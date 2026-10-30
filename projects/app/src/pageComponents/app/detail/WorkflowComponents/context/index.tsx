@@ -1,55 +1,40 @@
-import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
 import React from 'react';
-import { ReactFlowProvider } from 'reactflow';
-import WorkflowInitContextProvider from './workflowInitContext';
-import { WorkflowSnapshotProvider } from './workflowSnapshotContext';
-import { WorkflowUtilsProvider } from './workflowUtilsContext';
-import { WorkflowActionsProvider } from './workflowActionsContext';
-import { WorkflowDebugProvider } from './workflowDebugContext';
-import { WorkflowUIProvider } from './workflowUIContext';
-import { WorkflowModalProvider } from './workflowModalContext';
-import { WorkflowPersistenceProvider } from './workflowPersistenceContext';
-import { WorkflowComputeProvider } from './workflowComputeContext';
+import { ReactFlowProvider } from '@xyflow/react';
+import { AppContext } from '@/pageComponents/app/detail/context';
+import { WorkflowSessionProvider } from '@/web/core/workflow/editor/session/workflowSession';
+import WorkflowCanvasProvider from '../Flow/canvas/workflowCanvasContext';
+import { WorkflowDebugProvider } from '../debug/workflowDebugSession';
+import { useContextSelector } from 'use-context-selector';
 
 /* 
   ReactFlowProvider
-  └── WorkflowInitContextProvider          // Layer 1: 基础数据
-      └── WorkflowBufferDataContext              // Layer 2: 节点边数据
-          └── WorkflowSnapshotProvider     // Layer 3: 快照管理
-              └── WorkflowActionsProvider  // Layer 4: 节点边操作
-                └── WorkflowUtilsProvider    // Layer 5: 纯函数工具
-                      └── WorkflowDebugProvider  // Layer 6: 调试功能
-                          └── WorkflowUIProvider // Layer 7: UI 交互
-                              └── WorkflowModalProvider    // Layer 8: 弹窗管理
-                                └── WorkflowPersistenceProvider  // Layer 8: 持久化
-                                      └── WorkflowComputeProvider // Layer 9: 复杂计算
+  └── WorkflowSessionProvider          // Runtime lifecycle, persistence and issue state
+  └── WorkflowCanvasProvider       // renderer projection and interaction state
+          └── WorkflowDebugProvider    // debug session renderer state
+
+  UI 交互、选中态与弹窗 Context 属于 renderer 层（Flow/context/），挂载点在 renderer 组件树
+  （页面 WorkflowEdit 与画布 Flow）。
 */
-export const ReactFlowCustomProvider = ({
-  templates,
-  children
-}: {
-  templates: FlowNodeTemplateType[];
-  children: React.ReactNode;
-}) => {
+
+/**
+ * 工作流编辑器装配：ReactFlow + host + renderer canvas state。
+ */
+export const ReactFlowCustomProvider = ({ children }: { children: React.ReactNode }) => {
+  const appId = useContextSelector(AppContext, (value) => value.appId);
+  const appDetailChatConfig = useContextSelector(AppContext, (value) => value.appDetail.chatConfig);
+  const setAppDetail = useContextSelector(AppContext, (value) => value.setAppDetail);
+
   return (
     <ReactFlowProvider>
-      <WorkflowInitContextProvider basicNodeTemplates={templates}>
-        <WorkflowSnapshotProvider>
-          <WorkflowActionsProvider>
-            <WorkflowUtilsProvider>
-              <WorkflowDebugProvider>
-                <WorkflowUIProvider>
-                  <WorkflowModalProvider>
-                    <WorkflowPersistenceProvider>
-                      <WorkflowComputeProvider>{children}</WorkflowComputeProvider>
-                    </WorkflowPersistenceProvider>
-                  </WorkflowModalProvider>
-                </WorkflowUIProvider>
-              </WorkflowDebugProvider>
-            </WorkflowUtilsProvider>
-          </WorkflowActionsProvider>
-        </WorkflowSnapshotProvider>
-      </WorkflowInitContextProvider>
+      <WorkflowSessionProvider
+        appId={appId}
+        appDetailChatConfig={appDetailChatConfig}
+        onChatConfigChange={(chatConfig) => setAppDetail((detail) => ({ ...detail, chatConfig }))}
+      >
+        <WorkflowCanvasProvider>
+          <WorkflowDebugProvider>{children}</WorkflowDebugProvider>
+        </WorkflowCanvasProvider>
+      </WorkflowSessionProvider>
     </ReactFlowProvider>
   );
 };

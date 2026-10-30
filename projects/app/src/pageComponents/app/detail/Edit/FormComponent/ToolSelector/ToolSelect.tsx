@@ -91,8 +91,9 @@ const ToolSelect = ({
         gridGap={[2, 4]}
       >
         {selectedTools.map((item) => {
+          const status = item.pluginData?.status || item.status;
           const toolError = getToolErrorMessage({
-            status: item.pluginData?.status || item.status,
+            status,
             error: item.pluginData?.error,
             t
           });

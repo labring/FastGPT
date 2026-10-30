@@ -1,5 +1,5 @@
 import { reactFlowStateToWorkflowDocument } from '@/pageComponents/app/detail/WorkflowComponents/adapters/document';
-import { storeEdge2RenderEdge, storeNode2FlowNode } from '@/web/core/workflow/utils';
+import { storeNode2FlowNode } from '@/web/core/workflow/utils';
 import {
   WorkflowDocumentSchema,
   type WorkflowDocument
@@ -19,13 +19,24 @@ import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/consta
 import basicAiWorkflowFixture from '@fastgpt/workflow-core/test/fixtures/basic-ai/workflow.json';
 import { describe, expect, it } from 'vitest';
 
+const toFlowEdge = (
+  edge: { source: string; sourceHandle?: string; target: string; targetHandle?: string },
+  index: number
+) => ({
+  id: `edge-${index}`,
+  source: edge.source,
+  sourceHandle: edge.sourceHandle,
+  target: edge.target,
+  targetHandle: edge.targetHandle
+});
+
 const toWebGraph = (document: WorkflowDocument) => {
   const workflow = compileStoreWorkflow(document);
   return {
     nodes: workflow.nodes.map((node) =>
       storeNode2FlowNode({ item: node, t: ((value: string) => value) as any })
     ),
-    edges: workflow.edges.map((edge) => storeEdge2RenderEdge({ edge }))
+    edges: workflow.edges.map(toFlowEdge)
   };
 };
 

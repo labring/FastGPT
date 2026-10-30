@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
-import { type NodeProps, Position } from 'reactflow';
+import { Position } from '@xyflow/react';
+import type { CanvasNodeProps } from '@/web/core/workflow/editor/canvas/canvasTypes';
 import { Box, Button, Flex, Textarea } from '@chakra-ui/react';
 import NodeCard from './render/NodeCard';
 import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
@@ -14,29 +15,37 @@ import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/i
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { MySourceHandle } from './render/Handle';
 import { getHandleId } from '@fastgpt/global/common/workflow/reference';
-import { useContextSelector } from 'use-context-selector';
-import { WorkflowActionsContext } from '../../context/workflowActionsContext';
-import { WorkflowUtilsContext } from '../../context/workflowUtilsContext';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
+import { getOutputDisconnectCommands, splitToolInputsByMode } from '@/web/core/workflow/utils';
+import { useIsToolNode } from './render/useWorkflowDocument';
+import { useFieldActions } from '@/web/core/workflow/editor/react/useField';
+import { useNode, useNodeActions } from '@/web/core/workflow/editor/react/useNode';
+import { useWorkflowActions } from '@/web/core/workflow/editor/react/useWorkflow';
 
-const NodeCQNode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
+/** 分类源柄的平移量：模块级常量，避免每次渲染换数组身份打穿 MySourceHandle 的 React.memo。 */
+const sourceTranslate = [9, 0] as [number, number];
+const NodeCQNode = ({ data, selected }: CanvasNodeProps) => {
   const { t } = useTranslation();
-  const { nodeId, inputs } = data;
-  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
-  const onDelEdge = useContextSelector(WorkflowActionsContext, (v) => v.onDelEdge);
-  const splitToolInputs = useContextSelector(WorkflowUtilsContext, (ctx) => ctx.splitToolInputs);
-  const { isTool, commonInputs } = useMemoEnhance(
-    () => splitToolInputs(inputs, nodeId),
-    [inputs, nodeId, splitToolInputs]
+  const { nodeId } = data;
+  const inputs = useNode<FlowNodeItemType['inputs']>(nodeId, (node) => node?.data.inputs) ?? [];
+  const nodeActions = useNodeActions(nodeId);
+  // 边集合只在删除分类的回调里读，走非订阅 getter：点击时取当前值，组件不订阅结构变更。
+  const { getEdges } = useWorkflowActions();
+  // CustomComponent 是被 RenderInput 直接调用的普通函数，字段句柄必须在组件顶层取。
+  const agentsFieldActions = useFieldActions({
+    nodeId,
+    fieldKey: NodeInputKeyEnum.agents,
+    kind: 'input'
+  });
+  const isTool = useIsToolNode(nodeId);
+  const { commonInputs } = useMemoEnhance(
+    () => splitToolInputsByMode(inputs, isTool),
+    [inputs, isTool]
   );
 
   const CustomComponent = useMemo(
     () => ({
-      [NodeInputKeyEnum.agents]: ({
-        key: agentKey,
-        value = [],
-        ...props
-      }: FlowNodeInputItemType) => {
+      [NodeInputKeyEnum.agents]: ({ key: agentKey, value = [] }: FlowNodeInputItemType) => {
         const agents = value as ClassifyQuestionAgentItemType[];
         return (
           <Box>
@@ -53,20 +62,26 @@ const NodeCQNode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                       color={'myGray.600'}
                       _hover={{ color: 'red.600' }}
                       onClick={() => {
-                        onChangeNode({
-                          nodeId,
-                          type: 'updateInput',
-                          key: agentKey,
-                          value: {
-                            ...props,
-                            key: agentKey,
-                            value: agents.filter((input) => input.key !== item.key)
+                        // 删除分类要同时断开该分支 handle 上的连线：同一事务提交，撤销只需一步。
+                        nodeActions?.updateNode(
+                          (current) => ({
+                            inputs: current.inputs.map((input) =>
+                              input.key === agentKey
+                                ? {
+                                    ...input,
+                                    value: agents.filter((agent) => agent.key !== item.key)
+                                  }
+                                : input
+                            )
+                          }),
+                          {
+                            disconnectEdges: getOutputDisconnectCommands({
+                              edges: getEdges(),
+                              nodeId,
+                              outputKey: item.key
+                            })
                           }
-                        });
-                        onDelEdge({
-                          nodeId,
-                          sourceHandle: getHandleId(nodeId, 'source', item.key)
-                        });
+                        );
                       }}
                     />
                   </MyTooltip>
@@ -90,23 +105,14 @@ const NodeCQNode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                             }
                           : val
                       );
-                      onChangeNode({
-                        nodeId,
-                        type: 'updateInput',
-                        key: agentKey,
-                        value: {
-                          ...props,
-                          key: agentKey,
-                          value: newVal
-                        }
-                      });
+                      agentsFieldActions.setValue(newVal);
                     }}
                   />
                   <MySourceHandle
                     nodeId={nodeId}
                     handleId={getHandleId(nodeId, 'source', item.key)}
                     position={Position.Right}
-                    translate={[34, 0]}
+                    translate={sourceTranslate}
                   />
                 </Box>
               </Box>
@@ -116,16 +122,7 @@ const NodeCQNode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
               onClick={() => {
                 const key = getNanoid();
 
-                onChangeNode({
-                  nodeId,
-                  type: 'updateInput',
-                  key: agentKey,
-                  value: {
-                    ...props,
-                    key: agentKey,
-                    value: agents.concat({ value: '', key })
-                  }
-                });
+                agentsFieldActions.setValue(agents.concat({ value: '', key }));
               }}
             >
               {t('common:core.module.Add question type')}
@@ -134,7 +131,7 @@ const NodeCQNode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         );
       }
     }),
-    [nodeId, onChangeNode, onDelEdge, t]
+    [agentsFieldActions, getEdges, nodeActions, nodeId, t]
   );
 
   const Render = useMemo(() => {

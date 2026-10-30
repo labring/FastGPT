@@ -11,7 +11,7 @@ import {
   type WorkflowDiagnostic
 } from '@fastgpt/workflow-core/domain/diagnostic';
 import { decompileStoreEdge } from '@fastgpt/workflow-core/edge/compiler';
-import type { Edge, Node } from 'reactflow';
+import type { Edge, Node } from '@xyflow/react';
 
 /**
  * 无损投影校验快照：保留失效引用和资源标记，不复用保存时的清理流程，不修改画布。
@@ -23,7 +23,7 @@ export const createWorkflowCheckDocument = ({
   chatConfig = {}
 }: {
   nodes: Node<FlowNodeItemType, string | undefined>[];
-  edges: Edge[];
+  edges: Pick<Edge, 'source' | 'target' | 'sourceHandle' | 'targetHandle'>[];
   chatConfig?: AppChatConfigType;
 }) => {
   const document: WorkflowDocument = {

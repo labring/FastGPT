@@ -1019,14 +1019,16 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
         skillId: String(activeSkill._id),
         name: 'Current Skill Name',
         description: 'Current skill description',
-        avatar: 'current-avatar'
+        avatar: 'current-avatar',
+        isDeleted: false
       },
       {
         skillId: String(deletedSkill._id),
         name: 'Deleted Snapshot',
         description: 'Deleted snapshot description',
         avatar: undefined,
-        error: 'resource_missing'
+        error: 'resource_missing',
+        isDeleted: true
       }
     ]);
   });

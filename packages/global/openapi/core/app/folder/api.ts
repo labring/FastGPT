@@ -62,7 +62,8 @@ export const GetAppFolderPathQuerySchema = GetPathPropsSchema.extend({
   }),
   type: z.enum(['current', 'parent']).optional().meta({
     example: 'current',
-    description: '路径查询方式：current 返回当前节点路径（非文件夹资源时为所在文件夹路径加资源自身），parent 返回父级路径'
+    description:
+      '路径查询方式：current 返回当前节点路径（非文件夹资源时为所在文件夹路径加资源自身），parent 返回父级路径'
   })
 }).meta({
   example: {

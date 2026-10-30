@@ -8,9 +8,9 @@ import type { UserChatItemType } from '@fastgpt/global/core/chat/type';
 import {
   getWorkflowEntryNodeIds,
   getMaxHistoryLimitFromNodes,
-  storeEdges2RuntimeEdges,
-  storeNodes2RuntimeNodes
+  storeEdges2RuntimeEdges
 } from '@fastgpt/global/core/workflow/runtime/utils';
+import { storeNodes2RuntimeNodes } from '@fastgpt/global/common/workflow/runtime';
 import { getModuleFileAmountLimit } from '@fastgpt/global/core/workflow/fileLimit';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type {

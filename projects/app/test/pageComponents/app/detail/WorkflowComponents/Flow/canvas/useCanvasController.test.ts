@@ -1,0 +1,491 @@
+import { describe, expect, it, vi } from 'vitest';
+import type { Node, NodePositionChange, XYPosition } from '@xyflow/react';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+
+// Mock Markdown component: its CSS imports (katex) cannot be resolved under vitest.
+// useCanvasController.tsx transitively imports AppContext -> Markdown.
+vi.mock('@/components/Markdown', () => ({ default: () => null }));
+vi.mock('katex/dist/katex.min.css', () => ({}));
+
+import {
+  collectClearSelectionIds,
+  collectSelectionConflictIds,
+  collectGeometryUpdates,
+  collectCommittedGeometryNodeIds,
+  captureWorkflowDrag,
+  getContainerDescendantIds,
+  getGeometryNodeIdsForDrag,
+  getWorkflowDragNodeIds,
+  getPositionDelta,
+  computeHelperLines as computeHelperLinesWithNode,
+  dropEdgeDisconnectsOfRemovedNodes,
+  popoverWidth,
+  popoverHeight
+} from '@/pageComponents/app/detail/WorkflowComponents/Flow/canvas/useCanvasController';
+
+// Helpers
+const buildNode = (
+  id: string,
+  x: number,
+  y: number,
+  width = 50,
+  height = 50,
+  extra: Partial<Node> = {}
+): Node => ({
+  id,
+  position: { x, y },
+  data: {},
+  width,
+  height,
+  ...extra
+});
+
+const buildPositionChange = (
+  id: string,
+  position: XYPosition | undefined,
+  dragging = true
+): NodePositionChange =>
+  ({
+    id,
+    type: 'position',
+    position,
+    dragging
+  }) as NodePositionChange;
+
+const computeHelperLines = (change: NodePositionChange, nodes: Node[], distance?: number) =>
+  computeHelperLinesWithNode({
+    change,
+    node: nodes.find((node) => node.id === change.id),
+    nodes,
+    distance,
+    getNodeDimension: (nodeId) => {
+      const node = nodes.find((item) => item.id === nodeId);
+      return node ? { width: node.width ?? 0, height: node.height ?? 0 } : undefined;
+    }
+  });
+
+describe('collectGeometryUpdates', () => {
+  it('keeps dragging frames out of Runtime geometry commits', () => {
+    expect([
+      ...collectCommittedGeometryNodeIds([buildPositionChange('dragging', { x: 11, y: 20 })])
+    ]).toEqual([]);
+    expect([
+      ...collectCommittedGeometryNodeIds([
+        buildPositionChange('dragging', { x: 11, y: 20 }),
+        buildPositionChange('committed', { x: 12, y: 20 }, false)
+      ])
+    ]).toEqual(['committed']);
+  });
+
+  it('drops zero-delta container children and keeps moved nodes', () => {
+    const currentNodes = [buildNode('parent', 10, 20), buildNode('child', 30, 40)];
+    const previousPositions = new Map([
+      ['parent', { x: 10, y: 20 }],
+      ['child', { x: 30, y: 40 }]
+    ]);
+
+    expect(
+      collectGeometryUpdates({
+        nodeIds: ['parent', 'child'],
+        currentNodes,
+        getPreviousPosition: (nodeId) => previousPositions.get(nodeId)
+      })
+    ).toEqual([]);
+  });
+
+  it('only emits the moved node from a multi-selection batch', () => {
+    const currentNodes = [buildNode('moved', 11, 20), buildNode('steady', 30, 40)];
+    const previousPositions = new Map([
+      ['moved', { x: 10, y: 20 }],
+      ['steady', { x: 30, y: 40 }]
+    ]);
+
+    expect(
+      collectGeometryUpdates({
+        nodeIds: ['moved', 'steady'],
+        currentNodes,
+        getPreviousPosition: (nodeId) => previousPositions.get(nodeId)
+      })
+    ).toEqual([{ nodeId: 'moved', position: { x: 11, y: 20 } }]);
+  });
+});
+
+describe('getPositionDelta', () => {
+  it('moves child nodes when parent moves from (10, 20) to (0, 0)', () => {
+    expect(getPositionDelta({ x: 10, y: 20 }, { x: 0, y: 0 })).toEqual({ x: -10, y: -20 });
+  });
+
+  it('keeps an explicit x coordinate of 0', () => {
+    expect(getPositionDelta({ x: 10, y: 20 }, { x: 0 })).toEqual({ x: -10, y: 0 });
+  });
+
+  it('keeps an explicit y coordinate of 0', () => {
+    expect(getPositionDelta({ x: 10, y: 20 }, { y: 0 })).toEqual({ x: 0, y: -20 });
+  });
+});
+
+describe('container drag geometry', () => {
+  const hierarchyNode = (
+    id: string,
+    parentNodeId: string | undefined,
+    x: number,
+    y: number,
+    selected = false
+  ) =>
+    buildNode(id, x, y, 50, 50, {
+      selected,
+      data: { parentNodeId }
+    });
+
+  it('moves every descendant with a container while keeping selected child roots independent', () => {
+    const nodes = [
+      hierarchyNode('container', undefined, 100, 200, true),
+      hierarchyNode('nested', 'container', 20, 30, true),
+      hierarchyNode('leaf', 'nested', 4, 5, true),
+      hierarchyNode('outside', undefined, 700, 800)
+    ];
+
+    expect([...getContainerDescendantIds(nodes, 'container')]).toEqual(['nested', 'leaf']);
+    expect([...getWorkflowDragNodeIds(nodes, 'container')]).toEqual([
+      'container',
+      'nested',
+      'leaf'
+    ]);
+
+    const childGesture = captureWorkflowDrag(
+      [
+        hierarchyNode('container', undefined, 100, 200),
+        hierarchyNode('child', 'container', 20, 30, true)
+      ],
+      'child'
+    );
+    expect([...childGesture.nodeIds]).toEqual(['child']);
+  });
+
+  it('includes container ancestors so bbox relocation commits with child movement', () => {
+    const nodes = [
+      hierarchyNode('container', undefined, 100, 200),
+      hierarchyNode('child', 'container', 20, 30)
+    ];
+    const gesture = captureWorkflowDrag(nodes, 'child');
+
+    expect([...getGeometryNodeIdsForDrag(nodes, gesture)]).toEqual(['child', 'container']);
+  });
+});
+
+describe('computeHelperLines', () => {
+  it('should inspect each node exactly once when filtering candidates', () => {
+    const change = buildPositionChange('a', { x: 0, y: 0 });
+    const nodes = [buildNode('a', 0, 0), buildNode('b', 0, 100), buildNode('c', 500, 500)];
+    const isCandidate = vi.fn((node: Node) => node.id !== 'c');
+
+    const result = computeHelperLinesWithNode({
+      change,
+      node: nodes[0],
+      nodes,
+      isCandidate,
+      getNodeDimension: (nodeId) => {
+        const node = nodes.find((item) => item.id === nodeId);
+        return node ? { width: node.width ?? 0, height: node.height ?? 0 } : undefined;
+      }
+    });
+
+    expect(isCandidate).toHaveBeenCalledTimes(nodes.length);
+    expect(result.snapPosition.x).toBe(0);
+  });
+
+  it('should return default when change target node not found', () => {
+    const change = buildPositionChange('missing', { x: 0, y: 0 });
+    const nodes: Node[] = [buildNode('a', 0, 0)];
+    const result = computeHelperLines(change, nodes);
+    expect(result).toEqual({
+      horizontal: undefined,
+      vertical: undefined,
+      snapPosition: { x: undefined, y: undefined }
+    });
+  });
+
+  it('should return default when change.position is undefined', () => {
+    const change = buildPositionChange('a', undefined);
+    const nodes: Node[] = [buildNode('a', 0, 0)];
+    const result = computeHelperLines(change, nodes);
+    expect(result.horizontal).toBeUndefined();
+    expect(result.vertical).toBeUndefined();
+    expect(result.snapPosition).toEqual({ x: undefined, y: undefined });
+  });
+
+  it('should return initial value with only nodeA present (no reduce iterations)', () => {
+    const change = buildPositionChange('a', { x: 0, y: 0 });
+    const nodes: Node[] = [buildNode('a', 0, 0)];
+    const result = computeHelperLines(change, nodes);
+    expect(result.snapPosition).toEqual({ x: undefined, y: undefined });
+    expect(result.horizontal).toBeUndefined();
+    expect(result.vertical).toBeUndefined();
+  });
+
+  it('should fall back to 0 width/height when node has no size', () => {
+    const change = buildPositionChange('a', { x: 0, y: 0 });
+    // nodeA without width/height
+    const nodeA: Node = { id: 'a', position: { x: 0, y: 0 }, data: {} } as any;
+    const nodeB: Node = { id: 'b', position: { x: 0, y: 200 }, data: {} } as any;
+    const result = computeHelperLines(change, [nodeA, nodeB]);
+    // LL = |0 - 0| = 0, triggers vertical snap
+    expect(result.snapPosition.x).toBe(0);
+    // With zero widths, centerX = 0 for both -> also triggers CXCX equal branch
+    expect(result.vertical).toBeDefined();
+  });
+
+  it('should snap Left-Left', () => {
+    const change = buildPositionChange('a', { x: 0, y: 0 });
+    const nodeA = buildNode('a', 0, 0, 50, 50);
+    // nodeB with different width so R/LR/RL/CX won't equal LL=0
+    const nodeB = buildNode('b', 0, 500, 100, 50);
+    const result = computeHelperLines(change, [nodeA, nodeB]);
+    expect(result.snapPosition.x).toBe(0);
+    expect(result.vertical?.position).toBe(0);
+    expect(result.horizontal?.nodes).toEqual([]);
+  });
+
+  it('should snap Right-Right (nodeBBounds.right - nodeABounds.width)', () => {
+    const change = buildPositionChange('a', { x: 0, y: 0 });
+    const nodeA = buildNode('a', 0, 0, 100, 50);
+    // nodeB: right=100 (left=50,width=50), so RR=0; LL=50,LR=100,RL=50,CXCX=25 -> none match
+    const nodeB = buildNode('b', 50, 500, 50, 50);
+    const result = computeHelperLines(change, [nodeA, nodeB]);
+    expect(result.snapPosition.x).toBe(0); // 100 - 100
+    expect(result.vertical?.position).toBe(100);
+  });
+
+  it('should snap Left-Right', () => {
+    const change = buildPositionChange('a', { x: 100, y: 0 });
+    const nodeA = buildNode('a', 100, 0, 50, 50);
+    // nodeB right = 100 (left=0,width=100); LR=0, LL=100, RR=50, RL=150, CXCX=75
+    const nodeB = buildNode('b', 0, 500, 100, 50);
+    const result = computeHelperLines(change, [nodeA, nodeB]);
+    expect(result.snapPosition.x).toBe(100);
+    expect(result.vertical?.position).toBe(100);
+  });
+
+  it('should snap Right-Left (nodeBBounds.left - nodeABounds.width)', () => {
+    const change = buildPositionChange('a', { x: 0, y: 0 });
+    const nodeA = buildNode('a', 0, 0, 100, 50);
+    // nodeB: left=100; LL=100, RR=50, LR=150, RL=0, CXCX=25
+    const nodeB = buildNode('b', 100, 500, 50, 50);
+    const result = computeHelperLines(change, [nodeA, nodeB]);
+    expect(result.snapPosition.x).toBe(0); // 100 - 100
+    expect(result.vertical?.position).toBe(100);
+  });
+
+  it('should snap Top-Top', () => {
+    const change = buildPositionChange('a', { x: 0, y: 0 });
+    const nodeA = buildNode('a', 0, 0, 50, 50);
+    // nodeB with different height so BB/BT/TB/CY don't match TT=0
+    const nodeB = buildNode('b', 500, 0, 50, 100);
+    const result = computeHelperLines(change, [nodeA, nodeB]);
+    expect(result.snapPosition.y).toBe(0);
+    expect(result.horizontal?.position).toBe(0);
+  });
+
+  it('should snap Bottom-Top (nodeBBounds.top - nodeABounds.height)', () => {
+    const change = buildPositionChange('a', { x: 0, y: 0 });
+    const nodeA = buildNode('a', 0, 0, 50, 100);
+    const nodeB = buildNode('b', 500, 100, 50, 50);
+    const result = computeHelperLines(change, [nodeA, nodeB]);
+    expect(result.snapPosition.y).toBe(0); // 100 - 100
+    expect(result.horizontal?.position).toBe(100);
+  });
+
+  it('should snap Bottom-Bottom', () => {
+    const change = buildPositionChange('a', { x: 0, y: 50 });
+    const nodeA = buildNode('a', 0, 50, 50, 100);
+    // nodeB: top=0, bottom=150, centerY=75
+    // TT=50, BT=150, BB=0, TB=100, CYCY=25
+    const nodeB = buildNode('b', 500, 0, 50, 150);
+    const result = computeHelperLines(change, [nodeA, nodeB]);
+    expect(result.snapPosition.y).toBe(50); // 150 - 100
+    expect(result.horizontal?.position).toBe(150);
+  });
+
+  it('should snap Top-Bottom', () => {
+    const change = buildPositionChange('a', { x: 0, y: 100 });
+    const nodeA = buildNode('a', 0, 100, 50, 50);
+    // nodeB bottom=100 (top=0, height=100); TT=100, BT=150, BB=50, TB=0, CYCY=75
+    const nodeB = buildNode('b', 500, 0, 50, 100);
+    const result = computeHelperLines(change, [nodeA, nodeB]);
+    expect(result.snapPosition.y).toBe(100);
+    expect(result.horizontal?.position).toBe(100);
+  });
+
+  it('should snap CenterX-CenterX', () => {
+    const change = buildPositionChange('a', { x: 0, y: 0 });
+    const nodeA = buildNode('a', 0, 0, 100, 50); // centerX=50
+    // nodeB: left=25, right=75, centerX=50; LL=25, RR=25, LR=75, RL=75, CXCX=0
+    const nodeB = buildNode('b', 25, 500, 50, 50);
+    const result = computeHelperLines(change, [nodeA, nodeB]);
+    expect(result.snapPosition.x).toBe(0); // 50 - 50
+    expect(result.vertical?.position).toBe(50);
+  });
+
+  it('should snap CenterY-CenterY', () => {
+    const change = buildPositionChange('a', { x: 0, y: 0 });
+    const nodeA = buildNode('a', 0, 0, 50, 100); // centerY=50
+    // nodeB: top=25, bottom=75, centerY=50; TT=25, BT=75, BB=25, TB=75, CYCY=0
+    const nodeB = buildNode('b', 500, 25, 50, 50);
+    const result = computeHelperLines(change, [nodeA, nodeB]);
+    expect(result.snapPosition.y).toBe(0); // 50 - 50
+    expect(result.horizontal?.position).toBe(50);
+  });
+
+  it('should add additional nodes to vertical.nodes when LL equals current verticalDistance', () => {
+    const change = buildPositionChange('a', { x: 0, y: 0 });
+    const nodeA = buildNode('a', 0, 0, 50, 50);
+    // Both B and C have left=0 (LL=0). C iteration will hit else-if.
+    const nodeB = buildNode('b', 0, 500, 100, 50);
+    const nodeC = buildNode('c', 0, 1000, 100, 50);
+    const result = computeHelperLines(change, [nodeA, nodeB, nodeC]);
+    expect(result.snapPosition.x).toBe(0);
+    expect(result.vertical?.nodes.length).toBeGreaterThanOrEqual(3); // A + B + C at least
+  });
+
+  it('should add additional nodes to horizontal.nodes when TT equals current horizontalDistance', () => {
+    const change = buildPositionChange('a', { x: 0, y: 0 });
+    const nodeA = buildNode('a', 0, 0, 50, 50);
+    // Two nodes with top=0, different heights so only TT triggers
+    const nodeB = buildNode('b', 500, 0, 50, 100);
+    const nodeC = buildNode('c', 1000, 0, 50, 100);
+    const result = computeHelperLines(change, [nodeA, nodeB, nodeC]);
+    expect(result.snapPosition.y).toBe(0);
+    expect(result.horizontal?.nodes.length).toBeGreaterThanOrEqual(3);
+  });
+
+  it('should respect custom distance parameter (larger than default)', () => {
+    const change = buildPositionChange('a', { x: 20, y: 0 });
+    const nodeA = buildNode('a', 20, 0, 50, 50); // left=20, right=70, centerX=45
+    // Width 200 separates all LL/RR/LR/RL/CXCX distances. Only LL=20 is small.
+    const nodeB = buildNode('b', 0, 500, 200, 50); // left=0, right=200, centerX=100
+    const noSnap = computeHelperLines(change, [nodeA, nodeB]);
+    expect(noSnap.snapPosition.x).toBeUndefined();
+
+    const change2 = buildPositionChange('a', { x: 20, y: 0 });
+    const snap = computeHelperLines(change2, [nodeA, nodeB], 30);
+    expect(snap.snapPosition.x).toBe(0);
+  });
+
+  it('should leave snapPosition unchanged when all distances exceed threshold', () => {
+    const change = buildPositionChange('a', { x: 1000, y: 1000 });
+    const nodeA = buildNode('a', 1000, 1000, 50, 50);
+    const nodeB = buildNode('b', 0, 0, 50, 50);
+    const result = computeHelperLines(change, [nodeA, nodeB]);
+    expect(result.snapPosition.x).toBeUndefined();
+    expect(result.snapPosition.y).toBeUndefined();
+    // default vertical/horizontal from nodeABounds centers (set by first iteration)
+    expect(result.vertical?.position).toBe(1025);
+    expect(result.horizontal?.position).toBe(1025);
+  });
+});
+
+describe('popover constants', () => {
+  it('should expose expected popover dimensions', () => {
+    expect(popoverWidth).toBe(400);
+    expect(popoverHeight).toBe(600);
+  });
+});
+
+describe('dropEdgeDisconnectsOfRemovedNodes', () => {
+  const edge = (source: string, target: string) => ({
+    source,
+    target,
+    sourceHandle: 'source',
+    targetHandle: 'target'
+  });
+
+  it('drops every edge of a deleted node so the delete stays one history entry', () => {
+    // 删中间节点：reactflow 先派生两条连线 remove，再派生节点 remove。
+    // 两条断连都要丢掉，removeNodes 会级联删边，最终只提交一条命令。
+    expect(
+      dropEdgeDisconnectsOfRemovedNodes([edge('a', 'b'), edge('b', 'c')], new Set(['b']))
+    ).toEqual([]);
+  });
+
+  it('keeps edges that are unrelated to the deleted node', () => {
+    expect(
+      dropEdgeDisconnectsOfRemovedNodes([edge('a', 'b'), edge('c', 'd')], new Set(['b']))
+    ).toEqual([edge('c', 'd')]);
+  });
+
+  it('keeps edges in the document when nothing is being deleted', () => {
+    const edges = [edge('a', 'b')];
+    expect(dropEdgeDisconnectsOfRemovedNodes(edges, new Set())).toEqual(edges);
+  });
+});
+
+// 06a-8 第一部分的三条行为不变量：选中写入只对真的变了的节点发 select 变更。
+const selectionNode = (
+  id: string,
+  {
+    selected = false,
+    parentNodeId,
+    flowNodeType = 'tools'
+  }: { selected?: boolean; parentNodeId?: string; flowNodeType?: string } = {}
+): Node => ({ id, position: { x: 0, y: 0 }, data: { flowNodeType, parentNodeId }, selected });
+
+describe('collectClearSelectionIds', () => {
+  const nodes = [
+    selectionNode('a', { selected: true }),
+    selectionNode('b'),
+    selectionNode('c', { selected: true }),
+    selectionNode('focus', { selected: true })
+  ];
+
+  it('returns only the ids of nodes that are actually selected', () => {
+    expect(collectClearSelectionIds(nodes)).toEqual(['a', 'c', 'focus']);
+  });
+
+  it('skips the focused issue node so save-gate positioning keeps it selected', () => {
+    expect(collectClearSelectionIds(nodes, 'focus')).toEqual(['a', 'c']);
+  });
+
+  it('returns empty when nothing is selected so the caller emits no change at all', () => {
+    expect(collectClearSelectionIds([selectionNode('a'), selectionNode('b')])).toEqual([]);
+  });
+});
+
+describe('collectSelectionConflictIds', () => {
+  const container = selectionNode('loop', {
+    flowNodeType: FlowNodeTypeEnum.loop,
+    selected: true
+  });
+  const childA = selectionNode('child-a', { parentNodeId: 'loop', selected: true });
+  const childB = selectionNode('child-b', { parentNodeId: 'loop', selected: true });
+  const outside = selectionNode('outside', { selected: true });
+
+  it('deselects selected children when a container is selected', () => {
+    expect(
+      collectSelectionConflictIds({ nodes: [container, childA, childB, outside], node: container })
+    ).toEqual(['child-a', 'child-b']);
+  });
+
+  it('deselects the selected parent when a child is selected', () => {
+    expect(collectSelectionConflictIds({ nodes: [container, childA], node: childA })).toEqual([
+      'loop'
+    ]);
+  });
+
+  it('returns empty when the parent is not selected', () => {
+    const idleContainer = selectionNode('loop', { flowNodeType: FlowNodeTypeEnum.loop });
+    expect(collectSelectionConflictIds({ nodes: [idleContainer, childA], node: childA })).toEqual(
+      []
+    );
+  });
+
+  it('returns empty for a top-level non-container node', () => {
+    expect(collectSelectionConflictIds({ nodes: [container, outside], node: outside })).toEqual([]);
+  });
+
+  it('returns empty when a container has no selected child', () => {
+    const idleChild = selectionNode('child-a', { parentNodeId: 'loop' });
+    expect(collectSelectionConflictIds({ nodes: [container, idleChild], node: container })).toEqual(
+      []
+    );
+  });
+});

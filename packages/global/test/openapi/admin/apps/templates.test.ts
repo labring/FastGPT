@@ -29,6 +29,15 @@ const workflow = {
   chatConfig: {}
 };
 
+const referenceSnapshots = [
+  {
+    reference: ['deleted', 'output'],
+    sourceLabel: 'Deleted source',
+    outputLabel: 'Output',
+    icon: 'deleted-avatar'
+  }
+];
+
 const simpleWorkflow = {
   aiSettings: {
     model: 'gpt-4o-mini',
@@ -52,6 +61,16 @@ describe('admin app template schemas', () => {
         workflow
       }).workflow
     ).toEqual(workflow);
+  });
+
+  it('keeps reference snapshots when parsing a workflow template', () => {
+    const result = CreateTemplateBodySchema.parse({
+      ...templateBase,
+      type: AppTypeEnum.workflow,
+      workflow: { ...workflow, referenceSnapshots }
+    });
+
+    expect(result.workflow).toHaveProperty('referenceSnapshots', referenceSnapshots);
   });
 
   it('rejects an unsupported workflow node type', () => {

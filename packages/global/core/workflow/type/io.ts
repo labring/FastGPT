@@ -49,8 +49,6 @@ export const StoredSelectedDatasetSchema = z.object({
       description: '知识库向量模型快照'
     })
 });
-export type StoredSelectedDatasetType = z.infer<typeof StoredSelectedDatasetSchema>;
-
 // Dynamic input field configuration
 export const CustomFieldConfigTypeSchema = z.object({
   // reference
@@ -232,8 +230,6 @@ export const InputComponentPropsTypeSchema = z.object({
       deprecated: true
     })
 });
-export type InputComponentPropsType = z.infer<typeof InputComponentPropsTypeSchema>;
-
 export const InputConfigInputTypeSchema = z.enum([
   'input',
   'numberInput',
@@ -243,8 +239,6 @@ export const InputConfigInputTypeSchema = z.enum([
 ]);
 
 export const InputConfigInputTypeEnum = InputConfigInputTypeSchema.enum;
-
-export type InputConfigInputTypeType = z.infer<typeof InputConfigInputTypeSchema>;
 
 /** 系统密钥输入配置 */
 export const InputConfigTypeSchema = z.object({
@@ -429,6 +423,26 @@ export const HttpParamAndHeaderItemTypeSchema = z.object({
   value: z.string()
 });
 export type HttpParamAndHeaderItemType = z.infer<typeof HttpParamAndHeaderItemTypeSchema>;
+
+/**
+ * 已删除引用来源的历史展示元数据（根级稀疏数组）。
+ * 只在来源消失时捕获，导出前按「来源仍缺失且仍有 consumer」压缩，因此不是全量引用表。
+ */
+export const WorkflowReferenceSnapshotSchema = z.object({
+  reference: ReferenceItemValueTypeSchema.meta({
+    description: '[来源节点 ID, 输出 ID]，指向已消失的引用来源'
+  }),
+  sourceLabel: z.string().optional().meta({
+    description: '来源节点被删除时的展示名'
+  }),
+  outputLabel: z.string().optional().meta({
+    description: '来源输出被删除时的展示名'
+  }),
+  icon: z.string().optional().meta({
+    description: '来源节点被删除时的图标'
+  })
+});
+export type WorkflowReferenceSnapshot = z.infer<typeof WorkflowReferenceSnapshotSchema>;
 
 export type EditorVariablePickerType = {
   key: string;

@@ -5,13 +5,18 @@ import type { RerankModelDataType, TTSModelDataType } from '@fastgpt/global/core
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
-import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   FlowNodeInputTypeEnum,
+  FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
-import { storeNodes2RuntimeNodes } from '@fastgpt/global/core/workflow/runtime/utils';
-import type { PublishAppBodyType } from '@fastgpt/global/openapi/core/app/version/api';
+import {
+  GetLatestAppVersionResponseSchema,
+  PublishAppBodySchema,
+  type PublishAppBodyType
+} from '@fastgpt/global/openapi/core/app/version/api';
+import { storeNodes2RuntimeNodes } from '@fastgpt/global/common/workflow/runtime';
 import type {
   GetDatasetListV2Body,
   GetDatasetListV2Response
@@ -554,6 +559,173 @@ describe('publish optional model defaults', () => {
     expect(await MongoAppVersion.countDocuments({ appId: app._id, isPublish: true })).toBe(0);
   });
 
+  const referenceSnapshots: NonNullable<PublishAppBodyType['referenceSnapshots']> = [
+    {
+      reference: ['deleted-source', 'text'],
+      sourceLabel: 'Deleted source',
+      outputLabel: 'Text'
+    },
+    {
+      reference: ['source-without-output', 'removed-output'],
+      sourceLabel: 'Source without output',
+      outputLabel: 'Removed output'
+    },
+    {
+      reference: ['default-source', 'text'],
+      sourceLabel: 'Default source',
+      outputLabel: 'Text'
+    },
+    {
+      reference: ['restored-source', 'text'],
+      sourceLabel: 'Old restored source',
+      outputLabel: 'Text'
+    },
+    {
+      reference: ['unused-source', 'text'],
+      sourceLabel: 'Unused source',
+      outputLabel: 'Text'
+    },
+    {
+      reference: ['ordinary-array-source', 'text'],
+      sourceLabel: 'Ordinary array source',
+      outputLabel: 'Text'
+    }
+  ];
+
+  const referenceNodes: NonNullable<PublishAppBodyType['nodes']> = [
+    {
+      nodeId: 'source-without-output',
+      name: 'Source without output',
+      flowNodeType: FlowNodeTypeEnum.answerNode,
+      inputs: [],
+      outputs: []
+    },
+    {
+      nodeId: 'restored-source',
+      name: 'Restored source',
+      flowNodeType: FlowNodeTypeEnum.answerNode,
+      inputs: [],
+      outputs: [
+        {
+          id: 'text',
+          key: 'text',
+          type: FlowNodeOutputTypeEnum.source,
+          valueType: WorkflowIOValueTypeEnum.string,
+          label: 'Text'
+        }
+      ]
+    },
+    {
+      nodeId: 'consumer',
+      name: 'Consumer',
+      flowNodeType: FlowNodeTypeEnum.answerNode,
+      inputs: [
+        {
+          key: NodeInputKeyEnum.answerText,
+          label: 'Answer',
+          renderTypeList: [FlowNodeInputTypeEnum.reference],
+          selectedType: FlowNodeInputTypeEnum.reference,
+          value: [
+            ['deleted-source', 'text'],
+            ['source-without-output', 'removed-output'],
+            ['restored-source', 'text']
+          ]
+        },
+        {
+          key: 'defaultReference',
+          label: 'Default reference',
+          renderTypeList: [FlowNodeInputTypeEnum.reference],
+          selectedType: FlowNodeInputTypeEnum.reference,
+          defaultValue: [['default-source', 'text']]
+        },
+        {
+          key: 'ordinaryArray',
+          label: 'Ordinary array',
+          renderTypeList: [FlowNodeInputTypeEnum.hidden],
+          selectedType: FlowNodeInputTypeEnum.hidden,
+          value: ['ordinary-array-source', 'text']
+        }
+      ],
+      outputs: []
+    }
+  ];
+
+  const createReferenceSnapshotApp = async () => {
+    const root = await getRootUser();
+    const app = await MongoApp.create({
+      name: 'reference-snapshot-publish',
+      type: AppTypeEnum.workflow,
+      teamId: root.teamId,
+      tmbId: root.tmbId
+    });
+    await MongoAppVersion.create({
+      appId: app._id,
+      tmbId: root.tmbId,
+      nodes: referenceNodes,
+      edges: [],
+      chatConfig: {},
+      referenceSnapshots,
+      isAutoSave: true,
+      versionName: 'Reference snapshot draft'
+    });
+
+    return { root, app };
+  };
+
+  it('distinguishes omitted publish snapshots from empty snapshots and keeps response defaults', () => {
+    expect(PublishAppBodySchema.shape.referenceSnapshots.parse(undefined)).toBeUndefined();
+    expect(PublishAppBodySchema.shape.referenceSnapshots.parse([])).toEqual([]);
+    expect(GetLatestAppVersionResponseSchema.shape.referenceSnapshots.parse(undefined)).toEqual([]);
+  });
+
+  it.each([true, false])(
+    'inherits only still-unresolvable referenced snapshots for autoSave=%s',
+    async (autoSave) => {
+      const { root, app } = await createReferenceSnapshotApp();
+      const versionName = 'Reference snapshot publish';
+      const result = await Call<PublishAppBodyType, { appId: string }, undefined>(handler, {
+        auth: root,
+        query: { appId: String(app._id) },
+        body: {
+          nodes: referenceNodes,
+          edges: [],
+          chatConfig: {},
+          ...(autoSave ? { autoSave: true } : { isPublish: true, versionName })
+        }
+      });
+      const version = await MongoAppVersion.findOne(
+        autoSave ? { appId: app._id, isAutoSave: true } : { appId: app._id, versionName }
+      ).lean();
+
+      expect(result.code).toBe(200);
+      expect(version?.referenceSnapshots).toEqual(referenceSnapshots.slice(0, 3));
+    }
+  );
+
+  it.each([true, false])(
+    'clears reference snapshots when explicitly empty for autoSave=%s',
+    async (autoSave) => {
+      const { root, app } = await createReferenceSnapshotApp();
+      const versionName = 'Empty reference snapshot publish';
+      const result = await Call<PublishAppBodyType, { appId: string }, undefined>(handler, {
+        auth: root,
+        query: { appId: String(app._id) },
+        body: {
+          nodes: referenceNodes,
+          edges: [],
+          chatConfig: {},
+          referenceSnapshots: [],
+          ...(autoSave ? { autoSave: true } : { isPublish: true, versionName })
+        }
+      });
+      const version = await MongoAppVersion.findOne(
+        autoSave ? { appId: app._id, isAutoSave: true } : { appId: app._id, versionName }
+      ).lean();
+
+      expect(result.code).toBe(200);
+      expect(version?.referenceSnapshots).toEqual([]);
+    }
+  );
   it('keeps preview and published runtime consistent when nodes carry legacy rerankModel gte-rerank-v2', async () => {
     const root = await getRootUser();
     const llm = previousDefaults.llm!;

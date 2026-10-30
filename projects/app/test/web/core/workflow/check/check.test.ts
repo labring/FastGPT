@@ -13,7 +13,7 @@ import type {
   FlowNodeItemType,
   FlowNodeTemplateType
 } from '@fastgpt/global/core/workflow/type/node';
-import type { Node, Edge } from 'reactflow';
+import type { Node, Edge } from '@xyflow/react';
 import {
   FlowNodeTypeEnum,
   FlowNodeInputTypeEnum,

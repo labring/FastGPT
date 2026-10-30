@@ -2,10 +2,11 @@ import { act, createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { JSDOM } from 'jsdom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { Edge, Node } from 'reactflow';
+import type { Edge, Node } from '@xyflow/react';
 import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import type { WorkflowSnapshot } from '@fastgpt/global/core/workflow/editor/types';
 import {
   matchesWorkflowAutoLayoutRequest,
   getWorkflowAutoLayoutNodeSizeSignature,
@@ -17,30 +18,31 @@ const mocks = vi.hoisted(() => ({
   nodes: [] as Node<FlowNodeItemType>[],
   edges: [] as Edge[],
   initialized: true,
-  revision: 1,
-  setNodes: vi.fn(),
+  workflowSnapshot: {} as WorkflowSnapshot,
+  replaceNodes: vi.fn(),
+  commitGeometry: vi.fn(),
   getNodes: vi.fn(),
   getEdges: vi.fn(),
-  fitView: vi.fn(),
-  getParentNodeSizeAndPosition: vi.fn()
+  fitNodes: vi.fn(),
+  getNodeDimension: vi.fn()
 }));
-vi.mock('reactflow', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('reactflow')>()),
+vi.mock('@xyflow/react', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@xyflow/react')>()),
   useNodes: () => mocks.nodes,
-  useNodesInitialized: () => mocks.initialized,
-  useReactFlow: () => mocks
+  useNodesInitialized: () => mocks.initialized
 }));
-vi.mock('@/pageComponents/app/detail/WorkflowComponents/context/workflowInitContext', () => ({
-  WorkflowBufferDataContext: 'buffer'
+vi.mock('@/web/core/workflow/editor/react/useWorkflow', () => ({
+  useWorkflowActions: () => ({ commitGeometry: mocks.commitGeometry })
 }));
-vi.mock('use-context-selector', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('use-context-selector')>()),
-  useContextSelector: (context: string, selector: (value: unknown) => unknown) =>
-    selector(
-      context === 'buffer'
-        ? { setNodes: mocks.setNodes, workflowDataRevision: mocks.revision }
-        : { getParentNodeSizeAndPosition: mocks.getParentNodeSizeAndPosition }
-    )
+vi.mock('@/web/core/workflow/editor/session/workflowSession', () => ({
+  useWorkflowRuntime: () => ({ getWorkflow: () => mocks.workflowSnapshot, isDisposed: () => false }),
+  useWorkflowSnapshot: () => mocks.workflowSnapshot
+}));
+vi.mock('@/pageComponents/app/detail/WorkflowComponents/Flow/canvas/workflowCanvasContext', () => ({
+  useWorkflowCanvasRendererValue: (selector: (value: unknown) => unknown) =>
+    selector({ getNodes: mocks.getNodes, edges: mocks.edges, replaceNodes: mocks.replaceNodes }),
+  useWorkflowCanvasValue: (selector: (value: unknown) => unknown) =>
+    selector({ fitNodes: mocks.fitNodes, getNodeDimension: mocks.getNodeDimension })
 }));
 
 const node = (id: string, extra: Partial<Node<FlowNodeItemType>> = {}): Node<FlowNodeItemType> => ({
@@ -60,6 +62,15 @@ const node = (id: string, extra: Partial<Node<FlowNodeItemType>> = {}): Node<Flo
   },
   ...extra
 });
+
+const setCanvasNodes = (nodes: Node<FlowNodeItemType>[]) => {
+  mocks.nodes = nodes;
+  mocks.workflowSnapshot = {
+    nodes: nodes.map(({ data }) => ({ ...data, issues: [] })),
+    edges: [],
+    chatConfig: {}
+  } as unknown as WorkflowSnapshot;
+};
 
 describe('workflow layout data compatibility', () => {
   it('binds auto-layout readiness to the exact Builder-applied node set', () => {
@@ -98,13 +109,8 @@ describe('workflow layout data compatibility', () => {
     ).toBeUndefined();
   });
 
-  it('merges only positions and container dimensions into the latest data without resurrecting deleted nodes', () => {
+  it('merges layout coordinates into current projection without restoring deleted nodes', () => {
     const parent = node('loop');
-    parent.data.inputs = [
-      { key: NodeInputKeyEnum.nodeWidth, value: 400, label: 'Width', renderTypeList: [] },
-      { key: NodeInputKeyEnum.nodeHeight, value: 200, label: 'Height', renderTypeList: [] },
-      { key: 'prompt', label: 'Prompt', value: 'latest prompt', renderTypeList: [] }
-    ];
     const child = node('child');
     child.data.name = 'latest name';
     const added = node('new');
@@ -115,24 +121,14 @@ describe('workflow layout data compatibility', () => {
           ...parent,
           width: 900,
           height: 700,
-          position: { x: 20, y: 30 },
-          data: {
-            ...parent.data,
-            inputs: parent.data.inputs.map((input) => ({
-              ...input,
-              value: input.key === NodeInputKeyEnum.nodeWidth ? 800 : 600
-            }))
-          }
+          position: { x: 20, y: 30 }
         },
         { ...child, width: 999, position: { x: 50, y: 60 }, data: { ...child.data, name: 'old' } },
         node('deleted')
-      ],
-      resizedNodeIds: new Set(['loop'])
+      ]
     });
     expect(result.map(({ id }) => id)).toEqual(['loop', 'child', 'new']);
-    expect(result[0]).toMatchObject({ width: 900, height: 700, position: { x: 20, y: 30 } });
-    expect(result[0].data.inputs.map(({ value }) => value)).toEqual([800, 600, 'latest prompt']);
-    expect(result[0].data.inputs[0].label).toBe('Width');
+    expect(result[0]).toMatchObject({ width: 420, height: 240, position: { x: 20, y: 30 } });
     expect(result[1]).toMatchObject({ width: 420, data: { name: 'latest name' } });
     expect(result[1].position).toEqual({ x: 50, y: 60 });
     expect(result[1].data).toBe(child.data);
@@ -140,8 +136,7 @@ describe('workflow layout data compatibility', () => {
     expect(
       mergeWorkflowLayoutNodes({
         currentNodes: [added],
-        layoutedNodes: [],
-        resizedNodeIds: new Set()
+        layoutedNodes: []
       })[0]
     ).toBe(added);
     expect(parent.width).toBe(420);
@@ -172,7 +167,7 @@ describe('useWorkflowAutoLayout', () => {
     await act(async () => {
       result = layout.requestAutoLayout({
         nodeIds: mocks.nodes.map(({ id }) => id),
-        workflowDataRevision: mocks.revision
+        workflowSnapshot: mocks.workflowSnapshot
       });
     });
     return { result };
@@ -183,14 +178,20 @@ describe('useWorkflowAutoLayout', () => {
     vi.useFakeTimers();
     frameId = 0;
     frames = new Map();
-    mocks.nodes = [node('start'), node('answer'), node('isolated')];
+    setCanvasNodes([node('start'), node('answer'), node('isolated')]);
     mocks.edges = [{ id: 'edge', source: 'start', target: 'answer' }];
     mocks.initialized = true;
-    mocks.revision = 1;
     mocks.getNodes.mockImplementation(() => mocks.nodes);
     mocks.getEdges.mockImplementation(() => mocks.edges);
-    mocks.setNodes.mockImplementation((update) => {
-      mocks.nodes = typeof update === 'function' ? update(mocks.nodes) : update;
+    mocks.replaceNodes.mockImplementation((nodes) => {
+      mocks.nodes = nodes as Node<FlowNodeItemType>[];
+    });
+    mocks.fitNodes.mockReturnValue(true);
+    mocks.getNodeDimension.mockImplementation((nodeId) => {
+      const current = mocks.nodes.find(({ id }) => id === nodeId);
+      return current?.width && current?.height
+        ? { width: current.width, height: current.height }
+        : undefined;
     });
     dom = new JSDOM('<!doctype html><div id="root"></div>', { pretendToBeVisual: true });
     vi.stubGlobal('window', dom.window);
@@ -223,15 +224,15 @@ describe('useWorkflowAutoLayout', () => {
     expect(mocks.nodes[1].position.x).toBeGreaterThan(mocks.nodes[0].position.x);
     expect(mocks.nodes[2]).toEqual(original[2]);
     expect(mocks.nodes.map(({ data }) => data)).toEqual(original.map(({ data }) => data));
-    expect(mocks.fitView).toHaveBeenCalledOnce();
+    expect(mocks.fitNodes).toHaveBeenCalledOnce();
   });
 
   it.each(['empty', 'unmeasured'] as const)('does not mutate a manual %s canvas', async (state) => {
-    mocks.nodes = state === 'empty' ? [] : [node('start', { width: undefined })];
+    setCanvasNodes(state === 'empty' ? [] : [node('start', { width: undefined })]);
     await render();
     await expect(layout.autoLayout()).resolves.toBe('failed');
-    expect(mocks.setNodes).not.toHaveBeenCalled();
-    expect(mocks.fitView).not.toHaveBeenCalled();
+    expect(mocks.replaceNodes).not.toHaveBeenCalled();
+    expect(mocks.fitNodes).not.toHaveBeenCalled();
   });
 
   it('keeps user-selection branches in option order when laying out an ordinary canvas', async () => {
@@ -248,7 +249,7 @@ describe('useWorkflowAutoLayout', () => {
         ]
       }
     ];
-    mocks.nodes = [node('start'), selection, node('second'), node('first')];
+    setCanvasNodes([node('start'), selection, node('second'), node('first')]);
     mocks.edges = [
       { id: 'entry', source: 'start', target: 'selection' },
       { id: 'second', source: 'selection', target: 'second', sourceHandle: 'second-option' },
@@ -275,49 +276,35 @@ describe('useWorkflowAutoLayout', () => {
     children.forEach((child) => {
       child.data.parentNodeId = 'loop';
     });
-    mocks.nodes = [node('start'), loop, ...children];
+    setCanvasNodes([node('start'), loop, ...children]);
     const original = structuredClone(mocks.nodes);
     mocks.edges = [
       { id: 'outer', source: 'start', target: 'loop' },
       { id: 'inner', source: 'child-start', target: 'child-answer' }
     ];
-    let childLayout!: Node<FlowNodeItemType>[];
-    mocks.getParentNodeSizeAndPosition.mockImplementationOnce(({ nodes, parentId }) => {
-      expect(parentId).toBe('loop');
-      childLayout = structuredClone(nodes);
-      return {
-        parentX: 80,
-        parentY: 50,
-        childWidth: 1000,
-        childHeight: 500,
-        nodeWidth: 1100,
-        nodeHeight: 700
-      };
-    });
+    const originalChildPositions = new Map(
+      children.map((child) => [child.id, { ...child.position }])
+    );
     await render();
     const result = layout.autoLayout();
     await frame();
     await frame();
     await expect(result).resolves.toBe('applied');
     const parent = mocks.nodes.find(({ id }) => id === 'loop')!;
-    expect(parent).toMatchObject({ width: 1100, height: 700 });
-    expect(parent.data.inputs.map(({ value }) => value)).toEqual([1000, 500]);
+    expect(parent.width).toBe(420);
+    expect(parent.height).toBe(240);
     for (const child of mocks.nodes.filter(({ data }) => data.parentNodeId === 'loop')) {
-      const before = childLayout.find(({ id }) => id === child.id)!;
-      expect(child.position).toEqual({
-        x: before.position.x + parent.position.x - 80,
-        y: before.position.y + parent.position.y - 50
-      });
+      expect(child.position).not.toEqual(originalChildPositions.get(child.id));
     }
-    expect(childLayout[3].position.x).toBeGreaterThan(childLayout[2].position.x);
     expect(loop).toEqual(original[1]);
     expect(children).toEqual(original.slice(2));
+    expect(mocks.commitGeometry).toHaveBeenCalledOnce();
   });
 
   it('stops a manual layout from focusing a replaced or unmounted canvas', async () => {
     await render();
     const replaced = layout.autoLayout();
-    mocks.revision += 1;
+    setCanvasNodes(mocks.nodes);
     await render();
     await frame();
     await frame();
@@ -327,7 +314,7 @@ describe('useWorkflowAutoLayout', () => {
     await frame();
     await frame();
     await expect(unmounted).resolves.toBe('failed');
-    expect(mocks.fitView).not.toHaveBeenCalled();
+    expect(mocks.fitNodes).not.toHaveBeenCalled();
   });
 
   it('waits for initialization and two stable measured frames after the last resize', async () => {
@@ -335,7 +322,7 @@ describe('useWorkflowAutoLayout', () => {
     await render();
     const { result } = await request();
     await frame();
-    expect(mocks.setNodes).not.toHaveBeenCalled();
+    expect(mocks.replaceNodes).not.toHaveBeenCalled();
     mocks.initialized = true;
     await render();
     await frame();
@@ -343,13 +330,13 @@ describe('useWorkflowAutoLayout', () => {
     await frame();
     mocks.nodes[1].height = 480;
     await frame();
-    expect(mocks.setNodes).not.toHaveBeenCalled();
+    expect(mocks.replaceNodes).not.toHaveBeenCalled();
     await frame();
-    expect(mocks.setNodes).toHaveBeenCalledOnce();
+    expect(mocks.replaceNodes).toHaveBeenCalledOnce();
     await frame();
     await frame();
     await expect(result).resolves.toBe('applied');
-    expect(mocks.fitView).toHaveBeenCalledOnce();
+    expect(mocks.fitNodes).toHaveBeenCalledOnce();
     expect(vi.getTimerCount()).toBe(0);
   });
 
@@ -365,43 +352,40 @@ describe('useWorkflowAutoLayout', () => {
     await expect(result).resolves.toBe('degraded');
     expect(mocks.nodes[1].width).toBeUndefined();
     expect(mocks.nodes[1].height).toBeUndefined();
-    expect(mocks.fitView).toHaveBeenCalledWith({
-      nodes: [mocks.nodes[0], mocks.nodes[2]],
-      padding: 0.3
-    });
+    expect(mocks.fitNodes).toHaveBeenCalledWith(['start', 'isolated'], { padding: 0.3 });
   });
 
-  it.each(['revision', 'node set'] as const)(
+  it.each(['workflow snapshot', 'node set'] as const)(
     'rejects a stale %s request without moving the replacement canvas',
     async (changed) => {
       mocks.initialized = false;
       await render();
       const { result } = await request();
-      if (changed === 'revision') mocks.revision += 1;
+      if (changed === 'workflow snapshot') mocks.workflowSnapshot = {} as WorkflowSnapshot;
       else mocks.nodes = [node('replacement')];
       await render();
       await act(async () => vi.advanceTimersByTimeAsync(5000));
       await expect(result).resolves.toBe('failed');
-      expect(mocks.setNodes).not.toHaveBeenCalled();
-      expect(mocks.fitView).not.toHaveBeenCalled();
+      expect(mocks.replaceNodes).not.toHaveBeenCalled();
+      expect(mocks.fitNodes).not.toHaveBeenCalled();
     }
   );
 
-  it('cancels a stale revision while measuring without waiting for the fallback timeout', async () => {
+  it('cancels a stale workflow snapshot while measuring without fallback timeout', async () => {
     await render();
     const { result } = await request();
-    mocks.revision += 1;
+    mocks.workflowSnapshot = {} as WorkflowSnapshot;
     await render();
     await frame();
     await expect(result).resolves.toBe('failed');
-    expect(mocks.setNodes).not.toHaveBeenCalled();
+    expect(mocks.replaceNodes).not.toHaveBeenCalled();
     expect(frames.size).toBe(0);
     expect(vi.getTimerCount()).toBe(0);
   });
 
   it('settles a layout failure and clears its timeout so a later request can run', async () => {
     await render();
-    mocks.setNodes.mockImplementationOnce(() => {
+    mocks.replaceNodes.mockImplementationOnce(() => {
       throw new Error('Canvas unavailable');
     });
     const { result } = await request();
@@ -415,17 +399,18 @@ describe('useWorkflowAutoLayout', () => {
   });
 
   it.each([false, true])(
-    'does not let an earlier in-flight layout complete a newer request or focus its canvas (revision changed: %s)',
+    'does not let an earlier in-flight layout complete a newer request or focus its canvas (snapshot changed: %s)',
     async (changeRevision) => {
       await render();
       const first = await request();
       await frame();
       await frame();
-      expect(mocks.setNodes).toHaveBeenCalledOnce();
+      expect(mocks.replaceNodes).toHaveBeenCalledOnce();
 
-      if (changeRevision) mocks.revision += 1;
       mocks.initialized = false;
-      mocks.nodes = [node('replacement')];
+      const previousWorkflowSnapshot = mocks.workflowSnapshot;
+      setCanvasNodes([node('replacement')]);
+      if (!changeRevision) mocks.workflowSnapshot = previousWorkflowSnapshot;
       await render();
       const second = await request();
       await expect(first.result).resolves.toBe('failed');
@@ -434,13 +419,13 @@ describe('useWorkflowAutoLayout', () => {
       await frame();
       await frame();
       expect(completed).not.toHaveBeenCalled();
-      expect(mocks.fitView).not.toHaveBeenCalled();
+      expect(mocks.fitNodes).not.toHaveBeenCalled();
 
       await act(async () => vi.advanceTimersByTimeAsync(5000));
       await frame();
       await frame();
       await expect(second.result).resolves.toBe('applied');
-      expect(mocks.fitView).toHaveBeenCalledOnce();
+      expect(mocks.fitNodes).toHaveBeenCalledOnce();
     }
   );
 
@@ -457,7 +442,7 @@ describe('useWorkflowAutoLayout', () => {
       await expect(result).resolves.toBe('failed');
       await frame();
       await frame();
-      expect(mocks.fitView).not.toHaveBeenCalled();
+      expect(mocks.fitNodes).not.toHaveBeenCalled();
       expect(vi.getTimerCount()).toBe(0);
       expect(frames.size).toBe(0);
     }

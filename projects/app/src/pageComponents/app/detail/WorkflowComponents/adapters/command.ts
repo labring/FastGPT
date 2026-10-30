@@ -7,7 +7,7 @@ import {
 import { checkExecutionConnection } from '@fastgpt/workflow-core/edge/validation';
 import { planNodeRemoval } from '@fastgpt/workflow-core/node/removal';
 import { type WorkflowDocument } from '@fastgpt/global/core/workflow/type/document';
-import type { Connection, Edge, Node } from 'reactflow';
+import type { Connection, Edge, Node } from '@xyflow/react';
 import { reactFlowStateToWorkflowDocument } from './document';
 
 export type WorkflowCoreAdapterResult<T> =

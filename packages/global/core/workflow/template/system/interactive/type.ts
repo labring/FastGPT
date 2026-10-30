@@ -40,13 +40,6 @@ export const ChildrenInteractiveSchema = z.object({
     })
   })
 });
-export type ChildrenInteractive = InteractiveNodeType & {
-  type: 'childrenInteractive';
-  params: {
-    childrenResponse: WorkflowInteractiveResponseType;
-  };
-};
-
 export const ToolCallChildrenInteractiveSchema = z.object({
   type: z.literal('toolChildrenInteractive'),
   params: z.preprocess(
@@ -76,9 +69,6 @@ export const ToolCallChildrenInteractiveSchema = z.object({
     })
   )
 });
-export type ToolCallChildrenInteractive = InteractiveNodeType &
-  z.infer<typeof ToolCallChildrenInteractiveSchema>;
-
 // Loop bode
 export const LoopInteractiveSchema = z.object({
   type: z.literal('loopInteractive'),
@@ -91,15 +81,6 @@ export const LoopInteractiveSchema = z.object({
     currentIndex: z.number()
   })
 });
-export type LoopInteractive = InteractiveNodeType & {
-  type: 'loopInteractive';
-  params: {
-    loopResult: any[];
-    childrenResponse: WorkflowInteractiveResponseType;
-    currentIndex: number;
-  };
-};
-
 export const LoopRunInteractiveSchema = z.object({
   type: z.literal('loopRunInteractive'),
   params: z.object({
@@ -118,15 +99,37 @@ export const LoopRunInteractiveSchema = z.object({
       })
   })
 });
-export type LoopRunInteractive = InteractiveNodeType & {
-  type: 'loopRunInteractive';
-  params: {
-    loopHistory: any[];
-    childrenResponse: WorkflowInteractiveResponseType;
-    iteration: number;
-    pendingIterationSummary?: Record<string, any>;
-  };
-};
+export const AgentPlanAskOptionSchema = z.string().min(1);
+
+/**
+ * Legacy `ask_user` schema.
+ *
+ * @deprecated Use `AgentAskInteractiveSchema` (multiple questions).
+ */
+export const AgentPlanAskQueryInteractiveSchema = z
+  .object({
+    type: z.literal('agentPlanAskQuery'),
+    askId: z.string().min(1),
+    params: z.object({
+      content: z.string(),
+      reason: z.string().optional(),
+      blockerType: z
+        .enum(['missing_required_input', 'tool_unavailable', 'ambiguous_goal', 'user_choice'])
+        .optional(),
+      options: z.array(AgentPlanAskOptionSchema).min(2).max(5),
+      answer: z.string().optional()
+    })
+  })
+  .meta({
+    deprecated: true
+  });
+
+/**
+ * @deprecated Use `AgentAskInteractiveSchema` (multiple questions).
+ */
+export type AgentPlanAskQueryInteractive = z.infer<typeof AgentPlanAskQueryInteractiveSchema>;
+
+export type LoopRunInteractive = z.infer<typeof LoopRunInteractiveSchema>;
 
 // User selector
 export const UserSelectOptionItemSchema = z.object({

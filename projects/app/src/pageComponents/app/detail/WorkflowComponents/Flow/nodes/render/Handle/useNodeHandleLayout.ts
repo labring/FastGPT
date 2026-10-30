@@ -1,6 +1,22 @@
 import { useLayoutEffect } from 'react';
-import { useUpdateNodeInternals } from 'reactflow';
+import { useUpdateNodeInternals } from '@xyflow/react';
+import type { DeepReadonly } from '@fastgpt/global/core/workflow/editor/types';
 import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+
+type NodeHandleLayoutNode = DeepReadonly<
+  Pick<
+    FlowNodeItemType,
+    | 'nodeId'
+    | 'inputs'
+    | 'outputs'
+    | 'isFolded'
+    | 'catchError'
+    | 'showSourceHandle'
+    | 'showTargetHandle'
+    | 'name'
+    | 'intro'
+  >
+>;
 
 /**
  * 节点配置提交后显式刷新端口，包括等高排序、端口换 ID 和折叠。
@@ -11,7 +27,7 @@ export const useNodeHandleLayout = ({
   toolConnected,
   language
 }: {
-  node: FlowNodeItemType;
+  node?: NodeHandleLayoutNode;
   toolConnected: boolean;
   language: string;
 }) => {
@@ -26,10 +42,10 @@ export const useNodeHandleLayout = ({
     showTargetHandle,
     name,
     intro
-  } = node;
+  } = node ?? {};
 
   useLayoutEffect(() => {
-    updateNodeInternals(nodeId);
+    if (nodeId) updateNodeInternals(nodeId);
   }, [
     nodeId,
     inputs,

@@ -4,7 +4,7 @@ import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { TFunction } from 'next-i18next';
 import { getWorkflowModelCheckData } from './modelData';
-import { storeEdge2RenderEdge, storeNode2FlowNode } from './utils';
+import { storeNode2FlowNode } from './utils';
 import { checkWorkflowBeforeRunOrPublish } from '@/web/core/workflow/check/check';
 
 /**
@@ -36,11 +36,9 @@ export const checkStoreWorkflowBeforeRunOrPublish = async ({
       isTool: toolNodeIds.has(item.nodeId)
     })
   );
-  const edges = storeEdges.map((edge) => storeEdge2RenderEdge({ edge }));
-
   return checkWorkflowBeforeRunOrPublish({
     nodes,
-    edges,
+    edges: storeEdges,
     modelData: await getWorkflowModelCheckData({ nodes, chatConfig, appId }),
     chatConfig,
     t

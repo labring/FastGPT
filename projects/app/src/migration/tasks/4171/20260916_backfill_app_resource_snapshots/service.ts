@@ -4,7 +4,7 @@ import { AppResourcesSchema } from '@fastgpt/global/core/app/type';
 import {
   isLegacyV1Workflow,
   migrateWorkflowToCurrent
-} from '@fastgpt/global/core/workflow/migration';
+} from '@fastgpt/global/common/workflow/migration';
 import { Types } from '@fastgpt/service/common/mongo';
 import {
   MongoTransactionConflictError,

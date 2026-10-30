@@ -24,10 +24,11 @@ import type {
 } from '../types/runtime';
 import { getErrText, isUserConfigError, UserError } from '@fastgpt/global/common/error/utils';
 import {
+  appendWorkflowInteractiveValue,
   filterWorkflowEdges,
-  valueTypeFormat,
-  appendWorkflowInteractiveValue
+  valueTypeFormat
 } from '@fastgpt/global/core/workflow/runtime/utils';
+import { isWorkflowEdgeSourceHandleValid } from '@fastgpt/global/common/workflow/editor/utils';
 import type {
   InteractiveNodeResponseType,
   WorkflowInteractiveResponseType
@@ -475,7 +476,10 @@ export class WorkflowQueue {
       this.addSkipNode(node, new Set(skippedNodeIdList));
     });
 
-    this.edgeIndex = WorkflowQueue.buildEdgeIndex({ runtimeEdges: data.runtimeEdges });
+    this.edgeIndex = WorkflowQueue.buildEdgeIndex({
+      runtimeEdges: data.runtimeEdges,
+      nodesMap: this.runtimeNodesMap
+    });
     // 🆕 预构建节点边分组 Map（一次性计算，后续直接查询）
     this.nodeEdgeGroupsMap = WorkflowQueue.buildNodeEdgeGroupsMap({
       nodesMap: this.runtimeNodesMap,
@@ -486,12 +490,21 @@ export class WorkflowQueue {
 
   /* ===== utils ===== */
   // 一次性构建edge索引 - O(m)
-  static buildEdgeIndex({ runtimeEdges }: { runtimeEdges: RuntimeEdgeItemType[] }) {
+  static buildEdgeIndex({
+    runtimeEdges,
+    nodesMap
+  }: {
+    runtimeEdges: RuntimeEdgeItemType[];
+    nodesMap?: Map<string, RuntimeNodeItemType>;
+  }) {
     const edgeIndex = {
       bySource: new Map<string, RuntimeEdgeItemType[]>(),
       byTarget: new Map<string, RuntimeEdgeItemType[]>()
     };
-    const filteredEdges = filterWorkflowEdges(runtimeEdges);
+    const filteredEdges = filterWorkflowEdges(runtimeEdges).filter(
+      (edge) =>
+        !nodesMap || isWorkflowEdgeSourceHandleValid(nodesMap.get(edge.source), edge.sourceHandle)
+    );
     filteredEdges.forEach((edge) => {
       if (!edgeIndex.bySource.has(edge.source)) {
         edgeIndex.bySource.set(edge.source, []);
@@ -878,11 +891,14 @@ export class WorkflowQueue {
         this.data.workflowStreamResponse?.(workflowSseEvent.flowNodeStatus(node.name));
       }
       const startTime = Date.now();
-      // get node running params
+      // 参数解析保持在 catchError 边界外；只有模型校验和模块执行错误才走节点错误分支。
       const params = getWorkflowNodeRunParams({
         node,
         runtimeNodesMap: this.runtimeNodesMap,
-        variableState: this.data.variableState
+        variableState: this.data.variableState,
+        runtimeEdges: this.data.runtimeEdges,
+        runtimeEdgeIndex: this.edgeIndex,
+        isDebugMode: this.isDebugMode
       });
       const nodeSummary = createNodeSummary();
       const dispatchData: ModuleDispatchProps<Record<string, any>> = {
@@ -925,8 +941,14 @@ export class WorkflowQueue {
             if (result.error) {
               // Run error and not catch error, skip all edges
               if (!node.catchError) {
+                const nodeResponseBase = result[DispatchNodeResponseKeyEnum.nodeResponse];
+                const errorText = nodeResponseBase?.errorText ?? getErrText(result.error);
                 return {
                   ...result,
+                  [DispatchNodeResponseKeyEnum.nodeResponse]: {
+                    ...nodeResponseBase,
+                    error: errorText
+                  },
                   [DispatchNodeResponseKeyEnum.skipHandleId]: targetEdges.map(
                     (item) => item.sourceHandle
                   )
@@ -948,13 +970,7 @@ export class WorkflowQueue {
                       }
                     }
                   : {}),
-                [DispatchNodeResponseKeyEnum.skipHandleId]: result[
-                  DispatchNodeResponseKeyEnum.skipHandleId
-                ]
-                  ? [...result[DispatchNodeResponseKeyEnum.skipHandleId], ...skipHandleIds].filter(
-                      Boolean
-                    )
-                  : skipHandleIds
+                [DispatchNodeResponseKeyEnum.skipHandleId]: skipHandleIds
               };
             }
 

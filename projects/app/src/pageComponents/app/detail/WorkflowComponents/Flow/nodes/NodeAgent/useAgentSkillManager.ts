@@ -1,15 +1,14 @@
 import { useCallback, useMemo } from 'react';
-import { useContextSelector } from 'use-context-selector';
-import { WorkflowActionsContext } from '../../../context/workflowActionsContext';
 import { useSkillManager } from '@/pageComponents/app/detail/Edit/ChatAgent/hooks/useSkillManager';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import type { SelectedToolItemType } from '@fastgpt/global/core/app/formEdit/type';
 import { getToolIdentityKey } from '@fastgpt/global/core/app/tool/utils';
+import { useFieldActions } from '@/web/core/workflow/editor/react/useField';
 
 /**
  * Adapts the ChatAgent's useSkillManager to work in the workflow node context.
- * Reads/writes selectedTools from/to the node's input via onChangeNode.
+ * 读取 props 里的 selectedTools 派生技能列表，写入统一走 adapter 的 useField（整表提交）。
  */
 export const useAgentSkillManager = ({
   nodeId,
@@ -20,7 +19,11 @@ export const useAgentSkillManager = ({
   inputs: FlowNodeInputItemType[];
   onClickDatasetSearch?: () => void;
 }) => {
-  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
+  const toolsFieldActions = useFieldActions({
+    nodeId,
+    fieldKey: NodeInputKeyEnum.selectedTools,
+    kind: 'input'
+  });
 
   const toolsInput = useMemo(
     () => inputs.find((i) => i.key === NodeInputKeyEnum.selectedTools),
@@ -57,19 +60,9 @@ export const useAgentSkillManager = ({
           )
         : [...selectedTools, tool];
 
-      if (toolsInput) {
-        onChangeNode({
-          nodeId,
-          key: NodeInputKeyEnum.selectedTools,
-          type: 'updateInput',
-          value: {
-            ...toolsInput,
-            value: newTools
-          }
-        });
-      }
+      toolsFieldActions.setValue(newTools);
     },
-    [selectedTools, toolsInput, nodeId, onChangeNode]
+    [selectedTools, toolsFieldActions]
   );
 
   const onDeleteTool = useCallback(
@@ -78,19 +71,9 @@ export const useAgentSkillManager = ({
       const newTools = selectedTools.filter(
         (t) => getToolIdentityKey(t.pluginId, t.source) !== toolKey
       );
-      if (toolsInput) {
-        onChangeNode({
-          nodeId,
-          key: NodeInputKeyEnum.selectedTools,
-          type: 'updateInput',
-          value: {
-            ...toolsInput,
-            value: newTools
-          }
-        });
-      }
+      toolsFieldActions.setValue(newTools);
     },
-    [selectedTools, toolsInput, nodeId, onChangeNode]
+    [selectedTools, toolsFieldActions]
   );
 
   const { skillOption, selectedSkills, onClickSkill, onRemoveSkill, SkillModal } = useSkillManager({

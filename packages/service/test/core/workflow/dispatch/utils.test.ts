@@ -26,8 +26,12 @@ import { WorkflowVariableState } from '../../../../core/workflow/dispatch/utils/
 import { responseWrite } from '@fastgpt/service/common/response';
 import { ChatFileTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { ChatHistoryItemResType, ChatItemMiniType } from '@fastgpt/global/core/chat/type';
+import {
+  NodeOutputKeyEnum,
+  VariableInputEnum,
+  WorkflowIOValueTypeEnum
+} from '@fastgpt/global/core/workflow/constants';
 import { isUserConfigError, UserConfigError } from '@fastgpt/global/common/error/utils';
-import { NodeOutputKeyEnum, VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   SseResponseEventEnum,
   DispatchNodeResponseKeyEnum
@@ -39,6 +43,8 @@ import {
 } from '@fastgpt/global/core/workflow/node/constant';
 import type { RuntimeEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
+import { storeNodes2RuntimeNodes } from '@fastgpt/global/common/workflow/runtime';
+import { getWorkflowNodeRunParams } from '@fastgpt/service/core/workflow/dispatch/utils/runtime';
 import { runWithContext } from '@fastgpt/service/core/workflow/utils/context';
 
 const mockGetSystemToolRunTimeNodeFromSystemToolset = vi.fn();
@@ -2444,5 +2450,162 @@ describe('runtimeSummaryToNodeSummary', () => {
       errorCount: 1,
       errorText: 'failed'
     });
+  });
+});
+
+describe('getWorkflowNodeRunParams', () => {
+  it('resolves direct references from container ancestors and their upstream nodes', () => {
+    const makeInput = (key: string, value: unknown, renderType: FlowNodeInputTypeEnum) => ({
+      key,
+      value,
+      selectedType: renderType,
+      renderTypeList: [renderType],
+      canEdit: true
+    });
+    const makeNode = ({
+      nodeId,
+      flowNodeType,
+      inputs = [],
+      outputs = [],
+      parentNodeId
+    }: {
+      nodeId: string;
+      flowNodeType: FlowNodeTypeEnum;
+      inputs?: ReturnType<typeof makeInput>[];
+      outputs?: Array<{ id: string; value?: unknown }>;
+      parentNodeId?: string;
+    }) => ({
+      nodeId,
+      parentNodeId,
+      name: nodeId,
+      flowNodeType,
+      inputs,
+      outputs
+    });
+    const storedNodes = [
+      makeNode({
+        nodeId: 'edge-source',
+        flowNodeType: FlowNodeTypeEnum.answerNode,
+        outputs: [{ id: 'output', value: 'edge-value' }]
+      }),
+      makeNode({
+        nodeId: 'container-source',
+        flowNodeType: FlowNodeTypeEnum.answerNode,
+        outputs: [{ id: 'output', value: 'container-value' }]
+      }),
+      makeNode({
+        nodeId: 'upstream-source',
+        flowNodeType: FlowNodeTypeEnum.answerNode,
+        outputs: [{ id: 'output', value: 'upstream-value' }]
+      }),
+      makeNode({
+        nodeId: 'loop',
+        flowNodeType: FlowNodeTypeEnum.loop,
+        inputs: [
+          makeInput('loopInput', ['container-source', 'output'], FlowNodeInputTypeEnum.reference)
+        ],
+        outputs: [{ id: 'loop-output', value: 'loop-value' }]
+      }),
+      makeNode({
+        nodeId: 'inner',
+        flowNodeType: FlowNodeTypeEnum.answerNode,
+        parentNodeId: 'loop',
+        inputs: [
+          makeInput('edgeReference', ['edge-source', 'output'], FlowNodeInputTypeEnum.reference),
+          makeInput(
+            'containerReference',
+            ['container-source', 'output'],
+            FlowNodeInputTypeEnum.reference
+          ),
+          makeInput(
+            'upstreamReference',
+            ['upstream-source', 'output'],
+            FlowNodeInputTypeEnum.reference
+          ),
+          makeInput('textReference', '{{$edge-source.output$}}', FlowNodeInputTypeEnum.input),
+          makeInput('ancestorReference', ['loop', 'loop-output'], FlowNodeInputTypeEnum.reference)
+        ]
+      })
+    ];
+    const runtimeNodes = storeNodes2RuntimeNodes(storedNodes as any, []);
+    const runtimeNodesMap = new Map(runtimeNodes.map((node) => [node.nodeId, node]));
+    const runtimeEdges = [
+      {
+        source: 'edge-source',
+        target: 'loop',
+        sourceHandle: 'output',
+        targetHandle: 'input'
+      },
+      {
+        source: 'upstream-source',
+        target: 'container-source',
+        sourceHandle: 'output',
+        targetHandle: 'input'
+      }
+    ] as RuntimeEdgeItemType[];
+    const runtimeEdgeIndex = {
+      byTarget: new Map<string, readonly RuntimeEdgeItemType[]>([
+        ['loop', [runtimeEdges[0]]],
+        ['container-source', [runtimeEdges[1]]]
+      ])
+    };
+    expect(runtimeNodesMap.get('inner')?.parentNodeId).toBe('loop');
+
+    const params = getWorkflowNodeRunParams({
+      node: runtimeNodesMap.get('inner')!,
+      runtimeNodesMap,
+      runtimeEdges,
+      runtimeEdgeIndex,
+      variableState: { toRuntimeRecord: () => ({}) } as any
+    });
+
+    expect(params).toMatchObject({
+      edgeReference: 'edge-value',
+      containerReference: 'container-value',
+      upstreamReference: 'upstream-value',
+      textReference: 'edge-value'
+    });
+    expect(params.ancestorReference).toBeUndefined();
+  });
+
+  it('preserves typed literal overrides for reference inputs in debug mode', () => {
+    const debugValues = [
+      { key: 'prompt', value: 'debug prompt', valueType: WorkflowIOValueTypeEnum.string },
+      { key: 'count', value: 0, valueType: WorkflowIOValueTypeEnum.number },
+      { key: 'enabled', value: false, valueType: WorkflowIOValueTypeEnum.boolean },
+      { key: 'options', value: { topK: 3 }, valueType: WorkflowIOValueTypeEnum.object },
+      { key: 'files', value: ['file-a'], valueType: WorkflowIOValueTypeEnum.arrayString }
+    ];
+    const [node] = storeNodes2RuntimeNodes(
+      [
+        {
+          nodeId: 'debug',
+          name: 'Debug',
+          flowNodeType: FlowNodeTypeEnum.answerNode,
+          inputs: debugValues.map(({ key, value, valueType }) => ({
+            key,
+            label: key,
+            value,
+            valueType,
+            selectedType: FlowNodeInputTypeEnum.reference,
+            renderTypeList: [FlowNodeInputTypeEnum.reference],
+            debugValueOverride: true
+          })),
+          outputs: []
+        } as any
+      ],
+      []
+    );
+    if (!node) throw new Error('debug node fixture missing');
+    const runtimeNodesMap = new Map([[node.nodeId, node]]);
+
+    const params = getWorkflowNodeRunParams({
+      node,
+      runtimeNodesMap,
+      variableState: { toRuntimeRecord: () => ({}) } as any,
+      isDebugMode: true
+    });
+
+    expect(params).toEqual(Object.fromEntries(debugValues.map(({ key, value }) => [key, value])));
   });
 });

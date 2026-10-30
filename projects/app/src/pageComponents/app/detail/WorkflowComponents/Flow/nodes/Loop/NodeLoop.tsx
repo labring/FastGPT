@@ -3,9 +3,8 @@
   When the childNodes of loopFlow change, it automatically calculates the rectangular width, height, and position of the childNodes,
   thereby further updating the width and height properties of the loop node.
 */
-import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import React from 'react';
-import { type NodeProps } from 'reactflow';
+import type { CanvasNodeProps } from '@/web/core/workflow/editor/canvas/canvasTypes';
 import NodeCard from '../render/NodeCard';
 import Container from '../../components/Container';
 import IOTitle from '../../components/IOTitle';
@@ -15,10 +14,16 @@ import { Box } from '@chakra-ui/react';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import RenderOutput from '../render/RenderOutput';
 import { useNestedNode } from '../../hooks/useNestedNode';
+import type { WorkflowNodeData } from '@fastgpt/global/core/workflow/editor/types';
+import { useNode } from '@/web/core/workflow/editor/react/useNode';
 
-const NodeLoop = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
+const NodeLoop = ({ data, selected }: CanvasNodeProps) => {
   const { t } = useTranslation();
-  const { nodeId, inputs, outputs, isFolded } = data;
+  const { nodeId } = data;
+  const node = useNode<WorkflowNodeData>(nodeId, { raw: true });
+  const inputs = node?.data.inputs ?? [];
+  const outputs = node?.data.outputs ?? [];
+  const isFolded = node?.view.isFolded ?? false;
 
   const { nodeWidth, nodeHeight, inputBoxRef } = useNestedNode({ nodeId, inputs });
 
@@ -38,6 +43,7 @@ const NodeLoop = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
           <Box
             flex={1}
             position={'relative'}
+            data-workflow-container-content="true"
             border={'base'}
             bg={'myGray.100'}
             rounded={'8px'}

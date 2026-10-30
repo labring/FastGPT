@@ -4,7 +4,7 @@ import {
   validateConnectionWithCore
 } from '@/pageComponents/app/detail/WorkflowComponents/adapters/command';
 import { checkWorkflowBeforeRunOrPublish } from '@/web/core/workflow/check/check';
-import { storeEdge2RenderEdge, storeNode2FlowNode } from '@/web/core/workflow/utils';
+import { storeNode2FlowNode } from '@/web/core/workflow/utils';
 import { WorkflowDocumentSchema } from '@fastgpt/global/core/workflow/type/document';
 import { compileStoreWorkflow } from '@fastgpt/workflow-core/store/compile';
 import fixture from '@fastgpt/workflow-core/test/fixtures/basic-static/workflow.json';
@@ -14,14 +14,25 @@ import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { describe, expect, it } from 'vitest';
 
+const toFlowEdge = (
+  edge: { source: string; sourceHandle?: string; target: string; targetHandle?: string },
+  index: number
+) => ({
+  id: `edge-${index}`,
+  source: edge.source,
+  sourceHandle: edge.sourceHandle,
+  target: edge.target,
+  targetHandle: edge.targetHandle
+});
+
 const createGraph = () => {
   const workflow = compileStoreWorkflow(WorkflowDocumentSchema.parse(fixture));
   return {
     nodes: workflow.nodes.map((item) =>
       storeNode2FlowNode({ item, t: ((value: string) => value) as any })
     ),
-    edges: workflow.edges.map((edge) =>
-      storeEdge2RenderEdge({ edge: { ...edge, targetHandle: edge.target + '-target-right' } })
+    edges: workflow.edges.map((edge, index) =>
+      toFlowEdge({ ...edge, targetHandle: edge.target + '-target-right' }, index)
     )
   };
 };
@@ -58,7 +69,7 @@ describe('Workflow Core command adapters', () => {
       nodes: workflow.nodes.map((item) =>
         storeNode2FlowNode({ item, t: ((key: string) => key) as any })
       ),
-      edges: workflow.edges.map((edge) => storeEdge2RenderEdge({ edge }))
+      edges: workflow.edges.map(toFlowEdge)
     };
     expect(
       validateConnectionWithCore({
@@ -98,7 +109,7 @@ describe('Workflow Core command adapters', () => {
       nodes: workflow.nodes.map((item) =>
         storeNode2FlowNode({ item, t: ((key: string) => key) as any })
       ),
-      edges: workflow.edges.map((edge) => storeEdge2RenderEdge({ edge }))
+      edges: workflow.edges.map(toFlowEdge)
     };
     expect(
       validateConnectionWithCore({

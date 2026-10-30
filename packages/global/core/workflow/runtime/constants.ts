@@ -1,5 +1,3 @@
-import { FlowNodeInputTypeEnum } from '../node/constant';
-
 export enum SseResponseEventEnum {
   error = 'error',
   workflowDuration = 'workflowDuration', // workflow duration
@@ -29,7 +27,6 @@ export enum SseResponseEventEnum {
   // Workflow Builder
   workflowBuilderVersion = 'workflowBuilderVersion'
 }
-
 export const StreamResumePhaseEvent = 'resumePhase';
 export const StreamResumeCompletedEvent = 'resumeCompleted';
 export const StreamResumeUnavailableEvent = 'resumeUnavailable';
@@ -62,10 +59,3 @@ export enum DispatchNodeResponseKeyEnum {
   /** @deprecated */
   nodeDispatchUsages = 'nodeDispatchUsages' // the node bill.
 }
-
-export const needReplaceReferenceInputTypeList = [
-  FlowNodeInputTypeEnum.reference,
-  FlowNodeInputTypeEnum.settingDatasetQuotePrompt,
-  FlowNodeInputTypeEnum.addInputParam,
-  FlowNodeInputTypeEnum.custom
-] as string[];

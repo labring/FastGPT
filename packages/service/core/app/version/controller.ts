@@ -1,7 +1,7 @@
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { type AppResourcesType, type AppSchemaType } from '@fastgpt/global/core/app/type';
 import type { AppVersionSchemaType } from '@fastgpt/global/core/app/version/type';
-import { migrateWorkflowToCurrent } from '@fastgpt/global/core/workflow/migration';
+import { migrateWorkflowToCurrent } from '@fastgpt/global/common/workflow/migration';
 import { isInteractiveNodeType } from '@fastgpt/global/core/workflow/node/constant';
 import { Types, type ClientSession } from '../../../common/mongo';
 import { MongoTransactionConflictError } from '../../../common/mongo/sessionRun';
@@ -34,12 +34,13 @@ const getVersionResourceSnapshot = (
   });
 
 const normalizeStoredVersionWorkflow = (
-  version: Pick<AppVersionSchemaType, 'nodes' | 'edges' | 'chatConfig'>
+  version: Pick<AppVersionSchemaType, 'nodes' | 'edges' | 'chatConfig' | 'referenceSnapshots'>
 ) =>
   migrateWorkflowToCurrent({
     nodes: decodeToolSetNodesFromStorage(version.nodes),
     edges: version.edges,
-    chatConfig: version.chatConfig
+    chatConfig: version.chatConfig,
+    referenceSnapshots: version.referenceSnapshots
   });
 
 /**
@@ -78,16 +79,15 @@ const emptyVersionWorkflow = (): AppVersionWorkflow => {
   };
 };
 
-export type AppVersionLookupApp = AppSchemaType & {
-  /** @deprecated 仅用于无正式 Version 历史应用的迁移窗口兼容。 */
-  modules?: unknown[];
-  /** @deprecated 仅用于无正式 Version 历史应用的迁移窗口兼容。 */
-  edges?: unknown;
-  /** @deprecated 仅用于无正式 Version 历史应用的迁移窗口兼容。 */
-  chatConfig?: unknown;
-  /** @deprecated 仅用于无正式 Version 历史应用的迁移窗口兼容。 */
-  resourceRefs?: unknown;
-};
+export type AppVersionLookupApp = AppSchemaType &
+  Partial<
+    Pick<AppVersionSchemaType, 'edges' | 'chatConfig' | 'referenceSnapshots' | 'resources'>
+  > & {
+    /** @deprecated 仅用于无正式 Version 历史应用的迁移窗口兼容。 */
+    modules?: AppVersionSchemaType['nodes'];
+    /** @deprecated 仅用于无正式 Version 历史应用的迁移窗口兼容。 */
+    resourceRefs?: unknown;
+  };
 
 const loadApp = async (appId: string, app?: AppVersionLookupApp) =>
   app ?? ((await MongoApp.findById(appId).lean()) as AppVersionLookupApp | null | undefined);
@@ -102,12 +102,14 @@ const normalizeLegacyAppWorkflow = (app?: AppVersionLookupApp | null): AppVersio
   const normalizedWorkflow = migrateWorkflowToCurrent({
     nodes: decodeToolSetNodesFromStorage(Array.isArray(app.modules) ? app.modules : []),
     edges: Array.isArray(app.edges) ? app.edges : [],
-    chatConfig: app.chatConfig
+    chatConfig: app.chatConfig,
+    referenceSnapshots: app.referenceSnapshots
   });
   return {
-    versionId: undefined,
-    versionName: undefined,
+    versionId: app.pluginData?.nodeVersion,
+    versionName: app.name,
     resources: resolveStoredAppResources({
+      resources: app.resources,
       nodes: normalizedWorkflow.nodes,
       chatConfig: normalizedWorkflow.chatConfig,
       resourceRefs: app.resourceRefs
@@ -157,11 +159,9 @@ export const getAppDraftWorkflow = async (appId: string, app?: AppVersionLookupA
   return normalizeLegacyAppWorkflow(migrationApp);
 };
 
-/**
- * 读取当前最新 Version，作为保存增量鉴权的 baseline。
- */
+/** 读取该 App 最新写入的草稿 Version；仅在写入时间相同时优先 AutoSave。 */
 export const getAppDraftVersion = async (appId: string, session?: ClientSession) => {
-  const query = MongoAppVersion.findOne({ appId }).sort({ time: -1, _id: -1 });
+  const query = MongoAppVersion.findOne({ appId }).sort({ time: -1, isAutoSave: -1, _id: -1 });
   if (session) query.session(session);
   return query.lean();
 };

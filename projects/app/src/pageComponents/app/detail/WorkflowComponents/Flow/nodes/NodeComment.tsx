@@ -1,31 +1,44 @@
 import React, { useCallback, useMemo, useRef, useState } from 'react';
 import NodeCard from './render/NodeCard';
-import { type NodeProps } from 'reactflow';
-import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import type { CanvasNodeProps } from '@/web/core/workflow/editor/canvas/canvasTypes';
 import { Box, Textarea } from '@chakra-ui/react';
-import { useContextSelector } from 'use-context-selector';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
-import { WorkflowActionsContext } from '../../context/workflowActionsContext';
+import { useField, useFieldActions } from '@/web/core/workflow/editor/react/useField';
 
-const NodeComment = ({ data }: NodeProps<FlowNodeItemType>) => {
-  const { nodeId, inputs } = data;
-  const { commentText, commentSize } = useMemo(
-    () => ({
-      commentText: inputs.find((item) => item.key === NodeInputKeyEnum.commentText),
-      commentSize: inputs.find((item) => item.key === NodeInputKeyEnum.commentSize)
-    }),
-    [inputs]
+const NodeComment = ({ data }: CanvasNodeProps) => {
+  const { nodeId } = data;
+
+  // 备注文本与尺寸都只改字段值，走字段句柄；字段不存在时 setValue 自然不触发写入。
+  const commentText = useField(
+    nodeId,
+    NodeInputKeyEnum.commentText,
+    'input',
+    (field) => field?.data.input
   );
-
-  const onChangeNode = useContextSelector(WorkflowActionsContext, (ctx) => ctx.onChangeNode);
+  const commentSize = useField(
+    nodeId,
+    NodeInputKeyEnum.commentSize,
+    'input',
+    (field) => field?.data.input
+  );
+  const commentTextActions = useFieldActions({
+    nodeId,
+    fieldKey: NodeInputKeyEnum.commentText,
+    kind: 'input'
+  });
+  const commentSizeActions = useFieldActions({
+    nodeId,
+    fieldKey: NodeInputKeyEnum.commentSize,
+    kind: 'input'
+  });
 
   const { t } = useTranslation();
   const [size, setSize] = useState<{
     width: number;
     height: number;
-  }>(commentSize?.value);
+  }>(commentSize?.value ?? { width: 240, height: 140 });
 
   const initialY = useRef(0);
   const initialX = useRef(0);
@@ -44,19 +57,10 @@ const NodeComment = ({ data }: NodeProps<FlowNodeItemType>) => {
         }));
         initialY.current = e.clientY;
         initialX.current = e.clientX;
-        commentSize &&
-          onChangeNode({
-            nodeId: nodeId,
-            type: 'updateInput',
-            key: NodeInputKeyEnum.commentSize,
-            value: {
-              ...commentSize,
-              value: {
-                width: size.width + deltaX,
-                height: size.height + deltaY
-              }
-            }
-          });
+        commentSizeActions.setValue({
+          width: size.width + deltaX,
+          height: size.height + deltaY
+        });
       };
 
       const handleMouseUp = () => {
@@ -67,7 +71,7 @@ const NodeComment = ({ data }: NodeProps<FlowNodeItemType>) => {
       document.addEventListener('mousemove', handleMouseMove);
       document.addEventListener('mouseup', handleMouseUp);
     },
-    [commentSize, nodeId, onChangeNode, size.height, size.width]
+    [commentSizeActions, size.height, size.width]
   );
 
   const Render = useMemo(() => {
@@ -117,22 +121,13 @@ const NodeComment = ({ data }: NodeProps<FlowNodeItemType>) => {
             resize={'none'}
             placeholder={t('workflow:enter_comment')}
             onChange={(e) => {
-              commentText &&
-                onChangeNode({
-                  nodeId: nodeId,
-                  type: 'updateInput',
-                  key: NodeInputKeyEnum.commentText,
-                  value: {
-                    ...commentText,
-                    value: e.target.value
-                  }
-                });
+              commentTextActions.setValue(e.target.value);
             }}
           />
         </Box>
       </NodeCard>
     );
-  }, [commentText, data, handleMouseDown, nodeId, onChangeNode, size.height, size.width, t]);
+  }, [commentTextActions, commentText, data, handleMouseDown, size.height, size.width, t]);
 
   return Render;
 };

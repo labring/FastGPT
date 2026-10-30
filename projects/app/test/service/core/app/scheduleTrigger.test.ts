@@ -77,8 +77,11 @@ vi.mock('@fastgpt/service/support/wallet/usage/controller', () => ({
 
 vi.mock('@fastgpt/global/core/workflow/runtime/utils', () => ({
   getWorkflowEntryNodeIds: mocks.getWorkflowEntryNodeIds,
-  storeNodes2RuntimeNodes: mocks.storeNodes2RuntimeNodes,
   storeEdges2RuntimeEdges: mocks.storeEdges2RuntimeEdges
+}));
+
+vi.mock('@fastgpt/global/common/workflow/runtime', () => ({
+  storeNodes2RuntimeNodes: mocks.storeNodes2RuntimeNodes
 }));
 
 vi.mock('@fastgpt/global/common/string/time', () => ({

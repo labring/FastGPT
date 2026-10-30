@@ -7,9 +7,8 @@ import {
   type FlowNodeInputItemType,
   type ReferenceValueType
 } from '@fastgpt/global/core/workflow/type/io';
-import { useContextSelector } from 'use-context-selector';
 import { getInputComponentProps } from '@/web/core/workflow/utils';
-import { ReferSelector, useReference } from '../Reference';
+import { ReferSelector, useLazyReferenceList } from '../Reference';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import {
@@ -20,7 +19,9 @@ import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { WorkflowActionsContext } from '@/pageComponents/app/detail/WorkflowComponents/context/workflowActionsContext';
+import { useField } from '@/web/core/workflow/editor/react/useField';
+import { useNodeActions } from '@/web/core/workflow/editor/react/useNode';
+import { WorkflowFieldScope } from '@/web/core/workflow/editor/WorkflowFieldScope';
 
 const defaultInput: FlowNodeInputItemType = {
   renderTypeList: [FlowNodeInputTypeEnum.reference],
@@ -31,10 +32,13 @@ const defaultInput: FlowNodeInputItemType = {
   label: ''
 };
 
+/**
+ * 自定义输入（动态输入）模板：整块字段的增删改都是记录级变更，
+ * 统一读文档当前 inputs、拼完整数组后走 updateNode，一次交互只产生一条历史。
+ */
 const DynamicInputs = ({ item, inputs = [], nodeId }: RenderInputProps) => {
   const { t } = useSafeTranslation();
-
-  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
+  const nodeActions = useNodeActions(nodeId);
 
   const dynamicInputs = useMemoEnhance(() => inputs.filter((item) => item.canEdit), [inputs]);
   const existsKeys = useMemoEnhance(() => inputs.map((item) => item.key), [inputs]);
@@ -64,11 +68,9 @@ const DynamicInputs = ({ item, inputs = [], nodeId }: RenderInputProps) => {
                     bg: 'adora.100'
                   }}
                   onClick={() => {
-                    onChangeNode({
-                      nodeId,
-                      type: 'delInput',
-                      key: item.key
-                    });
+                    nodeActions?.updateNode((current) => ({
+                      inputs: current.inputs.filter((input) => input.key !== item.key)
+                    }));
                   }}
                 >
                   <MyIcon name={'common/info'} color={'adora.600'} w={4} mr={1} />
@@ -128,14 +130,19 @@ const Reference = ({
 }) => {
   const { t } = useSafeTranslation();
   const { toast } = useToast();
-  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
+  const nodeActions = useNodeActions(nodeId);
+  // 已选内容的展示读字段引用状态，因此可选列表可以等到打开选择器时再计算。
+  const currentInput =
+    (useField(nodeId, inputChildren.key, 'input', (field) => field?.data.input) as
+      | FlowNodeInputItemType
+      | undefined) ?? inputChildren;
 
-  const isEmptyItem = !inputChildren.key;
+  const isEmptyItem = !currentInput.key;
 
   const [tempLabel, setTempLabel] = useState('');
   const [isEditing, setIsEditing] = useState(false);
 
-  const { referenceList } = useReference({
+  const { referenceList, loadReferenceList } = useLazyReferenceList({
     nodeId,
     valueType: WorkflowIOValueTypeEnum.any,
     // Container nodes (loopRun) need to reference outputs from their sub-workflow.
@@ -146,7 +153,7 @@ const Reference = ({
     (label: string) => {
       setIsEditing(false);
       if (!label.trim()) return;
-      if (existsKeys.includes(label) && !isEmptyItem && label !== inputChildren.key) {
+      if (existsKeys.includes(label) && !isEmptyItem && label !== currentInput.key) {
         toast({
           status: 'warning',
           title: t('workflow:field_name_already_exists')
@@ -164,27 +171,18 @@ const Reference = ({
             valueType: WorkflowIOValueTypeEnum.any,
             required: true
           };
-          onChangeNode({
-            nodeId,
-            type: 'addInput',
-            value: newInput
-          });
+          nodeActions?.updateNode((current) => ({ inputs: [...current.inputs, newInput] }));
         } else if (!isEmptyItem) {
-          onChangeNode({
-            nodeId,
-            type: 'replaceInput',
-            key: inputChildren.key,
-            value: {
-              ...inputChildren,
-              label: label,
-              key: label || inputChildren.key
-            }
-          });
+          nodeActions?.updateNode((current) => ({
+            inputs: current.inputs.map((input) =>
+              input.key === currentInput.key ? { ...input, label, key: label || input.key } : input
+            )
+          }));
         }
       }, 50);
       setTempLabel('');
     },
-    [existsKeys, toast, t, isEmptyItem, item, onChangeNode, nodeId, inputChildren]
+    [currentInput.key, existsKeys, toast, t, isEmptyItem, item, nodeActions]
   );
   const onSelectReference = useCallback(
     (e?: ReferenceValueType) => {
@@ -194,35 +192,35 @@ const Reference = ({
         .find((item) => item.value === e[0])
         ?.children.find((item) => item.value === e[1]);
 
-      onChangeNode({
-        nodeId,
-        type: 'replaceInput',
-        key: inputChildren.key,
-        value: {
-          ...inputChildren,
-          value: e,
-          valueType: referenceItem?.valueType || WorkflowIOValueTypeEnum.any
-        }
-      });
+      nodeActions?.updateNode((current) => ({
+        inputs: current.inputs.map((input) =>
+          input.key === currentInput.key
+            ? {
+                ...input,
+                value: e,
+                // 目标类型解析不到时保留原类型，不要静默降级成 any
+                valueType: referenceItem?.valueType ?? input.valueType
+              }
+            : input
+        )
+      }));
     },
-    [inputChildren, nodeId, onChangeNode, referenceList]
+    [currentInput.key, nodeActions, referenceList]
   );
   const onDeleteInput = useCallback(() => {
-    onChangeNode({
-      nodeId,
-      type: 'delInput',
-      key: inputChildren.key
-    });
-  }, [inputChildren.key, nodeId, onChangeNode]);
+    nodeActions?.updateNode((current) => ({
+      inputs: current.inputs.filter((input) => input.key !== currentInput.key)
+    }));
+  }, [currentInput.key, nodeActions]);
 
   return (
     <Flex alignItems={'center'} mb={1} gap={2}>
       <Flex flex={'1'} bg={'white'} rounded={'md'}>
         <Input
           placeholder={t('workflow:Variable_name')}
-          value={isEditing ? tempLabel : inputChildren.label || ''}
+          value={isEditing ? tempLabel : currentInput.label || ''}
           onFocus={() => {
-            setTempLabel(inputChildren.label || '');
+            setTempLabel(currentInput.label || '');
             setIsEditing(true);
           }}
           onChange={(e) => setTempLabel(e.target.value.trim())}
@@ -230,24 +228,27 @@ const Reference = ({
           h={10}
           borderRightRadius={'none'}
         />
-        <ReferSelector
-          placeholder={t('common:select_reference_variable')}
-          list={referenceList}
-          value={inputChildren.value}
-          onSelect={onSelectReference}
-          ButtonProps={{
-            bg: 'none',
-            borderRadius: 'none',
-            borderColor: 'myGray.200',
-            borderLeftColor: 'transparent',
-            borderRightColor: 'transparent',
-            isDisabled: isEmptyItem,
-            w: '240px',
-            _hover: {
-              borderColor: 'blue.300'
-            }
-          }}
-        />
+        <WorkflowFieldScope nodeId={nodeId} fieldKey={currentInput.key}>
+          <ReferSelector
+            placeholder={t('common:select_reference_variable')}
+            list={referenceList}
+            value={currentInput.value}
+            onSelect={onSelectReference}
+            onOpenList={loadReferenceList}
+            ButtonProps={{
+              bg: 'none',
+              borderRadius: 'none',
+              borderColor: 'myGray.200',
+              borderLeftColor: 'transparent',
+              borderRightColor: 'transparent',
+              isDisabled: isEmptyItem,
+              w: '240px',
+              _hover: {
+                borderColor: 'blue.300'
+              }
+            }}
+          />
+        </WorkflowFieldScope>
         <Flex
           h={10}
           border={'1px solid'}
@@ -260,7 +261,7 @@ const Reference = ({
           fontSize={'sm'}
           fontWeight={'medium'}
         >
-          {t(getFlowValueTypeMeta(inputChildren.valueType).label)}
+          {t(getFlowValueTypeMeta(currentInput.valueType).label)}
         </Flex>
       </Flex>
       {!isEmptyItem && (

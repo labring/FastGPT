@@ -10,9 +10,9 @@ import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runti
 
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import type { DispatchNodeResultType, ModuleDispatchProps } from '../../types/runtime';
+import { getReferenceVariableValue } from '@fastgpt/global/common/workflow/runtime';
 import {
   formatVariableValByType,
-  getReferenceVariableValue,
   valueTypeFormat
 } from '@fastgpt/global/core/workflow/runtime/utils';
 import json5 from 'json5';
@@ -27,6 +27,7 @@ import { axios, type SafeAxiosRequestConfig } from '../../../../common/api/axios
 import { replaceEditorVariable } from '../utils/replaceEditorVariable';
 import { checkStrOversize, logOversizeString } from '../../../../common/string/replaceVariable';
 import { getWorkflowAppId } from '../utils/source';
+import { nodeInputIsReference } from '@fastgpt/global/common/workflow/reference';
 import { getErrText, UserConfigError } from '@fastgpt/global/common/error/utils';
 
 const logger = getLogger(LogCategories.MODULE.WORKFLOW.TOOLS);
@@ -483,13 +484,14 @@ export const replaceJsonBodyString = (
           if (output) return formatVariableValByType(output.value, output.valueType);
 
           const input = node.inputs.find((input) => input.key === id);
-          if (input) {
+          if (input && nodeInputIsReference(input)) {
             return getReferenceVariableValue({
               value: input.value,
               nodesMap: runtimeNodesMap,
               variables: allVariables
             });
           }
+          return input?.value;
         })();
 
         // Check for direct circular reference

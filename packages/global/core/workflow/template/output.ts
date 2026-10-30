@@ -19,7 +19,14 @@ export const FlowNodeTemplateOutputItemTypeSchema = FlowNodeOutputItemTypeSchema
         z.object({
           inputs: z.custom<FlowNodeInputItemType[]>(),
           llmModelMap:
-            z.custom<Record<string, Pick<LLMModelDataType, 'model' | 'modelId' | 'config'>>>()
+            z.custom<
+              Record<
+                string,
+                Pick<LLMModelDataType, 'modelId' | 'config'> & {
+                  model?: LLMModelDataType['model'];
+                }
+              >
+            >()
         })
       ]),
       output: BoolSchema

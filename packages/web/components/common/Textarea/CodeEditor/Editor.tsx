@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState, useEffect } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import Editor, { type Monaco, loader } from '@monaco-editor/react';
 import { Box, type BoxProps } from '@chakra-ui/react';
 import MyIcon from '../../Icon';
@@ -6,6 +6,8 @@ import { getWebReqUrl } from '../../../../common/system/utils';
 import usePythonCompletion from './usePythonCompletion';
 import useJSCompletion from './useJSCompletion';
 import useSystemHelperCompletion from './useSystemHelperCompletion';
+import { registerJsonEditorLanguage } from '../monacoLanguageRegistry';
+import { registerWorkflowMonacoModel } from '../monacoModelRegistry';
 
 loader.config({
   paths: { vs: getWebReqUrl('/js/monaco-editor.0.45.0/vs') }
@@ -25,6 +27,7 @@ export type Props = Omit<BoxProps, 'resize' | 'onChange'> & {
   variables?: EditorVariablePickerType[];
   defaultHeight?: number;
   language?: string;
+  path?: string;
   options?: any;
 };
 
@@ -64,6 +67,7 @@ const MyEditor = ({
   defaultHeight = 200,
   onOpenModal,
   language = 'javascript',
+  path,
   options,
   ...props
 }: Props) => {
@@ -103,36 +107,36 @@ const MyEditor = ({
   const editorRef = useRef<any>(null);
   const monacoRef = useRef<Monaco | null>(null);
 
-  const handleEditorDidMount = useCallback((editor: any, monaco: Monaco) => {
-    editorRef.current = editor;
-    monacoRef.current = monaco;
+  const handleEditorDidMount = useCallback(
+    (editor: any, monaco: Monaco) => {
+      editorRef.current = editor;
+      monacoRef.current = monaco;
 
-    // Prevent browser autofill from causing getModifierState errors
-    const editorDom = editor.getDomNode();
-    if (editorDom) {
-      const textarea = editorDom.querySelector('textarea');
-      if (textarea) {
-        textarea.setAttribute('autocomplete', 'off');
-        textarea.setAttribute('autocorrect', 'off');
-        textarea.setAttribute('autocapitalize', 'off');
-        textarea.setAttribute('spellcheck', 'false');
+      if (path) {
+        const model = editor.getModel();
+        if (model) {
+          registerWorkflowMonacoModel(model);
+        }
       }
-    }
-  }, []);
+
+      // Prevent browser autofill from causing getModifierState errors
+      const editorDom = editor.getDomNode();
+      if (editorDom) {
+        const textarea = editorDom.querySelector('textarea');
+        if (textarea) {
+          textarea.setAttribute('autocomplete', 'off');
+          textarea.setAttribute('autocorrect', 'off');
+          textarea.setAttribute('autocapitalize', 'off');
+          textarea.setAttribute('spellcheck', 'false');
+        }
+      }
+    },
+    [path]
+  );
 
   const beforeMount = useCallback(
     (monaco: Monaco) => {
-      monaco.languages.json.jsonDefaults.setDiagnosticsOptions({
-        validate: false,
-        allowComments: false,
-        schemas: [
-          {
-            uri: 'http://myserver/foo-schema.json', // 一个假设的 URI
-            fileMatch: ['*'], // 匹配所有文件
-            schema: {} // 空的 Schema
-          }
-        ]
-      });
+      registerJsonEditorLanguage(monaco);
 
       monaco.editor.defineTheme('JSONEditorTheme', {
         base: 'vs', // 可以基于已有的主题进行定制
@@ -167,6 +171,9 @@ const MyEditor = ({
     >
       <Editor
         height={'100%'}
+        path={path}
+        keepCurrentModel={Boolean(path)}
+        saveViewState={path ? true : undefined}
         language={language}
         options={mergedOptions}
         theme="JSONEditorTheme"

@@ -3,17 +3,18 @@ import React, { useState } from 'react';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
 import { Box, Button, Flex, Table, Thead, Tbody, Tr, Th, Td, HStack } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import dynamic from 'next/dynamic';
 import { defaultToolParamFormData } from '../../components/ToolParamsEditModal/constants';
-import { useContextSelector } from 'use-context-selector';
 import IOTitle from '../../../components/IOTitle';
 import { SmallAddIcon } from '@chakra-ui/icons';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
-import { WorkflowUtilsContext } from '../../../../context/workflowUtilsContext';
-import { WorkflowActionsContext } from '../../../../context/workflowActionsContext';
+import { useNode, useNodeActions } from '@/web/core/workflow/editor/react/useNode';
+import { splitToolInputsByMode } from '@/web/core/workflow/utils';
+import { useIsToolNode } from '../useWorkflowDocument';
 const ToolParamsEditModal = dynamic(() => import('../../components/ToolParamsEditModal'));
 
 /** 仅 HTTP 和 Code 节点支持用户配置工具参数；旧版插件输入中的 addInputParam 不参与判定。 */
@@ -24,6 +25,19 @@ export const hasDynamicToolInput = (
   (source.flowNodeType === FlowNodeTypeEnum.httpRequest468 ||
     source.flowNodeType === FlowNodeTypeEnum.code);
 
+/** 从 Runtime 节点类型与模板目录派生动态工具输入，避免读取 CanvasNode.data 的语义字段。 */
+export const useHasDynamicToolInput = (nodeId: string) => {
+  const flowNodeType = useNode(nodeId, (node) => node?.data.flowNodeType);
+  const hasToolInput = moduleTemplatesFlat.find(
+    (template) => template.flowNodeType === flowNodeType
+  )?.hasToolInput;
+
+  return hasDynamicToolInput({
+    flowNodeType: flowNodeType as FlowNodeItemType['flowNodeType'],
+    hasToolInput
+  });
+};
+
 const RenderToolInput = ({
   nodeId,
   inputs
@@ -32,11 +46,11 @@ const RenderToolInput = ({
   inputs: FlowNodeInputItemType[];
 }) => {
   const { t } = useTranslation();
-  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
-  const splitToolInputs = useContextSelector(WorkflowUtilsContext, (ctx) => ctx.splitToolInputs);
+  const isTool = useIsToolNode(nodeId);
+  const nodeActions = useNodeActions(nodeId);
   const { toolInputs } = useMemoEnhance(
-    () => splitToolInputs(inputs, nodeId),
-    [inputs, nodeId, splitToolInputs]
+    () => splitToolInputsByMode(inputs, isTool),
+    [inputs, isTool]
   );
 
   const [editField, setEditField] = useState<FlowNodeInputItemType>();
@@ -94,11 +108,10 @@ const RenderToolInput = ({
                         w={'16px'}
                         cursor={'pointer'}
                         onClick={() => {
-                          onChangeNode({
-                            nodeId,
-                            type: 'delInput',
-                            key: item.key
-                          });
+                          // 删除工具参数是记录级变更：以派发瞬间的 inputs 为基线整份提交。
+                          nodeActions?.updateNode((current) => ({
+                            inputs: current.inputs.filter((input) => input.key !== item.key)
+                          }));
                         }}
                       />
                     </Flex>

@@ -1,6 +1,5 @@
 import {
-  DYNAMIC_OPTION_EXCLUDED_VALUE_TYPES,
-  workflowReferenceValueIsSelectable
+  DYNAMIC_OPTION_EXCLUDED_VALUE_TYPES
 } from '@fastgpt/global/common/workflow/reference';
 import { Flex, Stack } from '@chakra-ui/react';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
@@ -20,10 +19,7 @@ import {
   useSubmitErrorHandler
 } from '@/components/core/app/utils/formValidation';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
-import { useContextSelector } from 'use-context-selector';
-import { AppContext } from '@/pageComponents/app/detail/context';
-import { WorkflowBufferDataContext } from '../../../context/workflowInitContext';
-import { getNodeAllSource } from '@/web/core/workflow/utils';
+import { useWorkflowRuntime } from '@/web/core/workflow/editor/session/workflowSession';
 
 export const defaultFormInput: UserInputFormItemType = {
   type: FlowNodeInputTypeEnum.input,
@@ -59,11 +55,7 @@ const InputFormEditModal = ({
   const { toast } = useToast();
   const validateFieldName = useValidateFieldName();
   const onSubmitError = useSubmitErrorHandler();
-  const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
-  const { edges, getNodeById, childrenNodeIdListMap } = useContextSelector(
-    WorkflowBufferDataContext,
-    (v) => v
-  );
+  const runtime = useWorkflowRuntime();
 
   const form = useForm({
     defaultValues: {
@@ -95,22 +87,16 @@ const InputFormEditModal = ({
       }
 
       if (isReferenceOptionFormItem(data)) {
-        const sourceNodes = data.listReference?.length
-          ? getNodeAllSource({
-              nodeId,
-              getNodeById,
-              edges,
-              chatConfig: appDetail.chatConfig,
-              t: t as any,
-              childrenNodeIdListMap
-            })
-          : [];
+        const selectableReferenceKeys = new Set(
+          (runtime?.getReferenceOptions({ nodeId }) ?? [])
+            .filter(
+              ({ sourceType }) =>
+                !sourceType || !DYNAMIC_OPTION_EXCLUDED_VALUE_TYPES.includes(sourceType)
+            )
+            .map(({ reference }) => JSON.stringify(reference))
+        );
         const selectableReferences = (data.listReference ?? []).filter((item) =>
-          workflowReferenceValueIsSelectable({
-            value: item,
-            sourceNodes,
-            excludeValueTypes: DYNAMIC_OPTION_EXCLUDED_VALUE_TYPES
-          })
+          selectableReferenceKeys.has(JSON.stringify(item))
         );
 
         if (selectableReferences.length === 0) {
@@ -145,10 +131,7 @@ const InputFormEditModal = ({
       defaultValueType,
       isEdit,
       nodeId,
-      getNodeById,
-      edges,
-      appDetail.chatConfig,
-      childrenNodeIdListMap,
+      runtime,
       toast,
       t,
       onSubmit,

@@ -6,7 +6,7 @@ import {
   type FlowNodeInputItemType,
   type ReferenceItemValueType
 } from '@fastgpt/global/core/workflow/type/io';
-import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import type { WorkflowNodeData } from '@fastgpt/global/core/workflow/editor/types';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
@@ -14,9 +14,7 @@ import InputSlider from '@fastgpt/web/components/common/MySlider/InputSlider';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { useTranslation } from 'next-i18next';
 import React, { useCallback, useMemo } from 'react';
-import { type NodeProps } from 'reactflow';
-import { useContextSelector } from 'use-context-selector';
-import { WorkflowActionsContext } from '../../context/workflowActionsContext';
+import type { CanvasNodeProps } from '@/web/core/workflow/editor/canvas/canvasTypes';
 import Container from '../components/Container';
 import IOTitle from '../components/IOTitle';
 import { useWorkflowQuoteLimit } from '../hooks/useWorkflowQuoteLimit';
@@ -25,12 +23,23 @@ import RenderInput from './render/RenderInput';
 import { ReferSelector, useReference } from './render/RenderInput/templates/Reference';
 import RenderOutput from './render/RenderOutput';
 import ValueTypeLabel from './render/ValueTypeLabel';
+import { useFieldActions } from '@/web/core/workflow/editor/react/useField';
+import { useNode, useNodeActions } from '@/web/core/workflow/editor/react/useNode';
+import { WorkflowFieldScope } from '@/web/core/workflow/editor/WorkflowFieldScope';
 
-const NodeDatasetConcat = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
+const NodeDatasetConcat = ({ data, selected }: CanvasNodeProps) => {
   const { t } = useTranslation();
-  const { nodeId, inputs, outputs } = data;
+  const { nodeId } = data;
+  const { inputs = [], outputs = [] } =
+    useNode<WorkflowNodeData>(nodeId, (node) => node?.data) ?? {};
   const llmMaxQuoteContext = useWorkflowQuoteLimit();
-  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
+  const nodeActions = useNodeActions(nodeId);
+  // CustomComponent 是被 RenderInput 直接调用的普通函数，字段句柄必须在组件顶层取。
+  const maxTokensField = useFieldActions({
+    nodeId,
+    fieldKey: NodeInputKeyEnum.datasetMaxTokens,
+    kind: 'input'
+  });
 
   const quoteList = useMemoEnhance(() => inputs.filter((item) => item.canEdit), [inputs]);
 
@@ -50,15 +59,7 @@ const NodeDatasetConcat = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
               step={maxTokenStep}
               value={item.value}
               onChange={(e) => {
-                onChangeNode({
-                  nodeId,
-                  type: 'updateInput',
-                  key: item.key,
-                  value: {
-                    ...item,
-                    value: e
-                  }
-                });
+                maxTokensField.setValue(e);
               }}
             />
           </Box>
@@ -72,15 +73,7 @@ const NodeDatasetConcat = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
             name={NodeInputKeyEnum.datasetMaxTokens}
             inputFieldProps={{ bg: 'white' }}
             onChange={(e) => {
-              onChangeNode({
-                nodeId,
-                type: 'updateInput',
-                key: item.key,
-                value: {
-                  ...item,
-                  value: e
-                }
-              });
+              maxTokensField.setValue(e);
             }}
           />
         ),
@@ -98,11 +91,13 @@ const NodeDatasetConcat = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                 iconSpacing={1}
                 size={'sm'}
                 onClick={() => {
-                  onChangeNode({
-                    nodeId,
-                    type: 'addInput',
-                    value: getOneQuoteInputTemplate({ index: quoteList.length + 1 })
-                  });
+                  // 新增引用记录属于记录级变更：以派发瞬间的 inputs 为基线拼完整数组。
+                  nodeActions?.updateNode((current) => ({
+                    inputs: [
+                      ...current.inputs,
+                      getOneQuoteInputTemplate({ index: quoteList.length + 1 })
+                    ]
+                  }));
                 }}
               >
                 {t('common:add_new')}
@@ -119,7 +114,7 @@ const NodeDatasetConcat = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         );
       }
     };
-  }, [maxTokenStep, llmMaxQuoteContext, nodeId, onChangeNode, quoteList, t]);
+  }, [maxTokenStep, llmMaxQuoteContext, maxTokensField, nodeActions, nodeId, quoteList, t]);
 
   const Render = useMemo(() => {
     return (
@@ -148,7 +143,12 @@ const VariableSelector = ({
   inputChildren: FlowNodeInputItemType;
 }) => {
   const { t } = useTranslation();
-  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
+  const nodeActions = useNodeActions(nodeId);
+  const quoteField = useFieldActions({
+    nodeId,
+    fieldKey: inputChildren.key,
+    kind: 'input'
+  });
 
   const { referenceList } = useReference({
     nodeId,
@@ -159,26 +159,17 @@ const VariableSelector = ({
     (e?: ReferenceItemValueType) => {
       if (!e) return;
 
-      onChangeNode({
-        nodeId,
-        type: 'replaceInput',
-        key: inputChildren.key,
-        value: {
-          ...inputChildren,
-          value: e
-        }
-      });
+      quoteField.setValue(e);
     },
-    [inputChildren, nodeId, onChangeNode]
+    [quoteField]
   );
 
   const onDel = useCallback(() => {
-    onChangeNode({
-      nodeId,
-      type: 'delInput',
-      key: inputChildren.key
-    });
-  }, [inputChildren.key, nodeId, onChangeNode]);
+    // 删除引用记录属于记录级变更：以派发瞬间的 inputs 为基线过滤后整份提交。
+    nodeActions?.updateNode((current) => ({
+      inputs: current.inputs.filter((input) => input.key !== inputChildren.key)
+    }));
+  }, [inputChildren.key, nodeActions]);
 
   return (
     <>
@@ -198,16 +189,18 @@ const VariableSelector = ({
           onClick={onDel}
         />
       </Flex>
-      <ReferSelector
-        placeholder={t(
-          (inputChildren.referencePlaceholder as any) ||
-            t('common:core.module.Dataset quote.select')
-        )}
-        list={referenceList}
-        value={inputChildren.value}
-        onSelect={onSelect}
-        isArray={false}
-      />
+      <WorkflowFieldScope nodeId={nodeId} fieldKey={inputChildren.key}>
+        <ReferSelector
+          placeholder={t(
+            (inputChildren.referencePlaceholder as any) ||
+              t('common:core.module.Dataset quote.select')
+          )}
+          list={referenceList}
+          value={inputChildren.value}
+          onSelect={onSelect}
+          isArray={false}
+        />
+      </WorkflowFieldScope>
     </>
   );
 };

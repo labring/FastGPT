@@ -4,7 +4,6 @@ import {
 } from '@fastgpt/global/core/workflow/diagnostic/constants';
 import type { WorkflowModelCheckData } from '@fastgpt/global/core/workflow/model/type';
 import type {
-  WorkflowCheckNodeIssueMap,
   FlowNodeItemType,
   WorkflowCheckIssue
 } from '@fastgpt/global/core/workflow/type/node';
@@ -16,16 +15,18 @@ import { checkWorkflowModels } from '@fastgpt/workflow-core/validation/model';
 import { collectWorkflowBindings } from '@fastgpt/workflow-core/binding/service';
 import type { WorkflowBindingRequirement } from '@fastgpt/workflow-core/binding/type';
 import type { WorkflowDiagnostic } from '@fastgpt/workflow-core/domain/diagnostic';
-import type { Edge, Node } from 'reactflow';
+import type { Edge, Node } from '@xyflow/react';
 import type { TFunction } from 'next-i18next';
 import { createWorkflowCheckDocument } from './document';
 import { formatWorkflowDiagnostic } from './diagnostic';
 import { checkWorkflowNodeResourceRules } from './resource';
 import { formatWorkflowRuleIssue } from './message';
 
+type WorkflowCheckNodeIssueMap = Record<string, WorkflowCheckIssue[]>;
+
 type WorkflowCheckInput = {
   nodes: Node<FlowNodeItemType, string | undefined>[];
-  edges: Edge[];
+  edges: Pick<Edge, 'source' | 'target' | 'sourceHandle' | 'targetHandle'>[];
   modelData?: WorkflowModelCheckData;
   nodeId?: string;
   t?: TFunction;

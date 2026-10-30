@@ -100,6 +100,45 @@ describe('create api', () => {
     expect(res4.data).toBeDefined();
   });
 
+  it('round trips exported reference snapshots through create api', async () => {
+    const [user] = (await getFakeUsers(1)).members;
+    await MongoResourcePermission.findOneAndUpdate(
+      {
+        resourceType: 'team',
+        teamId: user.teamId,
+        resourceId: null,
+        tmbId: user.tmbId
+      },
+      {
+        permission: TeamAppCreatePermissionVal
+      },
+      { upsert: true }
+    );
+
+    const referenceSnapshots: NonNullable<AppVersionSchemaType['referenceSnapshots']> = [
+      {
+        reference: ['deleted-node', 'output'],
+        sourceLabel: 'Deleted node'
+      }
+    ];
+    const result = await Call<CreateAppBodyType, EmptyRequestParams, string>(createapi.default, {
+      auth: user,
+      body: {
+        name: 'snapshot workflow',
+        type: AppTypeEnum.workflow,
+        modules: [],
+        edges: [],
+        chatConfig: {},
+        referenceSnapshots
+      }
+    });
+
+    expect(result.error).toBeUndefined();
+    expect(result.code).toBe(200);
+    const version = await MongoAppVersion.findOne({ appId: result.data }).lean();
+    expect(version?.referenceSnapshots).toEqual(referenceSnapshots);
+  });
+
   it('keeps community template avatar from plugin detail when database has stale avatar', async () => {
     const users = await getFakeUsers(1);
     await MongoResourcePermission.findOneAndUpdate(
@@ -160,7 +199,13 @@ describe('create api', () => {
           ],
           outputs: []
         }
-      ] as unknown as AppVersionSchemaType['nodes']
+      ] as unknown as AppVersionSchemaType['nodes'],
+      referenceSnapshots: [
+        {
+          reference: ['deleted-node', 'output'],
+          sourceLabel: 'Deleted node'
+        }
+      ]
     });
 
     const version = await MongoAppVersion.findOne({ appId }).lean();
@@ -172,6 +217,12 @@ describe('create api', () => {
 
     expect(input?.selectedType).toBe(FlowNodeInputTypeEnum.reference);
     expect(input).not.toHaveProperty('selectedTypeIndex');
+    expect(version?.referenceSnapshots).toEqual([
+      {
+        reference: ['deleted-node', 'output'],
+        sourceLabel: 'Deleted node'
+      }
+    ]);
     expect(rawApp).not.toHaveProperty('modules');
     expect(rawApp).not.toHaveProperty('edges');
     expect(rawApp).not.toHaveProperty('chatConfig');

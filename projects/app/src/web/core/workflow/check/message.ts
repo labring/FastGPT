@@ -80,9 +80,7 @@ const workflowCheckMessageKeys = {
 type WorkflowCheckMessageCode = keyof typeof workflowCheckMessageKeys;
 
 /** 只声明问题代码与展示文案不一致的别名，其他代码直接使用对应文案。 */
-const WORKFLOW_CHECK_MESSAGE_ALIASES: Partial<
-  Record<WorkflowCheckIssue['code'], WorkflowCheckMessageCode>
-> = {
+const WORKFLOW_CHECK_MESSAGE_ALIASES: Partial<Record<string, WorkflowCheckMessageCode>> = {
   [WorkflowCheckIssueCodeEnum.isolatedNode]: WorkflowCheckIssueCodeEnum.noUpstream,
   [WorkflowCheckIssueCodeEnum.unreachableFromStart]: WorkflowCheckIssueCodeEnum.noUpstream,
   [WorkflowCheckIssueCodeEnum.toolWaitingConfig]: WorkflowCheckIssueCodeEnum.toolInactive,

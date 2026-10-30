@@ -1,10 +1,8 @@
 import { isValidReferenceValueFormat } from '@fastgpt/global/common/workflow/reference';
+import { getReferenceVariableValue } from '@fastgpt/global/common/workflow/runtime';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
-import {
-  getReferenceVariableValue,
-  valueTypeFormat
-} from '@fastgpt/global/core/workflow/runtime/utils';
+import { valueTypeFormat } from '@fastgpt/global/core/workflow/runtime/utils';
 import type { ReferenceValueType } from '@fastgpt/global/core/workflow/type/io';
 
 /**

@@ -1,6 +1,7 @@
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import type { AppTemplateSchemaType } from '@fastgpt/global/core/app/type';
-import { migrateWorkflowToCurrent } from '@fastgpt/global/core/workflow/migration';
+import { migrateWorkflowToCurrent } from '@fastgpt/global/common/workflow/migration';
+import { WorkflowReferenceSnapshotSchema } from '@fastgpt/global/core/workflow/type/io';
 
 /**
  * 将模板内的历史工作流迁移为当前结构。
@@ -35,10 +36,19 @@ export const migrateAppTemplateWorkflowToCurrent = (
   }
 
   const workflow = template.workflow as unknown as Record<string, unknown>;
+  // 插件模板是不可信边界；单条坏快照不能触发严格迁移异常并清空整个模板目录。
+  const rawReferenceSnapshots = Array.isArray(workflow.referenceSnapshots)
+    ? workflow.referenceSnapshots
+    : [];
+  const referenceSnapshots = rawReferenceSnapshots.flatMap((snapshot) => {
+    const parsed = WorkflowReferenceSnapshotSchema.safeParse(snapshot);
+    return parsed.success ? [parsed.data] : [];
+  });
   const migrated = migrateWorkflowToCurrent({
     nodes: Array.isArray(workflow.nodes) ? workflow.nodes : [],
     edges: workflow.edges,
-    chatConfig: workflow.chatConfig
+    chatConfig: workflow.chatConfig,
+    referenceSnapshots
   });
 
   return {

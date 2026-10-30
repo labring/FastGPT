@@ -257,13 +257,15 @@ export async function rewriteAppWorkflowToDetail({
         skillId: String(skill._id),
         name: skill.name,
         description: skill.description,
-        avatar: skill.avatar
+        avatar: skill.avatar,
+        isDeleted: false as boolean
       }),
       formatFallback: (snapshot, error) => ({
         skillId: snapshot.skillId,
         name: snapshot.name ?? 'Invalid',
         description: snapshot.description ?? '',
         avatar: snapshot.avatar,
+        isDeleted: error === 'resource_missing',
         error
       })
     });

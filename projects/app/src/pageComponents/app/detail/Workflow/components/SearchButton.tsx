@@ -1,12 +1,16 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { Box, Flex, Button, IconButton, type ButtonProps, Input, Portal } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
-import { useContextSelector } from 'use-context-selector';
-import { WorkflowBufferDataContext } from '../../WorkflowComponents/context/workflowInitContext';
-import { useReactFlow } from 'reactflow';
 import { useKeyPress, useThrottleEffect } from 'ahooks';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
+import { useWorkflowOverlayActions } from '@/web/core/workflow/editor/session/workflowSession';
+import type { ViewOverlayPatch } from '@/web/core/workflow/editor/canvas/canvasTypes';
+import { useWorkflowSnapshotGetter } from '../../WorkflowComponents/Flow/nodes/render/useWorkflowDocument';
+import {
+  useWorkflowCanvasRendererValue,
+  useWorkflowCanvasValue
+} from '../../WorkflowComponents/Flow/canvas/workflowCanvasContext';
 import WorkflowToolbarTooltip from '../../WorkflowComponents/WorkflowBuilder/presentation/WorkflowToolbarTooltip';
 
 type SearchButtonProps = ButtonProps & {
@@ -16,8 +20,11 @@ type SearchButtonProps = ButtonProps & {
 
 const SearchButton = ({ inToolbar = false, portalContainerRef, ...props }: SearchButtonProps) => {
   const { t } = useTranslation();
-  const setNodes = useContextSelector(WorkflowBufferDataContext, (state) => state.setNodes);
-  const { fitView } = useReactFlow();
+  // 命中节点读文档一次性算，不建订阅；高亮标记是画布视图数据，写进 host overlay 由投影合并。
+  const getWorkflow = useWorkflowSnapshotGetter();
+  const patchViewData = useWorkflowOverlayActions();
+  const focusNodes = useWorkflowCanvasValue((v) => v.focusNodes);
+  const selectNodes = useWorkflowCanvasRendererValue((v) => v.selectNodes);
   const { isMac } = useSystem();
 
   const [keyword, setKeyword] = useState<string>();
@@ -25,11 +32,13 @@ const SearchButton = ({ inToolbar = false, portalContainerRef, ...props }: Searc
   const [searchedNodeCount, setSearchedNodeCount] = useState(0);
   const isSearchOpen = keyword !== undefined;
   const searchInputRef = useRef<HTMLInputElement>(null);
+  // 上一轮写过标记的节点：只提交增量，避免每次按键都让全画布 overlay 变更并重投影。
+  const markedNodeIdsRef = useRef<string[]>([]);
+  const fittedSearchTargetRef = useRef<string>();
 
   useEffect(() => {
     if (!isSearchOpen) return;
 
-    // Portal 先挂载子元素再插入页面，等容器就绪后聚焦，避免原生 autoFocus 失效。
     const frame = requestAnimationFrame(() =>
       searchInputRef.current?.focus({ preventScroll: true })
     );
@@ -48,52 +57,54 @@ const SearchButton = ({ inToolbar = false, portalContainerRef, ...props }: Searc
     setKeyword(undefined);
   });
 
+  /**
+   * 按节点名称搜索：命中标记写 host overlay，当前命中项定位并选中。
+   *
+   * 标记必须走 overlay 而不是画布数组：数组每次重投影都会从文档重建，
+   * 直接写 data 会让高亮在下一次任意编辑后丢失。
+   */
   const onSearch = useCallback(() => {
-    setNodes((nodes) => {
-      if (!keyword) {
-        setSearchIndex(0);
-        setSearchedNodeCount(0);
-        return nodes.map((node) => ({
-          ...node,
-          data: {
-            ...node.data,
-            searchedText: undefined
-          }
-        }));
-      }
+    const lowerKeyword = keyword?.toLowerCase();
+    const matchedNodeIds = lowerKeyword
+      ? (getWorkflow()?.nodes ?? [])
+          .filter((node) => node.name.toLowerCase().includes(lowerKeyword))
+          .map((node) => node.nodeId)
+      : [];
+    const matchedIds = new Set(matchedNodeIds);
+    const previousIds = markedNodeIdsRef.current;
+    const patches: ViewOverlayPatch[] = [
+      ...previousIds
+        .filter((nodeId) => !matchedIds.has(nodeId))
+        .map((nodeId) => ({ nodeId, values: { searchedText: undefined } })),
+      ...matchedNodeIds
+        .filter((nodeId) => !previousIds.includes(nodeId))
+        .map((nodeId) => ({ nodeId, values: { searchedText: keyword } }))
+    ];
+    markedNodeIdsRef.current = matchedNodeIds;
+    patchViewData(patches);
 
-      const searchResult = nodes.filter((node) => {
-        return node.data.name.toLowerCase().includes(keyword.toLowerCase());
-      });
+    if (!keyword) {
+      fittedSearchTargetRef.current = undefined;
+      setSearchIndex(0);
+      setSearchedNodeCount(0);
+      return;
+    }
+    if (matchedNodeIds.length === 0) {
+      fittedSearchTargetRef.current = undefined;
+      setSearchIndex(0);
+      setSearchedNodeCount(0);
+      return;
+    }
 
-      if (searchResult.length === 0) {
-        return nodes.map((node) => ({
-          ...node,
-          data: {
-            ...node.data,
-            searchedText: undefined
-          }
-        }));
-      }
-
-      setSearchedNodeCount(searchResult.length);
-
-      const searchedNode = searchResult[searchIndex] ?? searchResult[0];
-
-      if (searchedNode) {
-        fitView({ nodes: [searchedNode], padding: 0.6 });
-      }
-
-      return nodes.map((node) => ({
-        ...node,
-        selected: node.id === searchedNode.id,
-        data: {
-          ...node.data,
-          searchedText: searchResult.find((item) => item.id === node.id) ? keyword : undefined
-        }
-      }));
-    });
-  }, [fitView, keyword, searchIndex, setNodes]);
+    setSearchedNodeCount(matchedNodeIds.length);
+    const activeNodeId = matchedNodeIds[searchIndex] ?? matchedNodeIds[0];
+    const fitTargetKey = `${keyword}:${searchIndex}:${activeNodeId}`;
+    if (fittedSearchTargetRef.current !== fitTargetKey) {
+      fittedSearchTargetRef.current = fitTargetKey;
+      focusNodes([activeNodeId], { padding: 0.6, minZoom: 0.6 });
+    }
+    selectNodes([activeNodeId]);
+  }, [focusNodes, getWorkflow, keyword, patchViewData, searchIndex, selectNodes]);
 
   useThrottleEffect(
     () => {
@@ -148,7 +159,6 @@ const SearchButton = ({ inToolbar = false, portalContainerRef, ...props }: Searc
 
   if (!isSearchOpen) {
     if (inToolbar) return trigger;
-
     return (
       <Box position={'absolute'} top={'176px'} left={6} zIndex={1}>
         {trigger}

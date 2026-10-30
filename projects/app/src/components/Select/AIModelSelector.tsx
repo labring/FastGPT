@@ -127,6 +127,8 @@ const AIModelSelector = ({
   vision,
   excludeHidden,
   appId,
+  // Chakra Button 不消费 isInvalid，留在兜底 props 里只会泄漏成 DOM 非法属性。
+  isInvalid: _isInvalid,
   requireTtsVoice,
   ...props
 }: Props) => {

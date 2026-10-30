@@ -1,20 +1,29 @@
-import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import {
+  NodeInputKeyEnum,
+  NodeOutputKeyEnum,
+  VARIABLE_NODE_ID
+} from '@fastgpt/global/core/workflow/constants';
 import {
   FlowNodeInputTypeEnum,
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
-import type { ReferenceValueType } from '@fastgpt/global/core/workflow/type/io';
+import type { RuntimeEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import type { WorkflowVariableStateLike } from '../../types/runtime';
-import {
-  getReferenceVariableValue,
-  valueTypeFormat
-} from '@fastgpt/global/core/workflow/runtime/utils';
+import { getReferenceVariableValue } from '@fastgpt/global/common/workflow/runtime';
+import { valueTypeFormat } from '@fastgpt/global/core/workflow/runtime/utils';
 import {
   getSelectedInputRenderType,
   nodeInputIsReference
 } from '@fastgpt/global/common/workflow/reference';
 import { getSecretReferenceValue } from '@fastgpt/global/common/secret/utils';
+import {
+  filterSelectableWorkflowNodeOutputs,
+  getWorkflowReferenceItems,
+  getWorkflowReferenceItemsFromValue,
+  isWorkflowEdgeSourceHandleValid,
+  isWorkflowReferenceItem
+} from '@fastgpt/global/common/workflow/editor/utils';
 import { formatCollectionFilterMatchParam } from '@fastgpt/global/core/dataset/search/tagFilter';
 import { replaceEditorVariable } from './replaceEditorVariable';
 
@@ -27,11 +36,19 @@ import { replaceEditorVariable } from './replaceEditorVariable';
 export const getWorkflowNodeRunParams = ({
   node,
   runtimeNodesMap,
-  variableState
+  variableState,
+  runtimeEdges,
+  runtimeEdgeIndex,
+  isDebugMode = false
 }: {
   node: RuntimeNodeItemType;
   runtimeNodesMap: Map<string, RuntimeNodeItemType>;
   variableState: WorkflowVariableStateLike;
+  runtimeEdges?: readonly RuntimeEdgeItemType[];
+  runtimeEdgeIndex?: {
+    byTarget: ReadonlyMap<string, readonly RuntimeEdgeItemType[]>;
+  };
+  isDebugMode?: boolean;
 }) => {
   let runtimeVariables: Record<string, unknown> | undefined;
   const getRuntimeVariables = () => {
@@ -76,6 +93,125 @@ export const getWorkflowNodeRunParams = ({
       }
     : {};
 
+  const reverseEdges = runtimeEdgeIndex
+    ? undefined
+    : runtimeEdges
+      ? runtimeEdges.reduce<Map<string, string[]>>((map, edge) => {
+          if (
+            edge.sourceHandle === NodeOutputKeyEnum.selectedTools ||
+            edge.targetHandle === NodeOutputKeyEnum.selectedTools ||
+            !isWorkflowEdgeSourceHandleValid(runtimeNodesMap.get(edge.source), edge.sourceHandle)
+          ) {
+            return map;
+          }
+          const sources = map.get(edge.target) ?? [];
+          sources.push(edge.source);
+          map.set(edge.target, sources);
+          return map;
+        }, new Map())
+      : undefined;
+
+  const containerNodeIds = [node.nodeId];
+  const containerNodeIdSet = new Set(containerNodeIds);
+  let parentNodeId = node.parentNodeId;
+  while (parentNodeId && !containerNodeIdSet.has(parentNodeId)) {
+    const parentNode = runtimeNodesMap.get(parentNodeId);
+    if (!parentNode) break;
+    containerNodeIds.push(parentNodeId);
+    containerNodeIdSet.add(parentNodeId);
+    parentNodeId = parentNode.parentNodeId;
+  }
+
+  /** 引用输入只保留可执行来源；无效项按 main 行为过滤，不升级为参数异常。 */
+  const resolveReferenceInputValue = (value: unknown) => {
+    const references = getWorkflowReferenceItems(value);
+    const isReferenceArray = Array.isArray(value) && !isWorkflowReferenceItem(value);
+    if (references.length === 0) {
+      const isPlainArray =
+        Array.isArray(value) &&
+        !value.some(Array.isArray) &&
+        !(value.length === 2 && value.every((item) => typeof item === 'string'));
+      return isPlainArray ? value : undefined;
+    }
+    const variables = getRuntimeVariables();
+    const isReachableSource = (sourceNodeId: string) => {
+      const byTarget = runtimeEdgeIndex?.byTarget;
+      if (!reverseEdges && !byTarget) return true;
+      // 编辑器把祖先容器作为遍历起点，但容器自身不因此成为子节点的可引用来源。
+      if (sourceNodeId === node.nodeId) return true;
+      const pending = [...containerNodeIds];
+      const visited = new Set<string>();
+      while (pending.length > 0) {
+        const targetNodeId = pending.pop()!;
+        if (visited.has(targetNodeId)) continue;
+        visited.add(targetNodeId);
+
+        if (targetNodeId !== node.nodeId && containerNodeIdSet.has(targetNodeId)) {
+          const container = runtimeNodesMap.get(targetNodeId);
+          for (const input of container?.inputs ?? []) {
+            if (!nodeInputIsReference(input) || input.key === NodeInputKeyEnum.childrenNodeIdList) {
+              continue;
+            }
+            const references = getWorkflowReferenceItemsFromValue(
+              input.value ?? input.defaultValue
+            );
+            for (const [referenceSourceId] of references) {
+              if (
+                referenceSourceId === VARIABLE_NODE_ID ||
+                !runtimeNodesMap.has(referenceSourceId)
+              ) {
+                continue;
+              }
+              if (referenceSourceId === sourceNodeId) return true;
+              pending.push(referenceSourceId);
+            }
+          }
+        }
+
+        const upstreamNodeIds = byTarget
+          ? (byTarget.get(targetNodeId) ?? []).map((edge) => edge.source)
+          : (reverseEdges?.get(targetNodeId) ?? []);
+        if (upstreamNodeIds.includes(sourceNodeId)) return true;
+        pending.push(...upstreamNodeIds);
+      }
+      return false;
+    };
+
+    const validReferences = references.filter(([sourceNodeId, outputId]) => {
+      if (!outputId) return false;
+      if (sourceNodeId === VARIABLE_NODE_ID) {
+        return Object.prototype.hasOwnProperty.call(variables, outputId);
+      }
+      const sourceNode = runtimeNodesMap.get(sourceNodeId);
+      // Agent 生成参数引用节点 input；它不是可执行 output，但仍需保留旧的 undefined 语义。
+      const isAgentGeneratedInput =
+        sourceNode?.inputs.some(
+          (input) => input.key === outputId && input.defaultToAgentGenerated === true
+        ) === true;
+      if (isAgentGeneratedInput) return true;
+      const output = sourceNode?.outputs.find((item) => item.id === outputId);
+      if (!sourceNode || !output) return false;
+      if (
+        filterSelectableWorkflowNodeOutputs({
+          outputs: [output],
+          catchError: sourceNode.catchError
+        }).length === 0
+      ) {
+        return false;
+      }
+      return isReachableSource(sourceNodeId);
+    });
+    if (validReferences.length === 0) return undefined;
+
+    return getReferenceVariableValue({
+      value: (isReferenceArray ? validReferences : validReferences[0]) as Parameters<
+        typeof getReferenceVariableValue
+      >[0]['value'],
+      nodesMap: runtimeNodesMap,
+      variables
+    });
+  };
+
   node.inputs.forEach((input) => {
     // Special input, not format
     if (input.key === dynamicInput?.key) return;
@@ -94,6 +230,11 @@ export const getWorkflowNodeRunParams = ({
 
     const rawValue = input.value;
     const isReferenceInput = nodeInputIsReference(input);
+    const isDebugValueOverride =
+      isDebugMode &&
+      isReferenceInput &&
+      'debugValueOverride' in input &&
+      input.debugValueOverride === true;
     const isSecretInput = getSelectedInputRenderType(input) === FlowNodeInputTypeEnum.password;
     const needsTextReplace = typeof rawValue === 'string' && rawValue.includes('{{');
     let value = rawValue;
@@ -102,13 +243,11 @@ export const getWorkflowNodeRunParams = ({
       value = resolveSecretInputReference(value);
     }
 
-    if (isReferenceInput && !needsTextReplace) {
-      value = getReferenceVariableValue({
-        value,
-        nodesMap: runtimeNodesMap,
-        variables: getRuntimeVariables(),
-        isReferenceVal: true
-      });
+    if (isDebugValueOverride) {
+      // 调试表单提交的是字面值，即使保存态仍选中 Reference。
+      value = rawValue;
+    } else if (isReferenceInput && !needsTextReplace) {
+      value = resolveReferenceInputValue(value);
     } else {
       if (needsTextReplace) {
         value = replaceEditorVariable({
@@ -119,12 +258,7 @@ export const getWorkflowNodeRunParams = ({
       }
 
       if (isReferenceInput) {
-        value = getReferenceVariableValue({
-          value,
-          nodesMap: runtimeNodesMap,
-          variables: getRuntimeVariables(),
-          isReferenceVal: true
-        });
+        value = resolveReferenceInputValue(value);
       }
     }
 
@@ -139,13 +273,7 @@ export const getWorkflowNodeRunParams = ({
         ...datasetParams,
         collectionFilterMatch: formatCollectionFilterMatchParam({
           value: datasetParams.collectionFilterMatch,
-          resolveReference: (refValue) =>
-            getReferenceVariableValue({
-              value: refValue as ReferenceValueType,
-              nodesMap: runtimeNodesMap,
-              variables: getRuntimeVariables(),
-              isReferenceVal: true
-            })
+          resolveReference: (refValue) => resolveReferenceInputValue(refValue)
         })
       };
     }
@@ -153,13 +281,7 @@ export const getWorkflowNodeRunParams = ({
     if (input.key === NodeInputKeyEnum.collectionFilterMatch) {
       const formatted = formatCollectionFilterMatchParam({
         value,
-        resolveReference: (refValue) =>
-          getReferenceVariableValue({
-            value: refValue as ReferenceValueType,
-            nodesMap: runtimeNodesMap,
-            variables: getRuntimeVariables(),
-            isReferenceVal: true
-          })
+        resolveReference: (refValue) => resolveReferenceInputValue(refValue)
       });
       if (input.canEdit && dynamicInput && params[dynamicInput.key]) {
         params[dynamicInput.key][input.key] = formatted;

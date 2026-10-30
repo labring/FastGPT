@@ -1,15 +1,15 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import { Box, Flex, IconButton, Portal, Text } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { useContextSelector } from 'use-context-selector';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { AppContext } from '../../context';
-import { getAppChatConfig } from '@fastgpt/global/common/app/chat';
 import { SystemConfigForm } from './components/SystemConfigForm';
 import { PluginConfigForm } from './nodes/NodePluginIO/PluginConfigForm';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import AppDetailPanelModal, {
-  APP_DETAIL_PANEL_WIDTH_PX
+  APP_DETAIL_PANEL_WIDTH_PX,
+  usePanelContentMounted
 } from '../../components/AppDetailPanelModal';
 import { useAppEditorUIState } from '@/components/core/app/useAppEditorUIState';
 import WorkflowBuilderGuidePopover from '../WorkflowBuilder/presentation/GuidePopover';
@@ -58,20 +58,12 @@ const SystemConfigDrawer = () => {
   const { t } = useTranslation();
   const { activeLeftPanel, closeLeftPanel } = useWorkflowBuilderUI();
   const isOpen = activeLeftPanel === 'systemConfig';
+  const isContentMounted = usePanelContentMounted(isOpen);
   const onClose = () => closeLeftPanel('systemConfig');
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
   const isWorkflowTool = appDetail.type === AppTypeEnum.workflowTool;
   const setAppDetail = useContextSelector(AppContext, (v) => v.setAppDetail);
   const { isWelcomeTextFolded, toggleWelcomeTextFold } = useAppEditorUIState(appDetail._id);
-
-  const chatConfig = useMemo(
-    () =>
-      getAppChatConfig({
-        chatConfig: appDetail.chatConfig,
-        isPublicFetch: true
-      }),
-    [appDetail.chatConfig]
-  );
 
   return (
     <>
@@ -126,17 +118,17 @@ const SystemConfigDrawer = () => {
               }
             }}
           >
-            {isWorkflowTool ? (
-              <PluginConfigForm chatConfig={chatConfig} setAppDetail={setAppDetail} />
-            ) : (
-              <SystemConfigForm
-                chatConfig={chatConfig}
-                setAppDetail={setAppDetail}
-                mode={'drawer'}
-                isWelcomeTextFolded={isWelcomeTextFolded}
-                onToggleWelcomeTextFold={toggleWelcomeTextFold}
-              />
-            )}
+            {isContentMounted &&
+              (isWorkflowTool ? (
+                <PluginConfigForm setAppDetail={setAppDetail} />
+              ) : (
+                <SystemConfigForm
+                  setAppDetail={setAppDetail}
+                  mode={'drawer'}
+                  isWelcomeTextFolded={isWelcomeTextFolded}
+                  onToggleWelcomeTextFold={toggleWelcomeTextFold}
+                />
+              ))}
           </Box>
         </AppDetailPanelModal>
       </Portal>

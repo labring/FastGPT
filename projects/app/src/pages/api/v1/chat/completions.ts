@@ -18,10 +18,10 @@ import {
   getWorkflowEntryNodeIds,
   getMaxHistoryLimitFromNodes,
   storeEdges2RuntimeEdges,
-  storeNodes2RuntimeNodes,
   getLastInteractiveValue,
   rewriteNodeOutputByHistories
 } from '@fastgpt/global/core/workflow/runtime/utils';
+import { storeNodes2RuntimeNodes } from '@fastgpt/global/common/workflow/runtime';
 import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
 import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
 import { getChatItems } from '@fastgpt/service/core/chat/controller';

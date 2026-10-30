@@ -1,30 +1,40 @@
 import React, { useMemo } from 'react';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { useTranslation } from 'next-i18next';
-import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { Box, Button } from '@chakra-ui/react';
 import { useBoolean } from 'ahooks';
-import { useContextSelector } from 'use-context-selector';
-import { WorkflowBufferDataContext } from '../../context/workflowInitContext';
 import { SystemToolSecretInputTypeMap } from '@fastgpt/global/core/app/tool/systemTool/constants';
 import SecretInputModal, {
   type SecretReferenceList,
   type ToolParamsFormType
 } from '@/pageComponents/app/tool/SecretInputModal';
-import { WorkflowActionsContext } from '../../context/workflowActionsContext';
+import { useFieldActions } from '@/web/core/workflow/editor/react/useField';
+import { useNode } from '@/web/core/workflow/editor/react/useNode';
+import { useWorkflowOverlayValue } from '@/web/core/workflow/editor/session/workflowSession';
 import { ReferSelector, useReference } from '../nodes/render/RenderInput/templates/Reference';
-import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 
 const ToolConfig = ({ nodeId, inputs }: { nodeId?: string; inputs?: FlowNodeInputItemType[] }) => {
   const { t } = useTranslation();
-  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
-  const node = useContextSelector(WorkflowBufferDataContext, (v) => v.getNodeById(nodeId));
+  // nodeId 是可选 prop：hook 必须无条件调用，空 id 时 useNode / useField 返回 undefined。
+  const nodeData = useNode(nodeId ?? '', (node) => node?.data);
+  const inputFieldActions = useFieldActions({
+    nodeId: nodeId ?? '',
+    fieldKey: NodeInputKeyEnum.systemInputConfig,
+    kind: 'input'
+  });
+  // 教程地址是画布视图数据（不进文档），由 NodeCard 拉到工具详情后写进 host overlay；
+  // 选择器返回原始值，overlay 更新时 host 会 bump，这里随之刷新。
+  const courseUrl = useWorkflowOverlayValue(nodeId)?.courseUrl as string | undefined;
   const { referenceList } = useReference({
-    nodeId: nodeId || '',
+    nodeId: nodeId ?? '',
     valueType: WorkflowIOValueTypeEnum.any
   });
 
-  const inputConfig = inputs?.find((item) => item.key === NodeInputKeyEnum.systemInputConfig);
+  const inputConfig = useMemo(
+    () => inputs?.find((item) => item.key === NodeInputKeyEnum.systemInputConfig),
+    [inputs]
+  );
   const inputList = inputConfig?.inputList;
   const [isOpen, { setTrue, setFalse }] = useBoolean(false);
 
@@ -39,18 +49,15 @@ const ToolConfig = ({ nodeId, inputs }: { nodeId?: string; inputs?: FlowNodeInpu
     });
   }, [inputConfig?.value, t]);
 
+  /** 提交密钥配置：只改这一个输入记录的值，走字段句柄而不是整节点 patch。 */
   const onSubmit = (data: ToolParamsFormType) => {
-    if (!inputConfig) return;
+    if (
+      !inputConfig ||
+      !nodeData?.inputs.some((input) => input.key === NodeInputKeyEnum.systemInputConfig)
+    )
+      return;
 
-    onChangeNode({
-      nodeId: nodeId as string,
-      type: 'updateInput',
-      key: inputConfig.key,
-      value: {
-        ...inputConfig,
-        value: data
-      }
-    });
+    inputFieldActions.setValue(data);
     setFalse();
   };
 
@@ -71,14 +78,14 @@ const ToolConfig = ({ nodeId, inputs }: { nodeId?: string; inputs?: FlowNodeInpu
           renderReference={({ list, value, onSelect }) => (
             <ReferSelector list={list} value={value} onSelect={onSelect} />
           )}
-          isFolder={node?.isFolder}
+          isFolder={nodeData?.isFolder}
           inputConfig={inputConfig}
-          hasSystemSecret={node?.hasSystemSecret}
-          secretCost={node?.systemKeyCost}
-          courseUrl={node?.courseUrl}
-          readmeUrl={node?.readmeUrl}
-          parentId={node?.pluginId}
-          source={node?.source}
+          hasSystemSecret={nodeData?.hasSystemSecret}
+          secretCost={nodeData?.systemKeyCost}
+          courseUrl={courseUrl}
+          readmeUrl={nodeData?.readmeUrl}
+          parentId={nodeData?.pluginId}
+          source={nodeData?.source}
           onClose={setFalse}
           onSubmit={onSubmit}
         />

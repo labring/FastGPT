@@ -2,7 +2,7 @@ import { act, createElement, useLayoutEffect } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { JSDOM } from 'jsdom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import * as reactFlow from 'reactflow';
+import * as reactFlow from '@xyflow/react';
 import { getHandleId } from '@fastgpt/global/common/workflow/reference';
 import { useNodeHandleDrag } from '@/pageComponents/app/detail/WorkflowComponents/Flow/nodes/render/Handle/useNodeHandleDrag';
 
@@ -11,19 +11,24 @@ describe('useNodeHandleDrag', () => {
   let root: Root;
   let container: HTMLDivElement;
   let store: ReturnType<typeof reactFlow.useStoreApi>;
+  let updateNodeInternals: ReturnType<typeof reactFlow.useUpdateNodeInternals>;
+  let internalNode: ReturnType<typeof reactFlow.useInternalNode>;
   let drag: ReturnType<typeof useNodeHandleDrag>;
   let frames: FrameRequestCallback[];
   const handleId = getHandleId('node', 'source', 'branch');
 
   const Harness = ({ cloned = false }: { cloned?: boolean }) => {
     const currentStore = reactFlow.useStoreApi();
+    const currentUpdateNodeInternals = reactFlow.useUpdateNodeInternals();
+    internalNode = reactFlow.useInternalNode('node');
     drag = useNodeHandleDrag('node');
     useLayoutEffect(() => {
       store = currentStore;
-    }, [currentStore]);
+      updateNodeInternals = currentUpdateNodeInternals;
+    }, [currentStore, currentUpdateNodeInternals]);
     return createElement(
       'div',
-      { className: 'react-flow__viewport' },
+      { className: 'react-flow__viewport xyflow__viewport' },
       createElement(
         'div',
         { className: 'react-flow__node', 'data-id': 'node' },
@@ -45,16 +50,14 @@ describe('useNodeHandleDrag', () => {
       )
     );
   };
-  const measure = () =>
-    store.getState().updateNodeDimensions([
-      {
-        id: 'node',
-        nodeElement: container.querySelector<HTMLDivElement>('.react-flow__node')!,
-        forceUpdate: true
-      }
-    ]);
+  const measure = async () => {
+    await act(async () => {
+      updateNodeInternals('node');
+      frames.splice(0).forEach((callback) => callback(0));
+    });
+  };
   const bounds = () =>
-    store.getState().nodeInternals.get('node')?.[reactFlow.internalsSymbol]?.handleBounds?.source;
+    internalNode?.internals.handleBounds?.source;
 
   beforeEach(async () => {
     frames = [];
@@ -96,8 +99,10 @@ describe('useNodeHandleDrag', () => {
     container = document.querySelector<HTMLDivElement>('#root')!;
     root = createRoot(container);
     await render();
-    store.setState({ domNode: container, transform: [0, 0, 2] });
-    store.getState().setNodes([{ id: 'node', position: { x: 0, y: 0 }, data: {} }]);
+    await act(async () => {
+      store.setState({ domNode: container, transform: [0, 0, 2] });
+      store.getState().setNodes([{ id: 'node', position: { x: 0, y: 0 }, data: {} }]);
+    });
   });
   afterEach(async () => {
     await act(async () => root.unmount());
@@ -109,7 +114,7 @@ describe('useNodeHandleDrag', () => {
   it.each(['drop', 'cancel'] as const)(
     'keeps the dragged port in its node until %s, then returns it to the real row',
     async () => {
-      measure();
+      await measure();
       const initial = bounds();
       expect(initial?.map((handle) => handle.id)).toEqual([handleId]);
       await act(async () => drag.onBeforeCapture({ draggableId: 'branch' }));
@@ -121,7 +126,7 @@ describe('useNodeHandleDrag', () => {
       expect(handle.style.top).toBe('40px');
       expect(handle.style.width).toBe('24px');
       expect(handle.style.visibility).toBe('hidden');
-      measure();
+      await measure();
       expect(bounds()).toEqual(initial);
 
       await act(async () => {

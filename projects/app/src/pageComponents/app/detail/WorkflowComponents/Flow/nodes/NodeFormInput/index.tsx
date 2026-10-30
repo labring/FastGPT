@@ -1,8 +1,8 @@
 import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
-import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import type { WorkflowNodeData } from '@fastgpt/global/core/workflow/editor/types';
 /* eslint-disable react-hooks/refs -- react-beautiful-dnd requires render-time drag props. */
 import React, { useMemo, useState } from 'react';
-import { type NodeProps, useViewport } from 'reactflow';
+import type { CanvasNodeProps } from '@/web/core/workflow/editor/canvas/canvasTypes';
 import NodeCard from '../render/NodeCard';
 import Container from '../../components/Container';
 import RenderInput from '../render/RenderInput';
@@ -22,7 +22,6 @@ import {
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { SmallAddIcon } from '@chakra-ui/icons';
 import IOTitle from '../../components/IOTitle';
-import { useContextSelector } from 'use-context-selector';
 import InputFormEditModal, { defaultFormInput } from './InputFormEditModal';
 import RenderOutput from '../render/RenderOutput';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
@@ -32,86 +31,100 @@ import DndDrag, {
   type DraggableProvided,
   type DraggableStateSnapshot
 } from '@fastgpt/web/components/common/DndDrag';
-import { WorkflowActionsContext } from '../../../context/workflowActionsContext';
+import { getOutputDisconnectCommands } from '@/web/core/workflow/utils';
+import { useNode, useNodeActions } from '@/web/core/workflow/editor/react/useNode';
+import { useWorkflowActions } from '@/web/core/workflow/editor/react/useWorkflow';
 
-const NodeFormInput = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
-  const { nodeId, inputs, outputs } = data;
+const NodeFormInput = ({ data, selected }: CanvasNodeProps) => {
+  const { nodeId } = data;
+  const { inputs = [], outputs = [] } =
+    useNode<WorkflowNodeData>(nodeId, (node) => node?.data) ?? {};
   const { t } = useTranslation();
-  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
-  const { zoom } = useViewport();
+  const nodeActions = useNodeActions(nodeId);
+  // 边集合只在改名/删除表单字段的回调里读，走非订阅 getter：点击时取当前值，组件不订阅结构变更。
+  const { getEdges } = useWorkflowActions();
 
   const [editField, setEditField] = useState<UserInputFormItemType>();
 
   const CustomComponent = useMemo(
     () => ({
-      [NodeInputKeyEnum.userInputForms]: ({ value, key, ...props }: FlowNodeInputItemType) => {
+      [NodeInputKeyEnum.userInputForms]: ({ value, key }: FlowNodeInputItemType) => {
         const inputs = value as UserInputFormItemType[];
 
+        /**
+         * 提交表单字段编辑：字段列表与其结果 output 必须同一事务写入，否则撤销会拆成两步。
+         * 新增走追加，编辑按原 key 定位；只有改名时旧 handle 上的连线才需要一起断开。
+         */
         const onSubmit = (data: UserInputFormItemType) => {
-          if (!editField?.key) {
-            onChangeNode({
-              nodeId,
-              type: 'updateInput',
-              key,
-              value: {
-                ...props,
-                key,
-                value: inputs.concat(data)
-              }
-            });
-            onChangeNode({
-              nodeId,
-              type: 'addOutput',
-              value: {
-                id: data.key,
-                valueType: data.valueType,
-                key: data.key,
-                label: data.label,
-                type: FlowNodeOutputTypeEnum.static
-              }
-            });
-          } else {
-            const output = outputs.find((output) => output.key === editField.key);
-            onChangeNode({
-              nodeId,
-              type: 'updateInput',
-              key,
-              value: {
-                ...props,
-                key,
-                value: inputs.map((input) => (input.key === editField.key ? data : input))
-              }
-            });
-            onChangeNode({
-              nodeId,
-              type: 'replaceOutput',
-              key: editField.key,
-              value: {
-                ...(output as FlowNodeOutputItemType),
-                valueType: data.valueType,
-                key: data.key,
-                label: data.label
-              }
-            });
-          }
+          const editKey = editField?.key;
+
+          nodeActions?.updateNode(
+            (current) => {
+              const nextOutput: FlowNodeOutputItemType = editKey
+                ? {
+                    // 编辑态必然能按原 key 找到 output；找不到时 map 不命中，等价于旧 replaceOutput 的空操作。
+                    ...(current.outputs.find(
+                      (output) => output.key === editKey
+                    ) as FlowNodeOutputItemType),
+                    valueType: data.valueType,
+                    key: data.key,
+                    label: data.label
+                  }
+                : {
+                    id: data.key,
+                    valueType: data.valueType,
+                    key: data.key,
+                    label: data.label,
+                    type: FlowNodeOutputTypeEnum.static
+                  };
+
+              return {
+                inputs: current.inputs.map((input) =>
+                  input.key === key
+                    ? {
+                        ...input,
+                        value: editKey
+                          ? inputs.map((item) => (item.key === editKey ? data : item))
+                          : inputs.concat(data)
+                      }
+                    : input
+                ),
+                outputs: editKey
+                  ? current.outputs.map((output) => (output.key === editKey ? nextOutput : output))
+                  : current.outputs.concat(nextOutput)
+              };
+            },
+            editKey && editKey !== data.key
+              ? {
+                  disconnectEdges: getOutputDisconnectCommands({
+                    edges: getEdges(),
+                    nodeId,
+                    outputKey: editKey
+                  })
+                }
+              : undefined
+          );
         };
 
         const onDelete = (valueKey: string) => {
-          onChangeNode({
-            nodeId,
-            type: 'updateInput',
-            key,
-            value: {
-              ...props,
-              key,
-              value: inputs.filter((input) => input.key !== valueKey)
+          // 删除字段时其 output 与 handle 连线同事务消失，撤销一步恢复。
+          nodeActions?.updateNode(
+            (current) => ({
+              inputs: current.inputs.map((input) =>
+                input.key === key
+                  ? { ...input, value: inputs.filter((item) => item.key !== valueKey) }
+                  : input
+              ),
+              outputs: current.outputs.filter((output) => output.key !== valueKey)
+            }),
+            {
+              disconnectEdges: getOutputDisconnectCommands({
+                edges: getEdges(),
+                nodeId,
+                outputKey: valueKey
+              })
             }
-          });
-          onChangeNode({
-            nodeId,
-            type: 'delOutput',
-            key: valueKey
-          });
+          );
         };
 
         return (
@@ -164,31 +177,20 @@ const NodeFormInput = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                 </Thead>
                 <DndDrag<UserInputFormItemType>
                   onDragEndCb={(list) => {
-                    const sortedOutputs = [
-                      outputs[0],
-                      ...outputs.slice(1).sort((a, b) => {
-                        const aIndex = list.findIndex((item) => item.key === a.key);
-                        const bIndex = list.findIndex((item) => item.key === b.key);
-                        return aIndex - bIndex;
-                      })
-                    ];
-
-                    onChangeNode({
-                      nodeId,
-                      type: 'updateInput',
-                      key,
-                      value: {
-                        ...props,
-                        key,
-                        value: list
-                      }
-                    });
-                    onChangeNode({
-                      nodeId,
-                      type: 'attr',
-                      key: 'outputs',
-                      value: sortedOutputs
-                    });
+                    // 拖拽排序：字段顺序与 output 顺序同事务写入，撤销一步回到旧顺序。
+                    nodeActions?.updateNode((current) => ({
+                      inputs: current.inputs.map((input) =>
+                        input.key === key ? { ...input, value: list } : input
+                      ),
+                      outputs: [
+                        current.outputs[0],
+                        ...current.outputs.slice(1).sort((a, b) => {
+                          const aIndex = list.findIndex((item) => item.key === a.key);
+                          const bIndex = list.findIndex((item) => item.key === b.key);
+                          return aIndex - bIndex;
+                        })
+                      ]
+                    }));
                   }}
                   dataList={inputs}
                   renderClone={(provided, snapshot, rubric) => {
@@ -206,7 +208,6 @@ const NodeFormInput = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                       />
                     );
                   }}
-                  zoom={zoom}
                 >
                   {({ provided }) => (
                     <Tbody {...provided.droppableProps} ref={provided.innerRef}>
@@ -237,7 +238,7 @@ const NodeFormInput = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         );
       }
     }),
-    [t, editField, zoom, onChangeNode, nodeId, outputs]
+    [t, editField, nodeActions, getEdges, nodeId]
   );
 
   return (

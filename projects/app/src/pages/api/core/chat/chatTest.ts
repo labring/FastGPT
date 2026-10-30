@@ -22,9 +22,9 @@ import {
   getMaxHistoryLimitFromNodes,
   getWorkflowEntryNodeIds,
   storeEdges2RuntimeEdges,
-  rewriteNodeOutputByHistories,
-  storeNodes2RuntimeNodes
+  rewriteNodeOutputByHistories
 } from '@fastgpt/global/core/workflow/runtime/utils';
+import { storeNodes2RuntimeNodes } from '@fastgpt/global/common/workflow/runtime';
 import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
 import { WORKFLOW_MAX_RUN_TIMES } from '@fastgpt/service/core/workflow/constants';
 import { getWorkflowToolInputsFromStoreNodes } from '@fastgpt/global/core/app/tool/workflowTool/utils';

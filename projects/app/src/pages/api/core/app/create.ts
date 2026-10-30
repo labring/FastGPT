@@ -4,7 +4,7 @@ import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils'
 import { AppFolderTypeList, AppTypeEnum, ToolTypeList } from '@fastgpt/global/core/app/constants';
 import type { AppResourcesType, AppSchemaType } from '@fastgpt/global/core/app/type';
 import type { AppVersionSchemaType } from '@fastgpt/global/core/app/version/type';
-import { migrateWorkflowToCurrent } from '@fastgpt/global/core/workflow/migration';
+import { migrateWorkflowToCurrent } from '@fastgpt/global/common/workflow/migration';
 import { formatModels } from '@fastgpt/global/common/workflow/model';
 import {
   CreateAppRequestBodySchema,
@@ -53,8 +53,19 @@ async function handler(req: ApiRequestProps<CreateAppBodyType>) {
     req,
     bodySchema: CreateAppRequestBodySchema
   });
-  const { parentId, name, avatar, intro, type, nodes, edges, chatConfig, templateId, utmParams } =
-    body;
+  const {
+    parentId,
+    name,
+    avatar,
+    intro,
+    type,
+    nodes,
+    edges,
+    chatConfig,
+    referenceSnapshots,
+    templateId,
+    utmParams
+  } = body;
 
   // 凭证校验
   const { teamId, tmbId, isRoot } = parentId
@@ -88,6 +99,7 @@ async function handler(req: ApiRequestProps<CreateAppBodyType>) {
     nodes,
     edges,
     chatConfig,
+    referenceSnapshots,
     teamId,
     tmbId,
     userAvatar: tmb?.avatar,
@@ -131,6 +143,7 @@ export const onCreateApp = async ({
   storageNodes,
   edges,
   chatConfig,
+  referenceSnapshots,
   teamId,
   tmbId,
   pluginData,
@@ -148,6 +161,7 @@ export const onCreateApp = async ({
   storageNodes?: AppVersionSchemaType['nodes'];
   edges?: AppVersionSchemaType['edges'];
   chatConfig?: AppVersionSchemaType['chatConfig'];
+  referenceSnapshots?: AppVersionSchemaType['referenceSnapshots'];
   intro?: string;
   teamId: string;
   tmbId: string;
@@ -188,7 +202,8 @@ export const onCreateApp = async ({
   const normalizedWorkflow = migrateWorkflowToCurrent({
     nodes: nodes ?? [],
     edges: edges ?? [],
-    chatConfig
+    chatConfig,
+    referenceSnapshots
   });
   const modelHandle = await getTeamModelHandle({ teamId });
   const authorizedIds = await getAuthorizedModelIds({
@@ -278,6 +293,7 @@ export const onCreateApp = async ({
             nodes: storageNodes ?? normalizedWorkflow.nodes,
             edges: normalizedWorkflow.edges,
             chatConfig: normalizedWorkflow.chatConfig,
+            referenceSnapshots: normalizedWorkflow.referenceSnapshots,
             versionName: name,
             username,
             avatar: userAvatar,
@@ -346,6 +362,7 @@ export const onUpdateAppWorkflow = async ({
   nodes,
   edges,
   chatConfig,
+  referenceSnapshots,
   resources,
   teamId,
   tmbId,
@@ -355,6 +372,7 @@ export const onUpdateAppWorkflow = async ({
   nodes?: AppVersionSchemaType['nodes'];
   edges?: AppVersionSchemaType['edges'];
   chatConfig?: AppVersionSchemaType['chatConfig'];
+  referenceSnapshots?: AppVersionSchemaType['referenceSnapshots'];
   resources: AppResourcesType;
   teamId: string;
   tmbId: string;
@@ -363,7 +381,8 @@ export const onUpdateAppWorkflow = async ({
   const workflow = migrateWorkflowToCurrent({
     nodes: nodes ?? [],
     edges: edges ?? [],
-    chatConfig
+    chatConfig,
+    referenceSnapshots
   });
   const modelHandle = await getTeamModelHandle({ teamId });
   const authorizedIds = await getAuthorizedModelIds({
@@ -388,6 +407,7 @@ export const onUpdateAppWorkflow = async ({
       nodes: workflow.nodes,
       edges: workflow.edges,
       chatConfig: workflow.chatConfig,
+      referenceSnapshots: workflow.referenceSnapshots,
       time: new Date(),
       resources
     },

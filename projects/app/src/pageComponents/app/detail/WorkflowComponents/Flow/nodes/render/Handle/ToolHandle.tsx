@@ -1,14 +1,14 @@
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { Box, type BoxProps } from '@chakra-ui/react';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { useTranslation } from 'next-i18next';
-import { Handle, Position } from 'reactflow';
-import React, { useMemo } from 'react';
-import { useContextSelector } from 'use-context-selector';
-import { WorkflowBufferDataContext } from '../../../../context/workflowInitContext';
-import { WorkflowActionsContext } from '../../../../context/workflowActionsContext';
-import { WorkflowUIContext } from '../../../../context/workflowUIContext';
 import { checkExecutionConnection } from '@fastgpt/workflow-core/edge/validation';
+import { useTranslation } from 'next-i18next';
+import { type Connection, Handle, Position } from '@xyflow/react';
+import { useCallback, useContext, useMemo } from 'react';
+import { useWorkflowUIValue } from '../../../canvas/canvasState';
+import { useWorkflowActions, useWorkflow } from '@/web/core/workflow/editor/react/useWorkflow';
+import { useWorkflowRuntime } from '@/web/core/workflow/editor/session/workflowSession';
+import { WorkflowHandleRenderContext } from './handleRenderContext';
 
 const handleSize = '20px';
 const activeHandleSize = '24px';
@@ -18,16 +18,18 @@ type ToolHandleProps = BoxProps & {
   nodeId: string;
   show: boolean;
 };
+
 export const ToolTargetHandle = ({ show, nodeId }: ToolHandleProps) => {
-  const connectingEdge = useContextSelector(WorkflowActionsContext, (ctx) => ctx.connectingEdge);
-  const edges = useContextSelector(WorkflowBufferDataContext, (v) => v.edges);
-  const getNodeById = useContextSelector(WorkflowBufferDataContext, (v) => v.getNodeById);
-  const connected = useContextSelector(WorkflowBufferDataContext, (v) =>
-    v.edges.some((edge) => edge.target === nodeId && edge.targetHandle === handleId)
-  );
+  const renderHandle = useContext(WorkflowHandleRenderContext);
+  const runtime = useWorkflowRuntime();
+  const connectingEdge = useWorkflowUIValue((ctx) => ctx.connectingEdge);
+  const connected = useWorkflow((_structure, graph) => graph.isMountedTool(nodeId));
 
   const active = useMemo(() => {
-    if (!show || connectingEdge?.handleId !== handleId) return false;
+    if (!show || !runtime || connectingEdge?.handleId !== handleId || !connectingEdge.nodeId)
+      return false;
+
+    const workflow = runtime.getWorkflowData();
     return checkExecutionConnection({
       connection: {
         source: connectingEdge.nodeId,
@@ -35,17 +37,16 @@ export const ToolTargetHandle = ({ show, nodeId }: ToolHandleProps) => {
         target: nodeId,
         targetHandle: handleId
       },
-      edges,
-      getNodeById
+      edges: workflow.edges,
+      getNodeById: (sourceNodeId) =>
+        workflow.nodes.find((node) => node.nodeId === sourceNodeId)
     }).allowed;
-  }, [connectingEdge, edges, getNodeById, nodeId, show]);
-  // 拖线时只显示可连接入口；空闲时显示已有端点。隐藏均保留真实端口和已有边。
+  }, [connectingEdge, nodeId, runtime, show]);
   const showHandle = connectingEdge ? active : connected;
-
   const size = active ? activeHandleSize : handleSize;
 
-  const Render = useMemo(() => {
-    return (
+  const Render = useMemo(
+    () => (
       <Handle
         style={{
           borderRadius: '0',
@@ -56,7 +57,6 @@ export const ToolTargetHandle = ({ show, nodeId }: ToolHandleProps) => {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          top: '-10px',
           zIndex: 30,
           ...(showHandle ? {} : { visibility: 'hidden' })
         }}
@@ -73,68 +73,86 @@ export const ToolTargetHandle = ({ show, nodeId }: ToolHandleProps) => {
           border={'4px solid #8774EE'}
           rounded={'xs'}
           bg={'white'}
-          transform={'translate(0,0) rotate(45deg)'}
+          transform={'rotate(45deg)'}
           pointerEvents={'none'}
           flexShrink={0}
         />
       </Handle>
-    );
-  }, [active, showHandle, size]);
+    ),
+    [active, showHandle, size]
+  );
 
-  return Render;
+  return renderHandle ? Render : null;
 };
 
 export const ToolSourceHandle = ({ nodeId }: { nodeId: string }) => {
+  const renderHandle = useContext(WorkflowHandleRenderContext);
   const { t } = useTranslation();
-  const connectingEdge = useContextSelector(WorkflowActionsContext, (ctx) => ctx.connectingEdge);
-  const nodeIsHover = useContextSelector(WorkflowUIContext, (v) => v.hoverNodeId === nodeId);
-
-  const active = useMemo(
-    () => nodeIsHover || connectingEdge?.nodeId === nodeId,
-    [connectingEdge, nodeId, nodeIsHover]
-  );
-
+  const { disconnectEdge, getEdges } = useWorkflowActions();
+  const connectingEdge = useWorkflowUIValue((ctx) => ctx.connectingEdge?.nodeId === nodeId);
+  const nodeIsHover = useWorkflowUIValue((ctx) => ctx.hoverNodeId === nodeId);
+  const active = useMemo(() => nodeIsHover || connectingEdge, [connectingEdge, nodeIsHover]);
   const size = active ? activeHandleSize : handleSize;
 
-  const Render = useMemo(() => {
-    return (
+  const onConnect = useCallback(
+    (connection: Connection) => {
+      getEdges()
+        .filter(
+          (edge) =>
+            edge.target === connection.target && edge.targetHandle !== NodeOutputKeyEnum.selectedTools
+        )
+        .forEach((edge) =>
+          disconnectEdge({
+            edge: {
+              source: edge.source,
+              target: edge.target,
+              sourceHandle: edge.sourceHandle || '',
+              targetHandle: edge.targetHandle || ''
+            }
+          })
+        );
+    },
+    [disconnectEdge, getEdges]
+  );
+
+  const Render = useMemo(
+    () => (
       <MyTooltip label={t('common:core.workflow.tool.Handle')} shouldWrapChildren={false}>
-        <Handle
-          style={{
-            borderRadius: '0',
-            backgroundColor: 'transparent',
-            border: 'none',
-            width: handleSize,
-            height: handleSize,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            bottom: '-10px',
-            zIndex: 30
-          }}
-          type="source"
-          id={NodeOutputKeyEnum.selectedTools}
-          position={Position.Bottom}
-          isConnectableEnd={false}
-        >
-          <Box
-            w={size}
-            h={size}
-            border={'4px solid #8774EE'}
-            rounded={'xs'}
-            bg={'white'}
-            transform={'translate(0,0) rotate(45deg)'}
-            pointerEvents={'none'}
-            flexShrink={0}
-          />
-        </Handle>
+        <Box position="absolute" left="50%" bottom={0} w="0px" h="0px">
+          <Handle
+            style={{
+              borderRadius: '0',
+              backgroundColor: 'transparent',
+              border: 'none',
+              width: size,
+              height: size,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 30
+            }}
+            type="source"
+            id={NodeOutputKeyEnum.selectedTools}
+            position={Position.Bottom}
+            isConnectableEnd={false}
+            onConnect={onConnect}
+          >
+            <Box
+              w={size}
+              h={size}
+              border={'4px solid #8774EE'}
+              rounded={'xs'}
+              bg={'white'}
+              transform={'rotate(45deg)'}
+              pointerEvents={'none'}
+              flexShrink={0}
+            />
+          </Handle>
+        </Box>
       </MyTooltip>
-    );
-  }, [size, t]);
+    ),
+    [onConnect, size, t]
+  );
 
-  return Render;
+  return renderHandle ? Render : null;
 };
-
-export default function Dom() {
-  return <></>;
-}

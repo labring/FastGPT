@@ -11,6 +11,7 @@ import {
   OpenAPIFlowNodeOutputItemTypeSchema,
   OpenAPIStoreNodeItemTypeSchema
 } from '../../../core/workflow/node';
+import { WorkflowReferenceSnapshotSchema } from '../../../../core/workflow/type/io';
 import z from 'zod';
 import { OpenAPIAppTemplateSchema } from '../../../core/app/template/api';
 
@@ -39,7 +40,8 @@ const AdminWorkflowNodeSchema = OpenAPIStoreNodeItemTypeSchema.extend({
 const AdminWorkflowTemplateSchema = z.object({
   nodes: z.array(AdminWorkflowNodeSchema),
   edges: z.array(StoreEdgeItemTypeSchema),
-  chatConfig: OpenAPIAppChatConfigSchema.optional()
+  chatConfig: OpenAPIAppChatConfigSchema.optional(),
+  referenceSnapshots: z.array(WorkflowReferenceSnapshotSchema).optional()
 });
 
 const AdminSelectedToolItemSchema = SelectedToolItemTypeSchema.omit({

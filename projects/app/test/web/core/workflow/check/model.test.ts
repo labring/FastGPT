@@ -2,7 +2,7 @@ import { WorkflowCheckIssueCodeEnum } from '@fastgpt/global/core/workflow/diagno
 import type { WorkflowModelCheckData } from '@fastgpt/global/core/workflow/model/type';
 import { describe, it, expect } from 'vitest';
 import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import type { Node } from 'reactflow';
+import type { Node } from '@xyflow/react';
 import {
   FlowNodeTypeEnum,
   FlowNodeInputTypeEnum

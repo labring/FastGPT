@@ -6,9 +6,9 @@ import { runWorkflow, type RunWorkflowProps } from '../../../../../../../core/wo
 import {
   getWorkflowEntryNodeIds,
   rewriteNodeOutputByHistories,
-  storeEdges2RuntimeEdges,
-  storeNodes2RuntimeNodes
+  storeEdges2RuntimeEdges
 } from '@fastgpt/global/core/workflow/runtime/utils';
+import { storeNodes2RuntimeNodes } from '@fastgpt/global/common/workflow/runtime';
 import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
 import {
   FlowNodeInputTypeEnum,
@@ -240,7 +240,7 @@ export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppRespon
           name: systemToolRuntime.name
         },
         // 系统 Workflow 没有调用者可访问的 App 记录，沿用当前工作流的用户上下文。
-        externalProviderTmbId: systemToolRuntime.tmbId ?? runningAppInfo.tmbId,
+        externalProviderTmbId: systemToolRuntime.tmbId ?? runningUserInfo.tmbId,
         billingTool: systemToolRuntime,
         // 系统工具由管理员发布：内部静态资源直接写入快照免鉴权，未命中快照的资源仍按运行人鉴权。
         resourceContext: createSystemToolResourceContext({
@@ -284,8 +284,8 @@ export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppRespon
   const childRunningAppInfo = {
     sourceType: ChatSourceTypeEnum.app,
     sourceId: childAppInfo.sourceId,
-    teamId: String(childAppInfo.teamId || runningAppInfo.teamId),
-    tmbId: String(childAppInfo.tmbId || runningAppInfo.tmbId),
+    teamId: String(childAppInfo.teamId || runningUserInfo.teamId),
+    tmbId: String(childAppInfo.tmbId || runningUserInfo.tmbId),
     name: childAppInfo.name,
     isChildApp: true
   };

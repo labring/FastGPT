@@ -1,9 +1,8 @@
-import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import React from 'react';
-import { type NodeProps } from 'reactflow';
+import type { CanvasNodeProps } from '@/web/core/workflow/editor/canvas/canvasTypes';
 import NodeCard from '../render/NodeCard';
 
-const NodeLoopRunBreak = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
+const NodeLoopRunBreak = ({ data, selected }: CanvasNodeProps) => {
   return (
     <NodeCard
       selected={selected}

@@ -541,8 +541,38 @@ describe('useDebugInput', () => {
       }
     });
 
-    expect(runtimeInput.value).toEqual(['https://files.example.com/local.pdf']);
+    expect(runtimeInput).toMatchObject({
+      value: ['https://files.example.com/local.pdf'],
+      debugValueOverride: true
+    });
     expect(referenceInput.value).toBe(referenceValue);
+  });
+
+  it.each([
+    { name: 'string', valueType: WorkflowIOValueTypeEnum.string, value: 'debug prompt' },
+    { name: 'number', valueType: WorkflowIOValueTypeEnum.number, value: 0 },
+    { name: 'boolean', valueType: WorkflowIOValueTypeEnum.boolean, value: false },
+    { name: 'object', valueType: WorkflowIOValueTypeEnum.object, value: { topK: 3 } },
+    { name: 'array', valueType: WorkflowIOValueTypeEnum.arrayString, value: ['file-a'] }
+  ])('preserves $name debug values for reference inputs', ({ valueType, value }) => {
+    const input = makeInput({
+      key: 'debugValue',
+      renderTypeList: [FlowNodeInputTypeEnum.reference],
+      selectedType: FlowNodeInputTypeEnum.reference,
+      valueType,
+      value: ['source', 'output']
+    });
+
+    const [runtimeInput] = getDebugRuntimeInputs({
+      inputs: [input],
+      nodeVariables: { debugValue: value }
+    });
+
+    expect(runtimeInput).toMatchObject({
+      value,
+      selectedType: FlowNodeInputTypeEnum.reference,
+      debugValueOverride: true
+    });
   });
 
   it('should keep inputs that are not shown in the debug form unchanged', () => {
@@ -575,5 +605,21 @@ describe('useDebugInput', () => {
     });
 
     expect(updatedInput.value).toEqual({ new: true });
+  });
+
+  it('should preserve array values returned by the debug form', () => {
+    const input = makeInput({
+      key: 'labels',
+      renderTypeList: [FlowNodeInputTypeEnum.select],
+      valueType: WorkflowIOValueTypeEnum.arrayString
+    });
+    const values = ['true'];
+
+    const [updatedInput] = getDebugRuntimeInputs({
+      inputs: [input],
+      nodeVariables: { labels: values }
+    });
+
+    expect(updatedInput.value).toBe(values);
   });
 });

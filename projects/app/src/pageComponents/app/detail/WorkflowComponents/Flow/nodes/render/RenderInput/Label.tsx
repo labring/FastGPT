@@ -16,13 +16,10 @@ import {
   USER_SELECT_REFERENCE_HANDLE_KEY
 } from '@fastgpt/global/core/workflow/template/system/interactive/userSelect';
 import ValueTypeLabel from '../ValueTypeLabel';
-import { useContextSelector } from 'use-context-selector';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import { WorkflowActionsContext } from '../../../../context/workflowActionsContext';
-import { WorkflowBufferDataContext } from '../../../../context/workflowInitContext';
 import { getToolInputDisplayRenderTypeList } from '@fastgpt/global/core/app/formEdit/utils';
 import { getHandleId, getSelectedInputRenderType } from '@fastgpt/global/common/workflow/reference';
 import {
@@ -31,6 +28,10 @@ import {
   isDatasetTagFilterValue
 } from '@fastgpt/global/core/dataset/search/tagFilter';
 import { datasetSearchUsesLegacyFilter } from '@/web/core/workflow/datasetSearchNodeUpgrade';
+import type { WorkflowCommand, WorkflowNodeData } from '@fastgpt/global/core/workflow/editor/types';
+import { useNode, useNodeActions } from '@/web/core/workflow/editor/react/useNode';
+import { useWorkflowRuntime } from '@/web/core/workflow/editor/session/workflowSession';
+import { cloneValue } from '@fastgpt/global/common/workflow/editor/runtime/kernel';
 
 type Props = {
   nodeId: string;
@@ -41,16 +42,14 @@ type Props = {
 
 const InputLabel = ({ nodeId, input, RightComponent, isTool }: Props) => {
   const { t } = useSafeTranslation();
+  const runtime = useWorkflowRuntime();
+  const node = useNode<WorkflowNodeData>(nodeId, (handle) => handle?.data);
+  const nodeActions = useNodeActions(nodeId);
 
   const labelText = t(input.label as any);
   const descriptionText = input.description ? t(input.description as any) : undefined;
 
-  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
-  const setEdges = useContextSelector(WorkflowBufferDataContext, (v) => v.setEdges);
-  const getNodeById = useContextSelector(WorkflowBufferDataContext, (v) => v.getNodeById);
-
   const { required, renderTypeList, valueType, valueDesc } = input;
-  const node = getNodeById(nodeId);
   const isUserSelectOptions =
     node?.flowNodeType === FlowNodeTypeEnum.userSelect &&
     input.key === NodeInputKeyEnum.userSelectOptions;
@@ -94,49 +93,72 @@ const InputLabel = ({ nodeId, input, RightComponent, isTool }: Props) => {
       const nextInput = {
         ...input,
         ...getSelectedRenderTypeState({
-          renderTypeList: displayRenderTypeList,
+          renderTypeList: [...displayRenderTypeList],
           selectedType: nextRenderType
         }),
         value: nextValue
       };
 
-      onChangeNode({
+      // 切换渲染类型整条替换输入记录（含清空 value），属于记录级变更。
+      const updateNodeInput = () =>
+        nodeActions?.updateNode((current) => ({
+          inputs: current.inputs.map((item) => (item.key === input.key ? nextInput : item))
+        }));
+
+      if (!isUserSelectOptions || !runtime) {
+        updateNodeInput();
+        return;
+      }
+
+      const currentNode = runtime.getNode(nodeId);
+      if (!currentNode) return;
+
+      const edges = runtime.getWorkflow().edges;
+      const optionHandleIds =
+        nextRenderType === FlowNodeInputTypeEnum.reference && Array.isArray(input.value)
+          ? input.value.map((item: { key: string }) => getHandleId(nodeId, 'source', item.key))
+          : [];
+      // 手动切引用时按选项顺序保留首条已连线分支，并把边迁移和节点更新放进同一事务。
+      const edgeToKeep =
+        optionHandleIds
+          .map((handleId) =>
+            edges.find((edge) => edge.source === nodeId && edge.sourceHandle === handleId)
+          )
+          .find((edge) => edge !== undefined) ?? edges.find((edge) => edge.source === nodeId);
+      if (!edgeToKeep) {
+        updateNodeInput();
+        return;
+      }
+
+      const nextFirstHandleId =
+        nextRenderType === FlowNodeInputTypeEnum.reference
+          ? getHandleId(nodeId, 'source', USER_SELECT_REFERENCE_HANDLE_KEY)
+          : getHandleId(nodeId, 'source', USER_SELECT_DEFAULT_OPTIONS[0].key);
+      const commands: WorkflowCommand[] = edges
+        .flatMap((edge, index) =>
+          edge.source === nodeId && (edge !== edgeToKeep || edge.sourceHandle !== nextFirstHandleId)
+            ? [index]
+            : []
+        )
+        .sort((a, b) => b - a)
+        .map((index) => ({ type: 'disconnectEdge', index }));
+
+      commands.push({
+        type: 'updateNode',
         nodeId,
-        type: 'updateInput',
-        key: input.key,
-        value: nextInput
+        patch: {
+          inputs: cloneValue(
+            currentNode.inputs.map((item) => (item.key === input.key ? nextInput : item))
+          ) as FlowNodeInputItemType[]
+        }
       });
-
-      if (isUserSelectOptions) {
-        const nextFirstHandleId =
-          nextRenderType === FlowNodeInputTypeEnum.reference
-            ? getHandleId(nodeId, 'source', USER_SELECT_REFERENCE_HANDLE_KEY)
-            : getHandleId(nodeId, 'source', USER_SELECT_DEFAULT_OPTIONS[0].key);
-        const optionHandleIds =
-          nextRenderType === FlowNodeInputTypeEnum.reference && Array.isArray(input.value)
-            ? input.value.map((item: { key: string }) => getHandleId(nodeId, 'source', item.key))
-            : [];
-
-        setEdges((prevEdges) => {
-          // 手动切引用时优先按选项顺序保留第一个已连线分支，避免受连线先后顺序影响。
-          const firstConnectedHandle =
-            optionHandleIds.find((handleId) =>
-              prevEdges.some((edge) => edge.source === nodeId && edge.sourceHandle === handleId)
-            ) ?? prevEdges.find((edge) => edge.source === nodeId)?.sourceHandle;
-          if (!firstConnectedHandle) return prevEdges;
-
-          return prevEdges.flatMap((edge) => {
-            if (edge.source !== nodeId) return [edge];
-            if (edge.sourceHandle !== firstConnectedHandle) return [];
-            return [
-              {
-                ...edge,
-                sourceHandle: nextFirstHandleId
-              }
-            ];
-          });
+      if (edgeToKeep.sourceHandle !== nextFirstHandleId) {
+        commands.push({
+          type: 'connectEdge',
+          edge: { ...edgeToKeep, sourceHandle: nextFirstHandleId }
         });
       }
+      runtime.dispatch(commands);
     },
     [
       displayRenderTypeList,
@@ -145,8 +167,8 @@ const InputLabel = ({ nodeId, input, RightComponent, isTool }: Props) => {
       isLegacyTagFilter,
       isUserSelectOptions,
       nodeId,
-      onChangeNode,
-      setEdges
+      nodeActions,
+      runtime
     ]
   );
 
@@ -196,11 +218,9 @@ const InputLabel = ({ nodeId, input, RightComponent, isTool }: Props) => {
                 bg: 'adora.100'
               }}
               onClick={() => {
-                onChangeNode({
-                  nodeId,
-                  type: 'delInput',
-                  key: input.key
-                });
+                nodeActions?.updateNode((current) => ({
+                  inputs: current.inputs.filter((item) => item.key !== input.key)
+                }));
               }}
             >
               <MyIcon name={'common/info'} color={'adora.600'} w={4} mr={1} />

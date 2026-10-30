@@ -1,8 +1,8 @@
 import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { type NodeProps } from 'reactflow';
+import type { CanvasNodeProps } from '@/web/core/workflow/editor/canvas/canvasTypes';
 import NodeCard from '../render/NodeCard';
-import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import type { WorkflowNodeData } from '@fastgpt/global/core/workflow/editor/types';
 import Container from '../../components/Container';
 import RenderInput from '../render/RenderInput';
 import RenderOutput from '../render/RenderOutput';
@@ -39,22 +39,22 @@ import { type EditorVariableLabelPickerType } from '@fastgpt/web/components/comm
 import HttpInput from '@fastgpt/web/components/common/Input/HttpInput';
 import dynamic from 'next/dynamic';
 import MySelect from '@fastgpt/web/components/common/MySelect';
-import RenderToolInput, { hasDynamicToolInput } from '../render/RenderToolInput';
+import RenderToolInput, { useHasDynamicToolInput } from '../render/RenderToolInput';
 import IOTitle from '../../components/IOTitle';
-import { useContextSelector } from 'use-context-selector';
 import { useMemoizedFn } from 'ahooks';
-import { AppContext } from '@/pageComponents/app/detail/context';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { getEditorVariables } from '../../../utils';
 import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
-import { WorkflowBufferDataContext } from '../../../context/workflowInitContext';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import CatchError from '../render/RenderOutput/CatchError';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
-import { WorkflowUtilsContext } from '../../../context/workflowUtilsContext';
-import { WorkflowActionsContext } from '../../../context/workflowActionsContext';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
+import { splitNodeOutputs, splitToolInputsByMode } from '@/web/core/workflow/utils';
+import { useIsToolNode, useNodeWorkflowDocument } from '../render/useWorkflowDocument';
+import { useFieldActions } from '@/web/core/workflow/editor/react/useField';
+import { useNode, useNodeActions } from '@/web/core/workflow/editor/react/useNode';
+import { WorkflowFieldScope } from '@/web/core/workflow/editor/WorkflowFieldScope';
 import { ReferSelector, useReference } from '../render/RenderInput/templates/Reference';
 
 const CurlImportModal = dynamic(() => import('./CurlImportModal'));
@@ -94,9 +94,19 @@ const RenderHttpMethodAndUrl = React.memo(function RenderHttpMethodAndUrl({
   const { t } = useTranslation();
   const { toast } = useToast();
 
-  const { edges, getNodeById } = useContextSelector(WorkflowBufferDataContext, (v) => v);
-  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
-  const { appDetail } = useContextSelector(AppContext, (v) => v);
+  // 变量列表只读本节点与其上游来源闭包：窄订阅让无关字段的提交不重算也不重渲染。
+  const { workflow, getNodeById, graph } = useNodeWorkflowDocument({ nodeId });
+  const nodeActions = useNodeActions(nodeId);
+  const urlFieldActions = useFieldActions({
+    nodeId,
+    fieldKey: NodeInputKeyEnum.httpReqUrl,
+    kind: 'input'
+  });
+  const methodFieldActions = useFieldActions({
+    nodeId,
+    fieldKey: NodeInputKeyEnum.httpMethod,
+    kind: 'input'
+  });
 
   const { feConfigs } = useSystemStore();
   const { isOpen: isOpenCurl, onOpen: onOpenCurl, onClose: onCloseCurl } = useDisclosure();
@@ -109,16 +119,10 @@ const RenderHttpMethodAndUrl = React.memo(function RenderHttpMethodAndUrl({
   ) as FlowNodeInputItemType;
 
   const onChangeUrl = (value: string) => {
-    onChangeNode({
-      nodeId,
-      type: 'updateInput',
-      key: NodeInputKeyEnum.httpReqUrl,
-      value: {
-        ...requestUrl,
-        value
-      }
-    });
+    urlFieldActions.setValue(value);
   };
+
+  /** 失焦时把 url 上的 query 拆进 params：两个字段同一事务提交，撤销一步回到拆分前。 */
   const onBlurUrl = (val: string) => {
     // 拆分params和url
     const url = val.split('?')[0];
@@ -143,25 +147,15 @@ const RenderHttpMethodAndUrl = React.memo(function RenderHttpMethodAndUrl({
         }
       });
 
-      onChangeNode({
-        nodeId,
-        type: 'updateInput',
-        key: NodeInputKeyEnum.httpParams,
-        value: {
-          ...inputParams,
-          value: concatParams
-        }
-      });
-
-      onChangeNode({
-        nodeId,
-        type: 'updateInput',
-        key: NodeInputKeyEnum.httpReqUrl,
-        value: {
-          ...requestUrl,
-          value: url
-        }
-      });
+      nodeActions?.updateNode((current) => ({
+        inputs: current.inputs.map((input) => {
+          if (input.key === NodeInputKeyEnum.httpParams) {
+            return { ...input, value: concatParams };
+          }
+          if (input.key === NodeInputKeyEnum.httpReqUrl) return { ...input, value: url };
+          return input;
+        })
+      }));
 
       toast({
         status: 'success',
@@ -171,14 +165,15 @@ const RenderHttpMethodAndUrl = React.memo(function RenderHttpMethodAndUrl({
   };
 
   const variables = useMemoEnhance(() => {
+    if (!workflow || !graph) return [];
     return getEditorVariables({
       nodeId,
       getNodeById,
-      edges,
-      appDetail,
-      t
+      chatConfig: workflow.chatConfig,
+      t,
+      getSourceNodeIds: (sourceNodeId) => graph.getSourceNodeIds({ nodeId: sourceNodeId })
     });
-  }, [nodeId, getNodeById, edges, appDetail, t]);
+  }, [nodeId, workflow, getNodeById, graph, t]);
 
   const externalProviderWorkflowVariables = useMemo(() => {
     return (
@@ -208,15 +203,7 @@ const RenderHttpMethodAndUrl = React.memo(function RenderHttpMethodAndUrl({
           value={requestMethods?.value}
           list={HTTP_METHODS.map((method) => ({ label: method, value: method }))}
           onChange={(e) => {
-            onChangeNode({
-              nodeId,
-              type: 'updateInput',
-              key: NodeInputKeyEnum.httpMethod,
-              value: {
-                ...requestMethods,
-                value: e
-              }
-            });
+            methodFieldActions.setValue(e);
           }}
         />
         <Box
@@ -227,24 +214,26 @@ const RenderHttpMethodAndUrl = React.memo(function RenderHttpMethodAndUrl({
           bg={'white'}
           ml={2}
         >
-          <PromptEditor
-            placeholder={
-              t('common:core.module.input.label.Http Request Url') +
-              ', ' +
-              t('common:textarea_variable_picker_tip')
-            }
-            value={requestUrl?.value || ''}
-            variableLabels={variables}
-            variables={externalProviderWorkflowVariables}
-            onBlur={onBlurUrl}
-            onChange={onChangeUrl}
-            minH={40}
-            showOpenModal={false}
-          />
+          <WorkflowFieldScope nodeId={nodeId} fieldKey={NodeInputKeyEnum.httpReqUrl}>
+            <PromptEditor
+              placeholder={
+                t('common:core.module.input.label.Http Request Url') +
+                ', ' +
+                t('common:textarea_variable_picker_tip')
+              }
+              value={requestUrl?.value || ''}
+              variableLabels={variables}
+              variables={externalProviderWorkflowVariables}
+              onBlur={onBlurUrl}
+              onChange={onChangeUrl}
+              minH={40}
+              showOpenModal={false}
+            />
+          </WorkflowFieldScope>
         </Box>
       </Flex>
 
-      {isOpenCurl && <CurlImportModal nodeId={nodeId} inputs={inputs} onClose={onCloseCurl} />}
+      {isOpenCurl && <CurlImportModal nodeId={nodeId} onClose={onCloseCurl} />}
     </Box>
   );
 });
@@ -259,11 +248,12 @@ export function RenderHttpProps({
   const { t } = useTranslation();
   const [selectedTab, setSelectedTab] = useState(TabEnum.params);
 
-  const edges = useContextSelector(WorkflowBufferDataContext, (v) => v.edges);
-  const { getNodeById } = useContextSelector(WorkflowBufferDataContext, (v) => v);
-  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
-
-  const { appDetail } = useContextSelector(AppContext, (v) => v);
+  const { workflow, getNodeById, graph } = useNodeWorkflowDocument({ nodeId });
+  const headerSecretFieldActions = useFieldActions({
+    nodeId,
+    fieldKey: NodeInputKeyEnum.headerSecret,
+    kind: 'input'
+  });
   const { feConfigs } = useSystemStore();
 
   const requestMethods = inputs.find((item) => item.key === NodeInputKeyEnum.httpMethod)?.value;
@@ -293,14 +283,15 @@ export function RenderHttpProps({
   }, [feConfigs?.externalProviderWorkflowVariables]);
 
   const variables = useMemoEnhance(() => {
+    if (!workflow || !graph) return [];
     return getEditorVariables({
       nodeId,
       getNodeById,
-      edges,
-      appDetail,
-      t
+      chatConfig: workflow.chatConfig,
+      t,
+      getSourceNodeIds: (sourceNodeId) => graph.getSourceNodeIds({ nodeId: sourceNodeId })
     });
-  }, [nodeId, getNodeById, edges, appDetail, t]);
+  }, [nodeId, workflow, getNodeById, graph, t]);
 
   const variableText = useMemo(() => {
     return variables
@@ -345,15 +336,7 @@ export function RenderHttpProps({
               />
             )}
             onUpdate={(data) => {
-              onChangeNode({
-                nodeId,
-                type: 'updateInput',
-                key: NodeInputKeyEnum.headerSecret,
-                value: {
-                  ...headerSecret,
-                  value: data
-                }
-              });
+              headerSecretFieldActions.setValue(data);
             }}
           />
         </Flex>
@@ -425,8 +408,8 @@ export function RenderHttpProps({
     formBody,
     headersLength,
     headerSecret,
+    headerSecretFieldActions,
     nodeId,
-    onChangeNode,
     paramsLength,
     referenceList,
     requestMethods,
@@ -448,7 +431,11 @@ const RenderHttpTimeout = ({
   const { t } = useTranslation();
   const timeout = inputs.find((item) => item.key === NodeInputKeyEnum.httpTimeout)!;
   const [isEditTimeout, setIsEditTimeout] = useState(false);
-  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
+  const timeoutFieldActions = useFieldActions({
+    nodeId,
+    fieldKey: NodeInputKeyEnum.httpTimeout,
+    kind: 'input'
+  });
 
   return (
     <Flex alignItems={'center'} justifyContent={'space-between'}>
@@ -464,15 +451,7 @@ const RenderHttpTimeout = ({
             bg={'white'}
             onBlur={() => setIsEditTimeout(false)}
             onChange={(e) => {
-              onChangeNode({
-                nodeId,
-                type: 'updateInput',
-                key: NodeInputKeyEnum.httpTimeout,
-                value: {
-                  ...timeout,
-                  value: Number(e)
-                }
-              });
+              timeoutFieldActions.setValue(Number(e));
             }}
           >
             <NumberInputField autoFocus bg={'white'} px={3} borderRadius={'sm'} />
@@ -508,12 +487,11 @@ const RenderForm = ({
 }) => {
   const { t } = useTranslation();
   const { toast } = useToast();
-  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
+  const fieldActions = useFieldActions({ nodeId, fieldKey: input.key, kind: 'input' });
   const draftValuesRef = React.useRef<Record<number, PropsArrType>>({});
 
   const list = useMemo(() => (input.value || []) as PropsArrType[], [input.value]);
   const latestListRef = useRef(list);
-  const inputRef = useRef(input);
   const pendingListRef = useRef<PropsArrType[] | undefined>();
   const pendingFrameRef = useRef<number | undefined>(undefined);
   const [rowKeys, setRowKeys] = useState<string[]>(() =>
@@ -523,8 +501,7 @@ const RenderForm = ({
   useEffect(() => {
     draftValuesRef.current = {};
     latestListRef.current = list;
-    inputRef.current = input;
-  }, [input, list]);
+  }, [list]);
 
   useEffect(
     () => () => {
@@ -539,17 +516,10 @@ const RenderForm = ({
 
   const updateListAndNode = useCallback(
     (nextList: PropsArrType[]) => {
-      onChangeNode({
-        nodeId,
-        type: 'updateInput',
-        key: inputRef.current.key,
-        value: {
-          ...inputRef.current,
-          value: nextList
-        }
-      });
+      // params / headers 整表就是一个字段的值：整体提交，一次交互一条历史。
+      fieldActions.setValue(nextList);
     },
-    [nodeId, onChangeNode]
+    [fieldActions]
   );
 
   const scheduleListUpdate = useCallback(
@@ -707,7 +677,7 @@ const RenderForm = ({
                     <HttpInput
                       placeholder={t('common:textarea_variable_picker_tip')}
                       value={item.value}
-                      variables={externalProviderWorkflowVariables}
+                      variables={variables}
                       variableLabels={variables}
                       tabIndex={0}
                       resetOnValueChange={false}
@@ -759,7 +729,11 @@ const RenderForm = ({
     variables
   ]);
 
-  return Render;
+  return (
+    <WorkflowFieldScope nodeId={nodeId} fieldKey={input.key}>
+      {Render}
+    </WorkflowFieldScope>
+  );
 };
 const RenderBody = ({
   nodeId,
@@ -780,24 +754,31 @@ const RenderBody = ({
   }[];
 }) => {
   const { t } = useTranslation();
-  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
+  const nodeActions = useNodeActions(nodeId);
+  const contentTypeFieldActions = useFieldActions({
+    nodeId,
+    fieldKey: NodeInputKeyEnum.httpContentType,
+    kind: 'input'
+  });
+  const jsonBodyFieldActions = useFieldActions({ nodeId, fieldKey: jsonBody.key, kind: 'input' });
 
   useEffect(() => {
-    if (typeInput === undefined) {
-      onChangeNode({
-        nodeId,
-        type: 'ensureInput',
-        value: {
+    if (typeInput !== undefined) return;
+    // 基于派发时的最新 inputs 去重，避免旧文档字段初始化重复。
+    nodeActions?.updateNode((current) => {
+      if (current.inputs.some((input) => input.key === NodeInputKeyEnum.httpContentType)) return {};
+      return {
+        inputs: current.inputs.concat({
           key: NodeInputKeyEnum.httpContentType,
           renderTypeList: [FlowNodeInputTypeEnum.hidden],
           valueType: WorkflowIOValueTypeEnum.string,
           value: ContentTypes.json,
           label: '',
           required: false
-        }
-      });
-    }
-  }, [nodeId, onChangeNode, typeInput]);
+        })
+      };
+    });
+  }, [nodeActions, typeInput]);
 
   const Render = useMemo(() => {
     return (
@@ -825,19 +806,7 @@ const RenderBody = ({
                   })}
               _hover={{ bg: 'white', borderColor: 'myGray.200', color: 'primary.700' }}
               onClick={() => {
-                onChangeNode({
-                  nodeId,
-                  type: 'updateInput',
-                  key: NodeInputKeyEnum.httpContentType,
-                  value: {
-                    key: NodeInputKeyEnum.httpContentType,
-                    renderTypeList: [FlowNodeInputTypeEnum.hidden],
-                    valueType: WorkflowIOValueTypeEnum.string,
-                    value: item,
-                    label: '',
-                    required: false
-                  }
-                });
+                contentTypeFieldActions.setValue(item);
               }}
               cursor={'pointer'}
               whiteSpace={'nowrap'}
@@ -864,15 +833,7 @@ const RenderBody = ({
             value={jsonBody.value}
             placeholder={t('workflow:http_body_placeholder')}
             onChange={(e) => {
-              onChangeNode({
-                nodeId,
-                type: 'updateInput',
-                key: jsonBody.key,
-                value: {
-                  ...jsonBody,
-                  value: e
-                }
-              });
+              jsonBodyFieldActions.setValue(e);
             }}
           />
         )}
@@ -881,15 +842,7 @@ const RenderBody = ({
             value={jsonBody.value}
             placeholder={t('common:textarea_variable_picker_tip')}
             onChange={(e) => {
-              onChangeNode({
-                nodeId,
-                type: 'updateInput',
-                key: jsonBody.key,
-                value: {
-                  ...jsonBody,
-                  value: e
-                }
-              });
+              jsonBodyFieldActions.setValue(e);
             }}
             showOpenModal={false}
             variableLabels={variables}
@@ -906,9 +859,14 @@ const RenderBody = ({
     externalProviderWorkflowVariables,
     jsonBody,
     t,
-    onChangeNode
+    contentTypeFieldActions,
+    jsonBodyFieldActions
   ]);
-  return Render;
+  return (
+    <WorkflowFieldScope nodeId={nodeId} fieldKey={jsonBody.key}>
+      {Render}
+    </WorkflowFieldScope>
+  );
 };
 
 const RenderPropsItem = ({ text, num }: { text: string; num: number }) => {
@@ -924,17 +882,23 @@ const RenderPropsItem = ({ text, num }: { text: string; num: number }) => {
   );
 };
 
-const NodeHttp = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
+const NodeHttp = ({ data, selected }: CanvasNodeProps) => {
   const { t } = useTranslation();
-  const { nodeId, inputs, outputs, catchError } = data;
-  const { splitToolInputs, splitOutput } = useContextSelector(WorkflowUtilsContext, (v) => v);
-  const { commonInputs, isTool } = useMemoEnhance(
-    () => splitToolInputs(inputs, nodeId),
-    [inputs, nodeId, splitToolInputs]
+  const { nodeId } = data;
+  const {
+    inputs = [],
+    outputs = [],
+    catchError = false
+  } = useNode<WorkflowNodeData>(nodeId, (current) => current?.data) ?? {};
+  const hasDynamicInput = useHasDynamicToolInput(nodeId);
+  const isTool = useIsToolNode(nodeId);
+  const { commonInputs } = useMemoEnhance(
+    () => splitToolInputsByMode(inputs, isTool),
+    [inputs, isTool]
   );
   const { successOutputs, errorOutputs } = useMemoEnhance(
-    () => splitOutput(outputs),
-    [splitOutput, outputs]
+    () => splitNodeOutputs(outputs),
+    [outputs]
   );
 
   const HttpMethodAndUrl = useMemoizedFn(() => (
@@ -960,7 +924,7 @@ const NodeHttp = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
       maxW={HTTP_NODE_WIDTH}
       selected={selected}
     >
-      {isTool && hasDynamicToolInput(data) && (
+      {isTool && hasDynamicInput && (
         <>
           <Container>
             <RenderToolInput nodeId={nodeId} inputs={inputs} />

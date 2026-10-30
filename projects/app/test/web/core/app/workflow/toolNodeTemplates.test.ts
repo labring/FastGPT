@@ -23,7 +23,7 @@ import {
   nodeTemplate2FlowNode,
   storeNode2FlowNode
 } from '@/web/core/workflow/utils';
-import { uiWorkflow2StoreWorkflow } from '@/pageComponents/app/detail/WorkflowComponents/utils';
+import { uiWorkflow2StoreWorkflow } from '@/web/core/workflow/editor/codec';
 import { hasDynamicToolInput } from '@/pageComponents/app/detail/WorkflowComponents/Flow/nodes/render/RenderToolInput';
 
 describe('workflow tool node templates', () => {
@@ -259,7 +259,7 @@ describe('workflow tool node templates', () => {
           t: ((key: string) => key) as any
         })
       );
-    const workflow = uiWorkflow2StoreWorkflow({ nodes: toolNodes, edges: [], chatConfig: {} });
+    const workflow = uiWorkflow2StoreWorkflow({ nodes: toolNodes, edges: [] });
 
     expect(CanonicalWorkflowDataSchema.safeParse({ ...workflow, chatConfig: {} }).success).toBe(
       true

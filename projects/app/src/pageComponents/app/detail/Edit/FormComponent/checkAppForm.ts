@@ -147,9 +147,9 @@ export const checkAppFormBeforePublish = async ({
   // 3. 工作流图级校验（模型可用性、节点输入完整性等）
   const workflow = form2WorkflowFn(appForm, t);
   const checkResults = await checkStoreWorkflowBeforeRunOrPublish({
-    appId,
     nodes: workflow.nodes,
     edges: workflow.edges,
+    appId,
     chatConfig: appForm.chatConfig,
     t
   });

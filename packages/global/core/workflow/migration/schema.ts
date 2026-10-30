@@ -5,6 +5,7 @@ import { AgentToolInputModeEnum } from '../../app/tool/constants';
 import { NodeToolConfigTypeSchema, StoreNodeItemTypeSchema } from '../type/node';
 import { StoreEdgeItemTypeSchema } from '../type/edge';
 import { LanguageSchema } from '../../../common/i18n/type';
+import { WorkflowReferenceSnapshotSchema } from '../type/io';
 
 /**
  * 当前工作流输入。该类型不包含任何历史字段。
@@ -53,6 +54,9 @@ export const CanonicalSelectedToolsValueSchema = z.union([
 export const CanonicalWorkflowDataSchema = z.object({
   nodes: z.array(StoreNodeItemTypeSchema),
   edges: z.array(StoreEdgeItemTypeSchema),
-  chatConfig: AppChatConfigTypeSchema.default({})
+  chatConfig: AppChatConfigTypeSchema.default({}),
+  referenceSnapshots: z.array(WorkflowReferenceSnapshotSchema).default([]).meta({
+    description: '已删除引用来源的历史展示元数据；旧数据没有该字段时按空数组处理'
+  })
 });
 export type CanonicalWorkflowData = z.infer<typeof CanonicalWorkflowDataSchema>;

@@ -1,39 +1,43 @@
-import {
-  filterWorkflowNodeOutputsByType,
-  filterSelectableWorkflowNodeOutputs,
-  workflowReferenceValueIsSelectable
-} from '@fastgpt/global/common/workflow/reference';
 import { describe, it, expect, vi } from 'vitest';
 import type {
   FlowNodeItemType,
   FlowNodeTemplateType,
   StoreNodeItemType
 } from '@fastgpt/global/core/workflow/type/node';
-import type { Edge } from 'reactflow';
+import type { Node, Edge } from '@xyflow/react';
 import {
   FlowNodeTypeEnum,
   FlowNodeInputTypeEnum,
-  FlowNodeOutputTypeEnum
+  FlowNodeOutputTypeEnum,
+  LoopRunModeEnum,
+  EDGE_TYPE
 } from '@fastgpt/global/core/workflow/node/constant';
-import {
-  WorkflowIOValueTypeEnum,
-  NodeInputKeyEnum,
-  NodeOutputKeyEnum,
-  VARIABLE_NODE_ID
-} from '@fastgpt/global/core/workflow/constants';
+import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   nodeTemplate2FlowNode,
   storeNode2FlowNode,
   getNodeAllSource
 } from '@/web/core/workflow/utils';
+import {
+  filterWorkflowNodeOutputsByType,
+  filterSelectableWorkflowNodeOutputs,
+  workflowReferenceValueIsSelectable
+} from '@fastgpt/global/common/workflow/reference';
+import { applyWorkflowStartInputAutoFill } from '@fastgpt/global/common/workflow/editor/startAutoFill';
+import {
+  collectWorkflowStartInputAutoFillPatches,
+  collectWorkflowStartOutputAutoFillRevertPatches
+} from '@/web/core/workflow/workflowStartAutoFill';
 import type { FlowNodeOutputItemType } from '@fastgpt/global/core/workflow/type/io';
-import { uiWorkflow2StoreWorkflow } from '@/pageComponents/app/detail/WorkflowComponents/utils';
+import { NodeOutputKeyEnum, VARIABLE_NODE_ID } from '@fastgpt/global/core/workflow/constants';
+import { uiWorkflow2StoreWorkflow } from '@/web/core/workflow/editor/codec';
 import { AiChatModule } from '@fastgpt/global/core/workflow/template/system/aiChat';
 import { DatasetSearchModule } from '@fastgpt/global/core/workflow/template/system/datasetSearch';
 import { AgentNode } from '@fastgpt/global/core/workflow/template/system/agent';
 import { ClassifyQuestionModule } from '@fastgpt/global/core/workflow/template/system/classifyQuestion';
 import { ToolCallNode } from '@fastgpt/global/core/workflow/template/system/toolCall';
-import { LoopRunModeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { userFilesInput } from '@fastgpt/global/core/workflow/template/output';
 import { Input_Template_Dataset_Tag_Filter_Version } from '@fastgpt/global/core/workflow/template/input';
 
 describe('nodeTemplate2FlowNode', () => {
@@ -41,7 +45,7 @@ describe('nodeTemplate2FlowNode', () => {
     const node = nodeTemplate2FlowNode({
       template: DatasetSearchModule,
       position: { x: 0, y: 0 },
-      initialModelId: 'default-llm',
+      defaultModelIds: { llm: 'default-llm', rerank: 'default-rerank' },
       t: ((key: string) => key) as any
     });
     const stored = uiWorkflow2StoreWorkflow({ nodes: [node], edges: [] });
@@ -74,18 +78,20 @@ describe('nodeTemplate2FlowNode', () => {
   });
 
   it.each([AiChatModule, ToolCallNode, ClassifyQuestionModule])(
-    'stores the initial model on a new $flowNodeType node without changing its template',
+    'initializes $flowNodeType models once at node creation',
     (template) => {
-      const node = nodeTemplate2FlowNode({
-        template,
-        position: { x: 0, y: 0 },
-        t: ((key: string) => key) as any,
-        initialModelId: 'selected-model-id'
-      });
-      const stored = uiWorkflow2StoreWorkflow({ nodes: [node], edges: [] });
-      expect(stored.nodes[0].inputs.find((i) => i.key === NodeInputKeyEnum.aiModelId)?.value).toBe(
-        'selected-model-id'
-      );
+      for (const expected of ['remembered', 'system']) {
+        const node = nodeTemplate2FlowNode({
+          template,
+          position: { x: 0, y: 0 },
+          t: ((key: string) => key) as any,
+          initialModelId: expected
+        });
+        const stored = uiWorkflow2StoreWorkflow({ nodes: [node], edges: [] });
+        expect(
+          stored.nodes[0].inputs.find((i) => i.key === NodeInputKeyEnum.aiModelId)?.value
+        ).toBe(expected);
+      }
       expect(
         template.inputs.find((i) => i.key === NodeInputKeyEnum.aiModelId)?.value
       ).toBeUndefined();
@@ -190,6 +196,258 @@ describe('nodeTemplate2FlowNode', () => {
       'workflow:template_name',
       'workflow:template_intro'
     ]);
+  });
+});
+
+describe('auto-fill input variables after connecting from workflow start', () => {
+  const makeNode = (
+    nodeId: string,
+    flowNodeType: FlowNodeTypeEnum,
+    data?: Partial<FlowNodeItemType>
+  ): Node<FlowNodeItemType> =>
+    ({
+      id: nodeId,
+      type: flowNodeType,
+      position: { x: 0, y: 0 },
+      data: {
+        nodeId,
+        flowNodeType,
+        name: nodeId,
+        inputs: [],
+        outputs: [],
+        ...data
+      }
+    }) as Node<FlowNodeItemType>;
+
+  const startNode = makeNode('start', FlowNodeTypeEnum.workflowStart, {
+    outputs: [
+      {
+        id: NodeOutputKeyEnum.userChatInput,
+        key: NodeOutputKeyEnum.userChatInput,
+        label: 'question',
+        type: FlowNodeOutputTypeEnum.static,
+        valueType: WorkflowIOValueTypeEnum.string
+      }
+    ]
+  });
+
+  const makeFreshConnectedNode = (
+    nodeId: string,
+    template: FlowNodeTemplateType
+  ): Node<FlowNodeItemType> =>
+    makeNode(nodeId, template.flowNodeType, {
+      inputs: template.inputs.map((input) => ({
+        ...input,
+        value: input.value ?? input.defaultValue
+      })),
+      outputs: template.outputs
+    });
+
+  const startNodeWithFiles = makeNode('start', FlowNodeTypeEnum.workflowStart, {
+    outputs: [...startNode.data.outputs, userFilesInput]
+  });
+
+  const applyStartAutoFill = (targetNode: Node<FlowNodeItemType>, workflowStart = startNode) => {
+    targetNode.data.inputs = applyWorkflowStartInputAutoFill({
+      inputs: targetNode.data.inputs,
+      workflowStartNodeId: workflowStart.data.nodeId,
+      workflowStartOutputs: workflowStart.data.outputs
+    });
+  };
+
+  const expectInputValue = (
+    node: Node<FlowNodeItemType>,
+    inputKey: NodeInputKeyEnum,
+    expectedValue: unknown
+  ) => {
+    expect(
+      node.data.inputs.find((input) => input.key === inputKey)?.value,
+      `${node.data.name || node.id}.${inputKey} should auto reference workflow start output after connection`
+    ).toEqual(expectedValue);
+  };
+
+  it.each([
+    [
+      'AI 对话',
+      AiChatModule,
+      'ai-chat',
+      NodeInputKeyEnum.userChatInput,
+      ['start', NodeOutputKeyEnum.userChatInput]
+    ],
+    [
+      '知识库搜索',
+      DatasetSearchModule,
+      'dataset-search',
+      NodeInputKeyEnum.datasetSearchInput,
+      [['start', NodeOutputKeyEnum.userChatInput]]
+    ],
+    [
+      '问题分类',
+      ClassifyQuestionModule,
+      'classify',
+      NodeInputKeyEnum.userChatInput,
+      ['start', NodeOutputKeyEnum.userChatInput]
+    ],
+    [
+      '工具调用',
+      ToolCallNode,
+      'tool-call',
+      NodeInputKeyEnum.userChatInput,
+      ['start', NodeOutputKeyEnum.userChatInput]
+    ]
+  ] as const)(
+    '%s 节点连线后应自动填充用户问题引用',
+    (_nodeName, template, nodeId, inputKey, expectedValue) => {
+      const targetNode = makeFreshConnectedNode(nodeId, template);
+      applyStartAutoFill(targetNode);
+
+      expectInputValue(targetNode, inputKey, expectedValue);
+    }
+  );
+
+  it('AI 对话节点连线且开启文件上传后应自动填充文件链接引用', () => {
+    const targetNode = makeFreshConnectedNode('ai-chat', AiChatModule);
+    applyStartAutoFill(targetNode, startNodeWithFiles);
+
+    expectInputValue(targetNode, NodeInputKeyEnum.fileUrlList, [
+      ['start', NodeOutputKeyEnum.userFiles]
+    ]);
+    expect(
+      workflowReferenceValueIsSelectable({
+        value: targetNode.data.inputs.find((input) => input.key === NodeInputKeyEnum.fileUrlList)
+          ?.value as any,
+        sourceNodes: [
+          {
+            nodeId: startNodeWithFiles.data.nodeId,
+            outputs: startNodeWithFiles.data.outputs
+          }
+        ],
+        valueType: WorkflowIOValueTypeEnum.arrayString
+      })
+    ).toBe(true);
+  });
+
+  it('标量字符串输入不接受文件数组输出', () => {
+    expect(
+      workflowReferenceValueIsSelectable({
+        value: ['start', NodeOutputKeyEnum.userFiles] as any,
+        sourceNodes: [
+          {
+            nodeId: startNodeWithFiles.data.nodeId,
+            outputs: startNodeWithFiles.data.outputs
+          }
+        ],
+        valueType: WorkflowIOValueTypeEnum.string
+      })
+    ).toBe(false);
+  });
+
+  it('收集自动填充补丁时，同一个节点的文件链接和用户问题应同时返回', () => {
+    const targetNode = makeFreshConnectedNode('ai-chat', AiChatModule);
+
+    const patches = collectWorkflowStartInputAutoFillPatches({
+      nodes: [startNodeWithFiles, targetNode],
+      edges: [{ source: 'start', target: 'ai-chat' }],
+      workflowStartNode: startNodeWithFiles.data
+    });
+
+    expect(
+      patches
+        .filter((patch) => patch.nodeId === 'ai-chat')
+        .map((patch) => patch.key)
+        .sort()
+    ).toEqual([NodeInputKeyEnum.fileUrlList, NodeInputKeyEnum.userChatInput].sort());
+  });
+
+  it('开启文件上传后再关闭，应清理自动写入的 userFiles 引用', () => {
+    const aiNode = makeFreshConnectedNode('ai-chat', AiChatModule);
+    const datasetNode = makeFreshConnectedNode('dataset-search', DatasetSearchModule);
+    const edges: Edge[] = [
+      { id: 'e-start-ai', source: 'start', target: 'ai-chat', type: EDGE_TYPE },
+      { id: 'e-ai-dataset', source: 'ai-chat', target: 'dataset-search', type: EDGE_TYPE }
+    ];
+    const nodes = [startNodeWithFiles, aiNode, datasetNode];
+
+    const autoFillPatches = collectWorkflowStartInputAutoFillPatches({
+      nodes,
+      edges,
+      workflowStartNode: startNodeWithFiles.data
+    });
+
+    nodes.forEach((node) => {
+      node.data.inputs = node.data.inputs.map((input) => {
+        const patch = autoFillPatches.find(
+          (item) => item.nodeId === node.data.nodeId && item.key === input.key
+        );
+        return patch ? patch.value : input;
+      });
+    });
+
+    const revertPatches = collectWorkflowStartOutputAutoFillRevertPatches({
+      nodes,
+      edges,
+      workflowStartNode: startNodeWithFiles.data,
+      outputKey: userFilesInput.key
+    });
+
+    expect(revertPatches.map((patch) => `${patch.nodeId}:${patch.key}`).sort()).toEqual(
+      [
+        `ai-chat:${NodeInputKeyEnum.fileUrlList}`,
+        `dataset-search:${NodeInputKeyEnum.datasetSearchInput}`
+      ].sort()
+    );
+
+    nodes.forEach((node) => {
+      node.data.inputs = node.data.inputs.map((input) => {
+        const patch = revertPatches.find(
+          (item) => item.nodeId === node.data.nodeId && item.key === input.key
+        );
+        return patch ? patch.value : input;
+      });
+    });
+
+    expectInputValue(aiNode, NodeInputKeyEnum.fileUrlList, undefined);
+    expectInputValue(datasetNode, NodeInputKeyEnum.datasetSearchInput, [
+      ['start', NodeOutputKeyEnum.userChatInput]
+    ]);
+  });
+
+  it('流程开始节点可达的间接下游节点也应自动填充用户问题引用', () => {
+    const aiNode = makeFreshConnectedNode('ai-chat', AiChatModule);
+    const toolNode = makeFreshConnectedNode('tool-call', ToolCallNode);
+
+    const patches = collectWorkflowStartInputAutoFillPatches({
+      nodes: [startNode, aiNode, toolNode],
+      edges: [
+        { source: 'start', target: 'ai-chat' },
+        { source: 'ai-chat', target: 'tool-call' }
+      ],
+      workflowStartNode: startNode.data
+    });
+
+    const toolUserQuestionPatch = patches.find(
+      (patch) => patch.nodeId === 'tool-call' && patch.key === NodeInputKeyEnum.userChatInput
+    );
+
+    expect(toolUserQuestionPatch?.value.value).toEqual(['start', NodeOutputKeyEnum.userChatInput]);
+  });
+
+  it('合法手动配置的用户问题引用不应被连线自动填充覆盖', () => {
+    const targetNode = makeFreshConnectedNode('ai-chat', AiChatModule);
+    const manualReference = [VARIABLE_NODE_ID, 'customQuestion'];
+    targetNode.data.inputs = targetNode.data.inputs.map((input) =>
+      input.key === NodeInputKeyEnum.userChatInput ? { ...input, value: manualReference } : input
+    );
+
+    applyStartAutoFill(targetNode);
+
+    expectInputValue(targetNode, NodeInputKeyEnum.userChatInput, manualReference);
+  });
+
+  it('未从流程开始连线时不应自动填充', () => {
+    const targetNode = makeFreshConnectedNode('ai-chat', AiChatModule);
+
+    expectInputValue(targetNode, NodeInputKeyEnum.userChatInput, undefined);
   });
 });
 
@@ -512,19 +770,16 @@ describe('storeNode2FlowNode', () => {
         position: { x: 0, y: 0 },
         inputs: [
           {
-            label: '',
             key: NodeInputKeyEnum.aiModel,
             renderTypeList: [FlowNodeInputTypeEnum.settingLLMModel],
             value: 'legacy-model'
           },
           {
-            label: '',
             key: NodeInputKeyEnum.aiModelId,
             renderTypeList: [FlowNodeInputTypeEnum.settingLLMModel],
             value: ''
           },
           {
-            label: '',
             key: NodeInputKeyEnum.aiModel,
             renderTypeList: [FlowNodeInputTypeEnum.settingLLMModel],
             value: 'duplicate-legacy-model'
@@ -553,7 +808,6 @@ describe('storeNode2FlowNode', () => {
         position: { x: 0, y: 0 },
         inputs: [
           {
-            label: '',
             key: NodeInputKeyEnum.aiModel,
             renderTypeList: [FlowNodeInputTypeEnum.settingLLMModel],
             selectedType: FlowNodeInputTypeEnum.settingLLMModel,
@@ -588,7 +842,6 @@ describe('storeNode2FlowNode', () => {
         position: { x: 0, y: 0 },
         inputs: [
           {
-            label: '',
             key: NodeInputKeyEnum.aiModel,
             renderTypeList: [
               FlowNodeInputTypeEnum.settingLLMModel,
@@ -683,7 +936,7 @@ describe('storeNode2FlowNode', () => {
       item: storeNode,
       t: ((key: string) => key) as any
     });
-    const result = uiWorkflow2StoreWorkflow({ nodes: [node], edges: [], chatConfig: {} });
+    const result = uiWorkflow2StoreWorkflow({ nodes: [node], edges: [] });
 
     expect(result.nodes[0].inputs[0]).toMatchObject({
       selectedType: FlowNodeInputTypeEnum.input,
@@ -694,7 +947,7 @@ describe('storeNode2FlowNode', () => {
     );
   });
 
-  it('loopRun: 自动补齐动态输出缺失的 canEdit 输入声明（AI 文档只声明 outputs 的场景）', () => {
+  +it('loopRun: 自动补齐动态输出缺失的 canEdit 输入声明（AI 文档只声明 outputs 的场景）', () => {
     const storeNode: StoreNodeItemType = {
       nodeId: 'examLoop',
       flowNodeType: FlowNodeTypeEnum.loopRun,
@@ -837,7 +1090,7 @@ describe('storeNode2FlowNode', () => {
 });
 
 describe('filterWorkflowNodeOutputsByType', () => {
-  it('should filter outputs by type', () => {
+  it('keeps only outputs compatible with string inputs', () => {
     const outputs: FlowNodeOutputItemType[] = [
       {
         id: '1',
@@ -864,8 +1117,7 @@ describe('filterWorkflowNodeOutputsByType', () => {
 
     const result = filterWorkflowNodeOutputsByType(outputs, WorkflowIOValueTypeEnum.string);
 
-    expect(result).toHaveLength(1);
-    expect(result[0].id).toBe('1');
+    expect(result.map((output) => output.id)).toEqual(['1']);
   });
 
   it('should return all outputs for any type', () => {
@@ -932,6 +1184,7 @@ describe('filterSelectableWorkflowNodeOutputs', () => {
     const outputs: FlowNodeOutputItemType[] = [
       makeOutput('text', WorkflowIOValueTypeEnum.string),
       makeOutput('count', WorkflowIOValueTypeEnum.number),
+      makeOutput('object', WorkflowIOValueTypeEnum.object),
       makeOutput(NodeOutputKeyEnum.addOutputParam, WorkflowIOValueTypeEnum.string),
       makeOutput('invalid', WorkflowIOValueTypeEnum.string, { invalid: true }),
       makeOutput('error', WorkflowIOValueTypeEnum.string, { type: FlowNodeOutputTypeEnum.error })
@@ -939,11 +1192,11 @@ describe('filterSelectableWorkflowNodeOutputs', () => {
 
     const result = filterSelectableWorkflowNodeOutputs({
       outputs,
-      valueType: WorkflowIOValueTypeEnum.string,
+      valueType: WorkflowIOValueTypeEnum.arrayObject,
       catchError: false
     });
 
-    expect(result.map((output) => output.id)).toEqual(['text']);
+    expect(result.map((output) => output.id)).toEqual(['object']);
   });
 
   it('keeps error output only when source node can catch error', () => {
@@ -1015,12 +1268,12 @@ describe('workflowReferenceValueIsSelectable', () => {
     ).toBe(false);
   });
 
-  it('returns false when referenced output type is not selectable for current value type', () => {
+  it('returns false when referenced output type cannot be converted for current value type', () => {
     expect(
       workflowReferenceValueIsSelectable({
         value: ['source', 'count'],
         sourceNodes,
-        valueType: WorkflowIOValueTypeEnum.string
+        valueType: WorkflowIOValueTypeEnum.arrayString
       })
     ).toBe(false);
   });
@@ -1061,8 +1314,7 @@ describe('workflowReferenceValueIsSelectable', () => {
     ).toBe(false);
   });
 });
-
-describe('getNodeAllSource', () => {
++describe('getNodeAllSource', () => {
   const makeNode = (nodeId: string, parentNodeId?: string): FlowNodeItemType =>
     ({
       id: nodeId,

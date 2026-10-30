@@ -20,10 +20,10 @@ import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import type { AppDetailType } from '@fastgpt/global/core/app/type';
 import { WORKFLOW_BUILDER_CHAT_CONFIG } from '@fastgpt/global/core/workflow/builder/constants';
-import { WorkflowBufferDataContext } from '../context/workflowInitContext';
+import { useWorkflowRuntime } from '@/web/core/workflow/editor/session/workflowSession';
 import {
   appDetailToWorkflowDocumentApp,
-  reactFlowStateToWorkflowDocument
+  workflowRuntimeToWorkflowDocument
 } from '../adapters/document';
 import { getWorkflowChecksum } from '@fastgpt/workflow-core/domain/checksum';
 import { streamWorkflowBuilderChat } from './api';
@@ -87,8 +87,7 @@ const WorkflowBuilderChatContent = ({
     (value) => value.isChatRecordsLoaded
   );
   const clearChatRecords = useContextSelector(ChatItemContext, (value) => value.clearChatRecords);
-  const getNodes = useContextSelector(WorkflowBufferDataContext, (value) => value.getNodes);
-  const edges = useContextSelector(WorkflowBufferDataContext, (value) => value.edges);
+  const runtime = useWorkflowRuntime();
   const modelStorageKey = `fastgpt:workflow-builder:model:${appId}`;
   const [selectedModelId, setSelectedModelId] = useLocalStorageState<string>(modelStorageKey, {
     defaultValue: ''
@@ -279,9 +278,10 @@ const WorkflowBuilderChatContent = ({
 
   const onStartChat = useMemoizedFn(
     async ({ messages, responseChatItemId, controller, generatingMessage }: StartChatFnProps) => {
-      const document = reactFlowStateToWorkflowDocument({
-        nodes: getNodes(),
-        edges,
+      if (!runtime || runtime.isDisposed())
+        throw new Error('Workflow Builder canvas is unavailable');
+      const document = workflowRuntimeToWorkflowDocument({
+        runtime,
         chatConfig: appDetail.chatConfig,
         app: appDetailToWorkflowDocumentApp(appDetail)
       });
