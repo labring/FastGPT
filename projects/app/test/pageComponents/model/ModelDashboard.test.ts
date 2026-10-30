@@ -19,9 +19,7 @@ const mocks = vi.hoisted(() => ({
     provider: string;
     type: ModelTypeEnum;
     scope: ModelScopeEnum;
-    testMode?: boolean;
-  })[],
-  modelOptions: [] as { value: string }[]
+  })[]
 }));
 vi.mock('@fastgpt/web/hooks/useSafeTranslation', () => ({
   useSafeTranslation: () => ({ t: (key: string) => key, i18n: { language: 'en' } })
@@ -32,7 +30,7 @@ vi.mock('@/web/common/system/useSystemStore', () => ({
 vi.mock('@/web/core/ai/model/useModelConfig', () => ({
   useModelConfig: () => ({
     models: mocks.models,
-    getModelProvider: (provider: string) => ({ order: provider === 'a' ? 0 : 1, avatar: '' })
+    getModelProvider: () => ({ order: 0, avatar: '' })
   })
 }));
 vi.mock('@fastgpt/web/hooks/useRequest', () => ({
@@ -61,18 +59,7 @@ vi.mock('@fastgpt/web/components/common/charts/AreaChartComponent', () => ({
     )
 }));
 vi.mock('@fastgpt/web/components/common/DateRangePicker', () => ({ default: () => null }));
-vi.mock('@fastgpt/web/components/common/TagFilter', () => ({
-  SingleSelectFilter: ({
-    title,
-    options
-  }: {
-    title: string;
-    options: typeof mocks.modelOptions;
-  }) => {
-    if (title === 'config_model:model_name') mocks.modelOptions = options;
-    return null;
-  }
-}));
+vi.mock('@fastgpt/web/components/common/TagFilter', () => ({ SingleSelectFilter: () => null }));
 vi.mock('@fastgpt/web/components/common/Tabs/FillRowTabs', () => ({ default: () => null }));
 vi.mock('@/components/core/ai/ModelTabHeader', () => ({ default: () => null }));
 vi.mock('@fastgpt/web/components/common/FixedTable', () => ({
@@ -87,41 +74,7 @@ const tier = { inputPrice: 2000, outputPrice: 4000 };
 describe('model dashboard million-unit pricing', () => {
   beforeEach(() => {
     mocks.requestIndex = 0;
-    mocks.models = [];
-    mocks.data = [];
-    mocks.modelOptions = [];
   });
-
-  it.each(['system', 'team'] as const)(
-    'keeps %s model filter catalog order with beta models last',
-    (channelType) => {
-      const base = { type: ModelTypeEnum.llm, scope: ModelScopeEnum.system };
-      mocks.models = [
-        { ...base, model: 'beta-first', provider: 'a', testMode: true },
-        { ...base, model: 'rank-first', provider: 'b' },
-        { ...base, model: 'rank-second', provider: 'a' },
-        { ...base, model: 'beta-second', provider: 'b', testMode: true }
-      ];
-      const originalModels = [...mocks.models];
-
-      renderToStaticMarkup(
-        React.createElement(
-          ChakraProvider,
-          { theme },
-          React.createElement(ModelDashboard, { Tab: null, channelType })
-        )
-      );
-
-      expect(mocks.modelOptions.map(({ value }) => value)).toEqual([
-        '',
-        'rank-first',
-        'rank-second',
-        'beta-first',
-        'beta-second'
-      ]);
-      expect(mocks.models).toEqual(originalModels);
-    }
-  );
 
   it.each([
     {

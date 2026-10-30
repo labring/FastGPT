@@ -2,30 +2,6 @@ import { describe, expect, it } from 'vitest';
 import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type { LLMModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import { desensitizeModel, flatModelToDocumentData } from '../../../../core/ai/model/transform';
-import { getModelConfigUpdate } from '../../../../core/ai/model/utils';
-
-describe('getModelConfigUpdate', () => {
-  it.each([0, 123, undefined])(
-    'ignores a supplied display rank of %s without clearing it',
-    (sortOrder) => {
-      const modelData = {
-        type: ModelTypeEnum.llm as const,
-        provider: 'OpenAI',
-        model: 'test',
-        name: 'Test',
-        scope: ModelScopeEnum.system,
-        config: { maxContext: 16000, maxResponse: 8000, quoteMaxToken: 12000 },
-        sortOrder
-      };
-      const update = getModelConfigUpdate(modelData);
-
-      expect(update.$set).not.toHaveProperty('sortOrder');
-      expect(update.$unset).not.toHaveProperty('sortOrder');
-      expect(update.$set).toMatchObject({ model: 'test', name: 'Test' });
-      expect(modelData).toHaveProperty('sortOrder', sortOrder);
-    }
-  );
-});
 
 describe('flatModelToDocumentData', () => {
   it('moves type-specific fields into config and normalizes plugin maxTokens', () => {

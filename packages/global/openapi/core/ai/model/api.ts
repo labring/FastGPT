@@ -21,7 +21,7 @@ import { I18nStringSchema } from '../../../../common/i18n/type';
 import { ModelDefaultIdsSchema } from '../../../../core/ai/model/default';
 import { OutLinkChatAuthQuerySchema } from '../../../../support/permission/chat';
 import { ChannelTypeSchema } from '../../../../core/ai/model/scope';
-import { ModelOrderMoveSchema } from '../../../../core/ai/model/order';
+import { ModelOrderIdsSchema } from '../../../../core/ai/model/order';
 
 export const ModelChannelSummarySchema = z.object({
   id: IntSchema.positive().meta({ example: 1, description: 'AI Proxy 渠道 ID' }),
@@ -479,38 +479,11 @@ export type UpdateModelStatusBody = z.infer<typeof UpdateModelStatusBodySchema>;
  * API: 更新模型展示顺序
  * Route: PUT /api/core/ai/model/updateOrder
  * Method: PUT
- * Description: 按一组相对移动操作更新模型展示顺序，不要求提交完整模型列表
+ * Description: 按完整模型 ID 列表更新模型展示顺序，服务端写入连续 rank
  * Tags: ['Model', 'Admin', 'Write']
  * ============================================================================ */
 export const UpdateModelOrderBodySchema = z.object({
-  // 相对移动不受批量启停/删除的 500 条上限限制，支持任意已安装目录大小。
-  moves: z
-    .array(ModelOrderMoveSchema)
-    .min(1)
-    .superRefine((moves, ctx) => {
-      const modelIds = new Set<string>();
-      moves.forEach(({ modelId, beforeModelId }, index) => {
-        if (modelIds.has(modelId)) {
-          ctx.addIssue({
-            code: 'custom',
-            path: [index, 'modelId'],
-            message: 'Each model may only appear once as a move source'
-          });
-        }
-        if (modelId === beforeModelId) {
-          ctx.addIssue({
-            code: 'custom',
-            path: [index, 'beforeModelId'],
-            message: 'A model cannot be moved before itself'
-          });
-        }
-        modelIds.add(modelId);
-      });
-    })
-    .meta({
-      example: [{ modelId: '68ad85a7463006c963799a05', beforeModelId: null }],
-      description: '本次保存需要执行的相对移动操作，不限制模型总数'
-    }),
+  modelIds: ModelOrderIdsSchema,
   channelType: ModelChannelTypeSchema
 });
 export type UpdateModelOrderBody = z.infer<typeof UpdateModelOrderBodySchema>;

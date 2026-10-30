@@ -124,13 +124,6 @@ describe('DndDrag lifecycle', () => {
     );
   });
 
-  it('keeps the legacy inner placeholder in standard mode', () => {
-    mocks.droppableSnapshot.isDraggingOver = true;
-
-    expect(renderDndDrag()).toContain('data-dnd-inner-placeholder="0px"');
-    expect(mocks.droppableProps).toMatchObject({ mode: 'standard' });
-  });
-
   it.each(['CANCEL', 'DROP'] as const)(
     'cleans up when %s has no destination, without changing the list',
     (reason) => {

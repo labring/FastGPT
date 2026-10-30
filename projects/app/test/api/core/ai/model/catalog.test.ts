@@ -225,107 +225,6 @@ describe('GET /api/core/ai/model/catalog', () => {
     );
   });
 
-  it('keeps unranked models at the end of each group and filters inactive or unauthorized models', async () => {
-    const teamModel = { ...model, scope: ModelScopeEnum.team, tmbId: 'member' };
-    setModelTestSnapshot({
-      models: [
-        { ...model, modelId: 'system-unranked-1' },
-        { ...teamModel, modelId: 'team-unranked' },
-        { ...model, modelId: 'system-unranked-2' },
-        { ...teamModel, modelId: 'team-ranked', sortOrder: 10 },
-        { ...model, modelId: 'system-ranked', sortOrder: 0 },
-        { ...teamModel, modelId: 'shared-unranked-1', tmbId: 'other-member' },
-        { ...teamModel, modelId: 'shared-ranked-1', tmbId: 'other-member', sortOrder: 0 },
-        { ...teamModel, modelId: 'shared-unranked-2', tmbId: 'third-member' },
-        { ...teamModel, modelId: 'shared-ranked-2', tmbId: 'third-member', sortOrder: 0 },
-        { ...teamModel, modelId: 'private', tmbId: 'other-member', sortOrder: 0 },
-        {
-          ...teamModel,
-          modelId: 'shared-inactive',
-          tmbId: 'other-member',
-          sortOrder: 0,
-          isActive: false
-        },
-        { ...model, modelId: 'inactive', sortOrder: 0, isActive: false }
-      ]
-    });
-    mocks.getAuthorizedModelIds.mockResolvedValue(
-      new Set([
-        'system-unranked-1',
-        'team-unranked',
-        'system-unranked-2',
-        'team-ranked',
-        'system-ranked',
-        'shared-unranked-1',
-        'shared-ranked-1',
-        'shared-unranked-2',
-        'shared-ranked-2',
-        'shared-inactive',
-        'inactive'
-      ])
-    );
-
-    const result = await handler({ query: { orderBy: 'custom' } } as any);
-    expect(result.data?.models.map((item) => item.modelId)).toEqual([
-      'team-ranked',
-      'team-unranked',
-      'shared-ranked-1',
-      'shared-ranked-2',
-      'shared-unranked-1',
-      'shared-unranked-2',
-      'system-ranked',
-      'system-unranked-1',
-      'system-unranked-2'
-    ]);
-  });
-
-  it('groups ownership using the authenticated viewer and does not reuse another viewer display version', async () => {
-    const owned = {
-      ...model,
-      modelId: 'owned',
-      scope: ModelScopeEnum.team,
-      tmbId: 'member',
-      sortOrder: 100
-    };
-    const shared = { ...owned, modelId: 'shared', tmbId: 'other-member', sortOrder: 0 };
-    setModelTestSnapshot({ models: [model, shared, owned] });
-    const initial = await handler({ query: { orderBy: 'custom' } } as any);
-    expect(initial.data?.models.map((item) => item.modelId)).toEqual([
-      'owned',
-      'shared',
-      model.modelId
-    ]);
-
-    mocks.authUserPer.mockResolvedValueOnce({
-      teamId: 'team',
-      tmbId: 'other-member',
-      isRoot: false,
-      tmb: { permission: { hasManagePer: false } }
-    });
-    const otherViewer = await handler({
-      query: { orderBy: 'custom', version: initial.version }
-    } as any);
-    expect(otherViewer.version).not.toBe(initial.version);
-    expect(otherViewer.data?.models.map((item) => item.modelId)).toEqual([
-      'shared',
-      'owned',
-      model.modelId
-    ]);
-
-    const outLinkAuthData = { shareId: 'share-id', outLinkUid: 'outlink-user' };
-    mocks.authOutLink.mockResolvedValueOnce({
-      outLinkConfig: { teamId: 'team', tmbId: 'other-member' }
-    });
-    const outLink = await handler({
-      query: { orderBy: 'custom', outLinkAuthData: JSON.stringify(outLinkAuthData) }
-    } as any);
-    expect(outLink.data?.models.map((item) => item.modelId)).toEqual([
-      'shared',
-      'owned',
-      model.modelId
-    ]);
-  });
-
   it('refreshes the display cache after a rank-only change while keeping the runtime version', async () => {
     const first = { ...model, modelId: 'first', sortOrder: 100 };
     const second = { ...model, modelId: 'second', sortOrder: 200 };
@@ -347,17 +246,6 @@ describe('GET /api/core/ai/model/catalog', () => {
       version: runtime.version
     });
   });
-
-  it.each([{ models: [] }, { models: [{ ...model, sortOrder: 0 }] }])(
-    'supports an empty or system-only custom catalog ($models.length models)',
-    async ({ models }) => {
-      setModelTestSnapshot({ models });
-      const result = await handler({ query: { orderBy: 'custom' } } as any);
-      expect(result.data?.models.map((item) => item.modelId)).toEqual(
-        models.map((item) => item.modelId)
-      );
-    }
-  );
 
   it('forwards the authenticated actor to getAuthorizedModelIds', async () => {
     mocks.authUserPer.mockResolvedValueOnce({

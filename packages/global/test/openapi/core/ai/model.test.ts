@@ -81,69 +81,26 @@ describe('admin system model API schemas', () => {
     ).toThrow();
   });
 
-  it('validates unbounded relative moves while keeping batch-operation limits separate', () => {
+  it('validates a complete model order without the batch-operation limit', () => {
     const first = '68ad85a7463006c963799a05';
     const second = '68ad85a7463006c963799a06';
 
     expect(
       UpdateModelOrderBodySchema.parse({
-        moves: [{ modelId: second, beforeModelId: first }],
+        modelIds: [second, first],
         channelType: 'team'
       })
     ).toEqual({
-      moves: [{ modelId: second, beforeModelId: first }],
+      modelIds: [second, first],
       channelType: 'team'
     });
-    expect(
-      UpdateModelOrderBodySchema.parse({
-        moves: Array.from({ length: 501 }, (_, index) => ({
-          modelId: (index + 1).toString(16).padStart(24, '0'),
-          beforeModelId: null
-        })),
-        channelType: 'system'
-      }).moves
-    ).toHaveLength(501);
     expect(() =>
       UpdateModelOrderBodySchema.parse({
-        moves: [
-          { modelId: first, beforeModelId: second },
-          { modelId: first, beforeModelId: null }
-        ],
+        modelIds: [first, first],
         channelType: 'system'
       })
-    ).toThrow('Each model may only appear once as a move source');
-    expect(() =>
-      UpdateModelOrderBodySchema.parse({
-        moves: [{ modelId: first, beforeModelId: first }],
-        channelType: 'system'
-      })
-    ).toThrow('A model cannot be moved before itself');
-    expect(() =>
-      UpdateModelOrderBodySchema.parse({
-        moves: [{ modelId: 'invalid-model-id', beforeModelId: null }],
-        channelType: 'system'
-      })
-    ).toThrow();
-    expect(() => UpdateModelOrderBodySchema.parse({ moves: [], channelType: 'system' })).toThrow();
+    ).toThrow('modelIds must be unique');
   });
-
-  it.each(['system', 'team'] as const)(
-    'accepts %s model order moves larger than the batch limit',
-    (channelType) => {
-      const moves = Array.from({ length: 501 }, (_, index) => ({
-        modelId: (index + 1).toString(16).padStart(24, '0'),
-        beforeModelId: null
-      }));
-
-      expect(UpdateModelOrderBodySchema.parse({ moves, channelType })).toEqual({
-        moves,
-        channelType
-      });
-      expect(() =>
-        UpdateModelOrderBodySchema.parse({ moves: [...moves, moves[0]], channelType })
-      ).toThrow('Each model may only appear once as a move source');
-    }
-  );
 
   it('enforces the template creation batch boundary', () => {
     const templates = Array.from({ length: 501 }, (_, index) => ({

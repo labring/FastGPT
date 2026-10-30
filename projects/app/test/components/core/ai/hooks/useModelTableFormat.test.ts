@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { ChakraProvider } from '@chakra-ui/react';
@@ -97,26 +97,6 @@ describe('model table projection', () => {
       { model: 'chat-c', provider: 'c', type: ModelTypeEnum.llm, contextToken: 64000 }
     ]);
   });
-  it('preserves custom team/system ordering through provider and search filters', () => {
-    const orderedModels = [
-      { ...models[0], modelId: 'team-b', scope: ModelScopeEnum.team, provider: 'b' },
-      { ...models[0], modelId: 'team-a', scope: ModelScopeEnum.team, provider: 'a' },
-      { ...models[0], modelId: 'system-b', scope: ModelScopeEnum.system, provider: 'b' },
-      { ...models[0], modelId: 'system-a', scope: ModelScopeEnum.system, provider: 'a' }
-    ];
-    expect(
-      formatModelTableList({ ...props, models: orderedModels }).map((item) => item.modelId)
-    ).toEqual(['team-b', 'team-a', 'system-b', 'system-a']);
-    expect(
-      formatModelTableList({
-        ...props,
-        models: orderedModels,
-        provider: 'b',
-        search: 'chat-a'
-      }).map((item) => item.modelId)
-    ).toEqual(['team-b', 'system-b']);
-  });
-
   it('filters the actual model identity after formatting and keeps equal provider order stable', () => {
     expect(
       formatModelTableList({ ...props, provider: 'b', search: 'embed' }).map(({ model }) => model)

@@ -184,7 +184,7 @@ export const AIModelPath: OpenAPIPath = {
   '/core/ai/model/updateOrder': {
     put: {
       summary: '更新模型展示顺序',
-      description: '按显式作用域提交相对移动操作；排序值由服务端维护，不需要提交完整模型列表',
+      description: '按显式作用域提交完整模型 ID 列表；服务端按列表顺序写入连续排序值',
       tags: [DevApiTagsMap.model],
       requestBody: {
         content: { 'application/json': { schema: UpdateModelOrderBodySchema } }
