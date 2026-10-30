@@ -331,6 +331,19 @@ export const datasetSelectValueDesc = `[
     "datasetId": "6693a4a6b69b7a9b0e37d9b0"
   }
 ]`;
+export const datasetTagFilterValueDesc = `{
+  "tags": {
+    "$and": [
+      { "tag_name": { "$eq": "value" } },
+      { "tag_name2": { "$eq": "value" } }
+    ]
+  },
+  "createTime": {
+    "$gte": "YYYY-MM-DD HH:mm",
+    "$lte": "YYYY-MM-DD HH:mm"
+  },
+  "collectionIds": ["collectionId"]
+}`;
 
 export const AppNodeFlowNodeTypeMap: Record<any, boolean> = {
   [FlowNodeTypeEnum.pluginModule]: true,
