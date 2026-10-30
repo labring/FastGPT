@@ -1,6 +1,5 @@
 import jwt from 'jsonwebtoken';
-import path from 'node:path';
-import { audioFileType, imageFileType, videoFileType } from '@fastgpt/global/common/file/constants';
+import { getChatFileTypeByFilename } from '@fastgpt/global/core/chat/file/utils';
 import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 import {
   PluginPermissionEnum,
@@ -98,12 +97,7 @@ export class InvokeProcessor {
       if (contentType?.startsWith('audio/')) return ChatFileTypeEnum.audio;
       if (contentType?.startsWith('video/')) return ChatFileTypeEnum.video;
 
-      const extname = path.extname(filename).toLowerCase();
-      if (extname && imageFileType.includes(extname)) return ChatFileTypeEnum.image;
-      if (extname && audioFileType.includes(extname)) return ChatFileTypeEnum.audio;
-      if (extname && videoFileType.includes(extname)) return ChatFileTypeEnum.video;
-
-      return ChatFileTypeEnum.file;
+      return getChatFileTypeByFilename(filename);
     })();
 
     return {

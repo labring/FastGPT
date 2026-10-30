@@ -142,7 +142,7 @@ describe('agentLoopCore reminder helpers', () => {
     const filePrompt = buildAgentLoopCoreInputFilesPrompt([
       {
         name: `a<b>&"c"'d.pdf`,
-        type: ChatFileTypeEnum.file,
+        type: ChatFileTypeEnum.document,
         url: '/guide.pdf'
       },
       {
@@ -179,7 +179,7 @@ describe('agentLoopCore reminder helpers', () => {
       filesInfo: [
         {
           name: 'guide.pdf',
-          type: ChatFileTypeEnum.file,
+          type: ChatFileTypeEnum.document,
           url: '/guide.pdf'
         }
       ],

@@ -1148,6 +1148,23 @@ describe('chats2GPTMessages', () => {
     expect(content[0].name).toBe('document.pdf');
   });
 
+  it.each([ChatFileTypeEnum.document, ChatFileTypeEnum.unknown])(
+    '文件类型 %s 在聊天与模型消息间往返时保持不变',
+    (type) => {
+      const messages: ChatItemMiniType[] = [
+        {
+          obj: ChatRoleEnum.Human,
+          value: [{ file: { type, name: 'attachment', url: 'https://example.com/download' } }]
+        }
+      ];
+      const transport = chats2GPTMessages({ messages, reserveId: false });
+      expect(transport[0].content).toEqual([
+        expect.objectContaining({ type: 'file_url', fileType: type })
+      ]);
+      expect(GPTMessages2Chats({ messages: transport })[0].value).toEqual(messages[0].value);
+    }
+  );
+
   it('should convert AI message with text', () => {
     const messages: ChatItemMiniType[] = [
       {
@@ -3077,7 +3094,7 @@ describe('GPTMessages2Chats', () => {
 
     expect(result).toHaveLength(1);
     const fileValue = result[0].value[0] as { file?: { type: string; name: string } };
-    expect(fileValue.file?.type).toBe(ChatFileTypeEnum.file);
+    expect(fileValue.file?.type).toBe(ChatFileTypeEnum.document);
     expect(fileValue.file?.name).toBe('document.pdf');
   });
 
@@ -3093,7 +3110,7 @@ describe('GPTMessages2Chats', () => {
 
     expect(result).toHaveLength(1);
     const fileValue = result[0].value[0] as { file?: { type: string; name: string } };
-    expect(fileValue.file?.type).toBe(ChatFileTypeEnum.file);
+    expect(fileValue.file?.type).toBe(ChatFileTypeEnum.document);
     expect(fileValue.file?.name).toBe('');
   });
 

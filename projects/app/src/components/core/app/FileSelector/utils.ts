@@ -1,6 +1,6 @@
 import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { getFileIcon } from '@fastgpt/global/common/file/icon';
-import { imageFileType } from '@fastgpt/global/common/file/constants';
+import { normalizeChatFileType } from '@fastgpt/global/core/chat/file/utils';
 import { isEqual } from 'lodash-es';
 import mime from 'mime';
 import { parseContentDispositionFilename } from '@fastgpt/global/common/file/tools';
@@ -15,24 +15,9 @@ import type {
 const isFileObject = (file: FileSelectorInputItemType): file is FileSelectorInputObjectItemType =>
   !!file && typeof file === 'object';
 
-const imageFileExtensions = imageFileType.split(',').map((item) => item.trim().toLowerCase());
-
-export const inferFileSelectorType = (filename?: string): ChatFileTypeEnum => {
-  const normalizedName = (() => {
-    if (!filename) return '';
-
-    try {
-      return decodeURIComponent(new URL(filename).pathname).toLowerCase();
-    } catch {
-      return filename.split(/[?#]/)[0].toLowerCase();
-    }
-  })();
-  const extension = normalizedName.match(/\.[^./\\]+$/)?.[0];
-
-  return extension && imageFileExtensions.includes(extension)
-    ? ChatFileTypeEnum.image
-    : ChatFileTypeEnum.file;
-};
+/** 文件名与 URL 输入共用聊天文件归类规则，URL 的 filename 参数也参与推测。 */
+export const inferFileSelectorType = (filename?: string): ChatFileTypeEnum =>
+  normalizeChatFileType({ filename });
 
 /**
  * 清洗 FileSelector 对外输出的值。
@@ -68,7 +53,11 @@ export const sanitizeFileSelectValue = (
 
       const baseFile = {
         name: file.name || file.key || file.url || '',
-        type: file.type || inferFileSelectorType(file.name || file.key || url)
+        type: normalizeChatFileType({
+          type: file.type,
+          filename: file.name || file.key,
+          url
+        })
       };
 
       if (key) {

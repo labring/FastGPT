@@ -44,15 +44,19 @@ describe('ChatFileTypeEnum', () => {
     expect(ChatFileTypeEnum.audio).toBe('audio');
     expect(ChatFileTypeEnum.video).toBe('video');
     expect(ChatFileTypeEnum.file).toBe('file');
+    expect(ChatFileTypeEnum.document).toBe('document');
+    expect(ChatFileTypeEnum.unknown).toBe('unknown');
   });
 
   it('should have all expected file types', () => {
     const types = Object.values(ChatFileTypeEnum);
-    expect(types).toHaveLength(4);
+    expect(types).toHaveLength(6);
     expect(types).toContain('image');
     expect(types).toContain('audio');
     expect(types).toContain('video');
     expect(types).toContain('file');
+    expect(types).toContain('document');
+    expect(types).toContain('unknown');
   });
 });
 

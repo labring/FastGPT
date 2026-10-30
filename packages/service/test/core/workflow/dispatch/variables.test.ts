@@ -438,12 +438,12 @@ describe('WorkflowVariableState', () => {
 
     expect(state.toStoreRecord().files).toEqual([
       {
-        type: ChatFileTypeEnum.file,
+        type: ChatFileTypeEnum.image,
         name: 'file.jpg',
         url: 'https://example.com/files/file.jpg'
       },
       {
-        type: ChatFileTypeEnum.file,
+        type: ChatFileTypeEnum.document,
         name: 'doc.pdf',
         url: 'https://preview.example.com/doc.pdf'
       }
@@ -486,7 +486,7 @@ describe('WorkflowVariableState', () => {
       {
         url: 'https://example.com/files/report.pdf',
         name: 'report.pdf',
-        type: ChatFileTypeEnum.file
+        type: ChatFileTypeEnum.document
       }
     ]);
   });
@@ -526,7 +526,7 @@ describe('WorkflowVariableState', () => {
       {
         key: 'chat/app/parent.pdf',
         name: 'parent.pdf',
-        type: ChatFileTypeEnum.file
+        type: ChatFileTypeEnum.document
       }
     ]);
   });
@@ -589,7 +589,7 @@ describe('WorkflowVariableState', () => {
       {
         url: 'https://example.com/report.unknown',
         name: 'report.unknown',
-        type: ChatFileTypeEnum.file
+        type: ChatFileTypeEnum.unknown
       }
     ]);
     await expect(state.set('files', 'https://example.com/report.pdf')).rejects.toThrow(

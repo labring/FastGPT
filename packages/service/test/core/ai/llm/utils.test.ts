@@ -7,6 +7,7 @@ import {
   type ChatCompletionMessageParam
 } from '@fastgpt/global/core/ai/llm/type';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
+import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 
 // Mock external dependencies
@@ -679,12 +680,12 @@ describe('loadRequestMessages function tests', () => {
 
     it.each([
       ['https://files.example.com/opaque', '会议录音', undefined],
-      ['https://files.example.com/opaque', 'explicit.mp3', undefined],
-      ['https://files.example.com/audio.ogg', 'incorrect.wav', 'ogg'],
+      ['https://files.example.com/opaque', 'explicit.mp3', 'mp3'],
+      ['https://files.example.com/audio.ogg', 'incorrect.wav', 'wav'],
       ['https://files.example.com/audio.mp3', undefined, 'mp3'],
       ['https://files.example.com/audio.bin', '会议录音', undefined]
     ] as const)(
-      '按 audio 类型转换，名称不影响发送，URL 格式可选：%s / %s',
+      '显式 audio 类型保持不变，格式优先按名称、再按 URL：%s / %s',
       async (url, name, format) => {
         multimediaEnv.MULTIPLE_DATA_TO_BASE64 = false;
         const result = await loadRequestMessages({
@@ -692,7 +693,7 @@ describe('loadRequestMessages function tests', () => {
             {
               role: ChatCompletionRequestMessageRoleEnum.User,
               content: [
-                { type: 'file_url', fileType: 'audio', url, name },
+                { type: 'file_url', fileType: ChatFileTypeEnum.audio, url, name },
                 { type: 'text', text: '识别录音' }
               ]
             }
@@ -721,7 +722,7 @@ describe('loadRequestMessages function tests', () => {
         messages: [
           {
             role: ChatCompletionRequestMessageRoleEnum.User,
-            content: [{ type: 'file_url', fileType: 'audio', url }]
+            content: [{ type: 'file_url', fileType: ChatFileTypeEnum.audio, url }]
           }
         ],
         useAudio: true
@@ -734,7 +735,7 @@ describe('loadRequestMessages function tests', () => {
     });
 
     it.each(
-      (['audio', 'video'] as const).flatMap((fileType) =>
+      ([ChatFileTypeEnum.audio, ChatFileTypeEnum.video] as const).flatMap((fileType) =>
         [false, true].map((base64) => ({ fileType, base64 }))
       )
     )(
@@ -779,7 +780,7 @@ describe('loadRequestMessages function tests', () => {
             role: ChatCompletionRequestMessageRoleEnum.User,
             content: [
               type === 'file_url'
-                ? { type, fileType: 'video', url, name: 'misleading.wav' }
+                ? { type, fileType: ChatFileTypeEnum.video, url, name: 'misleading.wav' }
                 : { type, video_url: { url } }
             ]
           }
@@ -808,14 +809,14 @@ describe('loadRequestMessages function tests', () => {
               type: 'file_url',
               name: 'audio.mp3',
               url: audioUrl,
-              fileType: 'audio',
+              fileType: ChatFileTypeEnum.audio,
               key: 'chat/audio.mp3'
             },
             {
               type: 'file_url',
               name: 'video.mp4',
               url: videoUrl,
-              fileType: 'video',
+              fileType: ChatFileTypeEnum.video,
               key: 'chat/video.mp4'
             },
             {
@@ -855,6 +856,81 @@ describe('loadRequestMessages function tests', () => {
       expect(content.some((item: any) => item.type === 'file_url')).toBe(false);
       expect(content.some((item: any) => item.key)).toBe(false);
       expect(mockAxiosGet).not.toHaveBeenCalled();
+    });
+
+    it.each([ChatFileTypeEnum.unknown, ChatFileTypeEnum.file])(
+      '待分类类型 %s 按传入名称识别媒体，不被下载接口后缀覆盖',
+      async (fileType) => {
+        multimediaEnv.MULTIPLE_DATA_TO_BASE64 = false;
+        const result = await loadRequestMessages({
+          messages: [
+            {
+              role: ChatCompletionRequestMessageRoleEnum.User,
+              content: [
+                {
+                  type: 'file_url',
+                  fileType,
+                  name: 'photo.png',
+                  url: 'https://example.com/image.php'
+                },
+                {
+                  type: 'file_url',
+                  fileType,
+                  name: 'voice.mp3',
+                  url: 'https://example.com/audio.php'
+                },
+                {
+                  type: 'file_url',
+                  fileType,
+                  name: 'movie.mp4',
+                  url: 'https://example.com/video.php'
+                },
+                {
+                  type: 'file_url',
+                  fileType,
+                  name: 'archive.zip',
+                  url: 'https://example.com/voice.mp3'
+                }
+              ]
+            }
+          ],
+          useVision: true,
+          useAudio: true,
+          useVideo: true
+        });
+        expect(result[0].content).toEqual([
+          { type: 'image_url', image_url: { url: 'https://example.com/image.php' } },
+          {
+            type: 'input_audio',
+            input_audio: { data: 'https://example.com/audio.php', format: 'mp3' }
+          },
+          { type: 'video_url', video_url: { url: 'https://example.com/video.php' } }
+        ]);
+        expect(mockAxiosHead).not.toHaveBeenCalled();
+      }
+    );
+
+    it('显式文档不会因名称或链接的媒体后缀进入多模态通道', async () => {
+      const result = await loadRequestMessages({
+        messages: [
+          {
+            role: ChatCompletionRequestMessageRoleEnum.User,
+            content: [
+              { type: 'text', text: 'read document' },
+              {
+                type: 'file_url',
+                fileType: ChatFileTypeEnum.document,
+                name: 'voice.mp3',
+                url: 'https://example.com/voice.mp3'
+              }
+            ]
+          }
+        ],
+        useVision: true,
+        useAudio: true,
+        useVideo: true
+      });
+      expect(result[0].content).toBe('read document');
     });
 
     it('should preserve legacy vision extraction when extractFiles is omitted', async () => {

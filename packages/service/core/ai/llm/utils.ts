@@ -10,6 +10,7 @@ import type {
   ChatCompletionMessageParam
 } from '@fastgpt/global/core/ai/llm/type';
 import { audioFileType } from '@fastgpt/global/common/file/constants';
+import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { axios } from '../../../common/api/axios';
 
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
@@ -215,7 +216,9 @@ export const loadRequestMessages = async ({
    * 创建图片 content part。
    * 图片协议当前只需要 URL，内部文件转 base64 的动作由后续归一化阶段处理。
    */
-  const createImageContentPart = (url: string): ChatCompletionContentPart => ({
+  const createImageContentPart = (
+    url: string
+  ): Extract<ChatCompletionContentPart, { type: 'image_url' }> => ({
     type: 'image_url',
     image_url: {
       url
@@ -428,26 +431,33 @@ export const loadRequestMessages = async ({
   };
 
   /**
-   * 将 FastGPT 内部 file_url 转成模型可消费的音频/视频 content part。
+   * 将 FastGPT 内部 file_url 按统一分类规则转成模型可消费的多模态 content part。
    * 普通文档文件不会进入 LLM 多模态消息，文档内容由上游读取后以文本提供。
    */
   const normalizeFileUrlContentPart = async (
     item: Extract<ChatCompletionContentPart, { type: 'file_url' }>
   ): Promise<ChatCompletionContentPart | undefined> => {
     const { key: _key, ...fileItem } = item;
-    if (!useAudio && !useVideo) return;
+    if (!useVision && !useAudio && !useVideo) return;
 
     const parsed = await classifyUrlMediaType({
       url: fileItem.url,
+      name: fileItem.name,
       type: fileItem.fileType as FileClassificationMediaType | undefined,
       fileContext
     });
     if (!parsed) return;
 
     // 上传文件会先以 FastGPT 内部的 file_url 存在，发给模型前需要转成供应商支持的
-    // input_audio / video_url。普通 file 当前不直接透传给 LLM。
+    // image_url / input_audio / video_url。文档和无法识别的文件不直接透传给 LLM。
+    if (parsed.type === 'image' && useVision) {
+      return normalizeImageContentPart(createImageContentPart(fileItem.url));
+    }
+
     if (parsed.type === 'audio' && useAudio) {
-      return normalizeAudioContentPart(createAudioContentPart(fileItem.url, parsed.filename));
+      return normalizeAudioContentPart(
+        createAudioContentPart(fileItem.url, parsed.filename || fileItem.name)
+      );
     }
 
     if (parsed.type === 'video' && useVideo) {
@@ -490,10 +500,12 @@ export const loadRequestMessages = async ({
     }
 
     if (item.type === 'file_url') {
-      if (item.fileType === 'file') return;
       if (item.fileType === 'audio') return useAudio ? item : undefined;
       if (item.fileType === 'video') return useVideo ? item : undefined;
-      return useAudio || useVideo ? item : undefined;
+      // unknown、历史 file 与缺省类型继续推测，显式文档不进入供应商多模态通道。
+      return item.fileType !== ChatFileTypeEnum.document && (useVision || useAudio || useVideo)
+        ? item
+        : undefined;
     }
 
     if (item.type === 'input_audio') {

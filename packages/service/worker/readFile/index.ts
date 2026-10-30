@@ -10,7 +10,7 @@ import { readCsvRawText } from './extension/csv';
 import { readOfdFile } from './extension/ofd';
 import { isAnydocDocumentExtension, readAnydocRawText } from './extension/anydoc';
 import { UserError } from '@fastgpt/global/common/error/utils';
-import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
+import { documentFileType } from '@fastgpt/global/common/file/constants';
 import { type UploadFileHandler } from './type';
 import {
   createWorkerUploadFileHandlerWithListener,
@@ -115,7 +115,11 @@ const read = async (
         });
       }
 
-      return Promise.reject(new UserError(CommonErrEnum.unsupportedParseFileType));
+      return Promise.reject(
+        new UserError(
+          `The current file extension is "${params.extension || '(none)'}". Only the following file types are supported: ${documentFileType}.`
+        )
+      );
   }
 };
 

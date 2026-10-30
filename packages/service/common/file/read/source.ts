@@ -1,10 +1,11 @@
 import { documentFileExtensions } from '@fastgpt/global/common/file/constants';
+import { normalizeDocumentFileExtension } from '@fastgpt/global/common/file/utils';
+import { parseFilenameExtension } from '@fastgpt/global/common/string/tools';
 import {
   detectFileEncoding,
   parseContentDispositionFilename
 } from '@fastgpt/global/common/file/tools';
 import type { Readable } from 'node:stream';
-import path from 'node:path';
 import { readStreamToBuffer } from '../../s3/utils';
 import { DEFAULT_CONTENT_TYPE, normalizeMimeType, resolveMimeExtension } from '../../s3/utils/mime';
 import { readExternalFileBuffer } from './external';
@@ -52,26 +53,16 @@ export type ExternalHttpFileSource = FileSourceBase & {
 
 export type FileSource = S3FileSource | ExternalHttpFileSource;
 
-const normalizeExtension = (extension?: string) => {
-  const normalized = extension?.trim().toLowerCase().replace(/^\./, '') ?? '';
-  if (normalized === 'markdown') return 'md';
-  if (normalized === 'htm') return 'html';
-  return normalized;
-};
-
-const getFilenameExtension = (filename?: string) =>
-  normalizeExtension(path.extname(filename ?? ''));
-
 /** 不读取文件内容，仅从来源声明元数据得到初始调度扩展名。 */
 export const resolveFileSourceDeclaredExtension = (metadata: FileSourceMetadata) => {
-  const explicitExtension = normalizeExtension(metadata.extension);
+  const explicitExtension = normalizeDocumentFileExtension(metadata.extension);
   if (explicitExtension) return explicitExtension;
 
-  const filenameExtension = getFilenameExtension(metadata.filename);
+  const filenameExtension = parseFilenameExtension(metadata.filename);
   if (filenameExtension) return filenameExtension;
 
   const normalizedContentType = normalizeMimeType(metadata.contentType, '');
-  const mimeExtension = normalizeExtension(resolveMimeExtension(normalizedContentType));
+  const mimeExtension = resolveMimeExtension(normalizedContentType).replace(/^\./, '');
   if (documentExtensionSet.has(mimeExtension)) return mimeExtension;
   if (normalizedContentType.startsWith('text/')) return 'txt';
   return '';
@@ -94,7 +85,7 @@ export const resolveFileSourceExtension = ({
   if (declaredExtension) return declaredExtension;
 
   const normalizedContentType = normalizeMimeType(metadata.contentType, '');
-  const mimeExtension = normalizeExtension(resolveMimeExtension(normalizedContentType));
+  const mimeExtension = resolveMimeExtension(normalizedContentType).replace(/^\./, '');
   if (documentExtensionSet.has(mimeExtension)) return mimeExtension;
   if (normalizedContentType.startsWith('text/')) return 'txt';
 

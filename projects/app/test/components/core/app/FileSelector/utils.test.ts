@@ -27,7 +27,9 @@ describe('sanitizeFileSelectValue', () => {
         type: ChatFileTypeEnum.file
       }
     ];
-    expect(sanitizeFileSelectValue(files, true)).toEqual(files);
+    expect(sanitizeFileSelectValue(files, true)).toEqual([
+      { ...files[0], type: ChatFileTypeEnum.document }
+    ]);
     expect(sanitizeFileSelectValue(files)[0]).not.toHaveProperty('url');
     expect(
       sanitizeFileSelectValue([{ ...files[0], url: 'data:application/pdf;base64,abc' }], true)[0]
@@ -75,12 +77,12 @@ describe('sanitizeFileSelectValue', () => {
       {
         url: 'https://example.com/file.pdf',
         name: 'https://example.com/file.pdf',
-        type: ChatFileTypeEnum.file
+        type: ChatFileTypeEnum.document
       },
       {
         url: 'https://example.com/legacy.pdf',
         name: 'https://example.com/legacy.pdf',
-        type: ChatFileTypeEnum.file
+        type: ChatFileTypeEnum.document
       }
     ]);
   });
@@ -107,7 +109,7 @@ describe('sanitizeFileSelectValue', () => {
       {
         url: 'https://example.com/report.pdf',
         name: 'report.pdf',
-        type: ChatFileTypeEnum.file
+        type: ChatFileTypeEnum.document
       },
       {
         url: 'https://example.com/legacy.jpg',
@@ -143,11 +145,19 @@ describe('sanitizeFileSelectValue', () => {
 });
 
 describe('inferFileSelectorType', () => {
-  it('按 URL 或文件名扩展名推断图片类型，未知类型兜底普通文件', () => {
+  it('recognizes filename query parameters and parser-supported aliases', () => {
+    expect(inferFileSelectorType('https://example.com/download.php?filename=report.pdf')).toBe(
+      ChatFileTypeEnum.document
+    );
+    expect(inferFileSelectorType('README.MARKDOWN')).toBe(ChatFileTypeEnum.document);
+  });
+
+  it('按 URL 或文件名区分媒体、文档和未知类型', () => {
     expect(inferFileSelectorType('https://example.com/image.png?token=1')).toBe(
       ChatFileTypeEnum.image
     );
-    expect(inferFileSelectorType('report.unknown')).toBe(ChatFileTypeEnum.file);
+    expect(inferFileSelectorType('report.pdf')).toBe(ChatFileTypeEnum.document);
+    expect(inferFileSelectorType('report.unknown')).toBe(ChatFileTypeEnum.unknown);
   });
 });
 

@@ -4,6 +4,7 @@ import { audioFileType } from '../../../common/file/constants';
 import z from 'zod';
 import { OpenObjectOpenApiMeta } from '../../../common/zod/openapi';
 import { UserChatSelectSchema } from '../../chat/input/type';
+import { ChatFileTypeEnum } from '../../chat/constants';
 
 /* 通用类型 */
 export const ChatCompletionContentPartTextSchema = z.object({
@@ -97,7 +98,7 @@ export const ChatCompletionContentPartFileTypeSchema = z.object({
   type: z.literal('file_url'),
   name: z.string().optional(),
   url: z.string(),
-  fileType: z.enum(['file', 'audio', 'video']).optional(),
+  fileType: z.enum(ChatFileTypeEnum).exclude([ChatFileTypeEnum.image]).optional(),
   key: z.string().optional()
 });
 /** FastGPT 结构化问答传输；模型请求适配时会转换为文本或工具结果。 */

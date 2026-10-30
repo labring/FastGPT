@@ -1,5 +1,5 @@
 import crypto from 'node:crypto';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { createWechatOutlinkAdapter } from '@fastgpt/service/support/outLink/wechat/adapter';
 
@@ -11,6 +11,55 @@ vi.mock('@fastgpt/service/support/outLink/tools', async (importOriginal) => ({
 }));
 
 describe('createWechatOutlinkAdapter', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.clearAllMocks();
+  });
+
+  it.each([
+    ['report.pdf', ChatFileTypeEnum.document],
+    ['archive.zip', ChatFileTypeEnum.unknown],
+    ['photo.png', ChatFileTypeEnum.image]
+  ])('微信 FILE 消息 %s 在入口归类为 %s，并保留原文件名', async (filename, type) => {
+    const key = Buffer.from('0123456789abcdef');
+    const cipher = crypto.createCipheriv('aes-128-ecb', key, null);
+    const encrypted = Buffer.concat([cipher.update(Buffer.from('file content')), cipher.final()]);
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(encrypted, {
+          headers: { 'content-type': 'application/octet-stream' }
+        })
+      )
+    );
+    uploadOutLinkFile.mockResolvedValue({ key: 'chat/file-key' });
+    const adapter = createWechatOutlinkAdapter({
+      client: {} as any,
+      appId: 'app-1',
+      jobData: {
+        shareId: 'share-1',
+        userId: 'user-1',
+        contextToken: 'context-1',
+        lastMsgId: 'message-1',
+        items: [
+          {
+            type: 4,
+            file_item: {
+              file_name: filename,
+              media: { aes_key: key.toString('base64'), full_url: 'https://example.com/file' }
+            }
+          }
+        ]
+      }
+    });
+
+    const message = await adapter.normalizeMessage();
+    await expect(
+      message.resolveQuery?.({ maxFileAmount: 1, maxBytesPerFile: 1024 })
+    ).resolves.toEqual([{ file: { type, name: filename, url: '', key: 'chat/file-key' } }]);
+    expect(uploadOutLinkFile).toHaveBeenCalledWith(expect.objectContaining({ filename }));
+  });
+
   it('uploads video items as video files', async () => {
     const key = Buffer.from('0123456789abcdef');
     const cipher = crypto.createCipheriv('aes-128-ecb', key, null);

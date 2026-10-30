@@ -112,11 +112,11 @@ const getUserContextMessagesForTest = async ({
 };
 
 describe('buildAgentLoopCoreInputFilesPrompt', () => {
-  it('generates file XML block for document files only', () => {
+  it('labels documents separately and preserves multimodal file types', () => {
     const result = buildAgentLoopCoreInputFilesPrompt([
       {
         name: 'guide.pdf',
-        type: ChatFileTypeEnum.file,
+        type: ChatFileTypeEnum.document,
         url: '/guide.pdf'
       },
       {
@@ -146,13 +146,39 @@ describe('buildAgentLoopCoreInputFilesPrompt', () => {
     expect(result).toContain('<type>image</type>');
     expect(result).toContain('<type>audio</type>');
     expect(result).toContain('<type>video</type>');
+    expect(result).toContain('<type>document</type>');
+    expect(result).not.toContain('<type>file</type>');
+  });
+
+  it('labels unsupported formats and extensionless files as unknown', () => {
+    const result = buildAgentLoopCoreInputFilesPrompt(
+      ['archive.zip', 'script.js', 'README', 'report.pdf.zip'].map((name) => ({
+        name,
+        type: ChatFileTypeEnum.unknown,
+        url: `/files/${name}`
+      }))
+    );
+    expect(result.match(/<type>unknown<\/type>/g)).toHaveLength(4);
+    expect(result).not.toContain('<type>file</type>');
+    expect(result).toContain('不要使用 read_files 读取');
+  });
+
+  it('serializes the classified type without inferring it again from display names', () => {
+    const prompt = buildAgentLoopCoreInputFilesPrompt([
+      { name: 'report.pdf', type: ChatFileTypeEnum.unknown, url: '/report.pdf' },
+      { name: '下载', type: ChatFileTypeEnum.document, url: '/opaque.signature' }
+    ]);
+    expect(prompt.match(/<type>(.*?)<\/type>/g)).toEqual([
+      '<type>unknown</type>',
+      '<type>document</type>'
+    ]);
   });
 
   it('escapes XML fields in file metadata', () => {
     const result = buildAgentLoopCoreInputFilesPrompt([
       {
         name: `a<b>&"c"'d.pdf`,
-        type: ChatFileTypeEnum.file,
+        type: ChatFileTypeEnum.document,
         url: '/guide.pdf'
       }
     ]);
@@ -182,7 +208,7 @@ describe('buildAgentLoopCoreUserReminderInput', () => {
       filesInfo: [
         {
           name: 'guide.pdf',
-          type: ChatFileTypeEnum.file,
+          type: ChatFileTypeEnum.document,
           url: '/guide.pdf'
         }
       ],
@@ -396,7 +422,7 @@ describe('useUserContext', () => {
         expect(result.currentFiles).toEqual([
           {
             name: 'current.pdf',
-            type: ChatFileTypeEnum.file,
+            type: ChatFileTypeEnum.document,
             url: 'https://files.example.com/current.pdf'
           },
           {
@@ -619,7 +645,7 @@ describe('useUserContext', () => {
         expect(result.currentFiles).toEqual([
           {
             name: 'current.pdf',
-            type: ChatFileTypeEnum.file,
+            type: ChatFileTypeEnum.document,
             url: 'https://files.example.com/current.pdf'
           }
         ]);
@@ -773,7 +799,7 @@ describe('useUserContext', () => {
         expect(result.currentFiles).toEqual([
           {
             name: 'doc.pdf',
-            type: ChatFileTypeEnum.file,
+            type: ChatFileTypeEnum.document,
             url: 'https://files.example.com/doc.pdf'
           },
           {
@@ -869,7 +895,7 @@ describe('useUserContext', () => {
         expect(result.currentFiles).toEqual([
           {
             name: 'report v1.pdf',
-            type: ChatFileTypeEnum.file,
+            type: ChatFileTypeEnum.document,
             url: 'https://files.example.com/uploads/report%20v1.pdf'
           }
         ]);
