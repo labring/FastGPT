@@ -8,7 +8,10 @@ import {
   OpenAPIAppScheduledTriggerConfigSchema,
   UpdateAppBodySchema
 } from '@fastgpt/global/openapi/core/app/common/api';
-import { PublishAppBodySchema } from '@fastgpt/global/openapi/core/app/version/api';
+import {
+  PublishAppBodySchema,
+  PublishAppRequestBodySchema
+} from '@fastgpt/global/openapi/core/app/version/api';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import type { z } from 'zod';
 import { describe, expect, it } from 'vitest';
@@ -160,6 +163,22 @@ describe('PublishAppBodySchema', () => {
 
     expect(result).not.toHaveProperty('nodes.0.unsupportedNodeField');
     expect(result).not.toHaveProperty('nodes.0.inputs.0.unsupportedInputField');
+  });
+
+  it('documents toolset App runtime roots without weakening normal workflow validation', () => {
+    const toolsetNode = {
+      ...currentNode,
+      flowNodeType: 'toolSet',
+      toolConfig: {
+        mcpToolSet: {
+          url: 'https://mcp.example.com',
+          toolList: [{ name: 'search', description: 'Search', inputSchema: { type: 'object' } }]
+        }
+      }
+    };
+
+    expect(PublishAppRequestBodySchema.safeParse({ nodes: [toolsetNode] }).success).toBe(true);
+    expect(PublishAppBodySchema.safeParse({ nodes: [toolsetNode] }).success).toBe(false);
   });
 });
 

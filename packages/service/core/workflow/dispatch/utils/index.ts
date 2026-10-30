@@ -46,7 +46,10 @@ import { loadWorkflowAppResource } from '../../resource/service';
 import { axios } from '../../../../common/api/axios';
 import { getSecretValue } from '../../../../common/secret/utils';
 import { checkUrlSafety } from '../../../../common/system/utils';
-import { getLastInteractiveValue } from '@fastgpt/global/core/workflow/runtime/utils';
+import {
+  getLastInteractiveValue,
+  rewriteInteractiveToolSetNodeIds
+} from '@fastgpt/global/core/workflow/runtime/utils';
 import {
   getSavedToolInputSelectedType,
   initToolInputsTypeByDefaultMode,
@@ -58,6 +61,7 @@ import {
   bundleOpenAPISchema,
   parseOpenAPISchemaString
 } from '@fastgpt/global/common/string/swagger';
+import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 
 /**
  * 构造 workflow SSE 写入函数。
@@ -342,13 +346,49 @@ export const rewriteRuntimeWorkFlow = async ({
   tmbId,
   nodes,
   edges,
-  lang
+  lang: _lang,
+  lastInteractive
 }: {
   teamId: string;
   tmbId: string;
   nodes: RuntimeNodeItemType[];
   edges: RuntimeEdgeItemType[];
   lang?: localeType;
+  lastInteractive?: WorkflowInteractiveResponseType;
+}) => {
+  const legacyToolNodeIds = new Map<string, string>();
+  const setLegacyToolNodeId = (legacyId: string, nodeId: string) => {
+    if (!legacyToolNodeIds.has(legacyId)) legacyToolNodeIds.set(legacyId, nodeId);
+  };
+
+  await rewriteRuntimeWorkFlowNodes({
+    teamId,
+    tmbId,
+    nodes,
+    edges,
+    setLegacyToolNodeId
+  });
+
+  edges.forEach((edge) => {
+    const stableNodeId = legacyToolNodeIds.get(edge.target);
+    if (stableNodeId) edge.target = stableNodeId;
+  });
+
+  return rewriteInteractiveToolSetNodeIds({ lastInteractive, nodeIdMap: legacyToolNodeIds });
+};
+
+const rewriteRuntimeWorkFlowNodes = async ({
+  teamId,
+  tmbId,
+  nodes,
+  edges,
+  setLegacyToolNodeId
+}: {
+  teamId: string;
+  tmbId: string;
+  nodes: RuntimeNodeItemType[];
+  edges: RuntimeEdgeItemType[];
+  setLegacyToolNodeId: (legacyId: string, nodeId: string) => void;
 }) => {
   const mergeToolNodeInputs = ({
     node,
@@ -462,6 +502,30 @@ export const rewriteRuntimeWorkFlow = async ({
     avatar?: string;
   };
 
+  const existingNodeIds = new Set(nodes.map((node) => node.nodeId));
+  const usedNodeIds = new Set(existingNodeIds);
+  const getToolSetChildNodeId = ({
+    toolSetNode,
+    tool,
+    index
+  }: {
+    toolSetNode: RuntimeNodeItemType;
+    tool: { name: string; path?: string; method?: string };
+    index: number;
+  }) => {
+    const legacyNodeId = `${toolSetNode.nodeId}${index}`;
+    let nodeId = `${toolSetNode.nodeId}#toolset:${encodeURIComponent(tool.name)}`;
+    let suffix = 1;
+    while (usedNodeIds.has(nodeId)) {
+      nodeId = `${toolSetNode.nodeId}#toolset:${encodeURIComponent(tool.name)}~${suffix++}`;
+    }
+    usedNodeIds.add(nodeId);
+
+    if (!existingNodeIds.has(legacyNodeId)) setLegacyToolNodeId(legacyNodeId, nodeId);
+
+    return nodeId;
+  };
+
   /* ToolSet 展开 */
   // TODO: 待性能优化
   const parseToolset = async () => {
@@ -516,7 +580,7 @@ export const rewriteRuntimeWorkFlow = async ({
             toolList.forEach((tool, index) => {
               const newToolNode = initToolSetChildNode(
                 getMCPToolRuntimeNode({
-                  nodeId: `${toolSetNode.nodeId}${index}`,
+                  nodeId: getToolSetChildNodeId({ toolSetNode, tool, index }),
                   toolsetName: toolSetNode.name,
                   avatar: toolSetNode.avatar,
                   tool,
@@ -550,7 +614,7 @@ export const rewriteRuntimeWorkFlow = async ({
               };
               const newToolNode = initToolSetChildNode(
                 getMCPToolRuntimeNode({
-                  nodeId: `${toolSetNode.nodeId}${index}`,
+                  nodeId: getToolSetChildNodeId({ toolSetNode, tool, index }),
                   toolSetId,
                   toolsetName: toolSetNode.name,
                   avatar: toolSetNode.avatar,
@@ -592,7 +656,7 @@ export const rewriteRuntimeWorkFlow = async ({
             toolList.forEach((tool, index) => {
               const runtimeNode = getHTTPToolRuntimeNode({
                 tool,
-                nodeId: `${toolSetNode.nodeId}${index}`,
+                nodeId: getToolSetChildNodeId({ toolSetNode, tool, index }),
                 avatar: toolSetNode.avatar,
                 toolSetId: 'inline',
                 toolsetName: toolSetNode.name
@@ -638,7 +702,7 @@ export const rewriteRuntimeWorkFlow = async ({
               const newToolNode = initToolSetChildNode(
                 getHTTPToolRuntimeNode({
                   tool: runtimeTool,
-                  nodeId: `${toolSetNode.nodeId}${index}`,
+                  nodeId: getToolSetChildNodeId({ toolSetNode, tool, index }),
                   avatar: toolSetNode.avatar,
                   toolSetId,
                   toolsetName: toolSetNode.name

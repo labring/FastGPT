@@ -1204,7 +1204,9 @@ describe('rewriteRuntimeWorkFlow', () => {
     await rewriteRuntimeWorkFlow({ teamId: 'team1', tmbId: 'tmb1', nodes, edges });
 
     expect(nodes.find((n) => n.nodeId === 'ts2')).toBeUndefined();
-    expect(nodes.find((n) => n.nodeId === 'ts20')).toMatchObject({
+    const childNodeId = edges.find((edge) => edge.source === 'parent')?.target;
+    expect(childNodeId).toBeDefined();
+    expect(nodes.find((n) => n.nodeId === childNodeId)).toMatchObject({
       intro: 'desc',
       toolConfig: {
         mcpTool: {
@@ -1213,7 +1215,7 @@ describe('rewriteRuntimeWorkFlow', () => {
       }
     });
     expect(edges.find((e) => e.target === 'ts2')).toBeUndefined();
-    expect(edges.find((e) => e.target === 'ts20')).toBeDefined();
+    expect(edges.find((e) => e.target === childNodeId)).toBeDefined();
   });
 
   it('should keep resumed MCP toolSet memory edge after child node is rebuilt', async () => {
@@ -1265,9 +1267,12 @@ describe('rewriteRuntimeWorkFlow', () => {
     await rewriteRuntimeWorkFlow({ teamId: 'team1', tmbId: 'tmb1', nodes, edges });
     const filteredEdges = filterOrphanEdges({ nodes, edges, workflowId: 'workflow-app' });
 
-    expect(nodes.find((n) => n.nodeId === 'ts20')?.jsonSchema).toEqual(fullSchema);
-    expect(nodes.find((n) => n.nodeId === 'ts20')?.toolConfig).not.toHaveProperty('mcpToolSet');
-    expect(nodes.find((n) => n.nodeId === 'ts20')?.inputs[0]).toMatchObject({
+    expect(edges[0].target).not.toBe('ts20');
+    expect(nodes.find((n) => n.nodeId === edges[0].target)?.jsonSchema).toEqual(fullSchema);
+    expect(nodes.find((n) => n.nodeId === edges[0].target)?.toolConfig).not.toHaveProperty(
+      'mcpToolSet'
+    );
+    expect(nodes.find((n) => n.nodeId === edges[0].target)?.inputs[0]).toMatchObject({
       key: 'city',
       selectedType: FlowNodeInputTypeEnum.agentGenerated,
       renderTypeList: [
@@ -1277,7 +1282,7 @@ describe('rewriteRuntimeWorkFlow', () => {
       ]
     });
     expect(filteredEdges).toHaveLength(1);
-    expect(filteredEdges[0].target).toBe('ts20');
+    expect(filteredEdges[0].target).toBe(edges[0].target);
   });
 
   it('should skip MCP toolSet when app not found', async () => {
@@ -1347,7 +1352,8 @@ describe('rewriteRuntimeWorkFlow', () => {
       await rewriteRuntimeWorkFlow({ teamId: 'team1', tmbId: 'tmb1', nodes, edges });
 
       expect(nodes.find((n) => n.nodeId === 'ts4')).toBeUndefined();
-      expect(nodes.find((n) => n.nodeId === 'ts40')?.inputs).toEqual(
+      const childNodeIds = edges.map((edge) => edge.target);
+      expect(nodes.find((n) => n.nodeId === childNodeIds[0])?.inputs).toEqual(
         expect.arrayContaining([
           expect.objectContaining({
             key: 'manual',
@@ -1359,10 +1365,10 @@ describe('rewriteRuntimeWorkFlow', () => {
           })
         ])
       );
-      expect(nodes.find((n) => n.nodeId === 'ts41')).toBeDefined();
-      expect(nodes.find((n) => n.nodeId === 'ts40')?.intro).toBe('desc1');
-      expect(nodes.find((n) => n.nodeId === 'ts41')?.intro).toBe('desc2');
-      expect(edges.filter((e) => e.target === 'ts40' || e.target === 'ts41').length).toBe(2);
+      expect(nodes.find((n) => n.nodeId === childNodeIds[1])).toBeDefined();
+      expect(nodes.find((n) => n.nodeId === childNodeIds[0])?.intro).toBe('desc1');
+      expect(nodes.find((n) => n.nodeId === childNodeIds[1])?.intro).toBe('desc2');
+      expect(edges.filter((e) => childNodeIds.includes(e.target)).length).toBe(2);
     }
   );
 
@@ -1414,10 +1420,10 @@ describe('rewriteRuntimeWorkFlow', () => {
 
     await rewriteRuntimeWorkFlow({ teamId: 'team1', nodes, edges });
 
-    expect(nodes.find((node) => node.nodeId === 'mcpToolSet0')?.intro).toBe(
+    expect(nodes.find((node) => node.name === 'MCP ToolSet/search')?.intro).toBe(
       'Saved MCP description'
     );
-    expect(nodes.find((node) => node.nodeId === 'httpToolSet0')?.intro).toBe(
+    expect(nodes.find((node) => node.name === 'HTTP ToolSet/search')?.intro).toBe(
       'Saved HTTP description'
     );
   });

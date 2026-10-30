@@ -8,6 +8,7 @@ import type { AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import {
   rewriteNodeOutputByHistories,
+  rewriteLegacyInteractiveToolSetNodeIds,
   storeEdges2RuntimeEdges
 } from '@fastgpt/global/core/workflow/runtime/utils';
 import { LoopRunModeEnum } from '@fastgpt/global/core/workflow/node/constant';
@@ -87,6 +88,13 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
   // doesn't cover the loop body — apply the inner snapshot here so downstream refs
   // in the resumed iteration resolve correctly.
   if (interactiveData?.childrenResponse) {
+    interactiveData = {
+      ...interactiveData,
+      childrenResponse: rewriteLegacyInteractiveToolSetNodeIds({
+        lastInteractive: interactiveData.childrenResponse,
+        nodes: isolatedNodes
+      })!
+    };
     isolatedNodes = rewriteNodeOutputByHistories(isolatedNodes, interactiveData.childrenResponse);
   }
 
