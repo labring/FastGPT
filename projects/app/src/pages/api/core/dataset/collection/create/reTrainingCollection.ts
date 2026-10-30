@@ -1,5 +1,5 @@
 import { createCollectionAndInsertData } from '@fastgpt/service/core/dataset/collection/controller';
-import { getDatasetModelAuthContext } from '@/service/core/dataset/collection/auth';
+import { getDatasetModelAuthContext } from '@fastgpt/service/core/dataset/model';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/next/type';

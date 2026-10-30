@@ -33,7 +33,7 @@ vi.mock('@fastgpt/service/support/permission/dataset/auth', () => ({
   authDatasetCollection: mockAuthDatasetCollection
 }));
 
-vi.mock('@/service/core/dataset/collection/auth', () => ({
+vi.mock('@fastgpt/service/core/dataset/model', () => ({
   getDatasetModelAuthContext: mockGetDatasetModelAuthContext
 }));
 

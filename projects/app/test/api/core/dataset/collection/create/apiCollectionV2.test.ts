@@ -21,7 +21,7 @@ vi.mock('@fastgpt/service/support/permission/dataset/auth', () => ({
 vi.mock('@fastgpt/service/support/permission/teamLimit', () => ({
   checkDatasetIndexLimit: vi.fn()
 }));
-vi.mock('@/service/core/dataset/collection/auth', () => ({
+vi.mock('@fastgpt/service/core/dataset/model', () => ({
   getDatasetModelAuthContext: getModelAuthContext
 }));
 import handler from '@/pages/api/core/dataset/collection/create/apiCollectionV2';

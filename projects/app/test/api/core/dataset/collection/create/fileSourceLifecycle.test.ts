@@ -61,7 +61,7 @@ vi.mock('@fastgpt/service/core/dataset/collection/controller', () => ({
   createCollectionAndInsertData: mockCreateCollectionAndInsertData
 }));
 
-vi.mock('@/service/core/dataset/collection/auth', () => ({
+vi.mock('@fastgpt/service/core/dataset/model', () => ({
   getDatasetModelAuthContext: mockGetDatasetModelAuthContext
 }));
 
