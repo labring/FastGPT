@@ -174,7 +174,7 @@ describe('v1 chat completions profile status', () => {
         newVariables: {},
         durationSeconds: 1,
         flatNodeResponses: [],
-        workflowRuntimeSummary: { hasError: !!errorText, errorText }
+        workflowRuntimeSummary: { errorCount: errorText ? 1 : 0, errorText }
       });
       const { req, res } = createHttpObjects(stream);
       const writeSpy = vi.spyOn(res, 'write');

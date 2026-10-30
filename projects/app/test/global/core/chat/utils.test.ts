@@ -8,8 +8,40 @@ import {
 } from '@fastgpt/global/core/ai/sandbox/tools';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { addStatisticalDataToHistoryItem, getChatItemErrorText } from '@/global/core/chat/utils';
+import { filterNodeResponseTreeData } from '@fastgpt/global/core/chat/utils';
 
 describe('addStatisticalDataToHistoryItem', () => {
+  it.each([
+    { isToolCall: false, errorCaptured: false, visible: true },
+    { isToolCall: true, errorCaptured: false, visible: false },
+    { isToolCall: false, errorCaptured: true, visible: false }
+  ])(
+    'shows direct MCP errors only when uncaught: $isToolCall/$errorCaptured',
+    ({ isToolCall, errorCaptured, visible }) => {
+      const responseData: ChatHistoryItemResType[] = [
+        {
+          id: 'mcp-response',
+          nodeId: 'mcp-node',
+          moduleName: 'MCP tool',
+          moduleType: FlowNodeTypeEnum.tool,
+          isToolCall,
+          errorCaptured,
+          errorText: 'MCP requests through an HTTP proxy are not supported by SSRF protection'
+        }
+      ];
+      const expected = visible
+        ? { moduleName: 'MCP tool', errorText: responseData[0].errorText }
+        : undefined;
+      expect(getChatItemErrorText(responseData)).toEqual(expected);
+      expect(
+        getChatItemErrorText(filterNodeResponseTreeData({ nodeResponses: responseData }))
+      ).toEqual(expected);
+      expect(
+        addStatisticalDataToHistoryItem({ obj: ChatRoleEnum.AI, value: [], responseData }).errorText
+      ).toEqual(expected);
+    }
+  );
+
   it.each([
     ['workflow_cli_query', true],
     ['workflow_cli_stage', true],

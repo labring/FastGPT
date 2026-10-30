@@ -438,17 +438,21 @@ const MultipleReferenceSelector = ({
   const references = useWorkflowReferenceScope();
   const getSelectValue = useCallback(
     (value: ReferenceValueType) => {
-      if (!value) return [];
+      if (!value) return {};
 
       const firstColumn = list.find((item) => item.value === value[0]);
       if (!firstColumn) {
-        return [];
+        return {};
       }
       const secondColumn = firstColumn.children.find((item) => item.value === value[1]);
       if (!secondColumn) {
-        return [];
+        return {};
       }
-      return [firstColumn.label, secondColumn.label];
+      return {
+        nodeName: firstColumn.name || firstColumn.label,
+        avatar: firstColumn.name ? firstColumn.avatar : undefined,
+        outputName: secondColumn.label
+      };
     },
     [list]
   );
@@ -456,10 +460,8 @@ const MultipleReferenceSelector = ({
   // 存量数据可能是单选形态 [nodeId, outputId]：展示时升级成引用数组，不回写文档。
   const arrayVal = useMemo(() => getWorkflowReferenceItems(value), [value]);
 
-  // Keep invalid items visible so users can inspect and remove stale references.
+  // 保留失效引用，让用户能看到并删除已经不可用的来源。
   const formatList = useMemo(() => {
-    // 给出字段引用状态时按状态解析展示名，此时 list 可以是懒加载的空数组。
-    // 失效引用不再被抹成空名：来源被删除时状态里带的是 Reference Snapshot 的历史名字与图标。
     return arrayVal.map((item) => {
       const status = getReferenceStatus(references, item, excludeValueTypes);
       if (status) {
@@ -471,7 +473,7 @@ const MultipleReferenceSelector = ({
           status
         };
       }
-      const [nodeName, outputName] = getSelectValue(item);
+      const { nodeName, outputName } = getSelectValue(item);
       return {
         rawValue: item,
         nodeName,
@@ -497,7 +499,9 @@ const MultipleReferenceSelector = ({
           formatList.length > 0 ? (
             <Grid
               py={3}
-              gridTemplateColumns={'1fr 1fr'}
+              w={'100%'}
+              minW={0}
+              gridTemplateColumns={'repeat(2, minmax(0, 1fr))'}
               gap={2}
               fontSize={'sm'}
               fontWeight={'normal'}
@@ -517,8 +521,8 @@ const MultipleReferenceSelector = ({
                 const referenceTitle = getReferenceTitle(rawValue);
                 const row = (
                   <Flex
-                    key={index}
                     w={'100%'}
+                    minW={0}
                     alignItems={'center'}
                     pointerEvents={'auto'}
                     bg={isInvalidReference ? 'red.50' : 'primary.50'}
@@ -529,42 +533,47 @@ const MultipleReferenceSelector = ({
                   >
                     <Flex
                       alignItems={'center'}
-                      flex={'1 0 0'}
-                      className="textEllipsis"
+                      flex={'1 1 0'}
+                      minW={0}
                       color={isInvalidReference ? 'red.600' : undefined}
-                      title={isInvalidReference ? referenceTitle : undefined}
                     >
-                      {isInvalidReference ? (
+                      <Flex alignItems={'center'} flex={'0 1 auto'} minW={0}>
+                        {!!icon && (
+                          <Avatar src={icon} w={'1rem'} borderRadius={'xs'} flexShrink={0} />
+                        )}
+                        <Box
+                          ml={icon ? 1 : 0}
+                          minW={0}
+                          maxW={'10ch'}
+                          flex={'0 1 auto'}
+                          overflow={'hidden'}
+                          textOverflow={'ellipsis'}
+                          whiteSpace={'nowrap'}
+                          title={isInvalidReference ? referenceTitle : undefined}
+                        >
+                          {nodeName || (isInvalidReference ? t('common:invalid_variable') : '')}
+                        </Box>
+                      </Flex>
+                      {!!nodeName && !!outputName && (
                         <>
-                          {!!icon && <Avatar src={icon} w={'1rem'} mr={1} borderRadius={'xs'} />}
-                          {nodeName || outputName ? (
-                            <>
-                              {nodeName}
-                              {!!nodeName && !!outputName && (
-                                <MyIcon
-                                  name={'common/rightArrowLight'}
-                                  mx={1}
-                                  w={'12px'}
-                                  color={'myGray.500'}
-                                />
-                              )}
-                              {outputName}
-                            </>
-                          ) : (
-                            t('common:invalid_variable')
-                          )}
-                        </>
-                      ) : (
-                        <>
-                          {!!icon && <Avatar src={icon} w={'1rem'} mr={1} borderRadius={'xs'} />}
-                          {nodeName}
                           <MyIcon
                             name={'common/rightArrowLight'}
                             mx={1}
                             w={'12px'}
+                            flexShrink={0}
                             color={'myGray.500'}
                           />
-                          {outputName}
+                          <Box
+                            minW={0}
+                            maxW={'10ch'}
+                            flex={'0 1 auto'}
+                            overflow={'hidden'}
+                            textOverflow={'ellipsis'}
+                            whiteSpace={'nowrap'}
+                            title={outputName}
+                          >
+                            {outputName}
+                          </Box>
                         </>
                       )}
                     </Flex>
@@ -574,6 +583,7 @@ const MultipleReferenceSelector = ({
                       name={'common/closeLight'}
                       w={'1rem'}
                       ml={1}
+                      flexShrink={0}
                       cursor={'pointer'}
                       color={'myGray.500'}
                       _hover={{

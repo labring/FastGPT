@@ -76,7 +76,7 @@ describe('BaseSandboxAdapter', () => {
     await expect(adapter.interrupt('session')).rejects.toBeInstanceOf(FeatureNotSupportedError);
   });
 
-  it('maps valid byte ranges and reports invalid ranges per file', async () => {
+  it('keeps relative paths normalized while streaming through the command polyfill', async () => {
     const execute = vi.fn(
       async (command: string): Promise<ExecuteResult> => ({
         stdout: command.includes('base64') ? 'YWJj' : '',
@@ -85,20 +85,6 @@ describe('BaseSandboxAdapter', () => {
       })
     );
     const adapter = new TestAdapter(execute, true);
-
-    const [result] = await adapter.readFiles(['file.txt'], { offset: 1, length: 3 });
-    const [invalidResult] = await adapter.readFiles(['file.txt'], { offset: -1 });
-
-    expect(result.error).toBeNull();
-    expect(execute).toHaveBeenCalledWith(
-      "tail -c +2 '/workspace/file.txt' | head -c 3 | base64 -w 0",
-      undefined
-    );
-    expect(invalidResult.error).toBeInstanceOf(TypeError);
-  });
-
-  it('keeps relative paths normalized while streaming through the command polyfill', async () => {
-    const adapter = new TestAdapter(undefined, true);
     const getFileInfo = vi
       .spyOn(adapter, 'getFileInfo')
       .mockResolvedValue(
@@ -109,19 +95,15 @@ describe('BaseSandboxAdapter', () => {
           ]
         ])
       );
-    const readFiles = vi.spyOn(adapter, 'readFiles').mockResolvedValue([
-      {
-        path: '/workspace/file.txt',
-        content: new TextEncoder().encode('abc'),
-        error: null
-      }
-    ]);
 
     const chunks: Uint8Array[] = [];
     for await (const chunk of adapter.readFileStream('file.txt')) chunks.push(chunk);
 
     expect(getFileInfo).toHaveBeenCalledWith(['/workspace/file.txt']);
-    expect(readFiles).toHaveBeenCalledWith(['/workspace/file.txt'], { offset: 0, length: 3 });
+    expect(execute).toHaveBeenCalledWith(
+      "tail -c +1 '/workspace/file.txt' | head -c 3 | base64 -w 0",
+      undefined
+    );
     expect(new TextDecoder().decode(chunks[0])).toBe('abc');
   });
 

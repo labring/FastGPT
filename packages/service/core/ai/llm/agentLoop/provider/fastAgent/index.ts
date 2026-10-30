@@ -73,6 +73,7 @@ export const runFastAgentLoop = async <TChildrenResponse = unknown>({
     useAudio: runtime.llmParams.useAudio,
     useVideo: runtime.llmParams.useVideo,
     extractFiles: runtime.llmParams.extractFiles,
+    fileContext: runtime.fileContext,
     lang: runtime.lang,
     maxRunAgentTimes: runtime.maxRunAgentTimes,
     completionPolicy: runtime.completionPolicy,

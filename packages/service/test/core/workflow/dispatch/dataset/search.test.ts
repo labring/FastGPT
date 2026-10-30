@@ -241,6 +241,7 @@ describe('dispatchDatasetSearch', () => {
       },
       nodeSummary
     );
+
     expect(nodeSummary).toMatchObject({ llmInputTokens: 0, llmOutputTokens: 0 });
     expect(result.error).toBeUndefined();
     expect(defaultSearchDatasetDataMock).toHaveBeenCalledWith(
@@ -264,7 +265,7 @@ describe('dispatchDatasetSearch', () => {
       throw new UserError(ModelErrEnum.unExist);
     });
     const result = await runSearch({ usingReRank: true, datasetSearchUsingExtensionQuery: true });
-    expect(result.error).toBeDefined();
+    expect(result.rawError).toBeDefined();
     expect(defaultSearchDatasetDataMock).not.toHaveBeenCalled();
     expect((await modelGetters.getSystemModelHandle()).getDefaultModelData).not.toHaveBeenCalled();
   });
@@ -741,6 +742,8 @@ describe('dispatchDatasetSearch', () => {
     const error = new WorkflowResourceError('App resource is unavailable: dataset:deleted_id');
     loadWorkflowDatasetResourceMock.mockRejectedValueOnce(error);
     const result = await runSearch();
+
+    expect(result.rawError).toBe(error);
     expect(result).toMatchObject({
       error: { [NodeOutputKeyEnum.errorText]: error.message },
       [DispatchNodeResponseKeyEnum.nodeResponse]: { errorText: error.message },
@@ -753,7 +756,7 @@ describe('dispatchDatasetSearch', () => {
   it('downgrades log to warn when dataset is missing (unExistDataset)', async () => {
     findDatasetMock.mockReturnValueOnce({ lean: vi.fn().mockResolvedValue([]) });
     const result = await runSnapshotSearch();
-    expect(result.error).toBeDefined();
+    expect(result.rawError).toBeDefined();
     expect(mockLogger.warn).toHaveBeenCalledWith('Dataset search dispatch failed', {
       error: DatasetErrEnum.unExist
     });
@@ -764,6 +767,7 @@ describe('dispatchDatasetSearch', () => {
     const error = new Error('Mongo connection timed out');
     findDatasetMock.mockReturnValueOnce({ lean: vi.fn().mockRejectedValue(error) });
     const result = await runSnapshotSearch();
+    expect(result.rawError).toBe(error);
     expect(result.error).toEqual({ [NodeOutputKeyEnum.errorText]: error.message });
     expect(mockLogger.error).toHaveBeenCalledWith('Dataset search dispatch failed', { error });
     expect(mockLogger.warn).not.toHaveBeenCalled();

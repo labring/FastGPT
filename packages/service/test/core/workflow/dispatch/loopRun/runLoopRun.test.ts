@@ -24,9 +24,10 @@ vi.mock('@fastgpt/service/core/workflow/dispatch', () => ({
 }));
 
 // Shrink max iterations so overflow tests run fast.
-vi.mock('@fastgpt/service/env', () => ({
-  serviceEnv: { WORKFLOW_MAX_LOOP_TIMES: 5 }
-}));
+vi.mock('@fastgpt/service/env', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@fastgpt/service/env')>();
+  return { ...actual, serviceEnv: { ...actual.serviceEnv, WORKFLOW_MAX_LOOP_TIMES: 5 } };
+});
 
 // Import after mocks so runLoopRun pulls the mocked modules.
 import { dispatchLoopRun } from '@fastgpt/service/core/workflow/dispatch/loopRun/runLoopRun';
@@ -618,14 +619,13 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
     );
 
     const result: any = await dispatchLoopRun(props);
+
     expect(iter).toBe(3);
     expect(result[DispatchNodeResponseKeyEnum.nodeResponse].loopRunIterations).toBe(3);
   });
 
   it('conditional mode - 子节点 catchError=false 出错 → 当轮 break, 后续迭代不执行', async () => {
-    // 对齐 dispatch/index.ts 错误归一化后的 nodeResponse summary 形状：
-    // dispatcher 返回 `{error}` + catchError=false 会把 error 写回 nodeResponse，
-    // 所以 nodeResponse 项上 `r.error` 必定可见。用户场景：code 节点 iter=2 throw。
+    // 子流程通过顶层 error 透传原始异常，nodeResponse 仅保留展示文本。
     let iter = 0;
     runWorkflowMock.mockImplementation(() => {
       iter++;
@@ -663,6 +663,65 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
     expect(result.error?.[NodeOutputKeyEnum.errorText]).toBe('111');
   });
 
+  it('publishes only display text on the failed iteration wrapper', async () => {
+    const nodeResponseSink = createNodeResponseSinkMock();
+    runWorkflowMock.mockResolvedValue(
+      makeDispatchFlowResponse({
+        nodeResponses: [makeResponseItem('startNode', { error: 'Invalid MCP URL' })],
+        workflowRuntimeSummary: {
+          ...createWorkflowRuntimeSummary(),
+          errorCount: 1,
+          errorText: 'Invalid MCP URL'
+        }
+      })
+    );
+    const props: any = makeProps({
+      [NodeInputKeyEnum.loopRunMode]: LoopRunModeEnum.array,
+      [NodeInputKeyEnum.loopRunInputArray]: ['first']
+    });
+    props.nodeResponseSink = nodeResponseSink;
+
+    await dispatchLoopRun(props);
+
+    const publishedResponses = nodeResponseSink.publish.mock.calls.flatMap(
+      ([items]: [{ response: any }[]]) => items.map((item) => item.response)
+    );
+    expect(publishedResponses).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          error: 'Invalid MCP URL'
+        })
+      ])
+    );
+  });
+
+  it('stops on a current child business failure without reconstructing an exception', async () => {
+    runWorkflowMock.mockResolvedValue(
+      makeDispatchFlowResponse({
+        nodeResponses: [makeResponseItem('startNode', { error: 'database unavailable' })],
+        workflowRuntimeSummary: {
+          ...createWorkflowRuntimeSummary(),
+          errorText: 'database unavailable',
+          errorCount: 2
+        }
+      })
+    );
+
+    const result: any = await dispatchLoopRun(
+      makeProps({
+        [NodeInputKeyEnum.loopRunMode]: LoopRunModeEnum.array,
+        [NodeInputKeyEnum.loopRunInputArray]: ['first', 'second']
+      })
+    );
+
+    expect(Object.hasOwn(result, 'rawError')).toBe(false);
+    expect(result.error?.system_error_text).toBe('database unavailable');
+    expect(result.responseData.loopRunHistory).toMatchObject([
+      { iteration: 1, success: false, error: 'database unavailable' }
+    ]);
+    expect(runWorkflowMock).toHaveBeenCalledOnce();
+  });
+
   it('conditional mode - 无 break 节点 → precheck 返回 errorText 并不执行任何迭代', async () => {
     const props = makeProps({ [NodeInputKeyEnum.loopRunMode]: LoopRunModeEnum.conditional });
     const result: any = await dispatchLoopRun(props);
@@ -694,6 +753,8 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
     expect(result.error?.[NodeOutputKeyEnum.errorText]).toBe(
       'workflow:loop_run_max_iterations_exceeded'
     );
+    expect(result.rawError).toBeInstanceOf(Error);
+    expect(result.rawError.message).toBe(result.error?.[NodeOutputKeyEnum.errorText]);
     const nodeResponse = result[DispatchNodeResponseKeyEnum.nodeResponse];
     expect(nodeResponse.loopRunIterations).toBe(5);
     expect(nodeResponse.loopRunHistory).toHaveLength(5);
@@ -735,6 +796,44 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
     expect(nodeResponse.childResponseCount).toBe(2);
     expect(nodeResponse.childTotalPoints).toBeUndefined();
   });
+
+  it.each([false, true])(
+    'resume error state is independent from pre-interrupt errors: current failure=%s',
+    async (failsNow) => {
+      const error = new Error('current system failure');
+      runWorkflowMock.mockResolvedValueOnce(
+        makeDispatchFlowResponse({
+          nodeResponses: [makeResponseItem('chatNode', failsNow ? { error: error.message } : {})]
+        })
+      );
+      const props = makeProps({
+        [NodeInputKeyEnum.loopRunMode]: LoopRunModeEnum.array,
+        [NodeInputKeyEnum.loopRunInputArray]: ['a'],
+        [NodeInputKeyEnum.childrenNodeIdList]: ['startNode', 'chatNode']
+      });
+      props.lastInteractive = {
+        type: 'loopRunInteractive',
+        params: {
+          loopHistory: [],
+          iteration: 1,
+          childrenResponse: { entryNodeIds: ['chatNode'] },
+          pendingIterationSummary: {
+            ...createWorkflowRuntimeSummary(),
+            finishedNodeIds: ['startNode'],
+            errorText: 'previous round failure',
+            errorCount: 1,
+            llmInputTokens: 10
+          }
+        }
+      };
+      const result = await dispatchLoopRun(props);
+      const history = result.responseData?.loopRunHistory;
+      expect(history?.[0].success).toBe(!failsNow);
+      expect(history?.[0].error).toBe(failsNow ? error.message : undefined);
+      expect(Object.hasOwn(result, 'rawError')).toBe(false);
+      expect(result.error?.system_error_text).toBe(failsNow ? error.message : undefined);
+    }
+  );
 
   it('lastInteractive 恢复 → 从中断轮次续跑, 保留已累积 loopHistory', async () => {
     // Resume at iteration 2 (0-based index 1). Prior history has 1 success entry.

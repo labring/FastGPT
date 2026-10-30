@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { parseFileExtensionFromUrl } from '@fastgpt/global/common/string/tools';
+import {
+  parseFileExtensionFromUrl,
+  parseFilenameExtension
+} from '@fastgpt/global/common/string/tools';
 
 describe('parseFileExtensionFromUrl', () => {
   it('should parse extension from simple URL', () => {
@@ -208,5 +211,16 @@ describe('parseFileExtensionFromUrl', () => {
     expect(parseFileExtensionFromUrl('my_file.txt')).toBe('txt');
     expect(parseFileExtensionFromUrl('file name.txt')).toBe('txt');
     expect(parseFileExtensionFromUrl('文件.pdf')).toBe('pdf');
+    expect(parseFileExtensionFromUrl('https://example.com/photo%231.png')).toBe('png');
+    expect(parseFileExtensionFromUrl('https://example.com/photo%3F1.png')).toBe('png');
+    expect(parseFileExtensionFromUrl('https://example.com/record%2Emp3?token=1')).toBe('mp3');
+  });
+
+  it('should parse extension from decoded filename without stripping # or ?', () => {
+    expect(parseFilenameExtension('photo#1.png')).toBe('png');
+    expect(parseFilenameExtension('photo?1.png')).toBe('png');
+    expect(parseFilenameExtension('100% done.PDF')).toBe('pdf');
+    expect(parseFilenameExtension('.gitignore')).toBe('');
+    expect(parseFilenameExtension('')).toBe('');
   });
 });

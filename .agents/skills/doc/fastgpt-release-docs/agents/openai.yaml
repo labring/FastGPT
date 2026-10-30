@@ -1,0 +1,7 @@
+interface:
+  display_name: "FastGPT 版本文档"
+  short_description: "手动编写 FastGPT 版本说明，按功能归并改动并同步中英文文档"
+  default_prompt: "使用 $fastgpt-release-docs 编写 4173 版本文档，对比上一正式版本，先整理中文并归并同类改动，再调用 doc-i18n 翻译英文。"
+
+policy:
+  allow_implicit_invocation: false

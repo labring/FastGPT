@@ -674,27 +674,31 @@ export const rewriteRuntimeWorkFlow = async ({
 /**
  * 生成节点执行失败时的标准返回结构。
  *
- * 同一份错误会被写入节点输出、nodeResponse 和 toolResponse，兼容普通节点执行、
- * 前端节点详情展示以及 tool call 调用方读取错误的不同路径。
+ * error 保留错误分支可引用的输出，rawError 独立保留原始异常供分类和日志判断。
+ * 展示文本可独立覆盖，例如 HTTP 节点会补充响应体摘要；不覆盖原始异常。
+ * nodeResponse/toolResponse 只接收可展示数据，避免异常堆栈和 cause 进入持久化或模型上下文。
  */
 export const getNodeErrResponse = <TError extends Record<string, any> = Record<string, never>>({
   error,
+  errorText: displayErrorText,
   customErr,
   responseData,
   runTimes,
   system_memories
 }: {
-  error: any;
+  error: unknown;
+  errorText?: string;
   customErr?: TError;
   [DispatchNodeResponseKeyEnum.nodeResponse]?: Record<string, any>;
   [DispatchNodeResponseKeyEnum.runTimes]?: number;
   [DispatchNodeResponseKeyEnum.memories]?: Record<string, any>;
 }) => {
-  const errorText = getErrText(error);
+  const errorText = displayErrorText ?? getErrText(error);
 
   return {
     [DispatchNodeResponseKeyEnum.runTimes]: runTimes,
     [DispatchNodeResponseKeyEnum.memories]: system_memories,
+    rawError: error,
     error: {
       [NodeOutputKeyEnum.errorText]: errorText,
       ...(typeof customErr === 'object' ? customErr : {})

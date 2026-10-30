@@ -52,6 +52,26 @@ describe('createAgentLoopCoreWorkflowToolRunner', () => {
     vi.clearAllMocks();
   });
 
+  it.each([0, 1])(
+    'derives tool failure from errorCount=%s without a hasError flag',
+    async (errorCount) => {
+      const runner = createRunner({
+        runtimeNodes: [{ nodeId: 'search', inputs: [], outputs: [] }],
+        getToolInfo: () => ({ type: 'user', rawData: { nodeId: 'search' } }),
+        runWorkflowTool: vi.fn().mockResolvedValue({
+          flowResponses: [],
+          flowUsages: [],
+          assistantResponses: [],
+          toolResponses: undefined,
+          workflowRuntimeSummary: { errorCount, errorText: 'child failed' }
+        })
+      });
+      const result = await runner.runTool({ call: createCall() });
+      expect(result.response).toBe(errorCount > 0 ? 'child failed' : 'none');
+      expect(result.errorMessage).toBe(errorCount > 0 ? 'child failed' : undefined);
+    }
+  );
+
   it.each(['call', 'resume'] as const)(
     'syncs real variable-update writes to parent outputs during %s without leaking inputs',
     async (mode) => {

@@ -10,7 +10,6 @@ import { getTeamAppTemplatesV2, getAppToolTemplates } from '@/web/core/app/api/t
 import { TemplateTypeEnum } from './header';
 import { useContextSelector } from 'use-context-selector';
 import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
-import { useDebounceEffect } from 'ahooks';
 import { AppContext } from '@/pageComponents/app/detail/context';
 import { getPluginToolTags } from '@/web/core/plugin/toolTag/api';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
@@ -26,7 +25,6 @@ export const useNodeTemplates = (context: NodeTemplateContext | null = null) => 
   const [templateType, setTemplateType] = useState(TemplateTypeEnum.basic);
 
   const [searchKey, setSearchKey] = useState('');
-  const searchKeyLock = useRef(false);
 
   const [parentId, setParentId] = useState<ParentIdType>('');
   const [parentSource, setParentSource] = useState<string>();
@@ -113,72 +111,78 @@ export const useNodeTemplates = (context: NodeTemplateContext | null = null) => 
   );
 
   const {
-    data: teamAndSystemTools,
+    data: systemTools,
     loading: templatesIsLoading,
-    runAsync: loadNodeTemplates
+    runAsync: loadSystemTools
   } = useRequest(
     async ({
       parentId,
-      type = templateType,
       searchVal,
       tags,
       source
     }: {
       parentId?: ParentIdType;
-      type?: TemplateTypeEnum;
       searchVal?: string;
       tags?: string[];
       source?: string;
-    }) => {
-      if (type === TemplateTypeEnum.systemTools) {
-        // systemTool
-        return getAppToolTemplates({
-          searchKey: searchVal,
-          parentId,
-          source: parentId ? source : undefined,
-          tags
-        });
-      }
-      return [];
-    },
+    }) =>
+      getAppToolTemplates({
+        searchKey: searchVal,
+        parentId,
+        source: parentId ? source : undefined,
+        tags
+      }),
     {
       onSuccess(list: (NodeTemplateListItemType & { appType?: AppTypeEnum })[] | undefined) {
         list?.forEach(({ id, appType }) => {
           if (appType) parentTypes.current.set(id, appType);
         });
-        searchKeyLock.current = false;
       }
     }
   );
 
-  useDebounceEffect(
-    () => {
-      if (templateType !== TemplateTypeEnum.systemTools || searchKeyLock.current) {
-        return;
-      }
+  /**
+   * 系统工具列表的唯一加载入口：所有触发条件（切 tab、进入/退出工具集、标签、搜索）都只改状态，
+   * 由这里统一发起一次请求，避免事件回调和 effect 重复请求。
+   * 仅当“只有搜索词变化”时才防抖，其余变化立即请求；搜索词在目录切换时会被同时重置，此时不应等待防抖。
+   */
+  const lastSystemToolQuery = useRef<{
+    parentId: ParentIdType;
+    parentSource?: string;
+    selectedTagIds: string[];
+    searchKey: string;
+  }>();
+  useEffect(() => {
+    if (templateType !== TemplateTypeEnum.systemTools) {
+      // 离开系统工具 tab 后再回来必须重新请求，不能与上次的查询条件比较。
+      lastSystemToolQuery.current = undefined;
+      return;
+    }
 
-      loadNodeTemplates({
+    const last = lastSystemToolQuery.current;
+    const onlySearchKeyChanged =
+      !!last &&
+      last.parentId === parentId &&
+      last.parentSource === parentSource &&
+      last.selectedTagIds === selectedTagIds &&
+      last.searchKey !== searchKey;
+    lastSystemToolQuery.current = { parentId, parentSource, selectedTagIds, searchKey };
+
+    const load = () =>
+      loadSystemTools({
         parentId,
         searchVal: searchKey,
         tags: selectedTagIds,
         source: parentSource
       });
-    },
-    [searchKey, parentSource, templateType],
-    {
-      wait: 300
-    }
-  );
 
-  useEffect(() => {
-    if (templateType !== TemplateTypeEnum.systemTools) return;
-    loadNodeTemplates({
-      parentId,
-      searchVal: searchKey,
-      tags: selectedTagIds,
-      source: parentSource
-    });
-  }, [loadNodeTemplates, parentId, parentSource, searchKey, selectedTagIds, templateType]);
+    if (!onlySearchKeyChanged) {
+      load();
+      return;
+    }
+    const timer = setTimeout(load, 300);
+    return () => clearTimeout(timer);
+  }, [loadSystemTools, parentId, parentSource, searchKey, selectedTagIds, templateType]);
 
   const onUpdateParentId = useCallback(
     (parentId: ParentIdType, source?: string) => {
@@ -188,41 +192,21 @@ export const useNodeTemplates = (context: NodeTemplateContext | null = null) => 
           ? parentTypes.current.get(parentId)
           : undefined;
 
-      searchKeyLock.current = true;
       setSearchKey('');
       setParentType(nextParentType);
       setParentId(parentId);
       setParentSource(nextParentSource);
-      if (templateType === TemplateTypeEnum.systemTools) {
-        loadNodeTemplates({ parentId, source: nextParentSource });
-      }
     },
-    [loadNodeTemplates, parentSource, templateType]
+    [parentSource, templateType]
   );
-  const onUpdateTemplateType = useCallback(
-    (type: TemplateTypeEnum) => {
-      searchKeyLock.current = true;
-      setSearchKey('');
-      setParentType(undefined);
-      setParentId('');
-      setParentSource(undefined);
-      setSelectedTagIds([]);
-      setTemplateType(type);
-      if (type === TemplateTypeEnum.systemTools) {
-        loadNodeTemplates({ type });
-      }
-    },
-    [loadNodeTemplates]
-  );
-  const onUpdateSelectedTagIds = useCallback(
-    (tags: string[]) => {
-      setSelectedTagIds(tags);
-      if (templateType === TemplateTypeEnum.systemTools) {
-        loadNodeTemplates({ parentId, searchVal: searchKey, tags, source: parentSource });
-      }
-    },
-    [loadNodeTemplates, parentId, parentSource, searchKey, templateType]
-  );
+  const onUpdateTemplateType = useCallback((type: TemplateTypeEnum) => {
+    setSearchKey('');
+    setParentType(undefined);
+    setParentId('');
+    setParentSource(undefined);
+    setSelectedTagIds([]);
+    setTemplateType(type);
+  }, []);
 
   const templates = useMemo(() => {
     if (templateType === TemplateTypeEnum.basic) {
@@ -232,20 +216,13 @@ export const useNodeTemplates = (context: NodeTemplateContext | null = null) => 
           : true
       );
     }
-    const templateList = isTeamTemplate ? teamTemplates : teamAndSystemTools;
+    const templateList = isTeamTemplate ? teamTemplates : systemTools;
     return (templateList || []).filter((item) =>
       context?.handleId === NodeOutputKeyEnum.selectedTools
         ? 'isTool' in item && item.isTool === true
         : true
     );
-  }, [
-    basicNodes,
-    context?.handleId,
-    isTeamTemplate,
-    teamAndSystemTools,
-    teamTemplates,
-    templateType
-  ]);
+  }, [basicNodes, context?.handleId, isTeamTemplate, systemTools, teamTemplates, templateType]);
 
   return {
     templateType,
@@ -259,7 +236,7 @@ export const useNodeTemplates = (context: NodeTemplateContext | null = null) => 
     searchKey,
     setSearchKey,
     selectedTagIds,
-    setSelectedTagIds: onUpdateSelectedTagIds,
+    setSelectedTagIds,
     toolTags
   };
 };

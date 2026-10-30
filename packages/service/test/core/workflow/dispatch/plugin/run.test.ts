@@ -58,7 +58,8 @@ const createVariableState = () =>
   WorkflowVariableState.create({
     timezone: 'Asia/Shanghai',
     runningAppInfo: {
-      id: 'app',
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: 'app',
       name: 'app',
       teamId: 'team',
       tmbId: 'member'
@@ -75,6 +76,21 @@ describe('dispatchRunPlugin', () => {
     runWorkflowMock.mockReset();
     getSystemToolWorkflowRuntimeMock.mockReset();
     computedAppToolUsageMock.mockReset().mockResolvedValue(1);
+  });
+
+  it('returns its own resource-load exception in rawError', async () => {
+    const error = new Error('Plugin resource unavailable');
+    getSystemToolWorkflowRuntimeMock.mockRejectedValueOnce(error);
+
+    const result = await dispatchRunPlugin({
+      node: { pluginId: 'commercial-system-workflow' },
+      query: [],
+      params: {}
+    } as any);
+
+    expect(result.rawError).toBe(error);
+    expect(result.error?.[NodeOutputKeyEnum.errorText]).toBe(error.message);
+    expect(runWorkflowMock).not.toHaveBeenCalled();
   });
 
   it.each([
@@ -152,69 +168,79 @@ describe('dispatchRunPlugin', () => {
     }
   );
 
-  it('marks a failed child workflow as a billing error', async () => {
-    getSystemToolWorkflowRuntimeMock.mockResolvedValue({
-      id: 'commercial-system-workflow',
-      name: 'System Workflow',
-      avatar: '',
-      nodes: [],
-      edges: [],
-      chatConfig: { variables: [] },
-      currentCost: 10,
-      hasTokenFee: true
-    });
-    runWorkflowMock.mockResolvedValue({
-      flowUsages: [{ moduleName: 'Failed child usage', totalPoints: 3 }],
-      workflowRuntimeSummary: summarizeRuntimeNodeResponses(undefined, [
+  it.each(['child failed', undefined])(
+    'propagates child execution failure and marks billing as failed with errorText=%s',
+    async (errorText) => {
+      getSystemToolWorkflowRuntimeMock.mockResolvedValue({
+        id: 'commercial-system-workflow',
+        name: 'System Workflow',
+        avatar: '',
+        nodes: [],
+        edges: [],
+        chatConfig: { variables: [] },
+        currentCost: 10,
+        hasTokenFee: true
+      });
+      const runtimeSummary = summarizeRuntimeNodeResponses(undefined, [
         {
           id: 'failedResponse',
           nodeId: 'failedNode',
           moduleName: 'Failed node',
-          moduleType: FlowNodeTypeEnum.systemConfig,
+          moduleType: FlowNodeTypeEnum.chatNode,
           errorText: 'child failed'
         }
-      ])
-    });
+      ]);
+      runtimeSummary.errorText = errorText;
+      runWorkflowMock.mockResolvedValue({
+        flowUsages: [{ moduleName: 'Failed child usage', totalPoints: 3 }],
+        workflowRuntimeSummary: runtimeSummary
+      });
 
-    await dispatchRunPlugin({
-      node: {
-        nodeId: 'toolNode',
-        name: 'Tool',
-        avatar: '',
-        flowNodeType: FlowNodeTypeEnum.pluginModule,
-        pluginId: 'commercial-system-workflow',
-        inputs: [],
-        outputs: []
-      },
-      runningAppInfo: {
-        id: 'app',
-        name: 'app',
-        teamId: 'team',
-        tmbId: 'member'
-      },
-      query: [],
-      params: {},
-      histories: [],
-      timezone: 'Asia/Shanghai',
-      uid: 'user',
-      chatId: 'chat',
-      responseChatItemId: 'response',
-      variableState: await createVariableState(),
-      usagePush: vi.fn(),
-      runtimeNodes: [],
-      runtimeNodesMap: new Map(),
-      runtimeEdges: [],
-      nodeSummary: createNodeSummary()
-    } as any);
+      const result = await dispatchRunPlugin({
+        node: {
+          nodeId: 'toolNode',
+          name: 'Tool',
+          avatar: '',
+          flowNodeType: FlowNodeTypeEnum.pluginModule,
+          pluginId: 'commercial-system-workflow',
+          inputs: [],
+          outputs: []
+        },
+        runningAppInfo: {
+          id: 'app',
+          name: 'app',
+          teamId: 'team',
+          tmbId: 'member'
+        },
+        query: [],
+        params: {},
+        histories: [],
+        timezone: 'Asia/Shanghai',
+        uid: 'user',
+        chatId: 'chat',
+        responseChatItemId: 'response',
+        variableState: await createVariableState(),
+        usagePush: vi.fn(),
+        runtimeNodes: [],
+        runtimeNodesMap: new Map(),
+        runtimeEdges: [],
+        nodeSummary: createNodeSummary()
+      } as any);
 
-    expect(computedAppToolUsageMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        error: true
-      })
-    );
-  });
+      expect(computedAppToolUsageMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          error: true
+        })
+      );
+      const expectedError = errorText ?? 'Run workflow tool failed';
+      expect(result.error?.[NodeOutputKeyEnum.errorText]).toBe(expectedError);
+      expect(result[DispatchNodeResponseKeyEnum.nodeResponse]?.errorText).toBe(expectedError);
+      expect(result[DispatchNodeResponseKeyEnum.toolResponse]).toEqual({ error: expectedError });
+      expect(Object.hasOwn(result, 'rawError')).toBe(false);
+    }
+  );
 
-  it('treats pluginOutput.error as a standard workflow tool failure', async () => {
+  it('keeps business failure output separate from the original exception', async () => {
     getSystemToolWorkflowRuntimeMock.mockResolvedValue({
       id: 'commercial-system-workflow',
       name: 'System Workflow',
@@ -270,7 +296,8 @@ describe('dispatchRunPlugin', () => {
     } as any);
 
     expect(computedAppToolUsageMock).toHaveBeenCalledWith(expect.objectContaining({ error: true }));
-    expect(result.error).toEqual({
+    expect(Object.hasOwn(result, 'rawError')).toBe(false);
+    expect(result.error).toMatchObject({
       [NodeOutputKeyEnum.errorText]: 'upstream unavailable'
     });
     expect(result[DispatchNodeResponseKeyEnum.nodeResponse]).toMatchObject({
@@ -416,7 +443,7 @@ describe('dispatchRunPlugin', () => {
       totalPoints: 1,
       citeCollectionIds: ['hidden-system-cite']
     });
-    expect(result.data?.[NodeOutputKeyEnum.errorText]).toBeUndefined();
+    expect(result.error?.[NodeOutputKeyEnum.errorText]).toBeUndefined();
   });
 
   it('Workflow Tool child context only inherits selected files from the parent context', async () => {

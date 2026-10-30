@@ -19,6 +19,7 @@ import {
 } from './service';
 import { pushSubWorkflowUsage } from '../utils';
 import { createContainerRunStateSnapshot, syncContainerRunState } from '../utils/containerRunState';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.nestedInputArray]: Array<any>;
@@ -60,6 +61,8 @@ export const dispatchParallelRun = async (props: Props): Promise<Response> => {
 
   const maxRetryAttempts = clampParallelRetryTimes(userRetryTimes);
   const attemptResults: ParallelTaskResult[] = [];
+  // 仅保留并行节点自身未恢复的异常；子流程失败只参与任务结果汇总。
+  let parallelFailure: { rawError: unknown } | undefined;
   const taskResponseIdPrefix = props.nodeResponseParentId || node.nodeId;
 
   const taskResults = await batchRun(
@@ -156,6 +159,8 @@ export const dispatchParallelRun = async (props: Props): Promise<Response> => {
             totalPoints: accumulatedPoints
           };
         } catch (err) {
+          // 重试成功不遗留本节点的失败状态；最终异常由外层调度统一记录。
+          if (attempt === maxRetryAttempts) parallelFailure = { rawError: err };
           const attemptResult = {
             ...parseTaskError(index, err),
             taskResponseId,
@@ -210,7 +215,7 @@ export const dispatchParallelRun = async (props: Props): Promise<Response> => {
     [NodeOutputKeyEnum.parallelFullResults]: fullResultsArray,
     [NodeOutputKeyEnum.parallelStatus]: status
   };
-  return {
+  const result = {
     data,
     [DispatchNodeResponseKeyEnum.toolResponse]: fullResultsArray,
     [DispatchNodeResponseKeyEnum.assistantResponses]: assistantResponses,
@@ -223,4 +228,11 @@ export const dispatchParallelRun = async (props: Props): Promise<Response> => {
     [DispatchNodeResponseKeyEnum.customFeedbacks]:
       customFeedbacks.length > 0 ? customFeedbacks : undefined
   };
+  return parallelFailure
+    ? {
+        ...result,
+        ...parallelFailure,
+        error: { [NodeOutputKeyEnum.errorText]: getErrText(parallelFailure.rawError) }
+      }
+    : result;
 };

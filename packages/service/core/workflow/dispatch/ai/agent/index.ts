@@ -17,7 +17,6 @@ import type { DispatchNodeResultType, ModuleDispatchProps } from '../../../types
 import { useUserContext } from './adapter/userContext';
 import { getAgentDatasetParams, getSubapps } from './sub/utils';
 
-import { getErrText } from '@fastgpt/global/common/error/utils';
 import { buildDefaultAgentSystemPrompt } from '../../../../ai/llm/agentLoop/interface';
 import {
   assertSandboxAvailable,
@@ -26,6 +25,7 @@ import {
 import { getWorkflowFileMaxAmount } from '../../../utils/context';
 import { loadWorkflowModelResource } from '../../../resource/service';
 import { runtimeSummaryToNodeSummary, stripNodeSummaryErrorFields } from '../../utils/summary';
+import { getNodeErrResponse } from '../../utils';
 import {
   buildAgentLoopCoreDoneMemories,
   buildAgentLoopCoreFinalAssistantOutput,
@@ -317,7 +317,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       });
     // 3. 运行单主 loop。
     // 如果上一轮因 ask_user 暂停，这里会把用户回答作为 ask tool response 接回原 messages。
-    const { summary: outputSummary } = await runAgentLoopCoreWithSummary({
+    const { result: coreResult, summary: outputSummary } = await runAgentLoopCoreWithSummary({
       provider,
       runtime,
       input: buildAgentLoopCoreInput({
@@ -374,33 +374,30 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       hideReason: aiChatReasoning === false
     });
 
-    return {
+    const result = {
       data: {
         [NodeOutputKeyEnum.answerText]: finalOutput.answerText
       },
-      ...(outputSummary.errorText && {
-        error: {
-          [NodeOutputKeyEnum.errorText]: outputSummary.errorText
-        }
-      }),
       ...(provider === 'piAgent' && {
         [DispatchNodeResponseKeyEnum.memories]: buildAgentLoopCoreDoneMemories({ nodeId })
       }),
       [DispatchNodeResponseKeyEnum.assistantResponses]: finalOutput.assistantResponses
     };
+    // 异常与错误分支输出必须同时返回，空错误文本也不能让节点走成功分支。
+    return coreResult.status === 'error'
+      ? {
+          ...result,
+          rawError: coreResult.error,
+          error: { [NodeOutputKeyEnum.errorText]: outputSummary.errorText ?? '' }
+        }
+      : result;
   } catch (error) {
     // dispatch 层兜底：异常仅清理 Pi 的原生恢复状态；内部详情已经由 sink 发布。
     getLogger(LogCategories.MODULE.AI.AGENT).error(`[Agent] dispatchRunAgent caught error`, {
       error
     });
-    const errorText = getErrText(error);
     return {
-      error: {
-        [NodeOutputKeyEnum.errorText]: errorText
-      },
-      [DispatchNodeResponseKeyEnum.toolResponse]: {
-        error: errorText
-      },
+      ...getNodeErrResponse({ error }),
       ...(provider === 'piAgent' && {
         [DispatchNodeResponseKeyEnum.memories]: buildAgentLoopCoreProviderStateMemories({
           nodeId,

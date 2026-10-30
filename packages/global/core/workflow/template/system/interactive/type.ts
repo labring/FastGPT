@@ -140,8 +140,8 @@ export type UserSelectOptionItemType = z.infer<typeof UserSelectOptionItemSchema
 export const UserSelectInteractiveSchema = z.object({
   type: z.literal('userSelect'),
   params: z.object({
-    // 说明文字是可选的输入。
-    description: z.string().default(''),
+    // 空说明在 Mongo Mixed 更新后可能从 undefined 变为 null，读取旧快照时统一为空串。
+    description: z.preprocess((value) => value ?? '', z.string()),
     userSelectOptions: z.array(UserSelectOptionItemSchema),
     userSelectedVal: z.string().optional()
   })
@@ -184,8 +184,8 @@ export type UserInputFormItemType = z.infer<typeof UserInputFormItemSchema>;
 export const UserInputInteractiveSchema = z.object({
   type: z.literal('userInput'),
   params: z.object({
-    // 说明文字是可选输入，缺省为空串。
-    description: z.string().default(''),
+    // 与用户选择保持一致，兼容持久化快照中的空说明。
+    description: z.preprocess((value) => value ?? '', z.string()),
     inputForm: z.array(UserInputFormItemSchema),
     submitted: z.boolean().optional()
   })

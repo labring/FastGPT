@@ -8,6 +8,7 @@ import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
+import { UserConfigError } from '@fastgpt/global/common/error/utils';
 import { getRunningSandboxId } from '@fastgpt/service/core/ai/sandbox/utils/id';
 import { getSandboxRuntimeProfile } from '@fastgpt/service/core/ai/sandbox/application/runtime';
 import { createNodeSummary } from '@fastgpt/service/core/workflow/dispatch/utils/summary';
@@ -788,6 +789,37 @@ describe('dispatchRunAgent user context', () => {
       }
     ]);
   });
+
+  it.each([new UserConfigError('Invalid API key'), new Error(''), undefined])(
+    'returns error output together with the original core exception: %j',
+    async (error) => {
+      const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
+      runAgentLoopMock.mockResolvedValueOnce({
+        status: 'error',
+        error,
+        completeMessages: [],
+        assistantMessages: [],
+        requestIds: [],
+        finishReason: 'error',
+        usages: []
+      });
+
+      let resultPromise: Promise<any>;
+      runWithContext(
+        {
+          mcpClientMemory: {}
+        },
+        () => {
+          resultPromise = dispatchRunAgent(createProps());
+        }
+      );
+      const result = await resultPromise!;
+
+      expect(Object.hasOwn(result, 'rawError')).toBe(true);
+      expect(result.rawError).toBe(error);
+      expect(result.error).toEqual({ system_error_text: error?.message ?? '' });
+    }
+  );
 
   it('does not duplicate final answer already persisted from answer_delta', async () => {
     const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');

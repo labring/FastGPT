@@ -63,6 +63,21 @@ describe('WorkflowBuilderPreviewComposer', () => {
     vi.unstubAllGlobals();
   });
 
+  it.each([undefined, null, {}, { arguments: 'not JSON' }])(
+    'does not offer confirmation for incomplete preview params: %j',
+    async (params) => {
+      await act(async () =>
+        root.render(
+          React.createElement(WorkflowBuilderPreviewComposer, {
+            interactive: { ...interactive, params } as unknown as WorkflowBuilderPreviewInteractive
+          })
+        )
+      );
+      expect(mocks.composer).not.toHaveBeenCalled();
+      expect(mocks.continueInteractive).not.toHaveBeenCalled();
+    }
+  );
+
   it.each<{
     detail: AgentAskAnswerDetail;
     action: 'confirm' | 'revise' | 'cancel';

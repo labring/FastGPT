@@ -19,6 +19,7 @@ import MyLoading from '../MyLoading';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '../../common/Icon';
 import { useMenuListPresence } from './useMenuListPresence';
+import { useCloseOnFlowNodeDragAreaPointerDown } from '../../../hooks/useCloseOnFlowNodeDragAreaPointerDown';
 
 const useBrowserLayoutEffect = typeof window === 'undefined' ? useEffect : useLayoutEffect;
 
@@ -285,6 +286,7 @@ const MultipleRowSelect = React.memo(function MultipleRowSelect({
   rowMinWidth = 'auto'
 }: MultipleRowSelectProps) {
   const ButtonRef = useRef<HTMLButtonElement>(null);
+  const OutsideClickRef = useRef<HTMLDivElement>(null);
 
   const { isOpen, onOpen, onClose } = useDisclosure({ onClose: onCloseFunc });
   const [cloneValue, setCloneValue] = useState<(string | undefined)[]>(() =>
@@ -462,9 +464,11 @@ const MultipleRowSelect = React.memo(function MultipleRowSelect({
       )}
     </MenuList>
   ) : null;
+  useCloseOnFlowNodeDragAreaPointerDown(OutsideClickRef, onClose, isOpen);
 
   return (
     <Box
+      ref={OutsideClickRef}
       css={css({
         '& div:not([data-preserve-width])': {
           width: 'auto !important'
@@ -544,6 +548,8 @@ const MultipleRowArraySelect = React.memo(function MultipleRowArraySelect({
     onOpen();
     onOpenFunc?.();
   }, [onOpen, onOpenFunc]);
+
+  useCloseOnFlowNodeDragAreaPointerDown(ref, onClose, isOpen);
 
   return (
     <Box ref={ref} position={'relative'}>

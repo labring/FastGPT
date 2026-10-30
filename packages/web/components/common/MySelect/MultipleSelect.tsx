@@ -27,6 +27,7 @@ import FilterSearchInput, { filterSelectOptionsBySearch } from '../TagFilter/Fil
 import { useStaticVirtualList } from '../../../hooks/useVirtualList';
 import MyIconButton from '../Icon/button';
 import { useMenuListPresence } from './useMenuListPresence';
+import { useCloseOnFlowNodeDragAreaPointerDown } from '../../../hooks/useCloseOnFlowNodeDragAreaPointerDown';
 
 const menuItemStyles: MenuItemProps = {
   borderRadius: 'sm',
@@ -537,6 +538,7 @@ const MultipleSelect = <T = any,>({
   ...props
 }: SelectProps<T>) => {
   const tagsContainerRef = useRef<HTMLDivElement>(null);
+  const outsideClickRef = useRef<HTMLDivElement>(null);
 
   const { t } = useTranslation();
   const { isOpen, onOpen: originalOnOpen, onClose } = useDisclosure();
@@ -546,6 +548,8 @@ const MultipleSelect = <T = any,>({
     originalOnOpen();
     onOpenFunc?.();
   }, [originalOnOpen, onOpenFunc]);
+
+  useCloseOnFlowNodeDragAreaPointerDown(outsideClickRef, onClose, isOpen && !isDisabled);
 
   const canSearch = isSearch || setInputValue !== undefined;
   const searchValue = inputValue ?? innerInputValue;
@@ -857,7 +861,7 @@ const MultipleSelect = <T = any,>({
   );
 
   return (
-    <Box h={'100%'} w={'100%'}>
+    <Box ref={outsideClickRef} h={'100%'} w={'100%'}>
       <MultipleSelectMenu
         isOpen={isMenuOpen}
         isDisabled={isDisabled}

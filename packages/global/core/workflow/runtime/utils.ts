@@ -1,4 +1,3 @@
-import { AgentAskInteractiveSchema } from '../../ai/agent/type';
 import json5 from 'json5';
 import { ChatRoleEnum } from '../../../core/chat/constants';
 import type { ChatItemMiniType } from '../../../core/chat/type';
@@ -6,8 +5,11 @@ import type { NodeOutputItemType, RuntimeNodeItemType } from './type';
 import { createChatCompletionDeltaResponse } from '../../ai/llm/utils';
 import { NodeInputKeyEnum, NodeOutputKeyEnum, WorkflowIOValueTypeEnum } from '../constants';
 import { FlowNodeTypeEnum } from '../node/constant';
-import { type WorkflowInteractiveResponseType } from '../template/system/interactive/type';
-import { WorkflowBuilderPreviewInteractiveSchema } from '../builder/type';
+import {
+  InteractiveNodeResponseTypeSchema,
+  type InteractiveNodeResponseType,
+  type WorkflowInteractiveResponseType
+} from '../template/system/interactive/type';
 import type { RuntimeEdgeItemType, StoreEdgeItemType } from '../type/edge';
 import type { FlowNodeOutputItemType } from '../type/io';
 import type { StoreNodeItemType } from '../type/node';
@@ -38,13 +40,28 @@ export const extractDeepestInteractive = (
   let current = interactive;
   let depth = 0;
 
-  while (depth < MAX_DEPTH && current?.params && 'childrenResponse' in current.params) {
+  while (
+    depth < MAX_DEPTH &&
+    current?.params &&
+    typeof current.params === 'object' &&
+    'childrenResponse' in current.params
+  ) {
     current = current.params.childrenResponse;
     depth++;
   }
 
   return current;
 };
+
+/**
+ * 校验可展示及等待回复的叶子交互，跳过缺字段、旧协议和未完整展开的子交互。
+ * 仅校验节点载荷，不要求历史消息包含调度字段，也不替换原对象，保留恢复执行所需元数据。
+ */
+export const isValidInteractive = (value: unknown): value is InteractiveNodeResponseType => {
+  const result = InteractiveNodeResponseTypeSchema.safeParse(value);
+  return result.success && !isChildInteractive(result.data.type);
+};
+
 export const getMaxHistoryLimitFromNodes = (nodes: StoreNodeItemType[]): number => {
   // Agent 的恢复来源是完整 ChatItem；Mongo limit=0 表示不裁剪，模型侧仍按最新 checkpoint 压缩。
   if (
@@ -205,12 +222,8 @@ export const getLastInteractiveValue = (
     }
 
     const finalInteractive = extractDeepestInteractive(lastValue.interactive);
-    if (!finalInteractive) return;
+    if (!isValidInteractive(finalInteractive)) return;
     if (isAskInteractive(finalInteractive)) {
-      const schema = isAgentAskInteractive(finalInteractive)
-        ? AgentAskInteractiveSchema
-        : WorkflowBuilderPreviewInteractiveSchema;
-      if (!schema.safeParse(finalInteractive).success) return;
       return histories[lastAIIndex + 1]?.obj === ChatRoleEnum.Human
         ? undefined
         : lastValue.interactive;

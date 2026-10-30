@@ -3,7 +3,10 @@ import type {
   AIChatItemValueItemType,
   ChatHistoryItemResType
 } from '@fastgpt/global/core/chat/type';
-import { extractDeepestInteractive } from '@fastgpt/global/core/workflow/runtime/utils';
+import {
+  extractDeepestInteractive,
+  isValidInteractive
+} from '@fastgpt/global/core/workflow/runtime/utils';
 import React from 'react';
 import { useContextSelector } from 'use-context-selector';
 import {
@@ -190,13 +193,14 @@ const AIResponseBox = ({
   }
 
   if (showInteractive && 'interactive' in value && value.interactive) {
-    const interactive = extractDeepestInteractive(value.interactive);
-    if (interactive.type === 'userSelect') {
+    const rawInteractive = extractDeepestInteractive(value.interactive);
+    const interactive = isValidInteractive(rawInteractive) ? rawInteractive : undefined;
+    if (interactive?.type === 'userSelect') {
       responseBlocks.push(
         <RenderUserSelectInteractive key="interactive" interactive={interactive} />
       );
     }
-    if (interactive.type === 'userInput') {
+    if (interactive?.type === 'userInput') {
       responseBlocks.push(
         <RenderUserFormInteractive
           key="interactive"
@@ -206,12 +210,12 @@ const AIResponseBox = ({
         />
       );
     }
-    if (interactive.type === 'paymentPause') {
+    if (interactive?.type === 'paymentPause') {
       responseBlocks.push(
         <RenderPaymentPauseInteractive key="interactive" interactive={interactive} />
       );
     }
-    if (interactive.type === 'workflowBuilderPreview') {
+    if (interactive?.type === 'workflowBuilderPreview') {
       responseBlocks.push(
         <RenderWorkflowBuilderPreview key="interactive" interactive={interactive} />
       );
@@ -224,7 +228,7 @@ const AIResponseBox = ({
         key={`chatAgentBuilderVersion-${value.chatAgentBuilderVersion.s3Key}`}
         version={value.chatAgentBuilderVersion}
         responseChatItemId={chatItemDataId}
-        isChatting={isChatting}
+        isChatting={disableStreamingInteraction}
       />
     );
   }

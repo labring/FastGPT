@@ -19,7 +19,6 @@ export const createWorkflowRuntimeSummary = (): WorkflowRuntimeSummaryType => {
   const summary: WorkflowRuntimeSummaryType = {
     responseIds: [],
     finishedNodeIds: [],
-    hasError: false,
     errorCount: 0,
     hasLoopRunBreak: false,
     hasToolStop: false,
@@ -48,7 +47,6 @@ export const createNodeSummary = (): NodeSummaryCollector => {
     llmOutputTokens: 0,
     responseIds: [],
     finishedNodeIds: [],
-    hasError: false,
     errorCount: 0,
     citeCollectionIds: [],
     hasLoopRunBreak: false,
@@ -60,7 +58,6 @@ export const createNodeSummary = (): NodeSummaryCollector => {
       if (!source) return;
       summary.responseIds?.push(...(source.responseIds ?? []));
       summary.finishedNodeIds?.push(...(source.finishedNodeIds ?? []));
-      summary.hasError ||= !!source.hasError;
       summary.errorText = source.errorText || summary.errorText;
       summary.errorCount = (summary.errorCount || 0) + (source.errorCount || 0);
       summary.citeCollectionIds?.push(...(source.citeCollectionIds ?? []));
@@ -90,7 +87,6 @@ export const getNodeSummaryData = (summary: NodeSummary): NodeSummary => ({
   ...(summary.llmOutputTokens ? { llmOutputTokens: summary.llmOutputTokens } : {}),
   ...(summary.responseIds?.length ? { responseIds: [...summary.responseIds] } : {}),
   ...(summary.finishedNodeIds?.length ? { finishedNodeIds: [...summary.finishedNodeIds] } : {}),
-  ...(summary.hasError ? { hasError: true } : {}),
   ...(summary.errorText ? { errorText: summary.errorText } : {}),
   ...(summary.errorCount ? { errorCount: summary.errorCount } : {}),
   ...(summary.citeCollectionIds?.length
@@ -126,7 +122,6 @@ export const stripNodeSummaryErrorFields = (summary?: NodeSummary): NodeSummary 
   if (!summary) return undefined;
 
   const controlSummary = { ...summary };
-  delete controlSummary.hasError;
   delete controlSummary.errorText;
   delete controlSummary.errorCount;
 
@@ -254,11 +249,10 @@ export const summarizeRuntimeNodeResponses = (
     if (
       !response.errorCaptured &&
       !isToolExecutionResponse(response) &&
-      (response.error || response.errorText)
+      (response.error !== undefined || response.errorText !== undefined)
     ) {
-      summary.hasError = true;
       summary.errorCount += 1;
-      summary.errorText = getErrText(response.error || response.errorText);
+      summary.errorText = getErrText(response.error ?? response.errorText);
     }
     if (response.moduleType === FlowNodeTypeEnum.loopRunBreak) {
       summary.hasLoopRunBreak = true;
@@ -341,7 +335,6 @@ export const mergeWorkflowRuntimeSummary = ({
 
       merged.responseIds.push(...(summary.responseIds ?? []));
       merged.finishedNodeIds.push(...(summary.finishedNodeIds ?? []));
-      merged.hasError ||= summary.hasError;
       if (summary.errorText) {
         merged.errorText = summary.errorText;
       }
@@ -370,7 +363,6 @@ export const mergeWorkflowRuntimeSummary = ({
   if (nodeSummary) {
     merged.responseIds.push(...(nodeSummary.responseIds ?? []));
     merged.finishedNodeIds.push(...(nodeSummary.finishedNodeIds ?? []));
-    merged.hasError ||= !!nodeSummary.hasError;
     if (nodeSummary.errorText) {
       merged.errorText = nodeSummary.errorText;
     }

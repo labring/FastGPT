@@ -22,6 +22,7 @@ import {
 import type { ButtonProps, MenuItemProps, MenuProps } from '@chakra-ui/react';
 import MyIcon from '../Icon';
 import { useRequest } from '../../../hooks/useRequest';
+import { useCloseOnFlowNodeDragAreaPointerDown } from '../../../hooks/useCloseOnFlowNodeDragAreaPointerDown';
 import MyDivider from '../MyDivider';
 import type { useScrollPagination } from '../../../hooks/useScrollPagination';
 import Avatar from '../Avatar';
@@ -287,6 +288,7 @@ const SelectMenu = React.memo(function SelectMenu({
   ...props
 }: SelectMenuProps) {
   const ButtonRef = useRef<HTMLButtonElement>(null);
+  const MenuRef = useRef<HTMLDivElement>(null);
   const MenuListRef = useRef<HTMLDivElement>(null);
   const SelectedItemRef = useRef<HTMLDivElement>(null);
   const SearchInputRef = useRef<HTMLInputElement>(null);
@@ -382,6 +384,8 @@ const SelectMenu = React.memo(function SelectMenu({
     e.preventDefault();
     e.stopPropagation();
   };
+
+  useCloseOnFlowNodeDragAreaPointerDown(MenuRef, onClose, isOpen);
 
   const filterList = useMemo(() => {
     if (!isSearch || !search) {
@@ -502,7 +506,7 @@ const SelectMenu = React.memo(function SelectMenu({
   );
 
   return (
-    <Box>
+    <Box ref={MenuRef}>
       {isMounted ? (
         <Menu
           autoSelect={false}

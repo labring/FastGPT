@@ -1,3 +1,17 @@
+import { execFile } from 'node:child_process';
+import {
+  chmod,
+  lstat,
+  mkdtemp,
+  readdir,
+  readFile,
+  rm,
+  stat,
+  symlink,
+  writeFile
+} from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 import type { ICommandExecution } from '@/contracts';
 import { CommandFilesystemPolyfill } from '@/polyfills/command-filesystem';
@@ -50,9 +64,36 @@ describe('CommandFilesystemPolyfill', () => {
     });
   });
 
+  it('refuses a fallback read whose output was truncated', async () => {
+    const { execute, polyfill } = setup();
+    execute
+      .mockResolvedValueOnce(commandResult('STAT_FAILED'))
+      .mockResolvedValueOnce({ ...commandResult('b2xkCg=='), truncated: true });
+
+    await expect(
+      polyfill.replaceContent([{ path: '/workspace/big.txt', oldContent: 'old', newContent: '' }])
+    ).rejects.toMatchObject({ path: '/workspace/big.txt', fileErrorCode: 'TRANSFER_ERROR' });
+    expect(execute).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not replace a symlink it cannot resolve', async () => {
+    const { execute, polyfill } = setup();
+    execute
+      .mockResolvedValueOnce(commandResult('4'))
+      .mockResolvedValueOnce(commandResult('b2xkCg=='))
+      .mockResolvedValueOnce(commandResult('', 'sh: readlink: not found', 127));
+
+    await expect(
+      polyfill.replaceContent([
+        { path: '/workspace/link.txt', oldContent: 'old', newContent: 'new' }
+      ])
+    ).rejects.toMatchObject({ path: '/workspace/link.txt' });
+    expect(execute).toHaveBeenCalledTimes(3);
+  });
+
   it('chunks encoded writes without interpolating source text', async () => {
     const { execute, polyfill } = setup();
-    const content = '$(touch /tmp/pwned)\n'.repeat(100);
+    const content = '$(touch /tmp/pwned)\n'.repeat(3000);
     const byteLength = new TextEncoder().encode(content).byteLength;
 
     await expect(polyfill.writeTextFile('/workspace/file.txt', content)).resolves.toBe(byteLength);
@@ -156,6 +197,206 @@ MemAvailable:   6144000 kB`)
       memoryTotalMiB: 8000,
       memoryUsedMiB: 2000,
       timestamp: expect.any(Number)
+    });
+  });
+
+  describe.skipIf(process.platform === 'win32')('replaceContent', () => {
+    // 用真实 sh 执行命令，验证文件最终内容，而不是断言拼出的命令字符串。
+    const setupShell = async (
+      content: string | Uint8Array,
+      // 返回 true 时模拟该次命令的传输失败
+      failCommand: (command: string) => boolean = () => false
+    ) => {
+      const dir = await mkdtemp(join(tmpdir(), 'command-fs-'));
+      const path = join(dir, 'file.txt');
+      await writeFile(path, content);
+      // 显式 chmod，避免宿主 umask 影响初始权限
+      await chmod(path, 0o640);
+
+      const executor = {
+        execute: async (command: string): Promise<ExecuteResult> => {
+          if (failCommand(command)) throw new Error('connection lost');
+          return new Promise((resolve) => {
+            execFile('sh', ['-c', command], (error, stdout, stderr) => {
+              resolve(commandResult(stdout, stderr, error ? Number(error.code ?? 1) : 0));
+            });
+          });
+        },
+        executeStream: vi.fn(async () => {}),
+        executeBackground: vi.fn(async () => ({
+          sessionId: 'test-session',
+          kill: async () => {}
+        })),
+        interrupt: vi.fn(async () => {})
+      } satisfies ICommandExecution;
+
+      return {
+        path,
+        polyfill: new CommandFilesystemPolyfill(executor),
+        read: () => readFile(path, 'utf8'),
+        dir,
+        listDir: () => readdir(dir),
+        cleanup: () => rm(dir, { recursive: true, force: true })
+      };
+    };
+
+    it('replaces text containing regex characters and backslashes literally', async () => {
+      const { path, polyfill, read, cleanup } = await setupShell(
+        'const re = /a.b*/;\nconst p = "C:\\tmp\\[x]";\nconst t = `${cost}$`;\naxbb\n'
+      );
+      try {
+        await polyfill.replaceContent([
+          { path, oldContent: '/a.b*/', newContent: '/a\\.b+/' },
+          { path, oldContent: '"C:\\tmp\\[x]"', newContent: '"D:\\data & more"' },
+          { path, oldContent: '`${cost}$`', newContent: '`$1 & \\n`' }
+        ]);
+
+        await expect(read()).resolves.toBe(
+          'const re = /a\\.b+/;\nconst p = "D:\\data & more";\nconst t = `$1 & \\n`;\naxbb\n'
+        );
+      } finally {
+        await cleanup();
+      }
+    });
+
+    it('replaces multi-line and repeated text and keeps the file mode', async () => {
+      const { path, polyfill, read, cleanup } = await setupShell(
+        'function a() {\n  return 1;\n}\nfunction a() {\n  return 1;\n}\nend\n'
+      );
+      try {
+        await polyfill.replaceContent([
+          { path, oldContent: '{\n  return 1;\n}', newContent: '{\n  return 2;\n}' }
+        ]);
+
+        await expect(read()).resolves.toBe(
+          'function a() {\n  return 2;\n}\nfunction a() {\n  return 2;\n}\nend\n'
+        );
+        expect((await stat(path)).mode & 0o777).toBe(0o640);
+      } finally {
+        await cleanup();
+      }
+    });
+
+    it('keeps the original file when a write fails partway through', async () => {
+      const original = `${'0123456789abcdef'.repeat(6200)}old\n`;
+      let appends = 0;
+      const { path, polyfill, read, listDir, cleanup } = await setupShell(original, (command) =>
+        command.includes('base64 -d >>') ? ++appends === 2 : false
+      );
+      try {
+        await expect(
+          polyfill.replaceContent([{ path, oldContent: 'old', newContent: 'new' }])
+        ).rejects.toThrow('connection lost');
+
+        await expect(read()).resolves.toBe(original);
+        await expect(listDir()).resolves.toEqual(['file.txt']);
+      } finally {
+        await cleanup();
+      }
+    });
+
+    it('keeps the original file when the final rename fails', async () => {
+      const original = 'keep the old line\n';
+      const { path, polyfill, read, listDir, cleanup } = await setupShell(original, (command) =>
+        command.startsWith('mv -f')
+      );
+      try {
+        await expect(
+          polyfill.replaceContent([{ path, oldContent: 'old', newContent: 'new' }])
+        ).rejects.toThrow('connection lost');
+
+        await expect(read()).resolves.toBe(original);
+        await expect(listDir()).resolves.toEqual(['file.txt']);
+      } finally {
+        await cleanup();
+      }
+    });
+
+    it.each([
+      ['longer', `old\n${'valuable line\n'.repeat(4)}`],
+      ['shorter', 'old\n']
+    ])('edits the file a symlink points to when it is %s than the link', async (_, content) => {
+      const { path, polyfill, read, dir, cleanup } = await setupShell(content);
+      const link = join(dir, 'link.txt');
+      await symlink('file.txt', link);
+      try {
+        await polyfill.replaceContent([{ path: link, oldContent: 'old', newContent: 'new' }]);
+
+        await expect(read()).resolves.toBe(content.replace('old', 'new'));
+        expect((await lstat(link)).isSymbolicLink()).toBe(true);
+        expect((await stat(path)).mode & 0o777).toBe(0o640);
+        expect((await readdir(dir)).sort()).toEqual(['file.txt', 'link.txt']);
+      } finally {
+        await cleanup();
+      }
+    });
+
+    it('edits a file whose name is close to the length limit', async () => {
+      const { polyfill, dir, cleanup } = await setupShell('');
+      const path = join(dir, `${'n'.repeat(240)}.txt`);
+      await writeFile(path, 'old\n');
+      try {
+        await polyfill.replaceContent([{ path, oldContent: 'old', newContent: 'new' }]);
+
+        await expect(readFile(path, 'utf8')).resolves.toBe('new\n');
+        expect((await readdir(dir)).sort()).toEqual(['file.txt', `${'n'.repeat(240)}.txt`]);
+      } finally {
+        await cleanup();
+      }
+    });
+
+    it.skipIf(process.getuid?.() === 0)('reports a file it cannot read', async () => {
+      const { path, polyfill, cleanup } = await setupShell('old\n');
+      try {
+        await chmod(path, 0o000);
+        await expect(
+          polyfill.replaceContent([{ path, oldContent: 'old', newContent: 'new' }])
+        ).rejects.toMatchObject({ fileErrorCode: 'PERMISSION_DENIED' });
+      } finally {
+        await chmod(path, 0o640);
+        await cleanup();
+      }
+    });
+
+    it('keeps a UTF-8 BOM and rejects text that is not UTF-8', async () => {
+      const bom = await setupShell('\uFEFFconst answer = 1;\n');
+      try {
+        await bom.polyfill.replaceContent([{ path: bom.path, oldContent: '1', newContent: '2' }]);
+        await expect(readFile(bom.path)).resolves.toEqual(Buffer.from('\uFEFFconst answer = 2;\n'));
+      } finally {
+        await bom.cleanup();
+      }
+
+      const latin1 = Buffer.from('caf\xe9 old\n', 'latin1');
+      const binary = await setupShell(latin1);
+      try {
+        await expect(
+          binary.polyfill.replaceContent([
+            { path: binary.path, oldContent: 'old', newContent: 'new' }
+          ])
+        ).rejects.toMatchObject({ fileErrorCode: 'TRANSFER_ERROR' });
+        await expect(readFile(binary.path)).resolves.toEqual(latin1);
+      } finally {
+        await binary.cleanup();
+      }
+    });
+
+    it('rejects an empty search string and reports missing files', async () => {
+      const { path, polyfill, read, cleanup } = await setupShell('keep\n');
+      try {
+        await expect(
+          polyfill.replaceContent([{ path, oldContent: '', newContent: 'x' }])
+        ).rejects.toMatchObject({ path, fileErrorCode: 'INVALID_PATH' });
+        await expect(polyfill.readFile(`${path}.missing`)).rejects.toMatchObject({
+          fileErrorCode: 'FILE_NOT_FOUND'
+        });
+        await expect(
+          polyfill.replaceContent([{ path: `${path}.missing`, oldContent: 'a', newContent: 'b' }])
+        ).rejects.toMatchObject({ fileErrorCode: 'FILE_NOT_FOUND' });
+        await expect(read()).resolves.toBe('keep\n');
+      } finally {
+        await cleanup();
+      }
     });
   });
 });

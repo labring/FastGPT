@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 import { ApiRequestInputParseError } from '../../../common/zod/requestParseError';
-import { UserError } from '@fastgpt/global/common/error/utils';
+import { UserError, UserConfigError } from '@fastgpt/global/common/error/utils';
 import { ERROR_ENUM, ERROR_RESPONSE } from '@fastgpt/global/common/error/errorCode';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
@@ -96,6 +96,35 @@ describe('processError zod logging', () => {
     );
     expect(logger.info).not.toHaveBeenCalled();
   });
+
+  it('does not log expected user config errors', () => {
+    const processed = processError({
+      error: new UserConfigError('Invalid MCP URL'),
+      url: '/api/test',
+      defaultCode: 400
+    });
+
+    expect(processed).toMatchObject({
+      message: 'Invalid MCP URL',
+      httpStatus: 400
+    });
+    expect(logger.info).not.toHaveBeenCalled();
+    expect(logger.error).not.toHaveBeenCalled();
+  });
+
+  it('falls back safely when a serialized user config error has a non-string display message', () => {
+    const processed = processError({
+      error: {
+        name: 'UserConfigError',
+        message: 'Invalid API key',
+        displayMessage: { text: 'unexpected object' }
+      } as any,
+      url: '/api/test',
+      defaultCode: 400
+    });
+
+    expect(processed.message).toBe('Invalid API key');
+  });
 });
 
 describe('processError HTTP status mapping', () => {
@@ -140,6 +169,25 @@ describe('processError HTTP status mapping', () => {
     ).toBe('Model type mismatch: https://xxx');
     expect(processError({ error: new UserError('custom', '具体提示') }).message).toBe('具体提示');
   });
+  it('maps a config UserError to HTTP 400 even when defaultCode is 500', () => {
+    const error = new UserConfigError('MCP protocol mismatch');
+    const processed = processError({ error, defaultCode: 500 });
+    expect(processed.httpStatus).toBe(400);
+    expect(processed.code).toBe(400);
+
+    const res = { status: vi.fn().mockReturnThis(), json: vi.fn() } as unknown as Parameters<
+      typeof jsonRes
+    >[0];
+    jsonRes(res, { error, code: 500 });
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        code: 400,
+        message: 'MCP protocol mismatch'
+      })
+    );
+  });
+
   it('maps a missing file to HTTP 404', () => {
     const processed = processError({
       error: CommonErrEnum.fileNotFound

@@ -9,15 +9,25 @@ import type {
   ChatCompletionContentPartText,
   ChatCompletionMessageParam
 } from '@fastgpt/global/core/ai/llm/type';
-import { audioFileType, imageFileType, videoFileType } from '@fastgpt/global/common/file/constants';
+import { audioFileType } from '@fastgpt/global/common/file/constants';
 import { axios } from '../../../common/api/axios';
 
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { getImageBase64 } from '../../../common/file/image/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
+import {
+  parseFileExtensionFromUrl,
+  parseFilenameExtension
+} from '@fastgpt/global/common/string/tools';
 import { getLogger, LogCategories } from '../../../common/logger';
 import { serviceEnv } from '../../../env';
+import {
+  classifyUrlMediaType,
+  createFileClassificationContext,
+  type FileClassificationContext,
+  type FileClassificationMediaType
+} from '../../../common/file/classification';
 import {
   ACTIVE_PLAN_END_TAG,
   ACTIVE_PLAN_START_TAG,
@@ -156,6 +166,7 @@ export const loadRequestMessages = async ({
   useAudio = false,
   useVideo = false,
   extractFiles,
+  fileContext = createFileClassificationContext(),
   supportReason = false
 }: {
   messages: ChatCompletionMessageParam[];
@@ -163,58 +174,10 @@ export const loadRequestMessages = async ({
   useAudio?: boolean;
   useVideo?: boolean;
   extractFiles?: boolean;
+  /** 在一次请求或 Agent 运行内复用分类和降级结果，不跨请求共享。 */
+  fileContext?: FileClassificationContext;
   supportReason?: boolean;
 }) => {
-  type MediaFileType = 'image' | 'audio' | 'video';
-
-  /**
-   * 提取文件扩展名并统一成小写。
-   * 空文件名或无扩展名时返回空字符串，方便后续类型匹配直接失败。
-   */
-  const getFileExtension = (filename: string) => filename.split('.').pop()?.toLowerCase() || '';
-
-  /**
-   * 判断扩展名是否命中 FastGPT 配置的文件类型白名单。
-   * fileTypes 使用逗号分隔的 .ext 列表，这里保持与全局常量格式一致。
-   */
-  const matchFileType = (fileTypes: string, extension: string) =>
-    !!extension && fileTypes.split(',').some((item) => item.trim() === `.${extension}`);
-
-  /**
-   * 从可访问 URL 中恢复文件名，用于判断音频格式。
-   * S3 签名链接可能把原始文件名放在 query 里，普通链接则取 pathname 末尾。
-   */
-  const getFilenameFromUrl = (url: string, fallbackName?: string) => {
-    if (fallbackName && !fallbackName.startsWith('http')) return fallbackName;
-
-    try {
-      const parsedUrl = new URL(url, 'http://localhost:3000');
-      const filename =
-        parsedUrl.searchParams.get('filename') || parsedUrl.pathname.split('/').pop();
-      return filename || fallbackName || 'file';
-    } catch {
-      return fallbackName || 'file';
-    }
-  };
-
-  /**
-   * 根据 URL 或签名链接里的文件名判断媒体类型。
-   * 未命中图片、音频、视频白名单时统一归为普通 file。
-   */
-  const getFileTypeFromUrl = (url: string): MediaFileType | 'file' => {
-    const mediaFileTypes = [
-      { type: 'image', fileTypes: imageFileType },
-      { type: 'audio', fileTypes: audioFileType },
-      { type: 'video', fileTypes: videoFileType }
-    ] as const satisfies { type: MediaFileType; fileTypes: string }[];
-
-    const filename = getFilenameFromUrl(url, url);
-    const extension = getFileExtension(filename);
-    return (
-      mediaFileTypes.find(({ fileTypes }) => matchFileType(fileTypes, extension))?.type || 'file'
-    );
-  };
-
   /**
    * 从 URL 下载二进制内容并转成 data URL。
    * 用于供应商不能访问内部文件或模型配置要求 base64 的媒体输入。
@@ -261,14 +224,22 @@ export const loadRequestMessages = async ({
 
   /**
    * 已识别为音频的输入始终生成 input_audio。
-   * 已知 URL 格式时保留 format；未知时省略，不按名称过滤附件或猜测编码。
+   * OpenAI input_audio 协议要求显式提供 format（如 mp3/wav），而 image_url/video_url 仅需 url；
+   * 优先从探测出的真实文件名提取后缀，否则回退到 URL 后缀，未知格式时省略。
    */
-  const createAudioContentPart = (data: string, format = ''): ChatCompletionContentPart => {
+  const createAudioContentPart = (
+    data: string,
+    filename?: string
+  ): Extract<ChatCompletionContentPart, { type: 'input_audio' }> => {
+    const format = parseFilenameExtension(filename) || parseFileExtensionFromUrl(data);
+    const isSupportedAudioFormat =
+      !!format && audioFileType.split(',').some((item) => item.trim() === `.${format}`);
+
     return {
       type: 'input_audio',
       input_audio: {
         data,
-        ...(matchFileType(audioFileType, format) ? { format } : {})
+        ...(isSupportedAudioFormat ? { format } : {})
       }
     };
   };
@@ -277,7 +248,9 @@ export const loadRequestMessages = async ({
    * 创建视频 content part。
    * 视频协议目前只保留 URL，是否需要 base64 由归一化阶段统一判断。
    */
-  const createVideoContentPart = (url: string): ChatCompletionContentPart => ({
+  const createVideoContentPart = (
+    url: string
+  ): Extract<ChatCompletionContentPart, { type: 'video_url' }> => ({
     type: 'video_url',
     video_url: {
       url
@@ -292,9 +265,17 @@ export const loadRequestMessages = async ({
     url.startsWith('/') || serviceEnv.MULTIPLE_DATA_TO_BASE64;
 
   /**
-   * 仅从短文本中识别媒体 URL。普通文档 URL 仍作为文本保留，不在这里转成 LLM 媒体输入。
+   * 剥离系统自动注入的 <system-reminder> 块，仅对用户原始输入做长度判断与链接提取。
+   * 避免挂载技能、知识库或对话文件后 reminder 长度超过 500 字符导致提取失效，或误提取 reminder 内的链接。
    */
-  const extractMediaUrls = (input: string) => {
+  const stripSystemReminder = (input: string) =>
+    input.replace(/<system-reminder>[\s\S]*?<\/system-reminder>\s*/g, '');
+
+  /**
+   * 从短文本中提取候选 HTTP(S) 链接并做尾部标点与 Markdown 语法清洗。
+   * 具体是否为媒体文件交由统一分类入口 classifyUrlMediaType 判断，支持无后缀短链探测。
+   */
+  const extractCandidateUrls = (input: string) => {
     const urlRegex = /(https?:\/\/[^\s<>"'\\]+)/gi;
     const normalizeExtractedUrl = (rawUrl: string) => {
       // Markdown 链接里的 URL 可能同时出现在 label 和 href 中，避免把 `](...)` 当成 URL 的一部分。
@@ -307,42 +288,51 @@ export const loadRequestMessages = async ({
 
     const normalizedUrls = Array.from(input.matchAll(urlRegex), (m) => normalizeExtractedUrl(m[0]));
 
-    return Array.from(new Set(normalizedUrls)).filter((url) => getFileTypeFromUrl(url) !== 'file');
+    return Array.from(new Set(normalizedUrls));
   };
 
   /**
-   * 根据当前模型能力把文本里的媒体 URL 转成 content part。
-   * 不支持的媒体类型返回 undefined，后续会保持原文本输入。
+   * 根据统一链接分类结果与当前模型能力把文本里的媒体 URL 转成 content part。
+   * 支持无显式后缀的下载短链按元数据/响应探测识别；普通文档 URL 或未开启对应多模态能力时返回 undefined。
    */
-  const createMediaContentPartFromUrl = (url: string): ChatCompletionContentPart | undefined => {
-    const fileType = getFileTypeFromUrl(url);
+  const createMediaContentPartFromUrl = async (
+    url: string
+  ): Promise<ChatCompletionContentPart | undefined> => {
+    const parsed = await classifyUrlMediaType({ url, fileContext });
+    if (!parsed) return;
 
-    if (fileType === 'image' && useVision) {
+    if (parsed.type === 'image' && useVision) {
       return createImageContentPart(url);
     }
 
-    if (fileType === 'audio' && useAudio) {
-      return createAudioContentPart(url, getFileExtension(getFilenameFromUrl(url)));
+    if (parsed.type === 'audio' && useAudio) {
+      return createAudioContentPart(url, parsed.filename);
     }
 
-    if (fileType === 'video' && useVideo) {
+    if (parsed.type === 'video' && useVideo) {
       return createVideoContentPart(url);
     }
   };
 
   /**
    * 从短文本里提取可由当前模型能力消费的媒体 URL，同时保留原始文本。
-   * 长文本不做 URL 拆分，避免把普通上下文里的链接误判成模型输入文件。
+   * 计数和提取前先剥离 <system-reminder>，长文本不做 URL 拆分，避免把普通上下文里的链接误判成模型输入文件。
    */
-  const parseTextUserContentParts = (input: string): ChatCompletionContentPart[] => {
+  const parseTextUserContentParts = async (input: string): Promise<ChatCompletionContentPart[]> => {
     const shouldExtractFiles = extractFiles ?? useVision;
-    if (!shouldExtractFiles || input.length >= 500) {
+    const userText = stripSystemReminder(input);
+    if (!shouldExtractFiles || (!useVision && !useAudio && !useVideo) || userText.length >= 500) {
       return [{ type: 'text', text: input }];
     }
 
-    const mediaParts = extractMediaUrls(input)
-      .map((url) => createMediaContentPartFromUrl(url))
-      .filter(Boolean) as ChatCompletionContentPart[];
+    const candidateUrls = extractCandidateUrls(userText);
+    if (candidateUrls.length === 0) {
+      return [{ type: 'text', text: input }];
+    }
+
+    const mediaParts = (
+      await Promise.all(candidateUrls.map((url) => createMediaContentPartFromUrl(url)))
+    ).filter((part): part is ChatCompletionContentPart => part !== undefined);
 
     // Too many media files return text
     if (mediaParts.length > 4) {
@@ -445,26 +435,23 @@ export const loadRequestMessages = async ({
     item: Extract<ChatCompletionContentPart, { type: 'file_url' }>
   ): Promise<ChatCompletionContentPart | undefined> => {
     const { key: _key, ...fileItem } = item;
-    const fileType = fileItem.fileType || getFileTypeFromUrl(fileItem.url);
+    if (!useAudio && !useVideo) return;
+
+    const parsed = await classifyUrlMediaType({
+      url: fileItem.url,
+      type: fileItem.fileType as FileClassificationMediaType | undefined,
+      fileContext
+    });
+    if (!parsed) return;
 
     // 上传文件会先以 FastGPT 内部的 file_url 存在，发给模型前需要转成供应商支持的
     // input_audio / video_url。普通 file 当前不直接透传给 LLM。
-    if (fileType === 'audio' && useAudio) {
-      const fileUrl = fileItem.url;
-      const audioUrl = shouldLoadMediaAsBase64(fileUrl)
-        ? await loadUrlAsBase64Data(fileUrl)
-        : fileUrl;
-
-      return createAudioContentPart(audioUrl, getFileExtension(getFilenameFromUrl(fileUrl)));
+    if (parsed.type === 'audio' && useAudio) {
+      return normalizeAudioContentPart(createAudioContentPart(fileItem.url, parsed.filename));
     }
 
-    if (fileType === 'video' && useVideo) {
-      const fileUrl = fileItem.url;
-      const videoUrl = shouldLoadMediaAsBase64(fileUrl)
-        ? await loadUrlAsBase64Data(fileUrl)
-        : fileUrl;
-
-      return createVideoContentPart(videoUrl);
+    if (parsed.type === 'video' && useVideo) {
+      return normalizeVideoContentPart(createVideoContentPart(fileItem.url));
     }
   };
 
@@ -503,10 +490,10 @@ export const loadRequestMessages = async ({
     }
 
     if (item.type === 'file_url') {
-      const fileType = item.fileType || getFileTypeFromUrl(item.url);
-      if (fileType === 'audio' && useAudio) return item;
-      if (fileType === 'video' && useVideo) return item;
-      return;
+      if (item.fileType === 'file') return;
+      if (item.fileType === 'audio') return useAudio ? item : undefined;
+      if (item.fileType === 'video') return useVideo ? item : undefined;
+      return useAudio || useVideo ? item : undefined;
     }
 
     if (item.type === 'input_audio') {
@@ -536,7 +523,7 @@ export const loadRequestMessages = async ({
       if (content === '') return;
 
       const normalizedContent = await normalizeMediaContentParts(
-        parseTextUserContentParts(content)
+        await parseTextUserContentParts(content)
       );
       if (normalizedContent.length === 0) return;
       return normalizedContent;

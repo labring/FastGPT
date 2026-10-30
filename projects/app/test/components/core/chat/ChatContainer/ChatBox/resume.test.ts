@@ -344,7 +344,15 @@ describe('mergeResumeCompletedChatRecords', () => {
               arguments: JSON.stringify({
                 reason: '',
                 blockerType: 'user_choice',
-                questions: [{ question: 'Question', options: [] }]
+                questions: [
+                  {
+                    question: 'Question',
+                    options: [
+                      { summary: 'A', value: 'A' },
+                      { summary: 'B', value: 'B' }
+                    ]
+                  }
+                ]
               })
             }
           };
@@ -455,4 +463,23 @@ describe('mergeResumeCompletedChatRecords', () => {
       'child-response'
     ]);
   });
+});
+
+describe('resume interactive compatibility', () => {
+  it.each(['userInput', 'workflowBuilderPreview'])(
+    'skips invalid replayed %s interactions and accepts a valid replacement',
+    (type) => {
+      const invalid = { type, params: null } as unknown as WorkflowInteractiveResponseType;
+      const valid = { type: 'paymentPause', params: {} } as WorkflowInteractiveResponseType;
+      expect(
+        shouldAppendResumeInteractive({ existingValues: [], incomingInteractive: invalid })
+      ).toBe(false);
+      expect(
+        shouldAppendResumeInteractive({
+          existingValues: [{ interactive: invalid }],
+          incomingInteractive: valid
+        })
+      ).toBe(true);
+    }
+  );
 });

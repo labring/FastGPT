@@ -67,6 +67,9 @@ export const DispatchNodeResponseSchema = z
       .meta({ description: '错误信息' }),
     errorText: z.string().optional().meta({ description: '错误文本' }), // Just show
     errorCaptured: z.boolean().optional().meta({ description: '错误已被 catch 分支捕获' }),
+    isToolCall: z.boolean().optional().meta({
+      description: '工具节点是否由模型工具调用调度；false 表示工作流直接执行，缺省兼容历史响应'
+    }),
 
     customInputs: z.record(z.string(), z.any()).optional().meta({ description: '自定义输入' }),
     customOutputs: z.record(z.string(), z.any()).optional().meta({ description: '自定义输出' }),

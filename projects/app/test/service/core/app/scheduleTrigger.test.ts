@@ -128,7 +128,6 @@ describe('getScheduleTriggerApp', () => {
       workflowRuntimeSummary: {
         responseIds: [],
         finishedNodeIds: [],
-        hasError: false,
         citeCollectionIds: [],
         errorCount: 0,
         totalPoints: 0,
@@ -178,7 +177,6 @@ describe('getScheduleTriggerApp', () => {
       workflowRuntimeSummary: {
         responseIds: [],
         finishedNodeIds: [],
-        hasError: false,
         citeCollectionIds: [],
         errorCount: 0,
         totalPoints: 0,
