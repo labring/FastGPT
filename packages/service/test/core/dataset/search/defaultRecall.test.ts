@@ -3,6 +3,7 @@ import { DatasetSearchModeEnum, SearchScoreTypeEnum } from '@fastgpt/global/core
 import type { FullTextSearchProps } from '@fastgpt/service/common/vectorDB/type';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { serviceEnv } from '@fastgpt/service/env';
+import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
 
 const mockGetVectors = vi.hoisted(() => vi.fn());
 const mockRecallFromVectorStore = vi.hoisted(() => vi.fn());
@@ -203,6 +204,7 @@ describe('default recall dataset search', () => {
     });
 
     const result = await searchDatasetData({
+      metadataFilterEnabled: false,
       histories: [],
       teamId: 'team-1',
       model: embeddingModel,
@@ -218,6 +220,7 @@ describe('default recall dataset search', () => {
       usingReRank: false
     });
 
+    expect(pushTrack.datasetSearch).not.toHaveBeenCalled();
     expect(result.imageCaptionResult).toEqual({
       model: 'mock-vlm-model',
       inputTokens: 3,
@@ -259,6 +262,7 @@ describe('default recall dataset search', () => {
     });
 
     await searchDatasetData({
+      metadataFilterEnabled: false,
       histories: [],
       teamId: 'team-1',
       model: embeddingModel,
@@ -301,6 +305,7 @@ describe('default recall dataset search', () => {
     });
 
     await searchDatasetData({
+      metadataFilterEnabled: false,
       histories: [],
       teamId: 'team-1',
       model: embeddingModel,
@@ -342,6 +347,7 @@ describe('default recall dataset search', () => {
     }));
 
     await searchDatasetData({
+      metadataFilterEnabled: false,
       histories: [],
       teamId: 'team-1',
       model: smallEmbeddingModel,
@@ -380,6 +386,7 @@ describe('default recall dataset search', () => {
     });
 
     await searchDatasetData({
+      metadataFilterEnabled: false,
       histories: [],
       teamId: 'team-1',
       model: embeddingModel,
@@ -416,6 +423,7 @@ describe('default recall dataset search', () => {
     embeddingModel.config.vision = false;
 
     const result = await searchDatasetData({
+      metadataFilterEnabled: false,
       histories: [],
       teamId: 'team-1',
       model: embeddingModel,
@@ -479,6 +487,7 @@ describe('default recall dataset search', () => {
     });
 
     const result = await searchDatasetData({
+      metadataFilterEnabled: false,
       histories: [],
       teamId: 'team-1',
       model: embeddingModel,
@@ -567,6 +576,7 @@ describe('default recall dataset search', () => {
 
     const runSearch = (params: Record<string, unknown> = {}) =>
       searchDatasetData({
+        metadataFilterEnabled: false,
         histories: [],
         teamId: 'team-1',
         model: embeddingModel,

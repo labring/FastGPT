@@ -5,20 +5,12 @@ import type {
 } from '@fastgpt/global/core/dataset/search/type';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { DatasetSearchModeEnum, DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
-import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
-import { authDatasetByTmbId } from '../../../support/permission/dataset/auth';
-import { resolveReadableCollectionIds } from '../../../support/permission/collection/auth';
-import { getAuthorizedModelIds, assertAuthModels } from '../../../support/permission/model/auth';
-import { isAuthorizedTempFileS3Key } from '../../../common/s3/sources/temp/key';
-import { getS3DatasetSource } from '../../../common/s3/sources/dataset';
-import { getDatasetModelReference } from '../model';
-import { defaultSearchDatasetData } from './index';
-import { findFirstDatasetSearchVlmModel } from './vlm';
 import type { DatasetSearchProps, DatasetSearchUsage } from './type';
 
 /**
  * 执行成员身份下的完整知识库搜索。参数由入口校验并补齐默认值，HTTP 凭证在入口层解析；余额、限流、账单和审计
- * 由调用方注入。资源与集合权限固定在召回前验证，任何不可读目标都会使请求失败。
+ * 及基础设施由调用方注入。资源与集合权限固定在召回前验证，任何不可读目标都会使请求失败；
+ * 回调异常原样传出，调用方负责确定哪些外部副作用允许降级。
  */
 export const search = async ({
   params: input,
@@ -26,17 +18,14 @@ export const search = async ({
   deps
 }: DatasetSearchProps): Promise<DatasetSearchResult> => {
   const start = Date.now();
-  const { actor } = context;
+  const { actor, capabilities } = context;
   const datasetIds = [...new Set(input.scope.datasetIds)];
+  if (datasetIds.length === 0) throw new UserConfigError('搜索目标不能为空');
 
   // 1. 对全部目标做资源鉴权；root 也只能在本次请求明确的团队范围内搜索。
   const datasets = await Promise.all(
     datasetIds.map(async (datasetId) => {
-      const { dataset } = await authDatasetByTmbId({
-        ...actor,
-        datasetId,
-        per: ReadPermissionVal
-      });
+      const dataset = await deps.permissions.loadReadableDataset({ actor, datasetId });
       if (String(dataset.teamId) !== actor.teamId) throw DatasetErrEnum.unAuthDataset;
       if (dataset.type === DatasetTypeEnum.folder) {
         throw new UserConfigError('搜索目标必须是知识库，不能是文件夹');
@@ -45,64 +34,43 @@ export const search = async ({
     })
   );
   const imageKeys = [...new Set(input.query.imageKeys)];
-  if (imageKeys.some((key) => !isAuthorizedTempFileS3Key({ key, teamId: actor.teamId }))) {
+  if (imageKeys.some((key) => !deps.images.isAuthorizedKey({ key, teamId: actor.teamId }))) {
     throw new UserConfigError('检索图片必须是当前团队上传的临时图片');
   }
 
   // 现有元数据过滤器在非商业版本会忽略配置，新入口明确拒绝，避免无声扩大召回范围。
   const filter = input.scope.filter;
-  if (filter && Object.keys(filter).length > 0 && !global.feConfigs.isPlus) {
+  if (filter && Object.keys(filter).length > 0 && !capabilities.metadataFilter) {
     throw new UserConfigError('当前版本不支持知识库搜索筛选');
   }
 
   // 2. 选择本次模型快照；向量检索不允许用首库模型查询其他模型生成的索引。
-  const modelHandle = await deps.getModelHandle({ teamId: actor.teamId });
-  const vectorModels = datasets.map((dataset) =>
-    modelHandle.getModelData(getDatasetModelReference(dataset, 'embedding'), { type: 'embedding' })
-  );
+  const rerank = input.rerank;
+  const extension = input.queryExtension;
+  const models = await deps.resolveModels({ actor, datasets, rerank, queryExtension: extension });
+  const vectorModels = models.embeddings;
   const vectorModel = vectorModels[0];
+  if (!vectorModel || vectorModels.length !== datasets.length) {
+    throw new Error('搜索模型适配器必须为每个知识库解析一个向量模型');
+  }
   if (
     input.retrieval.mode !== DatasetSearchModeEnum.fullTextRecall &&
     vectorModels.some((model) => model.modelId !== vectorModel.modelId)
   ) {
     throw new UserConfigError('联合向量检索要求知识库使用相同的向量模型');
   }
-  const authorizedIds = await getAuthorizedModelIds({ actor, handle: modelHandle });
-  const rerank = input.rerank;
-  const extension = input.queryExtension;
-  const rerankModel = rerank.enabled
-    ? modelHandle.getModelData(
-        { modelId: rerank.modelId },
-        { type: 'rerank', authorizedIds, fallbackToDefault: rerank.modelId === undefined }
-      )
-    : undefined;
-  const extensionModel = extension.enabled
-    ? modelHandle.getModelData(
-        { modelId: extension.modelId },
-        { type: 'llm', authorizedIds, fallbackToDefault: extension.modelId === undefined }
-      )
-    : undefined;
-  await assertAuthModels({
+  const rerankModel = models.rerank;
+  const extensionModel = models.queryExtension;
+  const vlmModel = models.imageCaption;
+  const readableCollectionIdList = await deps.permissions.resolveReadableCollectionIds({
     actor,
-    handle: modelHandle,
-    modelIds: [rerankModel, extensionModel]
-      .filter((model) => model !== undefined)
-      .map((model) => model.modelId),
-    action: 'use'
-  });
-  const vlmModel = findFirstDatasetSearchVlmModel(datasets, modelHandle);
-  const readableCollectionIdList = await resolveReadableCollectionIds({
-    ...actor,
     datasetIds
   });
 
   // 3. 外部业务策略在任何模型调用前完成；回调不可获取或修改检索权限范围。
   await deps.beforeSearch();
   const imageQueries = await Promise.all(
-    imageKeys.map(async (key) => {
-      const { url } = await getS3DatasetSource().createExternalUrl({ key, expiredHours: 1 });
-      return url;
-    })
+    imageKeys.map((key) => deps.images.createQueryUrl({ key }))
   );
   /** 只序列化已校验的结构化条件，复用既有过滤执行器和集合权限交集。 */
   const serializeFilter = () => {
@@ -122,7 +90,7 @@ export const search = async ({
         : undefined
     });
   };
-  const result = await defaultSearchDatasetData({
+  const result = await deps.recall({
     teamId: actor.teamId,
     tmbId: actor.tmbId,
     histories: context.histories ?? [],
@@ -143,6 +111,7 @@ export const search = async ({
     datasetSearchExtensionModel: extensionModel,
     datasetSearchExtensionBg: extension.enabled ? extension.background : undefined,
     collectionFilterMatch: serializeFilter(),
+    metadataFilterEnabled: capabilities.metadataFilter,
     readableCollectionIdList
   });
 

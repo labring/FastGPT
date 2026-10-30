@@ -61,6 +61,7 @@ describe('defaultSearchDatasetData', () => {
 
   it('should drop whitespace-only text queries before extension and recall', async () => {
     await defaultSearchDatasetData({
+      metadataFilterEnabled: false,
       histories: [],
       teamId: 'team-1',
       datasetIds: ['dataset-1'],
@@ -88,6 +89,7 @@ describe('defaultSearchDatasetData', () => {
     });
 
     await defaultSearchDatasetData({
+      metadataFilterEnabled: false,
       histories: [],
       teamId: 'team-1',
       datasetIds: ['dataset-1'],
@@ -132,6 +134,7 @@ describe('defaultSearchDatasetData', () => {
     const userKey = { key: 'test-external-account', baseUrl: 'https://api.example.com/v1' };
 
     const result = await defaultSearchDatasetData({
+      metadataFilterEnabled: false,
       histories: [],
       teamId: 'team-1',
       datasetIds: ['dataset-1'],

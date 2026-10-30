@@ -11,7 +11,50 @@ import type { OpenaiAccountType } from '@fastgpt/global/support/user/team/type';
 import type { AIModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import type { DatasetSearchParams } from '@fastgpt/global/core/dataset/search/type';
 import type { DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
-import type { ModelHandle } from '../../ai/model/catalog/handle';
+
+export type DatasetSearchActor = { teamId: string; tmbId: string; isRoot: boolean };
+
+/** 由可信调用方声明，不能从公开搜索请求中读取。 */
+export type DatasetSearchCapabilities = { metadataFilter: boolean };
+
+export type DatasetSearchDataset = Pick<
+  DatasetSchemaType,
+  '_id' | 'teamId' | 'name' | 'type' | 'vectorModelId' | 'vectorModel' | 'vlmModelId' | 'vlmModel'
+>;
+
+/** 搜索只使用解析后的模型，不依赖模型目录、缓存或权限实现。 */
+export type DatasetSearchModels = {
+  /** 与输入知识库保持相同顺序，每个知识库必须恰好对应一个模型。 */
+  embeddings: EmbeddingModelDataType[];
+  rerank?: RerankModelDataType;
+  queryExtension?: LLMModelDataType;
+  imageCaption?: LLMModelDataType;
+};
+
+/** 基础设施端口：实现必须遵守读取权限、图片归属及集合过滤约定。 */
+export type DatasetSearchRuntime = {
+  permissions: {
+    loadReadableDataset: (props: {
+      actor: DatasetSearchActor;
+      datasetId: string;
+    }) => Promise<DatasetSearchDataset>;
+    resolveReadableCollectionIds: (props: {
+      actor: DatasetSearchActor;
+      datasetIds: string[];
+    }) => Promise<string[] | undefined>;
+  };
+  resolveModels: (props: {
+    actor: DatasetSearchActor;
+    datasets: DatasetSearchDataset[];
+    rerank: DatasetSearchParams['rerank'];
+    queryExtension: DatasetSearchParams['queryExtension'];
+  }) => Promise<DatasetSearchModels>;
+  images: {
+    isAuthorizedKey: (props: { key: string; teamId: string }) => boolean;
+    createQueryUrl: (props: { key: string }) => Promise<string>;
+  };
+  recall: (props: DefaultSearchDatasetDataProps) => Promise<SearchDatasetDataResponse>;
+};
 
 export type DatasetSearchUsage = {
   items: Array<{
@@ -33,12 +76,12 @@ export type DatasetSearchProps = {
   /** 入口按各自协议完成校验与默认值补齐，领域层不叠加新 HTTP 协议的范围约束。 */
   params: DatasetSearchParams;
   context: {
-    actor: { teamId: string; tmbId: string; isRoot: boolean };
+    actor: DatasetSearchActor;
+    capabilities: DatasetSearchCapabilities;
     histories?: ChatItemMiniType[];
     userKey?: OpenaiAccountType;
   };
-  deps: {
-    getModelHandle: (props: { teamId: string }) => Promise<ModelHandle>;
+  deps: DatasetSearchRuntime & {
     beforeSearch: () => Promise<void>;
     onUsage: (usage: DatasetSearchUsage) => Promise<void>;
     onSearched?: (event: DatasetSearchEvent) => Promise<void>;
@@ -83,6 +126,9 @@ export type SearchDatasetDataProps = {
     }
   */
   collectionFilterMatch?: string;
+
+  /** 调用方显式声明元数据筛选能力，底层不读取商业版本全局开关。 */
+  metadataFilterEnabled: boolean;
 
   // Collection 级权限可读 file collection ID 列表（检索权限过滤）。
   // undefined = 无需 collection 级过滤（短路 / 全部可读）；空数组 = 无可读集合（直接空结果）。

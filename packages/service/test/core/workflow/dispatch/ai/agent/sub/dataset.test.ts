@@ -1,3 +1,4 @@
+import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
 import { DatasetSearchModeEnum, SearchScoreTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -170,6 +171,13 @@ describe('dispatchAgentDatasetSearch', () => {
             usingReRank: false
           }
         });
+        expect(pushTrack.datasetSearch).toHaveBeenCalledExactlyOnceWith({
+          teamId: 'team_1',
+          datasetIds: ['dataset_1']
+        });
+        expect(defaultSearchDatasetDataMock).toHaveBeenCalledWith(
+          expect.objectContaining({ metadataFilterEnabled: false })
+        );
         const response = JSON.parse(result.response);
         expect(response.cites[0].content).toBe('alias\nanswer');
         if (enabled) {
