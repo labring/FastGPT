@@ -1,10 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
-  getWorkflowBuilderVersionButtonState,
   getWorkflowBuilderToolDisplayName,
   getWorkflowBuilderToolPresentation,
-  resolveWorkflowBuilderPreviewAnswerAction,
-  workflowBuilderAppliedFeedbackDuration
+  resolveWorkflowBuilderPreviewAnswerAction
 } from '@/components/core/chat/components/AIResponseBox/WorkflowBuilder/utils';
 
 describe('WorkflowBuilder utils', () => {
@@ -98,37 +96,5 @@ describe('WorkflowBuilder utils', () => {
       key === 'workflow:workflow_builder_tool_query' ? 'Inspect workflow' : key;
     expect(getWorkflowBuilderToolDisplayName({ ...tool, t: zh })).toBe('查看现状');
     expect(getWorkflowBuilderToolDisplayName({ ...tool, t: en })).toBe('Inspect workflow');
-  });
-
-  it('maps Workflow Builder version facts to the Figma button states', () => {
-    expect(
-      getWorkflowBuilderVersionButtonState({
-        displayState: 'available',
-        loading: false,
-        showApplied: false
-      })
-    ).toBe('apply');
-    expect(
-      getWorkflowBuilderVersionButtonState({
-        displayState: 'available',
-        loading: true,
-        showApplied: false
-      })
-    ).toBe('loading');
-    expect(
-      getWorkflowBuilderVersionButtonState({
-        displayState: 'available',
-        loading: false,
-        showApplied: true
-      })
-    ).toBe('applied');
-    expect(
-      getWorkflowBuilderVersionButtonState({
-        displayState: 'expired',
-        loading: true,
-        showApplied: true
-      })
-    ).toBe('expired');
-    expect(workflowBuilderAppliedFeedbackDuration).toBe(1200);
   });
 });

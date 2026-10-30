@@ -65,11 +65,18 @@ describe('historical generated configuration card', () => {
     return container.querySelector('button')!;
   };
 
-  it('applies only after an explicit click on the stored message', async () => {
+  it('allows applying the stored configuration again after the previous application finishes', async () => {
     const button = await render();
     expect(actions.applyConfig).not.toHaveBeenCalled();
     await act(async () => button.click());
     expect(actions.applyConfig).toHaveBeenCalledExactlyOnceWith('historical-ai');
+    actions.isApplying = true;
+    expect((await render()).disabled).toBe(true);
+    actions.isApplying = false;
+    const enabledButton = await render();
+    expect(enabledButton.disabled).toBe(false);
+    await act(async () => enabledButton.click());
+    expect(actions.applyConfig).toHaveBeenCalledTimes(2);
   });
 
   it('checks expiration again when a page has remained open past the archive lifetime', async () => {

@@ -26,7 +26,8 @@ vi.mock('@/components/core/chat/components/AIResponseBox/RenderPlan', () => ({
   default: () => React.createElement('span', null, 'interactive')
 }));
 vi.mock('@/components/core/chat/components/AIResponseBox/RenderChatAgentBuilderVersion', () => ({
-  default: () => React.createElement('span', null, 'interactive')
+  default: ({ isChatting }: { isChatting: boolean }) =>
+    React.createElement('button', { disabled: isChatting }, 'interactive')
 }));
 vi.mock('@/components/core/chat/components/AIResponseBox/RenderPlanStatus', () => ({
   default: () => React.createElement('span', null, 'interactive')
@@ -77,6 +78,26 @@ const render = (interactive: unknown) =>
   );
 
 describe('AIResponseBox interactive history compatibility', () => {
+  it.each([true, false])(
+    'only blocks the configuration card of the generating message (last: %s)',
+    (isLastChild) => {
+      const html = renderToStaticMarkup(
+        React.createElement(AIResponseBox, {
+          chatItemDataId: 'ai-1',
+          value: {
+            chatAgentBuilderVersion: {
+              s3Key: 'chat/helper/config.json',
+              expiresAt: '2099-01-01T00:00:00.000Z'
+            }
+          },
+          isLastResponseValue: true,
+          isLastChild,
+          isChatting: true
+        })
+      );
+      expect(html.includes('disabled')).toBe(isLastChild);
+    }
+  );
   it.each(['userSelect', 'userInput', 'paymentPause', 'agentAsk', 'workflowBuilderPreview'])(
     'preserves the answer while skipping invalid %s cards',
     (type) => {

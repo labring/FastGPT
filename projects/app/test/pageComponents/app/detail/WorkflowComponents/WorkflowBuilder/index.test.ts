@@ -41,6 +41,7 @@ const mocks = vi.hoisted(() => ({
   requestAutoLayout: vi.fn(),
   setActivity: vi.fn(),
   dismissBanner: vi.fn(),
+  updateAppliedVersion: vi.fn(),
   toast: vi.fn()
 }));
 
@@ -118,9 +119,10 @@ vi.mock('@chakra-ui/react', async () => {
   };
 });
 vi.mock('@/pageComponents/app/detail/WorkflowComponents/WorkflowBuilder/ChatPanel', async () => {
-  const { forwardRef, useEffect } = await import('react');
+  const { forwardRef, useEffect, useImperativeHandle } = await import('react');
   return {
-    default: forwardRef(({ workflowBuilderVersionActions, onChatIdChange }: any, _ref) => {
+    default: forwardRef(({ workflowBuilderVersionActions, onChatIdChange }: any, ref) => {
+      useImperativeHandle(ref, () => ({ updateAppliedVersion: mocks.updateAppliedVersion }));
       mocks.actions = workflowBuilderVersionActions;
       useEffect(() => onChatIdChange('chat-1'), [onChatIdChange]);
       return null;
@@ -207,6 +209,7 @@ describe('WorkflowBuilder applyVersion', () => {
     expect(dom.window.document.querySelector('button')!.disabled).toBe(true);
     expect(mocks.load).toHaveBeenCalledOnce();
     expect(mocks.initData).toHaveBeenCalledOnce();
+    expect(mocks.updateAppliedVersion).not.toHaveBeenCalled();
     expect(canvas.nodes).toHaveLength(document.nodes.length);
 
     await act(async () => {
@@ -217,6 +220,7 @@ describe('WorkflowBuilder applyVersion', () => {
     expect(canvas).toEqual({ nodes: [], edges: [], chatConfig: { welcomeText: 'original' } });
     expect(mocks.actions!.isApplying).toBe(false);
     expect(mocks.pushPastSnapshot).not.toHaveBeenCalled();
+    expect(mocks.updateAppliedVersion).not.toHaveBeenCalled();
     expect(mocks.toast).toHaveBeenCalledExactlyOnceWith({
       status: 'error',
       title: 'workflow:workflow_builder_apply_failed',
@@ -245,16 +249,12 @@ describe('WorkflowBuilder applyVersion', () => {
     expect(successTitle.textContent).toBe('「AI 生成版本 1」 应用成功');
     expect(successTitle.querySelector('strong')?.textContent).toBe('「AI 生成版本 1」');
     expect(successTitle.querySelector('span')?.style.fontWeight).toBe('normal');
-    const updateActivity = mocks.setActivity.mock.lastCall![0];
-    const activity = { latestVersion: { version, responseChatItemId: 'response-2' } };
-    expect(updateActivity(activity).latestVersion.version).toHaveProperty('appliedAt');
-    const newerActivity = {
-      latestVersion: {
-        version: { ...version, checksum: 'newer-checksum' },
-        responseChatItemId: 'response-3'
-      }
-    };
-    expect(updateActivity(newerActivity)).toBe(newerActivity);
+    expect(mocks.updateAppliedVersion).toHaveBeenCalledExactlyOnceWith({
+      appId: 'app-1',
+      chatId: 'chat-1',
+      responseChatItemId: 'response-2',
+      version: { ...version, appliedAt: '2026-10-19T01:00:00.000Z' }
+    });
   });
 
   it('keeps the lock until rollback finishes', async () => {
