@@ -37,6 +37,7 @@ const AIModelSchema = new Schema(
       ref: 'teams'
     },
     isActive: Boolean,
+    isUpcomingDeprecation: Boolean,
     requestUrl: String,
     requestAuth: String,
     testMode: Boolean,

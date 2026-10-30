@@ -96,6 +96,10 @@ const AIModelDocumentBaseSchema = PriceTypeSchema.extend({
   tmbId: ObjectIdSchema.nullish(),
   teamId: ObjectIdSchema.nullish(),
   isActive: z.boolean().optional(),
+  isUpcomingDeprecation: z.boolean().optional().meta({
+    description: '模型是否即将下架',
+    example: true
+  }),
   requestUrl: z.string().optional(),
   requestAuth: z.string().optional(),
   testMode: z.boolean().optional()

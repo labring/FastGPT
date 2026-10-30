@@ -43,6 +43,7 @@ import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import AddModel from './AddModel';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
 import TestModeBetaTag from '@/components/core/ai/TestModeBetaTag';
+import DeprecationTag from '@/components/core/ai/DeprecationTag';
 import ModelCapabilityTags from '@/components/core/ai/ModelCapabilityTags';
 import { accountContentScrollStyles, accountPageRootStyles } from '@/pageComponents/account/styles';
 import ModelTabHeader from '@/components/core/ai/ModelTabHeader';
@@ -508,6 +509,9 @@ const ModelTable = ({ Tab, channelType }: { Tab: React.ReactNode; channelType: C
                                 </MyTag>
                               )}
                               {item.testMode && <TestModeBetaTag />}
+                              {channelType === 'system' && item.isUpcomingDeprecation === true && (
+                                <DeprecationTag size={'sm'} />
+                              )}
                             </Flex>
                           </HStack>
                           <HStack mt={2} spacing={2} flexWrap={'nowrap'}>

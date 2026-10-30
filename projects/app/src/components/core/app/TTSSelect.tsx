@@ -1,5 +1,6 @@
 import { ModelStatusLabel } from '@/components/Select/ModelStatusLabel';
 import MySlider from '@/components/Slider';
+import DeprecationTag from '@/components/core/ai/DeprecationTag';
 import { AppContext } from '@/pageComponents/app/detail/context';
 import { useAudioPlay } from '@/web/common/utils/voice';
 import { useModelDetail } from '@/web/core/ai/model/useModelDetail';
@@ -71,11 +72,14 @@ const TTSSelect = ({
         return {
           avatar: providerData.avatar,
           label: (
-            <HStack minW={0} maxW={'100%'}>
-              <Avatar borderRadius={'0'} w={'1.25rem'} flexShrink={0} src={providerData.avatar} />
-              <Box minW={0} className={'textEllipsis'}>
-                {modelName}
-              </Box>
+            <HStack minW={0} maxW={'100%'} justifyContent={'space-between'}>
+              <HStack minW={0}>
+                <Avatar borderRadius={'0'} w={'1.25rem'} flexShrink={0} src={providerData.avatar} />
+                <Box minW={0} className={'textEllipsis'}>
+                  {modelName}
+                </Box>
+              </HStack>
+              {model.isUpcomingDeprecation === true && <DeprecationTag size={'sm'} />}
             </HStack>
           ),
           value: model.modelId,
@@ -101,10 +105,19 @@ const TTSSelect = ({
     const voice = selectedTtsModel?.config.voices.find((item) => item.value === formatValue[1]);
     if (isBuiltin) return provider?.label;
     return (
-      <Flex maxW={['180px', '250px']} minW={0} overflow="hidden" alignItems="center" gap={1}>
-        <ModelStatusLabel modelId={modelId} {...detailState} />
-        {detailState.detail?.status === 'active' && voice && (
-          <Box className="textEllipsis">/ {voice.label}</Box>
+      <Flex minW={0} w={'100%'} overflow="hidden" alignItems="center" gap={1}>
+        <Flex minW={0} flex={'1 1 0'} overflow="hidden" alignItems="center" gap={1}>
+          <Flex minW={0} flex={'1 1 0'}>
+            <ModelStatusLabel modelId={modelId} {...detailState} />
+          </Flex>
+          {detailState.detail?.status === 'active' && voice && (
+            <Box className="textEllipsis">/ {voice.label}</Box>
+          )}
+        </Flex>
+        {detailState.detail?.isUpcomingDeprecation === true && (
+          <Box mr={2}>
+            <DeprecationTag size={'sm'} />
+          </Box>
         )}
       </Flex>
     );
@@ -203,7 +216,7 @@ const TTSSelect = ({
           <FormLabel>{t('common:core.app.tts.Speech model')}</FormLabel>
           <MultipleRowSelect
             rowMinWidth="160px"
-            label={<Box minW={'150px'}>{formLabel}</Box>}
+            label={<Box w={'220px'}>{formLabel}</Box>}
             value={formatValue}
             list={selectorList}
             onSelect={onclickChange}

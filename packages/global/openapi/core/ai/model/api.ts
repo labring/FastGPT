@@ -42,6 +42,10 @@ const MyModelBaseSchema = z.object({
   tmbId: z.string().optional().meta({ description: '模型归属成员 ID' }),
   avatar: z.string().optional().meta({ description: '模型图标' }),
   isActive: z.boolean().optional().meta({ description: '模型是否启用' }),
+  isUpcomingDeprecation: z.boolean().optional().meta({
+    description: '模型是否即将下架',
+    example: true
+  }),
   testMode: z.boolean().optional().meta({ description: '是否为测试模式' }),
   pricing: ModelPricingSchema.optional().meta({ description: '模型计价配置；缺失时免费' })
 });

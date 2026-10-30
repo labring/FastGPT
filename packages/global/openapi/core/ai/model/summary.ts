@@ -32,7 +32,11 @@ export const GetModelSummariesBodySchema = z.object({
 export type GetModelSummariesBody = z.infer<typeof GetModelSummariesBodySchema>;
 
 const DisplayModelIdentitySchema = z.object({
-  modelId: z.string().meta({ description: '模型稳定 ID', example: '68ad85a7463006c963799a01' })
+  modelId: z.string().meta({ description: '模型稳定 ID', example: '68ad85a7463006c963799a01' }),
+  isUpcomingDeprecation: z.boolean().optional().meta({
+    description: '模型是否即将下架',
+    example: true
+  })
 });
 
 export const ModelSummarySchema = z.discriminatedUnion('status', [
