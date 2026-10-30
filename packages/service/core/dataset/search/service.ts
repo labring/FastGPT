@@ -1,5 +1,4 @@
 import { UserConfigError } from '@fastgpt/global/common/error/utils';
-import { DatasetSearchParamsSchema } from '@fastgpt/global/core/dataset/search/type';
 import type {
   DatasetSearchTagCondition,
   DatasetSearchResult
@@ -18,16 +17,15 @@ import { findFirstDatasetSearchVlmModel } from './vlm';
 import type { DatasetSearchProps, DatasetSearchUsage } from './type';
 
 /**
- * 执行成员身份下的完整知识库搜索。HTTP 凭证在入口层解析；余额、限流、账单和审计
+ * 执行成员身份下的完整知识库搜索。参数由入口校验并补齐默认值，HTTP 凭证在入口层解析；余额、限流、账单和审计
  * 由调用方注入。资源与集合权限固定在召回前验证，任何不可读目标都会使请求失败。
  */
 export const search = async ({
-  params,
+  params: input,
   context,
   deps
 }: DatasetSearchProps): Promise<DatasetSearchResult> => {
   const start = Date.now();
-  const input = DatasetSearchParamsSchema.parse(params);
   const { actor } = context;
   const datasetIds = [...new Set(input.scope.datasetIds)];
 

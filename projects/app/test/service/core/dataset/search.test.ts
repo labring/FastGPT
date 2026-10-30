@@ -6,6 +6,7 @@ import type {
 import type { EmbeddingModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import { DatasetSearchParamsSchema } from '@fastgpt/global/core/dataset/search/type';
 
 const mocks = vi.hoisted(() => ({
   search: vi.fn(),
@@ -40,7 +41,10 @@ vi.mock('@fastgpt/service/support/user/audit/util', () => ({
 import { searchDatasetForApi } from '@/service/core/dataset/search';
 
 const auth = { teamId: 'team', tmbId: 'member', isRoot: false, apikey: 'test-key' };
-const params = { scope: { datasetIds: ['507f1f77bcf86cd799439011'] }, query: { text: 'q' } };
+const params = DatasetSearchParamsSchema.parse({
+  scope: { datasetIds: ['507f1f77bcf86cd799439011'] },
+  query: { text: 'q' }
+});
 const model: EmbeddingModelDataType = {
   provider: 'test',
   model: 'embedding',
@@ -76,12 +80,20 @@ beforeEach(() => {
 
 describe('search API business adapter', () => {
   it('checks policies before recording actual use and updates API Key consumption once', async () => {
-    await searchDatasetForApi({ params, auth });
+    const onRateLimit = vi.fn();
+    mocks.rate.mockResolvedValue({ limit: 100, remaining: 99, resetAt: 123456 });
+    await searchDatasetForApi({ params, auth, onRateLimit });
+    expect(onRateLimit).toHaveBeenCalledExactlyOnceWith({
+      limit: 100,
+      remaining: 99,
+      resetAt: 123456
+    });
     expect(mocks.rate).toHaveBeenCalledExactlyOnceWith({ teamId: 'team', type: 'chat' });
     expect(mocks.balance).toHaveBeenCalledExactlyOnceWith('team');
     expect(mocks.bill).toHaveBeenCalledExactlyOnceWith(
       expect.objectContaining({
         source: 'api',
+        appName: 'Knowledge search',
         totalPoints: 10,
         list: [expect.objectContaining({ modelId: 'model', inputTokens: 10, amount: 10 })]
       })
@@ -105,9 +117,13 @@ describe('search API business adapter', () => {
         }
       ]
     };
-    await searchDatasetForApi({ params, auth: { ...auth, apikey: '' } });
+    await searchDatasetForApi({
+      params,
+      auth: { ...auth, apikey: '' },
+      usageAppName: 'Legacy search test'
+    });
     expect(mocks.bill).toHaveBeenCalledWith(
-      expect.objectContaining({ source: 'fastgpt', totalPoints: 0 })
+      expect.objectContaining({ source: 'fastgpt', totalPoints: 0, appName: 'Legacy search test' })
     );
     expect(mocks.keyUsage).not.toHaveBeenCalled();
     expect(mocks.price).not.toHaveBeenCalled();
