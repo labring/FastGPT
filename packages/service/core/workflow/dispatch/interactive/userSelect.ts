@@ -17,6 +17,10 @@ type UserSelectResponse = DispatchNodeResultType<{
   [NodeOutputKeyEnum.selectResult]?: string;
 }>;
 
+/**
+ * 首次执行时解析并展示选项，恢复时输出用户选择并激活对应分支。
+ * 动态选项为空是可预期的业务失败，只返回错误输出和提示，不产生原始异常日志。
+ */
 export const dispatchUserSelect = async (props: Props): Promise<UserSelectResponse> => {
   const {
     histories,
@@ -48,14 +52,18 @@ export const dispatchUserSelect = async (props: Props): Promise<UserSelectRespon
       : (userSelectOptions as UserSelectOptionItemType[]);
 
     if (isReferenceMode && resolvedOptions.length === 0) {
-      throw new Error(i18nT('workflow:user_select_no_available_options'));
+      const errorText = i18nT('workflow:user_select_no_available_options');
+      return {
+        error: { [NodeOutputKeyEnum.errorText]: errorText },
+        [DispatchNodeResponseKeyEnum.nodeResponse]: { errorText }
+      };
     }
 
     return {
       [DispatchNodeResponseKeyEnum.interactive]: {
         type: 'userSelect',
         params: {
-          description,
+          description: description ?? '',
           userSelectOptions: resolvedOptions
         }
       }

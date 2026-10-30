@@ -110,10 +110,7 @@ describe('createAgentLoopCoreToolRuntime', () => {
         childrenResponse: {
           entryNodeIds: ['search']
         },
-        toolParams: {
-          memoryRequestMessages: [],
-          toolCallId: 'call_search'
-        }
+        toolCallId: 'call_search'
       } as any)
     ).resolves.toEqual({
       response: 'interactive result',

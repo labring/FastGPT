@@ -874,7 +874,18 @@ export const updateInteractiveChat = async ({
     const hasRemainingSemanticValue = (item: AIChatItemValueItemType) =>
       Object.entries(item).some(([key, itemValue]) => {
         // id 只是工具容器的关联键，不能单独构成一条可持久化的 assistant value。
-        if (key === 'id' || key === 'tools') return false;
+        if (
+          [
+            'id',
+            'tools',
+            'modelResponseId',
+            'toolCallIds',
+            'hideInUI',
+            'hideReason',
+            'displayOnly'
+          ].includes(key)
+        )
+          return false;
         return itemValue !== undefined && itemValue !== null;
       });
 

@@ -1,5 +1,8 @@
 import { WorkflowDiagnosticCodeEnum } from '@fastgpt/global/core/workflow/diagnostic/constants';
-import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import {
+  FlowNodeInputTypeEnum,
+  FlowNodeTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
 import {
   VARIABLE_NODE_ID,
   NodeInputKeyEnum,
@@ -28,6 +31,51 @@ describe('input mutation services', () => {
 
   beforeEach(() => {
     document = WorkflowDocumentSchema.parse(aiWorkflow);
+  });
+
+  it('sets and replaces tool authorization while preserving unrelated credentials', () => {
+    const input: FlowNodeInputItemType = {
+      key: NodeInputKeyEnum.systemInputConfig,
+      label: '',
+      renderTypeList: [FlowNodeInputTypeEnum.hidden],
+      inputList: [
+        { key: 'appId', label: 'App ID', inputType: 'input', required: true },
+        { key: 'appSecret', label: 'App secret', inputType: 'secret', required: true }
+      ]
+    };
+    document.nodes.find((node) => node.nodeId === 'ai')!.inputs.push(input);
+    const params = { document, nodeId: 'ai', inputKey: input.key };
+    const value = {
+      type: 'manual',
+      value: { appId: { value: 'demo-app' }, appSecret: { value: 'demo-secret' } }
+    };
+    setInputValue({ ...params, value });
+    expect(input.value).toEqual(value);
+    expect(input.value).not.toBe(value);
+    expect(validateWorkflow(document, { invalidReferencePolicy: 'error' })).toEqual([]);
+
+    const replacement = {
+      ...value,
+      value: { ...value.value, appSecret: { value: 'replacement-secret' } }
+    };
+    setInputValue({ ...params, value: replacement });
+    expect(input.value).toEqual(replacement);
+    expect(() =>
+      setInputValue({ ...params, value: { type: 'manual', value: { appSecret: 'raw' } } })
+    ).toThrow(WorkflowDiagnosticCodeEnum.inputValueSchemaInvalid);
+    expect(input.value).toEqual(replacement);
+    expect(() =>
+      setInputReference({ ...params, ref: { nodeId: 'start', outputKey: 'userChatInput' } })
+    ).toThrow(WorkflowDiagnosticCodeEnum.inputModeNotAllowed);
+
+    setInputValue({ ...params, value: { type: 'system', value: replacement.value } });
+    expect(input.value).toEqual({ type: 'system' });
+    expect(replacement.value.appSecret.value).toBe('replacement-secret');
+    expect(validateWorkflow(document, { invalidReferencePolicy: 'error' })).toEqual([]);
+    expect(() =>
+      setInputValue({ ...params, value: { type: 'system', unknown: 'unsupported' } })
+    ).toThrow(WorkflowDiagnosticCodeEnum.inputValueSchemaInvalid);
+    expect(input.value).toEqual({ type: 'system' });
   });
 
   it.each([
@@ -276,6 +324,42 @@ describe('input mutation services', () => {
 
     setInputValue({ document, nodeId: 'ai', inputKey: input.key, value: { count: 3 } });
     expect(input.value).toEqual({ count: 3 });
+  });
+
+  it('hides tool caller outputs from queries, assignment and reference validation', () => {
+    const tool = document.nodes.find((node) => node.nodeId === 'ai')!;
+    document.nodes.push({
+      ...structuredClone(tool),
+      nodeId: 'caller',
+      flowNodeType: FlowNodeTypeEnum.toolCall
+    });
+    document.executionEdges = [
+      { source: { kind: 'next', nodeId: 'start' }, target: { kind: 'target', nodeId: 'caller' } },
+      {
+        source: { kind: 'selectedTools', nodeId: 'caller' },
+        target: { kind: 'selectedTools', nodeId: 'ai' }
+      }
+    ];
+    const params = { document, nodeId: 'ai', inputKey: 'userChatInput' };
+    const callerRef = { nodeId: 'caller', outputKey: 'answerText' };
+    const upstreamRef = { nodeId: 'start', outputKey: 'userChatInput' };
+
+    const references = getAvailableInputReferences(params);
+    expect(references).not.toContainEqual(expect.objectContaining({ ref: callerRef }));
+    expect(references).toContainEqual(expect.objectContaining({ ref: upstreamRef }));
+    setInputReference({ ...params, ref: upstreamRef });
+    expect(() => setInputReference({ ...params, ref: callerRef })).toThrow(
+      WorkflowDiagnosticCodeEnum.referenceSourceNotUpstream
+    );
+
+    tool.inputs.find((input) => input.key === params.inputKey)!.value = ['caller', 'answerText'];
+    expect(validateWorkflow(document, { invalidReferencePolicy: 'error' })).toContainEqual(
+      expect.objectContaining({
+        code: WorkflowDiagnosticCodeEnum.referenceSourceNotUpstream,
+        nodeId: 'ai',
+        inputKey: params.inputKey
+      })
+    );
   });
 
   it('validates reference mode, source output and value type', () => {

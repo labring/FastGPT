@@ -1,3 +1,5 @@
 numpy
 pandas
 matplotlib
+pillow>=13.0.0
+brotli>=1.2.1

@@ -358,7 +358,7 @@ export const callMcpServerTool = async ({ key, toolName, inputs, authProxy }: to
 
       // dispatchWorkFlow 正常返回但工作流内部存在未捕获错误时，本次调用仍应视为失败，
       // 避免失败请求进入成功分位数；响应与落库行为保持不变。
-      if (workflowRuntimeSummary?.hasError || workflowRuntimeSummary?.errorText) {
+      if (workflowRuntimeSummary?.errorCount || workflowRuntimeSummary?.errorText) {
         markProfileError(workflowRuntimeSummary.errorText || 'Workflow run failed');
       }
 

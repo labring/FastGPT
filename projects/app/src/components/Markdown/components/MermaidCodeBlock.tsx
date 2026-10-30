@@ -8,26 +8,6 @@ import { useTranslation } from 'next-i18next';
 import { MarkdownRendererRuntimeContext } from '../utils/runtimeContext';
 import CodeBlockErrorCard from './CodeBlockErrorCard';
 
-const punctuationMap: Record<string, string> = {
-  '，': ',',
-  '；': ';',
-  '。': '.',
-  '：': ':',
-  '！': '!',
-  '？': '?',
-  '“': '"',
-  '”': '"',
-  '‘': "'",
-  '’': "'",
-  '【': '[',
-  '】': ']',
-  '（': '(',
-  '）': ')',
-  '《': '<',
-  '》': '>',
-  '、': ','
-};
-
 /**
  * 处理 Mermaid SVG：
  * 1. 确保包含标准 xmlns 命名空间；
@@ -114,11 +94,8 @@ const MermaidBlock = ({ code }: { code: string }) => {
       if (!code || !mermaid || isLoading) return;
 
       try {
-        const formatCode = code.replace(
-          new RegExp(`[${Object.keys(punctuationMap).join('')}]`, 'g'),
-          (match) => punctuationMap[match]
-        );
-        const { svg: renderedSvg } = await mermaid.render(`mermaid-${Date.now()}`, formatCode);
+        // Mermaid 源码包含语法标点；全角标点可能属于标签文本，不能全局转换成语法符号。
+        const { svg: renderedSvg } = await mermaid.render(`mermaid-${Date.now()}`, code);
         setSvg(renderedSvg);
         setHasError(false);
       } catch (error) {

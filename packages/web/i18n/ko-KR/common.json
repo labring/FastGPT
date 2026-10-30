@@ -375,6 +375,7 @@
   "core.chat.Feedback Modal": "결과 피드백",
   "core.chat.Feedback Modal Tip": "답변에서 만족스럽지 않은 부분을 입력하세요",
   "core.chat.Feedback Submit": "피드백 제출",
+  "core.chat.Feedback Cancelled": "피드백이 취소되었습니다",
   "core.chat.Feedback Success": "피드백 제출 성공!",
   "core.chat.Finish Speak": "음성 입력 완료",
   "core.chat.History": "이력",

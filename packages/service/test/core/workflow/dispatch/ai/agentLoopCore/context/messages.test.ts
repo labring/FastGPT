@@ -98,9 +98,7 @@ describe('buildAgentLoopCoreInput', () => {
       childrenResponse: {
         type: 'userSelect'
       },
-      toolParams: {
-        toolCallId: 'call_tool'
-      }
+      toolCallId: 'call_tool'
     };
 
     expect(

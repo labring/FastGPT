@@ -91,7 +91,62 @@ describe('useLinkedScroll', () => {
   afterEach(async () => {
     await act(async () => root.unmount());
     vi.restoreAllMocks();
+    vi.useRealTimers();
     vi.unstubAllGlobals();
+  });
+
+  it('keeps local replacement and new anchors when an older pagination request finishes', async () => {
+    vi.useFakeTimers();
+    await render('first');
+    await act(async () =>
+      requests[0].resolve({
+        list: [{ id: 'old-anchor' }],
+        hasMorePrev: true,
+        hasMoreNext: false
+      })
+    );
+    await act(async () => vi.advanceTimersByTimeAsync(250));
+    expect(requests[1].params.prevId).toBe('old-anchor');
+
+    await act(async () =>
+      state.replaceDataList({
+        list: [{ id: 'retained-anchor' }],
+        hasMorePrev: true,
+        hasMoreNext: false
+      })
+    );
+    await act(async () =>
+      requests[1].resolve({
+        list: [{ id: 'deleted-stale-record' }],
+        hasMorePrev: false,
+        hasMoreNext: false
+      })
+    );
+    expect(state.dataList).toEqual([{ id: 'retained-anchor' }]);
+    expect(state.itemRefs.current.get('old-anchor')).toBeNull();
+    await act(async () => vi.advanceTimersByTimeAsync(250));
+    expect(requests[2].params.prevId).toBe('retained-anchor');
+    await act(async () =>
+      requests[2].resolve({
+        list: [{ id: 'previous-record' }],
+        hasMorePrev: false,
+        hasMoreNext: false
+      })
+    );
+    expect(state.dataList).toEqual([{ id: 'previous-record' }, { id: 'retained-anchor' }]);
+  });
+
+  it('clears pagination anchors when the complete window is removed locally', async () => {
+    vi.useFakeTimers();
+    await render('first');
+    await resolve(0, 'first-record');
+    await act(async () =>
+      state.replaceDataList({ list: [], hasMorePrev: false, hasMoreNext: false })
+    );
+    await act(async () => vi.advanceTimersByTimeAsync(250));
+    expect(state.dataList).toEqual([]);
+    expect(state.itemRefs.current.get('first-record')).toBeNull();
+    expect(requests).toHaveLength(1);
   });
 
   it('loads once on mount and ignores renders with unchanged params', async () => {

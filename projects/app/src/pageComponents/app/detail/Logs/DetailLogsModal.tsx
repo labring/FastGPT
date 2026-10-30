@@ -212,8 +212,7 @@ const DetailLogsModal = ({
                   sourceTarget={{ sourceType: ChatSourceTypeEnum.app, sourceId: appId }}
                   chatId={chatId}
                   features={{
-                    feedbackType: 'admin',
-                    mark: true,
+                    fbTypes: ['mark', 'log', 'custom'],
                     voice: false,
                     tts: false,
                     inputGuide: false,

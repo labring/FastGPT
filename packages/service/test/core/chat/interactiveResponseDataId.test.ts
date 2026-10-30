@@ -67,24 +67,27 @@ describe('resolveResponseChatItemId', () => {
         responseChatItemId: 'client-response-id',
         interactive: {
           type: 'agentAsk',
-          askId: 'call_ask',
+
           entryNodeIds: [],
           memoryEdges: [],
           nodeOutputs: [],
           params: {
-            description: '',
-            submitted: false,
-            questions: [
-              {
-                question: 'Need more input',
-                options: [
-                  { summary: 'Use repo', value: 'Use repo' },
-                  { summary: 'Use docs', value: 'Use docs' },
-                  { summary: 'Use defaults', value: 'Use defaults' }
-                ],
-                answer: ''
-              }
-            ]
+            toolCallId: 'call_ask',
+            arguments: JSON.stringify({
+              reason: '',
+              blockerType: 'user_choice',
+              questions: [
+                {
+                  question: 'Need more input',
+                  options: [
+                    { summary: 'Use repo', value: 'Use repo' },
+                    { summary: 'Use docs', value: 'Use docs' },
+                    { summary: 'Use defaults', value: 'Use defaults' }
+                  ],
+                  answer: ''
+                }
+              ]
+            })
           }
         },
         userContent: {
@@ -111,26 +114,27 @@ describe('resolveResponseChatItemId', () => {
         interactive: {
           type: 'toolChildrenInteractive',
           params: {
-            toolParams: {
-              toolCallId: 'tool_1'
-            },
+            toolCallId: 'tool_1',
             childrenResponse: {
               type: 'agentAsk',
-              askId: 'call_ask',
+
               params: {
-                description: '',
-                submitted: false,
-                questions: [
-                  {
-                    question: 'Need more input',
-                    options: [
-                      { summary: 'Use repo', value: 'Use repo' },
-                      { summary: 'Use docs', value: 'Use docs' },
-                      { summary: 'Use defaults', value: 'Use defaults' }
-                    ],
-                    answer: ''
-                  }
-                ]
+                toolCallId: 'call_ask',
+                arguments: JSON.stringify({
+                  reason: '',
+                  blockerType: 'user_choice',
+                  questions: [
+                    {
+                      question: 'Need more input',
+                      options: [
+                        { summary: 'Use repo', value: 'Use repo' },
+                        { summary: 'Use docs', value: 'Use docs' },
+                        { summary: 'Use defaults', value: 'Use defaults' }
+                      ],
+                      answer: ''
+                    }
+                  ]
+                })
               }
             }
           }

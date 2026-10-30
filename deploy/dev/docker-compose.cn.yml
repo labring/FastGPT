@@ -267,7 +267,7 @@ services:
   # runtime=docker 模式需要挂载 Docker socket
   # 配置 docker.host_ip 为宿主机 LAN IP（容器内访问宿主机服务用）
   opensandbox-server:
-    image: sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/server:v0.2.2
+    image: sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/server:release-1.2.0
     container_name: fastgpt-opensandbox-server
     restart: always
     ports:
@@ -320,15 +320,15 @@ services:
 
   # Pre-pull only: not started by `docker compose up` (uses profile `prepull`).
   opensandbox-agent-sandbox-image:
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-sandbox:v0.3.0
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-sandbox:v0.3.1
     profiles:
       - prepull
   opensandbox-execd-image:
-    image: sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/execd:v1.0.21
+    image: sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/execd:release-1.2.0
     profiles:
       - prepull
   opensandbox-egress-image:
-    image: sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/egress:v1.1.5
+    image: sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/egress:release-1.2.0
     profiles:
       - prepull
   # 卷管理微服务：负责幂等创建/删除 Docker named volume 或 k8s PVC
@@ -431,10 +431,10 @@ configs:
 
       [runtime]
       type = "docker"
-      execd_image = "sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/execd:v1.0.21"
+      execd_image = "sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/execd:release-1.2.0"
 
       [egress]
-      image = "sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/egress:v1.1.5"
+      image = "sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/egress:release-1.2.0"
       mode = "dns+nft"
       disable_ipv6 = true
 

@@ -27,6 +27,11 @@ export type GetSystemInitDataQuery = z.infer<typeof GetSystemInitDataQuerySchema
 const ClientFeConfigsSchema = FastGPTFeConfigsSchema.partial()
   .strip()
   .extend({
+    // 仅为环境变量的客户端投影，不属于可存储、可编辑的系统配置。
+    showAuxiliaryGenerationRunDetail: BoolSchema.optional().meta({
+      description: '是否展示辅助生成运行详情，仅由 AUXILIARY_GENERATION_SHOW_RUN_DETAIL 控制',
+      example: false
+    }),
     // SSO 根地址只在服务端访问；客户端通过能力标志展示入口，点击后按需获取授权地址。
     sso: FastGPTFeConfigsSchema.shape.sso
       .unwrap()

@@ -377,6 +377,7 @@
   "core.chat.Feedback Modal": "Result Feedback",
   "core.chat.Feedback Modal Tip": "Enter the part you are not satisfied with the answer",
   "core.chat.Feedback Submit": "Submit Feedback",
+  "core.chat.Feedback Cancelled": "Feedback canceled",
   "core.chat.Feedback Success": "Feedback Successful!",
   "core.chat.Finish Speak": "Voice Input Completed",
   "core.chat.History": "History",

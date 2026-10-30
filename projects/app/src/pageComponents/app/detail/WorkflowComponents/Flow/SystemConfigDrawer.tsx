@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Box, CloseButton, Flex, IconButton, Portal, Text } from '@chakra-ui/react';
+import { Box, Flex, IconButton, Portal, Text } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { useContextSelector } from 'use-context-selector';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -97,7 +97,16 @@ const SystemConfigDrawer = () => {
               >
                 {t('workflow:template.system_config')}
               </Text>
-              <CloseButton size={'sm'} onClick={onClose} />
+              <IconButton
+                aria-label={t('common:Close')}
+                size={'smSquare'}
+                icon={<MyIcon name={'common/closeLight'} w={'20px'} />}
+                variant={'ghost'}
+                bg={'transparent'}
+                borderRadius={'md'}
+                _hover={{ bg: 'myGray.05' }}
+                onClick={onClose}
+              />
             </Flex>
           }
         >

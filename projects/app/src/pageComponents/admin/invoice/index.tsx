@@ -37,7 +37,8 @@ import { downloadFetch } from '@/web/common/system/utils';
 
 const InvoiceManageTable = () => {
   const [search, setSearch] = useState<string>();
-  const [uploadInvoiceId, setUploadInvoiceId] = useState<string>();
+  // 保存选中记录的快照，避免列表刷新、排序或翻页后查找不到弹窗数据。
+  const [uploadInvoiceData, setUploadInvoiceData] = useState<InvoiceSchemaType>();
   const [invoiceDetailData, setInvoiceDetailData] = useState<InvoiceSchemaType>();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
@@ -113,8 +114,8 @@ const InvoiceManageTable = () => {
             </Tr>
           </Thead>
           <Tbody fontSize={'sm'}>
-            {invoices.map((item, i) => (
-              <Tr key={i}>
+            {invoices.map((item) => (
+              <Tr key={item._id}>
                 <Td
                   {...(item.status === InvoiceStatusEnum.submitted
                     ? {
@@ -138,7 +139,7 @@ const InvoiceManageTable = () => {
                   {item.status === InvoiceStatusEnum.submitted ? (
                     <Button
                       variant={'whiteBase'}
-                      onClick={() => setUploadInvoiceId(item._id)}
+                      onClick={() => setUploadInvoiceData(item)}
                       size={'sm'}
                     >
                       {'确认开票'}
@@ -178,11 +179,10 @@ const InvoiceManageTable = () => {
             flashData={() => getData(1)}
           />
         )}
-        {uploadInvoiceId && (
+        {uploadInvoiceData && (
           <InvoiceFinishModal
-            invoice={invoices.find((item) => item._id === uploadInvoiceId)!}
-            invoiceId={uploadInvoiceId}
-            onClose={() => setUploadInvoiceId(undefined)}
+            invoice={uploadInvoiceData}
+            onClose={() => setUploadInvoiceData(undefined)}
             flashData={() => getData(1)}
           />
         )}
@@ -294,24 +294,23 @@ function LabelItem({ label, value }: { label: string; value?: string }) {
   );
 }
 
+/** 使用选中发票的快照提交文件，成功后先关闭弹窗，再刷新列表。 */
 function InvoiceFinishModal({
   onClose,
-  invoiceId,
   flashData,
   invoice
 }: {
   onClose: () => void;
-  invoiceId: string;
   flashData: () => void;
   invoice: InvoiceSchemaType;
 }) {
   const [selectedFile, setSelectedFile] = useState<File>();
   const { File, onOpen: onOpenSelectFile } = useSelectFile({});
   const { loading, run: uploadInvoice } = useRequest(
-    (metadata: Record<string, any>, file: File) => {
+    (file: File) => {
       const formData = new FormData();
       formData.append('file', file, encodeURIComponent(file.name));
-      formData.append('data', JSON.stringify(metadata));
+      formData.append('data', JSON.stringify({ invoiceId: invoice._id }));
       return finishInvoice(formData);
     },
     {
@@ -319,8 +318,8 @@ function InvoiceFinishModal({
       successToast: '操作成功',
       errorToast: '操作失败',
       onSuccess: () => {
-        flashData();
         onClose();
+        flashData();
       }
     }
   );
@@ -343,7 +342,10 @@ function InvoiceFinishModal({
           <Button
             isDisabled={!selectedFile}
             isLoading={loading}
-            onClick={() => uploadInvoice({ invoiceId }, selectedFile!)}
+            onClick={() => {
+              if (!selectedFile) return;
+              uploadInvoice(selectedFile);
+            }}
           >
             确认提交
           </Button>

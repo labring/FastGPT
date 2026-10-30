@@ -4,8 +4,7 @@ import type {
   ChatCompletionMessageParam,
   ChatCompletionMessageToolCall
 } from '@fastgpt/global/core/ai/llm/type';
-import { parseJsonArgs } from '../../../../../utils';
-import { AgentAskPayloadSchema, type AgentAskPayload } from './tool';
+import { AgentAskArgumentsSchema, type AgentAskPayload } from '@fastgpt/global/core/ai/agent/type';
 
 type ParseAgentAskToolCallResult =
   | {
@@ -24,15 +23,7 @@ type ParseAgentAskToolCallResult =
 export const parseAgentAskToolCall = (
   toolCall: ChatCompletionMessageToolCall
 ): ParseAgentAskToolCallResult => {
-  const parsed = parseJsonArgs<Record<string, unknown>>(toolCall.function.arguments);
-  if (!parsed) {
-    return {
-      success: false,
-      error: 'Ask tool arguments are not valid JSON.'
-    };
-  }
-
-  const result = AgentAskPayloadSchema.safeParse(parsed);
+  const result = AgentAskArgumentsSchema.safeParse(toolCall.function.arguments);
   if (!result.success) {
     return {
       success: false,

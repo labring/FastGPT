@@ -116,19 +116,34 @@ describe('summarizeAgentLoopCoreResult', () => {
       ]
     };
 
+    const argumentsText = JSON.stringify(ask, null, 2);
+
     expect(
       summarizeAgentLoopCoreResult({
         status: 'interactive',
         requestIds: [],
-        completeMessages: [],
+        completeMessages: [
+          {
+            role: 'assistant',
+            tool_calls: [
+              {
+                id: 'call_ask',
+                type: 'function',
+                function: { name: 'ask_user', arguments: argumentsText }
+              }
+            ]
+          }
+        ],
         assistantMessages: [],
         assistantResponses: [],
         finishReason: 'stop',
         usages: [],
         pause: {
-          type: 'ask',
-          ask,
-          askId: 'call_ask'
+          toolCallId: 'call_ask',
+          interactive: {
+            type: 'agentAsk',
+            params: { toolCallId: 'call_ask', arguments: argumentsText }
+          }
         },
         providerState
       })
@@ -138,26 +153,14 @@ describe('summarizeAgentLoopCoreResult', () => {
         providerState,
         interactive: {
           type: 'agentAsk',
-          askId: 'call_ask',
-          params: {
-            description: 'Need input',
-            questions: [
-              {
-                question: 'Confirm?',
-                options: [
-                  { summary: 'Yes', value: 'Yes' },
-                  { summary: 'No', value: 'No' },
-                  { summary: 'Not sure', value: 'Not sure' }
-                ]
-              }
-            ]
-          }
+
+          params: { toolCallId: 'call_ask', arguments: argumentsText }
         }
       })
     );
   });
 
-  it('normalizes tool child pause to unified interactive', () => {
+  it('passes explicitly wrapped workflow state through without adding a wrapper', () => {
     const childrenResponse = {
       type: 'userSelect'
     };
@@ -172,9 +175,11 @@ describe('summarizeAgentLoopCoreResult', () => {
         finishReason: 'stop',
         usages: [],
         pause: {
-          type: 'tool_child',
-          childrenResponse,
-          toolCallId: 'call_tool'
+          toolCallId: 'call_tool',
+          interactive: {
+            type: 'toolChildrenInteractive',
+            params: { childrenResponse, toolCallId: 'call_tool' }
+          }
         }
       })
     ).toEqual(
@@ -183,9 +188,7 @@ describe('summarizeAgentLoopCoreResult', () => {
           type: 'toolChildrenInteractive',
           params: {
             childrenResponse,
-            toolParams: {
-              toolCallId: 'call_tool'
-            }
+            toolCallId: 'call_tool'
           }
         }
       })

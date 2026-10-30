@@ -42,6 +42,7 @@ const STATE_MAP: Record<string, SandboxState> = {
   creating: 'Creating',
   resuming: 'Starting',
   pausing: 'Stopping',
+  stopping: 'Deleting',
   deleting: 'Deleting',
   error: 'Error',
   paused: 'Stopped',
