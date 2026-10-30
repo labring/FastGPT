@@ -9,7 +9,7 @@ import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { OpenaiAccountType } from '@fastgpt/global/support/user/team/type';
 import type { AIModelDataType } from '@fastgpt/global/core/ai/model/schema';
-import type { DatasetSearchInput } from '@fastgpt/global/core/dataset/search/type';
+import type { DatasetSearchParams } from '@fastgpt/global/core/dataset/search/type';
 import type { DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
 import type { ModelHandle } from '../../ai/model/catalog/handle';
 
@@ -30,7 +30,8 @@ export type DatasetSearchEvent = {
 };
 
 export type DatasetSearchProps = {
-  params: DatasetSearchInput;
+  /** 入口按各自协议完成校验与默认值补齐，领域层不叠加新 HTTP 协议的范围约束。 */
+  params: DatasetSearchParams;
   context: {
     actor: { teamId: string; tmbId: string; isRoot: boolean };
     histories?: ChatItemMiniType[];

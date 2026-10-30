@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import type { DatasetSearchInput } from '@fastgpt/global/core/dataset/search/type';
+import { DatasetSearchParamsSchema } from '@fastgpt/global/core/dataset/search/type';
 import type { DatasetSearchProps } from '../../../../core/dataset/search/type';
 import type { ModelHandle } from '../../../../core/ai/model/catalog/handle';
 
@@ -82,7 +83,15 @@ const run = (
     onUsage: vi.fn<DatasetSearchProps['deps']['onUsage']>(async () => {}),
     onSearched: vi.fn(async () => {})
   };
-  return { deps, promise: search({ params, context: { actor }, deps, ...overrides }) };
+  return {
+    deps,
+    promise: search({
+      params: DatasetSearchParamsSchema.parse(params),
+      context: { actor },
+      deps,
+      ...overrides
+    })
+  };
 };
 
 beforeEach(() => {
@@ -118,6 +127,19 @@ beforeEach(() => {
 });
 
 describe('member knowledge search orchestration', () => {
+  it('keeps normalized legacy numeric options independent from the new HTTP contract', async () => {
+    const params = DatasetSearchParamsSchema.parse({
+      scope: { datasetIds: ids },
+      query: { text: 'q' }
+    });
+    params.result = { maxTokens: 0.5, similarity: -1 };
+    params.retrieval.embeddingWeight = 1.25;
+    await run(undefined, { params }).promise;
+    expect(mocks.recall).toHaveBeenCalledWith(
+      expect.objectContaining({ limit: 0.5, similarity: -1, embeddingWeight: 1.25 })
+    );
+  });
+
   it('authorizes every distinct dataset, applies collection permissions and invokes business hooks once', async () => {
     mocks.readable.mockResolvedValue(['readable-collection']);
     const { deps, promise } = run({
@@ -159,6 +181,28 @@ describe('member knowledge search orchestration', () => {
     mocks.auth.mockRejectedValueOnce(new Error('access denied'));
     const { deps, promise } = run();
     await expect(promise).rejects.toThrow('access denied');
+    expect(deps.beforeSearch).not.toHaveBeenCalled();
+    expect(mocks.recall).not.toHaveBeenCalled();
+    expect(deps.onUsage).not.toHaveBeenCalled();
+  });
+
+  it('rejects unauthorized auxiliary models before policies, retrieval and billing', async () => {
+    mocks.assertModels.mockRejectedValueOnce(new Error('model access denied'));
+    const { deps, promise } = run({
+      scope: { datasetIds: ids },
+      query: { text: 'q' },
+      rerank: { enabled: true },
+      queryExtension: { enabled: true }
+    });
+    await expect(promise).rejects.toThrow('model access denied');
+    expect(mocks.assertModels).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actor,
+        modelIds: [rerank.modelId, llm.modelId],
+        action: 'use',
+        handle
+      })
+    );
     expect(deps.beforeSearch).not.toHaveBeenCalled();
     expect(mocks.recall).not.toHaveBeenCalled();
     expect(deps.onUsage).not.toHaveBeenCalled();

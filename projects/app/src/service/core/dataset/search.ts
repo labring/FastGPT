@@ -1,5 +1,6 @@
-import type { DatasetSearchInput } from '@fastgpt/global/core/dataset/search/type';
+import type { DatasetSearchParams } from '@fastgpt/global/core/dataset/search/type';
 import type { DatasetSearchProps } from '@fastgpt/service/core/dataset/search/type';
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { search } from '@fastgpt/service/core/dataset/search/service';
 import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/catalog/service';
 import type { ModelHandle } from '@fastgpt/service/core/ai/model/catalog/handle';
@@ -22,11 +23,17 @@ type SearchApiAuth = DatasetSearchProps['context']['actor'] & { apikey: string }
 export const searchDatasetForApi = ({
   params,
   auth,
-  modelHandle
+  modelHandle,
+  usageAppName = 'Knowledge search',
+  onRateLimit
 }: {
-  params: DatasetSearchInput;
+  params: DatasetSearchParams;
   auth: SearchApiAuth;
   modelHandle?: ModelHandle;
+  /** 旧搜索测试保留账单名称，避免迁移改变账单筛选与展示。 */
+  usageAppName?: string;
+  /** 仅传出限流元数据，HTTP 入口可据此写响应头，领域服务不依赖 res。 */
+  onRateLimit?: (result: Awaited<ReturnType<typeof assertTeamFrequencyLimit>>) => void;
 }) =>
   search({
     params,
@@ -34,13 +41,24 @@ export const searchDatasetForApi = ({
     deps: {
       getModelHandle: modelHandle ? async () => modelHandle : getTeamModelHandle,
       beforeSearch: async () => {
-        await assertTeamFrequencyLimit({ teamId: auth.teamId, type: LimitTypeEnum.chat });
+        const result = await assertTeamFrequencyLimit({
+          teamId: auth.teamId,
+          type: LimitTypeEnum.chat
+        });
+        onRateLimit?.(result);
         await checkTeamAIPoints(auth.teamId);
       },
       onUsage: async ({ items }) => {
         if (items.length === 0) return;
+        const moduleNames = {
+          embedding: i18nT('account_usage:embedding_index'),
+          rerank: i18nT('account_usage:rerank'),
+          queryExtension: i18nT('common:core.module.template.Query extension'),
+          queryExtensionEmbedding: i18nT('account_usage:ai.query_extension_embedding'),
+          imageCaption: i18nT('account_usage:image_parse')
+        };
         const list = items.map((item) => ({
-          moduleName: item.phase,
+          moduleName: moduleNames[item.phase],
           modelId: item.model.modelId,
           inputTokens: item.inputTokens,
           outputTokens: item.outputTokens,
@@ -50,7 +68,7 @@ export const searchDatasetForApi = ({
         await createUsage({
           teamId: auth.teamId,
           tmbId: auth.tmbId,
-          appName: 'Knowledge search',
+          appName: usageAppName,
           source: auth.apikey ? UsageSourceEnum.api : UsageSourceEnum.fastgpt,
           list,
           totalPoints
