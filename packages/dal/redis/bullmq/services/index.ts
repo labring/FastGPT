@@ -6,6 +6,7 @@
 export * from './appDelete';
 export * from './collectionUpdate';
 export * from './datasetDelete';
+export * from './datasetPermissionSync';
 export * from './datasetSync';
 export * from './evaluation';
 export * from './s3FileDelete';

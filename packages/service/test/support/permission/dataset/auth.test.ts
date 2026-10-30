@@ -392,6 +392,82 @@ describe('authDatasetCollection', () => {
     expect(mockResolveCollectionPermission).not.toHaveBeenCalled();
   });
 
+  it('disableSuperAdmin applies to the dataset gate and the collection bypass alike', async () => {
+    mockParseHeaderCert.mockResolvedValue({
+      teamId: 'team-a',
+      tmbId: 'tmb-a',
+      userId: 'user-a',
+      isRoot: true
+    });
+    mockDatasetQuery({
+      _id: datasetId,
+      teamId: 'team-a',
+      tmbId: 'tmb-other',
+      collectionPermissionEnabled: true,
+      apiDatasetServer: { apiServer: { baseUrl: 'https://example.com' }, disableSuperAdmin: true }
+    });
+    mockGetCollectionWithDataset.mockResolvedValue({
+      _id: collectionId,
+      teamId: 'team-a',
+      datasetId,
+      tmbId: 'tmb-other',
+      dataset: {
+        apiDatasetServer: { apiServer: { baseUrl: 'https://example.com' }, disableSuperAdmin: true }
+      }
+    });
+    mockResolveCollectionPermission.mockResolvedValue(ReadRoleVal);
+
+    // 没有 dataset ACL：root 在 Dataset 读门槛就被拒，连 collection 层都到不了
+    await expect(
+      authDatasetCollection({
+        mockReq,
+        authToken: true,
+        collectionId,
+        per: ReadPermissionVal
+      })
+    ).rejects.toBe(DatasetErrEnum.unAuthDataset);
+    expect(mockResolveCollectionPermission).not.toHaveBeenCalled();
+
+    // 有 dataset ACL read：能进知识库，但 collection 维度仍只按文件 ACL，root 不短路
+    mockGetTmbPermission.mockResolvedValue(ReadPermissionVal);
+    const result = await authDatasetCollection({
+      mockReq,
+      authToken: true,
+      collectionId,
+      per: ReadPermissionVal
+    });
+
+    expect(result.permission.role).toBe(ReadRoleVal);
+    expect(mockResolveCollectionPermission).toHaveBeenCalled();
+
+    await expect(
+      authDatasetCollection({
+        mockReq,
+        authToken: true,
+        collectionId,
+        per: ManagePermissionVal
+      })
+    ).rejects.toBe(DatasetErrEnum.unAuthDatasetCollection);
+  });
+
+  it('disableSuperAdmin also removes the team-owner bypass on the dataset', async () => {
+    mockDatasetQuery({
+      _id: datasetId,
+      teamId: 'team-a',
+      tmbId: 'tmb-other',
+      apiDatasetServer: { apiServer: { baseUrl: 'https://example.com' }, disableSuperAdmin: true }
+    });
+
+    await expect(
+      authDatasetByTmbId({ tmbId: 'tmb-a', datasetId, per: ReadPermissionVal })
+    ).rejects.toBe(DatasetErrEnum.unAuthDataset);
+
+    // 未开启时团队 owner 仍按 owner 处理
+    mockDatasetQuery({ _id: datasetId, teamId: 'team-a', tmbId: 'tmb-other' });
+    const result = await authDatasetByTmbId({ tmbId: 'tmb-a', datasetId, per: ReadPermissionVal });
+    expect(result.dataset.permission.isOwner).toBe(true);
+  });
+
   it('grants the team owner owner role on a collection owned by another member', async () => {
     // 团队 owner 短路为 owner：changeOwner 等 owner 专属操作不能因 cap 到 manage 被误拒
     mockGetTmbInfoByTmbId.mockResolvedValue({

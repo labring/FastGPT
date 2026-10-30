@@ -1411,5 +1411,6 @@
   "core.dataset.error.tagValueInvalid": "태그 값 형식이 유형과 일치하지 않습니다",
   "core.dataset.error.tagValueDatetimeInvalid": "날짜/시간 태그 값 형식이 올바르지 않습니다",
   "core.dataset.error.arrayTagValueInvalid": "배열 태그 값이 올바르지 않습니다 (요소는 문자열, 배열 길이 ≤ 64, 요소 길이 ≤ 256)",
-  "error.operation_too_frequently": "작업이 너무 많습니다. 잠시 후 다시 시도하세요."
+  "error.operation_too_frequently": "작업이 너무 많습니다. 잠시 후 다시 시도하세요.",
+  "core.dataset.error.permissionSyncManaged": "이 지식 베이스의 파일 권한은 외부 API 파일 라이브러리에서 동기화되므로 여기서 수정할 수 없습니다"
 }

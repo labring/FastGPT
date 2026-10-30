@@ -11,6 +11,7 @@ import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
+import { assertCollectionPermissionEditable } from '@fastgpt/service/support/permission/collection/datasetSwitch';
 
 async function handler(req: ApiRequestProps<ResumeCollectionInheritPermissionBody>) {
   const { collectionId } = parseApiInput({
@@ -23,6 +24,11 @@ async function handler(req: ApiRequestProps<ResumeCollectionInheritPermissionBod
     req,
     authToken: true,
     per: ManagePermissionVal
+  });
+
+  await assertCollectionPermissionEditable({
+    teamId: String(collection.teamId),
+    datasetId: String(collection.datasetId)
   });
 
   const parentCollection = collection.parentId

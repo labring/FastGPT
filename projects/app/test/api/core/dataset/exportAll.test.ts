@@ -25,13 +25,15 @@ const createDataset = async ({
   owner,
   type = DatasetTypeEnum.dataset,
   parentId,
-  collectionPermissionEnabled
+  collectionPermissionEnabled,
+  apiDatasetServer
 }: {
   name: string;
   owner: TestUser;
   type?: DatasetTypeEnum;
   parentId?: string;
   collectionPermissionEnabled?: boolean;
+  apiDatasetServer?: Record<string, unknown>;
 }) =>
   MongoDataset.create({
     name,
@@ -40,6 +42,7 @@ const createDataset = async ({
     tmbId: owner.tmbId,
     parentId,
     collectionPermissionEnabled,
+    apiDatasetServer,
     vectorModel: 'test',
     agentModel: 'test'
   });
@@ -203,6 +206,35 @@ describe('export dataset respects collection permission', () => {
 
     expect(res.code).toBe(200);
     expect(res.raw).toContain('owner-file-q');
+  });
+
+  it('filters collections for the team owner when disableSuperAdmin is on', async () => {
+    const users = await getFakeUsers(1);
+    const teamOwner = users.owner;
+    const member = users.members[0];
+    const dataset = await createDataset({
+      name: 'disable-super-admin-dataset',
+      owner: member,
+      collectionPermissionEnabled: true,
+      apiDatasetServer: {
+        apiServer: { baseUrl: 'https://example.com' },
+        disableSuperAdmin: true
+      }
+    });
+    // 文件作者是 member：owner 行只属于 member，团队 owner 没有 collection ACL
+    await createFileCollection({
+      name: 'member-file',
+      owner: member,
+      datasetId: String(dataset._id)
+    });
+
+    const res = await StreamCall(handler, {
+      auth: teamOwner,
+      query: { datasetId: String(dataset._id) }
+    });
+
+    expect(res.code).toBe(200);
+    expect(res.raw).not.toContain('member-file-q');
   });
 
   it('rejects exporting a folder', async () => {

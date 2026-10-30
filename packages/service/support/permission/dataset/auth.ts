@@ -37,6 +37,7 @@ import {
   toInheritedPermissionValue
 } from '../resourcePermissionPolicy';
 import { resolveCollectionPermission } from '../collection/auth';
+import { isDisableSuperAdmin } from '@fastgpt/global/core/dataset/apiDataset/utils';
 import { assertDatasetPermission } from './utils';
 import type { TeamTmbItemType } from '@fastgpt/global/support/user/team/type';
 
@@ -67,7 +68,12 @@ export const authDatasetByTmbId = async ({
       return Promise.reject(DatasetErrEnum.unExist);
     }
 
-    if (isRoot) {
+    // 外部权限同步可以要求连超管也遵守本地 ACL：此时 root 和团队 owner 都不再旁路，
+    // Dataset 级权限与其他成员一样只来自 ACL 行（dataset owner 仍由 assertDatasetPermission 兜底）。
+    const disableSuperAdmin = isDisableSuperAdmin(dataset.apiDatasetServer);
+    const effectiveIsRoot = isRoot && !disableSuperAdmin;
+
+    if (effectiveIsRoot) {
       return {
         ...dataset,
         permission: new DatasetPermission({
@@ -105,8 +111,8 @@ export const authDatasetByTmbId = async ({
       dataset,
       teamId,
       tmbId,
-      isTeamOwner: tmbPer.isOwner,
-      isRoot,
+      isTeamOwner: tmbPer.isOwner && !disableSuperAdmin,
+      isRoot: effectiveIsRoot,
       // 父级 owner 在子级只能是 manage；物化快照已含父级贡献，这里只兜底历史缺失快照。
       role: sumPer(toInheritedPermissionValue(folderPer), myPer) ?? 0,
       per
@@ -215,9 +221,15 @@ export async function authDatasetCollection({
     return Promise.reject(DatasetErrEnum.unExist);
   }
 
+  // 外部权限同步可以要求连超管也按文件权限走：root 与团队 owner 的短路全部关闭。
+  // Dataset read 门槛保留（否则连知识库都不可见），只在 Collection 维度取消旁路。
+  const disableSuperAdmin = isDisableSuperAdmin(collection.dataset?.apiDatasetServer);
+  const isRoot = isRootFromHeader && !disableSuperAdmin;
+
   const tmbInfo = await getTmbInfoByTmbId({ tmbId });
 
-  // 1. Dataset read 门槛：Collection 权限不能绕过 Dataset 权限
+  // 1. Dataset read 门槛：Collection 权限不能绕过 Dataset 权限。
+  //    `disableSuperAdmin` 在 authDatasetByTmbId 内同样生效：超管没有 dataset ACL 时这一层就会被拒。
   const { dataset } = await authDatasetByTmbId({
     tmbId,
     datasetId: collection.datasetId,
@@ -232,14 +244,14 @@ export async function authDatasetCollection({
   }
 
   // 系统 root 用户：与 Dataset 级 isRoot 语义一致，跳过 Collection 级权限解析。
-  if (isRootFromHeader) {
+  if (isRoot) {
     return {
       userId,
       teamId,
       tmbId,
       collection,
       permission: new CollectionPermission({ isOwner: true }),
-      isRoot: isRootFromHeader
+      isRoot
     };
   }
 
@@ -248,7 +260,9 @@ export async function authDatasetCollection({
   //    视为 owner（含 owner 专属操作），与 listV2/RAG 短路保持一致。
   //    团队管理员（hasManagePer）不在此列：团队级 manage 只覆盖团队自身资源（成员组/组织），
   //    Dataset / Collection 等业务资源仍以各自 ACL 为准，与 authDatasetByTmbId、dataset list 一致。
-  const isTeamOwner = String(tmbInfo.teamId) === String(teamId) && tmbInfo.permission.isOwner;
+  //    disableSuperAdmin 时同样关闭：这是「外部权限连管理员也必须遵守」的唯一实现点。
+  const isTeamOwner =
+    !disableSuperAdmin && String(tmbInfo.teamId) === String(teamId) && tmbInfo.permission.isOwner;
 
   // 3. 短路：Dataset 处于关闭态（默认，含全部存量数据）→ Collection 有效权限直接等于
   //    Dataset 有效权限（父 owner 不透传，cap 为 manage）。关闭态由「开关是唯一入口」保证不存
@@ -298,7 +312,7 @@ export async function authDatasetCollection({
     tmbId,
     collection,
     permission,
-    isRoot: isRootFromHeader
+    isRoot
   };
 }
 
