@@ -22,6 +22,7 @@ import { deleteDatasetDataVector } from '../../../common/vectorDB/controller';
 import { checkDatasetIndexLimit } from '../../../support/permission/teamLimit';
 import { createTrainingUsage } from '../../../support/wallet/usage/controller';
 import { getTeamModelHandle } from '../../ai/model/catalog/service';
+import type { ModelHandle } from '../../ai/model/catalog/handle';
 import { MongoDatasetData } from '../data/schema';
 import { getDatasetModelReference } from '../model';
 import { rawText2Chunks } from '../read';
@@ -374,21 +375,29 @@ export const bulkMoveCollectionsParent = async ({
  * 批量创建时整批复用同一份结果，避免逐文件重复计算。
  * 导出供单测直接断言计算结果（避免测试复制一份计算逻辑当断言基准）。
  */
+export type DatasetModelAuthContext = {
+  modelHandle: ModelHandle;
+  authorizedIds: Set<string>;
+};
+
 export const formatCollectionParamsByDataset = async ({
   dataset,
-  createCollectionParams
+  createCollectionParams,
+  modelAuthContext
 }: {
   dataset: DatasetSchemaType;
   /** name 不是公共参数（逐文件不同），故此处不要求 */
   createCollectionParams: Omit<CreateOneCollectionParams, 'name' | 'session'>;
+  modelAuthContext?: DatasetModelAuthContext;
 }) => {
-  const modelHandle = await getTeamModelHandle({ teamId: String(dataset.teamId) });
+  const modelHandle =
+    modelAuthContext?.modelHandle ?? (await getTeamModelHandle({ teamId: String(dataset.teamId) }));
   const agentModelData = modelHandle.getModelData(getDatasetModelReference(dataset, 'agent'), {
     type: 'llm'
   });
   const embeddingModelData = modelHandle.getModelData(
     getDatasetModelReference(dataset, 'embedding'),
-    { type: 'embedding' }
+    { type: 'embedding', authorizedIds: modelAuthContext?.authorizedIds }
   );
   const vlmModelData = modelHandle.getModelData(getDatasetModelReference(dataset, 'vlm'), {
     type: 'llm',
@@ -467,12 +476,14 @@ export const createCollectionAndInsertData = async ({
   createCollectionParams,
   backupParse = false,
   billId,
-  session
+  session,
+  modelAuthContext
 }: {
   dataset: DatasetSchemaType;
   rawText?: string;
   imageIds?: string[];
   createCollectionParams: CreateOneCollectionParams;
+  modelAuthContext?: DatasetModelAuthContext;
 
   backupParse?: boolean;
 
@@ -486,7 +497,7 @@ export const createCollectionAndInsertData = async ({
     formatCreateCollectionParams,
     trainingType,
     trainingMode
-  } = await formatCollectionParamsByDataset({ dataset, createCollectionParams });
+  } = await formatCollectionParamsByDataset({ dataset, createCollectionParams, modelAuthContext });
 
   const teamId = formatCreateCollectionParams.teamId;
   const tmbId = formatCreateCollectionParams.tmbId;
@@ -919,7 +930,8 @@ export const createApiFileCollectionsBatch = async ({
   createCollectionParams,
   billing = { mode: 'shared' },
   indexLimitEstimate,
-  session
+  session,
+  modelAuthContext
 }: {
   dataset: DatasetSchemaType;
   files: CreateApiFileCollectionItem[];
@@ -932,6 +944,7 @@ export const createApiFileCollectionsBatch = async ({
   /** 缺省按文件数预估；同步的旧解析路径没有已知分块，传 0 保留其原估算契约。 */
   indexLimitEstimate?: number;
   session?: ClientSession;
+  modelAuthContext?: DatasetModelAuthContext;
 }): Promise<{ collectionIds: string[] }> => {
   if (files.length === 0) return { collectionIds: [] };
 
@@ -942,7 +955,7 @@ export const createApiFileCollectionsBatch = async ({
     vlmModelData,
     formatCreateCollectionParams,
     trainingType
-  } = await formatCollectionParamsByDataset({ dataset, createCollectionParams });
+  } = await formatCollectionParamsByDataset({ dataset, createCollectionParams, modelAuthContext });
   const teamId = formatCreateCollectionParams.teamId;
   const tmbId = formatCreateCollectionParams.tmbId;
   await checkDatasetIndexLimit({ teamId, insertLen: indexLimitEstimate ?? files.length });

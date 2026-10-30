@@ -4,6 +4,7 @@ import {
   type CreateCollectionWithResultResponseType
 } from '@fastgpt/global/openapi/core/dataset/collection/createApi';
 import { createCollectionAndInsertData } from '@fastgpt/service/core/dataset/collection/controller';
+import { getDatasetModelAuthContext } from '@fastgpt/service/core/dataset/model';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/next/type';
@@ -19,7 +20,7 @@ async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResult
     bodySchema: CreateCollectionByFileIdBodySchema
   }).body;
 
-  const { teamId, tmbId, dataset } = await authDatasetCollectionCreate({
+  const { teamId, tmbId, isRoot, dataset } = await authDatasetCollectionCreate({
     req,
     authToken: true,
     authApiKey: true,
@@ -32,6 +33,12 @@ async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResult
     return Promise.reject(CommonErrEnum.unAuthFileKey);
   }
 
+  const modelAuthContext = await getDatasetModelAuthContext({
+    dataset,
+    teamId,
+    tmbId,
+    isRoot
+  });
   const metadata = await getS3DatasetSource().getFileMetadata(fileId);
   if (!metadata) {
     return Promise.reject(CommonErrEnum.fileNotFound);
@@ -45,6 +52,7 @@ async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResult
 
   return createCollectionAndInsertData({
     dataset,
+    modelAuthContext,
     createCollectionParams: {
       ...body,
       teamId,

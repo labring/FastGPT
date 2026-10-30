@@ -1,4 +1,5 @@
 import { createCollectionAndInsertData } from '@fastgpt/service/core/dataset/collection/controller';
+import { getDatasetModelAuthContext } from '@fastgpt/service/core/dataset/model';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/next/type';
@@ -24,12 +25,18 @@ async function handler(req: ApiRequestProps): Promise<ReTrainingCollectionRespon
     bodySchema: ReTrainingCollectionBodySchema
   }).body;
 
-  const { collection, teamId, tmbId } = await authDatasetCollection({
+  const { collection, teamId, tmbId, isRoot } = await authDatasetCollection({
     req,
     authToken: true,
     authApiKey: true,
     collectionId: inputCollectionId,
     per: WritePermissionVal
+  });
+  const modelAuthContext = await getDatasetModelAuthContext({
+    dataset: collection.dataset,
+    teamId,
+    tmbId,
+    isRoot
   });
 
   return mongoSessionRun(async (session) => {
@@ -51,6 +58,7 @@ async function handler(req: ApiRequestProps): Promise<ReTrainingCollectionRespon
     const { collectionId } = await createCollectionAndInsertData({
       dataset: collection.dataset,
       session,
+      modelAuthContext,
       createCollectionParams: {
         ...collection,
         ...data,

@@ -1,5 +1,9 @@
 import type { OpenAPIPath } from '../../../type';
 import {
+  CreateModelDeprecationInformBodySchema,
+  CreateModelDeprecationInformResponseSchema,
+  ListModelDeprecationInformQuerySchema,
+  ListModelDeprecationInformResponseSchema,
   SendSystemInformBodySchema,
   UpdateSystemModalBodySchema,
   UpdateOperationalAdBodySchema,
@@ -11,6 +15,54 @@ import {
 import { DevApiTagsMap } from '../../../tag';
 
 export const AdminInformPath: OpenAPIPath = {
+  '/proApi/admin/system/inform/modelDeprecation/create': {
+    post: {
+      summary: '创建模型下架通知计划',
+      description: '为一组即将下架模型创建多轮通知计划',
+      tags: [DevApiTagsMap.adminInform],
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: CreateModelDeprecationInformBodySchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: '成功创建模型下架通知计划',
+          content: {
+            'application/json': {
+              schema: CreateModelDeprecationInformResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
+  '/proApi/admin/system/inform/modelDeprecation/list': {
+    post: {
+      summary: '查询模型下架通知历史',
+      description: '分页查询模型下架通知计划及各轮发送状态',
+      tags: [DevApiTagsMap.adminInform],
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: ListModelDeprecationInformQuerySchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: '成功获取模型下架通知历史',
+          content: {
+            'application/json': {
+              schema: ListModelDeprecationInformResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
   '/proApi/admin/system/inform/sendSystemInform': {
     post: {
       summary: '发送系统通知给所有用户',

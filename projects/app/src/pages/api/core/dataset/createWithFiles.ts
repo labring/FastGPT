@@ -160,6 +160,7 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetWithFilesResp
 
         await createCollectionAndInsertData({
           dataset,
+          modelAuthContext: { modelHandle, authorizedIds },
           createCollectionParams: {
             datasetId: dataset._id,
             teamId,

@@ -1,4 +1,5 @@
 import React from 'react';
+import DeprecationTag from '@/components/core/ai/DeprecationTag';
 import MultimodalTag from '@/components/core/ai/MultimodelTag';
 import TestModeBetaTag from '@/components/core/ai/TestModeBetaTag';
 import { useModelList } from '@/web/core/ai/model/useModelList';
@@ -25,6 +26,7 @@ import {
   resolveModelSelectorDisabled,
   resolveModelSelectorProviders,
   resolveModelSelectorSelection,
+  shouldShowTestModeTag,
   sortModelSelectorModels
 } from './AIModelSelector.utils';
 import { useContextSelector } from 'use-context-selector';
@@ -105,8 +107,9 @@ const ModelLabel = ({
               {t('common:model.system_model_tag')}
             </MyTag>
           )}
-          {model.testMode && <TestModeBetaTag />}
+          {shouldShowTestModeTag(model) && <TestModeBetaTag />}
           {multimodalEmbedding && <MultimodalTag />}
+          {isSystem && model.isUpcomingDeprecation === true && <DeprecationTag size={'sm'} />}
         </Flex>
       )}
     </Flex>
@@ -273,6 +276,9 @@ const AIModelSelector = ({
           error={detailState.error}
           emptyLabel={canBeUnset ? unsetLabel : placeholder}
           avatarSize={avatarSize}
+          showUpcomingDeprecationTag
+          hideUpcomingDeprecationTagWhenDisabled
+          disabledLabel={(name) => t('common:model_disabled_prefix', { model: name })}
         />
       }
       list={loading || catalogError ? [] : selectorList}

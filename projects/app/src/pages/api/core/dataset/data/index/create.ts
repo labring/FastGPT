@@ -12,6 +12,7 @@ import type { ApiRequestProps } from '@fastgpt/next/type';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/catalog/service';
 import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
+import { getAuthorizedModelIds } from '@fastgpt/service/support/permission/model/auth';
 import { authDatasetData } from '@fastgpt/service/support/permission/dataset/auth';
 import { addAuditLog, getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
 
@@ -21,7 +22,7 @@ async function handler(req: ApiRequestProps): Promise<DatasetDataIndexResponse> 
     bodySchema: CreateDatasetDataIndexBodySchema
   }).body;
 
-  const { datasetData, tmbId, teamId, collection } = await authDatasetData({
+  const { datasetData, tmbId, teamId, isRoot, collection } = await authDatasetData({
     req,
     authToken: true,
     authApiKey: true,
@@ -30,9 +31,13 @@ async function handler(req: ApiRequestProps): Promise<DatasetDataIndexResponse> 
     assertWritable: true
   });
   const modelHandle = await getTeamModelHandle({ teamId });
+  const authorizedIds = await getAuthorizedModelIds({
+    actor: { teamId, tmbId, isRoot },
+    handle: modelHandle
+  });
   const embeddingModel = modelHandle.getModelData(
     getDatasetModelReference(collection.dataset, 'embedding'),
-    { type: 'embedding' }
+    { type: 'embedding', authorizedIds }
   );
   const { index, tokens } = await createDatasetDataIndex({
     data: datasetData,

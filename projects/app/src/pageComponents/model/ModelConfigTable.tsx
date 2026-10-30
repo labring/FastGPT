@@ -43,6 +43,7 @@ import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import AddModel from './AddModel';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
 import TestModeBetaTag from '@/components/core/ai/TestModeBetaTag';
+import DeprecationTag from '@/components/core/ai/DeprecationTag';
 import ModelCapabilityTags from '@/components/core/ai/ModelCapabilityTags';
 import { accountContentScrollStyles, accountPageRootStyles } from '@/pageComponents/account/styles';
 import ModelTabHeader from '@/components/core/ai/ModelTabHeader';
@@ -57,6 +58,8 @@ import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { FixedTableLayout } from '@fastgpt/web/components/common/FixedTable';
 import JsonModelConfigModal from './JsonModelConfigModal';
 import DefaultModelModal from './DefaultModelModal';
+import ModelDeprecationInformModal from './ModelDeprecationInformModal';
+import ModelDeprecationHistoryModal from './ModelDeprecationHistoryModal';
 import ModelListFilters from '@/components/core/ai/ModelListFilters';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useModelTableFormat } from '@/components/core/ai/hooks/useModelTableFormat';
@@ -303,6 +306,16 @@ const ModelTable = ({ Tab, channelType }: { Tab: React.ReactNode; channelType: C
     onClose: onCloseDefaultModel,
     isOpen: isOpenDefaultModel
   } = useDisclosure();
+  const {
+    isOpen: isOpenDeprecationInform,
+    onOpen: onOpenDeprecationInform,
+    onClose: onCloseDeprecationInform
+  } = useDisclosure();
+  const {
+    isOpen: isOpenDeprecationHistory,
+    onOpen: onOpenDeprecationHistory,
+    onClose: onCloseDeprecationHistory
+  } = useDisclosure();
 
   // 渠道是列表的补充数据，模型详情和更新也都有独立操作反馈；只有模型首次加载阻塞整表。
   const isInitialLoading = loadingModels && modelConfigData === undefined;
@@ -319,12 +332,23 @@ const ModelTable = ({ Tab, channelType }: { Tab: React.ReactNode; channelType: C
           <Grid
             w={['100%', 'auto']}
             templateColumns={
-              !isTeam && isRoot ? ['repeat(3, minmax(0, 1fr))', 'repeat(3, auto)'] : ['1fr', 'auto']
+              !isTeam && isRoot ? ['repeat(4, minmax(0, 1fr))', 'repeat(4, auto)'] : ['1fr', 'auto']
             }
             gap={2}
           >
             {!isTeam && isRoot && (
               <>
+                {feConfigs?.isPlus && (
+                  <Button
+                    w={['100%', 'auto']}
+                    minW={0}
+                    px={[2, 4]}
+                    variant={'whiteBase'}
+                    onClick={onOpenDeprecationInform}
+                  >
+                    {t('config_model:model_deprecation.send_entry')}
+                  </Button>
+                )}
                 <Button
                   w={['100%', 'auto']}
                   minW={0}
@@ -508,6 +532,9 @@ const ModelTable = ({ Tab, channelType }: { Tab: React.ReactNode; channelType: C
                                 </MyTag>
                               )}
                               {item.testMode && <TestModeBetaTag />}
+                              {channelType === 'system' && item.isUpcomingDeprecation === true && (
+                                <DeprecationTag size={'sm'} />
+                              )}
                             </Flex>
                           </HStack>
                           <HStack mt={2} spacing={2} flexWrap={'nowrap'}>
@@ -697,6 +724,19 @@ const ModelTable = ({ Tab, channelType }: { Tab: React.ReactNode; channelType: C
           onClose={onCloseDefaultModel}
           onSuccess={refreshModels}
         />
+      )}
+      {isOpenDeprecationInform && (
+        <ModelDeprecationInformModal
+          models={modelItems}
+          onClose={onCloseDeprecationInform}
+          onShowHistory={() => {
+            onCloseDeprecationInform();
+            onOpenDeprecationHistory();
+          }}
+        />
+      )}
+      {isOpenDeprecationHistory && (
+        <ModelDeprecationHistoryModal models={modelItems} onClose={onCloseDeprecationHistory} />
       )}
       <BatchDeleteConfirmModal isLoading={deletingModels} />
     </>

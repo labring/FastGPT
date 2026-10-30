@@ -503,6 +503,7 @@ const ModelConfigForm = ({
         delete modelData.requestUrl;
         delete modelData.requestAuth;
         delete modelData.testMode;
+        delete modelData.isUpcomingDeprecation;
       }
 
       return onSubmit(normalizeModelPricingForSave(data));
@@ -873,6 +874,11 @@ const ModelConfigForm = ({
                   label={t('config_model:model.test_mode')}
                   tip={t('config_model:model.test_mode_tip')}
                   field={'testMode'}
+                  register={register}
+                />
+                <SwitchField
+                  label={t('config_model:model.upcoming_deprecation')}
+                  field={'isUpcomingDeprecation'}
                   register={register}
                 />
               </>

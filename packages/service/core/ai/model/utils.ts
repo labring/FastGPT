@@ -69,14 +69,19 @@ export const getModelConfigUpdate = (
  */
 export const sanitizeTeamModelData = <T extends object>(
   modelData: T
-): Omit<T, 'requestUrl' | 'requestAuth' | 'testMode' | 'tmbId' | 'teamId'> => {
-  const { requestUrl, requestAuth, testMode, tmbId, teamId, ...rest } = modelData as T & {
-    requestUrl?: unknown;
-    requestAuth?: unknown;
-    testMode?: unknown;
-    tmbId?: unknown;
-    teamId?: unknown;
-  };
+): Omit<
+  T,
+  'requestUrl' | 'requestAuth' | 'testMode' | 'tmbId' | 'teamId' | 'isUpcomingDeprecation'
+> => {
+  const { requestUrl, requestAuth, testMode, tmbId, teamId, isUpcomingDeprecation, ...rest } =
+    modelData as T & {
+      requestUrl?: unknown;
+      requestAuth?: unknown;
+      testMode?: unknown;
+      tmbId?: unknown;
+      teamId?: unknown;
+      isUpcomingDeprecation?: unknown;
+    };
   return rest;
 };
 

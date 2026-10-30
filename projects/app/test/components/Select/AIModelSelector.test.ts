@@ -1,4 +1,5 @@
 import AIModelSelector from '@/components/Select/AIModelSelector';
+import { shouldShowTestModeTag } from '@/components/Select/AIModelSelector.utils';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({
@@ -271,5 +272,43 @@ describe('AIModelSelector lazy directory', () => {
     mocks.effects.forEach((fn) => fn());
     expect(mocks.refresh).not.toHaveBeenCalled();
     expect(mocks.setFromCatalog).not.toHaveBeenCalled();
+  });
+
+  it('marks upcoming system models in candidate and current-value displays without changing selection', () => {
+    mocks.open = true;
+    mocks.lists.mockReturnValue({
+      modelList: [
+        {
+          modelId: 'chosen',
+          model: 'provider-model',
+          name: 'Chosen',
+          type: 'llm',
+          provider: 'p',
+          scope: 'system',
+          isUpcomingDeprecation: true,
+          config: {}
+        }
+      ],
+      loading: false,
+      error: false
+    });
+    mocks.detail.mockReturnValue({
+      detail: { modelId: 'chosen', name: 'Chosen', status: 'active', isUpcomingDeprecation: true },
+      loading: false,
+      error: false,
+      refresh: mocks.refresh,
+      setFromCatalog: mocks.setFromCatalog
+    });
+
+    const selector = AIModelSelector({ modelType: ModelTypeEnum.llm, value: 'chosen' });
+
+    expect(selector.props.list[0].label.props.model.isUpcomingDeprecation).toBe(true);
+    expect(selector.props.label.props.showUpcomingDeprecationTag).toBe(true);
+    expect(selector.props.value).toEqual(['chosen']);
+  });
+
+  it('hides the beta tag only for upcoming models', () => {
+    expect(shouldShowTestModeTag({ testMode: true })).toBe(true);
+    expect(shouldShowTestModeTag({ testMode: true, isUpcomingDeprecation: true })).toBe(false);
   });
 });
