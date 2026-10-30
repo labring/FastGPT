@@ -1,0 +1,194 @@
+---
+title: MinIO to RustFS Migration
+description: Migrate FastGPT Docker object storage from MinIO to RustFS
+---
+
+New deployments from the `main` version use RustFS as their object storage. Existing MinIO deployments must migrate in place, keeping the original Compose project, business volumes, database connection settings, and secrets while replacing only object storage.
+
+> Do not rerun `install.sh` in another directory or change the Compose project name. Starting a fresh installation creates new MongoDB, Redis, and PG volumes and regenerates database passwords and application secrets without preserving the old values, making the original business data inaccessible.
+
+## 1. Pin the Existing Deployment and Back It Up
+
+Run the following commands in the existing FastGPT deployment directory. Back up the current Compose file and retain any local configuration file such as `config.json` without overwriting it with a fresh installation.
+
+```bash
+cd /path/to/current-fastgpt
+cp docker-compose.yml docker-compose.yml.minio.bak
+test ! -f config.json || cp config.json config.json.minio.bak
+```
+
+Confirm the current Compose project name and business volumes. Every later `docker compose` command must either run in this directory or explicitly use the same project name.
+
+```bash
+docker inspect -f '{{ index .Config.Labels "com.docker.compose.project" }}' fastgpt-mongo
+docker volume ls --filter label=com.docker.compose.project=YOUR_PROJECT_NAME
+```
+
+If the project name is empty, identify the project for the current configuration with `docker compose ls` before continuing.
+
+## 2. Add RustFS to the Existing Compose File
+
+Add a pair of credential anchors at the top level of the existing Compose file, then add the service below under the services mapping. Because it stays in the original project, `fastgpt-rustfs` uses the existing project's volume namespace and the same volume can be reused after the switch.
+
+```yaml
+x-rustfs-access-key: &x-rustfs-access-key 'YOUR_NEW_ACCESS_KEY'
+x-rustfs-secret-key: &x-rustfs-secret-key 'YOUR_NEW_SECRET_KEY'
+```
+
+```yaml
+  fastgpt-rustfs:
+    image: rustfs/rustfs:1.0.4
+    # In mainland China, use docker.m.daocloud.io/rustfs/rustfs:1.0.4
+    container_name: fastgpt-rustfs
+    restart: always
+    ports:
+      - 9010:9000
+      - 9011:9001
+    networks:
+      - data
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      RUSTFS_ACCESS_KEY: *x-rustfs-access-key
+      RUSTFS_SECRET_KEY: *x-rustfs-secret-key
+      RUSTFS_VOLUMES: /data
+      RUSTFS_ADDRESS: :9000
+      RUSTFS_CONSOLE_ADDRESS: :9001
+      RUSTFS_CONSOLE_ENABLE: "true"
+      RUSTFS_OBS_LOGGER_LEVEL: error
+      RUSTFS_OBS_LOG_DIRECTORY: /logs
+    volumes:
+      - fastgpt-rustfs:/data
+    healthcheck:
+      test: ['CMD-SHELL', 'curl -fsS http://127.0.0.1:9000/health && curl -fsS http://127.0.0.1:9001/rustfs/console/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+```
+
+Declare the new data volume in the volumes section. Keep `fastgpt-minio` until the switch has been verified so it remains available for rollback.
+
+```yaml
+volumes:
+  fastgpt-rustfs:
+```
+
+Generate two random values and replace `YOUR_NEW_ACCESS_KEY` and `YOUR_NEW_SECRET_KEY` above:
+
+```bash
+openssl rand -hex 16
+openssl rand -hex 16
+```
+
+Start only RustFS from the existing deployment directory. The temporary ports 9010 and 9011 avoid conflicting with the old MinIO on ports 9000 and 9001.
+
+```bash
+docker compose up -d fastgpt-rustfs
+docker compose ps fastgpt-rustfs
+curl -fsS http://127.0.0.1:9010/health
+```
+
+Record the RustFS volume name. The migration and final deployment must use this same volume:
+
+```bash
+docker volume ls --filter label=com.docker.compose.project=YOUR_PROJECT_NAME
+```
+
+## 3. Copy the Initial Object Data
+
+Install [MinIO Client](https://min.io/docs/minio/linux/reference/minio-mc.html) on the host and create aliases for the old MinIO and new RustFS. Never swap the addresses or credentials assigned to the old and new aliases.
+
+```bash
+mc alias set old http://127.0.0.1:9000 YOUR_OLD_ACCESS_KEY YOUR_OLD_SECRET_KEY
+mc alias set new http://127.0.0.1:9010 YOUR_NEW_ACCESS_KEY YOUR_NEW_SECRET_KEY
+mc alias list
+```
+
+If the old deployment uses a different MinIO port, use that port instead. If you changed the `STORAGE_PUBLIC_BUCKET` or `STORAGE_PRIVATE_BUCKET` values, use your actual bucket names in every command below.
+
+```bash
+mc mb --ignore-existing new/fastgpt-public new/fastgpt-private
+mc mirror --overwrite old/fastgpt-public new/fastgpt-public
+mc mirror --overwrite old/fastgpt-private new/fastgpt-private
+```
+
+The old FastGPT deployment can remain online during this step. After the initial copy, leave an observation window so normal reads and writes before the switch continue to reach the old MinIO.
+
+## 4. Freeze Writes and Run the Final Sync
+
+Stop every application that may write to object storage from the same old deployment directory. Stop any external scripts or clients that write directly to the old MinIO as well.
+
+```bash
+docker compose stop fastgpt-app fastgpt-plugin
+```
+
+After confirming the source and target aliases and bucket names, run the final sync. It must use `--remove` so objects deleted from the old MinIO are also removed from the target RustFS.
+
+```bash
+set -euo pipefail
+mc mirror --overwrite --remove old/fastgpt-public new/fastgpt-public
+mc mirror --overwrite --remove old/fastgpt-private new/fastgpt-private
+```
+
+Do not switch if either sync command fails. Then run a dry-run for both buckets. A matching target reports zero values for the `total` and `transferred` fields in the JSON summary.
+
+```bash
+mc mirror --dry-run --overwrite --remove --json old/fastgpt-public new/fastgpt-public
+mc mirror --dry-run --overwrite --remove --json old/fastgpt-private new/fastgpt-private
+mc du old/fastgpt-public new/fastgpt-public
+mc du old/fastgpt-private new/fastgpt-private
+```
+
+If a dry-run still reports differences, `mc du` does not match expectations, or the source and target buckets cannot be confirmed, stop the migration, keep the old deployment, and do not start the new application configuration.
+
+## 5. Switch Object Storage in Place
+
+After the final sync succeeds, stop the old MinIO container to release ports 9000 and 9001, but do not delete its data volume:
+
+```bash
+docker compose stop fastgpt-minio
+```
+
+Continue editing the same `docker-compose.yml` in the current directory:
+
+1. Change the `fastgpt-rustfs` ports back to host ports 9000 and 9001.
+2. Use the RustFS credentials and endpoint in the shared database configuration.
+3. Change `fastgpt-minio` to `fastgpt-rustfs` in the `depends_on` entries for both application services.
+4. Replace `fastgpt-minio` with `fastgpt-rustfs` in both proxy environment variables.
+5. Remove or comment out the old `fastgpt-minio` service so a full `docker compose up -d` does not start it again. Keep the `fastgpt-minio` data volume.
+
+The shared storage configuration should match the following:
+
+```yaml
+  STORAGE_ACCESS_KEY_ID: *x-rustfs-access-key
+  STORAGE_SECRET_ACCESS_KEY: *x-rustfs-secret-key
+  STORAGE_S3_ENDPOINT: http://fastgpt-rustfs:9000
+```
+
+Keep `STORAGE_VENDOR` set to the value `minio` because this switch changes only the S3-compatible endpoint and credentials.
+
+Validate and start the original deployment. Because it still runs from the original directory and Compose project, MongoDB, Redis, PG, application secrets, and the existing configuration remain unchanged.
+
+```bash
+docker compose config --quiet
+docker compose up -d
+docker compose ps
+curl -fsS http://127.0.0.1:9000/health
+```
+
+After file upload, download, Dataset file access, and anonymous reads from the public bucket work, consider deleting the old `fastgpt-minio` data volume. Never remove volumes with the `-v` option.
+
+## Rollback
+
+If the application does not work after the switch, stop RustFS and FastGPT, restore the backed-up Compose file, and start the original deployment:
+
+```bash
+docker compose stop fastgpt-app fastgpt-plugin fastgpt-rustfs
+cp docker-compose.yml.minio.bak docker-compose.yml
+docker compose up -d
+```
+
+The old MinIO data remains available. If new files were written to RustFS after the switch, mirror them back to MinIO first; otherwise they will not appear after rollback.
+
+> FastGPT sets the anonymous read policy for `fastgpt-public` on startup. Before FastGPT starts after the migration, public files return 403; `fastgpt-private` stays private.

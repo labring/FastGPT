@@ -22,6 +22,8 @@ x-agent-sandbox-proxy-secret: &x-agent-sandbox-proxy-secret 'default_fastgpt_age
 x-volume-manager-auth-token: &x-volume-manager-auth-token 'vmtoken'
 # aiproxy token
 x-aiproxy-token: &x-aiproxy-token 'token'
+x-rustfs-access-key: &x-rustfs-access-key 'rustfsadmin'
+x-rustfs-secret-key: &x-rustfs-secret-key 'rustfsadmin'
 # 数据库连接相关配置
 x-share-db-config: &x-share-db-config
   MONGODB_URI: mongodb://myusername:mypassword@fastgpt-mongo:27017/fastgpt?authSource=admin
@@ -30,12 +32,12 @@ x-share-db-config: &x-share-db-config
   # @see https://doc.fastgpt.cn/self-host/config/object-storage
   STORAGE_VENDOR: minio # minio | aws-s3 | cos | oss
   STORAGE_REGION: us-east-1
-  STORAGE_ACCESS_KEY_ID: minioadmin
-  STORAGE_SECRET_ACCESS_KEY: minioadmin
+  STORAGE_ACCESS_KEY_ID: *x-rustfs-access-key
+  STORAGE_SECRET_ACCESS_KEY: *x-rustfs-secret-key
   STORAGE_PUBLIC_BUCKET: fastgpt-public
   STORAGE_PRIVATE_BUCKET: fastgpt-private
   STORAGE_DOWNLOAD_URL_MODE: short-proxy # short-proxy | short-redirect
-  STORAGE_S3_ENDPOINT: http://fastgpt-minio:9000 # 协议://域名(IP):端口
+  STORAGE_S3_ENDPOINT: http://fastgpt-rustfs:9000 # 协议://域名(IP):端口
   STORAGE_S3_FORCE_PATH_STYLE: true
   STORAGE_S3_MAX_RETRIES: 3
 # Log 配置
@@ -48,8 +50,8 @@ x-log-config: &x-log-config
 # 容器运行环境可能会自动注入 HTTP_PROXY/HTTPS_PROXY。
 # 明确绕过 compose 内部服务，避免内部请求被代理劫持。
 x-no-proxy-config: &x-no-proxy-config
-  NO_PROXY: localhost,127.0.0.1,::1,fastgpt-app,fastgpt-plugin,fastgpt-code-sandbox,fastgpt-agent-sandbox-proxy,fastgpt-opensandbox-server,fastgpt-volume-manager,fastgpt-aiproxy,fastgpt-aiproxy-pg,fastgpt-minio,fastgpt-mongo,fastgpt-redis,fastgpt-vector,host.docker.internal,*.orb.internal,*.orb.local
-  no_proxy: localhost,127.0.0.1,::1,fastgpt-app,fastgpt-plugin,fastgpt-code-sandbox,fastgpt-agent-sandbox-proxy,fastgpt-opensandbox-server,fastgpt-volume-manager,fastgpt-aiproxy,fastgpt-aiproxy-pg,fastgpt-minio,fastgpt-mongo,fastgpt-redis,fastgpt-vector,host.docker.internal,*.orb.internal,*.orb.local
+  NO_PROXY: localhost,127.0.0.1,::1,fastgpt-app,fastgpt-plugin,fastgpt-code-sandbox,fastgpt-agent-sandbox-proxy,fastgpt-opensandbox-server,fastgpt-volume-manager,fastgpt-aiproxy,fastgpt-aiproxy-pg,fastgpt-rustfs,fastgpt-mongo,fastgpt-redis,fastgpt-vector,host.docker.internal,*.orb.internal,*.orb.local
+  no_proxy: localhost,127.0.0.1,::1,fastgpt-app,fastgpt-plugin,fastgpt-code-sandbox,fastgpt-agent-sandbox-proxy,fastgpt-opensandbox-server,fastgpt-volume-manager,fastgpt-aiproxy,fastgpt-aiproxy-pg,fastgpt-rustfs,fastgpt-mongo,fastgpt-redis,fastgpt-vector,host.docker.internal,*.orb.internal,*.orb.local
 
 # FastGPT 主服务的 Agent Sandbox 配置
 x-agent-sandbox-config: &x-agent-sandbox-config
@@ -157,26 +159,38 @@ services:
       start_period: 30s
     volumes:
       - fastgpt-redis:/data
-  fastgpt-minio:
-    image: ${{minio.image}}:${{minio.tag}}
-    container_name: fastgpt-minio
+  fastgpt-rustfs:
+    image: ${{rustfs.image}}:${{rustfs.tag}}
+    container_name: fastgpt-rustfs
     restart: always
     ports:
       - 9000:9000
       - 9001:9001
     networks:
       - data
+    security_opt:
+      - no-new-privileges:true
     environment:
-      - MINIO_ROOT_USER=minioadmin
-      - MINIO_ROOT_PASSWORD=minioadmin
+      RUSTFS_ACCESS_KEY: *x-rustfs-access-key
+      RUSTFS_SECRET_KEY: *x-rustfs-secret-key
+      # 默认单盘 SNSD 拓扑。RustFS 1.0.4 校验多盘 EC 的每个目录必须落在不同物理磁盘，
+      # 单机只有一块盘时写 /data/rustfs{0...3} 会 FATAL 启动失败。
+      RUSTFS_VOLUMES: /data
+      RUSTFS_ADDRESS: :9000
+      RUSTFS_CONSOLE_ADDRESS: :9001
+      RUSTFS_CONSOLE_ENABLE: "true"
+      RUSTFS_OBS_LOGGER_LEVEL: error
+      RUSTFS_OBS_LOG_DIRECTORY: /logs
     volumes:
-      - fastgpt-minio:/data
-    command: server /data --console-address ":9001"
+      # 命名卷继承镜像内 rustfs(uid 10001) 的目录属主；改成 bind mount 时需保证宿主机目录对 10001 可写
+      - fastgpt-rustfs:/data
     healthcheck:
-      test: ['CMD', 'curl', '-f', 'http://localhost:9000/minio/health/live']
+      test: ['CMD-SHELL', 'curl -fsS http://127.0.0.1:9000/health && curl -fsS http://127.0.0.1:9001/rustfs/console/health']
       interval: 30s
-      timeout: 20s
+      timeout: 10s
       retries: 3
+      # 首次启动需要初始化数据目录和 Console，预留较宽的启动窗口
+      start_period: 40s
 
   fastgpt-app:
     container_name: fastgpt-app
@@ -194,7 +208,7 @@ services:
       # ${{vec.depends}}
       fastgpt-redis:
         condition: service_healthy
-      fastgpt-minio:
+      fastgpt-rustfs:
         condition: service_healthy
       fastgpt-code-sandbox:
         condition: service_healthy
@@ -341,7 +355,7 @@ services:
     depends_on:
       fastgpt-mongo:
         condition: service_healthy
-      fastgpt-minio:
+      fastgpt-rustfs:
         condition: service_healthy
     healthcheck:
       test: ['CMD', 'curl', '-f', 'http://localhost:3000/health']
@@ -495,7 +509,7 @@ volumes:
   fastgpt-pg:
   fastgpt-mongo:
   fastgpt-redis:
-  fastgpt-minio:
+  fastgpt-rustfs:
   fastgpt-milvus-minio:
   fastgpt-milvus-etcd:
   fastgpt-milvus-data:

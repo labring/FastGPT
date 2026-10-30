@@ -695,6 +695,7 @@ randomize_compose_credentials() {
     local system_key file_token_key aes256_secret_key invoke_token_secret
     local plugin_token code_sandbox_token volume_manager_token agent_proxy_secret aiproxy_token
     local root_password mongo_password redis_password minio_password
+    local rustfs_access_key rustfs_secret_key
     local pg_password aiproxy_pg_password oceanbase_sys_password oceanbase_tenant_password seekdb_password opengauss_password
 
     system_key="$(random_hex 32)"
@@ -710,6 +711,8 @@ randomize_compose_credentials() {
     mongo_password="$(random_hex 16)"
     redis_password="$(random_hex 16)"
     minio_password="$(random_hex 16)"
+    rustfs_access_key="$(random_hex 10)"
+    rustfs_secret_key="$(random_hex 16)"
     pg_password="$(random_hex 16)"
     aiproxy_pg_password="$(random_hex 16)"
     oceanbase_sys_password="$(random_hex 16)"
@@ -768,10 +771,17 @@ randomize_compose_credentials() {
     replace_text "'redis-cli', '-a', 'mypassword', 'ping'" "'redis-cli', '-a', '$redis_password', 'ping'"
     replace_text '"redis-cli", "-a", "mypassword", "ping"' "\"redis-cli\", \"-a\", \"$redis_password\", \"ping\""
 
-    # FastGPT 自带 MinIO。用户名保持 minioadmin 便于识别和登录控制台，只随机化密钥。
+    # v4.14/v4.15 历史模板仍使用 FastGPT 自带 MinIO。用户名保持 minioadmin 便于识别和登录控制台，只随机化密钥。
     replace_text "STORAGE_SECRET_ACCESS_KEY: minioadmin" "STORAGE_SECRET_ACCESS_KEY: $minio_password"
     replace_text "MINIO_SECRET_KEY: minioadmin" "MINIO_SECRET_KEY: $minio_password"
     replace_text "- MINIO_ROOT_PASSWORD=minioadmin" "- MINIO_ROOT_PASSWORD=$minio_password"
+
+    # main 模板使用 FastGPT 自带 RustFS（S3 兼容）。RustFS 官方建议 Access Key 和 Secret Key 都不要保留 rustfsadmin。
+    # RUSTFS_ACCESS_KEY/STORAGE_ACCESS_KEY_ID 与 RUSTFS_SECRET_KEY/STORAGE_SECRET_ACCESS_KEY 各共用一个锚点，替换锚点即可同步两端。
+    replace_text "x-rustfs-access-key: &x-rustfs-access-key 'rustfsadmin'" "x-rustfs-access-key: &x-rustfs-access-key '$rustfs_access_key'"
+    replace_text 'x-rustfs-access-key: &x-rustfs-access-key "rustfsadmin"' "x-rustfs-access-key: &x-rustfs-access-key \"$rustfs_access_key\""
+    replace_text "x-rustfs-secret-key: &x-rustfs-secret-key 'rustfsadmin'" "x-rustfs-secret-key: &x-rustfs-secret-key '$rustfs_secret_key'"
+    replace_text 'x-rustfs-secret-key: &x-rustfs-secret-key "rustfsadmin"' "x-rustfs-secret-key: &x-rustfs-secret-key \"$rustfs_secret_key\""
 
     # 本地 PG 向量库，仅在选择 pg 时存在。
     replace_text "PG_URL: postgresql://username:password@fastgpt-vector:5432/postgres" "PG_URL: postgresql://username:$pg_password@fastgpt-vector:5432/postgres"
