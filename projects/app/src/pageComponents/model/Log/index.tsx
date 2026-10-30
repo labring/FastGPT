@@ -1,3 +1,4 @@
+import { sortModelSelectorModels } from '@/components/Select/AIModelSelector.utils';
 import { getChannelList, getChannelLog, getLogDetail } from '@/web/core/ai/model/channel';
 import {
   Table,
@@ -93,17 +94,14 @@ const ChannelLog = ({ Tab, channelType }: { Tab: React.ReactNode; channelType: C
   );
 
   const modelList = useMemo(() => {
-    const res = availableModels
-      .map((item) => {
-        const provider = getModelProvider(item.provider, i18n.language);
-        return {
-          order: provider.order,
-          avatar: provider.avatar,
-          label: item.model,
-          value: item.model
-        };
-      })
-      .sort((a, b) => a.order - b.order);
+    const res = sortModelSelectorModels(availableModels).map((item) => {
+      const provider = getModelProvider(item.provider, i18n.language);
+      return {
+        avatar: provider.avatar,
+        label: item.model,
+        value: item.model
+      };
+    });
     return [{ label: t('common:All'), value: '' }, ...res];
   }, [availableModels, getModelProvider, i18n.language, t]);
 

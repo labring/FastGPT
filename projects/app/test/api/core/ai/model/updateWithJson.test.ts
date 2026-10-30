@@ -90,6 +90,35 @@ describe('admin settings model updateWithJson api', () => {
     configMocks.updatedReloadSystemModel.mockReset().mockResolvedValue(undefined);
   });
 
+  it.each([true, false])(
+    'keeps local ranks when importing configuration (rank supplied: %s)',
+    async (supplied) => {
+      const existing = await MongoAIModel.create({
+        ...buildStoredLlm('ranked-model'),
+        sortOrder: 100
+      });
+      const result = await callUpdateWithJson(
+        JSON.stringify([
+          {
+            ...buildLlmConfig({ modelId: String(existing._id), model: 'ranked-model' }),
+            name: 'Imported display name',
+            ...(supplied ? { sortOrder: 0 } : {})
+          },
+          { ...buildLlmConfig({ modelId: 'external-new', model: 'new-model' }), sortOrder: 1 }
+        ])
+      );
+
+      expect(result.code).toBe(200);
+      expect(await MongoAIModel.findById(existing._id).lean()).toMatchObject({
+        name: 'Imported display name',
+        sortOrder: 100
+      });
+      expect(await MongoAIModel.findOne({ model: 'new-model' }).lean()).not.toHaveProperty(
+        'sortOrder'
+      );
+    }
+  );
+
   it('keeps million-unit prices across an export/import round trip', async () => {
     const { insertedId: modelId } = await MongoAIModel.collection.insertOne({
       ...buildStoredLlm('legacy-priced'),

@@ -294,5 +294,8 @@
   "replace_invalid_failed_samples": "失败样例",
   "replace_invalid_retry": "重新执行",
   "replace_invalid_retry_note": "可使用相同映射再次执行，以处理未完成的失效引用。",
-  "replace_invalid_request_failed": "替换请求失败；已写入的记录不会自动回滚，可重新执行。"
+  "replace_invalid_request_failed": "替换请求失败；已写入的记录不会自动回滚，可重新执行。",
+  "model.custom_sort": "自定义排序",
+  "model.cancel_sort": "取消",
+  "model.save_sort": "保存排序"
 }

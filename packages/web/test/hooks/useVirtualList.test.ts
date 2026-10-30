@@ -4,7 +4,7 @@ import React, { useLayoutEffect } from 'react';
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { useVirtualList } from '../../hooks/useVirtualList';
+import { useStaticVirtualList, useVirtualList } from '../../hooks/useVirtualList';
 
 const mocks = vi.hoisted(() => ({
   paginationState: {
@@ -17,6 +17,11 @@ const mocks = vi.hoisted(() => ({
     fetchData: vi.fn(),
     refreshList: vi.fn()
   }
+}));
+
+vi.mock('ahooks', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('ahooks')>()),
+  useSize: () => ({ height: 60, width: 100 })
 }));
 
 vi.mock('next-i18next', () => ({
@@ -63,6 +68,29 @@ const Harness = ({ version }: HarnessProps) => {
     state.ScrollList,
     { 'data-testid': 'scroll-list' },
     React.createElement('div', { key: version }, mocks.paginationState.data.join(','))
+  );
+};
+
+const StaticHarness = ({ data, visible = true }: { data: number[]; visible?: boolean }) => {
+  const { containerRef, virtualDataList, topPlaceholderHeight, bottomPlaceholderHeight } =
+    useStaticVirtualList({ data, itemHeight: 20, overscan: 2 });
+
+  if (!visible) return null;
+
+  return React.createElement(
+    'div',
+    { ref: containerRef, 'data-testid': 'static-list' },
+    React.createElement('div', {
+      'data-testid': 'top-placeholder',
+      'data-height': topPlaceholderHeight
+    }),
+    ...virtualDataList.map(({ data: item, index }) =>
+      React.createElement('div', { key: index, 'data-index': index, 'data-value': item }, item)
+    ),
+    React.createElement('div', {
+      'data-testid': 'bottom-placeholder',
+      'data-height': bottomPlaceholderHeight
+    })
   );
 };
 
@@ -135,5 +163,147 @@ describe('useVirtualList', () => {
     expect(mocks.paginationState.fetchData).toHaveBeenCalled();
     root.unmount();
     host.remove();
+  });
+
+  it('keeps virtual indices and spacers in sync when scrolling and remounting the container', async () => {
+    const { host, root } = createTestRoot();
+    const originalClientHeight = Object.getOwnPropertyDescriptor(
+      HTMLElement.prototype,
+      'clientHeight'
+    );
+    const originalRequestAnimationFrame = window.requestAnimationFrame;
+    const originalCancelAnimationFrame = window.cancelAnimationFrame;
+    const frameCallbacks = new Map<number, FrameRequestCallback>();
+    let nextFrameId = 0;
+
+    Object.defineProperty(HTMLElement.prototype, 'clientHeight', {
+      configurable: true,
+      get() {
+        return this.dataset.testid === 'static-list' ? 60 : 0;
+      }
+    });
+    window.requestAnimationFrame = ((callback: FrameRequestCallback) => {
+      const id = ++nextFrameId;
+      frameCallbacks.set(id, callback);
+      return id;
+    }) as typeof window.requestAnimationFrame;
+    window.cancelAnimationFrame = ((id: number) => {
+      frameCallbacks.delete(id);
+    }) as typeof window.cancelAnimationFrame;
+
+    const flushFrames = () => {
+      const callbacks = [...frameCallbacks.values()];
+      frameCallbacks.clear();
+      callbacks.forEach((callback) => callback(0));
+    };
+
+    try {
+      await act(async () => {
+        root.render(
+          React.createElement(StaticHarness, {
+            data: Array.from({ length: 100 }, (_, index) => index)
+          })
+        );
+        await Promise.resolve();
+      });
+
+      const container = host.querySelector<HTMLElement>('[data-testid="static-list"]');
+      expect(container).not.toBeNull();
+      expect(host.querySelectorAll('[data-index]')).toHaveLength(5);
+      expect(
+        host.querySelector('[data-testid="top-placeholder"]')?.getAttribute('data-height')
+      ).toBe('0');
+      expect(
+        host.querySelector('[data-testid="bottom-placeholder"]')?.getAttribute('data-height')
+      ).toBe('1900');
+      if (!container) return;
+
+      await act(async () => {
+        container.scrollTop = 500;
+        container.dispatchEvent(new Event('scroll'));
+        flushFrames();
+        await Promise.resolve();
+      });
+
+      expect(host.querySelector('[data-index="23"]')?.getAttribute('data-value')).toBe('23');
+      expect(host.querySelector('[data-index="29"]')?.getAttribute('data-value')).toBe('29');
+      expect(host.querySelectorAll('[data-index]')).toHaveLength(7);
+      expect(
+        host.querySelector('[data-testid="top-placeholder"]')?.getAttribute('data-height')
+      ).toBe('460');
+      expect(
+        host.querySelector('[data-testid="bottom-placeholder"]')?.getAttribute('data-height')
+      ).toBe('1400');
+
+      // 模式切换只卸载滚动容器，hook 和同尺寸的完整数据仍保留在父组件中。
+      const data = Array.from({ length: 100 }, (_, index) => index);
+      const previousContainer = container;
+      await act(async () => {
+        root.render(React.createElement(StaticHarness, { data, visible: false }));
+      });
+      expect(host.querySelector('[data-testid="static-list"]')).toBeNull();
+
+      await act(async () => {
+        root.render(React.createElement(StaticHarness, { data }));
+      });
+      const remountedContainer = host.querySelector<HTMLElement>('[data-testid="static-list"]');
+      expect(remountedContainer).not.toBeNull();
+      expect(remountedContainer).not.toBe(previousContainer);
+      expect(remountedContainer?.scrollTop).toBe(0);
+      expect(host.querySelector('[data-index]')?.getAttribute('data-index')).toBe('0');
+      expect(host.querySelectorAll('[data-index]')).toHaveLength(5);
+      expect(
+        host.querySelector('[data-testid="top-placeholder"]')?.getAttribute('data-height')
+      ).toBe('0');
+      expect(
+        host.querySelector('[data-testid="bottom-placeholder"]')?.getAttribute('data-height')
+      ).toBe('1900');
+      if (!remountedContainer) return;
+
+      // 新容器仍应绑定滚动监听，后续重排和滚动继续使用真实窗口。
+      await act(async () => {
+        remountedContainer.scrollTop = 500;
+        remountedContainer.dispatchEvent(new Event('scroll'));
+        flushFrames();
+      });
+      expect(host.querySelector('[data-index]')?.getAttribute('data-index')).toBe('23');
+
+      await act(async () => {
+        root.render(
+          React.createElement(StaticHarness, {
+            data: Array.from({ length: 100 }, (_, index) => 99 - index)
+          })
+        );
+        await Promise.resolve();
+      });
+      expect(host.querySelector('[data-index="23"]')?.getAttribute('data-value')).toBe('76');
+
+      await act(async () => {
+        remountedContainer.scrollTop = 1980;
+        remountedContainer.dispatchEvent(new Event('scroll'));
+        flushFrames();
+        await Promise.resolve();
+      });
+      expect(host.querySelector('[data-index="97"]')?.getAttribute('data-value')).toBe('2');
+      expect(host.querySelector('[data-index="99"]')?.getAttribute('data-value')).toBe('0');
+      expect(host.querySelectorAll('[data-index]')).toHaveLength(3);
+      expect(
+        host.querySelector('[data-testid="top-placeholder"]')?.getAttribute('data-height')
+      ).toBe('1940');
+      expect(
+        host.querySelector('[data-testid="bottom-placeholder"]')?.getAttribute('data-height')
+      ).toBe('0');
+    } finally {
+      await act(async () => root.unmount());
+      host.remove();
+      frameCallbacks.clear();
+      window.requestAnimationFrame = originalRequestAnimationFrame;
+      window.cancelAnimationFrame = originalCancelAnimationFrame;
+      if (originalClientHeight) {
+        Object.defineProperty(HTMLElement.prototype, 'clientHeight', originalClientHeight);
+      } else {
+        delete (HTMLElement.prototype as Partial<HTMLElement>).clientHeight;
+      }
+    }
   });
 });

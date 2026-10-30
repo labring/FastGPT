@@ -1,5 +1,6 @@
 import { GET, POST } from '@/web/common/api/request';
 import type {
+  GetModelCatalogQuery,
   GetModelCatalogResponse,
   GetSystemModelsResponse
 } from '@fastgpt/global/openapi/core/ai/model/api';
@@ -20,11 +21,20 @@ export const getPublicModelCatalog = () =>
   GET<GetSystemModelsResponse>(coreModelPath + '/list', undefined, { deduplicate: true });
 export const getUserModelCatalog = ({
   version,
-  outLinkAuthData
-}: { version?: string; outLinkAuthData?: OutLinkChatAuthProps } = {}) =>
+  outLinkAuthData,
+  orderBy
+}: {
+  version?: string;
+  outLinkAuthData?: OutLinkChatAuthProps;
+  orderBy?: GetModelCatalogQuery['orderBy'];
+} = {}) =>
   GET<GetModelCatalogResponse>(
     coreModelPath + '/catalog',
-    { version, outLinkAuthData: outLinkAuthData ? JSON.stringify(outLinkAuthData) : undefined },
+    {
+      version,
+      orderBy,
+      outLinkAuthData: outLinkAuthData ? JSON.stringify(outLinkAuthData) : undefined
+    },
     { deduplicate: true }
   );
 

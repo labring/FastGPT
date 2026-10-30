@@ -52,6 +52,7 @@ import { calculateModelPrice } from '@fastgpt/global/core/ai/model/pricing';
 import { formatDbModelToRuntimeModel } from '@fastgpt/service/core/ai/model/runtime';
 import getModelTemplatesApi from '@/pages/api/core/ai/model/templates';
 import updateModelApi from '@/pages/api/core/ai/model/update';
+import updateModelOrderApi from '@/pages/api/core/ai/model/updateOrder';
 
 const buildLlmDocument = () => ({
   type: ModelTypeEnum.llm,
@@ -138,10 +139,11 @@ describe('admin settings model create/update api', () => {
     async ({ pricing, expected }) => {
       const result = await callApi({
         handler: createModelApi,
-        body: { modelData: { ...buildLlmDocument(), ...pricing } }
+        body: { modelData: { ...buildLlmDocument(), ...pricing, sortOrder: 123 } }
       });
       expect(result.code).toBe(200);
       const stored = await MongoAIModel.findById(result.data.modelId).lean();
+      expect(stored).not.toHaveProperty('sortOrder');
       expect(stored).not.toHaveProperty('inputPrice');
       expect(stored).not.toHaveProperty('pricing.unitPrice');
       expect(stored).not.toHaveProperty('pricing.extra');
@@ -283,6 +285,60 @@ describe('admin settings model create/update api', () => {
       ).toBe(1.01);
     }
   );
+
+  it('applies relative system model moves and rejects anchors outside the scope', async () => {
+    const first = await insertSystemModel({ ...buildLlmDocument(), model: 'first' });
+    const second = await insertSystemModel({ ...buildLlmDocument(), model: 'second' });
+
+    const res = await callApi({
+      handler: updateModelOrderApi,
+      body: {
+        moves: [{ modelId: String(first._id), beforeModelId: String(second._id) }]
+      }
+    });
+
+    expect(res.error).toBeUndefined();
+    await expect(
+      MongoAIModel.find({ scope: ModelScopeEnum.system }).sort({ sortOrder: 1 }).lean()
+    ).resolves.toMatchObject([
+      { model: 'first', sortOrder: 500_000 },
+      { model: 'second', sortOrder: 1_000_000 }
+    ]);
+
+    const invalidAnchor = await callApi({
+      handler: updateModelOrderApi,
+      body: {
+        moves: [{ modelId: String(first._id), beforeModelId: '68ad85a7463006c963799a07' }]
+      }
+    });
+    expect(invalidAnchor.error).toBeDefined();
+    await expect(MongoAIModel.findById(first._id).lean()).resolves.toMatchObject({
+      sortOrder: 500_000
+    });
+  });
+
+  it('saves a complete order of more than 500 installed models through the API', async () => {
+    const models = await MongoAIModel.insertMany(
+      Array.from({ length: 501 }, (_, index) => ({
+        ...buildLlmDocument(),
+        model: `model-${index}`
+      }))
+    );
+    await mongoSessionRun((session) =>
+      incrementModelCatalogRevision({ scope: ModelScopeEnum.system }, session)
+    );
+    const modelIds = models.map(({ _id }) => String(_id));
+    const moves = modelIds.map((modelId) => ({ modelId, beforeModelId: null }));
+
+    const res = await callApi({ handler: updateModelOrderApi, body: { moves } });
+
+    expect(res.error).toBeUndefined();
+    const saved = await MongoAIModel.find({ scope: ModelScopeEnum.system })
+      .sort({ sortOrder: 1 })
+      .lean();
+    expect(saved.map(({ _id }) => String(_id))).toEqual(modelIds);
+    expect(saved.every(({ sortOrder }) => Number.isSafeInteger(sortOrder))).toBe(true);
+  });
 
   it('creates a custom model through the dedicated create endpoint', async () => {
     const res = await callApi({

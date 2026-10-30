@@ -93,6 +93,9 @@ const AIModelDocumentBaseSchema = PriceTypeSchema.extend({
   model: z.string().trim().min(1),
   name: z.string().trim().min(1),
   scope: z.nativeEnum(ModelScopeEnum).default(ModelScopeEnum.system),
+  sortOrder: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER).optional().meta({
+    description: '同一作用域内的模型展示 rank，数值越小越靠前'
+  }),
   tmbId: ObjectIdSchema.nullish(),
   teamId: ObjectIdSchema.nullish(),
   isActive: z.boolean().optional(),
