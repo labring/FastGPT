@@ -2,6 +2,8 @@ import { serviceEnv } from '../../env';
 
 export const DatasetVectorDbName = 'fastgpt';
 export const DatasetVectorTableName = 'modeldata';
+export const DatasetEmbeddingCollectionName = 'dataset_data_embeddings';
+export const EMBEDDING_MONGO_ADDRESS = serviceEnv.EMBEDDING_MONGO_URL;
 
 export const PG_ADDRESS = serviceEnv.PG_URL;
 export const OPENGAUSS_ADDRESS = serviceEnv.OPENGAUSS_URL;
@@ -90,9 +92,10 @@ export const DatasetVectorTableNameV2 = 'modeldata_v2';
 /** mongo 全文批量写入分片上限 */
 export const FULL_TEXT_WRITE_BATCH_SIZE = 50;
 
-export type VectorType = 'seekdb' | 'oceanbase' | 'pg' | 'milvus' | 'opengauss';
+export type VectorType = 'mongo' | 'seekdb' | 'oceanbase' | 'pg' | 'milvus' | 'opengauss';
 
 export const getVectorType = (): VectorType => {
+  if (EMBEDDING_MONGO_ADDRESS) return 'mongo';
   if (SEEKDB_ADDRESS) return 'seekdb';
   if (OCEANBASE_ADDRESS) return 'oceanbase';
   if (PG_ADDRESS) return 'pg';
@@ -103,8 +106,10 @@ export const getVectorType = (): VectorType => {
 
 /**
  * 逻辑表名解析(逻辑 alias):
- * provider=milvus → modeldata_v2;其他向量库 → modeldata。
+ * MongoDB 使用 dataset_data_embeddings，Milvus 使用 modeldata_v2，其他向量库使用 modeldata。
  * 向量读写一律经此函数取实际集合名。
  */
-export const getDatasetVectorTableName = (): string =>
-  getVectorType() === 'milvus' ? DatasetVectorTableNameV2 : DatasetVectorTableName;
+export const getDatasetVectorTableName = (): string => {
+  if (getVectorType() === 'mongo') return DatasetEmbeddingCollectionName;
+  return getVectorType() === 'milvus' ? DatasetVectorTableNameV2 : DatasetVectorTableName;
+};

@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 vi.unmock('@fastgpt/service/common/vectorDB/constants');
 
 const originalAddresses = {
+  EMBEDDING_MONGO_URL: process.env.EMBEDDING_MONGO_URL,
   SEEKDB_URL: process.env.SEEKDB_URL,
   OCEANBASE_URL: process.env.OCEANBASE_URL,
   PG_URL: process.env.PG_URL,
@@ -14,14 +15,21 @@ const originalAddresses = {
 
 // 先设 process.env 地址,再 resetModules 重载 constants,使 serviceEnv 在模块加载时读到目标 provider。
 // 显式清空全部地址(delete 才能真正移除,赋 undefined 会变成字符串 'undefined'),避免全局测试环境残留干扰优先级。
-const importConstants = async (address: { MILVUS?: string; PG?: string; SEEKDB?: string }) => {
+const importConstants = async (address: {
+  MONGO?: string;
+  MILVUS?: string;
+  PG?: string;
+  SEEKDB?: string;
+}) => {
   vi.resetModules();
   delete process.env.SEEKDB_URL;
+  delete process.env.EMBEDDING_MONGO_URL;
   delete process.env.OCEANBASE_URL;
   delete process.env.PG_URL;
   delete process.env.MILVUS_ADDRESS;
   delete process.env.OPENGAUSS_URL;
   if (address.SEEKDB) process.env.SEEKDB_URL = address.SEEKDB;
+  if (address.MONGO) process.env.EMBEDDING_MONGO_URL = address.MONGO;
   if (address.PG) process.env.PG_URL = address.PG;
   if (address.MILVUS) process.env.MILVUS_ADDRESS = address.MILVUS;
   return await import('@fastgpt/service/common/vectorDB/constants');
@@ -29,11 +37,22 @@ const importConstants = async (address: { MILVUS?: string; PG?: string; SEEKDB?:
 
 describe('vectorDB constants table resolution', () => {
   afterEach(() => {
+    if (originalAddresses.EMBEDDING_MONGO_URL === undefined) delete process.env.EMBEDDING_MONGO_URL;
+    else process.env.EMBEDDING_MONGO_URL = originalAddresses.EMBEDDING_MONGO_URL;
     process.env.SEEKDB_URL = originalAddresses.SEEKDB_URL;
     process.env.OCEANBASE_URL = originalAddresses.OCEANBASE_URL;
     process.env.PG_URL = originalAddresses.PG_URL;
     process.env.MILVUS_ADDRESS = originalAddresses.MILVUS_ADDRESS;
     process.env.OPENGAUSS_URL = originalAddresses.OPENGAUSS_URL;
+  });
+
+  it('selects the explicit MongoDB embedding connection before PG without changing other providers', async () => {
+    const { getVectorType, getDatasetVectorTableName } = await importConstants({
+      MONGO: 'mongodb://localhost/embeddings',
+      PG: 'mock://pg'
+    });
+    expect(getVectorType()).toBe('mongo');
+    expect(getDatasetVectorTableName()).toBe('dataset_data_embeddings');
   });
 
   it('TC-3.1 resolves to modeldata when vector store is pg', async () => {
