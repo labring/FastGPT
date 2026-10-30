@@ -23,6 +23,7 @@ export type LinkedScrollDataProps = BoxProps & {
  * 加载以锚点为中心的关联列表，并按滚动位置补充前后数据。
  * 关闭分页时仍保留滚动容器和初始锚点请求，适用于只展示单条数据的场景。
  * 查询参数变化时立即切换数据窗口，首次加载未完成时也会重查，并丢弃旧参数的响应。
+ * 实际发出初始化或完整刷新时切换窗口版本，丢弃此前的初始化与分页响应。
  * 滚动层只展示前后分页的请求文字；初始化与追加的加载状态交给外层决定显示效果。
  */
 export function useLinkedScroll<
@@ -129,7 +130,8 @@ export function useLinkedScroll<
         return;
       }
 
-      const paramsVersion = paramsVersionRef.current;
+      // 完整请求替换整个数据窗口；即使参数未变，也需让旧分页和旧刷新失效。
+      const paramsVersion = ++paramsVersionRef.current;
       const response = await api({
         initialId: currentData?.id,
         anchor: currentData?.anchor,

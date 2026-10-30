@@ -13,7 +13,7 @@ import {
   buildAgentLoopCoreSkillsPrompt,
   buildAgentLoopCoreUserReminderInput
 } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/application/context/reminder';
-import type { DeployedSkillInfo } from '@fastgpt/service/core/ai/skill/runtime/types';
+import type { DeployedSkillInfo } from '@fastgpt/service/core/ai/sandbox/application/runtime/skill/types';
 
 vi.mock('@fastgpt/global/common/time/timezone', () => ({
   getSystemTime: vi.fn(() => '2026-05-14 10:00:00 Thursday')

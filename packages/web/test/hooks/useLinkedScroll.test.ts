@@ -46,6 +46,7 @@ type Response = {
 type Params = LinkedPaginationProps<{ chatId: string }>;
 type HarnessProps = {
   chatId: string;
+  currentData?: { id: string };
   renderInitialOverlay?: boolean;
   scrollRef?: React.RefObject<HTMLDivElement>;
   onScroll?: React.UIEventHandler<HTMLDivElement>;
@@ -60,9 +61,15 @@ describe('useLinkedScroll', () => {
   const api = vi.fn(
     (params: Params) => new Promise<Response>((resolve) => requests.push({ params, resolve }))
   );
-  const Harness = ({ chatId, renderInitialOverlay = true, scrollRef, onScroll }: HarnessProps) => {
+  const Harness = ({
+    chatId,
+    currentData,
+    renderInitialOverlay = true,
+    scrollRef,
+    onScroll
+  }: HarnessProps) => {
     const params = useMemo(() => ({ chatId }), [chatId]);
-    state = useLinkedScroll(api, { params, showErrorToast: false });
+    state = useLinkedScroll(api, { params, currentData, showErrorToast: false });
     const scrollProps = {
       id: 'scroll-viewport',
       ScrollContainerRef: scrollRef,
@@ -114,6 +121,88 @@ describe('useLinkedScroll', () => {
     vi.restoreAllMocks();
     vi.useRealTimers();
     vi.unstubAllGlobals();
+  });
+
+  it.each(['prev', 'next'] as const)(
+    'ignores an older %s page after a complete refresh replaces the window',
+    async (direction) => {
+      vi.useFakeTimers();
+      await render('first');
+      await act(async () =>
+        requests[0].resolve({
+          list: [{ id: 'old-anchor' }],
+          hasMorePrev: direction === 'prev',
+          hasMoreNext: direction === 'next'
+        })
+      );
+      await act(async () => vi.advanceTimersByTimeAsync(250));
+      expect(requests[1].params[direction === 'prev' ? 'prevId' : 'nextId']).toBe('old-anchor');
+
+      await act(async () => {
+        void state.loadInitData({ refresh: true, scrollWhenFinish: false });
+      });
+      await resolve(2, 'fresh-record');
+      await act(async () =>
+        requests[1].resolve({
+          list: [{ id: 'stale-page' }],
+          hasMorePrev: true,
+          hasMoreNext: true
+        })
+      );
+      expect(state.dataList).toEqual([{ id: 'fresh-record' }]);
+      expect(state.hasMorePrev).toBe(false);
+      expect(state.hasMoreNext).toBe(false);
+      await act(async () => vi.advanceTimersByTimeAsync(250));
+      expect(requests).toHaveLength(3);
+    }
+  );
+
+  it('keeps the latest complete refresh when responses finish in reverse order', async () => {
+    await render('first');
+    await resolve(0, 'first-record');
+    await act(async () => {
+      void state.loadInitData({ refresh: true, scrollWhenFinish: false });
+      void state.loadInitData({ refresh: true, scrollWhenFinish: false });
+    });
+    expect(requests).toHaveLength(3);
+
+    await resolve(2, 'fresh-record');
+    await act(async () =>
+      requests[1].resolve({
+        list: [{ id: 'stale-refresh' }],
+        hasMorePrev: true,
+        hasMoreNext: true
+      })
+    );
+    expect(state.dataList).toEqual([{ id: 'fresh-record' }]);
+    expect(state.hasMorePrev).toBe(false);
+    expect(state.hasMoreNext).toBe(false);
+    expect(container.querySelector('[data-loading-overlay]')).toBeNull();
+  });
+
+  it('keeps an in-flight page when focusing an already loaded record', async () => {
+    vi.useFakeTimers();
+    const scrollRef = React.createRef<HTMLDivElement>();
+    await render('first', { currentData: { id: 'first-record' }, scrollRef });
+    await act(async () =>
+      requests[0].resolve({
+        list: [{ id: 'first-record' }],
+        hasMorePrev: true,
+        hasMoreNext: false
+      })
+    );
+    await act(async () => vi.advanceTimersByTimeAsync(250));
+    expect(requests[1].params.prevId).toBe('first-record');
+
+    vi.mocked(scrollRef.current!.scrollTo).mockClear();
+    await act(async () => {
+      await state.loadInitData();
+    });
+    expect(requests).toHaveLength(2);
+    expect(scrollRef.current!.scrollTo).toHaveBeenCalledOnce();
+
+    await resolve(1, 'previous-record');
+    expect(state.dataList).toEqual([{ id: 'previous-record' }, { id: 'first-record' }]);
   });
 
   it('keeps local replacement and new anchors when an older pagination request finishes', async () => {
