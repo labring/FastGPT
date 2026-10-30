@@ -41,7 +41,7 @@
       "mongo": "registry.cn-hangzhou.aliyuncs.com/fastgpt/mongo",
       "redis": "registry.cn-hangzhou.aliyuncs.com/fastgpt/redis",
       "minio": "registry.cn-hangzhou.aliyuncs.com/fastgpt/minio",
-      "rustfs": "rustfs/rustfs",
+      "rustfs": "docker.m.daocloud.io/rustfs/rustfs",
       "pg": "registry.cn-hangzhou.aliyuncs.com/fastgpt/pgvector",
       "milvus-minio": "minio/minio",
       "milvus-etcd": "quay.io/coreos/etcd",

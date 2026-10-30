@@ -3,64 +3,192 @@ title: MinIO 迁移到 RustFS
 description: FastGPT Docker 部署的对象存储从 MinIO 迁移到 RustFS
 ---
 
-`main` 版本的新部署默认使用 RustFS 作为对象存储。已有 MinIO 部署不要直接替换 `docker-compose.yml`，否则会切换到空的 `fastgpt-rustfs` 数据卷。可以按下面步骤迁移对象数据。
+`main` 版本的新部署默认使用 RustFS 作为对象存储。已有 MinIO 部署必须原地迁移，保留原有 Compose project、业务数据卷、数据库连接和密钥，只替换对象存储。
 
-## 1. 保留旧部署并记录凭据
+> 不要在另一个目录重新执行 `install.sh`，也不要更换 Compose project 名称。直接启动一套新安装会创建新的 MongoDB、Redis、PG 数据卷，并重新生成数据库密码、`ROOT_KEY` 和 `AES256_SECRET_KEY`，导致原业务数据不可见。
 
-保留旧部署运行，记录旧 MinIO 的 Access Key / Secret Key（内置 MinIO 对应 `MINIO_ROOT_USER` / `MINIO_ROOT_PASSWORD`）。
+## 1. 固定原部署身份并备份
 
-## 2. 启动新的 RustFS
+以下命令均在现有 FastGPT 部署目录执行。先备份当前 Compose 文件；如果目录中存在 `config.json` 或其他本地配置，也一并保留，不要用新安装文件覆盖。
 
-在新目录按正常安装流程生成新版 `docker-compose.yml`（例如运行 `install.sh`），先把 `fastgpt-rustfs` 的宿主机端口临时改成 `9010:9000` 和 `9011:9001`，避免和旧 MinIO 的 `9000/9001` 冲突，然后只启动 RustFS：
+```bash
+cd /path/to/current-fastgpt
+cp docker-compose.yml docker-compose.yml.minio.bak
+test ! -f config.json || cp config.json config.json.minio.bak
+```
+
+确认当前 Compose project 名称和业务数据卷。后续所有 `docker compose` 命令都必须在这个目录执行，或显式传入同一个 project 名称。
+
+```bash
+docker inspect -f '{{ index .Config.Labels "com.docker.compose.project" }}' fastgpt-mongo
+docker volume ls --filter label=com.docker.compose.project=YOUR_PROJECT_NAME
+```
+
+如果 project 名称为空，先用 `docker compose ls` 确认当前配置对应的 project，再继续操作。
+
+## 2. 在原 Compose 中加入 RustFS
+
+在现有 `docker-compose.yml` 顶层增加一组凭证锚点，并把下面的服务加入 `services`。`fastgpt-rustfs` 会使用原 project 的命名卷前缀，稍后切换时继续复用同一个卷。
+
+```yaml
+x-rustfs-access-key: &x-rustfs-access-key 'YOUR_NEW_ACCESS_KEY'
+x-rustfs-secret-key: &x-rustfs-secret-key 'YOUR_NEW_SECRET_KEY'
+```
+
+```yaml
+  fastgpt-rustfs:
+    image: rustfs/rustfs:1.0.4
+    # 中国大陆网络可改为 docker.m.daocloud.io/rustfs/rustfs:1.0.4
+    container_name: fastgpt-rustfs
+    restart: always
+    ports:
+      - 9010:9000
+      - 9011:9001
+    networks:
+      - data
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      RUSTFS_ACCESS_KEY: *x-rustfs-access-key
+      RUSTFS_SECRET_KEY: *x-rustfs-secret-key
+      RUSTFS_VOLUMES: /data
+      RUSTFS_ADDRESS: :9000
+      RUSTFS_CONSOLE_ADDRESS: :9001
+      RUSTFS_CONSOLE_ENABLE: "true"
+      RUSTFS_OBS_LOGGER_LEVEL: error
+      RUSTFS_OBS_LOG_DIRECTORY: /logs
+    volumes:
+      - fastgpt-rustfs:/data
+    healthcheck:
+      test: ['CMD-SHELL', 'curl -fsS http://127.0.0.1:9000/health && curl -fsS http://127.0.0.1:9001/rustfs/console/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+```
+
+同时在 `volumes` 中声明新的数据卷。不要删除 `fastgpt-minio`，切换完成并验证前它仍用于回滚。
+
+```yaml
+volumes:
+  fastgpt-rustfs:
+```
+
+为两个新凭证生成随机值，替换上面的 `YOUR_NEW_ACCESS_KEY` 和 `YOUR_NEW_SECRET_KEY`：
+
+```bash
+openssl rand -hex 16
+openssl rand -hex 16
+```
+
+在当前旧部署目录只启动 RustFS。临时端口 `9010/9011` 用于避开旧 MinIO 的 `9000/9001`。
 
 ```bash
 docker compose up -d fastgpt-rustfs
+docker compose ps fastgpt-rustfs
+curl -fsS http://127.0.0.1:9010/health
 ```
 
-新凭据在 `docker-compose.yml` 的 `x-rustfs-access-key` / `x-rustfs-secret-key` 锚点中。
-
-## 3. 用 MinIO Client 迁移对象数据
-
-在宿主机安装 [MinIO Client](https://min.io/docs/minio/linux/reference/minio-mc.html)，创建目标桶并迁移两个桶：
+记录 RustFS 数据卷名称，迁移过程中和最终切换都必须使用这个卷：
 
 ```bash
-mc alias set old http://127.0.0.1:9000 <旧AccessKey> <旧SecretKey>
-mc alias set new http://127.0.0.1:9010 <新AccessKey> <新SecretKey>
+docker volume ls --filter label=com.docker.compose.project=YOUR_PROJECT_NAME
+```
+
+## 3. 复制初始对象数据
+
+在宿主机安装 [MinIO Client](https://min.io/docs/minio/linux/reference/minio-mc.html)，使用旧 MinIO 和新 RustFS 的凭证创建别名。不要交换 `old`、`new` 的地址或凭证。
+
+```bash
+mc alias set old http://127.0.0.1:9000 YOUR_OLD_ACCESS_KEY YOUR_OLD_SECRET_KEY
+mc alias set new http://127.0.0.1:9010 YOUR_NEW_ACCESS_KEY YOUR_NEW_SECRET_KEY
+mc alias list
+```
+
+如果旧部署改过 MinIO 的 `9000` 端口，请使用实际端口；如果改过 `STORAGE_PUBLIC_BUCKET` / `STORAGE_PRIVATE_BUCKET`，下面所有命令都要使用实际桶名。
+
+```bash
 mc mb --ignore-existing new/fastgpt-public new/fastgpt-private
 mc mirror --overwrite old/fastgpt-public new/fastgpt-public
 mc mirror --overwrite old/fastgpt-private new/fastgpt-private
 ```
 
-如果旧部署改过 MinIO 的 `9000` 端口，请使用实际端口；如果改过 `STORAGE_PUBLIC_BUCKET` / `STORAGE_PRIVATE_BUCKET`，请换成实际桶名。
+这一步可以保持旧 FastGPT 运行。初次复制完成后，等待一个观察窗口，让切换到 RustFS 之前的正常读写都落到旧 MinIO。
 
-## 4. 停止写入并做增量同步
+## 4. 冻结写入并做最终同步
 
-在旧部署目录停止 FastGPT 应用，冻结写入：
+在同一旧部署目录停止所有可能写入对象存储的应用。若还有外部脚本或客户端直接写入旧 MinIO，也必须先停止。
 
 ```bash
 docker compose stop fastgpt-app fastgpt-plugin
 ```
 
-然后重复执行第 3 步的 `mc mirror` 命令同步增量数据，并用 `mc du` 核对两个桶的对象数量和大小：
+确认源和目标别名、桶名无误后执行最终同步。最终同步必须包含 `--remove`，把旧 MinIO 中已删除、但目标 RustFS 中仍存在的对象一并删除。
 
 ```bash
-mc mirror --overwrite old/fastgpt-public new/fastgpt-public
-mc mirror --overwrite old/fastgpt-private new/fastgpt-private
+set -euo pipefail
+mc mirror --overwrite --remove old/fastgpt-public new/fastgpt-public
+mc mirror --overwrite --remove old/fastgpt-private new/fastgpt-private
+```
+
+任何一条同步命令失败时都不要切换。随后对两个桶执行 dry-run；只有目标与源无差异，dry-run 的汇总才应为 `"total":0` 和 `"transferred":0`。
+
+```bash
+mc mirror --dry-run --overwrite --remove --json old/fastgpt-public new/fastgpt-public
+mc mirror --dry-run --overwrite --remove --json old/fastgpt-private new/fastgpt-private
 mc du old/fastgpt-public new/fastgpt-public
 mc du old/fastgpt-private new/fastgpt-private
 ```
 
-## 5. 切换部署
+如果 dry-run 仍有差异、`mc du` 的结果不符合预期，或者无法确认源和目标桶，立即停止迁移并继续保留旧部署，不要启动新版应用。
 
-编辑新版 `docker-compose.yml`，把 RustFS 端口改回 `9000:9000` / `9001:9001`，停止旧部署并启动新部署：
+## 5. 原地切换对象存储
+
+最终同步完成后，先停止旧 MinIO 容器以释放 `9000/9001` 端口，但不要删除它的数据卷：
 
 ```bash
-# 旧部署目录
-docker compose down
-# 新部署目录
+docker compose stop fastgpt-minio
+```
+
+继续修改当前目录中的同一个 `docker-compose.yml`：
+
+1. 将 `fastgpt-rustfs` 的端口改回 `9000:9000` 和 `9001:9001`。
+2. 在 `x-share-db-config` 中使用 RustFS 凭证和 Endpoint。
+3. 将 `fastgpt-app`、`fastgpt-plugin` 的 `depends_on` 从 `fastgpt-minio` 改为 `fastgpt-rustfs`。
+4. 将 `NO_PROXY` / `no_proxy` 中的 `fastgpt-minio` 替换为 `fastgpt-rustfs`。
+5. 删除或注释旧 `fastgpt-minio` 服务定义，避免 `docker compose up -d` 再次启动它；保留 `fastgpt-minio` 数据卷。
+
+共享存储配置应与下面一致：
+
+```yaml
+  STORAGE_ACCESS_KEY_ID: *x-rustfs-access-key
+  STORAGE_SECRET_ACCESS_KEY: *x-rustfs-secret-key
+  STORAGE_S3_ENDPOINT: http://fastgpt-rustfs:9000
+```
+
+`STORAGE_VENDOR` 仍保持 `minio`，这里只替换 S3 兼容实现的地址与凭证。
+
+校验并启动原部署。由于仍在原目录、原 Compose project 中运行，MongoDB、Redis、PG、应用密钥和原配置都会保持不变。
+
+```bash
+docker compose config --quiet
+docker compose up -d
+docker compose ps
+curl -fsS http://127.0.0.1:9000/health
+```
+
+确认文件上传、下载、知识库文件访问和公开桶匿名读取正常后，再考虑删除旧 `fastgpt-minio` 数据卷。不要执行 `docker compose down -v`。
+
+## 回滚
+
+如果切换后应用无法正常工作，停止新对象存储和 FastGPT，再恢复备份的 Compose 文件并启动原部署：
+
+```bash
+docker compose stop fastgpt-app fastgpt-plugin fastgpt-rustfs
+cp docker-compose.yml.minio.bak docker-compose.yml
 docker compose up -d
 ```
 
-确认文件上传、下载和知识库文件访问正常后，再删除旧的 `fastgpt-minio` 数据卷；删除前保留该卷用于回滚。
+回滚后旧 MinIO 数据仍然可用。如果切换到 RustFS 后已经产生新的文件，需要先把这些新对象反向同步回 MinIO，否则它们不会出现在回滚后的部署中。
 
-> `fastgpt-public` 的匿名只读策略会在 FastGPT 启动时自动设置，迁移完成后、FastGPT 启动前公开文件会返回 403；`fastgpt-private` 始终保持私有。
+> `fastgpt-public` 的匿名只读策略会在 FastGPT 启动时自动设置。迁移完成后、FastGPT 启动前公开文件会返回 403；`fastgpt-private` 始终保持私有。
