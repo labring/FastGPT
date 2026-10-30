@@ -222,19 +222,22 @@ export async function canShortCircuitCollectionPermission({
   teamId,
   datasetIds,
   tmbId,
-  tmbInfo
+  tmbInfo,
+  ignoreTeamOwner = false
 }: {
   teamId: string;
   datasetIds: string[];
   tmbId: string;
   /** 可选：已解析的 tmb 信息，避免重复查询。 */
   tmbInfo?: TeamTmbItemType;
+  /** 外部权限同步要求管理员同样遵守文件 ACL 时置 true：团队 owner 不再短路。 */
+  ignoreTeamOwner?: boolean;
 }): Promise<boolean> {
   if (datasetIds.length === 0) return true;
 
   const info = tmbInfo ?? (await getTmbInfoByTmbId({ tmbId }));
   if (String(info.teamId) !== String(teamId)) return false;
-  if (info.permission.isOwner) return true;
+  if (!ignoreTeamOwner && info.permission.isOwner) return true;
 
   // 普通成员（含团队管理员）：全部 Dataset 均处于关闭态才短路。关闭态 ⇒ 不存在自定义
   // collection 权限，由「开关是唯一入口」保证：未启用时所有 collection 写路径都会拒绝。
@@ -253,7 +256,7 @@ export async function canShortCircuitCollectionPermission({
  *
  * 语义：返回 `undefined` 表示「无需 collection 级过滤」（短路 / 全部可读），
  * 返回字符串数组表示「仅这些 file collection 可读」的真子集。
- *  - 团队 owner：`undefined`（无 collection 级过滤，按 dataset 召回）；
+ *  - 团队 owner（`ignoreTeamOwner !== true` 时）：`undefined`（无 collection 级过滤，按 dataset 召回）；
  *  - 全部目标 dataset 处于关闭态（`collectionPermissionEnabled` 非 true，含全部存量数据）：
  *    `undefined`（短路）；
  *  - 否则：加载目标 dataset 下 file collection 最小字段，逐 dataset 并行
@@ -267,18 +270,29 @@ export async function resolveReadableCollectionIds({
   teamId,
   datasetIds,
   tmbId,
-  tmbInfo
+  tmbInfo,
+  ignoreTeamOwner = false
 }: {
   teamId: string;
   datasetIds: string[];
   tmbId: string;
   /** 可选：已解析的 tmb 信息，避免重复查询。 */
   tmbInfo?: TeamTmbItemType;
+  /** 外部权限同步要求管理员同样遵守文件 ACL 时置 true：团队 owner 不再短路。 */
+  ignoreTeamOwner?: boolean;
 }): Promise<string[] | undefined> {
   if (datasetIds.length === 0) return undefined;
 
-  // 团队 owner 或全部关闭态 → 短路，无需 collection 级过滤
-  if (await canShortCircuitCollectionPermission({ teamId, datasetIds, tmbId, tmbInfo })) {
+  // 团队 owner（除非要求遵守文件 ACL）或全部关闭态 → 短路，无需 collection 级过滤
+  if (
+    await canShortCircuitCollectionPermission({
+      teamId,
+      datasetIds,
+      tmbId,
+      tmbInfo,
+      ignoreTeamOwner
+    })
+  ) {
     return undefined;
   }
 

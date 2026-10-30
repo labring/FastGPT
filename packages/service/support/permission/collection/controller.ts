@@ -6,6 +6,7 @@ import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import type { ClientSession } from '../../../common/mongo';
 import { MongoDatasetCollection } from '../../../core/dataset/collection/schema';
 import { MongoDataset } from '../../../core/dataset/schema';
+import { isPermissionSyncDataset } from '@fastgpt/global/core/dataset/apiDataset/utils';
 import { MongoResourcePermission } from '../schema';
 import { getCollaboratorId } from '@fastgpt/global/support/permission/utils';
 import {
@@ -460,6 +461,15 @@ export async function syncDatasetToCollections({
   newEffectiveClbs: CollaboratorItemType[];
   session: ClientSession;
 }): Promise<void> {
+  // 外部权限同步托管：ACL 由外部列表整份覆盖，级联写入既会被下一轮抹掉，也会与外部意图冲突。
+  // 必须在收集阶段之前退出，避免对开启态的 dataset 产生任何 ACL 写。
+  const datasetConfig = await MongoDataset.findOne({ _id: datasetId, teamId }, 'apiDatasetServer')
+    .session(session)
+    .lean();
+  if (isPermissionSyncDataset(datasetConfig?.apiDatasetServer)) {
+    return;
+  }
+
   // 按层收集继承态后代 dataset。独立权限分支在收集阶段剪掉：父级 ACL 变化不会传播进去，
   // 其整棵子树无需同步。不能用 collectionPermissionEnabled 剪枝——关闭态 folder 下可能有开启态知识库。
   const datasetNodes = new Map<string, { collectionPermissionEnabled?: boolean }>();
@@ -556,7 +566,7 @@ export async function syncDatasetToCollections({
 }
 
 /** 批量 ACL 写入的分片大小：4w 行整批 deleteMany + insertMany 的载荷与内存都不可接受 */
-const COLLECTION_PERMISSION_WRITE_CHUNK_SIZE = 1000;
+export const COLLECTION_PERMISSION_WRITE_CHUNK_SIZE = 1000;
 
 const chunked = <T>(items: T[], size: number): T[][] => {
   const result: T[][] = [];

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   APIFileServerSchema,
+  ApiDatasetPermissionItemSchema,
   ApiDatasetServerSchema
 } from '@fastgpt/global/core/dataset/apiDataset/type';
 import {
@@ -8,6 +9,7 @@ import {
   UpdateDatasetBodySchema
 } from '@fastgpt/global/openapi/core/dataset/api';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import { OwnerRoleVal } from '@fastgpt/global/support/permission/constant';
 
 const objectId = '68ad85a7463006c963799a05';
 
@@ -73,5 +75,87 @@ describe('dataset create/update contracts', () => {
         apiDatasetServer: { apiServer: { baseUrl: ' https://api.example.com ' } }
       }).apiDatasetServer?.apiServer?.baseUrl
     ).toBe('https://api.example.com');
+  });
+});
+
+describe('apiDataset permission sync switches', () => {
+  it('keeps the three switches optional so existing exact-equality contracts hold', () => {
+    expect(
+      ApiDatasetServerSchema.parse({ apiServer: { baseUrl: 'https://api.example.com' } })
+    ).toEqual({ apiServer: { baseUrl: 'https://api.example.com' } });
+  });
+
+  it('accepts permissionSync only when the custom apiServer exists', () => {
+    expect(
+      ApiDatasetServerSchema.safeParse({
+        apiServer: { baseUrl: 'https://api.example.com' },
+        permissionSync: true,
+        disableSuperAdmin: true,
+        syncAllFiles: true
+      }).success
+    ).toBe(true);
+
+    const result = ApiDatasetServerSchema.safeParse({ permissionSync: true });
+    expect(result.success).toBe(false);
+    expect(result.error?.issues[0]?.path).toEqual(['permissionSync']);
+
+    // 非 custom provider 只开另外两个开关是合法的
+    expect(
+      ApiDatasetServerSchema.safeParse({
+        feishuServer: { appId: 'app', folderToken: 'folder' },
+        disableSuperAdmin: true,
+        syncAllFiles: true
+      }).success
+    ).toBe(true);
+  });
+
+  it('exposes the switches on the update contract', () => {
+    const parsed = UpdateDatasetBodySchema.parse({
+      id: objectId,
+      apiDatasetServer: {
+        apiServer: { baseUrl: 'https://api.example.com' },
+        permissionSync: true,
+        syncAllFiles: true
+      }
+    });
+
+    expect(parsed.apiDatasetServer?.permissionSync).toBe(true);
+    expect(parsed.apiDatasetServer?.syncAllFiles).toBe(true);
+  });
+});
+
+describe('ApiDatasetPermissionItemSchema', () => {
+  it('accepts exactly one subject', () => {
+    for (const item of [
+      { username: 'alice', permission: 4 },
+      { tmbId: 'tmb', permission: 2 },
+      { groupId: 'group', permission: 1 },
+      { orgId: 'org', permission: 4 }
+    ]) {
+      expect(ApiDatasetPermissionItemSchema.safeParse(item).success).toBe(true);
+    }
+  });
+
+  it('rejects missing or multiple subjects', () => {
+    expect(ApiDatasetPermissionItemSchema.safeParse({ permission: 4 }).success).toBe(false);
+    expect(
+      ApiDatasetPermissionItemSchema.safeParse({ username: 'alice', tmbId: 'tmb', permission: 4 })
+        .success
+    ).toBe(false);
+  });
+
+  it('accepts only the four ACL roles', () => {
+    for (const permission of [4, 2, 1, OwnerRoleVal]) {
+      expect(ApiDatasetPermissionItemSchema.safeParse({ tmbId: 'tmb', permission }).success).toBe(
+        true
+      );
+    }
+    // 7/6 这类组合掩码、0 和任意其他数字都不是单一位 role
+    for (const permission of [7, 6, 3, 0, -1]) {
+      expect(ApiDatasetPermissionItemSchema.safeParse({ tmbId: 'tmb', permission }).success).toBe(
+        false
+      );
+    }
+    expect(ApiDatasetPermissionItemSchema.safeParse({ tmbId: 'tmb' }).success).toBe(false);
   });
 });

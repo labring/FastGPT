@@ -478,6 +478,11 @@ export const DatasetItemSchema = DatasetSchema.omit({
     example: false
   }),
   errorMsg: z.string().optional().meta({ description: '错误信息' }),
+  permissionSyncStatus: z
+    .enum(DatasetStatusEnum)
+    .optional()
+    .meta({ description: '外部文件权限同步状态；仅在 permissionSync 开启时返回' }),
+  permissionSyncErrorMsg: z.string().optional().meta({ description: '外部文件权限同步失败信息' }),
   vectorModel: EmbeddingModelDataSchema.optional().meta({
     description: '向量模型；模型已删除时为空，已停用模型仍返回展示数据'
   }),

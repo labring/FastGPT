@@ -34,7 +34,17 @@ import { getFakeUsers } from '@test/datas/users';
 import { getModelTestDefaults, setModelTestSnapshot } from '@test/modelCache';
 import { Call } from '@test/utils/request';
 import { Types } from 'mongoose';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+const { enqueueDatasetPermissionSync } = vi.hoisted(() => ({
+  enqueueDatasetPermissionSync: vi.fn()
+}));
+
+vi.mock('@fastgpt/service/core/dataset/datasetPermissionSync', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('@fastgpt/service/core/dataset/datasetPermissionSync')>();
+  return { ...actual, enqueueDatasetPermissionSync };
+});
 
 /** Snapshot ACL rows in a stable order so assertions compare exact permission sets. */
 const toPermissionRows = (collaborators: { tmbId?: unknown; permission: number }[]) =>
@@ -807,6 +817,116 @@ describe('update dataset', () => {
     });
     expect(allowed.code).toBe(200);
     expect((await MongoDataset.findById(dataset._id).lean())?.name).toBe('renamed-by-manage');
+  });
+});
+
+describe('dataset permission sync switch', () => {
+  beforeEach(() => {
+    enqueueDatasetPermissionSync.mockClear();
+  });
+
+  const permissionSyncBody = {
+    apiDatasetServer: {
+      apiServer: { baseUrl: 'https://example.com' },
+      permissionSync: true
+    }
+  };
+
+  it('enables collection permissions inside the update transaction and enqueues a full sync', async () => {
+    const { owner } = await getFakeUsers(1);
+    const teamId = String(owner.teamId);
+    const dataset = await createDatasetWithOwnerSnapshot({
+      teamId,
+      tmbId: String(owner.tmbId),
+      name: 'permission-sync-dataset',
+      type: DatasetTypeEnum.dataset
+    });
+    const collection = await MongoDatasetCollection.create({
+      teamId,
+      tmbId: String(owner.tmbId),
+      datasetId: String(dataset._id),
+      name: 'file',
+      type: DatasetCollectionTypeEnum.file
+    });
+
+    const res = await Call<UpdateDatasetBody, Record<string, never>, string>(updateHandler, {
+      auth: owner,
+      body: { id: String(dataset._id), ...permissionSyncBody }
+    });
+
+    expect(res.error).toBeUndefined();
+    expect(res.code).toBe(200);
+
+    const updated = await MongoDataset.findById(dataset._id).lean();
+    expect(updated?.apiDatasetServer?.permissionSync).toBe(true);
+    expect(updated?.collectionPermissionEnabled).toBe(true);
+
+    // 开启即产生完整快照：读取层只查自身 ACL，没有快照的节点对所有人不可见
+    await expect(
+      getResourceOwnedClbs({
+        teamId,
+        resourceId: String(collection._id),
+        resourceType: PerResourceTypeEnum.collection
+      }).then(toPermissionRows)
+    ).resolves.toEqual(
+      toPermissionRows([{ tmbId: String(owner.tmbId), permission: OwnerRoleVal }])
+    );
+
+    expect(enqueueDatasetPermissionSync).toHaveBeenCalledWith({
+      datasetId: String(dataset._id)
+    });
+  });
+
+  it('repairs an enabled-permission-sync dataset whose collection flag is still off', async () => {
+    const { owner } = await getFakeUsers(1);
+    const teamId = String(owner.teamId);
+    // 异常组合：permissionSync 已开但 collection 权限未开（历史数据 / 直写绕过）
+    const dataset = await MongoDataset.create({
+      teamId,
+      tmbId: String(owner.tmbId),
+      name: 'sync-without-flag',
+      type: DatasetTypeEnum.dataset,
+      apiDatasetServer: permissionSyncBody.apiDatasetServer
+    });
+
+    const res = await Call<UpdateDatasetBody, Record<string, never>, string>(updateHandler, {
+      auth: owner,
+      body: { id: String(dataset._id), name: 'renamed' }
+    });
+
+    expect(res.code).toBe(200);
+    expect((await MongoDataset.findById(dataset._id).lean())?.collectionPermissionEnabled).toBe(
+      true
+    );
+    expect(enqueueDatasetPermissionSync).toHaveBeenCalledWith({
+      datasetId: String(dataset._id)
+    });
+  });
+
+  it('does not enqueue again once the switch and the flag are both on', async () => {
+    const { owner } = await getFakeUsers(1);
+    const teamId = String(owner.teamId);
+    const dataset = await createDatasetWithOwnerSnapshot({
+      teamId,
+      tmbId: String(owner.tmbId),
+      name: 'already-on',
+      type: DatasetTypeEnum.dataset
+    });
+
+    await Call<UpdateDatasetBody, Record<string, never>, string>(updateHandler, {
+      auth: owner,
+      body: { id: String(dataset._id), ...permissionSyncBody }
+    });
+    expect(enqueueDatasetPermissionSync).toHaveBeenCalledTimes(1);
+
+    enqueueDatasetPermissionSync.mockClear();
+    const res = await Call<UpdateDatasetBody, Record<string, never>, string>(updateHandler, {
+      auth: owner,
+      body: { id: String(dataset._id), ...permissionSyncBody, name: 'renamed' }
+    });
+
+    expect(res.code).toBe(200);
+    expect(enqueueDatasetPermissionSync).not.toHaveBeenCalled();
   });
 });
 

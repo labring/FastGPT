@@ -220,6 +220,7 @@ export const dispatchAgentDatasetSearch = async ({
     }
 
     // Collection 级权限可读集合仅对真实成员鉴权生效；authTmbId 未设置时不做 collection 级过滤。
+    // 不传 ignoreTeamOwner：disableSuperAdmin 只作用于知识库管理侧，检索仍按团队 owner 短路。
     const readableCollectionIdList = datasetParams.authTmbId
       ? await resolveReadableCollectionIds({
           teamId,
