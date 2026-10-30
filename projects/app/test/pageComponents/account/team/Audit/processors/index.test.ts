@@ -12,6 +12,29 @@ const translations: Record<string, string> = {
 };
 
 describe('processAuditMetadata', () => {
+  it.each([undefined, '', 'account_team:父目录/名称'])(
+    'preserves dedicated collection inheritance metadata with parent %s',
+    (parentResource) => {
+      const t = vi.fn((key: string) => `translated:${key}`);
+      const metadata = Object.freeze({
+        name: 'account_team:用户',
+        datasetName: 'dataset:知识库',
+        collectionName: 'collection:文件',
+        parentResource
+      });
+
+      expect(
+        processAuditMetadata({
+          event: DatasetAuditEventEnum.DATASET_COLLECTION_PERMISSION_INHERITANCE_RESUME,
+          metadata,
+          t
+        })
+      ).toEqual({ ...metadata, parentResource: parentResource ?? '-' });
+      expect(t).not.toHaveBeenCalled();
+      expect(metadata.parentResource).toBe(parentResource);
+    }
+  );
+
   it.each([
     { parentResource: undefined, expectedParent: '-' },
     { parentResource: '', expectedParent: '' },

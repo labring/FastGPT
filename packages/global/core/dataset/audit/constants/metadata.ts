@@ -45,3 +45,13 @@ export const datasetConfigAuditItemLabelMap: Record<DatasetConfigAuditItem, stri
     'account_team:dataset_config_item_fileParseConfig'
   )
 };
+
+/** 集合对象的可审计变更动作，区分同一次更新中的改名、移动和启停。 */
+export enum DatasetContentAuditActionEnum {
+  RENAME = 'rename',
+  MOVE = 'move',
+  ENABLE = 'enable',
+  DISABLE = 'disable'
+}
+
+export type DatasetContentAuditAction = `${DatasetContentAuditActionEnum}`;

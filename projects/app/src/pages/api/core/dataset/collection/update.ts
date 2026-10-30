@@ -14,18 +14,24 @@ import {
 } from '@fastgpt/global/support/permission/constant';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { type ApiRequestProps } from '@fastgpt/next/type';
+import { DatasetAuditEventEnum } from '@fastgpt/global/core/dataset/audit/constants/event';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { type ClientSession } from '@fastgpt/service/common/mongo';
-import { type CollectionWithDatasetType } from '@fastgpt/global/core/dataset/type';
+import { type DatasetCollectionSchemaType } from '@fastgpt/global/core/dataset/type';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
-import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
-import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
-import { getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
+import { addAuditLogs, type AuditLogInput } from '@fastgpt/service/support/user/audit/util';
+import { diffCollectionTags } from '@fastgpt/service/core/dataset/audit/utils';
+import { MongoDatasetCollectionTagsV2 } from '@fastgpt/service/core/dataset/tag/schemaV2';
 import { UpdateDatasetCollectionBodySchema } from '@fastgpt/global/openapi/core/dataset/collection/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { checkMoveFolderDepth } from '@fastgpt/service/common/parentFolder/depth';
 import { moveCollectionPermission } from '@fastgpt/service/support/permission/collection/controller';
 import { authDatasetCollectionMove } from '@fastgpt/service/support/permission/collection/moveAuth';
+import {
+  buildCollectionUpdateAuditChanges,
+  getCollectionAuditLocation,
+  getCollectionAuditObjectType
+} from '@fastgpt/service/core/dataset/audit/collection';
 
 // Set folder collection children forbid status
 const updateFolderChildrenForbid = async ({
@@ -33,7 +39,7 @@ const updateFolderChildrenForbid = async ({
   forbid,
   session
 }: {
-  collection: CollectionWithDatasetType;
+  collection: Pick<DatasetCollectionSchemaType, '_id' | 'teamId' | 'datasetId'>;
   forbid: boolean;
   session: ClientSession;
 }) => {
@@ -113,9 +119,10 @@ async function handler(req: ApiRequestProps) {
   const hasMetaUpdate =
     !!name || tags !== undefined || forbid !== undefined || createTime !== undefined;
   const auth = { req, authToken: true, authApiKey: true, collectionId: id };
-  const { collection, teamId, tmbId } = isMove
+  const { collection, tmbId } = isMove
     ? await authDatasetCollectionMove({ ...auth, targetParentId })
     : await authDatasetCollection({ ...auth, per: ManagePermissionVal });
+  const resourceTeamId = String(collection.teamId);
 
   // 同请求携带字段更新时仍需节点 manage，避免借 move 绕过改名/禁用等门槛
   if (isMove && hasMetaUpdate) {
@@ -141,10 +148,54 @@ async function handler(req: ApiRequestProps) {
     });
   }
 
-  await mongoSessionRun(async (session) => {
+  const {
+    previousCollection,
+    auditChanges,
+    tagChanges
+  }: {
+    previousCollection: DatasetCollectionSchemaType;
+    auditChanges: ReturnType<typeof buildCollectionUpdateAuditChanges>;
+    tagChanges: ReturnType<typeof diffCollectionTags>;
+  } = await mongoSessionRun(async (session) => {
+    // 所有变更共用事务内旧快照；重试时重新读取，避免并发操作导致漏记或沿用已回滚的差异。
+    const previousCollection = await MongoDatasetCollection.findOne(
+      { _id: id, teamId: resourceTeamId },
+      null,
+      { session }
+    ).lean();
+    if (!previousCollection) {
+      return Promise.reject(CommonErrEnum.fileNotFound);
+    }
+
+    const oldParentId = previousCollection.parentId ? String(previousCollection.parentId) : null;
+    const actualMove = isMove && oldParentId !== targetParentId;
+
+    /** 路径与属性共用事务快照，在移动写入前保存，避免新位置覆盖旧位置。 */
+    const getCollectionPath = async (pathParentId: string | null, pathName: string) => {
+      const location = await getCollectionAuditLocation({
+        datasetName: collection.dataset?.name ?? '',
+        teamId: String(previousCollection.teamId),
+        datasetId: String(previousCollection.datasetId),
+        parentId: pathParentId,
+        session
+      });
+      return [location, pathName].filter(Boolean).join('/');
+    };
+    const move = actualMove
+      ? {
+          oldPath: await getCollectionPath(oldParentId, previousCollection.name),
+          newPath: await getCollectionPath(targetParentId, name || previousCollection.name)
+        }
+      : undefined;
+    const auditChanges = buildCollectionUpdateAuditChanges({
+      collection: previousCollection,
+      update: { name, forbid },
+      move
+    });
+
     const collectionTags = await createOrGetCollectionTags({
       tags,
-      teamId,
+      teamId: resourceTeamId,
       datasetId: collection.datasetId,
       session
     });
@@ -155,13 +206,13 @@ async function handler(req: ApiRequestProps) {
       // parentId 由 moveCollectionPermission 更新，避免重复写入。
       await moveCollectionPermission({
         collection: {
-          _id: String(collection._id),
-          type: collection.type,
-          teamId: String(collection.teamId),
-          parentId: collection.parentId ? String(collection.parentId) : null,
-          datasetId: String(collection.datasetId),
-          tmbId: String(collection.tmbId),
-          inheritPermission: collection.inheritPermission
+          _id: String(previousCollection._id),
+          type: previousCollection.type,
+          teamId: String(previousCollection.teamId),
+          parentId: oldParentId,
+          datasetId: String(previousCollection.datasetId),
+          tmbId: String(previousCollection.tmbId),
+          inheritPermission: previousCollection.inheritPermission
         },
         targetParentId,
         session
@@ -186,27 +237,74 @@ async function handler(req: ApiRequestProps) {
     );
 
     // Folder update forbid
-    if (collection.type === DatasetCollectionTypeEnum.folder && forbid !== undefined) {
+    if (previousCollection.type === DatasetCollectionTypeEnum.folder && forbid !== undefined) {
       await updateFolderChildrenForbid({
-        collection,
+        collection: previousCollection,
         forbid,
         session
       });
     }
+
+    // 只使用最终成功提交的事务返回值，日志在事务外写入，避免重试重复记录。
+    return {
+      previousCollection,
+      auditChanges,
+      tagChanges: diffCollectionTags({
+        currentTags: previousCollection.tags ?? [],
+        nextTags: collectionTags ?? previousCollection.tags ?? []
+      })
+    };
   });
 
-  (async () => {
-    addAuditLog({
-      tmbId,
-      teamId,
-      event: AuditEventEnum.UPDATE_COLLECTION,
-      params: {
-        collectionName: collection.name,
-        datasetName: collection.dataset?.name || '',
-        datasetType: getI18nDatasetType(collection.dataset?.type || '')
-      }
-    });
-  })();
+  const tagAuditChanges = [
+    { event: DatasetAuditEventEnum.DATASET_COLLECTION_TAG_ADD, tagIds: tagChanges.addedTagIds },
+    { event: DatasetAuditEventEnum.DATASET_COLLECTION_TAG_REMOVE, tagIds: tagChanges.removedTagIds }
+  ].filter(({ tagIds }) => tagIds.length > 0);
+
+  if (auditChanges.length === 0 && tagAuditChanges.length === 0) return;
+
+  const auditLogs: AuditLogInput[] = auditChanges.map((change) => ({
+    tmbId,
+    teamId: resourceTeamId,
+    event: DatasetAuditEventEnum.DATASET_COLLECTION_UPDATE,
+    params: {
+      datasetName: collection.dataset?.name ?? '',
+      collectionName: previousCollection.name,
+      objectType: getCollectionAuditObjectType(previousCollection.type),
+      ...change
+    }
+  }));
+
+  if (tagAuditChanges.length > 0) {
+    // 标签名只用于展示；查询失败时回退 ID，避免已提交的集合更新因审计补充查询而失败。
+    const tagDocs = await MongoDatasetCollectionTagsV2.find(
+      {
+        _id: { $in: [...tagChanges.addedTagIds, ...tagChanges.removedTagIds] },
+        teamId: resourceTeamId,
+        datasetId: collection.datasetId
+      },
+      'tag'
+    )
+      .lean()
+      .catch(() => []);
+    const tagNameById = new Map(tagDocs.map((tag) => [String(tag._id), tag.tag]));
+
+    auditLogs.push(
+      ...tagAuditChanges.map(({ event, tagIds }) => ({
+        tmbId,
+        teamId: resourceTeamId,
+        event,
+        params: {
+          datasetName: collection.dataset?.name ?? '',
+          collectionName: previousCollection.name,
+          tagName: tagIds.map((tagId) => tagNameById.get(tagId) ?? tagId).join(', ')
+        }
+      }))
+    );
+  }
+
+  // 每个属性变更一条日志，标签按集合分别记录实际新增和移除的部分。
+  void addAuditLogs(auditLogs);
 }
 
 export default NextAPI(handler);

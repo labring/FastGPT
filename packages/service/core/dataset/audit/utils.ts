@@ -2,8 +2,10 @@ import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import {
   datasetConfigAuditItemLabelMap,
   type DatasetConfigAuditItem
-} from '@fastgpt/global/core/dataset/audit/constants/config';
+} from '@fastgpt/global/core/dataset/audit/constants/metadata';
 import { isEqual } from 'lodash-es';
+import type { CollectionTagValueType } from '@fastgpt/global/core/dataset/type';
+import { isCollectionTagValue } from '@fastgpt/global/core/dataset/tagUtils';
 
 /** 审计值允许为任意原始类型，写入前统一转成字符串落到 metadata。 */
 type AuditRawValue = unknown;
@@ -173,3 +175,68 @@ export const stringifyDatasetConfigAuditValue = ({
   value: AuditRawValue;
   fieldName?: string;
 }): string => formatAuditScalar(sanitizeAuditValue(value));
+
+/**
+ * 比较集合标签写入前后的实际值，供公开更新入口、单集合和批量标签更新复用。
+ * 旧字符串标签不参与审计；新增、值追加或覆盖记为 added，整条移除或仅裁剪选项记为 removed。
+ * 值比较按选项集合进行，避免规范化、选项顺序或重复项造成假变更；changed 另按存储内容判断。
+ */
+export const diffCollectionTags = ({
+  currentTags,
+  nextTags
+}: {
+  currentTags: Array<string | CollectionTagValueType>;
+  nextTags: Array<string | CollectionTagValueType>;
+}) => {
+  /** 存储签名保留顺序与旧格式条目，用于批量路径判断是否需要写库。 */
+  const tagItemsSignature = (items: Array<string | CollectionTagValueType>) =>
+    items
+      .map((item) =>
+        isCollectionTagValue(item)
+          ? `v2:${String(item.tagId)}:${JSON.stringify(item.value ?? null)}`
+          : `legacy:${JSON.stringify(item)}`
+      )
+      .join('\u0000');
+
+  /** 同一标签的值按集合比较，忽略选项顺序和重复值。 */
+  const valuesByTagId = (items: Array<string | CollectionTagValueType>) => {
+    const map = new Map<string, Set<string>>();
+    for (const item of items) {
+      if (!isCollectionTagValue(item)) continue;
+      const tagId = String(item.tagId);
+      const values = map.get(tagId) ?? new Set<string>();
+      for (const value of Array.isArray(item.value) ? item.value : [item.value]) {
+        values.add(JSON.stringify(value));
+      }
+      map.set(tagId, values);
+    }
+    return map;
+  };
+
+  const before = valuesByTagId(currentTags);
+  const after = valuesByTagId(nextTags);
+  const addedTagIds: string[] = [];
+  const removedTagIds: string[] = [];
+
+  for (const tagId of new Set([...before.keys(), ...after.keys()])) {
+    const beforeValues = before.get(tagId);
+    const afterValues = after.get(tagId);
+
+    if (!beforeValues) {
+      addedTagIds.push(tagId);
+    } else if (!afterValues) {
+      removedTagIds.push(tagId);
+    } else if ([...afterValues].some((value) => !beforeValues.has(value))) {
+      // 覆盖同时含新增、移除值时只记一次写入，避免一条操作产生互相矛盾的日志。
+      addedTagIds.push(tagId);
+    } else if ([...beforeValues].some((value) => !afterValues.has(value))) {
+      removedTagIds.push(tagId);
+    }
+  }
+
+  return {
+    addedTagIds,
+    removedTagIds,
+    changed: tagItemsSignature(currentTags) !== tagItemsSignature(nextTags)
+  };
+};
