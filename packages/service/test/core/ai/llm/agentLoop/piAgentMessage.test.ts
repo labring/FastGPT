@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { convertMessages } from '@mariozechner/pi-ai/openai-completions';
 import {
   convertChatMessagesToPiAgentMessages,
   convertPiAgentMessagesToChatMessages,
@@ -11,10 +12,49 @@ import {
 const model = {
   api: 'openai-completions',
   provider: 'openai',
-  id: 'gpt-5'
+  id: 'gpt-5',
+  reasoning: true
 } as any;
 
 describe('piAgent message conversion', () => {
+  it.each(['', 'Original reasoning.'])(
+    'keeps the reasoning field and its signature across context conversion: %s',
+    (reasoning) => {
+      const converted = convertChatMessagesToPiAgentMessages({
+        model,
+        messages: [{ role: 'assistant', content: 'Answer.', reasoning_content: reasoning }]
+      });
+      expect(converted[0]).toMatchObject({
+        content: [
+          { type: 'thinking', thinking: reasoning, thinkingSignature: 'reasoning_content' },
+          { type: 'text', text: 'Answer.' }
+        ]
+      });
+      expect(convertPiAgentMessagesToChatMessages(converted)).toEqual([
+        { role: 'assistant', content: 'Answer.', reasoning_content: reasoning }
+      ]);
+      if (reasoning) {
+        const outgoing = convertMessages(
+          { ...model, baseUrl: 'https://example.com/v1' },
+          { messages: converted },
+          {} as Parameters<typeof convertMessages>[2]
+        );
+        expect(outgoing[0]).toHaveProperty('reasoning_content', reasoning);
+      }
+    }
+  );
+
+  it('does not add thinking blocks to non-reasoning models', () => {
+    const converted = convertChatMessagesToPiAgentMessages({
+      model: { ...model, reasoning: false },
+      messages: [{ role: 'assistant', content: 'Answer.', reasoning_content: '' }]
+    });
+    expect(converted[0]).toMatchObject({ content: [{ type: 'text', text: 'Answer.' }] });
+    expect(convertPiAgentMessagesToChatMessages(converted)[0]).not.toHaveProperty(
+      'reasoning_content'
+    );
+  });
+
   it('converts standard history while preserving reasoning and tool relationships', () => {
     const result = convertChatMessagesToPiAgentMessages({
       model,
@@ -58,7 +98,11 @@ describe('piAgent message conversion', () => {
       expect.objectContaining({
         role: 'assistant',
         content: [
-          { type: 'thinking', thinking: 'Need current information.' },
+          {
+            type: 'thinking',
+            thinking: 'Need current information.',
+            thinkingSignature: 'reasoning_content'
+          },
           { type: 'text', text: 'I will search.' },
           {
             type: 'toolCall',

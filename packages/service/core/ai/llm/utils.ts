@@ -553,6 +553,7 @@ export const loadRequestMessages = async ({
   /**
    * 格式化 assistant 消息的结构字段。
    * reasoning_content 只在模型声明支持时保留，避免传给不支持 reasoning 字段的供应商。
+   * 原样保留已有的思考内容和空字符串。
    */
   const formatAssistantItem = (
     item: ChatCompletionAssistantMessageParam & {
@@ -563,7 +564,7 @@ export const loadRequestMessages = async ({
     return {
       role: item.role,
       content: item.content || undefined,
-      reasoning_content: supportReason ? item.reasoning_content || undefined : undefined,
+      reasoning_content: supportReason ? item.reasoning_content : undefined,
       function_call: item.function_call || undefined,
       name: item.name || undefined,
       refusal: item.refusal || undefined,

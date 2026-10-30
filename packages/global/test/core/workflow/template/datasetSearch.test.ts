@@ -1,13 +1,23 @@
 import { describe, expect, it } from 'vitest';
 import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { DatasetSearchModule } from '@fastgpt/global/core/workflow/template/system/datasetSearch';
-import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import {
+  datasetTagFilterValueDesc,
+  FlowNodeInputTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
 import {
   getToolInputDisplayRenderTypeList,
   normalizeFlowNodeInputType
 } from '@fastgpt/global/core/app/formEdit/utils';
 
 describe('DatasetSearchModule', () => {
+  it('should define valueDesc for collectionFilterMatch input', () => {
+    const filterInput = DatasetSearchModule.inputs.find(
+      (input) => input.key === NodeInputKeyEnum.collectionFilterMatch
+    );
+
+    expect(filterInput?.valueDesc).toBe(datasetTagFilterValueDesc);
+  });
   it('should use array search input without legacy user question input', () => {
     const legacyUserQuestionInput = DatasetSearchModule.inputs.find(
       (input) => input.key === NodeInputKeyEnum.userChatInput

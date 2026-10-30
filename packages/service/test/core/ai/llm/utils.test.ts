@@ -445,6 +445,47 @@ describe('loadRequestMessages function tests', () => {
   });
 
   describe('Basic message processing', () => {
+    it.each([undefined, '', 'Original reasoning.'])(
+      'preserves existing reasoning without changing tool relationships or input: %s',
+      async (reasoning) => {
+        const messages: ChatCompletionMessageParam[] = [
+          { role: 'user', content: 'Continue the task.' },
+          {
+            role: 'assistant',
+            ...(reasoning !== undefined ? { reasoning_content: reasoning } : {}),
+            tool_calls: [
+              {
+                id: 'call_history',
+                type: 'function',
+                function: { name: 'search', arguments: '{}' }
+              }
+            ]
+          },
+          { role: 'tool', tool_call_id: 'call_history', content: 'Tool completed.' },
+          {
+            role: 'assistant',
+            content: 'Task complete.',
+            ...(reasoning !== undefined ? { reasoning_content: reasoning } : {})
+          }
+        ];
+        const original = structuredClone(messages);
+        const result = await loadRequestMessages({ messages, supportReason: true });
+        const serializedResult = JSON.parse(JSON.stringify(result));
+
+        expect(result).toHaveLength(messages.length);
+        expect(serializedResult[1]).toEqual(messages[1]);
+        expect(result[2]).toMatchObject(messages[2]);
+        expect(serializedResult[3]).toEqual(messages[3]);
+        expect(result[0]).not.toHaveProperty('reasoning_content');
+        expect(result[2]).not.toHaveProperty('reasoning_content');
+        expect(messages).toEqual(original);
+
+        const plainResult = await loadRequestMessages({ messages, supportReason: false });
+        expect(JSON.parse(JSON.stringify(plainResult[1]))).not.toHaveProperty('reasoning_content');
+        expect(JSON.parse(JSON.stringify(plainResult[3]))).not.toHaveProperty('reasoning_content');
+      }
+    );
+
     it('should reject empty messages array', async () => {
       await expect(
         loadRequestMessages({
@@ -1540,7 +1581,7 @@ describe('loadRequestMessages function tests', () => {
     });
 
     it('should preserve private upload URLs when MULTIPLE_DATA_TO_BASE64 is disabled', async () => {
-      serviceEnv.MULTIPLE_DATA_TO_BASE64 = false;
+      multimediaEnv.MULTIPLE_DATA_TO_BASE64 = false;
       const imageUrl = 'http://localhost:9000/fastgpt-private/chat/image.png?X-Amz-Signature=test';
       const messages: ChatCompletionMessageParam[] = [
         {
