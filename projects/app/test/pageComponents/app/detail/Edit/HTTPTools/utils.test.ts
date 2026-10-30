@@ -46,4 +46,13 @@ describe('buildWorkflowCustomHeaders', () => {
       headerSecret: {}
     });
   });
+
+  it('does not revive a deleted secret when a header with the same key is added again', () => {
+    const result = buildWorkflowCustomHeaders({
+      headers: [{ key: 'X-API-Key', value: '' }],
+      storedSecrets: { 'X-API-Key': { value: '', secret: 'removed-ciphertext' } }
+    });
+
+    expect(result.headerSecret).toEqual({});
+  });
 });

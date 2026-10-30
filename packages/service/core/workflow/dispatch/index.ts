@@ -25,6 +25,7 @@ import type {
 import { getErrText, isUserConfigError, UserError } from '@fastgpt/global/common/error/utils';
 import {
   filterWorkflowEdges,
+  rewriteLegacyInteractiveToolSetNodeIds,
   valueTypeFormat,
   appendWorkflowInteractiveValue
 } from '@fastgpt/global/core/workflow/runtime/utils';
@@ -147,18 +148,14 @@ export async function dispatchWorkFlow({
   concatUsage,
   ...data
 }: Props & WorkflowUsageProps): Promise<DispatchFlowResponse> {
-  const {
-    res,
-    stream,
-    runningUserInfo,
-    runningAppInfo,
-    lastInteractive,
-    histories,
-    query,
-    chatId,
-    apiVersion
-  } = data;
+  const { res, stream, runningUserInfo, runningAppInfo, histories, query, chatId, apiVersion } =
+    data;
   const responseChatItemId = data.responseChatItemId;
+  data.lastInteractive = rewriteLegacyInteractiveToolSetNodeIds({
+    lastInteractive: data.lastInteractive,
+    nodes: data.runtimeNodes
+  });
+  const rewrittenLastInteractive = data.lastInteractive;
   if (stream && res && !isWorkflowSseResponseInitialized(res)) {
     // HTTP SSE 响应必须由调用入口提前初始化，dispatch 只执行 workflow，不隐式管理响应协议。
     return Promise.reject(
@@ -1627,13 +1624,15 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
         async (workflowSpan) => {
           const startTime = Date.now();
           try {
-            await rewriteRuntimeWorkFlow({
+            const rewrittenInteractive = await rewriteRuntimeWorkFlow({
               teamId: data.runningAppInfo.teamId,
               tmbId: data.runningUserInfo.tmbId,
               nodes: data.runtimeNodes,
               edges: data.runtimeEdges,
-              lang: data.lang
+              lang: data.lang,
+              lastInteractive: data.lastInteractive
             });
+            if (rewrittenInteractive) data.lastInteractive = rewrittenInteractive;
             // ToolSet 会在运行态展开为临时 Tool 节点；交互暂停保存的 memoryEdges 也会指向这些
             // 临时节点。孤儿边过滤必须等展开完成后执行，否则续跑时会先删除 ToolCall -> Tool 的
             // selectedTools 边，导致 ToolCall 拿不到已挂载的 MCP/HTTP ToolSet 子工具。

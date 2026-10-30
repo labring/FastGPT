@@ -10,7 +10,13 @@ import { AppResourcesSchema } from '../../../../core/app/type';
 import { StoreEdgeItemTypeSchema } from '../../../../core/workflow/type/edge';
 import { AppChatConfigInputSchema, OpenAPIAppChatConfigSchema } from '../common/api';
 import { BoolSchema, NumSchema } from '../../../../common/zod';
-import type { StoreNodeItemType } from '../../../../core/workflow/type/node';
+import {
+  HttpToolSetRuntimeConfigSchema,
+  McpToolSetRuntimeConfigSchema,
+  type StoreNodeItemType
+} from '../../../../core/workflow/type/node';
+import { FlowNodeTypeEnum } from '../../../../core/workflow/node/constant';
+import { AppTypeEnum } from '../../../../core/app/constants';
 
 export const PublishAppQuerySchema = z.object({
   appId: ObjectIdSchema.meta({
@@ -24,10 +30,6 @@ const AppVersionNodesSchema = z.array(OpenAPIStoreNodeItemTypeSchema).meta({
   description: '版本内保存的应用节点配置'
 });
 
-const PublishAppNodesSchema = z.array(PersistedOpenAPIStoreNodeItemTypeSchema).meta({
-  description: '本次保存的应用节点配置'
-});
-
 const AppVersionEdgesSchema = z.array(StoreEdgeItemTypeSchema).default([]).meta({
   description: '版本内保存的应用连线配置'
 });
@@ -38,6 +40,84 @@ const AppVersionChatConfigSchema = OpenAPIAppChatConfigSchema.default({}).meta({
 const AppVersionChatConfigInputSchema = AppChatConfigInputSchema.default({}).meta({
   description: '本次写入的应用对话配置'
 });
+
+const PublishAppBodyCommonShape = {
+  edges: AppVersionEdgesSchema.optional().meta({
+    description: '本次保存的应用连线配置；未传时按空连线保存'
+  }),
+  chatConfig: AppVersionChatConfigInputSchema.optional().meta({
+    description: '本次保存的应用对话配置'
+  }),
+  isPublish: BoolSchema.optional().meta({
+    example: true,
+    description:
+      '是否发布为线上运行版本；重排、问题优化、猜你想问和模型语音播放关闭时不校验模型，开启且未填模型时补默认值，已填模型不可用时拒绝发布'
+  }),
+  versionName: z.string().optional().meta({
+    example: '正式发布版',
+    description: '版本名称；自动保存时服务端会使用自动保存文案'
+  }),
+  autoSave: BoolSchema.optional().meta({
+    example: false,
+    description: '是否为编辑器自动保存；自动保存会覆盖当前自动保存记录'
+  })
+};
+
+const PublishAppNodesDescription = '本次保存的应用节点配置；未传时按空节点保存';
+
+const PublishAppNodesSchema = z.array(PersistedOpenAPIStoreNodeItemTypeSchema).meta({
+  description: '本次保存的应用节点配置'
+});
+
+const createPublishToolSetAppBodySchema = (type: AppTypeEnum) => {
+  const PublishedToolSetRootNodeSchema = OpenAPIStoreNodeItemTypeSchema.superRefine((node, ctx) => {
+    const runtimeConfig =
+      type === AppTypeEnum.mcpToolSet
+        ? McpToolSetRuntimeConfigSchema
+        : HttpToolSetRuntimeConfigSchema;
+    const configKey = type === AppTypeEnum.mcpToolSet ? 'mcpToolSet' : 'httpToolSet';
+    const otherConfigKey = type === AppTypeEnum.mcpToolSet ? 'httpToolSet' : 'mcpToolSet';
+    const isValidRoot =
+      node.flowNodeType === FlowNodeTypeEnum.toolSet &&
+      !node.pluginId &&
+      runtimeConfig.safeParse(node.toolConfig?.[configKey]).success &&
+      node.toolConfig?.[otherConfigKey] === undefined;
+    if (isValidRoot) return;
+
+    ctx.addIssue({
+      code: 'custom',
+      path: ['toolConfig'],
+      message: '完整工具集配置只允许匹配类型的工具集 App 根节点'
+    });
+  });
+  const nodesSchema = z
+    .array(z.union([PersistedOpenAPIStoreNodeItemTypeSchema, PublishedToolSetRootNodeSchema]))
+    .superRefine((nodes, ctx) => {
+      nodes.forEach((node, index) => {
+        if (PersistedOpenAPIStoreNodeItemTypeSchema.safeParse(node).success) return;
+        if (
+          index === 0 &&
+          nodes.length === 1 &&
+          PublishedToolSetRootNodeSchema.safeParse(node).success
+        ) {
+          return;
+        }
+
+        ctx.addIssue({
+          code: 'custom',
+          path: [index],
+          message: '完整工具集配置只允许匹配类型的工具集 App 唯一根节点'
+        });
+      });
+    });
+
+  return z.object({
+    ...PublishAppBodyCommonShape,
+    nodes: nodesSchema.optional().meta({
+      description: PublishAppNodesDescription
+    })
+  });
+};
 
 const AppVersionResourcesSchema = AppResourcesSchema.meta({
   description: '该版本引用的资源集合'
@@ -71,29 +151,27 @@ const OpenAPIVersionListItemSchema = VersionListItemSchema.extend({
 });
 
 export const PublishAppBodySchema = z.object({
+  ...PublishAppBodyCommonShape,
   nodes: PublishAppNodesSchema.optional().meta({
-    description: '本次保存的应用节点配置；未传时按空节点保存'
-  }),
-  edges: AppVersionEdgesSchema.optional().meta({
-    description: '本次保存的应用连线配置；未传时按空连线保存'
-  }),
-  chatConfig: AppVersionChatConfigInputSchema.optional().meta({
-    description: '本次保存的应用对话配置'
-  }),
-  isPublish: BoolSchema.optional().meta({
-    example: true,
-    description:
-      '是否发布为线上运行版本；重排、问题优化、猜你想问和模型语音播放关闭时不校验模型，开启且未填模型时补默认值，已填模型不可用时拒绝发布'
-  }),
-  versionName: z.string().optional().meta({
-    example: '正式发布版',
-    description: '版本名称；自动保存时服务端会使用自动保存文案'
-  }),
-  autoSave: BoolSchema.optional().meta({
-    example: false,
-    description: '是否为编辑器自动保存；自动保存会覆盖当前自动保存记录'
+    description: PublishAppNodesDescription
   })
 });
+
+/** 工具集 App 保存完整根配置；鉴权后按实际 App 类型选择此 schema。 */
+export const PublishMcpToolSetAppBodySchema = createPublishToolSetAppBodySchema(
+  AppTypeEnum.mcpToolSet
+);
+export const PublishHttpToolSetAppBodySchema = createPublishToolSetAppBodySchema(
+  AppTypeEnum.httpToolSet
+);
+
+/** OpenAPI 入口无法读取 App 类型，同时声明普通工作流摘要和两类工具集 App 完整根配置。 */
+export const PublishAppRequestBodySchema = z.union([
+  PublishAppBodySchema,
+  PublishMcpToolSetAppBodySchema,
+  PublishHttpToolSetAppBodySchema
+]);
+
 export type PublishAppBodyType = Omit<z.input<typeof PublishAppBodySchema>, 'nodes'> & {
   nodes?: StoreNodeItemType[];
 };

@@ -235,7 +235,7 @@ describe('rewriteRuntimeWorkFlow independent toolsets', () => {
       url: 'https://mcp.example.com',
       headerSecret: { Authorization: { value: '', secret: 'encrypted-token' } }
     });
-    expect(edges.map((edge) => edge.target)).toEqual(['mcp-set0', 'mcp-set1']);
+    expect(edges.map((edge) => edge.target)).toEqual(nodes.map((node) => node.nodeId));
   });
 
   it('propagates MCP list failures without falling back to saved summaries', async () => {
@@ -286,7 +286,167 @@ describe('rewriteRuntimeWorkFlow independent toolsets', () => {
     expect(nodes[0].toolConfig?.httpTool?.apiSchemaStr).toBe(
       JSON.stringify(await bundleOpenAPISchema(parseOpenAPISchemaString(openApiSchema)))
     );
-    expect(edges.map((edge) => edge.target)).toEqual(['http-set0', 'http-set1']);
+    expect(edges.map((edge) => edge.target)).toEqual(nodes.map((node) => node.nodeId));
+  });
+
+  it('keeps the selected tool when remote tool order changes between resume attempts', async () => {
+    const inputSchema = { type: 'object' };
+    const search = { name: 'search', description: 'Search', inputSchema };
+    const remove = { name: 'delete', description: 'Delete', inputSchema };
+
+    mocks.getMcpTools.mockResolvedValueOnce([search, remove]);
+    const firstNodes = [createMcpToolSetNode([])];
+    const firstEdges = [createSelectedToolEdge()];
+    await rewriteRuntimeWorkFlow({
+      teamId: 'team-1',
+      tmbId: 'member-1',
+      nodes: firstNodes,
+      edges: firstEdges
+    });
+    const selectedTarget = firstNodes.find((node) => node.name.endsWith('/search'))!.nodeId;
+
+    mocks.getMcpTools.mockResolvedValueOnce([remove, search]);
+    const resumedNodes = [createMcpToolSetNode([])];
+    const resumedEdges = [
+      {
+        source: 'tool-call',
+        sourceHandle: 'selectedTools',
+        target: selectedTarget,
+        targetHandle: NodeOutputKeyEnum.selectedTools
+      }
+    ];
+    await rewriteRuntimeWorkFlow({
+      teamId: 'team-1',
+      tmbId: 'member-1',
+      nodes: resumedNodes,
+      edges: resumedEdges
+    });
+
+    expect(
+      resumedNodes.find((node) => node.nodeId === resumedEdges[0].target)?.toolConfig?.mcpTool
+    ).toMatchObject({ name: 'search' });
+  });
+
+  it('maps legacy index child IDs to the current tool position', async () => {
+    mocks.getMcpTools.mockResolvedValue([
+      { name: 'search', description: 'Search', inputSchema: { type: 'object' } }
+    ]);
+    const nodes = [createMcpToolSetNode([])];
+    const edges = [
+      {
+        source: 'tool-call',
+        sourceHandle: 'selectedTools',
+        target: 'mcp-set0',
+        targetHandle: NodeOutputKeyEnum.selectedTools
+      }
+    ];
+
+    await rewriteRuntimeWorkFlow({ teamId: 'team-1', tmbId: 'member-1', nodes, edges });
+
+    expect(nodes).toHaveLength(1);
+    expect(edges[0].target).toBe(nodes[0].nodeId);
+  });
+
+  it('rewrites every legacy toolset runtime reference to the stable node', async () => {
+    mocks.getMcpTools.mockResolvedValue([
+      { name: 'search', description: 'Search', inputSchema: { type: 'object' } }
+    ]);
+    const nodes = [createMcpToolSetNode([])];
+    const edges = [
+      {
+        source: 'tool-call',
+        sourceHandle: 'selectedTools',
+        target: 'mcp-set0',
+        targetHandle: NodeOutputKeyEnum.selectedTools
+      }
+    ];
+    const interactive = {
+      type: 'userSelect',
+      entryNodeIds: ['tool-call'],
+      memoryEdges: edges,
+      nodeOutputs: [{ nodeId: 'mcp-set0', key: 'rawResponse', value: 'ok' }],
+      params: { description: '', userSelectOptions: [] }
+    } as any;
+
+    const rewrittenInteractive = await rewriteRuntimeWorkFlow({
+      teamId: 'team-1',
+      tmbId: 'member-1',
+      nodes,
+      edges,
+      lastInteractive: interactive
+    });
+
+    expect(rewrittenInteractive?.entryNodeIds).toEqual(['tool-call']);
+    expect(rewrittenInteractive?.memoryEdges?.[0].target).toBe(nodes[0].nodeId);
+    expect(rewrittenInteractive?.nodeOutputs?.[0].nodeId).toBe(nodes[0].nodeId);
+  });
+
+  it('does not collide with another toolset whose ID starts with the same prefix', async () => {
+    mocks.getMcpTools.mockResolvedValue([
+      { name: 'search', description: 'Search', inputSchema: { type: 'object' } }
+    ]);
+    const first = { ...createMcpToolSetNode([]), nodeId: 'a' };
+    const second = { ...createMcpToolSetNode([]), nodeId: 'a0' };
+    const nodes = [first, second];
+
+    await rewriteRuntimeWorkFlow({ teamId: 'team-1', tmbId: 'member-1', nodes, edges: [] });
+
+    expect(new Set(nodes.map((node) => node.nodeId)).size).toBe(nodes.length);
+    expect(nodes.every((node) => node.flowNodeType === FlowNodeTypeEnum.tool)).toBe(true);
+  });
+
+  it('does not remap an edge that already targets a real node with the legacy child ID', async () => {
+    mocks.getMcpTools.mockResolvedValue([
+      { name: 'search', description: 'Search', inputSchema: { type: 'object' } }
+    ]);
+    const toolset = { ...createMcpToolSetNode([]), nodeId: 'a' };
+    const realNode = {
+      ...createMcpToolSetNode([]),
+      nodeId: 'a0',
+      flowNodeType: FlowNodeTypeEnum.textEditor,
+      toolConfig: undefined
+    };
+    const edges = [
+      {
+        source: 'a',
+        sourceHandle: 'selectedTools',
+        target: 'a0',
+        targetHandle: NodeOutputKeyEnum.selectedTools
+      }
+    ];
+
+    await rewriteRuntimeWorkFlow({
+      teamId: 'team-1',
+      tmbId: 'member-1',
+      nodes: [toolset, realNode],
+      edges
+    });
+
+    expect(edges[0].target).toBe('a0');
+  });
+
+  it('keeps duplicate HTTP tool names distinct by path and method', async () => {
+    mocks.getHttpSchema.mockResolvedValue({
+      data: JSON.stringify({
+        openapi: '3.0.0',
+        info: { title: 'Duplicate names', version: '1.0.0' },
+        servers: [{ url: 'https://api.example.com' }],
+        paths: {
+          '/search': {
+            get: { operationId: 'search', responses: { 200: { description: 'OK' } } }
+          },
+          '/search-v2': {
+            post: { operationId: 'search', responses: { 200: { description: 'OK' } } }
+          }
+        }
+      })
+    });
+    const nodes = [createHttpToolSetNode([])];
+
+    await rewriteRuntimeWorkFlow({ teamId: 'team-1', tmbId: 'member-1', nodes, edges: [] });
+
+    expect(nodes).toHaveLength(2);
+    expect(nodes[0].nodeId).not.toBe(nodes[1].nodeId);
   });
 
   it('uses the OpenAPI server URL when no base URL override is configured', async () => {

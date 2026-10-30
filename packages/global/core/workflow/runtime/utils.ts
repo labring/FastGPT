@@ -274,6 +274,67 @@ export const storeEdges2RuntimeEdges = (
   return edges?.map((edge) => ({ ...edge, status: 'waiting' })) || [];
 };
 
+/** 把历史交互快照中的工具集位置 ID 映射到稳定子工具 ID。 */
+export const rewriteInteractiveToolSetNodeIds = ({
+  lastInteractive,
+  nodeIdMap
+}: {
+  lastInteractive?: WorkflowInteractiveResponseType;
+  nodeIdMap: Map<string, string>;
+}): WorkflowInteractiveResponseType | undefined => {
+  if (!lastInteractive || nodeIdMap.size === 0) return lastInteractive;
+
+  const mapId = (id: string) => nodeIdMap.get(id) ?? id;
+  const result = {
+    ...lastInteractive,
+    entryNodeIds: lastInteractive.entryNodeIds?.map(mapId),
+    memoryEdges: lastInteractive.memoryEdges?.map((edge) => ({
+      ...edge,
+      source: mapId(edge.source),
+      target: mapId(edge.target)
+    })),
+    nodeOutputs: lastInteractive.nodeOutputs?.map((output) => ({
+      ...output,
+      nodeId: mapId(output.nodeId)
+    })),
+    ...(lastInteractive.params && 'childrenResponse' in lastInteractive.params
+      ? {
+          params: {
+            ...lastInteractive.params,
+            childrenResponse: rewriteInteractiveToolSetNodeIds({
+              lastInteractive: lastInteractive.params.childrenResponse,
+              nodeIdMap
+            })!
+          }
+        }
+      : {})
+  } as WorkflowInteractiveResponseType;
+  return result;
+};
+
+/** 旧暂停快照只记录 toolset 子工具的 index；按本地摘要名称重建当前稳定 ID。 */
+export const rewriteLegacyInteractiveToolSetNodeIds = ({
+  lastInteractive,
+  nodes
+}: {
+  lastInteractive?: WorkflowInteractiveResponseType;
+  nodes: (StoreNodeItemType | RuntimeNodeItemType)[];
+}) => {
+  const nodeIdMap = new Map<string, string>();
+  nodes.forEach((node) => {
+    if (node.flowNodeType !== FlowNodeTypeEnum.toolSet) return;
+    const toolList =
+      node.toolConfig?.mcpToolSet?.toolList ?? node.toolConfig?.httpToolSet?.toolList ?? [];
+    toolList.forEach((tool, index) => {
+      nodeIdMap.set(
+        `${node.nodeId}${index}`,
+        `${node.nodeId}#toolset:${encodeURIComponent(tool.name)}`
+      );
+    });
+  });
+  return rewriteInteractiveToolSetNodeIds({ lastInteractive, nodeIdMap });
+};
+
 export const getWorkflowEntryNodeIds = (
   nodes: (StoreNodeItemType | RuntimeNodeItemType)[],
   lastInteractive?: WorkflowInteractiveResponseType
