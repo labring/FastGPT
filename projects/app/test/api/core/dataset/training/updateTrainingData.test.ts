@@ -9,6 +9,9 @@ import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { BLOCKED_LOCK_TIME } from '@fastgpt/service/core/dataset/training/query';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { MongoTeamAudit } from '@fastgpt/service/support/user/audit/schema';
+import { MongoS3TTL } from '@fastgpt/service/common/s3/models/ttl';
+import { S3Buckets } from '@fastgpt/service/common/s3/config/constants';
+import { claimDatasetInlineImageCleanup } from '@fastgpt/service/core/dataset/data/inlineImages/entity';
 import { getUser } from '@test/datas/users';
 import { createDatasetCollectionFixture } from '@test/datas/dataset';
 import { Call } from '@test/utils/request';
@@ -16,8 +19,138 @@ import { Types } from '@fastgpt/service/common/mongo';
 import { describe, expect, it, vi } from 'vitest';
 
 vi.unmock('@fastgpt/service/support/user/audit/util');
+vi.unmock('@fastgpt/service/common/mongo/sessionRun');
 
 describe('updateTrainingData', () => {
+  it.each(
+    (['pending', 'deleted'] as const).flatMap((state) =>
+      (['image', 'link'] as const).map((syntax) => ({ state, syntax }))
+    )
+  )(
+    'rejects a new $syntax reference to a $state inline image and rolls back data and task state',
+    async ({ state, syntax }) => {
+      const { root, scope } = await createDatasetCollectionFixture();
+      const key = `dataset/${scope.datasetId}/inline-images/file/${'b'.repeat(32)}.png`;
+      const record = await MongoS3TTL.create({
+        bucketName: S3Buckets.private,
+        minioKey: key,
+        expiredTime: new Date(0),
+        datasetInlineImage: { teamId: scope.teamId, datasetId: scope.datasetId }
+      });
+      expect(await claimDatasetInlineImageCleanup(record.toObject())).toBe(true);
+      if (state === 'deleted') await MongoS3TTL.deleteOne({ _id: record._id });
+      const data = await MongoDatasetData.create({
+        ...scope,
+        q: 'original',
+        indexStatus: DatasetDataIndexStatusEnum.error,
+        indexErrorMsg: 'failed'
+      });
+      const task = await MongoDatasetTraining.create({
+        ...scope,
+        dataId: data._id,
+        billId: 'test',
+        mode: TrainingModeEnum.index,
+        q: 'original',
+        a: 'original answer',
+        retryCount: 0,
+        errorMsg: 'failed'
+      });
+      const response = await Call(handler, {
+        auth: root,
+        body: { dataId: task._id, q: `${syntax === 'image' ? '!' : ''}[image](${key})` }
+      });
+      expect(response.code).not.toBe(200);
+      expect(await MongoDatasetTraining.findById(task._id).lean()).toMatchObject({
+        q: 'original',
+        a: 'original answer',
+        retryCount: 0,
+        errorMsg: 'failed'
+      });
+      expect(await MongoDatasetData.findById(data._id).lean()).toMatchObject({
+        indexStatus: DatasetDataIndexStatusEnum.error,
+        indexErrorMsg: 'failed'
+      });
+    }
+  );
+
+  it.each(['a', 'imageId'] as const)(
+    'checks the unchanged %s reference when only q is edited',
+    async (field) => {
+      const { root, scope } = await createDatasetCollectionFixture();
+      const key = `dataset/${scope.datasetId}/inline-images/file/${'b'.repeat(32)}.png`;
+      await MongoS3TTL.create({
+        bucketName: S3Buckets.private,
+        minioKey: key,
+        expiredTime: new Date(0),
+        datasetInlineImage: {
+          teamId: scope.teamId,
+          datasetId: scope.datasetId,
+          cleanupPending: true
+        }
+      });
+      const task = await MongoDatasetTraining.create({
+        ...scope,
+        billId: 'test',
+        mode: TrainingModeEnum.index,
+        q: 'original',
+        [field]: field === 'imageId' ? key : `![image](${key})`,
+        retryCount: 0
+      });
+      expect(
+        (await Call(handler, { auth: root, body: { dataId: task._id, q: 'edited' } })).code
+      ).not.toBe(200);
+      expect(await MongoDatasetTraining.findById(task._id).lean()).toMatchObject({
+        q: 'original',
+        retryCount: 0
+      });
+    }
+  );
+
+  it.each(
+    (['q', 'a'] as const).flatMap((field) =>
+      (['image', 'link'] as const).map((syntax) => ({ field, syntax }))
+    )
+  )(
+    'renews an available $syntax in the final $field content and commits the retry',
+    async ({ field, syntax }) => {
+      const { root, scope } = await createDatasetCollectionFixture();
+      const key = `dataset/${scope.datasetId}/inline-images/file/${'b'.repeat(32)}.png`;
+      const text =
+        syntax === 'image'
+          ? `![image](${key.replace(/[./-]/g, '\\$&')})`
+          : `[view](<${key}> "original image")`;
+      const record = await MongoS3TTL.create({
+        bucketName: S3Buckets.private,
+        minioKey: key,
+        expiredTime: new Date(0),
+        datasetInlineImage: { teamId: scope.teamId, datasetId: scope.datasetId }
+      });
+      const task = await MongoDatasetTraining.create({
+        ...scope,
+        billId: 'test',
+        mode: TrainingModeEnum.index,
+        q: 'original',
+        a: 'original answer',
+        retryCount: 0,
+        errorMsg: 'failed'
+      });
+      const response = await Call(handler, {
+        auth: root,
+        body: { dataId: task._id, [field]: text }
+      });
+      expect(response.code).toBe(200);
+      expect(await MongoDatasetTraining.findById(task._id).lean()).toMatchObject({
+        [field]: text,
+        [field === 'q' ? 'a' : 'q']: field === 'q' ? 'original answer' : 'original',
+        retryCount: 3
+      });
+      expect((await MongoS3TTL.findById(record._id).lean())!.expiredTime.getTime()).toBeGreaterThan(
+        Date.now()
+      );
+      expect(await claimDatasetInlineImageCleanup(record.toObject())).toBe(false);
+    }
+  );
+
   it.each([TrainingModeEnum.index, TrainingModeEnum.imageParse])(
     'edits %s output and ignores a legacy request datasetId',
     async (mode) => {

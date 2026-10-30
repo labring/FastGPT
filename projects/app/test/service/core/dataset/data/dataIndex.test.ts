@@ -2,6 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Types } from '@fastgpt/service/common/mongo';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
+import { MongoS3TTL } from '@fastgpt/service/common/s3/models/ttl';
+import { S3Buckets } from '@fastgpt/service/common/s3/config/constants';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { MongoDatasetSynonym } from '@fastgpt/service/core/dataset/synonym/schema';
 import { DatasetSynonymSchemaVersion } from '@fastgpt/global/core/dataset/synonym';
@@ -61,6 +63,7 @@ const embeddingModel = {
   }
 } as any;
 const originalMultipleDataToBase64 = serviceEnv.MULTIPLE_DATA_TO_BASE64;
+vi.unmock('@fastgpt/service/common/mongo/sessionRun');
 const originalDatasetSynonymEnabled = serviceEnv.DATASET_SYNONYM_ENABLED;
 const tokenHeavyText = Array.from({ length: 30 }, (_, index) => `𠮷${index}`).join('');
 const largeTokenHeavyText = Array.from(
@@ -988,6 +991,50 @@ describe('DatasetDataIndexOperation', () => {
   });
 
   describe('writeDatasetDataIndex', () => {
+    it.each(
+      [false, true].flatMap((pending) =>
+        (['image', 'link'] as const).map((syntax) => ({ pending, syntax }))
+      )
+    )(
+      'protects $syntax references in custom index text (pending: $pending)',
+      async ({ pending, syntax }) => {
+        const { root, dataset, data, dataItem } = await createData();
+        const key = `dataset/${dataset._id}/inline-images/file/${'d'.repeat(32)}.png`;
+        await MongoS3TTL.create({
+          bucketName: S3Buckets.private,
+          minioKey: key,
+          expiredTime: new Date(0),
+          datasetInlineImage: {
+            teamId: String(root.teamId),
+            datasetId: String(dataset._id),
+            cleanupPending: pending
+          }
+        });
+        const text = `${syntax === 'image' ? '!' : ''}[view](${key})`;
+        const write = createDatasetDataIndex({
+          data: dataItem,
+          type: DatasetDataIndexTypeEnum.custom,
+          text,
+          model: embeddingModel
+        });
+        if (pending) {
+          await expect(write).rejects.toThrow('Inline image is no longer available');
+          expect((await MongoDatasetData.findById(data._id).lean())!.indexes).not.toEqual(
+            expect.arrayContaining([expect.objectContaining({ text })])
+          );
+          expect(mockVectorDelete).toHaveBeenCalledWith({
+            teamId: String(root.teamId),
+            idList: ['id_1']
+          });
+        } else {
+          await expect(write).resolves.toHaveProperty('index');
+          expect(
+            (await MongoS3TTL.findOne({ minioKey: key }).lean())!.expiredTime.getTime()
+          ).toBeGreaterThan(Date.now());
+        }
+      }
+    );
+
     it('should create a custom index and push it before existing indexes', async () => {
       const { data, dataItem } = await createData();
 

@@ -10,6 +10,8 @@ import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { findAndLockTrainingTask } from '@fastgpt/service/core/dataset/training/entity';
 import { BLOCKED_LOCK_TIME } from '@fastgpt/service/core/dataset/training/query';
+import { MongoS3TTL } from '@fastgpt/service/common/s3/models/ttl';
+import { S3Buckets } from '@fastgpt/service/common/s3/config/constants';
 import {
   createTrainingTaskLease,
   TrainingLeaseLostError,
@@ -64,6 +66,63 @@ describe('getDatasetIndexTrainingMode', () => {
 });
 
 describe('createTrainingTaskLease', () => {
+  it.each(
+    [false, true].flatMap((pending) =>
+      (['image', 'link'] as const).map((syntax) => ({ pending, syntax }))
+    )
+  )(
+    'protects $syntax references introduced by a training stage transition (pending: $pending)',
+    async ({ pending, syntax }) => {
+      const context = await createContext(DatasetDataIndexStatusEnum.indexing);
+      const key = `dataset/${context.datasetId}/inline-images/file/${'c'.repeat(32)}.png`;
+      await MongoS3TTL.create({
+        minioKey: key,
+        bucketName: S3Buckets.private,
+        expiredTime: new Date(0),
+        datasetInlineImage: {
+          teamId: context.teamId,
+          datasetId: context.datasetId,
+          cleanupPending: pending
+        }
+      });
+      const task = await MongoDatasetTraining.create({
+        ...context,
+        tmbId: new Types.ObjectId(),
+        billId: 'test',
+        mode: TrainingModeEnum.auto,
+        q: 'original',
+        errorMsg: 'failed',
+        lockTime: new Date()
+      });
+      const lease = createTrainingTaskLease(task);
+      const next = {
+        mode: TrainingModeEnum.index,
+        q: `${syntax === 'image' ? '!' : ''}[view](${key})`
+      };
+      try {
+        if (pending) {
+          await expect(lease.transition(next)).rejects.toThrow(
+            'Inline image is no longer available'
+          );
+          expect(await MongoDatasetTraining.findById(task._id).lean()).toMatchObject({
+            q: 'original',
+            mode: TrainingModeEnum.auto,
+            errorMsg: 'failed',
+            lockTime: task.lockTime
+          });
+        } else {
+          await lease.transition(next);
+          expect(await MongoDatasetTraining.findById(task._id).lean()).toMatchObject(next);
+          expect(
+            (await MongoS3TTL.findOne({ minioKey: key }).lean())!.expiredTime.getTime()
+          ).toBeGreaterThan(Date.now());
+        }
+      } finally {
+        await lease.stop();
+      }
+    }
+  );
+
   it.each([
     TrainingModeEnum.index,
     TrainingModeEnum.rebuildIndex,

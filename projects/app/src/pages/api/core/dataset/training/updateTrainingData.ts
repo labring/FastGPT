@@ -21,11 +21,11 @@ import {
   getTrainingTaskReadyUpdate
 } from '@fastgpt/service/core/dataset/training/utils';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
-import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { DatasetAuditEventEnum } from '@fastgpt/global/core/dataset/audit/constants/event';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { persistDatasetDataImages } from '@fastgpt/service/core/dataset/data/inlineImages/entity';
 
 /** 重试训练任务；首次训练允许编辑正文，rebuild 只重试已存索引。 */
 async function handler(req: ApiRequestProps): Promise<UpdateTrainingDataResponse> {
@@ -150,6 +150,17 @@ async function handler(req: ApiRequestProps): Promise<UpdateTrainingDataResponse
 
   const readyUpdate = getTrainingTaskReadyUpdate();
   await mongoSessionRun(async (session) => {
+    // 在编辑事务中读取最终内容并获取图片引用，与回收竞争同一归属记录锁。
+    // 未提交的字段以当前任务为准，避免事务外快照漏掉并发新增的引用。
+    const current = await MongoDatasetTraining.findOne(trainingMatch).session(session).lean();
+    if (!current) throw new Error('data not found');
+    await persistDatasetDataImages({
+      teamId: String(current.teamId),
+      datasetId: String(current.datasetId),
+      data: [{ ...current, ...(q !== undefined && { q }), ...(a !== undefined && { a }) }],
+      session
+    });
+
     if (data.dataId) {
       await MongoDatasetData.updateOne(
         {

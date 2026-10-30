@@ -9,6 +9,10 @@ import {
   type InvalidStorageObjectKeyReason
 } from '@fastgpt-sdk/storage';
 import { getS3ParsedPrefix, isOpaqueS3ParsedObjectKey } from '../opaqueKey';
+import {
+  filterDeletableDatasetInlineImages,
+  completeDatasetInlineImageCleanup
+} from '../../../core/dataset/data/inlineImages/entity';
 
 export type { S3MQJobData } from '@fastgpt/dal/redis/bullmq';
 
@@ -77,7 +81,8 @@ export const executeS3DeleteJob = async ({ prefix, bucketName, key, keys }: S3MQ
   if (key) {
     keys = [key];
   }
-  if (keys) {
+  if (keys) keys = await filterDeletableDatasetInlineImages({ bucketName, keys });
+  if (keys?.length) {
     logger.debug('S3 delete by keys', { bucketName, count: keys.length });
     const result = (await bucket.client.deleteObjectsByMultiKeys({ keys }).catch((error) => {
       if (!isLegacyStorageKeyError(error)) throw error;
@@ -123,6 +128,7 @@ export const executeS3DeleteJob = async ({ prefix, bucketName, key, keys }: S3MQ
         })) as { keys?: string[] } | undefined;
       assertNoFailedKeys(result?.keys, `parsed prefix ${fileParsedPrefix}`);
     });
+    await completeDatasetInlineImageCleanup({ bucketName, keys });
   }
   if (prefix) {
     logger.info('S3 delete by prefix started', { bucketName, prefix });

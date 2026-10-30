@@ -34,6 +34,7 @@ import { serviceEnv } from '@fastgpt/service/env';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { refreshDatasetDataVectorCreateTime } from '@fastgpt/service/common/vectorDB/controller';
 import { assertDatasetDataWritable } from '@fastgpt/service/core/dataset/data/utils';
+import { persistDatasetDataImages } from '@fastgpt/service/core/dataset/data/inlineImages/entity';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.EMBEDDING);
 
@@ -246,6 +247,12 @@ export class DatasetDataOperation {
         session,
         commit,
         fn: async (mongoSession) => {
+          await persistDatasetDataImages({
+            teamId,
+            datasetId,
+            data: [{ q: dataQ, a, imageId, indexes: results }],
+            session: mongoSession
+          });
           const [{ _id }] = await MongoDatasetData.create(
             [
               {
@@ -412,6 +419,12 @@ export class DatasetDataOperation {
           if (synonymContext?.isCurrent && !(await synonymContext.isCurrent())) {
             throw new Error('同义词配置已变化，请重试索引更新');
           }
+          await persistDatasetDataImages({
+            teamId: String(mongoData.teamId),
+            datasetId: String(mongoData.datasetId),
+            data: [{ q: nextQ, a: nextA, imageId: nextImageId, indexes: newIndexes }],
+            session: mongoSession
+          });
           // 重试只改变状态、不更新 updateTime；失败修复还需校验状态，不能覆盖已恢复的任务。
           const updateResult = await MongoDatasetData.updateOne(
             {
@@ -742,6 +755,12 @@ export class DatasetDataOperation {
         if (synonymContext?.isCurrent && !(await synonymContext.isCurrent())) {
           throw new Error('同义词配置已变化，请重试索引更新');
         }
+        await persistDatasetDataImages({
+          teamId: String(mongoData.teamId),
+          datasetId: String(mongoData.datasetId),
+          data: [{ q: nextQ, a: nextA, imageId: nextImageId, indexes: nextIndexes }],
+          session
+        });
         const updateResult = await MongoDatasetData.updateOne(
           {
             _id: mongoData._id,
