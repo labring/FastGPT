@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type { LLMModelDataType } from '@fastgpt/global/core/ai/model/schema';
+import { getModelConfigUpdate, sanitizeTeamModelData } from '../../../../core/ai/model/utils';
 import { desensitizeModel, flatModelToDocumentData } from '../../../../core/ai/model/transform';
 
 describe('flatModelToDocumentData', () => {
@@ -106,5 +107,39 @@ describe('system model response filtering', () => {
     });
     expect(model.requestAuth).toBe('model-secret');
     expect(JSON.stringify(result)).not.toContain('model-secret');
+  });
+});
+
+describe('upcoming model deprecation flag scope', () => {
+  it('sets the optional flag without clearing it when omitted from updates', () => {
+    const update = getModelConfigUpdate({
+      type: ModelTypeEnum.llm,
+      provider: 'OpenAI',
+      name: 'GPT',
+      scope: ModelScopeEnum.system,
+      config: { maxContext: 4096, maxResponse: 1024, quoteMaxToken: 1024 },
+      isUpcomingDeprecation: true
+    });
+
+    expect(update.$set).toHaveProperty('isUpcomingDeprecation', true);
+    const omitted = getModelConfigUpdate({
+      type: ModelTypeEnum.llm,
+      provider: 'OpenAI',
+      name: 'GPT',
+      scope: ModelScopeEnum.system,
+      config: { maxContext: 4096, maxResponse: 1024, quoteMaxToken: 1024 }
+    });
+    expect(omitted.$set).not.toHaveProperty('isUpcomingDeprecation');
+    expect(omitted.$unset).not.toHaveProperty('isUpcomingDeprecation');
+  });
+
+  it('strips the optional flag from team model writes', () => {
+    expect(
+      sanitizeTeamModelData({
+        model: 'team-model',
+        isUpcomingDeprecation: true,
+        teamId: 'team-1'
+      })
+    ).toEqual({ model: 'team-model' });
   });
 });
