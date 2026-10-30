@@ -43,6 +43,32 @@ afterEach(() => {
 });
 
 describe('parseUrlToChatFileType', () => {
+  it.each([
+    [FileType.file, `${url}.PDF`, FileType.document],
+    [FileType.unknown, `${url}.png`, FileType.image],
+    [undefined, `${url}.zip`, FileType.unknown]
+  ] as const)('待分类类型 %s 按 URL %s 推测为 %s', async (type, url, expected) => {
+    expect((await parseUrlToChatFileType({ url, type }))?.type).toBe(expected);
+    expect(axios.head).not.toHaveBeenCalled();
+  });
+
+  it.each([FileType.image, FileType.document])(
+    '显式类型 %s 优先于冲突的名称、URL 和响应元数据',
+    async (type) => {
+      expect(
+        (
+          await parseUrlToChatFileType({
+            url: `${url}.mp4`,
+            name: 'archive.zip',
+            type,
+            metadata: { contentType: 'audio/mpeg' }
+          })
+        )?.type
+      ).toBe(type);
+      expect(axios.head).not.toHaveBeenCalled();
+    }
+  );
+
   it.each(['/api/system/file/d/', '/f/', '/'])(
     '短链 %s 使用响应元数据分类，不把签名中的点号当成文件后缀',
     async (prefix) => {
@@ -59,7 +85,7 @@ describe('parseUrlToChatFileType', () => {
       ).toEqual({
         url: shortUrl,
         name: shortUrl,
-        type: FileType.file,
+        type: FileType.document,
         filename: 'test_file.txt'
       });
       expect(axios.head).toHaveBeenCalledTimes(1);
@@ -112,12 +138,12 @@ describe('parseUrlToChatFileType', () => {
     ['data:IMAGE/PNG;base64,abc', undefined, FileType.image, 'image.png'],
     ['data:image/jpeg;base64,abc', '头像', FileType.image, '头像'],
     ['chat/nested/photo.jpg', undefined, FileType.image, 'photo.jpg'],
-    ['chat/report.pdf', undefined, FileType.file, 'report.pdf'],
+    ['chat/report.pdf', undefined, FileType.document, 'report.pdf'],
     ['/static/my.file.PNG', undefined, FileType.image, 'my.file.PNG'],
     ['http://files.example.com/a.mp3?token=1#part', undefined, FileType.audio, 'a.mp3'],
     [`${url}.mp4`, undefined, FileType.video, 'download.mp4'],
-    [`${url}.pdf`, '报告', FileType.file, '报告'],
-    [`${url}.png?filename=report.pdf`, undefined, FileType.file, 'report.pdf'],
+    [`${url}.pdf`, '报告', FileType.document, '报告'],
+    [`${url}.png?filename=report.pdf`, undefined, FileType.document, 'report.pdf'],
     [`${url}.png?filename=`, undefined, FileType.image, 'download.png'],
     ['https://files.example.com/file%20name.jpg', undefined, FileType.image, 'file name.jpg'],
     ['https://files.example.com/photo%231.png', undefined, FileType.image, 'photo#1.png'],
@@ -128,13 +154,13 @@ describe('parseUrlToChatFileType', () => {
     [
       'https://files.example.com/literal%2520name.pdf',
       undefined,
-      FileType.file,
+      FileType.document,
       'literal%20name.pdf'
     ],
-    [`${url}?filename=literal%2520name.pdf`, undefined, FileType.file, 'literal%20name.pdf'],
-    ['relative', undefined, FileType.file, 'relative'],
-    ['http://[invalid', '保留名称', FileType.file, '保留名称'],
-    ['chat/%invalid.png', undefined, FileType.file, 'chat/%invalid.png']
+    [`${url}?filename=literal%2520name.pdf`, undefined, FileType.document, 'literal%20name.pdf'],
+    ['relative', undefined, FileType.unknown, 'relative'],
+    ['http://[invalid', '保留名称', FileType.unknown, '保留名称'],
+    ['chat/%invalid.png', undefined, FileType.unknown, 'chat/%invalid.png']
   ])('本地分类和名称规则：%s', async (url, name, type, expectedName) => {
     expect(await parseUrlToChatFileType({ url, name })).toEqual({ url, name: expectedName, type });
     expect(axios.head).not.toHaveBeenCalled();
@@ -160,23 +186,34 @@ describe('parseUrlToChatFileType', () => {
     expect(await parseUrlToChatFileType({ url, type: FileType.file })).toEqual({
       url,
       name,
-      type: FileType.file
+      type: FileType.unknown
     });
     expect(axios.head).not.toHaveBeenCalled();
     expect(axios.get).not.toHaveBeenCalled();
   });
 
-  it('目录和显式显示名称的后缀不能替代链接自身的文件名', async () => {
+  it('传入名称有未知后缀时保留 unknown，不被下载响应覆盖', async () => {
     const inputUrl = 'https://files.example.com/path.with.dots/download';
     expect(
       await parseUrlToChatFileType({ url: inputUrl, name: 'display.php', type: FileType.file })
     ).toEqual({
       url: inputUrl,
       name: 'display.php',
-      type: FileType.image,
-      filename: 'download.png'
+      type: FileType.unknown
     });
-    expect(axios.head).toHaveBeenCalledTimes(1);
+    expect(axios.head).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['report.pdf', `${url}.php?id=42`, FileType.file, FileType.document],
+    ['photo.png', `${url}.pdf`, FileType.file, FileType.image],
+    ['report.pdf', `${url}.mp4`, FileType.unknown, FileType.document]
+  ] as const)('待分类文件以传入名称 %s 优先于 URL 和 MIME', async (name, url, type, expected) => {
+    expect(
+      (await parseUrlToChatFileType({ url, name, type, metadata: { contentType: 'audio/mpeg' } }))
+        ?.type
+    ).toBe(expected);
+    expect(axios.head).not.toHaveBeenCalled();
   });
 
   it('空白 filename 参数不阻止无文件名链接探测', async () => {
@@ -191,7 +228,6 @@ describe('parseUrlToChatFileType', () => {
   });
 
   it.each([
-    [FileType.video, { contentType: 'audio/mpeg', filename: 'photo.png' }, FileType.video],
     [
       FileType.file,
       { contentType: 'AUDIO/MPEG; charset=binary', filename: 'photo.png' },
@@ -201,22 +237,19 @@ describe('parseUrlToChatFileType', () => {
     [undefined, { contentType: 'image/png' }, FileType.image],
     [undefined, { filename: 'photo.PNG' }, FileType.image],
     [undefined, { filename: 'unknown', contentType: 'application/octet-stream' }, FileType.video]
-  ])(
-    '类型优先级：显式媒体 > 对象 MIME > 对象名称 > URL 后缀（%s, %j）',
-    async (type, metadata, expected) => {
-      expect((await parseUrlToChatFileType({ url: 'chat/object.mp4', type, metadata }))?.type).toBe(
-        expected
-      );
-      expect(axios.head).not.toHaveBeenCalled();
-    }
-  );
+  ])('对象 MIME、对象名称优先于 URL 后缀（%s, %j）', async (type, metadata, expected) => {
+    expect((await parseUrlToChatFileType({ url: 'chat/object.mp4', type, metadata }))?.type).toBe(
+      expected
+    );
+    expect(axios.head).not.toHaveBeenCalled();
+  });
 
   it.each([
     ['image/png', FileType.image, 'download.png'],
     ['audio/mpeg', FileType.audio, 'download.mpga'],
     ['video/mp4', FileType.video, 'download.mp4'],
-    ['application/pdf', FileType.file, 'report.pdf'],
-    [undefined, FileType.file, 'download']
+    ['application/pdf', FileType.document, 'report.pdf'],
+    [undefined, FileType.unknown, 'download']
   ])('未知链接使用系统推测 MIME %s，普通 file 提示不阻止探测', async (mime, expected, filename) => {
     vi.mocked(axios.head).mockResolvedValueOnce({
       headers: {
@@ -245,7 +278,7 @@ describe('parseUrlToChatFileType', () => {
     async (outcome) => {
       if (outcome === 'failure') vi.mocked(axios.head).mockRejectedValue(new Error('offline'));
       const { context, files } = createContext();
-      const expected = outcome === 'success' ? FileType.image : FileType.file;
+      const expected = outcome === 'success' ? FileType.image : FileType.unknown;
       const results = await Promise.all(
         ['first', 'second'].map((name) =>
           parseUrlToChatFileType({ url: `${url}#${name}`, name, fileContext: context })
@@ -298,7 +331,7 @@ describe('parseUrlToChatFileType', () => {
 
   it('分类被域名策略拒绝的未知链接时不探测', async () => {
     global.systemEnv.fileUrlWhitelist = ['allowed.example.com'];
-    expect((await parseUrlToChatFileType({ url }))?.type).toBe(FileType.file);
+    expect((await parseUrlToChatFileType({ url }))?.type).toBe(FileType.unknown);
     expect(axios.head).not.toHaveBeenCalled();
   });
 });
@@ -373,7 +406,10 @@ describe('prepareChatFiles', () => {
         maxFiles: 2,
         fileContext: context
       })
-    ).toEqual([{ name: '最终名称', type: FileType.video, url: `${url}/model` }, registered]);
+    ).toEqual([
+      { name: '最终名称', type: FileType.video, url: `${url}/model`, filename: 'download.png' },
+      registered
+    ]);
     expect(context.registerExternalFile).toHaveBeenCalledTimes(1);
   });
 
@@ -395,7 +431,7 @@ describe('prepareChatFiles', () => {
 
   it('不提供登记器也能准备文件', async () => {
     expect(await prepareChatFiles({ files: [{ url }], maxFiles: 1 })).toEqual([
-      { url, name: url, type: FileType.image }
+      { url, name: url, type: FileType.image, filename: 'download.png' }
     ]);
   });
 

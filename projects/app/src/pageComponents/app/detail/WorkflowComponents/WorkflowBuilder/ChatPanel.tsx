@@ -327,6 +327,7 @@ const WorkflowBuilderChatContent = ({
     <Box display={'flex'} flexDirection={'column'} h={'100%'} minH={0}>
       <Box flex={1} minH={0} overflow={'hidden'}>
         <ChatBox
+          showInitialLoading={false}
           dialogTips={t('builder_input_placeholder')}
           isReady={!!selectedModel}
           active={!watchExternalChat}
@@ -446,7 +447,7 @@ const ChatPanel = React.forwardRef<
           </Flex>
         )}
         {chatId && (
-          <ChatRecordContextProvider params={chatRecordProviderParams} showInitialLoading={false}>
+          <ChatRecordContextProvider params={chatRecordProviderParams}>
             <WorkflowBuilderChatContent
               appId={appId}
               appDetail={appDetail}

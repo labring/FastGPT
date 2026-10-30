@@ -60,13 +60,13 @@ describe('useToolMessages', () => {
     expect(files).toEqual([]);
     expect(text).toContain('question');
     expect(text).toContain('<name>report.pdf</name>');
-    expect(text).toContain('<type>file</type>');
+    expect(text).toContain('<type>document</type>');
     expect(text).toContain('<url>https://files.example.com/report.pdf</url>');
     expect(text).toContain(`<sandboxPath>${SANDBOX_USER_FILES_PATH}report.pdf</sandboxPath>`);
     expect(result.currentInputFiles).toEqual([
       {
         name: 'report.pdf',
-        type: ChatFileTypeEnum.file,
+        type: ChatFileTypeEnum.document,
         url: 'https://files.example.com/report.pdf',
         sandboxPath: `${SANDBOX_USER_FILES_PATH}report.pdf`
       }

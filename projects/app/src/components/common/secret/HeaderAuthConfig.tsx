@@ -1,11 +1,11 @@
 import type { ButtonProps } from '@chakra-ui/react';
-import { Box, Button, Flex, ModalBody, ModalFooter, useDisclosure } from '@chakra-ui/react';
+import { Box, Button, Flex, useDisclosure } from '@chakra-ui/react';
 import { HeaderSecretTypeEnum } from '@fastgpt/global/common/secret/constants';
 import type { SecretValueType, StoreSecretValueType } from '@fastgpt/global/common/secret/type';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import MyModal from '@fastgpt/web/components/common/MyModal';
+import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import HeaderAuthForm, { getSecretType, type SecretReferenceRenderer } from './HeaderAuthForm';
 
 export type HeaderSecretValueType = SecretValueType;
@@ -110,34 +110,33 @@ const HeaderAuthConfig = ({
         <MyModal
           isOpen={isOpen}
           onClose={onClose}
-          iconSrc={'common/setting'}
-          iconColor={'primary.600'}
           title={t('common:auth_config')}
-          w={540}
+          size={'md'}
+          footerStyles={{ px: 0, pb: 0, gap: 0, flexDirection: 'column' }}
+          footer={
+            <>
+              <Flex justifyContent={'flex-end'} px={8} pb={8}>
+                <Button onClick={onSubmit}>{t('common:Save')}</Button>
+              </Flex>
+              <Box
+                borderTop={'sm'}
+                color={'myGray.500'}
+                bg={'myGray.50'}
+                fontSize={'xs'}
+                textAlign={'center'}
+                py={3}
+                borderBottomRadius={'md'}
+              >
+                {t('common:secret_tips')}
+              </Box>
+            </>
+          }
         >
-          <ModalBody px={9}>
-            <HeaderAuthForm
-              headerSecretValue={formValues}
-              onChange={setFormValues}
-              renderReference={renderReference}
-            />
-          </ModalBody>
-          <ModalFooter px={9} display={'flex'} flexDirection={'column'}>
-            <Flex justifyContent={'end'} w={'full'}>
-              <Button onClick={onSubmit}>{t('common:Save')}</Button>
-            </Flex>
-          </ModalFooter>
-          <Box
-            borderTop={'sm'}
-            color={'myGray.500'}
-            bg={'myGray.50'}
-            fontSize={'xs'}
-            textAlign={'center'}
-            py={2}
-            borderBottomRadius={'md'}
-          >
-            {t('common:secret_tips')}
-          </Box>
+          <HeaderAuthForm
+            headerSecretValue={formValues}
+            onChange={setFormValues}
+            renderReference={renderReference}
+          />
         </MyModal>
       )}
     </>

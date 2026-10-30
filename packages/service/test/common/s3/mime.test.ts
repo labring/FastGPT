@@ -38,6 +38,8 @@ describe('resolveMimeExtension', () => {
   it('resolves file extension from MIME type', () => {
     expect(resolveMimeExtension('image/png')).toBe('.png');
     expect(resolveMimeExtension('application/pdf')).toBe('.pdf');
+    expect(resolveMimeExtension('text/html; charset=utf-8')).toBe('.html');
+    expect(resolveMimeExtension('TEXT/MARKDOWN')).toBe('.md');
   });
 
   it('returns empty string for unknown MIME types', () => {

@@ -361,7 +361,7 @@ describe('prepareWorkflowFileContext', () => {
     expect(queryRef).toBe(historyRef);
     expect(queryRef?.source).toEqual({ type: 'chatObject', objectKey: privateKey });
     expect(fileContext.resolveChatFile(queryUrl)).toEqual({
-      type: ChatFileTypeEnum.file,
+      type: ChatFileTypeEnum.document,
       name: 'report.pdf',
       key: privateKey,
       url: 'https://files.example.com/api/system/file/d/signed'
@@ -694,7 +694,7 @@ describe('prepareWorkflowFileContext', () => {
       if (kind === 'child') expect(fileContext.resolve(url)).toBeUndefined();
       expect(
         await prepareChatFiles({ files: [{ url }], maxFiles: 1, fileContext: context })
-      ).toEqual([{ url, name: '报告', filename: 'download.pdf', type: ChatFileTypeEnum.file }]);
+      ).toEqual([{ url, name: '报告', filename: 'download.pdf', type: ChatFileTypeEnum.document }]);
       expect(axiosHeadMock).toHaveBeenCalledTimes(1);
       expect(axiosGetMock).toHaveBeenCalledTimes(1);
 
@@ -909,7 +909,7 @@ describe('prepareWorkflowFileContext — 外链登记与派生', () => {
 
   it('inherits selected classifications and keeps new child registrations isolated', async () => {
     const url = 'https://files.example.com/opaque';
-    const { fileContext } = await prepare([createFile({ url })]);
+    const { fileContext } = await prepare([createFile({ url, name: 'attachment' })]);
     const child = await fileContext.derive([url]);
     expect(child.resolve(url)).toBe(fileContext.resolve(url));
     const childUrl = 'https://files.example.com/child-opaque';
@@ -976,8 +976,8 @@ describe('prepareWorkflowFileContext — 外链登记与派生', () => {
   it.each([0, 1])('truncates query files before probing with limit %s', async (maxFileAmount) => {
     const result = await prepare(
       [
-        createFile({ url: 'https://files.example.com/first' }),
-        createFile({ url: 'https://files.example.com/second' })
+        createFile({ url: 'https://files.example.com/first', name: 'attachment' }),
+        createFile({ url: 'https://files.example.com/second', name: 'attachment' })
       ],
       maxFileAmount
     );

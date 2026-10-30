@@ -1,4 +1,5 @@
-import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
+import type { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { isChatFileMediaType } from '@fastgpt/global/core/chat/file/utils';
 import { chatValue2RuntimePrompt, runtimePrompt2ChatsValue } from '@fastgpt/global/core/chat/adapt';
 import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import {
@@ -8,6 +9,8 @@ import {
 
 export type AgentLoopCoreInputFile = {
   name: string;
+  /** 可信对象元数据或链接探测得到的文件名，优先用于判断可解析格式。 */
+  filename?: string;
   type: ChatFileTypeEnum;
   url: string;
   sandboxPath?: string;
@@ -40,7 +43,7 @@ export const rewriteAgentLoopCoreUserMessageWithFiles = ({
     ...message,
     value: runtimePrompt2ChatsValue({
       files: files
-        .filter((file) => file.type !== ChatFileTypeEnum.file)
+        .filter((file) => isChatFileMediaType(file.type))
         .map(({ name, type, url }) => ({ name, type, url })),
       text: buildAgentLoopCoreUserReminderInput({
         query: inputQuery ?? messageQuery,

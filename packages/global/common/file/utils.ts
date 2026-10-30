@@ -1,5 +1,13 @@
 import path from 'path';
 
+/** 统一文档分类与解析的扩展名别名，返回不带点的小写后缀；未知后缀保留供解析器报错。 */
+export const normalizeDocumentFileExtension = (extension?: string) => {
+  const normalized = extension?.trim().toLowerCase().replace(/^\./, '') ?? '';
+  if (normalized === 'markdown') return 'md';
+  if (normalized === 'htm') return 'html';
+  return normalized;
+};
+
 export const isCSVFile = (filename: string) => {
   const extension = path.extname(filename).toLowerCase();
   return extension === '.csv';

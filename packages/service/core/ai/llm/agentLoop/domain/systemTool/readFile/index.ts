@@ -15,7 +15,8 @@ export const createReadFilesTool = ({
   type: 'function',
   function: {
     name: READ_FILES_TOOL_NAME,
-    description: 'Read the content of specified files.',
+    description:
+      'Read and parse only files marked as document from absolute HTTP(S) URLs. Do not use this tool for files marked as unknown, image, audio, or video.',
     parameters: {
       type: 'object',
       properties: {

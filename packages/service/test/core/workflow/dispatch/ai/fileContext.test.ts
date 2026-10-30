@@ -60,7 +60,7 @@ describe('parseWorkflowAIInputFiles', () => {
     expect(result).toEqual([
       {
         name: 'report.pdf',
-        type: ChatFileTypeEnum.file,
+        type: ChatFileTypeEnum.document,
         url: 'https://files.example.com/report.pdf'
       },
       {
@@ -117,7 +117,7 @@ describe('parseWorkflowAIInputFiles', () => {
       ).toEqual([
         {
           name: 'report.pdf',
-          type: ChatFileTypeEnum.file,
+          type: ChatFileTypeEnum.document,
           url: modelUrl
         }
       ]);
@@ -126,6 +126,41 @@ describe('parseWorkflowAIInputFiles', () => {
 });
 
 describe('rewriteWorkflowAIUserMessageWithFiles', () => {
+  it.each([
+    ['application/pdf', 'report.pdf', 'document'],
+    ['application/zip', 'archive.zip', 'unknown']
+  ])(
+    'classifies opaque download URLs using the probed filename: %s',
+    async (mime, filename, type) => {
+      const { axios } = await import('@fastgpt/service/common/api/axios');
+      vi.mocked(axios.head).mockResolvedValueOnce({
+        headers: {
+          'content-type': mime,
+          'content-disposition': `attachment; filename="${filename}"`
+        }
+      } as any);
+      const { message, files } = await rewriteWorkflowAIUserMessageWithFiles({
+        message: {
+          obj: ChatRoleEnum.Human,
+          value: runtimePrompt2ChatsValue({
+            files: [
+              {
+                name: 'display',
+                type: ChatFileTypeEnum.file,
+                url: 'https://files.example.com/download'
+              }
+            ]
+          })
+        },
+        maxFileAmount: 1
+      });
+      expect(files[0].filename).toBe(filename);
+      expect(chatValue2RuntimePrompt(message.value).text).toContain(`<type>${type}</type>`);
+      expect(chatValue2RuntimePrompt(message.value).files).toEqual([]);
+      expect(axios.head).toHaveBeenCalledTimes(1);
+    }
+  );
+
   it('moves documents into the reminder and keeps multimodal URLs as message files', async () => {
     const message: ChatItemMiniType = {
       obj: ChatRoleEnum.Human,
@@ -189,14 +224,24 @@ describe('asynchronous classification ordering', () => {
     });
     try {
       const result = parseWorkflowAIInputFiles({
-        files: urls.map((url) => ({ name: 'report.pdf', type: ChatFileTypeEnum.file, url })),
+        files: urls.map((url) => ({ name: 'report', type: ChatFileTypeEnum.file, url })),
         maxFileAmount: 2
       });
       await Promise.resolve();
       releaseFirst();
       expect(await result).toEqual([
-        { name: 'report.pdf', type: ChatFileTypeEnum.file, url: urls[0] },
-        { name: 'report-1.pdf', type: ChatFileTypeEnum.file, url: urls[1] }
+        {
+          name: 'report',
+          filename: 'first.pdf',
+          type: ChatFileTypeEnum.document,
+          url: urls[0]
+        },
+        {
+          name: 'report-1',
+          filename: 'second.pdf',
+          type: ChatFileTypeEnum.document,
+          url: urls[1]
+        }
       ]);
     } finally {
       spy.mockRestore();

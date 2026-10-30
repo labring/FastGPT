@@ -13,7 +13,7 @@ import {
   buildAgentLoopCoreSkillsPrompt,
   buildAgentLoopCoreUserReminderInput
 } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/application/context/reminder';
-import type { DeployedSkillInfo } from '@fastgpt/service/core/ai/skill/runtime/types';
+import type { DeployedSkillInfo } from '@fastgpt/service/core/ai/sandbox/application/runtime/skill/types';
 
 vi.mock('@fastgpt/global/common/time/timezone', () => ({
   getSystemTime: vi.fn(() => '2026-05-14 10:00:00 Thursday')
@@ -112,11 +112,11 @@ const getUserContextMessagesForTest = async ({
 };
 
 describe('buildAgentLoopCoreInputFilesPrompt', () => {
-  it('generates file XML block for document files only', () => {
+  it('serializes document, media and unknown files with their usage guidance', () => {
     const result = buildAgentLoopCoreInputFilesPrompt([
       {
         name: 'guide.pdf',
-        type: ChatFileTypeEnum.file,
+        type: ChatFileTypeEnum.document,
         url: '/guide.pdf'
       },
       {
@@ -133,6 +133,11 @@ describe('buildAgentLoopCoreInputFilesPrompt', () => {
         name: 'demo.mp4',
         type: ChatFileTypeEnum.video,
         url: 'https://files.example.com/demo.mp4'
+      },
+      {
+        name: 'archive.zip',
+        type: ChatFileTypeEnum.unknown,
+        url: '/files/archive.zip'
       }
     ]);
 
@@ -146,13 +151,29 @@ describe('buildAgentLoopCoreInputFilesPrompt', () => {
     expect(result).toContain('<type>image</type>');
     expect(result).toContain('<type>audio</type>');
     expect(result).toContain('<type>video</type>');
+    expect(result).toContain('<type>document</type>');
+    expect(result).toContain('<type>unknown</type>');
+    expect(result).toContain('<url>/files/archive.zip</url>');
+    expect(result).toContain('不要使用 read_files 读取');
+    expect(result).not.toContain('<type>file</type>');
+  });
+
+  it('serializes the classified type without inferring it again from display names', () => {
+    const prompt = buildAgentLoopCoreInputFilesPrompt([
+      { name: 'report.pdf', type: ChatFileTypeEnum.unknown, url: '/report.pdf' },
+      { name: '下载', type: ChatFileTypeEnum.document, url: '/opaque.signature' }
+    ]);
+    expect(prompt.match(/<type>(.*?)<\/type>/g)).toEqual([
+      '<type>unknown</type>',
+      '<type>document</type>'
+    ]);
   });
 
   it('escapes XML fields in file metadata', () => {
     const result = buildAgentLoopCoreInputFilesPrompt([
       {
         name: `a<b>&"c"'d.pdf`,
-        type: ChatFileTypeEnum.file,
+        type: ChatFileTypeEnum.document,
         url: '/guide.pdf'
       }
     ]);
@@ -182,7 +203,7 @@ describe('buildAgentLoopCoreUserReminderInput', () => {
       filesInfo: [
         {
           name: 'guide.pdf',
-          type: ChatFileTypeEnum.file,
+          type: ChatFileTypeEnum.document,
           url: '/guide.pdf'
         }
       ],
@@ -396,7 +417,7 @@ describe('useUserContext', () => {
         expect(result.currentFiles).toEqual([
           {
             name: 'current.pdf',
-            type: ChatFileTypeEnum.file,
+            type: ChatFileTypeEnum.document,
             url: 'https://files.example.com/current.pdf'
           },
           {
@@ -619,7 +640,7 @@ describe('useUserContext', () => {
         expect(result.currentFiles).toEqual([
           {
             name: 'current.pdf',
-            type: ChatFileTypeEnum.file,
+            type: ChatFileTypeEnum.document,
             url: 'https://files.example.com/current.pdf'
           }
         ]);
@@ -773,7 +794,7 @@ describe('useUserContext', () => {
         expect(result.currentFiles).toEqual([
           {
             name: 'doc.pdf',
-            type: ChatFileTypeEnum.file,
+            type: ChatFileTypeEnum.document,
             url: 'https://files.example.com/doc.pdf'
           },
           {
@@ -869,7 +890,7 @@ describe('useUserContext', () => {
         expect(result.currentFiles).toEqual([
           {
             name: 'report v1.pdf',
-            type: ChatFileTypeEnum.file,
+            type: ChatFileTypeEnum.document,
             url: 'https://files.example.com/uploads/report%20v1.pdf'
           }
         ]);

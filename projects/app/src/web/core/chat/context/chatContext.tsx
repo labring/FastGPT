@@ -10,10 +10,10 @@ import {
   getChatHistoryStatus
 } from '../history/api';
 import { type ChatHistoryItemType } from '@fastgpt/global/core/chat/type';
-import { type BoxProps, useDisclosure } from '@chakra-ui/react';
+import { useDisclosure } from '@chakra-ui/react';
 import { useChatStore } from './useChatStore';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
+import { useScrollPagination, type ScrollListType } from '@fastgpt/web/hooks/useScrollPagination';
 import type {
   GetHistoriesBodyType,
   UpdateHistoryBodyType
@@ -40,18 +40,10 @@ type ChatContextType = {
   forbidLoadChat: React.MutableRefObject<boolean>;
   onChangeChatId: (chatId?: string, forbid?: boolean) => void;
   loadHistories: (options?: { init?: boolean; silent?: boolean }) => void;
-  ScrollData: ({
-    children,
-    EmptyChildren,
-    isLoading,
-    ...props
-  }: {
-    children: React.ReactNode;
-    EmptyChildren?: React.ReactNode;
-    isLoading?: boolean;
-  } & BoxProps) => ReactNode;
+  ScrollData: ScrollListType;
   onChangeAppId: (appId: string) => void;
   isLoading: boolean;
+  isInitialLoading: boolean;
   histories: ChatHistoryItemType[];
   onUpdateHistoryTitle: ({ chatId, newTitle }: { chatId: string; newTitle: string }) => void;
 };
@@ -80,7 +72,8 @@ export const ChatContext = createContext<ChatContextType>({
   forbidLoadChat: { current: false },
   onChangeChatId: () => {},
   onChangeAppId: () => {},
-  isLoading: false
+  isLoading: false,
+  isInitialLoading: false
 });
 
 const ChatContextProvider = ({
@@ -149,6 +142,7 @@ const ChatContextProvider = ({
   const {
     ScrollData,
     isLoading: isPaginationLoading,
+    isInitialLoading,
     setData: setHistories,
     setTotal: setHistoriesTotal,
     fetchData: loadHistories,
@@ -426,6 +420,7 @@ const ChatContextProvider = ({
       onChangeChatId,
       onChangeAppId,
       isLoading,
+      isInitialLoading,
       setHistories,
       ScrollData,
       loadHistories,
@@ -436,6 +431,7 @@ const ChatContextProvider = ({
       ScrollData,
       displayHistories,
       isLoading,
+      isInitialLoading,
       isOpenSlider,
       loadHistories,
       onChangeAppId,

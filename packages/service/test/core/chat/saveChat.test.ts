@@ -1337,7 +1337,7 @@ describe('pushChatRecords', () => {
         {
           url: 'https://external.example.com/report.pdf',
           name: 'report.pdf',
-          type: ChatFileTypeEnum.file
+          type: ChatFileTypeEnum.document
         }
       ]);
     });

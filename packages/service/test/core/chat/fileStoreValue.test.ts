@@ -19,7 +19,7 @@ describe('normalizeChatFileStoreValue', () => {
     });
   });
 
-  it('优先保留显式 type，不用扩展名覆盖用户传入的类型', () => {
+  it('历史 file 类型按文件名后缀重新归类', () => {
     expect(
       normalizeChatFileStoreValue({
         key: 'chat/files/photo.png',
@@ -29,7 +29,7 @@ describe('normalizeChatFileStoreValue', () => {
     ).toEqual({
       key: 'chat/files/photo.png',
       name: 'photo.png',
-      type: ChatFileTypeEnum.file
+      type: ChatFileTypeEnum.image
     });
   });
 
@@ -54,7 +54,7 @@ describe('normalizeChatFileStoreValue', () => {
     ).toEqual({
       key: '/',
       name: 'file',
-      type: ChatFileTypeEnum.file
+      type: ChatFileTypeEnum.unknown
     });
   });
 
@@ -90,7 +90,7 @@ describe('normalizeChatFileStoreValue', () => {
     ).toEqual({
       url: 'https://example.com/files/archive.unknown',
       name: 'archive.unknown',
-      type: ChatFileTypeEnum.file
+      type: ChatFileTypeEnum.unknown
     });
   });
 
@@ -102,7 +102,7 @@ describe('normalizeChatFileStoreValue', () => {
     ).toEqual({
       url: 'https://example.com/',
       name: 'https://example.com/',
-      type: ChatFileTypeEnum.file
+      type: ChatFileTypeEnum.unknown
     });
   });
 
@@ -120,6 +120,21 @@ describe('normalizeChatFileStoreValue', () => {
 });
 
 describe('assertChatFileRuntimeValue', () => {
+  it('先清洗非法字段，再按稳定 key 归类，避免扩展名判断读取非法字段', () => {
+    expect(
+      assertChatFileRuntimeValue([
+        { key: 'chat/files/report.pdf', name: 7, url: 123, type: 'invalid' } as any
+      ])
+    ).toEqual([
+      {
+        key: 'chat/files/report.pdf',
+        name: undefined,
+        url: undefined,
+        type: ChatFileTypeEnum.document
+      }
+    ]);
+  });
+
   it('非数组运行态直接抛错，暴露 file 变量类型错误', () => {
     expect(() => assertChatFileRuntimeValue('https://example.com/a.png' as any)).toThrow(
       'File variable value must be an array'
@@ -145,7 +160,7 @@ describe('assertChatFileRuntimeValue', () => {
       {
         key: 'chat/files/b.pdf',
         name: 'b.pdf',
-        type: ChatFileTypeEnum.file
+        type: ChatFileTypeEnum.document
       }
     ]);
   });
@@ -176,7 +191,7 @@ describe('normalizeChatFileStoreValues', () => {
       {
         key: 'chat/files/doc.pdf',
         name: 'doc.pdf',
-        type: ChatFileTypeEnum.file
+        type: ChatFileTypeEnum.document
       },
       {
         url: 'https://example.com/sound.m4a',

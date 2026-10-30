@@ -95,7 +95,7 @@ export const InvokeFileUploadResponseSchema = z.object({
   }),
   type: z.enum(ChatFileTypeEnum).meta({
     description: '聊天文件类型',
-    example: ChatFileTypeEnum.file
+    example: ChatFileTypeEnum.document
   })
 });
 

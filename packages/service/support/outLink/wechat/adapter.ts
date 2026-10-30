@@ -2,6 +2,7 @@ import crypto from 'node:crypto';
 import { Readable } from 'node:stream';
 import { buffer } from 'node:stream/consumers';
 import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { getChatFileTypeByFilename } from '@fastgpt/global/core/chat/file/utils';
 import { isChatFileAllowedBySelectConfig } from '@fastgpt/global/core/app/constants';
 import type { AppFileSelectConfigType } from '@fastgpt/global/core/app/type/config.schema';
 import type { UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
@@ -37,7 +38,7 @@ const WECHAT_MEDIA_TIMEOUT_MS = 30_000;
 
 type WechatMediaResource = {
   item: MessageItem;
-  fileType: ChatFileTypeEnum.image | ChatFileTypeEnum.file | ChatFileTypeEnum.video;
+  fileType: ChatFileTypeEnum;
 };
 
 type ParsedWechatItems = {
@@ -137,7 +138,8 @@ export const createWechatOutlinkAdapter = ({
       } else if (item.type === WechatMessageItemType.IMAGE && item.image_item?.media) {
         resources.push({ item, fileType: ChatFileTypeEnum.image });
       } else if (item.type === WechatMessageItemType.FILE && item.file_item?.media?.aes_key) {
-        resources.push({ item, fileType: ChatFileTypeEnum.file });
+        // 微信 FILE 是消息通道，可能承载文档、媒体或未知格式，入口直接归类为聊天文件类型。
+        resources.push({ item, fileType: getChatFileTypeByFilename(item.file_item.file_name) });
       } else if (item.type === WechatMessageItemType.VIDEO && item.video_item?.media?.aes_key) {
         resources.push({ item, fileType: ChatFileTypeEnum.video });
       }
@@ -185,8 +187,8 @@ export const createWechatOutlinkAdapter = ({
       if (fileBuffer.length > maxBytes) throw new OutLinkFileSizeExceededError(maxBytes);
 
       const filename = (() => {
-        if (fileType === ChatFileTypeEnum.file) return item.file_item?.file_name || 'file';
-        if (fileType === ChatFileTypeEnum.video) {
+        if (item.type === WechatMessageItemType.FILE) return item.file_item?.file_name || 'file';
+        if (item.type === WechatMessageItemType.VIDEO) {
           return (
             item.video_item?.file_name || `video${resolveMimeExtension(contentType) || '.mp4'}`
           );

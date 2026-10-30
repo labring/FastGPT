@@ -13,7 +13,7 @@ import MyBox from '../MyBox';
 import { useSystem } from '../../../hooks/useSystem';
 import Avatar from '../Avatar';
 
-export interface MyModalProps extends ModalContentProps {
+export type MyModalProps = Omit<ModalContentProps, 'title'> & {
   iconSrc?: string;
   iconColor?: ImageProps['color'];
   title?: any;
@@ -24,8 +24,9 @@ export interface MyModalProps extends ModalContentProps {
   closeOnOverlayClick?: boolean;
   size?: 'md' | 'lg';
   showCloseButton?: boolean;
-}
+};
 
+/** 保留旧版头部和正文 API，加载遮罩覆盖正文可视外壳，内容在内层滚动。 */
 const MyModal = ({
   isOpen = true,
   onClose,
@@ -107,12 +108,25 @@ const MyModal = ({
 
         <MyBox
           isLoading={isLoading}
-          overflow={props.overflow || 'overlay'}
-          h={'100%'}
+          position={'relative'}
+          overflow={['visible', 'unset'].includes(String(props.overflow)) ? 'visible' : 'hidden'}
+          h={'auto'}
+          flex={'1 1 auto'}
+          minH={0}
+          minW={0}
           display={'flex'}
           flexDirection={'column'}
         >
-          {children}
+          <Box
+            overflow={props.overflow ?? 'overlay'}
+            h={'auto'}
+            flex={'1 1 auto'}
+            minH={0}
+            display={'flex'}
+            flexDirection={'column'}
+          >
+            {children}
+          </Box>
         </MyBox>
       </ModalContent>
     </Modal>

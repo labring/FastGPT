@@ -61,13 +61,7 @@ const SelectMarkCollection = ({
           tips={t('common:core.chat.Select dataset Desc')}
         >
           {datasets.length === 0 && <EmptyTip text={t('chat:empty_directory')}></EmptyTip>}
-          <ScrollData
-            ScrollContainerRef={scrollContainerRef}
-            flex={1}
-            minH={0}
-            isLoading={isFetching}
-            showLoadingOverlay={false}
-          >
+          <ScrollData ScrollContainerRef={scrollContainerRef} flex={1} minH={0}>
             <Grid
               ref={gridRef}
               display={'grid'}

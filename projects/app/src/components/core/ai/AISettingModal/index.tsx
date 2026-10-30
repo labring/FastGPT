@@ -307,9 +307,9 @@ const AIChatSettingsModal = ({
                 sx={{ tableLayout: 'fixed', width: `${headerTableWidth} !important` }}
               >
                 <colgroup>
-                  <col style={{ width: '40%' }} />
-                  <col style={{ width: '30%' }} />
-                  <col style={{ width: '30%' }} />
+                  <col style={{ width: '60%' }} />
+                  <col style={{ width: '20%' }} />
+                  <col style={{ width: '20%' }} />
                 </colgroup>
                 <Thead>
                   <Tr>
@@ -337,9 +337,9 @@ const AIChatSettingsModal = ({
             renderBody={() => (
               <Table variant={'bordered'} w={'100%'} sx={{ tableLayout: 'fixed' }}>
                 <colgroup>
-                  <col style={{ width: '40%' }} />
-                  <col style={{ width: '30%' }} />
-                  <col style={{ width: '30%' }} />
+                  <col style={{ width: '60%' }} />
+                  <col style={{ width: '20%' }} />
+                  <col style={{ width: '20%' }} />
                 </colgroup>
                 <Tbody>
                   <Tr>

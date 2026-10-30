@@ -80,7 +80,7 @@ function useOrg({ withPermission = true }: { withPermission?: boolean } = {}) {
     data: members = [],
     ScrollData: MemberScrollData,
     refreshList: refetchMembers,
-    isLoading: isLoadingMembers
+    isInitialLoading: isLoadingMembers
   } = useScrollPagination(getTeamMembers, {
     pageSize: 20,
     params: {

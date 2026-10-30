@@ -940,7 +940,7 @@ describe('WorkflowVariableState file store conversion', () => {
       {
         url: 'https://preview.example.com/doc.pdf',
         name: 'doc.pdf',
-        type: ChatFileTypeEnum.file
+        type: ChatFileTypeEnum.document
       }
     ]);
   });
@@ -968,7 +968,7 @@ describe('WorkflowVariableState file store conversion', () => {
       {
         url: 'https://external.example.com/report.unknown',
         name: 'report.unknown',
-        type: ChatFileTypeEnum.file
+        type: ChatFileTypeEnum.unknown
       }
     ]);
   });

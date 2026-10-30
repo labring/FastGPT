@@ -245,7 +245,7 @@ export const callMcpServerTool = async ({ key, toolName, inputs, authProxy }: to
         value: [
           ...(variables.fileUrlList || []).map((url: string) => ({
             file: {
-              type: ChatFileTypeEnum.file,
+              type: ChatFileTypeEnum.unknown,
               name: url,
               url: url
             }

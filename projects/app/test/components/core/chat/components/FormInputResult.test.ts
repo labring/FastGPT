@@ -44,7 +44,8 @@ describe('FormInputResult', () => {
         storedValue,
         runtimeValue: ['http://localhost:3000/api/system/file/d/opaque-token']
       })
-    ).toEqual(storedValue);
+    ).toEqual([{ ...storedValue[0], type: ChatFileTypeEnum.document }]);
+    expect(storedValue[0].type).toBe(ChatFileTypeEnum.file);
   });
 
   it('keeps external file names and urls from the original storage value', () => {
@@ -61,7 +62,8 @@ describe('FormInputResult', () => {
         storedValue,
         runtimeValue: ['https://runtime.example.com/opaque-token']
       })
-    ).toEqual(storedValue);
+    ).toEqual([{ ...storedValue[0], type: ChatFileTypeEnum.document }]);
+    expect(storedValue[0].type).toBe(ChatFileTypeEnum.file);
   });
 
   it('falls back to runtime urls only when legacy history has no stored file value', () => {
