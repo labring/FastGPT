@@ -340,6 +340,7 @@ describe('dispatchTool runtime toolset auth', () => {
   it.each(['mcp', 'http'] as const)(
     'uses freshly loaded %s definitions and passes model params through',
     async (source) => {
+      const requestMeta = { 'example/context': { locale: 'zh-CN' } };
       const latestSchema = {
         type: 'object',
         properties: { query: { type: 'string', pattern: '^latest$' } },
@@ -352,7 +353,8 @@ describe('dispatchTool runtime toolset auth', () => {
         method: 'POST',
         inputSchema: latestSchema,
         requestSchema: latestSchema,
-        staticHeaders: [{ key: 'X-Version', value: 'latest' }]
+        staticHeaders: [{ key: 'X-Version', value: 'latest' }],
+        requestMeta
       };
       const key = source === 'mcp' ? 'mcpToolSet' : 'httpToolSet';
       authAppByTmbIdMock.mockResolvedValue({
@@ -412,7 +414,8 @@ describe('dispatchTool runtime toolset auth', () => {
       } else {
         expect(mcpToolCallMock).toHaveBeenCalledExactlyOnceWith({
           toolName: 'search',
-          params
+          params,
+          requestMeta
         });
       }
       expect(getAppVersionByIdMock).toHaveBeenCalled();

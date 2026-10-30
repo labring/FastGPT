@@ -6,6 +6,18 @@ import {
 } from '@fastgpt/service/core/app/jsonSchemaStorage';
 
 describe('workflow JSON Schema storage codec', () => {
+  it('round-trips MCP request metadata with arbitrary JSON keys without mutating the input', () => {
+    const requestMeta = { 'example.context': { $context: [false, 0, null] } };
+    const nodes = [{ toolConfig: { mcpToolSet: { toolList: [{ requestMeta }] } } }];
+    const encoded = encodeMcpToolSetNodesForStorage(nodes);
+    expect(encoded[0].toolConfig.mcpToolSet.toolList[0].requestMeta).toBe(
+      JSON.stringify(requestMeta)
+    );
+    expect(decodeMcpToolSetNodesFromStorage(encoded)).toEqual(nodes);
+    expect(nodes[0].toolConfig.mcpToolSet.toolList[0].requestMeta).toEqual(requestMeta);
+    expect(decodeMcpToolSetNodesFromStorage(nodes)).toEqual(nodes);
+  });
+
   it('encodes MCP and HTTP tool schemas without changing node structure', () => {
     const nodes = [
       {

@@ -495,6 +495,7 @@ describe('dispatchRunTool runtime toolset auth', () => {
   });
 
   it.each([false, true])('preserves modern MCP results and detects isError=%s', async (isError) => {
+    const requestMeta = { 'example/context': { locale: 'zh-CN' } };
     authAppByTmbIdMock.mockResolvedValueOnce({
       app: {
         _id: 'victim-toolset',
@@ -524,6 +525,7 @@ describe('dispatchRunTool runtime toolset auth', () => {
       {
         name: 'search',
         description: 'Search',
+        requestMeta,
         inputSchema: {
           type: 'object',
           properties: { query: { type: 'string' } },
@@ -549,6 +551,7 @@ describe('dispatchRunTool runtime toolset auth', () => {
     expect(mcpToolCallMock).toHaveBeenCalledExactlyOnceWith({
       toolName: 'search',
       params: { extra: true },
+      requestMeta,
       closeConnection: false
     });
   });
@@ -639,15 +642,22 @@ describe('dispatchRunTool runtime toolset auth', () => {
     expect(Object.keys(workflowContextMock.mcpClientMemory).join(' ')).not.toContain('token-');
   });
 
-  it.each(['toolData', 'system_toolData'] as const)(
-    'should keep the baseline fallback for legacy single MCP tool params (%s)',
-    async (legacyKey) => {
+  it.each(
+    ['toolData', 'system_toolData'].flatMap((legacyKey) =>
+      [undefined, { 'example/context': { locale: 'zh-CN' } }].flatMap((requestMeta) =>
+        [false, true].map((isError) => ({ legacyKey, requestMeta, isError }))
+      )
+    )
+  )(
+    'keeps legacy $legacyKey metadata and handles isError=$isError: $requestMeta',
+    async ({ legacyKey, requestMeta, isError }) => {
       const props = createRunToolProps({});
       props.params = {
         query: 'fastgpt',
         [legacyKey]: {
           name: 'search',
           url: 'https://mcp.example.com',
+          requestMeta,
           headerSecret: { Authorization: { value: 'legacy-token' }, 'X-Key': { value: 'api-key' } },
           inputSchema: {
             type: 'object',
@@ -656,17 +666,26 @@ describe('dispatchRunTool runtime toolset auth', () => {
           }
         }
       };
-      mcpToolCallMock.mockResolvedValueOnce({ ok: true });
+      const toolResult = { isError, content: [{ type: 'text', text: 'Legacy MCP call failed' }] };
+      mcpToolCallMock.mockResolvedValueOnce(toolResult);
 
       const result = await dispatchRunTool(props);
-      expect(result.error).toBeUndefined();
+      expect(result.error?.[NodeOutputKeyEnum.errorText]).toBe(
+        isError ? 'Legacy MCP call failed' : undefined
+      );
+      expect(result.responseData?.errorText).toBe(isError ? 'Legacy MCP call failed' : undefined);
+      expect(result.rawError).toBeUndefined();
+      expect(result.data?.[NodeOutputKeyEnum.rawResponse]).toEqual(toolResult);
+      expect(result.responseData?.toolRes).toEqual(toolResult);
+      expect(result.toolResponse).toEqual(toolResult);
       expect(MCPClient).toHaveBeenCalledWith({
         url: 'https://mcp.example.com',
         headers: { Authorization: 'legacy-token', 'X-Key': 'api-key' }
       });
       expect(mcpToolCallMock).toHaveBeenCalledWith({
         toolName: 'search',
-        params: { query: 'fastgpt' }
+        params: { query: 'fastgpt' },
+        ...(requestMeta !== undefined ? { requestMeta } : {})
       });
     }
   );
