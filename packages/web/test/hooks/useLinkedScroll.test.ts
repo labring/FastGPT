@@ -8,25 +8,34 @@ import { useLinkedScroll } from '../../hooks/useLinkedScroll';
 
 vi.mock('next-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
 vi.mock('../../hooks/useToast', () => ({ useToast: () => ({ toast: vi.fn() }) }));
-vi.mock('../../components/common/MyBox', () => ({
-  default: React.forwardRef<HTMLDivElement, { isLoading: boolean; children: React.ReactNode }>(
-    function ScrollContainer({ isLoading, children }, ref) {
-      return React.createElement(
-        'div',
-        {
-          ref: (element: HTMLDivElement | null) => {
-            if (element) element.scrollTo = vi.fn();
-            if (typeof ref === 'function') ref(element);
-            else if (ref) ref.current = element;
-          },
-          'data-loading': String(isLoading)
-        },
-        children
-      );
-    }
-  )
+vi.mock('../../components/common/MyLoading', () => ({
+  default: () => React.createElement('div', { 'data-loading-overlay': '' })
 }));
-vi.mock('@chakra-ui/react', () => ({ Box: () => null }));
+vi.mock('@chakra-ui/react', () => ({
+  Box: React.forwardRef<
+    HTMLDivElement,
+    React.PropsWithChildren<{
+      id?: string;
+      overflow?: string;
+      onScroll?: React.UIEventHandler<HTMLDivElement>;
+    }>
+  >(function ScrollContainer({ children, id, overflow, onScroll }, ref) {
+    return React.createElement(
+      'div',
+      {
+        id,
+        onScroll,
+        'data-overflow': overflow,
+        ref: (element: HTMLDivElement | null) => {
+          if (element && !element.scrollTo) element.scrollTo = vi.fn();
+          if (typeof ref === 'function') ref(element);
+          else if (ref) ref.current = element;
+        }
+      },
+      children
+    );
+  })
+}));
 
 type Response = {
   list: { id: string }[];
@@ -34,6 +43,12 @@ type Response = {
   hasMoreNext: boolean;
 };
 type Params = LinkedPaginationProps<{ chatId: string }>;
+type HarnessProps = {
+  chatId: string;
+  showInitialLoading?: boolean;
+  scrollRef?: React.RefObject<HTMLDivElement>;
+  onScroll?: React.UIEventHandler<HTMLDivElement>;
+};
 
 describe('useLinkedScroll', () => {
   let root: Root;
@@ -44,18 +59,17 @@ describe('useLinkedScroll', () => {
   const api = vi.fn(
     (params: Params) => new Promise<Response>((resolve) => requests.push({ params, resolve }))
   );
-  const Harness = ({
-    chatId,
-    showInitialLoading
-  }: {
-    chatId: string;
-    showInitialLoading?: boolean;
-  }) => {
+  const Harness = ({ chatId, showInitialLoading, scrollRef, onScroll }: HarnessProps) => {
     const params = useMemo(() => ({ chatId }), [chatId]);
     state = useLinkedScroll(api, { params, showErrorToast: false, showInitialLoading });
     const scrollProps = {
+      id: 'scroll-viewport',
+      containerProps: { id: 'scroll-shell' },
+      ScrollContainerRef: scrollRef,
+      onScroll,
       children: [
         'Composer',
+        React.createElement('input', { key: 'draft', defaultValue: 'draft' }),
         ...state.dataList.map(({ id }) =>
           React.createElement('div', {
             key: id,
@@ -68,10 +82,8 @@ describe('useLinkedScroll', () => {
     };
     return React.createElement(state.ScrollData, scrollProps);
   };
-  const render = async (chatId: string, showInitialLoading?: boolean) => {
-    await act(async () =>
-      root.render(React.createElement(Harness, { chatId, showInitialLoading }))
-    );
+  const render = async (chatId: string, props: Omit<HarnessProps, 'chatId'> = {}) => {
+    await act(async () => root.render(React.createElement(Harness, { chatId, ...props })));
   };
   const resolve = async (index: number, id: string) => {
     await act(async () =>
@@ -180,18 +192,61 @@ describe('useLinkedScroll', () => {
   it.each([undefined, false])(
     'preserves default initial loading and allows callers to disable only the first overlay: %s',
     async (showInitialLoading) => {
-      await render('first', showInitialLoading);
-      expect(container.querySelector('[data-loading]')?.getAttribute('data-loading')).toBe(
-        String(showInitialLoading !== false)
+      await render('first', { showInitialLoading });
+      expect(!!container.querySelector('[data-loading-overlay]')).toBe(
+        showInitialLoading !== false
       );
       expect(container.textContent).toBe('Composer');
       await resolve(0, 'first-record');
-      expect(container.querySelector('[data-loading]')?.getAttribute('data-loading')).toBe('false');
+      expect(container.querySelector('[data-loading-overlay]')).toBeNull();
 
-      await render('second', showInitialLoading);
-      expect(container.querySelector('[data-loading]')?.getAttribute('data-loading')).toBe('true');
+      await render('second', { showInitialLoading });
+      expect(container.querySelector('[data-loading-overlay]')).not.toBeNull();
       await resolve(1, 'second-record');
-      expect(container.querySelector('[data-loading]')?.getAttribute('data-loading')).toBe('false');
+      expect(container.querySelector('[data-loading-overlay]')).toBeNull();
     }
   );
+
+  it('keeps the overlay outside the viewport and preserves its ref, draft and scroll position across refreshes', async () => {
+    const scrollRef = React.createRef<HTMLDivElement>();
+    const scrollTargets: EventTarget[] = [];
+    const onScroll = vi.fn((event: React.UIEvent<HTMLDivElement>) => {
+      scrollTargets.push(event.currentTarget);
+    });
+    await render('first', { scrollRef, onScroll });
+    const component = state.ScrollData;
+    const viewport = scrollRef.current!;
+    const draft = container.querySelector('input')!;
+    const shell = container.querySelector('#scroll-shell');
+    expect(viewport.id).toBe('scroll-viewport');
+    expect(viewport.parentElement).toBe(shell);
+    expect(viewport.getAttribute('data-overflow')).toBe('auto');
+    expect(shell?.getAttribute('data-overflow')).toBe('hidden');
+    expect(container.querySelector('[data-loading-overlay]')?.parentElement).toBe(shell);
+    viewport.scrollTop = 300;
+    draft.value = 'unsaved draft';
+
+    await resolve(0, 'first-record');
+    expect(state.ScrollData).toBe(component);
+    expect(scrollRef.current).toBe(viewport);
+    expect(container.querySelector('input')).toBe(draft);
+    expect(draft.value).toBe('unsaved draft');
+    expect(viewport.scrollTop).toBe(300);
+    expect(container.querySelector('[data-loading-overlay]')).toBeNull();
+
+    await act(async () => {
+      void state.loadInitData({ refresh: true, scrollWhenFinish: false });
+    });
+    const overlay = container.querySelector('[data-loading-overlay]');
+    expect(overlay?.parentElement).toBe(shell);
+    expect(viewport.contains(overlay)).toBe(false);
+    expect(scrollRef.current).toBe(viewport);
+    await resolve(1, 'refreshed-record');
+    expect(scrollRef.current).toBe(viewport);
+    expect(viewport.scrollTop).toBe(300);
+    expect(draft.value).toBe('unsaved draft');
+    await act(async () => viewport.dispatchEvent(new Event('scroll')));
+    expect(onScroll).toHaveBeenCalledOnce();
+    expect(scrollTargets).toEqual([viewport]);
+  });
 });

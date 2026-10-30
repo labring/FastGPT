@@ -2,11 +2,18 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { type LinkedListResponse, type LinkedPaginationProps } from '@fastgpt/global/openapi/api';
 import { Box, type BoxProps } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
-import { useScroll, useDebounceEffect } from 'ahooks';
-import MyBox from '../components/common/MyBox';
+import { useScroll, useDebounceEffect, useMemoizedFn } from 'ahooks';
+import MyScrollBox from '../components/common/MyScrollBox';
 import { useRequest } from './useRequest';
 
 const threshold = 200;
+
+export type LinkedScrollDataProps = BoxProps & {
+  children: ReactNode;
+  ScrollContainerRef?: React.RefObject<HTMLDivElement>;
+  /** 外壳承接尺寸和 flex 布局；其余属性、滚动事件与 ref 仍属于内部滚动层。 */
+  containerProps?: BoxProps;
+};
 
 /**
  * 加载以锚点为中心的关联列表，并按滚动位置补充前后数据。
@@ -270,76 +277,71 @@ export function useLinkedScroll<
     }
   );
 
-  const ScrollData = useCallback(
-    ({
-      children,
-      ScrollContainerRef,
-      ...props
-    }: {
-      children: ReactNode;
-      ScrollContainerRef?: React.RefObject<HTMLDivElement>;
-    } & BoxProps) => {
-      // If external ref is provided, use it; otherwise use internal ref
-      const actualContainerRef = ScrollContainerRef || containerRef;
-      const scroll = useScroll(actualContainerRef);
+  // 保持组件引用稳定，加载状态切换时不重建表单和滚动 DOM。
+  const ScrollData = useMemoizedFn(function ScrollData({
+    children,
+    ScrollContainerRef,
+    containerProps,
+    ...props
+  }: LinkedScrollDataProps) {
+    // If external ref is provided, use it; otherwise use internal ref
+    const actualContainerRef = ScrollContainerRef || containerRef;
+    const scroll = useScroll(actualContainerRef);
 
-      // Merge refs: set both internal and external refs when element mounts
-      const setRefs = useCallback(
-        (el: HTMLDivElement | null) => {
+    // Merge refs: set both internal and external refs when element mounts
+    const setRefs = useCallback(
+      (el: HTMLDivElement | null) => {
+        // @ts-ignore - RefObject.current is readonly, but we need to set it
+        containerRef.current = el;
+        if (ScrollContainerRef) {
           // @ts-ignore - RefObject.current is readonly, but we need to set it
-          containerRef.current = el;
-          if (ScrollContainerRef) {
-            // @ts-ignore - RefObject.current is readonly, but we need to set it
-            ScrollContainerRef.current = el;
-          }
-        },
-        [ScrollContainerRef]
-      );
+          ScrollContainerRef.current = el;
+        }
+      },
+      [ScrollContainerRef]
+    );
 
-      useDebounceEffect(
-        () => {
-          if (!enablePagination || !actualContainerRef?.current || isLoading) return;
+    useDebounceEffect(
+      () => {
+        if (!enablePagination || !actualContainerRef?.current || isLoading) return;
 
-          const { scrollTop, scrollHeight, clientHeight } = actualContainerRef.current;
+        const { scrollTop, scrollHeight, clientHeight } = actualContainerRef.current;
 
-          // 滚动到底部附近，加载更多下方数据
-          if (scrollTop + clientHeight >= scrollHeight - threshold && !nextLoadingRef.current) {
-            loadNextData(actualContainerRef);
-          }
+        // 滚动到底部附近，加载更多下方数据
+        if (scrollTop + clientHeight >= scrollHeight - threshold && !nextLoadingRef.current) {
+          loadNextData(actualContainerRef);
+        }
 
-          // 滚动到顶部附近，加载更多上方数据
-          if (scrollTop <= threshold && !prevLoadingRef.current) {
-            loadPrevData(actualContainerRef);
-          }
-        },
-        [scroll, enablePagination],
-        { wait: 200 }
-      );
+        // 滚动到顶部附近，加载更多上方数据
+        if (scrollTop <= threshold && !prevLoadingRef.current) {
+          loadPrevData(actualContainerRef);
+        }
+      },
+      [scroll, enablePagination, isLoading],
+      { wait: 200 }
+    );
 
-      return (
-        <MyBox
-          ref={setRefs}
-          h={'100%'}
-          overflow={'auto'}
-          isLoading={isLoading && (showInitialLoading || isInit.current)}
-          {...props}
-        >
-          {showPrevLoading && hasMorePrev && prevLoading && (
-            <Box mt={2} fontSize={'xs'} color={'blackAlpha.500'} textAlign={'center'}>
-              {t('common:is_requesting')}
-            </Box>
-          )}
-          {children}
-          {hasMoreNext && nextLoading && (
-            <Box mt={2} fontSize={'xs'} color={'blackAlpha.500'} textAlign={'center'}>
-              {t('common:is_requesting')}
-            </Box>
-          )}
-        </MyBox>
-      );
-    },
-    [enablePagination, isLoading, showInitialLoading, showPrevLoading]
-  );
+    return (
+      <MyScrollBox
+        ref={setRefs}
+        containerProps={containerProps}
+        isLoading={isLoading && (showInitialLoading || isInit.current)}
+        {...props}
+      >
+        {showPrevLoading && hasMorePrev && prevLoading && (
+          <Box mt={2} fontSize={'xs'} color={'blackAlpha.500'} textAlign={'center'}>
+            {t('common:is_requesting')}
+          </Box>
+        )}
+        {children}
+        {hasMoreNext && nextLoading && (
+          <Box mt={2} fontSize={'xs'} color={'blackAlpha.500'} textAlign={'center'}>
+            {t('common:is_requesting')}
+          </Box>
+        )}
+      </MyScrollBox>
+    );
+  });
 
   return {
     dataList,

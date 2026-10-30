@@ -305,7 +305,7 @@ const CollectionReader = ({
 
       {/* quote list */}
       {isLoading || formatedDataList.length > 0 ? (
-        <ScrollData flex={'1 0 0'} p={'12px'}>
+        <ScrollData containerProps={{ flex: '1 0 0', h: 0 }} p={'12px'}>
           <Flex flexDir={'column'} gap={'12px'}>
             {formatedDataList.map((item) => (
               <CollectionQuoteItem

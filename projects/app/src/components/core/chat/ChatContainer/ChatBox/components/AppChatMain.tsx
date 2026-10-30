@@ -12,14 +12,9 @@ import { useContextSelector } from 'use-context-selector';
 import { QuickReplyContext } from '../../context/quickReplyContext';
 import { useChatInstanceActions } from '../../context/chatInstanceActionsContext';
 import { useMemoizedFn } from 'ahooks';
+import type { LinkedScrollDataProps } from '@fastgpt/web/hooks/useLinkedScroll';
 
-type ScrollDataComponent = ({
-  children,
-  ...props
-}: {
-  children: React.ReactNode;
-  ScrollContainerRef?: RefObject<HTMLDivElement>;
-} & BoxProps) => React.JSX.Element;
+type ScrollDataComponent = (props: LinkedScrollDataProps) => React.JSX.Element;
 
 type AppChatMainProps = BoxProps & {
   ScrollData: ScrollDataComponent;
@@ -70,9 +65,7 @@ const AppChatMain = ({
   return (
     <ScrollData
       ScrollContainerRef={ScrollContainerRef}
-      flex={'1 0 0'}
-      h={0}
-      w={'100%'}
+      containerProps={{ flex: '1 0 0', h: 0, w: '100%' }}
       overflow={'overlay'}
       overflowX={'hidden'}
       px={[4, 6]}
