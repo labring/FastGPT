@@ -8,6 +8,41 @@ import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/ty
 import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { OpenaiAccountType } from '@fastgpt/global/support/user/team/type';
+import type { AIModelDataType } from '@fastgpt/global/core/ai/model/schema';
+import type { DatasetSearchInput } from '@fastgpt/global/core/dataset/search/type';
+import type { DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
+import type { ModelHandle } from '../../ai/model/catalog/handle';
+
+export type DatasetSearchUsage = {
+  items: Array<{
+    phase: 'embedding' | 'rerank' | 'queryExtension' | 'queryExtensionEmbedding' | 'imageCaption';
+    model: AIModelDataType;
+    inputTokens: number;
+    outputTokens: number;
+    usedUserOpenAIKey: boolean;
+  }>;
+};
+
+export type DatasetSearchEvent = {
+  datasets: Pick<DatasetSchemaType, '_id' | 'name' | 'type'>[];
+  resultCount: number;
+  durationMs: number;
+};
+
+export type DatasetSearchProps = {
+  params: DatasetSearchInput;
+  context: {
+    actor: { teamId: string; tmbId: string; isRoot: boolean };
+    histories?: ChatItemMiniType[];
+    userKey?: OpenaiAccountType;
+  };
+  deps: {
+    getModelHandle: (props: { teamId: string }) => Promise<ModelHandle>;
+    beforeSearch: () => Promise<void>;
+    onUsage: (usage: DatasetSearchUsage) => Promise<void>;
+    onSearched?: (event: DatasetSearchEvent) => Promise<void>;
+  };
+};
 
 export type SearchDatasetDataProps = {
   histories: ChatItemMiniType[];

@@ -14,6 +14,7 @@ import {
   SearchDatasetTestBodySchema
 } from '../../../openapi/core/dataset/api';
 import { CreateCollectionByFileIdBodySchema } from '../../../openapi/core/dataset/collection/createApi';
+import { SearchDatasetBodySchema } from '../../../openapi/core/dataset/search/api';
 import {
   ChangeCollectionOwnerBodySchema,
   ChangeCollectionOwnerResponseSchema,
@@ -30,6 +31,51 @@ import {
 } from '../../../core/dataset/type';
 
 const objectId = '68ad85a7463006c963799a05';
+
+describe('structured dataset search OpenAPI', () => {
+  it.each([
+    ['DevAPI', openAPIDocument],
+    ['System OpenAPI', apiDocOpenAPIDocument]
+  ] as const)('documents grouped input and a valid request example in %s', (_, document) => {
+    const operation = document.paths!['/core/dataset/search']!.post!;
+    const body = operation.requestBody!;
+    if ('$ref' in body) throw new Error('Unexpected body reference');
+    const media = body.content['application/json'];
+    expect(media.schema).toMatchObject({
+      required: expect.arrayContaining(['scope', 'query']),
+      properties: {
+        scope: {
+          required: ['datasetIds'],
+          properties: { datasetIds: { minItems: 1, maxItems: 100 } }
+        },
+        query: {
+          anyOf: [
+            {
+              required: ['text'],
+              properties: { text: { minLength: 1 }, imageKeys: { maxItems: 10, default: [] } }
+            },
+            {
+              required: ['imageKeys'],
+              properties: { imageKeys: { minItems: 1 }, text: { default: '' } }
+            }
+          ]
+        },
+        retrieval: { properties: { mode: { default: 'embedding' } } },
+        rerank: { default: { enabled: false } },
+        queryExtension: { default: { enabled: false } },
+        result: { properties: { maxTokens: { minimum: 1, maximum: 20000 } } }
+      }
+    });
+    expect(SearchDatasetBodySchema.safeParse(media.example).success).toBe(true);
+    expect(operation.responses![200]).toMatchObject({
+      content: {
+        'application/json': {
+          schema: { properties: { list: { type: 'array' }, meta: { type: 'object' } } }
+        }
+      }
+    });
+  });
+});
 
 const expectedPaths = {
   '/proApi/core/dataset/changeOwner': 'post',
