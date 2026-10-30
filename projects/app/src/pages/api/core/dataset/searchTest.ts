@@ -143,7 +143,7 @@ export async function handler(
 
   const embeddingModelData = modelHandle.getModelData(
     getDatasetModelReference(dataset, 'embedding'),
-    { type: 'embedding' }
+    { type: 'embedding', authorizedIds }
   );
   const vlmModelData = findFirstDatasetSearchVlmModel([dataset], modelHandle);
 

@@ -7,6 +7,7 @@ import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/catalog/service';
 import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
 import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
+import { getAuthorizedModelIds } from '@fastgpt/service/support/permission/model/auth';
 import { createTrainingUsage } from '@fastgpt/service/support/wallet/usage/controller';
 import { addDays } from 'date-fns';
 
@@ -42,7 +43,7 @@ async function handler(req: ApiRequestProps): Promise<InsertImagesResponse> {
     filepaths.push(...result.fileMetadata.map((item) => item.path));
     const { collectionId } = InsertImagesBodySchema.parse(result.data);
 
-    const { collection, teamId, tmbId } = await authDatasetCollection({
+    const { collection, teamId, tmbId, isRoot } = await authDatasetCollection({
       collectionId,
       per: WritePermissionVal,
       req,
@@ -51,9 +52,13 @@ async function handler(req: ApiRequestProps): Promise<InsertImagesResponse> {
     });
     const dataset = collection.dataset;
     const modelHandle = await getTeamModelHandle({ teamId });
+    const authorizedIds = await getAuthorizedModelIds({
+      actor: { teamId, tmbId, isRoot },
+      handle: modelHandle
+    });
     const vectorModelData = modelHandle.getModelData(
       getDatasetModelReference(dataset, 'embedding'),
-      { type: 'embedding' }
+      { type: 'embedding', authorizedIds }
     );
     const agentModelData = modelHandle.getModelData(getDatasetModelReference(dataset, 'agent'), {
       type: 'llm'

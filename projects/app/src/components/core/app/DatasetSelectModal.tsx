@@ -142,10 +142,8 @@ export const DatasetSelectModal = ({
     if (checked) {
       if (!isSelectableDataset(item)) {
         return toast({
-          status: 'warning',
-          title: item.vectorModel
-            ? t('common:model_disabled', { model: item.vectorModel.name })
-            : t('common:model_delisted')
+          status: 'error',
+          title: t('app:dataset.Missing_index_model_select_tip')
         });
       }
       if (isDatasetDisabled(item)) {
@@ -368,21 +366,25 @@ export const DatasetSelectModal = ({
                                 {item.name}
                               </Box>
                             </MyTooltip>
-                            <Box fontSize="xs" color="myGray.500" className="textEllipsis">
+                            <Box
+                              fontSize="xs"
+                              color={
+                                item.type !== DatasetTypeEnum.folder && !isSelectableDataset(item)
+                                  ? 'red.500'
+                                  : 'myGray.500'
+                              }
+                              className="textEllipsis"
+                            >
                               {item.type === DatasetTypeEnum.folder ? (
                                 <>{t('common:Folder')}</>
                               ) : (
                                 <>
                                   {t('app:Index')}:{' '}
-                                  {item.vectorModel?.isActive ? (
+                                  {isSelectableDataset(item) ? (
                                     item.vectorModel.name
                                   ) : (
                                     <Box as="span" color="red.500" fontWeight="500">
-                                      {item.vectorModel
-                                        ? t('common:model_disabled', {
-                                            model: item.vectorModel.name
-                                          })
-                                        : t('common:model_delisted')}
+                                      {t('app:dataset.Missing_index_model')}
                                     </Box>
                                   )}
                                 </>

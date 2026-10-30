@@ -947,6 +947,7 @@
   "model.upcoming_deprecation": "Upcoming deprecation",
   "invalid_value": "Invalid value",
   "model_disabled": "{{model}} has been disabled",
+  "model_disabled_prefix": "Disabled {{model}}",
   "model_delisted": "This model has been removed",
   "model_id_already_exists": "Model ID already exists",
   "model_probe_task_running": "Probe task is running",

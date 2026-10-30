@@ -1,10 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { createCollection, authCreate, authChanges } = vi.hoisted(() => ({
-  createCollection: vi.fn(),
-  authCreate: vi.fn(),
-  authChanges: vi.fn()
-}));
+const { createCollection, authCreate, authChanges, getModelAuthContext, modelAuthContext } =
+  vi.hoisted(() => ({
+    createCollection: vi.fn(),
+    authCreate: vi.fn(),
+    authChanges: vi.fn(),
+    getModelAuthContext: vi.fn(),
+    modelAuthContext: { modelHandle: {}, authorizedIds: new Set<string>() }
+  }));
 vi.mock('@/service/middleware/entry', () => ({ NextAPI: (handler: any) => handler }));
 vi.mock('@fastgpt/service/core/dataset/apiDataset/service', () => ({
   createApiDatasetCollection: createCollection
@@ -18,12 +21,21 @@ vi.mock('@fastgpt/service/support/permission/dataset/auth', () => ({
 vi.mock('@fastgpt/service/support/permission/teamLimit', () => ({
   checkDatasetIndexLimit: vi.fn()
 }));
+vi.mock('@/service/core/dataset/collection/auth', () => ({
+  getDatasetModelAuthContext: getModelAuthContext
+}));
 import handler from '@/pages/api/core/dataset/collection/create/apiCollectionV2';
 
 const plan = { creationParentIds: [null], newFolderIds: new Set<string>(), moves: [] };
 beforeEach(() => {
   vi.clearAllMocks();
-  authCreate.mockResolvedValue({ teamId: 'team', tmbId: 'member', dataset: { _id: 'dataset' } });
+  authCreate.mockResolvedValue({
+    teamId: 'team',
+    tmbId: 'member',
+    isRoot: false,
+    dataset: { _id: 'dataset' }
+  });
+  getModelAuthContext.mockResolvedValue(modelAuthContext);
   authChanges.mockResolvedValue(undefined);
   createCollection.mockImplementation(async ({ authorizeChanges }) => {
     await authorizeChanges(plan);
@@ -48,7 +60,12 @@ describe('handler', () => {
       ...plan
     });
     expect(createCollection).toHaveBeenCalledWith(
-      expect.objectContaining({ parentId: undefined, teamId: 'team', tmbId: 'member' })
+      expect.objectContaining({
+        parentId: undefined,
+        teamId: 'team',
+        tmbId: 'member',
+        modelAuthContext
+      })
     );
   });
   it('真实落位鉴权失败时透传拒绝结果', async () => {
@@ -68,6 +85,19 @@ describe('handler', () => {
       )
     ).rejects.toThrow();
     expect(authCreate).not.toHaveBeenCalled();
+    expect(createCollection).not.toHaveBeenCalled();
+  });
+
+  it('embedding 权限失败时不开始远端导入', async () => {
+    getModelAuthContext.mockRejectedValueOnce(new Error('embedding model is not authorized'));
+
+    await expect(
+      handler(
+        { body: { datasetId: 'dataset', apiFiles: [] } } as any,
+        {} as Parameters<typeof handler>[1]
+      )
+    ).rejects.toThrow('embedding model is not authorized');
+
     expect(createCollection).not.toHaveBeenCalled();
   });
 });

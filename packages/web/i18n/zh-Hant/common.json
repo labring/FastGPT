@@ -947,6 +947,7 @@
   "model.upcoming_deprecation": "即將下架",
   "invalid_value": "無效值",
   "model_disabled": "{{model}}已停用",
+  "model_disabled_prefix": "已停用 {{model}}",
   "model_delisted": "該模型已下架",
   "model_id_already_exists": "模型 ID 已存在",
   "model_probe_task_running": "探測任務正在進行中",

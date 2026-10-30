@@ -20,6 +20,7 @@ import {
   beforeUpdateAppFormat,
   updateParentFoldersUpdateTime
 } from '@fastgpt/service/core/app/controller';
+import { assertAppDatasetIndexModelsAvailable } from '@fastgpt/service/core/app/resource/service';
 import { extractAppResources } from '@fastgpt/service/core/app/resource/utils';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
@@ -141,6 +142,15 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>) {
       modelHandle,
       session
     });
+    if (isPublish) {
+      await assertAppDatasetIndexModelsAvailable({
+        resources,
+        teamId,
+        modelHandle,
+        authorizedIds,
+        session
+      });
+    }
 
     // create version histories
     const [{ _id }] = await MongoAppVersion.create(

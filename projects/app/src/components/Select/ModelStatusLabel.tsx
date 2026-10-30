@@ -17,7 +17,9 @@ export const ModelStatusLabel = ({
   emptyLabel,
   avatarSize = '1rem',
   noTruncate = false,
-  showUpcomingDeprecationTag = false
+  showUpcomingDeprecationTag = false,
+  hideUpcomingDeprecationTagWhenDisabled = false,
+  disabledLabel
 }: {
   modelId?: string;
   detail?: ModelSummary;
@@ -27,6 +29,8 @@ export const ModelStatusLabel = ({
   avatarSize?: string;
   noTruncate?: boolean;
   showUpcomingDeprecationTag?: boolean;
+  hideUpcomingDeprecationTagWhenDisabled?: boolean;
+  disabledLabel?: (modelName: string) => string;
 }) => {
   const { t } = useTranslation();
   if (isEmptyModelValue(modelId)) return <>{emptyLabel ?? t('common:not_model_config')}</>;
@@ -37,7 +41,7 @@ export const ModelStatusLabel = ({
     detail.status === 'forbidden'
       ? t('common:model_forbidden', { model: detail.name })
       : detail.status === 'disabled'
-        ? t('common:model_disabled', { model: detail.name })
+        ? (disabledLabel?.(detail.name) ?? t('common:model_disabled', { model: detail.name }))
         : detail.name;
   return (
     <Flex
@@ -60,11 +64,13 @@ export const ModelStatusLabel = ({
           {text}
         </Box>
       </MyTooltip>
-      {showUpcomingDeprecationTag && detail.isUpcomingDeprecation === true && (
-        <Box mr={2}>
-          <DeprecationTag size={'sm'} />
-        </Box>
-      )}
+      {showUpcomingDeprecationTag &&
+        detail.isUpcomingDeprecation === true &&
+        !(hideUpcomingDeprecationTagWhenDisabled && detail.status === 'disabled') && (
+          <Box mr={2}>
+            <DeprecationTag size={'sm'} />
+          </Box>
+        )}
     </Flex>
   );
 };

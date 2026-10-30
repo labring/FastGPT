@@ -3,6 +3,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mockAuthDatasetCollectionCreate = vi.fn();
 const mockCreateApiDatasetCollection = vi.fn();
 const mockGetFileDetail = vi.fn();
+const mockGetDatasetModelAuthContext = vi.fn();
+const modelAuthContext = { modelHandle: {}, authorizedIds: new Set<string>() };
 
 vi.mock('@/service/middleware/entry', () => ({
   NextAPI: (handler: any) => handler
@@ -22,6 +24,10 @@ vi.mock('@fastgpt/service/core/dataset/apiDataset/service', () => ({
   createApiDatasetCollection: (...args: any[]) => mockCreateApiDatasetCollection(...args)
 }));
 
+vi.mock('@/service/core/dataset/collection/auth', () => ({
+  getDatasetModelAuthContext: (...args: any[]) => mockGetDatasetModelAuthContext(...args)
+}));
+
 import handler from '@/pages/api/core/dataset/collection/create/apiCollection';
 
 describe('handler', () => {
@@ -30,8 +36,10 @@ describe('handler', () => {
     mockAuthDatasetCollectionCreate.mockResolvedValue({
       teamId: '6acb61a720031dde73883461',
       tmbId: '6acb61a720031dde73883462',
+      isRoot: false,
       dataset: { _id: '6acb61a720031dde73883463', apiDatasetServer: {} }
     });
+    mockGetDatasetModelAuthContext.mockResolvedValue(modelAuthContext);
     mockGetFileDetail.mockResolvedValue({
       success: true,
       data: {
@@ -59,9 +67,13 @@ describe('handler', () => {
         expect.objectContaining({ parentId })
       );
       expect(mockGetFileDetail).toHaveBeenCalledWith({ apiFileId: 'f1' });
+      expect(mockGetDatasetModelAuthContext.mock.invocationCallOrder[0]).toBeLessThan(
+        mockGetFileDetail.mock.invocationCallOrder[0]
+      );
       expect(mockCreateApiDatasetCollection).toHaveBeenCalledWith(
         expect.objectContaining({
           targetParentId: parentId,
+          modelAuthContext,
           apiFiles: [expect.objectContaining({ id: 'f1' })]
         })
       );
@@ -83,6 +95,23 @@ describe('handler', () => {
         {} as Parameters<typeof handler>[1]
       )
     ).rejects.toBe('detail unavailable');
+    expect(mockCreateApiDatasetCollection).not.toHaveBeenCalled();
+  });
+
+  it('embedding 权限失败时不读取远端文件', async () => {
+    const error = new Error('embedding model is not authorized');
+    mockGetDatasetModelAuthContext.mockRejectedValueOnce(error);
+
+    await expect(
+      handler(
+        {
+          body: { datasetId: '6acb61a720031dde73883463', apiFileId: 'f1', name: 'File 1' }
+        } as any,
+        {} as Parameters<typeof handler>[1]
+      )
+    ).rejects.toBe(error);
+
+    expect(mockGetFileDetail).not.toHaveBeenCalled();
     expect(mockCreateApiDatasetCollection).not.toHaveBeenCalled();
   });
 });

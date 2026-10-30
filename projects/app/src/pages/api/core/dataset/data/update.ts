@@ -18,6 +18,7 @@ import { replaceS3KeysToPreviewUrls } from '@fastgpt/service/common/s3/utils/pre
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/catalog/service';
 import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
+import { getAuthorizedModelIds } from '@fastgpt/service/support/permission/model/auth';
 import { authDatasetData } from '@fastgpt/service/support/permission/dataset/auth';
 import { addAuditLog, getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
 import { addHours } from 'date-fns';
@@ -34,6 +35,7 @@ async function handler(req: ApiRequestProps): Promise<UpdateDatasetDataResponse>
     collection: { name, indexPrefixTitle },
     teamId,
     tmbId,
+    isRoot,
     collection,
     datasetData
   } = await authDatasetData({
@@ -47,8 +49,13 @@ async function handler(req: ApiRequestProps): Promise<UpdateDatasetDataResponse>
 
   const dataset = collection.dataset;
   const modelHandle = await getTeamModelHandle({ teamId });
+  const authorizedIds = await getAuthorizedModelIds({
+    actor: { teamId, tmbId, isRoot },
+    handle: modelHandle
+  });
   const vectorModel = modelHandle.getModelData(getDatasetModelReference(dataset, 'embedding'), {
-    type: 'embedding'
+    type: 'embedding',
+    authorizedIds
   });
   const nextQ = q ?? datasetData.q ?? '';
   const nextA = a ?? datasetData.a ?? '';

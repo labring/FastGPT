@@ -277,6 +277,8 @@ const AIModelSelector = ({
           emptyLabel={canBeUnset ? unsetLabel : placeholder}
           avatarSize={avatarSize}
           showUpcomingDeprecationTag
+          hideUpcomingDeprecationTagWhenDisabled
+          disabledLabel={(name) => t('common:model_disabled_prefix', { model: name })}
         />
       }
       list={loading || catalogError ? [] : selectorList}

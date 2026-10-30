@@ -16,7 +16,8 @@ const {
   mockGetDatasetImageIndexCapability,
   mockGetDatasetEmbeddingModel,
   mockGetDatasetAgentModel,
-  mockGetDatasetVlmModel
+  mockGetDatasetVlmModel,
+  mockGetAuthorizedModelIds
 } = vi.hoisted(() => ({
   mockResolveMultipleFormData: vi.fn(),
   mockClearDiskTempFiles: vi.fn(),
@@ -34,7 +35,8 @@ const {
   mockGetDatasetImageIndexCapability: vi.fn(),
   mockGetDatasetEmbeddingModel: vi.fn(),
   mockGetDatasetAgentModel: vi.fn(),
-  mockGetDatasetVlmModel: vi.fn()
+  mockGetDatasetVlmModel: vi.fn(),
+  mockGetAuthorizedModelIds: vi.fn()
 }));
 
 vi.mock('@/service/middleware/entry', () => ({
@@ -50,6 +52,10 @@ vi.mock('@fastgpt/service/common/file/multer', () => ({
 
 vi.mock('@fastgpt/service/support/permission/dataset/auth', () => ({
   authDatasetCollection: mockAuthDatasetCollection
+}));
+
+vi.mock('@fastgpt/service/support/permission/model/auth', () => ({
+  getAuthorizedModelIds: mockGetAuthorizedModelIds
 }));
 
 vi.mock('@fastgpt/service/common/rateLimit/interface/upload', () => ({
@@ -135,6 +141,7 @@ const agentModelData = {
 describe('POST /api/core/dataset/data/insertImages', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockGetAuthorizedModelIds.mockResolvedValue(new Set<string>());
     mockResolveMultipleFormData.mockResolvedValue({
       data: { collectionId },
       fileMetadata: [
@@ -148,6 +155,7 @@ describe('POST /api/core/dataset/data/insertImages', () => {
     mockAuthDatasetCollection.mockResolvedValue({
       teamId: 'team-id',
       tmbId: 'tmb-id',
+      isRoot: false,
       collection: {
         _id: collectionId,
         name: 'Images',
