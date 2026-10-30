@@ -4,6 +4,7 @@ import {
   type CreateCollectionWithResultResponseType
 } from '@fastgpt/global/openapi/core/dataset/collection/createApi';
 import { createCollectionAndInsertData } from '@fastgpt/service/core/dataset/collection/controller';
+import { getDatasetModelAuthContext } from '@/service/core/dataset/collection/auth';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/next/type';
@@ -31,12 +32,18 @@ async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResult
     filepaths.push(formData.fileMetadata.path);
 
     const collectionData = CreateCollectionByLocalFileBodySchema.parse(formData.data);
-    const { teamId, tmbId, dataset } = await authDatasetCollectionCreate({
+    const { teamId, tmbId, isRoot, dataset } = await authDatasetCollectionCreate({
       req,
       authToken: true,
       authApiKey: true,
       datasetId: collectionData.datasetId,
       parentId: collectionData.parentId
+    });
+    const modelAuthContext = await getDatasetModelAuthContext({
+      dataset,
+      teamId,
+      tmbId,
+      isRoot
     });
 
     // Check dataset limit
@@ -56,6 +63,7 @@ async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResult
 
     const collectionResult = await createCollectionAndInsertData({
       dataset,
+      modelAuthContext,
       createCollectionParams: {
         ...collectionData,
         datasetId: dataset._id,

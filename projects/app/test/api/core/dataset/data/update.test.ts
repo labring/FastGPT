@@ -9,6 +9,7 @@ const {
   mockPushGenerateVectorUsage,
   mockAddAuditLog,
   mockReplaceS3KeysToPreviewUrls,
+  mockGetAuthorizedModelIds,
   mockEmbeddingModel
 } = vi.hoisted(() => ({
   mockAuthDatasetData: vi.fn(),
@@ -17,6 +18,7 @@ const {
   mockPushGenerateVectorUsage: vi.fn(),
   mockAddAuditLog: vi.fn(),
   mockReplaceS3KeysToPreviewUrls: vi.fn(),
+  mockGetAuthorizedModelIds: vi.fn(),
   mockEmbeddingModel: {
     modelId: '68ad85a7463006c963799a06',
     model: 'vision-embedding',
@@ -35,6 +37,10 @@ vi.mock('@/service/middleware/entry', () => ({
 
 vi.mock('@fastgpt/service/support/permission/dataset/auth', () => ({
   authDatasetData: mockAuthDatasetData
+}));
+
+vi.mock('@fastgpt/service/support/permission/model/auth', () => ({
+  getAuthorizedModelIds: mockGetAuthorizedModelIds
 }));
 
 vi.mock('@/service/core/dataset/data/data', () => ({
@@ -67,6 +73,7 @@ const dataId = '68ad85a7463006c963799a05';
 const buildAuthResult = () => ({
   teamId: 'team-id',
   tmbId: 'tmb-id',
+  isRoot: false,
   collection: {
     datasetId: 'dataset-id',
     name: 'Collection',
@@ -103,6 +110,7 @@ const buildAuthResult = () => ({
 describe('PUT /api/core/dataset/data/update', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockGetAuthorizedModelIds.mockResolvedValue(new Set<string>());
     mockAuthDatasetData.mockResolvedValue(buildAuthResult());
     mockReplaceS3KeysToPreviewUrls.mockImplementation((texts: string[]) => texts);
     mockUpdateDatasetDataByIndexes.mockResolvedValue({ tokens: 12 });

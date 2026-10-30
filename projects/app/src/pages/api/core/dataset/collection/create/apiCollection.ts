@@ -3,6 +3,7 @@ import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/next/type';
 import { getApiDatasetRequest } from '@fastgpt/service/core/dataset/apiDataset';
 import { createApiDatasetCollection } from '@fastgpt/service/core/dataset/apiDataset/service';
+import { getDatasetModelAuthContext } from '@/service/core/dataset/collection/auth';
 import { authApiFileImportChanges } from '@fastgpt/service/core/dataset/apiDataset/auth';
 import {
   CreateApiCollectionBodySchema,
@@ -16,13 +17,19 @@ async function handler(req: ApiRequestProps) {
     bodySchema: CreateApiCollectionBodySchema
   }).body;
 
-  const { teamId, tmbId, dataset } = await authDatasetCollectionCreate({
+  const { teamId, tmbId, isRoot, dataset } = await authDatasetCollectionCreate({
     req,
     authToken: true,
     authApiKey: true,
     datasetId: body.datasetId,
     // V1 支持指定本地落位目录，写入前校验该目录权限。
     parentId: body.parentId
+  });
+  const modelAuthContext = await getDatasetModelAuthContext({
+    dataset,
+    teamId,
+    tmbId,
+    isRoot
   });
 
   const fileDetailRes = await (
@@ -51,7 +58,8 @@ async function handler(req: ApiRequestProps) {
           datasetId: body.datasetId,
           ...changes
         }),
-      ...body
+      ...body,
+      modelAuthContext
     })
   );
 }

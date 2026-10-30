@@ -1,7 +1,12 @@
 import handler from '@/pages/api/core/app/version/publish';
 import datasetListHandler from '@/pages/api/core/dataset/listV2';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import type { RerankModelDataType, TTSModelDataType } from '@fastgpt/global/core/ai/model/schema';
+import {
+  AIModelDataSchema,
+  type AIModelDataType,
+  type RerankModelDataType,
+  type TTSModelDataType
+} from '@fastgpt/global/core/ai/model/schema';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
@@ -40,7 +45,46 @@ import { getModelTestDefaults, setModelTestSnapshot } from '@test/modelCache';
 import { Call } from '@test/utils/request';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
+const PUBLISH_TEST_EMBEDDING_MODEL_ID = 'publish-test-embedding';
+const createEmbeddingTestModel = (baseModel: AIModelDataType, modelId: string) =>
+  AIModelDataSchema.parse({
+    ...baseModel,
+    modelId,
+    model: 'publish-test-embedding',
+    name: 'Publish test embedding',
+    type: ModelTypeEnum.embedding,
+    config: { defaultToken: 512, maxToken: 8192, batchSize: 64 }
+  });
+
 describe('publish manually selected datasets', () => {
+  let previousModels: AIModelDataType[];
+  let previousDefaults: ReturnType<typeof getModelTestDefaults>;
+
+  beforeEach(() => {
+    previousModels = getCachedSystemModelHandle()?.getAllModels() ?? [];
+    previousDefaults = getModelTestDefaults();
+    const embeddingModel = createEmbeddingTestModel(
+      previousDefaults.llm!,
+      PUBLISH_TEST_EMBEDDING_MODEL_ID
+    );
+    setModelTestSnapshot({
+      models: [
+        ...previousModels.filter(({ modelId }) => modelId !== embeddingModel.modelId),
+        embeddingModel
+      ],
+      defaultModels: { ...previousDefaults, embedding: embeddingModel }
+    });
+  });
+
+  afterEach(() => {
+    setModelTestSnapshot({ models: previousModels, defaultModels: previousDefaults });
+  });
+
+  const withAvailableIndexModel = <T extends Record<string, unknown>>(dataset: T) => ({
+    ...dataset,
+    vectorModelId: PUBLISH_TEST_EMBEDDING_MODEL_ID
+  });
+
   const createDatasetNode = (
     datasetId: string,
     nodeId = 'search'
@@ -86,12 +130,14 @@ describe('publish manually selected datasets', () => {
       'dataset-creator',
       scenario.sameTeam ? publisher.teamId : undefined
     );
-    const dataset = await MongoDataset.create({
-      name: 'Manually selected dataset',
-      teamId: creator.teamId,
-      tmbId: creator.tmbId,
-      type: DatasetTypeEnum.dataset
-    });
+    const dataset = await MongoDataset.create(
+      withAvailableIndexModel({
+        name: 'Manually selected dataset',
+        teamId: creator.teamId,
+        tmbId: creator.tmbId,
+        type: DatasetTypeEnum.dataset
+      })
+    );
     if (scenario.granted) {
       await MongoResourcePermission.create({
         teamId: publisher.teamId,
@@ -141,14 +187,72 @@ describe('publish manually selected datasets', () => {
     }
   });
 
+  it('rejects publishing a knowledge base reference without an available index model', async () => {
+    const root = await getRootUser();
+    const dataset = await MongoDataset.create({
+      name: 'Dataset without an index model',
+      teamId: root.teamId,
+      tmbId: root.tmbId,
+      vectorModelId: 'missing-embedding-model'
+    });
+    const app = await MongoApp.create({
+      name: 'Missing dataset index model',
+      type: AppTypeEnum.workflow,
+      teamId: root.teamId,
+      tmbId: root.tmbId
+    });
+
+    const result = await Call<PublishAppBodyType>(handler, {
+      auth: root,
+      query: { appId: String(app._id) },
+      body: {
+        isPublish: true,
+        nodes: [createDatasetNode(String(dataset._id))]
+      }
+    });
+
+    expect(result.code).not.toBe(200);
+    expect(await MongoAppVersion.countDocuments({ appId: app._id })).toBe(0);
+  });
+
+  it('allows saving a knowledge base reference without an available index model', async () => {
+    const root = await getRootUser();
+    const dataset = await MongoDataset.create({
+      name: 'Dataset without an index model',
+      teamId: root.teamId,
+      tmbId: root.tmbId,
+      vectorModelId: 'missing-embedding-model'
+    });
+    const app = await MongoApp.create({
+      name: 'Save without dataset index model',
+      type: AppTypeEnum.workflow,
+      teamId: root.teamId,
+      tmbId: root.tmbId
+    });
+
+    const result = await Call<PublishAppBodyType>(handler, {
+      auth: root,
+      query: { appId: String(app._id) },
+      body: {
+        isPublish: false,
+        nodes: [createDatasetNode(String(dataset._id))]
+      }
+    });
+
+    expect(result.code, JSON.stringify(result)).toBe(200);
+    expect(await MongoAppVersion.countDocuments({ appId: app._id })).toBe(1);
+  });
+
   it('rejects a foreign dataset in an old authorized snapshot and removes it from autosave authorization', async () => {
     const root = await getRootUser();
     const other = await getUser('old-cross-team-dataset-owner');
-    const dataset = await MongoDataset.create({
-      name: 'Old foreign dataset',
-      teamId: other.teamId,
-      tmbId: other.tmbId
-    });
+    const dataset = await MongoDataset.create(
+      withAvailableIndexModel({
+        name: 'Old foreign dataset',
+        teamId: other.teamId,
+        tmbId: other.tmbId
+      })
+    );
     const app = await MongoApp.create({
       name: 'Old root snapshot',
       type: AppTypeEnum.workflow,
@@ -188,11 +292,13 @@ describe('publish manually selected datasets', () => {
 
   it('uses the application team when root publishes an application from another team', async () => {
     const { root, owner, app } = await createAppInAnotherTeam();
-    const dataset = await MongoDataset.create({
-      name: 'Application team dataset',
-      teamId: owner.teamId,
-      tmbId: owner.tmbId
-    });
+    const dataset = await MongoDataset.create(
+      withAvailableIndexModel({
+        name: 'Application team dataset',
+        teamId: owner.teamId,
+        tmbId: owner.tmbId
+      })
+    );
 
     const result = await Call<PublishAppBodyType>(handler, {
       auth: root,
@@ -220,11 +326,13 @@ describe('publish manually selected datasets', () => {
     'rejects root login-team resources in another application team, including snapshots (%s)',
     async (hasSnapshot) => {
       const { root, app } = await createAppInAnotherTeam();
-      const dataset = await MongoDataset.create({
-        name: 'Root login-team dataset',
-        teamId: root.teamId,
-        tmbId: root.tmbId
-      });
+      const dataset = await MongoDataset.create(
+        withAvailableIndexModel({
+          name: 'Root login-team dataset',
+          teamId: root.teamId,
+          tmbId: root.tmbId
+        })
+      );
       const nodes = [createDatasetNode(String(dataset._id))];
       if (hasSnapshot) {
         await MongoAppVersion.create({
@@ -253,8 +361,16 @@ describe('publish manually selected datasets', () => {
     async (autoSave) => {
       const { root, owner, app } = await createAppInAnotherTeam();
       const [appDataset, loginDataset] = await MongoDataset.create([
-        { name: 'Application team dataset', teamId: owner.teamId, tmbId: owner.tmbId },
-        { name: 'Root login-team dataset', teamId: root.teamId, tmbId: root.tmbId }
+        withAvailableIndexModel({
+          name: 'Application team dataset',
+          teamId: owner.teamId,
+          tmbId: owner.tmbId
+        }),
+        withAvailableIndexModel({
+          name: 'Root login-team dataset',
+          teamId: root.teamId,
+          tmbId: root.tmbId
+        })
       ]);
       const nodes = [
         createDatasetNode(String(appDataset._id)),
@@ -308,8 +424,9 @@ describe('publish optional model defaults', () => {
       type: ModelTypeEnum.tts,
       config: { voices: [{ label: 'Voice', value: 'voice' }] }
     };
-    setModelTestSnapshot({ models: [llm, rerank, tts] });
-    setModelTestSnapshot({ defaultModels: { llm, rerank, tts } });
+    const embedding = createEmbeddingTestModel(llm, PUBLISH_TEST_EMBEDDING_MODEL_ID);
+    setModelTestSnapshot({ models: [llm, embedding, rerank, tts] });
+    setModelTestSnapshot({ defaultModels: { llm, embedding, rerank, tts } });
   });
   afterEach(() => {
     setModelTestSnapshot({ models: previousModels });
@@ -564,14 +681,16 @@ describe('publish optional model defaults', () => {
       type: ModelTypeEnum.rerank,
       config: {}
     };
-    setModelTestSnapshot({ models: [llm, gteRerank] });
-    setModelTestSnapshot({ defaultModels: { llm, rerank: gteRerank } });
+    const embedding = createEmbeddingTestModel(llm, PUBLISH_TEST_EMBEDDING_MODEL_ID);
+    setModelTestSnapshot({ models: [llm, embedding, gteRerank] });
+    setModelTestSnapshot({ defaultModels: { llm, embedding, rerank: gteRerank } });
 
     const dataset = await MongoDataset.create({
       name: 'test-dataset',
       teamId: root.teamId,
       tmbId: root.tmbId,
       type: DatasetTypeEnum.dataset,
+      vectorModelId: embedding.modelId,
       vectorModel: 'text-embedding-3-small',
       agentModel: llm.model
     });

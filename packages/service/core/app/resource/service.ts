@@ -22,6 +22,8 @@ import {
 } from '../../../support/permission/app/resource';
 import { getTmbInfoByTmbId } from '../../../support/user/team/controller';
 import { MongoApp } from '../schema';
+import { findDatasetIndexModelReferences } from '../../dataset/entity';
+import { getDatasetModelReference } from '../../dataset/model';
 import { getAppDraftVersion, getAppLatestVersion } from '../version/controller';
 import { decodeToolSetNodesFromStorage } from '../jsonSchemaStorage';
 import {
@@ -75,6 +77,35 @@ export const getAppDraftResourceBaseline = async ({
     teamId,
     isRoot,
     modelHandle
+  });
+};
+
+/** 保存 App/workflow 引用前校验其知识库仍有可用的 embedding 索引模型。 */
+export const assertAppDatasetIndexModelsAvailable = async ({
+  resources,
+  teamId,
+  modelHandle,
+  authorizedIds,
+  session
+}: {
+  resources: AppResource[];
+  teamId: string;
+  modelHandle: ModelHandle;
+  authorizedIds: ReadonlySet<string>;
+  session?: ClientSession;
+}) => {
+  const datasetIds = Array.from(
+    new Set(resources.filter((resource) => resource.type === 'dataset').map(({ id }) => id))
+  );
+  if (datasetIds.length === 0) return;
+
+  const datasets = await findDatasetIndexModelReferences({ datasetIds, teamId, session });
+
+  datasets.forEach((dataset) => {
+    modelHandle.getModelData(getDatasetModelReference(dataset, 'embedding'), {
+      type: 'embedding',
+      authorizedIds
+    });
   });
 };
 

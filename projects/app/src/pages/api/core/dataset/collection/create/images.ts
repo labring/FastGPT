@@ -20,6 +20,7 @@ import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/catalog/servi
 import { createCollectionAndInsertData } from '@fastgpt/service/core/dataset/collection/controller';
 import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
 import { authDatasetCollectionCreate } from '@fastgpt/service/support/permission/dataset/auth';
+import { getAuthorizedModelIds } from '@fastgpt/service/support/permission/model/auth';
 import { checkDatasetIndexLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { addDays } from 'date-fns';
 import fs from 'node:fs';
@@ -43,7 +44,7 @@ async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResult
       result.data
     );
 
-    const { dataset, teamId, tmbId } = await authDatasetCollectionCreate({
+    const { dataset, teamId, tmbId, isRoot } = await authDatasetCollectionCreate({
       datasetId,
       parentId,
       req,
@@ -68,9 +69,14 @@ async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResult
       increment: result.fileMetadata.length
     });
     const modelHandle = await getTeamModelHandle({ teamId });
+    const authorizedIds = await getAuthorizedModelIds({
+      actor: { teamId, tmbId, isRoot },
+      handle: modelHandle
+    });
     const { supportVlm, supportImageEmbedding } = getDatasetImageIndexCapability({
       vectorModel: modelHandle.getModelData(getDatasetModelReference(dataset, 'embedding'), {
-        type: 'embedding'
+        type: 'embedding',
+        authorizedIds
       }),
       vlmModel: modelHandle.getModelData(getDatasetModelReference(dataset, 'vlm'), {
         type: 'llm',
@@ -108,6 +114,7 @@ async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResult
     return createCollectionAndInsertData({
       dataset,
       imageIds,
+      modelAuthContext: { modelHandle, authorizedIds },
       createCollectionParams: {
         parentId,
         teamId,

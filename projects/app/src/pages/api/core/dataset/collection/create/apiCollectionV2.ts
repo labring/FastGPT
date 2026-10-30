@@ -5,6 +5,7 @@ import {
 } from '@fastgpt/global/openapi/core/dataset/collection/createApi';
 import { authDatasetCollectionCreate } from '@fastgpt/service/support/permission/dataset/auth';
 import { createApiDatasetCollection } from '@fastgpt/service/core/dataset/apiDataset/service';
+import { getDatasetModelAuthContext } from '@/service/core/dataset/collection/auth';
 import { authApiFileImportChanges } from '@fastgpt/service/core/dataset/apiDataset/auth';
 import { checkDatasetIndexLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
@@ -14,11 +15,17 @@ import type { ApiRequestProps } from '@fastgpt/next/type';
 /** V2 入口先校验知识库，再由远端树生成实际创建/移动计划逐项鉴权。 */
 async function handler(req: ApiRequestProps): Promise<CreateApiCollectionV2ResponseType> {
   const body = parseApiInput({ req, bodySchema: CreateApiCollectionV2BodySchema }).body;
-  const { teamId, tmbId, dataset } = await authDatasetCollectionCreate({
+  const { teamId, tmbId, isRoot, dataset } = await authDatasetCollectionCreate({
     req,
     authToken: true,
     authApiKey: true,
     datasetId: body.datasetId
+  });
+  const modelAuthContext = await getDatasetModelAuthContext({
+    dataset,
+    teamId,
+    tmbId,
+    isRoot
   });
   await checkDatasetIndexLimit({ teamId, insertLen: 1 });
   return CreateApiCollectionV2ResponseSchema.parse(
@@ -28,6 +35,7 @@ async function handler(req: ApiRequestProps): Promise<CreateApiCollectionV2Respo
       teamId,
       tmbId,
       dataset,
+      modelAuthContext,
       authorizeChanges: (changes) =>
         authApiFileImportChanges({
           req,

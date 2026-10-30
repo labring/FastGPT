@@ -17,7 +17,8 @@ const {
   mockCreateCollectionAndInsertData,
   mockGetDatasetImageIndexCapability,
   mockGetDatasetEmbeddingModel,
-  mockGetDatasetVlmModel
+  mockGetDatasetVlmModel,
+  mockGetAuthorizedModelIds
 } = vi.hoisted(() => ({
   mockResolveMultipleFormData: vi.fn(),
   mockClearDiskTempFiles: vi.fn(),
@@ -33,7 +34,8 @@ const {
   mockCreateCollectionAndInsertData: vi.fn(),
   mockGetDatasetImageIndexCapability: vi.fn(),
   mockGetDatasetEmbeddingModel: vi.fn(),
-  mockGetDatasetVlmModel: vi.fn()
+  mockGetDatasetVlmModel: vi.fn(),
+  mockGetAuthorizedModelIds: vi.fn()
 }));
 
 vi.mock('@/service/middleware/entry', () => ({
@@ -49,6 +51,10 @@ vi.mock('@fastgpt/service/common/file/multer', () => ({
 
 vi.mock('@fastgpt/service/support/permission/dataset/auth', () => ({
   authDatasetCollectionCreate: mockAuthDatasetCollectionCreate
+}));
+
+vi.mock('@fastgpt/service/support/permission/model/auth', () => ({
+  getAuthorizedModelIds: mockGetAuthorizedModelIds
 }));
 
 vi.mock('@fastgpt/service/support/permission/teamLimit', () => ({
@@ -92,6 +98,7 @@ const mockModelHandle = {
       ? mockGetDatasetVlmModel(reference, options)
       : mockGetDatasetEmbeddingModel(reference, options)
 };
+const authorizedIds = new Set<string>();
 
 vi.mock('@fastgpt/service/core/ai/model/catalog/service', () => ({
   getSystemModelHandle: async () => mockModelHandle,
@@ -118,6 +125,7 @@ const parentId = '68ad85a7463006c963799a08';
 describe('POST /api/core/dataset/collection/create/images', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockGetAuthorizedModelIds.mockResolvedValue(authorizedIds);
     mockResolveMultipleFormData.mockResolvedValue({
       data: {
         parentId,
@@ -136,6 +144,7 @@ describe('POST /api/core/dataset/collection/create/images', () => {
     mockAuthDatasetCollectionCreate.mockResolvedValue({
       teamId: 'team-id',
       tmbId: 'tmb-id',
+      isRoot: false,
       dataset: {
         _id: datasetId,
         vectorModel: 'vision-embedding',
@@ -182,6 +191,7 @@ describe('POST /api/core/dataset/collection/create/images', () => {
         agentModel: 'gpt-5'
       },
       imageIds: ['dataset/team/cat.png'],
+      modelAuthContext: { modelHandle: mockModelHandle, authorizedIds },
       createCollectionParams: {
         parentId,
         teamId: 'team-id',
