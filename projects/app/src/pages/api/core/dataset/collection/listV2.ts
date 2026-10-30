@@ -50,6 +50,7 @@ import { getGroupsByTmbId } from '@fastgpt/service/support/permission/memberGrou
 import { getTmbInfoByTmbId } from '@fastgpt/service/support/user/team/controller';
 import { getOrgIdSetWithParentByTmbId } from '@fastgpt/service/support/permission/org/controllers';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
+import { isDisableSuperAdmin } from '@fastgpt/global/core/dataset/apiDataset/utils';
 import { CollectionPermission } from '@fastgpt/global/support/permission/collection/controller';
 import type { FolderAccessMode } from '@fastgpt/global/common/parentFolder/type';
 import {
@@ -213,12 +214,16 @@ async function handler(req: ApiRequestProps): Promise<ListCollectionV2ResponseTy
   let orgIds: string[] = [];
   // 复用同一次 tmb 查询：短路判定与逐 Collection 返回权限都依赖是否团队 owner。
   const tmbInfo = await getTmbInfoByTmbId({ tmbId });
-  const isTeamOwner = String(tmbInfo.teamId) === String(teamId) && tmbInfo.permission.isOwner;
+  // 外部权限同步可以要求超管同样遵守文件 ACL：root 与团队 owner 的旁路全部关闭。
+  const disableSuperAdmin = isDisableSuperAdmin(dataset.apiDatasetServer);
+  const isTeamOwner =
+    !disableSuperAdmin && String(tmbInfo.teamId) === String(teamId) && tmbInfo.permission.isOwner;
   const shortCircuitCollectionPermission = await canShortCircuitCollectionPermission({
     teamId,
     datasetIds: [datasetId],
     tmbId,
-    tmbInfo
+    tmbInfo,
+    ignoreTeamOwner: disableSuperAdmin
   });
   // 短路时所有 Collection 都可读，不存在导航目录；此时父目录鉴权失败只可能是跨知识库访问。
   if (parentRequiresNavigation && shortCircuitCollectionPermission) {
@@ -352,10 +357,16 @@ async function handler(req: ApiRequestProps): Promise<ListCollectionV2ResponseTy
     if (folderAccessModeMap.get(String(item._id)) === 'navigate') {
       return new CollectionPermission({ role: NullRoleVal, isOwner: false });
     }
-    if (isRoot) return new CollectionPermission({ isOwner: true });
+    if (isRoot && !disableSuperAdmin) return new CollectionPermission({ isOwner: true });
 
     const resolvedPermission = collectionPermissionMap?.get(String(item._id));
     if (resolvedPermission) return resolvedPermission;
+
+    // 关闭超管旁路时，未出现在 ACL 解析结果里的 Collection 一律无权限：
+    // 不能再用 dataset 角色兜底，否则 root / 团队 owner 会绕过文件级权限。
+    if (disableSuperAdmin && !shortCircuitCollectionPermission) {
+      return new CollectionPermission({ role: NullRoleVal, isOwner: false });
+    }
 
     return new CollectionPermission({
       // 团队 owner 与详情鉴权一致返回 owner；dataset owner 的父级权限不透传，cap 为 manage。

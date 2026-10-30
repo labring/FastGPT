@@ -131,6 +131,8 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetResponse> {
           avatar,
           type,
           apiDatasetServer,
+          // 创建即开启同步时，collection 权限同步置位，避免「同步已开但读路径未启用」
+          ...(apiDatasetServer?.permissionSync === true && { collectionPermissionEnabled: true }),
           ...(sangforFileParseConfig && { sangforFileParseConfig }),
           // 独立态创建（sangfor 专用）只对文件夹生效，其余类型固定按继承态创建
           inheritPermission: type === DatasetTypeEnum.folder ? inheritPermission : true

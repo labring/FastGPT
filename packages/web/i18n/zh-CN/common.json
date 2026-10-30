@@ -1392,5 +1392,6 @@
   "core.workflow.check.source_output_missing": "节点 {{nodeId}} 的输出 {{outputKey}} 不存在或不支持连线",
   "core.workflow.check.node_missing": "节点 {{nodeId}} 已不存在，请删除残留连线",
   "core.workflow.check.option_keys_invalid": "选项或分类的键名缺失或重复，请检查配置",
-  "core.workflow.check.form_configuration_invalid": "表单字段的键名或对应输出配置不完整：{{fieldKeys}}"
+  "core.workflow.check.form_configuration_invalid": "表单字段的键名或对应输出配置不完整：{{fieldKeys}}",
+  "core.dataset.error.permissionSyncManaged": "该知识库的文件权限由外部 API 文件库同步维护，无法在此修改"
 }

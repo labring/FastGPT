@@ -1,9 +1,12 @@
 import { OwnerRoleVal, PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
+import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
+import { isPermissionSyncDataset } from '@fastgpt/global/core/dataset/apiDataset/utils';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { MongoDatasetCollection } from '../../../core/dataset/collection/schema';
 import { MongoDataset } from '../../../core/dataset/schema';
 import { MongoResourcePermission } from '../schema';
 import { mongoSessionRun } from '../../../common/mongo/sessionRun';
+import type { ClientSession } from '../../../common/mongo';
 import { getResourceOwnedClbs } from '../controller';
 import { syncRootCollections } from './controller';
 import { getLogger, LogCategories } from '../../../common/logger';
@@ -141,7 +144,8 @@ export type EnableDatasetCollectionResult = {
 };
 
 /**
- * 启用 collection 级权限：物化该 dataset 全部 collection 快照，成功后置位开关。
+ * 在给定事务会话内启用 collection 级权限。所有读写在调用方事务中完成，
+ * 重试由调用方（`enableDatasetCollectionPermissions` 或 update 接口）负责。
  *
  * 顺序（与设计 §12.1 一致）：
  *  1. 只读前置：父级图校验（孤儿 / 循环即报错）+ dataset 有效 clbs；
@@ -151,103 +155,124 @@ export type EnableDatasetCollectionResult = {
  *
  * 幂等：已启用时直接返回；首次启用失败中断后重跑会重新执行，开关最后置位保证读语义不变。
  */
-export const enableDatasetCollectionPermissions = async ({
+const enableWithinSession = async ({
   teamId,
-  datasetId
+  datasetId,
+  session
 }: {
   teamId: string;
   datasetId: string;
+  session: ClientSession;
+}): Promise<number> => {
+  // 每次事务重试都重读开关：并发启停会让本轮事务重试，重试后才看得到最新状态。
+  const dataset = await MongoDataset.findOne(
+    { _id: datasetId, teamId },
+    'teamId collectionPermissionEnabled'
+  )
+    .session(session)
+    .lean();
+  if (!dataset) {
+    throw new Error(`Dataset ${datasetId} not found in team ${teamId}`);
+  }
+
+  // 已启用即 no-op：开关与物化在同一事务提交，true 代表快照完整。
+  // 重跑若继续「清空 + 重建」，会跳过独立节点整棵子树，误删其继承后代已物化的 ACL 行。
+  if (dataset.collectionPermissionEnabled === true) {
+    logger.info(`[collectionPermission] enable skipped: already enabled, datasetId=${datasetId}`);
+    return MongoDatasetCollection.countDocuments({ teamId, datasetId }).session(session);
+  }
+
+  // 每次事务重试都重读集合和 dataset ACL，避免复用并发创建前的旧快照。
+  const collections = await MongoDatasetCollection.find(
+    { teamId, datasetId },
+    '_id tmbId parentId inheritPermission type'
+  )
+    .session(session)
+    .lean<CollectionForEnable[]>();
+
+  assertValidCollectionTree(collections, datasetId);
+
+  // dataset 已完全物化权限：有效 clbs = 自身快照（无需沿 parentId 链合并）。
+  const datasetEffectiveClbs = await getResourceOwnedClbs({
+    resourceType: PerResourceTypeEnum.dataset,
+    teamId,
+    resourceId: datasetId,
+    session
+  });
+
+  // 启用态下不应存在独立态 collection（关闭会重置、未启用时创建被拒）；这里防御性保留，
+  // 避免异常数据被静默改写语义。
+  const preservedCollectionIds = new Set(
+    collections
+      .filter((collection) => collection.inheritPermission === false)
+      .map((collection) => String(collection._id))
+  );
+  const collectionsToRefresh = collections.filter(
+    (collection) => !preservedCollectionIds.has(String(collection._id))
+  );
+
+  if (collectionsToRefresh.length > 0) {
+    // 1. 未配置独立 ACL 的 collection 统一回到继承态，建立可重放的纯继承基线。
+    await MongoDatasetCollection.updateMany(
+      { teamId, datasetId, inheritPermission: { $ne: false } },
+      { $set: { inheritPermission: true } },
+      { session }
+    );
+
+    // 2. 旧 ACL 不能参与快照计算，否则会被误当成子级独有权限保留。
+    await MongoResourcePermission.deleteMany(
+      {
+        resourceType: PerResourceTypeEnum.collection,
+        teamId,
+        resourceId: { $in: collectionsToRefresh.map((collection) => String(collection._id)) }
+      },
+      { session }
+    );
+  }
+
+  if (collections.length > 0) {
+    // 3. 重建 owner 行（待刷新记录刚被清空；独立态记录补 owner，保证 owner 唯一不变量）。
+    await MongoResourcePermission.bulkWrite(buildOwnerUpserts({ teamId, collections }), {
+      session
+    });
+  }
+
+  // 4. 重建根级继承态 collection 快照（父级 = dataset 有效 clbs），folder 递归子树。
+  // 独立态节点由 syncRootCollections / syncResourceTreePermissions 自动跳过。
+  await syncRootCollections({
+    teamId,
+    datasetId,
+    oldRootClbs: [],
+    rootClbs: datasetEffectiveClbs,
+    session
+  });
+
+  // 5. 开关最后置位：失败时读语义保持关闭态，重试即再执行一次。
+  await setDatasetCollectionPermissionEnabled({ datasetId, enabled: true, session });
+  return collections.length;
+};
+
+/**
+ * 启用 collection 级权限：物化该 dataset 全部 collection 快照，成功后置位开关。
+ *
+ * 传入 `session` 时在调用方事务内执行（开启权限同步要求与 dataset 配置同事务），
+ * 否则自建事务。两种方式都保持「开关最后置位」的幂等语义。
+ */
+export const enableDatasetCollectionPermissions = async ({
+  teamId,
+  datasetId,
+  session
+}: {
+  teamId: string;
+  datasetId: string;
+  /** 可选：外部事务会话；由调用方保证该事务的重试与提交。 */
+  session?: ClientSession;
 }): Promise<EnableDatasetCollectionResult> => {
   logger.info(`[collectionPermission] enable dataset: datasetId=${datasetId} teamId=${teamId}`);
 
-  const collectionCount = await mongoSessionRun(async (session) => {
-    // 每次事务重试都重读开关：并发启停会让本轮事务重试，重试后才看得到最新状态。
-    const dataset = await MongoDataset.findOne(
-      { _id: datasetId, teamId },
-      'teamId collectionPermissionEnabled'
-    )
-      .session(session)
-      .lean();
-    if (!dataset) {
-      throw new Error(`Dataset ${datasetId} not found in team ${teamId}`);
-    }
-
-    // 已启用即 no-op：开关与物化在同一事务提交，true 代表快照完整。
-    // 重跑若继续「清空 + 重建」，会跳过独立节点整棵子树，误删其继承后代已物化的 ACL 行。
-    if (dataset.collectionPermissionEnabled === true) {
-      logger.info(`[collectionPermission] enable skipped: already enabled, datasetId=${datasetId}`);
-      return MongoDatasetCollection.countDocuments({ teamId, datasetId }).session(session);
-    }
-
-    // 每次事务重试都重读集合和 dataset ACL，避免复用并发创建前的旧快照。
-    const collections = await MongoDatasetCollection.find(
-      { teamId, datasetId },
-      '_id tmbId parentId inheritPermission type'
-    )
-      .session(session)
-      .lean<CollectionForEnable[]>();
-
-    assertValidCollectionTree(collections, datasetId);
-
-    // dataset 已完全物化权限：有效 clbs = 自身快照（无需沿 parentId 链合并）。
-    const datasetEffectiveClbs = await getResourceOwnedClbs({
-      resourceType: PerResourceTypeEnum.dataset,
-      teamId,
-      resourceId: datasetId,
-      session
-    });
-
-    // 启用态下不应存在独立态 collection（关闭会重置、未启用时创建被拒）；这里防御性保留，
-    // 避免异常数据被静默改写语义。
-    const preservedCollectionIds = new Set(
-      collections
-        .filter((collection) => collection.inheritPermission === false)
-        .map((collection) => String(collection._id))
-    );
-    const collectionsToRefresh = collections.filter(
-      (collection) => !preservedCollectionIds.has(String(collection._id))
-    );
-
-    if (collectionsToRefresh.length > 0) {
-      // 1. 未配置独立 ACL 的 collection 统一回到继承态，建立可重放的纯继承基线。
-      await MongoDatasetCollection.updateMany(
-        { teamId, datasetId, inheritPermission: { $ne: false } },
-        { $set: { inheritPermission: true } },
-        { session }
-      );
-
-      // 2. 旧 ACL 不能参与快照计算，否则会被误当成子级独有权限保留。
-      await MongoResourcePermission.deleteMany(
-        {
-          resourceType: PerResourceTypeEnum.collection,
-          teamId,
-          resourceId: { $in: collectionsToRefresh.map((collection) => String(collection._id)) }
-        },
-        { session }
-      );
-    }
-
-    if (collections.length > 0) {
-      // 3. 重建 owner 行（待刷新记录刚被清空；独立态记录补 owner，保证 owner 唯一不变量）。
-      await MongoResourcePermission.bulkWrite(buildOwnerUpserts({ teamId, collections }), {
-        session
-      });
-    }
-
-    // 4. 重建根级继承态 collection 快照（父级 = dataset 有效 clbs），folder 递归子树。
-    // 独立态节点由 syncRootCollections / syncResourceTreePermissions 自动跳过。
-    await syncRootCollections({
-      teamId,
-      datasetId,
-      oldRootClbs: [],
-      rootClbs: datasetEffectiveClbs,
-      session
-    });
-
-    // 5. 开关最后置位：失败时读语义保持关闭态，重试即再执行一次。
-    await setDatasetCollectionPermissionEnabled({ datasetId, enabled: true, session });
-    return collections.length;
-  });
+  const run = (activeSession: ClientSession) =>
+    enableWithinSession({ teamId, datasetId, session: activeSession });
+  const collectionCount = session ? await run(session) : await mongoSessionRun(run);
 
   return { collectionCount };
 };
@@ -274,6 +299,15 @@ export const disableDatasetCollectionPermissions = async ({
   logger.info(`[collectionPermission] disable dataset: datasetId=${datasetId} teamId=${teamId}`);
 
   const collectionCount = await mongoSessionRun(async (session) => {
+    // 外部权限同步托管时，关闭 collection 权限会让同步无处落 ACL，也会让读路径整体短路。
+    // 且 permissionSync=true ⇒ collectionPermissionEnabled=true 是硬不变量，关闭必须先退出托管。
+    const datasetConfig = await MongoDataset.findOne({ _id: datasetId, teamId }, 'apiDatasetServer')
+      .session(session)
+      .lean();
+    if (datasetConfig && isPermissionSyncDataset(datasetConfig.apiDatasetServer)) {
+      return Promise.reject(DatasetErrEnum.permissionSyncManaged);
+    }
+
     // 重试时必须包含刚提交的新集合，不能在事务外固定待清理 ID 列表。
     const collectionIds = (
       await MongoDatasetCollection.distinct('_id', { teamId, datasetId }).session(session)

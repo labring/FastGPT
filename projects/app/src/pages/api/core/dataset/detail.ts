@@ -1,5 +1,8 @@
 import { NextAPI } from '@/service/middleware/entry';
-import { filterApiDatasetServerPublicData } from '@fastgpt/global/core/dataset/apiDataset/utils';
+import {
+  filterApiDatasetServerPublicData,
+  isPermissionSyncDataset
+} from '@fastgpt/global/core/dataset/apiDataset/utils';
 import {
   GetDatasetDetailQuerySchema,
   GetDatasetDetailResponseSchema,
@@ -11,6 +14,7 @@ import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/catalog/service';
 import { desensitizeModel } from '@fastgpt/service/core/ai/model/transform';
 import { getDatasetSyncDatasetStatus } from '@fastgpt/service/core/dataset/datasetSync';
+import { getDatasetPermissionSyncStatus } from '@fastgpt/service/core/dataset/datasetPermissionSync';
 import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
 import { hasDatasetTrainingTask } from '@fastgpt/service/core/dataset/training/entity';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
@@ -27,9 +31,13 @@ async function handler(req: ApiRequestProps): Promise<GetDatasetDetailResponse> 
     per: ReadPermissionVal
   });
 
-  const [{ status, errorMsg }, hasTrainingTask] = await Promise.all([
+  const [{ status, errorMsg }, hasTrainingTask, permissionSyncStatus] = await Promise.all([
     getDatasetSyncDatasetStatus(datasetId),
-    hasDatasetTrainingTask({ teamId: dataset.teamId, datasetId })
+    hasDatasetTrainingTask({ teamId: dataset.teamId, datasetId }),
+    // 只有开启同步才有状态可报；关闭时连队列都不查
+    isPermissionSyncDataset(dataset.apiDatasetServer)
+      ? getDatasetPermissionSyncStatus(datasetId)
+      : Promise.resolve(undefined)
   ]);
   const modelHandle = await getTeamModelHandle({ teamId: String(dataset.teamId) });
   const vectorModel = modelHandle.findModelData(getDatasetModelReference(dataset, 'embedding'), {
@@ -49,6 +57,12 @@ async function handler(req: ApiRequestProps): Promise<GetDatasetDetailResponse> 
     hasTrainingTask,
     errorMsg,
     permission,
+    ...(permissionSyncStatus
+      ? {
+          permissionSyncStatus: permissionSyncStatus.status,
+          permissionSyncErrorMsg: permissionSyncStatus.errorMsg
+        }
+      : {}),
     vectorModel: vectorModel ? desensitizeModel(vectorModel) : undefined,
     agentModel: agentModel ? desensitizeModel(agentModel) : undefined,
     vlmModel: vlmModel ? desensitizeModel(vlmModel) : undefined,

@@ -8,16 +8,22 @@ const {
   mockBulkInsertFolderCollections,
   mockBulkMoveCollectionsParent,
   mockCollectionFind,
+  mockDatasetUpdateOne,
   mockMongoSessionRun,
-  mockLoggerWarn
+  mockEnqueueDatasetPermissionSync,
+  mockLoggerWarn,
+  mockLoggerError
 } = vi.hoisted(() => ({
   mockListFiles: vi.fn(),
   mockCreateApiFileCollectionsBatch: vi.fn(),
   mockBulkInsertFolderCollections: vi.fn(),
   mockBulkMoveCollectionsParent: vi.fn(),
   mockCollectionFind: vi.fn(),
+  mockDatasetUpdateOne: vi.fn(),
   mockMongoSessionRun: vi.fn(),
-  mockLoggerWarn: vi.fn()
+  mockEnqueueDatasetPermissionSync: vi.fn(),
+  mockLoggerWarn: vi.fn(),
+  mockLoggerError: vi.fn()
 }));
 
 vi.mock('@fastgpt/service/support/permission/teamLimit', () => ({
@@ -26,7 +32,11 @@ vi.mock('@fastgpt/service/support/permission/teamLimit', () => ({
 
 vi.mock('@fastgpt/service/common/logger', () => ({
   LogCategories: { MODULE: { DATASET: 'dataset' } },
-  getLogger: () => ({ info: vi.fn(), warn: mockLoggerWarn, error: vi.fn() })
+  getLogger: () => ({ info: vi.fn(), warn: mockLoggerWarn, error: mockLoggerError })
+}));
+
+vi.mock('@fastgpt/service/core/dataset/schema', () => ({
+  MongoDataset: { updateOne: mockDatasetUpdateOne }
 }));
 
 vi.mock('@fastgpt/service/core/dataset/collection/schema', () => ({
@@ -41,6 +51,10 @@ vi.mock('@fastgpt/service/core/dataset/apiDataset', () => ({
 
 vi.mock('@fastgpt/service/common/mongo/sessionRun', () => ({
   mongoSessionRun: mockMongoSessionRun
+}));
+
+vi.mock('@fastgpt/service/core/dataset/datasetPermissionSync', () => ({
+  enqueueDatasetPermissionSync: mockEnqueueDatasetPermissionSync
 }));
 
 vi.mock('@fastgpt/service/core/dataset/collection/controller', () => ({
@@ -128,32 +142,26 @@ beforeEach(() => {
   }));
   mockMongoSessionRun.mockImplementation((fn: any) => fn('session'));
   mockCreateApiFileCollectionsBatch.mockResolvedValue({ collectionIds: [] });
+  mockDatasetUpdateOne.mockResolvedValue({});
+  mockEnqueueDatasetPermissionSync.mockResolvedValue(undefined);
 });
 
 describe('createApiDatasetCollection', () => {
   it.each([
-    ['yuque', { yuqueServer: { userId: 'yuque-user' } }],
-    ['dingtalk', { dingtalkServer: { appKey: 'ding-app', userId: 'user-id' } }]
-  ])('%s 未配置根路径时，全选从 provider 根枚举', async (_, apiDatasetServer) => {
+    ['custom', { apiServer: { basePath: 'configured-root' } }],
+    ['yuque 未配置根路径', { yuqueServer: { userId: 'yuque-user' } }],
+    ['yuque', { yuqueServer: { basePath: 'configured-root' } }],
+    ['feishu', { feishuServer: { folderToken: 'configured-root' } }],
+    ['dingtalk 未配置根路径', { dingtalkServer: { appKey: 'ding-app', userId: 'user-id' } }]
+  ])('%s 全选以 provider 根的直接子节点为种子', async (_, apiDatasetServer) => {
     await call({
       apiFiles: [apiFile(RootCollectionId, 'folder', true, 'ROOT_FOLDER')],
       dataset: createDataset(apiDatasetServer)
     });
 
-    expect(mockListFiles).toHaveBeenCalledWith({ parentId: undefined });
+    // 哨兵不进入建树：种子来自 provider 根，缺省 parentId 由各 provider 解析为配置根
+    expect(mockListFiles).toHaveBeenCalledWith({ parentId: null });
     expect(mockListFiles).not.toHaveBeenCalledWith({ parentId: RootCollectionId });
-  });
-
-  it.each([
-    ['custom', { apiServer: { basePath: 'configured-root' } }],
-    ['yuque', { yuqueServer: { basePath: 'configured-root' } }],
-    ['feishu', { feishuServer: { folderToken: 'configured-root' } }]
-  ])('%s 全选使用配置的根路径', async (_, apiDatasetServer) => {
-    await call({
-      apiFiles: [apiFile(RootCollectionId, 'folder', true)],
-      dataset: createDataset(apiDatasetServer)
-    });
-    expect(mockListFiles).toHaveBeenCalledWith({ parentId: 'configured-root' });
   });
 
   it('四层层级：folder 逐层写 parentId，file 落在 L3 之下', async () => {
@@ -378,6 +386,21 @@ describe('createApiDatasetCollection', () => {
     expect(mockCreateApiFileCollectionsBatch).not.toHaveBeenCalled();
   });
 
+  it('外部权限同步托管时跳过 collection 级鉴权：落位由 server 树推导，本地 ACL 不代表访问权', async () => {
+    setServerTree({ root: [apiFile('child', 'file')] });
+    const authorizeChanges = vi.fn();
+
+    const result = await call({
+      apiFiles: [apiFile('root', 'folder', true)],
+      authorizeChanges,
+      dataset: createDataset({ apiServer: {}, permissionSync: true })
+    });
+
+    expect(authorizeChanges).not.toHaveBeenCalled();
+    // 跳过鉴权不影响实际写入
+    expect(result.successCount).toBe(2);
+  });
+
   it.each(['self', 'descendant'])('V1 重复导入在任何写入前拒绝目录环：%s', async (mode) => {
     const parent = localId('parent');
     const child = localId('child');
@@ -557,10 +580,10 @@ describe('createApiDatasetCollection', () => {
   });
 
   it.each([undefined, false])(
-    '根哨兵保持层级且仅其自身使用权限标记 %s',
+    '根哨兵不落库，provider 根级节点上提为本地根并承接请求权限标记 %s',
     async (inheritPermission) => {
       setServerTree({
-        'dingtalk-root': [apiFile('root-folder', 'folder', true), apiFile('root-file', 'file')],
+        null: [apiFile('root-folder', 'folder', true), apiFile('root-file', 'file')],
         'root-folder': [apiFile('deep-file', 'file')]
       });
 
@@ -572,7 +595,7 @@ describe('createApiDatasetCollection', () => {
         }
       });
 
-      await createApiDatasetCollection({
+      const result = await createApiDatasetCollection({
         datasetId: 'dataset-id',
         apiFiles: [apiFile(RootCollectionId, 'folder', true, 'ROOT_FOLDER')],
         customPdfParse: false,
@@ -584,36 +607,73 @@ describe('createApiDatasetCollection', () => {
       } as any);
 
       expect(getApiDatasetRequest).toHaveBeenCalledWith(dataset.apiDatasetServer);
-      expect(mockListFiles).toHaveBeenCalledWith({ parentId: 'dingtalk-root' });
-      const sentinel = findFolder(RootCollectionId);
-      expect(sentinel).toBeTruthy();
-      expect(sentinel.inheritPermission).toBe(inheritPermission);
-      expect(findFolder('root-folder').inheritPermission).toBeUndefined();
-      // 哨兵自身落在 dataset 根（没有请求体父级）
-      expect(sentinel.parentId).toBeNull();
-      // 哨兵不是真实 server 节点，没有 server 父级：同样落缺字段而不是 null
-      expect(sentinel.apiFileParentId).toBeUndefined();
+      // 哨兵本身不是真实 server 节点：既不拿它当种子，也不会用它的 id 去列子级
+      expect(mockListFiles).toHaveBeenCalledWith({ parentId: null });
+      expect(mockListFiles).not.toHaveBeenCalledWith({ parentId: RootCollectionId });
 
-      // server 根级 folder 挂在哨兵行之下，直系 server 父级记为哨兵 id
-      expect(String(findFolder('root-folder').parentId)).toBe(String(sentinel._id));
-      expect(findFolder('root-folder').apiFileParentId).toBe(RootCollectionId);
+      // 哨兵不落库
+      expect(findFolder(RootCollectionId)).toBeUndefined();
+      expect(createdFileParams().some((params: any) => params.apiFileId === RootCollectionId)).toBe(
+        false
+      );
 
-      // server 根级 file 同样挂在哨兵行之下，而不是 dataset 根
+      // provider 根级 folder 落在 dataset 根，且承接请求级权限标记
+      expect(findFolder('root-folder').parentId).toBeNull();
+      expect(findFolder('root-folder').apiFileParentId).toBeUndefined();
+      expect(findFolder('root-folder').inheritPermission).toBe(inheritPermission);
+
+      // provider 根级 file 同样落在 dataset 根（落库时 null 归一为缺字段）
       const rootFileParams = createdFileParams().find(
         (params: any) => params.apiFileId === 'root-file'
       );
-      expect(rootFileParams.parentId).toBe(String(sentinel._id));
-      expect(rootFileParams.apiFileParentId).toBe(RootCollectionId);
-      expect(rootFileParams.inheritPermission).toBeUndefined();
-      // 子级 file 的父级是 root-folder 行
+      expect(rootFileParams.parentId).toBeUndefined();
+      expect(rootFileParams.apiFileParentId).toBeUndefined();
+      expect(rootFileParams.inheritPermission).toBe(inheritPermission);
+
+      // 子级保持继承：父级 ACL 变化时才跟着变
       const deepFileParams = createdFileParams().find(
         (params: any) => params.apiFileId === 'deep-file'
       );
       expect(deepFileParams.parentId).toBe(String(findFolder('root-folder')._id));
       expect(deepFileParams.apiFileParentId).toBe('root-folder');
       expect(deepFileParams.inheritPermission).toBeUndefined();
+
+      // 幂等置位：后续每日同步的范围是知识库根，而不是本地最外层节点
+      expect(mockDatasetUpdateOne).toHaveBeenCalledWith(
+        { _id: 'dataset-id', teamId: 'team-id' },
+        { $set: { 'apiDatasetServer.syncAllFiles': true } }
+      );
+      // successCount 不再包含该合成节点
+      expect(result).toEqual({ successCount: 3, failedCount: 0 });
     }
   );
+
+  it('已开启 syncAllFiles 时不再重复置位', async () => {
+    setServerTree({ null: [apiFile('root-folder', 'folder')] });
+
+    await call({
+      apiFiles: [apiFile(RootCollectionId, 'folder', true)],
+      dataset: createDataset({ apiServer: { basePath: 'configured-root' }, syncAllFiles: true })
+    });
+
+    expect(mockDatasetUpdateOne).not.toHaveBeenCalled();
+  });
+
+  it('置位 syncAllFiles 失败只告警，不阻断导入', async () => {
+    setServerTree({ null: [apiFile('root-folder', 'folder')] });
+    mockDatasetUpdateOne.mockRejectedValueOnce(new Error('mongo down'));
+
+    const result = await call({
+      apiFiles: [apiFile(RootCollectionId, 'folder', true)],
+      dataset: createDataset({ apiServer: { basePath: 'configured-root' } })
+    });
+
+    expect(result).toEqual({ successCount: 1, failedCount: 0 });
+    expect(mockLoggerError).toHaveBeenCalledWith(
+      'Set apiDatasetServer.syncAllFiles failed',
+      expect.objectContaining({ datasetId: 'dataset-id' })
+    );
+  });
 
   /**
    * 回归场景：目录骨架整体漏传 inheritPermission —— 文件走 `...body` 落成请求指定的独立态，
@@ -751,5 +811,70 @@ describe('createApiDatasetCollection', () => {
       'Create api file collection parent correction not fully matched',
       expect.anything()
     );
+  });
+
+  describe('外部权限同步入队', () => {
+    /** 本地快照查询不带 apiFileId 过滤；根节点查询按 apiFileId 过滤，用一个实现分流。 */
+    const setFindByRootQuery = (localRows: any[], rootRows: any[]) =>
+      mockCollectionFind.mockImplementation((filter: any) => ({
+        lean: vi.fn().mockResolvedValue(filter.apiFileId ? rootRows : localRows)
+      }));
+    const syncDataset = () => createDataset({ apiServer: {}, permissionSync: true });
+    const rootQueryIds = () => {
+      const filter = mockCollectionFind.mock.calls.at(-1)![0] as { apiFileId?: { $in: string[] } };
+      return filter.apiFileId?.$in;
+    };
+
+    it('只把本次选中的节点作为根入队，选中文件的 #dir 同为根', async () => {
+      setServerTree({ doc: [apiFile('sub', 'file')] });
+      const rootRows = [{ _id: localId('ROOT_FOLDER') }, { _id: localId('ROOT_DOC') }];
+      setFindByRootQuery([], rootRows);
+
+      await call({
+        apiFiles: [apiFile('folderA', 'folder'), apiFile('doc', 'file', true)],
+        dataset: syncDataset()
+      });
+
+      // 只取请求里选中的节点，不扩到展开出的子节点
+      expect(new Set(rootQueryIds())).toEqual(new Set(['folderA', 'doc', 'doc#dir']));
+      expect(mockEnqueueDatasetPermissionSync).toHaveBeenCalledWith({
+        datasetId: 'dataset-id',
+        collectionIds: [localId('ROOT_FOLDER'), localId('ROOT_DOC')]
+      });
+    });
+
+    it('选中文件挂在存量目录下时只入队它自己', async () => {
+      setFindByRootQuery(
+        [
+          { _id: localId('PARENT'), apiFileId: 'parent', type: 'folder', parentId: null },
+          { _id: localId('DOC'), apiFileId: 'doc', type: 'apiFile', parentId: localId('PARENT') }
+        ],
+        [{ _id: localId('DOC') }]
+      );
+
+      await call({ apiFiles: [apiFile('doc', 'file')], dataset: syncDataset() });
+
+      expect(new Set(rootQueryIds())).toEqual(new Set(['doc', 'doc#dir']));
+      expect(mockEnqueueDatasetPermissionSync).toHaveBeenCalledWith({
+        datasetId: 'dataset-id',
+        collectionIds: [localId('DOC')]
+      });
+    });
+
+    it('根节点未落库时不入队', async () => {
+      setFindByRootQuery([], []);
+
+      await call({ apiFiles: [apiFile('doc', 'file')], dataset: syncDataset() });
+
+      expect(mockEnqueueDatasetPermissionSync).not.toHaveBeenCalled();
+    });
+
+    it('未开启 permissionSync 时不入队', async () => {
+      setFindByRootQuery([], [{ _id: localId('DOC') }]);
+
+      await call({ apiFiles: [apiFile('doc', 'file')] });
+
+      expect(mockEnqueueDatasetPermissionSync).not.toHaveBeenCalled();
+    });
   });
 });

@@ -1,9 +1,12 @@
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
+import { isPermissionSyncDataset } from '@fastgpt/global/core/dataset/apiDataset/utils';
 import { MongoDataset } from '../../../core/dataset/schema';
 import type { ClientSession } from '../../../common/mongo';
 
 /**
- * Dataset 级 collection 权限开关（`collectionPermissionEnabled`）读写。
+ * Dataset 级 collection 权限开关读写。
+ *
+ * 1. `collectionPermissionEnabled`（collection 级自定义权限）：
  *
  * 语义：开关是 collection 级自定义权限的**唯一入口**。
  *  - `false`（默认，含全部存量数据）：读路径短路到 dataset 有效权限，不查询也不依赖任何
@@ -14,6 +17,8 @@ import type { ClientSession } from '../../../common/mongo';
  * 只有启用/关闭接口（enable.ts）可以改变该字段；其余写路径统一通过
  * `assertDatasetCollectionPermissionEnabled` 做前置断言，禁止任何形式的「隐式开启」——
  * 隐式开启会让关闭态数据被按逐 collection 解析，而关闭态并不保证存在快照行。
+ *
+ * 2. `apiDatasetServer.permissionSync`（外部权限同步托管）：见 `assertCollectionPermissionEditable`。
  */
 
 /** 读取开关；字段缺失（旧数据）视为关闭。 */
@@ -98,5 +103,25 @@ export const assertDatasetCollectionPermissionEnabled = async ({
 
   if (!enabled) {
     return Promise.reject(DatasetErrEnum.collectionPermissionDisabled);
+  }
+};
+
+/**
+ * 写入口守卫：权限由外部同步托管时，本地不允许修改 collection ACL。
+ *
+ * 外部每一轮同步都会整份替换 ACL；本地改动要么立刻被抹掉，要么与外部列表产生长期冲突。
+ * 因此所有人工写入口（协作者、恢复继承、转移 owner、关闭 collection 权限）都在进入事务前拒绝。
+ */
+export const assertCollectionPermissionEditable = async ({
+  teamId,
+  datasetId
+}: {
+  teamId: string;
+  datasetId: string;
+}): Promise<void> => {
+  const dataset = await MongoDataset.findOne({ _id: datasetId, teamId }, 'apiDatasetServer').lean();
+  if (!dataset) return Promise.reject(DatasetErrEnum.unExist);
+  if (isPermissionSyncDataset(dataset.apiDatasetServer)) {
+    return Promise.reject(DatasetErrEnum.permissionSyncManaged);
   }
 };
