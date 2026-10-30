@@ -59,6 +59,8 @@ import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { FixedTableLayout } from '@fastgpt/web/components/common/FixedTable';
 import JsonModelConfigModal from './JsonModelConfigModal';
 import DefaultModelModal from './DefaultModelModal';
+import ModelDeprecationInformModal from './ModelDeprecationInformModal';
+import ModelDeprecationHistoryModal from './ModelDeprecationHistoryModal';
 import ModelListFilters from '@/components/core/ai/ModelListFilters';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useModelTableFormat } from '@/components/core/ai/hooks/useModelTableFormat';
@@ -366,6 +368,16 @@ const ModelTable = ({ Tab, channelType }: { Tab: React.ReactNode; channelType: C
     onClose: onCloseDefaultModel,
     isOpen: isOpenDefaultModel
   } = useDisclosure();
+  const {
+    isOpen: isOpenDeprecationInform,
+    onOpen: onOpenDeprecationInform,
+    onClose: onCloseDeprecationInform
+  } = useDisclosure();
+  const {
+    isOpen: isOpenDeprecationHistory,
+    onOpen: onOpenDeprecationHistory,
+    onClose: onCloseDeprecationHistory
+  } = useDisclosure();
 
   // 渠道是列表的补充数据，模型详情和更新也都有独立操作反馈；只有模型首次加载阻塞整表。
   const isInitialLoading = loadingModels && modelConfigData === undefined;
@@ -450,13 +462,14 @@ const ModelTable = ({ Tab, channelType }: { Tab: React.ReactNode; channelType: C
               isSortMode
                 ? ['repeat(2, minmax(0, 1fr))', 'repeat(2, auto)']
                 : !isTeam && isRoot
-                  ? ['repeat(2, minmax(0, 1fr))', 'repeat(4, minmax(0, 1fr))']
+                  ? ['repeat(2, minmax(0, 1fr))', `repeat(${feConfigs?.isPlus ? 5 : 4}, minmax(0, 1fr))`]
                   : ['repeat(2, minmax(0, 1fr))', 'repeat(2, minmax(0, 1fr))']
             }
             gap={2}
           >
             {isSortMode ? (
               <>
+
                 <Button
                   w={['100%', '81px']}
                   minW={0}
@@ -495,6 +508,17 @@ const ModelTable = ({ Tab, channelType }: { Tab: React.ReactNode; channelType: C
                 </Button>
                 {!isTeam && isRoot && (
                   <>
+                    {feConfigs?.isPlus && (
+                      <Button
+                        w={'100%'}
+                        minW={0}
+                        px={[2, 4]}
+                        variant={'whiteBase'}
+                        onClick={onOpenDeprecationInform}
+                      >
+                        {t('config_model:model_deprecation.send_entry')}
+                      </Button>
+                    )}
                     <Button
                       w={'100%'}
                       minW={0}
@@ -1007,6 +1031,19 @@ const ModelTable = ({ Tab, channelType }: { Tab: React.ReactNode; channelType: C
           onClose={onCloseDefaultModel}
           onSuccess={refreshModels}
         />
+      )}
+      {isOpenDeprecationInform && (
+        <ModelDeprecationInformModal
+          models={modelItems}
+          onClose={onCloseDeprecationInform}
+          onShowHistory={() => {
+            onCloseDeprecationInform();
+            onOpenDeprecationHistory();
+          }}
+        />
+      )}
+      {isOpenDeprecationHistory && (
+        <ModelDeprecationHistoryModal models={modelItems} onClose={onCloseDeprecationHistory} />
       )}
       <BatchDeleteConfirmModal isLoading={deletingModels} />
     </>
