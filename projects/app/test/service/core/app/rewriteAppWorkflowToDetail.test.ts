@@ -4,6 +4,7 @@ import { MongoAgentSkills } from '@fastgpt/service/core/ai/skill/model/schema';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { AgentSkillSourceEnum, AgentSkillTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
 import { DatasetTypeEnum, DatasetTypeMap } from '@fastgpt/global/core/dataset/constants';
+import { migrateWorkflowToCurrent } from '@fastgpt/global/core/workflow/migration';
 import {
   FlowNodeInputTypeEnum,
   FlowNodeOutputTypeEnum,
@@ -16,6 +17,7 @@ import type {
   SelectedAgentSkillItemType
 } from '@fastgpt/global/core/app/formEdit/type';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
+import { OpenAPIStoreNodeItemTypeSchema } from '@fastgpt/global/openapi/core/workflow/node';
 import { getUser } from '@test/datas/users';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 
@@ -849,6 +851,74 @@ describe('rewriteAppWorkflowToDetail - workflow tool inputs', () => {
 });
 
 describe('rewriteAppWorkflowToDetail - tool set descriptions', () => {
+  beforeEach(() => {
+    getClientToolPreviewNodeMock.mockReset();
+    authAppByTmbIdMock.mockReset();
+  });
+
+  it('keeps the plugin reference ID after migrating a legacy hidden MCP input', async () => {
+    const pluginId = '507f1f77bcf86cd799439011';
+    getClientToolPreviewNodeMock.mockResolvedValue({
+      id: pluginId,
+      pluginId,
+      flowNodeType: FlowNodeTypeEnum.toolSet,
+      name: 'External MCP tool set',
+      avatar: '',
+      intro: '',
+      inputs: [],
+      outputs: [],
+      version: '',
+      isLatestVersion: true,
+      source: 'mcp',
+      toolConfig: {
+        mcpToolSet: {
+          toolId: pluginId,
+          toolList: [{ name: 'search', description: 'Search' }]
+        }
+      }
+    });
+    authAppByTmbIdMock.mockResolvedValue({});
+    const workflow = migrateWorkflowToCurrent({
+      nodes: [
+        {
+          nodeId: 'legacy-external-tool-set',
+          flowNodeType: FlowNodeTypeEnum.toolSet,
+          pluginId,
+          name: 'External MCP tool set',
+          inputs: [
+            {
+              key: 'legacy-tool-set-config',
+              label: 'MCP tool set config',
+              renderTypeList: [FlowNodeInputTypeEnum.input],
+              value: {
+                url: 'https://mcp.example.com',
+                toolList: [{ name: 'search', description: 'Search' }]
+              }
+            }
+          ],
+          outputs: []
+        }
+      ],
+      edges: []
+    });
+
+    await rewriteAppWorkflowToDetail({
+      nodes: workflow.nodes,
+      teamId: 'team-1',
+      ownerTmbId: 'owner-1',
+      isRoot: false
+    });
+
+    expect(getClientToolPreviewNodeMock).toHaveBeenCalledWith(
+      expect.objectContaining({ appId: pluginId })
+    );
+    expect(OpenAPIStoreNodeItemTypeSchema.safeParse(workflow.nodes[0]).success).toBe(true);
+    expect(workflow.nodes[0].toolConfig?.mcpToolSet).toMatchObject({
+      toolId: pluginId,
+      toolList: [{ name: 'search', description: 'Search' }]
+    });
+  });
+
   it('保留工具集节点已编辑的子工具描述', async () => {
     getClientToolPreviewNodeMock.mockResolvedValue({
       id: 'systemTool-toolset',
@@ -904,6 +974,96 @@ describe('rewriteAppWorkflowToDetail - tool set descriptions', () => {
       { toolId: 'blank', name: 'Blank', description: '' },
       { toolId: 'new', name: 'New', description: 'New definition description' }
     ]);
+  });
+
+  it('encrypts inline HTTP parent auth before returning a detail response', async () => {
+    const secret = 'http-detail-secret';
+    const httpToolSet = {
+      baseUrl: 'https://api.example.com',
+      headerSecret: { Authorization: { value: secret } },
+      toolList: [
+        {
+          name: 'search',
+          description: 'Search',
+          path: '/search',
+          method: 'GET'
+        }
+      ]
+    };
+    const nodes = [
+      {
+        nodeId: 'tool-set',
+        flowNodeType: FlowNodeTypeEnum.toolSet,
+        inputs: [],
+        outputs: [],
+        toolConfig: { httpToolSet }
+      } as StoreNodeItemType
+    ];
+
+    await rewriteAppWorkflowToDetail({
+      nodes,
+      teamId: 'team-1',
+      ownerTmbId: 'tmb-1',
+      isRoot: false
+    });
+
+    expect(getClientToolPreviewNodeMock).not.toHaveBeenCalled();
+    const resultToolSet = nodes[0].toolConfig?.httpToolSet;
+    if (!resultToolSet || !('headerSecret' in resultToolSet)) {
+      throw new Error('HTTP toolset auth is missing');
+    }
+    expect(resultToolSet.headerSecret?.Authorization).toMatchObject({
+      secret: expect.any(String)
+    });
+    expect(JSON.stringify(nodes)).not.toContain(secret);
+  });
+
+  it('preserves and encrypts per-tool auth on complete HTTP tool-set detail responses', async () => {
+    const secret = 'stored-http-tool-secret';
+    const encryptedSecret = 'encrypted-http-tool-secret';
+    const httpToolSet = {
+      baseUrl: 'https://api.example.com',
+      toolList: [
+        {
+          name: 'search',
+          description: 'Search',
+          path: '/search',
+          method: 'GET',
+          headerSecret: { Authorization: { secret: encryptedSecret } }
+        },
+        {
+          name: 'create',
+          description: 'Create',
+          path: '/create',
+          method: 'POST',
+          headerSecret: { Authorization: { value: secret } }
+        }
+      ]
+    };
+    const nodes = [
+      {
+        nodeId: 'tool-set',
+        flowNodeType: FlowNodeTypeEnum.toolSet,
+        inputs: [],
+        outputs: [],
+        toolConfig: { httpToolSet }
+      } as StoreNodeItemType
+    ];
+
+    await rewriteAppWorkflowToDetail({
+      nodes,
+      teamId: 'team-1',
+      ownerTmbId: 'tmb-1',
+      isRoot: false
+    });
+
+    expect(nodes[0].toolConfig?.httpToolSet?.toolList?.[0]).toMatchObject({
+      headerSecret: { Authorization: { secret: encryptedSecret } }
+    });
+    expect(nodes[0].toolConfig?.httpToolSet?.toolList?.[1]).toMatchObject({
+      headerSecret: { Authorization: { secret: expect.any(String) } }
+    });
+    expect(JSON.stringify(nodes)).not.toContain(secret);
   });
 });
 

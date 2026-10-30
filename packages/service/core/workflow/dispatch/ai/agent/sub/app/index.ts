@@ -6,6 +6,7 @@ import { runWorkflow, type RunWorkflowProps } from '../../../../../../../core/wo
 import {
   getWorkflowEntryNodeIds,
   rewriteNodeOutputByHistories,
+  rewriteLegacyInteractiveToolSetNodeIds,
   storeEdges2RuntimeEdges,
   storeNodes2RuntimeNodes
 } from '@fastgpt/global/core/workflow/runtime/utils';
@@ -109,11 +110,15 @@ export const dispatchApp = async (props: Props): Promise<DispatchSubAppResponse>
   // 恢复 AgentV2 子工作流时，入口节点、节点输出和记忆边必须沿用暂停快照。
   // 仅把 lastInteractive 传给 runWorkflow 不足以恢复队列：运行时节点和边在进入
   // WorkflowQueue 前已经被重新初始化了。
+  const restoredInteractive = rewriteLegacyInteractiveToolSetNodeIds({
+    lastInteractive: data.lastInteractive,
+    nodes
+  });
   const runtimeNodes = rewriteNodeOutputByHistories(
-    storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes, data.lastInteractive)),
-    data.lastInteractive
+    storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes, restoredInteractive)),
+    restoredInteractive
   );
-  const runtimeEdges = storeEdges2RuntimeEdges(edges, data.lastInteractive);
+  const runtimeEdges = storeEdges2RuntimeEdges(edges, restoredInteractive);
 
   const { assistantResponses, flowUsages, workflowRuntimeSummary, workflowInteractiveResponse } =
     await runWithDerivedWorkflowFileContext({
@@ -166,7 +171,8 @@ export const dispatchApp = async (props: Props): Promise<DispatchSubAppResponse>
                 }
               ],
           stream: false,
-          workflowStreamResponse: undefined
+          workflowStreamResponse: undefined,
+          lastInteractive: restoredInteractive
         });
       }
     });
@@ -339,9 +345,13 @@ export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppRespon
         resolveInputFile
       });
       const runtimeVariables = childrenVariableState.toRuntimeRecord();
+      const restoredInteractive = rewriteLegacyInteractiveToolSetNodeIds({
+        lastInteractive: data.lastInteractive,
+        nodes
+      });
       const restoredRuntimeNodes = rewriteNodeOutputByHistories(
-        storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes, data.lastInteractive)),
-        data.lastInteractive
+        storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes, restoredInteractive)),
+        restoredInteractive
       );
       const runtimeNodes = restoredRuntimeNodes.map((node) => {
         // Update plugin input value
@@ -396,12 +406,13 @@ export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppRespon
         },
         runningUserInfo,
         runtimeNodes,
-        runtimeEdges: storeEdges2RuntimeEdges(edges, data.lastInteractive),
+        runtimeEdges: storeEdges2RuntimeEdges(edges, restoredInteractive),
         chatConfig,
         histories: [],
         variableState: childrenVariableState,
         isToolCall: true,
-        query: data.lastInteractive
+        lastInteractive: restoredInteractive,
+        query: restoredInteractive
           ? data.query
           : serverGetWorkflowToolRunUserQuery({
               pluginInputs,

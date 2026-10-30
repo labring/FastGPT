@@ -22,15 +22,20 @@ import {
 import {
   getHTTPToolRuntimeSchemas,
   getHTTPToolRuntimeNode,
-  parseHttpToolConfig
+  parseHttpToolConfig,
+  pathData2ToolList
 } from '@fastgpt/global/core/app/tool/httpTool/utils';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { getMCPChildren } from '../../../app/mcp';
+import { getMCPChildren, MCPClient } from '../../../app/mcp';
 import { getSystemToolRunTimeNodeFromSystemToolset } from '../../utils';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
 import type { HttpToolConfigType } from '@fastgpt/global/core/app/tool/httpTool/type';
 import type { McpToolConfigType } from '@fastgpt/global/core/app/tool/mcpTool/type';
-import type { McpToolSetRuntimeConfigType } from '@fastgpt/global/core/workflow/type/node';
+import {
+  HttpToolSetNodeConfigSchema,
+  McpToolSetNodeConfigSchema,
+  type McpToolSetRuntimeConfigType
+} from '@fastgpt/global/core/workflow/type/node';
 import type { WorkflowResponseType } from '@fastgpt/global/core/workflow/runtime/sse';
 import { getLogger, LogCategories } from '../../../../common/logger';
 
@@ -38,14 +43,25 @@ import { getHTTPToolList } from '../../../app/http';
 import { getWorkflowResourceContext } from '../../utils/context';
 import { filterWorkflowToolList } from '../../resource/context';
 import { loadWorkflowAppResource } from '../../resource/service';
-import { getLastInteractiveValue } from '@fastgpt/global/core/workflow/runtime/utils';
+import { axios } from '../../../../common/api/axios';
+import { getSecretValue } from '../../../../common/secret/utils';
+import { checkUrlSafety } from '../../../../common/system/utils';
+import {
+  getLastInteractiveValue,
+  rewriteInteractiveToolSetNodeIds
+} from '@fastgpt/global/core/workflow/runtime/utils';
 import {
   getSavedToolInputSelectedType,
   initToolInputsTypeByDefaultMode,
   normalizeFlowNodeInputType
 } from '@fastgpt/global/core/app/formEdit/utils';
-import { jsonSchema2NodeInput } from '@fastgpt/global/core/app/jsonschema';
+import { jsonSchema2NodeInput, str2OpenApiSchema } from '@fastgpt/global/core/app/jsonschema';
 import { getToolSetChildDescription } from '@fastgpt/global/core/app/tool/utils';
+import {
+  bundleOpenAPISchema,
+  parseOpenAPISchemaString
+} from '@fastgpt/global/common/string/swagger';
+import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 
 /**
  * 构造 workflow SSE 写入函数。
@@ -338,13 +354,49 @@ export const rewriteRuntimeWorkFlow = async ({
   tmbId,
   nodes,
   edges,
-  lang
+  lang: _lang,
+  lastInteractive
 }: {
   teamId: string;
   tmbId: string;
   nodes: RuntimeNodeItemType[];
   edges: RuntimeEdgeItemType[];
   lang?: localeType;
+  lastInteractive?: WorkflowInteractiveResponseType;
+}) => {
+  const legacyToolNodeIds = new Map<string, string>();
+  const setLegacyToolNodeId = (legacyId: string, nodeId: string) => {
+    if (!legacyToolNodeIds.has(legacyId)) legacyToolNodeIds.set(legacyId, nodeId);
+  };
+
+  await rewriteRuntimeWorkFlowNodes({
+    teamId,
+    tmbId,
+    nodes,
+    edges,
+    setLegacyToolNodeId
+  });
+
+  edges.forEach((edge) => {
+    const stableNodeId = legacyToolNodeIds.get(edge.target);
+    if (stableNodeId) edge.target = stableNodeId;
+  });
+
+  return rewriteInteractiveToolSetNodeIds({ lastInteractive, nodeIdMap: legacyToolNodeIds });
+};
+
+const rewriteRuntimeWorkFlowNodes = async ({
+  teamId,
+  tmbId,
+  nodes,
+  edges,
+  setLegacyToolNodeId
+}: {
+  teamId: string;
+  tmbId: string;
+  nodes: RuntimeNodeItemType[];
+  edges: RuntimeEdgeItemType[];
+  setLegacyToolNodeId: (legacyId: string, nodeId: string) => void;
 }) => {
   const mergeToolNodeInputs = ({
     node,
@@ -424,11 +476,62 @@ export const rewriteRuntimeWorkFlow = async ({
     }
   };
 
+  /** 历史外部 ToolSet 可能缺少嵌套 ID，运行时回退到父节点 pluginId。 */
+  const getToolSetReferenceId = (toolSet: unknown, pluginId: string) =>
+    typeof toolSet === 'object' &&
+    toolSet !== null &&
+    'toolId' in toolSet &&
+    typeof toolSet.toolId === 'string' &&
+    toolSet.toolId
+      ? toolSet.toolId
+      : pluginId;
+
+  /** 本地摘要仅覆盖同名远端工具的描述，不能限制远端当前工具列表。 */
+  const mergeToolSetChildDescriptions = <T extends { name: string; description?: string }>({
+    toolList,
+    summaries
+  }: {
+    toolList: T[];
+    summaries: { name: string; description?: string }[];
+  }) => {
+    const descriptionMap = new Map(
+      summaries.map(({ name, description }) => [name, description] as const)
+    );
+    return toolList.map((tool) => ({
+      ...tool,
+      description: getToolSetChildDescription(descriptionMap.get(tool.name), tool.description)
+    }));
+  };
+
   type RuntimeMcpTool = McpToolConfigType & {
     url?: string;
     headerSecret?: McpToolSetRuntimeConfigType['headerSecret'];
     id?: string;
     avatar?: string;
+  };
+
+  const existingNodeIds = new Set(nodes.map((node) => node.nodeId));
+  const usedNodeIds = new Set(existingNodeIds);
+  const getToolSetChildNodeId = ({
+    toolSetNode,
+    tool,
+    index
+  }: {
+    toolSetNode: RuntimeNodeItemType;
+    tool: { name: string; path?: string; method?: string };
+    index: number;
+  }) => {
+    const legacyNodeId = `${toolSetNode.nodeId}${index}`;
+    let nodeId = `${toolSetNode.nodeId}#toolset:${encodeURIComponent(tool.name)}`;
+    let suffix = 1;
+    while (usedNodeIds.has(nodeId)) {
+      nodeId = `${toolSetNode.nodeId}#toolset:${encodeURIComponent(tool.name)}~${suffix++}`;
+    }
+    usedNodeIds.add(nodeId);
+
+    if (!existingNodeIds.has(legacyNodeId)) setLegacyToolNodeId(legacyNodeId, nodeId);
+
+    return nodeId;
   };
 
   /* ToolSet 展开 */
@@ -471,80 +574,152 @@ export const rewriteRuntimeWorkFlow = async ({
             pushEdges(runtimeNode.nodeId);
           });
         } else if (mcpToolsetVal) {
-          // 旧调试状态可能仍携带空 toolId，占位值不能阻止按 pluginId 加载资源。
-          const toolSetId =
-            ('toolId' in mcpToolsetVal ? mcpToolsetVal.toolId : undefined) || toolSetNode.pluginId;
-          if (!toolSetId) continue;
+          if (!toolSetNode.pluginId) {
+            const mcpToolSet = McpToolSetNodeConfigSchema.parse(mcpToolsetVal);
+            const remoteToolList = await new MCPClient({
+              url: mcpToolSet.url,
+              headers: getSecretValue({ storeSecret: mcpToolSet.headerSecret ?? undefined })
+            }).getTools();
+            const toolList = mergeToolSetChildDescriptions({
+              toolList: remoteToolList,
+              summaries: mcpToolSet.toolList
+            });
 
-          const app = await getAuthorizedToolSet(toolSetId);
-          if (!app) continue;
-          const toolList = filterWorkflowToolList({
-            context: getWorkflowResourceContext(),
-            appId: String(app._id),
-            tools: (await getMCPChildren(app)) as RuntimeMcpTool[]
-          });
+            toolList.forEach((tool, index) => {
+              const newToolNode = initToolSetChildNode(
+                getMCPToolRuntimeNode({
+                  nodeId: getToolSetChildNodeId({ toolSetNode, tool, index }),
+                  toolsetName: toolSetNode.name,
+                  avatar: toolSetNode.avatar,
+                  tool,
+                  url: mcpToolSet.url,
+                  headerSecret: mcpToolSet.headerSecret ?? undefined
+                })
+              );
+              nodes.push(newToolNode);
+              pushEdges(newToolNode.nodeId);
+            });
+          } else {
+            const toolSetId = getToolSetReferenceId(mcpToolsetVal, toolSetNode.pluginId);
+            const app = await getAuthorizedToolSet(toolSetId);
+            if (!app) continue;
+            const toolList = filterWorkflowToolList({
+              context: getWorkflowResourceContext(),
+              appId: String(app._id),
+              tools: (await getMCPChildren(app)) as RuntimeMcpTool[]
+            });
 
-          const savedDescriptionMap = new Map(
-            (mcpToolsetVal.toolList ?? []).map((tool) => [tool.name, tool.description])
-          );
-          toolList.forEach((tool, index) => {
-            const runtimeTool = {
-              ...tool,
-              description: getToolSetChildDescription(
-                savedDescriptionMap.get(tool.name),
-                tool.description
-              )
-            };
-            const newToolNode = initToolSetChildNode(
-              getMCPToolRuntimeNode({
-                nodeId: `${toolSetNode.nodeId}${index}`,
-                toolSetId,
-                toolsetName: toolSetNode.name,
-                avatar: toolSetNode.avatar,
-                tool: runtimeTool
-              })
+            const savedDescriptionMap = new Map(
+              (mcpToolsetVal.toolList ?? []).map((tool) => [tool.name, tool.description])
             );
-            nodes.push(newToolNode);
-            pushEdges(newToolNode.nodeId);
-          });
+            toolList.forEach((tool, index) => {
+              const runtimeTool = {
+                ...tool,
+                description: getToolSetChildDescription(
+                  savedDescriptionMap.get(tool.name),
+                  tool.description
+                )
+              };
+              const newToolNode = initToolSetChildNode(
+                getMCPToolRuntimeNode({
+                  nodeId: getToolSetChildNodeId({ toolSetNode, tool, index }),
+                  toolSetId,
+                  toolsetName: toolSetNode.name,
+                  avatar: toolSetNode.avatar,
+                  tool: runtimeTool
+                })
+              );
+              nodes.push(newToolNode);
+              pushEdges(newToolNode.nodeId);
+            });
+          }
         } else if (httpToolsetVal) {
-          const toolSetId =
-            ('toolId' in httpToolsetVal ? httpToolsetVal.toolId : undefined) ||
-            toolSetNode.pluginId;
-          if (!toolSetId) continue;
+          if (!toolSetNode.pluginId) {
+            const httpToolSet = HttpToolSetNodeConfigSchema.parse(httpToolsetVal);
+            if (!httpToolSet.apiSchemaUrl) throw new Error('HTTP tool set schema URL is missing');
 
-          const app = await getAuthorizedToolSet(toolSetId);
-          if (!app) continue;
-
-          const toolList = filterWorkflowToolList({
-            context: getWorkflowResourceContext(),
-            appId: String(app._id),
-            tools: await getHTTPToolList(app)
-          });
-
-          const savedDescriptionMap = new Map(
-            (httpToolsetVal.toolList ?? []).map((tool) => [tool.name, tool.description])
-          );
-          toolList.forEach((tool: HttpToolConfigType, index: number) => {
-            const runtimeTool = {
-              ...tool,
-              description: getToolSetChildDescription(
-                savedDescriptionMap.get(tool.name),
-                tool.description
-              )
-            };
-            const newToolNode = initToolSetChildNode(
-              getHTTPToolRuntimeNode({
-                tool: runtimeTool,
-                nodeId: `${toolSetNode.nodeId}${index}`,
-                avatar: toolSetNode.avatar,
-                toolSetId,
-                toolsetName: toolSetNode.name
-              })
+            await checkUrlSafety(httpToolSet.apiSchemaUrl, 'OpenAPI Schema URL');
+            const { data: downloadedSchema } = await axios.get<string>(httpToolSet.apiSchemaUrl, {
+              responseType: 'text',
+              maxRedirects: 0,
+              timeout: 30000,
+              transformResponse: (value) => value
+            });
+            const bundledSchema = await bundleOpenAPISchema(
+              parseOpenAPISchemaString(downloadedSchema)
             );
-            nodes.push(newToolNode);
-            pushEdges(newToolNode.nodeId);
-          });
+            const apiSchemaStr = JSON.stringify(bundledSchema);
+            if (!apiSchemaStr) throw new Error('Failed to serialize HTTP tool schema');
+
+            const apiSchema = await str2OpenApiSchema(apiSchemaStr);
+            const parsedToolList = await pathData2ToolList(apiSchema.pathData);
+            if (parsedToolList.length !== apiSchema.pathData.length) {
+              throw new Error('Failed to parse HTTP tool schema');
+            }
+            const toolList = mergeToolSetChildDescriptions({
+              toolList: parsedToolList,
+              summaries: httpToolSet.toolList
+            });
+
+            toolList.forEach((tool, index) => {
+              const runtimeNode = getHTTPToolRuntimeNode({
+                tool,
+                nodeId: getToolSetChildNodeId({ toolSetNode, tool, index }),
+                avatar: toolSetNode.avatar,
+                toolSetId: 'inline',
+                toolsetName: toolSetNode.name
+              });
+              const { headerSecret: _headerSecret, ...toolWithoutHeaderSecret } = tool;
+              runtimeNode.toolConfig = {
+                ...runtimeNode.toolConfig,
+                httpTool: {
+                  ...toolWithoutHeaderSecret,
+                  baseUrl: httpToolSet.baseUrl?.trim() || apiSchema.serverPath,
+                  apiSchemaStr,
+                  customHeaders: httpToolSet.customHeaders,
+                  headerSecret: httpToolSet.headerSecret ?? undefined
+                }
+              };
+
+              const newToolNode = initToolSetChildNode(runtimeNode);
+              nodes.push(newToolNode);
+              pushEdges(newToolNode.nodeId);
+            });
+          } else {
+            const toolSetId = getToolSetReferenceId(httpToolsetVal, toolSetNode.pluginId);
+            const app = await getAuthorizedToolSet(toolSetId);
+            if (!app) continue;
+
+            const toolList = filterWorkflowToolList({
+              context: getWorkflowResourceContext(),
+              appId: String(app._id),
+              tools: await getHTTPToolList(app)
+            });
+
+            const savedDescriptionMap = new Map(
+              (httpToolsetVal.toolList ?? []).map((tool) => [tool.name, tool.description])
+            );
+            toolList.forEach((tool: HttpToolConfigType, index: number) => {
+              const runtimeTool = {
+                ...tool,
+                description: getToolSetChildDescription(
+                  savedDescriptionMap.get(tool.name),
+                  tool.description
+                )
+              };
+              const newToolNode = initToolSetChildNode(
+                getHTTPToolRuntimeNode({
+                  tool: runtimeTool,
+                  nodeId: getToolSetChildNodeId({ toolSetNode, tool, index }),
+                  avatar: toolSetNode.avatar,
+                  toolSetId,
+                  toolsetName: toolSetNode.name
+                })
+              );
+              nodes.push(newToolNode);
+              pushEdges(newToolNode.nodeId);
+            });
+          }
         }
       }
 
@@ -571,7 +746,7 @@ export const rewriteRuntimeWorkFlow = async ({
     const parseMcpToolConfigs = mcpToolNodes
       .map((node) => {
         const mcpTool = node.toolConfig?.mcpTool;
-        return mcpTool ? parsetMcpToolConfig(mcpTool) : undefined;
+        return mcpTool && 'toolId' in mcpTool ? parsetMcpToolConfig(mcpTool) : undefined;
       })
       .filter(Boolean) as { toolsetId: string; toolName: string }[];
     // 批量获取 toolset，避免每个工具节点都单独查询一次数据库。
@@ -593,6 +768,7 @@ export const rewriteRuntimeWorkFlow = async ({
     mcpToolNodes.forEach((node) => {
       const mcpTool = node.toolConfig?.mcpTool;
       if (!mcpTool) return;
+      if (!('toolId' in mcpTool)) return;
       const parseResult = parsetMcpToolConfig(mcpTool);
       if (!parseResult) return;
       const toolList = toolListMap.get(parseResult.toolsetId);

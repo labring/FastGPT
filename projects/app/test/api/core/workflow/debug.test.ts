@@ -137,7 +137,7 @@ describe('workflow debug API chatId', () => {
     );
     expect(mocks.createChatUsageRecord).not.toHaveBeenCalled();
     expect(mocks.getNanoid).toHaveBeenCalledTimes(1);
-    expect(mocks.getAppDraftWorkflow).toHaveBeenCalledWith(appId);
+    expect(mocks.getAppDraftWorkflow).toHaveBeenCalledWith(appId, app);
     expect(mocks.prepareWorkflowFileQuery).toHaveBeenCalledWith(
       expect.objectContaining({ chatConfig: savedChatConfig })
     );
@@ -166,7 +166,7 @@ describe('workflow debug API chatId', () => {
     );
     expect(mocks.createChatUsageRecord).toHaveBeenCalledTimes(1);
     expect(mocks.getNanoid).toHaveBeenCalledTimes(2);
-    expect(mocks.getAppDraftWorkflow).toHaveBeenCalledWith(appId);
+    expect(mocks.getAppDraftWorkflow).toHaveBeenCalledWith(appId, app);
     expect(mocks.dispatchWorkFlow).toHaveBeenCalledWith(
       expect.objectContaining({ chatConfig: savedChatConfig })
     );

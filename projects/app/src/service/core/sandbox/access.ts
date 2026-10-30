@@ -44,7 +44,9 @@ export async function resolveSandboxSessionAvailability(
 
   const app = await MongoApp.findById(session.sourceId).lean();
   const appEnabled = isChatTest
-    ? isAppSandboxEnabledInNodes((await getAppDraftWorkflow(session.sourceId)).nodes)
+    ? isAppSandboxEnabledInNodes(
+        (await getAppDraftWorkflow(session.sourceId, app ?? undefined)).nodes
+      )
     : isAppSandboxEnabledInNodes(
         (await getAppLatestVersion(session.sourceId, app ?? undefined)).nodes
       );

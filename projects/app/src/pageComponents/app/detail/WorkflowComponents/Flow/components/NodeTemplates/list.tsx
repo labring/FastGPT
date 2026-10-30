@@ -21,7 +21,10 @@ import { selectPluginText } from '@fastgpt/global/common/i18n/utils';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { isEmptyModelValue } from '@fastgpt/global/core/ai/model/reference';
 import { getToolIdentityKey, isDebugToolSource } from '@fastgpt/global/core/app/tool/utils';
-import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import {
+  FlowNodeTemplateTypeEnum,
+  NodeOutputKeyEnum
+} from '@fastgpt/global/core/workflow/constants';
 import {
   FlowNodeInputTypeEnum,
   FlowNodeTypeEnum,
@@ -36,6 +39,8 @@ import {
 import { LoopEndNode } from '@fastgpt/global/core/workflow/template/system/loop/loopEnd';
 import { LoopStartNode } from '@fastgpt/global/core/workflow/template/system/loop/loopStart';
 import { LoopRunStartNode } from '@fastgpt/global/core/workflow/template/system/loopRun/loopRunStart';
+import { HttpToolSetNode } from '@fastgpt/global/core/workflow/template/system/httpToolSet';
+import { McpToolSetNode } from '@fastgpt/global/core/workflow/template/system/mcpToolSet';
 import type {
   FlowNodeItemType,
   NodeTemplateListItemType,
@@ -73,6 +78,25 @@ export type TemplateListProps = {
   ScrollData?: ScrollListType;
 };
 
+type ToolSetTemplate = Pick<NodeTemplateListItemType, 'id' | 'flowNodeType' | 'templateType'>;
+
+const isLocalToolSetTemplate = (template: ToolSetTemplate) =>
+  template.templateType === FlowNodeTemplateTypeEnum.toolCall &&
+  (template.id === McpToolSetNode.id || template.id === HttpToolSetNode.id);
+
+/** 本地 MCP/HTTP 工具集可直接添加；其他工具集需先选择。 */
+export const canDirectAddToolSet = ({
+  template,
+  isPopover,
+  isToolSelector
+}: {
+  template: ToolSetTemplate;
+  isPopover?: boolean;
+  isToolSelector: boolean;
+}) =>
+  template.flowNodeType === FlowNodeTypeEnum.toolSet &&
+  (isToolSelector || (!isPopover && isLocalToolSetTemplate(template)));
+
 const NodeTemplateListItem = ({
   template,
   templateType,
@@ -97,12 +121,11 @@ const NodeTemplateListItem = ({
   const isSystemTool = templateType === TemplateTypeEnum.systemTools;
   const isToolSet = template.flowNodeType === FlowNodeTypeEnum.toolSet;
   const isToolSelector = handleParams?.handleId === NodeOutputKeyEnum.selectedTools;
-  // 工具集（系统工具、团队 HTTP/MCP 工具）只有在工具调用的工具选择器里才允许直接创建节点；
-  // 侧边栏等其他场景点击卡片一律进入工具集内部，选择单个工具。
-  const allowDirectAddToolSet = isToolSet && isToolSelector;
+  const isLocalToolSet = isLocalToolSetTemplate(template);
+  const allowDirectAddToolSet = canDirectAddToolSet({ template, isPopover, isToolSelector });
   const canDragCreateNode =
     !isPopover && (!template.isFolder || isToolSet) && (!isToolSet || allowDirectAddToolSet);
-  const showExpandArrow = template.isFolder || isToolSet;
+  const showExpandArrow = (template.isFolder || isToolSet) && !isLocalToolSet;
   const isDebugTool = isDebugToolSource(template.source);
   const isSystemSource = template.source === 'system';
 
@@ -271,6 +294,11 @@ const NodeTemplateList = ({
       try {
         const templateNode = await (async () => {
           try {
+            const baseTemplate = moduleTemplatesFlat.find((item) => item.id === template.id);
+            const isLocalToolSet =
+              template.id === McpToolSetNode.id || template.id === HttpToolSetNode.id;
+            if (isLocalToolSet && baseTemplate) return { ...baseTemplate };
+
             const shouldLoadPreviewNode = [
               FlowNodeTypeEnum.tool,
               FlowNodeTypeEnum.toolSet,
@@ -294,11 +322,9 @@ const NodeTemplateList = ({
               };
             }
 
-            const baseTemplate = moduleTemplatesFlat.find((item) => item.id === template.id);
-            if (!baseTemplate) {
-              throw new Error('baseTemplate not found');
-            }
-            return { ...baseTemplate };
+            if (baseTemplate) return { ...baseTemplate };
+
+            throw new Error('baseTemplate not found');
           } catch (e) {
             toast({
               status: 'error',

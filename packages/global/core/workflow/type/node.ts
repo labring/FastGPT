@@ -27,6 +27,22 @@ export const McpToolSetRuntimeConfigSchema = z.object({
 });
 export type McpToolSetRuntimeConfigType = z.infer<typeof McpToolSetRuntimeConfigSchema>;
 
+export const McpToolSetNodeConfigSchema = z
+  .object({
+    url: z.string().meta({
+      description: 'MCP 服务地址',
+      example: 'https://mcp.example.com/sse'
+    }),
+    headerSecret: StoreSecretValueTypeSchema.nullish().meta({
+      description: 'MCP 服务请求头密钥配置'
+    }),
+    toolList: z.array(ToolSetToolSummarySchema.strict()).meta({
+      description: 'MCP 工具名称与描述摘要'
+    })
+  })
+  .strict();
+export type McpToolSetNodeConfigType = z.infer<typeof McpToolSetNodeConfigSchema>;
+
 export const HttpToolSetRuntimeConfigSchema = z.object({
   toolList: z.array(HttpToolConfigTypeSchema).meta({
     description: 'HTTP 工具集包含的工具列表'
@@ -46,28 +62,82 @@ export const HttpToolSetRuntimeConfigSchema = z.object({
 });
 export type HttpToolSetRuntimeConfigType = z.infer<typeof HttpToolSetRuntimeConfigSchema>;
 
+export const HttpToolSetNodeConfigSchema = z
+  .object({
+    toolList: z.array(ToolSetToolSummarySchema.strict()).meta({
+      description: 'HTTP 工具名称与描述摘要'
+    }),
+    apiSchemaUrl: z.string().optional().meta({
+      description: 'HTTP 工具集 OpenAPI 文档地址',
+      example: 'https://api.example.com/openapi.json'
+    }),
+    baseUrl: z.string().optional().meta({
+      description: 'HTTP 工具集请求基础地址',
+      example: 'https://gateway.example.com/v2'
+    }),
+    customHeaders: z.string().optional().meta({
+      description: 'HTTP 工具集公共请求头 JSON 字符串'
+    }),
+    headerSecret: StoreSecretValueTypeSchema.nullish().meta({
+      description: 'HTTP 工具集请求头密钥配置'
+    })
+  })
+  .strict();
+export type HttpToolSetNodeConfigType = z.infer<typeof HttpToolSetNodeConfigSchema>;
+
+export const HttpToolRuntimeConfigSchema = HttpToolConfigTypeSchema.extend({
+  baseUrl: z.string().optional().meta({
+    description: 'HTTP 工具集请求基础地址',
+    example: 'https://api.example.com'
+  }),
+  apiSchemaStr: z.string().optional().meta({
+    description: 'HTTP 工具集导入的 OpenAPI Schema 原始内容'
+  }),
+  customHeaders: z.string().optional().meta({
+    description: 'HTTP 工具集公共请求头 JSON 字符串'
+  })
+});
+export type HttpToolRuntimeConfigType = z.infer<typeof HttpToolRuntimeConfigSchema>;
+
 const ToolSetReferenceSchema = z.object({
   toolId: z.string().min(1).meta({
     description: '工具集 ID'
   })
 });
 
-const ToolSetPreviewReferenceSchema = ToolSetReferenceSchema.extend({
-  toolList: z.array(ToolSetToolSummarySchema).optional().meta({
+export const ToolSetPreviewReferenceSchema = ToolSetReferenceSchema.extend({
+  toolList: z.array(ToolSetToolSummarySchema.strict()).optional().meta({
     description: '工具集预览展示摘要，不包含执行 Schema'
+  })
+})
+  .strict()
+  .meta({
+    description: '工具集外部引用及可选展示摘要'
+  });
+
+export const McpToolRuntimeConfigSchema = McpToolConfigSchema.extend({
+  url: z.string().meta({
+    description: 'MCP 服务地址',
+    example: 'https://mcp.example.com/sse'
+  }),
+  headerSecret: StoreSecretValueTypeSchema.nullish().meta({
+    description: 'MCP 服务请求头密钥配置'
   })
 });
 
 const NodeToolConfigCommonSchema = z.object({
   mcpTool: z
-    .object({
-      toolId: z.string().meta({
-        description: '节点引用的 MCP 工具 ID'
-      }) // mcp-appId/oolname
-    })
+    .union([
+      z.object({
+        toolId: z.string().meta({
+          description: '节点引用的 MCP 工具 ID'
+        }) // mcp-appId/oolname
+      }),
+      McpToolRuntimeConfigSchema
+    ])
     .optional()
     .meta({
-      description: '节点绑定的 MCP 单工具配置'
+      description: '节点绑定的 MCP 单工具引用或运行时内联配置'
     }),
   systemTool: z
     .object({
@@ -117,30 +187,41 @@ const NodeToolConfigCommonSchema = z.object({
       description: '节点绑定的系统工具集配置'
     }),
   httpTool: z
-    .object({
-      toolId: z.string().meta({
-        description: '节点引用的 HTTP 工具 ID'
-      }) // http-appId/oolname
-    })
+    .union([
+      z.object({
+        toolId: z.string().meta({
+          description: '节点引用的 HTTP 工具 ID'
+        }) // http-appId/oolname
+      }),
+      HttpToolRuntimeConfigSchema
+    ])
     .optional()
     .meta({
-      description: '节点绑定的 HTTP 单工具配置'
+      description: '节点绑定的 HTTP 单工具引用或运行时内联配置'
     })
 });
 
-/** 工作流数据兼容当前引用格式与历史完整快照；引用分支优先，避免空 HTTP toolList 被当成完整配置而丢失 ID。 */
+/** 通用节点读取兼容 App 根完整配置；工作流持久化入参在 OpenAPI 边界限制为摘要。 */
 export const NodeToolConfigTypeSchema = NodeToolConfigCommonSchema.extend({
   mcpToolSet: z
-    .union([ToolSetPreviewReferenceSchema, McpToolSetRuntimeConfigSchema])
+    .union([
+      McpToolSetNodeConfigSchema,
+      McpToolSetRuntimeConfigSchema.strict(),
+      ToolSetPreviewReferenceSchema
+    ])
     .optional()
     .meta({
-      description: '兼容历史 MCP 工具集快照或当前工具集引用'
+      description: 'MCP 节点摘要、工具集 App 完整配置或外部引用摘要'
     }),
   httpToolSet: z
-    .union([ToolSetPreviewReferenceSchema, HttpToolSetRuntimeConfigSchema])
+    .union([
+      HttpToolSetNodeConfigSchema,
+      HttpToolSetRuntimeConfigSchema.strict(),
+      ToolSetPreviewReferenceSchema
+    ])
     .optional()
     .meta({
-      description: '兼容历史 HTTP 工具集快照或当前工具集引用'
+      description: 'HTTP 节点摘要、工具集 App 完整配置或外部引用摘要'
     })
 });
 export type NodeToolConfigType = z.infer<typeof NodeToolConfigTypeSchema>;
@@ -362,5 +443,19 @@ export const StoreNodeItemTypeSchema = FlowNodeCommonTypeSchema.extend({
       y: NumSchema
     })
     .optional()
+}).superRefine((node, ctx) => {
+  if (
+    node.flowNodeType !== FlowNodeTypeEnum.toolSet ||
+    !node.toolConfig?.mcpToolSet ||
+    !node.toolConfig.httpToolSet
+  ) {
+    return;
+  }
+
+  ctx.addIssue({
+    code: 'custom',
+    path: ['toolConfig', 'httpToolSet'],
+    message: '工具集节点只能配置 MCP 或 HTTP 工具集'
+  });
 });
 export type StoreNodeItemType = z.infer<typeof StoreNodeItemTypeSchema>;

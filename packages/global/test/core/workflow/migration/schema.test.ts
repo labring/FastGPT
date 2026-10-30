@@ -47,6 +47,244 @@ describe('workflow input schema boundaries', () => {
   });
 });
 
+describe('legacy ToolSet migration', () => {
+  it.each(['mcpToolSet', 'httpToolSet'] as const)(
+    'projects a legacy external %s snapshot to its referenced summary',
+    (toolSetKey) => {
+      const result = migrateWorkflowToCurrent({
+        nodes: [
+          {
+            nodeId: 'external-tool-set',
+            flowNodeType: 'toolSet',
+            pluginId: 'external-tool-set-id',
+            name: 'External ToolSet',
+            inputs: [],
+            outputs: [],
+            toolConfig: {
+              [toolSetKey]: {
+                ...(toolSetKey === 'mcpToolSet'
+                  ? { url: 'https://mcp.example.com' }
+                  : { baseUrl: 'https://api.example.com' }),
+                headerSecret: { Authorization: { value: 'secret', secret: '' } },
+                toolList: [{ name: 'search', description: 'Search' }]
+              }
+            }
+          }
+        ],
+        edges: []
+      });
+
+      expect(result.nodes[0].toolConfig?.[toolSetKey]).toEqual({
+        toolId: 'external-tool-set-id',
+        toolList: [{ name: 'search', description: 'Search' }]
+      });
+    }
+  );
+
+  it('keeps node-local HTTP source config and tool summaries', () => {
+    const result = migrateWorkflowToCurrent({
+      nodes: [
+        {
+          nodeId: 'inline-tool-set',
+          flowNodeType: 'toolSet',
+          name: 'Inline ToolSet',
+          inputs: [],
+          outputs: [],
+          toolConfig: {
+            httpToolSet: {
+              apiSchemaUrl: 'https://api.example.com/openapi.json',
+              toolList: [{ name: 'search', description: 'Search' }]
+            }
+          }
+        }
+      ],
+      edges: []
+    });
+
+    expect(result.nodes[0].toolConfig?.httpToolSet).toEqual({
+      apiSchemaUrl: 'https://api.example.com/openapi.json',
+      toolList: [{ name: 'search', description: 'Search' }]
+    });
+  });
+
+  it('preserves a full inline HTTP App runtime config and tool schemas', () => {
+    const httpToolSet = {
+      baseUrl: 'https://http.example.com',
+      apiSchemaStr: '{"openapi":"3.0.0"}',
+      customHeaders: '{}',
+      headerSecret: { Authorization: { value: 'secret' } },
+      toolList: [
+        {
+          name: 'search',
+          description: 'Search',
+          path: '/search',
+          method: 'POST',
+          inputSchema: {
+            type: 'object',
+            properties: { query: { type: 'string' } },
+            required: ['query']
+          }
+        }
+      ]
+    };
+    const result = migrateWorkflowToCurrent({
+      nodes: [
+        {
+          nodeId: 'http-app-root',
+          flowNodeType: 'toolSet',
+          name: 'HTTP App',
+          inputs: [],
+          outputs: [],
+          toolConfig: { httpToolSet }
+        }
+      ],
+      edges: []
+    });
+
+    expect(result.nodes[0].toolConfig?.httpToolSet).toEqual(httpToolSet);
+  });
+
+  it('preserves a full inline MCP App runtime config and tool schemas', () => {
+    const mcpToolSet = {
+      url: 'https://mcp.example.com',
+      headerSecret: { Authorization: { value: 'secret' } },
+      toolList: [
+        {
+          name: 'search',
+          description: 'Search',
+          inputSchema: {
+            type: 'object',
+            properties: { query: { type: 'string' } },
+            required: ['query']
+          }
+        }
+      ]
+    };
+    const result = migrateWorkflowToCurrent({
+      nodes: [
+        {
+          nodeId: 'mcp-app-root',
+          flowNodeType: 'toolSet',
+          name: 'MCP App',
+          inputs: [],
+          outputs: [],
+          toolConfig: { mcpToolSet }
+        }
+      ],
+      edges: []
+    });
+
+    expect(result.nodes[0].toolConfig?.mcpToolSet).toEqual(mcpToolSet);
+  });
+
+  it('strips a historical empty MCP toolId before strict runtime validation', () => {
+    const mcpToolSet = {
+      toolId: '',
+      url: 'https://mcp.example.com',
+      headerSecret: { Authorization: { value: 'secret' } },
+      toolList: [
+        {
+          name: 'search',
+          description: 'Search',
+          inputSchema: { type: 'object', properties: { query: { type: 'string' } } }
+        }
+      ]
+    };
+    const result = migrateWorkflowToCurrent({
+      nodes: [
+        {
+          nodeId: 'mcp-app-root',
+          flowNodeType: 'toolSet',
+          name: 'MCP App',
+          inputs: [],
+          outputs: [],
+          toolConfig: { mcpToolSet }
+        }
+      ],
+      edges: []
+    });
+
+    expect(result.nodes[0].toolConfig?.mcpToolSet).toEqual({
+      url: mcpToolSet.url,
+      headerSecret: mcpToolSet.headerSecret,
+      toolList: mcpToolSet.toolList
+    });
+  });
+
+  it('rejects an incomplete inline MCP App runtime config', () => {
+    expect(() =>
+      migrateWorkflowToCurrent({
+        nodes: [
+          {
+            nodeId: 'mcp-app-root',
+            flowNodeType: 'toolSet',
+            name: 'MCP App',
+            inputs: [],
+            outputs: [],
+            toolConfig: {
+              mcpToolSet: {
+                toolList: [{ name: 'search', description: 'Search' }]
+              }
+            }
+          }
+        ],
+        edges: []
+      })
+    ).toThrow();
+  });
+
+  it('rejects an invalid inline HTTP App runtime config', () => {
+    expect(() =>
+      migrateWorkflowToCurrent({
+        nodes: [
+          {
+            nodeId: 'inline-tool-set',
+            flowNodeType: 'toolSet',
+            name: 'Inline ToolSet',
+            inputs: [],
+            outputs: [],
+            toolConfig: {
+              httpToolSet: {
+                apiSchemaStr: '{"openapi":"3.0.0"}',
+                toolList: [
+                  {
+                    name: 'search',
+                    description: 'Search',
+                    path: '/search',
+                    inputSchema: { type: 'object' }
+                  }
+                ]
+              }
+            }
+          }
+        ],
+        edges: []
+      })
+    ).toThrow();
+  });
+
+  it('rejects a toolset configuring both protocols', () => {
+    expect(() =>
+      migrateWorkflowToCurrent({
+        nodes: [
+          {
+            nodeId: 'dual-tool-set',
+            flowNodeType: 'toolSet',
+            name: 'Dual ToolSet',
+            inputs: [],
+            outputs: [],
+            toolConfig: {
+              mcpToolSet: { toolId: 'mcp-tool-set', toolList: [] },
+              httpToolSet: { toolId: 'http-tool-set', toolList: [] }
+            }
+          }
+        ],
+        edges: []
+      })
+    ).toThrow();
+  });
+});
+
 describe('workflow migration boundary', () => {
   it('preserves ordinary business JSON containing credential-shaped fields', () => {
     const value = {
@@ -92,8 +330,9 @@ describe('workflow migration boundary', () => {
             outputs: [],
             toolConfig: {
               [toolSetKey]: {
-                url: 'https://example.com/mcp',
-                baseUrl: 'https://example.com',
+                ...(toolSetKey === 'mcpToolSet'
+                  ? { url: 'https://example.com/mcp' }
+                  : { baseUrl: 'https://example.com' }),
                 toolList: [],
                 headerSecret: {
                   Authorization: {},

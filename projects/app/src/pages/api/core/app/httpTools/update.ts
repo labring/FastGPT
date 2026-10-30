@@ -5,8 +5,10 @@ import type { ApiRequestProps } from '@fastgpt/next/type';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { ManagePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { storeSecretValue } from '@fastgpt/service/common/secret/utils';
-import { updateParentFoldersUpdateTime } from '@fastgpt/service/core/app/controller';
-import { beforeUpdateAppFormat } from '@fastgpt/service/core/app/controller';
+import {
+  beforeUpdateAppFormat,
+  updateParentFoldersUpdateTime
+} from '@fastgpt/service/core/app/controller';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { updateAppPublishedVersion } from '@fastgpt/service/core/app/version/controller';
 import {
@@ -44,7 +46,6 @@ async function handler(
     customHeaders
   });
   const storageNodes = encodeHttpToolSetNodesForStorage([toolSetRuntimeNode]);
-
   await beforeUpdateAppFormat({ nodes: [toolSetRuntimeNode], teamId });
 
   await mongoSessionRun(async (session) => {

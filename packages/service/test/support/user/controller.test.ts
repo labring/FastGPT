@@ -9,13 +9,7 @@ import { createDefaultTeam } from '@fastgpt/service/support/user/team/controller
 vi.unmock(import('@fastgpt/service/common/mongo/sessionRun'));
 
 describe('getUserDetail status', () => {
-  const setupUser = async ({
-    username,
-    status
-  }: {
-    username: string;
-    status?: UserStatusEnum;
-  }) => {
+  const setupUser = async ({ username, status }: { username: string; status?: UserStatusEnum }) => {
     const user = await MongoUser.create({
       username,
       password: 'password',

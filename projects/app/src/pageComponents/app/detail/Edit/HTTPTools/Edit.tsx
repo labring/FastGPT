@@ -11,6 +11,7 @@ import { type HttpToolConfigType } from '@fastgpt/global/core/app/tool/httpTool/
 import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '../../context';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { HttpToolSetRuntimeConfigSchema } from '@fastgpt/global/core/workflow/type/node';
 
 const Edit = () => {
   const { isPc } = useSystem();
@@ -22,7 +23,11 @@ const Edit = () => {
     return toolSetNode?.toolConfig?.httpToolSet;
   }, [appDetail.nodes]);
 
-  const editableToolSetData = toolSetData && 'toolId' in toolSetData ? undefined : toolSetData;
+  const runtimeToolSet =
+    toolSetData && !('toolId' in toolSetData)
+      ? HttpToolSetRuntimeConfigSchema.safeParse(toolSetData)
+      : undefined;
+  const editableToolSetData = runtimeToolSet?.success ? runtimeToolSet.data : undefined;
 
   const [currentTool, setCurrentTool] = useState<HttpToolConfigType | undefined>(
     editableToolSetData?.toolList?.[0]

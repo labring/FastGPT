@@ -33,6 +33,7 @@ import { DatasetSearchModule } from '@fastgpt/global/core/workflow/template/syst
 import { AgentNode } from '@fastgpt/global/core/workflow/template/system/agent';
 import { ClassifyQuestionModule } from '@fastgpt/global/core/workflow/template/system/classifyQuestion';
 import { ToolCallNode } from '@fastgpt/global/core/workflow/template/system/toolCall';
+import { HttpToolSetNode } from '@fastgpt/global/core/workflow/template/system/httpToolSet';
 import { LoopRunModeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { Input_Template_Dataset_Tag_Filter_Version } from '@fastgpt/global/core/workflow/template/input';
 
@@ -318,6 +319,19 @@ describe('storeNode2FlowNode', () => {
     });
 
     expect(result.data.showSourceHandle).toBe(false);
+  });
+
+  it('restores custom HTTP tool sets with the HTTP icon', () => {
+    const result = storeNode2FlowNode({
+      item: {
+        ...HttpToolSetNode,
+        nodeId: 'http-tool-set',
+        avatar: 'core/app/type/httpToolsFill'
+      },
+      t: ((key: string) => key) as any
+    });
+
+    expect(result.data.avatar).toBe('core/app/type/httpPluginFill');
   });
 
   it('should materialize stored editable text when it matches an i18n key', () => {

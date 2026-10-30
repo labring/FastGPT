@@ -144,6 +144,7 @@ export enum WorkflowCheckIssueCodeEnum {
   toolMissing = 'tool_missing',
   toolNoPermission = 'tool_no_permission',
   toolOffline = 'tool_offline',
+  toolSetNotConfigured = 'tool_set_not_configured',
   toolWaitingConfig = 'tool_waiting_config',
   unreachableFromStart = 'unreachable_from_start',
   userSelectEmpty = 'user_select_empty',

@@ -134,7 +134,7 @@ const CustomHeaderModeSelect = ({
   );
 };
 
-const AuthValueDisplay = ({
+export const AuthValueDisplay = ({
   showInput,
   index = 0,
   onEdit,

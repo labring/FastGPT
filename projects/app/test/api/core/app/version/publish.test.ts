@@ -39,6 +39,89 @@ import { getRootUser, getUser } from '@test/datas/users';
 import { getModelTestDefaults, setModelTestSnapshot } from '@test/modelCache';
 import { Call } from '@test/utils/request';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { getHTTPToolSetRuntimeNode } from '@fastgpt/global/core/app/tool/httpTool/utils';
+import { getMCPToolSetRuntimeNode } from '@fastgpt/global/core/app/tool/mcpTool/utils';
+
+describe('publish toolset App workflow', () => {
+  const createApp = (type: AppTypeEnum, user: Awaited<ReturnType<typeof getUser>>) =>
+    MongoApp.create({
+      name: `publish ${type}`,
+      type,
+      teamId: user.teamId,
+      tmbId: user.tmbId
+    });
+
+  it.each([
+    {
+      type: AppTypeEnum.mcpToolSet,
+      node: getMCPToolSetRuntimeNode({
+        url: 'https://mcp.example.com',
+        toolList: [
+          {
+            name: 'search',
+            description: 'Search',
+            inputSchema: { type: 'object' }
+          }
+        ]
+      }),
+      configKey: 'mcpToolSet'
+    },
+    {
+      type: AppTypeEnum.httpToolSet,
+      node: getHTTPToolSetRuntimeNode({
+        baseUrl: 'https://api.example.com',
+        apiSchemaStr: '{"openapi":"3.0.0"}',
+        toolList: [
+          {
+            name: 'search',
+            description: 'Search',
+            path: '/search',
+            method: 'GET',
+            inputSchema: { type: 'object' }
+          }
+        ]
+      }),
+      configKey: 'httpToolSet'
+    }
+  ] as const)('preserves runtime schema for $type App', async ({ type, node, configKey }) => {
+    const user = await getUser(`publish-${type}`);
+    const app = await createApp(type, user);
+
+    const result = await Call<PublishAppBodyType>(handler, {
+      auth: user,
+      query: { appId: String(app._id) },
+      body: { isPublish: true, nodes: [node] }
+    });
+
+    expect(result.code, JSON.stringify(result)).toBe(200);
+    const workflow = await getAppLatestVersion(String(app._id), app);
+    expect(workflow.nodes[0].toolConfig?.[configKey]?.toolList[0]).toHaveProperty('inputSchema');
+  });
+
+  it('rejects a complete toolset root on a normal workflow App', async () => {
+    const user = await getUser('publish-workflow-toolset-reject');
+    const app = await createApp(AppTypeEnum.workflow, user);
+    const node = getMCPToolSetRuntimeNode({
+      url: 'https://mcp.example.com',
+      toolList: [
+        {
+          name: 'search',
+          description: 'Search',
+          inputSchema: { type: 'object' }
+        }
+      ]
+    });
+
+    const result = await Call<PublishAppBodyType>(handler, {
+      auth: user,
+      query: { appId: String(app._id) },
+      body: { isPublish: true, nodes: [node] }
+    });
+
+    expect(result.code).toBe(500);
+    expect(await MongoAppVersion.countDocuments({ appId: app._id })).toBe(0);
+  });
+});
 
 describe('publish manually selected datasets', () => {
   const createDatasetNode = (
@@ -459,6 +542,88 @@ describe('publish optional model defaults', () => {
     expect(
       (await MongoAppVersion.findOne({ appId: app._id, isPublish: true }).lean())?.resources
     ).toEqual([{ type: 'model', id: restrictedModel.modelId }]);
+  });
+
+  it('stores nested MCP and HTTP tool-set IDs in published resource snapshots', async () => {
+    const root = await getRootUser();
+    const workflowApp = await MongoApp.create({
+      name: 'tool-set-resource-snapshot',
+      type: AppTypeEnum.workflow,
+      teamId: root.teamId,
+      tmbId: root.tmbId
+    });
+    const [parentMcp, nestedMcp, parentHttp, nestedHttp] = await Promise.all([
+      MongoApp.create({
+        name: 'parent MCP tool set',
+        type: AppTypeEnum.mcpToolSet,
+        modules: [],
+        edges: [],
+        teamId: root.teamId,
+        tmbId: root.tmbId
+      }),
+      MongoApp.create({
+        name: 'nested MCP tool set',
+        type: AppTypeEnum.mcpToolSet,
+        modules: [],
+        edges: [],
+        teamId: root.teamId,
+        tmbId: root.tmbId
+      }),
+      MongoApp.create({
+        name: 'parent HTTP tool set',
+        type: AppTypeEnum.httpToolSet,
+        modules: [],
+        edges: [],
+        teamId: root.teamId,
+        tmbId: root.tmbId
+      }),
+      MongoApp.create({
+        name: 'nested HTTP tool set',
+        type: AppTypeEnum.httpToolSet,
+        modules: [],
+        edges: [],
+        teamId: root.teamId,
+        tmbId: root.tmbId
+      })
+    ]);
+
+    const result = await Call<PublishAppBodyType, { appId: string }, undefined>(handler, {
+      auth: root,
+      query: { appId: String(workflowApp._id) },
+      body: {
+        isPublish: true,
+        versionName: 'tool set resources',
+        edges: [],
+        nodes: [
+          {
+            nodeId: 'external-mcp-set',
+            name: 'External MCP',
+            flowNodeType: FlowNodeTypeEnum.toolSet,
+            pluginId: String(parentMcp._id),
+            inputs: [],
+            outputs: [],
+            toolConfig: { mcpToolSet: { toolId: String(nestedMcp._id), toolList: [] } }
+          },
+          {
+            nodeId: 'external-http-set',
+            name: 'External HTTP',
+            flowNodeType: FlowNodeTypeEnum.toolSet,
+            pluginId: String(parentHttp._id),
+            inputs: [],
+            outputs: [],
+            toolConfig: { httpToolSet: { toolId: String(nestedHttp._id), toolList: [] } }
+          }
+        ] as any
+      }
+    });
+
+    expect(result.code, JSON.stringify(result)).toBe(200);
+    const version = await MongoAppVersion.findOne({
+      appId: workflowApp._id,
+      isPublish: true
+    }).lean();
+    const nestedIds = [String(nestedMcp._id), String(nestedHttp._id)].sort();
+    expect(version?.resources).toEqual(nestedIds.map((id) => ({ type: 'tool', id })));
   });
 
   it('preserves restricted model references when saving a draft', async () => {

@@ -8,7 +8,9 @@ import { formatModels } from '@fastgpt/global/common/workflow/model';
 import {
   PublishAppBodySchema,
   PublishAppQuerySchema,
-  PublishAppResponseSchema
+  PublishAppResponseSchema,
+  PublishHttpToolSetAppBodySchema,
+  PublishMcpToolSetAppBodySchema
 } from '@fastgpt/global/openapi/core/app/version/api';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
@@ -27,16 +29,16 @@ import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { getAuthorizedModelIds } from '@fastgpt/service/support/permission/model/auth';
 import { resolveAppResourcesByPermission } from '@fastgpt/service/core/app/resource/service';
 import { addAuditLog, getI18nAppType } from '@fastgpt/service/support/user/audit/util';
+import { normalizeAppWorkflow } from '@fastgpt/service/core/app/version/controller';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 
 /** 保存或发布应用版本，资源归属和模型目录以目标应用团队为边界，ACL 保留实际操作者身份。 */
 async function handler(req: ApiRequestProps<PostPublishAppProps>) {
   const {
-    query: { appId },
-    body: { nodes = [], edges = [], chatConfig, isPublish, versionName, autoSave }
+    query: { appId }
   } = parseApiInput({
     req,
-    querySchema: PublishAppQuerySchema,
-    bodySchema: PublishAppBodySchema
+    querySchema: PublishAppQuerySchema
   });
 
   const { app, tmbId, isRoot } = await authApp({
@@ -46,9 +48,25 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>) {
     authToken: true
   });
 
+  const {
+    body: { nodes = [], edges = [], chatConfig, isPublish, versionName, autoSave }
+  } = parseApiInput({
+    req,
+    bodySchema: (() => {
+      if (app.type === AppTypeEnum.mcpToolSet) return PublishMcpToolSetAppBodySchema;
+      if (app.type === AppTypeEnum.httpToolSet) return PublishHttpToolSetAppBodySchema;
+      return PublishAppBodySchema;
+    })()
+  });
+
   // Root 可管理其他团队的应用；登录团队不能替代应用团队决定资源归属、默认模型和审计范围。
   const teamId = String(app.teamId);
-  const normalizedWorkflow = migrateWorkflowToCurrent({ nodes, edges, chatConfig });
+  const normalizedWorkflow = (() => {
+    if (app.type === AppTypeEnum.mcpToolSet || app.type === AppTypeEnum.httpToolSet) {
+      return normalizeAppWorkflow({ nodes, edges, chatConfig }, app.type);
+    }
+    return migrateWorkflowToCurrent({ nodes, edges, chatConfig });
+  })();
   const modelHandle = await getTeamModelHandle({ teamId });
   const authorizedIds = await getAuthorizedModelIds({
     actor: { teamId, tmbId, isRoot },

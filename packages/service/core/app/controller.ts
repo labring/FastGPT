@@ -3,10 +3,13 @@ import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { isSystemOrCommercialToolId } from '@fastgpt/global/core/app/tool/utils';
+import { StoreSecretValueTypeSchema } from '@fastgpt/global/common/secret/type';
+import { HttpToolSetRuntimeConfigSchema } from '@fastgpt/global/core/workflow/type/node';
 import { MongoApp } from './schema';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { getClientToolPreviewNode } from './tool/utils/client';
 import { formatToolInputSecrets } from './tool/secretConfig';
+import { storeSecretValue } from '../../common/secret/utils';
 import { MongoEvaluation } from './evaluation/evalSchema';
 import { removeEvaluationJob } from './evaluation/mq';
 import { MongoOutLink } from '../../support/outLink/schema';
@@ -74,6 +77,38 @@ export const beforeUpdateAppFormat = async ({
   };
 
   nodes.forEach((node) => {
+    const mcpToolSet = node.toolConfig?.mcpToolSet;
+    if (
+      mcpToolSet &&
+      'url' in mcpToolSet &&
+      mcpToolSet.headerSecret !== null &&
+      mcpToolSet.headerSecret !== undefined
+    ) {
+      mcpToolSet.headerSecret = storeSecretValue(mcpToolSet.headerSecret);
+    }
+
+    const httpToolSet = node.toolConfig?.httpToolSet;
+    if (httpToolSet && !('toolId' in httpToolSet)) {
+      const headerSecret = StoreSecretValueTypeSchema.safeParse(httpToolSet.headerSecret);
+      if (headerSecret.success) {
+        Object.assign(httpToolSet, { headerSecret: storeSecretValue(headerSecret.data) });
+      }
+
+      const runtimeToolSet = HttpToolSetRuntimeConfigSchema.safeParse(httpToolSet);
+      if (runtimeToolSet.success) {
+        const toolList = runtimeToolSet.data.toolList.map((tool, index) => {
+          if (tool.headerSecret === undefined || tool.headerSecret === null) {
+            return httpToolSet.toolList[index];
+          }
+          return {
+            ...httpToolSet.toolList[index],
+            headerSecret: storeSecretValue(tool.headerSecret)
+          };
+        });
+        Object.assign(httpToolSet, { toolList });
+      }
+    }
+
     const isDatasetNode =
       node.flowNodeType === FlowNodeTypeEnum.datasetSearchNode ||
       node.flowNodeType === FlowNodeTypeEnum.agent;

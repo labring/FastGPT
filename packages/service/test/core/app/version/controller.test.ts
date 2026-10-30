@@ -1,3 +1,6 @@
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { getHTTPToolSetRuntimeNode } from '@fastgpt/global/core/app/tool/httpTool/utils';
+import { getMCPToolSetRuntimeNode } from '@fastgpt/global/core/app/tool/mcpTool/utils';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   FlowNodeInputTypeEnum,
@@ -71,6 +74,77 @@ const createAgentVersion = (resources?: unknown) => ({
   chatConfig: undefined,
   ...(resources === undefined ? {} : { resources })
 });
+
+const createToolSetVersion = (toolConfig: Record<string, unknown>) => ({
+  _id: '507f1f77bcf86cd799439011',
+  versionName: 'Toolset version',
+  nodes: [
+    {
+      nodeId: 'toolset-root',
+      name: 'Toolset',
+      flowNodeType: FlowNodeTypeEnum.toolSet,
+      inputs: [],
+      outputs: [],
+      toolConfig
+    }
+  ],
+  edges: [],
+  chatConfig: {},
+  resources: []
+});
+
+const toolSetVersionCases = [
+  {
+    protocol: 'MCP',
+    appType: AppTypeEnum.mcpToolSet,
+    toolSetKey: 'mcpToolSet',
+    createVersion: () => ({
+      ...createToolSetVersion({}),
+      nodes: [
+        getMCPToolSetRuntimeNode({
+          url: 'https://mcp.example.com/sse',
+          toolList: [
+            {
+              name: 'search',
+              description: 'Search tool',
+              inputSchema: {
+                type: 'object',
+                properties: { query: { type: 'string' } },
+                required: ['query']
+              }
+            }
+          ]
+        })
+      ]
+    })
+  },
+  {
+    protocol: 'HTTP',
+    appType: AppTypeEnum.httpToolSet,
+    toolSetKey: 'httpToolSet',
+    createVersion: () => ({
+      ...createToolSetVersion({}),
+      nodes: [
+        getHTTPToolSetRuntimeNode({
+          baseUrl: 'https://http.example.com',
+          toolList: [
+            {
+              name: 'search',
+              description: 'Search tool',
+              path: '/search',
+              method: 'POST',
+              inputSchema: {
+                type: 'object',
+                properties: { query: { type: 'string' } },
+                required: ['query']
+              }
+            }
+          ]
+        })
+      ]
+    })
+  }
+] as const;
 
 describe('getAppLatestVersion', () => {
   beforeEach(() => {
@@ -256,6 +330,62 @@ describe('getAppLatestVersion', () => {
     });
     expect(result.resources).toEqual([{ type: 'skill', id: 'pinned-skill' }]);
   });
+
+  it('preserves full MCP tool definitions on the MCP toolset App root', async () => {
+    const toolSetConfig = {
+      toolId: '',
+      url: 'https://mcp.example.com',
+      toolList: [
+        {
+          name: 'search',
+          description: 'Search documents',
+          inputSchema: {
+            type: 'object',
+            properties: { query: { type: 'string' } }
+          }
+        }
+      ]
+    };
+    const version = createToolSetVersion({ mcpToolSet: toolSetConfig });
+    findOneMock.mockReturnValue({
+      sort: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue(version) })
+    });
+
+    const result = await getAppLatestVersion('app-id', { type: AppTypeEnum.mcpToolSet } as any);
+
+    expect(result.nodes[0].toolConfig?.mcpToolSet).toEqual({
+      url: toolSetConfig.url,
+      toolList: toolSetConfig.toolList
+    });
+  });
+
+  it('preserves full HTTP tool definitions and import config on the HTTP toolset App root', async () => {
+    const toolSetConfig = {
+      baseUrl: 'https://api.example.com',
+      apiSchemaStr: '{"openapi":"3.0.0"}',
+      customHeaders: '{}',
+      toolList: [
+        {
+          name: 'search',
+          description: 'Search documents',
+          path: '/search',
+          method: 'GET',
+          inputSchema: {
+            type: 'object',
+            properties: { query: { type: 'string' } }
+          }
+        }
+      ]
+    };
+    const version = createToolSetVersion({ httpToolSet: toolSetConfig });
+    findOneMock.mockReturnValue({
+      sort: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue(version) })
+    });
+
+    const result = await getAppLatestVersion('app-id', { type: AppTypeEnum.httpToolSet } as any);
+
+    expect(result.nodes[0].toolConfig?.httpToolSet).toEqual(toolSetConfig);
+  });
 });
 
 describe('getAppDraftVersion', () => {
@@ -323,6 +453,24 @@ describe('getAppDraftWorkflow', () => {
       { type: 'skill', id: 'legacy-skill' }
     ]);
   });
+
+  it.each(toolSetVersionCases)(
+    'loads App type dynamically for migrated $protocol draft Versions',
+    async ({ appType, toolSetKey, createVersion }) => {
+      const version = createVersion();
+      findOneMock.mockReturnValue({
+        sort: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue(version) })
+      });
+      findAppByIdMock.mockReturnValue({
+        lean: vi.fn().mockResolvedValue({ type: appType })
+      });
+
+      const result = await getAppDraftWorkflow('app-id');
+
+      expect(findAppByIdMock).toHaveBeenCalledWith('app-id', 'type');
+      expect(result.nodes[0]).toHaveProperty(`toolConfig.${toolSetKey}.toolList.0.inputSchema`);
+    }
+  );
 });
 
 describe('getAppVersionById', () => {
@@ -343,6 +491,24 @@ describe('getAppVersionById', () => {
 
     expect(result.resources).toEqual([{ type: 'agent', id: 'legacy-agent-id' }]);
   });
+
+  it.each(toolSetVersionCases)(
+    'loads App type dynamically for migrated $protocol requested Versions',
+    async ({ appType, toolSetKey, createVersion }) => {
+      findOneMock.mockReturnValue({ lean: vi.fn().mockResolvedValue(createVersion()) });
+      findAppByIdMock.mockReturnValue({
+        lean: vi.fn().mockResolvedValue({ type: appType })
+      });
+
+      const result = await getAppVersionById({
+        appId: 'app-id',
+        versionId: '507f1f77bcf86cd799439011'
+      });
+
+      expect(findAppByIdMock).toHaveBeenCalledWith('app-id', 'type');
+      expect(result.nodes[0]).toHaveProperty(`toolConfig.${toolSetKey}.toolList.0.inputSchema`);
+    }
+  );
 });
 
 describe('getAppPublishedWorkflowMap', () => {
@@ -445,6 +611,30 @@ describe('getAppPublishedWorkflowMap', () => {
       toolList: []
     });
     expect(result.get('app-id')?.nodes[0].inputs).toEqual([]);
+  });
+
+  it('preserves full HTTP tool definitions on a published toolset App root', async () => {
+    const versionId = '507f1f77bcf86cd799439011';
+    const toolSetConfig = {
+      baseUrl: 'https://api.example.com',
+      toolList: [
+        { name: 'search', description: 'Search documents', path: '/search', method: 'GET' }
+      ]
+    };
+    const version = {
+      ...createToolSetVersion({ httpToolSet: toolSetConfig }),
+      _id: versionId,
+      appId: 'app-id'
+    };
+    findMock.mockReturnValue({
+      lean: vi.fn().mockResolvedValue([version])
+    });
+
+    const result = await getAppPublishedWorkflowMap([
+      { _id: 'app-id', type: AppTypeEnum.httpToolSet, publishedVersionId: versionId } as any
+    ]);
+
+    expect(result.get('app-id')?.nodes[0].toolConfig?.httpToolSet).toEqual(toolSetConfig);
   });
 });
 

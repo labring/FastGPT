@@ -32,7 +32,7 @@ async function handler(req: NextApiRequest): Promise<GetAppVersionDetailResponse
     return Promise.reject('version not found');
   }
 
-  const normalizedWorkflow = normalizeAppVersionWorkflow(result);
+  const normalizedWorkflow = normalizeAppVersionWorkflow(result, app.type);
   await rewriteAppWorkflowToDetail({
     nodes: normalizedWorkflow.nodes,
     teamId,

@@ -9,7 +9,7 @@ import { migrateSystemConfigToChatConfig } from './systemConfig';
 import { FlowNodeInputTypeEnum, FlowNodeTypeEnum } from '../../node/constant';
 import { NodeInputKeyEnum, NodeOutputKeyEnum, WorkflowIOValueTypeEnum } from '../../constants';
 import { StoreSecretValueTypeSchema } from '../../../../common/secret/type';
-import { migrateSecretStoreToCurrent } from '../secret';
+import { migrateSecretStoreToCurrent, migrateWorkflowSecretValues } from '../secret';
 import { getElseIFLabel } from '../../../../common/workflow/condition';
 import {
   getHandleId,
@@ -200,7 +200,7 @@ export const migrateLegacyWorkflowStructureToCurrent = (
   input: LegacyWorkflowDataInput
 ): CanonicalWorkflowData => {
   // 先把输入收敛到只允许历史字段的边界，避免后续迁移函数处理任意脏数据。
-  const legacy = LegacyWorkflowDataSchema.parse(input);
+  const legacy = LegacyWorkflowDataSchema.parse(migrateWorkflowSecretValues(input));
   // 废弃的系统配置节点需要先合并到 chatConfig，再从画布中移除。
   const workflow = migrateSystemConfigToChatConfig(legacy);
   // 工具节点由 selectedTools 边识别，后续输入迁移需要据此决定默认来源。
