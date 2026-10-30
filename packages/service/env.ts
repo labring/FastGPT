@@ -242,6 +242,9 @@ export const serviceEnv = createEnv({
     }),
 
     // VectorDB
+    EMBEDDING_MONGO_URL: z.string().optional().meta({
+      description: 'MongoDB 向量库连接参数；配置后优先启用 MongoDB，使用 INT8 标量量化索引'
+    }),
     VECTOR_VQ_LEVEL: IntSchema.default(32).meta({
       description: '向量量化等级'
     }),

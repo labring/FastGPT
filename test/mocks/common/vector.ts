@@ -48,6 +48,10 @@ vi.mock('@fastgpt/service/common/vectorDB/pg', () => ({
   PgVectorCtrl: MockVectorCtrl
 }));
 
+vi.mock('@fastgpt/service/common/vectorDB/mongo', () => ({
+  MongoVectorCtrl: MockVectorCtrl
+}));
+
 // Mock ObVectorCtrl
 vi.mock('@fastgpt/service/common/vectorDB/oceanbase', () => ({
   ObVectorCtrl: MockVectorCtrl
@@ -62,6 +66,8 @@ vi.mock('@fastgpt/service/common/vectorDB/milvus', () => ({
 vi.mock('@fastgpt/service/common/vectorDB/constants', () => ({
   DatasetVectorDbName: 'fastgpt',
   DatasetVectorTableName: 'modeldata',
+  DatasetEmbeddingCollectionName: 'dataset_data_embeddings',
+  EMBEDDING_MONGO_ADDRESS: undefined,
   DatasetVectorTableNameV2: 'modeldata_v2',
   FULL_TEXT_WRITE_BATCH_SIZE: 50,
   getVectorType: () => 'pg',
