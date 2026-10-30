@@ -27,7 +27,7 @@ export const AuditFilterSchema = z
     }),
     timezone: z.string().optional().meta({
       example: 'Asia/Shanghai',
-      description: '浏览器 IANA 时区，用于处理夏令时边界'
+      description: '浏览器 IANA 时区，用于时间范围校验及导出时间转换（含夏令时）'
     }),
     tmbIds: z
       .array(ObjectIdSchema)
