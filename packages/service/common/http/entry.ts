@@ -6,6 +6,8 @@ import { ZodError } from 'zod';
 import { randomUUID } from 'crypto';
 import { getClientIpFromRequest } from '../security/clientIp';
 import { ApiRequestInputParseError, getZodParseErrorInputSource } from '../zod/requestParseError';
+import { withHttpRequestProfile } from './requestProfile';
+import { markProfileError } from '../profiling';
 
 export type ApiHandler<
   T = any,
@@ -107,125 +109,136 @@ export const createApiEntry = <
       const requestBodySize = parseHeaderNumber(contentLength);
 
       return withContext({ requestId }, async () =>
-        withActiveSpan(
-          {
-            name: 'http.request',
-            tracerName: 'fastgpt.http',
-            attributes: {
-              'http.request.method': method,
-              'http.route': route,
-              'http.request.body.size': requestBodySize
-            }
-          },
-          async (span) => {
-            requestLogger.info(`[${method}] ${logUrl}`, {
-              verbose: false,
-              requestId,
-              method,
-              url: logUrl,
-              ip,
-              userAgent,
-              contentLength
-            });
-
-            let responseLogged = false;
-            const logResponse = (event: 'request-finish' | 'request-close') => {
-              if (responseLogged) return;
-              responseLogged = true;
-              const durationMs = Date.now() - start;
-              const httpStatusCode = res.statusCode;
-
-              responseLogger.info(`[${method}] ${logUrl} - ${httpStatusCode} in ${durationMs}ms`, {
+        withHttpRequestProfile({ headers: req.headers, kind: `${method} ${route}` }, () =>
+          withActiveSpan(
+            {
+              name: 'http.request',
+              tracerName: 'fastgpt.http',
+              attributes: {
+                'http.request.method': method,
+                'http.route': route,
+                'http.request.body.size': requestBodySize
+              }
+            },
+            async (span) => {
+              requestLogger.info(`[${method}] ${logUrl}`, {
                 verbose: false,
                 requestId,
                 method,
-                httpStatusCode,
-                event
+                url: logUrl,
+                ip,
+                userAgent,
+                contentLength
               });
-            };
 
-            res.once('finish', () => logResponse('request-finish'));
-            res.once('close', () => logResponse('request-close'));
+              let responseLogged = false;
+              const logResponse = (event: 'request-finish' | 'request-close') => {
+                if (responseLogged) return;
+                responseLogged = true;
+                const durationMs = Date.now() - start;
+                const httpStatusCode = res.statusCode;
 
-            try {
-              await Promise.all(beforeCallback.map((item) => item(req as Request, res)));
-              if (isResponseClosed()) {
-                return;
-              }
+                responseLogger.info(
+                  `[${method}] ${logUrl} - ${httpStatusCode} in ${durationMs}ms`,
+                  {
+                    verbose: false,
+                    requestId,
+                    method,
+                    httpStatusCode,
+                    event
+                  }
+                );
+              };
 
-              let response = null;
-              for await (const handler of args) {
-                response = await handler(req, res);
+              res.once('finish', () => logResponse('request-finish'));
+              res.once('close', () => logResponse('request-close'));
+
+              try {
+                await Promise.all(beforeCallback.map((item) => item(req as Request, res)));
                 if (isResponseClosed()) {
-                  break;
+                  return;
                 }
-              }
 
-              const contentType = res.getHeader('Content-Type');
-              if (
-                (!contentType || contentType === 'application/json') &&
-                !res.headersSent &&
-                !isResponseClosed()
-              ) {
-                const jsonResponse = await jsonRes(res, {
-                  code: 200,
-                  data: response
-                });
+                let response = null;
+                for await (const handler of args) {
+                  response = await handler(req, res);
+                  if (isResponseClosed()) {
+                    break;
+                  }
+                }
+
+                const contentType = res.getHeader('Content-Type');
+                if (
+                  (!contentType || contentType === 'application/json') &&
+                  !res.headersSent &&
+                  !isResponseClosed()
+                ) {
+                  const jsonResponse = await jsonRes(res, {
+                    code: 200,
+                    data: response
+                  });
+
+                  span.setAttribute('http.response.status_code', res.statusCode);
+                  return jsonResponse;
+                }
 
                 span.setAttribute('http.response.status_code', res.statusCode);
-                return jsonResponse;
-              }
-
-              span.setAttribute('http.response.status_code', res.statusCode);
-            } catch (error) {
-              // 响应一旦开始就不能改成 JSON 错误；保留已发送内容并结束失效连接。
-              if (res.headersSent || isResponseClosed()) {
-                span.setAttribute('http.response.status_code', res.statusCode);
-                setSpanError(span, error);
-                getLogger(LogCategories.HTTP.ERROR).error('API response stream failed', {
-                  url: logUrl,
-                  error
-                });
-                if (!isResponseClosed()) res.destroy();
-                return;
-              }
-
-              // Handle Zod validation errors. Only explicit API input parse errors can be downgraded.
-              if (error instanceof ZodError || error instanceof ApiRequestInputParseError) {
-                const requestInputErrorContext = getZodParseErrorInputSource(error);
-                if (!requestInputErrorContext) {
-                  span.setAttribute('http.response.status_code', 500);
+              } catch (error) {
+                markProfileError(error);
+                // 响应一旦开始就不能改成 JSON 错误；保留已发送内容并结束失效连接。
+                if (res.headersSent || isResponseClosed()) {
+                  span.setAttribute('http.response.status_code', res.statusCode);
                   setSpanError(span, error);
+                  getLogger(LogCategories.HTTP.ERROR).error('API response stream failed', {
+                    url: logUrl,
+                    error
+                  });
+                  if (!isResponseClosed()) res.destroy();
+                  return;
+                }
 
+                // Handle Zod validation errors. Only explicit API input parse errors can be downgraded.
+                if (error instanceof ZodError || error instanceof ApiRequestInputParseError) {
+                  const requestInputErrorContext = getZodParseErrorInputSource(error);
+                  if (!requestInputErrorContext) {
+                    span.setAttribute('http.response.status_code', 500);
+                    setSpanError(span, error);
+
+                    return jsonRes(res, {
+                      code: 500,
+                      error,
+                      url: logUrl
+                    });
+                  }
+
+                  span.setAttribute('http.response.status_code', 400);
                   return jsonRes(res, {
-                    code: 500,
+                    code: 400,
+                    message: 'Data validation error',
                     error,
                     url: logUrl
                   });
                 }
 
-                span.setAttribute('http.response.status_code', 400);
-                return jsonRes(res, {
-                  code: 400,
-                  message: 'Data validation error',
+                const response = jsonRes(res, {
+                  code: 500,
                   error,
                   url: logUrl
                 });
-              }
+                span.setAttribute('http.response.status_code', res.statusCode);
+                if (res.statusCode >= 500) {
+                  setSpanError(span, error);
+                }
 
-              const response = jsonRes(res, {
-                code: 500,
-                error,
-                url: logUrl
-              });
-              span.setAttribute('http.response.status_code', res.statusCode);
-              if (res.statusCode >= 500) {
-                setSpanError(span, error);
+                return response;
+              } finally {
+                // 业务自行写回错误响应时不会抛异常，也必须排除出成功请求的统计。
+                if (res.statusCode >= 400 || (res.destroyed && !res.writableEnded)) {
+                  markProfileError();
+                }
               }
-
-              return response;
             }
-          }
+          )
         )
       );
     };

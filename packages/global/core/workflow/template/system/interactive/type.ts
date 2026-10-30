@@ -7,8 +7,7 @@ import { RuntimeEdgeItemTypeSchema } from '../../../type/edge';
 import { ReferenceArrayValueTypeSchema } from '../../../type/io';
 import z from 'zod';
 import { JsonValueOpenApiMeta, OpenObjectOpenApiMeta } from '../../../../../common/zod/openapi';
-import { ChatCompletionMessageParamSchema } from '../../../../ai/llm/type';
-import { AgentAskQuestionSchema } from '../../../../ai/agent/type';
+import { AgentAskInteractiveSchema } from '../../../../ai/agent/type';
 
 export const InteractiveBasicTypeSchema = z.object({
   entryNodeIds: z.array(z.string()),
@@ -23,14 +22,13 @@ export const InteractiveBasicTypeSchema = z.object({
 });
 export type InteractiveBasicType = z.infer<typeof InteractiveBasicTypeSchema>;
 
-const InteractiveNodeTypeSchema = z.object({
-  entryNodeIds: z.array(z.string()).optional(),
-  interactiveId: z.string().optional(),
-  nodeResponseId: z.string().optional(),
-  memoryEdges: z.array(RuntimeEdgeItemTypeSchema).optional(),
-  nodeOutputs: z.array(NodeOutputItemSchema).optional()
-});
-export type InteractiveNodeType = z.infer<typeof InteractiveNodeTypeSchema>;
+/** 节点局部交互尚未补齐调度字段，复用完整交互的基础类型并将这些字段设为可选。 */
+export type InteractiveNodeType = Partial<
+  Pick<
+    InteractiveBasicType,
+    'entryNodeIds' | 'interactiveId' | 'nodeResponseId' | 'memoryEdges' | 'nodeOutputs'
+  >
+>;
 
 export const ChildrenInteractiveSchema = z.object({
   type: z.literal('childrenInteractive'),
@@ -51,17 +49,32 @@ export type ChildrenInteractive = InteractiveNodeType & {
 
 export const ToolCallChildrenInteractiveSchema = z.object({
   type: z.literal('toolChildrenInteractive'),
-  params: z.object({
-    childrenResponse: z.any().meta({
-      ...OpenObjectOpenApiMeta,
-      description: '子工作流交互响应'
-    }),
-    toolParams: z.object({
-      // 兼容旧历史：新交互不再持久化完整 messages 快照，恢复时由 chat history 重建。
-      memoryRequestMessages: z.array(ChatCompletionMessageParamSchema).optional(),
-      toolCallId: z.string() // 记录对应 tool 的id，用于后续交互节点可以替换掉 tool 的 response
+  params: z.preprocess(
+    (value) => {
+      // 旧包装只在读取边界提取 ID；快照和 toolParams 不进入新结构。
+      if (
+        typeof value === 'object' &&
+        value !== null &&
+        !('toolCallId' in value) &&
+        'toolParams' in value &&
+        typeof value.toolParams === 'object' &&
+        value.toolParams !== null &&
+        'toolCallId' in value.toolParams
+      ) {
+        return { ...value, toolCallId: value.toolParams.toolCallId };
+      }
+      return value;
+    },
+    z.object({
+      toolCallId: z.string().min(1).meta({
+        description: '父模型的原始工具调用 ID，子流程续跑结果回填到此调用'
+      }),
+      childrenResponse: z.any().meta({
+        ...OpenObjectOpenApiMeta,
+        description: '子工作流交互响应'
+      })
     })
-  })
+  )
 });
 export type ToolCallChildrenInteractive = InteractiveNodeType &
   z.infer<typeof ToolCallChildrenInteractiveSchema>;
@@ -124,8 +137,8 @@ export type UserSelectOptionItemType = z.infer<typeof UserSelectOptionItemSchema
 export const UserSelectInteractiveSchema = z.object({
   type: z.literal('userSelect'),
   params: z.object({
-    // 说明文字是可选的输入。
-    description: z.string().default(''),
+    // 空说明在 Mongo Mixed 更新后可能从 undefined 变为 null，读取旧快照时统一为空串。
+    description: z.preprocess((value) => value ?? '', z.string()),
     userSelectOptions: z.array(UserSelectOptionItemSchema),
     userSelectedVal: z.string().optional()
   })
@@ -168,23 +181,13 @@ export type UserInputFormItemType = z.infer<typeof UserInputFormItemSchema>;
 export const UserInputInteractiveSchema = z.object({
   type: z.literal('userInput'),
   params: z.object({
-    // 说明文字是可选输入，缺省为空串。
-    description: z.string().default(''),
+    // 与用户选择保持一致，兼容持久化快照中的空说明。
+    description: z.preprocess((value) => value ?? '', z.string()),
     inputForm: z.array(UserInputFormItemSchema),
     submitted: z.boolean().optional()
   })
 });
 export type UserInputInteractive = z.infer<typeof UserInputInteractiveSchema>;
-
-export const AgentAskInteractiveSchema = z.object({
-  type: z.literal('agentAsk'),
-  askId: z.string().min(1),
-  params: z.object({
-    description: z.string(),
-    questions: z.array(AgentAskQuestionSchema).min(1).max(3)
-  })
-});
-export type AgentAskInteractive = z.infer<typeof AgentAskInteractiveSchema>;
 
 // 欠费暂停交互
 export const PaymentPauseInteractiveSchema = z.object({
@@ -196,22 +199,17 @@ export const PaymentPauseInteractiveSchema = z.object({
 });
 export type PaymentPauseInteractive = z.infer<typeof PaymentPauseInteractiveSchema>;
 
-export const InteractiveNodeResponseTypeSchema = z.intersection(
-  z.discriminatedUnion('type', [
-    UserSelectInteractiveSchema,
-    UserInputInteractiveSchema,
-    ChildrenInteractiveSchema,
-    ToolCallChildrenInteractiveSchema,
-    LoopInteractiveSchema,
-    LoopRunInteractiveSchema,
-    PaymentPauseInteractiveSchema,
-    AgentAskInteractiveSchema,
-    WorkflowBuilderPreviewInteractiveSchema
-  ]),
-  z.object({
-    askId: z.string().nullish()
-  })
-);
+export const InteractiveNodeResponseTypeSchema = z.discriminatedUnion('type', [
+  UserSelectInteractiveSchema,
+  UserInputInteractiveSchema,
+  ChildrenInteractiveSchema,
+  ToolCallChildrenInteractiveSchema,
+  LoopInteractiveSchema,
+  LoopRunInteractiveSchema,
+  PaymentPauseInteractiveSchema,
+  AgentAskInteractiveSchema,
+  WorkflowBuilderPreviewInteractiveSchema
+]);
 export type InteractiveNodeResponseType = z.infer<typeof InteractiveNodeResponseTypeSchema>;
 
 export const WorkflowInteractiveResponseTypeSchema = z.intersection(

@@ -101,8 +101,10 @@ export const moveDataset = async ({
   await checkMoveFolderDepth({
     resourceId: id,
     targetParentId: parentId,
-    teamId: dataset.teamId,
-    model: MongoDataset,
+    findResource: (id) =>
+      MongoDataset.findOne({ _id: id, teamId: dataset.teamId }, '_id parentId type').lean(),
+    findChildren: (parentId) =>
+      MongoDataset.find({ parentId, teamId: dataset.teamId }, '_id type').lean(),
     isFolderType: (type) => type === DatasetTypeEnum.folder
   });
 
@@ -111,6 +113,7 @@ export const moveDataset = async ({
     const ancestorIds = isPathFolder
       ? await getFolderAncestorIdsFromParentId({
           parentId: parentId ? String(parentId) : null,
+          maxDepth: serviceEnv.MAX_FOLDER_DEPTH,
           findFolder: (parentFolderId) =>
             MongoDataset.findOne({
               _id: parentFolderId,
@@ -127,6 +130,7 @@ export const moveDataset = async ({
       await rewriteFolderSubtreeAncestorIds({
         rootId: id,
         rootAncestorIds: ancestorIds,
+        // 路径重写也按目标祖先加子树的绝对层级校验，不能沿用只读遍历上限。
         maxDepth: serviceEnv.MAX_FOLDER_DEPTH,
         findChildFolders: (parentIds) =>
           MongoDataset.find({

@@ -618,5 +618,6 @@
   "delete_following_folders_tip": "삭제 후 해당 폴더와 내부의 모든 앱 및 연결된 대화 기록이 함께 삭제됩니다.",
   "chat_agent_config_ready": "구성이 생성되었습니다",
   "chat_agent_config_apply": "구성 적용",
+  "chat_agent_config_applied": "구성이 적용되었습니다",
   "chat_agent_config_expired": "구성이 만료되었습니다"
 }

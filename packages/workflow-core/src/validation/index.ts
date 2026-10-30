@@ -1,5 +1,9 @@
 import { WorkflowDiagnosticCodeEnum } from '@fastgpt/global/core/workflow/diagnostic/constants';
-import { NodeInputKeyEnum, VARIABLE_NODE_ID } from '@fastgpt/global/core/workflow/constants';
+import {
+  NodeInputKeyEnum,
+  NodeOutputKeyEnum,
+  VARIABLE_NODE_ID
+} from '@fastgpt/global/core/workflow/constants';
 import {
   FlowNodeInputTypeEnum,
   FlowNodeOutputTypeEnum,
@@ -142,7 +146,9 @@ const validateSpecialNode = ({
         getNodeById: (id) => document.nodes.find((item) => item.nodeId === id),
         edges: document.executionEdges.map((edge) => ({
           source: edge.source.nodeId,
-          target: edge.target.nodeId
+          target: edge.target.nodeId,
+          targetHandle:
+            edge.target.kind === 'selectedTools' ? NodeOutputKeyEnum.selectedTools : undefined
         }))
       }),
       {

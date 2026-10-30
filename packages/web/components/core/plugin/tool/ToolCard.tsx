@@ -320,8 +320,7 @@ const ToolCard = ({
         color={isMarketplaceVariant ? '#667085' : 'myGray.500'}
       >
         <Box className={'textEllipsis2'}>
-          {selectPluginText(item.description, i18n.language) ||
-            t('app:templateMarket.no_intro')}
+          {selectPluginText(item.description, i18n.language) || t('app:templateMarket.no_intro')}
         </Box>
       </Box>
       <Flex

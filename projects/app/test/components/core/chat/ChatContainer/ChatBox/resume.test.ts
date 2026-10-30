@@ -337,12 +337,23 @@ describe('mergeResumeCompletedChatRecords', () => {
             type,
             memoryEdges: [],
             nodeOutputs: [],
-            askId: id,
             entryNodeIds: ['same-node'],
             usageId: 'same-usage',
             params: {
-              description: '',
-              questions: [{ question: 'Question', options: [] }]
+              toolCallId: id,
+              arguments: JSON.stringify({
+                reason: '',
+                blockerType: 'user_choice',
+                questions: [
+                  {
+                    question: 'Question',
+                    options: [
+                      { summary: 'A', value: 'A' },
+                      { summary: 'B', value: 'B' }
+                    ]
+                  }
+                ]
+              })
             }
           };
         }
@@ -350,14 +361,15 @@ describe('mergeResumeCompletedChatRecords', () => {
           type,
           memoryEdges: [],
           nodeOutputs: [],
-          previewId: id,
           entryNodeIds: ['same-node'],
           usageId: 'same-usage',
           params: {
-            title: 'Confirm?',
-            mermaid: '',
-            sections: [],
-            actions: []
+            toolCallId: id,
+            arguments: JSON.stringify({
+              title: 'Confirm?',
+              mermaid: 'flowchart TD; A-->B',
+              sections: [{ title: 'Goal', content: 'Build' }]
+            })
           }
         };
       };
@@ -451,4 +463,23 @@ describe('mergeResumeCompletedChatRecords', () => {
       'child-response'
     ]);
   });
+});
+
+describe('resume interactive compatibility', () => {
+  it.each(['userInput', 'workflowBuilderPreview'])(
+    'skips invalid replayed %s interactions and accepts a valid replacement',
+    (type) => {
+      const invalid = { type, params: null } as unknown as WorkflowInteractiveResponseType;
+      const valid = { type: 'paymentPause', params: {} } as WorkflowInteractiveResponseType;
+      expect(
+        shouldAppendResumeInteractive({ existingValues: [], incomingInteractive: invalid })
+      ).toBe(false);
+      expect(
+        shouldAppendResumeInteractive({
+          existingValues: [{ interactive: invalid }],
+          incomingInteractive: valid
+        })
+      ).toBe(true);
+    }
+  );
 });

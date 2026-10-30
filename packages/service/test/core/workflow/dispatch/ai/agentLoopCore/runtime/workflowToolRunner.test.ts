@@ -52,6 +52,26 @@ describe('createAgentLoopCoreWorkflowToolRunner', () => {
     vi.clearAllMocks();
   });
 
+  it.each([0, 1])(
+    'derives tool failure from errorCount=%s without a hasError flag',
+    async (errorCount) => {
+      const runner = createRunner({
+        runtimeNodes: [{ nodeId: 'search', inputs: [], outputs: [] }],
+        getToolInfo: () => ({ type: 'user', rawData: { nodeId: 'search' } }),
+        runWorkflowTool: vi.fn().mockResolvedValue({
+          flowResponses: [],
+          flowUsages: [],
+          assistantResponses: [],
+          toolResponses: undefined,
+          workflowRuntimeSummary: { errorCount, errorText: 'child failed' }
+        })
+      });
+      const result = await runner.runTool({ call: createCall() });
+      expect(result.response).toBe(errorCount > 0 ? 'child failed' : 'none');
+      expect(result.errorMessage).toBe(errorCount > 0 ? 'child failed' : undefined);
+    }
+  );
+
   it.each(['call', 'resume'] as const)(
     'syncs real variable-update writes to parent outputs during %s without leaking inputs',
     async (mode) => {
@@ -103,7 +123,7 @@ describe('createAgentLoopCoreWorkflowToolRunner', () => {
       } else {
         await runner.runInteractiveTool({
           childrenResponse: { entryNodeIds: ['search'] },
-          toolParams: { toolCallId: 'resume' }
+          toolCallId: 'resume'
         } as any);
       }
 
@@ -450,9 +470,7 @@ describe('createAgentLoopCoreWorkflowToolRunner', () => {
       childrenResponse: {
         entryNodeIds: ['search']
       },
-      toolParams: {
-        toolCallId: 'call_interactive'
-      }
+      toolCallId: 'call_interactive'
     } as any);
 
     expect(cacheToolFlowResponse).toHaveBeenLastCalledWith({
@@ -537,7 +555,7 @@ describe('createAgentLoopCoreWorkflowToolRunner', () => {
         memoryEdges: [{ source: 'before', target: 'search', status: 'active' }],
         nodeOutputs: [{ nodeId: 'search', key: 'result', value: false }]
       },
-      toolParams: { toolCallId: 'resume' }
+      toolCallId: 'resume'
     } as any);
 
     expect(received.runtimeEdges).toEqual([
@@ -571,7 +589,7 @@ describe('createAgentLoopCoreWorkflowToolRunner', () => {
     await runInteractiveTool({
       call: createCall({ args: '{"userChatInput":"restored user prompt"}' }),
       childrenResponse: { entryNodeIds: ['search'] },
-      toolParams: { toolCallId: 'resume' }
+      toolCallId: 'resume'
     } as any);
 
     expect(received.runtimeNodes[0].inputs).toEqual([

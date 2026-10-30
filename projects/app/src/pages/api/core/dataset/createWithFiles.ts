@@ -29,6 +29,7 @@ import { S3PrivateBucket } from '@fastgpt/service/common/s3/buckets/private';
 import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
 import { isAuthorizedTempFileS3Key } from '@fastgpt/service/common/s3/sources/temp/key';
 import { getFileS3Key } from '@fastgpt/service/common/s3/utils';
+import { checkCreateResourceParent } from '@fastgpt/service/common/parentFolder/depth';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { createCollectionAndInsertData } from '@fastgpt/service/core/dataset/collection/controller';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
@@ -54,7 +55,7 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetWithFilesResp
     sangforFileParseConfig
   } = datasetParams;
 
-  const { teamId, tmbId, userId, isRoot } = parentId
+  const { teamId, tmbId, isRoot } = parentId
     ? await authDataset({
         req,
         datasetId: parentId,
@@ -68,6 +69,13 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetWithFilesResp
         authApiKey: true,
         per: TeamDatasetCreatePermissionVal
       });
+
+  await checkCreateResourceParent({
+    parentId,
+    findResource: (id) => MongoDataset.findOne({ _id: id, teamId }, '_id parentId type').lean(),
+    isFolder: false,
+    isFolderType: (type) => type === DatasetTypeEnum.folder
+  });
 
   const modelHandle = await getTeamModelHandle({ teamId });
   const authorizedIds = await getAuthorizedModelIds({
@@ -190,8 +198,7 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetWithFilesResp
     pushTrack.createDataset({
       type: DatasetTypeEnum.dataset,
       teamId,
-      tmbId,
-      uid: userId
+      tmbId
     });
 
     (async () => {

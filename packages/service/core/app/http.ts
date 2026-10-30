@@ -1,4 +1,5 @@
 import { type StoreSecretValueType } from '@fastgpt/global/common/secret/type';
+import type { SecretValueReferenceResolver } from '@fastgpt/global/common/secret/utils';
 import { getSecretValue } from '../../common/secret/utils';
 import { axios } from '../../common/api/axios';
 import { formatHttpError } from '../../common/api/httpError';
@@ -34,6 +35,7 @@ export type RunHTTPToolParams = {
   staticParams?: HttpToolConfigType['staticParams'];
   staticHeaders?: HttpToolConfigType['staticHeaders'];
   staticBody?: HttpToolConfigType['staticBody'];
+  resolveReference?: SecretValueReferenceResolver;
 };
 
 export type RunHTTPToolResult = RequireOnlyOne<{
@@ -49,7 +51,8 @@ const buildHttpRequest = ({
   customHeaders,
   staticParams,
   staticHeaders,
-  staticBody
+  staticBody,
+  resolveReference
 }: Omit<RunHTTPToolParams, 'baseUrl' | 'toolPath'>) => {
   const replaceVariables = (text: string) => {
     return replaceEditorVariable({
@@ -103,7 +106,7 @@ const buildHttpRequest = ({
   const headers = {
     ...(contentType && { 'Content-Type': contentType }),
     ...(customHeaders || {}),
-    ...(headerSecret ? getSecretValue({ storeSecret: headerSecret }) : {}),
+    ...(headerSecret ? getSecretValue({ storeSecret: headerSecret, resolveReference }) : {}),
     ...(staticHeaders?.reduce(
       (acc, { key, value }) => {
         const replacedKey = replaceVariables(key);
@@ -156,7 +159,8 @@ export const runHTTPTool = async ({
   staticParams,
   staticHeaders,
   staticBody,
-  apiSchemaStr
+  apiSchemaStr,
+  resolveReference
 }: RunHTTPToolParams): Promise<RunHTTPToolResult> => {
   try {
     // OpenAPI 与手动工具共用发送层，但参数来源不同；不能用 staticBody 缺失来猜测来源。
@@ -168,7 +172,8 @@ export const runHTTPTool = async ({
       customHeaders,
       staticParams,
       staticHeaders,
-      staticBody: openApiSchema ? undefined : staticBody
+      staticBody: openApiSchema ? undefined : staticBody,
+      resolveReference
     });
     const request = openApiSchema
       ? await buildOpenAPIHttpRequest({ apiSchemaStr: openApiSchema, toolPath, method, params })

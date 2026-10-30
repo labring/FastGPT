@@ -2,6 +2,7 @@ import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import { ChatRoleEnum, ChatStatusEnum } from '@fastgpt/global/core/chat/constants';
 import {
   isAgentAskInteractive,
+  isValidInteractive,
   extractDeepestInteractive,
   getLastInteractiveValue
 } from '@fastgpt/global/core/workflow/runtime/utils';
@@ -9,6 +10,9 @@ import type {
   UserInputInteractive,
   WorkflowInteractiveResponseType
 } from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import { UserInputInteractiveSchema } from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import { AgentAskInteractiveSchema } from '@fastgpt/global/core/ai/agent/type';
+import { WorkflowBuilderPreviewInteractiveSchema } from '@fastgpt/global/core/workflow/builder/type';
 import { checkInteractiveResponseStatus } from '@fastgpt/global/core/chat/utils';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { resolveFormInputFileValues } from '../../../components/FormInputResult';
@@ -19,7 +23,10 @@ export const isPendingAgentAsk = (interactive?: WorkflowInteractiveResponseType)
   if (!interactive) return false;
 
   const finalInteractive = extractDeepestInteractive(interactive);
-  return isAgentAskInteractive(finalInteractive);
+  return (
+    isAgentAskInteractive(finalInteractive) &&
+    AgentAskInteractiveSchema.safeParse(finalInteractive).success
+  );
 };
 
 /** 判断当前是否正在等待 Workflow Builder 的 Mermaid 方案确认。 */
@@ -27,7 +34,7 @@ export const isPendingWorkflowBuilderPreview = (interactive?: WorkflowInteractiv
   if (!interactive) return false;
 
   const finalInteractive = extractDeepestInteractive(interactive);
-  return finalInteractive?.type === 'workflowBuilderPreview';
+  return WorkflowBuilderPreviewInteractiveSchema.safeParse(finalInteractive).success;
 };
 
 /**
@@ -45,6 +52,7 @@ export const isUserInputInteractiveSubmitted = ({
   responseData?: ChatHistoryItemResType[];
   isLastChild: boolean;
 }) => {
+  if (!UserInputInteractiveSchema.safeParse(interactive).success) return true;
   if (interactive.params.submitted || !isLastChild) return true;
 
   return !!responseData?.some((item) => {
@@ -90,7 +98,11 @@ export const refreshSubmittedFormInteractiveValues = ({
       history.value.filter((value) => {
         if (!value.interactive) return false;
         const finalInteractive = extractDeepestInteractive(value.interactive);
-        return finalInteractive.type === 'userInput' && !!finalInteractive.params.submitted;
+        return (
+          finalInteractive?.type === 'userInput' &&
+          UserInputInteractiveSchema.safeParse(finalInteractive).success &&
+          !!finalInteractive.params.submitted
+        );
       }).length
     );
   }, 0);
@@ -103,7 +115,10 @@ export const refreshSubmittedFormInteractiveValues = ({
       if (!value.interactive) return value;
 
       const finalInteractive = extractDeepestInteractive(value.interactive);
-      if (finalInteractive.type !== 'userInput') {
+      if (
+        finalInteractive?.type !== 'userInput' ||
+        !UserInputInteractiveSchema.safeParse(finalInteractive).success
+      ) {
         return value;
       }
       if (!finalInteractive.params.submitted) return value;
@@ -271,6 +286,7 @@ export const rewriteHistoriesByInteractiveResponse = ({
       if (!('interactive' in val) || !val.interactive) return val;
 
       const finalInteractive = extractDeepestInteractive(val.interactive);
+      if (!isValidInteractive(finalInteractive)) return val;
 
       if (finalInteractive.type === 'userSelect') {
         return {

@@ -9,7 +9,7 @@ import { formatModelChars2Points } from '../../../../../support/wallet/usage/uti
 import { createLLMResponse } from '../../../../ai/llm/request';
 import { computedMaxToken } from '../../../../ai/utils';
 import { postTextCensor } from '../../../../chat/postTextCensor';
-import { getWorkflowFileMaxAmount } from '../../../utils/context';
+import { getWorkflowFileContext, getWorkflowFileMaxAmount } from '../../../utils/context';
 import { loadWorkflowModelResource } from '../../../resource/service';
 import { checkQuoteQAValue, getHistories, getNodeErrResponse } from '../../utils';
 import { getChatMessages } from './chatMessages';
@@ -150,6 +150,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       requestId // 获取请求追踪 ID
     } = await createLLMResponse({
       throwError: false,
+      fileContext: getWorkflowFileContext(),
       body: {
         model: modelConstantsData,
         stream,

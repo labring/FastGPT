@@ -441,7 +441,7 @@ const OutLink = (props: Props) => {
                       outLinkAuthData={outLinkAuthData}
                       features={{
                         autoResume: true,
-                        feedbackType: 'user',
+                        fbTypes: ['user'],
                         workorder: showWorkorder === '1',
                         quickReplies: true,
                         inputGuide: true,

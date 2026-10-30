@@ -98,6 +98,7 @@ export type ToolDispatchContext = Pick<
   | 'stream'
   | 'nodeResponseSink'
 > & {
+  runtimeNodesMap?: DispatchAgentModuleProps['runtimeNodesMap'];
   modelData: import('@fastgpt/global/core/ai/model/schema').LLMModelDataType;
   nodeResponseParentId?: string;
   systemPrompt?: string;
@@ -157,6 +158,7 @@ export const getExecuteTool = ({
   responseChatItemId,
   uid,
   variableState,
+  runtimeNodesMap,
   externalProvider,
   lang,
   requestOrigin,
@@ -244,6 +246,7 @@ export const getExecuteTool = ({
             chatId,
             uid,
             variableState,
+            runtimeNodesMap,
             // Agent 统一负责外层流输出，子工具不得绕过 Agent 直接写入响应流。
             workflowStreamResponse: undefined
           });

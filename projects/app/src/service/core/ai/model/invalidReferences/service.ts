@@ -2,12 +2,26 @@ import { getModelReferenceValue, isEmptyModelValue } from '@fastgpt/global/core/
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { isModelConfigError } from '@fastgpt/global/common/error/model';
 import {
+  getWorkflowNodeModelInputs,
   isWorkflowModelExpression,
-  walkWorkflowModelReferences
+  isWorkflowSystemModelInput
 } from '@fastgpt/global/common/workflow/model';
-import type { AppVersionSchemaType } from '@fastgpt/global/core/app/version/type';
-import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import {
+  getSelectedInputRenderType,
+  nodeInputIsReference
+} from '@fastgpt/global/common/workflow/reference';
+import {
+  workflowDatasetParamModelSlots,
+  workflowSystemModelSlots
+} from '@fastgpt/global/core/workflow/model/constants';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import {
+  FlowNodeInputTypeEnum,
+  FlowNodeTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
+import type { AppVersionSchemaType } from '@fastgpt/global/core/app/version/type';
+import { legacySystemConfigNodeType } from '@fastgpt/global/core/workflow/migration/legacy/systemConfig';
+import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import {
   AppResourcesSchema,
   type AppChatConfigType,
@@ -154,6 +168,14 @@ export const createInvalidReferenceReplacer = ({
     }
   };
 
+  /** 自定义模型选择器兼容旧版 model 名称，同时优先保留可识别的 modelId。 */
+  const getLLMSelectorReference = (value: unknown): Reference => {
+    if (typeof value === 'string' && !handle.findModelData({ modelId: value })) {
+      return { model: value };
+    }
+    return { modelId: value };
+  };
+
   const replaceConfigReference = ({
     config,
     modelIdKey,
@@ -196,32 +218,43 @@ export const createInvalidReferenceReplacer = ({
     referenceNodes?: StoreNodeItemType[];
     changes: Record<ModelKind, Change>;
   }) => {
-    walkWorkflowModelReferences({
-      nodes,
-      referenceNodes,
-      onReference: ({
-        source,
-        reference,
-        type,
-        input,
-        node,
-        config,
-        slot,
-        legacyInputs,
-        isReferenceInput
-      }) => {
-        const kind = getKind(type);
-        if (source === 'systemInput' && input && node && slot) {
-          const invalid = isInvalid({ reference, type });
+    if (!Array.isArray(nodes)) return;
+    const referenceNodeById = new Map(referenceNodes?.map((node) => [node.nodeId, node]));
+    nodes.forEach((rawNode, nodeIndex) => {
+      if (!isObject(rawNode) || !Array.isArray(rawNode.inputs)) return;
+      const node = rawNode as StoreNodeItemType;
+      if (!node.inputs.every(isObject)) return;
+      const referenceNode = node.nodeId
+        ? referenceNodeById.get(node.nodeId)
+        : referenceNodes?.[nodeIndex];
+      const getReferenceInput = (input: StoreNodeItemType['inputs'][number]) =>
+        referenceNode?.inputs.find((referenceInput) => referenceInput.key === input.key) ?? input;
+      const isReferenceInput = (input: StoreNodeItemType['inputs'][number]) =>
+        nodeInputIsReference(getReferenceInput(input));
+
+      for (const slot of workflowSystemModelSlots) {
+        const { modelIdInputs, legacyInputs } = getWorkflowNodeModelInputs({ node, slot });
+        const effectiveInputs = modelIdInputs.length > 0 ? modelIdInputs : legacyInputs;
+        const kind = getKind(slot.type);
+        for (const input of effectiveInputs) {
+          if (isReferenceInput(input)) {
+            changes[kind].skippedReferences++;
+            continue;
+          }
+          const reference = {
+            modelId: input.key === slot.modelIdKey ? input.value : undefined,
+            model: input.key === slot.legacyKey ? input.value : legacyInputs[0]?.value
+          };
+          const invalid = isInvalid({ reference, type: slot.type });
           if (invalid === undefined) {
             changes[kind].skippedReferences++;
-            return;
+            continue;
           }
-          if (!invalid) return;
+          if (!invalid) continue;
           const target = targets[kind];
           if (input.key === slot.modelIdKey) {
             input.value = target.modelId;
-            legacyInputs?.forEach((legacy) => {
+            legacyInputs.forEach((legacy) => {
               if (!isReferenceInput(legacy)) legacy.value = target.model;
             });
           } else {
@@ -229,18 +262,76 @@ export const createInvalidReferenceReplacer = ({
             node.inputs.push({ ...input, key: slot.modelIdKey, value: target.modelId });
           }
           changes[kind].replacedReferences++;
-          return;
+        }
+      }
+
+      const migratedNode = referenceNode ?? node;
+      for (const input of node.inputs) {
+        const migratedInput = getReferenceInput(input);
+        if (isWorkflowSystemModelInput({ node: migratedNode, input: migratedInput })) continue;
+        if (isReferenceInput(input)) {
+          if (migratedInput.renderTypeList?.includes(FlowNodeInputTypeEnum.selectLLMModel)) {
+            changes.llm.skippedReferences++;
+          }
+          continue;
+        }
+        if (getSelectedInputRenderType(migratedInput) !== FlowNodeInputTypeEnum.selectLLMModel) {
+          continue;
         }
 
-        if (source === 'legacyConfig' || source === 'datasetConfig') {
+        const modelValue = migratedInput.value ?? migratedInput.defaultValue;
+        const invalid = isInvalid({
+          reference: getLLMSelectorReference(modelValue),
+          type: ModelTypeEnum.llm
+        });
+        if (invalid === undefined) {
+          changes.llm.skippedReferences++;
+          continue;
+        }
+        if (!invalid) continue;
+
+        if (input.value !== undefined && input.value !== null) {
+          input.value = targets.llm.modelId;
+        } else if (input.defaultValue !== undefined && input.defaultValue !== null) {
+          input.defaultValue = targets.llm.modelId;
+        } else {
+          input.value = targets.llm.modelId;
+        }
+        changes.llm.replacedReferences++;
+      }
+
+      if ((node.flowNodeType as string) === legacySystemConfigNodeType) {
+        // 读取路径会把旧 userGuide 配置迁入 chatConfig；写入时保留节点原形，只更新引用值。
+        for (const [inputKey, type] of [
+          [NodeInputKeyEnum.questionGuide, ModelTypeEnum.llm],
+          [NodeInputKeyEnum.tts, ModelTypeEnum.tts]
+        ] as const) {
+          const input = node.inputs.find(({ key }) => key === inputKey);
+          if (!input || isReferenceInput(input) || !isObject(input.value)) continue;
+
+          const config = input.value;
+          if (type === ModelTypeEnum.tts && config.type !== 'model') continue;
           replaceConfigReference({
-            config: config!,
-            modelIdKey: slot?.modelIdKey ?? 'modelId',
-            legacyKey: slot?.legacyKey ?? 'model',
+            config,
+            modelIdKey: 'modelId',
+            legacyKey: 'model',
             type,
             changes
           });
         }
+      }
+
+      if (node.flowNodeType !== FlowNodeTypeEnum.agent) return;
+      const paramsInput = node.inputs.find((input) => input.key === NodeInputKeyEnum.datasetParams);
+      if (!paramsInput || isReferenceInput(paramsInput) || !isObject(paramsInput.value)) return;
+      for (const slot of workflowDatasetParamModelSlots) {
+        replaceConfigReference({
+          config: paramsInput.value,
+          modelIdKey: slot.modelIdKey,
+          legacyKey: slot.legacyKey,
+          type: slot.type,
+          changes
+        });
       }
     });
   };
@@ -258,20 +349,28 @@ export const createInvalidReferenceReplacer = ({
     const nextChatConfig = cloneDeep(chatConfig);
     const changes = newChanges();
     replaceNodes({ nodes: nextNodes, referenceNodes, changes });
-    walkWorkflowModelReferences({
-      chatConfig: nextChatConfig,
-      onReference: ({ source, config, type }) => {
-        if (source === 'chatConfig') {
-          replaceConfigReference({
-            config: config!,
-            modelIdKey: 'modelId',
-            legacyKey: 'model',
-            type,
-            changes
-          });
-        }
-      }
-    });
+    if (isObject(nextChatConfig) && isObject(nextChatConfig.questionGuide)) {
+      replaceConfigReference({
+        config: nextChatConfig.questionGuide,
+        modelIdKey: 'modelId',
+        legacyKey: 'model',
+        type: ModelTypeEnum.llm,
+        changes
+      });
+    }
+    if (
+      isObject(nextChatConfig) &&
+      isObject(nextChatConfig.ttsConfig) &&
+      nextChatConfig.ttsConfig.type === 'model'
+    ) {
+      replaceConfigReference({
+        config: nextChatConfig.ttsConfig,
+        modelIdKey: 'modelId',
+        legacyKey: 'model',
+        type: ModelTypeEnum.tts,
+        changes
+      });
+    }
     return { nodes: nextNodes, chatConfig: nextChatConfig, changes };
   };
 

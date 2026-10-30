@@ -4,7 +4,7 @@ import type {
   CompletionFinishReason
 } from '@fastgpt/global/core/ai/llm/type';
 import type { AgentPlanType } from '@fastgpt/global/core/ai/agent/type';
-import type { AgentAskPayload } from './systemTool/ask';
+import type { AgentAskPayload } from '@fastgpt/global/core/ai/agent/type';
 import type { AgentLoopUsage } from './usage';
 import type { AgentLoopAssistantResponse } from './tool';
 
@@ -38,12 +38,20 @@ type AgentLoopPlanOperationEvent = {
 
 export type AgentLoopEvent =
   | {
+      type: 'user_message';
+      content: string;
+      source: 'server';
+    }
+  | {
       type: 'llm_request_start';
+      responseId?: string;
       requestIndex: number;
       modelName: string;
     }
   | {
       type: 'llm_request_end';
+      responseId?: string;
+      assistantMessage?: ChatCompletionMessageParam;
       requestIndex: number;
       modelName: string;
       requestId: string;
@@ -86,6 +94,9 @@ export type AgentLoopEvent =
     }
   | {
       type: 'tool_run_end';
+      resumed?: boolean;
+      internalOnly?: boolean;
+      hideInUI?: boolean;
       call: ChatCompletionMessageToolCall;
       /** 实际给模型的完整结果；聊天持久化和 SSE 均使用此值，不再额外裁剪。 */
       response: string;
@@ -114,11 +125,10 @@ export type AgentLoopEvent =
     }
   | AgentLoopPlanOperationEvent
   | {
-      type: 'ask_start';
-      ask: AgentAskPayload;
-      id?: string;
-      params?: string;
-      seconds?: number;
+      type: 'tool_interactive';
+      call: ChatCompletionMessageToolCall;
+      /** 由业务适配层解释的交互结构，Loop 不依赖 workflow schema。 */
+      interactive: unknown;
     }
   | {
       type: 'ask';

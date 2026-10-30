@@ -331,7 +331,6 @@ const ModelReferenceSchema = z
 | `POST /core/dataset/create`     | `vlmModelId`                    | `vlmModel`                    | 两者都缺少时使用默认 VLM            |
 | `POST /core/dataset/searchTest` | `rerankModelId`                 | `rerankModel`                 | 仅启用 Rerank 时解析                |
 | `POST /core/dataset/searchTest` | `datasetSearchExtensionModelId` | `datasetSearchExtensionModel` | 仅启用问题扩展时解析                |
-| `POST /core/dataset/searchTest` | `datasetDeepSearchModelId`      | `datasetDeepSearchModel`      | 仅启用深度搜索时解析                |
 
 表内每组字段都必须把 `modelId` 和 deprecated `model` 一起传给统一的 `getXXModelData`，不得在 API handler 中先用 `modelId ?? model` 压成单个字符串。这样才能区分“没有传 `modelId`”与“传入的 `modelId` 无效”，并保证后者立即报“模型不存在”而不回退。
 
@@ -473,7 +472,6 @@ const displayModel =
 | `embeddingModel`              | `embeddingModelId`              |
 | `rerankModel`                 | `rerankModelId`                 |
 | `datasetSearchExtensionModel` | `datasetSearchExtensionModelId` |
-| `datasetDeepSearchModel`      | `datasetDeepSearchModelId`      |
 
 旧 key 必须继续保留在 Workflow input 常量、类型、Zod Schema、模板反序列化和 Dispatcher 读取分支中，并标记 deprecated；本轮不能通过 rename 或删除旧 input 实现迁移。`datasetParams` 复合对象内的同名字段也遵循相同规则。
 
@@ -499,7 +497,7 @@ const displayModel =
 ### 7.5 需要覆盖的调用链
 
 - LLM：AI Chat、Agent、问题分类、内容提取、工具调用、上下文压缩、辅助生成、Skill 调试。
-- Dataset：向量生成、文本余弦、图片理解、查询扩展、深度搜索、rerank、训练和重建 embedding。
+- Dataset：向量生成、文本余弦、图片理解、查询扩展、rerank、训练和重建 embedding。
 - Audio：站内 TTS/STT 配置与调用。
 - Evaluation：创建、执行、重试、列表和用量。
 - 模型管理：配置接口统一移动到 `/admin/settings/model/*`；create 与 update 分离，detail、update、delete、test、updateDefault 等接口按 modelId 定位，管理列表返回 modelId。

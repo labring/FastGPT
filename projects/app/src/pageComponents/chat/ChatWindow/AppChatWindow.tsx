@@ -266,7 +266,7 @@ const AppChatWindow = () => {
               isReady={!loading && !!appId && isCurrentChatReady}
               features={{
                 autoResume: true,
-                feedbackType: 'user',
+                fbTypes: ['user'],
                 quickReplies: true,
                 inputGuide: true,
                 voice: true,

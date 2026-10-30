@@ -21,7 +21,7 @@ export const deleteApp = async ({
   req: ApiRequestProps;
   appId: string;
 }): Promise<string[]> => {
-  const { teamId, tmbId, userId, app } = await authApp({
+  const { teamId, tmbId, app } = await authApp({
     req,
     authToken: true,
     appId,
@@ -45,7 +45,7 @@ export const deleteApp = async ({
       appType: getI18nAppType(app.type)
     }
   });
-  pushTrack.countAppNodes({ teamId, tmbId, uid: userId, appId });
+  pushTrack.countAppNodes({ teamId, tmbId, appId });
 
   return deleteAppsList
     .filter((item) => !AppFolderTypeList.includes(item.type))

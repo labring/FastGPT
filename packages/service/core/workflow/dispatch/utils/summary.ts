@@ -19,7 +19,6 @@ export const createWorkflowRuntimeSummary = (): WorkflowRuntimeSummaryType => {
   const summary: WorkflowRuntimeSummaryType = {
     responseIds: [],
     finishedNodeIds: [],
-    hasError: false,
     errorCount: 0,
     hasLoopRunBreak: false,
     hasToolStop: false,
@@ -48,7 +47,6 @@ export const createNodeSummary = (): NodeSummaryCollector => {
     llmOutputTokens: 0,
     responseIds: [],
     finishedNodeIds: [],
-    hasError: false,
     errorCount: 0,
     citeCollectionIds: [],
     hasLoopRunBreak: false,
@@ -60,7 +58,6 @@ export const createNodeSummary = (): NodeSummaryCollector => {
       if (!source) return;
       summary.responseIds?.push(...(source.responseIds ?? []));
       summary.finishedNodeIds?.push(...(source.finishedNodeIds ?? []));
-      summary.hasError ||= !!source.hasError;
       summary.errorText = source.errorText || summary.errorText;
       summary.errorCount = (summary.errorCount || 0) + (source.errorCount || 0);
       summary.citeCollectionIds?.push(...(source.citeCollectionIds ?? []));
@@ -90,7 +87,6 @@ export const getNodeSummaryData = (summary: NodeSummary): NodeSummary => ({
   ...(summary.llmOutputTokens ? { llmOutputTokens: summary.llmOutputTokens } : {}),
   ...(summary.responseIds?.length ? { responseIds: [...summary.responseIds] } : {}),
   ...(summary.finishedNodeIds?.length ? { finishedNodeIds: [...summary.finishedNodeIds] } : {}),
-  ...(summary.hasError ? { hasError: true } : {}),
   ...(summary.errorText ? { errorText: summary.errorText } : {}),
   ...(summary.errorCount ? { errorCount: summary.errorCount } : {}),
   ...(summary.citeCollectionIds?.length
@@ -126,7 +122,6 @@ export const stripNodeSummaryErrorFields = (summary?: NodeSummary): NodeSummary 
   if (!summary) return undefined;
 
   const controlSummary = { ...summary };
-  delete controlSummary.hasError;
   delete controlSummary.errorText;
   delete controlSummary.errorCount;
 
@@ -174,10 +169,6 @@ export const summarizeRuntimeNodeResponses = (
     outputTokens?: number;
     toolCallInputTokens?: number;
     toolCallOutputTokens?: number;
-    deepSearchResult?: {
-      inputTokens?: number;
-      outputTokens?: number;
-    };
   };
   // currentSummary 中的 response 已经在之前批次完成 token 归属；后续 parent row
   // 再携带这些 child 时也必须跳过，避免跨 publish 批次重复累计。
@@ -197,7 +188,7 @@ export const summarizeRuntimeNodeResponses = (
    * 读取当前响应自身拥有的 LLM token。
    *
    * childrenResponses/toolDetail/loopDetail 不是通用递归入口：只有知识库节点的
-   * 明确 LLM 子响应，以及 dataset deep search 这个没有独立响应行的调用，才在这里补入。
+   * 明确 LLM 子响应才在这里补入。
    * wrapper 节点的 child workflow token 由 wrapper 读取 child summary 后显式 push。
    */
   const getResponseLLMTokens = (response: ChatHistoryItemResType) => {
@@ -211,9 +202,6 @@ export const summarizeRuntimeNodeResponses = (
     }
 
     if (response.moduleType === FlowNodeTypeEnum.datasetSearchNode) {
-      inputTokens += current.deepSearchResult?.inputTokens || 0;
-      outputTokens += current.deepSearchResult?.outputTokens || 0;
-
       // dataset search 的这些 child 是同一个 nodeResponse 内部创建的 LLM 调用，
       // 只读取直接子项，embedding/rerank 等非 LLM token 不会进入 runtime summary。
       (response.childrenResponses ?? []).forEach((child) => {
@@ -261,11 +249,10 @@ export const summarizeRuntimeNodeResponses = (
     if (
       !response.errorCaptured &&
       !isToolExecutionResponse(response) &&
-      (response.error || response.errorText)
+      (response.error !== undefined || response.errorText !== undefined)
     ) {
-      summary.hasError = true;
       summary.errorCount += 1;
-      summary.errorText = getErrText(response.error || response.errorText);
+      summary.errorText = getErrText(response.error ?? response.errorText);
     }
     if (response.moduleType === FlowNodeTypeEnum.loopRunBreak) {
       summary.hasLoopRunBreak = true;
@@ -348,7 +335,6 @@ export const mergeWorkflowRuntimeSummary = ({
 
       merged.responseIds.push(...(summary.responseIds ?? []));
       merged.finishedNodeIds.push(...(summary.finishedNodeIds ?? []));
-      merged.hasError ||= summary.hasError;
       if (summary.errorText) {
         merged.errorText = summary.errorText;
       }
@@ -377,7 +363,6 @@ export const mergeWorkflowRuntimeSummary = ({
   if (nodeSummary) {
     merged.responseIds.push(...(nodeSummary.responseIds ?? []));
     merged.finishedNodeIds.push(...(nodeSummary.finishedNodeIds ?? []));
-    merged.hasError ||= !!nodeSummary.hasError;
     if (nodeSummary.errorText) {
       merged.errorText = nodeSummary.errorText;
     }

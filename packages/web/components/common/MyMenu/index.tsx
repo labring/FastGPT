@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
   Menu,
   MenuList,
@@ -16,6 +16,7 @@ import {
 import MyDivider from '../MyDivider';
 import type { IconNameType } from '../Icon/type';
 import { useSystem } from '../../../hooks/useSystem';
+import { useCloseOnFlowNodeDragAreaPointerDown } from '../../../hooks/useCloseOnFlowNodeDragAreaPointerDown';
 import Avatar from '../Avatar';
 import MyTooltip from '../MyTooltip';
 
@@ -218,18 +219,18 @@ const MyMenu = ({
 
   const formatTrigger = !isPc ? 'click' : trigger;
 
-  const isIgnoreOutsideClickTarget = (event: Event) => {
-    return event.composedPath().some((target) => {
+  const closeOnOutsideClick = useCallback((event: Event) => {
+    const isIgnored = event.composedPath().some((target) => {
       return target instanceof HTMLElement && target.dataset.myMenuIgnoreOutsideClick !== undefined;
     });
-  };
+    if (isIgnored) return;
+    setIsOpen(false);
+  }, []);
 
+  useCloseOnFlowNodeDragAreaPointerDown(ref, closeOnOutsideClick, isOpen);
   useOutsideClick({
     ref: ref,
-    handler: (event) => {
-      if (isIgnoreOutsideClickTarget(event)) return;
-      setIsOpen(false);
-    }
+    handler: closeOnOutsideClick
   });
 
   const computeOffset = useMemo<[number, number]>(() => {

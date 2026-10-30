@@ -167,8 +167,8 @@ const toToolRunResult = <TChildrenResponse = unknown>(
   result: AgentLoopCoreToolRunResult<TChildrenResponse>;
   flowResponse: AgentLoopCoreToolRunFlowResponse;
 } => {
-  const errorMessage = toolRunResponse.workflowRuntimeSummary?.hasError
-    ? toolRunResponse.workflowRuntimeSummary.errorText || 'Tool execution failed'
+  const errorMessage = !!toolRunResponse.workflowRuntimeSummary?.errorCount
+    ? toolRunResponse.workflowRuntimeSummary?.errorText || 'Tool execution failed'
     : undefined;
 
   const rawToolResponses = toolRunResponse.toolResponses;
@@ -441,14 +441,14 @@ export const createAgentLoopCoreWorkflowToolRunner = <TChildrenResponse = unknow
   const runInteractiveTool = async ({
     call,
     childrenResponse,
-    toolParams
+    toolCallId
   }: AgentLoopInteractiveToolExecuteParams<TChildrenResponse>) => {
     const entryNodeIds = (childrenResponse as { entryNodeIds?: string[] }).entryNodeIds ?? [];
     const startParams = parseJsonArgs(call?.function?.arguments) ?? {};
 
     // 交互恢复沿用原 toolCallId，最终仍由统一 tool_run_end 落 SSE 和运行详情。
     const toolRunResponse = await runIsolatedWorkflowTool({
-      callId: toolParams.toolCallId,
+      callId: toolCallId,
       entryNodeIds,
       startParams,
       lastInteractive: childrenResponse
@@ -456,7 +456,7 @@ export const createAgentLoopCoreWorkflowToolRunner = <TChildrenResponse = unknow
     const { result, flowResponse } = toToolRunResult<TChildrenResponse>(toolRunResponse);
 
     cacheToolFlowResponse?.({
-      callId: toolParams.toolCallId,
+      callId: toolCallId,
       flowResponse
     });
 

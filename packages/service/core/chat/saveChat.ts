@@ -33,7 +33,6 @@ import type { ClientSession } from '../../common/mongo';
 import { removeS3TTL } from '../../common/s3/utils';
 import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import { encryptSecretValue, anyValueDecrypt } from '../../common/secret/utils';
-import type { SecretValueType } from '@fastgpt/global/common/secret/type';
 import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { normalizeChatFileStoreValues } from './fileStoreValue';
@@ -875,7 +874,18 @@ export const updateInteractiveChat = async ({
     const hasRemainingSemanticValue = (item: AIChatItemValueItemType) =>
       Object.entries(item).some(([key, itemValue]) => {
         // id 只是工具容器的关联键，不能单独构成一条可持久化的 assistant value。
-        if (key === 'id' || key === 'tools') return false;
+        if (
+          [
+            'id',
+            'tools',
+            'modelResponseId',
+            'toolCallIds',
+            'hideInUI',
+            'hideReason',
+            'displayOnly'
+          ].includes(key)
+        )
+          return false;
         return itemValue !== undefined && itemValue !== null;
       });
 
@@ -932,10 +942,7 @@ export const updateInteractiveChat = async ({
           if (typeof decryptedVal === 'string') {
             return {
               ...item,
-              value: encryptSecretValue({
-                value: decryptedVal,
-                secret: ''
-              } as SecretValueType)
+              value: encryptSecretValue({ value: decryptedVal })
             };
           }
           return {

@@ -30,17 +30,33 @@ describe('UserInputFormItemSchema', () => {
 });
 
 describe('interactive description', () => {
-  // 说明文字是可选节点输入；历史与调试回放会直接省略该字段，缺省为空串而不是拒绝。
-  it('defaults a missing description', () => {
+  it.each([undefined, null, '', '说明'])('normalizes description %s', (description) => {
     expect(
       UserSelectInteractiveSchema.parse({
         type: 'userSelect',
-        params: { userSelectOptions: [{ key: 'option1', value: 'Confirm' }] }
+        params: { description, userSelectOptions: [{ key: 'option1', value: 'Confirm' }] }
       })
-    ).toMatchObject({ params: { description: '' } });
+    ).toMatchObject({ params: { description: description ?? '' } });
 
     expect(
-      UserInputInteractiveSchema.parse({ type: 'userInput', params: { inputForm: [] } })
-    ).toMatchObject({ params: { description: '' } });
+      UserInputInteractiveSchema.parse({
+        type: 'userInput',
+        params: { description, inputForm: [] }
+      })
+    ).toMatchObject({ params: { description: description ?? '' } });
+  });
+  it.each([123, {}, []])('rejects an invalid description %s', (description) => {
+    expect(
+      UserInputInteractiveSchema.safeParse({
+        type: 'userInput',
+        params: { description, inputForm: [] }
+      }).success
+    ).toBe(false);
+    expect(
+      UserSelectInteractiveSchema.safeParse({
+        type: 'userSelect',
+        params: { description, userSelectOptions: [] }
+      }).success
+    ).toBe(false);
   });
 });

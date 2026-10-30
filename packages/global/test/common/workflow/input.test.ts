@@ -1,11 +1,30 @@
 import { describe, expect, it } from 'vitest';
 import {
   getOrInitModuleInputValue,
+  getWorkflowSecretInputKind,
   projectExternalVariableInput
 } from '@fastgpt/global/common/workflow/input';
-import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
+import {
+  FlowNodeInputTypeEnum,
+  FlowNodeTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
+import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
+
+describe('getWorkflowSecretInputKind', () => {
+  it.each([
+    [FlowNodeTypeEnum.httpRequest468, NodeInputKeyEnum.headerSecret, 'headers'],
+    [FlowNodeTypeEnum.tool, NodeInputKeyEnum.systemInputConfig, 'systemConfig'],
+    [FlowNodeTypeEnum.toolSet, NodeInputKeyEnum.systemInputConfig, 'systemConfig'],
+    [FlowNodeTypeEnum.pluginModule, NodeInputKeyEnum.systemInputConfig, 'systemConfig'],
+    [FlowNodeTypeEnum.code, NodeInputKeyEnum.headerSecret, undefined],
+    [FlowNodeTypeEnum.code, NodeInputKeyEnum.systemInputConfig, undefined],
+    [FlowNodeTypeEnum.httpRequest468, 'business', undefined],
+    [undefined, NodeInputKeyEnum.headerSecret, undefined]
+  ])('identifies %s / %s only from its declared location', (flowNodeType, inputKey, expected) => {
+    expect(getWorkflowSecretInputKind({ flowNodeType, inputKey })).toBe(expected);
+  });
+});
 
 describe('projectExternalVariableInput', () => {
   it.each([

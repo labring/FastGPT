@@ -622,5 +622,6 @@
   "delete_following_folders_tip": "Once deleted, these folders, all apps inside them, and associated chat history will be deleted.",
   "chat_agent_config_ready": "Configuration generated",
   "chat_agent_config_apply": "Apply configuration",
+  "chat_agent_config_applied": "Configuration applied successfully",
   "chat_agent_config_expired": "Configuration expired"
 }

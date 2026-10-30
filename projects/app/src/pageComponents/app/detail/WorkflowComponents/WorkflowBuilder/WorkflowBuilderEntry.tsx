@@ -1,4 +1,5 @@
 import React from 'react';
+import { webPushTrack } from '@/web/common/middle/tracks/utils';
 import { Box, IconButton } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -38,6 +39,7 @@ const WorkflowBuilderEntry = () => {
           </Box>
         }
         onClick={() => {
+          void webPushTrack.workflowBuilderClick()?.catch(() => {});
           openLeftPanel('workflowBuilder');
           if (entryAccess === 'enabled') requestInputFocus();
         }}

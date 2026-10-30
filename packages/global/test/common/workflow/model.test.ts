@@ -191,13 +191,12 @@ describe('formatModels', () => {
     { model: 'gpt-4', modelId: '68ad85a7463006c963799a05', type: ModelTypeEnum.llm },
     { model: 'rerank-v1', modelId: '68ad85a7463006c963799a06', type: ModelTypeEnum.rerank },
     { model: 'extension-v1', modelId: '68ad85a7463006c963799a07', type: ModelTypeEnum.llm },
-    { model: 'deep-search-v1', modelId: '68ad85a7463006c963799a08', type: ModelTypeEnum.llm },
     { model: 'legacy-tts', modelId: 'existing-tts-id', type: ModelTypeEnum.tts }
   ];
   const defaultModelIds = {
     [ModelTypeEnum.llm]: models[2].modelId,
     [ModelTypeEnum.rerank]: models[1].modelId,
-    [ModelTypeEnum.tts]: models[4].modelId
+    [ModelTypeEnum.tts]: models[3].modelId
   };
 
   it('returns undefined nodes unchanged', () => {
@@ -315,12 +314,6 @@ describe('formatModels', () => {
             label: 'Extension model',
             value: 'extension-v1',
             renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
-          },
-          {
-            key: NodeInputKeyEnum.datasetDeepSearchModel,
-            label: 'Deep search model',
-            value: 'deep-search-v1',
-            renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
           }
         ],
         outputs: []
@@ -329,13 +322,12 @@ describe('formatModels', () => {
 
     const result = formatModels({ nodes, models, modelReferencePolicy: 'fallback' });
 
-    expect(result?.[0].inputs).toHaveLength(4);
+    expect(result?.[0].inputs).toHaveLength(3);
     expect(result?.[0].inputs.map((input) => input.key)).not.toEqual(
       expect.arrayContaining([
         NodeInputKeyEnum.aiModel,
         NodeInputKeyEnum.datasetSearchRerankModel,
-        NodeInputKeyEnum.datasetSearchExtensionModel,
-        NodeInputKeyEnum.datasetDeepSearchModel
+        NodeInputKeyEnum.datasetSearchExtensionModel
       ])
     );
     expect(result?.[0].inputs).toEqual(
@@ -351,10 +343,6 @@ describe('formatModels', () => {
         expect.objectContaining({
           key: NodeInputKeyEnum.datasetSearchExtensionModelId,
           value: models[2].modelId
-        }),
-        expect.objectContaining({
-          key: NodeInputKeyEnum.datasetDeepSearchModelId,
-          value: models[3].modelId
         })
       ])
     );
@@ -954,7 +942,7 @@ describe('formatModels', () => {
     ];
     const chatConfig = {
       questionGuide: { open: true, modelId: models[0].modelId },
-      ttsConfig: { type: 'model' as const, modelId: models[4].modelId }
+      ttsConfig: { type: 'model' as const, modelId: models[3].modelId }
     };
 
     addModelNamesToWorkflow({ nodes, chatConfig, models });
@@ -978,8 +966,8 @@ describe('formatModels', () => {
     });
     expect(chatConfig.ttsConfig).toEqual({
       type: 'model',
-      modelId: models[4].modelId,
-      model: models[4].model
+      modelId: models[3].modelId,
+      model: models[3].model
     });
   });
 

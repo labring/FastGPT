@@ -16,7 +16,7 @@ import { isAuthorizedTempFileS3Key } from '@fastgpt/service/common/s3/sources/te
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/catalog/service';
 import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
-import { deepRagSearch, defaultSearchDatasetData } from '@fastgpt/service/core/dataset/search';
+import { defaultSearchDatasetData } from '@fastgpt/service/core/dataset/search';
 import { findFirstDatasetSearchVlmModel } from '@fastgpt/service/core/dataset/search/vlm';
 import { updateApiKeyUsage } from '@fastgpt/service/support/openapi/tools';
 import { resolveReadableCollectionIds } from '@fastgpt/service/support/permission/collection/auth';
@@ -50,13 +50,7 @@ export async function handler(
     datasetSearchUsingExtensionQuery = false,
     datasetSearchExtensionModelId,
     datasetSearchExtensionModel,
-    datasetSearchExtensionBg,
-
-    datasetDeepSearch = false,
-    datasetDeepSearchModelId,
-    datasetDeepSearchModel,
-    datasetDeepSearchMaxTimes,
-    datasetDeepSearchBg
+    datasetSearchExtensionBg
   } = parseApiInput({ req, bodySchema: SearchDatasetTestBodySchema }).body;
 
   const start = Date.now();
@@ -121,17 +115,7 @@ export async function handler(
         { type: 'llm', fallbackToDefault: true, authorizedIds }
       )
     : undefined;
-  const deepSearchModelData = datasetDeepSearch
-    ? modelHandle.getModelData(
-        {
-          modelId: datasetDeepSearchModelId,
-          model: datasetDeepSearchModel
-        },
-        { type: 'llm', authorizedIds }
-      )
-    : undefined;
-
-  const auxiliaryModels = [rerankModelData, extensionModelData, deepSearchModelData].filter(
+  const auxiliaryModels = [rerankModelData, extensionModelData].filter(
     (model) => model !== undefined
   );
   await assertAuthModels({
@@ -174,19 +158,12 @@ export async function handler(
     queryExtensionResult,
     imageCaptionResult,
     ...result
-  } = datasetDeepSearch && !!text.trim()
-    ? await deepRagSearch({
-        ...searchData,
-        datasetDeepSearchModel: deepSearchModelData,
-        datasetDeepSearchMaxTimes,
-        datasetDeepSearchBg
-      })
-    : await defaultSearchDatasetData({
-        ...searchData,
-        datasetSearchUsingExtensionQuery,
-        datasetSearchExtensionModel: extensionModelData,
-        datasetSearchExtensionBg
-      });
+  } = await defaultSearchDatasetData({
+    ...searchData,
+    datasetSearchUsingExtensionQuery,
+    datasetSearchExtensionModel: extensionModelData,
+    datasetSearchExtensionBg
+  });
 
   // push bill
   const source = apikey ? UsageSourceEnum.api : UsageSourceEnum.fastgpt;

@@ -119,7 +119,7 @@ describe('Agent read_files tool protocol', () => {
       stream: false,
       getSubAppInfo: () => ({
         name: 'Dataset Search',
-        avatar: '',
+        avatar: ''
       }),
       getSubApp: () => undefined,
       completionTools: []

@@ -8,6 +8,7 @@ import {
 } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { legacySystemConfigNodeType } from '@fastgpt/global/core/workflow/migration/legacy/systemConfig';
+import { migrateWorkflowToCurrent } from '@fastgpt/global/core/workflow/migration/migrate';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
@@ -149,6 +150,93 @@ describe('replaceInvalidModelReferences', () => {
     expect(nodes[0].inputs[0].value).toBe('{{modelId}}');
     expect(nodes[1].inputs[0].value).toBe('missing');
     expect(nodes[2].inputs[0].value).toBe('new-rerank');
+  });
+
+  it('replaces migrated custom LLM selectors while preserving stored inputs and team models', () => {
+    const teamModel = {
+      modelId: 'team-custom-llm',
+      model: 'team-custom-llm-name',
+      type: ModelTypeEnum.llm,
+      isActive: true,
+      scope: ModelScopeEnum.team,
+      teamId: String(ids.team),
+      config: { vision: true }
+    };
+    const teamHandle = createHandle([...models, teamModel]);
+    const replacer = createInvalidReferenceReplacer({ handle: teamHandle, replacement });
+    const nodes = [
+      {
+        nodeId: 'plugin-node',
+        flowNodeType: FlowNodeTypeEnum.pluginModule,
+        name: 'Plugin',
+        pluginId: 'plugin-id',
+        inputs: [
+          {
+            key: '模型',
+            label: 'Model',
+            value: 'old-llm',
+            defaultValue: 'keep-default',
+            description: 'keep-description',
+            customMetadata: 'preserve',
+            renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.selectLLMModel],
+            selectedTypeIndex: 1
+          },
+          {
+            key: 'team-model',
+            label: 'Team model',
+            value: teamModel.modelId,
+            renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
+          },
+          {
+            key: 'other-mode',
+            label: 'Other mode',
+            value: 'old-llm',
+            renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel, FlowNodeInputTypeEnum.input],
+            selectedType: FlowNodeInputTypeEnum.input
+          },
+          {
+            key: 'reference',
+            label: 'Reference',
+            value: ['source-node', 'output'],
+            renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel, FlowNodeInputTypeEnum.reference],
+            selectedTypeIndex: 1
+          },
+          {
+            key: 'dynamic',
+            label: 'Dynamic',
+            value: '{{selectedModel}}',
+            renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
+          }
+        ],
+        outputs: []
+      }
+    ];
+    const migratedWorkflow = migrateWorkflowToCurrent({ nodes });
+
+    expect(migratedWorkflow.nodes[0].inputs[0].selectedType).toBe(
+      FlowNodeInputTypeEnum.selectLLMModel
+    );
+    expect(migratedWorkflow.nodes[0].inputs[3].selectedType).toBe(FlowNodeInputTypeEnum.reference);
+
+    const content = replacer.replaceAppContent({
+      nodes,
+      referenceNodes: migratedWorkflow.nodes
+    });
+    const storedNode = content.nodes?.[0] as { inputs: Array<Record<string, unknown>> };
+
+    expect(storedNode.inputs[0]).toMatchObject({
+      key: '模型',
+      value: replacement.llmModelId,
+      defaultValue: 'keep-default',
+      description: 'keep-description',
+      customMetadata: 'preserve',
+      selectedTypeIndex: 1
+    });
+    expect(storedNode.inputs[1].value).toBe(teamModel.modelId);
+    expect(storedNode.inputs[2].value).toBe('old-llm');
+    expect(storedNode.inputs[3].value).toEqual(['source-node', 'output']);
+    expect(storedNode.inputs[4].value).toBe('{{selectedModel}}');
+    expect(content.changes.llm).toEqual({ replacedReferences: 1, skippedReferences: 2 });
   });
 
   it('persists team model IDs for legacy config and node references', () => {

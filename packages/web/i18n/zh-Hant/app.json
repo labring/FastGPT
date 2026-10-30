@@ -618,5 +618,6 @@
   "delete_following_folders_tip": "刪除後，這些文件夾及其包含的全部應用、關聯對話記錄將被一併刪除。",
   "chat_agent_config_ready": "配置已生成",
   "chat_agent_config_apply": "套用配置",
+  "chat_agent_config_applied": "配置套用成功",
   "chat_agent_config_expired": "配置已過期"
 }

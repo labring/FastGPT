@@ -85,7 +85,7 @@ describe('dispatchUserSelect', () => {
     });
   });
 
-  it('throws an error when reference mode resolves to an empty option list', async () => {
+  it('returns a business failure without a raw exception when reference options are empty', async () => {
     await expect(
       dispatchUserSelect({
         histories: [],
@@ -107,7 +107,10 @@ describe('dispatchUserSelect', () => {
         },
         query: []
       } as any)
-    ).rejects.toThrow('workflow:user_select_no_available_options');
+    ).resolves.toEqual({
+      error: { [NodeOutputKeyEnum.errorText]: 'workflow:user_select_no_available_options' },
+      responseData: { errorText: 'workflow:user_select_no_available_options' }
+    });
   });
 
   it('does not skip ref_default handle when user selects an option in reference mode', async () => {

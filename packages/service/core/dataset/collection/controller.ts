@@ -1,3 +1,5 @@
+import { checkCreateResourceParent } from '../../../common/parentFolder/depth';
+import { defaultSubtreeMaxDepth } from '@fastgpt/global/common/parentFolder/subtree';
 import { assertParentPlanAcyclic } from '../../../common/parentFolder/parentPlan';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import {
@@ -709,7 +711,9 @@ export type CreateOneCollectionParams = ApiCreateDatasetCollectionParams & {
 };
 /**
  * 批量创建集合，统一标签解析、文档构造、文件 TTL 和 ACL 初始化。
- * 同一团队/知识库/标签组合只解析一次；父目录须已完成创建，目录树由上层按层提交。
+ * 同一团队/知识库/标签组合只解析一次；父目录须已创建且类型合法，目录树由上层按层提交。
+ * 普通创建使用配置深度；外部库目录和正文（apiFileId）使用 20 层上限，叶子不占目录层数。
+ * 祖先读取在当前事务内复用，深度策略不会改变父级类型、归属和环检测。
  * 单条与批量均使用此入口；集合、ACL 和文件状态共享事务，任一失败整体回滚。
  */
 export async function createCollections({
@@ -804,6 +808,44 @@ export async function createCollections({
     const newIds = new Set(docs.map((doc) => String(doc._id)));
     if (docs.some((doc) => doc.parentId && newIds.has(String(doc.parentId)))) {
       throw new Error('Collection batch parents must already exist');
+    }
+
+    // 父级必须属于同一知识库且为文件夹；只有新建文件夹才增加策略深度。
+    const checkedParents = new Set<string>();
+    // 同批文件夹常共享祖先；缓存事务内的只读查询，避免沿每条父链重复往返数据库。
+    const parentCache = new Map<
+      string,
+      Promise<Pick<DatasetCollectionSchemaType, '_id' | 'parentId' | 'type'> | null>
+    >();
+    for (const doc of docs) {
+      const isFolder = doc.type === DatasetCollectionTypeEnum.folder;
+      // apiFileId 是外部库的资源身份，普通创建 HTTP 入参不接收该字段。
+      // 导入、增量同步和已有文件重建均保留这一身份，统一采用外部树的遍历上限。
+      const maxDepth = doc.apiFileId ? defaultSubtreeMaxDepth : undefined;
+      const key = JSON.stringify([doc.teamId, doc.datasetId, doc.parentId, isFolder, maxDepth]);
+      if (checkedParents.has(key)) continue;
+      await checkCreateResourceParent({
+        parentId: doc.parentId,
+        findResource: (id) => {
+          const key = JSON.stringify([doc.teamId, doc.datasetId, id]);
+          const cached = parentCache.get(key);
+          if (cached) return cached;
+          const parent = Promise.resolve(
+            MongoDatasetCollection.findOne(
+              { _id: id, teamId: doc.teamId, datasetId: doc.datasetId },
+              '_id parentId type'
+            )
+              .session(s)
+              .lean()
+          );
+          parentCache.set(key, parent);
+          return parent;
+        },
+        isFolder,
+        maxDepth,
+        isFolderType: (type) => type === DatasetCollectionTypeEnum.folder
+      });
+      checkedParents.add(key);
     }
 
     // 2. 创建集合并按父级去重初始化快照。关闭态不需要 collection ACL；独立态仍须拒绝。
