@@ -14,7 +14,6 @@ import * as modelGetters from '../../../../../core/ai/model/catalog/service';
 
 const {
   defaultSearchDatasetDataMock,
-  deepRagSearchMock,
   loadWorkflowDatasetResourceMock,
   findDatasetMock,
   getDatasetSearchVlmModelMock,
@@ -23,7 +22,6 @@ const {
   mockLogger
 } = vi.hoisted(() => ({
   defaultSearchDatasetDataMock: vi.fn(),
-  deepRagSearchMock: vi.fn(),
   loadWorkflowDatasetResourceMock: vi.fn(),
   findDatasetMock: vi.fn(),
   getDatasetSearchVlmModelMock: vi.fn(),
@@ -43,8 +41,7 @@ vi.mock('@fastgpt/service/common/logger', async (importOriginal) => ({
 }));
 
 vi.mock('@fastgpt/service/core/dataset/search', () => ({
-  defaultSearchDatasetData: defaultSearchDatasetDataMock,
-  deepRagSearch: deepRagSearchMock
+  defaultSearchDatasetData: defaultSearchDatasetDataMock
 }));
 
 vi.mock('@fastgpt/service/core/dataset/search/vlm', () => ({
@@ -244,6 +241,7 @@ describe('dispatchDatasetSearch', () => {
       },
       nodeSummary
     );
+
     expect(nodeSummary).toMatchObject({ llmInputTokens: 0, llmOutputTokens: 0 });
     expect(result.error).toBeUndefined();
     expect(defaultSearchDatasetDataMock).toHaveBeenCalledWith(
@@ -267,7 +265,7 @@ describe('dispatchDatasetSearch', () => {
       throw new UserError(ModelErrEnum.unExist);
     });
     const result = await runSearch({ usingReRank: true, datasetSearchUsingExtensionQuery: true });
-    expect(result.error).toBeDefined();
+    expect(result.rawError).toBeDefined();
     expect(defaultSearchDatasetDataMock).not.toHaveBeenCalled();
     expect((await modelGetters.getSystemModelHandle()).getDefaultModelData).not.toHaveBeenCalled();
   });
@@ -588,7 +586,7 @@ describe('dispatchDatasetSearch', () => {
     );
   });
 
-  it('uses default recall for image-only input even when deep search is enabled', async () => {
+  it('uses default recall for image-only input', async () => {
     defaultSearchDatasetDataMock.mockResolvedValue({
       searchRes: [],
       embeddingTokens: 4,
@@ -614,14 +612,12 @@ describe('dispatchDatasetSearch', () => {
         embeddingWeight: 0.5,
         usingReRank: false,
         rerankWeight: 0.5,
-        datasetSearchUsingExtensionQuery: false,
-        datasetDeepSearch: true
+        datasetSearchUsingExtensionQuery: false
       },
       nodeSummary: createNodeSummary(),
       usagePush: usagePushMock
     } as any);
 
-    expect(deepRagSearchMock).not.toHaveBeenCalled();
     expect(defaultSearchDatasetDataMock).toHaveBeenCalledWith(
       expect.objectContaining({
         textQueries: [],
@@ -630,6 +626,38 @@ describe('dispatchDatasetSearch', () => {
     );
     expect(result[DispatchNodeResponseKeyEnum.nodeResponse]?.datasetQueries).toEqual([
       'https://files.example.com/query.png'
+    ]);
+  });
+
+  it('ignores retired search options and bills ordinary recall', async () => {
+    const quotes = [{ id: 'ordinary', q: 'question', a: 'answer', sourceName: 'doc.md' }];
+    defaultSearchDatasetDataMock.mockResolvedValue({
+      searchRes: quotes,
+      embeddingTokens: 10,
+      reRankInputTokens: 0,
+      usingSimilarityFilter: false,
+      usingReRank: false
+    });
+
+    const result = await runSearch({
+      datasetDeepSearch: true,
+      datasetDeepSearchModelId: 'deleted-model',
+      datasetDeepSearchModel: 'deleted-model',
+      datasetDeepSearchMaxTimes: 3,
+      datasetDeepSearchBg: 'old settings'
+    });
+
+    expect(result.error).toBeUndefined();
+    expect(result.data?.quoteQA).toEqual(quotes);
+    expect(defaultSearchDatasetDataMock).toHaveBeenCalledWith(
+      expect.objectContaining({ textQueries: ['question'] })
+    );
+    expect((await modelGetters.getSystemModelHandle()).getModelData).not.toHaveBeenCalledWith(
+      expect.objectContaining({ modelId: 'deleted-model' }),
+      expect.anything()
+    );
+    expect(usagePushMock).toHaveBeenCalledWith([
+      expect.objectContaining({ inputTokens: 10, totalPoints: 0.1 })
     ]);
   });
 
@@ -708,30 +736,14 @@ describe('dispatchDatasetSearch', () => {
         'retrievalResults'
       );
     });
-
-    it('omits the field on the deep search path, which does not produce it', async () => {
-      await useRerankModel();
-      deepRagSearchMock.mockResolvedValue({
-        searchRes: reranked,
-        embeddingTokens: 10,
-        reRankInputTokens: 5,
-        usingSimilarityFilter: false,
-        usingReRank: true
-      });
-
-      const result = await runSearch({ usingReRank: true, datasetDeepSearch: true });
-      expect(deepRagSearchMock).toHaveBeenCalled();
-
-      expect(result[DispatchNodeResponseKeyEnum.nodeResponse]).not.toHaveProperty(
-        'retrievalResults'
-      );
-    });
   });
 
   it('downgrades workflow resource errors without changing the node response', async () => {
     const error = new WorkflowResourceError('App resource is unavailable: dataset:deleted_id');
     loadWorkflowDatasetResourceMock.mockRejectedValueOnce(error);
     const result = await runSearch();
+
+    expect(result.rawError).toBe(error);
     expect(result).toMatchObject({
       error: { [NodeOutputKeyEnum.errorText]: error.message },
       [DispatchNodeResponseKeyEnum.nodeResponse]: { errorText: error.message },
@@ -744,7 +756,7 @@ describe('dispatchDatasetSearch', () => {
   it('downgrades log to warn when dataset is missing (unExistDataset)', async () => {
     findDatasetMock.mockReturnValueOnce({ lean: vi.fn().mockResolvedValue([]) });
     const result = await runSnapshotSearch();
-    expect(result.error).toBeDefined();
+    expect(result.rawError).toBeDefined();
     expect(mockLogger.warn).toHaveBeenCalledWith('Dataset search dispatch failed', {
       error: DatasetErrEnum.unExist
     });
@@ -755,6 +767,7 @@ describe('dispatchDatasetSearch', () => {
     const error = new Error('Mongo connection timed out');
     findDatasetMock.mockReturnValueOnce({ lean: vi.fn().mockRejectedValue(error) });
     const result = await runSnapshotSearch();
+    expect(result.rawError).toBe(error);
     expect(result.error).toEqual({ [NodeOutputKeyEnum.errorText]: error.message });
     expect(mockLogger.error).toHaveBeenCalledWith('Dataset search dispatch failed', { error });
     expect(mockLogger.warn).not.toHaveBeenCalled();

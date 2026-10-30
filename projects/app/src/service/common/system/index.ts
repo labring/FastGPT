@@ -11,10 +11,8 @@ import {
   postCheckCensor,
   postConcatUsage,
   postCreateUsage,
-  postDeepRag,
   postPushUsageItems
 } from '@fastgpt/service/thirdProvider/fastgptPro/api';
-import type { DeepRagSearchProps } from '@fastgpt/service/core/dataset/search';
 import type {
   PushUsageItemsProps,
   ConcatUsageProps,
@@ -40,10 +38,6 @@ export function initGlobalVariables() {
     global.textCensorHandler = function textCensorHandler({ text }: { text: string }) {
       if (!isProVersion()) return Promise.resolve({ code: 200 });
       return postCheckCensor({ text });
-    };
-
-    global.deepRagHandler = function deepRagHandler(data: DeepRagSearchProps) {
-      return postDeepRag(data);
     };
 
     global.createUsageHandler = function createUsageHandler(data: CreateUsageProps) {

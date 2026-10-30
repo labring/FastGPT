@@ -63,6 +63,13 @@ vi.mock('@fastgpt/service/common/s3/accessLink', async (importOriginal) => {
   };
 });
 
+vi.mock('@fastgpt/service/common/s3/accessLink/downloadAlias/service', async (importOriginal) => ({
+  ...(await importOriginal<
+    typeof import('@fastgpt/service/common/s3/accessLink/downloadAlias/service')
+  >()),
+  verifyS3DownloadAccess: mockVerifyS3DownloadAccess
+}));
+
 // 全局 s3 mock 把 S3ChatSource 替换成了 vi.fn()，丢失了静态方法。
 // 这里用真实模块覆盖回来，让 parseChatUrl 静态方法可用。
 vi.mock('@fastgpt/service/common/s3/sources/chat/index', async (importOriginal) => {

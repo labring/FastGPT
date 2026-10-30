@@ -127,8 +127,16 @@ async function handler(req: ApiRequestProps) {
     await checkMoveFolderDepth({
       resourceId: id,
       targetParentId,
-      teamId: collection.teamId,
-      model: MongoDatasetCollection,
+      findResource: (id) =>
+        MongoDatasetCollection.findOne(
+          { _id: id, teamId: collection.teamId, datasetId: collection.datasetId },
+          '_id parentId type'
+        ).lean(),
+      findChildren: (parentId) =>
+        MongoDatasetCollection.find(
+          { parentId, teamId: collection.teamId, datasetId: collection.datasetId },
+          '_id type'
+        ).lean(),
       isFolderType: (type) => type === DatasetCollectionTypeEnum.folder
     });
   }

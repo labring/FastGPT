@@ -66,8 +66,7 @@ export type SearchDatasetDataResponse = {
 
   /** 重排前的文本召回候选集快照，仅用于日志详情对比召回与重排。
    *  取自重排前的 textRecallResults（不含图片侧召回），仅在启用重排且
-   *  RETRIEVAL_RESULTS_LIMIT > 0 时产出。
-   *  可选：deepRagHandler 等外部实现不产出该字段。 */
+   *  RETRIEVAL_RESULTS_LIMIT > 0 时产出。 */
   retrievalResults?: SearchDataResponseItemType[];
 
   queryExtensionResult?: {
@@ -81,7 +80,6 @@ export type SearchDatasetDataResponse = {
     embeddingTokens: number;
     query: string;
   };
-  deepSearchResult?: { model: string; inputTokens: number; outputTokens: number };
   imageCaptionResult?: {
     model: string;
     inputTokens: number;
@@ -98,10 +96,4 @@ export type DefaultSearchDatasetDataProps = Omit<SearchDatasetDataProps, 'reRank
   [NodeInputKeyEnum.datasetSearchExtensionModel]?: LLMModelDataType;
   [NodeInputKeyEnum.datasetSearchExtensionBg]?: string;
   userKey?: OpenaiAccountType;
-};
-
-export type DeepRagSearchProps = Omit<SearchDatasetDataProps, 'reRankQuery'> & {
-  [NodeInputKeyEnum.datasetDeepSearchModel]?: LLMModelDataType;
-  [NodeInputKeyEnum.datasetDeepSearchMaxTimes]?: number;
-  [NodeInputKeyEnum.datasetDeepSearchBg]?: string;
 };

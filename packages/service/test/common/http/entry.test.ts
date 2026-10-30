@@ -4,6 +4,7 @@ import { describe, expect, it, onTestFinished, vi } from 'vitest';
 import { z } from 'zod';
 import type { NodeApiRequest, NodeApiResponse } from '@fastgpt/service/types/http';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { UserConfigError } from '@fastgpt/global/common/error/utils';
 
 // 必须运行真实入口和 JSON 响应，才能验证 end/finish/close 之间的边界。
 vi.unmock('@fastgpt/service/common/http/entry');
@@ -11,6 +12,8 @@ vi.unmock('@fastgpt/service/common/response');
 vi.unmock('@fastgpt/service/common/logger');
 
 import { createApiEntry, redactRequestUrl } from '@fastgpt/service/common/http/entry';
+import { isProfiling, profileStage } from '@fastgpt/service/common/profiling';
+import { REQUEST_PROFILE_HEADER } from '@fastgpt/service/common/http/requestProfile';
 
 describe('redactRequestUrl', () => {
   it('redacts every declared query value while preserving non-sensitive parameters', () => {
@@ -66,6 +69,32 @@ describe('createApiEntry response lifecycle', () => {
     });
   });
 
+  it.each([undefined, '1'])(
+    '请求入口按 header 创建上下文，覆盖前置中间件和异步业务：%s',
+    async (header) => {
+      const { req, res } = createHttpObjects();
+      req.headers[REQUEST_PROFILE_HEADER] = header;
+      const active = header === '1';
+      const handler = createApiEntry({
+        beforeCallback: [
+          async () => {
+            expect(isProfiling()).toBe(active);
+          }
+        ]
+      })(async () => {
+        expect(isProfiling()).toBe(active);
+        await profileStage({ event: 'tools.authorize', params: { toolCount: 2 } }, async () => {
+          await Promise.resolve();
+          expect(isProfiling()).toBe(active);
+        });
+        return { value: 1 };
+      });
+      await handler(req, res);
+      expect(isProfiling()).toBe(false);
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ data: { value: 1 } }));
+    }
+  );
+
   it('stops later handlers and JSON fallback after end without waiting for finish', async () => {
     const { req, res } = createHttpObjects();
     const nextHandler = vi.fn();
@@ -108,15 +137,18 @@ describe('createApiEntry response lifecycle', () => {
     expect(res.json).not.toHaveBeenCalled();
   });
 
-  it('returns JSON errors when no response has started', async () => {
+  it.each([
+    { error: new Error('Handler failed'), status: 500 },
+    { error: new UserConfigError('Invalid API key'), status: 400 }
+  ])('returns the response mapper status before streaming: $status', async ({ error, status }) => {
     const { req, res } = createHttpObjects();
 
     await createApiEntry({})(async () => {
-      throw new Error('Handler failed');
+      throw error;
     })(req, res);
 
-    expect(res.statusCode).toBe(500);
-    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ message: 'Handler failed' }));
+    expect(res.statusCode).toBe(status);
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ message: error.message }));
   });
 
   it('preserves the 400 response for invalid API input before response streaming', async () => {

@@ -551,7 +551,7 @@ export async function rewriteAppWorkflowToDetail({
                   };
                 });
 
-                formatToolInputSecrets({ inputs: mergedInputs });
+                formatToolInputSecrets({ inputs: mergedInputs, flowNodeType: data.flowNodeType });
                 // 旧工具用英文重建缺失文案，但不把回退语言写成历史 metadataLocale。
                 const { metadataLocale: previewLocale, ...toolData } = data;
                 void previewLocale;

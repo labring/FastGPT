@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 import { ApiRequestInputParseError } from '../../../common/zod/requestParseError';
-import { UserError } from '@fastgpt/global/common/error/utils';
+import { UserError, UserConfigError } from '@fastgpt/global/common/error/utils';
 import { ERROR_ENUM, ERROR_RESPONSE } from '@fastgpt/global/common/error/errorCode';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
@@ -28,7 +28,12 @@ vi.mock('@fastgpt/service/common/logger', () => ({
   }
 }));
 
-const { getSseErrorResponse, jsonRes, processError } = await import('../../../common/response');
+const profilingMocks = vi.hoisted(() => ({ markProfileError: vi.fn() }));
+
+vi.mock('@fastgpt/service/common/profiling', () => profilingMocks);
+
+const { getSseErrorResponse, jsonRes, processError, responseWrite, sseErrRes } =
+  await import('../../../common/response');
 
 function buildZodError() {
   try {
@@ -91,6 +96,35 @@ describe('processError zod logging', () => {
     );
     expect(logger.info).not.toHaveBeenCalled();
   });
+
+  it('does not log expected user config errors', () => {
+    const processed = processError({
+      error: new UserConfigError('Invalid MCP URL'),
+      url: '/api/test',
+      defaultCode: 400
+    });
+
+    expect(processed).toMatchObject({
+      message: 'Invalid MCP URL',
+      httpStatus: 400
+    });
+    expect(logger.info).not.toHaveBeenCalled();
+    expect(logger.error).not.toHaveBeenCalled();
+  });
+
+  it('falls back safely when a serialized user config error has a non-string display message', () => {
+    const processed = processError({
+      error: {
+        name: 'UserConfigError',
+        message: 'Invalid API key',
+        displayMessage: { text: 'unexpected object' }
+      } as any,
+      url: '/api/test',
+      defaultCode: 400
+    });
+
+    expect(processed.message).toBe('Invalid API key');
+  });
 });
 
 describe('processError HTTP status mapping', () => {
@@ -135,6 +169,25 @@ describe('processError HTTP status mapping', () => {
     ).toBe('Model type mismatch: https://xxx');
     expect(processError({ error: new UserError('custom', '具体提示') }).message).toBe('具体提示');
   });
+  it('maps a config UserError to HTTP 400 even when defaultCode is 500', () => {
+    const error = new UserConfigError('MCP protocol mismatch');
+    const processed = processError({ error, defaultCode: 500 });
+    expect(processed.httpStatus).toBe(400);
+    expect(processed.code).toBe(400);
+
+    const res = { status: vi.fn().mockReturnThis(), json: vi.fn() } as unknown as Parameters<
+      typeof jsonRes
+    >[0];
+    jsonRes(res, { error, code: 500 });
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        code: 400,
+        message: 'MCP protocol mismatch'
+      })
+    );
+  });
+
   it('maps a missing file to HTTP 404', () => {
     const processed = processError({
       error: CommonErrEnum.fileNotFound
@@ -314,5 +367,42 @@ describe('SSE stream resume mirror', () => {
     ]);
     expect(flushMirror).toHaveBeenCalledTimes(1);
     expect(response.write).not.toHaveBeenCalled();
+  });
+});
+
+describe('SSE error response profiling', () => {
+  beforeEach(() => {
+    profilingMocks.markProfileError.mockClear();
+  });
+
+  it('marks the request profile as failed when building an SSE error payload', () => {
+    const error = new Error('auth failed');
+
+    const response = getSseErrorResponse(error);
+
+    // 响应载荷保持原样，只是同时把请求标记为失败
+    expect(response.event).toBe('error');
+    expect(profilingMocks.markProfileError).toHaveBeenCalledWith(error);
+  });
+
+  it('marks the request profile as failed when a direct error event is written', () => {
+    const res = { write: vi.fn(() => true) };
+
+    responseWrite({ res: res as any, event: 'error', data: '{"message":"node failed"}' });
+    expect(profilingMocks.markProfileError).toHaveBeenCalledWith('{"message":"node failed"}');
+
+    profilingMocks.markProfileError.mockClear();
+    responseWrite({ res: res as any, event: 'answer', data: 'content' });
+    expect(profilingMocks.markProfileError).not.toHaveBeenCalled();
+  });
+
+  it('marks the request profile as failed when sseErrRes writes an SSE error', () => {
+    const error = new Error('auth failed');
+    const res = { write: vi.fn(() => true) };
+
+    sseErrRes(res as any, error);
+
+    expect(res.write).toHaveBeenCalled();
+    expect(profilingMocks.markProfileError).toHaveBeenCalledWith(error);
   });
 });

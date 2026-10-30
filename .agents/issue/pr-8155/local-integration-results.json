@@ -1,0 +1,1597 @@
+{
+  "pr": "https://github.com/labring/FastGPT/pull/8155",
+  "testedFastGPTCommit": "4abb328314e45b75a5585123cc59cba16711f8fd",
+  "testedProCommit": "a5f7ec1a4f6ae6c19096ad931a3372c7f36485ca",
+  "totalPassed": 121,
+  "totalFailed": 0,
+  "totalSkipped": 0,
+  "environment": {
+    "node": "v24.16.0",
+    "platform": "darwin",
+    "mongo": "local ephemeral replica set",
+    "redisDatabase": 14,
+    "mockedModules": [],
+    "mongoVersion": "7.0.14",
+    "redisVersion": "7.2.14"
+  },
+  "http": {
+    "requestCount": 411,
+    "endpointCount": 19,
+    "successBusinessResponses": 251,
+    "expectedRejectedBusinessResponses": 160,
+    "endpoints": [
+      {
+        "endpoint": "GET /api/core/ai/skill/folder/path",
+        "businessCodes": {
+          "200": 6,
+          "509001": 4
+        }
+      },
+      {
+        "endpoint": "GET /api/core/app/folder/path",
+        "businessCodes": {
+          "200": 12,
+          "502001": 8
+        }
+      },
+      {
+        "endpoint": "GET /api/core/dataset/collection/paths",
+        "businessCodes": {
+          "501004": 2,
+          "200": 6,
+          "501005": 2
+        }
+      },
+      {
+        "endpoint": "POST /api/core/ai/skill/collaborator/update",
+        "businessCodes": {
+          "200": 5
+        }
+      },
+      {
+        "endpoint": "POST /api/core/ai/skill/create",
+        "businessCodes": {
+          "200": 8,
+          "507000": 5,
+          "500004": 1,
+          "509001": 3,
+          "507006": 1
+        }
+      },
+      {
+        "endpoint": "POST /api/core/ai/skill/folder/create",
+        "businessCodes": {
+          "200": 24,
+          "507006": 2,
+          "507000": 1
+        }
+      },
+      {
+        "endpoint": "POST /api/core/ai/skill/update",
+        "businessCodes": {
+          "507007": 2,
+          "200": 5,
+          "507000": 7,
+          "509001": 2
+        }
+      },
+      {
+        "endpoint": "POST /api/core/app/collaborator/update",
+        "businessCodes": {
+          "200": 10
+        }
+      },
+      {
+        "endpoint": "POST /api/core/app/create",
+        "businessCodes": {
+          "200": 22,
+          "507006": 4,
+          "502007": 8,
+          "507000": 8,
+          "500004": 2,
+          "502001": 6
+        }
+      },
+      {
+        "endpoint": "POST /api/core/app/folder/create",
+        "businessCodes": {
+          "200": 50,
+          "507006": 4,
+          "502007": 2
+        }
+      },
+      {
+        "endpoint": "POST /api/core/app/update",
+        "businessCodes": {
+          "507007": 4,
+          "200": 10,
+          "507000": 12,
+          "502007": 8,
+          "502001": 4
+        }
+      },
+      {
+        "endpoint": "POST /api/core/dataset/collaborator/update",
+        "businessCodes": {
+          "200": 6
+        }
+      },
+      {
+        "endpoint": "POST /api/core/dataset/collection/collaborator/update",
+        "businessCodes": {
+          "200": 5
+        }
+      },
+      {
+        "endpoint": "POST /api/core/dataset/collection/create",
+        "businessCodes": {
+          "200": 35,
+          "507006": 6,
+          "507000": 6,
+          "501004": 3,
+          "501005": 2
+        }
+      },
+      {
+        "endpoint": "POST /api/core/dataset/collection/update",
+        "businessCodes": {
+          "507007": 2,
+          "200": 5,
+          "507000": 7,
+          "501005": 2,
+          "501004": 1
+        }
+      },
+      {
+        "endpoint": "POST /api/core/dataset/create",
+        "businessCodes": {
+          "200": 10,
+          "507006": 2,
+          "507000": 5,
+          "500004": 1,
+          "501004": 3
+        }
+      },
+      {
+        "endpoint": "POST /api/core/dataset/folder/create",
+        "businessCodes": {
+          "200": 23,
+          "507006": 2,
+          "507000": 1
+        }
+      },
+      {
+        "endpoint": "POST /api/core/dataset/listV2",
+        "businessCodes": {
+          "501004": 4,
+          "200": 4
+        }
+      },
+      {
+        "endpoint": "POST /api/core/dataset/update",
+        "businessCodes": {
+          "507007": 2,
+          "200": 5,
+          "507000": 7,
+          "501004": 2
+        }
+      }
+    ]
+  },
+  "cleanup": {
+    "redisDb14KeysAfterRun": 0,
+    "temporaryMongoStopped": true,
+    "testHttpServersStopped": true
+  },
+  "runs": [
+    {
+      "name": "local_http_and_mongo",
+      "passed": 47,
+      "failed": 0,
+      "skipped": 0,
+      "startTimeEpochMs": 1793102581728,
+      "durationMs": 43647.9345703125,
+      "cases": [
+        {
+          "name": "local production HTTP resource integration HTTP app allows four folder levels and a leaf at level four; rejects dedicated and generic level five",
+          "status": "passed",
+          "durationMs": 760.45
+        },
+        {
+          "name": "local production HTTP resource integration HTTP app validates whole moved subtree depth and persists accepted moves",
+          "status": "passed",
+          "durationMs": 1480.63
+        },
+        {
+          "name": "local production HTTP resource integration HTTP app rejects self, descendants, and non-folder parents for create and move",
+          "status": "passed",
+          "durationMs": 822.46
+        },
+        {
+          "name": "local production HTTP resource integration HTTP app rejects wrong-type, missing, cyclic and foreign-team ancestors without writing",
+          "status": "passed",
+          "durationMs": 1013.05
+        },
+        {
+          "name": "local production HTTP resource integration HTTP app enforces real sessions and Pro ACL propagation, read-only writes and independent branches",
+          "status": "passed",
+          "durationMs": 1213.74
+        },
+        {
+          "name": "local production HTTP resource integration HTTP app rebases inherited subtree ACL on move and restores it on moving back",
+          "status": "passed",
+          "durationMs": 892.73
+        },
+        {
+          "name": "local production HTTP resource integration HTTP app reads historical depth six while rejecting new resources and moves beyond four",
+          "status": "passed",
+          "durationMs": 588.96
+        },
+        {
+          "name": "local production HTTP resource integration HTTP app bounds cyclic reads and prevents foreign-team direct access",
+          "status": "passed",
+          "durationMs": 322.07
+        },
+        {
+          "name": "local production HTTP resource integration HTTP tool allows four folder levels and a leaf at level four; rejects dedicated and generic level five",
+          "status": "passed",
+          "durationMs": 468.36
+        },
+        {
+          "name": "local production HTTP resource integration HTTP tool validates whole moved subtree depth and persists accepted moves",
+          "status": "passed",
+          "durationMs": 1127.48
+        },
+        {
+          "name": "local production HTTP resource integration HTTP tool rejects self, descendants, and non-folder parents for create and move",
+          "status": "passed",
+          "durationMs": 627.34
+        },
+        {
+          "name": "local production HTTP resource integration HTTP tool rejects wrong-type, missing, cyclic and foreign-team ancestors without writing",
+          "status": "passed",
+          "durationMs": 866.31
+        },
+        {
+          "name": "local production HTTP resource integration HTTP tool enforces real sessions and Pro ACL propagation, read-only writes and independent branches",
+          "status": "passed",
+          "durationMs": 1139.58
+        },
+        {
+          "name": "local production HTTP resource integration HTTP tool rebases inherited subtree ACL on move and restores it on moving back",
+          "status": "passed",
+          "durationMs": 890.55
+        },
+        {
+          "name": "local production HTTP resource integration HTTP tool reads historical depth six while rejecting new resources and moves beyond four",
+          "status": "passed",
+          "durationMs": 495.35
+        },
+        {
+          "name": "local production HTTP resource integration HTTP tool bounds cyclic reads and prevents foreign-team direct access",
+          "status": "passed",
+          "durationMs": 227.61
+        },
+        {
+          "name": "local production HTTP resource integration HTTP dataset allows four folder levels and a leaf at level four; rejects dedicated and generic level five",
+          "status": "passed",
+          "durationMs": 530.29
+        },
+        {
+          "name": "local production HTTP resource integration HTTP dataset validates whole moved subtree depth and persists accepted moves",
+          "status": "passed",
+          "durationMs": 1040.64
+        },
+        {
+          "name": "local production HTTP resource integration HTTP dataset rejects self, descendants, and non-folder parents for create and move",
+          "status": "passed",
+          "durationMs": 634.28
+        },
+        {
+          "name": "local production HTTP resource integration HTTP dataset rejects wrong-type, missing, cyclic and foreign-team ancestors without writing",
+          "status": "passed",
+          "durationMs": 1164.21
+        },
+        {
+          "name": "local production HTTP resource integration HTTP dataset enforces real sessions and Pro ACL propagation, read-only writes and independent branches",
+          "status": "passed",
+          "durationMs": 1217.75
+        },
+        {
+          "name": "local production HTTP resource integration HTTP dataset rebases inherited subtree ACL on move and restores it on moving back",
+          "status": "passed",
+          "durationMs": 956.13
+        },
+        {
+          "name": "local production HTTP resource integration HTTP dataset reads historical depth six while rejecting new resources and moves beyond four",
+          "status": "passed",
+          "durationMs": 702.93
+        },
+        {
+          "name": "local production HTTP resource integration HTTP dataset bounds cyclic reads and prevents foreign-team direct access",
+          "status": "passed",
+          "durationMs": 410.14
+        },
+        {
+          "name": "local production HTTP resource integration HTTP collection allows four folder levels and a leaf at level four; rejects dedicated and generic level five",
+          "status": "passed",
+          "durationMs": 291.79
+        },
+        {
+          "name": "local production HTTP resource integration HTTP collection validates whole moved subtree depth and persists accepted moves",
+          "status": "passed",
+          "durationMs": 499.15
+        },
+        {
+          "name": "local production HTTP resource integration HTTP collection rejects self, descendants, and non-folder parents for create and move",
+          "status": "passed",
+          "durationMs": 453.11
+        },
+        {
+          "name": "local production HTTP resource integration HTTP collection rejects wrong-type, missing, cyclic and foreign-team ancestors without writing",
+          "status": "passed",
+          "durationMs": 431.23
+        },
+        {
+          "name": "local production HTTP resource integration HTTP collection enforces real sessions and Pro ACL propagation, read-only writes and independent branches",
+          "status": "passed",
+          "durationMs": 858.51
+        },
+        {
+          "name": "local production HTTP resource integration HTTP collection rebases inherited subtree ACL on move and restores it on moving back",
+          "status": "passed",
+          "durationMs": 617.55
+        },
+        {
+          "name": "local production HTTP resource integration HTTP collection reads historical depth six while rejecting new resources and moves beyond four",
+          "status": "passed",
+          "durationMs": 224.39
+        },
+        {
+          "name": "local production HTTP resource integration HTTP collection bounds cyclic reads and prevents foreign-team direct access",
+          "status": "passed",
+          "durationMs": 294.29
+        },
+        {
+          "name": "local production HTTP resource integration HTTP skill allows four folder levels and a leaf at level four; rejects dedicated and generic level five",
+          "status": "passed",
+          "durationMs": 403.71
+        },
+        {
+          "name": "local production HTTP resource integration HTTP skill validates whole moved subtree depth and persists accepted moves",
+          "status": "passed",
+          "durationMs": 797.03
+        },
+        {
+          "name": "local production HTTP resource integration HTTP skill rejects self, descendants, and non-folder parents for create and move",
+          "status": "passed",
+          "durationMs": 528.28
+        },
+        {
+          "name": "local production HTTP resource integration HTTP skill rejects wrong-type, missing, cyclic and foreign-team ancestors without writing",
+          "status": "passed",
+          "durationMs": 792.83
+        },
+        {
+          "name": "local production HTTP resource integration HTTP skill enforces real sessions and Pro ACL propagation, read-only writes and independent branches",
+          "status": "passed",
+          "durationMs": 710.6
+        },
+        {
+          "name": "local production HTTP resource integration HTTP skill rebases inherited subtree ACL on move and restores it on moving back",
+          "status": "passed",
+          "durationMs": 635.97
+        },
+        {
+          "name": "local production HTTP resource integration HTTP skill reads historical depth six while rejecting new resources and moves beyond four",
+          "status": "passed",
+          "durationMs": 373.48
+        },
+        {
+          "name": "local production HTTP resource integration HTTP skill bounds cyclic reads and prevents foreign-team direct access",
+          "status": "passed",
+          "durationMs": 221.38
+        },
+        {
+          "name": "local production HTTP resource integration HTTP resource scope and subtype boundaries separates application folders and tool folders for every current App subtype",
+          "status": "passed",
+          "durationMs": 2624.59
+        },
+        {
+          "name": "local production HTTP resource integration HTTP resource scope and subtype boundaries rejects Collection parents from another dataset and forged external-depth fields",
+          "status": "passed",
+          "durationMs": 546.11
+        },
+        {
+          "name": "local production HTTP resource integration real Mongo external synchronization depth policy accepts external folder twenty and files within it, rejects twenty-one and mixed manual batches",
+          "status": "passed",
+          "durationMs": 635.01
+        },
+        {
+          "name": "local production HTTP resource integration HTTP app traversal ceiling returns at most twenty distinct breadcrumb nodes for historical depth twenty-two",
+          "status": "passed",
+          "durationMs": 172.02
+        },
+        {
+          "name": "local production HTTP resource integration HTTP tool traversal ceiling returns at most twenty distinct breadcrumb nodes for historical depth twenty-two",
+          "status": "passed",
+          "durationMs": 223.88
+        },
+        {
+          "name": "local production HTTP resource integration HTTP collection traversal ceiling returns at most twenty distinct breadcrumb nodes for historical depth twenty-two",
+          "status": "passed",
+          "durationMs": 249.43
+        },
+        {
+          "name": "local production HTTP resource integration HTTP skill traversal ceiling returns at most twenty distinct breadcrumb nodes for historical depth twenty-two",
+          "status": "passed",
+          "durationMs": 162.93
+        }
+      ]
+    },
+    {
+      "name": "app_migration_and_collection_regression",
+      "passed": 22,
+      "failed": 0,
+      "skipped": 0,
+      "startTimeEpochMs": 1793102237790,
+      "durationMs": 21554.654541015625,
+      "cases": [
+        {
+          "name": "create collection parent checks imports and syncs external resources through 20 folder levels while manual creation keeps its configured limit",
+          "status": "passed",
+          "durationMs": 5868.58
+        },
+        {
+          "name": "create collection parent checks enforces depth for generic and shared folder creation, and allows a leaf at the boundary",
+          "status": "passed",
+          "durationMs": 312.12
+        },
+        {
+          "name": "create collection parent checks rejects an invalid type parent in shared persistence",
+          "status": "passed",
+          "durationMs": 188.52
+        },
+        {
+          "name": "create collection parent checks rejects an invalid dataset parent in shared persistence",
+          "status": "passed",
+          "durationMs": 226.62
+        },
+        {
+          "name": "backfillFolderAncestorIds scans both collections, validates all rows, and completes every progress stage",
+          "status": "passed",
+          "durationMs": 659.72
+        },
+        {
+          "name": "backfillFolderAncestorIds persists skipped bad rows before advancing and fails with the complete unresolved snapshot",
+          "status": "passed",
+          "durationMs": 299.45
+        },
+        {
+          "name": "backfillFolderAncestorIds retries saved bad rows before resuming the checkpoint and replaces the error snapshot",
+          "status": "passed",
+          "durationMs": 110.65
+        },
+        {
+          "name": "folder ancestor path migration service bounds stable batches by the initial snapshot, includes soft-deleted rows, and ignores invalid retry IDs",
+          "status": "passed",
+          "durationMs": 3409.02
+        },
+        {
+          "name": "folder ancestor path migration service rebuilds App and tool folder paths independently and clears non-folder paths",
+          "status": "passed",
+          "durationMs": 229.56
+        },
+        {
+          "name": "folder ancestor path migration service skips invalid parents, cycles, and over-depth rows without partial path writes",
+          "status": "passed",
+          "durationMs": 296.47
+        },
+        {
+          "name": "folder ancestor path migration service moves cross-tree children to the root instead of failing the migration",
+          "status": "passed",
+          "durationMs": 60.2
+        },
+        {
+          "name": "folder ancestor path migration service truncates the path at the cross-tree boundary without cascading to descendants",
+          "status": "passed",
+          "durationMs": 37.97
+        },
+        {
+          "name": "folder ancestor path migration service backfills folders deeper than the create-time policy limit",
+          "status": "passed",
+          "durationMs": 46.75
+        },
+        {
+          "name": "folder ancestor path migration service validates without writing and remains idempotent after a successful backfill",
+          "status": "passed",
+          "durationMs": 41.47
+        },
+        {
+          "name": "folder migration transactions and permissions rebases apps folder ACLs (tool=false), including enabled descendant Collections",
+          "status": "passed",
+          "durationMs": 429.32
+        },
+        {
+          "name": "folder migration transactions and permissions rebases apps folder ACLs (tool=true), including enabled descendant Collections",
+          "status": "passed",
+          "durationMs": 409.19
+        },
+        {
+          "name": "folder migration transactions and permissions rebases datasets folder ACLs (tool=false), including enabled descendant Collections",
+          "status": "passed",
+          "durationMs": 246.49
+        },
+        {
+          "name": "folder migration transactions and permissions preserves independent folder ACLs when detaching them",
+          "status": "passed",
+          "durationMs": 201.68
+        },
+        {
+          "name": "folder migration transactions and permissions re-reads stale batches after a successful API move and skips deleted records",
+          "status": "passed",
+          "durationMs": 293.79
+        },
+        {
+          "name": "folder migration transactions and permissions retries the entire transaction after a concurrent move commits",
+          "status": "passed",
+          "durationMs": 394.01
+        },
+        {
+          "name": "folder migration transactions and permissions rolls back apps parent, path, and descendant ACL writes together after a later failure",
+          "status": "passed",
+          "durationMs": 338.11
+        },
+        {
+          "name": "folder migration transactions and permissions rolls back datasets parent, path, and descendant ACL writes together after a later failure",
+          "status": "passed",
+          "durationMs": 409.06
+        }
+      ]
+    },
+    {
+      "name": "pro_external_provider_regression",
+      "passed": 52,
+      "failed": 0,
+      "skipped": 0,
+      "startTimeEpochMs": 1793102261065,
+      "durationMs": 113222.8818359375,
+      "cases": [
+        {
+          "name": "custom provider import and sync integration imports, parses, reimports and converges across changed and unchanged sync rounds (ACL=false)",
+          "status": "passed",
+          "durationMs": 3838.59
+        },
+        {
+          "name": "custom provider import and sync integration imports, parses, reimports and converges across changed and unchanged sync rounds (ACL=true)",
+          "status": "passed",
+          "durationMs": 3562.65
+        },
+        {
+          "name": "custom provider import and sync integration import 远端列表失败时保留完整数据库快照",
+          "status": "passed",
+          "durationMs": 963.59
+        },
+        {
+          "name": "custom provider import and sync integration sync 远端列表失败时保留完整数据库快照",
+          "status": "passed",
+          "durationMs": 2230.45
+        },
+        {
+          "name": "custom provider import and sync integration keeps old content on a fetch failure while committing structure, then converges on retry",
+          "status": "passed",
+          "durationMs": 3475.5
+        },
+        {
+          "name": "custom provider import and sync integration does not delete a locally imported file on root verification HTTP 503",
+          "status": "passed",
+          "durationMs": 1483.69
+        },
+        {
+          "name": "custom provider import and sync integration deletes a locally imported file only after the provider confirms that it is missing",
+          "status": "passed",
+          "durationMs": 1471.61
+        },
+        {
+          "name": "yuque provider import and sync integration imports, parses, reimports and converges across changed and unchanged sync rounds (ACL=false)",
+          "status": "passed",
+          "durationMs": 3550.71
+        },
+        {
+          "name": "yuque provider import and sync integration imports, parses, reimports and converges across changed and unchanged sync rounds (ACL=true)",
+          "status": "passed",
+          "durationMs": 3548.7
+        },
+        {
+          "name": "yuque provider import and sync integration import 远端列表失败时保留完整数据库快照",
+          "status": "passed",
+          "durationMs": 1040.07
+        },
+        {
+          "name": "yuque provider import and sync integration sync 远端列表失败时保留完整数据库快照",
+          "status": "passed",
+          "durationMs": 3374.77
+        },
+        {
+          "name": "yuque provider import and sync integration keeps old content on a fetch failure while committing structure, then converges on retry",
+          "status": "passed",
+          "durationMs": 3257.2
+        },
+        {
+          "name": "yuque provider import and sync integration does not delete a locally imported file on root verification HTTP 429",
+          "status": "passed",
+          "durationMs": 2183.23
+        },
+        {
+          "name": "yuque provider import and sync integration deletes a locally imported file only after the provider confirms that it is missing",
+          "status": "passed",
+          "durationMs": 1314.07
+        },
+        {
+          "name": "feishu provider import and sync integration imports, parses, reimports and converges across changed and unchanged sync rounds (ACL=false)",
+          "status": "passed",
+          "durationMs": 4242.15
+        },
+        {
+          "name": "feishu provider import and sync integration imports, parses, reimports and converges across changed and unchanged sync rounds (ACL=true)",
+          "status": "passed",
+          "durationMs": 3669.8
+        },
+        {
+          "name": "feishu provider import and sync integration import 远端列表失败时保留完整数据库快照",
+          "status": "passed",
+          "durationMs": 917.19
+        },
+        {
+          "name": "feishu provider import and sync integration sync 远端列表失败时保留完整数据库快照",
+          "status": "passed",
+          "durationMs": 2602.31
+        },
+        {
+          "name": "feishu provider import and sync integration keeps old content on a fetch failure while committing structure, then converges on retry",
+          "status": "passed",
+          "durationMs": 3920.65
+        },
+        {
+          "name": "feishu provider import and sync integration does not delete a locally imported file on root verification HTTP 401",
+          "status": "passed",
+          "durationMs": 4757.45
+        },
+        {
+          "name": "feishu provider import and sync integration deletes a locally imported file only after the provider confirms that it is missing",
+          "status": "passed",
+          "durationMs": 1416.36
+        },
+        {
+          "name": "dingtalk provider import and sync integration imports, parses, reimports and converges across changed and unchanged sync rounds (ACL=false)",
+          "status": "passed",
+          "durationMs": 3847.61
+        },
+        {
+          "name": "dingtalk provider import and sync integration imports, parses, reimports and converges across changed and unchanged sync rounds (ACL=true)",
+          "status": "passed",
+          "durationMs": 3358.74
+        },
+        {
+          "name": "dingtalk provider import and sync integration import 远端列表失败时保留完整数据库快照",
+          "status": "passed",
+          "durationMs": 784.28
+        },
+        {
+          "name": "dingtalk provider import and sync integration sync 远端列表失败时保留完整数据库快照",
+          "status": "passed",
+          "durationMs": 1987.89
+        },
+        {
+          "name": "dingtalk provider import and sync integration keeps old content on a fetch failure while committing structure, then converges on retry",
+          "status": "passed",
+          "durationMs": 3101.84
+        },
+        {
+          "name": "dingtalk provider import and sync integration does not delete a locally imported file on root verification HTTP 403",
+          "status": "passed",
+          "durationMs": 1190.07
+        },
+        {
+          "name": "dingtalk provider import and sync integration deletes a locally imported file only after the provider confirms that it is missing",
+          "status": "passed",
+          "durationMs": 1283.2
+        },
+        {
+          "name": "shared import and sync transaction boundaries creates 201 remote files in two batches with distinct per-file bills and no duplicate content fetch",
+          "status": "passed",
+          "durationMs": 2058.25
+        },
+        {
+          "name": "shared import and sync transaction boundaries rolls back a failed body replacement without deleting old chunks, tasks or ACL",
+          "status": "passed",
+          "durationMs": 2337.77
+        },
+        {
+          "name": "shared import and sync transaction boundaries rolls back body collections, ACL, bills and queue together when initial import queue insertion fails",
+          "status": "passed",
+          "durationMs": 2166.72
+        },
+        {
+          "name": "shared import and sync transaction boundaries does not retain a failed folder transaction or enqueue its children and recovers on the next round",
+          "status": "passed",
+          "durationMs": 2405.32
+        },
+        {
+          "name": "shared import and sync transaction boundaries rejects reimport moves across a restricted source parent before changing the local tree",
+          "status": "passed",
+          "durationMs": 1111.53
+        },
+        {
+          "name": "custom imported document root evolution adds and removes a derived directory as root document children change, converging across sync/import",
+          "status": "passed",
+          "durationMs": 1752.47
+        },
+        {
+          "name": "yuque imported document root evolution adds and removes a derived directory as root document children change, converging across sync/import",
+          "status": "passed",
+          "durationMs": 1888.67
+        },
+        {
+          "name": "dingtalk imported document root evolution adds and removes a derived directory as root document children change, converging across sync/import",
+          "status": "passed",
+          "durationMs": 1837.6
+        },
+        {
+          "name": "legacy DingTalk document directories 同步恢复带子文档的历史目录，保留 owner、ACL、子树和位置（ACL=false）",
+          "status": "passed",
+          "durationMs": 1341.74
+        },
+        {
+          "name": "legacy DingTalk document directories 同步恢复带子文档的历史目录，保留 owner、ACL、子树和位置（ACL=true）",
+          "status": "passed",
+          "durationMs": 1344.77
+        },
+        {
+          "name": "legacy DingTalk document directories 叶子文档通过 import 恢复后沿用旧独立权限和手动目录位置",
+          "status": "passed",
+          "durationMs": 1356.04
+        },
+        {
+          "name": "legacy DingTalk document directories 叶子文档通过 sync 恢复后沿用旧独立权限和手动目录位置",
+          "status": "passed",
+          "durationMs": 1299.2
+        },
+        {
+          "name": "legacy DingTalk document directories 正文入队失败后通过 sync 幂等恢复正文及权限",
+          "status": "passed",
+          "durationMs": 1290.23
+        },
+        {
+          "name": "legacy DingTalk document directories 正文入队失败后通过 import 幂等恢复正文及权限",
+          "status": "passed",
+          "durationMs": 1402.49
+        },
+        {
+          "name": "legacy DingTalk document directories 复用历史目录权限前要求 manage，只有 write 时不转换也不创建正文",
+          "status": "passed",
+          "durationMs": 957.12
+        },
+        {
+          "name": "legacy DingTalk document directories 1001 个身份跨批转换遇到 parent 变更时全部回滚，重试保留元数据",
+          "status": "passed",
+          "durationMs": 1099.71
+        },
+        {
+          "name": "legacy DingTalk document directories 1001 个身份跨批转换遇到 identity 变更时全部回滚，重试保留元数据",
+          "status": "passed",
+          "durationMs": 1082.64
+        },
+        {
+          "name": "legacy DingTalk document directories 规划后出现派生身份占用时拒绝转换",
+          "status": "passed",
+          "durationMs": 806.23
+        },
+        {
+          "name": "legacy DingTalk document directories V2 旧页面类型 'file' / hasChild=false 按实际子级恢复，重复选择只确认一次",
+          "status": "passed",
+          "durationMs": 1556.18
+        },
+        {
+          "name": "legacy DingTalk document directories V2 旧页面类型 'file' / hasChild=true 按实际子级恢复，重复选择只确认一次",
+          "status": "passed",
+          "durationMs": 1504.71
+        },
+        {
+          "name": "legacy DingTalk document directories V2 旧页面类型 'folder' / hasChild=true 按实际子级恢复，重复选择只确认一次",
+          "status": "passed",
+          "durationMs": 1083.12
+        },
+        {
+          "name": "legacy DingTalk document directories V2 根节点的远端确认失败时不提交任何身份转换",
+          "status": "passed",
+          "durationMs": 1600.74
+        },
+        {
+          "name": "legacy DingTalk document directories V2 客户端把真实远端目录声明为正文时拒绝兼容转换",
+          "status": "passed",
+          "durationMs": 1473.71
+        },
+        {
+          "name": "legacy DingTalk document directories 叶子兼容转换保留旧目录中用户自建的节点，正文仍回到原位置",
+          "status": "passed",
+          "durationMs": 2288.88
+        }
+      ]
+    }
+  ],
+  "postRebase": {
+    "testedFastGPTCommit": "921beeaa98e5b535615c6922df3a5f1d19f14d68",
+    "upstreamMainCommit": "c4612e610ffa0d23b7aad051433f95274c79e54e",
+    "testedProCommit": "a5f7ec1a4f6ae6c19096ad931a3372c7f36485ca",
+    "totalPassed": 114,
+    "totalFailed": 0,
+    "totalSkipped": 0,
+    "http": {
+      "requestCount": 411,
+      "endpointCount": 19,
+      "successBusinessResponses": 251,
+      "expectedRejectedBusinessResponses": 160,
+      "endpoints": [
+        {
+          "endpoint": "GET /api/core/ai/skill/folder/path",
+          "businessCodes": {
+            "200": 6,
+            "509001": 4
+          }
+        },
+        {
+          "endpoint": "GET /api/core/app/folder/path",
+          "businessCodes": {
+            "200": 12,
+            "502001": 8
+          }
+        },
+        {
+          "endpoint": "GET /api/core/dataset/collection/paths",
+          "businessCodes": {
+            "501004": 2,
+            "200": 6,
+            "501005": 2
+          }
+        },
+        {
+          "endpoint": "POST /api/core/ai/skill/collaborator/update",
+          "businessCodes": {
+            "200": 5
+          }
+        },
+        {
+          "endpoint": "POST /api/core/ai/skill/create",
+          "businessCodes": {
+            "200": 8,
+            "507000": 5,
+            "500004": 1,
+            "509001": 3,
+            "507006": 1
+          }
+        },
+        {
+          "endpoint": "POST /api/core/ai/skill/folder/create",
+          "businessCodes": {
+            "200": 24,
+            "507006": 2,
+            "507000": 1
+          }
+        },
+        {
+          "endpoint": "POST /api/core/ai/skill/update",
+          "businessCodes": {
+            "507007": 2,
+            "200": 5,
+            "507000": 7,
+            "509001": 2
+          }
+        },
+        {
+          "endpoint": "POST /api/core/app/collaborator/update",
+          "businessCodes": {
+            "200": 10
+          }
+        },
+        {
+          "endpoint": "POST /api/core/app/create",
+          "businessCodes": {
+            "200": 22,
+            "507006": 4,
+            "502007": 8,
+            "507000": 8,
+            "500004": 2,
+            "502001": 6
+          }
+        },
+        {
+          "endpoint": "POST /api/core/app/folder/create",
+          "businessCodes": {
+            "200": 50,
+            "507006": 4,
+            "502007": 2
+          }
+        },
+        {
+          "endpoint": "POST /api/core/app/update",
+          "businessCodes": {
+            "507007": 4,
+            "200": 10,
+            "507000": 12,
+            "502007": 8,
+            "502001": 4
+          }
+        },
+        {
+          "endpoint": "POST /api/core/dataset/collaborator/update",
+          "businessCodes": {
+            "200": 6
+          }
+        },
+        {
+          "endpoint": "POST /api/core/dataset/collection/collaborator/update",
+          "businessCodes": {
+            "200": 5
+          }
+        },
+        {
+          "endpoint": "POST /api/core/dataset/collection/create",
+          "businessCodes": {
+            "200": 35,
+            "507006": 6,
+            "507000": 6,
+            "501004": 3,
+            "501005": 2
+          }
+        },
+        {
+          "endpoint": "POST /api/core/dataset/collection/update",
+          "businessCodes": {
+            "507007": 2,
+            "200": 5,
+            "507000": 7,
+            "501005": 2,
+            "501004": 1
+          }
+        },
+        {
+          "endpoint": "POST /api/core/dataset/create",
+          "businessCodes": {
+            "200": 10,
+            "507006": 2,
+            "507000": 5,
+            "500004": 1,
+            "501004": 3
+          }
+        },
+        {
+          "endpoint": "POST /api/core/dataset/folder/create",
+          "businessCodes": {
+            "200": 23,
+            "507006": 2,
+            "507000": 1
+          }
+        },
+        {
+          "endpoint": "POST /api/core/dataset/listV2",
+          "businessCodes": {
+            "501004": 4,
+            "200": 4
+          }
+        },
+        {
+          "endpoint": "POST /api/core/dataset/update",
+          "businessCodes": {
+            "507007": 2,
+            "200": 5,
+            "507000": 7,
+            "501004": 2
+          }
+        }
+      ]
+    },
+    "runs": [
+      {
+        "name": "local_http_and_mongo",
+        "passed": 47,
+        "failed": 0,
+        "skipped": 0,
+        "startTimeEpochMs": 1793103122603,
+        "durationMs": 41987.83349609375,
+        "cases": [
+          {
+            "name": "local production HTTP resource integration HTTP app allows four folder levels and a leaf at level four; rejects dedicated and generic level five",
+            "status": "passed",
+            "durationMs": 510.09
+          },
+          {
+            "name": "local production HTTP resource integration HTTP app validates whole moved subtree depth and persists accepted moves",
+            "status": "passed",
+            "durationMs": 1288.8
+          },
+          {
+            "name": "local production HTTP resource integration HTTP app rejects self, descendants, and non-folder parents for create and move",
+            "status": "passed",
+            "durationMs": 823.23
+          },
+          {
+            "name": "local production HTTP resource integration HTTP app rejects wrong-type, missing, cyclic and foreign-team ancestors without writing",
+            "status": "passed",
+            "durationMs": 1213.66
+          },
+          {
+            "name": "local production HTTP resource integration HTTP app enforces real sessions and Pro ACL propagation, read-only writes and independent branches",
+            "status": "passed",
+            "durationMs": 1320.08
+          },
+          {
+            "name": "local production HTTP resource integration HTTP app rebases inherited subtree ACL on move and restores it on moving back",
+            "status": "passed",
+            "durationMs": 887.91
+          },
+          {
+            "name": "local production HTTP resource integration HTTP app reads historical depth six while rejecting new resources and moves beyond four",
+            "status": "passed",
+            "durationMs": 557.61
+          },
+          {
+            "name": "local production HTTP resource integration HTTP app bounds cyclic reads and prevents foreign-team direct access",
+            "status": "passed",
+            "durationMs": 411.73
+          },
+          {
+            "name": "local production HTTP resource integration HTTP tool allows four folder levels and a leaf at level four; rejects dedicated and generic level five",
+            "status": "passed",
+            "durationMs": 552.3
+          },
+          {
+            "name": "local production HTTP resource integration HTTP tool validates whole moved subtree depth and persists accepted moves",
+            "status": "passed",
+            "durationMs": 1066.61
+          },
+          {
+            "name": "local production HTTP resource integration HTTP tool rejects self, descendants, and non-folder parents for create and move",
+            "status": "passed",
+            "durationMs": 771.72
+          },
+          {
+            "name": "local production HTTP resource integration HTTP tool rejects wrong-type, missing, cyclic and foreign-team ancestors without writing",
+            "status": "passed",
+            "durationMs": 983.57
+          },
+          {
+            "name": "local production HTTP resource integration HTTP tool enforces real sessions and Pro ACL propagation, read-only writes and independent branches",
+            "status": "passed",
+            "durationMs": 1531.27
+          },
+          {
+            "name": "local production HTTP resource integration HTTP tool rebases inherited subtree ACL on move and restores it on moving back",
+            "status": "passed",
+            "durationMs": 856.85
+          },
+          {
+            "name": "local production HTTP resource integration HTTP tool reads historical depth six while rejecting new resources and moves beyond four",
+            "status": "passed",
+            "durationMs": 559.04
+          },
+          {
+            "name": "local production HTTP resource integration HTTP tool bounds cyclic reads and prevents foreign-team direct access",
+            "status": "passed",
+            "durationMs": 254.9
+          },
+          {
+            "name": "local production HTTP resource integration HTTP dataset allows four folder levels and a leaf at level four; rejects dedicated and generic level five",
+            "status": "passed",
+            "durationMs": 544.49
+          },
+          {
+            "name": "local production HTTP resource integration HTTP dataset validates whole moved subtree depth and persists accepted moves",
+            "status": "passed",
+            "durationMs": 1069.9
+          },
+          {
+            "name": "local production HTTP resource integration HTTP dataset rejects self, descendants, and non-folder parents for create and move",
+            "status": "passed",
+            "durationMs": 861.52
+          },
+          {
+            "name": "local production HTTP resource integration HTTP dataset rejects wrong-type, missing, cyclic and foreign-team ancestors without writing",
+            "status": "passed",
+            "durationMs": 934.04
+          },
+          {
+            "name": "local production HTTP resource integration HTTP dataset enforces real sessions and Pro ACL propagation, read-only writes and independent branches",
+            "status": "passed",
+            "durationMs": 1541.45
+          },
+          {
+            "name": "local production HTTP resource integration HTTP dataset rebases inherited subtree ACL on move and restores it on moving back",
+            "status": "passed",
+            "durationMs": 1229.22
+          },
+          {
+            "name": "local production HTTP resource integration HTTP dataset reads historical depth six while rejecting new resources and moves beyond four",
+            "status": "passed",
+            "durationMs": 715.59
+          },
+          {
+            "name": "local production HTTP resource integration HTTP dataset bounds cyclic reads and prevents foreign-team direct access",
+            "status": "passed",
+            "durationMs": 517.03
+          },
+          {
+            "name": "local production HTTP resource integration HTTP collection allows four folder levels and a leaf at level four; rejects dedicated and generic level five",
+            "status": "passed",
+            "durationMs": 380.21
+          },
+          {
+            "name": "local production HTTP resource integration HTTP collection validates whole moved subtree depth and persists accepted moves",
+            "status": "passed",
+            "durationMs": 536.91
+          },
+          {
+            "name": "local production HTTP resource integration HTTP collection rejects self, descendants, and non-folder parents for create and move",
+            "status": "passed",
+            "durationMs": 406.87
+          },
+          {
+            "name": "local production HTTP resource integration HTTP collection rejects wrong-type, missing, cyclic and foreign-team ancestors without writing",
+            "status": "passed",
+            "durationMs": 634.33
+          },
+          {
+            "name": "local production HTTP resource integration HTTP collection enforces real sessions and Pro ACL propagation, read-only writes and independent branches",
+            "status": "passed",
+            "durationMs": 806.08
+          },
+          {
+            "name": "local production HTTP resource integration HTTP collection rebases inherited subtree ACL on move and restores it on moving back",
+            "status": "passed",
+            "durationMs": 661.5
+          },
+          {
+            "name": "local production HTTP resource integration HTTP collection reads historical depth six while rejecting new resources and moves beyond four",
+            "status": "passed",
+            "durationMs": 233.32
+          },
+          {
+            "name": "local production HTTP resource integration HTTP collection bounds cyclic reads and prevents foreign-team direct access",
+            "status": "passed",
+            "durationMs": 287.1
+          },
+          {
+            "name": "local production HTTP resource integration HTTP skill allows four folder levels and a leaf at level four; rejects dedicated and generic level five",
+            "status": "passed",
+            "durationMs": 388.75
+          },
+          {
+            "name": "local production HTTP resource integration HTTP skill validates whole moved subtree depth and persists accepted moves",
+            "status": "passed",
+            "durationMs": 874.28
+          },
+          {
+            "name": "local production HTTP resource integration HTTP skill rejects self, descendants, and non-folder parents for create and move",
+            "status": "passed",
+            "durationMs": 689.12
+          },
+          {
+            "name": "local production HTTP resource integration HTTP skill rejects wrong-type, missing, cyclic and foreign-team ancestors without writing",
+            "status": "passed",
+            "durationMs": 761.68
+          },
+          {
+            "name": "local production HTTP resource integration HTTP skill enforces real sessions and Pro ACL propagation, read-only writes and independent branches",
+            "status": "passed",
+            "durationMs": 884.5
+          },
+          {
+            "name": "local production HTTP resource integration HTTP skill rebases inherited subtree ACL on move and restores it on moving back",
+            "status": "passed",
+            "durationMs": 713.02
+          },
+          {
+            "name": "local production HTTP resource integration HTTP skill reads historical depth six while rejecting new resources and moves beyond four",
+            "status": "passed",
+            "durationMs": 411.15
+          },
+          {
+            "name": "local production HTTP resource integration HTTP skill bounds cyclic reads and prevents foreign-team direct access",
+            "status": "passed",
+            "durationMs": 248.53
+          },
+          {
+            "name": "local production HTTP resource integration HTTP resource scope and subtype boundaries separates application folders and tool folders for every current App subtype",
+            "status": "passed",
+            "durationMs": 2429.42
+          },
+          {
+            "name": "local production HTTP resource integration HTTP resource scope and subtype boundaries rejects Collection parents from another dataset and forged external-depth fields",
+            "status": "passed",
+            "durationMs": 503.73
+          },
+          {
+            "name": "local production HTTP resource integration real Mongo external synchronization depth policy accepts external folder twenty and files within it, rejects twenty-one and mixed manual batches",
+            "status": "passed",
+            "durationMs": 566.14
+          },
+          {
+            "name": "local production HTTP resource integration HTTP app traversal ceiling returns at most twenty distinct breadcrumb nodes for historical depth twenty-two",
+            "status": "passed",
+            "durationMs": 180.45
+          },
+          {
+            "name": "local production HTTP resource integration HTTP tool traversal ceiling returns at most twenty distinct breadcrumb nodes for historical depth twenty-two",
+            "status": "passed",
+            "durationMs": 262.12
+          },
+          {
+            "name": "local production HTTP resource integration HTTP collection traversal ceiling returns at most twenty distinct breadcrumb nodes for historical depth twenty-two",
+            "status": "passed",
+            "durationMs": 176.96
+          },
+          {
+            "name": "local production HTTP resource integration HTTP skill traversal ceiling returns at most twenty distinct breadcrumb nodes for historical depth twenty-two",
+            "status": "passed",
+            "durationMs": 222.83
+          }
+        ]
+      },
+      {
+        "name": "app_migration_and_collection_regression",
+        "passed": 22,
+        "failed": 0,
+        "skipped": 0,
+        "startTimeEpochMs": 1793103194220,
+        "durationMs": 15275.58544921875,
+        "cases": [
+          {
+            "name": "create collection parent checks imports and syncs external resources through 20 folder levels while manual creation keeps its configured limit",
+            "status": "passed",
+            "durationMs": 3639.07
+          },
+          {
+            "name": "create collection parent checks enforces depth for generic and shared folder creation, and allows a leaf at the boundary",
+            "status": "passed",
+            "durationMs": 168.82
+          },
+          {
+            "name": "create collection parent checks rejects an invalid type parent in shared persistence",
+            "status": "passed",
+            "durationMs": 81.97
+          },
+          {
+            "name": "create collection parent checks rejects an invalid dataset parent in shared persistence",
+            "status": "passed",
+            "durationMs": 96.74
+          },
+          {
+            "name": "backfillFolderAncestorIds scans both collections, validates all rows, and completes every progress stage",
+            "status": "passed",
+            "durationMs": 624.94
+          },
+          {
+            "name": "backfillFolderAncestorIds persists skipped bad rows before advancing and fails with the complete unresolved snapshot",
+            "status": "passed",
+            "durationMs": 327.2
+          },
+          {
+            "name": "backfillFolderAncestorIds retries saved bad rows before resuming the checkpoint and replaces the error snapshot",
+            "status": "passed",
+            "durationMs": 113.59
+          },
+          {
+            "name": "folder ancestor path migration service bounds stable batches by the initial snapshot, includes soft-deleted rows, and ignores invalid retry IDs",
+            "status": "passed",
+            "durationMs": 2654.23
+          },
+          {
+            "name": "folder ancestor path migration service rebuilds App and tool folder paths independently and clears non-folder paths",
+            "status": "passed",
+            "durationMs": 267.13
+          },
+          {
+            "name": "folder ancestor path migration service skips invalid parents, cycles, and over-depth rows without partial path writes",
+            "status": "passed",
+            "durationMs": 43.22
+          },
+          {
+            "name": "folder ancestor path migration service moves cross-tree children to the root instead of failing the migration",
+            "status": "passed",
+            "durationMs": 37.83
+          },
+          {
+            "name": "folder ancestor path migration service truncates the path at the cross-tree boundary without cascading to descendants",
+            "status": "passed",
+            "durationMs": 20.47
+          },
+          {
+            "name": "folder ancestor path migration service backfills folders deeper than the create-time policy limit",
+            "status": "passed",
+            "durationMs": 30.74
+          },
+          {
+            "name": "folder ancestor path migration service validates without writing and remains idempotent after a successful backfill",
+            "status": "passed",
+            "durationMs": 23.88
+          },
+          {
+            "name": "folder migration transactions and permissions rebases apps folder ACLs (tool=false), including enabled descendant Collections",
+            "status": "passed",
+            "durationMs": 215.05
+          },
+          {
+            "name": "folder migration transactions and permissions rebases apps folder ACLs (tool=true), including enabled descendant Collections",
+            "status": "passed",
+            "durationMs": 206.23
+          },
+          {
+            "name": "folder migration transactions and permissions rebases datasets folder ACLs (tool=false), including enabled descendant Collections",
+            "status": "passed",
+            "durationMs": 243.34
+          },
+          {
+            "name": "folder migration transactions and permissions preserves independent folder ACLs when detaching them",
+            "status": "passed",
+            "durationMs": 159.14
+          },
+          {
+            "name": "folder migration transactions and permissions re-reads stale batches after a successful API move and skips deleted records",
+            "status": "passed",
+            "durationMs": 249.02
+          },
+          {
+            "name": "folder migration transactions and permissions retries the entire transaction after a concurrent move commits",
+            "status": "passed",
+            "durationMs": 218.78
+          },
+          {
+            "name": "folder migration transactions and permissions rolls back apps parent, path, and descendant ACL writes together after a later failure",
+            "status": "passed",
+            "durationMs": 186.24
+          },
+          {
+            "name": "folder migration transactions and permissions rolls back datasets parent, path, and descendant ACL writes together after a later failure",
+            "status": "passed",
+            "durationMs": 198.44
+          }
+        ]
+      },
+      {
+        "name": "collection_permission_regression",
+        "passed": 45,
+        "failed": 0,
+        "skipped": 0,
+        "startTimeEpochMs": 1793103224857,
+        "durationMs": 12504.30517578125,
+        "cases": [
+          {
+            "name": "createCollections / createCollectionPermission 批量创建与权限 enable 并发时，新节点遵守提交后的权限状态",
+            "status": "passed",
+            "durationMs": 2417.79
+          },
+          {
+            "name": "createCollections / createCollectionPermission 批量创建与权限 disable 并发时，新节点遵守提交后的权限状态",
+            "status": "passed",
+            "durationMs": 140.52
+          },
+          {
+            "name": "createCollections / createCollectionPermission 同父级兼容正文保留旧 owner 和独立 ACL，目录内正文继续继承，来源查询按 ID 去重",
+            "status": "passed",
+            "durationMs": 174.94
+          },
+          {
+            "name": "createCollections / createCollectionPermission 权限复用来源 missing 已失效时不创建集合",
+            "status": "passed",
+            "durationMs": 156.17
+          },
+          {
+            "name": "createCollections / createCollectionPermission 权限复用来源 team 已失效时不创建集合",
+            "status": "passed",
+            "durationMs": 154.04
+          },
+          {
+            "name": "createCollections / createCollectionPermission 权限复用来源 dataset 已失效时不创建集合",
+            "status": "passed",
+            "durationMs": 146.6
+          },
+          {
+            "name": "createCollections / createCollectionPermission 权限复用来源 parent 已失效时不创建集合",
+            "status": "passed",
+            "durationMs": 155.69
+          },
+          {
+            "name": "createCollections / createCollectionPermission 权限复用来源 non-folder 已失效时不创建集合",
+            "status": "passed",
+            "durationMs": 118.97
+          },
+          {
+            "name": "createCollections / createCollectionPermission 关闭态单条和批量均不写 ACL，启用后为所有新集合物化完整快照",
+            "status": "passed",
+            "durationMs": 218.73
+          },
+          {
+            "name": "createCollections / createCollectionPermission 开启态 200 个同父级集合只读取一次父级 ACL，且每个集合保留 owner 和 reader",
+            "status": "passed",
+            "durationMs": 180.18
+          },
+          {
+            "name": "createCollections / createCollectionPermission 关闭态创建独立权限集合被拒绝，真实事务回滚已创建集合",
+            "status": "passed",
+            "durationMs": 80.87
+          },
+          {
+            "name": "createCollections / createCollectionPermission 解析队列写入失败时真实事务回滚集合、ACL 和逐文件账单",
+            "status": "passed",
+            "durationMs": 100.05
+          },
+          {
+            "name": "moveCollectionPermission 继承节点移动：'目录之间'，撤销旧父授权并合并新父授权",
+            "status": "passed",
+            "durationMs": 171.75
+          },
+          {
+            "name": "moveCollectionPermission 继承节点移动：'目录移到知识库根'，撤销旧父授权并合并新父授权",
+            "status": "passed",
+            "durationMs": 180.94
+          },
+          {
+            "name": "moveCollectionPermission 继承节点移动：'知识库根移入目录'，撤销旧父授权并合并新父授权",
+            "status": "passed",
+            "durationMs": 186.86
+          },
+          {
+            "name": "moveCollectionPermission 独立权限节点移动保持隔离，目标为 dataset 根：false",
+            "status": "passed",
+            "durationMs": 164.09
+          },
+          {
+            "name": "moveCollectionPermission 独立权限节点移动保持隔离，目标为 dataset 根：true",
+            "status": "passed",
+            "durationMs": 173.94
+          },
+          {
+            "name": "moveCollectionPermission propagates the new snapshot to the descendants of a moved folder",
+            "status": "passed",
+            "durationMs": 195.04
+          },
+          {
+            "name": "moveCollectionPermissionsBatch / syncMovedCollectionPermissionDescendants 同批移动父子时使用新快照，中间祖先模式：none",
+            "status": "passed",
+            "durationMs": 254.67
+          },
+          {
+            "name": "moveCollectionPermissionsBatch / syncMovedCollectionPermissionDescendants 同批移动父子时使用新快照，中间祖先模式：inherited",
+            "status": "passed",
+            "durationMs": 305.19
+          },
+          {
+            "name": "moveCollectionPermissionsBatch / syncMovedCollectionPermissionDescendants 同批移动父子时使用新快照，中间祖先模式：independent",
+            "status": "passed",
+            "durationMs": 352.64
+          },
+          {
+            "name": "moveCollectionPermissionsBatch / syncMovedCollectionPermissionDescendants 同批移动父子时使用新快照，中间祖先模式：two-level",
+            "status": "passed",
+            "durationMs": 348.77
+          },
+          {
+            "name": "moveCollectionPermissionsBatch 空列表无需读取或写入权限",
+            "status": "passed",
+            "durationMs": 2.81
+          },
+          {
+            "name": "moveCollectionPermissionsBatch 无需变更快照时保持数据且不生成子树传播计划：disabled",
+            "status": "passed",
+            "durationMs": 115.04
+          },
+          {
+            "name": "moveCollectionPermissionsBatch 无需变更快照时保持数据且不生成子树传播计划：independent",
+            "status": "passed",
+            "durationMs": 128.19
+          },
+          {
+            "name": "moveCollectionPermissionsBatch 无需变更快照时保持数据且不生成子树传播计划：root",
+            "status": "passed",
+            "durationMs": 151.05
+          },
+          {
+            "name": "moveCollectionPermissionsBatch 源父级在计划后改变时拒绝整批迁移，重建计划后撤销实际旧父级的继承权限",
+            "status": "passed",
+            "durationMs": 231.45
+          },
+          {
+            "name": "moveCollectionPermissionsBatch 源状态 inheritPermission 在计划后改变时拒绝写入",
+            "status": "passed",
+            "durationMs": 145.25
+          },
+          {
+            "name": "moveCollectionPermissionsBatch 源状态 type 在计划后改变时拒绝写入",
+            "status": "passed",
+            "durationMs": 154.66
+          },
+          {
+            "name": "moveCollectionPermissionsBatch 源状态 deleted 在计划后改变时拒绝写入",
+            "status": "passed",
+            "durationMs": 150.92
+          },
+          {
+            "name": "moveCollectionPermissionsBatch 独立权限节点同批脱离旧祖先时，按最终结构计算 ACL 并传播到未移动后代",
+            "status": "passed",
+            "durationMs": 180.14
+          },
+          {
+            "name": "moveCollectionPermissionsBatch 多个移动节点共享两层外部祖先时复用新快照，两个分支都继承新权限",
+            "status": "passed",
+            "durationMs": 288.86
+          },
+          {
+            "name": "moveCollectionPermissionsBatch 旧节点缺少 ACL 快照时按空快照重建，移入空权限父级时撤销继承授权",
+            "status": "passed",
+            "durationMs": 262.23
+          },
+          {
+            "name": "moveCollectionPermissionsBatch 权限模式 disabled 仍拒绝将目录移入自身后代",
+            "status": "passed",
+            "durationMs": 129.57
+          },
+          {
+            "name": "moveCollectionPermissionsBatch 权限模式 independent 仍拒绝将目录移入自身后代",
+            "status": "passed",
+            "durationMs": 157.03
+          },
+          {
+            "name": "moveCollectionPermissionsBatch 目标父级循环在写入前失败，保留原快照和父级：moving",
+            "status": "passed",
+            "durationMs": 126.88
+          },
+          {
+            "name": "moveCollectionPermissionsBatch 目标父级循环在写入前失败，保留原快照和父级：external-self",
+            "status": "passed",
+            "durationMs": 142.26
+          },
+          {
+            "name": "moveCollectionPermissionsBatch 目标父级循环在写入前失败，保留原快照和父级：external-pair",
+            "status": "passed",
+            "durationMs": 148.75
+          },
+          {
+            "name": "moveCollectionPermissionsBatch 目标父级循环在写入前失败，保留原快照和父级：mixed",
+            "status": "passed",
+            "durationMs": 147.93
+          },
+          {
+            "name": "syncMovedCollectionPermissionDescendants 空传播计划直接返回",
+            "status": "passed",
+            "durationMs": 3.53
+          },
+          {
+            "name": "syncDatasetToCollections removes old inherited access and preserves descendant-specific access",
+            "status": "passed",
+            "durationMs": 171.28
+          },
+          {
+            "name": "syncDatasetToCollections dataset folder（自身开关关闭）授权透传到子知识库的 collection folder 与文件",
+            "status": "passed",
+            "durationMs": 198.11
+          },
+          {
+            "name": "syncDatasetToCollections 开关按 dataset 独立判定：关闭态子知识库的 collection 快照保持不变",
+            "status": "passed",
+            "durationMs": 182.71
+          },
+          {
+            "name": "syncDatasetToCollections 收集阶段剪掉独立权限子树：不查询其后代，也不加载其 ACL",
+            "status": "passed",
+            "durationMs": 120.04
+          },
+          {
+            "name": "syncRootCollections recalculates root collections and propagates to folder subtrees",
+            "status": "passed",
+            "durationMs": 190.31
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -26,6 +26,7 @@ import { WorkflowVariableState } from '../../../../core/workflow/dispatch/utils/
 import { responseWrite } from '@fastgpt/service/common/response';
 import { ChatFileTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { ChatHistoryItemResType, ChatItemMiniType } from '@fastgpt/global/core/chat/type';
+import { isUserConfigError, UserConfigError } from '@fastgpt/global/common/error/utils';
 import { NodeOutputKeyEnum, VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   SseResponseEventEnum,
@@ -574,18 +575,22 @@ describe('getHistories', () => {
           {
             interactive: {
               type: 'agentAsk',
-              askId: 'ask_1',
+
               params: {
-                description: 'Choose one',
-                questions: [
-                  {
-                    question: 'Choose one?',
-                    options: [
-                      { summary: 'A', value: 'A' },
-                      { summary: 'B', value: 'B' }
-                    ]
-                  }
-                ]
+                toolCallId: 'ask_1',
+                arguments: JSON.stringify({
+                  reason: 'Choose one',
+                  blockerType: 'user_choice',
+                  questions: [
+                    {
+                      question: 'Choose one?',
+                      options: [
+                        { summary: 'A', value: 'A' },
+                        { summary: 'B', value: 'B' }
+                      ]
+                    }
+                  ]
+                })
               }
             } as any
           }
@@ -609,9 +614,7 @@ describe('getHistories', () => {
             interactive: {
               type: 'toolChildrenInteractive',
               params: {
-                toolParams: {
-                  toolCallId: 'tool_1'
-                },
+                toolCallId: 'tool_1',
                 childrenResponse: {
                   type: 'userSelect',
                   params: {
@@ -641,19 +644,23 @@ describe('getHistories', () => {
           {
             interactive: {
               type: 'agentAsk',
-              askId: 'ask_1',
+
               params: {
-                description: '',
-                questions: [
-                  {
-                    question: 'Choose one',
-                    options: [
-                      { summary: 'A', value: 'A' },
-                      { summary: 'B', value: 'B' },
-                      { summary: 'C', value: 'C' }
-                    ]
-                  }
-                ]
+                toolCallId: 'ask_1',
+                arguments: JSON.stringify({
+                  reason: '',
+                  blockerType: 'user_choice',
+                  questions: [
+                    {
+                      question: 'Choose one',
+                      options: [
+                        { summary: 'A', value: 'A' },
+                        { summary: 'B', value: 'B' },
+                        { summary: 'C', value: 'C' }
+                      ]
+                    }
+                  ]
+                })
               }
             }
           }
@@ -681,6 +688,82 @@ describe('getHistories', () => {
 
   it('keeps configured agent history unchanged when history is not 0', () => {
     expect(getAgentLoopHistories(1, MockHistories)).toEqual(getHistories(1, MockHistories));
+  });
+
+  it.each([0, 1])('honors history=%s for completed model response groups', (history) => {
+    const histories: ChatItemMiniType[] = Array.from({ length: 3 }, (_, index) => [
+      { obj: ChatRoleEnum.Human, value: [{ text: { content: `question-${index}` } }] },
+      {
+        obj: ChatRoleEnum.AI,
+        value: [{ modelResponseId: `response-${index}`, text: { content: `answer-${index}` } }]
+      }
+    ]).flat();
+
+    expect(getAgentLoopHistories(history, histories)).toEqual(
+      history === 0 ? [] : histories.slice(-2)
+    );
+  });
+
+  it.each([0, 1])('keeps the complete pending interaction chain with history=%s', (history) => {
+    const ask: ChatItemMiniType = {
+      obj: ChatRoleEnum.AI,
+      value: [
+        {
+          modelResponseId: 'ask-response',
+          interactive: {
+            type: 'agentAsk',
+            entryNodeIds: [],
+            memoryEdges: [],
+            nodeOutputs: [],
+            params: {
+              toolCallId: 'ask-1',
+              arguments: JSON.stringify({
+                reason: '',
+                blockerType: 'user_choice',
+                questions: [
+                  {
+                    question: 'Choose?',
+                    options: [
+                      { summary: 'A', value: 'A' },
+                      { summary: 'B', value: 'B' }
+                    ]
+                  }
+                ]
+              })
+            }
+          }
+        }
+      ]
+    };
+    const pendingRound: ChatItemMiniType[] = [
+      { obj: ChatRoleEnum.Human, value: [{ text: { content: 'start current task' } }] },
+      ask,
+      {
+        obj: ChatRoleEnum.Human,
+        value: [{ select: { type: 'agentAsk', questions: [{ question: 'Choose?', value: 'A' }] } }]
+      },
+      {
+        ...ask,
+        value: [
+          {
+            ...ask.value[0],
+            modelResponseId: 'next-ask-response'
+          }
+        ]
+      }
+    ];
+    expect(getAgentLoopHistories(history, [...MockHistories, ...pendingRound])).toEqual(
+      history === 0 ? pendingRound : [MockHistories[0], ...MockHistories.slice(-2), ...pendingRound]
+    );
+    expect(getAgentLoopHistories([ask], pendingRound)).toEqual([ask]);
+    expect(getAgentLoopHistories(0, [ask])).toEqual([ask]);
+    const checkpointAsk: ChatItemMiniType = {
+      ...ask,
+      value: [{ contextCheckpoint: 'compressed current task' }, ...ask.value]
+    };
+    expect(getAgentLoopHistories(0, [...pendingRound.slice(0, -1), checkpointAsk])).toEqual([
+      checkpointAsk
+    ]);
   });
 
   it('should use default empty histories', () => {
@@ -1804,6 +1887,7 @@ describe('rewriteRuntimeWorkFlow', () => {
 describe('getNodeErrResponse', () => {
   it('should return proper error response structure', () => {
     const result = getNodeErrResponse({ error: 'test error' });
+    expect(result.rawError).toBe('test error');
     expect(result.error[NodeOutputKeyEnum.errorText]).toBe('test error');
     expect(result[DispatchNodeResponseKeyEnum.nodeResponse]).toHaveProperty(
       'errorText',
@@ -1827,6 +1911,18 @@ describe('getNodeErrResponse', () => {
       code: 500,
       detail: 'internal'
     });
+  });
+
+  it('keeps classification on the raw exception and excludes it from display details', () => {
+    const error = new UserConfigError('Invalid MCP URL');
+    const result = getNodeErrResponse({ error });
+
+    expect(result.rawError).toBe(error);
+    expect(result.error).toEqual({ [NodeOutputKeyEnum.errorText]: 'Invalid MCP URL' });
+    expect(result[DispatchNodeResponseKeyEnum.nodeResponse]).toMatchObject({
+      errorText: 'Invalid MCP URL'
+    });
+    expect(isUserConfigError(result.rawError)).toBe(true);
   });
 
   it('should include responseData in nodeResponse', () => {
@@ -1860,6 +1956,19 @@ describe('getNodeErrResponse', () => {
       [NodeOutputKeyEnum.errorText]: 'fail'
     });
   });
+
+  it('keeps the original exception while allowing a sanitized display message', () => {
+    const cause = new Error('upstream failure');
+    const error = new Error('private transport details', { cause });
+    const result = getNodeErrResponse({ error, errorText: 'HTTP 400: missing input' });
+
+    expect(result.rawError).toBe(error);
+    expect(result.error).toEqual({ system_error_text: 'HTTP 400: missing input' });
+    expect(result.responseData).toEqual({ errorText: 'HTTP 400: missing input' });
+    expect(result.toolResponse).toEqual({ error: 'HTTP 400: missing input' });
+    expect(JSON.stringify(result.responseData)).not.toContain('private transport details');
+    expect(JSON.stringify(result.responseData)).not.toContain('upstream failure');
+  });
 });
 
 describe('summarizeRuntimeNodeResponses', () => {
@@ -1880,7 +1989,6 @@ describe('summarizeRuntimeNodeResponses', () => {
     ] as ChatHistoryItemResType[]);
 
     expect(summary).toMatchObject({
-      hasError: true,
       errorCount: 1,
       errorText: 'workflow failed'
     });
@@ -1898,9 +2006,38 @@ describe('summarizeRuntimeNodeResponses', () => {
     ] as ChatHistoryItemResType[]);
 
     expect(summary).toMatchObject({
-      hasError: true,
       errorCount: 1,
       errorText: 'child workflow failed'
+    });
+  });
+
+  it('summarizes failure display text without persisting classification', () => {
+    const userConfigOnly = summarizeRuntimeNodeResponses(undefined, [
+      {
+        id: 'config-error',
+        nodeId: 'tool-node',
+        moduleType: FlowNodeTypeEnum.toolCall,
+        errorText: 'Invalid MCP URL'
+      }
+    ] as ChatHistoryItemResType[]);
+
+    expect(userConfigOnly).toMatchObject({
+      errorCount: 1,
+      errorText: 'Invalid MCP URL'
+    });
+
+    const withSystemError = summarizeRuntimeNodeResponses(userConfigOnly, [
+      {
+        id: 'system-error',
+        nodeId: 'chat-node',
+        moduleType: FlowNodeTypeEnum.chatNode,
+        errorText: 'database unavailable'
+      }
+    ] as ChatHistoryItemResType[]);
+
+    expect(withSystemError).toMatchObject({
+      errorText: 'database unavailable',
+      errorCount: 2
     });
   });
 
@@ -1922,7 +2059,6 @@ describe('summarizeRuntimeNodeResponses', () => {
     ] as ChatHistoryItemResType[]);
 
     expect(summary).toMatchObject({
-      hasError: true,
       errorCount: 1,
       errorText: 'Rate limit'
     });
@@ -1940,7 +2076,6 @@ describe('summarizeRuntimeNodeResponses', () => {
     ] as ChatHistoryItemResType[]);
 
     expect(summary).toMatchObject({
-      hasError: true,
       errorCount: 1,
       errorText: 'Plugin failed'
     });
@@ -2111,7 +2246,7 @@ describe('summarizeRuntimeNodeResponses', () => {
     expect(summary).toMatchObject({ llmInputTokens: 20, llmOutputTokens: 8 });
   });
 
-  it('counts dataset LLM children and deep search, excluding embedding and rerank tokens', () => {
+  it('counts dataset LLM children, excluding embedding and rerank tokens', () => {
     const summary = summarizeRuntimeNodeResponses(undefined, [
       {
         id: 'dataset-search',
@@ -2119,7 +2254,6 @@ describe('summarizeRuntimeNodeResponses', () => {
         moduleType: FlowNodeTypeEnum.datasetSearchNode,
         embeddingTokens: 700,
         reRankInputTokens: 300,
-        deepSearchResult: { inputTokens: 9, outputTokens: 4 },
         childrenResponses: [
           {
             id: 'query-extension',
@@ -2133,7 +2267,7 @@ describe('summarizeRuntimeNodeResponses', () => {
       } as any
     ]);
 
-    expect(summary).toMatchObject({ llmInputTokens: 24, llmOutputTokens: 10 });
+    expect(summary).toMatchObject({ llmInputTokens: 15, llmOutputTokens: 6 });
   });
 
   it('deduplicates dataset child tokens when the child row arrives before its parent', () => {
@@ -2186,7 +2320,6 @@ describe('stripNodeSummaryErrorFields', () => {
         llmOutputTokens: 4,
         totalPoints: 2,
         citeCollectionIds: ['collection-1'],
-        hasError: true,
         errorCount: 1,
         errorText: 'tool failed'
       })
@@ -2238,7 +2371,7 @@ describe('mergeWorkflowRuntimeSummary', () => {
       llmOutputTokens: 3,
       responseIds: ['child'],
       finishedNodeIds: ['end'],
-      hasError: true,
+      errorCount: 1,
       errorText: 'failed',
       hasLoopRunBreak: true,
       hasToolStop: true,
@@ -2283,10 +2416,18 @@ describe('mergeWorkflowRuntimeSummary', () => {
 describe('createNodeSummary', () => {
   it('每次执行独立采集，并通过统一入口累加 token', () => {
     const summary = createNodeSummary();
-    summary.mergeNodeSummary({ llmInputTokens: 5, llmOutputTokens: 2 });
+    summary.mergeNodeSummary({
+      llmInputTokens: 5,
+      llmOutputTokens: 2,
+      errorCount: 1
+    });
     summary.mergeNodeSummary({ llmInputTokens: 3 });
     summary.mergeNodeSummary({});
-    expect(summary).toMatchObject({ llmInputTokens: 8, llmOutputTokens: 2 });
+    expect(summary).toMatchObject({
+      llmInputTokens: 8,
+      llmOutputTokens: 2,
+      errorCount: 1
+    });
     expect(createNodeSummary()).toMatchObject({ llmInputTokens: 0, llmOutputTokens: 0 });
   });
 });
@@ -2300,13 +2441,13 @@ describe('runtimeSummaryToNodeSummary', () => {
         ...createWorkflowRuntimeSummary(),
         llmInputTokens: 13,
         llmOutputTokens: 7,
-        hasError: true,
+        errorCount: 1,
         errorText: 'failed'
       })
     ).toEqual({
       llmInputTokens: 13,
       llmOutputTokens: 7,
-      hasError: true,
+      errorCount: 1,
       errorText: 'failed'
     });
   });

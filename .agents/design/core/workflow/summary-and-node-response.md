@@ -526,7 +526,7 @@ ToolCall 子工作流的错误 response 不做特殊过滤，与成功 response 
 3. 同 identity 的 rows 合并为一个展示节点；
 4. `runningTime`、`totalPoints`、`childResponseCount`、tokens 等数值字段按增量累加；
 5. `llmRequestIds` 去重合并；
-6. `compressTextAgent`、`deepSearchResult` 等结构化用量按既有累加规则合并；
+6. `compressTextAgent` 等结构化用量按既有累加规则合并；
 7. 普通标量字段以后到的 incoming 为准；
 8. `childrenResponses` 递归使用同一合并规则；
 9. child row 先到时先作为临时 root，parent row 到达后再挂回 parent。
@@ -668,7 +668,6 @@ expect(result.workflowRuntimeSummary.llmOutputTokens).toBe(expectedOutput);
 | S03 | 缺少 token 或 token 为 0 | 不抛错，结果为 0 |
 | S04 | ToolCall 带 `toolCall*Tokens` 和 `toolDetail` | 只统计白名单字段，不递归 toolDetail |
 | S05 | dataset query extension、image caption、chunk selection | 白名单 LLM token 计入 |
-| S06 | dataset deep search | `deepSearchResult` LLM token 计入 |
 | S07 | embedding/rerank 与 LLM token 同时存在 | embedding/rerank 排除 |
 | S08 | dataset child 先到、parent 后到 | token 不重复 |
 | S09 | parent 先到、child 后到，跨批处理 | token 不重复 |

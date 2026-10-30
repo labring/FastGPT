@@ -1,4 +1,5 @@
 import type { StoreSecretValueType } from '@fastgpt/global/common/secret/type';
+import { isSecretValueConfigured } from '@fastgpt/global/common/secret/utils';
 
 export type CustomHeaderItem = {
   key: string;
@@ -29,7 +30,7 @@ export const buildWorkflowCustomHeaders = ({
     if (!secretKey || edited) return;
 
     const storedValue = storedSecrets[secretKey];
-    if (storedValue?.secret || storedValue?.value) {
+    if (isSecretValueConfigured(storedValue)) {
       headerSecret[key] = storedValue;
     }
   });

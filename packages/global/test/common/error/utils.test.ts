@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest';
 import {
   getErrorMessage,
   getErrText,
+  isUserConfigError,
   ToastHandledError,
-  UserError
+  UserError,
+  UserConfigError
 } from '@fastgpt/global/common/error/utils';
 import { ERROR_ENUM, ERROR_RESPONSE } from '@fastgpt/global/common/error/errorCode';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
@@ -123,6 +125,61 @@ describe('UserError', () => {
     expect(err.name).toBe('UserError');
     expect(err.message).toBe('boom');
   });
+});
+
+describe('UserConfigError', () => {
+  it('uses the same constructor parameters and inherits UserError', () => {
+    const cause = new Error('upstream rejected the key');
+    const error = new UserConfigError('invalid key', '请检查密钥', { cause });
+
+    expect(error).toBeInstanceOf(UserConfigError);
+    expect(error).toBeInstanceOf(UserError);
+    expect(error).toBeInstanceOf(Error);
+    expect(error).toMatchObject({
+      name: 'UserConfigError',
+      message: 'invalid key',
+      displayMessage: '请检查密钥',
+      cause
+    });
+    expect(error.cause).toBe(cause);
+
+    expect(getErrText(error)).toBe('请检查密钥');
+  });
+
+  it('accepts a message without extra configuration arguments', () => {
+    const error = new UserConfigError('MCP tool set is missing');
+
+    expect(error.name).toBe('UserConfigError');
+    expect(error.message).toBe('MCP tool set is missing');
+    expect(error.displayMessage).toBeUndefined();
+    expect(error.cause).toBeUndefined();
+  });
+});
+
+describe('isUserConfigError', () => {
+  it('recognizes the class identity before and after serialization', () => {
+    const error = new UserConfigError('invalid key');
+
+    expect(isUserConfigError(error)).toBe(true);
+    expect(isUserConfigError(JSON.parse(JSON.stringify(error)))).toBe(true);
+    expect(isUserConfigError({ name: 'UserConfigError' })).toBe(true);
+  });
+
+  it.each([
+    new UserError('ordinary business error'),
+    new Error('system error'),
+    new Error('internal wrapper', { cause: new UserConfigError('invalid key') }),
+    { name: 'UserError' },
+    null,
+    undefined,
+    'config',
+    1
+  ])(
+    'does not classify ordinary business errors or invalid values as config errors: %j',
+    (error) => {
+      expect(isUserConfigError(error)).toBe(false);
+    }
+  );
 });
 
 describe('ToastHandledError', () => {

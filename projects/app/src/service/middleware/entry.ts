@@ -9,6 +9,10 @@ type NextAPIOptions = {
   redactQueryParams?: string[];
 };
 
+/**
+ * Next.js API 统一入口：CORS/CSRF 由适配层处理，日志、错误和采集上下文交给共享 HTTP 管线。
+ * 仅请求携带 x-fastgpt-profile: 1 时启用分段性能采集，业务无需注册采集器。
+ */
 export const NextAPI = (
   ...args: (ApiHandler<any, NextApiRequest, NextApiResponse> | NextAPIOptions)[]
 ) => {

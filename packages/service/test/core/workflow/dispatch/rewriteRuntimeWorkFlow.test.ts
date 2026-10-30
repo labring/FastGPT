@@ -66,7 +66,7 @@ const createMcpToolSetNode = (toolList: unknown[]): RuntimeNodeItemType =>
     toolConfig: {
       mcpToolSet: {
         url: 'https://mcp.example.com',
-        headerSecret: { Authorization: { value: '', secret: 'encrypted-token' } },
+        headerSecret: { Authorization: { secret: 'encrypted-token' } },
         toolList
       }
     }
@@ -93,7 +93,7 @@ const createHttpToolSetNode = (
     toolConfig: {
       httpToolSet: {
         apiSchemaUrl: 'https://api.example.com/openapi.json',
-        headerSecret: { Authorization: { value: '', secret: 'encrypted-token' } },
+        headerSecret: { Authorization: { secret: 'encrypted-token' } },
         ...config,
         toolList
       }
@@ -226,14 +226,14 @@ describe('rewriteRuntimeWorkFlow independent toolsets', () => {
       headers: { Authorization: 'Bearer mcp-token' }
     });
     expect(mocks.getSecretValue).toHaveBeenCalledWith({
-      storeSecret: { Authorization: { value: '', secret: 'encrypted-token' } }
+      storeSecret: { Authorization: { secret: 'encrypted-token' } }
     });
     expect(nodes.map((node) => node.name)).toEqual(['Local MCP/search', 'Local MCP/new_tool']);
     expect(nodes.map((node) => node.intro)).toEqual(['Local search', 'Remote new tool']);
     expect(nodes[0].jsonSchema).toEqual(inputSchema);
     expect(nodes[0].toolConfig?.mcpTool).toMatchObject({
       url: 'https://mcp.example.com',
-      headerSecret: { Authorization: { value: '', secret: 'encrypted-token' } }
+      headerSecret: { Authorization: { secret: 'encrypted-token' } }
     });
     expect(edges.map((edge) => edge.target)).toEqual(nodes.map((node) => node.nodeId));
   });
@@ -281,7 +281,7 @@ describe('rewriteRuntimeWorkFlow independent toolsets', () => {
       path: '/search',
       method: 'get',
       customHeaders: '{"X-Trace":"enabled"}',
-      headerSecret: { Authorization: { value: '', secret: 'encrypted-token' } }
+      headerSecret: { Authorization: { secret: 'encrypted-token' } }
     });
     expect(nodes[0].toolConfig?.httpTool?.apiSchemaStr).toBe(
       JSON.stringify(await bundleOpenAPISchema(parseOpenAPISchemaString(openApiSchema)))

@@ -6,6 +6,7 @@ import type {
 import type { AgentPlanType } from '@fastgpt/global/core/ai/agent/type';
 import type { LLMModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
+import type { FileClassificationContext } from '../../../../../../../common/file/classification';
 import type { CreateLLMResponseProps } from '../../../../request';
 import type { SandboxClient } from '../../../../../sandbox/application/runtime/client';
 import type { SandboxToolCallValidator } from '../../../../../sandbox/application/toolCall/type';
@@ -17,7 +18,6 @@ import type {
   AgentLoopCompletionPolicy,
   AgentLoopEvent,
   AgentLoopInteractiveToolExecuteParams,
-  AgentLoopPendingMainContext,
   AgentLoopPause,
   AgentLoopReadFileExecutor,
   AgentLoopToolExecutionResult,
@@ -50,6 +50,7 @@ export type AgentLoopRuntime<TChildrenResponse = unknown> = {
   useAudio?: boolean;
   useVideo?: boolean;
   extractFiles?: boolean;
+  fileContext?: FileClassificationContext;
   lang?: localeType;
   maxRunAgentTimes?: number;
   completionPolicy?: AgentLoopCompletionPolicy;
@@ -75,20 +76,16 @@ export type AgentLoopRuntime<TChildrenResponse = unknown> = {
   emitEvent?: (event: AgentLoopEvent) => void;
 };
 
-export type PendingMainContext = AgentLoopPendingMainContext;
-
 export type FastAgentLoopInput<TChildrenResponse = unknown> = {
   messages: ChatCompletionMessageParam[];
   systemPrompt?: string;
   activePlan?: AgentPlanType;
-  pendingMainContext?: PendingMainContext;
   userAnswer?: string;
   childrenInteractiveParams?: AgentLoopChildrenInteractiveParams<TChildrenResponse>;
 };
 
 export type FastAgentLoopResultBase = {
   activePlan?: AgentPlanType;
-  pendingMainContext?: PendingMainContext;
   completeMessages: ChatCompletionMessageParam[];
   assistantMessages: ChatCompletionMessageParam[];
   inputTokens?: number;

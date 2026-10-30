@@ -49,6 +49,7 @@ const mocks = vi.hoisted(() => ({
   deleteRecords: vi.fn(),
   getRecords: vi.fn(),
   refreshRecords: vi.fn(),
+  truncateRecords: vi.fn(),
   system: { isPc: false }
 }));
 vi.mock('@fastgpt/web/hooks/useToast', () => ({ useToast: () => ({ toast: mocks.toast }) }));
@@ -245,6 +246,11 @@ describe('useChatGenerate.sendPrompt', () => {
         const history = await mocks.refreshRecords();
         setChatRecords(history);
         return history;
+      },
+      truncateChatRecords: async (dataId: string) => {
+        const history = await mocks.truncateRecords(dataId);
+        setChatRecords(history);
+        return history;
       }
     } as unknown as React.ComponentProps<typeof ChatRecordContext.Provider>['value'];
     const chat = {
@@ -322,6 +328,12 @@ describe('useChatGenerate.sendPrompt', () => {
       }
     });
     mocks.deleteRecords.mockResolvedValue(undefined);
+    mocks.truncateRecords.mockImplementation(async (dataId: string) =>
+      records.slice(
+        0,
+        records.findIndex((item) => item.dataId === dataId)
+      )
+    );
     mocks.startAudio.mockResolvedValue(undefined);
     root = createRoot(document.getElementById('root')!);
   });
@@ -419,50 +431,43 @@ describe('useChatGenerate.sendPrompt', () => {
                 { question: 'Optional?', value: '' }
               ]
             }
-          : {
-              type: 'workflowBuilderPreview',
-              questions: [
-                {
-                  question: 'Confirm workflow?',
-                  value:
-                    action === 'revise'
-                      ? 'Add a review branch'
-                      : action === 'confirm'
-                        ? 'Confirm'
-                        : 'Cancel'
-                }
-              ]
-            };
+          : action === 'revise'
+            ? { type: 'workflowBuilderPreview', action: action, reviseText: 'Add a review branch' }
+            : { type: 'workflowBuilderPreview', action: action };
       const interactive: WorkflowInteractiveResponseType =
         action === 'agentAsk'
           ? {
               ...runtime,
               type: 'agentAsk',
-              askId: 'ask-1',
+
               params: {
-                description: '',
-                questions: select.questions.map(({ question }) => ({
-                  question,
-                  options: [
-                    { summary: 'Upload file', value: 'upload' },
-                    { summary: 'Paste text', value: 'paste' }
-                  ]
-                }))
+                toolCallId: 'ask-1',
+                arguments: JSON.stringify({
+                  reason: '',
+                  blockerType: 'user_choice',
+                  questions: (select.type === 'agentAsk' ? select.questions : []).map(
+                    ({ question }) => ({
+                      question,
+                      options: [
+                        { summary: 'Upload file', value: 'upload' },
+                        { summary: 'Paste text', value: 'paste' }
+                      ]
+                    })
+                  )
+                })
               }
             }
           : {
               ...runtime,
               type: 'workflowBuilderPreview',
-              previewId: 'preview-1',
+
               params: {
-                title: 'Confirm workflow?',
-                mermaid: 'flowchart LR; A --> B',
-                sections: [],
-                actions: [
-                  { value: 'confirm', label: 'Confirm', inputMode: 'none' },
-                  { value: 'revise', label: 'Revise', inputMode: 'text' },
-                  { value: 'cancel', label: 'Cancel', inputMode: 'none' }
-                ]
+                toolCallId: 'preview-1',
+                arguments: JSON.stringify({
+                  title: 'Confirm workflow?',
+                  mermaid: 'flowchart LR; A --> B',
+                  sections: [{ title: 'Goal', content: 'Build the workflow' }]
+                })
               }
             };
       const request = Promise.withResolvers<{ responseText: string }>();
@@ -494,14 +499,15 @@ describe('useChatGenerate.sendPrompt', () => {
         )
       ).toEqual([expect.objectContaining({ content: [{ type: 'select', select }] })]);
       await act(async () => request.resolve({ responseText: 'Continued' }));
-      mocks.refreshRecords.mockResolvedValueOnce([sourceAi]);
+      mocks.truncateRecords.mockResolvedValueOnce([sourceAi]);
       if (paginated) await act(async () => setRecords(records.slice(1)));
       await act(async () => recordActions.retryInput(user.dataId)?.());
       expect(mocks.getRecords).not.toHaveBeenCalled();
       expect(mocks.deleteRecords).toHaveBeenCalledTimes(1);
       expect(mocks.deleteRecords.mock.calls[0][0]).not.toHaveProperty('retry');
-      expect(mocks.refreshRecords).toHaveBeenCalledTimes(1);
-      expect(mocks.refreshRecords.mock.invocationCallOrder[0]).toBeGreaterThan(
+      expect(mocks.refreshRecords).not.toHaveBeenCalled();
+      expect(mocks.truncateRecords).toHaveBeenCalledExactlyOnceWith(user.dataId);
+      expect(mocks.truncateRecords.mock.invocationCallOrder[0]).toBeGreaterThan(
         mocks.deleteRecords.mock.invocationCallOrder[0]
       );
       const retried = records.at(-2);
@@ -550,6 +556,7 @@ describe('useChatGenerate.sendPrompt', () => {
     expect(records).toBe(original);
     expect(mocks.start).not.toHaveBeenCalled();
     expect(mocks.refreshRecords).not.toHaveBeenCalled();
+    expect(mocks.truncateRecords).not.toHaveBeenCalled();
     expect(mocks.toast).toHaveBeenCalledWith(
       expect.objectContaining({ status: 'warning', title: 'Delete failed' })
     );
@@ -568,10 +575,10 @@ describe('useChatGenerate.sendPrompt', () => {
             status: ChatStatusEnum.finish,
             value: [
               {
-                select: {
-                  type,
-                  questions: [{ question: 'Choose?', value: 'confirm' }]
-                }
+                select:
+                  type === 'agentAsk'
+                    ? { type, questions: [{ question: 'Choose?', value: 'confirm' }] }
+                    : { type, action: 'confirm' }
               }
             ]
           }
@@ -589,7 +596,7 @@ describe('useChatGenerate.sendPrompt', () => {
   );
 
   it.each([true, false])(
-    'reloads the history window before sending an edited message (refresh succeeds: %s)',
+    'uses the remaining history before sending an edited message (truncation succeeds: %s)',
     async (succeeds) => {
       await render();
       await act(async () =>
@@ -603,16 +610,17 @@ describe('useChatGenerate.sendPrompt', () => {
           }
         ])
       );
-      if (succeeds) mocks.refreshRecords.mockResolvedValueOnce([]);
-      else mocks.refreshRecords.mockRejectedValueOnce(new Error('Refresh failed'));
+      if (succeeds) mocks.truncateRecords.mockResolvedValueOnce([]);
+      else mocks.truncateRecords.mockRejectedValueOnce(new Error('Truncation failed'));
 
       await act(async () =>
         recordActions.editInput('old-user')?.({ text: 'Edited prompt', files: [] })
       );
 
       expect(mocks.deleteRecords).toHaveBeenCalledTimes(1);
-      expect(mocks.refreshRecords).toHaveBeenCalledTimes(1);
-      expect(mocks.refreshRecords.mock.invocationCallOrder[0]).toBeGreaterThan(
+      expect(mocks.refreshRecords).not.toHaveBeenCalled();
+      expect(mocks.truncateRecords).toHaveBeenCalledExactlyOnceWith('old-user');
+      expect(mocks.truncateRecords.mock.invocationCallOrder[0]).toBeGreaterThan(
         mocks.deleteRecords.mock.invocationCallOrder[0]
       );
       expect(recordActions.isRecordActionLoading).toBe(false);
@@ -624,7 +632,7 @@ describe('useChatGenerate.sendPrompt', () => {
       } else {
         expect(mocks.start).not.toHaveBeenCalled();
         expect(mocks.toast).toHaveBeenCalledWith(
-          expect.objectContaining({ status: 'warning', title: 'Refresh failed' })
+          expect.objectContaining({ status: 'warning', title: 'Truncation failed' })
         );
       }
     }

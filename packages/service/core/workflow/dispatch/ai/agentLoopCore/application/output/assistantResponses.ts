@@ -9,13 +9,34 @@ export const compactAgentLoopCorePlanSnapshots = (
   assistantResponses: AIChatItemValueItemType[]
 ): AIChatItemValueItemType[] => {
   const lastPlanIndex = assistantResponses.findLastIndex(
-    (value) => Object.prototype.hasOwnProperty.call(value, 'plan') && value.plan !== undefined
+    (value) =>
+      !value.displayOnly &&
+      Object.prototype.hasOwnProperty.call(value, 'plan') &&
+      value.plan !== undefined
   );
   if (lastPlanIndex < 0) return assistantResponses;
 
+  /** 移除已结束的计划卡后，内部工具记录仍需隐藏，避免留下只有元信息的空气泡。 */
+  const hideInternalOnlyValue = (value: AIChatItemValueItemType) => {
+    if (
+      !value.plan &&
+      !value.interactive &&
+      !value.text?.content &&
+      (!value.reasoning?.content || value.hideReason) &&
+      value.tools?.length &&
+      value.tools.every((tool) => tool.hideInUI)
+    )
+      return { ...value, hideInUI: true };
+    return value;
+  };
+
   return assistantResponses.flatMap((value, index) => {
     const currentPlan = value.plan;
-    if (!Object.prototype.hasOwnProperty.call(value, 'plan') || currentPlan === undefined) {
+    if (
+      value.displayOnly ||
+      !Object.prototype.hasOwnProperty.call(value, 'plan') ||
+      currentPlan === undefined
+    ) {
       return [value];
     }
 
@@ -27,13 +48,13 @@ export const compactAgentLoopCorePlanSnapshots = (
     if (index === lastPlanIndex) {
       const plan =
         currentPlan === null || !hasUnfinishedAgentPlan(currentPlan) ? null : currentPlan;
-      return [{ ...valueWithoutPlan, plan }];
+      return [hideInternalOnlyValue({ ...valueWithoutPlan, plan })];
     }
 
     const hasSemanticValue = Object.entries(valueWithoutPlan).some(
       ([key, itemValue]) => key !== 'id' && itemValue !== undefined && itemValue !== null
     );
-    return hasSemanticValue ? [valueWithoutPlan] : [];
+    return hasSemanticValue ? [hideInternalOnlyValue(valueWithoutPlan)] : [];
   });
 };
 

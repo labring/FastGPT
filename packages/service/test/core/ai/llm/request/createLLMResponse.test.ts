@@ -5,7 +5,7 @@ import type {
   StreamResponseType
 } from '@fastgpt/global/core/ai/llm/type';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
-import { getErrText } from '@fastgpt/global/common/error/utils';
+import { getErrText, UserConfigError } from '@fastgpt/global/common/error/utils';
 import type { LLMModelConfigType, LLMModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 
@@ -181,6 +181,37 @@ describe('createLLMResponse', () => {
   });
 
   describe('User key routing', () => {
+    it('preserves the actual user-key classification and partial output after a stream read fails', async () => {
+      const { parseLLMStreamResponse } = await vi.importActual<
+        typeof import('@fastgpt/service/core/ai/utils')
+      >('@fastgpt/service/core/ai/utils');
+      mockParseLLMStreamResponse.mockImplementationOnce(parseLLMStreamResponse);
+      const error = new Error('upstream disconnected');
+      async function* chunks() {
+        yield { choices: [{ delta: { content: 'partial' }, finish_reason: null }] };
+        throw error;
+      }
+      const response = Object.assign(chunks(), { controller: { abort: vi.fn() } });
+      mockGetAIApi.mockReturnValue(
+        createMockAIApiResult(
+          { chat: { completions: { create: vi.fn().mockResolvedValue(response) } } },
+          { usedUserOpenAIKey: true, baseUrl: 'https://user.example.com/v1' }
+        )
+      );
+
+      const result = await createLLMResponse({
+        throwError: false,
+        saveLLMResponseRecord: false,
+        body: { model: createMockModelData(), messages: [], stream: true }
+      });
+
+      expect(result.error).toBeInstanceOf(UserConfigError);
+      expect(result.error.cause).toBe(error);
+      expect(result.answerText).toBe('partial');
+      expect(result.usage.usedUserOpenAIKey).toBe(true);
+      expect(result.finish_reason).toBe('error');
+    });
+
     const mockTextResponse = {
       choices: [
         {

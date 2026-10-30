@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest';
+import { UserStatusEnum } from '@fastgpt/global/support/user/constant';
 import {
   finishPostLoginAction,
   getNextPostLoginAction,
+  isMandatoryPostLoginAction,
   isMandatoryPostLoginActionRoute,
   isPostLoginActionRoute,
+  shouldPromptAccountActivation,
   startPostLoginAction,
   type OneTimePostLoginAction,
   type PostLoginAction,
@@ -13,7 +16,8 @@ import {
 const getAction = (
   completed: OneTimePostLoginAction[] = [],
   hasImportantInform = true,
-  currentAction?: PostLoginAction
+  currentAction?: PostLoginAction,
+  needsAccountActivation = false
 ) =>
   getNextPostLoginAction({
     canStartMandatory: true,
@@ -25,7 +29,8 @@ const getAction = (
     shouldShowContact: true,
     contactHandled: false,
     isPlus: true,
-    hasImportantInform
+    hasImportantInform,
+    needsAccountActivation
   });
 
 describe('post login action order', () => {
@@ -164,6 +169,71 @@ describe('post login action order', () => {
 
   it('keeps the current action ahead of newly arrived notifications', () => {
     expect(getAction([], true, 'activityAd')).toBe('activityAd');
+  });
+
+  it('prioritises the account activation over every other action', () => {
+    expect(getAction([], true, undefined, true)).toBe('accountActivation');
+    // 未激活时后面的动作只能排队，不能抢在账号激活前面弹出。
+    expect(getAction(['accountActivation'], true, undefined, true)).toBe('invitation');
+  });
+
+  it('does not prompt password activation for accounts without platform-password support', () => {
+    expect(
+      shouldPromptAccountActivation({
+        status: UserStatusEnum.inactive,
+        passwordAvailable: false
+      })
+    ).toBe(false);
+    expect(
+      shouldPromptAccountActivation({
+        status: UserStatusEnum.inactive,
+        passwordAvailable: true
+      })
+    ).toBe(true);
+    // 兼容未提供能力标志的旧登录信息。
+    expect(shouldPromptAccountActivation({ status: UserStatusEnum.inactive })).toBe(true);
+  });
+
+  it('treats the account activation as a mandatory action', () => {
+    expect(isMandatoryPostLoginAction('accountActivation')).toBe(true);
+  });
+
+  it('marks account activation complete and releases the lock once activation finishes', () => {
+    const key = 'user-1:team-1';
+    const state = startPostLoginAction({
+      state: { key, completed: new Set() },
+      key,
+      action: 'accountActivation'
+    });
+    const finished = finishPostLoginAction({
+      state,
+      key,
+      action: 'accountActivation'
+    });
+
+    expect(finished.currentAction).toBeUndefined();
+    expect(finished.completed.has('accountActivation')).toBe(true);
+  });
+
+  it('keeps the account activation behind the mandatory gate', () => {
+    const params = {
+      canStartMandatory: true,
+      canStartOptional: true,
+      completed: new Set<OneTimePostLoginAction>(),
+      inviteLinkId: '',
+      hasPendingMemberName: false,
+      shouldShowContact: false,
+      contactHandled: false,
+      // root 账号不在 plus 名单里，账号激活仍必须由独立状态控制。
+      isPlus: false,
+      hasImportantInform: false,
+      needsAccountActivation: true
+    };
+
+    expect(getNextPostLoginAction(params)).toBe('accountActivation');
+    // 只准入可选动作时不能展示账号激活：它属于强制动作集合，必须走强制门槛。
+    expect(getNextPostLoginAction({ ...params, canStartMandatory: false })).toBeUndefined();
+    expect(getNextPostLoginAction({ ...params, needsAccountActivation: false })).toBeUndefined();
   });
 
   it('can enqueue important notifications again after the first login flow', () => {

@@ -34,6 +34,7 @@ import {
 } from '@/components/common/secret/HeaderAuthConfig';
 import HeaderAuthForm, { AuthValueDisplay } from '@/components/common/secret/HeaderAuthForm';
 import type { StoreSecretValueType } from '@fastgpt/global/common/secret/type';
+import { getSecretPlainValue, isSecretValueConfigured } from '@fastgpt/global/common/secret/utils';
 import {
   HttpToolSetRuntimeConfigSchema,
   type HttpToolSetNodeConfigType
@@ -435,7 +436,11 @@ const SchemaConfigModal = ({
                   const storedValue = headerSecret[item.secretKey ?? item.key];
                   const hasValue = item.edited
                     ? Boolean(item.value)
-                    : Boolean(storedValue?.secret || storedValue?.value || item.value);
+                    : Boolean(
+                        isSecretValueConfigured(storedValue) ||
+                        getSecretPlainValue(storedValue) ||
+                        item.value
+                      );
 
                   return (
                     <Tr key={`${index}`}>

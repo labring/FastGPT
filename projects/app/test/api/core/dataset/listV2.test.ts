@@ -245,4 +245,53 @@ describe('POST /api/core/dataset/listV2 - datasetIds', () => {
     });
     expect(response.error).toBeInstanceOf(ApiRequestInputParseError);
   });
+
+  it('深层文件夹入口在根视图可见（不受创建深度策略限制）', async () => {
+    const { owner, members } = await getFakeUsers(1);
+    const member = members[0];
+    const teamId = String(owner.teamId);
+
+    // 造一条超过 MAX_FOLDER_DEPTH(4) 的历史嵌套：f0 -> f1 -> f2 -> f3 -> f4（5 层）。
+    const chainIds = Array.from({ length: 5 }, () => new Types.ObjectId());
+    await MongoDataset.insertMany(
+      chainIds.map((_id, index) => ({
+        _id,
+        teamId: owner.teamId,
+        tmbId: owner.tmbId,
+        name: `deep-folder-${index}`,
+        type: DatasetTypeEnum.folder,
+        parentId: chainIds[index - 1] ?? null,
+        ancestorIds: chainIds.slice(0, index),
+        inheritPermission: false
+      }))
+    );
+    // 中间层不授可读权限，只在最深层放一个可读知识库。
+    // 此时根视图必须能给出通往它的首层文件夹入口（navigate 模式）。
+    const deepDataset = await MongoDataset.create({
+      name: 'deep-readable-dataset',
+      teamId: owner.teamId,
+      tmbId: owner.tmbId,
+      type: DatasetTypeEnum.dataset,
+      parentId: String(chainIds[chainIds.length - 1]),
+      inheritPermission: false
+    });
+    await MongoResourcePermission.create({
+      resourceType: PerResourceTypeEnum.dataset,
+      teamId,
+      resourceId: String(deepDataset._id),
+      tmbId: String(member.tmbId),
+      permission: ReadPermissionVal
+    });
+
+    const response = await Call<
+      GetDatasetListV2Body,
+      Record<string, never>,
+      GetDatasetListV2Response
+    >(handler, { auth: member, body: { parentId: null } });
+
+    expect(response.code).toBe(200);
+    // 修复前路径解析被 MAX_FOLDER_DEPTH(4) 截断，f4 被丢弃，
+    // 导致根视图缺少进入该分支的入口。
+    expect(response.data.list.map((item) => String(item._id))).toContain(String(chainIds[0]));
+  });
 });

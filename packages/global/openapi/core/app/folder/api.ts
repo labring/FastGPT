@@ -51,7 +51,7 @@ export type CreateAppFolderBodyType = z.input<typeof CreateAppFolderBodySchema>;
  * API: 获取应用文件夹路径
  * Route: GET /api/core/app/folder/path
  * Method: GET
- * Description: 获取指定应用或文件夹的父级路径。
+ * Description: 获取指定应用或文件夹的父级路径。当 sourceId 是非文件夹资源（如 MCP/HTTP 工具集）且 type 为 current 时，返回其所在文件夹路径并追加资源自身。
  * Tags: ['文件夹管理']
  * ============================================================================ */
 
@@ -62,7 +62,8 @@ export const GetAppFolderPathQuerySchema = GetPathPropsSchema.extend({
   }),
   type: z.enum(['current', 'parent']).optional().meta({
     example: 'current',
-    description: '路径查询方式：current 返回当前节点路径，parent 返回父级路径'
+    description:
+      '路径查询方式：current 返回当前节点路径（非文件夹资源时为所在文件夹路径加资源自身），parent 返回父级路径'
   })
 }).meta({
   example: {

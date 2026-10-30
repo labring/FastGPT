@@ -651,8 +651,7 @@ const SearchDatasetTestOptionsSchema = z.object({
   datasetSearchUsingExtensionQuery: z.boolean().optional().meta({
     example: false,
     default: false,
-    description:
-      '是否在普通检索前对文本问题扩展，默认 false；纯图片输入不执行文本扩展，深度搜索使用独立流程'
+    description: '是否在检索前对文本问题扩展，默认 false；纯图片输入不执行文本扩展'
   }),
   datasetSearchExtensionModelId: z.string().optional().meta({
     description: '问题扩展模型 ID，开启问题扩展时使用；未指定或模型配置失效时尝试团队默认语言模型'
@@ -665,28 +664,6 @@ const SearchDatasetTestOptionsSchema = z.object({
   datasetSearchExtensionBg: z.string().optional().meta({
     example: '根据 FastGPT 产品文档扩展用户问题',
     description: '问题扩展的背景信息，用于辅助生成检索问题'
-  }),
-  datasetDeepSearch: z.boolean().optional().meta({
-    example: false,
-    default: false,
-    description:
-      '是否启用深度搜索，默认 false；仅 text 包含非空白内容时进入深度搜索，纯图片输入仍使用普通检索'
-  }),
-  datasetDeepSearchModelId: z.string().optional().meta({
-    description: '深度搜索使用的语言模型 ID，需具备该模型的使用权限'
-  }),
-  datasetDeepSearchModel: z.string().optional().meta({
-    example: 'gpt-4o-mini',
-    description: '旧版深度搜索模型标识',
-    deprecated: true
-  }),
-  datasetDeepSearchMaxTimes: z.number().optional().meta({
-    example: 3,
-    description: '深度搜索的最大迭代轮次，仅在实际进入深度搜索时生效'
-  }),
-  datasetDeepSearchBg: z.string().optional().meta({
-    example: '结合产品功能与使用场景检索相关资料',
-    description: '深度搜索的背景信息，仅在实际进入深度搜索时生效'
   })
 });
 

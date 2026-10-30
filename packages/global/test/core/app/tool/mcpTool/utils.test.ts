@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   getMCPToolSetRuntimeNode,
   getMCPToolRuntimeNode,
+  getMCPToolErrorText,
   parsetMcpToolConfig
 } from '@fastgpt/global/core/app/tool/mcpTool/utils';
 import {
@@ -16,6 +17,35 @@ import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import type { McpToolConfigType } from '@fastgpt/global/core/app/tool/mcpTool/type';
 
 describe('mcpTool utils', () => {
+  describe('getMCPToolErrorText', () => {
+    it.each([
+      { result: {}, expected: undefined },
+      {
+        result: { isError: false, content: [{ type: 'text', text: 'error' }] },
+        expected: undefined
+      },
+      { result: { isError: false, error: 'business value' }, expected: undefined },
+      {
+        result: {
+          isError: true,
+          content: [
+            { type: 'text', text: 'First failure' },
+            { type: 'image' },
+            { type: 'text', text: 'Second failure' }
+          ]
+        },
+        expected: 'First failure\nSecond failure'
+      },
+      { result: { isError: true }, expected: 'MCP tool execution failed' },
+      {
+        result: { isError: true, content: [{ type: 'text', text: '  ' }, { type: 'image' }] },
+        expected: 'MCP tool execution failed'
+      }
+    ])('extracts only protocol errors: $expected', ({ result, expected }) => {
+      expect(getMCPToolErrorText(result)).toBe(expected);
+    });
+  });
+
   describe('getMCPToolSetRuntimeNode', () => {
     it('should create runtime node with required params', () => {
       const toolList: McpToolConfigType[] = [

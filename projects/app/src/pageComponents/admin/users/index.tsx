@@ -36,6 +36,7 @@ import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 
 const userStatusColorMap = {
   [UserStatusEnum.active]: 'green',
+  [UserStatusEnum.inactive]: 'yellow',
   [UserStatusEnum.forbidden]: 'red',
   cancelled: 'gray'
 } as const;
@@ -53,6 +54,7 @@ const UserTable = () => {
   const statusOptions = [
     { label: t('common:All'), value: undefined },
     { label: t('admin:user_status_active'), value: UserStatusEnum.active },
+    { label: t('admin:user_status_inactive'), value: UserStatusEnum.inactive },
     { label: t('admin:user_status_forbidden'), value: UserStatusEnum.forbidden },
     { label: t('admin:user_status_cancelled'), value: 'cancelled' as const }
   ];

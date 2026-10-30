@@ -1,3 +1,5 @@
+import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
+import { serviceEnv } from '@fastgpt/service/env';
 import { getModelTestDefaults, setModelTestSnapshot } from '@test/modelCache';
 import createHandler from '@/pages/api/core/dataset/create';
 import {
@@ -13,7 +15,7 @@ import {
   ReadRoleVal
 } from '@fastgpt/global/support/permission/constant';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
-import { getFakeUsers } from '@test/datas/users';
+import { getFakeUsers, getUser } from '@test/datas/users';
 import type { parseHeaderCertRet } from '@test/mocks/request';
 import { Call } from '@test/utils/request';
 import { describe, it, expect } from 'vitest';
@@ -278,4 +280,104 @@ describe('create dataset inheritPermission', () => {
       ].sort()
     );
   });
+});
+
+describe('generic dataset creation parent checks', () => {
+  it('rejects a foreign-team ancestor behind an authorized parent folder', async () => {
+    const { owner } = await getFakeUsers(1);
+    const foreign = await getUser('foreign-team-owner');
+    const ancestor = await MongoDataset.create({
+      name: 'foreign-ancestor',
+      type: DatasetTypeEnum.folder,
+      teamId: foreign.teamId,
+      tmbId: foreign.tmbId
+    });
+    const parent = await MongoDataset.create({
+      name: 'local-parent',
+      type: DatasetTypeEnum.folder,
+      parentId: ancestor._id,
+      teamId: owner.teamId,
+      tmbId: owner.tmbId
+    });
+    const result = await Call(createHandler, {
+      auth: owner,
+      body: {
+        name: 'invalid-child',
+        intro: '',
+        type: DatasetTypeEnum.dataset,
+        parentId: String(parent._id)
+      }
+    });
+    expect(result.error).toBe(CommonErrEnum.invalidParams);
+    expect(await MongoDataset.countDocuments({ name: 'invalid-child' })).toBe(0);
+  });
+
+  it('enforces folder depth at the boundary and permits a dataset in the deepest folder', async () => {
+    const { owner } = await getFakeUsers(1);
+    const ids: string[] = [];
+    for (let i = 0; i < serviceEnv.MAX_FOLDER_DEPTH - 1; i++) {
+      const folder = await MongoDataset.create({
+        name: `level-${i}`,
+        type: DatasetTypeEnum.folder,
+        parentId: ids.at(-1) ?? null,
+        teamId: owner.teamId,
+        tmbId: owner.tmbId
+      });
+      ids.push(String(folder._id));
+    }
+    const last = await Call(createHandler, {
+      auth: owner,
+      body: { name: 'last', intro: '', type: DatasetTypeEnum.folder, parentId: ids.at(-1) }
+    });
+    expect(last.code).toBe(200);
+    expect((await MongoDataset.findById(last.data).lean())?.ancestorIds.map(String)).toEqual(ids);
+    const overflow = await Call(createHandler, {
+      auth: owner,
+      body: { name: 'overflow', intro: '', type: DatasetTypeEnum.folder, parentId: last.data }
+    });
+    expect(overflow.error).toBe(CommonErrEnum.folderDepthLimit);
+    expect(await MongoDataset.countDocuments({ name: 'overflow' })).toBe(0);
+    const leaf = await Call(createHandler, {
+      auth: owner,
+      body: { name: 'leaf', intro: '', type: DatasetTypeEnum.dataset, parentId: last.data }
+    });
+    expect(leaf.code).toBe(200);
+    const historical = await MongoDataset.create({
+      name: 'historical-deep-folder',
+      type: DatasetTypeEnum.folder,
+      parentId: last.data,
+      teamId: owner.teamId,
+      tmbId: owner.tmbId
+    });
+    const deepLeaf = await Call(createHandler, {
+      auth: owner,
+      body: {
+        name: 'invalid-deep-leaf',
+        intro: '',
+        type: DatasetTypeEnum.dataset,
+        parentId: String(historical._id)
+      }
+    });
+    expect(deepLeaf.error).toBe(CommonErrEnum.folderDepthLimit);
+    expect(await MongoDataset.countDocuments({ name: 'invalid-deep-leaf' })).toBe(0);
+  });
+
+  it.each([DatasetTypeEnum.folder, DatasetTypeEnum.dataset])(
+    'rejects a dataset as the parent of %s',
+    async (type) => {
+      const { owner } = await getFakeUsers(1);
+      const parent = await MongoDataset.create({
+        name: 'leaf-parent',
+        type: DatasetTypeEnum.dataset,
+        teamId: owner.teamId,
+        tmbId: owner.tmbId
+      });
+      const res = await Call(createHandler, {
+        auth: owner,
+        body: { name: 'invalid', intro: '', type, parentId: String(parent._id) }
+      });
+      expect(res.error).toBe(CommonErrEnum.invalidParams);
+      expect(await MongoDataset.countDocuments({ parentId: parent._id })).toBe(0);
+    }
+  );
 });

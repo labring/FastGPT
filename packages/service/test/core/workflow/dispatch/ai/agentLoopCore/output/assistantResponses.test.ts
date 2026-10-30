@@ -24,6 +24,30 @@ describe('agentLoopCore output assistantResponses helpers', () => {
     ).toEqual([{ text: { content: 'working' } }, { plan: createPlan('3') }]);
   });
 
+  it('hides completed internal plan records while retaining their terminal marker and tool context', () => {
+    const values = compactAgentLoopCorePlanSnapshots([
+      {
+        plan: {
+          planId: 'complete',
+          name: 'Done',
+          steps: [{ id: 'done', name: 'Done', status: 'done' }]
+        },
+        tools: [
+          {
+            id: 'plan-call',
+            toolName: 'Plan',
+            toolAvatar: '',
+            functionName: 'update_plan',
+            params: '{}',
+            response: 'Done',
+            hideInUI: true
+          }
+        ]
+      }
+    ]);
+    expect(values[0]).toMatchObject({ plan: null, hideInUI: true, tools: [{ response: 'Done' }] });
+  });
+
   it('stores a null terminal marker when the last plan is complete', () => {
     expect(
       compactAgentLoopCorePlanSnapshots([

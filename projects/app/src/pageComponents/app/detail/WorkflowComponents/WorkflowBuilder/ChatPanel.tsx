@@ -1,5 +1,5 @@
 import React, { useEffect, useImperativeHandle, useMemo, useState } from 'react';
-import { Box } from '@chakra-ui/react';
+import { Box, Button, Flex, Spinner, Text } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import { useContextSelector } from 'use-context-selector';
 import { useLocalStorageState, useMemoizedFn } from 'ahooks';
@@ -9,8 +9,8 @@ import type { StartChatFnProps } from '@/components/core/chat/ChatContainer/type
 import ChatItemContextProvider, { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import ChatRecordContextProvider from '@/web/core/chat/context/chatRecordContext';
 import ChatAIModelSelector from '@/pageComponents/chat/ChatWindow/ChatAIModelSelector';
-import { useUserStore } from '@/web/support/user/useUserStore';
-import { useChatStore } from '@/web/core/chat/context/useChatStore';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useAppBuilderChat } from '@/web/core/chat/useAppBuilderChat';
 import { getChatSourceKey, type ChatSourceTarget } from '@/web/core/chat/utils';
 import { getInitChatInfo } from '@/web/core/chat/api';
 import { useModelDefault } from '@/web/core/ai/model/useModelDefault';
@@ -26,8 +26,9 @@ import {
   reactFlowStateToWorkflowDocument
 } from '../adapters/document';
 import { getWorkflowChecksum } from '@fastgpt/workflow-core/domain/checksum';
-import { clearWorkflowBuilderChatHistory, streamWorkflowBuilderChat } from './api';
+import { streamWorkflowBuilderChat } from './api';
 import type { WorkflowBuilderVersionActions } from '@/web/core/chat/context/chatItemContext';
+import type { WorkflowBuilderVersion } from '@fastgpt/global/core/workflow/builder/type';
 import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
 import { ChatGenerateStatusEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { WorkflowBuilderActivity } from './context';
@@ -41,7 +42,14 @@ import {
 import { WORKFLOW_BUILDER_CHAT_ID_QUERY_KEY } from '@/web/core/app/utils';
 
 export type WorkflowBuilderChatPanelRef = {
-  clearHistory: () => Promise<void>;
+  restartChat: () => void;
+  /** 将已提交版本写回当前会话记录；忽略切换会话后迟到的应用结果。 */
+  updateAppliedVersion: (data: {
+    appId: string;
+    chatId: string;
+    responseChatItemId: string;
+    version: WorkflowBuilderVersion;
+  }) => void;
 };
 
 const WorkflowBuilderChatContent = ({
@@ -73,6 +81,7 @@ const WorkflowBuilderChatContent = ({
   const chatBoxData = useContextSelector(ChatItemContext, (value) => value.chatBoxData);
   const ChatBoxRef = useContextSelector(ChatItemContext, (value) => value.ChatBoxRef);
   const chatRecords = useContextSelector(ChatRecordContext, (value) => value.chatRecords);
+  const setChatRecords = useContextSelector(ChatRecordContext, (value) => value.setChatRecords);
   const isChatRecordsLoaded = useContextSelector(
     ChatRecordContext,
     (value) => value.isChatRecordsLoaded
@@ -116,13 +125,30 @@ const WorkflowBuilderChatContent = ({
     [appDetail.name, t]
   );
   useImperativeHandle(chatPanelRef, () => ({
-    clearHistory: () =>
-      clearWorkflowBuilderChatHistory({
-        appId,
-        chatId,
-        clearChatRecords,
-        restartChat: onRestart
-      })
+    restartChat: () => {
+      // 新对话只重置当前展示和会话 ID，保留服务端历史及其版本归档。
+      clearChatRecords();
+      onRestart();
+    },
+    updateAppliedVersion: (data) => {
+      if (data.appId !== appId || data.chatId !== chatId) return;
+      // 以消息和版本共同定位，避免同一配置重复生成时误标其他版本。
+      setChatRecords((records) =>
+        records.map((record) => {
+          if (record.obj !== ChatRoleEnum.AI || record.dataId !== data.responseChatItemId) {
+            return record;
+          }
+          return {
+            ...record,
+            value: record.value.map((item) =>
+              item.workflowBuilderVersion?.checksum === data.version.checksum
+                ? { ...item, workflowBuilderVersion: data.version }
+                : item
+            )
+          };
+        })
+      );
+    }
   }));
 
   useEffect(() => {
@@ -159,28 +185,30 @@ const WorkflowBuilderChatContent = ({
   }, [appDetail, appId, builderChatConfig, chatId, setChatBoxData, sourceKey]);
 
   useRequest(
-    async () => {
-      const result = await getInitChatInfo({
+    () =>
+      getInitChatInfo({
         appId,
         chatId,
         sourceType: ChatSourceTypeEnum.workflowBuilder
-      });
-      setChatBoxData((previous) => ({
-        ...previous,
-        sourceKey,
-        appId,
-        chatId: result.chatId || chatId,
-        title: result.title,
-        chatGenerateStatus: result.chatGenerateStatus,
-        hasBeenRead: result.hasBeenRead
-      }));
-      setHydratedChatInfoKey(chatInfoRequestKey);
-    },
+      }),
     {
       manual: false,
       pollingInterval: watchExternalChat ? 1500 : undefined,
       refreshDeps: [appId, chatId, sourceKey],
-      errorToast: ''
+      errorToast: '',
+      // 只由仍有效的请求水合详情，避免旧会话覆盖新对话及其生成状态。
+      onSuccess: (result) => {
+        setChatBoxData((previous) => ({
+          ...previous,
+          sourceKey,
+          appId,
+          chatId: result.chatId || chatId,
+          title: result.title,
+          chatGenerateStatus: result.chatGenerateStatus,
+          hasBeenRead: result.hasBeenRead
+        }));
+        setHydratedChatInfoKey(chatInfoRequestKey);
+      }
     }
   );
 
@@ -307,7 +335,6 @@ const WorkflowBuilderChatContent = ({
           chatType={ChatTypeEnum.test}
           features={{
             markRead: false,
-            mark: false,
             voice: true,
             tts: false,
             inputGuide: false,
@@ -352,30 +379,25 @@ const ChatPanel = React.forwardRef<
     },
     ref
   ) => {
+    const { t } = useTranslation('common');
     const router = useRouter();
-    const tmbId = useUserStore((state) => state.userInfo?.team?.tmbId ?? '');
+    const showRunDetail = useSystemStore(
+      (state) => state.feConfigs.showAuxiliaryGenerationRunDetail ?? false
+    );
     const sourceTarget = useMemo<ChatSourceTarget>(
       () => ({ sourceType: ChatSourceTypeEnum.workflowBuilder, sourceId: appId }),
       [appId]
     );
-    const chatIdCacheKey = useMemo(
-      () => (tmbId ? `workflow-builder:${getChatSourceKey(sourceTarget)}:${tmbId}` : ''),
-      [sourceTarget, tmbId]
-    );
-    const cachedChatId = useChatStore((state) => state.sourceChatIdMap[chatIdCacheKey] || '');
-    const ensureSourceChatId = useChatStore((state) => state.ensureSourceChatId);
-    const setSourceChatId = useChatStore((state) => state.setSourceChatId);
     const watchChatId = getWorkflowBuilderWatchChatId(
       router.query[WORKFLOW_BUILDER_CHAT_ID_QUERY_KEY]
     );
-    // 旁观链接仅选择当前页面的会话，不能写入跨标签页缓存并切走正在编辑的对话。
-    const chatId = watchChatId ?? cachedChatId;
-
-    useEffect(() => {
-      if (chatIdCacheKey && !watchChatId && !chatId) {
-        ensureSourceChatId(chatIdCacheKey);
-      }
-    }, [chatId, chatIdCacheKey, ensureSourceChatId, watchChatId]);
+    const { chatId, restartChat, restoreChat, isRestoringChat, restoreChatError } =
+      useAppBuilderChat({
+        appId,
+        sourceType: ChatSourceTypeEnum.workflowBuilder,
+        watchChatId,
+        ready: router.isReady
+      });
 
     const chatRecordProviderParams = useMemo(
       () => ({
@@ -386,7 +408,13 @@ const ChatPanel = React.forwardRef<
       [appId, chatId]
     );
     const onRestart = useMemoizedFn(() => {
-      setSourceChatId(chatIdCacheKey);
+      restartChat();
+      if (watchChatId) {
+        // 新对话属于当前成员，退出旁观链接后才能采用刚缓存的会话 ID。
+        const query = { ...router.query };
+        delete query[WORKFLOW_BUILDER_CHAT_ID_QUERY_KEY];
+        void router.replace({ pathname: router.pathname, query }, undefined, { shallow: true });
+      }
     });
 
     return (
@@ -397,12 +425,26 @@ const ChatPanel = React.forwardRef<
         isShowFullText={false}
         showRunningStatus={true}
         showSkillReferences={true}
-        showWholeResponse={false}
+        showWholeResponse={showRunDetail}
         showPoints={false}
         showAvatar={true}
         showSandboxAction={false}
         workflowBuilderVersionActions={workflowBuilderVersionActions}
       >
+        {!chatId && (
+          <Flex flex={1} alignItems="center" justifyContent="center" flexDirection="column" gap={3}>
+            {restoreChatError && !isRestoringChat ? (
+              <>
+                <Text color="myGray.500">{t('load_failed')}</Text>
+                <Button variant="whiteBase" onClick={restoreChat}>
+                  {t('refresh')}
+                </Button>
+              </>
+            ) : (
+              <Spinner size="sm" />
+            )}
+          </Flex>
+        )}
         {chatId && (
           <ChatRecordContextProvider params={chatRecordProviderParams} showInitialLoading={false}>
             <WorkflowBuilderChatContent

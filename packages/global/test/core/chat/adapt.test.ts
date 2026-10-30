@@ -15,6 +15,214 @@ import { ChatRoleEnum, ChatFileTypeEnum } from '@fastgpt/global/core/chat/consta
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/llm/type';
+import type {
+  WorkflowBuilderPreviewInteractive,
+  WorkflowBuilderPreviewAction
+} from '@fastgpt/global/core/workflow/builder/type';
+import { WORKFLOW_BUILDER_PREVIEW_TOOL_NAME } from '@fastgpt/global/core/workflow/builder/constants';
+import { getWorkflowBuilderPreviewToolResponse } from '@fastgpt/global/core/workflow/builder/utils';
+
+describe('persisted Agent context boundaries', () => {
+  it.each(['flat', 'legacy', 'invalid'] as const)(
+    'restores only the parent tool for a %s child wrapper',
+    (format) => {
+      const messages: ChatItemMiniType[] = [
+        {
+          obj: ChatRoleEnum.AI,
+          value: [
+            {
+              modelResponseId: 'parent-response',
+              tools: [
+                {
+                  id: 'parent-call',
+                  functionName: 'workflow_tool',
+                  toolName: 'Workflow',
+                  toolAvatar: '',
+                  params: '{}',
+                  response: 'Waiting for child'
+                }
+              ]
+            },
+            {
+              interactive: {
+                type: 'toolChildrenInteractive',
+                entryNodeIds: [],
+                memoryEdges: [],
+                nodeOutputs: [],
+                params: {
+                  ...(format === 'flat'
+                    ? { toolCallId: 'parent-call' }
+                    : { toolParams: { toolCallId: format === 'legacy' ? 'parent-call' : '' } }),
+                  childrenResponse: {
+                    type: 'agentAsk',
+                    params: {
+                      toolCallId: 'child-ask',
+                      arguments: JSON.stringify({
+                        reason: 'Choose',
+                        blockerType: 'user_choice',
+                        questions: [
+                          {
+                            question: 'Format?',
+                            options: [
+                              { summary: 'Brief', value: 'Brief' },
+                              { summary: 'Full', value: 'Full' }
+                            ]
+                          }
+                        ]
+                      })
+                    }
+                  }
+                }
+              } as any
+            }
+          ]
+        },
+        {
+          obj: ChatRoleEnum.Human,
+          value: [
+            { select: { type: 'agentAsk', questions: [{ question: 'Format?', value: 'Brief' }] } }
+          ]
+        },
+        {
+          obj: ChatRoleEnum.AI,
+          value: [
+            {
+              toolResponses: [{ id: 'parent-call', response: 'Actual child result' }],
+              hideInUI: true
+            }
+          ]
+        }
+      ];
+      const before = structuredClone(messages);
+      const result = chats2GPTMessages({ messages, reserveTool: true, reserveId: false });
+      expect(
+        result.flatMap((item) =>
+          item.role === 'assistant' ? (item.tool_calls ?? []).map((call) => call.id) : []
+        )
+      ).toEqual(['parent-call']);
+      expect(result.find((item) => item.role === 'tool')).toMatchObject({
+        tool_call_id: 'parent-call',
+        content: 'Actual child result'
+      });
+      // 无效包装保留普通 Human；新旧有效包装只消费父工具的最终结果。
+      expect(result.filter((item) => item.role === 'user')).toHaveLength(
+        format === 'invalid' ? 1 : 0
+      );
+      expect(messages).toEqual(before);
+    }
+  );
+
+  it.each([
+    { reserveTool: false, reserveSelect: false },
+    { reserveTool: true, reserveSelect: true }
+  ])('keeps private Agent inputs out of ordinary/transport history: %j', (options) => {
+    const messages: ChatItemMiniType[] = [
+      { obj: ChatRoleEnum.Human, value: [{ text: { content: 'Original question' } }] },
+      {
+        obj: ChatRoleEnum.AI,
+        value: [
+          { inputContext: { content: 'Private prepared input' }, text: { content: 'Answer' } },
+          { userMessage: { content: 'Private continuation', source: 'server' }, hideInUI: true },
+          { text: { content: 'Final answer' } }
+        ]
+      }
+    ];
+    const result = chats2GPTMessages({ messages, reserveId: false, ...options });
+    expect(result[0]).toMatchObject({ role: 'user', content: 'Original question' });
+    expect(result.filter((item) => item.role === 'user')).toHaveLength(1);
+    expect(JSON.stringify(result)).not.toContain('Private');
+    expect(JSON.stringify(result)).toContain('Final answer');
+  });
+
+  it('restores prepared input and hidden server continuations without resetting history', () => {
+    const messages: ChatItemMiniType[] = [
+      { obj: ChatRoleEnum.Human, value: [{ text: { content: 'Raw input' } }] },
+      {
+        obj: ChatRoleEnum.AI,
+        value: [
+          {
+            modelResponseId: 'first',
+            inputContext: { content: 'Prepared input' },
+            text: { content: 'First answer' }
+          },
+          {
+            userMessage: { content: 'Continue until delivered', source: 'server' },
+            hideInUI: true
+          },
+          { modelResponseId: 'second', text: { content: 'Delivered' } }
+        ]
+      }
+    ];
+    const before = structuredClone(messages);
+    const result = chats2GPTMessages({ messages, reserveId: false, reserveTool: true });
+    expect(result.map((item) => [item.role, item.content, !!item.hideInUI])).toEqual([
+      ['user', 'Prepared input', false],
+      ['assistant', 'First answer', false],
+      ['user', 'Continue until delivered', true],
+      ['assistant', 'Delivered', false]
+    ]);
+    expect(messages).toEqual(before);
+  });
+
+  it.each([false, true])(
+    'pairs valid standalone interactive Ask without response metadata: answered=%s',
+    (answered) => {
+      const messages: ChatItemMiniType[] = [
+        { obj: ChatRoleEnum.Human, value: [{ text: { content: 'Choose format' } }] },
+        {
+          obj: ChatRoleEnum.AI,
+          value: [
+            {
+              interactive: {
+                type: 'agentAsk',
+                params: {
+                  toolCallId: 'standalone-ask',
+                  arguments: JSON.stringify({
+                    reason: 'Need format',
+                    blockerType: 'user_choice',
+                    questions: [
+                      {
+                        question: 'Format?',
+                        options: [
+                          { summary: 'Brief', value: 'Brief' },
+                          { summary: 'Full', value: 'Full' }
+                        ]
+                      }
+                    ]
+                  })
+                },
+                entryNodeIds: [],
+                memoryEdges: [],
+                nodeOutputs: []
+              }
+            }
+          ]
+        },
+        ...(answered
+          ? [{ obj: ChatRoleEnum.Human as const, value: [{ text: { content: 'Full' } }] }]
+          : [])
+      ];
+      const askMessage = messages[1];
+      if (askMessage.obj !== ChatRoleEnum.AI) throw new Error('Expected Ask message');
+      const interactive = askMessage.value[0].interactive;
+      if (interactive?.type !== 'agentAsk') throw new Error('Expected Ask interactive');
+      const rawArguments = JSON.stringify(JSON.parse(interactive.params.arguments), null, 2) + '\n';
+      interactive.params.arguments = rawArguments;
+      const result = chats2GPTMessages({ messages, reserveId: false, reserveTool: true });
+      expect(result.find((item) => item.role === 'assistant')?.tool_calls).toEqual([
+        expect.objectContaining({
+          id: 'standalone-ask',
+          function: { name: 'ask_user', arguments: rawArguments }
+        })
+      ]);
+      expect(result.find((item) => item.role === 'tool')).toMatchObject({
+        tool_call_id: 'standalone-ask',
+        content: answered ? expect.stringContaining('Full') : 'Waiting for user answer.'
+      });
+      expect(result.filter((item) => item.role === 'user')).toHaveLength(1);
+    }
+  );
+});
 
 describe('GPT2Chat mapping', () => {
   it('should map GPT roles to Chat roles correctly', () => {
@@ -1847,19 +2055,23 @@ describe('chats2GPTMessages', () => {
           {
             interactive: {
               type: 'agentAsk',
-              askId: 'call_ask',
+
               params: {
-                description: '',
-                questions: [
-                  {
-                    question: 'What would you like to know?',
-                    options: [
-                      { summary: 'Use repo', value: 'Use repo' },
-                      { summary: 'Use docs', value: 'Use docs' },
-                      { summary: 'Use defaults', value: 'Use defaults' }
-                    ]
-                  }
-                ]
+                toolCallId: 'call_ask',
+                arguments: JSON.stringify({
+                  reason: '',
+                  blockerType: 'user_choice',
+                  questions: [
+                    {
+                      question: 'What would you like to know?',
+                      options: [
+                        { summary: 'Use repo', value: 'Use repo' },
+                        { summary: 'Use docs', value: 'Use docs' },
+                        { summary: 'Use defaults', value: 'Use defaults' }
+                      ]
+                    }
+                  ]
+                })
               }
             }
           } as any
@@ -3281,19 +3493,23 @@ describe('GPTMessages2Chats', () => {
         content: '',
         interactive: {
           type: 'agentAsk',
-          askId: 'call_ask',
+
           params: {
-            description: '',
-            questions: [
-              {
-                question: 'What would you like to know?',
-                options: [
-                  { summary: 'Use repo', value: 'Use repo' },
-                  { summary: 'Use docs', value: 'Use docs' },
-                  { summary: 'Use defaults', value: 'Use defaults' }
-                ]
-              }
-            ]
+            toolCallId: 'call_ask',
+            arguments: JSON.stringify({
+              reason: '',
+              blockerType: 'user_choice',
+              questions: [
+                {
+                  question: 'What would you like to know?',
+                  options: [
+                    { summary: 'Use repo', value: 'Use repo' },
+                    { summary: 'Use docs', value: 'Use docs' },
+                    { summary: 'Use defaults', value: 'Use defaults' }
+                  ]
+                }
+              ]
+            })
           }
         } as any
       }
@@ -3555,12 +3771,38 @@ describe('structured user answers', () => {
     type: 'agentAsk' as const,
     questions: [{ question: '输入方式？', value: 'upload' }]
   };
-  const ask: ChatItemMiniType = {
+  const makeAsk = (askId = 'ask-call', question = '输入方式？'): ChatItemMiniType => ({
     obj: ChatRoleEnum.AI,
     value: [
-      { agentAsk: { id: 'ask-call', askId: 'ask-call', functionName: 'ask_user', params: '{}' } }
+      {
+        modelResponseId: askId,
+        toolCallIds: [askId],
+        interactive: {
+          type: 'agentAsk',
+          entryNodeIds: [],
+          memoryEdges: [],
+          nodeOutputs: [],
+          params: {
+            toolCallId: askId,
+            arguments: JSON.stringify({
+              reason: '',
+              blockerType: 'user_choice',
+              questions: [
+                {
+                  question,
+                  options: [
+                    { summary: 'upload', value: 'upload' },
+                    { summary: 'other', value: 'other' }
+                  ]
+                }
+              ]
+            })
+          }
+        }
+      }
     ]
-  };
+  });
+  const ask = makeAsk();
   const answer: ChatItemMiniType = { obj: ChatRoleEnum.Human, value: [{ select }] };
 
   it('reads only the adjacent user and consumes its answer once as a tool response', () => {
@@ -3570,7 +3812,14 @@ describe('structured user answers', () => {
       expect.objectContaining({
         role: 'assistant',
         tool_calls: [
-          { id: 'ask-call', type: 'function', function: { name: 'ask_user', arguments: '{}' } }
+          {
+            id: 'ask-call',
+            type: 'function',
+            function: {
+              name: 'ask_user',
+              arguments: expect.stringContaining('\"blockerType\":\"user_choice\"')
+            }
+          }
         ]
       }),
       expect.objectContaining({
@@ -3585,13 +3834,13 @@ describe('structured user answers', () => {
     { intervening: [] },
     { intervening: [{ obj: ChatRoleEnum.AI, value: [{ text: { content: 'intervening AI' } }] }] }
   ])(
-    'returns an empty response when the next record is missing or not user: %j',
+    'keeps a waiting response when the next record is missing or not user: %j',
     ({ intervening }) => {
       const messages: ChatItemMiniType[] = intervening.length
         ? [ask, ...(intervening as ChatItemMiniType[]), answer]
         : [ask];
       const result = chats2GPTMessages({ messages, reserveId: false, reserveTool: true });
-      expect(result.find((item) => item.role === 'tool')?.content).toBe('');
+      expect(result.find((item) => item.role === 'tool')?.content).toBe('Waiting for user answer.');
       if (intervening.length) expect(result.at(-1)).toMatchObject({ role: 'user' });
     }
   );
@@ -3603,7 +3852,10 @@ describe('structured user answers', () => {
       reserveTool: true
     });
     expect(result).toHaveLength(2);
-    expect(result[1]).toMatchObject({ role: 'tool', content: 'custom answer' });
+    expect(result[1]).toMatchObject({
+      role: 'tool',
+      content: '## 输入方式？\n\n回答：custom answer'
+    });
   });
 
   it('preserves the structured user type across ChatBox transport and extracts runtime answers', () => {
@@ -3624,10 +3876,7 @@ describe('structured user answers', () => {
   });
 
   it('keeps independent answers for consecutive Ask rounds without matching user ids', () => {
-    const secondAsk: ChatItemMiniType = {
-      ...ask,
-      value: [{ agentAsk: { id: 'ask-2', askId: 'ask-2', functionName: 'ask_user', params: '{}' } }]
-    };
+    const secondAsk = makeAsk('ask-2', '补充？');
     const secondAnswer: ChatItemMiniType = {
       obj: ChatRoleEnum.Human,
       value: [
@@ -3648,5 +3897,293 @@ describe('structured user answers', () => {
       '## 输入方式？\n\n回答：upload',
       '## 补充？\n\n回答：review'
     ]);
+  });
+});
+
+describe('workflow preview answers', () => {
+  const preview: WorkflowBuilderPreviewInteractive = {
+    type: 'workflowBuilderPreview',
+
+    params: {
+      toolCallId: 'preview-call',
+      arguments: JSON.stringify({
+        title: 'Build workflow',
+        mermaid: 'flowchart TD\n A-->B',
+        sections: [{ title: 'Goal', content: 'Review and reply' }]
+      })
+    }
+  };
+  const makePreview = (id = 'preview-call'): ChatItemMiniType => ({
+    obj: ChatRoleEnum.AI,
+    value: [
+      {
+        tools: [
+          {
+            id: 'failed-preview',
+            toolName: 'Preview',
+            toolAvatar: '',
+            functionName: WORKFLOW_BUILDER_PREVIEW_TOOL_NAME,
+            params: '{}',
+            response: '{"ok":false}'
+          },
+          {
+            id,
+            toolName: 'Preview',
+            toolAvatar: '',
+            functionName: WORKFLOW_BUILDER_PREVIEW_TOOL_NAME,
+            params: preview.params.arguments,
+            response:
+              '{"ok":true,"state":"awaiting_confirmation","previewId":"preview-call","taskComplete":false}'
+          }
+        ]
+      },
+      {
+        interactive: {
+          ...preview,
+          entryNodeIds: [],
+          memoryEdges: [],
+          nodeOutputs: [],
+          params: { ...preview.params, toolCallId: id }
+        }
+      }
+    ]
+  });
+  const answer = (
+    value: string,
+    action: WorkflowBuilderPreviewAction = 'confirm'
+  ): ChatItemMiniType => ({
+    obj: ChatRoleEnum.Human,
+    value: [
+      {
+        select:
+          action === 'revise'
+            ? { type: 'workflowBuilderPreview', action: action, reviseText: value }
+            : { type: 'workflowBuilderPreview', action: action }
+      }
+    ]
+  });
+
+  it.each([false, true])(
+    'restores raw Preview arguments without a duplicate tool record (grouped=%s)',
+    (grouped) => {
+      const rawArguments = ` \n${JSON.stringify({ sections: JSON.parse(preview.params.arguments).sections, extension: 'keep original', mermaid: 'flowchart TD\n A-->B', title: 'Build workflow' }, null, 2)}\n`;
+      const ai: ChatItemMiniType = {
+        obj: ChatRoleEnum.AI,
+        value: [
+          {
+            ...(grouped
+              ? { modelResponseId: 'preview-response', toolCallIds: ['preview-call'] }
+              : {}),
+            interactive: {
+              ...preview,
+              entryNodeIds: [],
+              memoryEdges: [],
+              nodeOutputs: [],
+              params: { toolCallId: 'preview-call', arguments: rawArguments }
+            }
+          }
+        ]
+      };
+      const before = structuredClone(ai);
+      for (const replied of [false, true]) {
+        const result = chats2GPTMessages({
+          messages: [ai, ...(replied ? [answer('Add review', 'revise')] : [])],
+          reserveId: false,
+          reserveTool: true
+        });
+        expect(
+          result
+            .filter((message) => message.role === 'assistant')
+            .flatMap((message) => message.tool_calls ?? [])
+        ).toEqual([
+          {
+            id: 'preview-call',
+            type: 'function',
+            function: { name: WORKFLOW_BUILDER_PREVIEW_TOOL_NAME, arguments: rawArguments }
+          }
+        ]);
+        expect(result.find((message) => message.role === 'tool')?.content).toBe(
+          JSON.stringify(
+            replied
+              ? getWorkflowBuilderPreviewToolResponse({
+                  previewId: 'preview-call',
+                  action: 'revise',
+                  feedback: 'Add review'
+                })
+              : {
+                  ok: true,
+                  state: 'awaiting_confirmation',
+                  previewId: 'preview-call',
+                  taskComplete: false
+                }
+          )
+        );
+        expect(result.filter((message) => message.role === 'user')).toEqual([]);
+        expect(ai).toEqual(before);
+      }
+    }
+  );
+
+  it.each([
+    { value: 'Confirm and build', decision: 'confirm', state: 'confirmed', taskComplete: false },
+    { value: 'Cancel this build', decision: 'cancel', state: 'cancelled', taskComplete: true },
+    {
+      value: 'Add a review branch',
+      decision: 'revise',
+      state: 'revision_requested',
+      taskComplete: false
+    }
+  ] as const)(
+    'projects the adjacent Human $decision into only the matching tool response',
+    ({ value, decision, state, taskComplete }) => {
+      const messages = [makePreview(), answer(value, decision)];
+      const before = structuredClone(messages);
+      const result = chats2GPTMessages({ messages, reserveId: false, reserveTool: true });
+      const response = result.find(
+        (item) => item.role === 'tool' && item.tool_call_id === 'preview-call'
+      );
+      expect(JSON.parse(String(response?.content))).toMatchObject({
+        ok: true,
+        state,
+        decision,
+        previewId: 'preview-call',
+        taskComplete
+      });
+      if (decision === 'revise') expect(JSON.parse(String(response?.content)).feedback).toBe(value);
+      expect(
+        result.find((item) => item.role === 'tool' && item.tool_call_id === 'failed-preview')
+          ?.content
+      ).toBe('{"ok":false}');
+      expect(result.filter((item) => item.role === 'user')).toEqual([]);
+      expect(messages).toEqual(before);
+    }
+  );
+
+  it.each([false, true])('replays the exact runtime response string for grouped=%s', (grouped) => {
+    const ai = makePreview();
+    if (ai.obj !== ChatRoleEnum.AI) throw new Error('Expected AI preview');
+    if (grouped) {
+      ai.value[0].modelResponseId = 'preview-response';
+      ai.value[0].toolCallIds = ['failed-preview', 'preview-call'];
+    }
+    const result = chats2GPTMessages({
+      messages: [ai, answer('Add review', 'revise')],
+      reserveId: false,
+      reserveTool: true
+    });
+    const response = result.find(
+      (item) => item.role === 'tool' && item.tool_call_id === 'preview-call'
+    );
+    expect(response?.content).toBe(
+      JSON.stringify(
+        getWorkflowBuilderPreviewToolResponse({
+          previewId: 'preview-call',
+          action: 'revise',
+          feedback: 'Add review'
+        })
+      )
+    );
+  });
+
+  it('treats plain confirmation text as revision feedback and preserves attached files', () => {
+    const result = chats2GPTMessages({
+      messages: [
+        makePreview(),
+        {
+          obj: ChatRoleEnum.Human,
+          value: [
+            { text: { content: 'Confirm and build' } },
+            {
+              file: {
+                type: ChatFileTypeEnum.image,
+                name: 'reference.png',
+                url: 'https://example.com/reference.png'
+              }
+            }
+          ]
+        }
+      ],
+      reserveId: false,
+      reserveTool: true
+    });
+    const response = result.find(
+      (item) => item.role === 'tool' && item.tool_call_id === 'preview-call'
+    );
+    expect(JSON.parse(String(response?.content))).toMatchObject({
+      decision: 'revise',
+      feedback: 'Confirm and build'
+    });
+    expect(result.at(-1)).toMatchObject({ role: 'user', content: [{ type: 'image_url' }] });
+  });
+
+  it.each(['missing', 'intervening AI', 'wrong select type'])(
+    'does not invent a decision for %s',
+    (scenario) => {
+      const messages: ChatItemMiniType[] = [makePreview()];
+      if (scenario === 'intervening AI')
+        messages.push(
+          { obj: ChatRoleEnum.AI, value: [{ text: { content: 'Another reply' } }] },
+          answer('Confirm and build')
+        );
+      if (scenario === 'wrong select type')
+        messages.push({
+          obj: ChatRoleEnum.Human,
+          value: [
+            {
+              select: {
+                type: 'agentAsk',
+                questions: [{ question: 'Other question', value: 'Confirm and build' }]
+              }
+            }
+          ]
+        });
+      const result = chats2GPTMessages({ messages, reserveId: false, reserveTool: true });
+      const response = result.find(
+        (item) => item.role === 'tool' && item.tool_call_id === 'preview-call'
+      );
+      expect(JSON.parse(String(response?.content))).toEqual({
+        ok: true,
+        state: 'awaiting_confirmation',
+        previewId: 'preview-call',
+        taskComplete: false
+      });
+      if (scenario !== 'missing') expect(result.at(-1)?.role).toBe('user');
+    }
+  );
+
+  it('keeps answers independent across preview rounds', () => {
+    const result = chats2GPTMessages({
+      messages: [
+        makePreview(),
+        answer('Confirm and build'),
+        makePreview('preview-next'),
+        answer('Cancel this build', 'cancel')
+      ],
+      reserveId: false,
+      reserveTool: true
+    });
+    expect(
+      result
+        .filter((item) => item.role === 'tool' && item.tool_call_id !== 'failed-preview')
+        .map((item) => JSON.parse(String(item.content)).decision)
+    ).toEqual(['confirm', 'cancel']);
+  });
+
+  it('preserves original values for ChatBox transport and ordinary chat rendering', () => {
+    const messages = [makePreview(), answer('Confirm and build')];
+    const transport = chats2GPTMessages({
+      messages,
+      reserveId: true,
+      reserveTool: true,
+      reserveSelect: true
+    });
+    expect(transport.at(-1)).toMatchObject({ role: 'user', content: [{ type: 'select' }] });
+    const response = transport.find(
+      (item) => item.role === 'tool' && item.tool_call_id === 'preview-call'
+    );
+    expect(JSON.parse(String(response?.content))).not.toHaveProperty('decision');
+    expect(
+      chats2GPTMessages({ messages, reserveId: false, reserveTool: false }).at(-1)
+    ).toMatchObject({ role: 'user', content: JSON.stringify({ action: 'confirm' }) });
   });
 });

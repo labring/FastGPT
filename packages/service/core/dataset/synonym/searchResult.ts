@@ -30,7 +30,7 @@ export const attachSynonymMappingsToSearchResults = async ({
   results: SearchDataResponseItemType[];
 }): Promise<SearchDataResponseItemType[]> => {
   // 1. 定义内部快照剥离工具；功能关闭时直接清理全部同义词字段并返回。
-  // 上游（如 Deep RAG 经 pro 返回）可能已完成装饰且映射可信；只剥离内部快照 Symbol。
+  // 上游可能已完成装饰且映射可信；只剥离内部快照 Symbol。
   const stripInternalSnapshot = (item: InternalSearchItem): SearchDataResponseItemType => {
     const { [searchSynonymSnapshot]: snapshot, ...clean } = item;
     return clean;
@@ -91,8 +91,8 @@ export const attachSynonymMappingsToSearchResults = async ({
 
   return Promise.all(
     results.map(async (item: InternalSearchItem) => {
-      // 幂等：已携带映射且归属本次授权知识库的结果视为可信装饰，直接透传。否则 Deep RAG 会对
-      // searchDatasetData 的已装饰结果重复查库，且正文已签名导致图片分块映射被抹掉。
+      // 幂等：已携带映射且归属本次授权知识库的结果直接透传，避免重复查库，
+      // 或因正文已签名导致图片分块映射被抹掉。
       // 越界结果不采信外部映射，走下方回溯逻辑后按普通条目处理。
       if (item.synonymMappings !== undefined && datasetIds.includes(item.datasetId)) {
         return stripInternalSnapshot(item);

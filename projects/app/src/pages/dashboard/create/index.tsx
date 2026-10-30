@@ -36,6 +36,7 @@ import { createAppTypeMap } from '@/pageComponents/app/constants';
 import MyImage from '@fastgpt/web/components/common/Image/MyImage';
 import LeftRadio from '@fastgpt/web/components/common/Radio/LeftRadio';
 import HeaderAuthForm from '@/components/common/secret/HeaderAuthForm';
+import type { HeaderSecretConfigType } from '@/components/common/secret/HeaderAuthConfig';
 import { postCreateHttpTools } from '@/web/core/app/api/httpTools';
 import { getMCPTools, postCreateMCPTools } from '@/web/core/app/api/mcpTools';
 import { headerValue2StoreHeader } from '@/components/common/secret/HeaderAuthConfig';
@@ -57,8 +58,8 @@ type FormType = {
   createType?: HttpToolType;
   // mcp
   mcpUrl?: string;
-  mcpHeaderSecret?: any;
-  mcpToolList?: any[];
+  mcpHeaderSecret?: HeaderSecretConfigType;
+  mcpToolList?: McpToolConfigType[];
 };
 
 export type CreateAppType =
@@ -146,7 +147,7 @@ const CreateAppsPage = () => {
             ...baseParams,
             url: mcpUrl || '',
             headerSecret,
-            toolList: (mcpToolList || []) as McpToolConfigType[]
+            toolList: mcpToolList || []
           });
         }
 

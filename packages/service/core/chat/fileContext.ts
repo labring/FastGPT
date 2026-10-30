@@ -113,31 +113,18 @@ const resolveShortLinkMediaFileItem = async (file: UserChatItemFileItemType) => 
   if (file.type !== ChatFileTypeEnum.file) return file;
   if (!resolveSignedDownloadAliasFromUrl(file.url)) return file;
 
-  try {
-    const shortDownloadAccess = await resolveShortDownloadAccessFromUrl(file.url);
-    if (!shortDownloadAccess) return file;
+  const parsed = await parseUrlToChatFileType({
+    url: file.url,
+    name: file.name,
+    type: file.type
+  });
+  if (!parsed || parsed.type === ChatFileTypeEnum.file) return file;
 
-    const parsed = await parseUrlToChatFileType({
-      url: shortDownloadAccess.objectKey,
-      metadata: {
-        filename: shortDownloadAccess.filename,
-        contentType: shortDownloadAccess.responseContentType
-      }
-    });
-    if (!parsed || parsed.type === ChatFileTypeEnum.file) return file;
-
-    return {
-      ...file,
-      type: parsed.type,
-      name:
-        file.name ||
-        shortDownloadAccess.filename ||
-        path.basename(shortDownloadAccess.objectKey) ||
-        file.url
-    };
-  } catch {
-    return file;
-  }
+  return {
+    ...file,
+    type: parsed.type,
+    name: file.name || parsed.filename || file.url
+  };
 };
 
 const resolveShortLinkMediaFilesInUserQuery = async (userQuery: UserChatItemValueItemType[]) => {

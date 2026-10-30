@@ -2,9 +2,9 @@ import { type AppSchemaType } from '@fastgpt/global/core/app/type';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { isSystemOrCommercialToolId } from '@fastgpt/global/core/app/tool/utils';
 import { StoreSecretValueTypeSchema } from '@fastgpt/global/common/secret/type';
 import { HttpToolSetRuntimeConfigSchema } from '@fastgpt/global/core/workflow/type/node';
-import { SystemToolSecretInputTypeEnum } from '@fastgpt/global/core/app/tool/systemTool/constants';
 import { MongoApp } from './schema';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { getClientToolPreviewNode } from './tool/utils/client';
@@ -48,7 +48,7 @@ const logger = getLogger(LogCategories.MODULE.APP.FOLDER);
  * 主要职责：
  * 1. 知识库：仅保存 datasetId，展示信息由应用详情接口实时补全。
  * 2. Skill: 移除编辑态状态并保留展示快照（skillId, avatar, name, description）。
- * 3. 密钥输入与 MCP/HTTP 工具集鉴权：使用服务级密钥加密。
+ * 3. 密钥输入：清理敏感信息。
  */
 export const beforeUpdateAppFormat = async ({
   nodes,
@@ -86,6 +86,7 @@ export const beforeUpdateAppFormat = async ({
     ) {
       mcpToolSet.headerSecret = storeSecretValue(mcpToolSet.headerSecret);
     }
+
     const httpToolSet = node.toolConfig?.httpToolSet;
     if (httpToolSet && !('toolId' in httpToolSet)) {
       const headerSecret = StoreSecretValueTypeSchema.safeParse(httpToolSet.headerSecret);
@@ -114,7 +115,7 @@ export const beforeUpdateAppFormat = async ({
 
     // Format header secret
     node.inputs.forEach((input) => {
-      formatToolInputSecrets({ inputs: [input] });
+      formatToolInputSecrets({ inputs: [input], flowNodeType: node.flowNodeType });
       if (nodeInputIsReference(input)) return;
       // 知识库
       if (isDatasetNode) {
@@ -171,20 +172,23 @@ export const beforeUpdateAppFormat = async ({
             configInputs.forEach((input) => {
               input.value = selectedTool.config[input.key];
             });
-            formatToolInputSecrets({ inputs: configInputs });
+            formatToolInputSecrets({ inputs: configInputs, flowNodeType: preview.flowNodeType });
             configInputs.forEach((input) => {
               selectedTool.config[input.key] = input.value;
             });
           } catch {
-            // 工具已删除或暂时不可用时，至少清理嵌套 system/team 临时值。
-            const systemInput = selectedTool.config.system_input_config;
-            if (
-              systemInput &&
-              typeof systemInput === 'object' &&
-              systemInput.type !== SystemToolSecretInputTypeEnum.manual
-            ) {
-              delete systemInput.value;
-            }
+            // 预览不可用时，只对可确认身份的系统工具清理临时值，不能猜测业务参数。
+            if (!isSystemOrCommercialToolId(selectedTool.id)) return;
+            formatToolInputSecrets({
+              flowNodeType: FlowNodeTypeEnum.tool,
+              inputs: [
+                {
+                  key: NodeInputKeyEnum.systemInputConfig,
+                  renderTypeList: [],
+                  value: selectedTool.config[NodeInputKeyEnum.systemInputConfig]
+                }
+              ]
+            });
           }
         })
       );

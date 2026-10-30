@@ -142,7 +142,7 @@ export const getPluginInputTypeRawList = (options?: {
     {
       icon: 'core/workflow/inputType/password',
       label: i18nT('common:core.workflow.inputType.password'),
-      value: [FlowNodeInputTypeEnum.password],
+      value: [FlowNodeInputTypeEnum.password, FlowNodeInputTypeEnum.reference],
       defaultValueType: WorkflowIOValueTypeEnum.string
     },
     {

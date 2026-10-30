@@ -136,7 +136,7 @@ JSON 和 multipart 输入统一经过 Zod 业务 schema。API 使用 `parseApiIn
 ### 8.3 装饰的幂等与可信边界
 
 - 引擎召回结果携带内部 Symbol 快照（teamId / datasetId / synonymVersion / q / a），不进入序列化输出。
-- 外部来源（如 Deep RAG 经 HTTP 到 pro）无法携带 Symbol，按 id 回查 Mongo，并比对 q/a/updateTime 后才采信。
+- 外部来源无法携带 Symbol，按 id 回查 Mongo，并比对 q/a/updateTime 后才采信。
 - `attachSynonymMappingsToSearchResults` 幂等：已携带 `synonymMappings` 且 `datasetId` 在本次授权范围内的条目直接透传（剥离 Symbol），避免二次查库和签名正文导致的映射丢失；越界条目丢弃上游映射；功能关闭时统一剥离全部同义词字段。
 
 ### 8.4 引用模板注入（`withSynonymQuoteTemplates`）

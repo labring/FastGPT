@@ -24,6 +24,7 @@ export const dispatchInternalRuntimeNode = async (props: Record<string, any>) =>
   const runner = props.params?.[internalRuntimeNodeRunnerKey];
   if (typeof runner !== 'function') {
     return {
+      rawError: new Error('Internal runtime node runner is missing'),
       error: {
         [NodeOutputKeyEnum.errorText]: 'Internal runtime node runner is missing'
       },

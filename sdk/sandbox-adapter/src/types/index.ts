@@ -18,7 +18,6 @@ export type {
   FileWriteResult,
   MoveEntry,
   PermissionEntry,
-  ReadFileOptions,
   SearchResult
 } from './filesystem';
 // Re-export from sandbox

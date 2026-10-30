@@ -125,7 +125,7 @@ describe('dispatchChatCompletion token summary', () => {
         outputTokens: 4
       });
       expect(nodeSummary).toMatchObject({ llmInputTokens: 0, llmOutputTokens: 0 });
-      if (status !== 'success') expect(result.error).toBeDefined();
+      if (status !== 'success') expect(result.rawError).toBeDefined();
       if (status === 'empty') expect(usagePush).not.toHaveBeenCalled();
       else
         expect(usagePush).toHaveBeenCalledWith([
@@ -147,7 +147,7 @@ describe('dispatchChatCompletion token summary', () => {
       nodeSummary,
       usagePush: vi.fn()
     } as any);
-    expect(result.error).toBeDefined();
+    expect(result.rawError).toBeDefined();
     expect(nodeSummary).toMatchObject({ llmInputTokens: 0, llmOutputTokens: 0 });
   });
 });

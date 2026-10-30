@@ -51,8 +51,9 @@ export const MessageCardStyle: BoxProps = {
 
 export enum FeedbackTypeEnum {
   user = 'user',
-  admin = 'admin',
-  hidden = 'hidden'
+  mark = 'mark',
+  log = 'log',
+  custom = 'custom'
 }
 
 export enum ChatTypeEnum {

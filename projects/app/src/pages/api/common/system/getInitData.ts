@@ -9,6 +9,7 @@ import {
   type GetSystemInitDataResponse
 } from '@fastgpt/global/openapi/common/system/api';
 import { getRuntimeSubPlansConfig } from '@fastgpt/global/support/wallet/sub/utils';
+import { serviceEnv } from '@fastgpt/service/env';
 
 /** 按会话鉴权返回初始化数据；匿名白名单覆盖登录、价格和分享聊天的公共依赖。 */
 async function handler(
@@ -28,6 +29,8 @@ async function handler(
   const filterFeConfigs = (isAuthenticated: boolean): GetSystemInitDataResponse['feConfigs'] => {
     const config = {
       ...global.feConfigs,
+      // 每次响应直接读取环境变量，忽略文件、数据库和热更新配置中的同名字段。
+      showAuxiliaryGenerationRunDetail: serviceEnv.AUXILIARY_GENERATION_SHOW_RUN_DETAIL,
       sso: (() => {
         if (!global.feConfigs.sso && !global.systemEnv?.sso?.url) return undefined;
         // 地址及启用状态以服务端连接配置为准，不能信任存储的前端能力标志。

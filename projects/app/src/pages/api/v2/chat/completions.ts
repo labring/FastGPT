@@ -49,6 +49,7 @@ import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 import { type AIChatItemType, type UserChatItemType } from '@fastgpt/global/core/chat/type';
 import { NextAPI } from '@/service/middleware/entry';
+import { markProfileError } from '@fastgpt/service/common/profiling';
 import { getAppLatestVersion } from '@fastgpt/service/core/app/version/controller';
 import { createWorkflowResourceContext } from '@fastgpt/service/core/workflow/resource/context';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
@@ -186,6 +187,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         res
       }))
     ) {
+      markProfileError();
       return;
     }
 
@@ -562,7 +564,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         totalPoints
       });
     }
+
+    if (finalError) markProfileError(finalError);
   } catch (err) {
+    markProfileError(err);
     const { preparedRound } = roundState;
     if (preparedRound?.shouldPersistChatRound && roundState.sourceId && roundState.chatId) {
       if (preparedRound.shouldFinalizePreparedRound) {

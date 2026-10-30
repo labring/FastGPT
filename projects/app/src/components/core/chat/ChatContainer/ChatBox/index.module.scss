@@ -9,7 +9,8 @@
 .likeFeedbackCanvas {
   position: fixed;
   inset: 0;
-  z-index: 40;
+  // 画布挂在 body，需高于辅助生成面板和弹窗，同时低于 Toast、Tooltip。
+  z-index: var(--chakra-zIndices-popover, 1500);
   pointer-events: none;
 }
 

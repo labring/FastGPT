@@ -1,3 +1,5 @@
+import type { AgentLoopPause } from '../../../domain/result';
+import type { AgentAskInteractive } from '@fastgpt/global/core/ai/agent/type';
 import type {
   ChatCompletionMessageParam,
   ChatCompletionMessageToolCall,
@@ -24,11 +26,17 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import { batchRun } from '@fastgpt/global/common/system/utils';
 import { normalizeToolResponseContent } from '@fastgpt/global/core/ai/llm/utils';
 import type { AgentPlanType } from '@fastgpt/global/core/ai/agent/type';
+import { getNanoid } from '@fastgpt/global/common/string/tools';
+import {
+  createFileClassificationContext,
+  type FileClassificationContext
+} from '../../../../../../../common/file/classification';
 
 type RunAgentCallProps<TChildrenResponse = unknown> = {
   maxRunAgentTimes: number;
   completionPolicy?: AgentLoopCompletionPolicy;
   batchToolSize?: number;
+  fileContext?: FileClassificationContext;
   body: CreateLLMResponseProps['body'] & {
     tools: ChatCompletionTool[];
     temperature?: number;
@@ -59,13 +67,15 @@ type RunAgentCallProps<TChildrenResponse = unknown> = {
     call: ChatCompletionMessageToolCall;
     messages: ChatCompletionMessageParam[];
     assistantMessage?: ChatCompletionMessageParam;
-  }) => Promise<AgentLoopToolExecutionResult<TChildrenResponse>>;
+  }) => Promise<AgentLoopToolExecutionResult<TChildrenResponse | AgentAskInteractive>>;
   // 返回 false 的工具会按 toolCalls 顺序串行执行，用于 plan/ask_user 这类有状态内部工具。
   canBatchTool?: (call: ChatCompletionMessageToolCall) => boolean;
   // 每次 createLLMResponse 的生命周期回调。
   // workflow adapter 用它向客户端展示模型运行状态，并增量收集 requestId。
-  onLLMRequestStart?: (e: { requestIndex: number; modelName: string }) => void;
+  onLLMRequestStart?: (e: { requestIndex: number; modelName: string; responseId: string }) => void;
   onLLMRequestEnd?: (e: {
+    responseId: string;
+    assistantMessage?: ChatCompletionMessageParam;
     requestIndex: number;
     modelName: string;
     requestId: string;
@@ -83,6 +93,8 @@ type RunAgentCallProps<TChildrenResponse = unknown> = {
     error?: unknown;
   }) => void;
   onToolRunEnd?: (e: {
+    resumed?: boolean;
+    hideInUI?: boolean;
     call: ChatCompletionMessageToolCall;
     response: string;
     assistantMessages?: ChatCompletionMessageParam[];
@@ -91,6 +103,7 @@ type RunAgentCallProps<TChildrenResponse = unknown> = {
     seconds: number;
     usages?: AgentLoopUsage[];
     metadata?: unknown;
+    interactive?: TChildrenResponse | AgentAskInteractive;
     toolResponseCompress?: {
       response: string;
       modelName: string;
@@ -99,6 +112,7 @@ type RunAgentCallProps<TChildrenResponse = unknown> = {
       seconds: number;
     };
   }) => void;
+  onUserMessage?: (e: { content: string; source: 'server' }) => void;
   onToolCall?: (e: { call: ChatCompletionMessageToolCall }) => void;
   onToolParam?: (e: { call: ChatCompletionMessageToolCall; argsDelta: string }) => void;
   onToolRunStart?: (e: { call: ChatCompletionMessageToolCall }) => void;
@@ -111,10 +125,7 @@ type RunAgentResponse<TChildrenResponse = unknown> = {
   error?: any;
   completeMessages: ChatCompletionMessageParam[]; // Loop request complete messages
   assistantMessages: ChatCompletionMessageParam[]; // Loop assistant response messages
-  toolChildPause?: {
-    childrenResponse: TChildrenResponse;
-    toolCallId: string;
-  };
+  pause?: AgentLoopPause<TChildrenResponse>;
 
   // Usage
   model: string;
@@ -195,6 +206,8 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
   maxRunAgentTimes,
   completionPolicy,
   batchToolSize = 1,
+  // 同次 Agent 运行的各轮模型请求共享分类缓存，支持上层传入已有上下文（如 WorkflowFileContext）。
+  fileContext = createFileClassificationContext(),
   body: { model, messages, max_tokens, ...body },
 
   userKey,
@@ -210,6 +223,7 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
   onToolParam,
   onToolRunStart,
   onToolRunEnd,
+  onUserMessage,
   onRunTool,
   canBatchTool = () => true,
   onLLMRequestStart,
@@ -221,12 +235,7 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
   const modelData = model;
 
   let runTimes = 0;
-  let toolChildPause:
-    | {
-        childrenResponse: TChildrenResponse;
-        toolCallId: string;
-      }
-    | undefined;
+  let pause: AgentLoopPause<TChildrenResponse> | undefined;
 
   // Init messages
   // 本轮产生的 assistantMessages，包括 tool 内产生的
@@ -277,10 +286,10 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
           ? message.tool_calls || []
           : []
       )
-      .find((call) => call.id === childrenInteractiveParams.toolParams.toolCallId) ||
+      .find((call) => call.id === childrenInteractiveParams.toolCallId) ||
       // 兼容缺少 assistant tool_call 的旧交互快照；callId 仍能用于回填原工具卡片。
       {
-        id: childrenInteractiveParams.toolParams.toolCallId,
+        id: childrenInteractiveParams.toolCallId,
         type: 'function' as const,
         function: {
           name: '',
@@ -316,6 +325,7 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
     })();
 
     onToolRunEnd?.({
+      resumed: true,
       call: resumedToolCall,
       response: normalizeToolResponseContent(response),
       assistantMessages: toolAssistantMessages,
@@ -323,17 +333,13 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
       errorMessage: interactiveToolErrorMessage || errorMessage,
       seconds: +((Date.now() - toolStartTime) / 1000).toFixed(2),
       usages: toolUsages,
-      metadata
+      metadata,
+      interactive
     });
 
-    // 将 requestMessages 复原成上一轮中断时的内容，并附上 tool response。
-    // 新版 workflow interactive 不再持久化完整 messages 快照，调用方会从 chat history 重建；
-    // 旧历史若仍带 memoryRequestMessages，则继续按旧快照恢复。
-    const resumeMessages = childrenInteractiveParams.toolParams.memoryRequestMessages?.length
-      ? childrenInteractiveParams.toolParams.memoryRequestMessages
-      : requestMessages;
-    requestMessages = resumeMessages.map((item) =>
-      item.role === 'tool' && item.tool_call_id === childrenInteractiveParams.toolParams.toolCallId
+    // FastAgent 只使用 ChatItem 重建的上下文，旧交互中的 memory 快照不再参与恢复。
+    requestMessages = requestMessages.map((item) =>
+      item.role === 'tool' && item.tool_call_id === childrenInteractiveParams.toolCallId
         ? {
             ...item,
             content: normalizeToolResponseContent(response)
@@ -345,19 +351,19 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
     // 放进本轮 transcript，外层才能回填旧工具卡并保证后续 history 重建使用真实结果。
     assistantMessages.push({
       role: ChatCompletionRequestMessageRoleEnum.Tool,
-      tool_call_id: childrenInteractiveParams.toolParams.toolCallId,
+      tool_call_id: childrenInteractiveParams.toolCallId,
       content: response
     });
     assistantMessages.push(...filterEmptyAssistantMessages(toolAssistantMessages));
     // 相同 tool 触发了多次交互, 调用的 toolId 认为是相同的
     if (interactive) {
-      toolChildPause = {
-        childrenResponse: interactive,
-        toolCallId: childrenInteractiveParams.toolParams.toolCallId
+      pause = {
+        interactive,
+        toolCallId: childrenInteractiveParams.toolCallId
       };
     }
 
-    if (toolChildPause || stop) {
+    if (pause || stop) {
       return {
         requestIds: [],
         model: modelData.model,
@@ -366,7 +372,7 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
         llmTotalPoints: 0,
         completeMessages: requestMessages,
         assistantMessages,
-        toolChildPause,
+        pause,
         finish_reason: 'stop'
       };
     }
@@ -418,8 +424,10 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
 
     // 2. Request LLM
     const requestStartTime = Date.now();
+    const responseId = getNanoid();
     let firstTokenTime: number | undefined;
     onLLMRequestStart?.({
+      responseId,
       requestIndex: runTimes,
       modelName: modelData.name
     });
@@ -435,6 +443,7 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
       error
     } = await createLLMResponse({
       throwError: false,
+      fileContext,
       body: {
         ...body,
         max_tokens,
@@ -466,6 +475,8 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
           outputTokens: usage.outputTokens
         }).totalPoints;
     onLLMRequestEnd?.({
+      responseId,
+      assistantMessage: llmAssistantMessage,
       requestIndex: runTimes,
       modelName: modelData.name,
       requestId,
@@ -531,7 +542,7 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
       // 3. Call tools
       type ToolRunResult = {
         tool: ChatCompletionMessageToolCall;
-        interactive?: TChildrenResponse;
+        interactive?: TChildrenResponse | AgentAskInteractive;
         stopLoop?: boolean;
         toolMessage: ChatCompletionMessageParam;
         toolAssistantMessages: ChatCompletionMessageParam[];
@@ -556,6 +567,7 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
           stop: stopLoop,
           skipResponseCompress,
           errorMessage,
+          hideInUI,
           metadata
         } = await (async () => {
           try {
@@ -621,7 +633,9 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
           seconds: +((Date.now() - toolStartTime) / 1000).toFixed(2),
           usages: [...toolUsages, ...(toolResponseCompress ? [toolResponseCompress.usage] : [])],
           toolResponseCompress,
-          metadata
+          metadata,
+          hideInUI,
+          interactive
         });
 
         return {
@@ -647,8 +661,8 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
           toolAssistantMessages
         } of toolRunResults) {
           if (interactive) {
-            toolChildPause = {
-              childrenResponse: interactive,
+            pause = {
+              interactive,
               toolCallId: tool.id
             };
           }
@@ -679,7 +693,7 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
 
           // 交互或 stop 工具已经决定暂停当前 loop，不能再执行同一轮中排在后面的工具，
           // 否则会在用户回答前产生额外副作用，且恢复上下文无法准确反映实际执行顺序。
-          if (toolChildPause || stopAgentLoop || isAborted?.()) {
+          if (pause || stopAgentLoop || isAborted?.()) {
             break;
           }
           continue;
@@ -707,14 +721,28 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
         await appendToolRunResults(toolRunResults);
 
         // 同一并发批次已经启动的工具无法撤回，但后续批次不应在暂停信号后继续调度。
-        if (toolChildPause || stopAgentLoop || isAborted?.()) {
+        if (pause || stopAgentLoop || isAborted?.()) {
           break;
         }
+      }
+
+      // 暂停之后的调用尚未执行，显式记录跳过结果，保证原始多工具消息始终完整配对。
+      for (const tool of toolCalls.slice(toolIndex)) {
+        const response =
+          'Tool was not executed because a preceding tool paused or stopped the loop.';
+        const toolMessage: ChatCompletionMessageParam = {
+          role: ChatCompletionRequestMessageRoleEnum.Tool,
+          tool_call_id: tool.id,
+          content: response
+        };
+        assistantMessages.push(toolMessage);
+        await appendRequestMessages(toolMessage);
+        onToolRunEnd?.({ call: tool, response, seconds: 0 });
       }
     }
 
     // 暂停、工具显式停止和取消优先于业务完成判断。
-    if (toolChildPause || stopAgentLoop || isAborted?.()) {
+    if (pause || stopAgentLoop || isAborted?.()) {
       break;
     }
     if (toolCalls.length > 0) {
@@ -723,19 +751,25 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
 
     // 只有模型自然结束时，才由业务策略决定是否追加指令继续。
     try {
-      const decision = await completionPolicy?.({ requestIndex: runTimes });
+      if (!completionPolicy) break;
+      const decision = await completionPolicy({ requestIndex: runTimes });
       // 策略可能异步执行，等待期间的取消不能触发下一轮请求。
-      if (isAborted?.() || !decision || decision.action === 'complete') {
+      if (isAborted?.() || decision.action === 'complete') {
         break;
       }
+      // 续跑指令是服务端输入，按 User 角色落库；不伪造模型工具调用，也不提升为 System。
+      const message: ChatCompletionMessageParam = {
+        role: ChatCompletionRequestMessageRoleEnum.User,
+        content: decision.message,
+        hideInUI: true
+      };
+      assistantMessages.push(message);
+      await appendRequestMessages(message);
+      onUserMessage?.({ content: decision.message, source: 'server' });
       if (runTimes >= maxRunAgentTimes) {
         requestError = new Error(`Agent loop reached max run times: ${maxRunAgentTimes}`);
         break;
       }
-      await appendRequestMessages({
-        role: ChatCompletionRequestMessageRoleEnum.System,
-        content: decision.message
-      });
     } catch (error) {
       requestError = error;
       break;
@@ -752,7 +786,7 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
     contextCheckpoint,
     completeMessages: requestMessages,
     assistantMessages,
-    toolChildPause,
+    pause,
     finish_reason
   };
 };

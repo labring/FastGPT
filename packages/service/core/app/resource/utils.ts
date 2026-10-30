@@ -1,7 +1,8 @@
 import {
   getWorkflowNodeModelInputs,
   isWorkflowModelExpression,
-  isWorkflowModelSlotEnabled
+  isWorkflowModelSlotEnabled,
+  isWorkflowSystemModelInput
 } from '@fastgpt/global/common/workflow/model';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import {
@@ -14,11 +15,17 @@ import {
 import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import { splitCombineToolId, splitToolsetToolPluginId } from '@fastgpt/global/core/app/tool/utils';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import {
+  FlowNodeInputTypeEnum,
+  FlowNodeTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 
-import { nodeInputIsReference } from '@fastgpt/global/common/workflow/reference';
+import {
+  getSelectedInputRenderType,
+  nodeInputIsReference
+} from '@fastgpt/global/common/workflow/reference';
 import {
   workflowDatasetParamModelSlots,
   workflowSystemModelSlots
@@ -239,6 +246,16 @@ export const extractAppResources = ({
     }
   };
 
+  const addLLMSelectorReference = (value: unknown) => {
+    const modelId = getEntityId(value, 'modelId');
+    if (!modelId || isWorkflowModelExpression(modelId)) return;
+    const resolvedId =
+      systemHandle?.findModelData({ modelId })?.modelId ??
+      systemHandle?.findModelData({ model: modelId }, { type: ModelTypeEnum.llm })?.modelId ??
+      modelId;
+    addResource({ type: 'model', id: resolvedId });
+  };
+
   /** 从知识库搜索配置中提取已开启的模型 ID（rerankModelId / datasetSearchExtensionModelId）。 */
   const addDatasetParamsModels = (params: unknown) => {
     if (!isRecord(params)) return;
@@ -296,6 +313,12 @@ export const extractAppResources = ({
 
     inputs.forEach((input) => {
       if (nodeInputIsReference(input)) return;
+      if (
+        getSelectedInputRenderType(input) === FlowNodeInputTypeEnum.selectLLMModel &&
+        !isWorkflowSystemModelInput({ node, input })
+      ) {
+        addLLMSelectorReference(input.value ?? input.defaultValue);
+      }
       if (input.key === NodeInputKeyEnum.skills) {
         addSkills(input.value);
       }

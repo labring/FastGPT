@@ -3,7 +3,7 @@ import z from 'zod';
 import { ObjectIdSchema } from '../../common/type/mongo';
 import { LanguageSchema, type LangEnum } from '../../common/i18n/type';
 import { TeamPermission } from '../permission/user/controller';
-import type { UserStatusEnum } from './constant';
+import { UserStatusEnum } from './constant';
 import { TeamMemberStatusEnum } from './team/constant';
 import { TeamTmbItemSchema } from './team/type';
 import type { FastGPTSemType } from '../marketing/type';
@@ -24,7 +24,7 @@ export type UserModelSchema = {
   createTime: number;
   timezone: string;
   language: `${LangEnum}`;
-  status: `${UserStatusEnum}`;
+  status: UserStatusEnum;
   lastLoginTmbId?: string;
   passwordUpdateTime?: Date;
   fastgpt_sem?: FastGPTSemType;
@@ -45,7 +45,8 @@ export const UserSchema = z.object({
   contact: z.string().nullish(),
   tags: z.array(UserTagsSchema).optional(),
   hasPassword: z.boolean(),
-  passwordAvailable: z.boolean().optional()
+  passwordAvailable: z.boolean().optional(),
+  status: z.enum(UserStatusEnum).meta({ description: '账号状态' })
 });
 export type UserType = z.infer<typeof UserSchema>;
 

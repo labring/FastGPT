@@ -1,3 +1,5 @@
+import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
+import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import {
@@ -460,6 +462,7 @@ describe('authDatasetCollectionCreate', () => {
   it('uses the parent collection write permission for nested creation', async () => {
     mockGetCollectionWithDataset.mockResolvedValue({
       _id: collectionId,
+      type: DatasetCollectionTypeEnum.folder,
       teamId: 'team-a',
       datasetId,
       tmbId: 'tmb-owner'
@@ -474,6 +477,20 @@ describe('authDatasetCollectionCreate', () => {
         parentId: collectionId
       })
     ).resolves.toMatchObject({ collection: { _id: collectionId } });
+  });
+
+  it('rejects a writable non-folder parent', async () => {
+    mockGetCollectionWithDataset.mockResolvedValue({
+      _id: collectionId,
+      type: DatasetCollectionTypeEnum.virtual,
+      teamId: 'team-a',
+      datasetId,
+      tmbId: 'tmb-owner'
+    });
+    mockGetTmbPermission.mockResolvedValue(WritePermissionVal);
+    await expect(
+      authDatasetCollectionCreate({ mockReq, authToken: true, datasetId, parentId: collectionId })
+    ).rejects.toBe(CommonErrEnum.invalidParams);
   });
 
   it('rejects a parent collection from another dataset', async () => {

@@ -35,14 +35,16 @@ export default function UserEditModal(props: { data: any; getData: any }) {
   const { data, getData } = props;
   const { toast } = useToast();
 
-  const { register, handleSubmit, reset, control } = useForm({
-    defaultValues: data
+  const { register, handleSubmit, reset, control } = useForm<TFormData>({
+    defaultValues: { ...data, password: '' }
   });
   // 服务端在「改名 + 同时设密码」时会校验新旧两个用户名，前端必须同口径，
   // 否则会出现密码框可填但提交必被 ssoPasswordUnavailable 拒绝的错位。
   // 用 useWatch 而非 watch()，避开 react-hooks/incompatible-library 的缓存告警。
   const watchedUsername = useWatch({ control, name: 'username' });
   const passwordAvailable = useAdminPasswordAvailability([data.username, watchedUsername]);
+  // 受限 SSO 账号无法通过平台密码完成激活，不允许新进入 inactive；已有状态可原样保留。
+  const canMarkInactive = passwordAvailable || data.status === 'inactive';
 
   const { runAsync: onSubmit, loading } = useRequest(
     async (formData: TFormData) => {
@@ -95,7 +97,7 @@ export default function UserEditModal(props: { data: any; getData: any }) {
         size={'sm'}
         onClick={() => {
           onOpen();
-          reset(data);
+          reset({ ...data, password: '' });
         }}
       >
         编辑
@@ -174,6 +176,14 @@ export default function UserEditModal(props: { data: any; getData: any }) {
               </Radio>
               <Radio {...register('status')} value="forbidden" size="lg">
                 forbidden
+              </Radio>
+              <Radio
+                {...register('status')}
+                value="inactive"
+                size="lg"
+                isDisabled={!canMarkInactive}
+              >
+                inactive
               </Radio>
             </HStack>
           </RadioGroup>

@@ -1,4 +1,5 @@
 import React from 'react';
+import { parseWorkflowBuilderPreviewArguments } from '@fastgpt/global/core/workflow/builder/utils';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { JSDOM } from 'jsdom';
 import { ChakraProvider } from '@chakra-ui/react';
@@ -9,7 +10,16 @@ import type AIChatBubble from '@/components/core/chat/ChatContainer/ChatBox/comp
 import ChatItem from '@/components/core/chat/ChatContainer/ChatBox/components/ChatItem';
 import type { WorkflowBuilderPreviewInteractive } from '@fastgpt/global/core/workflow/builder/type';
 
-vi.mock('next-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
+vi.mock('next-i18next', () => ({
+  useTranslation: () => ({
+    t: (key: string) =>
+      ({
+        'workflow:workflow_builder_preview_confirm': '确认并开始搭建',
+        'workflow:workflow_builder_preview_revise': '修改方案',
+        'workflow:workflow_builder_preview_cancel': '取消本次搭建'
+      })[key] ?? key
+  })
+}));
 // 图标异步加载不参与 SSR，用可查询的标记验证真实气泡的编辑入口。
 vi.mock('@fastgpt/web/components/common/Icon', () => ({
   default: ({ name }: { name: string }) => React.createElement('svg', { 'data-icon': name })
@@ -23,9 +33,11 @@ vi.mock('@/components/core/chat/ChatContainer/ChatBox/components/AIChatBubble', 
       chatValue
         .map((value) => {
           if (value.interactive?.type === 'workflowBuilderPreview') {
-            return value.interactive.params.sections
-              .map((section) => `${section.title}${section.content}`)
-              .join('');
+            return (
+              parseWorkflowBuilderPreviewArguments(value.interactive.params.arguments)
+                ?.sections.map((section) => `${section.title}${section.content}`)
+                .join('') ?? ''
+            );
           }
           return value.text?.content ?? '';
         })
@@ -43,10 +55,14 @@ const answeredAsk: Extract<ChatSiteItemType, { obj: ChatRoleEnum.AI }> = {
     {
       interactive: {
         type: 'agentAsk',
-        askId: 'ask-1',
+
         params: {
-          description: '',
-          questions: [{ question: 'Question', options: [] }]
+          toolCallId: 'ask-1',
+          arguments: JSON.stringify({
+            reason: '',
+            blockerType: 'user_choice',
+            questions: [{ question: 'Question', options: [] }]
+          })
         },
         entryNodeIds: [],
         memoryEdges: [],
@@ -196,22 +212,20 @@ describe('ChatItem interactive replies', () => {
   it.each([
     { answerValue: 'confirm', answerText: undefined, expected: '确认并开始搭建' },
     { answerValue: 'revise', answerText: '增加审核分支', expected: '增加审核分支' },
-    { answerValue: 'cancel', answerText: undefined, expected: '取消' }
+    { answerValue: 'cancel', answerText: undefined, expected: '取消本次搭建' }
   ] as const)(
     'renders a persisted $answerValue user reply once before the next AI message',
     (response) => {
       const preview: WorkflowBuilderPreviewInteractive = {
         type: 'workflowBuilderPreview',
-        previewId: 'preview-1',
+
         params: {
-          title: '确认工作流方案？',
-          mermaid: 'flowchart LR\n  A --> B',
-          sections: [{ title: '工作流说明', content: '预览内容' }],
-          actions: [
-            { value: 'confirm', label: '确认并开始搭建', inputMode: 'none' },
-            { value: 'revise', label: '修改方案', inputMode: 'text' },
-            { value: 'cancel', label: '取消', inputMode: 'none' }
-          ]
+          toolCallId: 'preview-1',
+          arguments: JSON.stringify({
+            title: '确认工作流方案？',
+            mermaid: 'flowchart LR\n  A --> B',
+            sections: [{ title: '工作流说明', content: '预览内容' }]
+          })
         }
       };
       const dom = renderChatItem([
@@ -231,10 +245,14 @@ describe('ChatItem interactive replies', () => {
           value: [
             {
               text: { content: response.expected },
-              select: {
-                type: 'workflowBuilderPreview',
-                questions: [{ question: preview.params.title, value: response.expected }]
-              }
+              select:
+                response.answerValue === 'revise'
+                  ? {
+                      type: 'workflowBuilderPreview',
+                      action: response.answerValue,
+                      reviseText: response.answerText
+                    }
+                  : { type: 'workflowBuilderPreview', action: response.answerValue }
             }
           ]
         },
@@ -248,7 +266,7 @@ describe('ChatItem interactive replies', () => {
       const cards = [...dom.window.document.querySelectorAll('.chat-box-card')];
       expect(cards.map((card) => card.textContent)).toEqual([
         '工作流说明预览内容',
-        `确认工作流方案？${response.expected}`,
+        response.answerValue === 'revise' ? `修改方案\n\n${response.expected}` : response.expected,
         '继续搭建'
       ]);
       expect(dom.window.document.querySelector('[data-chat-id="preview-reply"] .chakra-card')).toBe(
