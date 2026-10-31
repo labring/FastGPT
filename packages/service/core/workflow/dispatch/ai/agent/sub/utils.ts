@@ -2,8 +2,10 @@ import type { localeType } from '@fastgpt/global/common/i18n/type';
 import type { AgentToolType } from '@fastgpt/global/core/app/tool/type';
 import type { DispatchSubAppResponse, GetSubAppInfoFnType, SubAppRuntimeType } from '../type';
 import { getAgentRuntimeTools } from './tool/utils';
-import type { ChatCompletionTool } from '@fastgpt/global/core/ai/llm/type';
-import type { ChatCompletionToolMessageContentPart } from '@fastgpt/global/core/ai/llm/type';
+import type {
+  ChatCompletionTool,
+  ChatCompletionToolMessageContentPart
+} from '@fastgpt/global/core/ai/llm/type';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import type { DispatchAgentModuleProps } from '..';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';

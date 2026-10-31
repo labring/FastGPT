@@ -22,8 +22,8 @@ import {
   createDatasetSearchTool,
   patchDatasetSearchParams
 } from '../../../domain/systemTool/datasetSearch';
+import { buildToolMessageContent } from '../../../domain/tool';
 import {
-  buildToolMessageContent,
   normalizeAgentLoopUsages,
   type AgentLoopAssistantResponse,
   type AgentLoopEvent,
