@@ -9,12 +9,7 @@ import type {
   ChatCompletionContentPartText,
   ChatCompletionMessageParam
 } from '@fastgpt/global/core/ai/llm/type';
-import {
-  audioFileType,
-  imageFileType,
-  maxToolImagePartAmount,
-  videoFileType
-} from '@fastgpt/global/common/file/constants';
+import { audioFileType, maxToolImagePartAmount } from '@fastgpt/global/common/file/constants';
 import { axios } from '../../../common/api/axios';
 
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';

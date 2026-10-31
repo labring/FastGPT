@@ -68,7 +68,8 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
 }): Promise<AgentLoopResult<TChildrenResponse>> => {
   const state = readPiAgentProviderState(input.providerState);
   const modelData = runtime.llmParams.model;
-  const useVision = runtime.llmParams.useVision && modelData.config.vision;
+  // 显式转布尔：useVision 缺省时与 fastAgent / loadRequestMessages 的“按纯文本处理”一致。
+  const useVision = !!(runtime.llmParams.useVision && modelData.config.vision);
   const piModel = buildPiModel(
     modelData,
     runtime.llmParams.useVision,
