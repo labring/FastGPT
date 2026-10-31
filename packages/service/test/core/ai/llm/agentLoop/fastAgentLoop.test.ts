@@ -757,6 +757,41 @@ describe('runFastAgentMainLoop', () => {
     expect(createLLMResponseMock).toHaveBeenCalledTimes(2);
   });
 
+  it('writes the tool response parts into the next round tool message', async () => {
+    const imagePart = {
+      type: 'image_url' as const,
+      image_url: { url: 'data:image/png;base64,AAAA' }
+    };
+    mockCreateLLMResponseQueue(createLLMResponseMock, [
+      toolCall({ id: 'call_image', name: 'search', args: { query: 'chart' } }),
+      text({ requestId: 'req_after_image', content: 'done' })
+    ]);
+
+    const executeTool = vi.fn(async () => ({
+      response: '{"jobId":"task-123"}',
+      content: [imagePart],
+      assistantMessages: [],
+      usages: [],
+      stop: false
+    }));
+
+    const result = await runFastAgentMainLoop({
+      runtime: createRuntime({ executeTool }),
+      input: { messages: [{ role: ChatCompletionRequestMessageRoleEnum.User, content: 'draw it' }] }
+    });
+
+    expect(result.status).toBe('done');
+    // 关键接缝：结构化的 content 必须真的写进下一轮请求的 tool 消息，否则等于没实现。
+    const secondRequest = createLLMResponseMock.mock.calls[1][0];
+    const toolMessage = (secondRequest.body.messages as ChatCompletionMessageParam[]).find(
+      (message) => message.role === ChatCompletionRequestMessageRoleEnum.Tool
+    );
+    expect(toolMessage?.content).toEqual([
+      { type: 'text', text: '{"jobId":"task-123"}' },
+      imagePart
+    ]);
+  });
+
   it('uses reconstructed messages without an Ask-specific snapshot', async () => {
     mockCreateLLMResponseQueue(createLLMResponseMock, [text({ content: 'continued' })]);
     const messages = [{ role: 'user' as const, content: 'Continue normally' }];
@@ -885,6 +920,21 @@ describe('buildToolMessageContent', () => {
       { type: 'text', text: 'summary' },
       { type: 'image_url', image_url: { url: 'data:image/png;base64,aW1hZ2U=' } }
     ]);
+  });
+
+  it('caps the image parts so one tool result cannot flood the request', () => {
+    const content: ChatCompletionToolMessageContentPart[] = Array.from(
+      { length: 6 },
+      (_, index) => ({
+        type: 'image_url' as const,
+        image_url: { url: `data:image/png;base64,IMG${index}` }
+      })
+    );
+
+    const result = buildToolMessageContent({ content, text: 'summary' });
+
+    expect(Array.isArray(result)).toBe(true);
+    expect(result).toHaveLength(1 + 4);
   });
 
   it('replaces raw text parts with the final text', () => {
