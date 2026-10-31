@@ -1,0 +1,43 @@
+---
+title: JZSTOKEN Integration Example
+description: JZSTOKEN integration example for FastGPT
+---
+
+[JZSTOKEN](https://jzstoken.com) is an OpenAI-compatible API service that provides access to multiple text and vision models through one API key. Its OpenAI-compatible Base URL makes it possible to use JZSTOKEN in FastGPT without a provider-specific adapter.
+
+Before reading this guide, make sure you've read the [Model Configuration Guide](/en/self-host/config/model/intro).
+
+## 1. Get an API Key
+
+1. Visit [JZSTOKEN](https://jzstoken.com), register, and log in.
+2. Create an API key in the console and copy the value. The key uses the `sk-...` format.
+
+## 2. Add Models
+
+The model ID must exactly match the ID exposed by JZSTOKEN. You can enter custom model IDs on the `Model Configuration` page; see [add a custom model](/en/self-host/config/model/intro#add-a-custom-model).
+
+### Common Models
+
+| Model ID          | Context | Max Output | Description                                   |
+| ----------------- | ------- | ---------- | --------------------------------------------- |
+| `claude-sonnet-5` | 1M      | 32K        | Claude Sonnet model with reasoning            |
+| `claude-opus-5`   | 1M      | 32K        | Higher-capability Claude model                |
+| `gpt-5.6-terra`   | 258K    | 32K        | OpenAI-compatible general-purpose model       |
+| `qwen3.8-max`     | 1M      | 32K        | Qwen flagship model with vision               |
+| `jzs-max-3.0`     | 1M      | 32K        | JZSTOKEN model available with a dedicated key |
+
+For current model availability, capabilities, and pricing, see the [JZSTOKEN model pricing page](https://jzstoken.com/model-pricing).
+
+## 3. Add a Model Provider
+
+On the Model providers page, add an OpenAI-compatible provider:
+
+- **Name**: `JZSTOKEN`
+- **Protocol type**: Select **OpenAI**
+- **Proxy URL**: `https://jzstoken.com/api/v1`
+- **API Key**: Enter the JZSTOKEN key created above
+- **Models**: Add or select the JZSTOKEN model IDs you need
+
+## 4. Test Models
+
+After configuration, click the test button in the provider list to verify connectivity and model availability.
