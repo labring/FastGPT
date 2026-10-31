@@ -1453,6 +1453,29 @@ describe('loadRequestMessages function tests', () => {
       ]);
     });
 
+    it('should drop a tool image that fails to load and keep the tool text', async () => {
+      multimediaEnv.MULTIPLE_DATA_TO_BASE64 = true;
+      mockGetImageBase64.mockRejectedValue(new Error('download failed'));
+      const messages: ChatCompletionMessageParam[] = [
+        { role: ChatCompletionRequestMessageRoleEnum.User, content: 'Hello' },
+        {
+          role: ChatCompletionRequestMessageRoleEnum.Tool,
+          tool_call_id: 'call1',
+          content: [
+            { type: 'text', text: 'Look at this image' },
+            { type: 'image_url', image_url: { url: 'https://example.com/gone.png' } }
+          ]
+        }
+      ];
+
+      // 单张工具图片失效不能让整轮请求失败：丢掉图片，保留 tool 文本。
+      const result = await loadRequestMessages({ messages, useVision: true });
+
+      expect(result).toHaveLength(2);
+      expect(result[1].role).toBe(ChatCompletionRequestMessageRoleEnum.Tool);
+      expect(result[1].content).toBe('Look at this image');
+    });
+
     it('should append tool images after every tool result of the same assistant turn', async () => {
       multimediaEnv.MULTIPLE_DATA_TO_BASE64 = false;
       const messages: ChatCompletionMessageParam[] = [
@@ -1568,6 +1591,42 @@ describe('loadRequestMessages function tests', () => {
       expect(mockGetImageBase64).toHaveBeenCalledWith(
         'https://sandbox-preview.example.com/preview/sandbox-1/session-1/a.png',
         { trustedOrigin: 'https://sandbox-preview.example.com' }
+      );
+    });
+
+    it('should recognize preview urls when the configured base carries query or default port', async () => {
+      multimediaEnv.MULTIPLE_DATA_TO_BASE64 = false;
+      // builder 会规范化 base：host 小写、去掉默认端口与 query；识别逻辑必须一致。
+      multimediaEnv.AGENT_SANDBOX_PREVIEW_PROXY_URL =
+        'https://Sandbox-Preview.Example.com:443/?v=1#x';
+      mockGetImageBase64.mockResolvedValue({
+        completeBase64: 'data:image/png;base64,inlined',
+        base64: 'inlined',
+        mime: 'image/png'
+      });
+
+      const messages: ChatCompletionMessageParam[] = [
+        { role: ChatCompletionRequestMessageRoleEnum.User, content: 'Hello' },
+        {
+          role: ChatCompletionRequestMessageRoleEnum.Tool,
+          tool_call_id: 'call1',
+          content: [
+            {
+              type: 'image_url',
+              image_url: {
+                url: 'https://sandbox-preview.example.com/preview/sandbox-1/session-1/a.png'
+              }
+            }
+          ]
+        }
+      ];
+
+      const result = await loadRequestMessages({ messages, useVision: true });
+
+      expect(result).toHaveLength(3);
+      expect(mockGetImageBase64).toHaveBeenCalledWith(
+        'https://sandbox-preview.example.com/preview/sandbox-1/session-1/a.png',
+        { trustedOrigin: 'https://Sandbox-Preview.Example.com:443/?v=1#x' }
       );
     });
 

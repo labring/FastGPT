@@ -98,6 +98,18 @@ const getContentText = (
 };
 
 /**
+ * 图片 part 的文本占位。
+ *
+ * data URI 内联了整段 base64，原样铺进 prompt 会撑爆上下文，因此只保留 mime；
+ * 沙箱预览地址带一次性 session 凭证，需要脱敏后再写入文本。
+ */
+const getImagePlaceholder = (url: string) => {
+  const dataMatch = url.match(/^data:([^;,]+)[;,]/);
+  if (dataMatch) return `[Image: ${dataMatch[1]}]`;
+  return `[Image: ${maskImagePlaceholderUrl(url)}]`;
+};
+
+/**
  * 将工具返回的 content（字符串或 text / image_url parts）转换成 pi-agent 的
  * TextContent / ImageContent。图片 URL 取回 base64 后进入 transcript；
  * 取图失败时降级为占位文本，避免中断 agent loop。
@@ -121,7 +133,7 @@ export const convertToolResponseContentToPiContent = async (
 
       const url = part.image_url.url;
       if (!useVision) {
-        return { type: 'text', text: `[Image: ${maskImagePlaceholderUrl(url)}]` };
+        return { type: 'text', text: getImagePlaceholder(url) };
       }
       const dataMatch = url.match(/^data:([^;]+);base64,(.+)$/);
       if (dataMatch) {
@@ -133,7 +145,7 @@ export const convertToolResponseContentToPiContent = async (
         const { base64, mime } = await loadImageBase64(url);
         return { type: 'image', mimeType: mime, data: base64 };
       } catch {
-        return { type: 'text', text: `[Image: ${maskImagePlaceholderUrl(url)}]` };
+        return { type: 'text', text: getImagePlaceholder(url) };
       }
     })
   );
@@ -242,7 +254,7 @@ export const convertChatMessagesToPiAgentMessages = ({
             content.push({ type: 'image', mimeType: match[1], data: match[2] });
             return;
           }
-          content.push({ type: 'text', text: `[Image: ${part.image_url.url}]` });
+          content.push({ type: 'text', text: getImagePlaceholder(part.image_url.url) });
         });
       } else {
         content.push({ type: 'text', text: getContentText(message.content) });

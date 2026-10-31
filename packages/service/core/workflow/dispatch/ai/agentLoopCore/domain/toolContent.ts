@@ -2,6 +2,7 @@ import {
   ChatCompletionToolMessageContentPartSchema,
   type ChatCompletionToolMessageContentPart
 } from '@fastgpt/global/core/ai/llm/type';
+import { providerImageMimeType } from '@fastgpt/global/common/file/constants';
 
 /**
  * 从工具输出中提取结构化 tool content。
@@ -40,6 +41,64 @@ export const extractAgentLoopCoreToolContent = (
   return parts;
 };
 
+const providerImageMimeTypes = providerImageMimeType.split(',').map((item) => item.trim());
+const isProviderImageMimeType = (mimeType: string) => providerImageMimeTypes.includes(mimeType);
+
+/** MCP 图片块是否能转换成供应商可消费的视觉输入。 */
+const isConvertibleMcpImageBlock = (block: { data?: unknown; mimeType?: unknown }) =>
+  typeof block.data === 'string' &&
+  block.data.length > 0 &&
+  typeof block.mimeType === 'string' &&
+  isProviderImageMimeType(block.mimeType);
+
+/**
+ * 把模型文本里的图片数据替换成占位，避免同一份图片既进 tool 文本又进 vision part。
+ *
+ * - MCP `{ type: 'image', data, mimeType }` 只替换真正会被转换的块（栅格格式、data 非空）；
+ *   未转换的块保持原样，否则这些内容会在两个通道里同时消失。
+ * - `image_url.url` 为 data URI 的 part 只在调用方确认它已通过 content 通道发送时替换
+ *   （`maskDataUrlParts`），否则会把唯一一份数据丢掉。
+ *
+ * 原始结果仍保留在节点响应里供详情展示。
+ */
+export const maskToolImagePayload = (
+  toolResponses: unknown,
+  options: { maskDataUrlParts?: boolean } = {}
+): unknown => {
+  if (!toolResponses || typeof toolResponses !== 'object') return toolResponses;
+
+  const content = (toolResponses as { content?: unknown }).content;
+  if (!Array.isArray(content)) return toolResponses;
+
+  let changed = false;
+  const maskedContent = content.map((block) => {
+    if (!block || typeof block !== 'object') return block;
+
+    const item = block as {
+      type?: unknown;
+      data?: unknown;
+      mimeType?: unknown;
+      image_url?: { url?: unknown };
+    };
+
+    if (item.type === 'image') {
+      if (!isConvertibleMcpImageBlock(item)) return block;
+      changed = true;
+      return { type: 'image', mimeType: item.mimeType, data: '[image data omitted]' };
+    }
+
+    const url = item.image_url?.url;
+    if (options.maskDataUrlParts && typeof url === 'string' && url.startsWith('data:')) {
+      changed = true;
+      return { ...item, image_url: { ...item.image_url, url: '[image data omitted]' } };
+    }
+
+    return block;
+  });
+
+  return changed ? { ...toolResponses, content: maskedContent } : toolResponses;
+};
+
 /**
  * 把 MCP `CallToolResult.content` 的原生内容块转换成 tool content parts。
  *
@@ -64,13 +123,7 @@ export const convertMcpToolContentToToolContent = (
       data?: unknown;
       mimeType?: unknown;
     };
-    if (
-      type !== 'image' ||
-      typeof data !== 'string' ||
-      !data ||
-      typeof mimeType !== 'string' ||
-      !mimeType.startsWith('image/')
-    ) {
+    if (type !== 'image' || !isConvertibleMcpImageBlock({ data, mimeType })) {
       continue;
     }
 

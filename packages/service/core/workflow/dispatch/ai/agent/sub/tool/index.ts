@@ -43,7 +43,8 @@ import {
 } from '../../../../../../plugin/teamPluginPolicy';
 import {
   convertMcpToolContentToToolContent,
-  extractAgentLoopCoreToolContent
+  extractAgentLoopCoreToolContent,
+  maskToolImagePayload
 } from '../../../agentLoopCore/domain/toolContent';
 
 type SystemInputConfigType = {
@@ -263,11 +264,14 @@ export const dispatchTool = async ({
       });
 
       // 插件输出若显式声明了结构化 content，透传给 agent-loop 作为下一轮模型输入；
-      // response 仍是完整业务输出，两者互不替代。
+      // response 仍是完整业务输出，两者互不替代。图片数据只保留在 content 通道里一份。
       const content = extractAgentLoopCoreToolContent(result);
+      const responsePayload = content
+        ? maskToolImagePayload(result, { maskDataUrlParts: true })
+        : result;
 
       return {
-        response: JSON.stringify(result),
+        response: JSON.stringify(responsePayload),
         ...(content ? { content } : {}),
         nodeResponse: getNodeResponse({
           result
@@ -326,7 +330,8 @@ export const dispatchTool = async ({
         (result as { content?: unknown } | undefined)?.content
       );
       return {
-        response: JSON.stringify(result),
+        // 图片走 image_url part；文本里把 base64 换成占位，避免同一张图在上下文里出现两份。
+        response: JSON.stringify(maskToolImagePayload(result)),
         ...(content ? { content } : {}),
         ...(errorMessage !== undefined ? { errorMessage } : {}),
         nodeResponse: {
@@ -391,11 +396,17 @@ export const dispatchTool = async ({
       }
 
       const content = extractAgentLoopCoreToolContent(data);
+      // 图片数据只保留在 content 通道里一份，业务文本里换成占位。
+      const responseData =
+        content && data && typeof data === 'object'
+          ? maskToolImagePayload(data, { maskDataUrlParts: true })
+          : data;
+
       return {
         nodeResponse: getNodeResponse({
           result: data
         }),
-        response: typeof data === 'object' ? JSON.stringify(data) : data,
+        response: typeof responseData === 'object' ? JSON.stringify(responseData) : responseData,
         ...(content ? { content } : {})
       };
     } else {

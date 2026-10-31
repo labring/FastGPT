@@ -377,6 +377,41 @@ describe('piAgent message conversion', () => {
     ]);
   });
 
+  it('keeps tool image content when an interactive tool resumes', () => {
+    const call = {
+      id: 'call_ask',
+      type: 'function',
+      function: { name: 'ask_user', arguments: '{}' }
+    } as any;
+
+    const result = replaceInteractiveToolResult({
+      messages: [
+        {
+          role: 'toolResult',
+          toolCallId: 'call_ask',
+          toolName: 'ask_user',
+          content: [{ type: 'text', text: 'pending' }],
+          details: {},
+          isError: true,
+          timestamp: 1
+        } as any
+      ],
+      call,
+      response: '{"jobId":"task-123"}',
+      isError: false,
+      content: [
+        { type: 'text', text: '{"jobId":"task-123"}' },
+        { type: 'image', mimeType: 'image/png', data: 'AAAA' }
+      ]
+    });
+
+    // 恢复路径必须和普通路径一样保留图片，否则 ask_user 续跑会丢视觉输入。
+    expect((result[0] as any).content).toEqual([
+      { type: 'text', text: '{"jobId":"task-123"}' },
+      { type: 'image', mimeType: 'image/png', data: 'AAAA' }
+    ]);
+  });
+
   it('converts tool response parts to pi content and degrades images when vision is disabled', async () => {
     const parts = [
       { type: 'text', text: 'ok' },
@@ -394,7 +429,8 @@ describe('piAgent message conversion', () => {
     });
     expect(withoutVision).toEqual([
       { type: 'text', text: 'ok' },
-      { type: 'text', text: '[Image: data:image/png;base64,aW1hZ2U=]' }
+      // data URI 不能原样铺进文本，只保留 mime 占位。
+      { type: 'text', text: '[Image: image/png]' }
     ]);
   });
 

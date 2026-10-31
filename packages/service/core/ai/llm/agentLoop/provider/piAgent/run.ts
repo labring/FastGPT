@@ -18,8 +18,8 @@ import { formatModelChars2Points } from '../../../../../../support/wallet/usage/
 import { AgentUsageModuleName } from '../../domain/usage';
 import { askUserToolName, formatAgentAskToolResponse } from '../../domain/systemTool/ask';
 import { setPlanToolName, updatePlanToolName } from '../../domain/systemTool/plan';
+import { buildToolMessageContent } from '../../domain/tool';
 import {
-  buildToolMessageContent,
   normalizeAgentLoopUsages,
   type AgentLoopInput,
   type AgentLoopResult,

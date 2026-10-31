@@ -15,7 +15,11 @@ import type { AgentLoopInteractiveToolExecuteParams } from '../../../../../../ai
 import type { AgentLoopDatasetSearchExecutor } from '../../../../../../ai/llm/agentLoop/interface';
 import { parseJsonArgs } from '../../../../../../ai/utils';
 import type { AgentLoopCoreToolInfo, AgentLoopCoreToolRunResult } from '../../domain/toolProvider';
-import { extractAgentLoopCoreToolContent } from '../../domain/toolContent';
+import {
+  convertMcpToolContentToToolContent,
+  extractAgentLoopCoreToolContent,
+  maskToolImagePayload
+} from '../../domain/toolContent';
 import type { AgentLoopCoreToolRunFlowResponse } from '../../adapter/nodeResponse/toolRunCollector';
 import { normalizeAgentLoopCoreDatasetSearchResult } from './systemToolHelpers';
 import { cloneDeep } from 'lodash-es';
@@ -103,8 +107,6 @@ export const formatAgentLoopCoreToolResponse = (toolResponses: any) => {
   return toolResponses ? String(toolResponses) : 'none';
 };
 
-// 结构化 content 的提取规则由 workflow 工具与 Agent V2 业务工具共用，实现在 domain 层。
-
 /**
  * 初始化阶段直接在传入的 runtime edge/node 上标记入口状态。
  * 调用方需要根据自身的状态隔离要求决定是否先创建副本。
@@ -177,14 +179,22 @@ const toToolRunResult = <TChildrenResponse = unknown>(
   const rawToolResponses = toolRunResponse.toolResponses;
   const hasToolResponses =
     rawToolResponses !== undefined && rawToolResponses !== null && rawToolResponses !== '';
-  const content = extractAgentLoopCoreToolContent(rawToolResponses);
+  // ToolCall 节点里的 MCP 工具会返回 MCP 原生图片块，先按 MCP 契约转换；
+  // 其余工具（插件 / HTTP / workflow）仍走共享 schema 提取。
+  const content =
+    convertMcpToolContentToToolContent(
+      (rawToolResponses as { content?: unknown } | undefined)?.content
+    ) ?? extractAgentLoopCoreToolContent(rawToolResponses);
 
   return {
     result: {
       // 工具失败时把错误原因返回给模型；'none' 会掩盖失败原因。
+      // 图片已经作为 content part 传给模型，文本里把 MCP base64 换成占位，避免重复发送。
       response:
         hasToolResponses || !errorMessage
-          ? formatAgentLoopCoreToolResponse(rawToolResponses)
+          ? formatAgentLoopCoreToolResponse(
+              maskToolImagePayload(rawToolResponses, { maskDataUrlParts: Boolean(content) })
+            )
           : errorMessage,
       ...(errorMessage ? { errorMessage } : {}),
       ...(content ? { content } : {}),

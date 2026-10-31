@@ -169,8 +169,8 @@ export const getImageBuffer = async (
       ...(isTrustedOrigin ? { maxRedirects: 0 } : {})
     });
 
-    // 可信通道不跟随重定向时，3xx 会作为普通响应返回；必须显式拒绝，
-    // 否则会把跳转响应当成图片内容继续读取。真实 axios 响应一定带 status。
+    // 兜底校验：axios 默认 validateStatus 已拒绝非 2xx，这里再显式拒绝一次，
+    // 避免换成不抛错的自定义客户端时把跳转响应当成图片内容继续读取。
     const status = response?.status;
     if (typeof status === 'number' && (status < 200 || status >= 300)) {
       response.data?.destroy?.();

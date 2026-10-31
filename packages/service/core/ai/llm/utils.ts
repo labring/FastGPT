@@ -47,7 +47,18 @@ const logger = getLogger(LogCategories.MODULE.AI.LLM);
 export const isSandboxPreviewFileUrl = (url: string) => {
   const base = serviceEnv.AGENT_SANDBOX_PREVIEW_PROXY_URL;
   if (!base) return false;
-  return url.startsWith(`${base.replace(/\/+$/, '')}/preview/`);
+
+  try {
+    // 与 sandbox 层 buildSandboxPreviewFileUrl 的 URL 规范化保持一致：host 小写、去掉默认端口，
+    // 并清掉 base 自身可能带的 query/hash，否则生成的预览地址认不出来。
+    const parsedBase = new URL(base);
+    parsedBase.search = '';
+    parsedBase.hash = '';
+    const normalizedBase = parsedBase.toString().replace(/\/+$/, '');
+    return url.startsWith(`${normalizedBase}/preview/`);
+  } catch {
+    return false;
+  }
 };
 
 /**
@@ -550,6 +561,30 @@ export const loadRequestMessages = async ({
   };
 
   /**
+   * 工具图片的归一化不阻塞整轮请求。
+   *
+   * 工具给出的图片可能已经失效（404、超限、被内网策略拒绝）；此时只丢弃这张图片，
+   * 保留 tool 文本继续请求，与 piAgent 的占位降级语义保持一致，避免整次 agent 运行失败。
+   */
+  const normalizeToolMediaContentParts = async (content: ChatCompletionContentPart[]) => {
+    const normalized = await Promise.all(
+      content.map(async (item) => {
+        try {
+          const [result] = await normalizeMediaContentParts([item]);
+          return result;
+        } catch (error) {
+          logger.warn('Drop tool image part after normalization failure', {
+            error: getErrText(error)
+          });
+          return undefined;
+        }
+      })
+    );
+
+    return normalized.filter(Boolean) as ChatCompletionContentPart[];
+  };
+
+  /**
    * 在归一化前按模型能力过滤用户输入。
    * 这里处理的是能力边界，不做 URL/base64 转换，避免过滤和转换逻辑混在一起。
    */
@@ -827,7 +862,7 @@ export const loadRequestMessages = async ({
           const normalizedTextParts = (await normalizeMediaContentParts(
             textParts
           )) as ChatCompletionContentPartText[];
-          const normalizedMediaParts = await normalizeMediaContentParts(
+          const normalizedMediaParts = await normalizeToolMediaContentParts(
             (await Promise.all(mediaParts.map(inlineSandboxPreviewImage))).filter(
               (part): part is ChatCompletionContentPart => Boolean(part)
             )
