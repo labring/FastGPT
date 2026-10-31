@@ -98,7 +98,8 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
   const tools: AgentTool[] = [];
 
   // 与 loadRequestMessages 对齐：模型不支持视觉时，工具图片 part 降级为占位文本。
-  const useVision = runtime.llmParams.useVision && runtime.llmParams.model.config.vision;
+  // 显式转布尔，避免 useVision 缺省时被转换器默认值当成 true。
+  const useVision = !!(runtime.llmParams.useVision && runtime.llmParams.model.config.vision);
 
   /** 保证每个普通工具 start 都对应 end，并将异常变成可回填模型的工具结果。 */
   const executeOrdinaryTool = async ({
