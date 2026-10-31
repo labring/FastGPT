@@ -1,0 +1,43 @@
+---
+title: JZSTOKEN 接入示例
+description: JZSTOKEN 接入示例
+---
+
+[JZSTOKEN](https://jzstoken.com) 是一个 OpenAI 兼容的 API 服务，可通过一个 API Key 使用多种文本与视觉模型。其 OpenAI 兼容 Base URL 可以直接接入 FastGPT，无需专用协议适配器。
+
+在阅读该章之前，请先确保你阅读了[模型配置说明](./intro.mdx)。
+
+## 1. 获取 API Key
+
+1. 访问 [JZSTOKEN](https://jzstoken.com)，注册并登录账号。
+2. 在控制台创建 API Key 并复制密钥，密钥格式为 `sk-...`。
+
+## 2. 新增模型
+
+模型 ID 必须与 JZSTOKEN 提供的 ID 完全一致。可以在 `模型配置` 页面新增自定义模型，具体步骤见[手动添加自定义模型](./intro.mdx#新增自定义模型)。
+
+### 常用模型
+
+| 模型 ID           | 上下文 | 最大输出 | 说明                                |
+| ----------------- | ------ | -------- | ----------------------------------- |
+| `claude-sonnet-5` | 1M     | 32K      | 支持推理的 Claude Sonnet 模型       |
+| `claude-opus-5`   | 1M     | 32K      | 能力更高的 Claude 模型              |
+| `gpt-5.6-terra`   | 258K   | 32K      | OpenAI 兼容的通用模型               |
+| `qwen3.8-max`     | 1M     | 32K      | 支持视觉输入的 Qwen 旗舰模型        |
+| `jzs-max-3.0`     | 1M     | 32K      | 需要专用密钥的 JZSTOKEN 模型        |
+
+最新模型、能力与价格信息请参考 [JZSTOKEN 模型价格页](https://jzstoken.com/model-pricing)。
+
+## 3. 新增模型渠道
+
+在模型渠道页新增一个 OpenAI 兼容渠道：
+
+- **名称**：填写 `JZSTOKEN`
+- **协议类型**：选择 **OpenAI**
+- **代理地址**：填写 `https://jzstoken.com/api/v1`
+- **API 密钥**：填写上一步获取的 JZSTOKEN API Key
+- **模型**：新增或选择需要使用的 JZSTOKEN 模型 ID
+
+## 4. 测试模型
+
+配置完成后，在渠道列表中点击测试按钮，验证渠道连通性和模型是否可用。
