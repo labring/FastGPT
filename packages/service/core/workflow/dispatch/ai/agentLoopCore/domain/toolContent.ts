@@ -131,7 +131,8 @@ export const convertMcpToolContentToToolContent = (
       type: 'image_url',
       image_url: { url: `data:${mimeType};base64,${data}` }
     });
-    // MCP 服务返回的 mimeType 不可信，转出来不合法就整块丢弃，不污染请求字段。
+    // 正常不会失败（url 允许任意字符串）；保留 safeParse 作为 schema 变更时的兜底，
+    // 真正的过滤在 isConvertibleMcpImageBlock 的白名单里。
     if (!parsed.success) continue;
 
     parts.push(parsed.data);

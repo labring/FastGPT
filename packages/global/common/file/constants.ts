@@ -67,4 +67,12 @@ export const audioFileType = '.mp3, .wav, .ogg, .m4a, .amr, .mpga';
 export const providerImageFileType = '.png, .jpg, .jpeg, .gif, .webp, .bmp';
 export const providerImageMimeType = 'image/png, image/jpeg, image/gif, image/webp, image/bmp';
 
+/**
+ * 单次工具结果最多携带多少张图片。
+ *
+ * 工具可以一次列出很多文件，若全部转成视觉输入，后续每轮都要重复下载并内联 base64，
+ * 很容易把请求撑到供应商上限；超出的文件仍保留在文本链接里。
+ */
+export const maxToolImagePartAmount = 4;
+
 export const videoFileType = '.mp4, .mov, .avi, .mpeg, .webm';
