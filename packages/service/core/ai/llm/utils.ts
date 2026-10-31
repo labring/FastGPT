@@ -9,7 +9,12 @@ import type {
   ChatCompletionContentPartText,
   ChatCompletionMessageParam
 } from '@fastgpt/global/core/ai/llm/type';
-import { audioFileType } from '@fastgpt/global/common/file/constants';
+import {
+  audioFileType,
+  imageFileType,
+  maxToolImagePartAmount,
+  videoFileType
+} from '@fastgpt/global/common/file/constants';
 import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { axios } from '../../../common/api/axios';
 
@@ -874,11 +879,13 @@ export const loadRequestMessages = async ({
           const normalizedTextParts = (await normalizeMediaContentParts(
             textParts
           )) as ChatCompletionContentPartText[];
-          const normalizedMediaParts = await normalizeToolMediaContentParts(
-            (await Promise.all(mediaParts.map(inlineSandboxPreviewImage))).filter(
-              (part): part is ChatCompletionContentPart => Boolean(part)
+          const normalizedMediaParts = (
+            await normalizeToolMediaContentParts(
+              (await Promise.all(mediaParts.map(inlineSandboxPreviewImage))).filter(
+                (part): part is ChatCompletionContentPart => Boolean(part)
+              )
             )
-          );
+          ).slice(0, maxToolImagePartAmount);
 
           const toolMessage = {
             ...item,
@@ -900,9 +907,7 @@ export const loadRequestMessages = async ({
         }
       })
     )
-  )
-    .flat()
-    .filter(Boolean) as ChatCompletionMessageParam[];
+  ).filter(Boolean) as ChatCompletionMessageParam[];
 
   /**
    * 同一轮的全部 tool 结果必须连续回填，工具图片消息统一追加在这一轮 tool 结果之后。

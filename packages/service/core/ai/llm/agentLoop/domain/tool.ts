@@ -4,6 +4,7 @@ import type {
   ChatCompletionTool,
   ChatCompletionToolMessageContentPart
 } from '@fastgpt/global/core/ai/llm/type';
+import { maxToolImagePartAmount } from '@fastgpt/global/common/file/constants';
 import type { SandboxClient } from '../../../sandbox/application/runtime/client';
 import type { SandboxToolCallValidator } from '../../../sandbox/application/toolCall/type';
 import type { AgentLoopDatasetSearchExecutor } from './systemTool/datasetSearch';
@@ -23,6 +24,9 @@ export type AgentLoopToolCatalog = {
  *
  * fastAgent 与 piAgent 共用这层组合规则，避免两条 provider 路径对同一个工具结果
  * 给出不同的内容：业务 response 文本永远保留，图片只作为附加 part。
+ *
+ * 图片数量按 `maxToolImagePartAmount` 截断：一次工具调用列出很多文件时，每轮请求都会重复
+ * 下载并内联这些图片，必须限制单个工具结果的视觉输入量。
  */
 export const buildToolMessageContent = ({
   content,
@@ -32,7 +36,10 @@ export const buildToolMessageContent = ({
   text: string;
 }): string | ChatCompletionToolMessageContentPart[] => {
   if (!content?.length) return text;
-  return [{ type: 'text', text }, ...content.filter((part) => part.type !== 'text')];
+
+  const images = content.filter((part) => part.type !== 'text').slice(0, maxToolImagePartAmount);
+
+  return images.length ? [{ type: 'text', text }, ...images] : text;
 };
 
 /**
