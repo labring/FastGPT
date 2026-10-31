@@ -58,4 +58,21 @@ export const imageFileType =
 
 export const audioFileType = '.mp3, .wav, .ogg, .m4a, .amr, .mpga';
 
+/**
+ * 主流视觉模型可消费的栅格图片格式。
+ *
+ * `imageFileType` 还包含 svg / psd / raw / eps 等格式：把这些当图片发给供应商大概率被拒，
+ * 反而丢掉原本可读的文本内容，所以视觉得到图片链路统一按这份白名单过滤。
+ */
+export const providerImageFileType = '.png, .jpg, .jpeg, .gif, .webp, .bmp';
+export const providerImageMimeType = 'image/png, image/jpeg, image/gif, image/webp, image/bmp';
+
+/**
+ * 单次工具结果最多携带多少张图片。
+ *
+ * 工具可以一次列出很多文件，若全部转成视觉输入，后续每轮都要重复下载并内联 base64，
+ * 很容易把请求撑到供应商上限；超出的文件仍保留在文本链接里。
+ */
+export const maxToolImagePartAmount = 4;
+
 export const videoFileType = '.mp4, .mov, .avi, .mpeg, .webm';

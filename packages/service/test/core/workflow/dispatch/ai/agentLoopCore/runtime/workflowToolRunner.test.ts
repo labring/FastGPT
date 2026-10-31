@@ -1,5 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createAgentLoopCoreWorkflowToolRunner } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/application/runtime/workflowToolRunner';
+import {
+  convertMcpToolContentToToolContent,
+  extractAgentLoopCoreToolContent,
+  maskToolImagePayload
+} from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/domain/toolContent';
 import { dispatchUpdateVariable } from '@fastgpt/service/core/workflow/dispatch/tools/runUpdateVar';
 
 const createCall = ({
@@ -50,6 +55,46 @@ const createRunner = ({
 describe('createAgentLoopCoreWorkflowToolRunner', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  it('converts MCP image blocks from a tool node into image_url content', async () => {
+    const toolResponses = {
+      content: [
+        { type: 'text', text: 'chart ready' },
+        { type: 'image', data: 'AAAA', mimeType: 'image/png' }
+      ]
+    };
+    const runner = createRunner({
+      runtimeNodes: [{ nodeId: 'search', inputs: [], outputs: [] }],
+      getToolInfo: () => ({ type: 'user', rawData: { nodeId: 'search' } }),
+      runWorkflowTool: vi.fn().mockResolvedValue({
+        flowResponses: [],
+        flowUsages: [],
+        assistantResponses: [],
+        toolResponses
+      })
+    });
+
+    const result = await runner.runTool({ call: createCall() });
+
+    // ToolCall 节点里的 MCP 工具同样要能把原生图片块变成视觉输入。
+    expect(result.content).toEqual([
+      { type: 'image_url', image_url: { url: 'data:image/png;base64,AAAA' } }
+    ]);
+    // 文本里不能再带一份 base64：图片已经由 content part 承载。
+    expect(result.response).toBe(
+      JSON.stringify(
+        {
+          content: [
+            { type: 'text', text: 'chart ready' },
+            { type: 'image', mimeType: 'image/png', data: '[image data omitted]' }
+          ]
+        },
+        null,
+        2
+      )
+    );
+    expect(result.response).not.toContain('AAAA');
   });
 
   it.each([0, 1])(
@@ -595,5 +640,136 @@ describe('createAgentLoopCoreWorkflowToolRunner', () => {
     expect(received.runtimeNodes[0].inputs).toEqual([
       { key: 'userChatInput', value: 'restored user prompt', renderTypeList: ['agentGenerated'] }
     ]);
+  });
+});
+
+describe('extractAgentLoopCoreToolContent', () => {
+  it('returns structured content parts when every part is valid', () => {
+    const content = [
+      { type: 'text', text: 'done' },
+      { type: 'image_url', image_url: { url: 'https://files.example.com/plot.png' } }
+    ];
+
+    expect(extractAgentLoopCoreToolContent({ content })).toEqual(content);
+  });
+
+  it('returns undefined for non-object or missing content', () => {
+    expect(extractAgentLoopCoreToolContent(undefined)).toBeUndefined();
+    expect(extractAgentLoopCoreToolContent(null)).toBeUndefined();
+    expect(extractAgentLoopCoreToolContent('text')).toBeUndefined();
+    expect(extractAgentLoopCoreToolContent([])).toBeUndefined();
+    expect(extractAgentLoopCoreToolContent({})).toBeUndefined();
+  });
+
+  it('returns undefined when content is an empty array', () => {
+    expect(extractAgentLoopCoreToolContent({ content: [] })).toBeUndefined();
+  });
+
+  it('returns undefined when an image_url part has an empty url', () => {
+    expect(
+      extractAgentLoopCoreToolContent({
+        content: [{ type: 'image_url', image_url: { url: '' } }]
+      })
+    ).toBeUndefined();
+  });
+
+  it('returns undefined when any part is invalid', () => {
+    expect(
+      extractAgentLoopCoreToolContent({
+        content: [
+          { type: 'text', text: 'ok' },
+          { type: 'image_url', image_url: {} },
+          { type: 'unknown' }
+        ]
+      })
+    ).toBeUndefined();
+  });
+
+  it('rejects image parts whose detail is not accepted by the shared schema', () => {
+    // detail 只允许 auto/low/high；手写校验放过它会让下一轮请求被供应商拒绝。
+    expect(
+      extractAgentLoopCoreToolContent({
+        content: [
+          {
+            type: 'image_url',
+            image_url: { url: 'https://files.example.com/plot.png', detail: 'ultra' }
+          }
+        ]
+      })
+    ).toBeUndefined();
+  });
+});
+
+describe('convertMcpToolContentToToolContent', () => {
+  it('converts MCP image blocks into data URI image parts', () => {
+    // MCP 原生图片块是 { type: 'image', data, mimeType }，不是 image_url。
+    expect(
+      convertMcpToolContentToToolContent([
+        { type: 'text', text: 'chart ready' },
+        { type: 'image', data: 'AAAA', mimeType: 'image/png' }
+      ])
+    ).toEqual([{ type: 'image_url', image_url: { url: 'data:image/png;base64,AAAA' } }]);
+  });
+
+  it('returns undefined when the result has no image block', () => {
+    expect(convertMcpToolContentToToolContent([{ type: 'text', text: 'ok' }])).toBeUndefined();
+    expect(convertMcpToolContentToToolContent(undefined)).toBeUndefined();
+    expect(convertMcpToolContentToToolContent([])).toBeUndefined();
+  });
+
+  it('skips non-raster image blocks that vision providers reject', () => {
+    expect(
+      convertMcpToolContentToToolContent([
+        { type: 'image', data: 'AAAA', mimeType: 'image/svg+xml' }
+      ])
+    ).toBeUndefined();
+  });
+
+  it('drops image blocks with unusable payload', () => {
+    expect(
+      convertMcpToolContentToToolContent([{ type: 'image', data: '', mimeType: 'image/png' }])
+    ).toBeUndefined();
+    expect(
+      convertMcpToolContentToToolContent([{ type: 'image', data: 'AAAA', mimeType: 'text/html' }])
+    ).toBeUndefined();
+  });
+});
+
+describe('maskToolImagePayload', () => {
+  it('replaces only the MCP image blocks that get converted', () => {
+    expect(
+      maskToolImagePayload({
+        content: [
+          { type: 'text', text: 'ok' },
+          { type: 'image', data: 'AAAA', mimeType: 'image/png' },
+          { type: 'image', data: 'BBBB', mimeType: 'image/svg+xml' }
+        ]
+      })
+    ).toEqual({
+      content: [
+        { type: 'text', text: 'ok' },
+        { type: 'image', mimeType: 'image/png', data: '[image data omitted]' },
+        // 没被转换的块不能跟着消失，否则两条通道都拿不到内容。
+        { type: 'image', data: 'BBBB', mimeType: 'image/svg+xml' }
+      ]
+    });
+  });
+
+  it('masks data URI parts only when the part is also sent as content', () => {
+    const input = {
+      content: [
+        { type: 'text', text: 'ok' },
+        { type: 'image_url', image_url: { url: 'data:image/png;base64,AAAA' } }
+      ]
+    };
+
+    expect(maskToolImagePayload(input, { maskDataUrlParts: true })).toEqual({
+      content: [
+        { type: 'text', text: 'ok' },
+        { type: 'image_url', image_url: { url: '[image data omitted]' } }
+      ]
+    });
+    // 没走 content 通道时保持原样，否则唯一一份数据会被抹掉。
+    expect(maskToolImagePayload(input)).toBe(input);
   });
 });

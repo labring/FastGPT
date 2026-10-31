@@ -9,7 +9,7 @@ import type {
   ChatCompletionContentPartText,
   ChatCompletionMessageParam
 } from '@fastgpt/global/core/ai/llm/type';
-import { audioFileType } from '@fastgpt/global/common/file/constants';
+import { audioFileType, maxToolImagePartAmount } from '@fastgpt/global/common/file/constants';
 import { axios } from '../../../common/api/axios';
 
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
@@ -36,6 +36,56 @@ import {
 } from './compress/constants';
 
 const logger = getLogger(LogCategories.MODULE.AI.LLM);
+
+/**
+ * 判断 URL 是否为沙箱文件预览地址。
+ *
+ * 预览地址带一次性 session 凭证且只在服务端网络拓扑内可达，不适合直接透传给模型服务商。
+ * 这里按 env 里的代理前缀识别（与 sandbox 层 buildSandboxPreviewFileUrl 的 `/preview/` 契约一致），
+ * 避免把 sandbox 模块及其 dal/redis 依赖拖进 llm 模块。
+ */
+export const isSandboxPreviewFileUrl = (url: string) => {
+  const base = serviceEnv.AGENT_SANDBOX_PREVIEW_PROXY_URL;
+  if (!base) return false;
+
+  try {
+    // 与 sandbox 层 buildSandboxPreviewFileUrl 的 URL 规范化保持一致：host 小写、去掉默认端口，
+    // 并清掉 base 自身可能带的 query/hash，否则生成的预览地址认不出来。
+    const parsedBase = new URL(base);
+    parsedBase.search = '';
+    parsedBase.hash = '';
+    const normalizedBase = parsedBase.toString().replace(/\/+$/, '');
+    return url.startsWith(`${normalizedBase}/preview/`);
+  } catch {
+    return false;
+  }
+};
+
+/**
+ * 图片占位文本里的 URL 可能是带凭证的预览地址，写入提示词前先脱敏，
+ * 避免凭证经纯文本路径外发给模型服务商。
+ */
+export const maskImagePlaceholderUrl = (url: string) =>
+  isSandboxPreviewFileUrl(url) ? 'sandbox preview file' : url;
+
+/**
+ * 按来源选择图片下载通道。
+ *
+ * 沙箱预览代理可能部署在内网，公共 SSRF 内网拦截会把配置里的合法预览地址一起拒掉，
+ * 导致工具图片全部丢失。这类地址的 origin 来自服务端配置而不是用户输入，因此只对
+ * 该 origin 使用受限通道；其它地址继续走安全的公共下载逻辑。
+ *
+ * fastAgent（loadRequestMessages）与 piAgent（工具 content 转换）都通过这里取图，
+ * 保证两条 provider 路径对沙箱预览地址的能力一致。
+ */
+export const loadImageBase64 = (url: string) => {
+  const previewProxyBase = serviceEnv.AGENT_SANDBOX_PREVIEW_PROXY_URL;
+  if (!previewProxyBase || !isSandboxPreviewFileUrl(url)) {
+    return getImageBase64(url);
+  }
+
+  return getImageBase64(url, { trustedOrigin: previewProxyBase });
+};
 
 /**
  * 判断消息是否属于系统级提示。
@@ -272,6 +322,38 @@ export const loadRequestMessages = async ({
     input.replace(/<system-reminder>[\s\S]*?<\/system-reminder>\s*/g, '');
 
   /**
+   * 预览图片在发送前由服务端下载并转成 data URI。
+   * 下载失败时丢弃该图片 part，避免把带凭证的预览地址透传给模型服务商。
+   */
+  const inlineSandboxPreviewImage = async (
+    part: ChatCompletionContentPart
+  ): Promise<ChatCompletionContentPart | undefined> => {
+    if (
+      part.type !== 'image_url' ||
+      !part.image_url.url ||
+      !isSandboxPreviewFileUrl(part.image_url.url)
+    ) {
+      return part;
+    }
+
+    try {
+      const { completeBase64: base64 } = await loadImageBase64(part.image_url.url);
+      return {
+        ...part,
+        image_url: {
+          ...part.image_url,
+          url: base64
+        }
+      };
+    } catch (error) {
+      logger.warn('Failed to inline sandbox preview image, drop the image part', {
+        error: getErrText(error)
+      });
+      return undefined;
+    }
+  };
+
+  /**
    * 从短文本中提取候选 HTTP(S) 链接并做尾部标点与 Markdown 语法清洗。
    * 具体是否为媒体文件交由统一分类入口 classifyUrlMediaType 判断，支持无后缀短链探测。
    */
@@ -358,7 +440,7 @@ export const loadRequestMessages = async ({
 
     if (shouldLoadMediaAsBase64(imgUrl)) {
       try {
-        const { completeBase64: base64 } = await getImageBase64(imgUrl);
+        const { completeBase64: base64 } = await loadImageBase64(imgUrl);
 
         return {
           ...imageItem,
@@ -474,6 +556,30 @@ export const loadRequestMessages = async ({
    */
   const normalizeMediaContentParts = async (content: ChatCompletionContentPart[]) => {
     const normalized = await Promise.all(content.map((item) => normalizeMediaContentPart(item)));
+
+    return normalized.filter(Boolean) as ChatCompletionContentPart[];
+  };
+
+  /**
+   * 工具图片的归一化不阻塞整轮请求。
+   *
+   * 工具给出的图片可能已经失效（404、超限、被内网策略拒绝）；此时只丢弃这张图片，
+   * 保留 tool 文本继续请求，与 piAgent 的占位降级语义保持一致，避免整次 agent 运行失败。
+   */
+  const normalizeToolMediaContentParts = async (content: ChatCompletionContentPart[]) => {
+    const normalized = await Promise.all(
+      content.map(async (item) => {
+        try {
+          const [result] = await normalizeMediaContentParts([item]);
+          return result;
+        } catch (error) {
+          logger.warn('Drop tool image part after normalization failure', {
+            error: getErrText(error)
+          });
+          return undefined;
+        }
+      })
+    );
 
     return normalized.filter(Boolean) as ChatCompletionContentPart[];
   };
@@ -664,6 +770,14 @@ export const loadRequestMessages = async ({
     }, []);
   })(messages);
 
+  /**
+   * 工具消息里的图片不能直接放进 tool content（供应商只接受字符串或文本 parts），
+   * 需要转换成紧随其后的 user 视觉消息。但同一个 assistant 消息可能同时发起多个工具调用，
+   * 这时的图片消息必须排在全部 tool 结果之后，否则会打断 tool_call 结果回填顺序。
+   * 这里先给 tool 消息登记图片，拼装阶段再按“整轮 tool 结果”统一追加。
+   */
+  const toolImageParts = new WeakMap<ChatCompletionMessageParam, ChatCompletionContentPart[]>();
+
   const loadMessages = (
     await Promise.all(
       mergeMessages.map(async (raw, i) => {
@@ -728,6 +842,49 @@ export const loadRequestMessages = async ({
             ...formatAssistantItem(item, supportReason),
             content: formatContent
           };
+        } else if (item.role === ChatCompletionRequestMessageRoleEnum.Tool) {
+          // 供应商接口的 tool content 只接受字符串或文本 parts，图片不能放进 tool 消息。
+          // 文本保留在 tool 消息里；图片先按模型能力过滤、再归一化，登记到 toolImageParts，
+          // 由拼装阶段转换成这一轮 tool 结果之后的 user 视觉消息。
+          if (!Array.isArray(item.content)) {
+            return item;
+          }
+
+          const supportedContent = item.content
+            .map((part) => filterSupportedUserContentPart(part as ChatCompletionContentPart))
+            .filter(Boolean) as ChatCompletionContentPart[];
+
+          const textParts = supportedContent.filter(
+            (part): part is ChatCompletionContentPartText => part.type === 'text'
+          );
+          const mediaParts = supportedContent.filter((part) => part.type !== 'text');
+
+          const normalizedTextParts = (await normalizeMediaContentParts(
+            textParts
+          )) as ChatCompletionContentPartText[];
+          const normalizedMediaParts = (
+            await normalizeToolMediaContentParts(
+              (await Promise.all(mediaParts.map(inlineSandboxPreviewImage))).filter(
+                (part): part is ChatCompletionContentPart => Boolean(part)
+              )
+            )
+          ).slice(0, maxToolImagePartAmount);
+
+          const toolMessage = {
+            ...item,
+            content:
+              normalizedTextParts.length === 0
+                ? 'none'
+                : normalizedTextParts.length === 1
+                  ? normalizedTextParts[0].text
+                  : normalizedTextParts
+          } as ChatCompletionMessageParam;
+
+          if (normalizedMediaParts.length > 0) {
+            toolImageParts.set(toolMessage, normalizedMediaParts);
+          }
+
+          return toolMessage;
         } else {
           return item;
         }
@@ -735,5 +892,40 @@ export const loadRequestMessages = async ({
     )
   ).filter(Boolean) as ChatCompletionMessageParam[];
 
-  return loadMessages;
+  /**
+   * 同一轮的全部 tool 结果必须连续回填，工具图片消息统一追加在这一轮 tool 结果之后。
+   * 否则 assistant(A,B) 的回填会变成 tool A → user(image) → tool B，打断协议顺序。
+   */
+  const appendToolImagesAfterToolRun = (messages: ChatCompletionMessageParam[]) => {
+    const result: ChatCompletionMessageParam[] = [];
+    let pendingToolImages: ChatCompletionContentPart[] = [];
+
+    const flushToolImages = () => {
+      if (pendingToolImages.length === 0) return;
+      result.push({
+        role: ChatCompletionRequestMessageRoleEnum.User,
+        content: pendingToolImages
+      } as ChatCompletionMessageParam);
+      pendingToolImages = [];
+    };
+
+    messages.forEach((message) => {
+      if (message.role === ChatCompletionRequestMessageRoleEnum.Tool) {
+        result.push(message);
+        const images = toolImageParts.get(message);
+        if (images?.length) {
+          pendingToolImages.push(...images);
+        }
+        return;
+      }
+
+      flushToolImages();
+      result.push(message);
+    });
+    flushToolImages();
+
+    return result;
+  };
+
+  return appendToolImagesAfterToolRun(loadMessages);
 };

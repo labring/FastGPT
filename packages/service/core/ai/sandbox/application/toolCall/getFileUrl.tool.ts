@@ -11,10 +11,20 @@ import {
   createSandboxPreviewSession,
   resolveSandboxPreviewPath
 } from '../preview';
+import type { ChatCompletionToolMessageContentPart } from '@fastgpt/global/core/ai/llm/type';
+import { providerImageFileType } from '@fastgpt/global/common/file/constants';
 
 const SandboxGetFileUrlToolSchema = z.object({
   paths: z.array(z.string())
 });
+
+/** 只有主流视觉模型能消费的栅格格式才附加 image_url part，其余文件只保留文本链接。 */
+const providerImageFileTypes = providerImageFileType.split(',').map((item) => item.trim());
+
+const isProviderImageFilePath = (filePath: string) => {
+  const extension = `.${path.posix.extname(filePath).slice(1).toLowerCase()}`;
+  return extension !== '.' && providerImageFileTypes.includes(extension);
+};
 
 export const sandboxGetFileUrlTool = defineTool({
   zodSchema: SandboxGetFileUrlToolSchema,
@@ -66,6 +76,21 @@ export const sandboxGetFileUrlTool = defineTool({
       filename: path.posix.basename(relativePath)
     }));
 
-    return { response: JSON.stringify(result) };
+    // content 必须以承载原 response 的 text part 打头（保留全部文件的 filename/fileUrl，
+    // 供下一轮压缩与展示使用），图片文件再以 image_url part 追加作为视觉输入。
+    const content: ChatCompletionToolMessageContentPart[] = [
+      { type: 'text', text: JSON.stringify(result) },
+      ...result
+        .filter(({ filename }) => isProviderImageFilePath(filename))
+        .map<ChatCompletionToolMessageContentPart>(({ fileUrl }) => ({
+          type: 'image_url',
+          image_url: { url: fileUrl }
+        }))
+    ];
+
+    return {
+      response: JSON.stringify(result),
+      content
+    };
   }
 });

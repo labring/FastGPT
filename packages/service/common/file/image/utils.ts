@@ -1,4 +1,4 @@
-import { axios } from '../../api/axios';
+import { axios, axiosWithoutSSRF } from '../../api/axios';
 import { serverRequestBaseUrl } from '../../api/serverRequest';
 import { getAxiosContentType, getAxiosHeaderValue } from '@fastgpt/global/common/axios/utils';
 import { getLogger, LogCategories } from '../../logger';
@@ -116,17 +116,41 @@ export const guessBase64ImageType = (str: string): string => {
 };
 
 /**
+ * 判断一次图片下载是否命中调用方声明的可信 origin。
+ *
+ * 沙箱预览地址来自服务端配置（AGENT_SANDBOX_PREVIEW_PROXY_URL），可能部署在内网，
+ * 不能被公共 SSRF 内网拦截误杀；这类地址不是用户任意输入，因此允许对该 origin 走
+ * 受限通道。origin 之外的地址仍然走 safe axios，避免把“可信”扩大成任意内网访问。
+ */
+export const isTrustedOriginUrl = (url: string, trustedOrigin?: string) => {
+  if (!trustedOrigin) return false;
+
+  try {
+    const target = new URL(url, serverRequestBaseUrl);
+    const trusted = new URL(trustedOrigin, serverRequestBaseUrl);
+    return target.origin === trusted.origin;
+  } catch {
+    return false;
+  }
+};
+
+/**
  * 下载远程图片并返回 Buffer。
  *
  * 该函数用于文档解析链路中转存 markdown http 图片，因此默认限制为 180 秒和 10MB：
  * 先用 Content-Length 快速拒绝明显超限的资源，下载过程中再按累计字节数中断，避免
  * 第三方图片拖住解析任务或把大响应一次性读进内存。
+ *
+ * 可信 origin 通道关闭自动重定向：safe axios 的每一跳都会做内网校验，而无 SSRF 通道
+ * 一旦跟随 3xx 就会把“只放行配置 origin”扩大成任意地址，因此这里宁可让重定向失败。
  */
 export const getImageBuffer = async (
   url: string,
   options: {
     timeoutMs?: number;
     maxSize?: number;
+    /** 可信 origin（如沙箱预览代理），命中时跳过公共内网拦截。 */
+    trustedOrigin?: string;
   } = {}
 ) => {
   logger.debug('Load image to buffer', { url });
@@ -134,12 +158,24 @@ export const getImageBuffer = async (
   try {
     const timeoutMs = options.timeoutMs ?? DEFAULT_IMAGE_DOWNLOAD_TIMEOUT_MS;
     const maxSize = options.maxSize ?? DEFAULT_IMAGE_DOWNLOAD_MAX_SIZE;
-    const response = await axios.get(url, {
+    const isTrustedOrigin = isTrustedOriginUrl(url, options.trustedOrigin);
+    const requestClient = isTrustedOrigin ? axiosWithoutSSRF : axios;
+    const response = await requestClient.get(url, {
       baseURL: serverRequestBaseUrl,
       responseType: 'stream',
       timeout: timeoutMs,
-      maxContentLength: maxSize
+      maxContentLength: maxSize,
+      // 不跟随 3xx：跨 origin 跳转会绕开内网校验，同 origin 跳转也不值得放开。
+      ...(isTrustedOrigin ? { maxRedirects: 0 } : {})
     });
+
+    // 兜底校验：axios 默认 validateStatus 已拒绝非 2xx，这里再显式拒绝一次，
+    // 避免换成不抛错的自定义客户端时把跳转响应当成图片内容继续读取。
+    const status = response?.status;
+    if (typeof status === 'number' && (status < 200 || status >= 300)) {
+      response.data?.destroy?.();
+      throw new Error(`Unexpected image response status: ${status}`);
+    }
 
     const contentLength = Number(getAxiosHeaderValue(response?.headers?.['content-length']) || 0);
     if (contentLength > maxSize) {
@@ -205,6 +241,8 @@ export const getImageBase64 = async (
     timeoutMs?: number;
     maxSize?: number;
     maxBase64BufferSize?: number;
+    /** 可信 origin（如沙箱预览代理），命中时跳过公共内网拦截。 */
+    trustedOrigin?: string;
   } = {}
 ) => {
   logger.debug('Load image to base64', { url });
@@ -212,7 +250,8 @@ export const getImageBase64 = async (
   try {
     const { buffer, mime } = await getImageBuffer(url, {
       timeoutMs: options.timeoutMs,
-      maxSize: options.maxSize
+      maxSize: options.maxSize,
+      trustedOrigin: options.trustedOrigin
     });
     const maxBase64BufferSize = options.maxBase64BufferSize ?? DEFAULT_IMAGE_BASE64_MAX_BUFFER_SIZE;
 
