@@ -4,7 +4,6 @@ import type {
   ChatCompletionMessageParam,
   ChatCompletionMessageToolCall,
   ChatCompletionTool,
-  ChatCompletionToolMessageContentPart,
   CompletionFinishReason
 } from '@fastgpt/global/core/ai/llm/type';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
