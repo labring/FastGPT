@@ -316,7 +316,7 @@ export async function runOutlinkRuntime<T extends OutlinkAppType>({
         chatId,
         offset: 0,
         limit: getMaxHistoryLimitFromNodes(nodes),
-        field: `obj value`
+        field: `obj value memories`
       }),
       MongoChat.findOne(
         { ...buildChatSourceQuery(chatSource), chatId },

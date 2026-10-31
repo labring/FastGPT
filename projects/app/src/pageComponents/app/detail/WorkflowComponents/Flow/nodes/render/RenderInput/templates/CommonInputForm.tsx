@@ -8,7 +8,10 @@ import { getEditorVariables } from '@/pageComponents/app/detail/WorkflowComponen
 import { AppContext } from '@/pageComponents/app/detail/context';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { isNestedParentNodeType } from '@fastgpt/global/core/workflow/node/constant';
+import {
+  FlowNodeTypeEnum,
+  isNestedParentNodeType
+} from '@fastgpt/global/core/workflow/node/constant';
 import { getSelectedInputRenderType } from '@fastgpt/global/common/workflow/reference';
 import { workflowModelKeyMappings } from '@fastgpt/global/core/workflow/model/constants';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
@@ -17,6 +20,7 @@ import { useTranslation } from 'next-i18next';
 import React, { useCallback, useMemo } from 'react';
 import { useContextSelector } from 'use-context-selector';
 import type { RenderInputProps } from '../type';
+import ChatHistoryWindow from './ChatHistoryWindow';
 
 const CommonInputForm = ({ item, nodeId }: RenderInputProps) => {
   const { t } = useTranslation();
@@ -114,7 +118,7 @@ const CommonInputForm = ({ item, nodeId }: RenderInputProps) => {
 
   const { key: inputKey, ...inputProps } = item;
 
-  return (
+  const input = (
     <InputRender
       key={inputKey}
       inputType={inputType}
@@ -127,6 +131,22 @@ const CommonInputForm = ({ item, nodeId }: RenderInputProps) => {
       {...inputProps}
     />
   );
+  const node = getNodeById(nodeId);
+  if (
+    item.key === NodeInputKeyEnum.history &&
+    inputType === InputTypeEnum.numberInput &&
+    node?.flowNodeType === FlowNodeTypeEnum.chatNode
+  ) {
+    return (
+      <ChatHistoryWindow
+        nodeId={nodeId}
+        inputs={node.inputs}
+        fixedInput={input}
+        history={item.value}
+      />
+    );
+  }
+  return input;
 };
 
 export default React.memo(CommonInputForm);

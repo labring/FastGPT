@@ -1,4 +1,8 @@
 {
+  "history_window_enabled": "週期歷史視窗",
+  "history_window_max": "最多歷史輪數",
+  "history_window_min": "最少保留輪數",
+  "history_window_tip": "視窗增長期間保留穩定前綴，超過上限後縮回最少輪數。平均上下文會增加，快取效益取決於模型和提示內容。",
   "tool_target_already_attached": "此節點已屬於另一個工具呼叫，請先刪除原有工具連線。",
   "tool_connection_has_normal_edges": "目標節點已有一般輸入連線，請先刪除這些連線，再連接工具連接埠。",
   "Array_element": "陣列元素",

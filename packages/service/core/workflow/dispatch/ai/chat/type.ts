@@ -2,6 +2,7 @@ import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import type { ChatHistoryWindowType } from '@fastgpt/global/core/workflow/template/system/aiChat/type';
 import type {
   AIChatNodeProps,
   DispatchNodeResultType,
@@ -12,6 +13,7 @@ export type ChatProps = ModuleDispatchProps<
   AIChatNodeProps & {
     [NodeInputKeyEnum.userChatInput]?: string;
     [NodeInputKeyEnum.history]?: ChatItemMiniType[] | number;
+    [NodeInputKeyEnum.aiChatHistoryWindow]?: ChatHistoryWindowType;
     [NodeInputKeyEnum.aiChatDatasetQuote]?: SearchDataResponseItemType[];
   }
 >;

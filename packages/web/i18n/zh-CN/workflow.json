@@ -1,4 +1,8 @@
 {
+  "history_window_enabled": "周期历史窗口",
+  "history_window_max": "最大历史轮数",
+  "history_window_min": "最小保留轮数",
+  "history_window_tip": "窗口增长期间保留稳定前缀，超过上限后缩回最小轮数。平均上下文会增加，缓存收益取决于模型和提示内容。",
   "tool_target_already_attached": "该节点已属于另一个工具调用，请先删除原有工具连线。",
   "tool_connection_has_normal_edges": "目标节点已有普通入边，请先删除这些连线，再连接工具端口。",
   "Array_element": "数组元素",

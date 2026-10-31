@@ -2,7 +2,15 @@ import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runti
 import { dispatchChatCompletion } from '@fastgpt/service/core/workflow/dispatch/ai/chat/dispatchChatCompletion';
 import { createNodeSummary } from '@fastgpt/service/core/workflow/dispatch/utils/summary';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { ChatFileTypeEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import {
+  ChatFileTypeEnum,
+  ChatRoleEnum,
+  ChatSourceTypeEnum
+} from '@fastgpt/global/core/chat/constants';
+import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
+import { getChatItems } from '@fastgpt/service/core/chat/controller';
+import { getMaxHistoryLimitFromNodes } from '@fastgpt/global/core/workflow/runtime/utils';
+import { AiChatModule } from '@fastgpt/global/core/workflow/template/system/aiChat';
 import {
   NodeInputKeyEnum,
   VariableInputEnum,
@@ -19,8 +27,10 @@ import { WorkflowVariableState } from '@fastgpt/service/core/workflow/dispatch/u
 const fixture = vi.hoisted(() => ({
   requestMock: vi.fn(),
   useRealFileFlow: false,
+  useRealDatasetCite: false,
   modelSupportsAudio: false,
-  modelSupportsVideo: false
+  modelSupportsVideo: false,
+  maxContext: 8192
 }));
 const { requestMock } = fixture;
 vi.mock('@fastgpt/service/core/ai/llm/request', () => ({ createLLMResponse: fixture.requestMock }));
@@ -35,7 +45,7 @@ vi.mock('@fastgpt/service/core/ai/model/catalog/service', () => ({
       name: 'model',
       config: {
         maxResponse: 4096,
-        maxContext: 8192,
+        maxContext: fixture.maxContext,
         audio: fixture.modelSupportsAudio,
         video: fixture.modelSupportsVideo
       }
@@ -45,7 +55,7 @@ vi.mock('@fastgpt/service/core/ai/model/catalog/service', () => ({
       name: 'model',
       config: {
         maxResponse: 4096,
-        maxContext: 8192,
+        maxContext: fixture.maxContext,
         audio: fixture.modelSupportsAudio,
         video: fixture.modelSupportsVideo
       }
@@ -63,9 +73,17 @@ vi.mock('@fastgpt/service/core/workflow/dispatch/ai/chat/chatMessages', async (i
       fixture.useRealFileFlow ? mod.getChatMessages(props) : []
   };
 });
-vi.mock('@fastgpt/service/core/workflow/dispatch/ai/chat/datasetCite', () => ({
-  getDatasetCiteData: async () => ({ userInput: 'question' })
-}));
+vi.mock('@fastgpt/service/core/workflow/dispatch/ai/chat/datasetCite', async (importOriginal) => {
+  const mod =
+    await importOriginal<
+      typeof import('@fastgpt/service/core/workflow/dispatch/ai/chat/datasetCite')
+    >();
+  return {
+    ...mod,
+    getDatasetCiteData: (props: Parameters<typeof mod.getDatasetCiteData>[0]) =>
+      fixture.useRealDatasetCite ? mod.getDatasetCiteData(props) : { userInput: 'question' }
+  };
+});
 vi.mock('@fastgpt/service/core/workflow/dispatch/ai/chat/fileContext', async (importOriginal) => {
   const mod =
     await importOriginal<
@@ -290,6 +308,162 @@ describe('dispatchChatCompletion media file inputs', () => {
       );
       expect(head).toHaveBeenCalledTimes(media === 'video' ? 1 : 0);
       expect(get).not.toHaveBeenCalled();
+    }
+  );
+});
+
+// 真实 Mongo 读写模拟多次独立请求，验证加载上限和落库 memory 共同维持窗口。
+describe('periodic chat history across persisted rounds', () => {
+  afterEach(() => {
+    fixture.useRealFileFlow = false;
+    fixture.useRealDatasetCite = false;
+    fixture.maxContext = 8192;
+    requestMock.mockReset();
+  });
+
+  it('周期窗口仍受最终 token 上限约束，模型失败时不推进窗口状态', async () => {
+    fixture.useRealFileFlow = true;
+    fixture.useRealDatasetCite = true;
+    fixture.maxContext = 3;
+    const histories = Array.from({ length: 4 }, (_, index) => [
+      { dataId: `r${index}`, obj: ChatRoleEnum.Human, value: [{ text: { content: `q${index}` } }] },
+      { dataId: `r${index}`, obj: ChatRoleEnum.AI, value: [{ text: { content: `a${index}` } }] }
+    ]).flat();
+    const props = {
+      node: { ...AiChatModule, nodeId: 'chat' },
+      histories,
+      responseChatItemId: 'current',
+      runningAppInfo: { sourceType: ChatSourceTypeEnum.app, sourceId: 'source', teamId: 'team' },
+      runningUserInfo: { teamId: 'team', tmbId: 'member' },
+      externalProvider: {},
+      checkIsStopping: () => false,
+      params: {
+        history: 6,
+        aiChatHistoryWindow: { min: 2, max: 4 },
+        systemPrompt: 'system',
+        userChatInput: 'current',
+        maxToken: 1
+      },
+      usagePush: vi.fn(),
+      nodeSummary: createNodeSummary()
+    };
+    for (const error of [undefined, 'model failed']) {
+      let sent: ChatCompletionMessageParam[] = [];
+      requestMock.mockImplementationOnce(async ({ body }) => {
+        sent = await loadRequestMessages({ messages: body.messages });
+        return {
+          completeMessages: sent,
+          answerText: 'answer',
+          finish_reason: 'stop',
+          requestId: 'req',
+          usage: { inputTokens: 1, outputTokens: 1 },
+          error
+        };
+      });
+      const result = await dispatchChatCompletion(props as any);
+      expect(sent.map((message) => message.content)).toEqual(['system', 'current']);
+      if (error) expect(result[DispatchNodeResponseKeyEnum.memories]).toBeUndefined();
+      else expect(result[DispatchNodeResponseKeyEnum.memories]).toBeDefined();
+    }
+  });
+
+  it.each([false, true])(
+    '保持增长期的实际请求前缀，并跨越加载上限重置窗口（stream=%s）',
+    async (stream) => {
+      fixture.useRealFileFlow = true;
+      fixture.useRealDatasetCite = true;
+      const sourceId = '67e0d5535c02d1d5cdede71f';
+      const teamId = '654a4107c32f3bf5f998452f';
+      const tmbId = '65ab7007462ada7dbb899948';
+      const node = {
+        ...AiChatModule,
+        nodeId: 'chat',
+        inputs: [
+          ...AiChatModule.inputs.filter((input) => input.key !== 'aiChatHistoryWindow'),
+          {
+            key: 'aiChatHistoryWindow',
+            value: { min: 6, max: 12 },
+            label: '',
+            renderTypeList: [],
+            valueType: WorkflowIOValueTypeEnum.object
+          }
+        ]
+      };
+      let previousRequest: ChatCompletionMessageParam[] = [];
+      for (let round = 0; round < 30; round++) {
+        const { histories } = await getChatItems({
+          sourceType: ChatSourceTypeEnum.app,
+          sourceId,
+          chatId: 'periodic',
+          offset: 0,
+          limit: getMaxHistoryLimitFromNodes([node as any]),
+          field: 'obj value memories'
+        });
+        let sent: ChatCompletionMessageParam[] = [];
+        requestMock.mockImplementationOnce(async ({ body }) => {
+          sent = await loadRequestMessages({ messages: body.messages });
+          return {
+            completeMessages: [...sent, { role: 'assistant', content: `answer-${round}` }],
+            answerText: `answer-${round}`,
+            finish_reason: 'stop',
+            requestId: `req-${round}`,
+            usage: { inputTokens: 1, outputTokens: 1 }
+          };
+        });
+        const result = await dispatchChatCompletion({
+          node,
+          histories,
+          stream,
+          responseChatItemId: `round-${round}`,
+          runningAppInfo: { sourceType: ChatSourceTypeEnum.app, sourceId, teamId },
+          runningUserInfo: { teamId, tmbId },
+          externalProvider: {},
+          checkIsStopping: () => false,
+          params: {
+            userChatInput: `question-${round}`,
+            systemPrompt: 'Stable system',
+            history: 6,
+            aiChatHistoryWindow: { min: 6, max: 12 },
+            maxToken: 1
+          },
+          usagePush: vi.fn(),
+          nodeSummary: createNodeSummary()
+        } as any);
+        expect(result.error).toBeUndefined();
+        const kept = round <= 12 ? round : 6 + ((round - 6) % 7);
+        const first = round - kept;
+        expect(
+          sent.filter((message) => message.role === 'user').map((message) => message.content)
+        ).toEqual(Array.from({ length: kept + 1 }, (_, index) => `question-${first + index}`));
+        // 增长阶段保留上一请求的完整消息前缀；缩窗发生时允许前缀改变。
+        if (round > 0 && kept !== 6) {
+          expect(sent.slice(0, previousRequest.length)).toEqual(previousRequest);
+        }
+        previousRequest = sent;
+        await MongoChatItem.create([
+          {
+            appId: sourceId,
+            sourceType: ChatSourceTypeEnum.app,
+            teamId,
+            tmbId,
+            chatId: 'periodic',
+            dataId: `round-${round}`,
+            obj: ChatRoleEnum.Human,
+            value: [{ text: { content: `question-${round}` } }]
+          },
+          {
+            appId: sourceId,
+            sourceType: ChatSourceTypeEnum.app,
+            teamId,
+            tmbId,
+            chatId: 'periodic',
+            dataId: `round-${round}`,
+            obj: ChatRoleEnum.AI,
+            value: [{ text: { content: `answer-${round}` } }],
+            memories: result[DispatchNodeResponseKeyEnum.memories]
+          }
+        ]);
+      }
     }
   );
 });
