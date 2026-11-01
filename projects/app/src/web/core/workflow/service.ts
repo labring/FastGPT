@@ -1,4 +1,5 @@
-import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import { getWorkflowSandboxCheckData } from '@/web/core/workflow/sandbox';
+import type { FlowNodeItemType, StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import type { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
@@ -16,6 +17,9 @@ export const checkStoreWorkflowBeforeRunOrPublish = async ({
   edges: storeEdges,
   appId,
   chatConfig,
+  resourceNodes,
+  checkAgentResources,
+  sandbox = getWorkflowSandboxCheckData(),
   t
 }: {
   nodes: StoreNodeItemType[];
@@ -23,6 +27,9 @@ export const checkStoreWorkflowBeforeRunOrPublish = async ({
   appId?: string;
   chatConfig?: AppChatConfigType;
   t: TFunction;
+  resourceNodes?: Pick<FlowNodeItemType, 'nodeId' | 'inputs'>[];
+  checkAgentResources?: boolean;
+  sandbox?: Parameters<typeof checkWorkflowBeforeRunOrPublish>[0]['sandbox'];
 }) => {
   const toolNodeIds = new Set(
     storeEdges
@@ -39,6 +46,9 @@ export const checkStoreWorkflowBeforeRunOrPublish = async ({
   const edges = storeEdges.map((edge) => storeEdge2RenderEdge({ edge }));
 
   return checkWorkflowBeforeRunOrPublish({
+    sandbox,
+    resourceNodes,
+    checkAgentResources,
     nodes,
     edges,
     modelData: await getWorkflowModelCheckData({ nodes, chatConfig, appId }),

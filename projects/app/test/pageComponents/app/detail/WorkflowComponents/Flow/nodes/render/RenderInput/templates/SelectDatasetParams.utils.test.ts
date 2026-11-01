@@ -1,11 +1,34 @@
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { describe, expect, it } from 'vitest';
 import {
   getDatasetSearchParamInputs,
   getDatasetSearchParams
 } from '@/pageComponents/app/detail/WorkflowComponents/Flow/nodes/render/RenderInput/templates/SelectDatasetParams.utils';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
+import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { AgentNode } from '@fastgpt/global/core/workflow/template/system/agent';
+import { DatasetSearchModule } from '@fastgpt/global/core/workflow/template/system/datasetSearch';
+import type { ReferenceItemValueType } from '@fastgpt/global/core/workflow/type/io';
+import { nodeInputIsReference } from '@fastgpt/global/common/workflow/reference';
+import { normalizeFlowNodeInputType } from '@fastgpt/global/core/app/formEdit/utils';
+import { createEmptyTagFilterValue } from '@fastgpt/global/core/dataset/search/tagFilter/type';
 
 describe('getDatasetSearchParams', () => {
+  it('matches runtime precedence for legacy nested parameters without losing false or zero', () => {
+    const params = getDatasetSearchParams([
+      {
+        key: NodeInputKeyEnum.datasetParams,
+        value: { similarity: 0, usingReRank: false, rerankModelId: 'legacy-model' }
+      },
+      { key: 'similarity', value: 0.5 },
+      { key: 'usingReRank', value: true }
+    ]);
+    expect(params).toMatchObject({
+      similarity: 0,
+      usingReRank: false,
+      rerankModelId: 'legacy-model'
+    });
+  });
   it.each([undefined, null, false])(
     'keeps absent or disabled feature switches off in the summary (%s)',
     (value) => {
@@ -25,24 +48,27 @@ describe('getDatasetSearchParams', () => {
     }
   );
   it('shows only persisted model choices and can read initially empty keys', () => {
-    expect(getDatasetSearchParams([]).datasetSearchExtensionModelId).toBeUndefined();
+    const empty = getDatasetSearchParams([]);
+    expect(empty.datasetSearchExtensionModelId).toBeUndefined();
+    expect(empty.collectionFilterMatch).toBeUndefined();
     const input = { key: 'datasetSearchExtensionModelId', value: 'chosen' };
     expect(getDatasetSearchParams([input]).datasetSearchExtensionModelId).toBe('chosen');
     expect(
       getDatasetSearchParams([{ ...input, value: null }]).datasetSearchExtensionModelId
     ).toBeUndefined();
     expect(
-      getDatasetSearchParams([{ key: 'datasetSearchUsingExtensionQuery', value: false }])
-        .datasetSearchUsingExtensionQuery
-    ).toBe(false);
+      getDatasetSearchParams([{ key: 'collectionFilterMatch', value: '{"and":["tag1"]}' }])
+        .collectionFilterMatch
+    ).toBe('{"and":["tag1"]}');
   });
 });
 describe('getDatasetSearchParamInputs', () => {
-  it('materializes missing canonical model inputs and preserves existing metadata', () => {
+  it('materializes missing canonical model inputs as hidden and preserves existing metadata', () => {
     const values = {
       searchMode: DatasetSearchModeEnum.embedding,
       datasetSearchUsingExtensionQuery: true,
-      datasetSearchExtensionModelId: 'chosen'
+      datasetSearchExtensionModelId: 'chosen',
+      collectionFilterMatch: '{"and":["tag1"]}'
     };
     const inputs = getDatasetSearchParamInputs({ inputs: [], values });
     expect(inputs).toEqual(
@@ -51,6 +77,11 @@ describe('getDatasetSearchParamInputs', () => {
           key: 'datasetSearchExtensionModelId',
           value: 'chosen',
           renderTypeList: ['hidden']
+        }),
+        expect.objectContaining({
+          key: 'collectionFilterMatch',
+          value: '{"and":["tag1"]}',
+          renderTypeList: ['hidden', 'reference']
         })
       ])
     );
@@ -66,6 +97,58 @@ describe('getDatasetSearchParamInputs', () => {
     expect(getDatasetSearchParams(next).datasetSearchExtensionModelId).toBe('changed');
     expect(original.find((i) => i.key === 'datasetSearchExtensionModelId')?.value).toBe('chosen');
   });
+  it.each([AgentNode, DatasetSearchModule])(
+    'syncs filter modes and legacy settings for $flowNodeType',
+    (template) => {
+      const reference: ReferenceItemValueType = ['upstream', 'filterJson'];
+      const values = {
+        collectionFilterMatch: reference,
+        similarity: 0,
+        usingReRank: false,
+        datasets: [
+          { datasetId: 'new-dataset', name: 'New', avatar: '', vectorModel: { model: 'embedding' } }
+        ]
+      };
+      const legacyInput = {
+        key: NodeInputKeyEnum.datasetParams,
+        label: '',
+        renderTypeList: [FlowNodeInputTypeEnum.hidden],
+        value: { datasets: [{ datasetId: 'dataset-1' }], usingReRank: true }
+      };
+      const inputs = getDatasetSearchParamInputs({
+        inputs: [...template.inputs, legacyInput],
+        values
+      });
+      expect(nodeInputIsReference(normalizeFlowNodeInputType(inputs[0]))).toBe(true);
+      expect(getDatasetSearchParams(inputs)).toMatchObject({
+        collectionFilterMatch: reference,
+        similarity: 0,
+        usingReRank: false
+      });
+      expect(inputs.at(-1)?.value).toMatchObject(values);
+      expect(
+        inputs.find((input) => input.key === NodeInputKeyEnum.datasetSelectList)?.value
+      ).toEqual(values.datasets);
+
+      const [manualInput] = getDatasetSearchParamInputs({
+        inputs,
+        values: { collectionFilterMatch: { ...createEmptyTagFilterValue(), open: true } }
+      });
+      expect(manualInput.selectedType).toBe(
+        template.inputs.find((input) => input.key === NodeInputKeyEnum.collectionFilterMatch)
+          ?.renderTypeList[0]
+      );
+
+      const clearedInputs = getDatasetSearchParamInputs({
+        inputs,
+        values: { collectionFilterMatch: undefined }
+      });
+      expect(getDatasetSearchParams(clearedInputs).collectionFilterMatch).toBeUndefined();
+      expect(clearedInputs.at(-1)?.value.collectionFilterMatch).toBeUndefined();
+      expect(legacyInput.value.usingReRank).toBe(true);
+    }
+  );
+
   it('does not create inputs for unknown legacy-only keys', () => {
     expect(
       getDatasetSearchParamInputs({

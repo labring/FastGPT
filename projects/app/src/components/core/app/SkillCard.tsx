@@ -61,6 +61,7 @@ const SkillCard = React.memo(function SkillCard({
       nameFontWeight={nameFontWeight}
       isUnavailable={hasError}
       tooltipLabel={tooltipLabel}
+      showTooltipOnlyWhenOverflow={!hasError && !skill.description}
       errorText={errorText}
       flexProps={{ p: 2.5, ...flexProps }}
       actions={
@@ -79,5 +80,33 @@ const SkillCard = React.memo(function SkillCard({
     />
   );
 });
+
+/** 已选技能列表的共同入口；紧凑样式用于工作流节点，错误态和删除行为保持一致。 */
+export const AgentSkillCardList = ({
+  skills,
+  onDelete,
+  compact = false
+}: {
+  skills: SelectedAgentSkillItemType[];
+  onDelete: (skillId: string) => void;
+  compact?: boolean;
+}) => (
+  <>
+    {skills.map((skill) => (
+      <SkillCard
+        key={skill.skillId}
+        skill={skill}
+        onDelete={onDelete}
+        {...(compact
+          ? {
+              avatarSize: '18px',
+              nameFontWeight: 'medium',
+              flexProps: { h: 10, px: 3, py: 2.5, boxShadow: 'none' }
+            }
+          : {})}
+      />
+    ))}
+  </>
+);
 
 export default SkillCard;

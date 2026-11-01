@@ -17,7 +17,11 @@ import { prepareSandboxToolRuntime } from '../../../../ai/sandbox/application/to
 import { postTextCensor } from '../../../../chat/postTextCensor';
 import { readWorkflowFileBuffer } from '../../../utils/context';
 import { loadWorkflowModelResource } from '../../../resource/service';
-import { getAgentLoopHistories, getNodeErrResponse } from '../../utils';
+import {
+  getAgentLoopHistories,
+  getNodeErrResponse,
+  removeUnfinishedInteractiveHistories
+} from '../../utils';
 import { WorkflowMemoryState } from '../../../memory/state';
 import { buildAgentLoopCoreRequestMessages } from '../agentLoopCore/application/context/messages';
 import { createAgentLoopCoreChildInteractiveParams } from '../agentLoopCore/adapter/interactive/child';
@@ -238,6 +242,10 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
       firstTokenTime
     });
 
+    const rewrittenHistories = lastInteractive
+      ? removeUnfinishedInteractiveHistories(histories)
+      : undefined;
+
     if (error) {
       return {
         ...getNodeErrResponse({
@@ -246,6 +254,9 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
           [DispatchNodeResponseKeyEnum.runTimes]: runTimes,
           [DispatchNodeResponseKeyEnum.memories]: systemMemories
         }),
+        ...(rewrittenHistories
+          ? { [DispatchNodeResponseKeyEnum.rewriteHistories]: rewrittenHistories }
+          : {}),
         [DispatchNodeResponseKeyEnum.assistantResponses]: isResponseAnswerText
           ? assistantResponses
           : undefined
@@ -276,6 +287,9 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
         ? assistantResponses
         : undefined,
       [DispatchNodeResponseKeyEnum.memories]: systemMemories,
+      ...(rewrittenHistories
+        ? { [DispatchNodeResponseKeyEnum.rewriteHistories]: rewrittenHistories }
+        : {}),
       [DispatchNodeResponseKeyEnum.nodeResponse]: nodeResponse,
       [DispatchNodeResponseKeyEnum.interactive]: toolWorkflowInteractiveResponse
     };

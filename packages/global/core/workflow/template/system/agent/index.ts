@@ -15,14 +15,16 @@ import {
 import {
   Input_Template_Dataset_Tag_Filter_Version,
   Input_Template_File_Link,
+  Input_Template_History,
   Input_Template_SettingAiModel,
   Input_Template_System_Prompt,
   Input_Template_UserChatInput
 } from '../../input';
-import { chatNodeSystemPromptTip, systemPromptTip } from '../../tip';
+import { systemPromptTip } from '../../tip';
 import { i18nT } from '../../../../../common/i18n/utils';
 import { Output_Template_Error_Message } from '../../output';
 import { DatasetSearchModeEnum } from '../../../../dataset/constants';
+import { createHideInContext } from '../../context';
 
 export const AgentNode: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.agent,
@@ -30,12 +32,14 @@ export const AgentNode: FlowNodeTemplateType = {
   templateType: FlowNodeTemplateTypeEnum.ai,
   showSourceHandle: true,
   showTargetHandle: true,
-  avatar: 'core/app/type/agentFill',
+  avatar: 'core/workflow/template/agent',
   avatarLinear: 'core/workflow/template/agentLinear',
   colorSchema: 'emerald',
   name: i18nT('workflow:template.agent_module'),
   intro: i18nT('workflow:template.agent_module_intro'),
   showStatus: true,
+  isTool: true,
+  isShowInContext: createHideInContext([{ parentType: FlowNodeTypeEnum.parallelRun }]),
   catchError: false,
   version: '4.17.0',
   inputs: [
@@ -129,21 +133,20 @@ export const AgentNode: FlowNodeTemplateType = {
       ...Input_Template_System_Prompt,
       label: i18nT('common:core.ai.Prompt'),
       description: systemPromptTip,
-      placeholder: chatNodeSystemPromptTip
+      placeholder: i18nT('workflow:agent.prompt_placeholder')
     },
-    Input_Template_File_Link,
-    Input_Template_UserChatInput,
     {
       key: NodeInputKeyEnum.useAgentSandbox,
       renderTypeList: [FlowNodeInputTypeEnum.switch],
       label: i18nT('app:use_agent_sandbox'),
       description: i18nT('app:use_computer_desc'),
       valueType: WorkflowIOValueTypeEnum.boolean,
+      canAgentGenerated: false,
       value: false
     },
     {
       key: NodeInputKeyEnum.sandboxEntrypoint,
-      renderTypeList: [FlowNodeInputTypeEnum.custom],
+      renderTypeList: [FlowNodeInputTypeEnum.hidden],
       label: '',
       valueType: WorkflowIOValueTypeEnum.string
     },
@@ -168,15 +171,16 @@ export const AgentNode: FlowNodeTemplateType = {
     // Dataset
     {
       key: NodeInputKeyEnum.datasetSelectList,
-      renderTypeList: [FlowNodeInputTypeEnum.selectDataset],
-      label: i18nT('common:core.module.input.label.Select dataset'),
+      renderTypeList: [FlowNodeInputTypeEnum.selectDataset, FlowNodeInputTypeEnum.reference],
+      label: i18nT('common:core.dataset.Dataset'),
       value: [],
       valueType: WorkflowIOValueTypeEnum.selectDataset,
+      canAgentGenerated: false,
       valueDesc: datasetSelectValueDesc
     },
     {
       key: NodeInputKeyEnum.datasetSimilarity,
-      renderTypeList: [FlowNodeInputTypeEnum.selectDatasetParamsModal],
+      renderTypeList: [FlowNodeInputTypeEnum.hidden],
       label: '',
       value: 0.4,
       valueType: WorkflowIOValueTypeEnum.number
@@ -227,7 +231,7 @@ export const AgentNode: FlowNodeTemplateType = {
       renderTypeList: [FlowNodeInputTypeEnum.hidden],
       label: '',
       valueType: WorkflowIOValueTypeEnum.boolean,
-      value: true
+      value: false
     },
     {
       key: NodeInputKeyEnum.datasetSearchExtensionModelId,
@@ -252,13 +256,19 @@ export const AgentNode: FlowNodeTemplateType = {
     Input_Template_Dataset_Tag_Filter_Version,
     {
       key: NodeInputKeyEnum.collectionFilterMatch,
-      renderTypeList: [FlowNodeInputTypeEnum.datasetTagFilter, FlowNodeInputTypeEnum.reference],
+      renderTypeList: [FlowNodeInputTypeEnum.hidden, FlowNodeInputTypeEnum.reference],
       label: i18nT('workflow:tag_filter'),
       valueType: WorkflowIOValueTypeEnum.string,
       isPro: true,
       description: i18nT('workflow:tag_filter_description'),
       valueDesc: datasetTagFilterValueDesc
-    }
+    },
+    Input_Template_History,
+    {
+      ...Input_Template_File_Link,
+      toolDescription: i18nT('app:workflow.user_file_input')
+    },
+    Input_Template_UserChatInput
   ],
   outputs: [
     {

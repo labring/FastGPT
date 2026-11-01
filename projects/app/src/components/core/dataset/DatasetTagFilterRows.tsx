@@ -565,20 +565,32 @@ export const useDatasetTagFilterPrune = ({
   );
 
   useEffect(() => {
-    if (
-      loading ||
-      error ||
-      !shouldFetch ||
-      data?.key !== datasetIdsKey ||
-      !isDatasetTagFilterValue(value)
-    ) {
+    if (!isDatasetTagFilterValue(value)) return;
+    if (datasetIds.length === 0) {
+      const next = pruneTagFilterConditions(value, []);
+      if (JSON.stringify(next) !== JSON.stringify(value)) {
+        onChange(next);
+      }
+      return;
+    }
+    if (loading || error || !shouldFetch || data?.key !== datasetIdsKey) {
       return;
     }
 
     const next = pruneTagFilterConditions(value, options);
     if (JSON.stringify(next) === JSON.stringify(value)) return;
     onChange(next);
-  }, [data?.key, datasetIdsKey, error, loading, onChange, options, shouldFetch, value]);
+  }, [
+    data?.key,
+    datasetIds.length,
+    datasetIdsKey,
+    error,
+    loading,
+    onChange,
+    options,
+    shouldFetch,
+    value
+  ]);
 
   return { options };
 };

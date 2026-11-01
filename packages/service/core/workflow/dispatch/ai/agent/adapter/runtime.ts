@@ -116,8 +116,10 @@ export const createWorkflowAgentLoopRuntime = ({
       environment: {
         node: context.node,
         workflowStreamResponse,
-        streamReasoning: context.params.aiChatReasoning !== false,
-        shouldStreamTool: () => true,
+        streamAnswer: context.params.isResponseAnswerText !== false,
+        streamReasoning:
+          context.params.isResponseAnswerText !== false && context.params.aiChatReasoning !== false,
+        shouldStreamTool: () => context.params.isResponseAnswerText !== false,
         nodeResponses: artifacts.nodeResponses,
         appendNodeResponse,
         getToolInfo
@@ -125,6 +127,7 @@ export const createWorkflowAgentLoopRuntime = ({
       llmParams: {
         model: context.modelData,
         reasoningEffort: context.params.aiChatReasoningEffort,
+        maxTokens: context.params.maxToken,
         userKey: context.externalProvider.openaiAccount,
         stream: context.stream,
         useVision: context.params.aiChatVision,

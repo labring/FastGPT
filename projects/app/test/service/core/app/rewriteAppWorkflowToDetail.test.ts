@@ -1,3 +1,4 @@
+import { serializeAgentTool } from '@fastgpt/global/core/app/formEdit/utils';
 import { getModelTestDefaults } from '@test/modelCache';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MongoAgentSkills } from '@fastgpt/service/core/ai/skill/model/schema';
@@ -63,6 +64,7 @@ describe('rewriteAppWorkflowToDetail - current workflow tool inputs', () => {
             value: [
               {
                 id: 'systemTool-missing',
+                metadataLocale: 'zh-CN',
                 version: 'v1',
                 source: 'debug:tmbId:tmb-1',
                 config: { apiKey: 'saved' },
@@ -85,12 +87,19 @@ describe('rewriteAppWorkflowToDetail - current workflow tool inputs', () => {
 
     expect(tool).toMatchObject({
       pluginId: 'systemTool-missing',
+      metadataLocale: 'zh-CN',
       source: 'debug:tmbId:tmb-1',
       version: 'v1',
       config: { apiKey: 'saved' }
     });
-    expect(tool.inputs).toEqual([{ key: 'query', mode: 'agentGenerated' }]);
+    expect(tool.inputs).toEqual([]);
+    expect(tool.rawInputs).toEqual([{ key: 'query', mode: 'agentGenerated' }]);
     expect(tool.pluginData.error).toContain('Tool deleted');
+    expect(serializeAgentTool({ tool })).toMatchObject({
+      id: 'systemTool-missing',
+      config: { apiKey: 'saved' },
+      inputs: [{ key: 'query', mode: 'agentGenerated' }]
+    });
   });
 
   it('marks tool as resource_no_permission and preserves snapshot name/avatar when unauthorized', async () => {
@@ -1699,7 +1708,8 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
         pluginData: {
           error: '调试插件元数据不存在: debug:tmbId:tmb-1'
         },
-        configStatus: 'invalid'
+        inputs: [],
+        rawInputs: undefined
       }
     ]);
   });

@@ -54,7 +54,10 @@ enum SearchSettingTabEnum {
   queryExtension = 'queryExtension'
 }
 
-type DatasetParamsModalFormType = Omit<AppDatasetSearchParamsType, 'collectionFilterMatch'> & {
+export type DatasetParamsModalFormType = Omit<
+  AppDatasetSearchParamsType,
+  'collectionFilterMatch'
+> & {
   collectionFilterMatch?:
     | AppDatasetSearchParamsType['collectionFilterMatch']
     | ReferenceItemValueType

@@ -4,7 +4,7 @@ import type {
   SelectedAgentSkillItemType
 } from '@fastgpt/global/core/app/formEdit/type';
 import type { AgentToolType } from '@fastgpt/global/core/app/tool/type';
-import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatRoleEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import type {
   AIChatItemValueItemType,
   ChatHistoryItemResType,
@@ -25,8 +25,12 @@ import {
 import { getWorkflowFileMaxAmount } from '../../../utils/context';
 import { loadWorkflowModelResource } from '../../../resource/service';
 import { runtimeSummaryToNodeSummary, stripNodeSummaryErrorFields } from '../../utils/summary';
-import { getNodeErrResponse } from '../../utils';
-import { WorkflowMemoryState } from '../../../memory/state';
+import { getNodeErrResponse, removeUnfinishedInteractiveHistories } from '../../utils';
+import {
+  getWorkflowNodeMemoryKey,
+  readWorkflowNodeMemory,
+  WorkflowMemoryState
+} from '../../../memory/state';
 import {
   buildAgentLoopCoreDoneMemories,
   buildAgentLoopCoreFinalAssistantOutput,
@@ -54,6 +58,8 @@ export type DispatchAgentModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.aiChatAudio]?: boolean;
   [NodeInputKeyEnum.aiChatVideo]?: boolean;
   [NodeInputKeyEnum.aiChatExtractFiles]?: boolean;
+  [NodeInputKeyEnum.aiChatMaxToken]?: number;
+  [NodeInputKeyEnum.aiChatIsResponseText]?: boolean;
   [NodeInputKeyEnum.aiChatReasoning]?: boolean;
   [NodeInputKeyEnum.aiChatReasoningEffort]?: ReasoningEffort;
   [NodeInputKeyEnum.fileUrlList]?: string[];
@@ -95,7 +101,7 @@ type Response = DispatchNodeResultType<{
 
 /**
  * Agent 节点入口。
- * 负责准备历史、文件、工具和能力插件，并仅为 Pi 保留原生恢复状态，然后把实际循环执行交给统一 agentLoop 入口。
+ * 负责准备历史、文件、工具和能力插件，维护节点级交互恢复状态，然后把实际循环执行交给统一 agentLoop 入口。
  */
 export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise<Response> => {
   // assistantResponses 贯穿整轮 dispatch；Agent 内部 nodeResponse 由 sink 逐条发布。
@@ -113,7 +119,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     nodeResponseCollector.appendNodeResponse(response);
 
   const {
-    node: { nodeId, inputs },
+    node: { nodeId, inputs, catchError },
     lang,
     histories,
     query,
@@ -138,6 +144,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       sandboxEntrypoint,
       modelId,
       model,
+      isResponseAnswerText = true,
       aiChatReasoning
     }
   } = props;
@@ -190,6 +197,25 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     history,
     hasInteractiveResume: !!lastInteractive
   });
+  // FastAgent 作为子工具或子应用运行时，其输出在父级历史中会被标记为 displayOnly 或跨轮置空。
+  // 交互恢复时优先从节点作用域 memoryState 恢复暂停前保存的完整 transcript，缺省再回退到历史。
+  const storedMemory =
+    provider === 'fastAgent' && lastInteractive
+      ? readWorkflowNodeMemory<ChatItemMiniType[]>({
+          memoryState,
+          runningAppInfo,
+          nodeId,
+          history,
+          histories,
+          hasInteractiveResume: true
+        })
+      : undefined;
+  const restoredMessages =
+    Array.isArray(storedMemory) && storedMemory.length > 0 ? storedMemory : undefined;
+  const buildClearedNodeMemories = () =>
+    provider === 'piAgent' || restoredMessages !== undefined
+      ? buildAgentLoopCoreDoneMemories({ memoryState, runningAppInfo, nodeId })
+      : undefined;
   const buildAgentMemories = (ownMemories?: Record<string, any>) => {
     const merged = {
       ...agentMemoryState.getDelta(),
@@ -204,7 +230,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
 
     const userContext = await useUserContext({
       history,
-      histories,
+      histories: restoredMessages ? [] : histories,
       currentFiles: fileLinks,
       currentUserInput: userChatInput,
       currentQuery: query,
@@ -251,16 +277,17 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       skillInfos,
       currentWorkingDirectory
     });
+    const baseHistories = restoredMessages ?? rewrittenHistories;
 
     // 转化成请求的 messages
     // 交互恢复时，query 只是用户对交互节点的回答/恢复参数，provider 会把它写入
     // 对应的 tool response；不能再次作为新的 user message 追加到模型上下文。
     const requestMessages =
       provider === 'fastAgent' && lastInteractive?.type === 'agentAsk'
-        ? [...rewrittenHistories, { ...currentUserMessage, value: query }]
+        ? [...baseHistories, { ...currentUserMessage, value: query }]
         : lastInteractive
-          ? rewrittenHistories
-          : [...rewrittenHistories, currentUserMessage];
+          ? baseHistories
+          : [...baseHistories, currentUserMessage];
     const loopMessages = buildAgentLoopCoreRequestMessages({
       messages: requestMessages,
       removeSystemMessages: true
@@ -300,7 +327,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         completionTools: agentCompletionTools,
         currentFiles: userContext.currentFiles,
         sandboxClient,
-        streamResponseFn: workflowStreamResponse
+        streamResponseFn: isResponseAnswerText ? workflowStreamResponse : undefined
       },
       usagePush,
       workflowStreamResponse,
@@ -317,7 +344,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     });
 
     // providerState 统一保存 provider 内部恢复信息。
-    // FastAgent 只使用 ChatItem；Pi 暂时保留其原生 providerState。
+    // FastAgent 使用 ChatItem 重建消息；Pi 暂时保留其原生 providerState。
     const restoredMemory =
       provider === 'piAgent'
         ? readAgentLoopCoreProviderStateMemory({
@@ -329,7 +356,9 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
             nodeId
           })
         : {};
-    const activePlan = readAgentLoopCoreActivePlan({ histories });
+    const activePlan = readAgentLoopCoreActivePlan({
+      histories: restoredMessages ?? histories
+    });
     const { providerState: runtimeProviderState, isAskResume } =
       prepareAgentLoopCoreProviderRunState({
         restoredProviderState: restoredMemory.providerState,
@@ -381,66 +410,81 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
               nodeId,
               providerState: outputSummary.providerState
             })
-          : undefined
+          : {
+              [getWorkflowNodeMemoryKey({ memoryState, runningAppInfo, nodeId })]: [
+                ...requestMessages,
+                {
+                  dataId: responseChatItemId,
+                  obj: ChatRoleEnum.AI,
+                  value: outputAssistantResponses
+                }
+              ] satisfies ChatItemMiniType[]
+            }
       );
       return {
-        [DispatchNodeResponseKeyEnum.assistantResponses]: outputAssistantResponses,
+        [DispatchNodeResponseKeyEnum.assistantResponses]: isResponseAnswerText
+          ? outputAssistantResponses
+          : undefined,
         [DispatchNodeResponseKeyEnum.memories]: interactiveMemories,
         [DispatchNodeResponseKeyEnum.interactive]: outputSummary.interactive
       };
     }
 
     // 4. 结束态归一化。
-    // done 正常落 answer；error/aborted 转成可见文本，同时保留 error 输出给 workflow。
+    // done 正常落 answer；error/aborted 在未开启异常捕获时转成可见文本，开启 catchError 时仅通过 errorText 分支暴露。
+    const finalTextForBubble =
+      coreResult.status === 'error' && catchError ? '' : outputSummary.finalText;
     const finalOutput = buildAgentLoopCoreFinalAssistantOutput({
       assistantResponses: outputAssistantResponses,
-      finalText: outputSummary.finalText,
+      finalText: finalTextForBubble,
       reasoningText: outputSummary.reasoningText,
       hideReason: aiChatReasoning === false
     });
-    const doneMemories = buildAgentMemories(
-      provider === 'piAgent'
-        ? buildAgentLoopCoreDoneMemories({
-            memoryState,
-            runningAppInfo,
-            nodeId
-          })
-        : undefined
-    );
+    const doneMemories = buildAgentMemories(buildClearedNodeMemories());
 
     const result = {
       data: {
         [NodeOutputKeyEnum.answerText]: finalOutput.answerText
       },
+      [DispatchNodeResponseKeyEnum.toolResponse]: finalOutput.answerText,
       [DispatchNodeResponseKeyEnum.memories]: doneMemories,
-      [DispatchNodeResponseKeyEnum.assistantResponses]: finalOutput.assistantResponses
+      [DispatchNodeResponseKeyEnum.assistantResponses]: isResponseAnswerText
+        ? finalOutput.assistantResponses
+        : undefined,
+      ...(lastInteractive
+        ? {
+            [DispatchNodeResponseKeyEnum.rewriteHistories]:
+              removeUnfinishedInteractiveHistories(histories)
+          }
+        : {})
     };
     // 异常与错误分支输出必须同时返回，空错误文本也不能让节点走成功分支。
     return coreResult.status === 'error'
       ? {
           ...result,
           rawError: coreResult.error,
-          error: { [NodeOutputKeyEnum.errorText]: outputSummary.errorText ?? '' }
+          error: { [NodeOutputKeyEnum.errorText]: outputSummary.errorText ?? '' },
+          [DispatchNodeResponseKeyEnum.toolResponse]: {
+            error: outputSummary.errorText ?? ''
+          }
         }
       : result;
   } catch (error) {
-    // dispatch 层兜底：异常仅清理 Pi 的原生恢复状态；内部详情已经由 sink 发布。
+    // dispatch 层兜底：异常时清理当前节点的暂停恢复状态；内部详情已经由 sink 发布。
     getLogger(LogCategories.MODULE.AI.AGENT).error(`[Agent] dispatchRunAgent caught error`, {
       error
     });
-    const catchMemories = buildAgentMemories(
-      provider === 'piAgent'
-        ? buildAgentLoopCoreDoneMemories({
-            memoryState,
-            runningAppInfo,
-            nodeId
-          })
-        : undefined
-    );
+    const catchMemories = buildAgentMemories(buildClearedNodeMemories());
+    const errResponse = getNodeErrResponse({ error });
     return {
-      ...getNodeErrResponse({ error }),
+      ...errResponse,
+      [DispatchNodeResponseKeyEnum.toolResponse]: {
+        error: errResponse.error?.[NodeOutputKeyEnum.errorText] ?? ''
+      },
       [DispatchNodeResponseKeyEnum.memories]: catchMemories,
-      [DispatchNodeResponseKeyEnum.assistantResponses]: assistantResponses
+      [DispatchNodeResponseKeyEnum.assistantResponses]: isResponseAnswerText
+        ? assistantResponses
+        : undefined
     };
   } finally {
     await nodeResponseCollector.flush();

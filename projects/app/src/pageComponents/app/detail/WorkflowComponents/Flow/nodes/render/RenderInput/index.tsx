@@ -1,6 +1,7 @@
+import WorkflowSandboxConfig from '../../components/WorkflowSandboxConfig';
 import React from 'react';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
-import { Box, Flex, Switch } from '@chakra-ui/react';
+import { Box, Flex } from '@chakra-ui/react';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import dynamic from 'next/dynamic';
 import InputLabel from './Label';
@@ -10,9 +11,6 @@ import VariableTip from '@/components/common/Textarea/MyTextarea/VariableTip';
 import CommonInputForm from './templates/CommonInputForm';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import SandboxNotSupportTip from '@/pageComponents/app/detail/components/SandboxNotSupportTip';
-import { useUserStore } from '@/web/support/user/useUserStore';
-import MyTag from '@fastgpt/web/components/common/Tag/index';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { getSelectedInputRenderType } from '@fastgpt/global/common/workflow/reference';
@@ -105,8 +103,19 @@ const RenderList: Record<
   [FlowNodeInputTypeEnum.hidden]: undefined,
   [FlowNodeInputTypeEnum.off]: undefined,
   [FlowNodeInputTypeEnum.custom]: undefined,
-  [FlowNodeInputTypeEnum.selectSkill]: undefined,
-  [FlowNodeInputTypeEnum.selectTool]: undefined
+  [FlowNodeInputTypeEnum.selectSkill]: {
+    Component: dynamic(() =>
+      import('../../NodeAgent/AgentInputs').then((mod) => mod.AgentSkillsInput)
+    ),
+    LableRightComponent: dynamic(() =>
+      import('../../NodeAgent/AgentInputs').then((mod) => mod.AgentSkillsLabel)
+    )
+  },
+  [FlowNodeInputTypeEnum.selectTool]: {
+    Component: dynamic(() =>
+      import('../../NodeAgent/AgentInputs').then((mod) => mod.AgentToolsInput)
+    )
+  }
 };
 
 const hideLabelTypeList = [FlowNodeInputTypeEnum.addInputParam];
@@ -115,9 +124,11 @@ type Props = {
   flowInputList: FlowNodeInputItemType[];
   nodeId: string;
   CustomComponent?: Record<string, (e: FlowNodeInputItemType) => React.ReactNode>;
+  CustomLabelRightComponent?: Record<string, React.JSX.Element | undefined>;
   settingLLMModelProps?: RenderInputProps['settingLLMModelProps'];
   mb?: number;
   isTool?: boolean;
+  onChangeSandbox?: (checked: boolean) => void;
 };
 const AgentGeneratedPlaceholder = ({ isRowUI }: { isRowUI: boolean }) => {
   const { t } = useTranslation();
@@ -152,15 +163,13 @@ const RenderInput = ({
   flowInputList,
   nodeId,
   CustomComponent,
+  CustomLabelRightComponent,
   settingLLMModelProps,
   mb = 5,
-  isTool
+  isTool,
+  onChangeSandbox
 }: Props) => {
-  const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
-  const { teamPlanStatus } = useUserStore();
-  const enableSandbox = !teamPlanStatus?.standard || !!teamPlanStatus?.standard?.enableSandbox;
-  const showSandbox = feConfigs.show_agent_sandbox;
 
   const filterProInputs = useMemoEnhance(() => {
     return flowInputList.filter((input) => {
@@ -173,6 +182,13 @@ const RenderInput = ({
     return filterProInputs.filter((input) => {
       const renderType = getSelectedInputRenderType(input);
       const isDynamic = !!input.canEdit;
+
+      // Agent 的过滤来源由知识库参数弹窗编辑，引用模式也不重复生成独立输入行。
+      if (
+        input.key === NodeInputKeyEnum.collectionFilterMatch &&
+        input.renderTypeList.includes(FlowNodeInputTypeEnum.hidden)
+      )
+        return false;
 
       if (
         renderType === FlowNodeInputTypeEnum.hidden ||
@@ -204,47 +220,43 @@ const RenderInput = ({
             };
           }
 
-          if (renderType === FlowNodeInputTypeEnum.custom && CustomComponent?.[input.key]) {
+          if (renderType !== FlowNodeInputTypeEnum.reference && CustomComponent?.[input.key]) {
             return {
-              Component: <>{CustomComponent?.[input.key]({ ...input })}</>
+              Component: <>{CustomComponent?.[input.key]({ ...input })}</>,
+              LableRightComponent: CustomLabelRightComponent?.[input.key]
             };
           }
 
+          if (
+            input.key === NodeInputKeyEnum.useAgentSandbox &&
+            renderType !== FlowNodeInputTypeEnum.reference
+          ) {
+            return {
+              Component: (
+                <WorkflowSandboxConfig
+                  item={input}
+                  inputs={filterProInputs}
+                  nodeId={nodeId}
+                  onChangeSandbox={onChangeSandbox}
+                />
+              )
+            };
+          }
           const RenderItem = RenderList[renderType];
-
           if (!RenderItem) return null;
-
-          const renderInput =
-            input.key === NodeInputKeyEnum.useAgentSandbox
-              ? {
-                  ...input,
-                  customRender: ({
-                    value,
-                    onChange
-                  }: {
-                    value: boolean;
-                    onChange?: (value: boolean) => void;
-                  }) => (
-                    <Switch
-                      isChecked={!!value}
-                      onChange={(e) => {
-                        const checked = e.target.checked;
-                        if (checked && (!showSandbox || !enableSandbox)) return;
-                        onChange?.(checked);
-                      }}
-                    />
-                  )
-                }
-              : input;
+          const renderInput = input;
 
           const isCollectionFilter = input.key === NodeInputKeyEnum.collectionFilterMatch;
+          const isDatasetSelect = input.key === NodeInputKeyEnum.datasetSelectList;
           const isFilterOpen =
             !isCollectionFilter ||
             datasetSearchUsesLegacyFilter(filterProInputs) ||
             isDatasetTagFilterOpen(renderInput.value);
           const LableRightComponent = isCollectionFilter
             ? RenderList[FlowNodeInputTypeEnum.datasetTagFilter]?.LableRightComponent
-            : RenderItem.LableRightComponent;
+            : isDatasetSelect
+              ? RenderList[FlowNodeInputTypeEnum.selectDataset]?.LableRightComponent
+              : RenderItem.LableRightComponent;
 
           return {
             Component: isFilterOpen ? (
@@ -255,13 +267,16 @@ const RenderInput = ({
                 settingLLMModelProps={settingLLMModelProps}
               />
             ) : null,
-            LableRightComponent: LableRightComponent ? (
-              <LableRightComponent inputs={filterProInputs} item={renderInput} nodeId={nodeId} />
-            ) : undefined
+            LableRightComponent:
+              CustomLabelRightComponent?.[input.key] ??
+              (LableRightComponent ? (
+                <LableRightComponent inputs={filterProInputs} item={renderInput} nodeId={nodeId} />
+              ) : undefined)
           };
         })();
 
         const isRowUI =
+          input.key === NodeInputKeyEnum.useAgentSandbox ||
           renderType === FlowNodeInputTypeEnum.switch ||
           (renderType === FlowNodeInputTypeEnum.agentGenerated &&
             agentGeneratedDeveloperType === FlowNodeInputTypeEnum.switch);
@@ -284,33 +299,10 @@ const RenderInput = ({
               />
             )}
 
-            {input.key === NodeInputKeyEnum.useAgentSandbox ? (
-              RenderComponent ? (
-                <Flex alignItems={'center'} gap={1}>
-                  {showSandbox && enableSandbox ? (
-                    feConfigs.show_agent_sandbox_free_tip && (
-                      <MyTag>{t('app:sandbox_free_tip')}</MyTag>
-                    )
-                  ) : (
-                    <MyTag>
-                      {t(
-                        showSandbox ? 'app:sandbox_free_not_support' : 'app:sandbox_not_support_tip'
-                      )}
-                    </MyTag>
-                  )}
-                  {RenderComponent.Component}
-                </Flex>
-              ) : (
-                <SandboxNotSupportTip type={showSandbox ? 'freeDisable' : 'systemDisable'} />
-              )
-            ) : (
-              <>
-                {!!RenderComponent?.Component && (
-                  <Box mt={isRowUI ? 0 : 2} className={'nodrag'}>
-                    {RenderComponent.Component}
-                  </Box>
-                )}
-              </>
+            {!!RenderComponent?.Component && (
+              <Box mt={isRowUI ? 0 : 2} className={'nodrag'}>
+                {RenderComponent.Component}
+              </Box>
             )}
           </Box>
         );

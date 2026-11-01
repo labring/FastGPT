@@ -1,4 +1,3 @@
-import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import {
   getWorkflowNodeMemoryKey,
@@ -35,14 +34,6 @@ export const readAgentLoopCoreProviderStateMemory = ({
   runningAppInfo?: WorkflowMemorySource;
   nodeId: string;
 }): AgentLoopCoreProviderStateMemory => {
-  const selectedHistories = Array.isArray(history) ? history : histories;
-  if (
-    !(hasInteractiveResume && memoryState) &&
-    selectedHistories.length > 0 &&
-    selectedHistories.at(-1)?.obj !== ChatRoleEnum.AI
-  )
-    return {};
-
   const storedMemory = readWorkflowNodeMemory({
     memoryState,
     history,
