@@ -83,19 +83,23 @@ COPY --from=builder --chown=nextjs:nodejs /app/projects/app/worker /app/projects
 COPY --from=builder --chown=nextjs:nodejs /app/projects/app/worker /app/worker
 # LiteParse is externalized from the worker bundle and loads this file at runtime.
 RUN test -f /app/worker/node_modules/@llamaindex/liteparse-wasm/pkg/liteparse_wasm_bg.wasm
+
 # anydoc is a N-API package; loading it here verifies that the matching gnu binary was packaged.
 RUN node -e "require('/app/worker/node_modules/@fastgpt-sdk/anydoc')"
 
 COPY --from=maindeps /app/node_modules/@zilliz/milvus2-sdk-node ./node_modules/@zilliz/milvus2-sdk-node
 
+# copy package.json to version file
+COPY --from=builder /app/projects/app/package.json ./package.json
+# 用于 STT 测试
+COPY --chown=nextjs:nodejs ./projects/app/data/test.mp3 /app/data/test.mp3
+# 用于 IP 推测
+COPY --chown=nextjs:nodejs ./projects/app/data/GeoLite2-City.mmdb /app/data/GeoLite2-City.mmdb
+
+# 辅助脚本用于重置 root 密码
 COPY --from=builder --chown=nextjs:nodejs /app/projects/app/scripts/dist/reset-root-password.cjs /app/scripts/reset-root-password.cjs
 RUN RESET_ROOT_PASSWORD_SELFTEST=1 node /app/scripts/reset-root-password.cjs
 
-# copy package.json to version file
-COPY --from=builder /app/projects/app/package.json ./package.json
-# copy config and data files (use --chown to avoid extra layer from chown)
-COPY --chown=nextjs:nodejs ./projects/app/data/test.mp3 /app/data/test.mp3
-COPY --chown=nextjs:nodejs ./projects/app/data/GeoLite2-City.mmdb /app/data/GeoLite2-City.mmdb
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
