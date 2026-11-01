@@ -41,6 +41,7 @@ import ChatHistorySidebar from '@/pageComponents/chat/slider/ChatSliderSidebar';
 import ChatSliderMobileDrawer from '@/pageComponents/chat/slider/ChatSliderMobileDrawer';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import ChatLanguageSelector from '@/pageComponents/chat/LanguageSelector';
+import ShareChatLanguageEntry from '@/pageComponents/chat/ShareChatLanguageEntry';
 import ChatWindowHeader from '@/pageComponents/chat/ChatWindow/ChatWindowHeader';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import ToolMenu from '@/pageComponents/chat/ToolMenu';
@@ -420,6 +421,11 @@ const OutLink = (props: Props) => {
                       )}
                     </Flex>
                   ))}
+                <ShareChatLanguageEntry
+                  showHistory={showHistory}
+                  showHead={showHead}
+                  isPlugin={isPlugin}
+                />
                 {/* chat box */}
                 <Box flex={1} minH={0} minW={0} overflow={'hidden'} bg={'white'}>
                   {isPlugin ? (
