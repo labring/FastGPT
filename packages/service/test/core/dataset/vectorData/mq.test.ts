@@ -60,12 +60,47 @@ beforeEach(() => {
 });
 
 describe('onDatasetVectorCounted', () => {
+  it('does not queue ordinary small datasets without an index or with confirmed none state', async () => {
+    await createDataset();
+    await onDatasetVectorCounted({ ...scope, rows: 19999 });
+    expect(mocks.add).not.toHaveBeenCalled();
+    expect((await MongoDataset.findById(scope.datasetId).lean())?.vectorData).toBeUndefined();
+    await MongoDataset.updateOne(
+      { _id: scope.datasetId },
+      { $set: { vectorData: { pgIndex: 'none', pgIndexCheckedAt: new Date() } } }
+    );
+    await onDatasetVectorCounted({ ...scope, rows: 0 });
+    expect(mocks.add).not.toHaveBeenCalled();
+  });
+
+  it('queues retirement below 20000 without demoting ready or extending the existing job', async () => {
+    const checked = new Date(1000);
+    await createDataset({ vectorData: { pgIndex: 'ready', pgIndexCheckedAt: checked } });
+    for (const rows of [20000, 25000, 30000]) {
+      await onDatasetVectorCounted({ ...scope, rows });
+    }
+    expect(mocks.add).not.toHaveBeenCalled();
+    await onDatasetVectorCounted({ ...scope, rows: 19999 });
+    await onDatasetVectorCounted({ ...scope, rows: 0 });
+    expect(mocks.add.mock.calls).toEqual([
+      ['maintain', scope, { jobId: scope.datasetId }],
+      ['maintain', scope, { jobId: scope.datasetId }]
+    ]);
+    expect((await MongoDataset.findById(scope.datasetId).lean())?.vectorData).toEqual({
+      pgIndex: 'ready',
+      pgIndexCheckedAt: checked
+    });
+    expect(mocks.getQueue.mock.calls[0][1].defaultJobOptions.delay).toBe(600000);
+  });
+
   it('enqueues strictly above 30000 with a fixed dataset ID and 10 minute delay', async () => {
     await createDataset();
     await onDatasetVectorCounted({ ...scope, rows: 30000 });
     expect(mocks.add).not.toHaveBeenCalled();
     await onDatasetVectorCounted({ ...scope, rows: 30001 });
-    expect(mocks.add).toHaveBeenCalledExactlyOnceWith('build', scope, { jobId: scope.datasetId });
+    expect(mocks.add).toHaveBeenCalledExactlyOnceWith('maintain', scope, {
+      jobId: scope.datasetId
+    });
     expect(mocks.getQueue.mock.calls[0][1].defaultJobOptions).toMatchObject({
       delay: 600000,
       removeOnComplete: true
@@ -114,23 +149,26 @@ describe('onDatasetVectorCounted', () => {
     );
   });
 
-  it('does not overwrite ready when an older count notification finishes after the worker', async () => {
-    await createDataset();
-    mocks.add.mockImplementationOnce(async () => {
-      await MongoDataset.updateOne(
-        { _id: scope.datasetId },
-        {
-          $set: {
-            vectorData: { pgIndex: 'ready', pgIndexCheckedAt: new Date() }
+  it.each(['ready', 'removing'] as const)(
+    'does not overwrite %s when an older count notification finishes after the worker',
+    async (pgIndex) => {
+      await createDataset();
+      mocks.add.mockImplementationOnce(async () => {
+        await MongoDataset.updateOne(
+          { _id: scope.datasetId },
+          {
+            $set: {
+              vectorData: { pgIndex, pgIndexCheckedAt: new Date() }
+            }
           }
-        }
+        );
+      });
+      await onDatasetVectorCounted({ ...scope, rows: 40000 });
+      expect((await MongoDataset.findById(scope.datasetId).lean())?.vectorData?.pgIndex).toBe(
+        pgIndex
       );
-    });
-    await onDatasetVectorCounted({ ...scope, rows: 40000 });
-    expect((await MongoDataset.findById(scope.datasetId).lean())?.vectorData?.pgIndex).toBe(
-      'ready'
-    );
-  });
+    }
+  );
 
   it('skips other providers, wrong teams and deleted or absent datasets', async () => {
     await onDatasetVectorCounted({ ...scope, rows: 40000 });
@@ -145,6 +183,41 @@ describe('onDatasetVectorCounted', () => {
 });
 
 describe('processDatasetVectorIndex', () => {
+  it('publishes removing before DROP and none only after removal succeeds', async () => {
+    await createDataset({ vectorData: { pgIndex: 'ready', pgIndexCheckedAt: new Date() } });
+    mocks.ensureIndex.mockImplementation(async ({ onRemoving }) => {
+      await onRemoving();
+      expect((await MongoDataset.findById(scope.datasetId).lean())?.vectorData?.pgIndex).toBe(
+        'removing'
+      );
+      return { pgIndex: 'none', created: false };
+    });
+    await processDatasetVectorIndex(scope);
+    expect((await MongoDataset.findById(scope.datasetId).lean())?.vectorData).toEqual({
+      pgIndex: 'none',
+      pgIndexCheckedAt: expect.any(Date)
+    });
+  });
+
+  it('records DROP failures and allows the next low count to enqueue a successful retry', async () => {
+    await createDataset({ vectorData: { pgIndex: 'ready', pgIndexCheckedAt: new Date() } });
+    mocks.ensureIndex.mockImplementationOnce(async ({ onRemoving }) => {
+      await onRemoving();
+      throw new Error('DROP connection lost');
+    });
+    await expect(processDatasetVectorIndex(scope)).rejects.toThrow('DROP connection lost');
+    expect((await MongoDataset.findById(scope.datasetId).lean())?.vectorData?.pgIndex).toBe(
+      'failed'
+    );
+    await onDatasetVectorCounted({ ...scope, rows: 0 });
+    expect(mocks.add).toHaveBeenCalledExactlyOnceWith('maintain', scope, {
+      jobId: scope.datasetId
+    });
+    mocks.ensureIndex.mockResolvedValueOnce({ pgIndex: 'none', created: false });
+    await processDatasetVectorIndex(scope);
+    expect((await MongoDataset.findById(scope.datasetId).lean())?.vectorData?.pgIndex).toBe('none');
+  });
+
   it('publishes building and real phase progress, then ready only after catalog verification', async () => {
     await createDataset();
     mocks.ensureIndex.mockImplementation(async ({ onBuilding, onProgress }) => {

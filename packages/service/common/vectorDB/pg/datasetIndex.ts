@@ -1,13 +1,16 @@
 import pg from 'pg';
 import { ObjectIdSchema } from '@fastgpt/global/common/type/mongo';
-import { DATASET_VECTOR_INDEX_MIN_ROWS } from '@fastgpt/global/core/dataset/vectorData/constants';
+import {
+  DATASET_VECTOR_INDEX_MIN_ROWS,
+  DATASET_VECTOR_INDEX_DROP_ROWS
+} from '@fastgpt/global/core/dataset/vectorData/constants';
 import { DatasetVectorTableName, PG_ADDRESS } from '../constants';
 import { PgClient } from './controller';
 import { getLogger, LogCategories } from '../../logger';
 import { configurePgIndexMemory } from './indexMemory';
 
 const logger = getLogger(LogCategories.INFRA.POSTGRES);
-const INDEX_BUILD_LOCK = 41823001;
+const INDEX_MAINTENANCE_LOCK = 41823001;
 
 export type PgDatasetIndexScope = { teamId: string; datasetId: string };
 export type PgDatasetIndexProgress = {
@@ -24,16 +27,18 @@ export const getPgDatasetIndexName = (datasetId: string) => {
 };
 
 /**
- * 在线创建知识库 FP16 局部索引，保留原列的 FP32 或 FP16 存储类型。
- * 全局 PG 会话锁兜底 worker 失联后仍在运行的 DDL；只修复定义完全匹配的无效索引。
+ * 在线维护知识库 FP16 局部索引：超过三万建图，低于两万移除，原列和中间区间保持不变。
+ * 全局 PG 会话锁串行 CREATE / DROP；只操作定义完全匹配的索引，移除前通知业务切换查询路径。
  */
 export const ensurePgDatasetIndex = async ({
   teamId,
   datasetId,
   onBuilding,
+  onRemoving,
   onProgress
 }: PgDatasetIndexScope & {
   onBuilding: () => Promise<void>;
+  onRemoving?: () => Promise<void>;
   onProgress: (progress: PgDatasetIndexProgress) => void;
 }): Promise<{ pgIndex: 'ready' | 'none'; created: boolean }> => {
   const indexName = getPgDatasetIndexName(datasetId);
@@ -117,8 +122,21 @@ export const ensurePgDatasetIndex = async ({
       );
       const index = rows[0];
       if (!index) return;
+      // 仅消除语法差异；字符串常量和未知引号标识符的内容必须保留，避免误认其他团队或其他列的索引。
       const normalize = (value: string) =>
-        value.replace(/::(?:text|character varying)/g, '').replace(/[\s()"]/g, '');
+        value.replace(
+          /'(?:[^']|'')*'|"(?:[^"]|"")*"|::(?:text|character varying)|[\s()]/g,
+          (token) => {
+            if (token.startsWith("'")) return token;
+            if (token.startsWith('"')) {
+              const identifier = token.slice(1, -1);
+              return ['vector', 'halfvec', 'dataset_id', 'team_id'].includes(identifier)
+                ? identifier
+                : token;
+            }
+            return '';
+          }
+        );
       const expression = normalize(index.expression);
       // halfvec 列转为相同维度的 halfvec 时，PG 会消除恒等转换，将索引键记录为 vector 列。
       const matchesExpression =
@@ -137,32 +155,57 @@ export const ensurePgDatasetIndex = async ({
       return index;
     };
 
-    let existing = await readIndex();
-    if (!existing?.valid || !existing.ready) {
-      const { rows: lock } = await client.query<{ locked: boolean }>(
-        'SELECT pg_try_advisory_lock($1) AS locked',
-        [INDEX_BUILD_LOCK]
+    /** 维护决策只使用 PG 实际行数，不能依赖十分钟前的 Redis 计数。 */
+    const countRows = async () => {
+      const { rows } = await client.query<{ count: string }>(
+        `SELECT count(*) FROM ${qualifiedTable} WHERE ${predicate}`
       );
-      if (!lock[0].locked) throw new Error('Another PG dataset index build is still running');
-      // 等待 BullMQ 恢复期间，旧 worker 可能刚完成 DDL；拿到锁后再核验一次。
-      existing = await readIndex();
-    }
-    if (existing?.valid && existing.ready) {
+      return Number(rows[0].count);
+    };
+
+    const reuseIndex = () => {
       logger.info('PG dataset FP16 index already exists; skipped build', { datasetId, indexName });
-      return { pgIndex: 'ready', created: false };
+      return { pgIndex: 'ready' as const, created: false };
+    };
+
+    let existing = await readIndex();
+    if (
+      existing?.valid &&
+      existing.ready &&
+      (await countRows()) >= DATASET_VECTOR_INDEX_DROP_ROWS
+    ) {
+      return reuseIndex();
     }
 
-    // 2. 十分钟内可能发生大量删除：建图前重新统计，低于阈值时直接退出。
-    const { rows: counts } = await client.query<{ count: string }>(
-      `SELECT count(*) FROM ${qualifiedTable} WHERE ${predicate}`
+    // 2. CREATE / DROP 共用会话锁；拿到锁后再次核验目录和行数，避免处理旧任务时误删回涨的索引。
+    const { rows: lock } = await client.query<{ locked: boolean }>(
+      'SELECT pg_try_advisory_lock($1) AS locked',
+      [INDEX_MAINTENANCE_LOCK]
     );
-    if (Number(counts[0].count) <= DATASET_VECTOR_INDEX_MIN_ROWS) {
-      if (existing) await client.query(`DROP INDEX CONCURRENTLY ${qualifiedIndex}`);
+    if (!lock[0].locked) throw new Error('Another PG dataset index maintenance is still running');
+    existing = await readIndex();
+    const rows = await countRows();
+
+    /** 先停止新查询使用该索引，再在线移除；通知失败时不执行 DROP，交给队列重试。 */
+    const removeIndex = async () => {
+      await onRemoving?.();
+      await client.query(`DROP INDEX CONCURRENTLY ${qualifiedIndex}`);
+      logger.info('PG dataset FP16 index removed', { teamId, datasetId, indexName, rows });
+    };
+
+    if (existing?.valid && existing.ready) {
+      if (rows >= DATASET_VECTOR_INDEX_DROP_ROWS) return reuseIndex();
+      await removeIndex();
+      return { pgIndex: 'none', created: false };
+    }
+    if (rows <= DATASET_VECTOR_INDEX_MIN_ROWS) {
+      // 失败索引不属于可保留状态；低于建图阈值时只清理，不重新构建。
+      if (existing) await removeIndex();
       return { pgIndex: 'none', created: false };
     }
     const memory = await configurePgIndexMemory({
       client,
-      rows: Number(counts[0].count),
+      rows,
       dimensions: table.dimensions
     });
     // 始终与 PG 原预算比较；即使会话预算已调高，也要提示估算超过原配置。
@@ -193,7 +236,7 @@ export const ensurePgDatasetIndex = async ({
       teamId,
       datasetId,
       indexName,
-      rows: Number(counts[0].count),
+      rows,
       dimensions: table.dimensions,
       memory,
       ...settings[0]
@@ -246,7 +289,7 @@ export const ensurePgDatasetIndex = async ({
   } finally {
     if (progressTimer) clearInterval(progressTimer);
     await progressQuery;
-    // 关闭独立会话同时释放 advisory lock；即使 CREATE INDEX 失败也不把锁留给下一轮。
+    // 关闭独立会话同时释放 advisory lock；即使 CREATE / DROP 失败也不把锁留给下一轮。
     await client.end();
   }
 };

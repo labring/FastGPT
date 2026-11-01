@@ -3,7 +3,7 @@ import { IntSchema } from '../../../common/zod';
 
 /** 行数仅缓存在 Redis；Mongo 内部元数据只记录 PG 局部索引的生命周期。 */
 export const DatasetVectorDataSchema = z.object({
-  pgIndex: z.enum(['none', 'pending', 'building', 'ready', 'failed']),
+  pgIndex: z.enum(['none', 'pending', 'building', 'ready', 'removing', 'failed']),
   pgIndexCheckedAt: z.date()
 });
 export type DatasetVectorData = z.infer<typeof DatasetVectorDataSchema>;

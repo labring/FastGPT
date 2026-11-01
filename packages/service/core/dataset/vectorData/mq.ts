@@ -1,6 +1,9 @@
 import { bullMQ } from '@fastgpt/dal/redis/bullmq/binding';
 import { QueueNames } from '@fastgpt/dal/redis/bullmq/names';
-import { DATASET_VECTOR_INDEX_MIN_ROWS } from '@fastgpt/global/core/dataset/vectorData/constants';
+import {
+  DATASET_VECTOR_INDEX_MIN_ROWS,
+  DATASET_VECTOR_INDEX_DROP_ROWS
+} from '@fastgpt/global/core/dataset/vectorData/constants';
 import { getVectorType } from '../../../common/vectorDB/constants';
 import {
   ensurePgDatasetIndex,
@@ -10,41 +13,45 @@ import { getLogger, LogCategories } from '../../../common/logger';
 import { findDatasetVectorData, updateDatasetPgIndexState } from './entity';
 
 const logger = getLogger(LogCategories.INFRA.QUEUE);
-const INDEX_BUILD_DELAY_MS = 10 * 60 * 1000;
+const INDEX_MAINTENANCE_DELAY_MS = 10 * 60 * 1000;
 
 /** 固定 jobId 在 delayed/waiting/active/retry 全生命周期去重；重复计数不延长首次等待窗口。 */
 const getDatasetVectorIndexQueue = () =>
   bullMQ.getQueue<PgDatasetIndexScope>(QueueNames.datasetVectorIndex, {
     defaultJobOptions: {
-      delay: INDEX_BUILD_DELAY_MS,
+      delay: INDEX_MAINTENANCE_DELAY_MS,
       attempts: 3,
-      backoff: { type: 'exponential', delay: INDEX_BUILD_DELAY_MS },
+      backoff: { type: 'exponential', delay: INDEX_MAINTENANCE_DELAY_MS },
       removeOnComplete: true,
       removeOnFail: true
     }
   });
 
 /**
- * 只由真实的知识库行数统计触发；同库只保留一个延迟/执行中的任务。
- * pending/building/ready 不重复写 Mongo，已有索引由任务核验后退出，不重新建图。
+ * 真实计数超过三万时创建、低于两万时清理可能存在的索引；中间区间和普通小库不额外投递。
+ * CREATE / DROP 共用固定 jobId 和首次延迟窗口，维护中的状态不被重复通知覆盖。
  */
 export const onDatasetVectorCounted = async ({
   rows,
   ...scope
 }: PgDatasetIndexScope & { rows: number }) => {
-  if (getVectorType() !== 'pg' || rows <= DATASET_VECTOR_INDEX_MIN_ROWS) return;
+  if (getVectorType() !== 'pg') return;
+  const shouldBuild = rows > DATASET_VECTOR_INDEX_MIN_ROWS;
+  if (!shouldBuild && rows >= DATASET_VECTOR_INDEX_DROP_ROWS) return;
   const dataset = await findDatasetVectorData(scope);
   if (!dataset) return;
   const data = dataset.vectorData;
+  // 缺少索引元数据或已确认 none 的小库无需检查目录，避免所有小库都进入维护队列。
+  if (!shouldBuild && (!data || data.pgIndex === 'none')) return;
 
   // 先可靠投递再置 pending；进程中断重投安全，状态更新也不能覆盖正在构建/已完成状态。
-  await getDatasetVectorIndexQueue().add('build', scope, { jobId: String(scope.datasetId) });
-  if (!data || data.pgIndex === 'none' || data.pgIndex === 'failed') {
+  await getDatasetVectorIndexQueue().add('maintain', scope, { jobId: String(scope.datasetId) });
+  if (shouldBuild && (!data || data.pgIndex === 'none' || data.pgIndex === 'failed')) {
     await updateDatasetPgIndexState({ ...scope, pgIndex: 'pending' });
   }
 };
 
-/** 只有通过 PG 目录核验才能置 ready；无效同名索引由 adapter 检查归属后修复。 */
+/** 通过 PG 目录核验后同步最终状态；removing 先停用索引路由，DROP 失败仍可从 failed 重试。 */
 export const processDatasetVectorIndex = async (scope: PgDatasetIndexScope) => {
   const dataset = await findDatasetVectorData(scope);
   if (!dataset) return;
@@ -54,6 +61,9 @@ export const processDatasetVectorIndex = async (scope: PgDatasetIndexScope) => {
       ...scope,
       onBuilding: async () => {
         await updateDatasetPgIndexState({ ...scope, pgIndex: 'building' });
+      },
+      onRemoving: async () => {
+        await updateDatasetPgIndexState({ ...scope, pgIndex: 'removing' });
       },
       onProgress: (progress) => {
         // blocks 是当前阶段的进度，等待旧事务等阶段没有总量，不能伪装为整个任务百分比。
@@ -84,7 +94,7 @@ export const processDatasetVectorIndex = async (scope: PgDatasetIndexScope) => {
   }
 };
 
-/** 所有应用节点共享一个构建槽位；必须先设置全局并发，再允许本节点启动消费。 */
+/** 所有应用节点共享一个维护槽位；CREATE / DROP 串行执行，先设置全局并发再启动消费。 */
 export const initDatasetVectorIndexWorker = async () => {
   if (getVectorType() !== 'pg') return;
   await getDatasetVectorIndexQueue().setGlobalConcurrency(1);

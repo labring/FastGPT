@@ -61,7 +61,11 @@ let rows: number;
 let locked: boolean;
 let table: { schema: string; vector_type: string; dimensions: number } | undefined;
 let ddl: (() => Promise<void>) | undefined;
-const callbacks = { onBuilding: vi.fn(async () => {}), onProgress: vi.fn() };
+const callbacks = {
+  onBuilding: vi.fn(async () => {}),
+  onRemoving: vi.fn(async () => {}),
+  onProgress: vi.fn()
+};
 
 beforeEach(() => {
   index = undefined;
@@ -71,6 +75,7 @@ beforeEach(() => {
   table = { schema: 'public', vector_type: 'vector', dimensions: 16 };
   Object.values(mocks).forEach((mock) => mock.mockReset());
   callbacks.onBuilding.mockReset().mockResolvedValue(undefined);
+  callbacks.onRemoving.mockReset().mockResolvedValue(undefined);
   callbacks.onProgress.mockReset();
   mocks.connect.mockResolvedValue(undefined);
   mocks.end.mockResolvedValue(undefined);
@@ -113,6 +118,86 @@ describe('getPgDatasetIndexName', () => {
 });
 
 describe('ensurePgDatasetIndex', () => {
+  it.each([0, 19999])(
+    'removes an owned valid index with %i rows before returning none',
+    async (count) => {
+      index = { ...validIndex };
+      rows = count;
+      callbacks.onRemoving.mockImplementationOnce(async () => {
+        expect(index).toBeDefined();
+        expect(mocks.query.mock.calls.some(([sql]) => sql.includes('DROP INDEX'))).toBe(false);
+      });
+      expect(await ensurePgDatasetIndex({ ...scope, ...callbacks })).toEqual({
+        pgIndex: 'none',
+        created: false
+      });
+      expect(index).toBeUndefined();
+      expect(callbacks.onRemoving).toHaveBeenCalledOnce();
+      expect(callbacks.onBuilding).not.toHaveBeenCalled();
+      expect(mocks.memory).not.toHaveBeenCalled();
+      expect(mocks.query.mock.calls.some(([sql]) => sql.includes('CREATE INDEX'))).toBe(false);
+      expect(mocks.end).toHaveBeenCalledOnce();
+    }
+  );
+
+  it('retains an index if rows recover before the maintenance lock is acquired', async () => {
+    index = { ...validIndex };
+    rows = 19999;
+    const query = mocks.query.getMockImplementation()!;
+    mocks.query.mockImplementation(async (sql: string) => {
+      if (sql.includes('pg_try_advisory_lock')) rows = 25000;
+      return query(sql);
+    });
+    expect(await ensurePgDatasetIndex({ ...scope, ...callbacks })).toEqual({
+      pgIndex: 'ready',
+      created: false
+    });
+    expect(callbacks.onRemoving).not.toHaveBeenCalled();
+    expect(mocks.query.mock.calls.some(([sql]) => sql.includes('DROP INDEX'))).toBe(false);
+  });
+
+  it('does not remove an index while another maintenance session holds the global lock', async () => {
+    index = { ...validIndex };
+    rows = 0;
+    locked = false;
+    await expect(ensurePgDatasetIndex({ ...scope, ...callbacks })).rejects.toThrow('still running');
+    expect(callbacks.onRemoving).not.toHaveBeenCalled();
+    expect(index).toBeDefined();
+    expect(mocks.end).toHaveBeenCalledOnce();
+  });
+
+  it('keeps the physical index if switching the query path fails', async () => {
+    index = { ...validIndex };
+    rows = 0;
+    callbacks.onRemoving.mockRejectedValueOnce(new Error('Mongo offline'));
+    await expect(ensurePgDatasetIndex({ ...scope, ...callbacks })).rejects.toThrow('Mongo offline');
+    expect(index).toBeDefined();
+    expect(mocks.query.mock.calls.some(([sql]) => sql.includes('DROP INDEX'))).toBe(false);
+    expect(mocks.end).toHaveBeenCalledOnce();
+  });
+
+  it('closes a failed DROP session and allows a later retry to finish removing the index', async () => {
+    index = { ...validIndex };
+    rows = 0;
+    const query = mocks.query.getMockImplementation()!;
+    mocks.query.mockImplementation(async (sql: string) => {
+      if (sql.includes('DROP INDEX')) throw new Error('PG disconnected');
+      return query(sql);
+    });
+    await expect(ensurePgDatasetIndex({ ...scope, ...callbacks })).rejects.toThrow(
+      'PG disconnected'
+    );
+    expect(index).toBeDefined();
+    expect(mocks.end).toHaveBeenCalledOnce();
+    mocks.query.mockImplementation(query);
+    expect(await ensurePgDatasetIndex({ ...scope, ...callbacks })).toEqual({
+      pgIndex: 'none',
+      created: false
+    });
+    expect(index).toBeUndefined();
+    expect(mocks.end).toHaveBeenCalledTimes(2);
+  });
+
   it('builds only a matching team/dataset FP16 expression and closes the dedicated unlimited-timeout session', async () => {
     expect(await ensurePgDatasetIndex({ ...scope, ...callbacks })).toEqual({
       pgIndex: 'ready',
@@ -136,16 +221,26 @@ describe('ensurePgDatasetIndex', () => {
     );
   });
 
-  it('returns an existing valid index without re-counting or starting a build', async () => {
-    index = { ...validIndex };
-    expect(await ensurePgDatasetIndex({ ...scope, ...callbacks })).toEqual({
-      pgIndex: 'ready',
-      created: false
-    });
-    expect(callbacks.onBuilding).not.toHaveBeenCalled();
-    expect(mocks.query.mock.calls.some(([sql]) => sql.includes('count(*)'))).toBe(false);
-    expect(mocks.memory).not.toHaveBeenCalled();
-  });
+  it.each([20000, 25000, 30000, 30001])(
+    'retains a valid index with %i rows without starting DDL',
+    async (count) => {
+      index = { ...validIndex };
+      rows = count;
+      expect(await ensurePgDatasetIndex({ ...scope, ...callbacks })).toEqual({
+        pgIndex: 'ready',
+        created: false
+      });
+      expect(callbacks.onBuilding).not.toHaveBeenCalled();
+      expect(callbacks.onRemoving).not.toHaveBeenCalled();
+      expect(mocks.query.mock.calls.filter(([sql]) => sql.includes('count(*)'))).toHaveLength(1);
+      expect(
+        mocks.query.mock.calls.some(([sql]) =>
+          /DROP INDEX|CREATE INDEX|pg_try_advisory_lock/.test(sql)
+        )
+      ).toBe(false);
+      expect(mocks.memory).not.toHaveBeenCalled();
+    }
+  );
 
   it.each([
     {
@@ -243,6 +338,20 @@ describe('ensurePgDatasetIndex', () => {
     );
   });
 
+  it('accepts catalog quoting of the expected column and tenant fields', async () => {
+    index = {
+      ...validIndex,
+      expression: '("vector")::halfvec(16)',
+      predicate: validIndex.predicate
+        .replace('dataset_id', '"dataset_id"')
+        .replace('team_id', '"team_id"')
+    };
+    expect(await ensurePgDatasetIndex({ ...scope, ...callbacks })).toEqual({
+      pgIndex: 'ready',
+      created: false
+    });
+  });
+
   it.each([
     { on_table: false },
     { method: 'btree' },
@@ -250,8 +359,11 @@ describe('ensurePgDatasetIndex', () => {
     { columns: 2 },
     { expression: 'vector::halfvec(8)' },
     { expression: 'vector' },
+    { expression: '"v ector"::halfvec(16)' },
+    { predicate: validIndex.predicate.replace(scope.teamId, ` ${scope.teamId}`) },
     { predicate: null }
   ])('never removes a mismatched same-name index: %j', async (overrides) => {
+    rows = 19999;
     index = { ...validIndex, ...overrides } as Index;
     await expect(ensurePgDatasetIndex({ ...scope, ...callbacks })).rejects.toThrow('Refusing');
     expect(mocks.query.mock.calls.some(([sql]) => /DROP INDEX|CREATE INDEX/.test(sql))).toBe(false);

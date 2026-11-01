@@ -1,10 +1,11 @@
 import pg from 'pg';
-import { DATASET_VECTOR_INDEX_MIN_ROWS } from '@fastgpt/global/core/dataset/vectorData/constants';
+import { DATASET_VECTOR_INDEX_DROP_ROWS } from '@fastgpt/global/core/dataset/vectorData/constants';
 import type { EmbeddingRecallCtrlPropsType } from '../type';
 import { DatasetVectorTableName } from '../constants';
 
 /**
- * 将 ready 大库各自路由到 FP16 索引，其余库合并精确检索；所有分组各取 limit，再按 FP32 统一截断。
+ * 将 ready 且至少两万行的库各自路由到 FP16 索引，其余库合并精确检索；各组取 limit 后按 FP32 截断。
+ * 两万到三万行保留已有索引路由，低于两万或正在移除的库立即回到精确路径，不等待延迟维护任务。
  * 局部索引谓词使用驱动转义后的常量，使 PG 无需依赖参数值就能证明谓词成立。
  */
 export const buildPgVectorRecallQuery = ({
@@ -42,7 +43,7 @@ export const buildPgVectorRecallQuery = ({
   const metadata = new Map(datasetVectorData.map((item) => [String(item.datasetId), item]));
   const indexed = ids.filter((id) => {
     const data = metadata.get(id);
-    return data?.pgIndex === 'ready' && data.rows > DATASET_VECTOR_INDEX_MIN_ROWS;
+    return data?.pgIndex === 'ready' && data.rows >= DATASET_VECTOR_INDEX_DROP_ROWS;
   });
   const indexedSet = new Set(indexed);
   const exact = ids.filter((id) => !indexedSet.has(id));

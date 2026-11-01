@@ -283,6 +283,112 @@ describeStorage('local PG FP16 dataset index with %s storage', (storage) => {
     },
     240000
   );
+
+  it('retains at 20000..30000, removes below 20000, and rebuilds only above 30000', async () => {
+    const pool = await connectPg();
+    const scope = { teamId, datasetId };
+    const indexName = getPgDatasetIndexName(datasetId);
+    const readIndexOid = async () =>
+      (await pool.query('SELECT to_regclass($1)::oid::text AS oid', [indexName])).rows[0].oid;
+    // 保留最大 ID，留下高分和权限样本；仅修改本测试 schema 内当前团队的向量。
+    const shrinkTo = (rows: number) =>
+      pool.query(
+        `DELETE FROM modeldata WHERE id IN (
+          SELECT id FROM modeldata WHERE team_id=$1 AND dataset_id=$2
+          ORDER BY id DESC OFFSET $3
+        )`,
+        [teamId, datasetId, rows]
+      );
+    const growTo = async (rows: number) => {
+      const count = await ctrl.getVectorCount(scope);
+      await pool.query(
+        `INSERT INTO modeldata (team_id, dataset_id, collection_id, vector)
+         SELECT $1, $2, 'allowed', array_fill(0::real, ARRAY[${dimensions}])::vector
+         FROM generate_series(1, $3::int)`,
+        [teamId, datasetId, rows - count]
+      );
+    };
+    const recallProps = (rows: number, pgIndex: 'ready' | 'none') => ({
+      teamId,
+      datasetIds: [datasetId, ...smallIds],
+      vector,
+      limit: 100,
+      forbidCollectionIdList: ['hidden'],
+      datasetVectorData: [{ datasetId, rows, pgIndex }]
+    });
+    const oid = await readIndexOid();
+    expect(oid).toBeTruthy();
+
+    for (const rows of [30000, 25000, 20000]) {
+      await shrinkTo(rows);
+      expect(await ensurePgDatasetIndex({ ...scope, ...callbacks })).toEqual({
+        pgIndex: 'ready',
+        created: false
+      });
+      expect(await readIndexOid()).toBe(oid);
+      const props = recallProps(rows, 'ready');
+      const query = buildPgVectorRecallQuery(props)!;
+      expect(query.usesHnsw).toBe(true);
+      const plan = await pool.query(`EXPLAIN (FORMAT JSON) ${query.text}`, query.values);
+      expect(JSON.stringify(plan.rows)).toContain(indexName);
+      expect((await ctrl.embRecall(props)).results).toHaveLength(100);
+    }
+
+    await shrinkTo(19999);
+    const onRemoving = vi.fn(async () => {
+      expect(await readIndexOid()).toBe(oid);
+    });
+    expect(await ensurePgDatasetIndex({ ...scope, ...callbacks, onRemoving })).toEqual({
+      pgIndex: 'none',
+      created: false
+    });
+    expect(onRemoving).toHaveBeenCalledOnce();
+    expect(await readIndexOid()).toBeNull();
+    expect(await ctrl.getVectorCount(scope)).toBe(19999);
+    // 延迟任务尚未同步元数据时，低行数也必须走精确路径。
+    expect(buildPgVectorRecallQuery(recallProps(19999, 'ready'))!.usesHnsw).toBe(false);
+    expect((await ctrl.embRecall(recallProps(19999, 'none'))).results).toHaveLength(100);
+
+    for (const rows of [25000, 30000, 30001]) {
+      await growTo(rows);
+      const pgIndex = rows > 30000 ? 'ready' : 'none';
+      expect(await ensurePgDatasetIndex({ ...scope, ...callbacks })).toEqual({
+        pgIndex,
+        created: rows > 30000
+      });
+      expect((await ctrl.embRecall(recallProps(rows, pgIndex))).results).toHaveLength(100);
+    }
+    expect(await readIndexOid()).not.toBe(oid);
+  }, 240000);
+
+  it('preserves a foreign same-name index whose tenant literal differs by whitespace', async () => {
+    const pool = await connectPg();
+    const name = getPgDatasetIndexName(datasetId);
+    const backup = `${name}_preserved`;
+    await pool.query(`ALTER INDEX ${name} RENAME TO ${backup}`);
+    await pool.query(
+      `CREATE INDEX ${name} ON modeldata USING hnsw
+       ((vector::halfvec(${dimensions})) halfvec_ip_ops)
+       WHERE dataset_id='${datasetId}' AND team_id=' ${teamId}'`
+    );
+    const oid = (await pool.query('SELECT to_regclass($1)::oid::text AS oid', [name])).rows[0].oid;
+    await pool.query(
+      `DELETE FROM modeldata WHERE id IN (
+        SELECT id FROM modeldata WHERE team_id=$1 AND dataset_id=$2
+        ORDER BY id DESC OFFSET 19999
+      )`,
+      [teamId, datasetId]
+    );
+    await expect(ensurePgDatasetIndex({ teamId, datasetId, ...callbacks })).rejects.toThrow(
+      'Refusing'
+    );
+    const { rows } = await pool.query(
+      'SELECT to_regclass($1)::oid::text AS oid, to_regclass($2) IS NOT NULL AS preserved',
+      [name, backup]
+    );
+    expect(rows[0]).toEqual({ oid, preserved: true });
+  });
+
   it.skipIf(!process.env.FASTGPT_PG_INDEX_BENCHMARK || storage !== 'vector')(
     'reports warm vector-stage latency for the same 100 queries',
     async () => {

@@ -8,7 +8,7 @@ export const findDatasetVectorData = (scope: { teamId: string; datasetId: string
     { vectorData: 1 }
   ).lean();
 
-/** 更新内部索引状态；pending 通知不得覆盖已经开始构建或已经 ready 的状态。 */
+/** 更新内部索引状态；pending 通知不得覆盖已经开始维护或已经 ready 的状态。 */
 export const updateDatasetPgIndexState = ({
   teamId,
   datasetId,
@@ -24,7 +24,7 @@ export const updateDatasetPgIndexState = ({
       teamId,
       deleteTime: null,
       ...(pgIndex === 'pending'
-        ? { 'vectorData.pgIndex': { $nin: ['ready', 'building', 'pending'] } }
+        ? { 'vectorData.pgIndex': { $nin: ['ready', 'building', 'removing', 'pending'] } }
         : {})
     },
     { $set: { vectorData: { pgIndex, pgIndexCheckedAt: new Date() } } }
