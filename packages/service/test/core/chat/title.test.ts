@@ -349,6 +349,22 @@ describe('syncGeneratedChatTitleFromUserContent', () => {
     expect(createLLMResponseMock).not.toHaveBeenCalled();
   });
 
+  it('does not split an emoji when truncating the fallback title', async () => {
+    getDefaultChatTitleModelDataMock.mockReturnValue(undefined);
+    await createChat();
+
+    // `😀` 占 2 个 UTF-16 code unit，第 20 个 code unit 正好是它的前半部分
+    const question = `${'a'.repeat(19)}😀 tail`;
+
+    const result = await syncGeneratedChatTitleFromUserContent({
+      ...base,
+      userContent: textContent(question)
+    });
+
+    expect(result).toBe('a'.repeat(19));
+    expect(await readStoredTitle()).toBe('a'.repeat(19));
+  });
+
   it('truncates model title input question to 1000 characters', async () => {
     await createChat();
     const longQuestion = `${'a'.repeat(1000)}tail`;

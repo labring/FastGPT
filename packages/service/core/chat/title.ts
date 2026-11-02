@@ -55,19 +55,33 @@ export const CHAT_TITLE_GENERATION_TIMEOUT_MS = 30_000;
 export const CHAT_TITLE_SEND_WAIT_TIMEOUT_MS = 3_000;
 
 /**
+ * 按 UTF-16 code unit 截取前 maxLength 个字符，但不切开代理对。
+ *
+ * `😀` 这类非 BMP 字符占 2 个 code unit，直接 `slice` 可能留下孤立的前半部分，
+ * 写库和下发后会显示成 U+FFFD。截断点落在代理对中间时丢弃这半个字符。
+ */
+const sliceTitleText = (text: string, maxLength: number) => {
+  const sliced = text.slice(0, maxLength);
+  const lastCode = sliced.charCodeAt(sliced.length - 1);
+  return lastCode >= 0xd800 && lastCode <= 0xdbff ? sliced.slice(0, -1) : sliced;
+};
+
+/**
  * 规范化清洗生成的会话标题。
  *
  * 过滤首尾引号、Markdown 标题标识/列表符以及多余的空白字符，
  * 并截断至 GENERATED_CHAT_TITLE_MAX_LENGTH (80 字符)，确保标题整洁且符合 UI 展示要求。
  */
 export const normalizeGeneratedTitle = (title: string) =>
-  title
-    .trim()
-    .replace(/^["'“”‘’`]+|["'“”‘’`]+$/g, '')
-    .replace(/^[#*\-\s]+/, '')
-    .replace(/\s+/g, ' ')
-    .trim()
-    .slice(0, GENERATED_CHAT_TITLE_MAX_LENGTH);
+  sliceTitleText(
+    title
+      .trim()
+      .replace(/^["'“”‘’`]+|["'“”‘’`]+$/g, '')
+      .replace(/^[#*\-\s]+/, '')
+      .replace(/\s+/g, ' ')
+      .trim(),
+    GENERATED_CHAT_TITLE_MAX_LENGTH
+  );
 
 /**
  * 禁止作为标题写入的无效值。
@@ -179,8 +193,8 @@ const generateChatTitleFromQuestion = async ({
 }): Promise<string | undefined> => {
   const modelHandle = await getSystemModelHandle();
   const titleModel = modelHandle.getDefaultModelData('chatTitleLLM');
-  if (!titleModel?.model) return question.slice(0, FALLBACK_CHAT_TITLE_MAX_LENGTH);
-  const questionForTitle = question.slice(0, CHAT_TITLE_QUESTION_MAX_LENGTH);
+  if (!titleModel?.model) return sliceTitleText(question, FALLBACK_CHAT_TITLE_MAX_LENGTH);
+  const questionForTitle = sliceTitleText(question, CHAT_TITLE_QUESTION_MAX_LENGTH);
   const userPrompt = `Generate a title for the following source text. Do not answer it.
 
 <user_message>
