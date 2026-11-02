@@ -33,7 +33,7 @@ export const CreateModelDeprecationInformBodySchema = z.object({
     example: ['68ad85a7463006c963799a05']
   }),
   plannedDeprecationAt: z.string().date().meta({
-    description: '计划下架日期，服务端按自身时区解释为该日 00:00',
+    description: '浏览器选择的计划下架日，格式 YYYY-MM-DD，用于通知文案',
     example: '2026-12-31'
   }),
   channels: z
@@ -118,9 +118,9 @@ export const ModelDeprecationInformHistoryItemSchema = z.object({
     description: '通知计划中的模型稳定 ID',
     example: ['68ad85a7463006c963799a05']
   }),
-  plannedDeprecationAt: z.string().datetime().meta({
-    description: '计划下架时间，由服务端时区下的零点转换为 ISO-8601',
-    example: '2026-12-31T00:00:00.000Z'
+  plannedDeprecationAt: z.string().date().meta({
+    description: '浏览器选择的计划下架日，格式 YYYY-MM-DD',
+    example: '2026-12-31'
   }),
   createdAt: z.string().datetime().meta({
     description: '通知计划创建时间',

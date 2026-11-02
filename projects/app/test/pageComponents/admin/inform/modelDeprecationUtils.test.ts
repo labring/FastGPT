@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
+import { ModelDeprecationInformChannelEnum } from '@fastgpt/global/support/user/inform/constants';
 import {
+  getModelDeprecationInformChannels,
   getLocalDateLabel,
-  getPlannedDeprecationDateLabel,
   getSelectableDeprecationModels
 } from '@/pageComponents/admin/inform/modelDeprecationUtils';
 
@@ -20,14 +21,20 @@ describe('getSelectableDeprecationModels', () => {
   });
 });
 
-describe('getLocalDateLabel', () => {
-  it('keeps the selected local calendar day', () => {
-    expect(getLocalDateLabel(new Date(2026, 11, 31))).toBe('2026-12-31');
+describe('getModelDeprecationInformChannels', () => {
+  it('expands the merged email-or-sms option into both delivery channels', () => {
+    expect(
+      getModelDeprecationInformChannels([ModelDeprecationInformChannelEnum.inApp, 'email_or_sms'])
+    ).toEqual([
+      ModelDeprecationInformChannelEnum.inApp,
+      ModelDeprecationInformChannelEnum.email,
+      ModelDeprecationInformChannelEnum.sms
+    ]);
   });
 });
 
-describe('getPlannedDeprecationDateLabel', () => {
-  it('shows the server-normalized calendar day returned by the API', () => {
-    expect(getPlannedDeprecationDateLabel('2026-12-31T00:00:00.000Z')).toBe('2026-12-31');
+describe('getLocalDateLabel', () => {
+  it('keeps the selected local calendar day', () => {
+    expect(getLocalDateLabel(new Date(2026, 11, 31))).toBe('2026-12-31');
   });
 });

@@ -1,6 +1,5 @@
 import { Box, Button, Checkbox, HStack } from '@chakra-ui/react';
 import type { ModelConfigListItem } from '@fastgpt/global/openapi/core/ai/model/api';
-import type { CreateModelDeprecationInformBodyType } from '@fastgpt/global/openapi/admin/system/inform/api';
 import { ModelDeprecationInformChannelEnum } from '@fastgpt/global/support/user/inform/constants';
 import DateTimePicker from '@fastgpt/web/components/common/DateTimePicker';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
@@ -8,15 +7,17 @@ import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { nanoid } from 'nanoid';
 import React from 'react';
 import {
+  getModelDeprecationInformChannels,
   getLocalDateLabel,
-  getSelectableDeprecationModels
+  getSelectableDeprecationModels,
+  type ModelDeprecationInformChannelOption
 } from '@/pageComponents/admin/inform/modelDeprecationUtils';
 import { postCreateModelDeprecationInform } from '@/web/admin/system/inform/api';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 
-const defaultChannels = [
+const defaultChannels: ModelDeprecationInformChannelOption[] = [
   ModelDeprecationInformChannelEnum.inApp,
-  ModelDeprecationInformChannelEnum.email
+  'email_or_sms'
 ];
 
 /** 创建模型下架通知计划；成功后可在同一 modal 切换到发送记录。 */
@@ -32,7 +33,7 @@ const ModelDeprecationInformModal = ({
   const { t } = useSafeTranslation();
   const [plannedDate, setPlannedDate] = React.useState<Date>();
   const [channels, setChannels] =
-    React.useState<CreateModelDeprecationInformBodyType['channels']>(defaultChannels);
+    React.useState<ModelDeprecationInformChannelOption[]>(defaultChannels);
   const [minPlannedDate] = React.useState(() => {
     const date = new Date();
     date.setHours(0, 0, 0, 0);
@@ -55,7 +56,7 @@ const ModelDeprecationInformModal = ({
       label: t('config_model:model_deprecation.channel_in_app')
     },
     {
-      value: ModelDeprecationInformChannelEnum.email,
+      value: 'email_or_sms',
       label: t('config_model:model_deprecation.channel_email')
     }
   ] as const;
@@ -83,7 +84,7 @@ const ModelDeprecationInformModal = ({
                 requestId: requestId.current,
                 models: selectedModels,
                 plannedDeprecationAt: getLocalDateLabel(plannedDate),
-                channels
+                channels: getModelDeprecationInformChannels(channels)
               });
             }}
           >
