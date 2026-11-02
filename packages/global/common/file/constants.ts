@@ -61,11 +61,12 @@ export const audioFileType = '.mp3, .wav, .ogg, .m4a, .amr, .mpga';
 /**
  * 主流视觉模型可消费的栅格图片格式。
  *
- * `imageFileType` 还包含 svg / psd / raw / eps 等格式：把这些当图片发给供应商大概率被拒，
- * 反而丢掉原本可读的文本内容，所以视觉得到图片链路统一按这份白名单过滤。
+ * `imageFileType` 还包含 svg / psd / raw / eps / bmp 等格式：把它们当图片发给供应商大概率被拒
+ * （OpenAI 与 Claude 只接受 PNG / JPEG / WEBP / GIF），反而丢掉原本可读的文本内容，
+ * 所以进入视觉通道前统一按这份白名单过滤。
  */
-export const providerImageFileType = '.png, .jpg, .jpeg, .gif, .webp, .bmp';
-export const providerImageMimeType = 'image/png, image/jpeg, image/gif, image/webp, image/bmp';
+export const providerImageFileType = '.png, .jpg, .jpeg, .gif, .webp';
+export const providerImageMimeType = 'image/png, image/jpeg, image/gif, image/webp';
 
 /**
  * 单次工具结果最多携带多少张图片。
