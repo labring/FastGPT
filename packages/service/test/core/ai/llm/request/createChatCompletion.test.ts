@@ -14,14 +14,16 @@ const mockLogger = vi.hoisted(() => ({
   error: vi.fn()
 }));
 
-vi.mock('@fastgpt/service/common/logger', () => ({
-  getLogger: () => mockLogger,
-  LogCategories: {
-    MODULE: {
-      AI: { LLM: 'ai.llm' }
-    }
-  }
-}));
+// 只替换 getLogger；LogCategories 必须沿用真实模块，否则间接依赖（如 common/api/serverRequest）
+// 在模块加载期读取 LogCategories.HTTP.ERROR 会直接抛错。
+vi.mock('@fastgpt/service/common/logger', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@fastgpt/service/common/logger')>();
+
+  return {
+    ...actual,
+    getLogger: () => mockLogger
+  };
+});
 
 vi.mock('@fastgpt/service/core/ai/config', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@fastgpt/service/core/ai/config')>();
