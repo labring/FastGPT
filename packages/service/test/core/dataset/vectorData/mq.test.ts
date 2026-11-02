@@ -105,8 +105,11 @@ describe('onDatasetVectorCounted', () => {
     });
     expect(mocks.getQueue.mock.calls[0][1].defaultJobOptions).toMatchObject({
       delay: 600000,
-      removeOnComplete: true
+      attempts: 1,
+      removeOnComplete: true,
+      removeOnFail: true
     });
+    expect(mocks.getQueue.mock.calls[0][1].defaultJobOptions).not.toHaveProperty('backoff');
     const dataset = await MongoDataset.findById(scope.datasetId).lean();
     expect(dataset?.vectorData).toEqual({ pgIndex: 'pending', pgIndexCheckedAt: expect.any(Date) });
     expect(dataset?.vectorData).not.toHaveProperty('rows');
@@ -288,8 +291,9 @@ describe('processDatasetVectorIndex', () => {
     );
   });
 
-  it('sets failed on build errors and allows the queue retry to synchronize ready', async () => {
+  it('keeps failed after a build error until a new count schedules another attempt', async () => {
     await createDataset();
+    await onDatasetVectorCounted({ ...scope, rows: 40000 });
     const error = Object.assign(
       new Error('could not resize shared memory segment: No space left on device'),
       { code: '53100' }
@@ -302,6 +306,13 @@ describe('processDatasetVectorIndex', () => {
     );
     expect((await MongoDataset.findById(scope.datasetId).lean())?.vectorData?.pgIndex).toBe(
       'failed'
+    );
+    expect(mocks.add).toHaveBeenCalledOnce();
+    await onDatasetVectorCounted({ ...scope, rows: 40000 });
+    expect(mocks.add).toHaveBeenCalledTimes(2);
+    expect(mocks.add).toHaveBeenLastCalledWith('maintain', scope, { jobId: scope.datasetId });
+    expect((await MongoDataset.findById(scope.datasetId).lean())?.vectorData?.pgIndex).toBe(
+      'pending'
     );
     await processDatasetVectorIndex(scope);
     expect((await MongoDataset.findById(scope.datasetId).lean())?.vectorData?.pgIndex).toBe(

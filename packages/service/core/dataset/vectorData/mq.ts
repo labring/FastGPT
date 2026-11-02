@@ -15,13 +15,12 @@ import { findDatasetVectorData, updateDatasetPgIndexState } from './entity';
 const logger = getLogger(LogCategories.INFRA.QUEUE);
 const INDEX_MAINTENANCE_DELAY_MS = 10 * 60 * 1000;
 
-/** 固定 jobId 在 delayed/waiting/active/retry 全生命周期去重；重复计数不延长首次等待窗口。 */
+/** 固定 jobId 在 delayed/waiting/active 期间去重；失败移除任务，等待下次真实统计重新投递。 */
 const getDatasetVectorIndexQueue = () =>
   bullMQ.getQueue<PgDatasetIndexScope>(QueueNames.datasetVectorIndex, {
     defaultJobOptions: {
       delay: INDEX_MAINTENANCE_DELAY_MS,
-      attempts: 3,
-      backoff: { type: 'exponential', delay: INDEX_MAINTENANCE_DELAY_MS },
+      attempts: 1,
       removeOnComplete: true,
       removeOnFail: true
     }
@@ -51,7 +50,7 @@ export const onDatasetVectorCounted = async ({
   }
 };
 
-/** 通过 PG 目录核验后同步最终状态；removing 先停用索引路由，DROP 失败仍可从 failed 重试。 */
+/** 通过 PG 目录核验后同步最终状态；失败保留 failed 状态，由下次真实统计重新投递。 */
 export const processDatasetVectorIndex = async (scope: PgDatasetIndexScope) => {
   const dataset = await findDatasetVectorData(scope);
   if (!dataset) return;
@@ -87,7 +86,7 @@ export const processDatasetVectorIndex = async (scope: PgDatasetIndexScope) => {
       elapsedMs: Date.now() - startedAt
     });
   } catch (error) {
-    // Mongo 故障不掩盖原始构建错误；BullMQ 退避后再核验，成功的索引无需重复构建。
+    // Mongo 故障不掩盖原始构建错误；下次真实统计重新投递后再核验，成功索引无需重复构建。
     await updateDatasetPgIndexState({ ...scope, pgIndex: 'failed' }).catch((stateError) =>
       logger.warn('Failed to update dataset PG index state', { ...scope, error: stateError })
     );
