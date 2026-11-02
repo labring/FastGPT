@@ -23,6 +23,7 @@
   "export_config": "導出配置",
   "export_failed": "導出失敗",
   "export_success": "導出成功",
+  "export_sandbox_wait": "請等待沙盒就緒後再匯出技能",
   "history_versions": "歷史版本",
   "import_existing_skill": "導入已有技能",
   "import_existing_skill_desc": "將外部的常用技能直接導入平台，支持 .zip 格式",

@@ -163,14 +163,16 @@ export const LeftHeader = () => {
   const { t } = useTranslation();
   const router = useRouter();
 
-  const { skillDetail, isSkillReady, restartChat } = useContextSelector(
+  const { skillDetail, isSkillReady, sandboxState, restartChat } = useContextSelector(
     SkillDetailContext,
     (v) => ({
       skillDetail: v.skillDetail,
       isSkillReady: v.isSkillReady,
+      sandboxState: v.sandboxState,
       restartChat: v.restartChat
     })
   );
+  const isSandboxReady = sandboxState === 'ready';
 
   const { setEditedSkill, setShowPermModal, onExportSkill, openConfirmDelete, onClickDeleteSkill } =
     useHeader();
@@ -207,8 +209,10 @@ export const LeftHeader = () => {
             icon: 'export' as const,
             type: 'grayBg' as const,
             label: t('skill:export_config'),
+            disabled: !isSandboxReady,
+            disabledTip: !isSandboxReady ? t('skill:export_sandbox_wait') : undefined,
             onClick: () => {
-              if (!skillDetail) return;
+              if (!skillDetail || !isSandboxReady) return;
               onExportSkill(skillDetail._id, skillDetail.name);
             }
           }
@@ -248,6 +252,7 @@ export const LeftHeader = () => {
     [
       t,
       skillDetail,
+      isSandboxReady,
       onExportSkill,
       setEditedSkill,
       setShowPermModal,
