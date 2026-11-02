@@ -2,8 +2,10 @@ import { useEffect, useMemo, type ReactNode } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/router';
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
+import { preloadImages } from '@fastgpt/web/components/common/Image/preloadImages';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import type { ChannelType } from '@fastgpt/global/core/ai/model/scope';
+import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
 
 const ModelConfigTable = dynamic(() => import('@/pageComponents/model/ModelConfigTable'));
 const ChannelTable = dynamic(() => import('@/pageComponents/model/Channel'));
@@ -37,6 +39,18 @@ export const ModelManagementContainer = ({
 }: ModelManagementContainerProps) => {
   const { t } = useSafeTranslation();
   const router = useRouter();
+  const modelProviders = useUserModelStore((state) => state.modelProviders);
+
+  /**
+   * 供应商头像是对象存储上的绝对地址，每个 TAB 面板重新挂载时都会重新发请求，
+   * 表现为图标晚于条目文字 0.5-1 秒出现。目录就绪后先统一预热，切 TAB 时直接命中缓存。
+   */
+  useEffect(() => {
+    const avatars = Object.values(modelProviders ?? {}).flatMap((providerList) =>
+      (providerList ?? []).map((provider) => provider.avatar)
+    );
+    void preloadImages(avatars);
+  }, [modelProviders]);
 
   const baseTabList = useMemo<{ label: string; value: ModelTabType }[]>(
     () => [
