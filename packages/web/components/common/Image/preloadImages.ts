@@ -9,7 +9,7 @@
  * 约定：预热只做尽力而为，任何失败（跨域、超时、地址为空）都不能影响页面渲染。
  */
 
-export type PreloadImageLoader = (url: string) => Promise<void>;
+export type PreloadImageLoader = (url: string) => Promise<boolean | void>;
 
 type PreloadImageOptions = {
   /** 测试注入用；默认用浏览器 Image 对象下载。 */
@@ -23,10 +23,10 @@ const pendingImages = new Set<HTMLImageElement>();
 const PRELOAD_TIMEOUT_MS = 10_000;
 
 const loadWithBrowserImage: PreloadImageLoader = (url) =>
-  new Promise<void>((resolve) => {
-    // SSR 或测试环境没有 Image 时直接跳过，不阻塞调用方。
+  new Promise<boolean>((resolve) => {
+    // SSR 或测试环境没有 Image 时直接跳过，不阻塞调用方；不计入成功缓存，后续可重试。
     if (typeof window === 'undefined' || typeof window.Image === 'undefined') {
-      resolve();
+      resolve(false);
       return;
     }
 
@@ -35,18 +35,18 @@ const loadWithBrowserImage: PreloadImageLoader = (url) =>
 
     let timer: ReturnType<typeof setTimeout> | undefined;
     // load / error / timeout 统一收尾：释放引用、清理计时器，保证 Promise 一定 settle。
-    const finish = () => {
+    const finish = (succeeded: boolean) => {
       if (timer !== undefined) clearTimeout(timer);
       image.onload = null;
       image.onerror = null;
       pendingImages.delete(image);
-      resolve();
+      resolve(succeeded);
     };
 
-    // onerror 同样 resolve：头像加载失败由 Avatar 的 fallbackSrc 兜底，预热不抛错。
-    image.onload = finish;
-    image.onerror = finish;
-    timer = setTimeout(finish, PRELOAD_TIMEOUT_MS);
+    // 加载失败由 Avatar 的 fallbackSrc 兜底；只有成功结果进入长期缓存，失败/超时下次可重试。
+    image.onload = () => finish(true);
+    image.onerror = () => finish(false);
+    timer = setTimeout(() => finish(false), PRELOAD_TIMEOUT_MS);
     image.src = url;
   });
 
@@ -61,11 +61,16 @@ export const preloadImage = (
   if (inflight) return inflight;
 
   // Wrap in a promise chain so a synchronously throwing loader is caught as well.
+  // 只有成功加载才写入长期缓存；失败、超时、SSR 跳过均允许后续调用重试。
   const task = Promise.resolve()
     .then(() => loader(url))
+    .then((result) => {
+      if (result !== false) {
+        preloadedUrls.add(url);
+      }
+    })
     .catch(() => undefined)
     .then(() => {
-      preloadedUrls.add(url);
       inflightLoads.delete(url);
     });
 

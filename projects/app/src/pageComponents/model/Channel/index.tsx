@@ -9,7 +9,7 @@ import {
   putChannelStatus
 } from '@/web/core/ai/model/channel';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Table,
   Thead,
@@ -41,6 +41,8 @@ import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import Avatar from '@fastgpt/web/components/common/Avatar';
+import { preloadImages } from '@fastgpt/web/components/common/Image/preloadImages';
+import { getProviderAvatarUrls } from '@/web/core/ai/model/providerAvatar';
 import ModelTabHeader from '@/components/core/ai/ModelTabHeader';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { FixedTableLayout } from '@fastgpt/web/components/common/FixedTable';
@@ -89,6 +91,14 @@ const ChannelTable = ({ Tab, channelType }: { Tab: React.ReactNode; channelType:
       manual: false
     }
   );
+
+  const channelProviderAvatars = useMemo(
+    () => getProviderAvatarUrls(Object.values(channelProviders)),
+    [channelProviders]
+  );
+  useEffect(() => {
+    void preloadImages(channelProviderAvatars);
+  }, [channelProviderAvatars]);
 
   const [editChannel, setEditChannel] = useState<ChannelInfoType>();
   const [channelMutationLoading, setChannelMutationLoading] = useState(false);

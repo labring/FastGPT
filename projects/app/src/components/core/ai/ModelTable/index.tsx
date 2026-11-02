@@ -24,6 +24,8 @@ import {
   getModelProviderListFromCache
 } from '@fastgpt/global/core/ai/model/provider';
 import Avatar from '@fastgpt/web/components/common/Avatar';
+import { preloadImages } from '@fastgpt/web/components/common/Image/preloadImages';
+import { getProviderAvatarUrls } from '@/web/core/ai/model/providerAvatar';
 import CopyBox from '@fastgpt/web/components/common/String/CopyBox';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import { FixedTableLayout } from '@fastgpt/web/components/common/FixedTable';
@@ -93,6 +95,11 @@ const ModelTable = ({
       ),
     [i18n.language, memberModelProviders, permissionConfig, publicProviderCache]
   );
+
+  const modelProviderAvatars = useMemo(() => getProviderAvatarUrls(providers), [providers]);
+  useEffect(() => {
+    void preloadImages(modelProviderAvatars);
+  }, [modelProviderAvatars]);
 
   const [modelType, setModelType] = useState<ModelTypeEnum | ''>('');
 

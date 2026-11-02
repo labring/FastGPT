@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import {
   formatModelProviders,
@@ -10,7 +10,9 @@ import type {
   GetTeamModelsResponse
 } from '@fastgpt/global/openapi/core/ai/model/api';
 import type { ChannelType } from '@fastgpt/global/core/ai/model/scope';
+import { preloadImages } from '@fastgpt/web/components/common/Image/preloadImages';
 import { getModelConfig } from './api';
+import { getProviderAvatarUrls } from './providerAvatar';
 import { useUserModelStore } from './useUserModelStore';
 
 type ModelConfigResponse = GetSystemModelConfigResponse | GetTeamModelsResponse;
@@ -63,6 +65,13 @@ export const useModelConfig = ({
       ),
     [language, providerCache.ModelProviderListCache]
   );
+
+  // 管理页配置/日志/监控均通过本 hook 读取实际 Provider 数据；目录数据就绪后预热头像。
+  const providerAvatars = useMemo(() => getProviderAvatarUrls(providers), [providers]);
+  useEffect(() => {
+    void preloadImages(providerAvatars);
+  }, [providerAvatars]);
+
   const refresh = useCallback(async () => {
     useUserModelStore.getState().clearMemory();
     await runAsync();

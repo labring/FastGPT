@@ -120,6 +120,68 @@ describe('image preload helper', () => {
     await expect(pending).resolves.toBeUndefined();
   });
 
+  it('loader 失败后再次调用会重试，不把失败地址加入长期缓存', async () => {
+    let callCount = 0;
+    const loader = vi.fn(async () => {
+      callCount += 1;
+      if (callCount === 1) throw new Error('network error');
+    });
+
+    await preloadImage('https://cdn.example.com/models/Yi/logo', { loader });
+    await preloadImage('https://cdn.example.com/models/Yi/logo', { loader });
+
+    expect(loader).toHaveBeenCalledTimes(2);
+  });
+
+  it('默认实现 onerror 会结束等待，失败地址下次仍可重试', async () => {
+    const created: { src: string; onload?: () => void; onerror?: () => void }[] = [];
+    class FakeImage {
+      onload?: () => void;
+      onerror?: () => void;
+      src = '';
+      constructor() {
+        created.push(this);
+      }
+    }
+    (globalThis as { window?: unknown }).window = { Image: FakeImage };
+
+    const first = preloadImage('https://cdn.example.com/models/Yi/logo');
+    await Promise.resolve();
+    created[0].onerror?.();
+    await expect(first).resolves.toBeUndefined();
+
+    const second = preloadImage('https://cdn.example.com/models/Yi/logo');
+    await Promise.resolve();
+    expect(created).toHaveLength(2);
+    created[1].onload?.();
+    await expect(second).resolves.toBeUndefined();
+  });
+
+  it('默认实现超时后再次调用可重试', async () => {
+    vi.useFakeTimers();
+    const created: { src: string; onload?: () => void; onerror?: () => void }[] = [];
+    class FakeImage {
+      onload?: () => void;
+      onerror?: () => void;
+      src = '';
+      constructor() {
+        created.push(this);
+      }
+    }
+    (globalThis as { window?: unknown }).window = { Image: FakeImage };
+
+    const pending = preloadImage('https://cdn.example.com/models/OpenAI/logo');
+    await Promise.resolve();
+    await vi.advanceTimersByTimeAsync(10_000);
+    await expect(pending).resolves.toBeUndefined();
+
+    const retry = preloadImage('https://cdn.example.com/models/OpenAI/logo');
+    await Promise.resolve();
+    expect(created).toHaveLength(2);
+    created[1].onload?.();
+    await expect(retry).resolves.toBeUndefined();
+  });
+
   it('没有浏览器 Image 时空实现直接返回', async () => {
     await expect(
       preloadImage('https://cdn.example.com/models/OpenAI/logo')
