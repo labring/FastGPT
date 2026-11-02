@@ -19,12 +19,12 @@ import {
   intersectWorkflowTagOptions,
   isDatasetTagFilterValue,
   isTagFilterAttributeField,
+  isTagFilterOpWithoutValue,
   pruneTagFilterConditions,
   type DatasetTagFilterCondition,
   type DatasetTagFilterValue,
   type WorkflowTagFilterOption
 } from '@fastgpt/global/core/dataset/search/tagFilter';
-import { isTagFilterOpWithoutValue } from '@fastgpt/global/core/dataset/search/tagFilter/normalizer';
 import type {
   ReferenceItemValueType,
   EditorVariablePickerType
@@ -221,6 +221,25 @@ export const isTagFilterValueTypeCompatible = (
 };
 
 /**
+ * 按允许的目标变量类型过滤引用变量树，供整段标签过滤引用选择器与单行条件值引用选择器共用。
+ */
+export const filterTagFilterReferenceList = (
+  referenceList: TagFilterReferenceList,
+  allowedTypes: WorkflowIOValueTypeEnum[]
+): TagFilterReferenceList => {
+  if (allowedTypes.length === 0) return referenceList;
+
+  return referenceList
+    .map((group) => ({
+      ...group,
+      children: group.children.filter((child) =>
+        isTagFilterValueTypeCompatible(child.valueType, allowedTypes)
+      )
+    }))
+    .filter((group) => group.children.length > 0);
+};
+
+/**
  * 判断条件行是否已选中具体属性或标签，未选定时禁用取值模式切换。
  */
 export const isTagFilterAttrSelected = (condition: DatasetTagFilterCondition): boolean =>
@@ -247,19 +266,10 @@ const TagFilterValueCell = ({
   const isOpDisabled = isTagFilterOpWithoutValue(condition.op);
   const canSwitchMode = isAttrSelected && !isOpDisabled;
 
-  const filteredReferenceList = useMemo(() => {
-    const allowedTypes = getTagFilterAllowedValueTypes(condition);
-    if (allowedTypes.length === 0) return referenceList;
-
-    return referenceList
-      .map((group) => ({
-        ...group,
-        children: group.children.filter((child) =>
-          isTagFilterValueTypeCompatible(child.valueType, allowedTypes)
-        )
-      }))
-      .filter((group) => group.children.length > 0);
-  }, [condition, referenceList]);
+  const filteredReferenceList = useMemo(
+    () => filterTagFilterReferenceList(referenceList, getTagFilterAllowedValueTypes(condition)),
+    [condition, referenceList]
+  );
 
   const literalInput = (() => {
     if (!condition.tagType) {
