@@ -1299,6 +1299,54 @@ describe('markdown 字符串处理函数测试', () => {
       expect(controller).not.toHaveBeenCalled();
     });
 
+    it('普通和嵌套描述混排时保留地址、标题及原文偏移', () => {
+      const nodes = [
+        '![plain](https://example.com/a.png "first")',
+        '![图 [1]](https://example.com/b.png "second")',
+        '![](https://example.com/c.png "third")'
+      ];
+      const text = nodes.join(' text ');
+
+      expect(matchMarkdownImages(text)).toEqual(
+        nodes.map((node, index) => ({
+          altText: ['plain', '图 [1]', ''][index],
+          url: `https://example.com/${['a', 'b', 'c'][index]}.png`,
+          fullMatch: node,
+          index: text.indexOf(node)
+        }))
+      );
+      expect(matchDocumentImages(text).map((image) => image.replace('next-key'))).toEqual([
+        '![plain](next-key "first")',
+        '![图 [1]](next-key "second")',
+        '![](next-key "third")'
+      ]);
+    });
+
+    it('无效候选共用右括号时仍能找到后续有效图片', () => {
+      const prefix = 'before ![broken ![also broken] not-image ';
+      const node = '![valid](https://example.com/a.png)';
+
+      expect(matchMarkdownImages(`${prefix}${node}`)).toEqual([
+        {
+          altText: 'valid',
+          url: 'https://example.com/a.png',
+          fullMatch: node,
+          index: prefix.length
+        }
+      ]);
+    });
+
+    it('大量未闭合候选不会重复扫描同一个右括号或剩余全文', () => {
+      const noClosing = '![unclosed '.repeat(20000);
+      const sharedClosing = `${'![unclosed '.repeat(4000)}${'x'.repeat(100000)}] not-image`;
+
+      const started = performance.now();
+      expect(matchMarkdownImages(noClosing)).toEqual([]);
+      expect(matchMarkdownImages(sharedClosing)).toEqual([]);
+      // 逐候选重扫后缀需数秒，缓存右括号并及时终止后只需一次线性扫描。
+      expect(performance.now() - started).toBeLessThan(500);
+    });
+
     it('多种长度且不闭合的反引号串不会反复扫描后文', () => {
       const runs = Array.from({ length: 400 }, (_, i) => '`'.repeat(i + 1)).join(' ');
       const text = `![a [1]](https://example.com/a.png) ${runs} ${'x'.repeat(1_000_000)}`;
