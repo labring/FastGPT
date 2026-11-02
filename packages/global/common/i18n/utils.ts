@@ -49,8 +49,9 @@ export const parseLocale = (value?: string): localeType | undefined => {
 export const parseI18nString = (str: I18nStringLikeType | string = '', lang = 'en') => {
   if (!str || typeof str === 'string') return str;
 
-  // 尝试使用当前语言
-  if (lang in str) {
+  // 尝试使用当前语言。繁体中文的键存在但翻译为空时，与键缺失同等对待，
+  // 继续走下方简体中文回退；否则空字符串会挡住回退，繁体用户拿到空文案。
+  if (lang in str && (lang !== 'zh-Hant' || str[lang as keyof I18nStringLikeType])) {
     return str[lang as keyof I18nStringLikeType] || '';
   }
 

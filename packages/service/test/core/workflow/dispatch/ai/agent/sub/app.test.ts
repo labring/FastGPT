@@ -6,7 +6,11 @@ import {
 } from '@fastgpt/global/core/workflow/constants';
 import { WorkflowVariableState } from '@fastgpt/service/core/workflow/dispatch/utils/variables';
 import { summarizeRuntimeNodeResponses } from '@fastgpt/service/core/workflow/dispatch/utils/summary';
-import { ChatFileTypeEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import {
+  ChatFileTypeEnum,
+  ChatRoleEnum,
+  ChatSourceTypeEnum
+} from '@fastgpt/global/core/chat/constants';
 import { prepareWorkflowFileContext } from '@fastgpt/service/core/workflow/utils/fileContext';
 import {
   getWorkflowFileContext,
@@ -801,4 +805,108 @@ describe('agent sub app dispatchApp', () => {
       'internal default'
     );
   });
+});
+
+describe('Agent nested workflow memory isolation', () => {
+  it.each(['app', 'plugin'] as const)(
+    'isolates the shared descendant of two cloned %s tools across calls and reloads',
+    async (type) => {
+      const { WorkflowMemoryState } = await import('@fastgpt/service/core/workflow/memory/state');
+      const rootSource = { sourceType: ChatSourceTypeEnum.app, sourceId: 'parent-app' };
+      let rootState = WorkflowMemoryState.fromRecord({}, { rootSource });
+      let agentState = rootState.fork('node:agent1');
+      const descendantSource = { sourceType: ChatSourceTypeEnum.app, sourceId: 'shared-plugin' };
+      const seen: Array<{ appId: string; previous: unknown; key: string }> = [];
+
+      mocks.authAppByTmbId.mockImplementation(async ({ appId }: { appId: string }) => ({
+        app: { _id: appId, name: appId, teamId: 'team', tmbId: 'member' }
+      }));
+      mocks.getAppVersionById.mockResolvedValue({
+        resources: [],
+        nodes: [],
+        edges: [],
+        chatConfig: { variables: [] }
+      });
+      mocks.serverGetWorkflowToolRunUserQuery.mockReturnValue({ value: [] });
+      mocks.runWorkflow.mockImplementation(async (args: any) => {
+        const descendantState = args.memoryState.fork('node:shared_plugin_node');
+        const key = descendantState.getNodeMemoryKey({
+          runningAppInfo: descendantSource,
+          nodeId: 'extract_1'
+        });
+        seen.push({
+          appId: args.runningAppInfo.sourceId,
+          previous: descendantState.readNodeMemory({
+            runningAppInfo: descendantSource,
+            nodeId: 'extract_1'
+          }),
+          key
+        });
+        descendantState.merge({ [key]: { origin: args.runningAppInfo.sourceId } });
+        return {
+          assistantResponses: [],
+          flowUsages: [],
+          system_memories: descendantState.getDelta(),
+          workflowRuntimeSummary: summarizeRuntimeNodeResponses(undefined, [
+            {
+              id: 'output',
+              nodeId: 'output',
+              moduleType: FlowNodeTypeEnum.pluginOutput,
+              moduleName: 'Output',
+              pluginOutput: { result: 'ok' }
+            }
+          ])
+        };
+      });
+
+      /** 经过真实的子应用/插件入口，模拟其内部相同节点挂载同一个插件。 */
+      const callTool = async (id: string) => {
+        const props = {
+          app: { id, name: id },
+          memoryState: agentState,
+          runningAppInfo: { ...rootSource, teamId: 'team', tmbId: 'member', name: 'Parent' },
+          runningUserInfo: {
+            teamId: 'team',
+            tmbId: 'member',
+            username: 'user',
+            teamName: 'Team',
+            memberName: 'Member',
+            contact: ''
+          },
+          customAppVariables: {},
+          userChatInput: 'hello',
+          timezone: 'Asia/Shanghai',
+          uid: 'user',
+          chatId: 'chat',
+          responseChatItemId: 'response',
+          variableState: await createVariableState(),
+          checkIsStopping: () => false,
+          maxRunTimes: 20,
+          workflowDispatchDeep: 0,
+          mode: 'chat' as const,
+          externalProvider: {},
+          query: []
+        };
+        return type === 'app' ? dispatchApp(props) : dispatchPlugin(props);
+      };
+
+      await Promise.all([callTool('clone_A'), callTool('clone_B')]);
+      expect(seen.map(({ previous }) => previous)).toEqual([undefined, undefined]);
+      expect(new Set(seen.map(({ key }) => key)).size).toBe(2);
+      expect(Object.keys(agentState.getDelta())).toHaveLength(2);
+
+      rootState.merge(agentState.getDelta());
+      rootState = WorkflowMemoryState.fromHistories(
+        [{ obj: ChatRoleEnum.AI, value: [], memories: rootState.toRecord() }],
+        { rootSource }
+      );
+      agentState = rootState.fork('node:agent1');
+      await callTool('clone_B');
+      await callTool('clone_A');
+      expect(seen.slice(2)).toMatchObject([
+        { appId: 'clone_B', previous: { origin: 'clone_B' } },
+        { appId: 'clone_A', previous: { origin: 'clone_A' } }
+      ]);
+    }
+  );
 });

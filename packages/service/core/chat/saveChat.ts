@@ -43,6 +43,7 @@ import {
   stripUserContentFileUrls
 } from './utils/prepare';
 import { buildChatSourceQuery, buildChatSourceWriteFields, type ChatSourceParams } from './source';
+import { mergeWorkflowMemories } from '../workflow/memory/utils';
 
 const logger = getLogger(LogCategories.MODULE.CHAT);
 
@@ -992,10 +993,11 @@ export const updateInteractiveChat = async ({
     }
 
     if (aiContent.memories) {
-      chatItem.memories = {
-        ...chatItem.memories,
-        ...aiContent.memories
-      };
+      chatItem.memories = mergeWorkflowMemories({
+        baseline: chatItem.memories,
+        entries: aiContent.memories,
+        rootSource: chatSource
+      });
     }
 
     chatItem.durationSeconds = chatItem.durationSeconds

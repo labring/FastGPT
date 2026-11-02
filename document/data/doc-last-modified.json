@@ -203,8 +203,6 @@
   "content/self-host/config/sandbox/sealosdevbox.mdx": "2026-08-19T19:27:03+08:00",
   "content/self-host/config/signoz.en.mdx": "2026-10-19T09:55:56+08:00",
   "content/self-host/config/signoz.mdx": "2026-04-26T21:08:47+08:00",
-  "content/self-host/custom-models/marker.en.mdx": "2026-08-15T23:40:17+08:00",
-  "content/self-host/custom-models/marker.mdx": "2026-04-26T21:08:47+08:00",
   "content/self-host/custom-models/mineru.en.mdx": "2026-10-19T09:55:56+08:00",
   "content/self-host/custom-models/mineru.mdx": "2026-04-26T21:08:47+08:00",
   "content/self-host/custom-models/ollama.en.mdx": "2026-10-19T09:55:56+08:00",
@@ -221,6 +219,8 @@
   "content/self-host/design/dataset.mdx": "2026-04-26T21:08:47+08:00",
   "content/self-host/dev.en.mdx": "2026-10-19T09:55:56+08:00",
   "content/self-host/dev.mdx": "2026-07-17T19:17:14+08:00",
+  "content/self-host/docker_minio_to_rustfs.en.mdx": "2026-11-02T11:39:37+08:00",
+  "content/self-host/docker_minio_to_rustfs.mdx": "2026-11-02T11:39:37+08:00",
   "content/self-host/index.en.mdx": "2026-04-26T21:08:47+08:00",
   "content/self-host/index.mdx": "2026-04-26T21:08:47+08:00",
   "content/self-host/migration/docker_db.en.mdx": "2026-04-26T21:08:47+08:00",
@@ -514,5 +514,7 @@
   "content/self-host/upgrading/version-timeline.en.mdx": "2026-08-16T23:16:43+08:00",
   "content/self-host/upgrading/version-timeline.mdx": "2026-08-16T23:16:43+08:00",
   "content/toc.en.mdx": "2026-11-01T21:47:02+08:00",
-  "content/toc.mdx": "2026-11-01T21:47:02+08:00"
+  "content/toc.mdx": "2026-11-01T21:47:02+08:00",
+  "content/self-host/upgrading/4-18/4180.en.mdx": "2026-11-02T11:20:42+08:00",
+  "content/self-host/upgrading/4-18/4180.mdx": "2026-11-02T11:20:42+08:00"
 }
