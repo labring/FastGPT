@@ -10,7 +10,8 @@ import { getLogger, LogCategories } from '../../logger';
 import { configurePgIndexMemory } from './indexMemory';
 
 const logger = getLogger(LogCategories.INFRA.POSTGRES);
-const INDEX_MAINTENANCE_LOCK = 41823001;
+// 升级清理旧全局索引与局部索引 CREATE / DROP 共用此会话锁。
+export const PG_INDEX_MAINTENANCE_LOCK = 41823001;
 
 export type PgDatasetIndexScope = { teamId: string; datasetId: string };
 export type PgDatasetIndexProgress = {
@@ -180,7 +181,7 @@ export const ensurePgDatasetIndex = async ({
     // 2. CREATE / DROP 共用会话锁；拿到锁后再次核验目录和行数，避免处理旧任务时误删回涨的索引。
     const { rows: lock } = await client.query<{ locked: boolean }>(
       'SELECT pg_try_advisory_lock($1) AS locked',
-      [INDEX_MAINTENANCE_LOCK]
+      [PG_INDEX_MAINTENANCE_LOCK]
     );
     if (!lock[0].locked) throw new Error('Another PG dataset index maintenance is still running');
     existing = await readIndex();

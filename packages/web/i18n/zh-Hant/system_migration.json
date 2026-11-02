@@ -137,7 +137,8 @@
   "migrations.20261025_token_prices_per_million.models": "更新系統模型單價",
   "migrations.20261025_token_prices_per_million.result": "已遷移 {{migratedCount}} 個系統模型至 pricing，舊價格原值和團隊模型保持不變。",
   "migrations.20261022_initialize_dataset_vector_indexes.name": "初始化知識庫向量索引",
-  "migrations.20261022_initialize_dataset_vector_indexes.description": "在背景統計既有知識庫的向量數，為超過三萬筆的知識庫延遲排入 FP16 局部索引建置任務；索引完成前繼續精確檢索。",
+  "migrations.20261022_initialize_dataset_vector_indexes.description": "先核驗並在線上移除舊全域 HNSW 索引，再於背景統計知識庫向量數，為超過三萬筆的知識庫排入 FP16 局部索引建置任務；索引完成前繼續精確檢索。",
   "migrations.20261022_initialize_dataset_vector_indexes.result": "已統計 {{scannedCount}} 個知識庫，{{eligibleCount}} 個符合索引建置條件；實際建置由佇列繼續執行。",
-  "migrations.20261022_initialize_dataset_vector_indexes.datasets": "統計知識庫並排入索引任務"
+  "migrations.20261022_initialize_dataset_vector_indexes.datasets": "統計知識庫並排入索引任務",
+  "migrations.20261022_initialize_dataset_vector_indexes.legacyIndex": "清理舊全域 HNSW 索引"
 }

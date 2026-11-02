@@ -67,7 +67,7 @@ describe('validateSystemMigrationRegistry', () => {
       id: '20261022_initialize_dataset_vector_indexes',
       version: '4.17.4',
       blockStartup: false,
-      progressSteps: [{ key: 'datasets' }]
+      progressSteps: [{ key: 'legacyIndex' }, { key: 'datasets' }]
     });
     expect(task).not.toHaveProperty('manual');
     expect(task).not.toHaveProperty('independent');

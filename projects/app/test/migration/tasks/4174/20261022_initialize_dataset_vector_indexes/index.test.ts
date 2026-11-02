@@ -5,7 +5,15 @@ import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import type { SystemMigrationContext } from '@/migration/registry';
 import { initializeDatasetVectorIndexes } from '@/migration/tasks/4174/20261022_initialize_dataset_vector_indexes';
 
-const mocks = vi.hoisted(() => ({ count: vi.fn(), counted: vi.fn(), provider: 'pg' }));
+const mocks = vi.hoisted(() => ({
+  count: vi.fn(),
+  counted: vi.fn(),
+  removeLegacy: vi.fn(),
+  provider: 'pg'
+}));
+vi.mock('@/migration/tasks/4174/20261022_initialize_dataset_vector_indexes/service', () => ({
+  removeLegacyPgVectorIndex: mocks.removeLegacy
+}));
 vi.mock('@fastgpt/service/common/vectorDB/controller', () => ({ getVectorCount: mocks.count }));
 vi.mock('@fastgpt/service/core/dataset/vectorData/mq', () => ({
   onDatasetVectorCounted: mocks.counted
@@ -55,6 +63,7 @@ beforeEach(() => {
   mocks.provider = 'pg';
   mocks.count.mockReset().mockResolvedValue(40000);
   mocks.counted.mockReset().mockResolvedValue(undefined);
+  mocks.removeLegacy.mockReset().mockResolvedValue(undefined);
 });
 
 describe('initializeDatasetVectorIndexes', () => {
@@ -83,6 +92,13 @@ describe('initializeDatasetVectorIndexes', () => {
       ]
     ]);
     expect(mocks.counted).toHaveBeenCalledWith({ teamId, datasetId: id(2), rows: 30001 });
+    expect(mocks.removeLegacy.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.count.mock.invocationCallOrder[0]
+    );
+    expect(context.reportProgress.mock.calls.slice(0, 2)).toEqual([
+      [{ key: 'legacyIndex', status: 'running' }],
+      [{ key: 'legacyIndex', status: 'succeeded' }]
+    ]);
     expect(checkpoint()).toMatchObject({ lastId: id(2), endId: id(2) });
     expect(context.reportProgress).toHaveBeenLastCalledWith({
       key: 'datasets',
@@ -93,6 +109,34 @@ describe('initializeDatasetVectorIndexes', () => {
       eligibleCount: 1
     });
     expect(mocks.count).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not count or save a scan checkpoint until legacy index cleanup succeeds', async () => {
+    await seed(1);
+    mocks.removeLegacy.mockRejectedValueOnce(new Error('DROP failed'));
+    const { context, checkpoint } = createContext();
+    await expect(initializeDatasetVectorIndexes(context)).rejects.toThrow('DROP failed');
+    expect(mocks.count).not.toHaveBeenCalled();
+    expect(checkpoint()).toBeUndefined();
+    expect(context.reportProgress.mock.calls).toEqual([
+      [{ key: 'legacyIndex', status: 'running' }]
+    ]);
+    expect(await initializeDatasetVectorIndexes(context)).toEqual({
+      scannedCount: 1,
+      eligibleCount: 1
+    });
+    expect(mocks.removeLegacy).toHaveBeenCalledTimes(2);
+  });
+
+  it('stops before scanning if the lease is lost during legacy index cleanup', async () => {
+    await seed(1);
+    const { context, checkpoint } = createContext();
+    mocks.removeLegacy.mockImplementationOnce(async () => {
+      context.assertActive.mockRejectedValue(new Error('lease lost'));
+    });
+    await expect(initializeDatasetVectorIndexes(context)).rejects.toThrow('lease lost');
+    expect(mocks.count).not.toHaveBeenCalled();
+    expect(checkpoint()).toBeUndefined();
   });
 
   it('does not advance past a failed queue delivery and resumes at the first uncommitted batch', async () => {
@@ -176,5 +220,6 @@ describe('initializeDatasetVectorIndexes', () => {
       status: 'succeeded'
     });
     expect(mocks.count).not.toHaveBeenCalled();
+    expect(mocks.removeLegacy).toHaveBeenCalledTimes(pg ? 1 : 0);
   });
 });

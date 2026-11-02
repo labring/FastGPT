@@ -10,6 +10,7 @@ import { onDatasetVectorCounted } from '@fastgpt/service/core/dataset/vectorData
 import { withTimeout } from '@fastgpt/global/common/system/utils';
 import { systemMigrationBatchSize } from '@/migration/constants';
 import type { SystemMigrationContext } from '@/migration/registry';
+import { removeLegacyPgVectorIndex } from './service';
 
 const CursorSchema = z
   .string()
@@ -27,11 +28,15 @@ const CheckpointSchema = z
 /**
  * 固定 _id 上界分批断点续扫：真实统计并可靠投递后才推进 checkpoint，重复批次由 datasetId 去重。
  * 任务成功只表示完成历史知识库统计与投递，实际建图仍延迟十分钟、全局串行，不阻塞系统启动。
- * 不修改原始向量，不删除旧全局索引；滚动升级的旧节点仍能继续读写。
+ * 扫描前先核验并在线删除旧全局 HNSW，保留原始向量及普通索引，查询在局部索引就绪前继续精确检索。
  */
 export const initializeDatasetVectorIndexes = async (context: SystemMigrationContext) => {
-  await context.reportProgress({ key: 'datasets', status: SystemMigrationStatusEnum.running });
+  await context.reportProgress({ key: 'legacyIndex', status: SystemMigrationStatusEnum.running });
   await context.assertActive();
+  if (getVectorType() === 'pg') await removeLegacyPgVectorIndex(context);
+  await context.assertActive();
+  await context.reportProgress({ key: 'legacyIndex', status: SystemMigrationStatusEnum.succeeded });
+  await context.reportProgress({ key: 'datasets', status: SystemMigrationStatusEnum.running });
   if (getVectorType() !== 'pg') {
     await context.reportProgress({ key: 'datasets', status: SystemMigrationStatusEnum.succeeded });
     return { scannedCount: 0, eligibleCount: 0 };
