@@ -9,7 +9,7 @@ on:
       target:
         description: 'Target branch to cherry pick to'
         required: true
-        default: 'v4.16.x'
+        default: 'v4.17.x'
 jobs:
   cherry-pick:
     permissions:
