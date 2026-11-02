@@ -27,18 +27,18 @@ const CheckpointSchema = z
 
 /**
  * 固定 _id 上界分批断点续扫：真实统计并可靠投递后才推进 checkpoint，重复批次由 datasetId 去重。
- * 任务成功只表示完成历史知识库统计与投递，实际建图仍延迟十分钟、全局串行，不阻塞系统启动。
- * 扫描前先核验并在线删除旧全局 HNSW，保留原始向量及普通索引，查询在局部索引就绪前继续精确检索。
+ * 全部扫描与投递成功后再核验并在线删除旧全局 HNSW；扫描失败时保留旧索引，清理失败则从扫描断点重试。
+ * 任务成功不表示局部索引已就绪，实际建图仍延迟十分钟、全局串行，不阻塞系统启动。
  */
 export const initializeDatasetVectorIndexes = async (context: SystemMigrationContext) => {
-  await context.reportProgress({ key: 'legacyIndex', status: SystemMigrationStatusEnum.running });
-  await context.assertActive();
-  if (getVectorType() === 'pg') await removeLegacyPgVectorIndex(context);
-  await context.assertActive();
-  await context.reportProgress({ key: 'legacyIndex', status: SystemMigrationStatusEnum.succeeded });
   await context.reportProgress({ key: 'datasets', status: SystemMigrationStatusEnum.running });
   if (getVectorType() !== 'pg') {
     await context.reportProgress({ key: 'datasets', status: SystemMigrationStatusEnum.succeeded });
+    await context.reportProgress({ key: 'legacyIndex', status: SystemMigrationStatusEnum.running });
+    await context.reportProgress({
+      key: 'legacyIndex',
+      status: SystemMigrationStatusEnum.succeeded
+    });
     return { scannedCount: 0, eligibleCount: 0 };
   }
 
@@ -104,6 +104,14 @@ export const initializeDatasetVectorIndexes = async (context: SystemMigrationCon
 
   await context.assertActive();
   await context.reportProgress({ key: 'datasets', status: SystemMigrationStatusEnum.succeeded });
+
+  // 所有批次完成可靠投递后才清理旧索引；清理失败可沿用 checkpoint，避免重复统计和投递。
+  await context.reportProgress({ key: 'legacyIndex', status: SystemMigrationStatusEnum.running });
+  await context.assertActive();
+  await removeLegacyPgVectorIndex(context);
+  await context.assertActive();
+  await context.reportProgress({ key: 'legacyIndex', status: SystemMigrationStatusEnum.succeeded });
+
   const result = { scannedCount: checkpoint.scannedCount, eligibleCount: checkpoint.eligibleCount };
   context.logger.info('Historical dataset vector counts and index scheduling completed', result);
   return result;
