@@ -157,7 +157,7 @@ describe('PgVectorCtrl.embRecall indexed transactions', () => {
     });
     expect(poolClient.query.mock.calls.map(([sql]) => sql)[0]).toBe('BEGIN');
     expect(poolClient.query.mock.calls.at(-1)?.[0]).toBe('COMMIT');
-    expect(poolClient.query.mock.calls[1][1]).toEqual(['100', '100000']);
+    expect(poolClient.query.mock.calls[1][1]).toEqual(['100', '30001']);
     expect(poolClient.query.mock.calls[2][0]).toMatchObject({ query_timeout: 120_000 });
     expect(poolClient.release).toHaveBeenCalledExactlyOnceWith(false);
   });

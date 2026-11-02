@@ -47,6 +47,11 @@ export const buildPgVectorRecallQuery = ({
   });
   const indexedSet = new Set(indexed);
   const exact = ids.filter((id) => !indexedSet.has(id));
+  // 事务内各 HNSW 分组独立使用扫描上限，取最大库行数即可；GUC 只接受 int32。
+  const maxScanTuples = indexed.reduce(
+    (max, id) => Math.min(2_147_483_647, Math.max(max, metadata.get(id)!.rows)),
+    0
+  );
 
   // 2. 参数先声明为 vector，避免 PG 从首次 halfvec 转换推断类型，提前量化重排使用的查询向量。
   // 候选集先物化，再将存储向量转为 FP32 计算距离；halfvec 存储不会恢复量化前的精度。
@@ -79,6 +84,7 @@ export const buildPgVectorRecallQuery = ({
       SELECT id, collection_id, score FROM (${groups.join('\nUNION ALL\n')}) AS grouped_results
       ORDER BY score, id LIMIT $2`,
     values,
-    usesHnsw: indexed.length > 0
+    usesHnsw: indexed.length > 0,
+    maxScanTuples
   };
 };

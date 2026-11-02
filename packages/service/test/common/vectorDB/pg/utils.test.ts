@@ -19,6 +19,7 @@ describe('buildPgVectorRecallQuery', () => {
         datasetVectorData: [{ datasetId: 'retained', rows, pgIndex: 'ready' }]
       })!;
       expect(query.usesHnsw).toBe(true);
+      expect(query.maxScanTuples).toBe(rows);
       expect(query.text).toContain('AS MATERIALIZED');
       expect(query.text).not.toContain('ANY(');
     }
@@ -35,6 +36,7 @@ describe('buildPgVectorRecallQuery', () => {
       ]
     })!;
     expect(query.usesHnsw).toBe(true);
+    expect(query.maxScanTuples).toBe(30001);
     expect(query.text.match(/AS MATERIALIZED/g)).toHaveLength(1);
     expect(query.text).toContain('vector::halfvec(2) <#> $1::vector::halfvec(2)');
     expect(query.text).toContain('vector::vector <#> $1::vector AS score');
@@ -48,21 +50,31 @@ describe('buildPgVectorRecallQuery', () => {
     const query = buildPgVectorRecallQuery({
       ...props,
       datasetIds: ['a', 'b'],
-      datasetVectorData: ['a', 'b'].map((datasetId) => ({
-        datasetId,
-        rows: 40000,
-        pgIndex: 'ready'
-      }))
+      datasetVectorData: [
+        { datasetId: 'a', rows: 40000, pgIndex: 'ready' },
+        { datasetId: 'b', rows: 150000, pgIndex: 'ready' }
+      ]
     })!;
+    expect(query.maxScanTuples).toBe(150000);
     expect(query.text.match(/AS MATERIALIZED/g)).toHaveLength(2);
     expect(query.text).not.toContain('ANY(');
     expect(query.values).toHaveLength(2);
     expect(query.text).toMatch(/ORDER BY score, id LIMIT \$2$/);
   });
 
+  it('caps the scan budget at the PostgreSQL integer parameter limit', () => {
+    const query = buildPgVectorRecallQuery({
+      ...props,
+      datasetIds: ['large'],
+      datasetVectorData: [{ datasetId: 'large', rows: 3_000_000_000, pgIndex: 'ready' }]
+    })!;
+    expect(query.maxScanTuples).toBe(2_147_483_647);
+  });
+
   it('uses one exact query without metadata', () => {
     const query = buildPgVectorRecallQuery(props)!;
     expect(query.usesHnsw).toBe(false);
+    expect(query.maxScanTuples).toBe(0);
     expect(query.text).not.toContain('UNION ALL');
     expect(query.text).not.toContain('halfvec');
     expect(query.values.at(-1)).toEqual(['large', 'small', 'pending']);

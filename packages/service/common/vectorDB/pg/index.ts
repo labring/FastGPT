@@ -148,7 +148,7 @@ export class PgVectorCtrl implements VectorControllerType {
                   set_config('hnsw.iterative_scan', 'relaxed_order', true)`,
           [
             String(Math.min(1000, Math.max(props.limit, global.systemEnv?.hnswEfSearch || 100))),
-            String(global.systemEnv?.hnswMaxScanTuples || 100000)
+            String(query.maxScanTuples)
           ]
         );
         const result = await client.query<{ id: string; collection_id: string; score: number }>(

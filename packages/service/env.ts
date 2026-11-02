@@ -258,9 +258,6 @@ export const serviceEnv = createEnv({
     HNSW_EF_SEARCH: IntSchema.min(1).default(100).meta({
       description: '向量检索 hnsw ef_search 参数，仅对 PG / OB / OpenGauss 生效'
     }),
-    HNSW_MAX_SCAN_TUPLES: IntSchema.min(1).default(100000).meta({
-      description: '向量检索最大扫描数据量，仅对 PG 生效'
-    }),
 
     // 对象存储
     STORAGE_VENDOR: StorageVendorSchema.default('minio'),
