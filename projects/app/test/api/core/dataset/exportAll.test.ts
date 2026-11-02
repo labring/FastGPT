@@ -221,6 +221,8 @@ describe('export dataset respects collection permission', () => {
         disableSuperAdmin: true
       }
     });
+    // 导出要求 dataset write，disableSuperAdmin 又关掉了团队 owner 旁路，必须显式授予。
+    await grantDataset({ datasetId: String(dataset._id), user: teamOwner, permission: WriteRoleVal });
     // 文件作者是 member：owner 行只属于 member，团队 owner 没有 collection ACL
     await createFileCollection({
       name: 'member-file',

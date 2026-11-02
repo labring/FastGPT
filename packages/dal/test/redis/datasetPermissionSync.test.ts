@@ -9,7 +9,8 @@ import {
 import {
   RedisLeaseLostError,
   RedisLeaseUnavailableError,
-  type LeaseCache
+  type LeaseCache,
+  type RedisLeaseContext
 } from '@fastgpt/dal/redis/caches';
 import { QueueNames } from '@fastgpt/dal/redis/bullmq/names';
 import { DatasetStatusEnum } from '@fastgpt/global/core/dataset/constants';
@@ -59,7 +60,10 @@ const createFailedJob = ({
 const createLeaseCache = (withLease: ReturnType<typeof vi.fn>) =>
   ({ withLease }) as unknown as LeaseCache;
 
-const allowLease = () => vi.fn(async ({ fn }: { fn: () => Promise<unknown> }) => fn());
+const allowLease = () =>
+  vi.fn(async ({ fn }: { fn: (context: RedisLeaseContext) => Promise<unknown> }) =>
+    fn({ signal: new AbortController().signal, assertValid: vi.fn() })
+  );
 
 /** 取出 getWorker 收到的包装后 processor。 */
 const getWrappedProcessor = (binding: BullMQBinding) => {
@@ -180,7 +184,10 @@ describe('DatasetPermissionSyncMQService', () => {
       getFailed: vi.fn().mockResolvedValue([failed])
     };
     const binding = createBinding(queue);
-    const withLease = allowLease();
+    const lease = { signal: new AbortController().signal, assertValid: vi.fn() };
+    const withLease = vi.fn(
+      async ({ fn }: { fn: (context: RedisLeaseContext) => Promise<unknown> }) => fn(lease)
+    );
     const service = new DatasetPermissionSyncMQService(binding, createLeaseCache(withLease));
     const processor = vi.fn().mockResolvedValue('done');
     service.getWorker(processor);
@@ -194,7 +201,8 @@ describe('DatasetPermissionSyncMQService', () => {
         ttlMs: 2 * 60 * 1000
       })
     );
-    expect(processor).toHaveBeenCalledWith(job, 'token');
+    // processor 必须拿到租约上下文，写入前才能确认自己仍是当前执行者
+    expect(processor).toHaveBeenCalledWith(job, 'token', lease);
     expect(failed.remove).toHaveBeenCalledTimes(1);
   });
 

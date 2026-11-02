@@ -11,10 +11,11 @@ import { getLogger, LogCategories } from '../../../../common/logger';
 import { Types } from '../../../../common/mongo';
 import { fetchApiFilePermissions } from './adapters';
 import { resolveApiDatasetPermissionItems, ensureOwnerAccess } from './resolver';
-import { assertPermissionSyncDeadline } from './utils';
+import { assertPermissionSyncActive } from './utils';
 import { applyCollectionPermissionStates, isSameCollaboratorSet } from './writer';
 import type { CollectionPermissionSyncStats, CollectionPermissionTargetState } from './types';
 import type { ApiDatasetPermissionItemType } from '@fastgpt/global/core/dataset/apiDataset/type';
+import type { RedisLeaseContext } from '@fastgpt/dal/redis/caches';
 
 const logger = getLogger(LogCategories.MODULE.DATASET);
 
@@ -24,9 +25,21 @@ type PermissionSyncCollectionRow = {
   type: string;
   parentId?: unknown;
   inheritPermission?: boolean;
+  metadata?: { apiFileSourceId?: unknown };
 };
 
-const SYNC_TARGET_FIELDS = '_id apiFileId type parentId inheritPermission';
+const SYNC_TARGET_FIELDS = '_id apiFileId type parentId inheritPermission metadata';
+
+/**
+ * collection 对应的外部文件 ID。
+ *
+ * 带子文档的文件会额外生成 `doc#dir` 派生目录，它本地存的是派生 ID，真实外部 ID 在
+ * `metadata.apiFileSourceId`；直接拿 `apiFileId` 拉权限会在外部 404，被误判成「外部未表达」。
+ */
+const getPermissionSourceId = (row: PermissionSyncCollectionRow) => {
+  const sourceId = row.metadata?.apiFileSourceId;
+  return typeof sourceId === 'string' && sourceId ? sourceId : String(row.apiFileId);
+};
 
 /**
  * 把定向同步的根节点展开成本轮的目标节点集，按层级逐层下钻。
@@ -107,7 +120,8 @@ export const syncCollectionPermissions = async ({
   datasetId,
   collectionIds,
   traceId,
-  deadlineAt
+  deadlineAt,
+  lease
 }: {
   teamId: string;
   datasetId: string;
@@ -116,8 +130,12 @@ export const syncCollectionPermissions = async ({
   traceId?: string;
   /** 本轮截止时间；到达后不再发起新的拉取或写入。 */
   deadlineAt?: number;
+  /** 同库租约上下文：丢失后立即停止拉取和写入。 */
+  lease?: RedisLeaseContext;
 }): Promise<CollectionPermissionSyncStats> => {
   const stats: CollectionPermissionSyncStats = { checked: 0, updated: 0, skipped: 0, failed: 0 };
+
+  assertPermissionSyncActive({ deadlineAt, lease });
 
   const dataset = await MongoDataset.findOne(
     { _id: datasetId, teamId },
@@ -144,14 +162,16 @@ export const syncCollectionPermissions = async ({
     : await MongoDatasetCollection.find(
         { teamId, datasetId, apiFileId: { $exists: true, $ne: null } },
         SYNC_TARGET_FIELDS
-      ).lean();
+      ).lean<PermissionSyncCollectionRow[]>();
 
   stats.checked = collections.length;
   if (collections.length === 0) return stats;
 
-  const apiFileIds = Array.from(
-    new Set(collections.map((collection) => String(collection.apiFileId)))
+  // 正文与派生目录共用同一个外部文件 ID，本轮只拉一次。
+  const sourceIdByCollectionId = new Map(
+    collections.map((collection) => [String(collection._id), getPermissionSourceId(collection)])
   );
+  const apiFileIds = Array.from(new Set(sourceIdByCollectionId.values()));
 
   logger.info('[permissionSync] round started', {
     teamId,
@@ -166,7 +186,8 @@ export const syncCollectionPermissions = async ({
     apiDatasetServer: dataset.apiDatasetServer,
     request,
     apiFileIds,
-    deadlineAt
+    deadlineAt,
+    lease
   });
   // 只把拿到外部结论的节点交给解析；失败节点本轮保持本地不动。
   const okPermissionsByFileId = new Map<string, ApiDatasetPermissionItemType[] | undefined>();
@@ -180,12 +201,13 @@ export const syncCollectionPermissions = async ({
     }
     okPermissionsByFileId.set(apiFileId, snapshot?.permissions);
   }
+  assertPermissionSyncActive({ deadlineAt, lease });
   const resolved = await resolveApiDatasetPermissionItems({
     teamId,
     itemsByFileId: okPermissionsByFileId
   });
 
-  assertPermissionSyncDeadline(deadlineAt);
+  assertPermissionSyncActive({ deadlineAt, lease });
   const currentRows = await resourcePermissionRepo.findByResourceIds({
     teamId,
     resourceType: PerResourceTypeEnum.collection,
@@ -204,13 +226,14 @@ export const syncCollectionPermissions = async ({
 
   const ownerTmbId = String(dataset.tmbId);
   const states: CollectionPermissionTargetState[] = [];
+  assertPermissionSyncActive({ deadlineAt, lease });
   for (const collection of collections) {
     const collectionId = String(collection._id);
-    const apiFileId = String(collection.apiFileId);
+    const sourceId = sourceIdByCollectionId.get(collectionId)!;
     // 抓取失败已在上面计入 failed，这里不能再算 skipped
-    if (failedFileIds.has(apiFileId)) continue;
-    const rawPermissions = okPermissionsByFileId.get(apiFileId);
-    const collaborators = resolved.get(apiFileId);
+    if (failedFileIds.has(sourceId)) continue;
+    const rawPermissions = okPermissionsByFileId.get(sourceId);
+    const collaborators = resolved.get(sourceId);
     // undefined = 外部未提供（或本条失败）：本地保持不动（跳过，不算失败）
     if (collaborators === undefined) {
       stats.skipped++;
@@ -250,12 +273,13 @@ export const syncCollectionPermissions = async ({
     });
   }
 
-  assertPermissionSyncDeadline(deadlineAt);
+  assertPermissionSyncActive({ deadlineAt, lease });
   const { updated } = await applyCollectionPermissionStates({
     teamId,
     datasetId,
     states,
-    deadlineAt
+    deadlineAt,
+    lease
   });
   stats.updated = updated;
 

@@ -6,8 +6,9 @@ import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import type { CollaboratorItemType } from '@fastgpt/global/support/permission/collaborator';
 import { getPermissionSubjectKey } from './resolver';
-import { assertPermissionSyncDeadline } from './utils';
+import { assertPermissionSyncActive } from './utils';
 import type { CollectionPermissionTargetState } from './types';
+import type { RedisLeaseContext } from '@fastgpt/dal/redis/caches';
 
 /** 协作者集合比较键：subject + role。ACL 行里存的就是这两项。 */
 const collaboratorKey = (collaborator: CollaboratorItemType) =>
@@ -43,24 +44,27 @@ export const applyCollectionPermissionStates = async ({
   teamId,
   datasetId,
   states,
-  deadlineAt
+  deadlineAt,
+  lease
 }: {
   teamId: string;
   datasetId: string;
   states: CollectionPermissionTargetState[];
   /** 本轮截止时间；到达后不再写库。 */
   deadlineAt?: number;
+  /** 同库租约上下文；丢失后停止后续写入。已提交的事务无法回滚，靠下一个检查点收敛。 */
+  lease?: RedisLeaseContext;
 }): Promise<{ updated: number }> => {
   const changedStates = states.filter((state) => state.changed);
   if (changedStates.length === 0) return { updated: 0 };
 
-  assertPermissionSyncDeadline(deadlineAt);
+  assertPermissionSyncActive({ deadlineAt, lease });
 
   const stopResourceIds = new Set(states.map((state) => state.collectionId));
 
   await mongoSessionRun(async (session) => {
-    // 事务可能被 driver 重试，截止检查放在回调内才能覆盖每一次重试。
-    assertPermissionSyncDeadline(deadlineAt);
+    // 事务可能被 driver 重试，检查放在回调内才能覆盖每一次重试。
+    assertPermissionSyncActive({ deadlineAt, lease });
 
     await resourcePermissionRepo.replaceResources({
       teamId,
@@ -86,6 +90,7 @@ export const applyCollectionPermissionStates = async ({
       ) {
         continue;
       }
+      assertPermissionSyncActive({ deadlineAt, lease });
       await syncResourceTreePermissions({
         resource: {
           _id: state.collectionId,

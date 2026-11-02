@@ -37,7 +37,10 @@ import {
   toInheritedPermissionValue
 } from '../resourcePermissionPolicy';
 import { resolveCollectionPermission } from '../collection/auth';
-import { isDisableSuperAdmin } from '@fastgpt/global/core/dataset/apiDataset/utils';
+import {
+  isDisableSuperAdmin,
+  isPermissionSyncDataset
+} from '@fastgpt/global/core/dataset/apiDataset/utils';
 import { assertDatasetPermission } from './utils';
 import type { TeamTmbItemType } from '@fastgpt/global/support/user/team/type';
 
@@ -268,6 +271,8 @@ export async function authDatasetCollection({
   //    Dataset 有效权限（父 owner 不透传，cap 为 manage）。关闭态由「开关是唯一入口」保证不存
   //    在自定义 collection 权限，与 listV2/RAG 短路语义一致（避免列表可见但详情拒绝）。
   const datasetCollectionPermissionEnabled = dataset.collectionPermissionEnabled;
+  // 托管模式的 ACL 是唯一授权来源：创建者身份（tmbId）不再升格为 owner。
+  const permissionSync = isPermissionSyncDataset(collection.dataset?.apiDatasetServer);
 
   // 4. Collection 维度解析：物化快照直读（无父链递归）。
   let role: PermissionValueType;
@@ -276,7 +281,7 @@ export async function authDatasetCollection({
     // isOwner: true」一致。cap 为 manage 会让「转移 owner」等 owner 专属操作被误拒。
     role = OwnerRoleVal;
   } else if (datasetCollectionPermissionEnabled !== true) {
-    const isCollectionOwner = String(collection.tmbId) === String(tmbId);
+    const isCollectionOwner = !permissionSync && String(collection.tmbId) === String(tmbId);
     const datasetRole = dataset.permission.role;
     // Collection owner 优先：owner 由创建/changeOwner 产生，owner 记录在全量快照中始终为
     // OwnerRoleVal（merge 时与父级降级后的 manage 按位 OR 后保留全位）。短路分支必须与
@@ -295,7 +300,7 @@ export async function authDatasetCollection({
     });
   }
 
-  const isOwner = String(collection.tmbId) === String(tmbId);
+  const isOwner = !permissionSync && String(collection.tmbId) === String(tmbId);
 
   const permission = new CollectionPermission({
     role,

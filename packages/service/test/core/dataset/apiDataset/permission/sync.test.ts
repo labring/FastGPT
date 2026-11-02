@@ -50,6 +50,7 @@ type CollectionRow = {
   type: string;
   parentId: string | null;
   inheritPermission?: boolean;
+  metadata?: { apiFileSourceId?: unknown };
 };
 
 /**
@@ -361,5 +362,91 @@ describe('syncCollectionPermissions', () => {
     expect(fetchApiFilePermissions).toHaveBeenCalledWith(
       expect.objectContaining({ apiFileIds: ['f1'] })
     );
+  });
+
+  it('aborts before fetching when the dataset lease is already lost', async () => {
+    const controller = new AbortController();
+    controller.abort();
+
+    await expect(
+      syncCollectionPermissions({
+        teamId,
+        datasetId,
+        lease: { signal: controller.signal, assertValid: vi.fn() }
+      })
+    ).rejects.toMatchObject({ name: 'PermissionSyncCancelledError' });
+    expect(fetchApiFilePermissions).not.toHaveBeenCalled();
+  });
+
+  it('does not write when the dataset lease is lost after fetching', async () => {
+    const leaseError = new Error('lease lost');
+    // 起始、解析前、构建 states 前各检查一次；第三次起失败 → 不进入 writer
+    const assertValid = vi
+      .fn()
+      .mockReturnValueOnce(undefined)
+      .mockReturnValueOnce(undefined)
+      .mockImplementation(() => {
+        throw leaseError;
+      });
+    mockCollectionFind({
+      all: [{ _id: 'c1', apiFileId: 'f1', type: 'file', parentId: null, inheritPermission: true }]
+    });
+    fetchApiFilePermissions.mockResolvedValue(
+      new Map([['f1', { apiFileId: 'f1', status: 'ok', permissions: [] }]])
+    );
+    resolveApiDatasetPermissionItems.mockResolvedValue(new Map([['f1', []]]));
+
+    await expect(
+      syncCollectionPermissions({
+        teamId,
+        datasetId,
+        lease: { signal: new AbortController().signal, assertValid }
+      })
+    ).rejects.toMatchObject({ name: 'PermissionSyncCancelledError', cause: leaseError });
+    expect(fetchApiFilePermissions).toHaveBeenCalled();
+    expect(applyCollectionPermissionStates).not.toHaveBeenCalled();
+  });
+
+  it('queries the external permission once for a document and its derived directory', async () => {
+    mockCollectionFind({
+      all: [
+        { _id: 'c1', apiFileId: 'f1', type: 'file', parentId: null, inheritPermission: true },
+        {
+          _id: 'c2',
+          apiFileId: 'f1#dir',
+          type: 'folder',
+          parentId: null,
+          inheritPermission: true,
+          metadata: { apiFileSourceId: 'f1' }
+        }
+      ]
+    });
+    const target: CollaboratorItemType[] = [{ tmbId: 'tmb-1', permission: ReadRoleVal }];
+    fetchApiFilePermissions.mockResolvedValue(
+      new Map([['f1', { apiFileId: 'f1', status: 'ok', permissions: target }]])
+    );
+    resolveApiDatasetPermissionItems.mockResolvedValue(new Map([['f1', target]]));
+
+    await syncCollectionPermissions({ teamId, datasetId });
+
+    // 派生目录用 metadata.apiFileSourceId 还原真实外部 ID：只拉一次，两条 collection 共用结论
+    expect(fetchApiFilePermissions).toHaveBeenCalledWith(
+      expect.objectContaining({ apiFileIds: ['f1'] })
+    );
+    expect(resolveApiDatasetPermissionItems).toHaveBeenCalledWith(
+      expect.objectContaining({ itemsByFileId: new Map([['f1', target]]) })
+    );
+    const [states] = applyCollectionPermissionStates.mock.calls[0] as [
+      { states: { collectionId: string; collaborators: CollaboratorItemType[] }[] }
+    ];
+    expect(states.states.map((state) => state.collectionId)).toEqual(['c1', 'c2']);
+    for (const state of states.states) {
+      expect(state.collaborators).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ tmbId: 'tmb-1', permission: ReadRoleVal }),
+          expect.objectContaining({ tmbId: 'owner-tmb', permission: OwnerRoleVal })
+        ])
+      );
+    }
   });
 });

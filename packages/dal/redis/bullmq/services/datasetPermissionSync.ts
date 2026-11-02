@@ -1,10 +1,10 @@
 import { DelayedError } from 'bullmq';
 import { bullMQ, type BullMQBinding } from '../binding';
-import { LeaseCache, RedisLeaseUnavailableError } from '../../caches';
+import { LeaseCache, RedisLeaseUnavailableError, type RedisLeaseContext } from '../../caches';
 import { removeSupersededFailedJobs } from '../failed-job-cleanup';
 import { QueueNames } from '../names';
 import { defaultWorkerOptions, fastRetryJobOptions } from '../options';
-import type { Job, Processor, Queue, Worker } from '../types';
+import type { Job, Queue, Worker } from '../types';
 import { DatasetStatusEnum } from '@fastgpt/global/core/dataset/constants';
 import { hashStr } from '@fastgpt/global/common/string/tools';
 
@@ -19,6 +19,13 @@ export type DatasetPermissionSyncJobData = {
   collectionIds?: string[];
   traceId?: string;
 };
+
+/** processor 额外拿到同库租约上下文：写入前可据此确认自己仍是当前执行者。 */
+export type DatasetPermissionSyncProcessor<T> = (
+  job: Job<DatasetPermissionSyncJobData>,
+  token: string | undefined,
+  lease: RedisLeaseContext
+) => Promise<T>;
 
 /**
  * 去重键。
@@ -59,9 +66,9 @@ export class DatasetPermissionSyncMQService {
    * 不消耗 attempts；只有 Redis 故障等其它租约错误才让 job 失败并走重试。
    */
   getWorker(
-    processor: Processor<DatasetPermissionSyncJobData>
-  ): Worker<DatasetPermissionSyncJobData> {
-    return this.binding.getWorker<DatasetPermissionSyncJobData>(
+    processor: DatasetPermissionSyncProcessor<unknown>
+  ): Worker<DatasetPermissionSyncJobData, unknown> {
+    return this.binding.getWorker<DatasetPermissionSyncJobData, unknown>(
       QueueNames.datasetPermissionSync,
       async (job, token) => {
         const datasetId = String(job.data.datasetId);
@@ -70,8 +77,8 @@ export class DatasetPermissionSyncMQService {
             key: `dataset-permission-sync:${datasetId}`,
             label: 'dataset-permission-sync',
             ttlMs: DATASET_PERMISSION_SYNC_LEASE_TTL_MS,
-            fn: async () => {
-              const result = await processor(job, token);
+            fn: async (lease) => {
+              const result = await processor(job, token, lease);
               // 清理只能发生在成功路径，且失败不能把已成功的任务判失败：
               // 残留的失败记录最多让状态多显示一轮 error，下一次成功会再清。
               await this.cleanupFailedJobs(job).catch((error) => {
