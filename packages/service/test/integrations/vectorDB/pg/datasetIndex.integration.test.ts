@@ -259,7 +259,7 @@ describeStorage('local PG FP16 dataset index with %s storage', (storage) => {
     expect(await ctrl.getVectorCount(scope)).toBe(count);
   });
 
-  it('keeps one database build globally even if an old worker still owns the session lock', async () => {
+  it('keeps one database build globally while another maintenance session owns the lock', async () => {
     await admin.query('SELECT pg_advisory_lock(41823001)');
     try {
       await expect(
@@ -292,6 +292,36 @@ describeStorage('local PG FP16 dataset index with %s storage', (storage) => {
     },
     240000
   );
+
+  it('merges multiple HNSW groups and the exact group with one final FP32 ranking', async () => {
+    await ensurePgDatasetIndex({ teamId, datasetId: repairId, ...callbacks });
+    const props = {
+      teamId,
+      datasetIds: [datasetId, repairId, ...smallIds],
+      vector,
+      limit: 3,
+      forbidCollectionIdList: ['hidden'],
+      datasetVectorData: [datasetId, repairId].map((datasetId) => ({
+        datasetId,
+        rows: 30001,
+        pgIndex: 'ready' as const
+      }))
+    };
+    const query = buildPgVectorRecallQuery(props)!;
+    const plan = await (
+      await connectPg()
+    ).query(`EXPLAIN (FORMAT JSON) ${query.text}`, query.values);
+    for (const id of [datasetId, repairId]) {
+      expect(JSON.stringify(plan.rows)).toContain(getPgDatasetIndexName(id));
+    }
+    const indexed = await ctrl.embRecall(props);
+    const exact = await ctrl.embRecall({ ...props, datasetVectorData: [] });
+    expect(indexed.results).toHaveLength(props.limit);
+    expect(indexed.results).toEqual(exact.results);
+    expect(indexed.results.map(({ score }) => score)).toEqual(
+      [topScores[3], topScores[2], topScores[1]].map(scoreFor)
+    );
+  }, 240000);
 
   it('retains at 20000..30000, removes below 20000, and rebuilds only above 30000', async () => {
     const pool = await connectPg();
@@ -354,7 +384,7 @@ describeStorage('local PG FP16 dataset index with %s storage', (storage) => {
     expect(onRemoving).toHaveBeenCalledOnce();
     expect(await readIndexOid()).toBeNull();
     expect(await ctrl.getVectorCount(scope)).toBe(19999);
-    // 延迟任务尚未同步元数据时，低行数也必须走精确路径。
+    // 维护任务尚未同步元数据时，低行数也必须走精确路径。
     expect(buildPgVectorRecallQuery(recallProps(19999, 'ready'))!.usesHnsw).toBe(false);
     expect((await ctrl.embRecall(recallProps(19999, 'none'))).results).toHaveLength(100);
 
@@ -540,77 +570,4 @@ describeStorage('local PG FP16 dataset index with %s storage', (storage) => {
     );
     expect(rows[0]).toEqual({ oid, preserved: true });
   });
-
-  it.skipIf(!process.env.FASTGPT_PG_INDEX_BENCHMARK || storage !== 'vector')(
-    'reports warm vector-stage latency for the same 100 queries',
-    async () => {
-      const { rows } = await (
-        await connectPg()
-      ).query(
-        "SELECT vector::text AS vector FROM modeldata WHERE team_id = $1 AND dataset_id = $2 AND collection_id = 'allowed' LIMIT 100 OFFSET 100",
-        [teamId, datasetId]
-      );
-      const queries = rows.map((row) => JSON.parse(row.vector) as number[]);
-      const run = async (indexed: boolean, concurrency: number) => {
-        const latencies: number[] = [];
-        const resultIds: string[][] = new Array(queries.length);
-        let next = 0;
-        const started = performance.now();
-        await Promise.all(
-          Array.from({ length: concurrency }, async () => {
-            while (next < queries.length) {
-              const index = next++;
-              const query = queries[index];
-              const start = performance.now();
-              const result = await ctrl.embRecall({
-                teamId,
-                datasetIds: [datasetId, ...smallIds],
-                vector: query,
-                limit: 100,
-                forbidCollectionIdList: ['hidden'],
-                datasetVectorData: indexed ? [{ datasetId, rows: 30004, pgIndex: 'ready' }] : []
-              });
-              latencies.push(performance.now() - start);
-              resultIds[index] = result.results.map((item) => item.id);
-              expect(result.results).toHaveLength(100);
-            }
-          })
-        );
-        latencies.sort((a, b) => a - b);
-        const wallMs = performance.now() - started;
-        return {
-          resultIds,
-          indexed,
-          concurrency,
-          queries: queries.length,
-          avgMs: Math.round((latencies.reduce((a, b) => a + b, 0) / latencies.length) * 10) / 10,
-          p95Ms: Math.round(latencies[Math.ceil(latencies.length * 0.95) - 1] * 10) / 10,
-          qps: Math.round((queries.length / wallMs) * 10000) / 10
-        };
-      };
-      const measurements = [
-        await run(false, 1),
-        await run(true, 1),
-        await run(false, 20),
-        await run(true, 20)
-      ];
-      const groundTruth = measurements[0].resultIds.map((ids) => new Set(ids));
-      console.log(
-        'FP16 routing local microbenchmark (synthetic vectors; excludes Mongo/Redis/embedding)',
-        {
-          dimensions,
-          results: measurements.map(({ resultIds, ...metrics }) => ({
-            ...metrics,
-            recallAt100:
-              resultIds.reduce(
-                (sum, ids, index) => sum + ids.filter((id) => groundTruth[index].has(id)).length,
-                0
-              ) /
-              (100 * resultIds.length)
-          }))
-        }
-      );
-    },
-    240000
-  );
 });

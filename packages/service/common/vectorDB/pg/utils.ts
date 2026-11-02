@@ -5,7 +5,7 @@ import { DatasetVectorTableName } from '../constants';
 
 /**
  * 将 ready 且至少两万行的库各自路由到 FP16 索引，其余库合并精确检索；各组取 limit 后按 FP32 截断。
- * 两万到三万行保留已有索引路由，低于两万或正在移除的库立即回到精确路径，不等待延迟维护任务。
+ * 两万到三万行保留已有索引路由，低于两万或正在移除的库立即回到精确路径，不等待维护任务。
  * 局部索引谓词使用驱动转义后的常量，使 PG 无需依赖参数值就能证明谓词成立。
  */
 export const buildPgVectorRecallQuery = ({
@@ -64,10 +64,10 @@ export const buildPgVectorRecallQuery = ({
       LIMIT $2
     )`
   );
+  // 候选集每组已经限制数量，FP32 距离只需在末尾统一排序，不再逐组排序和截断。
   const groups = indexed.map(
     (_, i) => `(SELECT id, collection_id, vector::vector <#> $1::vector AS score
-      FROM candidates_${i}
-      ORDER BY score LIMIT $2)`
+      FROM candidates_${i})`
   );
 
   if (exact.length > 0) {

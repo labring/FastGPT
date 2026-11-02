@@ -66,6 +66,9 @@ describe('buildPgVectorRecallQuery', () => {
     expect(query.text).not.toContain('ANY(');
     expect(query.values).toHaveLength(2);
     expect(query.text).toMatch(/ORDER BY score, id LIMIT \$2$/);
+    // 每组候选已有 limit，只需要一次全局 FP32 重排，避免重复的组内排序与截断。
+    expect(query.text.match(/ORDER BY score/g)).toHaveLength(1);
+    expect(query.text.match(/LIMIT \$2/g)).toHaveLength(3);
   });
 
   it('caps the scan budget at the PostgreSQL integer parameter limit', () => {

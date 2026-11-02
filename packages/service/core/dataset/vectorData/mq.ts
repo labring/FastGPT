@@ -52,7 +52,7 @@ export const onDatasetVectorCounted = async ({
     await cancelPgDatasetIndexBuild(scope);
     return;
   }
-  if (shouldBuild && (!data || data.pgIndex === 'none' || data.pgIndex === 'failed')) {
+  if (!data || data.pgIndex === 'none' || data.pgIndex === 'failed') {
     // 消费可能先完成，只有读取时的状态快照未变化，才能补写 pending。
     await updateDatasetPgIndexState({
       ...scope,

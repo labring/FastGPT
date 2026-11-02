@@ -8,20 +8,19 @@ import { getVectorCount } from '@fastgpt/service/common/vectorDB/controller';
 import { getVectorType } from '@fastgpt/service/common/vectorDB/constants';
 import { onDatasetVectorCounted } from '@fastgpt/service/core/dataset/vectorData/mq';
 import { withTimeout } from '@fastgpt/global/common/system/utils';
+import { ObjectIdSchema } from '@fastgpt/global/common/type/mongo';
+import { IntSchema } from '@fastgpt/global/common/zod';
 import { systemMigrationBatchSize } from '@/migration/constants';
 import type { SystemMigrationContext } from '@/migration/registry';
 import { removeLegacyPgVectorIndex } from './service';
 
-const CursorSchema = z
-  .string()
-  .regex(/^[a-f0-9]{24}$/)
-  .nullable();
+const CursorSchema = ObjectIdSchema.nullable();
 const CheckpointSchema = z
   .object({
     endId: CursorSchema,
     lastId: CursorSchema,
-    scannedCount: z.number().int().nonnegative(),
-    eligibleCount: z.number().int().nonnegative()
+    scannedCount: IntSchema,
+    eligibleCount: IntSchema
   })
   .refine(({ endId, lastId }) => !lastId || (!!endId && lastId <= endId));
 
@@ -76,8 +75,9 @@ export const initializeDatasetVectorIndexes = async (context: SystemMigrationCon
     for (const dataset of datasets) {
       context.signal.throwIfAborted();
       await context.assertActive();
+      // 历史记录先校验归属，避免缺失 teamId 时执行没有租户范围的统计。
       const scope = { teamId: String(dataset.teamId), datasetId: String(dataset._id) };
-      if (!/^[a-f0-9]{24}$/.test(scope.teamId)) {
+      if (!ObjectIdSchema.safeParse(dataset.teamId).success) {
         throw new Error(`Dataset has an invalid team ID: ${scope.datasetId}`);
       }
       const rows = await getVectorCount(scope, { refresh: true, notifyDatasetCounted: false });

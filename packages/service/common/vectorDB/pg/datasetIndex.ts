@@ -282,7 +282,7 @@ const maintainPgDatasetIndex = async ({
     existing = await readIndex();
     const rows = await countRows();
 
-    /** 先停止新查询使用该索引，再在线移除；通知失败时不执行 DROP，交给队列重试。 */
+    /** 先停止新查询使用该索引，再在线移除；通知失败时不执行 DROP，等待后续统计重新投递。 */
     const removeIndex = async () => {
       await onRemoving?.();
       await client.query(`DROP INDEX CONCURRENTLY ${qualifiedIndex}`);
