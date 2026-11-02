@@ -8,7 +8,6 @@ import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import React from 'react';
-import { getPlannedDeprecationDateLabel } from '@/pageComponents/admin/inform/modelDeprecationUtils';
 import { postListModelDeprecationInforms } from '@/web/admin/system/inform/api';
 
 const formatDate = (date: string) => new Date(date).toLocaleDateString();
@@ -194,8 +193,8 @@ const HistoryRow = ({
   channelLabels: Record<ModelDeprecationInformChannelEnum, string>;
 }) => {
   const models = item.models.map((modelId) => modelNames.get(modelId) ?? modelId);
-  const channels = [...new Set(item.jobs.flatMap((job) => job.channels))].map(
-    (channel) => channelLabels[channel]
+  const channels = Array.from(
+    new Set(item.jobs.flatMap((job) => job.channels).map((channel) => channelLabels[channel]))
   );
   const sendTimes = item.jobs.flatMap((job) =>
     job.completedAt ? [formatDate(job.completedAt)] : []
@@ -206,7 +205,7 @@ const HistoryRow = ({
       <Td verticalAlign={'middle'}>
         <HistoryLines values={models} />
       </Td>
-      <Td verticalAlign={'middle'}>{getPlannedDeprecationDateLabel(item.plannedDeprecationAt)}</Td>
+      <Td verticalAlign={'middle'}>{item.plannedDeprecationAt}</Td>
       <Td verticalAlign={'middle'}>
         <HistoryLines values={channels} />
       </Td>
