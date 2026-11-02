@@ -3,7 +3,6 @@ import type {
   SelectedDatasetType,
   EditorVariablePickerType
 } from '@fastgpt/global/core/workflow/type/io';
-import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import type { EditorProps } from '@fastgpt/web/components/common/Textarea/PromptEditor/Editor';
 import type { EditorVariableLabelPickerType } from '@fastgpt/web/components/common/Textarea/PromptEditor/type';
 import type { UseFormReturn } from 'react-hook-form';
@@ -49,9 +48,6 @@ export type SpecificProps = {
   datasetOptions?: SelectedDatasetType[];
 
   // JSONEditor - no extra props
-
-  // selectLLMModel
-  outLinkAuthData?: OutLinkChatAuthProps;
 
   // fileSelect
   retainPreviewUrl?: boolean;

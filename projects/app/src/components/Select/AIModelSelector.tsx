@@ -11,7 +11,6 @@ import { HUGGING_FACE_ICON } from '@fastgpt/global/common/system/constants';
 import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { isEmptyModelValue } from '@fastgpt/global/core/ai/model/reference';
 import type { MyModelItemType } from '@fastgpt/global/openapi/core/ai/model/api';
-import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyTag from '@fastgpt/web/components/common/Tag';
 import type { SelectProps } from '@fastgpt/web/components/common/MySelect';
@@ -29,6 +28,7 @@ import {
 } from './AIModelSelector.utils';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '@/pageComponents/app/detail/context';
+import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import { ModelStatusLabel } from './ModelStatusLabel';
 
 type Props = Omit<SelectProps, 'list'> & {
@@ -39,7 +39,6 @@ type Props = Omit<SelectProps, 'list'> & {
   noOfLines?: ResponsiveValue<number>;
   canBeUnset?: boolean;
   unsetLabel?: string;
-  outLinkAuthData?: OutLinkChatAuthProps;
   /** 只展示具备视觉能力的候选，不要求父组件预加载模型列表。 */
   vision?: boolean;
   excludeHidden?: boolean;
@@ -123,7 +122,6 @@ const AIModelSelector = ({
   canBeUnset = false,
   unsetLabel,
   placeholder,
-  outLinkAuthData,
   vision,
   excludeHidden,
   appId,
@@ -133,6 +131,7 @@ const AIModelSelector = ({
   const { t, i18n } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const contextAppId = useContextSelector(AppContext, (e) => e?.appId);
+  const outLinkAuthData = useChatStore((state) => state.outLinkAuthData);
   const effectiveAppId = appId ?? (contextAppId || undefined);
 
   const {

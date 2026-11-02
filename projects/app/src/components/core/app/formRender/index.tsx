@@ -207,13 +207,7 @@ const InputRender = (props: InputRenderProps) => {
   }
 
   if (inputType === InputTypeEnum.selectLLMModel) {
-    return (
-      <AIModelSelector
-        {...commonProps}
-        modelType={ModelTypeEnum.llm}
-        outLinkAuthData={props.outLinkAuthData}
-      />
-    );
+    return <AIModelSelector {...commonProps} modelType={ModelTypeEnum.llm} />;
   }
 
   if (inputType === InputTypeEnum.fileSelect) {

@@ -12,7 +12,10 @@ const mocks = vi.hoisted(() => ({
   detail: vi.fn(),
   refresh: vi.fn(),
   setFromCatalog: vi.fn(),
-  providers: [] as { id: string }[]
+  providers: [] as { id: string }[],
+  chatStore: {} as {
+    outLinkAuthData?: { shareId: string; outLinkUid: string };
+  }
 }));
 vi.mock('react', async (importOriginal) => ({
   ...(await importOriginal<typeof import('react')>()),
@@ -48,6 +51,9 @@ vi.mock('use-context-selector', () => ({
   useContextSelector: (_: unknown, select: (value: { appId?: string }) => unknown) => select({})
 }));
 vi.mock('@/pageComponents/app/detail/context', () => ({ AppContext: {} }));
+vi.mock('@/web/core/chat/context/useChatStore', () => ({
+  useChatStore: (selector: (state: typeof mocks.chatStore) => unknown) => selector(mocks.chatStore)
+}));
 
 describe('AIModelSelector lazy directory', () => {
   beforeEach(() => {
@@ -59,6 +65,7 @@ describe('AIModelSelector lazy directory', () => {
     mocks.refs = [];
     mocks.refIndex = 0;
     mocks.providers = [];
+    mocks.chatStore = {};
     mocks.lists.mockImplementation(() => ({
       modelList: [
         {
@@ -307,5 +314,13 @@ describe('AIModelSelector lazy directory', () => {
     mocks.effects.forEach((fn) => fn());
     expect(mocks.refresh).not.toHaveBeenCalled();
     expect(mocks.setFromCatalog).not.toHaveBeenCalled();
+  });
+
+  it('forwards outLinkAuthData from chat store to model list and summary hooks', () => {
+    const outLinkAuthData = { shareId: 'share-1', outLinkUid: 'uid-1' };
+    mocks.chatStore = { outLinkAuthData };
+    AIModelSelector({ modelType: ModelTypeEnum.llm, value: 'chosen' });
+    expect(mocks.lists).toHaveBeenLastCalledWith(expect.objectContaining({ outLinkAuthData }));
+    expect(mocks.detail).toHaveBeenLastCalledWith(expect.objectContaining({ outLinkAuthData }));
   });
 });

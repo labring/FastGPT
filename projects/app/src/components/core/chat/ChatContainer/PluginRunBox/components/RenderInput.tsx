@@ -236,7 +236,6 @@ const RenderInput = () => {
                         inputType={nodeInputTypeToInputType(input.renderTypeList)}
                         form={variablesForm}
                         fieldName={inputKey}
-                        outLinkAuthData={outLinkAuthData}
                         isRichText={false}
                         canLocalUpload={input.canLocalUpload ?? true}
                       />
