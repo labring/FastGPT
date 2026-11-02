@@ -14,18 +14,31 @@ import {
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { isEmptyModelValue } from '@fastgpt/global/core/ai/model/reference';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
+import {
+  getNextDatasetTagFilterValue,
+  isDatasetTagFilterOpen
+} from '@fastgpt/global/core/dataset/search/tagFilter';
+import {
+  datasetTagFilterValueDesc,
+  FlowNodeInputTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
+import type { ReferenceItemValueType } from '@fastgpt/global/core/workflow/type/io';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
+import NodeInputSelect from '@fastgpt/web/components/core/workflow/NodeInputSelect';
 import { useTranslation } from 'next-i18next';
 import { useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 
 import MyTextarea from '@/components/common/Textarea/MyTextarea';
 import DatasetTagFilterRows, {
+  filterTagFilterReferenceList,
   type TagFilterReferenceList
 } from '@/components/core/dataset/DatasetTagFilterRows';
+import { ReferSelector } from '@/pageComponents/app/detail/WorkflowComponents/Flow/nodes/render/RenderInput/templates/Reference';
+import ValueTypeLabel from '@/pageComponents/app/detail/WorkflowComponents/Flow/nodes/render/ValueTypeLabel';
 import SelectAiModel from '@/components/Select/AIModelSelector';
 import { type AppDatasetSearchParamsType } from '@fastgpt/global/core/app/type';
-import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
@@ -38,9 +51,15 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 enum SearchSettingTabEnum {
   searchMode = 'searchMode',
   limit = 'limit',
-  queryExtension = 'queryExtension',
-  tagFilter = 'tagFilter'
+  queryExtension = 'queryExtension'
 }
+
+type DatasetParamsModalFormType = Omit<AppDatasetSearchParamsType, 'collectionFilterMatch'> & {
+  collectionFilterMatch?:
+    | AppDatasetSearchParamsType['collectionFilterMatch']
+    | ReferenceItemValueType
+    | [];
+};
 
 const DatasetParamsModal = ({
   searchMode = DatasetSearchModeEnum.embedding,
@@ -57,13 +76,15 @@ const DatasetParamsModal = ({
   datasetSearchExtensionBg,
   collectionFilterMatch,
   showTagFilter = false,
+  canSwitchTagFilterMode = false,
   datasetIds = [],
   tagFilterReferenceList = [],
   maxTokens,
   onClose,
   onSuccess
-}: AppDatasetSearchParamsType & {
+}: DatasetParamsModalFormType & {
   showTagFilter?: boolean;
+  canSwitchTagFilterMode?: boolean;
   datasetIds?: string[];
   tagFilterReferenceList?: TagFilterReferenceList;
   maxTokens?: number; // limit max tokens
@@ -76,7 +97,7 @@ const DatasetParamsModal = ({
   const [currentTabType, setCurrentTabType] = useState(SearchSettingTabEnum.searchMode);
 
   // 固定本次弹窗的初始值；values 接受完整业务类型，避免 DeepPartial 将 unknown 条件值收窄成对象。
-  const [initialValues] = useState<AppDatasetSearchParamsType>(() => ({
+  const [initialValues] = useState<DatasetParamsModalFormType>(() => ({
     searchMode,
     embeddingWeight: embeddingWeight ?? 0.5,
     usingReRank: !!usingReRank,
@@ -93,7 +114,7 @@ const DatasetParamsModal = ({
     ...(showTagFilter ? { collectionFilterMatch } : {})
   }));
   const { register, setValue, getValues, handleSubmit, watch } =
-    useForm<AppDatasetSearchParamsType>({ values: initialValues });
+    useForm<DatasetParamsModalFormType>({ values: initialValues });
 
   const searchModeWatch = watch('searchMode');
   const embeddingWeightWatch = watch('embeddingWeight');
@@ -109,6 +130,12 @@ const DatasetParamsModal = ({
   const reRankModelIdWatch = watch('rerankModelId');
   const rerankWeightWatch = watch('rerankWeight');
   const collectionFilterMatchWatch = watch('collectionFilterMatch');
+  const isTagFilterOpen = isDatasetTagFilterOpen(collectionFilterMatchWatch);
+  const isTagFilterReference = canSwitchTagFilterMode && Array.isArray(collectionFilterMatchWatch);
+  const stringTagFilterReferenceList = useMemo(
+    () => filterTagFilterReferenceList(tagFilterReferenceList, [WorkflowIOValueTypeEnum.string]),
+    [tagFilterReferenceList]
+  );
 
   const showSimilarity = useMemo(() => {
     if (similarity === undefined) return false;
@@ -163,7 +190,7 @@ const DatasetParamsModal = ({
                   datasetSearchExtensionModel: _extensionModel,
                   ...canonicalValues
                 } = values;
-                onSuccess(canonicalValues);
+                onSuccess(canonicalValues as AppDatasetSearchParamsType);
                 onClose();
               })();
             }}
@@ -191,16 +218,7 @@ const DatasetParamsModal = ({
               label: t('common:core.module.template.Query extension'),
               value: SearchSettingTabEnum.queryExtension,
               icon: 'core/dataset/questionExtension'
-            },
-            ...(showTagFilter
-              ? [
-                  {
-                    icon: 'core/dataset/tag',
-                    label: t('workflow:tag_filter'),
-                    value: SearchSettingTabEnum.tagFilter
-                  }
-                ]
-              : [])
+            }
           ]}
           inlineStyles={{
             borderBottomColor: 'myGray.200',
@@ -385,7 +403,7 @@ const DatasetParamsModal = ({
                 </Box>
               </Box>
             )}
-            <Box display={['block', 'flex']} mt={[6, 10]} mb={4}>
+            <Box display={['block', 'flex']} mt={[6, 10]} mb={showTagFilter ? 0 : 4}>
               <Flex flex={'0 0 120px'} alignItems={'center'} mb={[5, 0]}>
                 <FormLabel>{t('common:min_similarity')}</FormLabel>
                 <QuestionTip label={t('common:min_similarity_tip')} />
@@ -409,6 +427,101 @@ const DatasetParamsModal = ({
                 )}
               </Box>
             </Box>
+            {showTagFilter && (
+              <Box mt={[6, 10]} mb={4}>
+                <Box display={['block', 'flex']} alignItems={'center'} minH={'28px'}>
+                  <Flex flex={'0 0 120px'} alignItems={'center'} mb={[5, 0]}>
+                    <FormLabel>{t('workflow:tag_filter')}</FormLabel>
+                    <QuestionTip label={t('workflow:tag_filter_description')} />
+                  </Flex>
+                  <Flex flex={'1 0 0'} alignItems={'center'} gap={4}>
+                    <Switch
+                      name={'collectionFilterOpen'}
+                      isChecked={isTagFilterOpen}
+                      onChange={(event) => {
+                        setValue(
+                          'collectionFilterMatch',
+                          getNextDatasetTagFilterValue({
+                            value: getValues('collectionFilterMatch'),
+                            isReference: isTagFilterReference,
+                            open: event.target.checked
+                          }),
+                          { shouldDirty: true }
+                        );
+                      }}
+                    />
+                    {isTagFilterOpen && canSwitchTagFilterMode && (
+                      <>
+                        {isTagFilterReference && (
+                          <ValueTypeLabel
+                            valueType={WorkflowIOValueTypeEnum.string}
+                            valueDesc={datasetTagFilterValueDesc}
+                            ml={0}
+                          />
+                        )}
+                        <NodeInputSelect
+                          renderTypeList={[
+                            FlowNodeInputTypeEnum.datasetTagFilter,
+                            FlowNodeInputTypeEnum.reference
+                          ]}
+                          selectedType={
+                            isTagFilterReference
+                              ? FlowNodeInputTypeEnum.reference
+                              : FlowNodeInputTypeEnum.datasetTagFilter
+                          }
+                          onChange={(nextType) => {
+                            setValue(
+                              'collectionFilterMatch',
+                              getNextDatasetTagFilterValue({
+                                value: getValues('collectionFilterMatch'),
+                                isReference: nextType === FlowNodeInputTypeEnum.reference,
+                                open: true
+                              }),
+                              { shouldDirty: true }
+                            );
+                          }}
+                        />
+                      </>
+                    )}
+                  </Flex>
+                </Box>
+                {isTagFilterOpen &&
+                  (isTagFilterReference ? (
+                    <Box mt={2}>
+                      <ReferSelector
+                        placeholder={t('common:select_reference_variable')}
+                        list={stringTagFilterReferenceList}
+                        value={
+                          Array.isArray(collectionFilterMatchWatch)
+                            ? (collectionFilterMatchWatch as ReferenceItemValueType)
+                            : undefined
+                        }
+                        onSelect={(val) => {
+                          setValue('collectionFilterMatch', val ?? [], { shouldDirty: true });
+                        }}
+                        isArray={false}
+                        ButtonProps={{
+                          h: '40px',
+                          w: '100%',
+                          borderRadius: 'md'
+                        }}
+                      />
+                    </Box>
+                  ) : (
+                    <Box mt={4}>
+                      <DatasetTagFilterRows
+                        usePortal
+                        value={collectionFilterMatchWatch}
+                        onChange={(value) => {
+                          setValue('collectionFilterMatch', value, { shouldDirty: true });
+                        }}
+                        datasetIds={datasetIds}
+                        referenceList={tagFilterReferenceList}
+                      />
+                    </Box>
+                  ))}
+              </Box>
+            )}
           </Box>
         )}
         {currentTabType === SearchSettingTabEnum.queryExtension && (
@@ -482,20 +595,6 @@ const DatasetParamsModal = ({
                 </Box>
               </>
             )}
-          </Box>
-        )}
-        {currentTabType === SearchSettingTabEnum.tagFilter && showTagFilter && (
-          <Box pt={3}>
-            {/* 仅 SimpleApp 与 ChatAgent 在弹窗内展示标签过滤；二者自接入起即为结构化格式，且不支持工作流转回简易应用，无旧版字符串历史数据 */}
-            <DatasetTagFilterRows
-              usePortal
-              value={collectionFilterMatchWatch}
-              onChange={(value) => {
-                setValue('collectionFilterMatch', value, { shouldDirty: true });
-              }}
-              datasetIds={datasetIds}
-              referenceList={tagFilterReferenceList}
-            />
           </Box>
         )}
       </Box>

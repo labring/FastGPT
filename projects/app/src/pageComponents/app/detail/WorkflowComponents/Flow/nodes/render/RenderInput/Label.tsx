@@ -26,9 +26,8 @@ import { WorkflowBufferDataContext } from '../../../../context/workflowInitConte
 import { getToolInputDisplayRenderTypeList } from '@fastgpt/global/core/app/formEdit/utils';
 import { getHandleId, getSelectedInputRenderType } from '@fastgpt/global/common/workflow/reference';
 import {
-  createEmptyTagFilterValue,
-  isDatasetTagFilterOpen,
-  isDatasetTagFilterValue
+  getNextDatasetTagFilterValue,
+  isDatasetTagFilterOpen
 } from '@fastgpt/global/core/dataset/search/tagFilter';
 import { datasetSearchUsesLegacyFilter } from '@/web/core/workflow/datasetSearchNodeUpgrade';
 
@@ -79,14 +78,11 @@ const InputLabel = ({ nodeId, input, RightComponent, isTool }: Props) => {
             : USER_SELECT_DEFAULT_OPTIONS.map((item) => ({ ...item }));
         }
         if (isCollectionFilter && !isLegacyTagFilter) {
-          return nextRenderType === FlowNodeInputTypeEnum.reference
-            ? []
-            : {
-                ...(isDatasetTagFilterValue(input.value)
-                  ? input.value
-                  : createEmptyTagFilterValue()),
-                open: true
-              };
+          return getNextDatasetTagFilterValue({
+            value: input.value,
+            isReference: nextRenderType === FlowNodeInputTypeEnum.reference,
+            open: true
+          });
         }
         return undefined;
       })();
