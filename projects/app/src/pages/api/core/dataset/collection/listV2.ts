@@ -50,7 +50,10 @@ import { getGroupsByTmbId } from '@fastgpt/service/support/permission/memberGrou
 import { getTmbInfoByTmbId } from '@fastgpt/service/support/user/team/controller';
 import { getOrgIdSetWithParentByTmbId } from '@fastgpt/service/support/permission/org/controllers';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
-import { isDisableSuperAdmin } from '@fastgpt/global/core/dataset/apiDataset/utils';
+import {
+  isDisableSuperAdmin,
+  isPermissionSyncDataset
+} from '@fastgpt/global/core/dataset/apiDataset/utils';
 import { CollectionPermission } from '@fastgpt/global/support/permission/collection/controller';
 import type { FolderAccessMode } from '@fastgpt/global/common/parentFolder/type';
 import {
@@ -343,7 +346,9 @@ async function handler(req: ApiRequestProps): Promise<ListCollectionV2ResponseTy
         String(item._id),
         new CollectionPermission({
           role: roleMap.get(String(item._id)) ?? NullRoleVal,
-          isOwner: String(item.tmbId) === tmbId
+          // 托管模式下 ACL 是唯一授权来源，创建者不再隐式 owner。
+          isOwner:
+            !isPermissionSyncDataset(dataset.apiDatasetServer) && String(item.tmbId) === tmbId
         })
       ])
     );

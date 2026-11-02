@@ -1,3 +1,5 @@
+import type { RedisLeaseContext } from '@fastgpt/dal/redis/caches';
+
 /**
  * 权限同步的协作式截止控制。
  *
@@ -13,6 +15,17 @@ export class PermissionSyncDeadlineError extends Error {
   }
 }
 
+/** 同库租约已丢失：本轮必须立刻停止，不能继续写 ACL。 */
+export class PermissionSyncCancelledError extends Error {
+  cause?: unknown;
+
+  constructor(message = 'Permission sync cancelled', cause?: unknown) {
+    super(message);
+    this.name = 'PermissionSyncCancelledError';
+    this.cause = cause;
+  }
+}
+
 /**
  * 到达截止时间即抛出 `PermissionSyncDeadlineError`。
  *
@@ -21,6 +34,29 @@ export class PermissionSyncDeadlineError extends Error {
 export const assertPermissionSyncDeadline = (deadlineAt?: number): void => {
   if (deadlineAt !== undefined && Date.now() >= deadlineAt) {
     throw new PermissionSyncDeadlineError();
+  }
+};
+
+/**
+ * 截止时间或同库租约失效时中止本轮。
+ *
+ * 租约丢失说明同 dataset 的更新任务可能已经开始执行，旧任务再写 ACL 会覆盖新结果；
+ * `signal` 是同步信号，`assertValid` 每次触发一次 Redis 续租确认。
+ */
+export const assertPermissionSyncActive = ({
+  deadlineAt,
+  lease
+}: {
+  deadlineAt?: number;
+  lease?: RedisLeaseContext;
+}): void => {
+  assertPermissionSyncDeadline(deadlineAt);
+  if (!lease) return;
+  if (lease.signal.aborted) throw new PermissionSyncCancelledError();
+  try {
+    lease.assertValid();
+  } catch (error) {
+    throw new PermissionSyncCancelledError('Permission sync lease lost', error);
   }
 };
 

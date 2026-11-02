@@ -7,6 +7,7 @@ import { getLogger, LogCategories } from '../../../../../common/logger';
 import type { getApiDatasetRequest } from '../../index';
 import { fetchCustomApiFilePermissions } from './custom';
 import type { ApiFilePermissionSnapshot } from '../types';
+import type { RedisLeaseContext } from '@fastgpt/dal/redis/caches';
 
 type ApiDatasetRequest = Awaited<ReturnType<typeof getApiDatasetRequest>>;
 
@@ -54,19 +55,27 @@ export const fetchApiFilePermissions = async ({
   apiDatasetServer,
   request,
   apiFileIds,
-  deadlineAt
+  deadlineAt,
+  lease
 }: {
   apiDatasetServer?: ApiDatasetServerType;
   request: ApiDatasetRequest;
   apiFileIds: string[];
   /** 本轮同步的截止时间；到达后不再发起新的外部请求。 */
   deadlineAt?: number;
+  /** 同库租约上下文；丢失后立刻中止拉取。 */
+  lease?: RedisLeaseContext;
 }): Promise<Map<string, ApiFilePermissionSnapshot>> => {
   if (!apiDatasetServer?.apiServer) {
     throw new Error('Permission sync adapter is only available for apiServer datasets');
   }
 
-  const rawSnapshots = await fetchCustomApiFilePermissions({ request, apiFileIds, deadlineAt });
+  const rawSnapshots = await fetchCustomApiFilePermissions({
+    request,
+    apiFileIds,
+    deadlineAt,
+    lease
+  });
 
   const snapshots = new Map<string, ApiFilePermissionSnapshot>();
   for (const snapshot of rawSnapshots.values()) {

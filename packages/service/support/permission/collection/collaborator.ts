@@ -6,7 +6,10 @@ import { MongoDatasetCollection } from '../../../core/dataset/collection/schema'
 import { getResourceOwnedClbs } from '../controller';
 import { updateResourceCollaborators } from '../resourcePermissionService';
 import type { ClientSession } from '../../../common/mongo';
-import { assertDatasetCollectionPermissionEnabled } from './datasetSwitch';
+import {
+  assertCollectionPermissionEditable,
+  assertDatasetCollectionPermissionEnabled
+} from './datasetSwitch';
 import { resolveCollectionParentClbs, type CollectionMoveResourceType } from './controller';
 
 /**
@@ -33,6 +36,12 @@ export async function updateCollectionCollaboratorsWithAuth({
   authorize: (changedClbs: ReturnType<typeof getChangedCollaborators>) => void | Promise<void>;
 }) {
   return mongoSessionRun(async (session: ClientSession) => {
+    // 托管模式下 ACL 由外部同步全量替换：事务内再断言一次，路由层守卫漏掉的内部调用也拦得住。
+    await assertCollectionPermissionEditable({
+      teamId: collection.teamId,
+      datasetId: collection.datasetId,
+      session
+    });
     // 配置是启用态下的操作：关闭态不存在 collection 快照，必须先拒绝而不是隐式开启。
     await assertDatasetCollectionPermissionEnabled({
       teamId: collection.teamId,

@@ -499,6 +499,83 @@ describe('authDatasetCollection', () => {
     // 短路生效：启用态下也不读物化快照
     expect(mockResolveCollectionPermission).not.toHaveBeenCalled();
   });
+
+  it('does not treat the collection creator as owner under permission sync', async () => {
+    const apiDatasetServer = {
+      apiServer: { baseUrl: 'https://example.com' },
+      permissionSync: true
+    };
+    mockGetTmbInfoByTmbId.mockResolvedValue({
+      teamId: 'team-a',
+      permission: { isOwner: false }
+    });
+    mockDatasetQuery({
+      _id: datasetId,
+      teamId: 'team-a',
+      tmbId: 'tmb-other',
+      collectionPermissionEnabled: true,
+      apiDatasetServer
+    });
+    // 创建者是当前用户，但外部 ACL 只给了 read
+    mockGetCollectionWithDataset.mockResolvedValue({
+      _id: collectionId,
+      teamId: 'team-a',
+      datasetId,
+      tmbId: 'tmb-a',
+      dataset: { apiDatasetServer }
+    });
+    mockGetTmbPermission.mockResolvedValue(ReadPermissionVal);
+    mockResolveCollectionPermission.mockResolvedValue(ReadRoleVal);
+
+    const result = await authDatasetCollection({
+      mockReq,
+      authToken: true,
+      collectionId,
+      per: ReadPermissionVal
+    });
+    expect(result.permission.role).toBe(ReadRoleVal);
+    expect(result.permission.isOwner).toBe(false);
+
+    await expect(
+      authDatasetCollection({
+        mockReq,
+        authToken: true,
+        collectionId,
+        per: OwnerPermissionVal
+      })
+    ).rejects.toBe(DatasetErrEnum.unAuthDatasetCollection);
+  });
+
+  it('keeps the creator owner when collection permissions are enabled manually', async () => {
+    mockGetTmbInfoByTmbId.mockResolvedValue({
+      teamId: 'team-a',
+      permission: { isOwner: false }
+    });
+    mockDatasetQuery({
+      _id: datasetId,
+      teamId: 'team-a',
+      tmbId: 'tmb-other',
+      collectionPermissionEnabled: true
+    });
+    mockGetCollectionWithDataset.mockResolvedValue({
+      _id: collectionId,
+      teamId: 'team-a',
+      datasetId,
+      tmbId: 'tmb-a'
+    });
+    mockGetTmbPermission.mockResolvedValue(ReadPermissionVal);
+    mockResolveCollectionPermission.mockResolvedValue(ReadRoleVal);
+
+    const result = await authDatasetCollection({
+      mockReq,
+      authToken: true,
+      collectionId,
+      per: OwnerPermissionVal
+    });
+    // 非托管启用态保留「创建者即 owner」语义
+    expect(result.permission.isOwner).toBe(true);
+    expect(result.permission.checkPer(OwnerPermissionVal)).toBe(true);
+  });
 });
 
 describe('authDatasetCollectionCreate', () => {

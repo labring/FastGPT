@@ -166,4 +166,29 @@ describe('applyCollectionPermissionStates', () => {
     expect(replaceResources).not.toHaveBeenCalled();
     expect(updateMany).not.toHaveBeenCalled();
   });
+
+  it('aborts inside the transaction when the dataset lease is lost', async () => {
+    const leaseError = new Error('lease lost');
+    // 事务外检查通过，事务内再检查时租约已被抢走
+    const assertValid = vi
+      .fn()
+      .mockReturnValueOnce(undefined)
+      .mockImplementation(() => {
+        throw leaseError;
+      });
+
+    await expect(
+      applyCollectionPermissionStates({
+        teamId,
+        datasetId,
+        states: [folderState()],
+        lease: { signal: new AbortController().signal, assertValid }
+      })
+    ).rejects.toMatchObject({ name: 'PermissionSyncCancelledError', cause: leaseError });
+
+    // 事务回调内中止：ACL 与继承态都没有写
+    expect(replaceResources).not.toHaveBeenCalled();
+    expect(updateMany).not.toHaveBeenCalled();
+    expect(syncResourceTreePermissions).not.toHaveBeenCalled();
+  });
 });

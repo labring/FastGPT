@@ -53,6 +53,61 @@ describe('collection listV2 permission', () => {
       hasManagePer: true
     });
   });
+
+  it('does not mark the creator as owner under permission sync', async () => {
+    const users = await getFakeUsers(1);
+    const member = users.members[0];
+    const dataset = await MongoDataset.create({
+      name: 'permission-sync-list',
+      teamId: users.owner.teamId,
+      tmbId: users.owner.tmbId,
+      vectorModel: 'test',
+      agentModel: 'test',
+      collectionPermissionEnabled: true,
+      apiDatasetServer: {
+        apiServer: { baseUrl: 'https://example.com' },
+        permissionSync: true
+      }
+    });
+    const collection = await MongoDatasetCollection.create({
+      name: 'owned-by-member',
+      type: DatasetCollectionTypeEnum.file,
+      teamId: users.owner.teamId,
+      tmbId: member.tmbId,
+      datasetId: dataset._id
+    });
+    await MongoResourcePermission.create([
+      {
+        resourceType: PerResourceTypeEnum.dataset,
+        teamId: users.owner.teamId,
+        resourceId: dataset._id,
+        tmbId: member.tmbId,
+        permission: ReadPermissionVal
+      },
+      {
+        resourceType: PerResourceTypeEnum.collection,
+        teamId: users.owner.teamId,
+        resourceId: collection._id,
+        tmbId: member.tmbId,
+        permission: ReadPermissionVal
+      }
+    ]);
+
+    const response = await Call(listHandler, {
+      auth: member,
+      body: { datasetId: dataset._id, pageSize: 10, offset: 0 }
+    });
+
+    expect(response.code).toBe(200);
+    // 托管模式下创建者身份不是授权来源：只有 ACL 里的 read
+    expect(
+      response.data.list.find((item) => String(item._id) === String(collection._id))?.permission
+    ).toMatchObject({
+      isOwner: false,
+      hasReadPer: true,
+      hasManagePer: false
+    });
+  });
 });
 
 describe('collection listV2 navigation folders', () => {

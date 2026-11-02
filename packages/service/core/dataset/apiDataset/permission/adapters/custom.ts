@@ -6,11 +6,13 @@ import { withTimeout } from '@fastgpt/global/common/system/utils';
 import { getLogger, LogCategories } from '../../../../../common/logger';
 import type { getApiDatasetRequest } from '../../index';
 import {
-  assertPermissionSyncDeadline,
+  assertPermissionSyncActive,
   getRemainingTimeoutMs,
+  PermissionSyncCancelledError,
   PermissionSyncDeadlineError
 } from '../utils';
 import type { RawApiFilePermissionSnapshot } from '../types';
+import type { RedisLeaseContext } from '@fastgpt/dal/redis/caches';
 
 type ApiDatasetRequest = Awaited<ReturnType<typeof getApiDatasetRequest>>;
 
@@ -42,21 +44,23 @@ class ApiFilePermissionUnauthorizedError extends Error {
 export const fetchCustomApiFilePermissions = async ({
   request,
   apiFileIds,
-  deadlineAt
+  deadlineAt,
+  lease
 }: {
   request: ApiDatasetRequest;
   apiFileIds: string[];
   deadlineAt?: number;
+  lease?: RedisLeaseContext;
 }): Promise<Map<string, RawApiFilePermissionSnapshot>> => {
   const result = new Map<string, RawApiFilePermissionSnapshot>();
 
   for (let offset = 0; offset < apiFileIds.length; offset += PERMISSION_FETCH_CONCURRENCY) {
-    assertPermissionSyncDeadline(deadlineAt);
+    assertPermissionSyncActive({ deadlineAt, lease });
 
     const chunk = apiFileIds.slice(offset, offset + PERMISSION_FETCH_CONCURRENCY);
     const snapshots = await Promise.all(
       chunk.map(async (apiFileId): Promise<RawApiFilePermissionSnapshot> => {
-        assertPermissionSyncDeadline(deadlineAt);
+        assertPermissionSyncActive({ deadlineAt, lease });
 
         // 单请求超时不超过剩余预算：让在途批在截止点收敛，旧任务不会在超时后多挂一个
         // 请求超时。只影响本次 await，底层请求仍会跑完，不释放连接。
@@ -95,12 +99,13 @@ export const fetchCustomApiFilePermissions = async ({
         } catch (error) {
           if (
             error instanceof PermissionSyncDeadlineError ||
+            error instanceof PermissionSyncCancelledError ||
             error instanceof ApiFilePermissionUnauthorizedError
           ) {
             throw error;
           }
-          // 预算耗尽导致的单请求超时按 deadline 中止，不能记成节点失败。
-          assertPermissionSyncDeadline(deadlineAt);
+          // 预算耗尽或租约丢失都要中止，不能记成节点失败继续跑。
+          assertPermissionSyncActive({ deadlineAt, lease });
           logger.warn('fetch api file permission failed, skip this node', {
             apiFileId,
             error

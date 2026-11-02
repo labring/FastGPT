@@ -1,7 +1,10 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { PERMISSION_FETCH_CONCURRENCY } from '@fastgpt/global/core/dataset/apiDataset/constants';
 import { fetchCustomApiFilePermissions } from '@fastgpt/service/core/dataset/apiDataset/permission/adapters/custom';
-import { PermissionSyncDeadlineError } from '@fastgpt/service/core/dataset/apiDataset/permission/utils';
+import {
+  PermissionSyncCancelledError,
+  PermissionSyncDeadlineError
+} from '@fastgpt/service/core/dataset/apiDataset/permission/utils';
 
 const createRequest = (results: Record<string, unknown>) =>
   ({
@@ -115,5 +118,47 @@ describe('fetchCustomApiFilePermissions', () => {
         deadlineAt: Date.now() + 20
       })
     ).rejects.toBeInstanceOf(PermissionSyncDeadlineError);
+  });
+
+  it('aborts when the dataset lease is lost instead of recording a failed node', async () => {
+    const controller = new AbortController();
+    const request = createRequest({ f1: OK_EMPTY });
+
+    await expect(
+      fetchCustomApiFilePermissions({
+        request,
+        apiFileIds: ['f1'],
+        lease: { signal: controller.signal, assertValid: vi.fn() }
+      })
+    ).resolves.toBeDefined();
+
+    controller.abort();
+    await expect(
+      fetchCustomApiFilePermissions({
+        request,
+        apiFileIds: ['f1'],
+        lease: { signal: controller.signal, assertValid: vi.fn() }
+      })
+    ).rejects.toBeInstanceOf(PermissionSyncCancelledError);
+  });
+
+  it('turns a lease lost during a request into a cancellation, not a failed node', async () => {
+    const leaseError = new Error('lease lost');
+    const assertValid = vi
+      .fn()
+      .mockReturnValueOnce(undefined)
+      .mockReturnValueOnce(undefined)
+      .mockImplementation(() => {
+        throw leaseError;
+      });
+    const request = createRequest({ f1: RATE_LIMIT });
+
+    await expect(
+      fetchCustomApiFilePermissions({
+        request,
+        apiFileIds: ['f1'],
+        lease: { signal: new AbortController().signal, assertValid }
+      })
+    ).rejects.toMatchObject({ name: 'PermissionSyncCancelledError', cause: leaseError });
   });
 });
