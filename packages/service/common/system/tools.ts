@@ -5,8 +5,11 @@ import {
 } from '@fastgpt/global/common/system/types';
 import { isIPv6 } from 'net';
 import { getLogger, LogCategories } from '../logger';
-import { getAgentSandboxSkillMaxBytes } from '../../core/ai/sandbox/config';
-import { hasAgentSandboxConfig, serviceEnv } from '../../env';
+import {
+  getAgentSandboxProvider,
+  getAgentSandboxSkillMaxBytes
+} from '../../core/ai/sandbox/config';
+import { serviceEnv } from '../../env';
 import { normalizeSsoConfig } from '@fastgpt/global/common/system/config/sso';
 
 const logger = getLogger(LogCategories.ERROR);
@@ -48,7 +51,8 @@ export const initFastGPTConfig = (config?: FastGPTConfigFileType) => {
     !!config.systemEnv.customPdfParse?.textinAppId ||
     !!config.systemEnv.customPdfParse?.doc2xKey;
   config.feConfigs.customPdfParsePrice = config.systemEnv.customPdfParse?.price || 0;
-  config.feConfigs.show_agent_sandbox = hasAgentSandboxConfig();
+  // provider 以实例配置为权威；仅迁移完成前回落到 env，避免 DB 配置后前端仍隐藏沙箱入口
+  config.feConfigs.show_agent_sandbox = getAgentSandboxProvider() !== 'none';
   config.feConfigs.show_agent_sandbox_free_tip =
     serviceEnv.AGENT_SANDBOX_SHOW_FREE_TIP || !!config.feConfigs.agentSandboxFree;
   config.feConfigs.limit = {

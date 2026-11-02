@@ -55,6 +55,17 @@ describe('buildAuthoritativeSystemEnv', () => {
     expect(result.fileUrlWhitelist).toEqual([]);
   });
 
+  it('preserves an explicit unlimited per-team sandbox quota', () => {
+    const instanceConfig = resolveSystemInstanceConfig({
+      subservice: { agentSandbox: { common: { maxPerTeam: null } } }
+    });
+
+    const result = buildAuthoritativeSystemEnv({ legacySystemEnv: undefined, instanceConfig });
+
+    // null 表示明确不限量；不能转成 undefined，否则 getAgentSandboxMaxPerTeam 会回落 env
+    expect(result.agentSandboxMaxPerTeam).toBeNull();
+  });
+
   it('works with no legacy systemEnv at all', () => {
     const instanceConfig = resolveSystemInstanceConfig({ vector: { hnswEfSearch: 123 } });
 

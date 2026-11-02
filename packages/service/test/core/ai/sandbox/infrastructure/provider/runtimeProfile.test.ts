@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { LEAF_ABSENT_SNAPSHOT } from '@test/utils/instanceConfigSnapshot';
 
 const originalEnv = {
   AGENT_SANDBOX_PROVIDER: process.env.AGENT_SANDBOX_PROVIDER,
@@ -10,6 +11,8 @@ const originalEnv = {
 
 const loadSandboxRuntimeProfileModule = async () => {
   vi.resetModules();
+  // 叶子缺省快照：provider 连接参数回落到 stub 的环境变量，保持本文件 env 驱动语义。
+  (global as any).systemInstanceConfig = LEAF_ABSENT_SNAPSHOT();
   return import('@fastgpt/service/core/ai/sandbox/infrastructure/provider/runtimeProfile');
 };
 

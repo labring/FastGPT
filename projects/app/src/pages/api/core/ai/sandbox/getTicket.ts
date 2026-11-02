@@ -1,4 +1,5 @@
 import { getAgentSandboxMaxFileBytes } from '@fastgpt/service/core/ai/sandbox/config';
+import { getSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/controller';
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/next/type';
 import { buildSandboxClientQueryFromChatSource } from '@fastgpt/service/core/ai/sandbox/interface/runtime';
@@ -24,7 +25,10 @@ async function handler(req: ApiRequestProps): Promise<SandboxGetTicketResponse> 
   if (!secret) {
     throw new Error('AGENT_SANDBOX_PROXY_SECRET environment variable is missing');
   }
-  const proxyUrl = serviceEnv.AGENT_SANDBOX_PROXY_URL;
+  // 代理地址属于实例配置 subservice.agentSandbox.proxy；控制器加载时会用 env 补齐空值。
+  const proxyUrl =
+    getSystemInstanceConfig().subservice.agentSandbox.proxy.wsUrl ||
+    serviceEnv.AGENT_SANDBOX_PROXY_URL;
   if (!proxyUrl) {
     throw new Error('AGENT_SANDBOX_PROXY_URL environment variable is missing');
   }

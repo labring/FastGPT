@@ -1,4 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { LEAF_ABSENT_SNAPSHOT } from '@test/utils/instanceConfigSnapshot';
+
+// 快照叶子缺省，读取点回落到 mockEnv；保持本文件由环境变量驱动的测试意图。
+(global as any).systemInstanceConfig = LEAF_ABSENT_SNAPSHOT();
 
 const { mockEnv } = vi.hoisted(() => ({
   mockEnv: {

@@ -2,6 +2,10 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { WorkerNameEnum } from '@fastgpt/service/worker/utils';
 import { countPromptTokensInWorker } from '@fastgpt/service/worker/countGptMessagesTokens/count';
 import { availableParallelism } from 'node:os';
+import { LEAF_ABSENT_SNAPSHOT } from '@test/utils/instanceConfigSnapshot';
+
+// 快照叶子缺省，解析配置回落到 mockEnv；保持本文件由环境变量驱动的测试意图。
+(global as any).systemInstanceConfig = LEAF_ABSENT_SNAPSHOT();
 
 // hoisted: 这些 mock 必须在 vi.mock 工厂里可见
 const { mockRun, mockGetWorkerController, mockUploadImage2S3Bucket, mockEnv } = vi.hoisted(() => {

@@ -3,10 +3,14 @@ import { TrackModel } from './schema';
 import { TrackEnum } from '@fastgpt/global/common/middle/tracks/constants';
 import { getLogger, LogCategories } from '../../logger';
 import { serviceEnv } from '../../../env';
+import { getSystemInstanceConfig } from '../../system/systemInstanceConfig/controller';
 
 const logger = getLogger(LogCategories.EVENT.TRACK);
 
-const batchUpdateTime = serviceEnv.TRACK_BATCH_UPDATE_TIME;
+/** 批量刷新间隔以实例配置为权威；快照叶子缺省时回落 env。 */
+const getBatchUpdateTime = () =>
+  getSystemInstanceConfig().performance.tracking.batchUpdateTime ??
+  serviceEnv.TRACK_BATCH_UPDATE_TIME;
 
 const getCurrentTenMinuteBoundary = () => {
   const now = new Date();
@@ -28,7 +32,8 @@ const getCurrentMinuteBoundary = () => {
 export const trackTimerProcess = async () => {
   while (true) {
     await countTrackTimer();
-    await delay(batchUpdateTime);
+    // 每轮重新读取，Admin 保存后无需重启即可生效
+    await delay(getBatchUpdateTime());
   }
 };
 

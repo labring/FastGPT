@@ -15,6 +15,7 @@ import {
   StreamResumeUnavailableReasonEnum
 } from '@fastgpt/global/core/workflow/runtime/constants';
 import handler from '@/pages/api/core/chat/resume';
+import { LEAF_ABSENT_SNAPSHOT } from '@test/utils/instanceConfigSnapshot';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { authChatTargetCrud } from '@fastgpt/service/core/chat/auth';
 import { getChatItems } from '@fastgpt/service/core/chat/controller';
@@ -26,13 +27,16 @@ import {
   resetStreamResumeMirrorGuardForTest,
   getStreamResumeRedisKeys,
   getStreamResumeActiveState,
+  getStreamResumePostCompleteTtlSeconds,
+  getStreamResumeRedisMaxmemoryRatio,
+  getStreamResumeTtlSeconds,
   isStreamResumeActiveStale,
   STREAM_RESUME_INACTIVE_MS,
-  STREAM_RESUME_POST_COMPLETE_TTL_SECONDS,
-  STREAM_RESUME_REDIS_MAXMEMORY_RATIO,
-  STREAM_RESUME_TTL_SECONDS,
   STREAM_RESUME_TTL_TOUCH_INTERVAL_MS
 } from '@fastgpt/service/core/chat/resume';
+
+// 叶子缺省快照：流恢复参数回落到真实 serviceEnv，保持本文件原有断言值。
+(global as any).systemInstanceConfig = LEAF_ABSENT_SNAPSHOT();
 
 vi.mock('@fastgpt/service/core/chat/chatSchema', () => ({
   MongoChat: {
@@ -570,7 +574,7 @@ describe('stream resume api', () => {
       } as any);
 
       const redis = getRedisRuntime().getCommandConnection() as any;
-      const usedMemory = Math.ceil(STREAM_RESUME_REDIS_MAXMEMORY_RATIO * 100) + 1;
+      const usedMemory = Math.ceil(getStreamResumeRedisMaxmemoryRatio() * 100) + 1;
       redis.info = vi.fn().mockResolvedValue(`used_memory:${usedMemory}\r\nmaxmemory:100\r\n`);
 
       await getStreamResumeMirror({
@@ -663,7 +667,7 @@ describe('stream resume api', () => {
       );
 
       const redis = getRedisRuntime().getCommandConnection() as any;
-      const usedMemory = Math.ceil(STREAM_RESUME_REDIS_MAXMEMORY_RATIO * 100) + 1;
+      const usedMemory = Math.ceil(getStreamResumeRedisMaxmemoryRatio() * 100) + 1;
       redis.info = vi.fn().mockResolvedValue(`used_memory:${usedMemory}\r\nmaxmemory:100\r\n`);
 
       await getStreamResumeMirror({
@@ -689,7 +693,7 @@ describe('stream resume api', () => {
         }
       );
 
-      await vi.advanceTimersByTimeAsync(STREAM_RESUME_TTL_SECONDS * 1000 + 1);
+      await vi.advanceTimersByTimeAsync(getStreamResumeTtlSeconds() * 1000 + 1);
 
       const { chunks, res } = await responsePromise;
 
@@ -812,14 +816,14 @@ describe('stream resume helpers', () => {
 
       expect(redis.expire).toHaveBeenCalledWith(
         `${FASTGPT_REDIS_PREFIX}${keys.keyOfStream}`,
-        STREAM_RESUME_TTL_SECONDS
+        getStreamResumeTtlSeconds()
       );
       expect(redis.expire).toHaveBeenCalledTimes(1);
       expect(redis.set).toHaveBeenCalledWith(
         `${FASTGPT_REDIS_PREFIX}${keys.keyOfActive}`,
         expect.stringMatching(/^\{"updatedAt":\d+\}$/),
         'PX',
-        STREAM_RESUME_TTL_SECONDS * 1000
+        getStreamResumeTtlSeconds() * 1000
       );
       expect(await getStreamResumeActiveState({ teamId, ...appSource, chatId })).toEqual({
         updatedAt: expect.any(Number)
@@ -846,11 +850,11 @@ describe('stream resume helpers', () => {
     await mirror.shrinkTTLAfterComplete();
     expect(redis.expire).toHaveBeenCalledWith(
       `${FASTGPT_REDIS_PREFIX}${keys.keyOfStream}`,
-      STREAM_RESUME_POST_COMPLETE_TTL_SECONDS
+      getStreamResumePostCompleteTtlSeconds()
     );
     expect(redis.expire).toHaveBeenCalledWith(
       `${FASTGPT_REDIS_PREFIX}${keys.keyOfActive}`,
-      STREAM_RESUME_POST_COMPLETE_TTL_SECONDS
+      getStreamResumePostCompleteTtlSeconds()
     );
     expect(redis.expire).toHaveBeenCalledTimes(2);
   });
@@ -936,7 +940,7 @@ describe('stream resume helpers', () => {
 
   it('should skip creating a mirror when redis memory usage crosses the watermark', async () => {
     const redis = getRedisRuntime().getCommandConnection() as any;
-    const usedMemory = Math.ceil(STREAM_RESUME_REDIS_MAXMEMORY_RATIO * 100) + 1;
+    const usedMemory = Math.ceil(getStreamResumeRedisMaxmemoryRatio() * 100) + 1;
     redis.set.mockClear?.();
     redis.info = vi.fn().mockResolvedValue(`used_memory:${usedMemory}\r\nmaxmemory:100\r\n`);
 
@@ -955,7 +959,7 @@ describe('stream resume helpers', () => {
         reason: StreamResumeUnavailableReasonEnum.memoryPressure
       }),
       'PX',
-      STREAM_RESUME_TTL_SECONDS * 1000
+      getStreamResumeTtlSeconds() * 1000
     );
   });
 

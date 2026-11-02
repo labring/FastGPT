@@ -401,11 +401,16 @@ export const SystemEnvSchema = z.looseObject({
       'Agent 沙箱活跃实例系统总上限，须为正整数（app 会话与技能编辑共用计数池）；未配置时使用环境变量',
     example: 100
   }),
-  agentSandboxMaxPerTeam: optionalNullToUndefined(IntSchema.min(1)).meta({
-    description:
-      '单团队 Agent 沙箱活跃实例配额，须为正整数；未配置时使用环境变量，环境变量未配置时不限制',
-    example: 10
-  }),
+  // null 是显式"不限量"，必须与"未配置"区分：未配置时回落环境变量，
+  // 显式 null 不能再被环境变量重新加回限制。
+  agentSandboxMaxPerTeam: z
+    .union([IntSchema.min(1), z.null()])
+    .optional()
+    .meta({
+      description:
+        '单团队 Agent 沙箱活跃实例配额，须为正整数；null 表示显式不限制，未配置时使用环境变量',
+      example: 10
+    }),
   openapiPrefix: z.string().optional(),
 
   datasetParseMaxProcess: NumSchema.default(10).meta({

@@ -450,6 +450,87 @@ describe('migration env wiring', () => {
     ).toBeUndefined();
   });
 
+  it('does not revive an explicit unlimited per-team quota from env', () => {
+    const originalMaxPerTeam = serviceEnv.AGENT_SANDBOX_MAX_PER_TEAM;
+    serviceEnv.AGENT_SANDBOX_MAX_PER_TEAM = 5;
+
+    try {
+      expect(
+        pick(
+          buildLegacyDomainOverrides({
+            feConfigs: {},
+            systemEnv: { agentSandboxMaxPerTeam: null }
+          }),
+          'subservice.agentSandbox.common.maxPerTeam'
+        )
+      ).toBeNull();
+    } finally {
+      serviceEnv.AGENT_SANDBOX_MAX_PER_TEAM = originalMaxPerTeam;
+    }
+  });
+
+  it('migrates Sangfor credentials from the legacy document when env has no custom PDF URL', () => {
+    const originalProvider = serviceEnv.DOCUMENT_PARSE_PROVIDER;
+    const originalUrl = serviceEnv.CUSTOM_PDF_PARSE_URL;
+    const originalKey = serviceEnv.CUSTOM_PDF_PARSE_KEY;
+    serviceEnv.DOCUMENT_PARSE_PROVIDER = 'sangfor';
+    serviceEnv.CUSTOM_PDF_PARSE_URL = undefined;
+    serviceEnv.CUSTOM_PDF_PARSE_KEY = undefined;
+
+    try {
+      const overrides = buildLegacyDomainOverrides({
+        feConfigs: {},
+        systemEnv: {
+          customPdfParse: { url: 'https://legacy-sangfor.example.com', key: 'legacy-key' }
+        }
+      });
+
+      expect(pick(overrides, 'providers.documentParse.provider')).toBe('sangfor');
+      expect(pick(overrides, 'providers.documentParse.sangfor.url')).toBe(
+        'https://legacy-sangfor.example.com'
+      );
+      expect(pick(overrides, 'providers.documentParse.sangfor.key')).toBe('legacy-key');
+    } finally {
+      serviceEnv.DOCUMENT_PARSE_PROVIDER = originalProvider;
+      serviceEnv.CUSTOM_PDF_PARSE_URL = originalUrl;
+      serviceEnv.CUSTOM_PDF_PARSE_KEY = originalKey;
+    }
+  });
+
+  it('freezes the legacy PDF credential order into provider when none is selected', () => {
+    const originalProvider = serviceEnv.DOCUMENT_PARSE_PROVIDER;
+    const originalUrl = serviceEnv.CUSTOM_PDF_PARSE_URL;
+    const originalKey = serviceEnv.CUSTOM_PDF_PARSE_KEY;
+    const originalSomark = serviceEnv.SOMARK_API_KEY;
+    const originalDoc2x = serviceEnv.DOC2X_KEY;
+    const originalTextinAppId = serviceEnv.TEXTIN_APP_ID;
+    const originalTextinSecretCode = serviceEnv.TEXTIN_SECRET_CODE;
+    serviceEnv.DOCUMENT_PARSE_PROVIDER = undefined;
+    serviceEnv.CUSTOM_PDF_PARSE_URL = undefined;
+    serviceEnv.CUSTOM_PDF_PARSE_KEY = undefined;
+    serviceEnv.SOMARK_API_KEY = undefined;
+    serviceEnv.DOC2X_KEY = undefined;
+    serviceEnv.TEXTIN_APP_ID = undefined;
+    serviceEnv.TEXTIN_SECRET_CODE = undefined;
+
+    try {
+      const overrides = buildLegacyDomainOverrides({
+        feConfigs: {},
+        systemEnv: { customPdfParse: { somarkApiKey: 'sk-legacy' } }
+      });
+
+      expect(pick(overrides, 'providers.documentParse.provider')).toBe('somark');
+    } finally {
+      serviceEnv.DOCUMENT_PARSE_PROVIDER = originalProvider;
+      serviceEnv.CUSTOM_PDF_PARSE_URL = originalUrl;
+      serviceEnv.CUSTOM_PDF_PARSE_KEY = originalKey;
+      serviceEnv.SOMARK_API_KEY = originalSomark;
+      serviceEnv.DOC2X_KEY = originalDoc2x;
+      serviceEnv.TEXTIN_APP_ID = originalTextinAppId;
+      serviceEnv.TEXTIN_SECRET_CODE = originalTextinSecretCode;
+    }
+  });
+
   /**
    * 客户的环境变量只在这条迁移链路上进入实例配置：任何一条映射断掉，
    * 客户已配置的 env 值在升级后就会变成 Schema 默认值。

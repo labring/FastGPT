@@ -3,8 +3,13 @@
  *
  * 只负责把环境变量转换成 adapter 可用的配置，不执行远端生命周期动作。
  */
-import { serviceEnv } from '../../../../../env';
-import { getAgentSandboxMaxFileBytes } from '../../config';
+import {
+  getAgentSandboxCommonConfig,
+  getAgentSandboxMaxFileBytes,
+  getAgentSandboxOpenSandboxConfig,
+  getAgentSandboxProvider,
+  getAgentSandboxSealosConfig
+} from '../../config';
 import type { SandboxCreateSpec, SandboxProviderType } from '@fastgpt-sdk/sandbox-adapter';
 import type { VolumeManagerResult } from '../volume/service';
 import { getSandboxRuntimeProfile } from './runtimeProfile';
@@ -40,8 +45,8 @@ function assertNever(value: never): never {
 }
 
 export function getConfiguredSandboxProvider(): SandboxProviderType {
-  const provider = serviceEnv.AGENT_SANDBOX_PROVIDER;
-  if (!provider) {
+  const provider = getAgentSandboxProvider();
+  if (provider === 'none') {
     throw new Error('AGENT_SANDBOX_PROVIDER is required when Agent Sandbox is used');
   }
   return provider;
@@ -100,6 +105,7 @@ export function getSandboxAdapterConfig({
   sessionId?: string;
 } = {}): SandboxAdapterConfig {
   const profile = getSandboxRuntimeProfile(provider);
+  const common = getAgentSandboxCommonConfig();
   const baseEnv =
     runtime && sessionId
       ? buildBaseSandboxRuntimeEnv({
@@ -107,20 +113,21 @@ export function getSandboxAdapterConfig({
           workDirectory: profile.workDirectory,
           ideAgentMaxFileBytes: getAgentSandboxMaxFileBytes(),
           ideAgentWsLimits: {
-            maxMessageBytes: serviceEnv.AGENT_SANDBOX_WS_MAX_MESSAGE_BYTES,
-            maxFrameBytes: serviceEnv.AGENT_SANDBOX_WS_MAX_FRAME_BYTES
+            maxMessageBytes: common.wsMaxMessageBytes,
+            maxFrameBytes: common.wsMaxFrameBytes
           }
         })
       : undefined;
 
   switch (provider) {
     case 'opensandbox': {
+      const opensandbox = getAgentSandboxOpenSandboxConfig();
       const providerConfig: OpenSandboxProviderConfig = {
         provider,
-        baseUrl: serviceEnv.AGENT_SANDBOX_OPENSANDBOX_BASEURL ?? '',
-        apiKey: serviceEnv.AGENT_SANDBOX_OPENSANDBOX_API_KEY ?? '',
-        runtime: serviceEnv.AGENT_SANDBOX_OPENSANDBOX_RUNTIME,
-        useServerProxy: serviceEnv.AGENT_SANDBOX_OPENSANDBOX_USE_SERVER_PROXY
+        baseUrl: opensandbox.baseUrl,
+        apiKey: opensandbox.apiKey,
+        runtime: opensandbox.runtime,
+        useServerProxy: opensandbox.useServerProxy
       };
       validateSandboxConfig(providerConfig);
 
@@ -142,10 +149,11 @@ export function getSandboxAdapterConfig({
     }
 
     case 'sealosdevbox': {
+      const sealos = getAgentSandboxSealosConfig();
       const providerConfig: SealosDevboxProviderConfig = {
         provider,
-        baseUrl: serviceEnv.AGENT_SANDBOX_SEALOS_BASEURL ?? '',
-        token: serviceEnv.AGENT_SANDBOX_SEALOS_TOKEN ?? ''
+        baseUrl: sealos.baseUrl,
+        token: sealos.token
       };
       validateSandboxConfig(providerConfig);
 

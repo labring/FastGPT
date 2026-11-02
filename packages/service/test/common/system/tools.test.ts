@@ -11,6 +11,7 @@ vi.mock('@fastgpt/service/env', () => ({
 }));
 
 vi.mock('@fastgpt/service/core/ai/sandbox/config', () => ({
+  getAgentSandboxProvider: vi.fn(() => 'none'),
   getAgentSandboxSkillMaxBytes: vi.fn(() => 512)
 }));
 
@@ -121,7 +122,8 @@ describe('initFastGPTConfig', () => {
     expect(global.systemEnv).toMatchObject({
       datasetParseMaxProcess: 'not_a_number',
       agentSandboxMax: 12,
-      agentSandboxMaxPerTeam: undefined,
+      // null 是显式"不限量"，必须保留而不是归一为 undefined
+      agentSandboxMaxPerTeam: null,
       vectorRecallConcurrency: 8,
       customSetting: 7
     });

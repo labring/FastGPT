@@ -128,7 +128,9 @@ describe('applyInstanceConfigMigration (per-domain idempotency)', () => {
     expect(before.existingDomainCount).toBe(0);
     const targetDomainCount = Object.keys(before.overrides).length;
     expect(targetDomainCount).toBeGreaterThan(0);
-    expect(before.missingDomainCount).toBe(targetDomainCount);
+    // 完成条件按全部 Domain 判断：没有 legacy overrides 的默认域也必须落库，
+    // 否则 Pro 的 11 域启动断言会失败。
+    expect(before.missingDomainCount).toBe(SYSTEM_INSTANCE_CONFIG_DOMAINS.length);
 
     // 写入目标集合为空时 inspect 统计出的缺失域
     await applyInstanceConfigMigration({ overrides: before.overrides, logger });
@@ -154,8 +156,8 @@ describe('applyInstanceConfigMigration (per-domain idempotency)', () => {
     });
 
     const inspection = await inspectInstanceConfigMigration();
-    // 整域存在，因此不计入 missingDomainCount，但缺字段要单独暴露给任务停止跳过
-    expect(inspection.missingDomainCount).toBe(0);
+    // 该域已存在，但其余默认域仍未落库：缺失域计数覆盖全部 Domain
+    expect(inspection.missingDomainCount).toBe(SYSTEM_INSTANCE_CONFIG_DOMAINS.length - 1);
     expect(inspection.pendingBackfillDomainCount).toBe(1);
     expect(inspection.pendingBackfillPaths.length).toBeGreaterThan(0);
     expect(inspection.pendingBackfillPaths.every((path) => path.startsWith(`${domain}.`))).toBe(

@@ -37,6 +37,19 @@ const optionalNumber = (value: unknown): number | undefined =>
 const optionalBool = (value: unknown): boolean | undefined =>
   typeof value === 'boolean' ? value : undefined;
 
+/**
+ * 解析一组 url/key 凭据：旧库任一字段存在时整组采用旧库。
+ * 两个字段分别回落可能拼出跨来源组合（旧库地址 + 环境变量密钥），
+ * 把一方的凭据发给另一方服务。
+ */
+const resolveCredentialGroup = ({
+  legacy,
+  env
+}: {
+  legacy: { url?: string; key?: string };
+  env: { url?: string; key?: string };
+}): { url?: string; key?: string } => (legacy.url || legacy.key ? legacy : env);
+
 /** 将逗号或空白分隔的字符串转换为去重数组；空值返回 undefined 以跳过写入。 */
 const splitList = (value: unknown): string[] | undefined => {
   if (!isNonEmpty(value)) return undefined;
@@ -277,28 +290,55 @@ export const buildLegacyDomainOverrides = ({
   // ---------- providers ----------
   const legacyCustomPdf = (systemEnv.customPdfParse ?? {}) as LegacyFeConfigs;
   const isSangfor = serviceEnv.DOCUMENT_PARSE_PROVIDER === 'sangfor';
-  // 深信服复用 CUSTOM_PDF_PARSE_URL/KEY 作为地址与 Bearer Token，迁移时同步写入 sangfor 域。
-  const sangforUrl = isSangfor ? optionalText(serviceEnv.CUSTOM_PDF_PARSE_URL) : undefined;
-  const sangforKey = isSangfor ? optionalText(serviceEnv.CUSTOM_PDF_PARSE_KEY) : undefined;
+  // 深信服复用 CUSTOM_PDF_PARSE_URL/KEY 作为地址与 Bearer Token。
+  // 旧库优先：远程解析凭据历史上同时保存在 systemEnv.customPdfParse 和环境变量中，
+  // 迁移时必须从同一来源成组取值，再同步写入 customPdf 与 sangfor 两个逻辑块。
+  const legacyPdfCredentials = {
+    url: optionalText(legacyCustomPdf.url),
+    key: optionalText(legacyCustomPdf.key)
+  };
+  const envPdfCredentials = {
+    url: optionalText(serviceEnv.CUSTOM_PDF_PARSE_URL),
+    key: optionalText(serviceEnv.CUSTOM_PDF_PARSE_KEY)
+  };
+  const customPdfCredentials = resolveCredentialGroup({
+    legacy: legacyPdfCredentials,
+    env: envPdfCredentials
+  });
+  const customPdf = {
+    url: customPdfCredentials.url,
+    key: customPdfCredentials.key,
+    somarkApiKey:
+      optionalText(legacyCustomPdf.somarkApiKey) ?? optionalText(serviceEnv.SOMARK_API_KEY),
+    doc2xKey: optionalText(legacyCustomPdf.doc2xKey) ?? optionalText(serviceEnv.DOC2X_KEY),
+    textinAppId:
+      optionalText(legacyCustomPdf.textinAppId) ?? optionalText(serviceEnv.TEXTIN_APP_ID),
+    textinSecretCode:
+      optionalText(legacyCustomPdf.textinSecretCode) ?? optionalText(serviceEnv.TEXTIN_SECRET_CODE)
+  };
+  const sangforCredentials = isSangfor
+    ? resolveCredentialGroup({ legacy: legacyPdfCredentials, env: envPdfCredentials })
+    : { url: undefined, key: undefined };
+
+  // 旧运行时没有 provider 选择，按 custom → somark → textin → doc2x 的固定顺序选择第一个
+  // 可用凭据。迁移时把这一实际选择固化为 provider，运行期改为按 provider 分派，
+  // 避免管理员切换后仍被旧凭据抢占。
+  const documentParseProvider = (() => {
+    if (isSangfor && sangforCredentials.url) return 'sangfor' as const;
+    if (customPdf.url) return 'customPdf' as const;
+    if (customPdf.somarkApiKey) return 'somark' as const;
+    if (customPdf.textinAppId && customPdf.textinSecretCode) return 'textin' as const;
+    if (customPdf.doc2xKey) return 'doc2x' as const;
+    return undefined;
+  })();
 
   overrides.providers = compact({
     documentParse: compact({
-      provider: isSangfor ? 'sangfor' : undefined,
-      customPdf: compact({
-        url: optionalText(legacyCustomPdf.url) ?? optionalText(serviceEnv.CUSTOM_PDF_PARSE_URL),
-        key: optionalText(legacyCustomPdf.key) ?? optionalText(serviceEnv.CUSTOM_PDF_PARSE_KEY),
-        somarkApiKey:
-          optionalText(legacyCustomPdf.somarkApiKey) ?? optionalText(serviceEnv.SOMARK_API_KEY),
-        doc2xKey: optionalText(legacyCustomPdf.doc2xKey) ?? optionalText(serviceEnv.DOC2X_KEY),
-        textinAppId:
-          optionalText(legacyCustomPdf.textinAppId) ?? optionalText(serviceEnv.TEXTIN_APP_ID),
-        textinSecretCode:
-          optionalText(legacyCustomPdf.textinSecretCode) ??
-          optionalText(serviceEnv.TEXTIN_SECRET_CODE)
-      }),
+      provider: documentParseProvider,
+      customPdf: compact(customPdf),
       sangfor: compact({
-        url: sangforUrl,
-        key: sangforKey,
+        url: sangforCredentials.url,
+        key: sangforCredentials.key,
         extensions: optionalText(serviceEnv.SANGFOR_PARSE_EXTENSIONS),
         timeoutSeconds: optionalNumber(serviceEnv.SANGFOR_PARSE_TIMEOUT_SECONDS)
       })
@@ -350,9 +390,12 @@ export const buildLegacyDomainOverrides = ({
         archiveInactiveDays: optionalNumber(serviceEnv.AGENT_SANDBOX_ARCHIVE_INACTIVE_DAYS),
         maxEditDebug:
           optionalNumber(systemEnv.agentSandboxMax) ?? optionalNumber(serviceEnv.AGENT_SANDBOX_MAX),
+        // null 是旧库中的显式"不限量"，不能被环境变量的配额重新覆盖。
         maxPerTeam:
-          optionalNumber(systemEnv.agentSandboxMaxPerTeam) ??
-          optionalNumber(serviceEnv.AGENT_SANDBOX_MAX_PER_TEAM),
+          systemEnv.agentSandboxMaxPerTeam === null
+            ? null
+            : (optionalNumber(systemEnv.agentSandboxMaxPerTeam) ??
+              optionalNumber(serviceEnv.AGENT_SANDBOX_MAX_PER_TEAM)),
         entrypointTimeoutSeconds: optionalNumber(
           serviceEnv.AGENT_SANDBOX_ENTRYPOINT_TIMEOUT_SECONDS
         ),
@@ -850,8 +893,11 @@ export const inspectInstanceConfigMigration = async () => {
   const existingDomains = new Set<string>(
     existingDocs.map((doc) => String((doc as any).domain ?? doc._id))
   );
+  // 完成条件必须按全部 Domain 判断：applyInstanceConfigMigration 会为没有 overrides 的
+  // Domain 也写入空文档（Schema 默认值），这里若只统计"有非默认 overrides 的域"，
+  // 缺失的默认域会被误判为已完成，迁移入口直接 skipped，Pro 的 11 域启动断言随后失败。
   const missingDomainCount = SYSTEM_INSTANCE_CONFIG_DOMAINS.filter(
-    (domain) => !!overrides[domain] && !existingDomains.has(domain)
+    (domain) => !existingDomains.has(domain)
   ).length;
 
   // 已有域里仍缺失的字段：整域存在不代表迁移已完成，客户已配置的环境变量可能还没进来

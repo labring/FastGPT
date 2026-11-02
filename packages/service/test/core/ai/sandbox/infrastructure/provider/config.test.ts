@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { LEAF_ABSENT_SNAPSHOT } from '@test/utils/instanceConfigSnapshot';
 
 const originalEnv = {
   AGENT_SANDBOX_PROVIDER: process.env.AGENT_SANDBOX_PROVIDER,
@@ -25,6 +26,8 @@ const originalEnv = {
 
 const loadSandboxConfigModule = async () => {
   vi.resetModules();
+  // 叶子缺省快照：provider 连接参数回落到 stub 的环境变量，保持本文件 env 驱动语义。
+  (global as any).systemInstanceConfig = LEAF_ABSENT_SNAPSHOT();
   return import('@fastgpt/service/core/ai/sandbox/infrastructure/provider/config');
 };
 
@@ -121,6 +124,29 @@ describe('sandbox provider config', () => {
     expect(getSandboxProviderConfig).toThrow(
       'AGENT_SANDBOX_PROVIDER is required when Agent Sandbox is used'
     );
+  });
+
+  it('connects to the provider stored in instance config when env provider is removed', async () => {
+    vi.stubEnv('AGENT_SANDBOX_PROVIDER', undefined);
+
+    const { getSandboxProviderConfig } = await loadSandboxConfigModule();
+    const snapshot = LEAF_ABSENT_SNAPSHOT() as any;
+    snapshot.subservice.agentSandbox.provider = 'opensandbox';
+    snapshot.subservice.agentSandbox.opensandbox = {
+      baseUrl: 'https://opensandbox.example.com',
+      apiKey: 'opensandbox-key',
+      runtime: 'docker',
+      useServerProxy: true
+    };
+    (global as any).systemInstanceConfig = snapshot;
+
+    expect(getSandboxProviderConfig()).toEqual({
+      provider: 'opensandbox',
+      baseUrl: 'https://opensandbox.example.com',
+      apiKey: 'opensandbox-key',
+      runtime: 'docker',
+      useServerProxy: true
+    });
   });
 
   it('builds sealosdevbox runtime create config from runtime profile', async () => {

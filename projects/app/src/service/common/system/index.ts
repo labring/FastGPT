@@ -37,7 +37,9 @@ import { logInstanceConfigRead } from '@fastgpt/service/common/system/migrationC
 import { buildAuthoritativeSystemEnv } from './buildAuthoritativeSystemEnv';
 import {
   buildOauthFeConfig,
-  buildRegisterMethods
+  buildPayConfig,
+  buildRegisterMethods,
+  hasPayChannel
 } from '@fastgpt/global/common/system/config/frontendProjection';
 
 const logger = getLogger(LogCategories.SYSTEM);
@@ -175,6 +177,9 @@ async function doInitSystemConfig() {
   // 避免过期的商业版授权继续开启商业能力；前端据此可区分「未激活」与「已到期」。
   global.licenseData = licenseData;
   const isPlus = isLicenseActive(licenseData);
+  // 支付渠道是实例配置的派生能力：旧库 feConfigs.payConfig 只是历史快照，
+  // 新增渠道不可选、删除渠道后旧入口仍可见，必须在这里统一重算。
+  const payConfig = buildPayConfig(instanceConfig.commercial);
 
   const config: FastGPTConfigFileType = {
     feConfigs: {
@@ -193,6 +198,9 @@ async function doInitSystemConfig() {
       marketplaceUrl: instanceConfig.site.marketplaceUrl,
       navbarItems: instanceConfig.site.navbarItems,
 
+      // 团队模式与 Pro getProTeamMode 共用同一份实例配置；社区版移除该 Pro 字段时
+      // 保留旧库值，避免降级后把历史 multi/sync 模式误判为默认值。
+      teamMode: instanceConfig.auth.teamMode ?? fastgptConfig.feConfigs?.teamMode,
       wecomLoginAutoRedirect: instanceConfig.auth.wecomLoginAutoRedirect,
       oauth: buildOauthFeConfig(instanceConfig.auth),
       register_method: buildRegisterMethods({
@@ -221,6 +229,8 @@ async function doInitSystemConfig() {
 
       show_coupon: instanceConfig.commercial.showCoupon,
       show_discount_coupon: instanceConfig.commercial.showDiscountCoupon,
+      show_pay: hasPayChannel(payConfig),
+      payConfig,
       payFormUrl: instanceConfig.commercial.payFormUrl,
       agentSandboxFree: instanceConfig.commercial.agentSandboxFreeTip,
 

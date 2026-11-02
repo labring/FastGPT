@@ -23,6 +23,7 @@ import {
   resolveFileSourceExtension
 } from '../common/file/read/source';
 import { getLightweightWorkerPoolOptions } from './lightweightResource';
+import { getSystemInstanceConfig } from '../common/system/systemInstanceConfig/controller';
 
 export const text2Chunks = async (props: SplitProps) => {
   // Test env, not run worker
@@ -52,12 +53,25 @@ type ReadFileWorkerProps = {
   };
 };
 
-const getReadFileWorker = () =>
-  getWorkerController<ReadFileWorkerProps, ReadFileResponse>({
+const getReadFileWorker = () => {
+  const parse = getSystemInstanceConfig().performance.parse;
+  // 单任务超时与 worker 内的 XLSX/HTML 限制都来自实例配置 performance.parse；
+  // 快照叶子缺省时回落环境变量，兼容启动早期与测试种子。
+  const fileTimeoutSeconds = parse.fileTimeoutSeconds ?? serviceEnv.PARSE_FILE_TIMEOUT_SECONDS;
+  const workerEnvVersion = [
+    parse.maxHtmlTransformChars ?? serviceEnv.MAX_HTML_TRANSFORM_CHARS,
+    parse.xlsxMaxRows ?? serviceEnv.XLSX_PARSE_MAX_ROWS,
+    parse.xlsxMaxColumns ?? serviceEnv.XLSX_PARSE_MAX_COLUMNS,
+    parse.xlsxMaxCells ?? serviceEnv.XLSX_PARSE_MAX_CELLS,
+    parse.xlsxMaxMergedCells ?? serviceEnv.XLSX_PARSE_MAX_MERGED_CELLS
+  ].join(':');
+
+  return getWorkerController<ReadFileWorkerProps, ReadFileResponse>({
     name: WorkerNameEnum.readFile,
     maxReservedThreads: getFileParseMaxWorkers(),
-    // 单任务超时：默认 600s（10min），由 PARSE_FILE_TIMEOUT_SECONDS（秒）配置
-    taskTimeoutMs: serviceEnv.PARSE_FILE_TIMEOUT_SECONDS * 1000,
+    taskTimeoutMs: fileTimeoutSeconds * 1000,
+    // worker 环境只在创建线程时注入，版本变化时回收空闲线程使新配置生效
+    workerEnvVersion,
     // mammoth/xlsx/pdf-parse 历史上有 module 级缓存与潜在内存泄漏，定期回收 worker
     maxTasksPerWorker: 100,
     resourcePolicy: {
@@ -79,6 +93,7 @@ const getReadFileWorker = () =>
     idleWorkerTimeoutMs: fileParseResourceConstants.idleWorkerTimeoutMs,
     minIdleWorkers: fileParseResourceConstants.minIdleWorkers
   });
+};
 
 const createUploadFileHandler = (imageKeyOptions?: ReadFileWorkerProps['imageKeyOptions']) =>
   imageKeyOptions?.prefix

@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildOauthFeConfig,
-  buildRegisterMethods
+  buildPayConfig,
+  buildRegisterMethods,
+  hasPayChannel
 } from '../../../../common/system/config/frontendProjection';
 import { resolveSystemInstanceConfig } from '../../../../common/system/config/schema';
 
@@ -59,5 +61,61 @@ describe('buildRegisterMethods', () => {
     expect(
       buildRegisterMethods({ legacyMethods: ['phone', 'email'], auth: createAuth({}) })
     ).toEqual(['phone']);
+  });
+
+  it('re-enables email when the legacy array never contained it', () => {
+    const enabledAuth = createAuth({ loginProviders: { email: { register: true } } });
+
+    expect(buildRegisterMethods({ legacyMethods: ['phone'], auth: enabledAuth })).toEqual([
+      'email',
+      'phone'
+    ]);
+    expect(buildRegisterMethods({ legacyMethods: [], auth: enabledAuth })).toEqual(['email']);
+  });
+
+  it('keeps the original email position when the legacy array contains it', () => {
+    const enabledAuth = createAuth({ loginProviders: { email: { register: true } } });
+
+    expect(buildRegisterMethods({ legacyMethods: ['phone', 'email'], auth: enabledAuth })).toEqual([
+      'phone',
+      'email'
+    ]);
+  });
+});
+
+describe('buildPayConfig', () => {
+  it('projects every channel whose complete credential is present', () => {
+    const commercial = resolveSystemInstanceConfig({
+      commercial: {
+        payment: {
+          wx: { privateKey: 'wx-private-key' },
+          alipay: { rootCertContent: 'alipay-root-cert' },
+          bank: { description: 'bank transfer' }
+        }
+      }
+    }).commercial;
+
+    const payConfig = buildPayConfig(commercial);
+
+    expect(payConfig).toEqual({ wx: true, alipay: true, bank: true });
+    expect(hasPayChannel(payConfig)).toBe(true);
+  });
+
+  it('stops exposing a channel after its credential is removed', () => {
+    const commercial = resolveSystemInstanceConfig({
+      commercial: {
+        payment: {
+          wx: { privateKey: '' },
+          alipay: { rootCertContent: '' },
+          bank: { description: 'bank transfer' }
+        }
+      }
+    }).commercial;
+
+    const payConfig = buildPayConfig(commercial);
+
+    expect(payConfig).toEqual({ wx: false, alipay: false, bank: true });
+    expect(hasPayChannel(payConfig)).toBe(true);
+    expect(hasPayChannel({ wx: false, alipay: false, bank: false })).toBe(false);
   });
 });

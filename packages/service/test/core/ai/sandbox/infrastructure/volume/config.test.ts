@@ -1,7 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { LEAF_ABSENT_SNAPSHOT } from '@test/utils/instanceConfigSnapshot';
 
 const loadVolumeConfigModule = async () => {
   vi.resetModules();
+  // 叶子缺省快照：volume-manager 连接参数回落到 mock 的环境变量。
+  (global as any).systemInstanceConfig = LEAF_ABSENT_SNAPSHOT();
   return import('@fastgpt/service/core/ai/sandbox/infrastructure/volume/config');
 };
 

@@ -23,7 +23,8 @@ export const buildAuthoritativeSystemEnv = ({
     openapiPrefix: instanceConfig.site.openApiPrefix,
     fileUrlWhitelist: instanceConfig.security.fileUrlWhitelist,
     agentSandboxMax: instanceConfig.subservice.agentSandbox.common.maxEditDebug,
-    agentSandboxMaxPerTeam: instanceConfig.subservice.agentSandbox.common.maxPerTeam ?? undefined,
+    // 保留 null：它是"明确不限量"，转成 undefined 会让 getAgentSandboxMaxPerTeam 回落 env。
+    agentSandboxMaxPerTeam: instanceConfig.subservice.agentSandbox.common.maxPerTeam,
     workflowHttpNode: {
       ...(legacySystemEnv?.workflowHttpNode || {}),
       ignoreHttpsCertificate: instanceConfig.security.workflowHttpNode.ignoreHttpsCertificate

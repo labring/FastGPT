@@ -154,6 +154,7 @@ const tmbId = 'test-tmb-id';
 describe('readFileContentByBuffer', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    (global as any).systemInstanceConfig = LEAF_ABSENT_SNAPSHOT();
     global.systemEnv = {} as any;
     mockEnv.PARSE_FILE_TIMEOUT_SECONDS = 600;
     mockEnv.DOCUMENT_PARSE_PROVIDER = '';
@@ -774,6 +775,28 @@ describe('readFileContentByBuffer', () => {
     expect(result.rawText).toBe('doc2x-parsed-text');
   });
 
+  it('dispatches by the selected documentParse provider instead of the legacy fixed order', async () => {
+    const snapshot = LEAF_ABSENT_SNAPSHOT() as any;
+    snapshot.providers.documentParse.provider = 'doc2x';
+    (global as any).systemInstanceConfig = snapshot;
+    // 旧 custom URL 仍然存在，但管理员已选中 doc2x：不能再被 custom 抢占
+    global.systemEnv = {
+      customPdfParse: { url: 'http://old-custom.test/parse', doc2xKey: 'doc2x-api-key' }
+    } as any;
+
+    const result = await readFileContentByBuffer({
+      teamId,
+      tmbId,
+      extension: 'pdf',
+      buffer: Buffer.from('pdf content'),
+      encoding: 'utf-8',
+      customPdfParse: true
+    });
+
+    expect(result.rawText).toBe('doc2x-parsed-text');
+    expect(mockAxiosPost).not.toHaveBeenCalled();
+  });
+
   it('should pass Doc2x image upload handler when imageKeyOptions is provided', async () => {
     global.systemEnv = {
       customPdfParse: { doc2xKey: 'doc2x-api-key' }
@@ -981,6 +1004,7 @@ describe('readFileContentByBuffer', () => {
 describe('readFileContentBySource', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    (global as any).systemInstanceConfig = LEAF_ABSENT_SNAPSHOT();
     global.systemEnv = {} as any;
     mockEnv.DOCUMENT_PARSE_PROVIDER = '';
     mockEnv.SANGFOR_PARSE_EXTENSIONS = 'pdf';

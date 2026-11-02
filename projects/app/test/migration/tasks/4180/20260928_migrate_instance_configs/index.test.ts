@@ -106,6 +106,36 @@ describe('migrateInstanceConfigs', () => {
     );
   });
 
+  it('does not skip when only default domains are missing', async () => {
+    // 缺失的默认域没有 legacy overrides；apply 仍会写入空文档满足 Pro 的 11 域断言，
+    // 入口不能因为 overrides 为空就把 missingDomainCount 误判为 0。
+    mocks.inspectInstanceConfigMigration
+      .mockResolvedValueOnce({
+        existingDomainCount: 10,
+        missingDomainCount: 1,
+        pendingBackfillDomainCount: 0,
+        pendingBackfillPaths: [],
+        hasLegacyConfig: false,
+        hasLegacyProConfig: false,
+        envRehomedWarnings: [],
+        schemaSanitizedWarnings: [],
+        overrides: {}
+      })
+      .mockResolvedValueOnce(successPostInspection);
+    mocks.applyInstanceConfigMigration.mockResolvedValue({
+      domains: ['feature'],
+      migratedCount: 1,
+      createdDomains: ['feature'],
+      backfilledDomains: [],
+      backfilledPaths: []
+    });
+
+    const result = await migrateInstanceConfigs(createContext());
+
+    expect(result).toEqual({ migratedDomainCount: 1, backfilledDomainCount: 0, skipped: false });
+    expect(mocks.applyInstanceConfigMigration).toHaveBeenCalledTimes(1);
+  });
+
   it('logs warnings for fields re-homed to environment variables', async () => {
     mocks.inspectInstanceConfigMigration
       .mockResolvedValueOnce({
