@@ -1,0 +1,71 @@
+name: Auto Github Rebot for Cherry Pick
+on:
+  workflow_dispatch:
+    inputs:
+      prNumber:
+        description: 'PR Number to cherry pick'
+        required: true
+        default: '1234'
+      target:
+        description: 'Target branch to cherry pick to'
+        required: true
+        default: 'v4.16.x'
+jobs:
+  cherry-pick:
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+    name: Cherry Pick
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout the latest code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+      - name: Automatic Cherry Pick
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ inputs.prNumber }}
+          TARGET_BRANCH: ${{ inputs.target }}
+        run: |
+          git config --global --add safe.directory /github/workspace
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          bash "./${PROJECT_PATH}/.github/scripts/cherry-pick.sh"  ${PR_NUMBER} ${TARGET_BRANCH}
+      - name: Get PR title
+        id: pr_title
+        env:
+          PR_NUMBER: ${{ inputs.prNumber }}
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const pr = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: Number(process.env.PR_NUMBER)
+            });
+            return pr.data.title;
+      - uses: peter-evans/create-pull-request@v5
+        with:
+          title: ${{ fromJSON(steps.pr_title.outputs.result) }}
+          body: |
+            fix(cherry-pick): Automated CherryPick ${{ inputs.prNumber }} for ${{ inputs.target }}
+            
+            Automated changes by [create-pull-request](https://github.com/peter-evans/create-pull-request) GitHub action
+          commit-message: |
+            🤖 cherry-pick to ${{ inputs.target }} using robot.
+          branch: cherry-pick-${{ inputs.target }}-${{ inputs.prNumber }}
+          base: ${{ inputs.target }}
+          draft: true
+          signoff: true
+          labels: |
+            bot
+          delete-branch: true
+          token: ${{ secrets.GITHUB_TOKEN }}
+          reviewers: cuisongliu
+          milestone: cherry-pick
+          committer: github-actions[bot] <github-actions[bot]@users.noreply.github.com>
+          author: github-actions[bot] <github-actions[bot]@users.noreply.github.com>
