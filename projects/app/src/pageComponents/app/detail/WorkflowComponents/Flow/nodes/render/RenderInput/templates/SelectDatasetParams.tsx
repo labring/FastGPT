@@ -1,5 +1,6 @@
 import DatasetParamsModal from '@/components/core/app/DatasetParamsModal';
 import SearchParamsTip from '@/components/core/dataset/SearchParamsTip';
+import { AppContext } from '@/pageComponents/app/detail/context';
 import { WorkflowActionsContext } from '@/pageComponents/app/detail/WorkflowComponents/context/workflowActionsContext';
 import { Flex, useDisclosure } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -11,6 +12,7 @@ import type { RenderInputProps } from '../type';
 import { getDatasetSearchParamInputs, getDatasetSearchParams } from './SelectDatasetParams.utils';
 
 const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
+  const appId = useContextSelector(AppContext, (v) => v.appId);
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
   const llmMaxQuoteContext = useWorkflowQuoteLimit();
   const { t } = useTranslation();
@@ -46,6 +48,7 @@ const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
       {isOpen && (
         <DatasetParamsModal
           {...data}
+          appId={appId || undefined}
           maxTokens={llmMaxQuoteContext}
           onClose={onClose}
           onSuccess={(e) => {

@@ -51,6 +51,7 @@ export type SpecificProps = {
   // JSONEditor - no extra props
 
   // selectLLMModel
+  appId?: string;
   outLinkAuthData?: OutLinkChatAuthProps;
 
   // fileSelect

@@ -43,10 +43,6 @@ vi.mock('@/web/core/ai/model/useUserModelStore', () => ({
       getModelProviders: () => []
     })
 }));
-vi.mock('use-context-selector', () => ({
-  useContextSelector: (_: unknown, select: (value: { appId?: string }) => unknown) => select({})
-}));
-vi.mock('@/pageComponents/app/detail/context', () => ({ AppContext: {} }));
 
 describe('AIModelSelector lazy directory', () => {
   beforeEach(() => {
@@ -271,5 +267,19 @@ describe('AIModelSelector lazy directory', () => {
     mocks.effects.forEach((fn) => fn());
     expect(mocks.refresh).not.toHaveBeenCalled();
     expect(mocks.setFromCatalog).not.toHaveBeenCalled();
+  });
+
+  it('forwards appId and outLinkAuthData props to model list and summary hooks', () => {
+    const outLinkAuthData = { shareId: 'share-1', outLinkUid: 'uid-1' };
+    AIModelSelector({
+      modelType: ModelTypeEnum.llm,
+      value: 'chosen',
+      appId: 'app-1',
+      outLinkAuthData
+    });
+    expect(mocks.lists).toHaveBeenLastCalledWith(expect.objectContaining({ outLinkAuthData }));
+    expect(mocks.detail).toHaveBeenLastCalledWith(
+      expect.objectContaining({ appId: 'app-1', outLinkAuthData })
+    );
   });
 });

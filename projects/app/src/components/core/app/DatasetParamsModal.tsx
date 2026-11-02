@@ -60,6 +60,7 @@ const DatasetParamsModal = ({
   datasetIds = [],
   tagFilterReferenceList = [],
   maxTokens,
+  appId,
   onClose,
   onSuccess
 }: AppDatasetSearchParamsType & {
@@ -67,6 +68,7 @@ const DatasetParamsModal = ({
   datasetIds?: string[];
   tagFilterReferenceList?: TagFilterReferenceList;
   maxTokens?: number; // limit max tokens
+  appId?: string;
   onClose: () => void;
   onSuccess: (e: AppDatasetSearchParamsType) => void;
 }) => {
@@ -338,6 +340,7 @@ const DatasetParamsModal = ({
                     <Box flex={'1 0 0'}>
                       <SelectAiModel
                         modelType={ModelTypeEnum.rerank}
+                        appId={appId}
                         bg={'myGray.50'}
                         h={'36px'}
                         value={reRankModelIdWatch || rerankModel}
@@ -450,6 +453,7 @@ const DatasetParamsModal = ({
                   <Box flex={['1 0 0', '0 0 300px']}>
                     <SelectAiModel
                       modelType={ModelTypeEnum.llm}
+                      appId={appId}
                       width={'100%'}
                       value={
                         queryExtensionModelId !== undefined
