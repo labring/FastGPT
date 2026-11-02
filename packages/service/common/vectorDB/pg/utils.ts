@@ -4,9 +4,10 @@ import type { EmbeddingRecallCtrlPropsType } from '../type';
 import { DatasetVectorTableName } from '../constants';
 
 /**
- * 将 ready 且至少两万行的库各自路由到 FP16 索引，其余库合并精确检索；各组取 limit 后按 FP32 截断。
- * 两万到三万行保留已有索引路由，低于两万或正在移除的库立即回到精确路径，不等待维护任务。
- * 局部索引谓词使用驱动转义后的常量，使 PG 无需依赖参数值就能证明谓词成立。
+ * 将 ready 且至少五千行的库各自路由到 FP16 索引，其余库合并精确检索；各组取 limit 后按 FP32 截断。
+ * 五千到一万行保留已有索引路由，低于五千或正在移除的库立即回到精确路径，不等待维护任务。
+ * datasetId 来自当前团队的路由快照且全局唯一；HNSW 组只按该常量和 collection 约束检索，
+ * 避免 team/dataset 关联条件被重复估算。精确组保留团队过滤，局部谓词常量使用驱动转义。
  */
 export const buildPgVectorRecallQuery = ({
   teamId,
@@ -37,9 +38,7 @@ export const buildPgVectorRecallQuery = ({
     values.push(forbidden);
     collectionClauses.push(`NOT (collection_id = ANY($${values.length}::varchar[]))`);
   }
-  const baseWhere = [`team_id = ${pg.escapeLiteral(String(teamId))}`, ...collectionClauses].join(
-    ' AND '
-  );
+  const exactWhere = [`team_id = ${pg.escapeLiteral(String(teamId))}`, ...collectionClauses];
   const metadata = new Map(datasetVectorData.map((item) => [String(item.datasetId), item]));
   const indexed = ids.filter((id) => {
     const data = metadata.get(id);
@@ -59,7 +58,7 @@ export const buildPgVectorRecallQuery = ({
     (id, i) => `candidates_${i} AS MATERIALIZED (
       SELECT id, collection_id, vector
       FROM ${DatasetVectorTableName}
-      WHERE ${baseWhere} AND dataset_id = ${pg.escapeLiteral(id)}
+      WHERE ${[`dataset_id = ${pg.escapeLiteral(id)}`, ...collectionClauses].join(' AND ')}
       ORDER BY vector::halfvec(${vector.length}) <#> $1::vector::halfvec(${vector.length})
       LIMIT $2
     )`
@@ -71,11 +70,14 @@ export const buildPgVectorRecallQuery = ({
   );
 
   if (exact.length > 0) {
-    values.push(exact);
+    const datasetParams = exact.map((id) => {
+      values.push(id);
+      return `$${values.length}::varchar`;
+    });
     // +0 阻止旧全局 HNSW 接管精确分组；仍允许 team/dataset/collection B-tree 过滤。
     groups.push(`(SELECT id, collection_id, vector::vector <#> $1::vector AS score
       FROM ${DatasetVectorTableName}
-      WHERE ${baseWhere} AND dataset_id = ANY($${values.length}::varchar[])
+      WHERE ${exactWhere.join(' AND ')} AND dataset_id IN (${datasetParams.join(', ')})
       ORDER BY (vector::vector <#> $1::vector) + 0, id LIMIT $2)`);
   }
 

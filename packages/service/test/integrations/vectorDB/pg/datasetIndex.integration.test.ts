@@ -43,7 +43,8 @@ describeStorage('local PG FP16 dataset index with %s storage', (storage) => {
   const teamId = '507f1f77bcf86cd799439011';
   const datasetId = '507f1f77bcf86cd799439012';
   const repairId = '507f1f77bcf86cd799439013';
-  const smallIds = ['507f1f77bcf86cd799439014', '507f1f77bcf86cd799439015'];
+  const foreignDatasetId = '507f1f77bcf86cd799439098';
+  const smallIds = ['507f1f77bcf86cd799439014', '507f1f77bcf86cd799439015', foreignDatasetId];
   const dimensions = Number(process.env.FASTGPT_PG_INDEX_TEST_DIMENSIONS ?? 16);
   const ctrl = new PgVectorCtrl();
   const admin = new Client({ connectionString: target?.address });
@@ -72,7 +73,7 @@ describeStorage('local PG FP16 dataset index with %s storage', (storage) => {
         SELECT $1, $2, 'allowed', ARRAY(
           SELECT (sin(g::float8 * d) * 0.1 / sqrt(${dimensions}))::real
           FROM generate_series(1, ${dimensions}) d
-        )::vector FROM generate_series(1, 30001) g`,
+        )::vector FROM generate_series(1, 10001) g`,
         [teamId, id]
       );
     }
@@ -94,10 +95,15 @@ describeStorage('local PG FP16 dataset index with %s storage', (storage) => {
         [teamId, repairId, `[${[1000000, ...vector.slice(1)].join(',')}]`]
       );
     }
-    // 即使 datasetId 相同，其他团队也不允许进入候选。
+    // datasetId 遵循 Mongo _id 全局唯一；未取得本团队路由元数据的外部库留在精确组，由 teamId 排除。
     await pool.query(
       'INSERT INTO modeldata (team_id, dataset_id, collection_id, vector) VALUES ($1,$2,$3,$4)',
-      ['507f1f77bcf86cd799439099', datasetId, 'allowed', `[${[10, ...vector.slice(1)].join(',')}]`]
+      [
+        '507f1f77bcf86cd799439099',
+        foreignDatasetId,
+        'allowed',
+        `[${[10, ...vector.slice(1)].join(',')}]`
+      ]
     );
     await pool.query('VACUUM ANALYZE modeldata');
   }, 240000);
@@ -143,7 +149,7 @@ describeStorage('local PG FP16 dataset index with %s storage', (storage) => {
       vector,
       limit: 3,
       forbidCollectionIdList: ['hidden'],
-      datasetVectorData: [{ datasetId, rows: 30004, pgIndex: 'pending' as const }]
+      datasetVectorData: [{ datasetId, rows: 10004, pgIndex: 'pending' as const }]
     };
     const query = buildPgVectorRecallQuery(props)!;
     expect(query.usesHnsw).toBe(false);
@@ -166,6 +172,14 @@ describeStorage('local PG FP16 dataset index with %s storage', (storage) => {
       created: false
     });
     expect(callbacks.onBuilding).toHaveBeenCalledOnce();
+    const { rows } = await (
+      await connectPg()
+    ).query(
+      'SELECT pg_get_expr(indpred, indrelid) AS predicate FROM pg_index WHERE indexrelid = to_regclass($1)',
+      [getPgDatasetIndexName(datasetId)]
+    );
+    expect(rows[0].predicate).toContain(datasetId);
+    expect(rows[0].predicate).not.toContain('team_id');
   }, 240000);
 
   it('queries while legacy and local indexes coexist, then removes the legacy test index', async () => {
@@ -175,7 +189,7 @@ describeStorage('local PG FP16 dataset index with %s storage', (storage) => {
       vector,
       limit: 100,
       forbidCollectionIdList: ['hidden'],
-      datasetVectorData: [{ datasetId, rows: 30004, pgIndex: 'ready' }]
+      datasetVectorData: [{ datasetId, rows: 10004, pgIndex: 'ready' }]
     });
     expect(result.results).toHaveLength(100);
     expect(result.results.every(({ collectionId }) => collectionId === 'allowed')).toBe(true);
@@ -194,7 +208,7 @@ describeStorage('local PG FP16 dataset index with %s storage', (storage) => {
       vector,
       limit: 3,
       forbidCollectionIdList: ['hidden'],
-      datasetVectorData: [{ datasetId, rows: 30004, pgIndex: 'ready' as const }]
+      datasetVectorData: [{ datasetId, rows: 10004, pgIndex: 'ready' as const }]
     };
     const query = buildPgVectorRecallQuery(props)!;
     const plan = await (
@@ -303,7 +317,7 @@ describeStorage('local PG FP16 dataset index with %s storage', (storage) => {
       forbidCollectionIdList: ['hidden'],
       datasetVectorData: [datasetId, repairId].map((datasetId) => ({
         datasetId,
-        rows: 30001,
+        rows: 10001,
         pgIndex: 'ready' as const
       }))
     };
@@ -323,7 +337,7 @@ describeStorage('local PG FP16 dataset index with %s storage', (storage) => {
     );
   }, 240000);
 
-  it('retains at 20000..30000, removes below 20000, and rebuilds only above 30000', async () => {
+  it('retains at 5000..10000, removes below 5000, and rebuilds only above 10000', async () => {
     const pool = await connectPg();
     const scope = { teamId, datasetId };
     const indexName = getPgDatasetIndexName(datasetId);
@@ -358,7 +372,7 @@ describeStorage('local PG FP16 dataset index with %s storage', (storage) => {
     const oid = await readIndexOid();
     expect(oid).toBeTruthy();
 
-    for (const rows of [30000, 20000]) {
+    for (const rows of [10000, 5000]) {
       await shrinkTo(rows);
       expect(await ensurePgDatasetIndex({ ...scope, ...callbacks })).toEqual({
         pgIndex: 'ready',
@@ -373,7 +387,7 @@ describeStorage('local PG FP16 dataset index with %s storage', (storage) => {
       expect((await ctrl.embRecall(props)).results).toHaveLength(100);
     }
 
-    await shrinkTo(19999);
+    await shrinkTo(4999);
     const onRemoving = vi.fn(async () => {
       expect(await readIndexOid()).toBe(oid);
     });
@@ -383,17 +397,17 @@ describeStorage('local PG FP16 dataset index with %s storage', (storage) => {
     });
     expect(onRemoving).toHaveBeenCalledOnce();
     expect(await readIndexOid()).toBeNull();
-    expect(await ctrl.getVectorCount(scope)).toBe(19999);
+    expect(await ctrl.getVectorCount(scope)).toBe(4999);
     // 维护任务尚未同步元数据时，低行数也必须走精确路径。
-    expect(buildPgVectorRecallQuery(recallProps(19999, 'ready'))!.usesHnsw).toBe(false);
-    expect((await ctrl.embRecall(recallProps(19999, 'none'))).results).toHaveLength(100);
+    expect(buildPgVectorRecallQuery(recallProps(4999, 'ready'))!.usesHnsw).toBe(false);
+    expect((await ctrl.embRecall(recallProps(4999, 'none'))).results).toHaveLength(100);
 
-    for (const rows of [30000, 30001]) {
+    for (const rows of [10000, 10001]) {
       await growTo(rows);
-      const pgIndex = rows > 30000 ? 'ready' : 'none';
+      const pgIndex = rows > 10000 ? 'ready' : 'none';
       expect(await ensurePgDatasetIndex({ ...scope, ...callbacks })).toEqual({
         pgIndex,
-        created: rows > 30000
+        created: rows > 10000
       });
       expect((await ctrl.embRecall(recallProps(rows, pgIndex))).results).toHaveLength(100);
     }
@@ -408,7 +422,7 @@ describeStorage('local PG FP16 dataset index with %s storage', (storage) => {
       await ensurePgDatasetIndex({ ...scope, ...callbacks });
       const indexName = `${target!.schema}.${getPgDatasetIndexName(datasetId)}`;
       const before = await ctrl.getVectorCount(scope);
-      expect(before).toBeGreaterThan(30000);
+      expect(before).toBeGreaterThan(10000);
       if (invalid) {
         await pool.query(
           'UPDATE pg_index SET indisvalid=false, indisready=false WHERE indexrelid=to_regclass($1)',
@@ -510,7 +524,7 @@ describeStorage('local PG FP16 dataset index with %s storage', (storage) => {
     );
     await pool.query(
       `CREATE INDEX ${name} ON ${qualifiedTable} USING hnsw ((vector::halfvec(${dimensions})) halfvec_ip_ops)
-       WHERE dataset_id='${childId}' AND team_id='${teamId}'`
+       WHERE dataset_id='${childId}'`
     );
     // 在真正删除 Mongo 记录的边界读取 PG 目录，证明顺序，而非只检查最终状态。
     const originalDelete = MongoDataset.deleteMany.bind(MongoDataset);
@@ -543,7 +557,7 @@ describeStorage('local PG FP16 dataset index with %s storage', (storage) => {
     }
   });
 
-  it('preserves a foreign same-name index whose tenant literal differs by whitespace', async () => {
+  it('preserves a foreign same-name index whose dataset literal differs by whitespace', async () => {
     const pool = await connectPg();
     const name = getPgDatasetIndexName(datasetId);
     const backup = `${name}_preserved`;
@@ -551,13 +565,13 @@ describeStorage('local PG FP16 dataset index with %s storage', (storage) => {
     await pool.query(
       `CREATE INDEX ${name} ON modeldata USING hnsw
        ((vector::halfvec(${dimensions})) halfvec_ip_ops)
-       WHERE dataset_id='${datasetId}' AND team_id=' ${teamId}'`
+       WHERE dataset_id=' ${datasetId}'`
     );
     const oid = (await pool.query('SELECT to_regclass($1)::oid::text AS oid', [name])).rows[0].oid;
     await pool.query(
       `DELETE FROM modeldata WHERE id IN (
         SELECT id FROM modeldata WHERE team_id=$1 AND dataset_id=$2
-        ORDER BY id DESC OFFSET 19999
+        ORDER BY id DESC OFFSET 4999
       )`,
       [teamId, datasetId]
     );

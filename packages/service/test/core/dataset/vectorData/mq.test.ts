@@ -73,7 +73,7 @@ beforeEach(() => {
 describe('onDatasetVectorCounted', () => {
   it('does not queue ordinary small datasets without an index or with confirmed none state', async () => {
     await createDataset();
-    await onDatasetVectorCounted({ ...scope, rows: 19999 });
+    await onDatasetVectorCounted({ ...scope, rows: 4999 });
     expect(mocks.add).not.toHaveBeenCalled();
     expect((await MongoDataset.findById(scope.datasetId).lean())?.vectorData).toBeUndefined();
     await MongoDataset.updateOne(
@@ -84,14 +84,14 @@ describe('onDatasetVectorCounted', () => {
     expect(mocks.add).not.toHaveBeenCalled();
   });
 
-  it('queues retirement below 20000 without demoting ready or extending the existing job', async () => {
+  it('queues retirement below 5000 without demoting ready or extending the existing job', async () => {
     const checked = new Date(1000);
     await createDataset({ vectorData: { pgIndex: 'ready', pgIndexCheckedAt: checked } });
-    for (const rows of [20000, 30000]) {
+    for (const rows of [5000, 10000]) {
       await onDatasetVectorCounted({ ...scope, rows });
     }
     expect(mocks.add).not.toHaveBeenCalled();
-    await onDatasetVectorCounted({ ...scope, rows: 19999 });
+    await onDatasetVectorCounted({ ...scope, rows: 4999 });
     await onDatasetVectorCounted({ ...scope, rows: 0 });
     expect(mocks.add.mock.calls).toEqual([
       ['cleanup', scope, { jobId: `${scope.datasetId}-cleanup` }],
@@ -109,11 +109,11 @@ describe('onDatasetVectorCounted', () => {
     expect(mocks.getQueue.mock.calls[0][1].defaultJobOptions).not.toHaveProperty('delay');
   });
 
-  it('enqueues strictly above 30000 immediately with a fixed dataset ID', async () => {
+  it('enqueues strictly above 10000 immediately with a fixed dataset ID', async () => {
     await createDataset();
-    await onDatasetVectorCounted({ ...scope, rows: 30000 });
+    await onDatasetVectorCounted({ ...scope, rows: 10000 });
     expect(mocks.add).not.toHaveBeenCalled();
-    await onDatasetVectorCounted({ ...scope, rows: 30001 });
+    await onDatasetVectorCounted({ ...scope, rows: 10001 });
     expect(mocks.add).toHaveBeenCalledExactlyOnceWith('build', scope, {
       jobId: `${scope.datasetId}-build`
     });
@@ -153,7 +153,7 @@ describe('onDatasetVectorCounted', () => {
     async (pgIndex) => {
       await createDataset({ vectorData: { pgIndex, pgIndexCheckedAt: new Date() } });
       await onDatasetVectorCounted({ ...scope, rows: 40000 });
-      await onDatasetVectorCounted({ ...scope, rows: 19999 });
+      await onDatasetVectorCounted({ ...scope, rows: 4999 });
       await onDatasetVectorCounted({ ...scope, rows: 0 });
       expect(mocks.add.mock.calls).toEqual([
         ['build', scope, { jobId: `${scope.datasetId}-build` }],

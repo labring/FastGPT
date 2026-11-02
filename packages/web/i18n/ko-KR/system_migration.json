@@ -137,7 +137,7 @@
   "migrations.20261025_token_prices_per_million.models": "시스템 모델 단가 업데이트",
   "migrations.20261025_token_prices_per_million.result": "시스템 모델 {{migratedCount}}개의 가격을 pricing으로 이전했습니다. 기존 가격과 팀 모델은 변경하지 않았습니다.",
   "migrations.20261022_initialize_dataset_vector_indexes.name": "데이터셋 벡터 인덱스 초기화",
-  "migrations.20261022_initialize_dataset_vector_indexes.description": "데이터셋의 벡터 수를 백그라운드에서 집계하고 30,000개를 초과하면 FP16 부분 인덱스 생성 작업을 예약합니다. 마이그레이션 작업은 지연 없이 전역에서 하나씩 실행됩니다. 전체 스캔과 예약이 성공한 뒤 기존 전역 HNSW 인덱스를 검증하고 온라인으로 삭제하며, 모든 부분 인덱스의 생성 완료를 기다리지는 않습니다. 인덱스 생성 중에는 정확 검색을 계속 사용할 수 있습니다.",
+  "migrations.20261022_initialize_dataset_vector_indexes.description": "데이터셋의 벡터 수를 백그라운드에서 집계하고 10,000개를 초과하면 FP16 부분 인덱스 생성 작업을 예약합니다. 마이그레이션 작업은 지연 없이 전역에서 하나씩 실행됩니다. 전체 스캔과 예약이 성공한 뒤 기존 전역 HNSW 인덱스를 검증하고 온라인으로 삭제하며, 모든 부분 인덱스의 생성 완료를 기다리지는 않습니다. 인덱스 생성 중에는 정확 검색을 계속 사용할 수 있습니다.",
   "migrations.20261022_initialize_dataset_vector_indexes.result": "{{scannedCount}}개 데이터셋을 집계했으며 {{eligibleCount}}개가 인덱스 생성 기준을 충족했습니다. 인덱스 생성은 대기열에서 계속 진행됩니다.",
   "migrations.20261022_initialize_dataset_vector_indexes.datasets": "벡터 수 집계 및 인덱스 생성 예약",
   "migrations.20261022_initialize_dataset_vector_indexes.legacyIndex": "기존 전역 HNSW 인덱스 삭제"

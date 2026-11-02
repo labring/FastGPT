@@ -26,7 +26,7 @@ const getDatasetVectorIndexQueue = () =>
   });
 
 /**
- * 真实计数超过三万时创建、低于两万时清理可能存在的索引；中间区间和普通小库不额外投递。
+ * 真实计数超过一万时创建、低于五千时清理可能存在的索引；中间区间和普通小库不额外投递。
  * 创建与清理分别使用 datasetId-build / datasetId-cleanup，避免建图期间的清理通知被活跃任务吞掉。
  */
 export const onDatasetVectorCounted = async ({

@@ -56,7 +56,7 @@ const validIndex = {
   opclass: 'halfvec_ip_ops',
   columns: 1,
   expression: '(vector)::halfvec(16)',
-  predicate: `((dataset_id)::text = '${scope.datasetId}'::text) AND ((team_id)::text = '${scope.teamId}'::text)`
+  predicate: `((dataset_id)::text = '${scope.datasetId}'::text)`
 };
 type Index = typeof validIndex;
 let index: Index | undefined;
@@ -72,7 +72,7 @@ const callbacks = {
 
 beforeEach(() => {
   index = undefined;
-  rows = 30001;
+  rows = 10001;
   locked = true;
   ddl = undefined;
   table = { schema: 'public', vector_type: 'vector', dimensions: 16 };
@@ -154,7 +154,7 @@ describe('cancelPgDatasetIndexBuild', () => {
 
 describe('ensurePgDatasetIndex', () => {
   it.each([false, true])(
-    'never builds during cleanup after rows rebound above 30000, with invalid index=%s',
+    'never builds during cleanup after rows rebound above 10000, with invalid index=%s',
     async (exists) => {
       rows = 40000;
       if (exists) index = { ...validIndex, valid: false, ready: false };
@@ -173,9 +173,9 @@ describe('ensurePgDatasetIndex', () => {
     }
   );
 
-  it('retains an existing valid index when cleanup sees rows rebound to 20000', async () => {
+  it('retains an existing valid index when cleanup sees rows rebound to 5000', async () => {
     index = { ...validIndex };
-    rows = 20000;
+    rows = 5000;
     expect(await ensurePgDatasetIndex({ ...scope, ...callbacks, allowCreate: false })).toEqual({
       pgIndex: 'ready',
       created: false
@@ -196,7 +196,7 @@ describe('ensurePgDatasetIndex', () => {
     expect(mocks.end).toHaveBeenCalledOnce();
   });
 
-  it.each([0, 19999])(
+  it.each([0, 4999])(
     'removes an owned valid index with %i rows before returning none',
     async (count) => {
       index = { ...validIndex };
@@ -220,7 +220,7 @@ describe('ensurePgDatasetIndex', () => {
 
   it('retains an index if rows recover before the maintenance lock is acquired', async () => {
     index = { ...validIndex };
-    rows = 19999;
+    rows = 4999;
     const query = mocks.query.getMockImplementation()!;
     mocks.query.mockImplementation(async (sql: string) => {
       if (sql.includes('pg_try_advisory_lock')) rows = 25000;
@@ -266,7 +266,7 @@ describe('ensurePgDatasetIndex', () => {
     expect(mocks.end).toHaveBeenCalledTimes(2);
   });
 
-  it('builds only a matching team/dataset FP16 expression and closes the dedicated unlimited-timeout session', async () => {
+  it('builds a dataset-only FP16 index, keeps counts tenant-scoped and closes its dedicated session', async () => {
     expect(await ensurePgDatasetIndex({ ...scope, ...callbacks })).toEqual({
       pgIndex: 'ready',
       created: true
@@ -284,6 +284,12 @@ describe('ensurePgDatasetIndex', () => {
     expect(mocks.query.mock.calls.find(([sql]) => sql.includes('CREATE INDEX'))?.[0]).toContain(
       'WITH (m = 32, ef_construction = 256)'
     );
+    const createSql = mocks.query.mock.calls.find(([sql]) => sql.includes('CREATE INDEX'))![0];
+    expect(createSql).toContain(`WHERE dataset_id = '${scope.datasetId}'`);
+    expect(createSql).not.toContain('team_id');
+    expect(mocks.query.mock.calls.find(([sql]) => sql.includes('SELECT count(*)'))?.[0]).toContain(
+      `WHERE team_id = '${scope.teamId}' AND dataset_id = '${scope.datasetId}'`
+    );
     expect(callbacks.onBuilding).toHaveBeenCalledOnce();
     expect(mocks.end).toHaveBeenCalledOnce();
     const connectionError = mocks.on.mock.calls.find(([event]) => event === 'error')![1];
@@ -296,7 +302,7 @@ describe('ensurePgDatasetIndex', () => {
     );
   });
 
-  it.each([20000, 30000, 30001])(
+  it.each([5000, 10000, 10001])(
     'retains a valid index with %i rows without starting DDL',
     async (count) => {
       index = { ...validIndex };
@@ -405,13 +411,11 @@ describe('ensurePgDatasetIndex', () => {
     );
   });
 
-  it('accepts catalog quoting of the expected column and tenant fields', async () => {
+  it('accepts catalog quoting of the expected column and dataset field', async () => {
     index = {
       ...validIndex,
       expression: '("vector")::halfvec(16)',
-      predicate: validIndex.predicate
-        .replace('dataset_id', '"dataset_id"')
-        .replace('team_id', '"team_id"')
+      predicate: validIndex.predicate.replace('dataset_id', '"dataset_id"')
     };
     expect(await ensurePgDatasetIndex({ ...scope, ...callbacks })).toEqual({
       pgIndex: 'ready',
@@ -427,10 +431,10 @@ describe('ensurePgDatasetIndex', () => {
     { expression: 'vector::halfvec(8)' },
     { expression: 'vector' },
     { expression: '"v ector"::halfvec(16)' },
-    { predicate: validIndex.predicate.replace(scope.teamId, ` ${scope.teamId}`) },
+    { predicate: validIndex.predicate.replace(scope.datasetId, ` ${scope.datasetId}`) },
     { predicate: null }
   ])('never removes a mismatched same-name index: %j', async (overrides) => {
-    rows = 19999;
+    rows = 4999;
     index = { ...validIndex, ...overrides } as Index;
     await expect(ensurePgDatasetIndex({ ...scope, ...callbacks })).rejects.toThrow('Refusing');
     expect(mocks.query.mock.calls.some(([sql]) => /DROP INDEX|CREATE INDEX/.test(sql))).toBe(false);
@@ -438,7 +442,7 @@ describe('ensurePgDatasetIndex', () => {
   });
 
   it('skips building if the delayed dataset has shrunk to the threshold', async () => {
-    rows = 30000;
+    rows = 10000;
     expect(await ensurePgDatasetIndex({ ...scope, ...callbacks })).toEqual({
       pgIndex: 'none',
       created: false
@@ -447,7 +451,7 @@ describe('ensurePgDatasetIndex', () => {
   });
 
   it('removes a matching failed index when the dataset shrinks below the build threshold', async () => {
-    rows = 30000;
+    rows = 10000;
     index = { ...validIndex, valid: false };
     expect(await ensurePgDatasetIndex({ ...scope, ...callbacks })).toEqual({
       pgIndex: 'none',
@@ -621,8 +625,8 @@ describe('removePgDatasetIndex', () => {
     expect(mocks.end).toHaveBeenCalledTimes(2);
   });
 
-  it('refuses an index belonging to another team', async () => {
-    index = { ...validIndex, predicate: "dataset_id='other' AND team_id='other'" };
+  it('refuses an index belonging to another dataset', async () => {
+    index = { ...validIndex, predicate: "dataset_id='other'" };
     await expect(removePgDatasetIndex(scope)).rejects.toThrow('Refusing');
     expect(mocks.query.mock.calls.some(([sql]) => sql.includes('DROP INDEX'))).toBe(false);
     expect(index).toBeDefined();

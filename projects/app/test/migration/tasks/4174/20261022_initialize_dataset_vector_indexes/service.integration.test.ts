@@ -82,7 +82,7 @@ describe.skipIf(!target).each(['vector', 'halfvec'])(
       await admin.query(`CREATE INDEX create_time_index ON ${qualifiedTable} (createtime)`);
       await admin.query(
         `CREATE INDEX ${localIndex} ON ${qualifiedTable} USING hnsw
-         ((vector::halfvec(16)) halfvec_ip_ops) WHERE dataset_id = '${datasetId}' AND team_id = 'team'`
+         ((vector::halfvec(16)) halfvec_ip_ops) WHERE dataset_id = '${datasetId}'`
       );
     });
     beforeEach(async () => {

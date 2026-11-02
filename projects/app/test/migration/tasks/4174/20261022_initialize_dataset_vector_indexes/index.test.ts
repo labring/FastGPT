@@ -72,7 +72,7 @@ describe('initializeDatasetVectorIndexes', () => {
     await seed(2);
     await seed(3, { type: DatasetTypeEnum.folder });
     await seed(4, { deleteTime: new Date() });
-    mocks.count.mockResolvedValueOnce(30000).mockResolvedValueOnce(30001);
+    mocks.count.mockResolvedValueOnce(10000).mockResolvedValueOnce(10001);
     mocks.counted.mockImplementationOnce(async () => {
       await seed(9);
     });
@@ -92,8 +92,8 @@ describe('initializeDatasetVectorIndexes', () => {
       ]
     ]);
     expect(mocks.counted.mock.calls).toEqual([
-      [{ teamId, datasetId: id(1), rows: 30000 }],
-      [{ teamId, datasetId: id(2), rows: 30001 }]
+      [{ teamId, datasetId: id(1), rows: 10000 }],
+      [{ teamId, datasetId: id(2), rows: 10001 }]
     ]);
     expect(mocks.removeLegacy.mock.invocationCallOrder[0]).toBeGreaterThan(
       mocks.counted.mock.invocationCallOrder.at(-1)!

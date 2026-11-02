@@ -73,7 +73,7 @@ describe('PgVectorCtrl.embRecall', () => {
     expect(query).toMatchObject({ query_timeout: 120_000 });
     const sql = typeof query === 'string' ? query : query.text;
     expect(sql).toMatch(
-      /WHERE\s+team_id = 'team-a'[\s\S]*AND dataset_id = ANY\(\$\d+::varchar\[\]\)/
+      /WHERE\s+team_id = 'team-a'[\s\S]*AND dataset_id IN \(\$\d+::varchar, \$\d+::varchar\)/
     );
     for (const clause of filters.collectionClauses) {
       expect(sql).toContain(clause);
@@ -139,7 +139,7 @@ describe('PgVectorCtrl.embRecall indexed transactions', () => {
     vector: [0.1, 0.2],
     limit: 100,
     forbidCollectionIdList: [],
-    datasetVectorData: [{ datasetId: 'large', rows: 30001, pgIndex: 'ready' as const }]
+    datasetVectorData: [{ datasetId: 'large', rows: 10001, pgIndex: 'ready' as const }]
   };
   beforeEach(() => {
     global.systemEnv = {} as any;
@@ -158,7 +158,7 @@ describe('PgVectorCtrl.embRecall indexed transactions', () => {
     });
     expect(poolClient.query.mock.calls.map(([sql]) => sql)[0]).toBe('BEGIN');
     expect(poolClient.query.mock.calls.at(-1)?.[0]).toBe('COMMIT');
-    expect(poolClient.query.mock.calls[1][1]).toEqual(['200', '30001']);
+    expect(poolClient.query.mock.calls[1][1]).toEqual(['200', '10001']);
     expect(poolClient.query.mock.calls[2][0]).toMatchObject({ query_timeout: 120_000 });
     expect(poolClient.release).toHaveBeenCalledExactlyOnceWith(false);
   });
@@ -171,7 +171,7 @@ describe('PgVectorCtrl.embRecall indexed transactions', () => {
   ])('bounds configured search width: %j', async ({ configured, limit, expected }) => {
     global.systemEnv.hnswEfSearch = configured;
     await new PgVectorCtrl().embRecall({ ...props, limit });
-    expect(poolClient.query.mock.calls[1][1]).toEqual([String(expected), '30001']);
+    expect(poolClient.query.mock.calls[1][1]).toEqual([String(expected), '10001']);
   });
 
   it.each([false, true])(

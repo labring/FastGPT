@@ -83,7 +83,7 @@ export const cancelPgDatasetIndexBuild = async ({ teamId, datasetId }: PgDataset
 };
 
 /**
- * 在线维护知识库 FP16 局部索引：超过三万建图，低于两万移除，原列和中间区间保持不变。
+ * 在线维护知识库 FP16 局部索引：超过一万建图，低于五千移除，原列和中间区间保持不变。
  * 全局 PG 会话锁串行 CREATE / DROP；只操作定义完全匹配的索引，移除前通知业务切换查询路径。
  * allowCreate=false 供清理任务使用，行数回涨后也不创建或重建索引。
  */
@@ -177,7 +177,8 @@ const maintainPgDatasetIndex = async ({
     }
     const qualifiedTable = `${pg.escapeIdentifier(table.schema)}.${pg.escapeIdentifier(DatasetVectorTableName)}`;
     const qualifiedIndex = `${pg.escapeIdentifier(table.schema)}.${pg.escapeIdentifier(indexName)}`;
-    const predicate = `dataset_id = ${pg.escapeLiteral(datasetId)} AND team_id = ${pg.escapeLiteral(teamId)}`;
+    // datasetId 全局唯一，索引与单库召回使用相同谓词；计数仍按团队范围使用普通复合索引。
+    const predicate = `dataset_id = ${pg.escapeLiteral(datasetId)}`;
 
     /** 目录核验同时检查表、方法、opclass、表达式、谓词，避免误用或删除同名自建索引。 */
     const readIndex = async () => {
@@ -212,9 +213,7 @@ const maintainPgDatasetIndex = async ({
             if (token.startsWith("'")) return token;
             if (token.startsWith('"')) {
               const identifier = token.slice(1, -1);
-              return ['vector', 'halfvec', 'dataset_id', 'team_id'].includes(identifier)
-                ? identifier
-                : token;
+              return ['vector', 'halfvec', 'dataset_id'].includes(identifier) ? identifier : token;
             }
             return '';
           }
@@ -254,7 +253,7 @@ const maintainPgDatasetIndex = async ({
     /** 维护决策只使用 PG 实际行数，不能依赖排队时的缓存计数。 */
     const countRows = async () => {
       const { rows } = await client.query<{ count: string }>(
-        `SELECT count(*) FROM ${qualifiedTable} WHERE ${predicate}`
+        `SELECT count(*) FROM ${qualifiedTable} WHERE team_id = ${pg.escapeLiteral(teamId)} AND ${predicate}`
       );
       return Number(rows[0].count);
     };
