@@ -23,32 +23,30 @@ FastGPT Example Travel Policy
 
 ## Step 1: Create a Knowledge Base and Import Sample Data
 
-1. Log in to the FastGPT console, navigate to "Knowledge Base", and click "New" in the upper right corner.
-2. Set the knowledge base name to `Corporate Travel Policy`, select the recommended embedding model, and confirm.
-3. Open the newly created knowledge base, click "New / Import → Text Dataset → Local Files", and upload your `travel-policy.txt` file.
-4. Keep the default chunking strategy on the data parsing screen, then click "Next".
-5. In the data preview screen, verify that the submission deadlines and receipt requirements remain intact within the chunks, then click "Start Import".
-6. Wait until the index status displays "Ready".
+1. Log in to FastGPT, click "Knowledge Base" in the left navigation bar, click "New" in the upper right corner, and select "General Dataset" from the dropdown menu.
+2. In the creation dialog, enter `Corporate Travel Policy` as the name, keep the default index model and text understanding model, and click "Create".
+3. Open the newly created knowledge base, click "New / Import → Text Dataset → Local Files", upload `travel-policy.txt` in the "Select File" step, wait until upload reaches 100%, and click "Next".
+4. In the "Parameter settings" step, keep the default data processing settings and click "Next".
+5. In the "Data preview" step, click `travel-policy.txt` in the left file list, verify in the right chunk preview that the submission deadlines and receipt requirements remain intact, and click "Next".
+6. In the "Start import" step, click "Start Upload" and wait until the training status in the collection list turns to "Ready".
 
 ![Create travel policy knowledge base and choose available model](/imgs/optimized/current/knowledge-create.png.webp)
 
 ## Step 2: Create a Chat Agent and Attach the Knowledge Base
 
-1. Click "Application" in the navigation bar, then click "Create Application" in the upper right corner.
-2. Select "Chat Agent" as the application type, enter `Travel Assistant` as the name, and click "Create".
-3. In the application settings panel, pick an available chat model.
-4. In the "Knowledge Base" section, click add and select the `Corporate Travel Policy` knowledge base created earlier.
-5. In the system prompt area, enter the operational instructions:
+1. Click "Studio" (or "Workbench") in the left navigation bar. Click "Create your first Agent" in the center of the page (or the "New" card in the list if applications already exist) to open the "Create Agent" page.
+2. Select "Chat Agent" under "Agent Type", enter `Travel Policy Q&A` under "Icon & Name", and click "Create".
+3. In the "App Config" panel under "AI Settings → AI Model", select an available chat model (such as `qwen3.8-flash`).
+4. In the "Knowledge Base" section below, click "+ Select" on the right, check the `Corporate Travel Policy` knowledge base created earlier, and confirm.
+5. In the "Prompt" field, enter the operational instructions:
 
 ```text
-You are a corporate travel expense assistant. Answer questions based on the referenced travel policy.
-State explicit deadlines and required documents clearly with references.
-When a requested item is not mentioned in the policy, state that the current documentation contains no record.
+Answer questions using the retrieved travel policy. State the deadline and required documents precisely. Cite the available sources. When the policy does not cover a question, explain what information is missing.
 ```
 
 ## Step 3: Test Responses in Workspace
 
-In the right-hand testing chat drawer, submit a test query:
+In the right-hand "Debug Preview" panel, submit a test query:
 
 ```text
 How many days do I have to submit my travel expenses after returning? What documents are required?
@@ -60,9 +58,9 @@ Inspect the response. The assistant clearly identifies the "15 calendar days" de
 
 ## Step 4: Publish a Public Share Link
 
-1. Click the "Publish" button in the top right corner to freeze the active version.
-2. Open the "Publishing Channels" tab at the top and select "Public Share Link".
-3. Enable the share link and copy the generated URL.
+1. Click the "Save" button in the top right corner and select "Save and publish" from the dropdown; enter a version name (such as `Travel Policy v1`) in the dialog and click "Confirm".
+2. Open the "Publish Channels" tab at the top and select "Login-Free Window" on the left.
+3. Click "Create New Link" in the upper right corner, enter a link name (optionally enable "View citation snippets"), and click "Confirm". The generated share URL is copied automatically.
 4. Open the link in a separate browser tab to verify the standalone user experience.
 
 ![Publish share link for end users](/imgs/optimized/current/app-publish.png.webp)

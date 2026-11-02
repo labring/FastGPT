@@ -34,12 +34,12 @@ FastGPT Example Travel Policy
 
 ## Step 1: Create a Knowledge Base and Configure Chunking
 
-1. Open the "Knowledge Base" console, click "New", name it `Corporate Travel Policy`, and select your team's embedding model.
-2. Open the knowledge base, click "New / Import → Text Dataset → Local Files", and upload `travel-policy.txt`.
-3. **Chunking Strategy**:
+1. Click "Knowledge Base" in the left navigation bar, click "New" in the upper right corner, and select "General Dataset"; name it `Corporate Travel Policy`, keep the default models, and click "Create".
+2. Open the knowledge base, click "New / Import → Text Dataset → Local Files", upload `travel-policy.txt` in the "Select File" step, wait until upload reaches 100%, and click "Next".
+3. **Parameter settings (Chunking Strategy)**:
    - For policy clauses, start with the default chunking parameters and inspect complete clauses in the preview before adjusting boundaries.
    - For structured Q&A catalogs: Use QA segmentation to automatically derive query-answer pairs for higher semantic matching.
-4. In the preview view, click the file on the left to confirm that time limits and documentation requirements remain grouped in single chunks. Click "Start Import".
+4. Click "Next" to enter the "Data preview" step, click `travel-policy.txt` in the left file list, and verify in the right chunk preview that time limits and documentation requirements remain grouped in single chunks. Click "Next", then click "Start Upload" in the final step.
 
 ![Previewing text chunks preserves core factual context](/imgs/optimized/current/knowledge-preview.png.webp)
 
@@ -55,10 +55,10 @@ Before connecting the knowledge base to an application, verify retrieval quality
 
 ## Step 3: Create a Chat Agent with Grounding Prompts
 
-1. Navigate to "Applications", create a new application, choose "Chat Agent", and name it `Travel Policy Assistant`.
-2. Pick an active chat model.
-3. In the "Knowledge Base" configuration section, attach the validated `Corporate Travel Policy`.
-4. Compose a system prompt enforcing strict factual adherence:
+1. Click "Studio" (or "Workbench") in the left navigation bar, click "Create your first Agent" (or the "New" card), choose "Chat Agent", name it `Travel Policy Q&A`, and click "Create".
+2. Under "AI Settings → AI Model", pick an active chat model.
+3. In the "Knowledge Base" section, click "+ Select" and attach the validated `Corporate Travel Policy`.
+4. In the "Prompt" field, compose instructions enforcing strict factual adherence:
 
 ```text
 You are a corporate travel policy assistant.
@@ -82,9 +82,9 @@ Run two distinct tests in the right-hand testing drawer:
 
 ## Step 5: Configure Citation Visibility and Publish
 
-1. Click "Save" in the workspace header and publish a production release.
-2. Open the "Publishing Channels" tab and add a "Public Share Link".
-3. Toggle on "Show Source Citations". This lets end users click citation pills at the bottom of answers to inspect original source chunks.
+1. Click "Save" in the top right corner, choose "Save and publish", enter a version name, and click "Confirm".
+2. Open the "Publish Channels" tab at the top, select "Login-Free Window", and click "Create New Link".
+3. Enter a link name, toggle on "View citation snippets", and click "Confirm". This lets end users inspect source citations in answers.
 4. Copy the URL and test the experience in an external browser tab.
 
 ![Published share window returns 15 calendar days deadline and required documents](/imgs/optimized/current/knowledge-published.png.webp)
