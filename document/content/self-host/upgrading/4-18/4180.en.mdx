@@ -56,4 +56,4 @@ MinIO objects require a manual migration. System startup tasks do not move them 
 
 ## 🛠️ Code improvements
 
-1. **[System and operations]** Added a manually triggered GitHub Actions backport workflow that cherry-picks a merged PR to a target branch and creates a draft PR for maintainers to review. The target branch defaults to `v4.17.x` and can be changed when triggering the workflow.
+1. **[System and operations]** Added a manually triggered GitHub Actions workflow for backporting merged PRs; its target branch defaults to `v4.17.x` and can be changed, and it creates a draft PR when complete. The repository also provides the `fastgpt-backport-pr` skill for batch backports of merged PRs to an explicitly specified historical branch. It resolves mechanical conflicts automatically, requires confirmation for semantic conflicts, and pushes directly to the target branch on `upstream` after targeted checks pass.
