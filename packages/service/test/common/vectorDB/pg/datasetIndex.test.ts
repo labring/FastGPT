@@ -41,7 +41,8 @@ vi.mock('@fastgpt/service/common/logger', async (importOriginal) => ({
 }));
 import {
   ensurePgDatasetIndex,
-  getPgDatasetIndexName
+  getPgDatasetIndexName,
+  removePgDatasetIndex
 } from '@fastgpt/service/common/vectorDB/pg/datasetIndex';
 
 const scope = { teamId: '507f1f77bcf86cd799439011', datasetId: '507f1f77bcf86cd799439012' };
@@ -88,6 +89,7 @@ beforeEach(() => {
   });
   mocks.query.mockImplementation(async (sql: string) => {
     if (sql.includes('pg_try_advisory_lock')) return { rows: [{ locked }] };
+    if (sql.includes('pg_advisory_lock')) return { rows: [] };
     if (sql.includes('JOIN pg_attribute')) return { rows: table ? [table] : [] };
     if (sql.includes('JOIN pg_index')) return { rows: index ? [index] : [] };
     if (sql.includes('SELECT count(*)')) return { rows: [{ count: String(rows) }] };
@@ -118,6 +120,18 @@ describe('getPgDatasetIndexName', () => {
 });
 
 describe('ensurePgDatasetIndex', () => {
+  it('does not build when the business record became unavailable while waiting for maintenance', async () => {
+    const result = await ensurePgDatasetIndex({
+      ...scope,
+      ...callbacks,
+      onBuilding: async () => false
+    });
+    expect(result).toEqual({ pgIndex: 'none', created: false });
+    expect(mocks.query.mock.calls.some(([sql]) => sql.includes('CREATE INDEX'))).toBe(false);
+    expect(mocks.query.mock.calls.some(([sql]) => sql.includes('pg_backend_pid'))).toBe(false);
+    expect(mocks.end).toHaveBeenCalledOnce();
+  });
+
   it.each([0, 19999])(
     'removes an owned valid index with %i rows before returning none',
     async (count) => {
@@ -502,5 +516,82 @@ describe('ensurePgDatasetIndex', () => {
     finish();
     await building;
     expect(vi.getTimerCount()).toBe(0);
+  });
+});
+
+describe('removePgDatasetIndex', () => {
+  it.each([
+    { valid: true, ready: true },
+    { valid: false, ready: false },
+    { valid: false, ready: true }
+  ])('removes an owned index regardless of row count and validity: %j', async (state) => {
+    index = { ...validIndex, ...state };
+    rows = 1_000_000;
+    await removePgDatasetIndex(scope);
+    expect(index).toBeUndefined();
+    expect(mocks.query).toHaveBeenCalledWith(
+      'SELECT pg_try_advisory_lock($1) AS locked',
+      [41823001]
+    );
+    expect(mocks.query).toHaveBeenCalledWith(
+      `DROP INDEX CONCURRENTLY IF EXISTS "public"."${getPgDatasetIndexName(scope.datasetId)}"`
+    );
+    expect(mocks.query.mock.calls.some(([sql]) => /count\(\*\)|CREATE INDEX/.test(sql))).toBe(
+      false
+    );
+    expect(mocks.memory).not.toHaveBeenCalled();
+    expect(mocks.end).toHaveBeenCalledOnce();
+  });
+
+  it('waits for the maintenance lock before checking absence, including repeated deletion', async () => {
+    await removePgDatasetIndex(scope);
+    await removePgDatasetIndex(scope);
+    const queries = mocks.query.mock.calls.map(([sql]) => sql as string);
+    expect(queries.indexOf('SELECT pg_try_advisory_lock($1) AS locked')).toBeLessThan(
+      queries.findIndex((sql) => sql.includes('JOIN pg_index'))
+    );
+    expect(queries.some((sql) => sql.includes('DROP INDEX'))).toBe(false);
+    expect(mocks.end).toHaveBeenCalledTimes(2);
+  });
+
+  it('refuses an index belonging to another team', async () => {
+    index = { ...validIndex, predicate: "dataset_id='other' AND team_id='other'" };
+    await expect(removePgDatasetIndex(scope)).rejects.toThrow('Refusing');
+    expect(mocks.query.mock.calls.some(([sql]) => sql.includes('DROP INDEX'))).toBe(false);
+    expect(index).toBeDefined();
+  });
+
+  it('propagates DROP errors and allows a later retry to verify removal', async () => {
+    index = { ...validIndex };
+    const query = mocks.query.getMockImplementation()!;
+    let failed = false;
+    mocks.query.mockImplementation(async (sql: string) => {
+      if (sql.includes('DROP INDEX') && !failed) {
+        failed = true;
+        throw new Error('PG connection lost');
+      }
+      return query(sql);
+    });
+    await expect(removePgDatasetIndex(scope)).rejects.toThrow('PG connection lost');
+    expect(index).toBeDefined();
+    await removePgDatasetIndex(scope);
+    expect(index).toBeUndefined();
+    expect(mocks.end).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not report success if the index is still present after DROP', async () => {
+    index = { ...validIndex };
+    const query = mocks.query.getMockImplementation()!;
+    mocks.query.mockImplementation(async (sql: string) =>
+      sql.includes('DROP INDEX') ? { rows: [] } : query(sql)
+    );
+    await expect(removePgDatasetIndex(scope)).rejects.toThrow('still exists');
+  });
+
+  it('allows removal checks without imposing index-build dimension requirements', async () => {
+    table!.dimensions = 5000;
+    await expect(removePgDatasetIndex(scope)).resolves.toBeUndefined();
+    table = undefined;
+    await expect(removePgDatasetIndex(scope)).resolves.toBeUndefined();
   });
 });

@@ -60,7 +60,9 @@ export const processDatasetVectorIndex = async (scope: PgDatasetIndexScope) => {
     const result = await ensurePgDatasetIndex({
       ...scope,
       onBuilding: async () => {
-        await updateDatasetPgIndexState({ ...scope, pgIndex: 'building' });
+        const result = await updateDatasetPgIndexState({ ...scope, pgIndex: 'building' });
+        // deleteTime 条件与状态更新原子判断，挡住进入删除流程前已领取的陈旧任务。
+        return result.matchedCount > 0;
       },
       onRemoving: async () => {
         await updateDatasetPgIndexState({ ...scope, pgIndex: 'removing' });

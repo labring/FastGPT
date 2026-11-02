@@ -1,6 +1,6 @@
 import pg from 'pg';
 import { DatasetVectorTableName, PG_ADDRESS } from '@fastgpt/service/common/vectorDB/constants';
-import { PG_INDEX_MAINTENANCE_LOCK } from '@fastgpt/service/common/vectorDB/pg/datasetIndex';
+import { waitForPgIndexMaintenanceLock } from '@fastgpt/service/common/vectorDB/pg/datasetIndex';
 import type { SystemMigrationContext } from '@/migration/registry';
 
 /**
@@ -42,7 +42,7 @@ export const removeLegacyPgVectorIndex = async (
     await client.connect();
     context.signal.throwIfAborted();
     // 允许等待在途建图；独立连接不受普通连接池的 60 秒 query_timeout 限制。
-    await client.query('SELECT pg_advisory_lock($1)', [PG_INDEX_MAINTENANCE_LOCK]);
+    await waitForPgIndexMaintenanceLock({ client, signal: context.signal });
     await context.assertActive();
     context.signal.throwIfAborted();
 

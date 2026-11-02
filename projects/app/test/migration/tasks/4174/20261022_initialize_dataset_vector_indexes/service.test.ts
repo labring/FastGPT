@@ -53,7 +53,7 @@ beforeEach(() => {
   mocks.connect.mockReset().mockResolvedValue(undefined);
   mocks.end.mockReset().mockResolvedValue(undefined);
   mocks.query.mockReset().mockImplementation(async (sql: string) => {
-    if (sql.includes('pg_advisory_lock')) return { rows: [] };
+    if (sql.includes('pg_try_advisory_lock')) return { rows: [{ locked: true }] };
     if (sql.includes('AS vector_type')) return { rows: table ? [table] : [] };
     if (sql.includes('AS on_table')) return { rows: index ? [index] : [] };
     if (sql.startsWith('DROP INDEX')) return { rows: [] };
@@ -68,7 +68,7 @@ describe('removeLegacyPgVectorIndex', () => {
     index!.opclass = `${storage}_ip_ops`;
     await removeLegacyPgVectorIndex(createContext());
     expect(mocks.query.mock.calls[0]).toEqual([
-      'SELECT pg_advisory_lock($1)',
+      'SELECT pg_try_advisory_lock($1) AS locked',
       [PG_INDEX_MAINTENANCE_LOCK]
     ]);
     expect(mocks.query).toHaveBeenCalledWith(

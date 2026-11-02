@@ -52,7 +52,7 @@ describe.skipIf(!target).each(['vector', 'halfvec'])(
           const { rows } = await admin.query(
             `SELECT count(*)::int AS count FROM pg_stat_activity
            WHERE application_name = 'fastgpt-legacy-vector-index-cleanup'
-           AND wait_event_type = 'Lock' AND wait_event = 'advisory'`
+           AND state = 'idle' AND query LIKE 'SELECT pg_try_advisory_lock%'`
           );
           expect(rows[0].count).toBe(1);
         },

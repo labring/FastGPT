@@ -14,19 +14,29 @@ const target = vi.hoisted(() => {
   return { address, schema, connectionString: url.toString() };
 });
 vi.unmock('@fastgpt/service/common/vectorDB/pg');
+vi.unmock('@fastgpt/service/common/mongo/sessionRun');
+vi.mock('@fastgpt/service/common/s3/sources/dataset', () => ({
+  getS3DatasetSource: () => ({ deleteDatasetFilesByPrefix: vi.fn() })
+}));
 vi.mock('@fastgpt/service/common/vectorDB/constants', async (importOriginal) => ({
   ...(await importOriginal<object>()),
   PG_ADDRESS: target?.connectionString,
-  DatasetVectorTableName: 'modeldata'
+  DatasetVectorTableName: 'modeldata',
+  getVectorType: () => 'pg'
 }));
 
 import { PgVectorCtrl } from '@fastgpt/service/common/vectorDB/pg';
 import {
   ensurePgDatasetIndex,
-  getPgDatasetIndexName
+  getPgDatasetIndexName,
+  removePgDatasetIndex
 } from '@fastgpt/service/common/vectorDB/pg/datasetIndex';
 import { buildPgVectorRecallQuery } from '@fastgpt/service/common/vectorDB/pg/utils';
 import { connectPg } from '@fastgpt/service/common/vectorDB/pg/controller';
+import { datasetDeleteProcessor } from '@fastgpt/service/core/dataset/delete/processor';
+import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
+import { Types } from '@fastgpt/service/common/mongo';
+import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 
 const describeStorage = describe.skipIf(!target).each(['vector', 'halfvec']);
 describeStorage('local PG FP16 dataset index with %s storage', (storage) => {
@@ -360,6 +370,149 @@ describeStorage('local PG FP16 dataset index with %s storage', (storage) => {
     }
     expect(await readIndexOid()).not.toBe(oid);
   }, 240000);
+
+  it.each([false, true])(
+    'forces removal before deletion with invalid index=%s without deleting vectors',
+    async (invalid) => {
+      const pool = await connectPg();
+      const scope = { teamId, datasetId };
+      await ensurePgDatasetIndex({ ...scope, ...callbacks });
+      const indexName = `${target!.schema}.${getPgDatasetIndexName(datasetId)}`;
+      const before = await ctrl.getVectorCount(scope);
+      expect(before).toBeGreaterThan(30000);
+      if (invalid) {
+        await pool.query(
+          'UPDATE pg_index SET indisvalid=false, indisready=false WHERE indexrelid=to_regclass($1)',
+          [indexName]
+        );
+      }
+      await removePgDatasetIndex(scope);
+      await removePgDatasetIndex(scope);
+      expect(
+        (await pool.query('SELECT to_regclass($1) AS index', [indexName])).rows[0].index
+      ).toBeNull();
+      expect(await ctrl.getVectorCount(scope)).toBe(before);
+    },
+    240000
+  );
+
+  it('waits for an admitted build before dropping it and rejects a stale rebuild afterwards', async () => {
+    const pool = await connectPg();
+    let release!: () => void;
+    let admitted!: () => void;
+    const started = new Promise<void>((resolve) => {
+      admitted = resolve;
+    });
+    const pause = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const scope = { teamId, datasetId };
+    const building = ensurePgDatasetIndex({
+      ...scope,
+      ...callbacks,
+      onBuilding: async () => {
+        admitted();
+        await pause;
+      }
+    });
+    await started;
+    const removing = removePgDatasetIndex(scope);
+    void removing.catch(() => {});
+    try {
+      await vi.waitFor(
+        async () => {
+          const { rows } = await pool.query(
+            `SELECT count(*)::int AS waiting FROM pg_stat_activity
+           WHERE application_name='fastgpt-dataset-index' AND state='idle'
+           AND query LIKE 'SELECT pg_try_advisory_lock%'`
+          );
+          expect(rows[0].waiting).toBe(1);
+        },
+        { timeout: 5000, interval: 25 }
+      );
+    } finally {
+      release();
+      await building;
+      await removing;
+    }
+    expect(
+      await ensurePgDatasetIndex({ ...scope, ...callbacks, onBuilding: async () => false })
+    ).toEqual({
+      pgIndex: 'none',
+      created: false
+    });
+    const indexName = `${target!.schema}.${getPgDatasetIndexName(datasetId)}`;
+    expect(
+      (await pool.query('SELECT to_regclass($1) AS index', [indexName])).rows[0].index
+    ).toBeNull();
+    // 恢复当前夹具索引，后续外部同名索引保护测试仍使用同一知识库。
+    await ensurePgDatasetIndex({ ...scope, ...callbacks });
+  }, 240000);
+
+  it('removes a folder subtree from PG and Mongo only after its owned index is gone', async () => {
+    const rootId = '507f1f77bcf86cd799439016';
+    const childId = '507f1f77bcf86cd799439017';
+    await MongoDataset.create([
+      {
+        _id: rootId,
+        teamId,
+        tmbId: new Types.ObjectId(),
+        name: 'delete-root',
+        type: DatasetTypeEnum.folder,
+        deleteTime: new Date()
+      },
+      {
+        _id: childId,
+        parentId: rootId,
+        teamId,
+        tmbId: new Types.ObjectId(),
+        name: 'delete-child',
+        type: DatasetTypeEnum.dataset,
+        deleteTime: new Date()
+      }
+    ]);
+    const pool = await connectPg();
+    const qualifiedTable = `${target!.schema}.modeldata`;
+    const name = getPgDatasetIndexName(childId);
+    await pool.query(
+      `INSERT INTO ${qualifiedTable} (team_id,dataset_id,collection_id,vector)
+       SELECT $1,$2,'delete-file',array_fill(0::real, ARRAY[${dimensions}])::vector FROM generate_series(1,400)`,
+      [teamId, childId]
+    );
+    await pool.query(
+      `CREATE INDEX ${name} ON ${qualifiedTable} USING hnsw ((vector::halfvec(${dimensions})) halfvec_ip_ops)
+       WHERE dataset_id='${childId}' AND team_id='${teamId}'`
+    );
+    // 在真正删除 Mongo 记录的边界读取 PG 目录，证明顺序，而非只检查最终状态。
+    const originalDelete = MongoDataset.deleteMany.bind(MongoDataset);
+    let checkedBeforeDelete = false;
+    const removeRecords = vi.spyOn(MongoDataset, 'deleteMany').mockImplementation((...args) => {
+      const query = originalDelete(...args);
+      const execute = query.exec.bind(query);
+      query.exec = async () => {
+        expect(
+          (await pool.query('SELECT to_regclass($1) AS index', [`${target!.schema}.${name}`]))
+            .rows[0].index
+        ).toBeNull();
+        checkedBeforeDelete = true;
+        return execute();
+      };
+      return query;
+    });
+    try {
+      await datasetDeleteProcessor({ data: { teamId, datasetId: rootId } } as never);
+      expect(
+        (await pool.query('SELECT to_regclass($1) AS index', [`${target!.schema}.${name}`])).rows[0]
+          .index
+      ).toBeNull();
+      expect(await ctrl.getVectorCount({ teamId, datasetId: childId })).toBe(0);
+      expect(await MongoDataset.countDocuments({ _id: { $in: [rootId, childId] } })).toBe(0);
+      expect(removeRecords).toHaveBeenCalledOnce();
+      expect(checkedBeforeDelete).toBe(true);
+    } finally {
+      removeRecords.mockRestore();
+    }
+  });
 
   it('preserves a foreign same-name index whose tenant literal differs by whitespace', async () => {
     const pool = await connectPg();

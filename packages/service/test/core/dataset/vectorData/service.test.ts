@@ -3,20 +3,27 @@ import { Types } from '@fastgpt/service/common/mongo';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 
-const mocks = vi.hoisted(() => ({ count: vi.fn(), provider: 'pg' }));
+const mocks = vi.hoisted(() => ({ count: vi.fn(), removeIndex: vi.fn(), provider: 'pg' }));
+vi.mock('@fastgpt/service/common/vectorDB/pg/datasetIndex', () => ({
+  removePgDatasetIndex: mocks.removeIndex
+}));
 vi.mock('@fastgpt/service/common/vectorDB/controller', () => ({ getVectorCount: mocks.count }));
 vi.mock('@fastgpt/service/common/vectorDB/constants', async (importOriginal) => ({
   ...(await importOriginal<object>()),
   getVectorType: () => mocks.provider
 }));
-import { getDatasetVectorSearchData } from '@fastgpt/service/core/dataset/vectorData/service';
+import {
+  getDatasetVectorSearchData,
+  removeDatasetVectorIndexes
+} from '@fastgpt/service/core/dataset/vectorData/service';
+
+beforeEach(() => {
+  mocks.provider = 'pg';
+  mocks.count.mockReset().mockResolvedValue(50);
+  mocks.removeIndex.mockReset().mockResolvedValue(undefined);
+});
 
 describe('getDatasetVectorSearchData', () => {
-  beforeEach(() => {
-    mocks.provider = 'pg';
-    mocks.count.mockReset().mockResolvedValue(50);
-  });
-
   it('reads one metadata snapshot, deduplicates datasets and keeps counts outside Mongo', async () => {
     const teamId = String(new Types.ObjectId());
     const datasets = await MongoDataset.create(
@@ -78,5 +85,33 @@ describe('getDatasetVectorSearchData', () => {
     });
     expect(result).toHaveLength(9);
     expect(maxActive).toBe(4);
+  });
+});
+
+describe('removeDatasetVectorIndexes', () => {
+  it('deduplicates dataset IDs and waits for each confirmed removal', async () => {
+    await removeDatasetVectorIndexes({ teamId: 'team', datasetIds: ['a', 'b', 'a'] });
+    expect(mocks.removeIndex.mock.calls).toEqual([
+      [{ teamId: 'team', datasetId: 'a' }],
+      [{ teamId: 'team', datasetId: 'b' }]
+    ]);
+  });
+
+  it('stops the deletion batch when an index cannot be removed', async () => {
+    mocks.removeIndex.mockRejectedValueOnce(new Error('DROP failed'));
+    await expect(
+      removeDatasetVectorIndexes({
+        teamId: 'team',
+        datasetIds: ['a', 'b']
+      })
+    ).rejects.toThrow('DROP failed');
+    expect(mocks.removeIndex).toHaveBeenCalledOnce();
+  });
+
+  it('does not contact PG for other providers or an empty dataset list', async () => {
+    await removeDatasetVectorIndexes({ teamId: 'team', datasetIds: [] });
+    mocks.provider = 'milvus';
+    await removeDatasetVectorIndexes({ teamId: 'team', datasetIds: ['a'] });
+    expect(mocks.removeIndex).not.toHaveBeenCalled();
   });
 });

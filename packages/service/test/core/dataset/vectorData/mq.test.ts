@@ -10,7 +10,8 @@ const mocks = vi.hoisted(() => ({
   getQueue: vi.fn(),
   ensureIndex: vi.fn(),
   provider: 'pg',
-  info: vi.fn()
+  info: vi.fn(),
+  error: vi.fn()
 }));
 vi.mock('@fastgpt/dal/redis/bullmq/binding', () => ({
   bullMQ: { getQueue: mocks.getQueue, getWorker: mocks.getWorker }
@@ -24,7 +25,7 @@ vi.mock('@fastgpt/service/common/vectorDB/constants', async (importOriginal) => 
 }));
 vi.mock('@fastgpt/service/common/logger', async (importOriginal) => ({
   ...(await importOriginal<object>()),
-  getLogger: () => ({ info: mocks.info, warn: vi.fn(), error: vi.fn() })
+  getLogger: () => ({ info: mocks.info, warn: vi.fn(), error: mocks.error })
 }));
 
 import {
@@ -57,6 +58,7 @@ beforeEach(() => {
     .mockReturnValue({ add: mocks.add, setGlobalConcurrency: mocks.setGlobalConcurrency });
   mocks.ensureIndex.mockReset().mockResolvedValue({ pgIndex: 'ready', created: true });
   mocks.info.mockClear();
+  mocks.error.mockClear();
 });
 
 describe('onDatasetVectorCounted', () => {
@@ -183,6 +185,28 @@ describe('onDatasetVectorCounted', () => {
 });
 
 describe('processDatasetVectorIndex', () => {
+  it.each(['soft-deleted', 'removed'])(
+    'denies a build if the dataset was %s after the worker claimed its job',
+    async (state) => {
+      await createDataset();
+      mocks.ensureIndex.mockImplementation(async ({ onBuilding }) => {
+        if (state === 'soft-deleted') {
+          await MongoDataset.updateOne(
+            { _id: scope.datasetId },
+            { $set: { deleteTime: new Date() } }
+          );
+        } else {
+          await MongoDataset.deleteOne({ _id: scope.datasetId });
+        }
+        expect(await onBuilding()).toBe(false);
+        return { pgIndex: 'none', created: false };
+      });
+      await processDatasetVectorIndex(scope);
+      expect(mocks.ensureIndex).toHaveBeenCalledOnce();
+      expect((await MongoDataset.findById(scope.datasetId).lean())?.vectorData).toBeUndefined();
+    }
+  );
+
   it('publishes removing before DROP and none only after removal succeeds', async () => {
     await createDataset({ vectorData: { pgIndex: 'ready', pgIndexCheckedAt: new Date() } });
     mocks.ensureIndex.mockImplementation(async ({ onRemoving }) => {
@@ -221,7 +245,7 @@ describe('processDatasetVectorIndex', () => {
   it('publishes building and real phase progress, then ready only after catalog verification', async () => {
     await createDataset();
     mocks.ensureIndex.mockImplementation(async ({ onBuilding, onProgress }) => {
-      await onBuilding();
+      expect(await onBuilding()).toBe(true);
       expect((await MongoDataset.findById(scope.datasetId).lean())?.vectorData?.pgIndex).toBe(
         'building'
       );
@@ -266,8 +290,16 @@ describe('processDatasetVectorIndex', () => {
 
   it('sets failed on build errors and allows the queue retry to synchronize ready', async () => {
     await createDataset();
-    mocks.ensureIndex.mockRejectedValueOnce(new Error('PG down'));
-    await expect(processDatasetVectorIndex(scope)).rejects.toThrow('PG down');
+    const error = Object.assign(
+      new Error('could not resize shared memory segment: No space left on device'),
+      { code: '53100' }
+    );
+    mocks.ensureIndex.mockRejectedValueOnce(error);
+    await expect(processDatasetVectorIndex(scope)).rejects.toThrow('shared memory');
+    expect(mocks.error).toHaveBeenCalledWith(
+      'PG dataset FP16 index task failed',
+      expect.objectContaining({ ...scope, error })
+    );
     expect((await MongoDataset.findById(scope.datasetId).lean())?.vectorData?.pgIndex).toBe(
       'failed'
     );

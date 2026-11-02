@@ -8,10 +8,33 @@ import { DatasetVectorTableName, PG_ADDRESS } from '../constants';
 import { PgClient } from './controller';
 import { getLogger, LogCategories } from '../../logger';
 import { configurePgIndexMemory } from './indexMemory';
+import { delay } from '@fastgpt/global/common/system/utils';
 
 const logger = getLogger(LogCategories.INFRA.POSTGRES);
 // 升级清理旧全局索引与局部索引 CREATE / DROP 共用此会话锁。
 export const PG_INDEX_MAINTENANCE_LOCK = 41823001;
+
+/**
+ * 用独立短查询轮询维护锁，避免等待方一直持有事务，令 CONCURRENTLY 建图等待该事务而形成死锁。
+ * 调用方持有独立会话并负责关闭释放锁；迁移取消时可通过 signal 停止后续轮询。
+ */
+export const waitForPgIndexMaintenanceLock = async ({
+  client,
+  signal
+}: {
+  client: Pick<pg.Client, 'query'>;
+  signal?: AbortSignal;
+}) => {
+  while (true) {
+    signal?.throwIfAborted();
+    const { rows } = await client.query<{ locked: boolean }>(
+      'SELECT pg_try_advisory_lock($1) AS locked',
+      [PG_INDEX_MAINTENANCE_LOCK]
+    );
+    if (rows[0].locked) return;
+    await delay(1000);
+  }
+};
 
 export type PgDatasetIndexScope = { teamId: string; datasetId: string };
 export type PgDatasetIndexProgress = {
@@ -20,6 +43,12 @@ export type PgDatasetIndexProgress = {
   blocksTotal: number;
   tuplesDone: number;
   tuplesTotal: number;
+};
+type PgDatasetIndexCallbacks = {
+  /** 持锁后原子确认业务记录仍有效；false 表示已进入删除流程，不得开始建图。 */
+  onBuilding: () => Promise<boolean | void>;
+  onRemoving?: () => Promise<void>;
+  onProgress: (progress: PgDatasetIndexProgress) => void;
 };
 
 /** 名字由知识库 ID 唯一推导，不在 Mongo 中存储或信任外部传入的索引名。 */
@@ -31,17 +60,29 @@ export const getPgDatasetIndexName = (datasetId: string) => {
  * 在线维护知识库 FP16 局部索引：超过三万建图，低于两万移除，原列和中间区间保持不变。
  * 全局 PG 会话锁串行 CREATE / DROP；只操作定义完全匹配的索引，移除前通知业务切换查询路径。
  */
-export const ensurePgDatasetIndex = async ({
+export const ensurePgDatasetIndex = (props: PgDatasetIndexScope & PgDatasetIndexCallbacks) =>
+  maintainPgDatasetIndex(props);
+
+/**
+ * 知识库物理删除前强制回收专属索引，不受行数和有效状态限制。
+ * 即使暂时没有索引也等待维护锁，确保在途建图结束后再核验；失败直接阻止业务删除。
+ */
+export const removePgDatasetIndex = async (scope: PgDatasetIndexScope) => {
+  await maintainPgDatasetIndex({ ...scope, removeOnly: true });
+};
+
+/** 共用索引归属核验与独立会话；删除模式不统计行数，维护模式沿用双阈值决策。 */
+const maintainPgDatasetIndex = async ({
   teamId,
   datasetId,
   onBuilding,
   onRemoving,
-  onProgress
-}: PgDatasetIndexScope & {
-  onBuilding: () => Promise<void>;
-  onRemoving?: () => Promise<void>;
-  onProgress: (progress: PgDatasetIndexProgress) => void;
-}): Promise<{ pgIndex: 'ready' | 'none'; created: boolean }> => {
+  onProgress,
+  removeOnly = false
+}: PgDatasetIndexScope &
+  Partial<PgDatasetIndexCallbacks> & {
+    removeOnly?: boolean;
+  }): Promise<{ pgIndex: 'ready' | 'none'; created: boolean }> => {
   const indexName = getPgDatasetIndexName(datasetId);
 
   // 普通池有 60 秒 query_timeout；建图使用独立会话，不能把连接池查询配置改为无限等待。
@@ -70,6 +111,11 @@ export const ensurePgDatasetIndex = async ({
   let progressQuery: Promise<void> | undefined;
   try {
     await client.connect();
+    if (removeOnly) {
+      logger.info('PG dataset FP16 index removal started', { teamId, datasetId, indexName });
+      // 即使目录里暂时没有表/索引，也先等在途建图结束，再读取最终目录状态。
+      await waitForPgIndexMaintenanceLock({ client });
+    }
     // 1. 按实际列类型核验索引，兼容配置决定的 vector / halfvec 存储。
     const { rows: tables } = await client.query<{
       schema: string;
@@ -84,11 +130,14 @@ export const ensurePgDatasetIndex = async ({
       [DatasetVectorTableName]
     );
     const table = tables[0];
+    // 表已不存在时，所属索引也已随表删除；删除业务无需依赖建图要求的列维度。
+    if (!table && removeOnly) return { pgIndex: 'none', created: false };
     if (
       !table ||
-      !['vector', 'halfvec'].includes(table.vector_type) ||
-      table.dimensions < 1 ||
-      table.dimensions > 4000
+      (!removeOnly &&
+        (!['vector', 'halfvec'].includes(table.vector_type) ||
+          table.dimensions < 1 ||
+          table.dimensions > 4000))
     ) {
       throw new Error(
         'Dataset FP16 indexing requires a dimensioned vector or halfvec column (1..4000)'
@@ -144,6 +193,7 @@ export const ensurePgDatasetIndex = async ({
         expression === `vector::halfvec${table.dimensions}` ||
         (table.vector_type === 'halfvec' && expression === 'vector');
       if (
+        !['vector', 'halfvec'].includes(table.vector_type) ||
         !index.on_table ||
         index.columns !== 1 ||
         index.method !== 'hnsw' ||
@@ -155,6 +205,19 @@ export const ensurePgDatasetIndex = async ({
       }
       return index;
     };
+
+    if (removeOnly) {
+      if (await readIndex()) {
+        await client.query(`DROP INDEX CONCURRENTLY IF EXISTS ${qualifiedIndex}`);
+      }
+      if (await readIndex()) throw new Error(`PG dataset index still exists: ${indexName}`);
+      logger.info('PG dataset FP16 index cleared before dataset deletion', {
+        teamId,
+        datasetId,
+        indexName
+      });
+      return { pgIndex: 'none', created: false };
+    }
 
     /** 维护决策只使用 PG 实际行数，不能依赖十分钟前的 Redis 计数。 */
     const countRows = async () => {
@@ -222,7 +285,8 @@ export const ensurePgDatasetIndex = async ({
         }
       );
     }
-    await onBuilding();
+    // 回调在同一把维护锁内检查 deleteTime；删除方等此锁，清理之后旧任务便不能重建索引。
+    if ((await onBuilding?.()) === false) return { pgIndex: 'none', created: false };
     if (existing) await client.query(`DROP INDEX CONCURRENTLY ${qualifiedIndex}`);
 
     const { rows: settings } = await client.query<{
@@ -259,7 +323,7 @@ export const ensurePgDatasetIndex = async ({
         );
         if (!rows[0]) return;
         const progress = rows[0];
-        onProgress({
+        onProgress?.({
           phase: progress.phase,
           blocksDone: Number(progress.blocks_done),
           blocksTotal: Number(progress.blocks_total),
