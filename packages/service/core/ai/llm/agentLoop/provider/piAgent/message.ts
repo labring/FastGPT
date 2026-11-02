@@ -106,6 +106,8 @@ const getContentText = (
 const getImagePlaceholder = (url: string) => {
   const dataMatch = url.match(/^data:([^;,]+)[;,]/);
   if (dataMatch) return `[Image: ${dataMatch[1]}]`;
+  // 畸形 data URI（缺 mime）同样不能回显内容，否则整段 base64 会进 prompt 文本。
+  if (url.startsWith('data:')) return '[Image: data URI]';
   return `[Image: ${maskImagePlaceholderUrl(url)}]`;
 };
 

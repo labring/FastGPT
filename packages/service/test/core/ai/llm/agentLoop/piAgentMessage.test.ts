@@ -434,6 +434,21 @@ describe('piAgent message conversion', () => {
     ]);
   });
 
+  it('never echoes a malformed data uri into the placeholder text', async () => {
+    const result = await convertToolResponseContentToPiContent(
+      [
+        {
+          type: 'image_url',
+          image_url: { url: 'data:;base64,THIS_IS_PAYLOAD' }
+        }
+      ] as any,
+      { useVision: false }
+    );
+
+    // 缺 mime 的 data URI 也要脱敏，否则整段 base64 会进 prompt 文本。
+    expect(result).toEqual([{ type: 'text', text: '[Image: data URI]' }]);
+  });
+
   it('masks sandbox preview urls in image placeholders when vision is disabled', async () => {
     const original = previewProxyEnv.AGENT_SANDBOX_PREVIEW_PROXY_URL;
     previewProxyEnv.AGENT_SANDBOX_PREVIEW_PROXY_URL = 'https://sandbox-preview.example.com';

@@ -41,6 +41,13 @@ export {
   createAgentLoopCoreWorkflowToolRunner,
   type CreateAgentLoopCoreWorkflowToolRunnerParams
 } from '../application/runtime/workflowToolRunner';
+// 工具结果的结构化 content 规则属于公共能力：外层 Agent / ToolCall 节点需要直接使用，
+// 边界测试通过本文件的 re-export 推导允许直接引用的定义模块。
+export {
+  convertMcpToolContentToToolContent,
+  extractAgentLoopCoreToolContent,
+  maskToolImagePayload
+} from '../domain/toolContent';
 
 export { createAgentLoopCoreChildInteractiveParams } from '../adapter/interactive/child';
 export {
