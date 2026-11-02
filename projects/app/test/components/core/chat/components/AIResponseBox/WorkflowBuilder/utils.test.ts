@@ -1,53 +1,45 @@
 import { describe, expect, it } from 'vitest';
-import type { WorkflowBuilderPreviewAction } from '@fastgpt/global/core/workflow/builder/type';
 import {
-  getWorkflowBuilderVersionButtonState,
   getWorkflowBuilderToolDisplayName,
   getWorkflowBuilderToolPresentation,
-  resolveWorkflowBuilderPreviewAnswerAction,
-  workflowBuilderAppliedFeedbackDuration
+  resolveWorkflowBuilderPreviewAnswerAction
 } from '@/components/core/chat/components/AIResponseBox/WorkflowBuilder/utils';
-
-const actions: WorkflowBuilderPreviewAction[] = [
-  { value: 'confirm', label: '确认并开始搭建', inputMode: 'none' },
-  {
-    value: 'revise',
-    label: '修改方案',
-    inputMode: 'text',
-    inputPlaceholder: '请描述需要调整的地方'
-  },
-  { value: 'cancel', label: '取消本次搭建', inputMode: 'none' }
-];
 
 describe('WorkflowBuilder utils', () => {
   it('keeps option answers mapped to the selected Builder action', () => {
     expect(
       resolveWorkflowBuilderPreviewAnswerAction({
-        actions,
-        customAction: actions[1],
         answerDetail: { kind: 'option', value: 'confirm' }
       })
-    ).toEqual({ action: actions[0] });
+    ).toEqual({ type: 'workflowBuilderPreview', action: 'confirm' });
   });
 
   it('keeps custom text answers mapped to the revise Builder action', () => {
     expect(
       resolveWorkflowBuilderPreviewAnswerAction({
-        actions,
-        customAction: actions[1],
         answerDetail: { kind: 'custom', value: '  帮我减少节点  ' }
       })
-    ).toEqual({ action: actions[1], text: '帮我减少节点' });
+    ).toEqual({ type: 'workflowBuilderPreview', action: 'revise', reviseText: '帮我减少节点' });
   });
 
   it('maps the Composer close/skip action to cancel Builder action', () => {
     expect(
       resolveWorkflowBuilderPreviewAnswerAction({
-        actions,
-        customAction: actions[1],
         answerDetail: { kind: 'skip' }
       })
-    ).toEqual({ action: actions[2] });
+    ).toEqual({ type: 'workflowBuilderPreview', action: 'cancel' });
+  });
+
+  it('ignores unknown options and empty custom input', () => {
+    expect(resolveWorkflowBuilderPreviewAnswerAction({})).toBeUndefined();
+    expect(
+      resolveWorkflowBuilderPreviewAnswerAction({
+        answerDetail: { kind: 'option', value: 'other' }
+      })
+    ).toBeUndefined();
+    expect(
+      resolveWorkflowBuilderPreviewAnswerAction({ answerDetail: { kind: 'custom', value: '   ' } })
+    ).toBeUndefined();
   });
 
   it('restores localized presentation metadata for legacy Workflow Builder tools', () => {
@@ -104,37 +96,5 @@ describe('WorkflowBuilder utils', () => {
       key === 'workflow:workflow_builder_tool_query' ? 'Inspect workflow' : key;
     expect(getWorkflowBuilderToolDisplayName({ ...tool, t: zh })).toBe('查看现状');
     expect(getWorkflowBuilderToolDisplayName({ ...tool, t: en })).toBe('Inspect workflow');
-  });
-
-  it('maps Workflow Builder version facts to the Figma button states', () => {
-    expect(
-      getWorkflowBuilderVersionButtonState({
-        displayState: 'available',
-        loading: false,
-        showApplied: false
-      })
-    ).toBe('apply');
-    expect(
-      getWorkflowBuilderVersionButtonState({
-        displayState: 'available',
-        loading: true,
-        showApplied: false
-      })
-    ).toBe('loading');
-    expect(
-      getWorkflowBuilderVersionButtonState({
-        displayState: 'available',
-        loading: false,
-        showApplied: true
-      })
-    ).toBe('applied');
-    expect(
-      getWorkflowBuilderVersionButtonState({
-        displayState: 'expired',
-        loading: true,
-        showApplied: true
-      })
-    ).toBe('expired');
-    expect(workflowBuilderAppliedFeedbackDuration).toBe(1200);
   });
 });

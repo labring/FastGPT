@@ -27,10 +27,9 @@ export const optionalNullToUndefined = <T extends z.ZodTypeAny>(schema: T) =>
 
 /** 将可选字段中的显式 null 或空字符串归一为 undefined，保持 schema 输出类型的可选语义，避免 z.coerce.number 将空值转为 0。 */
 export const optionalEmptyToUndefined = <T extends z.ZodTypeAny>(schema: T) =>
-  z.preprocess(
-    (value) => (value === null || value === '' ? undefined : value),
-    schema.optional()
-  ).optional();
+  z
+    .preprocess((value) => (value === null || value === '' ? undefined : value), schema.optional())
+    .optional();
 
 /**
  * 归一化 HTTP GET query 中的数组参数。

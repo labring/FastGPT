@@ -1,19 +1,153 @@
 import { describe, it, expect } from 'vitest';
-import { isSecretValue } from '@fastgpt/global/common/secret/utils';
+import {
+  formatSecretReference,
+  getSecretCipherValue,
+  getSecretPlainValue,
+  getSecretReferenceValue,
+  isSecretValueConfigured,
+  parseSecretValue,
+  StoreSecretValueTypeApiInputSchema
+} from '@fastgpt/global/common/secret/utils';
 
-describe('isSecretValue', () => {
-  it('should return true for object with truthy secret', () => {
-    expect(isSecretValue({ secret: 'token' })).toBe(true);
-    expect(isSecretValue({ secret: true })).toBe(true);
+describe('parseSecretValue', () => {
+  it('normalizes empty legacy wrappers only at a declared credential boundary', () => {
+    for (const value of [
+      {},
+      { value: undefined },
+      { secret: undefined },
+      { value: undefined, secret: undefined },
+      '{}'
+    ]) {
+      expect(parseSecretValue(value)).toBeUndefined();
+      expect(StoreSecretValueTypeApiInputSchema.parse({ token: value })).toEqual({
+        token: { value: '' }
+      });
+    }
+    const business = { extra: true };
+    expect(StoreSecretValueTypeApiInputSchema.safeParse({ token: business }).success).toBe(false);
   });
 
-  it('should return false for non-object values', () => {
-    const cases = [null, undefined, 'secret', 1, false];
-    cases.forEach((val) => expect(isSecretValue(val)).toBe(false));
+  it.each([
+    [{ value: 'plain', secret: 'cipher' }, { value: 'plain' }],
+    [{ value: '', secret: 'cipher' }, { secret: 'cipher' }],
+    [{ value: undefined, secret: 'cipher' }, { secret: 'cipher' }],
+    [{ value: 'plain', secret: undefined }, { value: 'plain' }],
+    ['{"value":"","secret":"cipher"}', { secret: 'cipher' }],
+    ['{"ref":["node","token"]}', { ref: ['node', 'token'] }]
+  ])('normalizes known credential storage values: %j', (value, expected) => {
+    expect(parseSecretValue(value)).toEqual(expected);
   });
 
-  it('should return false for empty or missing secret', () => {
-    const cases = [{}, { secret: '' }, { secret: 0 }, { secret: null }, []];
-    cases.forEach((val) => expect(isSecretValue(val)).toBe(false));
+  it.each([
+    undefined,
+    null,
+    false,
+    0,
+    [],
+    'plain',
+    '42',
+    'null',
+    '{invalid',
+    '{"payload":true}',
+    { value: 1 },
+    { secret: false },
+    { value: 'plain', secret: 'cipher', business: true }
+  ])('rejects unrelated or malformed values: %j', (value) => {
+    expect(parseSecretValue(value)).toBeUndefined();
+  });
+
+  it.each([
+    { value: '' },
+    { secret: 'cipher' },
+    { ref: ['node', 'token'] },
+    {
+      ref: [
+        ['node', 'token'],
+        ['other', 'token']
+      ]
+    }
+  ])('accepts canonical wrappers: %j', (value) => {
+    expect(parseSecretValue(value)).toEqual(value);
+  });
+
+  it.each([
+    { ref: [] },
+    { ref: ['node'] },
+    { ref: ['', 'token'] },
+    { ref: ['node', ''] },
+    { ref: [['node', '']] },
+    { ref: [['node', 1]] },
+    { ref: ['node', 'token'], value: 'plain' },
+    { ref: ['node', 'token'], secret: 'cipher' },
+    { value: 'plain', business: true }
+  ])('rejects invalid or mixed wrappers: %j', (value) => {
+    expect(parseSecretValue(value)).toBeUndefined();
+  });
+
+  it('uses the same legacy precedence at API boundaries and in field getters', () => {
+    const legacy = { value: 'plain', secret: 'cipher' };
+    expect(parseSecretValue(legacy)).toEqual({ value: 'plain' });
+    expect(getSecretPlainValue(legacy)).toBe('plain');
+    expect(getSecretCipherValue(legacy)).toBeUndefined();
+    expect(StoreSecretValueTypeApiInputSchema.parse({ token: legacy })).toEqual({
+      token: parseSecretValue(legacy)
+    });
+  });
+});
+
+describe('isSecretValueConfigured', () => {
+  it.each([
+    [undefined, false],
+    [{ value: '' }, false],
+    [{ secret: '' }, false],
+    [{ value: 'plain' }, true],
+    [{ secret: 'cipher' }, true],
+    [{ ref: ['node', 'token'] }, true],
+    [{ value: '', secret: 'cipher' }, true]
+  ])('judges configured sources without decrypting them: %j', (value, expected) => {
+    expect(isSecretValueConfigured(value)).toBe(expected);
+  });
+});
+
+describe('getSecretPlainValue', () => {
+  it('returns only plaintext, including empty values', () => {
+    expect(getSecretPlainValue({ value: '' })).toBe('');
+    expect(getSecretPlainValue({ secret: 'cipher' })).toBeUndefined();
+    expect(getSecretPlainValue(undefined)).toBeUndefined();
+  });
+});
+
+describe('getSecretCipherValue', () => {
+  it('returns only ciphertext, including empty values', () => {
+    expect(getSecretCipherValue({ secret: '' })).toBe('');
+    expect(getSecretCipherValue({ value: 'plain' })).toBeUndefined();
+    expect(getSecretCipherValue(undefined)).toBeUndefined();
+  });
+});
+
+describe('getSecretReferenceValue', () => {
+  it('returns only a validated reference', () => {
+    expect(getSecretReferenceValue({ value: 'plain' })).toBeUndefined();
+    expect(getSecretReferenceValue({ ref: ['node', 'token'] })).toEqual(['node', 'token']);
+    expect(getSecretReferenceValue(undefined)).toBeUndefined();
+  });
+});
+
+describe('formatSecretReference', () => {
+  it.each([
+    [undefined, ''],
+    [{ ref: [] }, ''],
+    [{ ref: ['node', 'token'] }, 'node / token'],
+    [
+      {
+        ref: [
+          ['node', 'token'],
+          ['other', 'token']
+        ]
+      },
+      'node / token, other / token'
+    ]
+  ])('formats validated references for both editors: %j', (value, expected) => {
+    expect(formatSecretReference(value)).toBe(expected);
   });
 });

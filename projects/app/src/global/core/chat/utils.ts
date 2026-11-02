@@ -91,7 +91,8 @@ export const chatItemResponsePreviewProjection = {
   'data.toolId': 1,
   'data.toolRes.citeLinks': 1,
   'data.errorText': 1,
-  'data.errorCaptured': 1
+  'data.errorCaptured': 1,
+  'data.isToolCall': 1
 } as const;
 
 export function transformPreviewHistories(

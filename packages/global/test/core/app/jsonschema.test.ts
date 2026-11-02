@@ -1878,7 +1878,6 @@ describe('jsonSchema2SecretInput', () => {
       placeholder: 'Enter token'
     });
   });
-
 });
 
 describe('getSchemaValueType', () => {

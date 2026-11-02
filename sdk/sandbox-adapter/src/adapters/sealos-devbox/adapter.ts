@@ -18,8 +18,7 @@ import type {
   SandboxState,
   FileWriteEntry,
   FileWriteResult,
-  FileReadResult,
-  ReadFileOptions
+  FileReadResult
 } from '../../types';
 import { BaseSandboxAdapter } from '../base';
 import { DevboxClient, DevboxClientError } from './client';
@@ -538,19 +537,11 @@ export class SealosDevboxAdapter extends BaseSandboxAdapter {
     return results;
   }
 
-  async readFiles(paths: string[], options?: ReadFileOptions): Promise<FileReadResult[]> {
+  async readFiles(paths: string[]): Promise<FileReadResult[]> {
     const results: FileReadResult[] = [];
     for (const path of paths) {
       const normalizedPath = this.normalizePath(path);
       try {
-        if (options?.offset !== undefined || options?.length !== undefined) {
-          const [fallbackResult] = await super.readFiles([normalizedPath], options);
-          if (fallbackResult) {
-            results.push(fallbackResult);
-            continue;
-          }
-        }
-
         const buffer = await this.api.downloadFile(this._id, { path: normalizedPath });
         results.push({
           path: normalizedPath,

@@ -401,62 +401,72 @@ describe('support user OpenAPI contracts', () => {
     ).toBe(false);
   });
 
-  it('defaults missing member names in team response contracts', () => {
-    const member = {
-      tmbId: objectId,
-      userId: objectId,
-      teamId: objectId,
-      name: '历史成员',
-      status: TeamMemberStatusEnum.active,
-      createTime: '2026-01-01T00:00:00.000Z'
-    };
+  it.each([
+    { memberName: undefined, expected: 'Member' },
+    { memberName: null, expected: 'Member' },
+    { memberName: '', expected: '' },
+    { memberName: '张三', expected: '张三' }
+  ])(
+    'normalizes member name $memberName in team response contracts',
+    ({ memberName, expected }) => {
+      const member = {
+        tmbId: objectId,
+        userId: objectId,
+        teamId: objectId,
+        name: memberName,
+        memberName,
+        status: TeamMemberStatusEnum.active,
+        createTime: '2026-01-01T00:00:00.000Z'
+      };
 
-    expect(
-      SearchMembersOrgsGroupsResponseSchema.parse({
+      const searchResponse = SearchMembersOrgsGroupsResponseSchema.parse({
         members: [member],
         orgs: [],
         groups: []
-      }).members[0].memberName
-    ).toBe('Member');
+      });
+      expect(searchResponse.members[0]).toMatchObject({ name: expected, memberName: expected });
 
-    expect(
-      GetTeamListResponseSchema.parse([
-        {
-          userId: objectId,
-          teamId: objectId,
-          teamName: 'FastGPT 团队',
-          tmbId: objectId,
-          status: TeamMemberStatusEnum.active,
-          permission: {
-            role: 1,
-            isOwner: false,
-            hasManagePer: false,
-            hasWritePer: false,
-            hasReadPer: true,
-            hasManageRole: false,
-            hasWriteRole: false,
-            hasReadRole: true
-          }
-        }
-      ])[0].memberName
-    ).toBe('Member');
-
-    expect(
-      ListTeamMembersResponseSchema.parse({
-        total: 1,
-        list: [
+      expect(
+        GetTeamListResponseSchema.parse([
           {
             userId: objectId,
-            tmbId: objectId,
             teamId: objectId,
-            isSetMemberName: true,
+            teamName: 'FastGPT 团队',
+            memberName,
+            tmbId: objectId,
             status: TeamMemberStatusEnum.active,
-            createTime: '2026-01-01T00:00:00.000Z'
+            permission: {
+              role: 1,
+              isOwner: false,
+              hasManagePer: false,
+              hasWritePer: false,
+              hasReadPer: true,
+              hasManageRole: false,
+              hasWriteRole: false,
+              hasReadRole: true
+            }
           }
-        ]
-      }).list[0].memberName
-    ).toBe('Member');
-  });
+        ])[0].memberName
+      ).toBe(expected);
+
+      expect(
+        ListTeamMembersResponseSchema.parse({
+          total: 1,
+          list: [
+            {
+              userId: objectId,
+              tmbId: objectId,
+              teamId: objectId,
+              memberName,
+              isSetMemberName: true,
+              status: TeamMemberStatusEnum.active,
+              createTime: '2026-01-01T00:00:00.000Z'
+            }
+          ]
+        }).list[0].memberName
+      ).toBe(expected);
+    }
+  );
 
   it('parses team management list and write contracts', () => {
     expect(GetTeamListQuerySchema.parse({ status: 'active' })).toEqual({ status: 'active' });

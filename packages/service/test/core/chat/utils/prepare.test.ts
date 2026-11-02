@@ -341,21 +341,25 @@ describe('prepare chat round', () => {
 
       const ask: WorkflowInteractiveResponseType = {
         type: 'agentAsk',
-        askId: 'chat-agent-helper-ask',
+
         entryNodeIds: [],
         memoryEdges: [],
         nodeOutputs: [],
         params: {
-          description: 'Collect requirements',
-          questions: [
-            {
-              question: 'Audience?',
-              options: [
-                { summary: 'A', value: 'A' },
-                { summary: 'B', value: 'B' }
-              ]
-            }
-          ]
+          toolCallId: 'chat-agent-helper-ask',
+          arguments: JSON.stringify({
+            reason: 'Collect requirements',
+            blockerType: 'user_choice',
+            questions: [
+              {
+                question: 'Audience?',
+                options: [
+                  { summary: 'A', value: 'A' },
+                  { summary: 'B', value: 'B' }
+                ]
+              }
+            ]
+          })
         }
       };
       const result = await preChatRound({
@@ -443,19 +447,23 @@ describe('prepare chat round', () => {
       ...params,
       interactive: {
         type: 'agentAsk',
-        askId: 'call_ask',
+
         params: {
-          description: '',
-          questions: [
-            {
-              question: 'Need more input',
-              options: [
-                { summary: 'Use repo', value: 'Use repo' },
-                { summary: 'Use docs', value: 'Use docs' },
-                { summary: 'Use defaults', value: 'Use defaults' }
-              ]
-            }
-          ]
+          toolCallId: 'call_ask',
+          arguments: JSON.stringify({
+            reason: '',
+            blockerType: 'user_choice',
+            questions: [
+              {
+                question: 'Need more input',
+                options: [
+                  { summary: 'Use repo', value: 'Use repo' },
+                  { summary: 'Use docs', value: 'Use docs' },
+                  { summary: 'Use defaults', value: 'Use defaults' }
+                ]
+              }
+            ]
+          })
         }
       } as any
     });
@@ -478,24 +486,26 @@ describe('prepare chat round', () => {
       interactive: {
         type: 'toolChildrenInteractive',
         params: {
-          toolParams: {
-            toolCallId: 'tool_1'
-          },
+          toolCallId: 'tool_1',
           childrenResponse: {
             type: 'agentAsk',
-            askId: 'call_ask',
+
             params: {
-              description: '',
-              questions: [
-                {
-                  question: 'Need more input',
-                  options: [
-                    { summary: 'Use repo', value: 'Use repo' },
-                    { summary: 'Use docs', value: 'Use docs' },
-                    { summary: 'Use defaults', value: 'Use defaults' }
-                  ]
-                }
-              ]
+              toolCallId: 'call_ask',
+              arguments: JSON.stringify({
+                reason: '',
+                blockerType: 'user_choice',
+                questions: [
+                  {
+                    question: 'Need more input',
+                    options: [
+                      { summary: 'Use repo', value: 'Use repo' },
+                      { summary: 'Use docs', value: 'Use docs' },
+                      { summary: 'Use defaults', value: 'Use defaults' }
+                    ]
+                  }
+                ]
+              })
             }
           }
         }

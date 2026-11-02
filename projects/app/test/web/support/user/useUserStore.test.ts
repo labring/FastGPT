@@ -40,6 +40,7 @@ const buildUser = (language: UserType['language']): UserType =>
   ({
     _id: 'user-id',
     username: 'user@example.com',
+    status: 'active',
     avatar: '',
     timezone: 'Asia/Shanghai',
     language,

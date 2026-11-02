@@ -18,6 +18,7 @@
     "../guide/admin/teamMode",
     "---运维与排障---",
     "...troubleshooting",
+    "docker_minio_to_rustfs",
     "migration",
     "---架构与设计方案---",
     "...design",

@@ -14,8 +14,8 @@ const processor = remark().use(remarkMdx).use(remarkGfm).use(remarkHeading);
 const han = /\p{Script=Han}/u;
 // Preserve the community contributors' original handles from the Chinese sources.
 const contributorNames = {
-  'self-host/custom-models/chatglm2-m3e.en.mdx': ['不做了睡大觉'],
-  'self-host/custom-models/m3e.en.mdx': ['睡大觉'],
+  'self-host/custom-models/legacy/chatglm2-m3e.en.mdx': ['不做了睡大觉'],
+  'self-host/custom-models/legacy/m3e.en.mdx': ['睡大觉'],
   'guide/version/cloud/terms.en.mdx': ['广州环际云计算有限公司']
 };
 
@@ -40,6 +40,11 @@ function parsePage(raw) {
           prose.push(attribute.value);
         }
         if (attribute.name === 'href') links.push(attribute.value);
+        if (node.name === 'Redirect' && attribute.name === 'to') {
+          links.push(
+            attribute.value.startsWith('/en/') ? attribute.value : `/en${attribute.value}`
+          );
+        }
       }
     }
     for (const child of node.children ?? []) visit(child);

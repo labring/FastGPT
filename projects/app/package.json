@@ -12,20 +12,22 @@
   "scripts": {
     "dev": "pnpm run build:workers && next dev",
     "dev:pro": "pnpm run dev",
-    "build": "pnpm run build:workers && next build",
-    "build:webpack": "pnpm run build:workers && next build --webpack",
+    "build": "pnpm run build:workers && pnpm run build:cli-scripts && next build",
+    "build:webpack": "pnpm run build:workers && pnpm run build:cli-scripts && next build --webpack",
     "analyze": "next experimental-analyze",
     "start": "next start",
     "migrate:auth-code": "tsx scripts/migration/authCodeToTmpData.ts",
+    "reset:root-psw": "pnpm run build:cli-scripts && node ./scripts/dist/reset-root-password.cjs",
     "test": "vitest run -c vitest.config.ts",
     "test:watch": "vitest -c vitest.config.ts",
     "build:workers": "tsx scripts/build-workers.ts",
+    "build:cli-scripts": "tsx scripts/build-cli-scripts.ts",
     "typecheck": "tsc --noEmit --pretty",
     "lint": "eslint ./src",
     "build:workers:watch": "tsx scripts/build-workers.ts --watch"
   },
   "engines": {
-    "node": ">=22.23.2",
+    "node": "^22.23.4 || ^24.22.1 || ^26.12.1",
     "pnpm": "10.x"
   },
   "dependencies": {

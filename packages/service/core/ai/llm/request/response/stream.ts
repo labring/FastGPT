@@ -9,6 +9,8 @@ import { parseLLMStreamResponse } from '../../../utils';
 import { parsePromptToolCall } from '../../promptCall';
 import type { CompleteParams, CompleteResponse, CreateLLMResponseProps } from '../types';
 import { normalizeNativeToolCalls, normalizeToolName } from './normalize';
+import type { AIApiRequestMeta } from '../../../config';
+import { createUserKeyError } from '../createChatCompletion';
 
 /**
  * 解析 stream completion 响应。
@@ -21,6 +23,7 @@ import { normalizeNativeToolCalls, normalizeToolName } from './normalize';
 export const createStreamResponse = async ({
   body,
   response,
+  requestMeta,
   isAborted,
   onStreaming,
   onReasoning,
@@ -28,18 +31,28 @@ export const createStreamResponse = async ({
   onToolParam
 }: CompleteParams & {
   response: StreamResponseType;
+  requestMeta?: AIApiRequestMeta;
   isAborted?: CreateLLMResponseProps<ChatCompletionCreateParams>['isAborted'];
 }): Promise<CompleteResponse> => {
   const { retainDatasetCite = true, tools, toolCallMode = 'toolChoice', model } = body;
 
   const { parsePart, getResponseData, updateFinishReason, updateError } = parseLLMStreamResponse();
 
+  /** 只转换上游迭代器异常；消费端解析/回调抛错仍交给外层按系统异常处理。 */
+  async function* readStream() {
+    try {
+      yield* response;
+    } catch (error) {
+      throw requestMeta?.usedUserOpenAIKey ? createUserKeyError({ error, requestMeta }) : error;
+    }
+  }
+
   /** 统一读取、取消和异常捕获；各模式按原有顺序消费解析后的正文、思考和工具增量。 */
   const consumeStream = async (
     onPart: (data: ReturnType<typeof parsePart>, part: ChatCompletionChunk) => void
   ) => {
     try {
-      for await (const part of response) {
+      for await (const part of readStream()) {
         if (isAborted?.()) {
           // 用户中断是正常关闭，保留已经收到的内容。
           response.controller?.abort();

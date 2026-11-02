@@ -16,6 +16,7 @@ import EmptyTip from '../EmptyTip';
 import MyLoading from '../MyLoading';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '../../common/Icon';
+import { useCloseOnFlowNodeDragAreaPointerDown } from '../../../hooks/useCloseOnFlowNodeDragAreaPointerDown';
 
 type RenderListProps = {
   isOpen: boolean;
@@ -185,6 +186,7 @@ export const MultipleRowSelect = ({
   rowMinWidth?: string;
 }) => {
   const ButtonRef = useRef<HTMLButtonElement>(null);
+  const OutsideClickRef = useRef<HTMLDivElement>(null);
 
   const { isOpen, onOpen, onClose } = useDisclosure({ onClose: onCloseFunc });
   const [cloneValue, setCloneValue] = useState<(string | undefined)[]>(() =>
@@ -207,8 +209,11 @@ export const MultipleRowSelect = ({
     onOpenFunc?.();
   }, [value, onOpen, onOpenFunc]);
 
+  useCloseOnFlowNodeDragAreaPointerDown(OutsideClickRef, onClose, isOpen);
+
   return (
     <Box
+      ref={OutsideClickRef}
       css={css({
         '& div:not([data-preserve-width])': {
           width: 'auto !important'
@@ -341,6 +346,7 @@ export const MultipleRowArraySelect = ({
 }: MultipleArraySelectProps) => {
   const { t } = useTranslation();
   const ButtonRef = useRef<HTMLButtonElement>(null);
+  const OutsideClickRef = useRef<HTMLDivElement>(null);
   const { isOpen, onOpen, onClose } = useDisclosure();
 
   const [navigationPath, setNavigationPath] = useState<string[]>([]);
@@ -449,8 +455,10 @@ export const MultipleRowArraySelect = ({
     onOpen();
   }, [onOpen]);
 
+  useCloseOnFlowNodeDragAreaPointerDown(OutsideClickRef, onClose, isOpen);
+
   return (
-    <Box>
+    <Box ref={OutsideClickRef}>
       <Menu
         autoSelect={false}
         isOpen={isOpen}

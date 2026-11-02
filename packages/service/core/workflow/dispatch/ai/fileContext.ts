@@ -56,6 +56,7 @@ export const parseWorkflowAIInputFiles = async ({
   const usedNames = new Map<string, number>();
   return parsedFiles.map((file, index) => ({
     name: getSafeSandboxInputFilename(file.name || file.url, index, usedNames),
+    ...(file.filename ? { filename: file.filename } : {}),
     type: file.type,
     url: file.url
   }));
@@ -76,7 +77,9 @@ export const buildWorkflowAICurrentInputFiles = async ({
   const queryFilesByUrl = new Map(queryFiles.map((file) => [file.url, file]));
 
   return await parseWorkflowAIInputFiles({
-    files: inputUrls.map((url) => queryFilesByUrl.get(url) || { type: ChatFileTypeEnum.file, url }),
+    files: inputUrls.map(
+      (url) => queryFilesByUrl.get(url) || { type: ChatFileTypeEnum.unknown, url }
+    ),
     maxFileAmount
   });
 };

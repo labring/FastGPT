@@ -7,7 +7,7 @@ import { prepareWorkflowFileQuery } from '@fastgpt/service/core/workflow/utils/f
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { getRunningUserInfoByTmbId } from '@fastgpt/service/support/user/team/utils';
 import { NextAPI } from '@/service/middleware/entry';
-import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
+import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { WORKFLOW_MAX_RUN_TIMES } from '@fastgpt/service/core/workflow/constants';
 import { getLastInteractiveValue } from '@fastgpt/global/core/workflow/runtime/utils';
 import { getLocale } from '@fastgpt/service/common/middle/i18n';
@@ -47,7 +47,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse): Promise<Workf
       req,
       authToken: true
     }),
-    authApp({ req, authToken: true, appId, per: ReadPermissionVal })
+    // 工作流调试会执行用户传入的节点定义（包括代码节点），需要写入权限
+    authApp({ req, authToken: true, appId, per: WritePermissionVal })
   ]);
   // 兼容未传 chatConfig 的旧客户端；App 主表不再保存工作流配置，默认值从草稿 Version 读取。
   const workflowChatConfig = chatConfig ?? (await getAppDraftWorkflow(appId)).chatConfig;

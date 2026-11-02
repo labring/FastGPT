@@ -20,10 +20,22 @@ const InteractiveReply = ({
   children?: React.ReactNode;
 }) => {
   const { t } = useTranslation();
-  const questions = reply.questions.map(({ question, value }) => ({
-    question,
-    value: value === '' ? t('chat:interactive.agent_ask.unanswered') : value
-  }));
+  const questions =
+    reply.type === 'agentAsk'
+      ? reply.questions.map(({ question, value }) => ({
+          question,
+          value: value === '' ? t('chat:interactive.agent_ask.unanswered') : value
+        }))
+      : [
+          {
+            question: '',
+            value: (() => {
+              if (reply.action === 'confirm') return t('workflow:workflow_builder_preview_confirm');
+              if (reply.action === 'cancel') return t('workflow:workflow_builder_preview_cancel');
+              return `${t('workflow:workflow_builder_preview_revise')}\n\n${reply.reviseText}`;
+            })()
+          }
+        ];
   const files = chatValue.filter((value) => value.file).map(({ file }) => ({ file }));
 
   return (
@@ -34,7 +46,9 @@ const InteractiveReply = ({
         ...files,
         {
           text: {
-            content: questions.map(({ question, value }) => `${question}\n${value}`).join('\n\n')
+            content: questions
+              .map(({ question, value }) => (question ? `${question}\n${value}` : value))
+              .join('\n\n')
           }
         }
       ]}
@@ -43,11 +57,13 @@ const InteractiveReply = ({
           {files.length > 0 && <HumanChatBubbleContent chatValue={files} />}
           {questions.map(({ question, value }, index) => (
             <Box key={index} minW={0} maxW={'100%'} lineHeight={7}>
-              <MyTooltip label={question} showOnlyWhenOverflow>
-                <Box color={'myGray.600'} noOfLines={1}>
-                  {question}
-                </Box>
-              </MyTooltip>
+              {question && (
+                <MyTooltip label={question} showOnlyWhenOverflow>
+                  <Box color={'myGray.600'} noOfLines={1}>
+                    {question}
+                  </Box>
+                </MyTooltip>
+              )}
               <Box whiteSpace={'pre-wrap'} wordBreak={'break-word'}>
                 {value}
               </Box>

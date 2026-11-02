@@ -26,7 +26,6 @@ type RunCodeResponse = DispatchNodeResultType<
 
 export const dispatchCodeSandbox = async (props: RunCodeType): Promise<RunCodeResponse> => {
   const {
-    node: { catchError },
     params: { codeType, code, [NodeInputKeyEnum.addInputParam]: customVariables }
   } = props;
 
@@ -66,7 +65,8 @@ export const dispatchCodeSandbox = async (props: RunCodeType): Promise<RunCodeRe
     const text = getErrText(error, 'Request code sandbox failed');
 
     return getNodeErrResponse({
-      error: text,
+      error,
+      errorText: text,
       customErr: {
         [NodeOutputKeyEnum.error]: text
       },

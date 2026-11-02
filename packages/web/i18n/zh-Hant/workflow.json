@@ -381,5 +381,9 @@
   "workflow_builder_tool_commit": "正式交付",
   "workflow_builder_tool_preview": "方案預覽",
   "workflow_builder_tool_cancel": "取消任務",
-  "connection_invalid": "此連線不符合工作流程規則"
+  "connection_invalid": "此連線不符合工作流程規則",
+  "workflow_builder_preview_confirm": "確認並開始搭建",
+  "workflow_builder_preview_revise": "修改方案",
+  "workflow_builder_preview_cancel": "取消本次搭建",
+  "workflow_builder_preview_revise_placeholder": "請說明需要調整的節點或流程"
 }

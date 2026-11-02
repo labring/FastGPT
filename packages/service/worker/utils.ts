@@ -240,7 +240,13 @@ export const isExpectedWorkerTaskError = (error: unknown): boolean => {
       return false;
     }
 
-    if (error instanceof UserError || current.name === 'UserError') return true;
+    if (
+      error instanceof UserError ||
+      current.name === 'UserError' ||
+      current.name === 'UserConfigError'
+    ) {
+      return true;
+    }
 
     // 错误码优先于文案：getaddrinfo 的 EAI_MEMORY 等基础设施故障不能因文本相似而降级。
     const codes = [current.code, cause.code].filter(Boolean);

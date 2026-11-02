@@ -6,6 +6,7 @@
     "sandbox",
     "object-storage",
     "env",
+    "root-password",
     "signoz",
     "remote-debug-suite"
   ]

@@ -25,6 +25,7 @@ import { BoolSchema, NumSchema } from '../../common/zod';
 import { WorkflowBuilderVersionSchema } from '../workflow/builder/type';
 import { ChatAgentBuilderVersionSchema } from '../ai/auxiliaryGeneration/chatAgentBuilderVersion';
 import { UserChatSelectSchema } from './input/type';
+import { ChatCompletionUserMessageParamSchema } from '../ai/llm/type';
 
 export const ChatHistoryItemResSchema = DispatchNodeResponseSchema.extend({
   nodeId: z.string(),
@@ -46,6 +47,11 @@ export const ToolModuleResponseItemSchema = z.object({
   params: z.string(),
   response: z.string().nullish(),
   hideDetails: BoolSchema.optional().meta({ description: '仅展示工具信息，不提供参数或响应详情' }),
+  hideInUI: z.boolean().optional().meta({ description: '隐藏内部工具展示，仍保留模型上下文' }),
+  internalOnly: z
+    .boolean()
+    .optional()
+    .meta({ description: '内部目录工具上下文，仅供服务端恢复，对外移除详情' }),
   functionName: z.string()
 });
 export type ToolModuleResponseItemType = z.infer<typeof ToolModuleResponseItemSchema>;
@@ -230,8 +236,28 @@ export const ContextCheckpointValueSchema = z.string();
 export type ContextCheckpointValueType = z.infer<typeof ContextCheckpointValueSchema>;
 
 export const AIChatItemValueSchema = z.object({
+  userMessage: z
+    .object({ content: z.string(), source: z.literal('server') })
+    .optional()
+    .meta({ description: '服务端追加的隐藏 User 指令，按原顺序恢复，不重置历史' }),
+  inputContext: ChatCompletionUserMessageParamSchema.omit({ role: true }).optional().meta({
+    description: '本轮实际消费的 Human 改写输入，保留技能、时间、文件等上下文，不保存历史快照'
+  }),
   id: z.string().nullish(),
-  askId: z.string().nullish(),
+  modelResponseId: z.string().optional().meta({ description: '本次模型响应的稳定关联 ID' }),
+  toolCallIds: z
+    .array(z.string())
+    .optional()
+    .meta({ description: '本次响应的工具调用原始顺序，含交互工具' }),
+  displayOnly: z.boolean().optional().meta({ description: '子工具展示输出，不进入父模型上下文' }),
+  toolResponses: z
+    .array(z.object({ id: z.string().min(1), response: z.string() }))
+    .optional()
+    .meta({ description: '子工具续跑产生的实际结果，补齐原调用，不创建新调用' }),
+  askId: z
+    .string()
+    .nullish()
+    .meta({ deprecated: true, description: '旧版 Ask 关联字段，新消息停止写入' }),
   text: z
     .object({
       content: z.string()
@@ -248,7 +274,10 @@ export const AIChatItemValueSchema = z.object({
   plan: AgentPlanReadSchema.nullish(),
   planStatus: AgentPlanStatusSchema.nullish(),
   agentPlanUpdate: AgentLoopPlanUpdateSchema.nullish(),
-  agentAsk: AgentLoopAskSchema.nullish(),
+  agentAsk: AgentLoopAskSchema.nullish().meta({
+    deprecated: true,
+    description: '旧版 Ask 副本，新消息仅保存 interactive'
+  }),
   contextCheckpoint: ContextCheckpointValueSchema.nullish(),
   workflowBuilderVersion: WorkflowBuilderVersionSchema.optional(),
   chatAgentBuilderVersion: ChatAgentBuilderVersionSchema.optional(),

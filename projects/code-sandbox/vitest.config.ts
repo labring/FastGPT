@@ -25,7 +25,7 @@ export default defineConfig({
       // 冷启动 matplotlib 等原生包在并行测试时可能超过 8s；同时给 30s 用例超时保留回收余量。
       SANDBOX_MAX_TIMEOUT: '15000',
       SANDBOX_QUEUE_ID_CONCURRENCY: '1',
-      SANDBOX_TOKEN: 'test'
+      SANDBOX_TOKEN: process.env.SANDBOX_TOKEN ?? 'test'
     }
   }
 });

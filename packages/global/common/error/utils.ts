@@ -94,15 +94,43 @@ export const getErrResponse = (err: any): any => {
   return err?.response?.data || err?.response || err;
 };
 
+/**
+ * 可直接展示给用户的预期业务错误。
+ * message/displayMessage 分别保留业务原因和展示文案，options 可携带原始 cause。
+ */
 export class UserError extends Error {
   constructor(
     message: string,
-    readonly displayMessage?: string
+    readonly displayMessage?: string,
+    options?: ErrorOptions
   ) {
-    super(message);
+    super(message, options);
     this.name = 'UserError';
   }
 }
+
+/**
+ * 预期的用户配置错误；构造参数与 UserError 保持一致，供日志和工作流统一降级。
+ */
+export class UserConfigError extends UserError {
+  constructor(message: string, displayMessage?: string, options?: ErrorOptions) {
+    super(message, displayMessage, options);
+    this.name = 'UserConfigError';
+  }
+}
+
+/**
+ * 按类身份识别配置错误，兼容跨构建产物和序列化后仅保留 name 的错误记录。
+ * 不沿 cause 分类，普通 UserError 和包含配置错误的系统异常仍保留原有语义。
+ */
+export const isUserConfigError = (
+  error: unknown
+): error is UserConfigError | { name: 'UserConfigError'; displayMessage?: string } =>
+  error instanceof UserConfigError ||
+  (typeof error === 'object' &&
+    error !== null &&
+    'name' in error &&
+    error.name === 'UserConfigError');
 
 /**
  * 表示错误提示已经由业务侧自行展示，通用请求层应跳过重复 toast。

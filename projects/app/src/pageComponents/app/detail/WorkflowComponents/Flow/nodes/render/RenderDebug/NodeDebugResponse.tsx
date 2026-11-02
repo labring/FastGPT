@@ -1,3 +1,4 @@
+import { isValidInteractive } from '@fastgpt/global/core/workflow/runtime/utils';
 import React, { useCallback, useMemo } from 'react';
 import { Box, Button, Card, Flex } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
@@ -99,7 +100,8 @@ const NodeDebugResponse = ({ nodeId, debugResult }: NodeDebugResponseProps) => {
 
   const response = debugResult?.response;
 
-  const interactive = debugResult?.interactiveResponse;
+  const rawInteractive = debugResult?.interactiveResponse;
+  const interactive = isValidInteractive(rawInteractive) ? rawInteractive : undefined;
   const onNextInteractive = useCallback(
     (userContent: string) => {
       if (!workflowDebugData || !workflowDebugData || !interactive) return;

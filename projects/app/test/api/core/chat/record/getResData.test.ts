@@ -49,7 +49,7 @@ const mockChatItem = (chatItem: Record<string, any> | null) => {
 
 describe('getResData handler', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.resetAllMocks();
 
     mocks.authChatTargetCrud.mockResolvedValue({
       sourceType: ChatSourceTypeEnum.app,
@@ -81,6 +81,60 @@ describe('getResData handler', () => {
       chatItemDataId: dataId,
       fallbackResponseData: [{ id: 'legacy-root' }]
     });
+  });
+
+  it.each([
+    ChatSourceTypeEnum.chatAgentHelper,
+    ChatSourceTypeEnum.workflowBuilder,
+    ChatSourceTypeEnum.skillEdit
+  ])('reads auxiliary generation details through the authorized %s target', async (sourceType) => {
+    mockChatItem({ obj: ChatRoleEnum.AI });
+    const sourceId = '507f1f77bcf86cd799439012';
+    mocks.authChatTargetCrud.mockResolvedValue({ sourceType, sourceId, showCite: true });
+    const target =
+      sourceType === ChatSourceTypeEnum.skillEdit
+        ? { skillId: sourceId }
+        : { appId: sourceId, sourceType };
+    await expect(
+      handler({ query: { ...target, chatId, dataId } } as ApiRequestProps)
+    ).resolves.toEqual([{ id: 'persisted-root' }]);
+    expect(mocks.authChatTargetCrud).toHaveBeenCalledWith(
+      expect.objectContaining({ sourceType, sourceId, chatId, authToken: true })
+    );
+    expect(mocks.findChatItem).toHaveBeenCalledWith(
+      expect.objectContaining({
+        appId: sourceId,
+        sourceType,
+        chatId,
+        dataId,
+        obj: ChatRoleEnum.AI
+      }),
+      expect.any(String)
+    );
+    expect(mocks.getChatItemResponseData).toHaveBeenCalledWith({
+      sourceType,
+      sourceId,
+      chatId,
+      chatItemDataId: dataId,
+      fallbackResponseData: undefined
+    });
+  });
+
+  it('does not read helper details when chat target authorization fails', async () => {
+    const error = new Error('Unauthorized');
+    mocks.authChatTargetCrud.mockRejectedValueOnce(error);
+    await expect(
+      handler({
+        query: {
+          sourceType: ChatSourceTypeEnum.chatAgentHelper,
+          appId,
+          chatId,
+          dataId
+        }
+      } as ApiRequestProps)
+    ).rejects.toBe(error);
+    expect(mocks.findChatItem).not.toHaveBeenCalled();
+    expect(mocks.getChatItemResponseData).not.toHaveBeenCalled();
   });
 
   it('passes empty legacy inline responseData as fallback', async () => {

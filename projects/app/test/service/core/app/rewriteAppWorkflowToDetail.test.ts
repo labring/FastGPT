@@ -843,12 +843,9 @@ describe('rewriteAppWorkflowToDetail - workflow tool inputs', () => {
       description: '',
       value: ''
     });
-    expect(nodes[1].inputs[0].value).toEqual([
-      expect.objectContaining({ name: '' })
-    ]);
+    expect(nodes[1].inputs[0].value).toEqual([expect.objectContaining({ name: '' })]);
     expect(nodes[1].inputs[0].value).not.toHaveProperty('0.metadataLocale');
   });
-
 });
 
 describe('rewriteAppWorkflowToDetail - tool set descriptions', () => {

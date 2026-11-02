@@ -38,11 +38,37 @@ const mocks = vi.hoisted(() => ({
 vi.mock('@fastgpt/service/core/app/tool/utils/client', () => mocks);
 
 describe('beforeUpdateAppFormat', () => {
+  it.each([
+    ['systemTool-weather', true],
+    ['business-app-id', false]
+  ])('预览不可用时仅清理已确认身份的系统工具：%s', async (id, shouldClear) => {
+    mocks.getClientToolPreviewNode.mockRejectedValueOnce(new Error('Tool unavailable'));
+    const systemInput = {
+      type: SystemToolSecretInputTypeEnum.system,
+      value: { apiKey: { value: 'temporary-or-business-value' } }
+    };
+    const nodes = [
+      {
+        flowNodeType: FlowNodeTypeEnum.agent,
+        inputs: [
+          {
+            key: NodeInputKeyEnum.selectedTools,
+            value: [{ id, config: { [NodeInputKeyEnum.systemInputConfig]: systemInput } }]
+          }
+        ]
+      }
+    ] as StoreNodeItemType[];
+
+    await beforeUpdateAppFormat({ nodes });
+    expect('value' in systemInput).toBe(!shouldClear);
+  });
+
   it.each([SystemToolSecretInputTypeEnum.system, SystemToolSecretInputTypeEnum.team])(
     '保存前清理 %s 类型中的临时密钥值',
     async (type) => {
       const nodes = [
         {
+          flowNodeType: FlowNodeTypeEnum.tool,
           inputs: [
             {
               key: NodeInputKeyEnum.systemInputConfig,
@@ -70,6 +96,7 @@ describe('beforeUpdateAppFormat', () => {
   it('即使系统输入被标记为引用，也不能保留临时密钥值', async () => {
     const nodes = [
       {
+        flowNodeType: FlowNodeTypeEnum.tool,
         inputs: [
           {
             key: NodeInputKeyEnum.systemInputConfig,
@@ -100,6 +127,7 @@ describe('beforeUpdateAppFormat', () => {
   it('保存前仅加密 manual 类型的临时密钥值', async () => {
     const nodes = [
       {
+        flowNodeType: FlowNodeTypeEnum.tool,
         inputs: [
           {
             key: NodeInputKeyEnum.systemInputConfig,
@@ -126,13 +154,13 @@ describe('beforeUpdateAppFormat', () => {
 
     const value = nodes[0].inputs[0].value as any;
     expect(value.type).toBe(SystemToolSecretInputTypeEnum.manual);
-    expect(value.value.apiKey.value).toBe('');
-    expect(value.value.apiKey.secret).toEqual(expect.any(String));
+    expect(value.value.apiKey).toEqual({ secret: expect.any(String) });
     expect(value.value.region).toBe('cn');
   });
 
   it('保存 Agent 嵌套工具配置前加密手动密钥', async () => {
     mocks.getClientToolPreviewNode.mockResolvedValueOnce({
+      flowNodeType: FlowNodeTypeEnum.tool,
       inputs: [
         {
           key: NodeInputKeyEnum.systemInputConfig,
@@ -167,8 +195,7 @@ describe('beforeUpdateAppFormat', () => {
     await beforeUpdateAppFormat({ nodes, teamId: 'team-1' });
 
     const config = (nodes[0].inputs[0].value as any)[0].config;
-    expect(config.system_input_config.value.apiKey.value).toBe('');
-    expect(config.system_input_config.value.apiKey.secret).toEqual(expect.any(String));
+    expect(config.system_input_config.value.apiKey).toEqual({ secret: expect.any(String) });
   });
 
   it('保存 Agent 嵌套团队工具配置时把 teamId 传给预览接口', async () => {

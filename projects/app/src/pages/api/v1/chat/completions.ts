@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { sseErrRes, jsonRes } from '@fastgpt/service/common/response';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
+import { markProfileError } from '@fastgpt/service/common/profiling';
 import {
   ChatRoleEnum,
   ChatSourceEnum,
@@ -482,6 +483,13 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       flatNodeResponses,
       shouldCollect: shouldCollectFinalResponseData
     });
+    const finalError = getWorkflowFinalResponseError({
+      workflowRuntimeSummary,
+      finalResponseData
+    });
+    // 工作流可正常返回错误摘要，JSON/SSE 都可能以 HTTP 200 收尾，需显式标记采集失败。
+    if (finalError) markProfileError(finalError);
+
     const feResponseData = filterWorkflowFinalResponseData({
       responseData: finalResponseData,
       responseAllData,
@@ -514,15 +522,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         includeLegacyType: true
       });
 
-      const error = getWorkflowFinalResponseError({
-        workflowRuntimeSummary,
-        finalResponseData
-      });
-
       res.json({
         ...(detail ? { responseData: feResponseData, newVariables } : {}),
         title: generatedTitle,
-        error,
+        error: finalError,
         id: saveChatId,
         model: '',
         usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 1 },

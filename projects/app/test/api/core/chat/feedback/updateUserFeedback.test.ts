@@ -122,6 +122,94 @@ describe('updateUserFeedback api test', () => {
     expect(chatLog?.badFeedbackCount).toBe(0);
   });
 
+  describe('workflow Builder feedback', () => {
+    beforeEach(async () => {
+      await MongoChat.create({
+        teamId: testUser.teamId,
+        tmbId: testUser.tmbId,
+        sourceType: ChatSourceTypeEnum.workflowBuilder,
+        appId,
+        chatId,
+        source: ChatSourceEnum.test
+      });
+      await MongoChatItem.create({
+        teamId: testUser.teamId,
+        tmbId: testUser.tmbId,
+        sourceType: ChatSourceTypeEnum.workflowBuilder,
+        appId,
+        chatId,
+        dataId,
+        obj: ChatRoleEnum.AI,
+        value: [{ type: 'text', text: { content: 'Generated workflow version' } }]
+      });
+    });
+
+    it('reuses feedback for like, dislike and cancellation without affecting ordinary app records or analytics', async () => {
+      const query = { sourceType: ChatSourceTypeEnum.workflowBuilder, appId, chatId } as const;
+      for (const feedback of [{ userGoodFeedback: 'yes' }, { userBadFeedback: '缺少节点' }, {}]) {
+        const res = await Call<
+          UpdateUserFeedbackBodyType,
+          Record<string, never>,
+          UpdateUserFeedbackResponseType
+        >(handler, {
+          auth: testUser,
+          body: { ...query, dataId, ...feedback }
+        });
+        expect(res.code).toBe(200);
+        expect(res.error).toBeUndefined();
+        const item = await MongoChatItem.findOne({ ...query, dataId });
+        if (item?.obj !== ChatRoleEnum.AI) throw new Error('Expected a Builder AI record');
+        expect(item.userGoodFeedback).toBe(feedback.userGoodFeedback);
+        expect(item.userBadFeedback).toBe(feedback.userBadFeedback);
+        const chat = await MongoChat.findOne(query);
+        expect(!!chat?.hasGoodFeedback).toBe(!!feedback.userGoodFeedback);
+        expect(!!chat?.hasBadFeedback).toBe(!!feedback.userBadFeedback);
+
+        const appItem = await MongoChatItem.findOne({
+          appId,
+          chatId,
+          dataId,
+          sourceType: ChatSourceTypeEnum.app
+        });
+        expect(appItem?.toObject()).not.toHaveProperty('userGoodFeedback');
+        expect(appItem?.toObject()).not.toHaveProperty('userBadFeedback');
+        const log = await MongoAppChatLog.findOne({ appId, chatId });
+        expect(log?.goodFeedbackCount).toBe(0);
+        expect(log?.badFeedbackCount).toBe(0);
+      }
+    });
+
+    it('rejects feedback for another member’s Builder conversation', async () => {
+      const otherUser = await getUser(`other-feedback-owner-${Math.random()}`);
+      await MongoChat.updateOne(
+        { sourceType: ChatSourceTypeEnum.workflowBuilder, appId, chatId },
+        { $set: { tmbId: otherUser.tmbId } }
+      );
+      const res = await Call<
+        UpdateUserFeedbackBodyType,
+        Record<string, never>,
+        UpdateUserFeedbackResponseType
+      >(handler, {
+        auth: testUser,
+        body: {
+          sourceType: ChatSourceTypeEnum.workflowBuilder,
+          appId,
+          chatId,
+          dataId,
+          userGoodFeedback: 'yes'
+        }
+      });
+      expect(res.code).not.toBe(200);
+      const item = await MongoChatItem.findOne({
+        sourceType: ChatSourceTypeEnum.workflowBuilder,
+        appId,
+        chatId,
+        dataId
+      });
+      expect(item?.toObject()).not.toHaveProperty('userGoodFeedback');
+    });
+  });
+
   it('should add bad feedback', async () => {
     const res = await Call<
       UpdateUserFeedbackBodyType,

@@ -212,7 +212,7 @@ export const useChatTest = ({
         chatId={chatId}
         boxBodyProps={boxBodyProps}
         features={{
-          mark: true,
+          fbTypes: ['mark'],
           autoResume: true,
           quickReplies: true,
           inputGuide: true,

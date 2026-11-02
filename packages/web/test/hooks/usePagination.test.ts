@@ -83,14 +83,14 @@ vi.mock('ahooks', async () => {
 type TestItem = string;
 type TestResponse = PaginationResponse<TestItem>;
 type TestRequest = {
-  params: PaginationProps<undefined>;
+  params: PaginationProps;
   resolve: (response: TestResponse) => void;
   reject: (error: unknown) => void;
 };
 
 const createDeferredApi = () => {
   const requests: TestRequest[] = [];
-  const api = vi.fn((params: PaginationProps<undefined>) => {
+  const api = vi.fn((params: PaginationProps) => {
     return new Promise<TestResponse>((resolve, reject) => {
       requests.push({ params, resolve, reject });
     });
@@ -100,18 +100,19 @@ const createDeferredApi = () => {
 };
 
 type HarnessProps = {
-  api: (params: PaginationProps<undefined>) => Promise<TestResponse>;
-  onState: (state: ReturnType<typeof usePagination<TestItem, TestItem>>) => void;
+  api: (params: PaginationProps) => Promise<TestResponse>;
+  onState: (state: ReturnType<typeof usePagination<unknown, TestItem>>) => void;
+  type?: 'button' | 'scroll';
 };
 
-const Harness = ({ api, onState }: HarnessProps) => {
+const Harness = ({ api, onState, type = 'scroll' }: HarnessProps) => {
   const state = usePagination(api, {
-    type: 'scroll',
+    type,
     defaultPageSize: 1
   });
 
   useLayoutEffect(() => {
-    const container = document.querySelector('[data-testid="scroll-data"]');
+    const container = document.querySelector('#scroll-data');
     if (!(container instanceof HTMLDivElement)) return;
 
     Object.defineProperty(container, 'clientHeight', {
@@ -128,7 +129,8 @@ const Harness = ({ api, onState }: HarnessProps) => {
 
   return React.createElement(
     state.ScrollData,
-    { 'data-testid': 'scroll-data' },
+    // children 由第三个参数传入，补齐 createElement 对必需 props 的类型约束。
+    { id: 'scroll-data' } as React.ComponentProps<typeof state.ScrollData>,
     React.createElement('span', null, state.data.join(','))
   );
 };
@@ -141,14 +143,18 @@ const renderHarness = async (root: Root, props: HarnessProps) => {
 };
 
 describe('usePagination', () => {
+  let root: Root;
+
   beforeEach(() => {
     vi.stubGlobal('React', React);
     vi.useFakeTimers();
     mocks.router.query = {};
     mocks.toast.mockReset();
+    root = createRoot(document.createElement('div'));
   });
 
-  afterEach(() => {
+  afterEach(async () => {
+    await act(async () => root.unmount());
     vi.useRealTimers();
     vi.unstubAllGlobals();
   });
@@ -156,7 +162,6 @@ describe('usePagination', () => {
   it('stops automatic retries after a failed scroll page and allows manual retry', async () => {
     const { api, requests } = createDeferredApi();
     const onState = vi.fn();
-    const root = createRoot(document.createElement('div'));
 
     await renderHarness(root, { api, onState });
     expect(requests[0]?.params.pageNum).toBe(1);
@@ -187,6 +192,88 @@ describe('usePagination', () => {
 
     expect(requests).toHaveLength(3);
     expect(requests[2]?.params.pageNum).toBe(2);
-    root.unmount();
+  });
+
+  it.each([
+    { label: 'missing response', response: undefined },
+    { label: 'null response', response: null },
+    { label: 'missing list', response: { total: 10 } },
+    { label: 'null list', response: { total: 10, list: null } },
+    { label: 'non-array list', response: { total: 10, list: {} } }
+  ])('preserves the current page on $label and allows retry', async ({ response }) => {
+    const { api, requests } = createDeferredApi();
+    const onState = vi.fn<HarnessProps['onState']>();
+    await renderHarness(root, { api, onState, type: 'button' });
+
+    await act(async () => requests[0].resolve({ list: ['first'], total: 2 }));
+    await act(async () => {
+      void onState.mock.lastCall?.[0].getData(2);
+    });
+    await act(async () => {
+      // 模拟接口违反 TypeScript 合约的实际响应，校验状态不会被污染。
+      requests[1].resolve(response as TestResponse);
+    });
+
+    expect(onState.mock.lastCall?.[0]).toMatchObject({
+      data: ['first'],
+      total: 2,
+      pageNum: 1,
+      isLoading: false,
+      error: expect.any(Error)
+    });
+    expect(mocks.toast).toHaveBeenCalledWith(expect.objectContaining({ status: 'error' }));
+
+    await act(async () => {
+      void onState.mock.lastCall?.[0].getData(2);
+    });
+    await act(async () => requests[2].resolve({ list: ['second'], total: 2 }));
+    expect(onState.mock.lastCall?.[0]).toMatchObject({
+      data: ['second'],
+      pageNum: 2,
+      isLoading: false,
+      error: null
+    });
+  });
+
+  it('preserves scroll items on an invalid next page and accepts a valid empty refresh', async () => {
+    const { api, requests } = createDeferredApi();
+    const onState = vi.fn<HarnessProps['onState']>();
+    await renderHarness(root, { api, onState });
+    await act(async () => requests[0].resolve({ list: ['first'], total: 2 }));
+
+    await act(async () => {
+      void onState.mock.lastCall?.[0].getData(2);
+    });
+    await act(async () => requests[1].resolve({ total: 10 } as TestResponse));
+    expect(onState.mock.lastCall?.[0]).toMatchObject({
+      data: ['first'],
+      total: 2,
+      pageNum: 1,
+      isLoading: false,
+      error: expect.any(Error)
+    });
+
+    await act(async () => {
+      void onState.mock.lastCall?.[0].getData(1);
+    });
+    await act(async () => requests[2].resolve({ list: [], total: 0 }));
+    expect(onState.mock.lastCall?.[0]).toMatchObject({
+      data: [],
+      total: 0,
+      isLoading: false,
+      error: null
+    });
+  });
+
+  it.each([
+    { reason: null, toastCount: 1 },
+    { reason: { code: 'ERR_CANCELED' }, toastCount: 0 }
+  ])('settles loading after rejection with $reason', async ({ reason, toastCount }) => {
+    const { api, requests } = createDeferredApi();
+    const onState = vi.fn<HarnessProps['onState']>();
+    await renderHarness(root, { api, onState, type: 'button' });
+    await act(async () => requests[0].reject(reason));
+    expect(onState.mock.lastCall?.[0]).toMatchObject({ data: [], isLoading: false });
+    expect(mocks.toast).toHaveBeenCalledTimes(toastCount);
   });
 });

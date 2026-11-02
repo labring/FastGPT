@@ -1,29 +1,92 @@
 import z from 'zod';
 
-export const SecretValueTypeSchema = z
+/**
+ * 结构化工作流引用，保留历史引用数组的结构兼容。
+ * 结构合法不代表目标字段接受数组：请求头要求字符串，系统工具参数要求标量。
+ */
+export const ReferenceValueSchema = z.union([
+  z.tuple([z.string().min(1), z.string().min(1)]),
+  z.array(z.tuple([z.string().min(1), z.string().min(1)])).min(1)
+]);
+export type ReferenceValue = z.infer<typeof ReferenceValueSchema>;
+
+const SecretPlainValueSchema = z
   .object({
-    value: z.string().optional().meta({
-      description: '密钥明文值；提交明文时会优先使用该值'
-    }),
-    secret: z.string().optional().meta({
+    value: z.string().meta({
+      description: '密钥明文值；服务端保存时会加密为 secret'
+    })
+  })
+  .strict();
+
+const SecretCipherValueSchema = z
+  .object({
+    secret: z.string().meta({
       description: '已加密或脱敏后的密钥值'
     })
   })
-  .meta({
-    description: '密钥值类型，value 为明文，secret 为密文，如果了 value 则优先使用 value。',
-    example: {
-      value: '1234567890',
-      secret: ''
-    }
-  });
+  .strict();
+
+export const StaticSecretValueSchema = z.union([SecretPlainValueSchema, SecretCipherValueSchema]);
+
+export const SecretRefValueSchema = z
+  .object({
+    ref: ReferenceValueSchema.meta({
+      description:
+        '工作流变量引用，运行时解析后按目标类型校验。请求头必须为字符串，系统工具参数必须为标量；引用数组仅保留结构兼容，不放宽目标类型要求。'
+    })
+  })
+  .strict();
+
+export const SecretValueTypeSchema = z.union([StaticSecretValueSchema, SecretRefValueSchema]).meta({
+  description: '密钥值类型，使用 value 明文、secret 密文或 ref 工作流变量引用。',
+  example: {
+    secret: 'encrypted-value'
+  }
+});
 export type SecretValueType = z.infer<typeof SecretValueTypeSchema>;
+
+// 复用当前字段定义接纳旧双字段结构，strict 保证附带业务字段的对象不会被当作凭据。
+const SecretValueInputSchema = z.preprocess(
+  (value) => {
+    if (typeof value !== 'string') return value;
+    try {
+      return JSON.parse(value);
+    } catch {
+      return value;
+    }
+  },
+  z.union([
+    SecretRefValueSchema,
+    SecretPlainValueSchema.extend(SecretCipherValueSchema.shape).partial()
+  ])
+);
+
+/** 将已校验的历史凭据收敛为当前格式；非空明文优先，否则保留密文或空明文。 */
+const normalizeSecretValueInput = (
+  value: z.output<typeof SecretValueInputSchema>
+): SecretValueType => {
+  if ('ref' in value) return value;
+  if (value.value !== undefined && value.value !== '') return { value: value.value };
+  if (value.secret !== undefined) return { secret: value.secret };
+  return { value: '' };
+};
+
+/** 通用凭据识别要求存在明确来源，避免把普通业务空对象识别为凭据。 */
+export const SecretValueParseSchema = SecretValueInputSchema.refine(
+  (value) => 'ref' in value || value.value !== undefined || value.secret !== undefined
+)
+  .transform(normalizeSecretValueInput)
+  .pipe(SecretValueTypeSchema);
+
+/** 仅在已确认的凭据边界兼容旧空 wrapper；API 与迁移共用相同转换规则。 */
+export const CompatibleSecretValueSchema =
+  SecretValueInputSchema.transform(normalizeSecretValueInput).pipe(SecretValueTypeSchema);
 
 export const StoreSecretValueTypeSchema = z.record(z.string(), SecretValueTypeSchema).meta({
   description: '存储密钥值类型，key 为密钥名称，value 为密钥值。',
   example: {
     Authorization: {
-      value: '1234567890',
-      secret: ''
+      secret: 'encrypted-value'
     }
   }
 });

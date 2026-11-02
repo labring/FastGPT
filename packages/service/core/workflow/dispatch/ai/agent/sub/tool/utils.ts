@@ -736,7 +736,7 @@ export const getAgentRuntimeTools = async ({
                 metadataLocale: toolNode.metadataLocale,
                 version: toolNode.version
               },
-              teamId: isTeamPluginSource(runtimeSource) ? await getCurrentTeamId() : undefined,
+              teamId: isTeamPluginSource(runtimeSource) ? await getCurrentTeamId() : undefined
             });
 
             return children.map((child) => buildSubApp(child));

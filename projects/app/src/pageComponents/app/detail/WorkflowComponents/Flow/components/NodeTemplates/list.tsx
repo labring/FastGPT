@@ -643,7 +643,7 @@ const NodeTemplateList = ({
 
   if (ScrollData) {
     return (
-      <ScrollData flex={1} minH={0} showLoadingOverlay={false}>
+      <ScrollData flex={1} minH={0}>
         <Box flexShrink={0} px={formatTemplatesArrayData.length > 1 ? 2 : 5}>
           {listContent}
         </Box>

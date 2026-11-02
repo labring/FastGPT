@@ -29,7 +29,7 @@ import { useWorkflowBuilderUI } from './hooks/useWorkflowBuilderUI';
 import WorkflowBuilderCommercialInput from './presentation/CommercialInput';
 
 const WorkflowBuilder = () => {
-  const { t } = useTranslation(['workflow']);
+  const { t } = useTranslation(['workflow', 'common']);
   const { toast: myToast } = useToast();
   const { requestAutoLayout } = useWorkflowAutoLayout();
   const appId = useContextSelector(AppContext, (value) => value.appId);
@@ -148,15 +148,12 @@ const WorkflowBuilder = () => {
           chatConfig: appliedChatConfig,
           customTitle: version.name
         });
-        setActivity((current) => {
-          if (current.latestVersion?.version.checksum !== archivedVersion.checksum) return current;
-          return {
-            ...current,
-            latestVersion: {
-              ...current.latestVersion,
-              version: archivedVersion
-            }
-          };
+        // 横幅和卡片共用记录状态，活动摘要再由记录派生，避免两个入口展示不一致。
+        chatPanelRef.current?.updateAppliedVersion({
+          appId,
+          chatId: builderChatId,
+          responseChatItemId,
+          version: archivedVersion
         });
         myToast({
           status: 'success',
@@ -208,7 +205,6 @@ const WorkflowBuilder = () => {
       pushPastSnapshot,
       requestAutoLayout,
       setAppDetail,
-      setActivity,
       notifyVersionExpired,
       myToast,
       t
@@ -337,15 +333,15 @@ const WorkflowBuilder = () => {
                 >
                   {t('workflow_builder_title')}
                 </Text>
-                <MyTooltip label={t('workflow_builder_clear_history')}>
+                <MyTooltip label={t('common:core.chat.New Chat')}>
                   <IconButton
-                    aria-label={t('workflow_builder_clear_history')}
+                    aria-label={t('common:core.chat.New Chat')}
                     size="smSquare"
-                    icon={<MyIcon name="common/clearLight" w="14px" />}
-                    variant="whiteDanger"
+                    icon={<MyIcon name="core/chat/chatLight" w="14px" />}
+                    variant="whitePrimary"
                     borderRadius="md"
                     mr={2}
-                    onClick={() => chatPanelRef.current?.clearHistory()}
+                    onClick={() => chatPanelRef.current?.restartChat()}
                   />
                 </MyTooltip>
                 <MyTooltip label={t('workflow_builder_collapse')}>

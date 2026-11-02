@@ -140,19 +140,17 @@ export const contentProps = (
 export const confirmedPreview: AIChatItemValueItemType = {
   interactive: {
     type: 'workflowBuilderPreview',
-    previewId: 'preview-1',
+
     entryNodeIds: [],
     memoryEdges: [],
     nodeOutputs: [],
     params: {
-      title: 'Preview',
-      mermaid: 'flowchart LR',
-      sections: [],
-      actions: [
-        { value: 'confirm', label: 'Confirm', inputMode: 'none' },
-        { value: 'revise', label: 'Revise', inputMode: 'text' },
-        { value: 'cancel', label: 'Cancel', inputMode: 'none' }
-      ]
+      toolCallId: 'preview-1',
+      arguments: JSON.stringify({
+        title: 'Preview',
+        mermaid: 'flowchart LR',
+        sections: [{ title: 'Goal', content: 'Build the workflow' }]
+      })
     }
   }
 };

@@ -46,7 +46,9 @@ export async function handler(
     MongoPluginToolTag.find({}).lean()
   ]);
 
-  const filteredTools = systemTools.filter((item) => filterToolByName(item.name, searchRegex, lang));
+  const filteredTools = systemTools.filter((item) =>
+    filterToolByName(item.name, searchRegex, lang)
+  );
 
   return GetAdminSystemToolsResponseSchema.parse(
     filteredTools.map((item) => {

@@ -93,7 +93,9 @@ const normalizeSystemToolDetail = (
   const inputs = tool.inputSchema
     ? jsonSchema2NodeInput({ jsonSchema: tool.inputSchema, schemaType: 'systemTool', lang })
     : [];
-  const outputs = tool.outputSchema ? jsonSchema2NodeOutput({ jsonSchema: tool.outputSchema, lang }) : [];
+  const outputs = tool.outputSchema
+    ? jsonSchema2NodeOutput({ jsonSchema: tool.outputSchema, lang })
+    : [];
   const secrets = tool.secretSchema
     ? jsonSchema2SecretInput({ jsonSchema: tool.secretSchema, lang })
     : undefined;
@@ -238,13 +240,8 @@ export const useToolDetail = ({
   const loadingDetail = !detailReady && !detailError;
 
   // Calculate tool structure
-  const isToolSet = useMemo(() => {
-    if (!toolDetail?.tools || !Array.isArray(toolDetail?.tools) || toolDetail?.tools.length === 0) {
-      return false;
-    }
-    const subTools = toolDetail.tools.filter((subTool) => subTool.parentId);
-    return subTools.length > 0;
-  }, [toolDetail?.tools]);
+  const tools = toolDetail?.tools;
+  const isToolSet = Array.isArray(tools) && tools.some((tool) => Boolean(tool.parentId));
 
   const parentTool = useMemo(() => {
     const parentTool = toolDetail?.tools.find((tool: ToolDetailExtendedType) => !tool.parentId);
@@ -266,7 +263,6 @@ export const useToolDetail = ({
     i18n.language
   );
   const readmeRequestKey = `${currentRequestKey}\u0000${readmeUrl ?? ''}`;
-
 
   // README 文档独立加载；语言切换到新 URL 时使用新请求键，避免展示上一语言的内容。
   useEffect(() => {
@@ -300,8 +296,7 @@ export const useToolDetail = ({
   }, [readmeRequestKey, readmeUrl, toolDetail]);
 
   const readmeContent = readmeResult?.requestKey === readmeRequestKey ? readmeResult.content : '';
-  const loadingReadme =
-    detailReady && !!readmeUrl && readmeResult?.requestKey !== readmeRequestKey;
+  const loadingReadme = detailReady && !!readmeUrl && readmeResult?.requestKey !== readmeRequestKey;
 
   return {
     toolDetail,

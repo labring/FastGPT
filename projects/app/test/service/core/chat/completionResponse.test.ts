@@ -19,6 +19,88 @@ describe('getChatItemValueType', () => {
 });
 
 describe('formatCompletionResponseContent', () => {
+  it.each([false, true])(
+    'projects public values without leaking Agent restore data: v1=%s',
+    (includeLegacyType) => {
+      const tool = {
+        id: 'call',
+        toolName: 'Read',
+        toolAvatar: '',
+        functionName: 'read',
+        params: 'private-params',
+        response: 'private-result',
+        internalOnly: true
+      };
+      const responseContent: AIChatItemValueItemType[] = [
+        {
+          text: { content: 'Visible answer' },
+          inputContext: { content: 'private-input' },
+          modelResponseId: 'private-response-id',
+          toolCallIds: ['private-call-id'],
+          toolResponses: [{ id: 'call', response: 'private-resume-result' }]
+        },
+        { contextCheckpoint: 'private-checkpoint' },
+        { userMessage: { source: 'server', content: 'private-continuation' }, hideInUI: true },
+        { text: { content: 'private-hidden-text' }, hideInUI: true },
+        { tools: [tool, { ...tool, id: 'hidden', hideInUI: true }] },
+        { displayOnly: true, text: { content: 'Visible child output' } }
+      ];
+      const before = structuredClone(responseContent);
+      const result = formatCompletionResponseContent({
+        responseContent,
+        detail: true,
+        includeLegacyType
+      });
+      const legacyType = (type: ChatItemValueTypeEnum) => (includeLegacyType ? { type } : {});
+      expect(result).toEqual([
+        { text: { content: 'Visible answer' }, ...legacyType(ChatItemValueTypeEnum.text) },
+        {
+          tools: [
+            {
+              id: 'call',
+              toolName: 'Read',
+              toolAvatar: '',
+              functionName: 'read',
+              params: '',
+              response: '',
+              hideDetails: true
+            }
+          ],
+          ...legacyType(ChatItemValueTypeEnum.tool)
+        },
+        { text: { content: 'Visible child output' }, ...legacyType(ChatItemValueTypeEnum.text) }
+      ]);
+      expect(JSON.stringify(result)).not.toContain('private-');
+      expect(responseContent).toEqual(before);
+      expect(
+        formatCompletionResponseContent({ responseContent, detail: false, includeLegacyType })
+      ).toEqual({ reasoning: '', content: 'Visible answer\nVisible child output' });
+    }
+  );
+
+  it.each(['toolChildrenInteractive', 'loopRunInteractive'] as const)(
+    'redacts malformed runtime wrappers: %s',
+    (type) => {
+      const result = formatCompletionResponseContent({
+        responseContent: [
+          {
+            interactive: {
+              type,
+              params: {
+                childrenResponse: null,
+                toolParams: { memoryRequestMessages: ['private-input'] },
+                loopHistory: ['private-history']
+              }
+            } as unknown as AIChatItemValueItemType['interactive']
+          }
+        ],
+        detail: true,
+        includeLegacyType: false
+      });
+      expect(result).toEqual([{ interactive: { type, params: {} } }]);
+    }
+  );
+
   it('keeps plain single text response OpenAI compatible', () => {
     const result = formatCompletionResponseContent({
       detail: true,

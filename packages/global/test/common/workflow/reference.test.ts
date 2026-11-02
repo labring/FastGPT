@@ -17,6 +17,7 @@ import {
 import {
   WorkflowIOValueTypeEnum,
   NodeInputKeyEnum,
+  NodeOutputKeyEnum,
   VARIABLE_NODE_ID
 } from '@fastgpt/global/core/workflow/constants';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
@@ -53,6 +54,74 @@ describe('getWorkflowReferenceSourceNodes', () => {
       'ancestor'
     ]);
     expect(getWorkflowReferenceSourceNodes({ ...params, nodeId: 'missing' })).toEqual([]);
+  });
+
+  it.each([
+    { nodeId: 'tool', expected: ['completedCall', 'start'] },
+    { nodeId: 'nextTool', expected: ['tool', 'completedCall', 'start'] },
+    { nodeId: 'nestedTool', expected: ['tool', 'completedCall', 'start'] },
+    { nodeId: 'child', expected: ['loopStart', 'nextTool', 'tool', 'completedCall', 'start'] },
+    { nodeId: 'mainNext', expected: ['caller', 'completedCall', 'start'] }
+  ])('excludes pending tool callers from references for $nodeId', ({ nodeId, expected }) => {
+    const nodes = new Map<string, StoreNodeItemType>(
+      [
+        'start',
+        'completedCall',
+        'caller',
+        'tool',
+        'nextTool',
+        'nestedCaller',
+        'nestedTool',
+        'loop',
+        'loopStart',
+        'child',
+        'mainNext'
+      ].map((id) => [
+        id,
+        {
+          nodeId: id,
+          name: id,
+          flowNodeType: ['completedCall', 'caller', 'nestedCaller'].includes(id)
+            ? FlowNodeTypeEnum.toolCall
+            : FlowNodeTypeEnum.code,
+          parentNodeId: ['loopStart', 'child'].includes(id) ? 'loop' : undefined,
+          inputs: [],
+          outputs: []
+        }
+      ])
+    );
+    const loop = nodes.get('loop')!;
+    loop.flowNodeType = FlowNodeTypeEnum.loopRun;
+    // 旧配置可能已错误引用调用者；子节点继承父容器输入时也不能重新暴露该输出。
+    loop.inputs = [
+      {
+        key: NodeInputKeyEnum.loopRunInputArray,
+        label: '',
+        renderTypeList: [FlowNodeInputTypeEnum.reference],
+        value: ['caller', 'answerText']
+      }
+    ];
+    const sources = getWorkflowReferenceSourceNodes({
+      nodeId,
+      getNodeById: (id) => nodes.get(id),
+      edges: [
+        { source: 'start', target: 'completedCall' },
+        { source: 'completedCall', target: 'caller' },
+        { source: 'caller', target: 'tool', targetHandle: NodeOutputKeyEnum.selectedTools },
+        { source: 'tool', target: 'nextTool' },
+        { source: 'tool', target: 'nestedCaller' },
+        {
+          source: 'nestedCaller',
+          target: 'nestedTool',
+          targetHandle: NodeOutputKeyEnum.selectedTools
+        },
+        { source: 'nextTool', target: 'loop' },
+        { source: 'loopStart', target: 'child' },
+        { source: 'caller', target: 'mainNext' }
+      ]
+    });
+
+    expect(sources.map((node) => node.nodeId)).toEqual(expected);
   });
 });
 

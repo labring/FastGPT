@@ -79,7 +79,6 @@ describe('getWorkflowFinalResponseError', () => {
         workflowRuntimeSummary: {
           responseIds: [],
           finishedNodeIds: [],
-          hasError: true,
           errorText: 'Root node failed',
           errorCount: 1,
           hasLoopRunBreak: false,

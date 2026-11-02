@@ -1151,6 +1151,34 @@ describe('getNodeAllSource', () => {
     ]);
   });
 
+  it('excludes the caller inside a tool chain and keeps its output for the main successor', () => {
+    const nodes = ['start', 'caller', 'tool', 'toolNext', 'mainNext'].map((id) => makeNode(id));
+    nodes[1].flowNodeType = FlowNodeTypeEnum.toolCall;
+    const edges: Edge[] = [
+      { id: 'start-to-caller', source: 'start', target: 'caller' },
+      {
+        id: 'caller-to-tool',
+        source: 'caller',
+        target: 'tool',
+        sourceHandle: NodeOutputKeyEnum.selectedTools,
+        targetHandle: NodeOutputKeyEnum.selectedTools
+      },
+      { id: 'tool-to-next', source: 'tool', target: 'toolNext' },
+      { id: 'caller-to-main-next', source: 'caller', target: 'mainNext' }
+    ];
+
+    expect(getSourceNodeIds({ nodeId: 'toolNext', nodes, edges })).toEqual([
+      'tool',
+      'start',
+      VARIABLE_NODE_ID
+    ]);
+    expect(getSourceNodeIds({ nodeId: 'mainNext', nodes, edges })).toEqual([
+      'caller',
+      'start',
+      VARIABLE_NODE_ID
+    ]);
+  });
+
   it('orders nested node references by nearest edge and keeps global variables last', () => {
     const nodes = [
       makeNode('reply', 'loop'),

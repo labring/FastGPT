@@ -6,6 +6,7 @@ import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workf
 import type { ChatSiteItemType } from '@/components/core/chat/ChatContainer/ChatBox/type';
 import {
   getInteractiveByHistories,
+  refreshSubmittedFormInteractiveValues,
   isPendingAgentAsk,
   isPendingWorkflowBuilderPreview,
   isUserInputInteractiveSubmitted,
@@ -123,18 +124,22 @@ describe('getInteractiveByHistories', () => {
       const interactive: WorkflowInteractiveResponseType = {
         ...baseInteractive,
         type: 'agentAsk',
-        askId: 'ask-1',
+
         params: {
-          description: '',
-          questions: [
-            {
-              question: 'Choose?',
-              options: [
-                { summary: 'A', value: 'A' },
-                { summary: 'B', value: 'B' }
-              ]
-            }
-          ]
+          toolCallId: 'ask-1',
+          arguments: JSON.stringify({
+            reason: '',
+            blockerType: 'user_choice',
+            questions: [
+              {
+                question: 'Choose?',
+                options: [
+                  { summary: 'A', value: 'A' },
+                  { summary: 'B', value: 'B' }
+                ]
+              }
+            ]
+          })
         }
       };
       for (const source of [
@@ -153,6 +158,45 @@ describe('getInteractiveByHistories', () => {
       }
     }
   );
+
+  it.each(['userSelect', 'userInput', 'paymentPause', 'agentAsk', 'workflowBuilderPreview'])(
+    'allows ordinary input for invalid historical %s interactions',
+    (type) => {
+      for (const params of [undefined, null, 'legacy']) {
+        const interactive = {
+          ...baseInteractive,
+          type,
+          params
+        } as unknown as WorkflowInteractiveResponseType;
+        const histories = [createAiRecord(interactive)];
+        expect(getInteractiveByHistories(histories)).toEqual({
+          interactive: undefined,
+          canSendQuery: true
+        });
+        expect(
+          refreshSubmittedFormInteractiveValues({
+            histories,
+            nodeResponse: { nodeId: 'node-1', formInputResult: { name: 'Alice' } } as any
+          })
+        ).toBe(histories);
+      }
+    }
+  );
+
+  it('ignores submitted historical forms without a field array during hydration', () => {
+    const interactive = {
+      ...baseInteractive,
+      type: 'userInput',
+      params: { submitted: true }
+    } as unknown as WorkflowInteractiveResponseType;
+    const histories = [createAiRecord(interactive)];
+    expect(
+      refreshSubmittedFormInteractiveValues({
+        histories,
+        nodeResponse: { nodeId: 'node-1', formInputResult: { name: 'Alice' } } as any
+      })
+    ).toBe(histories);
+  });
 
   it('allows normal chat when no pending interactive exists', () => {
     expect(getInteractiveByHistories([createAiRecord()])).toEqual({
@@ -181,16 +225,14 @@ describe('getInteractiveByHistories', () => {
     const interactive = {
       ...baseInteractive,
       type: 'workflowBuilderPreview',
-      previewId: 'preview-1',
+
       params: {
-        title: 'Confirm workflow',
-        mermaid: 'flowchart LR\n  A --> B',
-        sections: [],
-        actions: [
-          { value: 'confirm', label: 'Confirm', inputMode: 'none' },
-          { value: 'revise', label: 'Revise', inputMode: 'text' },
-          { value: 'cancel', label: 'Cancel', inputMode: 'none' }
-        ]
+        toolCallId: 'preview-1',
+        arguments: JSON.stringify({
+          title: 'Confirm workflow',
+          mermaid: 'flowchart LR\n  A --> B',
+          sections: [{ title: 'Goal', content: 'Build the workflow' }]
+        })
       }
     } satisfies WorkflowInteractiveResponseType;
 
@@ -211,18 +253,22 @@ describe('isPendingAgentAsk', () => {
       isPendingAgentAsk({
         ...baseInteractive,
         type: 'agentAsk',
-        askId: 'ask-1',
+
         params: {
-          description: 'Need input',
-          questions: [
-            {
-              question: 'Need input?',
-              options: [
-                { summary: 'A', value: 'A' },
-                { summary: 'B', value: 'B' }
-              ]
-            }
-          ]
+          toolCallId: 'ask-1',
+          arguments: JSON.stringify({
+            reason: 'Need input',
+            blockerType: 'user_choice',
+            questions: [
+              {
+                question: 'Need input?',
+                options: [
+                  { summary: 'A', value: 'A' },
+                  { summary: 'B', value: 'B' }
+                ]
+              }
+            ]
+          })
         }
       } as WorkflowInteractiveResponseType)
     ).toBe(true);
@@ -319,18 +365,22 @@ describe('resolveInteractiveResponseChatItemId', () => {
     const interactive = {
       ...baseInteractive,
       type: 'agentAsk',
-      askId: 'ask-1',
+
       params: {
-        description: 'Need input',
-        questions: [
-          {
-            question: 'Need input?',
-            options: [
-              { summary: 'A', value: 'A' },
-              { summary: 'B', value: 'B' }
-            ]
-          }
-        ]
+        toolCallId: 'ask-1',
+        arguments: JSON.stringify({
+          reason: 'Need input',
+          blockerType: 'user_choice',
+          questions: [
+            {
+              question: 'Need input?',
+              options: [
+                { summary: 'A', value: 'A' },
+                { summary: 'B', value: 'B' }
+              ]
+            }
+          ]
+        })
       }
     } as WorkflowInteractiveResponseType;
 
@@ -362,49 +412,43 @@ describe('Ask and Preview immutable questions', () => {
   it.each(['agentAsk', 'workflowBuilderPreview'] as const)(
     'keeps the original %s and the new structured user round unchanged',
     (type) => {
-      const interactive =
-        type === 'agentAsk'
-          ? {
-              ...baseInteractive,
-              type,
-              askId: 'ask-1',
-              params: {
-                description: '',
-                questions: [
-                  {
-                    question: 'Choose?',
-                    options: [
-                      { summary: 'A', value: 'A' },
-                      { summary: 'B', value: 'B' }
-                    ]
-                  }
-                ]
-              }
-            }
-          : {
-              ...baseInteractive,
-              type,
-              previewId: 'preview-1',
-              params: {
-                title: 'Confirm?',
-                mermaid: 'flowchart LR; A --> B',
-                sections: [],
-                actions: [
-                  { value: 'confirm' as const, label: 'Confirm', inputMode: 'none' as const },
-                  { value: 'revise' as const, label: 'Revise', inputMode: 'text' as const },
-                  { value: 'cancel' as const, label: 'Cancel', inputMode: 'none' as const }
-                ]
-              }
-            };
+      const interactive = {
+        ...baseInteractive,
+        type,
+        params: {
+          toolCallId: 'interactive-call',
+          arguments: JSON.stringify(
+            type === 'agentAsk'
+              ? {
+                  reason: '',
+                  blockerType: 'user_choice',
+                  questions: [
+                    {
+                      question: 'Choose?',
+                      options: [
+                        { summary: 'A', value: 'A' },
+                        { summary: 'B', value: 'B' }
+                      ]
+                    }
+                  ]
+                }
+              : {
+                  title: 'Confirm?',
+                  mermaid: 'flowchart LR; A --> B',
+                  sections: [{ title: 'Goal', content: 'Build' }]
+                }
+          )
+        }
+      };
       const human: ChatSiteItemType = {
         ...createHumanRecord(),
         obj: ChatRoleEnum.Human,
         value: [
           {
-            select: {
-              type,
-              questions: [{ question: 'Choose?', value: type === 'agentAsk' ? 'A' : 'confirm' }]
-            }
+            select:
+              type === 'agentAsk'
+                ? { type, questions: [{ question: 'Choose?', value: 'A' }] }
+                : { type, action: 'confirm' }
           }
         ]
       };

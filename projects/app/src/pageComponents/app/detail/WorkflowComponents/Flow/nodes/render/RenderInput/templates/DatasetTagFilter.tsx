@@ -144,6 +144,9 @@ export const DatasetTagFilterLogic = React.memo(function DatasetTagFilterLogic({
             description:
               DatasetSearchModule.inputs.find((input) => input.key === item.key)?.description ??
               item.description,
+            valueDesc:
+              DatasetSearchModule.inputs.find((input) => input.key === item.key)?.valueDesc ??
+              item.valueDesc,
             value: {
               ...createEmptyTagFilterValue(),
               open: true

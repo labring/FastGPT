@@ -25,6 +25,7 @@ export type RunAgentLoopCoreParams<TChildrenResponse = unknown> = {
       updatePlanToolName?: string;
       askToolName?: string;
     };
+    persistInputContext?: boolean;
   };
 };
 
@@ -49,20 +50,40 @@ export const runAgentLoopCore = async <TChildrenResponse = unknown>({
     metaEventNames: assistantResponses?.metaEventNames
   });
   let firstTokenTime: number | undefined;
+  let hasRecordedEvents = false;
   const result = await runAgentLoop<TChildrenResponse>({
     provider,
     input,
     runtime: {
       ...runtime,
+      recordEvent: (event) => {
+        hasRecordedEvents = true;
+        assistantEventCollector.emitEvent(event);
+        runtime.recordEvent?.(event);
+      },
       emitEvent: (event) => {
         if (event.type === 'llm_request_end' && firstTokenTime === undefined) {
           firstTokenTime = event.firstTokenTime;
         }
-        assistantEventCollector.emitEvent(event);
+        // 兼容直接发事件的适配器；标准 application 已通过可信 recordEvent 记录原始上下文。
+        if (!hasRecordedEvents) assistantEventCollector.emitEvent(event);
         runtime.emitEvent?.(event);
       }
     }
   });
+  // 只记录本轮改写后的用户输入；历史 messages、Ask 回答和 provider 快照均不重复保存。
+  const currentInput = input.messages.at(-1);
+  if (assistantResponses?.persistInputContext && currentInput?.role === 'user') {
+    const target = eventAssistantResponses.find(
+      (value) => !value.displayOnly && !value.contextCheckpoint
+    );
+    const inputContext = {
+      content: currentInput.content,
+      ...(currentInput.name ? { name: currentInput.name } : {})
+    };
+    if (target) target.inputContext = inputContext;
+    else eventAssistantResponses.push({ inputContext, hideInUI: true });
+  }
   const assistantResponseValues = compactAgentLoopCorePlanSnapshots([
     ...(assistantResponses?.extraResponses ?? []),
     ...eventAssistantResponses

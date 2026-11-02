@@ -1414,8 +1414,15 @@ export default function SkillPickerPlugin({
             </Box>
           )}
           {canLoadMore && pageState?.loading && columnData.list.length > 0 && (
-            <Box h={6} display={'flex'} alignItems={'center'} justifyContent={'center'}>
-              <MyIcon name={'common/loading'} w={4} color={'myGray.400'} />
+            <Box
+              h={6}
+              display={'flex'}
+              alignItems={'center'}
+              justifyContent={'center'}
+              fontSize={'xs'}
+              color={'myGray.400'}
+            >
+              {t('common:is_requesting')}
             </Box>
           )}
           {canLoadMore && pageState?.error && (

@@ -43,6 +43,7 @@ import { createSystemToolResourceContext } from '../../resource/context';
 import { loadChildWorkflowWithResource } from '../../resource/service';
 import type { WorkflowResourceContext } from '@fastgpt/global/core/workflow/runtime/type';
 import { withWorkflowNodeResponseOutputPolicy } from '../nodeResponseSink';
+import { WorkflowMemoryState } from '../../memory/state';
 
 type RunPluginProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.forbidStream]?: boolean;
@@ -62,6 +63,7 @@ type RunPluginResponse = DispatchNodeResultType<
  * 1. 系统工具 systemTool- 转发到 dispatchRunTool （为了兼容旧的数据）
  * 2. personal （自己的插件）
  * 3. commercial （系统级别的工作流插件）
+ * 子流程未捕获错误和商业工具业务错误均交给父节点错误分支，原始异常仅在产生处记录。
  */
 export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPluginResponse> => {
   const {
@@ -286,9 +288,13 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
           resolveInputFile
         });
         const runtimeVariables = childVariableState.toRuntimeRecord();
+        const childMemoryState = WorkflowMemoryState.fromWorkflow(props).fork(
+          props.node?.nodeId ? `node:${props.node.nodeId}` : undefined
+        );
 
         return runWorkflow({
           ...props,
+          memoryState: childMemoryState,
           // 系统级 workflow tool 只保留工具节点自身的响应，不展开保存其内部 workflow 详情。
           nodeResponseSink: withWorkflowNodeResponseOutputPolicy({
             sink: props.nodeResponseSink,
@@ -337,15 +343,20 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
       plugin: workflowTool,
       pluginOutput
     });
+    // 执行失败优先于工具业务输出；子流程已捕获的错误不继续向父流程传播。
+    const errorText =
+      runtimeSummary.errorCount > 0
+        ? runtimeSummary.errorText || 'Run workflow tool failed'
+        : pluginOutputError;
 
     const usagePoints = await computedAppToolUsage({
       plugin: workflowTool,
       childrenUsage: flowUsages,
-      error: runtimeSummary.hasError || !pluginOutput || !!pluginOutputError
+      error: errorText !== undefined || !pluginOutput
     });
     const ownUsagePoints = getAppToolOwnUsage({
       plugin: workflowTool,
-      error: runtimeSummary.hasError || !pluginOutput || !!pluginOutputError
+      error: errorText !== undefined || !pluginOutput
     });
     props.nodeSummary.mergeNodeSummary({
       ...(shouldStoreChildNodeResponses
@@ -377,10 +388,10 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
       : undefined;
     return {
       data: pluginOutput || {},
-      ...(pluginOutputError
+      ...(errorText !== undefined
         ? {
             error: {
-              [NodeOutputKeyEnum.errorText]: pluginOutputError
+              [NodeOutputKeyEnum.errorText]: errorText
             }
           }
         : {}),
@@ -395,11 +406,10 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
         toolInput: workflowToolVariables,
         pluginOutput,
         childResponseCount,
-        ...(pluginOutputError ? { errorText: pluginOutputError } : {})
+        ...(errorText !== undefined ? { errorText } : {})
       },
-      [DispatchNodeResponseKeyEnum.toolResponse]: pluginOutputError
-        ? { ...toolResponse, error: pluginOutputError }
-        : toolResponse,
+      [DispatchNodeResponseKeyEnum.toolResponse]:
+        errorText !== undefined ? { ...toolResponse, error: errorText } : toolResponse,
       [DispatchNodeResponseKeyEnum.customFeedbacks]: customFeedbacks
     };
   } catch (error) {

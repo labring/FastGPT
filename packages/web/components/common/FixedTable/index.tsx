@@ -280,8 +280,8 @@ type FixedTableContainerProps = BoxProps & {
 /**
  * 将普通表格的自动布局结果同步给独立表头。
  * 只读取浏览器原生布局结果，不自行计算期望列宽或向 body 注入列宽。
- * 表体保留一个不可见的原生表头副本参与列宽计算，不重复挂载 React 组件或事件。
- * 副本使用 collapse 去掉行高，并移除 ID、禁用交互；动态表头和容器尺寸变化时重新同步。
+ * 表体保留一个不可见的原生表头副本参与列宽计算；副本移除浮层、ID 并禁用交互。
+ * 副本使用 collapse 去掉行高，动态表头和容器尺寸变化时重新同步。
  */
 const useNormalTableColumns = (bodyRef: RefObject<HTMLDivElement>, flush: boolean) => {
   useBrowserLayoutEffect(() => {
@@ -354,6 +354,12 @@ const useNormalTableColumns = (bodyRef: RefObject<HTMLDivElement>, flush: boolea
       clone.setAttribute('aria-hidden', 'true');
       clone.setAttribute('inert', '');
       clone.style.visibility = 'collapse';
+      // DOM 克隆会保留已展开的浮层，但副本不受 React 控制，需在测宽前移除。
+      clone
+        .querySelectorAll(
+          '[data-popper-placement], [role="menu"], [role="dialog"], [role="listbox"]'
+        )
+        .forEach((element) => element.remove());
       // inert 阻止交互，disabled/name 清理同时排除原生表单校验和提交。
       clone.querySelectorAll('input, select, textarea, button').forEach((element) => {
         element.setAttribute('disabled', '');

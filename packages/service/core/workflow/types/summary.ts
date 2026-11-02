@@ -9,11 +9,9 @@ export type WorkflowRuntimeSummaryFields = {
   responseIds: string[];
   /** 已完成的 nodeId。 */
   finishedNodeIds: string[];
-  /** 当前 workflow 是否出现节点错误。 */
-  hasError: boolean;
   /** 最近一次错误文本。 */
   errorText?: string;
-  /** 当前 workflow 的错误响应数量。 */
+  /** 本轮未捕获的错误响应数量；大于 0 表示流程失败，不承担日志上报控制。 */
   errorCount: number;
   /** loopRunBreak 节点是否命中。 */
   hasLoopRunBreak: boolean;

@@ -14,6 +14,7 @@ import {
   initAgentToolInputType,
   initToolInputTypeByDefaultMode,
   isAgentGeneratedToolInput,
+  isToolInputValueConfigured,
   migrateToolInputConfig,
   normalizeFlowNodeInputType,
   parseJsonEditorValue,
@@ -23,7 +24,11 @@ import {
   FlowNodeInputTypeEnum,
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
-import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
+import {
+  NodeInputKeyEnum,
+  VARIABLE_NODE_ID,
+  WorkflowIOValueTypeEnum
+} from '@fastgpt/global/core/workflow/constants';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
 
@@ -570,7 +575,49 @@ describe('checkNeedsUserConfiguration', () => {
   });
 });
 
+describe('isToolInputValueConfigured', () => {
+  it('checks the selected mode when password inputs also support references', () => {
+    const input = createMockInput({
+      renderTypeList: [FlowNodeInputTypeEnum.password, FlowNodeInputTypeEnum.reference],
+      selectedType: FlowNodeInputTypeEnum.reference,
+      value: [VARIABLE_NODE_ID, 'token']
+    });
+    expect(isToolInputValueConfigured({ input })).toBe(true);
+    expect(
+      isToolInputValueConfigured({
+        input: { ...input, selectedType: FlowNodeInputTypeEnum.password }
+      })
+    ).toBe(false);
+    expect(isToolInputValueConfigured({ input: { ...input, value: [] } })).toBe(false);
+    expect(
+      isToolInputValueConfigured({
+        input: { ...input, value: undefined, defaultValue: input.value }
+      })
+    ).toBe(true);
+  });
+});
+
 describe('getToolConfigStatus', () => {
+  it.each([
+    [{ value: 'plain' }, 'configured'],
+    [{ secret: 'cipher' }, 'configured'],
+    ['legacy-plain', 'configured'],
+    [{ value: '' }, 'waitingForConfig'],
+    [{ value: 'plain', extra: true }, 'waitingForConfig'],
+    [{ ref: [] }, 'waitingForConfig']
+  ])('uses shared credential validity for password configuration: %j', (value, status) => {
+    const tool = {
+      inputs: [
+        createMockInput({
+          renderTypeList: [FlowNodeInputTypeEnum.password],
+          required: true,
+          value
+        })
+      ]
+    };
+    expect(getToolConfigStatus({ tool }).status).toBe(status);
+  });
+
   describe('noConfig status', () => {
     it('should return noConfig for empty inputs', () => {
       const tool = { inputs: [] };

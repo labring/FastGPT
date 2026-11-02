@@ -103,12 +103,12 @@ return withContext({ requestId }, async () => {
 **审查要点**:
 - ✅ 禁止输出 token、密钥、密码、完整对话内容
 - ✅ 必须记录敏感信息时做脱敏或截断
-- ✅ 需要阻止 OTEL 导出时，可添加 `fastgpt` 属性
+- ✅ 需要阻止 OTEL 导出时，显式添加 `otel: false`
 
 **示例**:
 ```ts
 logger.warn('Payload truncated for debug', {
-  fastgpt: true,
+  otel: false,
   payloadPreview: payload.slice(0, 200)
 });
 ```
