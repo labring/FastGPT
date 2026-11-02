@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { DatasetAuditEventEnum } from '@fastgpt/global/core/dataset/audit/constants/event';
 import { ManageRoleVal, ReadRoleVal } from '@fastgpt/global/support/permission/constant';
-import { processAuditMetadata } from '@/pageComponents/account/team/Audit/processors';
+import { processAuditMetadata } from '@fastgpt/web/support/user/audit/processors';
 
 const translations: Record<string, string> = {
   'app:type.Chat_Agent': '聊天助手',

@@ -33,6 +33,7 @@ const DateRangePicker = ({
   },
   dateRange,
   formLabel,
+  historyLimitDays = 180,
   ...props
 }: {
   onChange?: (date: DateRangeType) => void;
@@ -41,6 +42,8 @@ const DateRangePicker = ({
   defaultDate?: DateRangeType;
   dateRange?: DateRangeType;
   formLabel?: string;
+  /** null 允许选择所有历史日期；未来日期始终禁用。 */
+  historyLimitDays?: number | null;
 } & BoxProps) => {
   const { t } = useTranslation();
   const { isPc } = useSystem();
@@ -107,8 +110,10 @@ const DateRangePicker = ({
         defaultMonth={range.to}
         selected={range}
         disabled={[
-          { from: new Date(2022, 3, 1), to: addDays(new Date(), -180) },
-          { from: addDays(new Date(), 1), to: new Date(2099, 1, 1) }
+          ...(historyLimitDays === null
+            ? []
+            : [{ before: addDays(new Date(), -historyLimitDays) }]),
+          { after: new Date() }
         ]}
         onSelect={(date) => {
           let typeDate = date as DateRangeType;

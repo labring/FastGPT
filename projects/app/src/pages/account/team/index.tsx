@@ -4,7 +4,7 @@ import { Box, Flex } from '@chakra-ui/react';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import TeamSelector from '@/pageComponents/account/TeamSelector';
 import { useUserStore } from '@/web/support/user/useUserStore';
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useContextSelector } from 'use-context-selector';
 import { useRouter } from 'next/router';
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
@@ -12,8 +12,8 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
 import { TeamContext, TeamModalContextProvider } from '@/pageComponents/account/team/context';
 import dynamic from 'next/dynamic';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useToast } from '@fastgpt/web/hooks/useToast';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { accountPageRootStyles, accountTitleTextStyles } from '@/pageComponents/account/styles';
 
 const MemberTable = dynamic(() => import('@/pageComponents/account/team/MemberTable'));
@@ -39,16 +39,34 @@ const Team = () => {
 
   const { t } = useSafeTranslation();
   const { userInfo, teamPlanStatus } = useUserStore();
+  const subscriptionEnabled = useSystemStore((state) => !!state.subPlans?.standard);
   const standardPlan = teamPlanStatus?.standard;
-  const level = standardPlan?.currentSubLevel;
-  const { subPlans } = useSystemStore();
-  const planContent = useMemo(() => {
-    const plan = level !== undefined ? subPlans?.standard?.[level] : undefined;
-    if (!plan) return;
-    return {
-      auditLogStoreDuration: plan?.auditLogStoreDuration
-    };
-  }, [subPlans?.standard, level]);
+  const [planCheckedAt, setPlanCheckedAt] = useState(Date.now);
+  // 在套餐开始或到期时更新入口状态，长时间停留页面也不继续展示已到期能力。
+  useEffect(() => {
+    const nextBoundary = Math.min(
+      ...[standardPlan?.startTime, standardPlan?.expiredTime]
+        .filter((value) => value !== undefined && value !== null)
+        .map((value) => new Date(value!).getTime())
+        .filter((value) => Number.isFinite(value) && value > planCheckedAt)
+    );
+    if (!Number.isFinite(nextBoundary)) return;
+    const timer = setTimeout(
+      () => setPlanCheckedAt(Date.now()),
+      Math.min(Math.max(0, nextBoundary - Date.now()), 2_147_483_647)
+    );
+    return () => clearTimeout(timer);
+  }, [planCheckedAt, standardPlan?.startTime, standardPlan?.expiredTime]);
+  // 与后端一致：未启用订阅体系时只要求团队管理权限。
+  const canReadAudit = !!(
+    userInfo?.team.permission.hasManagePer &&
+    (!subscriptionEnabled ||
+      (standardPlan?.auditLogStoreDuration &&
+        standardPlan.auditLogStoreDuration > 0 &&
+        (!standardPlan.expiredTime ||
+          new Date(standardPlan.expiredTime).getTime() > planCheckedAt) &&
+        (!standardPlan.startTime || new Date(standardPlan.startTime).getTime() <= planCheckedAt)))
+  );
   const { toast } = useToast();
 
   const { setEditTeamData, teamSize } = useContextSelector(TeamContext, (v) => v);
@@ -70,7 +88,7 @@ const Team = () => {
         ]}
         value={teamTab}
         onChange={(e) => {
-          if (e === TeamTabEnum.audit && planContent && !planContent?.auditLogStoreDuration) {
+          if (e === TeamTabEnum.audit && !canReadAudit) {
             toast({
               status: 'warning',
               title: t('common:not_permission')
@@ -86,7 +104,7 @@ const Team = () => {
         }}
       />
     ),
-    [planContent, router, t, teamTab, toast, userInfo?.team.permission.hasManagePer]
+    [canReadAudit, router, t, teamTab, toast, userInfo?.team.permission.hasManagePer]
   );
 
   return (
@@ -163,7 +181,15 @@ const Team = () => {
           {teamTab === TeamTabEnum.org && <OrgManage Tabs={Tabs} />}
           {teamTab === TeamTabEnum.group && <GroupManage Tabs={Tabs} />}
           {teamTab === TeamTabEnum.permission && <PermissionManage Tabs={Tabs} />}
-          {teamTab === TeamTabEnum.audit && <AuditLog Tabs={Tabs} />}
+          {teamTab === TeamTabEnum.audit &&
+            (canReadAudit ? (
+              <AuditLog key={userInfo?.team.teamId} Tabs={Tabs} />
+            ) : (
+              <Box px={6}>
+                {Tabs}
+                <Box mt={6}>{t('common:not_permission')}</Box>
+              </Box>
+            ))}
         </Box>
       </Flex>
     </AccountContainer>
