@@ -1136,6 +1136,113 @@ describe('markdown 字符串处理函数测试', () => {
       ).toMatchObject([{ altText: 'a [b', url: 'https://a.com/1.png' }]);
     });
 
+    it.each([
+      ['LF', '\n'],
+      ['CRLF', '\r\n'],
+      ['CR', '\r']
+    ])('%s 空行阻止跨段落配对，保留正文且不上传伪图片', async (_name, lineEnding) => {
+      for (const blank of ['', ' \t']) {
+        const text = `before ![a [b]${lineEnding}${blank}${lineEnding}c](data:image/png;base64,AAAA) after`;
+        const controller = vi.fn(async () => ({ key: 'uploaded-key' }));
+        const normalized = text.replace(/\r\n|\r/g, '\n');
+
+        expect(matchMarkdownImages(text)).toEqual([]);
+        expect(matchDocumentImages(text)).toEqual([]);
+        expect(replaceMarkdownImageAltText(text, 'next')).toBe(text);
+        expect(await parseMarkdownBase64Images(text)).toBe(normalized);
+        expect(await parseMarkdownBase64Images(text, { controller, parseHttp: true })).toBe(
+          normalized
+        );
+        expect(controller).not.toHaveBeenCalled();
+      }
+    });
+
+    it.each([
+      ['LF', '\n'],
+      ['CRLF', '\r\n'],
+      ['CR', '\r']
+    ])('%s 换行后仍按原文偏移匹配和替换真实图片', async (_name, lineEnding) => {
+      const prefix = `before ![a [b]${lineEnding}${lineEnding}c](data:image/png;base64,AAAA) after${lineEnding}`;
+      const node = `![图 [1]${lineEnding}示意](data:image/png;base64,BBBB "caption")`;
+      const text = `${prefix}${node} end`;
+      const controller = vi.fn(async () => ({ key: 'uploaded-key' }));
+
+      expect(matchMarkdownImages(text)).toEqual([
+        {
+          altText: `图 [1]${lineEnding}示意`,
+          url: 'data:image/png;base64,BBBB',
+          fullMatch: node,
+          index: prefix.length
+        }
+      ]);
+      expect(matchDocumentImages(text)[0].replace('uploaded-key')).toBe(
+        node.replace('data:image/png;base64,BBBB', 'uploaded-key')
+      );
+      expect(replaceMarkdownImageAltText(node, 'next')).toBe(
+        '![next](data:image/png;base64,BBBB "caption")'
+      );
+      expect(await parseMarkdownBase64Images(text, { controller })).toBe(
+        `${prefix}${node.replace('data:image/png;base64,BBBB', 'uploaded-key')} end`.replace(
+          /\r\n|\r/g,
+          '\n'
+        )
+      );
+      expect(controller).toHaveBeenCalledTimes(1);
+      expect(controller).toHaveBeenCalledWith(
+        expect.objectContaining({ url: 'data:image/png;base64,BBBB', index: prefix.length })
+      );
+    });
+
+    it.each([
+      ['LF', '\n'],
+      ['CRLF', '\r\n'],
+      ['CR', '\r']
+    ])('%s 换行后的块级标记阻止配对跨越正文块', async (_name, lineEnding) => {
+      for (const block of [
+        '# Heading',
+        '---',
+        '===',
+        '***',
+        '___',
+        '- item',
+        '+ item',
+        '1. item',
+        '1) item',
+        '> quote',
+        `~~~${lineEnding}code${lineEnding}~~~`
+      ]) {
+        const text = `before ![a [b]${lineEnding}  ${block}${lineEnding}c](data:image/png;base64,AAAA) after`;
+        const controller = vi.fn(async () => ({ key: 'uploaded-key' }));
+
+        expect(matchMarkdownImages(text)).toEqual([]);
+        expect(await parseMarkdownBase64Images(text, { controller })).toBe(
+          simpleMarkdownText(text)
+        );
+        expect(controller).not.toHaveBeenCalled();
+      }
+    });
+
+    it('块边界两侧及反斜杠硬换行都不会扩展图片，块内完整图片仍可识别', async () => {
+      for (const lineEnding of ['\n', '\r\n', '\r']) {
+        for (const text of [
+          `# before ![a [b]${lineEnding}c](data:image/png;base64,AAAA) after`,
+          `before ![a [b]\\${lineEnding}${lineEnding}c](data:image/png;base64,AAAA) after`
+        ]) {
+          const controller = vi.fn(async () => ({ key: 'uploaded-key' }));
+          expect(matchMarkdownImages(text)).toEqual([]);
+          expect(await parseMarkdownBase64Images(text, { controller })).toBe(
+            simpleMarkdownText(text)
+          );
+          expect(controller).not.toHaveBeenCalled();
+        }
+
+        const node = '![图 [1]](https://example.com/a.png)';
+        expect(matchMarkdownImages(`# ${node}${lineEnding}after`)).toEqual([
+          { altText: '图 [1]', url: 'https://example.com/a.png', fullMatch: node, index: 2 }
+        ]);
+      }
+    });
+
     it('HTML 标签或前文标题里的反引号不改变图片边界', async () => {
       // HTML 属性值里的 `[` 不参与配对，图片仍在第一个右方括号结束，正文不丢失。
       const html =

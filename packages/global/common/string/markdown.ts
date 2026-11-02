@@ -306,19 +306,9 @@ export const matchDocumentImages = (text = ''): DocumentImageItem[] => {
   return safeMatches;
 };
 
-/** 从 from 开始找下一个空行（只含空白的行）的位置，找不到时返回文本长度。 */
-const findParagraphEnd = (text: string, from: number) => {
-  for (let i = text.indexOf('\n', from); i !== -1; i = text.indexOf('\n', i + 1)) {
-    let cursor = i + 1;
-    while (text[cursor] === ' ' || text[cursor] === '\t' || text[cursor] === '\r') cursor++;
-    if (cursor >= text.length || text[cursor] === '\n') return i;
-  }
-  return text.length;
-};
-
 /**
  * 一次线性扫描，记录每个 `[` 配对的 `]`。CommonMark 允许图片描述里出现成对的方括号
- * （如 `![图 [1]](url)`）；转义的方括号不参与配对，配对也不跨越空行。
+ * （如 `![图 [1]](url)`）；转义的方括号不参与配对，配对也不跨越空行或疑似块级边界。
  *
  * 反引号和可能开始 HTML 标签的 `<`（后跟字母、`/`、`!` 或 `?`）优先级高于方括号配对。
  * 为避免误判，左右方括号之间出现它们时不记录配对，图片描述回到原有的「第一个右方括号」规则。
@@ -327,22 +317,40 @@ const findParagraphEnd = (text: string, from: number) => {
  * 不会让描述越过代码、HTML 或链接地址。
  */
 const pairSquareBrackets = (text: string) => {
+  // 只保守扩展纯文本描述，不尝试完整解析块语法；疑似标题、列表、引用等行不与相邻行配对。
+  const possibleBlockStart = /(?:[#>*_~+=-]|\d{1,9}[.)](?:[ \t\r\n]|$))/y;
+  /** 从原文行首跳过空格和 tab，识别会中断纯文本配对的边界，不修改原文偏移。 */
+  const readLineStart = (from: number) => {
+    let cursor = from;
+    while (text[cursor] === ' ' || text[cursor] === '\t') cursor++;
+    possibleBlockStart.lastIndex = cursor;
+    return {
+      blank: cursor >= text.length || text[cursor] === '\r' || text[cursor] === '\n',
+      block: possibleBlockStart.test(text)
+    };
+  };
+
   const pairs = new Map<number, number>();
   let stack: number[] = [];
-  let paragraphEnd = findParagraphEnd(text, 0);
+  let lineStart = readLineStart(0);
   // 最近一个反引号、HTML 标签开头或嵌套链接地址的位置；左方括号在它之前的配对不记录。
   let lastInlineMarkup = -1;
 
   for (let i = 0; i < text.length; i++) {
-    if (i >= paragraphEnd) {
-      stack = [];
-      paragraphEnd = findParagraphEnd(text, i + 1);
+    const char = text[i];
+    if (char === '\r' || char === '\n') {
+      // CRLF 只算一次换行；单独 CR 和 LF 也是换行，不能靠后续文本清理补救扫描边界。
+      const nextLineStart = i + (char === '\r' && text[i + 1] === '\n' ? 2 : 1);
+      const nextLine = readLineStart(nextLineStart);
+      if (lineStart.block || nextLine.blank || nextLine.block) stack = [];
+      lineStart = nextLine;
+      i = nextLineStart - 1;
       continue;
     }
 
-    const char = text[i];
     if (char === '\\') {
-      i++;
+      // 行尾反斜杠可转义硬换行，但不能跳过下一轮的空行或块边界检查。
+      if (text[i + 1] !== '\r' && text[i + 1] !== '\n') i++;
     } else if (char === '`' || (char === '<' && /[A-Za-z/!?]/.test(text[i + 1] ?? ''))) {
       lastInlineMarkup = i;
     } else if (char === '[') {
