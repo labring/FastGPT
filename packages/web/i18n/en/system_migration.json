@@ -137,7 +137,7 @@
   "migrations.20261025_token_prices_per_million.models": "Update system model prices",
   "migrations.20261025_token_prices_per_million.result": "Migrated {{migratedCount}} system models to pricing. Original prices and team models remain unchanged.",
   "migrations.20261022_initialize_dataset_vector_indexes.name": "Initialize dataset vector indexes",
-  "migrations.20261022_initialize_dataset_vector_indexes.description": "Count existing Dataset vectors in the background and schedule FP16 partial indexes for Datasets with more than 30,000 vectors. After all scanning and scheduling succeeds, verify and remove the legacy global HNSW index online without waiting for all partial indexes to finish building. Exact search remains available while indexes are being built.",
+  "migrations.20261022_initialize_dataset_vector_indexes.description": "Count existing Dataset vectors in the background and schedule FP16 partial indexes for Datasets with more than 30,000 vectors. Migration jobs run without a delay, one at a time globally. After all scanning and scheduling succeeds, verify and remove the legacy global HNSW index online without waiting for all partial indexes to finish building. Exact search remains available while indexes are being built.",
   "migrations.20261022_initialize_dataset_vector_indexes.result": "Counted {{scannedCount}} datasets; {{eligibleCount}} met the index threshold. Index builds continue in the queue.",
   "migrations.20261022_initialize_dataset_vector_indexes.datasets": "Count dataset vectors and schedule index builds",
   "migrations.20261022_initialize_dataset_vector_indexes.legacyIndex": "Remove the legacy global HNSW index"

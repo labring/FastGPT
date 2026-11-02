@@ -28,12 +28,12 @@ const getDatasetVectorIndexQueue = () =>
 
 /**
  * 真实计数超过三万时创建、低于两万时清理可能存在的索引；中间区间和普通小库不额外投递。
- * CREATE / DROP 共用固定 jobId 和首次延迟窗口，维护中的状态不被重复通知覆盖。
+ * CREATE / DROP 共用固定 jobId；日常统计保留首次延迟窗口，迁移可立即激活已投递的延迟任务。
  */
-export const onDatasetVectorCounted = async ({
-  rows,
-  ...scope
-}: PgDatasetIndexScope & { rows: number }) => {
+export const onDatasetVectorCounted = async (
+  { rows, ...scope }: PgDatasetIndexScope & { rows: number },
+  { immediate = false }: { immediate?: boolean } = {}
+) => {
   if (getVectorType() !== 'pg') return;
   const shouldBuild = rows > DATASET_VECTOR_INDEX_MIN_ROWS;
   if (!shouldBuild && rows >= DATASET_VECTOR_INDEX_DROP_ROWS) return;
@@ -44,9 +44,20 @@ export const onDatasetVectorCounted = async ({
   if (!shouldBuild && (!data || data.pgIndex === 'none')) return;
 
   // 先可靠投递再置 pending；进程中断重投安全，状态更新也不能覆盖正在构建/已完成状态。
-  await getDatasetVectorIndexQueue().add('maintain', scope, { jobId: String(scope.datasetId) });
+  const job = await getDatasetVectorIndexQueue().add('maintain', scope, {
+    jobId: String(scope.datasetId)
+  });
   if (shouldBuild && (!data || data.pgIndex === 'none' || data.pgIndex === 'failed')) {
     await updateDatasetPgIndexState({ ...scope, pgIndex: 'pending' });
+  }
+
+  // 先同步 pending 再解除延迟，避免立即消费后把快速失败的 failed 状态覆盖回 pending。
+  // add 的同名去重不会修改旧延迟；同时提升已有任务，已排队/执行的任务继续复用。
+  if (immediate && (await job.getState()) === 'delayed') {
+    await job.promote().catch(async (error) => {
+      // 其他迁移节点或 worker 可能已推进任务；仍在 delayed 才视为本次投递未完成。
+      if ((await job.getState()) === 'delayed') throw error;
+    });
   }
 };
 

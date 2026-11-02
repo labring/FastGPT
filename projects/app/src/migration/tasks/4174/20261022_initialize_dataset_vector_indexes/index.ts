@@ -28,7 +28,7 @@ const CheckpointSchema = z
 /**
  * 固定 _id 上界分批断点续扫：真实统计并可靠投递后才推进 checkpoint，重复批次由 datasetId 去重。
  * 全部扫描与投递成功后再核验并在线删除旧全局 HNSW；扫描失败时保留旧索引，清理失败则从扫描断点重试。
- * 任务成功不表示局部索引已就绪，实际建图仍延迟十分钟、全局串行，不阻塞系统启动。
+ * 迁移投递后立即进入全局串行建图队列；任务成功不表示局部索引已就绪，不阻塞系统启动。
  */
 export const initializeDatasetVectorIndexes = async (context: SystemMigrationContext) => {
   await context.reportProgress({ key: 'datasets', status: SystemMigrationStatusEnum.running });
@@ -83,7 +83,7 @@ export const initializeDatasetVectorIndexes = async (context: SystemMigrationCon
       const rows = await getVectorCount(scope, { refresh: true, notifyDatasetCounted: false });
       // 升级任务必须确认投递成功，不能依赖正常请求路径的 best-effort 异步通知。
       await context.assertActive();
-      await withTimeout(onDatasetVectorCounted({ ...scope, rows }), 60000);
+      await withTimeout(onDatasetVectorCounted({ ...scope, rows }, { immediate: true }), 60000);
       if (rows > DATASET_VECTOR_INDEX_MIN_ROWS) eligible++;
     }
 
