@@ -213,6 +213,9 @@ describe('ensurePgDatasetIndex', () => {
     expect(mocks.query.mock.calls.find(([sql]) => sql.includes('CREATE INDEX'))?.[0]).toContain(
       'USING hnsw ((vector::halfvec(16)) halfvec_ip_ops)'
     );
+    expect(mocks.query.mock.calls.find(([sql]) => sql.includes('CREATE INDEX'))?.[0]).toContain(
+      'WITH (m = 32, ef_construction = 256)'
+    );
     expect(callbacks.onBuilding).toHaveBeenCalledOnce();
     expect(mocks.end).toHaveBeenCalledOnce();
     const connectionError = mocks.on.mock.calls.find(([event]) => event === 'error')![1];

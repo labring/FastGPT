@@ -142,6 +142,7 @@ describe('PgVectorCtrl.embRecall indexed transactions', () => {
     datasetVectorData: [{ datasetId: 'large', rows: 30001, pgIndex: 'ready' as const }]
   };
   beforeEach(() => {
+    global.systemEnv = {} as any;
     poolClient.query.mockReset().mockResolvedValue({ rows: [] });
     poolClient.release.mockReset();
   });
@@ -157,9 +158,20 @@ describe('PgVectorCtrl.embRecall indexed transactions', () => {
     });
     expect(poolClient.query.mock.calls.map(([sql]) => sql)[0]).toBe('BEGIN');
     expect(poolClient.query.mock.calls.at(-1)?.[0]).toBe('COMMIT');
-    expect(poolClient.query.mock.calls[1][1]).toEqual(['100', '30001']);
+    expect(poolClient.query.mock.calls[1][1]).toEqual(['200', '30001']);
     expect(poolClient.query.mock.calls[2][0]).toMatchObject({ query_timeout: 120_000 });
     expect(poolClient.release).toHaveBeenCalledExactlyOnceWith(false);
+  });
+
+  it.each([
+    { configured: 100, limit: 100, expected: 100 },
+    { configured: 400, limit: 100, expected: 400 },
+    { configured: 100, limit: 300, expected: 300 },
+    { configured: 2000, limit: 100, expected: 1000 }
+  ])('bounds configured search width: %j', async ({ configured, limit, expected }) => {
+    global.systemEnv.hnswEfSearch = configured;
+    await new PgVectorCtrl().embRecall({ ...props, limit });
+    expect(poolClient.query.mock.calls[1][1]).toEqual([String(expected), '30001']);
   });
 
   it.each([false, true])(

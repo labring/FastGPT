@@ -345,7 +345,7 @@ const maintainPgDatasetIndex = async ({
     await client.query(
       `CREATE INDEX CONCURRENTLY ${pg.escapeIdentifier(indexName)} ON ${qualifiedTable}
        USING hnsw ((vector::halfvec(${table.dimensions})) halfvec_ip_ops)
-       WITH (m = 16, ef_construction = 128) WHERE ${predicate}`
+       WITH (m = 32, ef_construction = 256) WHERE ${predicate}`
     );
     const built = await readIndex();
     if (!built?.valid || !built.ready)
