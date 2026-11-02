@@ -1,3 +1,4 @@
+import { sortModelSelectorModels } from '@/components/Select/AIModelSelector.utils';
 import type { CreateChannelResponse } from '@fastgpt/global/openapi/core/ai/model/channel/api';
 import { type ChannelInfoType } from '@fastgpt/global/core/ai/model/channel';
 import { Box, type BoxProps, Button, Flex, Input, HStack } from '@chakra-ui/react';
@@ -103,7 +104,7 @@ const EditChannelModal = ({
 
   const models = useWatch({ control, name: 'models' });
   const modelList = useMemo(() => {
-    return availableModels.map((item: any) => {
+    return sortModelSelectorModels(availableModels).map((item) => {
       const provider = getModelProvider(item.provider, i18n.language);
 
       return {

@@ -12,7 +12,8 @@ export type EditableModelData = Omit<AIModelDocumentDataType, 'model'> & {
 const optionalModelConfigFields = ['requestUrl', 'requestAuth', 'testMode', 'pricing'] as const;
 
 /**
- * 生成模型配置的替换式更新表达式，清除缺失的可选字段并保护不可修改的 type 与 scope。
+ * 生成模型配置的替换式更新表达式，清除缺失的可选字段并保护类型、归属和展示顺序。
+ * sortOrder 仅由排序接口维护，配置更新即使显式携带该字段也不修改或清除已有 rank。
  */
 export const getModelConfigUpdate = (
   modelData: EditableModelData
@@ -24,6 +25,7 @@ export const getModelConfigUpdate = (
   delete mutableModelData.teamId;
   delete mutableModelData._id;
   delete mutableModelData.modelId;
+  delete mutableModelData.sortOrder;
 
   if (typeof mutableModelData.model === 'string') {
     const trimmed = mutableModelData.model.trim();
