@@ -250,6 +250,7 @@ const EditForm = ({
             <FormLabel w={['60px', '100px']}>{t('common:core.ai.Model')}</FormLabel>
             <Box flex={'1 0 0'}>
               <SettingLLMModel
+                appId={appId || undefined}
                 bg="myGray.50"
                 defaultData={{
                   modelId:
@@ -611,6 +612,7 @@ const EditForm = ({
         {/* question guide */}
         <Box {...BoxStyles}>
           <QGConfig
+            appId={appId || undefined}
             value={appForm.chatConfig.questionGuide}
             onChange={(e) => {
               setAppForm((state) => ({
@@ -666,6 +668,7 @@ const EditForm = ({
       {isOpenDatasetParams && (
         <DatasetParamsModal
           {...appForm.dataset}
+          appId={appId || undefined}
           maxTokens={tokenLimit}
           showTagFilter={!!feConfigs?.isPlus}
           datasetIds={datasetIds}

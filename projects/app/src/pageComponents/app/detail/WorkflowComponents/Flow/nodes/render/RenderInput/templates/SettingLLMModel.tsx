@@ -4,12 +4,14 @@ import type { SettingAIDataType } from '@fastgpt/global/core/app/type';
 import SettingLLMModel from '@/components/core/ai/SettingLLMModel';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { useContextSelector } from 'use-context-selector';
+import { AppContext } from '@/pageComponents/app/detail/context';
 import { WorkflowActionsContext } from '@/pageComponents/app/detail/WorkflowComponents/context/workflowActionsContext';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { useLocalStorageState } from 'ahooks';
 import { Input_Template_SettingAiModel } from '@fastgpt/global/core/workflow/template/input';
 
 const SelectAiModelRender = ({ inputs = [], nodeId, settingLLMModelProps }: RenderInputProps) => {
+  const appId = useContextSelector(AppContext, (v) => v.appId);
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
   const [, setDefaultModel] = useLocalStorageState<string>('workflow_default_llm_model', {
     defaultValue: ''
@@ -121,6 +123,7 @@ const SelectAiModelRender = ({ inputs = [], nodeId, settingLLMModelProps }: Rend
 
   return (
     <SettingLLMModel
+      appId={appId || undefined}
       defaultData={llmModelData}
       onChange={onChangeModel}
       {...settingLLMModelProps}

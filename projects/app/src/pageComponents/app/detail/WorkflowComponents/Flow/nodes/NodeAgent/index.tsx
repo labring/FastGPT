@@ -819,6 +819,7 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
       {isOpenDatasetParams && (
         <DatasetParamsModal
           {...datasetParamsData}
+          appId={appDetail._id}
           maxTokens={llmMaxQuoteContext}
           onClose={onCloseDatasetParams}
           onSuccess={(e) => {

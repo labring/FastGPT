@@ -24,9 +24,11 @@ import ChatFunctionTip from './Tip';
 // question generator config
 const QGConfig = ({
   value = defaultQGConfig,
+  appId,
   onChange
 }: {
   value?: AppQGConfigType;
+  appId?: string;
   onChange: (e: AppQGConfigType) => void;
 }) => {
   const { t } = useTranslation();
@@ -51,7 +53,9 @@ const QGConfig = ({
         }
       />
 
-      {isOpen && <QGConfigModal value={value} onChange={onChange} onClose={onClose} />}
+      {isOpen && (
+        <QGConfigModal value={value} appId={appId} onChange={onChange} onClose={onClose} />
+      )}
     </>
   );
 };
@@ -67,10 +71,12 @@ const LabelStyles: BoxProps = {
 };
 const QGConfigModal = ({
   value,
+  appId,
   onClose,
   onChange
 }: {
   value: AppQGConfigType;
+  appId?: string;
   onChange: (e: AppQGConfigType) => void;
   onClose: () => void;
 }) => {
@@ -125,6 +131,7 @@ const QGConfigModal = ({
               <Box flex={'1 0 0'}>
                 <AIModelSelector
                   modelType={ModelTypeEnum.llm}
+                  appId={appId}
                   width={'100%'}
                   value={modelId}
                   onChange={(modelId) => {

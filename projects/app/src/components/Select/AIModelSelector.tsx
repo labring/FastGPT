@@ -11,6 +11,7 @@ import { HUGGING_FACE_ICON } from '@fastgpt/global/common/system/constants';
 import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { isEmptyModelValue } from '@fastgpt/global/core/ai/model/reference';
 import type { MyModelItemType } from '@fastgpt/global/openapi/core/ai/model/api';
+import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyTag from '@fastgpt/web/components/common/Tag';
 import type { SelectProps } from '@fastgpt/web/components/common/MySelect';
@@ -26,9 +27,6 @@ import {
   resolveModelSelectorSelection,
   sortModelSelectorModels
 } from './AIModelSelector.utils';
-import { useContextSelector } from 'use-context-selector';
-import { AppContext } from '@/pageComponents/app/detail/context';
-import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import { ModelStatusLabel } from './ModelStatusLabel';
 
 type Props = Omit<SelectProps, 'list'> & {
@@ -39,6 +37,7 @@ type Props = Omit<SelectProps, 'list'> & {
   noOfLines?: ResponsiveValue<number>;
   canBeUnset?: boolean;
   unsetLabel?: string;
+  outLinkAuthData?: OutLinkChatAuthProps;
   /** 只展示具备视觉能力的候选，不要求父组件预加载模型列表。 */
   vision?: boolean;
   excludeHidden?: boolean;
@@ -122,6 +121,7 @@ const AIModelSelector = ({
   canBeUnset = false,
   unsetLabel,
   placeholder,
+  outLinkAuthData,
   vision,
   excludeHidden,
   appId,
@@ -130,9 +130,6 @@ const AIModelSelector = ({
 }: Props) => {
   const { t, i18n } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
-  const contextAppId = useContextSelector(AppContext, (e) => e?.appId);
-  const outLinkAuthData = useChatStore((state) => state.outLinkAuthData);
-  const effectiveAppId = appId ?? (contextAppId || undefined);
 
   const {
     modelList,
@@ -159,7 +156,7 @@ const AIModelSelector = ({
   const currentValue = isEmptyModelValue(props.value) ? '' : String(props.value);
   const detailState = useModelSummary({
     modelId: currentValue,
-    appId: effectiveAppId,
+    appId,
     outLinkAuthData
   });
 
@@ -197,16 +194,16 @@ const AIModelSelector = ({
       return;
     }
     if (!currentValue) return;
-    const key = JSON.stringify([catalogVersion, currentValue, effectiveAppId]);
+    const key = JSON.stringify([catalogVersion, currentValue, appId]);
     if (checkedCatalogRef.current === key) return;
     checkedCatalogRef.current = key;
     const currentModel = modelList.find((model) => model.modelId === currentValue);
     if (currentModel) setFromCatalog(currentModel);
   }, [
+    appId,
     catalogError,
     catalogVersion,
     currentValue,
-    effectiveAppId,
     setFromCatalog,
     isOpen,
     loading,
