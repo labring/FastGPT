@@ -1,3 +1,4 @@
+import { sortModelSelectorModels } from '@/components/Select/AIModelSelector.utils';
 import React, { useCallback, useMemo, useState } from 'react';
 import type { BoxProps } from '@chakra-ui/react';
 import { Box, Flex, Grid, useTheme } from '@chakra-ui/react';
@@ -130,17 +131,14 @@ const ModelDashboard = ({
   );
 
   const modelList = useMemo(() => {
-    const res = availableModels
-      .map((item) => {
-        const provider = getModelProvider(item.provider, i18n.language);
-        return {
-          order: provider.order,
-          avatar: provider.avatar,
-          label: item.model,
-          value: item.model
-        };
-      })
-      .sort((a, b) => a.order - b.order);
+    const res = sortModelSelectorModels(availableModels).map((item) => {
+      const provider = getModelProvider(item.provider, i18n.language);
+      return {
+        avatar: provider.avatar,
+        label: item.model,
+        value: item.model
+      };
+    });
     return [{ label: t('common:All'), value: '' }, ...res];
   }, [availableModels, getModelProvider, i18n.language, t]);
   // Model price map
