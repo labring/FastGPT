@@ -6,13 +6,12 @@ import {
 } from '@fastgpt/global/core/dataset/vectorData/constants';
 import { getVectorType } from '../../../common/vectorDB/constants';
 import {
+  cancelPgDatasetIndexBuild,
   ensurePgDatasetIndex,
   type PgDatasetIndexScope
 } from '../../../common/vectorDB/pg/datasetIndex';
 import { getLogger, LogCategories } from '../../../common/logger';
 import { findDatasetVectorData, updateDatasetPgIndexState } from './entity';
-import { getVectorCount } from '../../../common/vectorDB/controller';
-import { withTimeout } from '@fastgpt/global/common/system/utils';
 
 const logger = getLogger(LogCategories.INFRA.QUEUE);
 
@@ -48,6 +47,11 @@ export const onDatasetVectorCounted = async ({
   await getDatasetVectorIndexQueue().add(operation, scope, {
     jobId: `${scope.datasetId}-${operation}`
   });
+  if (!shouldBuild) {
+    // 清理和创建共用消费槽位，投递方先终止在途创建，清理任务随后回收残留索引。
+    await cancelPgDatasetIndexBuild(scope);
+    return;
+  }
   if (shouldBuild && (!data || data.pgIndex === 'none' || data.pgIndex === 'failed')) {
     // 消费可能先完成，只有读取时的状态快照未变化，才能补写 pending。
     await updateDatasetPgIndexState({
@@ -59,7 +63,7 @@ export const onDatasetVectorCounted = async ({
 };
 
 /**
- * 通过 PG 目录核验后同步状态；创建完成后重新统计并可靠补投清理，覆盖构建中行数下降的边界。
+ * 通过 PG 目录核验后同步状态；创建前检查是否已有清理任务，完成后不额外统计行数。
  * 清理任务回涨后保留有效索引；两种任务均只尝试一次，失败等待下次统计重新投递。
  */
 export const processDatasetVectorIndex = async (
@@ -74,6 +78,8 @@ export const processDatasetVectorIndex = async (
       ...scope,
       allowCreate: operation === 'build',
       onBuilding: async () => {
+        // 清理通知可能早于专用 PG 连接建立；此时尚无会话可终止，由建图前检查挡住旧创建任务。
+        if (await getDatasetVectorIndexQueue().getJob(`${scope.datasetId}-cleanup`)) return false;
         const result = await updateDatasetPgIndexState({ ...scope, pgIndex: 'building' });
         // deleteTime 条件与状态更新原子判断，挡住进入删除流程前已领取的陈旧任务。
         return result.matchedCount > 0;
@@ -95,13 +101,6 @@ export const processDatasetVectorIndex = async (
       }
     });
     await updateDatasetPgIndexState({ ...scope, pgIndex: result.pgIndex });
-    if (operation === 'build' && result.created) {
-      // 不依赖构建期间是否发生过统计通知；刷新 Redis 行数后，用另一个 jobId 保留后续清理意图。
-      const rows = await getVectorCount(scope, { refresh: true, notifyDatasetCounted: false });
-      if (rows < DATASET_VECTOR_INDEX_DROP_ROWS) {
-        await withTimeout(onDatasetVectorCounted({ ...scope, rows }), 60000);
-      }
-    }
     logger.info('PG dataset FP16 index task completed', {
       ...scope,
       operation,

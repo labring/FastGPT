@@ -5,11 +5,12 @@ import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 
 const mocks = vi.hoisted(() => ({
   add: vi.fn(),
+  getJob: vi.fn(),
   setGlobalConcurrency: vi.fn(),
   getWorker: vi.fn(),
   getQueue: vi.fn(),
   ensureIndex: vi.fn(),
-  count: vi.fn(),
+  cancelBuild: vi.fn(),
   provider: 'pg',
   info: vi.fn(),
   error: vi.fn()
@@ -18,9 +19,9 @@ vi.mock('@fastgpt/dal/redis/bullmq/binding', () => ({
   bullMQ: { getQueue: mocks.getQueue, getWorker: mocks.getWorker }
 }));
 vi.mock('@fastgpt/service/common/vectorDB/pg/datasetIndex', () => ({
-  ensurePgDatasetIndex: mocks.ensureIndex
+  ensurePgDatasetIndex: mocks.ensureIndex,
+  cancelPgDatasetIndexBuild: mocks.cancelBuild
 }));
-vi.mock('@fastgpt/service/common/vectorDB/controller', () => ({ getVectorCount: mocks.count }));
 vi.mock('@fastgpt/service/common/vectorDB/constants', async (importOriginal) => ({
   ...(await importOriginal<object>()),
   getVectorType: () => mocks.provider
@@ -56,12 +57,15 @@ beforeEach(() => {
     id: `${scope.datasetId}-build`
   });
   mocks.setGlobalConcurrency.mockReset().mockResolvedValue(undefined);
+  mocks.getJob.mockReset().mockResolvedValue(undefined);
+  mocks.cancelBuild.mockReset().mockResolvedValue(undefined);
   mocks.getWorker.mockReset().mockReturnValue('worker');
-  mocks.getQueue
-    .mockReset()
-    .mockReturnValue({ add: mocks.add, setGlobalConcurrency: mocks.setGlobalConcurrency });
+  mocks.getQueue.mockReset().mockReturnValue({
+    add: mocks.add,
+    getJob: mocks.getJob,
+    setGlobalConcurrency: mocks.setGlobalConcurrency
+  });
   mocks.ensureIndex.mockReset().mockResolvedValue({ pgIndex: 'ready', created: true });
-  mocks.count.mockReset().mockResolvedValue(40000);
   mocks.info.mockClear();
   mocks.error.mockClear();
 });
@@ -93,6 +97,11 @@ describe('onDatasetVectorCounted', () => {
       ['cleanup', scope, { jobId: `${scope.datasetId}-cleanup` }],
       ['cleanup', scope, { jobId: `${scope.datasetId}-cleanup` }]
     ]);
+    expect(mocks.cancelBuild).toHaveBeenCalledTimes(2);
+    expect(mocks.cancelBuild).toHaveBeenLastCalledWith(scope);
+    expect(mocks.cancelBuild.mock.invocationCallOrder[0]).toBeGreaterThan(
+      mocks.add.mock.invocationCallOrder[0]
+    );
     expect((await MongoDataset.findById(scope.datasetId).lean())?.vectorData).toEqual({
       pgIndex: 'ready',
       pgIndexCheckedAt: checked
@@ -118,6 +127,7 @@ describe('onDatasetVectorCounted', () => {
     const dataset = await MongoDataset.findById(scope.datasetId).lean();
     expect(dataset?.vectorData).toEqual({ pgIndex: 'pending', pgIndexCheckedAt: expect.any(Date) });
     expect(dataset?.vectorData).not.toHaveProperty('rows');
+    expect(mocks.cancelBuild).not.toHaveBeenCalled();
   });
 
   it.each(['pending', 'building', 'ready'] as const)(
@@ -167,6 +177,18 @@ describe('onDatasetVectorCounted', () => {
     );
   });
 
+  it('keeps cleanup queued when cancellation fails, and never cancels before reliable delivery', async () => {
+    await createDataset({ vectorData: { pgIndex: 'building', pgIndexCheckedAt: new Date() } });
+    mocks.add.mockRejectedValueOnce(new Error('redis down'));
+    await expect(onDatasetVectorCounted({ ...scope, rows: 0 })).rejects.toThrow('redis down');
+    expect(mocks.cancelBuild).not.toHaveBeenCalled();
+    mocks.cancelBuild.mockRejectedValueOnce(new Error('PG offline'));
+    await expect(onDatasetVectorCounted({ ...scope, rows: 0 })).rejects.toThrow('PG offline');
+    expect(mocks.add).toHaveBeenLastCalledWith('cleanup', scope, {
+      jobId: `${scope.datasetId}-cleanup`
+    });
+  });
+
   it.each([
     ['none', 'ready'],
     ['none', 'removing'],
@@ -211,32 +233,8 @@ describe('onDatasetVectorCounted', () => {
 });
 
 describe('processDatasetVectorIndex', () => {
-  it('rechecks freshly built rows and schedules a separate cleanup even without a deletion notification', async () => {
+  it('synchronizes ready after a build without enqueueing follow-up work', async () => {
     await createDataset();
-    mocks.count.mockResolvedValueOnce(19999);
-    await processDatasetVectorIndex(scope, { operation: 'build' });
-    expect(mocks.count).toHaveBeenCalledExactlyOnceWith(scope, {
-      refresh: true,
-      notifyDatasetCounted: false
-    });
-    expect(mocks.add).toHaveBeenCalledExactlyOnceWith('cleanup', scope, {
-      jobId: `${scope.datasetId}-cleanup`
-    });
-    expect((await MongoDataset.findById(scope.datasetId).lean())?.vectorData?.pgIndex).toBe(
-      'ready'
-    );
-    mocks.ensureIndex.mockResolvedValueOnce({ pgIndex: 'none', created: false });
-    await processDatasetVectorIndex(scope, { operation: 'cleanup' });
-    expect(mocks.ensureIndex).toHaveBeenLastCalledWith(
-      expect.objectContaining({ ...scope, allowCreate: false })
-    );
-    expect(mocks.count).toHaveBeenCalledOnce();
-    expect((await MongoDataset.findById(scope.datasetId).lean())?.vectorData?.pgIndex).toBe('none');
-  });
-
-  it('keeps the index at exactly 20000 rows after a build', async () => {
-    await createDataset();
-    mocks.count.mockResolvedValueOnce(20000);
     await processDatasetVectorIndex(scope, { operation: 'build' });
     expect(mocks.add).not.toHaveBeenCalled();
     expect((await MongoDataset.findById(scope.datasetId).lean())?.vectorData?.pgIndex).toBe(
@@ -244,23 +242,17 @@ describe('processDatasetVectorIndex', () => {
     );
   });
 
-  it.each(['count', 'cleanup-delivery'] as const)(
-    'retains failed state when the post-build %s cannot complete',
-    async (step) => {
-      await createDataset();
-      if (step === 'count') mocks.count.mockRejectedValueOnce(new Error('post-build failed'));
-      else {
-        mocks.count.mockResolvedValueOnce(19999);
-        mocks.add.mockRejectedValueOnce(new Error('post-build failed'));
-      }
-      await expect(processDatasetVectorIndex(scope, { operation: 'build' })).rejects.toThrow(
-        'post-build failed'
-      );
-      expect((await MongoDataset.findById(scope.datasetId).lean())?.vectorData?.pgIndex).toBe(
-        'failed'
-      );
-    }
-  );
+  it('skips building when cleanup was queued before its PG connection existed', async () => {
+    await createDataset();
+    mocks.getJob.mockResolvedValueOnce({ id: `${scope.datasetId}-cleanup` });
+    mocks.ensureIndex.mockImplementationOnce(async ({ onBuilding }) => {
+      expect(await onBuilding()).toBe(false);
+      return { pgIndex: 'none', created: false };
+    });
+    await processDatasetVectorIndex(scope, { operation: 'build' });
+    expect(mocks.getJob).toHaveBeenCalledExactlyOnceWith(`${scope.datasetId}-cleanup`);
+    expect((await MongoDataset.findById(scope.datasetId).lean())?.vectorData?.pgIndex).toBe('none');
+  });
 
   it.each(['soft-deleted', 'removed'])(
     'denies a build if the dataset was %s after the worker claimed its job',

@@ -56,6 +56,32 @@ export const getPgDatasetIndexName = (datasetId: string) => {
   return `${DatasetVectorTableName}_fp16_${ObjectIdSchema.parse(datasetId)}`;
 };
 
+/** 创建会话按知识库隔离命名，供清理通知精确终止；清理会话不使用此名称。 */
+const getBuildApplicationName = (datasetId: string) =>
+  `fastgpt-${getPgDatasetIndexName(datasetId)}`;
+
+/**
+ * 强制结束同库、同账号、指定知识库的专用创建会话，涵盖建图 SQL 之前的准备阶段。
+ * 清理任务须先可靠入队；会话终止后由它核验归属并回收无效索引，不触碰查询池和其他知识库。
+ */
+export const cancelPgDatasetIndexBuild = async ({ teamId, datasetId }: PgDatasetIndexScope) => {
+  const { rows } = await PgClient.query<{ pid: number; terminated: boolean }>(
+    `SELECT pid, pg_terminate_backend(pid) AS terminated
+     FROM pg_stat_activity
+     WHERE datname = current_database() AND usename = current_user
+       AND backend_type = 'client backend' AND application_name = $1
+       AND pid <> pg_backend_pid()`,
+    [getBuildApplicationName(datasetId)]
+  );
+  if (rows.length > 0) {
+    logger.info('PG dataset index build cancellation requested', {
+      teamId,
+      datasetId,
+      backends: rows
+    });
+  }
+};
+
 /**
  * 在线维护知识库 FP16 局部索引：超过三万建图，低于两万移除，原列和中间区间保持不变。
  * 全局 PG 会话锁串行 CREATE / DROP；只操作定义完全匹配的索引，移除前通知业务切换查询路径。
@@ -93,7 +119,8 @@ const maintainPgDatasetIndex = async ({
   // 普通池有 60 秒 query_timeout；建图使用独立会话，不能把连接池查询配置改为无限等待。
   const client = new pg.Client({
     connectionString: PG_ADDRESS,
-    application_name: 'fastgpt-dataset-index',
+    application_name:
+      allowCreate && !removeOnly ? getBuildApplicationName(datasetId) : 'fastgpt-dataset-index',
     connectionTimeoutMillis: 30000,
     query_timeout: 0,
     statement_timeout: 0,

@@ -10,7 +10,8 @@ const mocks = vi.hoisted(() => ({
   warn: vi.fn(),
   options: vi.fn(),
   memory: vi.fn(),
-  error: vi.fn()
+  error: vi.fn(),
+  info: vi.fn()
 }));
 vi.mock('@fastgpt/service/common/vectorDB/pg/indexMemory', () => ({
   configurePgIndexMemory: mocks.memory
@@ -37,12 +38,13 @@ vi.mock('@fastgpt/service/common/vectorDB/pg/controller', () => ({
 }));
 vi.mock('@fastgpt/service/common/logger', async (importOriginal) => ({
   ...(await importOriginal<object>()),
-  getLogger: () => ({ info: vi.fn(), warn: mocks.warn, error: mocks.error })
+  getLogger: () => ({ info: mocks.info, warn: mocks.warn, error: mocks.error })
 }));
 import {
   ensurePgDatasetIndex,
   getPgDatasetIndexName,
-  removePgDatasetIndex
+  removePgDatasetIndex,
+  cancelPgDatasetIndexBuild
 } from '@fastgpt/service/common/vectorDB/pg/datasetIndex';
 
 const scope = { teamId: '507f1f77bcf86cd799439011', datasetId: '507f1f77bcf86cd799439012' };
@@ -119,6 +121,37 @@ describe('getPgDatasetIndexName', () => {
   });
 });
 
+describe('cancelPgDatasetIndexBuild', () => {
+  it.each([
+    { backends: [] },
+    { backends: [{ pid: 42, terminated: true }] },
+    { backends: [{ pid: 42, terminated: false }] }
+  ])('only targets the same database, role and dataset build session: %j', async ({ backends }) => {
+    mocks.monitor.mockResolvedValueOnce({ rows: backends });
+    await cancelPgDatasetIndexBuild(scope);
+    expect(mocks.monitor).toHaveBeenCalledExactlyOnceWith(
+      expect.stringContaining('pg_terminate_backend(pid)'),
+      [`fastgpt-modeldata_fp16_${scope.datasetId}`]
+    );
+    const sql = mocks.monitor.mock.calls[0][0];
+    for (const condition of [
+      'datname = current_database()',
+      'usename = current_user',
+      "backend_type = 'client backend'",
+      'application_name = $1',
+      'pid <> pg_backend_pid()'
+    ])
+      expect(sql).toContain(condition);
+    expect(mocks.info).toHaveBeenCalledTimes(backends.length > 0 ? 1 : 0);
+    expect(mocks.connect).not.toHaveBeenCalled();
+  });
+
+  it('propagates connection or permission failures to the cleanup notifier', async () => {
+    mocks.monitor.mockRejectedValueOnce(new Error('permission denied'));
+    await expect(cancelPgDatasetIndexBuild(scope)).rejects.toThrow('permission denied');
+  });
+});
+
 describe('ensurePgDatasetIndex', () => {
   it.each([false, true])(
     'never builds during cleanup after rows rebound above 30000, with invalid index=%s',
@@ -133,6 +166,9 @@ describe('ensurePgDatasetIndex', () => {
       expect(callbacks.onRemoving).toHaveBeenCalledTimes(exists ? 1 : 0);
       expect(callbacks.onBuilding).not.toHaveBeenCalled();
       expect(mocks.memory).not.toHaveBeenCalled();
+      expect(mocks.options).toHaveBeenCalledWith(
+        expect.objectContaining({ application_name: 'fastgpt-dataset-index' })
+      );
       expect(mocks.query.mock.calls.some(([sql]) => sql.includes('CREATE INDEX'))).toBe(false);
     }
   );
@@ -236,7 +272,11 @@ describe('ensurePgDatasetIndex', () => {
       created: true
     });
     expect(mocks.options).toHaveBeenCalledWith(
-      expect.objectContaining({ query_timeout: 0, statement_timeout: 0 })
+      expect.objectContaining({
+        query_timeout: 0,
+        statement_timeout: 0,
+        application_name: `fastgpt-modeldata_fp16_${scope.datasetId}`
+      })
     );
     expect(mocks.query.mock.calls.find(([sql]) => sql.includes('CREATE INDEX'))?.[0]).toContain(
       'USING hnsw ((vector::halfvec(16)) halfvec_ip_ops)'
