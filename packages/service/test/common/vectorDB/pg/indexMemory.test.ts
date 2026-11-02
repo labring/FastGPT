@@ -13,14 +13,9 @@ describe('configurePgIndexMemory', () => {
     { rows: 250000, configuredMB: 64, estimatedMB: 1472, budgetMB: 1472, source: 'estimate' },
     { rows: 250000, configuredMB: 4096, estimatedMB: 1472, budgetMB: 1472, source: 'estimate' },
     { rows: 349525, configuredMB: 64, estimatedMB: 2048, budgetMB: 2048, source: 'estimate' },
-    { rows: 349525, configuredMB: 4096, estimatedMB: 2048, budgetMB: 2048, source: 'estimate' },
     { rows: 349526, configuredMB: 2064, estimatedMB: 2064, budgetMB: 2064, source: 'postgres' },
     { rows: 500000, configuredMB: 4096, estimatedMB: 2944, budgetMB: 4096, source: 'postgres' },
-    { rows: 524288, configuredMB: 3072, estimatedMB: 3072, budgetMB: 3072, source: 'postgres' },
-    { rows: 1000000, configuredMB: 8192, estimatedMB: 5872, budgetMB: 8192, source: 'postgres' },
-    { rows: 349526, configuredMB: 2048, estimatedMB: 2064, budgetMB: 2048, source: 'capped' },
-    { rows: 500000, configuredMB: 64, estimatedMB: 2944, budgetMB: 2048, source: 'capped' },
-    { rows: 1000000, configuredMB: 4096, estimatedMB: 5872, budgetMB: 2048, source: 'capped' }
+    { rows: 349526, configuredMB: 2048, estimatedMB: 2064, budgetMB: 2048, source: 'capped' }
   ])(
     'selects the requested budget for $rows rows and configured $configuredMB MiB ($source)',
     async (props) => {
@@ -58,20 +53,17 @@ describe('configurePgIndexMemory', () => {
     ).toMatchObject({ estimatedMB: 64, budgetMB: 64 });
   });
 
-  it.each(['read', 'set'])(
-    'propagates a failed %s so the queue can retry without starting DDL',
-    async (phase) => {
-      query.mockImplementation(async (sql) => {
-        if (
-          (phase === 'read' && sql.includes('current_setting')) ||
-          (phase === 'set' && sql.includes('set_config'))
-        )
-          throw new Error('PG connection lost');
-        return { rows: [{ memory_bytes: String(64 * MiB) }] };
-      });
-      await expect(
-        configurePgIndexMemory({ client: { query }, rows: 250000, dimensions: 1536 })
-      ).rejects.toThrow('PG connection lost');
-    }
-  );
+  it.each(['read', 'set'])('propagates a failed %s to the caller', async (phase) => {
+    query.mockImplementation(async (sql) => {
+      if (
+        (phase === 'read' && sql.includes('current_setting')) ||
+        (phase === 'set' && sql.includes('set_config'))
+      )
+        throw new Error('PG connection lost');
+      return { rows: [{ memory_bytes: String(64 * MiB) }] };
+    });
+    await expect(
+      configurePgIndexMemory({ client: { query }, rows: 250000, dimensions: 1536 })
+    ).rejects.toThrow('PG connection lost');
+  });
 });

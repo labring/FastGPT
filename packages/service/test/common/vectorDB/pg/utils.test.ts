@@ -10,20 +10,26 @@ const props = {
 };
 
 describe('buildPgVectorRecallQuery', () => {
-  it.each([20000, 25000, 30000])(
-    'keeps routing a ready index with %i rows through HNSW',
-    (rows) => {
-      const query = buildPgVectorRecallQuery({
-        ...props,
-        datasetIds: ['retained'],
-        datasetVectorData: [{ datasetId: 'retained', rows, pgIndex: 'ready' }]
-      })!;
-      expect(query.usesHnsw).toBe(true);
-      expect(query.maxScanTuples).toBe(rows);
-      expect(query.text).toContain('AS MATERIALIZED');
-      expect(query.text).not.toContain('ANY(');
-    }
-  );
+  it.each([
+    ['ready', 19999, false],
+    ['ready', 20000, true],
+    ['ready', 30000, true],
+    ['none', 50000, false],
+    ['pending', 50000, false],
+    ['building', 50000, false],
+    ['removing', 50000, false],
+    ['failed', 50000, false]
+  ] as const)('routes %s with %i rows through HNSW=%s', (pgIndex, rows, usesHnsw) => {
+    const query = buildPgVectorRecallQuery({
+      ...props,
+      datasetIds: ['retained'],
+      datasetVectorData: [{ datasetId: 'retained', rows, pgIndex }]
+    })!;
+    expect(query.usesHnsw).toBe(usesHnsw);
+    expect(query.maxScanTuples).toBe(usesHnsw ? rows : 0);
+    expect(query.text.includes('AS MATERIALIZED')).toBe(usesHnsw);
+    expect(query.values).toEqual(usesHnsw ? ['[0.1,0.2]', 100] : ['[0.1,0.2]', 100, ['retained']]);
+  });
 
   it('queries ready large datasets individually and all other datasets in one exact group', () => {
     const query = buildPgVectorRecallQuery({
@@ -78,20 +84,6 @@ describe('buildPgVectorRecallQuery', () => {
     expect(query.text).not.toContain('UNION ALL');
     expect(query.text).not.toContain('halfvec');
     expect(query.values.at(-1)).toEqual(['large', 'small', 'pending']);
-  });
-
-  it.each([
-    { rows: 19999, pgIndex: 'ready' as const },
-    { rows: 50000, pgIndex: 'removing' as const }
-  ])('uses exact search for retirement scopes: %j', (metadata) => {
-    const query = buildPgVectorRecallQuery({
-      ...props,
-      datasetIds: ['retiring'],
-      datasetVectorData: [{ datasetId: 'retiring', ...metadata }]
-    })!;
-    expect(query.usesHnsw).toBe(false);
-    expect(query.text).not.toContain('halfvec');
-    expect(query.values.at(-1)).toEqual(['retiring']);
   });
 
   it('applies allow minus deny before candidate selection and binds collection IDs', () => {

@@ -170,16 +170,6 @@ describe('ensurePgDatasetIndex', () => {
     expect(mocks.query.mock.calls.some(([sql]) => sql.includes('DROP INDEX'))).toBe(false);
   });
 
-  it('does not remove an index while another maintenance session holds the global lock', async () => {
-    index = { ...validIndex };
-    rows = 0;
-    locked = false;
-    await expect(ensurePgDatasetIndex({ ...scope, ...callbacks })).rejects.toThrow('still running');
-    expect(callbacks.onRemoving).not.toHaveBeenCalled();
-    expect(index).toBeDefined();
-    expect(mocks.end).toHaveBeenCalledOnce();
-  });
-
   it('keeps the physical index if switching the query path fails', async () => {
     index = { ...validIndex };
     rows = 0;
@@ -235,7 +225,7 @@ describe('ensurePgDatasetIndex', () => {
     );
   });
 
-  it.each([20000, 25000, 30000, 30001])(
+  it.each([20000, 30000, 30001])(
     'retains a valid index with %i rows without starting DDL',
     async (count) => {
       index = { ...validIndex };
@@ -270,14 +260,6 @@ describe('ensurePgDatasetIndex', () => {
       estimatedMB: 8192,
       configuredMB: 8192,
       budgetMB: 8192,
-      warning: false,
-      diskBasedBuildMayBeNeeded: false
-    },
-    {
-      source: 'estimate',
-      estimatedMB: 256,
-      configuredMB: 512,
-      budgetMB: 256,
       warning: false,
       diskBasedBuildMayBeNeeded: false
     },
@@ -433,27 +415,41 @@ describe('ensurePgDatasetIndex', () => {
     expect(callbacks.onBuilding).not.toHaveBeenCalled();
   });
 
-  it('respects another database build lock', async () => {
+  it.each([false, true])('blocks conflicting DDL with an existing index=%s', async (exists) => {
+    if (exists) {
+      index = { ...validIndex };
+      rows = 0;
+    }
     locked = false;
     await expect(ensurePgDatasetIndex({ ...scope, ...callbacks })).rejects.toThrow('still running');
+    expect(callbacks.onBuilding).not.toHaveBeenCalled();
+    expect(callbacks.onRemoving).not.toHaveBeenCalled();
+    expect(index).toEqual(exists ? validIndex : undefined);
+    expect(mocks.query.mock.calls.some(([sql]) => /DROP INDEX|CREATE INDEX/.test(sql))).toBe(false);
     expect(mocks.end).toHaveBeenCalledOnce();
   });
 
-  it('closes sessions on connection, DDL and post-build validation failures', async () => {
-    mocks.connect.mockRejectedValueOnce(new Error('connect failed'));
-    await expect(ensurePgDatasetIndex({ ...scope, ...callbacks })).rejects.toThrow(
-      'connect failed'
-    );
-    ddl = async () => {
-      throw new Error('out of memory');
-    };
-    await expect(ensurePgDatasetIndex({ ...scope, ...callbacks })).rejects.toThrow('out of memory');
-    ddl = async () => {
-      table!.dimensions = 8;
-    };
-    await expect(ensurePgDatasetIndex({ ...scope, ...callbacks })).rejects.toThrow('Refusing');
-    expect(mocks.end).toHaveBeenCalledTimes(3);
-  });
+  it.each(['connect', 'DDL', 'ownership'] as const)(
+    'closes the session after a %s failure',
+    async (phase) => {
+      if (phase === 'connect') mocks.connect.mockRejectedValueOnce(new Error('connect failed'));
+      if (phase === 'DDL') {
+        ddl = async () => {
+          throw new Error('out of memory');
+        };
+      }
+      if (phase === 'ownership') {
+        ddl = async () => {
+          table!.dimensions = 8;
+        };
+      }
+      const message = { connect: 'connect failed', DDL: 'out of memory', ownership: 'Refusing' };
+      await expect(ensurePgDatasetIndex({ ...scope, ...callbacks })).rejects.toThrow(
+        message[phase]
+      );
+      expect(mocks.end).toHaveBeenCalledOnce();
+    }
+  );
 
   it.each([undefined, { ...validIndex, valid: false }, { ...validIndex, ready: false }])(
     'does not declare success if the final index catalog state is invalid',

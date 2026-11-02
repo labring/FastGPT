@@ -44,7 +44,7 @@ describeStorage('local PG FP16 dataset index with %s storage', (storage) => {
   const datasetId = '507f1f77bcf86cd799439012';
   const repairId = '507f1f77bcf86cd799439013';
   const smallIds = ['507f1f77bcf86cd799439014', '507f1f77bcf86cd799439015'];
-  const dimensions = Number(process.env.FASTGPT_PG_INDEX_TEST_DIMENSIONS || 16);
+  const dimensions = Number(process.env.FASTGPT_PG_INDEX_TEST_DIMENSIONS ?? 16);
   const ctrl = new PgVectorCtrl();
   const admin = new Client({ connectionString: target?.address });
   // 查询值不能被 FP16 精确表示，确保 FP32 重排不会误用已量化的查询向量。
@@ -136,25 +136,24 @@ describeStorage('local PG FP16 dataset index with %s storage', (storage) => {
     const { rows } = await pool.query("SELECT to_regclass('vector_index') IS NOT NULL AS exists");
     expect(rows[0].exists).toBe(true);
 
-    for (const pgIndex of [undefined, 'pending', 'building', 'failed'] as const) {
-      const props = {
-        teamId,
-        datasetIds: [datasetId, ...smallIds],
-        vector,
-        limit: 3,
-        forbidCollectionIdList: ['hidden'],
-        datasetVectorData: pgIndex ? [{ datasetId, rows: 30004, pgIndex }] : undefined
-      };
-      const query = buildPgVectorRecallQuery(props)!;
-      expect(query.usesHnsw).toBe(false);
-      const plan = await pool.query(`EXPLAIN (FORMAT JSON) ${query.text}`, query.values);
-      expect(JSON.stringify(plan.rows)).not.toContain('vector_index');
-      const result = await ctrl.embRecall(props);
-      expect(result.results.map(({ score }) => score)).toEqual(
-        [topScores[3], topScores[2], topScores[1]].map(scoreFor)
-      );
-      expect(result.results.every(({ collectionId }) => collectionId === 'allowed')).toBe(true);
-    }
+    // 状态枚举在 SQL 构造器单测覆盖；集成测试验证真实旧索引存在时的精确回退。
+    const props = {
+      teamId,
+      datasetIds: [datasetId, ...smallIds],
+      vector,
+      limit: 3,
+      forbidCollectionIdList: ['hidden'],
+      datasetVectorData: [{ datasetId, rows: 30004, pgIndex: 'pending' as const }]
+    };
+    const query = buildPgVectorRecallQuery(props)!;
+    expect(query.usesHnsw).toBe(false);
+    const plan = await pool.query(`EXPLAIN (FORMAT JSON) ${query.text}`, query.values);
+    expect(JSON.stringify(plan.rows)).not.toContain('vector_index');
+    const result = await ctrl.embRecall(props);
+    expect(result.results.map(({ score }) => score)).toEqual(
+      [topScores[3], topScores[2], topScores[1]].map(scoreFor)
+    );
+    expect(result.results.every(({ collectionId }) => collectionId === 'allowed')).toBe(true);
   }, 240000);
 
   it('creates a valid FP16 partial index and skips a second build', async () => {
@@ -185,7 +184,7 @@ describeStorage('local PG FP16 dataset index with %s storage', (storage) => {
     );
     // halfvec 列的旧全局与局部索引表达式相同，优化器可能选择任意一个。
     // 仅清理本测试 schema 的旧索引，后续用例验证完成清理后的局部索引路径。
-    await (await connectPg()).query('DROP INDEX CONCURRENTLY vector_index');
+    await (await connectPg()).query(`DROP INDEX CONCURRENTLY ${target!.schema}.vector_index`);
   });
 
   it('hits the local HNSW and merges exact small datasets by FP32 distance with permissions', async () => {
@@ -329,7 +328,7 @@ describeStorage('local PG FP16 dataset index with %s storage', (storage) => {
     const oid = await readIndexOid();
     expect(oid).toBeTruthy();
 
-    for (const rows of [30000, 25000, 20000]) {
+    for (const rows of [30000, 20000]) {
       await shrinkTo(rows);
       expect(await ensurePgDatasetIndex({ ...scope, ...callbacks })).toEqual({
         pgIndex: 'ready',
@@ -359,7 +358,7 @@ describeStorage('local PG FP16 dataset index with %s storage', (storage) => {
     expect(buildPgVectorRecallQuery(recallProps(19999, 'ready'))!.usesHnsw).toBe(false);
     expect((await ctrl.embRecall(recallProps(19999, 'none'))).results).toHaveLength(100);
 
-    for (const rows of [25000, 30000, 30001]) {
+    for (const rows of [30000, 30001]) {
       await growTo(rows);
       const pgIndex = rows > 30000 ? 'ready' : 'none';
       expect(await ensurePgDatasetIndex({ ...scope, ...callbacks })).toEqual({

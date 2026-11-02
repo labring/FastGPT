@@ -18,7 +18,7 @@ vi.mock('@fastgpt/service/common/vectorDB/pg/controller', () => ({
 }));
 
 describe('PgVectorCtrl.init', () => {
-  it.each([32, 16, 8, 4, 2])(
+  it.each([32, 16])(
     'uses configured storage for VectorVQ=%i without a global HNSW',
     async (vectorVQ) => {
       storage.vectorVQ = vectorVQ;

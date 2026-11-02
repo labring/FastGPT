@@ -320,84 +320,6 @@ describe('VectorDB Controller', () => {
     });
   });
 
-  describe('dataset count hooks', () => {
-    it('notifies fresh dataset counts once, excluding cache hits, team and collection totals', async () => {
-      const onDatasetCounted = vi.fn(async () => {});
-      await initVectorStore({ onDatasetCounted });
-      await getVectorCount({ teamId: 'team', datasetId: 'dataset' });
-      await vi.waitFor(() =>
-        expect(onDatasetCounted).toHaveBeenCalledExactlyOnceWith({
-          teamId: 'team',
-          datasetId: 'dataset',
-          rows: 50
-        })
-      );
-      mockRedisStringGet.mockResolvedValue('50');
-      await getVectorCount({ teamId: 'team', datasetId: 'dataset' });
-      await getVectorCountByTeamId('team');
-      await getVectorCount({ teamId: 'team', datasetId: 'dataset', collectionId: 'file' });
-      expect(onDatasetCounted).toHaveBeenCalledOnce();
-    });
-
-    it('allows migration scans to refresh a cache hit without sending unfenced notifications', async () => {
-      const onDatasetCounted = vi.fn(async () => {});
-      await initVectorStore({ onDatasetCounted });
-      mockRedisStringGet.mockResolvedValue('10');
-      await expect(
-        getVectorCount(
-          { teamId: 'team', datasetId: 'dataset' },
-          {
-            refresh: true,
-            notifyDatasetCounted: false
-          }
-        )
-      ).resolves.toBe(50);
-      expect(mockGetVectorCount).toHaveBeenCalledOnce();
-      expect(onDatasetCounted).not.toHaveBeenCalled();
-    });
-
-    it('coalesces concurrent cache misses into one database count and recovers after failure', async () => {
-      let resolveCount!: (count: number) => void;
-      mockGetVectorCount.mockImplementationOnce(
-        () =>
-          new Promise<number>((resolve) => {
-            resolveCount = resolve;
-          })
-      );
-      const scope = { teamId: 'team', datasetId: 'dataset' };
-      const results = Array.from({ length: 20 }, () => getVectorCount(scope));
-      await vi.waitFor(() => expect(mockGetVectorCount).toHaveBeenCalledOnce());
-      resolveCount(40);
-      expect(await Promise.all(results)).toEqual(Array(20).fill(40));
-      mockGetVectorCount.mockRejectedValueOnce(new Error('database down'));
-      await expect(getVectorCount(scope)).rejects.toThrow('database down');
-      await expect(getVectorCount(scope)).resolves.toBe(50);
-    });
-
-    it('keeps successful counts when the queue hook rejects or times out', async () => {
-      const onDatasetCounted = vi.fn(async () => {
-        throw new Error('MQ unavailable');
-      });
-      await initVectorStore({ onDatasetCounted });
-      await expect(getVectorCount({ teamId: 'team', datasetId: 'dataset' })).resolves.toBe(50);
-      await vi.waitFor(() =>
-        expect(mockLoggerWarn).toHaveBeenCalledWith(
-          'Dataset vector count notification failed',
-          expect.objectContaining({ datasetId: 'dataset' })
-        )
-      );
-      vi.useFakeTimers();
-      onDatasetCounted.mockImplementation(() => new Promise(() => {}));
-      mockLoggerWarn.mockClear();
-      await expect(getVectorCount({ teamId: 'team', datasetId: 'dataset' })).resolves.toBe(50);
-      await vi.advanceTimersByTimeAsync(3000);
-      expect(mockLoggerWarn).toHaveBeenCalledWith(
-        'Dataset vector count notification failed',
-        expect.anything()
-      );
-    });
-  });
-
   describe('getVectorCountByTeamId', () => {
     it('should return cached count if available', async () => {
       mockRedisStringGet.mockResolvedValue('150');
@@ -485,6 +407,82 @@ describe('VectorDB Controller', () => {
   });
 
   describe('getVectorCount', () => {
+    it('notifies fresh dataset counts once, excluding cache hits, team and collection totals', async () => {
+      const onDatasetCounted = vi.fn(async () => {});
+      await initVectorStore({ onDatasetCounted });
+      await getVectorCount({ teamId: 'team', datasetId: 'dataset' });
+      await vi.waitFor(() =>
+        expect(onDatasetCounted).toHaveBeenCalledExactlyOnceWith({
+          teamId: 'team',
+          datasetId: 'dataset',
+          rows: 50
+        })
+      );
+      mockRedisStringGet.mockResolvedValue('50');
+      await getVectorCount({ teamId: 'team', datasetId: 'dataset' });
+      await getVectorCountByTeamId('team');
+      await getVectorCount({ teamId: 'team', datasetId: 'dataset', collectionId: 'file' });
+      expect(onDatasetCounted).toHaveBeenCalledOnce();
+    });
+
+    it('allows migration scans to refresh a cache hit without sending unfenced notifications', async () => {
+      const onDatasetCounted = vi.fn(async () => {});
+      await initVectorStore({ onDatasetCounted });
+      mockRedisStringGet.mockResolvedValue('10');
+      await expect(
+        getVectorCount(
+          { teamId: 'team', datasetId: 'dataset' },
+          {
+            refresh: true,
+            notifyDatasetCounted: false
+          }
+        )
+      ).resolves.toBe(50);
+      expect(mockGetVectorCount).toHaveBeenCalledOnce();
+      expect(onDatasetCounted).not.toHaveBeenCalled();
+    });
+
+    it('coalesces concurrent cache misses into one database count and recovers after failure', async () => {
+      let resolveCount!: (count: number) => void;
+      mockGetVectorCount.mockImplementationOnce(
+        () =>
+          new Promise<number>((resolve) => {
+            resolveCount = resolve;
+          })
+      );
+      const scope = { teamId: 'team', datasetId: 'dataset' };
+      const results = Array.from({ length: 20 }, () => getVectorCount(scope));
+      await vi.waitFor(() => expect(mockGetVectorCount).toHaveBeenCalledOnce());
+      resolveCount(40);
+      expect(await Promise.all(results)).toEqual(Array(20).fill(40));
+      mockGetVectorCount.mockRejectedValueOnce(new Error('database down'));
+      await expect(getVectorCount(scope)).rejects.toThrow('database down');
+      await expect(getVectorCount(scope)).resolves.toBe(50);
+    });
+
+    it('keeps successful counts when the queue hook rejects or times out', async () => {
+      const onDatasetCounted = vi.fn(async () => {
+        throw new Error('MQ unavailable');
+      });
+      await initVectorStore({ onDatasetCounted });
+      await expect(getVectorCount({ teamId: 'team', datasetId: 'dataset' })).resolves.toBe(50);
+      await vi.waitFor(() =>
+        expect(mockLoggerWarn).toHaveBeenCalledWith(
+          'Dataset vector count notification failed',
+          expect.objectContaining({ datasetId: 'dataset' })
+        )
+      );
+      vi.useFakeTimers();
+      onDatasetCounted.mockImplementation(() => new Promise(() => {}));
+      mockLoggerWarn.mockClear();
+      await expect(getVectorCount({ teamId: 'team', datasetId: 'dataset' })).resolves.toBe(50);
+      await vi.advanceTimersByTimeAsync(3000);
+      expect(mockLoggerWarn).toHaveBeenCalledWith(
+        'Dataset vector count notification failed',
+        expect.anything()
+      );
+    });
+
     it.each(['77', '0'])(
       'returns a cached dataset count (%s) without querying vectors',
       async (cached) => {
@@ -504,6 +502,7 @@ describe('VectorDB Controller', () => {
       mockGetVectorCount.mockResolvedValueOnce(12);
       const scope = { teamId: 'team_1', datasetId: 'dataset_1' };
       await expect(getVectorCount(scope)).resolves.toBe(12);
+      expect(mockGetVectorCount).toHaveBeenCalledExactlyOnceWith(scope);
       expect(mockRedisStringSet).toHaveBeenCalledWith({
         key: 'cache:dataset_vector_count:team_1:dataset_1',
         value: '12',
@@ -531,18 +530,6 @@ describe('VectorDB Controller', () => {
       await expect(getVectorCount({ teamId: 'team_1' })).resolves.toBe(66);
       expect(mockRedisStringGet).toHaveBeenCalledWith('cache:team_vector_count:team_1');
       expect(mockGetVectorCount).not.toHaveBeenCalled();
-    });
-
-    it('should call Vector.getVectorCount', async () => {
-      mockGetVectorCount.mockResolvedValue(50);
-
-      const result = await getVectorCount({ teamId: 'team_1', datasetId: 'dataset_1' });
-
-      expect(mockGetVectorCount).toHaveBeenCalledWith({
-        teamId: 'team_1',
-        datasetId: 'dataset_1'
-      });
-      expect(result).toBe(50);
     });
   });
 

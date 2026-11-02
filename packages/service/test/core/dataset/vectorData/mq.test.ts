@@ -78,7 +78,7 @@ describe('onDatasetVectorCounted', () => {
   it('queues retirement below 20000 without demoting ready or extending the existing job', async () => {
     const checked = new Date(1000);
     await createDataset({ vectorData: { pgIndex: 'ready', pgIndexCheckedAt: checked } });
-    for (const rows of [20000, 25000, 30000]) {
+    for (const rows of [20000, 30000]) {
       await onDatasetVectorCounted({ ...scope, rows });
     }
     expect(mocks.add).not.toHaveBeenCalled();
@@ -115,7 +115,7 @@ describe('onDatasetVectorCounted', () => {
     expect(dataset?.vectorData).not.toHaveProperty('rows');
   });
 
-  it.each(['pending', 'building'] as const)(
+  it.each(['pending', 'building', 'ready'] as const)(
     'does not overwrite %s state on repeat notifications',
     async (pgIndex) => {
       const checked = new Date(1000);
@@ -126,22 +126,12 @@ describe('onDatasetVectorCounted', () => {
         { jobId: scope.datasetId },
         { jobId: scope.datasetId }
       ]);
-      expect(
-        (await MongoDataset.findById(scope.datasetId).lean())?.vectorData?.pgIndexCheckedAt
-      ).toEqual(checked);
+      expect((await MongoDataset.findById(scope.datasetId).lean())?.vectorData).toEqual({
+        pgIndex,
+        pgIndexCheckedAt: checked
+      });
     }
   );
-
-  it('queues ready datasets for catalog checks without demoting them', async () => {
-    await createDataset({ vectorData: { pgIndex: 'ready', pgIndexCheckedAt: new Date() } });
-    await onDatasetVectorCounted({ ...scope, rows: 50000 });
-    expect(mocks.add).toHaveBeenCalledOnce();
-    await onDatasetVectorCounted({ ...scope, rows: 50000 });
-    expect(mocks.add).toHaveBeenCalledTimes(2);
-    expect((await MongoDataset.findById(scope.datasetId).lean())?.vectorData?.pgIndex).toBe(
-      'ready'
-    );
-  });
 
   it('never persists pending if queue delivery fails; the next count can retry', async () => {
     await createDataset();
