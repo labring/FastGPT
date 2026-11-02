@@ -7,6 +7,7 @@ import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import LabelAndFormRender from '@/components/core/app/formRender/LabelAndForm';
 import { variableInputTypeToInputType } from '@/components/core/app/formRender/utils';
+import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import type { ChatBoxInputFormType } from '../type';
 import { ChatBoxContentMaxWidth, ChatTypeEnum } from '../constants';
 
@@ -109,6 +110,8 @@ export const ChatVariableFields = ({
   variablesForm: UseFormReturn<any>;
   isUnChange: boolean;
 }) => {
+  const outLinkAuthData = useChatStore((state) => state.outLinkAuthData);
+
   return (
     <Flex
       flexDirection={'column'}
@@ -128,6 +131,7 @@ export const ChatVariableFields = ({
           description={item.description}
           inputType={variableInputTypeToInputType(item.type, item.valueType)}
           form={variablesForm}
+          outLinkAuthData={outLinkAuthData}
           bg={'white'}
         />
       ))}
