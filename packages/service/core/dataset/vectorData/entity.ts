@@ -8,15 +8,17 @@ export const findDatasetVectorData = (scope: { teamId: string; datasetId: string
     { vectorData: 1 }
   ).lean();
 
-/** 更新内部索引状态；pending 通知不得覆盖已经开始维护或已经 ready 的状态。 */
+/** 更新内部索引状态；pending 必须匹配投递前的时间戳，防止覆盖立即消费后产生的新状态。 */
 export const updateDatasetPgIndexState = ({
   teamId,
   datasetId,
-  pgIndex
+  pgIndex,
+  expectedCheckedAt
 }: {
   teamId: string;
   datasetId: string;
   pgIndex: DatasetVectorData['pgIndex'];
+  expectedCheckedAt?: Date;
 }) =>
   MongoDataset.updateOne(
     {
@@ -24,7 +26,10 @@ export const updateDatasetPgIndexState = ({
       teamId,
       deleteTime: null,
       ...(pgIndex === 'pending'
-        ? { 'vectorData.pgIndex': { $nin: ['ready', 'building', 'removing', 'pending'] } }
+        ? {
+            'vectorData.pgIndex': { $nin: ['ready', 'building', 'removing', 'pending'] },
+            'vectorData.pgIndexCheckedAt': expectedCheckedAt ?? null
+          }
         : {})
     },
     { $set: { vectorData: { pgIndex, pgIndexCheckedAt: new Date() } } }

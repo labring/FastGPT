@@ -92,8 +92,8 @@ describe('initializeDatasetVectorIndexes', () => {
       ]
     ]);
     expect(mocks.counted.mock.calls).toEqual([
-      [{ teamId, datasetId: id(1), rows: 30000 }, { immediate: true }],
-      [{ teamId, datasetId: id(2), rows: 30001 }, { immediate: true }]
+      [{ teamId, datasetId: id(1), rows: 30000 }],
+      [{ teamId, datasetId: id(2), rows: 30001 }]
     ]);
     expect(mocks.removeLegacy.mock.invocationCallOrder[0]).toBeGreaterThan(
       mocks.counted.mock.invocationCallOrder.at(-1)!

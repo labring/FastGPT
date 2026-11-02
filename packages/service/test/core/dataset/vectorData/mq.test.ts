@@ -57,7 +57,7 @@ beforeEach(() => {
     getState: mocks.getState,
     promote: mocks.promote
   });
-  mocks.getState.mockReset().mockResolvedValue('delayed');
+  mocks.getState.mockReset().mockResolvedValue('waiting');
   mocks.promote.mockReset().mockResolvedValue(undefined);
   mocks.setGlobalConcurrency.mockReset().mockResolvedValue(undefined);
   mocks.getWorker.mockReset().mockReturnValue('worker');
@@ -100,10 +100,10 @@ describe('onDatasetVectorCounted', () => {
       pgIndex: 'ready',
       pgIndexCheckedAt: checked
     });
-    expect(mocks.getQueue.mock.calls[0][1].defaultJobOptions.delay).toBe(600000);
+    expect(mocks.getQueue.mock.calls[0][1].defaultJobOptions).not.toHaveProperty('delay');
   });
 
-  it('enqueues strictly above 30000 with a fixed dataset ID and 10 minute delay', async () => {
+  it('enqueues strictly above 30000 immediately with a fixed dataset ID', async () => {
     await createDataset();
     await onDatasetVectorCounted({ ...scope, rows: 30000 });
     expect(mocks.add).not.toHaveBeenCalled();
@@ -112,54 +112,38 @@ describe('onDatasetVectorCounted', () => {
       jobId: scope.datasetId
     });
     expect(mocks.getQueue.mock.calls[0][1].defaultJobOptions).toMatchObject({
-      delay: 600000,
       attempts: 1,
       removeOnComplete: true,
       removeOnFail: true
     });
+    expect(mocks.getQueue.mock.calls[0][1].defaultJobOptions).not.toHaveProperty('delay');
     expect(mocks.getQueue.mock.calls[0][1].defaultJobOptions).not.toHaveProperty('backoff');
     const dataset = await MongoDataset.findById(scope.datasetId).lean();
     expect(dataset?.vectorData).toEqual({ pgIndex: 'pending', pgIndexCheckedAt: expect.any(Date) });
     expect(dataset?.vectorData).not.toHaveProperty('rows');
-    expect(mocks.getState).not.toHaveBeenCalled();
+    expect(mocks.getState).toHaveBeenCalledOnce();
     expect(mocks.promote).not.toHaveBeenCalled();
   });
 
-  it.each(['new', 'already-delayed'] as const)(
-    'immediately promotes a %s migration job after synchronizing pending',
-    async (state) => {
-      await createDataset(
-        state === 'already-delayed'
-          ? { vectorData: { pgIndex: 'pending', pgIndexCheckedAt: new Date() } }
-          : {}
-      );
-      mocks.promote.mockImplementationOnce(async () => {
-        expect((await MongoDataset.findById(scope.datasetId).lean())?.vectorData?.pgIndex).toBe(
-          'pending'
-        );
-        // 立即消费失败后不能被投递方再次覆盖回 pending。
-        await MongoDataset.updateOne(
-          { _id: scope.datasetId },
-          { $set: { vectorData: { pgIndex: 'failed', pgIndexCheckedAt: new Date() } } }
-        );
-      });
-      await onDatasetVectorCounted({ ...scope, rows: 40000 }, { immediate: true });
-      expect(mocks.add).toHaveBeenCalledExactlyOnceWith('maintain', scope, {
-        jobId: scope.datasetId
-      });
-      expect(mocks.promote).toHaveBeenCalledOnce();
-      expect((await MongoDataset.findById(scope.datasetId).lean())?.vectorData?.pgIndex).toBe(
-        'failed'
-      );
-    }
-  );
+  it('immediately promotes a task left delayed by an older node', async () => {
+    await createDataset({ vectorData: { pgIndex: 'pending', pgIndexCheckedAt: new Date() } });
+    mocks.getState.mockResolvedValueOnce('delayed');
+    await onDatasetVectorCounted({ ...scope, rows: 40000 });
+    expect(mocks.add).toHaveBeenCalledExactlyOnceWith('maintain', scope, {
+      jobId: scope.datasetId
+    });
+    expect(mocks.promote).toHaveBeenCalledOnce();
+    expect((await MongoDataset.findById(scope.datasetId).lean())?.vectorData?.pgIndex).toBe(
+      'pending'
+    );
+  });
 
   it.each(['waiting', 'active', 'unknown'])(
-    'reuses a migration job already in %s without promoting or recreating it',
+    'reuses a job already in %s without promoting or recreating it',
     async (state) => {
       await createDataset();
       mocks.getState.mockResolvedValueOnce(state);
-      await onDatasetVectorCounted({ ...scope, rows: 40000 }, { immediate: true });
+      await onDatasetVectorCounted({ ...scope, rows: 40000 });
       expect(mocks.add).toHaveBeenCalledOnce();
       expect(mocks.promote).not.toHaveBeenCalled();
     }
@@ -173,7 +157,7 @@ describe('onDatasetVectorCounted', () => {
       mocks.getState
         .mockResolvedValueOnce('delayed')
         .mockResolvedValueOnce(delayed ? 'delayed' : 'active');
-      const notification = onDatasetVectorCounted({ ...scope, rows: 40000 }, { immediate: true });
+      const notification = onDatasetVectorCounted({ ...scope, rows: 40000 });
       if (delayed) {
         await expect(notification).rejects.toThrow('promotion failed');
       } else {
@@ -212,19 +196,29 @@ describe('onDatasetVectorCounted', () => {
     );
   });
 
-  it.each(['ready', 'removing'] as const)(
-    'does not overwrite %s when an older count notification finishes after the worker',
-    async (pgIndex) => {
-      await createDataset();
+  it.each([
+    ['none', 'ready'],
+    ['none', 'removing'],
+    ['none', 'failed'],
+    ['failed', 'failed']
+  ] as const)(
+    'preserves the worker outcome after %s -> %s while a notification is still enqueueing',
+    async (before, pgIndex) => {
+      await createDataset(
+        before === 'failed'
+          ? { vectorData: { pgIndex: 'failed', pgIndexCheckedAt: new Date(1000) } }
+          : {}
+      );
       mocks.add.mockImplementationOnce(async () => {
         await MongoDataset.updateOne(
           { _id: scope.datasetId },
           {
             $set: {
-              vectorData: { pgIndex, pgIndexCheckedAt: new Date() }
+              vectorData: { pgIndex, pgIndexCheckedAt: new Date(2000) }
             }
           }
         );
+        return { id: scope.datasetId, getState: mocks.getState, promote: mocks.promote };
       });
       await onDatasetVectorCounted({ ...scope, rows: 40000 });
       expect((await MongoDataset.findById(scope.datasetId).lean())?.vectorData?.pgIndex).toBe(

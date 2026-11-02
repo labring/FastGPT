@@ -13,13 +13,11 @@ import { getLogger, LogCategories } from '../../../common/logger';
 import { findDatasetVectorData, updateDatasetPgIndexState } from './entity';
 
 const logger = getLogger(LogCategories.INFRA.QUEUE);
-const INDEX_MAINTENANCE_DELAY_MS = 10 * 60 * 1000;
 
 /** 固定 jobId 在 delayed/waiting/active 期间去重；失败移除任务，等待下次真实统计重新投递。 */
 const getDatasetVectorIndexQueue = () =>
   bullMQ.getQueue<PgDatasetIndexScope>(QueueNames.datasetVectorIndex, {
     defaultJobOptions: {
-      delay: INDEX_MAINTENANCE_DELAY_MS,
       attempts: 1,
       removeOnComplete: true,
       removeOnFail: true
@@ -28,12 +26,12 @@ const getDatasetVectorIndexQueue = () =>
 
 /**
  * 真实计数超过三万时创建、低于两万时清理可能存在的索引；中间区间和普通小库不额外投递。
- * CREATE / DROP 共用固定 jobId；日常统计保留首次延迟窗口，迁移可立即激活已投递的延迟任务。
+ * CREATE / DROP 共用固定 jobId，满足条件后立即排队；重复通知复用尚未完成的任务。
  */
-export const onDatasetVectorCounted = async (
-  { rows, ...scope }: PgDatasetIndexScope & { rows: number },
-  { immediate = false }: { immediate?: boolean } = {}
-) => {
+export const onDatasetVectorCounted = async ({
+  rows,
+  ...scope
+}: PgDatasetIndexScope & { rows: number }) => {
   if (getVectorType() !== 'pg') return;
   const shouldBuild = rows > DATASET_VECTOR_INDEX_MIN_ROWS;
   if (!shouldBuild && rows >= DATASET_VECTOR_INDEX_DROP_ROWS) return;
@@ -48,14 +46,18 @@ export const onDatasetVectorCounted = async (
     jobId: String(scope.datasetId)
   });
   if (shouldBuild && (!data || data.pgIndex === 'none' || data.pgIndex === 'failed')) {
-    await updateDatasetPgIndexState({ ...scope, pgIndex: 'pending' });
+    // 消费可能先完成，只有读取时的状态快照未变化，才能补写 pending。
+    await updateDatasetPgIndexState({
+      ...scope,
+      pgIndex: 'pending',
+      expectedCheckedAt: data?.pgIndexCheckedAt
+    });
   }
 
-  // 先同步 pending 再解除延迟，避免立即消费后把快速失败的 failed 状态覆盖回 pending。
-  // add 的同名去重不会修改旧延迟；同时提升已有任务，已排队/执行的任务继续复用。
-  if (immediate && (await job.getState()) === 'delayed') {
+  // 兼容旧节点已投递的延迟任务；新任务默认立即排队，已排队/执行的任务继续复用。
+  if ((await job.getState()) === 'delayed') {
     await job.promote().catch(async (error) => {
-      // 其他迁移节点或 worker 可能已推进任务；仍在 delayed 才视为本次投递未完成。
+      // 其他通知或 worker 可能已推进任务；仍在 delayed 才视为本次投递未完成。
       if ((await job.getState()) === 'delayed') throw error;
     });
   }

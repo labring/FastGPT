@@ -83,7 +83,7 @@ export const initializeDatasetVectorIndexes = async (context: SystemMigrationCon
       const rows = await getVectorCount(scope, { refresh: true, notifyDatasetCounted: false });
       // 升级任务必须确认投递成功，不能依赖正常请求路径的 best-effort 异步通知。
       await context.assertActive();
-      await withTimeout(onDatasetVectorCounted({ ...scope, rows }, { immediate: true }), 60000);
+      await withTimeout(onDatasetVectorCounted({ ...scope, rows }), 60000);
       if (rows > DATASET_VECTOR_INDEX_MIN_ROWS) eligible++;
     }
 
