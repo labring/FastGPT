@@ -1,3 +1,4 @@
+import { sortModelSelectorModels } from '@/components/Select/AIModelSelector.utils';
 import { ModelStatusLabel } from '@/components/Select/ModelStatusLabel';
 import MySlider from '@/components/Slider';
 import { AppContext } from '@/pageComponents/app/detail/context';
@@ -65,7 +66,7 @@ const TTSSelect = ({
         value: TTSTypeEnum.web,
         children: []
       },
-      ...ttsModels.map((model) => {
+      ...sortModelSelectorModels(ttsModels).map((model) => {
         const providerData = getModelProvider(model.provider, i18n.language);
         const modelName = t(model.name as any);
         return {

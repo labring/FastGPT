@@ -36,7 +36,10 @@ const publishInstalledModels = async ({ language = 'en' }: { language?: string }
       JSON.stringify({
         schemaVersion: 1,
         // 模型顺序属于目录内容；安装实例变化后必须触发客户端缓存更新。
-        models: _systemActiveModelList.map(desensitizeModel),
+        // 管理列表 rank 不参与运行目录版本，避免纯展示排序触发客户端目录缓存失效。
+        models: _systemActiveModelList.map(({ sortOrder: _sortOrder, ...model }) =>
+          desensitizeModel(model)
+        ),
         providers: getModelProviderMetadata().providers,
         defaultModelIds: configuredDefaultModelIds
       })
