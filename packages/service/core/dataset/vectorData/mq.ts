@@ -99,6 +99,8 @@ export const processDatasetVectorIndex = async (scope: PgDatasetIndexScope) => {
       elapsedMs: Date.now() - startedAt
     });
   } catch (error) {
+    // 资源不足也按普通失败处理，暂不通过降低并行度或内存预算保证建图成功。
+    // 下次真实统计仍按原预算规则投递，资源限制未解除时可能再次失败；failed 期间走精确检索。
     // Mongo 故障不掩盖原始构建错误；下次真实统计重新投递后再核验，成功索引无需重复构建。
     await updateDatasetPgIndexState({ ...scope, pgIndex: 'failed' }).catch((stateError) =>
       logger.warn('Failed to update dataset PG index state', { ...scope, error: stateError })
