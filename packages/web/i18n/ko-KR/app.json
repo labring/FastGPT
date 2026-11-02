@@ -1,4 +1,6 @@
 {
+  "yuanbao_web_search": "Yuanbao 웹 검색",
+  "yuanbao_web_search_description": "필요할 때 AI가 Yuanbao로 웹을 검색하고 답변에 출처를 인용하도록 허용합니다.",
   "Add_tool": "도구 추가",
   "AutoOptimize": "자동 최적화",
   "Click_to_delete_this_field": "클릭하여 이 필드 삭제",

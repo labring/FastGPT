@@ -62,6 +62,18 @@ export const serviceEnv = createEnv({
     AIPROXY_API_ENDPOINT: UrlSchema,
     AIPROXY_API_TOKEN: z.string().trim().min(1),
 
+    // 元宝联网搜索仅在节点开关开启时使用，凭据始终留在服务端。
+    YUANBAO_SECRET_ID: z
+      .string()
+      .trim()
+      .optional()
+      .transform((value) => value || undefined),
+    YUANBAO_SECRET_KEY: z
+      .string()
+      .trim()
+      .optional()
+      .transform((value) => value || undefined),
+
     PRO_URL: UrlSchema.optional(),
     PRO_TOKEN: z.string().min(32, 'PRO_TOKEN must be at least 32 characters').optional(),
     AGENT_USERS: z.string().optional(),

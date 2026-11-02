@@ -1,4 +1,6 @@
 {
+  "yuanbao_web_search": "Yuanbao web search",
+  "yuanbao_web_search_description": "Let AI search the web with Yuanbao when needed and cite sources in its answer.",
   "Add_tool": "Add tool",
   "AutoOptimize": "Automatic optimization",
   "Click_to_delete_this_field": "Click to delete this field",

@@ -22,6 +22,7 @@ import { WorkflowActionsContext } from '../../context/workflowActionsContext';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useToast } from '@fastgpt/web/hooks/useToast';
+import WorkflowWebSearchConfig from './components/WorkflowWebSearchConfig';
 
 const NodeToolCall = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
@@ -54,6 +55,7 @@ const NodeToolCall = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     const visibleInputs = commonInputs.filter(
       (input) =>
         input.key !== NodeInputKeyEnum.useAgentSandbox &&
+        input.key !== NodeInputKeyEnum.enableWebSearch &&
         input.key !== NodeInputKeyEnum.sandboxEntrypoint
     );
     const sandboxIndex = commonInputs.findIndex(
@@ -113,6 +115,7 @@ const NodeToolCall = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
       <Container>
         <IOTitle text={t('common:Input')} />
         <RenderInput nodeId={nodeId} flowInputList={beforeSandboxInputs} isTool={isTool} />
+        <WorkflowWebSearchConfig nodeId={nodeId} inputs={inputs} />
         <WorkflowSandboxConfig
           nodeId={nodeId}
           sandboxInput={sandboxInput}

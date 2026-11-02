@@ -38,6 +38,7 @@ import { useWorkflowQuoteLimit } from '../../hooks/useWorkflowQuoteLimit';
 import OptimizerPopover from '@/components/common/PromptEditor/OptimizerPopover';
 import { useAgentSkillManager } from './useAgentSkillManager';
 import { restoreDatasetParams } from './utils';
+import WorkflowWebSearchConfig from '../components/WorkflowWebSearchConfig';
 
 import DatasetCard from '@/components/core/app/DatasetCard';
 import SkillCard from '@/components/core/app/SkillCard';
@@ -207,6 +208,7 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         NodeInputKeyEnum.aiModelId,
         NodeInputKeyEnum.aiModel,
         NodeInputKeyEnum.aiSystemPrompt,
+        NodeInputKeyEnum.enableWebSearch,
         NodeInputKeyEnum.skills,
         NodeInputKeyEnum.useAgentSandbox,
         NodeInputKeyEnum.sandboxEntrypoint,
@@ -499,6 +501,8 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
             </Box>
           </Box>
         )}
+
+        <WorkflowWebSearchConfig nodeId={nodeId} inputs={inputs} />
 
         {/* 3. Chat inputs (fileLink, userChatInput) */}
         {chatInputs.length > 0 && <RenderInput nodeId={nodeId} flowInputList={chatInputs} />}

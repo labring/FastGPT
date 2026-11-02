@@ -174,9 +174,7 @@ const Layout = ({ children }: { children: JSX.Element }) => {
             status: 'warning',
             title: t('common:embedding_model_not_config')
           });
-          if (router.pathname !== '/admin/resources/model') {
-            router.push('/admin/resources/model?modelTab=config');
-          }
+          // 向量模型仅在知识库功能中需要，不能阻止普通对话和联网搜索应用的配置。
         }
       })
       .catch(() => {

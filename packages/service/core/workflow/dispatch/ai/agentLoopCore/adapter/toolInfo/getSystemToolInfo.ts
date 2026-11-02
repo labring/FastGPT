@@ -2,6 +2,10 @@ import { getSystemToolInfo } from '@fastgpt/global/core/workflow/node/agent/cons
 import { getSandboxToolInfo } from '../../../../../../ai/sandbox/application/toolCall';
 import { READ_FILES_TOOL_NAME } from '../../../../../../ai/llm/agentLoop/interface';
 import { DATASET_SEARCH_TOOL_NAME } from '../../../../../../ai/llm/agentLoop/interface';
+import {
+  YUANBAO_WEB_SEARCH_TOOL_LABEL,
+  YUANBAO_WEB_SEARCH_TOOL_NAME
+} from '../../../../../../ai/webSearch/tool';
 import type {
   AgentLoopCoreSystemToolInfo,
   GetAgentLoopCoreToolInfoParams
@@ -17,6 +21,13 @@ export const getAgentLoopCoreSystemToolInfo = ({
   name,
   lang
 }: GetAgentLoopCoreToolInfoParams): AgentLoopCoreSystemToolInfo | undefined => {
+  if (name === YUANBAO_WEB_SEARCH_TOOL_NAME) {
+    return {
+      type: 'webSearch',
+      name: YUANBAO_WEB_SEARCH_TOOL_LABEL,
+      avatar: ''
+    };
+  }
   const sandboxToolInfo = getSandboxToolInfo(name, lang);
   if (sandboxToolInfo) {
     return {

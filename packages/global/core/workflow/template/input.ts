@@ -14,6 +14,15 @@ export const Input_Template_Dataset_Tag_Filter_Version: FlowNodeInputItemType = 
   value: DatasetTagFilterVersionEnum.structured
 };
 
+export const Input_Template_WebSearch: FlowNodeInputItemType = {
+  key: NodeInputKeyEnum.enableWebSearch,
+  renderTypeList: [FlowNodeInputTypeEnum.switch],
+  valueType: WorkflowIOValueTypeEnum.boolean,
+  label: i18nT('app:yuanbao_web_search'),
+  description: i18nT('app:yuanbao_web_search_description'),
+  value: false
+};
+
 export const Input_Template_History: FlowNodeInputItemType = {
   key: NodeInputKeyEnum.history,
   renderTypeList: [FlowNodeInputTypeEnum.numberInput, FlowNodeInputTypeEnum.reference],

@@ -16,6 +16,14 @@ import { getChatMessages } from './chatMessages';
 import { getDatasetCiteData } from './datasetCite';
 import { getAIChatFileContextConfig, getInputFiles } from './fileContext';
 import type { ChatProps, ChatResponse } from './type';
+import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/llm/type';
+import type { LLMResponse } from '../../../../ai/llm/request/types';
+import {
+  createYuanbaoWebSearchTool,
+  executeYuanbaoWebSearchTool,
+  YUANBAO_WEB_SEARCH_TOOL_LABEL,
+  YUANBAO_WEB_SEARCH_TOOL_NAME
+} from '../../../../ai/webSearch/tool';
 
 /**
  * 调度 AI Chat 节点：整理引用、历史和文件上下文，调用 LLM，并写入节点响应与用量。
@@ -52,6 +60,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       aiChatStopSign,
       aiChatResponseFormat,
       aiChatJsonSchema,
+      enableWebSearch = false,
 
       quoteQA: rawQuoteQA,
       aiChatVision: rawAiChatVision,
@@ -139,88 +148,149 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     const requestStartTime = Date.now();
     let firstTokenTime: number | undefined; // 首个模型输出 token 到达时刻(含思考)
 
-    const {
-      completeMessages,
-      reasoningText,
-      answerText,
-      finish_reason,
-      responseEmptyTip,
-      usage,
-      error,
-      requestId // 获取请求追踪 ID
-    } = await createLLMResponse({
-      throwError: false,
-      fileContext: getWorkflowFileContext(),
-      body: {
-        model: modelConstantsData,
-        stream,
-        messages: filterMessages,
-        temperature,
-        max_tokens,
-        top_p: aiChatTopP,
-        stop: aiChatStopSign,
-        reasoning_effort: aiChatReasoningEffort,
-        response_format: {
-          type: aiChatResponseFormat,
-          json_schema: aiChatJsonSchema
+    // 最多执行 3 次搜索工具轮次，最后一次请求强制仅生成回答，避免模型无限搜索。
+    const webSearchEnabled = enableWebSearch === true;
+    const toolCallMode = modelConstantsData.config.toolChoice ? 'toolChoice' : 'prompt';
+    const maxSearchRounds = webSearchEnabled ? 3 : 0;
+    let modelMessages: ChatCompletionMessageParam[] = filterMessages;
+    const responses: LLMResponse[] = [];
+    let searchCalls = 0;
+    for (let round = 0; round <= maxSearchRounds; round++) {
+      const allowSearch = webSearchEnabled && round < maxSearchRounds;
+      const current = await createLLMResponse({
+        throwError: false,
+        fileContext: getWorkflowFileContext(),
+        body: {
+          model: modelConstantsData,
+          stream,
+          messages: modelMessages,
+          temperature,
+          max_tokens,
+          top_p: aiChatTopP,
+          stop: aiChatStopSign,
+          reasoning_effort: aiChatReasoningEffort,
+          response_format: {
+            type: aiChatResponseFormat,
+            json_schema: aiChatJsonSchema
+          },
+          retainDatasetCite,
+          useVision: aiChatVision,
+          useAudio: aiChatAudio,
+          useVideo: aiChatVideo,
+          extractFiles: aiChatExtractFiles,
+          requestOrigin,
+          ...(webSearchEnabled
+            ? {
+                tools:
+                  allowSearch || toolCallMode === 'toolChoice'
+                    ? [createYuanbaoWebSearchTool()]
+                    : undefined,
+                toolCallMode,
+                tool_choice: allowSearch ? ('auto' as const) : ('none' as const),
+                parallel_tool_calls: false
+              }
+            : {})
         },
-        retainDatasetCite,
-        useVision: aiChatVision,
-        useAudio: aiChatAudio,
-        useVideo: aiChatVideo,
-        extractFiles: aiChatExtractFiles,
-        requestOrigin
-      },
-      userKey: externalProvider.openaiAccount,
-      teamId: runningUserInfo.teamId,
-      isAborted: checkIsStopping,
-      onReasoning({ text }) {
-        firstTokenTime ??= Date.now();
-        if (!aiChatReasoning) return;
-        workflowStreamResponse?.(workflowSseEvent.reasoningDelta(text));
-      },
-      onStreaming({ text }) {
-        firstTokenTime ??= Date.now();
-        if (!isResponseAnswerText) return;
-        workflowStreamResponse?.(workflowSseEvent.answerDelta(text));
-      }
-    });
-    if (responseEmptyTip) {
-      return getNodeErrResponse({
-        error: responseEmptyTip,
-        responseData: {
-          inputTokens: usage.inputTokens,
-          outputTokens: usage.outputTokens
+        userKey: externalProvider.openaiAccount,
+        teamId: runningUserInfo.teamId,
+        isAborted: checkIsStopping,
+        onReasoning({ text }) {
+          firstTokenTime ??= Date.now();
+          if (!aiChatReasoning) return;
+          workflowStreamResponse?.(workflowSseEvent.reasoningDelta(text));
+        },
+        onStreaming({ text }) {
+          firstTokenTime ??= Date.now();
+          if (!isResponseAnswerText) return;
+          workflowStreamResponse?.(workflowSseEvent.answerDelta(text));
         }
       });
-    }
+      responses.push(current);
+      if (current.error || current.responseEmptyTip || !allowSearch || !current.toolCalls?.length) {
+        break;
+      }
 
+      modelMessages = [...current.completeMessages];
+      for (const call of current.toolCalls) {
+        const result = await (async () => {
+          if (call.function.name !== YUANBAO_WEB_SEARCH_TOOL_NAME) {
+            return { response: 'Tool error: Unknown tool' };
+          }
+          if (searchCalls >= 3) {
+            return { response: 'Tool error: Search limit reached' };
+          }
+          searchCalls++;
+          return executeYuanbaoWebSearchTool({ call, checkIsStopping });
+        })();
+        modelMessages.push({
+          role: 'tool',
+          tool_call_id: call.id,
+          content: result.response
+        });
+      }
+    }
+    const finalResponse = responses[responses.length - 1];
+    const { finish_reason, responseEmptyTip, error } = finalResponse;
+    const completeMessages =
+      webSearchEnabled && responses.length > 1
+        ? [
+            ...modelMessages,
+            ...(finalResponse.completeMessages.length > modelMessages.length
+              ? finalResponse.completeMessages.slice(modelMessages.length)
+              : [{ role: 'assistant' as const, content: finalResponse.answerText }])
+          ]
+        : finalResponse.completeMessages;
+    const answerText = webSearchEnabled
+      ? responses.map((item) => item.answerText).join('')
+      : finalResponse.answerText;
+    const reasoningText = responses
+      .map((item) => item.reasoningText)
+      .filter(Boolean)
+      .join('\n');
+    const usage = {
+      inputTokens: responses.reduce((sum, item) => sum + item.usage.inputTokens, 0),
+      outputTokens: responses.reduce((sum, item) => sum + item.usage.outputTokens, 0),
+      usedUserOpenAIKey: responses.some((item) => item.usage.usedUserOpenAIKey)
+    };
+    const requestIds = responses.map((item) => item.requestId);
     const firstTokenTimeSec =
       firstTokenTime === undefined
         ? undefined
         : +((firstTokenTime - requestStartTime) / 1000).toFixed(2);
 
-    const { totalPoints } = formatModelChars2Points({
-      model: modelConstantsData,
-      inputTokens: usage.inputTokens,
-      outputTokens: usage.outputTokens
+    // 每次模型调用独立计价，避免多轮搜索时阶梯价格与真实请求不一致。
+    const points = responses.reduce((sum, item) => {
+      if (item.usage.usedUserOpenAIKey) return sum;
+      return (
+        sum +
+        formatModelChars2Points({
+          model: modelConstantsData,
+          inputTokens: item.usage.inputTokens,
+          outputTokens: item.usage.outputTokens
+        }).totalPoints
+      );
+    }, 0);
+    if (!responseEmptyTip || responses.length > 1) {
+      props.usagePush([
+        {
+          moduleName: name,
+          totalPoints: points,
+          modelId: modelConstantsData.modelId,
+          inputTokens: usage.inputTokens,
+          outputTokens: usage.outputTokens
+        }
+      ]);
+    }
+
+    const chatCompleteMessages = GPTMessages2Chats({
+      messages: completeMessages,
+      getToolInfo: (name) =>
+        name === YUANBAO_WEB_SEARCH_TOOL_NAME ? { name: YUANBAO_WEB_SEARCH_TOOL_LABEL } : undefined
     });
-    const points = usage.usedUserOpenAIKey ? 0 : totalPoints;
-    props.usagePush([
-      {
-        moduleName: name,
-        totalPoints: points,
-        modelId: modelConstantsData.modelId,
-        inputTokens: usage.inputTokens,
-        outputTokens: usage.outputTokens
-      }
-    ]);
 
-    const chatCompleteMessages = GPTMessages2Chats({ messages: completeMessages });
-
-    if (error) {
+    if (responseEmptyTip || error) {
       return getNodeErrResponse({
-        error,
+        error: responseEmptyTip || error,
         responseData: {
           totalPoints: points,
           model: modelConstantsData.name,
@@ -232,7 +302,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
           historyPreview: getHistoryPreview(chatCompleteMessages, 10000, aiChatVision),
           contextTotalLen: completeMessages.length,
           finishReason: finish_reason,
-          llmRequestIds: [requestId], // 记录 LLM 请求追踪 ID
+          llmRequestIds: requestIds, // 记录每轮 LLM 请求追踪 ID
           firstTokenTime: firstTokenTimeSec
         }
       });
@@ -258,7 +328,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
         historyPreview: getHistoryPreview(chatCompleteMessages, 10000, aiChatVision),
         contextTotalLen: completeMessages.length,
         finishReason: finish_reason,
-        llmRequestIds: [requestId], // 记录 LLM 请求追踪 ID
+        llmRequestIds: requestIds, // 记录每轮 LLM 请求追踪 ID
         firstTokenTime: firstTokenTimeSec
       },
       [DispatchNodeResponseKeyEnum.toolResponse]: answerText

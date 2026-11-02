@@ -72,6 +72,9 @@ export const appWorkflow2Form = ({
         NodeInputKeyEnum.aiModelId
       );
       defaultAppForm.aiSettings.model = findInputValueByKey(node.inputs, NodeInputKeyEnum.aiModel);
+      // 旧工作流可能保存了非布尔值，只有字面量 true 才能与运行时开关一致。
+      defaultAppForm.aiSettings.enableWebSearch =
+        findInputValueByKey(node.inputs, NodeInputKeyEnum.enableWebSearch) === true;
       defaultAppForm.aiSettings.systemPrompt = findInputValueByKey(
         node.inputs,
         NodeInputKeyEnum.aiSystemPrompt
@@ -305,6 +308,13 @@ export function form2AppWorkflow(
       version: AiChatModule.version,
       inputs: [
         ...getModelReferenceInputs(formData),
+        {
+          key: NodeInputKeyEnum.enableWebSearch,
+          renderTypeList: [FlowNodeInputTypeEnum.hidden],
+          label: '',
+          valueType: WorkflowIOValueTypeEnum.boolean,
+          value: formData.aiSettings.enableWebSearch === true
+        },
         {
           key: NodeInputKeyEnum.aiChatTemperature,
           renderTypeList: [FlowNodeInputTypeEnum.hidden],
@@ -762,6 +772,13 @@ export function form2AppWorkflow(
               ...input,
               label: t('common:core.module.input.label.aiModel')
             })),
+            {
+              key: NodeInputKeyEnum.enableWebSearch,
+              renderTypeList: [FlowNodeInputTypeEnum.hidden],
+              label: '',
+              valueType: WorkflowIOValueTypeEnum.boolean,
+              value: formData.aiSettings.enableWebSearch === true
+            },
             {
               key: NodeInputKeyEnum.aiChatTemperature,
               renderTypeList: [FlowNodeInputTypeEnum.hidden],

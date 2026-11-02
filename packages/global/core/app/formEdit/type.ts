@@ -4,6 +4,7 @@ import { AppChatConfigTypeSchema, AppDatasetSearchParamsTypeSchema } from '../ty
 import { FlowNodeTemplateTypeSchema } from '../../workflow/type/node';
 import { NodeInputKeyEnum } from '../../workflow/constants';
 import { SANDBOX_ENTRYPOINT_MAX_LENGTH } from '../../ai/sandbox/constants';
+import { BoolSchema } from '../../../common/zod';
 
 export type AgentSubAppItemType = object;
 
@@ -43,6 +44,7 @@ export const AppFormEditFormV1TypeSchema = z.object({
     /** @deprecated */
     [NodeInputKeyEnum.aiModel]: z.string().optional(),
     [NodeInputKeyEnum.aiSystemPrompt]: z.string().optional(),
+    [NodeInputKeyEnum.enableWebSearch]: BoolSchema.optional(),
 
     [NodeInputKeyEnum.aiChatTemperature]: z.number().optional(),
     [NodeInputKeyEnum.aiChatMaxToken]: z.number().optional(),

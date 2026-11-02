@@ -19,6 +19,10 @@ import { getAgentDatasetParams, getSubapps } from './sub/utils';
 
 import { buildDefaultAgentSystemPrompt } from '../../../../ai/llm/agentLoop/interface';
 import {
+  YUANBAO_WEB_SEARCH_TOOL_LABEL,
+  YUANBAO_WEB_SEARCH_TOOL_NAME
+} from '../../../../ai/webSearch/tool';
+import {
   assertSandboxAvailable,
   resolveAppSandboxAvailability
 } from '../../../../ai/sandbox/application/availability';
@@ -56,6 +60,7 @@ export type DispatchAgentModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.aiChatExtractFiles]?: boolean;
   [NodeInputKeyEnum.aiChatReasoning]?: boolean;
   [NodeInputKeyEnum.aiChatReasoningEffort]?: ReasoningEffort;
+  [NodeInputKeyEnum.enableWebSearch]?: boolean;
   [NodeInputKeyEnum.fileUrlList]?: string[];
   [NodeInputKeyEnum.aiModelId]?: string;
   [NodeInputKeyEnum.aiModel]?: string;
@@ -337,6 +342,12 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         eventTarget: assistantResponses,
         showReasoning: aiChatReasoning !== false,
         getEventToolInfo: (name) => {
+          if (
+            name === YUANBAO_WEB_SEARCH_TOOL_NAME &&
+            props.params[NodeInputKeyEnum.enableWebSearch] === true
+          ) {
+            return { name: YUANBAO_WEB_SEARCH_TOOL_LABEL, avatar: '' };
+          }
           const subApp = getSubAppInfo(name);
           return {
             name: subApp.name || name,

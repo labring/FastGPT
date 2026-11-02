@@ -14,6 +14,57 @@ import { DatasetCollectionTagTypeEnum } from '@fastgpt/global/core/dataset/const
 
 vi.mock('@/web/core/app/api/tool', () => ({ getNewToolPreviewNode: vi.fn() }));
 
+describe('Yuanbao web search settings', () => {
+  it.each([true, false])('round trips enabled=%s through the saved agent workflow', (enabled) => {
+    const form = getDefaultAppForm();
+    form.aiSettings.enableWebSearch = enabled;
+    const workflow = agentForm2AppWorkflow(form, (key: string) => key);
+    const agent = workflow.nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.agent);
+
+    expect(agent?.inputs.find((input) => input.key === 'enableWebSearch')?.value).toBe(enabled);
+    expect(appWorkflow2AgentForm(workflow).aiSettings.enableWebSearch).toBe(enabled);
+  });
+
+  it('keeps legacy workflows opted out of web search', () => {
+    expect(appWorkflow2AgentForm({ nodes: [], chatConfig: {} }).aiSettings.enableWebSearch).toBe(
+      false
+    );
+  });
+
+  it('keeps a legacy agent node without the web search input opted out', () => {
+    const workflow = agentForm2AppWorkflow(getDefaultAppForm(), (key: string) => key);
+    const agent = workflow.nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.agent)!;
+    agent.inputs = agent.inputs.filter((input) => input.key !== NodeInputKeyEnum.enableWebSearch);
+
+    expect(appWorkflow2AgentForm(workflow).aiSettings.enableWebSearch).toBe(false);
+  });
+
+  it.each(['false', 'true', 0, 1])(
+    'restores malformed agent web search input %s as false',
+    (value) => {
+      const workflow = agentForm2AppWorkflow(getDefaultAppForm(), (key: string) => key);
+      const agent = workflow.nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.agent)!;
+      agent.inputs.find((input) => input.key === NodeInputKeyEnum.enableWebSearch)!.value = value;
+
+      expect(appWorkflow2AgentForm(workflow).aiSettings.enableWebSearch).toBe(false);
+    }
+  );
+
+  it.each(['false', 'true', 0, 1])(
+    'serializes malformed agent form web search value %s as false',
+    (value) => {
+      const form = getDefaultAppForm();
+      Object.assign(form.aiSettings, { enableWebSearch: value });
+      const workflow = agentForm2AppWorkflow(form, (key: string) => key);
+      const agent = workflow.nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.agent);
+
+      expect(
+        agent?.inputs.find((input) => input.key === NodeInputKeyEnum.enableWebSearch)?.value
+      ).toBe(false);
+    }
+  );
+});
+
 describe('loadGeneratedTools', () => {
   const toolId = 'systemTool-shared';
   const createTool = (source?: string): SelectedToolItemType => ({

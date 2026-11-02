@@ -17,7 +17,8 @@ import {
   Input_Template_History,
   Input_Template_System_Prompt,
   Input_Template_UserChatInput,
-  Input_Template_File_Link
+  Input_Template_File_Link,
+  Input_Template_WebSearch
 } from '../../input';
 import { i18nT } from '../../../../../common/i18n/utils';
 import { Output_Template_Error_Message } from '../../output';
@@ -60,6 +61,7 @@ export const AiChatModule: FlowNodeTemplateType = {
   catchError: false,
   inputs: [
     Input_Template_SettingAiModel,
+    Input_Template_WebSearch,
     // --- settings modal
     {
       key: NodeInputKeyEnum.aiChatTemperature,

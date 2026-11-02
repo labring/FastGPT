@@ -67,6 +67,9 @@ export const appWorkflow2AgentForm = ({
       );
       defaultAppForm.aiSettings.model = findInputValueByKey(node.inputs, NodeInputKeyEnum.aiModel);
       defaultAppForm.aiSettings.systemPrompt = inputMap.get(NodeInputKeyEnum.aiSystemPrompt);
+      // 旧工作流可能保存了非布尔值，只有字面量 true 才能与运行时开关一致。
+      defaultAppForm.aiSettings.enableWebSearch =
+        inputMap.get(NodeInputKeyEnum.enableWebSearch) === true;
       defaultAppForm.aiSettings.temperature = inputMap.get(NodeInputKeyEnum.aiChatTemperature);
       defaultAppForm.aiSettings.maxHistories = inputMap.get(NodeInputKeyEnum.history);
       defaultAppForm.aiSettings.aiChatReasoning =
@@ -352,6 +355,13 @@ export function agentForm2AppWorkflow(
                 collectionFilterMatch: data.dataset.collectionFilterMatch,
                 [NodeInputKeyEnum.authTmbId]: data.dataset.authTmbId
               })
+            },
+            {
+              key: NodeInputKeyEnum.enableWebSearch,
+              renderTypeList: [FlowNodeInputTypeEnum.hidden],
+              label: '',
+              valueType: WorkflowIOValueTypeEnum.boolean,
+              value: data.aiSettings.enableWebSearch === true
             },
             // agent sandbox
             {

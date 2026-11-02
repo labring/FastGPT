@@ -17,6 +17,12 @@ import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runti
 import { dispatchWorkflowReadFiles } from '../../readFiles';
 import { getWorkflowFileMaxAmount } from '../../../../utils/context';
 import type { DispatchFlowResponse } from '../../../type';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import {
+  createYuanbaoWebSearchTool,
+  executeYuanbaoWebSearchTool,
+  YUANBAO_WEB_SEARCH_TOOL_NAME
+} from '../../../../../ai/webSearch/tool';
 
 type CacheToolFlowResponse = (args: {
   callId: string;
@@ -111,9 +117,24 @@ export const createToolCallToolProvider = async ({
 
   return {
     finalMessages,
-    buildRuntimeTools: () => tools,
+    buildRuntimeTools: () =>
+      workflowProps.params?.[NodeInputKeyEnum.enableWebSearch] === true
+        ? [
+            ...tools.filter((tool) => tool.function.name !== YUANBAO_WEB_SEARCH_TOOL_NAME),
+            createYuanbaoWebSearchTool()
+          ]
+        : tools,
     getToolInfo,
     executeTool: async (params) => {
+      if (
+        workflowProps.params?.[NodeInputKeyEnum.enableWebSearch] === true &&
+        params.call.function.name === YUANBAO_WEB_SEARCH_TOOL_NAME
+      ) {
+        return executeYuanbaoWebSearchTool({
+          call: params.call,
+          checkIsStopping: workflowProps.checkIsStopping
+        });
+      }
       const result = await runTool(params);
       return {
         ...result,

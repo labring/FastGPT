@@ -18,6 +18,12 @@ import {
 import { createWorkflowAgentToolProvider } from '../toolProvider';
 import type { AgentLoopCoreToolRunResult } from '../../agentLoopCore/interface';
 import { getWorkflowFileContext } from '../../../../utils/context';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import {
+  createYuanbaoWebSearchTool,
+  YUANBAO_WEB_SEARCH_TOOL_LABEL,
+  YUANBAO_WEB_SEARCH_TOOL_NAME
+} from '../../../../../ai/webSearch/tool';
 
 type WorkflowAgentLoopRuntimeContext = ToolDispatchContext & {
   node: {
@@ -69,7 +75,15 @@ export const createWorkflowAgentLoopRuntime = ({
 } => {
   // 工具目录只在 workflow adapter 层生成，agentLoop 后续只依赖通用 toolCatalog。
   const toolCatalog = createWorkflowAgentLoopToolCatalog({
-    completionTools: context.completionTools
+    completionTools:
+      context.params[NodeInputKeyEnum.enableWebSearch] === true
+        ? [
+            ...context.completionTools.filter(
+              (tool) => tool.function.name !== YUANBAO_WEB_SEARCH_TOOL_NAME
+            ),
+            createYuanbaoWebSearchTool()
+          ]
+        : context.completionTools
   });
   // artifacts 是本次 Agent 节点运行结束后要回写给 workflow/chat 层的结果容器。
   // assistantResponses 和 nodeResponses 允许外部传入，是为了继续复用已有数组并保持引用稳定。
@@ -82,6 +96,12 @@ export const createWorkflowAgentLoopRuntime = ({
   };
 
   const getToolInfo = (name: string) => {
+    if (
+      name === YUANBAO_WEB_SEARCH_TOOL_NAME &&
+      context.params[NodeInputKeyEnum.enableWebSearch] === true
+    ) {
+      return { name: YUANBAO_WEB_SEARCH_TOOL_LABEL, avatar: '' };
+    }
     const systemToolInfo = getAgentLoopCoreSystemToolInfo({
       name,
       lang: context.lang

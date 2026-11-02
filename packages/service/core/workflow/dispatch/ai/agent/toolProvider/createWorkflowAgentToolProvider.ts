@@ -13,6 +13,12 @@ import { getAgentDatasetParams, getExecuteTool } from '../sub/utils';
 import type { WorkflowAgentToolProvider, WorkflowAgentToolProviderContext } from './type';
 import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { getWorkflowFileMaxAmount } from '../../../../utils/context';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import {
+  createYuanbaoWebSearchTool,
+  executeYuanbaoWebSearchTool,
+  YUANBAO_WEB_SEARCH_TOOL_NAME
+} from '../../../../../ai/webSearch/tool';
 
 /**
  * 创建 Workflow Agent 节点的工具 provider。
@@ -78,7 +84,15 @@ export const createWorkflowAgentToolProvider = ({
   });
 
   return {
-    buildRuntimeTools: () => context.completionTools,
+    buildRuntimeTools: () =>
+      context.params[NodeInputKeyEnum.enableWebSearch] === true
+        ? [
+            ...context.completionTools.filter(
+              (tool) => tool.function.name !== YUANBAO_WEB_SEARCH_TOOL_NAME
+            ),
+            createYuanbaoWebSearchTool()
+          ]
+        : context.completionTools,
     getToolInfo: (name) => {
       const subApp = context.getSubApp(name);
       if (!subApp) return undefined;
@@ -93,6 +107,15 @@ export const createWorkflowAgentToolProvider = ({
     executeTool: async ({
       call
     }): Promise<AgentLoopCoreToolRunResult<WorkflowInteractiveResponseType>> => {
+      if (
+        context.params[NodeInputKeyEnum.enableWebSearch] === true &&
+        call.function.name === YUANBAO_WEB_SEARCH_TOOL_NAME
+      ) {
+        return executeYuanbaoWebSearchTool<WorkflowInteractiveResponseType>({
+          call,
+          checkIsStopping: context.checkIsStopping
+        });
+      }
       const result = await executeTool({
         callId: call.id,
         toolId: call.function.name,

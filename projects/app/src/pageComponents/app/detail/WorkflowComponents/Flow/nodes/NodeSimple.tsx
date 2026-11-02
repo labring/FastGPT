@@ -12,6 +12,9 @@ import { useContextSelector } from 'use-context-selector';
 import CatchError from './render/RenderOutput/CatchError';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { WorkflowUtilsContext } from '../../context/workflowUtilsContext';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import WorkflowWebSearchConfig from './components/WorkflowWebSearchConfig';
 
 const NodeSimple = ({
   data,
@@ -49,7 +52,16 @@ const NodeSimple = ({
           <>
             <Container>
               <IOTitle text={t('common:Input')} nodeId={nodeId} inputs={inputs} />
-              <RenderInput nodeId={nodeId} flowInputList={commonInputs} isTool={isTool} />
+              <RenderInput
+                nodeId={nodeId}
+                flowInputList={commonInputs.filter(
+                  (input) => input.key !== NodeInputKeyEnum.enableWebSearch
+                )}
+                isTool={isTool}
+              />
+              {data.flowNodeType === FlowNodeTypeEnum.chatNode && (
+                <WorkflowWebSearchConfig nodeId={nodeId} inputs={inputs} />
+              )}
             </Container>
           </>
         )}

@@ -175,6 +175,7 @@ export enum NodeInputKeyEnum {
   aiChatStopSign = 'aiChatStopSign',
   aiChatResponseFormat = 'aiChatResponseFormat',
   aiChatJsonSchema = 'aiChatJsonSchema',
+  enableWebSearch = 'enableWebSearch',
 
   // agent
   selectedTools = 'agent_selectedTools',

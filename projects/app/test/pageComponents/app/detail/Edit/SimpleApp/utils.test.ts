@@ -9,6 +9,98 @@ import { RunAppNode } from '@fastgpt/global/core/workflow/template/system/runApp
 import { Input_Template_Stream_MODE } from '@fastgpt/global/core/workflow/template/input';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 
+describe('Yuanbao web search settings', () => {
+  it.each([true, false])('round trips enabled=%s through a simple AI chat workflow', (enabled) => {
+    const form = getDefaultAppForm();
+    form.aiSettings.enableWebSearch = enabled;
+    const workflow = form2AppWorkflow(form, (key: string) => key);
+    const chat = workflow.nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.chatNode);
+
+    expect(chat?.inputs.find((input) => input.key === 'enableWebSearch')?.value).toBe(enabled);
+    expect(appWorkflow2Form(workflow).aiSettings.enableWebSearch).toBe(enabled);
+  });
+
+  it('keeps legacy workflows opted out of web search', () => {
+    expect(appWorkflow2Form({ nodes: [], chatConfig: {} }).aiSettings.enableWebSearch).toBe(false);
+  });
+
+  it.each([false, true])('round trips enabled=%s through a ToolCall workflow', (enabled) => {
+    const form = getDefaultAppForm();
+    form.aiSettings.enableWebSearch = enabled;
+    form.selectedTools = [
+      { ...RunAppNode, id: 'child-app', pluginId: 'child-app', inputs: [], outputs: [] }
+    ];
+    const workflow = form2AppWorkflow(form, (key: string) => key);
+    const toolCall = workflow.nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.toolCall);
+
+    expect(
+      toolCall?.inputs.find((input) => input.key === NodeInputKeyEnum.enableWebSearch)?.value
+    ).toBe(enabled);
+    expect(appWorkflow2Form(workflow).aiSettings.enableWebSearch).toBe(enabled);
+  });
+
+  it.each([FlowNodeTypeEnum.chatNode, FlowNodeTypeEnum.toolCall])(
+    'keeps a legacy %s node without the web search input opted out',
+    (nodeType) => {
+      const form = getDefaultAppForm();
+      if (nodeType === FlowNodeTypeEnum.toolCall) {
+        form.selectedTools = [
+          { ...RunAppNode, id: 'child-app', pluginId: 'child-app', inputs: [], outputs: [] }
+        ];
+      }
+      const workflow = form2AppWorkflow(form, (key: string) => key);
+      const node = workflow.nodes.find((item) => item.flowNodeType === nodeType)!;
+      node.inputs = node.inputs.filter((input) => input.key !== NodeInputKeyEnum.enableWebSearch);
+
+      expect(appWorkflow2Form(workflow).aiSettings.enableWebSearch).toBe(false);
+    }
+  );
+
+  it.each(['false', 'true', 0, 1])(
+    'restores malformed AI chat web search input %s as false',
+    (value) => {
+      const workflow = form2AppWorkflow(getDefaultAppForm(), (key: string) => key);
+      const chat = workflow.nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.chatNode)!;
+      chat.inputs.find((input) => input.key === NodeInputKeyEnum.enableWebSearch)!.value = value;
+
+      expect(appWorkflow2Form(workflow).aiSettings.enableWebSearch).toBe(false);
+    }
+  );
+
+  it.each(['false', 'true', 0, 1])(
+    'serializes malformed simple form web search value %s as false',
+    (value) => {
+      const form = getDefaultAppForm();
+      Object.assign(form.aiSettings, { enableWebSearch: value });
+      const workflow = form2AppWorkflow(form, (key: string) => key);
+      const chat = workflow.nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.chatNode);
+
+      expect(
+        chat?.inputs.find((input) => input.key === NodeInputKeyEnum.enableWebSearch)?.value
+      ).toBe(false);
+    }
+  );
+
+  it.each(['false', 'true', 0, 1])(
+    'serializes malformed ToolCall form web search value %s as false',
+    (value) => {
+      const form = getDefaultAppForm();
+      Object.assign(form.aiSettings, { enableWebSearch: value });
+      form.selectedTools = [
+        { ...RunAppNode, id: 'child-app', pluginId: 'child-app', inputs: [], outputs: [] }
+      ];
+      const workflow = form2AppWorkflow(form, (key: string) => key);
+      const toolCall = workflow.nodes.find(
+        (node) => node.flowNodeType === FlowNodeTypeEnum.toolCall
+      );
+
+      expect(
+        toolCall?.inputs.find((input) => input.key === NodeInputKeyEnum.enableWebSearch)?.value
+      ).toBe(false);
+    }
+  );
+});
+
 const getModelInputs = ({ modelId, model }: { modelId?: string; model?: string }) => {
   const form = getDefaultAppForm();
   form.aiSettings.modelId = modelId;

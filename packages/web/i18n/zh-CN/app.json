@@ -1,4 +1,6 @@
 {
+  "yuanbao_web_search": "元宝联网搜索",
+  "yuanbao_web_search_description": "开启后，AI 可按需使用元宝搜索互联网，并在回答中引用来源。",
   "Add_tool": "添加工具",
   "AutoOptimize": "自动优化",
   "Click_to_delete_this_field": "点击删除该字段",

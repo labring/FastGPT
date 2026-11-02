@@ -21,6 +21,7 @@ export const getDefaultAppForm = (): AppFormEditFormType => {
   return {
     aiSettings: {
       isResponseAnswerText: true,
+      enableWebSearch: false,
       maxHistories: 6
     },
     dataset: {

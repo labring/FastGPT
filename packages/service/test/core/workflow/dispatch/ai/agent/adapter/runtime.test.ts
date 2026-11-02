@@ -1,14 +1,27 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ChatCompletionTool } from '@fastgpt/global/core/ai/llm/type';
 import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { createWorkflowAgentLoopRuntime as createWorkflowAgentLoopRuntimeWithoutContext } from '@fastgpt/service/core/workflow/dispatch/ai/agent/adapter/runtime';
 import { runWithContext } from '@fastgpt/service/core/workflow/utils/context';
+import { serviceEnv } from '@fastgpt/service/env';
 
 const { dispatchWorkflowReadFilesMock, dispatchAgentDatasetSearchMock } = vi.hoisted(() => ({
   dispatchWorkflowReadFilesMock: vi.fn(),
   dispatchAgentDatasetSearchMock: vi.fn()
 }));
+
+const credentials = serviceEnv as typeof serviceEnv & {
+  YUANBAO_SECRET_ID?: string;
+  YUANBAO_SECRET_KEY?: string;
+};
+const previousId = credentials.YUANBAO_SECRET_ID;
+const previousKey = credentials.YUANBAO_SECRET_KEY;
+afterEach(() => {
+  credentials.YUANBAO_SECRET_ID = previousId;
+  credentials.YUANBAO_SECRET_KEY = previousKey;
+  vi.unstubAllGlobals();
+});
 
 vi.mock('@fastgpt/service/core/workflow/dispatch/ai/readFiles', () => ({
   dispatchWorkflowReadFiles: dispatchWorkflowReadFilesMock
@@ -95,6 +108,82 @@ const toolCall = ({ id, name, args = '{}' }: { id: string; name: string; args?: 
 });
 
 describe('createWorkflowAgentLoopRuntime', () => {
+  it('exposes Yuanbao search only when the node flag is true and executes it through the shared tool runtime', async () => {
+    const disabled = createWorkflowAgentLoopRuntime({
+      context: createContext(),
+      usagePush: vi.fn(),
+      executeToolFactory: vi.fn()
+    }).runtime;
+    expect(disabled.toolCatalog.runtimeTools.map((item) => item.function.name)).not.toContain(
+      'yuanbao_web_search'
+    );
+
+    const enabled = createWorkflowAgentLoopRuntime({
+      context: createContext({ params: { model: 'gpt-4', enableWebSearch: true } }),
+      usagePush: vi.fn(),
+      executeToolFactory: vi.fn()
+    }).runtime;
+    expect(enabled.toolCatalog.runtimeTools.map((item) => item.function.name)).toContain(
+      'yuanbao_web_search'
+    );
+    credentials.YUANBAO_SECRET_ID = 'test-id';
+    credentials.YUANBAO_SECRET_KEY = 'test-key';
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              Response: {
+                Pages: [{ title: 'FastGPT', url: 'https://example.com', passage: 'Result' }]
+              }
+            }),
+            { status: 200 }
+          )
+      )
+    );
+
+    const result = await enabled.executeTool({
+      call: toolCall({ id: 'call_web', name: 'yuanbao_web_search', args: '{"query":"FastGPT"}' }),
+      messages: []
+    });
+    expect(result.response).toBe(
+      JSON.stringify({
+        query: 'FastGPT',
+        results: [{ title: 'FastGPT', url: 'https://example.com', snippet: 'Result' }]
+      })
+    );
+    expect(result.errorMessage).toBeUndefined();
+    expect(result.metadata).toMatchObject({ id: 'call_web', toolRes: expect.any(String) });
+  });
+
+  it('returns a safe search failure as a tool result so the agent can continue', async () => {
+    const runtime = createWorkflowAgentLoopRuntime({
+      context: createContext({ params: { enableWebSearch: true } }),
+      usagePush: vi.fn(),
+      executeToolFactory: vi.fn()
+    }).runtime;
+    credentials.YUANBAO_SECRET_ID = 'test-id';
+    credentials.YUANBAO_SECRET_KEY = 'test-key';
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => {
+        throw new Error('untrusted secret text');
+      })
+    );
+
+    const result = await runtime.executeTool({
+      call: toolCall({
+        id: 'call_web_error',
+        name: 'yuanbao_web_search',
+        args: '{"query":"FastGPT"}'
+      }),
+      messages: []
+    });
+    expect(result.response).toContain('Yuanbao search unavailable');
+    expect(result.errorMessage).toContain('Yuanbao search unavailable');
+  });
+
   it('creates a generic agent loop runtime from workflow context', () => {
     const usagePush = vi.fn();
     const { runtime } = createWorkflowAgentLoopRuntime({

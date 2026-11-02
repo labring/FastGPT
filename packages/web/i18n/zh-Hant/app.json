@@ -1,4 +1,6 @@
 {
+  "yuanbao_web_search": "元寶聯網搜尋",
+  "yuanbao_web_search_description": "啟用後，AI 可視需要使用元寶搜尋網路，並在回答中引用來源。",
   "Add_tool": "添加工具",
   "AutoOptimize": "自動優化",
   "Click_to_delete_this_field": "點擊刪除該字段",

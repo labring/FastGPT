@@ -17,7 +17,8 @@ import {
   Input_Template_File_Link,
   Input_Template_SettingAiModel,
   Input_Template_System_Prompt,
-  Input_Template_UserChatInput
+  Input_Template_UserChatInput,
+  Input_Template_WebSearch
 } from '../../input';
 import { chatNodeSystemPromptTip, systemPromptTip } from '../../tip';
 import { i18nT } from '../../../../../common/i18n/utils';
@@ -40,6 +41,7 @@ export const AgentNode: FlowNodeTemplateType = {
   version: '4.17.0',
   inputs: [
     Input_Template_SettingAiModel,
+    Input_Template_WebSearch,
     {
       key: NodeInputKeyEnum.aiChatTemperature,
       renderTypeList: [FlowNodeInputTypeEnum.hidden],

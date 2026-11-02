@@ -16,6 +16,7 @@ import React, { useCallback, useMemo, useTransition } from 'react';
 import OptimizerPopover from '@/components/common/PromptEditor/OptimizerPopover';
 import VariableTip from '@/components/common/Textarea/MyTextarea/VariableTip';
 import SettingLLMModel from '@/components/core/ai/SettingLLMModel';
+import WebSearchSwitch from '@/components/core/ai/WebSearchSwitch';
 import DatasetCard from '@/components/core/app/DatasetCard';
 import { useWelcomeTextFoldState } from '@/components/core/app/useAppEditorUIState';
 import VariableEdit from '@/components/core/app/VariableEdit';
@@ -244,6 +245,18 @@ const EditForm = ({
               />
             </Box>
           </Box>
+        </Box>
+
+        <Box {...BoxStyles}>
+          <WebSearchSwitch
+            isChecked={appForm.aiSettings.enableWebSearch ?? false}
+            onChange={(enabled) => {
+              setAppForm((state) => ({
+                ...state,
+                aiSettings: { ...state.aiSettings, enableWebSearch: enabled }
+              }));
+            }}
+          />
         </Box>
 
         {/* Use Computer */}

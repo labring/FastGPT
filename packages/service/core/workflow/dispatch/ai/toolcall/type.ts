@@ -28,6 +28,7 @@ export type DispatchToolModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.aiChatExtractFiles]?: boolean;
   [NodeInputKeyEnum.aiChatReasoning]?: boolean;
   [NodeInputKeyEnum.aiChatReasoningEffort]?: ReasoningEffort;
+  [NodeInputKeyEnum.enableWebSearch]?: boolean;
   [NodeInputKeyEnum.aiChatTopP]?: number;
   [NodeInputKeyEnum.aiChatStopSign]?: string;
   [NodeInputKeyEnum.aiChatResponseFormat]?: string;

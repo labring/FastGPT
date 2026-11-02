@@ -8,8 +8,14 @@ import { createToolCallToolProvider } from '@fastgpt/service/core/workflow/dispa
 import { runWithContext } from '@fastgpt/service/core/workflow/utils/context';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { runWorkflowMock } = vi.hoisted(() => ({
-  runWorkflowMock: vi.fn()
+const { runWorkflowMock, runYuanbaoSearchMock } = vi.hoisted(() => ({
+  runWorkflowMock: vi.fn(),
+  runYuanbaoSearchMock: vi.fn()
+}));
+
+vi.mock('@fastgpt/service/core/ai/webSearch/yuanbao', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@fastgpt/service/core/ai/webSearch/yuanbao')>()),
+  runYuanbaoSearch: runYuanbaoSearchMock
 }));
 
 vi.mock('@fastgpt/service/core/workflow/dispatch', () => ({
@@ -92,6 +98,44 @@ describe('createToolCallToolProvider', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     runWorkflowMock.mockReset();
+  });
+
+  it('adds Yuanbao search for enabled legacy ToolCall nodes and keeps disabled nodes unchanged', async () => {
+    const disabled = await createProvider();
+    expect(disabled.buildRuntimeTools().map((tool) => tool.function.name)).not.toContain(
+      'yuanbao_web_search'
+    );
+
+    const enabled = await createProvider({
+      workflowProps: {
+        runningUserInfo: { teamId: 'team_1', tmbId: 'tmb_1' },
+        params: { enableWebSearch: true },
+        checkIsStopping: () => false
+      } as any
+    });
+    expect(enabled.buildRuntimeTools().map((tool) => tool.function.name)).toContain(
+      'yuanbao_web_search'
+    );
+    runYuanbaoSearchMock.mockResolvedValueOnce({
+      query: 'FastGPT',
+      results: [{ title: 'FastGPT', url: 'https://example.com', snippet: 'Result' }]
+    });
+
+    const result = await enabled.executeTool({
+      call: {
+        id: 'call_web',
+        type: 'function',
+        function: { name: 'yuanbao_web_search', arguments: '{"query":"FastGPT"}' }
+      },
+      messages: []
+    });
+    expect(result.response).toBe(
+      JSON.stringify({
+        query: 'FastGPT',
+        results: [{ title: 'FastGPT', url: 'https://example.com', snippet: 'Result' }]
+      })
+    );
+    expect(runWorkflowMock).not.toHaveBeenCalled();
   });
 
   it('exposes ToolCall runtime tools and tool info through the core provider protocol', async () => {

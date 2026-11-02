@@ -14,6 +14,7 @@ import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type
 import { useTranslation } from 'next-i18next';
 import React, { useCallback, useMemo } from 'react';
 import SettingLLMModel from '@/components/core/ai/SettingLLMModel';
+import WebSearchSwitch from '@/components/core/ai/WebSearchSwitch';
 import DatasetCard from '@/components/core/app/DatasetCard';
 import SkillCard from '@/components/core/app/SkillCard';
 import { useWelcomeTextFoldState } from '@/components/core/app/useAppEditorUIState';
@@ -318,6 +319,18 @@ const EditForm = ({
               />
             </Box>
           </Box>
+        </Box>
+
+        <Box {...BoxStyles}>
+          <WebSearchSwitch
+            isChecked={appForm.aiSettings.enableWebSearch ?? false}
+            onChange={(enabled) => {
+              setAppForm((state) => ({
+                ...state,
+                aiSettings: { ...state.aiSettings, enableWebSearch: enabled }
+              }));
+            }}
+          />
         </Box>
 
         {/* Sandbox (虚拟机) */}
