@@ -1,90 +1,203 @@
 import { createI18nMiddleware } from 'fumadocs-core/i18n';
 import { defaultHomePath, i18n } from '@/lib/i18n';
+import { getFastGPTDocsOriginForLocale } from '@/lib/docs-locale';
 import { type NextRequest, NextResponse } from 'next/server';
 
 // Old path redirects mapping. Keys/values are POST-strip (no /docs prefix).
 // Old links like /docs/foo are first stripped to /foo, then matched here.
 const exactMap: Record<string, string> = {
   '': defaultHomePath,
+  '/': defaultHomePath,
   '/intro': defaultHomePath,
 
   // Version / home.
   '/commercial/intro': '/guide/version/commercial',
   '/introduction': defaultHomePath,
-  '/introduction/shopping_cart/intro': '/guide/version/commercial',
+  '/introduction/community': defaultHomePath,
   '/introduction/cloud': '/guide/version/cloud/intro',
+  '/introduction/opensource': '/guide/version/opensource/intro',
+  '/introduction/version': '/guide/version/commercial',
+  '/protocol': '/guide/version/opensource/license',
+  '/protocol/open-source': '/guide/version/opensource/license',
   '/protocol/terms': '/guide/version/cloud/terms',
   '/protocol/privacy': '/guide/version/cloud/privacy',
 
   // Self-host.
   '/upgrading/intro': '/self-host/upgrading/upgrade-instruction',
   '/upgrading': '/self-host/upgrading/upgrade-instruction',
+  '/self-host/upgrading': '/self-host/upgrading/upgrade-instruction',
+  '/self-host/upgrading/intro': '/self-host/upgrading/upgrade-instruction',
   // Pre-rename misspellings of the upgrade page keep resolving.
   '/self-host/upgrading/upgrade-intruction': '/self-host/upgrading/upgrade-instruction',
   '/upgrading/upgrade-intruction': '/self-host/upgrading/upgrade-instruction',
-  '/introduction/development/docker': '/self-host/deploy/docker',
-  '/introduction/development/sealos': '/self-host/deploy/sealos',
-  '/introduction/development/intro': '/self-host/dev',
-  '/introduction/development/object-storage': '/self-host/config/object-storage',
+  '/self-host/upgrading/4-12': '/self-host/upgrading/4-12/4124',
+  '/self-host/upgrading/4-12/4125': '/self-host/upgrading/4-12/4124',
+  '/self-host/upgrading/4-13': '/self-host/upgrading/4-13/4132',
+  '/self-host/upgrading/4-14': '/self-host/upgrading/4-14/41431',
+  '/self-host/upgrading/4-14/41930': '/self-host/upgrading/4-14/4143',
+  '/self-host/upgrading/4-15': '/self-host/upgrading/4-15/4158',
+  '/self-host/upgrading/4-15/4150': '/self-host/upgrading/4-15/41500',
+  '/self-host/upgrading/4-16': '/self-host/upgrading/4-16/4162',
+  '/self-host/upgrading/4-16/4163': '/self-host/upgrading/4-17/4170',
+  '/self-host/upgrading/4-17': '/self-host/upgrading/4-17/4173',
+  '/self-host/upgrading/outdated': '/self-host/upgrading/outdated/4111',
+  '/self-host/upgrading/outdated/4112': '/self-host/upgrading/outdated/4111',
+  '/development/docker': '/self-host/deploy/docker',
+  '/development/sealos': '/self-host/deploy/sealos',
+  '/development/intro': '/self-host/dev',
+  '/self-host/quick-start': '/self-host/deploy/docker',
+  '/self-host/community': defaultHomePath,
+  '/self-host/custom-models': '/self-host/config/model/intro',
+  '/self-host/custom-models/bge-rerank': '/self-host/custom-models/legacy/bge-rerank',
+  '/self-host/custom-models/chatglm2-m3e': '/self-host/custom-models/legacy/chatglm2-m3e',
+  '/self-host/custom-models/chatglm2': '/self-host/custom-models/legacy/chatglm2',
+  '/self-host/custom-models/m3e': '/self-host/custom-models/legacy/m3e',
+  '/self-host/custom-models/marker': '/self-host/custom-models/legacy/marker',
+  '/self-host/config': '/self-host/config/model/intro',
+  '/self-host/config/sandbox': '/self-host/config/sandbox/opensandbox',
+  '/self-host/deploy': '/self-host/deploy/docker',
+  '/self-host/design': '/self-host/design/dataset',
+  '/self-host/migration': '/self-host/migration/docker_db',
+  '/self-host/troubleshooting': '/self-host/troubleshooting/attention',
+  '/self-host/object-storage': '/self-host/config/object-storage',
+  '/self-host/configuration': '/self-host/config/env',
+  '/self-host/signoz': '/self-host/config/signoz',
+  '/self-host/config/json': '/self-host/config/env',
+  '/self-host/config/sandbox/common': '/self-host/config/sandbox/opensandbox',
+  '/self-host/config/model/ai-proxy': '/self-host/config/model/intro',
+  '/self-host/config/model/one-api': '/self-host/config/model/intro',
+  '/development/one-api': '/self-host/config/model/intro',
+  '/development/modelConfig': '/self-host/config/model/intro',
+  '/self-host/modelConfig': '/self-host/config/model/intro',
+  '/self-host/config/model': '/self-host/config/model/intro',
+  '/self-host/config/model/ppio': '/self-host/config/model/intro',
+  '/self-host/design/design_plugin': '/plugin/intro',
+  '/self-host/faq': '/self-host/troubleshooting/faq',
 
   // General config / getting started.
-  '/introduction/guide/course/quick-start': '/guide/getting-started/quick-start',
-  '/introduction/guide/course/ai_settings': '/guide/build/general/ai_settings',
-  '/introduction/guide/course/chat_input_guide': '/guide/build/general/chat_input_guide',
-  '/introduction/guide/course/fileinput': '/guide/build/general/fileInput',
-  '/introduction/guide/course/fileInput': '/guide/build/general/fileInput',
+  '/guide/course': '/guide/getting-started/quick-start',
+  '/guide/course/quick-start': '/guide/getting-started/quick-start',
+  '/guide/course/ai_settings': '/guide/build/general/ai_settings',
+  '/guide/course/chat_input_guide': '/guide/build/general/chat_input_guide',
+  '/guide/course/fileinput': '/guide/build/general/fileInput',
+  '/guide/course/fileInput': '/guide/build/general/fileInput',
+  '/guide/course/welcomeText': '/guide/build/general/welcomeText',
+  '/guide/course/voiceInput': '/guide/build/general/voiceInput',
+  '/guide/course/collection_tags': '/guide/dataset/collection_tags',
 
   // Knowledge base third-party pages moved under dataset/third-party.
-  '/introduction/guide/knowledge_base/api_dataset': '/guide/dataset/third-party/api_dataset',
-  '/introduction/guide/knowledge_base/lark_dataset': '/guide/dataset/third-party/lark_dataset',
-  '/introduction/guide/knowledge_base/feishu_dataset': '/guide/dataset/third-party/lark_dataset',
-  '/introduction/guide/knowledge_base/yuque_dataset':
-    '/guide/dataset/third-party/yuque_dataset',
-  '/introduction/guide/knowledge_base/dingtalk_dataset':
-    '/guide/dataset/third-party/dingtalk_dataset',
-  '/introduction/guide/knowledge_base/third_dataset':
-    '/guide/dataset/third-party/third_dataset',
-  '/introduction/guide/knowledge_base/RAG': '/guide/dataset/rag',
+  '/guide/knowledge_base': '/guide/dataset/rag',
+  '/guide/dataset/externalFile': '/guide/dataset/third-party/third_dataset',
+  '/guide/knowledge_base/api_dataset': '/guide/dataset/third-party/api_dataset',
+  '/guide/knowledge_base/lark_dataset': '/guide/dataset/third-party/lark_dataset',
+  '/guide/knowledge_base/feishu_dataset': '/guide/dataset/third-party/lark_dataset',
+  '/guide/knowledge_base/yuque_dataset': '/guide/dataset/third-party/yuque_dataset',
+  '/guide/knowledge_base/dingtalk_dataset': '/guide/dataset/third-party/dingtalk_dataset',
+  '/guide/knowledge_base/third_dataset': '/guide/dataset/third-party/third_dataset',
+  '/guide/knowledge_base/RAG': '/guide/dataset/rag',
 
   // Dashboard pages that moved to different build sub-sections.
-  '/introduction/guide/dashboard/evaluation': '/guide/build/evaluation',
-  '/introduction/guide/dashboard/intro': '/guide/build/workflow/intro',
-  '/introduction/guide/dashboard/mcp_server': '/guide/build/publish/mcp_server',
-  '/introduction/guide/dashboard/mcp_tools': '/guide/build/tools/mcp_tools',
+  '/guide/dashboard': '/guide/build/workflow/intro',
+  '/guide/workbench': '/guide/build/workflow/intro',
+  '/guide/dashboard/workflow': '/guide/build/workflow/intro',
+  '/guide/workbench/workflow': '/guide/build/workflow/intro',
+  '/guide/dashboard/evaluation': '/guide/build/evaluation',
+  '/guide/dashboard/intro': '/guide/build/workflow/intro',
+  '/guide/workbench/intro': '/guide/build/workflow/intro',
+  '/guide/dashboard/basic-mode': '/guide/build/chat-agent',
+  '/guide/workbench/basic-mode': '/guide/build/chat-agent',
+  '/guide/dashboard/gapier': '/guide/build/tools/http_tools',
+  '/guide/workbench/gapier': '/guide/build/tools/http_tools',
+  '/guide/dashboard/mcp_server': '/guide/build/publish/mcp_server',
+  '/guide/dashboard/mcp_tools': '/guide/build/tools/mcp_tools',
+  '/guide/build/agentv2/startup': '/guide/build/agentv2/vm',
+  '/guide/build/workflow/nodes/sandbox': '/guide/build/workflow/nodes/sandbox-v2',
+  '/guide/build/workflow/nodes/laf': '/guide/build/workflow/nodes/sandbox-v2',
+  '/guide/plugins': '/plugin/team-installation',
+  '/guide/plugins/design_plugin': '/plugin/intro',
+  '/guide/plugins/dev_system_tool': '/plugin/system-tool-development',
   '/guide/build/tools/system-plugins/dev_system_tool': '/plugin/system-tool-development',
+  '/guide/build/tools/system-plugins/how_to_submit_system_plugin': '/plugin/system-tool-development',
+  '/guide/build/tools/system-plugins/bing_search_plugin': '/plugin/team-installation',
+  '/guide/build/tools/system-plugins/doc2x_plugin_guide': '/plugin/team-installation',
+  '/guide/build/tools/system-plugins/google_search_plugin_guide': '/plugin/team-installation',
+  '/guide/build/tools/system-plugins/searxng_plugin_guide': '/plugin/team-installation',
+  '/guide/build/publish/iframe_integration': '/guide/build/publish/link',
+  '/guide/build/publish/onwechat': '/guide/build/publish/wechat',
+
+  // Section folder landings.
+  '/guide/build': '/guide/build/chat-agent',
+  '/guide/build/agentv2': '/guide/build/agentv2/settings',
+  '/guide/build/general': '/guide/build/general/ai_settings',
+  '/guide/build/publish': '/guide/build/publish/versions',
+  '/guide/build/skill': '/guide/build/skill/intro',
+  '/guide/build/tools': '/guide/build/tools/overview',
+  '/guide/build/tools/system-plugins': '/guide/build/tools/system-plugins/upload_system_tool',
+  '/guide/build/workflow': '/guide/build/workflow/intro',
+  '/guide/build/workflow/nodes': '/guide/build/workflow/nodes/ai_chat',
+  '/guide/chat': '/guide/chat/html',
+  '/guide/dataset': '/guide/dataset/lifecycle',
+  '/guide/dataset/third-party': '/guide/dataset/third-party/api_dataset',
+  '/guide/getting-started/examples': '/guide/getting-started/examples/email-assistant',
+  '/guide/version': '/guide/version/cloud/intro',
+  '/guide/version/cloud': '/guide/version/cloud/intro',
+  '/guide/version/opensource': '/guide/version/opensource/intro',
+  '/guide/workspace': '/guide/workspace/team/team_roles_permissions',
+  '/guide/workspace/team': '/guide/workspace/team/team_roles_permissions',
 
   // Workspace.
   '/introduction/commercial': '/guide/version/commercial',
+  '/guide/team_permissions': '/guide/workspace/team/team_roles_permissions',
+  '/guide/workspace/team/customDomain': '/guide/workspace/customDomain',
+  '/guide/DialogBoxes': '/guide/chat/html',
+  '/guide/admin': '/guide/admin/platform-console',
+
+  // Historical FAQ subpages.
+  '/faq/app': '/guide/build/faq',
+  '/faq/dataset': '/guide/dataset/faq',
+  '/faq/external_channel_integration': '/guide/build/publish/versions',
+  '/use-cases/external-integration': '/guide/build/publish/versions',
+  '/faq/other': '/guide/version/cloud/faq',
+  '/faq/points_consumption': '/guide/version/cloud/faq',
+  '/faq/attention': '/self-host/troubleshooting/attention',
+  '/faq/docker': '/self-host/troubleshooting/faq',
+  '/faq/error': '/self-host/troubleshooting/faq',
+  '/faq/privateDeploy': '/self-host/troubleshooting/faq',
 
   // Navbar redirects.
   '/guide': defaultHomePath,
   '/use-cases': defaultHomePath,
-  '/self-host': '/self-host/deploy/docker',
   '/openapi': '/openapi/intro',
+  '/openapi/swagger': '/openapi/intro',
   '/openapi/share': '/guide/build/publish/link',
+  '/plugin': '/plugin/intro',
   '/faq': '/faq/chat'
 };
 
 // Prefix redirects for groups that kept the same slug after moving.
 const prefixMap: Record<string, string> = {
+  '/introduction/FAQ': '/faq',
   '/FAQ': '/faq',
-  '/shopping_cart': '/guide/version/commercial',
   '/upgrading': '/self-host/upgrading',
+  '/introduction/openapi': '/openapi',
+  '/introduction/guide': '/guide',
+  '/introduction/development': '/development',
+  '/development/openapi': '/openapi',
+  '/development/modelConfig': '/self-host/config/model',
   '/development': '/self-host',
 
   // Project code in PR 6880 changed these three old groups.
   '/use-cases/external-integration': '/guide/build/publish',
-  '/introduction/guide/dashboard/workflow': '/guide/build/workflow/nodes',
-  '/introduction/guide/knowledge_base': '/guide/dataset',
+  '/guide/dashboard/workflow': '/guide/build/workflow/nodes',
+  '/guide/workbench/workflow': '/guide/build/workflow/nodes',
+  '/guide/knowledge_base': '/guide/dataset',
 
   // Other moved documentation groups.
-  '/introduction/guide/plugins': '/guide/build/tools/system-plugins',
-  '/introduction/guide/team_permissions': '/guide/workspace/team',
-  '/introduction/guide/DialogBoxes': '/guide/chat',
-  '/introduction/guide/admin': '/guide/admin',
+  '/guide/plugins': '/guide/build/tools/system-plugins',
+  '/guide/team_permissions': '/guide/workspace/team',
+  '/guide/DialogBoxes': '/guide/chat',
 
-  '/introduction/development/openapi': '/openapi',
-  '/introduction/development': '/self-host',
+  '/self-host/modelConfig': '/self-host/config/model',
   '/introduction/version': '/guide/version',
   '/introduction/cloud': '/guide/version/cloud',
   '/introduction/opensource': '/guide/version/opensource',
@@ -94,40 +207,81 @@ const prefixMap: Record<string, string> = {
 const i18nMiddleware = createI18nMiddleware(i18n);
 const documentCacheControl = 'public, max-age=0, must-revalidate';
 
+/** Strip trailing slashes and /index suffixes from non-root paths. */
 function normalizePath(path: string) {
-  return path.length > 1 ? path.replace(/\/+$/, '') : path;
+  if (path.length <= 1) return path;
+  const trimmed = path.replace(/\/+$/, '');
+  return trimmed.endsWith('/index') ? trimmed.slice(0, -'/index'.length) || '/' : trimmed;
 }
 
 function applyRedirectMaps(path: string): string | null {
+  const matchesPrefix = (prefix: string) => path === prefix || path.startsWith(`${prefix}/`);
   if (path in exactMap) return exactMap[path];
+  if (matchesPrefix('/use-cases/app-cases')) return '/guide/getting-started';
+  if (matchesPrefix('/shopping_cart') || matchesPrefix('/introduction/shopping_cart')) {
+    return '/guide/version/commercial';
+  }
+  if (matchesPrefix('/introduction/development/proxy') || matchesPrefix('/self-host/proxy')) {
+    return '/self-host/deploy/docker';
+  }
+  const outdatedUpgradeMatch = path.match(
+    /^\/self-host\/upgrading\/(?:4-(?:8|9|10|11)\/)?(4(?:[0-9]|1[01])\d*)$/
+  );
+  if (outdatedUpgradeMatch) {
+    return `/self-host/upgrading/outdated/${outdatedUpgradeMatch[1]}`;
+  }
   for (const [oldPrefix, newPrefix] of Object.entries(prefixMap)) {
-    if (path.startsWith(oldPrefix)) {
+    if (matchesPrefix(oldPrefix)) {
       return newPrefix + path.slice(oldPrefix.length);
     }
   }
   return null;
 }
 
-function createRedirectUrl(target: string, request: NextRequest, lang: string) {
-  if (/^https?:\/\//i.test(target)) {
-    return new URL(target);
+/** Resolve legacy chains before issuing a single permanent redirect. */
+function resolveLegacyPath(path: string): string {
+  let target = path;
+  for (let step = 0; step < 10; step++) {
+    const next = applyRedirectMaps(target);
+    if (next === null || next === target) return target;
+    target = next;
   }
+  return target;
+}
 
-  return new URL(`/${lang}${target || '/'}`, request.url);
+function createRedirectUrl(target: string, request: NextRequest, lang: string) {
+  const host = request.headers.get('host')?.split(':')[0];
+  const origin = host === 'doc.fastgpt.cn' || host === 'doc.fastgpt.io'
+    ? getFastGPTDocsOriginForLocale(lang === 'en' ? 'en' : 'zh-CN')
+    : request.url;
+  const url = new URL(`/${lang}${target || '/'}`, origin);
+  url.search = request.nextUrl.search;
+  return url;
 }
 
 export default function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Extract language from pathname
-  let lang = i18n.defaultLanguage;
+  const host = request.headers.get('host')?.split(':')[0];
+  const hostLocale = host === 'doc.fastgpt.cn' ? 'zh-CN' : host === 'doc.fastgpt.io' ? 'en' : undefined;
+  let lang = hostLocale ?? i18n.defaultLanguage;
   let pathWithoutLang = pathname;
+  let hasLegacyLocalePrefix = false;
 
   for (const language of i18n.languages) {
-    if (pathname.startsWith(`/${language}`)) {
+    if (pathname === `/${language}` || pathname.startsWith(`/${language}/`)) {
       lang = language;
       pathWithoutLang = pathname.slice(`/${language}`.length);
       break;
+    }
+  }
+  if (pathWithoutLang === pathname) {
+    const legacyZhMatch = pathname.match(/^\/(?:zh-cn|zh)(?=\/|$)(.*)$/i);
+    if (legacyZhMatch) {
+      lang = 'zh-CN';
+      pathWithoutLang = legacyZhMatch[1];
+      hasLegacyLocalePrefix = true;
     }
   }
 
@@ -135,17 +289,20 @@ export default function middleware(request: NextRequest) {
   // Always 301 to the canonical (no-/docs) path, even if no map entry matches.
   if (pathWithoutLang === '/docs' || pathWithoutLang.startsWith('/docs/')) {
     const stripped = normalizePath(pathWithoutLang).slice('/docs'.length); // '' for /docs, /foo for /docs/foo
-    const mapped = applyRedirectMaps(stripped);
-    const finalPath = mapped ?? stripped;
+    const finalPath = resolveLegacyPath(stripped);
     return NextResponse.redirect(createRedirectUrl(finalPath, request, lang), 301);
   }
 
   // Non-/docs paths still consult the same maps so that direct hits on old
   // canonical paths (e.g. /upgrading) get redirected to their new home.
   const normalizedPath = normalizePath(pathWithoutLang);
-  const mapped = applyRedirectMaps(normalizedPath);
-  if (mapped !== null && mapped !== pathWithoutLang) {
+  const mapped = resolveLegacyPath(normalizedPath);
+  if (mapped !== pathWithoutLang || hasLegacyLocalePrefix) {
     return NextResponse.redirect(createRedirectUrl(mapped, request, lang), 301);
+  }
+
+  if (hostLocale && lang !== hostLocale) {
+    return NextResponse.redirect(createRedirectUrl(normalizedPath, request, lang), 301);
   }
 
   // Build enhanced request headers so server components (e.g. (docs)/layout)
@@ -174,12 +331,16 @@ export default function middleware(request: NextRequest) {
     return response;
   }
 
+  if (hostLocale) {
+    return NextResponse.redirect(createRedirectUrl(normalizedPath, request, hostLocale), 301);
+  }
+
   // No language prefix — check cookie for user's language preference
   const cookieLocale = request.cookies.get('FD_LOCALE')?.value;
   if (cookieLocale && i18n.languages.includes(cookieLocale)) {
     const newUrl = new URL(`/${cookieLocale}${pathname}`, request.url);
     newUrl.search = request.nextUrl.search;
-    return NextResponse.redirect(newUrl);
+    return NextResponse.redirect(newUrl, 301);
   }
 
   // Fall back to fumadocs i18n (Accept-Language detection / redirect)
@@ -189,6 +350,6 @@ export default function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!api|_next/static|_next/image|favicon(?:\\.ico|/)|robots\\.txt|sitemap.*\\.xml|.*\\.svg|.*\\.png|deploy/.*).*)'
+    '/((?!api|_next/static|_next/image|favicon(?:\\.ico|/)|robots\\.txt|sitemap.*\\.xml|static\\.json|.*\\.(?:svg|png|jpe?g|webp)|deploy/.*|examples/.*).*)'
   ]
 };

@@ -30,7 +30,7 @@ import { isLicenseActive } from '@fastgpt/global/common/system/license/utils';
 const logger = getLogger(LogCategories.SYSTEM);
 const pluginFeaturesProbeTimeoutMs = 3000;
 const defaultOpenSourceLoginGuideDocUrl =
-  'https://doc.fastgpt.io/zh-CN/guide/version/cloud/faq#%E8%B4%A6%E5%8F%B7%E7%99%BB%E5%BD%95%E9%97%AE%E9%A2%98';
+  'https://doc.fastgpt.cn/zh-CN/guide/version/cloud/faq#%E8%B4%A6%E5%8F%B7%E7%99%BB%E5%BD%95%E9%97%AE%E9%A2%98';
 
 /* Init global variables */
 export function initGlobalVariables() {
@@ -88,7 +88,7 @@ export async function getInitConfig() {
 const defaultFeConfigs: FastGPTFeConfigsType = {
   show_git: true,
   docUrl: 'https://doc.fastgpt.io',
-  openAPIDocUrl: 'https://doc.fastgpt.io/openapi/intro',
+  openAPIDocUrl: 'https://doc.fastgpt.io/en/openapi/intro',
   enable_team_plugin_upload: false,
   enable_team_model: false,
   appTemplateCourse:

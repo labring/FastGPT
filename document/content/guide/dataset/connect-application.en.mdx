@@ -1,0 +1,77 @@
+---
+title: "Connecting Knowledge Bases to Applications"
+description: Master attaching knowledge bases to Chat Agents, Chat Agent V2, and Workflows, configuring retrieval parameters, and authoring grounding templates.
+---
+
+{/* Preserve incoming bookmarks for reorganized sections. */}
+<span id="1-connect-the-knowledge-base" />
+<span id="2-debug-answers-and-citations" />
+<span id="3-publish-and-verify" />
+<span id="using-a-workflow" />
+
+Connecting a validated knowledge base to an application allows models to retrieve relevant context chunks before answering user queries, using source documentation as grounding evidence.
+
+## Scenario 1: Mount Knowledge Bases into Chat Agents
+
+Chat Agents (both standard Chat Agent and Chat Agent V2) support mounting single or multiple knowledge bases directly:
+
+1. Open the "Applications" console and navigate to your target Chat Agent.
+2. In the application settings panel on the left, locate the "Knowledge Base" section and click "Add".
+3. Check the target knowledge bases you want to connect. FastGPT supports multi-dataset attachments (for example, simultaneously attaching both a Product Manual and a Service Policy).
+4. **Configure Search Parameters**:
+   - **Citation Limit**: Set the retrieved-context token budget according to chunk size and model context capacity.
+   - **Minimum Similarity**: Calibrate the threshold with labeled questions and verify that score filtering is active.
+   - **Search Mode**: Select "Hybrid Search" to combine semantic generalization and keyword matching.
+
+![Attach knowledge bases in Chat Agent](/imgs/optimized/current/agent-prompt-reference.png.webp)
+
+## Scenario 2: Orchestrate Knowledge Retrieval in Workflows
+
+In workflows, knowledge base search operates as a discrete functional node, connecting with upstream and downstream components across the visual canvas:
+
+1. Open your target workflow canvas, then drag a "Knowledge Base Search" node from the node library onto the canvas.
+2. Connect an incoming execution edge from an upstream node (such as "Workflow Start" or a "Question Classifier" node).
+3. **Configure Node Inputs**:
+   - **User Query Input**: Click the reference selector and bind to the "User Input" parameter of "Workflow Start", or link to rewritten query output from an upstream intent extraction node.
+   - **Connected Datasets**: Select one or more target knowledge bases.
+   - **Search Settings**: Set the citation token budget and similarity threshold.
+4. **Merge Multi-Dataset Searches**:
+   When parallel retrieval branches query multiple datasets, add a "Dataset Search Merge" node downstream to consolidate, deduplicate, and align similarity scores.
+5. **Downstream Execution Flow**:
+   Connect the execution output of the search node to an "AI Chat" node, and bind the search node's retrieved context to the "Referenced Knowledge" input of the AI Chat node.
+
+![Workflow knowledge base search node configuration](/imgs/optimized/current/node-dataset-search.png.webp)
+
+## Step 3: Author Grounded System Prompt Templates
+
+To maximize the accuracy of knowledge base integration, compose strict grounding instructions in your prompt template:
+
+```text
+You are an enterprise knowledge specialist. Your duty is to answer user inquiries strictly using the reference material below.
+
+Reference Documentation:
+
+Operational Principles:
+1. Extract and state facts directly supported by the reference material.
+2. Maintain an objective, disciplined tone, outlining specific policies and procedures clearly.
+3. If the reference material does not contain the required facts, state that the current knowledge base contains no record and advise contacting customer support.
+```
+
+Bind search results to the AI Chat node's knowledge input. The dedicated knowledge reference prompt uses `{{quote}}` to insert formatted chunks; keep its default template or edit it in the reference settings.
+
+![Prompt reference template and parameter configuration](/imgs/optimized/current/citation-prompt-settings.png.webp)
+
+## Step 4: End-to-End Testing and Publication
+
+1. In the right-hand testing drawer, submit a representative business query.
+2. Open "Execution Details" and review each step:
+   - Verify that the knowledge base search node triggered successfully.
+   - Confirm that recalled chunks align closely with the query topic.
+   - Verify that the generated answer incorporates the retrieved facts faithfully.
+3. Once the output meets production standards, click "Publish" in the workspace header to freeze the configuration into the active production version.
+
+## Next Steps
+
+- Tag-based filtering: Learn [Collection Tag System](/en/guide/dataset/collection_tags).
+- Collaborator permissions: Study [Collection Permission Control](/en/guide/dataset/collection_permission).
+- Automated sync: Review [Data Maintenance and Incremental Updates](/en/guide/dataset/update-data).

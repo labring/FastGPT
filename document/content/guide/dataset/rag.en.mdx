@@ -1,270 +1,103 @@
 ---
-title: Dataset Fundamentals
-description: This section covers the core mechanisms, use cases, advantages, and limitations of RAG in generation tasks.
+title: "RAG Architecture and Anti-Hallucination"
+description: Master the RAG execution loop, context assembly, truncation strategies, evaluation metrics, and anti-hallucination engineering controls.
 ---
 
-[RAG Documentation](https://huggingface.co/docs/transformers/model_doc/rag)
-
-# 1. Introduction
-
-As natural language processing (NLP) technology has advanced rapidly, generative language models (such as GPT and BART) have excelled at text generation tasks, particularly in language generation and context understanding. However, purely generative models have inherent limitations when handling factual tasks. Since these models rely on fixed pre-training data, they may "hallucinate" — fabricating information when answering questions that require up-to-date or real-time knowledge, leading to inaccurate or unfounded results. Additionally, generative models often struggle with long-tail questions and complex reasoning tasks due to a lack of domain-specific external knowledge.
-
-Meanwhile, retrieval models (Retrievers) can quickly locate relevant information across massive document collections, addressing factual query needs. However, traditional retrieval models (such as BM25) often return isolated results when facing ambiguous queries or cross-domain questions, and cannot generate coherent natural language answers. Without contextual reasoning capabilities, the answers they produce tend to lack coherence and completeness.
-
-To address the shortcomings of both approaches, Retrieval-Augmented Generation (RAG) was developed. RAG combines the strengths of generative and retrieval models by fetching relevant information from external datasets in real time and incorporating it into the generation process. This ensures that generated text is both contextually coherent and factually grounded. This hybrid architecture performs particularly well in intelligent Q&A, information retrieval and reasoning, and domain-specific content generation.
-
-## 1.1 Definition of RAG
-
-RAG is a hybrid architecture that combines information retrieval with generative models. First, the retriever fetches content fragments relevant to the user's query from an external Dataset or document collection. Then, the generator produces natural language output based on these retrieved fragments, ensuring the output is information-rich, highly relevant, and accurate.
-
-# 2. Core Mechanisms of RAG
-
-RAG models consist of two main components: the Retriever and the Generator. These components work together to ensure generated text contains relevant external knowledge while maintaining natural, fluent language.
-
-## 2.1 Retriever
-
-The retriever's primary task is to fetch the most relevant content from an external Dataset or document collection for a given input query. Common techniques in RAG include:
-
-- Vector retrieval: Using models like BERT to convert documents and queries into vector space representations, then matching them via similarity calculations. Vector retrieval excels at capturing semantic similarity rather than relying solely on lexical matching.
-- Traditional retrieval algorithms: Such as BM25, which uses term frequency and inverse document frequency (TF-IDF) weighted scoring to rank and retrieve documents. BM25 works well for straightforward keyword matching tasks.
-
-The retriever in RAG provides contextual background for the generator, enabling it to produce more relevant answers based on the retrieved document fragments.
-
-## 2.2 Generator
-
-The generator is responsible for producing the final natural language output. Common generators in RAG systems include:
-
-- BART: A sequence-to-sequence model focused on text generation, capable of improving output quality through various noise-handling techniques.
-- GPT series: Pre-trained language models that excel at generating fluent, natural text, particularly strong in generation tasks thanks to large-scale training data.
-
-After receiving document fragments from the retriever, the generator uses them as context alongside the input query to produce relevant, natural text answers. This ensures the output draws on both existing knowledge and the latest external information.
-
-## 2.3 RAG Workflow
-
-The RAG model workflow can be summarized as follows:
-
-1. Input query: The user submits a question, which the system converts to a vector representation.
-2. Document retrieval: The retriever extracts the most relevant document fragments from the Dataset, typically using vector retrieval or traditional techniques like BM25.
-3. Answer generation: The generator receives the retrieved fragments and produces a natural language answer based on both the original query and the retrieved context, providing richer, more contextually relevant responses.
-4. Output: The generated answer is returned to the user, ensuring they receive an accurate response grounded in relevant, up-to-date information.
-
-# 3. How RAG Works
-
-## 3.1 Retrieval Phase
-
-In RAG, the user's query is first converted to a vector representation, then vector search is performed against the Dataset. The retriever typically uses pre-trained models like BERT to generate vector representations of both queries and document fragments, matching the most relevant fragments through similarity calculations (such as cosine similarity). RAG's retriever goes beyond simple keyword matching by using semantic-level vector representations, enabling more accurate results even for complex or ambiguous queries. This step is critical because retrieval quality directly determines the context available to the generator.
-
-## 3.2 Generation Phase
-
-The generation phase is the core of RAG. The generator produces coherent, natural text answers based on retrieved content. RAG generators like BART or GPT combine the user's query with retrieved document fragments to produce more precise and comprehensive answers. Unlike traditional generative models, RAG's generator can incorporate factual information from external datasets, improving accuracy.
-
-## 3.3 Multi-Turn Interaction and Feedback
-
-RAG models effectively support multi-turn interactions in conversational systems. Each round's query and generated results serve as input for the next round. Through this feedback loop, RAG progressively refines its retrieval and generation strategies, producing increasingly relevant answers across multiple chat turns. This also enhances RAG's adaptability in complex conversational scenarios involving cross-turn knowledge integration and reasoning.
-
-# 4. Advantages and Limitations of RAG
-
-## 4.1 Advantages
-
-- Information completeness: RAG combines retrieval and generation, producing text that is both naturally fluent and grounded in real-time information from external datasets. This significantly improves accuracy in knowledge-intensive scenarios like medical Q&A or legal opinion generation, avoiding the risk of hallucinated information.
-- Knowledge reasoning: RAG can efficiently retrieve from large-scale external datasets and reason with real data to generate fact-based answers. Compared to traditional generative models, RAG handles more complex tasks, particularly cross-domain or cross-document reasoning — such as legal case analysis or financial report generation.
-- Strong domain adaptability: RAG adapts well across domains, performing efficient retrieval and generation within specific fields. In domains like healthcare, law, and finance that require real-time updates and high accuracy, RAG outperforms models that rely solely on pre-training.
-
-## 4.2 Limitations
-
-Despite its strong potential and cross-domain adaptability, RAG faces several key limitations in practice that constrain large-scale deployment and optimization:
-
-#### 4.2.1 Retriever Dependency and Quality Issues
-
-RAG performance depends heavily on the quality of documents returned by the retriever. If retrieved fragments are irrelevant or inaccurate, the generated text may be biased or misleading — especially with ambiguous queries or cross-domain retrieval.
-
-- Challenge: Improving retriever precision for complex queries across large, diverse datasets remains difficult. Methods like BM25 have limitations, particularly with semantically ambiguous queries where keyword matching falls short.
-- Solution: Adopt hybrid retrieval combining sparse retrieval (BM25) with dense retrieval (vector search). For example, generate dense embeddings with BERT or a similar model, then use Faiss to index and search those vectors. This improves semantic matching and reduces the impact of irrelevant documents on generation.
-
-#### 4.2.2 Generator Computational Complexity and Performance Bottlenecks
-
-Combining retrieval and generation components significantly increases computational complexity. When processing large datasets or long texts, the generator must integrate information from multiple document fragments, increasing generation time and reducing inference speed. This is a major bottleneck for real-time Q&A systems.
-
-- Challenge: As Dataset scale grows, both retrieval computation and the generator's multi-fragment integration capabilities significantly impact system efficiency. GPU and memory consumption can multiply in multi-turn chats or complex generation tasks.
-- Solution: Use model compression and knowledge distillation to reduce generator complexity and inference time. Distributed computing and model parallelization techniques like [DeepSpeed](https://www.deepspeed.ai/) can effectively handle high computational demands in large-scale scenarios.
-
-#### 4.2.3 Dataset Updates and Maintenance
-
-RAG models typically rely on a pre-built external Dataset containing documents, papers, legal provisions, and other information. The timeliness and accuracy of this content directly affect the credibility of generated results. Over time, Dataset content may become outdated, producing answers that don't reflect current information — particularly problematic in fast-moving fields like healthcare and finance.
-
-- Challenge: Datasets need frequent updates, but manual updates are time-consuming and error-prone. Implementing continuous automated updates without impacting system performance is a significant challenge.
-- Solution: Use automated crawlers and information extraction systems (such as Scrapy) to automatically fetch and update Dataset content. Combined with [dynamic indexing techniques](https://arxiv.org/pdf/2102.03315), retrievers can update indexes in real time. Incremental learning allows the generator to gradually absorb new information, avoiding outdated answers.
-
-#### 4.2.4 Generated Content Controllability and Transparency
-
-RAG models have controllability and transparency challenges. In complex tasks or with ambiguous user input, the generator may produce incorrect reasoning based on inaccurate document fragments. Due to RAG's "black box" nature, users find it difficult to understand how the generator uses retrieved information — a significant concern in sensitive domains like law and healthcare, potentially eroding user trust.
-
-- Challenge: Insufficient model transparency makes it hard for users to verify the source and credibility of generated answers. For tasks requiring high explainability (medical consultations, legal advice), inability to trace answer sources undermines trust.
-- Solution: Introduce explainable AI (XAI) techniques like LIME or SHAP ([link](https://github.com/marcotcr/lime)) to provide detailed provenance for each generated answer, showing which knowledge fragments were referenced. Additionally, rule constraints and user feedback mechanisms can progressively optimize generator output for greater trustworthiness.
-
-# 5. RAG Improvement Directions
-
-RAG model performance depends on Dataset accuracy and retrieval efficiency. Optimizing data collection, content chunking, retrieval precision, and answer generation are key to improving overall effectiveness.
-
-## 5.1 Data Collection and Dataset Construction
-
-A Dataset acts as external memory for RAG. Its usefulness depends on broad coverage, reliable sources, and current information. Scientific literature databases such as PubMed and IEEE Xplore, established news organizations, industry standards, and reports can provide the background needed for different tasks. Automated updates help keep answers relevant as that information changes.
-
-**Challenges**
-
-- **Limited source coverage.** A Dataset built from one or a few sources may cover some domains well while leaving others poorly represented. For example, a collection focused on medicine may lack the legal and financial context needed for questions that span those fields. These gaps reduce accuracy for diverse topics and complex tasks.
-- **Uneven data quality.** Unreliable sources can introduce biased, incomplete, or inaccurate information. Unverified health information, for example, can lead to misleading answers. Ingesting this material without review weakens the reliability of the entire Dataset.
-- **Infrequent updates.** Law, finance, and technology change quickly. A Dataset with no regular update process can produce answers based on expired policies or outdated information, reducing its value for time-sensitive decisions.
-- **Slow, error-prone processing.** Collecting, cleaning, classifying, and structuring large volumes of mixed-format data takes substantial work. Manual processing and imperfect automation can both introduce errors or omit key information, leaving answers incomplete or incoherent.
-- **Sensitive information.** Medical, legal, and financial records can contain private data. These sources require appropriate authorization, secure storage, and privacy controls throughout ingestion and use. Poor handling can expose users to harm and create compliance problems.
-
-**Improvements**
-
-- **Expand and diversify sources.** Include specialist resources across the required domains, such as PubMed, LexisNexis, and financial databases. Use appropriately licensed open datasets and verified information, and work with domain organizations where useful. Broader coverage gives the system more depth for questions that span multiple fields.
-- **Review and filter data quality.** Combine automated checks, such as text similarity and sentiment-bias detection, with human review. Score records using source credibility and content completeness, then filter against those scores. This reduces the influence of unreliable or biased material and supports more accurate, neutral answers to specialist questions.
-- **Automate updates.** Regularly crawl trusted sites and industry databases. Use change detection to identify duplicates and outdated records, and prioritize information that is current or closely related to user needs. This keeps answers useful in fast-changing areas such as finance, policy, and technology.
-- **Improve cleaning and classification.** Use NLP models such as BERT for classification, entity recognition, and text denoising. Combine these with deduplication and automated labeling, then organize records by domain. Cleaner, well-organized data gives the generator more coherent context and reduces processing errors.
-- **Protect privacy and access.** Apply de-identification, masking, anonymization, and, where appropriate, differential privacy to sensitive records. Add access controls and encrypted storage. These measures support lawful, secure use of information in applications that handle personal or sensitive data.
-- **Standardize formats and relationships.** Adopt consistent formats and encodings, using JSON, XML, or knowledge graphs for structured information. Represent relationships between records explicitly so retrieval can use them efficiently. This supports retrieval across domains and makes the connections behind an answer easier to inspect.
-- **Use feedback to improve the Dataset.** Record user satisfaction, corrections, and suggestions. Analyze that feedback to identify missing topics and inaccurate information, then feed those findings back into data maintenance. The Dataset can then evolve with actual user needs.
-
-## 5.2 Data Chunking and Content Management
-
-Chunking determines which information the retriever can locate and how much context the generator receives. Splitting by paragraph, section, or topic can preserve logical relationships while limiting redundant content. This is especially important for long documents with complex structures.
-
-**Challenges**
-
-- **Broken context.** Excessive or arbitrary splitting can separate facts from their explanations. Cutting legal or technical documents into small, unrelated fragments may remove the context needed to interpret them, producing fragmented answers.
-- **Repeated information.** News reports and social posts may describe the same event many times. Without deduplication or consolidation, retrieval can return repeated evidence, making answers repetitive and consuming unnecessary compute.
-- **Unsuitable chunk size.** Very small chunks may lack context. Large chunks can make precise information harder to locate and introduce irrelevant material. The right granularity depends on the task, particularly when a question requires a short, specific answer.
-- **Complex topic boundaries.** Keyword-based rules can miss topic changes and information hierarchies in dense specialist writing. Misreading the structure of medical or financial content can reduce the accuracy and usefulness of generated answers.
-
-**Improvements**
-
-- **Split along semantic and logical boundaries.** Use syntactic analysis and semantic segmentation to identify coherent units. Models such as BERT can help recognize topics and context. Keep each chunk's information chain intact so long or complex documents provide usable context during generation.
-- **Deduplicate and consolidate.** Use TF-IDF or cosine similarity to identify repeated material, then apply clustering to merge related duplicates. Mark or index recurring content so the generator can avoid citing the same passage repeatedly. This produces clearer answers and reduces wasted computation.
-- **Adjust granularity to the task.** Use smaller chunks for concise facts in Q&A and larger chunks for background or long-form explanations. Adapt the split to query requirements and content complexity so retrieval can locate the key information while preserving enough supporting context.
-- **Group by topic.** Topic models such as LDA and embedding-based text clustering can group related content into chunks. Keeping a topic together is useful for academic papers and reports with many sections, and helps preserve the hierarchy and logic of the original material.
-- **Evaluate and revise chunking.** Monitor answer coherence and accuracy through user feedback and quality evaluation. Re-chunk passages associated with poor results and use real usage patterns to refine the strategy over time.
-
-## 5.3 Retrieval Optimization
-
-Retrieval determines which evidence is available for an answer. BM25 provides efficient keyword matching, while Dense Passage Retrieval (DPR) supports semantic matching. Combining them can help balance relevance, response speed, and resource use across different tasks.
-
-**Challenges**
-
-- **Dependence on one retrieval method.** BM25 works well with explicit terms but may miss complex semantic relationships. DPR handles meaning more effectively, while exact or frequent keyword matches can require additional attention. Relying on a single method can produce incomplete or imprecise results for complex queries.
-- **Latency and resource costs.** Semantic retrieval requires computation and storage, especially when many queries arrive at once. These costs can make real-time response targets difficult to meet.
-- **Redundant results.** Highly similar passages may repeat the same information. Without deduplication and ranking, those results can lead to repetitive answers and obscure the key evidence.
-- **Different task requirements.** Applications vary in their needs for precision, speed, and context length. Medical Q&A may prioritize semantic precision, while breaking-news queries may emphasize retrieval speed. A fixed strategy has limited flexibility across these use cases.
-
-**Improvements**
-
-- **Combine BM25 and DPR.** Use BM25 for an initial keyword filter, then apply DPR for deeper semantic matching. This layered approach combines lexical and semantic evidence and can help with multiple-intent queries or retrieval from long documents.
-- **Cache and parallelize.** Cache results for recent, frequent queries to reduce repeated computation. Distribute DPR processing across nodes where needed. Together, caching and parallel processing can improve responsiveness under high concurrency and limited resources.
-- **Deduplicate and rank results.** Use cosine similarity to remove redundant passages, then rank results using relevant signals such as user preferences or timestamps. This gives the generator more varied, current evidence and makes the resulting answer easier to read.
-- **Adapt the strategy by task.** Define retrieval templates that adjust weights, passage length, and the combination of methods. For example, emphasize semantic retrieval for medical questions and fast keyword matching for financial news. This helps match context to each task's requirements.
-- **Use retrieval frameworks where helpful.** Frameworks such as Haystack provide interfaces for combining retrieval and generation, with plugins that make retrieval easier to extend and tune. They can simplify experiments and support more stable behavior across different tasks.
-
-## 5.4 Answer Generation and Optimization
-
-The generator turns retrieved context into a natural language answer. Its accuracy, logical structure, and presentation shape the user experience. Structured information and knowledge graphs can help connect related facts, while feedback can guide improvements to content and style.
-
-**Challenges**
-
-- **Incomplete context.** Missing evidence can cause the generator to misinterpret or overlook important information, especially in complex questions spanning several fields. For example, an incomplete account of a medical case or symptoms can lead to an inaccurate or logically inconsistent answer.
-- **Specialist terminology and knowledge.** Medical and legal answers require precise concepts and references. Gaps in domain knowledge can produce incorrect terminology or mistaken citations to statutes and case law, reducing accuracy and trust.
-- **Weak use of feedback across turns.** Users may correct factual accuracy, logic, or style, yet the system may lack a mechanism to use those corrections consistently. A customer-service assistant can then repeat answers that fail to address the user's needs.
-- **Inconsistent output.** Without domain-specific rules, the generator may vary its terminology, style, or level of detail. Financial reports, for example, require consistent language and presentation to remain professionally useful.
-
-**Improvements**
-
-- **Provide structured context.** Integrate domain knowledge graphs or Datasets so the generator can retrieve key facts and their relationships. This can help maintain a coherent chain of reasoning in specialist areas such as medicine and law.
-- **Define domain rules.** Use answer templates, terminology lists, and generation constraints for recurring specialist questions. These rules improve consistency and help reduce errors in both content and presentation.
-- **Analyze and apply user feedback.** Use machine learning or other analysis methods to identify generation errors and changing user requirements. Adjust generation logic and gradually adapt to the user's needs and preferred style across turns.
-- **Coordinate retrieval and generation.** Allow the generator to request additional evidence before producing an answer when its context is incomplete. Additional retrieval can fill information gaps and support a more complete response.
-- **Check consistency and meaning.** Apply consistency checks to terminology and style, and use semantic correction to assess the logical structure of the answer against the user's request. Correcting inconsistencies is especially useful for complex answers, multiple conversation turns, and specialist documents.
-
-## 5.5 RAG Pipeline
-
-![RAG pipeline from query input and retrieval to generation, output, and feedback](/imgs/RAG1.png)
-
-1. Data loading and query input:
-   1. The user submits a natural language query through the UI or API.
-   2. The input is passed to a vectorizer (such as BERT or Sentence Transformer) to convert the query into a vector representation.
-2. Document retrieval:
-   1. The vectorized query is passed to the retriever, which finds the most relevant document fragments in the Dataset.
-   2. Retrieval can use sparse techniques (BM25) or dense techniques (DPR) for improved matching efficiency and precision.
-3. Generator processing and natural language generation:
-   1. Retrieved document fragments are fed to the generator (such as GPT, BART, or T5), which produces a natural language answer based on the query and document content.
-   2. The generator combines external retrieval results with pre-trained language knowledge for more precise, natural answers.
-4. Result output:
-   1. The generated answer is returned to the user via API or UI, ensuring coherence and factual accuracy.
-5. Feedback and optimization:
-   1. Users can provide feedback on generated answers, which the system uses to optimize retrieval and generation.
-   2. Through model fine-tuning or retrieval weight adjustments, the system progressively improves accuracy and efficiency.
-
-# 6. RAG Case Studies
-
-[RAG Across Various Domains](https://github.com/hymie122/RAG-Survey)
-
-# 7. RAG Use Cases
-
-RAG models have been widely adopted across multiple domains:
-
-## 7.1 Intelligent Q&A Systems
-
-- RAG generates accurate, detailed answers by retrieving from external datasets in real time, avoiding the hallucination issues of traditional generative models. For example, in medical Q&A systems, RAG can incorporate the latest medical literature to generate answers with current treatment protocols, helping medical professionals quickly access the latest research and clinical recommendations.
-  - [Medical Q&A System Case Study](https://www.apexon.com/blog/empowering-discovery-the-role-of-rag-architecture-generative-ai-in-healthcare-life-sciences/)
-    - ![Azure RAG architecture with authentication, document extraction, search, and answer generation](/imgs/RAG2.png)
-    - User submits a query through the web app:
-      1. The user enters a query in the web app, which enters the backend system and initiates the data processing pipeline.
-    - Authentication via Azure AD:
-      1. The system authenticates the user through Azure Active Directory (Azure AD), ensuring only authorized users can access the system and data.
-    - User permission check:
-      1. The system filters accessible content based on user group permissions managed by Azure AD.
-    - Azure AI Search Service:
-      1. The filtered query is passed to Azure AI Search, which finds relevant content in indexed databases or documents using semantic search.
-    - Document intelligence processing:
-      1. The system uses OCR and document extraction to convert unstructured data into structured, searchable data for Azure AI retrieval.
-    - Document sources:
-      1. Documents come from pre-stored collections that have been processed and indexed before user queries.
-    - Azure OpenAI generates response:
-      1. After retrieving relevant information, data is passed to Azure OpenAI, which uses natural language generation (NLG) to produce a coherent answer based on the query and retrieval results.
-    - Response returned to user:
-      1. The final answer is returned through the web app, completing the query-to-response flow.
-    - The entire pipeline demonstrates Azure AI technology integration, handling complex queries through document retrieval, intelligent processing, and natural language generation while ensuring data security and compliance.
-
-## 7.2 Information Retrieval and Text Generation
-
-- Text generation: RAG can not only retrieve relevant documents but also generate summaries, reports, or document abstracts, enhancing coherence and accuracy. For example, in the legal domain, RAG can integrate relevant statutes and case law to generate detailed legal opinions, ensuring comprehensiveness and rigor — particularly valuable for lawyers and legal practitioners to improve efficiency.
-  - [Legal Domain RAG Case Study](https://www.apexon.com/blog/empowering-discovery-the-role-of-rag-architecture-generative-ai-in-healthcare-life-sciences/)
-    - Summary:
-    - Background: Traditional LLMs perform well in generation tasks but have limitations with complex legal tasks. Legal documents have unique structures and terminology that standard retrieval benchmarks often fail to capture. LegalBench-RAG aims to provide a dedicated benchmark for evaluating legal document retrieval.
-    - LegalBench-RAG structure:
-      1. ![LegalBench-RAG diagram comparing retrieved evidence with annotated reference passages](/imgs/RAG3.png)
-      2. Workflow:
-      3. User inputs a question (Q: ?, A: ?): The user submits a query through the interface.
-      4. Embed + Retrieve component: Receives the query, embeds it as a vector, and performs similarity search in external datasets or documents.
-      5. Retrieved evidence (A): The retrieved passages provide context for the language model to generate an answer.
-      6. Benchmark comparison: The retrieved passages are compared with annotated reference passages from the original documents.
-      7. The benchmark is built on the LegalBench dataset with 6,858 query-answer pairs traced to exact locations in original legal documents.
-      8. LegalBench-RAG focuses on precisely retrieving small passages from legal texts rather than broad, contextually irrelevant fragments.
-      9. The dataset covers various legal document types including contracts and privacy policies, ensuring coverage across multiple legal scenarios.
-    - Significance: LegalBench-RAG is the first publicly available benchmark specifically for legal retrieval systems, providing a standardized framework for comparing retrieval algorithms in high-precision legal tasks such as citation lookup and clause interpretation.
-    - Key challenges:
-      1. RAG's generation component depends on retrieved information — incorrect retrieval can lead to incorrect generation.
-      2. The length and terminological complexity of legal documents increase retrieval and generation difficulty.
-    - Quality control: The dataset construction process ensures high-quality human annotations and textual precision, with multiple rounds of manual verification when mapping annotation categories and document IDs to specific text fragments.
-
-## 7.3 Other Use Cases
-
-RAG can also be applied to multimodal generation scenarios, including image, audio, and 3D content generation. Cross-modal systems like ReMoDiffuse and Make-An-Audio use RAG technology for generation across different data modalities. In enterprise decision support, RAG can rapidly retrieve external resources (industry reports, market data) to generate high-quality forward-looking reports, enhancing strategic decision-making capabilities.
-
-## 8. Summary
-
-This document systematically covers the core mechanisms, advantages, and use cases of Retrieval-Augmented Generation (RAG). By combining generative and retrieval models, RAG addresses the hallucination problem of traditional generative models in factual tasks and the inability of retrieval models to produce coherent natural language output. RAG models retrieve information from external datasets in real time, generating content that is both factually accurate and linguistically fluent — applicable to knowledge-intensive domains like healthcare, law, and intelligent Q&A systems.
-
-In practice, while RAG offers significant advantages in information completeness, reasoning capability, and cross-domain adaptability, it also faces challenges around data quality, computational resource consumption, and Dataset maintenance. To further improve RAG performance, this document proposes comprehensive improvements across data collection, content chunking, retrieval strategy optimization, and answer generation — including knowledge graph integration, user feedback optimization, and efficient deduplication algorithms — to enhance model applicability and efficiency.
-
-RAG has demonstrated strong potential in intelligent Q&A, information retrieval, and text generation, and continues to expand into multimodal generation and enterprise decision support. Through hybrid retrieval techniques, knowledge graphs, and dynamic feedback mechanisms, RAG can flexibly address complex user needs, generating factually grounded and logically coherent answers. Going forward, RAG will further improve trustworthiness and practicality in specialized domains through enhanced model transparency and controllability, supporting broader use cases for intelligent information retrieval and content generation.
+{/* Preserve incoming bookmarks for reorganized sections. */}
+<span id="1-introduction" />
+<span id="11-definition-of-rag" />
+<span id="21-retriever" />
+<span id="51-data-collection-and-dataset-construction" />
+<span id="52-data-chunking-and-content-management" />
+<span id="2-core-mechanisms-of-rag" />
+<span id="22-generator" />
+<span id="23-rag-workflow" />
+<span id="3-how-rag-works" />
+<span id="31-retrieval-phase" />
+<span id="32-generation-phase" />
+<span id="33-multi-turn-interaction-and-feedback" />
+<span id="4-advantages-and-limitations-of-rag" />
+<span id="41-advantages" />
+<span id="42-limitations" />
+<span id="421-retriever-dependency-and-quality-issues" />
+<span id="424-generated-content-controllability-and-transparency" />
+<span id="423-dataset-updates-and-maintenance" />
+<span id="422-generator-computational-complexity-and-performance-bottlenecks" />
+<span id="5-rag-improvement-directions" />
+<span id="53-retrieval-optimization" />
+<span id="54-answer-generation-and-optimization" />
+<span id="55-rag-pipeline" />
+<span id="6-rag-case-studies" />
+<span id="7-rag-use-cases" />
+<span id="71-intelligent-qa-systems" />
+<span id="72-information-retrieval-and-text-generation" />
+<span id="73-other-use-cases" />
+<span id="8-summary" />
+<span id="how-material-becomes-searchable" />
+<span id="the-stages-behind-an-answer" />
+<span id="retrieval-ranking-and-answer-correctness" />
+<span id="content-updates-and-published-configuration" />
+<span id="quality-latency-and-maintenance-ownership" />
+<span id="application-scope" />
+
+Retrieval-Augmented Generation (RAG) is a critical architectural pattern combining static knowledge assets with large language models. FastGPT combines retrieval, reference prompts, and citations to reduce unsupported answers. Validate factual accuracy with a representative test set.
+
+## The Complete RAG Execution Loop
+
+A configured RAG pipeline can contain the following phases. Query rewriting, hybrid search, and reranking depend on application settings:
+
+![RAG question-answering flow](/imgs/diagrams/rag-pipeline.en.light.svg)
+
+---
+
+## Core Evaluation Metric Framework
+
+Evaluating knowledge base RAG performance centers around four key dimensions:
+
+| Metric | Definition and Focus | Optimization Levers |
+| --- | --- | --- |
+| **Recall** | Whether the chunk containing the ground truth was successfully retrieved | Adjust chunk boundaries, enable hybrid search, tune embedding models |
+| **Precision** | Proportion of retrieved chunks that provide direct factual value | Integrate Rerank models for second-pass scoring; increase minimum similarity thresholds |
+| **Context Redundancy** | Density of irrelevant information in the model context | Refine chunk size limits, lower citation token budgets, eliminate duplicate data chunks |
+| **Factual Faithfulness** | Degree of alignment between model statements and cited reference material | Strengthen prompt constraints, select models with strong instruction-following capabilities |
+
+---
+
+## Context Assembly and Token Budgeting
+
+Large language models feature maximum context window boundaries, and model attention degrades across lengthy prompts. FastGPT enforces structured context assembly rules:
+
+1. **Token Allocation**: The system partitions context into four allocations: global system prompt, multi-turn history, retrieved knowledge chunks, and completion token headroom.
+2. **Relevance Ordering**: Candidate order follows the active retrieval and reranking configuration. Inspect the returned references to confirm that relevant evidence survives selection.
+3. **Safe Boundary Truncation**: Retrieval keeps whole chunks and can cross the token-budget boundary with its final chunk. The AI Chat stage applies its own reference limits; inspect the final assembled context.
+
+![Prompt context assembly and parameter configuration](/imgs/optimized/current/citation-prompt-settings.png.webp)
+
+---
+
+## Three Pillars of Anti-Hallucination Engineering
+
+Use the following controls and verify their behavior in the published application:
+
+### 1. Grounded System Instructions
+Define explicit operational boundaries within the prompt:
+```text
+You are a corporate policy assistant.
+Answer user questions strictly using the retrieved reference material below.
+When the references do not record the requested information, respond that the documentation contains no record, identify the missing details, and direct the user to the appropriate department.
+Do not infer unrecorded figures, deadlines, or promises from external knowledge.
+```
+
+### 2. Hard Similarity Threshold Filtering (Min Score)
+Calibrate similarity thresholds using labeled queries and verify the active score-filter mode. Configure and test an empty-result branch or insufficient-evidence prompt in the application.
+
+### 3. End-to-End Citation Transparency
+During response generation, the engine tracks and outputs the source file name, chunk text, and collection ID for each used candidate. Front-end chat widgets render clickable citation pills, enabling business users to verify statements against source text.
+
+![Citation verification against source material](/imgs/optimized/current/citation-reader-full-text.png.webp)
+
+## Next Steps
+
+- Test retrieval scores: Follow [Search Testing and Retrieval Parameters](/en/guide/dataset/test-retrieval).
+- Connect to conversational models: Follow [Connecting Knowledge Bases to Applications](/en/guide/dataset/connect-application).
+- Granular search filtering: Review [Collection Tag System](/en/guide/dataset/collection_tags).

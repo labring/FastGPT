@@ -44,7 +44,7 @@ Start FastGPT — Milvus initialization calls `getVersion()` to gate the version
 
 ### 5. Migrate
 
-After confirming that the old Milvus `modeldata` collection exists and contains vectors, call the migration API. This is a pure copy and does not regenerate embeddings.
+After confirming that the old Milvus `modeldata` collection exists and contains vectors, call the migration API to perform a direct data copy.
 
 ```bash
 # 1. Dry run to preview stats

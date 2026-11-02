@@ -1,0 +1,70 @@
+---
+title: Build a Chat Agent
+description: Configure models, system instructions, knowledge bases, tool calls, interactive features, and workflow conversion in a Chat Agent.
+---
+
+A Chat Agent organizes system instructions, knowledge retrieval, tool calling, and multimodal inputs around a single core chat model through a form-based editor.
+
+## Use Cases and Prerequisites
+
+- **Use cases**: Policy and product manual Q&A, standardized writing assistants, and lightweight assistants combining a single model with tools.
+- **Permissions**: Application creation or editing permission in the active team, plus access to the selected models, knowledge bases, and tools.
+- **Model capabilities**: Select a model with tool-calling support when attaching tools, and vision or audio support when enabling image or voice inputs.
+
+![Create a Chat Agent application](/imgs/optimized/current/app-create.png.webp)
+
+## Configuration Steps
+
+### 1. Select the Model and Parameters
+
+1. Open **Applications** in the workspace, click **Create Application**, and select **Chat Agent**.
+2. Click the model selector in the left **AI Settings** panel and choose an available language model.
+3. Open the parameter dialog next to the model to configure temperature, max response tokens, chat history turns, output format (Text or JSON Schema), and reasoning mode. See [AI Settings](/en/guide/build/general/ai_settings) for parameter details.
+
+![Select a chat model and configure parameters](/imgs/optimized/current/ai-model-selector.png.webp)
+
+### 2. Write System Instructions and Global Variables
+
+1. Define the assistant's role, grounding boundaries, and output structure in the **Prompt** field.
+2. Type `/` or click the variable button to insert [global variables](/en/guide/build/workflow/variables) such as department, language preference, or ticket ID.
+3. Add text, single-select, multi-select, or file variables in the **Variables** section when users need to supply context before starting a conversation.
+
+### 3. Associate Knowledge Bases and Retrieval Settings
+
+1. Click **Select** under **Associated Knowledge Bases** and choose one or more team knowledge bases.
+2. Open **Parameters** to configure search mode (semantic, full-text, or hybrid), reranking, citation token budget, minimum relevance threshold, query optimization, and [collection tag filters](/en/guide/dataset/collection_tags).
+3. Verify citation prompt templates and grounding constraints. See [Connect a Knowledge Base to an Application](/en/guide/dataset/connect-application) for tuning steps.
+
+![Configure knowledge base search mode and filters](/imgs/optimized/current/dataset-search-mode.png.webp)
+
+### 4. Attach Tools
+
+1. Click **Add** in the **Tool Call** section and choose from system tools, team-installed plugins, workflow tools, HTTP tool sets, or MCP tool sets.
+2. Supply required credentials or fixed parameters for the selected tools.
+3. State when each tool should be used in the system prompt so the model invokes tools automatically and synthesizes the returned data.
+
+### 5. Configure Conversation Features and Scheduled Triggers
+
+| Feature | Purpose | Detailed Guide |
+| --- | --- | --- |
+| **Welcome Message** | Display a greeting, quick starter questions, and rich text cards in new chats | [Welcome Text](/en/guide/build/general/welcomeText) |
+| **File Input** | Allow users to upload documents or images in the chat box | [File Input](/en/guide/build/general/fileInput) |
+| **Voice Input / TTS** | Enable microphone speech-to-text (STT) and audio playback (TTS) | [Voice Input](/en/guide/build/general/voiceInput) |
+| **Question Guide / Autocomplete** | Generate follow-up suggestions or autocomplete prompts from a lexicon | [Chat Input Guide](/en/guide/build/general/chat_input_guide) |
+| **Scheduled Trigger** | Run a default prompt automatically on a timezone-aware Cron schedule | [Configure Scheduled Triggers](/en/guide/build/scheduled-triggers) |
+
+## Debug, Publish, and Convert to Workflow
+
+1. **Live debugging**: Send test queries in the right **Debug Preview** pane, expand citation badges and run details, and verify retrieved chunks, tool arguments, and model outputs.
+2. **Publish a release version**: Click **Save and Publish** in the top-right corner once verified. Draft edits take effect on external channels after publication; see [Published Versions and Publishing Channels](/en/guide/build/publish/versions).
+3. **Convert to Workflow**: When your scenario grows to require deterministic branching, loop processing, or human form input, open the menu next to the application name and select **Convert to Workflow**. FastGPT creates a new Workflow copy with a `Copy` suffix while keeping your original Chat Agent intact.
+
+## Troubleshooting
+
+| Symptom | Check |
+| --- | --- |
+| Prompt or knowledge updates do not appear in shared links | Draft edits stay in the workspace until published; publish the version and start a fresh chat |
+| Attached tools are not invoked | Confirm the selected model supports tool calling, tool descriptions are clear, and required secrets are configured |
+| Knowledge base has content but answers lack citations | Run **Search Test** in the knowledge base and check relevance thresholds and collection tag filters |
+
+Next: Explore autonomous planning and virtual machines in [Chat Agent V2](/en/guide/build/agentv2/settings), or learn [Visual Workflow Orchestration](/en/guide/build/workflow/intro).

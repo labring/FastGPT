@@ -1,6 +1,6 @@
 ---
 title: 免登录窗口发布
-description: FastGPT 免登录窗口发布
+description: 创建分享链接，在新会话核对发布配置、答案和引用。
 ---
 
 ## 介绍
@@ -9,21 +9,33 @@ description: FastGPT 免登录窗口发布
 
 系统会为每个用户生成一个 localId，用于标识用户，从云端拉取对话记录。但是这种方式仅能保障用户在同一设备同一浏览器中使用，如果切换设备或者清空浏览器缓存则会丢失这些记录。这种方式存在一定的风险，因此我们仅允许用户拉取近 `30天` 的 `20条` 记录。
 
+## 开始前
+
+准备应用编辑和发布渠道管理权限、可用模型与额度，并先[发布已验证的配置](/zh-CN/guide/build/publish/versions)。链接使用量由所属团队承担；演示建议使用虚构资料并按可用能力设置有效期和用量限制。入口和选项以团队版本与权限为准。
+
 ## 使用流程
 
 ### 1. 创建链接
 
 在 `应用详情` - `发布渠道` - `免登录窗口` 中，创建新链接。
 
-填写名称后即可创建，该名称仅用于记录展示。
+填写便于识别的名称，设置所需的过期时间、QPM 和积分上限。本任务需要核对原文，在可见度配置中开启 **查看引用片段**，然后确认创建。创建后核对列表显示的过期时间和积分上限。名称仅用于记录展示。
 
-![alt text](/imgs/image.png)
+![创建分享链接并配置访问限制](/imgs/optimized/current/publish-link.png.webp)
 
 ### 2. 复制链接
 
 点击开始使用，即可打开使用链接，复制后即可使用。
 
-![alt text](/imgs/image-1.png)
+### 3. 验证新会话与引用
+
+打开链接并创建新对话，重复调试时使用的已知问题。差旅示例应回答 15 个自然日、发票和已批准差旅申请；住宿补贴问题应说明资料缺失。打开引用片段，核对来源和支持答案的原文。
+
+如果引用入口不可见，检查该链接的引用展示设置以及当前访问权限。根据使用者需要开启允许的查看能力，再从链接新建对话复核。
+
+### 4. 恢复访问或结果差异
+
+链接无法打开时检查有效期、用量限制、可用额度和已配置的身份验证。能打开但回答有差异时核对链接所属应用、发布版本、知识库索引及会话历史。修复后从同一链接新建对话，重跑事实与引用检查，详见[知识库排障](/zh-CN/guide/dataset/faq)。
 
 ## 参数配置
 
@@ -35,9 +47,9 @@ description: FastGPT 免登录窗口发布
 - 积分上限：该链接产生的最大计费数据。
 - 身份验证：便于接入第三方系统进行身份认证和对话回调。
 - 实时运行状态：是否展示当前运行的节点。
-- 查看引用片段：见系统介绍
-- 查看引用全文：见系统介绍
-- 下载/打开来源原文：见系统介绍
+- 查看引用片段：控制访问者查看检索片段的入口，用于核对答案依据。
+- 查看引用全文：按当前能力允许查看引用的完整内容。
+- 下载/打开来源原文：按来源类型与权限提供原文访问；开启前核对资料的可分享范围。
 
 ## 身份验证说明
 
@@ -66,13 +78,13 @@ description: FastGPT 免登录窗口发布
 
 #### 触发流程
 
-![](/imgs/sharelink_process.png)
+![配置身份验证后的分享链接流程](/imgs/diagrams/share-link-auth.zh-CN.light.svg)
+
+初始化要求 `success=true` 且 `uid` 为有效字符串。商业版对话入口会在开始回调前校验到期时间、用量和 QPM；完成回调用于结果通知。受保护链接还会验证登录成员与应用读取权限。
 
 ### 配置教程
 
 #### 1. 配置身份校验地址
-
-![](/imgs/share-setlink.png)
 
 配置校验地址后，在每次分享链接使用时，都会向对应的地址发起校验和上报请求。
 
@@ -140,7 +152,7 @@ curl --location --request POST '{{host}}/shareAuth/start' \
 --header 'Content-Type: application/json' \
 --data-raw '{
     "token": "[authToken]",
-    "question": "用户问题",
+    "question": "用户问题"
 }'
 ```
 
@@ -182,9 +194,9 @@ curl --location --request POST '{{host}}/shareAuth/start' \
 
 该接口无规定返回值。
 
-响应值与 [chat 接口格式相同](../../../openapi/intro.mdx#响应)，仅多了一个 `token`。
+响应值与 [chat 接口格式相同](/zh-CN/openapi/intro#响应)，仅多了一个 `token`。
 
-重点关注：`totalPoints` (总消耗 AI 积分)，`token` (Token 消耗总数)
+重点关注 `responseData` 中的 `totalPoints`（AI 积分）与 `tokens`（模型上下文 token 数）。顶层 `token` 是业务身份凭证，按鉴权约定处理。
 
 ```bash
 curl --location --request POST '{{host}}/shareAuth/finish' \
@@ -254,7 +266,6 @@ curl --location --request POST '{{host}}/shareAuth/finish' \
         }
     ]
 
-
 }'
 ```
 
@@ -310,8 +321,6 @@ type ResponseType = {
 我们以 [Laf 作为服务器为例](https://laf.dev/)，简单展示这 3 个接口的使用方式。
 
 #### 1. 创建 3 个 Laf 接口
-
-![](/imgs/share-auth1.png)
 
 <Tabs items={['/shareAuth/init','/shareAuth/start','/shareAuth/finish']}>
   <Tab value="/shareAuth/init" >
@@ -370,12 +379,11 @@ import cloud from '@lafjs/cloud';
 export default async function (ctx: FunctionContext) {
   const { token, responseData } = ctx.body;
 
-  const total = responseData.reduce((sum, item) => sum + item.price, 0);
-  const amount = total / 100000;
+  const totalPoints = responseData.reduce((sum, item) => sum + (item.totalPoints ?? 0), 0);
 
-  // 省略数据库操作
-
-  return {};
+  // Authenticate the callback and record points with an idempotency key.
+  // Currency conversion follows your own billing contract.
+  return { totalPoints };
 }
 ```
 
@@ -385,8 +393,6 @@ export default async function (ctx: FunctionContext) {
 #### 2. 配置校验地址
 
 我们随便复制 3 个地址中一个接口: `https://d8dns0.laf.dev/shareAuth/finish` , 去除 `/shareAuth/finish` 后填入 `身份校验` : `https://d8dns0.laf.dev`
-
-![](/imgs/share-auth2.jpg)
 
 #### 3. 修改分享链接参数
 

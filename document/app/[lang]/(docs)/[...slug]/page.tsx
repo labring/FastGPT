@@ -1,13 +1,14 @@
 import { source } from '@/lib/source';
+import { searchPath } from 'fumadocs-core/breadcrumb';
 import { DocsPage, DocsBody, DocsDescription, DocsTitle } from 'fumadocs-ui/page';
 import { notFound } from 'next/navigation';
-import NotFound from '@/components/docs/not-found';
 import { createRelativeLink } from 'fumadocs-ui/mdx';
 import { getMDXComponents } from '@/mdx-components';
 import { i18n } from '@/lib/i18n';
-import { generateArticleSchema, generateBreadcrumbSchema } from '@/lib/schema';
-import { getFastGPTDocsOrigin } from '@/lib/fastgpt-home-url';
+import { generateArticleSchema, generateBreadcrumbSchema, generateFaqSchema } from '@/lib/schema';
+import { getFastGPTDocsOriginForLocale } from '@/lib/fastgpt-home-url';
 import { CalendarDays } from 'lucide-react';
+import { LocalizedLink } from '@/components/docs/LocalizedLink';
 import {
   UpgradeVersionTimeline,
   type UpgradeVersionTimelineItem
@@ -21,20 +22,10 @@ export default async function Page({
 }: {
   params: Promise<{ lang: string; slug?: string[] }>;
 }) {
+  // 1. Resolve target page and optional upgrade timeline items.
   const { lang, slug } = await params;
-  let page = source.getPage(slug, lang);
-
-  // If page not found in current language, fallback to default language
-  // This allows showing Chinese content when English translation is not available
-  // while keeping the URL unchanged (e.g., /en/docs/faq shows Chinese content)
-  if (!page || !page.data || !page.file) {
-    page = source.getPage(slug, i18n.defaultLanguage);
-  }
-
-  // If still not found in default language, show 404
-  if (!page || !page.data || !page.file) {
-    return <NotFound />;
-  }
+  const page = source.getPage(slug, lang);
+  if (!page?.data || page.data._file.path.endsWith('.en.mdx') !== (lang === 'en')) notFound();
 
   const MDXContent = page.data.body;
   const releaseTime = page.data.releaseTime;
@@ -56,27 +47,60 @@ export default async function Page({
         }))
     : [];
 
+  // 2. Resolve file metadata and canonical page URL.
   // Use the physical locale file; the route path omits the language suffix.
   const filePath = `content/${page.data._file.path}`;
   const lastModifiedData = docLastModifiedData as Record<string, string>;
   const lastModified = lastModifiedData[filePath] ?? page.data.lastModified;
 
-  const domain = getFastGPTDocsOrigin();
+  const domain = getFastGPTDocsOriginForLocale(lang === 'en' ? 'en' : 'zh-CN');
   const url = `${domain}${page.url}`;
 
-  // 生成面包屑导航
-  const breadcrumbItems = [
-    { name: 'FastGPT', url: domain },
-    { name: 'Docs', url: `${domain}/${lang}` }
+  // 3. Build deduplicated breadcrumb items for JSON-LD.
+  const tree = source.pageTree[lang];
+  const section = searchPath(tree.children, page.url)?.find(
+    (node) => node.type === 'folder' && node.root
+  );
+  // Folders without an index page fall back to their first child page URL so intermediate hierarchy levels stay in BreadcrumbList.
+  const findFirstPageUrl = (node: (typeof tree.children)[number]): string | undefined => {
+    if (node.type === 'page') return node.url;
+    if (node.type === 'folder') {
+      if (node.index?.url) return node.index.url;
+      for (const child of node.children) {
+        const found = findFirstPageUrl(child);
+        if (found) return found;
+      }
+    }
+    return undefined;
+  };
+  const sectionEntryUrl = section ? findFirstPageUrl(section) : undefined;
+  const rawBreadcrumbs = [
+    section?.type === 'folder' && page.url !== `/${lang}/guide/getting-started`
+      ? {
+          name: String(section.name),
+          url: `${domain}${sectionEntryUrl ?? `/${lang}/guide/getting-started`}`
+        }
+      : { name: 'FastGPT', url: `${domain}/${lang}/guide/getting-started` },
+    ...(searchPath(tree.children, page.url) ?? []).flatMap((node) => {
+      const resolvedUrl = findFirstPageUrl(node);
+      return resolvedUrl && typeof node.name === 'string'
+        ? [{ name: String(node.name), url: `${domain}${resolvedUrl}` }]
+        : [];
+    })
   ];
-  if (slug && slug.length > 0) {
-    slug.forEach((segment, index) => {
-      const segmentUrl = `${domain}/${lang}/${slug.slice(0, index + 1).join('/')}`;
-      breadcrumbItems.push({ name: segment, url: segmentUrl });
-    });
+  const breadcrumbByUrl = new Map<string, { name: string; url: string }>();
+  for (const item of rawBreadcrumbs) {
+    if (
+      item.url === `${domain}/${lang}/guide/getting-started` &&
+      breadcrumbByUrl.has(item.url)
+    ) {
+      continue;
+    }
+    breadcrumbByUrl.set(item.url, item);
   }
+  const breadcrumbItems = [...breadcrumbByUrl.values()];
 
-  // 生成结构化数据
+  // 4. Generate structured data (Article, BreadcrumbList, and FAQPage).
   const articleSchema = generateArticleSchema({
     title: page.data.title,
     description: page.data.description || '',
@@ -89,6 +113,10 @@ export default async function Page({
   const breadcrumbSchema = generateBreadcrumbSchema({
     items: breadcrumbItems
   });
+  const isFaqPage =
+    /(?:^|\/)faq(?:\.en)?\.mdx$/.test(page.data._file.path) ||
+    page.data._file.path.startsWith('faq/');
+  const faqSchema = isFaqPage ? generateFaqSchema(page.data.structuredData ?? {}) : null;
 
   return (
     <>
@@ -100,6 +128,12 @@ export default async function Page({
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
       />
+      {faqSchema && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
+        />
+      )}
       <DocsPage
         toc={page.data.toc}
         full={page.data.full}
@@ -127,7 +161,7 @@ export default async function Page({
         <DocsBody>
           <MDXContent
             components={getMDXComponents({
-              a: createRelativeLink(source, page)
+              a: createRelativeLink(source, page, LocalizedLink)
             })}
           />
           {isUpgradeTimeline && (
@@ -148,23 +182,32 @@ export async function generateMetadata(props: {
 }) {
   const { lang, slug } = await props.params;
   const page = source.getPage(slug, lang);
-  if (!page || !page.data) notFound();
+  if (!page?.data || page.data._file.path.endsWith('.en.mdx') !== (lang === 'en')) notFound();
 
-  const domain = getFastGPTDocsOrigin();
+  const domain = getFastGPTDocsOriginForLocale(lang === 'en' ? 'en' : 'zh-CN');
   const url = `${domain}${page.url}`;
+  const filePath = `content/${page.data._file.path}`;
+  const lastModified =
+    (docLastModifiedData as Record<string, string>)[filePath] ?? page.data.lastModified;
 
   // 构建多语言 alternates
   const languages: Record<string, string> = {};
   i18n.languages.forEach((locale) => {
     const localePage = source.getPage(slug, locale);
-    if (localePage) {
-      languages[locale] = `${domain}/${locale}/${slug?.join('/') || ''}`;
+    if (localePage && localePage.data._file.path.endsWith('.en.mdx') === (locale === 'en')) {
+      languages[locale] = `${getFastGPTDocsOriginForLocale(locale === 'en' ? 'en' : 'zh-CN')}${localePage.url}`;
     }
   });
+  if (languages.en) {
+    languages['x-default'] = languages.en;
+  }
+  const shouldNoIndex =
+    page.data.deprecated || /^toc(?:\.en)?\.mdx$/.test(page.data._file.path);
 
   return {
     title: page.data.title,
     description: page.data.description,
+    ...(shouldNoIndex ? { robots: { index: false, follow: true } } : {}),
     alternates: {
       canonical: url,
       languages
@@ -174,11 +217,26 @@ export async function generateMetadata(props: {
       description: page.data.description,
       url,
       siteName: 'FastGPT',
-      locale: lang,
+      locale: lang === 'zh-CN' ? 'zh_CN' : 'en_US',
       type: 'article',
       publishedTime: page.data.releaseTime
         ? new Date(`${page.data.releaseTime}T00:00:00.000+08:00`).toISOString()
-        : undefined
+        : undefined,
+      modifiedTime: lastModified ? new Date(lastModified).toISOString() : undefined,
+      images: [
+        {
+          url: '/og-image.png',
+          width: 1200,
+          height: 630,
+          alt: page.data.title
+        }
+      ]
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: `${page.data.title} | FastGPT`,
+      description: page.data.description,
+      images: ['/og-image.png']
     }
   };
 }

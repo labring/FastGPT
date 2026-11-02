@@ -15,7 +15,7 @@ FastGPT supports MinIO, AWS S3, Alibaba Cloud OSS, Tencent Cloud COS, and Cloudf
 ## Access Modes
 
 - Uploads always go through the FastGPT backend proxy.
-- FastGPT provides short links for file downloads instead of returning object storage presigned URLs directly.
+- FastGPT provides authenticated short links for file downloads to manage file access and protect object storage credentials.
 - `STORAGE_DOWNLOAD_URL_MODE` supports two modes and defaults to `short-proxy`:
   - `short-proxy`: FastGPT validates the short link and proxies the file stream. Downloads through short links do not require a public object storage endpoint.
   - `short-redirect`: FastGPT validates the short link, then redirects to a short-lived object storage or CDN URL. File traffic bypasses FastGPT.
@@ -34,7 +34,7 @@ FastGPT supports MinIO, AWS S3, Alibaba Cloud OSS, Tencent Cloud COS, and Cloudf
 - `STORAGE_S3_FORCE_PATH_STYLE` [Optional] Virtual-hosted-style or path-style routing. If vendor is `minio`, this is fixed to `true`.
 - `STORAGE_S3_MAX_RETRIES` [Optional] Maximum request retry attempts. Default: 3
 
-If you expose MinIO through NodePort on Kubernetes, also expose its S3 API (port 9000) and set `STORAGE_EXTERNAL_ENDPOINT` to an address reachable by both browsers and FastGPT. A cluster-internal address or the server's `localhost:9000` cannot serve public bucket assets such as plugin logos to browsers. The same browser accessibility requirement applies to Docker deployments.
+When exposing MinIO in Kubernetes or Docker, configure `STORAGE_EXTERNAL_ENDPOINT` to a static host IP or domain reachable by both browsers and FastGPT to ensure public bucket assets such as plugin logos load correctly.
 
 **Complete Example**
 
@@ -124,9 +124,9 @@ STORAGE_COS_PROXY=
 
 R2 uses the S3-compatible API. Set `STORAGE_REGION` to `auto` and use the account-level S3 endpoint from Cloudflare as `STORAGE_S3_ENDPOINT`. FastGPT does not rewrite R2 presigned URLs through `STORAGE_S3_CDN_ENDPOINT`; private objects should normally use the default `short-proxy` download mode.
 
-`STORAGE_R2_PUBLIC_ENDPOINT` is required for public objects. Set it to the HTTPS custom domain (or another public HTTPS domain bound to the bucket). This is separate from the R2 S3 API endpoint and must not contain query parameters.
+`STORAGE_R2_PUBLIC_ENDPOINT` is required for public objects. Set it to the custom domain bound to the bucket for public HTTPS access without query parameters.
 
-For production, use a custom domain instead of the rate-limited `r2.dev` development URL. Create both R2 buckets in advance; FastGPT checks that production buckets exist at startup and does not create them automatically.
+For production, configure a custom domain bound to the R2 bucket for reliable access. Create both R2 buckets in advance; FastGPT verifies production buckets at startup.
 
 ```dotenv
 STORAGE_VENDOR=r2

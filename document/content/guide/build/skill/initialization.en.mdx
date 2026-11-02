@@ -13,7 +13,9 @@ Through the initialization script, you can automatically install third-party dep
 
 To add an initialization script to your skill, simply place a Shell script named `entrypoint.sh` in the root directory of your skill package.
 
-![Skill Initialization Script Example](/imgs/skill_initialization_entrypoint.png)
+![Skill Initialization Script Example](/imgs/optimized/current/skill-entrypoint.png.webp)
+
+This example uses a root `entrypoint.sh` that prints `Ready`. The terminal shows manual execution in the editing workspace. Runtime initialization is verified separately after associating the published Skill with an Agent.
 
 ### Execution Timing
 
@@ -26,7 +28,7 @@ To add an initialization script to your skill, simply place a Shell script named
 
 To prevent running environment initialization scripts repeatedly in subsequent conversations (for example, reinstalling dependencies on every turn would add substantial latency), FastGPT tracks successful initialization and skips repeated runs.
 
-The execution state is stored in the `~/.fastgpt/agent-skill-entrypoints/state.json` file inside the virtual machine.
+The execution state is stored in the `~/.fastgpt/runtime/state.json` file inside the virtual machine.
 
 - **Version ID Deduplication**: Since the code and script content of a specific skill version (`versionId`) are immutable once published, the system tracks the successfully executed `versionId` inside the virtual machine.
 - **Skipped Execution**: When the same virtual machine instance is reused in subsequent turns, if the corresponding `versionId` has already executed successfully, the system will **skip** running the script, enabling hot starts.
@@ -38,5 +40,9 @@ The execution state is stored in the `~/.fastgpt/agent-skill-entrypoints/state.j
 
 To ensure the smooth execution of the AI workflow, the skill initialization script must adhere to the same execution constraints and fault tolerance rules as the app startup script:
 
-- **Execution Constraints and Non-blocking Fault Tolerance**: The timeout protection (default 30 seconds), non-blocking workflow (failures do not block main execution), and 8KB log truncation limits are identical to those of the app startup script. For detailed parameters, please refer to [App Startup Script Execution Constraints](/en/guide/build/agentv2/vm#execution-constraints--fault-tolerance).
+- **Execution Constraints and Non-blocking Fault Tolerance**: The timeout protection (default 30 seconds), non-blocking workflow (failures do not block main execution), and 8 KiB execution-output limit (service logs separately truncate to 4,000 characters) are identical to those of the app startup script. For detailed parameters, please refer to [App Startup Script Execution Constraints](/en/guide/build/agentv2/vm#execution-constraints--fault-tolerance).
 - **Debug Mode Limitation**: In the skill edit mode, the virtual machine will not automatically execute the `entrypoint.sh` script. To verify the script's behavior, the skill developer can manually execute the commands inside the Workspace Terminal.
+
+## Troubleshoot initialization
+
+Current runtime state records successfully executed version IDs in `skillEntrypoints`. Inspect the deployed `projects/<versionId>/entrypoint.sh`, working directory, dependency-download network, and execution logs. Correct dependency or permission failures and verify the next initialization result. Use the state file for diagnosis; removing state manually can repeat initialization. This path describes the current implementation; check your release for older deployments.

@@ -4,22 +4,33 @@ description: FastGPT 知识库搜索引用合并模块介绍
 ---
 
 
-![](/imgs/knowledge_merge1.png)
+![知识库搜索引用合并：界面示例](/imgs/optimized/current/node-citation-merge.png.webp)
 
 ## 作用
 
-将多个知识库搜索结果合并成一个结果进行输出，并会通过 RRF 进行重新排序（根据排名情况），并且支持最大 tokens 过滤。
+将多个上游[知识库搜索](/zh-CN/guide/build/workflow/nodes/dataset_search)节点的输出引用列表合并为单一 `datasetQuote` 数组，按数据块 ID 自动去重，使用 **RRF（倒数排名融合，Reciprocal Rank Fusion）** 重新计算综合排序，并按配置的**最大 Tokens** 裁剪输出上下文。
+
+## 输入、配置与输出
+
+| 项目 | 内部 Key | 数据类型 | 说明 |
+| --- | --- | --- | --- |
+| **最大 Tokens** | `limit` | `Number` | 合并后保留的引用内容总 Token 上限，超出部分按 RRF 排名从低到高截断 |
+| **知识库引用输入（动态）** | `system_datasetQuoteList` | `DatasetQuote` | 接收两个或更多上游知识库搜索节点的 `quoteQA` 输出列表 |
+| **引用内容输出** | `quoteQA` | `DatasetQuote` | 去重、RRF 融合排序并裁剪后的最终引用列表，可直接传给 AI 对话节点 |
 
 ## 使用方法
 
-AI对话只能接收一个知识库引用内容。因此，如果调用了多个知识库，无法直接引用所有知识库（如下图）
+AI 对话的知识库引用输入接收一个引用列表。多个搜索节点的结果可先送入**知识库搜索引用合并**，再把合并后的引用传给 AI 对话。
 
-![](/imgs/knowledge_merge2.png)
+以下实测使用两组演示引用，其中一条重复。合并后返回两条引用，并附带 RRF 排名分数：
 
-使用**知识库搜索引用合并**，可以把多个知识库的搜索结果合在一起。
+![三条输入引用去重为两条](/imgs/optimized/current/citation-merge-result.png.webp)
 
-![](/imgs/knowledge_merge3.png)
+在运行详情中选择知识库搜索引用合并节点，可以核对合并总数。本例显示 `2`：
+
+![合并总数与执行节点](/imgs/optimized/current/citation-merge-detail.png.webp)
 
 ## 可用例子：
 
 1. 经过问题分类后对不同知识库进行检索，然后统一给一个 AI 进行回答，此时可以用到合并，不需要每个分支都添加一个 AI 对话。
+2. 对同一知识库分别使用原始用户问题和改写后的子问题并行执行两次检索，再通过本节点执行 RRF 去重融合，提升复杂问题的召回覆盖率。

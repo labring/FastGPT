@@ -33,28 +33,11 @@ The remote debug flow includes these components:
 
 Main flow:
 
-```mermaid
-sequenceDiagram
-    participant User as Developer
-    participant FastGPT as FastGPT
-    participant Plugin as Plugin Server
-    participant Gateway as Connection Gateway
-    participant CLI as fastgpt-plugin dev
+![Remote debugging: connect](/imgs/diagrams/remote-debug-connect.en.light.svg)
 
-    User->>FastGPT: Enable debug channel
-    FastGPT->>Plugin: Create debug channel
-    Plugin-->>FastGPT: connectionKey / connectionUrl / source
-    User->>CLI: fastgpt-plugin dev --connect <connectionUrl>
-    CLI->>FastGPT: Exchange connectionKey
-    FastGPT->>Plugin: Forward connectionKey exchange
-    Plugin-->>CLI: gatewayUrl / connectToken / source
-    CLI->>Gateway: WebSocket bind
-    FastGPT->>Plugin: Invoke plugin under debug source
-    Plugin->>Gateway: Send plugin-debug.run
-    Gateway->>CLI: Forward debug request
-    CLI-->>Gateway: Return execution result
-    Gateway-->>Plugin: Stream result
-```
+![Remote debugging: invoke and return](/imgs/diagrams/remote-debug-call.en.light.svg)
+
+FastGPT exchanges the connection key and returns connection details to the CLI. Execution results return through the Gateway, Plugin Server, and FastGPT. Gateway and CLI interactions follow the remote debugging interface contract.
 
 ## Prerequisites
 
@@ -196,7 +179,7 @@ curl http://connection-gateway:3000/health
 
 ### The debug channel opens, but the CLI cannot connect
 
-Check whether `CONNECTION_GATEWAY_PUBLIC_URL` is reachable from the developer's local machine. The browser and CLI run on the developer's computer, so Docker private hostnames will not work.
+Check whether `CONNECTION_GATEWAY_PUBLIC_URL` is reachable from the developer's local machine. The browser and CLI run on the developer's computer, requiring a reachable host IP or public domain.
 
 ### The CLI is connected, but FastGPT shows disconnected
 

@@ -1,10 +1,14 @@
 {
-  "title": "入门",
+  "title": "开始使用",
   "root": false,
   "pages": [
     "index",
     "quick-start",
-    "[视频教程](https://video.fastgpt.cn/videos)",
-    "[最佳案例](https://solutions.fastgpt.cn/)"
+    "first-agent",
+    "first-workflow",
+    "concepts",
+    "application-types",
+    "knowledge-qa",
+    "examples"
   ]
 }

@@ -1,6 +1,6 @@
 ---
 title: App Building FAQ
-description: Common FastGPT app building questions, including simple apps, workflows, and plugins
+description: Common FastGPT app building questions, including Chat Agent, workflows, and tools
 ---
 
 ## Multi-Turn Classification
@@ -21,21 +21,21 @@ After changing an app, click **Publish**. Chat and published channels only use t
 
 ## Disable Markdown Formatting
 
-Edit the Dataset default prompt. The built-in standard template instructs the model to use Markdown. You can remove that requirement:
+Open AI configuration in the application editor and inspect formatting rules in the main prompt and knowledge-reference prompt. Remove the Markdown instruction, test the same question in preview, then publish and repeat through the shared link:
 
-|                         |                         |
-| ----------------------- | ----------------------- |
-| ![Dataset response prompt settings](/imgs/image-83.png) | ![Edit the default response-formatting instruction](/imgs/image-84.png) |
+![Disable Markdown Formatting — interface example](/imgs/optimized/current/node-ai-chat.png.webp)
+
+![Disable Markdown Formatting — interface example](/imgs/optimized/current/citation-prompt-settings.png.webp)
 
 ## Inconsistent App Results
 
 Q: The app produces different results in debug mode vs. production, or when called via API.
 
-A: This is usually caused by differences in context. Check the chat logs, find the relevant entry, and compare the run details side by side.
+A: Open conversation logs and locate both executions by conversation and request time. Compare published version, input, history, variables, retrieved passages, model settings, and tool results in run details. Repeat with fixed inputs; see [log troubleshooting](/en/guide/build/logs).
 
-|                         |                         |                         |
-| ----------------------- | ----------------------- | ----------------------- |
-| ![Open the relevant chat log](/imgs/image-85.png) | ![Inspect the app run details](/imgs/image-86.png) | ![Compare the context passed to the app](/imgs/image-87.png) |
+![Inconsistent App Results — interface example](/imgs/optimized/current/feedback-log.png.webp)
+
+![Inconsistent App Results — interface example](/imgs/optimized/current/model-request-response.png.webp)
 
 The Dataset response settings require a custom prompt. Without one, the default prompt (which includes Markdown formatting instructions) is used.
 

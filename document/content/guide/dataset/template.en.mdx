@@ -1,80 +1,97 @@
 ---
-title: Template Import
-description: Batch-import Dataset data from a CSV or Excel template
+title: "Structured Dataset Template Specifications"
+description: Master CSV and XLSX dataset import column definitions, tail expansion rules, metadata formatting, and formula escape mechanisms.
 ---
 
-Template import lets you add prepared content or question-answer pairs to a Dataset in batches. FastGPT accepts `.csv` and `.xlsx` files and creates Dataset entries from the questions, answers, indexes, and metadata in the template.
+{/* Preserve incoming bookmarks for reorganized sections. */}
+<span id="file-structure" />
+<span id="csv-example" />
+<span id="excel-example" />
+<span id="import-a-template" />
+<span id="metadata" />
+<span id="invalid-file-format" />
 
-## File Structure
+FastGPT provides a deterministic structured tabular data import engine. Standardized spreadsheet templates allow builders to ingest question-answer pairs, multi-route index variants, and structured metadata directly into knowledge bases.
 
-The first row must contain the headers. The following columns are supported:
+## File Format and Parsing Constraints
 
-| Header     | Required | Count      | Description                                                     |
-| ---------- | -------- | ---------- | --------------------------------------------------------------- |
-| `q`        | Yes      | Exactly 1  | Content or a question                                           |
-| `a`        | Yes      | Exactly 1  | The answer; it can be empty when importing standalone content   |
-| `index`    | No       | Repeatable | A custom index. A row can contain multiple indexes              |
-| `metadata` | No       | At most 1  | A JSON object for custom information such as source or category |
+The platform enforces strict validation rules on uploaded spreadsheet files:
 
-Each row represents one Dataset entry. `q` and `a` should not both be empty. Headers can appear in any order, but do not add unsupported headers.
+| Check Item | Specification Rule |
+| --- | --- |
+| **File Format** | Standard CSV files (UTF-8 encoding without BOM recommended) or `.xlsx` workbooks |
+| **Sheet Structure** | XLSX workbooks must contain exactly one worksheet and must not include merged cells |
+| **Header Matching** | The parser trims whitespace and normalizes column headers to lowercase before matching |
+| **Empty Rows** | Rows where both `q` and `a` cells are empty are skipped automatically |
 
-### CSV Example
+## Core Column Definitions and Schema Contracts
+
+The template schema accepts the following header declarations:
+
+| Column Header | Occurrence Constraint | Data Type and Semantic Role |
+| --- | --- | --- |
+| `q` | **Exactly one column** | Question or primary index text. Vectors are computed on this column for semantic recall. |
+| `a` | **Exactly one column** | Answer or complete body content. Combined with `q` to produce the full context chunk. |
+| `index` | Multiple allowed, optional | Supplementary index. Each cell value is indexed as an independent vector query entry. |
+| `indexes` | Multiple allowed, optional | Backward-compatible alias for `index`, sharing identical parsing logic and weights. |
+| `metadata` | **At most one column** | Valid JSON string. Parsed key-value pairs are merged into the chunk metadata dictionary. |
+
+---
+
+## Supplementary Indexes and Tail Expansion
+
+To map multiple synonymous questions or alternative phrasing to a single answer, use the supplementary index mechanism:
+
+1. **Multi-Column Declarations**: Declare multiple independent columns named `index` (e.g., `q`, `a`, `index`, `index`). Each column cell holds a unique query variation.
+2. **Tail Expansion Mode**: When the spreadsheet contains a single `index` (or `indexes`) column and **omits** the `metadata` column, the parser reads from that index column through the end of the row, treating all subsequent non-empty cells as individual index entries. When using this mode, place `q` and `a` to the left of the index column.
+
+---
+
+## Metadata Column Standards
+
+The `metadata` column stores operational tags, department codes, timestamps, and external references:
+
+```json
+{
+  "department": "Finance",
+  "category": "Tax",
+  "docId": "DOC-2026-001",
+  "version": 2
+}
+```
+
+- Top-level keys of valid JSON objects are merged directly into the chunk's `metadata` property.
+- If formatting is invalid or non-object, the cell's raw text is retained as a string value.
+
+---
+
+## Formula Injection Escape Protection
+
+To prevent formula execution vulnerabilities when spreadsheets are opened in desktop spreadsheet software, FastGPT's export and import utilities implement automatic escaping:
+- Cell values starting with `=`, `+`, `-`, `@`, or `|` receive a prepended single quote `'` upon export.
+- Fields containing commas, quotation marks, or line breaks are enclosed in double quotes following RFC 4180 standards.
+
+---
+
+## Standard CSV Sample
 
 ```csv
 q,a,index,index,metadata
-"What is FastGPT?","FastGPT is an AI agent development platform.","FastGPT overview","AI agent platform","{""source"":""product-doc"",""category"":""overview""}"
-"How do I import Dataset data?","Use a CSV or Excel template.","Dataset import","template import","{""source"":""help-center""}"
+What is the annual leave policy?,Employees receive 5 days of paid annual leave after probation.,How is annual leave calculated,Paid vacation days,"{""category"":""HR"",""year"":2026}"
+What is the company billing name?,The billing name is FastGPT Technologies Inc.,Company invoice title,Official business name,"{""category"":""Finance""}"
 ```
 
-Use UTF-8 encoding for CSV files. Cells that contain commas, line breaks, or double quotes must be escaped according to CSV rules.
+## Import Procedure
 
-### Excel Example
+1. Open your target knowledge base, then click "New / Import → Text Dataset → Table Import".
+2. Upload your prepared CSV or XLSX file.
+3. The platform validates headers and generates a chunk preview. Confirm that question, answer, and index mappings align, then click "Confirm Import".
 
-Excel files use the same headers and data structure as CSV files:
+![Template Import dialog](/imgs/optimized/current/dataset-template-import.png.webp)
 
-| q                             | a                                            | index            | index             | metadata                                         |
-| ----------------------------- | -------------------------------------------- | ---------------- | ----------------- | ------------------------------------------------ |
-| What is FastGPT?              | FastGPT is an AI agent development platform. | FastGPT overview | AI agent platform | `{"source":"product-doc","category":"overview"}` |
-| How do I import Dataset data? | Use a CSV or Excel template.                 | Dataset import   | template import   | `{"source":"help-center"}`                       |
+![Dataset collection after a template import](/imgs/optimized/current/dataset-template-result.png.webp)
 
-Excel files must meet these requirements:
+## Next Steps
 
-- Use the `.xlsx` extension. `.xls` files are not supported.
-- Include exactly one worksheet.
-- Do not contain merged cells.
-- Use the first row for the template headers.
-
-## Import a Template
-
-1. Open the target Dataset and select **Template Import** from the import menu.
-
-   ![Template Import dialog](/imgs/template-import-dialog.png)
-
-2. Select **Download CSV Template** for an example, or prepare an `.xlsx` file with the same structure.
-3. Add your data and verify the headers, cell contents, and file format.
-4. Select the file and confirm the import. You can import one file at a time.
-5. After the import finishes, review the data and indexing status in the Dataset Collection.
-
-   ![Dataset collection after a template import](/imgs/template-import-result.png)
-
-## Metadata
-
-Use `metadata` to attach structured information to each entry. The cell must contain a valid JSON object, for example:
-
-```json
-{ "source": "product-doc", "category": "overview", "version": 2 }
-```
-
-Do not use an array, plain text, or invalid JSON. In CSV files, escape the JSON according to CSV rules. In Excel files, enter the JSON string directly in the cell.
-
-## Invalid File Format
-
-If FastGPT reports an invalid file format, check the following:
-
-- The file uses the `.csv` or `.xlsx` extension.
-- The header row contains only supported columns.
-- There is exactly one `q` column and one `a` column, with no more than one `metadata` column.
-- Quotes, commas, and line breaks are correctly escaped in CSV files.
-- The Excel file contains exactly one worksheet and no merged cells.
-
-Start with a small test file. After confirming the format, import larger datasets in batches.
+- Test imported Q&A recall: Explore [Search Testing and Retrieval Parameters](/en/guide/dataset/test-retrieval).
+- Query filtering with metadata: Learn [Collection Tag System](/en/guide/dataset/collection_tags).

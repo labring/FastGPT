@@ -7,7 +7,11 @@ import { Alert } from '@/components/docs/Alert';
 
 在 FastGPT 中，发布渠道里的 API 入口展示当前登录成员可用的 **APIKey**。APIKey 是团队成员的开放接口调用凭证，不再按应用创建专属密钥。
 
-调用当前应用的 `chat/completions` 接口时，推荐在请求体传入 `appId`。如果第三方应用只能配置 OpenAI SDK 风格的密钥，也可以使用 `apiKey-appId` 兼容格式。完整说明可以[查看 OpenAPI 介绍](../../../openapi/intro.mdx)。
+调用当前应用的 `chat/completions` 接口时，推荐在请求体传入 `appId`。如果第三方应用只能配置 OpenAI SDK 风格的密钥，也可以使用 `apiKey-appId` 兼容格式。完整说明可以[查看 OpenAPI 介绍](/zh-CN/openapi/intro)。
+
+![API 发布渠道中的 APIKey 列表与新建入口](/imgs/optimized/current/publish-api.png.webp)
+
+图中展示空密钥列表。界面服务根地址以 `/api` 结尾；OpenAI 兼容 SDK 的 base URL 使用下文的 `/api/v1`。
 
 ## 获取 APIKey
 
@@ -18,23 +22,19 @@ import { Alert } from '@/components/docs/Alert';
   列表中点击复制按钮。
 </Alert>
 
-![](/imgs/fastgpt-api1.jpg)
-
 <Alert icon="🍅" context="success">
-  Tips: 安全起见，你可以设置一个额度或者过期时间，防止 key 被滥用。
+  额度与过期时间取决于商业能力配置，具体条件见 [API 入门](/zh-CN/openapi/intro)。将密钥保存在可信服务端，并在泄漏后及时撤销。
 </Alert>
 
 ## 替换三方应用的变量
 
-```bash
-OPENAI_API_BASE_URL: http://localhost:3000/api (改成自己部署的域名)
-OPENAI_API_KEY = 上一步获取到的密钥（推荐在请求体传 appId；如第三方应用只能配置密钥，可填 apiKey-appId 兼容格式）
+OpenAI 兼容客户端使用实例地址加 `/api/v1` 作为 SDK base URL，请求路径为 `/chat/completions`。例如：
+
+```text
+Base URL: https://YOUR_FASTGPT_HOST/api/v1
+API key: YOUR_API_KEY-YOUR_APP_ID
 ```
 
-**[ChatGPT Next Web](https://github.com/Yidadaa/ChatGPT-Next-Web) 示例：**
+部分客户端接收服务根地址并自行追加 `/api/v1`。按客户端版本说明配置，并检查实际请求地址。发送一条简短消息，确认回答来自已发布应用；凭证保存在可信服务端配置中。
 
-![](/imgs/chatgptnext.png)
-
-**[ChatGPT Web](https://github.com/Chanzhaoyu/chatgpt-web) 示例：**
-
-![](/imgs/chatgptweb.png)
+[ChatGPT Next Web](https://github.com/Yidadaa/ChatGPT-Next-Web) 和 [ChatGPT Web](https://github.com/Chanzhaoyu/chatgpt-web) 的具体变量名以各客户端当前配置指南为准。

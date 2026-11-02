@@ -89,8 +89,8 @@ def main(url):
 
 **Limitations:**
 - Maximum 30 requests per execution
-- Single request timeout: 60s
-- Maximum response body: 2MB
+- Single request timeout: 60s by default (`SANDBOX_REQUEST_TIMEOUT`, in milliseconds)
+- Maximum response body: 10 MB by default (`SANDBOX_REQUEST_MAX_RESPONSE_MB`)
 - Only http/https protocols allowed
 - Internal IPs automatically blocked (127.0.0.0/8, 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, etc.)
 

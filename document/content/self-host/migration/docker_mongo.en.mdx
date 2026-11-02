@@ -1,182 +1,70 @@
 ---
 title: Docker MongoDB Migration (Dump Mode)
-description: FastGPT Docker MongoDB migration
+description: Logical MongoDB backup, isolated restoration, and FastGPT migration checks
 ---
+
+<span id="1-prepare-access-docker-mongodb-environment-a" />
+<span id="preparation" />
+<span id="create-the-directory-in-environment-a-for-the-dump-operation" />
+<span id="then-set-up-the-environment-c-host-directory-for-syncing-uploaded-files-into-the-container" />
+<span id="21-export" />
+<span id="fallback-if-files-dont-auto-sync-manually-copy-them-to-the-host-environment-a" />
+<span id="3-import-and-restore" />
+<span id="31-extract-the-archive-on-the-new-fastgpt-environment" />
+<span id="32-manually-copy-files-into-the-new-fastgpt-docker-container-environment-c" />
+<span id="33-initialize-docker-compose----run-it-once-to-create-the-new-mongodata-persistence-directory" />
 
 ## Author
 
-[https://github.com/samqin123](https://github.com/samqin123)
-
-[Related PR -- open this to discuss with the author](https://github.com/labring/FastGPT/pull/1426)
+The original community example was contributed by [samqin123](https://github.com/samqin123); see [PR 1426](https://github.com/labring/FastGPT/pull/1426). These steps retain the logical-backup approach and clarify the current migration scope.
 
 ## Overview
 
-How to use mongodump to migrate FastGPT's MongoDB from Environment A to Environment B.
+`mongodump` exports MongoDB business data. A complete FastGPT migration also needs the vector database, object storage, configuration, and secrets. See the [complete migration inventory](/en/self-host/migration/docker_db). A is the source, B is the target, and C is your local backup location.
 
-Prerequisites:
+Verify compatibility between FastGPT, MongoDB, and MongoDB Database Tools before migrating. Stop FastGPT and other writers for a consistent backup. Rehearse restoration in an isolated target instance with new persistent volumes, keeping the source environment and original volumes available for rollback.
 
-- Environment A: Your existing FastGPT deployment (e.g., on Alibaba Cloud) that needs to be migrated.
-- Environment B: The new FastGPT deployment (e.g., on Tencent Cloud, or a NAS like Synology/QNAP). Note: NAS deployments may require MongoDB 4.2 or 4.4, while cloud deployments support the default FastGPT MongoDB version.
-- Environment C: Your local machine, used as a staging area to hold files and coordinate the transfer.
+## 1. Prepare the Source and Backup Directory
 
-Run restore operations on the destination deployment, Environment B. Environment C holds a copy of the backup for transfer and verification. Some historical headings below refer to C during restoration; the destination remains B.
+The examples assume a MongoDB container named `mongo` and a database named `fastgpt`; replace them for your deployment. Confirm that a compatible `mongodump` is installed in the container and the backup account has export permissions. The commands omit the password parameter so the tool prompts interactively.
 
-## 1. Prepare: Access Docker MongoDB [Environment A]
-```
-docker exec -it mongo sh
-mongo -u 'username' -p 'password'
->> show dbs
-```
-Confirm you can see the fastgpt database and note the database name for export.
-
-##### Preparation:
-
-Create a temporary directory for import/export on both the container and the host, e.g., data/backup [Environment A + Environment C].
-
-#### Create the directory in [Environment A] for the dump operation
-Enter the FastGPT Docker container:
-```
-docker exec -it fastgpt sh
-mkdir -p /data/backup
+```bash
+docker exec mongo mongodump --version
+docker exec mongo mkdir -p /tmp/fastgpt-backup
+mkdir -p ./fastgpt-backup
 ```
 
-Once created, exported MongoDB data will appear in the `data/backup` directory under your local FastGPT installation folder (auto-synced via volume mount). If it doesn't sync automatically, you can manually create the directory and use `docker cp` to copy files out (this rarely happens).
+Copy the archive explicitly to the host. Inspect deployment configuration for actual volume mounts.
 
-#### Then set up the [Environment C] host directory for syncing uploaded files into the container.
-Navigate to the FastGPT directory, go into the mongo folder, and create a backup subdirectory:
-```
-mkdir -p /fastgpt/data/backup
-```
-Also create a backup directory in the new [Environment B], outside `/fastgpt/data`, so it remains separate from the database directory cleared during restoration:
-```
-mkdir -p /fastgpt/mongobackup
-```
+## 2. Export and Transfer
 
-###2. Export Data from [Environment A]
-Enter Environment A and use mongodump to export the MongoDB database.
+Run on the source host A:
 
-#### 2.1 Export
-Run mongodump to export data files to the temporary directory (data/backup).
-
-[The export path is set to /data/backup in the command. Since the FastGPT config already has data persistence set up, the exported files will sync to the host's fastgpt/mongo/data/backup directory.]
-
-Single command to export (run on the host, no need to enter the container):
-```
-docker exec -it mongo bash -c "mongodump --db fastgpt -u 'username' -p 'password' --authenticationDatabase admin --out /data/backup"
+```bash
+docker exec -it mongo mongodump --db fastgpt --username BACKUP_USER --authenticationDatabase admin --archive=/tmp/fastgpt-backup/fastgpt.archive.gz --gzip
+docker cp mongo:/tmp/fastgpt-backup/fastgpt.archive.gz ./fastgpt-backup/fastgpt.archive.gz
 ```
 
-You can also enter the container and combine directory creation with the export:
-```
-1.docker exec -it fastgpt sh
+Check the command exit status and export logs, then calculate a SHA-256 checksum. Use `sha256sum` on Linux or `shasum -a 256` on macOS. Copy the archive and checksum to C and B, and compare a newly calculated checksum after transfer. Back up a separate logging database separately.
 
-2.mkdir -p /data/backup
-
-3. mongodump --host 127.0.0.1:27017 --db fastgpt -u "username" -p "password" --authenticationDatabase admin --out /data/backup
+```bash
+sha256sum ./fastgpt-backup/fastgpt.archive.gz
+scp ./fastgpt-backup/fastgpt.archive.gz operator@target-host:/path/to/backup/
 ```
 
-##### Fallback: if files don't auto-sync, manually copy them to the host [Environment A]:
-```
-docker cp mongo:/data/backup   [local-fastgpt-dir]:/fastgpt/data/backup>
-```
+## 3. Restore in Isolation
 
-2.2  For beginners, it's recommended to compress the directory and download it to your local staging environment [A -> C] for verification. This ensures you have a backup and can check file counts. Experienced users can transfer directly to the new server [A -> B].
+Initialize the target MongoDB accounts and replica set according to the selected template. Keep FastGPT business services stopped. Check MongoDB logs and replica-set health, then copy the archive into the target MongoDB container:
 
-
-2.2.1 Navigate to the [Environment A] source system's local fastgpt/mongo/data directory:
-
-```
-cd /usr/fastgpt/mongo/data
+```bash
+docker cp /path/to/backup/fastgpt.archive.gz mongo:/tmp/fastgpt.archive.gz
+docker exec -it mongo mongorestore --username RESTORE_USER --authenticationDatabase admin --archive=/tmp/fastgpt.archive.gz --gzip --nsInclude='fastgpt.*'
 ```
 
-Compress the files:
-```
-tar -czvf ../fastgpt-mongo-backup-$(date +%Y-%m-%d).tar.gz ./
-```
-Download the archive to your local machine [A -> C] for verification. Experienced users can sync directly to Environment B's fastgpt data directory.
+Use an account with restore permissions. Check successful and failed record counts in restoration logs. Restore into a clean, isolated database. If duplicate keys or namespace conflicts occur, preserve the state and inspect the target and backup. When renaming databases, first verify Database Tools namespace-mapping options.
 
-```
-scp  -i /Users/path/[your-pem-file] root@[cloud-server-ip]:/usr/fastgpt/mongo/fastgptbackup-2024-05-03.tar.gz /[local-path]/Downloads/fastgpt
+## 4. Start and Validate
 
-```
-Experienced users can transfer directly to the new environment:
+Restore the corresponding vector data, object storage, and original configuration secrets before starting the target FastGPT. Run `docker compose ps`, check readiness and FastGPT/MongoDB logs, and confirm the expected replica-set state with `rs.status()`.
 
-```
-scp  -i /Users/path/[your-pem-file]  root@[old-server-ip]:/usr/fastgpt/mongo/fastgptbackup-2024-05-03.tar.gz    root@[new-server-ip]:/Downloads/fastgpt2
-
-```
-
-2.2 [Environment C] Verify the archive is complete. If not, re-export. Cross-environment scp transfers can occasionally lose data.
-
-After downloading the archive to Environment C, extract it to a custom directory, e.g., user/fastgpt/mongobackup/data:
-
-```
-tar -xvzf fastgptbackup-2024-05-03.tar.gz -C user/fastgpt/mongobackup/data
-```
-The extracted files should be .bson files. Verify the file count matches the source. If they don't match, the new FastGPT environment will have no data after import.
-
-<img width="1561" alt="image" src="https://github.com/labring/FastGPT/assets/103937568/cbb8a93c-5834-4a0d-be6c-c45c701f593e" />
-
-
-If everything looks good, upload the archive to Environment B's designated directory (e.g., /fastgpt/mongobackup). Do not place it in fastgpt/data/ -- that directory will be cleared later, and having extra files there will cause import errors.
-```
-scp  -rfv [local-path]/Downloads/fastgpt/fastgptbackup-2024-05-03.tar.gz  root@[new-server-ip]:/Downloads/fastgpt/backup
-```
-
-## 3. Import and Restore
-
-### 3.1. Extract the archive on the new FastGPT environment
-
-```
-tar -xvzf fastgptbackup-2024-05-03.tar.gz -C user/fastgpt/mongobackup/data
-```
-Verify the file count again against your earlier check.
-
-Experienced users can use tar to verify archive integrity. The above steps are for beginners to facilitate comparison.
-
-
-### 3.2 Manually copy files into the new FastGPT Docker container [Environment C]
-Since the files aren't in the data/ directory, they won't auto-sync into the container. Also ensure the container's data directory is clean, or the import will fail.
-
-Run the following copy command on Environment B, where the destination MongoDB container runs.
-
-```
-docker cp user/fastgpt/mongobackup/data mongo:/tmp/backup
-```
-
-### 3.3 Initialize docker compose -- run it once to create the new mongo/data persistence directory
-If the mongo/db directory isn't freshly initialized, mongorestore may fail. If you encounter errors, try initializing mongo.
-
-Before running the following deletion command on Environment B, stop the destination MongoDB service, verify the current directory, and keep a verified backup outside that directory. The command permanently deletes every matching file in the current directory. Restart MongoDB after its data directory has been initialized, then proceed with restoration.
-
-Commands:
-```
-cd /fastgpt-install-dir/mongo/data
-rm -rf *
-```
-
-
-4. Restore with mongorestore [Environment B]
-Run this from the host to import in one command (you can also run it inside the container):
-
-```
-docker exec -it mongo mongorestore -u "username" -p "password" --authenticationDatabase admin /tmp/backup/ --db fastgpt
-```
-<img width="1668" alt="image" src="https://github.com/labring/FastGPT/assets/103937568/32c2cdb8-bf80-4d31-9269-4bf3909cf04e" />
-Note: if the imported file count seems too low, the import likely failed. A failed import means you can log in to FastGPT but see no data.
-
-
-5. Restart containers [Environment B]
-```
-docker compose restart
-docker logs -f mongo  # Strongly recommended: check mongo logs before logging in. If mongo has errors, the web UI will also show errors.
-```
-
-If mongo starts normally, you should see output like this (not "mongo is restarting" -- that indicates an error):
-<img width="1736" alt="iShot_2024-05-09_19 21 26" src="https://github.com/labring/FastGPT/assets/103937568/94ee00db-43de-48bd-a1fc-22dfe86aaa90" />
-
-Error state:
-<img width="508" alt="iShot_2024-05-09_19 23 13" src="https://github.com/labring/FastGPT/assets/103937568/2e2afc9f-484c-4b63-93ee-1c14aef03de0" />
-
-
-6. After starting the FastGPT container, log in to the web UI. If all your original data is displayed, the migration was successful.
-<img width="1728" alt="iShot_2024-05-09_19 23 51" src="https://github.com/labring/FastGPT/assets/103937568/846b6157-6b6a-4468-a1d9-c44d681ebf7c" />
+Validate account login, Apps, Dataset Collections and chunks, file downloads, retrieval results, chat history, and new chats. Schedule traffic cutover only after archive checks and business acceptance pass. Retain the source backups and a rollback window.

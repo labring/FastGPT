@@ -244,7 +244,7 @@
   "comfirm_import": "가져오기 확인",
   "comfirm_leave_page": "이 페이지를 나가시겠습니까?",
   "comfirn_create": "생성 확인",
-  "commercial_function_tip": "이 기능을 사용하려면 상업용 버전으로 업그레이드하세요: https://doc.fastgpt.cn/guide/version/commercial",
+  "commercial_function_tip": "이 기능을 사용하려면 상업용 버전으로 업그레이드하세요: https://doc.fastgpt.io/en/guide/version/commercial",
   "community_support": "커뮤니티 지원",
   "compliance.chat": "이 콘텐츠는 AI가 생성했습니다. 내용을 신중하게 확인하세요.",
   "compliance.dataset": "업로드하는 콘텐츠가 관련 법률 및 규정을 엄격히 준수하는지 확인하고, 불법적이거나 침해성 있는 내용이 포함되지 않도록 해주세요. 민감한 정보가 포함될 수 있는 자료를 업로드할 때는 주의해 주세요.",

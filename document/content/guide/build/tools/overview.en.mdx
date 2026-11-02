@@ -1,0 +1,32 @@
+---
+title: Choose tools and Skills
+description: Choose system tools, workflow tools, HTTP tools, MCP tools, or Skills for a task.
+---
+
+FastGPT provides five capability extension mechanisms: **System Tools (Plugins)**, **Workflow Tools**, **HTTP Tool Sets**, **MCP Tool Sets**, and **Agent Skills**. A Tool is a callable operation with a defined input/output schema; a Skill packages versioned instructions (`SKILL.md`) and supporting scripts for an Agent to load inside a sandbox execution environment.
+
+## Selection Matrix
+
+| Extension Type | Role | Configuration Method | Execution Runtime | Primary Use Cases and Guide |
+| --- | --- | --- | --- | --- |
+| **System Tool / Team Plugin** | Standardized tool packages from the marketplace or local `.pkg` | Install in Marketplace + configure secrets | `fastgpt-plugin` runtime | Web search, image generation, IM notifications, database queries; see [Team Plugin Installation](/en/plugin/team-installation) |
+| **Workflow Tool** | Multi-node canvas workflow wrapped as a reusable function | Configure `pluginInput` / `pluginOutput` on canvas | FastGPT workflow engine | Combine internal retrieval, data cleaning, and API steps; see [Create and Reuse Workflow Tools](/en/guide/build/tools/workflow-tools) |
+| **HTTP Tool Set** | Turn external REST APIs into single or batch callable tools | Import OpenAPI Schema or configure endpoints manually | Direct HTTP call from FastGPT server | Connect internal CRM, ERP, or ticketing REST APIs; see [Create and Debug HTTP Tools](/en/guide/build/tools/http_tools) |
+| **MCP Tool Set** | Connect external servers implementing Model Context Protocol | Configure MCP Endpoint URL and auth headers | External MCP Server (Streamable HTTP / SSE) | Reuse ecosystem or enterprise MCP servers; see [Connect an MCP Tool Set](/en/guide/build/tools/mcp_tools) |
+| **Agent Skill** | Versioned package of instructions and scripts for sandbox execution | Author `SKILL.md` + scripts and init hooks | Agent VM sandbox (OpenSandbox / Devbox) | Complex spreadsheet analysis, document generation, multi-command workflows; see [Skill Introduction](/en/guide/build/skill/intro) |
+
+![Tool call and model interaction loop](/imgs/diagrams/tool-call-loop.en.light.svg)
+
+## Workflow tools
+
+Create a [workflow tool](/en/guide/build/tools/workflow-tools), declare caller-supplied parameters and types in its input, reference them in the flow, and declare returned values in its output. Run it independently with a known input and inspect the output structure. After publishing, select it from another application and verify argument mapping and execution results.
+
+Tool descriptions help models decide when to call an operation; parameter descriptions help them supply values. Describe external write operations clearly and verify permissions and business confirmation requirements before production use.
+
+## Use in applications
+
+- **Chat Agent**: Attach tools in the left **Tool Call** section for automatic Function Calling; see [Build a Chat Agent](/en/guide/build/chat-agent).
+- **Chat Agent V2**: Attach both tool sets and Agent Skills for multi-step autonomous execution inside a virtual machine; see [Chat Agent V2 Settings](/en/guide/build/agentv2/settings).
+- **Workflow**: Place tools directly on the canvas as deterministic steps, or attach them to a [Tool Call node](/en/guide/build/workflow/nodes/tool) or [Agent node](/en/guide/build/workflow/nodes/agent).
+
+See [team tool installation](/en/plugin/team-installation), [system tool development](/en/plugin/system-tool-development), and [Skill integration](/en/guide/build/skill/integration) for the two Agent integration surfaces.

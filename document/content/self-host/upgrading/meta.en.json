@@ -1,6 +1,7 @@
 {
-  "title": "Version History",
-  "description": "FastGPT version history",
+  "title": "Versions & Upgrades",
+  "description": "FastGPT release timeline, upgrade guide, and version history",
+  "root": true,
   "pages": [
     "version-timeline",
     "upgrade-instruction",

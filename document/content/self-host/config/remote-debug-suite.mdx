@@ -33,28 +33,11 @@ import { Alert } from '@/components/docs/Alert';
 
 主路径如下：
 
-```mermaid
-sequenceDiagram
-    participant User as Developer
-    participant FastGPT as FastGPT
-    participant Plugin as Plugin Server
-    participant Gateway as Connection Gateway
-    participant CLI as fastgpt-plugin dev
+![远程调试：建立连接](/imgs/diagrams/remote-debug-connect.zh-CN.light.svg)
 
-    User->>FastGPT: 开启调试通道
-    FastGPT->>Plugin: 创建 debug channel
-    Plugin-->>FastGPT: connectionKey / connectionUrl / source
-    User->>CLI: fastgpt-plugin dev --connect <connectionUrl>
-    CLI->>FastGPT: 兑换 connectionKey
-    FastGPT->>Plugin: 转发 connectionKey exchange
-    Plugin-->>CLI: gatewayUrl / connectToken / source
-    CLI->>Gateway: WebSocket bind
-    FastGPT->>Plugin: 调用 debug source 下的插件
-    Plugin->>Gateway: 发送 plugin-debug.run
-    Gateway->>CLI: 转发调试请求
-    CLI-->>Gateway: 返回执行结果
-    Gateway-->>Plugin: 流式返回结果
-```
+![远程调试：调用与返回](/imgs/diagrams/remote-debug-call.zh-CN.light.svg)
+
+连接信息经 FastGPT 兑换并返回 CLI；执行结果沿 Gateway、Plugin Server、FastGPT 逐层返回。图中 Gateway 与 CLI 的交互依据远程调试接口契约。
 
 ## 部署前提
 
@@ -196,7 +179,7 @@ curl http://connection-gateway:3000/health
 
 ### 页面可以开启调试，但 CLI 连接失败
 
-检查 `CONNECTION_GATEWAY_PUBLIC_URL` 是否为开发者本地可访问地址。浏览器和 CLI 在开发者电脑上运行，不能使用 Docker 内网域名。
+检查 `CONNECTION_GATEWAY_PUBLIC_URL` 是否为开发者本地可访问地址。浏览器和 CLI 在开发者电脑上运行，必须配置宿主机 IP 或公网域名。
 
 ### CLI 已连接，但 FastGPT 显示 disconnected
 

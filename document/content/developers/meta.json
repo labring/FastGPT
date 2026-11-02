@@ -1,0 +1,25 @@
+{
+  "title": "开发者",
+  "root": true,
+  "pages": [
+    "index",
+    "---API 入门---",
+    "../openapi/intro",
+    "../openapi/identity-proxy",
+    "../openapi/interactive-and-variables",
+    "---集成任务---",
+    "../openapi/app",
+    "../openapi/chat",
+    "../openapi/dataset",
+    "../guide/dataset/third-party/third_dataset",
+    "---插件系统---",
+    "../plugin/intro",
+    "../plugin/quick-start",
+    "../plugin/system-tool-development",
+    "../plugin/model-presets",
+    "../plugin/debugging-and-publishing",
+    "../plugin/package-reference",
+    "---历史参考---",
+    "../openapi/legacy"
+  ]
+}

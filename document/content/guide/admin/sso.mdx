@@ -22,7 +22,7 @@ FastGPT-pro 中，有一套标准的 SSO 和成员同步接口，系统会根据
 
 FastGPT-SSO-Service 是为了聚合不同来源的 SSO 和成员同步接口，将他们转成 fastgpt-pro 可识别的接口。
 
-![](/imgs/sso2.png)
+![通过适配服务完成 SSO 登录](/imgs/diagrams/sso-adapter.zh-CN.light.svg)
 
 ## 系统配置教程
 
@@ -126,9 +126,9 @@ env:
 
 #### 3. 开启成员同步（可选）
 
-如果需要同步外部系统的成员，可以选择开启成员同步。团队模式具体可参考：[团队模式说明文档](./teamMode.mdx)
+如果需要同步外部系统的成员，可以选择开启成员同步。团队模式具体可参考：[团队模式说明文档](/zh-CN/guide/admin/teamMode)
 
-![](/imgs/sso1.png)
+![3. 开启成员同步（可选）：界面示例](/imgs/optimized/sso1.png.webp)
 
 #### 4. 可选配置
 
@@ -151,13 +151,13 @@ App ID 和 App Secret
 
 进入开发者后台，点击企业自建应用，在凭证与基础信息页面查看应用凭证。
 
-![](/imgs/sso3.png)
+![1. 参数获取：界面示例](/imgs/optimized/sso3.png.webp)
 
 #### 2. 权限配置
 
 进入开发者后台，点击企业自建应用，在开发配置的权限管理页面开通权限。
 
-![](/imgs/sso4.png)
+![2. 权限配置：界面示例](/imgs/optimized/sso4.png.webp)
 
 可以使用**批量导入/导出权限** 功能，导入如下权限配置:
 
@@ -184,7 +184,7 @@ App ID 和 App Secret
 #### 3. 重定向 URL
 
 进入开发者后台，点击企业自建应用，在开发配置的安全设置中设置重定向 URL，重定向 URL 形如 `https://www.fastgpt.cn/login/provider` 前面的域名修改为部署后公开可访问的 fastgpt 的域名
-![](/imgs/sso5.png)
+![3. 重定向 URL：界面示例](/imgs/optimized/sso5.png.webp)
 
 #### 4. yml 配置示例
 
@@ -218,7 +218,7 @@ fastgpt-sso:
 
 CLIENT_ID 与 CLIENT_SECRET
 
-进入钉钉开放平台，点击应用开发，选择自己的应用进入，记录在凭证与基础信息页面下的 \`Client ID\` 与 \`Client secret\`。![](/imgs/sso6.png)
+进入钉钉开放平台，点击应用开发，选择自己的应用进入，记录在凭证与基础信息页面下的 \`Client ID\` 与 \`Client secret\`。![1. 参数获取：界面示例](/imgs/optimized/sso6.png.webp)
 
 #### 2. 权限配置
 
@@ -275,7 +275,7 @@ fastgpt-sso:
 
     b. 点击【我的企业】页面，查看企业的 **企业 ID**
 
-    ![](/imgs/sso7.png)
+    ![1. 参数获取：界面示例](/imgs/optimized/sso7.png.webp)
 
 2.  创建一个供 FastGPT 使用的内部应用：
 
@@ -283,9 +283,9 @@ fastgpt-sso:
 
     b. 应用的可见范围决定企微成员同步范围。请至少覆盖需要同步的部门；如果需要同步整个企业，请设置为根部门（全部可见）。
 
-    ![](/imgs/sso8.png)
+    ![1. 参数获取：界面示例](/imgs/optimized/sso8.png.webp)
 
-    ![](/imgs/sso9.png)
+    ![1. 参数获取：界面示例](/imgs/optimized/sso9.png.webp)
 
 3.  一个域名。并且要求：
 
@@ -297,11 +297,11 @@ fastgpt-sso:
 
     d. 可以在【企业微信授权登陆】页面下方设置"在工作台隐藏应用"
 
-    ![](/imgs/sso10.png)
+    ![1. 参数获取：界面示例](/imgs/optimized/sso10.png.webp)
 
-    ![](/imgs/sso11.png)
+    ![1. 参数获取：界面示例](/imgs/optimized/sso11.png.webp)
 
-    ![](/imgs/sso12.png)
+    ![1. 参数获取：界面示例](/imgs/optimized/sso12.png.webp)
 
 4.  获取 "通讯录同步助手" secret
 
@@ -309,7 +309,7 @@ fastgpt-sso:
 
     【安全与管理】--【管理工具】--【通讯录同步】
 
-    ![](/imgs/sso13.png)
+    ![1. 参数获取：界面示例](/imgs/optimized/sso13.png.webp)
 
 5.  开启接口同步
 
@@ -317,7 +317,7 @@ fastgpt-sso:
 
 7.  配置企业可信 IP
 
-    ![](/imgs/sso14.png)
+    ![1. 参数获取：界面示例](/imgs/optimized/sso14.png.webp)
 
 #### 2. 使用 latest 镜像部署 fastgpt-sso 中转服务
 
@@ -639,7 +639,7 @@ curl -H 'Authorization: Bearer replace-with-a-sync-token' http://fastgpt-sso:300
 
 以下是 FastGPT-pro 中，SSO 和成员同步的标准接口文档，如果需要对接非标准系统，可以参考该章节进行开发。
 
-![](/imgs/sso18.png)
+![第三方直接实现 SSO 标准接口](/imgs/diagrams/sso-direct.zh-CN.light.svg)
 
 FastGPT 提供如下标准接口支持：
 

@@ -47,7 +47,7 @@ This MinerU integration uses pipeline mode with built-in parallelization inside 
 
 For the commercial edition, open **Admin → System Configuration → Basic Configuration → PDF Parsing Configuration**. Enter your deployed MinerU URL, including `/v2/parse/file`, in the custom PDF parsing URL field. Enter the parsing service key if configured, then click **Save**.
 
-![alt text](../../../public/imgs/mineru6.png)
+![2. Add FastGPT Configuration — interface example](/imgs/optimized/mineru6.png.webp)
 
 **Note:** Services added via the configuration file require a restart to take effect.
 
@@ -55,7 +55,7 @@ For the commercial edition, open **Admin → System Configuration → Basic Conf
 
 Upload a PDF file through the Dataset and enable the `Enhanced PDF Parsing` option.
 
-![alt text](../../../public/imgs/mineru1.png)
+![3. Test — interface example](/imgs/optimized/mineru1.png.webp)
 
 After uploading, you should see the following logs (LOG_LEVEL must be set to info or debug):
 
@@ -66,7 +66,7 @@ After uploading, you should see the following logs (LOG_LEVEL must be set to inf
 
 Similarly, in apps you can enable `Enhanced PDF Parsing` in the file upload settings.
 
-![alt text](../../../public/imgs/mineru2.png)
+![3. Test — interface example](/imgs/optimized/mineru2.png.webp)
 
 ## Results
 
@@ -74,8 +74,8 @@ Using Tsinghua's [ChatDev Communicative Agents for Software Develop.pdf](https:/
 
 |                                                 |                                                 |                                                 |
 | ----------------------------------------------- | ----------------------------------------------- | ----------------------------------------------- |
-| ![alt text](../../../public/imgs/mineru3-1.png) | ![alt text](../../../public/imgs/mineru4-1.png) | ![alt text](../../../public/imgs/mineru5-1.png) |
-| ![alt text](../../../public/imgs/mineru3.png)   | ![alt text](../../../public/imgs/mineru4.png)   | ![alt text](../../../public/imgs/mineru5.png)   |
+| ![Results — interface example](/imgs/optimized/mineru3-1.png.webp) | ![Results — interface example](/imgs/optimized/mineru4-1.png.webp) | ![Results — interface example](/imgs/optimized/mineru5-1.png.webp) |
+| ![Results — interface example](/imgs/optimized/mineru3.png.webp)   | ![Results — interface example](/imgs/optimized/mineru4.png.webp)   | ![Results — interface example](/imgs/optimized/mineru5.png.webp)   |
 
 The top row shows chunked results; the bottom row shows the original PDF. Images, formulas, and OCR handwriting are all extracted effectively.
 

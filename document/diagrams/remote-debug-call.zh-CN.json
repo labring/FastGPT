@@ -1,0 +1,92 @@
+{
+  "type": "sequence",
+  "title": "远程调试：调用与返回",
+  "participants": [
+    {
+      "id": "app",
+      "label": "FastGPT",
+      "kind": "backend",
+      "focal": true,
+      "illustration": "core"
+    },
+    {
+      "id": "plugin",
+      "label": "Plugin 服务",
+      "kind": "backend",
+      "focal": false,
+      "illustration": "plugin"
+    },
+    {
+      "id": "gateway",
+      "label": "网关",
+      "kind": "external",
+      "focal": false,
+      "illustration": "gateway"
+    },
+    {
+      "id": "cli",
+      "label": "本地 CLI",
+      "kind": "external",
+      "focal": false,
+      "illustration": "code"
+    }
+  ],
+  "messages": [
+    [
+      "app",
+      "plugin",
+      "执行 debug 插件",
+      "primary"
+    ],
+    [
+      "plugin",
+      "gateway",
+      "plugin-debug.run",
+      "primary"
+    ],
+    [
+      "gateway",
+      "cli",
+      "转发请求",
+      "primary"
+    ],
+    [
+      "cli",
+      "gateway",
+      "执行结果",
+      "reply"
+    ],
+    [
+      "gateway",
+      "plugin",
+      "流式结果",
+      "reply"
+    ],
+    [
+      "plugin",
+      "app",
+      "流式结果",
+      "reply"
+    ]
+  ],
+  "numbered": true,
+  "evidence": [
+    {
+      "id": "app",
+      "file": "packages/service/thirdProvider/fastgptPlugin/index.ts",
+      "line": 115
+    },
+    {
+      "id": "plugin",
+      "file": "document/content/self-host/config/remote-debug-suite.mdx",
+      "line": 36
+    }
+  ],
+  "lang": "zh-CN",
+  "eyebrow": "",
+  "legend": false,
+  "motion": "trace",
+  "fonts": "system",
+  "watermark": false,
+  "skin": "light"
+}
