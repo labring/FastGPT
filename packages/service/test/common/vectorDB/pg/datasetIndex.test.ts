@@ -120,6 +120,34 @@ describe('getPgDatasetIndexName', () => {
 });
 
 describe('ensurePgDatasetIndex', () => {
+  it.each([false, true])(
+    'never builds during cleanup after rows rebound above 30000, with invalid index=%s',
+    async (exists) => {
+      rows = 40000;
+      if (exists) index = { ...validIndex, valid: false, ready: false };
+      expect(await ensurePgDatasetIndex({ ...scope, ...callbacks, allowCreate: false })).toEqual({
+        pgIndex: 'none',
+        created: false
+      });
+      expect(index).toBeUndefined();
+      expect(callbacks.onRemoving).toHaveBeenCalledTimes(exists ? 1 : 0);
+      expect(callbacks.onBuilding).not.toHaveBeenCalled();
+      expect(mocks.memory).not.toHaveBeenCalled();
+      expect(mocks.query.mock.calls.some(([sql]) => sql.includes('CREATE INDEX'))).toBe(false);
+    }
+  );
+
+  it('retains an existing valid index when cleanup sees rows rebound to 20000', async () => {
+    index = { ...validIndex };
+    rows = 20000;
+    expect(await ensurePgDatasetIndex({ ...scope, ...callbacks, allowCreate: false })).toEqual({
+      pgIndex: 'ready',
+      created: false
+    });
+    expect(callbacks.onRemoving).not.toHaveBeenCalled();
+    expect(mocks.query.mock.calls.some(([sql]) => /CREATE INDEX|DROP INDEX/.test(sql))).toBe(false);
+  });
+
   it('does not build when the business record became unavailable while waiting for maintenance', async () => {
     const result = await ensurePgDatasetIndex({
       ...scope,

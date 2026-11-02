@@ -59,9 +59,11 @@ export const getPgDatasetIndexName = (datasetId: string) => {
 /**
  * 在线维护知识库 FP16 局部索引：超过三万建图，低于两万移除，原列和中间区间保持不变。
  * 全局 PG 会话锁串行 CREATE / DROP；只操作定义完全匹配的索引，移除前通知业务切换查询路径。
+ * allowCreate=false 供清理任务使用，行数回涨后也不创建或重建索引。
  */
-export const ensurePgDatasetIndex = (props: PgDatasetIndexScope & PgDatasetIndexCallbacks) =>
-  maintainPgDatasetIndex(props);
+export const ensurePgDatasetIndex = (
+  props: PgDatasetIndexScope & PgDatasetIndexCallbacks & { allowCreate?: boolean }
+) => maintainPgDatasetIndex(props);
 
 /**
  * 知识库物理删除前强制回收专属索引，不受行数和有效状态限制。
@@ -78,10 +80,13 @@ const maintainPgDatasetIndex = async ({
   onBuilding,
   onRemoving,
   onProgress,
-  removeOnly = false
+  removeOnly = false,
+  allowCreate = true
 }: PgDatasetIndexScope &
   Partial<PgDatasetIndexCallbacks> & {
     removeOnly?: boolean;
+    /** 清理任务不能因旧通知在行数回涨后开始建图。 */
+    allowCreate?: boolean;
   }): Promise<{ pgIndex: 'ready' | 'none'; created: boolean }> => {
   const indexName = getPgDatasetIndexName(datasetId);
 
@@ -219,7 +224,7 @@ const maintainPgDatasetIndex = async ({
       return { pgIndex: 'none', created: false };
     }
 
-    /** 维护决策只使用 PG 实际行数，不能依赖十分钟前的 Redis 计数。 */
+    /** 维护决策只使用 PG 实际行数，不能依赖排队时的缓存计数。 */
     const countRows = async () => {
       const { rows } = await client.query<{ count: string }>(
         `SELECT count(*) FROM ${qualifiedTable} WHERE ${predicate}`
@@ -262,8 +267,8 @@ const maintainPgDatasetIndex = async ({
       await removeIndex();
       return { pgIndex: 'none', created: false };
     }
-    if (rows <= DATASET_VECTOR_INDEX_MIN_ROWS) {
-      // 失败索引不属于可保留状态；低于建图阈值时只清理，不重新构建。
+    if (rows <= DATASET_VECTOR_INDEX_MIN_ROWS || !allowCreate) {
+      // 无效索引不属于可保留状态；未达到建图阈值或仅做清理时，回收后直接返回。
       if (existing) await removeIndex();
       return { pgIndex: 'none', created: false };
     }

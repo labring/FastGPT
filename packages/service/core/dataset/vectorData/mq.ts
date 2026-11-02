@@ -11,10 +11,12 @@ import {
 } from '../../../common/vectorDB/pg/datasetIndex';
 import { getLogger, LogCategories } from '../../../common/logger';
 import { findDatasetVectorData, updateDatasetPgIndexState } from './entity';
+import { getVectorCount } from '../../../common/vectorDB/controller';
+import { withTimeout } from '@fastgpt/global/common/system/utils';
 
 const logger = getLogger(LogCategories.INFRA.QUEUE);
 
-/** 固定 jobId 在 delayed/waiting/active 期间去重；失败移除任务，等待下次真实统计重新投递。 */
+/** 创建与清理分别去重，共享维护队列和全局槽位；失败移除任务，等待下次统计重新投递。 */
 const getDatasetVectorIndexQueue = () =>
   bullMQ.getQueue<PgDatasetIndexScope>(QueueNames.datasetVectorIndex, {
     defaultJobOptions: {
@@ -26,7 +28,7 @@ const getDatasetVectorIndexQueue = () =>
 
 /**
  * 真实计数超过三万时创建、低于两万时清理可能存在的索引；中间区间和普通小库不额外投递。
- * CREATE / DROP 共用固定 jobId，满足条件后立即排队；重复通知复用尚未完成的任务。
+ * 创建与清理分别使用 datasetId-build / datasetId-cleanup，避免建图期间的清理通知被活跃任务吞掉。
  */
 export const onDatasetVectorCounted = async ({
   rows,
@@ -42,8 +44,9 @@ export const onDatasetVectorCounted = async ({
   if (!shouldBuild && (!data || data.pgIndex === 'none')) return;
 
   // 先可靠投递再置 pending；进程中断重投安全，状态更新也不能覆盖正在构建/已完成状态。
-  const job = await getDatasetVectorIndexQueue().add('maintain', scope, {
-    jobId: String(scope.datasetId)
+  const operation = shouldBuild ? 'build' : 'cleanup';
+  await getDatasetVectorIndexQueue().add(operation, scope, {
+    jobId: `${scope.datasetId}-${operation}`
   });
   if (shouldBuild && (!data || data.pgIndex === 'none' || data.pgIndex === 'failed')) {
     // 消费可能先完成，只有读取时的状态快照未变化，才能补写 pending。
@@ -53,24 +56,23 @@ export const onDatasetVectorCounted = async ({
       expectedCheckedAt: data?.pgIndexCheckedAt
     });
   }
-
-  // 兼容旧节点已投递的延迟任务；新任务默认立即排队，已排队/执行的任务继续复用。
-  if ((await job.getState()) === 'delayed') {
-    await job.promote().catch(async (error) => {
-      // 其他通知或 worker 可能已推进任务；仍在 delayed 才视为本次投递未完成。
-      if ((await job.getState()) === 'delayed') throw error;
-    });
-  }
 };
 
-/** 通过 PG 目录核验后同步最终状态；失败保留 failed 状态，由下次真实统计重新投递。 */
-export const processDatasetVectorIndex = async (scope: PgDatasetIndexScope) => {
+/**
+ * 通过 PG 目录核验后同步状态；创建完成后重新统计并可靠补投清理，覆盖构建中行数下降的边界。
+ * 清理任务回涨后保留有效索引；两种任务均只尝试一次，失败等待下次统计重新投递。
+ */
+export const processDatasetVectorIndex = async (
+  scope: PgDatasetIndexScope,
+  { operation }: { operation: 'build' | 'cleanup' }
+) => {
   const dataset = await findDatasetVectorData(scope);
   if (!dataset) return;
   const startedAt = Date.now();
   try {
     const result = await ensurePgDatasetIndex({
       ...scope,
+      allowCreate: operation === 'build',
       onBuilding: async () => {
         const result = await updateDatasetPgIndexState({ ...scope, pgIndex: 'building' });
         // deleteTime 条件与状态更新原子判断，挡住进入删除流程前已领取的陈旧任务。
@@ -93,8 +95,16 @@ export const processDatasetVectorIndex = async (scope: PgDatasetIndexScope) => {
       }
     });
     await updateDatasetPgIndexState({ ...scope, pgIndex: result.pgIndex });
+    if (operation === 'build' && result.created) {
+      // 不依赖构建期间是否发生过统计通知；刷新 Redis 行数后，用另一个 jobId 保留后续清理意图。
+      const rows = await getVectorCount(scope, { refresh: true, notifyDatasetCounted: false });
+      if (rows < DATASET_VECTOR_INDEX_DROP_ROWS) {
+        await withTimeout(onDatasetVectorCounted({ ...scope, rows }), 60000);
+      }
+    }
     logger.info('PG dataset FP16 index task completed', {
       ...scope,
+      operation,
       ...result,
       elapsedMs: Date.now() - startedAt
     });
@@ -105,7 +115,7 @@ export const processDatasetVectorIndex = async (scope: PgDatasetIndexScope) => {
     await updateDatasetPgIndexState({ ...scope, pgIndex: 'failed' }).catch((stateError) =>
       logger.warn('Failed to update dataset PG index state', { ...scope, error: stateError })
     );
-    logger.error('PG dataset FP16 index task failed', { ...scope, error });
+    logger.error('PG dataset FP16 index task failed', { ...scope, operation, error });
     throw error;
   }
 };
@@ -116,7 +126,12 @@ export const initDatasetVectorIndexWorker = async () => {
   await getDatasetVectorIndexQueue().setGlobalConcurrency(1);
   return bullMQ.getWorker<PgDatasetIndexScope>(
     QueueNames.datasetVectorIndex,
-    (job) => processDatasetVectorIndex(job.data),
+    (job) => {
+      if (job.name !== 'build' && job.name !== 'cleanup') {
+        throw new Error(`Unknown PG dataset index task: ${job.name}`);
+      }
+      return processDatasetVectorIndex(job.data, { operation: job.name });
+    },
     { concurrency: 1 }
   );
 };
