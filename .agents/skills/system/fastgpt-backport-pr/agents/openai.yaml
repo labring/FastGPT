@@ -1,0 +1,4 @@
+interface:
+  display_name: 'FastGPT PR 回补'
+  short_description: '支持批量 pick 已合入 PR，必须提供目标分支，验证后推送 upstream'
+  default_prompt: '使用 $fastgpt-backport-pr 将 PR #12345、#12346 回补到 upstream/v4.17.x，验证后直接推送；逻辑冲突先询问我。'
