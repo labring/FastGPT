@@ -13,7 +13,7 @@ import { createLLMResponse } from '../../../ai/llm/request';
 import type { DispatchNodeResultType, ModuleDispatchProps } from '../../types/runtime';
 import { loadWorkflowModelResource } from '../../resource/service';
 import { getHistories } from '../utils';
-import { getWorkflowSourceNodeKey } from '../utils/source';
+import { getWorkflowNodeMemoryKey, readWorkflowNodeMemory } from '../../memory/state';
 
 const logger = getLogger(LogCategories.MODULE.WORKFLOW.AI);
 
@@ -53,12 +53,19 @@ export const dispatchClassifyQuestion = async (props: Props): Promise<CQResponse
     model
   });
 
-  const memoryKey = getWorkflowSourceNodeKey({ runningAppInfo, nodeId });
   const chatHistories = getHistories(history, histories);
-  // @ts-ignore
-  const lastMemory = chatHistories[chatHistories.length - 1]?.memories?.[
-    memoryKey
-  ] as ClassifyQuestionAgentItemType;
+  const memoryKey = getWorkflowNodeMemoryKey({
+    memoryState: props.memoryState,
+    runningAppInfo,
+    nodeId
+  });
+  const lastMemory = readWorkflowNodeMemory<ClassifyQuestionAgentItemType>({
+    memoryState: props.memoryState,
+    runningAppInfo,
+    nodeId,
+    history,
+    histories
+  });
 
   const { arg, inputTokens, outputTokens, usedUserOpenAIKey } = await completions({
     ...props,

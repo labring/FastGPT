@@ -26,12 +26,12 @@ import { getWorkflowFileMaxAmount } from '../../../utils/context';
 import { loadWorkflowModelResource } from '../../../resource/service';
 import { runtimeSummaryToNodeSummary, stripNodeSummaryErrorFields } from '../../utils/summary';
 import { getNodeErrResponse } from '../../utils';
+import { WorkflowMemoryState } from '../../../memory/state';
 import {
   buildAgentLoopCoreDoneMemories,
   buildAgentLoopCoreFinalAssistantOutput,
   buildAgentLoopCoreInput,
   buildAgentLoopCorePausedMemories,
-  buildAgentLoopCoreProviderStateMemories,
   buildAgentLoopCoreRequestMessages,
   createAgentLoopCoreChildInteractiveParams,
   prepareAgentLoopCoreProviderRunState,
@@ -47,7 +47,7 @@ import { ensureAgentSandboxRuntime, type AgentSandboxPrepareAction } from './sub
 import { createAgentSubAppLookup, getWorkflowAgentLoopProvider } from './utils';
 
 export type DispatchAgentModuleProps = ModuleDispatchProps<{
-  [NodeInputKeyEnum.history]?: ChatItemMiniType[];
+  [NodeInputKeyEnum.history]?: ChatItemMiniType[] | number;
   [NodeInputKeyEnum.userChatInput]: string;
 
   [NodeInputKeyEnum.aiChatVision]?: boolean;
@@ -185,6 +185,18 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
   const fileLinks = parseHistoryFiles ? props.params.fileUrlList : undefined;
 
   const provider = getWorkflowAgentLoopProvider();
+  const memoryState = WorkflowMemoryState.fromWorkflow(props);
+  const agentMemoryState = memoryState.fork(`node:${nodeId}`, {
+    history,
+    hasInteractiveResume: !!lastInteractive
+  });
+  const buildAgentMemories = (ownMemories?: Record<string, any>) => {
+    const merged = {
+      ...agentMemoryState.getDelta(),
+      ...ownMemories
+    };
+    return Object.keys(merged).length > 0 ? merged : undefined;
+  };
   try {
     if (!isAppChat && sandboxRequested) {
       await assertSandboxAvailable(runningAppInfo.teamId);
@@ -280,6 +292,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     const { runtime, artifacts } = createWorkflowAgentLoopRuntime({
       context: {
         ...props,
+        memoryState: agentMemoryState,
         modelData: agentModel,
         systemPrompt: formattedUserSystemPrompt,
         getSubAppInfo,
@@ -307,7 +320,14 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     // FastAgent 只使用 ChatItem；Pi 暂时保留其原生 providerState。
     const restoredMemory =
       provider === 'piAgent'
-        ? readAgentLoopCoreProviderStateMemory({ histories: chatHistories, nodeId })
+        ? readAgentLoopCoreProviderStateMemory({
+            memoryState,
+            history,
+            hasInteractiveResume: !!lastInteractive,
+            histories: chatHistories,
+            runningAppInfo,
+            nodeId
+          })
         : {};
     const activePlan = readAgentLoopCoreActivePlan({ histories });
     const { providerState: runtimeProviderState, isAskResume } =
@@ -353,14 +373,19 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     const outputAssistantResponses = outputSummary.assistantResponses;
 
     if (outputSummary.status === 'interactive' && outputSummary.interactive) {
+      const interactiveMemories = buildAgentMemories(
+        provider === 'piAgent'
+          ? buildAgentLoopCorePausedMemories({
+              memoryState,
+              runningAppInfo,
+              nodeId,
+              providerState: outputSummary.providerState
+            })
+          : undefined
+      );
       return {
         [DispatchNodeResponseKeyEnum.assistantResponses]: outputAssistantResponses,
-        ...(provider === 'piAgent' && {
-          [DispatchNodeResponseKeyEnum.memories]: buildAgentLoopCorePausedMemories({
-            nodeId,
-            providerState: outputSummary.providerState
-          })
-        }),
+        [DispatchNodeResponseKeyEnum.memories]: interactiveMemories,
         [DispatchNodeResponseKeyEnum.interactive]: outputSummary.interactive
       };
     }
@@ -373,14 +398,21 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       reasoningText: outputSummary.reasoningText,
       hideReason: aiChatReasoning === false
     });
+    const doneMemories = buildAgentMemories(
+      provider === 'piAgent'
+        ? buildAgentLoopCoreDoneMemories({
+            memoryState,
+            runningAppInfo,
+            nodeId
+          })
+        : undefined
+    );
 
     const result = {
       data: {
         [NodeOutputKeyEnum.answerText]: finalOutput.answerText
       },
-      ...(provider === 'piAgent' && {
-        [DispatchNodeResponseKeyEnum.memories]: buildAgentLoopCoreDoneMemories({ nodeId })
-      }),
+      [DispatchNodeResponseKeyEnum.memories]: doneMemories,
       [DispatchNodeResponseKeyEnum.assistantResponses]: finalOutput.assistantResponses
     };
     // 异常与错误分支输出必须同时返回，空错误文本也不能让节点走成功分支。
@@ -396,14 +428,18 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     getLogger(LogCategories.MODULE.AI.AGENT).error(`[Agent] dispatchRunAgent caught error`, {
       error
     });
+    const catchMemories = buildAgentMemories(
+      provider === 'piAgent'
+        ? buildAgentLoopCoreDoneMemories({
+            memoryState,
+            runningAppInfo,
+            nodeId
+          })
+        : undefined
+    );
     return {
       ...getNodeErrResponse({ error }),
-      ...(provider === 'piAgent' && {
-        [DispatchNodeResponseKeyEnum.memories]: buildAgentLoopCoreProviderStateMemories({
-          nodeId,
-          memory: {}
-        })
-      }),
+      [DispatchNodeResponseKeyEnum.memories]: catchMemories,
       [DispatchNodeResponseKeyEnum.assistantResponses]: assistantResponses
     };
   } finally {
