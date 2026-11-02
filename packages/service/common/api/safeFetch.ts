@@ -93,16 +93,51 @@ const toUrl = (input: RequestInfo | URL): URL => {
   return new URL(input.url);
 };
 
+const createAbortError = (signal?: AbortSignal) =>
+  signal?.reason ?? new DOMException('This operation was aborted', 'AbortError');
+
+const throwIfAborted = (signal?: AbortSignal): void => {
+  if (signal?.aborted) throw createAbortError(signal);
+};
+
+/**
+ * 让不受 signal 控制的异步操作（如 dns.resolve4/6）在 abort 时及时释放调用方。
+ * 底层查询本身可能继续执行，但这里会在 resolve/reject/abort 三条路径都移除监听器。
+ */
+const awaitWithAbort = <T>(promise: Promise<T>, signal?: AbortSignal): Promise<T> => {
+  if (!signal) return promise;
+  throwIfAborted(signal);
+
+  return new Promise<T>((resolve, reject) => {
+    const onAbort = () => reject(createAbortError(signal));
+
+    signal.addEventListener('abort', onAbort, { once: true });
+    promise.then(
+      (value) => {
+        signal.removeEventListener('abort', onAbort);
+        resolve(value);
+      },
+      (error) => {
+        signal.removeEventListener('abort', onAbort);
+        reject(error);
+      }
+    );
+  });
+};
+
 /**
  * 校验单跳 URL。IP 字面量不会触发 DNS lookup，必须在这里直接判定；
  * 域名则由 isInternalAddress 解析后校验，直连时 safeAgent 还会在建连前二次校验。
+ * DNS 解析可能较慢，必须与请求 signal 竞速，避免预检拖过调用方的超时/取消截止时间。
  */
-const assertSafeHopUrl = async (url: URL): Promise<void> => {
+const assertSafeHopUrl = async (url: URL, signal?: AbortSignal): Promise<void> => {
+  throwIfAborted(signal);
+
   if (url.protocol !== 'http:' && url.protocol !== 'https:') {
     throw new Error('requestUrl must use http or https protocol');
   }
 
-  if (await isInternalAddress(url.toString())) {
+  if (await awaitWithAbort(isInternalAddress(url.toString()), signal)) {
     throw new Error(PRIVATE_URL_TEXT);
   }
 };
@@ -214,7 +249,7 @@ const fetchWithSafeRedirects = async (initialHop: SafeRequestHop): Promise<Respo
   let hop = initialHop;
 
   for (let count = 0; ; count++) {
-    await assertSafeHopUrl(hop.url);
+    await assertSafeHopUrl(hop.url, hop.signal);
 
     const response = await undiciFetch(hop.url, buildUndiciInit(hop));
 
@@ -270,7 +305,7 @@ export const safeLegacyFetch = (async (input: RequestInfo | URL, init?: RequestI
 
   // 调用方显式要求 manual/error 时不自动跟随，但仍校验首跳目标。
   if (hop.redirectMode !== 'follow') {
-    await assertSafeHopUrl(hop.url);
+    await assertSafeHopUrl(hop.url, hop.signal);
     return undiciFetch(hop.url, {
       ...buildUndiciInit(hop),
       redirect: hop.redirectMode
