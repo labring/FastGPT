@@ -443,6 +443,8 @@ describe('loadRequestMessages function tests', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     multimediaEnv.MULTIPLE_DATA_TO_BASE64 = originalMultipleDataToBase64;
+    // 预览代理地址也被本组用例改动，逐例复位，避免后续用例继承配置。
+    multimediaEnv.AGENT_SANDBOX_PREVIEW_PROXY_URL = originalPreviewProxyUrl;
     mockGetImageBase64.mockResolvedValue({
       completeBase64: 'data:image/png;base64,test',
       base64: 'test',
