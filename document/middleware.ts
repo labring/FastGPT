@@ -19,7 +19,6 @@ const exactMap: Record<string, string> = {
   // Self-host.
   '/upgrading/intro': '/self-host/upgrading/upgrade-instruction',
   '/upgrading': '/self-host/upgrading/upgrade-instruction',
-  '/self-host/migration/docker_minio_to_rustfs': '/self-host/docker_minio_to_rustfs',
   // Pre-rename misspellings of the upgrade page keep resolving.
   '/self-host/upgrading/upgrade-intruction': '/self-host/upgrading/upgrade-instruction',
   '/upgrading/upgrade-intruction': '/self-host/upgrading/upgrade-instruction',
