@@ -1,4 +1,7 @@
 {
+  "http_field_type": "Field type",
+  "http_field_text": "Text",
+  "http_file_field_placeholder": "Reference a file URL from this workflow",
   "tool_target_already_attached": "This node is already attached to another tool call. Remove its existing tool connection first.",
   "tool_connection_has_normal_edges": "This node already has incoming workflow connections. Remove them before connecting it as a tool.",
   "Array_element": "Array element",
