@@ -7,6 +7,8 @@ description: FastGPT Docker 部署的对象存储从 MinIO 迁移到 RustFS
 
 > 不要在另一个目录重新执行 `install.sh`，也不要更换 Compose project 名称。直接启动一套新安装会创建新的 MongoDB、Redis、PG 数据卷，并重新生成数据库密码、`ROOT_KEY` 和 `AES256_SECRET_KEY`，导致原业务数据不可见。
 
+本文中的容器名、Compose 服务名、网络名和端口均为示例，执行前必须核对当前部署。`docker inspect` 使用容器名，`docker compose stop` / `up` 使用 Compose 文件中 `services` 下的服务名，两者可能不同。后续命令中的 `fastgpt-mongo`、`fastgpt-minio`、`fastgpt-app`、`fastgpt-plugin` 和网络 `data` 都要替换为实际名称。
+
 ## 1. 固定原部署身份并备份
 
 以下命令均在现有 FastGPT 部署目录执行。先备份当前 Compose 文件；如果目录中存在 `config.json` 或其他本地配置，也一并保留，不要用新安装文件覆盖。
@@ -17,18 +19,28 @@ cp docker-compose.yml docker-compose.yml.minio.bak
 test ! -f config.json || cp config.json config.json.minio.bak
 ```
 
+如果 FastGPT 在宿主机上运行，例如通过 `pnpm dev` 启动，同时备份应用实际读取的 `.env` / `.env.local` 等配置文件。
+
+先列出当前 Compose 服务和容器，确认示例名称对应的实际名称：
+
+```bash
+docker compose config --services
+docker compose ps
+```
+
 确认当前 Compose project 名称和业务数据卷。后续所有 `docker compose` 命令都必须在这个目录执行，或显式传入同一个 project 名称。
 
 ```bash
 docker inspect -f '{{ index .Config.Labels "com.docker.compose.project" }}' fastgpt-mongo
 docker volume ls --filter label=com.docker.compose.project=YOUR_PROJECT_NAME
+docker inspect -f '{{ json .Mounts }}' fastgpt-minio
 ```
 
-如果 project 名称为空，先用 `docker compose ls` 确认当前配置对应的 project，再继续操作。
+如果 project 名称为空，先用 `docker compose ls` 确认当前配置对应的 project，再继续操作。`docker volume ls` 只列出 Docker 卷；旧 MinIO 如果使用 bind mount，还要记录并保留 `.Mounts` 中的宿主机数据目录。
 
 ## 2. 在原 Compose 中加入 RustFS
 
-在现有 `docker-compose.yml` 顶层增加一组凭证锚点，并把下面的服务加入 `services`。`fastgpt-rustfs` 会使用原 project 的命名卷前缀，稍后切换时继续复用同一个卷。
+在现有 `docker-compose.yml` 顶层、`x-share-db-config` 之前增加一组凭证锚点，确保锚点早于所有引用它的位置；YAML 不支持先引用、后定义锚点。然后把下面的服务加入 `services`。`fastgpt-rustfs` 会使用原 project 的命名卷前缀，稍后切换时继续复用同一个卷。
 
 ```yaml
 x-rustfs-access-key: &x-rustfs-access-key 'YOUR_NEW_ACCESS_KEY'
@@ -45,6 +57,7 @@ x-rustfs-secret-key: &x-rustfs-secret-key 'YOUR_NEW_SECRET_KEY'
       - 9010:9000
       - 9011:9001
     networks:
+      # 替换为原 Compose 中实际声明的网络名
       - data
     security_opt:
       - no-new-privileges:true
@@ -97,7 +110,15 @@ docker volume ls --filter label=com.docker.compose.project=YOUR_PROJECT_NAME
 
 ## 3. 复制初始对象数据
 
-在宿主机安装 [MinIO Client](https://min.io/docs/minio/linux/reference/minio-mc.html)，使用旧 MinIO 和新 RustFS 的凭证创建别名。不要交换 `old`、`new` 的地址或凭证。
+在宿主机安装 [MinIO Client](https://github.com/minio/mc#install-from-source)。如果 Homebrew 或旧二进制下载地址返回 HTTP 410，可以在已安装 Go 的环境中，从官方固定版本源码安装：
+
+```bash
+go install github.com/minio/mc@RELEASE.2025-08-13T08-35-41Z
+export PATH="$(go env GOPATH)/bin:$PATH"
+mc --version
+```
+
+使用旧 MinIO 和新 RustFS 的凭证创建别名。不要交换 `old`、`new` 的地址或凭证。
 
 ```bash
 mc alias set old http://127.0.0.1:9000 YOUR_OLD_ACCESS_KEY YOUR_OLD_SECRET_KEY
@@ -122,6 +143,8 @@ mc mirror --overwrite old/fastgpt-private new/fastgpt-private
 ```bash
 docker compose stop fastgpt-app fastgpt-plugin
 ```
+
+如果应用通过 `pnpm dev`、systemd 或其他方式运行，使用对应方式停止实际应用进程；只停止 Compose 中的依赖服务不能冻结宿主机应用的写入。还要排查其他机器、开发工作区和后台任务中连接同一套数据库及对象存储的实例，包含知识库训练消费者；它们也必须停止，并在切换后更新凭据再启动，避免旧凭据实例抢到新任务后读取失败。
 
 确认源和目标别名、桶名无误后执行最终同步。最终同步必须包含 `--remove`，把旧 MinIO 中已删除、但目标 RustFS 中仍存在的对象一并删除。
 
@@ -168,6 +191,8 @@ docker compose stop fastgpt-minio
 
 `STORAGE_VENDOR` 仍保持 `minio`，这里只替换 S3 兼容实现的地址与凭证。
 
+宿主机上运行的 FastGPT 还需要同步更新其 `.env` / `.env.local` 中的 `STORAGE_ACCESS_KEY_ID`、`STORAGE_SECRET_ACCESS_KEY` 和 `STORAGE_S3_ENDPOINT`。如果主站、Pro 后台或其他进程分别读取不同的环境文件，需要逐一更新所有连接这套对象存储的配置。Endpoint 使用该应用可访问的宿主机地址和映射端口，例如 `http://127.0.0.1:9000`；不要直接使用仅在 Compose 网络内解析的 `fastgpt-rustfs`。如果应用在另一台机器上运行，使用对象存储宿主机的实际可访问地址。
+
 校验并启动原部署。由于仍在原目录、原 Compose project 中运行，MongoDB、Redis、PG、应用密钥和原配置都会保持不变。
 
 ```bash
@@ -176,6 +201,8 @@ docker compose up -d
 docker compose ps
 curl -fsS http://127.0.0.1:9000/health
 ```
+
+宿主机应用也要通过原来的启动方式重新启动，确保读取更新后的存储配置。
 
 确认文件上传、下载、知识库文件访问和公开桶匿名读取正常后，再考虑删除旧 `fastgpt-minio` 数据卷。不要执行 `docker compose down -v`。
 
@@ -188,6 +215,8 @@ docker compose stop fastgpt-app fastgpt-plugin fastgpt-rustfs
 cp docker-compose.yml.minio.bak docker-compose.yml
 docker compose up -d
 ```
+
+宿主机应用需要同时恢复备份的 `.env` / `.env.local`，再通过原来的方式重新启动。
 
 回滚后旧 MinIO 数据仍然可用。如果切换到 RustFS 后已经产生新的文件，需要先把这些新对象反向同步回 MinIO，否则它们不会出现在回滚后的部署中。
 

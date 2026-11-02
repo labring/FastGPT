@@ -7,6 +7,8 @@ New deployments from the `main` version use RustFS as their object storage. Exis
 
 > Do not rerun `install.sh` in another directory or change the Compose project name. Starting a fresh installation creates new MongoDB, Redis, and PG volumes and regenerates database passwords and application secrets without preserving the old values, making the original business data inaccessible.
 
+Container names, Compose service names, network names, and ports in this guide are examples. Check your deployment before running commands. `docker inspect` takes a container name, while `docker compose stop` and `up` take service names from the Compose file's `services` mapping; these names may differ. Replace `fastgpt-mongo`, `fastgpt-minio`, `fastgpt-app`, `fastgpt-plugin`, and the `data` network with your actual names throughout the guide.
+
 ## 1. Pin the Existing Deployment and Back It Up
 
 Run the following commands in the existing FastGPT deployment directory. Back up the current Compose file and retain any local configuration file such as `config.json` without overwriting it with a fresh installation.
@@ -17,18 +19,28 @@ cp docker-compose.yml docker-compose.yml.minio.bak
 test ! -f config.json || cp config.json config.json.minio.bak
 ```
 
+If FastGPT runs on the host, for example through `pnpm dev`, also back up the `.env`, `.env.local`, or other configuration files that the application actually reads.
+
+List the current Compose services and containers to identify the actual names corresponding to the examples:
+
+```bash
+docker compose config --services
+docker compose ps
+```
+
 Confirm the current Compose project name and business volumes. Every later `docker compose` command must either run in this directory or explicitly use the same project name.
 
 ```bash
 docker inspect -f '{{ index .Config.Labels "com.docker.compose.project" }}' fastgpt-mongo
 docker volume ls --filter label=com.docker.compose.project=YOUR_PROJECT_NAME
+docker inspect -f '{{ json .Mounts }}' fastgpt-minio
 ```
 
-If the project name is empty, identify the project for the current configuration with `docker compose ls` before continuing.
+If the project name is empty, identify the project for the current configuration with `docker compose ls` before continuing. `docker volume ls` lists only Docker volumes. If the old MinIO uses a bind mount, also record and retain the host data directory shown in `.Mounts`.
 
 ## 2. Add RustFS to the Existing Compose File
 
-Add a pair of credential anchors at the top level of the existing Compose file, then add the service below under the services mapping. Because it stays in the original project, `fastgpt-rustfs` uses the existing project's volume namespace and the same volume can be reused after the switch.
+Add a pair of credential anchors at the top level of the existing Compose file, before `x-share-db-config` and every other reference to them. YAML anchors must be defined before they are referenced. Then add the service below under the services mapping. Because it stays in the original project, `fastgpt-rustfs` uses the existing project's volume namespace and the same volume can be reused after the switch.
 
 ```yaml
 x-rustfs-access-key: &x-rustfs-access-key 'YOUR_NEW_ACCESS_KEY'
@@ -45,6 +57,7 @@ x-rustfs-secret-key: &x-rustfs-secret-key 'YOUR_NEW_SECRET_KEY'
       - 9010:9000
       - 9011:9001
     networks:
+      # Replace with the network name declared in your existing Compose file
       - data
     security_opt:
       - no-new-privileges:true
@@ -97,7 +110,15 @@ docker volume ls --filter label=com.docker.compose.project=YOUR_PROJECT_NAME
 
 ## 3. Copy the Initial Object Data
 
-Install [MinIO Client](https://min.io/docs/minio/linux/reference/minio-mc.html) on the host and create aliases for the old MinIO and new RustFS. Never swap the addresses or credentials assigned to the old and new aliases.
+Install [MinIO Client](https://github.com/minio/mc#install-from-source) on the host. If Homebrew or an old binary download URL returns HTTP 410, you can install a pinned official source release in an environment with Go installed:
+
+```bash
+go install github.com/minio/mc@RELEASE.2025-08-13T08-35-41Z
+export PATH="$(go env GOPATH)/bin:$PATH"
+mc --version
+```
+
+Create aliases for the old MinIO and new RustFS. Never swap the addresses or credentials assigned to the old and new aliases.
 
 ```bash
 mc alias set old http://127.0.0.1:9000 YOUR_OLD_ACCESS_KEY YOUR_OLD_SECRET_KEY
@@ -122,6 +143,8 @@ Stop every application that may write to object storage from the same old deploy
 ```bash
 docker compose stop fastgpt-app fastgpt-plugin
 ```
+
+If the application runs through `pnpm dev`, systemd, or another process manager, stop the actual application through that mechanism. Stopping only its Compose dependencies does not freeze writes from an application running on the host. Also check other machines, development workspaces, and background jobs for instances connected to the same database and object store, including Dataset training consumers. Stop these instances too, and update their credentials before restarting after the switch; otherwise an instance with old credentials may claim new tasks and fail to read their files.
 
 After confirming the source and target aliases and bucket names, run the final sync. It must use `--remove` so objects deleted from the old MinIO are also removed from the target RustFS.
 
@@ -168,6 +191,8 @@ The shared storage configuration should match the following:
 
 Keep `STORAGE_VENDOR` set to the value `minio` because this switch changes only the S3-compatible endpoint and credentials.
 
+For FastGPT running on the host, also update `STORAGE_ACCESS_KEY_ID`, `STORAGE_SECRET_ACCESS_KEY`, and `STORAGE_S3_ENDPOINT` in its `.env` or `.env.local`. If the main application, Pro admin service, or other processes read separate environment files, update every configuration that connects to this object store. Use a host address and published port reachable by that application, such as `http://127.0.0.1:9000`, rather than the Compose-only hostname `fastgpt-rustfs`. If the application runs on another machine, use the object storage host's reachable address.
+
 Validate and start the original deployment. Because it still runs from the original directory and Compose project, MongoDB, Redis, PG, application secrets, and the existing configuration remain unchanged.
 
 ```bash
@@ -176,6 +201,8 @@ docker compose up -d
 docker compose ps
 curl -fsS http://127.0.0.1:9000/health
 ```
+
+Restart host applications through their original startup mechanism so they load the updated storage configuration.
 
 After file upload, download, Dataset file access, and anonymous reads from the public bucket work, consider deleting the old `fastgpt-minio` data volume. Never remove volumes with the `-v` option.
 
@@ -188,6 +215,8 @@ docker compose stop fastgpt-app fastgpt-plugin fastgpt-rustfs
 cp docker-compose.yml.minio.bak docker-compose.yml
 docker compose up -d
 ```
+
+For a host application, also restore its backed-up `.env` or `.env.local` and restart it through the original startup mechanism.
 
 The old MinIO data remains available. If new files were written to RustFS after the switch, mirror them back to MinIO first; otherwise they will not appear after rollback.
 
