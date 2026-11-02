@@ -2,13 +2,19 @@
 title: V4.18.0
 description: FastGPT V4.18.0 更新说明
 sidebarTag: 进行中
+upgradeTags:
+  - 进行中
+  - 手动迁移
 ---
 
 ## 升级指南
 
 ### 配置变更
 
-本轮无环境变量或系统配置变更，从 V4.17.3 升级无需额外调整配置。
+- `main` Docker Compose 模板的业务对象存储默认从 MinIO 切换为 RustFS，`STORAGE_S3_ENDPOINT` 改为 `http://fastgpt-rustfs:9000`；模板中 `STORAGE_VENDOR` 仍为 `minio`，`STORAGE_S3_FORCE_PATH_STYLE` 仍为 `true`。继续使用已有 MinIO 或外部对象存储时，保留原服务及连接配置；Milvus 专用的 `fastgpt-milvus-minio` 不参与本次切换。
+- 新增 Compose 凭证锚点 `x-rustfs-access-key`、`x-rustfs-secret-key`，分别供 RustFS 的 `RUSTFS_ACCESS_KEY`、`RUSTFS_SECRET_KEY` 与应用的 `STORAGE_ACCESS_KEY_ID`、`STORAGE_SECRET_ACCESS_KEY` 共用。模板默认值均为 `rustfsadmin`，一键安装会随机生成两项凭证；手工部署请替换默认值，并确保所有连接同一存储的服务使用一致的凭证。
+- RustFS 默认使用 `RUSTFS_VOLUMES=/data` 单盘布局及新的 `fastgpt-rustfs:/data` 命名卷，API、控制台端口分别为 `9000`、`9001`，控制台默认启用；日志默认级别为 `error`，目录为 `/logs`。改用宿主机目录挂载时，需允许 UID `10001` 写入数据目录。
+- 切换对象存储时，同步调整应用、插件的服务依赖及 `NO_PROXY` / `no_proxy`；宿主机运行的应用还需更新实际读取的环境文件，Endpoint 使用该应用可访问的宿主机地址及映射端口。
 
 ### 镜像更新
 
@@ -16,8 +22,11 @@ sidebarTag: 进行中
 
 本轮无新增或调整的自动升级脚本。
 
+MinIO 对象文件需手工迁移，不会由系统启动任务自动搬迁。
+
 ### 兼容说明
 
+- **已有 MinIO 数据迁移**：采用新版模板切换前，按 [MinIO 迁移到 RustFS](/self-host/docker_minio_to_rustfs) 原地备份配置并复制公私有桶；停止所有连接同一存储的应用、插件、后台处理进程及外部写入方后，执行 `mc mirror --overwrite --remove` 完成最终同步，验证无差异再切换所有实例的地址和凭证。保留原 Compose project、业务数据卷、数据库连接及应用密钥，以及旧 MinIO 数据用于回滚；不要另建目录重新执行 `install.sh`，也不要执行 `docker compose down -v`，切换后产生的新对象需在回滚前反向同步。重启后验证上传、下载、知识库文件访问及公有桶匿名读取；公有桶策略由 FastGPT 启动时自动设置，私有桶保持私有。
 - **工作流历史记忆**：内容提取、问题分类与 Pi Agent 的记忆键统一按来源和调用路径隔离。运行时兼容读取旧 Agent 键与可确定归属的旧子流程键，写入新键后清理对应旧键，无需批量迁移历史会话；直接读写 `ChatItem.memories` 的自定义集成需适配新键，不再依赖 `agentLoopMemory-${nodeId}` 或不含调用路径的子流程键。
 - **历史配置与交互续跑**：普通新请求中，`history=0` 不读取旧记忆，自定义历史只读取所传历史末尾 AI 消息的记忆；显式交互续跑优先使用父流程检查点，避免历史设置清除当前交互的恢复状态。
 
