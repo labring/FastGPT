@@ -718,10 +718,14 @@ describe('convertMcpToolContentToToolContent', () => {
   });
 
   it('skips non-raster image blocks that vision providers reject', () => {
+    // OpenAI / Claude 只接受 png/jpeg/webp/gif；svg、bmp 会被供应商拒绝。
     expect(
       convertMcpToolContentToToolContent([
         { type: 'image', data: 'AAAA', mimeType: 'image/svg+xml' }
       ])
+    ).toBeUndefined();
+    expect(
+      convertMcpToolContentToToolContent([{ type: 'image', data: 'AAAA', mimeType: 'image/bmp' }])
     ).toBeUndefined();
   });
 

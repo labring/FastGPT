@@ -127,16 +127,18 @@ describe('sandboxGetFileUrlTool', () => {
     getFileInfo.mockResolvedValue(
       new Map([
         ['/workspace/sessions/chat-1/report/logo.svg', { isDirectory: false }],
-        ['/workspace/sessions/chat-1/report/design.psd', { isDirectory: false }]
+        ['/workspace/sessions/chat-1/report/design.psd', { isDirectory: false }],
+        ['/workspace/sessions/chat-1/report/legacy.bmp', { isDirectory: false }]
       ])
     );
 
     const result = await sandboxGetFileUrlTool.execute({
       sandboxInstance: createSandboxInstance(),
-      params: { paths: ['report/logo.svg', 'report/design.psd'] }
+      params: { paths: ['report/logo.svg', 'report/design.psd', 'report/legacy.bmp'] }
     });
 
-    // svg / psd 等格式视觉模型消费不了，强行塞 image_url 会连文本内容一起失效。
+    // svg / psd / bmp 等格式视觉模型消费不了（OpenAI / Claude 只认 png/jpeg/webp/gif），
+    // 强行塞 image_url 会让整轮请求被拒，文本内容也一起失效。
     expect(result.content).toEqual([{ type: 'text', text: result.response }]);
   });
 
