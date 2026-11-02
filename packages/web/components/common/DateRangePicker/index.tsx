@@ -31,6 +31,7 @@ const DateRangePicker = ({
   defaultDate = getLocalDateRange(addDays(new Date(), -30), new Date()),
   dateRange,
   formLabel,
+  historyLimitDays = 180,
   ...props
 }: {
   onChange?: (date: DateRangeType) => void;
@@ -39,6 +40,8 @@ const DateRangePicker = ({
   defaultDate?: DateRangeType;
   dateRange?: DateRangeType;
   formLabel?: string;
+  /** null 允许选择所有历史日期；未来日期始终禁用。 */
+  historyLimitDays?: number | null;
 } & BoxProps) => {
   const { t } = useTranslation();
   const { isPc } = useSystem();
@@ -104,7 +107,12 @@ const DateRangePicker = ({
         }
         defaultMonth={range.to}
         selected={range}
-        disabled={[{ before: addDays(new Date(), -180) }, { after: new Date() }]}
+        disabled={[
+          ...(historyLimitDays === null
+            ? []
+            : [{ before: addDays(new Date(), -historyLimitDays) }]),
+          { after: new Date() }
+        ]}
         onSelect={(date) => {
           const from = date?.from ?? range.from;
           const typeDate = getLocalDateRange(from, date?.to ?? from);

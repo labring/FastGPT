@@ -47,6 +47,7 @@ export enum AuditEventEnum {
   DELETE_GROUP = 'DELETE_GROUP',
   ASSIGN_PERMISSION = 'ASSIGN_PERMISSION',
   TRANSFER_TEAM_OWNERSHIP = 'TRANSFER_TEAM_OWNERSHIP',
+  EXPORT_AUDIT_LOGS = 'EXPORT_AUDIT_LOGS',
   // Resource permission
   RESUME_INHERIT_PERMISSION = 'RESUME_INHERIT_PERMISSION',
   //APP
@@ -145,6 +146,6 @@ export type DatasetAuditEventParamsType = {
 export const TeamAuditEventList = [
   ...Object.values(AuditEventEnum),
   ...Object.values(DatasetAuditEventEnum)
-];
+].map((event) => `${event}` as const);
 
 export type TeamAuditEvent = `${AuditEventEnum | DatasetAuditEvent}`;
