@@ -358,7 +358,8 @@ const HeaderAuthForm = ({
       {currentAuthType !== HeaderSecretTypeEnum.None && (
         <Flex
           alignItems={'center'}
-          my={2}
+          mt={5}
+          mb={3}
           gap={2}
           color={'myGray.900'}
           fontWeight={fontWeight}
@@ -429,7 +430,7 @@ const HeaderAuthForm = ({
             <Box>
               {customHeaders?.map((item, index) => {
                 return (
-                  <Flex key={index} mb={2} align="center" gap={2}>
+                  <Flex key={index} mb={3} align="center" gap={2}>
                     <Flex flex={'3 1 0'} minW={0} alignItems={'center'}>
                       <Input
                         flex={1}

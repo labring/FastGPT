@@ -136,6 +136,8 @@ export async function createSinks(options: CreateSinksOptions): Promise<CreateSi
         const properties = record.properties ?? {};
 
         return (
+          // 显式关闭单条日志的 OTel 导出，本地 console sink 仍正常输出。
+          properties.otel !== false &&
           levelFilter(record, otelOptions.level) &&
           !sensitiveProperties.some((property) => property in properties)
         );

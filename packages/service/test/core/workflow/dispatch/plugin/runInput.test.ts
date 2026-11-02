@@ -81,7 +81,7 @@ describe('dispatchPluginInput', () => {
     expect(result[DispatchNodeResponseKeyEnum.nodeResponse]).toEqual({});
     expect(mockRegisterInputFile).toHaveBeenNthCalledWith(1, {
       file: {
-        type: ChatFileTypeEnum.file,
+        type: ChatFileTypeEnum.document,
         key: 'chat/files/doc.pdf',
         name: 'doc.pdf'
       },
@@ -115,7 +115,7 @@ describe('dispatchPluginInput', () => {
     expect(result.data?.upload).toEqual(['https://external.example.com/doc.pdf']);
     expect(mockRegisterInputFile).toHaveBeenCalledWith({
       file: {
-        type: ChatFileTypeEnum.file,
+        type: ChatFileTypeEnum.document,
         name: 'doc.pdf',
         url: 'https://external.example.com/doc.pdf'
       },

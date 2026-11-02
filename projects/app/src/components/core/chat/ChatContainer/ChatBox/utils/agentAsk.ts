@@ -56,7 +56,11 @@ export const getAIChatDisplayGroups = ({
               (!isReplyInteractive(value) ||
                 extractDeepestInteractive(value.interactive)?.type === 'workflowBuilderPreview')))
       );
-      if (!hasVisibleContent && (!isLastSegment || hasReplyBoundary)) return;
+      if (
+        !hasVisibleContent &&
+        (!isLastSegment || hasReplyBoundary || segment.some((value) => value.hideInUI))
+      )
+        return;
       groups.push({ type: 'ai', values });
     });
     segment = [];

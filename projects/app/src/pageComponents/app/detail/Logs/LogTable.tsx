@@ -148,7 +148,8 @@ const LogTable = ({
     };
   }, [userFilter]);
 
-  const { runAsync: exportLogs } = useRequest(async () => {
+  // 失败提示和 loading 由 PopoverConfirm 统一处理，避免重复 toast。
+  const exportLogs = async () => {
     const enabledKeys = logKeys.filter((item) => item.enable).map((item) => item.key);
     const headerTitle = enabledKeys.map((k) => t(AppLogKeysEnumMap[k])).join(',');
     await downloadFetch({
@@ -177,7 +178,7 @@ const LogTable = ({
         errorFilter: errorFilter === 'all' ? undefined : errorFilter
       }
     });
-  });
+  };
   const params = useMemoEnhance(
     () => ({
       appId,

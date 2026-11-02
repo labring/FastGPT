@@ -13,6 +13,7 @@
     "---版本升级---",
     "...upgrading",
     "---其他---",
+    "docker_minio_to_rustfs",
     "milvus-bm25",
     "migration",
     "custom-models",

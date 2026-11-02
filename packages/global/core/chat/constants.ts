@@ -22,6 +22,9 @@ export enum ChatFileTypeEnum {
   image = 'image',
   audio = 'audio',
   video = 'video',
+  document = 'document',
+  unknown = 'unknown',
+  /** @deprecated 只兼容历史数据和旧客户端入参，新文件须推测为 document、unknown 或媒体类型。 */
   file = 'file'
 }
 

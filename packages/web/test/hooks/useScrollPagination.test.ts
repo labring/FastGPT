@@ -5,7 +5,8 @@ import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { describe, expect, it, vi } from 'vitest';
 import type { PaginationType, PaginationResponseType } from '@fastgpt/global/openapi/api';
-import { useScrollPagination } from '../../hooks/useScrollPagination';
+import { useScrollPagination, type ScrollListType } from '../../hooks/useScrollPagination';
+import MyBox from '../../components/common/MyBox';
 
 vi.mock('next-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key })
@@ -15,18 +16,29 @@ vi.mock('../../hooks/useToast', () => ({
   useToast: () => ({ toast: vi.fn() })
 }));
 
-vi.mock('../../components/common/MyBox', () => ({
-  default: React.forwardRef<HTMLDivElement, React.PropsWithChildren<Record<string, unknown>>>(
-    function MockMyBox({ children, ...props }, ref) {
-      return React.createElement('div', { ...props, ref }, children);
-    }
-  )
+vi.mock('../../components/common/MyLoading', () => ({
+  default: () => React.createElement('div', { 'data-loading-overlay': '' })
 }));
 
 vi.mock('@chakra-ui/react', () => ({
   Box: React.forwardRef<HTMLDivElement, React.PropsWithChildren<Record<string, unknown>>>(
     function MockBox({ children, ...props }, ref) {
-      return React.createElement('div', { ...props, ref }, children);
+      return React.createElement(
+        'div',
+        {
+          ref,
+          id: props.id,
+          onScroll: props.onScroll,
+          onClick: props.onClick,
+          'data-testid': props['data-testid'],
+          'data-overflow': props.overflow,
+          'data-h': props.h,
+          'data-flex': props.flex,
+          'data-mr': props.mr,
+          'data-px': props.px
+        },
+        children
+      );
     }
   )
 }));
@@ -72,6 +84,9 @@ type HarnessProps = {
   scrollDataShowNoMoreTip?: boolean;
   refreshApi?: (ids: string[], controller?: AbortController) => Promise<string[]>;
   pageSize?: number;
+  scrollDataProps?: Partial<Parameters<ScrollListType>[0]>;
+  renderInitialOverlay?: boolean;
+  isOperating?: boolean;
 };
 
 const Harness = ({
@@ -82,7 +97,10 @@ const Harness = ({
   showNoMoreTip = true,
   scrollDataShowNoMoreTip,
   refreshApi,
-  pageSize = 10
+  pageSize = 10,
+  renderInitialOverlay = true,
+  isOperating = false,
+  scrollDataProps: extraScrollDataProps
 }: HarnessProps) => {
   const state = useScrollPagination(api, {
     pageSize,
@@ -99,9 +117,19 @@ const Harness = ({
   const scrollDataProps = {
     'data-testid': 'scroll-data',
     ...(scrollDataShowNoMoreTip !== undefined ? { showNoMoreTip: scrollDataShowNoMoreTip } : {}),
-    children: React.createElement('span', { 'data-testid': 'scroll-content' })
+    children: React.createElement('span', { 'data-testid': 'scroll-content' }),
+    ...extraScrollDataProps
   };
-  return React.createElement(state.ScrollData, scrollDataProps);
+  return React.createElement(
+    MyBox,
+    {
+      id: 'shell',
+      position: 'relative',
+      overflow: 'hidden',
+      isLoading: isOperating || (renderInitialOverlay && state.isInitialLoading)
+    },
+    React.createElement(state.ScrollData, scrollDataProps)
+  );
 };
 
 const createDeferredApi = () => {
@@ -139,6 +167,98 @@ const renderHarness = async (root: Root, props: HarnessProps) => {
 };
 
 describe('useScrollPagination', () => {
+  it('初始化、点击分页、外部操作和刷新共用滚动层，保留 ref、输入与滚动位置', async () => {
+    const { api, requests } = createDeferredApi();
+    const onState = vi.fn();
+    const onScroll = vi.fn();
+    const scrollRef = React.createRef<HTMLDivElement>();
+    const host = document.createElement('div');
+    const root = createRoot(host);
+
+    const props: HarnessProps = {
+      query: 'overlay',
+      api,
+      onState,
+      scrollDataProps: {
+        ScrollContainerRef: scrollRef,
+        flex: '1 0 0',
+        h: 0,
+        mr: '-16px',
+        px: 4,
+        onScroll,
+        children: React.createElement('input', { defaultValue: '' })
+      }
+    };
+    await renderHarness(root, props);
+    const viewport = host.querySelector<HTMLDivElement>('[data-testid="scroll-data"]')!;
+    const shell = host.querySelector('#shell')!;
+    const draft = host.querySelector('input')!;
+    expect(scrollRef.current).toBe(viewport);
+    expect(viewport.parentElement).toBe(shell);
+    expect(viewport.getAttribute('data-h')).toBe('0');
+    expect(viewport.getAttribute('data-flex')).toBe('1 0 0');
+    expect(viewport.getAttribute('data-mr')).toBe('-16px');
+    expect(viewport.getAttribute('data-px')).toBe('4');
+    expect(viewport.getAttribute('data-overflow')).toBe('auto');
+    expect(host.querySelector('[data-loading-overlay]')?.parentElement).toBe(shell);
+    expect(onState.mock.lastCall?.[0].isInitialLoading).toBe(true);
+    expect(onState.mock.lastCall?.[0].isLoadingMore).toBe(false);
+    viewport.scrollTop = 300;
+    draft.value = 'unsaved';
+
+    await act(async () => requests[0].resolve({ list: ['one'], total: 2 }));
+    expect(host.querySelector('[data-loading-overlay]')).toBeNull();
+    await act(async () => {
+      viewport.lastElementChild!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+    expect(requests).toHaveLength(2);
+    expect(requests[1].params.offset).toBe(1);
+    expect(host.querySelector('[data-loading-overlay]')).toBeNull();
+    expect(host.textContent).toContain('common:is_requesting');
+    expect(onState.mock.lastCall?.[0].isInitialLoading).toBe(false);
+    expect(onState.mock.lastCall?.[0].isLoadingMore).toBe(true);
+    await renderHarness(root, { ...props, isOperating: true });
+    expect(host.querySelector('[data-loading-overlay]')).not.toBeNull();
+    await renderHarness(root, props);
+    await act(async () => requests[1].resolve({ list: ['two'], total: 2 }));
+    expect(scrollRef.current).toBe(viewport);
+    expect(host.querySelector('input')).toBe(draft);
+    expect(draft.value).toBe('unsaved');
+    expect(viewport.scrollTop).toBe(300);
+    await act(async () => viewport.dispatchEvent(new Event('scroll')));
+    expect(onScroll).toHaveBeenCalledOnce();
+    expect(onScroll.mock.calls[0][0].target).toBe(viewport);
+    expect(host.querySelector('[data-loading-overlay]')).toBeNull();
+    expect(host.textContent).not.toContain('common:is_requesting');
+
+    await act(async () => onState.mock.lastCall?.[0].refreshList());
+    expect(host.querySelector('[data-loading-overlay]')).not.toBeNull();
+    await act(async () => requests[2].resolve({ list: [], total: 0 }));
+    expect(host.querySelector('[data-loading-overlay]')).toBeNull();
+    expect(scrollRef.current).toBe(viewport);
+    expect(host.querySelector('input')).toBe(draft);
+    expect(draft.value).toBe('unsaved');
+    await act(async () => root.unmount());
+  });
+
+  it('外层选择不展示初始化遮罩时，滚动层不会自行创建动画', async () => {
+    const { api, requests } = createDeferredApi();
+    const onState = vi.fn();
+    const host = document.createElement('div');
+    const root = createRoot(host);
+    await renderHarness(root, {
+      query: 'no-overlay',
+      api,
+      onState,
+      renderInitialOverlay: false
+    });
+    expect(onState.mock.lastCall?.[0].isLoading).toBe(true);
+    expect(host.querySelector('[data-loading-overlay]')).toBeNull();
+    await act(async () => requests[0].resolve({ list: ['one'], total: 1 }));
+    expect(host.querySelector('[data-loading-overlay]')).toBeNull();
+    await act(async () => root.unmount());
+  });
+
   it('marks an empty result only after the current request succeeds', async () => {
     const { api, requests } = createDeferredApi();
     const onState = vi.fn();

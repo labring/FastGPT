@@ -879,35 +879,106 @@ describe('pushChatRecords', () => {
   });
 
   describe('updateInteractiveChat function', () => {
+    it('preserves root canonical memories while cleaning legacy child memories on submit', async () => {
+      const rootKey = `app:${testAppId}:extract_1`;
+      const recursiveKey = `node:reenter/app:${testAppId}:extract_1`;
+      const legacyChildKey = 'app:child-app:extract_1';
+      const scopedChildKey = 'node:child/app:child-app:extract_1';
+      const rootMemory = { city: 'root-city' };
+      await MongoChatItem.create({
+        chatId: 'test-chat-id',
+        teamId: testTeamId,
+        tmbId: testTmbId,
+        sourceType: ChatSourceTypeEnum.app,
+        appId: testAppId,
+        obj: ChatRoleEnum.AI,
+        dataId: 'memory-submit',
+        memories: {
+          [rootKey]: rootMemory,
+          [legacyChildKey]: { stale: true },
+          'agentLoopMemory-child_agent': { providerState: { old: true } }
+        },
+        value: [
+          {
+            interactive: {
+              type: 'userSelect',
+              params: { userSelectedVal: undefined, options: ['Continue'] }
+            }
+          }
+        ]
+      });
+      const props = createMockProps(
+        {
+          userContent: { obj: ChatRoleEnum.Human, value: [{ text: { content: 'Continue' } }] },
+          aiContent: {
+            obj: ChatRoleEnum.AI,
+            value: [],
+            memories: {
+              [recursiveKey]: { city: 'recursive-city' },
+              [scopedChildKey]: { updated: true },
+              'node:child/app:child-app:child_agent': undefined
+            }
+          }
+        },
+        { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
+      );
+      await updateInteractiveChat({
+        ...props,
+        interactive: {
+          type: 'userSelect',
+          entryNodeIds: [],
+          memoryEdges: [],
+          nodeOutputs: [],
+          params: { description: '', userSelectOptions: [{ key: 'continue', value: 'Continue' }] }
+        }
+      });
+
+      const saved = await MongoChatItem.findOne({
+        appId: testAppId,
+        chatId: props.chatId,
+        obj: ChatRoleEnum.AI
+      }).lean();
+      if (!saved || saved.obj !== ChatRoleEnum.AI) throw new Error('AI chat item was not saved');
+      expect(saved.memories).toEqual({
+        [rootKey]: rootMemory,
+        [recursiveKey]: { city: 'recursive-city' },
+        [scopedChildKey]: { updated: true }
+      });
+    });
+
     it.each(['agentAsk', 'workflowBuilderPreview'] as const)(
       'does not persist or reject an ephemeral %s reply',
       async (type) => {
-        const interactive: WorkflowInteractiveResponseType =
-          type === 'agentAsk'
-            ? {
-                type,
-                entryNodeIds: [],
-                memoryEdges: [],
-                nodeOutputs: [],
-                askId: 'ask-1',
-                params: {
-                  description: '',
-                  questions: [{ question: 'Question', options: [] }]
-                }
-              }
-            : {
-                type,
-                entryNodeIds: [],
-                memoryEdges: [],
-                nodeOutputs: [],
-                previewId: 'preview-1',
-                params: {
-                  title: 'Confirm?',
-                  mermaid: 'flowchart LR; A --> B',
-                  sections: [],
-                  actions: []
-                }
-              };
+        const interactive: WorkflowInteractiveResponseType = {
+          type,
+          entryNodeIds: [],
+          memoryEdges: [],
+          nodeOutputs: [],
+          params: {
+            toolCallId: 'interactive-call',
+            arguments: JSON.stringify(
+              type === 'agentAsk'
+                ? {
+                    reason: '',
+                    blockerType: 'user_choice',
+                    questions: [
+                      {
+                        question: 'Question',
+                        options: [
+                          { summary: 'A', value: 'A' },
+                          { summary: 'B', value: 'B' }
+                        ]
+                      }
+                    ]
+                  }
+                : {
+                    title: 'Confirm?',
+                    mermaid: 'flowchart LR; A --> B',
+                    sections: [{ title: 'Goal', content: 'Build' }]
+                  }
+            )
+          }
+        };
         const props = createMockProps(
           { chatId: 'NO_RECORD_HISTORIES' },
           { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
@@ -1333,7 +1404,7 @@ describe('pushChatRecords', () => {
         {
           url: 'https://external.example.com/report.pdf',
           name: 'report.pdf',
-          type: ChatFileTypeEnum.file
+          type: ChatFileTypeEnum.document
         }
       ]);
     });
@@ -1351,19 +1422,23 @@ describe('pushChatRecords', () => {
           {
             interactive: {
               type: 'agentAsk' as const,
-              askId: 'call_ask_agent',
+
               params: {
-                description: '需要用户明确任务目标',
-                questions: [
-                  {
-                    question: '请补充目标',
-                    options: [
-                      { summary: '继续研究 Rust', value: '继续研究 Rust' },
-                      { summary: '改为研究 Go', value: '改为研究 Go' },
-                      { summary: '先给出学习路线', value: '先给出学习路线' }
-                    ]
-                  }
-                ]
+                toolCallId: 'call_ask_agent',
+                arguments: JSON.stringify({
+                  reason: '需要用户明确任务目标',
+                  blockerType: 'user_choice',
+                  questions: [
+                    {
+                      question: '请补充目标',
+                      options: [
+                        { summary: '继续研究 Rust', value: '继续研究 Rust' },
+                        { summary: '改为研究 Go', value: '改为研究 Go' },
+                        { summary: '先给出学习路线', value: '先给出学习路线' }
+                      ]
+                    }
+                  ]
+                })
               }
             }
           }
@@ -1386,22 +1461,26 @@ describe('pushChatRecords', () => {
 
       const interactive: WorkflowInteractiveResponseType = {
         type: 'agentAsk',
-        askId: 'call_ask_agent',
+
         entryNodeIds: [],
         memoryEdges: [],
         nodeOutputs: [],
         params: {
-          description: '需要用户明确任务目标',
-          questions: [
-            {
-              question: '请补充目标',
-              options: [
-                { summary: '继续研究 Rust', value: '继续研究 Rust' },
-                { summary: '改为研究 Go', value: '改为研究 Go' },
-                { summary: '先给出学习路线', value: '先给出学习路线' }
-              ]
-            }
-          ]
+          toolCallId: 'call_ask_agent',
+          arguments: JSON.stringify({
+            reason: '需要用户明确任务目标',
+            blockerType: 'user_choice',
+            questions: [
+              {
+                question: '请补充目标',
+                options: [
+                  { summary: '继续研究 Rust', value: '继续研究 Rust' },
+                  { summary: '改为研究 Go', value: '改为研究 Go' },
+                  { summary: '先给出学习路线', value: '先给出学习路线' }
+                ]
+              }
+            ]
+          })
         }
       };
 
@@ -1419,33 +1498,40 @@ describe('pushChatRecords', () => {
             ? {
                 ...runtime,
                 type: 'agentAsk',
-                askId: 'ask-1',
+
                 params: {
-                  description: '',
-                  questions: [
-                    {
-                      question: '方向？',
-                      options: [
-                        { summary: 'Rust', value: 'rust' },
-                        { summary: 'Go', value: 'go' }
-                      ]
-                    }
-                  ]
+                  toolCallId: 'ask-1',
+                  arguments: JSON.stringify({
+                    reason: '',
+                    blockerType: 'user_choice',
+                    questions: [
+                      {
+                        question: '方向？',
+                        options: [
+                          { summary: 'Rust', value: 'rust' },
+                          { summary: 'Go', value: 'go' }
+                        ]
+                      }
+                    ]
+                  })
                 }
               }
             : {
                 ...runtime,
                 type: 'workflowBuilderPreview',
-                previewId: 'preview-1',
+
                 params: {
-                  title: '确认方案？',
-                  mermaid: 'flowchart LR; A --> B',
-                  sections: [],
-                  actions: [
-                    { value: 'confirm', label: 'Confirm', inputMode: 'none' },
-                    { value: 'revise', label: 'Revise', inputMode: 'text' },
-                    { value: 'cancel', label: 'Cancel', inputMode: 'none' }
-                  ]
+                  toolCallId: 'preview-1',
+                  arguments: JSON.stringify({
+                    title: '确认方案？',
+                    mermaid: 'flowchart LR; A --> B',
+                    sections: [{ title: 'Goal', content: 'Build the workflow' }],
+                    actions: [
+                      { value: 'confirm', label: 'Confirm', inputMode: 'none' },
+                      { value: 'revise', label: 'Revise', inputMode: 'text' },
+                      { value: 'cancel', label: 'Cancel', inputMode: 'none' }
+                    ]
+                  })
                 }
               };
         const select = {
@@ -1565,9 +1651,7 @@ describe('pushChatRecords', () => {
                   memoryEdges: [],
                   nodeOutputs: []
                 },
-                toolParams: {
-                  toolCallId: 'call_select_1'
-                }
+                toolCallId: 'call_select_1'
               }
             }
           }
@@ -1640,9 +1724,7 @@ describe('pushChatRecords', () => {
             memoryEdges: [],
             nodeOutputs: []
           },
-          toolParams: {
-            toolCallId: 'call_select_1'
-          }
+          toolCallId: 'call_select_1'
         },
         entryNodeIds: [],
         memoryEdges: [],

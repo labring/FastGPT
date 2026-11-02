@@ -106,6 +106,7 @@ const CollectionReader = ({
   const {
     dataList: datasetDataList,
     isLoading,
+    isInitialLoading,
     ScrollData,
     itemRefs,
     loadInitData
@@ -305,27 +306,36 @@ const CollectionReader = ({
 
       {/* quote list */}
       {isLoading || formatedDataList.length > 0 ? (
-        <ScrollData flex={'1 0 0'} p={'12px'}>
-          <Flex flexDir={'column'} gap={'12px'}>
-            {formatedDataList.map((item) => (
-              <CollectionQuoteItem
-                key={item._id}
-                quoteRefs={itemRefs as React.MutableRefObject<Map<string, HTMLDivElement | null>>}
-                quoteIndex={item.quoteIndex}
-                setQuoteIndex={setQuoteIndex}
-                refreshList={() => loadInitData({ scrollWhenFinish: false, refresh: true })}
-                updated={item.updated}
-                isCurrentSelected={item.isCurrentSelected}
-                q={item.q}
-                a={item.a}
-                dataId={item._id}
-                collectionId={collectionId}
-                canEdit={!!userInfo && !!datasetData?.permission?.hasWritePer}
-                alwaysShowCopy={singleQuote}
-              />
-            ))}
-          </Flex>
-        </ScrollData>
+        <MyBox
+          flex={'1 0 0'}
+          h={0}
+          minH={0}
+          position={'relative'}
+          overflow={'hidden'}
+          isLoading={isInitialLoading}
+        >
+          <ScrollData p={'12px'}>
+            <Flex flexDir={'column'} gap={'12px'}>
+              {formatedDataList.map((item) => (
+                <CollectionQuoteItem
+                  key={item._id}
+                  quoteRefs={itemRefs as React.MutableRefObject<Map<string, HTMLDivElement | null>>}
+                  quoteIndex={item.quoteIndex}
+                  setQuoteIndex={setQuoteIndex}
+                  refreshList={() => loadInitData({ scrollWhenFinish: false, refresh: true })}
+                  updated={item.updated}
+                  isCurrentSelected={item.isCurrentSelected}
+                  q={item.q}
+                  a={item.a}
+                  dataId={item._id}
+                  collectionId={collectionId}
+                  canEdit={!!userInfo && !!datasetData?.permission?.hasWritePer}
+                  alwaysShowCopy={singleQuote}
+                />
+              ))}
+            </Flex>
+          </ScrollData>
+        </MyBox>
       ) : (
         <Flex
           flex={'1 0 0'}

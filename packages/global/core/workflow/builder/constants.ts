@@ -2,6 +2,7 @@ import { defaultAppSelectFileConfig } from '../../app/constants';
 import type { AppChatConfigType } from '../../app/type';
 
 export const WORKFLOW_BUILDER_MAX_FILE_AMOUNT = 10;
+export const WORKFLOW_BUILDER_PREVIEW_TOOL_NAME = 'workflow_builder_present_preview';
 
 /**
  * Workflow Builder 的独立对话配置。

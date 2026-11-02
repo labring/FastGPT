@@ -27,6 +27,7 @@ import ChatErrorCard from './ChatErrorCard';
 import { shouldShowChatItemInlineError } from '../utils/error';
 import { toChatAuthApiTarget } from '@/web/core/chat/utils';
 import { ChatBoxContentMaxWidth } from '../constants';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 
 const colorMap = {
   [ChatStatusEnum.loading]: {
@@ -209,6 +210,8 @@ const ChatItem = (props: Props) => {
           <Flex w={'100%'} alignItems={'center'} gap={2} justifyContent={styleMap.justifyContent}>
             <Flex
               alignItems={'center'}
+              minW={0}
+              maxW={'100%'}
               px={3}
               py={'1.5px'}
               borderRadius="md"
@@ -222,10 +225,21 @@ const ChatItem = (props: Props) => {
                 h="8px"
                 borderRadius={'50%'}
                 mt={'1px'}
+                flexShrink={0}
               />
-              <Box ml={2} color={'myGray.600'}>
-                {statusBoxData.name}
-              </Box>
+              <MyTooltip label={statusBoxData.name} showOnlyWhenOverflow>
+                <Box
+                  ml={2}
+                  minW={0}
+                  maxW={'320px'}
+                  color={'myGray.600'}
+                  overflow={'hidden'}
+                  whiteSpace={'nowrap'}
+                  textOverflow={'ellipsis'}
+                >
+                  {statusBoxData.name}
+                </Box>
+              </MyTooltip>
             </Flex>
           </Flex>
         )}

@@ -9,7 +9,9 @@ export const hasAiInteractiveContent = (item: AIChatItemValueItemType) => Boolea
 export const hasAiProcessingContent = (item: AIChatItemValueItemType) => {
   if (item.hideInUI) return false;
 
-  const tools = item.tools || (item.tool ? [item.tool] : undefined);
+  const tools = (item.tools || (item.tool ? [item.tool] : undefined))?.filter(
+    (tool) => !tool.hideInUI
+  );
   return Boolean(
     (item.reasoning?.content && !item.hideReason) ||
     tools?.length ||
@@ -22,7 +24,9 @@ export const hasAiProcessingContent = (item: AIChatItemValueItemType) => {
 export const hasAiFoldableProcessingContent = (item: AIChatItemValueItemType) => {
   if (item.hideInUI) return false;
 
-  const tools = item.tools || (item.tool ? [item.tool] : undefined);
+  const tools = (item.tools || (item.tool ? [item.tool] : undefined))?.filter(
+    (tool) => !tool.hideInUI
+  );
   return Boolean((item.reasoning?.content && !item.hideReason) || tools?.length);
 };
 
@@ -45,7 +49,13 @@ export const groupAIChatResponseValues = ({
   isLastChild: boolean;
   isChatting: boolean;
 }) => {
-  const filterList = chatValue.filter((item) => !shouldFilterAiValue(item));
+  const filterList = chatValue
+    .filter((item) => !shouldFilterAiValue(item))
+    .map((value) =>
+      value.tools?.some((tool) => tool.hideInUI)
+        ? { ...value, tools: value.tools.filter((tool) => !tool.hideInUI) }
+        : value
+    );
 
   const groupedValues: AIChatItemValueItemType[][] = [];
   let currentGroup: AIChatItemValueItemType[] = [];

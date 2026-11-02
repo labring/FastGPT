@@ -103,6 +103,11 @@ export const runAgentLoopApplication = async <TChildrenResponse = unknown>({
 
   /** 配置目录过滤的文件读取等待完整参数，其他工具完整透传。 */
   const emitEvent = (event: AgentLoopEvent) => {
+    runtime.recordEvent?.(
+      event.type === 'tool_run_end' && isInternalToolCall(event.call)
+        ? { ...event, internalOnly: true }
+        : event
+    );
     if (!hasVisibilityPolicy) {
       runtime.emitEvent?.(event);
       return;
@@ -142,7 +147,13 @@ export const runAgentLoopApplication = async <TChildrenResponse = unknown>({
       runtime.emitEvent?.(
         visibleToolCalls.length === event.toolCalls.length
           ? event
-          : { ...event, toolCalls: visibleToolCalls }
+          : {
+              ...event,
+              toolCalls: visibleToolCalls,
+              assistantMessage: event.assistantMessage
+                ? filterMessages([event.assistantMessage])[0]
+                : undefined
+            }
       );
       return;
     }
@@ -217,7 +228,7 @@ export const runAgentLoopApplication = async <TChildrenResponse = unknown>({
       status: 'error',
       error,
       activePlan: input.activePlan,
-      providerState: input.providerState,
+      providerState: provider.name === 'fastAgent' ? undefined : input.providerState,
       completeMessages: filterMessages(input.messages),
       assistantMessages: [],
       requestIds: [],

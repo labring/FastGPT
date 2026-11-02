@@ -3,7 +3,6 @@ import type {
   ChatCompletionMessageParam,
   ChatCompletionTool
 } from '@fastgpt/global/core/ai/llm/type';
-import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import { getLogger, LogCategories } from '../../../../common/logger';
 import { countGptMessagesTokens } from '../../../../common/string/tiktoken/index';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
@@ -59,6 +58,7 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
     useAudio: useAudio && model.config.audio,
     useVideo: useVideo && model.config.video,
     extractFiles,
+    fileContext: args.fileContext,
     supportReason: model.config.reasoning
   });
   const rewriteMessages = (() => {
@@ -73,7 +73,7 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
     ...body,
     messages: rewriteMessages
   });
-  const accumulator = useLLMResponseAccumulator();
+  const accumulator = useLLMResponseAccumulator({ supportReason: model.config.reasoning });
   const initialRequestMessages = mergeAssistantFieldMessages(
     requestBody.messages as ChatCompletionMessageParam[]
   ) as ChatCompletionMessageParam[];
@@ -116,6 +116,7 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
         if (currentIsStreamResponse) {
           return createStreamResponse({
             response,
+            requestMeta,
             body,
             isAborted: args.isAborted,
             onStreaming: args.onStreaming,
@@ -155,6 +156,7 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
     }
 
     const {
+      assistantMessage,
       answerText,
       reasoningText,
       toolCalls,
@@ -171,13 +173,6 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
       hasResponse: !!answerText || !!reasoningText || !!toolCalls?.length,
       error
     });
-
-    const assistantMessage: ChatCompletionMessageParam = {
-      role: ChatCompletionRequestMessageRoleEnum.Assistant as 'assistant',
-      ...(answerText && { content: answerText }),
-      ...(reasoningText && { reasoning_content: reasoningText }),
-      ...(toolCalls?.length && { tool_calls: toolCalls })
-    };
 
     // requestBody 运行时是经 LLMRequestBodyType narrow 进来的 FastGPT 数据，
     // 但类型层 InferCompletionsBody 落到了 SDK 形态（messages/tools 是 v6 后的 union）

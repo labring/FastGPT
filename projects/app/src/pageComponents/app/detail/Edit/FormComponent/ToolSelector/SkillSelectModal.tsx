@@ -258,13 +258,7 @@ const SkillSelectModal = ({
               w={'full'}
               minH={0}
             >
-              <ScrollData
-                ScrollContainerRef={scrollContainerRef}
-                flex={1}
-                minH={0}
-                isLoading={isLoadingSkillList}
-                showLoadingOverlay={false}
-              >
+              <ScrollData ScrollContainerRef={scrollContainerRef} flex={1} minH={0}>
                 <Grid
                   ref={gridRef}
                   gridTemplateColumns={['minmax(0, 1fr)', 'repeat(2, minmax(0, 1fr))']}

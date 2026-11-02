@@ -1,40 +1,70 @@
-import { JSDOM } from 'jsdom';
-import { act, createElement } from 'react';
+import React, { act, createElement } from 'react';
 import { createRoot } from 'react-dom/client';
-import { describe, expect, it, vi } from 'vitest';
-import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
+import { JSDOM } from 'jsdom';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   filterReferenceListByInputType,
   formatManualInputValue,
   normalizeInputValue,
   SecretInputForm,
-  type SecretReferenceList
+  type SecretReferenceList,
+  type ToolParamsFormType
 } from '@/pageComponents/app/tool/SecretInputModal';
-
-vi.mock('@fastgpt/web/components/common/Icon', async () => {
-  const React = await import('react');
-  const MockIcon = React.forwardRef(() => null);
-  MockIcon.displayName = 'MockIcon';
-  return { default: MockIcon };
-});
+import { SystemToolSecretInputTypeEnum } from '@fastgpt/global/core/app/tool/systemTool/constants';
+import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
+import {
+  FlowNodeInputTypeEnum,
+  FlowNodeTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
+import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
+import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import {
+  getNodeInputValueSchema,
+  valueMatchesSchema
+} from '@fastgpt/workflow-core/template/valueSchema';
+import { createWorkflowDocument } from '@fastgpt/workflow-core/domain/document';
+import { validateNodeIO } from '@fastgpt/workflow-core/validation/io';
+import type { WorkflowDiagnostic } from '@fastgpt/workflow-core/domain/diagnostic';
 
 vi.mock('next-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key, i18n: { language: 'en' } })
 }));
-
-vi.mock('@fastgpt/web/components/common/Radio/LeftRadio', async () => {
-  const React = await import('react');
-  const MockLeftRadio = React.forwardRef(({ list, value }: any, ref: any) =>
+vi.mock('@chakra-ui/react', async () => {
+  const { createElement, forwardRef } = await import('react');
+  const box = ({ as = 'div', children, id, onSubmit, onClick }: any) =>
+    createElement(as, { id, onSubmit, onClick }, children);
+  return {
+    Box: box,
+    Flex: box,
+    HStack: box,
+    Button: ({ children, onClick }: any) =>
+      createElement('button', { type: 'button', onClick }, children),
+    Input: forwardRef<HTMLInputElement, any>(
+      ({ name, onChange, onBlur, value, placeholder }, ref) =>
+        createElement('input', { name, onChange, onBlur, value, placeholder, ref })
+    ),
+    useDisclosure: () => ({ isOpen: false, onToggle: vi.fn() })
+  };
+});
+vi.mock('@fastgpt/web/components/common/Radio/LeftRadio', () => ({
+  default: ({ list, onChange }: any) =>
     React.createElement(
       React.Fragment,
       null,
-      React.createElement('div', { ref }, list.find((item: any) => item.value === value)?.children)
+      ...list.map((item: any) =>
+        React.createElement(
+          'div',
+          { key: item.value },
+          React.createElement(
+            'button',
+            { type: 'button', 'data-mode': item.value, onClick: () => onChange(item.value) },
+            item.title
+          ),
+          item.children
+        )
+      )
     )
-  );
-  MockLeftRadio.displayName = 'MockLeftRadio';
-  return { default: MockLeftRadio };
-});
-
+}));
 vi.mock('@fastgpt/web/components/core/workflow/NodeInputSelect', async () => {
   const React = await import('react');
   const { FlowNodeInputTypeEnum } = await import('@fastgpt/global/core/workflow/node/constant');
@@ -58,6 +88,114 @@ vi.mock('@fastgpt/web/components/core/workflow/NodeInputSelect', async () => {
 });
 
 vi.mock('@fastgpt/web/hooks/useRequest', () => ({ useRequest: () => ({ data: [] }) }));
+vi.mock('@/web/core/app/api/tool', () => ({ getAppToolTemplates: vi.fn() }));
+vi.mock('@fastgpt/web/components/common/MyBox/FormLabel', () => ({
+  default: ({ children }: any) => children
+}));
+vi.mock('@fastgpt/web/components/common/Icon', () => ({ default: () => null }));
+vi.mock('@fastgpt/web/components/common/MyTooltip/QuestionTip', () => ({ default: () => null }));
+vi.mock('@/pageComponents/account/team/OrgManage/IconButton', () => ({ default: () => null }));
+vi.mock('@fastgpt/web/components/v2/common/MyModal', () => ({ default: () => null }));
+vi.mock('@/components/core/app/formRender', () => ({ default: () => null }));
+vi.mock('@/components/common/Modal/UseGuideModal', () => ({ default: () => null }));
+
+const input: FlowNodeInputItemType = {
+  key: NodeInputKeyEnum.systemInputConfig,
+  label: 'Authorization',
+  renderTypeList: [FlowNodeInputTypeEnum.hidden],
+  inputList: [{ key: 'apiKey', label: 'API key', inputType: 'secret' }]
+};
+
+describe('SecretInputForm authorization output', () => {
+  let dom: JSDOM;
+  let root: ReturnType<typeof createRoot>;
+  const onChange = vi.fn();
+  const onSubmit = vi.fn();
+  beforeEach(() => {
+    vi.clearAllMocks();
+    dom = new JSDOM('<div id="root"></div>');
+    for (const name of ['window', 'document', 'HTMLElement', 'FileList', 'Blob'] as const)
+      vi.stubGlobal(name, name === 'window' ? dom.window : dom.window[name]);
+    vi.stubGlobal('React', React);
+    vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
+    root = createRoot(dom.window.document.getElementById('root')!);
+  });
+  afterEach(async () => {
+    await act(async () => root.unmount());
+    dom.window.close();
+    vi.unstubAllGlobals();
+  });
+  const render = async (value?: ToolParamsFormType, hasSystemSecret = true) => {
+    await act(async () =>
+      root.render(
+        React.createElement(SecretInputForm, {
+          inputConfig: { ...input, value },
+          hasSystemSecret,
+          onChange,
+          onSubmit,
+          formId: 'authorization'
+        })
+      )
+    );
+  };
+  const submit = async () => {
+    await act(async () =>
+      dom.window.document
+        .querySelector('form')!
+        .dispatchEvent(new dom.window.Event('submit', { bubbles: true, cancelable: true }))
+    );
+    const value = onSubmit.mock.lastCall![0];
+    expect(valueMatchesSchema(value, getNodeInputValueSchema({ input })!)).toBe(true);
+    const node: StoreNodeItemType = {
+      nodeId: 'authorized-tool',
+      name: 'Tool',
+      flowNodeType: FlowNodeTypeEnum.tool,
+      inputs: [{ ...input, value }],
+      outputs: []
+    };
+    const document = createWorkflowDocument({ nodes: [node], edges: [] });
+    const diagnostics: WorkflowDiagnostic[] = [];
+    validateNodeIO({ document, node, diagnostics });
+    expect(diagnostics).toEqual([]);
+    return value;
+  };
+
+  it.each([
+    undefined,
+    { type: SystemToolSecretInputTypeEnum.system, value: { apiKey: { secret: '', value: '' } } },
+    {
+      type: SystemToolSecretInputTypeEnum.system,
+      value: { apiKey: { secret: 'stale-ciphertext', value: 'stale-text' } }
+    }
+  ])('emits only type for default or legacy platform authorization: %j', async (value) => {
+    await render(value);
+    expect(onChange).toHaveBeenLastCalledWith({ type: 'system' });
+    expect(await submit()).toEqual({ type: 'system' });
+  });
+
+  it('normalizes legacy manual credentials and removes value when switching to platform authorization', async () => {
+    const value: ToolParamsFormType = {
+      type: SystemToolSecretInputTypeEnum.manual,
+      value: { apiKey: { secret: 'existing-ciphertext', value: '' } }
+    };
+    await render(value);
+    const expected = { type: 'manual', value: { apiKey: { secret: 'existing-ciphertext' } } };
+    expect(onChange).toHaveBeenLastCalledWith(expected);
+    expect(await submit()).toEqual(expected);
+    await act(async () =>
+      (dom.window.document.querySelector('[data-mode="system"]') as HTMLButtonElement).click()
+    );
+    expect(onChange).toHaveBeenLastCalledWith({ type: 'system' });
+    expect(await submit()).toEqual({ type: 'system' });
+  });
+
+  it('keeps default manual input wrappers when no platform credential exists', async () => {
+    await render(undefined, false);
+    const expected = { type: 'manual', value: { apiKey: { value: '' } } };
+    expect(onChange).toHaveBeenLastCalledWith(expected);
+    expect(await submit()).toEqual(expected);
+  });
+});
 
 const referenceList: SecretReferenceList = [
   {
@@ -122,6 +260,8 @@ describe('SecretInputForm', () => {
     vi.stubGlobal('requestAnimationFrame', dom.window.requestAnimationFrame.bind(dom.window));
     vi.stubGlobal('cancelAnimationFrame', dom.window.cancelAnimationFrame.bind(dom.window));
     vi.stubGlobal('getComputedStyle', dom.window.getComputedStyle.bind(dom.window));
+    // 只验证凭据校验；避免 JSDOM 聚焦触发 React 的旧浏览器输入补丁。
+    const focus = vi.spyOn(dom.window.HTMLElement.prototype, 'focus').mockImplementation(() => {});
     const container = document.createElement('div');
     document.body.appendChild(container);
     const root = createRoot(container);
@@ -204,6 +344,7 @@ describe('SecretInputForm', () => {
       await act(async () => root.unmount());
       container.remove();
       dom.window.close();
+      focus.mockRestore();
       vi.unstubAllGlobals();
     }
   });

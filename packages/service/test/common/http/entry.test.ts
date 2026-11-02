@@ -4,6 +4,7 @@ import { describe, expect, it, onTestFinished, vi } from 'vitest';
 import { z } from 'zod';
 import type { NodeApiRequest, NodeApiResponse } from '@fastgpt/service/types/http';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { UserConfigError } from '@fastgpt/global/common/error/utils';
 
 // 必须运行真实入口和 JSON 响应，才能验证 end/finish/close 之间的边界。
 vi.unmock('@fastgpt/service/common/http/entry');
@@ -136,15 +137,18 @@ describe('createApiEntry response lifecycle', () => {
     expect(res.json).not.toHaveBeenCalled();
   });
 
-  it('returns JSON errors when no response has started', async () => {
+  it.each([
+    { error: new Error('Handler failed'), status: 500 },
+    { error: new UserConfigError('Invalid API key'), status: 400 }
+  ])('returns the response mapper status before streaming: $status', async ({ error, status }) => {
     const { req, res } = createHttpObjects();
 
     await createApiEntry({})(async () => {
-      throw new Error('Handler failed');
+      throw error;
     })(req, res);
 
-    expect(res.statusCode).toBe(500);
-    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ message: 'Handler failed' }));
+    expect(res.statusCode).toBe(status);
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ message: error.message }));
   });
 
   it('preserves the 400 response for invalid API input before response streaming', async () => {

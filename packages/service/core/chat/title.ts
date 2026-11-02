@@ -7,6 +7,7 @@ import type { UserChatItemType } from '@fastgpt/global/core/chat/type';
 import type { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type { WorkflowTypedSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
 import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
+import { LeaseCache, RedisLeaseUnavailableError } from '@fastgpt/dal/redis/caches/lease';
 import { getLogger, LogCategories } from '../../common/logger';
 import { createLLMResponse } from '../ai/llm/request';
 import { getSystemModelHandle } from '../ai/model/catalog/service';
@@ -21,6 +22,7 @@ import { MongoChat } from './chatSchema';
 import { buildChatSourceQuery, type ChatSourceParams } from './source';
 
 const logger = getLogger(LogCategories.MODULE.CHAT);
+const titleGenerationLease = new LeaseCache();
 
 /**
  * 系统默认未命名会话标题占位符。
@@ -168,10 +170,12 @@ export const canWriteGeneratedTitle = (
  */
 const generateChatTitleFromQuestion = async ({
   question,
-  teamId
+  teamId,
+  signal
 }: {
   question: string;
   teamId: string;
+  signal: AbortSignal;
 }): Promise<string | undefined> => {
   const modelHandle = await getSystemModelHandle();
   const titleModel = modelHandle.getDefaultModelData('chatTitleLLM');
@@ -191,6 +195,7 @@ Return only the title.`;
       throwError: false,
       saveLLMResponseRecord: false,
       timeout: CHAT_TITLE_GENERATION_TIMEOUT_MS,
+      signal,
       body: {
         model: titleModel,
         stream: false,
@@ -232,23 +237,22 @@ Return only the title.`;
   return normalizedTitle;
 };
 
-/**
- * 基于当前用户问题为未命名会话生成一次会话标题。
- *
- * 标题生成结果会由调用方负责落库和发送；本函数只负责根据用户消息生成标题，或处理自动执行/只发文件的内容型固定标题。
- *
- * 标题优先级：自动执行哨兵固定文案 > 只发文件固定文案 > 标题模型生成。固定文案都在可覆盖白名单里，因此下一轮带文字的请求仍会用真实问题覆盖它们；
- * 用户手动改名（`customTitle`）或已有有效标题时一律不覆盖。
- */
 export type GeneratedChatTitleParams = {
   chatId: string;
   teamId: string;
   userContent: UserChatItemType;
   shouldGenerateTitle?: boolean;
+  /** 插件运行等入口指定的固定标题，同样受会话标题 lease 约束。 */
+  fixedTitle?: string;
   /** 固定文案的目标语言；缺失时回退 zh-CN，见 `getFixedChatTitle`。 */
   locale?: localeType;
 } & ChatSourceParams;
 
+/**
+ * 为未命名会话生成并保存标题；同一 sourceId（物理 appId）/chatId 只执行一个标题任务。
+ * lease 被占用时立即跳过，不排队；持有期间自动续租，覆盖生成及写库，不随主回答结束而释放。
+ * 拿到 lease 后重查生成资格，失去 lease 时取消模型请求并阻止迟到结果写库。
+ */
 export const syncGeneratedChatTitleFromUserContent = async ({
   sourceType,
   sourceId,
@@ -256,6 +260,7 @@ export const syncGeneratedChatTitleFromUserContent = async ({
   teamId,
   userContent,
   shouldGenerateTitle = true,
+  fixedTitle,
   locale
 }: GeneratedChatTitleParams): Promise<string | undefined> => {
   try {
@@ -263,42 +268,63 @@ export const syncGeneratedChatTitleFromUserContent = async ({
     if (sourceType === ChatSourceTypeEnum.skillEdit) return;
     if (!shouldGenerateTitle) return;
 
-    const questionText = chatValue2RuntimePrompt(userContent.value).text.trim();
-    const nextTitle = await (async () => {
-      // 自动执行
-      if (questionText === AUTO_EXECUTE_QUERY_SENTINEL) {
-        return getFixedChatTitle('autoExecute', locale);
-      }
-      // 只有文件
-      if (!questionText && userContent.value.some((item) => !!item.file)) {
-        return getFixedChatTitle('uploadFile', locale);
-      }
-      // 有问题，ai 生成
-      if (questionText) {
-        return generateChatTitleFromQuestion({ question: questionText, teamId });
-      }
-    })();
-    if (!nextTitle) return;
+    return await titleGenerationLease.withLease({
+      key: `chat:title:${sourceId}:${chatId}`,
+      label: 'chat-title-generation',
+      // TTL 是异常退出后的回收期限，长任务由 LeaseCache 自动续租。
+      ttlMs: CHAT_TITLE_GENERATION_TIMEOUT_MS,
+      fn: async ({ signal, assertValid }) => {
+        const chat = await MongoChat.findOne({
+          ...buildChatSourceQuery({ sourceType, sourceId }),
+          chatId
+        })
+          .select('title customTitle')
+          .lean();
+        if (!chat || !canWriteGeneratedTitle(chat)) return;
 
-    // 更新
-    const result = await MongoChat.updateOne(
-      {
-        ...buildChatSourceQuery({ sourceType, sourceId }),
-        chatId
-      },
-      {
-        $set: {
-          title: nextTitle
-        }
+        const questionText = chatValue2RuntimePrompt(userContent.value).text.trim();
+        const nextTitle = await (async () => {
+          if (fixedTitle) {
+            const title = normalizeGeneratedTitle(fixedTitle);
+            return title && !invalidGeneratedTitleValues.includes(title) ? title : undefined;
+          }
+          // 自动执行
+          if (questionText === AUTO_EXECUTE_QUERY_SENTINEL) {
+            return getFixedChatTitle('autoExecute', locale);
+          }
+          // 只有文件
+          if (!questionText && userContent.value.some((item) => !!item.file)) {
+            return getFixedChatTitle('uploadFile', locale);
+          }
+          // 有问题，ai 生成
+          if (questionText) {
+            return generateChatTitleFromQuestion({ question: questionText, teamId, signal });
+          }
+        })();
+        if (!nextTitle) return;
+
+        // 续租失败后旧任务可能仍返回结果，写库前必须确认 lease 仍有效。
+        assertValid();
+        const result = await MongoChat.updateOne(
+          {
+            ...buildChatSourceQuery({ sourceType, sourceId }),
+            chatId
+          },
+          {
+            $set: {
+              title: nextTitle
+            }
+          }
+        );
+
+        // 记录已删除或标题未变化时，不重复下发 chatTitle 事件。
+        if (result.matchedCount === 0 || result.modifiedCount === 0) return;
+
+        return nextTitle;
       }
-    );
-
-    // 未命中说明已有 customTitle 或有效标题；命中但未修改说明库里已经是同一个固定文案
-    // （例如连续多轮只发文件），两种情况都不向客户端重复下发 chatTitle 事件。
-    if (result.matchedCount === 0 || result.modifiedCount === 0) return;
-
-    return nextTitle;
+    });
   } catch (error) {
+    if (error instanceof RedisLeaseUnavailableError) return;
     logger.warn('Failed to generate chat title', { sourceType, sourceId, chatId, error });
   }
 };

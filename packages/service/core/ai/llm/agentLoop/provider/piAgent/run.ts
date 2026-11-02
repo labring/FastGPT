@@ -7,6 +7,7 @@ import type {
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import { isTeamModel } from '@fastgpt/global/core/ai/model/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
+import type { AgentAskPayload } from '@fastgpt/global/core/ai/agent/type';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import {
   normalizeToolResponseContent,
@@ -15,11 +16,7 @@ import {
 import { loadRequestMessages } from '../../../utils';
 import { formatModelChars2Points } from '../../../../../../support/wallet/usage/utils';
 import { AgentUsageModuleName } from '../../domain/usage';
-import {
-  askUserToolName,
-  formatAgentAskToolResponse,
-  type AgentAskPayload
-} from '../../domain/systemTool/ask';
+import { askUserToolName, formatAgentAskToolResponse } from '../../domain/systemTool/ask';
 import { setPlanToolName, updatePlanToolName } from '../../domain/systemTool/plan';
 import {
   normalizeAgentLoopUsages,
@@ -86,6 +83,7 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
     useAudio: runtime.llmParams.useAudio && modelData.config.audio,
     useVideo: runtime.llmParams.useVideo && modelData.config.video,
     extractFiles: runtime.llmParams.extractFiles,
+    fileContext: runtime.fileContext,
     supportReason: modelData.config.reasoning
   });
   const requestIds: string[] = [];
@@ -208,11 +206,17 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
   } = {};
   const normalizationTools = getPiAgentNormalizationTools(runtime);
   const retainDatasetCite = runtime.responseParams?.retainDatasetCite ?? true;
+  // 直接交互的 Human 回答已回放为末尾 tool response，必须保留整段上下文并继续执行。
+  // 只有新 User 输入才拆出最后一条消息交给 prompt，避免重复发送原始需求或丢失工具结果。
+  const shouldContinueFromMessages =
+    requestMessages.at(-1)?.role === ChatCompletionRequestMessageRoleEnum.Tool;
   const lastUserMessageIndex = requestMessages.findLastIndex(
     (message) => message.role === ChatCompletionRequestMessageRoleEnum.User
   );
   const standardHistoryMessages =
-    lastUserMessageIndex >= 0 ? requestMessages.slice(0, lastUserMessageIndex) : requestMessages;
+    !shouldContinueFromMessages && lastUserMessageIndex >= 0
+      ? requestMessages.slice(0, lastUserMessageIndex)
+      : requestMessages;
   const shouldResumeStandardAsk =
     !input.childrenInteractiveParams && !!pendingMainContext && input.userAnswer !== undefined;
   const shouldResumeAsk = shouldResumeStandardAsk;
@@ -285,7 +289,7 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
     }
 
     const call = resolveInteractiveToolCall({
-      toolCallId: input.childrenInteractiveParams.toolParams.toolCallId,
+      toolCallId: input.childrenInteractiveParams.toolCallId,
       messages: input.messages,
       piMessages: initialPiMessages
     });
@@ -342,8 +346,7 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
       return {
         status: 'paused',
         pause: {
-          type: 'tool_child',
-          childrenResponse: result.interactive,
+          interactive: result.interactive,
           toolCallId: call.id
         },
         activePlan,
@@ -599,7 +602,7 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
       const standardAssistantMessage: ChatCompletionMessageParam = {
         role: ChatCompletionRequestMessageRoleEnum.Assistant,
         content: removeDatasetCiteText(messageData.answerText, retainDatasetCite) || null,
-        ...(messageData.reasoningText
+        ...(modelData.config.reasoning || messageData.reasoningText
           ? {
               reasoning_content: removeDatasetCiteText(messageData.reasoningText, retainDatasetCite)
             }
@@ -687,7 +690,7 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
   };
 
   try {
-    if (resumedInteractiveTool || resumedAsk) {
+    if (resumedInteractiveTool || resumedAsk || shouldContinueFromMessages) {
       await runAgent(() => agent.continue());
     } else {
       const prompt = getPiAgentPrompt(requestMessages);
@@ -806,9 +809,18 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
     return {
       status: 'paused',
       pause: {
-        type: 'ask',
-        ask: pendingAsk,
-        askId: resolvedPendingAskId
+        toolCallId: resolvedPendingAskId,
+        interactive: {
+          type: 'agentAsk',
+          params: {
+            toolCallId: resolvedPendingAskId,
+            arguments: resolveInteractiveToolCall({
+              toolCallId: resolvedPendingAskId,
+              messages: completeMessages,
+              piMessages: agent.state.messages
+            }).function.arguments
+          }
+        }
       },
       activePlan,
       providerState: nextProviderState,
@@ -825,8 +837,8 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
     return {
       status: 'paused',
       pause: {
-        type: 'tool_child',
-        ...pendingToolChild
+        toolCallId: pendingToolChild.toolCallId,
+        interactive: pendingToolChild.childrenResponse
       },
       activePlan,
       providerState: nextProviderState,

@@ -12,12 +12,7 @@ import { MongoChat } from '../chatSchema';
 import { tryStartGenerateChat, updateChatGenerateStatus } from '../chatGenerateStatus';
 import { validateChatRoundDataIds } from './dataIdValidation';
 import { getInteractiveResponseStatus } from '../interactiveResponseDataId';
-import {
-  canWriteGeneratedTitle,
-  invalidGeneratedTitleValues,
-  normalizeGeneratedTitle,
-  syncGeneratedChatTitleFromUserContent
-} from '../title';
+import { canWriteGeneratedTitle, syncGeneratedChatTitleFromUserContent } from '../title';
 import { buildChatSourceQuery, buildChatSourceWriteFields, type ChatSourceParams } from '../source';
 
 export const NO_RECORD_CHAT_ID = 'NO_RECORD_HISTORIES';
@@ -303,23 +298,6 @@ export const preChatRound = async (params: PreChatRoundParams): Promise<PreChatR
     const titleGeneration = (() => {
       if (!preparedChatRound.shouldGenerateTitle) return;
 
-      if (params.fixedTitle) {
-        const fixedTitle = params.fixedTitle;
-        return (async () => {
-          const title = normalizeGeneratedTitle(fixedTitle);
-          if (!title || invalidGeneratedTitleValues.includes(title)) return;
-
-          await MongoChat.updateOne(
-            {
-              ...buildChatSourceQuery({ sourceType: params.sourceType, sourceId: params.sourceId }),
-              chatId
-            },
-            { $set: { title } }
-          );
-          return title;
-        })();
-      }
-
       return syncGeneratedChatTitleFromUserContent({
         sourceType: params.sourceType,
         sourceId: params.sourceId,
@@ -327,6 +305,7 @@ export const preChatRound = async (params: PreChatRoundParams): Promise<PreChatR
         teamId: params.teamId,
         userContent: params.userContent,
         shouldGenerateTitle: preparedChatRound.shouldGenerateTitle,
+        fixedTitle: params.fixedTitle,
         locale: params.locale
       });
     })();

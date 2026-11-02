@@ -154,6 +154,11 @@ export function usePagination<DataT, ResT = unknown>(
           ...params
         });
 
+        // 异常响应不能写入列表状态；保留上一页有效数据，并交给请求错误提示处理。
+        if (!Array.isArray(res?.list)) {
+          throw new Error(t('common:core.chat.error.data_error'));
+        }
+
         setPageNum(num);
         if (storeToQuery && num !== pageNum) {
           router.replace({
@@ -206,15 +211,15 @@ export function usePagination<DataT, ResT = unknown>(
         onChange?.(num);
       } catch (error: any) {
         setError(error);
-        if (error.code !== 'ERR_CANCELED') {
+        if (error?.code !== 'ERR_CANCELED') {
           toast({
             title: getErrText(error, t('common:core.chat.error.data_error')),
             status: 'error'
           });
         }
+      } finally {
+        setFalse();
       }
-
-      setFalse();
     }
   );
 

@@ -85,6 +85,7 @@ export type ToolDispatchContext = Pick<
   | 'usageId'
   | 'uid'
   | 'variableState'
+  | 'memoryState'
   | 'externalProvider'
   | 'lang'
   | 'requestOrigin'
@@ -158,6 +159,7 @@ export const getExecuteTool = ({
   responseChatItemId,
   uid,
   variableState,
+  memoryState,
   runtimeNodesMap,
   externalProvider,
   lang,
@@ -295,6 +297,7 @@ export const getExecuteTool = ({
             nodeResponseSink,
             nodeResponseParentId: callId,
             variableState,
+            memoryState,
             lastInteractive,
             query
           });
@@ -370,6 +373,7 @@ export const getExecuteTool = ({
             nodeResponseSink,
             nodeResponseParentId: callId,
             variableState,
+            memoryState,
             lastInteractive,
             query
           });

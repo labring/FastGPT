@@ -2,8 +2,23 @@ import { describe, it, expect } from 'vitest';
 import {
   isCSVFile,
   isOfficeLockFilename,
-  detectImageContentType
+  detectImageContentType,
+  normalizeDocumentFileExtension
 } from '@fastgpt/global/common/file/utils';
+
+describe('normalizeDocumentFileExtension', () => {
+  it.each([
+    [undefined, ''],
+    [' .HTM ', 'html'],
+    ['MARKDOWN', 'md'],
+    ['.ZIP', 'zip']
+  ])(
+    'normalizes %s without treating unsupported extensions as documents',
+    (extension, expected) => {
+      expect(normalizeDocumentFileExtension(extension)).toBe(expected);
+    }
+  );
+});
 
 describe('isCSVFile', () => {
   it('should detect csv extension', () => {

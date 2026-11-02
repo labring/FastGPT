@@ -1,5 +1,6 @@
 import { Box, Button, FormControl, Input, Flex } from '@chakra-ui/react';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
+import { getErrText, ToastHandledError } from '@fastgpt/global/common/error/utils';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
@@ -14,6 +15,7 @@ import {
 } from '@/web/support/user/team/api';
 import { clearInviteLinkFromRoute } from '@/web/support/user/loginRedirect/invitation';
 import { useUserStore } from '@/web/support/user/useUserStore';
+import { saveInvitationResultToast } from '@/web/support/user/team/useInvitationResultToast';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useMemberNameForm } from '@/pageComponents/account/team/MemberNameForm/useMemberNameForm';
 import {
@@ -23,8 +25,8 @@ import {
 } from '@/pageComponents/account/team/MemberNameForm/styles';
 
 /**
- * 登录后处理团队邀请。接受时一次提交成员名和邀请，拒绝或无效邀请只清理当前上下文。
- * 团队切换失败不回滚接受结果，也不自动重试，继续留在当前 session。
+ * 登录后处理团队邀请。接受时一次提交成员名和邀请，已加入时直接切换到目标团队。
+ * 拒绝或无效邀请只清理当前上下文；团队切换失败不回滚接受结果，也不自动重试。
  * inviteLinkId 由编排器在加锁时快照传入，因此这里清理路由上的邀请参数不会把自己卸载掉。
  */
 const HandleInviteModal = ({
@@ -37,7 +39,9 @@ const HandleInviteModal = ({
   const router = useRouter();
   const { t } = useSafeTranslation();
   const { toast } = useToast();
-  const { initUserInfo } = useUserStore();
+  const { userInfo, initUserInfo } = useUserStore();
+  const userId = userInfo?._id;
+  const currentTeamId = userInfo?.team.teamId;
   const { feConfigs } = useSystemStore();
   const isMultiTeamMode = feConfigs?.teamMode !== 'single';
   const { memberName, nameError, showNameError, markInteracted, onNameChange, parseMemberName } =
@@ -67,13 +71,49 @@ const HandleInviteModal = ({
     }
   });
 
+  /**
+   * 已在目标团队时只清理邀请；跨团队时直接跳转到清理后的地址，由新页面显示结果。
+   * 跳转前不更新 userInfo 或释放编排锁，避免新团队重复处理邀请、后续弹窗短暂闪现。
+   */
+  const switchToInvitedTeam = useCallback(
+    async (teamId: string, alreadyJoined = true) => {
+      const status = alreadyJoined ? 'info' : 'success';
+      if (currentTeamId === teamId) {
+        await finishInvitation();
+        toast({
+          status,
+          title: alreadyJoined
+            ? t('account_team:already_joined')
+            : t('account_team:join_team_success'),
+          duration: 3000
+        });
+        return;
+      }
+
+      try {
+        await putSwitchTeam(teamId);
+      } catch {
+        toast({ status: 'warning', title: t('account_team:switch_team_failed') });
+        await initUserInfo().catch((error) => {
+          console.error('[Team invitation] Failed to refresh user info:', error);
+        });
+        await finishInvitation();
+        return;
+      }
+
+      saveInvitationResultToast({ userId: userId ?? '', teamId, status });
+      // 使用浏览器实际地址保留部署和语言前缀，清理邀请后整页刷新并在目标页展示 toast。
+      window.location.replace(clearInviteLinkFromRoute(window.location.href));
+    },
+    [currentTeamId, finishInvitation, initUserInfo, t, toast, userId]
+  );
+
   useEffect(() => {
     if (!invitationInfo?.alreadyJoined || alreadyJoinedNotifiedRef.current) return;
 
     alreadyJoinedNotifiedRef.current = true;
-    toast({ status: 'error', title: t('account_team:already_joined') });
-    void finishInvitation();
-  }, [finishInvitation, invitationInfo?.alreadyJoined, t, toast]);
+    void switchToInvitedTeam(invitationInfo.teamId);
+  }, [invitationInfo?.alreadyJoined, invitationInfo?.teamId, switchToInvitedTeam]);
 
   // 优先展示邀请人的团队成员名；历史邀请没有成员 ID 时回落到用户名。
   const creatorMemberName = invitationInfo?.creatorMemberName?.trim();
@@ -91,37 +131,24 @@ const HandleInviteModal = ({
     },
     {
       manual: true,
+      // 已加入属于可继续切换团队的状态，避免通用请求层再弹出 error 提示。
+      errorToast: '',
       onError: async (error: Error) => {
         const statusText = (error as Error & { statusText?: string }).statusText;
-        const isTerminalError = [
-          TeamErrEnum.invitationLinkInvalid,
-          TeamErrEnum.youHaveBeenInTheTeam
-        ].includes(statusText as TeamErrEnum);
-
-        if (!isTerminalError) return;
-
-        if (statusText === TeamErrEnum.youHaveBeenInTheTeam) {
-          toast({ status: 'error', title: t('account_team:already_joined') });
+        if (statusText === TeamErrEnum.youHaveBeenInTheTeam && invitationInfo) {
+          await switchToInvitedTeam(invitationInfo.teamId);
+          return;
         }
-        await finishInvitation();
-      },
-      onSuccess: async ({ teamId }) => {
-        toast({ status: 'success', title: t('account_team:join_team_success') });
-        let shouldReload = false;
-        try {
-          await putSwitchTeam(teamId);
-          await initUserInfo();
-          shouldReload = true;
-        } catch {
-          toast({ status: 'warning', title: t('account_team:switch_team_failed') });
-          await initUserInfo().catch((error) => {
-            console.error('[Team invitation] Failed to refresh user info:', error);
-          });
-        } finally {
+
+        if (!(error instanceof ToastHandledError)) {
+          toast({ status: 'error', title: t(getErrText(error, 'Error')) });
+        }
+        if (statusText === TeamErrEnum.invitationLinkInvalid) {
           await finishInvitation();
         }
-
-        if (shouldReload) router.reload();
+      },
+      onSuccess: async ({ teamId }) => {
+        await switchToInvitedTeam(teamId, false);
       }
     }
   );

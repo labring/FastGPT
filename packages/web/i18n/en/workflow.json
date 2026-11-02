@@ -381,5 +381,9 @@
   "workflow_builder_tool_commit": "Finalize delivery",
   "workflow_builder_tool_preview": "Plan preview",
   "workflow_builder_tool_cancel": "Cancel task",
-  "connection_invalid": "This connection violates workflow rules"
+  "connection_invalid": "This connection violates workflow rules",
+  "workflow_builder_preview_confirm": "Confirm and build",
+  "workflow_builder_preview_revise": "Revise the plan",
+  "workflow_builder_preview_cancel": "Cancel this build",
+  "workflow_builder_preview_revise_placeholder": "Describe the nodes or logic to change"
 }

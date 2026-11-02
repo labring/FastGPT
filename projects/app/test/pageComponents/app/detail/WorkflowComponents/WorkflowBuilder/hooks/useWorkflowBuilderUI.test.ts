@@ -256,6 +256,41 @@ describe('useWorkflowBuilderUI', () => {
     }
   );
 
+  it.each(
+    (['systemConfig', 'workflowBuilder'] as const).flatMap((guideStep) =>
+      (['workflowBuilder', 'systemConfig', 'nodeTemplates'] as const).flatMap((panel) =>
+        (['open', 'toggle'] as const).map((action) => ({ guideStep, panel, action }))
+      )
+    )
+  )(
+    'dismisses the $guideStep guide when the user chooses to $action $panel',
+    async ({ guideStep, panel, action }) => {
+      mocks.editor.hasCompletedWorkflowBuilderFirstEntryGuide = false;
+      mocks.router.query = { [WORKFLOW_BUILDER_AUTO_OPEN_QUERY_KEY]: '1' };
+      await render({}, true);
+      await act(async () => vi.advanceTimersByTimeAsync(0));
+      if (guideStep === 'workflowBuilder') {
+        await act(async () => consumers[0].completeGuideStep('systemConfig'));
+      }
+      expect(consumers[1].guideStep).toBe(guideStep);
+
+      await act(async () => {
+        if (action === 'open') consumers[0].openLeftPanel(panel);
+        else consumers[0].toggleLeftPanel(panel);
+      });
+
+      expect(consumers.every((ui) => ui.guideStep === undefined)).toBe(true);
+      expect(consumers.every((ui) => ui.activeLeftPanel === panel)).toBe(true);
+      expect(mocks.editor.completeWorkflowBuilderFirstEntryGuide).toHaveBeenCalledOnce();
+      expect(consumers[1].focusRequestId).toBe(0);
+
+      await act(async () => consumers[1].closeLeftPanel(panel));
+      await render({}, true);
+      await act(async () => vi.advanceTimersByTimeAsync(0));
+      expect(consumers.every((ui) => ui.guideStep === undefined && !ui.activeLeftPanel)).toBe(true);
+    }
+  );
+
   it.each(['upgrade', 'hidden'] as const)(
     'does not auto-open Builder if access changes to %s during its guide',
     async (entryAccess) => {

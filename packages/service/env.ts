@@ -31,6 +31,9 @@ export const serviceEnv = createEnv({
   skipValidation: isPhaseProductionBuild,
   server: {
     // ==================== 基础配置 ====================
+    AUXILIARY_GENERATION_SHOW_RUN_DETAIL: BoolSchema.default(false).meta({
+      description: '是否展示 Skill、Agent 和工作流辅助生成的运行详情入口，默认不展示'
+    }),
     DB_MAX_LINK: NumSchema.int()
       .default(10)
       .transform((value) => Math.min(1000, Math.max(10, value))),

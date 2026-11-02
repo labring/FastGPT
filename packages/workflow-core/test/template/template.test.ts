@@ -127,6 +127,46 @@ describe('builtinTemplateProvider', () => {
     ).toEqual({ type: 'string', minLength: 3 });
   });
 
+  it('exposes tool authorization fields with the canvas storage contract', async () => {
+    const ref = parseNodeTemplateRef('builtin:ai-chat');
+    const resolved = await builtinTemplateProvider.resolve(ref, { locale: 'en' });
+    const input = {
+      key: NodeInputKeyEnum.systemInputConfig,
+      label: '',
+      renderTypeList: [FlowNodeInputTypeEnum.hidden],
+      inputList: [{ key: 'apiKey', label: 'API Key', inputType: 'secret' as const, required: true }]
+    };
+    const template = { ...resolved.template, inputs: [input] };
+    const descriptor = normalizeNodeTemplateDescriptor({ template, templateRef: ref });
+    expect(descriptor.inputs[0]).toMatchObject({
+      configurable: true,
+      inputModes: ['literal'],
+      defaultPolicy: 'userRequired',
+      resourceKind: 'secret',
+      constraints: {
+        valueSchema: {
+          oneOf: [
+            { properties: { type: { const: 'system' } } },
+            {
+              properties: {
+                type: { const: 'manual' },
+                value: { properties: { apiKey: { title: 'API Key', type: 'object' } } }
+              }
+            }
+          ]
+        }
+      }
+    });
+    expect(descriptor.inputs[0].description).toContain('Tool authorization');
+    expect(descriptor.inputs[0].defaultValue).toBeUndefined();
+    expect(
+      normalizeNodeTemplateDescriptor({
+        template: { ...template, inputs: [{ ...input, canEdit: false }] },
+        templateRef: ref
+      }).inputs[0].configurable
+    ).toBe(false);
+  });
+
   it('documents one inline reference format for node outputs and global variables', async () => {
     const ref = parseNodeTemplateRef('builtin:text-editor');
     const resolved = await builtinTemplateProvider.resolve(ref, { locale: 'en' });
@@ -190,7 +230,6 @@ describe('builtinTemplateProvider', () => {
       WorkflowIOValueTypeEnum.dynamic
     ]);
     const systemInputKeys = new Set([
-      'system_input_config',
       'system_addInputParam',
       'childrenNodeIdList',
       'nodeWidth',

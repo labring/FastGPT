@@ -15,7 +15,6 @@ import type {
   FileWriteResult,
   MoveEntry,
   PermissionEntry,
-  ReadFileOptions,
   SandboxCapabilities,
   SandboxEndpointSelector,
   SandboxEnsureRunningOptions,
@@ -162,7 +161,7 @@ export abstract class BaseSandboxAdapter implements ISandbox {
 
   // ==================== IFileSystem Implementation (Polyfill) ====================
 
-  async readFiles(paths: string[], options?: ReadFileOptions): Promise<FileReadResult[]> {
+  async readFiles(paths: string[]): Promise<FileReadResult[]> {
     const polyfillService = this.requirePolyfillService(
       'readFiles',
       'File read not supported by this provider'
@@ -171,17 +170,7 @@ export abstract class BaseSandboxAdapter implements ISandbox {
     const results: FileReadResult[] = [];
     for (const path of paths.map((p) => this.normalizePath(p))) {
       try {
-        let content: Uint8Array;
-        if (options?.offset !== undefined || options?.length !== undefined) {
-          const { offset, length } = this.validateReadOptions(options);
-          content = await polyfillService.readFileRange({
-            path,
-            start: offset,
-            end: length === undefined ? undefined : offset + length
-          });
-        } else {
-          content = await polyfillService.readFile(path);
-        }
+        const content = await polyfillService.readFile(path);
         results.push({ path, content, error: null });
       } catch (error) {
         results.push({
@@ -315,24 +304,12 @@ export abstract class BaseSandboxAdapter implements ISandbox {
   // ==================== Streaming Operations ====================
 
   async *readFileStream(path: string): AsyncIterable<Uint8Array> {
-    this.requirePolyfillService(
+    const polyfillService = this.requirePolyfillService(
       'readFileStream',
       'File stream read not supported by this provider'
     );
 
     const normalizedPath = this.normalizePath(path);
-    const readChunk = async (options?: ReadFileOptions): Promise<Uint8Array> => {
-      const results = await this.readFiles([normalizedPath], options);
-      const fileResult = results[0];
-      if (!fileResult) {
-        throw new Error('No file result returned');
-      }
-      if (fileResult.error) {
-        throw fileResult.error;
-      }
-      return fileResult.content;
-    };
-
     let size: number | undefined;
     try {
       const infoMap = await this.getFileInfo([normalizedPath]);
@@ -342,14 +319,26 @@ export abstract class BaseSandboxAdapter implements ISandbox {
     }
 
     if (typeof size !== 'number') {
-      yield await readChunk();
+      const results = await this.readFiles([normalizedPath]);
+      const fileResult = results[0];
+      if (!fileResult) {
+        throw new Error('No file result returned');
+      }
+      if (fileResult.error) {
+        throw fileResult.error;
+      }
+      yield fileResult.content;
       return;
     }
 
     const chunkSize = 64 * 1024;
     for (let offset = 0; offset < size; offset += chunkSize) {
       const length = Math.min(chunkSize, size - offset);
-      const content = await readChunk({ offset, length });
+      const content = await polyfillService.readFileRange({
+        path: normalizedPath,
+        start: offset,
+        end: offset + length
+      });
       yield content;
     }
   }
@@ -477,23 +466,6 @@ export abstract class BaseSandboxAdapter implements ISandbox {
       throw new FeatureNotSupportedError(message, feature, this.provider);
     }
     return this.polyfillService;
-  }
-
-  /** Validate provider-neutral byte range options before mapping them to a backend. */
-  protected validateReadOptions(
-    options: ReadFileOptions
-  ): Required<Pick<ReadFileOptions, 'offset'>> & Pick<ReadFileOptions, 'length'> {
-    const offset = options.offset ?? 0;
-    if (!Number.isSafeInteger(offset) || offset < 0) {
-      throw new TypeError(`Invalid file offset: ${String(options.offset)}`);
-    }
-    if (
-      options.length !== undefined &&
-      (!Number.isSafeInteger(options.length) || options.length < 0)
-    ) {
-      throw new TypeError(`Invalid file length: ${String(options.length)}`);
-    }
-    return { offset, length: options.length };
   }
 
   protected escapeShellArg(arg: string): string {

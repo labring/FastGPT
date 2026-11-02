@@ -1,0 +1,34 @@
+---
+title: V4.18.0
+description: FastGPT V4.18.0 release notes
+sidebarTag: In progress
+---
+
+## Upgrade guide
+
+### Configuration changes
+
+This version has no environment variable or system configuration changes. Upgrading from V4.17.3 requires no additional configuration.
+
+### Image updates
+
+### Upgrade scripts
+
+No automatic upgrade scripts were added or changed in this version.
+
+### Compatibility notes
+
+- **Workflow memory**: Memory keys for content extraction, question classification, and Pi Agents now include the source and call path. The runtime can read legacy Agent keys and legacy child Workflow keys whose ownership can be determined, then removes the corresponding legacy keys when writing new ones. Historical sessions do not require a bulk migration. Custom integrations that read or write `ChatItem.memories` directly must support the new keys instead of relying on `agentLoopMemory-${nodeId}` or child Workflow keys without a call path.
+- **History settings and interaction resumes**: For ordinary new requests, `history=0` disables reading previous memory. Custom history supplies memory only from its final AI message. Explicit interaction resumes prioritize the parent Workflow's checkpoint so history settings do not discard the state needed to continue the current interaction.
+
+## 🐛 Fixes
+
+1. **[Workflows and Agents]** Fixed internal Node memory being overwritten when multiple child Apps or Workflow Tools call the same target. Content extraction, question classification, and Pi Agent state are isolated by the full call path, including cloned Apps that share descendant Tools and recursive calls back into the root App.
+2. **[Workflows and Agents]** Fixed missing memory updates from Agents, Tool calls, and nested Workflows, loss of memory from branches that did not run, and concurrent child Workflows overwriting other Nodes' new state with stale state. Only each child Workflow's updates are merged, preserving other valid memory.
+3. **[Workflows and Agents]** Fixed memory propagation and failure isolation in loops and parallel runs. Loops pass memory between successful iterations and preserve checkpoints when paused for interaction; failed iterations do not commit updates. Parallel runs merge only successful task results, keep failed attempts from affecting retries, and merge in input order, with later successful tasks taking precedence for the same memory key.
+4. **[Workflows and Agents]** Fixed nested Pi Agents failing to resume question interactions when history is set to 0 or an empty custom history array. Resumes restore the state saved by the parent Workflow.
+5. **[Tools and channels]** Fixed blank text in some Tool names, descriptions, and tags when their Traditional Chinese translation is empty. These values fall back to Simplified Chinese, then English if no usable text is available.
+
+## 🛠️ Code improvements
+
+1. **[System and operations]** Added a manually triggered GitHub Actions backport workflow that cherry-picks a merged PR to a target branch and creates a draft PR for maintainers to review.

@@ -55,15 +55,42 @@ describe('userChatSelect2RuntimeText', () => {
     expect(userChatSelect2RuntimeText(select)).toBe('{"answers":["upload","自定义说明",""]}');
   });
 
-  it.each(['确认并开始搭建', '增加审核分支', '取消本次搭建'])(
-    'uses the same preview answer for display and runtime: %s',
-    (value) => {
-      expect(
-        userChatSelect2RuntimeText({
-          type: 'workflowBuilderPreview',
-          questions: [{ question: '确认？', value }]
-        })
-      ).toBe(value);
-    }
-  );
+  it.each([
+    { type: 'workflowBuilderPreview', action: 'confirm' },
+    { type: 'workflowBuilderPreview', action: 'cancel' },
+    { type: 'workflowBuilderPreview', action: 'revise', reviseText: 'Add review' }
+  ] as const)('preserves a standalone preview $action reply without display labels', (reply) => {
+    expect(getUserChatSelect([{ select: reply }])).toEqual(reply);
+    const payload =
+      reply.action === 'revise'
+        ? { action: reply.action, reviseText: reply.reviseText }
+        : { action: reply.action };
+    expect(userChatSelect2RuntimeText(reply)).toBe(JSON.stringify(payload));
+    expect(formatUserChatSelect(reply)).toBe(JSON.stringify(payload));
+  });
+
+  it('trims required revision text', () => {
+    expect(
+      getUserChatSelect([
+        {
+          select: { type: 'workflowBuilderPreview', action: 'revise', reviseText: '  Add review  ' }
+        }
+      ])
+    ).toEqual({ type: 'workflowBuilderPreview', action: 'revise', reviseText: 'Add review' });
+  });
+
+  it.each([
+    { type: 'workflowBuilderPreview', action: 'revise' },
+    { type: 'workflowBuilderPreview', action: 'revise', reviseText: '   ' },
+    { type: 'workflowBuilderPreview', action: 'confirm', reviseText: 'Invalid' },
+    { type: 'workflowBuilderPreview', action: 'cancel', reviseText: 'Invalid' },
+    { type: 'workflowBuilderPreview', action: 'confirm', reviseText: undefined },
+    { type: 'workflowBuilderPreview', action: 'confirm', answer: 'Removed field' },
+    { type: 'workflowBuilderPreview', action: 'unknown' },
+    { type: 'workflowBuilderPreview', questions: [{ question: 'Old', value: 'Confirm' }] }
+  ])('rejects an invalid Preview action payload: %j', (select) => {
+    expect(
+      getUserChatSelect([{ select }] as Parameters<typeof getUserChatSelect>[0])
+    ).toBeUndefined();
+  });
 });

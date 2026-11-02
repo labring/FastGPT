@@ -57,8 +57,7 @@ const ChatSchema = new Schema({
     default: ''
   },
   customTitle: {
-    type: String,
-    default: ''
+    type: String
   },
   top: {
     type: Boolean,

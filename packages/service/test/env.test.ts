@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 const validInvokeTokenSecret = 'fastgpt_test_invoke_token_secret_32';
 
 const originalEnv = {
+  AUXILIARY_GENERATION_SHOW_RUN_DETAIL: process.env.AUXILIARY_GENERATION_SHOW_RUN_DETAIL,
   DB_MAX_LINK: process.env.DB_MAX_LINK,
   SYSTEM_MIGRATION_BATCH_SIZE: process.env.SYSTEM_MIGRATION_BATCH_SIZE,
   SYSTEM_MIGRATION_DELAY_SECONDS: process.env.SYSTEM_MIGRATION_DELAY_SECONDS,
@@ -62,6 +63,10 @@ const importServiceEnv = async () => {
 
 describe('serviceEnv', () => {
   afterEach(() => {
+    vi.stubEnv(
+      'AUXILIARY_GENERATION_SHOW_RUN_DETAIL',
+      originalEnv.AUXILIARY_GENERATION_SHOW_RUN_DETAIL
+    );
     vi.stubEnv('DB_MAX_LINK', originalEnv.DB_MAX_LINK);
     vi.stubEnv('SYSTEM_MIGRATION_BATCH_SIZE', originalEnv.SYSTEM_MIGRATION_BATCH_SIZE);
     vi.stubEnv('SYSTEM_MIGRATION_DELAY_SECONDS', originalEnv.SYSTEM_MIGRATION_DELAY_SECONDS);
@@ -125,6 +130,17 @@ describe('serviceEnv', () => {
     vi.stubEnv('MILVUS_LANGUAGE_IDENTIFIER', originalEnv.MILVUS_LANGUAGE_IDENTIFIER);
     vi.stubEnv('MILVUS_ADDRESS', originalEnv.MILVUS_ADDRESS);
     vi.stubEnv('SANGFOR_CHUNK_URL', originalEnv.SANGFOR_CHUNK_URL);
+  });
+
+  it.each([
+    [undefined, false],
+    ['', false],
+    ['false', false],
+    ['true', true]
+  ])('parses auxiliary generation detail switch %s as %s', async (value, expected) => {
+    vi.stubEnv('AUXILIARY_GENERATION_SHOW_RUN_DETAIL', value);
+    const { serviceEnv } = await importServiceEnv();
+    expect(serviceEnv.AUXILIARY_GENERATION_SHOW_RUN_DETAIL).toBe(expected);
   });
 
   it('clamps DB_MAX_LINK to the supported connection pool range', async () => {

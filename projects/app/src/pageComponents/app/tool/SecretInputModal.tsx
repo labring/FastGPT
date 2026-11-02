@@ -3,7 +3,7 @@ import { SystemToolSecretInputTypeEnum } from '@fastgpt/global/core/app/tool/sys
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import LeftRadio from '@fastgpt/web/components/common/Radio/LeftRadio';
 import { useTranslation } from 'next-i18next';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import type {
@@ -152,41 +152,50 @@ export const SecretInputForm = ({
   const inputList = inputConfig?.inputList || [];
   const [fieldModes, setFieldModes] = useState<Record<string, FieldMode>>({});
 
+  /** 平台授权没有凭证字段；同时清理旧表单遗留值，保证提交与实时保存使用同一契约。 */
+  const normalizeFormValue = useCallback(
+    (data: ToolParamsFormType): ToolParamsFormType =>
+      data.type === SystemToolSecretInputTypeEnum.manual ? data : { type: data.type },
+    []
+  );
+
   const form = useForm<ToolParamsFormType>({
     defaultValues: (() => {
       const defaultValue = inputConfig.value as ToolParamsFormType | undefined;
       const defaultFields = defaultValue?.value;
-      return defaultValue
-        ? {
-            ...defaultValue,
-            ...(defaultValue.type === SystemToolSecretInputTypeEnum.manual
-              ? {
-                  value: inputList.reduce(
-                    (acc, item) => {
-                      acc[item.key] = normalizeInputValue(
-                        defaultFields?.[item.key],
-                        item.inputType
-                      );
-                      return acc;
-                    },
-                    {} as Record<string, any>
-                  )
-                }
-              : {})
-          }
-        : {
-            type: hasSystemSecret
-              ? SystemToolSecretInputTypeEnum.system
-              : SystemToolSecretInputTypeEnum.manual,
-            value:
-              inputList?.reduce(
-                (acc, item) => {
-                  acc[item.key] = { value: '' };
-                  return acc;
-                },
-                {} as Record<string, InputConfigType['value']>
-              ) || {}
-          };
+      return normalizeFormValue(
+        defaultValue
+          ? {
+              ...defaultValue,
+              ...(defaultValue.type === SystemToolSecretInputTypeEnum.manual
+                ? {
+                    value: inputList.reduce(
+                      (acc, item) => {
+                        acc[item.key] = normalizeInputValue(
+                          defaultFields?.[item.key],
+                          item.inputType
+                        );
+                        return acc;
+                      },
+                      {} as Record<string, any>
+                    )
+                  }
+                : {})
+            }
+          : {
+              type: hasSystemSecret
+                ? SystemToolSecretInputTypeEnum.system
+                : SystemToolSecretInputTypeEnum.manual,
+              value:
+                inputList?.reduce(
+                  (acc, item) => {
+                    acc[item.key] = { value: '' };
+                    return acc;
+                  },
+                  {} as Record<string, InputConfigType['value']>
+                ) || {}
+            }
+      );
     })()
   });
   const { register, unregister, setValue, getValues, handleSubmit, control } = form;
@@ -342,14 +351,14 @@ export const SecretInputForm = ({
   useEffect(() => {
     if (!onChange) return;
 
-    onChange(formValues as ToolParamsFormType);
-  }, [formValues, onChange]);
+    onChange(normalizeFormValue(formValues as ToolParamsFormType));
+  }, [formValues, onChange, normalizeFormValue]);
 
   return (
     <Box
       as={onSubmit ? 'form' : 'div'}
       id={formId}
-      onSubmit={onSubmit ? handleSubmit(onSubmit) : undefined}
+      onSubmit={onSubmit ? handleSubmit((data) => onSubmit(normalizeFormValue(data))) : undefined}
     >
       <>
         {showTitle && (

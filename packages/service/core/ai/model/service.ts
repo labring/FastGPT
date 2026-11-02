@@ -91,13 +91,29 @@ export const updateModel = async ({
     )
       throw new UserError(ModelErrEnum.alreadyExists);
     const normalizedModelData = normalizeModelPricingForSave({ ...modelData, model: newModel });
+    const hasRequestUrl = Object.prototype.hasOwnProperty.call(normalizedModelData, 'requestUrl');
+    const hasRequestAuth = Object.prototype.hasOwnProperty.call(normalizedModelData, 'requestAuth');
+    const requestUrlValue = (normalizedModelData as { requestUrl?: unknown }).requestUrl;
+    // 团队模型表单不提供端点配置，缺失字段表示保持原值；显式清空 URL 时，
+    // 未提交的旧鉴权也不能保留，避免后续换地址时把旧密钥带到新地址。
+    const clearsRequestUrl =
+      hasRequestUrl &&
+      (requestUrlValue === null ||
+        requestUrlValue === undefined ||
+        (typeof requestUrlValue === 'string' && requestUrlValue.trim() === ''));
+    const modelDataForUpdate =
+      context.scope === ModelScopeEnum.team
+        ? sanitizeTeamModelData({
+            ...normalizedModelData,
+            ...(!hasRequestUrl ? { requestUrl: existing.requestUrl ?? undefined } : {}),
+            ...(!hasRequestAuth && !clearsRequestUrl
+              ? { requestAuth: existing.requestAuth ?? undefined }
+              : {})
+          })
+        : normalizedModelData;
     await MongoAIModel.updateOne(
       { _id: modelId, ...filter },
-      getModelConfigUpdate(
-        context.scope === ModelScopeEnum.team
-          ? sanitizeTeamModelData(normalizedModelData)
-          : normalizedModelData
-      ),
+      getModelConfigUpdate(modelDataForUpdate),
       { session }
     );
     return { modelId, oldModel: existing.model, newModel };

@@ -3,7 +3,7 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import { Worker } from 'node:worker_threads';
-import { UserError } from '@fastgpt/global/common/error/utils';
+import { UserConfigError, UserError } from '@fastgpt/global/common/error/utils';
 import type { WorkerPool as WorkerPoolType } from '@fastgpt/service/worker/utils';
 
 const { mockEnv } = vi.hoisted(() => ({
@@ -986,5 +986,12 @@ describe('worker/utils isExpectedWorkerTaskError', () => {
   it('识别 UserError（仅在未跨线程的原始对象上有效）', () => {
     expect(isExpectedWorkerTaskError(new UserError('modelUnExist'))).toBe(true);
     expect(isExpectedWorkerTaskError({ name: 'UserError', message: 'Invalid file' })).toBe(true);
+  });
+
+  it('识别 UserConfigError 及其序列化记录', () => {
+    const error = new UserConfigError('Invalid file source');
+
+    expect(isExpectedWorkerTaskError(error)).toBe(true);
+    expect(isExpectedWorkerTaskError(JSON.parse(JSON.stringify(error)))).toBe(true);
   });
 });

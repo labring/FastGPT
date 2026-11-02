@@ -45,8 +45,8 @@ const RunPreviewHeader = ({
           <IconButton
             className="chat"
             size="smSquare"
-            icon={<MyIcon name="common/clearLight" w="14px" />}
-            variant="whiteDanger"
+            icon={<MyIcon name="core/chat/chatLight" w="14px" />}
+            variant="whitePrimary"
             borderRadius="md"
             aria-label={restartLabel}
             onClick={onRestart}

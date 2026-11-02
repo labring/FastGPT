@@ -101,6 +101,7 @@ export const createAgentLoopCoreEventDispatcher = ({
         return;
       }
       case 'tool_run_end': {
+        if (event.hideInUI) return;
         if (completedToolCallIds.has(event.call.id)) return;
         completedToolCallIds.add(event.call.id);
 
@@ -141,7 +142,7 @@ export const createAgentLoopCoreEventDispatcher = ({
         }
         return;
       case 'llm_request_end':
-      case 'ask_start':
+      case 'tool_interactive':
       case 'ask':
       case 'ask_resume':
         return;

@@ -1,3 +1,4 @@
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useContextSelector } from 'use-context-selector';
 import type { ReactNode } from 'react';
 import { ChatContext } from '@/web/core/chat/context/chatContext';
@@ -175,37 +176,39 @@ const ChatSliderMenu = ({ menuConfirmButtonText }: Props) => {
       )}
 
       {isPc ? (
-        <Button
-          variant={'whitePrimary'}
-          flex={1}
-          h={'36px'}
-          minH={'36px'}
-          px={'14px'}
-          py={'8px'}
-          color={'primary.600'}
-          borderRadius={'9999px'}
-          border={'1px solid'}
-          borderColor={'myGray.200'}
-          bg={'white'}
-          boxShadow={'0 1px 2px 0 rgba(19, 51, 107, 0.05), 0 0 1px 0 rgba(19, 51, 107, 0.08)'}
-          leftIcon={
-            <MyIcon
-              name={'core/chat/chatLight'}
-              w={'16px'}
-              h={'16px'}
-              color={'primary.600'}
-              fill={'primary.600'}
-            />
-          }
-          overflow={'hidden'}
-          onClick={() => {
-            clearChatRecords();
-            onChangeChatId();
-            setCiteModalData(undefined);
-          }}
-        >
-          {t('common:core.chat.New Chat')}
-        </Button>
+        <MyTooltip label={t('common:core.chat.New Chat')} shouldWrapChildren={false}>
+          <Button
+            variant={'whitePrimary'}
+            flex={1}
+            h={'36px'}
+            minH={'36px'}
+            px={'14px'}
+            py={'8px'}
+            color={'primary.600'}
+            borderRadius={'9999px'}
+            border={'1px solid'}
+            borderColor={'myGray.200'}
+            bg={'white'}
+            boxShadow={'0 1px 2px 0 rgba(19, 51, 107, 0.05), 0 0 1px 0 rgba(19, 51, 107, 0.08)'}
+            leftIcon={
+              <MyIcon
+                name={'core/chat/chatLight'}
+                w={'16px'}
+                h={'16px'}
+                color={'primary.600'}
+                fill={'primary.600'}
+              />
+            }
+            overflow={'hidden'}
+            onClick={() => {
+              clearChatRecords();
+              onChangeChatId();
+              setCiteModalData(undefined);
+            }}
+          >
+            {t('common:core.chat.New Chat')}
+          </Button>
+        </MyTooltip>
       ) : (
         histories.length > 0 && (
           <MobileClearHistoryConfirm

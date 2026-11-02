@@ -3,7 +3,6 @@ import { Box, type BoxProps } from '@chakra-ui/react';
 import { useToast } from './useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useBoolean, useMemoizedFn, useScroll, useThrottleEffect } from 'ahooks';
-import MyBox from '../components/common/MyBox';
 import { useTranslation } from 'next-i18next';
 import { useRequest } from './useRequest';
 import {
@@ -17,16 +16,12 @@ const thresholdVal = 100;
 export type ScrollListType = ({
   children,
   ScrollContainerRef,
-  isLoading,
-  showLoadingOverlay,
   showNoMoreTip,
   showPaginationTip,
   ...props
 }: {
   children: ReactNode;
   ScrollContainerRef?: RefObject<HTMLDivElement>;
-  isLoading?: boolean;
-  showLoadingOverlay?: boolean;
   showNoMoreTip?: boolean;
   showPaginationTip?: boolean;
 } & BoxProps) => React.JSX.Element;
@@ -36,6 +31,8 @@ export type ScrollListType = ({
  * 配置 refreshByIds 后按 ID 原位同步条目，保留其他缓存、分页状态及滚动容器。
  * ID 同步等待当前分页请求完成，连续保存合并待刷新 ID，不取消 list 或其他 ID 请求。
  * 分页错误通过 error 暴露并暂停自动加载；ID 同步错误通过 refreshError 暴露，不阻断分页。
+ * ScrollData 只渲染单层滚动容器和分页文字，不决定遮罩或骨架屏。
+ * isInitialLoading 与 isLoadingMore 区分初始化和追加请求，加载效果由外层布局控制。
  */
 export function useScrollPagination<
   TParams extends PaginationType,
@@ -95,6 +92,8 @@ export function useScrollPagination<
   const refreshControllerRef = useRef<AbortController>();
   const pendingRefreshIdsRef = useRef(new Set<string>());
   const isEmpty = hasLoaded && total === 0 && data.length === 0 && !isLoading;
+  const isInitialLoading = isLoading && !hasLoaded;
+  const isLoadingMore = isLoading && hasLoaded;
 
   const noMore = data.length >= total;
 
@@ -240,24 +239,15 @@ export function useScrollPagination<
     ({
       children,
       ScrollContainerRef,
-      isLoading: isLoadingProp,
-      showLoadingOverlay = true,
       showNoMoreTip: showNoMoreTipProp,
       showPaginationTip: showPaginationTipProp,
       ...props
-    }: {
-      isLoading?: boolean;
-      showLoadingOverlay?: boolean;
-      showNoMoreTip?: boolean;
-      showPaginationTip?: boolean;
-      children: ReactNode;
-      ScrollContainerRef?: RefObject<HTMLDivElement>;
-    } & BoxProps) => {
+    }: Parameters<ScrollListType>[0]) => {
       const finalShowNoMoreTip = showNoMoreTipProp ?? showNoMoreTip;
       const finalShowPaginationTip = showPaginationTipProp ?? showPaginationTip;
       const ref = ScrollContainerRef || ScrollRef;
       const loadText = (() => {
-        if (isLoading || isLoadingProp) return t('common:is_requesting');
+        if (isLoadingMore) return t('common:is_requesting');
         if (noMore) return t('common:request_end');
         return t('common:request_more');
       })();
@@ -283,16 +273,16 @@ export function useScrollPagination<
       );
 
       return (
-        <MyBox
+        <Box
           ref={ref}
           h={'100%'}
+          minH={0}
           overflow={'auto'}
           display={'flex'}
           flexDirection={'column'}
-          isLoading={showLoadingOverlay && (isLoading || isLoadingProp)}
           {...props}
         >
-          {scrollLoadType === 'top' && total > 0 && isLoading && (
+          {scrollLoadType === 'top' && isLoadingMore && (
             <Box mt={2} fontSize={'xs'} color={'blackAlpha.500'} textAlign={'center'}>
               {t('common:is_requesting')}
             </Box>
@@ -301,7 +291,7 @@ export function useScrollPagination<
           {scrollLoadType === 'bottom' &&
             finalShowPaginationTip &&
             !isEmpty &&
-            !(isLoading && data.length === 0) &&
+            !isInitialLoading &&
             (finalShowNoMoreTip || !noMore) && (
               <Box
                 mt={'auto'}
@@ -319,7 +309,7 @@ export function useScrollPagination<
               </Box>
             )}
           {isEmpty && EmptyTip}
-        </MyBox>
+        </Box>
       );
     }
   );
@@ -421,6 +411,8 @@ export function useScrollPagination<
   return {
     ScrollData,
     isLoading,
+    isInitialLoading,
+    isLoadingMore,
     error,
     refreshError,
     total: Math.max(total, data.length),

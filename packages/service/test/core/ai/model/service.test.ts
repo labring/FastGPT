@@ -284,6 +284,49 @@ describe('team model writes', () => {
         requestAuth: 'sk-team'
       });
     });
+    it('keeps an existing endpoint when editing other fields', async () => {
+      const created = await createModel({
+        ...owner,
+        modelData: {
+          ...draft,
+          requestUrl: 'https://93.184.216.34/v1',
+          requestAuth: 'sk-team'
+        }
+      });
+
+      // 表单不提供端点配置，只提交其他字段时不能清空已有端点。
+      await updateModel({
+        ...owner,
+        modelId: created.modelId,
+        modelData: { ...draft, name: 'Renamed' }
+      });
+
+      expect(await MongoAIModel.findById(created.modelId).lean()).toMatchObject({
+        name: 'Renamed',
+        requestUrl: 'https://93.184.216.34/v1',
+        requestAuth: 'sk-team'
+      });
+    });
+    it('clears auth when the endpoint URL is explicitly removed', async () => {
+      const created = await createModel({
+        ...owner,
+        modelData: {
+          ...draft,
+          requestUrl: 'https://93.184.216.34/v1',
+          requestAuth: 'sk-team'
+        }
+      });
+
+      await updateModel({
+        ...owner,
+        modelId: created.modelId,
+        modelData: { ...draft, requestUrl: '' }
+      });
+
+      const stored = await MongoAIModel.findById(created.modelId).lean();
+      expect(stored?.requestUrl).toBeUndefined();
+      expect(stored?.requestAuth).toBeUndefined();
+    });
     it('validates and clears team endpoints on update', async () => {
       const created = await createModel({
         ...owner,

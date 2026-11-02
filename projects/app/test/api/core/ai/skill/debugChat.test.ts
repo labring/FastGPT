@@ -358,7 +358,6 @@ describe('debugChat handler — parameter validation', () => {
       workflowRuntimeSummary: {
         responseIds: [],
         finishedNodeIds: [],
-        hasError: false,
         citeCollectionIds: [],
         errorCount: 0,
         totalPoints: 0,

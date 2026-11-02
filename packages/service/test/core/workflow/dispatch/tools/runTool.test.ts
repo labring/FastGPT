@@ -10,6 +10,7 @@ import { SystemToolSecretInputTypeEnum } from '@fastgpt/global/core/app/tool/sys
 import { MCPClient } from '@fastgpt/service/core/app/mcp';
 import { getWorkflowResourceContext } from '@fastgpt/service/core/workflow/utils/context';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
+import { UserConfigError } from '@fastgpt/global/common/error/utils';
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
 
 const {
@@ -22,7 +23,8 @@ const {
   runToolStreamMock,
   getSystemToolRuntimeMock,
   getSystemToolDetailMock,
-  workflowContextMock
+  workflowContextMock,
+  mockLogger
 } = vi.hoisted(() => ({
   authAppByTmbIdMock: vi.fn(),
   getAppVersionByIdMock: vi.fn(),
@@ -33,7 +35,8 @@ const {
   runToolStreamMock: vi.fn(),
   getSystemToolRuntimeMock: vi.fn(),
   getSystemToolDetailMock: vi.fn(),
-  workflowContextMock: { mcpClientMemory: {} as Record<string, unknown> }
+  workflowContextMock: { mcpClientMemory: {} as Record<string, unknown> },
+  mockLogger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() }
 }));
 
 vi.mock('@fastgpt/service/support/permission/app/auth', () => ({
@@ -68,9 +71,7 @@ vi.mock('@fastgpt/service/common/logger', () => {
   const logCategories = new Proxy({}, { get: () => logCategories });
   return {
     LogCategories: logCategories,
-    getLogger: vi.fn(() => ({
-      error: vi.fn()
-    }))
+    getLogger: vi.fn(() => mockLogger)
   };
 });
 
@@ -168,6 +169,54 @@ describe('dispatchRunTool runtime toolset auth', () => {
     });
     getSystemToolDetailMock.mockResolvedValue({ inputSchema: undefined });
     runToolStreamMock.mockResolvedValue({ output: { ok: true } });
+  });
+
+  it.each([
+    { source: 'mcp', failure: 'id', message: 'Invalid MCP tool id: invalid-id' },
+    { source: 'mcp', failure: 'set', message: 'MCP tool set is missing' },
+    { source: 'mcp', failure: 'tool', message: 'MCP tool missing not found' },
+    { source: 'mcp', failure: 'url', message: 'MCP tool set URL is missing' },
+    { source: 'http', failure: 'id', message: 'Invalid HTTP tool id: invalid-id' },
+    { source: 'http', failure: 'set', message: 'HTTP tool set not found' },
+    { source: 'http', failure: 'tool', message: 'HTTP tool missing not found' }
+  ])('reports $source $failure failures as system errors', async ({ source, failure, message }) => {
+    const tool = { name: 'available', description: 'Tool', path: '/search', method: 'GET' };
+    getAppVersionByIdMock.mockResolvedValue({
+      nodes:
+        failure === 'set'
+          ? []
+          : [
+              {
+                toolConfig: {
+                  mcpToolSet: {
+                    url: failure === 'url' ? '' : 'https://example.com/mcp',
+                    toolList: [tool]
+                  },
+                  httpToolSet: { baseUrl: 'https://example.com', toolList: [tool] }
+                }
+              }
+            ]
+    });
+    getMCPChildrenMock.mockResolvedValue([tool]);
+    getHTTPToolListMock.mockResolvedValue([tool]);
+    const toolId =
+      failure === 'id'
+        ? 'invalid-id'
+        : `${source}-victim-toolset/${failure === 'tool' ? 'missing' : 'available'}`;
+
+    const result = await dispatchRunTool(
+      createRunToolProps({ [source === 'mcp' ? 'mcpTool' : 'httpTool']: { toolId } })
+    );
+
+    expect(result.rawError).toBeInstanceOf(Error);
+    expect(result.rawError).not.toBeInstanceOf(UserConfigError);
+    expect(result.rawError).toMatchObject({ name: 'Error', message });
+    expect(result.error?.[NodeOutputKeyEnum.errorText]).toBe(message);
+    expect(mockLogger.error).toHaveBeenCalledExactlyOnceWith('Tool Run Error', {
+      error: result.rawError
+    });
+    expect(mcpToolCallMock).not.toHaveBeenCalled();
+    expect(runHTTPToolMock).not.toHaveBeenCalled();
   });
 
   it.each(['mcp', 'http'] as const)(
@@ -445,7 +494,7 @@ describe('dispatchRunTool runtime toolset auth', () => {
     expect(result.error?.[NodeOutputKeyEnum.errorText]).toBeTruthy();
   });
 
-  it('should pass MCP params through without validating against the tool schema', async () => {
+  it.each([false, true])('preserves modern MCP results and detects isError=%s', async (isError) => {
     authAppByTmbIdMock.mockResolvedValueOnce({
       app: {
         _id: 'victim-toolset',
@@ -483,16 +532,64 @@ describe('dispatchRunTool runtime toolset auth', () => {
       }
     ]);
 
+    const toolResult = { isError, content: [{ type: 'text', text: 'MCP call failed' }] };
+    mcpToolCallMock.mockResolvedValueOnce(toolResult);
     const result = await dispatchRunTool(
       createRunToolProps({ mcpTool: { toolId: 'mcp-victim-toolset/search' } }, { extra: true })
     );
 
-    expect(result.error).toBeUndefined();
+    expect(result.error?.[NodeOutputKeyEnum.errorText]).toBe(
+      isError ? 'MCP call failed' : undefined
+    );
+    expect(result.responseData?.errorText).toBe(isError ? 'MCP call failed' : undefined);
+    expect(result.rawError).toBeUndefined();
+    expect(result.data?.[NodeOutputKeyEnum.rawResponse]).toEqual(toolResult);
+    expect(result.responseData?.toolRes).toEqual(toolResult);
+    expect(result.toolResponse).toEqual(toolResult);
     expect(mcpToolCallMock).toHaveBeenCalledExactlyOnceWith({
       toolName: 'search',
       params: { extra: true },
       closeConnection: false
     });
+  });
+
+  it('should preserve MCP user config errors for centralized log classification', async () => {
+    authAppByTmbIdMock.mockResolvedValueOnce({
+      app: {
+        _id: 'victim-toolset',
+        modules: [
+          {
+            toolConfig: {
+              mcpToolSet: {
+                url: 'https://mcp.example.com',
+                toolList: [
+                  {
+                    name: 'search',
+                    description: 'Search',
+                    inputSchema: { type: 'object', properties: {} }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    });
+    getMCPChildrenMock.mockResolvedValueOnce([
+      {
+        name: 'search',
+        description: 'Search',
+        inputSchema: { type: 'object', properties: {} }
+      }
+    ]);
+    mcpToolCallMock.mockRejectedValueOnce(new UserConfigError('Invalid MCP URL'));
+
+    const result = await dispatchRunTool(
+      createRunToolProps({ mcpTool: { toolId: 'mcp-victim-toolset/search' } })
+    );
+
+    expect(result.error?.[NodeOutputKeyEnum.errorText]).toBe('Invalid MCP URL');
+    expect(mockLogger.error).toHaveBeenCalledWith('Tool Run Error', { error: result.rawError });
   });
 
   it('resolves MCP auth references per call and reuses clients for matching auth', async () => {
@@ -562,7 +659,6 @@ describe('dispatchRunTool runtime toolset auth', () => {
       mcpToolCallMock.mockResolvedValueOnce({ ok: true });
 
       const result = await dispatchRunTool(props);
-
       expect(result.error).toBeUndefined();
       expect(MCPClient).toHaveBeenCalledWith({
         url: 'https://mcp.example.com',
