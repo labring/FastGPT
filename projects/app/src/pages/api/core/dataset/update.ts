@@ -18,6 +18,7 @@ import {
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { enqueueDatasetPermissionSync } from '@fastgpt/service/core/dataset/datasetPermissionSync';
 import type { ApiDatasetServerType } from '@fastgpt/global/core/dataset/apiDataset/type';
+import { ApiDatasetServerSchema } from '@fastgpt/global/core/dataset/apiDataset/type';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { enableDatasetCollectionPermissions } from '@fastgpt/service/support/permission/collection/enable';
 import { assertAuthModels } from '@fastgpt/service/support/permission/model/auth';
@@ -32,7 +33,10 @@ import { isEmptyModelValue } from '@fastgpt/global/core/ai/model/reference';
 import { computedCollectionChunkSettings } from '@fastgpt/global/core/dataset/training/utils';
 import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
 import { isInternalAddress, PRIVATE_URL_TEXT } from '@fastgpt/service/common/system/utils';
-import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import {
+  ApiRequestInputParseError,
+  parseApiInput
+} from '@fastgpt/service/common/zod/requestParseError';
 
 /**
  * 更新知识库接口
@@ -163,8 +167,18 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
       ? dataset.apiDatasetServer
       : apiDatasetServerPatch?.effectiveValue
   ) as ApiDatasetServerType | undefined;
+  // 请求体只是局部 patch：permissionSync 依赖 apiServer 的组合约束必须在合并后判断，
+  // 否则存量 apiServer 配置无法单独打开开关。仅校验本次修改的配置，存量脏数据保持容忍。
+  if (apiDatasetServer !== undefined) {
+    const parsed = ApiDatasetServerSchema.safeParse(effectiveApiDatasetServer);
+    if (!parsed.success) {
+      throw new ApiRequestInputParseError(parsed.error, { inputSource: 'body' });
+    }
+  }
   const needsEnableCollectionPermission =
     effectiveApiDatasetServer?.permissionSync === true &&
+    // folder 类型 dataset 永远不开启 collection 权限（它只承载子知识库，没有自己的 collection）
+    dataset.type !== DatasetTypeEnum.folder &&
     dataset.collectionPermissionEnabled !== true;
   // 与「是否开启 collection 权限」解耦：开关早已打开但本次才开启托管时，同样需要补一轮全量。
   const shouldEnqueueFullSync =

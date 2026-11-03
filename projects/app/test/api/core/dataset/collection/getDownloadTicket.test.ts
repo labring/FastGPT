@@ -120,6 +120,40 @@ describe('POST /core/dataset/collection/getDownloadTicket', () => {
     expect(events).toEqual(['lease', 'rate-limit', 'prepare']);
   });
 
+  it('forwards the effective root flag and disableSuperAdmin to the readability check', async () => {
+    mocks.authDataset.mockResolvedValueOnce({
+      dataset: {
+        _id: datasetId,
+        name: 'Managed',
+        type: DatasetTypeEnum.dataset,
+        apiDatasetServer: {
+          apiServer: { baseUrl: 'https://example.com' },
+          disableSuperAdmin: true
+        }
+      },
+      teamId: 'team-1',
+      tmbId: 'member-1',
+      isRoot: false
+    });
+    mocks.prepareDatasetArchive.mockImplementationOnce(
+      async ({ assertCollectionsReadable }: any) => {
+        await assertCollectionsReadable(collectionIds);
+        return manifest;
+      }
+    );
+
+    await handler(createRequest() as any, new EventEmitter() as any);
+
+    expect(mocks.assertDatasetArchiveCollectionsReadable).toHaveBeenCalledWith({
+      teamId: 'team-1',
+      datasetId,
+      tmbId: 'member-1',
+      isRoot: false,
+      ignoreTeamOwner: true,
+      collectionIds
+    });
+  });
+
   it('rejects unsupported dataset types before acquiring archive resources', async () => {
     mocks.authDataset.mockResolvedValueOnce({
       dataset: { _id: datasetId, name: 'Website', type: DatasetTypeEnum.websiteDataset },

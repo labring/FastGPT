@@ -41,7 +41,7 @@ export const assertPermissionSyncDeadline = (deadlineAt?: number): void => {
  * 截止时间或同库租约失效时中止本轮。
  *
  * 租约丢失说明同 dataset 的更新任务可能已经开始执行，旧任务再写 ACL 会覆盖新结果；
- * `signal` 是同步信号，`assertValid` 每次触发一次 Redis 续租确认。
+ * `signal` 与 `assertValid` 都是进程内信号，只反映本进程已观测到的丢失 / 过期，不查询 Redis。
  */
 export const assertPermissionSyncActive = ({
   deadlineAt,

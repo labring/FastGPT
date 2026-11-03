@@ -189,11 +189,13 @@ async function handler(req: ApiRequestProps): Promise<ListCollectionV2ResponseTy
     datasetId,
     per: ReadPermissionVal
   });
+  // 资源范围以 dataset 归属为准：root 可以跨团队，用 header 的 teamId 会把列表过滤成空。
+  const scopeTeamId = String(dataset.teamId);
 
   // 搜索范围限定在当前路径及其子树，先枚举子树内的文件夹 ID（根目录搜索无需枚举）。
   const subtreeFolderIds =
     searchText && parentId
-      ? await findSubtreeFolderIds({ teamId, datasetId, collectionId: parentId })
+      ? await findSubtreeFolderIds({ teamId: scopeTeamId, datasetId, collectionId: parentId })
       : [];
   const scopeMatch = parseCollectionScopeMatch({ parentId, searchText, subtreeFolderIds });
 
@@ -228,15 +230,20 @@ async function handler(req: ApiRequestProps): Promise<ListCollectionV2ResponseTy
   const tmbInfo = await getTmbInfoByTmbId({ tmbId });
   // 外部权限同步可以要求超管同样遵守文件 ACL：root 与团队 owner 的旁路全部关闭。
   const disableSuperAdmin = isDisableSuperAdmin(dataset.apiDatasetServer);
+  const permissionSync = isPermissionSyncDataset(dataset.apiDatasetServer);
   const isTeamOwner =
     !disableSuperAdmin && String(tmbInfo.teamId) === String(teamId) && tmbInfo.permission.isOwner;
-  const shortCircuitCollectionPermission = await canShortCircuitCollectionPermission({
-    teamId,
-    datasetIds: [datasetId],
-    tmbId,
-    tmbInfo,
-    ignoreTeamOwner: disableSuperAdmin
-  });
+  const shortCircuitCollectionPermission =
+    // root 在非托管库上可读全部 Collection（与 authDatasetCollection 短路一致）；
+    // canShortCircuitCollectionPermission 只识别团队 owner 与关闭态，不认跨团队的 root。
+    isRoot ||
+    (await canShortCircuitCollectionPermission({
+      teamId,
+      datasetIds: [datasetId],
+      tmbId,
+      tmbInfo,
+      ignoreTeamOwner: disableSuperAdmin
+    }));
   // 短路时所有 Collection 都可读，不存在导航目录；此时父目录鉴权失败只可能是跨知识库访问。
   if (parentRequiresNavigation && shortCircuitCollectionPermission) {
     return Promise.reject(DatasetErrEnum.unAuthDatasetCollection);
@@ -251,11 +258,14 @@ async function handler(req: ApiRequestProps): Promise<ListCollectionV2ResponseTy
 
     if (!searchText) {
       // 浏览模式：Collection 没有持久化祖先路径，需要整棵目录树才能判断哪些不可读目录通往可读后代。
-      const allCollections = await findDatasetCollectionsForVisibility({ teamId, datasetId });
+      const allCollections = await findDatasetCollectionsForVisibility({
+        teamId: scopeTeamId,
+        datasetId
+      });
       const readableIds = await getReadableCollectionIds({
         collections: allCollections,
         tmbId,
-        teamId,
+        teamId: scopeTeamId,
         groupIds,
         orgIds,
         datasetPermission: permission.role,
@@ -288,7 +298,7 @@ async function handler(req: ApiRequestProps): Promise<ListCollectionV2ResponseTy
     } else {
       const candidates = await MongoDatasetCollection.find(
         {
-          teamId: new Types.ObjectId(teamId),
+          teamId: new Types.ObjectId(scopeTeamId),
           datasetId: new Types.ObjectId(datasetId),
           ...(selectFolder ? { type: DatasetCollectionTypeEnum.folder } : {}),
           ...scopeMatch,
@@ -301,7 +311,7 @@ async function handler(req: ApiRequestProps): Promise<ListCollectionV2ResponseTy
       const readableIds = await getReadableCollectionIds({
         collections: candidates,
         tmbId,
-        teamId,
+        teamId: scopeTeamId,
         groupIds,
         orgIds,
         datasetPermission: permission.role,
@@ -315,7 +325,7 @@ async function handler(req: ApiRequestProps): Promise<ListCollectionV2ResponseTy
   }
 
   const match = {
-    teamId: new Types.ObjectId(teamId),
+    teamId: new Types.ObjectId(scopeTeamId),
     datasetId: new Types.ObjectId(datasetId),
     ...(selectFolder ? { type: DatasetCollectionTypeEnum.folder } : {}),
     ...scopeMatch,
@@ -381,7 +391,7 @@ async function handler(req: ApiRequestProps): Promise<ListCollectionV2ResponseTy
     const roleMap = await getCollectionPermissionMap({
       collections,
       tmbId,
-      teamId,
+      teamId: scopeTeamId,
       groupIds,
       orgIds
     });
@@ -391,8 +401,7 @@ async function handler(req: ApiRequestProps): Promise<ListCollectionV2ResponseTy
         new CollectionPermission({
           role: roleMap.get(String(item._id)) ?? NullRoleVal,
           // 托管模式下 ACL 是唯一授权来源，创建者不再隐式 owner。
-          isOwner:
-            !isPermissionSyncDataset(dataset.apiDatasetServer) && String(item.tmbId) === tmbId
+          isOwner: !permissionSync && String(item.tmbId) === tmbId
         })
       ])
     );
@@ -406,21 +415,16 @@ async function handler(req: ApiRequestProps): Promise<ListCollectionV2ResponseTy
     if (folderAccessModeMap.get(String(item._id)) === 'navigate') {
       return new CollectionPermission({ role: NullRoleVal, isOwner: false });
     }
-    if (isRoot && !disableSuperAdmin) return new CollectionPermission({ isOwner: true });
+    if (isRoot) return new CollectionPermission({ isOwner: true });
 
     const resolvedPermission = collectionPermissionMap?.get(String(item._id));
     if (resolvedPermission) return resolvedPermission;
 
-    // 关闭超管旁路时，未出现在 ACL 解析结果里的 Collection 一律无权限：
-    // 不能再用 dataset 角色兜底，否则 root / 团队 owner 会绕过文件级权限。
-    if (disableSuperAdmin && !shortCircuitCollectionPermission) {
-      return new CollectionPermission({ role: NullRoleVal, isOwner: false });
-    }
-
+    // 非短路时 map 覆盖本页全部节点；走到这里只可能是关闭态短路（未加载 map），按 dataset 角色兜底。
     return new CollectionPermission({
       // 团队 owner 与详情鉴权一致返回 owner；dataset owner 的父级权限不透传，cap 为 manage。
       role: permission.role === OwnerRoleVal ? ManageRoleVal : permission.role,
-      isOwner: isTeamOwner || String(item.tmbId) === tmbId
+      isOwner: isTeamOwner || (!permissionSync && String(item.tmbId) === tmbId)
     });
   };
 
@@ -467,7 +471,7 @@ async function handler(req: ApiRequestProps): Promise<ListCollectionV2ResponseTy
   ] = await Promise.all([
     MongoDatasetTraining.aggregate(
       getCollectionTrainingModeCountsPipeline({
-        teamId: new Types.ObjectId(teamId),
+        teamId: new Types.ObjectId(scopeTeamId),
         datasetId: new Types.ObjectId(datasetId),
         collectionId: { $in: collectionIds }
       }),
@@ -477,7 +481,7 @@ async function handler(req: ApiRequestProps): Promise<ListCollectionV2ResponseTy
       [
         {
           $match: {
-            teamId: new Types.ObjectId(teamId),
+            teamId: new Types.ObjectId(scopeTeamId),
             datasetId: new Types.ObjectId(datasetId),
             collectionId: { $in: collectionIds }
           }

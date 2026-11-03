@@ -131,8 +131,10 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetResponse> {
           avatar,
           type,
           apiDatasetServer,
-          // 创建即开启同步时，collection 权限同步置位，避免「同步已开但读路径未启用」
-          ...(apiDatasetServer?.permissionSync === true && { collectionPermissionEnabled: true }),
+          // 创建即开启同步时，collection 权限同步置位，避免「同步已开但读路径未启用」；
+          // folder 类型 dataset 只承载子知识库，不开启 collection 权限。
+          ...(apiDatasetServer?.permissionSync === true &&
+            type !== DatasetTypeEnum.folder && { collectionPermissionEnabled: true }),
           ...(sangforFileParseConfig && { sangforFileParseConfig }),
           // folder 与普通知识库均支持独立态创建；未传时 schema 已按继承态解析。
           inheritPermission

@@ -109,6 +109,36 @@ describe('collection listV2 permission', () => {
       hasManagePer: false
     });
   });
+  it('short-circuits for a root user outside the dataset team', async () => {
+    const users = await getFakeUsers(1);
+    const root = await getRootUser();
+    const dataset = await MongoDataset.create({
+      name: 'root-list-permission',
+      teamId: users.owner.teamId,
+      tmbId: users.owner.tmbId,
+      vectorModel: 'test',
+      agentModel: 'test',
+      collectionPermissionEnabled: true
+    });
+    const collection = await MongoDatasetCollection.create({
+      name: 'no-acl-for-root',
+      type: DatasetCollectionTypeEnum.file,
+      teamId: users.owner.teamId,
+      tmbId: users.owner.tmbId,
+      datasetId: dataset._id
+    });
+
+    const response = await Call(listHandler, {
+      auth: root,
+      body: { datasetId: dataset._id, pageSize: 10, offset: 0 }
+    });
+
+    // 与 authDatasetCollection 一致：root 不依赖团队归属，列表不能把整库过滤成空
+    expect(response.code).toBe(200);
+    expect(
+      response.data.list.find((item) => String(item._id) === String(collection._id))?.permission
+    ).toMatchObject({ role: OwnerRoleVal, isOwner: true });
+  });
 });
 
 describe('collection listV2 navigation folders', () => {

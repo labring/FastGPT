@@ -74,6 +74,7 @@ vi.mock('@fastgpt/service/common/s3/sources/dataset', () => ({
 }));
 
 import {
+  authDataset,
   authDatasetByTmbId,
   authDatasetCollection,
   authDatasetCollectionCreate,
@@ -575,6 +576,56 @@ describe('authDatasetCollection', () => {
     // 非托管启用态保留「创建者即 owner」语义
     expect(result.permission.isOwner).toBe(true);
     expect(result.permission.checkPer(OwnerPermissionVal)).toBe(true);
+  });
+});
+
+describe('authDataset isRoot', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockParseHeaderCert.mockResolvedValue({
+      teamId: 'team-b',
+      tmbId: 'root-tmb',
+      userId: 'root-user',
+      isRoot: true
+    });
+    mockGetTmbInfoByTmbId.mockResolvedValue({
+      teamId: 'team-b',
+      permission: { isOwner: false }
+    });
+    mockGetTmbPermission.mockResolvedValue(ReadRoleVal);
+  });
+
+  it('返回有效 root 标记：disableSuperAdmin 关闭了 header 旁路', async () => {
+    mockDatasetQuery({
+      _id: datasetId,
+      teamId: 'team-b',
+      tmbId: 'owner-tmb',
+      inheritPermission: false,
+      collectionPermissionEnabled: false,
+      apiDatasetServer: {
+        apiServer: { baseUrl: 'https://example.com' },
+        disableSuperAdmin: true
+      }
+    });
+
+    const result = await authDataset({ req: mockReq, datasetId, per: ReadPermissionVal });
+
+    expect(result.isRoot).toBe(false);
+    expect(result.permission.isOwner).toBe(false);
+  });
+
+  it('未开启 disableSuperAdmin 时 root 仍返回 true 并短路为 owner', async () => {
+    mockDatasetQuery({
+      _id: datasetId,
+      teamId: 'team-b',
+      tmbId: 'owner-tmb',
+      inheritPermission: false
+    });
+
+    const result = await authDataset({ req: mockReq, datasetId, per: OwnerPermissionVal });
+
+    expect(result.isRoot).toBe(true);
+    expect(result.permission.isOwner).toBe(true);
   });
 });
 

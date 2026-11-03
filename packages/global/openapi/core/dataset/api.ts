@@ -1,6 +1,9 @@
 import { z } from 'zod';
 import { DatasetSearchModeEnum, DatasetTypeEnum } from '../../../core/dataset/constants';
-import { ApiDatasetServerSchema } from '../../../core/dataset/apiDataset/type';
+import {
+  ApiDatasetServerPatchSchema,
+  ApiDatasetServerSchema
+} from '../../../core/dataset/apiDataset/type';
 import { ObjectIdSchema } from '../../../common/type/mongo';
 import { FolderAccessModeSchema, ParentIdSchema } from '../../../common/parentFolder/type';
 import { BoolSchema } from '../../../common/zod';
@@ -501,7 +504,8 @@ export const UpdateDatasetBodySchema = z.object({
   externalReadUrl: z.string().optional().meta({
     description: '外部读取 URL'
   }),
-  apiDatasetServer: ApiDatasetServerSchema.optional().meta({
+  // 局部 patch：组合不变量（permissionSync 依赖 apiServer）由更新接口在合并后校验
+  apiDatasetServer: ApiDatasetServerPatchSchema.optional().meta({
     description: '第三方知识库服务器配置(API/飞书/语雀/钉钉)'
   }),
   autoSync: z.boolean().optional().meta({
