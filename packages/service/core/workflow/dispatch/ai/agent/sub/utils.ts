@@ -112,6 +112,7 @@ export type ToolDispatchContext = Pick<
 const filterAgentWorkflowRuntimeParams = (params: Record<string, any>) => {
   const runtimeParams = { ...params };
   delete runtimeParams[NodeInputKeyEnum.forbidStream];
+  delete runtimeParams[NodeInputKeyEnum.history];
   return runtimeParams;
 };
 

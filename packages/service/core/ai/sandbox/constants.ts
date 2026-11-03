@@ -119,6 +119,7 @@ export const MAX_GREP_LINE_CHARS = 500;
 
 // 运行初始化
 export const SANDBOX_ENTRYPOINT_STATE_HASH_KEY = 'sandboxEntrypoint';
+export const SKILL_ENTRYPOINT_STATE_LIST_KEY = 'skillEntrypoints';
 export const MAX_ENTRYPOINT_OUTPUT_BYTES = 8 * 1024;
 export const MAX_LOG_OUTPUT_LENGTH = 4000;
 export const SANDBOX_INIT_LEASE_TTL_MS = 180_000;

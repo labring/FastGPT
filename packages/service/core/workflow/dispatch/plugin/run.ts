@@ -360,7 +360,8 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
       totalPoints: Math.max(0, usagePoints - ownUsagePoints),
       ...(shouldStoreChildNodeResponses
         ? { citeCollectionIds: runtimeSummary.citeCollectionIds }
-        : {})
+        : {}),
+      hasAgentSandbox: runtimeSummary.hasAgentSandbox
     });
     // Child run not push usage
     props.usagePush([

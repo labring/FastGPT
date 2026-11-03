@@ -105,7 +105,8 @@ export const dispatchLoop = async (props: Props): Promise<Response> => {
       llmInputTokens: childSummary.llmInputTokens,
       llmOutputTokens: childSummary.llmOutputTokens,
       totalPoints: iterationPoints,
-      citeCollectionIds: childSummary.citeCollectionIds
+      citeCollectionIds: childSummary.citeCollectionIds,
+      hasAgentSandbox: childSummary.hasAgentSandbox
     });
 
     collectResponseFeedbacks(response, customFeedbacks);

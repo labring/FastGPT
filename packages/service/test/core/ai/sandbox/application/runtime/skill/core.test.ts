@@ -13,6 +13,10 @@ import { getNanoid } from '@fastgpt/global/common/string/tools';
 
 import { getUser } from '@test/datas/users';
 
+vi.mock('@fastgpt/service/core/ai/sandbox/application/runtime/home', () => ({
+  resolveSandboxHome: async () => '/home/test'
+}));
+
 const makePackage = async (entries: Array<{ path: string; name: string; description: string }>) => {
   const zip = new JSZip();
   for (const entry of entries) {
@@ -37,6 +41,8 @@ const makeWriteResults = (entries: Array<{ path: string; data: unknown }>) =>
   }));
 
 const createSkillFilesystemMocks = (directoryPaths: string[] = []) => ({
+  readFiles: vi.fn(async () => []),
+  getFileInfo: vi.fn(async () => new Map()),
   createDirectories: vi.fn(async (_paths: string[]) => undefined),
   listDirectory: vi.fn(async () =>
     directoryPaths.map((path) => ({
@@ -295,8 +301,7 @@ describe('injectAgentSkillFilesToSandbox', () => {
       ...createSkillFilesystemMocks(),
       listDirectory: vi.fn().mockRejectedValue(new Error('list failed')),
       writeFiles: vi.fn(),
-      execute: vi.fn(),
-      readFiles: vi.fn()
+      execute: vi.fn()
     };
 
     await expect(
@@ -391,15 +396,19 @@ describe('injectAgentSkillFilesToSandbox', () => {
 
         throw new Error(`Unexpected command: ${command}`);
       }),
-      readFiles: vi.fn(async () => [
-        {
-          path: latestSkillMdPath,
-          content: `---
+      readFiles: vi.fn(async (paths: string[]) =>
+        paths[0].endsWith('/state.json')
+          ? []
+          : [
+              {
+                path: latestSkillMdPath,
+                content: `---
 name: latest
 description: Latest current skill
 ---`
-        }
-      ])
+              }
+            ]
+      )
     };
 
     const deployedSkillVersions = await injectAgentSkillFilesToSandbox({
@@ -477,8 +486,7 @@ description: Latest current skill
       execute: vi.fn(async (command: string) => {
         if (command.includes('unzip')) return { exitCode: 0, stdout: '', stderr: '' };
         throw new Error(`Unexpected command: ${command}`);
-      }),
-      readFiles: vi.fn()
+      })
     };
 
     const staticVersions = await injectAgentSkillFilesToSandbox({
@@ -502,7 +510,7 @@ description: Latest current skill
     ]);
   });
 
-  it('skips existing current version directories and removes unselected version directories', async () => {
+  it('reuses current versions and preserves versions selected by other nodes', async () => {
     const user = await getUser(`runtime-skill-cached-${getNanoid(6)}`);
     const { teamId, tmbId } = user;
 
@@ -542,8 +550,7 @@ description: Latest current skill
     const sandbox = {
       ...createSkillFilesystemMocks([currentTargetDir, staleTargetDir, userProjectDir]),
       writeFiles: vi.fn(),
-      execute: vi.fn(),
-      readFiles: vi.fn()
+      execute: vi.fn()
     };
 
     const deployedSkillVersions = await injectAgentSkillFilesToSandbox({
@@ -565,10 +572,68 @@ description: Latest current skill
         targetDir: currentTargetDir
       }
     ]);
+    await expect(
+      injectAgentSkillFilesToSandbox({
+        sandbox: sandbox as any,
+        workDirectory: '/workspace',
+        skills: []
+      })
+    ).resolves.toEqual([]);
     expect(sandbox.writeFiles).not.toHaveBeenCalled();
-    expect(sandbox.deleteDirectories).toHaveBeenCalledWith([staleTargetDir]);
+    expect(sandbox.deleteDirectories).not.toHaveBeenCalled();
     expect(sandbox.deleteDirectories).not.toHaveBeenCalledWith([userProjectDir]);
     expect(sandbox.execute).not.toHaveBeenCalled();
+  });
+
+  it('clears the previous entrypoint marker when reinstalling a missing skill version directory', async () => {
+    const { teamId, tmbId } = await getUser(`runtime-skill-rebuild-${getNanoid(6)}`);
+    const skill = await MongoAgentSkills.create({
+      name: 'Rebuilt',
+      teamId,
+      tmbId,
+      source: AgentSkillSourceEnum.personal
+    });
+    const versionId = new Types.ObjectId();
+    const storage = await uploadSkillPackage({
+      teamId,
+      skillId: String(skill._id),
+      packageObjectId: 'rebuild',
+      zipBuffer: await makePackage([{ path: 'SKILL.md', name: 'Rebuilt', description: '' }])
+    });
+    await MongoAgentSkillsVersion.create({
+      _id: versionId,
+      skillId: skill._id,
+      tmbId,
+      storageKey: storage.key
+    });
+    await MongoAgentSkills.updateOne({ _id: skill._id }, { $set: { currentVersionId: versionId } });
+    const skills = await MongoAgentSkills.find({ _id: skill._id }).lean();
+
+    let state = { values: { skillEntrypoints: [String(versionId), 'another-version'] } };
+    const sandbox = {
+      ...createSkillFilesystemMocks(['/workspace/projects/0123456789abcdef01234567']),
+      readFiles: vi.fn(async () => [
+        { path: 'state.json', content: Buffer.from(JSON.stringify(state)), error: null }
+      ]),
+      writeFiles: vi.fn(async (files: Array<{ path: string; data: unknown }>) => {
+        if (files[0].path.endsWith('/state.json')) {
+          state = JSON.parse(String(files[0].data));
+        }
+        return makeWriteResults(files);
+      }),
+      execute: vi.fn(async () => ({ exitCode: 0, stdout: '', stderr: '' }))
+    };
+
+    await expect(
+      injectAgentSkillFilesToSandbox({
+        sandbox: sandbox as any,
+        workDirectory: '/workspace',
+        skills
+      })
+    ).resolves.toEqual([expect.objectContaining({ versionId: String(versionId) })]);
+    expect(state.values.skillEntrypoints).toEqual(['another-version']);
+    expect(sandbox.moveFiles).toHaveBeenCalledTimes(1);
+    expect(sandbox.deleteDirectories).not.toHaveBeenCalled();
   });
 
   it('throws when a skill package file fails to write', async () => {
@@ -614,8 +679,7 @@ description: Latest current skill
           error: writeError
         }))
       ),
-      execute: vi.fn(),
-      readFiles: vi.fn()
+      execute: vi.fn()
     };
 
     await expect(
@@ -642,8 +706,7 @@ description: Latest current skill
     const sandbox = {
       ...createSkillFilesystemMocks(),
       writeFiles: vi.fn(),
-      execute: vi.fn(),
-      readFiles: vi.fn()
+      execute: vi.fn()
     };
 
     // 1. Test when skill is invalid or deleted (skills.length === 0)
@@ -674,30 +737,6 @@ description: Latest current skill
       }).lean()
     });
     expect(resultNoVersion).toEqual([]);
-  });
-
-  it('cleans stale version directories when no skills are selected', async () => {
-    const tmbId = new Types.ObjectId().toHexString();
-    const staleTargetDir = '/workspace/projects/0123456789abcdef01234567';
-    const userProjectDir = '/workspace/projects/demo';
-    const sandbox = {
-      ...createSkillFilesystemMocks([staleTargetDir, userProjectDir]),
-      writeFiles: vi.fn(),
-      execute: vi.fn(),
-      readFiles: vi.fn()
-    };
-
-    const result = await injectAgentSkillFilesToSandbox({
-      sandbox: sandbox as any,
-      workDirectory: '/workspace',
-      skills: await MongoAgentSkills.find({ _id: { $in: [] }, deleteTime: null }).lean()
-    });
-
-    expect(result).toEqual([]);
-    expect(sandbox.deleteDirectories).toHaveBeenCalledWith([staleTargetDir]);
-    expect(sandbox.deleteDirectories).not.toHaveBeenCalledWith([userProjectDir]);
-    expect(sandbox.execute).not.toHaveBeenCalled();
-    expect(sandbox.writeFiles).not.toHaveBeenCalled();
   });
 });
 

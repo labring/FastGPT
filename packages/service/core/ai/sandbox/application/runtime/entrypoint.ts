@@ -63,22 +63,26 @@ export const withAgentSandboxInitLease = async <T>({
  *
  * 状态只写入 sandbox 用户 HOME，确保“是否执行过”跟具体 sandbox 实例绑定。
  * 脚本失败、超时或状态读写失败都不会阻断主流程。
+ * scope 必须显式区分应用/节点，只读取该作用域下的成功标记。
  */
 export const runAgentSandboxEntrypoint = async ({
   sandbox,
   sandboxEntrypoint,
-  workDirectory
+  workDirectory,
+  scope
 }: {
   sandbox: ISandbox;
   sandboxEntrypoint?: string;
   workDirectory?: string;
+  scope: string;
 }): Promise<void> => {
   const script = sandboxEntrypoint?.trim();
   if (!script) return;
 
   const stateContext = await readSandboxRuntimeState({ sandbox });
+  const stateKey = `${SANDBOX_ENTRYPOINT_STATE_HASH_KEY}:${scope}`;
   const scriptHash = buildRuntimeHash(script);
-  if (getRuntimeStateValue(stateContext.state, SANDBOX_ENTRYPOINT_STATE_HASH_KEY) === scriptHash) {
+  if (getRuntimeStateValue(stateContext.state, stateKey) === scriptHash) {
     return;
   }
 
@@ -92,21 +96,24 @@ export const runAgentSandboxEntrypoint = async ({
 
   if (!result) return;
 
-  setRuntimeStateValue(stateContext.state, SANDBOX_ENTRYPOINT_STATE_HASH_KEY, scriptHash);
+  setRuntimeStateValue(stateContext.state, stateKey, scriptHash);
   await writeSandboxRuntimeState(sandbox, stateContext);
 };
 
 /** 将 sandbox entrypoint 包装为 prepare step，便于和文件注入、skill 扫描按顺序编排。 */
 export const runSandboxEntrypoint =
   <Context extends SandboxPrepareContext>({
-    sandboxEntrypoint
+    sandboxEntrypoint,
+    scope
   }: {
     sandboxEntrypoint?: string;
+    scope: string;
   }): SandboxPrepareStep<Context> =>
   async (context) => {
     await runAgentSandboxEntrypoint({
       sandbox: context.sandbox,
       sandboxEntrypoint,
+      scope,
       workDirectory: context.workspaceRoot ?? context.workDirectory
     });
     return context;

@@ -317,6 +317,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       durationSeconds,
       metadata: {
         originIp,
+        // 本轮根节点配置与会话累计启用事实分开保存，子流程成功状态由 summary 承担。
         [APP_SANDBOX_ENABLED_CHAT_METADATA_KEY]: isAppSandboxEnabledInNodes(nodes)
       },
       workflowRuntimeSummary

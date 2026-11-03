@@ -46,10 +46,10 @@ type EnsureAgentSandboxRuntimeParams = {
   sourceId: string;
   userId: string;
   chatId: string;
-  teamId: string;
   tmbId: string;
   needSandboxRuntime: boolean;
   sandboxEntrypoint?: string;
+  sandboxEntrypointScope: string;
   skillIds: string[];
   selectedSkills?: SelectedAgentSkillItemType[];
   editSkillId?: string;
@@ -73,10 +73,10 @@ export async function ensureAgentSandboxRuntime({
   sourceId,
   userId,
   chatId,
-  teamId,
   tmbId,
   needSandboxRuntime,
   sandboxEntrypoint,
+  sandboxEntrypointScope,
   skillIds,
   selectedSkills,
   editSkillId,
@@ -125,7 +125,7 @@ export async function ensureAgentSandboxRuntime({
             }),
             injectCurrentInputFiles(currentFiles, readInputFile),
             ...prepareActions,
-            runSandboxEntrypoint({ sandboxEntrypoint }),
+            runSandboxEntrypoint({ sandboxEntrypoint, scope: sandboxEntrypointScope }),
             runSelectedSkillEntrypoints(),
             scanSelectedSkillInfos()
           );
