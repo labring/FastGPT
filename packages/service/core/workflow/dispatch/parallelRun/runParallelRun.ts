@@ -4,8 +4,8 @@ import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type { DispatchNodeResultType, ModuleDispatchProps } from '../../types/runtime';
 
-import { serviceEnv } from '../../../../env';
 import { runWorkflow } from '..';
+import { getWorkflowMaxLoopTimes, getWorkflowParallelMaxConcurrency } from '../../constants';
 import { getNodeResponseChildResponseCount } from '../../../chat/nodeResponseStorage';
 import {
   clampParallelConcurrency,
@@ -18,7 +18,6 @@ import {
   type ParallelFullResultItem
 } from './service';
 import { pushSubWorkflowUsage } from '../utils';
-import { logInstanceConfigRead } from '../../../../common/system/migrationCoverageLog';
 import { createContainerRunStateSnapshot, syncContainerRunState } from '../utils/containerRunState';
 import { WorkflowMemoryState } from '../../memory/state';
 import { getErrText } from '@fastgpt/global/common/error/utils';
@@ -51,23 +50,9 @@ export const dispatchParallelRun = async (props: Props): Promise<Response> => {
     return Promise.reject('Input value is not an array');
   }
 
-  const maxLength =
-    global.systemInstanceConfig?.performance?.workflow?.maxLoopTimes ??
-    serviceEnv.WORKFLOW_MAX_LOOP_TIMES;
-  const maxConcurrency =
-    global.systemInstanceConfig?.performance?.workflow?.parallelMaxConcurrency ??
-    serviceEnv.WORKFLOW_PARALLEL_MAX_CONCURRENCY;
-  logInstanceConfigRead({
-    callsite: 'runtime.workflow.parallelRun.dispatchParallelRun',
-    source:
-      global.systemInstanceConfig?.performance?.workflow?.maxLoopTimes === undefined
-        ? 'env-fallback'
-        : 'instance-config',
-    fields: [
-      { path: 'performance.workflow.maxLoopTimes', value: maxLength },
-      { path: 'performance.workflow.parallelMaxConcurrency', value: maxConcurrency }
-    ]
-  });
+  // 循环上限与并发上限由统一 getter 从实例配置读取，ENV 只在迁移时 seed
+  const maxLength = getWorkflowMaxLoopTimes();
+  const maxConcurrency = getWorkflowParallelMaxConcurrency();
   if (loopInputArray.length > maxLength) {
     return Promise.reject(`Input array length cannot be greater than ${maxLength}`);
   }

@@ -4,7 +4,8 @@ import { Input, Textarea, SimpleGrid, Text } from '@chakra-ui/react';
 import { useForm, Controller } from 'react-hook-form';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { ToastHandledError } from '@fastgpt/global/common/error/utils';
-import { useDomainConfig, batchUpdateDomainConfigApi } from '@/web/common/system/useDomainConfig';
+import { useDomainConfig, updateDomainConfigApi } from '@/web/common/system/useDomainConfig';
+import { useAdminPermission } from '@/pageComponents/admin/useAdminPermission';
 import AdminSettingPage from '@/pageComponents/admin/settings/AdminSettingPage';
 import AdminSettingSection from '@/pageComponents/admin/settings/AdminSettingSection';
 import AdminFormItem from '@/pageComponents/admin/settings/AdminFormItem';
@@ -17,17 +18,25 @@ type CommercialConfigForm = SystemInstanceConfigDomainMap['commercial'];
 
 const CommercialSettingComponent = () => {
   const { t } = useSafeTranslation();
+  const { isFieldVisible } = useAdminPermission();
+
+  const showCoupon = isFieldVisible('commercial.showCoupon');
+  const showDiscountCoupon = isFieldVisible('commercial.showDiscountCoupon');
+  const showPayForm = isFieldVisible('commercial.payFormUrl');
+  const showFreeClean = isFieldVisible('commercial.billingNotify.freeClean.zh');
+  const showFeatureSection = showCoupon || showDiscountCoupon;
+
   const tocItems: SettingTOCItem[] = useMemo(
     () => [
       { id: 'plans', label: t('admin:pay_section_plans') },
-      { id: 'features', label: t('admin:pay_section_features') },
-      { id: 'paymentForm', label: t('admin:pay_section_corporate') },
+      ...(showFeatureSection ? [{ id: 'features', label: t('admin:pay_section_features') }] : []),
+      ...(showPayForm ? [{ id: 'paymentForm', label: t('admin:pay_section_corporate') }] : []),
       { id: 'wxPay', label: t('admin:pay_section_wx') },
       { id: 'alipay', label: t('admin:pay_section_alipay') },
       { id: 'bankPay', label: t('admin:pay_section_bank_desc') },
       { id: 'billingNotify', label: t('admin:pay_section_notify_sms') }
     ],
-    [t]
+    [t, showFeatureSection, showPayForm]
   );
 
   const { revision, effectiveConfig, isLoading, isUpdating, refetch } =
@@ -52,21 +61,27 @@ const CommercialSettingComponent = () => {
       const subPlansData = await plansRef.current?.getSubPlansData();
       if (subPlansData === undefined) throw new ToastHandledError('Plans validation failed');
 
-      // 2. 商业配置与套餐合并为单个批量事务请求原子提交：
+      // 2. 只提交当前表单可见的字段；隐藏的 SaaS 字段不提交覆盖，保留库中现有值
+      const billingNotify = structuredClone(formData.billingNotify);
+      if (!showFreeClean) {
+        delete (billingNotify as Partial<typeof billingNotify>).freeClean;
+      }
+      const overrides: Record<string, unknown> = {
+        ...(showCoupon ? { showCoupon: Boolean(formData.showCoupon) } : {}),
+        ...(showDiscountCoupon ? { showDiscountCoupon: Boolean(formData.showDiscountCoupon) } : {}),
+        ...(showPayForm ? { payFormUrl: formData.payFormUrl || '' } : {}),
+        payment: formData.payment,
+        billingNotify
+      };
+
+      // 3. 商业配置与套餐合并为单个批量事务请求原子提交：
       // 任一校验失败、revision 冲突或写入异常，整体回滚，杜绝半生效状态。
-      await batchUpdateDomainConfigApi({
+      await updateDomainConfigApi({
         items: [
           {
             domain: 'commercial',
             expectedRevision: revision,
-            overrides: {
-              showCoupon: Boolean(formData.showCoupon),
-              showDiscountCoupon: Boolean(formData.showDiscountCoupon),
-              payFormUrl: formData.payFormUrl || '',
-              agentSandboxFreeTip: Boolean(formData.agentSandboxFreeTip),
-              payment: formData.payment,
-              billingNotify: formData.billingNotify
-            }
+            overrides
           }
         ],
         subPlans: subPlansData
@@ -100,59 +115,58 @@ const CommercialSettingComponent = () => {
         <PlansSettingSection ref={plansRef} />
       </AdminSettingSection>
 
-      {/* 2. 功能展示：优惠券策略与提示展示策略合并 */}
-      <AdminSettingSection id="features" title={t('admin:pay_section_features')} showDivider>
-        <SimpleGrid columns={[1, 2]} spacingX={16} spacingY={4}>
-          <Controller
-            name="showCoupon"
-            control={control}
-            render={({ field }) => (
-              <AdminSwitchRow
-                label={t('admin:show_recharge_coupons')}
-                tooltip={t('admin:show_coupon_redemption_and_available_coupon_entries_on_the_r')}
-                isChecked={field.value}
-                onChange={field.onChange}
+      {/* 2. 功能展示：优惠券策略（仅 SaaS 开启时展示） */}
+      {showFeatureSection && (
+        <AdminSettingSection id="features" title={t('admin:pay_section_features')} showDivider>
+          <SimpleGrid columns={[1, 2]} spacingX={16} spacingY={4}>
+            {showCoupon && (
+              <Controller
+                name="showCoupon"
+                control={control}
+                render={({ field }) => (
+                  <AdminSwitchRow
+                    label={t('admin:show_recharge_coupons')}
+                    tooltip={t(
+                      'admin:show_coupon_redemption_and_available_coupon_entries_on_the_r'
+                    )}
+                    isChecked={field.value}
+                    onChange={field.onChange}
+                  />
+                )}
               />
             )}
-          />
 
-          <Controller
-            name="showDiscountCoupon"
-            control={control}
-            render={({ field }) => (
-              <AdminSwitchRow
-                label={t('admin:show_discount_coupons')}
-                tooltip={t('admin:show_instant_discounts_and_coupon_options_during_user_checko')}
-                isChecked={field.value}
-                onChange={field.onChange}
+            {showDiscountCoupon && (
+              <Controller
+                name="showDiscountCoupon"
+                control={control}
+                render={({ field }) => (
+                  <AdminSwitchRow
+                    label={t('admin:show_discount_coupons')}
+                    tooltip={t(
+                      'admin:show_instant_discounts_and_coupon_options_during_user_checko'
+                    )}
+                    isChecked={field.value}
+                    onChange={field.onChange}
+                  />
+                )}
               />
             )}
-          />
+          </SimpleGrid>
+        </AdminSettingSection>
+      )}
 
-          <Controller
-            name="agentSandboxFreeTip"
-            control={control}
-            render={({ field }) => (
-              <AdminSwitchRow
-                label={t('admin:agent_sandbox_free_trial_banner')}
-                tooltip={t('admin:show_a_limited_time_free_trial_banner_at_the_top_of_the_agen')}
-                isChecked={field.value}
-                onChange={field.onChange}
-              />
-            )}
-          />
-        </SimpleGrid>
-      </AdminSettingSection>
-
-      {/* 3. 对公收款配置 */}
-      <AdminSettingSection id="paymentForm" title={t('admin:pay_section_corporate')} showDivider>
-        <AdminFormItem
-          label={t('admin:bank_transfer_corporate_form_url')}
-          tooltip={t('admin:full_url_of_the_corporate_form_a_user_fills_in_for_large_ban')}
-        >
-          <Input {...register('payFormUrl')} placeholder="https://form.example.com/pay" />
-        </AdminFormItem>
-      </AdminSettingSection>
+      {/* 3. 对公收款配置（仅 SaaS 开启时展示） */}
+      {showPayForm && (
+        <AdminSettingSection id="paymentForm" title={t('admin:pay_section_corporate')} showDivider>
+          <AdminFormItem
+            label={t('admin:bank_transfer_corporate_form_url')}
+            tooltip={t('admin:full_url_of_the_corporate_form_a_user_fills_in_for_large_ban')}
+          >
+            <Input {...register('payFormUrl')} placeholder="https://form.example.com/pay" />
+          </AdminFormItem>
+        </AdminSettingSection>
+      )}
 
       {/* 4. 微信支付凭据 */}
       <AdminSettingSection id="wxPay" title={t('admin:pay_section_wx')} showDivider>
@@ -320,9 +334,11 @@ const CommercialSettingComponent = () => {
           >
             <Input {...register('billingNotify.pointsTenPercentRemain.zh')} placeholder="SMS_xxx" />
           </AdminFormItem>
-          <AdminFormItem label={t('admin:free_clean_template')}>
-            <Input {...register('billingNotify.freeClean.zh')} placeholder="SMS_xxx" />
-          </AdminFormItem>
+          {showFreeClean && (
+            <AdminFormItem label={t('admin:free_clean_template')}>
+              <Input {...register('billingNotify.freeClean.zh')} placeholder="SMS_xxx" />
+            </AdminFormItem>
+          )}
           <AdminFormItem
             label={t('admin:plan_expiring_soon_chinese_template')}
             tooltip={t('admin:sms_template_id_for_plan_expiry_reminder_chinese')}

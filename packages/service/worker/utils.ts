@@ -3,8 +3,7 @@ import { Worker } from 'worker_threads';
 import { randomUUID } from 'node:crypto';
 import path from 'path';
 import { getLogger, LogCategories } from '../common/logger';
-import { serviceEnv } from '../env';
-import { getSystemInstanceConfig } from '../common/system/systemInstanceConfig/controller';
+import { getSystemInstanceConfig } from '../common/system/systemInstanceConfig/runtime';
 import { UserError } from '@fastgpt/global/common/error/utils';
 
 type WorkerTaskOutcome =
@@ -29,22 +28,18 @@ export enum WorkerNameEnum {
 
 /**
  * 生成 worker 线程的启动环境。
- * 解析限制以实例配置 performance.parse 为权威来源；worker 环境只在创建线程时注入，
+ * 解析限制以实例配置 performance.parse 为唯一来源；worker 环境只在创建线程时注入，
  * 配置变化后由 WorkerPool.refreshRuntimeConfig 回收空闲线程，让新线程读取新值。
  */
 export const getSafeEnv = () => {
   const parse = getSystemInstanceConfig().performance.parse;
 
   return {
-    MAX_HTML_TRANSFORM_CHARS: String(
-      parse.maxHtmlTransformChars ?? serviceEnv.MAX_HTML_TRANSFORM_CHARS
-    ),
-    XLSX_PARSE_MAX_ROWS: String(parse.xlsxMaxRows ?? serviceEnv.XLSX_PARSE_MAX_ROWS),
-    XLSX_PARSE_MAX_COLUMNS: String(parse.xlsxMaxColumns ?? serviceEnv.XLSX_PARSE_MAX_COLUMNS),
-    XLSX_PARSE_MAX_CELLS: String(parse.xlsxMaxCells ?? serviceEnv.XLSX_PARSE_MAX_CELLS),
-    XLSX_PARSE_MAX_MERGED_CELLS: String(
-      parse.xlsxMaxMergedCells ?? serviceEnv.XLSX_PARSE_MAX_MERGED_CELLS
-    ),
+    MAX_HTML_TRANSFORM_CHARS: String(parse.maxHtmlTransformChars),
+    XLSX_PARSE_MAX_ROWS: String(parse.xlsxMaxRows),
+    XLSX_PARSE_MAX_COLUMNS: String(parse.xlsxMaxColumns),
+    XLSX_PARSE_MAX_CELLS: String(parse.xlsxMaxCells),
+    XLSX_PARSE_MAX_MERGED_CELLS: String(parse.xlsxMaxMergedCells),
     NODE_ENV: process.env.NODE_ENV,
     HTTP_PROXY: process.env.HTTP_PROXY,
     HTTPS_PROXY: process.env.HTTPS_PROXY,

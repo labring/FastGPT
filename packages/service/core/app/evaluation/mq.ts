@@ -9,16 +9,14 @@ import {
   type EvaluationJobData,
   type Processor
 } from '@fastgpt/dal/redis/bullmq';
-import { serviceEnv } from '../../../env';
-import { getSystemInstanceConfig } from '../../../common/system/systemInstanceConfig/controller';
+import { getSystemInstanceConfig } from '../../../common/system/systemInstanceConfig/runtime';
 export type { EvaluationJobData } from '@fastgpt/dal/redis/bullmq';
 
 export const addEvaluationJob = (data: EvaluationJobData) => evaluationMQService.addJob(data);
 export const checkEvaluationJobActive = (evalId: string) => evaluationMQService.isJobActive(evalId);
 export const getEvaluationWorker = (processor: Processor<EvaluationJobData>) => {
-  // 评测并发属于实例配置 performance.task；快照叶子缺省时才回落 env。
-  const concurrency =
-    getSystemInstanceConfig().performance.task.evalConcurrency ?? serviceEnv.EVAL_CONCURRENCY;
+  // 评测并发只读实例配置 performance.task。
+  const concurrency = getSystemInstanceConfig().performance.task.evalConcurrency;
 
   return evaluationMQService.getWorker(processor, { concurrency });
 };

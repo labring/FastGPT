@@ -35,49 +35,38 @@ export const GetDomainConfigResponseSchema = z.object({
 export type GetDomainConfigResponse = z.infer<typeof GetDomainConfigResponseSchema>;
 
 /* ============================================================================
- * API: 更新指定 Domain 的稀疏覆盖配置
+ * API: 更新一个或多个 Domain 的稀疏覆盖配置
  * Route: POST /api/admin/system/config/update
  * Method: POST
- * Description: 带乐观锁版本号保存指定配置域的稀疏覆盖增量，自动执行两阶段严格校验
+ * Description: 一次请求、一个事务保存一个或多个配置域；支持同时提交套餐配置，任意域冲突则整体回滚
  * Tags: ['Admin', 'InstanceConfig', 'Write']
  * ============================================================================ */
 
-export const UpdateDomainConfigBodySchema = z.object({
+export const UpdateDomainConfigItemSchema = z.object({
   domain: SystemInstanceConfigDomainKeySchema.meta({ description: '配置域标识' }),
   expectedRevision: z.number().int().nonnegative().meta({
     description: '乐观锁期望版本号，必须与当前数据库中版本号一致方可写入'
   }),
   overrides: z.record(z.string(), z.unknown()).meta({
-    description: '需要覆盖修改的稀疏配置对象'
+    description: '需要覆盖修改的稀疏配置对象；只提交当前页面编辑的字段'
+  })
+});
+export type UpdateDomainConfigItem = z.infer<typeof UpdateDomainConfigItemSchema>;
+
+export const UpdateDomainConfigBodySchema = z.object({
+  items: z.array(UpdateDomainConfigItemSchema).min(1).max(20).meta({
+    description: '待保存的配置域列表，任意一项冲突则整体回滚'
+  }),
+  subPlans: z.record(z.string(), z.unknown()).optional().meta({
+    description: '与配置域同事务保存的套餐配置'
   })
 });
 export type UpdateDomainConfigBody = z.infer<typeof UpdateDomainConfigBodySchema>;
 
-export const UpdateDomainConfigResponseSchema = GetDomainConfigResponseSchema;
-export type UpdateDomainConfigResponse = GetDomainConfigResponse;
-
-/* ============================================================================
- * API: 批量更新多个 Domain 的配置（原子事务提交）
- * Route: POST /api/admin/system/config/batchUpdate
- * ============================================================================ */
-
-export const BatchUpdateDomainConfigItemSchema = z.object({
-  domain: SystemInstanceConfigDomainKeySchema,
-  expectedRevision: z.number().int().nonnegative(),
-  overrides: z.record(z.string(), z.unknown())
-});
-export type BatchUpdateDomainConfigItem = z.infer<typeof BatchUpdateDomainConfigItemSchema>;
-
-export const BatchUpdateDomainConfigBodySchema = z.object({
-  items: z.array(BatchUpdateDomainConfigItemSchema).min(1).max(20),
-  subPlans: z.record(z.string(), z.unknown()).optional()
-});
-export type BatchUpdateDomainConfigBody = z.infer<typeof BatchUpdateDomainConfigBodySchema>;
-
-export const BatchUpdateDomainConfigResponseSchema = z.object({
+export const UpdateDomainConfigResponseSchema = z.object({
   results: z.array(GetDomainConfigResponseSchema)
 });
-export type BatchUpdateDomainConfigResponse = z.infer<typeof BatchUpdateDomainConfigResponseSchema>;
+export type UpdateDomainConfigResponse = z.infer<typeof UpdateDomainConfigResponseSchema>;
 
 export const AdminInstanceConfigPath: OpenAPIPath = {
   '/api/admin/system/config/get': {
@@ -110,8 +99,9 @@ export const AdminInstanceConfigPath: OpenAPIPath = {
   },
   '/api/admin/system/config/update': {
     post: {
-      summary: '更新指定 Domain 的实例配置',
-      description: '带乐观锁版本号保存指定配置域的稀疏覆盖增量，自动执行两阶段严格校验',
+      summary: '更新一个或多个 Domain 的实例配置',
+      description:
+        '一次请求、一个事务保存一个或多个配置域；支持同时提交套餐配置，任意域冲突则整体回滚',
       tags: [DevApiTagsMap.adminSettings],
       requestBody: {
         content: {
@@ -126,30 +116,6 @@ export const AdminInstanceConfigPath: OpenAPIPath = {
           content: {
             'application/json': {
               schema: UpdateDomainConfigResponseSchema
-            }
-          }
-        }
-      }
-    }
-  },
-  '/api/admin/system/config/batchUpdate': {
-    post: {
-      summary: '跨域批量原子保存实例配置',
-      description: '多配置域批量提交并执行统一校验与原子写入，避免部分域写入失败破坏一致性',
-      tags: [DevApiTagsMap.adminSettings],
-      requestBody: {
-        content: {
-          'application/json': {
-            schema: BatchUpdateDomainConfigBodySchema
-          }
-        }
-      },
-      responses: {
-        200: {
-          description: '批量更新成功',
-          content: {
-            'application/json': {
-              schema: BatchUpdateDomainConfigResponseSchema
             }
           }
         }

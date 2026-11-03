@@ -1,15 +1,13 @@
-import { serviceEnv } from '../../env';
-
-export const aiProxyApiEndpoint = serviceEnv.AIPROXY_API_ENDPOINT;
-export const aiProxyApiToken = serviceEnv.AIPROXY_API_TOKEN;
+import { getSystemInstanceConfig } from '../../common/system/systemInstanceConfig/runtime';
 
 export const getAIProxyAdminConfig = () => {
-  if (!aiProxyApiEndpoint || !aiProxyApiToken) {
+  const { endpoint, token } = getSystemInstanceConfig().subservice.aiProxy;
+  if (!endpoint || !token) {
     throw new Error('AI Proxy endpoint or token is not set');
   }
 
   return {
-    baseUrl: aiProxyApiEndpoint,
-    token: aiProxyApiToken
+    baseUrl: endpoint,
+    token
   };
 };

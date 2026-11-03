@@ -3,11 +3,11 @@ import type { FastGPTFeConfigsType } from '@fastgpt/global/common/system/types/i
 import type { FastGPTConfigFileType } from '@fastgpt/global/common/system/types/index';
 import { getFastGPTConfigFromDB } from '@fastgpt/service/common/system/config/controller';
 import { initFastGPTConfig } from '@fastgpt/service/common/system/tools';
+import { reloadSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/controller';
 import {
-  reloadSystemInstanceConfig,
   computeSystemInitBufferId,
   getInstanceConfigVersionTag
-} from '@fastgpt/service/common/system/systemInstanceConfig/controller';
+} from '@fastgpt/service/common/system/systemInstanceConfig/runtime';
 import json5 from 'json5';
 import { defaultTemplateTypes } from '@fastgpt/web/core/workflow/constants';
 import { MongoPluginToolTag } from '@fastgpt/service/core/plugin/tool/tagSchema';
@@ -112,11 +112,11 @@ const defaultFeConfigs: FastGPTFeConfigsType = {
   limit: {
     exportDatasetLimitMinutes: 0,
     websiteSyncLimitMinuted: 0,
-    uploadFileMaxSize: serviceEnv.UPLOAD_FILE_MAX_SIZE,
-    uploadFileMaxAmount: serviceEnv.UPLOAD_FILE_MAX_AMOUNT,
+    uploadFileMaxSize: 1000,
+    uploadFileMaxAmount: 1000,
     skillSandboxMaxBytes: getAgentSandboxSkillMaxBytes(),
-    workflowParallelRunMaxConcurrency: serviceEnv.WORKFLOW_PARALLEL_MAX_CONCURRENCY,
-    maxFolderDepth: serviceEnv.MAX_FOLDER_DEPTH
+    workflowParallelRunMaxConcurrency: 10,
+    maxFolderDepth: 4
   },
   scripts: [],
   favicon: '/favicon.ico',
@@ -224,15 +224,17 @@ async function doInitSystemConfig() {
       show_publish_offiaccount: instanceConfig.feature.showPublishOffiaccount,
       show_publish_wechat: instanceConfig.feature.showPublishWechat,
       show_compliance_copywriting: instanceConfig.feature.showComplianceCopywriting,
-      show_workorder: Boolean(serviceEnv.PRO_URL),
-      show_enterprise_auth: isPlus && Boolean(serviceEnv.PRO_URL),
+      // 工单与企业认证入口由 Pro 根据实际服务配置决定，不按 PRO_URL 盲目展示
+      show_workorder: Boolean(fastgptConfig.feConfigs?.show_workorder),
+      show_enterprise_auth: Boolean(fastgptConfig.feConfigs?.show_enterprise_auth),
+      enableSaasAdminConfig: serviceEnv.ENABLE_SAAS_ADMIN_CONFIG,
 
       show_coupon: instanceConfig.commercial.showCoupon,
       show_discount_coupon: instanceConfig.commercial.showDiscountCoupon,
       show_pay: hasPayChannel(payConfig),
       payConfig,
       payFormUrl: instanceConfig.commercial.payFormUrl,
-      agentSandboxFree: instanceConfig.commercial.agentSandboxFreeTip,
+      agentSandboxFree: serviceEnv.AGENT_SANDBOX_SHOW_FREE_TIP,
 
       uploadFileMaxSize: instanceConfig.resource.uploadFileMaxSize,
       uploadFileMaxAmount: instanceConfig.resource.uploadFileMaxAmount,
@@ -265,9 +267,7 @@ async function doInitSystemConfig() {
       show_batch_eval: licenseData?.functions?.eval,
       pluginRemoteDebug: instanceConfig.subservice.plugin.remoteDebug || pluginRemoteDebug,
       disableMarketplace: appEnv.DISABLE_MARKETPLACE,
-      // 上游新增的强制展示免费标签开关：显式开启时盖过实例配置的免费期判定
-      show_agent_sandbox_free_tip:
-        appEnv.AGENT_SANDBOX_SHOW_FREE_TIP || instanceConfig.commercial.agentSandboxFreeTip,
+      show_agent_sandbox_free_tip: serviceEnv.AGENT_SANDBOX_SHOW_FREE_TIP,
       agentSandboxProxyUrl: instanceConfig.subservice.agentSandbox.proxy.wsUrl
     },
     // 权威数据源：实例配置派生值盖过旧库 systemEnv，旧库仅保留 schema 外扩展键

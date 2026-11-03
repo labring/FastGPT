@@ -2,16 +2,25 @@ import OpenAI from '@fastgpt/global/core/ai';
 import { type OpenaiAccountType } from '@fastgpt/global/support/user/team/type';
 import type { AIModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import { isSystemModel } from '@fastgpt/global/core/ai/model/utils';
-import { serviceEnv } from '../../env';
+import { getSystemInstanceConfig } from '../../common/system/systemInstanceConfig/runtime';
 import { getMemberGroupId } from '../../thirdProvider/aiproxy/group';
 import { getLegacyOpenAIRequestOptions, getLegacyAxiosRequestConfig } from './legacy/requestUrl';
 
-const aiProxyBaseUrl = serviceEnv.AIPROXY_API_ENDPOINT
-  ? `${serviceEnv.AIPROXY_API_ENDPOINT}/v1`
-  : undefined;
-export const openaiBaseUrl = aiProxyBaseUrl || 'https://api.openai.com/v1';
-export const openaiBaseKey = serviceEnv.AIPROXY_API_TOKEN || '';
+export const getAiProxyBaseUrl = () => {
+  const endpoint = getSystemInstanceConfig().subservice.aiProxy.endpoint;
+  return endpoint ? `${endpoint}/v1` : undefined;
+};
+
+export const getOpenaiBaseUrl = () => {
+  return getAiProxyBaseUrl() || 'https://api.openai.com/v1';
+};
+export const getOpenaiBaseKey = () => getSystemInstanceConfig().subservice.aiProxy.token || '';
 export const defaultUserOpenAIBaseUrl = 'https://api.openai.com/v1';
+
+/** @deprecated 使用 getOpenaiBaseUrl() 动态读取实例配置 */
+export const openaiBaseUrl = 'https://api.openai.com/v1';
+/** @deprecated 使用 getOpenaiBaseKey() 动态读取实例配置 */
+export const openaiBaseKey = '';
 
 export type AIApiRequestMeta = {
   usedUserOpenAIKey: boolean;
@@ -36,8 +45,8 @@ export const getAIApi = (props?: {
   const { userKey, timeout, model } = props || {};
   const userOpenAIAccount = getUserOpenAIAccount(userKey);
 
-  const baseUrl = userOpenAIAccount?.baseUrl || openaiBaseUrl;
-  const apiKey = userOpenAIAccount?.key || openaiBaseKey;
+  const baseUrl = userOpenAIAccount?.baseUrl || getOpenaiBaseUrl();
+  const apiKey = userOpenAIAccount?.key || getOpenaiBaseKey();
 
   const defaultHeaders = model ? getAiproxyScopeHeaders(model, baseUrl) : undefined;
 
@@ -61,8 +70,8 @@ export const getAxiosConfig = (props?: { userKey?: OpenaiAccountType }) => {
   const { userKey } = props || {};
   const userOpenAIAccount = getUserOpenAIAccount(userKey);
 
-  const baseUrl = userOpenAIAccount?.baseUrl || openaiBaseUrl;
-  const apiKey = userOpenAIAccount?.key || openaiBaseKey;
+  const baseUrl = userOpenAIAccount?.baseUrl || getOpenaiBaseUrl();
+  const apiKey = userOpenAIAccount?.key || getOpenaiBaseKey();
 
   return {
     baseUrl,
@@ -83,6 +92,7 @@ export const getAiproxyScopeHeaders = (
   modelData: AiproxyScopeModelInput,
   baseUrl: string | undefined
 ): Record<string, string> => {
+  const aiProxyBaseUrl = getAiProxyBaseUrl();
   if (!baseUrl || baseUrl !== aiProxyBaseUrl || !modelData) return {};
 
   // System models are served by system channels only (global scope).

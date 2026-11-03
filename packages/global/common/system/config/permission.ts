@@ -30,7 +30,7 @@ const allowedKeysByEdition: Record<SystemInstanceConfigEdition, Set<string>> = {
 };
 
 /**
- * 判断指定完整配置 Key（如 "commercial.showCoupon"）在给定版本下是否允许可见和配置。
+ * 判断指定完整配置 Key（如 "commercial.showCoupon"）在给定版本下是否允许访问（API 边界鉴权）。
  */
 export const isConfigFieldAllowed = (
   key: string,
@@ -38,6 +38,54 @@ export const isConfigFieldAllowed = (
 ): boolean => {
   const allowedSet = allowedKeysByEdition[edition] ?? allowedKeysByEdition.community;
   return allowedSet.has(key);
+};
+
+/**
+ * 判断指定完整配置 Key 在管理端表单和 UI 中是否可见。
+ * 结合版本权限与 ENABLE_SAAS_ADMIN_CONFIG 显示控制开关。
+ * 注意：该方法只控制 UI 展示，不控制 API 读写边界。
+ */
+export const isConfigFieldVisible = (
+  key: string,
+  options: {
+    edition: SystemInstanceConfigEdition;
+    enableSaasAdminConfig?: boolean;
+  }
+): boolean => {
+  const item = systemInstanceConfigRegistry.find((r) => r.key === key);
+  if (!item) return false;
+
+  const editionAllowed =
+    options.edition === 'all' || item.edition === 'all' || item.edition === options.edition;
+  if (!editionAllowed) return false;
+
+  if (item.isSaasOnly && !options.enableSaasAdminConfig) {
+    return false;
+  }
+
+  return true;
+};
+
+/**
+ * 获取指定 Domain 下当前版本和显示条件所有可见的相对字段路径集合（用于前端表单与 TOC 展示）。
+ */
+export const getDomainVisibleKeys = (
+  domain: SystemInstanceConfigDomainKey,
+  options: {
+    edition: SystemInstanceConfigEdition;
+    enableSaasAdminConfig?: boolean;
+  }
+): Set<string> => {
+  const prefix = `${domain}.`;
+  const result = new Set<string>();
+
+  for (const item of systemInstanceConfigRegistry) {
+    if (item.key.startsWith(prefix) && isConfigFieldVisible(item.key, options)) {
+      result.add(item.key.slice(prefix.length));
+    }
+  }
+
+  return result;
 };
 
 /**

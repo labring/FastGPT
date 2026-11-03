@@ -14,9 +14,8 @@ import { type Method } from 'axios';
 import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { createProxyAxios } from '../../../../common/api/axios';
 import { getLogger, LogCategories } from '../../../../common/logger';
-import { getSystemInstanceConfig } from '../../../../common/system/systemInstanceConfig/controller';
+import { getSystemInstanceConfig } from '../../../../common/system/systemInstanceConfig/runtime';
 import { logInstanceConfigRead } from '../../../../common/system/migrationCoverageLog';
-import { serviceEnv } from '../../../../env';
 import type { AsyncCache } from '../../../../common/cache/type';
 import { hashStr } from '@fastgpt/global/common/string/tools';
 
@@ -56,12 +55,10 @@ type YuqueTocListResponse = {
 const pendingSnapshots = new WeakMap<AsyncCache, Map<string, Promise<unknown>>>();
 // 实例配置优先；|| env 兜底仅在显式置空/未初始化/测试种子场景生效（见 common/dingtalk/endpoint.ts 同型注释）
 const getYuqueBaseUrl = () => {
-  const configured = getSystemInstanceConfig().providers.dataSource.yuqueDatasetBaseUrl;
-  const value = configured || serviceEnv.YUQUE_DATASET_BASE_URL;
+  const value = getSystemInstanceConfig().providers.dataSource.yuqueDatasetBaseUrl;
   logInstanceConfigRead({
     callsite: 'runtime.dataset.apiDataset.yuque.getYuqueBaseUrl',
-    source: configured ? 'instance-config' : 'env-fallback',
-    fields: [{ path: 'providers.dataSource.yuqueDatasetBaseUrl', value: configured || value }]
+    fields: [{ path: 'providers.dataSource.yuqueDatasetBaseUrl', value }]
   });
   return value;
 };

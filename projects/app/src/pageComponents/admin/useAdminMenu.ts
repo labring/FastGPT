@@ -2,6 +2,11 @@ import { useMemo } from 'react';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { isLicenseActive } from '@fastgpt/global/common/system/license/utils';
+import {
+  adminConfigPageFieldsMap,
+  countPageVisibleFields
+} from '@fastgpt/global/common/system/config/pageFields';
+import { getSystemEdition } from '@fastgpt/global/common/system/config/permission';
 
 /**
  * 二级子菜单项定义。
@@ -43,8 +48,56 @@ export type GetAdminMenuListParams = {
    * 商业版部署下 License 未激活/已过期时菜单降级为白名单入口，与 Layout 路由拦截保持一致。
    */
   licenseActive?: boolean;
+  /** 是否开启 SaaS 运营专用配置项展示（默认 false） */
+  enableSaasAdminConfig?: boolean;
   /** 可选的国际化翻译函数 */
   t?: MenuTranslateFn;
+};
+
+/**
+ * 判断指定后台路由在当前环境与配置下是否可见。
+ * 遵循「逐字段版本归属与入口自动隐藏」规范：
+ * - 配置/子服务页面按所管理字段的实际可见数判断，可见字段为 0 时自动隐藏；
+ * - 业务页面沿用各自业务规则（商业版、License 激活状态、支付能力）。
+ */
+export const isRouteVisible = (
+  route: string,
+  options: {
+    isProService: boolean;
+    hasPayCapability?: boolean;
+    licenseActive?: boolean;
+    enableSaasAdminConfig?: boolean;
+  }
+): boolean => {
+  const licenseActive = options.licenseActive ?? true;
+  const edition = options.isProService && licenseActive ? 'pro' : 'community';
+
+  // 1. 配置或子服务页面：按所管理字段在当前版本和显示条件下的可见数量判定
+  if (route in adminConfigPageFieldsMap) {
+    return (
+      countPageVisibleFields(route, {
+        edition,
+        enableSaasAdminConfig: options.enableSaasAdminConfig
+      }) > 0
+    );
+  }
+
+  // 2. 非配置页面沿用各自业务规则：
+  if (route === '/admin/license' || route === '/admin/migration') {
+    return true;
+  }
+  if (route === '/admin/resources/model' || route === '/admin/resources/tool') {
+    return true;
+  }
+  if (route === '/admin/resources/app_template') {
+    return options.isProService && licenseActive;
+  }
+  if (route === '/admin/plans' || route === '/admin/pays' || route === '/admin/invoice') {
+    return options.isProService && licenseActive && (options.hasPayCapability ?? true);
+  }
+
+  // 商业版业务页面（数据面板、通知管理、用户管理、团队管理、应用管理、知识库管理、审计日志）
+  return options.isProService && licenseActive;
 };
 
 /**
@@ -102,54 +155,23 @@ const createLabelGetter = (t?: MenuTranslateFn) => (key: AdminMenuKey, fallback:
   t ? t(ADMIN_MENU_I18N_KEYS[key]) : fallback;
 
 /**
- * 开源社区版菜单树：严格仅展示 系统概览、系统资源（系统模型/系统工具）、版本升级。
- * 遵循新版 UI 规范：仅一级菜单带有 icon，子级菜单不带 icon。
- * 版本信息已并入系统概览页，不再单独占用菜单项。
+ * 根据环境配置、版本归属以及所管理字段的实际可见数，动态解析并返回 /admin 菜单树。
+ * 遵循新版 UI 规范：
+ * - 仅一级菜单带有 icon，子级菜单不带 icon；
+ * - 配置/子服务页面按所声明字段的实际可见数量判定，可见字段为 0 时自动隐藏；
+ * - 子项全隐藏的父菜单同步隐藏，空父级不保留空壳；
+ * - 不再维护死名单，由字段元数据自动推导。
  */
-export const getCommunityAdminMenuList = (options?: { t?: MenuTranslateFn }): AdminMenuItem[] => {
-  const lbl = createLabelGetter(options?.t);
-  return [
-    {
-      icon: 'common/overviewLight',
-      label: lbl('menu_overview', '系统概览'),
-      value: '/admin/license'
-    },
-    {
-      icon: 'common/systemResourceLight',
-      label: lbl('menu_system_resources', '系统资源'),
-      value: '/admin/resources/model',
-      children: [
-        {
-          label: lbl('menu_models', '系统模型'),
-          value: '/admin/resources/model'
-        },
-        {
-          label: lbl('menu_tools', '系统工具'),
-          value: '/admin/resources/tool'
-        }
-      ]
-    },
-    {
-      icon: 'common/rocket',
-      label: lbl('menu_migration', '版本升级'),
-      value: '/admin/migration'
-    }
-  ];
-};
+export const getAdminMenuList = (params: GetAdminMenuListParams): AdminMenuItem[] => {
+  const lbl = createLabelGetter(params.t);
+  const options = {
+    isProService: params.isProService,
+    hasPayCapability: params.hasPayCapability ?? true,
+    licenseActive: params.licenseActive ?? true,
+    enableSaasAdminConfig: params.enableSaasAdminConfig ?? false
+  };
 
-/**
- * 商业版完整菜单树（当存在 PRO_URL 时展示）。
- * 遵循新版 UI 规范：仅一级菜单带有 icon，子级菜单不带 icon。
- */
-export const getProAdminMenuList = ({
-  hasPayCapability = true,
-  t
-}: {
-  hasPayCapability?: boolean;
-  t?: MenuTranslateFn;
-} = {}): AdminMenuItem[] => {
-  const lbl = createLabelGetter(t);
-  return [
+  const rawMenuTree: AdminMenuItem[] = [
     {
       icon: 'common/dashboardLight',
       label: lbl('menu_dashboard', '数据面板'),
@@ -188,7 +210,7 @@ export const getProAdminMenuList = ({
         }
       ]
     },
-    ...(hasPayCapability
+    ...(options.hasPayCapability
       ? [
           {
             icon: 'common/commercialLight',
@@ -281,7 +303,7 @@ export const getProAdminMenuList = ({
     {
       icon: 'common/systemSettingLight',
       label: lbl('menu_system_settings', '系统配置'),
-      value: '/admin/settings/site',
+      value: '/admin/settings/core',
       children: [
         {
           label: lbl('menu_setting_core', '核心配置'),
@@ -324,29 +346,35 @@ export const getProAdminMenuList = ({
       value: '/admin/audit'
     }
   ];
+
+  return rawMenuTree
+    .map((item) => {
+      if (item.children && item.children.length > 0) {
+        const visibleChildren = item.children.filter((child) =>
+          isRouteVisible(child.value, options)
+        );
+        if (visibleChildren.length === 0) return null;
+        return {
+          ...item,
+          value: visibleChildren[0].value,
+          children: visibleChildren
+        };
+      }
+      return isRouteVisible(item.value, options) ? item : null;
+    })
+    .filter((item): item is AdminMenuItem => item !== null);
 };
 
-/**
- * 纯函数：根据环境配置（尤其是是否部署商业版 PRO_URL）解析并返回 /admin 菜单树。
- */
-export const getAdminMenuList = ({
-  isProService,
+export const getCommunityAdminMenuList = (options?: { t?: MenuTranslateFn }): AdminMenuItem[] =>
+  getAdminMenuList({ isProService: false, t: options?.t });
+
+export const getProAdminMenuList = ({
   hasPayCapability = true,
-  licenseActive = true,
   t
-}: GetAdminMenuListParams): AdminMenuItem[] => {
-  if (!isProService) {
-    return getCommunityAdminMenuList({ t });
-  }
-
-  // 未激活/已过期：Layout 会把白名单外的 /admin/* 弹回 /admin/license，
-  // 菜单同步降级为社区版白名单入口，避免「可见但点击即回跳」的不一致。
-  if (!licenseActive) {
-    return getCommunityAdminMenuList({ t });
-  }
-
-  return getProAdminMenuList({ hasPayCapability, t });
-};
+}: {
+  hasPayCapability?: boolean;
+  t?: MenuTranslateFn;
+} = {}): AdminMenuItem[] => getAdminMenuList({ isProService: true, hasPayCapability, t });
 
 /**
  * 纯函数：解析访问 /admin 时的默认落地页。
@@ -381,15 +409,17 @@ export const useAdminMenu = () => {
 
   // 商业版且授权有效时，再按 License functions 决定支付能力（授权不可用时 functions 一律视为关闭）
   const hasPayCapability = isPro && licenseActive && (licenseData?.functions?.pay ?? true);
+  const enableSaasAdminConfig = !!feConfigs?.enableSaasAdminConfig;
 
   const menuList = useMemo(() => {
     return getAdminMenuList({
       isProService: isPro,
       hasPayCapability,
       licenseActive,
+      enableSaasAdminConfig,
       t
     });
-  }, [isPro, hasPayCapability, licenseActive, t]);
+  }, [isPro, hasPayCapability, licenseActive, enableSaasAdminConfig, t]);
 
   return {
     isPro,

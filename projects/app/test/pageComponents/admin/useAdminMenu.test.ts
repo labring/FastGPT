@@ -2,45 +2,52 @@ import { describe, expect, it } from 'vitest';
 import {
   getAdminDefaultRoute,
   getAdminMenuList,
-  communityAdminRoutes
+  isRouteVisible
 } from '@/pageComponents/admin/useAdminMenu';
+import { isConfigFieldVisible } from '@fastgpt/global/common/system/config/permission';
 
 describe('getAdminMenuList', () => {
-  it('returns only community allowed menu items when isProService is false', () => {
+  it('dynamically hides menus with zero visible fields in community edition', () => {
     const menus = getAdminMenuList({ isProService: false });
 
     const topLabels = menus.map((item) => item.label);
 
-    // 开源版仅可见：系统概览、系统资源、版本升级
-    expect(topLabels).toEqual(['系统概览', '系统资源', '版本升级']);
+    // 开源社区版：系统概览、系统资源、系统配置（含开源字段）、版本升级可见；
+    // 商业化、子服务等全为商业字段的分组自动隐藏，不再单独维护固定白名单。
+    expect(topLabels).toEqual(['系统概览', '系统资源', '系统配置', '版本升级']);
 
     // 系统概览为单级菜单，无子项
     const overviewMenu = menus.find((item) => item.label === '系统概览');
     expect(overviewMenu?.value).toBe('/admin/license');
     expect(overviewMenu?.children).toBeUndefined();
 
-    // 系统资源子菜单：仅系统模型、系统工具（应用模板不可见）
+    // 系统资源子菜单：仅系统模型、系统工具（应用模板为商业版特性不可见）
     const resourceMenu = menus.find((item) => item.label === '系统资源');
     expect(resourceMenu?.children?.map((c) => c.value)).toEqual([
       '/admin/resources/model',
       '/admin/resources/tool'
     ]);
 
+    // 系统配置：包含 7 个含开源字段的配置页（支付配置 pay 页面全为商业字段，自动隐藏）
+    const systemConfigMenu = menus.find((item) => item.label === '系统配置');
+    expect(systemConfigMenu?.children?.map((c) => c.value)).toEqual([
+      '/admin/settings/core',
+      '/admin/settings/site',
+      '/admin/settings/feature',
+      '/admin/settings/auth',
+      '/admin/settings/security',
+      '/admin/settings/limits',
+      '/admin/settings/providers'
+    ]);
+
     // 版本升级
     const migrationMenu = menus.find((item) => item.label === '版本升级');
     expect(migrationMenu?.value).toBe('/admin/migration');
 
-    // 收集开源版渲染出的所有叶子路由，确保严格等于白名单
-    const renderedRoutes = menus.flatMap((item) =>
-      item.children && item.children.length > 0 ? item.children.map((c) => c.value) : [item.value]
-    );
-    expect(renderedRoutes).toEqual(communityAdminRoutes);
-
-    // 确认商业化、子服务、数据面板、系统配置等均不可见
+    // 确认商业化、子服务（全为 pro 字段）、数据面板等均自动隐藏
     expect(topLabels).not.toContain('商业化');
     expect(topLabels).not.toContain('子服务');
     expect(topLabels).not.toContain('数据面板');
-    expect(topLabels).not.toContain('系统配置');
     expect(topLabels).not.toContain('运营管理');
     expect(topLabels).not.toContain('用户与团队');
     expect(topLabels).not.toContain('用户资源');
@@ -99,9 +106,8 @@ describe('getAdminMenuList', () => {
     expect(menuLabels).toContain('子服务');
   });
 
-  it('degrades to whitelist menu when pro license is inactive or expired', () => {
-    // License 未激活/已过期：菜单必须与 Layout 路由拦截保持一致，只留白名单入口，
-    // 避免「商业化等菜单可见但点击被弹回 /admin/license」
+  it('hides commercial business menus when pro license is inactive or expired', () => {
+    // License 未激活/已过期：商业版业务菜单隐藏，仅保留基础管理和系统配置入口
     const menus = getAdminMenuList({
       isProService: true,
       hasPayCapability: true,
@@ -109,17 +115,52 @@ describe('getAdminMenuList', () => {
     });
 
     const menuLabels = menus.map((item) => item.label);
-    expect(menuLabels).toEqual(['系统概览', '系统资源', '版本升级']);
+    expect(menuLabels).toContain('系统概览');
+    expect(menuLabels).toContain('系统资源');
+    expect(menuLabels).toContain('系统配置');
+    expect(menuLabels).toContain('版本升级');
     expect(menuLabels).not.toContain('商业化');
     expect(menuLabels).not.toContain('子服务');
     expect(menuLabels).not.toContain('数据面板');
-    expect(menuLabels).not.toContain('系统配置');
+    expect(menuLabels).not.toContain('运营管理');
+  });
 
-    // 降级后的叶子路由与社区版白名单严格一致
-    const renderedRoutes = menus.flatMap((item) =>
-      item.children && item.children.length > 0 ? item.children.map((c) => c.value) : [item.value]
-    );
-    expect(renderedRoutes).toEqual(communityAdminRoutes);
+  it('controls SaaS operational fields visibility via enableSaasAdminConfig', () => {
+    // 优惠券、对公表单在私有化（enableSaasAdminConfig=false）下不可见
+    expect(
+      isConfigFieldVisible('commercial.showCoupon', {
+        edition: 'pro',
+        enableSaasAdminConfig: false
+      })
+    ).toBe(false);
+    expect(
+      isConfigFieldVisible('commercial.payFormUrl', {
+        edition: 'pro',
+        enableSaasAdminConfig: false
+      })
+    ).toBe(false);
+
+    // 开启 SaaS 后可见
+    expect(
+      isConfigFieldVisible('commercial.showCoupon', {
+        edition: 'pro',
+        enableSaasAdminConfig: true
+      })
+    ).toBe(true);
+    expect(
+      isConfigFieldVisible('commercial.payFormUrl', {
+        edition: 'pro',
+        enableSaasAdminConfig: true
+      })
+    ).toBe(true);
+
+    // 支付凭据在私有化和 SaaS 均可见（非 SaaS 独占）
+    expect(
+      isConfigFieldVisible('commercial.payment.wx.appId', {
+        edition: 'pro',
+        enableSaasAdminConfig: false
+      })
+    ).toBe(true);
   });
 
   it('keeps the full pro menu when licenseActive defaults to true', () => {

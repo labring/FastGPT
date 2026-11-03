@@ -27,6 +27,8 @@ const originalDisableCache = serviceEnv.DISABLE_CACHE;
 
 beforeEach(() => {
   delete (global as any).systemCache;
+  (global as any).systemInstanceConfig = LEAF_ABSENT_SNAPSHOT();
+  (global as any).systemInstanceConfig.feature.disableCache = false;
   vi.clearAllMocks();
   mockSystemVersionCache.getOrInitialize.mockResolvedValue('version-1');
   mockSystemVersionCache.refresh.mockResolvedValue(undefined);
@@ -136,7 +138,7 @@ describe('getCachedData', () => {
   });
 
   it('refreshes when DISABLE_CACHE is true', async () => {
-    serviceEnv.DISABLE_CACHE = true;
+    (global as any).systemInstanceConfig.feature.disableCache = true;
     mockRefreshFunc.mockResolvedValue({ permission: 'first' });
     initCache();
     global.systemCache[SystemCacheKeyEnum.modelPermission].refreshFunc = mockRefreshFunc;

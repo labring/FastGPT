@@ -57,11 +57,10 @@ export const initFastGPTConfig = (config?: FastGPTConfigFileType) => {
     serviceEnv.AGENT_SANDBOX_SHOW_FREE_TIP || !!config.feConfigs.agentSandboxFree;
   config.feConfigs.limit = {
     ...config.feConfigs.limit,
-    uploadFileMaxSize: config.feConfigs.limit?.uploadFileMaxSize ?? serviceEnv.UPLOAD_FILE_MAX_SIZE,
-    uploadFileMaxAmount:
-      config.feConfigs.limit?.uploadFileMaxAmount ?? serviceEnv.UPLOAD_FILE_MAX_AMOUNT,
+    uploadFileMaxSize: config.feConfigs.limit?.uploadFileMaxSize ?? 1000,
+    uploadFileMaxAmount: config.feConfigs.limit?.uploadFileMaxAmount ?? 1000,
     skillSandboxMaxBytes: getAgentSandboxSkillMaxBytes(),
-    maxFolderDepth: config.feConfigs.limit?.maxFolderDepth ?? serviceEnv.MAX_FOLDER_DEPTH
+    maxFolderDepth: config.feConfigs.limit?.maxFolderDepth ?? 4
   };
 
   const parseResult = FastGPTConfigFileSchema.safeParse(config);

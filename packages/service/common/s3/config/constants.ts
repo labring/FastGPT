@@ -6,7 +6,7 @@ import type {
   IStorageOptions
 } from '@fastgpt-sdk/storage';
 import { serviceEnv } from '../../../env';
-import { getSystemInstanceConfig } from '../../system/systemInstanceConfig/controller';
+import { getSystemInstanceConfig } from '../../system/systemInstanceConfig/runtime';
 import { logInstanceConfigRead } from '../../system/migrationCoverageLog';
 import { StorageDownloadUrlModeSchema } from '../contracts/type';
 
@@ -20,24 +20,20 @@ export const getSystemMaxFileSize = () => global.feConfigs.limit?.uploadFileMaxS
 
 // ?? env 兜底仅覆盖叶子缺省的部分快照（测试种子）场景；未初始化时快照同样填满 schema 默认值
 export const getStorageFileUrlExpiredDays = () => {
-  const configured = getSystemInstanceConfig().storage.fileUrlExpiredDays;
-  const value = configured ?? serviceEnv.FILE_URL_EXPIRED_DAYS;
+  const value = getSystemInstanceConfig().storage.fileUrlExpiredDays;
   logInstanceConfigRead({
     callsite: 'runtime.common.s3.constants.getStorageFileUrlExpiredDays',
-    source: configured === undefined ? 'env-fallback' : 'instance-config',
-    fields: [{ path: 'storage.fileUrlExpiredDays', value: configured ?? value }]
+    fields: [{ path: 'storage.fileUrlExpiredDays', value }]
   });
   return value;
 };
 
 /** short-redirect 302 预签名地址临时有效期（秒）：请求期读快照，Admin 保存即生效。 */
 export const getStorageRedirectTtlSeconds = () => {
-  const configured = getSystemInstanceConfig().storage.redirectTtlSeconds;
-  const value = configured ?? serviceEnv.STORAGE_DOWNLOAD_REDIRECT_TTL_SECONDS;
+  const value = getSystemInstanceConfig().storage.redirectTtlSeconds;
   logInstanceConfigRead({
     callsite: 'runtime.common.s3.constants.getStorageRedirectTtlSeconds',
-    source: configured === undefined ? 'env-fallback' : 'instance-config',
-    fields: [{ path: 'storage.redirectTtlSeconds', value: configured ?? value }]
+    fields: [{ path: 'storage.redirectTtlSeconds', value }]
   });
   return value;
 };

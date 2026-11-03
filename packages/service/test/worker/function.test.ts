@@ -51,6 +51,8 @@ const { htmlToMarkdown } = await import('@fastgpt/service/common/string/utils');
 
 describe('worker/function', () => {
   beforeEach(() => {
+    (global as any).systemInstanceConfig = LEAF_ABSENT_SNAPSHOT();
+    (global as any).systemInstanceConfig.performance.parse.fileTimeoutSeconds = 300;
     mockRun.mockReset();
     mockGetWorkerController.mockReset();
     mockGetWorkerController.mockImplementation(() => ({ run: mockRun }));
@@ -251,6 +253,7 @@ describe('worker/function', () => {
 
     it('PARSE_FILE_TIMEOUT_SECONDS 自定义值生效（秒 -> 毫秒）', async () => {
       mockEnv.PARSE_FILE_TIMEOUT_SECONDS = 120;
+      (global as any).systemInstanceConfig.performance.parse.fileTimeoutSeconds = 120;
       mockRun.mockResolvedValueOnce({ rawText: '' });
 
       await readRawContentFromBuffer({

@@ -18,7 +18,7 @@ import { logInstanceConfigRead } from '../../system/migrationCoverageLog';
 import { getImageBuffer } from '../image/utils';
 import { uploadParsedPdfImage } from './image';
 import { getBackendFileOperationTimeoutMs } from '../parseTimeout';
-import { getSystemInstanceConfig } from '../../system/systemInstanceConfig/controller';
+import { getSystemInstanceConfig } from '../../system/systemInstanceConfig/runtime';
 import { serviceEnv } from '../../../env';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
@@ -410,7 +410,7 @@ const readFileContent = async ({
     // 管理员切换 provider 后仍会被旧凭据抢占。这里改为按选中的 provider 分派；
     // 叶子缺省的测试快照回落到旧环境变量，兼容迁移完成前的读取。
     const documentParse = getSystemInstanceConfig().providers.documentParse;
-    const provider = documentParse.provider || serviceEnv.DOCUMENT_PARSE_PROVIDER;
+    const provider = documentParse.provider;
 
     logInstanceConfigRead({
       callsite: 'runtime.common.file.read.pdfParseFn',

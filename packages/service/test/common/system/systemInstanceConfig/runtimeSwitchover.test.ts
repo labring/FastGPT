@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import {
   updateDomainConfig,
-  getSystemInstanceConfig,
   reloadSystemInstanceConfig
 } from '../../../../common/system/systemInstanceConfig/controller';
+import { getSystemInstanceConfig } from '../../../../common/system/systemInstanceConfig/runtime';
 import { MongoSystemInstanceConfig } from '../../../../common/system/systemInstanceConfig/schema';
 
 describe('Runtime Switchover Integration Test', () => {
@@ -27,6 +27,7 @@ describe('Runtime Switchover Integration Test', () => {
       submittedOverrides: { name: 'Acme Enterprise AI' },
       actor: { actor: 'admin', userId: 'admin-1' }
     });
+    await reloadSystemInstanceConfig();
 
     // 3. In-memory singleton reflects the update without restart
     const afterSiteUpdate = getSystemInstanceConfig();
@@ -44,6 +45,7 @@ describe('Runtime Switchover Integration Test', () => {
       submittedOverrides: { showEmptyChat: false, hideChatCopyrightSetting: true },
       actor: { actor: 'admin', userId: 'admin-1' }
     });
+    await reloadSystemInstanceConfig();
 
     // 6. Both site and feature domains retain their overrides in memory
     const finalConfig = getSystemInstanceConfig();
@@ -82,6 +84,7 @@ describe('Runtime Switchover Integration Test', () => {
       },
       actor: { actor: 'admin' }
     });
+    await reloadSystemInstanceConfig();
 
     const config = getSystemInstanceConfig();
     expect(config.site.favicon).toBe('/api/system/img/avatar/custom-test-favicon.png');

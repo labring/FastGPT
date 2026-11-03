@@ -1,12 +1,13 @@
 /**
  * Sandbox 领域共享配置派生。
  *
- * 这里只派生已在入口校验的系统配置和环境配置，不依赖 interface、application
+ * 这里只派生已在入口校验的系统配置，不依赖 interface、application
  * 或 infrastructure，供各层单向引用。
+ *
+ * 所有字段以实例配置快照为唯一运行时来源；ENV 只在启动迁移时一次性 seed 进 DB。
  */
 import { MB_BYTES, RESERVED_DISK_MB } from './constants';
-import { serviceEnv } from '../../../env';
-import { getSystemInstanceConfig } from '../../../common/system/systemInstanceConfig/controller';
+import { getSystemInstanceConfig } from '../../../common/system/systemInstanceConfig/runtime';
 
 type AgentSandboxInstanceConfig = ReturnType<
   typeof getSystemInstanceConfig
@@ -16,74 +17,54 @@ type AgentSandboxInstanceConfig = ReturnType<
 const getInstanceAgentSandboxConfig = (): AgentSandboxInstanceConfig =>
   getSystemInstanceConfig().subservice.agentSandbox;
 
-/**
- * 当前生效的 provider。
- * 快照 provider 为 none 时回落 env：迁移完成前快照仍是默认值，旧部署靠 env 启动；
- * 迁移会把 env provider 写入实例配置，之后以快照为准。
- */
-export const getAgentSandboxProvider = (): 'none' | 'sealosdevbox' | 'opensandbox' => {
-  const configured = getInstanceAgentSandboxConfig().provider;
-  if (configured === 'sealosdevbox' || configured === 'opensandbox') return configured;
-  return serviceEnv.AGENT_SANDBOX_PROVIDER ?? 'none';
-};
+/** 当前生效的 provider；none 表示未启用 Agent Sandbox。 */
+export const getAgentSandboxProvider = (): 'none' | 'sealosdevbox' | 'opensandbox' =>
+  getInstanceAgentSandboxConfig().provider;
 
-/**
- * 实例配置的公共资源与生命周期参数。
- * Schema 默认值在快照中恒存在；叶子缺省只出现在启动早期或测试种子，此时回落 env。
- */
+/** 实例配置的公共资源与生命周期参数。 */
 export const getAgentSandboxCommonConfig = () => {
   const common = getInstanceAgentSandboxConfig().common;
 
   return {
-    cpuCount: common.cpuCount ?? serviceEnv.AGENT_SANDBOX_CPU_COUNT,
-    memoryMiB: common.memoryMiB ?? serviceEnv.AGENT_SANDBOX_MEMORY_MIB,
-    storageSizeGi: common.storageSizeGi ?? serviceEnv.AGENT_SANDBOX_STORAGE_SIZE_GI,
-    suspendMinutes: common.suspendMinutes ?? serviceEnv.AGENT_SANDBOX_SUSPEND_MINUTES,
-    archiveInactiveDays:
-      common.archiveInactiveDays ?? serviceEnv.AGENT_SANDBOX_ARCHIVE_INACTIVE_DAYS,
-    entrypointTimeoutSeconds:
-      common.entrypointTimeoutSeconds ?? serviceEnv.AGENT_SANDBOX_ENTRYPOINT_TIMEOUT_SECONDS,
-    wsMaxMessageBytes: common.wsMaxMessageBytes ?? serviceEnv.AGENT_SANDBOX_WS_MAX_MESSAGE_BYTES,
-    wsMaxFrameBytes: common.wsMaxFrameBytes ?? serviceEnv.AGENT_SANDBOX_WS_MAX_FRAME_BYTES,
-    // 使用 ?? 而不是 ||：管理员显式清空后不能再用 env 的旧值复活
-    npmRegistry: common.npmRegistry ?? serviceEnv.AGENT_SANDBOX_NPM_REGISTRY,
-    pypiIndexUrl: common.pypiIndexUrl ?? serviceEnv.AGENT_SANDBOX_PYPI_INDEX_URL,
-    aptMirror: common.aptMirror ?? serviceEnv.AGENT_SANDBOX_APT_MIRROR
+    cpuCount: common.cpuCount,
+    memoryMiB: common.memoryMiB,
+    storageSizeGi: common.storageSizeGi,
+    suspendMinutes: common.suspendMinutes,
+    archiveInactiveDays: common.archiveInactiveDays,
+    entrypointTimeoutSeconds: common.entrypointTimeoutSeconds,
+    wsMaxMessageBytes: common.wsMaxMessageBytes,
+    wsMaxFrameBytes: common.wsMaxFrameBytes,
+    npmRegistry: common.npmRegistry,
+    pypiIndexUrl: common.pypiIndexUrl,
+    aptMirror: common.aptMirror
   };
 };
 
-/** Sealos Devbox 连接配置；实例配置优先，叶子缺省时回落 env。 */
+/** Sealos Devbox 连接配置。 */
 export const getAgentSandboxSealosConfig = () => {
   const sealos = getInstanceAgentSandboxConfig().sealosdevbox;
 
   return {
-    baseUrl: sealos.baseUrl ?? serviceEnv.AGENT_SANDBOX_SEALOS_BASEURL ?? '',
-    token: sealos.token ?? serviceEnv.AGENT_SANDBOX_SEALOS_TOKEN ?? '',
-    workDirectory:
-      sealos.workDirectory ??
-      serviceEnv.AGENT_SANDBOX_SEALOS_WORK_DIRECTORY ??
-      '/home/devbox/workspace',
-    image: sealos.image ?? serviceEnv.AGENT_SANDBOX_SEALOS_IMAGE
+    baseUrl: sealos.baseUrl,
+    token: sealos.token,
+    workDirectory: sealos.workDirectory,
+    image: sealos.image
   };
 };
 
-/** OpenSandbox 连接配置；实例配置优先，叶子缺省时回落 env。 */
+/** OpenSandbox 连接配置。 */
 export const getAgentSandboxOpenSandboxConfig = () => {
   const opensandbox = getInstanceAgentSandboxConfig().opensandbox;
 
   return {
-    baseUrl: opensandbox.baseUrl ?? serviceEnv.AGENT_SANDBOX_OPENSANDBOX_BASEURL ?? '',
-    apiKey: opensandbox.apiKey ?? serviceEnv.AGENT_SANDBOX_OPENSANDBOX_API_KEY ?? '',
-    runtime: opensandbox.runtime ?? serviceEnv.AGENT_SANDBOX_OPENSANDBOX_RUNTIME,
-    image: opensandbox.image ?? serviceEnv.AGENT_SANDBOX_OPENSANDBOX_IMAGE,
-    useServerProxy:
-      opensandbox.useServerProxy ?? serviceEnv.AGENT_SANDBOX_OPENSANDBOX_USE_SERVER_PROXY,
-    volumeManagerUrl:
-      opensandbox.volumeManagerUrl ?? serviceEnv.AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL,
-    volumeManagerToken:
-      opensandbox.volumeManagerToken ?? serviceEnv.AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN,
-    volumeNamePrefix:
-      opensandbox.volumeNamePrefix ?? serviceEnv.AGENT_SANDBOX_OPENSANDBOX_VOLUME_NAME_PREFIX
+    baseUrl: opensandbox.baseUrl,
+    apiKey: opensandbox.apiKey,
+    runtime: opensandbox.runtime,
+    image: opensandbox.image,
+    useServerProxy: opensandbox.useServerProxy,
+    volumeManagerUrl: opensandbox.volumeManagerUrl,
+    volumeManagerToken: opensandbox.volumeManagerToken,
+    volumeNamePrefix: opensandbox.volumeNamePrefix
   };
 };
 
@@ -117,18 +98,14 @@ export const getAgentSandboxMaxFileBytes = getAgentSandboxDiskBytes;
 
 /**
  * 获取 Agent sandbox 活跃实例系统总上限（app 会话与技能编辑共用同一计数池）。
- * 服务端系统配置（管理台 systemEnv）优先，env 兜底；undefined 表示不限制。
+ * undefined 表示不限制。
  */
 export const getAgentSandboxMax = (): number | undefined =>
-  global.systemEnv?.agentSandboxMax ?? serviceEnv.AGENT_SANDBOX_MAX;
+  getInstanceAgentSandboxConfig().common.maxEditDebug;
 
 /**
- * 获取单团队 Agent sandbox 活跃实例配额；系统配置优先、env 兜底，undefined 表示不限制。
- *
- * null 是实例配置的显式"不限量"语义：必须在这里止住，不能再被 ?? 回落成 env 配额。
+ * 获取单团队 Agent sandbox 活跃实例配额；undefined 表示不限制。
+ * null 是实例配置的显式「不限量」语义，不能再回落成其它来源的配额。
  */
-export const getAgentSandboxMaxPerTeam = (): number | undefined => {
-  const configured = global.systemEnv?.agentSandboxMaxPerTeam;
-  if (configured === null) return undefined;
-  return configured ?? serviceEnv.AGENT_SANDBOX_MAX_PER_TEAM;
-};
+export const getAgentSandboxMaxPerTeam = (): number | undefined =>
+  getInstanceAgentSandboxConfig().common.maxPerTeam ?? undefined;

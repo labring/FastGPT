@@ -2,7 +2,7 @@ import { checkCsrf } from '@fastgpt/next/middle/csrf';
 import { withNextCors } from '@fastgpt/next/middle/cors';
 import type { NextApiRequest, NextApiResponse } from '@fastgpt/next/type';
 import { createApiEntry, type ApiHandler } from '@fastgpt/service/common/http/entry';
-import { getSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/controller';
+import { getSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/runtime';
 import { logInstanceConfigRead } from '@fastgpt/service/common/system/migrationCoverageLog';
 
 type NextAPIOptions = {

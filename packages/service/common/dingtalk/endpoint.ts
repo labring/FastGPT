@@ -1,6 +1,5 @@
-import { getSystemInstanceConfig } from '../system/systemInstanceConfig/controller';
+import { getSystemInstanceConfig } from '../system/systemInstanceConfig/runtime';
 import { logInstanceConfigRead } from '../system/migrationCoverageLog';
-import { serviceEnv } from '../../env';
 
 /**
  * 解析钉钉 API 基础地址（v1.0 接口与 oapi 老接口两套域名）。
@@ -15,23 +14,19 @@ import { serviceEnv } from '../../env';
  * 内网代理部署的 env 初值由 blockStartup 迁移回填进覆盖项，权威链路与之一致。
  */
 export const getDingtalkBaseUrl = () => {
-  const configured = getSystemInstanceConfig().providers.dataSource.dingtalkBaseUrl;
-  const value = configured || serviceEnv.DINGTALK_BASE_URL;
+  const value = getSystemInstanceConfig().providers.dataSource.dingtalkBaseUrl;
   logInstanceConfigRead({
     callsite: 'runtime.common.dingtalk.endpoint.getDingtalkBaseUrl',
-    source: configured ? 'instance-config' : 'env-fallback',
-    fields: [{ path: 'providers.dataSource.dingtalkBaseUrl', value: configured || value }]
+    fields: [{ path: 'providers.dataSource.dingtalkBaseUrl', value }]
   });
   return value;
 };
 
 export const getDingtalkOapiBaseUrl = () => {
-  const configured = getSystemInstanceConfig().providers.dataSource.dingtalkOapiBaseUrl;
-  const value = configured || serviceEnv.DINGTALK_OAPI_BASE_URL;
+  const value = getSystemInstanceConfig().providers.dataSource.dingtalkOapiBaseUrl;
   logInstanceConfigRead({
     callsite: 'runtime.common.dingtalk.endpoint.getDingtalkOapiBaseUrl',
-    source: configured ? 'instance-config' : 'env-fallback',
-    fields: [{ path: 'providers.dataSource.dingtalkOapiBaseUrl', value: configured || value }]
+    fields: [{ path: 'providers.dataSource.dingtalkOapiBaseUrl', value }]
   });
   return value;
 };

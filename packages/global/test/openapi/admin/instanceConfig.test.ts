@@ -19,27 +19,48 @@ describe('Instance config OpenAPI schemas', () => {
     expect(GetDomainConfigQuerySchema.safeParse({ domain: 'non_existent' }).success).toBe(false);
   });
 
-  it('validates UpdateDomainConfigBodySchema', () => {
+  it('validates UpdateDomainConfigBodySchema for one or more domains', () => {
     const valid = UpdateDomainConfigBodySchema.parse({
-      domain: 'site',
-      expectedRevision: 1,
-      overrides: {
-        name: 'New Site Name'
-      }
+      items: [
+        {
+          domain: 'site',
+          expectedRevision: 1,
+          overrides: {
+            name: 'New Site Name'
+          }
+        },
+        {
+          domain: 'auth',
+          expectedRevision: 0,
+          overrides: { openApiKeyMaxCount: 100 }
+        }
+      ],
+      subPlans: { standard: { price: 1 } }
     });
 
-    expect(valid.domain).toBe('site');
-    expect(valid.expectedRevision).toBe(1);
-    expect(valid.overrides).toEqual({ name: 'New Site Name' });
+    expect(valid.items).toHaveLength(2);
+    expect(valid.items[0]).toMatchObject({
+      domain: 'site',
+      expectedRevision: 1,
+      overrides: { name: 'New Site Name' }
+    });
+    expect(valid.subPlans).toEqual({ standard: { price: 1 } });
 
     // Negative revision should fail
     expect(
       UpdateDomainConfigBodySchema.safeParse({
-        domain: 'site',
-        expectedRevision: -1,
-        overrides: {}
+        items: [
+          {
+            domain: 'site',
+            expectedRevision: -1,
+            overrides: {}
+          }
+        ]
       }).success
     ).toBe(false);
+
+    // 至少需要一个配置域
+    expect(UpdateDomainConfigBodySchema.safeParse({ items: [] }).success).toBe(false);
   });
 
   it('validates GetDomainConfigResponseSchema', () => {

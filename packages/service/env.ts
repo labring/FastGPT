@@ -38,6 +38,11 @@ export const serviceEnv = createEnv({
       .default(10)
       .transform((value) => Math.min(1000, Math.max(10, value))),
 
+    // ==================== 管理端展示控制 ====================
+    ENABLE_SAAS_ADMIN_CONFIG: BoolSchema.default(false).meta({
+      description: '是否在管理端展示 SaaS 专用配置项，默认为 false（私有化部署隐藏）'
+    }),
+
     // ==================== 密钥 ====================
     ROOT_KEY: z
       .string()

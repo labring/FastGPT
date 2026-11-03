@@ -65,6 +65,9 @@ describe('user session service', () => {
     mocks.cache.listByUser.mockResolvedValue([]);
     mocks.cache.set.mockResolvedValue(undefined);
     serviceEnv.MAX_LOGIN_SESSION = originalMaxLoginSession;
+    if ((global as any).systemInstanceConfig?.security) {
+      (global as any).systemInstanceConfig.security.maxLoginSession = originalMaxLoginSession;
+    }
   });
 
   it('returns a typed session and maps a missing session to unauthorized', async () => {
@@ -78,6 +81,7 @@ describe('user session service', () => {
 
   it('creates a session with the historical fields and starts background cleanup', async () => {
     serviceEnv.MAX_LOGIN_SESSION = 2;
+    (global as any).systemInstanceConfig.security.maxLoginSession = 2;
 
     const sessionId = await createUserSession({
       userId: 'user-1',
@@ -124,6 +128,7 @@ describe('user session service', () => {
 
   it('removes the oldest sessions in background when the login limit is exceeded', async () => {
     serviceEnv.MAX_LOGIN_SESSION = 2;
+    (global as any).systemInstanceConfig.security.maxLoginSession = 2;
     mocks.cache.listByUser.mockResolvedValue([
       { sessionId: 'user-1:old', data: { createdAt: 1000 } },
       { sessionId: 'user-1:new', data: { createdAt: 3000 } },

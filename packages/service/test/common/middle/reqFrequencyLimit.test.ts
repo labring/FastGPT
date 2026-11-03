@@ -32,6 +32,10 @@ const getRedisConnection = () => getRedisRuntime().getCommandConnection();
 
 const setUseIpLimit = (value: boolean) => {
   serviceEnv.USE_IP_LIMIT = value;
+  if (!(global as any).systemInstanceConfig) {
+    (global as any).systemInstanceConfig = LEAF_ABSENT_SNAPSHOT();
+  }
+  (global as any).systemInstanceConfig.security.useIpLimit = value;
 };
 
 const setTrustedProxyEnable = (value: boolean) => {

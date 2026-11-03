@@ -9,7 +9,7 @@ import {
   type UpdateDomainConfigResponse
 } from '@fastgpt/global/openapi/admin/system/instanceConfig/api';
 import {
-  updateDomainConfig,
+  batchUpdateDomainConfigs,
   getDomainConfig,
   getDomainConfigForAdmin,
   findOverridesNotAllowedByEdition,
@@ -25,82 +25,93 @@ import { ApiHttpError } from '@fastgpt/service/common/http/apiError';
 const logger = getLogger(LogCategories.SYSTEM);
 
 /**
- * Admin API - 保存并更新单个 Domain 的稀疏覆盖配置
- * 包含版本号乐观锁校验、两阶段类型校验、服务端版本边界校验与敏感字段防丢失恢复。
- * 版本边界由后端强制：开源版通过手工请求写入商业字段时直接拒绝（设计文档 §6 规则 2）。
+ * Admin API - 保存一个或多个 Domain 的稀疏覆盖配置。
+ *
+ * 一次请求只执行一个 Mongo 事务：鉴权、版本边界、掩码恢复、校验、revision 和持久化
+ * 共用同一条链路；任意域冲突或校验失败时整体回滚。数据库提交成功即返回成功，
+ * 运行时刷新在后台执行，刷新失败不回滚也不把已提交的保存误报为失败。
  */
 async function handler(
   req: ApiRequestProps<UpdateDomainConfigBody>
 ): Promise<UpdateDomainConfigResponse> {
   const auth = await authSystemAdmin({ req });
 
-  const { domain, expectedRevision, overrides } = parseApiInput({
+  const { items, subPlans } = parseApiInput({
     req,
     bodySchema: UpdateDomainConfigBodySchema
   }).body;
 
-  // 服务端版本边界：当前部署版本不允许的字段直接拒绝，不做静默丢弃
+  // 1. 服务端版本边界：当前部署版本不允许的字段直接拒绝
   const edition = getServiceEdition();
-  const notAllowedKeys = findOverridesNotAllowedByEdition(domain, overrides, edition);
-  if (notAllowedKeys.length > 0) {
-    throw new ApiHttpError(
-      403,
-      `Edition boundary violation: fields not allowed in ${edition} edition: ${notAllowedKeys.join(
-        ', '
-      )}`
-    );
+  for (const item of items) {
+    const notAllowedKeys = findOverridesNotAllowedByEdition(item.domain, item.overrides, edition);
+    if (notAllowedKeys.length > 0) {
+      throw new ApiHttpError(
+        403,
+        `Edition boundary violation in domain "${item.domain}": fields not allowed in ${edition} edition: ${notAllowedKeys.join(
+          ', '
+        )}`
+      );
+    }
+    if (item.domain === 'storage') {
+      assertStorageDownloadConfig(item.overrides);
+    }
   }
 
-  if (domain === 'storage') {
-    assertStorageDownloadConfig(overrides as Record<string, unknown>);
-  }
+  // 2. site 域涉及头像资源：先取旧值用于保存后的 S3 生命周期对比
+  const siteItem = items.find((item) => item.domain === 'site');
+  const previousSiteConfig = siteItem ? (await getDomainConfig('site')).effectiveConfig : undefined;
 
-  // site 域涉及头像资源：先取旧值用于保存后的 S3 生命周期对比
-  const previousConfig =
-    domain === 'site' ? (await getDomainConfig('site')).effectiveConfig : undefined;
-
-  await updateDomainConfig({
-    domain,
-    expectedRevision,
-    submittedOverrides: overrides as any,
+  // 3. 单事务写入全部域和可选套餐
+  const updatedDomains = await batchUpdateDomainConfigs({
+    items,
+    subPlans,
     actor: {
       actor: 'admin',
       userId: auth.userId
     }
   });
 
-  // 配置保存后，同步刷新全站运行时配置与前端缓存失效标志。
-  // 必须成功应用才返回，失败向外抛错，保证保存成功与实际生效契约一致。
-  await initSystemConfig();
-
-  // 更新完成后获取按版本过滤、脱敏后的生效数据作为响应返回
-  const result = await getDomainConfigForAdmin(domain, edition);
-  logInstanceConfigWrite({
-    callsite: 'runtime.app.admin.system.config.update',
-    fields: [{ path: domain, value: result.effectiveConfig }]
+  // 4. 数据库提交后即保存成功；运行时刷新在后台触发，刷新失败不将已提交的操作报告为失败
+  void initSystemConfig().catch((error) => {
+    logger.error('Failed to apply instance config after save', { error });
   });
 
-  // 头像生命周期同步是保存后的清理动作：配置已落库成功，
-  // 清理失败（S3 删除/移除 TTL 抛错）不应让请求整体失败——否则客户端误判保存失败，
-  // 重试还会因 revision 冲突失败。记录错误交由 TTL 回收兜底。
-  if (domain === 'site' && previousConfig) {
+  // 5. 站点头像生命周期同步是保存后的清理动作，失败不影响保存结果
+  if (siteItem && previousSiteConfig) {
+    const currentSite = await getDomainConfig('site');
     await syncSiteAvatarLifecycle({
-      previous: previousConfig as any,
-      next: result.effectiveConfig as any
+      previous: previousSiteConfig,
+      next: currentSite.effectiveConfig
     }).catch((error) => {
       logger.error('Failed to sync site avatar lifecycle after config update', { error });
     });
   }
 
-  return UpdateDomainConfigResponseSchema.parse({
-    domain: result.domain,
-    revision: result.revision,
-    effectiveConfig: result.effectiveConfig,
-    overrides: result.overrides,
-    secretKeys: result.secretKeys,
-    updatedAt: result.updatedAt,
-    updatedBy: result.updatedBy
+  // 6. 返回按版本过滤、脱敏后的生效数据
+  const results = await Promise.all(
+    updatedDomains.map(async (domain) => {
+      const res = await getDomainConfigForAdmin(domain, edition);
+      return {
+        domain: res.domain,
+        revision: res.revision,
+        effectiveConfig: res.effectiveConfig,
+        overrides: res.overrides,
+        secretKeys: res.secretKeys,
+        updatedAt: res.updatedAt,
+        updatedBy: res.updatedBy
+      };
+    })
+  );
+  logInstanceConfigWrite({
+    callsite: 'runtime.app.admin.system.config.update',
+    fields: results.map((result) => ({
+      path: result.domain,
+      value: result.effectiveConfig
+    }))
   });
+
+  return UpdateDomainConfigResponseSchema.parse({ results });
 }
 
 export default NextAPI(handler);

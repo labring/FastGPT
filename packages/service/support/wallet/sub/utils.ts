@@ -17,7 +17,7 @@ import { addMonths, addDays } from 'date-fns';
 import { readFromSecondary } from '../../../common/mongo/utils';
 import { TeamPointCache, teamQpmCache } from '@fastgpt/dal/redis/caches';
 import { getLogger, LogCategories } from '../../../common/logger';
-import { getSystemInstanceConfig } from '../../../common/system/systemInstanceConfig/controller';
+import { getSystemInstanceConfig } from '../../../common/system/systemInstanceConfig/runtime';
 import { logInstanceConfigRead } from '../../../common/system/migrationCoverageLog';
 import { serviceEnv } from '../../../env';
 import { getRuntimeStandardPlanConfig } from '@fastgpt/global/support/wallet/sub/utils';
@@ -363,12 +363,10 @@ export const teamQPM = {
     const limit = teamPlanStatus[SubTypeEnum.standard]?.requestsPerMinute;
 
     if (!limit) {
-      const configuredMaxQpm = getSystemInstanceConfig().performance.chat.maxQpm;
-      const maxQpm = configuredMaxQpm ?? serviceEnv.CHAT_MAX_QPM;
+      const maxQpm = getSystemInstanceConfig().performance.chat.maxQpm;
       logInstanceConfigRead({
         callsite: 'runtime.support.wallet.sub.teamQPM.getTeamQPMLimit',
-        source: configuredMaxQpm === undefined ? 'env-fallback' : 'instance-config',
-        fields: [{ path: 'performance.chat.maxQpm', value: configuredMaxQpm ?? maxQpm }]
+        fields: [{ path: 'performance.chat.maxQpm', value: maxQpm }]
       });
       return maxQpm;
     }

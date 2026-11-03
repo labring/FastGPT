@@ -2,9 +2,9 @@ import { describe, expect, it, vi } from 'vitest';
 import { MongoSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/schema';
 import {
   getSystemInstanceConfigSnapshot,
-  reloadSystemInstanceConfig,
-  getSystemInstanceConfig
+  reloadSystemInstanceConfig
 } from '@fastgpt/service/common/system/systemInstanceConfig/controller';
+import { getSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/runtime';
 
 describe('getSystemInstanceConfigSnapshot failure behavior', () => {
   it('throws on DB failure and reload preserves the previous successful snapshot', async () => {

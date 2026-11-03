@@ -1,5 +1,5 @@
 import { appEnv } from '@/env';
-import { getSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/controller';
+import { getSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/runtime';
 import { logInstanceConfigRead } from '@fastgpt/service/common/system/migrationCoverageLog';
 
 export const checkPswExpired = ({ updateTime }: { updateTime?: Date }) => {

@@ -3,7 +3,7 @@ import { useYuqueDatasetRequest } from '@fastgpt/service/core/dataset/apiDataset
 import { getApiDatasetRequest } from '@fastgpt/service/core/dataset/apiDataset';
 import { createDatasetCache } from '@fastgpt/service/support/tmpData/datasetCache';
 import { MongoTmpData } from '@fastgpt/service/support/tmpData/schema';
-import { getSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/controller';
+import { getSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/runtime';
 import type { AsyncCache } from '@fastgpt/service/common/cache/type';
 
 const { request } = vi.hoisted(() => ({ request: vi.fn() }));

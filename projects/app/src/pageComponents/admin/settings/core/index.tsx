@@ -12,7 +12,7 @@ import {
 import { useForm, Controller, useWatch } from 'react-hook-form';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { useDomainConfig, batchUpdateDomainConfigApi } from '@/web/common/system/useDomainConfig';
+import { useDomainConfig, updateDomainConfigApi } from '@/web/common/system/useDomainConfig';
 import { useAdminPermission } from '@/pageComponents/admin/useAdminPermission';
 import AdminSettingPage from '@/pageComponents/admin/settings/AdminSettingPage';
 import AdminSettingSection from '@/pageComponents/admin/settings/AdminSettingSection';
@@ -132,7 +132,7 @@ const CoreSettingComponent = () => {
   const { runAsync: onSave, loading: isSaving } = useRequest(
     async (formData: CoreConfigForm) => {
       // 跨域原子提交：auth、feature、storage、site 四个域合并为单个事务请求，避免多域分步提交留下半写
-      await batchUpdateDomainConfigApi({
+      await updateDomainConfigApi({
         items: [
           {
             domain: 'auth',

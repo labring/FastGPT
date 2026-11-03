@@ -34,52 +34,41 @@ describe('agent sandbox config', () => {
     global.systemEnv = originalSystemEnv;
   });
 
-  it('derives all size limits from AGENT_SANDBOX_STORAGE_SIZE_GI', () => {
-    serviceEnv.AGENT_SANDBOX_STORAGE_SIZE_GI = 1;
+  it('derives all size limits from instance config storageSizeGi', () => {
+    ((global as any).systemInstanceConfig.subservice.agentSandbox.common as any).storageSizeGi = 1;
     expect(getAgentSandboxArchiveMaxBytes()).toBe(362 * 1024 * 1024);
     expect(getAgentSandboxDiskBytes()).toBe(362 * 1024 * 1024);
     expect(getAgentSandboxSkillMaxBytes()).toBe(362 * 1024 * 1024);
     expect(getAgentSandboxMaxFileBytes()).toBe(362 * 1024 * 1024);
 
-    serviceEnv.AGENT_SANDBOX_STORAGE_SIZE_GI = 2;
+    ((global as any).systemInstanceConfig.subservice.agentSandbox.common as any).storageSizeGi = 2;
     expect(getAgentSandboxDiskBytes()).toBe(874 * 1024 * 1024);
   });
 
   it('rejects storage sizes without enough space for the reserved system capacity', () => {
-    serviceEnv.AGENT_SANDBOX_STORAGE_SIZE_GI = 0.29;
+    ((global as any).systemInstanceConfig.subservice.agentSandbox.common as any).storageSizeGi =
+      0.29;
     expect(() => getAgentSandboxDiskBytes()).toThrow('AGENT_SANDBOX_STORAGE_SIZE_GI');
   });
 
-  it('reads lifecycle thresholds from service env', () => {
-    serviceEnv.AGENT_SANDBOX_SUSPEND_MINUTES = 90;
-    serviceEnv.AGENT_SANDBOX_ARCHIVE_INACTIVE_DAYS = 14;
+  it('reads lifecycle thresholds from instance config', () => {
+    ((global as any).systemInstanceConfig.subservice.agentSandbox.common as any).suspendMinutes =
+      90;
+    (
+      (global as any).systemInstanceConfig.subservice.agentSandbox.common as any
+    ).archiveInactiveDays = 14;
 
     expect(getAgentSandboxSuspendMinutes()).toBe(90);
     expect(getAgentSandboxArchiveInactiveDays()).toBe(14);
   });
 
-  it('resolves system and per-team quotas with systemEnv priority and independent env fallback', () => {
-    // 1. 默认 env 兜底
-    serviceEnv.AGENT_SANDBOX_MAX = 42;
-    serviceEnv.AGENT_SANDBOX_MAX_PER_TEAM = 5;
-    global.systemEnv = {};
+  it('resolves system and per-team quotas from instance config', () => {
+    ((global as any).systemInstanceConfig.subservice.agentSandbox.common as any).maxEditDebug = 42;
+    ((global as any).systemInstanceConfig.subservice.agentSandbox.common as any).maxPerTeam = 5;
     expect(getAgentSandboxMax()).toBe(42);
     expect(getAgentSandboxMaxPerTeam()).toBe(5);
 
-    // 2. systemEnv 配置优先
-    global.systemEnv = { agentSandboxMax: 7, agentSandboxMaxPerTeam: 3 };
-    expect(getAgentSandboxMax()).toBe(7);
-    expect(getAgentSandboxMaxPerTeam()).toBe(3);
-
-    // 3. 两字段独立回退与清空
-    global.systemEnv = { agentSandboxMaxPerTeam: 3 };
-    expect(getAgentSandboxMax()).toBe(42);
-    expect(getAgentSandboxMaxPerTeam()).toBe(3);
-
-    global.systemEnv = {};
-    serviceEnv.AGENT_SANDBOX_MAX = undefined;
-    serviceEnv.AGENT_SANDBOX_MAX_PER_TEAM = undefined;
-    expect(getAgentSandboxMax()).toBeUndefined();
+    ((global as any).systemInstanceConfig.subservice.agentSandbox.common as any).maxPerTeam = null;
     expect(getAgentSandboxMaxPerTeam()).toBeUndefined();
   });
 

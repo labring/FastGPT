@@ -2,7 +2,6 @@ import type { SplitProps, SplitResponse } from '../common/string/textSplitter';
 import { getWorkerController, WorkerNameEnum } from './utils';
 import type { ReadFileResponse } from './readFile/type';
 import { isTestEnv } from '@fastgpt/global/common/system/constants';
-import { serviceEnv } from '../env';
 import { uploadImage2S3Bucket } from '../common/s3/utils';
 import { createOpaqueS3Filename } from '../common/s3/opaqueKey';
 import { normalizeMimeType, resolveMimeExtension, resolveMimeType } from '../common/s3/utils/mime';
@@ -23,7 +22,7 @@ import {
   resolveFileSourceExtension
 } from '../common/file/read/source';
 import { getLightweightWorkerPoolOptions } from './lightweightResource';
-import { getSystemInstanceConfig } from '../common/system/systemInstanceConfig/controller';
+import { getSystemInstanceConfig } from '../common/system/systemInstanceConfig/runtime';
 
 export const text2Chunks = async (props: SplitProps) => {
   // Test env, not run worker
@@ -55,15 +54,14 @@ type ReadFileWorkerProps = {
 
 const getReadFileWorker = () => {
   const parse = getSystemInstanceConfig().performance.parse;
-  // 单任务超时与 worker 内的 XLSX/HTML 限制都来自实例配置 performance.parse；
-  // 快照叶子缺省时回落环境变量，兼容启动早期与测试种子。
-  const fileTimeoutSeconds = parse.fileTimeoutSeconds ?? serviceEnv.PARSE_FILE_TIMEOUT_SECONDS;
+  // 单任务超时与 worker 内的 XLSX/HTML 限制都来自实例配置 performance.parse（唯一来源）。
+  const fileTimeoutSeconds = parse.fileTimeoutSeconds ?? 600;
   const workerEnvVersion = [
-    parse.maxHtmlTransformChars ?? serviceEnv.MAX_HTML_TRANSFORM_CHARS,
-    parse.xlsxMaxRows ?? serviceEnv.XLSX_PARSE_MAX_ROWS,
-    parse.xlsxMaxColumns ?? serviceEnv.XLSX_PARSE_MAX_COLUMNS,
-    parse.xlsxMaxCells ?? serviceEnv.XLSX_PARSE_MAX_CELLS,
-    parse.xlsxMaxMergedCells ?? serviceEnv.XLSX_PARSE_MAX_MERGED_CELLS
+    parse.maxHtmlTransformChars ?? 1000000,
+    parse.xlsxMaxRows ?? 100000,
+    parse.xlsxMaxColumns ?? 1000,
+    parse.xlsxMaxCells ?? 1000000,
+    parse.xlsxMaxMergedCells ?? 1000000
   ].join(':');
 
   return getWorkerController<ReadFileWorkerProps, ReadFileResponse>({

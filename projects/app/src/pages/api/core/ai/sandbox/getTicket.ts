@@ -1,5 +1,5 @@
 import { getAgentSandboxMaxFileBytes } from '@fastgpt/service/core/ai/sandbox/config';
-import { getSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/controller';
+import { getSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/runtime';
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/next/type';
 import { buildSandboxClientQueryFromChatSource } from '@fastgpt/service/core/ai/sandbox/interface/runtime';

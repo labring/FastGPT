@@ -1,6 +1,5 @@
-import { getSystemInstanceConfig } from '../system/systemInstanceConfig/controller';
+import { getSystemInstanceConfig } from '../system/systemInstanceConfig/runtime';
 import { logInstanceConfigRead } from '../system/migrationCoverageLog';
-import { serviceEnv } from '../../env';
 
 /**
  * 解析飞书开放平台基础地址。
@@ -10,12 +9,10 @@ import { serviceEnv } from '../../env';
  * 固化域名导致 Admin 修改后仍请求旧地址。
  */
 export const getFeishuBaseUrl = () => {
-  const configured = getSystemInstanceConfig().providers.dataSource.feishuBaseUrl;
-  const value = configured || serviceEnv.FEISHU_BASE_URL;
+  const value = getSystemInstanceConfig().providers.dataSource.feishuBaseUrl;
   logInstanceConfigRead({
     callsite: 'runtime.common.feishu.endpoint.getFeishuBaseUrl',
-    source: configured ? 'instance-config' : 'env-fallback',
-    fields: [{ path: 'providers.dataSource.feishuBaseUrl', value: configured || value }]
+    fields: [{ path: 'providers.dataSource.feishuBaseUrl', value }]
   });
   return value;
 };

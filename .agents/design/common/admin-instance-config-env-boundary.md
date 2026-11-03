@@ -1011,7 +1011,80 @@ Server、Agent Sandbox Proxy 和 IDE Agent 的运行时变量。为了避免“�
 
 1. `FE_DOMAIN`、`FILE_DOMAIN`、`FILE_DOWNLOAD_PUBLIC_URL_PREFIX` 是否长期只读环境变量，还是未来允许通过配置中心管理；当前草案按环境变量处理。
 2. Code Sandbox、MCP Server 等独立进程是否在后续接入配置中心；如果接入，配置变更时采用热更新、重建 Worker 还是受控重启。
-3. 社区版和商业版的最终菜单/字段能力矩阵，尤其是“系统模型、系统工具、应用模板、Agent Sandbox”各自的 edition 归属。
-4. 配置 `applyMode` 的实际生效协议：哪些字段支持 live/reload，哪些字段必须 restart，以及集群节点如何确认已应用同一 revision。
-5. PDF/Sangfor 逻辑配置块最终是否长期分开保存；当前迁移必须兼容旧的 `CUSTOM_PDF_PARSE_URL/KEY` 一组变量，不能要求新增一组 `SANGFOR_PARSE_URL/KEY`。
-6. “配置状态与生效状态”（schemaVersion、revision、applyMode、节点确认）需要另找落点，不再由“系统版本”页承载。
+3. 配置 `applyMode` 的实际生效协议：哪些字段支持 live/reload，哪些字段必须 restart，以及集群节点如何确认已应用同一 revision。
+4. PDF/Sangfor 逻辑配置块最终是否长期分开保存；当前迁移必须兼容旧的 `CUSTOM_PDF_PARSE_URL/KEY` 一组变量，不能要求新增一组 `SANGFOR_PARSE_URL/KEY`。
+5. “配置状态与生效状态”（schemaVersion、revision、applyMode、节点确认）需要另找落点，不再由“系统版本”页承载。
+
+## 13. 架构落地与 SaaS/私有化边界规范（2026-11）
+
+### 13.1 单一数据源与防回退原则（Single Source of Truth）
+
+1. **废除运行时兜底回退**：全面消除 `getSystemInstanceConfig().x ?? serviceEnv.X` 或 `|| serviceEnv.X` 级联回退代码。
+2. **环境变量角色转为初始种子（Seed）**：旧环境变量仅在系统首次启动、且数据库中尚无配置记录时，通过迁移程序写入 `system_instance_configs` 默认文档。一旦写入完成，MongoDB 成为运行时的唯一权威来源。
+3. **保留在环境变量中的配置**：
+   - 基础设施与拓扑：MongoDB、Redis、VectorDB、S3 存储桶连接参数、端口与外部网关。
+   - 安全根密钥：`ROOT_KEY`、`TOKEN_KEY`、`SANDBOX_JWT_SECRET` 等。
+   - 部署与构建：`SHOW_GIT`（Git 提交信息展示开关）、构建路径。
+   - 实验性与未进表单配置：`DATASET_SYNONYM_ENABLED`（同义词开关暂留 ENV，不进实例配置表单）。
+
+### 13.2 SaaS 与私有化展示边界（`ENABLE_SAAS_ADMIN_CONFIG`）
+
+为防止公有云 SaaS 运营项暴露在私有化部署环境中引发困惑，引入环境变量 `ENABLE_SAAS_ADMIN_CONFIG`（boolean，默认 `false`）：
+
+1. **纯展示层控制**：该变量仅用于前端与 Admin 配置中心菜单/字段的可见性判定，不改变底层 Schema、Zod 校验或数据库存储结构。
+2. **私有化商业版默认隐藏的运营项**：
+   - 优惠券与折扣券入口：`commercial.showCoupon`、`showDiscountCoupon`
+   - 对公充值表单：`commercial.payFormUrl`
+   - 企业微信服务商售卖运营字段：`auth.loginProviders.wecom` 中的服务商套件凭据（`providerSecret`、`buyerUserId`、`basicVersionId`、`advancedVersionId`、`paySecret`）
+   - 免费团队清理通知模板：`commercial.billingNotify.freeClean`
+   - 沙箱限时免费营销提示：`commercial.agentSandboxFreeTip`
+3. **私有化保留的商业化配置**：
+   - 支付通道配置（微信支付、支付宝）
+   - 套餐管理、积分充值包、用量限额
+   - 内部额度不足提醒模板：`commercial.billingNotify.insufficientBalance`
+   - 外部工单与企业认证入口：由实际服务配置（如 `WORKORDER_BASE_URL` 或 `hasEnterpriseAuthServiceConfig()`）决定展示，杜绝无配置时根据 `PRO_URL` 强行露出。
+
+### 13.3 动态菜单自动隐藏规范（Dynamic Menu Auto-Hide）
+
+1. **路由与字段映射**：在 `packages/global/common/system/config/pageFields.ts` 中维护 `adminConfigPageFieldsMap`，声明每个 `/admin/settings/*` 页面包含的配置字段列表。
+2. **可见性统计与页面过滤**：
+   - 使用 `countPageVisibleFields(route, { edition, enableSaasAdminConfig })` 计算页面可见字段数。
+   - 若某页面可见字段数为 0，则该页面在当前版本/环境下自动隐藏。
+3. **父级菜单自动折叠**：若某个菜单分组（如“商业化”、“子服务配置”）下的所有子页面均不可见，父级分组自动隐藏，彻底替代前端手写白名单。
+
+### 13.4 单事务统一保存架构（`/api/admin/system/config/update`）
+
+1. **统一端点**：废弃并移除 `batchUpdate.ts`，统一收敛至 `POST /api/admin/system/config/update`。
+2. **原子性多域提交**：入参支持 `items: Array<{ domain, config }>` 与可选的 `subPlans`，在单个 MongoDB 会话事务中执行校验、锁检测和保存，避免跨域页面（如账号与安全）多次请求引发并发冲突。
+3. **保存与重载解耦**：数据库事务提交成功即代表操作完成并返回成功；后台工作进程配置重载采用非阻塞方式触发，重载失败记录告警日志，不使已入库的保存操作报错。
+4. **乐观锁机制**：前端携带 `revision`，发生并发修改时返回 `409 Conflict`，明确提示管理员刷新最新配置，不进行静默重试。
+
+### 13.5 运行时读写分离（`runtime.ts`）
+
+创建 `packages/service/common/system/systemInstanceConfig/runtime.ts`，将轻量级内存快照读取（`getSystemInstanceConfig()`、`publishSystemInstanceConfigSnapshot()`）与复杂的数据库持久化控制器解耦，消除全局业务代码对数据库驱动的直接依赖。
+
+### 13.6 核心配置字段与版本支持矩阵
+
+| 配置路径 | 字段含义 | 社区版 | 商业版 (私有化) | 商业版 (SaaS) | 说明 |
+| :--- | :--- | :---: | :---: | :---: | :--- |
+| `site.title` | 站点名称 | ✅ | ✅ | ✅ | 品牌定制 |
+| `site.favicon` / `logo` | 站点图标 | ✅ | ✅ | ✅ | 品牌定制 |
+| `auth.register.methods` | 注册方式（邮箱/手机等） | ✅ | ✅ | ✅ | 基础认证 |
+| `auth.loginProviders.oauth` | 通用 OIDC / OAuth2 登录 | ❌ | ✅ | ✅ | 企业 SSO |
+| `auth.loginProviders.wecom` | 企微内部自建应用登录 | ❌ | ✅ | ✅ | 企业内部协同 |
+| `auth.loginProviders.wecom.providerSecret` 等 | 企微第三方应用服务商套件 | ❌ | ❌ | ✅ | 仅 SaaS 运营 |
+| `security.maxLoginSession` | 最大多端登录数量 | ✅ | ✅ | ✅ | 会话安全 |
+| `security.useIpLimit` | IP 请求频率限制 | ✅ | ✅ | ✅ | 防刷限制 |
+| `security.allowedOrigins` | 跨域允许来源列表 | ✅ | ✅ | ✅ | CORS 安全 |
+| `feature.app.chatHistory` 等 | 聊天记录保存等核心功能开关 | ✅ | ✅ | ✅ | 功能控制 |
+| `commercial.pay.channel` | 支付通道（微信/支付宝） | ❌ | ✅ | ✅ | 私有化支持多租户自费/充值 |
+| `commercial.showCoupon` | 优惠券展示入口 | ❌ | ❌ | ✅ | 仅 SaaS 营销运营 |
+| `commercial.payFormUrl` | 大额对公汇款登记表单 | ❌ | ❌ | ✅ | 仅 SaaS 运营 |
+| `commercial.agentSandboxFreeTip` | 沙箱限时免费营销文案 | ❌ | ❌ | ✅ | 仅 SaaS 营销 |
+| `commercial.billingNotify.insufficientBalance` | 余额不足告警模板 | ❌ | ✅ | ✅ | 私有化团队限额提醒 |
+| `commercial.billingNotify.freeClean` | 免费账号不活跃清理通知 | ❌ | ❌ | ✅ | 仅 SaaS 运营 |
+| `performance.workflow.*` | 工作流最大循环次数与并发度 | ✅ | ✅ | ✅ | 资源安全基准 |
+| `providers.documentParse` | PDF 与文档解析 Provider | ✅ | ✅ | ✅ | 包含开源与商业解析扩展 |
+| `subservice.codeSandbox` | 代码沙箱客户端连接配置 | ✅ | ✅ | ✅ | 统一动态配置 |
+| `subservice.agentSandbox` | 智能体沙箱配额与阈值 | ❌ | ✅ | ✅ | 商业版高级隔离环境 |
+

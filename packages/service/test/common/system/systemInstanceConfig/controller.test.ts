@@ -167,7 +167,7 @@ describe('systemInstanceConfig controller', () => {
         actor: { actor: 'system' }
       });
 
-      const snapshot = await getSystemInstanceConfigSnapshot();
+      const { snapshot } = await getSystemInstanceConfigSnapshot();
       expect(snapshot.site.name).toBe('Snapshot Site');
       expect(snapshot.performance.workflow.maxRunTimes).toBe(999);
       expect(snapshot.security.csrfEnabled).toBe(true); // default

@@ -8,11 +8,11 @@ import type {
   SystemInstanceConfigDomainMap,
   DeepPartial
 } from '@fastgpt/global/common/system/config/type';
+import { deepMergeConfig } from '@fastgpt/global/common/system/config/merge';
 import type {
   GetDomainConfigResponse,
   UpdateDomainConfigBody,
-  BatchUpdateDomainConfigBody,
-  BatchUpdateDomainConfigResponse
+  UpdateDomainConfigResponse
 } from '@fastgpt/global/openapi/admin/system/instanceConfig/api';
 
 /**
@@ -25,21 +25,12 @@ export const getDomainConfigApi = (
 };
 
 /**
- * 客户端 API 请求函数：保存并更新单个 Domain 稀疏配置
+ * 客户端 API 请求函数：保存一个或多个 Domain 稀疏配置（单事务提交）
  */
 export const updateDomainConfigApi = (
   data: UpdateDomainConfigBody
-): Promise<GetDomainConfigResponse> => {
-  return POST<GetDomainConfigResponse>('/admin/system/config/update', data);
-};
-
-/**
- * 客户端 API 请求函数：跨域原子批量保存配置
- */
-export const batchUpdateDomainConfigApi = (
-  data: BatchUpdateDomainConfigBody
-): Promise<BatchUpdateDomainConfigResponse> => {
-  return POST<BatchUpdateDomainConfigResponse>('/admin/system/config/batchUpdate', data);
+): Promise<UpdateDomainConfigResponse> => {
+  return POST<UpdateDomainConfigResponse>('/admin/system/config/update', data);
 };
 
 /**
@@ -70,9 +61,13 @@ export const useDomainConfig = <T extends SystemInstanceConfigDomainKey>(domain:
         throw new ToastHandledError('Domain config not loaded yet');
       }
       const res = await updateDomainConfigApi({
-        domain,
-        expectedRevision: data.revision,
-        overrides: nextOverrides
+        items: [
+          {
+            domain,
+            expectedRevision: data.revision,
+            overrides: nextOverrides
+          }
+        ]
       });
       return { res, silent };
     },
@@ -123,15 +118,13 @@ export const useDomainConfig = <T extends SystemInstanceConfigDomainKey>(domain:
   ) => submitOverrides({ overrides: next as Record<string, unknown>, silent: options?.silent });
 
   /**
-   * 局部提交：先与库中现有 overrides 顶层合并再整体提交。
+   * 局部提交：先与库中现有 overrides 深度合并再整体提交。
    *
-   * 后端按 Domain 整体替换 overrides，所以页面只负责部分字段时必须用它，
-   * 否则同 Domain 其它字段（含本页未展示的字段）会被重置为默认值。
-   * 合并进来的敏感字段是脱敏占位符，后端会用库中原值恢复。
+   * 页面只负责部分字段时必须用它，保留同域未编辑字段及密钥（含脱敏占位符由后端自动恢复）。
    */
   const patchConfig = (partial: Record<string, unknown>, options?: { silent?: boolean }) =>
     submitOverrides({
-      overrides: { ...(overrides as Record<string, unknown>), ...partial },
+      overrides: deepMergeConfig(overrides as Record<string, unknown>, partial),
       silent: options?.silent
     });
 

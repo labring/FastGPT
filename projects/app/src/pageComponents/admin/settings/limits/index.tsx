@@ -11,7 +11,7 @@ import {
 } from '@chakra-ui/react';
 import { useForm, Controller } from 'react-hook-form';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { useDomainConfig, batchUpdateDomainConfigApi } from '@/web/common/system/useDomainConfig';
+import { useDomainConfig, updateDomainConfigApi } from '@/web/common/system/useDomainConfig';
 import AdminSettingPage from '@/pageComponents/admin/settings/AdminSettingPage';
 import AdminSettingSection from '@/pageComponents/admin/settings/AdminSettingSection';
 import AdminFormItem from '@/pageComponents/admin/settings/AdminFormItem';
@@ -100,7 +100,7 @@ const LimitsSettingComponent = () => {
   const { runAsync: onSave, loading: isSaving } = useRequest(
     async (formData: LimitsConfigForm) => {
       // 跨域原子提交：resource、performance、auth、storage、vector 五个域合并为单个事务请求
-      await batchUpdateDomainConfigApi({
+      await updateDomainConfigApi({
         items: [
           {
             domain: 'resource',

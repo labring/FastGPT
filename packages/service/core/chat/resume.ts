@@ -1,6 +1,5 @@
-import { serviceEnv } from '../../env';
 import { getLogger, LogCategories } from '../../common/logger';
-import { getSystemInstanceConfig } from '../../common/system/systemInstanceConfig/controller';
+import { getSystemInstanceConfig } from '../../common/system/systemInstanceConfig/runtime';
 import {
   StreamResumeCache,
   type StreamResumeActiveState as DalStreamResumeActiveState,
@@ -13,26 +12,22 @@ import { StreamResumeUnavailableReasonEnum } from '@fastgpt/global/core/workflow
 
 const logger = getLogger(LogCategories.MODULE.CHAT.RESUME);
 
-/** 流恢复配置以实例配置 performance.streamResume 为权威，快照叶子缺省时回落 env。 */
+/** 流恢复配置以实例配置 performance.streamResume 为唯一运行时来源，ENV 只在启动迁移时 seed。 */
 const getStreamResumeConfig = () => getSystemInstanceConfig().performance.streamResume;
 
 /** 生成中：定期续期的 TTL 秒数。 */
-export const getStreamResumeTtlSeconds = () =>
-  getStreamResumeConfig().ttlSeconds ?? serviceEnv.STREAM_RESUME_TTL_SECONDS;
+export const getStreamResumeTtlSeconds = () => getStreamResumeConfig().ttlSeconds;
 
 /** 流结束后短 TTL 秒数。 */
 export const getStreamResumePostCompleteTtlSeconds = () =>
-  getStreamResumeConfig().postCompleteTtlSeconds ??
-  serviceEnv.STREAM_RESUME_POST_COMPLETE_TTL_SECONDS;
+  getStreamResumeConfig().postCompleteTtlSeconds;
 
 /** 当 Redis 已用内存 / maxmemory 达到该阈值时，停止为新请求创建镜像。 */
-export const getStreamResumeRedisMaxmemoryRatio = () =>
-  getStreamResumeConfig().redisMaxmemoryRatio ?? serviceEnv.STREAM_RESUME_REDIS_MAXMEMORY_RATIO;
+export const getStreamResumeRedisMaxmemoryRatio = () => getStreamResumeConfig().redisMaxmemoryRatio;
 
 /** Redis 内存检测缓存时间，避免每个流请求都去调用 INFO MEMORY。 */
 const getStreamResumeRedisMemoryCheckIntervalMs = () =>
-  getStreamResumeConfig().redisMemoryCheckIntervalMs ??
-  serviceEnv.STREAM_RESUME_REDIS_MEMORY_CHECK_INTERVAL_MS;
+  getStreamResumeConfig().redisMemoryCheckIntervalMs;
 
 /**
  * One active resume request keeps one dedicated blocking Redis connection alive for at most this

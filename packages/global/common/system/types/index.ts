@@ -84,6 +84,9 @@ export const FastGPTFeConfigsSchema = z.looseObject({
   register_method: z.array(FastGPTRegisterMethodCompatSchema).optional().meta({
     description: '用户自助注册方式列表（支持邮箱、手机号，兼容历史 sync 配置）'
   }),
+  enableSaasAdminConfig: z.boolean().optional().meta({
+    description: '是否在管理端展示 SaaS 专用配置项，默认为 false（私有化部署隐藏）'
+  }),
   teamMode: FastGPTTeamModeSchema.optional().meta({
     description: '团队模式（单团队/多团队/账号同步）'
   }),

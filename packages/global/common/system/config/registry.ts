@@ -31,6 +31,8 @@ export type SystemInstanceConfigRegistryItem = {
   key: string;
   section: SystemInstanceConfigSection;
   edition: SystemInstanceConfigEdition;
+  /** 是否属于 SaaS 运营专用字段；为 true 时在私有化部署（ENABLE_SAAS_ADMIN_CONFIG=false）下默认隐藏 */
+  isSaasOnly?: boolean;
   secret: boolean;
   applyMode: SystemInstanceConfigApplyMode;
 };
@@ -38,11 +40,14 @@ export type SystemInstanceConfigRegistryItem = {
 const createEntries = (
   section: SystemInstanceConfigSection,
   keys: readonly string[],
-  options: Omit<SystemInstanceConfigRegistryItem, 'key' | 'section'>
+  options: Omit<SystemInstanceConfigRegistryItem, 'key' | 'section' | 'isSaasOnly'> & {
+    isSaasOnly?: boolean;
+  }
 ): SystemInstanceConfigRegistryItem[] =>
   keys.map((key) => ({
     key: `${section}.${key}`,
     section,
+    isSaasOnly: options.isSaasOnly ?? false,
     ...options
   }));
 
@@ -103,9 +108,6 @@ export const systemInstanceConfigRegistry: readonly SystemInstanceConfigRegistry
       'loginProviders.wechat.appId',
       'loginProviders.wecom.suiteId',
       'loginProviders.wecom.corpId',
-      'loginProviders.wecom.buyerUserId',
-      'loginProviders.wecom.basicVersionId',
-      'loginProviders.wecom.advancedVersionId',
       'loginProviders.github.clientId',
       'loginProviders.google.clientId',
       'loginProviders.microsoft.clientId',
@@ -119,6 +121,16 @@ export const systemInstanceConfigRegistry: readonly SystemInstanceConfigRegistry
     ],
     { edition: 'pro', secret: false, applyMode: 'live' }
   ),
+  // 企微服务商运营字段：仅 SaaS 开启时在管理端表单展示
+  ...createEntries(
+    'auth',
+    [
+      'loginProviders.wecom.buyerUserId',
+      'loginProviders.wecom.basicVersionId',
+      'loginProviders.wecom.advancedVersionId'
+    ],
+    { edition: 'pro', secret: false, applyMode: 'live', isSaasOnly: true }
+  ),
   ...createEntries(
     'auth',
     [
@@ -128,14 +140,17 @@ export const systemInstanceConfigRegistry: readonly SystemInstanceConfigRegistry
       'loginProviders.wecom.secret',
       'loginProviders.wecom.token',
       'loginProviders.wecom.encodingAESKey',
-      'loginProviders.wecom.providerSecret',
-      'loginProviders.wecom.paySecret',
       'loginProviders.github.secret',
       'loginProviders.google.secret',
       'loginProviders.microsoft.secret',
       'loginProviders.dingtalk.secret'
     ],
     { edition: 'pro', secret: true, applyMode: 'live' }
+  ),
+  ...createEntries(
+    'auth',
+    ['loginProviders.wecom.providerSecret', 'loginProviders.wecom.paySecret'],
+    { edition: 'pro', secret: true, applyMode: 'live', isSaasOnly: true }
   ),
   ...createEntries(
     'security',
@@ -180,19 +195,13 @@ export const systemInstanceConfigRegistry: readonly SystemInstanceConfigRegistry
     ],
     { edition: 'all', secret: false, applyMode: 'live' }
   ),
-  // 同义词功能开关运行时可切换读写链路，但 synonymVersion 复合索引在模块加载期
-  // 按 DATASET_SYNONYM_ENABLED 决定是否声明（schema 求值早于配置加载，无法热生效），
-  // 完整效果需重启，按 restart 标注避免"即时生效"的虚假承诺。
-  ...createEntries('feature', ['datasetSynonymEnabled'], {
-    edition: 'all',
+  // DATASET_SYNONYM_ENABLED 暂时留在 ENV，不在 Admin 表单中注册
+  ...createEntries('commercial', ['showCoupon', 'showDiscountCoupon', 'payFormUrl'], {
+    edition: 'pro',
     secret: false,
-    applyMode: 'restart'
+    applyMode: 'live',
+    isSaasOnly: true
   }),
-  ...createEntries(
-    'commercial',
-    ['showCoupon', 'showDiscountCoupon', 'payFormUrl', 'agentSandboxFreeTip'],
-    { edition: 'pro', secret: false, applyMode: 'live' }
-  ),
   ...createEntries(
     'commercial',
     [
@@ -209,12 +218,18 @@ export const systemInstanceConfigRegistry: readonly SystemInstanceConfigRegistry
       'billingNotify.lackOfPoints.zh',
       'billingNotify.pointsThirtyPercentRemain.zh',
       'billingNotify.pointsTenPercentRemain.zh',
-      'billingNotify.freeClean.zh',
       'billingNotify.expireSoon.zh',
       'billingNotify.expired.zh'
     ],
     { edition: 'pro', secret: false, applyMode: 'live' }
   ),
+  // 免费账号清理属于 SaaS 运营任务，通知模板只在 SaaS 表单展示
+  ...createEntries('commercial', ['billingNotify.freeClean.zh'], {
+    edition: 'pro',
+    secret: false,
+    applyMode: 'live',
+    isSaasOnly: true
+  }),
   ...createEntries(
     'commercial',
     [
@@ -373,12 +388,17 @@ export const systemInstanceConfigRegistry: readonly SystemInstanceConfigRegistry
   )
 ];
 
-/** 按开源版/商业版过滤 Admin 可见和可写的配置字段。 */
+/**
+ * 按开源版/商业版以及可选的 SaaS 开关过滤 Admin 配置字段。
+ * options.enableSaasAdminConfig 仅控制表单/UI 展示过滤，不作为 API 权限边界。
+ */
 export const getSystemInstanceConfigRegistry = (
-  edition: SystemInstanceConfigEdition
+  edition: SystemInstanceConfigEdition,
+  options?: { enableSaasAdminConfig?: boolean }
 ): SystemInstanceConfigRegistryItem[] =>
-  edition === 'all'
-    ? [...systemInstanceConfigRegistry]
-    : systemInstanceConfigRegistry.filter(
-        (item) => item.edition === 'all' || item.edition === edition
-      );
+  systemInstanceConfigRegistry.filter((item) => {
+    const editionAllowed = edition === 'all' || item.edition === 'all' || item.edition === edition;
+    if (!editionAllowed) return false;
+    if (item.isSaasOnly && !options?.enableSaasAdminConfig) return false;
+    return true;
+  });

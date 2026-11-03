@@ -38,6 +38,11 @@ import { mongoSessionRun } from '../../mongo/sessionRun';
 import { ZodError } from 'zod';
 import { ApiRequestInputParseError } from '../../zod/requestParseError';
 import { serviceEnv } from '../../../env';
+import {
+  computeSystemInitBufferId,
+  getInstanceConfigVersionTag,
+  publishSystemInstanceConfigSnapshot
+} from './runtime';
 import { getLogger, LogCategories } from '../../logger';
 import { logInstanceConfigRead } from '../migrationCoverageLog';
 import { ApiHttpError } from '../../http/apiError';
@@ -212,28 +217,6 @@ export const getDomainConfig = async <T extends SystemInstanceConfigDomainKey>(
   const revision = doc?.revision ?? 0;
   const overrides = (doc?.overrides ?? {}) as DeepPartial<SystemInstanceConfigDomainMap[T]>;
   const effectiveConfig = resolveDomainEffectiveConfig(domain, overrides, { strict: false });
-
-  if (domain === 'subservice') {
-    const subserviceConfig = effectiveConfig as SystemInstanceConfigDomainMap['subservice'];
-    if (serviceEnv.AIPROXY_API_ENDPOINT) {
-      subserviceConfig.aiProxy.endpoint = serviceEnv.AIPROXY_API_ENDPOINT;
-    }
-    if (serviceEnv.CODE_SANDBOX_URL) {
-      subserviceConfig.codeSandbox.baseUrl = serviceEnv.CODE_SANDBOX_URL;
-    }
-    if (serviceEnv.PLUGIN_BASE_URL) {
-      subserviceConfig.plugin.baseUrl = serviceEnv.PLUGIN_BASE_URL;
-    }
-    if (serviceEnv.AGENT_SANDBOX_PROXY_URL && !subserviceConfig.agentSandbox.proxy.wsUrl) {
-      subserviceConfig.agentSandbox.proxy.wsUrl = serviceEnv.AGENT_SANDBOX_PROXY_URL;
-    }
-    if (
-      serviceEnv.AGENT_SANDBOX_PREVIEW_PROXY_URL &&
-      !subserviceConfig.agentSandbox.proxy.httpUrl
-    ) {
-      subserviceConfig.agentSandbox.proxy.httpUrl = serviceEnv.AGENT_SANDBOX_PREVIEW_PROXY_URL;
-    }
-  }
 
   logInstanceConfigRead({
     callsite: 'runtime.systemInstanceConfig.controller.getDomainConfig',
@@ -537,43 +520,24 @@ export const batchUpdateDomainConfigs = async ({
   return preparedItems.map((item) => item.domain);
 };
 
-let currentInstanceVersionTag = '0';
-
-/** 获取基于所有 Domain 文档当前 revision 聚合生成的确定性版本标识 */
-export const getInstanceConfigVersionTag = (): string => currentInstanceVersionTag;
-
-/**
- * 统一计算系统全局初始化缓存标记（systemInitBufferId）。
- * 结合实例配置版本签名、授权版本时间戳和套餐版本时间戳，确保多节点确定性一致，
- * 避免不同节点各自使用 Date.now() 或各并行任务先后覆写产生竞态。
- */
-export const computeSystemInitBufferId = ({
-  instanceVersionTag = currentInstanceVersionTag,
-  licenseUpdateTime,
-  subPlansUpdateTime
-}: {
-  instanceVersionTag?: string;
-  licenseUpdateTime?: number;
-  subPlansUpdateTime?: number;
-} = {}): string => {
-  const licenseTag = licenseUpdateTime ?? 0;
-  const subPlansTag = subPlansUpdateTime ?? 0;
-  return `v_${instanceVersionTag}_l_${licenseTag}_p_${subPlansTag}`;
-};
-
 /**
  * 一次性获取所有 11 个 Domain 的最新配置合成快照。
  * 供服务启动、Worker 进程同步以及全局运行时配置读取。
  * 发生错误时向上抛出，保留调用方已有的上一成功快照，绝不降级覆盖为全默认配置。
+ *
+ * 只按「Schema 默认值 + 数据库 overrides」合成，不再拼接 ENV；旧 ENV 只在首次迁移时写入。
  */
-export const getSystemInstanceConfigSnapshot = async (): Promise<SystemInstanceConfig> => {
+export const getSystemInstanceConfigSnapshot = async (): Promise<{
+  snapshot: SystemInstanceConfig;
+  versionTag: string;
+}> => {
   const docs = await MongoSystemInstanceConfig.find({}).lean();
 
-  const versionSig = docs
-    .map((d) => `${(d as any).domain ?? d._id}:${d.revision ?? 0}`)
-    .sort()
-    .join(';');
-  currentInstanceVersionTag = versionSig || '0';
+  const versionTag =
+    docs
+      .map((d) => `${(d as any).domain ?? d._id}:${d.revision ?? 0}`)
+      .sort()
+      .join(';') || '0';
 
   const domainOverridesMap: Partial<Record<SystemInstanceConfigDomainKey, unknown>> = {};
   for (const doc of docs) {
@@ -582,29 +546,6 @@ export const getSystemInstanceConfigSnapshot = async (): Promise<SystemInstanceC
   }
 
   const snapshot = resolveSystemInstanceConfig(domainOverridesMap, { strict: false });
-  if (serviceEnv.AIPROXY_API_ENDPOINT && snapshot.subservice?.aiProxy) {
-    snapshot.subservice.aiProxy.endpoint = serviceEnv.AIPROXY_API_ENDPOINT;
-  }
-  if (serviceEnv.CODE_SANDBOX_URL && snapshot.subservice?.codeSandbox) {
-    snapshot.subservice.codeSandbox.baseUrl = serviceEnv.CODE_SANDBOX_URL;
-  }
-  if (serviceEnv.PLUGIN_BASE_URL && snapshot.subservice?.plugin) {
-    snapshot.subservice.plugin.baseUrl = serviceEnv.PLUGIN_BASE_URL;
-  }
-  if (
-    serviceEnv.AGENT_SANDBOX_PROXY_URL &&
-    snapshot.subservice?.agentSandbox?.proxy &&
-    !snapshot.subservice.agentSandbox.proxy.wsUrl
-  ) {
-    snapshot.subservice.agentSandbox.proxy.wsUrl = serviceEnv.AGENT_SANDBOX_PROXY_URL;
-  }
-  if (
-    serviceEnv.AGENT_SANDBOX_PREVIEW_PROXY_URL &&
-    snapshot.subservice?.agentSandbox?.proxy &&
-    !snapshot.subservice.agentSandbox.proxy.httpUrl
-  ) {
-    snapshot.subservice.agentSandbox.proxy.httpUrl = serviceEnv.AGENT_SANDBOX_PREVIEW_PROXY_URL;
-  }
   logInstanceConfigRead({
     callsite: 'startup.systemInstanceConfig.getSystemInstanceConfigSnapshot',
     fields: [
@@ -621,24 +562,7 @@ export const getSystemInstanceConfigSnapshot = async (): Promise<SystemInstanceC
       { path: 'subservice', value: snapshot.subservice }
     ]
   });
-  return snapshot;
-};
-
-/**
- * 同步获取当前内存中的系统实例配置快照。
- * 若尚未完成启动加载，则返回 Schema 定义的初始默认值，保证业务无锁直接调用且永不为 null。
- */
-export const getSystemInstanceConfig = (): SystemInstanceConfig => {
-  // global 是跨 Next bundle 的唯一快照源；模块级缓存会让已访问过的路由永久滞留旧配置。
-  const snapshot = global.systemInstanceConfig ?? resolveSystemInstanceConfig({});
-  global.systemInstanceConfig = snapshot;
-
-  logInstanceConfigRead({
-    callsite: 'runtime.systemInstanceConfig.getSystemInstanceConfig',
-    fields: [],
-    dedupe: true
-  });
-  return snapshot;
+  return { snapshot, versionTag };
 };
 
 /**
@@ -646,10 +570,10 @@ export const getSystemInstanceConfig = (): SystemInstanceConfig => {
  * 供服务启动、Admin API 保存后以及集群变更通知时调用。
  */
 export const reloadSystemInstanceConfig = async (): Promise<SystemInstanceConfig> => {
-  const snapshot = await getSystemInstanceConfigSnapshot();
-  global.systemInstanceConfig = snapshot;
+  const { snapshot, versionTag } = await getSystemInstanceConfigSnapshot();
+  publishSystemInstanceConfigSnapshot({ snapshot, versionTag });
   global.systemInitBufferId = computeSystemInitBufferId({
-    instanceVersionTag: currentInstanceVersionTag,
+    instanceVersionTag: getInstanceConfigVersionTag(),
     licenseUpdateTime: (global.licenseData as any)?.expiredTime
       ? new Date((global.licenseData as any).expiredTime).getTime()
       : undefined

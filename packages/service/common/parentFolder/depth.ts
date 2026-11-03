@@ -1,6 +1,6 @@
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
-import { getSystemInstanceConfig } from '../system/systemInstanceConfig/controller';
+import { getSystemInstanceConfig } from '../system/systemInstanceConfig/runtime';
 
 type FolderResourceDoc = {
   _id: unknown;

@@ -2,15 +2,12 @@ import { delay } from '@fastgpt/global/common/system/utils';
 import { TrackModel } from './schema';
 import { TrackEnum } from '@fastgpt/global/common/middle/tracks/constants';
 import { getLogger, LogCategories } from '../../logger';
-import { serviceEnv } from '../../../env';
-import { getSystemInstanceConfig } from '../../system/systemInstanceConfig/controller';
+import { getSystemInstanceConfig } from '../../system/systemInstanceConfig/runtime';
 
 const logger = getLogger(LogCategories.EVENT.TRACK);
 
-/** 批量刷新间隔以实例配置为权威；快照叶子缺省时回落 env。 */
-const getBatchUpdateTime = () =>
-  getSystemInstanceConfig().performance.tracking.batchUpdateTime ??
-  serviceEnv.TRACK_BATCH_UPDATE_TIME;
+/** 批量刷新间隔只读实例配置 performance.tracking.batchUpdateTime。 */
+const getBatchUpdateTime = () => getSystemInstanceConfig().performance.tracking.batchUpdateTime;
 
 const getCurrentTenMinuteBoundary = () => {
   const now = new Date();

@@ -17,7 +17,7 @@ import { getMultipleDataToBase64 } from '../../../../common/system/constants';
 import { datasetCollectionSelectField, datasetDataSelectField } from './constant';
 import { buildSearchResultItem, concatRecallLists } from './result';
 import { getDatasetVectorSearchData } from '../../vectorData/service';
-import { getSystemInstanceConfig } from '../../../../common/system/systemInstanceConfig/controller';
+import { getSystemInstanceConfig } from '../../../../common/system/systemInstanceConfig/runtime';
 import { logInstanceConfigRead } from '../../../../common/system/migrationCoverageLog';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.DATA);

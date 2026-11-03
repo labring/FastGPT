@@ -1,9 +1,8 @@
 import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { getLogger, LogCategories } from '../../common/logger';
-import { getSystemInstanceConfig } from '../../common/system/systemInstanceConfig/controller';
+import { getSystemInstanceConfig } from '../../common/system/systemInstanceConfig/runtime';
 import { logInstanceConfigRead } from '../../common/system/migrationCoverageLog';
-import { serviceEnv } from '../../env';
 import { SessionCache, type SessionData } from '@fastgpt/dal/redis/caches';
 
 const logger = getLogger(LogCategories.MODULE.USER.ACCOUNT);
@@ -28,13 +27,11 @@ export const getUserSessionCount = async (userId: string) => {
 
 // 会根据创建时间，删除超出客户端登录限制的 session
 const delRedundantSession = async (userId: string) => {
-  // 优先取实例配置，未初始化时回退环境变量，至少为 1
-  const configuredMaxSession = getSystemInstanceConfig().security.maxLoginSession;
-  let maxSession = configuredMaxSession ?? serviceEnv.MAX_LOGIN_SESSION;
+  // 只读实例配置，至少为 1
+  let maxSession = getSystemInstanceConfig().security.maxLoginSession;
   logInstanceConfigRead({
     callsite: 'runtime.support.user.session.delRedundantSession',
-    source: configuredMaxSession === undefined ? 'env-fallback' : 'instance-config',
-    fields: [{ path: 'security.maxLoginSession', value: configuredMaxSession ?? maxSession }]
+    fields: [{ path: 'security.maxLoginSession', value: maxSession }]
   });
   if (maxSession < 1) {
     maxSession = 1;

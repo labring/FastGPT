@@ -9,9 +9,8 @@ import { TeamApikeyCreatePermissionVal } from '@fastgpt/global/support/permissio
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
-import { getSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/controller';
+import { getSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/runtime';
 import { logInstanceConfigRead } from '@fastgpt/service/common/system/migrationCoverageLog';
-import { appEnv } from '@/env';
 import { validateOpenApiTags } from '@fastgpt/service/support/openapi/tag/service';
 import {
   CreateApiKeyBodySchema,
@@ -43,12 +42,10 @@ async function handler(
   }
 
   const count = await MongoOpenApi.find({ tmbId }).countDocuments();
-  const configuredMaxCount = getSystemInstanceConfig().auth.openApiKeyMaxCount;
-  const maxCount = configuredMaxCount ?? appEnv.OPENAPI_KEY_MAX_COUNT;
+  const maxCount = getSystemInstanceConfig().auth.openApiKeyMaxCount;
   logInstanceConfigRead({
     callsite: 'runtime.app.openapi.create',
-    source: configuredMaxCount === undefined ? 'env-fallback' : 'instance-config',
-    fields: [{ path: 'auth.openApiKeyMaxCount', value: configuredMaxCount ?? maxCount }]
+    fields: [{ path: 'auth.openApiKeyMaxCount', value: maxCount }]
   });
 
   if (count >= maxCount) {

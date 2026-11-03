@@ -81,9 +81,36 @@ const {
   }),
   mockCreatePdfParseUsage: vi.fn(),
   mockEnv: {
-    PARSE_FILE_TIMEOUT_SECONDS: 600,
-    DOCUMENT_PARSE_PROVIDER: '' as '' | 'sangfor',
-    SANGFOR_PARSE_EXTENSIONS: 'pdf'
+    _parseFileTimeoutSeconds: 600,
+    get PARSE_FILE_TIMEOUT_SECONDS() {
+      return this._parseFileTimeoutSeconds;
+    },
+    set PARSE_FILE_TIMEOUT_SECONDS(val: number) {
+      this._parseFileTimeoutSeconds = val;
+      if ((global as any).systemInstanceConfig?.performance?.parse) {
+        (global as any).systemInstanceConfig.performance.parse.fileTimeoutSeconds = val;
+      }
+    },
+    _documentParseProvider: '' as '' | 'sangfor',
+    get DOCUMENT_PARSE_PROVIDER() {
+      return this._documentParseProvider;
+    },
+    set DOCUMENT_PARSE_PROVIDER(val: '' | 'sangfor') {
+      this._documentParseProvider = val;
+      if ((global as any).systemInstanceConfig?.providers?.documentParse) {
+        (global as any).systemInstanceConfig.providers.documentParse.provider = val || 'none';
+      }
+    },
+    _sangforParseExtensions: 'pdf',
+    get SANGFOR_PARSE_EXTENSIONS() {
+      return this._sangforParseExtensions;
+    },
+    set SANGFOR_PARSE_EXTENSIONS(val: string) {
+      this._sangforParseExtensions = val;
+      if ((global as any).systemInstanceConfig?.providers?.documentParse?.sangfor) {
+        (global as any).systemInstanceConfig.providers.documentParse.sangfor.extensions = val;
+      }
+    }
   }
 }));
 
@@ -155,6 +182,9 @@ describe('readFileContentByBuffer', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     (global as any).systemInstanceConfig = LEAF_ABSENT_SNAPSHOT();
+    (global as any).systemInstanceConfig.performance.parse.fileTimeoutSeconds = 600;
+    (global as any).systemInstanceConfig.providers.documentParse.provider = 'none';
+    (global as any).systemInstanceConfig.providers.documentParse.sangfor.extensions = 'pdf';
     global.systemEnv = {} as any;
     mockEnv.PARSE_FILE_TIMEOUT_SECONDS = 600;
     mockEnv.DOCUMENT_PARSE_PROVIDER = '';
@@ -1005,6 +1035,9 @@ describe('readFileContentBySource', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     (global as any).systemInstanceConfig = LEAF_ABSENT_SNAPSHOT();
+    (global as any).systemInstanceConfig.performance.parse.fileTimeoutSeconds = 600;
+    (global as any).systemInstanceConfig.providers.documentParse.provider = 'none';
+    (global as any).systemInstanceConfig.providers.documentParse.sangfor.extensions = 'pdf';
     global.systemEnv = {} as any;
     mockEnv.DOCUMENT_PARSE_PROVIDER = '';
     mockEnv.SANGFOR_PARSE_EXTENSIONS = 'pdf';

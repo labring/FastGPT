@@ -1,7 +1,6 @@
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { getSystemInstanceConfig } from '../system/systemInstanceConfig/controller';
+import { getSystemInstanceConfig } from '../system/systemInstanceConfig/runtime';
 import { logInstanceConfigRead } from '../system/migrationCoverageLog';
-import { serviceEnv } from '../../env';
 import { SYSTEM_STRING_LENGTH_UNIT } from '../../env.const';
 import { getLogger, LogCategories } from '../logger';
 
@@ -10,12 +9,10 @@ const MAX_REPLACEMENT_DEPTH = 10;
 const logger = getLogger(LogCategories.SYSTEM);
 
 export const getSystemMaxStringLength = () => {
-  const configured = getSystemInstanceConfig().resource.systemMaxStringLengthM;
-  const value = configured ?? serviceEnv.SYSTEM_MAX_STRING_LENGTH_M;
+  const value = getSystemInstanceConfig().resource.systemMaxStringLengthM;
   logInstanceConfigRead({
     callsite: 'runtime.common.replaceVariable.getSystemMaxStringLength',
-    source: configured === undefined ? 'env-fallback' : 'instance-config',
-    fields: [{ path: 'resource.systemMaxStringLengthM', value: configured ?? value }]
+    fields: [{ path: 'resource.systemMaxStringLengthM', value }]
   });
   return value * SYSTEM_STRING_LENGTH_UNIT;
 };
