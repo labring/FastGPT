@@ -420,7 +420,7 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
     } else {
       // mcp tool (old version compatible)
       const { toolData, system_toolData, ...restParams } = params;
-      const { name: toolName, url, headerSecret, requestMeta } = toolData || system_toolData;
+      const { name: toolName, url, headerSecret } = toolData || system_toolData;
 
       await assertMCPUrlNotInternal(url);
 
@@ -434,8 +434,7 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
       toolInput = restParams;
       const result = await mcpClient.toolCall({
         toolName,
-        params: restParams,
-        ...(requestMeta !== undefined ? { requestMeta } : {})
+        params: restParams
       });
 
       return getMcpResponse(result);

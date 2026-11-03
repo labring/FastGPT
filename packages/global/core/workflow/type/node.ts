@@ -145,6 +145,18 @@ export const NodeToolConfigTypeSchema = NodeToolConfigCommonSchema.extend({
 });
 export type NodeToolConfigType = z.infer<typeof NodeToolConfigTypeSchema>;
 
+/** 引用方工作流只保存工具定义快照；请求元数据归 MCP 工具本体所有，执行时读取当前配置。 */
+export const WorkflowNodeToolConfigSchema = NodeToolConfigTypeSchema.extend({
+  mcpToolSet: z
+    .union([
+      ToolSetPreviewReferenceSchema,
+      McpToolSetRuntimeConfigSchema.extend({
+        toolList: z.array(McpToolConfigSchema.omit({ requestMeta: true }))
+      })
+    ])
+    .optional()
+});
+
 export const ToolDataSchema = z.object({
   diagram: z.string().optional().meta({
     description: '工具说明图地址'
@@ -364,3 +376,8 @@ export const StoreNodeItemTypeSchema = FlowNodeCommonTypeSchema.extend({
     .optional()
 });
 export type StoreNodeItemType = z.infer<typeof StoreNodeItemTypeSchema>;
+
+/** 普通工作流的持久化节点；工具本体版本仍使用完整的 StoreNodeItemTypeSchema。 */
+export const WorkflowStoreNodeItemSchema = StoreNodeItemTypeSchema.extend({
+  toolConfig: WorkflowNodeToolConfigSchema.optional()
+});

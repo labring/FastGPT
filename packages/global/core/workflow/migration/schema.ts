@@ -2,7 +2,11 @@ import z from 'zod';
 import { AppChatConfigTypeSchema } from '../../app/type';
 import { FlowNodeInputItemTypeSchema } from '../type/io';
 import { AgentToolInputModeEnum } from '../../app/tool/constants';
-import { NodeToolConfigTypeSchema, StoreNodeItemTypeSchema } from '../type/node';
+import {
+  WorkflowNodeToolConfigSchema,
+  WorkflowStoreNodeItemSchema,
+  StoreNodeItemTypeSchema
+} from '../type/node';
 import { StoreEdgeItemTypeSchema } from '../type/edge';
 import { LanguageSchema } from '../../../common/i18n/type';
 
@@ -33,7 +37,7 @@ const CanonicalAvailableAgentToolSchema = z.object({
   version: z.string().optional(),
   source: z.string().optional(),
   metadataLocale: LanguageSchema.optional(),
-  toolConfig: NodeToolConfigTypeSchema.optional(),
+  toolConfig: WorkflowNodeToolConfigSchema.optional(),
   inputs: z.array(CanonicalAgentToolInputConfigSchema).optional(),
   config: z.record(z.string(), z.unknown())
 });
@@ -56,3 +60,8 @@ export const CanonicalWorkflowDataSchema = z.object({
   chatConfig: AppChatConfigTypeSchema.default({})
 });
 export type CanonicalWorkflowData = z.infer<typeof CanonicalWorkflowDataSchema>;
+
+/** 引用方工作流最终落库前的 Schema，不携带工具自身的请求元数据。 */
+export const PersistedWorkflowDataSchema = CanonicalWorkflowDataSchema.extend({
+  nodes: z.array(WorkflowStoreNodeItemSchema)
+});

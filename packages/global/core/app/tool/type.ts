@@ -1,7 +1,7 @@
 import z from 'zod';
 import type { StoreEdgeItemType } from '../../workflow/type/edge';
 import type { StoreNodeItemType } from '../../workflow/type/node';
-import { NodeToolConfigTypeSchema } from '../../workflow/type/node';
+import { WorkflowNodeToolConfigSchema } from '../../workflow/type/node';
 import type { AppChatConfigType } from '../type';
 import { CanonicalAgentToolInputConfigSchema } from '../../workflow/migration';
 import { LanguageSchema } from '../../../common/i18n/type';
@@ -43,7 +43,7 @@ const AgentToolBaseSchema = z.object({
   version: z.string().optional(),
   source: z.string().optional(),
   metadataLocale: LanguageSchema.optional(),
-  toolConfig: NodeToolConfigTypeSchema.optional(),
+  toolConfig: WorkflowNodeToolConfigSchema.optional(),
   inputs: z.array(AgentToolInputConfigSchema).optional(),
   config: z.record(z.string(), z.any())
 });

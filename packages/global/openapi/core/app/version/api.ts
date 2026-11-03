@@ -7,6 +7,7 @@ import { AppResourcesSchema } from '../../../../core/app/type';
 import { StoreEdgeItemTypeSchema } from '../../../../core/workflow/type/edge';
 import { AppChatConfigInputSchema, OpenAPIAppChatConfigSchema } from '../common/api';
 import { BoolSchema, NumSchema } from '../../../../common/zod';
+import { WorkflowNodeToolConfigSchema } from '../../../../core/workflow/type/node';
 
 export const PublishAppQuerySchema = z.object({
   appId: ObjectIdSchema.meta({
@@ -20,9 +21,15 @@ const AppVersionNodesSchema = z.array(OpenAPIStoreNodeItemTypeSchema).meta({
   description: '版本内保存的应用节点配置'
 });
 
-const PublishAppNodesSchema = z.array(OpenAPIStoreNodeItemTypeSchema).meta({
-  description: '本次保存的应用节点配置'
-});
+const PublishAppNodesSchema = z
+  .array(
+    OpenAPIStoreNodeItemTypeSchema.extend({
+      toolConfig: WorkflowNodeToolConfigSchema.optional()
+    })
+  )
+  .meta({
+    description: '本次保存的应用节点配置'
+  });
 
 const AppVersionEdgesSchema = z.array(StoreEdgeItemTypeSchema).default([]).meta({
   description: '版本内保存的应用连线配置'

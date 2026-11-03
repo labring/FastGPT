@@ -644,20 +644,17 @@ describe('dispatchRunTool runtime toolset auth', () => {
 
   it.each(
     ['toolData', 'system_toolData'].flatMap((legacyKey) =>
-      [undefined, { 'example/context': { locale: 'zh-CN' } }].flatMap((requestMeta) =>
-        [false, true].map((isError) => ({ legacyKey, requestMeta, isError }))
-      )
+      [false, true].map((isError) => ({ legacyKey, isError }))
     )
   )(
-    'keeps legacy $legacyKey metadata and handles isError=$isError: $requestMeta',
-    async ({ legacyKey, requestMeta, isError }) => {
+    'keeps legacy $legacyKey results and handles isError=$isError',
+    async ({ legacyKey, isError }) => {
       const props = createRunToolProps({});
       props.params = {
         query: 'fastgpt',
         [legacyKey]: {
           name: 'search',
           url: 'https://mcp.example.com',
-          requestMeta,
           headerSecret: { Authorization: { value: 'legacy-token' }, 'X-Key': { value: 'api-key' } },
           inputSchema: {
             type: 'object',
@@ -684,8 +681,7 @@ describe('dispatchRunTool runtime toolset auth', () => {
       });
       expect(mcpToolCallMock).toHaveBeenCalledWith({
         toolName: 'search',
-        params: { query: 'fastgpt' },
-        ...(requestMeta !== undefined ? { requestMeta } : {})
+        params: { query: 'fastgpt' }
       });
     }
   );
