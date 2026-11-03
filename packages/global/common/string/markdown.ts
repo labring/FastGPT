@@ -313,17 +313,66 @@ export const matchDocumentImages = (text = ''): DocumentImageItem[] => {
   return safeMatches;
 };
 
-const findClosingBracket = (text: string, startIndex: number) => {
-  for (let i = startIndex; i < text.length; i++) {
-    if (text[i] === '\\') {
-      i++;
+/**
+ * 一次线性扫描，记录每个 `[` 配对的 `]`。CommonMark 允许图片描述里出现成对的方括号
+ * （如 `![图 [1]](url)`）；转义的方括号不参与配对，配对也不跨越空行或疑似块级边界。
+ *
+ * 反引号和可能开始 HTML 标签的 `<`（后跟字母、`/`、`!` 或 `?`）优先级高于方括号配对。
+ * 为避免误判，左右方括号之间出现它们时不记录配对，图片描述回到原有的「第一个右方括号」规则。
+ * 描述里嵌套的链接或图片（内层 `]` 后紧跟 `(`）的目的地址可能含有 `](`，仅凭方括号无法
+ * 确定边界，因此同样不记录外层配对。这样配对结果只会在原规则之外多识别纯文本的嵌套方括号，
+ * 不会让描述越过代码、HTML 或链接地址。
+ */
+const pairSquareBrackets = (text: string) => {
+  // 只保守扩展纯文本描述，不尝试完整解析块语法；疑似标题、列表、引用等行不与相邻行配对。
+  const possibleBlockStart = /(?:[#>*_~+=-]|\d{1,9}[.)](?:[ \t\r\n]|$))/y;
+  /** 空行与疑似块级行都会中断跨行配对，只返回布尔值，避免逐行分配对象。 */
+  const isBoundaryLine = (from: number) => {
+    let cursor = from;
+    while (text[cursor] === ' ' || text[cursor] === '\t') cursor++;
+    possibleBlockStart.lastIndex = cursor;
+    return (
+      cursor >= text.length ||
+      text[cursor] === '\r' ||
+      text[cursor] === '\n' ||
+      possibleBlockStart.test(text)
+    );
+  };
+
+  const pairs = new Map<number, number>();
+  const stack: number[] = [];
+  let lineIsBoundary = isBoundaryLine(0);
+  // 最近一个反引号、HTML 标签开头或嵌套链接地址的位置；左方括号在它之前的配对不记录。
+  let lastInlineMarkup = -1;
+
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+    if (char === '\r' || char === '\n') {
+      // CRLF 只算一次换行；单独 CR 和 LF 也是换行，不能靠后续文本清理补救扫描边界。
+      const nextLineStart = i + (char === '\r' && text[i + 1] === '\n' ? 2 : 1);
+      const nextIsBoundary = isBoundaryLine(nextLineStart);
+      if (lineIsBoundary || nextIsBoundary) stack.length = 0;
+      lineIsBoundary = nextIsBoundary;
+      i = nextLineStart - 1;
       continue;
     }
 
-    if (text[i] === ']') return i;
+    if (char === '\\') {
+      // 行尾反斜杠可转义硬换行，但不能跳过下一轮的空行或块边界检查。
+      if (text[i + 1] !== '\r' && text[i + 1] !== '\n') i++;
+    } else if (char === '`' || (char === '<' && /[A-Za-z/!?]/.test(text[i + 1] ?? ''))) {
+      lastInlineMarkup = i;
+    } else if (char === '[') {
+      stack.push(i);
+    } else if (char === ']') {
+      const open = stack.pop();
+      if (open !== undefined && open > lastInlineMarkup) pairs.set(open, i);
+      // 嵌套的链接或图片：外层仍未闭合的左方括号都不再记录配对。
+      if (stack.length > 0 && text[i + 1] === '(') lastInlineMarkup = i;
+    }
   }
 
-  return -1;
+  return pairs;
 };
 
 /**
@@ -339,6 +388,36 @@ const scanMarkdownImages = (text = '') => {
     replaceAltText: (nextAltText: string) => string;
   })[] = [];
   let start = 0;
+  let bracketPairs: Map<number, number> | undefined;
+  let firstClosing: number | undefined;
+  let lastOpeningBeforeClosing = -1;
+
+  /**
+   * 普通描述只查找第一个未转义的右方括号；其前出现内层左方括号时才懒加载配对表。
+   * 顺序扫描的后续候选复用同一个右方括号，避免未闭合片段反复扫描相同后缀。
+   * 配对不存在或其后不是 `(` 时仍用第一个右括号，保留原有的宽松匹配。
+   */
+  const findClosingBracket = (altStart: number) => {
+    // 候选起点只前移且总在 `[` 后，转义状态一致，中间候选可安全复用缓存。
+    if (firstClosing === undefined || (firstClosing !== -1 && firstClosing < altStart)) {
+      firstClosing = -1;
+      for (let i = altStart; i < text.length; i++) {
+        if (text[i] === '\\') {
+          i++;
+        } else if (text[i] === ']') {
+          firstClosing = i;
+          break;
+        }
+      }
+      // 每个新右括号只反查一次；外层左括号位于 altStart - 1，反查不会超出本段。
+      lastOpeningBeforeClosing = firstClosing === -1 ? -1 : text.lastIndexOf('[', firstClosing - 1);
+    }
+    if (firstClosing === -1 || lastOpeningBeforeClosing < altStart) return firstClosing;
+
+    bracketPairs ??= pairSquareBrackets(text);
+    const paired = bracketPairs.get(altStart - 1);
+    return paired !== undefined && text[paired + 1] === '(' ? paired : firstClosing;
+  };
 
   /** 只用于本次扫描，返回原文中的地址区间和图片结束位置。 */
   const readDestination = (contentStart: number) => {
@@ -435,8 +514,10 @@ const scanMarkdownImages = (text = '') => {
     if (imageStart === -1) break;
 
     const altStart = imageStart + 2;
-    const altEnd = findClosingBracket(text, altStart);
-    if (altEnd === -1 || text[altEnd + 1] !== '(') {
+    const altEnd = findClosingBracket(altStart);
+    // 后缀没有未转义的右括号，后续候选也不可能构成图片。
+    if (altEnd === -1) break;
+    if (text[altEnd + 1] !== '(') {
       start = imageStart + 2;
       continue;
     }
