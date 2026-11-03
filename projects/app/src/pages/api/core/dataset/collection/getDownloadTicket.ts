@@ -10,6 +10,7 @@ import {
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import { isDisableSuperAdmin } from '@fastgpt/global/core/dataset/apiDataset/utils';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import {
   assertMemberRateLimit,
@@ -69,6 +70,7 @@ async function handler(
               datasetId: String(dataset._id),
               tmbId: String(tmbId),
               isRoot,
+              ignoreTeamOwner: isDisableSuperAdmin(dataset.apiDatasetServer),
               collectionIds: archiveCollectionIds
             })
         });

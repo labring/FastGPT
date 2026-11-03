@@ -289,7 +289,9 @@ export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServerTy
           // 子树不再被遍历 → 后代全部落入删除集，整棵删掉
           hasChild: fileData.hasChild ?? fileData.type === 'folder',
           updateTime: fileData.updateTime,
-          createTime: fileData.createTime
+          createTime: fileData.createTime,
+          // 原样透出，由权限同步层做逐项校验；缺失即外部未提供权限
+          ...(Array.isArray(fileData.permissions) ? { permissions: fileData.permissions } : {})
         });
       }
 

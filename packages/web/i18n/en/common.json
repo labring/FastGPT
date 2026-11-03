@@ -1395,5 +1395,6 @@
   "core.workflow.check.source_output_missing": "Output {{outputKey}} of node {{nodeId}} is missing or cannot be connected",
   "core.workflow.check.node_missing": "Node {{nodeId}} no longer exists; remove its stale connection",
   "core.workflow.check.option_keys_invalid": "Option or classification keys are missing or duplicated",
-  "core.workflow.check.form_configuration_invalid": "Form field keys or matching outputs are incomplete: {{fieldKeys}}"
+  "core.workflow.check.form_configuration_invalid": "Form field keys or matching outputs are incomplete: {{fieldKeys}}",
+  "core.dataset.error.permissionSyncManaged": "File permissions of this knowledge base are managed by the external API file library and cannot be edited here"
 }

@@ -32,6 +32,9 @@ export enum DatasetErrEnum {
   // Collection 级权限（501026+）
   collectionPermissionDisabled = 'collectionPermissionDisabled',
 
+  // 外部文件权限同步
+  permissionSyncManaged = 'permissionSyncManaged',
+
   archiveNoDownloadableFile = 'archiveNoDownloadableFile',
   archiveLimitExceeded = 'archiveLimitExceeded',
   archiveMemberBusy = 'archiveMemberBusy',
@@ -178,6 +181,12 @@ const datasetErr = [
     statusText: DatasetErrEnum.exportFolderNotSupported,
     message: i18nT('common:core.dataset.error.exportFolderNotSupported'),
     httpStatus: 400
+  },
+  // 追加在末尾：code 由数组下标推导，插到中间会让存量错误码整体位移
+  {
+    statusText: DatasetErrEnum.permissionSyncManaged,
+    message: i18nT('common:core.dataset.error.permissionSyncManaged'),
+    httpStatus: 403
   }
 ];
 export default datasetErr.reduce((acc, cur, index) => {

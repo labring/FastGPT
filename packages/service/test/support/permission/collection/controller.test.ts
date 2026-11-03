@@ -1750,6 +1750,76 @@ describe.sequential('syncDatasetToCollections', () => {
       aclReadSpy.mockRestore();
     }
   });
+  it('托管子知识库不参与跨树同步：跳过快照重写，也不继续下探', async () => {
+    const users = await getFakeUsers(2);
+    const teamId = String(users.owner.teamId);
+    const ownerTmbId = String(users.owner.tmbId);
+    const memberTmbId = String(users.members[0].tmbId);
+
+    const outerFolder = await mongoSessionRun(async (session) => {
+      const folder = await MongoDataset.create({
+        teamId,
+        tmbId: ownerTmbId,
+        type: DatasetTypeEnum.folder,
+        name: 'outer-folder'
+      });
+      await createResourceDefaultCollaborators({
+        resource: { _id: String(folder._id), type: folder.type, teamId },
+        resourceType: PerResourceTypeEnum.dataset,
+        session,
+        tmbId: ownerTmbId
+      });
+      return folder;
+    });
+    const managedDataset = await mongoSessionRun(async (session) => {
+      const child = await MongoDataset.create({
+        teamId,
+        tmbId: ownerTmbId,
+        parentId: outerFolder._id,
+        type: DatasetTypeEnum.dataset,
+        name: 'managed-dataset',
+        apiDatasetServer: {
+          apiServer: { baseUrl: 'https://example.com' },
+          permissionSync: true
+        }
+      });
+      await createResourceDefaultCollaborators({
+        resource: { _id: String(child._id), type: child.type, teamId },
+        resourceType: PerResourceTypeEnum.dataset,
+        session,
+        tmbId: ownerTmbId
+      });
+      return child;
+    });
+    await enableDatasetCollectionPermissions({ teamId, datasetId: String(managedDataset._id) });
+    const managedFile = await createCollection({
+      user: users.owner,
+      datasetId: String(managedDataset._id),
+      name: 'managed-file'
+    });
+
+    await mongoSessionRun(async (session) => {
+      const oldOuterClbs = await getResourceOwnedClbs({
+        teamId,
+        resourceType: PerResourceTypeEnum.dataset,
+        resourceId: String(outerFolder._id),
+        session
+      });
+      const newOuterClbs = [...oldOuterClbs, { tmbId: memberTmbId, permission: ReadRoleVal }];
+      await syncDatasetToCollections({
+        teamId,
+        datasetId: String(outerFolder._id),
+        oldEffectiveClbs: oldOuterClbs,
+        newEffectiveClbs: newOuterClbs,
+        session
+      });
+    });
+
+    // 托管库的 ACL 由外部同步驱动：本地级联不能把外层成员写进去
+    await expect(
+      collectionClbs(teamId, String(managedFile._id)).then(toPermissionMap)
+    ).resolves.toEqual(new Map([[ownerTmbId, OwnerRoleVal]]));
+  });
 });
 
 describe.sequential('syncRootCollections', () => {

@@ -16,7 +16,11 @@ import {
   upsertDatasetSyncJobScheduler
 } from '@fastgpt/service/core/dataset/datasetSync';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
+import { enqueueDatasetPermissionSync } from '@fastgpt/service/core/dataset/datasetPermissionSync';
+import type { ApiDatasetServerType } from '@fastgpt/global/core/dataset/apiDataset/type';
+import { ApiDatasetServerSchema } from '@fastgpt/global/core/dataset/apiDataset/type';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
+import { enableDatasetCollectionPermissions } from '@fastgpt/service/support/permission/collection/enable';
 import { assertAuthModels } from '@fastgpt/service/support/permission/model/auth';
 import { addAuditLogs } from '@fastgpt/service/support/user/audit/util';
 import { buildDatasetConfigUpdatePatch } from '@fastgpt/service/core/dataset/audit/patch';
@@ -29,7 +33,10 @@ import { isEmptyModelValue } from '@fastgpt/global/core/ai/model/reference';
 import { computedCollectionChunkSettings } from '@fastgpt/global/core/dataset/training/utils';
 import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
 import { isInternalAddress, PRIVATE_URL_TEXT } from '@fastgpt/service/common/system/utils';
-import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import {
+  ApiRequestInputParseError,
+  parseApiInput
+} from '@fastgpt/service/common/zod/requestParseError';
 
 /**
  * 更新知识库接口
@@ -151,6 +158,33 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
           patchValue: apiDatasetServer,
           rootPath: 'apiDatasetServer'
         });
+  // 外部权限同步开启 ⇒ collection 权限必须开启：否则快照没有读者，同步结果等于白写。
+  // 只经唯一入口 enableDatasetCollectionPermissions 开启，禁止直写开关（否则会出现
+  // 「开关已开但 collection 尚无快照」的窗口，读路径会整库不可见）。
+  // 未传 apiDatasetServer 时沿用库中配置，保证异常组合（permissionSync=true 但开关未开）能被顺带修复。
+  const effectiveApiDatasetServer = (
+    apiDatasetServer === undefined
+      ? dataset.apiDatasetServer
+      : apiDatasetServerPatch?.effectiveValue
+  ) as ApiDatasetServerType | undefined;
+  // 请求体只是局部 patch：permissionSync 依赖 apiServer 的组合约束必须在合并后判断，
+  // 否则存量 apiServer 配置无法单独打开开关。仅校验本次修改的配置，存量脏数据保持容忍。
+  if (apiDatasetServer !== undefined) {
+    const parsed = ApiDatasetServerSchema.safeParse(effectiveApiDatasetServer);
+    if (!parsed.success) {
+      throw new ApiRequestInputParseError(parsed.error, { inputSource: 'body' });
+    }
+  }
+  const needsEnableCollectionPermission =
+    effectiveApiDatasetServer?.permissionSync === true &&
+    // folder 类型 dataset 永远不开启 collection 权限（它只承载子知识库，没有自己的 collection）
+    dataset.type !== DatasetTypeEnum.folder &&
+    dataset.collectionPermissionEnabled !== true;
+  // 与「是否开启 collection 权限」解耦：开关早已打开但本次才开启托管时，同样需要补一轮全量。
+  const shouldEnqueueFullSync =
+    effectiveApiDatasetServer?.permissionSync === true &&
+    (dataset.apiDatasetServer?.permissionSync !== true ||
+      dataset.collectionPermissionEnabled !== true);
   const configAuditLogs = buildDatasetUpdateAuditLogs({
     dataset,
     modelHandle,
@@ -179,6 +213,12 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
   });
 
   const onUpdate = async (session: ClientSession) => {
+    // 开启开关与全库物化必须同一事务提交，否则读路径会看到「已开启但未物化」的整库不可见状态。
+    // 按设计顺序先开 collection 权限，再写 apiDatasetServer。
+    if (needsEnableCollectionPermission) {
+      await enableDatasetCollectionPermissions({ teamId, datasetId: String(id), session });
+    }
+
     // Website dataset update chunkSettings, need to clean up dataset
     if (
       dataset.type === DatasetTypeEnum.websiteDataset &&
@@ -245,6 +285,12 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
   };
 
   await mongoSessionRun((session) => onUpdate(session));
+
+  // 刚开启同步时补一轮全量：存量 collection 还没有任何外部快照。
+  // 入队在提交后执行，避免事务回滚却把任务发出去。
+  if (shouldEnqueueFullSync) {
+    await enqueueDatasetPermissionSync({ datasetId: String(id) });
+  }
 
   // 事务提交成功后才写审计：失败回滚的更新不应该出现在操作日志里。
   // 每个实际变化的配置项写一条日志，保留单项追溯能力，而不是把多个字段拼成一行。

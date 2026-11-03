@@ -338,6 +338,11 @@ describe('prepareDatasetArchive', () => {
 });
 
 describe('assertDatasetArchiveCollectionsReadable', () => {
+  beforeEach(() => {
+    // 同文件的其它 describe 共用这些 mock，调用历史会跨用例累积
+    vi.clearAllMocks();
+  });
+
   it('rejects a manifest containing a collection the member cannot read', async () => {
     const permissionCollections = [
       {
@@ -416,6 +421,26 @@ describe('assertDatasetArchiveCollectionsReadable', () => {
     expect(permissionMocks.getReadableCollectionIds).toHaveBeenCalledWith(
       expect.objectContaining({ collectionPermissionEnabled: true })
     );
+  });
+  it('passes ignoreTeamOwner through so managed datasets disable the team-owner short circuit', async () => {
+    permissionMocks.canShortCircuitCollectionPermission.mockResolvedValue(true);
+
+    await assertDatasetArchiveCollectionsReadable({
+      teamId: 'team-1',
+      datasetId: 'dataset-1',
+      tmbId: 'owner-1',
+      isRoot: false,
+      ignoreTeamOwner: true,
+      collectionIds: ['file-1']
+    });
+
+    expect(permissionMocks.canShortCircuitCollectionPermission).toHaveBeenCalledWith({
+      teamId: 'team-1',
+      datasetIds: ['dataset-1'],
+      tmbId: 'owner-1',
+      ignoreTeamOwner: true
+    });
+    expect(preparationMocks.findArchiveCollectionPermissionItems).not.toHaveBeenCalled();
   });
 });
 

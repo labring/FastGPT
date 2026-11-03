@@ -155,6 +155,7 @@ export const dispatchDatasetSearch = async (
 
     // Collection 级权限可读集合仅对真实成员鉴权生效；authTmbId=false（应用内预选 dataset，
     // 无当前用户身份）时不做 collection 级过滤，按 dataset 全量召回。
+    // 不传 ignoreTeamOwner：disableSuperAdmin 只作用于知识库管理侧，检索仍按团队 owner 短路。
     const readableCollectionIdList = authTmbId
       ? await resolveReadableCollectionIds({
           teamId: userInfo.teamId,

@@ -31,6 +31,9 @@ import { lockDatasetCollectionPermissionState } from '../../../support/permissio
 import { getLogger, LogCategories } from '../../../common/logger';
 import type { DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
 import { RootCollectionId } from '@fastgpt/global/core/dataset/collection/constants';
+import { isPermissionSyncDataset } from '@fastgpt/global/core/dataset/apiDataset/utils';
+import { MongoDataset } from '../schema';
+import { enqueueDatasetPermissionSync } from '../datasetPermissionSync';
 import type { DatasetPermission } from '@fastgpt/global/support/permission/dataset/controller';
 
 const logger = getLogger(LogCategories.MODULE.DATASET);
@@ -132,12 +135,6 @@ export const createApiDatasetCollection = async ({
       permission: DatasetPermission;
     };
   }): Promise<CreateApiCollectionV2ResponseType> => {
-  const startId =
-    dataset.apiDatasetServer?.apiServer?.basePath ||
-    dataset.apiDatasetServer?.yuqueServer?.basePath ||
-    dataset.apiDatasetServer?.feishuServer?.folderToken ||
-    dataset.apiDatasetServer?.dingtalkServer?.rootNodeId;
-
   const request = await getApiDatasetRequest(dataset.apiDatasetServer);
 
   // 1. 本地快照同时用于幂等匹配、旧目录识别与后续移动计划。
@@ -187,34 +184,48 @@ export const createApiDatasetCollection = async ({
     return verified;
   })();
 
+  // 2a. 旧客户端可能用 RootCollectionId 哨兵表达「全部文件」：等价于从知识库根整棵导入。
+  //     哨兵不是真实 server 节点，不进入建树，改用 provider 根的直接子节点作为种子；
+  //     同时幂等置 syncAllFiles，让后续每日同步仍覆盖整棵树。
+  const hasRootSentinel = seeds.some((item) => item.id === RootCollectionId);
+  if (hasRootSentinel && dataset.apiDatasetServer?.syncAllFiles !== true) {
+    try {
+      await MongoDataset.updateOne(
+        { _id: dataset._id, teamId },
+        { $set: { 'apiDatasetServer.syncAllFiles': true } }
+      );
+    } catch (error) {
+      // 置位失败只告警：本轮导入照常完成，下一轮同步会按已有节点收敛
+      logger.error('Set apiDatasetServer.syncAllFiles failed', {
+        datasetId: String(dataset._id),
+        error
+      });
+    }
+  }
+  // 空 parentId 就是「provider 配置的知识库根」：各 adapter 内部会回退到自己的根
+  // （custom/yuque/feishu 用 basePath/folderToken，dingtalk 用 rootNodeId），
+  // 与旧实现先算 startId 再展开哨兵等价。
+  const treeSeeds = hasRootSentinel ? await request.listFiles({ parentId: null }) : seeds;
+
   // 2. 拉 server 树（父先子后）。拉取失败直接抛出，本轮不写任何数据
-  const nodes = await buildApiFileTree({
-    request,
-    seeds: seeds.map((item) => ({
-      ...item,
-      // 根哨兵不是真实 server 节点，展开子级要用知识库根
-      ...(item.id === RootCollectionId ? { listId: startId } : {})
-    }))
-  });
+  const nodes = await buildApiFileTree({ request, seeds: treeSeeds });
 
   // 2b. 摊平成待落库记录：folder 只出目录记录；带子文档的 file 出「同名目录 + 正文」两条，
   //     于是子节点始终挂在一条真实的目录上，不会再出现「父是 file 导致 parentId 无解」
   const remoteRecords = buildApiFileRecords(nodes);
 
   // 2c. 请求级 inheritPermission 只作用于**显式选中的节点**：它们的后代保持继承态，权限跟随
-  //     选中的祖先（整库导入时只有根哨兵独立，全库继承它）。
+  //     选中的祖先（整库导入时根级节点独立，其子树继承它们）。
   //     否则 4w 节点各自落独立态，给某个目录授权不会传给其子目录。
   //     #dir 是选中文件的同名目录，同属该节点，用与建树同一个函数派生，避免后缀口径漂移
   const selectedDirIds = new Set(
-    seeds.flatMap((item) => [item.id, toApiFileDirId(item.id, item.type)])
+    treeSeeds.flatMap((item) => [item.id, toApiFileDirId(item.id, item.type)])
   );
   /**
    * undefined = 保持继承（schema default），交回父级传播。
    *
-   * 两点易被误判：① 全选时哨兵自身就是一条真实 collection 行（folder 的 dirId 即自身 id，
-   * 故这里命中它），标记落在哨兵上、整棵展开树继承它——不是「落到空处」；② 标记只在**新建**
-   * 记录时写入，已存在节点（existByApiFileId 命中）一律跳过、不改写 inheritPermission，
-   * 与同步路径同口径。故重复导入时该字段无任何效果，这是有意的，不是丢参数。
+   * 标记只在**新建**记录时写入，已存在节点（existByApiFileId 命中）一律跳过、不改写
+   * inheritPermission，与同步路径同口径。故重复导入时该字段无任何效果，这是有意的，不是丢参数。
    */
   const inheritPermissionOf = (record: ApiFileRecord) =>
     selectedDirIds.has(record.apiFileId) ? requestInheritPermission : undefined;
@@ -329,14 +340,19 @@ export const createApiDatasetCollection = async ({
       parentId = newFolderParents.get(parentId) ?? null;
     creationParentIds.add(parentId);
   }
-  await authorizeChanges?.({
-    creationParentIds: [...creationParentIds],
-    newFolderIds: new Set(newFolderParents.keys()),
-    moves: plannedMoves,
-    ...(legacyPlan.permissionSources.size
-      ? { permissionSourceIds: [...new Set(legacyPlan.permissionSources.values())] }
-      : {})
-  });
+  // 外部权限同步托管时跳过 collection 级鉴权：ACL 由外部列表整份接管，本地角色不代表访问权，
+  // 而这里的建树/纠偏落位由 server 树推导，不是用户选择的目标。入口已校验 dataset 级写权限，
+  // 仍按本地 collection ACL 鉴权只会把「有知识库写权限」的调用方误拒。
+  if (!isPermissionSyncDataset(dataset.apiDatasetServer)) {
+    await authorizeChanges?.({
+      creationParentIds: [...creationParentIds],
+      newFolderIds: new Set(newFolderParents.keys()),
+      moves: plannedMoves,
+      ...(legacyPlan.permissionSources.size
+        ? { permissionSourceIds: [...new Set(legacyPlan.permissionSources.values())] }
+        : {})
+    });
+  }
 
   await applyLegacyApiFileFolders({
     teamId,
@@ -464,6 +480,25 @@ export const createApiDatasetCollection = async ({
     successCount,
     failedCount
   });
+
+  // 外部权限同步开启时，只入队本次请求选中的节点作为根；失败只告警，不回滚已提交的导入
+  if (isPermissionSyncDataset(dataset.apiDatasetServer)) {
+    // 根 = 本次请求选中的节点；文件带子文档时子级挂在派生目录（xxx#dir）下，两者都算根
+    const rootApiFileIds = [
+      ...new Set(treeSeeds.flatMap((item) => [item.id, toApiFileDirId(item.id, item.type)]))
+    ];
+    const rootCollections = await MongoDatasetCollection.find(
+      { teamId, datasetId: dataset._id, apiFileId: { $in: rootApiFileIds } },
+      '_id'
+    ).lean();
+
+    if (rootCollections.length > 0) {
+      await enqueueDatasetPermissionSync({
+        datasetId: String(dataset._id),
+        collectionIds: rootCollections.map((collection) => String(collection._id))
+      });
+    }
+  }
 
   return { successCount, failedCount };
 };
