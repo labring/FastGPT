@@ -1,6 +1,10 @@
 import type { Processor } from '@fastgpt/dal/redis/bullmq';
 import { addDatasetDeleteJob, type DatasetDeleteJobData } from './index';
-import { delDatasetRelevantData, findDatasetAndAllChildren } from '../controller';
+import {
+  delDatasetRelevantData,
+  findDatasetAndAllChildren,
+  dispatchDatasetStorageCleanup
+} from '../controller';
 import { MongoDatasetCollectionTags } from '../tag/schema';
 import { MongoDatasetCollectionTagsV2 } from '../tag/schemaV2';
 import { removeDatasetSyncJobScheduler } from '../datasetSync';
@@ -104,11 +108,12 @@ const deleteDatasets = async ({
   }
 
   // delete all dataset.data and pg data
-  await mongoSessionRun(async (session) => {
+  const cleanup = await mongoSessionRun(async (session) => {
     // delete dataset data
-    await delDatasetRelevantData({
+    const cleanup = await delDatasetRelevantData({
       datasets,
-      session
+      session,
+      deleteDataset: true
     });
 
     // 权限与知识库本体同步删除，避免留下无法回收的孤立权限记录。
@@ -126,7 +131,9 @@ const deleteDatasets = async ({
       },
       { session }
     );
+    return cleanup;
   });
+  await dispatchDatasetStorageCleanup(cleanup);
 };
 
 export const datasetDeleteProcessor: Processor<DatasetDeleteJobData> = async (job) => {

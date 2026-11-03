@@ -9,11 +9,15 @@ import { MongoDatasetData } from './data/schema';
 import { deleteDatasetDataVector } from '../../common/vectorDB/controller';
 import { getFullTextStore } from './data/textStore';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
-import { retryFn } from '@fastgpt/global/common/system/utils';
 import { UserError } from '@fastgpt/global/common/error/utils';
-import { getS3DatasetSource } from '../../common/s3/sources/dataset';
 import { MongoDatasetSynonym, MongoDatasetSynonymMapping } from './synonym/schema';
 import { invalidateDatasetSynonymMatcherCache } from './synonym/entity';
+import {
+  createDatasetPrefixCleanup,
+  createChunkImagePrefixCleanup,
+  createDatasetFileCleanup
+} from '../../common/s3/lifecycle/entity';
+import { dispatchS3LifecycleCleanup } from '../../common/s3/lifecycle/service';
 
 /* ============= dataset ========== */
 /* find all datasetId by top datasetId */
@@ -66,15 +70,22 @@ export async function getCollectionWithDataset(collectionId: string) {
   return data;
 }
 
-/* delete all data by datasetIds */
+/**
+ * 清理同一团队的知识库内容，并在调用方事务内登记 S3 清理范围。
+ * 实际删库使用总目录；保留知识库的清空只处理旧集合资源，避免补投误删后续导入。
+ * 返回的记录 ID 必须由最外层事务提交后派发，进程退出或队列故障由 cron 恢复。
+ */
 export async function delDatasetRelevantData({
   datasets,
-  session
+  session,
+  deleteDataset = false
 }: {
   datasets: { _id: string; teamId: string }[];
   session: ClientSession;
+  /** 仅实际删除知识库时允许回收总目录；清空保留库时必须按旧资源范围回收。 */
+  deleteDataset?: boolean;
 }) {
-  if (!datasets.length) return;
+  if (!datasets.length) return { cleanupIds: [] };
 
   const teamId = datasets[0].teamId;
 
@@ -90,8 +101,16 @@ export async function delDatasetRelevantData({
       teamId,
       datasetId: { $in: datasetIds }
     },
-    '_id teamId datasetId fileId metadata'
-  ).lean();
+    '_id teamId datasetId fileId metadata chunkImagePrefixId'
+  )
+    .session(session)
+    .lean();
+  const cleanupIds = deleteDataset
+    ? await createDatasetPrefixCleanup({ datasetIds, session })
+    : [
+        ...(await createChunkImagePrefixCleanup({ scopes: collections, session })),
+        ...(await createDatasetFileCleanup({ collections, session }))
+      ];
 
   // delete training data
   await MongoDatasetTraining.deleteMany({
@@ -131,9 +150,13 @@ export async function delDatasetRelevantData({
   }).session(session);
   await deleteCollectionPermissions({ teamId, collectionIds, session });
 
-  // Delete all dataset files
   for (const datasetId of datasetIds) {
-    await getS3DatasetSource().deleteDatasetFilesByPrefix({ datasetId });
     invalidateDatasetSynonymMatcherCache({ teamId, datasetId });
   }
+  return { cleanupIds };
 }
+
+/** 最外层事务提交后派发持久化资源任务；入队失败保留记录，由 cron 补投。 */
+export const dispatchDatasetStorageCleanup = async (cleanup?: { cleanupIds: string[] }) => {
+  await dispatchS3LifecycleCleanup(cleanup?.cleanupIds);
+};

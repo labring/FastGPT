@@ -169,6 +169,13 @@ export type MarkdownImageParseOptions = {
 };
 
 const mdBase64ImageSrcRegex = /^data:image\/([^;]+);base64,([A-Za-z0-9+/=]+)$/;
+
+/** 识别图片 data URL 并提取声明类型和编码；严格解码、内容校验及失败策略由调用方负责。 */
+export const parseBase64ImageDataUrl = (url: string) => {
+  const match = mdBase64ImageSrcRegex.exec(url);
+  if (!match) return undefined;
+  return { mime: `image/${match[1]}`, base64: match[2] };
+};
 const mdHttpImageSrcRegex = /^https?:\/\/.+/;
 const markdownImageUploadConcurrency = 5;
 
@@ -505,17 +512,17 @@ export const parseMarkdownBase64Images = async (
 
   for (const item of matchDocumentImages(text)) {
     const url = item.format === 'markdown' ? unescapeMarkdownImageUrl(item.url) : item.url;
-    const base64Match = parseBase64 ? url.match(mdBase64ImageSrcRegex) : null;
+    const base64Image = parseBase64 ? parseBase64ImageDataUrl(url) : undefined;
 
-    if (base64Match) {
-      const [, mime, base64] = base64Match;
+    if (base64Image) {
+      const { mime, base64 } = base64Image;
 
       images.push({
         type: 'base64',
         altText: item.altText,
         url,
         dataUrl: url,
-        mime: `image/${mime}`,
+        mime,
         base64,
         fullMatch: item.fullMatch,
         index: item.index,

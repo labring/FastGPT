@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 
 const {
+  mockReadChunkImagePrefixId,
   mockAuthDatasetCollection,
   mockCreateCollectionAndInsertData,
   mockDelCollection,
@@ -11,6 +12,7 @@ const {
   mockGetCollectionCollaborators,
   mockCarryOverCollectionPermission
 } = vi.hoisted(() => ({
+  mockReadChunkImagePrefixId: vi.fn(),
   mockAuthDatasetCollection: vi.fn(),
   mockCreateCollectionAndInsertData: vi.fn(),
   mockDelCollection: vi.fn(),
@@ -19,6 +21,10 @@ const {
   mockAddAuditLog: vi.fn(),
   mockGetCollectionCollaborators: vi.fn(),
   mockCarryOverCollectionPermission: vi.fn()
+}));
+
+vi.mock('@fastgpt/service/core/dataset/collection/entity', () => ({
+  readChunkImagePrefixIdForRebuild: mockReadChunkImagePrefixId
 }));
 
 vi.mock('@/service/middleware/entry', () => ({
@@ -70,6 +76,7 @@ const sourceCollection = {
   parentId: null,
   name: 'source collection',
   type: DatasetCollectionTypeEnum.file,
+  chunkImagePrefixId: sourceCollectionId,
   tags: ['tag-id'],
   dataset: {
     _id: sourceDatasetId,
@@ -84,6 +91,7 @@ const sourceCollection = {
 describe('reTrainingCollection', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockReadChunkImagePrefixId.mockResolvedValue(sourceCollectionId);
     mockCollectionTagsToTagLabel.mockResolvedValue(['tag-label']);
     mockGetCollectionCollaborators.mockResolvedValue([]);
     mockCarryOverCollectionPermission.mockResolvedValue(undefined);
@@ -118,8 +126,32 @@ describe('reTrainingCollection', () => {
           teamId: 'team-b',
           tmbId: 'tmb-b',
           chunkSize: 800,
+          chunkImagePrefixId: sourceCollectionId,
           tags: ['tag-label']
         })
+      })
+    );
+  });
+
+  it('inherits a prefix initialized after the authorization snapshot and ignores request ownership', async () => {
+    mockAuthDatasetCollection.mockResolvedValue({
+      collection: { ...sourceCollection, chunkImagePrefixId: undefined },
+      teamId: 'team-b',
+      tmbId: 'tmb-b'
+    });
+    await handler(
+      { body: { collectionId: sourceCollectionId, chunkImagePrefixId: foreignDatasetId } } as any,
+      {} as Parameters<typeof handler>[1]
+    );
+    expect(mockReadChunkImagePrefixId).toHaveBeenCalledWith({
+      teamId: 'team-b',
+      datasetId: sourceDatasetId,
+      collectionId: sourceCollectionId,
+      session: 'session'
+    });
+    expect(mockCreateCollectionAndInsertData).toHaveBeenCalledWith(
+      expect.objectContaining({
+        createCollectionParams: expect.objectContaining({ chunkImagePrefixId: sourceCollectionId })
       })
     );
   });

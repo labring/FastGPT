@@ -120,7 +120,11 @@ export class S3DatasetSource extends S3PrivateBucket {
       throw error;
     }
 
-    await MongoS3TTL.deleteOne({ minioKey: key, bucketName: this.bucketName });
+    await MongoS3TTL.deleteOne({
+      minioKey: key,
+      bucketName: this.bucketName,
+      cleanupType: { $exists: false }
+    });
   }
 
   /**

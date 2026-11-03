@@ -3,6 +3,7 @@ import { getLogger, LogCategories } from '../../logger';
 import { setCron } from '../../system/cron';
 import { checkTimerLock } from '../../system/timerLock/utils';
 import { TimerIdEnum } from '../../system/timerLock/constants';
+import { enqueueS3LifecycleCleanup } from './service';
 
 const logger = getLogger(LogCategories.INFRA.S3);
 
@@ -27,6 +28,12 @@ export async function clearExpiredMinioFiles() {
 
     for (const file of expiredFiles) {
       try {
+        // 已接收图片没有逐对象 TTL；专用记录仅处理失败上传和已提交删除的资源。
+        if (file.cleanupType) {
+          // success 统计处理/派发成功，物理删除完成后才由 worker 移除这类记录。
+          if (await enqueueS3LifecycleCleanup(file)) success++;
+          continue;
+        }
         const bucketName = file.bucketName;
         const bucket = global.s3BucketMap[bucketName];
         const multipartUploadId = file.multipart?.uploadId?.trim();
@@ -61,7 +68,7 @@ export async function clearExpiredMinioFiles() {
             key: file.minioKey
           });
           if (!hasMultipartMarker) {
-            await MongoS3TTL.deleteOne({ minioKey: file.minioKey, bucketName: file.bucketName });
+            await MongoS3TTL.deleteOne({ _id: file._id });
             logger.info('Removed expired S3 TTL without bucket', {
               key: file.minioKey,
               bucketName: file.bucketName

@@ -1,6 +1,7 @@
 import * as http from 'node:http';
 import type { AddressInfo, Socket } from 'node:net';
 import { afterEach, describe, expect, it } from 'vitest';
+import { AwsS3StorageAdapter } from '../../../src/adapters/aws-s3.adapter';
 import { CosStorageAdapter } from '../../../src/adapters/cos.adapter';
 import { OssStorageAdapter } from '../../../src/adapters/oss.adapter';
 
@@ -133,4 +134,74 @@ describe('provider download abort transport integration', () => {
     await storage.destroy();
     await closeServer(server);
   });
+});
+
+// 使用真实厂商 SDK 和本地挂起连接验证取消，避免只断言 Promise 拒绝却保留后台上传。
+describe('provider upload deadline transport integration', () => {
+  it.each(['aws-s3', 'cos', 'oss'] as const)(
+    'terminates stalled %s uploads before TTL cleanup',
+    async (vendor) => {
+      const sockets = new Set<Socket>();
+      let notifyRequest: () => void;
+      const requestReceived = new Promise<void>((resolve) => {
+        notifyRequest = resolve;
+      });
+      const server = http.createServer((request, response) => {
+        request.resume();
+        // 持续有响应数据，验证总截止时间而非仅验证 socket 空闲超时。
+        response.writeHead(200, { 'Content-Type': 'application/xml' });
+        response.write(' ');
+        const heartbeat = setInterval(() => response.write(' '), 30);
+        response.once('close', () => clearInterval(heartbeat));
+        notifyRequest();
+      });
+      server.on('connection', (socket) => {
+        sockets.add(socket);
+        socket.once('close', () => sockets.delete(socket));
+      });
+      const port = await listen(server);
+      const credentials = { accessKeyId: 'access-key', secretAccessKey: 'secret-key' };
+      const storage =
+        vendor === 'aws-s3'
+          ? new AwsS3StorageAdapter({
+              vendor,
+              bucket: 'test-bucket',
+              region: 'us-east-1',
+              endpoint: `http://127.0.0.1:${port}`,
+              forcePathStyle: true,
+              maxRetries: 1,
+              credentials
+            })
+          : vendor === 'cos'
+            ? new CosStorageAdapter({
+                vendor,
+                bucket: 'test-bucket-1250000000',
+                region: 'ap-guangzhou',
+                protocol: 'http:',
+                domain: `127.0.0.1:${port}`,
+                credentials
+              })
+            : new OssStorageAdapter({
+                vendor,
+                bucket: 'test-bucket',
+                region: 'oss-cn-hangzhou',
+                endpoint: `http://127.0.0.1:${port}`,
+                cname: true,
+                secure: false,
+                credentials
+              });
+      const failed = expect(
+        storage.uploadObject({
+          key: 'deadline/image.png',
+          body: Buffer.from('image'),
+          timeoutMs: 500
+        })
+      ).rejects.toThrow();
+      await withTimeout(requestReceived, `${vendor} upload did not reach the server`);
+      await failed;
+      await expect.poll(() => sockets.size, { timeout: 1000 }).toBe(0);
+      await storage.destroy();
+      await closeServer(server);
+    }
+  );
 });

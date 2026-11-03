@@ -82,6 +82,10 @@ const setupCollection = async ({
     }
   ]);
 
+  await MongoDatasetCollection.updateOne(
+    { _id: collection._id },
+    { $set: { chunkImagePrefixId: String(collection._id) } }
+  );
   return collection;
 };
 
@@ -128,6 +132,9 @@ describe('reTrainingCollection permission carry over', () => {
     expect(response.code).toBe(200);
     const newCollectionId = response.data.collectionId;
     expect(newCollectionId).not.toBe(String(collection._id));
+    expect(
+      (await MongoDatasetCollection.findById(newCollectionId).lean())?.chunkImagePrefixId
+    ).toBe(String(collection._id));
 
     const newCollection = await MongoDatasetCollection.findById(newCollectionId).lean();
     expect(newCollection?.inheritPermission).toBe(false);
@@ -157,6 +164,9 @@ describe('reTrainingCollection permission carry over', () => {
     expect(response.code).toBe(200);
     const newCollectionId = response.data.collectionId;
     expect(newCollectionId).not.toBe(String(collection._id));
+    expect(
+      (await MongoDatasetCollection.findById(newCollectionId).lean())?.chunkImagePrefixId
+    ).toBe(String(collection._id));
 
     await expect(collectionPermissions({ teamId, collectionId: newCollectionId })).resolves.toEqual(
       before

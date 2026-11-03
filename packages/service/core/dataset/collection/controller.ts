@@ -43,6 +43,8 @@ import type {
 import { getS3DatasetSource } from '../../../common/s3/sources/dataset';
 import { isAuthorizedDatasetFileS3Key } from '../../../common/s3/sources/dataset/key';
 import { isS3ObjectKey, removeS3TTL } from '../../../common/s3/utils';
+import { createChunkImagePrefixCleanup } from '../../../common/s3/lifecycle/entity';
+import { parseChunkImageKey } from '../../../common/s3/sources/dataset/chunkImageKey';
 import {
   createCollectionPermissionsBatch,
   deleteCollectionPermissions,
@@ -687,6 +689,8 @@ export type CreateOneCollectionParams = ApiCreateDatasetCollectionParams & {
   name: string;
   type: DatasetCollectionTypeEnum;
   fileId?: string;
+  /** 仅可信重训/同步路径继承，外部入参不开放。 */
+  chunkImagePrefixId?: string;
   rawLink?: string;
   externalFileId?: string;
   externalFileUrl?: string;
@@ -717,6 +721,9 @@ export async function createCollections({
   session?: ClientSession;
 }) {
   if (collections.length === 0) return [];
+
+  if (collections.some(({ fileId }) => fileId && parseChunkImageKey(fileId)))
+    throw new UserError('Chunk images cannot be imported as source files');
 
   const fn = async (s: ClientSession) => {
     // 权限复用必须读取本事务的真实来源；不能把请求或规划时的 ACL 快照直接写给新集合。
@@ -1064,7 +1071,7 @@ export async function delCollection({
   delImg: boolean;
   delFile: boolean;
 }) {
-  if (collections.length === 0) return;
+  if (collections.length === 0) return [];
 
   const teamId = collections[0].teamId;
 
@@ -1098,6 +1105,18 @@ export async function delCollection({
     .map((item) => item.imageId!);
 
   const remove = async () => {
+    // 从事务内真实集合读取范围，不能依赖调用方投影是否携带新字段。
+    const imageScopes = delImg
+      ? await MongoDatasetCollection.find({
+          teamId,
+          _id: { $in: collectionIds },
+          chunkImagePrefixId: { $exists: true }
+        })
+          .select('datasetId chunkImagePrefixId')
+          .session(session)
+          .lean()
+      : [];
+    const cleanupIds = await createChunkImagePrefixCleanup({ scopes: imageScopes, session });
     // 同一 session 不并行发起 Mongo 写入；重建失败时旧分块和旧任务必须随集合一起恢复。
     await MongoDatasetTraining.deleteMany(
       { teamId, datasetId: { $in: datasetIds }, collectionId: { $in: collectionIds } },
@@ -1157,10 +1176,11 @@ export async function delCollection({
 
     // delete s3 images which are uploaded by users
     await s3DatasetSource.deleteDatasetFilesByKeys(imageIds);
+    return cleanupIds;
   };
 
-  if (session?.inTransaction()) await remove();
-  else await retryFn(remove);
+  if (session?.inTransaction()) return remove();
+  return retryFn(remove);
 }
 
 /** 查找 collection 及其全部子节点（parentId 子树）；返回 [根, ...子孙]。 */

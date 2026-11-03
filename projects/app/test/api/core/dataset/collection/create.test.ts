@@ -12,6 +12,7 @@ import {
   createApiFileCollectionsBatch
 } from '@fastgpt/service/core/dataset/collection/controller';
 import { defaultSubtreeMaxDepth } from '@fastgpt/global/common/parentFolder/subtree';
+import { getOrCreateChunkImagePrefixId } from '@fastgpt/service/core/dataset/collection/entity';
 import { syncCollection } from '@fastgpt/service/core/dataset/collection/utils';
 import * as datasetRead from '@fastgpt/service/core/dataset/read';
 import * as datasetS3 from '@fastgpt/service/common/s3/sources/dataset';
@@ -72,6 +73,9 @@ describe('create collection parent checks', () => {
 
     const file = await MongoDatasetCollection.findById(result.collectionIds[0]).lean();
     expect(String(file?.parentId)).toBe(String(parentId));
+    // 远端读取前的快照没有目录；此时首次写入图片也必须被后续同步重建继承。
+    expect(file?.chunkImagePrefixId).toBeUndefined();
+    await getOrCreateChunkImagePrefixId({ ...scope, collectionId: String(file!._id) });
     vi.spyOn(datasetRead, 'readDatasetSourceRawText').mockResolvedValue({
       title: 'synced-file',
       rawText: 'updated external body'
@@ -88,6 +92,8 @@ describe('create collection parent checks', () => {
       name: 'synced-file'
     }).lean();
     expect(String(synced?.parentId)).toBe(String(parentId));
+    expect(String(synced?._id)).not.toBe(String(file!._id));
+    expect(synced?.chunkImagePrefixId).toBe(String(file!._id));
 
     // 同父级混合批次也不能复用外部资源的深度校验结果，绕过普通创建限制。
     await expect(
