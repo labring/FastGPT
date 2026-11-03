@@ -41,12 +41,16 @@ export const assertDatasetArchiveCollectionsReadable = async ({
   datasetId,
   tmbId,
   isRoot,
+  ignoreTeamOwner = false,
   collectionIds
 }: {
   teamId: string;
   datasetId: string;
   tmbId: string;
+  /** 必须是有效 root（已应用 `disableSuperAdmin`），header 原值会在托管库上错误放行。 */
   isRoot: boolean;
+  /** 托管库要求团队 owner 同样遵守文件 ACL。 */
+  ignoreTeamOwner?: boolean;
   collectionIds: string[];
 }) => {
   const uniqueCollectionIds = [...new Set(collectionIds)];
@@ -55,7 +59,8 @@ export const assertDatasetArchiveCollectionsReadable = async ({
   const canShortCircuit = await canShortCircuitCollectionPermission({
     teamId,
     datasetIds: [datasetId],
-    tmbId
+    tmbId,
+    ignoreTeamOwner
   });
   if (canShortCircuit) return;
 

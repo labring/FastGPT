@@ -155,6 +155,8 @@ export const authDataset = async ({
 
   return {
     ...result,
+    // 外部权限同步要求超管也遵守 ACL 时，向下游返回有效 root 语义，避免调用方拿 header 原值旁路。
+    isRoot: result.isRoot && !isDisableSuperAdmin(dataset.apiDatasetServer),
     permission: dataset.permission,
     dataset
   };

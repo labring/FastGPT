@@ -10,10 +10,12 @@ import { isPermissionSyncDataset } from '@fastgpt/global/core/dataset/apiDataset
 import { MongoResourcePermission } from '../schema';
 import { getCollaboratorId } from '@fastgpt/global/support/permission/utils';
 import {
+  assertCollectionPermissionEditable,
   assertDatasetCollectionPermissionEnabled,
   getDatasetCollectionPermissionEnabled,
   lockDatasetCollectionPermissionState
 } from './datasetSwitch';
+import { mongoSessionRun } from '../../../common/mongo/sessionRun';
 import type { SyncChildrenPermissionResourceType } from '../inheritPermission';
 import type { DatasetCollectionSchemaType } from '@fastgpt/global/core/dataset/type';
 import {
@@ -220,23 +222,33 @@ export async function resumeCollectionInheritPermission({
   >;
   session?: ClientSession;
 }): Promise<void> {
-  // resume 只对独立态有意义，而独立态只存在于启用态；关闭态直接拒绝，不隐式开启开关。
-  await assertDatasetCollectionPermissionEnabled({
-    teamId: collection.teamId,
-    datasetId: collection.datasetId,
-    session
-  });
+  const fn = async (activeSession: ClientSession) => {
+    // 托管守卫必须与写入同事务：路由层无 session 的检查在并发开启托管后仍会放行。
+    await assertCollectionPermissionEditable({
+      teamId: collection.teamId,
+      datasetId: collection.datasetId,
+      session: activeSession
+    });
+    // resume 只对独立态有意义，而独立态只存在于启用态；关闭态直接拒绝，不隐式开启开关。
+    await assertDatasetCollectionPermissionEnabled({
+      teamId: collection.teamId,
+      datasetId: collection.datasetId,
+      session: activeSession
+    });
 
-  return resumeResourcePermissionInheritance({
-    resource: collection,
-    resourceModel: MongoDatasetCollection,
-    resourceType: PerResourceTypeEnum.collection,
-    parentResourceType: collection.parentId
-      ? PerResourceTypeEnum.collection
-      : PerResourceTypeEnum.dataset,
-    parentResourceId: collection.parentId ? String(collection.parentId) : collection.datasetId,
-    session
-  });
+    return resumeResourcePermissionInheritance({
+      resource: collection,
+      resourceModel: MongoDatasetCollection,
+      resourceType: PerResourceTypeEnum.collection,
+      parentResourceType: collection.parentId
+        ? PerResourceTypeEnum.collection
+        : PerResourceTypeEnum.dataset,
+      parentResourceId: collection.parentId ? String(collection.parentId) : collection.datasetId,
+      session: activeSession
+    });
+  };
+
+  return session ? fn(session) : mongoSessionRun(fn);
 }
 
 /**
@@ -479,12 +491,15 @@ export async function syncDatasetToCollections({
   while (pendingParentIds.length > 0) {
     const children = await MongoDataset.find(
       { teamId, parentId: { $in: pendingParentIds } },
-      '_id parentId inheritPermission collectionPermissionEnabled'
+      '_id parentId inheritPermission collectionPermissionEnabled apiDatasetServer'
     )
       .lean()
       .session(session);
-    const inheritingChildren = children.filter((child) =>
-      shouldInheritResourcePermission(child.inheritPermission)
+    const inheritingChildren = children.filter(
+      (child) =>
+        shouldInheritResourcePermission(child.inheritPermission) &&
+        // 托管库的 collection ACL 由外部同步整份覆盖，其子树一并跳过，避免本地级联覆盖外部意图。
+        !isPermissionSyncDataset(child.apiDatasetServer)
     );
 
     for (const child of inheritingChildren) {

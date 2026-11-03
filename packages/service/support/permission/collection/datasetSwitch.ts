@@ -110,8 +110,10 @@ export const assertDatasetCollectionPermissionEnabled = async ({
  * 写入口守卫：权限由外部同步托管时，本地不允许修改 collection ACL。
  *
  * 外部每一轮同步都会整份替换 ACL；本地改动要么立刻被抹掉，要么与外部列表产生长期冲突。
- * 因此所有人工写入口（协作者、恢复继承、转移 owner、关闭 collection 权限）都在进入事务前拒绝。
- * 路由层守卫只能挡 HTTP；service 层写事务内应带 `session` 再断言一次，覆盖内部调用与竞态。
+ * 因此所有人工写入口（协作者、恢复继承、转移 owner、关闭 collection 权限）都在进入写事务后拒绝。
+ *
+ * 传 `session` 时先递增 `collectionPermissionVersion` 再断言：只读查询与开启托管的事务不冲突，
+ * 快照读会在开关提交后仍然通过；版本自增制造写冲突，快照过期的一方被 driver 重试后重新断言。
  */
 export const assertCollectionPermissionEditable = async ({
   teamId,
@@ -122,11 +124,16 @@ export const assertCollectionPermissionEditable = async ({
   datasetId: string;
   session?: ClientSession;
 }): Promise<void> => {
-  const dataset = await MongoDataset.findOne(
-    { _id: datasetId, teamId },
-    'apiDatasetServer',
-    session ? { session } : undefined
-  ).lean();
+  const dataset = session
+    ? await MongoDataset.findOneAndUpdate(
+        { _id: datasetId, teamId },
+        { $inc: { collectionPermissionVersion: 1 } },
+        { session, new: true }
+      )
+        .select('apiDatasetServer')
+        .lean()
+    : await MongoDataset.findOne({ _id: datasetId, teamId }, 'apiDatasetServer').lean();
+
   if (!dataset) return Promise.reject(DatasetErrEnum.unExist);
   if (isPermissionSyncDataset(dataset.apiDatasetServer)) {
     return Promise.reject(DatasetErrEnum.permissionSyncManaged);

@@ -64,6 +64,40 @@ describe('resume collection inherit permission api', () => {
     );
   });
 
+  it('rejects a managed dataset without changing inheritance', async () => {
+    const users = await getFakeUsers(1);
+    const dataset = await MongoDataset.create({
+      name: 'managed-resume-dataset',
+      type: DatasetTypeEnum.dataset,
+      teamId: users.owner.teamId,
+      tmbId: users.owner.tmbId,
+      vectorModelId: 'test-model',
+      collectionPermissionEnabled: true,
+      apiDatasetServer: {
+        apiServer: { baseUrl: 'https://example.com' },
+        permissionSync: true
+      }
+    });
+    const collection = await MongoDatasetCollection.create({
+      name: 'managed-resume-collection',
+      type: DatasetCollectionTypeEnum.file,
+      teamId: users.owner.teamId,
+      tmbId: users.owner.tmbId,
+      datasetId: dataset._id,
+      inheritPermission: false
+    });
+
+    const res = await Call(handler, {
+      auth: users.owner,
+      body: { collectionId: String(collection._id) }
+    });
+
+    expect(res.code).not.toBe(200);
+    await expect(MongoDatasetCollection.findById(collection._id).lean()).resolves.toMatchObject({
+      inheritPermission: false
+    });
+  });
+
   it.each([true, false])('records the available parent name (%s)', async (parentExists) => {
     const users = await getFakeUsers(1);
     const dataset = await MongoDataset.create({

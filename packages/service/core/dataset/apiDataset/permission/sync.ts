@@ -89,7 +89,7 @@ const expandPermissionSyncCollections = async ({
       const id = String(row._id);
       if (visited.has(id)) continue;
       visited.add(id);
-      if (row.apiFileId != null) targets.push(row);
+      if (row.apiFileId !== null && row.apiFileId !== undefined) targets.push(row);
       nextFrontier.push(id);
     }
     frontier = nextFrontier;

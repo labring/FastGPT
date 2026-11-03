@@ -98,33 +98,36 @@ export const ApiDatasetPermissionItemSchema = z
   .meta({ description: '外部文件权限项' });
 export type ApiDatasetPermissionItemType = z.infer<typeof ApiDatasetPermissionItemSchema>;
 
-export const ApiDatasetServerSchema = z
-  .object({
-    apiServer: APIFileServerSchema.optional(),
-    feishuServer: FeishuServerSchema.optional(),
-    yuqueServer: YuqueServerSchema.optional(),
-    dingtalkServer: DingtalkServerSchema.optional(),
+/**
+ * 局部 patch 的宽松契约：跨字段不变量依赖库中已保存的配置，`dataset/update` 合并后再校验。
+ * 完整配置（创建 / 读取 / apiDataset 写接口）使用下面的 `ApiDatasetServerSchema`。
+ */
+export const ApiDatasetServerPatchSchema = z.object({
+  apiServer: APIFileServerSchema.optional(),
+  feishuServer: FeishuServerSchema.optional(),
+  yuqueServer: YuqueServerSchema.optional(),
+  dingtalkServer: DingtalkServerSchema.optional(),
 
-    // 三个开关均省略即 false。用 optional 而不是 default：schema 同时用于详情响应解析，
-    // default 会把字段补进来，破坏「存量记录原样返回」和既有精确断言。
-    /** 外部文件权限同步。仅 custom apiServer 支持；开启即由外部列表全量接管 collection ACL */
-    permissionSync: z.boolean().optional(),
-    /** 关闭 root/团队 owner 在知识库**管理侧**（Dataset / Collection 鉴权、列表、导出）的旁路；检索不读取该开关 */
-    disableSuperAdmin: z.boolean().optional(),
-    /** 整库同步：每日同步的根范围来自知识库根目录，而不是本地最外层节点 */
-    syncAllFiles: z.boolean().optional()
-  })
-  .superRefine((value, ctx) => {
-    // 其他 provider 的文件权限协议未实现，开启同步会让快照永远无法写入
-    if (value.permissionSync === true && !value.apiServer) {
-      ctx.addIssue({
-        code: 'custom',
-        path: ['permissionSync'],
-        message: 'permissionSync is only supported with apiServer'
-      });
-    }
-  })
-  .meta({ description: '第三方知识库配置' });
+  // 三个开关均省略即 false。用 optional 而不是 default：schema 同时用于详情响应解析，
+  // default 会把字段补进来，破坏「存量记录原样返回」和既有精确断言。
+  /** 外部文件权限同步。仅 custom apiServer 支持；开启即由外部列表全量接管 collection ACL */
+  permissionSync: z.boolean().optional(),
+  /** 关闭 root/团队 owner 在知识库**管理侧**（Dataset / Collection 鉴权、列表、导出）的旁路；检索不读取该开关 */
+  disableSuperAdmin: z.boolean().optional(),
+  /** 整库同步：每日同步的根范围来自知识库根目录，而不是本地最外层节点 */
+  syncAllFiles: z.boolean().optional()
+});
+
+export const ApiDatasetServerSchema = ApiDatasetServerPatchSchema.superRefine((value, ctx) => {
+  // 其他 provider 的文件权限协议未实现，开启同步会让快照永远无法写入
+  if (value.permissionSync === true && !value.apiServer) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['permissionSync'],
+      message: 'permissionSync is only supported with apiServer'
+    });
+  }
+}).meta({ description: '第三方知识库配置' });
 export type ApiDatasetServerType = z.infer<typeof ApiDatasetServerSchema>;
 
 // Api dataset api

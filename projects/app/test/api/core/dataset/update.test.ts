@@ -903,6 +903,75 @@ describe('dataset permission sync switch', () => {
     });
   });
 
+  it('accepts a partial patch that only flips permissionSync when apiServer already exists', async () => {
+    const { owner } = await getFakeUsers(1);
+    const dataset = await MongoDataset.create({
+      teamId: String(owner.teamId),
+      tmbId: String(owner.tmbId),
+      name: 'partial-patch',
+      type: DatasetTypeEnum.dataset,
+      apiDatasetServer: { apiServer: { baseUrl: 'https://example.com' } }
+    });
+
+    const res = await Call<UpdateDatasetBody, Record<string, never>, string>(updateHandler, {
+      auth: owner,
+      body: { id: String(dataset._id), apiDatasetServer: { permissionSync: true } }
+    });
+
+    expect(res.code).toBe(200);
+    const updated = await MongoDataset.findById(dataset._id).lean();
+    expect(updated?.apiDatasetServer?.permissionSync).toBe(true);
+    expect(updated?.apiDatasetServer?.apiServer?.baseUrl).toBe('https://example.com');
+    expect(updated?.collectionPermissionEnabled).toBe(true);
+  });
+
+  it('rejects permissionSync when the merged config still has no apiServer', async () => {
+    const { owner } = await getFakeUsers(1);
+    const dataset = await createDatasetWithOwnerSnapshot({
+      teamId: String(owner.teamId),
+      tmbId: String(owner.tmbId),
+      name: 'no-api-server',
+      type: DatasetTypeEnum.dataset
+    });
+
+    const res = await Call<UpdateDatasetBody, Record<string, never>, string>(updateHandler, {
+      auth: owner,
+      body: { id: String(dataset._id), apiDatasetServer: { permissionSync: true } }
+    });
+
+    expect(res.code).not.toBe(200);
+    expect(
+      (await MongoDataset.findById(dataset._id).lean())?.apiDatasetServer?.permissionSync
+    ).toBe(undefined);
+    expect(enqueueDatasetPermissionSync).not.toHaveBeenCalled();
+  });
+
+  it('does not enable collection permissions for a folder dataset', async () => {
+    const { owner } = await getFakeUsers(1);
+    const folder = await createDatasetWithOwnerSnapshot({
+      teamId: String(owner.teamId),
+      tmbId: String(owner.tmbId),
+      name: 'folder',
+      type: DatasetTypeEnum.folder
+    });
+
+    const res = await Call<UpdateDatasetBody, Record<string, never>, string>(updateHandler, {
+      auth: owner,
+      body: {
+        id: String(folder._id),
+        apiDatasetServer: {
+          apiServer: { baseUrl: 'https://example.com' },
+          permissionSync: true
+        }
+      }
+    });
+
+    expect(res.code).toBe(200);
+    expect((await MongoDataset.findById(folder._id).lean())?.collectionPermissionEnabled).not.toBe(
+      true
+    );
+  });
+
   it('does not enqueue again once the switch and the flag are both on', async () => {
     const { owner } = await getFakeUsers(1);
     const teamId = String(owner.teamId);
