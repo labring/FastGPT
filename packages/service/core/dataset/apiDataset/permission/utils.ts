@@ -27,6 +27,17 @@ export class PermissionSyncCancelledError extends Error {
 }
 
 /**
+ * 本轮抓取期间托管开关已关闭或外部配置已变更：目标态基于过期输入，必须整轮丢弃。
+ * 与租约丢失区分：后者是「本轮不再拥有写权限」，这里是「这份结果已经不该写」。
+ */
+export class PermissionSyncStaleRoundError extends Error {
+  constructor(message = 'Permission sync round is stale') {
+    super(message);
+    this.name = 'PermissionSyncStaleRoundError';
+  }
+}
+
+/**
  * 到达截止时间即抛出 `PermissionSyncDeadlineError`。
  *
  * 未传 `deadlineAt`（例如手动触发的定向同步）时不做限制。

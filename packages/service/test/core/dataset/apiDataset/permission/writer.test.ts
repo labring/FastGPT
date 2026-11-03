@@ -10,12 +10,16 @@ const updateMany = vi.fn();
 const replaceResources = vi.fn();
 const syncResourceTreePermissions = vi.fn();
 const mongoSessionRun = vi.fn(async (cb: (session: unknown) => Promise<void>) => cb('session'));
+const datasetFindOneAndUpdate = vi.fn();
 
 vi.mock('@fastgpt/service/core/dataset/collection/schema', () => ({
   MongoDatasetCollection: {
     updateMany,
     collection: { name: 'dataset_collections' }
   }
+}));
+vi.mock('@fastgpt/service/core/dataset/schema', () => ({
+  MongoDataset: { findOneAndUpdate: datasetFindOneAndUpdate }
 }));
 vi.mock('@fastgpt/service/support/permission/repository/resourcePermissionRepo', () => ({
   resourcePermissionRepo: { replaceResources }
@@ -31,6 +35,13 @@ const { applyCollectionPermissionStates, isSameCollaboratorSet } =
 const teamId = '64b7f4c2f1a2b3c4d5e6f700';
 const datasetId = '64b7f4c2f1a2b3c4d5e6f701';
 const folderId = '64b7f4c2f1a2b3c4d5e6f7a1';
+const apiDatasetServer = {
+  apiServer: { baseUrl: 'https://example.com' },
+  permissionSync: true
+};
+const mockDatasetState = (server: unknown = apiDatasetServer) => ({
+  select: vi.fn(() => ({ lean: vi.fn().mockResolvedValue({ apiDatasetServer: server }) }))
+});
 
 const folderState = (overrides: Record<string, unknown> = {}) => ({
   collectionId: folderId,
@@ -48,6 +59,7 @@ beforeEach(() => {
   updateMany.mockResolvedValue({});
   replaceResources.mockResolvedValue({});
   syncResourceTreePermissions.mockResolvedValue(undefined);
+  datasetFindOneAndUpdate.mockImplementation(() => mockDatasetState());
 });
 
 describe('isSameCollaboratorSet', () => {
@@ -76,7 +88,8 @@ describe('applyCollectionPermissionStates', () => {
     const result = await applyCollectionPermissionStates({
       teamId,
       datasetId,
-      states: [folderState({ changed: false })]
+      states: [folderState({ changed: false })],
+      expectedApiDatasetServer: apiDatasetServer
     });
 
     expect(result).toEqual({ updated: 0 });
@@ -98,7 +111,8 @@ describe('applyCollectionPermissionStates', () => {
     const result = await applyCollectionPermissionStates({
       teamId,
       datasetId,
-      states: [folder, file, unchanged]
+      states: [folder, file, unchanged],
+      expectedApiDatasetServer: apiDatasetServer
     });
 
     expect(result).toEqual({ updated: 2 });
@@ -145,7 +159,8 @@ describe('applyCollectionPermissionStates', () => {
     await applyCollectionPermissionStates({
       teamId,
       datasetId,
-      states: [folderState({ collaborators: shared, currentCollaborators: shared })]
+      states: [folderState({ collaborators: shared, currentCollaborators: shared })],
+      expectedApiDatasetServer: apiDatasetServer
     });
 
     expect(replaceResources).toHaveBeenCalled();
@@ -158,6 +173,7 @@ describe('applyCollectionPermissionStates', () => {
         teamId,
         datasetId,
         states: [folderState()],
+        expectedApiDatasetServer: apiDatasetServer,
         deadlineAt: Date.now() - 1
       })
     ).rejects.toBeInstanceOf(PermissionSyncDeadlineError);
@@ -182,6 +198,7 @@ describe('applyCollectionPermissionStates', () => {
         teamId,
         datasetId,
         states: [folderState()],
+        expectedApiDatasetServer: apiDatasetServer,
         lease: { signal: new AbortController().signal, assertValid }
       })
     ).rejects.toMatchObject({ name: 'PermissionSyncCancelledError', cause: leaseError });
@@ -190,5 +207,44 @@ describe('applyCollectionPermissionStates', () => {
     expect(replaceResources).not.toHaveBeenCalled();
     expect(updateMany).not.toHaveBeenCalled();
     expect(syncResourceTreePermissions).not.toHaveBeenCalled();
+  });
+
+  it('discards the round when permission sync was disabled during fetch', async () => {
+    datasetFindOneAndUpdate.mockImplementation(() =>
+      mockDatasetState({ ...apiDatasetServer, permissionSync: false })
+    );
+
+    await expect(
+      applyCollectionPermissionStates({
+        teamId,
+        datasetId,
+        states: [folderState()],
+        expectedApiDatasetServer: apiDatasetServer
+      })
+    ).rejects.toMatchObject({ name: 'PermissionSyncStaleRoundError' });
+
+    // 旧轮次一个字节都不能落库：关闭后人工设置的 ACL 不能被整集覆盖
+    expect(replaceResources).not.toHaveBeenCalled();
+    expect(updateMany).not.toHaveBeenCalled();
+    expect(syncResourceTreePermissions).not.toHaveBeenCalled();
+  });
+
+  it('discards the round when the external config changed during fetch', async () => {
+    datasetFindOneAndUpdate.mockImplementation(() =>
+      mockDatasetState({
+        ...apiDatasetServer,
+        apiServer: { baseUrl: 'https://changed.example.com' }
+      })
+    );
+
+    await expect(
+      applyCollectionPermissionStates({
+        teamId,
+        datasetId,
+        states: [folderState()],
+        expectedApiDatasetServer: apiDatasetServer
+      })
+    ).rejects.toMatchObject({ name: 'PermissionSyncStaleRoundError' });
+    expect(replaceResources).not.toHaveBeenCalled();
   });
 });

@@ -301,6 +301,8 @@ export const syncCollectionPermissions = async ({
     teamId,
     datasetId,
     states,
+    // 抓取使用的是这份配置：写入事务内会锁库重读，托管关闭或配置变更时丢弃本轮
+    expectedApiDatasetServer: dataset.apiDatasetServer,
     deadlineAt,
     lease
   });
