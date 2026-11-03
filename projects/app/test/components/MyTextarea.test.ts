@@ -22,20 +22,12 @@ vi.mock('@chakra-ui/react', async () => {
   );
   Div.displayName = 'MockDiv';
   const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaMockProps>((inputProps, ref) => {
-    const { onChange, onInput, ...props } = inputProps;
     const domProps = Object.fromEntries(
-      Object.entries(props).filter(
+      Object.entries(inputProps).filter(
         ([key]) => !['as', 'maxH', 'maxW', 'minH', 'resize', 'sx'].includes(key)
       )
     );
-    return React.createElement('textarea', {
-      ...domProps,
-      ref,
-      onInput: (event: React.FormEvent<HTMLTextAreaElement>) => {
-        onInput?.(event);
-        onChange?.(event as React.ChangeEvent<HTMLTextAreaElement>);
-      }
-    });
+    return React.createElement('textarea', { ...domProps, ref });
   });
   Textarea.displayName = 'MockTextarea';
   const Button = React.forwardRef<HTMLButtonElement, React.ButtonHTMLAttributes<HTMLButtonElement>>(
@@ -146,5 +138,53 @@ describe('MyTextarea', () => {
 
     expect(onChange).toHaveBeenCalledTimes(3);
     expect(restoreSelection).toHaveBeenCalledOnce();
+  });
+
+  it('accepts the same value after the parent resets the textarea', async () => {
+    const changes: string[] = [];
+    let resetValue = () => {};
+    const Harness = () => {
+      const [value, setValue] = React.useState('');
+      resetValue = () => setValue('');
+      return React.createElement(MyTextarea, {
+        value,
+        onChange: (event) => {
+          changes.push(event.currentTarget.value);
+          setValue(event.currentTarget.value);
+        }
+      });
+    };
+
+    await act(async () => root.render(React.createElement(Harness)));
+
+    const textarea = container.querySelector('textarea')!;
+    const setValue = (value: string) => {
+      Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value')?.set?.call(
+        textarea,
+        value
+      );
+    };
+    const dispatchInput = () =>
+      textarea.dispatchEvent(new window.Event('input', { bubbles: true }));
+
+    await act(async () => {
+      textarea.dispatchEvent(new window.Event('compositionstart', { bubbles: true }));
+      setValue('n');
+      dispatchInput();
+      setValue('你');
+      textarea.dispatchEvent(new window.Event('compositionend', { bubbles: true }));
+      dispatchInput();
+    });
+    expect(changes).toEqual(['n', '你']);
+
+    await act(async () => resetValue());
+    expect(textarea.value).toBe('');
+
+    await act(async () => {
+      setValue('你');
+      dispatchInput();
+    });
+    expect(changes).toEqual(['n', '你', '你']);
+    expect(textarea.value).toBe('你');
   });
 });

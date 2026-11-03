@@ -111,6 +111,14 @@ const Editor = React.memo(function Editor({
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
 
+  // 父组件重置或改写受控值后，旧组合输入的尾随事件不再有效。
+  useLayoutEffect(() => {
+    if (compositionEndValueRef.current !== null && props.value !== compositionEndValueRef.current) {
+      compositionEndValueRef.current = null;
+      lastCompositionValueRef.current = null;
+    }
+  }, [props.value]);
+
   // 使用 useLayoutEffect 同步恢复光标位置,避免闪烁
   useLayoutEffect(() => {
     if (
