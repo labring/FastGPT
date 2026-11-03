@@ -37,6 +37,8 @@ export const deprecatedOverridePaths: Partial<
     ['accountCancellation', 'todaySm', 'en']
   ],
   commercial: [
+    // 沙箱免费提示改回 ENV 权威，字段已从 Schema 删除；开发期迁移写过该 key 的库必须清掉
+    ['agentSandboxFreeTip'],
     ['billingNotify', 'paymentReceived', 'en'],
     ['billingNotify', 'lackOfPoints', 'en'],
     ['billingNotify', 'pointsTenPercentRemain', 'en'],

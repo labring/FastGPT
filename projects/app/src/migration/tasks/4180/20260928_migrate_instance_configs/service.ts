@@ -192,11 +192,11 @@ export const buildLegacyDomainOverrides = ({
   }) as DomainOverrides['feature'];
 
   // ---------- commercial ----------
+  // 沙箱免费提示（AGENT_SANDBOX_FREE_TIP）不迁移：该开关仍以 ENV 为权威，实例配置无消费点。
   overrides.commercial = compact({
     showCoupon: optionalBool(appEnv.SHOW_COUPON),
     showDiscountCoupon: optionalBool(appEnv.SHOW_DISCOUNT_COUPON),
-    payFormUrl: optionalText(appEnv.PAY_FORM_URL),
-    agentSandboxFreeTip: optionalBool(appEnv.AGENT_SANDBOX_FREE_TIP)
+    payFormUrl: optionalText(appEnv.PAY_FORM_URL)
   }) as DomainOverrides['commercial'];
 
   // ---------- resource ----------

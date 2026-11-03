@@ -575,7 +575,6 @@ describe('migration env wiring', () => {
       ['commercial.showCoupon', appEnv.SHOW_COUPON],
       ['commercial.showDiscountCoupon', appEnv.SHOW_DISCOUNT_COUPON],
       ['commercial.payFormUrl', appEnv.PAY_FORM_URL],
-      ['commercial.agentSandboxFreeTip', appEnv.AGENT_SANDBOX_FREE_TIP],
       // resource
       ['resource.serviceRequestMaxContentLength', serviceEnv.SERVICE_REQUEST_MAX_CONTENT_LENGTH],
       ['resource.systemMaxStringLengthM', serviceEnv.SYSTEM_MAX_STRING_LENGTH_M],
