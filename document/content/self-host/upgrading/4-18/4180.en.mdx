@@ -40,6 +40,7 @@ MinIO objects require a manual migration. System startup tasks do not move them 
 
 1. **[Models and billing]** Consistently place models in test mode last in the mobile model selector, speech playback, channel bindings, and model log and dashboard filters, preserving catalog order within each group.
 2. **[Models and billing]** Aligned header and body column widths in the model management table and isolated edit dialog state by row, reducing full-table rerenders when opening a dialog in a large list.
+3. **[Datasets and files]** In the Commercial edition, moved tag filtering for simple Apps and ChatAgents to the “Search filter” tab in Dataset search settings and added a dedicated toggle. Turning it off in manual input mode preserves conditions for later editing; the settings summary now reflects whether the toggle is on.
 
 ## 🐛 Fixes
 
@@ -47,7 +48,9 @@ MinIO objects require a manual migration. System startup tasks do not move them 
 2. **[Workflows and Agents]** Fixed missing memory updates from Agents, Tool calls, and nested Workflows, loss of memory from branches that did not run, and concurrent child Workflows overwriting other Nodes' new state with stale state. Only each child Workflow's updates are merged, preserving other valid memory.
 3. **[Workflows and Agents]** Fixed memory propagation and failure isolation in loops and parallel runs. Loops pass memory between successful iterations and preserve checkpoints when paused for interaction; failed iterations do not commit updates. Parallel runs merge only successful task results, keep failed attempts from affecting retries, and merge in input order, with later successful tasks taking precedence for the same memory key.
 4. **[Workflows and Agents]** Fixed nested Pi Agents failing to resume question interactions when history is set to 0 or an empty custom history array. Resumes restore the state saved by the parent Workflow.
-5. **[Tools and channels]** Fixed blank text in some Tool names, descriptions, and tags when their Traditional Chinese translation is empty. These values fall back to Simplified Chinese, then English if no usable text is available.
+5. **[Chat experience]** Fixed the header variable panel in shared chats without login using regular chat visibility rules. External variables are now hidden from share visitors.
+6. **[Chat experience]** Fixed model selectors in global variables and interaction forms in shared chats without login failing to load the model list or selected model name because share authentication was missing.
+7. **[Tools and channels]** Fixed blank text in some Tool names, descriptions, and tags when their Traditional Chinese translation is empty. These values fall back to Simplified Chinese, then English if no usable text is available.
 
 ## 🛠️ Code improvements
 

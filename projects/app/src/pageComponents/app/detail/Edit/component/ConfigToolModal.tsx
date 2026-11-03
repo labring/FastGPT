@@ -48,6 +48,8 @@ import { getSelectedInputRenderType } from '@fastgpt/global/common/workflow/refe
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import NodeInputSelect from '@fastgpt/web/components/core/workflow/NodeInputSelect';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
+import { useContextSelector } from 'use-context-selector';
+import { AppContext } from '@/pageComponents/app/detail/context';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import { getClientToolPreviewNode } from '@/web/core/app/api/tool';
 import { getAppVersionList } from '@/web/core/app/api/version';
@@ -434,6 +436,7 @@ const ConfigValueInput = ({
   control: Control<Record<string, any>>;
 }) => {
   const { t } = useSafeTranslation();
+  const appId = useContextSelector(AppContext, (v) => v.appId);
   const selectedInputType = useWatch({
     control,
     name: inputTypeFormKey(input.key)
@@ -477,6 +480,7 @@ const ConfigValueInput = ({
           <FormControl isInvalid={!!error}>
             <InputRender
               {...input}
+              appId={appId || undefined}
               isRichText={false}
               isInvalid={!!error}
               inputType={nodeInputTypeToInputType([inputType])}

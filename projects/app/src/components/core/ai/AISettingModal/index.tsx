@@ -94,6 +94,7 @@ const SettingRow = ({
 );
 
 export type AIChatSettingsModalProps = {
+  appId?: string;
   showMaxToken?: boolean;
   showTemperature?: boolean;
   showTopP?: boolean;
@@ -104,6 +105,7 @@ export type AIChatSettingsModalProps = {
 };
 
 const AIChatSettingsModal = ({
+  appId,
   onClose,
   onSuccess,
   defaultData,
@@ -284,6 +286,7 @@ const AIChatSettingsModal = ({
           <SettingRow label={t('common:core.ai.Model')}>
             <AIModelSelector
               modelType={ModelTypeEnum.llm}
+              appId={appId}
               width={'100%'}
               h={'36px'}
               value={modelId}
