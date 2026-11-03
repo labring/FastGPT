@@ -23,6 +23,7 @@
   "export_config": "Export Config",
   "export_failed": "Export failed",
   "export_success": "Exported successfully",
+  "export_sandbox_wait": "Please wait for the sandbox to be ready before exporting the skill.",
   "history_versions": "History Versions",
   "import_existing_skill": "Import existing Skill",
   "import_existing_skill_desc": "Import common Skills from outside directly into the platform. Supports .zip format.",
