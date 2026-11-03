@@ -72,5 +72,6 @@
   "wecom.create_modal.step.2": "콜백 URL 입력",
   "wecom.create_modal_title": "WeCom 봇 생성",
   "wecom.edit_modal_title": "WeCom 봇 편집",
-  "wecom.title": "WeCom 봇에 게시"
+  "wecom.title": "WeCom 봇에 게시",
+  "ip_whitelist": "IP 허용 목록"
 }

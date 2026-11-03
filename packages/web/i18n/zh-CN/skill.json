@@ -98,5 +98,6 @@
   "delete_skills_confirm_title": "确认删除 {{count}} 个技能",
   "delete_folders_confirm_title": "确认删除 {{count}} 个文件夹",
   "delete_following_skills_tip": "删除以下技能后将无法恢复。",
-  "delete_following_folders_tip": "删除后，这些文件夹及其包含的全部技能将被一并删除。"
+  "delete_following_folders_tip": "删除后，这些文件夹及其包含的全部技能将被一并删除。",
+  "generating": "生成中"
 }

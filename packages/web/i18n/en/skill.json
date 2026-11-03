@@ -102,5 +102,6 @@
   "delete_folders_confirm_title_one": "Confirm deleting {{count}} folder",
   "delete_folders_confirm_title_other": "Confirm deleting {{count}} folders",
   "delete_following_skills_tip": "Deleting the following skills cannot be undone.",
-  "delete_following_folders_tip": "Once deleted, these folders and all skills inside them will be deleted."
+  "delete_following_folders_tip": "Once deleted, these folders and all skills inside them will be deleted.",
+  "generating": "Generating"
 }
