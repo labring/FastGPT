@@ -47,6 +47,7 @@ const lean = <T>(rows: T[]) => ({ lean: vi.fn().mockResolvedValue(rows) });
 type CollectionRow = {
   _id: string;
   apiFileId: string | null;
+  apiFileParentId?: string | null;
   type: string;
   parentId: string | null;
   inheritPermission?: boolean;
@@ -448,5 +449,38 @@ describe('syncCollectionPermissions', () => {
         ])
       );
     }
+  });
+
+  it('resolves a legacy derived directory from mount evidence but leaves a real #dir node alone', async () => {
+    mockCollectionFind({
+      all: [
+        { _id: 'c1', apiFileId: 'f1', type: 'apiFile', parentId: 'c2', inheritPermission: true },
+        { _id: 'c2', apiFileId: 'f1#dir', type: 'folder', parentId: null, inheritPermission: true },
+        // 没有挂载证据的同名节点：外部可能真的就叫 f9#dir，不能裁后缀
+        { _id: 'c3', apiFileId: 'f9#dir', type: 'folder', parentId: null, inheritPermission: true }
+      ]
+    });
+    fetchApiFilePermissions.mockResolvedValue(
+      new Map([
+        ['f1', { apiFileId: 'f1', status: 'ok', permissions: [] }],
+        ['f9#dir', { apiFileId: 'f9#dir', status: 'ok', permissions: [] }]
+      ])
+    );
+    resolveApiDatasetPermissionItems.mockResolvedValue(
+      new Map([
+        ['f1', []],
+        ['f9#dir', []]
+      ])
+    );
+
+    await syncCollectionPermissions({ teamId, datasetId });
+
+    expect(fetchApiFilePermissions).toHaveBeenCalledWith(
+      expect.objectContaining({ apiFileIds: ['f1', 'f9#dir'] })
+    );
+    const [states] = applyCollectionPermissionStates.mock.calls[0] as [
+      { states: { collectionId: string }[] }
+    ];
+    expect(states.states.map((state) => state.collectionId)).toEqual(['c1', 'c2', 'c3']);
   });
 });

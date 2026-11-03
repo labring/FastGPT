@@ -2,9 +2,11 @@ import { MongoDataset } from '../../schema';
 import { MongoDatasetCollection } from '../../collection/schema';
 import { getApiDatasetRequest } from '../index';
 import { isPermissionSyncDataset } from '@fastgpt/global/core/dataset/apiDataset/utils';
+import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
 import type { CollaboratorItemType } from '@fastgpt/global/support/permission/collaborator';
+import { buildLegacyApiFileDirSourceMap } from '../utils';
 import { resourcePermissionRepo } from '../../../../support/permission/repository/resourcePermissionRepo';
 import { pickCollaboratorIdFields } from '../../../../support/permission/utils';
 import { getLogger, LogCategories } from '../../../../common/logger';
@@ -22,23 +24,31 @@ const logger = getLogger(LogCategories.MODULE.DATASET);
 type PermissionSyncCollectionRow = {
   _id: unknown;
   apiFileId: unknown;
+  apiFileParentId?: unknown;
   type: string;
   parentId?: unknown;
   inheritPermission?: boolean;
   metadata?: { apiFileSourceId?: unknown };
 };
 
-const SYNC_TARGET_FIELDS = '_id apiFileId type parentId inheritPermission metadata';
+const SYNC_TARGET_FIELDS = '_id apiFileId apiFileParentId type parentId inheritPermission metadata';
 
 /**
  * collection 对应的外部文件 ID。
  *
  * 带子文档的文件会额外生成 `doc#dir` 派生目录，它本地存的是派生 ID，真实外部 ID 在
  * `metadata.apiFileSourceId`；直接拿 `apiFileId` 拉权限会在外部 404，被误判成「外部未表达」。
+ * 更早的派生目录没有 metadata，改用本地挂载关系推导，仍推导不出时保持原值（不盲裁后缀）。
  */
-const getPermissionSourceId = (row: PermissionSyncCollectionRow) => {
+const getPermissionSourceId = (
+  row: PermissionSyncCollectionRow,
+  legacySourceByDirId: Map<string, string>
+) => {
+  const apiFileId = String(row.apiFileId);
+  if (row.type !== DatasetCollectionTypeEnum.folder) return apiFileId;
   const sourceId = row.metadata?.apiFileSourceId;
-  return typeof sourceId === 'string' && sourceId ? sourceId : String(row.apiFileId);
+  if (typeof sourceId === 'string' && sourceId) return sourceId;
+  return legacySourceByDirId.get(apiFileId) ?? apiFileId;
 };
 
 /**
@@ -168,8 +178,21 @@ export const syncCollectionPermissions = async ({
   if (collections.length === 0) return stats;
 
   // 正文与派生目录共用同一个外部文件 ID，本轮只拉一次。
+  const legacySourceByDirId = buildLegacyApiFileDirSourceMap(
+    collections.map((row) => ({
+      _id: row._id,
+      apiFileId: String(row.apiFileId),
+      apiFileParentId: row.apiFileParentId == null ? null : String(row.apiFileParentId),
+      parentId: row.parentId,
+      type: row.type as DatasetCollectionTypeEnum,
+      metadata: row.metadata
+    }))
+  );
   const sourceIdByCollectionId = new Map(
-    collections.map((collection) => [String(collection._id), getPermissionSourceId(collection)])
+    collections.map((collection) => [
+      String(collection._id),
+      getPermissionSourceId(collection, legacySourceByDirId)
+    ])
   );
   const apiFileIds = Array.from(new Set(sourceIdByCollectionId.values()));
 

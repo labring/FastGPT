@@ -219,10 +219,13 @@ export const buildApiFileParentUpdates = ({
 };
 
 /**
- * 同步只查询真实远端 ID。新派生目录保存 sourceId，正文尚未落库时也能恢复同步；
- * 历史目录仅在本地挂载关系能证明来源时兼容，不盲目裁剪 provider ID 的后缀。
+ * 历史派生目录的 `apiFileId` → 真实远端 ID。
+ *
+ * 新记录的来源写在 `metadata.apiFileSourceId`；更早的派生目录没有该字段，只能靠本地挂载
+ * 关系证明：正文挂在自己的目录内，或目录子节点的远端父级指向该正文。同名 `#dir` 后缀本身
+ * 不是证据（provider 允许真实节点就叫 `doc#dir`）。
  */
-export const getApiFileSyncRootIds = (collections: ApiFileLocalCollection[]): string[] => {
+export const buildLegacyApiFileDirSourceMap = (collections: ApiFileLocalCollection[]) => {
   const localByApiId = new Map(
     collections.filter((item) => item.apiFileId).map((item) => [item.apiFileId!, item])
   );
@@ -240,13 +243,20 @@ export const getApiFileSyncRootIds = (collections: ApiFileLocalCollection[]): st
     const dirId = toApiFileDirId(item.apiFileId, 'file');
     const directory = localByApiId.get(dirId);
     if (directory?.type !== DatasetCollectionTypeEnum.folder) continue;
-    // 同名后缀本身不是证据：真实 provider 允许 doc 和 doc#dir 同时存在。
-    // 只有正文挂在自己的目录内，或子文档的远端父级与本地目录对应，才按历史派生记录兼容。
     const isDerived =
       (String(item.parentId ?? '') === String(directory._id) && item.apiFileParentId !== dirId) ||
       remoteParentsByLocalParent.get(String(directory._id))?.has(item.apiFileId);
     if (isDerived) legacySources.set(dirId, item.apiFileId);
   }
+  return legacySources;
+};
+
+/**
+ * 同步只查询真实远端 ID。新派生目录保存 sourceId，正文尚未落库时也能恢复同步；
+ * 历史目录仅在本地挂载关系能证明来源时兼容，不盲目裁剪 provider ID 的后缀。
+ */
+export const getApiFileSyncRootIds = (collections: ApiFileLocalCollection[]): string[] => {
+  const legacySources = buildLegacyApiFileDirSourceMap(collections);
   const sourceIdOf = (item: ApiFileLocalCollection) => {
     if (!item.apiFileId) return undefined;
     if (item.type !== DatasetCollectionTypeEnum.folder) return item.apiFileId;

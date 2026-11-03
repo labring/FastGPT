@@ -107,7 +107,15 @@ export const applyCollectionPermissionStates = async ({
         session
       });
     }
+
+    // 回调返回后 driver 立即提交，这是提交前最后一个应用层检查点：租约已丢失时
+    // 必须让事务回滚，否则本轮写入会在新任务开始后再落地。
+    assertPermissionSyncActive({ deadlineAt, lease });
   });
+
+  // 覆盖「提交过程中租约才丢失」的窗口：写入可能已经落库，抛出取消让调用方按失败处理，
+  // 由下一轮同步收敛，不能把结果当成成功。
+  assertPermissionSyncActive({ deadlineAt, lease });
 
   return { updated: changedStates.length };
 };
