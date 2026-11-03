@@ -185,11 +185,12 @@ export const embeddingRecall = async ({
     };
   }
 
-  // 同一轮多 query 召回共用配置值，provider 只消费显式传入的搜索参数。
-  const { hnswEfSearch } = getSystemInstanceConfig().vector;
+  // 同一轮多 query 召回共用配置值，统一限制在 100～1000，provider 直接使用，不再按 limit 调整。
+  const { hnswEfSearch: configuredHnswEfSearch } = getSystemInstanceConfig().vector;
+  const hnswEfSearch = Math.min(1000, Math.max(100, configuredHnswEfSearch));
   logInstanceConfigRead({
     callsite: 'runtime.core.dataset.search.embeddingRecall',
-    fields: [{ path: 'vector.hnswEfSearch', value: hnswEfSearch }]
+    fields: [{ path: 'vector.hnswEfSearch', value: configuredHnswEfSearch }]
   });
 
   // 多个文本/图片 query 共用路由快照，避免每个向量都重复查询计数及索引状态。

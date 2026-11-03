@@ -74,8 +74,8 @@ export const EmbeddingRecallCtrlPropsSchema = z.object({
   datasetVectorData: z.array(DatasetVectorSearchDataSchema).optional(),
   vector: z.array(z.number()),
   limit: z.number(),
-  hnswEfSearch: IntSchema.positive().meta({
-    description: '本次 HNSW 搜索宽度，由召回入口读取实例配置后传入'
+  hnswEfSearch: IntSchema.min(100).max(1000).meta({
+    description: '本次 HNSW 搜索宽度，由召回入口统一限制在 100～1000 后传入'
   }),
   forbidCollectionIdList: z.array(z.string()),
   filterCollectionIdList: z.array(z.string()).optional(),

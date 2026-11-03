@@ -209,8 +209,12 @@ describe('default recall dataset search', () => {
 
   it.each([
     { configured: undefined, expected: 200 },
-    { configured: 400, expected: 400 }
-  ])('uses one HNSW search width for all recall tasks: %j', async ({ configured, expected }) => {
+    { configured: 99, expected: 100 },
+    { configured: 100, expected: 100 },
+    { configured: 400, expected: 400 },
+    { configured: 1000, expected: 1000 },
+    { configured: 1001, expected: 1000 }
+  ])('bounds HNSW search width once for all recall tasks: %j', async ({ configured, expected }) => {
     if (configured !== undefined) global.systemInstanceConfig!.vector.hnswEfSearch = configured;
     mockRecallFromVectorStore.mockImplementation(async () => {
       // 首个 query 执行后配置变化，本轮其他 query 仍需使用入口读取的同一份参数。
@@ -220,19 +224,20 @@ describe('default recall dataset search', () => {
 
     await searchDatasetData({
       histories: [],
-      teamId: 'team-1',
+      teamId: '507f1f77bcf86cd799439011',
       model: embeddingModel,
-      datasetIds: ['dataset-1'],
+      datasetIds: ['507f1f77bcf86cd799439012'],
       reRankQuery: 'first query',
       textQueries: ['first query', 'second query'],
       imageQueries: [],
       limit: 5000,
-      searchMode: DatasetSearchModeEnum.embedding,
+      searchMode: DatasetSearchModeEnum.mixedRecall,
       embeddingWeight: 0.5,
       usingReRank: false
     });
 
     expect(mockRecallFromVectorStore).toHaveBeenCalledTimes(2);
+    expect(mockRecallFromVectorStore.mock.calls[0][0].limit).toBe(80);
     expect(mockRecallFromVectorStore.mock.calls.map(([props]) => props.hnswEfSearch)).toEqual([
       expected,
       expected
