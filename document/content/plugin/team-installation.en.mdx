@@ -22,7 +22,7 @@ Team plugins can be updated or removed and do not have a deprecation state.
 Before installing a plugin, confirm that:
 
 1. Your account is a team administrator or team owner. Regular members can use installed plugins but cannot install, update, or remove them.
-2. The system administrator has enabled team plugin uploads. Although the configuration name refers to uploads, this option gates all team plugin installation methods; Marketplace installation, local uploads, and installation confirmation are rejected when it is disabled.
+2. The system administrator has enabled **Allow teams to upload plugins** under **Admin → System Config → Feature Flags**. This toggle gates all team plugin installation methods; Marketplace installation, local uploads, and installation confirmation are rejected when it is disabled.
 3. The deployment can access FastGPT Marketplace when installing from Marketplace.
 4. For a local installation, you have a valid `.pkg` file or a `.zip` archive containing one or more `.pkg` files.
 
@@ -30,8 +30,8 @@ Authors preparing a custom package can follow [debugging, packing, and publishin
 
 ## Install from Marketplace
 
-1. Open **Tools** in the FastGPT workspace.
-2. Open **Add Plugin** in the upper-right corner and choose the Marketplace installation option.
+1. Open **Studio → System Tools**.
+2. Click **+ Install Tool** in the upper-right corner and select **Install from Marketplace**.
 3. Find a plugin by name, source, or category. You can enable the uninstalled-only filter.
 4. Open the plugin details and review its description, version, and requested permissions.
 5. Select a version and click **Install** to continue.
@@ -42,8 +42,8 @@ After installation, the plugin appears in the team tool list and can be selected
 
 When team plugin uploads are enabled, you can install plugins you developed yourself or obtained through other channels:
 
-1. Open **Tools** in the workspace.
-2. Open **Add Plugin** and choose the local upload option.
+1. Open **Studio → System Tools**.
+2. Click **+ Install Tool** and select **Install from Local**.
 3. Select one or more `.pkg` files, or a `.zip` archive containing multiple `.pkg` files.
 4. Wait for FastGPT to upload and inspect the packages.
 5. Review the plugin name, version, permissions, and parsing result. Failed files display an individual error and can be retried.
@@ -91,13 +91,13 @@ Use clear internal conventions when both copies exist, especially when they have
 
 ## FAQ
 
-### Why is the Add Plugin button missing?
+### Why is the + Install Tool button missing?
 
 Only team administrators and team owners can manage team plugins.
 
-### Why is Upload Plugin missing?
+### Why is Install from Local missing?
 
-The system administrator has disabled team plugin uploads. Marketplace installation, local uploads, and installation confirmation are rejected while it is disabled. The page remains accessible by direct URL, but installations cannot be completed. Ask the system administrator to enable this option before installing a team plugin.
+The system administrator has disabled **Allow teams to upload plugins** under **Admin → System Config → Feature Flags**. Marketplace installation, local uploads, and installation confirmation are rejected while it is disabled. The page remains accessible by direct URL, but installations cannot be completed. Ask the system administrator to enable this option before installing a team plugin.
 
 ### Why is an uploaded plugin unavailable?
 

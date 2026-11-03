@@ -17,21 +17,13 @@ Welcome Text supports standard Markdown syntax, including headings, lists, links
 
 ## Quick Questions
 
-Welcome Text supports the special `[Quick Question]` format. FastGPT displays these items as clickable buttons, and users can send the preset question with one click.
+In the lower half of the Welcome Text configuration modal, click **Add preset question** to add input rows and enter one starter question per row:
 
-The screenshot shows the separate preset-question list. Add a question such as “What are the service hours?” and test it in the preview. The following Markdown syntax also creates quick questions inside the welcome text.
+- `What are the service hours?`
+- `How do I request support?`
+- `What scenarios does this product support?`
 
-Example:
-
-```md
-Hello, I can help you look up product information and support policies.
-
-[How do I request support?]
-[What scenarios does this product support?]
-[Recommend a starter plan]
-```
-
-When users start a new conversation, they will see the welcome message and quick question buttons. After a user clicks a quick question, FastGPT sends that question as the user's message.
+When users start a new conversation, they see the welcome message along with clickable preset question buttons. Clicking a preset question button sends that question directly as the user's message.
 
 ![Quick questions in chat](/imgs/optimized/current/welcome-preview.png.webp)
 

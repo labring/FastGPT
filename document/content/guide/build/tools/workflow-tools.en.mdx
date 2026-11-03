@@ -14,7 +14,7 @@ A Workflow Tool packages a multi-step canvas flow—combining HTTP requests, kno
 
 ## Step 1: Create a Workflow Tool and Declare Inputs
 
-1. Go to **Tools → My Tools** in the left sidebar, click **Create Tool**, and select **Workflow Tool**.
+1. Go to **Studio → My Tools**, click the first **Create** card in the list, and select **Workflow Tool** (the upper-right toolbar provides **Batch Manage**, **+ Folder**, and **Import**).
 2. The canvas initializes with two contract nodes: **Plugin Input (`pluginInput`)** and **Plugin Output (`pluginOutput`)**.
 3. Click **Add Field** on the **Plugin Input** node to declare each parameter:
 
@@ -41,7 +41,7 @@ A Workflow Tool packages a multi-step canvas flow—combining HTTP requests, kno
 
 ## Step 4: Attach and Invoke in Applications
 
-- **In Chat Agent / Chat Agent V2**: Add the published workflow tool under **Tool Call**. If any input field is configured as a static caller setting (such as a fixed secret or dataset scope), fill it in on the attached tool card.
+- **In Chat Agent / Chat Agent V2**: In the App's **Tools** section, click **+ Choose** and select the published workflow tool. If any input field is configured as a static caller setting (such as a fixed secret or Dataset scope), fill it in on the attached tool card.
 - **Static call in a Workflow**: Add the workflow tool from **Add Node → Tools** as a standard step on the canvas and map upstream variables to its input ports.
 - **Dynamic call via a Tool Call node**: Connect the workflow tool below a [Tool Call](/en/guide/build/workflow/nodes/tool) node using the blue diamond tool handle.
 

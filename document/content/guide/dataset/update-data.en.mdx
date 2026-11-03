@@ -18,10 +18,10 @@ Enterprise knowledge assets evolve continuously as policies update and business 
 When a specific policy clause requires minor phrasing adjustments or demands supplementary query variations, use inline chunk editing:
 
 1. Open your target knowledge base and click a collection to expand its data chunk list.
-2. Locate the chunk requiring edits and click "Edit" on the right side of the card.
+2. Click the target data chunk card to open the chunk edit dialog.
 3. **Update Chunk Content**: Modify the primary text directly. The platform recalculates textual representations upon saving.
-4. **Add Supplementary Indexes (Query Variants)**: In the "Supplementary Indexes" area, enter alternative phrasing that end users frequently submit. These entries act as independent retrieval anchors in vector space.
-5. **Save Changes**: Click "Save". Wait for the save and indexing operations to complete, then verify the updated chunk in Search Test.
+4. **Add Indexes (Query Variants)**: In the **Indexes** section at the bottom of the dialog, click **+ Add Index** and enter alternative phrasing that end users frequently submit. These entries act as independent retrieval anchors in vector space.
+5. **Save Changes**: Click **Confirm**. Wait for the save and indexing operations to complete, then verify the updated chunk in Search Test.
 
 ![Edit individual chunk text and supplementary query variants](/imgs/optimized/current/citation-edit-data.png.webp)
 
@@ -44,10 +44,10 @@ Knowledge bases support toggling retrieval eligibility at the collection level a
 
 ## Scenario 4: Rebuild Vector and Supplementary Indexes
 
-Use the rebuild operation supported by the current knowledge base when refreshing vector or supplementary indexes. Follow the deployed version's migration instructions when changing embedding models or dimensions:
+When switching embedding models and refreshing all vector indexes across a dataset:
 
-1. Navigate to knowledge base settings and open the "Advanced Settings" tab.
-2. Select "Rebuild Vector Index" (or "Rebuild Synonym Index" when synonym capability is enabled via `DATASET_SYNONYM_ENABLED`).
+1. Open the target dataset and locate the **Index Model** selector in the right-side information panel.
+2. Select the new embedding model and confirm the switch (when synonym capability is enabled via `DATASET_SYNONYM_ENABLED`, updating synonym rules also triggers synonym index rebuilding automatically).
 3. Confirm the operation. The platform generates batch task records in the background for all ready data chunks.
 4. Workers recompute and commit indexes per chunk, checking that source content still matches the task snapshot. Old vectors are cleaned up after each successful commit. Monitor partial completion and retry failed tasks.
 

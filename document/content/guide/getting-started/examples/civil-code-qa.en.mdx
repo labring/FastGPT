@@ -25,7 +25,7 @@ Think of the Dataset as a "reference room" configured for the AI. The model itse
 
 1. **Create a Dataset**
 
-   Click **Dataset** on the left side of the homepage, then click **New** in the top right corner. Name the Dataset `Civil Code Q&A Assistant`. Keep the other default settings for this case.
+   Click **Dataset** in the left navigation bar, click **New** in the upper-right corner, and select **General Dataset** from the dropdown menu. Name the Dataset `Civil Code Lease Articles`, select an available embedding model and text understanding model for your team, and click **Confirm**.
 
 2. **Create a Text Collection**
 
@@ -59,54 +59,36 @@ Think of the Dataset as a "reference room" configured for the AI. The model itse
 
 7. **Create and Link a Conversational Agent**
 
-   Create a new Conversational Agent, also named `Civil Code Q&A Assistant`. After creation, link the Dataset you just created in the app configuration.
+   Go to **Studio → Agent**, click the **Create** card, select **Chat Agent**, and name it `Civil Code Q&A Assistant`. In the **Dataset** section on the left, click **+ Choose** and link the Dataset created in Step 1.
 
    After linking the Dataset, the app's response flow changes from simple chat to "user question → Dataset search → model summarizes answer." This is the key difference between Case 1 and Case 2: Case 1 emphasizes content generation, while Case 2 emphasizes answering based on provided materials.
 
 8. **Configure the Q&A Prompt**
 
-   The Civil Code Q&A assistant needs to emphasize "answer based on the Dataset" and "cite the original text." You can use the following Prompt:
+   The Civil Code Q&A assistant needs to answer from the Dataset and cite original articles. Enter the concise prompt shown in the verification screenshot below:
 
    ```md
-   You are a professional Civil Code Q&A assistant, answering legal questions based on the original text of the _Civil Code of the People's Republic of China_.
-
-   Rules:
-
-   - Strictly answer based on the Civil Code articles retrieved from the Dataset; do not fabricate legal provisions.
-   - Every answer must cite the original Civil Code text (book, chapter, article).
-   - If there is no directly corresponding provision in the Civil Code, state this honestly and do not give legal advice.
-   - When applying the law to specific cases, remind the user: "This answer is for reference only; please consult a professional lawyer."
-   - Provide plain-language explanations of legal terms so that users without a legal background can understand.
-
-   Output format:
-
-   1. **Legal Conclusion** (1–3 sentence summary)
-   2. **Relevant Article Citation** (original excerpt + book/chapter/article number)
-   3. **Plain-Language Explanation** (explain the meaning of the article in everyday language)
-   4. **Practical Advice** (2–3 actionable suggestions)
-   5. **Disclaimer** ("This answer is based on the original Civil Code text and does not constitute legal advice. For specific cases, please consult a professional lawyer.")
+   Answer based on the Civil Code lease articles in the Dataset. Give a concise conclusion first, then cite the article numbers and key original text, explaining applicable conditions and exceptions. Use only retrieved evidence and state any missing evidence when the material is insufficient. Remind the user to consult a professional lawyer with their contract and case facts for specific cases. Keep the Chinese answer within 300 characters.
    ```
 
-   For legal Q&A scenarios, it's especially important to define boundaries: what can be answered is a general explanation based on the materials; the model's output should never be packaged as formal legal advice. Requiring article citations, stating uncertainty, and adding disclaimers in the Prompt all aim to make the output more traceable and compliant with high-risk knowledge Q&A usage norms.
+   For legal Q&A scenarios, clear boundaries keep responses traceable and compliant: provide general explanations grounded in retrieved articles, cite article numbers, identify missing evidence, and include a reminder to consult a lawyer.
 
 9. **Configure the Opening Message**
 
-   The opening greeting can include a few example questions to help users quickly understand how to use this assistant:
+   Open the **Welcome Message** configuration modal and enter the greeting text in the message box:
 
    ```text
    Hello! I'm the Civil Code Q&A Assistant ⚖️
 
    I answer legal questions based on the original text of the *Civil Code of the People's Republic of China*.
 
-   You can ask me:
-   ["My lease isn't up yet, but the landlord wants to sell the house. What should I do?"]
-   ["I received a product I bought online and it was broken, but the seller won't accept a return. What does the law say?"]
-   ["The upstairs neighbor's leak soaked my ceiling. Can I claim compensation?"]
-
    ⚠️ Note: My answers are for reference only. For specific legal issues, please consult a professional lawyer.
    ```
 
-   Use Add preset question in the greeting configuration to add the example questions.
+   Below the opening message box, click **Add preset question** to enter each example question on its own row:
+   - `My lease isn't up yet, but the landlord wants to sell the house. What should I do?`
+   - `I received a product I bought online and it was broken, but the seller won't accept a return. What does the law say?`
+   - `The upstairs neighbor's leak soaked my ceiling. Can I claim compensation?`
 
 10. **Verify Q&A Performance**
 
@@ -121,8 +103,6 @@ Think of the Dataset as a "reference room" configured for the AI. The model itse
 ![The Civil Code assistant answers a landlord-sale question using the lease excerpt](/imgs/optimized/current/civil-code-answer.png.webp)
 
 Ask: “My landlord wants to sell the property before my lease ends. What should I do?” Expect Article 725 on ownership changes and lease validity, plus Article 726 on the right of first refusal and its exceptions. Check Articles 727 and 728 for auction notice and compensation. An out-of-scope question such as “What is the longest employment probation period?” should identify the missing evidence in this lease-only sample.
-
-The captured run uses a concise prompt: answer from the retrieved lease articles, give a short conclusion, cite article numbers and key text, explain conditions, exceptions, and missing evidence, and recommend professional advice based on the contract and case facts. Keep the Chinese answer within 300 characters.
 
 ### 2.4 Business Value
 

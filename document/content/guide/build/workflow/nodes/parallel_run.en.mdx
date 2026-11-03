@@ -55,7 +55,7 @@ It fits batch tasks where each item can be completed **independently**, such as:
 - **No interactive nodes**: form input, user selection, and other interactive nodes cannot run inside the Execution Logic — the editor blocks dropping them in
 - **Variable and output races**: global variable changes from successful tasks are written back to the main flow. If a Variable Update node changes an output on a node outside the parallel container, that output is also written back after the task succeeds. When multiple tasks write the same variable or external node output, the final value depends on task completion order and is not guaranteed to be stable. For deterministic results, return values through the End node and use the Parallel Run aggregate outputs
 - **Array length cap**: the input array is capped at 100 items by default (adjustable by the deployment — see below)
-- **Turn off streaming for AI nodes inside the Execution Logic**: it is strongly recommended to disable **"Return AI content"** on AI Chat nodes placed inside the parallel body. Otherwise multiple tasks will stream to the same chat window at once and their output may interleave and become difficult to read. Usually you only want a final **Specified Reply** node *after* the parallel node to emit the aggregated result.
+- **Hide AI output for AI nodes inside the Execution Logic**: in the model settings of AI Chat nodes placed inside the parallel body, enable **"Hide AI output"** so responses are passed through the End anchor and emitted together by a downstream **Specified Reply** node.
 
 ### Deployment Settings
 
@@ -78,7 +78,7 @@ Validate parallel input and output with two strings before adding AI translation
 2. Reference that array in Parallel Run, set max concurrency to `2`, and retries per task to `0`.
 3. Connect Start to End inside the execution logic. Reference the current array item as the End output.
 4. Run the workflow and verify that Success Results is `["alpha", "beta"]` and both entries in Full Results succeeded.
-5. To add translation, place AI Chat between Start and End. Reference the current item as the user question, use the prompt “Translate the input text into English,” and turn off Return AI Content. Change End to reference the AI reply; use a downstream Specified Reply to display the aggregated results.
+5. To add translation, place AI Chat between Start and End. Reference the current item as the user question, use the prompt “Translate the input text into English,” and enable **Hide AI output** in model settings. Change End to reference the AI reply; use a downstream Specified Reply to display the aggregated results.
 
 #### Execution Flow
 

@@ -219,7 +219,7 @@ FASTGPT_LOCAL_COMPOSE_PATH=./docker-compose.source.yml bash install.sh
 
 The script copies this compose file to the final `docker-compose.yml`, then generates login passwords and credentials, and writes the S3/MCP addresses. After generation, log in with the root password printed in the terminal.
 
-For a fully offline environment, prepare `docker-compose.yml` and `install.sh` in advance. If the script cannot run, manually update `DEFAULT_ROOT_PSW`, service tokens, database passwords, and S3/MCP addresses.
+For a fully offline environment, prepare `docker-compose.yml` and `install.sh` in advance. If the script cannot run, manually update service tokens, database passwords, and S3/MCP addresses (`v4.17.3+` initializes with `123456` and requires changing the password in the first-login activation modal; `v4.17.2` and earlier use `DEFAULT_ROOT_PSW`).
 
 #### Deploy with a Custom Image Registry
 
@@ -274,7 +274,7 @@ Access FastGPT via the port/domain opened in step 3. The login username is `root
 ### 6. Configure Models
 
 - After first login, the system prompts that `Language Model` and `Embedding model` are not configured and automatically redirects to the model configuration page. At least these two model types are required.
-- If the redirect doesn't happen, go to `Admin - Model provider` to configure models. [View tutorial](/en/self-host/config/model/intro)
+- If the redirect doesn't happen, go to **Admin → System Resources → System Models** to configure models. [View tutorial](/en/self-host/config/model/intro)
 - Known issue: after first entering the system, the browser tab may become unresponsive. Close the tab and reopen it.
 
 ### 7. Install System Plugins as Needed

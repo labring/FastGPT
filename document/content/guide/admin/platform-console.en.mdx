@@ -3,60 +3,56 @@ title: Root Platform Administration Console Guide
 description: Reference for root administrators managing global dashboards, users, teams, model channels, marketplaces, billing, audit logs, and migrations.
 ---
 
-In self-hosted Commercial Edition deployments, signing in with the `root` administrator account grants access to the **Platform Administration Console** for centralized governance of tenants, system resources, model routing, billing, and system upgrade migrations.
+In self-hosted Commercial Edition deployments, signing in with the `root` administrator account and clicking **Admin** in the lower-left sidebar opens the **Platform Administration Console**, organized into nine top-level navigation sections for governing tenants, system resources, model routing, billing, and system upgrade migrations.
 
-## 1. Global Overview and Tenant Governance
+## 1. Dashboard, Notifications, and User & Resource Governance
 
-| Module | Responsibilities |
+| Navigation Path | Responsibilities |
 | --- | --- |
-| **Global Dashboard** | Monitor platform-wide user growth, active teams, total applications and knowledge bases, conversation turns, and AI point consumption trends |
-| **User Management** | Filter user accounts by status (All, Active, Disabled, Cancelled) and username, create or disable accounts, reset passwords, and inspect team memberships |
-| **Team Management** | Manage tenant teams, adjust team plan quotas, transfer team ownership, and configure custom member or resource caps |
-| **Application Governance** | Search applications (Chat Agents, Agent V2, Workflows, Tools) across all teams for troubleshooting or ownership transfer |
-| **Dataset Governance** | Inspect knowledge base sizes and collections across teams and monitor global embedding and QA training queue depth |
+| **Dashboard** | Monitor platform-wide user growth, active teams, total applications and datasets, conversation turns, and AI point consumption trends |
+| **Notifications** | Publish global banner announcements or send targeted in-app and email notifications |
+| **User Management → Users** | Filter user accounts by status (All, Active, Disabled, Cancelled) and username, create or disable accounts, reset passwords, and inspect team memberships |
+| **User Management → Teams** | Manage tenant teams, transfer team ownership, and inspect team members |
+| **User Management → Team Plans** | View and adjust active subscription tiers, expiration dates, and add-on quotas across teams |
+| **User Management → Orders** | Inspect payment orders, top-ups, and coupon redemptions across the platform |
+| **User Management → Invoices** | Review team invoice requests, verify tax headers, and upload issued PDF invoices |
+| **User Resources → Apps** | Search applications (Agents, Workflows, Tools) across all teams for troubleshooting or ownership transfer |
+| **User Resources → Datasets** | Inspect dataset sizes and collections across teams and monitor global embedding and QA training queues |
 
-## 2. System Resources and Model Channel Center
+## 2. System Resources (System Models, System Tools, and App Templates)
 
-### 1. System Models and AIProxy Channels
+### 1. System Resources → System Models
 
-Manage platform-wide model infrastructure across five sub-tabs (see [Model Configuration](/en/self-host/config/model/intro) for setup procedures):
+Manage platform-wide model infrastructure across five tabs (see [Model Configuration](/en/self-host/config/model/intro) for setup procedures):
 
-- **Model Config**: Enable models from presets or add custom LLM, Embedding, Rerank, TTS, and STT models, configuring context windows, capability tags, and `pricing` rules (M Tokens for Token models, per 1M characters for TTS, and per 60 seconds for STT).
+- **Active Models**: Manage enabled LLM, Embedding, Rerank, TTS, and STT models, configuring context windows, capability tags, platform default models, and `pricing` rules.
+- **All Models**: Browse all built-in presets and custom models to enable or register new models.
 - **Model Channels**: Configure provider endpoints, API keys, model mappings, and channel routing priority weights.
-- **Channel Logs**: Search underlying model requests by request ID, channel, model name, or HTTP status to inspect latency and error payloads.
-- **Provider Health Monitoring**: Run batch connectivity tests and configure automated health probes and alert webhooks.
+- **Call Logs**: Search underlying model requests by request ID, channel, model name, or HTTP status to inspect latency and error payloads.
+- **Model Test**: Run batch connectivity probes and configure automated health checks and alert webhooks.
 
-### 2. System Tools and Template Marketplace
+### 2. System Tools and App Templates
 
-| Module | Key Operations |
+| Navigation Path | Key Operations |
 | --- | --- |
-| **System Tool Repository** | Upload `.pkg` plugin archives, manage tool tags, configure platform-wide tool secrets, toggle availability, and set tool point costs; see [Configure System Tools](/en/guide/build/tools/system-plugins/upload_system_tool) |
-| **Application Templates** | Maintain template categories and featured templates displayed in the workspace Template Marketplace |
+| **System Resources → System Tools** | Upload `.pkg` plugin archives, manage tool tags, configure platform-wide tool secrets, toggle availability, and set tool point costs; see [Configure System Tools](/en/guide/build/tools/system-plugins/upload_system_tool) |
+| **System Resources → App Templates** | Maintain template categories and featured templates displayed in the Studio **Template Market** |
 
-## 3. Commercial Billing, Announcements, and Compliance Auditing
+## 3. System Config, Version Upgrade, Audit Logs, and License
 
-| Module | Responsibilities |
+### 1. System Config
+
+- **System Config → Basic Config**: Configure site title, branding logos, help links, **Max Vector Recall Concurrency** (`systemEnv.vectorRecallConcurrency`, integer `0–1000`, defaulting to `0` for unlimited), and **PDF Parsing Config** (such as MinerU, Marker, or Doc2x).
+- **System Config → Feature Flags**: Toggle team model management (`enable_team_model`), team plugin uploads (`enable_team_upload_plugin`), registration policies, and background sync features.
+- **System Config → Security Config**: Manage password policies, session security, and access protection rules.
+- **System Config → Third-Party Providers**: Configure SMS/email gateways and external provider credentials.
+- **System Config → User Config**: Configure OAuth2/OIDC/SAML SSO and directory sync (see [SSO & External Member Sync](/en/guide/admin/sso) and [Team Mode](/en/guide/admin/teamMode)).
+- **System Config → Plans & Pricing**: Configure standard subscription tiers, extra AI point or dataset index add-on packs, and payment gateway credentials.
+
+### 2. Version Upgrade, Audit Logs, and License
+
+| Navigation Path | Responsibilities |
 | --- | --- |
-| **Plans & Resource Packs** | Configure standard subscription tiers (pricing, billing cycle, quotas) and extra AI point or knowledge index add-on packs |
-| **Payments & Coupons** | Inspect payment orders and generate batch redemption codes or discount coupons |
-| **Invoice Management** | Review team invoice requests, verify tax headers, and upload issued PDF invoices |
-| **System Announcements** | Publish global banner announcements or send targeted in-app and email notifications |
-| **Platform Audit Logs** | Query platform-wide administrative and operational audit events by actor, team, event type, and time range |
-| **Commercial License** | Inspect the Instance ID, upload or renew Commercial Edition license keys, and verify licensed capabilities and expiration dates |
-
-## 4. System Settings and Automated Upgrade Migrations
-
-### 1. System Settings
-
-- **Basic Settings**: Configure site title, branding logos, help links, and compliance notices.
-- **Feature Flags & Concurrency**: Toggle team model management (`enable_team_model`), registration policies, background sync features, and maximum vector retrieval concurrency (`systemEnv.vectorRecallConcurrency`, integer `0–1000`, defaulting to `0` for unlimited).
-- **Default Models**: Select platform default models for chat, embedding, text understanding, and enhanced PDF parsing (MinerU, Marker, Doc2x).
-- **Payment Gateways**: Configure WeChat Pay, Alipay, or Stripe merchant credentials.
-- **Third-Party & Auth Settings**: Configure SMS/email gateways, OAuth2/OIDC/SAML SSO, and directory sync (see [SSO & External Member Sync](/en/guide/admin/sso) and [Team Mode](/en/guide/admin/teamMode)).
-
-### 2. System Upgrade Migrations
-
-After upgrading container images across versions, open the **System Migrations** page in the Platform Administration Console to inspect registered automated migration tasks:
-
-1. Check each migration task's status (pending, running, completed, failed), progress counters, and saved checkpoints.
-2. Trigger or resume migrations after confirming database backups, and verify completion alongside container logs. See [Upgrade Instructions](/en/self-host/upgrading/upgrade-instruction) for the standard upgrade workflow.
+| **Version Upgrade** | Inspect registered automated migration tasks (System Migration), progress counters, and saved checkpoints, and trigger or resume migrations after confirming database backups; see [Upgrade Instructions](/en/self-host/upgrading/upgrade-instruction) |
+| **Audit Logs** | Query platform-wide administrative and operational audit events by actor, team, event type, and time range |
+| **License** | Inspect the Instance ID, upload or renew Commercial Edition license keys, and verify licensed capabilities and expiration dates |

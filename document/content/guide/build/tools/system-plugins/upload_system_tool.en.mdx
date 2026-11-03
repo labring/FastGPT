@@ -21,7 +21,7 @@ description: "Upload, install, and update packaged custom system tool plugins in
 
 ### 1. Access the Configuration Page
 
-Log in as root, open **Configuration → Resource Library**, and choose **Add Resource**. The following screenshot shows that entry; the upload dialog labels can vary by version.
+Log in as `root`, open **Admin → System Resources → System Tools**, click **+ Install Tool** in the upper-right corner, and select **Install from Local** from the dropdown menu (which also provides **Install from Marketplace**).
 
 ![Configuration resource library and Add Resource entry](/imgs/optimized/plugins/entry.png.webp)
 
@@ -33,10 +33,10 @@ Prepare a `.pkg` file from a trusted author and confirm compatibility with the t
 
 ### 3. Upload
 
-1. Click the **"Import/Update"** button
-2. In the dialog that appears, click the file selection area
+1. Click **+ Install Tool → Install from Local** in the upper-right corner
+2. In the **Import/Update Plugin** drawer that opens, click the file selection area
 3. Select your prepared `.pkg` tool files
-4. After confirming the file details, click **"Confirm Import"**
+4. After confirming the file details, click **Confirm** at the bottom
 
 ### 4. Upload Process
 
@@ -66,7 +66,7 @@ Root administrators configure system secrets centrally. The FastGPT server store
 
 ## FAQ
 
-### Q: Can't see the "Import/Update" button
+### Q: Can't see the "+ Install Tool → Install from Local" option
 
 **Reason:** The current user is not a root user
 

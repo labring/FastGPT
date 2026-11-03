@@ -58,38 +58,6 @@ When enabled, use the slider to limit response length. If the value is too low, 
 
 Use a lower value for concise answers. Use a higher value when generating plans, articles, or longer explanations.
 
-### Temperature
-
-Controls how stable the response is.
-
-Lower values produce more stable responses and are better for customer support, Dataset Q&A, and scenarios with clear rules. Higher values produce more varied responses and are better for writing, brainstorming, and creative content.
-
-Common choices:
-
-- Customer support and Dataset Q&A: use a lower value.
-- Copywriting, stories, and creative suggestions: use a higher value.
-- If unsure: keep the default.
-
-### Top_p
-
-Top_p also controls response randomness, with some overlap with temperature.
-
-In most cases, avoid adjusting temperature and Top_p at the same time. If temperature already gives the result you want, keep Top_p disabled or at its default.
-
-### Stop
-
-Stops the AI response when specified content appears.
-
-Most chat scenarios do not need this setting. Use it only when the model should stop after outputting a fixed marker. Separate multiple stop strings with `|`, for example: `end|stop`.
-
-### Response Format
-
-Controls the format of the AI response.
-
-For regular chat, customer support, and Dataset Q&A, keep the default. Change this only when a later step needs to read the response in a fixed format.
-
-If you select `json_schema`, you also need to provide the corresponding schema. This option is suitable when the model must return content in a fixed structure.
-
 ### Multimodal Recognition
 
 If the selected model is configured with multimodal capability, this setting controls whether the AI can read images, audio, or video from user input.
@@ -230,3 +198,37 @@ Some models may not fully support every reasoning option. If an error occurs aft
 ### Hide AI Reasoning
 
 When enabled, users only see the final answer and do not see the AI's reasoning process. During app debugging, you can temporarily disable this option to inspect the model's intermediate reasoning.
+
+## Advanced Settings
+
+### Temperature
+
+Controls how stable the response is.
+
+Lower values produce more stable responses and are better for customer support, Dataset Q&A, and scenarios with clear rules. Higher values produce more varied responses and are better for writing, brainstorming, and creative content.
+
+Common choices:
+
+- Customer support and Dataset Q&A: use a lower value.
+- Copywriting, stories, and creative suggestions: use a higher value.
+- If unsure: keep the default.
+
+### Top_p
+
+Top_p also controls response randomness, with some overlap with temperature.
+
+When temperature already gives the desired result, keep Top_p disabled or at its default.
+
+### Stop
+
+Stops the AI response when specified content appears.
+
+Enable this setting when the model should stop after outputting a fixed marker. Separate multiple stop strings with `|`, for example: `end|stop`.
+
+### Response Format
+
+Controls the format of the AI response.
+
+For regular chat, customer support, and Dataset Q&A, keep the default. Enable and select a target format when a downstream step needs structured output.
+
+If you select `json_schema`, you also need to provide the corresponding schema. This option is suitable when the model must return content in a fixed structure.

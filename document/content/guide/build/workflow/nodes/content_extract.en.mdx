@@ -35,19 +35,29 @@ Set a goal for the model describing what content needs to be extracted.
 
 > Translate my question directly into English without answering it.
 
-### Chat History
+### Chat History (`history`)
 
-Some chat history is usually needed for more complete extraction. For example, if the task requires a name, time, and lab name, the user might initially provide only the time and lab name. After being prompted for the missing info, the user provides their name. At that point, the previous record is needed to extract all 3 fields completely.
+Configure the number of context turns or reference an upstream chat-history array so multi-turn conversations can complete missing fields across turns.
 
-### Target Fields
+### Text to Extract (`content`)
 
-Target fields correspond to extraction results. As shown above, each new field adds a corresponding output.
+Required input. Typically references the Start node's **User question** (`userChatInput`) or an upstream text output.
 
-- **key**: Unique identifier for the field. Must not be duplicated.
-- **Field description**: Describes what the field represents, e.g., name, time, search keyword, etc.
-- **Required**: Whether the model is forced to extract this field. It may still return an empty string.
+### Target Fields (`extractKeys`)
+
+Each target field adds a matching output handle on the node:
+
+- **Required**: Marks the field as required and lets you configure a **Default value** when the field is absent from the input.
+- **Data type**: Supports 8 types: `string`, `number`, `boolean`, `object`, `array<string>`, `array<number>`, `array<boolean>`, and `array<object>`.
+- **Field key (`key`)**: Unique identifier for the field and its output port.
+- **Field description**: Semantic and format instructions for the field (such as name, appointment time, or search keyword).
+- **Enum values (optional)**: One allowed value per line for `string`, `number`, or their array counterparts.
 
 ## Output
 
-- **Complete extraction result**: A JSON string containing all extracted fields.
-- **Target field extraction results**: All returned as string type.
+| Output Port | Internal Key | Value Type | Description |
+| --- | --- | --- | --- |
+| **Complete extraction result** | `fields` | `String` | JSON string containing all extracted key-value pairs |
+| **All required fields extracted** | `success` | `Boolean` | `true` when all required target fields are extracted or populated by default values |
+| **Target field outputs** | Custom `key` | Configured **Data type** | Individual output port for each declared target field |
+| **Error message** | `errorText` | `String` | Available when **Error capture** is enabled; outputs the error reason when model execution fails |

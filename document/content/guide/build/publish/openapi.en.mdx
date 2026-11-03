@@ -5,7 +5,7 @@ description: "Create application API keys and invoke published FastGPT applicati
 
 import { Alert } from '@/components/docs/Alert';
 
-In FastGPT, the API entry under Publish Channels shows **API Keys** available to the current signed-in member. API Keys are member credentials for OpenAPI calls and are no longer created as app-scoped keys.
+In FastGPT, the **API Request** entry under Publishing Channels shows **API Keys** available to the current signed-in member. API Keys serve as member credentials for OpenAPI calls and are managed at the member level.
 
 When calling this app through `chat/completions`, passing `appId` in the request body is recommended. If a third-party app only supports OpenAI SDK-style key configuration, you can use the `apiKey-appId` compatibility format. For details, [see the OpenAPI Introduction](/en/openapi/intro).
 
@@ -15,7 +15,7 @@ The APIKey list is empty in this example. The displayed service root ends in `/a
 
 ## Get an API Key
 
-Go to App -> "Publish Channels" -> "API", then click "New" to create a key.
+Go to App -> **Publishing Channels** -> **API Request**, then click **New** (or **Create New Key**) in the upper-right corner to create a key.
 
 <Alert context="warning">
   An API Key represents the current signed-in member's OpenAPI credential. Keep your key safe. To

@@ -12,7 +12,7 @@ Every main workflow canvas contains a single **Workflow Start** node that serves
 | Output Field | Internal Key | Value Type | Description |
 | --- | --- | --- | --- |
 | **User question** | `userChatInput` | `String` | Text message submitted by the user in the current turn |
-| **Document links** | `userFiles` | `Array<string>` | Temporary signed URLs of documents and images uploaded in the current turn when [File Input](/en/guide/build/general/fileInput) is enabled |
+| **File URLs** | `userFiles` | `Array<string>` | Temporary signed URLs of documents and images uploaded in the current turn when [File Input](/en/guide/build/general/fileInput) is enabled |
 
 ## 2. Global Variables
 
@@ -24,22 +24,23 @@ When configured, users see the corresponding form controls before starting a new
 
 | Variable Type | Enum Key | Default Value Type | Typical Use Case |
 | --- | --- | --- | --- |
-| **Text input** | `input` / `textarea` | `String` (or `Object` / typed arrays) | Name, ticket number, background context, or structured input |
-| **Password** | `password` | `String` | Masked temporary access token or secret |
-| **Number input** | `numberInput` | `Number` | Result count limit, budget cap, or numeric threshold |
-| **Single select** | `select` | `String` | Business category, target language, or output tone |
-| **Multiple select** | `multipleSelect` | `Array<string>` | Multiple review dimensions or delivery channels |
+| **Text Box** | `input` / `textarea` | `String` (or `Object` / typed arrays) | Name, ticket number, background context, or structured input |
+| **Number Input** | `numberInput` | `Number` | Result count limit, budget cap, or numeric threshold |
+| **Single Select** | `select` | `String` | Business category, target language, or output tone |
+| **Multi Select** | `multipleSelect` | `Array<string>` | Multiple review dimensions or delivery channels |
 | **Switch** | `switch` | `Boolean` | Toggle web search, deep analysis, or strict review branches |
-| **Time point** | `timePointSelect` | `String` | Specific deadline or query timestamp |
-| **Time range** | `timeRangeSelect` | `Array<string>` | Start and end time pair |
-| **Model select** | `llmSelect` | `String` | Allow the user to switch the underlying chat model |
-| **File upload** | `file` | `Array<string>` | Require reference documents before starting the conversation |
+| **Password** | `password` | `String` | Masked temporary access token or secret |
+| **Point in Time** | `timePointSelect` | `String` | Specific deadline or query timestamp |
+| **Time Range** | `timeRangeSelect` | `Array<string>` | Start and end time pair |
+| **Chat Model Select** | `llmSelect` | `String` | Allow the user to switch the underlying chat model |
+| **Dataset Select** | `datasetSelect` | `SelectDataset` | Allow the user to select datasets within a preset scope |
+| **File** | `file` | `Array<string>` | Supply pre-chat attachment file URLs |
 
 ### 2. Hidden and Internal State Variables
 
 | Variable Type | Enum Key | Visibility | Initialization and Update |
 | --- | --- | --- | --- |
-| **External variable (Custom)** | `custom` | Hidden from end users | Supplied via embedded URL query parameters, share-auth callbacks, or OpenAPI `variables` |
+| **No Input Required (Custom)** | `custom` | Hidden from end users | Supplied via embedded URL query parameters, share-auth callbacks, or OpenAPI `variables` |
 | **Internal variable (Internal)** | `internal` | Hidden from end users and external APIs | Initialized with its default value inside the workflow and mutated across nodes or loop iterations via [Variable Update](/en/guide/build/workflow/nodes/variable_update) |
 
 ![Configure numeric global variables and comparison operators](/imgs/optimized/current/variable-number-operators.png.webp)
@@ -52,9 +53,9 @@ System variables are injected automatically by the workflow engine on each run a
 | --- | --- | --- | --- |
 | **User ID** | `userId` | `String` | Authenticated member ID or external `customUid`, often passed to HTTP nodes for permission lookup |
 | **App ID** | `appId` | `String` | Unique identifier of the running application |
-| **Chat ID** | `chatId` | `String` | Unique identifier of the active multi-turn conversation |
-| **Response Item ID** | `responseChatItemId` | `String` | Unique record ID of the current assistant response item |
-| **Chat histories** | `histories` | `ChatHistory` | Conversation history array formatted as `{ obj: 'System' \| 'Human' \| 'AI', value: string }[]` |
+| **Current Chat ID** | `chatId` | `String` | Unique identifier of the active multi-turn conversation |
+| **AI Response ID** | `responseChatItemId` | `String` | Unique record ID of the current assistant response item |
+| **Chat history** | `histories` | `ChatHistory` | Conversation history array formatted as `{ obj: 'System' \| 'Human' \| 'AI', value: string }[]` |
 | **Current time** | `cTime` | `String` | Timestamp string with timezone context when the run started |
 
 ## 4. Node I/O Value Types (`WorkflowIOValueTypeEnum`)

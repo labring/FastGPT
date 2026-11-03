@@ -203,7 +203,7 @@ FASTGPT_LOCAL_COMPOSE_PATH=./docker-compose.source.yml bash install.sh
 
 脚本会复制该 compose 文件为最终的 `docker-compose.yml`，并继续随机生成登录密码和各类凭证、写入 S3/MCP 地址。生成完成后，按终端输出的 root 密码登录。
 
-完全离线环境下，需要同时准备 `docker-compose.yml` 和 `install.sh`。如果无法运行脚本，则需要手动修改 `DEFAULT_ROOT_PSW`、服务 Token、数据库密码、S3/MCP 地址等配置。
+完全离线环境下，需要同时准备 `docker-compose.yml` 和 `install.sh`。如果无法运行脚本，则需要手动修改服务 Token、数据库密码、S3/MCP 地址等配置（`v4.17.3+` 新实例初始密码固定为 `123456`，首次登录通过激活弹窗修改密码；`v4.17.2` 及更早版本通过 `DEFAULT_ROOT_PSW` 设置）。
 
 #### 自定义镜像源部署
 
@@ -258,7 +258,7 @@ docker compose up -d
 ### 6. 配置模型
 
 - 首次登录 FastGPT 后，系统会提示未配置 `语言模型` 和 `索引模型`，并自动跳转模型配置页面。系统必须至少有这两类模型才能正常使用。
-- 如果系统未正常跳转，可以在 `管理员-模型提供商` 页面进行模型配置。[点击查看相关教程](/zh-CN/self-host/config/model/intro)
+- 如果系统未正常跳转，可以在**管理员 → 系统资源 → 系统模型**页面进行模型配置。[点击查看相关教程](/zh-CN/self-host/config/model/intro)
 - 目前已知可能问题：首次进入系统后，整个浏览器 tab 无法响应。此时需要删除该 tab，重新打开一次即可。
 
 ### 7. 按需安装系统插件

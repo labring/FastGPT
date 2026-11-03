@@ -11,22 +11,20 @@ Agent 节点（`agent`）将基于 ReAct 循环的自主规划能力嵌入确定
 
 | 配置字段 | 内部 Key | 类型 | 用途与说明 |
 | --- | --- | --- | --- |
-| **模型与系统提示词** | `modelId` / `systemPrompt` | 模型配置 + `String` | 选择支持 Function Calling 的模型，规定任务目标、输出格式与工具调用边界 |
+| **AI 模型** | `model` | `String` | 选择支持工具调用的模型 |
+| **提示词** | `systemPrompt` | `String` | 规定任务目标、输出格式与工具调用边界 |
 | **用户问题** | `userChatInput` | `String` | 引用流程开始节点或上游节点生成的子任务指令 |
-| **聊天记录** | `history` | `ChatHistory` | 设置携带的历史对话轮数，或引用上游处理后的上下文数组 |
 | **文件链接** | `fileUrlList` | `Array<string>` | 传入当前任务可访问的文档或图片 URL 列表 |
-| **关联知识库** | `agent_datasetParams` | 知识库列表 + 检索参数 | 绑定供 Agent 自主按需检索的知识库、搜索模式、重排与标签过滤 |
-| **关联工具** | `agent_selectedTools` | 工具列表 | 挂载系统工具、HTTP 工具、MCP 工具或工作流工具 |
-| **关联 Skill 与虚拟机** | `skills` / `useAgentSandbox` | Skill 列表 + 布尔开关 | 挂载已发布的 [Agent Skill](/zh-CN/guide/build/skill/integration)，并在虚拟机沙箱中执行脚本与文件读写 |
-| **回复文本展示** | `isResponseAnswerText` | `Boolean` | 控制 Agent 的最终回复是否直接流式展示给终端用户 |
+| **知识库** | `datasets` | `SelectDataset` | 绑定供 Agent 自主按需检索的知识库及检索参数 |
+| **工具** | `selectedTools` | 工具列表 | 挂载系统工具、HTTP 工具、MCP 工具或工作流工具 |
+| **Agent 技能与启用虚拟机** | `skills` / `useAgentSandbox` | Skill 列表 + `Boolean` | 挂载已发布的 [Agent Skill](/zh-CN/guide/build/skill/integration)，并在虚拟机沙箱中执行脚本与文件读写 |
 
 ## 输出与连接
 
 | 输出端口 | 内部 Key | 数据类型 | 说明 |
 | --- | --- | --- | --- |
 | **AI 回复内容** | `answerText` | `String` | Agent 完成多轮思考与工具调用后生成的最终结论文本 |
-| **新的上下文** | `history` | `ChatHistory` | 附加本轮 Agent 问答后的完整会话历史 |
-| **错误信息** | `error` | `String` | 当模型或沙箱执行失败时输出错误详情，可连接异常捕获分支 |
+| **错误信息** | `errorText` | `String` | 开启**报错捕获**后显示，当模型或沙箱执行失败时输出错误详情并触发异常分支 |
 
 执行连线负责控制节点运行先后顺序，变量引用负责将 `answerText` 传递给下游判断器、文本拼接或指定回复节点。
 

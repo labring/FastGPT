@@ -11,22 +11,20 @@ In the captured SaaS interface, Add node → Agent lists existing applications. 
 
 | Setting | Internal Key | Type | Purpose |
 | --- | --- | --- | --- |
-| **Model and instructions** | `modelId` / `systemPrompt` | Model + `String` | Select a tool-calling model and define task goals, output format, and tool-use boundaries |
+| **AI model** | `model` | `String` | Select a tool-calling model |
+| **Prompt** | `systemPrompt` | `String` | Define task goals, output format, and tool-use boundaries |
 | **User question** | `userChatInput` | `String` | Reference the sub-task instruction from the start node or an upstream node |
-| **Chat history** | `history` | `ChatHistory` | Configure context turns or reference an upstream chat-history array |
 | **File links** | `fileUrlList` | `Array<string>` | Supply document or image URLs accessible to the current task |
-| **Knowledge bases** | `agent_datasetParams` | Dataset list + params | Bind knowledge bases, search modes, reranking, and tag filters for on-demand Agent retrieval |
-| **Tools** | `agent_selectedTools` | Tool list | Attach system tools, HTTP tools, MCP tools, or workflow tools |
-| **Skills and virtual machine** | `skills` / `useAgentSandbox` | Skill list + `Boolean` | Associate published [Agent Skills](/en/guide/build/skill/integration) and run scripts inside the virtual machine sandbox |
-| **Stream response text** | `isResponseAnswerText` | `Boolean` | Control whether the Agent's final response streams directly to the conversation |
+| **Datasets** | `datasets` | `SelectDataset` | Bind datasets and search parameters for on-demand Agent retrieval |
+| **Tools** | `selectedTools` | Tool list | Attach system tools, HTTP tools, MCP tools, or workflow tools |
+| **Agent Skills and Enable VM** | `skills` / `useAgentSandbox` | Skill list + `Boolean` | Associate published [Agent Skills](/en/guide/build/skill/integration) and run scripts inside the virtual machine sandbox |
 
 ## Outputs and connections
 
 | Output Port | Internal Key | Value Type | Description |
 | --- | --- | --- | --- |
 | **AI response content** | `answerText` | `String` | Final conclusion text synthesized after multi-step reasoning and tool calls |
-| **Updated context** | `history` | `ChatHistory` | Conversation history including the current Agent turn |
-| **Error message** | `error` | `String` | Diagnostic error details when model or sandbox execution fails |
+| **Error message** | `errorText` | `String` | Available when **Error capture** is enabled; outputs diagnostic error details when model or sandbox execution fails |
 
 Execution connections control run order; value references pass `answerText` to downstream conditional, text-concatenation, or reply nodes.
 

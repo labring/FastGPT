@@ -11,23 +11,23 @@ FastGPT offers three core application types: Chat Agent, Chat Agent V2, and Work
 
 ### 1. Chat Agent
 
-Chat Agent operates on a single-inference execution model. When a user submits a message, the platform constructs the prompt in a predetermined sequence:
+Chat Agent uses a form-based configuration model that supports system prompts, linked Datasets, and external Tools (plugins, workflow tools, and HTTP/MCP tools). When a user submits a message, the platform runs a streamlined sequence:
 - Injects the system prompt.
 - Appends historical conversation turns according to sliding-window context rules.
-- Retrieves matching knowledge base chunks and appends them as factual context.
-- Calls the language model to generate a streamed response directly.
+- Retrieves matching Dataset chunks and appends them as factual context.
+- Calls attached external Tools when needed and streams the final response from the language model.
 
-This design delivers low latency and transparent execution paths, making it ideal for policy Q&A, product manuals, and structured drafting assistants.
+This design delivers fast setup and transparent execution paths, making it ideal for policy Q&A, product manuals, structured drafting assistants, and lightweight tool-assisted tasks.
 
 ### 2. Chat Agent V2
 
 Chat Agent V2 employs an autonomous ReAct (Reasoning + Acting) execution loop. In this architecture, the model functions as an active decision orchestrator:
 - **Goal Decomposition**: Analyzes incoming tasks and determines necessary information and tools.
-- **Tool Execution**: Generates structured arguments to invoke attached knowledge bases, web search engines, code sandboxes, or external APIs.
+- **Tool Execution**: Dynamically calls built-in system tools (Dataset search, sub-apps, sandbox, file parsing), associated Skills, and custom Tools.
 - **Observation**: Ingests tool outputs and updates internal reasoning traces.
 - **Iteration**: Repeats the thought-action loop until achieving the target objective, returning the final conclusion to the user.
 
-This design enables dynamic environmental interaction, excelling in multi-source aggregation, live data analysis, and open-ended task handling.
+With ReAct dynamic planning, built-in system tools, and an isolated virtual machine sandbox, this design excels in multi-source aggregation, live data analysis, and open-ended task handling.
 
 ### 3. Workflow
 
@@ -47,9 +47,9 @@ Compare application types across determinism, construction cost, reasoning depth
 | Dimension | Chat Agent | Chat Agent V2 | Workflow |
 | --- | --- | --- | --- |
 | **Execution Determinism** | Moderate (governed by prompt constraints) | Dynamic (governed by autonomous model decisions) | Strict (governed by visual canvas topology) |
-| **Authoring Complexity** | Minimal (requires prompt and knowledge base) | Moderate (requires toolsets and sandbox configuration) | Highly flexible (requires edge wiring and variable mapping) |
-| **Tool Extensibility** | Static knowledge attachment | Dynamic autonomous tool selection | Granular node-level tool invocation |
-| **Multi-Step Reasoning** | Single generation turn | Multi-turn reasoning loops | Multi-node sequential and conditional flow |
+| **Authoring Complexity** | Minimal (form configuration for prompt, Dataset, and Tools) | Moderate (built-in system tools, Skills, and virtual machine sandbox) | Highly flexible (requires edge wiring and variable mapping) |
+| **Tool Extensibility** | Supports external Tools and linked Datasets | Dynamic scheduling across built-in system tools, custom Tools, and Skills | Granular node-level tool invocation |
+| **Multi-Step Reasoning** | Dataset search and tool calling | ReAct dynamic planning and sandbox reasoning loops | Multi-node sequential and conditional flow |
 | **Time to First Token** | Minimal (single round-trip model latency) | Variable (depends on tool execution rounds) | Staged (depends on predecessor node execution) |
 | **Typical Use Cases** | Customer support, knowledge FAQ | Smart analytical assistants, open tasks | Complex approval pipelines, data extraction, auditing |
 

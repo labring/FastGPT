@@ -15,8 +15,8 @@ Connecting a validated knowledge base to an application allows models to retriev
 
 Chat Agents (both standard Chat Agent and Chat Agent V2) support mounting single or multiple knowledge bases directly:
 
-1. Open the "Applications" console and navigate to your target Chat Agent.
-2. In the application settings panel on the left, locate the "Knowledge Base" section and click "Add".
+1. Go to **Studio → Agent** and open your target Chat Agent.
+2. In the application configuration panel, locate the **Dataset** section and click **+ Select**.
 3. Check the target knowledge bases you want to connect. FastGPT supports multi-dataset attachments (for example, simultaneously attaching both a Product Manual and a Service Policy).
 4. **Configure Search Parameters**:
    - **Citation Limit**: Set the retrieved-context token budget according to chunk size and model context capacity.
@@ -29,16 +29,16 @@ Chat Agents (both standard Chat Agent and Chat Agent V2) support mounting single
 
 In workflows, knowledge base search operates as a discrete functional node, connecting with upstream and downstream components across the visual canvas:
 
-1. Open your target workflow canvas, then drag a "Knowledge Base Search" node from the node library onto the canvas.
-2. Connect an incoming execution edge from an upstream node (such as "Workflow Start" or a "Question Classifier" node).
+1. Open your target workflow canvas, click the **`+`** button on the left, and choose **Dataset Search** under **Basic Nodes**.
+2. Connect an incoming execution edge from an upstream node (such as **Workflow Start** or **Question Classification**).
 3. **Configure Node Inputs**:
-   - **User Query Input**: Click the reference selector and bind to the "User Input" parameter of "Workflow Start", or link to rewritten query output from an upstream intent extraction node.
-   - **Connected Datasets**: Select one or more target knowledge bases.
+   - **Search query** (`userChatInput`): Click the variable picker and bind to **User question** on **Workflow Start**, or link to a rewritten query from an upstream node.
+   - **Select Datasets** (`datasets`): Select one or more target datasets.
    - **Search Settings**: Set the citation token budget and similarity threshold.
 4. **Merge Multi-Dataset Searches**:
-   When parallel retrieval branches query multiple datasets, add a "Dataset Search Merge" node downstream to consolidate, deduplicate, and align similarity scores.
+   When parallel retrieval branches query multiple datasets, add a **Dataset Search Citation Merge** (`datasetConcatNode`) node downstream to consolidate and deduplicate results.
 5. **Downstream Execution Flow**:
-   Connect the execution output of the search node to an "AI Chat" node, and bind the search node's retrieved context to the "Referenced Knowledge" input of the AI Chat node.
+   Connect the execution output of the search node to an **AI Chat** node, and bind the search node's **Search results** (`quoteQA`) output to the **Dataset citations** (`quoteQA`) input of the AI Chat node.
 
 ![Workflow knowledge base search node configuration](/imgs/optimized/current/node-dataset-search.png.webp)
 
@@ -64,11 +64,11 @@ Bind search results to the AI Chat node's knowledge input. The dedicated knowled
 ## Step 4: End-to-End Testing and Publication
 
 1. In the right-hand testing drawer, submit a representative business query.
-2. Open "Execution Details" and review each step:
+2. Click **Run Details** below the response and review each step:
    - Verify that the knowledge base search node triggered successfully.
    - Confirm that recalled chunks align closely with the query topic.
    - Verify that the generated answer incorporates the retrieved facts faithfully.
-3. Once the output meets production standards, click "Publish" in the workspace header to freeze the configuration into the active production version.
+3. Once the output meets production standards, click **Save → Save and publish** in the top-right corner to freeze the configuration into the active production version.
 
 ## Next Steps
 

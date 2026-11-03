@@ -14,8 +14,8 @@ As your team scales its Chat Agents, Agent V2 apps, and Workflows, use the Templ
 
 ## Filter Applications and Organize Folders
 
-1. **Filter and sort**: At the top of **My Applications**, filter by application type (Chat Agent, Chat Agent V2, Workflow), search by name, or change the sort order.
-2. **Create folders**: Click **New Folder** in the top-right corner, enter a name and description, and choose whether to inherit parent folder permissions to organize applications by department, project, or lifecycle stage.
+1. **Filter and sort**: Go to **Studio → Agent**, where the upper-left corner displays the **Agent** heading. Filter by App type (Chat Agent, Chat Agent V2, Workflow), search by name, or change the sort order; the upper-right toolbar provides **Batch Manage**, **+ Folder**, and **Import**.
+2. **Create folders**: Click **+ Folder** in the upper-right corner, enter a name and description, and choose whether to follow parent folder permissions to organize Apps by department, project, or lifecycle stage.
 3. **Permission inheritance and parent owner boundary**: Collaborator roles (Can Use, Can Edit, Can Manage) assigned to a folder are inherited by child folders and resources inside it; a parent folder's Owner inherits **Can Manage (`manage`)** permission on child resources while each child resource retains its own single Owner.
 4. **Ancestor path navigation**: When a member has access only to a descendant application, tool, skill, or dataset inside a folder hierarchy, ancestor folders appear as read-only navigation entries (hiding folder metadata and management menus and disabling drag-and-drop), allowing the member to follow breadcrumbs into the authorized subtree and search within it. See [Team Roles and Permissions](/en/guide/workspace/team/team_roles_permissions).
 
@@ -28,10 +28,10 @@ As your team scales its Chat Agents, Agent V2 apps, and Workflows, use the Templ
 
 ## Import and Export JSON Configurations
 
-Workflows and Agents support portable JSON DSL files for cross-environment migration, backup, and sharing:
+Workflows and Chat Agents (Simple Mode) support portable JSON DSL files for cross-environment migration, backup, and sharing:
 
-1. **Export configuration**: Open the application editor, click the dropdown menu next to the application name in the top-left corner, and select **Export Configuration** to download or copy the `.json` definition (sensitive credentials are excluded).
-2. **Import configuration**: In a target workflow editor, open the top-left menu, select **Import Configuration**, upload a `.json` file or paste the JSON payload, and save to replace the current canvas draft.
+1. **Export configuration**: Open the target Workflow or Chat Agent (Simple Mode) editor, click the menu beside the App name card in the upper-left corner (the dropdown arrow menu in Workflows or the **...** menu in Chat Agents), and select **Export** to download or copy the `.json` definition (sensitive credentials are excluded).
+2. **Import configuration**: In a target Workflow or Chat Agent (Simple Mode) editor, open the menu beside the App name in the upper-left corner, select **Import**, paste the JSON text or upload a `.json` file, and click **Confirm** to update the current draft. You can also click **Import** in the upper-right corner of the **Studio → Agent** list page to create a new App from JSON.
 3. **Post-import checklist**: After importing a configuration across teams or environments, re-select valid team models, knowledge bases, and tools before publishing.
 
 Next: Learn about [Published Versions and Publishing Channels](/en/guide/build/publish/versions) or configure [Team Roles and Permissions](/en/guide/workspace/team/team_roles_permissions).
