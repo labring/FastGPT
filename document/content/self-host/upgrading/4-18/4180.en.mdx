@@ -4,17 +4,13 @@ description: FastGPT V4.18.0 release notes
 sidebarTag: In progress
 upgradeTags:
   - In progress
-  - Manual migration
 ---
 
 ## Upgrade guide
 
 ### Configuration changes
 
-- The `main` Docker Compose templates now use RustFS instead of MinIO for business object storage. `STORAGE_S3_ENDPOINT` changes to `http://fastgpt-rustfs:9000`; in the templates, `STORAGE_VENDOR` remains `minio` and `STORAGE_S3_FORCE_PATH_STYLE` remains `true`. If you keep your existing MinIO or external object store, retain its services and connection settings. The dedicated `fastgpt-milvus-minio` service for Milvus is outside the scope of this switch.
-- New Compose credential anchors, `x-rustfs-access-key` and `x-rustfs-secret-key`, are shared by RustFS through `RUSTFS_ACCESS_KEY` and `RUSTFS_SECRET_KEY`, and by the App through `STORAGE_ACCESS_KEY_ID` and `STORAGE_SECRET_ACCESS_KEY`. Both template defaults are `rustfsadmin`; the installer generates random values for both credentials. For manual deployments, replace these defaults and use matching credentials across all services connected to the same object store.
-- RustFS defaults to a single-disk layout with `RUSTFS_VOLUMES=/data` and a new `fastgpt-rustfs:/data` named volume. The API and console ports are `9000` and `9001`, and the console is enabled by default. Logging defaults to level `error` and directory `/logs`. If you use a host bind mount, UID `10001` must be able to write to the data directory.
-- When switching object storage, update the App and Plugin service dependencies and `NO_PROXY` / `no_proxy`. Apps running on the host must also update the environment files they actually read and use a reachable host address and published port for the endpoint.
+- Default deployments now use RustFS for object storage. Existing deployments can keep their current storage. To switch, see [MinIO to RustFS migration](/en/self-host/docker_minio_to_rustfs).
 
 ### Image updates
 
@@ -22,11 +18,8 @@ upgradeTags:
 
 No automatic upgrade scripts were added or changed in this version.
 
-MinIO objects require a manual migration. System startup tasks do not move them automatically.
-
 ### Compatibility notes
 
-- **Migrating existing MinIO data**: Before switching with the new templates, follow [MinIO to RustFS migration](/en/self-host/docker_minio_to_rustfs) to back up configuration and copy the public and private buckets in place. Stop all Apps, Plugins, background processors, and external writers connected to the same object store, then complete the final sync with `mc mirror --overwrite --remove`. Verify that no differences remain before changing the endpoint and credentials for every instance. Keep the original Compose project, business volumes, database connection settings, and App secrets, along with the old MinIO data for rollback. Do not rerun `install.sh` in another directory or run `docker compose down -v`. Objects written after the switch must be synced back before rollback. After restarting, verify uploads, downloads, Dataset file access, and anonymous reads from the public bucket. FastGPT sets the public bucket policy on startup; the private bucket remains private.
 - **Model ordering and configuration imports**: `PUT /api/core/ai/model/updateOrder` requires an explicit `channelType` (`system` or `team`) and the complete, unique list of `modelIds` in the current management scope, including disabled models. Filtered subsets, duplicate IDs, and models outside that scope are rejected. Model creation, editing, and JSON imports ignore `sortOrder`, and exports omit it. Configuration updates preserve the order of existing models that can be matched; new models and those without a saved order appear after ranked models. Historical records do not require an offline migration.
 - **Model catalog and default selection**: `GET /api/core/ai/model/catalog` returns the grouped custom order when `orderBy=custom` is supplied; omitting it preserves runtime order. Display ordering does not overwrite configured defaults or change server-side fallback order. If neither the business default nor the system default meets the requested type and capabilities, the client uses the new catalog order for its final system-model fallback. Dedicated defaults for Dataset images and chat titles still have no automatic final fallback.
 - **Workflow memory**: Memory keys for content extraction, question classification, and Pi Agents now include the source and call path. The runtime can read legacy Agent keys and legacy child Workflow keys whose ownership can be determined, then removes the corresponding legacy keys when writing new ones. Historical sessions do not require a bulk migration. Custom integrations that read or write `ChatItem.memories` directly must support the new keys instead of relying on `agentLoopMemory-${nodeId}` or child Workflow keys without a call path.
