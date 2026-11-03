@@ -9,7 +9,9 @@ upgradeTags:
 
 ### Configuration changes
 
-- Default deployments now use RustFS for object storage. Existing deployments can keep their current storage. To switch, see [MinIO to RustFS migration](/en/self-host/docker_minio_to_rustfs).
+- The default for `HNSW_EF_SEARCH` / `systemEnv.hnswEfSearch` changes from `100` to `200` for PostgreSQL, Milvus, OceanBase, SeekDB, and openGauss; explicit settings still apply and can be tuned to balance recall and query time.
+- `HNSW_MAX_SCAN_TUPLES` / `systemEnv.hnswMaxScanTuples` no longer takes effect, and its admin setting has been removed. PostgreSQL now sets the scan limit automatically from the largest Dataset vector row count involved in the current indexed search, capped at `2147483647`; existing deployments can remove the old setting.
+- Default deployments now use RustFS for object storage; existing deployments can keep their current storage, and switching is covered in [MinIO to RustFS migration](/en/self-host/docker_minio_to_rustfs).
 
 - **Content moderation Plugin migration**: The legacy built-in Baidu text moderation (`censor.BAIDU_TEXT_CENSOR_CLIENTID` / `censor.BAIDU_TEXT_CENSOR_CLIENTSECRET`), custom censor URL (`censor.customCensorURL`), and per-model `censor` flag in the commercial edition are deprecated and replaced by the `moderation` Plugin system managed by `fastgpt-plugin`.
   - If you used legacy Baidu moderation, go to **Admin Console > Content Moderation > Moderation Policy** to configure and enable the official **Baidu Content Security (`baidu`)** Plugin.
@@ -20,22 +22,25 @@ upgradeTags:
 
 ### Upgrade scripts
 
-No automatic upgrade scripts were added or changed in this version.
+Added **Initialize Dataset vector indexes** (`20261022_initialize_dataset_vector_indexes`), which runs automatically in the background after startup for PostgreSQL without blocking the App: it first verifies and drops the legacy global `vector_index` online, then counts vectors in active Datasets in batches and queues index maintenance jobs. A successful migration means counting and queueing are complete; index builds continue in a globally serial queue. If cleanup or scanning fails, resolve the issue and retry from the upgrade management page to resume from the saved checkpoint. A custom index with the same name but a different definition is preserved and causes an error.
+
+PG partial indexes require `halfvec` support, a fixed vector dimension in the `1–4000` range, permission to create and drop indexes online, and sufficient memory, shared memory, and disk space. Datasets whose indexes are not ready or have failed continue to use exact search, which may increase query time. Failed builds do not automatically retry with a lower resource budget; after the issue is resolved, the next actual vector count queues another attempt. A cache hit does not trigger a retry.
 
 ### Compatibility notes
 
-- **Model catalog and default selection**: `GET /api/core/ai/model/catalog` returns the grouped custom order when `orderBy=custom` is supplied; omitting it preserves runtime order. Display ordering does not overwrite configured defaults or change server-side fallback order. If neither the business default nor the system default meets the requested type and capabilities, the client uses the new catalog order for its final system-model fallback. Dedicated defaults for Dataset images and chat titles still have no automatic final fallback.
-- **Workflow memory**: Memory keys for content extraction, question classification, and Pi Agents now include the source and call path. The runtime can read legacy Agent keys and legacy child Workflow keys whose ownership can be determined, then removes the corresponding legacy keys when writing new ones. Historical sessions do not require a bulk migration. Custom integrations that read or write `ChatItem.memories` directly must support the new keys instead of relying on `agentLoopMemory-${nodeId}` or child Workflow keys without a call path.
-- **History settings and interaction resumes**: For ordinary new requests, `history=0` disables reading previous memory. Custom history supplies memory only from its final AI message. Explicit interaction resumes prioritize the parent Workflow's checkpoint so history settings do not discard the state needed to continue the current interaction.
+- **Workflow memory**: Memory keys for content extraction, question classification, and Pi Agents now include the source and call path. Custom integrations that read or write `ChatItem.memories` directly must support the new keys instead of relying on `agentLoopMemory-${nodeId}` or child Workflow keys without a call path.
 
 ## 🚀 New features
 
-1. **[Models and billing]** Model management now supports dragging models into a custom display order, with options to save or cancel before saving. The root account can reorder system models; with team models enabled in the Commercial edition, members with the “Install model” permission can reorder their own models. The “Available models” page lists your team models, shared team models, and system models in that order, applying the custom order within each group; JSON configuration updates preserve the saved display order.
+1. **[Models and billing]** Model management now supports dragging models into a custom order and canceling before saving; the root account can reorder system models, and with team models enabled in the Commercial edition, members with the “Install model” permission can reorder their own models. “Available models” groups your own team models, shared team models, and system models in that order and applies the custom order within each group; JSON configuration updates preserve this order, which the client also uses for its final system-model fallback.
 
 ## ⚙️ Improvements
 
-1. **[Models and billing]** Consistently place models in test mode last in the mobile model selector, speech playback, channel bindings, and model log and dashboard filters, preserving catalog order within each group.
-2. **[Models and billing]** Aligned header and body column widths in the model management table and isolated edit dialog state by row, reducing full-table rerenders when opening a dialog in a large list.
+1. **[Datasets and files]** PostgreSQL now maintains FP16 partial HNSW indexes per Dataset, building them on demand above `10000` vector rows and removing them below `5000`; the existing state is retained between these thresholds. Datasets without a ready index use exact search, and candidates from all groups are ranked by FP32 distance without changing the precision of stored vectors.
+2. **[Datasets and files]** In the Commercial edition, moved tag filtering for simple Apps and ChatAgents to the “Search filter” tab in Dataset search settings and added a dedicated toggle. Turning it off in manual input mode preserves conditions for later editing; the settings summary now reflects whether the toggle is on.
+3. **[Models and billing]** Consistently place models in test mode last in the mobile model selector, speech playback, channel bindings, and model log and dashboard filters, preserving catalog order within each group.
+4. **[Models and billing]** Aligned header and body column widths in the model management table and isolated edit dialog state by row, reducing full-table rerenders when opening a dialog in a large list.
+5. **[System and operations]** Added OpenSandbox startup troubleshooting guidance for host seccomp restrictions that can leave `/workspace` unwritable even when volume permissions are correct.
 
 ## 🐛 Fixes
 
@@ -43,7 +48,10 @@ No automatic upgrade scripts were added or changed in this version.
 2. **[Workflows and Agents]** Fixed missing memory updates from Agents, Tool calls, and nested Workflows, loss of memory from branches that did not run, and concurrent child Workflows overwriting other Nodes' new state with stale state. Only each child Workflow's updates are merged, preserving other valid memory.
 3. **[Workflows and Agents]** Fixed memory propagation and failure isolation in loops and parallel runs. Loops pass memory between successful iterations and preserve checkpoints when paused for interaction; failed iterations do not commit updates. Parallel runs merge only successful task results, keep failed attempts from affecting retries, and merge in input order, with later successful tasks taking precedence for the same memory key.
 4. **[Workflows and Agents]** Fixed nested Pi Agents failing to resume question interactions when history is set to 0 or an empty custom history array. Resumes restore the state saved by the parent Workflow.
-5. **[Tools and channels]** Fixed blank text in some Tool names, descriptions, and tags when their Traditional Chinese translation is empty. These values fall back to Simplified Chinese, then English if no usable text is available.
+5. **[Chat experience]** Fixed the header variable panel in shared chats without login using regular chat visibility rules. External variables are now hidden from share visitors.
+6. **[Chat experience]** Fixed model selectors in global variables and interaction forms in shared chats without login failing to load the model list or selected model name because share authentication was missing.
+7. **[Chat experience]** Fixed images being missed when their Markdown descriptions contain paired square brackets, such as `![Image [1]](...)`; image extraction and replacement now handle these descriptions correctly.
+8. **[Tools and channels]** Fixed blank text in some Tool names, descriptions, and tags when their Traditional Chinese translation is empty. These values fall back to Simplified Chinese, then English if no usable text is available.
 
 ## 🛠️ Code improvements
 
