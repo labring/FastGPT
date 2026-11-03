@@ -128,18 +128,6 @@ export const serviceEnv = createEnv({
     STORAGE_PRIVATE_BUCKET: z.string().default('fastgpt-private'),
     STORAGE_REGION: z.string().default('us-east-1'),
     STORAGE_R2_PUBLIC_ENDPOINT: UrlSchema.optional(),
-    DATASET_ARCHIVE_MAX_FILES: IntSchema.min(1).default(2000).meta({
-      description: '知识库批量下载单个 ZIP 最多包含的原始文件数'
-    }),
-    DATASET_ARCHIVE_MAX_SOURCE_SIZE_MB: IntSchema.min(1).default(2048).meta({
-      description: '知识库批量下载归档前原始文件逻辑总大小上限（MiB）'
-    }),
-    DATASET_ARCHIVE_MAX_CONCURRENCY: IntSchema.min(1).default(4).meta({
-      description: '知识库批量下载在 Redis 集群中的同时归档数'
-    }),
-    DATASET_ARCHIVE_PREPARE_TIMEOUT_SECONDS: IntSchema.min(1).default(300).meta({
-      description: '知识库批量下载发送响应头前的最长准备时间（秒）'
-    }),
 
     STORAGE_S3_ENDPOINT: UrlSchema.default('http://localhost:9000'),
     STORAGE_PUBLIC_ACCESS_EXTRA_SUB_PATH: z.string().optional(),

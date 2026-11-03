@@ -53,7 +53,7 @@ export const CommercialConfigSchema = z.strictObject({
   showCoupon: z.boolean().default(false),
   showDiscountCoupon: z.boolean().default(false),
   payFormUrl: urlWithDefault(),
-  // 沙箱免费提示保持 ENV 权威（AGENT_SANDBOX_SHOW_FREE_TIP || AGENT_SANDBOX_FREE_TIP）：
+  // 沙箱免费提示保持 ENV 权威（AGENT_SANDBOX_SHOW_FREE_TIP）：
   // 实例配置里没有任何消费点，先不建字段，避免写入后无人读取的僵尸配置。
   // 曾写入过该字段的存量 overrides 由 20260929 清理任务删除，否则 strictObject 读取会抛错。
   payment: z

@@ -10,6 +10,22 @@ export const ResourceConfigSchema = z.strictObject({
   datasetFolderMaxAmount: nonNegativeInteger(1000),
   uploadFileMaxSize: positiveInteger(1000),
   uploadFileMaxAmount: positiveInteger(1000),
+  datasetArchive: z
+    .strictObject({
+      maxFiles: positiveInteger(2000).meta({
+        description: '知识库单次归档允许包含的原始文件数上限'
+      }),
+      maxSourceSizeMiB: positiveInteger(2048).meta({
+        description: '知识库单次归档原始文件逻辑总大小上限（MiB）'
+      }),
+      maxConcurrency: positiveInteger(4).meta({
+        description: 'Redis 集群中同时执行的知识库归档任务数上限'
+      }),
+      prepareTimeoutSeconds: positiveInteger(300).meta({
+        description: '知识库归档发送响应头前的最长准备时间（秒）'
+      })
+    })
+    .prefault({}),
   systemMaxStringLengthM: z.number().int().min(1).max(100).default(100),
   // 旧配置允许小数分钟（例如 0.1 = 6 秒），迁移时必须原样保留
   exportDatasetLimitMinutes: z.number().nonnegative().default(0),

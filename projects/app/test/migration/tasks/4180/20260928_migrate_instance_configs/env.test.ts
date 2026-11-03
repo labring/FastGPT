@@ -1,10 +1,27 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { readLegacyInstanceConfigEnv } from '@/migration/tasks/4180/20260928_migrate_instance_configs/env';
-import { buildLegacyDomainOverrides } from '@/migration/tasks/4180/20260928_migrate_instance_configs/service';
+import {
+  buildLegacyDomainOverrides,
+  buildSparseLegacyOverrides
+} from '@/migration/tasks/4180/20260928_migrate_instance_configs/service';
 
 afterEach(() => vi.unstubAllEnvs());
 
 describe('legacy instance config ENV import', () => {
+  it('把旧归档下载 ENV 迁入资源配置，保留已有部署的非默认值', () => {
+    vi.stubEnv('DATASET_ARCHIVE_MAX_FILES', '123');
+    vi.stubEnv('DATASET_ARCHIVE_MAX_SOURCE_SIZE_MB', '456');
+    vi.stubEnv('DATASET_ARCHIVE_MAX_CONCURRENCY', '7');
+    vi.stubEnv('DATASET_ARCHIVE_PREPARE_TIMEOUT_SECONDS', '89');
+    const overrides = buildSparseLegacyOverrides({ feConfigs: {}, systemEnv: {} });
+    expect(overrides.resource?.datasetArchive).toEqual({
+      maxFiles: 123,
+      maxSourceSizeMiB: 456,
+      maxConcurrency: 7,
+      prepareTimeoutSeconds: 89
+    });
+  });
+
   it('reads legacy values only when the migration runs, including updated values after module import', () => {
     vi.stubEnv('SYSTEM_NAME', 'Migrated name');
     vi.stubEnv('WORKFLOW_MAX_RUN_TIMES', '777');

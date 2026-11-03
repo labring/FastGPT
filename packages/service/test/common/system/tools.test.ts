@@ -1,10 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock('@fastgpt/service/env', () => ({
+const { serviceEnv } = vi.hoisted(() => ({
   serviceEnv: {
     AGENT_SANDBOX_SHOW_FREE_TIP: false
   }
 }));
+
+vi.mock('@fastgpt/service/env', () => ({ serviceEnv }));
 
 vi.mock('@fastgpt/service/core/ai/sandbox/config', () => ({
   getAgentSandboxProvider: vi.fn(() => 'none'),
@@ -37,6 +39,7 @@ describe('initFastGPTConfig', () => {
     expect(global.feConfigs.sso).toEqual({ enabled: false });
   });
   beforeEach(() => {
+    serviceEnv.AGENT_SANDBOX_SHOW_FREE_TIP = false;
     global.feConfigs = {} as any;
     global.systemEnv = {} as any;
   });
@@ -70,18 +73,13 @@ describe('initFastGPTConfig', () => {
     expect(global.systemEnv.datasetParseMaxProcess).toBe('not_a_number');
   });
 
-  it('正确挂载 show_agent_sandbox_free_tip 配置', () => {
+  it.each([false, true])('免费提示仅由 ENV 控制：%s，忽略旧配置', (enabled) => {
+    serviceEnv.AGENT_SANDBOX_SHOW_FREE_TIP = enabled;
     initFastGPTConfig({
-      feConfigs: {},
+      feConfigs: { agentSandboxFree: !enabled, show_agent_sandbox_free_tip: !enabled },
       systemEnv: {}
     } as any);
-    expect(global.feConfigs.show_agent_sandbox_free_tip).toBe(false);
-
-    initFastGPTConfig({
-      feConfigs: { agentSandboxFree: true },
-      systemEnv: {}
-    } as any);
-    expect(global.feConfigs.show_agent_sandbox_free_tip).toBe(true);
+    expect(global.feConfigs.show_agent_sandbox_free_tip).toBe(enabled);
   });
 
   it.each(['agentSandboxMax', 'agentSandboxMaxPerTeam', 'vectorRecallConcurrency'])(

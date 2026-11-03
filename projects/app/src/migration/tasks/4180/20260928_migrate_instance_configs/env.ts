@@ -252,6 +252,10 @@ const LegacyInstanceConfigEnvSchema = z.object({
   UPLOAD_FILE_MAX_AMOUNT: IntSchema.default(1000).meta({
     description: '最大上传文件数量'
   }),
+  DATASET_ARCHIVE_MAX_FILES: IntSchema.min(1).default(2000),
+  DATASET_ARCHIVE_MAX_SOURCE_SIZE_MB: IntSchema.min(1).default(2048),
+  DATASET_ARCHIVE_MAX_CONCURRENCY: IntSchema.min(1).default(4),
+  DATASET_ARCHIVE_PREPARE_TIMEOUT_SECONDS: IntSchema.min(1).default(300),
   LLM_REQUEST_TRACKING_RETENTION_HOURS: IntSchema.default(6).meta({
     description: 'LLM 请求追踪保留时长（小时）'
   }),

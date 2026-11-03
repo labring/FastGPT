@@ -237,8 +237,7 @@ async function doInitSystemConfig() {
       payConfig,
       payFormUrl: instanceConfig.commercial.payFormUrl,
       // 沙箱免费提示仍以 ENV 为权威，未迁入实例配置（Schema 无消费点）。
-      // FREE_TIP 只在 appEnv 声明，SHOW_TIP 两边都有，这里沿用本文件既有的 serviceEnv 读取。
-      agentSandboxFree: serviceEnv.AGENT_SANDBOX_SHOW_FREE_TIP || appEnv.AGENT_SANDBOX_FREE_TIP,
+      agentSandboxFree: serviceEnv.AGENT_SANDBOX_SHOW_FREE_TIP,
 
       uploadFileMaxSize: instanceConfig.resource.uploadFileMaxSize,
       uploadFileMaxAmount: instanceConfig.resource.uploadFileMaxAmount,

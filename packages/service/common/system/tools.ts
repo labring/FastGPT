@@ -53,8 +53,8 @@ export const initFastGPTConfig = (config?: FastGPTConfigFileType) => {
   config.feConfigs.customPdfParsePrice = config.systemEnv.customPdfParse?.price || 0;
   // provider 只以实例配置为权威，保证后台配置与前端沙箱入口一致。
   config.feConfigs.show_agent_sandbox = getAgentSandboxProvider() !== 'none';
-  config.feConfigs.show_agent_sandbox_free_tip =
-    serviceEnv.AGENT_SANDBOX_SHOW_FREE_TIP || !!config.feConfigs.agentSandboxFree;
+  // 免费提示只由保留的 ENV 控制，避免旧配置在开关关闭后继续展示。
+  config.feConfigs.show_agent_sandbox_free_tip = serviceEnv.AGENT_SANDBOX_SHOW_FREE_TIP;
   config.feConfigs.limit = {
     ...config.feConfigs.limit,
     uploadFileMaxSize: config.feConfigs.limit?.uploadFileMaxSize ?? 1000,

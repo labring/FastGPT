@@ -30,6 +30,16 @@ describe('Field permissions by edition', () => {
     expect(isConfigFieldAllowed('site.name', 'community')).toBe(true);
     expect(isConfigFieldAllowed('site.name', 'pro')).toBe(true);
     expect(isConfigFieldAllowed('security.csrfEnabled', 'community')).toBe(true);
+
+    for (const field of [
+      'maxFiles',
+      'maxSourceSizeMiB',
+      'maxConcurrency',
+      'prepareTimeoutSeconds'
+    ]) {
+      expect(isConfigFieldAllowed(`resource.datasetArchive.${field}`, 'community')).toBe(true);
+      expect(isConfigFieldAllowed(`resource.datasetArchive.${field}`, 'pro')).toBe(true);
+    }
   });
 
   it('restricts pro-only fields from the community edition', () => {

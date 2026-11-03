@@ -216,6 +216,12 @@ export const buildLegacyDomainOverrides = ({
       optionalNumber(legacyLimit.uploadFileMaxAmount) ??
       optionalNumber(feConfigs.uploadFileMaxAmount) ??
       optionalNumber(legacyEnv.UPLOAD_FILE_MAX_AMOUNT),
+    datasetArchive: compact({
+      maxFiles: optionalNumber(legacyEnv.DATASET_ARCHIVE_MAX_FILES),
+      maxSourceSizeMiB: optionalNumber(legacyEnv.DATASET_ARCHIVE_MAX_SOURCE_SIZE_MB),
+      maxConcurrency: optionalNumber(legacyEnv.DATASET_ARCHIVE_MAX_CONCURRENCY),
+      prepareTimeoutSeconds: optionalNumber(legacyEnv.DATASET_ARCHIVE_PREPARE_TIMEOUT_SECONDS)
+    }),
     exportDatasetLimitMinutes: optionalNumber(legacyLimit.exportDatasetLimitMinutes),
     websiteSyncLimitMinuted: optionalNumber(legacyLimit.websiteSyncLimitMinuted)
   }) as DomainOverrides['resource'];

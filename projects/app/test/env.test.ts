@@ -18,13 +18,7 @@ describe('app deployment ENV', () => {
     vi.stubEnv('SYSTEM_NAME', 'retired-name');
     const { appEnv } = await importAppEnv();
     expect(Object.keys(appEnv).sort()).toEqual(
-      [
-        'CHINESE_IP_REDIRECT_URL',
-        'SHOW_GIT',
-        'DISABLE_MARKETPLACE',
-        'AGENT_SANDBOX_FREE_TIP',
-        'AGENT_SANDBOX_SHOW_FREE_TIP'
-      ].sort()
+      ['CHINESE_IP_REDIRECT_URL', 'SHOW_GIT', 'DISABLE_MARKETPLACE'].sort()
     );
   });
 });

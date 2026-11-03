@@ -261,6 +261,16 @@ export const systemInstanceConfigRegistry: readonly SystemInstanceConfigRegistry
     { edition: 'all', secret: false, applyMode: 'reload' }
   ),
   ...createEntries(
+    'resource',
+    [
+      'datasetArchive.maxFiles',
+      'datasetArchive.maxSourceSizeMiB',
+      'datasetArchive.maxConcurrency',
+      'datasetArchive.prepareTimeoutSeconds'
+    ],
+    { edition: 'all', secret: false, applyMode: 'live' }
+  ),
+  ...createEntries(
     'performance',
     [
       'workflow.maxRunTimes',

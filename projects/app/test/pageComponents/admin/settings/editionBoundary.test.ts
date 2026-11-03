@@ -44,6 +44,7 @@ vi.mock('@chakra-ui/react', () => {
   const element = ({ children }: { children?: React.ReactNode }) => children;
   return {
     SimpleGrid: element,
+    Flex: element,
     Input: () => null,
     Text: element,
     NumberInput: element,
@@ -69,12 +70,40 @@ vi.mock('@/pageComponents/admin/settings/AdminSwitchRow', () => ({ default: () =
 
 import CoreSettings from '@/pageComponents/admin/settings/core';
 import AuthSettings from '@/pageComponents/admin/settings/auth';
+import LimitsSettings from '@/pageComponents/admin/settings/limits';
 
 describe('configuration form edition boundary', () => {
   beforeEach(() => {
     mocks.isPro = false;
     mocks.authOverrides = {};
     mocks.update.mockReset().mockResolvedValue({ results: [] });
+  });
+
+  it.each([false, true])('社区版和商业版都展示并保存归档下载配置：isPro=%s', async (isPro) => {
+    mocks.isPro = isPro;
+    const html = renderToStaticMarkup(React.createElement(LimitsSettings));
+    expect(html).toContain('id="datasetArchive"');
+    expect(html).toContain('admin:dataset_archive_download');
+    const config = resolveSystemInstanceConfig({});
+    const datasetArchive = {
+      maxFiles: 123,
+      maxSourceSizeMiB: 456,
+      maxConcurrency: 7,
+      prepareTimeoutSeconds: 89
+    };
+    await mocks.save!({
+      ...config.resource,
+      ...config.performance,
+      openApiKeyMaxCount: config.auth.openApiKeyMaxCount,
+      fileUrlExpiredDays: config.storage.fileUrlExpiredDays,
+      hnswEfSearch: config.vector.hnswEfSearch,
+      vectorRecallConcurrency: config.vector.vectorRecallConcurrency,
+      datasetArchive
+    });
+    const resource = mocks.update.mock.calls[0][0].items.find(
+      (item: { domain: string }) => item.domain === 'resource'
+    );
+    expect(resource.overrides.datasetArchive).toEqual(datasetArchive);
   });
 
   it('hides community SMTP/SMS sections and excludes their default form values from the save', async () => {

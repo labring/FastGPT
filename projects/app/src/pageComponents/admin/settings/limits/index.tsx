@@ -31,6 +31,29 @@ type LimitsConfigForm = SystemInstanceConfigDomainMap['resource'] &
 /** 数字输入统一尺寸，避免各字段各自声明宽度 */
 const numberInputProps = { variant: 'whiteOutline' as const, maxW: '400px' };
 
+const datasetArchiveFields = [
+  {
+    name: 'maxFiles',
+    label: 'admin:dataset_archive_max_files',
+    tooltip: 'admin:dataset_archive_max_files_tooltip'
+  },
+  {
+    name: 'maxSourceSizeMiB',
+    label: 'admin:dataset_archive_max_source_size_mib',
+    tooltip: 'admin:dataset_archive_max_source_size_mib_tooltip'
+  },
+  {
+    name: 'maxConcurrency',
+    label: 'admin:dataset_archive_max_concurrency',
+    tooltip: 'admin:dataset_archive_max_concurrency_tooltip'
+  },
+  {
+    name: 'prepareTimeoutSeconds',
+    label: 'admin:dataset_archive_prepare_timeout_seconds',
+    tooltip: 'admin:dataset_archive_prepare_timeout_seconds_tooltip'
+  }
+] as const;
+
 /**
  * 限制与并发页：由原「资源限制」与「性能与并发」合并而成。
  * 字段跨越 resource / performance / auth / storage / vector 五个配置域，
@@ -45,6 +68,7 @@ const LimitsSettingComponent = () => {
       { id: 'requestAndText', label: t('admin:request_text_limits') },
       { id: 'folder', label: t('admin:folder_structure_limits') },
       { id: 'uploadAndExpiry', label: t('admin:file_upload_validity') },
+      { id: 'datasetArchive', label: t('admin:dataset_archive_download') },
       { id: 'exportSync', label: t('admin:export_sync_rate_limiting') },
       { id: 'workflow', label: t('admin:workflow_execution_limits') },
       { id: 'parse', label: t('admin:document_parsing_limits') },
@@ -116,6 +140,7 @@ const LimitsSettingComponent = () => {
               datasetFolderMaxAmount: Number(formData.datasetFolderMaxAmount ?? 1000),
               uploadFileMaxSize: Number(formData.uploadFileMaxSize) || 1000,
               uploadFileMaxAmount: Number(formData.uploadFileMaxAmount) || 1000,
+              datasetArchive: formData.datasetArchive,
               exportDatasetLimitMinutes: Number(formData.exportDatasetLimitMinutes) || 0,
               websiteSyncLimitMinuted: Number(formData.websiteSyncLimitMinuted) || 0
             }
@@ -473,6 +498,38 @@ const LimitsSettingComponent = () => {
           >
             <AdminReadonlyInput value={t('admin:storage_bucket_initialized')} />
           </AdminFormItem>
+        </SimpleGrid>
+      </AdminSettingSection>
+
+      <AdminSettingSection
+        id="datasetArchive"
+        title={t('admin:dataset_archive_download')}
+        showDivider
+      >
+        <SimpleGrid columns={[1, 2]} spacing={5}>
+          {datasetArchiveFields.map(({ name, label, tooltip }) => (
+            <AdminFormItem key={name} label={t(label)} tooltip={t(tooltip)} isRequired>
+              <Controller
+                name={`datasetArchive.${name}`}
+                control={control}
+                render={({ field }) => (
+                  <NumberInput
+                    {...numberInputProps}
+                    min={1}
+                    precision={0}
+                    value={field.value ?? ''}
+                    onChange={(_, value) => field.onChange(value)}
+                  >
+                    <NumberInputField />
+                    <NumberInputStepper>
+                      <NumberIncrementStepper />
+                      <NumberDecrementStepper />
+                    </NumberInputStepper>
+                  </NumberInput>
+                )}
+              />
+            </AdminFormItem>
+          ))}
         </SimpleGrid>
       </AdminSettingSection>
 

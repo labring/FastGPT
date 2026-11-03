@@ -581,6 +581,13 @@ describe('migration env wiring', () => {
       ['resource.datasetFolderMaxAmount', legacyEnv.DATASET_FOLDER_MAX_AMOUNT],
       ['resource.uploadFileMaxSize', legacyEnv.UPLOAD_FILE_MAX_SIZE],
       ['resource.uploadFileMaxAmount', legacyEnv.UPLOAD_FILE_MAX_AMOUNT],
+      ['resource.datasetArchive.maxFiles', legacyEnv.DATASET_ARCHIVE_MAX_FILES],
+      ['resource.datasetArchive.maxSourceSizeMiB', legacyEnv.DATASET_ARCHIVE_MAX_SOURCE_SIZE_MB],
+      ['resource.datasetArchive.maxConcurrency', legacyEnv.DATASET_ARCHIVE_MAX_CONCURRENCY],
+      [
+        'resource.datasetArchive.prepareTimeoutSeconds',
+        legacyEnv.DATASET_ARCHIVE_PREPARE_TIMEOUT_SECONDS
+      ],
       // performance
       ['performance.workflow.maxRunTimes', legacyEnv.WORKFLOW_MAX_RUN_TIMES],
       ['performance.workflow.maxLoopTimes', legacyEnv.WORKFLOW_MAX_LOOP_TIMES],

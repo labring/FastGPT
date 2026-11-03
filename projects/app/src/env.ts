@@ -6,8 +6,6 @@ export const appEnv = createEnv({
     CHINESE_IP_REDIRECT_URL: UrlSchema.default(''),
 
     SHOW_GIT: BoolSchema.default(true),
-    AGENT_SANDBOX_FREE_TIP: BoolSchema.default(false),
-    AGENT_SANDBOX_SHOW_FREE_TIP: BoolSchema.default(false),
 
     DISABLE_MARKETPLACE: BoolSchema.default(false)
   },

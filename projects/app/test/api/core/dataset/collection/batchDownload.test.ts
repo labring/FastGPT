@@ -2,6 +2,7 @@ import { EventEmitter } from 'node:events';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { parseContentDispositionFilename } from '@fastgpt/global/common/file/tools';
+import { createDefaultInstanceConfig } from '@test/utils/instanceConfigSnapshot';
 
 const mocks = vi.hoisted(() => ({
   consumeDatasetArchiveTicket: vi.fn(),
@@ -58,6 +59,8 @@ class FakeResponse extends EventEmitter {
 describe('GET /core/dataset/collection/batchDownload', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    global.systemInstanceConfig = createDefaultInstanceConfig();
+    global.systemInstanceConfig.resource.datasetArchive.maxConcurrency = 7;
     vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(new Date(2026, 8, 29, 14, 5, 59));
     mocks.parseHeaderCert.mockResolvedValue({ teamId: 'team-1', tmbId: 'member-1' });
@@ -106,7 +109,7 @@ describe('GET /core/dataset/collection/batchDownload', () => {
       authApiKey: true
     });
     expect(mocks.withDatasetArchiveResources).toHaveBeenCalledWith(
-      expect.objectContaining({ tmbId: 'member-1', waitForSlot: true })
+      expect.objectContaining({ tmbId: 'member-1', concurrency: 7, waitForSlot: true })
     );
     expect(mocks.consumeDatasetArchiveTicket).toHaveBeenCalledWith({
       tmbId: 'member-1',
