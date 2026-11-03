@@ -23,5 +23,6 @@
   "invalid_parse_file": "文件无效或已损坏，请检查文件后重新上传",
   "office_conversion_failed": "暂时无法读取此文件，请确认文件未损坏且格式受支持后重新上传。若仍无法读取，请稍后再试。",
   "docx_parse_invalid": "文档格式无效或文件已损坏，请检查文件后重新上传",
-  "docx_conversion_failed": "文档解析失败，请稍后重试"
+  "docx_conversion_failed": "文档解析失败，请稍后重试",
+  "empty_file": "文件为空"
 }

@@ -23,5 +23,6 @@
   "invalid_parse_file": "The file is invalid or corrupted. Please check the file and upload it again",
   "office_conversion_failed": "This file cannot be read right now. Please make sure it is not corrupted and in a supported format, then upload it again. If it still cannot be read, try again later.",
   "docx_parse_invalid": "The document format is invalid or the file is corrupted. Please check the file and upload it again",
-  "docx_conversion_failed": "Failed to parse the document, please try again later"
+  "docx_conversion_failed": "Failed to parse the document, please try again later",
+  "empty_file": "Empty file"
 }
