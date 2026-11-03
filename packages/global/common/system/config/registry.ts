@@ -280,7 +280,7 @@ export const systemInstanceConfigRegistry: readonly SystemInstanceConfigRegistry
       applyMode: 'reload'
     }
   ),
-  ...createEntries('vector', ['hnswEfSearch', 'hnswMaxScanTuples'], {
+  ...createEntries('vector', ['hnswEfSearch'], {
     edition: 'all',
     secret: false,
     applyMode: 'reload'

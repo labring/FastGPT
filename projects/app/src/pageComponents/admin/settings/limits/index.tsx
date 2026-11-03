@@ -24,7 +24,6 @@ type LimitsConfigForm = SystemInstanceConfigDomainMap['resource'] &
     openApiKeyMaxCount: SystemInstanceConfigDomainMap['auth']['openApiKeyMaxCount'];
     fileUrlExpiredDays: SystemInstanceConfigDomainMap['storage']['fileUrlExpiredDays'];
     hnswEfSearch: SystemInstanceConfigDomainMap['vector']['hnswEfSearch'];
-    hnswMaxScanTuples: SystemInstanceConfigDomainMap['vector']['hnswMaxScanTuples'];
     vectorRecallConcurrency: SystemInstanceConfigDomainMap['vector']['vectorRecallConcurrency'];
   };
 
@@ -73,8 +72,7 @@ const LimitsSettingComponent = () => {
       ...performance.effectiveConfig,
       openApiKeyMaxCount: 100,
       fileUrlExpiredDays: 90,
-      hnswEfSearch: 100,
-      hnswMaxScanTuples: 100000,
+      hnswEfSearch: 200,
       vectorRecallConcurrency: 0
     }
   });
@@ -86,8 +84,7 @@ const LimitsSettingComponent = () => {
       ...performance.effectiveConfig,
       openApiKeyMaxCount: auth.effectiveConfig?.openApiKeyMaxCount ?? 100,
       fileUrlExpiredDays: storage.effectiveConfig?.fileUrlExpiredDays ?? 90,
-      hnswEfSearch: vector.effectiveConfig?.hnswEfSearch ?? 100,
-      hnswMaxScanTuples: vector.effectiveConfig?.hnswMaxScanTuples ?? 100000,
+      hnswEfSearch: vector.effectiveConfig?.hnswEfSearch ?? 200,
       vectorRecallConcurrency: vector.effectiveConfig?.vectorRecallConcurrency ?? 0
     });
   }, [
@@ -155,8 +152,7 @@ const LimitsSettingComponent = () => {
             expectedRevision: vector.revision,
             overrides: {
               ...(vector.overrides as Record<string, unknown>),
-              hnswEfSearch: Number(formData.hnswEfSearch) || 100,
-              hnswMaxScanTuples: Number(formData.hnswMaxScanTuples) || 100000,
+              hnswEfSearch: Number(formData.hnswEfSearch) || 200,
               vectorRecallConcurrency: Number(formData.vectorRecallConcurrency ?? 0)
             }
           }
@@ -902,34 +898,8 @@ const LimitsSettingComponent = () => {
                   {...numberInputProps}
                   min={10}
                   max={2000}
-                  value={field.value ?? 100}
-                  onChange={(_, val) => field.onChange(val || 100)}
-                >
-                  <NumberInputField />
-                  <NumberInputStepper>
-                    <NumberIncrementStepper />
-                    <NumberDecrementStepper />
-                  </NumberInputStepper>
-                </NumberInput>
-              )}
-            />
-          </AdminFormItem>
-
-          <AdminFormItem
-            label={t('admin:max_scan_rows_hnswmaxscantuples')}
-            tooltip={t('admin:max_scanned_rows_for_postgresql_pgvector_search_to_prevent_h')}
-            isRequired
-          >
-            <Controller
-              name="hnswMaxScanTuples"
-              control={control}
-              render={({ field }) => (
-                <NumberInput
-                  {...numberInputProps}
-                  min={1000}
-                  max={5000000}
-                  value={field.value ?? 100000}
-                  onChange={(_, val) => field.onChange(val || 100000)}
+                  value={field.value ?? 200}
+                  onChange={(_, val) => field.onChange(val || 200)}
                 >
                   <NumberInputField />
                   <NumberInputStepper>

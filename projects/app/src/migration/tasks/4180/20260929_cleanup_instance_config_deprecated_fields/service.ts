@@ -24,7 +24,7 @@ export const deprecatedOverridePaths: Partial<
   ],
   storage: [['downloadRedirectTtlSeconds'], ['downloadRedirectEndpoint']],
   feature: [['showWorkorder'], ['showEnterpriseAuth'], ['showGit']],
-  vector: [['vqLevel'], ['languageIdentifier']],
+  vector: [['vqLevel'], ['languageIdentifier'], ['hnswMaxScanTuples']],
   providers: [['chunk'], ['crm']],
   auth: [
     ['loginProviders', 'sms', 'login', 'en'],

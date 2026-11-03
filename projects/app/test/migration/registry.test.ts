@@ -79,8 +79,8 @@ describe('validateSystemMigrationRegistry', () => {
     expect(() => validateSystemMigrationRegistry(systemMigrations)).not.toThrow();
   });
 
-  it('appends dataset index initialization as a non-blocking automatic task', () => {
-    const task = systemMigrations.at(-1);
+  it('keeps dataset index initialization as a non-blocking automatic task', () => {
+    const task = systemMigrations.find(({ id }) => id === '20261022_initialize_dataset_vector_indexes');
     expect(task).toMatchObject({
       id: '20261022_initialize_dataset_vector_indexes',
       version: '4.17.4',

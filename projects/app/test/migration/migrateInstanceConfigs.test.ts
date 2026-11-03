@@ -625,7 +625,6 @@ describe('migration env wiring', () => {
       ['storage.redirectTtlSeconds', serviceEnv.STORAGE_DOWNLOAD_REDIRECT_TTL_SECONDS],
       // vector
       ['vector.hnswEfSearch', serviceEnv.HNSW_EF_SEARCH],
-      ['vector.hnswMaxScanTuples', serviceEnv.HNSW_MAX_SCAN_TUPLES],
       // providers
       ['providers.documentParse.customPdf.url', serviceEnv.CUSTOM_PDF_PARSE_URL],
       ['providers.documentParse.customPdf.key', serviceEnv.CUSTOM_PDF_PARSE_KEY],

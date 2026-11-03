@@ -34,7 +34,6 @@ export const buildAuthoritativeSystemEnv = ({
     qaMaxProcess: instanceConfig.performance.dataset.qaMaxProcess,
     vlmMaxProcess: instanceConfig.performance.dataset.vlmMaxProcess,
     hnswEfSearch: instanceConfig.vector.hnswEfSearch,
-    hnswMaxScanTuples: instanceConfig.vector.hnswMaxScanTuples,
     vectorRecallConcurrency: instanceConfig.vector.vectorRecallConcurrency,
     customPdfParse: {
       // 旧库独有的计费/扩展字段（price 等）深合并保留
@@ -78,7 +77,6 @@ export const buildAuthoritativeSystemEnv = ({
         value: instanceConfig.performance.dataset.vlmMaxProcess
       },
       { path: 'vector.hnswEfSearch', value: instanceConfig.vector.hnswEfSearch },
-      { path: 'vector.hnswMaxScanTuples', value: instanceConfig.vector.hnswMaxScanTuples },
       {
         path: 'vector.vectorRecallConcurrency',
         value: instanceConfig.vector.vectorRecallConcurrency

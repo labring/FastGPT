@@ -30,6 +30,7 @@ describe('deprecatedOverridePaths', () => {
         'feature.showGit',
         'vector.vqLevel',
         'vector.languageIdentifier',
+        'vector.hnswMaxScanTuples',
         'providers.chunk',
         'providers.crm',
         'auth.loginProviders.sms.login.en',
@@ -45,11 +46,12 @@ describe('stripDeprecatedOverrides', () => {
     const { overrides, removedFieldCount } = stripDeprecatedOverrides('vector', {
       vqLevel: 16,
       languageIdentifier: 'whatlang',
+      hnswMaxScanTuples: 100000,
       hnswEfSearch: 200
     });
 
     expect(overrides).toEqual({ hnswEfSearch: 200 });
-    expect(removedFieldCount).toBe(2);
+    expect(removedFieldCount).toBe(3);
   });
 
   it('drops parent objects that become empty after cleanup', () => {

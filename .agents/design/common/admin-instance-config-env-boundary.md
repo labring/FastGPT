@@ -157,7 +157,7 @@ config.resource
 └── systemMaxStringLengthM          SYSTEM_MAX_STRING_LENGTH_M
 ```
 
-`VECTOR_VQ_LEVEL`、`MILVUS_LANGUAGE_IDENTIFIER`、`HNSW_EF_SEARCH`、`HNSW_MAX_SCAN_TUPLES` 和 `FILE_URL_EXPIRED_DAYS` 也属于数据库配置：前四项放在 `config.vector`，后者放在 `config.storage`。
+`HNSW_EF_SEARCH` 和 `FILE_URL_EXPIRED_DAYS` 属于数据库配置，分别放在 `config.vector` 和 `config.storage`。`VECTOR_VQ_LEVEL`、`MILVUS_LANGUAGE_IDENTIFIER` 保留为 ENV；上游已取消 `HNSW_MAX_SCAN_TUPLES`，PG 扫描上限由知识库索引分组自动计算。
 
 需要保留的约束：更新配置时必须校验 `WORKFLOW_PARALLEL_MAX_CONCURRENCY <= WORKFLOW_MAX_LOOP_TIMES`，不能只依赖环境变量加载阶段校验。
 
@@ -188,7 +188,6 @@ config.vector
 ├── vqLevel                      VECTOR_VQ_LEVEL
 ├── languageIdentifier           MILVUS_LANGUAGE_IDENTIFIER
 ├── hnswEfSearch                 HNSW_EF_SEARCH
-├── hnswMaxScanTuples            HNSW_MAX_SCAN_TUPLES
 └── processLimits                VECTOR_MAX_PROCESS 等处理并发
 
 config.storage
@@ -562,7 +561,7 @@ BUILD    -> 构建、测试、脚本或操作系统继承变量，不属于运�
 
 `STORAGE_DOWNLOAD_REDIRECT_TTL_SECONDS` 亦不再配置（由存储层统一决定），
 `config.storage.downloadRedirectTtlSeconds` 字段已删除。
-`config.vector.hnswEfSearch` / `hnswMaxScanTuples` 仍为 DB 字段，Admin 页面由「向量检索策略」移入「限制与并发」。
+`config.vector.hnswEfSearch` 仍为 DB 字段，默认值随上游调整为 200，Admin 页面由「向量检索策略」移入「限制与并发」。`hnswMaxScanTuples` 随上游废弃，清理迁移移除历史覆盖项。
 
 同步删除的还有 `config.site.systemTitle`（原「页面标题后缀」）以及全部英文短信模板字段
 （`auth.loginProviders.sms.*.en`、`auth.accountCancellation.*.en`、`commercial.billingNotify.*.en`）。
@@ -592,7 +591,6 @@ config.performance.workflow.parallelMaxConcurrency
 | `VECTOR_VQ_LEVEL` | `config.vector.vqLevel` | 只保存检索策略 |
 | `MILVUS_LANGUAGE_IDENTIFIER` | `config.vector.languageIdentifier` | `lingua` 或 `whatlang` |
 | `HNSW_EF_SEARCH` | `config.vector.hnswEfSearch` | 向量检索参数 |
-| `HNSW_MAX_SCAN_TUPLES` | `config.vector.hnswMaxScanTuples` | PG 检索参数 |
 | `systemEnv.vectorRecallConcurrency` | `config.vector.vectorRecallConcurrency` | 商业版召回共享并发，0 表示不限制；无对应环境变量 |
 
 #### 外部 Provider
@@ -746,7 +744,7 @@ MILVUS_TOKEN
 OPENGAUSS_URL
 ```
 
-这里不包含已经迁移到 DB 的 `VECTOR_VQ_LEVEL`、`MILVUS_LANGUAGE_IDENTIFIER`、`HNSW_EF_SEARCH` 和 `HNSW_MAX_SCAN_TUPLES`。
+这里不包含已经迁移到 DB 的 `HNSW_EF_SEARCH`；`VECTOR_VQ_LEVEL`、`MILVUS_LANGUAGE_IDENTIFIER` 保留为 ENV，`HNSW_MAX_SCAN_TUPLES` 已随上游废弃。
 
 #### 日志、指标与链路追踪
 

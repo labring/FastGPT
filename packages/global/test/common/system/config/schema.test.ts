@@ -22,6 +22,10 @@ describe('Domain default config and overrides validation', () => {
     const performanceConfig = getDomainDefaultConfig('performance');
     expect(performanceConfig.workflow.parallelMaxConcurrency).toBe(10);
     expect(performanceConfig.dataset.retrievalResultsLimit).toBe(0);
+
+    const vectorConfig = getDomainDefaultConfig('vector');
+    expect(vectorConfig.hnswEfSearch).toBe(200);
+    expect(vectorConfig).not.toHaveProperty('hnswMaxScanTuples');
   });
 
   it('validates sparse overrides and rejects unknown fields in root and nested objects', () => {

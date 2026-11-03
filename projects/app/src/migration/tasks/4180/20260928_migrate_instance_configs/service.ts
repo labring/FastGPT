@@ -281,9 +281,6 @@ export const buildLegacyDomainOverrides = ({
   overrides.vector = compact({
     hnswEfSearch:
       optionalNumber(systemEnv.hnswEfSearch) ?? optionalNumber(serviceEnv.HNSW_EF_SEARCH),
-    hnswMaxScanTuples:
-      optionalNumber(systemEnv.hnswMaxScanTuples) ??
-      optionalNumber(serviceEnv.HNSW_MAX_SCAN_TUPLES),
     vectorRecallConcurrency: optionalNumber(systemEnv.vectorRecallConcurrency)
   }) as DomainOverrides['vector'];
 
