@@ -6,6 +6,8 @@ import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 const mocks = vi.hoisted(() => ({
   add: vi.fn(),
   getJob: vi.fn(),
+  getJobState: vi.fn(),
+  remove: vi.fn(),
   setGlobalConcurrency: vi.fn(),
   getWorker: vi.fn(),
   getQueue: vi.fn(),
@@ -58,11 +60,15 @@ beforeEach(() => {
   });
   mocks.setGlobalConcurrency.mockReset().mockResolvedValue(undefined);
   mocks.getJob.mockReset().mockResolvedValue(undefined);
+  mocks.getJobState.mockReset().mockResolvedValue('unknown');
+  mocks.remove.mockReset().mockResolvedValue(1);
   mocks.cancelBuild.mockReset().mockResolvedValue(undefined);
   mocks.getWorker.mockReset().mockReturnValue('worker');
   mocks.getQueue.mockReset().mockReturnValue({
     add: mocks.add,
     getJob: mocks.getJob,
+    getJobState: mocks.getJobState,
+    remove: mocks.remove,
     setGlobalConcurrency: mocks.setGlobalConcurrency
   });
   mocks.ensureIndex.mockReset().mockResolvedValue({ pgIndex: 'ready', created: true });
@@ -99,6 +105,7 @@ describe('onDatasetVectorCounted', () => {
     ]);
     expect(mocks.cancelBuild).toHaveBeenCalledTimes(2);
     expect(mocks.cancelBuild).toHaveBeenLastCalledWith(scope);
+    expect(mocks.remove).not.toHaveBeenCalled();
     expect(mocks.cancelBuild.mock.invocationCallOrder[0]).toBeGreaterThan(
       mocks.add.mock.invocationCallOrder[0]
     );
@@ -147,6 +154,50 @@ describe('onDatasetVectorCounted', () => {
       });
     }
   );
+
+  it.each([
+    { state: 'waiting', removed: 1 },
+    { state: 'waiting', removed: 0 },
+    { state: 'active', removed: 0 }
+  ])(
+    'queues a rebound build after handling $state cleanup (removed=$removed)',
+    async ({ state, removed }) => {
+      await createDataset({ vectorData: { pgIndex: 'pending', pgIndexCheckedAt: new Date() } });
+      mocks.getJobState.mockResolvedValueOnce(state);
+      mocks.remove.mockResolvedValueOnce(removed);
+
+      await onDatasetVectorCounted({ ...scope, rows: 10001 });
+
+      expect(mocks.getJobState).toHaveBeenCalledExactlyOnceWith(`${scope.datasetId}-cleanup`);
+      expect(mocks.add).toHaveBeenCalledExactlyOnceWith('build', scope, {
+        jobId: `${scope.datasetId}-build`
+      });
+      if (state === 'waiting') {
+        expect(mocks.remove).toHaveBeenCalledExactlyOnceWith(`${scope.datasetId}-cleanup`);
+        expect(mocks.remove.mock.invocationCallOrder[0]).toBeLessThan(
+          mocks.add.mock.invocationCallOrder[0]
+        );
+      } else {
+        expect(mocks.remove).not.toHaveBeenCalled();
+      }
+      expect(mocks.cancelBuild).not.toHaveBeenCalled();
+    }
+  );
+
+  it('stops a rebound notification on Redis removal failure and allows the next count to retry', async () => {
+    await createDataset();
+    mocks.getJobState.mockResolvedValue('waiting');
+    mocks.remove.mockRejectedValueOnce(new Error('redis down'));
+
+    await expect(onDatasetVectorCounted({ ...scope, rows: 10001 })).rejects.toThrow('redis down');
+    expect(mocks.add).not.toHaveBeenCalled();
+    expect((await MongoDataset.findById(scope.datasetId).lean())?.vectorData).toBeUndefined();
+
+    await onDatasetVectorCounted({ ...scope, rows: 10001 });
+    expect(mocks.add).toHaveBeenCalledExactlyOnceWith('build', scope, {
+      jobId: `${scope.datasetId}-build`
+    });
+  });
 
   it.each(['pending', 'building'] as const)(
     'keeps cleanup separate from a %s build and deduplicates repeated low-count notifications',

@@ -28,6 +28,7 @@ const getDatasetVectorIndexQueue = () =>
 /**
  * 真实计数超过一万时创建、低于五千时清理可能存在的索引；中间区间和普通小库不额外投递。
  * 创建与清理分别使用 datasetId-build / datasetId-cleanup，避免建图期间的清理通知被活跃任务吞掉。
+ * 回涨后撤销尚在排队的清理任务；已开始的清理继续完成，创建任务随后执行。
  */
 export const onDatasetVectorCounted = async ({
   rows,
@@ -42,9 +43,20 @@ export const onDatasetVectorCounted = async ({
   // 缺少索引元数据或已确认 none 的小库无需检查目录，避免所有小库都进入维护队列。
   if (!shouldBuild && (!data || data.pgIndex === 'none')) return;
 
+  const queue = getDatasetVectorIndexQueue();
+  if (shouldBuild) {
+    const cleanupJobId = `${scope.datasetId}-cleanup`;
+    if ((await queue.getJobState(cleanupJobId)) === 'waiting') {
+      // remove 原子检查任务锁；若清理已被领取则返回 0，保留运行中的清理，创建任务排在它后面。
+      await queue.remove(cleanupJobId);
+    }
+  }
+
   // 先可靠投递再置 pending；进程中断重投安全，状态更新也不能覆盖正在构建/已完成状态。
+  // 接受短暂竞态：旧 build 的 PG 会话已终止、MQ 尚未退出时，新 build 仍会被同名任务去重。
+  // 本轮可能暂不建索引，等待下次真实统计重新投递；计数缓存命中不会触发补投。
   const operation = shouldBuild ? 'build' : 'cleanup';
-  await getDatasetVectorIndexQueue().add(operation, scope, {
+  await queue.add(operation, scope, {
     jobId: `${scope.datasetId}-${operation}`
   });
   if (!shouldBuild) {
