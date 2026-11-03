@@ -84,10 +84,29 @@ const UpdateContactModal = ({
       isCentered
       onClose={onClose}
       showCloseButton={false}
+      // 以固定的标题区定位关闭按钮，避免正文滚动层造成偏移或裁剪。
+      headerStyles={{ position: 'relative', pr: '52px' }}
       title={
-        mode === 'notification_account'
-          ? t('common:support.user.info.notification_receiving_hint')
-          : t('common:contact_way')
+        <>
+          {mode === 'notification_account'
+            ? t('common:support.user.info.notification_receiving_hint')
+            : t('common:contact_way')}
+          <IconButton
+            aria-label={t('common:Close')}
+            icon={<Icon name="close" w="20px" h="20px" />}
+            variant="ghost"
+            position="absolute"
+            top="8px"
+            right="8px"
+            w="36px"
+            h="36px"
+            minW="36px"
+            p="4px"
+            borderRadius="4px"
+            zIndex={1}
+            onClick={onClose}
+          />
+        </>
       }
       borderRadius="10px"
       bodyStyles={{ pt: 0 }}
@@ -129,21 +148,6 @@ const UpdateContactModal = ({
         </>
       }
     >
-      <IconButton
-        aria-label={t('common:Close')}
-        icon={<Icon name="close" w="20px" h="20px" />}
-        variant="ghost"
-        position="absolute"
-        top="8px"
-        right="8px"
-        w="36px"
-        h="36px"
-        minW="36px"
-        p="4px"
-        borderRadius="4px"
-        zIndex={1}
-        onClick={onClose}
-      />
       <Box mt="8px" color="#667085" fontSize="mini" lineHeight="16px" letterSpacing="0.048px">
         {t('common:support.user.info.bind_notification_hint')}
       </Box>
