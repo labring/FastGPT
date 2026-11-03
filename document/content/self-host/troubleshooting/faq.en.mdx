@@ -200,3 +200,17 @@ The Loop Node added in 4.15.0 keeps only the value of the last iteration in its 
 2. The append box of an object array is a JSON input. To append an object output by an upstream node, add a Code run node in the loop body that combines the existing array and the current object into a new array, then update the variable with Variable Citation.
 
 ---
+
+### The sandbox fails to start with "Sandbox work directory is not writable: /workspace", but the volume permissions are correct
+
+When you use OpenSandbox in 4.15.2 and later, the sandbox checks after it starts whether `/workspace` is writable, and exits with this error if it is not. If the owner and permissions of `/workspace` in the volume are already correct and the error persists, the default seccomp profile of the host's Docker may be blocking the sandbox container.
+
+Run the command below with the sandbox image (`<volume-name>` is the volume the sandbox container mounts at `/workspace`; find it with `docker inspect <sandbox-container-name>`). If it prints fail and then ok, seccomp is the cause:
+
+```bash
+for o in "" "--security-opt seccomp=unconfined"; do docker run --rm $o -v <volume-name>:/workspace --entrypoint bash <sandbox-image> -c '[ -w /workspace ] && echo ok || echo fail'; done
+```
+
+To fix it, add `seccomp_profile = "unconfined"` under `[docker]` in `opensandbox-config` in your compose file, run `docker compose up -d --force-recreate fastgpt-opensandbox-server`, and click "Retry" on the page. This loosens the system call restrictions of the sandbox containers, so use it only after you have confirmed that seccomp is the cause.
+
+---

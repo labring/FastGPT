@@ -33,7 +33,8 @@ describe('validateSystemMigrationRegistry', () => {
       '20261009_migrate_dataset_rebuild_status',
       '20261009_backfill_agent_sandbox_team_id',
       '20261022_backfill_folder_ancestor_ids',
-      '20261025_token_prices_per_million'
+      '20261025_token_prices_per_million',
+      '20261022_initialize_dataset_vector_indexes'
     ]);
     expect(
       systemMigrations.filter((task: SystemMigration) => task.delay).map(({ id }) => id)
@@ -52,12 +53,26 @@ describe('validateSystemMigrationRegistry', () => {
     expect(
       systemMigrations.filter((task: SystemMigration) => task.blockStartup).map(({ id }) => id)
     ).toEqual(['20260903_migrate_legacy_system_models']);
-    expect(systemMigrations.at(-1)).toMatchObject({
+    expect(systemMigrations.at(-2)).toMatchObject({
       id: '20261025_token_prices_per_million',
       version: '4.17.3',
       progressSteps: [{ key: 'models' }]
     });
     expect(() => validateSystemMigrationRegistry(systemMigrations)).not.toThrow();
+  });
+
+  it('appends dataset index initialization as a non-blocking automatic task', () => {
+    const task = systemMigrations.at(-1);
+    expect(task).toMatchObject({
+      id: '20261022_initialize_dataset_vector_indexes',
+      version: '4.17.4',
+      blockStartup: false,
+      progressSteps: [{ key: 'legacyIndex' }, { key: 'datasets' }]
+    });
+    expect(task).not.toHaveProperty('manual');
+    expect(task).not.toHaveProperty('independent');
+    expect(task).not.toHaveProperty('dependsOn');
+    expect(task).not.toHaveProperty('onFailure');
   });
 
   it('runs only the selected production tasks independently', () => {

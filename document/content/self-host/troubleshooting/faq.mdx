@@ -202,3 +202,17 @@ description: FastGPT 私有部署常见问题排查方式
 2. 对象数组的追加框是 JSON 输入框。要追加上游节点输出的对象，可以在循环体里加一个「代码运行」节点，把原数组和本轮的对象拼成新数组，再用「变量引用」更新这个变量。
 
 ---
+
+### 沙箱启动报 Sandbox work directory is not writable: /workspace，但卷的权限是正确的怎么办？
+
+4.15.2 及以上版本使用 OpenSandbox 时，沙箱启动后会检查 `/workspace` 是否可写，不可写就报这个错并退出。卷里 `/workspace` 的属主和权限已经正确仍然报错时，可能是宿主机 Docker 默认的 seccomp 配置拦截了沙箱容器。
+
+用沙箱镜像执行下面的命令（`<卷名>` 是沙箱容器挂载到 `/workspace` 的卷，用 `docker inspect <沙箱容器名>` 查看）。先后输出 fail、ok，就是 seccomp 的原因：
+
+```bash
+for o in "" "--security-opt seccomp=unconfined"; do docker run --rm $o -v <卷名>:/workspace --entrypoint bash <沙箱镜像> -c '[ -w /workspace ] && echo ok || echo fail'; done
+```
+
+解决方法：在 compose 里 `opensandbox-config` 的 `[docker]` 下增加 `seccomp_profile = "unconfined"`，执行 `docker compose up -d --force-recreate fastgpt-opensandbox-server`，再到页面点「重试」。这会放宽沙箱容器的系统调用限制，确认是 seccomp 引起后再使用。
+
+---

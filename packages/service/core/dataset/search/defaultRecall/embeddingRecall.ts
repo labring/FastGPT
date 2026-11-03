@@ -15,6 +15,7 @@ import { readFromSecondary } from '../../../../common/mongo/utils';
 import { normalizeImageToBase64 } from '../utils';
 import { datasetCollectionSelectField, datasetDataSelectField } from './constant';
 import { buildSearchResultItem, concatRecallLists } from './result';
+import { getDatasetVectorSearchData } from '../../vectorData/service';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.DATA);
 
@@ -178,11 +179,14 @@ export const embeddingRecall = async ({
     };
   }
 
+  // 多个文本/图片 query 共用路由快照，避免每个向量都重复查询计数及索引状态。
+  const datasetVectorData = await getDatasetVectorSearchData({ teamId, datasetIds });
   const recallResults = await Promise.all(
     tasks.map(async ({ vector }) => {
       return await recallFromVectorStore({
         teamId,
         datasetIds,
+        datasetVectorData,
         vector,
         limit,
         forbidCollectionIdList,

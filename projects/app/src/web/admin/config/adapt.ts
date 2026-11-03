@@ -85,7 +85,7 @@ export function formatConfigStore2FormSchema({
     datasetParseMaxProcess = 10,
     vectorMaxProcess = 10,
     qaMaxProcess = 10,
-    hnswEfSearch = 100,
+    hnswEfSearch = 200,
     vectorRecallConcurrency = 0,
     vlmMaxProcess = 5,
     customPdfParse,
