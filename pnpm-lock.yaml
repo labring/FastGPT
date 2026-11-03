@@ -1612,6 +1612,9 @@ importers:
       p-limit:
         specifier: ^7.2.0
         version: 7.2.0
+      pg:
+        specifier: ^8.10.0
+        version: 8.14.0
       qrcode:
         specifier: ^1.5.4
         version: 1.5.4
@@ -1727,6 +1730,9 @@ importers:
       '@types/nprogress':
         specifier: ^0.2.0
         version: 0.2.3
+      '@types/pg':
+        specifier: ^8.6.6
+        version: 8.11.11
       '@types/qrcode':
         specifier: ^1.5.5
         version: 1.5.5

@@ -60,6 +60,10 @@ const vlmModel = {
   }
 };
 
+vi.mock('@fastgpt/service/core/dataset/vectorData/service', () => ({
+  getDatasetVectorSearchData: vi.fn(async () => undefined)
+}));
+
 vi.mock('@fastgpt/service/core/ai/embedding', () => ({
   getVectors: mockGetVectors
 }));

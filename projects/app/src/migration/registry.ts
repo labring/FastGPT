@@ -25,6 +25,7 @@ import { backfillFolderAncestorIds } from './tasks/4173/20261022_backfill_folder
 import { migrateChunkTraining } from './tasks/4171/20261008_migrate_chunk_training';
 import { backfillAgentSandboxTeamId } from './tasks/4173/20261009_backfill_agent_sandbox_team_id';
 import { migrateTokenPricesPerMillion } from './tasks/4173/20261025_token_prices_per_million';
+import { initializeDatasetVectorIndexes } from './tasks/4174/20261022_initialize_dataset_vector_indexes';
 
 export type SystemMigrationLogger = {
   info: (message: string, metadata?: Record<string, unknown>) => void;
@@ -574,6 +575,33 @@ export const systemMigrations = [
     // 系统模型迁移由全局启动链保证先成功；计价转换随后独立运行，不阻塞业务或普通队列。
     independent: true,
     run: migrateTokenPricesPerMillion
+  },
+  {
+    id: '20261022_initialize_dataset_vector_indexes',
+    version: '4.17.4',
+    nameKey: i18nT('system_migration:migrations.20261022_initialize_dataset_vector_indexes.name'),
+    descriptionKey: i18nT(
+      'system_migration:migrations.20261022_initialize_dataset_vector_indexes.description'
+    ),
+    resultKey: i18nT(
+      'system_migration:migrations.20261022_initialize_dataset_vector_indexes.result'
+    ),
+    progressSteps: [
+      {
+        key: 'legacyIndex',
+        labelKey: i18nT(
+          'system_migration:migrations.20261022_initialize_dataset_vector_indexes.legacyIndex'
+        )
+      },
+      {
+        key: 'datasets',
+        labelKey: i18nT(
+          'system_migration:migrations.20261022_initialize_dataset_vector_indexes.datasets'
+        )
+      }
+    ],
+    blockStartup: false,
+    run: initializeDatasetVectorIndexes
   }
 ] as const satisfies readonly SystemMigration[];
 

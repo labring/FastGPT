@@ -664,10 +664,19 @@ export class DatasetDataIndexOperation {
    * 按 id 删除向量。
    * 调用方需要负责同步删除或替换 Mongo 中的索引项。
    */
-  async deleteVectors({ teamId, idList }: { teamId: string; idList: string[] }) {
+  async deleteVectors({
+    teamId,
+    datasetId,
+    idList
+  }: {
+    teamId: string;
+    datasetId: string;
+    idList: string[];
+  }) {
     if (idList.length === 0) return;
     await deleteDatasetDataVector({
       teamId,
+      datasetId,
       idList
     });
   }
@@ -813,6 +822,7 @@ export class DatasetDataIndexOperation {
           // 先把 Mongo 索引替换成新的向量 id，再删除旧向量，避免检索指向不存在的向量记录。
           await this.deleteVectors({
             teamId: sourceData.teamId,
+            datasetId: sourceData.datasetId,
             idList: [targetIndex.dataId]
           });
         }
@@ -821,6 +831,7 @@ export class DatasetDataIndexOperation {
       if (synonymContext && newIndex) {
         await this.deleteVectors({
           teamId: sourceData.teamId,
+          datasetId: sourceData.datasetId,
           idList: [newIndex.dataId]
         }).catch(() => {});
       }
@@ -873,6 +884,7 @@ export class DatasetDataIndexOperation {
 
       await this.deleteVectors({
         teamId: data.teamId,
+        datasetId: data.datasetId,
         idList: [indexDataId]
       });
     });
