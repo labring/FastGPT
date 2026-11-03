@@ -23,6 +23,7 @@
   "export_config": "설정 내보내기",
   "export_failed": "내보내기 실패",
   "export_success": "내보내기 성공",
+  "export_sandbox_wait": "샌드박스가 준비된 후 스킬을 내보내세요.",
   "history_versions": "버전 기록",
   "import_existing_skill": "기존 스킬 가져오기",
   "import_existing_skill_desc": "외부에서 자주 사용하는 스킬을 플랫폼으로 바로 가져옵니다. .zip 형식을 지원합니다.",

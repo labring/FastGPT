@@ -24,6 +24,7 @@ import {
   getSkillCollaboratorList,
   postUpdateSkillCollaborators
 } from '@/web/core/skill/collaborator';
+import { isSkillExportDisabled } from '@fastgpt/global/core/ai/skill/exportAvailability';
 import { SkillRoleList } from '@fastgpt/global/support/permission/skill/constant';
 import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
 import dynamic from 'next/dynamic';
@@ -163,14 +164,19 @@ export const LeftHeader = () => {
   const { t } = useTranslation();
   const router = useRouter();
 
-  const { skillDetail, isSkillReady, restartChat } = useContextSelector(
+  const { skillDetail, isSkillReady, sandboxState, restartChat } = useContextSelector(
     SkillDetailContext,
     (v) => ({
       skillDetail: v.skillDetail,
       isSkillReady: v.isSkillReady,
+      sandboxState: v.sandboxState,
       restartChat: v.restartChat
     })
   );
+  const exportDisabled = isSkillExportDisabled({
+    hasWritePer: skillDetail?.permission?.hasWritePer,
+    sandboxState
+  });
 
   const { setEditedSkill, setShowPermModal, onExportSkill, openConfirmDelete, onClickDeleteSkill } =
     useHeader();
@@ -207,8 +213,10 @@ export const LeftHeader = () => {
             icon: 'export' as const,
             type: 'grayBg' as const,
             label: t('skill:export_config'),
+            disabled: exportDisabled,
+            disabledTip: exportDisabled ? t('skill:export_sandbox_wait') : undefined,
             onClick: () => {
-              if (!skillDetail) return;
+              if (!skillDetail || exportDisabled) return;
               onExportSkill(skillDetail._id, skillDetail.name);
             }
           }
@@ -248,6 +256,7 @@ export const LeftHeader = () => {
     [
       t,
       skillDetail,
+      exportDisabled,
       onExportSkill,
       setEditedSkill,
       setShowPermModal,
