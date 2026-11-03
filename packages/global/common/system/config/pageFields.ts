@@ -102,7 +102,6 @@ export const adminConfigPageFieldsMap: Record<string, readonly string[]> = {
     'performance.task.evalConcurrency',
     'performance.channel.wechatConcurrency',
     'vector.hnswEfSearch',
-    'vector.hnswMaxScanTuples',
     'vector.vectorRecallConcurrency'
   ],
   '/admin/settings/providers': [
