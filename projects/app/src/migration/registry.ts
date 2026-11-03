@@ -588,15 +588,15 @@ export const systemMigrations = [
     ),
     progressSteps: [
       {
-        key: 'datasets',
-        labelKey: i18nT(
-          'system_migration:migrations.20261022_initialize_dataset_vector_indexes.datasets'
-        )
-      },
-      {
         key: 'legacyIndex',
         labelKey: i18nT(
           'system_migration:migrations.20261022_initialize_dataset_vector_indexes.legacyIndex'
+        )
+      },
+      {
+        key: 'datasets',
+        labelKey: i18nT(
+          'system_migration:migrations.20261022_initialize_dataset_vector_indexes.datasets'
         )
       }
     ],

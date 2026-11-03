@@ -95,18 +95,18 @@ describe('initializeDatasetVectorIndexes', () => {
       [{ teamId, datasetId: id(1), rows: 10000 }],
       [{ teamId, datasetId: id(2), rows: 10001 }]
     ]);
-    expect(mocks.removeLegacy.mock.invocationCallOrder[0]).toBeGreaterThan(
-      mocks.counted.mock.invocationCallOrder.at(-1)!
+    expect(mocks.removeLegacy.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.count.mock.invocationCallOrder[0]
     );
-    expect(mocks.removeLegacy.mock.invocationCallOrder[0]).toBeGreaterThan(
-      context.saveCheckpoint.mock.invocationCallOrder.at(-1)!
+    expect(mocks.removeLegacy.mock.invocationCallOrder[0]).toBeLessThan(
+      context.saveCheckpoint.mock.invocationCallOrder[0]
     );
     expect(context.reportProgress.mock.calls).toEqual([
+      [{ key: 'legacyIndex', status: 'running' }],
+      [{ key: 'legacyIndex', status: 'succeeded' }],
       [{ key: 'datasets', status: 'running' }],
       [{ key: 'datasets', status: 'running', current: 2 }],
-      [{ key: 'datasets', status: 'succeeded' }],
-      [{ key: 'legacyIndex', status: 'running' }],
-      [{ key: 'legacyIndex', status: 'succeeded' }]
+      [{ key: 'datasets', status: 'succeeded' }]
     ]);
     expect(checkpoint()).toMatchObject({ lastId: id(2), endId: id(2) });
     expect(await initializeDatasetVectorIndexes(context)).toEqual({
@@ -116,19 +116,29 @@ describe('initializeDatasetVectorIndexes', () => {
     expect(mocks.count).toHaveBeenCalledTimes(2);
   });
 
-  it('retries failed legacy index cleanup without recounting or enqueueing completed batches', async () => {
+  it('starts no scan or enqueue until legacy index cleanup succeeds on retry', async () => {
     await seed(1);
     mocks.removeLegacy.mockRejectedValueOnce(new Error('DROP failed'));
     const { context, checkpoint } = createContext();
     await expect(initializeDatasetVectorIndexes(context)).rejects.toThrow('DROP failed');
-    expect(mocks.count).toHaveBeenCalledTimes(1);
-    expect(mocks.counted).toHaveBeenCalledTimes(1);
-    expect(checkpoint()).toMatchObject({ lastId: id(1), scannedCount: 1 });
-    expect(context.reportProgress.mock.calls.slice(-2)).toEqual([
-      [{ key: 'datasets', status: 'succeeded' }],
+    expect(mocks.count).not.toHaveBeenCalled();
+    expect(mocks.counted).not.toHaveBeenCalled();
+    expect(checkpoint()).toBeUndefined();
+    expect(context.reportProgress.mock.calls).toEqual([
       [{ key: 'legacyIndex', status: 'running' }]
     ]);
-    expect(await initializeDatasetVectorIndexes(context)).toEqual({
+    let finishCleanup!: () => void;
+    mocks.removeLegacy.mockReturnValueOnce(
+      new Promise<void>((resolve) => {
+        finishCleanup = resolve;
+      })
+    );
+    const retry = initializeDatasetVectorIndexes(context);
+    await vi.waitFor(() => expect(mocks.removeLegacy).toHaveBeenCalledTimes(2));
+    expect(mocks.count).not.toHaveBeenCalled();
+    expect(mocks.counted).not.toHaveBeenCalled();
+    finishCleanup();
+    expect(await retry).toEqual({
       scannedCount: 1,
       eligibleCount: 1
     });
@@ -144,8 +154,9 @@ describe('initializeDatasetVectorIndexes', () => {
       context.assertActive.mockRejectedValue(new Error('lease lost'));
     });
     await expect(initializeDatasetVectorIndexes(context)).rejects.toThrow('lease lost');
-    expect(mocks.count).toHaveBeenCalledTimes(1);
-    expect(checkpoint()).toMatchObject({ lastId: id(1), scannedCount: 1 });
+    expect(mocks.count).not.toHaveBeenCalled();
+    expect(mocks.counted).not.toHaveBeenCalled();
+    expect(checkpoint()).toBeUndefined();
     expect(context.reportProgress).not.toHaveBeenCalledWith({
       key: 'legacyIndex',
       status: 'succeeded'
@@ -153,7 +164,7 @@ describe('initializeDatasetVectorIndexes', () => {
   });
 
   it.each(['count', 'counted'] as const)(
-    'retains the legacy index after failed %s and resumes at the first uncommitted batch',
+    'resumes at the first uncommitted batch after failed %s once legacy cleanup is complete',
     async (step) => {
       await Promise.all([seed(1), seed(2), seed(3)]);
       mocks[step]
@@ -163,7 +174,7 @@ describe('initializeDatasetVectorIndexes', () => {
       const { context, checkpoint } = createContext();
       await expect(initializeDatasetVectorIndexes(context)).rejects.toThrow('scan failed');
       expect(checkpoint()).toMatchObject({ lastId: id(2), scannedCount: 2 });
-      expect(mocks.removeLegacy).not.toHaveBeenCalled();
+      expect(mocks.removeLegacy).toHaveBeenCalledOnce();
       expect(context.reportProgress).not.toHaveBeenCalledWith({
         key: 'datasets',
         status: 'succeeded'
@@ -175,7 +186,7 @@ describe('initializeDatasetVectorIndexes', () => {
       expect(mocks.counted.mock.calls.map(([scope]) => scope.datasetId)).toEqual(
         step === 'count' ? [id(1), id(2), id(3)] : [id(1), id(2), id(3), id(3)]
       );
-      expect(mocks.removeLegacy).toHaveBeenCalledTimes(1);
+      expect(mocks.removeLegacy).toHaveBeenCalledTimes(2);
     }
   );
 
@@ -189,7 +200,7 @@ describe('initializeDatasetVectorIndexes', () => {
     await expect(initializeDatasetVectorIndexes(context)).rejects.toThrow(
       'checkpoint write failed'
     );
-    expect(mocks.removeLegacy).not.toHaveBeenCalled();
+    expect(mocks.removeLegacy).toHaveBeenCalledOnce();
     expect(await initializeDatasetVectorIndexes(context)).toEqual({
       scannedCount: 1,
       eligibleCount: 1
@@ -206,7 +217,7 @@ describe('initializeDatasetVectorIndexes', () => {
     });
     await expect(initializeDatasetVectorIndexes(context)).rejects.toThrow('lease lost');
     expect(mocks.counted).not.toHaveBeenCalled();
-    expect(mocks.removeLegacy).not.toHaveBeenCalled();
+    expect(mocks.removeLegacy).toHaveBeenCalledOnce();
     expect(checkpoint()?.lastId).toBeNull();
   });
 
@@ -233,7 +244,7 @@ describe('initializeDatasetVectorIndexes', () => {
       eligibleCount: 0
     });
     expect(context.reportProgress).toHaveBeenLastCalledWith({
-      key: 'legacyIndex',
+      key: 'datasets',
       status: 'succeeded'
     });
     expect(mocks.count).not.toHaveBeenCalled();

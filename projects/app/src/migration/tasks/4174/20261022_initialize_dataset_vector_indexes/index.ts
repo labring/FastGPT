@@ -26,18 +26,25 @@ const CheckpointSchema = z
 
 /**
  * 固定 _id 上界分批断点续扫：真实统计并可靠投递后才推进 checkpoint，重复批次由 datasetId 去重。
- * 全部扫描与投递成功后再核验并在线删除旧全局 HNSW；扫描失败时保留旧索引，清理失败则从扫描断点重试。
+ * 先核验并在线删除旧全局 HNSW，成功后才开始统计和投递，避免本次迁移的建图与旧索引清理交错。
+ * 清理失败不扫描、不投递；扫描重试先幂等确认旧索引已删除，再沿用断点继续。
  * 迁移投递后立即进入全局串行建图队列；任务成功不表示局部索引已就绪，不阻塞系统启动。
  */
 export const initializeDatasetVectorIndexes = async (context: SystemMigrationContext) => {
+  const isPg = getVectorType() === 'pg';
+
+  // 先完成旧索引清理；扫描和投递尚未开始，失败不会留下本次迁移新创建的建图任务。
+  await context.reportProgress({ key: 'legacyIndex', status: SystemMigrationStatusEnum.running });
+  if (isPg) {
+    await context.assertActive();
+    await removeLegacyPgVectorIndex(context);
+    await context.assertActive();
+  }
+  await context.reportProgress({ key: 'legacyIndex', status: SystemMigrationStatusEnum.succeeded });
+
   await context.reportProgress({ key: 'datasets', status: SystemMigrationStatusEnum.running });
-  if (getVectorType() !== 'pg') {
+  if (!isPg) {
     await context.reportProgress({ key: 'datasets', status: SystemMigrationStatusEnum.succeeded });
-    await context.reportProgress({ key: 'legacyIndex', status: SystemMigrationStatusEnum.running });
-    await context.reportProgress({
-      key: 'legacyIndex',
-      status: SystemMigrationStatusEnum.succeeded
-    });
     return { scannedCount: 0, eligibleCount: 0 };
   }
 
@@ -104,13 +111,6 @@ export const initializeDatasetVectorIndexes = async (context: SystemMigrationCon
 
   await context.assertActive();
   await context.reportProgress({ key: 'datasets', status: SystemMigrationStatusEnum.succeeded });
-
-  // 所有批次完成可靠投递后才清理旧索引；清理失败可沿用 checkpoint，避免重复统计和投递。
-  await context.reportProgress({ key: 'legacyIndex', status: SystemMigrationStatusEnum.running });
-  await context.assertActive();
-  await removeLegacyPgVectorIndex(context);
-  await context.assertActive();
-  await context.reportProgress({ key: 'legacyIndex', status: SystemMigrationStatusEnum.succeeded });
 
   const result = { scannedCount: checkpoint.scannedCount, eligibleCount: checkpoint.eligibleCount };
   context.logger.info('Historical dataset vector counts and index scheduling completed', result);
