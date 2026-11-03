@@ -17,6 +17,8 @@ import { getMultipleDataToBase64 } from '../../../../common/system/constants';
 import { datasetCollectionSelectField, datasetDataSelectField } from './constant';
 import { buildSearchResultItem, concatRecallLists } from './result';
 import { getDatasetVectorSearchData } from '../../vectorData/service';
+import { getSystemInstanceConfig } from '../../../../common/system/systemInstanceConfig/controller';
+import { logInstanceConfigRead } from '../../../../common/system/migrationCoverageLog';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.DATA);
 
@@ -135,6 +137,7 @@ const buildVectorRecallTasks = async ({
  * 执行 embedding 召回并按 query 来源分组返回。
  * 向量库返回的是 index dataId，这里需要再回查 data/collection，补齐 q/a、
  * 图片字段和来源信息。每个 query 内先按数据块去重，多个 query 之间再交给 RRF 合并。
+ * 同一轮召回统一读取搜索配置后传给各 provider，避免多个 query 分别读取到不同配置。
  */
 export const embeddingRecall = async ({
   teamId,
@@ -182,6 +185,13 @@ export const embeddingRecall = async ({
     };
   }
 
+  // 同一轮多 query 召回共用配置值，provider 只消费显式传入的搜索参数。
+  const { hnswEfSearch } = getSystemInstanceConfig().vector;
+  logInstanceConfigRead({
+    callsite: 'runtime.core.dataset.search.embeddingRecall',
+    fields: [{ path: 'vector.hnswEfSearch', value: hnswEfSearch }]
+  });
+
   // 多个文本/图片 query 共用路由快照，避免每个向量都重复查询计数及索引状态。
   const datasetVectorData = await getDatasetVectorSearchData({ teamId, datasetIds });
   const recallResults = await Promise.all(
@@ -192,6 +202,7 @@ export const embeddingRecall = async ({
         datasetVectorData,
         vector,
         limit,
+        hnswEfSearch,
         forbidCollectionIdList,
         filterCollectionIdList
       });

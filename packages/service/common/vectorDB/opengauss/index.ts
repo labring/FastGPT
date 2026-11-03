@@ -4,7 +4,6 @@ import { OgClient, connectOg } from './controller';
 import type { VectorControllerType } from '../type';
 import dayjs from 'dayjs';
 import { getLogger, LogCategories } from '../../logger';
-import { logInstanceConfigRead } from '../../system/migrationCoverageLog';
 
 const logger = getLogger(LogCategories.INFRA.VECTOR);
 
@@ -105,8 +104,15 @@ export class OpenGaussVectorCtrl implements VectorControllerType {
     });
   };
   embRecall: VectorControllerType['embRecall'] = async (props) => {
-    const { teamId, datasetIds, vector, limit, forbidCollectionIdList, filterCollectionIdList } =
-      props;
+    const {
+      teamId,
+      datasetIds,
+      vector,
+      limit,
+      hnswEfSearch,
+      forbidCollectionIdList,
+      filterCollectionIdList
+    } = props;
 
     // Get forbid collection
     const formatForbidCollectionIdList = (() => {
@@ -137,12 +143,6 @@ export class OpenGaussVectorCtrl implements VectorControllerType {
       return { results: [] };
     }
 
-    const hnswEfSearch = global.systemEnv?.hnswEfSearch || 200;
-    logInstanceConfigRead({
-      callsite: 'runtime.common.vectorDB.opengauss.search',
-      source: 'bridged-system-env',
-      fields: [{ path: 'vector.hnswEfSearch', value: hnswEfSearch }]
-    });
     const results: any = await OgClient.query({
       // 客户端等待长于服务端的 90 秒超时，避免顶层提前释放并发额度。
       query_timeout: 120_000,

@@ -147,7 +147,7 @@ export class PgVectorCtrl implements VectorControllerType {
                   set_config('hnsw.max_scan_tuples', $2, true),
                   set_config('hnsw.iterative_scan', 'relaxed_order', true)`,
           [
-            String(Math.min(1000, Math.max(props.limit, global.systemEnv?.hnswEfSearch || 200))),
+            String(Math.min(1000, Math.max(props.limit, props.hnswEfSearch))),
             String(query.maxScanTuples)
           ]
         );

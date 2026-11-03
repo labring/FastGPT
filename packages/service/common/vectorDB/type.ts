@@ -1,6 +1,7 @@
 import z from 'zod';
 import type { ClientSession } from '../mongo';
 import { DatasetVectorSearchDataSchema } from '@fastgpt/global/core/dataset/vectorData/type';
+import { IntSchema } from '@fastgpt/global/common/zod';
 
 // Embedding recall item schema
 export const EmbeddingRecallItemSchema = z.object({
@@ -73,6 +74,9 @@ export const EmbeddingRecallCtrlPropsSchema = z.object({
   datasetVectorData: z.array(DatasetVectorSearchDataSchema).optional(),
   vector: z.array(z.number()),
   limit: z.number(),
+  hnswEfSearch: IntSchema.positive().meta({
+    description: '本次 HNSW 搜索宽度，由召回入口读取实例配置后传入'
+  }),
   forbidCollectionIdList: z.array(z.string()),
   filterCollectionIdList: z.array(z.string()).optional(),
   retry: z.number().optional()

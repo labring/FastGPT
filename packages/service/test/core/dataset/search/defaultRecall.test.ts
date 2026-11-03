@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { LEAF_ABSENT_SNAPSHOT } from '@test/utils/instanceConfigSnapshot';
+import { getDomainDefaultConfig } from '@fastgpt/global/common/system/config/schema';
 
 // commit 94ae033d7 起本被测链路改为读取实例配置：
 // searchDatasetData → `getSystemInstanceConfig().performance.dataset.retrievalResultsLimit ?? serviceEnv.RETRIEVAL_RESULTS_LIMIT`，
@@ -11,7 +12,8 @@ import { LEAF_ABSENT_SNAPSHOT } from '@test/utils/instanceConfigSnapshot';
 
 import { DatasetSearchModeEnum, SearchScoreTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import type { FullTextSearchProps } from '@fastgpt/service/common/vectorDB/type';
-import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import type { EmbeddingModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import { serviceEnv } from '@fastgpt/service/env';
 
 const mockGetVectors = vi.hoisted(() => vi.fn());
@@ -38,13 +40,13 @@ const mockCreateS3DownloadAccessUrls = vi.hoisted(() =>
 
 const originalMultipleDataToBase64 = serviceEnv.MULTIPLE_DATA_TO_BASE64;
 
-const embeddingModel = {
+const embeddingModel: EmbeddingModelDataType = {
   modelId: '507f1f77bcf86cd799439017',
   provider: 'openai',
   model: 'mock-embedding-model',
   name: 'Mock Embedding Model',
   type: ModelTypeEnum.embedding,
-  scope: 'system' as const,
+  scope: ModelScopeEnum.system,
   isActive: true,
   config: {
     defaultToken: 100,
@@ -169,6 +171,7 @@ afterEach(() => {
 describe('default recall dataset search', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    global.systemInstanceConfig!.vector = getDomainDefaultConfig('vector');
     // 重置 getFullTextStore 可切换 mock(ISSUE-015):默认走 mongo 委托,避免 milvus 用例污染
     mockUseMilvusStore.value = false;
     mockFullTextStoreSearch.mockReset();
@@ -202,6 +205,38 @@ describe('default recall dataset search', () => {
       lean: vi.fn().mockResolvedValue([])
     });
     mockMongoDatasetDataTextAggregate.mockResolvedValue([]);
+  });
+
+  it.each([
+    { configured: undefined, expected: 200 },
+    { configured: 400, expected: 400 }
+  ])('uses one HNSW search width for all recall tasks: %j', async ({ configured, expected }) => {
+    if (configured !== undefined) global.systemInstanceConfig!.vector.hnswEfSearch = configured;
+    mockRecallFromVectorStore.mockImplementation(async () => {
+      // 首个 query 执行后配置变化，本轮其他 query 仍需使用入口读取的同一份参数。
+      global.systemInstanceConfig!.vector.hnswEfSearch = 800;
+      return { results: [] };
+    });
+
+    await searchDatasetData({
+      histories: [],
+      teamId: 'team-1',
+      model: embeddingModel,
+      datasetIds: ['dataset-1'],
+      reRankQuery: 'first query',
+      textQueries: ['first query', 'second query'],
+      imageQueries: [],
+      limit: 5000,
+      searchMode: DatasetSearchModeEnum.embedding,
+      embeddingWeight: 0.5,
+      usingReRank: false
+    });
+
+    expect(mockRecallFromVectorStore).toHaveBeenCalledTimes(2);
+    expect(mockRecallFromVectorStore.mock.calls.map(([props]) => props.hnswEfSearch)).toEqual([
+      expected,
+      expected
+    ]);
   });
 
   it('should ignore failed image caption and continue dataset search', async () => {

@@ -5,7 +5,6 @@ import { type RowDataPacket } from 'mysql2/promise';
 import type { VectorControllerType } from '../type';
 import dayjs from 'dayjs';
 import { getLogger, LogCategories } from '../../logger';
-import { logInstanceConfigRead } from '../../system/migrationCoverageLog';
 
 const logger = getLogger(LogCategories.INFRA.VECTOR);
 
@@ -115,8 +114,15 @@ export class ObVectorCtrl implements VectorControllerType {
     });
   };
   embRecall: VectorControllerType['embRecall'] = async (props) => {
-    const { teamId, datasetIds, vector, limit, forbidCollectionIdList, filterCollectionIdList } =
-      props;
+    const {
+      teamId,
+      datasetIds,
+      vector,
+      limit,
+      hnswEfSearch,
+      forbidCollectionIdList,
+      filterCollectionIdList
+    } = props;
 
     // Get forbid collection
     const formatForbidCollectionIdList = (() => {
@@ -147,12 +153,6 @@ export class ObVectorCtrl implements VectorControllerType {
       return { results: [] };
     }
 
-    const hnswEfSearch = global.systemEnv?.hnswEfSearch || 200;
-    logInstanceConfigRead({
-      callsite: 'runtime.common.vectorDB.oceanbase.search',
-      source: 'bridged-system-env',
-      fields: [{ path: 'vector.hnswEfSearch', value: hnswEfSearch }]
-    });
     const rows = await this.obClient
       .query<
         ({

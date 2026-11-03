@@ -302,7 +302,7 @@ export class MilvusCtrl implements VectorControllerType {
         anns_field: 'vector',
         limit,
         // Milvus 的 HNSW 搜索宽度不能小于本次返回数量。
-        params: { ef: Math.max(limit, global.systemEnv?.hnswEfSearch || 200) },
+        params: { ef: Math.max(limit, props.hnswEfSearch) },
         expr: filterStr,
         // SDK 不自动回填主键:search 结果只含 output_fields 指定的字段,id 需显式列出
         output_fields: ['id', 'collectionId']

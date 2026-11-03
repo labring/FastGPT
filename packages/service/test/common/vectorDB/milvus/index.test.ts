@@ -380,20 +380,21 @@ describe('MilvusCtrl', () => {
   // 被测函数: MilvusCtrl.embRecall  等级: 3-High
   // (正常场景) 期望: SDK 2.6 的 client.search 使用 data: [vector](非 vector 字段)
   it.each([
-    { configured: undefined, limit: 10, expected: 200 },
+    { configured: 200, limit: 10, expected: 200 },
     { configured: 100, limit: 10, expected: 100 },
     { configured: 400, limit: 10, expected: 400 },
     { configured: 100, limit: 300, expected: 300 }
   ])(
     'TC-8.6 embRecall uses SDK 2.6 data and HNSW search parameters: %j',
     async ({ configured, limit, expected }) => {
-      if (configured !== undefined) global.systemEnv.hnswEfSearch = configured;
+      global.systemEnv.hnswEfSearch = 9999;
       const ctrl = new MilvusCtrl();
       await ctrl.embRecall({
         teamId: 't',
         datasetIds: ['d'],
         vector: [0.1, 0.2],
         limit,
+        hnswEfSearch: configured,
         forbidCollectionIdList: []
       });
       const arg = mockSearch.mock.calls[0][0];
