@@ -60,6 +60,8 @@ const DatasetCollectionSchema = new Schema({
   // local file collection
   // Support both GridFS ObjectId (string) and S3 key (string)
   fileId: String,
+  // 直接写入的正文图片独立归集合管理；重训更换 _id 时沿用此目录。
+  chunkImagePrefixId: String,
   // web link collection
   rawLink: String,
   // Api collection

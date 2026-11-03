@@ -60,18 +60,11 @@ export async function clearExpiredMinioFiles() {
             bucketName: file.bucketName,
             key: file.minioKey
           });
-          if (!hasMultipartMarker) {
-            await MongoS3TTL.deleteOne({ minioKey: file.minioKey, bucketName: file.bucketName });
-            logger.info('Removed expired S3 TTL without bucket', {
-              key: file.minioKey,
-              bucketName: file.bucketName
-            });
-          } else {
-            logger.info('Deferred expired Multipart cleanup because bucket is unavailable', {
-              key: file.minioKey,
-              bucketName: file.bucketName
-            });
-          }
+          // 存储尚未初始化时保留记录，不能把未成功投递的临时对象当作已回收。
+          logger.info('Deferred expired S3 cleanup because bucket is unavailable', {
+            key: file.minioKey,
+            bucketName: file.bucketName
+          });
         }
       } catch (error) {
         fail++;

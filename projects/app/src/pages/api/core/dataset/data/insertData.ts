@@ -23,6 +23,7 @@ import { getCollectionWithDataset } from '@fastgpt/service/core/dataset/controll
 import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
 import { checkDatasetIndexLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { addAuditLog, getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
+import { normalizeDatasetDataImages } from '@fastgpt/service/core/dataset/data/inlineImages/service';
 
 async function handler(req: ApiRequestProps): Promise<InsertDataResponse> {
   const { collectionId, q, a, indexes, metadata } = parseApiInput({
@@ -49,8 +50,14 @@ async function handler(req: ApiRequestProps): Promise<InsertDataResponse> {
   ]);
   const datasetId = dataset._id;
 
-  const formatQ = simpleText(q);
-  const formatA = simpleText(a);
+  const normalized = await normalizeDatasetDataImages({
+    teamId: String(teamId),
+    datasetId: String(datasetId),
+    collectionId,
+    data: [{ q: simpleText(q), a: simpleText(a) }]
+  });
+  const formatQ = normalized.data[0].q;
+  const formatA = normalized.data[0].a;
   const formatIndexes = indexes?.map((item) => ({
     ...item,
     text: simpleText(item.text)
@@ -83,6 +90,7 @@ async function handler(req: ApiRequestProps): Promise<InsertDataResponse> {
       imageIndex: !!imageIndex,
       indexes: formatIndexes,
       metadata,
+      ...(normalized.imageUploadKeys.length > 0 && { imageUploadKeys: normalized.imageUploadKeys }),
       session
     })
   );

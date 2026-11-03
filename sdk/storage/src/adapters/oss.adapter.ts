@@ -1,4 +1,6 @@
 import OSS from 'ali-oss';
+import { Agent as HttpAgent } from 'node:http';
+import { Agent as HttpsAgent } from 'node:https';
 import type { IOssStorageOptions, IStorage } from '../interface';
 import type * as Storage from '../types';
 import { Readable } from 'node:stream';
@@ -31,7 +33,13 @@ export class OssStorageAdapter implements IStorage {
       throw new Error('Invalid storage vendor: expected "oss"');
     }
 
-    this.client = new OSS({
+    this.client = this.createClient();
+  }
+
+  /** 有界单次上传使用独立连接池；到期销毁真实连接，不影响同一适配器的其他请求。 */
+  private createClient(transport?: { agent: HttpAgent; httpsAgent: HttpsAgent }) {
+    const options = this.options;
+    return new OSS({
       accessKeyId: options.credentials.accessKeyId,
       accessKeySecret: options.credentials.secretAccessKey,
       region: options.region,
@@ -42,7 +50,8 @@ export class OssStorageAdapter implements IStorage {
       secure: options.secure,
 
       // @ts-expect-error ali-oss SDK 类型未定义但存在此属性
-      enableProxy: options.proxy ? true : false
+      enableProxy: options.proxy ? true : false,
+      ...transport
     });
   }
 
@@ -119,6 +128,7 @@ export class OssStorageAdapter implements IStorage {
     };
   }
 
+  /** 有界上传使用独立连接池实现总截止时间，普通上传继续复用原客户端。 */
   async uploadObject(params: Storage.UploadObjectParams): Promise<Storage.UploadObjectResult> {
     const { key, body, contentType, contentLength, contentDisposition, metadata } = params;
     assertStorageObjectKey(key);
@@ -141,11 +151,32 @@ export class OssStorageAdapter implements IStorage {
       }
     }
 
-    await this.client.put(key, uploadBody, {
-      headers,
-      mime: contentType,
-      meta
-    });
+    const transport =
+      params.timeoutMs === undefined
+        ? undefined
+        : {
+            agent: new HttpAgent(),
+            httpsAgent: new HttpsAgent()
+          };
+    const client = transport ? this.createClient(transport) : this.client;
+    const closeTransport = () => {
+      transport?.agent.destroy();
+      transport?.httpsAgent.destroy();
+    };
+    const timer =
+      params.timeoutMs === undefined ? undefined : setTimeout(closeTransport, params.timeoutMs);
+    timer?.unref();
+    try {
+      await client.put(key, uploadBody, {
+        ...(params.timeoutMs !== undefined && { timeout: params.timeoutMs }),
+        headers,
+        mime: contentType,
+        meta
+      });
+    } finally {
+      if (timer) clearTimeout(timer);
+      closeTransport();
+    }
 
     return {
       key,

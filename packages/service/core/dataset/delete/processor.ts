@@ -1,6 +1,10 @@
 import type { Processor } from '@fastgpt/dal/redis/bullmq';
 import { addDatasetDeleteJob, type DatasetDeleteJobData } from './index';
-import { delDatasetRelevantData, findDatasetAndAllChildren } from '../controller';
+import {
+  delDatasetRelevantData,
+  findDatasetAndAllChildren,
+  dispatchDatasetStorageCleanup
+} from '../controller';
 import { MongoDatasetCollectionTags } from '../tag/schema';
 import { MongoDatasetCollectionTagsV2 } from '../tag/schemaV2';
 import { removeDatasetSyncJobScheduler } from '../datasetSync';
@@ -103,29 +107,20 @@ const deleteDatasets = async ({
     await removeImageByPath(dataset.avatar);
   }
 
-  // delete all dataset.data and pg data
-  await mongoSessionRun(async (session) => {
-    // delete dataset data
-    await delDatasetRelevantData({
-      datasets,
-      session
-    });
+  const cleanupJobs = await mongoSessionRun((session) =>
+    delDatasetRelevantData({ datasets, session, deleteDataset: true })
+  );
+  // 队列失败时保留已软删除的库文档；重试仍能构造总目录，无需逐对象清理记录。
+  await dispatchDatasetStorageCleanup(cleanupJobs);
 
-    // 权限与知识库本体同步删除，避免留下无法回收的孤立权限记录。
+  await mongoSessionRun(async (session) => {
     await resourcePermissionRepo.deleteByResources({
       teamId,
       resourceType: PerResourceTypeEnum.dataset,
       resourceIds: datasetIds,
       session
     });
-
-    await MongoDataset.deleteMany(
-      {
-        teamId,
-        _id: { $in: datasetIds }
-      },
-      { session }
-    );
+    await MongoDataset.deleteMany({ teamId, _id: { $in: datasetIds } }, { session });
   });
 };
 

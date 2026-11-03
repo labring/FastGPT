@@ -34,6 +34,8 @@ import { serviceEnv } from '@fastgpt/service/env';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { refreshDatasetDataVectorCreateTime } from '@fastgpt/service/common/vectorDB/controller';
 import { assertDatasetDataWritable } from '@fastgpt/service/core/dataset/data/utils';
+import { persistChunkImageReferences } from '@fastgpt/service/core/dataset/data/inlineImages/entity';
+import { parseChunkImageKey } from '@fastgpt/service/core/dataset/data/inlineImages/utils';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.EMBEDDING);
 
@@ -52,6 +54,8 @@ type DatasetDataWriteOptions =
   | { session?: never; commit: CommitDatasetData };
 
 type UpdateDatasetDataByIndexesProps = Omit<UpdateDatasetDataPropsType, 'indexes' | 'q'> & {
+  /** 仅 API 转存阶段传入，业务数据与取消临时清理共享实际提交事务。 */
+  imageUploadKeys?: string[];
   /** 替换索引必须等待整个事务提交，不能传入尚未提交的外部 session。 */
   commit?: CommitDatasetData;
   q?: string;
@@ -187,6 +191,7 @@ export class DatasetDataOperation {
     imageIndex,
     imageDescMap,
     metadata,
+    imageUploadKeys,
     session,
     commit
   }: CreateDatasetDataPropsType &
@@ -195,6 +200,7 @@ export class DatasetDataOperation {
       indexSize?: number;
       imageIndex?: boolean;
       imageDescMap?: Record<string, string>;
+      imageUploadKeys?: string[];
     }) {
     // 纯图片数据允许没有正文；indexQ 保持为空，避免生成普通 default 文本向量索引。
     const dataQ = q || '';
@@ -284,6 +290,14 @@ export class DatasetDataOperation {
             mongoSession
           );
           await assertSynonymContextCurrent();
+          await persistChunkImageReferences({
+            teamId: String(teamId),
+            datasetId: String(datasetId),
+            collectionId: String(collectionId),
+            data: [{ q: dataQ, a, imageId, indexes: results }],
+            imageUploadKeys,
+            session: mongoSession
+          });
 
           if (
             isS3ObjectKey(imageId, 'dataset') &&
@@ -333,6 +347,7 @@ export class DatasetDataOperation {
     metadata,
     forceRebuild = false,
     imageDescMap,
+    imageUploadKeys,
     commit
   }: UpdateDatasetDataByIndexesProps) {
     const embModel = model;
@@ -448,7 +463,10 @@ export class DatasetDataOperation {
             },
             { session: mongoSession }
           );
-          if ((synonymContext || isFailed) && updateResult.modifiedCount !== 1) {
+          if (
+            (synonymContext || isFailed || imageUploadKeys?.length) &&
+            updateResult.modifiedCount !== 1
+          ) {
             throw new Error('数据已变化，请重试索引更新');
           }
 
@@ -468,6 +486,15 @@ export class DatasetDataOperation {
             mongoSession
           );
 
+          await persistChunkImageReferences({
+            teamId: String(mongoData.teamId),
+            datasetId: String(mongoData.datasetId),
+            collectionId: String(mongoData.collectionId),
+            data: [{ q: nextQ, a: nextA, imageId: nextImageId, indexes: newIndexes }],
+            imageUploadKeys,
+            session: mongoSession
+          });
+
           if (!commit && isFailed) {
             await MongoDatasetTraining.deleteMany(
               {
@@ -481,7 +508,7 @@ export class DatasetDataOperation {
         }
       });
     } catch (error) {
-      if (synonymContext || commit || isFailed) {
+      if (newVectorIdList.length > 0) {
         await this.indexOperation
           .deleteVectors({ teamId: mongoData.teamId, idList: newVectorIdList })
           .catch(() => {});
@@ -663,7 +690,8 @@ export class DatasetDataOperation {
     model,
     indexSize = 512,
     indexPrefix,
-    imageIndex
+    imageIndex,
+    imageUploadKeys
   }: UpdateDatasetDataSystemIndexesProps) {
     const mongoData = await MongoDatasetData.findById(dataId);
     if (!mongoData) return Promise.reject('Data not found');
@@ -795,7 +823,10 @@ export class DatasetDataOperation {
           ],
           { session }
         );
-        if ((synonymContext || isFailed) && updateResult.modifiedCount !== 1) {
+        if (
+          (synonymContext || isFailed || imageUploadKeys?.length) &&
+          updateResult.modifiedCount !== 1
+        ) {
           throw new Error('数据已变化，请重试索引更新');
         }
 
@@ -815,6 +846,29 @@ export class DatasetDataOperation {
           session
         );
 
+        await persistChunkImageReferences({
+          teamId: String(mongoData.teamId),
+          datasetId: String(mongoData.datasetId),
+          collectionId: String(mongoData.collectionId),
+          data: [
+            {
+              q: nextQ,
+              a: nextA,
+              imageId: nextImageId,
+              indexes: isFailed
+                ? nextIndexes
+                : [
+                    ...mongoData.indexes.filter(
+                      (index) => !isDatasetDataSystemIndexType(index.type)
+                    ),
+                    ...nextIndexes
+                  ]
+            }
+          ],
+          imageUploadKeys,
+          session
+        });
+
         if (isFailed) {
           await MongoDatasetTraining.deleteMany(
             {
@@ -827,7 +881,7 @@ export class DatasetDataOperation {
         }
       });
     } catch (error) {
-      if (synonymContext || isFailed) {
+      if (newVectorIdList.length > 0) {
         await this.indexOperation
           .deleteVectors({ teamId: mongoData.teamId, idList: newVectorIdList })
           .catch(() => {});
@@ -867,6 +921,7 @@ export class DatasetDataOperation {
         // 仅删除归属于该数据块 dataset 的 key，避免脏数据里的外库 key 触发跨库物理删除。
         if (
           data.imageId &&
+          !parseChunkImageKey(data.imageId) &&
           isS3ObjectKey(data.imageId, 'dataset') &&
           isAuthorizedDatasetFileS3Key({ key: data.imageId, datasetId: data.datasetId })
         ) {
@@ -900,6 +955,7 @@ export const createDatasetData = async (
       indexSize?: number;
       imageIndex?: boolean;
       imageDescMap?: Record<string, string>;
+      imageUploadKeys?: string[];
     }
 ) => {
   return new DatasetDataOperation(props.embeddingModel).create(props);

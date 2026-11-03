@@ -1,4 +1,5 @@
 import { MongoDatasetCollection } from './schema';
+import { readChunkImagePrefixIdForRebuild } from './entity';
 import type { ClientSession } from '../../../common/mongo';
 import { MongoDatasetCollectionTags } from '../tag/schema';
 import { MongoDatasetCollectionTagsV2 } from '../tag/schemaV2';
@@ -372,6 +373,12 @@ export const syncCollection = async (collection: CollectionWithDatasetType) => {
   const hashRawText = hashStr(rawText);
   if (collection.hashRawText && hashRawText !== collection.hashRawText) {
     await mongoSessionRun(async (session) => {
+      const chunkImagePrefixId = await readChunkImagePrefixIdForRebuild({
+        teamId: String(collection.teamId),
+        datasetId: String(collection.datasetId),
+        collectionId: String(collection._id),
+        session
+      });
       // 同步同样以新 _id 重建 collection：删除前留存权限快照，创建后写回，避免协作者配置丢失。
       const collaborators = await getCollectionCollaborators({
         teamId: collection.teamId,
@@ -394,6 +401,7 @@ export const syncCollection = async (collection: CollectionWithDatasetType) => {
         rawText: rawText,
         createCollectionParams: {
           ...collection,
+          chunkImagePrefixId,
           name: title || collection.name,
           updateTime: new Date(),
           tags: await collectionTagsToTagLabel({

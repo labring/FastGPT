@@ -69,6 +69,8 @@ export type EnsureBucketResult = {
  * 上传对象入参。
  */
 export type UploadObjectParams = {
+  /** 可选上传截止时间（毫秒）；有界上传使用单次 PUT，内容须小于厂商单次 PUT 上限。 */
+  timeoutMs?: number;
   /** 对象 key。 */
   key: StorageObjectKey;
   /** 上传内容。 */

@@ -177,7 +177,8 @@ export const UploadImage2S3BucketParamsSchema = z
     uploadKey: StorageObjectKeySchema,
     mimetype: z.string().nonempty(),
     filename: z.string().nonempty(),
-    expiredTime: z.coerce.date().optional()
+    expiredTime: z.coerce.date().optional(),
+    uploadTimeoutMs: z.number().int().positive().optional()
   })
   .refine((value) => value.base64Img || value.buffer, {
     message: 'base64Img or buffer is required'

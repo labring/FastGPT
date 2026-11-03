@@ -25,6 +25,7 @@ import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { isAuthorizedDatasetFileS3Key } from '@fastgpt/service/common/s3/sources/dataset/key';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { createTrainingUsage } from '@fastgpt/service/support/wallet/usage/controller';
+import { normalizeDatasetDataImages } from '@fastgpt/service/core/dataset/data/inlineImages/service';
 
 async function handler(req: ApiRequestProps): Promise<PushDataResponseType> {
   const body = parseApiInput({ req, bodySchema: PushDataBodySchema }).body;
@@ -82,6 +83,14 @@ async function handler(req: ApiRequestProps): Promise<PushDataResponseType> {
     return Promise.reject(CommonErrEnum.unAuthFileKey);
   }
 
+  // 外部上传不进入可重试事务，替换后正文才参与长度过滤和实际训练。
+  const normalized = await normalizeDatasetDataImages({
+    teamId: String(teamId),
+    datasetId: String(collection.datasetId),
+    collectionId,
+    data
+  });
+
   return mongoSessionRun(async (session) => {
     const traingUsageId = await (async () => {
       if (billId) return billId;
@@ -101,6 +110,10 @@ async function handler(req: ApiRequestProps): Promise<PushDataResponseType> {
     if (mode === TrainingModeEnum.qa) {
       return pushDataListToTrainingQueue({
         ...body,
+        data: normalized.data,
+        ...(normalized.imageUploadKeys.length > 0 && {
+          imageUploadKeys: normalized.imageUploadKeys
+        }),
         session,
         billId: traingUsageId,
         mode,
@@ -115,6 +128,8 @@ async function handler(req: ApiRequestProps): Promise<PushDataResponseType> {
 
     return preCreateDatasetDataAndPushToTrainingQueue({
       ...body,
+      data: normalized.data,
+      ...(normalized.imageUploadKeys.length > 0 && { imageUploadKeys: normalized.imageUploadKeys }),
       session,
       billId: traingUsageId,
       mode, // Use collection's training mode

@@ -16,6 +16,7 @@ import {
 
 import { getTrainingDataIndexStatuses, getTrainingTaskReadyUpdate } from './utils';
 import { BLOCKED_LOCK_TIME, finalErrorTrainingMatch } from './query';
+import { persistChunkImageReferences } from '../data/inlineImages/entity';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.TRAINING);
 
@@ -165,6 +166,15 @@ export const createTrainingTaskLease = (task: TrainingLeaseTask) => {
     });
   const transition = async (next: TrainingStageResult) =>
     commit(async (session) => {
+      const current = await MongoDatasetTraining.findOne(getFilter()).session(session).lean();
+      if (!current) throw new TrainingLeaseLostError();
+      await persistChunkImageReferences({
+        teamId: String(task.teamId),
+        datasetId: String(task.datasetId),
+        collectionId: String(task.collectionId),
+        data: [{ ...current, ...next }],
+        session
+      });
       const readyUpdate = getTrainingTaskReadyUpdate();
       const result = await MongoDatasetTraining.updateOne(
         getFilter(),

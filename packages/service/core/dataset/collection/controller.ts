@@ -40,9 +40,10 @@ import type {
   ApiCreateDatasetCollectionParams,
   CreateCollectionWithResultResponseType
 } from '@fastgpt/global/openapi/core/dataset/collection/createApi';
-import { getS3DatasetSource } from '../../../common/s3/sources/dataset';
 import { isAuthorizedDatasetFileS3Key } from '../../../common/s3/sources/dataset/key';
 import { isS3ObjectKey, removeS3TTL } from '../../../common/s3/utils';
+import { getChunkImageCleanupJobs, parseChunkImageKey } from '../data/inlineImages/utils';
+import { S3Buckets } from '../../../common/s3/config/constants';
 import {
   createCollectionPermissionsBatch,
   deleteCollectionPermissions,
@@ -687,6 +688,8 @@ export type CreateOneCollectionParams = ApiCreateDatasetCollectionParams & {
   name: string;
   type: DatasetCollectionTypeEnum;
   fileId?: string;
+  /** 仅可信重训/同步路径继承，外部入参不开放。 */
+  chunkImagePrefixId?: string;
   rawLink?: string;
   externalFileId?: string;
   externalFileUrl?: string;
@@ -717,6 +720,9 @@ export async function createCollections({
   session?: ClientSession;
 }) {
   if (collections.length === 0) return [];
+
+  if (collections.some(({ fileId }) => fileId && parseChunkImageKey(fileId)))
+    throw new UserError('Chunk images cannot be imported as source files');
 
   const fn = async (s: ClientSession) => {
     // 权限复用必须读取本事务的真实来源；不能把请求或规划时的 ACL 快照直接写给新集合。
@@ -1051,7 +1057,7 @@ export const delCollectionRelatedSource = async ({
 /**
  * 删除集合及关联数据：Mongo 分块、任务、全文和 ACL 必须随调用方事务一起提交或回滚。
  * 同一 session 的数据库操作顺序执行；事务内失败交给外层重试整段回调，不能在已中止事务中局部重试。
- * 向量与对象存储仍沿用现有外部清理行为，不属于 Mongo 事务。
+ * S3 任务范围随结果返回，由最外层事务提交后派发；向量删除沿用既有行为。
  */
 export async function delCollection({
   collections,
@@ -1064,13 +1070,12 @@ export async function delCollection({
   delImg: boolean;
   delFile: boolean;
 }) {
-  if (collections.length === 0) return;
+  if (collections.length === 0) return [];
 
   const teamId = collections[0].teamId;
 
   if (!teamId) return Promise.reject('teamId is not exist');
 
-  const s3DatasetSource = getS3DatasetSource();
   const datasetIds = Array.from(new Set(collections.map((item) => String(item.datasetId))));
   const collectionIds = collections.map((item) => String(item._id));
 
@@ -1084,12 +1089,15 @@ export async function delCollection({
       collectionId: { $in: imageCollectionIds }
     },
     { imageId: 1, datasetId: 1 }
-  ).lean();
+  )
+    .session(session)
+    .lean();
   // 只删除归属于该图片集合 dataset 的 key，避免脏数据里的外库 key 被跨库物理删除。
   const imageIds = imageDatas
     .filter(
       (item) =>
         !!item.imageId &&
+        !parseChunkImageKey(item.imageId) &&
         isAuthorizedDatasetFileS3Key({
           key: item.imageId,
           datasetId: String(item.datasetId)
@@ -1098,6 +1106,32 @@ export async function delCollection({
     .map((item) => item.imageId!);
 
   const remove = async () => {
+    // 从事务内真实集合读取范围，不能依赖调用方投影是否携带新字段。
+    const imageScopes = delImg
+      ? await MongoDatasetCollection.find({
+          teamId,
+          _id: { $in: collectionIds },
+          chunkImagePrefixId: { $exists: true }
+        })
+          .select('datasetId chunkImagePrefixId')
+          .session(session)
+          .lean()
+      : [];
+    const fileKeys = delFile
+      ? collections
+          .filter(
+            (item) =>
+              !!item.fileId &&
+              !parseChunkImageKey(item.fileId) &&
+              isAuthorizedDatasetFileS3Key({ key: item.fileId, datasetId: String(item.datasetId) })
+          )
+          .map((item) => item.fileId!)
+      : [];
+    const cleanupJobs = [
+      ...getChunkImageCleanupJobs(imageScopes),
+      ...(fileKeys.length ? [{ bucketName: S3Buckets.private, keys: fileKeys }] : []),
+      ...(delImg && imageIds.length ? [{ bucketName: S3Buckets.private, keys: imageIds }] : [])
+    ];
     // 同一 session 不并行发起 Mongo 写入；重建失败时旧分块和旧任务必须随集合一起恢复。
     await MongoDatasetTraining.deleteMany(
       { teamId, datasetId: { $in: datasetIds }, collectionId: { $in: collectionIds } },
@@ -1121,24 +1155,6 @@ export async function delCollection({
             })
           ]
         : []),
-      // Delete files if needed
-      ...(delFile
-        ? [
-            getS3DatasetSource().deleteDatasetFilesByKeys(
-              // 同样只删除归属于各自 dataset 的 fileId，避免误删外库文件。
-              collections
-                .filter(
-                  (item) =>
-                    !!item.fileId &&
-                    isAuthorizedDatasetFileS3Key({
-                      key: item.fileId,
-                      datasetId: String(item.datasetId)
-                    })
-                )
-                .map((item) => item.fileId!)
-            )
-          ]
-        : []),
       // Delete vector data
       deleteDatasetDataVector({ teamId, datasetIds, collectionIds })
     ]);
@@ -1155,12 +1171,11 @@ export async function delCollection({
     // delete collection permission snapshots (same transaction)
     await deleteCollectionPermissions({ teamId, collectionIds, session });
 
-    // delete s3 images which are uploaded by users
-    await s3DatasetSource.deleteDatasetFilesByKeys(imageIds);
+    return cleanupJobs;
   };
 
-  if (session?.inTransaction()) await remove();
-  else await retryFn(remove);
+  if (session?.inTransaction()) return remove();
+  return retryFn(remove);
 }
 
 /** 查找 collection 及其全部子节点（parentId 子树）；返回 [根, ...子孙]。 */

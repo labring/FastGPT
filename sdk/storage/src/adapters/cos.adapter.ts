@@ -154,6 +154,7 @@ export class CosStorageAdapter implements IStorage {
     };
   }
 
+  /** 上传对象；配置截止时间时取消本次 COS task，不影响其他上传任务。 */
   async uploadObject(params: Storage.UploadObjectParams): Promise<Storage.UploadObjectResult> {
     const { key, body, contentType, contentLength, contentDisposition, metadata } = params;
     assertStorageObjectKey(key);
@@ -169,6 +170,18 @@ export class CosStorageAdapter implements IStorage {
     }
 
     await new Promise<COS.PutObjectResult>((resolve, reject) => {
+      let taskId: string | undefined;
+      let deadlineExceeded = false;
+      // COS 的取消以 task 为单位；不能仅让业务 Promise 超时而保留后台重试。
+      const timer =
+        params.timeoutMs === undefined
+          ? undefined
+          : setTimeout(() => {
+              deadlineExceeded = true;
+              if (taskId) this.client.cancelTask(taskId);
+              reject(new Error('Storage upload deadline exceeded'));
+            }, params.timeoutMs);
+      timer?.unref();
       this.client.putObject(
         {
           Bucket: this.options.bucket,
@@ -177,9 +190,16 @@ export class CosStorageAdapter implements IStorage {
           Body: body,
           ContentType: contentType,
           ContentLength: contentLength,
-          Headers: Object.keys(headers).length ? headers : undefined
+          Headers: Object.keys(headers).length ? headers : undefined,
+          ...(params.timeoutMs !== undefined && {
+            onTaskReady: (id: string) => {
+              taskId = id;
+              if (deadlineExceeded) this.client.cancelTask(id);
+            }
+          })
         },
         (err, data) => {
+          if (timer) clearTimeout(timer);
           if (err) {
             return reject(this.handleCosError(err));
           }

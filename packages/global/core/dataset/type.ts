@@ -257,6 +257,10 @@ export const DatasetCollectionSchema = ChunkSettingsSchema.omit({
     .meta({ description: '继承权限：true=快照合并父级，false=独立配置' }),
 
   fileId: z.string().optional().meta({ description: '文件 ID' }),
+  chunkImagePrefixId: z.string().optional().meta({
+    description: '直接写入分块正文图片的稳定目录标识，由服务端维护，重训时继承',
+    example: '68ad85a7463006c963799a06'
+  }),
   rawLink: z.string().optional().meta({ description: '原始链接' }),
   externalFileId: z.string().optional().meta({ description: '外部文件 ID' }),
   apiFileId: z.string().optional().meta({ description: 'API 文件 ID' }),

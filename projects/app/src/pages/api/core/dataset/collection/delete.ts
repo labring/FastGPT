@@ -10,6 +10,7 @@ import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { dispatchDatasetStorageCleanup } from '@fastgpt/service/core/dataset/controller';
 import {
   DeleteCollectionBodySchema,
   DeleteCollectionQuerySchema
@@ -60,7 +61,7 @@ async function handler(req: ApiRequestProps) {
   });
 
   // delete
-  await mongoSessionRun((session) =>
+  const cleanupJobs = await mongoSessionRun((session) =>
     delCollection({
       collections,
       delImg: true,
@@ -68,6 +69,7 @@ async function handler(req: ApiRequestProps) {
       session
     })
   );
+  await dispatchDatasetStorageCleanup(cleanupJobs);
 
   (async () => {
     addAuditLog({

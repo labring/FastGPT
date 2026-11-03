@@ -1,3 +1,4 @@
+import { dispatchDatasetStorageCleanup } from '@fastgpt/service/core/dataset/controller';
 import { NextAPI } from '@/service/middleware/entry';
 import { DatasetAuditEventEnum } from '@fastgpt/global/core/dataset/audit/constants/event';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
@@ -179,6 +180,7 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
   });
 
   const onUpdate = async (session: ClientSession) => {
+    let storageCleanup: Awaited<ReturnType<typeof delDatasetRelevantData>> | undefined;
     // Website dataset update chunkSettings, need to clean up dataset
     if (
       dataset.type === DatasetTypeEnum.websiteDataset &&
@@ -209,7 +211,7 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
         }
       )
     ) {
-      await delDatasetRelevantData({ datasets: [dataset], session });
+      storageCleanup = await delDatasetRelevantData({ datasets: [dataset], session });
     }
 
     const apiDatasetParams = apiDatasetServerPatch?.updateFields ?? {};
@@ -242,9 +244,11 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
     });
 
     await getS3AvatarSource().refreshAvatar(avatar, dataset.avatar, session);
+    return storageCleanup;
   };
 
-  await mongoSessionRun((session) => onUpdate(session));
+  const storageCleanup = await mongoSessionRun((session) => onUpdate(session));
+  await dispatchDatasetStorageCleanup(storageCleanup);
 
   // 事务提交成功后才写审计：失败回滚的更新不应该出现在操作日志里。
   // 每个实际变化的配置项写一条日志，保留单项追溯能力，而不是把多个字段拼成一行。

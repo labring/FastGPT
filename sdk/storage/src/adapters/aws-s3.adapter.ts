@@ -134,11 +134,30 @@ export class AwsS3StorageAdapter implements IStorage {
     };
   }
 
+  /** 有界上传采用单次 PUT 并取消实际 HTTP；未配置截止时间时保留既有自动分片行为。 */
   async uploadObject(params: Storage.UploadObjectParams): Promise<Storage.UploadObjectResult> {
     const { key, body, contentType, contentLength, contentDisposition, metadata } = params;
     assertStorageObjectKey(key);
 
     const meta = toAwsMetadata(metadata);
+
+    // lib-storage 的 abort 不会把信号传给所有 HTTP 请求；有界图片上传直接 PUT，
+    // 让请求处理器真正取消连接与 SDK 重试，避免临时对象清理后再迟到写入。
+    if (params.timeoutMs !== undefined) {
+      await this.client.send(
+        new AWS.PutObjectCommand({
+          Bucket: this.options.bucket,
+          Key: key,
+          Body: body,
+          ContentType: contentType,
+          ContentLength: contentLength,
+          ContentDisposition: contentDisposition,
+          Metadata: meta
+        }),
+        { abortSignal: AbortSignal.timeout(params.timeoutMs) }
+      );
+      return { key, bucket: this.options.bucket };
+    }
 
     const upload = new Upload({
       client: this.client,
