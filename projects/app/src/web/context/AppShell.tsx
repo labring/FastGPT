@@ -12,7 +12,7 @@ import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 import SystemStoreContextProvider from '@fastgpt/web/context/useSystem';
 import { useRouter } from 'next/router';
 import { errorLogger } from '@/web/common/utils/errorLogger';
-import { appClientEnv } from '@/web/common/system/env';
+import { getDomainDefaultConfig } from '@fastgpt/global/common/system/config/schema';
 import ClientI18nBoundary from '@fastgpt/web/i18n/ClientI18nBoundary';
 import ClientI18nGate from '@fastgpt/web/i18n/ClientI18nGate';
 import { LANG_KEY } from '@fastgpt/web/i18n/utils';
@@ -54,9 +54,9 @@ const AppContent = ({ Component, pageProps, renderPage }: AppPropsWithLayout) =>
   const shouldUseLayout = !router?.pathname || !routesWithoutLayout.includes(router.pathname);
   const headDesc =
     feConfigs?.systemDescription ||
-    appClientEnv.systemDescription ||
+    getDomainDefaultConfig('site').description ||
     t('common:system_intro', { title });
-  const headIcon = getWebReqUrl(feConfigs?.favicon || appClientEnv.systemFavicon);
+  const headIcon = getWebReqUrl(feConfigs?.favicon || getDomainDefaultConfig('site').favicon);
   const page = setLayout(renderPage ? renderPage() : <Component {...pageProps} />);
 
   if (openAPIReferenceRoutes.includes(router.pathname)) {

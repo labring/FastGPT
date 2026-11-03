@@ -1,6 +1,9 @@
-import { afterEach, describe, expect, it } from 'vitest';
-import { serviceEnv } from '@fastgpt/service/env';
-import { LEAF_ABSENT_SNAPSHOT } from '@test/utils/instanceConfigSnapshot';
+import {
+  getTestInstanceConfig,
+  createDefaultInstanceConfig
+} from '@test/utils/instanceConfigSnapshot';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+
 import {
   getAgentSandboxProvider,
   getAgentSandboxArchiveInactiveDays,
@@ -13,25 +16,34 @@ import {
   getAgentSandboxSuspendMinutes
 } from '@fastgpt/service/core/ai/sandbox/config';
 
-// 叶子缺省快照：读取点回落到 serviceEnv，保持既有 env 驱动的测试意图；
 // 需要验证实例配置优先的用例在用例内直接覆写快照叶子。
-(global as any).systemInstanceConfig = LEAF_ABSENT_SNAPSHOT();
+(global as any).systemInstanceConfig = createDefaultInstanceConfig();
 
 describe('agent sandbox config', () => {
-  const originalAgentSandboxStorageSize = serviceEnv.AGENT_SANDBOX_STORAGE_SIZE_GI;
-  const originalAgentSandboxSuspendMinutes = serviceEnv.AGENT_SANDBOX_SUSPEND_MINUTES;
-  const originalAgentSandboxArchiveInactiveDays = serviceEnv.AGENT_SANDBOX_ARCHIVE_INACTIVE_DAYS;
-  const originalAgentSandboxMax = serviceEnv.AGENT_SANDBOX_MAX;
-  const originalAgentSandboxMaxPerTeam = serviceEnv.AGENT_SANDBOX_MAX_PER_TEAM;
+  const originalAgentSandboxStorageSize =
+    getTestInstanceConfig().subservice.agentSandbox.common.storageSizeGi;
+  const originalAgentSandboxSuspendMinutes =
+    getTestInstanceConfig().subservice.agentSandbox.common.suspendMinutes;
+  const originalAgentSandboxArchiveInactiveDays =
+    getTestInstanceConfig().subservice.agentSandbox.common.archiveInactiveDays;
+  const originalAgentSandboxMax =
+    getTestInstanceConfig().subservice.agentSandbox.common.maxEditDebug;
+  const originalAgentSandboxMaxPerTeam =
+    getTestInstanceConfig().subservice.agentSandbox.common.maxPerTeam;
   const originalSystemEnv = global.systemEnv;
 
   afterEach(() => {
-    serviceEnv.AGENT_SANDBOX_STORAGE_SIZE_GI = originalAgentSandboxStorageSize;
-    serviceEnv.AGENT_SANDBOX_SUSPEND_MINUTES = originalAgentSandboxSuspendMinutes;
-    serviceEnv.AGENT_SANDBOX_ARCHIVE_INACTIVE_DAYS = originalAgentSandboxArchiveInactiveDays;
-    serviceEnv.AGENT_SANDBOX_MAX = originalAgentSandboxMax;
-    serviceEnv.AGENT_SANDBOX_MAX_PER_TEAM = originalAgentSandboxMaxPerTeam;
+    getTestInstanceConfig().subservice.agentSandbox.common.storageSizeGi =
+      originalAgentSandboxStorageSize;
+    getTestInstanceConfig().subservice.agentSandbox.common.suspendMinutes =
+      originalAgentSandboxSuspendMinutes;
+    getTestInstanceConfig().subservice.agentSandbox.common.archiveInactiveDays =
+      originalAgentSandboxArchiveInactiveDays;
+    getTestInstanceConfig().subservice.agentSandbox.common.maxEditDebug = originalAgentSandboxMax;
+    getTestInstanceConfig().subservice.agentSandbox.common.maxPerTeam =
+      originalAgentSandboxMaxPerTeam;
     global.systemEnv = originalSystemEnv;
+    vi.unstubAllEnvs();
   });
 
   it('derives all size limits from instance config storageSizeGi', () => {
@@ -73,14 +85,15 @@ describe('agent sandbox config', () => {
   });
 
   it('does not revive an explicit unlimited per-team quota from env', () => {
-    serviceEnv.AGENT_SANDBOX_MAX_PER_TEAM = 5;
+    vi.stubEnv('AGENT_SANDBOX_MAX_PER_TEAM', '5');
+    getTestInstanceConfig().subservice.agentSandbox.common.maxPerTeam = null;
     global.systemEnv = { agentSandboxMaxPerTeam: null };
 
     expect(getAgentSandboxMaxPerTeam()).toBeUndefined();
   });
 
-  it('prefers the instance-config provider and falls back to env only when absent', () => {
-    const snapshot = LEAF_ABSENT_SNAPSHOT() as any;
+  it('reads the provider only from instance config', () => {
+    const snapshot = createDefaultInstanceConfig() as any;
     snapshot.subservice.agentSandbox.provider = 'opensandbox';
     (global as any).systemInstanceConfig = snapshot;
 
@@ -88,9 +101,9 @@ describe('agent sandbox config', () => {
   });
 
   it('reads lifecycle thresholds from instance config before env', () => {
-    serviceEnv.AGENT_SANDBOX_SUSPEND_MINUTES = 90;
-    serviceEnv.AGENT_SANDBOX_ARCHIVE_INACTIVE_DAYS = 14;
-    const snapshot = LEAF_ABSENT_SNAPSHOT() as any;
+    getTestInstanceConfig().subservice.agentSandbox.common.suspendMinutes = 90;
+    getTestInstanceConfig().subservice.agentSandbox.common.archiveInactiveDays = 14;
+    const snapshot = createDefaultInstanceConfig() as any;
     snapshot.subservice.agentSandbox.common.suspendMinutes = 30;
     snapshot.subservice.agentSandbox.common.archiveInactiveDays = 3;
     (global as any).systemInstanceConfig = snapshot;

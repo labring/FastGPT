@@ -1,3 +1,4 @@
+import { getTestInstanceConfig } from '@test/utils/instanceConfigSnapshot';
 import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/llm/type';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -14,7 +15,6 @@ import {
   getCompletionStartHookText,
   normalizeCompletionMessages
 } from '@fastgpt/service/core/chat/completionMessage';
-import { serviceEnv } from '@fastgpt/service/env';
 
 const normalize = (
   messages: ChatCompletionMessageParam[],
@@ -64,7 +64,7 @@ describe('getCompletionStartHookText', () => {
 describe('normalizeCompletionMessages', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    serviceEnv.MULTIPLE_DATA_TO_BASE64 = false;
+    getTestInstanceConfig().feature.multipleDataToBase64 = false;
     mocks.uploadChatFile.mockResolvedValue({
       key: 'chat/app/507f1f77bcf86cd799439011/user-1/chat-1/image_123456.jpg',
       accessUrl: {
@@ -134,7 +134,7 @@ describe('normalizeCompletionMessages', () => {
   });
 
   it('uploads base64 images regardless of the model base64 setting', async () => {
-    serviceEnv.MULTIPLE_DATA_TO_BASE64 = true;
+    getTestInstanceConfig().feature.multipleDataToBase64 = true;
     const messages: ChatCompletionMessageParam[] = [
       {
         role: 'user',

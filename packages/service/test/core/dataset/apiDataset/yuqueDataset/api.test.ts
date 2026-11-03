@@ -1,7 +1,7 @@
+import { getTestInstanceConfig } from '@test/utils/instanceConfigSnapshot';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useYuqueDatasetRequest } from '@fastgpt/service/core/dataset/apiDataset/yuqueDataset/api';
 import { createProxyAxios } from '@fastgpt/service/common/api/axios';
-import { serviceEnv } from '@fastgpt/service/env';
 
 const { request } = vi.hoisted(() => ({ request: vi.fn() }));
 vi.mock('@fastgpt/service/common/api/axios', () => ({
@@ -57,7 +57,7 @@ describe('useYuqueDatasetRequest', () => {
     provider();
     expect(createProxyAxios).toHaveBeenCalledWith(
       {
-        baseURL: serviceEnv.YUQUE_DATASET_BASE_URL,
+        baseURL: getTestInstanceConfig().providers.dataSource.yuqueDatasetBaseUrl,
         timeout: 60000,
         headers: { 'X-Auth-Token': 'token' }
       },
@@ -271,7 +271,7 @@ describe('getFilePreviewUrl', () => {
   it('使用知识库与文档 slug 生成预览 URL', async () => {
     request.mockResolvedValueOnce(ok({ slug: 'repo' })).mockResolvedValueOnce(ok({ slug: 'doc' }));
     await expect(provider().getFilePreviewUrl({ apiFileId: '100-10-parent-uuid' })).resolves.toBe(
-      `${serviceEnv.YUQUE_DATASET_BASE_URL}/group/repo/doc`
+      `${getTestInstanceConfig().providers.dataSource.yuqueDatasetBaseUrl}/group/repo/doc`
     );
   });
 });

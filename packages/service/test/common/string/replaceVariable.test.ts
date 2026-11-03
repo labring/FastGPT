@@ -1,11 +1,7 @@
+import { createDefaultInstanceConfig } from '@test/utils/instanceConfigSnapshot';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { LEAF_ABSENT_SNAPSHOT } from '@test/utils/instanceConfigSnapshot';
 
-// commit 94ae033d7 起 checkStrOversize/logOversizeString 改为 `getSystemMaxStringLength()`：
-// `(getSystemInstanceConfig().resource.systemMaxStringLengthM ?? serviceEnv.SYSTEM_MAX_STRING_LENGTH_M) * SYSTEM_STRING_LENGTH_UNIT`。
-// 生产快照叶子被 schema 默认值填满，`?? serviceEnv` 兜底永不触发；本文件通过改写实例配置快照来驱动行为，
-// 预置"域对象存在、叶子字段全部缺省"的种子快照，既保证 getSystemInstanceConfig 采纳它、又不误填默认值改变上限。
-(global as any).systemInstanceConfig = LEAF_ABSENT_SNAPSHOT();
+(global as any).systemInstanceConfig = createDefaultInstanceConfig();
 
 import { valToStr, replaceVariable } from '@fastgpt/service/common/string/replaceVariable';
 import { SYSTEM_STRING_LENGTH_UNIT } from '@fastgpt/service/env.const';
@@ -82,7 +78,6 @@ describe('service replaceVariable', () => {
 
   it('should stop replacement rounds when the result exceeds the system string limit', () => {
     // getSystemMaxStringLength = (快照 resource.systemMaxStringLengthM ?? env.SYSTEM_MAX_STRING_LENGTH_M) * SYSTEM_STRING_LENGTH_UNIT。
-    // 直接给种子快照写叶子值来模拟 20 字符上限（快照是不经 schema 校验的测试对象，可用分数 M 精确得到 20），
     // 用例结束后删掉叶子，恢复"缺省回落 env"的种子语义，避免影响同文件其他用例。
     const snapshot = (global as any).systemInstanceConfig;
     snapshot.resource.systemMaxStringLengthM = 20 / SYSTEM_STRING_LENGTH_UNIT;

@@ -1,3 +1,4 @@
+import { assertStorageDownloadConfig } from '../../s3/config/utils';
 import {
   type SystemInstanceConfigDomainKey,
   type SystemInstanceConfigDomainMap,
@@ -580,6 +581,8 @@ export const getSystemInstanceConfigSnapshot = async (): Promise<{
  */
 export const reloadSystemInstanceConfig = async (): Promise<SystemInstanceConfig> => {
   const { snapshot, versionTag } = await getSystemInstanceConfigSnapshot();
+  // 环境变量仅提供基础设施 vendor；下载策略来自已加载配置，校验失败保留旧快照。
+  assertStorageDownloadConfig(snapshot.storage);
   publishSystemInstanceConfigSnapshot({ snapshot, versionTag });
   global.systemInitBufferId = computeSystemInitBufferId({
     instanceVersionTag: getInstanceConfigVersionTag(),

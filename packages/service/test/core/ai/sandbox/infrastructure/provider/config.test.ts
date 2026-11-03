@@ -1,5 +1,8 @@
+import {
+  getTestInstanceConfig,
+  createDefaultInstanceConfig
+} from '@test/utils/instanceConfigSnapshot';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { LEAF_ABSENT_SNAPSHOT } from '@test/utils/instanceConfigSnapshot';
 
 const originalEnv = {
   AGENT_SANDBOX_PROVIDER: process.env.AGENT_SANDBOX_PROVIDER,
@@ -26,8 +29,6 @@ const originalEnv = {
 
 const loadSandboxConfigModule = async () => {
   vi.resetModules();
-  // 叶子缺省快照：provider 连接参数回落到 stub 的环境变量，保持本文件 env 驱动语义。
-  (global as any).systemInstanceConfig = LEAF_ABSENT_SNAPSHOT();
   return import('@fastgpt/service/core/ai/sandbox/infrastructure/provider/config');
 };
 
@@ -58,50 +59,82 @@ const defaultOpenSandboxNetworkPolicy = {
 
 describe('sandbox provider config', () => {
   beforeEach(() => {
+    global.systemInstanceConfig = createDefaultInstanceConfig();
     vi.clearAllMocks();
     vi.stubEnv('AGENT_SANDBOX_PROXY_SECRET', 'test-secret-123456789012345678901234');
     vi.stubEnv('AGENT_SANDBOX_PROXY_URL', 'ws://localhost:1006');
   });
 
   afterEach(() => {
-    vi.stubEnv('AGENT_SANDBOX_PROVIDER', originalEnv.AGENT_SANDBOX_PROVIDER);
-    vi.stubEnv('AGENT_SANDBOX_SEALOS_BASEURL', originalEnv.AGENT_SANDBOX_SEALOS_BASEURL);
-    vi.stubEnv('AGENT_SANDBOX_SEALOS_TOKEN', originalEnv.AGENT_SANDBOX_SEALOS_TOKEN);
-    vi.stubEnv(
-      'AGENT_SANDBOX_SEALOS_WORK_DIRECTORY',
-      originalEnv.AGENT_SANDBOX_SEALOS_WORK_DIRECTORY
-    );
-    vi.stubEnv('AGENT_SANDBOX_SEALOS_IMAGE', originalEnv.AGENT_SANDBOX_SEALOS_IMAGE);
-    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_BASEURL', originalEnv.AGENT_SANDBOX_OPENSANDBOX_BASEURL);
-    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_API_KEY', originalEnv.AGENT_SANDBOX_OPENSANDBOX_API_KEY);
-    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_RUNTIME', originalEnv.AGENT_SANDBOX_OPENSANDBOX_RUNTIME);
-    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_IMAGE', originalEnv.AGENT_SANDBOX_OPENSANDBOX_IMAGE);
-    vi.stubEnv('AGENT_SANDBOX_CPU_COUNT', originalEnv.AGENT_SANDBOX_CPU_COUNT);
-    vi.stubEnv('AGENT_SANDBOX_MEMORY_MIB', originalEnv.AGENT_SANDBOX_MEMORY_MIB);
-    vi.stubEnv('AGENT_SANDBOX_STORAGE_SIZE_GI', originalEnv.AGENT_SANDBOX_STORAGE_SIZE_GI);
-    vi.stubEnv(
-      'AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL',
-      originalEnv.AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL
-    );
-    vi.stubEnv(
-      'AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN',
-      originalEnv.AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN
-    );
-    vi.stubEnv(
-      'AGENT_SANDBOX_WS_MAX_MESSAGE_BYTES',
-      originalEnv.AGENT_SANDBOX_WS_MAX_MESSAGE_BYTES
-    );
-    vi.stubEnv('AGENT_SANDBOX_WS_MAX_FRAME_BYTES', originalEnv.AGENT_SANDBOX_WS_MAX_FRAME_BYTES);
+    getTestInstanceConfig().subservice.agentSandbox.provider =
+      originalEnv.AGENT_SANDBOX_PROVIDER ??
+      createDefaultInstanceConfig().subservice.agentSandbox.provider;
+    getTestInstanceConfig().subservice.agentSandbox.sealosdevbox.baseUrl =
+      originalEnv.AGENT_SANDBOX_SEALOS_BASEURL ??
+      createDefaultInstanceConfig().subservice.agentSandbox.sealosdevbox.baseUrl;
+    getTestInstanceConfig().subservice.agentSandbox.sealosdevbox.token =
+      originalEnv.AGENT_SANDBOX_SEALOS_TOKEN ??
+      createDefaultInstanceConfig().subservice.agentSandbox.sealosdevbox.token;
+    getTestInstanceConfig().subservice.agentSandbox.sealosdevbox.workDirectory =
+      originalEnv.AGENT_SANDBOX_SEALOS_WORK_DIRECTORY ??
+      createDefaultInstanceConfig().subservice.agentSandbox.sealosdevbox.workDirectory;
+    getTestInstanceConfig().subservice.agentSandbox.sealosdevbox.image =
+      originalEnv.AGENT_SANDBOX_SEALOS_IMAGE ??
+      createDefaultInstanceConfig().subservice.agentSandbox.sealosdevbox.image;
+    getTestInstanceConfig().subservice.agentSandbox.opensandbox.baseUrl =
+      originalEnv.AGENT_SANDBOX_OPENSANDBOX_BASEURL ??
+      createDefaultInstanceConfig().subservice.agentSandbox.opensandbox.baseUrl;
+    getTestInstanceConfig().subservice.agentSandbox.opensandbox.apiKey =
+      originalEnv.AGENT_SANDBOX_OPENSANDBOX_API_KEY ??
+      createDefaultInstanceConfig().subservice.agentSandbox.opensandbox.apiKey;
+    getTestInstanceConfig().subservice.agentSandbox.opensandbox.runtime =
+      originalEnv.AGENT_SANDBOX_OPENSANDBOX_RUNTIME ??
+      createDefaultInstanceConfig().subservice.agentSandbox.opensandbox.runtime;
+    getTestInstanceConfig().subservice.agentSandbox.opensandbox.image =
+      originalEnv.AGENT_SANDBOX_OPENSANDBOX_IMAGE ??
+      createDefaultInstanceConfig().subservice.agentSandbox.opensandbox.image;
+    getTestInstanceConfig().subservice.agentSandbox.common.cpuCount =
+      originalEnv.AGENT_SANDBOX_CPU_COUNT === undefined
+        ? createDefaultInstanceConfig().subservice.agentSandbox.common.cpuCount
+        : Number(originalEnv.AGENT_SANDBOX_CPU_COUNT);
+    getTestInstanceConfig().subservice.agentSandbox.common.memoryMiB =
+      originalEnv.AGENT_SANDBOX_MEMORY_MIB === undefined
+        ? createDefaultInstanceConfig().subservice.agentSandbox.common.memoryMiB
+        : Number(originalEnv.AGENT_SANDBOX_MEMORY_MIB);
+    getTestInstanceConfig().subservice.agentSandbox.common.storageSizeGi =
+      originalEnv.AGENT_SANDBOX_STORAGE_SIZE_GI === undefined
+        ? createDefaultInstanceConfig().subservice.agentSandbox.common.storageSizeGi
+        : Number(originalEnv.AGENT_SANDBOX_STORAGE_SIZE_GI);
+    getTestInstanceConfig().subservice.agentSandbox.opensandbox.volumeManagerUrl =
+      originalEnv.AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL ??
+      createDefaultInstanceConfig().subservice.agentSandbox.opensandbox.volumeManagerUrl;
+    getTestInstanceConfig().subservice.agentSandbox.opensandbox.volumeManagerToken =
+      originalEnv.AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN ??
+      createDefaultInstanceConfig().subservice.agentSandbox.opensandbox.volumeManagerToken;
+    getTestInstanceConfig().subservice.agentSandbox.common.wsMaxMessageBytes =
+      originalEnv.AGENT_SANDBOX_WS_MAX_MESSAGE_BYTES === undefined
+        ? createDefaultInstanceConfig().subservice.agentSandbox.common.wsMaxMessageBytes
+        : Number(originalEnv.AGENT_SANDBOX_WS_MAX_MESSAGE_BYTES);
+    getTestInstanceConfig().subservice.agentSandbox.common.wsMaxFrameBytes =
+      originalEnv.AGENT_SANDBOX_WS_MAX_FRAME_BYTES === undefined
+        ? createDefaultInstanceConfig().subservice.agentSandbox.common.wsMaxFrameBytes
+        : Number(originalEnv.AGENT_SANDBOX_WS_MAX_FRAME_BYTES);
     vi.stubEnv('AGENT_SANDBOX_PROXY_SECRET', originalEnv.AGENT_SANDBOX_PROXY_SECRET);
     vi.stubEnv('AGENT_SANDBOX_PROXY_URL', originalEnv.AGENT_SANDBOX_PROXY_URL);
     vi.unstubAllGlobals();
   });
 
   it('parses sealosdevbox config from env', async () => {
-    vi.stubEnv('AGENT_SANDBOX_PROVIDER', 'sealosdevbox');
-    vi.stubEnv('AGENT_SANDBOX_SEALOS_BASEURL', 'https://devbox.example.com');
-    vi.stubEnv('AGENT_SANDBOX_SEALOS_TOKEN', 'sealos-token');
-    vi.stubEnv('AGENT_SANDBOX_SEALOS_IMAGE', 'default-sealos-image:latest');
+    getTestInstanceConfig().subservice.agentSandbox.provider =
+      'sealosdevbox' ?? createDefaultInstanceConfig().subservice.agentSandbox.provider;
+    getTestInstanceConfig().subservice.agentSandbox.sealosdevbox.baseUrl =
+      'https://devbox.example.com' ??
+      createDefaultInstanceConfig().subservice.agentSandbox.sealosdevbox.baseUrl;
+    getTestInstanceConfig().subservice.agentSandbox.sealosdevbox.token =
+      'sealos-token' ?? createDefaultInstanceConfig().subservice.agentSandbox.sealosdevbox.token;
+    getTestInstanceConfig().subservice.agentSandbox.sealosdevbox.image =
+      'default-sealos-image:latest' ??
+      createDefaultInstanceConfig().subservice.agentSandbox.sealosdevbox.image;
 
     const { getSandboxProviderConfig } = await loadSandboxConfigModule();
 
@@ -113,7 +146,8 @@ describe('sandbox provider config', () => {
   });
 
   it('does not default sandbox provider when env is empty', async () => {
-    vi.stubEnv('AGENT_SANDBOX_PROVIDER', undefined);
+    getTestInstanceConfig().subservice.agentSandbox.provider =
+      createDefaultInstanceConfig().subservice.agentSandbox.provider;
 
     const { getConfiguredSandboxProvider, getSandboxProviderConfig } =
       await loadSandboxConfigModule();
@@ -127,10 +161,11 @@ describe('sandbox provider config', () => {
   });
 
   it('connects to the provider stored in instance config when env provider is removed', async () => {
-    vi.stubEnv('AGENT_SANDBOX_PROVIDER', undefined);
+    getTestInstanceConfig().subservice.agentSandbox.provider =
+      createDefaultInstanceConfig().subservice.agentSandbox.provider;
 
     const { getSandboxProviderConfig } = await loadSandboxConfigModule();
-    const snapshot = LEAF_ABSENT_SNAPSHOT() as any;
+    const snapshot = createDefaultInstanceConfig() as any;
     snapshot.subservice.agentSandbox.provider = 'opensandbox';
     snapshot.subservice.agentSandbox.opensandbox = {
       baseUrl: 'https://opensandbox.example.com',
@@ -150,15 +185,22 @@ describe('sandbox provider config', () => {
   });
 
   it('builds sealosdevbox runtime create config from runtime profile', async () => {
-    vi.stubEnv('AGENT_SANDBOX_SEALOS_BASEURL', 'https://devbox.example.com');
-    vi.stubEnv('AGENT_SANDBOX_SEALOS_TOKEN', 'sealos-token');
-    vi.stubEnv('AGENT_SANDBOX_SEALOS_WORK_DIRECTORY', '/home/devbox/workspace');
-    vi.stubEnv('AGENT_SANDBOX_SEALOS_IMAGE', 'default-sealos-image:latest');
-    vi.stubEnv('AGENT_SANDBOX_CPU_COUNT', '2');
-    vi.stubEnv('AGENT_SANDBOX_MEMORY_MIB', '4096');
-    vi.stubEnv('AGENT_SANDBOX_STORAGE_SIZE_GI', '5');
-    vi.stubEnv('AGENT_SANDBOX_WS_MAX_MESSAGE_BYTES', '67108864');
-    vi.stubEnv('AGENT_SANDBOX_WS_MAX_FRAME_BYTES', '16777216');
+    getTestInstanceConfig().subservice.agentSandbox.sealosdevbox.baseUrl =
+      'https://devbox.example.com' ??
+      createDefaultInstanceConfig().subservice.agentSandbox.sealosdevbox.baseUrl;
+    getTestInstanceConfig().subservice.agentSandbox.sealosdevbox.token =
+      'sealos-token' ?? createDefaultInstanceConfig().subservice.agentSandbox.sealosdevbox.token;
+    getTestInstanceConfig().subservice.agentSandbox.sealosdevbox.workDirectory =
+      '/home/devbox/workspace' ??
+      createDefaultInstanceConfig().subservice.agentSandbox.sealosdevbox.workDirectory;
+    getTestInstanceConfig().subservice.agentSandbox.sealosdevbox.image =
+      'default-sealos-image:latest' ??
+      createDefaultInstanceConfig().subservice.agentSandbox.sealosdevbox.image;
+    getTestInstanceConfig().subservice.agentSandbox.common.cpuCount = 2;
+    getTestInstanceConfig().subservice.agentSandbox.common.memoryMiB = 4096;
+    getTestInstanceConfig().subservice.agentSandbox.common.storageSizeGi = 5;
+    getTestInstanceConfig().subservice.agentSandbox.common.wsMaxMessageBytes = 67108864;
+    getTestInstanceConfig().subservice.agentSandbox.common.wsMaxFrameBytes = 16777216;
 
     const { getSandboxAdapterConfig } = await loadSandboxConfigModule();
 
@@ -235,13 +277,24 @@ describe('sandbox provider config', () => {
   });
 
   it('parses opensandbox config and runtime create config from env', async () => {
-    vi.stubEnv('AGENT_SANDBOX_PROVIDER', 'opensandbox');
-    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_BASEURL', 'http://opensandbox.local');
-    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_API_KEY', 'opensandbox-key');
-    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_RUNTIME', 'docker');
-    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_IMAGE', 'fastgpt-agent-sandbox:test');
-    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL', 'http://volume-manager.local');
-    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN', 'volume-token');
+    getTestInstanceConfig().subservice.agentSandbox.provider =
+      'opensandbox' ?? createDefaultInstanceConfig().subservice.agentSandbox.provider;
+    getTestInstanceConfig().subservice.agentSandbox.opensandbox.baseUrl =
+      'http://opensandbox.local' ??
+      createDefaultInstanceConfig().subservice.agentSandbox.opensandbox.baseUrl;
+    getTestInstanceConfig().subservice.agentSandbox.opensandbox.apiKey =
+      'opensandbox-key' ?? createDefaultInstanceConfig().subservice.agentSandbox.opensandbox.apiKey;
+    getTestInstanceConfig().subservice.agentSandbox.opensandbox.runtime =
+      'docker' ?? createDefaultInstanceConfig().subservice.agentSandbox.opensandbox.runtime;
+    getTestInstanceConfig().subservice.agentSandbox.opensandbox.image =
+      'fastgpt-agent-sandbox:test' ??
+      createDefaultInstanceConfig().subservice.agentSandbox.opensandbox.image;
+    getTestInstanceConfig().subservice.agentSandbox.opensandbox.volumeManagerUrl =
+      'http://volume-manager.local' ??
+      createDefaultInstanceConfig().subservice.agentSandbox.opensandbox.volumeManagerUrl;
+    getTestInstanceConfig().subservice.agentSandbox.opensandbox.volumeManagerToken =
+      'volume-token' ??
+      createDefaultInstanceConfig().subservice.agentSandbox.opensandbox.volumeManagerToken;
 
     const { getSandboxAdapterConfig } = await loadSandboxConfigModule();
 
@@ -301,10 +354,13 @@ describe('sandbox provider config', () => {
   });
 
   it('builds opensandbox runtime create config from profile env image', async () => {
-    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_RUNTIME', 'docker');
-    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_IMAGE', 'default-opensandbox-image:stable');
-    vi.stubEnv('AGENT_SANDBOX_CPU_COUNT', '2');
-    vi.stubEnv('AGENT_SANDBOX_MEMORY_MIB', '4096');
+    getTestInstanceConfig().subservice.agentSandbox.opensandbox.runtime =
+      'docker' ?? createDefaultInstanceConfig().subservice.agentSandbox.opensandbox.runtime;
+    getTestInstanceConfig().subservice.agentSandbox.opensandbox.image =
+      'default-opensandbox-image:stable' ??
+      createDefaultInstanceConfig().subservice.agentSandbox.opensandbox.image;
+    getTestInstanceConfig().subservice.agentSandbox.common.cpuCount = 2;
+    getTestInstanceConfig().subservice.agentSandbox.common.memoryMiB = 4096;
     vi.resetModules();
     const { getSandboxRuntimeProfile } =
       await import('@fastgpt/service/core/ai/sandbox/infrastructure/provider/runtimeProfile');
@@ -343,8 +399,11 @@ describe('sandbox provider config', () => {
   });
 
   it('does not pass OpenSandbox network isolation to kubernetes runtime', async () => {
-    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_RUNTIME', 'kubernetes');
-    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_IMAGE', 'default-opensandbox-image:stable');
+    getTestInstanceConfig().subservice.agentSandbox.opensandbox.runtime =
+      'kubernetes' ?? createDefaultInstanceConfig().subservice.agentSandbox.opensandbox.runtime;
+    getTestInstanceConfig().subservice.agentSandbox.opensandbox.image =
+      'default-opensandbox-image:stable' ??
+      createDefaultInstanceConfig().subservice.agentSandbox.opensandbox.image;
     vi.resetModules();
     const { getSandboxRuntimeProfile } =
       await import('@fastgpt/service/core/ai/sandbox/infrastructure/provider/runtimeProfile');
@@ -364,8 +423,11 @@ describe('sandbox provider config', () => {
   });
 
   it('keeps Docker OpenSandbox egress policy behavior', async () => {
-    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_RUNTIME', 'docker');
-    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_IMAGE', 'default-opensandbox-image:stable');
+    getTestInstanceConfig().subservice.agentSandbox.opensandbox.runtime =
+      'docker' ?? createDefaultInstanceConfig().subservice.agentSandbox.opensandbox.runtime;
+    getTestInstanceConfig().subservice.agentSandbox.opensandbox.image =
+      'default-opensandbox-image:stable' ??
+      createDefaultInstanceConfig().subservice.agentSandbox.opensandbox.image;
     vi.resetModules();
     const { getSandboxRuntimeProfile } =
       await import('@fastgpt/service/core/ai/sandbox/infrastructure/provider/runtimeProfile');

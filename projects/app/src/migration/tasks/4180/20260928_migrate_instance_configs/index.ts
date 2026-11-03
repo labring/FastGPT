@@ -1,4 +1,5 @@
 import { SystemMigrationStatusEnum } from '@fastgpt/global/migration/constants';
+import { SYSTEM_INSTANCE_CONFIG_DOMAINS } from '@fastgpt/global/common/system/config/schema';
 import type { SystemMigrationContext } from '../../../registry';
 import { applyInstanceConfigMigration, inspectInstanceConfigMigration } from './service';
 
@@ -88,7 +89,8 @@ export const migrateInstanceConfigs = async (context: SystemMigrationContext) =>
       backfilledDomainCount: result.backfilledDomains.length
     },
     current: result.migratedCount,
-    total: Object.keys(inspection.overrides).length
+    // 使用默认值的域也会创建文档；只数非默认 overrides 会使 current > total 并阻塞启动。
+    total: SYSTEM_INSTANCE_CONFIG_DOMAINS.length
   });
 
   await context.assertActive();

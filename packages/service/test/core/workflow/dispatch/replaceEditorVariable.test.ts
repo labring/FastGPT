@@ -1,11 +1,8 @@
+import { createDefaultInstanceConfig } from '@test/utils/instanceConfigSnapshot';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { LEAF_ABSENT_SNAPSHOT } from '@test/utils/instanceConfigSnapshot';
 
-// commit 94ae033d7 起 replaceEditorVariable 依赖的 checkStrOversize/logOversizeString 改为读取
-// `getSystemInstanceConfig().resource.systemMaxStringLengthM ?? serviceEnv.SYSTEM_MAX_STRING_LENGTH_M`。
-// 预置"域对象存在、叶子字段全部缺省"的种子快照：getSystemInstanceConfig 首次调用采纳它；
 // 需要小上限的用例直接改写 resource 叶子，其余用例走 env 兜底，保持原有测试意图。
-(global as any).systemInstanceConfig = LEAF_ABSENT_SNAPSHOT();
+(global as any).systemInstanceConfig = createDefaultInstanceConfig();
 
 import { VARIABLE_NODE_ID, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import {
@@ -213,7 +210,6 @@ describe('replaceEditorVariable', () => {
   it('should stop node reference replacement rounds when the result exceeds the system string limit', () => {
     const text = 'Result: {{$node1.out1$}}';
     // getSystemMaxStringLength = (快照 resource.systemMaxStringLengthM ?? env) * SYSTEM_STRING_LENGTH_UNIT。
-    // 直接给种子快照写叶子值模拟 text.length 上限（分数 M 精确换算），用例后删掉恢复缺省回落 env。
     // 原先用 vi.doMock('@fastgpt/service/env') 只暴露 SYSTEM_MAX_STRING_LENGTH 会破坏接管后的
     // import 链（env 模块级常量、controller → Mongo schema 都从该模块取值），改为操作快照。
     const snapshot = (global as any).systemInstanceConfig;

@@ -1,14 +1,12 @@
+import {
+  getTestInstanceConfig,
+  createDefaultInstanceConfig
+} from '@test/utils/instanceConfigSnapshot';
 import http from 'http';
 import os from 'os';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { LEAF_ABSENT_SNAPSHOT } from '@test/utils/instanceConfigSnapshot';
 
-// commit 94ae033d7 起 feishuBaseUrl 改为 `getSystemInstanceConfig().providers.dataSource.feishuBaseUrl || serviceEnv.FEISHU_BASE_URL`：
-// 生产快照叶子被 schema 默认值填满（'https://open.feishu.cn'），`|| serviceEnv` 兜底永不触发。
-// 本文件通过 vi.stubEnv + vi.resetModules 改写 serviceEnv 指向本机私网服务，
-// 因此预置"域对象存在、叶子字段全部缺省"的种子快照；vi.resetModules 后 controller 首次调用
-// getSystemInstanceConfig 会重新采纳 global 上的种子，走回 env 兜底分支。
-(global as any).systemInstanceConfig = LEAF_ABSENT_SNAPSHOT();
+(global as any).systemInstanceConfig = createDefaultInstanceConfig();
 
 const proxyEnvKeys = [
   'HTTP_PROXY',
@@ -36,7 +34,8 @@ describe('useFeishuDatasetRequest 访问内网飞书服务', () => {
         process.env[key] = value;
       }
     });
-    vi.stubEnv('CHECK_INTERNAL_IP', originalCheckInternalIp ?? '');
+    getTestInstanceConfig().security.checkInternalIp =
+      ((originalCheckInternalIp ?? '' === 'true') || originalCheckInternalIp) ?? '' === '1';
     vi.unstubAllEnvs();
     vi.resetModules();
   });
@@ -143,8 +142,10 @@ describe('useFeishuDatasetRequest 访问内网飞书服务', () => {
 
       try {
         // serviceEnv 在模块加载时解析 process.env，必须先 stub 再导入，无法使用静态 import。
-        vi.stubEnv('FEISHU_BASE_URL', `http://${privateHost}:${address.port}`);
-        vi.stubEnv('CHECK_INTERNAL_IP', 'true');
+        getTestInstanceConfig().providers.dataSource.feishuBaseUrl =
+          `http://${privateHost}:${address.port}` ??
+          createDefaultInstanceConfig().providers.dataSource.feishuBaseUrl;
+        getTestInstanceConfig().security.checkInternalIp = true;
         vi.resetModules();
         const { useFeishuDatasetRequest } =
           await import('@fastgpt/service/core/dataset/apiDataset/feishuDataset/api');

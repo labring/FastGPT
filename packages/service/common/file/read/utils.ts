@@ -19,7 +19,6 @@ import { getImageBuffer } from '../image/utils';
 import { uploadParsedPdfImage } from './image';
 import { getBackendFileOperationTimeoutMs } from '../parseTimeout';
 import { getSystemInstanceConfig } from '../../system/systemInstanceConfig/runtime';
-import { serviceEnv } from '../../../env';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import type { FileSource } from './source';
@@ -408,13 +407,13 @@ const readFileContent = async ({
 
     // 旧运行时按 custom → somark → textin → doc2x 的固定顺序挑第一个已配置凭据，
     // 管理员切换 provider 后仍会被旧凭据抢占。这里改为按选中的 provider 分派；
-    // 叶子缺省的测试快照回落到旧环境变量，兼容迁移完成前的读取。
+    // 运行期只使用实例配置中的 provider 和凭据，不读取历史 ENV。
     const documentParse = getSystemInstanceConfig().providers.documentParse;
     const provider = documentParse.provider;
 
     logInstanceConfigRead({
       callsite: 'runtime.common.file.read.pdfParseFn',
-      source: documentParse.provider ? 'instance-config' : 'env-fallback',
+      source: 'instance-config',
       fields: [
         { path: 'providers.documentParse.provider', value: provider },
         {

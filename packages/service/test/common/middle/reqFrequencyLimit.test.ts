@@ -1,11 +1,10 @@
+import {
+  getTestInstanceConfig,
+  createDefaultInstanceConfig
+} from '@test/utils/instanceConfigSnapshot';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { LEAF_ABSENT_SNAPSHOT } from '@test/utils/instanceConfigSnapshot';
 
-// commit 94ae033d7 起 useIPFrequencyLimit 改为 `getSystemInstanceConfig().security.useIpLimit ?? serviceEnv.USE_IP_LIMIT`：
-// 生产快照的叶子字段被 schema 默认值填满，`?? serviceEnv` 兜底分支永不触发。
-// 本文件通过改写 serviceEnv 驱动被测行为，因此预置"域对象存在、叶子字段全部缺省"的种子快照，
-// 使 getSystemInstanceConfig 首次调用采纳它、读取回落到 serviceEnv，保持原 env 驱动的测试意图。
-(global as any).systemInstanceConfig = LEAF_ABSENT_SNAPSHOT();
+(global as any).systemInstanceConfig = createDefaultInstanceConfig();
 
 import { useIPFrequencyLimit } from '@fastgpt/service/common/middle/reqFrequencyLimit';
 import { jsonRes } from '@fastgpt/service/common/response';
@@ -17,7 +16,7 @@ import {
 } from '@fastgpt/dal/redis/runtime';
 import { RATE_LIMIT_KEY_PREFIX } from '@fastgpt/service/common/rateLimit/core';
 
-const originalUseIpLimit = serviceEnv.USE_IP_LIMIT;
+const originalUseIpLimit = getTestInstanceConfig().security.useIpLimit;
 const originalTrustedProxyEnable = serviceEnv.TRUSTED_PROXY_ENABLE;
 
 const getIPFrequencyLimitKey = (id: string, ip: string) =>
@@ -31,9 +30,9 @@ const getIPFrequencyLimitKey = (id: string, ip: string) =>
 const getRedisConnection = () => getRedisRuntime().getCommandConnection();
 
 const setUseIpLimit = (value: boolean) => {
-  serviceEnv.USE_IP_LIMIT = value;
+  getTestInstanceConfig().security.useIpLimit = value;
   if (!(global as any).systemInstanceConfig) {
-    (global as any).systemInstanceConfig = LEAF_ABSENT_SNAPSHOT();
+    (global as any).systemInstanceConfig = createDefaultInstanceConfig();
   }
   (global as any).systemInstanceConfig.security.useIpLimit = value;
 };

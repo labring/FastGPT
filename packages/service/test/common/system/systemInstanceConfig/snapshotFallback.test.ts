@@ -5,8 +5,26 @@ import {
   reloadSystemInstanceConfig
 } from '@fastgpt/service/common/system/systemInstanceConfig/controller';
 import { getSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/runtime';
+import { serviceEnv } from '@fastgpt/service/env';
 
 describe('getSystemInstanceConfigSnapshot failure behavior', () => {
+  it('validates loaded storage policy before publishing a snapshot', async () => {
+    const vendor = serviceEnv.STORAGE_VENDOR;
+    serviceEnv.STORAGE_VENDOR = 'minio';
+    try {
+      const initial = await reloadSystemInstanceConfig();
+      await MongoSystemInstanceConfig.create({
+        domain: 'storage',
+        revision: 1,
+        overrides: { downloadMode: 'short-redirect', externalEndpoint: '' },
+        updatedBy: { actor: 'system' }
+      });
+      await expect(reloadSystemInstanceConfig()).rejects.toThrow('external endpoint');
+      expect(getSystemInstanceConfig()).toBe(initial);
+    } finally {
+      serviceEnv.STORAGE_VENDOR = vendor;
+    }
+  });
   it('throws on DB failure and reload preserves the previous successful snapshot', async () => {
     // 首次正常加载一个快照
     const initial = await reloadSystemInstanceConfig();

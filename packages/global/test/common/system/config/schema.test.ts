@@ -23,6 +23,13 @@ describe('Domain default config and overrides validation', () => {
     expect(performanceConfig.workflow.parallelMaxConcurrency).toBe(10);
     expect(performanceConfig.dataset.retrievalResultsLimit).toBe(0);
 
+    expect(getDomainDefaultConfig('resource').datasetArchive).toEqual({
+      maxFiles: 2000,
+      maxSourceSizeMiB: 2048,
+      maxConcurrency: 4,
+      prepareTimeoutSeconds: 300
+    });
+
     const vectorConfig = getDomainDefaultConfig('vector');
     expect(vectorConfig.hnswEfSearch).toBe(200);
     expect(vectorConfig).not.toHaveProperty('hnswMaxScanTuples');
@@ -101,6 +108,22 @@ describe('Domain default config and overrides validation', () => {
 });
 
 describe('resolveDomainEffectiveConfig (Two-Phase Validation & Merge)', () => {
+  it.each(['maxFiles', 'maxSourceSizeMiB', 'maxConcurrency', 'prepareTimeoutSeconds'])(
+    '归档参数 %s 允许稀疏保存且必须为正整数',
+    (field) => {
+      const config = resolveDomainEffectiveConfig('resource', { datasetArchive: { [field]: 1 } });
+      expect(config.datasetArchive).toEqual({
+        ...getDomainDefaultConfig('resource').datasetArchive,
+        [field]: 1
+      });
+      for (const value of [0, 1.5]) {
+        expect(() =>
+          parseDomainOverrides('resource', { datasetArchive: { [field]: value } })
+        ).toThrow();
+      }
+    }
+  );
+
   it('merges overrides with defaults while preserving untouched default fields', () => {
     const effective = resolveDomainEffectiveConfig('site', {
       name: 'Custom FastGPT',
@@ -360,16 +383,13 @@ describe('systemInstanceConfigRegistry', () => {
     };
 
     const leafPaths = getLeafPaths(config);
-    // 该字段目前只由 ENV 控制，保留 Schema 字段但不注册 Admin 表单。
-    // 沙箱免费提示已整体改回 ENV，字段本身从 Schema 删除，因此不在此列。
-    const envOnlyPaths = new Set(['feature.datasetSynonymEnabled']);
     const registryKeys = new Set(systemInstanceConfigRegistry.map((item) => item.key));
 
     for (const leafPath of leafPaths) {
-      if (envOnlyPaths.has(leafPath)) continue;
       expect(registryKeys.has(leafPath), `Missing registry entry for ${leafPath}`).toBe(true);
     }
-    expect(registryKeys.size).toBe(leafPaths.length - envOnlyPaths.size);
+    expect(registryKeys.size).toBe(leafPaths.length);
+    expect(() => parseDomainOverrides('feature', { datasetSynonymEnabled: true })).toThrow();
   });
 
   it('filters commercial fields by edition and SaaS boundary', () => {

@@ -1,3 +1,4 @@
+import { getTestInstanceConfig } from '@test/utils/instanceConfigSnapshot';
 import http from 'http';
 import os from 'os';
 import { Types } from '@fastgpt/service/common/mongo';
@@ -21,14 +22,8 @@ const proxyEnvKeys = [
  * 打开 CHECK_INTERNAL_IP 后，聊天日志推送仍然必须可达，否则日志整体丢失。
  */
 describe('pushChatLog 访问内网日志服务', () => {
-  const mutableServiceEnv = serviceEnv as {
-    CHECK_INTERNAL_IP: boolean;
-    CHAT_LOG_URL?: string;
-    CHAT_LOG_INTERVAL?: number;
-    CHAT_LOG_SOURCE_ID_PREFIX?: string;
-  };
   const originalEnv = {
-    CHECK_INTERNAL_IP: serviceEnv.CHECK_INTERNAL_IP,
+    CHECK_INTERNAL_IP: getTestInstanceConfig().security.checkInternalIp,
     CHAT_LOG_URL: serviceEnv.CHAT_LOG_URL,
     CHAT_LOG_INTERVAL: serviceEnv.CHAT_LOG_INTERVAL,
     CHAT_LOG_SOURCE_ID_PREFIX: serviceEnv.CHAT_LOG_SOURCE_ID_PREFIX
@@ -36,7 +31,14 @@ describe('pushChatLog 访问内网日志服务', () => {
   const originalProxyEnv = proxyEnvKeys.map((key) => process.env[key]);
 
   afterEach(() => {
-    Object.assign(mutableServiceEnv, originalEnv);
+    Object.assign(getTestInstanceConfig().security, {
+      checkInternalIp: originalEnv.CHECK_INTERNAL_IP
+    });
+    Object.assign(mutableServiceEnv, {
+      CHAT_LOG_URL: originalEnv.CHAT_LOG_URL,
+      CHAT_LOG_INTERVAL: originalEnv.CHAT_LOG_INTERVAL,
+      CHAT_LOG_SOURCE_ID_PREFIX: originalEnv.CHAT_LOG_SOURCE_ID_PREFIX
+    });
     proxyEnvKeys.forEach((key, index) => {
       const value = originalProxyEnv[index];
       if (value === undefined) {
@@ -109,7 +111,7 @@ describe('pushChatLog 访问内网日志服务', () => {
     });
 
     try {
-      mutableServiceEnv.CHECK_INTERNAL_IP = true;
+      getTestInstanceConfig().security.checkInternalIp = true;
       mutableServiceEnv.CHAT_LOG_URL = `http://${privateHost}:${address.port}`;
       mutableServiceEnv.CHAT_LOG_INTERVAL = 10;
       mutableServiceEnv.CHAT_LOG_SOURCE_ID_PREFIX = 'test-';

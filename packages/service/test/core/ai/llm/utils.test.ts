@@ -1,11 +1,9 @@
-import { LEAF_ABSENT_SNAPSHOT } from '@test/utils/instanceConfigSnapshot';
+import {
+  getTestInstanceConfig,
+  createDefaultInstanceConfig
+} from '@test/utils/instanceConfigSnapshot';
 
-// commit 94ae033d7 起 loadRequestMessages 的 shouldLoadMediaAsBase64 改为
-// `getSystemInstanceConfig().feature.multipleDataToBase64 ?? serviceEnv.MULTIPLE_DATA_TO_BASE64`：
-// 生产快照的叶子字段被 schema 默认值填满，`?? serviceEnv` 兜底分支永不触发。
-// 本文件通过改写 serviceEnv 驱动被测行为，因此预置"域对象存在、叶子字段全部缺省"的种子快照，
-// 使 getSystemInstanceConfig 首次调用采纳它、读取回落到 serviceEnv，保持原 env 驱动的测试意图。
-(global as any).systemInstanceConfig = LEAF_ABSENT_SNAPSHOT();
+(global as any).systemInstanceConfig = createDefaultInstanceConfig();
 
 import {
   loadRequestMessages,
@@ -50,7 +48,6 @@ vi.mock('@fastgpt/service/common/api/axios', () => ({
 
 import { countGptMessagesTokens } from '@fastgpt/service/common/string/tiktoken/index';
 import { getImageBase64 } from '@fastgpt/service/common/file/image/utils';
-import { serviceEnv } from '@fastgpt/service/env';
 import { axios } from '@fastgpt/service/common/api/axios';
 import { createFileClassificationContext } from '@fastgpt/service/common/file/classification';
 
@@ -58,13 +55,12 @@ const mockCountGptMessagesTokens = vi.mocked(countGptMessagesTokens);
 const mockGetImageBase64 = vi.mocked(getImageBase64);
 const mockAxiosHead = vi.mocked(axios.head);
 const mockAxiosGet = vi.mocked(axios.get);
-const originalMultipleDataToBase64 = serviceEnv.MULTIPLE_DATA_TO_BASE64;
-const multimediaEnv: { MULTIPLE_DATA_TO_BASE64: boolean } = serviceEnv;
+const originalMultipleDataToBase64 = getTestInstanceConfig().feature.multipleDataToBase64;
 
 describe('filterGPTMessageByMaxContext function tests', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    multimediaEnv.MULTIPLE_DATA_TO_BASE64 = originalMultipleDataToBase64;
+    getTestInstanceConfig().feature.multipleDataToBase64 = originalMultipleDataToBase64;
     mockCountGptMessagesTokens.mockResolvedValue(10);
   });
 
@@ -444,7 +440,7 @@ describe('filterGPTMessageByMaxContext function tests', () => {
 describe('loadRequestMessages function tests', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    multimediaEnv.MULTIPLE_DATA_TO_BASE64 = originalMultipleDataToBase64;
+    getTestInstanceConfig().feature.multipleDataToBase64 = originalMultipleDataToBase64;
     mockGetImageBase64.mockResolvedValue({
       completeBase64: 'data:image/png;base64,test',
       base64: 'test',
@@ -627,7 +623,7 @@ describe('loadRequestMessages function tests', () => {
     });
 
     it('should extract audio and video links when enabled', async () => {
-      multimediaEnv.MULTIPLE_DATA_TO_BASE64 = false;
+      getTestInstanceConfig().feature.multipleDataToBase64 = false;
 
       const messages: ChatCompletionMessageParam[] = [
         {
@@ -678,7 +674,7 @@ describe('loadRequestMessages function tests', () => {
     });
 
     it('should convert extracted audio and video links when MULTIPLE_DATA_TO_BASE64 is enabled', async () => {
-      multimediaEnv.MULTIPLE_DATA_TO_BASE64 = true;
+      getTestInstanceConfig().feature.multipleDataToBase64 = true;
       mockAxiosGet.mockResolvedValue({
         data: Buffer.from('media bytes')
       });
@@ -737,7 +733,7 @@ describe('loadRequestMessages function tests', () => {
     ] as const)(
       '显式 audio 类型保持不变，格式优先按名称、再按 URL：%s / %s',
       async (url, name, format) => {
-        multimediaEnv.MULTIPLE_DATA_TO_BASE64 = false;
+        getTestInstanceConfig().feature.multipleDataToBase64 = false;
         const result = await loadRequestMessages({
           messages: [
             {
@@ -763,7 +759,7 @@ describe('loadRequestMessages function tests', () => {
     );
 
     it('无文件名音频转 base64 时仍保留附件，不猜测 format', async () => {
-      multimediaEnv.MULTIPLE_DATA_TO_BASE64 = true;
+      getTestInstanceConfig().feature.multipleDataToBase64 = true;
       const url = 'https://files.example.com/opaque';
       const buffer = Buffer.from('audio bytes');
       mockAxiosGet.mockResolvedValue({ data: buffer });
@@ -791,7 +787,7 @@ describe('loadRequestMessages function tests', () => {
     )(
       '保留显式 $fileType data URL，强制 base64=$base64 时也不重复下载',
       async ({ fileType, base64 }) => {
-        multimediaEnv.MULTIPLE_DATA_TO_BASE64 = base64;
+        getTestInstanceConfig().feature.multipleDataToBase64 = base64;
         const url = `data:${fileType}/${fileType === 'audio' ? 'wav' : 'mp4'};base64,YWJj`;
         const result = await loadRequestMessages({
           messages: [
@@ -819,7 +815,7 @@ describe('loadRequestMessages function tests', () => {
         [false, true].map((base64) => [type, base64] as const)
       )
     )('无后缀视频按协议转换，类型=%s、转 base64=%s', async (type, base64) => {
-      multimediaEnv.MULTIPLE_DATA_TO_BASE64 = base64;
+      getTestInstanceConfig().feature.multipleDataToBase64 = base64;
       const url = 'https://files.example.com/opaque?token=video';
       const buffer = Buffer.from('video bytes');
       mockAxiosGet.mockResolvedValue({ data: buffer });
@@ -848,7 +844,7 @@ describe('loadRequestMessages function tests', () => {
     });
 
     it('should ignore file keys and normalize audio and video file_url from existing urls', async () => {
-      multimediaEnv.MULTIPLE_DATA_TO_BASE64 = false;
+      getTestInstanceConfig().feature.multipleDataToBase64 = false;
       const audioUrl = 'https://cdn.example.com/preview/audio.mp3';
       const videoUrl = 'https://cdn.example.com/preview/video.mp4';
       const messages: ChatCompletionMessageParam[] = [
@@ -911,7 +907,7 @@ describe('loadRequestMessages function tests', () => {
     it.each([ChatFileTypeEnum.unknown, ChatFileTypeEnum.file])(
       '待分类类型 %s 按传入名称识别媒体，不被下载接口后缀覆盖',
       async (fileType) => {
-        multimediaEnv.MULTIPLE_DATA_TO_BASE64 = false;
+        getTestInstanceConfig().feature.multipleDataToBase64 = false;
         const result = await loadRequestMessages({
           messages: [
             {
@@ -999,7 +995,7 @@ describe('loadRequestMessages function tests', () => {
     });
 
     it('should extract clean image url from markdown link in json-like text', async () => {
-      multimediaEnv.MULTIPLE_DATA_TO_BASE64 = false;
+      getTestInstanceConfig().feature.multipleDataToBase64 = false;
       const imageUrl =
         'https://proxy.file.fastgpt.io/chat/image.png?X-Amz-Signature=test&x-id=GetObject';
       const messages: ChatCompletionMessageParam[] = [
@@ -1020,7 +1016,7 @@ describe('loadRequestMessages function tests', () => {
     });
 
     it('should extract image url before newline terminators', async () => {
-      multimediaEnv.MULTIPLE_DATA_TO_BASE64 = false;
+      getTestInstanceConfig().feature.multipleDataToBase64 = false;
       const imageUrl =
         'https://proxy.file.fastgpt.io/chat/%E7%AE%80%E5%8E%86.png?X-Amz-Signature=test&x-id=GetObject';
       const messages: ChatCompletionMessageParam[] = [
@@ -1052,7 +1048,7 @@ describe('loadRequestMessages function tests', () => {
     });
 
     it('should ignore <system-reminder> length and internal URLs when extracting user media links', async () => {
-      multimediaEnv.MULTIPLE_DATA_TO_BASE64 = false;
+      getTestInstanceConfig().feature.multipleDataToBase64 = false;
       const reminder = `<system-reminder>\n${'Skill description '.repeat(40)}\n<url>https://example.com/already-uploaded.png</url>\n</system-reminder>\n`;
       const userQuestion = '请看这张图 https://example.com/user-question.png';
       const fullContent = `${reminder}${userQuestion}`;
@@ -1077,7 +1073,7 @@ describe('loadRequestMessages function tests', () => {
     });
 
     it('should classify extensionless short links via parseUrlToChatFileType when extracting files', async () => {
-      multimediaEnv.MULTIPLE_DATA_TO_BASE64 = false;
+      getTestInstanceConfig().feature.multipleDataToBase64 = false;
       const imageShortUrl =
         'https://testdev.fastgpt.cn/api/system/file/d/q7aJkh7F0FB2FI3C.hskff.6JjpblHZ0hOyMbEq4frV0A';
       const audioShortUrl =
@@ -1180,7 +1176,7 @@ describe('loadRequestMessages function tests', () => {
       'https://example.com/download?filename=photo%231.png',
       'https://example.com/download?filename=photo%3F1.png'
     ])('保留编码了 # 或 ? 的图片文件名后缀：%s', async (imageUrl) => {
-      multimediaEnv.MULTIPLE_DATA_TO_BASE64 = false;
+      getTestInstanceConfig().feature.multipleDataToBase64 = false;
       const result = await loadRequestMessages({
         messages: [{ role: ChatCompletionRequestMessageRoleEnum.User, content: imageUrl }],
         useVision: true
@@ -1297,7 +1293,7 @@ describe('loadRequestMessages function tests', () => {
     });
 
     it('should pass through remote image URLs in array content without axios.head validation', async () => {
-      multimediaEnv.MULTIPLE_DATA_TO_BASE64 = false;
+      getTestInstanceConfig().feature.multipleDataToBase64 = false;
       const messages: ChatCompletionMessageParam[] = [
         {
           role: ChatCompletionRequestMessageRoleEnum.User,
@@ -1319,7 +1315,7 @@ describe('loadRequestMessages function tests', () => {
     });
 
     it('should preserve absolute image URLs', async () => {
-      multimediaEnv.MULTIPLE_DATA_TO_BASE64 = false;
+      getTestInstanceConfig().feature.multipleDataToBase64 = false;
       const messages: ChatCompletionMessageParam[] = [
         {
           role: ChatCompletionRequestMessageRoleEnum.User,
@@ -1566,7 +1562,7 @@ describe('loadRequestMessages function tests', () => {
     });
 
     it('should handle environment variable MULTIPLE_DATA_TO_BASE64', async () => {
-      multimediaEnv.MULTIPLE_DATA_TO_BASE64 = true;
+      getTestInstanceConfig().feature.multipleDataToBase64 = true;
 
       const messages: ChatCompletionMessageParam[] = [
         {
@@ -1590,7 +1586,7 @@ describe('loadRequestMessages function tests', () => {
     });
 
     it('should preserve private upload URLs when MULTIPLE_DATA_TO_BASE64 is disabled', async () => {
-      multimediaEnv.MULTIPLE_DATA_TO_BASE64 = false;
+      getTestInstanceConfig().feature.multipleDataToBase64 = false;
       const imageUrl = 'http://localhost:9000/fastgpt-private/chat/image.png?X-Amz-Signature=test';
       const messages: ChatCompletionMessageParam[] = [
         {

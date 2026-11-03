@@ -1,3 +1,4 @@
+import { getSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/runtime';
 import { exit } from 'process';
 import {
   runBackgroundInitializationStep,
@@ -92,11 +93,6 @@ export async function registerNodeInstrumentation() {
     await runInitializationStep({
       step: 'init-global-variables',
       action: () => initGlobalVariables(),
-      logger
-    });
-    await runInitializationStep({
-      step: 'validate-agent-sandbox-proxy-env',
-      action: () => validateAgentSandboxProxyEnv(),
       logger
     });
 
@@ -291,6 +287,9 @@ export async function registerNodeInstrumentation() {
           step: 'reload-system-config-after-startup-migrations',
           action: async () => {
             await getInitConfig();
+            validateAgentSandboxProxyEnv(
+              getSystemInstanceConfig().subservice.agentSandbox.provider
+            );
             initS3Buckets();
           },
           logger,

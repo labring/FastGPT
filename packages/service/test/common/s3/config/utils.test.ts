@@ -9,7 +9,7 @@ const originalExternalEndpoint = process.env.STORAGE_EXTERNAL_ENDPOINT;
  */
 const loadAssert = async () => {
   vi.resetModules();
-  return import('@/service/common/system/assertStorageDownloadConfig');
+  return import('@fastgpt/service/common/s3/config/utils');
 };
 
 describe('assertStorageDownloadConfig', () => {
@@ -22,6 +22,27 @@ describe('assertStorageDownloadConfig', () => {
     vi.stubEnv('STORAGE_EXTERNAL_ENDPOINT', originalExternalEndpoint);
     vi.resetModules();
     vi.restoreAllMocks();
+  });
+
+  it('rejects a CDN without an external endpoint', async () => {
+    vi.stubEnv('STORAGE_VENDOR', 'minio');
+    const { assertStorageDownloadConfig } = await loadAssert();
+    expect(() => assertStorageDownloadConfig({ cdnEndpoint: 'https://cdn.example.com' })).toThrow(
+      'external endpoint'
+    );
+  });
+
+  it('rejects CDN rewriting for R2 even when both config URLs are present', async () => {
+    vi.stubEnv('STORAGE_VENDOR', 'r2');
+    vi.stubEnv('STORAGE_R2_PUBLIC_ENDPOINT', 'https://assets.example.com');
+    const { assertStorageDownloadConfig } = await loadAssert();
+    expect(() =>
+      assertStorageDownloadConfig({
+        cdnEndpoint: 'https://cdn.example.com',
+        externalEndpoint: 'https://storage.example.com'
+      })
+    ).toThrow('R2');
+    vi.unstubAllEnvs();
   });
 
   it('rejects MinIO short-redirect without an external endpoint', async () => {

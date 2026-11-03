@@ -1,5 +1,8 @@
+import {
+  createDefaultInstanceConfig,
+  getTestInstanceConfig
+} from '@test/utils/instanceConfigSnapshot';
 import { runtimePrompt2ChatsValue } from '@fastgpt/global/core/chat/adapt';
-import { LEAF_ABSENT_SNAPSHOT } from '@test/utils/instanceConfigSnapshot';
 import {
   ChatFileTypeEnum,
   ChatRoleEnum,
@@ -17,8 +20,7 @@ import { runWithContext as runWithWorkflowContext } from '@fastgpt/service/core/
 import { Readable } from 'node:stream';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-// getWorkflowAgentLoopProvider 优先读取实例快照，叶子缺省时继续保持 serviceEnv 驱动的测试语义。
-(global as any).systemInstanceConfig = LEAF_ABSENT_SNAPSHOT();
+(global as any).systemInstanceConfig = createDefaultInstanceConfig();
 
 const runWithContext: typeof runWithWorkflowContext = (value, fn) =>
   runWithWorkflowContext(
@@ -334,6 +336,12 @@ const getSandboxWorkDirectory = () => getSandboxRuntimeProfile().workDirectory;
 
 describe('dispatchRunAgent user context', () => {
   beforeEach(() => {
+    global.systemInstanceConfig = createDefaultInstanceConfig();
+    Object.assign(getTestInstanceConfig().subservice.agentSandbox, { provider: 'opensandbox' });
+    Object.assign(getTestInstanceConfig().subservice.agentSandbox.opensandbox, {
+      runtime: 'docker',
+      image: 'fastgpt-agent-sandbox:latest'
+    });
     vi.clearAllMocks();
     getLLMModelDataMock.mockImplementation(({ modelId, model }) => ({
       modelId: modelId ?? '68ad85a7463006c963799a41',
@@ -351,7 +359,7 @@ describe('dispatchRunAgent user context', () => {
     }));
     checkTeamSandboxPermissionMock.mockResolvedValue(undefined);
     ensureAppSandboxRuntimeReadyMock.mockResolvedValue(false);
-    serviceEnvMock.AGENT_ENGINE = 'fastAgent';
+    getTestInstanceConfig().feature.agentEngine = 'fastAgent';
     (global as any).feConfigs = {
       ...(global as any).feConfigs,
       show_agent_sandbox: true
@@ -912,7 +920,7 @@ describe('dispatchRunAgent user context', () => {
 
   it('routes pi engine through the unified runAgentLoop provider entry', async () => {
     const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
-    serviceEnvMock.AGENT_ENGINE = 'piAgent';
+    getTestInstanceConfig().feature.agentEngine = 'piAgent';
     const props = createProps();
     runAgentLoopMock.mockResolvedValueOnce({
       status: 'done',
@@ -1165,7 +1173,7 @@ describe('dispatchRunAgent user context', () => {
 
   it('restores pi providerState from unified memory and resumes ask with user answer', async () => {
     const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
-    serviceEnvMock.AGENT_ENGINE = 'piAgent';
+    getTestInstanceConfig().feature.agentEngine = 'piAgent';
     const props = createProps();
     props.lastInteractive = {
       type: 'agentAsk',
@@ -1351,7 +1359,7 @@ describe('dispatchRunAgent user context', () => {
   it('resumes a nested Pi ask with history=0 using the parent workflow checkpoint', async () => {
     const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
     const { WorkflowMemoryState } = await import('@fastgpt/service/core/workflow/memory/state');
-    serviceEnvMock.AGENT_ENGINE = 'piAgent';
+    getTestInstanceConfig().feature.agentEngine = 'piAgent';
     const props = createProps();
     props.params.history = 0;
     props.histories = [];

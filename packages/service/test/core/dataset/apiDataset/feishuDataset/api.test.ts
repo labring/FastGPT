@@ -1,7 +1,7 @@
+import { getTestInstanceConfig } from '@test/utils/instanceConfigSnapshot';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useFeishuDatasetRequest } from '@fastgpt/service/core/dataset/apiDataset/feishuDataset/api';
 import { createProxyAxios } from '@fastgpt/service/common/api/axios';
-import { serviceEnv } from '@fastgpt/service/env';
 
 const mocks = vi.hoisted(() => ({ request: vi.fn(), post: vi.fn(), use: vi.fn() }));
 vi.mock('@fastgpt/service/common/api/axios', () => ({
@@ -26,7 +26,7 @@ describe('useFeishuDatasetRequest', () => {
   it('配置部署方基址、禁用 SSRF 拦截并通过专用客户端换取租户 token', async () => {
     provider();
     expect(createProxyAxios).toHaveBeenCalledWith(
-      { baseURL: serviceEnv.FEISHU_BASE_URL, timeout: 60000 },
+      { baseURL: getTestInstanceConfig().providers.dataSource.feishuBaseUrl, timeout: 60000 },
       false
     );
     mocks.post.mockResolvedValueOnce({ data: { code: 0, tenant_access_token: 'token' } });
@@ -35,7 +35,7 @@ describe('useFeishuDatasetRequest', () => {
       headers: { Authorization: 'Bearer token', 'Content-Type': 'application/json; charset=utf-8' }
     });
     expect(mocks.post).toHaveBeenCalledWith(
-      `${serviceEnv.FEISHU_BASE_URL}/open-apis/auth/v3/tenant_access_token/internal`,
+      `${getTestInstanceConfig().providers.dataSource.feishuBaseUrl}/open-apis/auth/v3/tenant_access_token/internal`,
       { app_id: 'app', app_secret: 'secret' }
     );
     const authorized = { headers: { Authorization: 'Bearer existing' } };

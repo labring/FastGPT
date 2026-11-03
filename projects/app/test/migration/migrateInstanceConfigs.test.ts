@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  buildLegacyDomainOverrides,
+  buildLegacyDomainOverrides as buildFromLegacy,
   buildLegacyProOverrides,
   buildSparseLegacyOverrides,
   collectEnvRehomedWarnings
@@ -9,8 +9,10 @@ import {
   SYSTEM_INSTANCE_CONFIG_DOMAINS,
   resolveDomainEffectiveConfig
 } from '@fastgpt/global/common/system/config/schema';
-import { serviceEnv } from '@fastgpt/service/env';
-import { appEnv } from '@/env';
+import { readLegacyInstanceConfigEnv } from '@/migration/tasks/4180/20260928_migrate_instance_configs/env';
+const legacyEnv = readLegacyInstanceConfigEnv();
+const buildLegacyDomainOverrides = (input: Parameters<typeof buildFromLegacy>[0]) =>
+  buildFromLegacy({ ...input, legacyEnv });
 
 describe('migration buildLegacyDomainOverrides', () => {
   it('maps legacy feConfigs values into the site domain', () => {
@@ -451,8 +453,8 @@ describe('migration env wiring', () => {
   });
 
   it('does not revive an explicit unlimited per-team quota from env', () => {
-    const originalMaxPerTeam = serviceEnv.AGENT_SANDBOX_MAX_PER_TEAM;
-    serviceEnv.AGENT_SANDBOX_MAX_PER_TEAM = 5;
+    const originalMaxPerTeam = legacyEnv.AGENT_SANDBOX_MAX_PER_TEAM;
+    legacyEnv.AGENT_SANDBOX_MAX_PER_TEAM = 5;
 
     try {
       expect(
@@ -465,17 +467,17 @@ describe('migration env wiring', () => {
         )
       ).toBeNull();
     } finally {
-      serviceEnv.AGENT_SANDBOX_MAX_PER_TEAM = originalMaxPerTeam;
+      legacyEnv.AGENT_SANDBOX_MAX_PER_TEAM = originalMaxPerTeam;
     }
   });
 
   it('migrates Sangfor credentials from the legacy document when env has no custom PDF URL', () => {
-    const originalProvider = serviceEnv.DOCUMENT_PARSE_PROVIDER;
-    const originalUrl = serviceEnv.CUSTOM_PDF_PARSE_URL;
-    const originalKey = serviceEnv.CUSTOM_PDF_PARSE_KEY;
-    serviceEnv.DOCUMENT_PARSE_PROVIDER = 'sangfor';
-    serviceEnv.CUSTOM_PDF_PARSE_URL = undefined;
-    serviceEnv.CUSTOM_PDF_PARSE_KEY = undefined;
+    const originalProvider = legacyEnv.DOCUMENT_PARSE_PROVIDER;
+    const originalUrl = legacyEnv.CUSTOM_PDF_PARSE_URL;
+    const originalKey = legacyEnv.CUSTOM_PDF_PARSE_KEY;
+    legacyEnv.DOCUMENT_PARSE_PROVIDER = 'sangfor';
+    legacyEnv.CUSTOM_PDF_PARSE_URL = undefined;
+    legacyEnv.CUSTOM_PDF_PARSE_KEY = undefined;
 
     try {
       const overrides = buildLegacyDomainOverrides({
@@ -491,27 +493,27 @@ describe('migration env wiring', () => {
       );
       expect(pick(overrides, 'providers.documentParse.sangfor.key')).toBe('legacy-key');
     } finally {
-      serviceEnv.DOCUMENT_PARSE_PROVIDER = originalProvider;
-      serviceEnv.CUSTOM_PDF_PARSE_URL = originalUrl;
-      serviceEnv.CUSTOM_PDF_PARSE_KEY = originalKey;
+      legacyEnv.DOCUMENT_PARSE_PROVIDER = originalProvider;
+      legacyEnv.CUSTOM_PDF_PARSE_URL = originalUrl;
+      legacyEnv.CUSTOM_PDF_PARSE_KEY = originalKey;
     }
   });
 
   it('freezes the legacy PDF credential order into provider when none is selected', () => {
-    const originalProvider = serviceEnv.DOCUMENT_PARSE_PROVIDER;
-    const originalUrl = serviceEnv.CUSTOM_PDF_PARSE_URL;
-    const originalKey = serviceEnv.CUSTOM_PDF_PARSE_KEY;
-    const originalSomark = serviceEnv.SOMARK_API_KEY;
-    const originalDoc2x = serviceEnv.DOC2X_KEY;
-    const originalTextinAppId = serviceEnv.TEXTIN_APP_ID;
-    const originalTextinSecretCode = serviceEnv.TEXTIN_SECRET_CODE;
-    serviceEnv.DOCUMENT_PARSE_PROVIDER = undefined;
-    serviceEnv.CUSTOM_PDF_PARSE_URL = undefined;
-    serviceEnv.CUSTOM_PDF_PARSE_KEY = undefined;
-    serviceEnv.SOMARK_API_KEY = undefined;
-    serviceEnv.DOC2X_KEY = undefined;
-    serviceEnv.TEXTIN_APP_ID = undefined;
-    serviceEnv.TEXTIN_SECRET_CODE = undefined;
+    const originalProvider = legacyEnv.DOCUMENT_PARSE_PROVIDER;
+    const originalUrl = legacyEnv.CUSTOM_PDF_PARSE_URL;
+    const originalKey = legacyEnv.CUSTOM_PDF_PARSE_KEY;
+    const originalSomark = legacyEnv.SOMARK_API_KEY;
+    const originalDoc2x = legacyEnv.DOC2X_KEY;
+    const originalTextinAppId = legacyEnv.TEXTIN_APP_ID;
+    const originalTextinSecretCode = legacyEnv.TEXTIN_SECRET_CODE;
+    legacyEnv.DOCUMENT_PARSE_PROVIDER = undefined;
+    legacyEnv.CUSTOM_PDF_PARSE_URL = undefined;
+    legacyEnv.CUSTOM_PDF_PARSE_KEY = undefined;
+    legacyEnv.SOMARK_API_KEY = undefined;
+    legacyEnv.DOC2X_KEY = undefined;
+    legacyEnv.TEXTIN_APP_ID = undefined;
+    legacyEnv.TEXTIN_SECRET_CODE = undefined;
 
     try {
       const overrides = buildLegacyDomainOverrides({
@@ -521,13 +523,13 @@ describe('migration env wiring', () => {
 
       expect(pick(overrides, 'providers.documentParse.provider')).toBe('somark');
     } finally {
-      serviceEnv.DOCUMENT_PARSE_PROVIDER = originalProvider;
-      serviceEnv.CUSTOM_PDF_PARSE_URL = originalUrl;
-      serviceEnv.CUSTOM_PDF_PARSE_KEY = originalKey;
-      serviceEnv.SOMARK_API_KEY = originalSomark;
-      serviceEnv.DOC2X_KEY = originalDoc2x;
-      serviceEnv.TEXTIN_APP_ID = originalTextinAppId;
-      serviceEnv.TEXTIN_SECRET_CODE = originalTextinSecretCode;
+      legacyEnv.DOCUMENT_PARSE_PROVIDER = originalProvider;
+      legacyEnv.CUSTOM_PDF_PARSE_URL = originalUrl;
+      legacyEnv.CUSTOM_PDF_PARSE_KEY = originalKey;
+      legacyEnv.SOMARK_API_KEY = originalSomark;
+      legacyEnv.DOC2X_KEY = originalDoc2x;
+      legacyEnv.TEXTIN_APP_ID = originalTextinAppId;
+      legacyEnv.TEXTIN_SECRET_CODE = originalTextinSecretCode;
     }
   });
 
@@ -544,158 +546,154 @@ describe('migration env wiring', () => {
     const overrides = buildLegacyDomainOverrides({ feConfigs: {}, systemEnv: {} });
     const cases: [string, unknown][] = [
       // site
-      ['site.name', appEnv.SYSTEM_NAME],
-      ['site.description', appEnv.SYSTEM_DESCRIPTION],
-      ['site.favicon', appEnv.SYSTEM_FAVICON],
-      ['site.marketplaceUrl', appEnv.MARKETPLACE_URL],
-      ['site.customApiDomain', appEnv.CUSTOM_API_DOMAIN],
-      ['site.customSharePageDomain', appEnv.CUSTOM_SHARE_PAGE_DOMAIN],
+      ['site.name', legacyEnv.SYSTEM_NAME],
+      ['site.description', legacyEnv.SYSTEM_DESCRIPTION],
+      ['site.favicon', legacyEnv.SYSTEM_FAVICON],
+      ['site.marketplaceUrl', legacyEnv.MARKETPLACE_URL],
+      ['site.customApiDomain', legacyEnv.CUSTOM_API_DOMAIN],
+      ['site.customSharePageDomain', legacyEnv.CUSTOM_SHARE_PAGE_DOMAIN],
       // auth
-      ['auth.openApiKeyMaxCount', appEnv.OPENAPI_KEY_MAX_COUNT],
-      ['auth.passwordExpiredMonth', appEnv.PASSWORD_EXPIRED_MONTH ?? null],
-      ['auth.wecomLoginAutoRedirect', appEnv.WECOM_LOGIN_AUTO_REDIRECT],
-      [
-        'auth.defaultTeamBasicPermissionsEnabled',
-        serviceEnv.DEFAULT_TEAM_BASIC_PERMISSIONS_ENABLED
-      ],
+      ['auth.openApiKeyMaxCount', legacyEnv.OPENAPI_KEY_MAX_COUNT],
+      ['auth.passwordExpiredMonth', legacyEnv.PASSWORD_EXPIRED_MONTH ?? null],
+      ['auth.wecomLoginAutoRedirect', legacyEnv.WECOM_LOGIN_AUTO_REDIRECT],
+      ['auth.defaultTeamBasicPermissionsEnabled', legacyEnv.DEFAULT_TEAM_BASIC_PERMISSIONS_ENABLED],
       // security
-      ['security.useIpLimit', serviceEnv.USE_IP_LIMIT],
-      ['security.checkInternalIp', serviceEnv.CHECK_INTERNAL_IP],
-      ['security.csrfEnabled', serviceEnv.CSRF_ENABLED],
-      ['security.passwordLoginMinuteLimitCount', serviceEnv.PASSWORD_LOGIN_MINUTE_LIMIT_COUNT],
-      ['security.maxLoginSession', serviceEnv.MAX_LOGIN_SESSION],
-      ['security.skipFileTypeCheck', serviceEnv.SKIP_FILE_TYPE_CHECK],
+      ['security.useIpLimit', legacyEnv.USE_IP_LIMIT],
+      ['security.checkInternalIp', legacyEnv.CHECK_INTERNAL_IP],
+      ['security.csrfEnabled', legacyEnv.CSRF_ENABLED],
+      ['security.passwordLoginMinuteLimitCount', legacyEnv.PASSWORD_LOGIN_MINUTE_LIMIT_COUNT],
+      ['security.maxLoginSession', legacyEnv.MAX_LOGIN_SESSION],
+      ['security.skipFileTypeCheck', legacyEnv.SKIP_FILE_TYPE_CHECK],
       // feature
-      ['feature.hideChatCopyrightSetting', appEnv.HIDE_CHAT_COPYRIGHT_SETTING],
-      ['feature.multipleDataToBase64', serviceEnv.MULTIPLE_DATA_TO_BASE64],
-      ['feature.datasetSynonymEnabled', serviceEnv.DATASET_SYNONYM_ENABLED],
-      ['feature.agentEngine', serviceEnv.AGENT_ENGINE],
-      ['feature.disableCache', serviceEnv.DISABLE_CACHE],
+      ['feature.hideChatCopyrightSetting', legacyEnv.HIDE_CHAT_COPYRIGHT_SETTING],
+      ['feature.multipleDataToBase64', legacyEnv.MULTIPLE_DATA_TO_BASE64],
+      ['feature.agentEngine', legacyEnv.AGENT_ENGINE],
+      ['feature.disableCache', legacyEnv.DISABLE_CACHE],
       // commercial
-      ['commercial.showCoupon', appEnv.SHOW_COUPON],
-      ['commercial.showDiscountCoupon', appEnv.SHOW_DISCOUNT_COUPON],
-      ['commercial.payFormUrl', appEnv.PAY_FORM_URL],
+      ['commercial.showCoupon', legacyEnv.SHOW_COUPON],
+      ['commercial.showDiscountCoupon', legacyEnv.SHOW_DISCOUNT_COUPON],
+      ['commercial.payFormUrl', legacyEnv.PAY_FORM_URL],
       // resource
-      ['resource.serviceRequestMaxContentLength', serviceEnv.SERVICE_REQUEST_MAX_CONTENT_LENGTH],
-      ['resource.systemMaxStringLengthM', serviceEnv.SYSTEM_MAX_STRING_LENGTH_M],
-      ['resource.maxFolderDepth', serviceEnv.MAX_FOLDER_DEPTH],
-      ['resource.appFolderMaxAmount', serviceEnv.APP_FOLDER_MAX_AMOUNT],
-      ['resource.datasetFolderMaxAmount', serviceEnv.DATASET_FOLDER_MAX_AMOUNT],
-      ['resource.uploadFileMaxSize', serviceEnv.UPLOAD_FILE_MAX_SIZE],
-      ['resource.uploadFileMaxAmount', serviceEnv.UPLOAD_FILE_MAX_AMOUNT],
+      ['resource.serviceRequestMaxContentLength', legacyEnv.SERVICE_REQUEST_MAX_CONTENT_LENGTH],
+      ['resource.systemMaxStringLengthM', legacyEnv.SYSTEM_MAX_STRING_LENGTH_M],
+      ['resource.maxFolderDepth', legacyEnv.MAX_FOLDER_DEPTH],
+      ['resource.appFolderMaxAmount', legacyEnv.APP_FOLDER_MAX_AMOUNT],
+      ['resource.datasetFolderMaxAmount', legacyEnv.DATASET_FOLDER_MAX_AMOUNT],
+      ['resource.uploadFileMaxSize', legacyEnv.UPLOAD_FILE_MAX_SIZE],
+      ['resource.uploadFileMaxAmount', legacyEnv.UPLOAD_FILE_MAX_AMOUNT],
       // performance
-      ['performance.workflow.maxRunTimes', serviceEnv.WORKFLOW_MAX_RUN_TIMES],
-      ['performance.workflow.maxLoopTimes', serviceEnv.WORKFLOW_MAX_LOOP_TIMES],
-      ['performance.workflow.parallelMaxConcurrency', serviceEnv.WORKFLOW_PARALLEL_MAX_CONCURRENCY],
-      ['performance.parse.fileTimeoutSeconds', serviceEnv.PARSE_FILE_TIMEOUT_SECONDS],
-      ['performance.parse.xlsxMaxRows', serviceEnv.XLSX_PARSE_MAX_ROWS],
-      ['performance.parse.xlsxMaxColumns', serviceEnv.XLSX_PARSE_MAX_COLUMNS],
-      ['performance.parse.xlsxMaxCells', serviceEnv.XLSX_PARSE_MAX_CELLS],
-      ['performance.parse.xlsxMaxMergedCells', serviceEnv.XLSX_PARSE_MAX_MERGED_CELLS],
-      ['performance.parse.maxHtmlTransformChars', serviceEnv.MAX_HTML_TRANSFORM_CHARS],
-      ['performance.dataset.parseMaxProcess', serviceEnv.DATASET_PARSE_MAX_PROCESS],
-      ['performance.dataset.vectorMaxProcess', serviceEnv.VECTOR_MAX_PROCESS],
-      ['performance.dataset.qaMaxProcess', serviceEnv.QA_MAX_PROCESS],
-      ['performance.dataset.vlmMaxProcess', serviceEnv.VLM_MAX_PROCESS],
-      ['performance.dataset.retrievalResultsLimit', serviceEnv.RETRIEVAL_RESULTS_LIMIT],
-      ['performance.chat.maxQpm', serviceEnv.CHAT_MAX_QPM],
-      ['performance.streamResume.ttlSeconds', serviceEnv.STREAM_RESUME_TTL_SECONDS],
+      ['performance.workflow.maxRunTimes', legacyEnv.WORKFLOW_MAX_RUN_TIMES],
+      ['performance.workflow.maxLoopTimes', legacyEnv.WORKFLOW_MAX_LOOP_TIMES],
+      ['performance.workflow.parallelMaxConcurrency', legacyEnv.WORKFLOW_PARALLEL_MAX_CONCURRENCY],
+      ['performance.parse.fileTimeoutSeconds', legacyEnv.PARSE_FILE_TIMEOUT_SECONDS],
+      ['performance.parse.xlsxMaxRows', legacyEnv.XLSX_PARSE_MAX_ROWS],
+      ['performance.parse.xlsxMaxColumns', legacyEnv.XLSX_PARSE_MAX_COLUMNS],
+      ['performance.parse.xlsxMaxCells', legacyEnv.XLSX_PARSE_MAX_CELLS],
+      ['performance.parse.xlsxMaxMergedCells', legacyEnv.XLSX_PARSE_MAX_MERGED_CELLS],
+      ['performance.parse.maxHtmlTransformChars', legacyEnv.MAX_HTML_TRANSFORM_CHARS],
+      ['performance.dataset.parseMaxProcess', legacyEnv.DATASET_PARSE_MAX_PROCESS],
+      ['performance.dataset.vectorMaxProcess', legacyEnv.VECTOR_MAX_PROCESS],
+      ['performance.dataset.qaMaxProcess', legacyEnv.QA_MAX_PROCESS],
+      ['performance.dataset.vlmMaxProcess', legacyEnv.VLM_MAX_PROCESS],
+      ['performance.dataset.retrievalResultsLimit', legacyEnv.RETRIEVAL_RESULTS_LIMIT],
+      ['performance.chat.maxQpm', legacyEnv.CHAT_MAX_QPM],
+      ['performance.streamResume.ttlSeconds', legacyEnv.STREAM_RESUME_TTL_SECONDS],
       [
         'performance.streamResume.postCompleteTtlSeconds',
-        serviceEnv.STREAM_RESUME_POST_COMPLETE_TTL_SECONDS
+        legacyEnv.STREAM_RESUME_POST_COMPLETE_TTL_SECONDS
       ],
       [
         'performance.streamResume.redisMaxmemoryRatio',
-        serviceEnv.STREAM_RESUME_REDIS_MAXMEMORY_RATIO
+        legacyEnv.STREAM_RESUME_REDIS_MAXMEMORY_RATIO
       ],
       [
         'performance.streamResume.redisMemoryCheckIntervalMs',
-        serviceEnv.STREAM_RESUME_REDIS_MEMORY_CHECK_INTERVAL_MS
+        legacyEnv.STREAM_RESUME_REDIS_MEMORY_CHECK_INTERVAL_MS
       ],
-      ['performance.tracking.batchUpdateTime', serviceEnv.TRACK_BATCH_UPDATE_TIME],
-      ['performance.tracking.retentionHours', serviceEnv.LLM_REQUEST_TRACKING_RETENTION_HOURS],
-      ['performance.task.evalConcurrency', serviceEnv.EVAL_CONCURRENCY],
-      ['performance.channel.wechatConcurrency', serviceEnv.WECHAT_CHANNEL_CONCURRENCY],
+      ['performance.tracking.batchUpdateTime', legacyEnv.TRACK_BATCH_UPDATE_TIME],
+      ['performance.tracking.retentionHours', legacyEnv.LLM_REQUEST_TRACKING_RETENTION_HOURS],
+      ['performance.task.evalConcurrency', legacyEnv.EVAL_CONCURRENCY],
+      ['performance.channel.wechatConcurrency', legacyEnv.WECHAT_CHANNEL_CONCURRENCY],
       // storage
-      ['storage.downloadMode', serviceEnv.STORAGE_DOWNLOAD_URL_MODE],
-      ['storage.externalEndpoint', serviceEnv.STORAGE_EXTERNAL_ENDPOINT],
-      ['storage.cdnEndpoint', serviceEnv.STORAGE_S3_CDN_ENDPOINT],
-      ['storage.fileUrlExpiredDays', serviceEnv.FILE_URL_EXPIRED_DAYS],
-      ['storage.redirectTtlSeconds', serviceEnv.STORAGE_DOWNLOAD_REDIRECT_TTL_SECONDS],
+      ['storage.downloadMode', legacyEnv.STORAGE_DOWNLOAD_URL_MODE],
+      ['storage.externalEndpoint', legacyEnv.STORAGE_EXTERNAL_ENDPOINT],
+      ['storage.cdnEndpoint', legacyEnv.STORAGE_S3_CDN_ENDPOINT],
+      ['storage.fileUrlExpiredDays', legacyEnv.FILE_URL_EXPIRED_DAYS],
+      ['storage.redirectTtlSeconds', legacyEnv.STORAGE_DOWNLOAD_REDIRECT_TTL_SECONDS],
       // vector
-      ['vector.hnswEfSearch', serviceEnv.HNSW_EF_SEARCH],
+      ['vector.hnswEfSearch', legacyEnv.HNSW_EF_SEARCH],
       // providers
-      ['providers.documentParse.customPdf.url', serviceEnv.CUSTOM_PDF_PARSE_URL],
-      ['providers.documentParse.customPdf.key', serviceEnv.CUSTOM_PDF_PARSE_KEY],
-      ['providers.documentParse.customPdf.somarkApiKey', serviceEnv.SOMARK_API_KEY],
-      ['providers.documentParse.customPdf.doc2xKey', serviceEnv.DOC2X_KEY],
-      ['providers.documentParse.customPdf.textinAppId', serviceEnv.TEXTIN_APP_ID],
-      ['providers.documentParse.customPdf.textinSecretCode', serviceEnv.TEXTIN_SECRET_CODE],
-      ['providers.documentParse.sangfor.extensions', serviceEnv.SANGFOR_PARSE_EXTENSIONS],
-      ['providers.documentParse.sangfor.timeoutSeconds', serviceEnv.SANGFOR_PARSE_TIMEOUT_SECONDS],
-      ['providers.dataSource.feishuBaseUrl', serviceEnv.FEISHU_BASE_URL],
-      ['providers.dataSource.dingtalkBaseUrl', serviceEnv.DINGTALK_BASE_URL],
-      ['providers.dataSource.dingtalkOapiBaseUrl', serviceEnv.DINGTALK_OAPI_BASE_URL],
-      ['providers.dataSource.yuqueDatasetBaseUrl', serviceEnv.YUQUE_DATASET_BASE_URL],
+      ['providers.documentParse.customPdf.url', legacyEnv.CUSTOM_PDF_PARSE_URL],
+      ['providers.documentParse.customPdf.key', legacyEnv.CUSTOM_PDF_PARSE_KEY],
+      ['providers.documentParse.customPdf.somarkApiKey', legacyEnv.SOMARK_API_KEY],
+      ['providers.documentParse.customPdf.doc2xKey', legacyEnv.DOC2X_KEY],
+      ['providers.documentParse.customPdf.textinAppId', legacyEnv.TEXTIN_APP_ID],
+      ['providers.documentParse.customPdf.textinSecretCode', legacyEnv.TEXTIN_SECRET_CODE],
+      ['providers.documentParse.sangfor.extensions', legacyEnv.SANGFOR_PARSE_EXTENSIONS],
+      ['providers.documentParse.sangfor.timeoutSeconds', legacyEnv.SANGFOR_PARSE_TIMEOUT_SECONDS],
+      ['providers.dataSource.feishuBaseUrl', legacyEnv.FEISHU_BASE_URL],
+      ['providers.dataSource.dingtalkBaseUrl', legacyEnv.DINGTALK_BASE_URL],
+      ['providers.dataSource.dingtalkOapiBaseUrl', legacyEnv.DINGTALK_OAPI_BASE_URL],
+      ['providers.dataSource.yuqueDatasetBaseUrl', legacyEnv.YUQUE_DATASET_BASE_URL],
       // subservice
-      ['subservice.plugin.baseUrl', serviceEnv.PLUGIN_BASE_URL],
-      ['subservice.plugin.token', serviceEnv.PLUGIN_TOKEN],
-      ['subservice.codeSandbox.baseUrl', serviceEnv.CODE_SANDBOX_URL],
-      ['subservice.codeSandbox.token', serviceEnv.CODE_SANDBOX_TOKEN],
-      ['subservice.aiProxy.endpoint', serviceEnv.AIPROXY_API_ENDPOINT],
-      ['subservice.aiProxy.token', serviceEnv.AIPROXY_API_TOKEN],
-      ['subservice.mcp.sseProxyUrl', appEnv.SSE_MCP_SERVER_PROXY_ENDPOINT],
-      ['subservice.agentSandbox.provider', serviceEnv.AGENT_SANDBOX_PROVIDER],
-      ['subservice.agentSandbox.common.cpuCount', serviceEnv.AGENT_SANDBOX_CPU_COUNT],
-      ['subservice.agentSandbox.common.memoryMiB', serviceEnv.AGENT_SANDBOX_MEMORY_MIB],
-      ['subservice.agentSandbox.common.storageSizeGi', serviceEnv.AGENT_SANDBOX_STORAGE_SIZE_GI],
-      ['subservice.agentSandbox.common.suspendMinutes', serviceEnv.AGENT_SANDBOX_SUSPEND_MINUTES],
+      ['subservice.plugin.baseUrl', legacyEnv.PLUGIN_BASE_URL],
+      ['subservice.plugin.token', legacyEnv.PLUGIN_TOKEN],
+      ['subservice.codeSandbox.baseUrl', legacyEnv.CODE_SANDBOX_URL],
+      ['subservice.codeSandbox.token', legacyEnv.CODE_SANDBOX_TOKEN],
+      ['subservice.aiProxy.endpoint', legacyEnv.AIPROXY_API_ENDPOINT],
+      ['subservice.aiProxy.token', legacyEnv.AIPROXY_API_TOKEN],
+      ['subservice.mcp.sseProxyUrl', legacyEnv.SSE_MCP_SERVER_PROXY_ENDPOINT],
+      ['subservice.agentSandbox.provider', legacyEnv.AGENT_SANDBOX_PROVIDER],
+      ['subservice.agentSandbox.common.cpuCount', legacyEnv.AGENT_SANDBOX_CPU_COUNT],
+      ['subservice.agentSandbox.common.memoryMiB', legacyEnv.AGENT_SANDBOX_MEMORY_MIB],
+      ['subservice.agentSandbox.common.storageSizeGi', legacyEnv.AGENT_SANDBOX_STORAGE_SIZE_GI],
+      ['subservice.agentSandbox.common.suspendMinutes', legacyEnv.AGENT_SANDBOX_SUSPEND_MINUTES],
       [
         'subservice.agentSandbox.common.archiveInactiveDays',
-        serviceEnv.AGENT_SANDBOX_ARCHIVE_INACTIVE_DAYS
+        legacyEnv.AGENT_SANDBOX_ARCHIVE_INACTIVE_DAYS
       ],
-      ['subservice.agentSandbox.common.maxEditDebug', serviceEnv.AGENT_SANDBOX_MAX],
+      ['subservice.agentSandbox.common.maxEditDebug', legacyEnv.AGENT_SANDBOX_MAX],
       [
         'subservice.agentSandbox.common.entrypointTimeoutSeconds',
-        serviceEnv.AGENT_SANDBOX_ENTRYPOINT_TIMEOUT_SECONDS
+        legacyEnv.AGENT_SANDBOX_ENTRYPOINT_TIMEOUT_SECONDS
       ],
       [
         'subservice.agentSandbox.common.wsMaxMessageBytes',
-        serviceEnv.AGENT_SANDBOX_WS_MAX_MESSAGE_BYTES
+        legacyEnv.AGENT_SANDBOX_WS_MAX_MESSAGE_BYTES
       ],
       [
         'subservice.agentSandbox.common.wsMaxFrameBytes',
-        serviceEnv.AGENT_SANDBOX_WS_MAX_FRAME_BYTES
+        legacyEnv.AGENT_SANDBOX_WS_MAX_FRAME_BYTES
       ],
-      ['subservice.agentSandbox.common.npmRegistry', serviceEnv.AGENT_SANDBOX_NPM_REGISTRY],
-      ['subservice.agentSandbox.common.pypiIndexUrl', serviceEnv.AGENT_SANDBOX_PYPI_INDEX_URL],
-      ['subservice.agentSandbox.common.aptMirror', serviceEnv.AGENT_SANDBOX_APT_MIRROR],
-      ['subservice.agentSandbox.sealosdevbox.baseUrl', serviceEnv.AGENT_SANDBOX_SEALOS_BASEURL],
-      ['subservice.agentSandbox.sealosdevbox.token', serviceEnv.AGENT_SANDBOX_SEALOS_TOKEN],
+      ['subservice.agentSandbox.common.npmRegistry', legacyEnv.AGENT_SANDBOX_NPM_REGISTRY],
+      ['subservice.agentSandbox.common.pypiIndexUrl', legacyEnv.AGENT_SANDBOX_PYPI_INDEX_URL],
+      ['subservice.agentSandbox.common.aptMirror', legacyEnv.AGENT_SANDBOX_APT_MIRROR],
+      ['subservice.agentSandbox.sealosdevbox.baseUrl', legacyEnv.AGENT_SANDBOX_SEALOS_BASEURL],
+      ['subservice.agentSandbox.sealosdevbox.token', legacyEnv.AGENT_SANDBOX_SEALOS_TOKEN],
       [
         'subservice.agentSandbox.sealosdevbox.workDirectory',
-        serviceEnv.AGENT_SANDBOX_SEALOS_WORK_DIRECTORY
+        legacyEnv.AGENT_SANDBOX_SEALOS_WORK_DIRECTORY
       ],
-      ['subservice.agentSandbox.sealosdevbox.image', serviceEnv.AGENT_SANDBOX_SEALOS_IMAGE],
-      ['subservice.agentSandbox.opensandbox.baseUrl', serviceEnv.AGENT_SANDBOX_OPENSANDBOX_BASEURL],
-      ['subservice.agentSandbox.opensandbox.apiKey', serviceEnv.AGENT_SANDBOX_OPENSANDBOX_API_KEY],
-      ['subservice.agentSandbox.opensandbox.runtime', serviceEnv.AGENT_SANDBOX_OPENSANDBOX_RUNTIME],
-      ['subservice.agentSandbox.opensandbox.image', serviceEnv.AGENT_SANDBOX_OPENSANDBOX_IMAGE],
+      ['subservice.agentSandbox.sealosdevbox.image', legacyEnv.AGENT_SANDBOX_SEALOS_IMAGE],
+      ['subservice.agentSandbox.opensandbox.baseUrl', legacyEnv.AGENT_SANDBOX_OPENSANDBOX_BASEURL],
+      ['subservice.agentSandbox.opensandbox.apiKey', legacyEnv.AGENT_SANDBOX_OPENSANDBOX_API_KEY],
+      ['subservice.agentSandbox.opensandbox.runtime', legacyEnv.AGENT_SANDBOX_OPENSANDBOX_RUNTIME],
+      ['subservice.agentSandbox.opensandbox.image', legacyEnv.AGENT_SANDBOX_OPENSANDBOX_IMAGE],
       [
         'subservice.agentSandbox.opensandbox.useServerProxy',
-        serviceEnv.AGENT_SANDBOX_OPENSANDBOX_USE_SERVER_PROXY
+        legacyEnv.AGENT_SANDBOX_OPENSANDBOX_USE_SERVER_PROXY
       ],
       [
         'subservice.agentSandbox.opensandbox.volumeManagerUrl',
-        serviceEnv.AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL
+        legacyEnv.AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL
       ],
       [
         'subservice.agentSandbox.opensandbox.volumeManagerToken',
-        serviceEnv.AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN
+        legacyEnv.AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN
       ],
       [
         'subservice.agentSandbox.opensandbox.volumeNamePrefix',
-        serviceEnv.AGENT_SANDBOX_OPENSANDBOX_VOLUME_NAME_PREFIX
+        legacyEnv.AGENT_SANDBOX_OPENSANDBOX_VOLUME_NAME_PREFIX
       ]
     ];
 

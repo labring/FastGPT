@@ -6,7 +6,6 @@ const logger = getLogger(LogCategories.SYSTEM);
 
 export type InstanceConfigReadSource =
   | 'instance-config'
-  | 'env-fallback'
   | 'schema-default'
   | 'caller-override'
   | 'bridged-fe'
@@ -208,7 +207,7 @@ const emitCoverageLog = ({
  * This is intentionally test-only: enabling `MIGRATION_VERIFY_LOG=true` makes
  * it possible to grep `[MIG-CONFIG]` after exercising the application and see
  * which callsites were visited, which config paths they read, and whether the
- * effective value came from the database, an env fallback, or a bridge.
+ * effective value came from the database, Schema defaults, or a bridge.
  */
 export const logInstanceConfigRead = ({
   callsite,

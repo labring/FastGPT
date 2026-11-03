@@ -1128,5 +1128,14 @@
   "license_admin_home_community_description": "현재 버전과 기능을 확인합니다",
   "user_status_active": "활성",
   "user_status_inactive": "활성화 대기 중",
-  "user_status_cancelled": "탈퇴"
+  "user_status_cancelled": "탈퇴",
+  "dataset_archive_download": "데이터셋 아카이브 다운로드",
+  "dataset_archive_max_files": "아카이브당 최대 파일 수",
+  "dataset_archive_max_files_tooltip": "하나의 ZIP 아카이브에 포함할 수 있는 원본 파일의 최대 개수입니다.",
+  "dataset_archive_max_source_size_mib": "원본 파일 총 크기 제한 (MiB)",
+  "dataset_archive_max_source_size_mib_tooltip": "ZIP 압축 후 크기가 아닌 원본 파일의 논리적 크기를 합산합니다.",
+  "dataset_archive_max_concurrency": "클러스터 동시 아카이브 작업 수",
+  "dataset_archive_max_concurrency_tooltip": "사전 검사 및 다운로드 단계에 적용되며 모든 서비스 노드가 공유하는 동시 작업 제한입니다.",
+  "dataset_archive_prepare_timeout_seconds": "아카이브 준비 시간 제한 (초)",
+  "dataset_archive_prepare_timeout_seconds_tooltip": "다운로드 응답 헤더를 보내기 전 사전 검사에 적용됩니다. 이미 시작된 파일 전송 시간은 제한하지 않습니다."
 }

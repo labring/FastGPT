@@ -1128,5 +1128,14 @@
   "license_admin_home_community_description": "查看当前版本与功能能力",
   "user_status_active": "活跃",
   "user_status_inactive": "待激活",
-  "user_status_cancelled": "注销"
+  "user_status_cancelled": "注销",
+  "dataset_archive_download": "知识库归档下载",
+  "dataset_archive_max_files": "单次归档文件数上限",
+  "dataset_archive_max_files_tooltip": "单个 ZIP 可包含的原始文件数量上限。",
+  "dataset_archive_max_source_size_mib": "原始文件总大小上限（MiB）",
+  "dataset_archive_max_source_size_mib_tooltip": "按归档内原始文件的逻辑大小累计，不是压缩后 ZIP 的大小。",
+  "dataset_archive_max_concurrency": "集群归档并发数",
+  "dataset_archive_max_concurrency_tooltip": "所有服务节点共享的归档任务并发上限，覆盖预检和下载阶段。",
+  "dataset_archive_prepare_timeout_seconds": "归档准备超时（秒）",
+  "dataset_archive_prepare_timeout_seconds_tooltip": "发送下载响应头前的预检时限，不限制已开始的文件传输时长。"
 }

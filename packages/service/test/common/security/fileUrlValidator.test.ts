@@ -1,3 +1,4 @@
+import { resolveDomainEffectiveConfig } from '@fastgpt/global/common/system/config/schema';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 const originalEnv = {
@@ -62,13 +63,16 @@ describe('fileUrlValidator', () => {
       expect(validateFileUrlDomain('http://cdn.example.com/file.png')).toBe(true);
     });
 
-    it('should reject invalid STORAGE_EXTERNAL_ENDPOINT at env validation stage', async () => {
+    it('rejects invalid external endpoints at the config boundary and ignores the retired ENV', async () => {
       vi.stubEnv('STORAGE_EXTERNAL_ENDPOINT', 'not-a-valid-url');
       global.systemEnv = { fileUrlWhitelist: ['other.com'] } as any;
 
-      await expect(import('@fastgpt/service/common/security/fileUrlValidator')).rejects.toThrow(
-        'Invalid environment variables. Please check: STORAGE_EXTERNAL_ENDPOINT'
-      );
+      expect(() =>
+        resolveDomainEffectiveConfig('storage', { externalEndpoint: 'not-a-valid-url' })
+      ).toThrow();
+      await expect(
+        import('@fastgpt/service/common/security/fileUrlValidator')
+      ).resolves.toBeDefined();
     });
 
     it('should extract hostname from FE_DOMAIN', async () => {

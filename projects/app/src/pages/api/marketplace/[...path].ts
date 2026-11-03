@@ -4,7 +4,7 @@ import { jsonRes } from '@fastgpt/service/common/response';
 import { Readable } from 'stream';
 import { authSystemAdmin, authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { buildSameOriginUrl } from '@fastgpt/service/common/security/network';
-import { appEnv } from '@/env';
+import { getSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/runtime';
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
@@ -26,10 +26,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       throw new Error('url is empty');
     }
 
-    const marketplaceUrl = appEnv.MARKETPLACE_URL;
+    const marketplaceUrl = getSystemInstanceConfig().site.marketplaceUrl;
 
     if (!marketplaceUrl) {
-      throw new Error('MARKETPLACE_URL is not configured');
+      throw new Error('Marketplace URL is not configured');
     }
 
     // 防御 protocol-relative URL 覆盖主机(如 path 含空段 → `//169.254...`)

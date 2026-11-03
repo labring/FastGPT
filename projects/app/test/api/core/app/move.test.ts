@@ -1,5 +1,6 @@
+import { getTestInstanceConfig } from '@test/utils/instanceConfigSnapshot';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
-import { serviceEnv } from '@fastgpt/service/env';
+
 import updateHandler from '@/pages/api/core/app/update';
 import moveHandler from '@/pages/api/core/app/batch/move';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
@@ -477,7 +478,7 @@ describe('configured move depth', () => {
       const { owner } = await getFakeUsers(1);
       const scope = { teamId: owner.teamId, tmbId: owner.tmbId };
       const targets: string[] = [];
-      for (let i = 0; i < serviceEnv.MAX_FOLDER_DEPTH; i++) {
+      for (let i = 0; i < getTestInstanceConfig().resource.maxFolderDepth; i++) {
         const folder = await MongoApp.create({
           ...scope,
           name: `target-${i}`,

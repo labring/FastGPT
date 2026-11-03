@@ -125,7 +125,7 @@ defineIndex(DatasetDataSchema, {
 
 // 同义词复合索引只在模块加载期按 env 声明（schema 求值早于实例配置加载，无法热生效）；
 // 开关本身暂留 ENV（DATASET_SYNONYM_ENABLED），消费点直读 serviceEnv，Admin 不提供修改入口，
-// 因此 feature.datasetSynonymEnabled 刻意不进 registry（registry 顶部有说明）。
+// 该开关不进入实例配置 Schema 或 registry。
 // 部署仍需 DATASET_SYNONYM_ENABLED=true 并重启，索引才会完整生效。
 if (serviceEnv.DATASET_SYNONYM_ENABLED) {
   defineIndex(DatasetDataSchema, {

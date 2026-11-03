@@ -1128,5 +1128,14 @@
   "license_admin_home_community_description": "View the current version and capabilities",
   "user_status_active": "Active",
   "user_status_inactive": "Pending activation",
-  "user_status_cancelled": "Cancelled"
+  "user_status_cancelled": "Cancelled",
+  "dataset_archive_download": "Dataset archive downloads",
+  "dataset_archive_max_files": "Files per archive",
+  "dataset_archive_max_files_tooltip": "Maximum number of source files included in a single ZIP archive.",
+  "dataset_archive_max_source_size_mib": "Total source file size limit (MiB)",
+  "dataset_archive_max_source_size_mib_tooltip": "Total logical size of the source files, before ZIP compression.",
+  "dataset_archive_max_concurrency": "Concurrent archive tasks across the cluster",
+  "dataset_archive_max_concurrency_tooltip": "Shared limit across all service nodes, covering both preparation and downloads.",
+  "dataset_archive_prepare_timeout_seconds": "Archive preparation timeout (seconds)",
+  "dataset_archive_prepare_timeout_seconds_tooltip": "Time limit for checks before download headers are sent. Does not limit a file transfer already in progress."
 }

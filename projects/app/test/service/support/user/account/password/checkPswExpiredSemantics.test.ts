@@ -1,11 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { LEAF_ABSENT_SNAPSHOT } from '@test/utils/instanceConfigSnapshot';
+import { createDefaultInstanceConfig } from '@test/utils/instanceConfigSnapshot';
 
 // checkPswExpired 的核心语义在"快照叶子值"而非 env：
 // 生产快照由 schema 默认值填满（auth.passwordExpiredMonth 恒为 number|null），
 // 即使测试种子缺失叶子，运行期也不能读回旧 ENV。
 const setSnapshotPasswordExpiredMonth = (value: number | null | undefined) => {
-  const snapshot = LEAF_ABSENT_SNAPSHOT() as any;
+  const snapshot = createDefaultInstanceConfig() as any;
   snapshot.auth.passwordExpiredMonth = value;
   (global as any).systemInstanceConfig = snapshot;
 };

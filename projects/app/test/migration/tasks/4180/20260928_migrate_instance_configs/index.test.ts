@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { SystemMigrationStatusEnum } from '@fastgpt/global/migration/constants';
+import { SystemMigrationProgressInputSchema } from '@fastgpt/global/migration/schema';
 import type { SystemMigrationContext } from '@/migration/registry';
 
 const mocks = vi.hoisted(() => ({
@@ -16,7 +17,10 @@ import { migrateInstanceConfigs } from '@/migration/tasks/4180/20260928_migrate_
 
 const createContext = () =>
   ({
-    reportProgress: vi.fn(),
+    reportProgress: vi.fn(async (input) => {
+      // 与真实 Runner 一致，拒绝 current > total，防止模拟器掩盖启动迁移的统计错误。
+      SystemMigrationProgressInputSchema.parse(input);
+    }),
     assertActive: vi.fn(),
     logger: {
       info: vi.fn(),

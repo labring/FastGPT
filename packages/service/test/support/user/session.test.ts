@@ -1,12 +1,11 @@
+import {
+  getTestInstanceConfig,
+  createDefaultInstanceConfig
+} from '@test/utils/instanceConfigSnapshot';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { LEAF_ABSENT_SNAPSHOT } from '@test/utils/instanceConfigSnapshot';
 
-// commit 94ae033d7 起 delRedundantSession 改为 `getSystemInstanceConfig().security.maxLoginSession ?? serviceEnv.MAX_LOGIN_SESSION`：
-// 生产快照的叶子字段被 schema 默认值填满，`?? serviceEnv` 兜底分支永不触发。
-// 本文件通过改写 serviceEnv 驱动被测行为，因此预置"域对象存在、叶子字段全部缺省"的种子快照，
-// 使 getSystemInstanceConfig 首次调用采纳它、读取回落到 serviceEnv，保持原 env 驱动的测试意图。
-// beforeAll 里的 vi.resetModules 会清空 controller 的模块级缓存，但 global 上的种子保留，重新导入后仍走兜底。
-(global as any).systemInstanceConfig = LEAF_ABSENT_SNAPSHOT();
+// 重新加载模块时保留完整测试快照；会话限制只由配置值驱动。
+(global as any).systemInstanceConfig = createDefaultInstanceConfig();
 
 const mocks = vi.hoisted(() => {
   const cache = {
@@ -35,19 +34,16 @@ import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 let authUserSession: typeof import('@fastgpt/service/support/user/session').authUserSession;
 let createUserSession: typeof import('@fastgpt/service/support/user/session').createUserSession;
 let delUserAllSession: typeof import('@fastgpt/service/support/user/session').delUserAllSession;
-let serviceEnv: typeof import('@fastgpt/service/env').serviceEnv;
-let originalMaxLoginSession: typeof serviceEnv.MAX_LOGIN_SESSION;
+let originalMaxLoginSession: number;
 
 beforeAll(async () => {
   // test/setup.ts imports the auth chain before this file, so reset it before loading the service.
   vi.resetModules();
   const sessionModule = await import('@fastgpt/service/support/user/session');
-  const envModule = await import('@fastgpt/service/env');
   authUserSession = sessionModule.authUserSession;
   createUserSession = sessionModule.createUserSession;
   delUserAllSession = sessionModule.delUserAllSession;
-  serviceEnv = envModule.serviceEnv;
-  originalMaxLoginSession = serviceEnv.MAX_LOGIN_SESSION;
+  originalMaxLoginSession = getTestInstanceConfig().security.maxLoginSession;
 });
 
 describe('user session service', () => {
@@ -64,7 +60,7 @@ describe('user session service', () => {
     });
     mocks.cache.listByUser.mockResolvedValue([]);
     mocks.cache.set.mockResolvedValue(undefined);
-    serviceEnv.MAX_LOGIN_SESSION = originalMaxLoginSession;
+    getTestInstanceConfig().security.maxLoginSession = originalMaxLoginSession;
     if ((global as any).systemInstanceConfig?.security) {
       (global as any).systemInstanceConfig.security.maxLoginSession = originalMaxLoginSession;
     }
@@ -80,7 +76,7 @@ describe('user session service', () => {
   });
 
   it('creates a session with the historical fields and starts background cleanup', async () => {
-    serviceEnv.MAX_LOGIN_SESSION = 2;
+    getTestInstanceConfig().security.maxLoginSession = 2;
     (global as any).systemInstanceConfig.security.maxLoginSession = 2;
 
     const sessionId = await createUserSession({
@@ -127,7 +123,7 @@ describe('user session service', () => {
   });
 
   it('removes the oldest sessions in background when the login limit is exceeded', async () => {
-    serviceEnv.MAX_LOGIN_SESSION = 2;
+    getTestInstanceConfig().security.maxLoginSession = 2;
     (global as any).systemInstanceConfig.security.maxLoginSession = 2;
     mocks.cache.listByUser.mockResolvedValue([
       { sessionId: 'user-1:old', data: { createdAt: 1000 } },

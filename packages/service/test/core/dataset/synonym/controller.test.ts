@@ -1,3 +1,4 @@
+import { createDefaultInstanceConfig } from '@test/utils/instanceConfigSnapshot';
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { serviceEnv } from '@fastgpt/service/env';
 import {
@@ -9,14 +10,13 @@ import {
   searchDatasetSynonymMappings
 } from '@fastgpt/service/core/dataset/synonym/controller';
 import { Types } from '@fastgpt/service/common/mongo';
-import { LEAF_ABSENT_SNAPSHOT } from '@test/utils/instanceConfigSnapshot';
 
 const originalDatasetSynonymEnabled = serviceEnv.DATASET_SYNONYM_ENABLED;
 
 describe('dataset synonym controller', () => {
   beforeEach(() => {
     serviceEnv.DATASET_SYNONYM_ENABLED = false;
-    (global as any).systemInstanceConfig = LEAF_ABSENT_SNAPSHOT();
+    (global as any).systemInstanceConfig = createDefaultInstanceConfig();
     vi.clearAllMocks();
   });
 

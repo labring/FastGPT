@@ -1,3 +1,4 @@
+import { getTestInstanceConfig } from '@test/utils/instanceConfigSnapshot';
 // 消费点已接管实例配置（94ae033d7）：DATASET_SYNONYM_ENABLED / MULTIPLE_DATA_TO_BASE64 等
 // 改为快照叶子 ?? serviceEnv。预置"域存在、叶子缺省"种子快照以走 serviceEnv 兜底分支。
 (global as any).systemInstanceConfig = {
@@ -95,7 +96,7 @@ const embeddingModel = {
     weight: 100
   }
 } as any;
-const originalMultipleDataToBase64 = serviceEnv.MULTIPLE_DATA_TO_BASE64;
+const originalMultipleDataToBase64 = getTestInstanceConfig().feature.multipleDataToBase64;
 const originalDatasetSynonymEnabled = serviceEnv.DATASET_SYNONYM_ENABLED;
 const tokenHeavyText = Array.from({ length: 30 }, (_, index) => `𠮷${index}`).join('');
 const largeTokenHeavyText = Array.from(
@@ -189,7 +190,7 @@ const createData = async (
 describe('DatasetDataIndexOperation', () => {
   beforeEach(() => {
     serviceEnv.DATASET_SYNONYM_ENABLED = true;
-    serviceEnv.MULTIPLE_DATA_TO_BASE64 = true;
+    getTestInstanceConfig().feature.multipleDataToBase64 = true;
     resetVectorMocks();
     mockGetVectors.mockClear();
     mockGetDatasetBase64Image.mockClear();
@@ -207,7 +208,7 @@ describe('DatasetDataIndexOperation', () => {
   });
 
   afterEach(() => {
-    serviceEnv.MULTIPLE_DATA_TO_BASE64 = originalMultipleDataToBase64;
+    getTestInstanceConfig().feature.multipleDataToBase64 = originalMultipleDataToBase64;
     serviceEnv.DATASET_SYNONYM_ENABLED = originalDatasetSynonymEnabled;
   });
 

@@ -18,7 +18,7 @@ export const S3Buckets = {
 /** 系统上传大小上限，单位 MB；0 表示未配置，与客户端使用相同的 1000MB 默认值。 */
 export const getSystemMaxFileSize = () => global.feConfigs.limit?.uploadFileMaxSize || 1000;
 
-// ?? env 兜底仅覆盖叶子缺省的部分快照（测试种子）场景；未初始化时快照同样填满 schema 默认值
+/** 文件短链有效期只读实例配置；启动加载前由 Schema 提供默认值。 */
 export const getStorageFileUrlExpiredDays = () => {
   const value = getSystemInstanceConfig().storage.fileUrlExpiredDays;
   logInstanceConfigRead({

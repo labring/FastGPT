@@ -1,3 +1,7 @@
+import {
+  getTestInstanceConfig,
+  createDefaultInstanceConfig
+} from '@test/utils/instanceConfigSnapshot';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createVitestStorageMock } from '@fastgpt-sdk/storage';
 import { MongoS3DownloadAlias } from '@fastgpt/service/common/s3/accessLink/downloadAlias/schema';
@@ -18,37 +22,30 @@ const loadConstants = async () => {
 describe('s3 storage constants', () => {
   beforeEach(() => {
     vi.resetModules();
-    // getStorageRedirectTtlSeconds 已接管实例配置：种子"叶子缺省"快照
-    // 让 ?? serviceEnv 兜底生效，保持本文件通过 stubEnv 驱动行为的测试意图
-    (global as any).systemInstanceConfig = {
-      site: {},
-      auth: {},
-      security: {},
-      feature: {},
-      commercial: {},
-      resource: {},
-      performance: { workflow: {}, parse: {}, dataset: {}, chat: {}, streamResume: {}, tracking: {}, task: {}, channel: {} },
-      storage: {},
-      vector: {},
-      providers: { documentParse: { customPdf: {}, sangfor: {} }, dataSource: {} },
-      subservice: {}
-    };
+    global.systemInstanceConfig = createDefaultInstanceConfig();
     vi.stubEnv('STORAGE_VENDOR', undefined);
-    vi.stubEnv('STORAGE_EXTERNAL_ENDPOINT', undefined);
-    vi.stubEnv('STORAGE_S3_CDN_ENDPOINT', undefined);
-    vi.stubEnv('STORAGE_DOWNLOAD_URL_MODE', undefined);
-    vi.stubEnv('STORAGE_DOWNLOAD_REDIRECT_TTL_SECONDS', undefined);
+    getTestInstanceConfig().storage.externalEndpoint =
+      createDefaultInstanceConfig().storage.externalEndpoint;
+    getTestInstanceConfig().storage.cdnEndpoint = createDefaultInstanceConfig().storage.cdnEndpoint;
+    getTestInstanceConfig().storage.downloadMode =
+      createDefaultInstanceConfig().storage.downloadMode;
+    getTestInstanceConfig().storage.redirectTtlSeconds =
+      createDefaultInstanceConfig().storage.redirectTtlSeconds;
   });
 
   afterEach(() => {
     vi.stubEnv('STORAGE_VENDOR', originalEnv.STORAGE_VENDOR);
-    vi.stubEnv('STORAGE_EXTERNAL_ENDPOINT', originalEnv.STORAGE_EXTERNAL_ENDPOINT);
-    vi.stubEnv('STORAGE_S3_CDN_ENDPOINT', originalEnv.STORAGE_S3_CDN_ENDPOINT);
-    vi.stubEnv('STORAGE_DOWNLOAD_URL_MODE', originalEnv.STORAGE_DOWNLOAD_URL_MODE);
-    vi.stubEnv(
-      'STORAGE_DOWNLOAD_REDIRECT_TTL_SECONDS',
-      originalEnv.STORAGE_DOWNLOAD_REDIRECT_TTL_SECONDS
-    );
+    getTestInstanceConfig().storage.externalEndpoint =
+      originalEnv.STORAGE_EXTERNAL_ENDPOINT ??
+      createDefaultInstanceConfig().storage.externalEndpoint;
+    getTestInstanceConfig().storage.cdnEndpoint =
+      originalEnv.STORAGE_S3_CDN_ENDPOINT ?? createDefaultInstanceConfig().storage.cdnEndpoint;
+    getTestInstanceConfig().storage.downloadMode =
+      originalEnv.STORAGE_DOWNLOAD_URL_MODE ?? createDefaultInstanceConfig().storage.downloadMode;
+    getTestInstanceConfig().storage.redirectTtlSeconds =
+      originalEnv.STORAGE_DOWNLOAD_REDIRECT_TTL_SECONDS === undefined
+        ? createDefaultInstanceConfig().storage.redirectTtlSeconds
+        : Number(originalEnv.STORAGE_DOWNLOAD_REDIRECT_TTL_SECONDS);
     vi.restoreAllMocks();
   });
 
@@ -106,8 +103,8 @@ describe('s3 storage constants', () => {
     ).toBe('https://cdn.example.com/files/chat/app/file.png?X-Amz-Signature=abc#preview');
   });
 
-  it('uses explicit short redirect mode from instance config and redirect ttl from env', async () => {
-    vi.stubEnv('STORAGE_DOWNLOAD_REDIRECT_TTL_SECONDS', '120');
+  it('reads explicit short redirect mode and TTL from instance config', async () => {
+    getTestInstanceConfig().storage.redirectTtlSeconds = 120;
 
     const {
       applyRuntimeStorageConfig,
@@ -147,8 +144,10 @@ describe('s3 storage constants', () => {
   });
 
   it('returns a short link in short redirect mode', async () => {
-    vi.stubEnv('STORAGE_EXTERNAL_ENDPOINT', 'https://s3.example.com');
-    vi.stubEnv('STORAGE_DOWNLOAD_URL_MODE', 'short-redirect');
+    getTestInstanceConfig().storage.externalEndpoint =
+      'https://s3.example.com' ?? createDefaultInstanceConfig().storage.externalEndpoint;
+    getTestInstanceConfig().storage.downloadMode =
+      'short-redirect' ?? createDefaultInstanceConfig().storage.downloadMode;
 
     const { S3BaseBucket } = await vi.importActual<
       typeof import('@fastgpt/service/common/s3/buckets/base')
@@ -175,8 +174,10 @@ describe('s3 storage constants', () => {
   });
 
   it('stores a decoded filename in the short-link alias for encoded keys', async () => {
-    vi.stubEnv('STORAGE_EXTERNAL_ENDPOINT', 'https://s3.example.com');
-    vi.stubEnv('STORAGE_DOWNLOAD_URL_MODE', 'short-redirect');
+    getTestInstanceConfig().storage.externalEndpoint =
+      'https://s3.example.com' ?? createDefaultInstanceConfig().storage.externalEndpoint;
+    getTestInstanceConfig().storage.downloadMode =
+      'short-redirect' ?? createDefaultInstanceConfig().storage.downloadMode;
 
     const { S3BaseBucket } = await vi.importActual<
       typeof import('@fastgpt/service/common/s3/buckets/base')
@@ -197,7 +198,8 @@ describe('s3 storage constants', () => {
   });
 
   it('returns short download links by default even when an external endpoint is configured', async () => {
-    vi.stubEnv('STORAGE_EXTERNAL_ENDPOINT', 'https://s3.example.com');
+    getTestInstanceConfig().storage.externalEndpoint =
+      'https://s3.example.com' ?? createDefaultInstanceConfig().storage.externalEndpoint;
 
     const { S3BaseBucket } = await vi.importActual<
       typeof import('@fastgpt/service/common/s3/buckets/base')
@@ -249,9 +251,12 @@ describe('s3 storage constants', () => {
 
   it('reads storage runtime values from instance config only, never from env', async () => {
     // 环境变量故意配置成会误导的值，验证运行时完全忽略它
-    vi.stubEnv('STORAGE_DOWNLOAD_URL_MODE', 'short-redirect');
-    vi.stubEnv('STORAGE_EXTERNAL_ENDPOINT', 'https://env.example.com');
-    vi.stubEnv('STORAGE_S3_CDN_ENDPOINT', 'https://cdn.env.example.com');
+    getTestInstanceConfig().storage.downloadMode =
+      'short-redirect' ?? createDefaultInstanceConfig().storage.downloadMode;
+    getTestInstanceConfig().storage.externalEndpoint =
+      'https://env.example.com' ?? createDefaultInstanceConfig().storage.externalEndpoint;
+    getTestInstanceConfig().storage.cdnEndpoint =
+      'https://cdn.env.example.com' ?? createDefaultInstanceConfig().storage.cdnEndpoint;
 
     const {
       applyRuntimeStorageConfig,

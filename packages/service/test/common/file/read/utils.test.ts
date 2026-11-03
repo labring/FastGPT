@@ -1,3 +1,4 @@
+import { createDefaultInstanceConfig } from '@test/utils/instanceConfigSnapshot';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { Readable } from 'node:stream';
@@ -5,15 +6,10 @@ import {
   createExternalHttpFileSource,
   createS3FileSource
 } from '@fastgpt/service/common/file/read/source';
-import { LEAF_ABSENT_SNAPSHOT } from '@test/utils/instanceConfigSnapshot';
 
-// commit 94ae033d7 起 useSangforParse 改为读取
-// `getSystemInstanceConfig().providers.documentParse.provider || serviceEnv.DOCUMENT_PARSE_PROVIDER`：
-// 生产快照叶子被 schema 默认值填满（provider='none' 是真值），`|| serviceEnv` 兜底永不触发，
 // 本文件通过 vi.mock 的 mockEnv 驱动解析链路的行为会失效。因此预置"域对象存在、叶子字段全部缺省"的
-// 种子快照：getSystemInstanceConfig 首次调用（发生在测试执行期，消费点均为惰性函数）采纳它，
 // 叶子 undefined 走回 mockEnv 兜底，保持原 env 驱动的测试意图。
-(global as any).systemInstanceConfig = LEAF_ABSENT_SNAPSHOT();
+(global as any).systemInstanceConfig = createDefaultInstanceConfig();
 
 // Hoist all mock functions so they're available in vi.mock factories
 const {
@@ -181,7 +177,7 @@ const tmbId = 'test-tmb-id';
 describe('readFileContentByBuffer', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    (global as any).systemInstanceConfig = LEAF_ABSENT_SNAPSHOT();
+    (global as any).systemInstanceConfig = createDefaultInstanceConfig();
     (global as any).systemInstanceConfig.performance.parse.fileTimeoutSeconds = 600;
     (global as any).systemInstanceConfig.providers.documentParse.provider = 'none';
     (global as any).systemInstanceConfig.providers.documentParse.sangfor.extensions = 'pdf';
@@ -806,7 +802,7 @@ describe('readFileContentByBuffer', () => {
   });
 
   it('dispatches by the selected documentParse provider instead of the legacy fixed order', async () => {
-    const snapshot = LEAF_ABSENT_SNAPSHOT() as any;
+    const snapshot = createDefaultInstanceConfig() as any;
     snapshot.providers.documentParse.provider = 'doc2x';
     (global as any).systemInstanceConfig = snapshot;
     // 旧 custom URL 仍然存在，但管理员已选中 doc2x：不能再被 custom 抢占
@@ -1034,7 +1030,7 @@ describe('readFileContentByBuffer', () => {
 describe('readFileContentBySource', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    (global as any).systemInstanceConfig = LEAF_ABSENT_SNAPSHOT();
+    (global as any).systemInstanceConfig = createDefaultInstanceConfig();
     (global as any).systemInstanceConfig.performance.parse.fileTimeoutSeconds = 600;
     (global as any).systemInstanceConfig.providers.documentParse.provider = 'none';
     (global as any).systemInstanceConfig.providers.documentParse.sangfor.extensions = 'pdf';

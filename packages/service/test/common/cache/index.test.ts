@@ -1,16 +1,14 @@
+import {
+  getTestInstanceConfig,
+  createDefaultInstanceConfig
+} from '@test/utils/instanceConfigSnapshot';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { LEAF_ABSENT_SNAPSHOT } from '@test/utils/instanceConfigSnapshot';
 
-// commit 94ae033d7 起 getCachedData 改为 `getSystemInstanceConfig().feature.disableCache ?? serviceEnv.DISABLE_CACHE`：
-// 生产快照的叶子字段被 schema 默认值填满，`?? serviceEnv` 兜底分支永不触发。
-// 本文件通过改写 serviceEnv 驱动被测行为，因此预置"域对象存在、叶子字段全部缺省"的种子快照，
-// 使 getSystemInstanceConfig 首次调用采纳它、读取回落到 serviceEnv，保持原 env 驱动的测试意图。
-(global as any).systemInstanceConfig = LEAF_ABSENT_SNAPSHOT();
+(global as any).systemInstanceConfig = createDefaultInstanceConfig();
 
 import { getCachedData, getVersionKey, refreshVersionKey } from '@fastgpt/service/common/cache';
 import { initCache } from '@fastgpt/service/common/cache/init';
 import { SystemCacheKeyEnum } from '@fastgpt/service/common/cache/type';
-import { serviceEnv } from '@fastgpt/service/env';
 
 const { mockSystemVersionCache } = vi.hoisted(() => ({
   mockSystemVersionCache: {
@@ -23,11 +21,11 @@ vi.mock('@fastgpt/dal/redis/caches', () => ({
   systemVersionCache: mockSystemVersionCache
 }));
 
-const originalDisableCache = serviceEnv.DISABLE_CACHE;
+const originalDisableCache = getTestInstanceConfig().feature.disableCache;
 
 beforeEach(() => {
   delete (global as any).systemCache;
-  (global as any).systemInstanceConfig = LEAF_ABSENT_SNAPSHOT();
+  (global as any).systemInstanceConfig = createDefaultInstanceConfig();
   (global as any).systemInstanceConfig.feature.disableCache = false;
   vi.clearAllMocks();
   mockSystemVersionCache.getOrInitialize.mockResolvedValue('version-1');
@@ -95,11 +93,11 @@ describe('getCachedData', () => {
 
   beforeEach(() => {
     mockRefreshFunc.mockReset();
-    serviceEnv.DISABLE_CACHE = false;
+    getTestInstanceConfig().feature.disableCache = false;
   });
 
   afterEach(() => {
-    serviceEnv.DISABLE_CACHE = originalDisableCache;
+    getTestInstanceConfig().feature.disableCache = originalDisableCache;
   });
 
   it('initializes systemCache on first access', async () => {

@@ -23,7 +23,7 @@ export const deprecatedOverridePaths: Partial<
     ['chat', 'logSourceIdPrefix']
   ],
   storage: [['downloadRedirectTtlSeconds'], ['downloadRedirectEndpoint']],
-  feature: [['showWorkorder'], ['showEnterpriseAuth'], ['showGit']],
+  feature: [['showWorkorder'], ['showEnterpriseAuth'], ['showGit'], ['datasetSynonymEnabled']],
   vector: [['vqLevel'], ['languageIdentifier'], ['hnswMaxScanTuples']],
   providers: [['chunk'], ['crm']],
   // 代理连接地址保留在部署 ENV；删除开发期写入的两个配置叶子。

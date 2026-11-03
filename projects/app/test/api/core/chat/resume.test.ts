@@ -1,3 +1,4 @@
+import { createDefaultInstanceConfig } from '@test/utils/instanceConfigSnapshot';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Call } from '@test/utils/request';
 import { getRedisRuntime } from '@fastgpt/dal/redis/runtime';
@@ -15,7 +16,6 @@ import {
   StreamResumeUnavailableReasonEnum
 } from '@fastgpt/global/core/workflow/runtime/constants';
 import handler from '@/pages/api/core/chat/resume';
-import { LEAF_ABSENT_SNAPSHOT } from '@test/utils/instanceConfigSnapshot';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { authChatTargetCrud } from '@fastgpt/service/core/chat/auth';
 import { getChatItems } from '@fastgpt/service/core/chat/controller';
@@ -35,8 +35,7 @@ import {
   STREAM_RESUME_TTL_TOUCH_INTERVAL_MS
 } from '@fastgpt/service/core/chat/resume';
 
-// 叶子缺省快照：流恢复参数回落到真实 serviceEnv，保持本文件原有断言值。
-(global as any).systemInstanceConfig = LEAF_ABSENT_SNAPSHOT();
+(global as any).systemInstanceConfig = createDefaultInstanceConfig();
 
 vi.mock('@fastgpt/service/core/chat/chatSchema', () => ({
   MongoChat: {

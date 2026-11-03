@@ -8,7 +8,7 @@ import { getLegacyOpenAIRequestOptions, getLegacyAxiosRequestConfig } from './le
 
 export const getAiProxyBaseUrl = () => {
   const endpoint = getSystemInstanceConfig().subservice.aiProxy.endpoint;
-  return endpoint ? `${endpoint}/v1` : undefined;
+  return endpoint ? `${endpoint.replace(/\/+$/, '')}/v1` : undefined;
 };
 
 export const getOpenaiBaseUrl = () => {

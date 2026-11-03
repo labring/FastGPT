@@ -1,28 +1,21 @@
+import {
+  createDefaultInstanceConfig,
+  getTestInstanceConfig
+} from '@test/utils/instanceConfigSnapshot';
 import FormData from 'form-data';
-import { LEAF_ABSENT_SNAPSHOT } from '@test/utils/instanceConfigSnapshot';
 
-// commit 94ae033d7 起 useSangforParse/parseFromSangfor 改为读取
-// `getSystemInstanceConfig().providers.documentParse.provider || serviceEnv.DOCUMENT_PARSE_PROVIDER`（extensions/timeoutSeconds 同理）：
-// 生产快照的叶子字段被 schema 默认值填满，`|| serviceEnv` 兜底分支永不触发。
-// 本文件通过 mock serviceEnv 驱动被测行为，因此预置"域对象存在、叶子字段全部缺省"的种子快照，
-// 使 getSystemInstanceConfig 首次调用采纳它、读取回落到 serviceEnv，保持原 env 驱动的测试意图。
-(global as any).systemInstanceConfig = LEAF_ABSENT_SNAPSHOT();
+(global as any).systemInstanceConfig = createDefaultInstanceConfig();
 
 import { getDatasetIultmzhFileParseConfig } from '@fastgpt/service/thirdProvider/sangfor/parseConfig';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { postMock, parseMarkdownImagesMock, uploadParsedPdfImageMock, mockEnv } = vi.hoisted(() => ({
+const { postMock, parseMarkdownImagesMock, uploadParsedPdfImageMock } = vi.hoisted(() => ({
   postMock: vi.fn(),
   parseMarkdownImagesMock: vi.fn(
     async (markdown: string, _options?: Record<string, unknown>) => `normalized:${markdown}`
   ),
-  uploadParsedPdfImageMock: vi.fn().mockResolvedValue({ key: 'parsed/image.png' }),
-  mockEnv: {
-    DOCUMENT_PARSE_PROVIDER: '' as '' | 'sangfor',
-    SANGFOR_PARSE_EXTENSIONS: 'pdf',
-    SANGFOR_PARSE_TIMEOUT_SECONDS: 600
-  }
+  uploadParsedPdfImageMock: vi.fn().mockResolvedValue({ key: 'parsed/image.png' })
 }));
 
 vi.mock('@fastgpt/service/common/api/axios', () => ({
@@ -43,19 +36,16 @@ vi.mock('@fastgpt/service/common/file/read/image', () => ({
   uploadParsedPdfImage: uploadParsedPdfImageMock
 }));
 
-vi.mock('@fastgpt/service/env', () => ({
-  serviceEnv: mockEnv
-}));
-
 const { parseFromSangfor, useSangforParse } =
   await import('@fastgpt/service/thirdProvider/sangfor');
 
 describe('Sangfor provider', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockEnv.DOCUMENT_PARSE_PROVIDER = '';
-    mockEnv.SANGFOR_PARSE_EXTENSIONS = 'pdf';
-    mockEnv.SANGFOR_PARSE_TIMEOUT_SECONDS = 600;
+    global.systemInstanceConfig = createDefaultInstanceConfig();
+    getTestInstanceConfig().providers.documentParse.provider = 'none';
+    getTestInstanceConfig().providers.documentParse.sangfor.extensions = 'pdf';
+    getTestInstanceConfig().providers.documentParse.sangfor.timeoutSeconds = 600;
     vi.stubGlobal('systemEnv', {
       customPdfParse: { url: 'http://sangfor-parser.test/parse', key: 'sangfor-key' }
     });
@@ -84,7 +74,7 @@ describe('Sangfor provider', () => {
   it('requires provider selection, parser URL and a supported extension', () => {
     expect(useSangforParse('pdf')).toBe(false);
 
-    mockEnv.DOCUMENT_PARSE_PROVIDER = 'sangfor';
+    getTestInstanceConfig().providers.documentParse.provider = 'sangfor';
     expect(useSangforParse('pdf')).toBe(true);
     expect(useSangforParse('docx')).toBe(false);
     expect(useSangforParse('')).toBe(false);
@@ -94,14 +84,14 @@ describe('Sangfor provider', () => {
   });
 
   it('normalizes configured extensions and ignores empty entries', () => {
-    mockEnv.DOCUMENT_PARSE_PROVIDER = 'sangfor';
-    mockEnv.SANGFOR_PARSE_EXTENSIONS = ' .PDF, DocX, ,pdf ';
+    getTestInstanceConfig().providers.documentParse.provider = 'sangfor';
+    getTestInstanceConfig().providers.documentParse.sangfor.extensions = ' .PDF, DocX, ,pdf ';
     expect(useSangforParse(' .Pdf ')).toBe(true);
     expect(useSangforParse('DOCX')).toBe(true);
     expect(useSangforParse('xlsx')).toBe(false);
     expect(useSangforParse('')).toBe(false);
 
-    mockEnv.SANGFOR_PARSE_EXTENSIONS = ' , ';
+    getTestInstanceConfig().providers.documentParse.sangfor.extensions = ' , ';
     expect(useSangforParse('pdf')).toBe(false);
   });
 
@@ -157,7 +147,7 @@ describe('Sangfor provider', () => {
   });
 
   it('uses the dedicated Sangfor timeout in seconds', async () => {
-    mockEnv.SANGFOR_PARSE_TIMEOUT_SECONDS = 45;
+    getTestInstanceConfig().providers.documentParse.sangfor.timeoutSeconds = 45;
     postMock.mockResolvedValueOnce({ data: { pages: 1, markdown: 'parsed' } });
 
     await parseFromSangfor({ fileBuffer: Buffer.from('pdf'), extension: 'pdf' });

@@ -1128,5 +1128,14 @@
   "license_admin_home_community_description": "檢視目前版本與功能能力",
   "user_status_active": "活躍",
   "user_status_inactive": "待啟用",
-  "user_status_cancelled": "註銷"
+  "user_status_cancelled": "註銷",
+  "dataset_archive_download": "知識庫封存下載",
+  "dataset_archive_max_files": "單次封存檔案數上限",
+  "dataset_archive_max_files_tooltip": "單個 ZIP 可包含的原始檔案數量上限。",
+  "dataset_archive_max_source_size_mib": "原始檔案總大小上限（MiB）",
+  "dataset_archive_max_source_size_mib_tooltip": "按封存內原始檔案的邏輯大小累計，並非壓縮後 ZIP 的大小。",
+  "dataset_archive_max_concurrency": "叢集封存並行數",
+  "dataset_archive_max_concurrency_tooltip": "所有服務節點共用的封存任務並行上限，涵蓋預檢與下載階段。",
+  "dataset_archive_prepare_timeout_seconds": "封存準備逾時（秒）",
+  "dataset_archive_prepare_timeout_seconds_tooltip": "傳送下載回應標頭前的預檢時限，不限制已開始的檔案傳輸時間。"
 }

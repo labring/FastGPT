@@ -1,3 +1,4 @@
+import { readLegacyInstanceConfigEnv } from './env';
 import { SystemConfigsTypeEnum } from '@fastgpt/global/common/system/config/constants';
 import z from 'zod';
 import {
@@ -11,8 +12,6 @@ import { pruneDefaultOverrides } from '@fastgpt/global/common/system/config/merg
 import { MongoSystemConfigs } from '@fastgpt/service/common/system/config/schema';
 import { MongoSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/schema';
 import { logInstanceConfigRead } from '@fastgpt/service/common/system/migrationCoverageLog';
-import { serviceEnv } from '@fastgpt/service/env';
-import { appEnv } from '@/env';
 import type { SystemMigrationLogger } from '@/migration/registry';
 
 type LegacyFeConfigs = Record<string, any>;
@@ -91,19 +90,21 @@ const compactDeep = (value: unknown): unknown => {
  */
 export const buildLegacyDomainOverrides = ({
   feConfigs,
-  systemEnv
+  systemEnv,
+  legacyEnv = readLegacyInstanceConfigEnv()
 }: {
   feConfigs: LegacyFeConfigs;
   systemEnv: LegacySystemEnv;
+  legacyEnv?: ReturnType<typeof readLegacyInstanceConfigEnv>;
 }): DomainOverrides => {
   const overrides: DomainOverrides = {};
 
   // ---------- site ----------
   overrides.site = compact({
-    name: optionalText(feConfigs.systemTitle) ?? optionalText(appEnv.SYSTEM_NAME),
-    description: optionalText(appEnv.SYSTEM_DESCRIPTION),
-    favicon: optionalText(feConfigs.favicon) ?? optionalText(appEnv.SYSTEM_FAVICON),
-    marketplaceUrl: optionalText(appEnv.MARKETPLACE_URL),
+    name: optionalText(feConfigs.systemTitle) ?? optionalText(legacyEnv.SYSTEM_NAME),
+    description: optionalText(legacyEnv.SYSTEM_DESCRIPTION),
+    favicon: optionalText(feConfigs.favicon) ?? optionalText(legacyEnv.SYSTEM_FAVICON),
+    marketplaceUrl: optionalText(legacyEnv.MARKETPLACE_URL),
     docUrl: optionalString(feConfigs.docUrl),
     openApiDocUrl: optionalString(feConfigs.openAPIDocUrl),
     openApiPrefix: optionalText(systemEnv.openapiPrefix),
@@ -111,18 +112,18 @@ export const buildLegacyDomainOverrides = ({
     appTemplateCourse: optionalString(feConfigs.appTemplateCourse),
     loginGuideDocUrl: optionalString(feConfigs.loginGuideDocUrl),
     customApiDomain:
-      optionalText(feConfigs.customApiDomain) ?? optionalText(appEnv.CUSTOM_API_DOMAIN),
+      optionalText(feConfigs.customApiDomain) ?? optionalText(legacyEnv.CUSTOM_API_DOMAIN),
     customSharePageDomain:
       optionalText(feConfigs.customSharePageDomain) ??
-      optionalText(appEnv.CUSTOM_SHARE_PAGE_DOMAIN),
+      optionalText(legacyEnv.CUSTOM_SHARE_PAGE_DOMAIN),
     scripts:
       Array.isArray(feConfigs.scripts) && feConfigs.scripts.length > 0
         ? (compactDeep(feConfigs.scripts) as Record<string, string>[])
         : (() => {
             const fromEnv = (() => {
-              if (!appEnv.SCRIPTS) return [];
+              if (!legacyEnv.SCRIPTS) return [];
               try {
-                const parsed = JSON.parse(appEnv.SCRIPTS);
+                const parsed = JSON.parse(legacyEnv.SCRIPTS);
                 return Array.isArray(parsed)
                   ? parsed.filter(
                       (item): item is Record<string, string> =>
@@ -142,11 +143,11 @@ export const buildLegacyDomainOverrides = ({
 
   // ---------- auth ----------
   overrides.auth = compact({
-    openApiKeyMaxCount: optionalNumber(appEnv.OPENAPI_KEY_MAX_COUNT),
-    passwordExpiredMonth: optionalNumber(appEnv.PASSWORD_EXPIRED_MONTH) ?? null,
-    wecomLoginAutoRedirect: optionalBool(appEnv.WECOM_LOGIN_AUTO_REDIRECT),
+    openApiKeyMaxCount: optionalNumber(legacyEnv.OPENAPI_KEY_MAX_COUNT),
+    passwordExpiredMonth: optionalNumber(legacyEnv.PASSWORD_EXPIRED_MONTH) ?? null,
+    wecomLoginAutoRedirect: optionalBool(legacyEnv.WECOM_LOGIN_AUTO_REDIRECT),
     defaultTeamBasicPermissionsEnabled: optionalBool(
-      serviceEnv.DEFAULT_TEAM_BASIC_PERMISSIONS_ENABLED
+      legacyEnv.DEFAULT_TEAM_BASIC_PERMISSIONS_ENABLED
     )
   }) as DomainOverrides['auth'];
 
@@ -156,13 +157,13 @@ export const buildLegacyDomainOverrides = ({
   // fastgptPro.censor，因此这里不读取 systemEnv.censor，改由 buildLegacyProOverrides 迁移。
   const legacyWorkflowHttpNode = systemEnv.workflowHttpNode as LegacyFeConfigs | undefined;
   overrides.security = compact({
-    useIpLimit: optionalBool(serviceEnv.USE_IP_LIMIT),
-    checkInternalIp: optionalBool(serviceEnv.CHECK_INTERNAL_IP),
-    csrfEnabled: optionalBool(serviceEnv.CSRF_ENABLED),
-    passwordLoginMinuteLimitCount: optionalNumber(serviceEnv.PASSWORD_LOGIN_MINUTE_LIMIT_COUNT),
-    maxLoginSession: optionalNumber(serviceEnv.MAX_LOGIN_SESSION),
-    allowedOrigins: splitList(serviceEnv.ALLOWED_ORIGINS),
-    skipFileTypeCheck: optionalBool(serviceEnv.SKIP_FILE_TYPE_CHECK),
+    useIpLimit: optionalBool(legacyEnv.USE_IP_LIMIT),
+    checkInternalIp: optionalBool(legacyEnv.CHECK_INTERNAL_IP),
+    csrfEnabled: optionalBool(legacyEnv.CSRF_ENABLED),
+    passwordLoginMinuteLimitCount: optionalNumber(legacyEnv.PASSWORD_LOGIN_MINUTE_LIMIT_COUNT),
+    maxLoginSession: optionalNumber(legacyEnv.MAX_LOGIN_SESSION),
+    allowedOrigins: splitList(legacyEnv.ALLOWED_ORIGINS),
+    skipFileTypeCheck: optionalBool(legacyEnv.SKIP_FILE_TYPE_CHECK),
     workflowHttpNode: compact({
       ignoreHttpsCertificate: optionalBool(legacyWorkflowHttpNode?.ignoreHttpsCertificate)
     }),
@@ -173,11 +174,10 @@ export const buildLegacyDomainOverrides = ({
 
   // ---------- feature ----------
   overrides.feature = compact({
-    hideChatCopyrightSetting: optionalBool(appEnv.HIDE_CHAT_COPYRIGHT_SETTING),
-    multipleDataToBase64: optionalBool(serviceEnv.MULTIPLE_DATA_TO_BASE64),
-    datasetSynonymEnabled: optionalBool(serviceEnv.DATASET_SYNONYM_ENABLED),
-    agentEngine: optionalText(serviceEnv.AGENT_ENGINE),
-    disableCache: optionalBool(serviceEnv.DISABLE_CACHE),
+    hideChatCopyrightSetting: optionalBool(legacyEnv.HIDE_CHAT_COPYRIGHT_SETTING),
+    multipleDataToBase64: optionalBool(legacyEnv.MULTIPLE_DATA_TO_BASE64),
+    agentEngine: optionalText(legacyEnv.AGENT_ENGINE),
+    disableCache: optionalBool(legacyEnv.DISABLE_CACHE),
     enableTeamPluginUpload: optionalBool(feConfigs.enable_team_plugin_upload),
     showEmptyChat: optionalBool(feConfigs.show_emptyChat),
     showDatasetFeishu: optionalBool(feConfigs.show_dataset_feishu),
@@ -192,30 +192,30 @@ export const buildLegacyDomainOverrides = ({
   }) as DomainOverrides['feature'];
 
   // ---------- commercial ----------
-  // 沙箱免费提示（AGENT_SANDBOX_FREE_TIP）不迁移：该开关仍以 ENV 为权威，实例配置无消费点。
+  // 沙箱免费提示（AGENT_SANDBOX_SHOW_FREE_TIP）不迁移：该开关仍以 ENV 为权威，实例配置无消费点。
   overrides.commercial = compact({
-    showCoupon: optionalBool(appEnv.SHOW_COUPON),
-    showDiscountCoupon: optionalBool(appEnv.SHOW_DISCOUNT_COUPON),
-    payFormUrl: optionalText(appEnv.PAY_FORM_URL)
+    showCoupon: optionalBool(legacyEnv.SHOW_COUPON),
+    showDiscountCoupon: optionalBool(legacyEnv.SHOW_DISCOUNT_COUPON),
+    payFormUrl: optionalText(legacyEnv.PAY_FORM_URL)
   }) as DomainOverrides['commercial'];
 
   // ---------- resource ----------
   const legacyLimit = (feConfigs.limit ?? {}) as LegacyFeConfigs;
   overrides.resource = compact({
-    serviceRequestMaxContentLength: optionalNumber(serviceEnv.SERVICE_REQUEST_MAX_CONTENT_LENGTH),
-    systemMaxStringLengthM: optionalNumber(serviceEnv.SYSTEM_MAX_STRING_LENGTH_M),
+    serviceRequestMaxContentLength: optionalNumber(legacyEnv.SERVICE_REQUEST_MAX_CONTENT_LENGTH),
+    systemMaxStringLengthM: optionalNumber(legacyEnv.SYSTEM_MAX_STRING_LENGTH_M),
     maxFolderDepth:
-      optionalNumber(legacyLimit.maxFolderDepth) ?? optionalNumber(serviceEnv.MAX_FOLDER_DEPTH),
-    appFolderMaxAmount: optionalNumber(serviceEnv.APP_FOLDER_MAX_AMOUNT),
-    datasetFolderMaxAmount: optionalNumber(serviceEnv.DATASET_FOLDER_MAX_AMOUNT),
+      optionalNumber(legacyLimit.maxFolderDepth) ?? optionalNumber(legacyEnv.MAX_FOLDER_DEPTH),
+    appFolderMaxAmount: optionalNumber(legacyEnv.APP_FOLDER_MAX_AMOUNT),
+    datasetFolderMaxAmount: optionalNumber(legacyEnv.DATASET_FOLDER_MAX_AMOUNT),
     uploadFileMaxSize:
       optionalNumber(legacyLimit.uploadFileMaxSize) ??
       optionalNumber(feConfigs.uploadFileMaxSize) ??
-      optionalNumber(serviceEnv.UPLOAD_FILE_MAX_SIZE),
+      optionalNumber(legacyEnv.UPLOAD_FILE_MAX_SIZE),
     uploadFileMaxAmount:
       optionalNumber(legacyLimit.uploadFileMaxAmount) ??
       optionalNumber(feConfigs.uploadFileMaxAmount) ??
-      optionalNumber(serviceEnv.UPLOAD_FILE_MAX_AMOUNT),
+      optionalNumber(legacyEnv.UPLOAD_FILE_MAX_AMOUNT),
     exportDatasetLimitMinutes: optionalNumber(legacyLimit.exportDatasetLimitMinutes),
     websiteSyncLimitMinuted: optionalNumber(legacyLimit.websiteSyncLimitMinuted)
   }) as DomainOverrides['resource'];
@@ -223,70 +223,70 @@ export const buildLegacyDomainOverrides = ({
   // ---------- performance ----------
   overrides.performance = compact({
     workflow: compact({
-      maxRunTimes: optionalNumber(serviceEnv.WORKFLOW_MAX_RUN_TIMES),
-      maxLoopTimes: optionalNumber(serviceEnv.WORKFLOW_MAX_LOOP_TIMES),
+      maxRunTimes: optionalNumber(legacyEnv.WORKFLOW_MAX_RUN_TIMES),
+      maxLoopTimes: optionalNumber(legacyEnv.WORKFLOW_MAX_LOOP_TIMES),
       parallelMaxConcurrency:
         optionalNumber(legacyLimit.workflowParallelRunMaxConcurrency) ??
-        optionalNumber(serviceEnv.WORKFLOW_PARALLEL_MAX_CONCURRENCY)
+        optionalNumber(legacyEnv.WORKFLOW_PARALLEL_MAX_CONCURRENCY)
     }),
     parse: compact({
-      fileTimeoutSeconds: optionalNumber(serviceEnv.PARSE_FILE_TIMEOUT_SECONDS),
-      xlsxMaxRows: optionalNumber(serviceEnv.XLSX_PARSE_MAX_ROWS),
-      xlsxMaxColumns: optionalNumber(serviceEnv.XLSX_PARSE_MAX_COLUMNS),
-      xlsxMaxCells: optionalNumber(serviceEnv.XLSX_PARSE_MAX_CELLS),
-      xlsxMaxMergedCells: optionalNumber(serviceEnv.XLSX_PARSE_MAX_MERGED_CELLS),
-      maxHtmlTransformChars: optionalNumber(serviceEnv.MAX_HTML_TRANSFORM_CHARS)
+      fileTimeoutSeconds: optionalNumber(legacyEnv.PARSE_FILE_TIMEOUT_SECONDS),
+      xlsxMaxRows: optionalNumber(legacyEnv.XLSX_PARSE_MAX_ROWS),
+      xlsxMaxColumns: optionalNumber(legacyEnv.XLSX_PARSE_MAX_COLUMNS),
+      xlsxMaxCells: optionalNumber(legacyEnv.XLSX_PARSE_MAX_CELLS),
+      xlsxMaxMergedCells: optionalNumber(legacyEnv.XLSX_PARSE_MAX_MERGED_CELLS),
+      maxHtmlTransformChars: optionalNumber(legacyEnv.MAX_HTML_TRANSFORM_CHARS)
     }),
     dataset: compact({
       parseMaxProcess:
         optionalNumber(systemEnv.datasetParseMaxProcess) ??
-        optionalNumber(serviceEnv.DATASET_PARSE_MAX_PROCESS),
+        optionalNumber(legacyEnv.DATASET_PARSE_MAX_PROCESS),
       vectorMaxProcess:
-        optionalNumber(systemEnv.vectorMaxProcess) ?? optionalNumber(serviceEnv.VECTOR_MAX_PROCESS),
+        optionalNumber(systemEnv.vectorMaxProcess) ?? optionalNumber(legacyEnv.VECTOR_MAX_PROCESS),
       qaMaxProcess:
-        optionalNumber(systemEnv.qaMaxProcess) ?? optionalNumber(serviceEnv.QA_MAX_PROCESS),
+        optionalNumber(systemEnv.qaMaxProcess) ?? optionalNumber(legacyEnv.QA_MAX_PROCESS),
       vlmMaxProcess:
-        optionalNumber(systemEnv.vlmMaxProcess) ?? optionalNumber(serviceEnv.VLM_MAX_PROCESS),
-      retrievalResultsLimit: optionalNumber(serviceEnv.RETRIEVAL_RESULTS_LIMIT)
+        optionalNumber(systemEnv.vlmMaxProcess) ?? optionalNumber(legacyEnv.VLM_MAX_PROCESS),
+      retrievalResultsLimit: optionalNumber(legacyEnv.RETRIEVAL_RESULTS_LIMIT)
     }),
     chat: compact({
-      maxQpm: optionalNumber(serviceEnv.CHAT_MAX_QPM)
+      maxQpm: optionalNumber(legacyEnv.CHAT_MAX_QPM)
     }),
     streamResume: compact({
-      ttlSeconds: optionalNumber(serviceEnv.STREAM_RESUME_TTL_SECONDS),
-      postCompleteTtlSeconds: optionalNumber(serviceEnv.STREAM_RESUME_POST_COMPLETE_TTL_SECONDS),
-      redisMaxmemoryRatio: optionalNumber(serviceEnv.STREAM_RESUME_REDIS_MAXMEMORY_RATIO),
+      ttlSeconds: optionalNumber(legacyEnv.STREAM_RESUME_TTL_SECONDS),
+      postCompleteTtlSeconds: optionalNumber(legacyEnv.STREAM_RESUME_POST_COMPLETE_TTL_SECONDS),
+      redisMaxmemoryRatio: optionalNumber(legacyEnv.STREAM_RESUME_REDIS_MAXMEMORY_RATIO),
       redisMemoryCheckIntervalMs: optionalNumber(
-        serviceEnv.STREAM_RESUME_REDIS_MEMORY_CHECK_INTERVAL_MS
+        legacyEnv.STREAM_RESUME_REDIS_MEMORY_CHECK_INTERVAL_MS
       )
     }),
     tracking: compact({
-      batchUpdateTime: optionalNumber(serviceEnv.TRACK_BATCH_UPDATE_TIME),
-      retentionHours: optionalNumber(serviceEnv.LLM_REQUEST_TRACKING_RETENTION_HOURS)
+      batchUpdateTime: optionalNumber(legacyEnv.TRACK_BATCH_UPDATE_TIME),
+      retentionHours: optionalNumber(legacyEnv.LLM_REQUEST_TRACKING_RETENTION_HOURS)
     }),
-    task: compact({ evalConcurrency: optionalNumber(serviceEnv.EVAL_CONCURRENCY) }),
-    channel: compact({ wechatConcurrency: optionalNumber(serviceEnv.WECHAT_CHANNEL_CONCURRENCY) })
+    task: compact({ evalConcurrency: optionalNumber(legacyEnv.EVAL_CONCURRENCY) }),
+    channel: compact({ wechatConcurrency: optionalNumber(legacyEnv.WECHAT_CHANNEL_CONCURRENCY) })
   }) as DomainOverrides['performance'];
 
   // ---------- storage ----------
   overrides.storage = compact({
-    downloadMode: optionalText(serviceEnv.STORAGE_DOWNLOAD_URL_MODE),
-    externalEndpoint: optionalText(serviceEnv.STORAGE_EXTERNAL_ENDPOINT),
-    cdnEndpoint: optionalText(serviceEnv.STORAGE_S3_CDN_ENDPOINT),
-    fileUrlExpiredDays: optionalNumber(serviceEnv.FILE_URL_EXPIRED_DAYS),
-    redirectTtlSeconds: optionalNumber(serviceEnv.STORAGE_DOWNLOAD_REDIRECT_TTL_SECONDS)
+    downloadMode: optionalText(legacyEnv.STORAGE_DOWNLOAD_URL_MODE),
+    externalEndpoint: optionalText(legacyEnv.STORAGE_EXTERNAL_ENDPOINT),
+    cdnEndpoint: optionalText(legacyEnv.STORAGE_S3_CDN_ENDPOINT),
+    fileUrlExpiredDays: optionalNumber(legacyEnv.FILE_URL_EXPIRED_DAYS),
+    redirectTtlSeconds: optionalNumber(legacyEnv.STORAGE_DOWNLOAD_REDIRECT_TTL_SECONDS)
   }) as DomainOverrides['storage'];
 
   // ---------- vector ----------
   overrides.vector = compact({
     hnswEfSearch:
-      optionalNumber(systemEnv.hnswEfSearch) ?? optionalNumber(serviceEnv.HNSW_EF_SEARCH),
+      optionalNumber(systemEnv.hnswEfSearch) ?? optionalNumber(legacyEnv.HNSW_EF_SEARCH),
     vectorRecallConcurrency: optionalNumber(systemEnv.vectorRecallConcurrency)
   }) as DomainOverrides['vector'];
 
   // ---------- providers ----------
   const legacyCustomPdf = (systemEnv.customPdfParse ?? {}) as LegacyFeConfigs;
-  const isSangfor = serviceEnv.DOCUMENT_PARSE_PROVIDER === 'sangfor';
+  const isSangfor = legacyEnv.DOCUMENT_PARSE_PROVIDER === 'sangfor';
   // 深信服复用 CUSTOM_PDF_PARSE_URL/KEY 作为地址与 Bearer Token。
   // 旧库优先：远程解析凭据历史上同时保存在 systemEnv.customPdfParse 和环境变量中，
   // 迁移时必须从同一来源成组取值，再同步写入 customPdf 与 sangfor 两个逻辑块。
@@ -295,8 +295,8 @@ export const buildLegacyDomainOverrides = ({
     key: optionalText(legacyCustomPdf.key)
   };
   const envPdfCredentials = {
-    url: optionalText(serviceEnv.CUSTOM_PDF_PARSE_URL),
-    key: optionalText(serviceEnv.CUSTOM_PDF_PARSE_KEY)
+    url: optionalText(legacyEnv.CUSTOM_PDF_PARSE_URL),
+    key: optionalText(legacyEnv.CUSTOM_PDF_PARSE_KEY)
   };
   const customPdfCredentials = resolveCredentialGroup({
     legacy: legacyPdfCredentials,
@@ -306,12 +306,11 @@ export const buildLegacyDomainOverrides = ({
     url: customPdfCredentials.url,
     key: customPdfCredentials.key,
     somarkApiKey:
-      optionalText(legacyCustomPdf.somarkApiKey) ?? optionalText(serviceEnv.SOMARK_API_KEY),
-    doc2xKey: optionalText(legacyCustomPdf.doc2xKey) ?? optionalText(serviceEnv.DOC2X_KEY),
-    textinAppId:
-      optionalText(legacyCustomPdf.textinAppId) ?? optionalText(serviceEnv.TEXTIN_APP_ID),
+      optionalText(legacyCustomPdf.somarkApiKey) ?? optionalText(legacyEnv.SOMARK_API_KEY),
+    doc2xKey: optionalText(legacyCustomPdf.doc2xKey) ?? optionalText(legacyEnv.DOC2X_KEY),
+    textinAppId: optionalText(legacyCustomPdf.textinAppId) ?? optionalText(legacyEnv.TEXTIN_APP_ID),
     textinSecretCode:
-      optionalText(legacyCustomPdf.textinSecretCode) ?? optionalText(serviceEnv.TEXTIN_SECRET_CODE)
+      optionalText(legacyCustomPdf.textinSecretCode) ?? optionalText(legacyEnv.TEXTIN_SECRET_CODE)
   };
   const sangforCredentials = isSangfor
     ? resolveCredentialGroup({ legacy: legacyPdfCredentials, env: envPdfCredentials })
@@ -336,15 +335,15 @@ export const buildLegacyDomainOverrides = ({
       sangfor: compact({
         url: sangforCredentials.url,
         key: sangforCredentials.key,
-        extensions: optionalText(serviceEnv.SANGFOR_PARSE_EXTENSIONS),
-        timeoutSeconds: optionalNumber(serviceEnv.SANGFOR_PARSE_TIMEOUT_SECONDS)
+        extensions: optionalText(legacyEnv.SANGFOR_PARSE_EXTENSIONS),
+        timeoutSeconds: optionalNumber(legacyEnv.SANGFOR_PARSE_TIMEOUT_SECONDS)
       })
     }),
     dataSource: compact({
-      feishuBaseUrl: optionalText(serviceEnv.FEISHU_BASE_URL),
-      dingtalkBaseUrl: optionalText(serviceEnv.DINGTALK_BASE_URL),
-      dingtalkOapiBaseUrl: optionalText(serviceEnv.DINGTALK_OAPI_BASE_URL),
-      yuqueDatasetBaseUrl: optionalText(serviceEnv.YUQUE_DATASET_BASE_URL)
+      feishuBaseUrl: optionalText(legacyEnv.FEISHU_BASE_URL),
+      dingtalkBaseUrl: optionalText(legacyEnv.DINGTALK_BASE_URL),
+      dingtalkOapiBaseUrl: optionalText(legacyEnv.DINGTALK_OAPI_BASE_URL),
+      yuqueDatasetBaseUrl: optionalText(legacyEnv.YUQUE_DATASET_BASE_URL)
     }),
     externalProviderWorkflowVariables: Array.isArray(feConfigs.externalProviderWorkflowVariables)
       ? (compactDeep(feConfigs.externalProviderWorkflowVariables) as Record<string, unknown>[])
@@ -352,71 +351,71 @@ export const buildLegacyDomainOverrides = ({
   }) as DomainOverrides['providers'];
 
   // ---------- subservice ----------
-  const pluginBaseUrl = optionalText(serviceEnv.PLUGIN_BASE_URL);
-  const codeSandboxBaseUrl = optionalText(serviceEnv.CODE_SANDBOX_URL);
-  const aiProxyEndpoint = optionalText(serviceEnv.AIPROXY_API_ENDPOINT);
-  const agentSandboxProvider = optionalText(serviceEnv.AGENT_SANDBOX_PROVIDER);
+  const pluginBaseUrl = optionalText(legacyEnv.PLUGIN_BASE_URL);
+  const codeSandboxBaseUrl = optionalText(legacyEnv.CODE_SANDBOX_URL);
+  const aiProxyEndpoint = optionalText(legacyEnv.AIPROXY_API_ENDPOINT);
+  const agentSandboxProvider = optionalText(legacyEnv.AGENT_SANDBOX_PROVIDER);
 
   overrides.subservice = compact({
     plugin: compact({
       enabled: pluginBaseUrl ? true : undefined,
       baseUrl: pluginBaseUrl,
-      token: optionalText(serviceEnv.PLUGIN_TOKEN)
+      token: optionalText(legacyEnv.PLUGIN_TOKEN)
     }),
     codeSandbox: compact({
       enabled: codeSandboxBaseUrl ? true : undefined,
       baseUrl: codeSandboxBaseUrl,
-      token: optionalText(serviceEnv.CODE_SANDBOX_TOKEN)
+      token: optionalText(legacyEnv.CODE_SANDBOX_TOKEN)
     }),
     mcp: compact({
-      enabled: appEnv.SSE_MCP_SERVER_PROXY_ENDPOINT ? true : undefined,
-      sseProxyUrl: optionalText(appEnv.SSE_MCP_SERVER_PROXY_ENDPOINT)
+      enabled: legacyEnv.SSE_MCP_SERVER_PROXY_ENDPOINT ? true : undefined,
+      sseProxyUrl: optionalText(legacyEnv.SSE_MCP_SERVER_PROXY_ENDPOINT)
     }),
     aiProxy: compact({
       enabled: aiProxyEndpoint ? true : undefined,
       endpoint: aiProxyEndpoint,
-      token: optionalText(serviceEnv.AIPROXY_API_TOKEN)
+      token: optionalText(legacyEnv.AIPROXY_API_TOKEN)
     }),
     agentSandbox: compact({
       provider: agentSandboxProvider,
       common: compact({
-        cpuCount: optionalNumber(serviceEnv.AGENT_SANDBOX_CPU_COUNT),
-        memoryMiB: optionalNumber(serviceEnv.AGENT_SANDBOX_MEMORY_MIB),
-        storageSizeGi: optionalNumber(serviceEnv.AGENT_SANDBOX_STORAGE_SIZE_GI),
-        suspendMinutes: optionalNumber(serviceEnv.AGENT_SANDBOX_SUSPEND_MINUTES),
-        archiveInactiveDays: optionalNumber(serviceEnv.AGENT_SANDBOX_ARCHIVE_INACTIVE_DAYS),
+        cpuCount: optionalNumber(legacyEnv.AGENT_SANDBOX_CPU_COUNT),
+        memoryMiB: optionalNumber(legacyEnv.AGENT_SANDBOX_MEMORY_MIB),
+        storageSizeGi: optionalNumber(legacyEnv.AGENT_SANDBOX_STORAGE_SIZE_GI),
+        suspendMinutes: optionalNumber(legacyEnv.AGENT_SANDBOX_SUSPEND_MINUTES),
+        archiveInactiveDays: optionalNumber(legacyEnv.AGENT_SANDBOX_ARCHIVE_INACTIVE_DAYS),
         maxEditDebug:
-          optionalNumber(systemEnv.agentSandboxMax) ?? optionalNumber(serviceEnv.AGENT_SANDBOX_MAX),
+          optionalNumber(systemEnv.agentSandboxMax) ?? optionalNumber(legacyEnv.AGENT_SANDBOX_MAX),
         // null 是旧库中的显式"不限量"，不能被环境变量的配额重新覆盖。
         maxPerTeam:
           systemEnv.agentSandboxMaxPerTeam === null
             ? null
             : (optionalNumber(systemEnv.agentSandboxMaxPerTeam) ??
-              optionalNumber(serviceEnv.AGENT_SANDBOX_MAX_PER_TEAM)),
+              optionalNumber(legacyEnv.AGENT_SANDBOX_MAX_PER_TEAM)),
         entrypointTimeoutSeconds: optionalNumber(
-          serviceEnv.AGENT_SANDBOX_ENTRYPOINT_TIMEOUT_SECONDS
+          legacyEnv.AGENT_SANDBOX_ENTRYPOINT_TIMEOUT_SECONDS
         ),
-        wsMaxMessageBytes: optionalNumber(serviceEnv.AGENT_SANDBOX_WS_MAX_MESSAGE_BYTES),
-        wsMaxFrameBytes: optionalNumber(serviceEnv.AGENT_SANDBOX_WS_MAX_FRAME_BYTES),
-        npmRegistry: optionalText(serviceEnv.AGENT_SANDBOX_NPM_REGISTRY),
-        pypiIndexUrl: optionalText(serviceEnv.AGENT_SANDBOX_PYPI_INDEX_URL),
-        aptMirror: optionalText(serviceEnv.AGENT_SANDBOX_APT_MIRROR)
+        wsMaxMessageBytes: optionalNumber(legacyEnv.AGENT_SANDBOX_WS_MAX_MESSAGE_BYTES),
+        wsMaxFrameBytes: optionalNumber(legacyEnv.AGENT_SANDBOX_WS_MAX_FRAME_BYTES),
+        npmRegistry: optionalText(legacyEnv.AGENT_SANDBOX_NPM_REGISTRY),
+        pypiIndexUrl: optionalText(legacyEnv.AGENT_SANDBOX_PYPI_INDEX_URL),
+        aptMirror: optionalText(legacyEnv.AGENT_SANDBOX_APT_MIRROR)
       }),
       sealosdevbox: compact({
-        baseUrl: optionalText(serviceEnv.AGENT_SANDBOX_SEALOS_BASEURL),
-        token: optionalText(serviceEnv.AGENT_SANDBOX_SEALOS_TOKEN),
-        workDirectory: optionalText(serviceEnv.AGENT_SANDBOX_SEALOS_WORK_DIRECTORY),
-        image: optionalText(serviceEnv.AGENT_SANDBOX_SEALOS_IMAGE)
+        baseUrl: optionalText(legacyEnv.AGENT_SANDBOX_SEALOS_BASEURL),
+        token: optionalText(legacyEnv.AGENT_SANDBOX_SEALOS_TOKEN),
+        workDirectory: optionalText(legacyEnv.AGENT_SANDBOX_SEALOS_WORK_DIRECTORY),
+        image: optionalText(legacyEnv.AGENT_SANDBOX_SEALOS_IMAGE)
       }),
       opensandbox: compact({
-        baseUrl: optionalText(serviceEnv.AGENT_SANDBOX_OPENSANDBOX_BASEURL),
-        apiKey: optionalText(serviceEnv.AGENT_SANDBOX_OPENSANDBOX_API_KEY),
-        runtime: optionalText(serviceEnv.AGENT_SANDBOX_OPENSANDBOX_RUNTIME),
-        image: optionalText(serviceEnv.AGENT_SANDBOX_OPENSANDBOX_IMAGE),
-        useServerProxy: optionalBool(serviceEnv.AGENT_SANDBOX_OPENSANDBOX_USE_SERVER_PROXY),
-        volumeManagerUrl: optionalText(serviceEnv.AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL),
-        volumeManagerToken: optionalText(serviceEnv.AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN),
-        volumeNamePrefix: optionalText(serviceEnv.AGENT_SANDBOX_OPENSANDBOX_VOLUME_NAME_PREFIX)
+        baseUrl: optionalText(legacyEnv.AGENT_SANDBOX_OPENSANDBOX_BASEURL),
+        apiKey: optionalText(legacyEnv.AGENT_SANDBOX_OPENSANDBOX_API_KEY),
+        runtime: optionalText(legacyEnv.AGENT_SANDBOX_OPENSANDBOX_RUNTIME),
+        image: optionalText(legacyEnv.AGENT_SANDBOX_OPENSANDBOX_IMAGE),
+        useServerProxy: optionalBool(legacyEnv.AGENT_SANDBOX_OPENSANDBOX_USE_SERVER_PROXY),
+        volumeManagerUrl: optionalText(legacyEnv.AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL),
+        volumeManagerToken: optionalText(legacyEnv.AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN),
+        volumeNamePrefix: optionalText(legacyEnv.AGENT_SANDBOX_OPENSANDBOX_VOLUME_NAME_PREFIX)
       })
     })
   }) as DomainOverrides['subservice'];

@@ -1,12 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@fastgpt/service/env', () => ({
-  hasAgentSandboxConfig: vi.fn(() => false),
   serviceEnv: {
-    AGENT_SANDBOX_SHOW_FREE_TIP: false,
-    UPLOAD_FILE_MAX_SIZE: 1000,
-    UPLOAD_FILE_MAX_AMOUNT: 1000,
-    MAX_FOLDER_DEPTH: 4
+    AGENT_SANDBOX_SHOW_FREE_TIP: false
   }
 }));
 
