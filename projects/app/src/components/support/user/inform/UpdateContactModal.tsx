@@ -1,11 +1,10 @@
 import React from 'react';
-import { Box, Flex, Input, Button, IconButton } from '@chakra-ui/react';
+import { Box, Flex, Input, Button } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import { useTranslation } from 'next-i18next';
 import { useForm } from 'react-hook-form';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { updateContact, updateNotificationAccount } from '@/web/support/user/api';
-import Icon from '@fastgpt/web/components/common/Icon';
 import { useSendCode } from '@/web/support/user/hooks/useSendCode';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
@@ -83,30 +82,10 @@ const UpdateContactModal = ({
       isOpen
       isCentered
       onClose={onClose}
-      showCloseButton={false}
-      // 以固定的标题区定位关闭按钮，避免正文滚动层造成偏移或裁剪。
-      headerStyles={{ position: 'relative', pr: '52px' }}
       title={
-        <>
-          {mode === 'notification_account'
-            ? t('common:support.user.info.notification_receiving_hint')
-            : t('common:contact_way')}
-          <IconButton
-            aria-label={t('common:Close')}
-            icon={<Icon name="close" w="20px" h="20px" />}
-            variant="ghost"
-            position="absolute"
-            top="8px"
-            right="8px"
-            w="36px"
-            h="36px"
-            minW="36px"
-            p="4px"
-            borderRadius="4px"
-            zIndex={1}
-            onClick={onClose}
-          />
-        </>
+        mode === 'notification_account'
+          ? t('common:support.user.info.notification_receiving_hint')
+          : t('common:contact_way')
       }
       borderRadius="10px"
       bodyStyles={{ pt: 0 }}
