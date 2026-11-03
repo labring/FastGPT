@@ -1,6 +1,6 @@
 import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import MyModal from '@fastgpt/web/components/common/MyModal';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import {
   Box,
@@ -63,19 +63,56 @@ const SchemaConfigModal = ({
   const { t } = useTranslation();
   const { toast } = useToast();
   const mountedRef = useRef(true);
-  useEffect(
-    () => () => {
+  const parseGenerationRef = useRef(0);
+  const activeParseRef = useRef<{
+    generation: number;
+    url: string;
+    controller: AbortController;
+  } | null>(null);
+  const cancelParse = useCallback(() => {
+    parseGenerationRef.current += 1;
+    activeParseRef.current?.controller.abort();
+    activeParseRef.current = null;
+  }, []);
+  const startParse = (url: string) => {
+    activeParseRef.current?.controller.abort();
+    const request = {
+      generation: ++parseGenerationRef.current,
+      url,
+      controller: new AbortController()
+    };
+    activeParseRef.current = request;
+    return request;
+  };
+  const isCurrentParse = (
+    request: NonNullable<typeof activeParseRef.current>,
+    currentUrl: string
+  ) =>
+    mountedRef.current &&
+    !request.controller.signal.aborted &&
+    request.generation === parseGenerationRef.current &&
+    request.url === currentUrl;
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
       mountedRef.current = false;
-    },
-    []
-  );
+      cancelParse();
+    };
+  }, [cancelParse]);
 
   const [schemaUrl, setSchemaUrl] = useState<string>('');
   const [apiSchemaUrl, setApiSchemaUrl] = useState(initialConfig?.apiSchemaUrl ?? '');
+  const schemaUrlRef = useRef('');
+  const apiSchemaUrlRef = useRef(initialConfig?.apiSchemaUrl ?? '');
   const [toolList, setToolList] = useState(initialConfig?.toolList ?? []);
   const [workflowApiSchemaStr, setWorkflowApiSchemaStr] = useState('');
   const [updateTrigger, setUpdateTrigger] = useState<boolean>(false);
   const isWorkflowNodeConfig = Boolean(onSaveConfig);
+  const handleClose = useCallback(() => {
+    cancelParse();
+    onClose();
+  }, [cancelParse, onClose]);
 
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
   const reloadApp = useContextSelector(AppContext, (v) => v.reloadApp);
@@ -156,17 +193,24 @@ const SchemaConfigModal = ({
     );
 
   const { runAsync: onClickUrlLoadApi, loading: isLoadingUrlApi } = useRequest(
-    async () => {
-      if (!schemaUrl || (!schemaUrl.startsWith('https://') && !schemaUrl.startsWith('http://'))) {
+    async (url: string) => {
+      if (!url || (!url.startsWith('https://') && !url.startsWith('http://'))) {
         return toast({
           title: t('common:plugin.Invalid URL'),
           status: 'warning'
         });
       }
 
-      const schema = await getApiSchemaByUrl(schemaUrl);
-      if (!mountedRef.current) return;
-      setValue('apiSchemaStr', JSON.stringify(schema, null, 2));
+      const request = startParse(url);
+      try {
+        const schema = await getApiSchemaByUrl(url, request.controller);
+        if (!isCurrentParse(request, schemaUrlRef.current.trim())) return;
+        setValue('apiSchemaStr', JSON.stringify(schema, null, 2));
+      } catch (error) {
+        if (!request.controller.signal.aborted) throw error;
+      } finally {
+        if (activeParseRef.current === request) activeParseRef.current = null;
+      }
     },
     {
       manual: true,
@@ -176,22 +220,32 @@ const SchemaConfigModal = ({
   // workflow 节点只在用户手动刷新时读取远端定义，并将其压成工具摘要。
   const { runAsync: onRefreshWorkflowTools, loading: isRefreshingWorkflowTools } = useRequest(
     async (url: string) => {
-      const schema = await getApiSchemaByUrl(url);
-      if (!mountedRef.current) return;
-      const schemaStr = JSON.stringify(schema, null, 2);
-      const { pathData } = await str2OpenApiSchema(schemaStr);
-      const tools = await pathData2ToolList(pathData);
-      if (!mountedRef.current) return [];
-      setWorkflowApiSchemaStr(schemaStr);
-      return tools;
+      const request = startParse(url);
+      try {
+        const schema = await getApiSchemaByUrl(url, request.controller);
+        if (!isCurrentParse(request, apiSchemaUrlRef.current.trim())) return;
+        const schemaStr = JSON.stringify(schema, null, 2);
+        const { pathData } = await str2OpenApiSchema(schemaStr);
+        if (!isCurrentParse(request, apiSchemaUrlRef.current.trim())) return;
+        const tools = await pathData2ToolList(pathData);
+        if (!isCurrentParse(request, apiSchemaUrlRef.current.trim())) return;
+        return { request, schemaStr, tools };
+      } catch (error) {
+        if (!request.controller.signal.aborted) throw error;
+      } finally {
+        if (activeParseRef.current === request) activeParseRef.current = null;
+      }
     },
     {
       manual: true,
-      onSuccess: (tools) => {
-        if (!mountedRef.current || !tools) return;
+      onSuccess: (result) => {
+        if (!result || !isCurrentParse(result.request, apiSchemaUrlRef.current.trim())) {
+          return;
+        }
+        setWorkflowApiSchemaStr(result.schemaStr);
         const savedDescriptions = new Map(toolList.map((tool) => [tool.name, tool.description]));
         setToolList(
-          tools.map(({ name, description }) => ({
+          result.tools.map(({ name, description }) => ({
             name,
             description: savedDescriptions.has(name)
               ? (savedDescriptions.get(name) ?? '')
@@ -222,14 +276,14 @@ const SchemaConfigModal = ({
           title: t('common:update_success'),
           status: 'success'
         });
-        onClose();
+        handleClose();
         reloadApp();
       }
     }
   );
 
   const onClickWorkflowRefresh = () => {
-    const url = apiSchemaUrl.trim();
+    const url = apiSchemaUrlRef.current.trim();
     if (!url.startsWith('https://') && !url.startsWith('http://')) {
       toast({ title: t('common:plugin.Invalid URL'), status: 'warning' });
       return;
@@ -239,7 +293,7 @@ const SchemaConfigModal = ({
 
   /** workflow 节点保存远端定义地址和本地请求配置；OpenAPI 正文仍在执行期动态读取。 */
   const onSaveWorkflowConfig = (data: HttpToolsType) => {
-    const url = apiSchemaUrl.trim();
+    const url = apiSchemaUrlRef.current.trim();
     const baseUrl = data.baseUrl?.trim();
     if (!url.startsWith('https://') && !url.startsWith('http://')) {
       toast({ title: t('common:plugin.Invalid URL'), status: 'warning' });
@@ -277,13 +331,13 @@ const SchemaConfigModal = ({
       headerSecret: { ...requestHeaderConfig.headerSecret, ...authHeaderSecrets },
       toolList
     });
-    onClose();
+    handleClose();
   };
 
   return (
     <MyModal
       isOpen={true}
-      onClose={onClose}
+      onClose={handleClose}
       iconSrc={'common/setting'}
       iconColor={'primary.600'}
       title={isWorkflowNodeConfig ? t('app:toolset_config') : t('app:Params_config')}
@@ -311,6 +365,8 @@ const SchemaConfigModal = ({
                 value={apiSchemaUrl}
                 placeholder={t('common:plugin.Import from URL')}
                 onChange={(event) => {
+                  apiSchemaUrlRef.current = event.target.value;
+                  cancelParse();
                   setApiSchemaUrl(event.target.value);
                   setWorkflowApiSchemaStr('');
                 }}
@@ -358,17 +414,22 @@ const SchemaConfigModal = ({
                 <Flex alignItems={'center'}>
                   <Input
                     mr={2}
+                    value={schemaUrl}
                     placeholder={t('common:plugin.Import from URL')}
                     h={'30px'}
                     w={['150px', '250px']}
                     fontSize={'sm'}
-                    onBlur={(e) => setSchemaUrl(e.target.value)}
+                    onChange={(event) => {
+                      schemaUrlRef.current = event.target.value;
+                      cancelParse();
+                      setSchemaUrl(event.target.value);
+                    }}
                   />
                   <Button
                     size={'sm'}
                     variant={'whitePrimary'}
                     isLoading={isLoadingUrlApi}
-                    onClick={onClickUrlLoadApi}
+                    onClick={() => onClickUrlLoadApi(schemaUrl.trim())}
                   >
                     {t('common:Import')}
                   </Button>
@@ -543,7 +604,7 @@ const SchemaConfigModal = ({
 
       <ModalFooter px={9} display={'flex'} flexDirection={'column'}>
         <Box display={'flex'} justifyContent={'end'} w={'full'} gap={3}>
-          <Button variant={'whiteBase'} onClick={onClose}>
+          <Button variant={'whiteBase'} onClick={handleClose}>
             {t('common:Close')}
           </Button>
           <Button

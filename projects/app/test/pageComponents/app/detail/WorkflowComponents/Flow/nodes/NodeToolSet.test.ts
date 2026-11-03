@@ -425,7 +425,10 @@ describe('NodeToolSet', () => {
     expect(container.querySelector('textarea')).toBeNull();
     await setFieldValue(schemaUrlInput, 'https://api.example/openapi.json');
     await click('common:Parse');
-    expect(mocks.getApiSchemaByUrl).toHaveBeenCalledWith('https://api.example/openapi.json');
+    expect(mocks.getApiSchemaByUrl).toHaveBeenCalledWith(
+      'https://api.example/openapi.json',
+      expect.any(AbortController)
+    );
     const schemaDisplay = container.querySelector('textarea');
     expect(schemaDisplay?.readOnly).toBe(true);
     expect(schemaDisplay?.value).toContain('"openapi": "3.0.0"');

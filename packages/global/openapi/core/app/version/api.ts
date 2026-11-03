@@ -65,6 +65,7 @@ const PublishAppBodyCommonShape = {
 
 const PublishAppNodesDescription = '本次保存的应用节点配置；未传时按空节点保存';
 
+// Workflow App 发布时以摘要保存 ToolSet 引用；完整配置校验只用于独立 ToolSet App 根节点。
 const PublishAppNodesSchema = z.array(PersistedOpenAPIStoreNodeItemTypeSchema).meta({
   description: '本次保存的应用节点配置'
 });
