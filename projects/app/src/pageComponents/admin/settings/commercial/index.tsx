@@ -69,8 +69,8 @@ const CommercialSettingComponent = () => {
       // 1. 先做套餐表单校验并拿到数据：若校验失败（返回 undefined）直接中断，不提交任何请求。
       // 必须抛 ToastHandledError 而不是 return：return 对 useRequest 是成功 resolve，
       // 会误弹「保存配置成功」；该错误类在 onError 中被静默跳过（RHF 已给字段级提示）。
-      const subPlansData = await plansRef.current?.getSubPlansData();
-      if (subPlansData === undefined) throw new ToastHandledError('Plans validation failed');
+      const plansData = await plansRef.current?.getSubPlansData();
+      if (plansData === undefined) throw new ToastHandledError('Plans validation failed');
 
       // 2. 只提交当前可见字段，并与库中 overrides 深合并：
       // 隐藏字段和未编辑的嵌套字段保持原值，不因显示开关被清空或重置。
@@ -92,6 +92,8 @@ const CommercialSettingComponent = () => {
 
       // 3. 商业配置与套餐合并为单个批量事务请求原子提交：
       // 任一校验失败、revision 冲突或写入异常，整体回滚，杜绝半生效状态。
+      // 套餐未读取成功时 plansData 不带 subPlans 键，后端按"未提供"保留存量套餐；
+      // subPlans 是整字段替换，不能把读取失败写成用户清空套餐。
       await updateDomainConfigApi({
         items: [
           {
@@ -100,7 +102,7 @@ const CommercialSettingComponent = () => {
             overrides
           }
         ],
-        subPlans: subPlansData
+        ...plansData
       });
 
       // 数据库提交成功即保存成功；刷新页面数据是后续动作，失败不能反向误报为保存失败

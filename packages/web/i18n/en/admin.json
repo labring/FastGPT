@@ -221,6 +221,7 @@
   "plan_buy_link": "Plan Purchase Link",
   "plan_enable_label": "Enable Subscription Plans",
   "plan_enable_tip": "When disabled, subscription entrances are hidden and configurations will not be delivered to the client",
+  "plan_load_failed_tip": "Failed to load subscription plans, so plan editing is disabled. Saving this page will not change existing plans.",
   "enable_basic_permissions_for_new_teams_by_default": "Enable basic permissions for new teams by default",
   "team_mode": "Team Mode",
   "agent_execution_engine": "Agent Execution Engine",

@@ -99,9 +99,26 @@ let defaultExtraPointPackages: PointsPackageItem[] = [
   { points: 10000, month: 1, price: 120, activityBonusPoints: 0 }
 ];
 
+/**
+ * 套餐区块交给父级提交的取值结果。
+ *
+ * subPlans 是"键存在即整字段替换"的提交语义，因此这里用"是否携带 subPlans 键"
+ * 区分两种完全不同的情形：
+ * - 不含 subPlans 键：套餐未成功读取，本次保存不修改存量套餐；
+ * - 含 subPlans：读取成功后的套餐表单值，按用户编辑结果替换（含用户主动关闭套餐）。
+ */
+export type PlansSettingSectionSubmit = {
+  subPlans?: Record<string, unknown>;
+};
+
 export type PlansSettingSectionHandle = {
-  /** 校验并获取套餐数据；表单校验失败时返回 undefined */
-  getSubPlansData: () => Promise<Record<string, unknown> | undefined>;
+  /**
+   * 校验并获取套餐数据。
+   *
+   * 返回 undefined 表示表单校验失败，父级应中断整次保存；
+   * 套餐读取未成功时返回不含 subPlans 键的对象，父级据此跳过套餐提交。
+   */
+  getSubPlansData: () => Promise<PlansSettingSectionSubmit | undefined>;
   /** 重新拉取配置 */
   reload: () => Promise<unknown>;
 };
@@ -140,6 +157,9 @@ const DateInput = ({
  *
  * subPlans 不在新的 system_instance_configs 11 个 Domain 内，由 commercial
  * 页面统一批量事务保存写入 MongoSystemConfigs，与商业配置原子生效。
+ *
+ * 套餐读取走 Pro 的配置接口：读取未成功（未激活/已到期）时本区块只读，
+ * 提交时不带 subPlans 键，避免把读取失败写成清空套餐。
  */
 const PlansSettingSection = forwardRef<PlansSettingSectionHandle, PlansSettingSectionProps>(
   (_props, ref) => {
@@ -164,7 +184,11 @@ const PlansSettingSection = forwardRef<PlansSettingSectionHandle, PlansSettingSe
       [standard]
     );
 
-    const { loading: loadingConfig, runAsync: loadConfig } = useRequest(getInitFormData, {
+    const {
+      loading: loadingConfig,
+      data: configStore,
+      runAsync: loadConfig
+    } = useRequest(getInitFormData, {
       manual: true,
       onSuccess: (data: ConfigStoreType) => {
         const aggregatedConfigs = formatConfigStore2FormSchema(data);
@@ -183,11 +207,31 @@ const PlansSettingSection = forwardRef<PlansSettingSectionHandle, PlansSettingSe
       errorToast: '获取订阅套餐配置出错'
     });
 
-    useEffect(() => {
-      void loadConfig();
-    }, [loadConfig]);
+    /**
+     * 套餐是否读取成功。
+     *
+     * 支付配置页按部署版本开放，未激活/已到期的 Pro 也能进入本页，但套餐仍来自
+     * Pro 的 /proApi/admin/system/getConfig，该路径不在 license 放行名单里，读取必然被拒。
+     * 此时表单从未 reset，任何取值都是空表单；而后端 subPlans 是整字段替换，
+     * 空表单被提交等同于"用户主动清空套餐"，所以只有读取成功后才允许产出套餐数据。
+     */
+    const subPlansLoaded = configStore !== null && configStore !== undefined;
 
-    const getSubPlansData = useCallback(async () => {
+    /**
+     * 读取失败已由 useRequest 的 errorToast 呈现，这里吞掉 rejection：
+     * 挂载即失败（未激活 Pro）时避免抛出未处理的 Promise 异常，失败态由 subPlansLoaded 表达。
+     */
+    const loadPlans = useCallback(() => loadConfig().catch(() => undefined), [loadConfig]);
+
+    useEffect(() => {
+      void loadPlans();
+    }, [loadPlans]);
+
+    // 签名取自 PlansSettingSectionHandle，避免父级契约与实现各写一份类型
+    const getSubPlansData = useCallback<PlansSettingSectionHandle['getSubPlansData']>(async () => {
+      // 读取未成功时返回不带 subPlans 键的对象：父级据此跳过套餐提交，存量套餐保持不变
+      if (!subPlansLoaded) return {};
+
       const formData = await new Promise<ConfigFormType['paySettings'] | undefined>((resolve) => {
         void handleSubmit(
           (data) => resolve(data),
@@ -195,12 +239,13 @@ const PlansSettingSection = forwardRef<PlansSettingSectionHandle, PlansSettingSe
         )();
       });
       if (!formData) return undefined;
-      return (formData.subPlans as Record<string, unknown>) ?? {};
-    }, [handleSubmit]);
+      return { subPlans: (formData.subPlans as Record<string, unknown>) ?? {} };
+    }, [handleSubmit, subPlansLoaded]);
 
-    useImperativeHandle(ref, () => ({ getSubPlansData, reload: loadConfig }), [
+    // reload 透给父级后多以 void 调用，沿用同一层 rejection 兜底，避免保存/冲突刷新后的重复异常
+    useImperativeHandle(ref, () => ({ getSubPlansData, reload: loadPlans }), [
       getSubPlansData,
-      loadConfig
+      loadPlans
     ]);
 
     return (
@@ -218,8 +263,15 @@ const PlansSettingSection = forwardRef<PlansSettingSectionHandle, PlansSettingSe
               {t('admin:loading')}
             </Box>
           )}
+          {/* 套餐读取失败时禁用编辑并说明后果：空表单一旦提交会清掉存量套餐 */}
+          {!loadingConfig && !subPlansLoaded && (
+            <Box fontSize={'xs'} color={'warning.500'} mr={3}>
+              {t('admin:plan_load_failed_tip')}
+            </Box>
+          )}
           <Switch
             isChecked={openPlan}
+            isDisabled={!subPlansLoaded}
             colorScheme={'blue'}
             onChange={(e) => {
               const checked = e.target.checked;

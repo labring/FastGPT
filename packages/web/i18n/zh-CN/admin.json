@@ -221,6 +221,7 @@
   "plan_buy_link": "套餐购买链接",
   "plan_enable_label": "是否启用订阅套餐",
   "plan_enable_tip": "关闭后套餐入口隐藏，套餐等级与积分包配置不会下发到前端",
+  "plan_load_failed_tip": "套餐配置读取失败，当前部署无法编辑套餐；保存本页其它配置不会修改已有套餐",
   "enable_basic_permissions_for_new_teams_by_default": "新团队默认开启基础权限",
   "team_mode": "团队模式",
   "agent_execution_engine": "Agent 执行引擎",

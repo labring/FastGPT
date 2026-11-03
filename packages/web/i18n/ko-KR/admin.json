@@ -221,6 +221,7 @@
   "plan_buy_link": "플랜 구매 링크",
   "plan_enable_label": "구독 플랜 활성화 여부",
   "plan_enable_tip": "비활성화하면 플랜 진입로가 숨겨지며 플랜 등급 및 포인트 패키지 설정이 프런트엔드로 전달되지 않습니다",
+  "plan_load_failed_tip": "플랜 설정을 불러오지 못해 플랜 편집이 비활성화되었습니다. 이 페이지를 저장해도 기존 플랜은 변경되지 않습니다.",
   "enable_basic_permissions_for_new_teams_by_default": "새 팀 생성 시 기본 권한 자동 활성화",
   "team_mode": "팀 모드",
   "agent_execution_engine": "Agent 실행 엔진",
