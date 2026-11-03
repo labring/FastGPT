@@ -1,4 +1,5 @@
 import OpenAI from '@fastgpt/global/core/ai';
+import { stripUrlTrailingSlash } from '@fastgpt/global/common/string/url';
 import { type OpenaiAccountType } from '@fastgpt/global/support/user/team/type';
 import type { AIModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import { isSystemModel } from '@fastgpt/global/core/ai/model/utils';
@@ -6,15 +7,33 @@ import { getSystemInstanceConfig } from '../../common/system/systemInstanceConfi
 import { getMemberGroupId } from '../../thirdProvider/aiproxy/group';
 import { getLegacyOpenAIRequestOptions, getLegacyAxiosRequestConfig } from './legacy/requestUrl';
 
+/**
+ * AI Proxy 请求基地址（`${endpoint}/v1`），来源只有实例配置 subservice.aiProxy.endpoint。
+ *
+ * 这里保留旧 ENV 链路（`AIPROXY_API_ENDPOINT: UrlSchema`）的两个归一化约定：
+ *  - 去尾部斜杠：配置 Schema 的 `urlWithDefault()` 只做 z.url() 校验，不会去掉 `http://x/` 的尾斜杠，
+ *    直接拼接会变成 `http://x//v1`，多数网关按不同路由处理，导致全部模型调用 404；
+ *  - token 去首尾空白：Admin 粘贴 Key 时极易带上换行/空格，旧 ENV 用 `.trim()` 兜住，
+ *    改为 DB 来源后必须在读取时归一，否则鉴权静默失败且难以排查。
+ *  - 以 `enabled` 为准入门槛：endpoint 的 Schema 默认值是 `http://localhost:3000`（compose 便利值），
+ *    只看 endpoint 会让没装 AI Proxy 的部署把系统模型流量发到本机 3000 端口并用空 Key 鉴权，
+ *    永远拿不到 `https://api.openai.com/v1` 兜底。迁移任务按 `AIPROXY_API_ENDPOINT` 是否配置写入
+ *    `enabled`，因此以 enabled 判定与旧 ENV 语义一致。
+ */
 export const getAiProxyBaseUrl = () => {
-  const endpoint = getSystemInstanceConfig().subservice.aiProxy.endpoint;
-  return endpoint ? `${endpoint.replace(/\/+$/, '')}/v1` : undefined;
+  const { enabled, endpoint } = getSystemInstanceConfig().subservice.aiProxy;
+  if (!enabled) return undefined;
+
+  const normalizedEndpoint = stripUrlTrailingSlash(endpoint);
+  return normalizedEndpoint ? `${normalizedEndpoint}/v1` : undefined;
 };
 
 export const getOpenaiBaseUrl = () => {
   return getAiProxyBaseUrl() || 'https://api.openai.com/v1';
 };
-export const getOpenaiBaseKey = () => getSystemInstanceConfig().subservice.aiProxy.token || '';
+export const getOpenaiBaseKey = () =>
+  // 可选链保留"快照叶子缺省"的容错（旧 `|| ''` 写法同样容忍 undefined），缺省时按未配置处理。
+  getSystemInstanceConfig().subservice.aiProxy.token?.trim() ?? '';
 export const defaultUserOpenAIBaseUrl = 'https://api.openai.com/v1';
 
 /** @deprecated 使用 getOpenaiBaseUrl() 动态读取实例配置 */
