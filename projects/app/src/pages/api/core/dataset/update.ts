@@ -168,8 +168,12 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
       : apiDatasetServerPatch?.effectiveValue
   ) as ApiDatasetServerType | undefined;
   // 请求体只是局部 patch：permissionSync 依赖 apiServer 的组合约束必须在合并后判断，
-  // 否则存量 apiServer 配置无法单独打开开关。仅校验本次修改的配置，存量脏数据保持容忍。
-  if (apiDatasetServer !== undefined) {
+  // 否则存量 apiServer 配置无法单独打开开关。仅校验实际产生写入的配置：空对象 / null 按既有契约
+  // 不落库，未配置的库带着空 patch 更新其它字段时不应被必填 schema 拒绝。
+  if (
+    apiDatasetServerPatch !== undefined &&
+    Object.keys(apiDatasetServerPatch.updateFields).length > 0
+  ) {
     const parsed = ApiDatasetServerSchema.safeParse(effectiveApiDatasetServer);
     if (!parsed.success) {
       throw new ApiRequestInputParseError(parsed.error, { inputSource: 'body' });

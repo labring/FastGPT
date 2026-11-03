@@ -1,12 +1,17 @@
 import { MongoDatasetCollection } from '../../collection/schema';
+import { MongoDataset } from '../../schema';
 import { resourcePermissionRepo } from '../../../../support/permission/repository/resourcePermissionRepo';
 import { syncResourceTreePermissions } from '../../../../support/permission/resourcePermissionService';
 import { mongoSessionRun } from '../../../../common/mongo/sessionRun';
 import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
+import { isPermissionSyncDataset } from '@fastgpt/global/core/dataset/apiDataset/utils';
+import type { ApiDatasetServerType } from '@fastgpt/global/core/dataset/apiDataset/type';
 import type { CollaboratorItemType } from '@fastgpt/global/support/permission/collaborator';
+import { isEqual } from 'lodash-es';
 import { getPermissionSubjectKey } from './resolver';
-import { assertPermissionSyncActive } from './utils';
+import { assertPermissionSyncActive, PermissionSyncStaleRoundError } from './utils';
 import type { CollectionPermissionTargetState } from './types';
 import type { RedisLeaseContext } from '@fastgpt/dal/redis/caches';
 
@@ -44,12 +49,15 @@ export const applyCollectionPermissionStates = async ({
   teamId,
   datasetId,
   states,
+  expectedApiDatasetServer,
   deadlineAt,
   lease
 }: {
   teamId: string;
   datasetId: string;
   states: CollectionPermissionTargetState[];
+  /** 本轮抓取所依据的托管配置；写事务内锁库重读后必须仍一致。 */
+  expectedApiDatasetServer: ApiDatasetServerType;
   /** 本轮截止时间；到达后不再写库。 */
   deadlineAt?: number;
   /** 同库租约上下文；丢失后停止后续写入。已提交的事务无法回滚，靠下一个检查点收敛。 */
@@ -65,6 +73,24 @@ export const applyCollectionPermissionStates = async ({
   await mongoSessionRun(async (session) => {
     // 事务可能被 driver 重试，检查放在回调内才能覆盖每一次重试。
     assertPermissionSyncActive({ deadlineAt, lease });
+
+    // 锁 dataset 文档并重读托管状态：抓取期间若关闭托管（或改了外部配置），
+    // 这类写入与本次 $inc 冲突，driver 重试后在这里看到新值并丢弃旧轮次，
+    // 否则旧目标态会整集覆盖关闭后人工修改的 ACL。
+    const dataset = await MongoDataset.findOneAndUpdate(
+      { _id: datasetId, teamId },
+      { $inc: { collectionPermissionVersion: 1 } },
+      { session, new: true }
+    )
+      .select('apiDatasetServer')
+      .lean();
+    if (!dataset) throw DatasetErrEnum.unExist;
+    if (
+      !isPermissionSyncDataset(dataset.apiDatasetServer) ||
+      !isEqual(dataset.apiDatasetServer, expectedApiDatasetServer)
+    ) {
+      throw new PermissionSyncStaleRoundError();
+    }
 
     await resourcePermissionRepo.replaceResources({
       teamId,

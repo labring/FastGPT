@@ -995,6 +995,28 @@ describe('dataset permission sync switch', () => {
     expect(enqueueDatasetPermissionSync).not.toHaveBeenCalled();
   });
 
+  it('accepts an empty apiDatasetServer patch on a dataset without API config', async () => {
+    const { owner } = await getFakeUsers(1);
+    const dataset = await createDatasetWithOwnerSnapshot({
+      teamId: String(owner.teamId),
+      tmbId: String(owner.tmbId),
+      name: 'empty-patch',
+      type: DatasetTypeEnum.dataset
+    });
+
+    // 空对象按既有契约不产生写入：不能因为「仍无配置」而拒绝同请求里的名称修改
+    const res = await Call<UpdateDatasetBody, Record<string, never>, string>(updateHandler, {
+      auth: owner,
+      body: { id: String(dataset._id), name: 'renamed', apiDatasetServer: {} }
+    });
+
+    expect(res.code).toBe(200);
+    const updated = await MongoDataset.findById(dataset._id).lean();
+    expect(updated?.name).toBe('renamed');
+    expect(updated?.apiDatasetServer).toBeUndefined();
+    expect(enqueueDatasetPermissionSync).not.toHaveBeenCalled();
+  });
+
   it('does not enable collection permissions for a folder dataset', async () => {
     const { owner } = await getFakeUsers(1);
     const folder = await createDatasetWithOwnerSnapshot({
