@@ -10,6 +10,7 @@ import type {
   RuntimeNodeItemType,
   WorkflowResourceContext
 } from '@fastgpt/global/core/workflow/runtime/type';
+import type { ReferenceValue } from '@fastgpt/global/common/secret/type';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
@@ -25,9 +26,10 @@ import type {
 import { getErrText, isUserConfigError, UserError } from '@fastgpt/global/common/error/utils';
 import {
   filterWorkflowEdges,
-  rewriteLegacyInteractiveToolSetNodeIds,
   valueTypeFormat,
-  appendWorkflowInteractiveValue
+  appendWorkflowInteractiveValue,
+  getReferenceVariableValue,
+  rewriteLegacyInteractiveToolSetNodeIds
 } from '@fastgpt/global/core/workflow/runtime/utils';
 import type {
   InteractiveNodeResponseType,
@@ -1645,13 +1647,24 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
         async (workflowSpan) => {
           const startTime = Date.now();
           try {
+            let runtimeVariables: Record<string, unknown> | undefined;
+            const resolveSecretReference = (reference: ReferenceValue) => {
+              runtimeVariables ??= data.variableState.toRuntimeRecord();
+              return getReferenceVariableValue({
+                value: reference,
+                nodesMap: new Map(data.runtimeNodes.map((node) => [node.nodeId, node])),
+                variables: runtimeVariables
+              });
+            };
+
             const rewrittenInteractive = await rewriteRuntimeWorkFlow({
               teamId: data.runningAppInfo.teamId,
               tmbId: data.runningUserInfo.tmbId,
               nodes: data.runtimeNodes,
               edges: data.runtimeEdges,
               lang: data.lang,
-              lastInteractive: data.lastInteractive
+              lastInteractive: data.lastInteractive,
+              resolveReference: resolveSecretReference
             });
             if (rewrittenInteractive) data.lastInteractive = rewrittenInteractive;
             // ToolSet 会在运行态展开为临时 Tool 节点；交互暂停保存的 memoryEdges 也会指向这些

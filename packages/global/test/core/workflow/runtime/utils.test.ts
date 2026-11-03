@@ -15,6 +15,7 @@ import {
   formatVariableValByType,
   textAdaptGptResponse,
   rewriteNodeOutputByHistories,
+  getToolSetChildNodeId,
   rewriteLegacyInteractiveToolSetNodeIds
 } from '@fastgpt/global/core/workflow/runtime/utils';
 import {
@@ -1946,6 +1947,7 @@ describe('rewriteLegacyInteractiveToolSetNodeIds', () => {
       entryNodeIds: ['mcp-set0'],
       memoryEdges: [{ source: 'mcp-set1', target: 'mcp-set0', status: 'active' }],
       nodeOutputs: [{ nodeId: 'mcp-set0', key: 'rawResponse', value: 'ok' }],
+      skipNodeQueue: [{ id: 'mcp-set0', skippedNodeIdList: ['mcp-set1', 'unrelated'] }],
       params: { description: '', userSelectOptions: [] }
     } as WorkflowInteractiveResponseType;
 
@@ -1965,6 +1967,112 @@ describe('rewriteLegacyInteractiveToolSetNodeIds', () => {
     expect(result?.nodeOutputs).toEqual([
       { nodeId: 'mcp-set#toolset:search', key: 'rawResponse', value: 'ok' }
     ]);
+    expect(result?.skipNodeQueue).toEqual([
+      {
+        id: 'mcp-set#toolset:search',
+        skippedNodeIdList: ['mcp-set#toolset:delete', 'unrelated']
+      }
+    ]);
+  });
+
+  it('uses runtime collision suffixes for duplicate tools and existing workflow IDs', () => {
+    const nodes = [
+      {
+        nodeId: 'mcp-set',
+        name: 'MCP set',
+        flowNodeType: FlowNodeTypeEnum.toolSet,
+        inputs: [],
+        outputs: [],
+        toolConfig: {
+          mcpToolSet: {
+            url: 'https://mcp.example.com',
+            toolList: [
+              { name: 'search', description: 'Search 1' },
+              { name: 'search', description: 'Search 2' }
+            ]
+          }
+        }
+      },
+      {
+        nodeId: 'mcp-set#toolset:search',
+        name: 'Existing node',
+        flowNodeType: FlowNodeTypeEnum.tool,
+        inputs: [],
+        outputs: []
+      }
+    ] as StoreNodeItemType[];
+    const interactive = {
+      type: 'userSelect',
+      entryNodeIds: ['mcp-set0', 'mcp-set1'],
+      memoryEdges: [],
+      nodeOutputs: [],
+      params: { description: '', userSelectOptions: [] }
+    } as WorkflowInteractiveResponseType;
+
+    const result = rewriteLegacyInteractiveToolSetNodeIds({
+      lastInteractive: interactive,
+      nodes
+    });
+
+    expect(result?.entryNodeIds).toEqual(['mcp-set#toolset:search~1', 'mcp-set#toolset:search~2']);
+
+    const usedNodeIds = new Set(['mcp-set#toolset:search']);
+    expect(
+      getToolSetChildNodeId({
+        toolSetNodeId: 'mcp-set',
+        toolName: 'search',
+        usedNodeIds
+      })
+    ).toBe('mcp-set#toolset:search~1');
+    expect(usedNodeIds.has('mcp-set#toolset:search~1')).toBe(true);
+  });
+
+  it('keeps the runtime first mapping when legacy child IDs collide', () => {
+    const nodes = [
+      {
+        nodeId: 'set-1',
+        name: 'First set',
+        flowNodeType: FlowNodeTypeEnum.toolSet,
+        inputs: [],
+        outputs: [],
+        toolConfig: {
+          mcpToolSet: {
+            url: 'https://mcp.example.com',
+            toolList: Array.from({ length: 11 }, (_, index) => ({
+              name: `tool-${index}`,
+              description: ''
+            }))
+          }
+        }
+      },
+      {
+        nodeId: 'set-11',
+        name: 'Second set',
+        flowNodeType: FlowNodeTypeEnum.toolSet,
+        inputs: [],
+        outputs: [],
+        toolConfig: {
+          mcpToolSet: {
+            url: 'https://mcp.example.com',
+            toolList: [{ name: 'child', description: '' }]
+          }
+        }
+      }
+    ] as StoreNodeItemType[];
+    const interactive = {
+      type: 'userSelect',
+      entryNodeIds: ['set-110'],
+      memoryEdges: [],
+      nodeOutputs: [],
+      params: { description: '', userSelectOptions: [] }
+    } as WorkflowInteractiveResponseType;
+
+    const result = rewriteLegacyInteractiveToolSetNodeIds({
+      lastInteractive: interactive,
+      nodes
+    });
+
+    expect(result?.entryNodeIds).toEqual(['set-1#toolset:tool-10']);
   });
 
   it('rewrites child interactive toolset IDs recursively', () => {
@@ -1995,6 +2103,7 @@ describe('rewriteLegacyInteractiveToolSetNodeIds', () => {
           entryNodeIds: ['mcp-set0'],
           memoryEdges: [],
           nodeOutputs: [{ nodeId: 'mcp-set0', key: 'rawResponse', value: 'ok' }],
+          skipNodeQueue: [{ id: 'mcp-set0', skippedNodeIdList: ['mcp-set0'] }],
           params: { description: '', userSelectOptions: [] }
         }
       }
@@ -2011,6 +2120,12 @@ describe('rewriteLegacyInteractiveToolSetNodeIds', () => {
     expect((result?.params as any).childrenResponse.memoryEdges).toEqual([]);
     expect((result?.params as any).childrenResponse.nodeOutputs).toEqual([
       { nodeId: 'mcp-set#toolset:search', key: 'rawResponse', value: 'ok' }
+    ]);
+    expect((result?.params as any).childrenResponse.skipNodeQueue).toEqual([
+      {
+        id: 'mcp-set#toolset:search',
+        skippedNodeIdList: ['mcp-set#toolset:search']
+      }
     ]);
   });
 });

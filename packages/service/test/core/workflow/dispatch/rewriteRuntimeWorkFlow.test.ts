@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
+import type { SecretValueReferenceResolver } from '@fastgpt/global/common/secret/utils';
 import {
   bundleOpenAPISchema,
   parseOpenAPISchemaString
@@ -55,7 +56,10 @@ beforeEach(() => {
   mocks.getSecretValue.mockReset().mockReturnValue({ Authorization: 'Bearer mcp-token' });
 });
 
-const createMcpToolSetNode = (toolList: unknown[]): RuntimeNodeItemType =>
+const createMcpToolSetNode = (
+  toolList: unknown[],
+  headerSecret: unknown = { Authorization: { secret: 'encrypted-token' } }
+): RuntimeNodeItemType =>
   ({
     nodeId: 'mcp-set',
     flowNodeType: FlowNodeTypeEnum.toolSet,
@@ -66,7 +70,7 @@ const createMcpToolSetNode = (toolList: unknown[]): RuntimeNodeItemType =>
     toolConfig: {
       mcpToolSet: {
         url: 'https://mcp.example.com',
-        headerSecret: { Authorization: { value: '', secret: 'encrypted-token' } },
+        headerSecret,
         toolList
       }
     }
@@ -193,6 +197,44 @@ describe('rewriteRuntimeWorkFlow external toolsets', () => {
 });
 
 describe('rewriteRuntimeWorkFlow independent toolsets', () => {
+  it('resolves workflow references for inline MCP headers', async () => {
+    const reference: [string, string] = ['variables', 'apiToken'];
+    const resolveReference = vi.fn().mockReturnValue('mcp-token');
+    mocks.getMcpTools.mockResolvedValue([]);
+    mocks.getSecretValue.mockImplementation(
+      ({
+        resolveReference: resolveSecretReference
+      }: {
+        resolveReference?: SecretValueReferenceResolver;
+      }) => ({
+        Authorization: `Bearer ${resolveSecretReference?.(reference)}`
+      })
+    );
+    const nodes = [
+      createMcpToolSetNode([], {
+        Authorization: { ref: reference }
+      })
+    ];
+
+    await rewriteRuntimeWorkFlow({
+      teamId: 'team-1',
+      tmbId: 'member-1',
+      nodes,
+      edges: [],
+      resolveReference
+    });
+
+    expect(resolveReference).toHaveBeenCalledWith(reference);
+    expect(mocks.getMcpTools).toHaveBeenCalledWith({
+      url: 'https://mcp.example.com',
+      headers: { Authorization: 'Bearer mcp-token' }
+    });
+    expect(mocks.getSecretValue).toHaveBeenCalledWith({
+      storeSecret: { Authorization: { ref: reference } },
+      resolveReference
+    });
+  });
+
   it('fetches the full MCP list, ignores stale summaries, and overrides descriptions by name', async () => {
     const inputSchema = {
       type: 'object',

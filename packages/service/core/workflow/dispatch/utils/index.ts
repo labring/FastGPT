@@ -48,6 +48,7 @@ import { getSecretValue } from '../../../../common/secret/utils';
 import { checkUrlSafety } from '../../../../common/system/utils';
 import {
   getLastInteractiveValue,
+  getToolSetChildNodeId as getStableToolSetChildNodeId,
   rewriteInteractiveToolSetNodeIds
 } from '@fastgpt/global/core/workflow/runtime/utils';
 import {
@@ -355,7 +356,8 @@ export const rewriteRuntimeWorkFlow = async ({
   nodes,
   edges,
   lang: _lang,
-  lastInteractive
+  lastInteractive,
+  resolveReference
 }: {
   teamId: string;
   tmbId: string;
@@ -363,6 +365,7 @@ export const rewriteRuntimeWorkFlow = async ({
   edges: RuntimeEdgeItemType[];
   lang?: localeType;
   lastInteractive?: WorkflowInteractiveResponseType;
+  resolveReference?: Parameters<typeof getSecretValue>[0]['resolveReference'];
 }) => {
   const legacyToolNodeIds = new Map<string, string>();
   const setLegacyToolNodeId = (legacyId: string, nodeId: string) => {
@@ -374,7 +377,8 @@ export const rewriteRuntimeWorkFlow = async ({
     tmbId,
     nodes,
     edges,
-    setLegacyToolNodeId
+    setLegacyToolNodeId,
+    resolveReference
   });
 
   edges.forEach((edge) => {
@@ -390,13 +394,15 @@ const rewriteRuntimeWorkFlowNodes = async ({
   tmbId,
   nodes,
   edges,
-  setLegacyToolNodeId
+  setLegacyToolNodeId,
+  resolveReference
 }: {
   teamId: string;
   tmbId: string;
   nodes: RuntimeNodeItemType[];
   edges: RuntimeEdgeItemType[];
   setLegacyToolNodeId: (legacyId: string, nodeId: string) => void;
+  resolveReference?: Parameters<typeof getSecretValue>[0]['resolveReference'];
 }) => {
   const mergeToolNodeInputs = ({
     node,
@@ -522,12 +528,11 @@ const rewriteRuntimeWorkFlowNodes = async ({
     index: number;
   }) => {
     const legacyNodeId = `${toolSetNode.nodeId}${index}`;
-    let nodeId = `${toolSetNode.nodeId}#toolset:${encodeURIComponent(tool.name)}`;
-    let suffix = 1;
-    while (usedNodeIds.has(nodeId)) {
-      nodeId = `${toolSetNode.nodeId}#toolset:${encodeURIComponent(tool.name)}~${suffix++}`;
-    }
-    usedNodeIds.add(nodeId);
+    const nodeId = getStableToolSetChildNodeId({
+      toolSetNodeId: toolSetNode.nodeId,
+      toolName: tool.name,
+      usedNodeIds
+    });
 
     if (!existingNodeIds.has(legacyNodeId)) setLegacyToolNodeId(legacyNodeId, nodeId);
 
@@ -578,7 +583,10 @@ const rewriteRuntimeWorkFlowNodes = async ({
             const mcpToolSet = McpToolSetNodeConfigSchema.parse(mcpToolsetVal);
             const remoteToolList = await new MCPClient({
               url: mcpToolSet.url,
-              headers: getSecretValue({ storeSecret: mcpToolSet.headerSecret ?? undefined })
+              headers: getSecretValue({
+                storeSecret: mcpToolSet.headerSecret ?? undefined,
+                ...(resolveReference ? { resolveReference } : {})
+              })
             }).getTools();
             const toolList = mergeToolSetChildDescriptions({
               toolList: remoteToolList,

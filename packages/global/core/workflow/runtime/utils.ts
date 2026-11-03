@@ -274,6 +274,28 @@ export const storeEdges2RuntimeEdges = (
   return edges?.map((edge) => ({ ...edge, status: 'waiting' })) || [];
 };
 
+/** 生成运行时 ToolSet 子工具 ID，并通过冲突后缀避开已有节点 ID。 */
+export const getToolSetChildNodeId = ({
+  toolSetNodeId,
+  toolName,
+  usedNodeIds
+}: {
+  toolSetNodeId: string;
+  toolName: string;
+  usedNodeIds: Set<string>;
+}) => {
+  const baseNodeId = `${toolSetNodeId}#toolset:${encodeURIComponent(toolName)}`;
+  let nodeId = baseNodeId;
+  let suffix = 1;
+
+  while (usedNodeIds.has(nodeId)) {
+    nodeId = `${baseNodeId}~${suffix++}`;
+  }
+  usedNodeIds.add(nodeId);
+
+  return nodeId;
+};
+
 /** 把历史交互快照中的工具集位置 ID 映射到稳定子工具 ID。 */
 export const rewriteInteractiveToolSetNodeIds = ({
   lastInteractive,
@@ -296,6 +318,11 @@ export const rewriteInteractiveToolSetNodeIds = ({
     nodeOutputs: lastInteractive.nodeOutputs?.map((output) => ({
       ...output,
       nodeId: mapId(output.nodeId)
+    })),
+    skipNodeQueue: lastInteractive.skipNodeQueue?.map((item) => ({
+      ...item,
+      id: mapId(item.id),
+      skippedNodeIdList: item.skippedNodeIdList.map(mapId)
     })),
     ...(lastInteractive.params && 'childrenResponse' in lastInteractive.params
       ? {
@@ -321,15 +348,24 @@ export const rewriteLegacyInteractiveToolSetNodeIds = ({
   nodes: (StoreNodeItemType | RuntimeNodeItemType)[];
 }) => {
   const nodeIdMap = new Map<string, string>();
+  const existingNodeIds = new Set(nodes.map((node) => node.nodeId));
+  const usedNodeIds = new Set(existingNodeIds);
+
   nodes.forEach((node) => {
     if (node.flowNodeType !== FlowNodeTypeEnum.toolSet) return;
     const toolList =
       node.toolConfig?.mcpToolSet?.toolList ?? node.toolConfig?.httpToolSet?.toolList ?? [];
     toolList.forEach((tool, index) => {
-      nodeIdMap.set(
-        `${node.nodeId}${index}`,
-        `${node.nodeId}#toolset:${encodeURIComponent(tool.name)}`
-      );
+      const legacyNodeId = `${node.nodeId}${index}`;
+      const runtimeNodeId = getToolSetChildNodeId({
+        toolSetNodeId: node.nodeId,
+        toolName: tool.name,
+        usedNodeIds
+      });
+
+      if (!existingNodeIds.has(legacyNodeId) && !nodeIdMap.has(legacyNodeId)) {
+        nodeIdMap.set(legacyNodeId, runtimeNodeId);
+      }
     });
   });
   return rewriteInteractiveToolSetNodeIds({ lastInteractive, nodeIdMap });
