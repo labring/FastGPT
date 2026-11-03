@@ -17,11 +17,7 @@ export const adminConfigPageFieldsMap: Record<string, readonly string[]> = {
     'storage.downloadMode',
     'site.customApiDomain',
     'site.customSharePageDomain',
-    'site.scripts',
-    'security.useIpLimit',
-    'security.checkInternalIp',
-    'security.csrfEnabled',
-    'security.skipFileTypeCheck'
+    'site.scripts'
   ],
   '/admin/settings/site': [
     'site.name',
@@ -51,7 +47,7 @@ export const adminConfigPageFieldsMap: Record<string, readonly string[]> = {
     'feature.showComplianceCopywriting'
   ],
   '/admin/settings/auth': [
-    'auth.openApiKeyMaxCount',
+    'auth.loginProviders.email.register',
     'auth.passwordExpiredMonth',
     'auth.wecomLoginAutoRedirect',
     'auth.loginProviders.sms.login.zh',
@@ -79,6 +75,7 @@ export const adminConfigPageFieldsMap: Record<string, readonly string[]> = {
     'security.workflowHttpNode.ignoreHttpsCertificate'
   ],
   '/admin/settings/limits': [
+    'auth.openApiKeyMaxCount',
     'resource.serviceRequestMaxContentLength',
     'resource.systemMaxStringLengthM',
     'resource.maxFolderDepth',

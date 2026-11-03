@@ -362,9 +362,7 @@ export const systemInstanceConfigRegistry: readonly SystemInstanceConfigRegistry
       'agentSandbox.opensandbox.image',
       'agentSandbox.opensandbox.useServerProxy',
       'agentSandbox.opensandbox.volumeManagerUrl',
-      'agentSandbox.opensandbox.volumeNamePrefix',
-      'agentSandbox.proxy.wsUrl',
-      'agentSandbox.proxy.httpUrl'
+      'agentSandbox.opensandbox.volumeNamePrefix'
     ],
     { edition: 'pro', secret: false, applyMode: 'restart' }
   ),

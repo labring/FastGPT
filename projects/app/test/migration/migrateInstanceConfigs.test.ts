@@ -696,9 +696,7 @@ describe('migration env wiring', () => {
       [
         'subservice.agentSandbox.opensandbox.volumeNamePrefix',
         serviceEnv.AGENT_SANDBOX_OPENSANDBOX_VOLUME_NAME_PREFIX
-      ],
-      ['subservice.agentSandbox.proxy.wsUrl', serviceEnv.AGENT_SANDBOX_PROXY_URL],
-      ['subservice.agentSandbox.proxy.httpUrl', serviceEnv.AGENT_SANDBOX_PREVIEW_PROXY_URL]
+      ]
     ];
 
     // 兜底：有取值才能验证绑定，条数过少说明表格被削掉了

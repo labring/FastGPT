@@ -1,9 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  getAdminDefaultRoute,
-  getAdminMenuList,
-  isRouteVisible
-} from '@/pageComponents/admin/useAdminMenu';
+import { getAdminDefaultRoute, getAdminMenuList } from '@/pageComponents/admin/useAdminMenu';
 import { isConfigFieldVisible } from '@fastgpt/global/common/system/config/permission';
 
 describe('getAdminMenuList', () => {
@@ -97,11 +93,13 @@ describe('getAdminMenuList', () => {
     expect(settingsValues).not.toContain('/admin/settings/storage');
   });
 
-  it('hides commercial pay menus when hasPayCapability is false in pro service', () => {
+  it('keeps payment configuration available without licensed payment business', () => {
     const menus = getAdminMenuList({ isProService: true, hasPayCapability: false });
 
     const menuLabels = menus.map((item) => item.label);
-    expect(menuLabels).not.toContain('商业化');
+    expect(
+      menus.find((menu) => menu.label === '商业化')?.children?.map((item) => item.value)
+    ).toEqual(['/admin/settings/pay']);
     expect(menuLabels).toContain('子服务');
   });
 
@@ -118,8 +116,10 @@ describe('getAdminMenuList', () => {
     expect(menuLabels).toContain('系统资源');
     expect(menuLabels).toContain('系统配置');
     expect(menuLabels).toContain('版本升级');
-    expect(menuLabels).not.toContain('商业化');
-    expect(menuLabels).not.toContain('子服务');
+    expect(
+      menus.find((menu) => menu.label === '商业化')?.children?.map((item) => item.value)
+    ).toEqual(['/admin/settings/pay']);
+    expect(menuLabels).toContain('子服务');
     expect(menuLabels).not.toContain('数据面板');
     expect(menuLabels).not.toContain('运营管理');
   });

@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { generateSandboxId } from '@fastgpt/global/core/ai/sandbox/constants';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { serviceEnv } from '@fastgpt/service/env';
+import { resolveSystemInstanceConfig } from '@fastgpt/global/common/system/config/schema';
 
 const redisMock = vi.hoisted(() => ({
   evalScript: vi.fn(),
@@ -46,6 +47,15 @@ const sessionContext = {
 
 describe('sandbox preview application', () => {
   beforeEach(() => {
+    // Provider 由实例配置管理；只有代理连接地址仍由 ENV 提供。
+    global.systemInstanceConfig = resolveSystemInstanceConfig({
+      subservice: {
+        agentSandbox: {
+          provider: 'opensandbox',
+          opensandbox: { baseUrl: 'https://sandbox.example.com' }
+        }
+      }
+    });
     Object.assign(serviceEnv, {
       AGENT_SANDBOX_PROXY_URL: 'wss://agent-proxy.example.com/base/',
       AGENT_SANDBOX_PREVIEW_PROXY_URL: 'https://agent-preview.example.com:3007/base/',

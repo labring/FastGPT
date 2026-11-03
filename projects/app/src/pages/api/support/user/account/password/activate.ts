@@ -30,7 +30,7 @@ async function handler(req: ApiRequestProps<ActivateAccountBody>): Promise<void>
 
   await assertPasswordUpdateRateLimit({
     account: userId,
-    // 与验证码 create/consume 限流共用 helper：实例配置权威、缺省回落 env
+    // 与验证码 create/consume 限流共用 helper：运行期只读实例配置
     limit: getPasswordLoginMinuteLimitCount()
   });
 

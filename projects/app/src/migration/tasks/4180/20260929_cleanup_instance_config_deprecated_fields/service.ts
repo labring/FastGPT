@@ -26,6 +26,11 @@ export const deprecatedOverridePaths: Partial<
   feature: [['showWorkorder'], ['showEnterpriseAuth'], ['showGit']],
   vector: [['vqLevel'], ['languageIdentifier'], ['hnswMaxScanTuples']],
   providers: [['chunk'], ['crm']],
+  // 代理连接地址保留在部署 ENV；删除开发期写入的两个配置叶子。
+  subservice: [
+    ['agentSandbox', 'proxy', 'wsUrl'],
+    ['agentSandbox', 'proxy', 'httpUrl']
+  ],
   auth: [
     ['loginProviders', 'sms', 'login', 'en'],
     ['loginProviders', 'sms', 'register', 'en'],

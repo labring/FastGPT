@@ -21,10 +21,7 @@ import {
   hasOverridePath,
   pruneDefaultOverrides
 } from '@fastgpt/global/common/system/config/merge';
-import type {
-  SystemInstanceConfigEdition,
-  SystemInstanceConfigRegistryItem
-} from '@fastgpt/global/common/system/config/registry';
+import type { SystemInstanceConfigEdition } from '@fastgpt/global/common/system/config/registry';
 import type {
   DeepPartial,
   SystemInstanceConfigUpdatedByType
@@ -43,11 +40,8 @@ import {
   getInstanceConfigVersionTag,
   publishSystemInstanceConfigSnapshot
 } from './runtime';
-import { getLogger, LogCategories } from '../../logger';
 import { logInstanceConfigRead } from '../migrationCoverageLog';
 import { ApiHttpError } from '../../http/apiError';
-
-const logger = getLogger(LogCategories.SYSTEM);
 
 export type GetDomainConfigResult<T extends SystemInstanceConfigDomainKey> = {
   domain: T;
@@ -131,7 +125,17 @@ export const getDomainConfigForAdmin = async <T extends SystemInstanceConfigDoma
   domain: T,
   edition: SystemInstanceConfigEdition = getServiceEdition()
 ): Promise<AdminDomainConfigResult<T>> => {
-  const result = await getDomainConfig(domain, { maskSecrets: true });
+  return formatDomainConfigForAdmin(await getDomainConfig(domain), edition);
+};
+
+/** 将已读取或已提交的配置按版本过滤并脱敏；不再读库，保证保存响应对应本次 revision。 */
+export const formatDomainConfigForAdmin = <T extends SystemInstanceConfigDomainKey>(
+  result: GetDomainConfigResult<T>,
+  edition: SystemInstanceConfigEdition
+): AdminDomainConfigResult<T> => {
+  const { domain } = result;
+  const overrides = maskDomainSecrets(domain, result.overrides);
+  const effectiveConfig = maskDomainSecrets(domain, result.effectiveConfig);
 
   const allowedSecretKeys = Array.from(getDomainSecretKeys(domain)).filter((relativeKey) =>
     isConfigFieldAllowed(`${domain}.${relativeKey}`, edition)
@@ -141,8 +145,8 @@ export const getDomainConfigForAdmin = async <T extends SystemInstanceConfigDoma
     return {
       domain: result.domain,
       revision: result.revision,
-      overrides: result.overrides,
-      effectiveConfig: result.effectiveConfig,
+      overrides,
+      effectiveConfig,
       secretKeys: allowedSecretKeys,
       updatedAt: result.updatedAt,
       updatedBy: result.updatedBy
@@ -152,8 +156,8 @@ export const getDomainConfigForAdmin = async <T extends SystemInstanceConfigDoma
   return {
     domain: result.domain,
     revision: result.revision,
-    overrides: filterDomainDataByEdition(domain, result.overrides, edition),
-    effectiveConfig: filterDomainDataByEdition(domain, result.effectiveConfig, edition),
+    overrides: filterDomainDataByEdition(domain, overrides, edition),
+    effectiveConfig: filterDomainDataByEdition(domain, effectiveConfig, edition),
     secretKeys: allowedSecretKeys,
     updatedAt: result.updatedAt,
     updatedBy: result.updatedBy
@@ -337,10 +341,6 @@ export const updateDomainConfig = async <T extends SystemInstanceConfigDomainKey
     updatedBy: updatedDoc.updatedBy
   };
 
-  // 写入成功后即时刷新单例快照：必须成功应用才返回，
-  // 失败保留上一成功快照并向外抛错，避免保存成功与运行时状态脱节。
-  await reloadSystemInstanceConfig();
-
   return result;
 };
 
@@ -353,7 +353,8 @@ export type BatchUpdateItemInput = {
 /**
  * 跨域批量原子保存：在单个 Mongo 事务中执行全域的 revision 校验与持久化。
  * 可选携带 subPlans（套餐），纳入同一事务与同一版本发布，杜绝商业配置与套餐分步提交留下的半写状态。
- * 任一域冲突、套餐写入失败或网络异常整体回滚。
+ * 任一域冲突、套餐写入失败或网络异常整体回滚。返回本次事务写入的数据，
+ * 不等待运行时应用、不在提交后重新查询；刷新由业务入口和 Watch 负责。
  */
 export const batchUpdateDomainConfigs = async ({
   items,
@@ -363,7 +364,7 @@ export const batchUpdateDomainConfigs = async ({
   items: BatchUpdateItemInput[];
   subPlans?: Record<string, unknown>;
   actor: SystemInstanceConfigUpdatedByType;
-}): Promise<SystemInstanceConfigDomainKey[]> => {
+}): Promise<GetDomainConfigResult<SystemInstanceConfigDomainKey>[]> => {
   if (items.length === 0 && subPlans === undefined) return [];
 
   /**
@@ -435,7 +436,7 @@ export const batchUpdateDomainConfigs = async ({
 
       const rawOverrides = restorePreservedSecrets(domain, submittedOverrides, existing?.overrides);
       const parsedOverrides = parseDomainOverrides(domain, rawOverrides);
-      resolveDomainEffectiveConfig(domain, parsedOverrides);
+      const effectiveConfig = resolveDomainEffectiveConfig(domain, parsedOverrides);
 
       const defaultValues = getDomainDefaultConfig(domain);
       const cleanOverrides = pruneDefaultOverrides(parsedOverrides, defaultValues) ?? {};
@@ -445,6 +446,7 @@ export const batchUpdateDomainConfigs = async ({
         existing,
         expectedRevision,
         cleanOverrides,
+        effectiveConfig,
         explicitDefaultPaths: resolveExplicitDefaultPaths({
           previousPaths: readExplicitDefaultPaths(existing),
           parsedOverrides,
@@ -455,7 +457,9 @@ export const batchUpdateDomainConfigs = async ({
   );
 
   // 2. 事务执行阶段：在同一个 session 中执行所有文档的新建、带 revision 限制的更新以及套餐写入
-  await mongoSessionRun(async (session) => {
+  return mongoSessionRun(async (session) => {
+    // 事务回调可能由 driver 重试；每次重新收集，避免返回已回滚尝试的 revision 或时间。
+    const results: GetDomainConfigResult<SystemInstanceConfigDomainKey>[] = [];
     if (normalizedSubPlans !== undefined) {
       const latestFastgpt = await MongoSystemConfigs.findOne(
         { type: SystemConfigsTypeEnum.fastgpt },
@@ -479,6 +483,7 @@ export const batchUpdateDomainConfigs = async ({
     }
 
     for (const item of preparedItems) {
+      let updatedDoc;
       if (!item.existing) {
         const newDoc = new MongoSystemInstanceConfig({
           domain: item.domain,
@@ -488,8 +493,9 @@ export const batchUpdateDomainConfigs = async ({
           updatedBy: actor
         });
         await newDoc.save({ session });
+        updatedDoc = newDoc.toObject();
       } else {
-        const updatedDoc = await MongoSystemInstanceConfig.findOneAndUpdate(
+        updatedDoc = await MongoSystemInstanceConfig.findOneAndUpdate(
           { domain: item.domain, revision: item.expectedRevision },
           {
             $set: {
@@ -510,14 +516,17 @@ export const batchUpdateDomainConfigs = async ({
           );
         }
       }
+      results.push({
+        domain: item.domain,
+        revision: updatedDoc.revision,
+        overrides: item.cleanOverrides,
+        effectiveConfig: item.effectiveConfig,
+        updatedAt: updatedDoc.updatedAt,
+        updatedBy: updatedDoc.updatedBy
+      });
     }
+    return results;
   });
-
-  // 3. 事务成功后即时刷新单例快照：必须成功应用才返回，
-  // 失败保留上一成功快照并向外抛错，避免保存成功与运行时状态脱节。
-  await reloadSystemInstanceConfig();
-
-  return preparedItems.map((item) => item.domain);
 };
 
 /**

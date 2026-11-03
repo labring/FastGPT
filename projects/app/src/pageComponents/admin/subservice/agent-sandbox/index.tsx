@@ -51,9 +51,8 @@ const AgentSandboxSubserviceComponent = () => {
   });
 
   const onSave = handleSubmit(async (formData) => {
-    // proxy 地址属于 ENV 独占的部署拓扑，不随表单写回；省略后 patchConfig 会保留库中旧值。
-    const { proxy: _proxy, ...agentSandbox } = formData.agentSandbox;
-    await patchConfig({ agentSandbox });
+    // 代理部署地址已从配置 Schema 移除，表单只提交沙箱运行参数。
+    await patchConfig({ agentSandbox: formData.agentSandbox });
   });
 
   return (

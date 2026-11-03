@@ -214,7 +214,8 @@ async function doInitSystemConfig() {
       hideChatCopyrightSetting: instanceConfig.feature.hideChatCopyrightSetting,
       enable_team_plugin_upload: instanceConfig.feature.enableTeamPluginUpload,
       show_emptyChat: instanceConfig.feature.showEmptyChat,
-      show_git: appEnv.SHOW_GIT,
+      // Pro 保留其 ENV 下发值（默认 false），社区版使用 App ENV（默认 true）。
+      show_git: serviceEnv.PRO_URL ? (fastgptConfig.feConfigs?.show_git ?? false) : appEnv.SHOW_GIT,
       show_dataset_feishu: instanceConfig.feature.showDatasetFeishu,
       show_dataset_yuque: instanceConfig.feature.showDatasetYuque,
       show_dataset_dingtalk: instanceConfig.feature.showDatasetDingtalk,
@@ -263,14 +264,14 @@ async function doInitSystemConfig() {
       isPlus,
       // 仅表示是否接入 pro 服务（PRO_URL 已配置），与授权是否有效无关
       isProService: !!serviceEnv.PRO_URL,
-      datasetSynonymEnabled: instanceConfig.feature.datasetSynonymEnabled,
+      datasetSynonymEnabled: serviceEnv.DATASET_SYNONYM_ENABLED,
       show_dataset_enhance: licenseData?.functions?.datasetEnhance,
       show_intelligent_chunking: !!serviceEnv.SANGFOR_CHUNK_URL,
       show_batch_eval: licenseData?.functions?.eval,
       pluginRemoteDebug: instanceConfig.subservice.plugin.remoteDebug || pluginRemoteDebug,
       disableMarketplace: appEnv.DISABLE_MARKETPLACE,
       show_agent_sandbox_free_tip: serviceEnv.AGENT_SANDBOX_SHOW_FREE_TIP,
-      agentSandboxProxyUrl: instanceConfig.subservice.agentSandbox.proxy.wsUrl
+      agentSandboxProxyUrl: serviceEnv.AGENT_SANDBOX_PROXY_URL
     },
     // 权威数据源：实例配置派生值盖过旧库 systemEnv，旧库仅保留 schema 外扩展键
     systemEnv: buildAuthoritativeSystemEnv({

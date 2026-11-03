@@ -14,8 +14,7 @@ import z from 'zod';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { asRedisLogicalKey, redisCacheAdapter } from '@fastgpt/dal/redis/adapter';
-import { getSystemInstanceConfig } from '../../../../common/system/systemInstanceConfig/runtime';
-import { logInstanceConfigRead } from '../../../../common/system/migrationCoverageLog';
+import { serviceEnv } from '../../../../env';
 import { resolveSandboxWorkspacePath } from './file';
 import { getSandboxRuntimeProfile } from '../infrastructure/provider/runtimeProfile';
 import { trimSandboxPathRight } from '../utils';
@@ -176,18 +175,10 @@ export function resolveSandboxPreviewPath(filePath: string): {
 }
 
 const getSandboxPreviewProxyBaseUrl = () => {
-  const rawUrl = getSystemInstanceConfig().subservice.agentSandbox.proxy.httpUrl;
-  logInstanceConfigRead({
-    callsite: 'runtime.ai.sandbox.preview.getSandboxPreviewProxyBaseUrl',
-    fields: [
-      {
-        path: 'subservice.agentSandbox.proxy.httpUrl',
-        value: rawUrl
-      }
-    ]
-  });
+  // 与 WebSocket 代理一致，HTTP 预览代理只使用部署 ENV。
+  const rawUrl = serviceEnv.AGENT_SANDBOX_PREVIEW_PROXY_URL;
   if (!rawUrl) {
-    throw new Error('AGENT_SANDBOX_PREVIEW_PROXY_URL is not configured');
+    throw new Error('AGENT_SANDBOX_PREVIEW_PROXY_URL environment variable is missing');
   }
 
   const url = new URL(rawUrl);

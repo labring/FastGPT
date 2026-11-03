@@ -18,6 +18,7 @@ import AdminSettingPage from '@/pageComponents/admin/settings/AdminSettingPage';
 import AdminSettingSection from '@/pageComponents/admin/settings/AdminSettingSection';
 import AdminFormItem from '@/pageComponents/admin/settings/AdminFormItem';
 import AdminSwitchRow from '@/pageComponents/admin/settings/AdminSwitchRow';
+import { deepMergeConfig } from '@fastgpt/global/common/system/config/merge';
 import type { SettingTOCItem } from '@/pageComponents/admin/settings/AdminSettingTOC';
 import type { SystemInstanceConfigDomainMap } from '@fastgpt/global/common/system/config/type';
 
@@ -44,6 +45,11 @@ const numberInputProps = { variant: 'whiteOutline' as const, maxW: '400px' };
  */
 const CoreSettingComponent = () => {
   const { t } = useSafeTranslation();
+  const { isFieldVisible, filterConfigData, filterConfigDataByEdition } = useAdminPermission();
+  const showTeamMode = isFieldVisible('auth.teamMode');
+  const showEmail = isFieldVisible('auth.loginProviders.email.smtp');
+  const showPhone = isFieldVisible('auth.loginProviders.phone.signName');
+
   const tocItems: SettingTOCItem[] = useMemo(
     () => [
       { id: 'team', label: t('admin:core_section_team') },
@@ -51,20 +57,16 @@ const CoreSettingComponent = () => {
       { id: 'applicationRuntime', label: t('admin:application_runtime') },
       { id: 'download', label: t('admin:core_section_download') },
       { id: 'openapi', label: t('admin:core_section_openapi') },
-      { id: 'email', label: t('admin:email_notification_config') },
-      { id: 'sms', label: t('admin:aliyun_sms_credentials') }
+      ...(showEmail ? [{ id: 'email', label: t('admin:email_notification_config') }] : []),
+      ...(showPhone ? [{ id: 'sms', label: t('admin:aliyun_sms_credentials') }] : [])
     ],
-    [t]
+    [t, showEmail, showPhone]
   );
 
   const auth = useDomainConfig('auth');
   const feature = useDomainConfig('feature');
   const storage = useDomainConfig('storage');
   const site = useDomainConfig('site');
-  const { isFieldVisible, filterConfigDataByEdition } = useAdminPermission();
-
-  // 团队模式为商业版能力，社区版不展示
-  const showTeamMode = isFieldVisible('auth.teamMode');
 
   const isLoading = auth.isLoading || feature.isLoading || storage.isLoading || site.isLoading;
 
@@ -137,50 +139,51 @@ const CoreSettingComponent = () => {
           {
             domain: 'auth',
             expectedRevision: auth.revision,
-            overrides: {
-              ...(filterConfigDataByEdition('auth', auth.overrides) as Record<string, unknown>),
-              defaultTeamBasicPermissionsEnabled: formData.defaultTeamBasicPermissionsEnabled,
-              ...(showTeamMode ? { teamMode: formData.teamMode } : {}),
-              loginProviders: {
-                ...((auth.effectiveConfig?.loginProviders ?? {}) as Record<string, unknown>),
-                email: formData.email,
-                phone: formData.phone
-              }
-            }
+            overrides: deepMergeConfig(
+              filterConfigDataByEdition('auth', auth.overrides) as Record<string, unknown>,
+              filterConfigData('auth', {
+                defaultTeamBasicPermissionsEnabled: formData.defaultTeamBasicPermissionsEnabled,
+                ...(showTeamMode ? { teamMode: formData.teamMode } : {}),
+                loginProviders: {
+                  email: formData.email,
+                  phone: formData.phone
+                }
+              })
+            )
           },
           {
             domain: 'feature',
             expectedRevision: feature.revision,
-            overrides: {
-              ...(filterConfigDataByEdition('feature', feature.overrides) as Record<
-                string,
-                unknown
-              >),
-              agentEngine: formData.agentEngine,
-              multipleDataToBase64: formData.multipleDataToBase64
-            }
+            overrides: deepMergeConfig(
+              filterConfigDataByEdition('feature', feature.overrides) as Record<string, unknown>,
+              filterConfigData('feature', {
+                agentEngine: formData.agentEngine,
+                multipleDataToBase64: formData.multipleDataToBase64
+              })
+            )
           },
           {
             domain: 'storage',
             expectedRevision: storage.revision,
-            overrides: {
-              ...(filterConfigDataByEdition('storage', storage.overrides) as Record<
-                string,
-                unknown
-              >),
-              downloadMode: formData.downloadMode,
-              externalEndpoint: formData.externalEndpoint || '',
-              cdnEndpoint: formData.cdnEndpoint || '',
-              redirectTtlSeconds: Number(formData.redirectTtlSeconds) || 300
-            }
+            overrides: deepMergeConfig(
+              filterConfigDataByEdition('storage', storage.overrides) as Record<string, unknown>,
+              filterConfigData('storage', {
+                downloadMode: formData.downloadMode,
+                externalEndpoint: formData.externalEndpoint || '',
+                cdnEndpoint: formData.cdnEndpoint || '',
+                redirectTtlSeconds: Number(formData.redirectTtlSeconds) || 300
+              })
+            )
           },
           {
             domain: 'site',
             expectedRevision: site.revision,
-            overrides: {
-              ...(filterConfigDataByEdition('site', site.overrides) as Record<string, unknown>),
-              openApiPrefix: formData.openApiPrefix
-            }
+            overrides: deepMergeConfig(
+              filterConfigDataByEdition('site', site.overrides) as Record<string, unknown>,
+              filterConfigData('site', {
+                openApiPrefix: formData.openApiPrefix
+              })
+            )
           }
         ]
       });
@@ -405,103 +408,107 @@ const CoreSettingComponent = () => {
       </AdminSettingSection>
 
       {/* 6. 邮箱通知 (SMTP) */}
-      <AdminSettingSection id="email" title={t('admin:email_notification_config')} showDivider>
-        <SimpleGrid columns={[1, 2]} spacing={5}>
-          <AdminFormItem
-            label={t('admin:smtp_server_address')}
-            tooltip={t('admin:mail_server_address_e_g_smtp_example_com')}
-          >
-            <Input {...register('email.smtp')} placeholder="smtp.example.com" />
-          </AdminFormItem>
-          <AdminFormItem
-            label={t('admin:sender_email_account')}
-            tooltip={t('admin:account_used_to_send_system_notification_emails')}
-          >
-            <Input {...register('email.user')} placeholder="no-reply@example.com" />
-          </AdminFormItem>
-          <AdminFormItem
-            label={t('admin:email_auth_code_password')}
-            tooltip={t('admin:smtp_login_credentials')}
-          >
-            <Input type="password" {...register('email.pass')} placeholder="******" />
-          </AdminFormItem>
-          <AdminFormItem
-            label={t('admin:smtp_port')}
-            tooltip={t('admin:common_ports_465_ssl_587_tls')}
-          >
+      {showEmail && (
+        <AdminSettingSection id="email" title={t('admin:email_notification_config')} showDivider>
+          <SimpleGrid columns={[1, 2]} spacing={5}>
+            <AdminFormItem
+              label={t('admin:smtp_server_address')}
+              tooltip={t('admin:mail_server_address_e_g_smtp_example_com')}
+            >
+              <Input {...register('email.smtp')} placeholder="smtp.example.com" />
+            </AdminFormItem>
+            <AdminFormItem
+              label={t('admin:sender_email_account')}
+              tooltip={t('admin:account_used_to_send_system_notification_emails')}
+            >
+              <Input {...register('email.user')} placeholder="no-reply@example.com" />
+            </AdminFormItem>
+            <AdminFormItem
+              label={t('admin:email_auth_code_password')}
+              tooltip={t('admin:smtp_login_credentials')}
+            >
+              <Input type="password" {...register('email.pass')} placeholder="******" />
+            </AdminFormItem>
+            <AdminFormItem
+              label={t('admin:smtp_port')}
+              tooltip={t('admin:common_ports_465_ssl_587_tls')}
+            >
+              <Controller
+                name="email.port"
+                control={control}
+                render={({ field }) => (
+                  <NumberInput
+                    {...numberInputProps}
+                    min={1}
+                    max={65535}
+                    value={field.value ?? 465}
+                    onChange={(_, val) => field.onChange(val || 465)}
+                  >
+                    <NumberInputField />
+                    <NumberInputStepper>
+                      <NumberIncrementStepper />
+                      <NumberDecrementStepper />
+                    </NumberInputStepper>
+                  </NumberInput>
+                )}
+              />
+            </AdminFormItem>
+          </SimpleGrid>
+
+          <SimpleGrid columns={[1, 2]} spacingX={16} spacingY={4} mt={4}>
             <Controller
-              name="email.port"
+              name="email.secure"
               control={control}
               render={({ field }) => (
-                <NumberInput
-                  {...numberInputProps}
-                  min={1}
-                  max={65535}
-                  value={field.value ?? 465}
-                  onChange={(_, val) => field.onChange(val || 465)}
-                >
-                  <NumberInputField />
-                  <NumberInputStepper>
-                    <NumberIncrementStepper />
-                    <NumberDecrementStepper />
-                  </NumberInputStepper>
-                </NumberInput>
+                <AdminSwitchRow
+                  label={t('admin:enable_ssl')}
+                  tooltip={t('admin:port_465_is_usually_enabled_port_587_recommends_starttls')}
+                  isChecked={field.value}
+                  onChange={field.onChange}
+                />
               )}
             />
-          </AdminFormItem>
-        </SimpleGrid>
-
-        <SimpleGrid columns={[1, 2]} spacingX={16} spacingY={4} mt={4}>
-          <Controller
-            name="email.secure"
-            control={control}
-            render={({ field }) => (
-              <AdminSwitchRow
-                label={t('admin:enable_ssl')}
-                tooltip={t('admin:port_465_is_usually_enabled_port_587_recommends_starttls')}
-                isChecked={field.value}
-                onChange={field.onChange}
-              />
-            )}
-          />
-          <Controller
-            name="email.register"
-            control={control}
-            render={({ field }) => (
-              <AdminSwitchRow
-                label={t('admin:enable_email_self_registration')}
-                tooltip={t('admin:allow_users_to_register_with_email')}
-                isChecked={field.value}
-                onChange={field.onChange}
-              />
-            )}
-          />
-        </SimpleGrid>
-      </AdminSettingSection>
+            <Controller
+              name="email.register"
+              control={control}
+              render={({ field }) => (
+                <AdminSwitchRow
+                  label={t('admin:enable_email_self_registration')}
+                  tooltip={t('admin:allow_users_to_register_with_email')}
+                  isChecked={field.value}
+                  onChange={field.onChange}
+                />
+              )}
+            />
+          </SimpleGrid>
+        </AdminSettingSection>
+      )}
 
       {/* 7. 阿里云短信密钥配置 */}
-      <AdminSettingSection id="sms" title={t('admin:aliyun_sms_credentials')} showDivider>
-        <SimpleGrid columns={[1, 3]} spacing={5}>
-          <AdminFormItem
-            label={t('admin:aliyun_accesskeyid')}
-            tooltip={t('admin:sms_accesskey_id')}
-          >
-            <Input {...register('phone.accessKeyId')} placeholder="******" />
-          </AdminFormItem>
-          <AdminFormItem
-            label={t('admin:aliyun_accesskeysecret')}
-            tooltip={t('admin:sms_accesskey_secret')}
-          >
-            <Input type="password" {...register('phone.accessKeySecret')} placeholder="******" />
-          </AdminFormItem>
-          <AdminFormItem
-            label={t('admin:sms_signature')}
-            tooltip={t('admin:signature_name_approved_in_the_aliyun_sms_console')}
-          >
-            <Input {...register('phone.signName')} placeholder="FastGPT" />
-          </AdminFormItem>
-        </SimpleGrid>
-      </AdminSettingSection>
+      {showPhone && (
+        <AdminSettingSection id="sms" title={t('admin:aliyun_sms_credentials')} showDivider>
+          <SimpleGrid columns={[1, 3]} spacing={5}>
+            <AdminFormItem
+              label={t('admin:aliyun_accesskeyid')}
+              tooltip={t('admin:sms_accesskey_id')}
+            >
+              <Input {...register('phone.accessKeyId')} placeholder="******" />
+            </AdminFormItem>
+            <AdminFormItem
+              label={t('admin:aliyun_accesskeysecret')}
+              tooltip={t('admin:sms_accesskey_secret')}
+            >
+              <Input type="password" {...register('phone.accessKeySecret')} placeholder="******" />
+            </AdminFormItem>
+            <AdminFormItem
+              label={t('admin:sms_signature')}
+              tooltip={t('admin:signature_name_approved_in_the_aliyun_sms_console')}
+            >
+              <Input {...register('phone.signName')} placeholder="FastGPT" />
+            </AdminFormItem>
+          </SimpleGrid>
+        </AdminSettingSection>
+      )}
     </AdminSettingPage>
   );
 };

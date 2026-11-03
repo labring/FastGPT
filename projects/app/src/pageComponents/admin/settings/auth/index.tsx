@@ -8,9 +8,7 @@ import {
   NumberIncrementStepper,
   NumberDecrementStepper,
   SimpleGrid,
-  Box,
-  Text,
-  useToast
+  Text
 } from '@chakra-ui/react';
 import { useForm, Controller, useWatch } from 'react-hook-form';
 import { useDomainConfig, updateDomainConfigApi } from '@/web/common/system/useDomainConfig';
@@ -32,8 +30,9 @@ type AuthConfigForm = Omit<SystemInstanceConfigDomainMap['auth'], 'fastLogin'> &
 
 const AuthSettingComponent = () => {
   const { t } = useSafeTranslation();
-  const { isFieldVisible, filterConfigDataByEdition } = useAdminPermission();
+  const { isFieldVisible, filterConfigData, filterConfigDataByEdition } = useAdminPermission();
 
+  const showEmail = isFieldVisible('auth.loginProviders.email.register');
   const showSms = isFieldVisible('auth.loginProviders.sms.login.zh');
   const showWechat = isFieldVisible('auth.loginProviders.wechat.appId');
   const showOauth = isFieldVisible('auth.loginProviders.github.clientId');
@@ -45,6 +44,7 @@ const AuthSettingComponent = () => {
       { id: 'apiAndPassword', label: t('admin:api_password_policy') },
       { id: 'loginAndTeam', label: t('admin:login_policy') },
       { id: 'loginProtection', label: t('admin:auth_section_protection') },
+      ...(showEmail ? [{ id: 'emailLogin', label: t('admin:email_notification_config') }] : []),
       ...(showSms ? [{ id: 'smsLogin', label: t('admin:sms_verification_code') }] : []),
       ...(showWechat
         ? [{ id: 'wechatLogin', label: t('admin:wechat_service_account_wecom') }]
@@ -54,14 +54,13 @@ const AuthSettingComponent = () => {
         ? [{ id: 'accountCancellation', label: t('admin:account_cancellation') }]
         : [])
     ],
-    [t, showSms, showWechat, showOauth, showCancellation]
+    [t, showEmail, showSms, showWechat, showOauth, showCancellation]
   );
 
   const auth = useDomainConfig('auth');
   const security = useDomainConfig('security');
   const { effectiveConfig } = auth;
   const isLoading = auth.isLoading || security.isLoading;
-  const toast = useToast();
 
   const { control, handleSubmit, reset, register } = useForm<AuthConfigForm>({
     defaultValues: {
@@ -92,7 +91,7 @@ const AuthSettingComponent = () => {
       // 深度合并保留同域未在当前页编辑的字段（如 teamMode、OpenAPI Key 上限、CORS 等）及密钥。
       const authOverrides = deepMergeConfig(
         filterConfigDataByEdition('auth', auth.overrides) as Record<string, unknown>,
-        {
+        filterConfigData('auth', {
           wecomLoginAutoRedirect: Boolean(rest.wecomLoginAutoRedirect),
           passwordExpiredMonth:
             rest.passwordExpiredMonth && Number(rest.passwordExpiredMonth) > 0
@@ -100,7 +99,7 @@ const AuthSettingComponent = () => {
               : null,
           loginProviders: rest.loginProviders,
           accountCancellation: rest.accountCancellation
-        }
+        })
       );
 
       const securityOverrides = deepMergeConfig(
@@ -258,28 +257,34 @@ const AuthSettingComponent = () => {
       </AdminSettingSection>
 
       {/* 4. 邮箱通知 (SMTP) */}
-      <AdminSettingSection id="emailLogin" title={t('admin:email_notification_config')} showDivider>
-        <SimpleGrid columns={[1, 2]} spacingX={16} spacingY={4}>
-          <Controller
-            name="loginProviders.email.register"
-            control={control}
-            render={({ field }) => (
-              <AdminSwitchRow
-                label={t('admin:enable_email_self_registration')}
-                tooltip={t('admin:allow_users_to_register_with_email')}
-                isChecked={field.value}
-                onChange={field.onChange}
-              />
-            )}
-          />
-        </SimpleGrid>
+      {showEmail && (
+        <AdminSettingSection
+          id="emailLogin"
+          title={t('admin:email_notification_config')}
+          showDivider
+        >
+          <SimpleGrid columns={[1, 2]} spacingX={16} spacingY={4}>
+            <Controller
+              name="loginProviders.email.register"
+              control={control}
+              render={({ field }) => (
+                <AdminSwitchRow
+                  label={t('admin:enable_email_self_registration')}
+                  tooltip={t('admin:allow_users_to_register_with_email')}
+                  isChecked={field.value}
+                  onChange={field.onChange}
+                />
+              )}
+            />
+          </SimpleGrid>
 
-        {emailRegister && (
-          <Text fontSize={'xs'} color={'myGray.500'} mt={2}>
-            {t('admin:ensure_the_smtp_configuration_is_complete_and_working_otherw')}
-          </Text>
-        )}
-      </AdminSettingSection>
+          {emailRegister && (
+            <Text fontSize={'xs'} color={'myGray.500'} mt={2}>
+              {t('admin:ensure_the_smtp_configuration_is_complete_and_working_otherw')}
+            </Text>
+          )}
+        </AdminSettingSection>
+      )}
 
       {/* 5. 短信验证码 */}
       {showSms && (

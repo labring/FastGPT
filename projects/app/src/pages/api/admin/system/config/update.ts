@@ -11,7 +11,7 @@ import {
 import {
   batchUpdateDomainConfigs,
   getDomainConfig,
-  getDomainConfigForAdmin,
+  formatDomainConfigForAdmin,
   findOverridesNotAllowedByEdition,
   getServiceEdition
 } from '@fastgpt/service/common/system/systemInstanceConfig/controller';
@@ -63,7 +63,7 @@ async function handler(
   const previousSiteConfig = siteItem ? (await getDomainConfig('site')).effectiveConfig : undefined;
 
   // 3. 单事务写入全部域和可选套餐
-  const updatedDomains = await batchUpdateDomainConfigs({
+  const savedConfigs = await batchUpdateDomainConfigs({
     items,
     subPlans,
     actor: {
@@ -79,30 +79,18 @@ async function handler(
 
   // 5. 站点头像生命周期同步是保存后的清理动作，失败不影响保存结果
   if (siteItem && previousSiteConfig) {
-    const currentSite = await getDomainConfig('site');
-    await syncSiteAvatarLifecycle({
-      previous: previousSiteConfig,
-      next: currentSite.effectiveConfig
-    }).catch((error) => {
-      logger.error('Failed to sync site avatar lifecycle after config update', { error });
-    });
+    const currentSite = savedConfigs.find((result) => result.domain === 'site');
+    if (currentSite)
+      void syncSiteAvatarLifecycle({
+        previous: previousSiteConfig,
+        next: currentSite.effectiveConfig as typeof previousSiteConfig
+      }).catch((error) => {
+        logger.error('Failed to sync site avatar lifecycle after config update', { error });
+      });
   }
 
-  // 6. 返回按版本过滤、脱敏后的生效数据
-  const results = await Promise.all(
-    updatedDomains.map(async (domain) => {
-      const res = await getDomainConfigForAdmin(domain, edition);
-      return {
-        domain: res.domain,
-        revision: res.revision,
-        effectiveConfig: res.effectiveConfig,
-        overrides: res.overrides,
-        secretKeys: res.secretKeys,
-        updatedAt: res.updatedAt,
-        updatedBy: res.updatedBy
-      };
-    })
-  );
+  // 6. 只投影本次提交结果，不再读库：后续刷新异常或并发保存不能改变这次保存的响应。
+  const results = savedConfigs.map((result) => formatDomainConfigForAdmin(result, edition));
   logInstanceConfigWrite({
     callsite: 'runtime.app.admin.system.config.update',
     fields: results.map((result) => ({

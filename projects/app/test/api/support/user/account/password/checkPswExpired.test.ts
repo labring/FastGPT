@@ -1,10 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { LEAF_ABSENT_SNAPSHOT } from '@test/utils/instanceConfigSnapshot';
-
-// checkPswExpired 已接管实例配置 auth.passwordExpiredMonth（null=显式"永不过期"，
-// undefined 才回落 env）。本文件通过 stubEnv 驱动行为，预置叶子缺省种子快照，
-// 让 auth.passwordExpiredMonth 为 undefined、?? 之前的 === undefined 兜底命中 env。
-(global as any).systemInstanceConfig = LEAF_ABSENT_SNAPSHOT();
+import { resolveSystemInstanceConfig } from '@fastgpt/global/common/system/config/schema';
 
 import { MongoUser } from '@fastgpt/service/support/user/schema';
 import { MongoTeam } from '@fastgpt/service/support/user/team/teamSchema';
@@ -25,6 +20,7 @@ describe('checkPswExpired API', () => {
   let testTmb: any;
 
   beforeEach(async () => {
+    global.systemInstanceConfig = resolveSystemInstanceConfig({});
     testUser = await MongoUser.create({
       username: 'testuser',
       password: 'testpassword',
@@ -49,8 +45,8 @@ describe('checkPswExpired API', () => {
     vi.stubEnv('PASSWORD_EXPIRED_MONTH', originalPasswordExpiredMonth);
   });
 
-  it('should return false when PASSWORD_EXPIRED_MONTH is not set', async () => {
-    vi.stubEnv('PASSWORD_EXPIRED_MONTH', undefined);
+  it('uses the default never-expire config independently of ENV', async () => {
+    vi.stubEnv('PASSWORD_EXPIRED_MONTH', '1');
     const checkPswExpiredApi = await loadCheckPswExpiredApi();
 
     const res = await Call(checkPswExpiredApi.default, {
@@ -67,8 +63,8 @@ describe('checkPswExpired API', () => {
     expect(res.data).toBe(false);
   });
 
-  it('should return false when PASSWORD_EXPIRED_MONTH=0', async () => {
-    vi.stubEnv('PASSWORD_EXPIRED_MONTH', '0');
+  it('should return false when the config expiration is zero', async () => {
+    global.systemInstanceConfig!.auth.passwordExpiredMonth = 0;
     const checkPswExpiredApi = await loadCheckPswExpiredApi();
 
     const res = await Call(checkPswExpiredApi.default, {
@@ -86,7 +82,7 @@ describe('checkPswExpired API', () => {
   });
 
   it('should return false when password was updated recently', async () => {
-    vi.stubEnv('PASSWORD_EXPIRED_MONTH', '3');
+    global.systemInstanceConfig!.auth.passwordExpiredMonth = 3;
     const checkPswExpiredApi = await loadCheckPswExpiredApi();
 
     // Update password time to now
@@ -109,7 +105,7 @@ describe('checkPswExpired API', () => {
   });
 
   it('should return true when password has expired (update time older than expiry period)', async () => {
-    vi.stubEnv('PASSWORD_EXPIRED_MONTH', '1');
+    global.systemInstanceConfig!.auth.passwordExpiredMonth = 1;
     const checkPswExpiredApi = await loadCheckPswExpiredApi();
 
     // Set password update time to 2 months ago
@@ -133,8 +129,8 @@ describe('checkPswExpired API', () => {
     expect(res.data).toBe(true);
   });
 
-  it('should return true when passwordUpdateTime is not set and env is configured', async () => {
-    vi.stubEnv('PASSWORD_EXPIRED_MONTH', '3');
+  it('should return true when passwordUpdateTime is not set and config requires expiration', async () => {
+    global.systemInstanceConfig!.auth.passwordExpiredMonth = 3;
     const checkPswExpiredApi = await loadCheckPswExpiredApi();
 
     // Remove passwordUpdateTime
@@ -157,7 +153,7 @@ describe('checkPswExpired API', () => {
   });
 
   it('should return false for root when password expiry is configured', async () => {
-    vi.stubEnv('PASSWORD_EXPIRED_MONTH', '1');
+    global.systemInstanceConfig!.auth.passwordExpiredMonth = 1;
     const checkPswExpiredApi = await loadCheckPswExpiredApi();
 
     await MongoUser.findByIdAndUpdate(testUser._id, {
@@ -201,7 +197,7 @@ describe('checkPswExpired API', () => {
     ['empty', ''],
     ['null', null]
   ])('should return false when password is %s', async (_label, password) => {
-    vi.stubEnv('PASSWORD_EXPIRED_MONTH', '1');
+    global.systemInstanceConfig!.auth.passwordExpiredMonth = 1;
     const checkPswExpiredApi = await loadCheckPswExpiredApi();
     const update =
       password === undefined

@@ -33,11 +33,6 @@ const AiProxySubserviceConfigSchema = z.strictObject({
   token: textWithDefault()
 });
 
-const AgentSandboxProxyConfigSchema = z.strictObject({
-  wsUrl: textWithDefault(),
-  httpUrl: textWithDefault()
-});
-
 const AgentSandboxSubserviceConfigSchema = z.strictObject({
   provider: z.enum(['none', 'sealosdevbox', 'opensandbox']).default('none'),
   common: z
@@ -102,11 +97,7 @@ const AgentSandboxSubserviceConfigSchema = z.strictObject({
       volumeManagerUrl: '',
       volumeManagerToken: '',
       volumeNamePrefix: 'fastgpt-session'
-    }),
-  proxy: AgentSandboxProxyConfigSchema.prefault({
-    wsUrl: '',
-    httpUrl: ''
-  })
+    })
 });
 
 export const SubserviceConfigBaseSchema = z.strictObject({

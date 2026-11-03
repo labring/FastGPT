@@ -417,10 +417,6 @@ export const buildLegacyDomainOverrides = ({
         volumeManagerUrl: optionalText(serviceEnv.AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL),
         volumeManagerToken: optionalText(serviceEnv.AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN),
         volumeNamePrefix: optionalText(serviceEnv.AGENT_SANDBOX_OPENSANDBOX_VOLUME_NAME_PREFIX)
-      }),
-      proxy: compact({
-        wsUrl: optionalText(serviceEnv.AGENT_SANDBOX_PROXY_URL),
-        httpUrl: optionalText(serviceEnv.AGENT_SANDBOX_PREVIEW_PROXY_URL)
       })
     })
   }) as DomainOverrides['subservice'];

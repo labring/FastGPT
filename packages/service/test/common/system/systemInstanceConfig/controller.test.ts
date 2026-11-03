@@ -193,7 +193,9 @@ describe('systemInstanceConfig controller', () => {
         actor: { actor: 'admin' }
       });
 
-      expect(updated).toEqual(['site', 'auth']);
+      expect(updated.map((result) => result.domain)).toEqual(['site', 'auth']);
+      expect(updated.map((result) => result.revision)).toEqual([1, 1]);
+      expect(updated[0].effectiveConfig).toMatchObject({ name: 'Batch Site' });
 
       const siteDoc = await MongoSystemInstanceConfig.findOne({ domain: 'site' }).lean();
       const authDoc = await MongoSystemInstanceConfig.findOne({ domain: 'auth' }).lean();
