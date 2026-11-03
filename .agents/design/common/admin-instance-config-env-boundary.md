@@ -1087,4 +1087,3 @@ Server、Agent Sandbox Proxy 和 IDE Agent 的运行时变量。为了避免“�
 | `providers.documentParse` | PDF 与文档解析 Provider | ✅ | ✅ | ✅ | 包含开源与商业解析扩展 |
 | `subservice.codeSandbox` | 代码沙箱客户端连接配置 | ✅ | ✅ | ✅ | 统一动态配置 |
 | `subservice.agentSandbox` | 智能体沙箱配额与阈值 | ❌ | ✅ | ✅ | 商业版高级隔离环境 |
-
