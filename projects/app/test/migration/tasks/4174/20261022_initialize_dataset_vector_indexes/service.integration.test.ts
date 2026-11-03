@@ -46,13 +46,14 @@ describe.skipIf(!target).each(['vector', 'halfvec'])(
       ]);
       return rows[0].exists;
     };
-    const waitForLock = () =>
+    const waitForDdlLock = (applicationName = 'fastgpt-legacy-vector-index-cleanup') =>
       vi.waitFor(
         async () => {
           const { rows } = await admin.query(
             `SELECT count(*)::int AS count FROM pg_stat_activity
-           WHERE application_name = 'fastgpt-legacy-vector-index-cleanup'
-           AND state = 'idle' AND query LIKE 'SELECT pg_try_advisory_lock%'`
+           WHERE datname = current_database() AND application_name = $1
+           AND state = 'active' AND wait_event_type = 'Lock'`,
+            [applicationName]
           );
           expect(rows[0].count).toBe(1);
         },
@@ -157,12 +158,11 @@ describe.skipIf(!target).each(['vector', 'halfvec'])(
       expect(await exists()).toBe(true);
     });
 
-    it('waits for the shared maintenance lock before removing the index', async () => {
+    it('removes the global index while the local maintenance lock is held', async () => {
       await admin.query('SELECT pg_advisory_lock($1)', [PG_INDEX_MAINTENANCE_LOCK]);
       const cleanup = removeLegacyPgVectorIndex(createContext());
       try {
-        await waitForLock();
-        expect(await exists()).toBe(true);
+        await vi.waitFor(async () => expect(await exists()).toBe(false), { timeout: 5000 });
       } finally {
         await admin.query('SELECT pg_advisory_unlock($1)', [PG_INDEX_MAINTENANCE_LOCK]);
         await cleanup;
@@ -170,19 +170,78 @@ describe.skipIf(!target).each(['vector', 'halfvec'])(
       expect(await exists()).toBe(false);
     });
 
-    it('cancels lock waiting on lease abort and succeeds on a later retry', async () => {
+    it.each(['cleanup', 'build'] as const)(
+      'lets PG coordinate concurrent DDL when %s is submitted first',
+      async (first) => {
+        const blocker = new Client({ connectionString: target?.connectionString });
+        const builder = new Client({
+          connectionString: target?.connectionString,
+          application_name: 'fastgpt-legacy-index-test-build'
+        });
+        const newIndex = `${localIndex}_concurrent`;
+        let cleanup: Promise<void> | undefined;
+        let building: Promise<unknown> | undefined;
+        try {
+          await blocker.connect();
+          await builder.connect();
+          await blocker.query('BEGIN');
+          await blocker.query(`LOCK TABLE ${qualifiedTable} IN SHARE UPDATE EXCLUSIVE MODE`);
+          const startCleanup = () => {
+            cleanup = removeLegacyPgVectorIndex(createContext());
+            void cleanup.catch(() => {});
+          };
+          const startBuild = () => {
+            building = builder.query(
+              `CREATE INDEX CONCURRENTLY ${newIndex} ON ${qualifiedTable} USING hnsw
+               ((vector::halfvec(16)) halfvec_ip_ops) WHERE dataset_id = '${datasetId}'`
+            );
+            void building.catch(() => {});
+          };
+          // 用真实表锁固定提交先后顺序，覆盖 PG 内部锁等待，不借用局部索引 advisory lock。
+          if (first === 'cleanup') {
+            startCleanup();
+            await waitForDdlLock();
+            startBuild();
+            await waitForDdlLock('fastgpt-legacy-index-test-build');
+          } else {
+            startBuild();
+            await waitForDdlLock('fastgpt-legacy-index-test-build');
+            startCleanup();
+            await waitForDdlLock();
+          }
+          await blocker.query('COMMIT');
+          await Promise.all([cleanup, building]);
+          expect(await exists()).toBe(false);
+          const { rows } = await admin.query(
+            'SELECT indisvalid, indisready FROM pg_index WHERE indexrelid = to_regclass($1)',
+            [`${target!.schema}.${newIndex}`]
+          );
+          expect(rows).toEqual([{ indisvalid: true, indisready: true }]);
+        } finally {
+          await blocker.end();
+          await builder.end();
+          await Promise.allSettled([cleanup, building]);
+          await admin.query(`DROP INDEX IF EXISTS ${target!.schema}.${newIndex}`);
+        }
+      }
+    );
+
+    it('cancels a blocked DROP on lease abort and succeeds on a later retry', async () => {
       const controller = new AbortController();
-      await admin.query('SELECT pg_advisory_lock($1)', [PG_INDEX_MAINTENANCE_LOCK]);
+      const blocker = new Client({ connectionString: target?.connectionString });
+      await blocker.connect();
+      await blocker.query('BEGIN');
+      await blocker.query(`LOCK TABLE ${qualifiedTable} IN SHARE UPDATE EXCLUSIVE MODE`);
       const cleanup = removeLegacyPgVectorIndex(createContext(controller));
       const rejected = expect(cleanup).rejects.toThrow();
       try {
-        await waitForLock();
+        await waitForDdlLock();
         controller.abort();
         await rejected;
         expect(await exists()).toBe(true);
       } finally {
         controller.abort();
-        await admin.query('SELECT pg_advisory_unlock($1)', [PG_INDEX_MAINTENANCE_LOCK]);
+        await blocker.end();
         await rejected;
       }
       await removeLegacyPgVectorIndex(createContext());

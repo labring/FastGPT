@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SystemMigrationContext } from '@/migration/registry';
 
 const mocks = vi.hoisted(() => ({
@@ -23,7 +23,6 @@ vi.mock('pg', async (importOriginal) => {
   return { ...actual, default: { ...driver, Client: MockClient } };
 });
 import { removeLegacyPgVectorIndex } from '@/migration/tasks/4174/20261022_initialize_dataset_vector_indexes/service';
-import { PG_INDEX_MAINTENANCE_LOCK } from '@fastgpt/service/common/vectorDB/pg/datasetIndex';
 
 const ownedIndex = {
   on_table: true,
@@ -53,24 +52,22 @@ beforeEach(() => {
   mocks.connect.mockReset().mockResolvedValue(undefined);
   mocks.end.mockReset().mockResolvedValue(undefined);
   mocks.query.mockReset().mockImplementation(async (sql: string) => {
-    if (sql.includes('pg_try_advisory_lock')) return { rows: [{ locked: true }] };
     if (sql.includes('AS vector_type')) return { rows: table ? [table] : [] };
     if (sql.includes('AS on_table')) return { rows: index ? [index] : [] };
+    if (sql.startsWith('SET lock_timeout')) return { rows: [] };
     if (sql.startsWith('DROP INDEX')) return { rows: [] };
     if (sql.includes('AS removed')) return { rows: [{ removed }] };
     throw new Error(`Unexpected SQL: ${sql}`);
   });
 });
+afterEach(() => vi.useRealTimers());
 
 describe('removeLegacyPgVectorIndex', () => {
   it.each(['vector', 'halfvec'])('removes the owned global %s index online', async (storage) => {
     table!.vector_type = storage;
     index!.opclass = `${storage}_ip_ops`;
     await removeLegacyPgVectorIndex(createContext());
-    expect(mocks.query.mock.calls[0]).toEqual([
-      'SELECT pg_try_advisory_lock($1) AS locked',
-      [PG_INDEX_MAINTENANCE_LOCK]
-    ]);
+    expect(mocks.query.mock.calls.some(([sql]) => sql.includes('advisory_lock'))).toBe(false);
     expect(mocks.query).toHaveBeenCalledWith(
       'DROP INDEX CONCURRENTLY IF EXISTS "vectors""schema"."vector_index"'
     );
@@ -139,6 +136,49 @@ describe('removeLegacyPgVectorIndex', () => {
     expect(mocks.end).toHaveBeenCalledOnce();
   });
 
+  it.each(['55P03', '40P01'])('yields on PG lock conflict %s then retries DROP', async (code) => {
+    vi.useFakeTimers();
+    const context = createContext();
+    const query = mocks.query.getMockImplementation()!;
+    let attempts = 0;
+    mocks.query.mockImplementation(async (sql: string, ...args) => {
+      if (sql.startsWith('DROP INDEX') && ++attempts === 1) {
+        throw Object.assign(new Error('PG lock conflict'), { code });
+      }
+      return query(sql, ...args);
+    });
+    const run = removeLegacyPgVectorIndex(context);
+    await vi.advanceTimersByTimeAsync(500);
+    expect(attempts).toBe(1);
+    expect(mocks.end).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(500);
+    await run;
+    expect(attempts).toBe(2);
+    expect(context.assertActive).toHaveBeenCalledTimes(3);
+    expect(context.logger.warn).toHaveBeenCalledOnce();
+    expect(mocks.end).toHaveBeenCalledOnce();
+  });
+
+  it('stops retrying lock conflicts when the migration is aborted', async () => {
+    vi.useFakeTimers();
+    const controller = new AbortController();
+    const query = mocks.query.getMockImplementation()!;
+    mocks.query.mockImplementation(async (sql: string, ...args) => {
+      if (sql.startsWith('DROP INDEX')) {
+        throw Object.assign(new Error('PG lock conflict'), { code: '55P03' });
+      }
+      return query(sql, ...args);
+    });
+    const run = removeLegacyPgVectorIndex(createContext(controller));
+    const rejected = expect(run).rejects.toThrow('migration stopped');
+    await vi.advanceTimersByTimeAsync(500);
+    controller.abort(new Error('migration stopped'));
+    await vi.advanceTimersByTimeAsync(500);
+    await rejected;
+    expect(mocks.query.mock.calls.filter(([sql]) => sql.startsWith('DROP INDEX'))).toHaveLength(1);
+    expect(mocks.end).toHaveBeenCalledOnce();
+  });
+
   it('starts no connection for an already aborted migration', async () => {
     const controller = new AbortController();
     controller.abort(new Error('migration stopped'));
@@ -146,24 +186,27 @@ describe('removeLegacyPgVectorIndex', () => {
     expect(mocks.options).not.toHaveBeenCalled();
   });
 
-  it('closes a lock-waiting connection once when the migration is aborted', async () => {
+  it('closes a pending DROP once when the migration is aborted', async () => {
     const controller = new AbortController();
-    let rejectLock: ((error: Error) => void) | undefined;
-    mocks.query.mockImplementation(
-      () =>
-        new Promise((_, reject) => {
-          rejectLock = reject;
-        })
-    );
+    let rejectDrop: ((error: Error) => void) | undefined;
+    const query = mocks.query.getMockImplementation()!;
+    mocks.query.mockImplementation(async (sql: string, ...args) => {
+      if (sql.startsWith('DROP INDEX')) {
+        return new Promise((_, reject) => {
+          rejectDrop = reject;
+        });
+      }
+      return query(sql, ...args);
+    });
     mocks.end.mockImplementation(async () => {
-      rejectLock?.(new Error('connection terminated'));
+      rejectDrop?.(new Error('connection terminated'));
     });
     const run = removeLegacyPgVectorIndex(createContext(controller));
     const rejected = expect(run).rejects.toThrow('connection terminated');
-    await vi.waitFor(() => expect(rejectLock).toBeDefined());
+    await vi.waitFor(() => expect(rejectDrop).toBeDefined());
     controller.abort();
     await rejected;
     expect(mocks.end).toHaveBeenCalledOnce();
-    expect(mocks.query).toHaveBeenCalledOnce();
+    expect(mocks.query.mock.calls.some(([sql]) => sql.includes('AS removed'))).toBe(false);
   });
 });

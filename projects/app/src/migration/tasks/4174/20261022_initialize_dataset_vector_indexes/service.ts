@@ -1,11 +1,12 @@
 import pg from 'pg';
 import { DatasetVectorTableName, PG_ADDRESS } from '@fastgpt/service/common/vectorDB/constants';
-import { waitForPgIndexMaintenanceLock } from '@fastgpt/service/common/vectorDB/pg/datasetIndex';
+import { delay } from '@fastgpt/global/common/system/utils';
 import type { SystemMigrationContext } from '@/migration/registry';
 
 /**
  * 在线清理旧版固定名称 vector_index：只接受当前向量表原始 vector/halfvec 列的全局内积 HNSW。
- * 与局部建图共用会话锁，重复执行和失败后的无效索引均可恢复；失去迁移 lease 时关闭 DDL 连接。
+ * 由迁移 lease 管理，不占用局部索引维护锁；重复执行和失败后的无效索引均可恢复。
+ * 失去迁移 lease 时关闭 DDL 连接；PG 锁冲突时短暂退让，避免等待中的 DROP 与建图形成死锁。
  * 普通索引、局部索引及同名但定义不同的自建索引保持不变，归属不匹配时终止迁移以便排查。
  */
 export const removeLegacyPgVectorIndex = async (
@@ -25,7 +26,7 @@ export const removeLegacyPgVectorIndex = async (
   client.on('error', (error) =>
     context.logger.warn('Legacy PG index cleanup connection error', { message: error.message })
   );
-  // abort 与 finally 共用一次关闭，打断锁等待/DDL，并释放会话 advisory lock。
+  // abort 与 finally 共用一次关闭，打断 PG 内部锁等待或正在执行的 DDL。
   let closing: Promise<void> | undefined;
   const close = () =>
     (closing ??= client.end().catch((error: Error) =>
@@ -41,11 +42,6 @@ export const removeLegacyPgVectorIndex = async (
   try {
     await client.connect();
     context.signal.throwIfAborted();
-    // 允许等待在途建图；独立连接不受普通连接池的 60 秒 query_timeout 限制。
-    await waitForPgIndexMaintenanceLock({ client, signal: context.signal });
-    await context.assertActive();
-    context.signal.throwIfAborted();
-
     const { rows: tables } = await client.query<{ schema: string; vector_type: string }>(
       `SELECT n.nspname AS schema, t.typname AS vector_type
        FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
@@ -92,10 +88,35 @@ export const removeLegacyPgVectorIndex = async (
       throw new Error(`Refusing to remove mismatched legacy PG index: ${qualifiedIndex}`);
     }
 
-    await context.assertActive();
-    context.signal.throwIfAborted();
-    // 不在事务中执行，不使用 CASCADE；查询与写入可继续，冲突的旧事务可能使 DROP 等待。
-    await client.query(`DROP INDEX CONCURRENTLY IF EXISTS ${qualifiedIndex}`);
+    // 不占用局部维护锁。DROP 等表锁时可能持有建图要等待的旧快照，短暂等锁后退出语句并退让。
+    // 仅重试 PG 锁超时/死锁；权限、连接等实际故障仍交给迁移框架报告失败。
+    await client.query("SET lock_timeout = '100ms'");
+    let waitingLogged = false;
+    while (true) {
+      await context.assertActive();
+      context.signal.throwIfAborted();
+      try {
+        await client.query(`DROP INDEX CONCURRENTLY IF EXISTS ${qualifiedIndex}`);
+        break;
+      } catch (error) {
+        if (
+          !(error instanceof Error) ||
+          !('code' in error) ||
+          !['55P03', '40P01'].includes(String(error.code))
+        ) {
+          throw error;
+        }
+        context.signal.throwIfAborted();
+        if (!waitingLogged) {
+          context.logger.warn('Legacy PG index cleanup waiting for conflicting transactions', {
+            indexName: qualifiedIndex,
+            code: error.code
+          });
+          waitingLogged = true;
+        }
+        await delay(1000);
+      }
+    }
     const { rows: verification } = await client.query<{ removed: boolean }>(
       'SELECT to_regclass($1) IS NULL AS removed',
       [qualifiedIndex]

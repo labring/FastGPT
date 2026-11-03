@@ -11,22 +11,15 @@ import { configurePgIndexMemory } from './indexMemory';
 import { delay } from '@fastgpt/global/common/system/utils';
 
 const logger = getLogger(LogCategories.INFRA.POSTGRES);
-// 升级清理旧全局索引与局部索引 CREATE / DROP 共用此会话锁。
+// 局部索引创建、清理与知识库物理删除共用此会话锁；旧全局索引由迁移独立清理。
 export const PG_INDEX_MAINTENANCE_LOCK = 41823001;
 
 /**
  * 用独立短查询轮询维护锁，避免等待方一直持有事务，令 CONCURRENTLY 建图等待该事务而形成死锁。
- * 调用方持有独立会话并负责关闭释放锁；迁移取消时可通过 signal 停止后续轮询。
+ * 知识库物理删除使用独立会话，拿锁后核验最终目录，关闭连接时释放锁。
  */
-export const waitForPgIndexMaintenanceLock = async ({
-  client,
-  signal
-}: {
-  client: Pick<pg.Client, 'query'>;
-  signal?: AbortSignal;
-}) => {
+const waitForPgIndexMaintenanceLock = async ({ client }: { client: Pick<pg.Client, 'query'> }) => {
   while (true) {
-    signal?.throwIfAborted();
     const { rows } = await client.query<{ locked: boolean }>(
       'SELECT pg_try_advisory_lock($1) AS locked',
       [PG_INDEX_MAINTENANCE_LOCK]
