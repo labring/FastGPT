@@ -72,5 +72,6 @@
   "wecom.create_modal.step.2": "Fill in Callback URL",
   "wecom.create_modal_title": "Create WeCom Bot",
   "wecom.edit_modal_title": "Edit WeCom Bot",
-  "wecom.title": "Publish to WeCom Bot"
+  "wecom.title": "Publish to WeCom Bot",
+  "ip_whitelist": "IP whitelist"
 }

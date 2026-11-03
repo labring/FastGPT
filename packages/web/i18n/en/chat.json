@@ -305,5 +305,7 @@
   "interactive.agent_ask.waiting": "Asking questions",
   "interactive.agent_ask.asked_questions": "Asked {{count}} questions",
   "view_all_citations": "View all",
-  "view_citations": "View Citations"
+  "view_citations": "View Citations",
+  "sandbox_connection_closed": "Sandbox connection closed",
+  "sandbox_invalid_file_name": "Invalid file name"
 }
