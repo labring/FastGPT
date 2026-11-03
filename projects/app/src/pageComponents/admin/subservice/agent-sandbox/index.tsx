@@ -32,8 +32,7 @@ const AgentSandboxSubserviceComponent = () => {
     { id: 'providerConfig', label: t('admin:provider_settings') },
     { id: 'specs', label: t('admin:shared_resource_specs') },
     { id: 'lifecycle', label: t('admin:lifecycle_runtime') },
-    { id: 'mirrors', label: t('admin:package_mirror_acceleration') },
-    { id: 'proxy', label: t('admin:proxy_network_settings') }
+    { id: 'mirrors', label: t('admin:package_mirror_acceleration') }
   ];
 
   const { control, handleSubmit, reset, register } = useForm<SubserviceConfigForm>({
@@ -52,7 +51,9 @@ const AgentSandboxSubserviceComponent = () => {
   });
 
   const onSave = handleSubmit(async (formData) => {
-    await patchConfig({ agentSandbox: formData.agentSandbox });
+    // proxy 地址属于 ENV 独占的部署拓扑，不随表单写回；省略后 patchConfig 会保留库中旧值。
+    const { proxy: _proxy, ...agentSandbox } = formData.agentSandbox;
+    await patchConfig({ agentSandbox });
   });
 
   return (
@@ -607,28 +608,6 @@ const AgentSandboxSubserviceComponent = () => {
             <Input
               {...register('agentSandbox.common.aptMirror')}
               placeholder="https://mirrors.aliyun.com"
-            />
-          </AdminFormItem>
-        </SimpleGrid>
-      </AdminSettingSection>
-
-      {/* 6. 代理网络配置 */}
-      <AdminSettingSection id="proxy" title={t('admin:proxy_network_settings')} showDivider>
-        <SimpleGrid columns={[1, 2]} spacing={5}>
-          <AdminFormItem
-            label={t('admin:websocket_reverse_proxy_url_ws_wss')}
-            tooltip={t('admin:websocket_proxy_endpoint_for_agent_sandbox_terminal_sessions')}
-          >
-            <Input {...register('agentSandbox.proxy.wsUrl')} placeholder="ws://localhost:3006" />
-          </AdminFormItem>
-
-          <AdminFormItem
-            label={t('admin:http_preview_reverse_proxy_url_http_https')}
-            tooltip={t('admin:http_proxy_endpoint_for_agent_sandbox_page_preview_and_stati')}
-          >
-            <Input
-              {...register('agentSandbox.proxy.httpUrl')}
-              placeholder="http://localhost:3006"
             />
           </AdminFormItem>
         </SimpleGrid>

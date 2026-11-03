@@ -10,8 +10,9 @@ import {
   Text
 } from '@chakra-ui/react';
 import { useForm, Controller } from 'react-hook-form';
-import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { useAdminConfigSaveRequest } from '@/web/common/system/useAdminConfigSaveRequest';
 import { useDomainConfig, updateDomainConfigApi } from '@/web/common/system/useDomainConfig';
+import { useAdminPermission } from '@/pageComponents/admin/useAdminPermission';
 import AdminSettingPage from '@/pageComponents/admin/settings/AdminSettingPage';
 import AdminSettingSection from '@/pageComponents/admin/settings/AdminSettingSection';
 import AdminFormItem from '@/pageComponents/admin/settings/AdminFormItem';
@@ -37,6 +38,8 @@ const numberInputProps = { variant: 'whiteOutline' as const, maxW: '400px' };
  */
 const LimitsSettingComponent = () => {
   const { t } = useSafeTranslation();
+  const { isFieldVisible, filterConfigDataByEdition } = useAdminPermission();
+  const showVectorRecallConcurrency = isFieldVisible('vector.vectorRecallConcurrency');
   const tocItems: SettingTOCItem[] = useMemo(
     () => [
       { id: 'requestAndText', label: t('admin:request_text_limits') },
@@ -97,7 +100,7 @@ const LimitsSettingComponent = () => {
     reset
   ]);
 
-  const { runAsync: onSave, loading: isSaving } = useRequest(
+  const { runAsync: onSave, loading: isSaving } = useAdminConfigSaveRequest(
     async (formData: LimitsConfigForm) => {
       // 跨域原子提交：resource、performance、auth、storage、vector 五个域合并为单个事务请求
       await updateDomainConfigApi({
@@ -135,7 +138,7 @@ const LimitsSettingComponent = () => {
             domain: 'auth',
             expectedRevision: auth.revision,
             overrides: {
-              ...(auth.overrides as Record<string, unknown>),
+              ...(filterConfigDataByEdition('auth', auth.overrides) as Record<string, unknown>),
               openApiKeyMaxCount: Number(formData.openApiKeyMaxCount) || 100
             }
           },
@@ -143,7 +146,10 @@ const LimitsSettingComponent = () => {
             domain: 'storage',
             expectedRevision: storage.revision,
             overrides: {
-              ...(storage.overrides as Record<string, unknown>),
+              ...(filterConfigDataByEdition('storage', storage.overrides) as Record<
+                string,
+                unknown
+              >),
               fileUrlExpiredDays: Number(formData.fileUrlExpiredDays) || 90
             }
           },
@@ -151,9 +157,11 @@ const LimitsSettingComponent = () => {
             domain: 'vector',
             expectedRevision: vector.revision,
             overrides: {
-              ...(vector.overrides as Record<string, unknown>),
+              ...(filterConfigDataByEdition('vector', vector.overrides) as Record<string, unknown>),
               hnswEfSearch: Number(formData.hnswEfSearch) || 200,
-              vectorRecallConcurrency: Number(formData.vectorRecallConcurrency ?? 0)
+              ...(showVectorRecallConcurrency
+                ? { vectorRecallConcurrency: Number(formData.vectorRecallConcurrency ?? 0) }
+                : {})
             }
           }
         ]
@@ -162,6 +170,13 @@ const LimitsSettingComponent = () => {
     {
       successToast: 'admin:settings_saved',
       errorToast: 'admin:failed_to_save_settings',
+      onConflict: () => {
+        void resource.refetch();
+        void performance.refetch();
+        void auth.refetch();
+        void storage.refetch();
+        void vector.refetch();
+      },
       onSuccess: () => {
         void resource.refetch();
         void performance.refetch();
@@ -911,32 +926,36 @@ const LimitsSettingComponent = () => {
             />
           </AdminFormItem>
 
-          <AdminFormItem
-            label={t('admin:vector_recall_concurrency')}
-            tooltip={t('admin:vector_recall_concurrency_tip')}
-            isRequired
-          >
-            <Controller
-              name="vectorRecallConcurrency"
-              control={control}
-              render={({ field }) => (
-                <NumberInput
-                  {...numberInputProps}
-                  min={0}
-                  max={1000}
-                  value={field.value ?? 0}
-                  // 0 = 不限制召回并发，不能用 || 吃掉
-                  onChange={(valueAsString, val) => field.onChange(valueAsString === '' ? 0 : val)}
-                >
-                  <NumberInputField />
-                  <NumberInputStepper>
-                    <NumberIncrementStepper />
-                    <NumberDecrementStepper />
-                  </NumberInputStepper>
-                </NumberInput>
-              )}
-            />
-          </AdminFormItem>
+          {showVectorRecallConcurrency && (
+            <AdminFormItem
+              label={t('admin:vector_recall_concurrency')}
+              tooltip={t('admin:vector_recall_concurrency_tip')}
+              isRequired
+            >
+              <Controller
+                name="vectorRecallConcurrency"
+                control={control}
+                render={({ field }) => (
+                  <NumberInput
+                    {...numberInputProps}
+                    min={0}
+                    max={1000}
+                    value={field.value ?? 0}
+                    // 0 = 不限制召回并发，不能用 || 吃掉
+                    onChange={(valueAsString, val) =>
+                      field.onChange(valueAsString === '' ? 0 : val)
+                    }
+                  >
+                    <NumberInputField />
+                    <NumberInputStepper>
+                      <NumberIncrementStepper />
+                      <NumberDecrementStepper />
+                    </NumberInputStepper>
+                  </NumberInput>
+                )}
+              />
+            </AdminFormItem>
+          )}
         </SimpleGrid>
       </AdminSettingSection>
 

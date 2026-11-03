@@ -12,7 +12,7 @@ vi.mock('@fastgpt/next/middle/cors', () => ({
   withNextCors: mocks.withNextCors
 }));
 vi.mock('@fastgpt/next/middle/csrf', () => ({ checkCsrf: mocks.checkCsrf }));
-vi.mock('@fastgpt/service/common/system/systemInstanceConfig/controller', () => ({
+vi.mock('@fastgpt/service/common/system/systemInstanceConfig/runtime', () => ({
   getSystemInstanceConfig: mocks.getSystemInstanceConfig
 }));
 const { NextAPI } = await import('@/service/middleware/entry');

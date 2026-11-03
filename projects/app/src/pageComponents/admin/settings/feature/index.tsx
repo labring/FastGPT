@@ -3,6 +3,7 @@ import React, { useEffect, useMemo } from 'react';
 import { SimpleGrid, Text } from '@chakra-ui/react';
 import { useForm, Controller } from 'react-hook-form';
 import { useDomainConfig } from '@/web/common/system/useDomainConfig';
+import { useAdminPermission } from '@/pageComponents/admin/useAdminPermission';
 import AdminSettingPage from '@/pageComponents/admin/settings/AdminSettingPage';
 import AdminSettingSection from '@/pageComponents/admin/settings/AdminSettingSection';
 import AdminSwitchRow from '@/pageComponents/admin/settings/AdminSwitchRow';
@@ -13,6 +14,7 @@ type FeatureConfigForm = SystemInstanceConfigDomainMap['feature'];
 
 const FeatureSettingComponent = () => {
   const { t } = useSafeTranslation();
+  const { filterConfigData } = useAdminPermission();
   const tocItems: SettingTOCItem[] = useMemo(
     () => [
       { id: 'chatAndDisplay', label: t('admin:chat_display') },
@@ -23,7 +25,7 @@ const FeatureSettingComponent = () => {
     [t]
   );
 
-  const { effectiveConfig, isLoading, isUpdating, updateConfig } = useDomainConfig('feature');
+  const { effectiveConfig, isLoading, isUpdating, patchConfig } = useDomainConfig('feature');
 
   const { control, handleSubmit, reset } = useForm<FeatureConfigForm>({
     defaultValues: effectiveConfig
@@ -36,7 +38,7 @@ const FeatureSettingComponent = () => {
   }, [effectiveConfig, reset]);
 
   const onSave = handleSubmit(async (formData) => {
-    await updateConfig(formData);
+    await patchConfig(filterConfigData('feature', formData) as Record<string, unknown>);
   });
 
   return (

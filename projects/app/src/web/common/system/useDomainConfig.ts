@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { GET, POST } from '@/web/common/api/request';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { ToastHandledError } from '@fastgpt/global/common/error/utils';
 import type { SystemInstanceConfigDomainKey } from '@fastgpt/global/common/system/config/schema';
 import type {
@@ -9,6 +10,10 @@ import type {
   DeepPartial
 } from '@fastgpt/global/common/system/config/type';
 import { deepMergeConfig } from '@fastgpt/global/common/system/config/merge';
+import {
+  filterDomainDataByEdition,
+  getSystemEdition
+} from '@fastgpt/global/common/system/config/permission';
 import type {
   GetDomainConfigResponse,
   UpdateDomainConfigBody,
@@ -25,7 +30,8 @@ export const getDomainConfigApi = (
 };
 
 /**
- * 客户端 API 请求函数：保存一个或多个 Domain 稀疏配置（单事务提交）
+ * 客户端 API 请求函数：一次请求原子保存一个或多个 Domain 的稀疏配置。
+ * 可附带 subPlans，与配置域在同一个数据库事务中提交。
  */
 export const updateDomainConfigApi = (
   data: UpdateDomainConfigBody
@@ -39,6 +45,8 @@ export const updateDomainConfigApi = (
  */
 export const useDomainConfig = <T extends SystemInstanceConfigDomainKey>(domain: T) => {
   const { toast } = useToast();
+  const { feConfigs } = useSystemStore();
+  const edition = getSystemEdition(!!feConfigs?.isProService);
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['domainConfig', domain],
@@ -109,22 +117,19 @@ export const useDomainConfig = <T extends SystemInstanceConfigDomainKey>(domain:
   const overrides = (data?.overrides ?? {}) as DeepPartial<SystemInstanceConfigDomainMap[T]>;
 
   /**
-   * 整 Domain 提交：提交内容即该 Domain 的完整覆盖值，未提供的字段回落默认值。
-   * 仅当页面覆盖了该 Domain 的全部字段时使用。
-   */
-  const updateConfig = (
-    next: DeepPartial<SystemInstanceConfigDomainMap[T]>,
-    options?: { silent?: boolean }
-  ) => submitOverrides({ overrides: next as Record<string, unknown>, silent: options?.silent });
-
-  /**
-   * 局部提交：先与库中现有 overrides 深度合并再整体提交。
+   * 局部提交：先与库中现有 overrides 深合并再提交。
    *
-   * 页面只负责部分字段时必须用它，保留同域未编辑字段及密钥（含脱敏占位符由后端自动恢复）。
+   * 页面只负责部分字段时必须用它，否则同 Domain 其它字段（含本页未展示、
+   * 未编辑的嵌套字段）会被整体替换掉。合并进来的敏感字段是脱敏占位符，
+   * 后端会用库中原值恢复。
    */
   const patchConfig = (partial: Record<string, unknown>, options?: { silent?: boolean }) =>
     submitOverrides({
-      overrides: deepMergeConfig(overrides as Record<string, unknown>, partial),
+      // 只按部署版本清洗旧 overrides；SaaS 显示开关隐藏的字段仍要原样带回，避免被本次替换清空。
+      overrides: deepMergeConfig(
+        filterDomainDataByEdition(domain, overrides, edition) as Record<string, unknown>,
+        partial
+      ),
       silent: options?.silent
     });
 
@@ -138,7 +143,6 @@ export const useDomainConfig = <T extends SystemInstanceConfigDomainKey>(domain:
     updatedBy: data?.updatedBy,
     isLoading,
     isUpdating,
-    updateConfig,
     patchConfig,
     refetch
   };

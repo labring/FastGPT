@@ -3,6 +3,7 @@ import React, { useEffect, useMemo } from 'react';
 import { Box, Input, Textarea, SimpleGrid } from '@chakra-ui/react';
 import { useForm, useWatch } from 'react-hook-form';
 import { useDomainConfig } from '@/web/common/system/useDomainConfig';
+import { useAdminPermission } from '@/pageComponents/admin/useAdminPermission';
 import AdminSettingPage from '@/pageComponents/admin/settings/AdminSettingPage';
 import AdminSettingSection from '@/pageComponents/admin/settings/AdminSettingSection';
 import AdminFormItem from '@/pageComponents/admin/settings/AdminFormItem';
@@ -15,6 +16,7 @@ type SiteConfigForm = SystemInstanceConfigDomainMap['site'];
 
 const SiteSettingComponent = () => {
   const { t } = useSafeTranslation();
+  const { filterConfigData } = useAdminPermission();
   const tocItems: SettingTOCItem[] = useMemo(
     () => [
       { id: 'brand', label: t('admin:site_section_brand') },
@@ -24,7 +26,7 @@ const SiteSettingComponent = () => {
     [t]
   );
 
-  const { effectiveConfig, isLoading, isUpdating, updateConfig } = useDomainConfig('site');
+  const { effectiveConfig, isLoading, isUpdating, patchConfig } = useDomainConfig('site');
 
   const { register, handleSubmit, reset, control, setValue } = useForm<SiteConfigForm>({
     defaultValues: effectiveConfig
@@ -40,7 +42,7 @@ const SiteSettingComponent = () => {
   const navbarItems = useWatch({ control, name: 'navbarItems' });
 
   const onSave = handleSubmit(async (formData) => {
-    await updateConfig(formData);
+    await patchConfig(filterConfigData('site', formData) as Record<string, unknown>);
   });
 
   return (

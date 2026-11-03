@@ -8,7 +8,8 @@ import {
   isConfigFieldVisible,
   getDomainAllowedKeys,
   getDomainVisibleKeys,
-  filterDomainDataByEdition
+  filterDomainDataByEdition,
+  filterDomainDataByVisibleKeys
 } from '@fastgpt/global/common/system/config/permission';
 import type { SystemInstanceConfigDomainKey } from '@fastgpt/global/common/system/config/schema';
 
@@ -48,13 +49,24 @@ export const useAdminPermission = () => {
   );
 
   /**
-   * 过滤指定 Domain 的配置数据对象，自动剔除当前版本下不允许访问的字段。
+   * 只按部署版本过滤，不应用 SaaS 显示开关。
+   * 用于保存时清洗库中旧 overrides：显示开关隐藏的字段仍必须原样保留在数据库里。
    */
-  const filterConfigData = useCallback(
+  const filterConfigDataByEdition = useCallback(
     <T>(domain: SystemInstanceConfigDomainKey, data: T): Partial<T> => {
       return filterDomainDataByEdition(domain, data, edition);
     },
     [edition]
+  );
+
+  /**
+   * 过滤指定 Domain 的配置数据对象，自动剔除当前版本和显示开关下不允许展示的字段。
+   */
+  const filterConfigData = useCallback(
+    <T>(domain: SystemInstanceConfigDomainKey, data: T): Partial<T> => {
+      return filterDomainDataByVisibleKeys(domain, data, { edition, enableSaasAdminConfig });
+    },
+    [edition, enableSaasAdminConfig]
   );
 
   return {
@@ -64,6 +76,7 @@ export const useAdminPermission = () => {
     enableSaasAdminConfig,
     isFieldVisible,
     getAllowedKeysForDomain,
-    filterConfigData
+    filterConfigData,
+    filterConfigDataByEdition
   };
 };

@@ -1,10 +1,10 @@
 import { defineIndex, getMongoLogModel, Schema } from '../../../common/mongo';
 import type { LLMRequestRecordSchemaType } from '@fastgpt/global/openapi/core/ai/api';
-import { serviceEnv } from '../../../env';
+import { getSystemInstanceConfig } from '../../../common/system/systemInstanceConfig/runtime';
 
 export const LLMRequestRecordCollectionName = 'llm_request_records';
 
-const expiredHours = serviceEnv.LLM_REQUEST_TRACKING_RETENTION_HOURS;
+const expiredHours = getSystemInstanceConfig().performance.tracking.retentionHours;
 
 const LLMRequestRecordSchema = new Schema({
   teamId: {

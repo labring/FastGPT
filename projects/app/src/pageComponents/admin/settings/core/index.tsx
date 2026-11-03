@@ -11,7 +11,7 @@ import {
 } from '@chakra-ui/react';
 import { useForm, Controller, useWatch } from 'react-hook-form';
 import MySelect from '@fastgpt/web/components/common/MySelect';
-import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { useAdminConfigSaveRequest } from '@/web/common/system/useAdminConfigSaveRequest';
 import { useDomainConfig, updateDomainConfigApi } from '@/web/common/system/useDomainConfig';
 import { useAdminPermission } from '@/pageComponents/admin/useAdminPermission';
 import AdminSettingPage from '@/pageComponents/admin/settings/AdminSettingPage';
@@ -61,7 +61,7 @@ const CoreSettingComponent = () => {
   const feature = useDomainConfig('feature');
   const storage = useDomainConfig('storage');
   const site = useDomainConfig('site');
-  const { isFieldVisible } = useAdminPermission();
+  const { isFieldVisible, filterConfigDataByEdition } = useAdminPermission();
 
   // 团队模式为商业版能力，社区版不展示
   const showTeamMode = isFieldVisible('auth.teamMode');
@@ -129,7 +129,7 @@ const CoreSettingComponent = () => {
     reset
   ]);
 
-  const { runAsync: onSave, loading: isSaving } = useRequest(
+  const { runAsync: onSave, loading: isSaving } = useAdminConfigSaveRequest(
     async (formData: CoreConfigForm) => {
       // 跨域原子提交：auth、feature、storage、site 四个域合并为单个事务请求，避免多域分步提交留下半写
       await updateDomainConfigApi({
@@ -138,7 +138,7 @@ const CoreSettingComponent = () => {
             domain: 'auth',
             expectedRevision: auth.revision,
             overrides: {
-              ...(auth.overrides as Record<string, unknown>),
+              ...(filterConfigDataByEdition('auth', auth.overrides) as Record<string, unknown>),
               defaultTeamBasicPermissionsEnabled: formData.defaultTeamBasicPermissionsEnabled,
               ...(showTeamMode ? { teamMode: formData.teamMode } : {}),
               loginProviders: {
@@ -152,7 +152,10 @@ const CoreSettingComponent = () => {
             domain: 'feature',
             expectedRevision: feature.revision,
             overrides: {
-              ...(feature.overrides as Record<string, unknown>),
+              ...(filterConfigDataByEdition('feature', feature.overrides) as Record<
+                string,
+                unknown
+              >),
               agentEngine: formData.agentEngine,
               multipleDataToBase64: formData.multipleDataToBase64
             }
@@ -161,7 +164,10 @@ const CoreSettingComponent = () => {
             domain: 'storage',
             expectedRevision: storage.revision,
             overrides: {
-              ...(storage.overrides as Record<string, unknown>),
+              ...(filterConfigDataByEdition('storage', storage.overrides) as Record<
+                string,
+                unknown
+              >),
               downloadMode: formData.downloadMode,
               externalEndpoint: formData.externalEndpoint || '',
               cdnEndpoint: formData.cdnEndpoint || '',
@@ -172,7 +178,7 @@ const CoreSettingComponent = () => {
             domain: 'site',
             expectedRevision: site.revision,
             overrides: {
-              ...(site.overrides as Record<string, unknown>),
+              ...(filterConfigDataByEdition('site', site.overrides) as Record<string, unknown>),
               openApiPrefix: formData.openApiPrefix
             }
           }
@@ -182,6 +188,12 @@ const CoreSettingComponent = () => {
     {
       successToast: 'admin:settings_saved',
       errorToast: 'admin:failed_to_save_settings',
+      onConflict: () => {
+        void auth.refetch();
+        void feature.refetch();
+        void storage.refetch();
+        void site.refetch();
+      },
       onSuccess: () => {
         void auth.refetch();
         void feature.refetch();

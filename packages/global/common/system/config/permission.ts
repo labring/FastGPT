@@ -119,16 +119,13 @@ const isPlainObject = (value: unknown): value is Record<string, unknown> =>
  * 递归清洗某个 Domain 的配置数据或 overrides 对象，
  * 剔除当前版本下不允许访问的字段，防止商业版配置被开源版读取或越权写入。
  */
-export const filterDomainDataByEdition = <T>(
-  domain: SystemInstanceConfigDomainKey,
+const filterDomainDataByAllowedKeys = <T>(
   data: T,
-  edition: SystemInstanceConfigEdition
+  allowedRelativeKeys: Set<string>
 ): Partial<T> => {
   if (!isPlainObject(data)) {
     return data;
   }
-
-  const allowedRelativeKeys = getDomainAllowedKeys(domain, edition);
 
   const cleanObject = (obj: Record<string, unknown>, currentPath = ''): Record<string, unknown> => {
     const result: Record<string, unknown> = {};
@@ -144,7 +141,7 @@ export const filterDomainDataByEdition = <T>(
           result[key] = cleanedNested;
         }
       } else {
-        // 叶子节点：检查是否在当前版本允许列表中
+        // 叶子节点：检查是否在允许列表中
         if (allowedRelativeKeys.has(path)) {
           result[key] = value;
         }
@@ -156,6 +153,27 @@ export const filterDomainDataByEdition = <T>(
 
   return cleanObject(data) as Partial<T>;
 };
+
+/**
+ * 按部署版本过滤配置数据，保留该版本 API 允许的全部字段（包括 SaaS 显示开关隐藏的字段）。
+ */
+export const filterDomainDataByEdition = <T>(
+  domain: SystemInstanceConfigDomainKey,
+  data: T,
+  edition: SystemInstanceConfigEdition
+): Partial<T> => filterDomainDataByAllowedKeys(data, getDomainAllowedKeys(domain, edition));
+
+/**
+ * 按部署版本与 SaaS 显示开关过滤配置数据，用于表单展示和用户可编辑值。
+ */
+export const filterDomainDataByVisibleKeys = <T>(
+  domain: SystemInstanceConfigDomainKey,
+  data: T,
+  options: {
+    edition: SystemInstanceConfigEdition;
+    enableSaasAdminConfig?: boolean;
+  }
+): Partial<T> => filterDomainDataByAllowedKeys(data, getDomainVisibleKeys(domain, options));
 
 export const SECRET_MASK = '******';
 

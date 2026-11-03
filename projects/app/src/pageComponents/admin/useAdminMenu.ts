@@ -100,16 +100,6 @@ export const isRouteVisible = (
   return options.isProService && licenseActive;
 };
 
-/**
- * 开源社区版（!isProService）允许访问与展示的管理员路由白名单。
- */
-export const communityAdminRoutes = [
-  '/admin/license',
-  '/admin/resources/model',
-  '/admin/resources/tool',
-  '/admin/migration'
-] as const;
-
 // 静态声明每个菜单项对应的完整 i18n key，避免动态拼接（'admin:' + key）导致静态扫描脚本无法提取
 const ADMIN_MENU_I18N_KEYS = {
   menu_overview: 'admin:menu_overview',
@@ -137,7 +127,6 @@ const ADMIN_MENU_I18N_KEYS = {
   menu_subservice_code_sandbox: 'admin:menu_subservice_code_sandbox',
   menu_subservice_ai_proxy: 'admin:menu_subservice_ai_proxy',
   menu_subservice_agent_sandbox: 'admin:menu_subservice_agent_sandbox',
-  menu_subservice_mcp: 'admin:menu_subservice_mcp',
   menu_system_settings: 'admin:menu_system_settings',
   menu_setting_core: 'admin:menu_setting_core',
   menu_setting_site: 'admin:menu_setting_site',
@@ -293,10 +282,6 @@ export const getAdminMenuList = (params: GetAdminMenuListParams): AdminMenuItem[
         {
           label: lbl('menu_subservice_agent_sandbox', 'Agent Sandbox'),
           value: '/admin/subservice/agent-sandbox'
-        },
-        {
-          label: lbl('menu_subservice_mcp', 'MCP 服务'),
-          value: '/admin/subservice/mcp'
         }
       ]
     },

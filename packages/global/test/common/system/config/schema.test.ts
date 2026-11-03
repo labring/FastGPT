@@ -360,21 +360,31 @@ describe('systemInstanceConfigRegistry', () => {
     };
 
     const leafPaths = getLeafPaths(config);
+    // 这两个字段目前只由 ENV 控制，保留 Schema 字段但不注册 Admin 表单。
+    const envOnlyPaths = new Set([
+      'feature.datasetSynonymEnabled',
+      'commercial.agentSandboxFreeTip'
+    ]);
     const registryKeys = new Set(systemInstanceConfigRegistry.map((item) => item.key));
 
     for (const leafPath of leafPaths) {
+      if (envOnlyPaths.has(leafPath)) continue;
       expect(registryKeys.has(leafPath), `Missing registry entry for ${leafPath}`).toBe(true);
     }
-    expect(registryKeys.size).toBe(leafPaths.length);
+    expect(registryKeys.size).toBe(leafPaths.length - envOnlyPaths.size);
   });
 
   it('filters commercial fields from the community edition', () => {
     const communityKeys = getSystemInstanceConfigRegistry('community').map((item) => item.key);
     const proKeys = getSystemInstanceConfigRegistry('pro').map((item) => item.key);
+    const saasProKeys = getSystemInstanceConfigRegistry('pro', {
+      enableSaasAdminConfig: true
+    }).map((item) => item.key);
 
     expect(communityKeys).toContain('site.name');
     expect(communityKeys).not.toContain('commercial.showCoupon');
-    expect(proKeys).toContain('commercial.showCoupon');
+    expect(proKeys).not.toContain('commercial.showCoupon');
+    expect(saasProKeys).toContain('commercial.showCoupon');
   });
   it('checks subservice resolveDomainEffectiveConfig errors', () => {
     try {

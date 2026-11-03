@@ -13,6 +13,7 @@ import {
 import { useForm, Controller, useWatch } from 'react-hook-form';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import { useDomainConfig } from '@/web/common/system/useDomainConfig';
+import { useAdminPermission } from '@/pageComponents/admin/useAdminPermission';
 import AdminSettingPage from '@/pageComponents/admin/settings/AdminSettingPage';
 import AdminSettingSection from '@/pageComponents/admin/settings/AdminSettingSection';
 import AdminFormItem from '@/pageComponents/admin/settings/AdminFormItem';
@@ -25,6 +26,7 @@ type ProvidersConfigForm = SystemInstanceConfigDomainMap['providers'];
 
 const ProvidersSettingComponent = () => {
   const { t } = useSafeTranslation();
+  const { filterConfigData } = useAdminPermission();
   const tocItems: SettingTOCItem[] = useMemo(
     () => [
       { id: 'documentParse', label: t('admin:provider_section_doc_parse') },
@@ -34,7 +36,7 @@ const ProvidersSettingComponent = () => {
     [t]
   );
 
-  const { effectiveConfig, isLoading, isUpdating, updateConfig } = useDomainConfig('providers');
+  const { effectiveConfig, isLoading, isUpdating, patchConfig } = useDomainConfig('providers');
 
   const { control, handleSubmit, reset, register, setValue } = useForm<ProvidersConfigForm>({
     defaultValues: effectiveConfig
@@ -53,7 +55,7 @@ const ProvidersSettingComponent = () => {
   });
 
   const onSave = handleSubmit(async (formData) => {
-    await updateConfig(formData);
+    await patchConfig(filterConfigData('providers', formData) as Record<string, unknown>);
   });
 
   return (

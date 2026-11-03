@@ -16,7 +16,7 @@ import { useForm, Controller, useWatch } from 'react-hook-form';
 import { useDomainConfig, updateDomainConfigApi } from '@/web/common/system/useDomainConfig';
 import { useAdminPermission } from '@/pageComponents/admin/useAdminPermission';
 import { deepMergeConfig } from '@fastgpt/global/common/system/config/merge';
-import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { useAdminConfigSaveRequest } from '@/web/common/system/useAdminConfigSaveRequest';
 import AdminSettingPage from '@/pageComponents/admin/settings/AdminSettingPage';
 import AdminSettingSection from '@/pageComponents/admin/settings/AdminSettingSection';
 import AdminFormItem from '@/pageComponents/admin/settings/AdminFormItem';
@@ -32,7 +32,7 @@ type AuthConfigForm = Omit<SystemInstanceConfigDomainMap['auth'], 'fastLogin'> &
 
 const AuthSettingComponent = () => {
   const { t } = useSafeTranslation();
-  const { isFieldVisible } = useAdminPermission();
+  const { isFieldVisible, filterConfigDataByEdition } = useAdminPermission();
 
   const showSms = isFieldVisible('auth.loginProviders.sms.login.zh');
   const showWechat = isFieldVisible('auth.loginProviders.wechat.appId');
@@ -84,26 +84,32 @@ const AuthSettingComponent = () => {
     }
   }, [effectiveConfig, security.effectiveConfig, reset]);
 
-  const { runAsync: submitAuthConfig, loading: isSaving } = useRequest(
+  const { runAsync: submitAuthConfig, loading: isSaving } = useAdminConfigSaveRequest(
     async (formData: AuthConfigForm) => {
       const { passwordLoginMinuteLimitCount, maxLoginSession, ...rest } = formData;
 
       // 单次请求、单个数据库事务原子保存 auth 与 security 两个域，避免分步提交导致半写状态。
       // 深度合并保留同域未在当前页编辑的字段（如 teamMode、OpenAPI Key 上限、CORS 等）及密钥。
-      const authOverrides = deepMergeConfig(auth.overrides as Record<string, unknown>, {
-        wecomLoginAutoRedirect: Boolean(rest.wecomLoginAutoRedirect),
-        passwordExpiredMonth:
-          rest.passwordExpiredMonth && Number(rest.passwordExpiredMonth) > 0
-            ? Number(rest.passwordExpiredMonth)
-            : null,
-        loginProviders: rest.loginProviders,
-        accountCancellation: rest.accountCancellation
-      });
+      const authOverrides = deepMergeConfig(
+        filterConfigDataByEdition('auth', auth.overrides) as Record<string, unknown>,
+        {
+          wecomLoginAutoRedirect: Boolean(rest.wecomLoginAutoRedirect),
+          passwordExpiredMonth:
+            rest.passwordExpiredMonth && Number(rest.passwordExpiredMonth) > 0
+              ? Number(rest.passwordExpiredMonth)
+              : null,
+          loginProviders: rest.loginProviders,
+          accountCancellation: rest.accountCancellation
+        }
+      );
 
-      const securityOverrides = deepMergeConfig(security.overrides as Record<string, unknown>, {
-        passwordLoginMinuteLimitCount: Number(passwordLoginMinuteLimitCount) || 10,
-        maxLoginSession: Number(maxLoginSession) || 10
-      });
+      const securityOverrides = deepMergeConfig(
+        filterConfigDataByEdition('security', security.overrides) as Record<string, unknown>,
+        {
+          passwordLoginMinuteLimitCount: Number(passwordLoginMinuteLimitCount) || 10,
+          maxLoginSession: Number(maxLoginSession) || 10
+        }
+      );
 
       await updateDomainConfigApi({
         items: [
@@ -123,6 +129,10 @@ const AuthSettingComponent = () => {
     {
       successToast: 'admin:settings_saved',
       errorToast: 'admin:failed_to_save_settings',
+      onConflict: () => {
+        void auth.refetch();
+        void security.refetch();
+      },
       onSuccess: () => {
         void auth.refetch();
         void security.refetch();

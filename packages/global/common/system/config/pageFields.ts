@@ -141,8 +141,7 @@ export const adminConfigPageFieldsMap: Record<string, readonly string[]> = {
     'subservice.agentSandbox.common.storageSizeGi',
     'subservice.agentSandbox.sealosdevbox.baseUrl',
     'subservice.agentSandbox.opensandbox.baseUrl'
-  ],
-  '/admin/subservice/mcp': ['subservice.mcp.enabled', 'subservice.mcp.sseProxyUrl']
+  ]
 };
 
 /**

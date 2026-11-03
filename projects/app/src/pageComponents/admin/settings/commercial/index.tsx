@@ -2,24 +2,29 @@ import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import { Input, Textarea, SimpleGrid, Text } from '@chakra-ui/react';
 import { useForm, Controller } from 'react-hook-form';
-import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { useAdminConfigSaveRequest } from '@/web/common/system/useAdminConfigSaveRequest';
 import { ToastHandledError } from '@fastgpt/global/common/error/utils';
 import { useDomainConfig, updateDomainConfigApi } from '@/web/common/system/useDomainConfig';
-import { useAdminPermission } from '@/pageComponents/admin/useAdminPermission';
 import AdminSettingPage from '@/pageComponents/admin/settings/AdminSettingPage';
 import AdminSettingSection from '@/pageComponents/admin/settings/AdminSettingSection';
 import AdminFormItem from '@/pageComponents/admin/settings/AdminFormItem';
 import AdminSwitchRow from '@/pageComponents/admin/settings/AdminSwitchRow';
 import type { SettingTOCItem } from '@/pageComponents/admin/settings/AdminSettingTOC';
-import type { SystemInstanceConfigDomainMap } from '@fastgpt/global/common/system/config/type';
+import type {
+  DeepPartial,
+  SystemInstanceConfigDomainMap
+} from '@fastgpt/global/common/system/config/type';
+import { useAdminPermission } from '@/pageComponents/admin/useAdminPermission';
+import { deepMergeConfig } from '@fastgpt/global/common/system/config/merge';
 import PlansSettingSection, { type PlansSettingSectionHandle } from './PlansSettingSection';
 
 type CommercialConfigForm = SystemInstanceConfigDomainMap['commercial'];
 
 const CommercialSettingComponent = () => {
   const { t } = useSafeTranslation();
-  const { isFieldVisible } = useAdminPermission();
+  const { isFieldVisible, filterConfigDataByEdition } = useAdminPermission();
 
+  // SaaS 运营字段是否展示由 ENABLE_SAAS_ADMIN_CONFIG 控制；支付、套餐、积分包始终保留。
   const showCoupon = isFieldVisible('commercial.showCoupon');
   const showDiscountCoupon = isFieldVisible('commercial.showDiscountCoupon');
   const showPayForm = isFieldVisible('commercial.payFormUrl');
@@ -39,8 +44,14 @@ const CommercialSettingComponent = () => {
     [t, showFeatureSection, showPayForm]
   );
 
-  const { revision, effectiveConfig, isLoading, isUpdating, refetch } =
-    useDomainConfig('commercial');
+  const {
+    revision,
+    effectiveConfig,
+    overrides: commercialOverrides,
+    isLoading,
+    isUpdating,
+    refetch
+  } = useDomainConfig('commercial');
   const plansRef = useRef<PlansSettingSectionHandle>(null);
 
   const { control, handleSubmit, reset, register } = useForm<CommercialConfigForm>({
@@ -53,7 +64,7 @@ const CommercialSettingComponent = () => {
     }
   }, [effectiveConfig, reset]);
 
-  const { runAsync: onSaveBatch, loading: isBatchSaving } = useRequest(
+  const { runAsync: onSaveBatch, loading: isBatchSaving } = useAdminConfigSaveRequest(
     async (formData: CommercialConfigForm) => {
       // 1. 先做套餐表单校验并拿到数据：若校验失败（返回 undefined）直接中断，不提交任何请求。
       // 必须抛 ToastHandledError 而不是 return：return 对 useRequest 是成功 resolve，
@@ -61,18 +72,23 @@ const CommercialSettingComponent = () => {
       const subPlansData = await plansRef.current?.getSubPlansData();
       if (subPlansData === undefined) throw new ToastHandledError('Plans validation failed');
 
-      // 2. 只提交当前表单可见的字段；隐藏的 SaaS 字段不提交覆盖，保留库中现有值
+      // 2. 只提交当前可见字段，并与库中 overrides 深合并：
+      // 隐藏字段和未编辑的嵌套字段保持原值，不因显示开关被清空或重置。
       const billingNotify = structuredClone(formData.billingNotify);
       if (!showFreeClean) {
         delete (billingNotify as Partial<typeof billingNotify>).freeClean;
       }
-      const overrides: Record<string, unknown> = {
+      const visibleOverrides: DeepPartial<CommercialConfigForm> = {
         ...(showCoupon ? { showCoupon: Boolean(formData.showCoupon) } : {}),
         ...(showDiscountCoupon ? { showDiscountCoupon: Boolean(formData.showDiscountCoupon) } : {}),
         ...(showPayForm ? { payFormUrl: formData.payFormUrl || '' } : {}),
         payment: formData.payment,
         billingNotify
       };
+      const overrides = deepMergeConfig(
+        filterConfigDataByEdition('commercial', commercialOverrides) as Record<string, unknown>,
+        visibleOverrides as Record<string, unknown>
+      );
 
       // 3. 商业配置与套餐合并为单个批量事务请求原子提交：
       // 任一校验失败、revision 冲突或写入异常，整体回滚，杜绝半生效状态。
@@ -87,13 +103,21 @@ const CommercialSettingComponent = () => {
         subPlans: subPlansData
       });
 
-      await Promise.all([refetch(), plansRef.current?.reload()]);
+      // 数据库提交成功即保存成功；刷新页面数据是后续动作，失败不能反向误报为保存失败
+      void Promise.allSettled([
+        Promise.resolve(refetch()),
+        Promise.resolve(plansRef.current?.reload())
+      ]);
     },
     {
       // admin:save_success 从未在任何语言定义（显示字面量 key）；改用与
       // auth/core/limits 页一致的 raw key 风格，useRequest 内部会走 i18n
       successToast: 'admin:settings_saved',
-      errorToast: 'admin:failed_to_save_settings'
+      errorToast: 'admin:failed_to_save_settings',
+      onConflict: () => {
+        void refetch();
+        void plansRef.current?.reload();
+      }
     }
   );
 
@@ -115,7 +139,7 @@ const CommercialSettingComponent = () => {
         <PlansSettingSection ref={plansRef} />
       </AdminSettingSection>
 
-      {/* 2. 功能展示：优惠券策略（仅 SaaS 开启时展示） */}
+      {/* 2. 功能展示：优惠券策略（SaaS 运营字段） */}
       {showFeatureSection && (
         <AdminSettingSection id="features" title={t('admin:pay_section_features')} showDivider>
           <SimpleGrid columns={[1, 2]} spacingX={16} spacingY={4}>
@@ -156,7 +180,7 @@ const CommercialSettingComponent = () => {
         </AdminSettingSection>
       )}
 
-      {/* 3. 对公收款配置（仅 SaaS 开启时展示） */}
+      {/* 3. 对公收款配置（SaaS 运营字段） */}
       {showPayForm && (
         <AdminSettingSection id="paymentForm" title={t('admin:pay_section_corporate')} showDivider>
           <AdminFormItem
