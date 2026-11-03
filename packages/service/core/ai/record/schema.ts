@@ -1,10 +1,7 @@
 import { defineIndex, getMongoLogModel, Schema } from '../../../common/mongo';
 import type { LLMRequestRecordSchemaType } from '@fastgpt/global/openapi/core/ai/api';
-import { getSystemInstanceConfig } from '../../../common/system/systemInstanceConfig/runtime';
 
 export const LLMRequestRecordCollectionName = 'llm_request_records';
-
-const expiredHours = getSystemInstanceConfig().performance.tracking.retentionHours;
 
 const LLMRequestRecordSchema = new Schema({
   teamId: {
@@ -25,8 +22,7 @@ const LLMRequestRecordSchema = new Schema({
   },
   createdAt: {
     type: Date,
-    default: () => new Date(),
-    expires: expiredHours * 60 * 60 // n hours
+    default: () => new Date()
   }
 });
 
@@ -39,3 +35,24 @@ export const MongoLLMRequestRecord = getMongoLogModel<LLMRequestRecordSchemaType
   LLMRequestRecordCollectionName,
   LLMRequestRecordSchema
 );
+
+/**
+ * 配置加载后才声明 TTL，避免模型在启动早期用默认值覆盖数据库的实际保留时间。
+ * 保持历史 createdAt_1 名称和 key；更新声明供后续索引同步使用，不重建 Model。
+ */
+export const configureLLMRequestRecordTTLIndex = (expireAfterSeconds: number) => {
+  const schema = MongoLLMRequestRecord.schema;
+  const declaration = schema
+    .indexes()
+    .find(([key]) => Object.keys(key).length === 1 && key.createdAt === 1);
+
+  if (declaration) {
+    declaration[1].expireAfterSeconds = expireAfterSeconds;
+    return;
+  }
+
+  defineIndex(schema, {
+    key: { createdAt: 1 },
+    options: { name: 'createdAt_1', expireAfterSeconds }
+  });
+};

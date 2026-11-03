@@ -25,6 +25,7 @@ import type {
 } from '@fastgpt/global/support/wallet/usage/api';
 import { isProVersion } from '@fastgpt/service/common/system/constants';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
+import { refreshLLMRequestRecordTTL } from '@fastgpt/service/core/ai/record/service';
 import { getAgentSandboxSkillMaxBytes } from '@fastgpt/service/core/ai/sandbox/config';
 import { serviceEnv } from '@fastgpt/service/env';
 import { appEnv } from '@/env';
@@ -283,6 +284,9 @@ async function doInitSystemConfig() {
 
   // set config
   initFastGPTConfig(config);
+
+  // 启动和 Watch/API 触发的 reload 共用此入口；TTL 失败由日志业务记录，不反向影响配置保存。
+  await refreshLLMRequestRecordTTL();
 
   // 存储运行策略（下载模式 / 公开地址）以实例配置为准，注入后按需重建 S3 bucket。
   // 启动首次调用时全局 bucket 尚未创建，由 instrumentation 的 init-s3-buckets 步骤完成构造。
