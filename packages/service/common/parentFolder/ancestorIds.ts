@@ -1,6 +1,6 @@
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { defaultSubtreeMaxDepth } from '@fastgpt/global/common/parentFolder/subtree';
-import { serviceEnv } from '../../env';
+import { getSystemInstanceConfig } from '../system/systemInstanceConfig/runtime';
 
 type FolderPathDoc = {
   _id: unknown;
@@ -36,7 +36,7 @@ export const getFolderParentPathItems = async ({
 export const getFolderAncestorIdsFromParentId = async ({
   parentId,
   findFolder,
-  maxDepth = serviceEnv.MAX_FOLDER_DEPTH
+  maxDepth = getSystemInstanceConfig().resource.maxFolderDepth
 }: {
   parentId: string | null;
   findFolder: (id: string) => Promise<FolderPathDoc | null>;
@@ -70,7 +70,7 @@ export const rewriteFolderSubtreeAncestorIds = async ({
   rootAncestorIds,
   findChildFolders,
   writeAncestorIds,
-  maxDepth = serviceEnv.MAX_FOLDER_DEPTH
+  maxDepth = getSystemInstanceConfig().resource.maxFolderDepth
 }: {
   rootId: string;
   rootAncestorIds: string[];
