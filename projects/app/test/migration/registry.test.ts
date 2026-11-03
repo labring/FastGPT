@@ -47,6 +47,13 @@ describe('validateSystemMigrationRegistry', () => {
     expect(
       systemMigrations.filter((task: SystemMigration) => task.manual).map(({ id }) => id)
     ).toEqual(['20261008_migrate_chunk_training', '20261009_migrate_dataset_rebuild_status']);
+    // 只有「声明集合可能增长、老库必须能补建新成员」的任务才允许每轮重跑
+    expect(
+      systemMigrations.filter((task: SystemMigration) => task.resumable).map(({ id }) => id)
+    ).toEqual([
+      '20260928_migrate_instance_configs',
+      '20260929_cleanup_instance_config_deprecated_fields'
+    ]);
     expect(
       systemMigrations.find(({ id }) => id === '20261009_migrate_dataset_rebuild_status')
     ).toMatchObject({
@@ -68,19 +75,23 @@ describe('validateSystemMigrationRegistry', () => {
       id: '20260928_migrate_instance_configs',
       version: '4.18.0',
       blockStartup: true,
+      resumable: true,
       progressSteps: [{ key: 'inspect' }, { key: 'migrate' }, { key: 'validate' }]
     });
     expect(systemMigrations.at(-1)).toMatchObject({
       id: '20260929_cleanup_instance_config_deprecated_fields',
       version: '4.18.0',
       blockStartup: true,
+      resumable: true,
       progressSteps: [{ key: 'cleanup' }, { key: 'validation' }]
     });
     expect(() => validateSystemMigrationRegistry(systemMigrations)).not.toThrow();
   });
 
   it('keeps dataset index initialization as a non-blocking automatic task', () => {
-    const task = systemMigrations.find(({ id }) => id === '20261022_initialize_dataset_vector_indexes');
+    const task = systemMigrations.find(
+      ({ id }) => id === '20261022_initialize_dataset_vector_indexes'
+    );
     expect(task).toMatchObject({
       id: '20261022_initialize_dataset_vector_indexes',
       version: '4.17.4',
@@ -128,6 +139,15 @@ describe('validateSystemMigrationRegistry', () => {
         { ...createMigration('20261008_manual'), manual: true, delay: true }
       ])
     ).toThrow('cannot be delayed');
+  });
+
+  it('rejects resumable manual execution', () => {
+    // manual 要求管理员显式入队，resumable 会让它每轮自动重跑，两者语义冲突
+    expect(() =>
+      validateSystemMigrationRegistry([
+        { ...createMigration('20261008_manual_resumable'), manual: true, resumable: true }
+      ])
+    ).toThrow('cannot be resumable');
   });
 
   it.each([{ keys: [''] }, { keys: ['repeated', 'repeated'] }])(

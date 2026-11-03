@@ -511,6 +511,11 @@ export const createSystemMigrationRunner = ({
      * 后台失败只阻止显式依赖；启动链失败持续等待 owner 重启后的过期接管。
      */
     const runQueue = async (): Promise<boolean> => {
+      /**
+       * 本轮 drain 内已执行过的 resumable 任务。succeeded 对其不是终态，若不记账，
+       * 成功状态写回后循环会立刻再次选中同一任务，变成只读空转的死循环。
+       */
+      const executedResumableIds = new Set<string>();
       while (!stopped) {
         const states = await store.getStates(migrationIds);
         const stateMap = new Map(states.map((state) => [state._id, state]));
@@ -519,7 +524,10 @@ export const createSystemMigrationRunner = ({
 
         for (const item of queueMigrations) {
           const state = stateMap.get(item.id);
-          if (state?.status === SystemMigrationStatusEnum.succeeded) continue;
+          // succeeded 默认永久跳过；resumable 每轮 drain 最多执行一次，写不写库由任务自身的幂等判断决定。
+          if (state?.status === SystemMigrationStatusEnum.succeeded) {
+            if (!item.resumable || executedResumableIds.has(item.id)) continue;
+          }
           // waiting 只接受管理员显式入队；已触发的手动任务仍使用正常 lease 接管机制。
           if (state?.status === SystemMigrationStatusEnum.waiting || (!state && item.manual))
             continue;
@@ -547,6 +555,8 @@ export const createSystemMigrationRunner = ({
           }
 
           migration = item;
+          // 选中即记账：首次从 pending 跑成 succeeded 的同一轮也不该再被补跑。
+          if (item.resumable) executedResumableIds.add(item.id);
           break;
         }
         // 仍有其他队列中的前置任务执行时保留探活；仅等待人工操作时停止扫描。
@@ -562,7 +572,9 @@ export const createSystemMigrationRunner = ({
             migrationId: migration.id,
             runId: createRunId(),
             leaseDurationMs: resolvedTiming.leaseDurationMs,
-            allowFailed: startup
+            allowFailed: startup,
+            // resumable 任务的成功态不是终态，允许重新领取以补写注册表后来新增的成员。
+            allowSucceeded: migration.resumable
           });
           // stop 或共享名额丢失可能发生在 claim 期间，不能再开始业务执行。
           if (stopped) return 'interrupted';
@@ -678,7 +690,16 @@ export const createSystemMigrationRunner = ({
       stopped = false;
       runnerAbortController = new AbortController();
       await store.ensureStates(migrations);
-      void wake();
+      /**
+       * resumable 的 blockStartup 任务必须先补跑完再放行：库里残留的 succeeded 可能来自上一轮进程，
+       * 只读的门禁会立刻判定通过，导致本节点在补写注册表新增成员之前就进入 ready（Pro 侧表现为断言失败）。
+       * 其余任务保持原有语义：扫描在后台推进，由门禁读取持久化状态。
+       */
+      if (startupMigrations.some((migration) => migration.resumable)) {
+        await wake();
+      } else {
+        void wake();
+      }
     },
     /** 所有节点只依据启动链的持久化成功状态放行；读取失败、缺失和明确失败均继续等待。 */
     waitForBlockingMigrations: async () => {
