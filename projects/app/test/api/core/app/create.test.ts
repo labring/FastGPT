@@ -5,7 +5,11 @@ import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import type { AppVersionSchemaType } from '@fastgpt/global/core/app/version/type';
 import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
-import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import {
+  FlowNodeInputTypeEnum,
+  FlowNodeTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { CreateAppBodyType } from '@fastgpt/global/openapi/core/app/common/api';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { TeamAppCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
@@ -13,6 +17,7 @@ import { Types } from '@fastgpt/service/common/mongo';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 import { MongoAppTemplate } from '@fastgpt/service/core/app/templates/templateSchema';
+import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import { getFakeUsers } from '@test/datas/users';
 import { Call } from '@test/utils/request';
@@ -238,6 +243,57 @@ describe('create api', () => {
       }
     );
     expect(validCreate.error).toBeUndefined();
+  });
+
+  it('filters out unauthorized and non-existent resources from initial version snapshot without blocking app creation', async () => {
+    const [creator, otherMember] = (await getFakeUsers(2)).members;
+    const [authorizedDataset, unauthorizedDataset] = await MongoDataset.create([
+      {
+        name: 'authorized-dataset',
+        teamId: creator.teamId,
+        tmbId: creator.tmbId,
+        vectorModel: 'text-embedding-3-small',
+        agentModel: 'gpt-4o-mini'
+      },
+      {
+        name: 'unauthorized-dataset',
+        teamId: otherMember.teamId,
+        tmbId: otherMember.tmbId,
+        vectorModel: 'text-embedding-3-small',
+        agentModel: 'gpt-4o-mini'
+      }
+    ]);
+
+    const appId = await createapi.onCreateApp({
+      name: 'imported-workflow',
+      type: AppTypeEnum.workflow,
+      teamId: creator.teamId,
+      tmbId: creator.tmbId,
+      nodes: [
+        {
+          nodeId: 'dataset-search-node',
+          flowNodeType: FlowNodeTypeEnum.datasetSearchNode,
+          name: 'Dataset Search',
+          inputs: [
+            {
+              key: NodeInputKeyEnum.datasetSelectList,
+              label: 'Dataset Select',
+              renderTypeList: [FlowNodeInputTypeEnum.selectDataset],
+              value: [
+                { datasetId: String(authorizedDataset._id) },
+                { datasetId: String(unauthorizedDataset._id) },
+                { datasetId: String(new Types.ObjectId()) }
+              ]
+            }
+          ],
+          outputs: []
+        }
+      ] as unknown as AppVersionSchemaType['nodes']
+    });
+
+    const version = await MongoAppVersion.findOne({ appId }).lean();
+    expect(version?.nodes).toHaveLength(1);
+    expect(version?.resources).toEqual([{ type: 'dataset', id: String(authorizedDataset._id) }]);
   });
 });
 
