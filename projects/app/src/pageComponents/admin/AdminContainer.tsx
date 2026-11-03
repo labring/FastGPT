@@ -177,6 +177,28 @@ const AdminContainer = ({
         ]
       },
       {
+        icon: 'checkCircle',
+        label: '内容审核',
+        value: '/admin/moderation/policy',
+        children: [
+          {
+            icon: 'common/settingLight',
+            label: '审核策略配置',
+            value: '/admin/moderation/policy'
+          },
+          {
+            icon: 'history',
+            label: '审核记录',
+            value: '/admin/moderation/records'
+          },
+          {
+            icon: 'common/audit',
+            label: '审核服务日志',
+            value: '/admin/moderation/logs'
+          }
+        ]
+      },
+      {
         icon: 'common/rocket',
         label: '版本升级',
         value: '/admin/migration'

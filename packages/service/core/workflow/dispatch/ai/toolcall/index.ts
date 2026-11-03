@@ -14,7 +14,6 @@ import {
   withAgentSandboxInitLease
 } from '../../../../ai/sandbox/application/runtime/entrypoint';
 import { prepareSandboxToolRuntime } from '../../../../ai/sandbox/application/toolCall';
-import { postTextCensor } from '../../../../chat/postTextCensor';
 import { readWorkflowFileBuffer, getWorkflowSandboxContext } from '../../../utils/context';
 import { loadWorkflowModelResource } from '../../../resource/service';
 import {
@@ -33,6 +32,8 @@ import { useToolMessages } from './hooks/useToolMessages';
 import { useToolNodeList } from './hooks/useToolNodeList';
 import { runToolCall } from './toolCall';
 import { type DispatchToolModuleProps } from './type';
+import { checkModelPromptAndInput } from '../../../../plugin/moderation';
+import { MODERATION_BLOCKED_ERROR_MESSAGE } from '@fastgpt/global/core/plugin/moderation/constants';
 
 type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.answerText]: string;
@@ -124,12 +125,38 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
     // 交互恢复入口会由子工具继续接管，父 ToolCall 节点本轮不再作为入口节点。
     props.node.isEntry = false;
 
+    // 锚点 2：进入模型前审查用户输入与系统提示词
+    const moderationContext = {
+      teamId: runningUserInfo?.teamId,
+      tmbId: runningUserInfo?.tmbId,
+      appId: runningAppInfo?.sourceId,
+      chatId: props.chatId,
+      responseChatItemId,
+      nodeId,
+      nodeName: props.node.name
+    };
+
+    const checked = await checkModelPromptAndInput({
+      userChatInput,
+      systemPrompt,
+      context: moderationContext
+    });
+
+    if (checked.isUserChatInputBlocked) {
+      return getNodeErrResponse({
+        error: checked.blockErrorMessage || MODERATION_BLOCKED_ERROR_MESSAGE
+      });
+    }
+
+    const effectiveUserChatInput = checked.userChatInput;
+    const effectiveSystemPrompt = checked.systemPrompt;
+
     const { messages, currentInputFiles } = await useToolMessages({
       defaultSystemPrompt: toolModel.config.defaultSystemChatPrompt,
-      systemPrompt,
+      systemPrompt: effectiveSystemPrompt,
       chatHistories,
       responseChatItemId,
-      userChatInput,
+      userChatInput: effectiveUserChatInput,
       fileLinks,
       parseHistoryFiles,
       lastInteractive,
@@ -182,15 +209,6 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
       : undefined;
     if (useSandbox) {
       props.nodeSummary?.mergeNodeSummary({ hasAgentSandbox: true });
-    }
-
-    // 未配置独立模型密钥时，沿用系统文本审核逻辑。
-    if (toolModel.config.censor && !externalProvider.openaiAccount?.key) {
-      await postTextCensor({
-        text: `${systemPrompt}
-          ${userChatInput}
-        `
-      });
     }
 
     const toolCallMemoryState = WorkflowMemoryState.fromWorkflow(props).fork(`node:${nodeId}`, {

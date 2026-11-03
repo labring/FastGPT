@@ -8,7 +8,6 @@ import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
 import { formatModelChars2Points } from '../../../../../support/wallet/usage/utils';
 import { createLLMResponse } from '../../../../ai/llm/request';
 import { computedMaxToken } from '../../../../ai/utils';
-import { postTextCensor } from '../../../../chat/postTextCensor';
 import { getWorkflowFileContext, getWorkflowFileMaxAmount } from '../../../utils/context';
 import { loadWorkflowModelResource } from '../../../resource/service';
 import { checkQuoteQAValue, getHistories, getNodeErrResponse } from '../../utils';
@@ -16,6 +15,8 @@ import { getChatMessages } from './chatMessages';
 import { getDatasetCiteData } from './datasetCite';
 import { getAIChatFileContextConfig, getInputFiles } from './fileContext';
 import type { ChatProps, ChatResponse } from './type';
+import { checkModelPromptAndInput } from '../../../../plugin/moderation';
+import { MODERATION_BLOCKED_ERROR_MESSAGE } from '@fastgpt/global/core/plugin/moderation/constants';
 
 /**
  * 调度 AI Chat 节点：整理引用、历史和文件上下文，调用 LLM，并写入节点响应与用量。
@@ -29,8 +30,8 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     externalProvider,
     histories,
     node: { name, version, inputs },
-    runningUserInfo,
     runningAppInfo,
+    runningUserInfo,
     workflowStreamResponse,
     chatConfig,
     usageId,
@@ -42,7 +43,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       history = 6,
       userChatInput: rawUserChatInput = '',
       isResponseAnswerText = true,
-      systemPrompt = '',
+      systemPrompt: rawSystemPrompt = '',
       aiChatQuoteRole = 'system',
       quoteTemplate,
       quotePrompt,
@@ -67,6 +68,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
   let aiChatVideo = rawAiChatVideo;
   let fileLinks = rawFileLinks;
   let userChatInput = rawUserChatInput;
+  let systemPrompt = rawSystemPrompt;
   const modelConstantsData = await loadWorkflowModelResource({
     appTeamId: runningAppInfo.teamId,
     userInfo: runningUserInfo,
@@ -83,6 +85,33 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
 
     const chatHistories = getHistories(history, histories);
     quoteQA = checkQuoteQAValue(quoteQA);
+
+    // 锚点 2：进入模型前审查用户输入与系统提示词
+    const moderationContext = {
+      teamId: runningUserInfo?.teamId,
+      tmbId: runningUserInfo?.tmbId,
+      appId: runningAppInfo?.sourceId,
+      chatId: props.chatId,
+      responseChatItemId: props.responseChatItemId,
+      nodeId: props.node.nodeId,
+      nodeName: props.node.name
+    };
+
+    const checked = await checkModelPromptAndInput({
+      userChatInput,
+      systemPrompt,
+      context: moderationContext
+    });
+
+    // 必需输入有效性校验：若用户问题被拦截导致节点无有效输入，该节点本次不运行并报错终止
+    if (checked.isUserChatInputBlocked) {
+      return getNodeErrResponse({
+        error: checked.blockErrorMessage || MODERATION_BLOCKED_ERROR_MESSAGE
+      });
+    }
+
+    userChatInput = checked.userChatInput;
+    systemPrompt = checked.systemPrompt;
 
     const [datasetCiteData, userFiles] = await Promise.all([
       getDatasetCiteData({
@@ -101,6 +130,15 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     ]);
     userChatInput = datasetCiteData.userInput;
 
+    // 审查知识库引用切片
+    if (datasetCiteData.systemPrompt) {
+      const citeChecked = await checkModelPromptAndInput({
+        datasetCitePrompt: datasetCiteData.systemPrompt,
+        context: moderationContext
+      });
+      datasetCiteData.systemPrompt = citeChecked.datasetCitePrompt ?? '';
+    }
+
     if (!userChatInput && userFiles.length === 0) {
       return getNodeErrResponse({ error: i18nT('chat:AI_input_is_empty') });
     }
@@ -110,31 +148,20 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       maxToken
     });
 
-    const [filterMessages] = await Promise.all([
-      getChatMessages({
-        model: modelConstantsData,
-        maxTokens: max_tokens,
-        histories: chatHistories,
-        datasetCiteSystemPrompt: datasetCiteData.systemPrompt,
-        systemPrompt,
-        userChatInput,
-        userFiles,
-        parseHistoryFiles: fileContextConfig.parseHistoryFiles,
-        maxFileAmount: getWorkflowFileMaxAmount(),
-        customPdfParse: chatConfig?.fileSelectConfig?.customPdfParse,
-        usageId,
-        runningUserInfo
-      }),
-      (() => {
-        if (modelConstantsData.config.censor && !externalProvider.openaiAccount?.key) {
-          return postTextCensor({
-            text: `${systemPrompt}
-            ${userChatInput}
-          `
-          });
-        }
-      })()
-    ]);
+    const filterMessages = await getChatMessages({
+      model: modelConstantsData,
+      maxTokens: max_tokens,
+      histories: chatHistories,
+      datasetCiteSystemPrompt: datasetCiteData.systemPrompt,
+      systemPrompt,
+      userChatInput,
+      userFiles,
+      parseHistoryFiles: fileContextConfig.parseHistoryFiles,
+      maxFileAmount: getWorkflowFileMaxAmount(),
+      customPdfParse: chatConfig?.fileSelectConfig?.customPdfParse,
+      usageId,
+      runningUserInfo
+    });
 
     const requestStartTime = Date.now();
     let firstTokenTime: number | undefined; // 首个模型输出 token 到达时刻(含思考)

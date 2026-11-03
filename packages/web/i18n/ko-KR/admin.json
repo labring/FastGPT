@@ -50,5 +50,19 @@
   "user_status_active": "활성",
   "user_status_inactive": "활성화 대기 중",
   "user_status_forbidden": "비활성화됨",
-  "user_status_cancelled": "탈퇴"
+  "user_status_cancelled": "탈퇴",
+  "moderation.label.porn": "음란물",
+  "moderation.label.politics": "정치적 민감",
+  "moderation.label.terror": "테러",
+  "moderation.label.contraband": "금지 품목",
+  "moderation.label.abuse": "욕설/비방",
+  "moderation.label.hate": "혐오/차별",
+  "moderation.label.ad": "광고",
+  "moderation.label.advertising_law": "광고법 위반",
+  "moderation.label.privacy": "개인정보 침해",
+  "moderation.label.flood": "도배",
+  "moderation.label.self_harm": "자해/자살",
+  "moderation.label.violence": "폭력/유혈",
+  "moderation.label.sexual_minors": "미성년자 관련",
+  "moderation.label.other": "기타"
 }

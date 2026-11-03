@@ -9,6 +9,7 @@ import { getNodeErrResponse } from '../utils';
 import { parseFileContentFromUrls } from '../../../chat/fileContext';
 import { sliceStrStartEnd } from '@fastgpt/global/common/string/tools';
 import { getWorkflowFileContext, getWorkflowFileMaxAmount } from '../../utils/context';
+import { checkFileContentModeration } from '../../../plugin/moderation';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.fileUrlList]: string[];
@@ -53,7 +54,7 @@ export const dispatchReadFiles = async (props: Props): Promise<Response> => {
   const filesFromHistories = version !== '489' ? [] : getHistoryFileLinks(histories);
 
   try {
-    const readFilesResult = await parseFileContentFromUrls({
+    const rawReadFilesResult = await parseFileContentFromUrls({
       // Concat fileUrlList and filesFromHistories; remove not supported files
       urls: [...fileUrlList, ...filesFromHistories],
       maxFiles: maxFileAmount,
@@ -63,6 +64,26 @@ export const dispatchReadFiles = async (props: Props): Promise<Response> => {
       usageId,
       fileContext: getWorkflowFileContext()
     });
+    const readFilesResult = await Promise.all(
+      rawReadFilesResult.map(async (item) => ({
+        ...item,
+        content: item.success
+          ? await checkFileContentModeration({
+              content: item.content,
+              fileName: item.name,
+              context: {
+                teamId,
+                tmbId,
+                appId: props.runningAppInfo?.sourceId,
+                chatId: props.chatId,
+                responseChatItemId: props.responseChatItemId,
+                nodeId: props.node?.nodeId,
+                nodeName: props.node?.name
+              }
+            })
+          : item.content
+      }))
+    );
     const files = readFilesResult.map((item, index) => ({
       id: `${index}`,
       name: item.name,

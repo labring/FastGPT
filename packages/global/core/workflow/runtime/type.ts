@@ -7,6 +7,7 @@ import { CompletionFinishReasonSchema } from '../../ai/llm/type';
 import { SearchDataResponseQuoteListItemSchema } from '../../dataset/type';
 import { DatasetSearchModeEnum } from '../../dataset/constants';
 import { ChatRoleEnum } from '../../chat/constants';
+import { NodeModerationRecordSchema } from '../../plugin/moderation/type';
 import z from 'zod';
 import { JsonValueOpenApiMeta, OpenObjectOpenApiMeta } from '../../../common/zod/openapi';
 import type { JSONSchemaInputType } from '../../app/jsonschema';
@@ -67,6 +68,9 @@ export const DispatchNodeResponseSchema = z
     errorCaptured: z.boolean().optional().meta({ description: '错误已被 catch 分支捕获' }),
     isToolCall: z.boolean().optional().meta({
       description: '工具节点是否由模型工具调用调度；false 表示工作流直接执行，缺省兼容历史响应'
+    }),
+    moderationRecords: z.array(NodeModerationRecordSchema).optional().meta({
+      description: '节点内容审核拦截记录（仅应用写权限可见）'
     }),
 
     customInputs: z.record(z.string(), z.any()).optional().meta({ description: '自定义输入' }),
