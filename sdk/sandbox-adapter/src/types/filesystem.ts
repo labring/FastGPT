@@ -108,14 +108,3 @@ export type ContentReplaceEntry = {
   oldContent: string;
   newContent: string;
 };
-
-/**
- * File read options.
- */
-export type ReadFileOptions = {
-  /** Zero-based byte offset. Defaults to the beginning of the file. */
-  offset?: number;
-
-  /** Maximum number of bytes to read. Omit to read to the end of the file. */
-  length?: number;
-};

@@ -25,10 +25,9 @@ type State = {
   setChatId: (e?: string) => any;
   /** 每个应用最近一次打开的 chatId，用于切换应用时恢复会话 */
   appChatIdMap: Record<string, string>;
-  /** 非主会话按标准 sourceKey 隔离的 chatId，用于同一页面承载多个 ChatBox。 */
-  sourceChatIdMap: Record<string, string>;
-  ensureSourceChatId: (sourceKey: string) => string;
-  setSourceChatId: (sourceKey: string, chatId?: string) => string;
+  /** 每个应用当前使用的辅助生成会话，登录或切换团队时清空。 */
+  appBuilderChatIdMap: Record<string, string>;
+  setAppBuilderChatId: (appId: string, chatId?: string) => string;
 
   lastPane: ChatSidebarPaneEnum;
   setLastPane: (e: ChatSidebarPaneEnum) => any;
@@ -204,23 +203,13 @@ export const useChatStore = create<State>()(
         lastChatId: '',
         chatId: '',
         appChatIdMap: {},
-        sourceChatIdMap: {},
-        ensureSourceChatId(sourceKey) {
-          let resolvedChatId = '';
-          set((state) => {
-            if (!sourceKey) return;
+        appBuilderChatIdMap: {},
+        setAppBuilderChatId(appId, chatId) {
+          if (!appId) return '';
 
-            resolvedChatId = state.sourceChatIdMap[sourceKey] || getNanoid(24);
-            state.sourceChatIdMap[sourceKey] = resolvedChatId;
-          });
-          return resolvedChatId;
-        },
-        setSourceChatId(sourceKey, chatId) {
           const resolvedChatId = chatId || getNanoid(24);
           set((state) => {
-            if (!sourceKey) return;
-
-            state.sourceChatIdMap[sourceKey] = resolvedChatId;
+            state.appBuilderChatIdMap[appId] = resolvedChatId;
           });
           return resolvedChatId;
         },
@@ -293,7 +282,7 @@ export const useChatStore = create<State>()(
             state.chatId = '';
             state.lastChatId = '';
             state.appChatIdMap = {};
-            state.sourceChatIdMap = {};
+            state.appBuilderChatIdMap = {};
             state.lastPane = ChatSidebarPaneEnum.HOME;
             state.agentChatTestTab = AgentChatTestTabEnum.chatDebug;
             state.outLinkAuthData = undefined;
@@ -322,7 +311,7 @@ export const useChatStore = create<State>()(
           lastPane: state.lastPane,
           agentChatTestTab: state.agentChatTestTab,
           appChatIdMap: state.appChatIdMap,
-          sourceChatIdMap: state.sourceChatIdMap
+          appBuilderChatIdMap: state.appBuilderChatIdMap
         })
       }
     )

@@ -48,6 +48,8 @@ import { getSelectedInputRenderType } from '@fastgpt/global/common/workflow/refe
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import NodeInputSelect from '@fastgpt/web/components/core/workflow/NodeInputSelect';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
+import { useContextSelector } from 'use-context-selector';
+import { AppContext } from '@/pageComponents/app/detail/context';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import { getClientToolPreviewNode } from '@/web/core/app/api/tool';
 import { getAppVersionList } from '@/web/core/app/api/version';
@@ -60,6 +62,8 @@ import type { SelectedToolItemType } from '@fastgpt/global/core/app/formEdit/typ
 import { getNodeToolSetList } from '../../WorkflowComponents/Flow/nodes/components/ToolSetList';
 import { inheritToolInputConfig } from '../FormComponent/ToolSelector/utils';
 import { validateToolInputValue } from '@fastgpt/global/core/app/tool/runtime';
+import { isSecretValueConfigured } from '@fastgpt/global/common/secret/utils';
+import { normalizeToolInputValue } from '@fastgpt/global/core/app/tool/systemTool/codec';
 
 const inputTypeFormKey = (key: string) => `__input_type__${key}`;
 // developerInputType 即全局的 manualRenderType：Agent 配置里“手动输入”实际使用的那个控件。
@@ -87,13 +91,14 @@ type ToolSetListItemType = {
 const buildConfigRenderTypeList = ({
   developerInputType,
   canAgentGenerated,
+  canManuallyConfigure,
   renderTypeList
 }: {
   developerInputType?: FlowNodeInputTypeEnum;
   canAgentGenerated: boolean;
+  canManuallyConfigure: boolean;
   renderTypeList: FlowNodeInputTypeEnum[];
 }): FlowNodeInputTypeEnum[] => {
-  const canManuallyConfigure = canInputBeManuallyConfigured({ renderTypeList });
   const developerRenderTypeList = renderTypeList.filter(
     (type) => type !== FlowNodeInputTypeEnum.agentGenerated
   );
@@ -123,12 +128,13 @@ const buildConfigInputTypeState = ({
   canAgentGenerated: boolean;
   renderTypeList: FlowNodeInputTypeEnum[];
 }) => {
+  const canManuallyConfigure = canInputBeManuallyConfigured({ renderTypeList });
   const finalRenderTypeList = buildConfigRenderTypeList({
     developerInputType,
     canAgentGenerated,
+    canManuallyConfigure,
     renderTypeList
   });
-  const canManuallyConfigure = canInputBeManuallyConfigured({ renderTypeList });
   const selectedRenderType =
     canAgentGenerated && selectedInputType === FlowNodeInputTypeEnum.agentGenerated
       ? FlowNodeInputTypeEnum.agentGenerated
@@ -287,10 +293,7 @@ const hasToolSetConfig = (tool: FlowNodeTemplateType) =>
 
 const isManualSecretConfigured = (value?: ToolParamsFormType) =>
   value?.type === SystemToolSecretInputTypeEnum.manual &&
-  Object.values(value.value ?? {}).some(
-    (item) =>
-      !!item?.secret || (item?.value !== undefined && item.value !== null && item.value !== '')
-  );
+  Object.values(value.value ?? {}).some(isSecretValueConfigured);
 
 const getSecretInputInitialExpanded = ({
   value,
@@ -314,11 +317,9 @@ const isSecretInputConfigValid = ({
     if (!item.required) return true;
 
     const fieldValue = value.value?.[item.key];
-    if (item.inputType === 'switch') {
-      return fieldValue?.value !== undefined && fieldValue.value !== null;
-    }
-
-    return !!fieldValue?.value || !!fieldValue?.secret;
+    return isSecretValueConfigured(
+      normalizeToolInputValue({ value: fieldValue, inputType: item.inputType })
+    );
   });
 };
 
@@ -435,6 +436,7 @@ const ConfigValueInput = ({
   control: Control<Record<string, any>>;
 }) => {
   const { t } = useSafeTranslation();
+  const appId = useContextSelector(AppContext, (v) => v.appId);
   const selectedInputType = useWatch({
     control,
     name: inputTypeFormKey(input.key)
@@ -478,6 +480,7 @@ const ConfigValueInput = ({
           <FormControl isInvalid={!!error}>
             <InputRender
               {...input}
+              appId={appId || undefined}
               isRichText={false}
               isInvalid={!!error}
               inputType={nodeInputTypeToInputType([inputType])}

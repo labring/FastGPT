@@ -9,7 +9,7 @@ import { dispatchWorkFlow } from '@fastgpt/service/core/workflow/dispatch';
 import { prepareWorkflowFileQuery } from '@fastgpt/service/core/workflow/utils/fileLimits';
 import { getRunningUserInfoByTmbId } from '@fastgpt/service/support/user/team/utils';
 import { concatHistories, removeEmptyUserInput } from '@fastgpt/global/core/chat/utils';
-import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
+import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import {
   serverGetWorkflowToolRunUserQuery,
@@ -89,11 +89,12 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
   try {
     /* user auth */
+    // 测试对话会执行请求体传入的节点定义（包括代码节点），需要写入权限
     const { app, teamId, tmbId, isRoot } = await authApp({
       req,
       authToken: true,
       appId,
-      per: ReadPermissionVal
+      per: WritePermissionVal
     });
     const resources = await prepareAppWorkflowResources({
       appId,

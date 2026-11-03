@@ -38,6 +38,7 @@ export const getWorkflowReferenceVariables = ({
  * 返回引用可见的节点，按当前作用域入边距离、父容器来源、可选子节点的顺序排列。
  * 引用可见性独立于执行边：容器内可读父容器上游，容器的动态输出可读直接子节点，
  * 但不开放跨作用域执行边，也不允许自引用或读取其他容器内部节点。
+ * 工具子流程可读调用者上游，但调用者自身的输出要等子流程结束后才产生，不能引用。
  */
 export const getWorkflowReferenceSourceNodes = <
   T extends Pick<StoreNodeItemType, 'nodeId' | 'parentNodeId' | 'flowNodeType' | 'inputs'>
@@ -50,7 +51,7 @@ export const getWorkflowReferenceSourceNodes = <
 }: {
   nodeId: string;
   getNodeById: (nodeId: string) => T | undefined;
-  edges: Pick<StoreEdgeItemType, 'source' | 'target'>[];
+  edges: (Pick<StoreEdgeItemType, 'source' | 'target'> & { targetHandle?: string | null })[];
   includeChildren?: boolean;
   childrenNodeIdListMap?: Record<string, string[]>;
 }): T[] => {
@@ -58,6 +59,7 @@ export const getWorkflowReferenceSourceNodes = <
   if (!node) return [];
 
   const sourceNodes = new Map<string, T>();
+  const toolCallerIds = new Set<string>();
   const searchedTargetNodeIds = new Set<string>();
 
   /** 仅沿同作用域入边遍历；visited 同时避免非法循环图造成无限递归。 */
@@ -75,6 +77,10 @@ export const getWorkflowReferenceSourceNodes = <
         const source = getNodeById(edge.source);
         if (!source || source.nodeId === nodeId || source.parentNodeId !== target.parentNodeId)
           continue;
+        // selectedTools 是调用边：继续追溯调用者上游，调用者自身在合并来源后统一排除。
+        if (edge.targetHandle === NodeOutputKeyEnum.selectedTools) {
+          toolCallerIds.add(source.nodeId);
+        }
         sourceNodes.set(source.nodeId, source);
         queue.push(source.nodeId);
       }
@@ -116,7 +122,8 @@ export const getWorkflowReferenceSourceNodes = <
       }
     }
   }
-  return [...sourceNodes.values()];
+  // 父容器的历史引用也可能指向调用者，不能通过输入继承重新暴露尚未产生的输出。
+  return [...sourceNodes.values()].filter((source) => !toolCallerIds.has(source.nodeId));
 };
 
 export const getSelectedInputRenderType = (input: {

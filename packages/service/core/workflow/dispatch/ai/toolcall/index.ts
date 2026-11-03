@@ -18,6 +18,7 @@ import { postTextCensor } from '../../../../chat/postTextCensor';
 import { readWorkflowFileBuffer } from '../../../utils/context';
 import { loadWorkflowModelResource } from '../../../resource/service';
 import { getAgentLoopHistories, getNodeErrResponse } from '../../utils';
+import { WorkflowMemoryState } from '../../../memory/state';
 import { buildAgentLoopCoreRequestMessages } from '../agentLoopCore/application/context/messages';
 import { createAgentLoopCoreChildInteractiveParams } from '../agentLoopCore/adapter/interactive/child';
 import { createAgentLoopCoreToolCallNodeResponse } from '../agentLoopCore/adapter/nodeResponse/toolCallNodeResponse';
@@ -175,6 +176,12 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
       });
     }
 
+    const toolCallMemoryState = WorkflowMemoryState.fromWorkflow(props).fork(`node:${nodeId}`, {
+      history,
+      histories: chatHistories,
+      hasInteractiveResume: !!lastInteractive
+    });
+
     const {
       toolWorkflowInteractiveResponse,
       toolDispatchFlowResponses, // 工具子流程运行详情
@@ -195,6 +202,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
 
       return runToolCall({
         ...props,
+        memoryState: toolCallMemoryState,
         currentInputFiles,
         sandboxClient,
         runtimeNodes,
@@ -207,6 +215,8 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
         })
       });
     })();
+    const toolMemories = toolCallMemoryState.getDelta();
+    const systemMemories = Object.keys(toolMemories).length > 0 ? toolMemories : undefined;
     const { runTimes, toolDetail } =
       summarizeAgentLoopCoreToolRunFlowResponses(toolDispatchFlowResponses);
     // 有 sink 时 child workflow 和当前 ToolCall 的内部 response 已经独立发布；
@@ -233,7 +243,8 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
         ...getNodeErrResponse({
           error,
           [DispatchNodeResponseKeyEnum.nodeResponse]: nodeResponse,
-          [DispatchNodeResponseKeyEnum.runTimes]: runTimes
+          [DispatchNodeResponseKeyEnum.runTimes]: runTimes,
+          [DispatchNodeResponseKeyEnum.memories]: systemMemories
         }),
         [DispatchNodeResponseKeyEnum.assistantResponses]: isResponseAnswerText
           ? assistantResponses
@@ -247,6 +258,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
         [DispatchNodeResponseKeyEnum.assistantResponses]: isResponseAnswerText
           ? assistantResponses
           : undefined,
+        [DispatchNodeResponseKeyEnum.memories]: systemMemories,
         [DispatchNodeResponseKeyEnum.nodeResponse]: nodeResponse,
         [DispatchNodeResponseKeyEnum.interactive]: toolWorkflowInteractiveResponse
       };
@@ -263,6 +275,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
       [DispatchNodeResponseKeyEnum.assistantResponses]: isResponseAnswerText
         ? assistantResponses
         : undefined,
+      [DispatchNodeResponseKeyEnum.memories]: systemMemories,
       [DispatchNodeResponseKeyEnum.nodeResponse]: nodeResponse,
       [DispatchNodeResponseKeyEnum.interactive]: toolWorkflowInteractiveResponse
     };

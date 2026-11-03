@@ -6,8 +6,8 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   createEmptyTagFilterValue,
+  getNextDatasetTagFilterValue,
   isDatasetTagFilterOpen,
-  isDatasetTagFilterValue,
   normalizeLegacyDatasetTagFilterValue,
   type DatasetTagFilterValue
 } from '@fastgpt/global/core/dataset/search/tagFilter';
@@ -144,6 +144,9 @@ export const DatasetTagFilterLogic = React.memo(function DatasetTagFilterLogic({
             description:
               DatasetSearchModule.inputs.find((input) => input.key === item.key)?.description ??
               item.description,
+            valueDesc:
+              DatasetSearchModule.inputs.find((input) => input.key === item.key)?.valueDesc ??
+              item.valueDesc,
             value: {
               ...createEmptyTagFilterValue(),
               open: true
@@ -178,17 +181,11 @@ export const DatasetTagFilterLogic = React.memo(function DatasetTagFilterLogic({
   const isOpen = isDatasetTagFilterOpen(item.value);
 
   const handleToggle = () => {
-    const nextOpen = !isOpen;
-    const renderType = getSelectedInputRenderType(item);
-    const nextValue =
-      renderType === FlowNodeInputTypeEnum.reference
-        ? nextOpen
-          ? []
-          : undefined
-        : {
-            ...(isDatasetTagFilterValue(item.value) ? item.value : createEmptyTagFilterValue()),
-            open: nextOpen
-          };
+    const nextValue = getNextDatasetTagFilterValue({
+      value: item.value,
+      isReference: getSelectedInputRenderType(item) === FlowNodeInputTypeEnum.reference,
+      open: !isOpen
+    });
 
     onChangeNode({
       nodeId,

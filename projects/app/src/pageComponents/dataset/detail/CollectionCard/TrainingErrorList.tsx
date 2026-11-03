@@ -187,22 +187,20 @@ const TrainingErrorList = ({
     return { datasetId: scope.datasetId };
   }, [scope]);
 
-  const { data, setData, setTotal, ScrollData, isLoading, total, fetchData } = useScrollPagination<
-    TrainingErrorListParams,
-    TrainingErrorListResponse
-  >(getErrorData, {
-    pageSize: 20,
-    params: (scope.type === 'dataset'
-      ? { ...requestParams, itemPageSize: datasetGroupItemPageSize }
-      : requestParams) as TrainingErrorRequestParams,
-    refreshDeps: [
-      scope.type,
-      scope.type === 'dataset' ? scope.datasetId : '',
-      scope.type === 'collection' ? scope.collectionId : ''
-    ],
-    showNoMoreTip: scope.type !== 'dataset',
-    EmptyTip: <EmptyTip text={t('dataset:training_error_empty')} />
-  });
+  const { data, setData, setTotal, ScrollData, isLoading, isInitialLoading, total, fetchData } =
+    useScrollPagination<TrainingErrorListParams, TrainingErrorListResponse>(getErrorData, {
+      pageSize: 20,
+      params: (scope.type === 'dataset'
+        ? { ...requestParams, itemPageSize: datasetGroupItemPageSize }
+        : requestParams) as TrainingErrorRequestParams,
+      refreshDeps: [
+        scope.type,
+        scope.type === 'dataset' ? scope.datasetId : '',
+        scope.type === 'collection' ? scope.collectionId : ''
+      ],
+      showNoMoreTip: scope.type !== 'dataset',
+      EmptyTip: <EmptyTip text={t('dataset:training_error_empty')} />
+    });
 
   useEffect(() => {
     trainingErrorDataRef.current = data;
@@ -585,7 +583,7 @@ const TrainingErrorList = ({
   return (
     <>
       {scope.type === 'collection' ? (
-        <MyBox flex={'1 1 0'} minH={0} overflow={'hidden'} isLoading={listLoading}>
+        <MyBox flex={'1 1 0'} minH={0} overflow={'hidden'} isLoading={isInitialLoading}>
           <FixedTableContainer
             ref={collectionScrollRef}
             h="100%"
@@ -629,98 +627,108 @@ const TrainingErrorList = ({
                 ))}
               </Tbody>
             </Table>
+            {listLoading && collectionItems.length > 0 && (
+              <Box py={2} fontSize={'xs'} color={'myGray.400'} textAlign={'center'}>
+                {t('common:is_requesting')}
+              </Box>
+            )}
             {total === 0 && !listLoading && <EmptyTip text={t('dataset:training_error_empty')} />}
           </FixedTableContainer>
         </MyBox>
       ) : (
-        <ScrollData
-          h={'100%'}
+        <MyBox
+          isLoading={isInitialLoading}
+          position={'relative'}
+          overflow={'hidden'}
           flex={'1 1 0'}
           minH={0}
-          pr={1}
-          ScrollContainerRef={datasetScrollRef}
-          isLoading={listLoading}
-          showLoadingOverlay
         >
-          <Flex flexDir={'column'} gap={4}>
-            {datasetGroups.map((group, index) => (
-              <Box key={String(group.collection.collectionId)}>
-                <Flex alignItems={'center'} gap={2} minW={0}>
-                  <Box
-                    color={'myGray.900'}
-                    fontWeight={500}
-                    fontSize={'12px'}
-                    lineHeight={'16px'}
-                    whiteSpace={'pre'}
-                  >
-                    {`${index + 1} `}
-                  </Box>
-                  <RawSourceBox
-                    collectionId={group.collection.collectionId}
-                    collectionType={group.collection.type as DatasetCollectionTypeEnum}
-                    rawSourceName={group.collection.sourceName || group.collection.name}
-                    rawSourceId={group.collection.sourceId}
-                    canView={false}
-                    alignItems={'center'}
-                    fontSize={'12px'}
-                    lineHeight={'16px'}
-                    color={'myGray.900'}
-                    minW={0}
-                  />
-                </Flex>
-                <Box pl={6} py={2.5}>
-                  <Box bg={'#FBFBFC'} borderRadius={'8px'} px={4} py={4}>
-                    <Flex flexDir={'column'} gap={2.5}>
-                      {group.items.map((item) => (
-                        <Flex key={String(item._id)} alignItems={'center'} h={'28px'} gap={'32px'}>
-                          <Box w={'180px'} flexShrink={0} minW={0}>
-                            <TrainingStageText item={item} />
-                          </Box>
-                          <Box flex={'1 1 auto'} minW={0}>
-                            <ErrorMessage errorMsg={item.errorMsg} />
-                          </Box>
-                          <Box flexShrink={0}>
-                            <ActionButtons
-                              item={item}
-                              isRetryLoading={updateLoading}
-                              isEditLoading={getDataLoading}
-                              isDeleteLoading={deleteLoading}
-                              onRetry={handleRetryItem}
-                              onEdit={handleEditItem}
-                              onDelete={handleDeleteItem}
-                            />
-                          </Box>
-                        </Flex>
-                      ))}
-                    </Flex>
-                    {group.hasMoreItems && (
-                      <Button
-                        variant={'ghost'}
-                        display={'flex'}
-                        mx={'auto'}
-                        mt={2.5}
-                        h={'20px'}
-                        minH={'20px'}
-                        px={1.5}
-                        minW={0}
-                        fontSize={'11px'}
-                        lineHeight={'14px'}
-                        color={'myGray.400'}
-                        _hover={{ bg: 'transparent', color: 'myGray.500' }}
-                        _active={{ bg: 'transparent' }}
-                        isLoading={loadMoreGroupItemsLoading}
-                        onMouseDown={handleLoadMoreMouseDown}
-                        onClick={() => handleLoadMoreGroupItems(group)}
-                      >
-                        {t('common:request_more')}
-                      </Button>
-                    )}
+          <ScrollData h={'100%'} pr={1} ScrollContainerRef={datasetScrollRef}>
+            <Flex flexDir={'column'} gap={4}>
+              {datasetGroups.map((group, index) => (
+                <Box key={String(group.collection.collectionId)}>
+                  <Flex alignItems={'center'} gap={2} minW={0}>
+                    <Box
+                      color={'myGray.900'}
+                      fontWeight={500}
+                      fontSize={'12px'}
+                      lineHeight={'16px'}
+                      whiteSpace={'pre'}
+                    >
+                      {`${index + 1} `}
+                    </Box>
+                    <RawSourceBox
+                      collectionId={group.collection.collectionId}
+                      collectionType={group.collection.type as DatasetCollectionTypeEnum}
+                      rawSourceName={group.collection.sourceName || group.collection.name}
+                      rawSourceId={group.collection.sourceId}
+                      canView={false}
+                      alignItems={'center'}
+                      fontSize={'12px'}
+                      lineHeight={'16px'}
+                      color={'myGray.900'}
+                      minW={0}
+                    />
+                  </Flex>
+                  <Box pl={6} py={2.5}>
+                    <Box bg={'#FBFBFC'} borderRadius={'8px'} px={4} py={4}>
+                      <Flex flexDir={'column'} gap={2.5}>
+                        {group.items.map((item) => (
+                          <Flex
+                            key={String(item._id)}
+                            alignItems={'center'}
+                            h={'28px'}
+                            gap={'32px'}
+                          >
+                            <Box w={'180px'} flexShrink={0} minW={0}>
+                              <TrainingStageText item={item} />
+                            </Box>
+                            <Box flex={'1 1 auto'} minW={0}>
+                              <ErrorMessage errorMsg={item.errorMsg} />
+                            </Box>
+                            <Box flexShrink={0}>
+                              <ActionButtons
+                                item={item}
+                                isRetryLoading={updateLoading}
+                                isEditLoading={getDataLoading}
+                                isDeleteLoading={deleteLoading}
+                                onRetry={handleRetryItem}
+                                onEdit={handleEditItem}
+                                onDelete={handleDeleteItem}
+                              />
+                            </Box>
+                          </Flex>
+                        ))}
+                      </Flex>
+                      {group.hasMoreItems && (
+                        <Button
+                          variant={'ghost'}
+                          display={'flex'}
+                          mx={'auto'}
+                          mt={2.5}
+                          h={'20px'}
+                          minH={'20px'}
+                          px={1.5}
+                          minW={0}
+                          fontSize={'11px'}
+                          lineHeight={'14px'}
+                          color={'myGray.400'}
+                          _hover={{ bg: 'transparent', color: 'myGray.500' }}
+                          _active={{ bg: 'transparent' }}
+                          isLoading={loadMoreGroupItemsLoading}
+                          onMouseDown={handleLoadMoreMouseDown}
+                          onClick={() => handleLoadMoreGroupItems(group)}
+                        >
+                          {t('common:request_more')}
+                        </Button>
+                      )}
+                    </Box>
                   </Box>
                 </Box>
-              </Box>
-            ))}
-          </Flex>
-        </ScrollData>
+              ))}
+            </Flex>
+          </ScrollData>
+        </MyBox>
       )}
 
       <RebuildDeleteConfirmModal />

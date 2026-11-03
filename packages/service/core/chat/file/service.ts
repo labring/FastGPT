@@ -1,20 +1,13 @@
-import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
+import type { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
 import type { UserChatItemFileItemType } from '@fastgpt/global/core/chat/type';
-import { audioFileType, imageFileType, videoFileType } from '@fastgpt/global/common/file/constants';
 import { batchRun } from '@fastgpt/global/common/system/utils';
 import { UserError } from '@fastgpt/global/common/error/utils';
-import path from 'node:path';
-import pLimit from 'p-limit';
-import { inferFileTypeFromUrl } from '../../../common/file/infer/service';
 import { validateFileUrlDomain } from '../../../common/security/fileUrlValidator';
-import { normalizeMimeType } from '../../../common/s3/utils/mime';
 import {
-  getFileNameFromUrl,
-  getFileUrlIdentity,
-  isAbsoluteHttpUrl,
-  isSignedDownloadAlias,
-  selectFileInputs
-} from './utils';
+  classifyUrlMediaType,
+  type FileClassificationMediaType
+} from '../../../common/file/classification';
+import { getFileUrlIdentity, isAbsoluteHttpUrl, selectFileInputs } from './utils';
 
 export type ChatFileInput = Pick<UserChatItemFileItemType, 'url'> &
   Partial<Pick<UserChatItemFileItemType, 'name' | 'type'>>;
@@ -22,7 +15,7 @@ export type ChatFileInput = Pick<UserChatItemFileItemType, 'url'> &
 /** filename 保存探测文件名（包含识别出的后缀），与调用方指定的显示名称 name 分离。 */
 export type PreparedChatFile = UserChatItemFileItemType & { filename?: string };
 
-type FileProbeResult = Pick<PreparedChatFile, 'type' | 'filename'>;
+export type FileProbeResult = Pick<PreparedChatFile, 'type' | 'filename'>;
 
 /** 分类只依赖已登记元数据，不依赖工作流、权限校验或登记实现。 */
 export type FileClassificationContext = {
@@ -39,20 +32,11 @@ export type FilePreparationContext = FileClassificationContext & {
   };
 };
 
-// 缓存随 Context 回收，不跨请求或父子 Context 共享未知文件，也不代表文件访问权限。
-const classificationStates = new WeakMap<
-  FileClassificationContext,
-  {
-    files: Map<string, Promise<FileProbeResult>>;
-    probe: ReturnType<typeof pLimit>;
-  }
->();
-const probeWithoutContext = pLimit(5);
-
 /**
- * 唯一链接分类入口：已登记结果 > 明确媒体类型 > 可信对象元数据 > 链接文件名 > 系统链接探测 > 普通文件。
- * 链接包含 filename 参数或带后缀的路径文件名时不探测，未知后缀保留为普通文件；短链凭证不视为文件名。
- * 普通 file 提示仍允许探测无文件名链接；私有 key 只按后缀推测，不请求签名链接。
+ * 唯一链接分类入口：已登记结果 > 显式 image/audio/video/document > 传入名称后缀 > 可信对象元数据 > 链接文件名 > 系统链接探测 > unknown。
+ * 非 URL 的 name 有后缀时以它为准；缺少名称后缀时才使用链接与响应信息。
+ * 链接包含 filename 参数或带后缀的路径文件名时不探测，文档归 document，未知后缀归 unknown；短链凭证不视为文件名。
+ * file、unknown 和缺省类型继续推测；私有 key 不请求签名链接。
  * 分类不截断、不登记。Context 内相同身份复用探测和降级结果，远端探测并发上限为 5。
  */
 export const parseUrlToChatFileType = async ({
@@ -67,115 +51,26 @@ export const parseUrlToChatFileType = async ({
   metadata?: { filename?: string; contentType?: string };
 }): Promise<PreparedChatFile | undefined> => {
   if (typeof url !== 'string') return;
-  const registered = fileContext?.resolveChatFile(url);
-  if (registered) return registered;
+  const classified = await classifyUrlMediaType({
+    url,
+    name,
+    type: type as FileClassificationMediaType | undefined,
+    fileContext,
+    metadata
+  });
 
-  /** 对象元数据与 HTTP 响应头使用同一 MIME 规则。 */
-  const mediaTypeFromMime = (contentType?: string) => {
-    const mime = normalizeMimeType(contentType, '');
-    if (mime.startsWith('image/')) return ChatFileTypeEnum.image;
-    if (mime.startsWith('audio/')) return ChatFileTypeEnum.audio;
-    if (mime.startsWith('video/')) return ChatFileTypeEnum.video;
+  if (!classified) return;
+
+  const inferred: PreparedChatFile = {
+    url: classified.url,
+    name: classified.name,
+    type: classified.type as ChatFileTypeEnum,
+    ...(classified.filename ? { filename: classified.filename } : {})
   };
 
-  /** 缓存远端类型和文件名；调用方的显示名称和显式类型不进入缓存，避免相互污染。 */
-  const probeFile = (): Promise<FileProbeResult> => {
-    const state = (() => {
-      if (!fileContext) return;
-      const existing = classificationStates.get(fileContext);
-      if (existing) return existing;
-      const created = {
-        files: new Map<string, Promise<FileProbeResult>>(),
-        probe: pLimit(5)
-      };
-      classificationStates.set(fileContext, created);
-      return created;
-    })();
-    const identity = fileContext?.getIdentity(url) ?? getFileUrlIdentity(url);
-    const cached = state?.files.get(identity);
-    if (cached) return cached;
-
-    const pending = (state?.probe ?? probeWithoutContext)(async () => {
-      try {
-        const { contentType, filename } = await inferFileTypeFromUrl({
-          url,
-          validateUrl: validateFileUrlDomain
-        });
-        return {
-          type: mediaTypeFromMime(contentType) ?? ChatFileTypeEnum.file,
-          // 探测端未返回文件名或格式证据时，不能继续把 URL 中的签名当作解析文件名。
-          filename: isSignedDownloadAlias(filename) ? undefined : filename
-        };
-      } catch {
-        // 系统探测失败时只降级类型，不授予读取权限；业务读取仍需通过独立校验。
-      }
-      return { type: ChatFileTypeEnum.file };
-    });
-    state?.files.set(identity, pending);
-    return pending;
-  };
-
-  /** 推测补充类型和文件名；请求层仍逐跳检查 SSRF 和域名白名单，避免重定向绕过输入校验。 */
-  const infer = async (): Promise<PreparedChatFile | undefined> => {
-    if (url.startsWith('data:')) {
-      const mime = url.match(/^data:([^;]+);base64,/)?.[1].toLowerCase();
-      if (!mime?.startsWith('image/')) return;
-      return { type: ChatFileTypeEnum.image, name: name || `image.${mime.split('/')[1]}`, url };
-    }
-
-    try {
-      const parsedUrl = new URL(url, 'http://localhost:3000');
-      const basename = url.startsWith('chat/')
-        ? path.basename(url)
-        : (getFileNameFromUrl(url) ?? path.basename(parsedUrl.pathname));
-      // 短链中的点号分隔 alias、过期时间与签名；交给响应元数据推测，不能作为已知后缀跳过探测。
-      const filename = isSignedDownloadAlias(basename)
-        ? ''
-        : (url.startsWith('chat/') ? undefined : parsedUrl.searchParams.get('filename')?.trim()) ||
-          (basename.includes('.') ? basename : '');
-      const extension = `.${filename.slice(filename.lastIndexOf('.') + 1).toLowerCase()}`;
-      const mediaExtensions: [string, ChatFileTypeEnum][] = [
-        [imageFileType, ChatFileTypeEnum.image],
-        [audioFileType, ChatFileTypeEnum.audio],
-        [videoFileType, ChatFileTypeEnum.video]
-      ];
-      const filenameType = [path.extname(metadata?.filename ?? '').toLowerCase(), extension]
-        .map(
-          (candidate) =>
-            mediaExtensions.find(([extensions]) =>
-              extensions.split(',').some((item) => item.trim() === candidate)
-            )?.[1]
-        )
-        .find((type) => type !== undefined);
-
-      const resolved = await (async (): Promise<FileProbeResult> => {
-        if (type && type !== ChatFileTypeEnum.file) return { type };
-        const metadataType = mediaTypeFromMime(metadata?.contentType);
-        if (metadataType) return { type: metadataType };
-        if (filenameType) return { type: filenameType };
-        if (filename || !isAbsoluteHttpUrl(url) || !validateFileUrlDomain(url))
-          return { type: ChatFileTypeEnum.file };
-        return probeFile();
-      })();
-
-      return {
-        type: resolved.type,
-        ...(resolved.filename ? { filename: resolved.filename } : {}),
-        // URL 路径和 query 已各自解码一次，避免把文件名中的字面量百分号再次解码。
-        // 私有 key 保留原有显示名称兼容行为。
-        name:
-          name ||
-          (filename ? (url.startsWith('chat/') ? decodeURIComponent(filename) : filename) : url),
-        url
-      };
-    } catch {
-      return { type: ChatFileTypeEnum.file, name: name || url, url };
-    }
-  };
-
-  const inferred = await infer();
-  // 探测期间其他入口可能已完成登记，不能把较早启动的推测覆盖到已登记结果上。
-  return fileContext?.resolveChatFile(url) ?? inferred;
+  // 分类入口已处理登记竞争；同类型复用原 Ref，保留其授权 key 等上下文。
+  const latestRegistered = fileContext?.resolveChatFile(url);
+  return latestRegistered?.type === inferred.type ? latestRegistered : inferred;
 };
 
 /** 校验外链准入；已授权 Ref 可使用自己的签名域名，不能据此放行其他外链。 */
@@ -209,7 +104,7 @@ export const prepareChatFiles = async ({
   maxFiles: number;
   fileContext?: FilePreparationContext;
   allowDataUrl?: boolean;
-}): Promise<UserChatItemFileItemType[]> => {
+}): Promise<PreparedChatFile[]> => {
   const selected = selectFileInputs({
     files: files
       .filter((file) => typeof file.url === 'string' && file.url.trim())
@@ -231,13 +126,23 @@ export const prepareChatFiles = async ({
         isAbsoluteHttpUrl(result.url)
       ) {
         const ref = fileContext.registerExternalFile(result);
-        return { name: ref.name, type: ref.type, url: ref.modelUrl };
+        return {
+          name: ref.name,
+          type: ref.type,
+          url: ref.modelUrl,
+          ...(result.filename ? { filename: result.filename } : {})
+        };
       }
       const registered = fileContext?.resolveChatFile(file.url);
-      if (registered) return registered;
-      return { name: result.name, type: result.type, url: result.url };
+      if (registered) return { ...registered, type: result.type };
+      return {
+        name: result.name,
+        type: result.type,
+        url: result.url,
+        ...(result.filename ? { filename: result.filename } : {})
+      };
     },
     5
   );
-  return parsed.filter((file): file is UserChatItemFileItemType => file !== undefined);
+  return parsed.filter((file): file is PreparedChatFile => file !== undefined);
 };

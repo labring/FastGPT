@@ -1,42 +1,4 @@
 import type { ChatCompletionTool } from '@fastgpt/global/core/ai/llm/type';
-import {
-  AgentAskBlockerTypeSchema,
-  AgentAskQuestionSchema
-} from '@fastgpt/global/core/ai/agent/type';
-import z from 'zod';
-
-const AgentAskBaseSchema = z.object({
-  reason: z.string(),
-  blockerType: AgentAskBlockerTypeSchema
-});
-const LegacyAgentAskQuestionSchema = z.object({
-  question: z.string().trim().min(1),
-  options: z.array(z.string().trim().min(1)).min(2).max(5)
-});
-
-export const AgentAskPayloadSchema = z
-  .union([
-    AgentAskBaseSchema.extend({
-      questions: z.array(AgentAskQuestionSchema).min(1).max(3)
-    }),
-    AgentAskBaseSchema.extend(LegacyAgentAskQuestionSchema.shape)
-  ])
-  .transform((payload) =>
-    'questions' in payload
-      ? payload
-      : // ? Compatibility fallback for reading legacy payload.
-        {
-          reason: payload.reason,
-          blockerType: payload.blockerType,
-          questions: [
-            {
-              question: payload.question,
-              options: payload.options.map((option) => ({ summary: option, value: option }))
-            }
-          ]
-        }
-  );
-export type AgentAskPayload = z.infer<typeof AgentAskPayloadSchema>;
 
 /**
  * 创建单主 loop 的用户追问工具。

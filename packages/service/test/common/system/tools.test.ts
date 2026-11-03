@@ -57,7 +57,7 @@ describe('initFastGPTConfig', () => {
     expect(global.feConfigs.showCustomPdfParse).toBe(true);
     expect(global.systemEnv.customPdfParse?.somarkApiKey).toBe('sk-test');
     expect(global.systemEnv.datasetParseMaxProcess).toBe(10);
-    expect(global.systemEnv.hnswEfSearch).toBe(100);
+    expect(global.systemEnv.hnswEfSearch).toBe(200);
     expect(global.systemEnv.vectorRecallConcurrency).toBe(0);
   });
 

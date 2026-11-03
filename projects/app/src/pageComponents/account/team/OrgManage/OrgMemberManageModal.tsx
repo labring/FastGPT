@@ -10,6 +10,7 @@ import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import React, { useState } from 'react';
 import { type OrgListItemType } from '@fastgpt/global/support/user/team/org/type';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
+import MyBox from '@fastgpt/web/components/common/MyBox';
 import { getTeamMembers } from '@/web/support/user/team/api';
 import MemberItemCard from '@/components/support/permission/MemberManager/MemberItemCard';
 import { type TeamMemberItemType } from '@fastgpt/global/support/user/team/type';
@@ -44,7 +45,11 @@ function OrgMemberManageContent({
   const { t } = useSafeTranslation();
   const [searchKey, setSearchKey] = useState('');
 
-  const { data: allMembers, ScrollData: MemberScrollData } = useScrollPagination(getTeamMembers, {
+  const {
+    data: allMembers,
+    ScrollData: MemberScrollData,
+    isInitialLoading
+  } = useScrollPagination(getTeamMembers, {
     pageSize: 20,
     params: {
       withOrgs: true,
@@ -130,20 +135,29 @@ function OrgMemberManageContent({
                 setSearchKey(e.target.value);
               }}
             />
-            <MemberScrollData mt={3} flexGrow="1" overflow={'auto'}>
-              {allMembers.map((member) => {
-                return (
-                  <MemberItemCard
-                    avatar={member.avatar}
-                    key={member.tmbId}
-                    name={member.memberName}
-                    onChange={() => handleToggleSelect(member.tmbId)}
-                    isChecked={!!isSelected(member.tmbId)}
-                    orgs={member.orgs}
-                  />
-                );
-              })}
-            </MemberScrollData>
+            <MyBox
+              isLoading={isInitialLoading}
+              position={'relative'}
+              overflow={'hidden'}
+              mt={3}
+              flex={1}
+              minH={0}
+            >
+              <MemberScrollData>
+                {allMembers.map((member) => {
+                  return (
+                    <MemberItemCard
+                      avatar={member.avatar}
+                      key={member.tmbId}
+                      name={member.memberName}
+                      onChange={() => handleToggleSelect(member.tmbId)}
+                      isChecked={!!isSelected(member.tmbId)}
+                      orgs={member.orgs}
+                    />
+                  );
+                })}
+              </MemberScrollData>
+            </MyBox>
           </Flex>
           <Flex flexDirection="column" p="4" overflowY="auto" overflowX="hidden">
             <Box mt={2} mb={3}>{`${t('common:chosen')}:${selected.length}`}</Box>

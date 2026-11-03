@@ -57,6 +57,15 @@ const createFormInput = (overrides: DeepPartial<ConfigFormInput> = {}): ConfigFo
 };
 
 describe('formatFormData2ConfigStore', () => {
+  it.each([undefined, 100, 400])('round-trips HNSW search width with input %j', (configured) => {
+    const form = formatConfigStore2FormSchema({
+      fastgpt: { feConfigs: {}, systemEnv: { hnswEfSearch: configured } } as any,
+      fastgptPro: {} as any
+    });
+    expect(form.siteSettings.systemEnv.hnswEfSearch).toBe(configured ?? 200);
+    expect(formatFormData2ConfigStore(form).fastgpt.systemEnv.hnswEfSearch).toBe(configured ?? 200);
+  });
+
   it.each([undefined, 0, 8])(
     'round-trips vector recall concurrency with input %j',
     (concurrency) => {

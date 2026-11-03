@@ -127,6 +127,7 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
             return {
               inputType: it,
               formParams: {
+                appId: appDetail._id,
                 maxLength: variable.maxLength,
                 minLength: variable.minLength,
                 min: variable.min,

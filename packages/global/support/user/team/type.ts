@@ -58,7 +58,10 @@ export const TeamTmbItemSchema = ThidPartyAccountSchema.extend({
   teamId: ObjectIdSchema,
   teamAvatar: z.string().nullish(),
   teamName: z.string(),
-  memberName: z.string().default('Member'),
+  // 兼容历史 null 和缺失值，输出保持字符串；已有空串和名称原样返回。
+  memberName: z
+    .preprocess((value) => value ?? undefined, z.string().default('Member'))
+    .meta({ description: '成员展示名称；历史空值回落为 Member', example: '张三' }),
   isSetMemberName: z.boolean().default(false),
   avatar: z.string().nullish(),
   balance: z.number().optional(),

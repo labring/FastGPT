@@ -1,6 +1,10 @@
 import { PluginErrEnum } from '@fastgpt/global/common/error/code/plugin';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
-import { parseI18nString, selectPluginText, selectReadmeUrl } from '@fastgpt/global/common/i18n/utils';
+import {
+  parseI18nString,
+  selectPluginText,
+  selectReadmeUrl
+} from '@fastgpt/global/common/i18n/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { AppFolderTypeList, AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { initToolInputsTypeByDefaultMode } from '@fastgpt/global/core/app/formEdit/utils';

@@ -40,7 +40,7 @@ export async function registerNodeInstrumentation() {
       { getReadableSystemResourceInfo },
       { startSystemMigrationRunner },
       { startBusinessAfterSystemMigrations },
-      { appEnv }
+      { onDatasetVectorCounted }
     ] = await Promise.all([
       import('@fastgpt/service/common/mongo/init'),
       import('@fastgpt/service/common/mongo/index'),
@@ -69,7 +69,7 @@ export async function registerNodeInstrumentation() {
       import('@fastgpt/service/common/system/resource'),
       import('@/migration/runner'),
       import('@/migration/startup'),
-      import('@/env')
+      import('@fastgpt/service/core/dataset/vectorData/mq')
     ]);
 
     console.log('System resources detected', getReadableSystemResourceInfo());
@@ -157,7 +157,7 @@ export async function registerNodeInstrumentation() {
       runInitializationStep({
         step: 'init-vector-store',
         stage: InitialErrorEnum.VECTORDB_ERROR,
-        action: () => initVectorStore(),
+        action: () => initVectorStore({ onDatasetCounted: onDatasetVectorCounted }),
         logger,
         getErrText
       })
@@ -182,7 +182,7 @@ export async function registerNodeInstrumentation() {
     // 初始化系统用户
     await runInitializationStep({
       step: 'init-system-user',
-      action: () => initSystemUser({ defaultRootPassword: appEnv.DEFAULT_ROOT_PSW }),
+      action: () => initSystemUser(),
       logger,
       getErrText
     });

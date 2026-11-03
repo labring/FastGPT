@@ -94,6 +94,7 @@ const SettingRow = ({
 );
 
 export type AIChatSettingsModalProps = {
+  appId?: string;
   showMaxToken?: boolean;
   showTemperature?: boolean;
   showTopP?: boolean;
@@ -104,6 +105,7 @@ export type AIChatSettingsModalProps = {
 };
 
 const AIChatSettingsModal = ({
+  appId,
   onClose,
   onSuccess,
   defaultData,
@@ -284,6 +286,7 @@ const AIChatSettingsModal = ({
           <SettingRow label={t('common:core.ai.Model')}>
             <AIModelSelector
               modelType={ModelTypeEnum.llm}
+              appId={appId}
               width={'100%'}
               h={'36px'}
               value={modelId}
@@ -307,9 +310,9 @@ const AIChatSettingsModal = ({
                 sx={{ tableLayout: 'fixed', width: `${headerTableWidth} !important` }}
               >
                 <colgroup>
-                  <col style={{ width: '40%' }} />
-                  <col style={{ width: '30%' }} />
-                  <col style={{ width: '30%' }} />
+                  <col style={{ width: '60%' }} />
+                  <col style={{ width: '20%' }} />
+                  <col style={{ width: '20%' }} />
                 </colgroup>
                 <Thead>
                   <Tr>
@@ -337,9 +340,9 @@ const AIChatSettingsModal = ({
             renderBody={() => (
               <Table variant={'bordered'} w={'100%'} sx={{ tableLayout: 'fixed' }}>
                 <colgroup>
-                  <col style={{ width: '40%' }} />
-                  <col style={{ width: '30%' }} />
-                  <col style={{ width: '30%' }} />
+                  <col style={{ width: '60%' }} />
+                  <col style={{ width: '20%' }} />
+                  <col style={{ width: '20%' }} />
                 </colgroup>
                 <Tbody>
                   <Tr>

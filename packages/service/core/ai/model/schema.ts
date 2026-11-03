@@ -28,6 +28,7 @@ const AIModelSchema = new Schema(
       required: true,
       default: ModelScopeEnum.system
     },
+    sortOrder: Number,
     tmbId: {
       type: Schema.Types.ObjectId,
       ref: 'team_members'

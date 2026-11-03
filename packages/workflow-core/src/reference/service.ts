@@ -1,5 +1,10 @@
 import { WorkflowDiagnosticCodeEnum } from '@fastgpt/global/core/workflow/diagnostic/constants';
-import { VARIABLE_NODE_ID, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
+import {
+  NodeInputKeyEnum,
+  NodeOutputKeyEnum,
+  VARIABLE_NODE_ID,
+  WorkflowIOValueTypeEnum
+} from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import {
@@ -13,7 +18,7 @@ import { WorkflowCommandError } from '../domain/diagnostic';
 import type { VariableRef } from './type';
 import { getInputAutomationMeta } from '@fastgpt/global/core/workflow/template/automationMeta';
 import { getNodeInputCapability, type NodeParameterInputMode } from '../template/descriptor';
-import { assertValueSchema } from '../template/valueSchema';
+import { assertValueSchema, getNodeInputValueSchema } from '../template/valueSchema';
 import { getWorkflowInputValueForValidation } from '../template/inputValue';
 
 export type WorkflowReferenceValue = [string, string];
@@ -53,7 +58,9 @@ export const getInputReferenceSourceNodes = ({
     getNodeById: (id) => nodesById.get(id),
     edges: document.executionEdges.map((edge) => ({
       source: edge.source.nodeId,
-      target: edge.target.nodeId
+      target: edge.target.nodeId,
+      targetHandle:
+        edge.target.kind === 'selectedTools' ? NodeOutputKeyEnum.selectedTools : undefined
     })),
     includeChildren: input.canEdit === true,
     childrenNodeIdListMap: {
@@ -158,7 +165,7 @@ const setSelectedInputRenderType = (
   input.selectedType = selectedType;
 };
 
-/** 更新固定值并同步 Web 输入模式；按输入的实际协议检查，保留标签过滤等编辑器的原始存储结构。 */
+/** 更新固定值并同步 Web 输入模式；授权写入规范化结果，标签过滤等编辑器保留原始存储结构。 */
 export const setInputValue = ({
   document,
   nodeId,
@@ -194,15 +201,19 @@ export const setInputValue = ({
       }
     ]);
   }
-  const valueSchema =
-    getInputAutomationMeta(
+  const valueSchema = getNodeInputValueSchema({
+    input,
+    automationMeta: getInputAutomationMeta(
       document.nodes.find((item) => item.nodeId === nodeId)!.flowNodeType,
       inputKey
-    )?.valueSchema ?? input.customJsonSchema;
+    )
+  });
   if (valueSchema)
     assertValueSchema({ value: effectiveValue, schema: valueSchema, nodeId, inputKey });
 
-  input.value = structuredClone(value);
+  input.value = structuredClone(
+    input.key === NodeInputKeyEnum.systemInputConfig ? effectiveValue : value
+  );
   setSelectedInputRenderType(input, literalType);
 };
 

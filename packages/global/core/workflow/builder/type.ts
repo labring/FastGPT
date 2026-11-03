@@ -1,5 +1,6 @@
 import { IntSchema } from '../../../common/zod';
 import { z } from 'zod';
+import { InteractiveToolParamsSchema } from '../../ai/agent/type';
 
 export const WorkflowChecksumSchema = z
   .string()
@@ -47,34 +48,106 @@ export type WorkflowBuilderVersion = z.infer<typeof WorkflowBuilderVersionSchema
 
 export type WorkflowBuilderVersionDisplayState = 'ready' | 'available' | 'expired';
 
-export const WorkflowBuilderPreviewActionSchema = z.object({
-  value: z.enum(['confirm', 'revise', 'cancel']),
-  label: z.string().trim().min(1),
-  inputMode: z.enum(['none', 'text']),
-  inputPlaceholder: z.string().trim().min(1).optional()
-});
+export const WorkflowBuilderPreviewActionSchema = z.enum(['confirm', 'revise', 'cancel']);
 export type WorkflowBuilderPreviewAction = z.infer<typeof WorkflowBuilderPreviewActionSchema>;
+
+/** Preview 回复按 action 区分：仅 revise 必须携带非空修改意见，其余动作不接受该字段。 */
+export const WorkflowBuilderPreviewReplySchema = z.discriminatedUnion('action', [
+  z
+    .object({
+      type: z.literal('workflowBuilderPreview'),
+      action: z.literal('confirm').meta({ description: '确认方案并开始搭建' })
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal('workflowBuilderPreview'),
+      action: z.literal('cancel').meta({ description: '取消本次搭建' })
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal('workflowBuilderPreview'),
+      action: z.literal('revise').meta({ description: '修改方案' }),
+      reviseText: z.string().trim().min(1).meta({ description: '修改方案的具体意见，不能为空' })
+    })
+    .strict()
+]);
+export type WorkflowBuilderPreviewReply = z.infer<typeof WorkflowBuilderPreviewReplySchema>;
 
 export const WorkflowBuilderPreviewSectionSchema = z.object({
   title: z.string().trim().min(1),
-  content: z.string()
+  content: z.string().trim().min(1)
 });
 export type WorkflowBuilderPreviewSection = z.infer<typeof WorkflowBuilderPreviewSectionSchema>;
 
+/** Preview 展示与服务端校验共用的工具参数，解析结果不重复持久化。 */
+export const WorkflowBuilderPreviewPayloadSchema = z.object({
+  title: z.string().trim().min(1),
+  mermaid: z.string().trim().min(1),
+  sections: z.array(WorkflowBuilderPreviewSectionSchema).min(1)
+});
+export type WorkflowBuilderPreviewPayload = z.infer<typeof WorkflowBuilderPreviewPayloadSchema>;
+
+/** 严格解析原始 JSON；拒绝自动修复，确保客户端可以解析同一份原文。 */
+export const WorkflowBuilderPreviewArgumentsSchema = z
+  .string()
+  .transform((value, ctx) => {
+    try {
+      return JSON.parse(value) as unknown;
+    } catch {
+      ctx.addIssue({ code: 'custom', message: 'Preview tool arguments are not valid JSON.' });
+      return z.NEVER;
+    }
+  })
+  .pipe(WorkflowBuilderPreviewPayloadSchema);
+
 /**
- * Workflow Builder 的唯一预览载荷。
- * Mermaid、说明和用户动作都挂在同一个交互节点上，避免 assistant 文本与预览字段各自维护一份方案。
+ * 仅保存模型原始参数字符串；展示时解析，恢复 tool call 时原样使用。
+ * 固定操作由前端提供，回答独立保存到下一条 Human。
  */
 export const WorkflowBuilderPreviewInteractiveSchema = z.object({
   type: z.literal('workflowBuilderPreview'),
-  previewId: z.string().min(1),
-  params: z.object({
-    title: z.string().trim().min(1),
-    mermaid: z.string().trim().min(1),
-    sections: z.array(WorkflowBuilderPreviewSectionSchema),
-    actions: z.array(WorkflowBuilderPreviewActionSchema).length(3)
+  params: InteractiveToolParamsSchema.extend({
+    arguments: z
+      .string()
+      .refine((value) => WorkflowBuilderPreviewArgumentsSchema.safeParse(value).success, {
+        message: 'Invalid Preview tool arguments'
+      })
+      .meta({ description: '模型原始 Preview 工具参数 JSON 字符串，展示时解析，恢复时原样使用' })
   })
 });
 export type WorkflowBuilderPreviewInteractive = z.infer<
   typeof WorkflowBuilderPreviewInteractiveSchema
 >;
+
+/** 由预览后紧邻的 Human 消息解析，仅用于本轮执行和模型工具上下文，不写回预览。 */
+export type WorkflowBuilderPreviewDecision = {
+  previewId: string;
+  action: WorkflowBuilderPreviewAction;
+  feedback?: string;
+};
+
+/** Builder 只持久化业务执行事实；对话、计划和模型暂停状态沿用 ChatItem 协议。 */
+export const WorkflowBuilderTaskSchema = z.object({
+  schemaVersion: z.literal(1),
+  taskId: z.string().min(1),
+  requestChatItemId: z.string().min(1),
+  baseChecksum: WorkflowChecksumSchema,
+  preview: z.object({
+    previewId: z.string().min(1),
+    responseChatItemId: z.string().min(1),
+    checksum: WorkflowChecksumSchema
+  }),
+  cancelled: z.boolean().optional(),
+  delivery: z
+    .object({
+      operationId: z.string().min(1),
+      draftRevision: z.string().min(1),
+      targetChecksum: WorkflowChecksumSchema,
+      responseChatItemId: z.string().min(1),
+      version: WorkflowBuilderVersionSchema.optional()
+    })
+    .optional()
+});
+export type WorkflowBuilderTask = z.infer<typeof WorkflowBuilderTaskSchema>;

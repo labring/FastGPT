@@ -1,0 +1,92 @@
+import pg from 'pg';
+import { DATASET_VECTOR_INDEX_DROP_ROWS } from '@fastgpt/global/core/dataset/vectorData/constants';
+import type { EmbeddingRecallCtrlPropsType } from '../type';
+import { DatasetVectorTableName } from '../constants';
+
+/**
+ * 将 ready 且至少五千行的库各自路由到 FP16 索引，其余库合并精确检索；各组取 limit 后按 FP32 截断。
+ * 五千到一万行保留已有索引路由，低于五千或正在移除的库立即回到精确路径，不等待维护任务。
+ * datasetId 来自当前团队的路由快照且全局唯一；HNSW 组只按该常量和 collection 约束检索，
+ * 避免 team/dataset 关联条件被重复估算。精确组保留团队过滤，局部谓词常量使用驱动转义。
+ */
+export const buildPgVectorRecallQuery = ({
+  teamId,
+  datasetIds,
+  datasetVectorData = [],
+  vector,
+  limit,
+  forbidCollectionIdList,
+  filterCollectionIdList
+}: EmbeddingRecallCtrlPropsType) => {
+  const ids = [...new Set(datasetIds.map(String))];
+  if (ids.length === 0 || limit <= 0 || filterCollectionIdList?.length === 0) return;
+  if (!Number.isSafeInteger(limit) || vector.length === 0 || !vector.every(Number.isFinite)) {
+    throw new Error('Invalid PG vector recall input');
+  }
+
+  const forbidden = [...new Set(forbidCollectionIdList.map(String))];
+  const allowed = filterCollectionIdList?.map(String).filter((id) => !forbidden.includes(id));
+  if (allowed?.length === 0) return;
+
+  // 1. 参数覆盖向量、limit、集合过滤；知识库和团队常量使用 pg.escapeLiteral。
+  const values: unknown[] = [`[${vector.join(',')}]`, limit];
+  const collectionClauses: string[] = [];
+  if (allowed) {
+    values.push(allowed);
+    collectionClauses.push(`collection_id = ANY($${values.length}::varchar[])`);
+  } else if (forbidden.length > 0) {
+    values.push(forbidden);
+    collectionClauses.push(`NOT (collection_id = ANY($${values.length}::varchar[]))`);
+  }
+  const exactWhere = [`team_id = ${pg.escapeLiteral(String(teamId))}`, ...collectionClauses];
+  const metadata = new Map(datasetVectorData.map((item) => [String(item.datasetId), item]));
+  const indexed = ids.filter((id) => {
+    const data = metadata.get(id);
+    return data?.pgIndex === 'ready' && data.rows >= DATASET_VECTOR_INDEX_DROP_ROWS;
+  });
+  const indexedSet = new Set(indexed);
+  const exact = ids.filter((id) => !indexedSet.has(id));
+  // 事务内各 HNSW 分组独立使用扫描上限，取最大库行数即可；GUC 只接受 int32。
+  const maxScanTuples = indexed.reduce(
+    (max, id) => Math.min(2_147_483_647, Math.max(max, metadata.get(id)!.rows)),
+    0
+  );
+
+  // 2. 参数先声明为 vector，避免 PG 从首次 halfvec 转换推断类型，提前量化重排使用的查询向量。
+  // 候选集先物化，再将存储向量转为 FP32 计算距离；halfvec 存储不会恢复量化前的精度。
+  const candidates = indexed.map(
+    (id, i) => `candidates_${i} AS MATERIALIZED (
+      SELECT id, collection_id, vector
+      FROM ${DatasetVectorTableName}
+      WHERE ${[`dataset_id = ${pg.escapeLiteral(id)}`, ...collectionClauses].join(' AND ')}
+      ORDER BY vector::halfvec(${vector.length}) <#> $1::vector::halfvec(${vector.length})
+      LIMIT $2
+    )`
+  );
+  // 候选集每组已经限制数量，FP32 距离只需在末尾统一排序，不再逐组排序和截断。
+  const groups = indexed.map(
+    (_, i) => `(SELECT id, collection_id, vector::vector <#> $1::vector AS score
+      FROM candidates_${i})`
+  );
+
+  if (exact.length > 0) {
+    const datasetParams = exact.map((id) => {
+      values.push(id);
+      return `$${values.length}::varchar`;
+    });
+    // +0 阻止旧全局 HNSW 接管精确分组；仍允许 team/dataset/collection B-tree 过滤。
+    groups.push(`(SELECT id, collection_id, vector::vector <#> $1::vector AS score
+      FROM ${DatasetVectorTableName}
+      WHERE ${exactWhere.join(' AND ')} AND dataset_id IN (${datasetParams.join(', ')})
+      ORDER BY (vector::vector <#> $1::vector) + 0, id LIMIT $2)`);
+  }
+
+  return {
+    text: `${candidates.length > 0 ? `WITH ${candidates.join(',\n')}` : ''}
+      SELECT id, collection_id, score FROM (${groups.join('\nUNION ALL\n')}) AS grouped_results
+      ORDER BY score, id LIMIT $2`,
+    values,
+    usesHnsw: indexed.length > 0,
+    maxScanTuples
+  };
+};

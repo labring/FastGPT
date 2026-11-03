@@ -1,6 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
-import { FlowNodeInputTypeEnum, FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import {
+  FlowNodeInputTypeEnum,
+  FlowNodeTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type {
   JSONSchemaInputType,
@@ -215,7 +218,7 @@ describe('getSystemToolRunTimeNodeFromSystemToolset', () => {
     const toolSetNode = makeToolSetNode();
 
     const result = await getSystemToolRunTimeNodeFromSystemToolset({
-      toolSetNode,
+      toolSetNode
     });
 
     expect(result).toEqual([]);
@@ -225,7 +228,7 @@ describe('getSystemToolRunTimeNodeFromSystemToolset', () => {
   it('uses the localized child intro', async () => {
     const toolSetNode = makeToolSetNode({
       toolList: [{ toolId: 'child-1', name: '', description: undefined }],
-      metadataLocale: 'zh-CN',
+      metadataLocale: 'zh-CN'
     });
     const inputSchema = {
       type: 'object',
@@ -247,7 +250,7 @@ describe('getSystemToolRunTimeNodeFromSystemToolset', () => {
     ]);
 
     const result = await getSystemToolRunTimeNodeFromSystemToolset({
-      toolSetNode,
+      toolSetNode
     });
 
     expect(result[0]).toMatchObject({
@@ -279,7 +282,7 @@ describe('getSystemToolRunTimeNodeFromSystemToolset', () => {
     ]);
 
     const result = await getSystemToolRunTimeNodeFromSystemToolset({
-      toolSetNode,
+      toolSetNode
     });
 
     expect(mockGetSystemToolDetail).toHaveBeenCalledWith({
@@ -338,7 +341,7 @@ describe('getSystemToolRunTimeNodeFromSystemToolset', () => {
     ]);
 
     const result = await getSystemToolRunTimeNodeFromSystemToolset({
-      toolSetNode,
+      toolSetNode
     });
 
     expect(result).toHaveLength(1);
@@ -359,7 +362,7 @@ describe('getSystemToolRunTimeNodeFromSystemToolset', () => {
     ]);
 
     const result = await getSystemToolRunTimeNodeFromSystemToolset({
-      toolSetNode,
+      toolSetNode
     });
 
     expect(result).toHaveLength(1);
@@ -381,7 +384,7 @@ describe('getSystemToolRunTimeNodeFromSystemToolset', () => {
     ]);
 
     const result = await getSystemToolRunTimeNodeFromSystemToolset({
-      toolSetNode,
+      toolSetNode
     });
 
     expect(result[0].intro).toBe('  ');
@@ -410,7 +413,7 @@ describe('getSystemToolRunTimeNodeFromSystemToolset', () => {
     ]);
 
     const result = await getSystemToolRunTimeNodeFromSystemToolset({
-      toolSetNode,
+      toolSetNode
     });
 
     expect(result).toHaveLength(1);
@@ -437,7 +440,7 @@ describe('getSystemToolRunTimeNodeFromSystemToolset', () => {
     ]);
 
     const result = await getSystemToolRunTimeNodeFromSystemToolset({
-      toolSetNode,
+      toolSetNode
     });
 
     const configInput = result[0].inputs.find(
@@ -480,7 +483,7 @@ describe('getSystemToolRunTimeNodeFromSystemToolset', () => {
     ]);
 
     const result = await getSystemToolRunTimeNodeFromSystemToolset({
-      toolSetNode,
+      toolSetNode
     });
 
     expect(result[0].inputs).toEqual([]);
@@ -502,7 +505,7 @@ describe('getSystemToolRunTimeNodeFromSystemToolset', () => {
     ]);
 
     const result = await getSystemToolRunTimeNodeFromSystemToolset({
-      toolSetNode,
+      toolSetNode
     });
 
     expect(result).toHaveLength(2);
@@ -523,7 +526,7 @@ describe('getSystemToolRunTimeNodeFromSystemToolset', () => {
     mockToolDetail();
 
     const result = await getSystemToolRunTimeNodeFromSystemToolset({
-      toolSetNode,
+      toolSetNode
     });
 
     expect(result).toHaveLength(1);
@@ -540,7 +543,7 @@ describe('getSystemToolRunTimeNodeFromSystemToolset', () => {
     mockToolDetail();
 
     const result = await getSystemToolRunTimeNodeFromSystemToolset({
-      toolSetNode,
+      toolSetNode
     });
 
     expect(result).toHaveLength(1);
@@ -555,7 +558,7 @@ describe('getSystemToolRunTimeNodeFromSystemToolset', () => {
     mockToolDetail();
 
     const result = await getSystemToolRunTimeNodeFromSystemToolset({
-      toolSetNode,
+      toolSetNode
     });
 
     expect(mockGetSystemToolDetail).toHaveBeenCalledWith({

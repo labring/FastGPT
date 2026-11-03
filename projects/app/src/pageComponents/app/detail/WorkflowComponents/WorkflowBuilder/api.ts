@@ -1,6 +1,4 @@
 import { streamFetch } from '@/web/common/api/fetch';
-import { batchDeleteChatHistories, getChatHistories } from '@/web/core/chat/history/api';
-import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import type { StartChatFnProps } from '@/components/core/chat/ChatContainer/type';
 import {
   WorkflowBuilderVersionCommitBodySchema,
@@ -31,20 +29,6 @@ export const streamWorkflowBuilderChat = ({
     abortCtrl
   });
 
-/**
- * 查询当前成员在应用下最近一次 Builder 会话。
- * 用于新浏览器或评测新应用首次打开时恢复服务端会话，不改变已有本地会话选择。
- */
-export const getLatestWorkflowBuilderChatId = async (appId: string) => {
-  const { list } = await getChatHistories({
-    appId,
-    sourceType: ChatSourceTypeEnum.workflowBuilder,
-    pageNum: 1,
-    pageSize: 1
-  });
-  return list[0]?.chatId;
-};
-
 export const loadWorkflowBuilderVersion = async (
   data: WorkflowBuilderVersionLoadBody
 ): Promise<WorkflowBuilderVersionLoadResponse> =>
@@ -64,24 +48,3 @@ export const commitWorkflowBuilderVersion = async (
       WorkflowBuilderVersionCommitBodySchema.parse(data)
     )
   );
-
-/** 服务端历史删除成功后重建 Builder 会话。 */
-export const clearWorkflowBuilderChatHistory = async ({
-  appId,
-  chatId,
-  clearChatRecords,
-  restartChat
-}: {
-  appId: string;
-  chatId: string;
-  clearChatRecords: () => void;
-  restartChat: () => void;
-}) => {
-  await batchDeleteChatHistories({
-    appId,
-    sourceType: ChatSourceTypeEnum.workflowBuilder,
-    chatIds: [chatId]
-  });
-  clearChatRecords();
-  restartChat();
-};

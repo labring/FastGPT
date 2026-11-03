@@ -1,6 +1,76 @@
 import { getAutomationMeta } from '@fastgpt/global/core/workflow/template/automationMeta';
-import { valueMatchesSchema } from '../../src/template/valueSchema';
+import { getNodeInputValueSchema, valueMatchesSchema } from '../../src/template/valueSchema';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { describe, expect, it } from 'vitest';
+
+describe('getNodeInputValueSchema', () => {
+  const input: FlowNodeInputItemType = {
+    key: NodeInputKeyEnum.systemInputConfig,
+    label: '',
+    renderTypeList: [FlowNodeInputTypeEnum.hidden],
+    inputList: [
+      { key: 'appId', label: 'App ID', inputType: 'input', required: true },
+      { key: 'appSecret', label: 'App secret', inputType: 'secret', required: true },
+      { key: 'limit', label: 'Limit', inputType: 'numberInput' },
+      { key: 'enabled', label: 'Enabled', inputType: 'switch' },
+      { key: 'region', label: 'Region', inputType: 'select', list: [{ label: 'US', value: 'us' }] },
+      { key: 'custom', label: 'Custom', inputType: 'select' }
+    ]
+  };
+
+  it.each([
+    { type: 'system' },
+    { type: 'manual', value: {} },
+    { type: 'manual', value: { appId: { value: 'demo-app' } } },
+    { type: 'manual', value: { appSecret: { value: '', secret: 'existing-ciphertext' } } },
+    { type: 'manual', value: { appSecret: { value: 'demo-secret', secret: '' } } },
+    { type: 'manual', value: { limit: { value: 0 }, enabled: { value: false } } },
+    { type: 'manual', value: { region: { value: 'us' }, custom: { value: 'custom' } } },
+    {
+      type: 'manual',
+      value: { limit: { value: '' }, enabled: { value: '' }, region: { value: '' } }
+    }
+  ])('accepts canvas authorization values, including pending fields: %j', (value) => {
+    expect(valueMatchesSchema(value, getNodeInputValueSchema({ input })!)).toBe(true);
+  });
+
+  it.each([
+    { type: 'team' },
+    {
+      type: 'system',
+      value: Object.fromEntries(input.inputList!.map(({ key }) => [key, { secret: '', value: '' }]))
+    },
+    { type: 'system', value: { appSecret: { value: 'would-be-discarded' } } },
+    { type: 'system', value: { appSecret: { secret: 'would-be-discarded' } } },
+    { type: 'system', value: { unknownKey: { secret: '', value: '' } } },
+    { type: 'manual' },
+    { type: 'manual', value: { appSecret: 'not-a-secret-wrapper' } },
+    { type: 'manual', value: { appSecret: { secret: 42 } } },
+    { type: 'manual', value: { unknownKey: { value: 'unknown-field' } } },
+    { type: 'manual', value: { limit: { value: 'not-a-number' } } },
+    { type: 'manual', value: { enabled: { value: 'not-a-boolean' } } },
+    { type: 'manual', value: { region: { value: 'unknown-region' } } }
+  ])('rejects shapes the authorization runtime cannot consume: %j', (value) => {
+    expect(valueMatchesSchema(value, getNodeInputValueSchema({ input })!)).toBe(false);
+  });
+
+  it('preserves explicit schemas and leaves unrelated inputs unchanged', () => {
+    const customJsonSchema = { type: 'object' };
+    expect(getNodeInputValueSchema({ input: { ...input, customJsonSchema } })).toBe(
+      customJsonSchema
+    );
+    const valueSchema = { const: 'explicit-contract' };
+    expect(
+      getNodeInputValueSchema({
+        input: { ...input, customJsonSchema },
+        automationMeta: { valueSchema }
+      })
+    ).toBe(valueSchema);
+    expect(getNodeInputValueSchema({ input: { ...input, key: 'ordinary' } })).toBeUndefined();
+  });
+});
 
 describe('valueMatchesSchema', () => {
   it('honors boolean schema branches and properties in tool input contracts', () => {

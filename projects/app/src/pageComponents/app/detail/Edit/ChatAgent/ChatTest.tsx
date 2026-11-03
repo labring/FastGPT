@@ -18,7 +18,6 @@ import ChatItemContextProvider, { ChatItemContext } from '@/web/core/chat/contex
 import ChatRecordContextProvider from '@/web/core/chat/context/chatRecordContext';
 import { AgentChatTestTabEnum, useChatStore } from '@/web/core/chat/context/useChatStore';
 import { useUserStore } from '@/web/support/user/useUserStore';
-import { getErrText } from '@fastgpt/global/common/error/utils';
 import { ChatAgentHelperTypeEnum } from '@fastgpt/global/core/ai/auxiliaryGeneration/constants';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
@@ -154,7 +153,8 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
     chatConfig: appForm.chatConfig,
     isReady: !isAgentSkillSandboxUnavailable
   });
-  const onRestartChat = useCallback(async () => {
+  const restartChatLabel = t('common:core.chat.New Chat');
+  const onRestartChat = useCallback(() => {
     if (isAgentSkillSandboxUnavailable) {
       toast({
         status: 'warning',
@@ -163,14 +163,7 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
       return;
     }
     if (activeTab === AgentChatTestTabEnum.helper) {
-      try {
-        await ChatAgentHelperRef.current?.restartChat();
-      } catch (error) {
-        toast({
-          status: 'warning',
-          title: getErrText(error, t('common:core.chat.error.Chat error'))
-        });
-      }
+      ChatAgentHelperRef.current?.restartChat();
     } else {
       restartChat();
     }
@@ -237,14 +230,14 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
             {activeTab === AgentChatTestTabEnum.chatDebug && (
               <ChatVariableButton chatType={ChatTypeEnum.test} />
             )}
-            <MyTooltip label={t('common:core.chat.Restart')}>
+            <MyTooltip label={restartChatLabel}>
               <IconButton
                 className="chat"
                 size={'smSquare'}
-                icon={<MyIcon name={'common/clearLight'} w={'14px'} />}
-                variant={'whiteDanger'}
+                icon={<MyIcon name={'core/chat/chatLight'} w={'14px'} />}
+                variant={'whitePrimary'}
                 borderRadius={'md'}
-                aria-label={'delete'}
+                aria-label={restartChatLabel}
                 onClick={(e) => {
                   e.stopPropagation();
                   onRestartChat();

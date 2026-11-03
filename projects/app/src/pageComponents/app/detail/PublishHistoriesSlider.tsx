@@ -198,6 +198,7 @@ const TeamCloud = ({
   const {
     ScrollData,
     data: scrollDataList,
+    isInitialLoading,
     setData
   } = useScrollPagination(getAppVersionList, {
     pageSize: 20,
@@ -246,90 +247,98 @@ const TeamCloud = ({
   );
 
   return (
-    <ScrollData flex={'1 0 0'} px={6} pb={6} isLoading={isLoadingVersion}>
-      {scrollDataList.map((item, index) => {
-        const firstPublishedIndex = scrollDataList.findIndex((data) => data.isPublish);
+    <MyBox
+      isLoading={isInitialLoading || isLoadingVersion}
+      position={'relative'}
+      overflow={'hidden'}
+      flex={'1 0 0'}
+      minH={0}
+    >
+      <ScrollData px={6} pb={6}>
+        {scrollDataList.map((item, index) => {
+          const firstPublishedIndex = scrollDataList.findIndex((data) => data.isPublish);
 
-        return (
-          <Flex
-            key={item._id}
-            alignItems={'center'}
-            py={editIndex !== index ? 2 : 1}
-            px={3}
-            borderRadius={'md'}
-            cursor={'pointer'}
-            fontWeight={500}
-            onMouseEnter={() => setHoveredIndex(index)}
-            onMouseLeave={() => setHoveredIndex(undefined)}
-            _hover={{
-              bg: 'primary.50'
-            }}
-            onClick={() => editIndex === undefined && onChangeVersion(item)}
-          >
-            <VersionPublisherPopover sourceMember={item.sourceMember} time={item.time} />
-            {editIndex !== index ? (
-              <>
-                <Box
-                  ml={3}
-                  flex={'1 0 0'}
-                  fontSize={'sm'}
-                  display="flex"
-                  alignItems="center"
-                  overflow="hidden"
-                  textOverflow="ellipsis"
-                  whiteSpace="nowrap"
-                >
-                  <Box minWidth={0} overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">
-                    <Box as={'span'} color={'myGray.900'}>
-                      {t(item.versionName) || formatTime2YMDHMS(item.time)}
+          return (
+            <Flex
+              key={item._id}
+              alignItems={'center'}
+              py={editIndex !== index ? 2 : 1}
+              px={3}
+              borderRadius={'md'}
+              cursor={'pointer'}
+              fontWeight={500}
+              onMouseEnter={() => setHoveredIndex(index)}
+              onMouseLeave={() => setHoveredIndex(undefined)}
+              _hover={{
+                bg: 'primary.50'
+              }}
+              onClick={() => editIndex === undefined && onChangeVersion(item)}
+            >
+              <VersionPublisherPopover sourceMember={item.sourceMember} time={item.time} />
+              {editIndex !== index ? (
+                <>
+                  <Box
+                    ml={3}
+                    flex={'1 0 0'}
+                    fontSize={'sm'}
+                    display="flex"
+                    alignItems="center"
+                    overflow="hidden"
+                    textOverflow="ellipsis"
+                    whiteSpace="nowrap"
+                  >
+                    <Box minWidth={0} overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">
+                      <Box as={'span'} color={'myGray.900'}>
+                        {t(item.versionName) || formatTime2YMDHMS(item.time)}
+                      </Box>
                     </Box>
+                    {item.isPublish && (
+                      <Tag
+                        ml={3}
+                        flexShrink={0}
+                        type="borderSolid"
+                        colorSchema={index === firstPublishedIndex ? 'green' : 'blue'}
+                      >
+                        {index === firstPublishedIndex
+                          ? t('app:app.version_current')
+                          : t('app:app.version_past')}
+                      </Tag>
+                    )}
                   </Box>
-                  {item.isPublish && (
-                    <Tag
-                      ml={3}
-                      flexShrink={0}
-                      type="borderSolid"
-                      colorSchema={index === firstPublishedIndex ? 'green' : 'blue'}
-                    >
-                      {index === firstPublishedIndex
-                        ? t('app:app.version_current')
-                        : t('app:app.version_past')}
-                    </Tag>
+                  {hoveredIndex === index && (
+                    <MyIcon
+                      name="edit"
+                      w={'18px'}
+                      ml={2}
+                      _hover={{ color: 'primary.600' }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setEditIndex(index);
+                      }}
+                    />
                   )}
-                </Box>
-                {hoveredIndex === index && (
-                  <MyIcon
-                    name="edit"
-                    w={'18px'}
-                    ml={2}
-                    _hover={{ color: 'primary.600' }}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setEditIndex(index);
+                </>
+              ) : (
+                <MyBox ml={3} isLoading={isEditing} size={'md'}>
+                  <Input
+                    autoFocus
+                    h={8}
+                    defaultValue={item.versionName || formatTime2YMDHMS(item.time)}
+                    onClick={(e) => e.stopPropagation()}
+                    onBlur={(e) => onUpdateVersion(item, e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        // @ts-ignore
+                        onUpdateVersion(item, e.target.value);
+                      }
                     }}
                   />
-                )}
-              </>
-            ) : (
-              <MyBox ml={3} isLoading={isEditing} size={'md'}>
-                <Input
-                  autoFocus
-                  h={8}
-                  defaultValue={item.versionName || formatTime2YMDHMS(item.time)}
-                  onClick={(e) => e.stopPropagation()}
-                  onBlur={(e) => onUpdateVersion(item, e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      // @ts-ignore
-                      onUpdateVersion(item, e.target.value);
-                    }
-                  }}
-                />
-              </MyBox>
-            )}
-          </Flex>
-        );
-      })}
-    </ScrollData>
+                </MyBox>
+              )}
+            </Flex>
+          );
+        })}
+      </ScrollData>
+    </MyBox>
   );
 };

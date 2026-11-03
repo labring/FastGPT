@@ -676,6 +676,54 @@ describe('validateWorkflow', () => {
     ).toContain(WorkflowDiagnosticCodeEnum.branchKeyNotFound);
   });
 
+  it('rejects dynamic choices from the tool caller while retaining its upstream choices', () => {
+    const document = makeDocument({
+      flowNodeType: FlowNodeTypeEnum.userSelect,
+      inputs: [
+        {
+          key: NodeInputKeyEnum.userSelectOptions,
+          label: 'Options',
+          renderTypeList: [FlowNodeInputTypeEnum.reference],
+          valueType: WorkflowIOValueTypeEnum.any,
+          required: true,
+          value: [['caller', 'choices']]
+        }
+      ]
+    });
+    document.nodes[0].outputs.push({
+      id: 'choices',
+      key: 'choices',
+      type: FlowNodeOutputTypeEnum.static,
+      valueType: WorkflowIOValueTypeEnum.arrayString
+    });
+    document.nodes.push({
+      ...structuredClone(document.nodes[0]),
+      nodeId: 'caller',
+      flowNodeType: FlowNodeTypeEnum.toolCall
+    });
+    document.executionEdges = [
+      { source: { kind: 'next', nodeId: 'start' }, target: { kind: 'target', nodeId: 'caller' } },
+      {
+        source: { kind: 'selectedTools', nodeId: 'caller' },
+        target: { kind: 'selectedTools', nodeId: 'target' }
+      }
+    ];
+    const emptyOptionsIssue = expect.objectContaining({
+      code: WorkflowDiagnosticCodeEnum.branchConfigurationInvalid,
+      nodeId: 'target',
+      inputKey: NodeInputKeyEnum.userSelectOptions,
+      params: { reason: 'empty' }
+    });
+    expect(validateWorkflow(document, { invalidReferencePolicy: 'error' })).toContainEqual(
+      emptyOptionsIssue
+    );
+
+    document.nodes[1].inputs[0].value = [['start', 'choices']];
+    expect(validateWorkflow(document, { invalidReferencePolicy: 'error' })).not.toContainEqual(
+      emptyOptionsIssue
+    );
+  });
+
   it.each([
     { invalid: true },
     { id: NodeOutputKeyEnum.addOutputParam },

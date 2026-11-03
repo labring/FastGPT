@@ -29,9 +29,6 @@ export type { TeamQpmCacheOptions } from './teamQpm';
 export { TeamPointCache, teamPointCache } from './teamPoint';
 export type { TeamPointCacheOptions, TeamPointSnapshot } from './teamPoint';
 
-export { TeamVectorCountCache } from './teamVectorCount';
-export type { TeamVectorCountCacheOptions } from './teamVectorCount';
-
 export {
   WECHAT_QR_LOGIN_TTL_SECONDS,
   WechatQrLoginCache,

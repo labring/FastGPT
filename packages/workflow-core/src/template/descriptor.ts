@@ -15,6 +15,7 @@ import type {
   WorkflowResourceKind
 } from '@fastgpt/global/core/workflow/template/type';
 import { getNodeRuntimeContract, type NodeRuntimeContract } from './contract';
+import { getNodeInputValueSchema } from './valueSchema';
 
 export type NodeParameterInputMode = 'literal' | 'reference' | 'secret';
 
@@ -95,7 +96,7 @@ const getInferredInputModes = (renderTypes: FlowNodeInputTypeEnum[]): NodeParame
 /**
  * 计算 Builder 对单个节点输入的可操作能力。
  * hidden 输入在 FastGPT 中也用于高级/弹窗设置，因此仍按字面量输入处理；
- * system_input_config、addInputParam 和 agentGenerated-only 不属于 Builder 配置面。
+ * 工具授权与画布共用配置结构；addInputParam 和 agentGenerated-only 不属于 Builder 配置面。
  */
 export const getNodeInputCapability = ({
   input,
@@ -111,7 +112,6 @@ export const getNodeInputCapability = ({
   if (
     input.canEdit === false ||
     automationMeta?.configurable === false ||
-    input.key === NodeInputKeyEnum.systemInputConfig ||
     input.renderTypeList.includes(FlowNodeInputTypeEnum.addInputParam) ||
     isAgentGeneratedOnly
   ) {
@@ -160,6 +160,7 @@ export const normalizeNodeTemplateDescriptor = ({
       .filter((input) => input.deprecated !== true)
       .map((input) => {
         const meta = automationMeta?.inputs?.[input.key];
+        const isToolAuthorization = input.key === NodeInputKeyEnum.systemInputConfig;
         const { configurable, inputModes } = getNodeInputCapability({
           input,
           automationMeta: meta
@@ -169,7 +170,7 @@ export const normalizeNodeTemplateDescriptor = ({
           max: input.max,
           minLength: input.minLength,
           maxLength: input.maxLength,
-          valueSchema: meta?.valueSchema ?? input.customJsonSchema
+          valueSchema: getNodeInputValueSchema({ input, automationMeta: meta })
         };
         const validatedDefault = validatedInputDefaults?.[input.key];
         return {
@@ -180,6 +181,9 @@ export const normalizeNodeTemplateDescriptor = ({
               meta?.agentHint,
               input.toolDescription,
               input.description,
+              isToolAuthorization
+                ? 'Tool authorization. Use manual to configure the fields in valueSchema; use system to reuse available platform credentials. Preserve other fields when replacing a credential. Missing fields remain pending until configured before running.'
+                : undefined,
               input.label,
               input.key
             ].find((value) => typeof value === 'string' && value.trim().length > 0) as string
@@ -190,8 +194,8 @@ export const normalizeNodeTemplateDescriptor = ({
             validatedDefault?.provided === true
               ? validatedDefault.value
               : (input.defaultValue ?? input.value),
-          defaultPolicy: meta?.defaultPolicy ?? 'template',
-          resourceKind: meta?.resourceKind,
+          defaultPolicy: meta?.defaultPolicy ?? (isToolAuthorization ? 'userRequired' : 'template'),
+          resourceKind: meta?.resourceKind ?? (isToolAuthorization ? 'secret' : undefined),
           bindingRequired: meta?.bindingRequired ?? false,
           configurable,
           inputModes,

@@ -1,6 +1,7 @@
 import type { DatasetCiteItemType } from '@fastgpt/global/core/dataset/type';
 import type { AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import { pick } from 'lodash-es';
 
 /* ===== 兼容性代码 ===== */
 export enum ChatItemValueTypeEnum {
@@ -35,9 +36,28 @@ export const getChatItemValueType = (item: ChatItemValueTypeInput): ChatItemValu
 
 export type PublicCompletionInteractive = Pick<WorkflowInteractiveResponseType, 'type' | 'params'>;
 
-export type CompletionDetailValueItem = Omit<AIChatItemValueItemType, 'interactive'> & {
+const publicCompletionValueKeys = [
+  'id',
+  'text',
+  'reasoning',
+  'tool',
+  'tools',
+  'skills',
+  'plan',
+  'planStatus',
+  'agentPlanUpdate',
+  'workflowBuilderVersion',
+  'chatAgentBuilderVersion',
+  'hideReason'
+] as const satisfies (keyof AIChatItemValueItemType)[];
+
+export type CompletionDetailValueItem = Pick<
+  AIChatItemValueItemType,
+  (typeof publicCompletionValueKeys)[number]
+> & {
   type?: ChatItemValueTypeEnum;
   interactive?: PublicCompletionInteractive;
+  file?: unknown;
 };
 
 export type CompletionResponseContent =
@@ -76,15 +96,6 @@ export const formatCompletionResponseContent = ({
     return childrenResponse as WorkflowInteractiveResponseType;
   };
 
-  const omitChildrenResponse = (
-    params: WorkflowInteractiveResponseType['params']
-  ): WorkflowInteractiveResponseType['params'] => {
-    const publicParams = { ...(params as Record<string, unknown>) };
-    delete publicParams.childrenResponse;
-
-    return publicParams as WorkflowInteractiveResponseType['params'];
-  };
-
   /**
    * workflow 暂停恢复依赖 entryNodeIds、memoryEdges、nodeOutputs 等运行态字段；这些字段会保存到
    * chat history，外部接口只需要返回当前交互的展示配置。children/loop/tool 包装节点会继续向下取
@@ -110,16 +121,60 @@ export const formatCompletionResponseContent = ({
 
     return {
       type: current.type,
-      params: omitChildrenResponse(current.params)
+      // 未能解开的运行态包装（损坏、循环或超深）不能暴露 toolParams、loopHistory 等内部上下文。
+      params:
+        current.type === 'childrenInteractive' ||
+        current.type === 'toolChildrenInteractive' ||
+        current.type === 'loopInteractive' ||
+        current.type === 'loopRunInteractive'
+          ? ({} as WorkflowInteractiveResponseType['params'])
+          : current.params
     };
   };
 
-  const formatDetailValueList = (responseContent: AIChatItemValueItemType[]) =>
-    responseContent.map((item) => ({
+  /** 只投影公开展示字段；新增恢复元数据默认不出现在非流式 API 响应中。 */
+  const publicValues = responseContent.flatMap((item): CompletionDetailValueItem[] => {
+    if (item.hideInUI) return [];
+    const value: CompletionDetailValueItem = pick(item, publicCompletionValueKeys);
+    const formatPublicTool = (tool: NonNullable<AIChatItemValueItemType['tool']>) => {
+      const publicTool = pick(tool, [
+        'id',
+        'toolName',
+        'toolAvatar',
+        'params',
+        'response',
+        'hideDetails',
+        'functionName'
+      ]);
+      return tool.internalOnly
+        ? { ...publicTool, params: '', response: '', hideDetails: true }
+        : publicTool;
+    };
+    if (item.tools) value.tools = item.tools.filter((tool) => !tool.hideInUI).map(formatPublicTool);
+    if (item.tool) value.tool = item.tool.hideInUI ? undefined : formatPublicTool(item.tool);
+    if (item.interactive) value.interactive = formatPublicCompletionInteractive(item.interactive);
+    // 兼容旧版文件 value；当前 AI Schema 不再声明该字段。
+    if ('file' in item) value.file = item.file;
+
+    const hasPublicContent =
+      value.text ||
+      value.reasoning ||
+      value.tool ||
+      value.tools?.length ||
+      value.skills?.length ||
+      value.interactive ||
+      'file' in value ||
+      value.plan !== undefined ||
+      value.planStatus !== undefined ||
+      value.agentPlanUpdate ||
+      value.workflowBuilderVersion ||
+      value.chatAgentBuilderVersion;
+    return hasPublicContent ? [value] : [];
+  });
+
+  const formatDetailValueList = () =>
+    publicValues.map((item) => ({
       ...item,
-      ...(item.interactive && {
-        interactive: formatPublicCompletionInteractive(item.interactive)
-      }),
       ...(includeLegacyType && { type: getChatItemValueType(item) })
     }));
 
@@ -127,7 +182,7 @@ export const formatCompletionResponseContent = ({
     responseContent,
     detail
   }: {
-    responseContent: AIChatItemValueItemType[];
+    responseContent: CompletionDetailValueItem[];
     detail: boolean;
   }) => {
     if (!detail) return false;
@@ -139,30 +194,30 @@ export const formatCompletionResponseContent = ({
     return !!(item.interactive || item.tool || item.tools || 'file' in item);
   };
 
-  if (responseContent.length === 0) {
+  if (publicValues.length === 0) {
     return {
       reasoning: '',
       content: ''
     };
   }
 
-  if (shouldReturnDetailValueList({ responseContent, detail })) {
-    return formatDetailValueList(responseContent);
+  if (shouldReturnDetailValueList({ responseContent: publicValues, detail })) {
+    return formatDetailValueList();
   }
 
-  if (responseContent.length === 1) {
+  if (publicValues.length === 1) {
     return {
-      reasoning: responseContent[0].reasoning?.content,
-      content: responseContent[0].text?.content
+      reasoning: publicValues[0].reasoning?.content,
+      content: publicValues[0].text?.content
     };
   }
 
   return {
-    reasoning: responseContent
+    reasoning: publicValues
       .map((item) => item?.reasoning?.content)
       .filter(Boolean)
       .join('\n'),
-    content: responseContent
+    content: publicValues
       .map((item) => item?.text?.content)
       .filter(Boolean)
       .join('\n')

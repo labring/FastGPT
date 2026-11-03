@@ -44,7 +44,11 @@ export const formatChatRequestVariables = ({
     }
 
     // 最后按 valueType 收敛类型，避免表单字符串直接进入 workflow runtime。
-    requestVariables[item.key] = valueTypeFormat(val, item.valueType);
+    requestVariables[item.key] = valueTypeFormat(
+      val,
+      item.valueType,
+      item.type === VariableInputEnum.password
+    );
   });
 
   return requestVariables;

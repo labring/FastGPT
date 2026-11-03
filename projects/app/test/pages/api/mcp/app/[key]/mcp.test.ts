@@ -2,13 +2,14 @@ import type { ApiRequestProps } from '@fastgpt/next/type';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { JSONRPCMessageSchema, isJSONRPCErrorResponse } from '@modelcontextprotocol/sdk/types.js';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   getMcpServerTools: vi.fn(),
   callMcpServerTool: vi.fn(),
   getMcpAuthProxyFromHeaders: vi.fn(),
-  handleRequest: vi.fn()
+  handleRequest: vi.fn(),
+  send: vi.fn()
 }));
 
 const mockLogger = vi.hoisted(() => ({
@@ -21,6 +22,7 @@ const mockLogger = vi.hoisted(() => ({
 vi.mock('@modelcontextprotocol/sdk/server/streamableHttp.js', () => {
   class StreamableHTTPServerTransport {
     handleRequest = mocks.handleRequest;
+    send = mocks.send;
     close = vi.fn();
   }
   return { StreamableHTTPServerTransport };
@@ -37,7 +39,10 @@ vi.mock('@modelcontextprotocol/sdk/server/index.js', () => {
 
 vi.mock('@fastgpt/service/common/logger', () => ({
   getLogger: () => mockLogger,
-  LogCategories: { MODULE: { MCP: { APP: 'mcp.app' } } }
+  LogCategories: {
+    MODULE: { MCP: { APP: 'mcp.app' } },
+    REQUEST: { PROFILE: ['request', 'profile'] }
+  }
 }));
 
 vi.mock('@/service/support/mcp/utils', () => ({
@@ -49,11 +54,20 @@ vi.mock('@/service/support/mcp/auth', () => ({
   getMcpAuthProxyFromHeaders: mocks.getMcpAuthProxyFromHeaders
 }));
 
-import handler from '@/pages/api/mcp/app/[key]/mcp';
+let handler: typeof import('@/pages/api/mcp/app/[key]/mcp').default;
+let profiling: typeof import('@fastgpt/service/common/profiling');
+
+beforeAll(async () => {
+  // setup 会通过 Mongo 提前加载采集器；重载后才能观察本文件注入的日志输出端。
+  vi.resetModules();
+  profiling = await import('@fastgpt/service/common/profiling');
+  handler = (await import('@/pages/api/mcp/app/[key]/mcp')).default;
+});
 
 const createRes = () => {
   const res = {
     writableFinished: false,
+    statusCode: 200,
     on: vi.fn(),
     status: vi.fn().mockReturnThis(),
     json: vi.fn()
@@ -61,12 +75,17 @@ const createRes = () => {
   return res;
 };
 
-const callPostHandler = async () => {
+const getProfilePayloads = () =>
+  mockLogger.info.mock.calls
+    .filter(([message]) => String(message).startsWith('Request profile '))
+    .map(([, payload]) => payload);
+
+const callPostHandler = async (profile = false) => {
   const req = {
     method: 'POST',
     query: { key: 'test-key' },
     body: { jsonrpc: '2.0', id: 1, method: 'tools/call', params: {} },
-    headers: {}
+    headers: profile ? { 'x-fastgpt-profile': '1' } : {}
   } as unknown as ApiRequestProps;
   const res = createRes();
   await handler(req, res as any);
@@ -77,7 +96,26 @@ describe('mcp app handler', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.getMcpAuthProxyFromHeaders.mockReturnValue({});
+    mocks.getMcpServerTools.mockResolvedValue([]);
+    mocks.send.mockResolvedValue(undefined);
   });
+
+  it.each([false, true])(
+    '原生 MCP 只在显式 header 开启时采集，且不追加默认 JSON：%s',
+    async (profile) => {
+      mocks.getMcpServerTools.mockImplementationOnce(async () => {
+        expect(profiling.isProfiling()).toBe(profile);
+        return profiling.profileStage(
+          { event: 'mcp.tools.list', params: { appCount: 1 } },
+          () => []
+        );
+      });
+      const res = await callPostHandler(profile);
+      expect(res.json).not.toHaveBeenCalled();
+      expect(mocks.handleRequest).toHaveBeenCalledOnce();
+      expect(profiling.isProfiling()).toBe(false);
+    }
+  );
 
   it('returns a parseable JSON-RPC error with the original id when team cancellation is pending', async () => {
     // 注销守卫抛出的错误形态：new Error(TeamErrEnum.accountCancellationPending)
@@ -123,7 +161,7 @@ describe('mcp app handler', () => {
     // key 不存在时的抛出形态：Promise.reject(裸字符串)，不是 Error 实例
     mocks.getMcpServerTools.mockRejectedValue(CommonErrEnum.invalidResource);
 
-    const res = await callPostHandler();
+    const res = await callPostHandler(true);
 
     // 无效 key 属于客户端侧状态，不是服务端异常：返回可解析的 JSON-RPC 错误而非 500
     expect(res.status).toHaveBeenCalledWith(200);
@@ -142,5 +180,41 @@ describe('mcp app handler', () => {
     // 日志降级为 warn，避免预期内的客户端错误污染服务端 error 指标
     expect(mockLogger.warn).toHaveBeenCalled();
     expect(mockLogger.error).not.toHaveBeenCalled();
+    const profiles = mockLogger.info.mock.calls.filter(([message]) =>
+      String(message).startsWith('Request profile ')
+    );
+    expect(profiles).toHaveLength(1);
+    expect(profiles[0][1]).toMatchObject({ kind: 'mcp', ok: false });
+  });
+
+  it('marks the profile as failed when the transport returns an HTTP error without throwing', async () => {
+    // Accept 不完整时 SDK 直接返回 406 JSON-RPC error，不抛异常
+    mocks.handleRequest.mockImplementationOnce(async (_req: any, res: any) => {
+      res.statusCode = 406;
+    });
+
+    await callPostHandler(true);
+
+    expect(getProfilePayloads()).toEqual([
+      expect.objectContaining({ kind: 'mcp', ok: false, error: 'MCP responded 406' })
+    ]);
+  });
+
+  it('marks the profile as failed when the SDK sends a JSON-RPC error over HTTP 200', async () => {
+    // 缺少 params.name 时 SDK 校验失败，经 transport.send 发出 SSE 内的 JSON-RPC error
+    mocks.handleRequest.mockImplementationOnce(async function (this: any) {
+      await this.send({
+        jsonrpc: '2.0',
+        id: 1,
+        error: { code: -32602, message: 'Invalid params' }
+      });
+    });
+
+    await callPostHandler(true);
+
+    expect(mocks.send).toHaveBeenCalledOnce();
+    expect(getProfilePayloads()).toEqual([
+      expect.objectContaining({ kind: 'mcp', ok: false, error: 'Invalid params' })
+    ]);
   });
 });

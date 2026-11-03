@@ -1,7 +1,39 @@
-import { FlowNodeInputTypeEnum } from '../../core/workflow/node/constant';
-import { WorkflowIOValueTypeEnum, VariableInputEnum } from '../../core/workflow/constants';
+import { FlowNodeInputTypeEnum, FlowNodeTypeEnum } from '../../core/workflow/node/constant';
+import {
+  NodeInputKeyEnum,
+  WorkflowIOValueTypeEnum,
+  VariableInputEnum
+} from '../../core/workflow/constants';
 import type { FlowNodeInputItemType } from '../../core/workflow/type/io';
 import type { VariableItemType } from '../../core/app/variable/type';
+
+/**
+ * 根据节点类型和系统 key 确认凭据容器，迁移与保存共用，禁止仅凭同名业务字段推断。
+ * 密码控件和 inputList 的密钥声明由各自的显式字段元数据识别。
+ */
+export const getWorkflowSecretInputKind = ({
+  flowNodeType,
+  inputKey
+}: {
+  flowNodeType: unknown;
+  inputKey: unknown;
+}): 'headers' | 'systemConfig' | undefined => {
+  if (
+    flowNodeType === FlowNodeTypeEnum.httpRequest468 &&
+    inputKey === NodeInputKeyEnum.headerSecret
+  ) {
+    return 'headers';
+  }
+  if (
+    (flowNodeType === FlowNodeTypeEnum.tool ||
+      flowNodeType === FlowNodeTypeEnum.toolSet ||
+      flowNodeType === FlowNodeTypeEnum.pluginModule) &&
+    inputKey === NodeInputKeyEnum.systemInputConfig
+  ) {
+    return 'systemConfig';
+  }
+  return undefined;
+};
 
 export const getOrInitModuleInputValue = (input: FlowNodeInputItemType) => {
   if (input.value !== undefined || !input.valueType) return input.value;

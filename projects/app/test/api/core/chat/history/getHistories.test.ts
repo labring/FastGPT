@@ -135,6 +135,62 @@ describe('getHistories api test', () => {
     expect(res2.data.total).toBe(3);
   });
 
+  it('recovers only the current member’s latest non-deleted Builder session for the requested app', async () => {
+    const otherMember = await getUser('other-builder-history-member', testUser.teamId);
+    const otherApp = await MongoApp.create({
+      name: 'Other Builder App',
+      type: AppTypeEnum.workflow,
+      teamId: testUser.teamId,
+      tmbId: testUser.tmbId
+    });
+    const builderChat = {
+      teamId: testUser.teamId,
+      tmbId: testUser.tmbId,
+      sourceType: ChatSourceTypeEnum.workflowBuilder,
+      source: ChatSourceEnum.test,
+      appId
+    };
+    await MongoChat.create([
+      { ...builderChat, chatId: 'old-builder', updateTime: new Date('2026-10-28T00:00:00Z') },
+      { ...builderChat, chatId: 'latest-builder', updateTime: new Date('2026-10-29T00:00:00Z') },
+      {
+        ...builderChat,
+        chatId: 'deleted-builder',
+        updateTime: new Date('2026-10-30T00:00:00Z'),
+        deleteTime: new Date()
+      },
+      {
+        ...builderChat,
+        tmbId: otherMember.tmbId,
+        chatId: 'other-member-builder',
+        updateTime: new Date('2026-10-30T00:00:00Z')
+      },
+      {
+        ...builderChat,
+        appId: otherApp._id,
+        chatId: 'other-app-builder',
+        updateTime: new Date('2026-10-30T00:00:00Z')
+      }
+    ]);
+
+    const res = await Call<GetHistoriesBodyType, Record<string, never>, GetHistoriesResponseType>(
+      handler,
+      {
+        auth: testUser,
+        body: { appId, sourceType: ChatSourceTypeEnum.workflowBuilder, pageNum: 1, pageSize: 1 }
+      }
+    );
+
+    expect(res.code).toBe(200);
+    expect(res.data.total).toBe(2);
+    expect(res.data.list).toHaveLength(1);
+    expect(res.data.list[0]).toMatchObject({
+      appId,
+      sourceType: ChatSourceTypeEnum.workflowBuilder,
+      chatId: 'latest-builder'
+    });
+  });
+
   it('should filter by source', async () => {
     // Create API source chat
     const apiChatId = getNanoid();

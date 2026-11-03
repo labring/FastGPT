@@ -182,7 +182,7 @@ describe('WorkflowVariableState', () => {
     await state.set('pwd', 'new-secret');
 
     expect(state.get('pwd')).toBe('new-secret');
-    expect(state.toStoreRecord().pwd).toMatchObject({ value: '' });
+    expect(state.toStoreRecord().pwd).toMatchObject({ secret: expect.any(String) });
     expect((state.toStoreRecord().pwd as any).secret).toEqual(expect.any(String));
     expect((state.toStoreRecord().pwd as any).secret).not.toBe('new-secret');
   });
@@ -198,7 +198,6 @@ describe('WorkflowVariableState', () => {
       ],
       inputVariables: {
         pwd: {
-          value: '',
           secret: encryptSecret('old-secret')
         }
       }
@@ -218,10 +217,7 @@ describe('WorkflowVariableState', () => {
         } as any
       ],
       inputVariables: {
-        pwd: JSON.stringify({
-          value: '',
-          secret: encryptSecret('old-secret')
-        })
+        pwd: JSON.stringify({ secret: encryptSecret('old-secret') })
       }
     });
 
@@ -442,12 +438,12 @@ describe('WorkflowVariableState', () => {
 
     expect(state.toStoreRecord().files).toEqual([
       {
-        type: ChatFileTypeEnum.file,
+        type: ChatFileTypeEnum.image,
         name: 'file.jpg',
         url: 'https://example.com/files/file.jpg'
       },
       {
-        type: ChatFileTypeEnum.file,
+        type: ChatFileTypeEnum.document,
         name: 'doc.pdf',
         url: 'https://preview.example.com/doc.pdf'
       }
@@ -490,7 +486,7 @@ describe('WorkflowVariableState', () => {
       {
         url: 'https://example.com/files/report.pdf',
         name: 'report.pdf',
-        type: ChatFileTypeEnum.file
+        type: ChatFileTypeEnum.document
       }
     ]);
   });
@@ -530,7 +526,7 @@ describe('WorkflowVariableState', () => {
       {
         key: 'chat/app/parent.pdf',
         name: 'parent.pdf',
-        type: ChatFileTypeEnum.file
+        type: ChatFileTypeEnum.document
       }
     ]);
   });
@@ -593,7 +589,7 @@ describe('WorkflowVariableState', () => {
       {
         url: 'https://example.com/report.unknown',
         name: 'report.unknown',
-        type: ChatFileTypeEnum.file
+        type: ChatFileTypeEnum.unknown
       }
     ]);
     await expect(state.set('files', 'https://example.com/report.pdf')).rejects.toThrow(

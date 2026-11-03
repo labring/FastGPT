@@ -3,7 +3,7 @@ title: MCP 工具集
 description: 快速了解 MCP 工具接入 FastGPT
 ---
 
-FastGPT v4.9.6 版本开始，新增了 MCP 工具集 这种新的应用类型，允许传入一个 MCP 的 SSE URL 来批量创建可被模型轻松调用的 MCP 工具，下面就来看下如何创建 MCP 工具并且让 AI 调用
+FastGPT v4.9.6 版本开始，新增了 MCP 工具集这种新的应用类型，允许传入远程 MCP URL 来批量创建可被模型轻松调用的 MCP 工具，下面就来看下如何创建 MCP 工具并且让 AI 调用
 
 ## 创建一个 MCP 工具集
 
@@ -16,6 +16,36 @@ FastGPT v4.9.6 版本开始，新增了 MCP 工具集 这种新的应用类型�
 然后填入到弹窗中的对应位置，点击后面的解析，会解析出对应的一系列工具
 
 这时再点击创建就能轻松创建 MCP 工具和 MCP 工具集
+
+## 接入需要鉴权的 Streamable HTTP 服务
+
+当前客户端也支持 Streamable HTTP。以[百智云浏览器（Baizhi Cloud Browser，也即 CapyBrowser）](https://baizhibrowser.cloud/)为例，可以在 FastGPT 中查询本次凭据的身份、价格和云浏览器运行状态，无需额外安装 FastGPT 插件。
+
+先在[百智云控制台](https://capybrowser.app.baizhi.cloud/)准备本人有权使用的 API Key，并核对[正式接入指南](https://capybrowser.app.baizhi.cloud/docs/installation.md)。新建 MCP 工具集，按下表填写，再点击「解析」并创建工具集。
+
+| 配置项         | 填写内容                                   |
+| -------------- | ------------------------------------------ |
+| MCP URL        | `https://capybrowser.app.baizhi.cloud/mcp` |
+| 请求头鉴权类型 | `Bearer`                                   |
+| 鉴权值         | 原始 API Key，不加 `Bearer ` 前缀          |
+
+Bearer 模式会自动生成 `Authorization: Bearer <API_KEY>`。如果选择自定义请求头，则名称填写 `Authorization`，值填写完整的 `Bearer <API_KEY>`；两种方式选一种，避免重复前缀。Key 放在鉴权配置中，不放入 URL、聊天消息或公开工作流。
+
+### 先做只读验证
+
+进入工具集调试页，仅运行 `browser_auth_check`，参数为 `{}`。检查返回的 `isError`，并阅读 `content` 中的文本结果，确认是预期服务及账号；缺失的归属字段按未知处理。再按需调用 `browser_pricing` 查询价格。这两步不创建浏览器运行。
+
+若要让模型调用，先只把 `browser_auth_check` 作为单个工具加入受控应用，使用支持工具调用的模型，请它核对本次凭据身份。只读调试成功仅证明该工具可用，不代表完整网页任务已经通过。
+
+解析会发现生命周期写工具。应用中有权调用这些工具的人可能使用所配置 Key 的资源权限；不要将整套工具集分享给不受信任的应用或用户。创建运行前确认任务、价格和权限；本示例不提供自动逐次确认机制。
+
+### 网页操作与结束运行
+
+该 MCP 管理云浏览器运行，网页导航、点击和读取仍需兼容 CDP 客户端；仅添加 MCP 不会让 FastGPT 自动获得页面操作能力。需要页面任务时，先准备 CDP 执行端，再按正式指南创建运行并记录原 Session ID。
+
+创建后即可能产生运行费。正常完成或失败都需结束自己创建的运行，并查询原 Session 确认 `released`；费用结算另行核对。关闭聊天、移除工具节点或删除 MCP 工具集不等于停止云浏览器。只连接他人拥有的运行时，不擅自结束。
+
+接入资料见 [Chaitin 公共接入仓库](https://github.com/chaitin/baizhi-cloud-browser)。本文贡献者 `ctcbyzx` 已参与该仓贡献，并通过[个人维护仓](https://github.com/ctcbyzx/baizhi-cloud-browser)维护客户端接入说明；使用问题可到其 [Issues](https://github.com/ctcbyzx/baizhi-cloud-browser/issues) 反馈。
 
 ## 测试 MCP 工具
 

@@ -21,10 +21,10 @@ type RunAuxiliaryGenerationAgentLoopParams = {
   streamWriter?: AuxiliaryGenerationStreamWriter;
   checkIsStopping?: () => boolean;
   usageSink?: (usages: ChatNodeUsageType[]) => void;
-  providerState?: unknown;
   userAnswer?: string;
   runtimeTools?: ChatCompletionTool[];
   executeTool?: AgentLoopRuntime['executeTool'];
+  onEvent?: AgentLoopRuntime['emitEvent'];
 };
 
 /**
@@ -32,7 +32,7 @@ type RunAuxiliaryGenerationAgentLoopParams = {
  *
  * systemPrompt 作为调用方提供的最终提示词原样传入。该入口启用标准 ask_user，并允许
  * 业务方显式注入 runtime tools；不会隐式获得默认 Agent 提示词、workflow、Skill、计划
- * 或虚拟机执行能力。paused/providerState 等结果保持 Agent Loop 原语义。
+ * 或虚拟机执行能力。暂停信息保持 Agent Loop 原语义；FastAgent 仅从传入 messages 恢复，不读取 memory。
  */
 export async function runAuxiliaryGenerationAgentLoop({
   teamId,
@@ -45,10 +45,10 @@ export async function runAuxiliaryGenerationAgentLoop({
   streamWriter,
   checkIsStopping,
   usageSink,
-  providerState,
   userAnswer,
   runtimeTools = [],
-  executeTool
+  executeTool,
+  onEvent
 }: RunAuxiliaryGenerationAgentLoopParams) {
   const result = await runAgentLoop({
     runtime: {
@@ -72,6 +72,7 @@ export async function runAuxiliaryGenerationAgentLoop({
           throw new Error('Auxiliary generation runtime tool executor is not configured');
         }),
       checkIsStopping,
+      recordEvent: onEvent,
       emitEvent: (event) => {
         if (event.type === 'reasoning_delta') {
           streamWriter?.({
@@ -91,7 +92,6 @@ export async function runAuxiliaryGenerationAgentLoop({
     input: {
       systemPrompt,
       messages,
-      providerState,
       userAnswer
     }
   });

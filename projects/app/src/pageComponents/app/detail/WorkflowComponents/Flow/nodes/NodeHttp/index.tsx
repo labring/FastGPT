@@ -55,6 +55,7 @@ import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { WorkflowUtilsContext } from '../../../context/workflowUtilsContext';
 import { WorkflowActionsContext } from '../../../context/workflowActionsContext';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
+import { ReferSelector, useReference } from '../render/RenderInput/templates/Reference';
 
 const CurlImportModal = dynamic(() => import('./CurlImportModal'));
 const HeaderAuthConfig = dynamic(() => import('@/components/common/secret/HeaderAuthConfig'));
@@ -273,6 +274,10 @@ export function RenderHttpProps({
     inputs.find((item) => item.key === NodeInputKeyEnum.httpFormBody) || defaultFormBody;
   const headerSecret = inputs.find((item) => item.key === NodeInputKeyEnum.headerSecret)!;
   const contentType = inputs.find((item) => item.key === NodeInputKeyEnum.httpContentType);
+  const { referenceList } = useReference({
+    nodeId,
+    valueType: WorkflowIOValueTypeEnum.string
+  });
 
   const paramsLength = params?.value?.length || 0;
   const headersLength = headers?.value?.length || 0;
@@ -329,6 +334,16 @@ export function RenderHttpProps({
           <Flex flex={1} />
           <HeaderAuthConfig
             storeHeaderSecretConfig={headerSecret?.value}
+            renderReference={({ value, onChange, buttonProps }) => (
+              <ReferSelector
+                list={referenceList}
+                value={value}
+                isArray={false}
+                onSelect={onChange}
+                popDirection={'bottom'}
+                ButtonProps={buttonProps}
+              />
+            )}
             onUpdate={(data) => {
               onChangeNode({
                 nodeId,
@@ -413,6 +428,7 @@ export function RenderHttpProps({
     nodeId,
     onChangeNode,
     paramsLength,
+    referenceList,
     requestMethods,
     selectedTab,
     stringifyVariables,

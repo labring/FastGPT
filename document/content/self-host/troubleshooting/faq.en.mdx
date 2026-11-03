@@ -100,7 +100,11 @@ Check connectivity from the FastGPT server to the model API. A server in mainlan
 
 ### How to change the root password
 
-Modify the `DEFAULT_ROOT_PSW` environment variable, and then restart FastGPT.
+- **Web UI**: Sign in as `root` and update your password in **Account Info** under the top-right avatar menu.
+- **CLI Reset (Forgotten Password)**: Run `docker compose exec fastgpt-app node /app/scripts/reset-root-password.cjs 'your_new_password'` inside the application container to reset the password immediately without restarting.
+- **Legacy versions (v4.17.2 and earlier)**: Modify the `DEFAULT_ROOT_PSW` environment variable and restart FastGPT.
+
+For detailed steps, see [Modify and Reset Root Password](/en/self-host/config/root-password).
 
 ---
 
@@ -194,5 +198,19 @@ The Loop Node added in 4.15.0 keeps only the value of the last iteration in its 
 
 1. In the Variable Update node, select the array variable, switch the value to Manual Input, and choose Append. In the input box of a string array, type `/` to insert the result of the current iteration. Variable Citation replaces the whole array with the referenced array and has no append option.
 2. The append box of an object array is a JSON input. To append an object output by an upstream node, add a Code run node in the loop body that combines the existing array and the current object into a new array, then update the variable with Variable Citation.
+
+---
+
+### The sandbox fails to start with "Sandbox work directory is not writable: /workspace", but the volume permissions are correct
+
+When you use OpenSandbox in 4.15.2 and later, the sandbox checks after it starts whether `/workspace` is writable, and exits with this error if it is not. If the owner and permissions of `/workspace` in the volume are already correct and the error persists, the default seccomp profile of the host's Docker may be blocking the sandbox container.
+
+Run the command below with the sandbox image (`<volume-name>` is the volume the sandbox container mounts at `/workspace`; find it with `docker inspect <sandbox-container-name>`). If it prints fail and then ok, seccomp is the cause:
+
+```bash
+for o in "" "--security-opt seccomp=unconfined"; do docker run --rm $o -v <volume-name>:/workspace --entrypoint bash <sandbox-image> -c '[ -w /workspace ] && echo ok || echo fail'; done
+```
+
+To fix it, add `seccomp_profile = "unconfined"` under `[docker]` in `opensandbox-config` in your compose file, run `docker compose up -d --force-recreate fastgpt-opensandbox-server`, and click "Retry" on the page. This loosens the system call restrictions of the sandbox containers, so use it only after you have confirmed that seccomp is the cause.
 
 ---

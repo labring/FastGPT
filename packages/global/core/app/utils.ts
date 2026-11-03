@@ -1,5 +1,5 @@
 import type { AppFormEditFormType } from './formEdit/type';
-import { DatasetSearchModeEnum, DatasetTagFilterVersionEnum } from '../dataset/constants';
+import { DatasetSearchModeEnum } from '../dataset/constants';
 import { NodeInputKeyEnum } from '../workflow/constants';
 import { FlowNodeTypeEnum } from '../workflow/node/constant';
 import { type WorkflowTemplateBasicType } from '../workflow/type';
@@ -32,7 +32,6 @@ export const getDefaultAppForm = (): AppFormEditFormType => {
       rerankWeight: 0.5,
       datasetSearchUsingExtensionQuery: false,
       datasetSearchExtensionBg: '',
-      [NodeInputKeyEnum.collectionFilterVersion]: DatasetTagFilterVersionEnum.structured,
       [NodeInputKeyEnum.authTmbId]: false
     },
     selectedTools: [],

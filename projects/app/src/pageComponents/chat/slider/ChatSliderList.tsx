@@ -13,6 +13,7 @@ import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
 import { getDisplayHistoryTitle } from '@/web/core/chat/context/historyTitleUtils';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
+import MyBox from '@fastgpt/web/components/common/MyBox';
 
 const ChatSliderList = () => {
   const { isPc } = useSystem();
@@ -22,6 +23,7 @@ const ChatSliderList = () => {
 
   const histories = useContextSelector(ChatContext, (v) => v.histories);
   const ScrollData = useContextSelector(ChatContext, (v) => v.ScrollData);
+  const isInitialLoading = useContextSelector(ChatContext, (v) => v.isInitialLoading);
   const onDelHistory = useContextSelector(ChatContext, (v) => v.onDelHistory);
   const onUpdateHistory = useContextSelector(ChatContext, (v) => v.onUpdateHistory);
   const onChangeChatId = useContextSelector(ChatContext, (v) => v.onChangeChatId);
@@ -114,174 +116,181 @@ const ChatSliderList = () => {
   return (
     <>
       {/* 移动端侧栏只需要纵向滚动；隐藏横向滚动条，避免底部语言入口上方出现灰线。 */}
-      {/* eslint-disable-next-line react-hooks/static-components -- ScrollData is supplied by useScrollPagination. */}
-      <ScrollData
+      <MyBox
+        isLoading={isInitialLoading}
+        position={'relative'}
+        overflow={'hidden'}
         flex={'1 0 0'}
         h={0}
-        pt={0}
-        pl={0}
-        pr={'16px'}
-        pb={'16px'}
+        minH={0}
         mr={'-16px'}
-        overflowY={'auto'}
-        overflowX={'hidden'}
-        sx={{
-          '& > div > div:last-of-type:not(.chatHistoryItem)': {
-            color: 'var(--chakra-colors-myGray-400)'
-          }
-        }}
       >
-        {concatHistory.map((item, i) => (
-          <Flex
-            position={'relative'}
-            className="chatHistoryItem"
-            key={item.id}
-            alignItems={'center'}
-            p="8px"
-            h={'40px'}
-            minH={'40px'}
-            cursor={'pointer'}
-            userSelect={'none'}
-            borderRadius={'md'}
-            fontSize={'sm'}
-            _hover={{
-              bg: 'myGray.50',
-              '& .more': {
-                display: 'block'
-              },
-              '& .unreadDot': {
-                display: 'none'
-              },
-              '& .time': {
-                display: isPc ? 'none' : 'block'
-              }
-            }}
-            bg={item.top ? '#E6F6F6 !important' : ''}
-            {...(item.id === activeChatId
-              ? {
-                  backgroundColor: 'primary.100 !important',
-                  color: 'primary.600'
+        {/* eslint-disable-next-line react-hooks/static-components -- ScrollData is supplied by useScrollPagination. */}
+        <ScrollData
+          pt={0}
+          pl={0}
+          pr={'16px'}
+          pb={'16px'}
+          overflowY={'auto'}
+          overflowX={'hidden'}
+          sx={{
+            '& > div:last-of-type:not(.chatHistoryItem)': {
+              color: 'var(--chakra-colors-myGray-400)'
+            }
+          }}
+        >
+          {concatHistory.map((item, i) => (
+            <Flex
+              position={'relative'}
+              className="chatHistoryItem"
+              key={item.id}
+              alignItems={'center'}
+              p="8px"
+              h={'40px'}
+              minH={'40px'}
+              cursor={'pointer'}
+              userSelect={'none'}
+              borderRadius={'md'}
+              fontSize={'sm'}
+              _hover={{
+                bg: 'myGray.50',
+                '& .more': {
+                  display: 'block'
+                },
+                '& .unreadDot': {
+                  display: 'none'
+                },
+                '& .time': {
+                  display: isPc ? 'none' : 'block'
                 }
-              : {
-                  onClick: () => {
-                    onChangeChatId(item.id);
-                    setCiteModalData(undefined);
+              }}
+              bg={item.top ? '#E6F6F6 !important' : ''}
+              {...(item.id === activeChatId
+                ? {
+                    backgroundColor: 'primary.100 !important',
+                    color: 'primary.600'
                   }
-                })}
-            {...(i !== concatHistory.length - 1 && {
-              mb: '4px'
-            })}
-          >
-            <Box flex={'1 0 0'} className="textEllipsis">
-              {item.title}
-            </Box>
-            {!!item.id && (
-              <Flex gap={2} alignItems={'center'}>
-                {item.hasBeenRead === false &&
-                item.chatGenerateStatus !== ChatGenerateStatusEnum.generating ? (
-                  <Box
-                    className="unreadDot"
-                    w={'8px'}
-                    h={'8px'}
-                    borderRadius={'full'}
-                    bg={'primary.500'}
-                    flexShrink={0}
-                  />
-                ) : item.isTemporary &&
-                  item.chatGenerateStatus !== ChatGenerateStatusEnum.generating ? null : (
-                  <Box
-                    className={
-                      item.chatGenerateStatus === ChatGenerateStatusEnum.generating
-                        ? 'generatingStatus'
-                        : 'time'
+                : {
+                    onClick: () => {
+                      onChangeChatId(item.id);
+                      setCiteModalData(undefined);
                     }
-                    display={'block'}
-                    fontWeight={'400'}
-                    fontSize={'mini'}
-                    color={
-                      item.chatGenerateStatus === ChatGenerateStatusEnum.generating
-                        ? 'primary.600'
-                        : 'myGray.500'
-                    }
-                  >
-                    {item.chatGenerateStatus === ChatGenerateStatusEnum.generating
-                      ? t('chat:history_generating')
-                      : t(formatTimeToChatTime(item.updateTime))}
-                  </Box>
-                )}
-                <Box className="more" display={['block', 'none']}>
-                  <MyMenu
-                    Button={
-                      <IconButton
-                        size={'xs'}
-                        variant={'ghost'}
-                        border={'none'}
-                        bg={'transparent'}
-                        color={'myGray.500'}
-                        _hover={{ bg: 'myGray.150', color: 'myGray.700' }}
-                        _active={{ bg: 'myGray.150' }}
-                        icon={<MyIcon name={'more'} w={'14px'} p={1} color={'currentColor'} />}
-                        aria-label={''}
-                      />
-                    }
-                    menuList={[
-                      {
-                        children: [
-                          {
-                            label: item.top
-                              ? t('common:core.chat.Unpin')
-                              : t('common:core.chat.Pin'),
-                            icon: 'core/chat/setTopLight',
-                            onClick: () => {
-                              onUpdateHistory({
-                                chatId: item.id,
-                                top: !item.top
-                              });
-                            }
-                          },
-
-                          // 临时会话尚未进入历史记录，自定义标题无法保存。
-                          ...(!item.isTemporary
-                            ? [
-                                {
-                                  label: t('common:custom_title'),
-                                  icon: 'common/customTitleLight',
-                                  onClick: () => {
-                                    onOpenModal({
-                                      defaultVal: item.customTitle || item.title,
-                                      onSuccess: (e) =>
-                                        onUpdateHistory({
-                                          chatId: item.id,
-                                          customTitle: e
-                                        })
-                                    });
-                                  }
-                                }
-                              ]
-                            : []),
-                          {
-                            label: t('common:Delete'),
-                            icon: 'delete',
-                            onClick: () => {
-                              onDelHistory(item.id);
-                              if (item.id === activeChatId) {
-                                clearChatRecords();
-                                onChangeChatId();
-                                setCiteModalData(undefined);
+                  })}
+              {...(i !== concatHistory.length - 1 && {
+                mb: '4px'
+              })}
+            >
+              <Box flex={'1 0 0'} className="textEllipsis">
+                {item.title}
+              </Box>
+              {!!item.id && (
+                <Flex gap={2} alignItems={'center'}>
+                  {item.hasBeenRead === false &&
+                  item.chatGenerateStatus !== ChatGenerateStatusEnum.generating ? (
+                    <Box
+                      className="unreadDot"
+                      w={'8px'}
+                      h={'8px'}
+                      borderRadius={'full'}
+                      bg={'primary.500'}
+                      flexShrink={0}
+                    />
+                  ) : item.isTemporary &&
+                    item.chatGenerateStatus !== ChatGenerateStatusEnum.generating ? null : (
+                    <Box
+                      className={
+                        item.chatGenerateStatus === ChatGenerateStatusEnum.generating
+                          ? 'generatingStatus'
+                          : 'time'
+                      }
+                      display={'block'}
+                      fontWeight={'400'}
+                      fontSize={'mini'}
+                      color={
+                        item.chatGenerateStatus === ChatGenerateStatusEnum.generating
+                          ? 'primary.600'
+                          : 'myGray.500'
+                      }
+                    >
+                      {item.chatGenerateStatus === ChatGenerateStatusEnum.generating
+                        ? t('chat:history_generating')
+                        : t(formatTimeToChatTime(item.updateTime))}
+                    </Box>
+                  )}
+                  <Box className="more" display={['block', 'none']}>
+                    <MyMenu
+                      Button={
+                        <IconButton
+                          size={'xs'}
+                          variant={'ghost'}
+                          border={'none'}
+                          bg={'transparent'}
+                          color={'myGray.500'}
+                          _hover={{ bg: 'myGray.150', color: 'myGray.700' }}
+                          _active={{ bg: 'myGray.150' }}
+                          icon={<MyIcon name={'more'} w={'14px'} p={1} color={'currentColor'} />}
+                          aria-label={''}
+                        />
+                      }
+                      menuList={[
+                        {
+                          children: [
+                            {
+                              label: item.top
+                                ? t('common:core.chat.Unpin')
+                                : t('common:core.chat.Pin'),
+                              icon: 'core/chat/setTopLight',
+                              onClick: () => {
+                                onUpdateHistory({
+                                  chatId: item.id,
+                                  top: !item.top
+                                });
                               }
                             },
-                            type: 'danger'
-                          }
-                        ]
-                      }
-                    ]}
-                  />
-                </Box>
-              </Flex>
-            )}
-          </Flex>
-        ))}
-      </ScrollData>
+
+                            // 临时会话尚未进入历史记录，自定义标题无法保存。
+                            ...(!item.isTemporary
+                              ? [
+                                  {
+                                    label: t('common:custom_title'),
+                                    icon: 'common/customTitleLight',
+                                    onClick: () => {
+                                      onOpenModal({
+                                        defaultVal: item.customTitle || item.title,
+                                        onSuccess: (e) =>
+                                          onUpdateHistory({
+                                            chatId: item.id,
+                                            customTitle: e
+                                          })
+                                      });
+                                    }
+                                  }
+                                ]
+                              : []),
+                            {
+                              label: t('common:Delete'),
+                              icon: 'delete',
+                              onClick: () => {
+                                onDelHistory(item.id);
+                                if (item.id === activeChatId) {
+                                  clearChatRecords();
+                                  onChangeChatId();
+                                  setCiteModalData(undefined);
+                                }
+                              },
+                              type: 'danger'
+                            }
+                          ]
+                        }
+                      ]}
+                    />
+                  </Box>
+                </Flex>
+              )}
+            </Flex>
+          ))}
+        </ScrollData>
+      </MyBox>
 
       <EditTitleModal />
     </>

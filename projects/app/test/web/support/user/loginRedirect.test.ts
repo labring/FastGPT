@@ -53,6 +53,7 @@ const sessionStorageMock = {
 const user = {
   _id: 'user-a',
   username: 'user-a',
+  status: 'active',
   team: {
     teamId: 'team-a',
     tmbId: 'tmb-a'

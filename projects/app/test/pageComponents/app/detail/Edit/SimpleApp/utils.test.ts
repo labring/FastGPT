@@ -180,7 +180,6 @@ describe('form2AppWorkflow model reference', () => {
 
   it('saves a structured filter marker and round-trips conditions without a form version', () => {
     const form = getFormWithDataset();
-    delete form.dataset.collectionFilterVersion;
     form.dataset.collectionFilterMatch = {
       logic: 'OR',
       conditions: [{ tag: 'price', tagType: 'number', op: '$gte', value: 10 }]
@@ -202,7 +201,6 @@ describe('form2AppWorkflow model reference', () => {
       ])
     );
     expect(appWorkflow2Form(workflow).dataset).toMatchObject({
-      collectionFilterVersion: 'structured',
       collectionFilterMatch: form.dataset.collectionFilterMatch
     });
   });

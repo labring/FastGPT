@@ -186,7 +186,8 @@ export const useUserModelStore = create<UserModelStoreState>()(
             try {
               const response = await getUserModelCatalog({
                 version: currentVersion ?? cached?.version,
-                outLinkAuthData
+                outLinkAuthData,
+                orderBy: 'custom'
               });
               // 身份或同身份请求代次发生变化时丢弃旧响应，防止切换成员后串写或覆盖新请求。
               if (

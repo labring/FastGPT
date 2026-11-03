@@ -1,3 +1,5 @@
+import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
+
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   FlowNodeOutputTypeEnum,
@@ -20,7 +22,8 @@ import {
 
 const runWorkflowMock = vi.fn();
 
-vi.mock('@fastgpt/global/common/system/utils', () => ({
+vi.mock('@fastgpt/global/common/system/utils', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@fastgpt/global/common/system/utils')>()),
   batchRun: async (list: any[], handler: (item: any, index: number) => Promise<any>) =>
     Promise.all(list.map((item, index) => handler(item, index)))
 }));
@@ -29,14 +32,20 @@ vi.mock('@fastgpt/service/core/workflow/dispatch', () => ({
   runWorkflow: (args: any) => runWorkflowMock(args)
 }));
 
-vi.mock('@fastgpt/service/env', () => ({
-  serviceEnv: {
-    WORKFLOW_MAX_LOOP_TIMES: 10,
-    WORKFLOW_PARALLEL_MAX_CONCURRENCY: 3
-  }
-}));
+vi.mock('@fastgpt/service/env', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@fastgpt/service/env')>();
+  return {
+    ...actual,
+    serviceEnv: {
+      ...actual.serviceEnv,
+      WORKFLOW_MAX_LOOP_TIMES: 10,
+      WORKFLOW_PARALLEL_MAX_CONCURRENCY: 3
+    }
+  };
+});
 
 import { dispatchParallelRun } from '@fastgpt/service/core/workflow/dispatch/parallelRun/runParallelRun';
+import { UserConfigError } from '@fastgpt/global/common/error/utils';
 
 const createNodeResponseSinkMock = () => ({
   publish: vi.fn(async (inputs: Array<{ response: ChatHistoryItemResType; parentId?: string }>) =>
@@ -128,6 +137,88 @@ const makeProps = (override: Record<string, any> = {}) => {
 };
 
 describe('dispatchParallelRun', () => {
+  it.each([new Error('task state clone failed'), undefined])(
+    'returns task-local exceptions to dispatch without logging or merging them: %s',
+    async (error) => {
+      const warn = vi.spyOn(getLogger(LogCategories.MODULE.WORKFLOW.DISPATCH), 'warn');
+      warn.mockClear();
+      const props = makeProps();
+      props.params.loopInputArray = ['a', 'b'];
+      props.variableState.clone.mockImplementation(() => {
+        throw error;
+      });
+      try {
+        const result = await dispatchParallelRun(props);
+        expect(Object.hasOwn(result, 'rawError')).toBe(true);
+        expect(result.rawError).toBe(error);
+        expect(warn).not.toHaveBeenCalled();
+        expect(Object.hasOwn(props.nodeSummary, 'error')).toBe(false);
+        expect(runWorkflowMock).not.toHaveBeenCalled();
+      } finally {
+        warn.mockRestore();
+      }
+    }
+  );
+
+  it('does not return an old task-local exception after a successful retry', async () => {
+    const props = makeProps();
+    props.params.parallelRunMaxRetryTimes = 1;
+    props.variableState.clone.mockImplementationOnce(() => {
+      throw new Error('transient state clone failure');
+    });
+    runWorkflowMock.mockResolvedValueOnce(
+      makeDispatchFlowResponse({
+        nodeResponses: [
+          makeResponseItem('nestedEnd', {
+            moduleType: FlowNodeTypeEnum.nestedEnd,
+            loopOutputValue: 'recovered'
+          })
+        ]
+      })
+    );
+
+    const result = await dispatchParallelRun(props);
+
+    expect(props.variableState.clone).toHaveBeenCalledTimes(2);
+    expect(Object.hasOwn(result, 'rawError')).toBe(false);
+    expect(Object.hasOwn(props.nodeSummary, 'error')).toBe(false);
+    expect(result.data?.[NodeOutputKeyEnum.parallelStatus]).toBe(ParallelRunStatusEnum.success);
+    expect(result.data?.[NodeOutputKeyEnum.parallelSuccessResults]).toEqual(['recovered']);
+  });
+
+  it.each([false, true])(
+    'aggregates child task status without promoting its raw exception: fails=%s',
+    async (fails) => {
+      const error = new UserConfigError('Invalid key');
+      runWorkflowMock.mockResolvedValueOnce(
+        makeDispatchFlowResponse({
+          nodeResponses: [
+            makeResponseItem(
+              fails ? 'chatNode' : 'nestedEnd',
+              fails
+                ? { error: error.message }
+                : { moduleType: FlowNodeTypeEnum.nestedEnd, loopOutputValue: 'done' }
+            )
+          ]
+        })
+      );
+      const props = makeProps();
+      const result = await dispatchParallelRun(props);
+      expect(Object.hasOwn(result, 'rawError')).toBe(false);
+      expect(Object.hasOwn(props.nodeSummary, 'error')).toBe(false);
+      expect(result.data?.[NodeOutputKeyEnum.parallelStatus]).toBe(
+        fails ? ParallelRunStatusEnum.failed : ParallelRunStatusEnum.success
+      );
+      if (fails) {
+        expect(result.data?.[NodeOutputKeyEnum.parallelFullResults]).toMatchObject([
+          { success: false, message: error.message }
+        ]);
+      }
+
+      expect(result.responseData).not.toHaveProperty('error');
+    }
+  );
+
   beforeEach(() => {
     runWorkflowMock.mockReset();
   });
@@ -215,7 +306,7 @@ describe('dispatchParallelRun', () => {
         makeDispatchFlowResponse({
           workflowRuntimeSummary: {
             ...createWorkflowRuntimeSummary(),
-            hasError: true,
+            errorCount: 1,
             llmInputTokens: 11,
             llmOutputTokens: 2
           },
@@ -281,7 +372,7 @@ describe('dispatchParallelRun', () => {
     expect(props.nodeSummary).toMatchObject({
       llmInputTokens: 34,
       llmOutputTokens: 7,
-      hasError: false,
+      errorCount: 0,
       hasNestedEnd: false
     });
   });
@@ -540,5 +631,92 @@ describe('dispatchParallelRun', () => {
     expect(parentVariableState.set).toHaveBeenCalledTimes(1);
     expect(parentVariableState.set).toHaveBeenCalledWith('count', 2);
     expect(parentVariableState.get('count')).toBe(2);
+  });
+
+  it('并发任务各自 fork 独立 memoryState，重试与失败隔离，并按任务索引顺序确定性合并成功任务的 system_memories', async () => {
+    const parentMemoryState = (
+      await import('@fastgpt/service/core/workflow/memory/state')
+    ).WorkflowMemoryState.fromRecord({
+      'app:app_1:extract1': { memory: 'baseline' }
+    });
+    const seenTaskMemories: any[] = [];
+
+    runWorkflowMock.mockImplementation(async (args: any) => {
+      // 每个并发任务都只能看到父 baseline，看不到其他并发任务的未提交写入
+      seenTaskMemories.push(
+        args.memoryState.readNodeMemory({
+          runningAppInfo: { sourceType: 'app', sourceId: 'app_1' },
+          nodeId: 'extract1'
+        })
+      );
+
+      if (args.nodeResponseParentId.endsWith('_task_0_attempt_0')) {
+        args.memoryState.merge({
+          'app:app_1:extract1': { memory: 'failed-attempt' },
+          'app:app_1:branch0': { memory: 'failed-branch0' }
+        });
+        return makeDispatchFlowResponse({
+          [DispatchNodeResponseKeyEnum.memories]: args.memoryState.getDelta(),
+          nodeResponses: [makeResponseItem('failed-node', { error: 'failed' })]
+        });
+      }
+      if (args.nodeResponseParentId.endsWith('_task_0_attempt_1')) {
+        args.memoryState.merge({
+          'app:app_1:extract1': { memory: 'task0-recovered' },
+          'app:app_1:branch0': { memory: 'task0-branch' }
+        });
+        return makeDispatchFlowResponse({
+          [DispatchNodeResponseKeyEnum.memories]: args.memoryState.getDelta(),
+          nodeResponses: [
+            makeResponseItem('nestedEnd', {
+              moduleType: FlowNodeTypeEnum.nestedEnd,
+              loopOutputValue: 'done-0'
+            })
+          ]
+        });
+      }
+      if (args.nodeResponseParentId.includes('_task_1')) {
+        args.memoryState.merge({
+          'app:app_1:extract1': { memory: 'task1-ok' },
+          'app:app_1:branch1': { memory: 'task1-branch' }
+        });
+        return makeDispatchFlowResponse({
+          [DispatchNodeResponseKeyEnum.memories]: args.memoryState.getDelta(),
+          nodeResponses: [
+            makeResponseItem('nestedEnd', {
+              moduleType: FlowNodeTypeEnum.nestedEnd,
+              loopOutputValue: 'done-1'
+            })
+          ]
+        });
+      }
+      args.memoryState.merge({
+        'app:app_1:extract1': { memory: 'task2-failed' },
+        'app:app_1:branch2': { memory: 'task2-branch' }
+      });
+      return makeDispatchFlowResponse({
+        [DispatchNodeResponseKeyEnum.memories]: args.memoryState.getDelta(),
+        nodeResponses: [makeResponseItem('failed-node', { error: 'failed' })]
+      });
+    });
+
+    const result: any = await dispatchParallelRun(
+      makeProps({
+        memoryState: parentMemoryState,
+        params: {
+          loopInputArray: ['a', 'b', 'c'],
+          [NodeInputKeyEnum.childrenNodeIdList]: [],
+          [NodeInputKeyEnum.parallelRunMaxConcurrency]: 3,
+          [NodeInputKeyEnum.parallelRunMaxRetryTimes]: 1
+        }
+      })
+    );
+
+    expect(seenTaskMemories.every((item) => item?.memory === 'baseline')).toBe(true);
+    expect(result[DispatchNodeResponseKeyEnum.memories]).toEqual({
+      'app:app_1:extract1': { memory: 'task1-ok' },
+      'app:app_1:branch0': { memory: 'task0-branch' },
+      'app:app_1:branch1': { memory: 'task1-branch' }
+    });
   });
 });

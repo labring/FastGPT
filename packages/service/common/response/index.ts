@@ -2,12 +2,13 @@ import type { NodeApiResponse, NodeHttpResponse } from '../../types/http';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { proxyError, ERROR_RESPONSE, ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 import { replaceSensitiveText } from '@fastgpt/global/common/string/tools';
-import { getErrorMessage, UserError } from '@fastgpt/global/common/error/utils';
+import { getErrorMessage, isUserConfigError, UserError } from '@fastgpt/global/common/error/utils';
 import { clearCookie } from '../../support/permission/auth/common';
 import { ZodError } from 'zod';
 import type Stream from 'node:stream';
 import { getLogger, LogCategories } from '../logger';
 import { ApiRequestInputParseError, getZodError } from '../zod/requestParseError';
+import { markProfileError } from '../profiling';
 
 const logger = getLogger(LogCategories.HTTP.ERROR);
 
@@ -38,6 +39,10 @@ function resolveHttpStatusForApiError(
 ): number {
   const { code: propsCode = 200, error } = props;
   const bc = processedError.code;
+
+  if (isUserConfigError(error)) {
+    return 400;
+  }
 
   if (typeof bc === 'number' && bc >= 400 && bc <= 499) {
     return bc;
@@ -128,7 +133,9 @@ export function processError(params: {
   }
 
   // 3. 根据错误类型记录不同级别的日志
-  if (error instanceof UserError) {
+  if (isUserConfigError(error)) {
+    msg = typeof error.displayMessage === 'string' ? error.displayMessage || msg : msg;
+  } else if (error instanceof UserError) {
     msg = error.displayMessage || msg;
     logger.info('Request error', { url, message: msg });
   } else if (error instanceof ZodError || error instanceof ApiRequestInputParseError) {
@@ -143,13 +150,15 @@ export function processError(params: {
     logger.error('System unexpected error', { url, message: msg, error });
   }
 
+  const defaultResolvedCode = isUserConfigError(error) ? 400 : defaultCode;
+
   // 4. 返回处理后的错误信息
   return {
-    code: defaultCode,
+    code: defaultResolvedCode,
     statusText: 'error',
     message: replaceSensitiveText(msg),
     shouldClearCookie: false,
-    httpStatus: defaultCode,
+    httpStatus: defaultResolvedCode,
     zodError
   };
 }
@@ -217,6 +226,11 @@ export const getSseErrorResponse = (
   data: string;
   shouldClearCookie: boolean;
 } => {
+  // SSE 错误按协议以 HTTP 200 正常结束，共享入口只能按状态码/断流判断成败，
+  // 因此在这个唯一的 SSE 错误载荷出口标记采集失败（v1、v2、pro 等入口共享）。
+  // 只影响观测口径，不改变响应内容。
+  markProfileError(error);
+
   const errResponseKey = typeof error === 'string' ? error : error?.message;
   const processedError = processError({ error });
 
@@ -266,6 +280,12 @@ export function responseWrite({
   const Write = res?.write;
 
   if (!Write) return;
+
+  // 直接写出 error 事件（如 workflowSseEvent.error）同样意味着请求失败；
+  // 与 getSseErrorResponse 的标记互为兜底，重复调用只保留第一个错误。
+  if (event === SseResponseEventEnum.error) {
+    markProfileError(data);
+  }
 
   if (event) {
     Write(`event: ${event}\n`);

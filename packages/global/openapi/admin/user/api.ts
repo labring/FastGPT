@@ -22,7 +22,7 @@ export type UserItemType = z.infer<typeof UserItemSchema>;
  * API: 获取用户列表
  * Route: POST /proApi/admin/user/getUsers
  * Method: POST
- * Description: 分页获取用户列表，支持按用户名搜索与活跃、禁用、注销状态过滤
+ * Description: 分页获取用户列表，支持按用户名搜索与活跃、待激活、禁用、注销状态过滤
  * Tags: ['Admin', 'Users', 'Read']
  * ============================================================================ */
 
@@ -42,7 +42,7 @@ export const GetUsersBodySchema = createPaginationSchema({
     .optional()
     .meta({
       description:
-        '状态多选过滤：active、forbidden 按实际 status 匹配，可包含注销账号；cancelled 仅按当前或历史匿名用户名格式推断注销。不传或空数组表示不限制状态；管理端默认只查 active',
+        '状态多选过滤：active、inactive、forbidden 按实际 status 匹配，可包含注销账号；cancelled 仅按当前或历史匿名用户名格式推断注销。不传或空数组表示不限制状态；管理端默认只查 active',
       example: ['cancelled']
     })
 });

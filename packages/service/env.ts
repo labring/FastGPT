@@ -31,6 +31,9 @@ export const serviceEnv = createEnv({
   skipValidation: isPhaseProductionBuild,
   server: {
     // ==================== 基础配置 ====================
+    AUXILIARY_GENERATION_SHOW_RUN_DETAIL: BoolSchema.default(false).meta({
+      description: '是否展示 Skill、Agent 和工作流辅助生成的运行详情入口，默认不展示'
+    }),
     DB_MAX_LINK: NumSchema.int()
       .default(10)
       .transform((value) => Math.min(1000, Math.max(10, value))),
@@ -252,11 +255,8 @@ export const serviceEnv = createEnv({
       description: 'Milvus 语言识别引擎(BM25 analyzer): lingua(默认) | whatlang'
     }),
     OPENGAUSS_URL: z.string().optional().meta({ description: 'openGauss 向量库连接参数' }),
-    HNSW_EF_SEARCH: IntSchema.min(1).default(100).meta({
-      description: '向量检索 hnsw ef_search 参数，仅对 PG / OB / OpenGauss 生效'
-    }),
-    HNSW_MAX_SCAN_TUPLES: IntSchema.min(1).default(100000).meta({
-      description: '向量检索最大扫描数据量，仅对 PG 生效'
+    HNSW_EF_SEARCH: IntSchema.min(1).default(200).meta({
+      description: 'HNSW 向量检索搜索宽度，对 PG / Milvus / OceanBase / SeekDB / OpenGauss 生效'
     }),
 
     // 对象存储

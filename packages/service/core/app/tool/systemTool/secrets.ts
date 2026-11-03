@@ -1,65 +1,20 @@
 import { SystemToolSecretMaskedValue } from '@fastgpt/global/core/app/tool/systemTool/constants';
+import {
+  getSecretReferenceValue,
+  isSecretValueConfigured
+} from '@fastgpt/global/common/secret/utils';
 import { type InputConfigType } from '@fastgpt/global/core/workflow/type/io';
-import { decryptSecret, encryptSecret } from '../../../../common/secret/aes256gcm';
+import { normalizeToolInputValue } from '@fastgpt/global/core/app/tool/systemTool/codec';
+import { decryptSecretValue, encryptSecretValue } from '../../../../common/secret/utils';
 
 type SecretsVal = Record<string, unknown>;
 
-type SecretValueLike = {
-  secret?: unknown;
-  value?: unknown;
-};
-
 const isMaskedValue = (value: unknown) => value === SystemToolSecretMaskedValue;
 
-const isSecretValueLike = (value: unknown): value is SecretValueLike => {
-  return typeof value === 'object' && value !== null && ('secret' in value || 'value' in value);
-};
-
-const isConfiguredValue = (value: unknown) => {
-  if (value === undefined || value === null || value === '') return false;
-  if (isMaskedValue(value)) return true;
-
-  if (isSecretValueLike(value)) {
-    return (value.value !== undefined && value.value !== '') || !!value.secret;
-  }
-
-  return true;
-};
-
-const isEncryptedValue = (value: unknown): value is { secret: string; value?: string } => {
-  return isSecretValueLike(value) && typeof value.secret === 'string' && value.secret.length > 0;
-};
-
-const encryptValue = (value: unknown) => {
-  if (value === undefined || value === null || value === '') return value;
-  if (isEncryptedValue(value)) return value;
-
-  if (isSecretValueLike(value)) {
-    if (typeof value.value !== 'string' || value.value === '') return '';
-    return {
-      secret: encryptSecret(value.value),
-      value: ''
-    };
-  }
-
-  return {
-    secret: encryptSecret(String(value)),
-    value: ''
-  };
-};
-
-const decryptValue = (value: unknown) => {
-  if (!isSecretValueLike(value)) return value;
-
-  if (typeof value.value === 'string' && value.value !== '') return value.value;
-  if (!isEncryptedValue(value)) return value.value ?? '';
-
-  try {
-    return decryptSecret(value.secret);
-  } catch {
-    // 兼容历史非 AES 密钥结构，避免一次坏字段导致整个工具无法运行。
-    return value.value ?? '';
-  }
+/** 管理员表单允许提交原始标量；仅在此边界包装明文，凭据识别仍由统一解析器负责。 */
+const normalizeSystemToolSecret = (value: unknown) => {
+  if (isMaskedValue(value)) return undefined;
+  return normalizeToolInputValue({ value, inputType: 'input' });
 };
 
 /** 从插件 secret schema 生成需要加密的字段集合。 */
@@ -78,33 +33,18 @@ export const encryptSystemToolSecrets = ({
 }) => {
   if (secretsVal === null || secretsVal === undefined) return secretsVal;
 
-  const result: SecretsVal = { ...(existingSecretsVal ?? {}) };
+  // 合并补丁后逐项处理；masked 读取旧值，每项只归一化一次，省略的历史明文也会加密。
+  return Object.fromEntries(
+    Object.entries({ ...existingSecretsVal, ...secretsVal }).flatMap(([key, value]) => {
+      if (!secretKeys.has(key)) return [[key, value]];
+      if (value === '' && Object.hasOwn(secretsVal, key)) return [];
 
-  Object.entries(secretsVal).forEach(([key, value]) => {
-    if (!secretKeys.has(key)) {
-      result[key] = value;
-      return;
-    }
-
-    if (isMaskedValue(value)) {
-      const existingValue = existingSecretsVal?.[key];
-      if (isConfiguredValue(existingValue)) {
-        result[key] = encryptValue(existingValue);
-      } else {
-        delete result[key];
-      }
-      return;
-    }
-
-    if (value === undefined || value === null || value === '') {
-      delete result[key];
-      return;
-    }
-
-    result[key] = encryptValue(value);
-  });
-
-  return result;
+      const isMasked = isMaskedValue(value);
+      const secretValue = normalizeSystemToolSecret(isMasked ? existingSecretsVal?.[key] : value);
+      if (!secretValue || (isMasked && !isSecretValueConfigured(secretValue))) return [];
+      return [[key, encryptSecretValue(secretValue)]];
+    })
+  );
 };
 
 /** 管理员详情只返回已配置标记，禁止把系统密钥明文或密文回传给前端。 */
@@ -118,21 +58,32 @@ export const maskSystemToolSecrets = ({
   if (!secretsVal) return secretsVal;
 
   return Object.fromEntries(
-    Object.entries(secretsVal).map(([key, value]) => [
-      key,
-      secretKeys.has(key) && isConfiguredValue(value) ? SystemToolSecretMaskedValue : value
-    ])
+    Object.entries(secretsVal).map(([key, value]) => {
+      if (!secretKeys.has(key)) return [key, value];
+      const secretValue = normalizeSystemToolSecret(value);
+      return [
+        key,
+        isSecretValueConfigured(secretValue) && !getSecretReferenceValue(secretValue)
+          ? SystemToolSecretMaskedValue
+          : (secretValue ?? '')
+      ];
+    })
   );
 };
 
-/** runtime 使用的系统密钥值，兼容旧明文并解密新格式。 */
+/** runtime 使用的系统密钥值，解密新格式并保留非密钥字段。 */
 export const decryptSystemToolSecrets = (secretsVal?: SecretsVal) => {
   if (!secretsVal) return secretsVal;
 
   return Object.fromEntries(
     Object.entries(secretsVal).flatMap(([key, value]) => {
       if (isMaskedValue(value)) return [];
-      return [[key, decryptValue(value)]];
+      try {
+        return [[key, decryptSecretValue(value)]];
+      } catch {
+        // 系统工具保留历史容错策略；解码和协议判断仍复用通用实现。
+        return [[key, '']];
+      }
     })
   );
 };

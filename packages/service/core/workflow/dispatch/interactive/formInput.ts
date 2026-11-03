@@ -81,7 +81,7 @@ const formatFileSelectRuntimeValue = async ({
 };
 
 /**
- * 首次执行时解析表单动态选项并返回交互；空选项交由工作流异常链路处理。
+ * 首次执行时解析表单动态选项并返回交互；空选项只返回错误输出和提示，不产生原始异常日志。
  * 恢复执行时从 query 的 JSON 文本读取用户提交内容，并转换文件和密码字段。
  */
 export const dispatchFormInput = async (props: Props): Promise<FormInputResponse> => {
@@ -104,9 +104,11 @@ export const dispatchFormInput = async (props: Props): Promise<FormInputResponse
       return runtimeVariables;
     };
 
-    const resolvedInputForms = userInputForms.map((item) => {
+    const resolvedInputForms: UserInputFormItemType[] = [];
+    for (const item of userInputForms) {
       if (!isReferenceOptionFormItem(item)) {
-        return item;
+        resolvedInputForms.push(item);
+        continue;
       }
 
       const list = resolveDynamicOptionStrings({
@@ -120,21 +122,25 @@ export const dispatchFormInput = async (props: Props): Promise<FormInputResponse
 
       // 与用户选择节点一致，避免返回没有可选值、用户无法完成的交互表单。
       if (list.length === 0) {
-        throw new Error(i18nT('workflow:form_input_no_available_options'));
+        const errorText = i18nT('workflow:form_input_no_available_options');
+        return {
+          error: { [NodeOutputKeyEnum.errorText]: errorText },
+          [DispatchNodeResponseKeyEnum.nodeResponse]: { errorText }
+        };
       }
 
-      return {
+      resolvedInputForms.push({
         ...item,
         defaultValue: undefined,
         list
-      };
-    });
+      });
+    }
 
     return {
       [DispatchNodeResponseKeyEnum.interactive]: {
         type: 'userInput',
         params: {
-          description,
+          description: description ?? '',
           inputForm: resolvedInputForms
         }
       }

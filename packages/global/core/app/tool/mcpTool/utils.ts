@@ -9,6 +9,23 @@ import { getNanoid } from '../../../../common/string/tools';
 import { AppToolSourceEnum } from '../constants';
 import type { NodeToolConfigType } from '../../../workflow/type/node';
 
+/**
+ * 提取 MCP 协议标记的执行错误；普通输出中的 error 字段仍是业务数据。
+ * 错误可能包含多个文本块或只有非文本内容，后者使用兜底提示，原始结果由调用方保留。
+ */
+export const getMCPToolErrorText = (result: {
+  isError?: boolean;
+  content?: Array<{ type: string; text?: string }>;
+}): string | undefined => {
+  if (result.isError !== true) return undefined;
+
+  const errorText = result.content
+    ?.filter((item) => item.type === 'text' && item.text?.trim())
+    .map((item) => item.text)
+    .join('\n');
+  return errorText || 'MCP tool execution failed';
+};
+
 export const getMCPToolSetRuntimeNode = ({
   url,
   toolList,
