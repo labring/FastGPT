@@ -1,42 +1,12 @@
-// openapi 数量上限已接管实例配置（94ae033d7）：getSystemInstanceConfig().auth.openApiKeyMaxCount
-// ?? appEnv.OPENAPI_KEY_MAX_COUNT。本文件通过 mock appEnv 驱动限额行为，预置"域存在、叶子缺省"
-// 种子快照走 ?? appEnv 兜底分支。
-(global as any).systemInstanceConfig = {
-  site: {},
-  auth: {},
-  security: {},
-  feature: {},
-  commercial: {},
-  resource: {},
-  performance: {
-    workflow: {},
-    parse: {},
-    dataset: {},
-    chat: {},
-    streamResume: {},
-    tracking: {},
-    task: {},
-    channel: {}
-  },
-  storage: {},
-  vector: {},
-  providers: {
-    documentParse: { customPdf: {}, sangfor: {} },
-    dataSource: {},
-    externalProviderWorkflowVariables: []
-  },
-  subservice: {
-    plugin: {},
-    codeSandbox: {},
-    aiProxy: {},
-    mcp: {},
-    agentSandbox: { provider: '', common: {}, sealosdevbox: {}, opensandbox: {}, proxy: {} }
-  }
-};
-
+// OpenAPI Key 数量上限由实例配置接管：create 接口只读 getSystemInstanceConfig().auth.openApiKeyMaxCount。
+// 27c957421 起实例配置是请求期唯一权威来源，appEnv.OPENAPI_KEY_MAX_COUNT 退化为 4180 迁移任务的
+// 首次导入种子（映射由 test/migration/migrateInstanceConfigs.test.ts 钉住），不再作为运行时兜底。
+// 因此快照必须用 resolveSystemInstanceConfig 生成「填满默认值的全量生效配置」；
+// 旧的「域存在、叶子缺省」骨架快照会让限额变成 undefined，等于限额失效。
 import type { EditApiKeyProps } from '@/global/support/openapi/api';
 import * as createapi from '@/pages/api/support/openapi/create';
 import { TeamApikeyCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
+import { resolveSystemInstanceConfig } from '@fastgpt/global/common/system/config/schema';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoOpenApi } from '@fastgpt/service/support/openapi/schema';
 import { MongoOpenApiTag } from '@fastgpt/service/support/openapi/tag/schema';
@@ -56,6 +26,8 @@ vi.mock('@/env', () => ({
 describe('support/openapi/create', () => {
   beforeEach(() => {
     mockAppEnv.OPENAPI_KEY_MAX_COUNT = 100;
+    // 逐用例重建默认快照：限额用例只改内存对象，不重置会把上一个用例的限额带给后续用例。
+    global.systemInstanceConfig = resolveSystemInstanceConfig({});
   });
 
   it('creates system APIKeys and ignores legacy appId input', async () => {
@@ -198,8 +170,8 @@ describe('support/openapi/create', () => {
     expect(openapi?.appId).toBeUndefined();
   });
 
-  it('uses OPENAPI_KEY_MAX_COUNT from app env as create limit', async () => {
-    mockAppEnv.OPENAPI_KEY_MAX_COUNT = 1;
+  it('uses auth.openApiKeyMaxCount from instance config as create limit', async () => {
+    global.systemInstanceConfig!.auth.openApiKeyMaxCount = 1;
     const users = await getFakeUsers(1);
     await MongoResourcePermission.create({
       resourceType: 'team',
@@ -212,7 +184,7 @@ describe('support/openapi/create', () => {
     const firstRes = await Call<EditApiKeyProps>(createapi.default, {
       auth: users.members[0],
       body: {
-        name: 'first env limited key',
+        name: 'first config limited key',
         limit: {
           maxUsagePoints: 1000
         }
@@ -223,7 +195,7 @@ describe('support/openapi/create', () => {
     const secondRes = await Call<EditApiKeyProps>(createapi.default, {
       auth: users.members[0],
       body: {
-        name: 'second env limited key',
+        name: 'second config limited key',
         limit: {
           maxUsagePoints: 1000
         }
@@ -231,7 +203,44 @@ describe('support/openapi/create', () => {
     });
 
     expect(secondRes.code).toBe(500);
-    expect(await MongoOpenApi.findOne({ name: 'second env limited key' })).toBeNull();
+    expect(await MongoOpenApi.findOne({ name: 'second config limited key' })).toBeNull();
+  });
+
+  it('keeps instance config authoritative over OPENAPI_KEY_MAX_COUNT env', async () => {
+    // ENV 只在迁移首次导入时进入实例配置；若请求期仍回落 ENV，Admin 把限额改回默认值也压不掉旧部署变量。
+    mockAppEnv.OPENAPI_KEY_MAX_COUNT = 1;
+    global.systemInstanceConfig!.auth.openApiKeyMaxCount = 100;
+
+    const users = await getFakeUsers(1);
+    await MongoResourcePermission.create({
+      resourceType: 'team',
+      teamId: users.members[0].teamId,
+      resourceId: null,
+      tmbId: users.members[0].tmbId,
+      permission: TeamApikeyCreatePermissionVal
+    });
+
+    const firstRes = await Call<EditApiKeyProps>(createapi.default, {
+      auth: users.members[0],
+      body: {
+        name: 'env ignored key 1',
+        limit: {
+          maxUsagePoints: 1000
+        }
+      }
+    });
+    const secondRes = await Call<EditApiKeyProps>(createapi.default, {
+      auth: users.members[0],
+      body: {
+        name: 'env ignored key 2',
+        limit: {
+          maxUsagePoints: 1000
+        }
+      }
+    });
+
+    expect(firstRes.code).toBe(200);
+    expect(secondRes.code).toBe(200);
   });
 
   it('limits APIKey name to 50 chars', async () => {
