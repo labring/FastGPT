@@ -77,14 +77,17 @@ describe('S3 TTL cleanup', () => {
     expect(await MongoS3TTL.find({ minioKey: fileKey, bucketName })).toHaveLength(0);
   });
 
-  it('keeps the Multipart TTL record when the bucket is unavailable', async () => {
-    await createExpiredTtl({ uploadId: 'retry-later-upload' });
-    global.s3BucketMap = {};
+  it.each([true, false])(
+    'keeps TTL while the bucket is unavailable (Multipart: %s)',
+    async (multipart) => {
+      await createExpiredTtl(multipart ? { uploadId: 'retry-later-upload' } : undefined);
+      global.s3BucketMap = {};
 
-    await clearExpiredMinioFiles();
+      await clearExpiredMinioFiles();
 
-    expect(await MongoS3TTL.find({ minioKey: fileKey, bucketName })).toHaveLength(1);
-  });
+      expect(await MongoS3TTL.find({ minioKey: fileKey, bucketName })).toHaveLength(1);
+    }
+  );
 
   it('submits normal expired objects for deletion and then removes their TTL record', async () => {
     const storage = createVitestStorageMock({ vi, bucketName });
@@ -97,6 +100,26 @@ describe('S3 TTL cleanup', () => {
 
     expect(addDeleteJob).toHaveBeenCalledWith({ key: fileKey });
     expect(await MongoS3TTL.find({ minioKey: fileKey, bucketName })).toHaveLength(0);
+  });
+
+  it('retains TTL until the queue accepts the deletion, and retries a failed submission', async () => {
+    const storage = createVitestStorageMock({ vi, bucketName });
+    const bucket = new S3BaseBucket(storage, undefined);
+    const record = await createExpiredTtl();
+    global.s3BucketMap = { [bucketName]: bucket };
+    const enqueue = vi.spyOn(bucket, 'addDeleteJob').mockImplementation(async () => {
+      expect(await MongoS3TTL.findById(record._id)).toBeTruthy();
+      throw new Error('queue offline');
+    });
+    await clearExpiredMinioFiles();
+    expect(await MongoS3TTL.findById(record._id)).toBeTruthy();
+    enqueue.mockImplementation(async () => {
+      expect(await MongoS3TTL.findById(record._id)).toBeTruthy();
+    });
+    await clearExpiredMinioFiles();
+    expect(enqueue).toHaveBeenCalledTimes(2);
+    expect(await MongoS3TTL.findById(record._id)).toBeNull();
+    expect(storage.deleteObjectsByMultiKeys).not.toHaveBeenCalled();
   });
 
   it('rejects a Multipart TTL without an uploadId', async () => {

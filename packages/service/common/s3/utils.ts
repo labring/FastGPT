@@ -137,7 +137,6 @@ export function removeS3TTL({
     return MongoS3TTL.deleteMany(
       {
         minioKey: { $in: key },
-        cleanupType: { $exists: false },
         bucketName: S3Buckets[bucketName]
       },
       { session }
@@ -148,7 +147,6 @@ export function removeS3TTL({
     return MongoS3TTL.deleteOne(
       {
         minioKey: key,
-        cleanupType: { $exists: false },
         bucketName: S3Buckets[bucketName]
       },
       { session }
@@ -156,7 +154,7 @@ export function removeS3TTL({
   }
 }
 
-/** 上传图片并透传可选截止时间；集合正文图片的临时记录由调用方在上传前登记。 */
+/** 上传图片并透传可选截止时间；调用方可在上传前登记临时回收记录。 */
 export async function uploadImage2S3Bucket(
   bucketName: keyof typeof S3Buckets,
   params: UploadImage2S3BucketParams

@@ -35,7 +35,7 @@ import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { refreshDatasetDataVectorCreateTime } from '@fastgpt/service/common/vectorDB/controller';
 import { assertDatasetDataWritable } from '@fastgpt/service/core/dataset/data/utils';
 import { persistChunkImageReferences } from '@fastgpt/service/core/dataset/data/inlineImages/entity';
-import { parseChunkImageKey } from '@fastgpt/service/common/s3/sources/dataset/chunkImageKey';
+import { parseChunkImageKey } from '@fastgpt/service/core/dataset/data/inlineImages/utils';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.EMBEDDING);
 

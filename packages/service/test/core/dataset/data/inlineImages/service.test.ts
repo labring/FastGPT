@@ -48,7 +48,7 @@ describe('normalizeDatasetDataImages', () => {
     ]);
     expect(s3Utils.uploadImage2S3Bucket).toHaveBeenCalledTimes(1);
     expect(await MongoS3TTL.findOne({ minioKey: key }).lean()).toMatchObject({
-      cleanupType: 'collectionImageUpload'
+      minioKey: key
     });
     expect(
       (await MongoDatasetCollection.findById(scope.collectionId).lean())?.chunkImagePrefixId
@@ -99,7 +99,7 @@ describe('normalizeDatasetDataImages', () => {
     await expect(
       normalizeDatasetDataImages({ ...scope, data: [{ q: `![image](${url})` }] })
     ).rejects.toThrow('storage unavailable');
-    expect(await MongoS3TTL.countDocuments({ cleanupType: 'collectionImageUpload' })).toBe(1);
+    expect(await MongoS3TTL.countDocuments()).toBe(1);
   });
 
   it('concurrent first uploads acquire the same stable directory', async () => {

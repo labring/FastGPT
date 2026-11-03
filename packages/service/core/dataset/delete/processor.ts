@@ -107,33 +107,21 @@ const deleteDatasets = async ({
     await removeImageByPath(dataset.avatar);
   }
 
-  // delete all dataset.data and pg data
-  const cleanup = await mongoSessionRun(async (session) => {
-    // delete dataset data
-    const cleanup = await delDatasetRelevantData({
-      datasets,
-      session,
-      deleteDataset: true
-    });
+  const cleanupJobs = await mongoSessionRun((session) =>
+    delDatasetRelevantData({ datasets, session, deleteDataset: true })
+  );
+  // 队列失败时保留已软删除的库文档；重试仍能构造总目录，无需逐对象清理记录。
+  await dispatchDatasetStorageCleanup(cleanupJobs);
 
-    // 权限与知识库本体同步删除，避免留下无法回收的孤立权限记录。
+  await mongoSessionRun(async (session) => {
     await resourcePermissionRepo.deleteByResources({
       teamId,
       resourceType: PerResourceTypeEnum.dataset,
       resourceIds: datasetIds,
       session
     });
-
-    await MongoDataset.deleteMany(
-      {
-        teamId,
-        _id: { $in: datasetIds }
-      },
-      { session }
-    );
-    return cleanup;
+    await MongoDataset.deleteMany({ teamId, _id: { $in: datasetIds } }, { session });
   });
-  await dispatchDatasetStorageCleanup(cleanup);
 };
 
 export const datasetDeleteProcessor: Processor<DatasetDeleteJobData> = async (job) => {

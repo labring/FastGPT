@@ -15,6 +15,7 @@ import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { S3Buckets } from '@fastgpt/service/common/s3/config/constants';
 import * as s3Utils from '@fastgpt/service/common/s3/utils';
 import * as datasetSource from '@fastgpt/service/common/s3/sources/dataset';
+import { s3FileDeleteMQService } from '@fastgpt/dal/redis/bullmq';
 import { mockVectorInsert } from '@test/mocks/common/vector';
 import { createVitestStorageMock } from '@fastgpt-sdk/storage';
 
@@ -50,6 +51,9 @@ describe('direct data image ingestion', () => {
   beforeEach(() => {
     storage = createVitestStorageMock({ vi, bucketName: S3Buckets.private });
     enqueue.mockClear();
+    vi.spyOn(s3FileDeleteMQService, 'addJob').mockImplementation(({ bucketName, ...job }) =>
+      enqueue(job)
+    );
     global.s3BucketMap = {
       [S3Buckets.private]: { client: storage, addDeleteJob: enqueue }
     } as typeof global.s3BucketMap;
@@ -79,7 +83,7 @@ describe('direct data image ingestion', () => {
       const original = (await MongoDatasetData.findById(dataId).lean())!;
       expect(original.q).toContain(`/chunk-images/${scope.collectionId}/`);
       expect(original.q).not.toContain('base64,');
-      expect(await MongoS3TTL.countDocuments({ cleanupType: 'collectionImageUpload' })).toBe(0);
+      expect(await MongoS3TTL.countDocuments()).toBe(0);
       const edited = await Call(updateHandler, {
         auth: root,
         body: {
@@ -94,7 +98,7 @@ describe('direct data image ingestion', () => {
       expect(current.q).not.toContain('base64,');
       expect(current.a).toBe('keep this answer');
       expect(current.history?.[0].q).toBe(original.q);
-      expect(await MongoS3TTL.countDocuments({ cleanupType: 'collectionImageUpload' })).toBe(0);
+      expect(await MongoS3TTL.countDocuments()).toBe(0);
     }
   );
 
@@ -117,7 +121,7 @@ describe('direct data image ingestion', () => {
       expect(tasks[0].q).toBe(tasks[1].q);
       expect(tasks[0].q).not.toContain('base64,');
       expect(storage.uploadObject).toHaveBeenCalledTimes(1);
-      expect(await MongoS3TTL.countDocuments({ cleanupType: 'collectionImageUpload' })).toBe(0);
+      expect(await MongoS3TTL.countDocuments()).toBe(0);
     }
   );
 
@@ -142,7 +146,7 @@ describe('direct data image ingestion', () => {
     expect(updated.q).not.toContain('base64,');
     expect(updated.a).toBe('keep original answer');
     expect(updated.retryCount).toBe(3);
-    expect(await MongoS3TTL.countDocuments({ cleanupType: 'collectionImageUpload' })).toBe(0);
+    expect(await MongoS3TTL.countDocuments()).toBe(0);
   });
 
   it.each([false, true])(
@@ -166,7 +170,7 @@ describe('direct data image ingestion', () => {
       });
       expect(edited.code).not.toBe(200);
       expect(await MongoDatasetData.findById(dataId)).toBeNull();
-      expect(await MongoS3TTL.countDocuments({ cleanupType: 'collectionImageUpload' })).toBe(1);
+      expect(await MongoS3TTL.countDocuments()).toBe(1);
     }
   );
 
@@ -183,7 +187,7 @@ describe('direct data image ingestion', () => {
     expect(result.code).toBe(200);
     expect(result.data.insertLen).toBe(0);
     expect(await MongoDatasetTraining.countDocuments({ collectionId: scope.collectionId })).toBe(0);
-    expect(await MongoS3TTL.countDocuments({ cleanupType: 'collectionImageUpload' })).toBe(1);
+    expect(await MongoS3TTL.countDocuments()).toBe(1);
   });
 
   it('retains shared images when all chunks are deleted, then cleans the source-less collection directory', async () => {
@@ -223,6 +227,6 @@ describe('direct data image ingestion', () => {
       prefix: `dataset/${scope.datasetId}/chunk-images/${scope.collectionId}/`
     });
     await expect(storage.getObjectMetadata({ key })).rejects.toThrow();
-    expect(await MongoS3TTL.countDocuments({ cleanupType: 'collectionImagePrefix' })).toBe(0);
+    expect(await MongoS3TTL.countDocuments()).toBe(0);
   });
 });

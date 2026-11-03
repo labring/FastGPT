@@ -26,20 +26,17 @@ import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection
 import { MongoTeam } from '@fastgpt/service/support/user/team/teamSchema';
 import { MongoS3TTL } from '@fastgpt/service/common/s3/models/ttl';
 import { S3Buckets } from '@fastgpt/service/common/s3/config/constants';
-import { clearExpiredMinioFiles } from '@fastgpt/service/common/s3/lifecycle/cleanup';
 import { S3PrivateBucket } from '@fastgpt/service/common/s3/buckets/private';
-import { datasetDeleteMQService, datasetSyncMQService } from '@fastgpt/dal/redis/bullmq';
+import {
+  datasetDeleteMQService,
+  datasetSyncMQService,
+  s3FileDeleteMQService
+} from '@fastgpt/dal/redis/bullmq';
 
 vi.unmock('@fastgpt/service/common/mongo/sessionRun');
 const { executeS3DeleteJob } = await vi.importActual<
   typeof import('@fastgpt/service/common/s3/queue/delete')
 >('@fastgpt/service/common/s3/queue/delete');
-
-vi.mock('@fastgpt/service/common/s3/sources/dataset', () => ({
-  getS3DatasetSource: () => ({
-    deleteDatasetFilesByPrefix: vi.fn().mockResolvedValue(undefined)
-  })
-}));
 
 const originalDatasetSynonymEnabled = serviceEnv.DATASET_SYNONYM_ENABLED;
 
@@ -279,8 +276,10 @@ describe('deleteTeamAllDatasets', () => {
     const contexts = [child, independent];
     const bucket = new S3PrivateBucket();
     const originalBuckets = global.s3BucketMap;
-    const enqueue = vi.spyOn(bucket, 'addDeleteJob').mockRejectedValue(new Error('queue offline'));
-    // scheduler 与队列是外部 Redis 边界，业务删除和清理记录使用真实 Mongo 事务。
+    const enqueue = vi
+      .spyOn(s3FileDeleteMQService, 'addJob')
+      .mockRejectedValue(new Error('queue offline'));
+    // scheduler 与队列是外部 Redis 边界，数据库删除使用真实 Mongo 事务。
     const removeScheduler = vi
       .spyOn(datasetSyncMQService, 'removeScheduler')
       .mockResolvedValue(true);
@@ -320,31 +319,33 @@ describe('deleteTeamAllDatasets', () => {
       expect(
         await MongoDataset.countDocuments({ teamId: user.teamId, deleteTime: { $ne: null } })
       ).toBe(3);
-      expect(await MongoS3TTL.countDocuments({ cleanupType: 'datasetPrefix' })).toBe(0);
+      expect(await MongoS3TTL.countDocuments()).toBe(0);
 
       // 账号/团队元数据被删除后，Dataset 和 S3 worker 仍须仅依靠任务范围继续执行。
       await MongoTeam.deleteOne({ _id: user.teamId });
       for (const data of jobs)
+        await expect(
+          datasetDeleteProcessor({ data } as Parameters<typeof datasetDeleteProcessor>[0])
+        ).rejects.toThrow('queue offline');
+      // 未确认目录入队前保留软删除的库文档；无需在 TTL 中登记业务清理记录。
+      expect(await MongoDataset.countDocuments({ teamId: user.teamId })).toBe(3);
+      expect(await MongoDatasetCollection.countDocuments({ teamId: user.teamId })).toBe(0);
+      expect(await MongoS3TTL.countDocuments()).toBe(0);
+      enqueue.mockClear().mockResolvedValue(undefined);
+      for (const data of jobs)
         await datasetDeleteProcessor({ data } as Parameters<typeof datasetDeleteProcessor>[0]);
       expect(await MongoDataset.countDocuments({ teamId: user.teamId })).toBe(0);
-      expect(await MongoDatasetCollection.countDocuments({ teamId: user.teamId })).toBe(0);
-      expect(await MongoS3TTL.countDocuments({ cleanupType: 'datasetPrefix' })).toBe(3);
-      // 数据库已清空但 Redis 投递失败；恢复后从持久化目录意图补投，覆盖旧文件和新图片。
-      enqueue.mockClear().mockResolvedValue(undefined);
-      await clearExpiredMinioFiles();
-      const pending = await MongoS3TTL.find({ cleanupType: 'datasetPrefix' }).lean();
       expect(enqueue).toHaveBeenCalledTimes(3);
       for (const { prefix, key } of images) {
-        expect(enqueue).toHaveBeenCalledWith({ prefix });
+        expect(enqueue).toHaveBeenCalledWith({ bucketName: S3Buckets.private, prefix });
         expect(await bucket.client.getObjectMetadata({ key })).toBeTruthy();
       }
-      for (const file of pending)
-        await executeS3DeleteJob({ bucketName: S3Buckets.private, prefix: file.minioKey });
+      for (const [job] of enqueue.mock.calls) await executeS3DeleteJob(job);
       for (const { key, legacyKey } of images) {
         await expect(bucket.client.getObjectMetadata({ key })).rejects.toThrow();
         await expect(bucket.client.getObjectMetadata({ key: legacyKey })).rejects.toThrow();
       }
-      expect(await MongoS3TTL.countDocuments({ cleanupType: 'datasetPrefix' })).toBe(0);
+      expect(await MongoS3TTL.countDocuments()).toBe(0);
     } finally {
       global.s3BucketMap = originalBuckets;
       enqueue.mockRestore();

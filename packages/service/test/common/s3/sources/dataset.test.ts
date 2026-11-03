@@ -182,8 +182,7 @@ describe('S3DatasetSource FileSource lifecycle', () => {
     expect(removeObject).toHaveBeenCalledWith('dataset/id/file.csv');
     expect(deleteTtl).toHaveBeenCalledWith({
       minioKey: 'dataset/id/file.csv',
-      bucketName: 'private',
-      cleanupType: { $exists: false }
+      bucketName: 'private'
     });
     expect(removeObject.mock.invocationCallOrder[0]).toBeLessThan(
       deleteTtl.mock.invocationCallOrder[0]

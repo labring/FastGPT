@@ -6,7 +6,7 @@ import {
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { addHours } from 'date-fns';
 import { getOrCreateChunkImagePrefixId } from '../../collection/entity';
-import { createChunkImageKey } from '../../../../common/s3/sources/dataset/chunkImageKey';
+import { createChunkImageKey } from './utils';
 import { normalizeMimeType, resolveMimeExtension } from '../../../../common/s3/utils/mime';
 import { isValidImageContentType } from '../../../../common/file/image/utils';
 import { validateUploadFile } from '../../../../common/s3/validation/upload';
@@ -66,8 +66,7 @@ export const normalizeDatasetDataImages = async <T extends { q?: string; a?: str
         await MongoS3TTL.create({
           bucketName: S3Buckets.private,
           minioKey: key,
-          expiredTime: addHours(new Date(), 3),
-          cleanupType: 'collectionImageUpload'
+          expiredTime: addHours(new Date(), 3)
         });
         await uploadImage2S3Bucket('private', {
           buffer,

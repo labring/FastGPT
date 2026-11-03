@@ -11,10 +11,6 @@ import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoS3TTL } from '@fastgpt/service/common/s3/models/ttl';
 import { S3Buckets } from '@fastgpt/service/common/s3/config/constants';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
-import {
-  createChunkImagePrefixCleanup,
-  claimChunkImageUploadCleanup
-} from '@fastgpt/service/common/s3/lifecycle/entity';
 
 vi.unmock('@fastgpt/service/common/mongo/sessionRun');
 
@@ -28,8 +24,7 @@ const setup = async () => {
   const record = await MongoS3TTL.create({
     bucketName: S3Buckets.private,
     minioKey: key,
-    expiredTime: new Date(Date.now() + 3600000),
-    cleanupType: 'collectionImageUpload'
+    expiredTime: new Date(Date.now() + 3600000)
   });
   return { root, scope, key, record };
 };
@@ -93,11 +88,9 @@ describe('persistChunkImageReferences', () => {
     expect(await MongoS3TTL.findById(record._id)).toBeTruthy();
   });
 
-  it('cannot promote an upload after cleanup has acquired it', async () => {
+  it('rejects a new upload whose temporary record is missing', async () => {
     const { scope, key, record } = await setup();
-    await MongoS3TTL.updateOne({ _id: record._id }, { expiredTime: new Date(0) });
-    const expired = (await MongoS3TTL.findById(record._id).lean())!;
-    expect(await claimChunkImageUploadCleanup(expired)).toBe(true);
+    await MongoS3TTL.deleteOne({ _id: record._id });
     await expect(
       mongoSessionRun((session) =>
         persistChunkImageReferences({
@@ -108,7 +101,6 @@ describe('persistChunkImageReferences', () => {
         })
       )
     ).rejects.toThrow('no longer available');
-    expect((await MongoS3TTL.findById(record._id).lean())?.cleanupClaimed).toBe(true);
   });
 
   it('rejects pending uploads being reused outside their upload request', async () => {
@@ -149,61 +141,6 @@ describe('persistChunkImageReferences', () => {
           })
         )
       ).rejects.toThrow('does not belong');
-    }
-  );
-
-  it.each([true, false])(
-    'serializes image promotion against collection deletion (write first: %s)',
-    async (writeFirst) => {
-      const { scope, key, record } = await setup();
-      let entered!: () => void;
-      let release!: () => void;
-      const locked = new Promise<void>((resolve) => {
-        entered = resolve;
-      });
-      const gate = new Promise<void>((resolve) => {
-        release = resolve;
-      });
-      const write = () =>
-        mongoSessionRun(async (session) => {
-          await MongoDatasetData.create([{ ...scope, q: `![image](${key})` }], { session });
-          await persistChunkImageReferences({
-            ...scope,
-            data: [{ q: `![image](${key})` }],
-            imageUploadKeys: [key],
-            session
-          });
-          if (writeFirst) {
-            entered();
-            await gate;
-          }
-        });
-      const remove = () =>
-        mongoSessionRun(async (session) => {
-          await createChunkImagePrefixCleanup({
-            scopes: [{ datasetId: scope.datasetId, chunkImagePrefixId: scope.collectionId }],
-            session
-          });
-          await MongoDatasetCollection.deleteOne({ _id: scope.collectionId }, { session });
-          await MongoDatasetData.deleteMany({ collectionId: scope.collectionId }, { session });
-          if (!writeFirst) {
-            entered();
-            await gate;
-          }
-        });
-      const first = writeFirst ? write() : remove();
-      await locked;
-      const second = writeFirst ? remove() : write();
-      // 立即挂接预期拒绝，避免等待删除提交期间被报告为未处理的 Promise。
-      const checked = writeFirst ? second : expect(second).rejects.toThrow('does not belong');
-      // 先持有集合真实写锁，再释放另一个事务，验证 Mongo 的冲突重试而非只读快照判断。
-      release();
-      await first;
-      await checked;
-      expect(await MongoDatasetCollection.findById(scope.collectionId)).toBeNull();
-      expect(await MongoDatasetData.countDocuments({ collectionId: scope.collectionId })).toBe(0);
-      expect(Boolean(await MongoS3TTL.findById(record._id))).toBe(!writeFirst);
-      expect(await MongoS3TTL.countDocuments({ cleanupType: 'collectionImagePrefix' })).toBe(1);
     }
   );
 

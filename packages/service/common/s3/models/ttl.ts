@@ -37,12 +37,6 @@ const S3TTLSchema = new Schema({
     type: Date,
     required: true
   },
-  cleanupType: {
-    type: String,
-    enum: ['collectionImageUpload', 'collectionImagePrefix', 'datasetPrefix', 'datasetFile'],
-    required: false
-  },
-  cleanupClaimed: { type: Boolean, required: false },
   multipart: {
     type: S3MultipartTTLSchema,
     required: false
