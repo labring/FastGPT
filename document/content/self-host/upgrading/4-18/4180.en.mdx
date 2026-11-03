@@ -35,7 +35,9 @@ PG partial indexes require `halfvec` support, a fixed vector dimension in the `1
 2. **[Datasets and files]** In the Commercial edition, moved tag filtering for simple Apps and ChatAgents to the “Search filter” tab in Dataset search settings and added a dedicated toggle. Turning it off in manual input mode preserves conditions for later editing; the settings summary now reflects whether the toggle is on.
 3. **[Models and billing]** Consistently place models in test mode last in the mobile model selector, speech playback, channel bindings, and model log and dashboard filters, preserving catalog order within each group.
 4. **[Models and billing]** Aligned header and body column widths in the model management table and isolated edit dialog state by row, reducing full-table rerenders when opening a dialog in a large list.
-5. **[System and operations]** Added OpenSandbox startup troubleshooting guidance for host seccomp restrictions that can leave `/workspace` unwritable even when volume permissions are correct.
+5. **[Chat experience]** Optimized scroll pagination to reduce rerenders caused by scrolling; scrolling can still load more items after content shrinks to less than one screen.
+6. **[Teams and permissions]** Aligned the close button position and style in the contact information and notification account dialogs.
+7. **[System and operations]** Added OpenSandbox startup troubleshooting guidance for host seccomp restrictions that can leave `/workspace` unwritable even when volume permissions are correct.
 
 ## 🐛 Fixes
 
@@ -43,10 +45,12 @@ PG partial indexes require `halfvec` support, a fixed vector dimension in the `1
 2. **[Workflows and Agents]** Fixed missing memory updates from Agents, Tool calls, and nested Workflows, loss of memory from branches that did not run, and concurrent child Workflows overwriting other Nodes' new state with stale state. Only each child Workflow's updates are merged, preserving other valid memory.
 3. **[Workflows and Agents]** Fixed memory propagation and failure isolation in loops and parallel runs. Loops pass memory between successful iterations and preserve checkpoints when paused for interaction; failed iterations do not commit updates. Parallel runs merge only successful task results, keep failed attempts from affecting retries, and merge in input order, with later successful tasks taking precedence for the same memory key.
 4. **[Workflows and Agents]** Fixed nested Pi Agents failing to resume question interactions when history is set to 0 or an empty custom history array. Resumes restore the state saved by the parent Workflow.
-5. **[Chat experience]** Fixed the header variable panel in shared chats without login using regular chat visibility rules. External variables are now hidden from share visitors.
-6. **[Chat experience]** Fixed model selectors in global variables and interaction forms in shared chats without login failing to load the model list or selected model name because share authentication was missing.
-7. **[Chat experience]** Fixed images being missed when their Markdown descriptions contain paired square brackets, such as `![Image [1]](...)`; image extraction and replacement now handle these descriptions correctly.
-8. **[Tools and channels]** Fixed blank text in some Tool names, descriptions, and tags when their Traditional Chinese translation is empty. These values fall back to Simplified Chinese, then English if no usable text is available.
+5. **[Workflows and Agents]** Fixed Skill exports failing when the edit sandbox was not running: when initialization is allowed, the server starts or resumes the sandbox and waits until it is ready before packaging. Members with write permission must wait for the sandbox to be ready; read-only collaborators can access export regardless of their local edit sandbox state.
+6. **[Chat experience]** Fixed the header variable panel in shared chats without login using regular chat visibility rules. External variables are now hidden from share visitors.
+7. **[Chat experience]** Fixed model selectors in global variables and interaction forms in shared chats without login failing to load the model list or selected model name because share authentication was missing.
+8. **[Chat experience]** Fixed images being missed when their Markdown descriptions contain paired square brackets, such as `![Image [1]](...)`; image extraction and replacement now handle these descriptions correctly.
+9. **[Teams and permissions]** Fixed the login and member name forms submitting when Enter was used to confirm an input method candidate during composition. Pressing Enter again after confirmation submits the form.
+10. **[Tools and channels]** Fixed blank text in some Tool names, descriptions, and tags when their Traditional Chinese translation is empty. These values fall back to Simplified Chinese, then English if no usable text is available.
 
 ## 🛠️ Code improvements
 
