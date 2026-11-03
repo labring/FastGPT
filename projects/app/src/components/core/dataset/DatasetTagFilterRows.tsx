@@ -528,25 +528,27 @@ export const useDatasetTagFilterPrune = ({
   onChange,
   fetchWhenEmptyValue = false
 }: {
-  datasetIds: string[];
+  datasetIds?: string[];
   value: unknown;
   onChange: (value: DatasetTagFilterValue) => void;
   fetchWhenEmptyValue?: boolean;
 }) => {
   const { feConfigs } = useSystemStore();
-  const datasetIdsKey = datasetIds.join(',');
+  const hasStaticDatasetIds = Array.isArray(datasetIds);
+  const resolvedDatasetIds = hasStaticDatasetIds ? datasetIds : [];
+  const datasetIdsKey = resolvedDatasetIds.join(',');
   const hasCustomTagCondition =
     isDatasetTagFilterValue(value) &&
     value.conditions.some((item) => !isTagFilterAttributeField(item.field) && Boolean(item.tag));
   const shouldFetch =
     Boolean(feConfigs?.isPlus) &&
-    datasetIds.length > 0 &&
+    resolvedDatasetIds.length > 0 &&
     (fetchWhenEmptyValue || hasCustomTagCondition);
 
   const { data, loading, error } = useRequest(
     async () => {
       if (!shouldFetch) return undefined;
-      const results = await Promise.all(datasetIds.map(getAllTags));
+      const results = await Promise.all(resolvedDatasetIds.map(getAllTags));
       return {
         key: datasetIdsKey,
         tagLists: results.map(({ list }) => list)
@@ -560,13 +562,14 @@ export const useDatasetTagFilterPrune = ({
   );
 
   const options = useMemo(
-    () => (datasetIds.length === 0 ? [] : intersectWorkflowTagOptions(data?.tagLists ?? [])),
-    [data?.tagLists, datasetIds.length]
+    () =>
+      resolvedDatasetIds.length === 0 ? [] : intersectWorkflowTagOptions(data?.tagLists ?? []),
+    [data?.tagLists, resolvedDatasetIds.length]
   );
 
   useEffect(() => {
-    if (!isDatasetTagFilterValue(value)) return;
-    if (datasetIds.length === 0) {
+    if (!hasStaticDatasetIds || !isDatasetTagFilterValue(value)) return;
+    if (resolvedDatasetIds.length === 0) {
       const next = pruneTagFilterConditions(value, []);
       if (JSON.stringify(next) !== JSON.stringify(value)) {
         onChange(next);
@@ -582,12 +585,13 @@ export const useDatasetTagFilterPrune = ({
     onChange(next);
   }, [
     data?.key,
-    datasetIds.length,
     datasetIdsKey,
     error,
+    hasStaticDatasetIds,
     loading,
     onChange,
     options,
+    resolvedDatasetIds.length,
     shouldFetch,
     value
   ]);
@@ -609,7 +613,7 @@ const DatasetTagFilterRows = ({
 }: {
   value: unknown;
   onChange: (value: DatasetTagFilterValue) => void;
-  datasetIds: string[];
+  datasetIds?: string[];
   referenceList: TagFilterReferenceList;
   usePortal?: boolean;
 }) => {

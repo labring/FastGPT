@@ -257,9 +257,10 @@ export const getHistories = (
 };
 
 const getInteractiveChainStartIndex = (histories: ChatItemMiniType[] = []) => {
+  const lastAIIndex = histories.findLastIndex((item) => item.obj === ChatRoleEnum.AI);
+  if (lastAIIndex < 0) return -1;
   if (!getLastInteractiveValue(histories)) return -1;
 
-  const lastAIIndex = histories.findLastIndex((item) => item.obj === ChatRoleEnum.AI);
   let startIndex = lastAIIndex;
   for (let index = lastAIIndex - 1; index >= 0; index--) {
     if (histories[index].obj !== ChatRoleEnum.Human) continue;

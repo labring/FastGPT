@@ -80,7 +80,7 @@ const DatasetParamsModal = ({
   collectionFilterMatch,
   showTagFilter = false,
   canSwitchTagFilterMode = false,
-  datasetIds = [],
+  datasetIds,
   tagFilterReferenceList = [],
   maxTokens,
   appId,

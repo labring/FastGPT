@@ -63,6 +63,8 @@ export const summarizeAgentLoopCoreResult = <TChildrenResponse = unknown>(
   const parsedInteractive = InteractiveNodeResponseTypeSchema.safeParse(result.pause?.interactive);
   // abort 既用于用户主动停止，也可能是 provider 结束暂停轮次的控制信号，不应展示为错误。
   const errorText = result.status === 'error' ? getErrText(result.error) : undefined;
+  const messageText = getAgentLoopCoreFinalMessageText(result.assistantMessages);
+  const finalText = [messageText, errorText].filter(Boolean).join('') || undefined;
 
   return {
     status: result.status,
@@ -76,7 +78,7 @@ export const summarizeAgentLoopCoreResult = <TChildrenResponse = unknown>(
     outputTokens: usageSummary.outputTokens,
     llmTotalPoints: usageSummary.llmTotalPoints,
     errorText,
-    finalText: getAgentLoopCoreFinalMessageText(result.assistantMessages) || errorText,
+    finalText,
     reasoningText: getAgentLoopCoreFinalMessageReasoning(result.assistantMessages),
     providerState: result.providerState,
     interactive: parsedInteractive.success ? parsedInteractive.data : undefined

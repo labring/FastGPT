@@ -15,7 +15,6 @@ import {
 import {
   Input_Template_Dataset_Tag_Filter_Version,
   Input_Template_File_Link,
-  Input_Template_History,
   Input_Template_SettingAiModel,
   Input_Template_System_Prompt,
   Input_Template_UserChatInput
@@ -263,7 +262,6 @@ export const AgentNode: FlowNodeTemplateType = {
       description: i18nT('workflow:tag_filter_description'),
       valueDesc: datasetTagFilterValueDesc
     },
-    Input_Template_History,
     {
       ...Input_Template_File_Link,
       toolDescription: i18nT('app:workflow.user_file_input')

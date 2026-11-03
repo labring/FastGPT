@@ -11,6 +11,8 @@ type DatasetCardProps = {
   dataset: SelectedDatasetType;
   onDelete?: (datasetId: string) => void;
   flexProps?: FlexProps;
+  avatarSize?: string;
+  compact?: boolean;
 };
 
 /**
@@ -19,13 +21,16 @@ type DatasetCardProps = {
 const DatasetCard = React.memo(function DatasetCard({
   dataset,
   onDelete,
-  flexProps
+  flexProps,
+  avatarSize,
+  compact = false
 }: DatasetCardProps) {
   const { t } = useTranslation();
   const router = useRouter();
   const hasError = !!dataset.error;
   const hasPreviewButton = !hasError;
   const hasDeleteButton = !!onDelete;
+  const resolvedAvatarSize = avatarSize || (compact ? '18px' : '1.5rem');
 
   const errorText =
     dataset.error === 'resource_no_permission'
@@ -37,7 +42,15 @@ const DatasetCard = React.memo(function DatasetCard({
 
   return (
     <FormResourceCard
-      avatar={<Avatar src={dataset.avatar} w={'1.5rem'} borderRadius={'sm'} />}
+      compact={compact}
+      avatar={
+        <Avatar
+          src={dataset.avatar}
+          w={resolvedAvatarSize}
+          h={resolvedAvatarSize}
+          borderRadius={'sm'}
+        />
+      }
       name={dataset.name}
       isUnavailable={hasError}
       tooltipLabel={tooltipLabel}

@@ -306,7 +306,6 @@ const createProps = () =>
       model: 'gpt-5',
       systemPrompt: 'system prompt',
       userChatInput: '当前问题',
-      history: 6,
       fileUrlList: ['https://files.example.com/current.pdf'],
       agent_selectedTools: [],
       skills: [],
@@ -767,8 +766,41 @@ describe('dispatchRunAgent user context', () => {
     expect(currentText).toContain('<location>./SKILL.md</location>');
   });
 
-  it('returns the final answer as assistant response', async () => {
+  it('returns the full process text across tool-calling turns without duplicating answer_delta', async () => {
     const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
+    runAgentLoopMock.mockImplementationOnce(async ({ runtime }) => {
+      runtime.emitEvent({
+        type: 'answer_delta',
+        text: '我先查询工具。'
+      });
+      return {
+        status: 'done',
+        completeMessages: [],
+        assistantMessages: [
+          {
+            role: 'assistant',
+            content: '我先查询工具。',
+            tool_calls: [
+              {
+                id: 'call_1',
+                type: 'function',
+                function: { name: 'search', arguments: '{}' }
+              }
+            ]
+          },
+          {
+            role: 'tool',
+            tool_call_id: 'call_1',
+            content: 'result'
+          },
+          {
+            role: 'assistant',
+            content: 'ok'
+          }
+        ],
+        requestIds: []
+      };
+    });
 
     let resultPromise: Promise<any>;
     runWithContext(
@@ -781,13 +813,18 @@ describe('dispatchRunAgent user context', () => {
     );
     const result = await resultPromise!;
 
-    expect(result.data.answerText).toBe('ok');
-    expect(result[DispatchNodeResponseKeyEnum.toolResponse]).toBe('ok');
+    expect(result.data.answerText).toBe('我先查询工具。ok');
+    expect(result[DispatchNodeResponseKeyEnum.toolResponse]).toBe('我先查询工具。ok');
     expect(
       result[DispatchNodeResponseKeyEnum.assistantResponses].filter(
         (value: any) => value.text || value.reasoning
       )
     ).toMatchObject([
+      {
+        text: {
+          content: '我先查询工具。'
+        }
+      },
       {
         text: {
           content: 'ok'
@@ -826,48 +863,6 @@ describe('dispatchRunAgent user context', () => {
       expect(result.error).toEqual({ system_error_text: error?.message ?? '' });
     }
   );
-
-  it('does not duplicate final answer already persisted from answer_delta', async () => {
-    const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
-    runAgentLoopMock.mockImplementationOnce(async ({ runtime }) => {
-      runtime.emitEvent({
-        type: 'answer_delta',
-        text: 'ok'
-      });
-      return {
-        status: 'done',
-        completeMessages: [],
-        assistantMessages: [
-          {
-            role: 'assistant',
-            content: 'ok'
-          }
-        ],
-        requestIds: []
-      };
-    });
-
-    let resultPromise: Promise<any>;
-    runWithContext(
-      {
-        mcpClientMemory: {}
-      },
-      () => {
-        resultPromise = dispatchRunAgent(createProps());
-      }
-    );
-    const result = await resultPromise!;
-
-    expect(result.data.answerText).toBe('ok');
-    expect(result[DispatchNodeResponseKeyEnum.toolResponse]).toBe('ok');
-    expect(result[DispatchNodeResponseKeyEnum.assistantResponses]).toMatchObject([
-      {
-        text: {
-          content: 'ok'
-        }
-      }
-    ]);
-  });
 
   it('suppresses stream output and visible assistantResponses when isResponseAnswerText is false while preserving ask and answerText', async () => {
     const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
@@ -976,16 +971,42 @@ describe('dispatchRunAgent user context', () => {
     expect(doneResult[DispatchNodeResponseKeyEnum.assistantResponses]).toBeUndefined();
   });
 
-  it('does not append errorText to assistantResponses when catchError is enabled on the node', async () => {
+  it('does not append errorText to assistantResponses and marks master_agent_call errorCaptured when catchError is enabled on the node', async () => {
     const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
+    const publishedResponses: any[] = [];
     const props = createProps();
+    delete props.params.agent_datasetParams;
     props.node.catchError = true;
-    runAgentLoopMock.mockResolvedValueOnce({
-      status: 'error',
-      error: { message: 'LLM request failed' },
-      completeMessages: [],
-      assistantMessages: [],
-      requestIds: []
+    props.nodeResponseParentId = 'workflow_agent_resp_id';
+    props.nodeResponseSink = {
+      publish: vi.fn(async (inputs: Array<{ response: any; parentId?: string }>) => {
+        publishedResponses.push(
+          ...inputs.map((input) => ({
+            ...input.response,
+            ...(input.parentId ? { parentId: input.parentId } : {})
+          }))
+        );
+        return inputs.map((input) => input.response);
+      })
+    };
+    runAgentLoopMock.mockImplementationOnce(async ({ runtime }) => {
+      runtime.emitEvent({
+        type: 'llm_request_end',
+        requestIndex: 1,
+        modelName: 'gpt-5',
+        requestId: 'req_failed',
+        finishReason: 'error',
+        error: new Error('LLM request failed'),
+        usages: [],
+        seconds: 0.2
+      });
+      return {
+        status: 'error',
+        error: { message: 'LLM request failed' },
+        completeMessages: [],
+        assistantMessages: [],
+        requestIds: ['req_failed']
+      };
     });
 
     let resultPromise: Promise<any>;
@@ -1003,6 +1024,18 @@ describe('dispatchRunAgent user context', () => {
         (item: any) => !item.inputContext
       )
     ).toEqual([]);
+    expect(publishedResponses).toEqual([
+      expect.objectContaining({
+        moduleName: 'chat:master_agent_call',
+        errorText: 'LLM request failed',
+        errorCaptured: true,
+        parentId: 'workflow_agent_resp_id'
+      })
+    ]);
+    expect(props.nodeSummary).toMatchObject({
+      errorCount: 0
+    });
+    expect(props.nodeSummary.errorText).toBeUndefined();
   });
 
   it('publishes Agent internal responses as current-layer top-level rows', async () => {
@@ -1276,6 +1309,10 @@ describe('dispatchRunAgent user context', () => {
 
     runAgentLoopMock.mockImplementationOnce(async ({ runtime }) => {
       runtime.emitEvent({
+        type: 'answer_delta',
+        text: '先确认一下方向。'
+      });
+      runtime.emitEvent({
         type: 'plan_operation',
         operation: 'set_plan',
         id: 'call_child_plan',
@@ -1300,7 +1337,7 @@ describe('dispatchRunAgent user context', () => {
           interactive: askInteractive
         },
         completeMessages: [],
-        assistantMessages: [],
+        assistantMessages: [{ role: 'assistant', content: '先确认一下方向。' }],
         requestIds: ['req_child_1']
       };
     });
@@ -1314,7 +1351,6 @@ describe('dispatchRunAgent user context', () => {
 
     // Turn 2: 父流程落库后将子 Agent 输出标为 displayOnly，通过 memoryState 恢复子 Agent 自身 transcript
     const turn2Props = createProps();
-    turn2Props.params.history = 0;
     turn2Props.params.userChatInput = '[SUBTASK_PAYLOAD_9527] 请处理子任务：介绍 FastGPT';
     turn2Props.lastInteractive = askInteractive;
     turn2Props.query = runtimePrompt2ChatsValue({
@@ -1396,7 +1432,19 @@ describe('dispatchRunAgent user context', () => {
         })
       ])
     );
-    expect(turn2Result.data.answerText).toBe('子任务完成：技术架构介绍');
+    expect(turn2Result.data.answerText).toBe('先确认一下方向。子任务完成：技术架构介绍');
+    expect(turn2Result[DispatchNodeResponseKeyEnum.toolResponse]).toBe(
+      '先确认一下方向。子任务完成：技术架构介绍'
+    );
+    expect(
+      turn2Result[DispatchNodeResponseKeyEnum.assistantResponses].filter((item: any) => item.text)
+    ).toEqual([
+      {
+        text: {
+          content: '子任务完成：技术架构介绍'
+        }
+      }
+    ]);
     expect(turn2Result[DispatchNodeResponseKeyEnum.memories]).toEqual({
       [scopedMemoryKey]: undefined
     });
@@ -1406,7 +1454,6 @@ describe('dispatchRunAgent user context', () => {
     const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
     serviceEnvMock.AGENT_ENGINE = 'piAgent';
     const props = createProps();
-    props.params.history = 0;
     props.lastInteractive = {
       type: 'agentAsk',
 
@@ -1704,5 +1751,82 @@ describe('dispatchRunAgent user context', () => {
     );
     expect(getSandboxClientMock).not.toHaveBeenCalled();
     expect(runAgentLoopMock).not.toHaveBeenCalled();
+  });
+
+  it('keeps internal steps flattened in Simple Mode (ChatAgent) while wrapping them under the Agent node in Workflow Mode', async () => {
+    const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
+
+    const emitStepAndFinish = async ({ runtime }: any) => {
+      runtime.emitEvent({
+        type: 'llm_request_end',
+        requestIndex: 1,
+        modelName: 'gpt-5',
+        requestId: 'req_1',
+        finishReason: 'stop',
+        answerText: 'done answer',
+        usages: [],
+        seconds: 0.5
+      });
+      return {
+        status: 'done',
+        completeMessages: [],
+        assistantMessages: [{ role: 'assistant', content: 'done answer' }],
+        requestIds: ['req_1']
+      };
+    };
+
+    // 1. Simple Mode (has agent_datasetParams): no parentId, no outer nodeResponse
+    const simplePublished: Array<{ response: any; parentId?: string }> = [];
+    const simpleProps = createProps();
+    simpleProps.nodeResponseParentId = 'simple_agent_resp_id';
+    simpleProps.nodeResponseSink = {
+      publish: vi.fn(async (entries) => {
+        simplePublished.push(...entries);
+        return entries.map((entry: any) => entry.response);
+      })
+    };
+    runAgentLoopMock.mockImplementationOnce(emitStepAndFinish);
+
+    const simpleResult = await runWithContext({ mcpClientMemory: {} }, () =>
+      dispatchRunAgent(simpleProps)
+    );
+    expect(simplePublished).toHaveLength(1);
+    expect(simplePublished[0].parentId).toBeUndefined();
+    expect(simpleResult[DispatchNodeResponseKeyEnum.nodeResponse]).toBeUndefined();
+
+    // 2. Workflow Mode (no agent_datasetParams, even when agent_datasetSelectList is configured): steps attach to nodeResponseParentId, returns outer nodeResponse
+    const workflowPublished: Array<{ response: any; parentId?: string }> = [];
+    const workflowProps = createProps();
+    delete workflowProps.params.agent_datasetParams;
+    workflowProps.params.agent_datasetSelectList = [
+      {
+        datasetId: 'dataset_1',
+        avatar: 'avatar',
+        name: '产品知识库',
+        vectorModel: {
+          model: 'text-embedding-3-small'
+        }
+      }
+    ];
+    workflowProps.nodeResponseParentId = 'workflow_agent_resp_id';
+    workflowProps.nodeResponseSink = {
+      publish: vi.fn(async (entries) => {
+        workflowPublished.push(...entries);
+        return entries.map((entry: any) => entry.response);
+      })
+    };
+    runAgentLoopMock.mockImplementationOnce(emitStepAndFinish);
+
+    const workflowResult = await runWithContext({ mcpClientMemory: {} }, () =>
+      dispatchRunAgent(workflowProps)
+    );
+    expect(workflowPublished).toHaveLength(1);
+    expect(workflowPublished[0].parentId).toBe('workflow_agent_resp_id');
+    expect(workflowResult[DispatchNodeResponseKeyEnum.nodeResponse]).toEqual({
+      model: 'gpt-5',
+      query: '当前问题',
+      textOutput: 'done answer',
+      childResponseCount: 1
+    });
   });
 });

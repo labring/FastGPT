@@ -21,7 +21,7 @@ const ToolSelectModal = dynamic(
   () => import('@/pageComponents/app/detail/Edit/FormComponent/ToolSelector/ToolSelectModal')
 );
 
-export const chooseButtonTooltipProps = {
+const chooseButtonTooltipProps = {
   offset: [0, 8] as [number, number],
   px: 3,
   py: 2,
@@ -31,6 +31,36 @@ export const chooseButtonTooltipProps = {
   boxShadow: '0px 2px 4px 0px rgba(161, 167, 179, 0.25), 0px 0px 1px 0px rgba(121, 141, 159, 0.25)',
   shouldWrapChildren: false
 } as const;
+
+/**
+ * Agent 节点标准资源选择按钮（技能、工具、知识库复用），对齐 Figma 设计稿 225x40px 规范。
+ */
+export const AgentChooseButton = React.memo(function AgentChooseButton({
+  tip,
+  onClick,
+  'data-dataset-select-trigger': datasetSelectTrigger
+}: {
+  tip: string;
+  onClick: () => void;
+  'data-dataset-select-trigger'?: string;
+}) {
+  const { t } = useTranslation();
+  return (
+    <MyTooltip label={tip} {...chooseButtonTooltipProps}>
+      <Button
+        variant={'primaryOutline'}
+        h={10}
+        w={'100%'}
+        borderRadius={'6px'}
+        leftIcon={<MyIcon name={'common/selectLight'} w={'18px'} h={'18px'} />}
+        data-dataset-select-trigger={datasetSelectTrigger}
+        onClick={onClick}
+      >
+        {t('common:Choose')}
+      </Button>
+    </MyTooltip>
+  );
+});
 
 /** 标准输入标题右侧只补 Agent 提示，来源切换仍由 InputLabel 负责。 */
 export const AgentPromptLabel = ({ item }: RenderInputProps) => {
@@ -102,17 +132,10 @@ export const AgentSkillsInput = () => {
   return (
     <>
       <Grid gridTemplateColumns={'repeat(2, minmax(0, 1fr))'} gridGap={3} minW={'350px'} w={'100%'}>
-        <MyTooltip label={t('workflow:agent.select_skill')} {...chooseButtonTooltipProps}>
-          <Button
-            variant={'primaryOutline'}
-            h={10}
-            w={'100%'}
-            leftIcon={<MyIcon name={'common/selectLight'} w={'14px'} />}
-            onClick={skillSelection.openSkillSelect}
-          >
-            {t('common:Choose')}
-          </Button>
-        </MyTooltip>
+        <AgentChooseButton
+          tip={t('workflow:agent.select_skill')}
+          onClick={skillSelection.openSkillSelect}
+        />
         <AgentSkillCardList
           skills={selectedAgentSkills}
           onDelete={skillSelection.onRemoveAgentSkill}
@@ -140,17 +163,7 @@ export const AgentToolsInput = () => {
   return (
     <>
       <Grid gridTemplateColumns={'repeat(2, minmax(0, 1fr))'} gridGap={3} minW={'350px'} w={'100%'}>
-        <MyTooltip label={t('workflow:agent.select_tool')} {...chooseButtonTooltipProps}>
-          <Button
-            variant={'primaryOutline'}
-            h={10}
-            w={'100%'}
-            leftIcon={<MyIcon name={'common/selectLight'} w={'14px'} />}
-            onClick={onOpen}
-          >
-            {t('common:Choose')}
-          </Button>
-        </MyTooltip>
+        <AgentChooseButton tip={t('workflow:agent.select_tool')} onClick={onOpen} />
         <SelectedToolCardList
           selectedTools={selectedTools}
           onConfigTool={skillManager.onOpenConfigTool}

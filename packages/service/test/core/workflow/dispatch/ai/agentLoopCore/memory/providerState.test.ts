@@ -137,40 +137,42 @@ describe('agentLoopCore providerState memory', () => {
     ).toBe(false);
   });
 
-  it('restores nested checkpoint with history=0 only during interactive resume', () => {
+  it('persists and restores paused assistantResponses alongside providerState', () => {
     const providerState = {
       pendingMainContext: {
-        askToolCallId: 'nested-ask',
-        messages: [{ role: 'assistant', content: 'waiting' }]
+        askToolCallId: 'call_ask'
       }
     };
-    const memoryState = WorkflowMemoryState.fromRecord(
-      {
-        'node:parent_agent/app:app_1:node_1': { providerState }
-      },
-      { rootSource: { ...runningAppInfo, sourceId: 'parent-app' } }
-    )
-      .fork('node:parent_agent')
-      .fork('app:app_1');
+    const assistantResponses = [{ text: { content: 'before ask ' } }];
+
+    const pausedMemories = buildAgentLoopCorePausedMemories({
+      runningAppInfo,
+      nodeId: 'node_1',
+      providerState,
+      assistantResponses
+    });
+    expect(pausedMemories).toEqual({
+      'app:app_1:node_1': {
+        providerState,
+        assistantResponses
+      }
+    });
 
     expect(
       readAgentLoopCoreProviderStateMemory({
-        memoryState,
+        histories: [
+          {
+            obj: ChatRoleEnum.AI,
+            value: [],
+            memories: pausedMemories
+          }
+        ],
         runningAppInfo,
-        nodeId: 'node_1',
-        history: 0,
-        histories: []
+        nodeId: 'node_1'
       })
-    ).toEqual({});
-    expect(
-      readAgentLoopCoreProviderStateMemory({
-        memoryState,
-        runningAppInfo,
-        nodeId: 'node_1',
-        history: 0,
-        histories: [],
-        hasInteractiveResume: true
-      })
-    ).toEqual({ providerState });
+    ).toEqual({
+      providerState,
+      assistantResponses
+    });
   });
 });

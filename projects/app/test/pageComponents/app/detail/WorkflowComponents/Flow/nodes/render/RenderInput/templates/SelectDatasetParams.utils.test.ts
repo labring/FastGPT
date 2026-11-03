@@ -2,7 +2,8 @@ import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { describe, expect, it } from 'vitest';
 import {
   getDatasetSearchParamInputs,
-  getDatasetSearchParams
+  getDatasetSearchParams,
+  getStaticDatasetIds
 } from '@/pageComponents/app/detail/WorkflowComponents/Flow/nodes/render/RenderInput/templates/SelectDatasetParams.utils';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
@@ -14,19 +15,16 @@ import { normalizeFlowNodeInputType } from '@fastgpt/global/core/app/formEdit/ut
 import { createEmptyTagFilterValue } from '@fastgpt/global/core/dataset/search/tagFilter/type';
 
 describe('getDatasetSearchParams', () => {
-  it('matches runtime precedence for legacy nested parameters without losing false or zero', () => {
+  it('preserves explicit false or zero values on inputs without falling back to defaults', () => {
     const params = getDatasetSearchParams([
-      {
-        key: NodeInputKeyEnum.datasetParams,
-        value: { similarity: 0, usingReRank: false, rerankModelId: 'legacy-model' }
-      },
-      { key: 'similarity', value: 0.5 },
-      { key: 'usingReRank', value: true }
+      { key: 'similarity', value: 0 },
+      { key: 'usingReRank', value: false },
+      { key: 'rerankModelId', value: 'chosen-model' }
     ]);
     expect(params).toMatchObject({
       similarity: 0,
       usingReRank: false,
-      rerankModelId: 'legacy-model'
+      rerankModelId: 'chosen-model'
     });
   });
   it.each([undefined, null, false])(
@@ -98,25 +96,16 @@ describe('getDatasetSearchParamInputs', () => {
     expect(original.find((i) => i.key === 'datasetSearchExtensionModelId')?.value).toBe('chosen');
   });
   it.each([AgentNode, DatasetSearchModule])(
-    'syncs filter modes and legacy settings for $flowNodeType',
+    'syncs filter modes and settings for $flowNodeType',
     (template) => {
       const reference: ReferenceItemValueType = ['upstream', 'filterJson'];
       const values = {
         collectionFilterMatch: reference,
         similarity: 0,
-        usingReRank: false,
-        datasets: [
-          { datasetId: 'new-dataset', name: 'New', avatar: '', vectorModel: { model: 'embedding' } }
-        ]
-      };
-      const legacyInput = {
-        key: NodeInputKeyEnum.datasetParams,
-        label: '',
-        renderTypeList: [FlowNodeInputTypeEnum.hidden],
-        value: { datasets: [{ datasetId: 'dataset-1' }], usingReRank: true }
+        usingReRank: false
       };
       const inputs = getDatasetSearchParamInputs({
-        inputs: [...template.inputs, legacyInput],
+        inputs: [...template.inputs],
         values
       });
       expect(nodeInputIsReference(normalizeFlowNodeInputType(inputs[0]))).toBe(true);
@@ -125,10 +114,6 @@ describe('getDatasetSearchParamInputs', () => {
         similarity: 0,
         usingReRank: false
       });
-      expect(inputs.at(-1)?.value).toMatchObject(values);
-      expect(
-        inputs.find((input) => input.key === NodeInputKeyEnum.datasetSelectList)?.value
-      ).toEqual(values.datasets);
 
       const [manualInput] = getDatasetSearchParamInputs({
         inputs,
@@ -144,8 +129,6 @@ describe('getDatasetSearchParamInputs', () => {
         values: { collectionFilterMatch: undefined }
       });
       expect(getDatasetSearchParams(clearedInputs).collectionFilterMatch).toBeUndefined();
-      expect(clearedInputs.at(-1)?.value.collectionFilterMatch).toBeUndefined();
-      expect(legacyInput.value.usingReRank).toBe(true);
     }
   );
 
@@ -159,5 +142,41 @@ describe('getDatasetSearchParamInputs', () => {
         }
       }).some((i) => i.key === 'datasetSearchExtensionModel')
     ).toBe(false);
+  });
+});
+
+describe('getStaticDatasetIds', () => {
+  it('distinguishes empty static dataset selections from variable references', () => {
+    expect(
+      getStaticDatasetIds({
+        renderTypeList: [FlowNodeInputTypeEnum.selectDataset, FlowNodeInputTypeEnum.reference],
+        selectedType: FlowNodeInputTypeEnum.selectDataset,
+        value: [{ datasetId: 'ds_1' }, { datasetId: 'ds_2' }]
+      })
+    ).toEqual(['ds_1', 'ds_2']);
+
+    expect(
+      getStaticDatasetIds({
+        renderTypeList: [FlowNodeInputTypeEnum.selectDataset, FlowNodeInputTypeEnum.reference],
+        selectedType: FlowNodeInputTypeEnum.selectDataset,
+        value: []
+      })
+    ).toEqual([]);
+
+    expect(
+      getStaticDatasetIds({
+        renderTypeList: [FlowNodeInputTypeEnum.selectDataset, FlowNodeInputTypeEnum.reference],
+        selectedType: FlowNodeInputTypeEnum.reference,
+        value: ['upstream_node', 'datasets']
+      })
+    ).toBeUndefined();
+
+    expect(
+      getStaticDatasetIds({
+        value: ['upstream_node', 'datasets']
+      })
+    ).toBeUndefined();
+
+    expect(getStaticDatasetIds(undefined)).toBeUndefined();
   });
 });

@@ -8,16 +8,16 @@
 | --- | --- |
 | 开放范围 | 注册到 `appSystemModuleTemplates`，供工作流应用使用；不加入 `pluginSystemModuleTemplates`，不扩大辅助生成白名单 |
 | Agent 能力 | 保留任务规划、工具/子应用调用、技能、沙盒、知识库、对话文件、上下文压缩和 `ask_user` |
-| 工具连接 | 模板 `isTool: true`，允许挂在工具调用节点下；提示词、历史、用户问题沿用通用输入来源切换 |
+| 工具连接 | 模板 `isTool: true`，允许挂在工具调用节点下；提示词、文件链接、用户问题沿用通用输入来源切换 |
 | 交互约束 | 加入 `INTERACTIVE_NODE_TYPES`，沿用交互节点的评测与并行容器限制 |
-| 输出 | 正常返回 `answerText`；工具调用方获得 `toolResponse`；错误交给节点的 `catchError` 分支 |
+| 输出 | 正常返回拼接整个 Agent 循环全过程文本的 `answerText`（对齐 `ToolCall` 节点）；工具调用方获得 `toolResponse`；错误交给节点的 `catchError` 分支 |
 | 静默模式 | 关闭 `aiChatIsResponseText` 后抑制可见 SSE 并隐藏响应展示，保留完整恢复上下文、交互、节点输出和运行详情 |
 
 ## 2. 模板是输入布局与能力来源
 
 模板位置：`packages/global/core/workflow/template/system/agent/index.ts`。
 
-可见输入固定按以下顺序声明：
+可见输入固定按以下顺序声明（不暴露聊天记录配置项，运行时默认开启最大 50 轮历史限制）：
 
 1. AI 模型。
 2. 提示词。
@@ -25,9 +25,8 @@
 4. 技能。
 5. 工具。
 6. 知识库。
-7. 聊天记录。
-8. 文件链接。
-9. 用户问题。
+7. 文件链接。
+8. 用户问题。
 
 模型参数、检索参数、标签过滤和启动脚本等附属配置采用 `hidden`，由对应弹窗编辑，不额外生成表单行。`skills`、`selectedTools` 只允许选择；`datasetSelectList` 允许选择或变量引用。沙盒显式声明 `canAgentGenerated: false`。
 
@@ -117,11 +116,11 @@
 
 `SelectDataset` 在知识库标题右侧提供内联参数入口，复用权限开关、引用选择和 `DatasetParamsModal`。标签过滤使用共享弹窗在检索配置中提供的开关及「手动配置 / 整项变量引用」切换，不再维护 Agent 专属弹窗。模型选择继续传入当前 `appId`。已有独立参数行的知识库搜索节点继续使用原入口。
 
-`getDatasetSearchParams` 与运行时保持嵌套 `datasetParams` 优先的兼容顺序，不用 truthy 判断覆盖 `false` 或 `0`。参数编辑、权限开关和标签过滤清理通过同一转换器批量回写当前输入与旧嵌套结构，避免维护重复同步分支。编辑知识库列表时也同步旧结构。移除知识库后通过共享 `useDatasetTagFilterPrune` 清理不再可用的标签条件，移除全部知识库时也执行清理。
+`getDatasetSearchParams` 从节点顶层输入读取配置，不用 truthy 判断覆盖 `false` 或 `0`。参数编辑、权限开关和标签过滤清理通过同一转换器批量回写当前顶层输入，避免维护重复分支。移除知识库后通过共享 `useDatasetTagFilterPrune` 清理不再可用的标签条件，移除全部知识库时也执行清理。
 
 `collectionFilterMatch` 保留隐藏手动输入与标准 `reference` 两种来源，整项变量引用按 `[nodeId, outputKey]` 保存，接入通用引用检查和运行时解析；两种模式都只在参数弹窗编辑，画布不生成重复输入行。Core 校验仍按 key 将结构化手动条件转换为运行时字符串。旧 `datasetParams.collectionFilterMatch` 的整项引用由同一过滤参数归一化器解析，保持与顶层输入一致。
 
-知识库使用变量引用时无法在编辑期确定自定义标签，手动条件不作为有效配置保留，应改用变量生成完整过滤 JSON；整项变量引用不会进入手动标签清理逻辑。固定知识库继续使用标签交集配置条件，系统属性条件不依赖自定义标签元数据。
+知识库使用变量引用时无法在编辑期确定静态知识库 ID，`useDatasetTagFilterPrune` 跳过按静态 ID 的裁剪以保留已有过滤条件，同时支持切换为整项变量引用生成完整过滤 JSON；只有在静态知识库模式下移除全部知识库（`datasetIds` 为空数组）时，才清理已失效的自定义标签条件。固定知识库继续使用标签交集配置条件，系统属性条件不依赖自定义标签元数据。
 
 ## 6. 执行与恢复约定
 
@@ -129,7 +128,7 @@
 
 - 独立 Agent 与工作流 Agent 均通过 `fileUrlList` 输入控制当前文件传入与历史文件解析，具体媒体能力仍由所选模型限制。
 - 继续使用 `WorkflowMemoryState` 的节点/子应用作用域，不新增并列 memory 系统。
-- `Agent` 作为子工具或子应用运行时，父级会将子 `Agent` 的展示输出标为 `displayOnly: true`（或子应用传入空 `histories`）以隔离父模型上下文。`FastAgent` 进入 `interactive` 暂停时，按 `getWorkflowNodeMemoryKey` 作用域键保存当前节点的完整非 `displayOnly` `transcript`（`[...requestMessages, { dataId: responseChatItemId, obj: AI, value: outputAssistantResponses }]`）；交互恢复（`lastInteractive`）时通过 `readWorkflowNodeMemory`（`hasInteractiveResume: true`）优先恢复自身 `transcript` 与 `activePlan`，保证 `inputContext`、已执行工具调用、`plan` 及 `ask_user` 工具响应完整续接；节点完成或异常结束时将该作用域键置为 `undefined` 清理。
+- `Agent` 作为子工具或子应用运行时，父级会将子 `Agent` 的展示输出标为 `displayOnly: true`（或子应用传入空 `histories`）以隔离父模型上下文。`FastAgent` 进入 `interactive` 暂停时，按 `getWorkflowNodeMemoryKey` 作用域键保存当前节点的完整非 `displayOnly` `transcript`（`[...requestMessages, { dataId: responseChatItemId, obj: AI, value: outputAssistantResponses }]`）；交互恢复（`lastInteractive`）时通过 `memoryState.readNodeMemory` 优先恢复自身 `transcript` 与 `activePlan`，保证 `inputContext`、已执行工具调用、`plan` 及 `ask_user` 工具响应完整续接；节点完成或异常结束时将该作用域键置为 `undefined` 清理。
 
 ### 6.2 静默输出
 
@@ -144,7 +143,12 @@
 
 Agent 内部工具错误交由 Agent Loop 消化。节点级错误保留原始错误和 `errorText`；开启 `catchError` 时不再把结束错误文本追加为聊天正文。未开启时保留既有可见错误行为。
 
-成功完成返回纯文本 `toolResponse`，节点级失败返回 `{ error }`，供外层工具调用消费。交互暂停继续返回交互状态与恢复数据，不伪造完成返回值。
+成功完成时，`answerText` 与纯文本 `toolResponse` 与工具调用节点保持一致，汇总当次 Agent 执行循环全过程（含工具调用中间步骤）产生的所有模型文本输出。节点级失败返回 `{ error }`，供外层工具调用消费。交互暂停继续返回交互状态与恢复数据，不伪造完成返回值。
+
+### 6.4 运行详情层级（工作流模式 vs 简易模式）
+
+- **简易模式（对话 Agent / Skill 调试）**：不生成外层 `Agent` 容器 `nodeResponse`，内部的 `Agent 对话`、工具调用、任务规划、追问、上下文压缩等步骤继续在当前作用域顶层平铺展示。
+- **工作流模式（画布 `Agent` 节点）**：`dispatchRunAgent` 返回外层 `Agent` 节点的 `nodeResponse`（含 `model`、`query`、`textOutput`、`childResponseCount`、`errorText`），并通过 `createAgentNodeResponseCollector` 为未携带 `parentId` 的内部步骤统一绑定 `parentId = nodeResponseParentId`，使运行详情树将该 `Agent` 节点下的全部执行步骤收纳到该节点下展示（已携带更深层 `parentId` 的子项如 `toolResponseCompress` 保持原有父子关系）。
 
 ## 7. 导出过滤
 

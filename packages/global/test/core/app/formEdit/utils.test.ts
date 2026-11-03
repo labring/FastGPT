@@ -1306,7 +1306,7 @@ describe('migrateToolInputConfig', () => {
 });
 
 describe('getAgentToolRuntimeStatus & serializeAgentTool', () => {
-  it('allows only aiSystemPrompt, history, fileUrlList, and userChatInput to be agentGenerated on AgentNode in tool mode', () => {
+  it('allows only aiSystemPrompt, fileUrlList, and userChatInput to be agentGenerated on AgentNode in tool mode', () => {
     const normalizedInputs = AgentNode.inputs.map((input) =>
       normalizeFlowNodeInputType(input, { isTool: true })
     );
@@ -1316,7 +1316,6 @@ describe('getAgentToolRuntimeStatus & serializeAgentTool', () => {
 
     expect(agentGeneratableKeys).toEqual([
       NodeInputKeyEnum.aiSystemPrompt,
-      NodeInputKeyEnum.history,
       NodeInputKeyEnum.fileUrlList,
       NodeInputKeyEnum.userChatInput
     ]);
