@@ -16,6 +16,7 @@ import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runti
 import { UserConfigError } from '@fastgpt/global/common/error/utils';
 
 const requestMock = vi.hoisted(() => vi.fn());
+const preflightMock = vi.hoisted(() => vi.fn());
 vi.mock('@fastgpt/service/common/api/axios', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@fastgpt/service/common/api/axios')>()),
   axios: requestMock
@@ -23,7 +24,7 @@ vi.mock('@fastgpt/service/common/api/axios', async (importOriginal) => ({
 // The test receiver is deliberately local. Production retains the safe Axios boundary.
 vi.mock('@fastgpt/service/common/system/utils', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@fastgpt/service/common/system/utils')>()),
-  isInternalAddress: async () => false
+  isInternalAddress: preflightMock
 }));
 
 import { dispatchHttp468Request } from '@fastgpt/service/core/workflow/dispatch/tools/http468';
@@ -87,6 +88,7 @@ describe('HTTP node uploaded file forwarding', () => {
 
   beforeEach(() => {
     received = [];
+    preflightMock.mockReset().mockResolvedValue(false);
     requestMock.mockReset().mockImplementation((config) => axios({ ...config, proxy: false }));
     getObjectMetadata.mockReset().mockResolvedValue({
       contentLength: bytes.length,
@@ -300,6 +302,91 @@ describe('HTTP node uploaded file forwarding', () => {
       });
     }
     expect(downloadObject).not.toHaveBeenCalled();
+  });
+
+  it.each(
+    [42, 0, false, null, { enabled: true }, [1, 2], undefined].flatMap((value) =>
+      [false, true].map((withFile) => ({ value, withFile }))
+    )
+  )(
+    'preserves native multipart text conversion for $value (file present: $withFile)',
+    async ({ value, withFile }) => {
+      const { fileContext } = await createContext();
+      const props: any = buildProps();
+      props.params[NodeInputKeyEnum.httpFormBody] = [
+        ...(withFile ? props.params[NodeInputKeyEnum.httpFormBody].slice(0, 1) : []),
+        { key: 'literal', value }
+      ];
+      const baseline = new FormData();
+      baseline.append('literal', value as any);
+      const result = await runWithContext({ mcpClientMemory: {}, fileContext }, () =>
+        dispatchHttp468Request(props)
+      );
+      expect(result.error).toBeUndefined();
+      expect(result.data?.[NodeOutputKeyEnum.httpRawResponse].fields.at(-1)).toEqual({
+        key: 'literal',
+        value: baseline.get('literal')
+      });
+      expect(result[DispatchNodeResponseKeyEnum.nodeResponse]?.body?.literal).toBe(
+        baseline.get('literal')
+      );
+    }
+  );
+
+  it.each(['stop', 'timeout'] as const)(
+    'settles a stalled outbound preflight on %s and never sends after late resolution',
+    async (mode) => {
+      const { fileContext } = await createContext();
+      let completePreflight: (blocked: boolean) => void = () => {};
+      let enteredPreflight: () => void = () => {};
+      const entered = new Promise<void>((resolve) => {
+        enteredPreflight = resolve;
+      });
+      preflightMock.mockImplementationOnce(() => {
+        enteredPreflight();
+        return new Promise<boolean>((resolve) => {
+          completePreflight = resolve;
+        });
+      });
+      let stopped = false;
+      const props: any = buildProps();
+      props.checkIsStopping = () => stopped;
+      props.params[NodeInputKeyEnum.httpTimeout] = mode === 'timeout' ? 0.05 : 5;
+      const pending = runWithContext({ mcpClientMemory: {}, fileContext }, () =>
+        dispatchHttp468Request(props)
+      );
+      await entered;
+      if (mode === 'stop') stopped = true;
+      let guardTimer: ReturnType<typeof setTimeout> | undefined;
+      const result = await Promise.race([
+        pending,
+        new Promise<undefined>((resolve) => {
+          guardTimer = setTimeout(resolve, 350);
+        })
+      ]);
+      clearTimeout(guardTimer);
+      // Always release the controlled DNS wait, including on the unpatched baseline.
+      completePreflight(false);
+      await pending;
+      expect(result, 'dispatcher must settle while DNS is still pending').toBeDefined();
+      expect(result?.error?.[NodeOutputKeyEnum.error]).toContain(
+        mode === 'stop' ? 'stopped' : 'timed out'
+      );
+      expect(downloadObject).toHaveBeenCalledTimes(1);
+      expect(requestMock).not.toHaveBeenCalled();
+      expect(received).toHaveLength(0);
+    }
+  );
+
+  it('keeps outbound SSRF rejection for file requests', async () => {
+    const { fileContext } = await createContext();
+    preflightMock.mockResolvedValue(true);
+    const result = await runWithContext({ mcpClientMemory: {}, fileContext }, () =>
+      dispatchHttp468Request(buildProps() as any)
+    );
+    expect(result.error).toBeDefined();
+    expect(preflightMock).toHaveBeenCalledWith(receiverUrl);
+    expect(requestMock).not.toHaveBeenCalled();
   });
 
   it('does not silently discard file fields on GET', async () => {

@@ -4,30 +4,7 @@ import { materializeFileSource } from '../../../../common/file/read/source';
 import { normalizeMimeType } from '../../../../common/s3/utils/mime';
 import { serviceRequestMaxContentLength } from '../../../../common/system/constants';
 import { getWorkflowFileContext } from '../../utils/context';
-
-/** 等待不可取消的元数据查询时也响应节点取消；迟到结果不再启动文件读取。 */
-const waitForFileOperation = async <T>(
-  operation: () => Promise<T>,
-  signal: AbortSignal
-): Promise<T> => {
-  signal.throwIfAborted();
-  let onAbort: () => void = () => {};
-  try {
-    return await Promise.race([
-      Promise.resolve().then(() => {
-        signal.throwIfAborted();
-        return operation();
-      }),
-      new Promise<never>((_, reject) => {
-        onAbort = () => reject(signal.reason);
-        signal.addEventListener('abort', onAbort, { once: true });
-        if (signal.aborted) onAbort();
-      })
-    ]);
-  } finally {
-    signal.removeEventListener('abort', onAbort);
-  }
-};
+import { runWithHttpAbort } from './httpAbort';
 
 /**
  * 组装 HTTP multipart 请求。文件只读取当前 Context 已登记的来源，不将任意 URL 当作文件下载。
@@ -45,7 +22,9 @@ export const buildHttpFormData = async ({
   const fileContext = getWorkflowFileContext();
   // 开始节点的 userFiles 是 URL 数组；一个字段可按 multipart 同名 parts 转发多个已授权文件。
   const expandedFields = fields.flatMap((field) => {
-    if (field.type !== 'file') return [field];
+    // Builder 和历史工作流允许非字符串字面量，沿用原生 FormData.append 的文本转换。
+    // 预算、发送和详情必须复用同一个结果，不能把对象改为 JSON 或把 null 变成空串。
+    if (field.type !== 'file') return [{ ...field, value: String(field.value) }];
     const urls: unknown = (() => {
       try {
         return field.value.trim().startsWith('[') ? JSON.parse(field.value) : [field.value];
@@ -107,7 +86,7 @@ export const buildHttpFormData = async ({
     if (!fileContext || !ref) {
       throw new UserConfigError('HTTP file must be registered in the current workflow');
     }
-    const { source } = await waitForFileOperation(() => fileContext.getSource(ref), signal);
+    const { source } = await runWithHttpAbort(() => fileContext.getSource(ref), signal);
     const maxBytes = Math.min(
       fileContext.limits.maxBytesPerFile,
       serviceRequestMaxContentLength - totalBytes
@@ -118,7 +97,7 @@ export const buildHttpFormData = async ({
       }
     };
     if (source.kind === 's3') checkFileSize(source.sizeBytes);
-    const { buffer, metadata } = await waitForFileOperation(
+    const { buffer, metadata } = await runWithHttpAbort(
       () =>
         materializeFileSource(source, {
           signal,

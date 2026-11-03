@@ -30,6 +30,7 @@ import { getWorkflowAppId } from '../utils/source';
 import { getErrText, UserConfigError } from '@fastgpt/global/common/error/utils';
 import type { HttpFormFieldType } from '@fastgpt/global/core/workflow/http/type';
 import { buildHttpFormData } from './httpFormData';
+import { runWithHttpAbort } from './httpAbort';
 
 const logger = getLogger(LogCategories.MODULE.WORKFLOW.TOOLS);
 
@@ -297,15 +298,19 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
       controller.signal.throwIfAborted();
     }
     // 只转换请求边界的失败，避免将后续输出处理中的内部异常一起降级。
-    const { formatResponse, rawResponse } = await fetchData({
-      method: httpMethod,
-      url: requestUrl,
-      headers: { ...sensitiveHeaders, ...publicHeaders },
-      body: requestBody,
-      params,
-      timeout: httpTimeout,
-      ...(hasFileFields ? { signal: controller.signal } : {})
-    }).catch((error: unknown) => {
+    const sendRequest = () =>
+      fetchData({
+        method: httpMethod,
+        url: requestUrl,
+        headers: { ...sensitiveHeaders, ...publicHeaders },
+        body: requestBody,
+        params,
+        timeout: httpTimeout,
+        ...(hasFileFields ? { signal: controller.signal } : {})
+      });
+    const { formatResponse, rawResponse } = await (
+      hasFileFields ? runWithHttpAbort(sendRequest, controller.signal) : sendRequest()
+    ).catch((error: unknown) => {
       throw new UserConfigError(getErrText(error), undefined, { cause: error });
     });
 
@@ -610,7 +615,11 @@ async function fetchData({
   timeout: number;
   signal?: AbortSignal;
 }) {
-  if (await isInternalAddress(url)) {
+  signal?.throwIfAborted();
+  const blocked = await isInternalAddress(url);
+  // DNS 预检本身不可取消；迟到返回后仍需阻止进入 Axios，且不能跳过原有 SSRF 校验。
+  signal?.throwIfAborted();
+  if (blocked) {
     return Promise.reject(PRIVATE_URL_TEXT);
   }
 
