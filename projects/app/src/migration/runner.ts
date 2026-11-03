@@ -167,6 +167,12 @@ export const createSystemMigrationRunner = ({
   const startupIds = new Set(startupMigrations.map((migration) => migration.id));
   let startupCompleted = startupIds.size === 0;
   let backgroundEnabled = startupCompleted;
+  /**
+   * 本节点这一轮确实跑完过的 resumable 任务。resumable 的 succeeded 可能来自上一轮进程，
+   * 只看库里的状态会在补建失败时（例如领取异常被 tick 的 catch 吞掉）提前放行启动门禁，
+   * 让节点用 Schema 默认值进入 ready。
+   */
+  const confirmedResumableIds = new Set<string>();
 
   /** 每个节点针对同一次失败只输出一组错误与人工处理提示，避免轮询刷屏。 */
   const logObservedFailure = (
@@ -429,6 +435,9 @@ export const createSystemMigrationRunner = ({
         loseLease('System migration completed after its lease was lost');
         return 'interrupted';
       }
+
+      // 只有本轮跑完才算确认；resumable 任务据此区分「历史成功」与「本次补建成功」。
+      if (migration.resumable) confirmedResumableIds.add(migration.id);
 
       migrationLogger.info('System migration execution succeeded', {
         durationMs: Date.now() - executionStartedAt,
@@ -719,10 +728,13 @@ export const createSystemMigrationRunner = ({
               logObservedFailure(migration, state);
           }
           if (
-            startupMigrations.every(
-              (migration) =>
-                stateMap.get(migration.id)?.status === SystemMigrationStatusEnum.succeeded
-            )
+            startupMigrations.every((migration) => {
+              if (stateMap.get(migration.id)?.status !== SystemMigrationStatusEnum.succeeded) {
+                return false;
+              }
+              // resumable 必须等本节点这一轮真的跑完；历史 succeeded 不代表当前补建目标已完成。
+              return !migration.resumable || confirmedResumableIds.has(migration.id);
+            })
           ) {
             startupCompleted = true;
             logger.info('Startup migration chain completed', { runnerId });
