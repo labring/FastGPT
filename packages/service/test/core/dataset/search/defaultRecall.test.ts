@@ -172,6 +172,7 @@ describe('default recall dataset search', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     global.systemInstanceConfig!.vector = getDomainDefaultConfig('vector');
+    global.systemInstanceConfig!.feature.multipleDataToBase64 = originalMultipleDataToBase64;
     // 重置 getFullTextStore 可切换 mock(ISSUE-015):默认走 mongo 委托,避免 milvus 用例污染
     mockUseMilvusStore.value = false;
     mockFullTextStoreSearch.mockReset();
@@ -424,6 +425,7 @@ describe('default recall dataset search', () => {
   it('should ignore failed image embedding normalization and keep text recall', async () => {
     embeddingModel.config.vision = true;
     serviceEnv.MULTIPLE_DATA_TO_BASE64 = true;
+    global.systemInstanceConfig!.feature.multipleDataToBase64 = true;
     mockGetImageBase64.mockRejectedValueOnce(new Error('expired image'));
     mockGetVectors.mockResolvedValueOnce({
       tokens: 12,
@@ -639,11 +641,13 @@ describe('default recall dataset search', () => {
     afterEach(() => {
       serviceEnv.RETRIEVAL_RESULTS_LIMIT = originalLimit;
       serviceEnv.DATASET_SYNONYM_ENABLED = originalSynonymEnabled;
+      global.systemInstanceConfig!.performance.dataset.retrievalResultsLimit = originalLimit;
     });
 
     it('重排生效时产出重排前的召回快照，含被重排淘汰的候选，且同义词只装饰最终结果', async () => {
       arrangeTwoCandidates();
       serviceEnv.RETRIEVAL_RESULTS_LIMIT = 20;
+      global.systemInstanceConfig!.performance.dataset.retrievalResultsLimit = 20;
       serviceEnv.DATASET_SYNONYM_ENABLED = true;
 
       const result = await runSearch({ usingReRank: true, rerankWeight: 1 });
@@ -663,6 +667,7 @@ describe('default recall dataset search', () => {
     it('重排未生效时不产出候选集，避免占用内存又最终不用', async () => {
       arrangeTwoCandidates();
       serviceEnv.RETRIEVAL_RESULTS_LIMIT = 20;
+      global.systemInstanceConfig!.performance.dataset.retrievalResultsLimit = 20;
 
       const result = await runSearch({ usingReRank: false });
 
@@ -675,6 +680,7 @@ describe('default recall dataset search', () => {
     it('重排请求但 rerank 模型缺失时不产出候选集', async () => {
       arrangeTwoCandidates();
       serviceEnv.RETRIEVAL_RESULTS_LIMIT = 20;
+      global.systemInstanceConfig!.performance.dataset.retrievalResultsLimit = 20;
 
       const result = await runSearch({ usingReRank: true, rerankModel: undefined });
 
@@ -687,6 +693,7 @@ describe('default recall dataset search', () => {
     it('RETRIEVAL_RESULTS_LIMIT 为 0 时不产出候选集', async () => {
       arrangeTwoCandidates();
       serviceEnv.RETRIEVAL_RESULTS_LIMIT = 0;
+      global.systemInstanceConfig!.performance.dataset.retrievalResultsLimit = 0;
 
       const result = await runSearch({ usingReRank: true, rerankWeight: 1 });
 
@@ -697,6 +704,7 @@ describe('default recall dataset search', () => {
     it('候选数超过上限时按上限截断', async () => {
       arrangeTwoCandidates();
       serviceEnv.RETRIEVAL_RESULTS_LIMIT = 1;
+      global.systemInstanceConfig!.performance.dataset.retrievalResultsLimit = 1;
 
       const result = await runSearch({ usingReRank: true, rerankWeight: 1 });
 
