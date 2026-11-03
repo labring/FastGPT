@@ -53,6 +53,12 @@ const createEntries = (
 
 /**
  * Admin 配置字段的展示与运行时元数据。字段的结构和默认值来自 SystemInstanceConfigSchema，这里只维护权限边界。
+ *
+ * 未在此登记的 Schema 叶子等于同时退出 Admin 表单和 API 写白名单（allowedKeysByEdition 由本表推导），
+ * 因此「不登记」本身就是权限手段，不是漏登记。当前唯一例外是 `feature.datasetSynonymEnabled`：
+ * 同义词开关暂时留在 ENV（DATASET_SYNONYM_ENABLED），消费点直读 serviceEnv
+ * （packages/service/core/dataset/synonym/entity.ts），且同义词复合索引只能在模块加载期按 env 声明。
+ * 叶子覆盖断言见 packages/global/test/common/system/config/schema.test.ts 的 envOnlyPaths。
  */
 export const systemInstanceConfigRegistry: readonly SystemInstanceConfigRegistryItem[] = [
   ...createEntries(
@@ -195,7 +201,7 @@ export const systemInstanceConfigRegistry: readonly SystemInstanceConfigRegistry
     ],
     { edition: 'all', secret: false, applyMode: 'live' }
   ),
-  // DATASET_SYNONYM_ENABLED 暂时留在 ENV，不在 Admin 表单中注册
+  // 营销与收款运营开关：私有化部署不展示，仅 SaaS 运营（ENABLE_SAAS_ADMIN_CONFIG）可配
   ...createEntries('commercial', ['showCoupon', 'showDiscountCoupon', 'payFormUrl'], {
     edition: 'pro',
     secret: false,

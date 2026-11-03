@@ -360,11 +360,9 @@ describe('systemInstanceConfigRegistry', () => {
     };
 
     const leafPaths = getLeafPaths(config);
-    // 这两个字段目前只由 ENV 控制，保留 Schema 字段但不注册 Admin 表单。
-    const envOnlyPaths = new Set([
-      'feature.datasetSynonymEnabled',
-      'commercial.agentSandboxFreeTip'
-    ]);
+    // 该字段目前只由 ENV 控制，保留 Schema 字段但不注册 Admin 表单。
+    // 沙箱免费提示已整体改回 ENV，字段本身从 Schema 删除，因此不在此列。
+    const envOnlyPaths = new Set(['feature.datasetSynonymEnabled']);
     const registryKeys = new Set(systemInstanceConfigRegistry.map((item) => item.key));
 
     for (const leafPath of leafPaths) {
@@ -374,8 +372,9 @@ describe('systemInstanceConfigRegistry', () => {
     expect(registryKeys.size).toBe(leafPaths.length - envOnlyPaths.size);
   });
 
-  it('filters commercial fields from the community edition', () => {
+  it('filters commercial fields by edition and SaaS boundary', () => {
     const communityKeys = getSystemInstanceConfigRegistry('community').map((item) => item.key);
+    // 私有化 Pro 不展示 SaaS 运营专用字段，需 ENABLE_SAAS_ADMIN_CONFIG 才进入表单
     const proKeys = getSystemInstanceConfigRegistry('pro').map((item) => item.key);
     const saasProKeys = getSystemInstanceConfigRegistry('pro', {
       enableSaasAdminConfig: true
