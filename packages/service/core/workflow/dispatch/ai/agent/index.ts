@@ -45,6 +45,8 @@ import { createWorkflowAgentLoopRuntime } from './adapter/runtime';
 import { createAgentNodeResponseCollector } from './nodeResponseCollector';
 import { ensureAgentSandboxRuntime, type AgentSandboxPrepareAction } from './sub/sandbox/prepare';
 import { createAgentSubAppLookup, getWorkflowAgentLoopProvider } from './utils';
+import { checkModelPromptAndInput } from '../../../../plugin/moderation';
+import { MODERATION_BLOCKED_ERROR_MESSAGE } from '@fastgpt/global/core/plugin/moderation/constants';
 
 export type DispatchAgentModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.userChatInput]: string;
@@ -264,10 +266,36 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       await assertSandboxAvailable(runningAppInfo.teamId);
     }
 
+    // 锚点 2：进入模型前审查用户输入与系统提示词
+    const moderationContext = {
+      teamId: runningUserInfo?.teamId,
+      tmbId: runningUserInfo?.tmbId,
+      appId: runningAppInfo?.sourceId,
+      chatId,
+      responseChatItemId,
+      nodeId: props.node.nodeId,
+      nodeName: props.node.name
+    };
+
+    const checked = await checkModelPromptAndInput({
+      userChatInput,
+      systemPrompt,
+      context: moderationContext
+    });
+
+    if (checked.isUserChatInputBlocked) {
+      return getNodeErrResponse({
+        error: checked.blockErrorMessage || MODERATION_BLOCKED_ERROR_MESSAGE
+      });
+    }
+
+    const effectiveUserChatInput = checked.userChatInput;
+    const effectiveSystemPrompt = checked.systemPrompt;
+
     const userContext = await useUserContext({
       histories: restoredMessages ? [] : histories,
       currentFiles: fileLinks,
-      currentUserInput: userChatInput,
+      currentUserInput: effectiveUserChatInput,
       currentQuery: query,
       currentDataId: responseChatItemId,
       parseHistoryFiles,
@@ -345,7 +373,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     // 历史里的 system 只作为外部噪音过滤；最终 systemPrompt 在创建 runtime 后按工具能力构建。
     // PromptEditor 保存的是工具 ID，进入主 Agent 前转换为具体名称，避免模型看到不可调用的 ID。
     const formattedUserSystemPrompt = replaceAgentPromptToolReferences({
-      text: systemPrompt,
+      text: effectiveSystemPrompt,
       resolveName: (id) => promptToolReferenceInfoMap.get(id) || getSubAppInfo(id).name || undefined
     });
 

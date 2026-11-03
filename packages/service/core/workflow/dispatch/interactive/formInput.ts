@@ -14,6 +14,9 @@ import {
   type ChatFileValueInput
 } from '../../../chat/fileStoreValue';
 import { getWorkflowFileContext, getWorkflowFileRegistrar } from '../../utils/context';
+import { checkOutputTextModeration } from '../../../plugin/moderation';
+import { getNodeErrResponse } from '../utils';
+import { MODERATION_BLOCKED_ERROR_MESSAGE } from '@fastgpt/global/core/plugin/moderation/constants';
 import type { WorkflowFileRegistrar } from '../../utils/fileContext';
 import { getModuleFileAmountLimit } from '@fastgpt/global/core/workflow/fileLimit';
 import { resolveDynamicOptionStrings } from './dynamicOptions';
@@ -134,6 +137,47 @@ export const dispatchFormInput = async (props: Props): Promise<FormInputResponse
         defaultValue: undefined,
         list
       });
+    }
+    // 锚点 3：输出检查 - 动态表单说明与选项/默认值审查
+    const moderationContext = {
+      teamId: props.runningUserInfo?.teamId,
+      tmbId: props.runningUserInfo?.tmbId,
+      appId: props.runningAppInfo?.sourceId,
+      chatId: props.chatId,
+      responseChatItemId: props.responseChatItemId,
+      nodeId: node.nodeId,
+      nodeName: node.name
+    };
+
+    if (description) {
+      const checkDesc = await checkOutputTextModeration({
+        text: description,
+        targetField: 'formInput.description',
+        context: moderationContext
+      });
+      if (!checkDesc.isPass) {
+        return getNodeErrResponse({
+          error: checkDesc.blockErrorMessage || MODERATION_BLOCKED_ERROR_MESSAGE
+        });
+      }
+    }
+
+    if (Array.isArray(resolvedInputForms)) {
+      for (const formItem of resolvedInputForms) {
+        const textToCheck = formItem.label || formItem.defaultValue;
+        if (typeof textToCheck === 'string' && textToCheck.trim()) {
+          const checkItem = await checkOutputTextModeration({
+            text: textToCheck,
+            targetField: `formInput.${formItem.key}`,
+            context: moderationContext
+          });
+          if (!checkItem.isPass) {
+            return getNodeErrResponse({
+              error: checkItem.blockErrorMessage || MODERATION_BLOCKED_ERROR_MESSAGE
+            });
+          }
+        }
+      }
     }
 
     return {

@@ -13,6 +13,7 @@ import {
   rewriteChatMessagesWithFileContext
 } from '../../../../chat/fileContext';
 import { getWorkflowFileContext } from '../../../utils/context';
+import { checkFileContentModeration } from '../../../../plugin/moderation';
 
 /**
  * 组装系统提示、历史、当前输入和文件上下文，并按模型上下文限制裁剪为 LLM 消息。
@@ -83,11 +84,20 @@ export const getChatMessages = async ({
         fileContext: getWorkflowFileContext()
       });
 
-      return files.map((file) => ({
-        name: file.name,
-        url: file.url,
-        content: file.content
-      }));
+      return Promise.all(
+        files.map(async (file) => ({
+          name: file.name,
+          url: file.url,
+          content: await checkFileContentModeration({
+            content: file.content,
+            fileName: file.name,
+            context: {
+              teamId: runningUserInfo?.teamId,
+              tmbId: runningUserInfo?.tmbId
+            }
+          })
+        }))
+      );
     }
   });
 

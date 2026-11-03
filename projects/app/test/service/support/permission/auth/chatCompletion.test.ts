@@ -331,6 +331,7 @@ describe('authChatCompletionHeaderRequest', () => {
     expect(result.tmbId).toBe(member.tmbId);
     expect(result.teamId).toBe(owner.teamId);
     expect(result.apikey).toBe('test-api-key');
+    expect(result.canReadModerationRecords).toBe(false);
     expect(result.showSkillReferences).toBe(true);
     expect(vi.mocked(authCert)).toHaveBeenCalledWith(
       expect.objectContaining({

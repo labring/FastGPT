@@ -22,6 +22,13 @@ import { createCompleteResponse } from './response/complete';
 import { normalizeCompletionFinishReason } from './response/normalize';
 import { createStreamResponse } from './response/stream';
 import type { CreateLLMResponseProps, LLMResponse } from './types';
+import {
+  checkOutputTextModeration,
+  checkToolParamsModeration,
+  createStreamModerationBuffer
+} from '../../../plugin/moderation';
+import { UserError } from '@fastgpt/global/common/error/utils';
+import { MODERATION_BLOCKED_ERROR_MESSAGE } from '@fastgpt/global/core/plugin/moderation/constants';
 
 const logger = getLogger(LogCategories.MODULE.AI.LLM);
 
@@ -114,26 +121,84 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
       accumulator.setFirstResponseType(currentIsStreamResponse);
       const parsedResponse = await (async () => {
         if (currentIsStreamResponse) {
-          return createStreamResponse({
+          let blockedReason = MODERATION_BLOCKED_ERROR_MESSAGE;
+          const streamModerationBuffer = await createStreamModerationBuffer({
+            context: { teamId, requestId },
+            onApprovedText: (text) => args.onStreaming?.({ text }),
+            onBlocked: (reason) => {
+              blockedReason = reason || MODERATION_BLOCKED_ERROR_MESSAGE;
+              response.controller?.abort();
+            },
+            abortController: response.controller
+          });
+
+          const result = await createStreamResponse({
             response,
             requestMeta,
             body,
-            isAborted: args.isAborted,
-            onStreaming: args.onStreaming,
+            isAborted: () => args.isAborted?.() || streamModerationBuffer.blocked,
+            onStreaming: async ({ text }) => {
+              await streamModerationBuffer.push(text);
+            },
             onReasoning: args.onReasoning,
             onToolCall: args.onToolCall,
             onToolParam: args.onToolParam
           });
+
+          try {
+            await streamModerationBuffer.flush();
+          } catch (err) {
+            result.answerText = '';
+            result.error = err;
+          }
+
+          if (streamModerationBuffer.blocked) {
+            result.answerText = '';
+            result.error = new UserError(blockedReason);
+          }
+
+          return result;
         }
 
-        return createCompleteResponse({
+        const completeResult = await createCompleteResponse({
           response,
           body,
           onStreaming: args.onStreaming,
           onReasoning: args.onReasoning,
           onToolCall: args.onToolCall
         });
+
+        // 锚点 3：非流式输出检查 - 违规整次拦截并抛错
+        if (completeResult.answerText) {
+          const outputCheck = await checkOutputTextModeration({
+            text: completeResult.answerText,
+            targetField: 'answerText',
+            context: { teamId, requestId }
+          });
+          if (!outputCheck.isPass) {
+            const errMessage = outputCheck.blockErrorMessage || MODERATION_BLOCKED_ERROR_MESSAGE;
+            completeResult.answerText = '';
+            completeResult.error = new UserError(errMessage);
+            throw new UserError(errMessage);
+          }
+        }
+
+        return completeResult;
       })();
+
+      // 锚点 3：模型生成的工具参数检查 - 违规终止调用并抛错，参数不返回客户端
+      if (parsedResponse.toolCalls?.length) {
+        const toolCheck = await checkToolParamsModeration({
+          toolCalls: parsedResponse.toolCalls,
+          context: { teamId, requestId }
+        });
+        if (!toolCheck.isPass) {
+          const errMessage = toolCheck.blockErrorMessage || MODERATION_BLOCKED_ERROR_MESSAGE;
+          parsedResponse.toolCalls = [];
+          parsedResponse.error = new UserError(errMessage);
+          throw new UserError(errMessage);
+        }
+      }
 
       accumulator.appendResponse(parsedResponse);
 

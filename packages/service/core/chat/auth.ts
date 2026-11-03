@@ -48,6 +48,7 @@ type AuthChatTargetCrudResult = {
   scope?: ChatAccessScope;
   publishSource?: ChatPublishSourceType;
   isRoot: boolean;
+  canWrite: boolean;
   authType?: `${AuthUserTypeEnum}`;
 } & (typeof chatSourceResponseOptions)[ChatSourceTypeEnum];
 
@@ -112,6 +113,7 @@ export const authChatTargetCrud = async ({
       publishSource,
       chat,
       isRoot: false,
+      canWrite: false,
       authType: AuthUserTypeEnum.outLink,
       showCite: outLinkConfig.showCite ?? false,
       showRunningStatus: outLinkConfig.showRunningStatus ?? true,
@@ -172,6 +174,7 @@ export const authChatTargetCrud = async ({
     app: resource.app,
     skill: resource.skill,
     isRoot: resource.isRoot,
+    canWrite: resource.permission.hasWritePer,
     authType: resource.authType,
     ...chatSourceResponseOptions[sourceType]
   };

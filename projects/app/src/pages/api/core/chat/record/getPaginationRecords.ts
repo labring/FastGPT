@@ -12,6 +12,7 @@ import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { ChatRoleEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import {
   filterPublicNodeResponseData,
+  stripModerationRecordsFromNodeResponses,
   removeAIResponseCite
 } from '@fastgpt/global/core/chat/utils';
 import { GetChatTypeEnum } from '@fastgpt/global/core/chat/constants';
@@ -109,6 +110,8 @@ export async function handler(req: ApiRequestProps): Promise<GetPaginationRecord
           item.value = item.value.filter((v) => !v.skills);
         }
       }
+    } else if (authRes.canWrite === false && item.obj === ChatRoleEnum.AI && item.responseData) {
+      item.responseData = stripModerationRecordsFromNodeResponses(item.responseData);
     }
 
     if (!authRes.showCite) {

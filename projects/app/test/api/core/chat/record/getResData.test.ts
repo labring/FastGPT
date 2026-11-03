@@ -178,4 +178,73 @@ describe('getResData handler', () => {
     await expect(callHandler()).resolves.toEqual([]);
     expect(mocks.getChatItemResponseData).not.toHaveBeenCalled();
   });
+
+  it('preserves moderationRecords when caller has app write permission (canWrite: true)', async () => {
+    mockChatItem({
+      obj: ChatRoleEnum.AI
+    });
+    mocks.authChatTargetCrud.mockResolvedValue({
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: appId,
+      showCite: true,
+      canWrite: true
+    });
+    const responseWithModeration = [
+      {
+        id: 'node-1',
+        moduleName: 'AI 对话',
+        moduleType: 'chatNode',
+        error: '内容包含敏感信息，已拦截',
+        moderationRecords: [
+          {
+            stage: 'output',
+            verdict: 'block',
+            actionTaken: 'block',
+            hits: [{ label: 'contraband', score: 0.87 }],
+            keywords: ['博彩'],
+            content: '请生成一段 博彩 推广文案'
+          }
+        ]
+      }
+    ];
+    mocks.getChatItemResponseData.mockResolvedValue(responseWithModeration);
+
+    const res = await callHandler();
+    expect(res[0].moderationRecords).toHaveLength(1);
+    expect(res[0].moderationRecords?.[0]?.keywords).toEqual(['博彩']);
+  });
+
+  it('strips moderationRecords when caller does not have app write permission (canWrite: false)', async () => {
+    mockChatItem({
+      obj: ChatRoleEnum.AI
+    });
+    mocks.authChatTargetCrud.mockResolvedValue({
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: appId,
+      showCite: true,
+      canWrite: false
+    });
+    mocks.getChatItemResponseData.mockResolvedValue([
+      {
+        id: 'node-1',
+        moduleName: 'AI 对话',
+        moduleType: 'chatNode',
+        error: '内容包含敏感信息，已拦截',
+        moderationRecords: [
+          {
+            stage: 'output',
+            verdict: 'block',
+            actionTaken: 'block',
+            hits: [{ label: 'contraband', score: 0.87 }],
+            keywords: ['博彩'],
+            content: '请生成一段 博彩 推广文案'
+          }
+        ]
+      }
+    ]);
+
+    const res = await callHandler();
+    expect(res[0].error).toBe('内容包含敏感信息，已拦截');
+    expect(res[0].moderationRecords).toBeUndefined();
+  });
 });

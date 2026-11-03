@@ -8,6 +8,9 @@ import type { ReferenceValueType } from '@fastgpt/global/core/workflow/type/io';
 import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
 import { resolveDynamicOptionStrings } from './dynamicOptions';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
+import { checkOutputTextModeration } from '../../../plugin/moderation';
+import { getNodeErrResponse } from '../utils';
+import { MODERATION_BLOCKED_ERROR_MESSAGE } from '@fastgpt/global/core/plugin/moderation/constants';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.description]: string;
@@ -57,6 +60,46 @@ export const dispatchUserSelect = async (props: Props): Promise<UserSelectRespon
         error: { [NodeOutputKeyEnum.errorText]: errorText },
         [DispatchNodeResponseKeyEnum.nodeResponse]: { errorText }
       };
+    }
+    // 锚点 3：输出检查 - 用户选择选项与说明文字审查
+    const moderationContext = {
+      teamId: props.runningUserInfo?.teamId,
+      tmbId: props.runningUserInfo?.tmbId,
+      appId: props.runningAppInfo?.sourceId,
+      chatId: props.chatId,
+      responseChatItemId: props.responseChatItemId,
+      nodeId,
+      nodeName: node.name
+    };
+
+    if (description) {
+      const checkDesc = await checkOutputTextModeration({
+        text: description,
+        targetField: 'userSelect.description',
+        context: moderationContext
+      });
+      if (!checkDesc.isPass) {
+        return getNodeErrResponse({
+          error: checkDesc.blockErrorMessage || MODERATION_BLOCKED_ERROR_MESSAGE
+        });
+      }
+    }
+
+    if (Array.isArray(resolvedOptions)) {
+      for (const opt of resolvedOptions) {
+        if (opt.value) {
+          const checkOpt = await checkOutputTextModeration({
+            text: opt.value,
+            targetField: 'userSelect.option',
+            context: moderationContext
+          });
+          if (!checkOpt.isPass) {
+            return getNodeErrResponse({
+              error: checkOpt.blockErrorMessage || MODERATION_BLOCKED_ERROR_MESSAGE
+            });
+          }
+        }
+      }
     }
 
     return {
