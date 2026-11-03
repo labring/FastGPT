@@ -6,7 +6,34 @@ const mocks = vi.hoisted(() => ({
   submit: vi.fn(),
   register: vi.fn(() => ({ name: 'field' })),
   registerMethods: ['email'] as Array<'email' | 'phone'>,
+  requesting: false,
   useSendCode: vi.fn()
+}));
+
+vi.mock('react', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('react')>()),
+  useState: (initial: unknown) => [typeof initial === 'function' ? initial() : initial, vi.fn()],
+  useEffect: vi.fn(),
+  useCallback: (callback: unknown) => callback
+}));
+
+vi.mock('next/navigation', () => ({
+  useSearchParams: () => new URLSearchParams()
+}));
+
+vi.mock('next/router', () => ({
+  useRouter: () => ({ query: {}, pathname: '/login', replace: vi.fn() })
+}));
+
+vi.mock('ahooks', () => ({
+  useMount: vi.fn()
+}));
+
+vi.mock('@/pageComponents/login/LoginForm/FormLayout', () => ({ default: 'form-layout' }));
+vi.mock('@/pageComponents/login/LoginForm/PolicyTip', () => ({ default: 'policy-tip' }));
+vi.mock('@fastgpt/web/components/common/Icon', () => ({ default: 'icon' }));
+vi.mock('@/components/support/user/safe/AccountVerificationPanel', () => ({
+  AccountVerificationPanel: 'verification-panel'
 }));
 
 vi.mock('react-hook-form', () => ({
@@ -22,6 +49,7 @@ vi.mock('react-hook-form', () => ({
 vi.mock('@chakra-ui/react', () => ({
   Box: 'box',
   Button: 'button',
+  Flex: 'flex',
   FormControl: 'form-control',
   Input: 'input'
 }));
@@ -38,7 +66,7 @@ vi.mock('@fastgpt/web/hooks/useToast', () => ({
 }));
 
 vi.mock('@fastgpt/web/hooks/useRequest', () => ({
-  useRequest: () => ({ runAsync: vi.fn(), loading: false })
+  useRequest: () => ({ runAsync: vi.fn(), loading: mocks.requesting })
 }));
 
 vi.mock('@/web/common/system/useSystemStore', () => ({
@@ -80,6 +108,7 @@ vi.stubGlobal('React', await import('react'));
 
 const RegisterForm = (await import('@/pageComponents/login/RegisterForm')).default;
 const ForgetPasswordForm = (await import('@/pageComponents/login/ForgetPasswordForm')).default;
+const LoginForm = (await import('@/pageComponents/login/LoginForm/LoginForm')).default;
 
 const findElement = (
   node: ReactNode,
@@ -103,6 +132,7 @@ const findElement = (
 };
 
 const forms = [
+  ['login', LoginForm],
   ['registration', RegisterForm],
   ['password recovery', ForgetPasswordForm]
 ] as const;
@@ -125,6 +155,7 @@ describe.each(forms)('%s form Enter submission', (_name, Form) => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.registerMethods = ['email'];
+    mocks.requesting = false;
     mocks.handleSubmit.mockReturnValue(mocks.submit);
   });
 
@@ -151,6 +182,48 @@ describe.each(forms)('%s form Enter submission', (_name, Form) => {
     });
 
     expect(mocks.handleSubmit).toHaveBeenCalledTimes(1);
+    expect(mocks.submit).not.toHaveBeenCalled();
+  });
+
+  it('submits only after the IME candidate has been confirmed', () => {
+    const onKeyDown = getKeyDownHandler();
+    onKeyDown({
+      key: 'Enter',
+      shiftKey: false,
+      keyCode: 229,
+      nativeEvent: { isComposing: true }
+    });
+    expect(mocks.submit).not.toHaveBeenCalled();
+
+    onKeyDown({
+      key: 'Enter',
+      shiftKey: false,
+      keyCode: 13,
+      nativeEvent: { isComposing: false }
+    });
+    expect(mocks.submit).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    ['Shift+Enter', { key: 'Enter', shiftKey: true }],
+    ['another key', { key: 'a', shiftKey: false }]
+  ])('does not submit for %s', (_case, event) => {
+    getKeyDownHandler()({
+      ...event,
+      keyCode: 13,
+      nativeEvent: { isComposing: false }
+    });
+    expect(mocks.submit).not.toHaveBeenCalled();
+  });
+
+  it('does not submit again while a request is pending', () => {
+    mocks.requesting = true;
+    getKeyDownHandler()({
+      key: 'Enter',
+      shiftKey: false,
+      keyCode: 13,
+      nativeEvent: { isComposing: false }
+    });
     expect(mocks.submit).not.toHaveBeenCalled();
   });
 });
