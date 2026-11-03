@@ -167,13 +167,13 @@ describe('PgVectorCtrl.embRecall indexed transactions', () => {
   });
 
   it.each([
-    { configured: 100, limit: 100, expected: 100 },
-    { configured: 400, limit: 100, expected: 400 },
-    { configured: 100, limit: 300, expected: 300 },
-    { configured: 2000, limit: 100, expected: 1000 }
-  ])('bounds the supplied search width: %j', async ({ configured, limit, expected }) => {
-    await new PgVectorCtrl().embRecall({ ...props, limit, hnswEfSearch: configured });
-    expect(poolClient.query.mock.calls[1][1]).toEqual([String(expected), '10001']);
+    { hnswEfSearch: 100, limit: 100 },
+    { hnswEfSearch: 400, limit: 100 },
+    { hnswEfSearch: 100, limit: 300 },
+    { hnswEfSearch: 1000, limit: 100 }
+  ])('uses the supplied search width unchanged: %j', async ({ hnswEfSearch, limit }) => {
+    await new PgVectorCtrl().embRecall({ ...props, limit, hnswEfSearch });
+    expect(poolClient.query.mock.calls[1][1]).toEqual([String(hnswEfSearch), '10001']);
   });
 
   it.each([false, true])(

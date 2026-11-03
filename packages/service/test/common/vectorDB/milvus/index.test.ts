@@ -380,13 +380,13 @@ describe('MilvusCtrl', () => {
   // 被测函数: MilvusCtrl.embRecall  等级: 3-High
   // (正常场景) 期望: SDK 2.6 的 client.search 使用 data: [vector](非 vector 字段)
   it.each([
-    { configured: 200, limit: 10, expected: 200 },
-    { configured: 100, limit: 10, expected: 100 },
-    { configured: 400, limit: 10, expected: 400 },
-    { configured: 100, limit: 300, expected: 300 }
+    { hnswEfSearch: 200, limit: 10 },
+    { hnswEfSearch: 100, limit: 10 },
+    { hnswEfSearch: 400, limit: 10 },
+    { hnswEfSearch: 100, limit: 300 }
   ])(
     'TC-8.6 embRecall uses SDK 2.6 data and HNSW search parameters: %j',
-    async ({ configured, limit, expected }) => {
+    async ({ hnswEfSearch, limit }) => {
       global.systemEnv.hnswEfSearch = 9999;
       const ctrl = new MilvusCtrl();
       await ctrl.embRecall({
@@ -394,12 +394,12 @@ describe('MilvusCtrl', () => {
         datasetIds: ['d'],
         vector: [0.1, 0.2],
         limit,
-        hnswEfSearch: configured,
+        hnswEfSearch,
         forbidCollectionIdList: []
       });
       const arg = mockSearch.mock.calls[0][0];
       expect(arg.data).toEqual([[0.1, 0.2]]);
-      expect(arg.params).toEqual({ ef: expected });
+      expect(arg.params).toEqual({ ef: hnswEfSearch });
       // 单表有 dense vector + sparse 两个 ANN 字段:anns_field 必须显式指 dense,SDK 缺省取 schema 第一个
       expect(arg.anns_field).toBe('vector');
       // 主键不自动回填:output_fields 必须含 id,否则结果行解析不出 id
