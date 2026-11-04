@@ -9,6 +9,11 @@ import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import { pushChatLog } from '@fastgpt/service/core/chat/pushChatLog';
 import { serviceEnv } from '@fastgpt/service/env';
 
+// 日志服务接入仍由 ENV 管理；仅移除测试中的 readonly，便于设置并恢复部署配置。
+const mutableServiceEnv = serviceEnv as {
+  -readonly [Key in keyof typeof serviceEnv]: (typeof serviceEnv)[Key];
+};
+
 const proxyEnvKeys = [
   'HTTP_PROXY',
   'HTTPS_PROXY',

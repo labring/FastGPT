@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { createDefaultInstanceConfig } from '@test/utils/instanceConfigSnapshot';
 import { getRedisRuntime } from '@fastgpt/dal/redis/runtime';
 import { responseWrite } from '@fastgpt/service/common/response';
 import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
@@ -17,11 +18,7 @@ import {
   STREAM_RESUME_REQUEST_HEADER
 } from '@fastgpt/global/core/chat/constants';
 
-const {
-  getStreamResumeRedisKeys,
-  STREAM_RESUME_MIRROR_KEEPALIVE_INTERVAL_MS,
-  STREAM_RESUME_TTL_SECONDS
-} = streamResume;
+const { getStreamResumeRedisKeys, STREAM_RESUME_MIRROR_KEEPALIVE_INTERVAL_MS } = streamResume;
 
 const clearCookieMock = vi.hoisted(() => vi.fn());
 const responseWriteMock = vi.hoisted(() => vi.fn());
@@ -84,6 +81,11 @@ const createRes = () => {
 describe('createWorkflowStreamResponseContext', () => {
   beforeEach(async () => {
     vi.clearAllMocks();
+    global.systemInstanceConfig = createDefaultInstanceConfig();
+    Object.assign(global.systemInstanceConfig.performance.streamResume, {
+      ttlSeconds: 180,
+      postCompleteTtlSeconds: 45
+    });
     streamResume.resetStreamResumeMirrorGuardForTest();
 
     const redis = getRedisRuntime().getCommandConnection() as any;
@@ -126,14 +128,14 @@ describe('createWorkflowStreamResponseContext', () => {
     );
     expect(responseWrite).not.toHaveBeenCalled();
     const completionExpirations = redis.expire.mock.calls.filter(
-      ([, ttl]: [string, number]) => ttl === streamResume.STREAM_RESUME_POST_COMPLETE_TTL_SECONDS
+      ([, ttl]: [string, number]) => ttl === streamResume.getStreamResumePostCompleteTtlSeconds()
     );
     expect(completionExpirations).toHaveLength(2);
 
     await context.flushResume();
     expect(
       redis.expire.mock.calls.filter(
-        ([, ttl]: [string, number]) => ttl === streamResume.STREAM_RESUME_POST_COMPLETE_TTL_SECONDS
+        ([, ttl]: [string, number]) => ttl === streamResume.getStreamResumePostCompleteTtlSeconds()
       )
     ).toHaveLength(2);
   });
@@ -216,7 +218,7 @@ describe('createWorkflowStreamResponseContext', () => {
       );
       expect(redis.expire).toHaveBeenCalledWith(
         `${FASTGPT_REDIS_PREFIX}${keys.keyOfStream}`,
-        streamResume.STREAM_RESUME_POST_COMPLETE_TTL_SECONDS
+        streamResume.getStreamResumePostCompleteTtlSeconds()
       );
     }
   );
@@ -294,7 +296,7 @@ describe('createWorkflowStreamResponseContext', () => {
     await vi.advanceTimersByTimeAsync(STREAM_RESUME_MIRROR_KEEPALIVE_INTERVAL_MS);
     expect(redis.expire).toHaveBeenCalledWith(
       `${FASTGPT_REDIS_PREFIX}${keys.keyOfStream}`,
-      STREAM_RESUME_TTL_SECONDS
+      streamResume.getStreamResumeTtlSeconds()
     );
 
     await context.flushResume();

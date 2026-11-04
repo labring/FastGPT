@@ -1,4 +1,5 @@
 import * as debugChatApi from '@/pages/api/core/ai/skill/debugChat';
+import { createDefaultInstanceConfig } from '@test/utils/instanceConfigSnapshot';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
@@ -49,23 +50,6 @@ const debugChatMocks = vi.hoisted(() => ({
   writeStreamError: vi.fn(),
   createWorkflowStreamResponseContext: vi.fn()
 }));
-
-vi.mock('@fastgpt/service/env', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@fastgpt/service/env')>();
-
-  return {
-    ...actual,
-    serviceEnv: {
-      ...actual.serviceEnv,
-      AGENT_SANDBOX_PROVIDER: 'opensandbox',
-      AGENT_SANDBOX_OPENSANDBOX_BASEURL: 'http://mock-opensandbox.local',
-      AGENT_SANDBOX_OPENSANDBOX_API_KEY: 'mock-opensandbox-api-key',
-      AGENT_SANDBOX_OPENSANDBOX_RUNTIME: 'docker',
-      AGENT_SANDBOX_OPENSANDBOX_IMAGE: 'runtime-image:test',
-      AGENT_SANDBOX_OPENSANDBOX_USE_SERVER_PROXY: false
-    }
-  };
-});
 
 vi.mock('@fastgpt/service/core/workflow/dispatch', () => ({
   dispatchWorkFlow: debugChatMocks.dispatchWorkFlow
@@ -310,6 +294,16 @@ describe('debugChat handler — parameter validation', () => {
   const getSseErrResMock = () => vi.mocked(responseModule.sseErrRes);
 
   beforeEach(async () => {
+    global.systemInstanceConfig = createDefaultInstanceConfig();
+    const sandbox = global.systemInstanceConfig.subservice.agentSandbox;
+    sandbox.provider = 'opensandbox';
+    Object.assign(sandbox.opensandbox, {
+      baseUrl: 'http://mock-opensandbox.local',
+      apiKey: 'mock-opensandbox-api-key',
+      runtime: 'docker',
+      image: 'runtime-image:test',
+      useServerProxy: false
+    });
     testUser = await getUser(`debug-chat-user-${getNanoid(6)}`);
     vi.clearAllMocks();
     const modelData: LLMModelDataType = {
