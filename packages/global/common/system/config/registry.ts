@@ -336,7 +336,6 @@ export const systemInstanceConfigRegistry: readonly SystemInstanceConfigRegistry
   ...createEntries(
     'subservice',
     [
-      'plugin.enabled',
       'plugin.baseUrl',
       'plugin.remoteDebug',
       'plugin.remoteDebugUrl',

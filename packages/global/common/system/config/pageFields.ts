@@ -123,7 +123,6 @@ export const adminConfigPageFieldsMap: Record<string, readonly string[]> = {
     'commercial.billingNotify.paymentReceived.zh'
   ],
   '/admin/subservice/plugin': [
-    'subservice.plugin.enabled',
     'subservice.plugin.baseUrl',
     'subservice.plugin.remoteDebug',
     'subservice.plugin.remoteDebugUrl'

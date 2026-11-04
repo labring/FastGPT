@@ -363,7 +363,6 @@ export const buildLegacyDomainOverrides = ({
 
   overrides.subservice = compact({
     plugin: compact({
-      enabled: pluginBaseUrl ? true : undefined,
       baseUrl: pluginBaseUrl,
       token: optionalText(legacyEnv.PLUGIN_TOKEN)
     }),

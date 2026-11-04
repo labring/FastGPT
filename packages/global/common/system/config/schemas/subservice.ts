@@ -14,7 +14,6 @@ const McpSubserviceConfigSchema = z.strictObject({
 });
 
 const PluginSubserviceConfigSchema = z.strictObject({
-  enabled: z.boolean().default(true),
   baseUrl: urlWithDefault('http://localhost:3004'),
   token: textWithDefault('token'),
   remoteDebug: z.boolean().default(false),

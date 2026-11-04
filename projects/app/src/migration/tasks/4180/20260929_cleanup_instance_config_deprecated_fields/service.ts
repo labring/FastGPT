@@ -34,6 +34,8 @@ export const deprecatedOverridePaths: Partial<
   providers: [['chunk'], ['crm']],
   // 代理连接地址保留在部署 ENV；删除开发期写入的两个配置叶子。
   subservice: [
+    // plugin.enabled 没有消费点：启停实际由 baseUrl/token 是否存在决定，删除冗余开关
+    ['plugin', 'enabled'],
     ['agentSandbox', 'proxy', 'wsUrl'],
     ['agentSandbox', 'proxy', 'httpUrl']
   ],
