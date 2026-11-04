@@ -24,10 +24,13 @@ PG partial indexes require `halfvec` support, a fixed vector dimension in the `1
 ### Compatibility notes
 
 - **Workflow memory**: Memory keys for content extraction, question classification, and Pi Agents now include the source and call path. Custom integrations that read or write `ChatItem.memories` directly must support the new keys instead of relying on `agentLoopMemory-${nodeId}` or child Workflow keys without a call path.
+- **API identity parameters**: Existing calls to `chat/completions` that send both `customUid` and `authProxy` must keep only one, depending on whether they identify a user or run as a Team member. Sending both now returns a parameter error, even when `customUid` is an empty string.
+- **Log CSV exports**: Scripts that parse Team members from the “User” column must support `ID:name` instead of the previous member name; when a member has no name, the column contains only the ID.
 
 ## 🚀 New features
 
 1. **[Models and billing]** Model management now supports dragging models into a custom order and canceling before saving; the root account can reorder system models, and with team models enabled in the Commercial edition, members with the “Install model” permission can reorder their own models. “Available models” groups your own team models, shared team models, and system models in that order and applies the custom order within each group; JSON configuration updates preserve this order, which the client also uses for its final system-model fallback.
+2. **[System and operations]** Chat logs now include an “Authorizer” column, hidden by default, separate from “User” to distinguish your users from the authenticated Team member. API `customUid` values appear unchanged as the user, and CSV exports follow the selected columns.
 
 ## ⚙️ Improvements
 
@@ -57,7 +60,8 @@ PG partial indexes require `halfvec` support, a fixed vector dimension in the `1
 13. **[Teams and permissions]** Fixed App creation, JSON imports, copies, and conversions to new Workflow copies failing when they include unreadable or missing resources. The initial version snapshots only readable resources; any remaining unusable Node references are marked as errors in the detail view for later correction.
 14. **[Teams and permissions]** Fixed the login and member name forms submitting when Enter was used to confirm an input method candidate during composition. Pressing Enter again after confirmation submits the form.
 15. **[Teams and permissions]** Fixed the “Cancel” button in the account deletion confirmation dialog not following the current interface language.
-16. **[Tools and channels]** Fixed blank text in some Tool names, descriptions, and tags when their Traditional Chinese translation is empty. These values fall back to Simplified Chinese, then English if no usable text is available.
+16. **[System and operations]** Fixed user, feedback, and session search filters overwriting one another in chat logs; the list and CSV export now apply all selected conditions together.
+17. **[Tools and channels]** Fixed blank text in some Tool names, descriptions, and tags when their Traditional Chinese translation is empty. These values fall back to Simplified Chinese, then English if no usable text is available.
 
 ## 🛠️ Code improvements
 
