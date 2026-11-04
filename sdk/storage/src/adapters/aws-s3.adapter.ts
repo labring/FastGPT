@@ -142,12 +142,28 @@ export class AwsS3StorageAdapter implements IStorage {
 
     const meta = toAwsMetadata(metadata);
     const uploadAbortController = new AbortController();
-    const abortUpload = () => uploadAbortController.abort();
+    const abortUpload = () => {
+      uploadAbortController.abort();
+      // lib-storage 不会销毁调用方传入的 Readable；取消时主动停止继续读取。
+      if (body instanceof Readable && !body.destroyed) body.destroy();
+    };
     abortSignal?.addEventListener('abort', abortUpload, { once: true });
+
+    // lib-storage 不把 abortSignal 传给实际的 S3 命令；用代理客户端为每个 send 注入，
+    // 这样单 PUT、分片和多段完成的在途 HTTP 请求都会随取消关闭。
+    const uploadClient = new Proxy(this.client, {
+      get: (target, property, receiver) => {
+        if (property === 'send') {
+          return (command: any, options?: any) =>
+            target.send(command, { ...options, abortSignal: uploadAbortController.signal });
+        }
+        return Reflect.get(target, property, receiver);
+      }
+    });
 
     try {
       const upload = new Upload({
-        client: this.client,
+        client: uploadClient,
         abortController: uploadAbortController,
         params: {
           Bucket: this.options.bucket,
