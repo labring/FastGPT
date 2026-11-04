@@ -42,31 +42,6 @@ const mocks = vi.hoisted(() => ({
 vi.mock('@fastgpt/service/core/app/tool/utils/client', () => mocks);
 
 describe('beforeUpdateAppFormat', () => {
-  it.each([
-    ['systemTool-weather', true],
-    ['business-app-id', false]
-  ])('预览不可用时仅清理已确认身份的系统工具：%s', async (id, shouldClear) => {
-    mocks.getClientToolPreviewNode.mockRejectedValueOnce(new Error('Tool unavailable'));
-    const systemInput = {
-      type: SystemToolSecretInputTypeEnum.system,
-      value: { apiKey: { value: 'temporary-or-business-value' } }
-    };
-    const nodes = [
-      {
-        flowNodeType: FlowNodeTypeEnum.agent,
-        inputs: [
-          {
-            key: NodeInputKeyEnum.selectedTools,
-            value: [{ id, config: { [NodeInputKeyEnum.systemInputConfig]: systemInput } }]
-          }
-        ]
-      }
-    ] as StoreNodeItemType[];
-
-    await beforeUpdateAppFormat({ nodes });
-    expect('value' in systemInput).toBe(!shouldClear);
-  });
-
   it.each(['mcpToolSet', 'httpToolSet'] as const)(
     'encrypts node-local %s auth and preserves it on repeat saves',
     async (toolSetKey) => {
@@ -82,7 +57,7 @@ describe('beforeUpdateAppFormat', () => {
                     apiSchemaUrl: 'https://api.example.com/openapi.json',
                     customHeaders: '{}'
                   }),
-              headerSecret: { 'X-API-Key': { value: 'temporary-secret', secret: '' } },
+              headerSecret: { 'X-API-Key': { value: 'temporary-secret' } },
               toolList: []
             }
           }
@@ -94,7 +69,7 @@ describe('beforeUpdateAppFormat', () => {
       const toolSet = nodes[0].toolConfig?.[toolSetKey];
       if (!toolSet) throw new Error('Toolset config is missing');
       const encryptedValue = toolSet.headerSecret?.['X-API-Key'];
-      expect(encryptedValue).toMatchObject({ value: '', secret: expect.any(String) });
+      expect(encryptedValue).toMatchObject({ secret: expect.any(String) });
       expect(JSON.stringify(nodes)).not.toContain('temporary-secret');
       expect(getSecretValue({ storeSecret: toolSet.headerSecret ?? undefined })).toEqual({
         'X-API-Key': 'temporary-secret'
@@ -117,7 +92,7 @@ describe('beforeUpdateAppFormat', () => {
           httpToolSet: {
             apiSchemaUrl: 'https://api.example.com/openapi.json',
             customHeaders: '{}',
-            headerSecret: { 'X-API-Key': { value: 'summary-secret', secret: '' } },
+            headerSecret: { 'X-API-Key': { value: 'summary-secret' } },
             toolList: [{ name: 'search', description: 'Summary only' }]
           }
         }
@@ -128,14 +103,14 @@ describe('beforeUpdateAppFormat', () => {
         toolConfig: {
           httpToolSet: {
             customHeaders: '{}',
-            headerSecret: { 'X-API-Key': { value: 'collection-secret', secret: '' } },
+            headerSecret: { 'X-API-Key': { value: 'collection-secret' } },
             toolList: [
               {
                 name: 'search',
                 description: 'Runtime tool',
                 path: '/search',
                 method: 'GET',
-                headerSecret: { Authorization: { value: 'tool-secret', secret: '' } }
+                headerSecret: { Authorization: { value: 'tool-secret' } }
               }
             ]
           }
@@ -165,11 +140,37 @@ describe('beforeUpdateAppFormat', () => {
     ).toEqual({ Authorization: 'tool-secret' });
   });
 
+  it.each([
+    ['systemTool-weather', true],
+    ['business-app-id', false]
+  ])('预览不可用时仅清理已确认身份的系统工具：%s', async (id, shouldClear) => {
+    mocks.getClientToolPreviewNode.mockRejectedValueOnce(new Error('Tool unavailable'));
+    const systemInput = {
+      type: SystemToolSecretInputTypeEnum.system,
+      value: { apiKey: { value: 'temporary-or-business-value' } }
+    };
+    const nodes = [
+      {
+        flowNodeType: FlowNodeTypeEnum.agent,
+        inputs: [
+          {
+            key: NodeInputKeyEnum.selectedTools,
+            value: [{ id, config: { [NodeInputKeyEnum.systemInputConfig]: systemInput } }]
+          }
+        ]
+      }
+    ] as StoreNodeItemType[];
+
+    await beforeUpdateAppFormat({ nodes });
+    expect('value' in systemInput).toBe(!shouldClear);
+  });
+
   it.each([SystemToolSecretInputTypeEnum.system, SystemToolSecretInputTypeEnum.team])(
     '保存前清理 %s 类型中的临时密钥值',
     async (type) => {
       const nodes = [
         {
+          flowNodeType: FlowNodeTypeEnum.tool,
           inputs: [
             {
               key: NodeInputKeyEnum.systemInputConfig,
@@ -197,6 +198,7 @@ describe('beforeUpdateAppFormat', () => {
   it('即使系统输入被标记为引用，也不能保留临时密钥值', async () => {
     const nodes = [
       {
+        flowNodeType: FlowNodeTypeEnum.tool,
         inputs: [
           {
             key: NodeInputKeyEnum.systemInputConfig,
@@ -227,6 +229,7 @@ describe('beforeUpdateAppFormat', () => {
   it('保存前仅加密 manual 类型的临时密钥值', async () => {
     const nodes = [
       {
+        flowNodeType: FlowNodeTypeEnum.tool,
         inputs: [
           {
             key: NodeInputKeyEnum.systemInputConfig,
@@ -253,13 +256,13 @@ describe('beforeUpdateAppFormat', () => {
 
     const value = nodes[0].inputs[0].value as any;
     expect(value.type).toBe(SystemToolSecretInputTypeEnum.manual);
-    expect(value.value.apiKey.value).toBe('');
-    expect(value.value.apiKey.secret).toEqual(expect.any(String));
+    expect(value.value.apiKey).toEqual({ secret: expect.any(String) });
     expect(value.value.region).toBe('cn');
   });
 
   it('保存 Agent 嵌套工具配置前加密手动密钥', async () => {
     mocks.getClientToolPreviewNode.mockResolvedValueOnce({
+      flowNodeType: FlowNodeTypeEnum.tool,
       inputs: [
         {
           key: NodeInputKeyEnum.systemInputConfig,
@@ -294,8 +297,7 @@ describe('beforeUpdateAppFormat', () => {
     await beforeUpdateAppFormat({ nodes, teamId: 'team-1' });
 
     const config = (nodes[0].inputs[0].value as any)[0].config;
-    expect(config.system_input_config.value.apiKey.value).toBe('');
-    expect(config.system_input_config.value.apiKey.secret).toEqual(expect.any(String));
+    expect(config.system_input_config.value.apiKey).toEqual({ secret: expect.any(String) });
   });
 
   it('保存 Agent 嵌套团队工具配置时把 teamId 传给预览接口', async () => {
@@ -449,6 +451,7 @@ describe('beforeUpdateAppFormat', () => {
             key: NodeInputKeyEnum.datasetParams,
             value: {
               datasets: [
+                ['source-node', 'datasets'],
                 {
                   datasetId: 'dataset-1',
                   avatar: 'avatar.png',
@@ -480,8 +483,15 @@ describe('beforeUpdateAppFormat', () => {
     });
   });
 
-  it('保存前保留知识库选择输入的引用模式值', async () => {
-    const referenceValue = ['sourceNode', 'datasets'];
+  it.each([
+    { referenceValue: ['sourceNode', 'datasets'] },
+    {
+      referenceValue: [
+        ['source-a', 'datasets'],
+        ['source-b', 'datasets']
+      ]
+    }
+  ])('保存前保留知识库选择输入的引用模式值 %#', async ({ referenceValue }) => {
     const nodes = [
       {
         nodeId: 'dataset-node',
@@ -525,27 +535,41 @@ describe('beforeUpdateAppFormat', () => {
     expect(nodes[0].inputs[0].value).toEqual([]);
   });
 
-  it('保存前遇到非法知识库选择项时抛错，避免清空后继续保存', async () => {
-    const nodes = [
-      {
-        flowNodeType: FlowNodeTypeEnum.datasetSearchNode,
-        inputs: [
-          {
-            key: NodeInputKeyEnum.datasetSelectList,
-            renderTypeList: [FlowNodeInputTypeEnum.selectDataset, FlowNodeInputTypeEnum.reference],
-            selectedType: FlowNodeInputTypeEnum.selectDataset,
-            value: [
-              {
-                name: 'Invalid Dataset'
-              }
-            ]
-          }
-        ]
-      } as StoreNodeItemType
-    ];
+  it.each([FlowNodeTypeEnum.datasetSearchNode, FlowNodeTypeEnum.agent])(
+    '保存 %s 时过滤非法知识库选择项并保留有效项',
+    async (flowNodeType) => {
+      const nodes = [
+        {
+          flowNodeType,
+          inputs: [
+            {
+              key: NodeInputKeyEnum.datasetSelectList,
+              renderTypeList: [
+                FlowNodeInputTypeEnum.selectDataset,
+                FlowNodeInputTypeEnum.reference
+              ],
+              selectedType: FlowNodeInputTypeEnum.selectDataset,
+              value: [
+                ['source-a', 'datasets'],
+                ['source-b', 'datasets'],
+                {
+                  name: 'Invalid Dataset'
+                },
+                {
+                  datasetId: 'dataset-1',
+                  name: 'Dataset'
+                }
+              ]
+            }
+          ]
+        } as StoreNodeItemType
+      ];
 
-    await expect(beforeUpdateAppFormat({ nodes, teamId: 'team-1' })).rejects.toThrow();
-  });
+      await beforeUpdateAppFormat({ nodes, teamId: 'team-1' });
+
+      expect(nodes[0].inputs[0].value).toEqual([{ datasetId: 'dataset-1' }]);
+    }
+  );
 
   it('保存前移除 Agent Skill 的编辑态删除标记并保留展示快照字段', async () => {
     const nodes = [

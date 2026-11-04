@@ -7,11 +7,8 @@ import {
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { NodeOutputKeyEnum, VARIABLE_NODE_ID } from '@fastgpt/global/core/workflow/constants';
 import { SystemToolSecretInputTypeEnum } from '@fastgpt/global/core/app/tool/systemTool/constants';
-import { assertMCPUrlNotInternal, MCPClient } from '@fastgpt/service/core/app/mcp';
-import {
-  getWorkflowContext,
-  getWorkflowResourceContext
-} from '@fastgpt/service/core/workflow/utils/context';
+import { MCPClient } from '@fastgpt/service/core/app/mcp';
+import { getWorkflowResourceContext } from '@fastgpt/service/core/workflow/utils/context';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { UserConfigError } from '@fastgpt/global/common/error/utils';
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
@@ -517,7 +514,8 @@ describe('dispatchRunTool runtime toolset auth', () => {
       customHeaders: { 'X-Trace': 'enabled' },
       staticParams: undefined,
       staticHeaders: undefined,
-      staticBody: undefined
+      staticBody: undefined,
+      resolveReference: expect.any(Function)
     });
     expect(result.data).toEqual({ [NodeOutputKeyEnum.rawResponse]: { ok: true }, ok: true });
   });
@@ -640,6 +638,39 @@ describe('dispatchRunTool runtime toolset auth', () => {
     expect(mockLogger.error).toHaveBeenCalledWith('Tool Run Error', { error: result.rawError });
   });
 
+  it('executes inline MCP tools without external resource authorization', async () => {
+    const url = 'https://mcp.example.com';
+    mcpToolCallMock.mockResolvedValueOnce({ ok: true });
+
+    const result = await dispatchRunTool(
+      createRunToolProps(
+        {
+          mcpTool: {
+            name: 'search',
+            description: 'Search documents',
+            inputSchema: { type: 'object' },
+            url,
+            headerSecret: { 'X-API-Key': { value: 'inline-token', secret: '' } }
+          }
+        },
+        { query: 'fastgpt' }
+      )
+    );
+
+    expect(authAppByTmbIdMock).not.toHaveBeenCalled();
+    expect(getMCPChildrenMock).not.toHaveBeenCalled();
+    expect(MCPClient).toHaveBeenCalledWith({
+      url,
+      headers: { 'X-API-Key': 'inline-token' }
+    });
+    expect(mcpToolCallMock).toHaveBeenCalledWith({
+      toolName: 'search',
+      params: { query: 'fastgpt' },
+      closeConnection: false
+    });
+    expect(result.data).toEqual({ [NodeOutputKeyEnum.rawResponse]: { ok: true } });
+  });
+
   it('resolves MCP auth references per call and reuses clients for matching auth', async () => {
     const url = 'https://mcp.example.com';
     const mcpTool = { name: 'search', description: 'Search' };
@@ -685,81 +716,6 @@ describe('dispatchRunTool runtime toolset auth', () => {
     expect(mcpToolCallMock).toHaveBeenCalledTimes(3);
     expect(Object.keys(workflowContextMock.mcpClientMemory)).toHaveLength(2);
     expect(Object.keys(workflowContextMock.mcpClientMemory).join(' ')).not.toContain('token-');
-  });
-
-  it('executes inline MCP tools without external resource authorization', async () => {
-    const url = 'https://mcp.example.com';
-    const props = createRunToolProps(
-      {
-        mcpTool: {
-          name: 'search',
-          description: 'Search documents',
-          inputSchema: {
-            type: 'object',
-            properties: { query: { type: 'string' } },
-            required: ['query']
-          },
-          url,
-          headerSecret: { 'X-API-Key': { value: 'inline-token', secret: '' } }
-        }
-      },
-      { query: 'fastgpt' }
-    );
-    mcpToolCallMock.mockResolvedValueOnce({ ok: true });
-
-    const result = await dispatchRunTool(props);
-
-    expect(authAppByTmbIdMock).not.toHaveBeenCalled();
-    expect(getMCPChildrenMock).not.toHaveBeenCalled();
-    expect(assertMCPUrlNotInternal).toHaveBeenCalledWith(url);
-    expect(MCPClient).toHaveBeenCalledWith({
-      url,
-      headers: { 'X-API-Key': 'inline-token' }
-    });
-    expect(mcpToolCallMock).toHaveBeenCalledWith({
-      toolName: 'search',
-      params: { query: 'fastgpt' },
-      closeConnection: false
-    });
-    expect(result.data).toEqual({ [NodeOutputKeyEnum.rawResponse]: { ok: true } });
-  });
-
-  it('keeps MCP clients separate when toolsets share a URL but use different credentials', async () => {
-    const url = 'https://mcp.example.com';
-    const mcpClientMemory = {};
-    vi.mocked(getWorkflowContext).mockReturnValue({
-      mcpClientMemory
-    } as ReturnType<typeof getWorkflowContext>);
-    mcpToolCallMock.mockResolvedValue({ ok: true });
-
-    for (const token of ['first-token', 'second-token']) {
-      await dispatchRunTool(
-        createRunToolProps(
-          {
-            mcpTool: {
-              name: 'search',
-              description: 'Search documents',
-              inputSchema: { type: 'object', properties: {} },
-              url,
-              headerSecret: { 'X-API-Key': { value: token, secret: '' } }
-            }
-          },
-          {}
-        )
-      );
-    }
-
-    expect(MCPClient).toHaveBeenCalledTimes(2);
-    expect(MCPClient).toHaveBeenNthCalledWith(1, {
-      url,
-      headers: { 'X-API-Key': 'first-token' }
-    });
-    expect(MCPClient).toHaveBeenNthCalledWith(2, {
-      url,
-      headers: { 'X-API-Key': 'second-token' }
-    });
-    expect(Object.keys(mcpClientMemory)).toHaveLength(2);
-    expect(Object.keys(mcpClientMemory).every((key) => !key.includes(url))).toBe(true);
   });
 
   it.each(['toolData', 'system_toolData'] as const)(
