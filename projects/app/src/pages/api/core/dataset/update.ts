@@ -27,6 +27,7 @@ import { addAuditLogs } from '@fastgpt/service/support/user/audit/util';
 import { buildDatasetConfigUpdatePatch } from '@fastgpt/service/core/dataset/audit/patch';
 import { buildDatasetUpdateAuditLogs } from '@fastgpt/service/core/dataset/audit/config';
 import { isEqual } from 'lodash-es';
+import { ZodError } from 'zod';
 import { type ClientSession } from 'mongoose';
 
 import { moveDataset } from '@/service/core/dataset/move';
@@ -180,6 +181,23 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
       throw new ApiRequestInputParseError(parsed.error, { inputSource: 'body' });
     }
   }
+  // folder 只承载子知识库、没有自己的 collection：托管开关写入后既没有 collection 可物化，
+  // 又会让 ACL 级联把整棵子树当成托管库剪掉。允许传 false，便于清理存量脏数据。
+  if (
+    dataset.type === DatasetTypeEnum.folder &&
+    apiDatasetServerPatch?.updateFields['apiDatasetServer.permissionSync'] === true
+  ) {
+    throw new ApiRequestInputParseError(
+      new ZodError([
+        {
+          code: 'custom',
+          path: ['apiDatasetServer', 'permissionSync'],
+          message: 'permissionSync is not supported for folder datasets'
+        }
+      ]),
+      { inputSource: 'body' }
+    );
+  }
   // 由事务内锁库后的最终状态决定，提交后再据此补全量同步。
   let shouldEnqueueFullSync = false;
   const configAuditLogs = buildDatasetUpdateAuditLogs({
@@ -245,7 +263,9 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
     }
 
     // 与「是否开启 collection 权限」解耦：开关早已打开但本次才开启托管时，同样需要补一轮全量。
+    // folder 不消费外部同步（存量脏数据），不要为它排队。
     shouldEnqueueFullSync =
+      lockedDataset.type !== DatasetTypeEnum.folder &&
       lockedApiDatasetServer?.permissionSync === true &&
       (lockedDataset.apiDatasetServer?.permissionSync !== true ||
         lockedDataset.collectionPermissionEnabled !== true);

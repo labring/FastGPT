@@ -1130,7 +1130,7 @@ describe('dataset permission sync switch', () => {
     expect(enqueueDatasetPermissionSync).not.toHaveBeenCalled();
   });
 
-  it('does not enable collection permissions for a folder dataset', async () => {
+  it('rejects permissionSync on a folder dataset', async () => {
     const { owner } = await getFakeUsers(1);
     const folder = await createDatasetWithOwnerSnapshot({
       teamId: String(owner.teamId),
@@ -1150,10 +1150,36 @@ describe('dataset permission sync switch', () => {
       }
     });
 
+    expect(res.code).not.toBe(200);
+    const stored = await MongoDataset.findById(folder._id).lean();
+    expect(stored?.apiDatasetServer).toBeUndefined();
+    expect(stored?.collectionPermissionEnabled).not.toBe(true);
+    expect(enqueueDatasetPermissionSync).not.toHaveBeenCalled();
+  });
+
+  it('allows clearing a legacy permissionSync flag left on a folder dataset', async () => {
+    const { owner } = await getFakeUsers(1);
+    const folder = await MongoDataset.create({
+      teamId: String(owner.teamId),
+      tmbId: String(owner.tmbId),
+      name: 'legacy-folder',
+      type: DatasetTypeEnum.folder,
+      apiDatasetServer: {
+        apiServer: { baseUrl: 'https://example.com' },
+        permissionSync: true
+      }
+    });
+
+    const res = await Call<UpdateDatasetBody, Record<string, never>, string>(updateHandler, {
+      auth: owner,
+      body: { id: String(folder._id), apiDatasetServer: { permissionSync: false } }
+    });
+
     expect(res.code).toBe(200);
-    expect((await MongoDataset.findById(folder._id).lean())?.collectionPermissionEnabled).not.toBe(
-      true
-    );
+    const stored = await MongoDataset.findById(folder._id).lean();
+    expect(stored?.apiDatasetServer?.permissionSync).toBe(false);
+    expect(stored?.collectionPermissionEnabled).not.toBe(true);
+    expect(enqueueDatasetPermissionSync).not.toHaveBeenCalled();
   });
 
   it('does not enqueue again once the switch and the flag are both on', async () => {

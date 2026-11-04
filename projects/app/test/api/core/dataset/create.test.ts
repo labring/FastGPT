@@ -96,6 +96,38 @@ describe('create dataset', () => {
     expect(res.code).toBe(200);
     expect(await MongoDataset.findById(res.data).lean()).not.toHaveProperty('vlmModelId');
   });
+  it('rejects permissionSync when creating a folder', async () => {
+    const users = await getFakeUsers(1);
+    const owner = users.members[0];
+    await MongoResourcePermission.create({
+      resourceType: 'team',
+      teamId: owner.teamId,
+      resourceId: null,
+      tmbId: owner.tmbId,
+      permission: TeamDatasetCreatePermissionVal
+    });
+
+    const res = await Call<CreateDatasetBody, Record<string, never>, CreateDatasetResponse>(
+      createHandler,
+      {
+        auth: owner,
+        body: {
+          name: 'managed-folder',
+          intro: '',
+          avatar: '',
+          type: DatasetTypeEnum.folder,
+          apiDatasetServer: {
+            apiServer: { baseUrl: 'https://example.com' },
+            permissionSync: true
+          }
+        }
+      }
+    );
+
+    expect(res.code).not.toBe(200);
+    expect(await MongoDataset.countDocuments({ name: 'managed-folder' })).toBe(0);
+  });
+
   it('should return 200 when create dataset success', async () => {
     const users = await getFakeUsers(2);
     await MongoResourcePermission.create({
