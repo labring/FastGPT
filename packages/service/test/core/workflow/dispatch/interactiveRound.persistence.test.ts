@@ -10,17 +10,12 @@ import {
   getWorkflowEntryNodeIds,
   storeEdges2RuntimeEdges
 } from '@fastgpt/global/core/workflow/runtime/utils';
-import {
-  ChatGenerateStatusEnum,
-  ChatRoleEnum,
-  ChatSourceTypeEnum
-} from '@fastgpt/global/core/chat/constants';
+import { ChatRoleEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import type { ChatItemMiniType, UserChatItemType } from '@fastgpt/global/core/chat/type';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import { getChatItems } from '@fastgpt/service/core/chat/controller';
 import { preChatRound } from '@fastgpt/service/core/chat/utils/prepare';
 import { finalizeChatRound, updateInteractiveChat } from '@fastgpt/service/core/chat/saveChat';
-import { updateChatGenerateStatus } from '@fastgpt/service/core/chat/chatGenerateStatus';
 
 it.each([false, true])(
   'resumes persisted form and select in one round with legacy null descriptions=%s',
@@ -97,52 +92,57 @@ it.each([false, true])(
       const interactive = getLastInteractiveValue(histories);
       const userContent = input(text);
       const prepared = await preChatRound({ ...props, userContent, interactive });
-      await prepared.titleGeneration;
-      expect(prepared.responseChatItemId).toBe('round-id');
-      expect(prepared.shouldFinalizePreparedRound).toBe(histories.length === 0);
-      const { result, responses } = await runGraph({
-        nodes: structuredClone(nodes).map((node) => ({
-          ...node,
-          isEntry: histories.length
-            ? getWorkflowEntryNodeIds(nodes, interactive).includes(node.nodeId)
-            : node.nodeId === 'answer'
-        })),
-        edges: storeEdges2RuntimeEdges(edges, interactive),
-        overrides: { lastInteractive: interactive, histories, query: userContent.value }
-      });
-      expect(result.workflowRuntimeSummary.errorCount, JSON.stringify(responses)).toBe(0);
-      const pending = result.workflowInteractiveResponse;
-      if (pending?.type === 'userInput' || pending?.type === 'userSelect') {
-        expect(pending.params.description).toBe('');
-        if (legacy) {
-          // 重现修复前未填说明的快照；Mongo 更新会把 Mixed 内显式 undefined 写为 null。
-          Object.assign(pending.params, { description: undefined });
+      try {
+        await prepared.titleGeneration;
+        expect(prepared.responseChatItemId).toBe('round-id');
+        expect(prepared.shouldFinalizePreparedRound).toBe(histories.length === 0);
+        const { result, responses } = await runGraph({
+          nodes: structuredClone(nodes).map((node) => ({
+            ...node,
+            isEntry: histories.length
+              ? getWorkflowEntryNodeIds(nodes, interactive).includes(node.nodeId)
+              : node.nodeId === 'answer'
+          })),
+          edges: storeEdges2RuntimeEdges(edges, interactive),
+          overrides: { lastInteractive: interactive, histories, query: userContent.value }
+        });
+        expect(result.workflowRuntimeSummary.errorCount, JSON.stringify(responses)).toBe(0);
+        const pending = result.workflowInteractiveResponse;
+        if (pending?.type === 'userInput' || pending?.type === 'userSelect') {
+          expect(pending.params.description).toBe('');
+          if (legacy) {
+            // 重现修复前未填说明的快照；Mongo 更新会把 Mixed 内显式 undefined 写为 null。
+            Object.assign(pending.params, { description: undefined });
+          }
         }
+        const saveProps = {
+          ...props,
+          nodes: [],
+          userContent,
+          aiContent: {
+            obj: ChatRoleEnum.AI as const,
+            dataId: prepared.responseChatItemId,
+            value: result.assistantResponses
+          },
+          variables: {},
+          durationSeconds: 1
+        };
+        if (interactive) {
+          await updateInteractiveChat({ ...saveProps, interactive });
+        } else {
+          await finalizeChatRound(saveProps);
+        }
+        const saved = await getChatItems({ ...source, offset: 0, limit: 20, field: 'obj value' });
+        if (legacy && result.workflowInteractiveResponse) {
+          const ai = saved.histories.findLast((item) => item.obj === ChatRoleEnum.AI);
+          expect(ai?.value.at(-1)).toMatchObject({
+            interactive: { params: { description: null } }
+          });
+        }
+        return saved.histories;
+      } finally {
+        await prepared.releaseGenerationLease?.();
       }
-      const saveProps = {
-        ...props,
-        nodes: [],
-        userContent,
-        aiContent: {
-          obj: ChatRoleEnum.AI as const,
-          dataId: prepared.responseChatItemId,
-          value: result.assistantResponses
-        },
-        variables: {},
-        durationSeconds: 1
-      };
-      if (interactive) {
-        await updateInteractiveChat({ ...saveProps, interactive });
-        await updateChatGenerateStatus({ ...source, status: ChatGenerateStatusEnum.done });
-      } else {
-        await finalizeChatRound(saveProps);
-      }
-      const saved = await getChatItems({ ...source, offset: 0, limit: 20, field: 'obj value' });
-      if (legacy && result.workflowInteractiveResponse) {
-        const ai = saved.histories.findLast((item) => item.obj === ChatRoleEnum.AI);
-        expect(ai?.value.at(-1)).toMatchObject({ interactive: { params: { description: null } } });
-      }
-      return saved.histories;
     };
 
     const awaitingForm = await runRound('1');

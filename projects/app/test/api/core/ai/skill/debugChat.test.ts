@@ -43,7 +43,6 @@ const debugChatMocks = vi.hoisted(() => ({
   finalizeChatRound: vi.fn(),
   failChatRound: vi.fn(),
   updateInteractiveChat: vi.fn(),
-  updateChatGenerateStatus: vi.fn(),
   getRunningUserInfoByTmbId: vi.fn(),
   responseWrite: vi.fn(),
   flushResume: vi.fn(),
@@ -80,10 +79,6 @@ vi.mock('@fastgpt/service/core/chat/saveChat', () => ({
   finalizeChatRound: debugChatMocks.finalizeChatRound,
   failChatRound: debugChatMocks.failChatRound,
   updateInteractiveChat: debugChatMocks.updateInteractiveChat
-}));
-
-vi.mock('@fastgpt/service/core/chat/chatGenerateStatus', () => ({
-  updateChatGenerateStatus: debugChatMocks.updateChatGenerateStatus
 }));
 
 vi.mock('@fastgpt/service/support/user/team/utils', () => ({
@@ -371,7 +366,6 @@ describe('debugChat handler — parameter validation', () => {
     debugChatMocks.finalizeChatRound.mockResolvedValue(undefined);
     debugChatMocks.failChatRound.mockResolvedValue(undefined);
     debugChatMocks.updateInteractiveChat.mockResolvedValue(undefined);
-    debugChatMocks.updateChatGenerateStatus.mockResolvedValue(undefined);
     debugChatMocks.getRunningUserInfoByTmbId.mockResolvedValue({
       teamId: testUser.teamId,
       tmbId: testUser.tmbId

@@ -105,6 +105,40 @@ describe('shouldCheckChatResumeStatus', () => {
 });
 
 describe('chat generating conflict recovery', () => {
+  it('recovers an already loaded server round even when the rejected send allocated a new ID', async () => {
+    const records = [createAiRecord({ dataId: 'active-A', status: ChatStatusEnum.finish })];
+    const loadRecords = vi.fn(async () => records);
+    await expect(
+      waitForConflictRecoveryRecords({
+        loadRecords,
+        responseChatItemId: 'active-A',
+        previousAiDataId: 'active-A',
+        canReusePreviousAi: false,
+        retryIntervalMs: 0
+      })
+    ).resolves.toBe(records);
+    expect(loadRecords).toHaveBeenCalledOnce();
+  });
+
+  it('waits for the exact occupied round instead of accepting a different stale record', async () => {
+    const oldRecords = [createAiRecord({ dataId: 'stale-C' })];
+    const activeRecords = [createAiRecord({ dataId: 'active-A' })];
+    const loadRecords = vi
+      .fn()
+      .mockResolvedValueOnce(oldRecords)
+      .mockResolvedValueOnce(activeRecords);
+    await expect(
+      waitForConflictRecoveryRecords({
+        loadRecords,
+        responseChatItemId: 'active-A',
+        previousAiDataId: 'another-old-id',
+        canReusePreviousAi: true,
+        retryIntervalMs: 0
+      })
+    ).resolves.toBe(activeRecords);
+    expect(loadRecords).toHaveBeenCalledTimes(2);
+  });
+
   it('uses the server round id after refreshing records', () => {
     const recoveredRecords = [
       createHumanRecord({ id: 'old-human', dataId: 'old-round' }),

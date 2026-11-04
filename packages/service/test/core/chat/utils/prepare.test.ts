@@ -1,4 +1,11 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import {
+  tryStartChatGenerationLease,
+  getChatGenerationStatuses
+} from '@fastgpt/service/core/chat/generationLease';
+import { ChatGeneratingConflictError } from '@fastgpt/global/core/chat/error';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { ChatGenerationLeaseCache } from '@fastgpt/dal/redis/lease/chat/chatGenerationLease';
+import { createChatStopController, setAgentRuntimeStop } from '@fastgpt/service/core/chat/stop';
 import {
   getPreparedRoundDataIds,
   NO_RECORD_CHAT_ID,
@@ -116,20 +123,23 @@ describe('prepare chat round', () => {
       userContent: params.userContent,
       responseChatItemId: params.responseChatItemId
     });
+    try {
+      expect(result.chatId).toBeTruthy();
+      expect(result.chatId).not.toBe('');
+      expect(result.responseChatItemId).toBe('generated-round-data-id');
+      expect(result.shouldPersistChatRound).toBe(true);
+      expect(result.shouldFinalizePreparedRound).toBe(true);
+      expect(params.userContent.dataId).toBe('generated-round-data-id');
 
-    expect(result.chatId).toBeTruthy();
-    expect(result.chatId).not.toBe('');
-    expect(result.responseChatItemId).toBe('generated-round-data-id');
-    expect(result.shouldPersistChatRound).toBe(true);
-    expect(result.shouldFinalizePreparedRound).toBe(true);
-    expect(params.userContent.dataId).toBe('generated-round-data-id');
-
-    const chatItems = await MongoChatItem.find({ appId: testAppId, chatId: result.chatId });
-    expect(chatItems).toHaveLength(2);
-    expect(chatItems.map((item) => item.dataId)).toEqual([
-      'generated-round-data-id',
-      'generated-round-data-id'
-    ]);
+      const chatItems = await MongoChatItem.find({ appId: testAppId, chatId: result.chatId });
+      expect(chatItems).toHaveLength(2);
+      expect(chatItems.map((item) => item.dataId)).toEqual([
+        'generated-round-data-id',
+        'generated-round-data-id'
+      ]);
+    } finally {
+      await result.releaseGenerationLease?.();
+    }
   });
 
   it('should skip persistence for no-record chat id and keep caller ids', async () => {
@@ -142,15 +152,50 @@ describe('prepare chat round', () => {
     );
 
     const result = await preChatRound(params);
+    try {
+      expect(result).toEqual({
+        chatId: NO_RECORD_CHAT_ID,
+        responseChatItemId: 'client-response-data-id',
+        shouldPersistChatRound: false,
+        shouldFinalizePreparedRound: false
+      });
+      expect(await MongoChat.countDocuments({ appId: testAppId })).toBe(0);
+      expect(await MongoChatItem.countDocuments({ appId: testAppId })).toBe(0);
+    } finally {
+      await result.releaseGenerationLease?.();
+    }
+  });
 
-    expect(result).toEqual({
-      chatId: NO_RECORD_CHAT_ID,
-      responseChatItemId: 'client-response-data-id',
-      shouldPersistChatRound: false,
-      shouldFinalizePreparedRound: false
-    });
-    expect(await MongoChat.countDocuments({ appId: testAppId })).toBe(0);
-    expect(await MongoChatItem.countDocuments({ appId: testAppId })).toBe(0);
+  it('preserves a stop received after lease acquisition while preparing the round', async () => {
+    const params = createPreChatRoundParams(
+      {},
+      { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
+    );
+    const originalAcquire = ChatGenerationLeaseCache.prototype.tryAcquire;
+    const acquire = vi
+      .spyOn(ChatGenerationLeaseCache.prototype, 'tryAcquire')
+      .mockImplementation(async function (this: ChatGenerationLeaseCache, input) {
+        const acquired = await originalAcquire.call(this, input);
+        if (acquired.acquired) await setAgentRuntimeStop(input.params);
+        return acquired;
+      });
+    let prepared: Awaited<ReturnType<typeof preChatRound>> | undefined;
+    try {
+      prepared = await preChatRound(params);
+      const controller = await createChatStopController({
+        sourceType: params.sourceType,
+        sourceId: params.sourceId,
+        chatId: prepared.chatId
+      });
+      try {
+        expect(controller.checkIsStopping()).toBe(true);
+      } finally {
+        await controller.cleanup();
+      }
+    } finally {
+      acquire.mockRestore();
+      await prepared?.releaseGenerationLease?.();
+    }
   });
 
   it('should generate responseChatItemId when client does not provide one', async () => {
@@ -162,16 +207,19 @@ describe('prepare chat round', () => {
     );
 
     const result = await preChatRound(params);
+    try {
+      expect(result.responseChatItemId).toBeTruthy();
+      expect(result.shouldFinalizePreparedRound).toBe(true);
+      expect(params.userContent.dataId).toBe(result.responseChatItemId);
 
-    expect(result.responseChatItemId).toBeTruthy();
-    expect(result.shouldFinalizePreparedRound).toBe(true);
-    expect(params.userContent.dataId).toBe(result.responseChatItemId);
-
-    const chatItems = await MongoChatItem.find({ appId: testAppId, chatId: params.chatId });
-    expect(chatItems).toHaveLength(2);
-    expect(new Set(chatItems.map((item) => item.dataId))).toEqual(
-      new Set([result.responseChatItemId])
-    );
+      const chatItems = await MongoChatItem.find({ appId: testAppId, chatId: params.chatId });
+      expect(chatItems).toHaveLength(2);
+      expect(new Set(chatItems.map((item) => item.dataId))).toEqual(
+        new Set([result.responseChatItemId])
+      );
+    } finally {
+      await result.releaseGenerationLease?.();
+    }
   });
 
   it('should reject when the chat is already generating', async () => {
@@ -191,20 +239,111 @@ describe('prepare chat round', () => {
       sourceType: ChatSourceTypeEnum.app,
       source: params.source,
       sourceName: 'original-source-name',
-      updateTime: originalUpdateTime,
-      chatGenerateStatus: ChatGenerateStatusEnum.generating
+      updateTime: originalUpdateTime
     });
 
-    await expect(preChatRound(params)).rejects.toBe(ChatErrEnum.chatIsGenerating);
+    const release = await tryStartChatGenerationLease({
+      sourceType: params.sourceType,
+      sourceId: params.sourceId,
+      chatId: params.chatId!
+    });
+    try {
+      await expect(preChatRound(params)).rejects.toBe(ChatErrEnum.chatIsGenerating);
 
-    const chat = await MongoChat.findOne({ appId: testAppId, chatId: params.chatId }).lean();
-    expect(chat?.sourceName).toBe('original-source-name');
-    expect(chat?.updateTime?.getTime()).toBe(originalUpdateTime.getTime());
-    expect(chat?.chatGenerateStatus).toBe(ChatGenerateStatusEnum.generating);
-    expect(await MongoChatItem.countDocuments({ appId: testAppId, chatId: params.chatId })).toBe(0);
+      const chat = await MongoChat.findOne({ appId: testAppId, chatId: params.chatId }).lean();
+      expect(chat?.sourceName).toBe('original-source-name');
+      expect(chat?.updateTime?.getTime()).toBe(originalUpdateTime.getTime());
+      expect(chat).not.toHaveProperty('chatGenerateStatus');
+      expect(await MongoChatItem.countDocuments({ appId: testAppId, chatId: params.chatId })).toBe(
+        0
+      );
+    } finally {
+      await release?.();
+    }
   });
 
-  it('should reject duplicated AI dataId and release generate lock as error', async () => {
+  it('rejects a second send before writing messages and identifies the original round', async () => {
+    const params = createPreChatRoundParams(
+      { chatId: 'busy-chat', responseChatItemId: 'active-A' },
+      { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
+    );
+    const active = await preChatRound(params);
+    try {
+      await expect(
+        preChatRound({
+          ...params,
+          responseChatItemId: 'rejected-B',
+          userContent: { ...params.userContent, value: [{ text: { content: 'rejected message' } }] }
+        })
+      ).rejects.toMatchObject({
+        name: ChatGeneratingConflictError.name,
+        data: { responseChatItemId: 'active-A' }
+      });
+      const records = await MongoChatItem.find({ appId: testAppId, chatId: params.chatId }).lean();
+      expect(records).toHaveLength(2);
+      expect(records.every((item) => item.dataId === 'active-A')).toBe(true);
+      expect(await MongoChatItem.countDocuments({ dataId: 'rejected-B' })).toBe(0);
+    } finally {
+      await active.releaseGenerationLease?.();
+    }
+  });
+
+  it('prepares a persisted round when acquiring the generation lease fails', async () => {
+    const params = createPreChatRoundParams(
+      { chatId: 'redis-unavailable-chat' },
+      { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
+    );
+    const acquire = vi
+      .spyOn(ChatGenerationLeaseCache.prototype, 'tryAcquire')
+      .mockRejectedValueOnce(new Error('Redis unavailable'));
+    try {
+      const prepared = await preChatRound(params);
+      expect(prepared.shouldPersistChatRound).toBe(true);
+      expect(prepared.shouldFinalizePreparedRound).toBe(true);
+      expect(await MongoChat.countDocuments({ appId: testAppId, chatId: params.chatId })).toBe(1);
+      const items = await MongoChatItem.find({ appId: testAppId, chatId: params.chatId }).lean();
+      expect(items.map((item) => item.obj).sort()).toEqual(
+        [ChatRoleEnum.Human, ChatRoleEnum.AI].sort()
+      );
+      await expect(prepared.releaseGenerationLease?.()).resolves.toBeUndefined();
+    } finally {
+      acquire.mockRestore();
+    }
+  });
+
+  it('starts a new round despite a legacy Mongo generating field when no lease exists', async () => {
+    const params = createPreChatRoundParams(
+      { chatId: 'legacy-status-chat', responseChatItemId: 'legacy-new-round' },
+      { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
+    );
+    const chat = await MongoChat.create({
+      appId: testAppId,
+      chatId: params.chatId,
+      teamId: testTeamId,
+      tmbId: testTmbId,
+      sourceType: ChatSourceTypeEnum.app,
+      source: params.source,
+      title: 'Existing title'
+    });
+    await MongoChat.collection.updateOne({ _id: chat._id }, { $set: { chatGenerateStatus: 0 } });
+    const prepared = await preChatRound(params);
+    try {
+      expect(prepared.shouldFinalizePreparedRound).toBe(true);
+      expect(
+        (
+          await getChatGenerationStatuses({
+            sourceType: params.sourceType,
+            sourceId: params.sourceId,
+            chatIds: [prepared.chatId]
+          })
+        ).get(prepared.chatId)
+      ).toBe(ChatGenerateStatusEnum.generating);
+    } finally {
+      await prepared.releaseGenerationLease?.();
+    }
+  });
+
+  it('should reject duplicated AI dataId and release the lease for retry', async () => {
     const params = createPreChatRoundParams(
       { responseChatItemId: 'duplicated-ai-data-id' },
       { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
@@ -237,7 +376,15 @@ describe('prepare chat round', () => {
     ).rejects.toThrow('Chat dataId already exists: duplicated-ai-data-id');
 
     const chat = await MongoChat.findOne({ appId: testAppId, chatId: params.chatId });
-    expect(chat?.chatGenerateStatus).toBe(ChatGenerateStatusEnum.error);
+    expect(chat).toBeNull();
+
+    // 准备失败必须释放 Redis 租约，使同一会话可以立即重试。
+    const retry = await preChatRound({ ...params, responseChatItemId: 'retry-ai-data-id' });
+    try {
+      expect(retry.shouldFinalizePreparedRound).toBe(true);
+    } finally {
+      await retry.releaseGenerationLease?.();
+    }
   });
 
   it('should reuse previous AI dataId for interactive continue without creating placeholders', async () => {
@@ -287,10 +434,20 @@ describe('prepare chat round', () => {
         params: {}
       } as any
     });
-
-    expect(result.responseChatItemId).toBe('previous-ai-data-id');
-    expect(result.shouldFinalizePreparedRound).toBe(false);
-    expect(await MongoChatItem.countDocuments({ appId: testAppId, chatId: params.chatId })).toBe(1);
+    try {
+      expect(result.responseChatItemId).toBe('previous-ai-data-id');
+      expect(result.shouldFinalizePreparedRound).toBe(false);
+      // 客户端传入的新 ID 不等于最终复用的 AI，冲突恢复必须刷新并复用已有记录。
+      await expect(preChatRound(params)).rejects.toMatchObject({
+        name: ChatGeneratingConflictError.name,
+        data: { reusePreviousAi: true }
+      });
+      expect(await MongoChatItem.countDocuments({ appId: testAppId, chatId: params.chatId })).toBe(
+        1
+      );
+    } finally {
+      await result.releaseGenerationLease?.();
+    }
   });
 
   it.each([
@@ -374,44 +531,47 @@ describe('prepare chat round', () => {
             }
           : ask
       });
-
-      expect(result.responseChatItemId).toBe('client-new-data-id');
-      expect(result.shouldFinalizePreparedRound).toBe(true);
-      const records = await MongoChatItem.find({
-        appId: testAppId,
-        chatId: params.chatId,
-        sourceType: params.sourceType
-      }).sort({ _id: 1 });
-      expect(records.map((record) => [record.obj, record.dataId])).toEqual([
-        [ChatRoleEnum.AI, 'previous-helper-ai-data-id'],
-        [ChatRoleEnum.Human, 'client-new-data-id'],
-        [ChatRoleEnum.AI, 'client-new-data-id']
-      ]);
-      const human = records[1];
-      if (human.obj !== ChatRoleEnum.Human) throw new Error('Expected the new user record');
-      expect(human.hideInUI).toBe(false);
-      expect(human.value).toEqual(params.userContent.value);
-      expect(human.value[0]).not.toHaveProperty('askId');
-      expect(human.value[0]).not.toHaveProperty('interactiveReply');
-      expect(chatValue2RuntimePrompt(params.userContent.value).text).toBe('{"answers":["A"]}');
-      await failChatRound({
-        sourceType,
-        sourceId: testAppId,
-        chatId: result.chatId,
-        responseChatItemId: result.responseChatItemId,
-        error: new Error('Resume failed')
-      });
-      const refreshedHuman = await MongoChatItem.findById(human._id).lean();
-      if (refreshedHuman?.obj !== ChatRoleEnum.Human) throw new Error('User record disappeared');
-      expect(refreshedHuman?.value).toEqual(human.value);
-      expect(refreshedHuman?.hideInUI).toBe(false);
-      const failedAi = await MongoChatItem.findById(records[2]._id).lean();
-      if (failedAi?.obj !== ChatRoleEnum.AI) throw new Error('Expected the new AI record');
-      expect(failedAi?.errorMsg).toBe('Resume failed');
+      try {
+        expect(result.responseChatItemId).toBe('client-new-data-id');
+        expect(result.shouldFinalizePreparedRound).toBe(true);
+        const records = await MongoChatItem.find({
+          appId: testAppId,
+          chatId: params.chatId,
+          sourceType: params.sourceType
+        }).sort({ _id: 1 });
+        expect(records.map((record) => [record.obj, record.dataId])).toEqual([
+          [ChatRoleEnum.AI, 'previous-helper-ai-data-id'],
+          [ChatRoleEnum.Human, 'client-new-data-id'],
+          [ChatRoleEnum.AI, 'client-new-data-id']
+        ]);
+        const human = records[1];
+        if (human.obj !== ChatRoleEnum.Human) throw new Error('Expected the new user record');
+        expect(human.hideInUI).toBe(false);
+        expect(human.value).toEqual(params.userContent.value);
+        expect(human.value[0]).not.toHaveProperty('askId');
+        expect(human.value[0]).not.toHaveProperty('interactiveReply');
+        expect(chatValue2RuntimePrompt(params.userContent.value).text).toBe('{"answers":["A"]}');
+        await failChatRound({
+          sourceType,
+          sourceId: testAppId,
+          chatId: result.chatId,
+          responseChatItemId: result.responseChatItemId,
+          error: new Error('Resume failed')
+        });
+        const refreshedHuman = await MongoChatItem.findById(human._id).lean();
+        if (refreshedHuman?.obj !== ChatRoleEnum.Human) throw new Error('User record disappeared');
+        expect(refreshedHuman?.value).toEqual(human.value);
+        expect(refreshedHuman?.hideInUI).toBe(false);
+        const failedAi = await MongoChatItem.findById(records[2]._id).lean();
+        if (failedAi?.obj !== ChatRoleEnum.AI) throw new Error('Expected the new AI record');
+        expect(failedAi?.errorMsg).toBe('Resume failed');
+      } finally {
+        await result.releaseGenerationLease?.();
+      }
     }
   );
 
-  it('should mark chat as error when interactive continue has no previous AI item', async () => {
+  it('should release the lease when interactive continue has no previous AI item', async () => {
     const params = createPreChatRoundParams(
       {
         chatId: 'interactive-missing-ai-chat-id',
@@ -431,7 +591,13 @@ describe('prepare chat round', () => {
     ).rejects.toThrow(`Interactive continue chat item not found: ${params.chatId}`);
 
     const chat = await MongoChat.findOne({ appId: testAppId, chatId: params.chatId });
-    expect(chat?.chatGenerateStatus).toBe(ChatGenerateStatusEnum.error);
+    expect(chat).toBeNull();
+    const statuses = await getChatGenerationStatuses({
+      sourceType: params.sourceType,
+      sourceId: params.sourceId,
+      chatIds: [params.chatId!]
+    });
+    expect(statuses.get(params.chatId!)).toBe(ChatGenerateStatusEnum.done);
     expect(await MongoChatItem.countDocuments({ appId: testAppId, chatId: params.chatId })).toBe(0);
   });
 
@@ -467,10 +633,15 @@ describe('prepare chat round', () => {
         }
       } as any
     });
-
-    expect(result.responseChatItemId).toBe('agent-plan-query-data-id');
-    expect(result.shouldFinalizePreparedRound).toBe(true);
-    expect(await MongoChatItem.countDocuments({ appId: testAppId, chatId: params.chatId })).toBe(2);
+    try {
+      expect(result.responseChatItemId).toBe('agent-plan-query-data-id');
+      expect(result.shouldFinalizePreparedRound).toBe(true);
+      expect(await MongoChatItem.countDocuments({ appId: testAppId, chatId: params.chatId })).toBe(
+        2
+      );
+    } finally {
+      await result.releaseGenerationLease?.();
+    }
   });
 
   it('should treat an agentAsk nested in a child tool as a new round', async () => {
@@ -511,13 +682,18 @@ describe('prepare chat round', () => {
         }
       } as any
     });
-
-    expect(result.responseChatItemId).toBe('nested-agent-query-data-id');
-    expect(result.shouldFinalizePreparedRound).toBe(true);
-    expect(await MongoChatItem.countDocuments({ appId: testAppId, chatId: params.chatId })).toBe(2);
+    try {
+      expect(result.responseChatItemId).toBe('nested-agent-query-data-id');
+      expect(result.shouldFinalizePreparedRound).toBe(true);
+      expect(await MongoChatItem.countDocuments({ appId: testAppId, chatId: params.chatId })).toBe(
+        2
+      );
+    } finally {
+      await result.releaseGenerationLease?.();
+    }
   });
 
-  it('should prepare chat and placeholders in generating status', async () => {
+  it('should prepare chat and placeholders without persisting runtime status', async () => {
     const responseChatItemId = 'prepared-ai-item';
     const params = createPrepareParams(
       { responseChatItemId },
@@ -543,7 +719,7 @@ describe('prepare chat round', () => {
     expect(params.userContent.dataId).toBe(responseChatItemId);
 
     const chat = await MongoChat.findOne({ appId: testAppId, chatId: params.chatId });
-    expect(chat?.chatGenerateStatus).toBe(ChatGenerateStatusEnum.generating);
+    expect(chat).not.toHaveProperty('chatGenerateStatus');
     expect(chat?.hasBeenRead).toBe(false);
 
     const chatItems = await MongoChatItem.find({ appId: testAppId, chatId: params.chatId });

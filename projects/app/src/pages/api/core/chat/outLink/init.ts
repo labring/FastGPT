@@ -1,3 +1,4 @@
+import { getChatGenerationStatuses } from '@fastgpt/service/core/chat/generationLease';
 import type { NextApiRequest } from 'next';
 import { getAppChatConfig } from '@fastgpt/global/common/app/chat';
 import { authOutLink } from '@fastgpt/service/support/permission/publish/authChat';
@@ -48,7 +49,12 @@ async function handler(req: NextApiRequest): Promise<InitOutLinkChatResponseType
     return Promise.reject(ChatErrEnum.unAuthChat);
   }
 
-  const chatGenerateStatus = chat?.chatGenerateStatus ?? ChatGenerateStatusEnum.done;
+  const generationStatuses = await getChatGenerationStatuses({
+    sourceType: ChatSourceTypeEnum.app,
+    sourceId: String(appId),
+    chatIds: chatId ? [chatId] : []
+  });
+  const chatGenerateStatus = generationStatuses.get(chatId ?? '') ?? ChatGenerateStatusEnum.done;
   if (chat?.hasBeenRead === false && chatGenerateStatus !== ChatGenerateStatusEnum.generating) {
     await MongoChat.updateOne(
       {
@@ -86,7 +92,7 @@ async function handler(req: NextApiRequest): Promise<InitOutLinkChatResponseType
     title: chat?.customTitle || chat?.title || '',
     userAvatar: getRandomUserAvatar(),
     variables,
-    chatGenerateStatus: chat?.chatGenerateStatus,
+    chatGenerateStatus,
     hasBeenRead: chat?.hasBeenRead,
     app: {
       chatConfig: appChatConfig,

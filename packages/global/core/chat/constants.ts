@@ -138,10 +138,12 @@ export enum GetChatTypeEnum {
   home = 'home'
 }
 
+/** 列表和轮询的单次运行状态查询上限。 */
+export const CHAT_GENERATION_STATUS_BATCH_SIZE = 200;
+
 export enum ChatGenerateStatusEnum {
   generating = 0,
-  done = 1,
-  error = 2
+  done = 1
 }
 
 /**

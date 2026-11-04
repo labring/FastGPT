@@ -559,18 +559,6 @@ export const getAgentRuntimeTools = async ({
         ]);
         const authApp = authResult?.app;
         toolNode.name = tool.name ?? toolNode.name;
-        if (
-          !validateToolConfiguration({
-            toolTemplate: toolNode,
-            isAppTool: true
-          })
-        ) {
-          getLogger(LogCategories.MODULE.AI.AGENT).warn(`[Agent] tool has unsupported inputs`, {
-            toolId: tool.id,
-            toolName: toolNode.name
-          });
-          return [];
-        }
         const legacyDefaultMode =
           tool.inputs === undefined
             ? isSystemOrCommercialToolId(tool.id)
@@ -592,6 +580,19 @@ export const getAgentRuntimeTools = async ({
             legacyDefaultMode
           })
         );
+        // 必须在输入类型归一化并应用已保存 mode 之后再校验，与 UI 侧校验状态对齐，避免 reference 等合法由 Agent 生成的入参被误判拦截。
+        if (
+          !validateToolConfiguration({
+            toolTemplate: toolNode,
+            isAppTool: true
+          })
+        ) {
+          getLogger(LogCategories.MODULE.AI.AGENT).warn(`[Agent] tool has unsupported inputs`, {
+            toolId: tool.id,
+            toolName: toolNode.name
+          });
+          return [];
+        }
         const configuredParams = filterToolConfiguredParams({
           params: tool.config,
           inputs: toolNode.inputs

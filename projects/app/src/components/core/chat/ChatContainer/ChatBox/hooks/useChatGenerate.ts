@@ -50,6 +50,7 @@ import { useChatAuthApiTarget } from '@/web/core/chat/utils';
 import { getChatItemErrorText } from '@/global/core/chat/utils';
 import {
   isChatGeneratingError,
+  getChatGeneratingConflictData,
   safeAbortController,
   shouldRestoreSubmittedChatInput
 } from '../utils/generate';
@@ -927,13 +928,16 @@ export const useChatGenerate = ({
                 state.sourceKey === sourceKey && state.chatId === chatId
                   ? {
                       ...state,
-                      chatGenerateStatus: ChatGenerateStatusEnum.error
+                      chatGenerateStatus: ChatGenerateStatusEnum.done
                     }
                   : state
               );
+              const conflictData = getChatGeneratingConflictData(err);
               onChatGeneratingConflict({
+                responseChatItemId: conflictData?.responseChatItemId,
                 previousAiDataId,
-                canReusePreviousAi: responseChatId === previousAiDataId
+                canReusePreviousAi:
+                  conflictData?.reusePreviousAi ?? responseChatId === previousAiDataId
               });
               return;
             }
@@ -964,7 +968,7 @@ export const useChatGenerate = ({
             const finishedInActiveChat =
               activeSourceKeyRef.current === sourceKey && activeChatIdRef.current === chatId;
             finishChatGenerateStatus({
-              status: ChatGenerateStatusEnum.error,
+              status: ChatGenerateStatusEnum.done,
               finishedInActiveChat,
               targetChatTarget: currentChatTarget,
               targetSourceKey: sourceKey,

@@ -1,5 +1,5 @@
 import { JSDOM } from 'jsdom';
-import React, { act, useLayoutEffect, useRef, useState } from 'react';
+import React, { act, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { useForm } from 'react-hook-form';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -22,6 +22,7 @@ import {
 } from '@fastgpt/global/core/chat/constants';
 import type {
   ChatBoxInputFormType,
+  ChatGeneratingConflictRecovery,
   ChatSiteItemType
 } from '@/components/core/chat/ChatContainer/ChatBox/type';
 import { clearChatInputDrafts, readChatInputDraft } from '@/web/core/chat/inputDraft/storage';
@@ -31,7 +32,7 @@ import type { UserChatSelectType } from '@fastgpt/global/core/chat/input/type';
 import { AuxiliaryGenerationEventEnum } from '@fastgpt/global/core/ai/auxiliaryGeneration/constants';
 import { ChatAgentConfigFormDataSchema } from '@fastgpt/global/core/ai/auxiliaryGeneration/type';
 import type { generatingMessageProps } from '@/components/core/chat/ChatContainer/type';
-import type { streamResumeFetch } from '@/web/common/api/fetch';
+import { createStreamFetchError, type streamResumeFetch } from '@/web/common/api/fetch';
 
 const mocks = vi.hoisted(() => ({
   start: vi.fn(),
@@ -117,6 +118,7 @@ describe('useChatGenerate.sendPrompt', () => {
     const activeChat = useRef<string | undefined>(chatId);
     const resumeController = useRef<AbortController>();
     const resumedChatTarget = useRef<string>();
+    const [conflict, setConflict] = useState<ChatGeneratingConflictRecovery>();
     useLayoutEffect(() => {
       activeChat.current = chatId;
     }, [chatId]);
@@ -151,9 +153,10 @@ describe('useChatGenerate.sendPrompt', () => {
       scrollToBottom: () => {},
       generatingScroll: mocks.scroll,
       notifyChatGenerateStatusChange: mocks.notifyStatus,
-      finishChatGenerateStatus: mocks.finishStatus
+      finishChatGenerateStatus: mocks.finishStatus,
+      onChatGeneratingConflict: resume ? setConflict : undefined
     });
-    useChatResume({
+    const { recoverChatGeneratingConflict } = useChatResume({
       enableAutoResume: resume,
       isReady: true,
       resumeTargetAiDataId: records.at(-1)?.dataId,
@@ -166,6 +169,11 @@ describe('useChatGenerate.sendPrompt', () => {
       scrollToBottom: mocks.scroll,
       finishChatGenerateStatus: mocks.finishStatus
     });
+    useEffect(() => {
+      if (!conflict) return;
+      setConflict(undefined);
+      recoverChatGeneratingConflict(conflict);
+    }, [conflict, recoverChatGeneratingConflict]);
     recordActions = useChatRecordActions({ sendPrompt: generate.sendPrompt });
     return withComposer
       ? React.createElement(ChatInput, {
@@ -345,6 +353,76 @@ describe('useChatGenerate.sendPrompt', () => {
     dom.window.close();
     vi.unstubAllGlobals();
   });
+
+  it.each(['streaming', 'completed', 'interactive'] as const)(
+    'restores a rejected send and recovers the already loaded original AI: %s',
+    async (mode) => {
+      const original: ChatSiteItemType = {
+        id: 'resumed-ai',
+        dataId: 'resumed-ai',
+        obj: ChatRoleEnum.AI,
+        status: ChatStatusEnum.finish,
+        value: []
+      };
+      mocks.resume
+        .mockResolvedValueOnce({
+          responseText: '',
+          completedChat: {
+            chatGenerateStatus: ChatGenerateStatusEnum.done,
+            records: { list: [original], total: 1, hasMorePrev: false, hasMoreNext: false }
+          }
+        })
+        .mockImplementationOnce(async ({ onmessage }: Parameters<typeof streamResumeFetch>[0]) => {
+          if (mode === 'completed') {
+            return {
+              responseText: '',
+              completedChat: {
+                chatGenerateStatus: ChatGenerateStatusEnum.done,
+                records: {
+                  list: [{ ...original, value: [{ text: { content: 'original A answer' } }] }],
+                  total: 1,
+                  hasMorePrev: false,
+                  hasMoreNext: false
+                }
+              }
+            };
+          }
+          onmessage({ event: SseResponseEventEnum.answer, text: 'original A answer' });
+          return { responseText: 'original A answer' };
+        });
+      mocks.refreshRecords.mockResolvedValueOnce([original]);
+      mocks.start.mockRejectedValueOnce(
+        createStreamFetchError({
+          error: {
+            statusText: 'chatIsGenerating',
+            data:
+              mode === 'interactive'
+                ? { reusePreviousAi: true }
+                : { responseChatItemId: 'resumed-ai' }
+          },
+          fallbackMessage: 'Conflict',
+          responseText: ''
+        })
+      );
+      await render({ resume: true });
+      expect(mocks.resume).toHaveBeenCalledOnce();
+      await edit('rejected B text', [file]);
+      await send({ text: 'rejected B text' });
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1200);
+      });
+      expect(mocks.start).toHaveBeenCalledOnce();
+      expect(input.chatForm.getValues('input')).toBe('rejected B text');
+      expect(input.chatForm.getValues('files')[0].key).toBe(file.key);
+      expect(readChatInputDraft(identity)?.text).toBe('rejected B text');
+      expect(mocks.refreshRecords).toHaveBeenCalledOnce();
+      expect(mocks.resume).toHaveBeenCalledTimes(2);
+      expect(records).toHaveLength(1);
+      expect(records[0].dataId).toBe('resumed-ai');
+      expect(JSON.stringify(records[0].value)).toContain('original A answer');
+      expect(JSON.stringify(records)).not.toContain('rejected B text');
+    }
+  );
 
   it.each(['normal', 'resume'] as const)(
     'applies generated agent configuration once through the %s stream',
@@ -829,8 +907,7 @@ describe('useChatGenerate.sendPrompt', () => {
       expect(mocks.finishAudio).toHaveBeenCalledOnce();
       expect(mocks.finishStatus).toHaveBeenCalledWith(
         expect.objectContaining({
-          status:
-            outcome === 'resolve' ? ChatGenerateStatusEnum.done : ChatGenerateStatusEnum.error,
+          status: outcome === 'resolve' ? ChatGenerateStatusEnum.done : ChatGenerateStatusEnum.done,
           finishedInActiveChat: true
         })
       );

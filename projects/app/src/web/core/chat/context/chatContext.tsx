@@ -104,10 +104,10 @@ const ChatContextProvider = ({
             sourceId: historySkillId
           }
         : {
-            sourceType: ChatSourceTypeEnum.app,
+            sourceType: params.sourceType ?? ChatSourceTypeEnum.app,
             sourceId: historyAppId
           },
-    [historyAppId, historySkillId]
+    [historyAppId, historySkillId, params.sourceType]
   );
   const historyTargetParams = useMemo(
     () =>
@@ -333,44 +333,73 @@ const ChatContextProvider = ({
     }
   }, [historyAppId, displayHistories, isPaginationLoading, onChangeChatId]);
 
-  /** 侧栏是否仍有「思考中」：仅此时需要定时轮询；无则只依赖单次 poll / 可见性拉取，避免一直打接口。 */
+  /** 列表存在运行中会话时持续轮询；全部空闲且没有失败重试时只做单次刷新。 */
   const hasGeneratingInSidebar = useMemo(
     () => displayHistories.some((h) => h.chatGenerateStatus === ChatGenerateStatusEnum.generating),
     [displayHistories]
   );
+  const statusPollingNeedsRetry = useRef(false);
+
+  useEffect(() => {
+    statusPollingNeedsRetry.current = false;
+  }, [historyTargetParams]);
 
   // 轮询同步侧栏 chatGenerateStatus / hasBeenRead（以服务端为准）。
-  // 条件轮询：仅当列表里至少有一条 generating 时挂 interval；否则每次依赖变化仍会先 poll 一次，且切回标签页会再拉一次。
+  // 运行中或上一轮请求失败时继续重试；成功确认全部空闲后停止，切回标签页仍单次刷新。
   useEffect(() => {
-    if (disabled || !historyAppId || !historiesRef.current.length) return;
+    if (disabled || (!historyAppId && !historySkillId) || !historiesRef.current.length) return;
 
-    const poll = () => {
-      const chatIds = historiesRef.current.map((h) => h.chatId);
-      getChatHistoryStatus({
-        ...historyTargetParams,
-        chatIds
-      })
-        .then((res) => {
-          const map = new Map(res.list.map((i) => [i.chatId, i]));
-          setHistories((prev) =>
-            prev.map((item) => {
-              const s = map.get(item.chatId);
-              if (!s) return item;
-              const nextGen = s.chatGenerateStatus ?? item.chatGenerateStatus;
-              const nextRead =
+    let polling = false;
+    let disposed = false;
+    let timer: number | undefined;
+
+    /** 请求失败保留原状态并继续重试；初始空闲列表的首次请求失败也要能启动定时器。 */
+    const syncPollingTimer = () => {
+      if (disposed) return;
+      if (hasGeneratingInSidebar || statusPollingNeedsRetry.current) {
+        timer ??= window.setInterval(() => {
+          if (document.visibilityState === 'visible') poll();
+        }, 5000);
+      } else if (timer !== undefined) {
+        window.clearInterval(timer);
+        timer = undefined;
+      }
+    };
+
+    const poll = async () => {
+      // 分批读取未结束时不叠加下一轮；切换资源后忽略旧请求返回的状态。
+      if (polling || disposed) return;
+      polling = true;
+      try {
+        const chatIds = historiesRef.current.map((h) => h.chatId);
+        const res = await getChatHistoryStatus({ ...historyTargetParams, chatIds });
+        if (disposed) return;
+        statusPollingNeedsRetry.current = false;
+        const map = new Map(res.list.map((item) => [item.chatId, item]));
+        setHistories((prev) =>
+          prev.map((item) => {
+            const status = map.get(item.chatId);
+            if (!status) return item;
+            const nextGen = status.chatGenerateStatus ?? item.chatGenerateStatus;
+            return {
+              ...item,
+              chatGenerateStatus: nextGen,
+              hasBeenRead:
                 nextGen === ChatGenerateStatusEnum.generating
                   ? false
-                  : (s.hasBeenRead ?? item.hasBeenRead);
-              return {
-                ...item,
-                chatGenerateStatus: nextGen,
-                hasBeenRead: nextRead,
-                updateTime: s.updateTime ?? item.updateTime
-              };
-            })
-          );
-        })
-        .catch(() => {});
+                  : (status.hasBeenRead ?? item.hasBeenRead),
+              updateTime: status.updateTime ?? item.updateTime
+            };
+          })
+        );
+      } catch {
+        if (disposed) return;
+        // 请求失败无法确认最新状态，静默保留整轮快照，等待下一次成功读取后再更新。
+        statusPollingNeedsRetry.current = true;
+      } finally {
+        polling = false;
+        syncPollingTimer();
+      }
     };
 
     poll();
@@ -380,26 +409,17 @@ const ChatContextProvider = ({
     };
     document.addEventListener('visibilitychange', onVisibility);
 
-    if (!hasGeneratingInSidebar) {
-      return () => {
-        document.removeEventListener('visibilitychange', onVisibility);
-      };
-    }
-
-    const tick = () => {
-      if (document.visibilityState === 'visible') {
-        poll();
-      }
-    };
-    const timer = window.setInterval(tick, 4000);
+    syncPollingTimer();
 
     return () => {
-      window.clearInterval(timer);
+      disposed = true;
+      if (timer !== undefined) window.clearInterval(timer);
       document.removeEventListener('visibilitychange', onVisibility);
     };
   }, [
     disabled,
     historyAppId,
+    historySkillId,
     historyTargetParams,
     historyChatIdsKey,
     hasGeneratingInSidebar,

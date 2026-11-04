@@ -244,7 +244,7 @@ export type CompletionsResponseType = z.infer<typeof CompletionsResponseSchema>;
 export const ChatWorkflowSseResponseSchema = z.string().meta({
   example: 'event: answer\ndata: {"choices":[...]}\n\n',
   description:
-    '工作流 SSE 事件流；根据接口版本和 detail 配置返回 answer、flowNodeResponse、interactive 等事件，最后以 [DONE] 结束'
+    '工作流 SSE 事件流；根据接口版本和 detail 配置返回 answer、flowNodeResponse、interactive 等事件，最后以 [DONE] 结束。同会话已有生成时，error 事件的 statusText 为 chatIsGenerating，data.responseChatItemId 提供当前服务端 AI 消息 ID；交互续跑返回 data.reusePreviousAi=true，表示刷新并复用最新 AI。本次被拒绝的消息未写入数据库，客户端应回填输入并恢复原有轮次。'
 });
 export type ChatWorkflowSseResponseType = z.infer<typeof ChatWorkflowSseResponseSchema>;
 

@@ -9,7 +9,6 @@ const mocks = vi.hoisted(() => ({
   finalizeChatRound: vi.fn(),
   failChatRound: vi.fn(),
   updateInteractiveChat: vi.fn(),
-  updateChatGenerateStatus: vi.fn(),
   responseWrite: vi.fn(),
   writeStreamError: vi.fn(),
   flushResume: vi.fn()
@@ -53,9 +52,6 @@ vi.mock('@fastgpt/service/core/chat/saveChat', () => ({
   finalizeChatRound: mocks.finalizeChatRound,
   failChatRound: mocks.failChatRound,
   updateInteractiveChat: mocks.updateInteractiveChat
-}));
-vi.mock('@fastgpt/service/core/chat/chatGenerateStatus', () => ({
-  updateChatGenerateStatus: mocks.updateChatGenerateStatus
 }));
 vi.mock('@fastgpt/service/core/workflow/dispatch', () => ({
   dispatchWorkFlow: mocks.dispatchWorkFlow
@@ -163,19 +159,19 @@ describe.each([
     expect(response.end).toHaveBeenCalledOnce();
   });
 
-  it('cleans up and preserves errors after interactive status persistence fails', async () => {
+  it('cleans up and preserves errors after round persistence fails', async () => {
     const persistenceError = new Error('Failure persistence failed');
     mocks.preChatRound.mockResolvedValueOnce({
       ...preparedRound,
-      shouldFinalizePreparedRound: false
+      shouldFinalizePreparedRound: true
     });
     mocks.dispatchWorkFlow.mockRejectedValueOnce(new Error('Workflow failed'));
-    mocks.updateChatGenerateStatus.mockRejectedValueOnce(persistenceError);
+    mocks.failChatRound.mockRejectedValueOnce(persistenceError);
 
     const { response, result } = runRequest();
     await expect(result).rejects.toBe(persistenceError);
 
-    expect(mocks.updateChatGenerateStatus).toHaveBeenCalledOnce();
+    expect(mocks.failChatRound).toHaveBeenCalledOnce();
     expect(mocks.flushResume).toHaveBeenCalledOnce();
     expect(response.end).toHaveBeenCalledOnce();
   });
