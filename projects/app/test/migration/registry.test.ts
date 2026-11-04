@@ -70,7 +70,7 @@ describe('validateSystemMigrationRegistry', () => {
     );
     expect(task).toMatchObject({
       id: '20261022_initialize_dataset_vector_indexes',
-      version: '4.17.4',
+      version: '4.18.0',
       blockStartup: false,
       progressSteps: [{ key: 'legacyIndex' }, { key: 'datasets' }]
     });

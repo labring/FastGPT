@@ -3,7 +3,7 @@ import { Types } from '@fastgpt/service/common/mongo';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import type { SystemMigrationContext } from '@/migration/registry';
-import { initializeDatasetVectorIndexes } from '@/migration/tasks/4174/20261022_initialize_dataset_vector_indexes';
+import { initializeDatasetVectorIndexes } from '@/migration/tasks/4180/20261022_initialize_dataset_vector_indexes';
 
 const mocks = vi.hoisted(() => ({
   count: vi.fn(),
@@ -11,7 +11,7 @@ const mocks = vi.hoisted(() => ({
   removeLegacy: vi.fn(),
   provider: 'pg'
 }));
-vi.mock('@/migration/tasks/4174/20261022_initialize_dataset_vector_indexes/service', () => ({
+vi.mock('@/migration/tasks/4180/20261022_initialize_dataset_vector_indexes/service', () => ({
   removeLegacyPgVectorIndex: mocks.removeLegacy
 }));
 vi.mock('@fastgpt/service/common/vectorDB/controller', () => ({ getVectorCount: mocks.count }));
