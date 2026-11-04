@@ -1,6 +1,6 @@
-// @vitest-environment jsdom
 import React, { act, useEffect, useState } from 'react';
-import { createRoot, type Root } from 'react-dom/client';
+import { JSDOM } from 'jsdom';
+import type { Root } from 'react-dom/client';
 import { onlineManager, QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useDomainConfig } from '@/web/common/system/useDomainConfig';
@@ -14,6 +14,7 @@ vi.mock('@fastgpt/web/hooks/useToast', () => ({ useToast: () => ({ toast: mocks.
 vi.mock('next-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
 
 describe('useDomainConfig', () => {
+  let dom: JSDOM;
   let root: Root;
   let container: HTMLDivElement;
   let client: QueryClient;
@@ -44,8 +45,13 @@ describe('useDomainConfig', () => {
     expect(config.isLoading).toBe(false);
   };
 
-  beforeEach(() => {
+  beforeEach(async () => {
+    // 共享 setup 先在 Node 环境加载服务端 ENV，再为当前用例安装 DOM。
+    dom = new JSDOM('<!doctype html><html><body></body></html>');
+    vi.stubGlobal('window', dom.window);
+    vi.stubGlobal('document', dom.window.document);
     vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
+    const { createRoot } = await import('react-dom/client');
     vi.clearAllMocks();
     mocks.get.mockResolvedValue({
       revision: 3,
@@ -64,6 +70,7 @@ describe('useDomainConfig', () => {
     client.clear();
     container.remove();
     onlineManager.setOnline(true);
+    dom.window.close();
     vi.unstubAllGlobals();
   });
 

@@ -1301,9 +1301,9 @@ Server、Agent Sandbox Proxy 和 IDE Agent 的运行时变量。为了避免“�
 | `subservice.plugin.baseUrl` | 插件服务地址 | — | ✅ | — | — | 只读：`/admin/subservice/plugin` |
 | `subservice.plugin.remoteDebug` | 开启插件远程调试通道 (Remote Debug) | — | ✅ | — | — | 可编辑：`/admin/subservice/plugin` |
 | `subservice.plugin.remoteDebugUrl` | 远程调试服务地址 | — | ✅ | — | — | 可编辑：`/admin/subservice/plugin`；业务未接入 |
-| `subservice.codeSandbox.enabled` | 启用 Code Sandbox | — | ✅ | — | — | 可编辑：`/admin/subservice/code-sandbox`；业务未接入 |
+| `subservice.codeSandbox.enabled` | 启用 Code Sandbox | — | ✅ | — | — | 可编辑：`/admin/subservice/code-sandbox` |
 | `subservice.codeSandbox.baseUrl` | 代码沙箱服务地址 | — | ✅ | — | — | 只读：`/admin/subservice/code-sandbox` |
-| `subservice.aiProxy.enabled` | 启用 AI Proxy | — | ✅ | — | — | 可编辑：`/admin/subservice/ai-proxy`；业务未接入 |
+| `subservice.aiProxy.enabled` | 启用 AI Proxy | — | ✅ | — | — | 可编辑：`/admin/subservice/ai-proxy` |
 | `subservice.aiProxy.endpoint` | AI Proxy 地址 | — | ✅ | — | — | 只读：`/admin/subservice/ai-proxy` |
 | `subservice.mcp.sseProxyUrl` | MCP SSE 代理地址 | — | ✅ | — | — | 仅 API（暂无新表单） |
 | `subservice.agentSandbox.provider` | 当前沙箱 Provider | — | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |

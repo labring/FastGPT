@@ -1,6 +1,6 @@
-// @vitest-environment jsdom
 import React, { act } from 'react';
-import { createRoot, type Root } from 'react-dom/client';
+import { JSDOM } from 'jsdom';
+import type { Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ToastHandledError } from '@fastgpt/global/common/error/utils';
 import { useAdminConfigSaveRequest } from '@/web/common/system/useAdminConfigSaveRequest';
@@ -10,6 +10,7 @@ vi.mock('@fastgpt/web/hooks/useToast', () => ({ useToast: () => ({ toast: mocks.
 vi.mock('next-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
 
 describe('useAdminConfigSaveRequest', () => {
+  let dom: JSDOM;
   let root: Root;
   let container: HTMLDivElement;
   let submit: ReturnType<typeof useAdminConfigSaveRequest>['runAsync'];
@@ -23,7 +24,12 @@ describe('useAdminConfigSaveRequest', () => {
   };
 
   beforeEach(async () => {
+    // 共享 setup 先在 Node 环境加载服务端 ENV，再为当前用例安装 DOM。
+    dom = new JSDOM('<!doctype html><html><body></body></html>');
+    vi.stubGlobal('window', dom.window);
+    vi.stubGlobal('document', dom.window.document);
     vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
+    const { createRoot } = await import('react-dom/client');
     vi.clearAllMocks();
     container = document.createElement('div');
     root = createRoot(container);
@@ -31,6 +37,7 @@ describe('useAdminConfigSaveRequest', () => {
   });
   afterEach(async () => {
     await act(async () => root.unmount());
+    dom.window.close();
     vi.unstubAllGlobals();
   });
 
