@@ -1,4 +1,5 @@
 import { resolveDomainEffectiveConfig } from '@fastgpt/global/common/system/config/schema';
+import { createDefaultInstanceConfig } from '@test/utils/instanceConfigSnapshot';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 const originalEnv = {
@@ -14,6 +15,8 @@ describe('fileUrlValidator', () => {
 
   beforeEach(() => {
     originalSystemEnv = global.systemEnv;
+    // 存储端点改由 canonical 快照提供；路由 bundle 不执行启动注入
+    global.systemInstanceConfig = createDefaultInstanceConfig();
     vi.resetModules();
     vi.stubEnv('STORAGE_S3_ENDPOINT', undefined);
     vi.stubEnv('STORAGE_EXTERNAL_ENDPOINT', undefined);
@@ -41,9 +44,7 @@ describe('fileUrlValidator', () => {
     });
 
     it('should extract hostname from the instance storage external endpoint', async () => {
-      const { applyRuntimeStorageConfig } =
-        await import('@fastgpt/service/common/s3/config/constants');
-      applyRuntimeStorageConfig({ externalEndpoint: 'https://external.example.com/path' });
+      global.systemInstanceConfig.storage.externalEndpoint = 'https://external.example.com/path';
       global.systemEnv = { fileUrlWhitelist: ['other.com'] } as any;
       const { validateFileUrlDomain } =
         await import('@fastgpt/service/common/security/fileUrlValidator');
@@ -51,12 +52,8 @@ describe('fileUrlValidator', () => {
     });
 
     it('should extract hostname from the instance storage CDN endpoint', async () => {
-      const { applyRuntimeStorageConfig } =
-        await import('@fastgpt/service/common/s3/config/constants');
-      applyRuntimeStorageConfig({
-        externalEndpoint: 'https://external.example.com',
-        cdnEndpoint: 'https://cdn.example.com/files'
-      });
+      global.systemInstanceConfig.storage.externalEndpoint = 'https://external.example.com';
+      global.systemInstanceConfig.storage.cdnEndpoint = 'https://cdn.example.com/files';
       global.systemEnv = { fileUrlWhitelist: ['other.com'] } as any;
       const { validateFileUrlDomain } =
         await import('@fastgpt/service/common/security/fileUrlValidator');
@@ -114,12 +111,8 @@ describe('fileUrlValidator', () => {
       vi.stubEnv('STORAGE_S3_ENDPOINT', 'http://s3.example.com');
       vi.stubEnv('FE_DOMAIN', 'https://fe.example.com');
       vi.stubEnv('PRO_URL', 'https://pro.example.com');
-      const { applyRuntimeStorageConfig } =
-        await import('@fastgpt/service/common/s3/config/constants');
-      applyRuntimeStorageConfig({
-        externalEndpoint: 'https://external.example.com',
-        cdnEndpoint: 'https://cdn.example.com'
-      });
+      global.systemInstanceConfig.storage.externalEndpoint = 'https://external.example.com';
+      global.systemInstanceConfig.storage.cdnEndpoint = 'https://cdn.example.com';
       global.systemEnv = { fileUrlWhitelist: ['user.com'] } as any;
       const { validateFileUrlDomain } =
         await import('@fastgpt/service/common/security/fileUrlValidator');

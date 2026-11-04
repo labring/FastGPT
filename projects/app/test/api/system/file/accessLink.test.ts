@@ -290,21 +290,18 @@ describe('s3 short access link api', () => {
       const [
         { default: redirectDownloadAccessHandler },
         { createS3DownloadAccessUrl },
-        { applyRuntimeStorageConfig },
         { getSystemInstanceConfig }
       ] = await Promise.all([
         import('@/pages/api/system/file/d/[signedAlias]'),
         import('@fastgpt/service/common/s3/accessLink'),
-        import('@fastgpt/service/common/s3/config/constants'),
-        import('@fastgpt/service/common/system/systemInstanceConfig/controller')
+        import('@fastgpt/service/common/system/systemInstanceConfig/runtime')
       ]);
-      // 下载模式与公开地址以实例配置为唯一来源，不再读环境变量
-      applyRuntimeStorageConfig({
-        downloadMode: 'short-redirect',
-        externalEndpoint: 'https://s3.example.com',
-        cdnEndpoint: 'https://cdn.example.com/files'
-      });
-      getSystemInstanceConfig().storage.redirectTtlSeconds = 120;
+      // 下载模式与公开地址以实例配置为唯一来源；直接写快照，等价于路由 bundle 的请求期读取
+      const storage = getSystemInstanceConfig().storage;
+      storage.downloadMode = 'short-redirect';
+      storage.externalEndpoint = 'https://s3.example.com';
+      storage.cdnEndpoint = 'https://cdn.example.com/files';
+      storage.redirectTtlSeconds = 120;
       const url = await createS3DownloadAccessUrl({
         bucketName: 'fastgpt-private',
         objectKey: 'dataset/team/page%20one.md',

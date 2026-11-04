@@ -70,7 +70,6 @@ type RuntimeStorageConfig = {
   cdnEndpoint?: string;
 };
 
-let runtimeStorageConfig: RuntimeStorageConfig | undefined;
 let appliedRuntimeStorageKey: string | undefined;
 
 /**
@@ -86,7 +85,7 @@ export const applyRuntimeStorageConfig = (config: RuntimeStorageConfig | undefin
     cdnEndpoint: config?.cdnEndpoint
   });
   const changed = appliedRuntimeStorageKey !== undefined && appliedRuntimeStorageKey !== nextKey;
-  runtimeStorageConfig = config;
+  // 仅记录用于判断是否变化；运行时读取一律走 global 快照，避免各路由 bundle 各持一份模块状态
   appliedRuntimeStorageKey = nextKey;
   logInstanceConfigRead({
     callsite: 'startup.common.s3.applyRuntimeStorageConfig',
@@ -102,11 +101,11 @@ export const applyRuntimeStorageConfig = (config: RuntimeStorageConfig | undefin
 
 /** 对外暴露的下载模式：仅取实例配置，未初始化时使用 Schema 默认值 short-proxy。 */
 export const getStorageDownloadUrlMode = () => {
-  const configured = runtimeStorageConfig?.downloadMode;
-  const value = StorageDownloadUrlModeSchema.parse(configured ?? 'short-proxy');
+  // 请求期读 global 快照：注入只发生在启动链路的模块实例里，路由 bundle 读不到那份状态
+  const value = StorageDownloadUrlModeSchema.parse(getSystemInstanceConfig().storage.downloadMode);
   logInstanceConfigRead({
     callsite: 'runtime.common.s3.constants.getStorageDownloadUrlMode',
-    source: configured === undefined ? 'schema-default' : 'instance-config',
+    source: 'instance-config',
     fields: [{ path: 'storage.downloadMode', value }]
   });
   return value;
@@ -114,11 +113,10 @@ export const getStorageDownloadUrlMode = () => {
 
 /** 对外公开的存储地址：仅取实例配置，未配置时返回空字符串（不再回落环境变量）。 */
 export const getStorageExternalEndpoint = () => {
-  const value = runtimeStorageConfig?.externalEndpoint ?? '';
+  const value = getSystemInstanceConfig().storage.externalEndpoint ?? '';
   logInstanceConfigRead({
     callsite: 'runtime.common.s3.constants.getStorageExternalEndpoint',
-    source:
-      runtimeStorageConfig?.externalEndpoint === undefined ? 'schema-default' : 'instance-config',
+    source: 'instance-config',
     fields: [{ path: 'storage.externalEndpoint', value }]
   });
   return value;
@@ -126,10 +124,10 @@ export const getStorageExternalEndpoint = () => {
 
 /** short-redirect 临时地址使用的 CDN 地址：仅取实例配置，未配置时返回空字符串。 */
 export const getStorageS3CdnEndpoint = () => {
-  const value = runtimeStorageConfig?.cdnEndpoint ?? '';
+  const value = getSystemInstanceConfig().storage.cdnEndpoint ?? '';
   logInstanceConfigRead({
     callsite: 'runtime.common.s3.constants.getStorageS3CdnEndpoint',
-    source: runtimeStorageConfig?.cdnEndpoint === undefined ? 'schema-default' : 'instance-config',
+    source: 'instance-config',
     fields: [{ path: 'storage.cdnEndpoint', value }]
   });
   return value;

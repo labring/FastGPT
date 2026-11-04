@@ -83,16 +83,13 @@ describe('s3 storage constants', () => {
 
   it('rewrites external URLs with the CDN endpoint', async () => {
     const {
-      applyRuntimeStorageConfig,
       getStorageDownloadUrlMode,
       canUseStorageDownloadRedirect,
       replaceS3UrlWithCdnEndpoint
     } = await loadConstants();
 
-    applyRuntimeStorageConfig({
-      externalEndpoint: 'https://s3.example.com',
-      cdnEndpoint: 'https://cdn.example.com/files'
-    });
+    getTestInstanceConfig().storage.externalEndpoint = 'https://s3.example.com';
+    getTestInstanceConfig().storage.cdnEndpoint = 'https://cdn.example.com/files';
 
     expect(getStorageDownloadUrlMode()).toBe('short-proxy');
     expect(canUseStorageDownloadRedirect()).toBe(true);
@@ -107,16 +104,13 @@ describe('s3 storage constants', () => {
     getTestInstanceConfig().storage.redirectTtlSeconds = 120;
 
     const {
-      applyRuntimeStorageConfig,
       getStorageDownloadUrlMode,
       getStorageRedirectTtlSeconds,
       canUseStorageDownloadRedirect
     } = await loadConstants();
 
-    applyRuntimeStorageConfig({
-      downloadMode: 'short-redirect',
-      externalEndpoint: 'https://s3.example.com'
-    });
+    getTestInstanceConfig().storage.downloadMode = 'short-redirect';
+    getTestInstanceConfig().storage.externalEndpoint = 'https://s3.example.com';
 
     expect(getStorageDownloadUrlMode()).toBe('short-redirect');
     expect(getStorageRedirectTtlSeconds()).toBe(120);
@@ -126,12 +120,29 @@ describe('s3 storage constants', () => {
   it('allows short redirect for storage vendors that do not use STORAGE_EXTERNAL_ENDPOINT', async () => {
     vi.stubEnv('STORAGE_VENDOR', 'cos');
 
-    const { applyRuntimeStorageConfig, getStorageDownloadUrlMode, canUseStorageDownloadRedirect } =
-      await loadConstants();
+    const { getStorageDownloadUrlMode, canUseStorageDownloadRedirect } = await loadConstants();
 
-    applyRuntimeStorageConfig({ downloadMode: 'short-redirect' });
+    getTestInstanceConfig().storage.downloadMode = 'short-redirect';
 
     expect(getStorageDownloadUrlMode()).toBe('short-redirect');
+    expect(canUseStorageDownloadRedirect()).toBe(true);
+  });
+
+  it('reads the download policy from the canonical snapshot without an init injection', async () => {
+    // 路由 bundle 不会执行启动期的 applyRuntimeStorageConfig，必须仍能读到库里的策略
+    getTestInstanceConfig().storage.downloadMode = 'short-redirect';
+    getTestInstanceConfig().storage.externalEndpoint = 'https://s3.example.com';
+
+    const {
+      getStorageDownloadUrlMode,
+      getStorageExternalEndpoint,
+      getStorageS3CdnEndpoint,
+      canUseStorageDownloadRedirect
+    } = await loadConstants();
+
+    expect(getStorageDownloadUrlMode()).toBe('short-redirect');
+    expect(getStorageExternalEndpoint()).toBe('https://s3.example.com');
+    expect(getStorageS3CdnEndpoint()).toBe(createDefaultInstanceConfig().storage.cdnEndpoint);
     expect(canUseStorageDownloadRedirect()).toBe(true);
   });
 
@@ -250,33 +261,27 @@ describe('s3 storage constants', () => {
   });
 
   it('reads storage runtime values from instance config only, never from env', async () => {
-    // 环境变量故意配置成会误导的值，验证运行时完全忽略它
-    getTestInstanceConfig().storage.downloadMode =
-      'short-redirect' ?? createDefaultInstanceConfig().storage.downloadMode;
-    getTestInstanceConfig().storage.externalEndpoint =
-      'https://env.example.com' ?? createDefaultInstanceConfig().storage.externalEndpoint;
-    getTestInstanceConfig().storage.cdnEndpoint =
-      'https://cdn.env.example.com' ?? createDefaultInstanceConfig().storage.cdnEndpoint;
+    // env 故意配成误导值；运行时只认 canonical 快照，路由 bundle 不执行启动注入
+    vi.stubEnv('STORAGE_DOWNLOAD_URL_MODE', 'short-redirect');
+    vi.stubEnv('STORAGE_EXTERNAL_ENDPOINT', 'https://env.example.com');
+    vi.stubEnv('STORAGE_S3_CDN_ENDPOINT', 'https://cdn.env.example.com');
 
     const {
-      applyRuntimeStorageConfig,
       getStorageDownloadUrlMode,
       getStorageExternalEndpoint,
       getStorageS3CdnEndpoint,
       canUseStorageDownloadRedirect
     } = await loadConstants();
 
-    // 未注入实例配置时使用 Schema 默认值，且不回落 env
+    // 快照为默认：返回默认值，不回落 env
     expect(getStorageDownloadUrlMode()).toBe('short-proxy');
     expect(getStorageExternalEndpoint()).toBe('');
     expect(getStorageS3CdnEndpoint()).toBe('');
 
-    // 注入后以实例配置为准
-    applyRuntimeStorageConfig({
-      downloadMode: 'short-redirect',
-      externalEndpoint: 'https://db.example.com',
-      cdnEndpoint: 'https://cdn.db.example.com'
-    });
+    // 快照有值：以快照为准（等价于管理员保存后，任意路由按请求期读取）
+    getTestInstanceConfig().storage.downloadMode = 'short-redirect';
+    getTestInstanceConfig().storage.externalEndpoint = 'https://db.example.com';
+    getTestInstanceConfig().storage.cdnEndpoint = 'https://cdn.db.example.com';
 
     expect(getStorageDownloadUrlMode()).toBe('short-redirect');
     expect(getStorageExternalEndpoint()).toBe('https://db.example.com');
