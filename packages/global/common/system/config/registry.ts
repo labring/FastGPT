@@ -184,7 +184,6 @@ export const systemInstanceConfigRegistry: readonly SystemInstanceConfigRegistry
       'multipleDataToBase64',
       'agentEngine',
       'disableCache',
-      'showEmptyChat',
       'enableTeamPluginUpload',
       'showDatasetFeishu',
       'showDatasetYuque',

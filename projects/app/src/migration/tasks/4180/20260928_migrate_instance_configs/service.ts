@@ -179,7 +179,6 @@ export const buildLegacyDomainOverrides = ({
     agentEngine: optionalText(legacyEnv.AGENT_ENGINE),
     disableCache: optionalBool(legacyEnv.DISABLE_CACHE),
     enableTeamPluginUpload: optionalBool(feConfigs.enable_team_plugin_upload),
-    showEmptyChat: optionalBool(feConfigs.show_emptyChat),
     showDatasetFeishu: optionalBool(feConfigs.show_dataset_feishu),
     showDatasetYuque: optionalBool(feConfigs.show_dataset_yuque),
     showDatasetDingtalk: optionalBool(feConfigs.show_dataset_dingtalk),

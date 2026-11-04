@@ -565,7 +565,6 @@
   "import_config": "匯入配置",
   "export_sync_rate_limiting": "匯出與同步限流",
   "display_card": "展示卡片",
-  "show_empty_chat_page": "展示對話空白頁",
   "attribute": "屬性",
   "workflow_qpm_range": "工作流 QPM 範圍",
   "workflow_execution_limits": "工作流執行限制",

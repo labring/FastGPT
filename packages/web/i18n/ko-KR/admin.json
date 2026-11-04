@@ -565,7 +565,6 @@
   "import_config": "설정 가져오기",
   "export_sync_rate_limiting": "내보내기 및 동기화 속도 제한",
   "display_card": "카드 표시",
-  "show_empty_chat_page": "빈 대화 페이지 표시",
   "attribute": "속성",
   "workflow_qpm_range": "워크플로 QPM 범위",
   "workflow_execution_limits": "워크플로 실행 제한",

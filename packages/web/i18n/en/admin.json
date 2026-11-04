@@ -565,7 +565,6 @@
   "import_config": "Import Config",
   "export_sync_rate_limiting": "Export & Sync Rate Limiting",
   "display_card": "Display Card",
-  "show_empty_chat_page": "Show Empty Chat Page",
   "attribute": "Attribute",
   "workflow_qpm_range": "Workflow QPM Range",
   "workflow_execution_limits": "Workflow Execution Limits",

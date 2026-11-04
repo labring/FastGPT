@@ -5,7 +5,6 @@ export const FeatureConfigSchema = z.strictObject({
   multipleDataToBase64: z.boolean().default(false),
   agentEngine: z.enum(['fastAgent', 'piAgent']).default('fastAgent'),
   disableCache: z.boolean().default(false),
-  showEmptyChat: z.boolean().default(true),
   enableTeamPluginUpload: z.boolean().default(false),
   // 业务入口可见性开关（决定各接入渠道在前端是否可见）
   showDatasetFeishu: z.boolean().default(true),

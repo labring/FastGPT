@@ -66,19 +66,6 @@ const FeatureSettingComponent = () => {
           />
 
           <Controller
-            name="showEmptyChat"
-            control={control}
-            render={({ field }) => (
-              <AdminSwitchRow
-                label={t('admin:show_empty_chat_page')}
-                tooltip={t('admin:show_feature_intro_empty_page_guidance_and_suggestions_when')}
-                isChecked={field.value}
-                onChange={field.onChange}
-              />
-            )}
-          />
-
-          <Controller
             name="showComplianceCopywriting"
             control={control}
             render={({ field }) => (

@@ -214,7 +214,6 @@ async function doInitSystemConfig() {
 
       hideChatCopyrightSetting: instanceConfig.feature.hideChatCopyrightSetting,
       enable_team_plugin_upload: instanceConfig.feature.enableTeamPluginUpload,
-      show_emptyChat: instanceConfig.feature.showEmptyChat,
       // Pro 保留其 ENV 下发值（默认 false），社区版使用 App ENV（默认 true）。
       show_git: serviceEnv.PRO_URL ? (fastgptConfig.feConfigs?.show_git ?? false) : appEnv.SHOW_GIT,
       show_dataset_feishu: instanceConfig.feature.showDatasetFeishu,

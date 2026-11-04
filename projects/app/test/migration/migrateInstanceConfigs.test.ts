@@ -225,7 +225,6 @@ describe('migration buildSparseLegacyOverrides', () => {
 
     expect(sparse.site?.name).toBe('Custom Title');
     // show_emptyChat 默认 true，改为 false 属真实修改，应保留
-    expect(sparse.feature?.showEmptyChat).toBe(false);
     // show_git 已回退为纯环境变量（SHOW_GIT），不再迁移进实例配置
     expect(sparse.feature?.showGit).toBeUndefined();
   });

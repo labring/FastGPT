@@ -35,7 +35,6 @@ export const adminConfigPageFieldsMap: Record<string, readonly string[]> = {
   '/admin/settings/feature': [
     'feature.hideChatCopyrightSetting',
     'feature.enableTeamPluginUpload',
-    'feature.showEmptyChat',
     'feature.showDatasetFeishu',
     'feature.showDatasetYuque',
     'feature.showDatasetDingtalk',

@@ -16,7 +16,7 @@ describe('Runtime Switchover Integration Test', () => {
     // 1. Initial snapshot has schema defaults
     const initial = getSystemInstanceConfig();
     expect(initial.site.name).toBe('AI');
-    expect(initial.feature.showEmptyChat).toBe(true);
+    expect(initial.feature.hideChatCopyrightSetting).toBe(false);
 
     const initialBufferId = global.systemInitBufferId;
 
@@ -42,7 +42,7 @@ describe('Runtime Switchover Integration Test', () => {
     await updateDomainConfig({
       domain: 'feature',
       expectedRevision: 0,
-      submittedOverrides: { showEmptyChat: false, hideChatCopyrightSetting: true },
+      submittedOverrides: { hideChatCopyrightSetting: true },
       actor: { actor: 'admin', userId: 'admin-1' }
     });
     await reloadSystemInstanceConfig();
@@ -50,7 +50,6 @@ describe('Runtime Switchover Integration Test', () => {
     // 6. Both site and feature domains retain their overrides in memory
     const finalConfig = getSystemInstanceConfig();
     expect(finalConfig.site.name).toBe('Acme Enterprise AI');
-    expect(finalConfig.feature.showEmptyChat).toBe(false);
     expect(finalConfig.feature.hideChatCopyrightSetting).toBe(true);
     expect(global.systemInitBufferId).not.toBe(prevBufferId);
   });

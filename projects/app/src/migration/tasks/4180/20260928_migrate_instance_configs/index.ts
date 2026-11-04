@@ -1,6 +1,5 @@
 import { SYSTEM_INSTANCE_CONFIG_DOMAINS } from '@fastgpt/global/common/system/config/schema';
 import { SystemMigrationStatusEnum } from '@fastgpt/global/migration/constants';
-import { SYSTEM_INSTANCE_CONFIG_DOMAINS } from '@fastgpt/global/common/system/config/schema';
 import type { SystemMigrationContext } from '../../../registry';
 import { applyInstanceConfigMigration, inspectInstanceConfigMigration } from './service';
 
