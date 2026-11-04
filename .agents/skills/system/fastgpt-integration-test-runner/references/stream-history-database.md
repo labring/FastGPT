@@ -3,14 +3,14 @@
 | 用例 | 脚本执行项 | 真实验证渠道 |
 | --- | --- | --- |
 | FG-CHAT-CONVERSATION-003 | C1–C6 | 原始/恢复 SSE、两个独立 Chromium 页面、Redis、Mongo |
-| FG-CHAT-HISTORY-001 | C1–C7 | 实际分页与轮询、权限 HTTP、React Context 只读快照、Redis 命令代理 |
+| FG-CHAT-HISTORY-001 | C2–C5、C7；C1、C6 由 AI 执行 | 实际分页与轮询、权限 HTTP、React Context 只读快照、Redis 命令代理 |
 | FG-INFRA-DATABASE-001 | C1–C3 | 历史 BSON、正常续聊、当前 Chat Schema 与 MongoIndexManager、真实索引与日志 |
 
 三个入口都是 Node 脚本，需要 UI 时在内部启动 Playwright。依赖沿用仓库的 `@playwright/test`、`mongoose`、`ioredis` 和 `tsx`，另需已安装的 Chromium。只手动运行，不加入 CI 或默认测试。
 
 ## 准备独立环境
 
-这些用例会构造旧字段、删除集合索引、改变 Redis 内存限制并注入命令故障，必须使用专用 Mongo/Redis 和专用 FastGPT 进程。`support/environment.mjs` 可以启动并准备这样的环境，不读取或复制原库业务数据。它从显式指定的环境文件继承插件、模型等服务连接配置，主库、日志库和 Redis 全部替换为本轮新实例。
+涉及构造旧字段、删除集合索引、改变 Redis 内存限制或注入命令故障的脚本，必须使用专用 Mongo/Redis 和专用 FastGPT 进程。C1、C6 的 AI 执行沿用本机 dev + Pro，只创建和回收本轮独立资源。`support/environment.mjs` 可以启动并准备这样的环境，不读取或复制原库业务数据。它从显式指定的环境文件继承插件、模型等服务连接配置，主库、日志库和 Redis 全部替换为本轮新实例。
 
 准备仓库依赖、Docker（Redis `7.2-alpine` 镜像）和可执行的本机 `mongod`。在仓库根目录前台运行：
 
@@ -51,28 +51,19 @@ const child = spawn('pnpm', ['test:cases', '--report', '/实际临时目录/repo
 child.on('exit', code => { process.exitCode = code ?? 1; });
 ```
 
-`FASTGPT_TEST_HEADED=1` 可以显示浏览器。隐藏页断言使用 Chromium 真正最小化后的 `document.visibilityState`；平台不支持时明确阻塞，不覆盖属性或停计时器冒充隐藏页。一个子场景失败后先释放 gate、关闭连接并等待 lease 结束，才进入下一项，避免串联失败。
+`FASTGPT_TEST_HEADED=1` 可以显示脚本浏览器。列表 C1、C6 不声明脚本覆盖；C1 的执行说明见下文。C6 由 AI 在真实桌面浏览器中延迟请求、切换其他标签页/最小化，再恢复可见，核对 Network 时间线与实际 `document.visibilityState`；若浏览器驱动开启了 focus emulation，先关闭驱动焦点模拟后再切换真实标签页，并用原生 Runtime 读取可见性；完成后恢复驱动原设置。不覆盖页面属性或冻结计时器。AI 完成前不判通过。一个脚本子场景失败后先释放 gate、关闭连接并等待 lease 结束，才进入下一项，避免串联失败。
 
 流夹具在 gate 前生成 55 段确定文本，完成后再生成尾段；逐字比较真实 SSE、数据库文本和可见 UI 的完整顺序及唯一性。私有环境完成后镜像 TTL 为 4 秒，运行中 TTL 为 30 秒；这些值随夹具登记，不能仅修改 JSON 而不修改服务配置。C5 使用真实 `CONFIG SET maxmemory` 触发内存保护，并在 finally 恢复原值。
 
-## Skill、Helper 和 Builder 的额外入口
+## C1 的本地 dev + Pro 执行
 
-自动准备覆盖普通 App。列表 C1 还需要配置 `fixture.history.entries`，分别提供 `skillEdit`、`chatAgentHelper`、`workflowBuilder` 的实际资源、工作流 gate 与已登录可见页面。每项包含：
+C1 由 AI 执行整个场景，不声明普通工作流 gate 对 Pro 入口的脚本覆盖。启动本地 dev 主站与 Pro，沿用实际登录态和模型，新建本轮独立测试 App/Skill；Skill 调试需要 sandbox ready。
 
-```json
-{
-  "sourceType": "skillEdit",
-  "sourceId": "实际资源 ID",
-  "role": "A",
-  "target": { "skillId": "实际资源 ID" },
-  "generation": { "route": "从真实页面 Network 核实的生成路由", "body": {} },
-  "url": "真实页面地址"
-}
-```
+- 普通 App：使用正常工作流生成，检查侧栏忙闲、已读、元数据保留及轮询停止。
+- Skill 调试：使用真实 debugChat 入口和 `{skillId, chatIds}` 查询列表/状态，核对调试面板的运行与完成状态。
+- ChatAgentHelper、WorkflowBuilder：从真实编辑面板发起生成，分别用 `{appId, sourceType, chatIds}` 查询，核对来源隔离和面板状态。
 
-`generation.body` 和 `url` 内支持 `$CHAT_ID`、`$QUESTION`、`$RESPONSE_ID` 占位；body 必须是该入口实际接受的完整请求，gate 收到原样 `$QUESTION` 后才能进入忙闲验证。Helper/Builder 的 `target` 使用 `{appId, sourceType}`，Skill 使用 `{skillId}`；不要伪造内部 sourceId 入参或直接写 lease。各入口产生的测试历史通过正常批量删除接口回收，专用资源由准备方回收。
-
-缺少任一入口时 C1 整行记录 blocked，同时保存已经完成的 App 证据。其他 C2–C7 继续独立执行，不能宣称全部来源已通过。
+这些辅助生成入口使用独立 Agent 运行流程，面板没有统一的 ChatContext 会话侧栏；不要配置一个 HTTP gate 或虚构通用 selector 来冒充实际操作。AI 记录真实请求、lease、接口结果和可见面板证据；优先检查本地 dev 真实入口，缺少模型或 sandbox 时说明实际依赖。
 
 ## 证据与收尾
 

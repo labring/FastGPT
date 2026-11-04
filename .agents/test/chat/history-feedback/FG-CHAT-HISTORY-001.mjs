@@ -1,11 +1,9 @@
 import assert from 'node:assert/strict';
-import { randomBytes } from 'node:crypto';
-import { runNodeCase, Blocked } from '../../support/runtime.mjs';
+import { runNodeCase } from '../../support/runtime.mjs';
 import { chatHarness, browserSession } from '../../support/chat.mjs';
 import { historySnapshot, loadHistory, historyNetwork } from '../../support/history.mjs';
 import { privateDatabase, control } from '../../support/private.mjs';
 import { success, permissionDenied, poll, required } from '../../support/scenario.mjs';
-import { openEventStream } from '../../support/stream.mjs';
 
 /** 列表使用真实页面/请求/Redis 观测；网络反例仅定向影响本轮请求。 */
 async function execute(context) {
@@ -33,134 +31,6 @@ async function execute(context) {
     await browser.page.goto(new URL(f.url, c.fixture.baseUrl).href, { timeout: 120000 });
     return browser;
   };
-  if (context.itemId === 'C1') {
-    success(
-      await c.request({
-        role: 'A',
-        kind: 'state',
-        method: 'PUT',
-        route: '/api/core/chat/history/updateHistory',
-        body: { appId, chatId: ids[0], customTitle: 'FG-TEST metadata ' + c.run, top: true }
-      })
-    );
-    const task = await h.start({ appId, chatId: ids[0] }),
-      browser = await open();
-    const initial = await loadHistory(browser.page, 20);
-    const metadata = (list) =>
-      normal(
-        list.map(({ chatId, title, customTitle, top }) => ({ chatId, title, customTitle, top }))
-      );
-    const oldMetadata = metadata(initial);
-    await poll(async () => {
-      const row = (await historySnapshot(browser.page)).find((row) => row.chatId === task.chatId);
-      assert.equal(row.chatGenerateStatus, 0);
-      assert.equal(row.hasBeenRead, false);
-    });
-    assert.equal(
-      success(await status([ids[0], ids[1]])).list.find((row) => row.chatId === ids[0])
-        .chatGenerateStatus,
-      0
-    );
-    await h.finish(task);
-    await poll(
-      async () =>
-        assert.ok(
-          (await historySnapshot(browser.page)).every((row) => row.chatGenerateStatus === 1)
-        ),
-      15000
-    );
-    const updatedMetadata = metadata(await historySnapshot(browser.page));
-    assert.deepEqual(updatedMetadata, oldMetadata, '状态刷新保留标题、自定义标题与置顶');
-    c.record('App 页面元数据保留', { before: oldMetadata, after: updatedMetadata });
-    const before = browser.calls.length;
-    await pause(6500);
-    assert.equal(browser.calls.length, before, '全部空闲后停止轮询');
-    await browser.capture('App忙闲切换');
-    // 跨来源沿用真实页面捕获的请求模板；没有准备入口则整行阻塞，保留 App 的实测证据。
-    const entries = required(f.entries, 'history.entries：Skill/Helper/Builder 的实际资源和请求');
-    for (const sourceType of ['skillEdit', 'chatAgentHelper', 'workflowBuilder']) {
-      const entry = required(
-        entries.find((row) => row.sourceType === sourceType),
-        'history.entries.' + sourceType
-      );
-      const chatId = `${c.run}-${sourceType}`,
-        question = `${c.run}-${sourceType}-question`,
-        responseId = randomBytes(12).toString('hex');
-      const variables = { $CHAT_ID: chatId, $QUESTION: question, $RESPONSE_ID: responseId };
-      const expand = (value) =>
-        typeof value === 'string'
-          ? Object.entries(variables).reduce(
-              (value, [key, replacement]) => value.replaceAll(key, replacement),
-              value
-            )
-          : Array.isArray(value)
-            ? value.map(expand)
-            : value && typeof value === 'object'
-              ? Object.fromEntries(Object.entries(value).map(([key, item]) => [key, expand(item)]))
-              : value;
-      const barrier = h.gate.register(question);
-      const source = { sourceType, sourceId: entry.sourceId, chatId };
-      context.itemFinalizers.push(async () => {
-        barrier.release();
-        await poll(
-          async () => assert.equal(await redis.client.get(redis.leaseKey(source)), null),
-          120000
-        );
-      });
-      context.cleanups.push(async () =>
-        success(
-          await c.request({
-            role: 'owner',
-            route: '/api/core/chat/history/batchDelete',
-            body: { ...entry.target, chatIds: [chatId] }
-          })
-        )
-      );
-      const stream = openEventStream(
-        await c.request({
-          role: entry.role ?? 'A',
-          kind: 'state',
-          route: entry.generation.route,
-          body: expand(entry.generation.body),
-          raw: true
-        })
-      );
-      h.connections.push(stream);
-      await barrier.entered();
-      assert.ok((await redis.observe(source)).lease);
-      const view = await browserSession(context, {
-        scenario: c,
-        url: expand(entry.url),
-        role: entry.role ?? 'A'
-      });
-      await poll(
-        async () =>
-          assert.equal(
-            (await historySnapshot(view.page)).find((row) => row.chatId === chatId)
-              ?.chatGenerateStatus,
-            0
-          ),
-        60000
-      );
-      barrier.release();
-      await stream.finished;
-      await poll(
-        async () => assert.equal(await redis.client.get(redis.leaseKey(source)), null),
-        45000
-      );
-      await poll(
-        async () =>
-          assert.equal(
-            (await historySnapshot(view.page)).find((row) => row.chatId === chatId)
-              ?.chatGenerateStatus,
-            1
-          ),
-        15000
-      );
-      await view.capture(sourceType + '忙闲切换');
-    }
-    return 'App/Skill/Helper/Builder 真实入口的状态、UI 已读/元数据和忙闲轮询生命周期均验证';
-  }
   if (context.itemId === 'C2') {
     const other = await h.start({ appId, role: 'B' });
     await h.finish(other);
@@ -394,55 +264,6 @@ async function execute(context) {
     );
     return '第一批状态/已读/时间改变但第二批失败时整轮不提交；下一轮两批成功才统一刷新';
   }
-  if (context.itemId === 'C6') {
-    const task = await h.start({ appId, chatId: ids[0] }),
-      browser = await open();
-    await loadHistory(browser.page, 20);
-    let held = false,
-      release;
-    const wait = new Promise((resolve) => {
-      release = resolve;
-    });
-    await browser.page.route('**/api/core/chat/history/getHistoryStatus', async (route) => {
-      if (!held) {
-        held = true;
-        await wait;
-      }
-      await route.continue();
-    });
-    await poll(() => assert.equal(held, true), 10000);
-    const count = browser.calls.length;
-    await pause(11000);
-    assert.equal(browser.calls.length, count, '在途轮次不得叠加');
-    release();
-    await browser.page.unrouteAll({ behavior: 'wait' });
-    const cdp = await browser.session.newCDPSession(browser.page),
-      window = await cdp.send('Browser.getWindowForTarget');
-    await cdp.send('Browser.setWindowBounds', {
-      windowId: window.windowId,
-      bounds: { windowState: 'minimized' }
-    });
-    try {
-      const visibility = await browser.page.evaluate(() => document.visibilityState);
-      c.record('真实页面可见性', { visibility, operation: 'Browser.setWindowBounds minimized' });
-      if (visibility !== 'hidden')
-        throw new Blocked('当前 Chromium 未将最小化视为隐藏页；未用覆盖 visibilityState 冒充');
-      await pause(1000);
-      const before = browser.calls.length;
-      await pause(11000);
-      assert.equal(browser.calls.length, before, '隐藏页不得开始新轮询');
-    } finally {
-      await cdp.send('Browser.setWindowBounds', {
-        windowId: window.windowId,
-        bounds: { windowState: 'normal' }
-      });
-    }
-    const before = browser.calls.length;
-    await poll(() => assert.ok(browser.calls.length > before), 10000);
-    await h.finish(task);
-    await browser.capture('在途与隐藏页恢复');
-    return '超过十秒在途不叠加；真实隐藏页暂停两个轮询周期，恢复可见触发一次刷新且无重复计时器';
-  }
   if (context.itemId === 'C7') {
     for (const fail of [false, true]) {
       const task = await h.start({ appId, chatId: ids[0] }),
@@ -511,5 +332,5 @@ async function execute(context) {
 }
 await runNodeCase(
   'FG-CHAT-HISTORY-001',
-  Object.fromEntries(Array.from({ length: 7 }, (_, index) => ['C' + (index + 1), execute]))
+  Object.fromEntries(['C2', 'C3', 'C4', 'C5', 'C7'].map((id) => [id, execute]))
 );
