@@ -20,7 +20,7 @@ vi.mock('@fastgpt/service/common/vectorDB/constants', async (importOriginal) => 
   DatasetVectorTableName: 'modeldata'
 }));
 
-import { removeLegacyPgVectorIndex } from '@/migration/tasks/4174/20261022_initialize_dataset_vector_indexes/service';
+import { removeLegacyPgVectorIndex } from '@/migration/tasks/4180/20261022_initialize_dataset_vector_indexes/service';
 import {
   PG_INDEX_MAINTENANCE_LOCK,
   getPgDatasetIndexName

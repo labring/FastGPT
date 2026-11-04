@@ -29,6 +29,7 @@
   "completed_at": "完成时间",
   "stages": "执行阶段",
   "progress_count": "{{current}} / {{total}}",
+  "progress_processed": "已处理 {{current}} 条",
   "last_error": "最近一次错误",
   "error_run": "执行批次 {{runId}}",
   "refresh": "刷新",
@@ -151,5 +152,11 @@
   "migrations.20261022_initialize_dataset_vector_indexes.description": "先核验并在线删除旧全局 HNSW 索引，成功后再后台统计知识库向量数，并为超过一万条的知识库投递 FP16 局部索引构建任务。构建任务不设延迟，全局串行执行；升级任务完成不表示局部索引全部就绪。索引未完成时继续精确检索。",
   "migrations.20261022_initialize_dataset_vector_indexes.result": "已统计 {{scannedCount}} 个知识库，{{eligibleCount}} 个达到索引构建条件；实际构建由队列继续执行。",
   "migrations.20261022_initialize_dataset_vector_indexes.datasets": "统计知识库并投递索引任务",
-  "migrations.20261022_initialize_dataset_vector_indexes.legacyIndex": "清理旧全局 HNSW 索引"
+  "migrations.20261022_initialize_dataset_vector_indexes.legacyIndex": "清理旧全局 HNSW 索引",
+  "migrations.20261104_backfill_chat_publish_source.name": "回填对话调用来源",
+  "migrations.20261104_backfill_chat_publish_source.description": "启动后独立后台回填历史调用来源，保留所有旧字段。",
+  "migrations.20261104_backfill_chat_publish_source.result": "已扫描 {{chats}} 个会话、{{chatLogs}} 个统计桶",
+  "migrations.20261104_backfill_chat_publish_source.chats": "对话来源",
+  "migrations.20261104_backfill_chat_publish_source.chatLogs": "统计桶来源",
+  "migrations.20261104_backfill_chat_publish_source.validation": "校验回填结果"
 }

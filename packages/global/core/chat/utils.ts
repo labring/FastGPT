@@ -333,6 +333,8 @@ export const getChatSourceByPublishChannel = (publishChannel: PublishChannelEnum
       return ChatSourceEnum.share;
     case PublishChannelEnum.apikey:
       return ChatSourceEnum.api;
+    case PublishChannelEnum.dingtalk:
+      return ChatSourceEnum.dingtalk;
     case PublishChannelEnum.feishu:
       return ChatSourceEnum.feishu;
     case PublishChannelEnum.wecom:

@@ -409,7 +409,7 @@
   "core.chat.logs.mcp": "MCP 호출",
   "core.chat.logs.official_account": "공식 계정",
   "core.chat.logs.online": "온라인 사용",
-  "core.chat.logs.share": "외부 링크 호출",
+  "core.chat.logs.share": "공유 링크",
   "core.chat.logs.test": "온라인 디버깅",
   "core.chat.logs.wechat": "WeChat",
   "core.chat.logs.wecom": "WeChat Work",

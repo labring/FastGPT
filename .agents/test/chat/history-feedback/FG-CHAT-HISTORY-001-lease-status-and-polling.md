@@ -23,7 +23,7 @@ sources:
 routes:
   - "POST /api/core/chat/history/getHistories"
   - "POST /api/core/chat/history/getHistoryStatus"
-related: [FG-CHAT-CONVERSATION-001, FG-INFRA-RUNTIME-001, FG-INFRA-DATABASE-001]
+related: [FG-CHAT-CONVERSATION-005, FG-INFRA-RUNTIME-002, FG-INFRA-DATABASE-001]
 baseline: "5a5211f70998f5311cd40b0e5362a1414be6fbdf"
 ---
 
@@ -35,7 +35,7 @@ baseline: "5a5211f70998f5311cd40b0e5362a1414be6fbdf"
 
 ## 前置准备
 
-- 复用 FG-CHAT-CONVERSATION-001 的查询和清理；准备当前成员两个会话（A busy、B idle）、同应用其他成员会话、其他团队/资源会话、已软删除会话和不存在的 chatId。保存各自访问范围，不因账号有应用读权限就认定能看他人成员历史。
+- 复用 FG-CHAT-CONVERSATION-005 的查询和清理；准备当前成员两个会话（A busy、B idle）、同应用其他成员会话、其他团队/资源会话、已软删除会话和不存在的 chatId。保存各自访问范围，不因账号有应用读权限就认定能看他人成员历史。
 - 另建 201 个当前成员可见的独立测试会话，通过正常分页滚动加载；记录 chatId、title、top、updateTime、hasBeenRead、chatGenerateStatus 原快照。测试长列表不能只向单个 HTTP 请求塞 201 项代替客户端分批。
 - 状态请求 App 用 `{appId, chatIds}`；Skill 用 `{skillId, chatIds}`；Helper/Builder 用 `{appId, sourceType, chatIds}`。外链使用真实 shareId/outLinkUid 身份构造，不在请求体虚构内部 sourceId 字段。
 - 网络代理能按状态请求返回一次 503、阻断为网络错误或延迟超过 5 秒；第二批失败只故障第二个 HTTP 请求。Redis MGET 故障使用私有实例命令代理，不影响无关业务。

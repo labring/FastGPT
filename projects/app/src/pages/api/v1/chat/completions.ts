@@ -1,3 +1,4 @@
+import { assertChatPublishSource } from '@fastgpt/service/core/chat/publishSource/utils';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { sseErrRes, jsonRes } from '@fastgpt/service/common/response';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
@@ -142,6 +143,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       showCite,
       authType,
       sourceName,
+      publishSource,
       apikey,
       responseAllData,
       outLinkUserId = customUid,
@@ -315,8 +317,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       teamId,
       tmbId: String(tmbId),
       source,
+      publishSource,
       sourceName: sourceName || '',
-      shareId,
       outLinkUid: outLinkUserId,
       userContent: workflowUserQuestion,
       responseChatItemId: roundState.responseChatItemId,
@@ -434,9 +436,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       nodes,
       appChatConfig: chatConfig,
       variables: newVariables,
-      shareId,
       outLinkUid: outLinkUserId,
       source,
+      publishSource: preparedRound.publishSource,
       sourceName: sourceName || '',
       userContent: workflowUserQuestion,
       aiContent: aiResponse,
@@ -614,6 +616,7 @@ const authShareChat = async ({
     showRunningStatus,
     showSkillReferences,
     uid,
+    publishSource,
     sourceName
   } = await authOutLinkChatStart({ ...data, req });
   const app = await MongoApp.findById(appId).lean();
@@ -627,11 +630,15 @@ const authShareChat = async ({
     ...buildChatSourceQuery({ sourceType: ChatSourceTypeEnum.app, sourceId: String(appId) }),
     chatId
   }).lean();
-  if (chat && (chat.shareId !== data.shareId || chat.outLinkUid !== uid)) {
-    return Promise.reject(ChatErrEnum.unAuthChat);
+  if (chat) {
+    assertChatPublishSource({ previous: chat.publishSource, current: publishSource });
+    if (chat.outLinkUid !== uid) {
+      return Promise.reject(ChatErrEnum.unAuthChat);
+    }
   }
 
   return {
+    publishSource,
     sourceName,
     teamId,
     tmbId,

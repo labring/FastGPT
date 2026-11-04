@@ -35,6 +35,7 @@ describe('validateSystemMigrationRegistry', () => {
       '20261022_backfill_folder_ancestor_ids',
       '20261025_token_prices_per_million',
       '20261022_initialize_dataset_vector_indexes',
+      '20261104_backfill_chat_publish_source',
       '20260928_migrate_instance_configs',
       '20260929_cleanup_instance_config_deprecated_fields'
     ]);
@@ -66,7 +67,9 @@ describe('validateSystemMigrationRegistry', () => {
       '20260928_migrate_instance_configs',
       '20260929_cleanup_instance_config_deprecated_fields'
     ]);
-    expect(systemMigrations.at(-4)).toMatchObject({
+    expect(
+      systemMigrations.find(({ id }) => id === '20261025_token_prices_per_million')
+    ).toMatchObject({
       id: '20261025_token_prices_per_million',
       version: '4.17.3',
       progressSteps: [{ key: 'models' }]
@@ -94,7 +97,7 @@ describe('validateSystemMigrationRegistry', () => {
     );
     expect(task).toMatchObject({
       id: '20261022_initialize_dataset_vector_indexes',
-      version: '4.17.4',
+      version: '4.18.0',
       blockStartup: false,
       progressSteps: [{ key: 'legacyIndex' }, { key: 'datasets' }]
     });
@@ -102,6 +105,20 @@ describe('validateSystemMigrationRegistry', () => {
     expect(task).not.toHaveProperty('independent');
     expect(task).not.toHaveProperty('dependsOn');
     expect(task).not.toHaveProperty('onFailure');
+  });
+
+  it('保留聊天来源回填为无依赖的独立自动任务', () => {
+    const task = systemMigrations.find(({ id }) => id === '20261104_backfill_chat_publish_source');
+    expect(task).toMatchObject({
+      id: '20261104_backfill_chat_publish_source',
+      version: '4.18.0',
+      independent: true,
+      progressSteps: [{ key: 'chats' }, { key: 'chatLogs' }, { key: 'validation' }]
+    });
+    expect(task).not.toHaveProperty('blockStartup', true);
+    expect(task).not.toHaveProperty('dependsOn');
+    expect(task).not.toHaveProperty('manual');
+    expect(task).not.toHaveProperty('delay');
   });
 
   it('runs only the selected production tasks independently', () => {
@@ -114,7 +131,8 @@ describe('validateSystemMigrationRegistry', () => {
       '20260928_backfill_member_name_set',
       '20261009_backfill_agent_sandbox_team_id',
       '20261022_backfill_folder_ancestor_ids',
-      '20261025_token_prices_per_million'
+      '20261025_token_prices_per_million',
+      '20261104_backfill_chat_publish_source'
     ]);
   });
 

@@ -25,9 +25,10 @@ import { backfillFolderAncestorIds } from './tasks/4173/20261022_backfill_folder
 import { migrateChunkTraining } from './tasks/4171/20261008_migrate_chunk_training';
 import { backfillAgentSandboxTeamId } from './tasks/4173/20261009_backfill_agent_sandbox_team_id';
 import { migrateTokenPricesPerMillion } from './tasks/4173/20261025_token_prices_per_million';
-import { initializeDatasetVectorIndexes } from './tasks/4174/20261022_initialize_dataset_vector_indexes';
+import { initializeDatasetVectorIndexes } from './tasks/4180/20261022_initialize_dataset_vector_indexes';
 import { migrateInstanceConfigs } from './tasks/4180/20260928_migrate_instance_configs';
 import { cleanupInstanceConfigDeprecatedFieldsTask } from './tasks/4180/20260929_cleanup_instance_config_deprecated_fields';
+import { backfillChatPublishSource } from './tasks/4180/20261104_backfill_chat_publish_source';
 
 export type SystemMigrationLogger = {
   info: (message: string, metadata?: Record<string, unknown>) => void;
@@ -589,7 +590,7 @@ export const systemMigrations = [
   },
   {
     id: '20261022_initialize_dataset_vector_indexes',
-    version: '4.17.4',
+    version: '4.18.0',
     nameKey: i18nT('system_migration:migrations.20261022_initialize_dataset_vector_indexes.name'),
     descriptionKey: i18nT(
       'system_migration:migrations.20261022_initialize_dataset_vector_indexes.description'
@@ -613,6 +614,36 @@ export const systemMigrations = [
     ],
     blockStartup: false,
     run: initializeDatasetVectorIndexes
+  },
+  {
+    id: '20261104_backfill_chat_publish_source',
+    version: '4.18.0',
+    // 仅追加历史来源且无迁移前置，独立调度避免等待普通后台长任务。
+    independent: true,
+    nameKey: i18nT('system_migration:migrations.20261104_backfill_chat_publish_source.name'),
+    descriptionKey: i18nT(
+      'system_migration:migrations.20261104_backfill_chat_publish_source.description'
+    ),
+    resultKey: i18nT('system_migration:migrations.20261104_backfill_chat_publish_source.result'),
+    progressSteps: [
+      {
+        key: 'chats',
+        labelKey: i18nT('system_migration:migrations.20261104_backfill_chat_publish_source.chats')
+      },
+      {
+        key: 'chatLogs',
+        labelKey: i18nT(
+          'system_migration:migrations.20261104_backfill_chat_publish_source.chatLogs'
+        )
+      },
+      {
+        key: 'validation',
+        labelKey: i18nT(
+          'system_migration:migrations.20261104_backfill_chat_publish_source.validation'
+        )
+      }
+    ],
+    run: backfillChatPublishSource
   },
   {
     id: '20260928_migrate_instance_configs',

@@ -1,4 +1,5 @@
 {
+  "source_dingtalk": "DingTalk",
   "AI_input_is_empty": "The content passed to the AI ​​node is empty",
   "LLM_model_response_empty": "The model returned an empty response. Check the model request details.",
   "Next": "Next",
