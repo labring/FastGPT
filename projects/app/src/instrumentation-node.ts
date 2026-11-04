@@ -213,15 +213,6 @@ export async function registerNodeInstrumentation() {
       getErrText
     });
 
-    // 升级脚本可以依赖完整的模型 Provider、模板和运行时缓存。
-    await runInitializationStep({
-      step: 'load-system-models',
-      stage: InitialErrorEnum.PLUGIN_ERROR,
-      action: () => loadSystemModels(),
-      logger,
-      getErrText
-    });
-
     const migrationRunner = await runInitializationStep({
       step: 'start-system-migration-runner',
       action: () => startSystemMigrationRunner(),
@@ -292,6 +283,19 @@ export async function registerNodeInstrumentation() {
             );
             initS3Buckets();
           },
+          logger,
+          getErrText
+        });
+
+        /**
+         * 系统模型必须在配置迁移之后加载：旧部署的插件地址/凭据要等迁移写入实例配置后才是权威值，
+         * 提前加载会拿 Schema 默认的 localhost:3004 请求 Provider，鉴权失败会让初始化直接终止，
+         * 迁移永远没有机会执行。
+         */
+        await runInitializationStep({
+          step: 'load-system-models-after-startup-migrations',
+          stage: InitialErrorEnum.PLUGIN_ERROR,
+          action: () => loadSystemModels(),
           logger,
           getErrText
         });
