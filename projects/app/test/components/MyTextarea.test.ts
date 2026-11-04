@@ -1,6 +1,7 @@
 import { JSDOM } from 'jsdom';
 import React, { act, type TextareaHTMLAttributes } from 'react';
 import type { Root } from 'react-dom/client';
+import { useForm } from 'react-hook-form';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import MyTextarea from '@/components/common/Textarea/MyTextarea';
 
@@ -187,4 +188,64 @@ describe('MyTextarea', () => {
     expect(changes).toEqual(['n', '你', '你']);
     expect(textarea.value).toBe('你');
   });
+
+  it.each(['before', 'after'])(
+    'updates an uncontrolled form after reset when final input is %s compositionend',
+    async (finalInputOrder) => {
+      const changes: string[] = [];
+      let resetValue = () => {};
+      let getFormValue = () => '';
+      const Harness = () => {
+        const { register, reset, getValues } = useForm<{ text: string }>({
+          defaultValues: { text: '' }
+        });
+        resetValue = () => reset({ text: '' });
+        getFormValue = () => getValues('text');
+        const field = register('text');
+        return React.createElement(MyTextarea, {
+          ...field,
+          onChange: (event) => {
+            changes.push(event.currentTarget.value);
+            void field.onChange(event);
+          }
+        });
+      };
+
+      await act(async () => root.render(React.createElement(Harness)));
+
+      const textarea = container.querySelector('textarea')!;
+      const setValue = (value: string) => {
+        Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value')?.set?.call(
+          textarea,
+          value
+        );
+      };
+      const dispatchInput = () =>
+        textarea.dispatchEvent(new window.Event('input', { bubbles: true }));
+
+      await act(async () => {
+        textarea.dispatchEvent(new window.Event('compositionstart', { bubbles: true }));
+        setValue('n');
+        dispatchInput();
+        setValue('你');
+        if (finalInputOrder === 'before') dispatchInput();
+        textarea.dispatchEvent(new window.Event('compositionend', { bubbles: true }));
+        if (finalInputOrder === 'after') dispatchInput();
+      });
+      expect(changes).toEqual(['n', '你']);
+      expect(getFormValue()).toBe('你');
+
+      await act(async () => resetValue());
+      expect(textarea.value).toBe('');
+      expect(getFormValue()).toBe('');
+
+      await act(async () => {
+        setValue('你');
+        dispatchInput();
+      });
+      expect(changes).toEqual(['n', '你', '你']);
+      expect(textarea.value).toBe('你');
+      expect(getFormValue()).toBe('你');
+    }
+  );
 });

@@ -178,6 +178,11 @@ const Editor = React.memo(function Editor({
       isComposingRef.current = false;
       compositionEndValueRef.current = e.currentTarget.value;
       cursorPositionRef.current = null;
+      // 尾随 input 与 compositionend 同轮派发；下一轮输入不能复用本次去重状态。
+      queueMicrotask(() => {
+        compositionEndValueRef.current = null;
+        lastCompositionValueRef.current = null;
+      });
       onCompositionEnd?.(e);
     },
     [onCompositionEnd]
