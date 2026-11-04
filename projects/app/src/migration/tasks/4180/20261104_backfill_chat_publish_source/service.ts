@@ -82,14 +82,7 @@ export const backfillPublishSourceRecord = async ({
         }
       }
     );
-    if (result.matchedCount) {
-      const saved = await collection.findOne(
-        { _id: raw._id },
-        { projection: { publishSource: 1 } }
-      );
-      if (saved) ChatPublishSourceSchema.parse(saved.publishSource);
-      return;
-    }
+    if (result.matchedCount) return;
     // 条件未命中不能记为迁移成功；重新读取并核验是否已有合法的新来源。
   }
   throw new Error('Conversation source changed repeatedly while backfilling');

@@ -3,8 +3,6 @@ import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 import {
   assertChatPublishSource,
-  buildChatPublishSourceFilter,
-  buildSharePublishSourceFilter,
   resolveCurrentChatPublishSource
 } from '@fastgpt/service/core/chat/publishSource/utils';
 
@@ -68,33 +66,5 @@ describe('assertChatPublishSource', () => {
         })
       ).not.toThrow();
     }
-  });
-});
-
-describe('buildChatPublishSourceFilter', () => {
-  it('省略为不过滤，空数组保留未选择条件', () => {
-    expect(buildChatPublishSourceFilter()).toEqual({});
-    expect(buildChatPublishSourceFilter([])).toEqual({
-      $or: [
-        { 'publishSource.type': { $in: [] } },
-        { 'publishSource.type': null, source: { $in: [] } }
-      ]
-    });
-  });
-});
-
-describe('buildSharePublishSourceFilter', () => {
-  it('完整新来源优先，只有缺新字段时才使用外部 shareId', () => {
-    expect(buildSharePublishSourceFilter({ id: a, shareId: 'public-share' })).toEqual({
-      $or: [
-        { 'publishSource.type': ChatSourceEnum.share, 'publishSource.id': a },
-        {
-          $and: [
-            { $or: [{ 'publishSource.type': null }, { 'publishSource.id': null }] },
-            { shareId: 'public-share' }
-          ]
-        }
-      ]
-    });
   });
 });

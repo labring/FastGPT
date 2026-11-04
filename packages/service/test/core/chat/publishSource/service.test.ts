@@ -239,31 +239,53 @@ describe('extendChatPublishSources', () => {
 });
 
 describe('来源查询兼容的 Mongo 语义', () => {
-  it('完整新来源不被旧字段覆盖，缺字段的分享仍可按旧 shareId 查到', async () => {
-    const id = oid();
+  it('新来源优先，缺字段回退旧值；省略筛选不过滤，空数组不返回记录', async () => {
+    const id = new Types.ObjectId();
     const base = {
-      ...scope,
-      appId: scope.sourceId,
+      teamId: new Types.ObjectId(scope.teamId),
+      tmbId: new Types.ObjectId(scope.tmbId),
+      appId: new Types.ObjectId(scope.sourceId),
+      sourceType: scope.sourceType,
       source: 'api',
       shareId: 'public',
       outLinkUid: 'u1'
     };
-    await MongoChat.create([
-      { ...base, chatId: 'new-share', publishSource: { type: 'share', id } },
-      { ...base, chatId: 'legacy' },
-      { ...base, chatId: 'type-only', publishSource: { type: 'share' } },
-      { ...base, chatId: 'new-api', publishSource: { type: 'api', id: oid() } }
-    ]);
+    // 原生写入用于保留旧记录缺 type / null 的真实形态，不经过当前 Schema 修正。
+    const records = [
+      { chatId: 'new-share', publishSource: { type: 'share', id } },
+      { chatId: 'legacy-api' },
+      { chatId: 'legacy-share', source: 'share' },
+      { chatId: 'type-only', publishSource: { type: 'share' } },
+      { chatId: 'id-only', source: 'share', publishSource: { id } },
+      { chatId: 'null-source', source: 'share', publishSource: null },
+      { chatId: 'other-share', publishSource: { type: 'share', id: new Types.ObjectId() } },
+      { chatId: 'new-api', source: 'share', publishSource: { type: 'api', id } },
+      { chatId: 'other-legacy', source: 'share', shareId: 'other' }
+    ];
+    await MongoChat.collection.insertMany(records.map((record) => ({ ...base, ...record })));
     expect(
       (await MongoChat.find(buildChatPublishSourceFilter(['share'])).lean())
         .map((c) => c.chatId)
         .sort()
-    ).toEqual(['new-share', 'type-only']);
+    ).toEqual([
+      'id-only',
+      'legacy-share',
+      'new-share',
+      'null-source',
+      'other-legacy',
+      'other-share',
+      'type-only'
+    ]);
     expect(
-      (await MongoChat.find(buildSharePublishSourceFilter({ id, shareId: 'public' })).lean())
+      (
+        await MongoChat.find(
+          buildSharePublishSourceFilter({ id: String(id), shareId: 'public' })
+        ).lean()
+      )
         .map((c) => c.chatId)
         .sort()
-    ).toEqual(['legacy', 'new-share', 'type-only']);
+    ).toEqual(['id-only', 'legacy-api', 'legacy-share', 'new-share', 'null-source', 'type-only']);
+    expect(await MongoChat.countDocuments(buildChatPublishSourceFilter())).toBe(records.length);
     expect(await MongoChat.countDocuments(buildChatPublishSourceFilter([]))).toBe(0);
   });
 });

@@ -329,7 +329,6 @@ export async function runSkillDebugChat({
       appChatConfig: {},
       variables: {},
       source: ChatSourceEnum.test,
-      publishSource: preparedRound.publishSource,
       userContent: workflowUserQuestion,
       aiContent: aiResponse,
       durationSeconds,
