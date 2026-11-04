@@ -32,6 +32,31 @@ const historyColumns = [
 ] as const;
 const historyTableMinWidth = '960px';
 
+/** 重试链只展示末端轮次，并按链起点的计划发送时间排序。 */
+export const getLatestModelDeprecationRuns = (runs: ModelDeprecationInformHistoryRunType[]) => {
+  const sourceRunIndexes = new Set(
+    runs
+      .map((run) => run.sourceRunIndex)
+      .filter((runIndex): runIndex is number => runIndex !== undefined)
+  );
+  const latestRuns = runs.filter((run) => !sourceRunIndexes.has(run.runIndex));
+  const rootScheduledAt = new Map(
+    latestRuns.map((run) => {
+      let rootRun = run;
+      while (rootRun.sourceRunIndex !== undefined) {
+        const sourceRun = runs[rootRun.sourceRunIndex];
+        if (!sourceRun) break;
+        rootRun = sourceRun;
+      }
+      return [run.runIndex, rootRun.scheduledAt ?? ''];
+    })
+  );
+
+  return latestRuns.sort((a, b) =>
+    (rootScheduledAt.get(a.runIndex) ?? '').localeCompare(rootScheduledAt.get(b.runIndex) ?? '')
+  );
+};
+
 /** 展示通知计划及各轮发送状态；失败正文只在点击异常标签后读取。 */
 const ModelDeprecationHistoryModal = ({
   models,
@@ -236,8 +261,9 @@ const HistoryRow = ({
   const planTerminated = item.runs.some(
     (run) => run.status === 'terminated' || run.status === 'skipped'
   );
+  const visibleRuns = getLatestModelDeprecationRuns(item.runs);
   const retriedRunIndexes = new Set(
-    item.runs
+    visibleRuns
       .filter((run) => run.kind === 'retry')
       .map((run) => run.sourceRunIndex)
       .filter((runIndex): runIndex is number => runIndex !== undefined)
@@ -257,7 +283,7 @@ const HistoryRow = ({
         </Td>
         <Td verticalAlign={'middle'} px={3}>
           <Flex direction={'column'} gap={'2px'}>
-            {item.runs.map((run) => (
+            {visibleRuns.map((run) => (
               <RunStatus
                 key={run.runIndex}
                 run={run}
