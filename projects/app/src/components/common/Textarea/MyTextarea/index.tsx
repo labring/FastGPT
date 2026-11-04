@@ -146,13 +146,10 @@ const Editor = React.memo(function Editor({
       return;
     }
 
-    // Safari 可能在 compositionend 后派发最终 input；同值只通知一次，并继续保护光标。
+    // 尾随 input 可能晚于 compositionend；同值仍保护光标，但必须转发重置后的真实输入。
     if (compositionEndValueRef.current === value) {
       cursorPositionRef.current = null;
-      if (lastCompositionValueRef.current !== value) {
-        lastCompositionValueRef.current = value;
-        onChangeRef.current?.(e);
-      }
+      onChangeRef.current?.(e);
       return;
     }
 
@@ -178,11 +175,6 @@ const Editor = React.memo(function Editor({
       isComposingRef.current = false;
       compositionEndValueRef.current = e.currentTarget.value;
       cursorPositionRef.current = null;
-      // 尾随 input 与 compositionend 同轮派发；下一轮输入不能复用本次去重状态。
-      queueMicrotask(() => {
-        compositionEndValueRef.current = null;
-        lastCompositionValueRef.current = null;
-      });
       onCompositionEnd?.(e);
     },
     [onCompositionEnd]

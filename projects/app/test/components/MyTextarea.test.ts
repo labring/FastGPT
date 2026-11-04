@@ -78,68 +78,74 @@ describe('MyTextarea', () => {
     vi.restoreAllMocks();
   });
 
-  it('does not restore selection during IME composition or its trailing input', async () => {
-    const onChange = vi.fn();
-    const onCompositionStart = vi.fn();
-    const onCompositionEnd = vi.fn();
-    const Harness = () => {
-      const [value, setValue] = React.useState('');
-      return React.createElement(MyTextarea, {
-        value,
-        onCompositionStart,
-        onCompositionEnd,
-        onChange: (event) => {
-          onChange(event);
-          setValue(event.currentTarget.value);
-        }
+  it.each(['same callback', 'later callback'])(
+    'does not restore selection during IME composition or its trailing input in a %s',
+    async (inputTiming) => {
+      const onChange = vi.fn();
+      const onCompositionStart = vi.fn();
+      const onCompositionEnd = vi.fn();
+      const Harness = () => {
+        const [value, setValue] = React.useState('');
+        return React.createElement(MyTextarea, {
+          value,
+          onCompositionStart,
+          onCompositionEnd,
+          onChange: (event) => {
+            onChange(event);
+            setValue(event.currentTarget.value);
+          }
+        });
+      };
+
+      await act(async () => root.render(React.createElement(Harness)));
+
+      const textarea = container.querySelector('textarea');
+      expect(textarea).not.toBeNull();
+      const restoreSelection = vi.spyOn(window.HTMLTextAreaElement.prototype, 'setSelectionRange');
+      const setValue = (value: string) => {
+        Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value')?.set?.call(
+          textarea,
+          value
+        );
+      };
+      const dispatchInput = () =>
+        textarea?.dispatchEvent(new window.Event('input', { bubbles: true }));
+
+      await act(async () => {
+        textarea?.dispatchEvent(new window.Event('compositionstart', { bubbles: true }));
+        setValue('n');
+        dispatchInput();
       });
-    };
 
-    await act(async () => root.render(React.createElement(Harness)));
+      expect(onCompositionStart).toHaveBeenCalledOnce();
+      expect(onChange).toHaveBeenCalledTimes(1);
+      expect(restoreSelection).not.toHaveBeenCalled();
 
-    const textarea = container.querySelector('textarea');
-    expect(textarea).not.toBeNull();
-    const restoreSelection = vi.spyOn(window.HTMLTextAreaElement.prototype, 'setSelectionRange');
-    const setValue = (value: string) => {
-      Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value')?.set?.call(
-        textarea,
-        value
-      );
-    };
-    const dispatchInput = () =>
-      textarea?.dispatchEvent(new window.Event('input', { bubbles: true }));
+      await act(async () => {
+        setValue('你');
+        textarea?.dispatchEvent(new window.Event('compositionend', { bubbles: true }));
+        if (inputTiming === 'same callback') dispatchInput();
+      });
+      if (inputTiming === 'later callback') {
+        await act(async () => dispatchInput());
+      }
 
-    await act(async () => {
-      textarea?.dispatchEvent(new window.Event('compositionstart', { bubbles: true }));
-      setValue('n');
-      dispatchInput();
-    });
+      expect(onCompositionEnd).toHaveBeenCalledOnce();
+      expect(onChange).toHaveBeenCalledTimes(2);
+      expect(restoreSelection).not.toHaveBeenCalled();
 
-    expect(onCompositionStart).toHaveBeenCalledOnce();
-    expect(onChange).toHaveBeenCalledTimes(1);
-    expect(restoreSelection).not.toHaveBeenCalled();
+      await act(async () => dispatchInput());
+      expect(onChange).toHaveBeenCalledTimes(2);
 
-    await act(async () => {
-      setValue('你');
-      textarea?.dispatchEvent(new window.Event('compositionend', { bubbles: true }));
-      dispatchInput();
-    });
+      await act(async () => {
+        setValue('你好');
+        dispatchInput();
+      });
 
-    expect(onCompositionEnd).toHaveBeenCalledOnce();
-    expect(onChange).toHaveBeenCalledTimes(2);
-    expect(restoreSelection).not.toHaveBeenCalled();
-
-    await act(async () => dispatchInput());
-    expect(onChange).toHaveBeenCalledTimes(2);
-
-    await act(async () => {
-      setValue('你好');
-      dispatchInput();
-    });
-
-    expect(onChange).toHaveBeenCalledTimes(3);
-    expect(restoreSelection).toHaveBeenCalledOnce();
-  });
+      expect(onChange).toHaveBeenCalledTimes(3);
+      expect(restoreSelection).toHaveBeenCalledOnce();
+    }
+  );
 
   it('accepts the same value after the parent resets the textarea', async () => {
     const changes: string[] = [];
