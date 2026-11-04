@@ -887,10 +887,19 @@ export class WorkflowQueue {
         variableState: this.data.variableState
       });
       const nodeSummary = createNodeSummary();
+      // Langfuse 兜底用量必须归属到“本次节点执行”：队列默认允许 10 个节点并发，
+      // 共享的 chatNodeUsages 会混入并发节点的 usage，不能按共享列表做切片。
+      const nodeUsage = { inputTokens: 0, outputTokens: 0 };
       const dispatchData: ModuleDispatchProps<Record<string, any>> = {
         ...this.data,
         memoryState: this.memoryState,
-        usagePush: this.usagePush.bind(this),
+        usagePush: (usages) => {
+          usages.forEach((item) => {
+            nodeUsage.inputTokens += item.inputTokens ?? 0;
+            nodeUsage.outputTokens += item.outputTokens ?? 0;
+          });
+          this.usagePush(usages);
+        },
         nodeSummary,
         lastInteractive: this.data.lastInteractive?.entryNodeIds?.includes(node.nodeId)
           ? this.data.lastInteractive
@@ -1081,7 +1090,9 @@ export class WorkflowQueue {
         nodeType: node.flowNodeType,
         input: params,
         output: dispatchRes.data,
-        response: formatCurrentNodeResponse
+        response: formatCurrentNodeResponse,
+        // agent 等节点的自身响应不带 token，用本次节点执行期间收到的 usage 兜底。
+        usage: nodeUsage
       });
 
       // Error
