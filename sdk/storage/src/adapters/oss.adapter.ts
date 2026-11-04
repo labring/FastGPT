@@ -120,10 +120,15 @@ export class OssStorageAdapter implements IStorage {
   }
 
   async uploadObject(params: Storage.UploadObjectParams): Promise<Storage.UploadObjectResult> {
-    const { key, body, contentType, contentLength, contentDisposition, metadata } = params;
+    const { key, body, contentType, contentLength, contentDisposition, metadata, abortSignal } =
+      params;
     assertStorageObjectKey(key);
+    throwIfStorageAborted(abortSignal);
     // ali-oss 会把字符串 body 当成本地文件路径，因此先转成字节以满足 IStorage 契约。
     const uploadBody = typeof body === 'string' ? Buffer.from(body) : body;
+    if (uploadBody instanceof Readable) {
+      bindAbortSignalToReadable({ readable: uploadBody, abortSignal });
+    }
 
     const headers: Record<string, unknown> = {
       'x-oss-storage-class': 'Standard',

@@ -155,8 +155,16 @@ export class CosStorageAdapter implements IStorage {
   }
 
   async uploadObject(params: Storage.UploadObjectParams): Promise<Storage.UploadObjectResult> {
-    const { key, body, contentType, contentLength, contentDisposition, metadata } = params;
+    const { key, body, contentType, contentLength, contentDisposition, metadata, abortSignal } =
+      params;
     assertStorageObjectKey(key);
+    throwIfStorageAborted(abortSignal);
+
+    // COS SDK 只监听 body 的 error 来中止请求；把取消绑定到 body 才能释放底层连接。
+    const uploadBody = abortSignal && !(body instanceof Readable) ? Readable.from([body]) : body;
+    if (uploadBody instanceof Readable) {
+      bindAbortSignalToReadable({ readable: uploadBody, abortSignal });
+    }
 
     const headers: Record<string, string> = {};
     if (contentDisposition) headers['Content-Disposition'] = contentDisposition;
@@ -174,7 +182,7 @@ export class CosStorageAdapter implements IStorage {
           Bucket: this.options.bucket,
           Region: this.options.region,
           Key: key,
-          Body: body,
+          Body: uploadBody,
           ContentType: contentType,
           ContentLength: contentLength,
           Headers: Object.keys(headers).length ? headers : undefined

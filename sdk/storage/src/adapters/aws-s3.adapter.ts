@@ -135,25 +135,35 @@ export class AwsS3StorageAdapter implements IStorage {
   }
 
   async uploadObject(params: Storage.UploadObjectParams): Promise<Storage.UploadObjectResult> {
-    const { key, body, contentType, contentLength, contentDisposition, metadata } = params;
+    const { key, body, contentType, contentLength, contentDisposition, metadata, abortSignal } =
+      params;
     assertStorageObjectKey(key);
+    throwIfStorageAborted(abortSignal);
 
     const meta = toAwsMetadata(metadata);
+    const uploadAbortController = new AbortController();
+    const abortUpload = () => uploadAbortController.abort();
+    abortSignal?.addEventListener('abort', abortUpload, { once: true });
 
-    const upload = new Upload({
-      client: this.client,
-      params: {
-        Bucket: this.options.bucket,
-        Key: key,
-        Body: body,
-        ContentType: contentType,
-        ContentLength: contentLength,
-        ContentDisposition: contentDisposition,
-        Metadata: meta
-      }
-    });
+    try {
+      const upload = new Upload({
+        client: this.client,
+        abortController: uploadAbortController,
+        params: {
+          Bucket: this.options.bucket,
+          Key: key,
+          Body: body,
+          ContentType: contentType,
+          ContentLength: contentLength,
+          ContentDisposition: contentDisposition,
+          Metadata: meta
+        }
+      });
 
-    await upload.done();
+      await upload.done();
+    } finally {
+      abortSignal?.removeEventListener('abort', abortUpload);
+    }
 
     return {
       key,

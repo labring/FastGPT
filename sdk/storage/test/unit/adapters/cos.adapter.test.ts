@@ -1,3 +1,4 @@
+import { PassThrough } from 'node:stream';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { CosStorageAdapter } from '../../../src/adapters/cos.adapter';
 
@@ -386,5 +387,46 @@ describe('CosStorageAdapter.generatePublicGetUrl', () => {
     });
 
     expect(adapter.generatePublicGetUrl({ key: 'folder #/file+.txt' }).url).toBe(expectedUrl);
+  });
+});
+
+describe('CosStorageAdapter.uploadObject', () => {
+  it('rejects a pre-aborted upload without dispatching a COS request', async () => {
+    const adapter = createAdapter();
+    const putObject = vi.fn();
+    (adapter as any).client.putObject = putObject;
+    const controller = new AbortController();
+    controller.abort();
+
+    await expect(
+      adapter.uploadObject({
+        key: 'dataset/team/file.txt',
+        body: Buffer.from('file'),
+        abortSignal: controller.signal
+      })
+    ).rejects.toMatchObject({ name: 'AbortError' });
+    expect(putObject).not.toHaveBeenCalled();
+  });
+
+  it('aborts an in-flight upload through the body error channel', async () => {
+    const adapter = createAdapter();
+    const body = new PassThrough();
+    const putObject = vi.fn((params, callback) => {
+      params.Body.once('error', (error) => callback(error));
+    });
+    (adapter as any).client.putObject = putObject;
+    const controller = new AbortController();
+
+    const uploadPromise = adapter.uploadObject({
+      key: 'dataset/team/file.txt',
+      body,
+      contentLength: 4,
+      abortSignal: controller.signal
+    });
+    controller.abort();
+
+    await expect(uploadPromise).rejects.toMatchObject({ name: 'AbortError' });
+    expect(body.destroyed).toBe(true);
+    expect(putObject).toHaveBeenCalledTimes(1);
   });
 });
