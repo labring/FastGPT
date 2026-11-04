@@ -1,4 +1,5 @@
 import { NextAPI } from '@/service/middleware/entry';
+import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { DatasetAuditEventEnum } from '@fastgpt/global/core/dataset/audit/constants/event';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { type DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
@@ -179,16 +180,8 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
       throw new ApiRequestInputParseError(parsed.error, { inputSource: 'body' });
     }
   }
-  const needsEnableCollectionPermission =
-    effectiveApiDatasetServer?.permissionSync === true &&
-    // folder 类型 dataset 永远不开启 collection 权限（它只承载子知识库，没有自己的 collection）
-    dataset.type !== DatasetTypeEnum.folder &&
-    dataset.collectionPermissionEnabled !== true;
-  // 与「是否开启 collection 权限」解耦：开关早已打开但本次才开启托管时，同样需要补一轮全量。
-  const shouldEnqueueFullSync =
-    effectiveApiDatasetServer?.permissionSync === true &&
-    (dataset.apiDatasetServer?.permissionSync !== true ||
-      dataset.collectionPermissionEnabled !== true);
+  // 由事务内锁库后的最终状态决定，提交后再据此补全量同步。
+  let shouldEnqueueFullSync = false;
   const configAuditLogs = buildDatasetUpdateAuditLogs({
     dataset,
     modelHandle,
@@ -217,11 +210,45 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
   });
 
   const onUpdate = async (session: ClientSession) => {
+    // 资源范围以 dataset 归属为准：root 可以跨团队，用 header 的 teamId 锁不到目标库。
+    const datasetTeamId = String(dataset.teamId);
+    // 事务外的 dataset 快照可能已被并发关闭改写：用旧开关决策会跳过物化却提交
+    // permissionSync=true。版本自增使并发启停与本事务冲突，driver 重试后在这里读最新状态，
+    // 每次重试都重新决策。
+    const lockedDataset = await MongoDataset.findOneAndUpdate(
+      { _id: id, teamId: datasetTeamId },
+      { $inc: { collectionPermissionVersion: 1 } },
+      { session, new: true }
+    )
+      .select('collectionPermissionEnabled type apiDatasetServer')
+      .lean();
+    if (!lockedDataset) throw DatasetErrEnum.unExist;
+
+    // 未传 apiDatasetServer 时沿用库中配置，也必须以锁后值为准。
+    const lockedApiDatasetServer = (
+      apiDatasetServer === undefined ? lockedDataset.apiDatasetServer : effectiveApiDatasetServer
+    ) as ApiDatasetServerType | undefined;
+    const needsEnableCollectionPermission =
+      lockedApiDatasetServer?.permissionSync === true &&
+      // folder 类型 dataset 永远不开启 collection 权限（它只承载子知识库，没有自己的 collection）
+      lockedDataset.type !== DatasetTypeEnum.folder &&
+      lockedDataset.collectionPermissionEnabled !== true;
+
     // 开启开关与全库物化必须同一事务提交，否则读路径会看到「已开启但未物化」的整库不可见状态。
     // 按设计顺序先开 collection 权限，再写 apiDatasetServer。
     if (needsEnableCollectionPermission) {
-      await enableDatasetCollectionPermissions({ teamId, datasetId: String(id), session });
+      await enableDatasetCollectionPermissions({
+        teamId: datasetTeamId,
+        datasetId: String(id),
+        session
+      });
     }
+
+    // 与「是否开启 collection 权限」解耦：开关早已打开但本次才开启托管时，同样需要补一轮全量。
+    shouldEnqueueFullSync =
+      lockedApiDatasetServer?.permissionSync === true &&
+      (lockedDataset.apiDatasetServer?.permissionSync !== true ||
+        lockedDataset.collectionPermissionEnabled !== true);
 
     // Website dataset update chunkSettings, need to clean up dataset
     if (
