@@ -174,7 +174,8 @@ export const authChatTargetCrud = async ({
     app: resource.app,
     skill: resource.skill,
     isRoot: resource.isRoot,
-    canWrite: resource.permission.hasWritePer,
+    // 缺少权限上下文时默认隐藏审核记录，不影响已有会话读取流程。
+    canWrite: resource.permission?.hasWritePer ?? false,
     authType: resource.authType,
     ...chatSourceResponseOptions[sourceType]
   };
