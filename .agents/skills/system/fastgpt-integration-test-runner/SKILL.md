@@ -7,6 +7,8 @@ description: 筛选并执行 FastGPT 集成用例，优先运行 Node 或无头 
 
 使用 `.agents/test/` 中已有用例；按本轮相关范围筛选、先生成报告、脚本优先执行，AI 执行未覆盖项并复核脚本失败。不复制维护第二份用例库，不把历史报告当作当前测试证据。
 
+这些用例仅在用户要求执行时手动运行，不接入 CI、`pnpm test`、构建或安装脚本；调度器自检也按需手动运行。浏览器和登录环境由本轮执行准备，不能让日常 CI 依赖这些条件。
+
 ## 筛选本轮用例
 
 先读取仓库 `AGENTS.md`、`.agents/code/syntax.md`，沿用会话中已确认的环境和授权。以下命令在仓库根目录运行，需要已安装仓库依赖；复用相邻 [用例生成 skill](../fastgpt-integration-test-case/SKILL.md) 的扫描器和 `.agents/test/index.html` 的离线渲染库。
