@@ -1,5 +1,6 @@
 import * as http from 'node:http';
 import type { AddressInfo, Socket } from 'node:net';
+import { PassThrough } from 'node:stream';
 import { afterEach, describe, expect, it } from 'vitest';
 import { CosStorageAdapter } from '../../../src/adapters/cos.adapter';
 import { OssStorageAdapter } from '../../../src/adapters/oss.adapter';
@@ -44,6 +45,24 @@ const createStalledObjectServer = () => {
       'Content-Type': 'application/octet-stream'
     });
     response.write('partial');
+    notifyRequest?.();
+  });
+  server.on('connection', (socket) => {
+    sockets.add(socket);
+    socket.once('close', () => sockets.delete(socket));
+  });
+
+  return { server, sockets, requestReceived };
+};
+
+const createStalledUploadServer = () => {
+  const sockets = new Set<Socket>();
+  let notifyRequest: (() => void) | undefined;
+  const requestReceived = new Promise<void>((resolve) => {
+    notifyRequest = resolve;
+  });
+  const server = http.createServer(() => {
+    // Keep the request open without a response so cancellation is observable.
     notifyRequest?.();
   });
   server.on('connection', (socket) => {
@@ -129,6 +148,80 @@ describe('provider download abort transport integration', () => {
 
     await withTimeout(streamClosed, 'COS stream did not close after abort');
     expect(body.errored).toBe(abortReason);
+    await expect.poll(() => sockets.size, { timeout: 1000 }).toBe(0);
+    await storage.destroy();
+    await closeServer(server);
+  });
+});
+
+describe('provider upload abort transport integration', () => {
+  it('closes the COS upload socket when the caller aborts an in-flight upload', async () => {
+    const { server, sockets, requestReceived } = createStalledUploadServer();
+    const port = await listen(server);
+    const storage = new CosStorageAdapter({
+      vendor: 'cos',
+      bucket: 'test-bucket-1250000000',
+      region: 'ap-guangzhou',
+      protocol: 'http:',
+      domain: `127.0.0.1:${port}`,
+      credentials: { accessKeyId: 'secret-id', secretAccessKey: 'secret-key' }
+    });
+    const controller = new AbortController();
+    const abortReason = new Error('client aborted');
+    const body = new PassThrough();
+    const uploadPromise = storage.uploadObject({
+      key: 'abort/upload.bin',
+      body,
+      contentLength: 4,
+      abortSignal: controller.signal
+    });
+    body.write(Buffer.from('test'));
+    const uploadSettled = uploadPromise.then(
+      () => undefined,
+      (error) => error
+    );
+    await withTimeout(requestReceived, 'COS upload did not reach the local server');
+
+    controller.abort(abortReason);
+
+    const error = await withTimeout(uploadSettled, 'COS upload did not settle after abort');
+    expect(error).toBe(abortReason);
+    await expect.poll(() => sockets.size, { timeout: 1000 }).toBe(0);
+    await storage.destroy();
+    await closeServer(server);
+  });
+
+  it('closes the OSS upload socket when the caller aborts an in-flight upload', async () => {
+    const { server, sockets, requestReceived } = createStalledUploadServer();
+    const port = await listen(server);
+    const storage = new OssStorageAdapter({
+      vendor: 'oss',
+      bucket: 'test-bucket',
+      region: 'oss-cn-hangzhou',
+      endpoint: `http://127.0.0.1:${port}`,
+      cname: true,
+      secure: false,
+      credentials: { accessKeyId: 'access-key', secretAccessKey: 'secret-key' }
+    });
+    const controller = new AbortController();
+    const abortReason = new Error('client aborted');
+    const body = new PassThrough();
+    const uploadPromise = storage.uploadObject({
+      key: 'abort/upload.bin',
+      body,
+      abortSignal: controller.signal
+    });
+    body.write(Buffer.from('test'));
+    const uploadSettled = uploadPromise.then(
+      () => undefined,
+      (error) => error
+    );
+    await withTimeout(requestReceived, 'OSS upload did not reach the local server');
+
+    controller.abort(abortReason);
+
+    const error = await withTimeout(uploadSettled, 'OSS upload did not settle after abort');
+    expect(error).toBe(abortReason);
     await expect.poll(() => sockets.size, { timeout: 1000 }).toBe(0);
     await storage.destroy();
     await closeServer(server);
