@@ -18,6 +18,7 @@ import type {
 } from '@fastgpt/global/openapi/core/app/common/api';
 import {
   PerResourceTypeEnum,
+  ReadPermissionVal,
   WritePermissionVal
 } from '@fastgpt/global/support/permission/constant';
 import { TeamAppCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
@@ -25,6 +26,7 @@ import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { getCachedSystemModelHandle } from '@fastgpt/service/core/ai/model/catalog/cache';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
+import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { serviceEnv } from '@fastgpt/service/env';
 import { getResourceOwnedClbs } from '@fastgpt/service/support/permission/controller';
 import { updateResourceCollaborators } from '@fastgpt/service/support/permission/resourcePermissionService';
@@ -75,6 +77,29 @@ describe('Copy', () => {
     expect(res2.error).toBeUndefined();
     expect(res2.code).toBe(200);
     const appId = res2.data as string;
+    const [readableDataset, privateDataset] = await MongoDataset.create([
+      {
+        name: 'readable-dataset',
+        teamId: users.members[0].teamId,
+        tmbId: users.members[0].tmbId,
+        vectorModel: 'text-embedding-3-small',
+        agentModel: 'gpt-4o-mini'
+      },
+      {
+        name: 'private-dataset',
+        teamId: users.members[0].teamId,
+        tmbId: users.members[0].tmbId,
+        vectorModel: 'text-embedding-3-small',
+        agentModel: 'gpt-4o-mini'
+      }
+    ]);
+    await MongoResourcePermission.create({
+      resourceType: PerResourceTypeEnum.dataset,
+      teamId: users.members[0].teamId,
+      resourceId: String(readableDataset._id),
+      tmbId: users.members[1].tmbId,
+      permission: ReadPermissionVal
+    });
     await MongoAppVersion.updateOne(
       { appId, isPublish: true },
       {
@@ -90,6 +115,22 @@ describe('Copy', () => {
                   value: 'disabled-copy-model',
                   selectedType: FlowNodeInputTypeEnum.selectLLMModel,
                   renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
+                }
+              ],
+              outputs: []
+            },
+            {
+              nodeId: 'dataset-node',
+              flowNodeType: FlowNodeTypeEnum.datasetSearchNode,
+              name: 'Dataset Search',
+              inputs: [
+                {
+                  key: NodeInputKeyEnum.datasetSelectList,
+                  renderTypeList: [FlowNodeInputTypeEnum.selectDataset],
+                  value: [
+                    { datasetId: String(readableDataset._id) },
+                    { datasetId: String(privateDataset._id) }
+                  ]
                 }
               ],
               outputs: []
@@ -160,6 +201,10 @@ describe('Copy', () => {
         key: NodeInputKeyEnum.aiModelId,
         value: expectedFallbackModelId
       })
+    ]);
+    expect(copiedVersion?.resources).toEqual([
+      { type: 'dataset', id: String(readableDataset._id) },
+      { type: 'model', id: expectedFallbackModelId }
     ]);
   });
 
