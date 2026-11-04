@@ -52,21 +52,6 @@ describe('serviceEnv bootstrap configuration', () => {
       serviceEnv: { DB_MAX_LINK: 1000 }
     });
   });
-  it('enables MongoDB index synchronization by default and supports disabling it', async () => {
-    vi.stubEnv('FILE_TOKEN_KEY', 'filetokenkey');
-    vi.stubEnv('AES256_SECRET_KEY', 'fastgptsecret');
-    vi.stubEnv('INVOKE_TOKEN_SECRET', validInvokeTokenSecret);
-
-    vi.stubEnv('SYNC_INDEX', undefined);
-    await expect(importServiceEnv()).resolves.toMatchObject({
-      serviceEnv: { SYNC_INDEX: true }
-    });
-
-    vi.stubEnv('SYNC_INDEX', 'false');
-    await expect(importServiceEnv()).resolves.toMatchObject({
-      serviceEnv: { SYNC_INDEX: false }
-    });
-  });
   it('validates the system migration batch size during service env init', async () => {
     vi.stubEnv('FILE_TOKEN_KEY', 'filetokenkey');
     vi.stubEnv('AES256_SECRET_KEY', 'fastgptsecret');

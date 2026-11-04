@@ -238,7 +238,6 @@ const syncMongoIndex = (model: Model<any>) => {
   if (
     process.env.NODE_ENV === 'test' ||
     process.env.NEXT_PHASE === 'phase-production-build' ||
-    !serviceEnv.SYNC_INDEX ||
     !MONGO_URL
   ) {
     return;
