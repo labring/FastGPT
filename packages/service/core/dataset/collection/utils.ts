@@ -459,5 +459,13 @@ export const getTrainingModeByCollection = ({
   ) {
     return TrainingModeEnum.auto;
   }
+  // 模板导入（FAQ q/a）也支持原生 autoIndex；训练阶段仍由 pro 的 autoTrainingProcess 执行。
+  if (
+    trainingType === DatasetCollectionDataProcessModeEnum.template &&
+    autoIndexes &&
+    global.feConfigs?.isPlus
+  ) {
+    return TrainingModeEnum.auto;
+  }
   return TrainingModeEnum.index;
 };
