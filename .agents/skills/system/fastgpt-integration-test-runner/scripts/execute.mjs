@@ -117,7 +117,10 @@ export function parseBrowserResults(data, caseId) {
       for (const test of spec.tests ?? []) {
         const results = test.results ?? [];
         const result =
-          results.length === 1 && results[0].status === 'passed'
+          test.expectedStatus === 'passed' &&
+          test.status === 'expected' &&
+          results.length === 1 &&
+          results[0].status === 'passed'
             ? 'passed'
             : !results.length || results.every((entry) => entry.status === 'skipped')
               ? 'blocked'
@@ -131,7 +134,10 @@ export function parseBrowserResults(data, caseId) {
             results
               .flatMap((entry) => entry.errors ?? [])
               .map((error) => (error.message ?? '').replace(/\u001b\[[0-?]*[ -/]*[@-~]/g, ''))
-              .join('\n') || result,
+              .join('\n') ||
+            (result === 'passed'
+              ? result
+              : `Playwright 状态：expectedStatus=${test.expectedStatus ?? 'missing'}，status=${test.status ?? 'missing'}，results=${results.map((entry) => entry.status).join(',') || 'empty'}`),
           evidence: results
             .flatMap((entry) => entry.attachments ?? [])
             .filter((entry) => entry.path)

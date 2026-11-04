@@ -428,9 +428,9 @@ export async function startPrivateEnvironment({
       ).json();
       if (r.code !== 200) throw Error('私有发布失败 ' + r.code);
     }
-    for (const name of ['resume', 'history', 'database', 'other', 'empty']) {
+    for (const name of ['resume', 'history', 'historySwitch', 'database', 'other', 'empty']) {
       const g = graph({
-        stages: name === 'resume' || name === 'database',
+        stages: ['resume', 'historySwitch', 'database'].includes(name),
         pieces: name === 'resume' ? 55 : 1,
         legacyVariables: name === 'database'
       });
@@ -548,6 +548,7 @@ export async function startPrivateEnvironment({
       stream: { prefixPieces: 55, postCompleteTtl: 4, streamTtl: 30 },
       history: {
         appId: apps.history,
+        switchAppId: apps.historySwitch,
         otherAppId: apps.other,
         chatIds: records,
         url: '/chat?appId=' + apps.history

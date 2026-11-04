@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { runNodeCase } from '../../support/runtime.mjs';
+import { Blocked, runNodeCase } from '../../support/runtime.mjs';
 import { chatHarness, browserSession } from '../../support/chat.mjs';
 import { historySnapshot, loadHistory, historyNetwork } from '../../support/history.mjs';
 import { privateDatabase, control } from '../../support/private.mjs';
@@ -265,6 +265,10 @@ async function execute(context) {
     return '第一批状态/已读/时间改变但第二批失败时整轮不提交；下一轮两批成功才统一刷新';
   }
   if (context.itemId === 'C7') {
+    const nextApp = required(f.switchAppId, 'history.switchAppId');
+    // 两份脚本各自回收应用，切换目标不能借用后续 Mongo 用例的资源。
+    if ([appId, c.fixture.apps.database].includes(nextApp))
+      throw new Blocked('history.switchAppId 必须独立于 history.appId 和 apps.database');
     for (const fail of [false, true]) {
       const task = await h.start({ appId, chatId: ids[0] }),
         browser = await open();
@@ -288,7 +292,6 @@ async function execute(context) {
       });
       await poll(() => assert.equal(captured, true), 10000);
       // 全部应用页本身保留 Context，必须再真实选择另一资源才能触发旧 effect 的清理。
-      const nextApp = required(c.fixture.apps.database, 'apps.database');
       const nextTask = await h.start({ appId: nextApp });
       const detail = success(
         await c.request({

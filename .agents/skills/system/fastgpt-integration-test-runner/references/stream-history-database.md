@@ -33,6 +33,8 @@ node .agents/test/support/environment.mjs \
 
 写操作同时校验 `fg_it_*` 数据库名称、Mongo marker、Redis marker 和本轮 nonce；普通数据库连接不能替代该证明。应用必须在 `lifecycle.disposeApps` 中登记并以 `FG-TEST-` 命名。运行结束经正常接口删除测试会话和应用；复测已回收的应用需要重新准备环境，不能盲目复用旧 ID。
 
+列表 C7 的 `history.switchAppId` 是单独创建的带 gate 工作流，与 `history.appId`、Mongo C1 的 `apps.database` 不同，并登记在 `lifecycle.disposeApps`。准备器会生成该字段；手工配置也需提供。每份脚本结束时会回收自己使用的应用，因此跨用例不能共用这些可回收资源，不能只调整执行顺序来避免清理冲突。
+
 ## 执行
 
 先按执行 skill 创建包含上述用例的临时报告，BASE_URL 和版本必须与本轮私有主站一致。然后将私有 JSON 作为子进程环境传入，不在命令行拼接凭证：

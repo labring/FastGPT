@@ -81,17 +81,26 @@ test('按子场景分派脚本和 AI，不扩展自定义变体范围或隐式�
 });
 
 test('浏览器按原始变体结果判断，预期失败、跳过和重试不能伪装为通过', () => {
-  const statuses = [['passed'], ['failed'], ['failed', 'passed'], ['skipped'], []];
+  const variants = [
+    ['passed', 'expected', ['passed']],
+    ['passed', 'unexpected', ['failed']],
+    ['failed', 'unexpected', ['passed']],
+    ['failed', 'expected', ['failed']],
+    ['passed', 'flaky', ['failed', 'passed']],
+    ['skipped', 'skipped', ['skipped']],
+    ['passed', 'skipped', []]
+  ];
   const data = {
     suites: [
       {
         suites: [
           {
-            specs: statuses.map((values, i) => ({
+            specs: variants.map(([expectedStatus, status, values], i) => ({
               title: '[FG-TEST-BROWSER/C' + (i + 1) + '] 变体',
               tests: [
                 {
-                  expectedStatus: 'failed',
+                  expectedStatus,
+                  status,
                   results: values.map((status) => ({ status, errors: [] }))
                 }
               ]
@@ -103,7 +112,7 @@ test('浏览器按原始变体结果判断，预期失败、跳过和重试不�
   };
   assert.deepEqual(
     parseBrowserResults(data, 'FG-TEST-BROWSER').map((entry) => entry.result),
-    ['passed', 'failed', 'failed', 'blocked', 'blocked']
+    ['passed', 'failed', 'failed', 'failed', 'failed', 'blocked', 'blocked']
   );
 });
 
@@ -317,6 +326,7 @@ test('[FG-TEST-BROWSER/C1] 无头真实点击',async({page},info)=>{
  await page.getByRole('button',{name:'执行'}).click();
  await expect(page.getByRole('button',{name:'完成'})).toBeVisible();
 });
+
 test('[FG-TEST-BROWSER/C2] 可控失败供 AI 复核',async({page})=>{
  await page.setContent('<p>框架失败路径自验证</p>');expect(1).toBe(2);
 });
@@ -344,6 +354,52 @@ test('[FG-TEST-BROWSER/C2] 可控失败供 AI 复核',async({page})=>{
     assert.equal(await page.locator('.detail-row > td').getAttribute('colspan'), '9');
   } finally {
     await browser?.close();
+    await h.close();
+  }
+});
+
+test('混合意外成功与普通失败均需 AI 复核，只复测后者不能消除前者', async () => {
+  const h = await harness('playwright');
+  try {
+    await writeFile(
+      h.script,
+      `import {test, expect} from '@playwright/test';
+test('[FG-TEST-BROWSER/C1] 意外成功', () => { test.fail(); expect(1).toBe(1); });
+test('[FG-TEST-BROWSER/C2] 普通失败', () => { expect(1).toBe(2); });
+`
+    );
+    await h.init('http://127.0.0.1:1');
+    const first = await h.run([], 1);
+    assert.deepEqual(
+      first.aiTasks.filter((entry) => entry.action === 'review').map((entry) => entry.itemId),
+      ['C1', 'C2']
+    );
+    assert.deepEqual(
+      (await h.data()).cases[0].items.map((entry) => entry.result),
+      ['failed', 'failed', 'pending']
+    );
+    await writeFile(
+      h.script,
+      `import {test, expect} from '@playwright/test';
+test('[FG-TEST-BROWSER/C2] 显式复测成功', () => { expect(1).toBe(1); });
+`
+    );
+    await h.run(['--case', h.caseId, '--items', 'C2']);
+    const current = await h.data();
+    const second = planExecution(current);
+    assert.deepEqual(
+      second.aiTasks.filter((entry) => entry.action === 'review').map((entry) => entry.itemId),
+      ['C1']
+    );
+    const rows = current.cases[0].items;
+    assert.deepEqual(
+      rows.map((entry) => entry.result),
+      ['failed', 'passed', 'pending']
+    );
+    assert.equal(rows[0].attempt, 1);
+    assert.equal(rows[1].attempt, 2);
+    assert.ok(rows[1].history.some((entry) => entry.result === 'failed'));
+  } finally {
     await h.close();
   }
 });

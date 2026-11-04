@@ -24,7 +24,7 @@ sources:
   - packages/dal/redis/lease/chat/chatGenerationLease.ts
   - projects/app/src/web/core/chat/history/api.ts
   - projects/app/src/web/core/chat/context/chatContext.tsx
-  - packages/service/core/ai/skill/debugChat.ts
+  - packages/service/core/ai/skill/debugChat/handler.ts
   - pro/admin/src/pages/api/core/chat/chatAgentHelper/completions.ts
   - pro/admin/src/service/core/ai/workflowBuilder/handler.ts
   - projects/app/src/pageComponents/dashboard/skill/detail/preview/SkillPreview.tsx
@@ -54,6 +54,7 @@ baseline: "5a5211f70998f5311cd40b0e5362a1414be6fbdf"
 
 - C2 复用 FG-CHAT-CONVERSATION-001 的查询和清理；准备当前成员两个会话（A busy、B idle）、同应用其他成员会话、其他团队/资源会话、已软删除会话和不存在的 chatId。保存各自访问范围，不因账号有应用读权限就认定能看他人成员历史。
 - C3、C5 另建 201 个当前成员可见的独立测试会话，通过正常分页滚动加载；记录 chatId、title、top、updateTime、hasBeenRead、chatGenerateStatus 原快照。测试长列表不能只向单个 HTTP 请求塞 201 项代替客户端分批。
+- C7 使用 `history.switchAppId` 指定独立的切换目标工作流，包含同样的确定回复和 gate；不能复用 Mongo 用例的 `apps.database`。两份脚本分别回收各自应用，同一报告可连续执行。
 - 状态请求 App 用 `{appId, chatIds}`；Skill 用 `{skillId, chatIds}`；Helper/Builder 用 `{appId, sourceType, chatIds}`。外链使用真实 shareId/outLinkUid 身份构造，不在请求体虚构内部 sourceId 字段。
 - 网络代理能按状态请求返回一次 503、阻断为网络错误或延迟超过 5 秒；第二批失败只故障第二个 HTTP 请求。Redis MGET 故障使用私有实例命令代理，不影响无关业务。
 - 取证：Network 保存每批去重后的 IDs、起止时间和响应；Redis 命令代理只记录本轮 key 与命令数，认证内容脱敏。监测组件状态可在测试浏览器调试器中读取既有 React/Zustand 状态，不新增产品调试接口。
