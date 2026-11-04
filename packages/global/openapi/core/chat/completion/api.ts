@@ -60,7 +60,7 @@ const WebCompletionsSchema = z.object({
   customUid: optionalNullToUndefined(z.string().max(1024)).meta({
     example: 'customer-42',
     description:
-      '接入方后端提供的使用者 ID，最长 1024 字符；不改变鉴权成员，与 authProxy 互斥。空字符串沿用默认使用者'
+      '接入方后端提供的使用者 ID（FastGPT 4.18.0 及以上版本支持），最长 1024 字符；不改变鉴权成员，与 authProxy 互斥。空字符串沿用默认使用者'
   }),
   metadata: optionalNullToUndefined(z.record(z.string(), z.any())).meta({
     description: '元数据'
