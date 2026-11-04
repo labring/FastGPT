@@ -30,6 +30,7 @@ const historyColumns = [
   { key: 'sendTimes', width: '28%' },
   { key: 'actions', width: '14%' }
 ] as const;
+const historyTableMinWidth = '960px';
 
 /** 展示通知计划及各轮发送状态；失败正文只在点击异常标签后读取。 */
 const ModelDeprecationHistoryModal = ({
@@ -75,6 +76,7 @@ const ModelDeprecationHistoryModal = ({
         rootProps={{
           w: '100%',
           h: '400px',
+          minW: 0,
           border: '1px solid',
           borderColor: 'myGray.200',
           borderRadius: 'lg',
@@ -105,7 +107,10 @@ const ModelDeprecationHistoryModal = ({
           ) : null
         }
         renderHeader={({ headerTableWidth }) => (
-          <Table sx={{ tableLayout: 'fixed', width: `${headerTableWidth} !important` }}>
+          <Table
+            minW={historyTableMinWidth}
+            sx={{ tableLayout: 'fixed', width: `${headerTableWidth} !important` }}
+          >
             <colgroup>
               {historyColumns.map((column) => (
                 <col key={column.key} style={{ width: column.width }} />
@@ -143,7 +148,7 @@ const ModelDeprecationHistoryModal = ({
               {t('config_model:model_deprecation.no_history')}
             </Flex>
           ) : (
-            <Table w={'100%'} sx={{ tableLayout: 'fixed' }}>
+            <Table minW={historyTableMinWidth} w={'100%'} sx={{ tableLayout: 'fixed' }}>
               <colgroup>
                 {historyColumns.map((column) => (
                   <col key={column.key} style={{ width: column.width }} />
@@ -286,7 +291,7 @@ const HistoryRow = ({
               {t('config_model:model_deprecation.terminate')}
             </Button>
           ) : (
-            '-'
+            <Box textAlign={'center'}>-</Box>
           )}
         </Td>
       </Tr>
