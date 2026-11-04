@@ -1,3 +1,5 @@
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
+import { getChatPublishSourceName } from '@fastgpt/global/common/chat/publishSource';
 import { getLogIdentity, normalizeAppLogKeys } from '@fastgpt/global/core/app/logs/utils';
 import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import {
@@ -252,6 +254,9 @@ const LogTable = ({
 
   const HeaderRenderMap = useMemoEnhance(
     () => ({
+      [AppLogKeysEnum.PUBLISH_SOURCE_TYPE]: (
+        <Th key={AppLogKeysEnum.PUBLISH_SOURCE_TYPE}>{t('app:logs_keys_publish_source_type')}</Th>
+      ),
       [AppLogKeysEnum.SOURCE]: <Th key={AppLogKeysEnum.SOURCE}>{t('app:logs_keys_source')}</Th>,
       [AppLogKeysEnum.CREATED_TIME]: (
         <Th key={AppLogKeysEnum.CREATED_TIME}>{t('app:logs_keys_createdTime')}</Th>
@@ -350,10 +355,29 @@ const LogTable = ({
 
   const getCellRenderMap = useCallback(
     (item: AppLogsListItemType) => ({
+      [AppLogKeysEnum.PUBLISH_SOURCE_TYPE]: (
+        <Td key={AppLogKeysEnum.PUBLISH_SOURCE_TYPE}>
+          {item.publishSource?.type && ChatSourceMap[item.publishSource.type]
+            ? t(ChatSourceMap[item.publishSource.type].name)
+            : '-'}
+        </Td>
+      ),
       [AppLogKeysEnum.SOURCE]: (
         <Td key={AppLogKeysEnum.SOURCE}>
-          {/* @ts-ignore */}
-          {item.sourceName || t(ChatSourceMap[item.source]?.name) || item.source}
+          <MyTooltip
+            label={
+              item.publishSource?.id
+                ? t('app:logs_publish_source_id', { id: item.publishSource.id })
+                : undefined
+            }
+          >
+            <Box as="span">
+              {getChatPublishSourceName({
+                name: item.publishSource?.name,
+                sourceName: item.sourceName
+              }) ?? t('app:logs_publish_source_deleted')}
+            </Box>
+          </MyTooltip>
         </Td>
       ),
       [AppLogKeysEnum.CREATED_TIME]: (

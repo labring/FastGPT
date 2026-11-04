@@ -1,3 +1,4 @@
+import { chatPublishSourceMongoSchema } from './publishSource/schema';
 import { connectionMongo, defineIndex, getMongoModel } from '../../common/mongo';
 const { Schema } = connectionMongo;
 import { type ChatSchemaType } from '@fastgpt/global/core/chat/type';
@@ -59,6 +60,7 @@ const ChatSchema = new Schema({
     type: Boolean,
     default: false
   },
+  publishSource: { type: chatPublishSourceMongoSchema },
   source: {
     type: String,
     required: true,
@@ -168,6 +170,12 @@ defineIndex(ChatSchema, {
       shareId: { $exists: true }
     }
   }
+});
+
+// 新来源分享历史；旧 shareId 索引仍服务兼容查询。
+defineIndex(ChatSchema, {
+  key: { 'publishSource.type': 1, 'publishSource.id': 1, outLinkUid: 1, updateTime: -1 },
+  options: { partialFilterExpression: { 'publishSource.id': { $exists: true } } }
 });
 
 /* get chat logs */

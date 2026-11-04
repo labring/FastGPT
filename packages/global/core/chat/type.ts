@@ -1,3 +1,4 @@
+import { ChatPublishSourceSchema } from './publishSource/type';
 import { SearchDataResponseQuoteListItemSchema } from '../dataset/type';
 import {
   ChatFileTypeEnum,
@@ -123,7 +124,8 @@ export const ChatSchema = z.object({
   title: z.string(),
   customTitle: z.string().optional(),
   top: z.boolean().default(false),
-  source: z.enum(ChatSourceEnum),
+  publishSource: ChatPublishSourceSchema.optional(),
+  source: z.enum(ChatSourceEnum).meta({ deprecated: true }),
   sourceName: z.string().optional(),
 
   shareId: z.string().optional(),

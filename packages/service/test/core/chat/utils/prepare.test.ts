@@ -1,3 +1,4 @@
+import { updateChatPublishSource } from '@fastgpt/service/core/chat/publishSource/service';
 import {
   tryStartChatGenerationLease,
   getChatGenerationStatuses
@@ -19,6 +20,7 @@ import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import {
+  ChatSourceEnum,
   ChatFileTypeEnum,
   ChatGenerateStatusEnum,
   ChatRoleEnum,
@@ -261,6 +263,70 @@ describe('prepare chat round', () => {
       await release?.();
     }
   });
+
+  it.each([false, true])(
+    'preChat 交互续跑=%s：执行前写入本次来源，失败尾部保留来源',
+    async (interactive) => {
+      const params = createPreChatRoundParams(
+        {
+          source: 'api',
+          publishSource: { type: ChatSourceEnum.api, id: testAppId },
+          sourceName: '本次渠道'
+        },
+        { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
+      );
+      await updateChatPublishSource({
+        ...params,
+        chatId: params.chatId!,
+        sourceName: '上一渠道',
+        publishSource: { type: ChatSourceEnum.api, id: testTmbId }
+      });
+      if (interactive) {
+        await MongoChatItem.create({
+          appId: testAppId,
+          sourceType: ChatSourceTypeEnum.app,
+          teamId: testTeamId,
+          tmbId: testTmbId,
+          chatId: params.chatId,
+          obj: ChatRoleEnum.AI,
+          dataId: 'previous-ai',
+          value: []
+        });
+      }
+      const prepared = await preChatRound({
+        ...params,
+        ...(interactive ? { interactive: { type: 'userSelect', params: {} } as any } : {})
+      });
+      try {
+        const chat = await MongoChat.findOne({ appId: testAppId, chatId: params.chatId }).lean();
+        expect(String(chat?.publishSource?.id)).toBe(testAppId);
+        expect(chat?.sourceName).toBe('本次渠道');
+        expect(prepared.responseChatItemId).toBe(
+          interactive ? 'previous-ai' : params.responseChatItemId
+        );
+        const count = await MongoChatItem.countDocuments({
+          appId: testAppId,
+          chatId: params.chatId
+        });
+        expect(count).toBe(interactive ? 1 : 2);
+        await failChatRound({
+          sourceType: params.sourceType,
+          sourceId: params.sourceId,
+          chatId: prepared.chatId,
+          responseChatItemId: prepared.responseChatItemId,
+          error: new Error('runtime failure')
+        });
+        expect(
+          String(
+            (await MongoChat.findOne({ appId: testAppId, chatId: params.chatId }).lean())
+              ?.publishSource?.id
+          )
+        ).toBe(testAppId);
+      } finally {
+        await prepared.releaseGenerationLease?.();
+      }
+    }
+  );
 
   it('rejects a second send before writing messages and identifies the original round', async () => {
     const params = createPreChatRoundParams(
@@ -700,6 +766,7 @@ describe('prepare chat round', () => {
       { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
     );
 
+    await updateChatPublishSource(params);
     const result = await prepareChatRound({
       chatId: params.chatId,
       sourceType: ChatSourceTypeEnum.app,
@@ -806,6 +873,7 @@ describe('prepare chat round', () => {
       { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
     );
 
+    await updateChatPublishSource(params);
     await prepareChatRound(params);
 
     const humanItem = await MongoChatItem.findOne({

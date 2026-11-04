@@ -12,7 +12,7 @@ import { authApp, authAppByTmbId } from '@fastgpt/service/support/permission/app
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { MongoUser } from '@fastgpt/service/support/user/schema';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
-import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatSourceEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { UserError } from '@fastgpt/global/common/error/utils';
 
 /**
@@ -104,12 +104,21 @@ export const authChatCompletionHeaderRequest = async ({
   authProxy?: ChatCompletionAuthProxy;
   showSkillReferences?: boolean;
 }): Promise<AuthResponseType> => {
-  const { legacyAppId, parsedAppId, apiKeyAuthProxy, teamId, tmbId, authType, sourceName, apikey } =
-    await authCert({
-      req,
-      authToken: true,
-      authApiKey: true
-    });
+  const {
+    legacyAppId,
+    parsedAppId,
+    apiKeyAuthProxy,
+    teamId,
+    tmbId,
+    authType,
+    sourceName,
+    apikey,
+    apiKeyId
+  } = await authCert({
+    req,
+    authToken: true,
+    authApiKey: true
+  });
 
   const { tmbId: effectiveTmbId } = await resolveChatCompletionEffectiveTmbId({
     authType,
@@ -177,6 +186,10 @@ export const authChatCompletionHeaderRequest = async ({
     apikey,
     authType,
     sourceName,
+    publishSource:
+      authType === AuthUserTypeEnum.apikey
+        ? { type: ChatSourceEnum.api, id: apiKeyId }
+        : { type: ChatSourceEnum.online },
     responseAllData: true,
     showCite: true,
     showSkillReferences

@@ -1,3 +1,7 @@
+import {
+  buildChatPublishSourceFilter,
+  buildSharePublishSourceFilter
+} from '@fastgpt/service/core/chat/publishSource/utils';
 import { addMonths } from 'date-fns';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 import { isAuxiliaryGenerationSourceType } from '@fastgpt/global/common/chat/source';
@@ -51,6 +55,7 @@ async function getChatHistoryContext({
     tmbId,
     uid,
     authType,
+    publishSource,
     scope
   } = await authChatTargetCrud({
     req,
@@ -67,7 +72,12 @@ async function getChatHistoryContext({
     authType === AuthUserTypeEnum.outLink
       ? {
           ...buildChatSourceQuery({ sourceType: resolvedSourceType, sourceId: resolvedSourceId }),
-          shareId: outLinkAuthData?.shareId,
+          $and: [
+            buildSharePublishSourceFilter({
+              id: publishSource!.id!,
+              shareId: outLinkAuthData!.shareId
+            })
+          ],
           outLinkUid: uid,
           updateTime: { $gte: addMonths(new Date(), -1) }
         }
@@ -75,7 +85,7 @@ async function getChatHistoryContext({
           ...buildChatSourceQuery({ sourceType: resolvedSourceType, sourceId: resolvedSourceId }),
           ...scope,
           tmbId,
-          ...(source && { source })
+          ...(source && { $and: [buildChatPublishSourceFilter([source])] })
         };
   return { match, authType, resolvedSourceType, resolvedSourceId };
 }
@@ -109,12 +119,16 @@ export async function buildClearChatHistoriesMatch({
   ) {
     return match;
   }
-  if (authType === AuthUserTypeEnum.token) return { ...match, source: ChatSourceEnum.online };
+  if (authType === AuthUserTypeEnum.token)
+    return {
+      ...match,
+      $and: [...(match.$and ?? []), buildChatPublishSourceFilter([ChatSourceEnum.online])]
+    };
   if (authType === AuthUserTypeEnum.apikey) {
     // 普通 App 的 API 清空保留原有整应用 api 记录语义。
     return {
       ...buildChatSourceQuery({ sourceType: resolvedSourceType, sourceId: resolvedSourceId }),
-      source: ChatSourceEnum.api
+      $and: [buildChatPublishSourceFilter([ChatSourceEnum.api])]
     };
   }
   return Promise.reject(ChatErrEnum.unAuthChat);

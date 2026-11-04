@@ -311,6 +311,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       appChatConfig: chatConfig,
       variables: newVariables,
       source,
+      publishSource: preparedRound.publishSource,
       sourceName: appName || '',
       userContent: workflowUserQuestion,
       aiContent: aiResponse,

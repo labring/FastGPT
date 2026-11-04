@@ -1,3 +1,4 @@
+import { chatPublishSourceMongoSchema } from '../../chat/publishSource/schema';
 import type { AppChatLogSchema } from '@fastgpt/global/core/app/logs/type';
 import { defineIndex, getMongoLogModel, Schema } from '../../../common/mongo';
 import { AppCollectionName } from '../schema';
@@ -22,6 +23,7 @@ const ChatLogSchema = new Schema({
     type: String,
     required: true
   },
+  publishSource: { type: chatPublishSourceMongoSchema },
   source: {
     type: String,
     required: true

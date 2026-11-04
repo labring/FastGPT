@@ -140,5 +140,11 @@
   "migrations.20261022_initialize_dataset_vector_indexes.description": "First verify and remove the legacy global HNSW index online. Once removal succeeds, count existing Dataset vectors in the background and schedule FP16 partial indexes for Datasets with more than 10,000 vectors. Index jobs run without a delay, one at a time globally. Migration completion does not mean all partial indexes are ready. Exact search remains available while indexes are being built.",
   "migrations.20261022_initialize_dataset_vector_indexes.result": "Counted {{scannedCount}} datasets; {{eligibleCount}} met the index threshold. Index builds continue in the queue.",
   "migrations.20261022_initialize_dataset_vector_indexes.datasets": "Count dataset vectors and schedule index builds",
-  "migrations.20261022_initialize_dataset_vector_indexes.legacyIndex": "Remove the legacy global HNSW index"
+  "migrations.20261022_initialize_dataset_vector_indexes.legacyIndex": "Remove the legacy global HNSW index",
+  "migrations.20261104_backfill_chat_publish_source.name": "Backfill chat call sources",
+  "migrations.20261104_backfill_chat_publish_source.description": "Backfill legacy publishSource references. Run manually after upgrading all writers and draining old executions.",
+  "migrations.20261104_backfill_chat_publish_source.result": "Scanned {{chats}} chats and {{chatLogs}} log buckets; {{missingChannelIds}} legacy sources have no recoverable channel ID",
+  "migrations.20261104_backfill_chat_publish_source.chats": "Chat sources",
+  "migrations.20261104_backfill_chat_publish_source.chatLogs": "Log bucket sources",
+  "migrations.20261104_backfill_chat_publish_source.validation": "Validate backfill"
 }

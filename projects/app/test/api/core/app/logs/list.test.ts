@@ -1,3 +1,4 @@
+import { MongoOpenApi } from '@fastgpt/service/support/openapi/schema';
 import exportLogs from '@/pages/api/core/app/logs/exportLogs';
 import { AppLogKeysEnum } from '@fastgpt/global/core/app/logs/constants';
 import { MongoAppLogKeys } from '@fastgpt/service/core/app/logs/logkeysSchema';
@@ -85,6 +86,84 @@ describe('logs list API - errorFilter', () => {
       tmbId: testTmbId,
       isRoot: false
     };
+  });
+
+  it('扩展渠道当前名、兼容旧名，来源筛选与CSV使用最新分类', async () => {
+    const key = await MongoOpenApi.create({
+      teamId: testTeamId,
+      tmbId: testTmbId,
+      apiKey: 'logs-source-key',
+      name: '当前名称'
+    });
+    const now = new Date();
+    await MongoChat.create(
+      [
+        {
+          chatId: 'channel-api',
+          publishSource: { type: 'api', id: key._id },
+          source: 'share',
+          sourceName: '旧名称'
+        },
+        { chatId: 'channel-old', source: 'api', sourceName: '历史入口' },
+        {
+          chatId: 'channel-deleted',
+          publishSource: { type: 'api', id: new Types.ObjectId() },
+          source: 'api',
+          sourceName: ' '
+        }
+      ].map((row) => ({
+        ...row,
+        teamId: testTeamId,
+        tmbId: testTmbId,
+        appId: testAppId,
+        sourceType: ChatSourceTypeEnum.app,
+        createTime: now,
+        updateTime: now
+      }))
+    );
+    const body = {
+      appId: testAppId,
+      dateStart: new Date(now.getTime() - 1000).toISOString(),
+      dateEnd: new Date(now.getTime() + 1000).toISOString(),
+      sources: ['api'],
+      pageNum: 1,
+      pageSize: 20
+    };
+    const result = await Call(listApi.default, { auth: authUser, headers: {}, body });
+    expect(result.data.total).toBe(3);
+    const rows = result.data.list;
+    expect(rows.find((r: any) => r.chatId === 'channel-api')?.publishSource).toEqual({
+      type: 'api',
+      id: String(key._id),
+      name: '当前名称'
+    });
+    expect(rows.find((r: any) => r.chatId === 'channel-old')?.publishSource).toEqual({
+      name: '历史入口'
+    });
+    expect(
+      rows.find((r: any) => r.chatId === 'channel-deleted')?.publishSource?.name
+    ).toBeUndefined();
+    const exported = await StreamCall(exportLogs, {
+      auth: authUser,
+      headers: {},
+      body: {
+        ...body,
+        title: 'source-test',
+        sourcesMap: { api: { label: 'API调用' } },
+        logKeys: [
+          AppLogKeysEnum.SESSION_ID,
+          AppLogKeysEnum.PUBLISH_SOURCE_TYPE,
+          AppLogKeysEnum.SOURCE
+        ]
+      }
+    });
+    expect(exported.raw).toContain('channel-api,API调用,当前名称');
+    expect(exported.raw).toContain("channel-old,'-,历史入口");
+    expect(exported.raw).toContain('channel-deleted,API调用,Channel deleted');
+    expect(
+      (await Call(listApi.default, { auth: authUser, headers: {}, body: { ...body, sources: [] } }))
+        .data.total
+    ).toBe(0);
   });
 
   it('should return all chats when errorFilter is not set', async () => {

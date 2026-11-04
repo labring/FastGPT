@@ -1,3 +1,4 @@
+import { MongoOpenApi } from '@fastgpt/service/support/openapi/schema';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import v1 from '@/pages/api/v1/chat/completions';
@@ -54,11 +55,18 @@ describe.each([
       chatConfig: {}
     });
     appId = String(app._id);
+    const key = await MongoOpenApi.create({
+      teamId: team._id,
+      tmbId: member._id,
+      apiKey: 'identity-test-key',
+      name: 'Identity key'
+    });
     auth = {
       userId: String(user._id),
       teamId: String(team._id),
       tmbId: String(member._id),
       authType: 'apikey',
+      apiKeyId: String(key._id),
       apiKeyAuthProxy: true,
       isRoot: false
     };

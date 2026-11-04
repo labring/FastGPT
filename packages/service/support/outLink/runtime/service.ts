@@ -379,6 +379,10 @@ export async function runOutlinkRuntime<T extends OutlinkAppType>({
       teamId: String(outLinkConfig.teamId),
       tmbId: String(outLinkConfig.tmbId),
       source: getChatSourceByPublishChannel(outLinkConfig.type),
+      publishSource: {
+        type: getChatSourceByPublishChannel(outLinkConfig.type),
+        id: String(outLinkConfig._id)
+      },
       sourceName: outLinkConfig.name,
       shareId: outLinkConfig.shareId,
       outLinkUid: chatUserId,
@@ -464,6 +468,7 @@ export async function runOutlinkRuntime<T extends OutlinkAppType>({
       variables: newVariables,
       shareId: outLinkConfig.shareId,
       source: getChatSourceByPublishChannel(outLinkConfig.type),
+      publishSource: preparedRound.publishSource,
       sourceName: outLinkConfig.name,
       userContent,
       aiContent: {

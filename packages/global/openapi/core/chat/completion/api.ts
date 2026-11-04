@@ -1,3 +1,4 @@
+import { ChatPublishSourceSchema } from '../../../../core/chat/publishSource/type';
 import { OpenObjectOpenApiMeta } from '../../../../common/zod/openapi';
 import z from 'zod';
 import type { ZodOpenApiMetadata } from 'zod-openapi';
@@ -249,6 +250,7 @@ export const ChatWorkflowSseResponseSchema = z.string().meta({
 export type ChatWorkflowSseResponseType = z.infer<typeof ChatWorkflowSseResponseSchema>;
 
 export const AuthResponseSchema = z.object({
+  publishSource: ChatPublishSourceSchema.optional(),
   teamId: ObjectIdSchema.meta({ description: '团队ID' }),
   tmbId: ObjectIdSchema.meta({ description: '团队成员ID' }),
   app: AppSchemaTypeSchema.meta({ description: '应用' }),

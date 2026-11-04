@@ -148,6 +148,7 @@ export const getScheduleTriggerApp = async () => {
           appChatConfig: chatConfig,
           variables: {},
           source: ChatSourceEnum.cronJob,
+          publishSource: preparedRound.publishSource,
           userContent,
           aiContent: {
             obj: ChatRoleEnum.AI,

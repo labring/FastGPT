@@ -1,3 +1,4 @@
+import { EventEmitter } from 'node:events';
 import type { NextApiHandler } from '@fastgpt/next/type';
 import type { MockReqType } from '../mocks/request';
 import { vi } from 'vitest';
@@ -9,23 +10,33 @@ export async function Call<B = any, Q = any, R = any>(
 ) {
   const { body = {}, query = {}, ...rest } = props || {};
   let raw;
+  const events = new EventEmitter();
   const res: any = {
     setHeader: vi.fn(),
     write: vi.fn((data: any) => {
       raw = data;
+      return true;
     }),
     json: vi.fn((data: any) => {
       raw = data;
+      return data;
     }),
     end: vi.fn(),
-    // 非流式聊天也会注册 finish 回调，测试响应需保留 Node HTTP 的 once 接口。
-    once: vi.fn().mockReturnThis(),
     on: vi.fn((event: string) => {
       if (event === 'drain') {
         // 模拟 drain 事件
       }
     }),
-    status: vi.fn()
+    // 聊天生命周期使用 once/off 注册和清理回调，保持与 Node HTTP 响应相同的接口。
+    once: vi.fn((event: string, callback: (...args: any[]) => void) => {
+      events.once(event, callback);
+      return res;
+    }),
+    off: vi.fn((event: string, callback: (...args: any[]) => void) => {
+      events.off(event, callback);
+      return res;
+    }),
+    status: vi.fn(() => res)
   };
   const response = (await handler(
     {

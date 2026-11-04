@@ -140,5 +140,11 @@
   "migrations.20261022_initialize_dataset_vector_indexes.description": "먼저 기존 전역 HNSW 인덱스를 검증하고 온라인으로 삭제합니다. 삭제에 성공한 뒤 데이터셋의 벡터 수를 백그라운드에서 집계하고 10,000개를 초과하면 FP16 부분 인덱스 생성 작업을 예약합니다. 인덱스 작업은 지연 없이 전역에서 하나씩 실행됩니다. 마이그레이션 완료가 모든 부분 인덱스의 준비 완료를 의미하지는 않습니다. 인덱스 생성 중에는 정확 검색을 계속 사용할 수 있습니다.",
   "migrations.20261022_initialize_dataset_vector_indexes.result": "{{scannedCount}}개 데이터셋을 집계했으며 {{eligibleCount}}개가 인덱스 생성 기준을 충족했습니다. 인덱스 생성은 대기열에서 계속 진행됩니다.",
   "migrations.20261022_initialize_dataset_vector_indexes.datasets": "벡터 수 집계 및 인덱스 생성 예약",
-  "migrations.20261022_initialize_dataset_vector_indexes.legacyIndex": "기존 전역 HNSW 인덱스 삭제"
+  "migrations.20261022_initialize_dataset_vector_indexes.legacyIndex": "기존 전역 HNSW 인덱스 삭제",
+  "migrations.20261104_backfill_chat_publish_source.name": "대화 호출 출처 보완",
+  "migrations.20261104_backfill_chat_publish_source.description": "모든 쓰기 노드를 업그레이드하고 이전 실행을 종료한 후 수동으로 실행하세요.",
+  "migrations.20261104_backfill_chat_publish_source.result": "대화 {{chats}}개와 통계 버킷 {{chatLogs}}개 확인, 이전 출처 {{missingChannelIds}}개의 채널 ID 복원 불가",
+  "migrations.20261104_backfill_chat_publish_source.chats": "대화 출처",
+  "migrations.20261104_backfill_chat_publish_source.chatLogs": "통계 버킷 출처",
+  "migrations.20261104_backfill_chat_publish_source.validation": "결과 검증"
 }

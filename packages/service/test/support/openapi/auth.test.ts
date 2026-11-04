@@ -73,6 +73,7 @@ describe('openapi auth', () => {
 
     expect(result).toEqual({
       apikey: 'fastgpt-team',
+      apiKeyId: String(openApi._id),
       teamId,
       tmbId,
       legacyAppId: '',
@@ -85,7 +86,7 @@ describe('openapi auth', () => {
   });
 
   it('旧应用 APIKey 按系统 key 鉴权并返回 legacyAppId', async () => {
-    await MongoOpenApi.create(legacyAppApiKey);
+    const openApi = await MongoOpenApi.create(legacyAppApiKey);
 
     const result = await authOpenApiKey({
       apikey: 'fastgpt-app'
@@ -93,6 +94,7 @@ describe('openapi auth', () => {
 
     expect(result).toEqual({
       apikey: 'fastgpt-app',
+      apiKeyId: String(openApi._id),
       teamId,
       tmbId,
       legacyAppId: appId,

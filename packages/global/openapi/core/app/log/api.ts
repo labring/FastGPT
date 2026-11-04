@@ -1,3 +1,4 @@
+import { ChatPublishSourceResponseSchema } from '../../../../core/chat/publishSource/type';
 import z from 'zod';
 import { PaginationResponseSchema, createPaginationSchema } from '../../../api';
 import { AppLogKeysEnum, AppLogTimespanEnum } from '../../../../core/app/logs/constants';
@@ -57,6 +58,7 @@ export type updateLogKeysResponseType = z.infer<typeof UpdateLogKeysResponseSche
 
 // Chat Log Item Schema (based on AppChatLogSchema)
 export const ChatLogItemSchema = z.object({
+  publishSource: ChatPublishSourceResponseSchema.optional(),
   _id: z.string().meta({ example: '68ad85a7463006c963799a05', description: '对话日志 ID' }),
   chatId: z.string().meta({ example: 'chat123', description: '对话 ID' }),
   title: z.string().nullish().meta({ example: '用户对话', description: '对话标题' }),
