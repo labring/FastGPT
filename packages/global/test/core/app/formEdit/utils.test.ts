@@ -91,6 +91,35 @@ describe('formatJsonEditorValue', () => {
   });
 });
 
+describe('normalizeFlowNodeInputType 知识库选择', () => {
+  it('保留仍支持的引用模式及其引用数组', () => {
+    const value = [['source-node', 'datasets']];
+    const input = normalizeFlowNodeInputType(
+      createMockInput({
+        renderTypeList: [FlowNodeInputTypeEnum.selectDataset, FlowNodeInputTypeEnum.reference],
+        selectedType: FlowNodeInputTypeEnum.reference,
+        value
+      })
+    );
+
+    expect(input.selectedType).toBe(FlowNodeInputTypeEnum.reference);
+    expect(input.value).toBe(value);
+  });
+
+  it('未显式配置手动选择值时保留 defaultValue 的回退语义', () => {
+    const defaultValue = [{ datasetId: 'default-dataset' }];
+    const input = normalizeFlowNodeInputType(
+      createMockInput({
+        renderTypeList: [FlowNodeInputTypeEnum.selectDataset],
+        defaultValue
+      })
+    );
+
+    expect(input.value).toBeUndefined();
+    expect(input.defaultValue).toBe(defaultValue);
+  });
+});
+
 describe('validateToolConfiguration', () => {
   describe('valid configurations', () => {
     it('should return true for empty inputs', () => {

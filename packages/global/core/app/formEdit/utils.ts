@@ -4,6 +4,7 @@ import type { FlowNodeInputItemType } from '../../workflow/type/io';
 import type { FlowNodeTemplateType } from '../../workflow/type/node';
 import type { CanonicalFlowNodeInputItem } from '../../workflow/migration';
 import { getSelectedInputRenderType } from '../../../common/workflow/reference';
+import { normalizeDatasetSelectValue } from '../../../common/workflow/input';
 import type { SelectedToolItemType } from './type';
 import { AgentToolInputModeEnum } from '../tool/constants';
 import { isSecretValueConfigured } from '../../../common/secret/utils';
@@ -137,6 +138,7 @@ export const canInputBeAgentGenerated = (
  *
  * 所有支持 AI 生成的输入都会补充 agentGenerated；工具上下文才允许选中该类型，
  * 并在没有明确选择时按 defaultToAgentGenerated 应用默认值。
+ * 最终为手动知识库选择时清理无效项，避免旧引用模式回退后仍保留引用值。
  */
 export const normalizeFlowNodeInputType = <T extends CanonicalFlowNodeInputItem>(
   input: T,
@@ -184,7 +186,11 @@ export const normalizeFlowNodeInputType = <T extends CanonicalFlowNodeInputItem>
   return {
     ...input,
     renderTypeList,
-    selectedType
+    selectedType,
+    // 未显式配置的输入继续使用原有 defaultValue，不能用空数组覆盖默认值。
+    ...(selectedType === FlowNodeInputTypeEnum.selectDataset && input.value !== undefined
+      ? { value: normalizeDatasetSelectValue(input.value) }
+      : {})
   } as T;
 };
 

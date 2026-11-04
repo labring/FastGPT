@@ -194,6 +194,47 @@ describe('nodeTemplate2FlowNode', () => {
 });
 
 describe('storeNode2FlowNode', () => {
+  it.each([
+    { datasets: [], expected: [] },
+    {
+      datasets: [{ datasetId: 'dataset-1', name: 'Dataset' }],
+      expected: [{ datasetId: 'dataset-1', name: 'Dataset' }]
+    }
+  ])('旧 Agent 知识库引用回退为手动选择后清理旧引用值 %#', ({ datasets, expected }) => {
+    const node = storeNode2FlowNode({
+      item: {
+        ...AgentNode,
+        nodeId: 'legacy-agent',
+        inputs: AgentNode.inputs.map((input) =>
+          input.key === NodeInputKeyEnum.datasetSelectList
+            ? {
+                ...input,
+                renderTypeList: [
+                  FlowNodeInputTypeEnum.selectDataset,
+                  FlowNodeInputTypeEnum.reference
+                ],
+                selectedType: FlowNodeInputTypeEnum.reference,
+                value: [['source-a', 'datasets'], ['source-b', 'datasets'], ...datasets]
+              }
+            : input
+        )
+      },
+      t: ((key: string) => key) as any
+    });
+    const stored = uiWorkflow2StoreWorkflow({ nodes: [node], edges: [] });
+
+    expect(
+      node.data.inputs.find((input) => input.key === NodeInputKeyEnum.datasetSelectList)
+    ).toMatchObject({
+      selectedType: FlowNodeInputTypeEnum.selectDataset,
+      value: expected
+    });
+    expect(
+      stored.nodes[0].inputs.find((input) => input.key === NodeInputKeyEnum.datasetSelectList)
+        ?.value
+    ).toEqual(expected);
+  });
+
   it('preserves saved query extension settings despite the new disabled template default', () => {
     const node = storeNode2FlowNode({
       item: {
