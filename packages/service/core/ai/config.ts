@@ -31,9 +31,13 @@ export const getAiProxyBaseUrl = () => {
 export const getOpenaiBaseUrl = () => {
   return getAiProxyBaseUrl() || 'https://api.openai.com/v1';
 };
-export const getOpenaiBaseKey = () =>
-  // 可选链保留"快照叶子缺省"的容错（旧 `|| ''` 写法同样容忍 undefined），缺省时按未配置处理。
-  getSystemInstanceConfig().subservice.aiProxy.token?.trim() ?? '';
+export const getOpenaiBaseKey = () => {
+  const { enabled, token } = getSystemInstanceConfig().subservice.aiProxy;
+  // 地址与凭据必须绑定同一启用状态：禁用代理时请求会回落到 api.openai.com，
+  // 此时若仍返回保留的代理 token，就会把私有凭据发给外部服务。
+  if (!enabled) return '';
+  return token?.trim() ?? '';
+};
 export const defaultUserOpenAIBaseUrl = 'https://api.openai.com/v1';
 
 /** @deprecated 使用 getOpenaiBaseUrl() 动态读取实例配置 */

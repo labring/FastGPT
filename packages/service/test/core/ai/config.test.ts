@@ -31,12 +31,16 @@ describe('AI config instance source', () => {
     // endpoint 的 Schema 默认值是 compose 便利用的 http://localhost:3000；只看 endpoint 会让
     // 没装 AI Proxy 的部署把系统模型流量发到本机 3000，且永远拿不到 OpenAI 兜底。
     global.systemInstanceConfig = resolveSystemInstanceConfig({
-      subservice: { aiProxy: { enabled: false, endpoint: 'http://localhost:3000' } }
+      subservice: {
+        aiProxy: { enabled: false, endpoint: 'http://localhost:3000', token: 'private-proxy-token' }
+      }
     });
-    const { getAiProxyBaseUrl, getOpenaiBaseUrl } = await importConfig();
+    const { getAiProxyBaseUrl, getOpenaiBaseUrl, getOpenaiBaseKey } = await importConfig();
 
     expect(getAiProxyBaseUrl()).toBeUndefined();
     expect(getOpenaiBaseUrl()).toBe('https://api.openai.com/v1');
+    // 禁用代理后请求会发往外部服务，不能继续携带私有代理凭据
+    expect(getOpenaiBaseKey()).toBe('');
   });
 
   it('normalizes configured proxy addresses before building request URLs', async () => {
