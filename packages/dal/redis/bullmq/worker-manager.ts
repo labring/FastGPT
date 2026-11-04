@@ -15,6 +15,8 @@ import type {
 /** 管理 Worker 的创建、异常恢复、业务 listener 迁移和有序关闭。 */
 export class BullMQWorkerManager {
   private readonly workers = new Map<string, Worker>();
+  /** 每个 worker 最近一次的可热更新选项；自动重建必须沿用它，否则并发会退回首次创建值。 */
+  private readonly workerOpts = new Map<string, Omit<WorkerOptions, 'connection'>>();
   private readonly restartingWorkers = new Set<string>();
   private readonly listeners = new BullMQLifecycleListeners();
   private readonly lifecycle: Required<BullMQWorkerLifecycleOptions>;
@@ -44,8 +46,11 @@ export class BullMQWorkerManager {
        * 只有重启进程才生效，后台改完看起来「保存成功但不生效」。
        * 只处理显式传入 concurrency 的调用方，其它 worker 参数仍以首次创建为准。
        */
-      if (opts?.concurrency !== undefined && existing.concurrency !== opts.concurrency) {
-        existing.concurrency = opts.concurrency;
+      if (opts?.concurrency !== undefined) {
+        if (existing.concurrency !== opts.concurrency) {
+          existing.concurrency = opts.concurrency;
+        }
+        this.workerOpts.set(name, { ...this.workerOpts.get(name), ...opts });
       }
       return existing as Worker<DataType, ReturnType>;
     }
@@ -53,6 +58,7 @@ export class BullMQWorkerManager {
       throw new Error(`BullMQ worker ${name} is restarting`);
     }
 
+    this.workerOpts.set(name, { ...opts });
     const worker = this.createWorker({ name, processor, opts });
     this.workers.set(name, worker);
     return worker;
@@ -164,7 +170,9 @@ export class BullMQWorkerManager {
   }) {
     while (this.options.getState() === 'running') {
       try {
-        const worker = this.createWorker({ name, processor, opts, listeners });
+        // 重建使用最近一次记录的热更新选项（closedHandler 的闭包只持有首次创建值）
+        const latestOpts = this.workerOpts.get(name) ?? opts;
+        const worker = this.createWorker({ name, processor, opts: latestOpts, listeners });
         if (this.options.getState() !== 'running') {
           await this.closeWorker({ name, worker });
           return;

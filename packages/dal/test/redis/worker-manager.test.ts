@@ -2,13 +2,13 @@ import { describe, expect, it, vi } from 'vitest';
 import { BullMQWorkerManager } from '../../redis/bullmq/worker-manager';
 
 /** 只验证缓存命中时的并发同步，不创建真实 Worker，因此不依赖 Redis。 */
-const createManager = () =>
+const createManager = (state: string = 'running') =>
   new BullMQWorkerManager({
     redisRuntime: {} as any,
     logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() } as any,
     closeTimeoutMs: 1_000,
     workerLifecycle: {} as any,
-    getState: () => ({}) as any
+    getState: () => state as any
   });
 
 const createWorkerStub = (concurrency: number) => ({ concurrency }) as any;
@@ -37,5 +37,29 @@ describe('BullMQWorkerManager.getWorker', () => {
 
     expect(returned).toBe(worker);
     expect(worker.concurrency).toBe(3);
+  });
+});
+
+describe('BullMQWorkerManager.restartWorker', () => {
+  it('restarts with the latest hot-updatable options instead of the creation-time opts', async () => {
+    const manager = createManager();
+    const worker = createWorkerStub(3);
+    (manager as any).workers.set('evaluation', worker);
+    // 首次并发 3，配置重载后热更新为 9
+    manager.getWorker('evaluation', (async () => undefined) as any, { concurrency: 9 });
+
+    const restartCreate = vi.fn(() => createWorkerStub(9));
+    (manager as any).createWorker = restartCreate;
+
+    // closedHandler 闭包里仍持有首次创建的 opts（concurrency: 3），重建必须改用最新值
+    await (manager as any).restartWorker({
+      name: 'evaluation',
+      processor: (async () => undefined) as any,
+      opts: { concurrency: 3 }
+    });
+
+    expect(restartCreate).toHaveBeenCalledWith(
+      expect.objectContaining({ opts: expect.objectContaining({ concurrency: 9 }) })
+    );
   });
 });
