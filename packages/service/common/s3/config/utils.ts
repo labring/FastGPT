@@ -1,4 +1,4 @@
-import { serviceEnv } from '@fastgpt/service/env';
+import { serviceEnv } from '../../../env';
 
 /**
  * 校验存储域下载策略的跨字段约束。
