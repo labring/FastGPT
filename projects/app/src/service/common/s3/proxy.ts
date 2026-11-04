@@ -439,6 +439,7 @@ export const handleS3ProxyUpload = async ({
   });
 
   let clientAborted = false;
+  const abortController = new AbortController();
   /**
    * `req.pipe` 不会把 source 的 close 传递给 destination。客户端中断后若不主动销毁 guard
    * stream，`validatedUpload` 会永久 pending，请求上下文和已缓冲数据无法释放。
@@ -449,6 +450,8 @@ export const handleS3ProxyUpload = async ({
     if (req.complete || req.readableEnded) return;
 
     clientAborted = true;
+    // 已开始消费 body 的 provider 需要显式取消信号，避免 COS 等 SDK 在 clean close 后继续等待。
+    abortController.abort(new Error(UPLOAD_REQUEST_ABORTED));
     if (!guardStream.destroyed) guardStream.destroy();
   };
 
@@ -472,7 +475,8 @@ export const handleS3ProxyUpload = async ({
       metadata: buildS3UploadMetadata({
         metadata,
         filename: validatedFile.filename
-      })
+      }),
+      abortSignal: abortController.signal
     });
 
     return { success: true };

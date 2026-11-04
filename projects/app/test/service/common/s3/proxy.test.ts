@@ -458,4 +458,54 @@ describe('handleS3ProxyUpload', () => {
     expect(req.listenerCount('aborted')).toBe(0);
     expect(req.listenerCount('close')).toBe(0);
   });
+
+  it('aborts an in-flight storage upload when the client disconnects after validation', async () => {
+    const req = new PassThrough() as any;
+    Object.assign(req, {
+      headers: { 'content-length': String(8192) },
+      aborted: false
+    });
+    let uploadSignal: AbortSignal | undefined;
+    let markUploadStarted!: () => void;
+    const uploadStarted = new Promise<void>((resolve) => {
+      markUploadStarted = resolve;
+    });
+    const uploadObject = vi.fn(
+      ({ abortSignal }: { abortSignal: AbortSignal }) =>
+        new Promise<never>((_resolve, reject) => {
+          uploadSignal = abortSignal;
+          markUploadStarted();
+          abortSignal.addEventListener('abort', () => reject(abortSignal.reason), { once: true });
+        })
+    );
+    global.s3BucketMap = {
+      'fastgpt-private': {
+        client: { uploadObject }
+      }
+    } as any;
+
+    const uploadPromise = handleS3ProxyUpload({
+      req,
+      payload: {
+        bucketName: 'fastgpt-private',
+        objectKey: 'dataset/team/file.txt',
+        maxSize: 1024 * 1024,
+        uploadPolicy: {
+          defaultContentType: 'text/plain'
+        },
+        fileHint: {
+          filename: 'file.txt',
+          contentType: 'text/plain',
+          source: 'local-file'
+        }
+      }
+    });
+
+    req.write(Buffer.alloc(8192, 'a'));
+    await uploadStarted;
+    req.destroy();
+
+    await expect(uploadPromise).rejects.toThrow('Upload request aborted');
+    expect(uploadSignal?.aborted).toBe(true);
+  });
 });
