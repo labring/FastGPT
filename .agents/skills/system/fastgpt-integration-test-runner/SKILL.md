@@ -1,11 +1,11 @@
 ---
 name: fastgpt-integration-test-runner
-description: 筛选并实际执行 FastGPT 用例库中的接口、UI、端到端或服务集成用例，创建临时 HTML 测试报告，逐个子场景更新执行结果、说明和证据。适用于执行已有用例、变更回归和复测；仅编写用例或单元测试时不使用。
+description: 筛选并执行 FastGPT 集成用例，优先运行 Node 或无头 Playwright 脚本，由 AI 执行未覆盖项并复核脚本失败，逐项更新临时 HTML 报告及执行方、说明和证据。适用于已有用例执行、变更回归和复测；仅编写用例或单元测试时不使用。
 ---
 
 # FastGPT 用例执行
 
-使用 `.agents/test/` 中已有用例；按本轮相关范围筛选、先生成报告、再逐项执行并更新。不复制维护第二份用例库，不把历史报告当作当前测试证据。
+使用 `.agents/test/` 中已有用例；按本轮相关范围筛选、先生成报告、脚本优先执行，AI 执行未覆盖项并复核脚本失败。不复制维护第二份用例库，不把历史报告当作当前测试证据。
 
 ## 筛选本轮用例
 
@@ -45,7 +45,7 @@ node .agents/skills/system/fastgpt-integration-test-runner/scripts/report.mjs in
 node .agents/skills/system/fastgpt-integration-test-runner/scripts/report.mjs init --ids FG-APP-WORKFLOW-007 --reason "普通连线规则回归"
 ```
 
-命令返回系统临时目录中的 `report.html` 和 `evidenceDirectory`。报告默认用多列表格展示，一行一个业务用例，列出业务、用例类型、测试方式、优先级、场景进度、**执行结果、结果说明**；点击行才展开完整用例、各子场景结果、证据及复测历史。运行信息默认折叠，不使用统计卡片或平铺长正文。
+命令返回系统临时目录中的 `report.html` 和 `evidenceDirectory`。报告默认用多列表格展示，一行一个业务用例，列出业务、用例类型、测试方式、执行方、优先级、场景进度、**执行结果、结果说明**；点击行才展开完整用例、各子场景结果、证据及复测历史。每个子场景和历史事件记录 `executor: script/ai`，汇总行可显示混合；未执行明确标注计划执行方，AI 只做复核不更改原执行方。运行信息默认折叠，不使用统计卡片或平铺长正文。
 
 报告复制完整 Markdown 快照（含原元数据、路径、哈希和基线），展开后在「预期结果」矩阵追加执行结果、结果说明两列；没有编号矩阵时增加 `CASE` 整体验证项。未选子场景保留原文并标注未纳入范围。草稿和废弃定义初始化为阻塞，不自动执行；完善定义后新建报告。
 
@@ -61,7 +61,11 @@ node .agents/skills/system/fastgpt-integration-test-runner/scripts/report.mjs se
 
 ## 逐项执行并更新
 
-按用例和子场景顺序串行执行。报告工具只记录和展示；实际操作使用当前可用的 HTTP、浏览器、服务集成、数据库或日志工具，不能以生成报告替代执行。
+先检查用例的 automation 映射。有脚本则使用 `pnpm test:cases --report <HTML>`，无脚本覆盖的子场景由 AI 执行；浏览器脚本默认使用 Playwright 无头 Chromium，接口可直接使用 Node.js。读取 [脚本协议与失败复核](references/automation.md)，了解安装、结果和证据约定。该入口会回填已有报告并返回 aiTasks，不会调用另一个 AI 或自动结束报告；当前执行方继续处理这些待办。
+
+脚本失败必须由 AI 审查证据，区分脚本兼容、环境问题与真实产品错误；保留失败，修正脚本后显式复测，不能以修改预期、删断言、跳过或自动重试消除失败。缺少脚本不是阻塞，AI 仍按原用例运行；声明的脚本不可用时先复核原因，再决定修复或实际由 AI 接手。
+
+按用例和子场景顺序串行执行。报告工具只记录和展示；实际操作使用脚本或当前可用的 HTTP、浏览器、服务集成、数据库、日志工具，不能以生成报告替代执行。
 
 1. 创建隔离测试数据，记录 run 标识、实际资源 ID、账号角色和时间。沿用用户授权的测试环境；用例文案本身不扩大到无关生产修改、支付、发布或对外消息。前置失败影响多个场景时逐项记录阻塞原因。
 2. 每项操作前写入 `running`。按步骤实际调用接口或操作 UI，按规则复位；同一行多个选中变体逐一执行，记录各自实际值和结果。不要只测第一种变体就整行通过。
@@ -77,6 +81,7 @@ node .agents/skills/system/fastgpt-integration-test-runner/scripts/report.mjs se
   "caseId": "FG-APP-WORKFLOW-007",
   "itemId": "C1",
   "result": "running",
+  "executor": "ai",
   "note": "开始重复同端口变体；已恢复 G1 并保存 E0"
 }
 ```
@@ -92,6 +97,7 @@ node .agents/skills/system/fastgpt-integration-test-runner/scripts/report.mjs up
   "caseId": "FG-APP-WORKFLOW-007",
   "itemId": "C1",
   "result": "passed",
+  "executor": "ai",
   "note": "重复同端口变体：目标不可连接，实际释放后 E=E0；已对比四元组集合。其余变体不在本轮范围。",
   "evidence": [{ "path": "evidence/C1-observation.json", "label": "DOM、E0 与释放后关系集合" }]
 }

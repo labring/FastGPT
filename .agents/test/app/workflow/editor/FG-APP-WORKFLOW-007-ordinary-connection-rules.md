@@ -19,6 +19,10 @@ tags:
   - 覆盖边界场景
 evidence:
   - ui
+automation:
+  - runner: playwright
+    script: .agents/test/app/workflow/editor/FG-APP-WORKFLOW-007.browser.spec.ts
+    items: [C1, C2, C3, C4]
 sources:
   - document/content/guide/build/workflow/rules.mdx
   - packages/workflow-core/src/edge/validation.ts
@@ -42,6 +46,7 @@ baseline: 5a5211f70998f5311cd40b0e5362a1414be6fbdf
 ## 前置准备
 
 - 环境：独立测试实例、Chrome、中文界面；登录具有本例临时应用写入和删除权限的账号，记录 BASE_URL、appId、teamId、版本和 run 标识。
+- 脚本执行时，`FASTGPT_TEST_STORAGE_STATE` 指向仓库外的已登录测试账号状态；脚本使用独立临时应用，完成后通过正常删除接口清理。未提供认证状态时由 AI 补齐环境，不跳过业务断言。
 - 配置：在应用列表新建临时工作流，普通节点填固定文本。顶部应用更多菜单支持“导入配置”和“导出配置 → 导出 JSON”；模型目录可正常读取。A、B 等是别名，记录实际 nodeId；→ 为普通边，⇢ 为菱形工具挂载。
 - 公共基线：每组图准备一次，导出所有 edges 的 (source, sourceHandle, target, targetHandle) 四元组集合 E0。临时画布边 ID 不持久化；比较精确集合/差集，不以边数或刷新后的临时 ID 代替。
 - 复位：除明确“承接”的行外，子场景从所指基线开始。参数化行逐个变体执行，失败先保存证据并复位再继续，记录“子场景编号 / 变体”，避免后续失败由脏状态引起。
