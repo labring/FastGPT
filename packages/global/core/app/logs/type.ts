@@ -31,8 +31,14 @@ export const AppChatLogSchema = z.object({
   chatId: z.string(),
   userId: z.string(),
   publishSource: ChatPublishSourceSchema.optional(),
-  source: z.enum(ChatSourceEnum).meta({ deprecated: true }),
-  sourceName: z.string().optional(),
+  source: z.enum(ChatSourceEnum).meta({
+    deprecated: true,
+    description: '旧统计桶渠道类型，仅作兼容；使用 publishSource.type'
+  }),
+  sourceName: z.string().optional().meta({
+    deprecated: true,
+    description: '旧统计桶渠道名称，仅用于兼容及历史名称回退'
+  }),
   createTime: z.coerce.date(),
   updateTime: z.coerce.date(),
 

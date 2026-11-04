@@ -125,10 +125,19 @@ export const ChatSchema = z.object({
   customTitle: z.string().optional(),
   top: z.boolean().default(false),
   publishSource: ChatPublishSourceSchema.optional(),
-  source: z.enum(ChatSourceEnum).meta({ deprecated: true }),
-  sourceName: z.string().optional(),
+  source: z.enum(ChatSourceEnum).meta({
+    deprecated: true,
+    description: '旧调用渠道类型，仅作兼容；使用 publishSource.type'
+  }),
+  sourceName: z.string().optional().meta({
+    deprecated: true,
+    description: '旧渠道名称，仅用于兼容及历史名称回退；日志展示使用扩展的 publishSource.name'
+  }),
 
-  shareId: z.string().optional(),
+  shareId: z.string().optional().meta({
+    deprecated: true,
+    description: '旧分享渠道标识，仅用于存量会话兼容和回填；渠道关联使用 publishSource.id'
+  }),
   outLinkUid: z.string().optional(),
 
   variableList: z.array(VariableItemTypeSchema).optional(),
