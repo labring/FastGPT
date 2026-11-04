@@ -259,7 +259,6 @@
   "logs_keys_source": "渠道名稱",
   "logs_keys_publish_source_type": "呼叫渠道",
   "logs_publish_source_id": "渠道 ID：{{id}}",
-  "logs_publish_source_deleted": "渠道已刪除",
   "logs_keys_title": "標題",
   "logs_keys_auth_user": "鑑權者",
   "logs_keys_user": "使用者",

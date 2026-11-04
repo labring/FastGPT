@@ -1,3 +1,5 @@
+import { ChatSourceEnum } from '../../core/chat/constants';
+
 /** 业务查询兼容旧分类；界面调用渠道列应直接读取 publishSource.type。 */
 export const getChatPublishSourceType = ({
   publishSource,
@@ -7,11 +9,22 @@ export const getChatPublishSourceType = ({
   source?: string | null;
 }) => publishSource?.type ?? source ?? undefined;
 
-/** 当前有效名称优先，历史名称仅作兼容；统一展示兜底由客户端负责。 */
+/** 内部入口没有发布渠道；外部入口优先使用当前名，再回退有效旧名，无名称时由展示层补 -。 */
 export const getChatPublishSourceName = ({
+  type,
   name,
   sourceName
 }: {
+  type?: string | null;
   name?: string | null;
   sourceName?: string | null;
-}) => name?.trim() || sourceName?.trim() || undefined;
+}) => {
+  if (
+    type === ChatSourceEnum.online ||
+    type === ChatSourceEnum.test ||
+    type === ChatSourceEnum.cronJob
+  ) {
+    return undefined;
+  }
+  return name?.trim() || sourceName?.trim() || undefined;
+};

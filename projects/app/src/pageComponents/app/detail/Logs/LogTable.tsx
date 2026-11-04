@@ -1,5 +1,8 @@
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import { getChatPublishSourceName } from '@fastgpt/global/common/chat/publishSource';
+import {
+  getChatPublishSourceName,
+  getChatPublishSourceType
+} from '@fastgpt/global/common/chat/publishSource';
 import { getLogIdentity, normalizeAppLogKeys } from '@fastgpt/global/core/app/logs/utils';
 import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import {
@@ -15,7 +18,7 @@ import {
   Tr,
   Checkbox
 } from '@chakra-ui/react';
-import { ChatSourceEnum, ChatSourceMap } from '@fastgpt/global/core/chat/constants';
+import { ChatSourceMap, type ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import DateRangePicker from '@fastgpt/web/components/common/DateRangePicker';
 import {
   FilterInput,
@@ -371,12 +374,11 @@ const LogTable = ({
             }
           >
             <Box as="span">
-              {item.publishSource?.type === ChatSourceEnum.online
-                ? '-'
-                : (getChatPublishSourceName({
-                    name: item.publishSource?.name,
-                    sourceName: item.sourceName
-                  }) ?? t('app:logs_publish_source_deleted'))}
+              {getChatPublishSourceName({
+                type: getChatPublishSourceType(item),
+                name: item.publishSource?.name,
+                sourceName: item.sourceName
+              }) ?? '-'}
             </Box>
           </MyTooltip>
         </Td>

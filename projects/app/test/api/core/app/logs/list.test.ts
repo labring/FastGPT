@@ -117,6 +117,18 @@ describe('logs list API - errorFilter', () => {
           publishSource: { type: 'online' },
           source: 'api',
           sourceName: '不应作为渠道名的旧应用名'
+        },
+        {
+          chatId: 'channel-test',
+          publishSource: { type: 'test' },
+          source: 'test',
+          sourceName: '不应作为渠道名的旧应用名'
+        },
+        {
+          chatId: 'channel-cron',
+          publishSource: { type: 'cronJob' },
+          source: 'cronJob',
+          sourceName: '不应作为渠道名的旧应用名'
         }
       ].map((row) => ({
         ...row,
@@ -150,14 +162,28 @@ describe('logs list API - errorFilter', () => {
     expect(
       rows.find((r: any) => r.chatId === 'channel-deleted')?.publishSource?.name
     ).toBeUndefined();
+    const internalRows = await Call(listApi.default, {
+      auth: authUser,
+      headers: {},
+      body: { ...body, sources: ['online', 'test', 'cronJob'] }
+    });
+    expect(internalRows.data.total).toBe(4);
+    expect(
+      internalRows.data.list.every((row: any) => !row.publishSource?.name && !row.sourceName)
+    ).toBe(true);
     const exported = await StreamCall(exportLogs, {
       auth: authUser,
       headers: {},
       body: {
         ...body,
         title: 'source-test',
-        sources: ['api', 'online'],
-        sourcesMap: { api: { label: 'API调用' }, online: { label: '在线使用' } },
+        sources: ['api', 'online', 'test', 'cronJob'],
+        sourcesMap: {
+          api: { label: 'API调用' },
+          online: { label: '在线使用' },
+          test: { label: '在线调试' },
+          cronJob: { label: '定时任务' }
+        },
         logKeys: [
           AppLogKeysEnum.SESSION_ID,
           AppLogKeysEnum.PUBLISH_SOURCE_TYPE,
@@ -167,9 +193,11 @@ describe('logs list API - errorFilter', () => {
     });
     expect(exported.raw).toContain('channel-api,API调用,当前名称');
     expect(exported.raw).toContain("channel-old,'-,历史入口");
-    expect(exported.raw).toContain('channel-deleted,API调用,Channel deleted');
+    expect(exported.raw).toContain("channel-deleted,API调用,'-");
     expect(exported.raw).toContain("channel-online,在线使用,'-");
     expect(exported.raw).toContain("channel-online-legacy,在线使用,'-");
+    expect(exported.raw).toContain("channel-test,在线调试,'-");
+    expect(exported.raw).toContain("channel-cron,定时任务,'-");
     expect(exported.raw).not.toContain('不应作为渠道名的旧应用名');
     expect(
       (await Call(listApi.default, { auth: authUser, headers: {}, body: { ...body, sources: [] } }))

@@ -1,7 +1,7 @@
-import enAppMessages from '@fastgpt/web/i18n/en/app.json';
-import zhAppMessages from '@fastgpt/web/i18n/zh-CN/app.json';
-import hantAppMessages from '@fastgpt/web/i18n/zh-Hant/app.json';
-import koAppMessages from '@fastgpt/web/i18n/ko-KR/app.json';
+import {
+  getChatPublishSourceName,
+  getChatPublishSourceType
+} from '@fastgpt/global/common/chat/publishSource';
 import { extendChatPublishSources } from '@fastgpt/service/core/chat/publishSource/service';
 import { buildAppChatLogFilter } from '@fastgpt/service/core/app/logs/utils';
 import type { NextApiResponse } from 'next';
@@ -18,7 +18,7 @@ import {
   ChatItemResponseCollectionName
 } from '@fastgpt/service/core/chat/constants';
 import { getTeamMemberMap } from '@fastgpt/service/support/user/team/utils';
-import { ChatSourceTypeEnum, ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatSourceTypeEnum, type ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import { AppLogKeysEnum } from '@fastgpt/global/core/app/logs/constants';
 import { sanitizeCsvField } from '@fastgpt/service/common/file/csv';
 import { AppReadChatLogPerVal } from '@fastgpt/global/support/permission/app/constant';
@@ -69,12 +69,6 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
   }).body;
 
   const locale = getLocale(req);
-  const deletedChannelName = {
-    en: enAppMessages,
-    'zh-CN': zhAppMessages,
-    'zh-Hant': hantAppMessages,
-    'ko-KR': koAppMessages
-  }[locale].logs_publish_source_deleted;
   const timezoneCode = getTimezoneCodeFromStr(dateStart);
 
   const { teamId, tmbId, app } = await authApp({
@@ -427,9 +421,11 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
     const valueMap: Record<string, () => any> = {
       [AppLogKeysEnum.PUBLISH_SOURCE_TYPE]: () => source,
       [AppLogKeysEnum.SOURCE]: () =>
-        doc.publishSource?.type === ChatSourceEnum.online
-          ? '-'
-          : doc.publishSource?.name || doc.sourceName || deletedChannelName,
+        getChatPublishSourceName({
+          type: getChatPublishSourceType(doc),
+          name: doc.publishSource?.name,
+          sourceName: doc.sourceName
+        }) ?? '-',
       [AppLogKeysEnum.CREATED_TIME]: () => createdTime,
       [AppLogKeysEnum.LAST_CONVERSATION_TIME]: () => lastConversationTime,
       [AppLogKeysEnum.USER]: () => doc.outLinkUid || authorizer,

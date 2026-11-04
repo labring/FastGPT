@@ -259,7 +259,6 @@
   "logs_keys_source": "채널 이름",
   "logs_keys_publish_source_type": "호출 채널",
   "logs_publish_source_id": "채널 ID: {{id}}",
-  "logs_publish_source_deleted": "삭제된 채널",
   "logs_keys_title": "제목",
   "logs_keys_auth_user": "인증 사용자",
   "logs_keys_user": "사용자",

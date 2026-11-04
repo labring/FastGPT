@@ -22,6 +22,9 @@ describe('getChatPublishSourceName', () => {
     [{ name: '  ', sourceName: ' 旧名称 ' }, '旧名称'],
     [{ name: null, sourceName: '历史入口' }, '历史入口'],
     [{ sourceName: '\t ' }, undefined],
+    [{ type: 'online', name: '应用名', sourceName: '旧应用名' }, undefined],
+    [{ type: 'test', sourceName: '调试应用名' }, undefined],
+    [{ type: 'cronJob', name: '定时任务应用名' }, undefined],
     [{}, undefined]
   ])('只使用有效名称 %j', (input, expected) => {
     expect(getChatPublishSourceName(input)).toBe(expected);

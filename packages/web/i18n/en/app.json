@@ -259,7 +259,6 @@
   "logs_keys_source": "Channel name",
   "logs_keys_publish_source_type": "Call channel",
   "logs_publish_source_id": "Channel ID: {{id}}",
-  "logs_publish_source_deleted": "Channel deleted",
   "logs_keys_title": "Title",
   "logs_keys_auth_user": "Authorizer",
   "logs_keys_user": "User",

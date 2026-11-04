@@ -202,7 +202,7 @@ describe('LogTable identity columns UI', () => {
     [...container.querySelectorAll('button[aria-label="invisible"]')].find((button) =>
       button.parentElement?.textContent?.includes('app:logs_keys_auth_user')
     );
-  it('shows a dash for online channel names while keeping other channel name rules', async () => {
+  it('shows a dash for internal entries and missing names, preserving actual channel names', async () => {
     localStorage.setItem('app_log_keys_app-1', JSON.stringify([{ key: 'source', enable: true }]));
     const base = getLogRows()[0];
     getLogRows.mockReturnValue(
@@ -213,7 +213,9 @@ describe('LogTable identity columns UI', () => {
           sourceName: 'Legacy app name'
         },
         { publishSource: { type: 'api', id: 'deleted-key' } },
-        { publishSource: { type: 'test' }, sourceName: '调试-对话' }
+        { publishSource: { type: 'test' }, sourceName: '调试-对话' },
+        { publishSource: { type: 'cronJob' }, sourceName: '定时任务应用名' },
+        { publishSource: { type: 'api', id: 'key', name: '客服后端' } }
       ].map((row, i) => ({ ...base, ...row, _id: `row-${i}`, chatId: `chat-${i}` }))
     );
     await render();
@@ -225,7 +227,7 @@ describe('LogTable identity columns UI', () => {
       [...container.querySelectorAll('tbody tr')].map(
         (row) => row.querySelectorAll('td')[column]?.textContent
       )
-    ).toEqual(['-', '-', 'app:logs_publish_source_deleted', '调试-对话']);
+    ).toEqual(['-', '-', '-', '-', '-', '客服后端']);
   });
   it('defaults to user only; toggles authorizer, persists and exports selected columns', async () => {
     await render();

@@ -1,5 +1,8 @@
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
-import { getChatPublishSourceName } from '@fastgpt/global/common/chat/publishSource';
+import {
+  getChatPublishSourceName,
+  getChatPublishSourceType
+} from '@fastgpt/global/common/chat/publishSource';
 import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import type {
   ChatPublishSourceType,
@@ -90,7 +93,11 @@ export const updateChatPublishSource = async (
 
 /** 分页或固定导出批次之后扩展渠道名，兼容旧响应名称，不把展示兜底写入业务数据。 */
 export const extendChatPublishSources = async <
-  T extends { publishSource?: Partial<ChatPublishSourceType> | null; sourceName?: string | null }
+  T extends {
+    publishSource?: Partial<ChatPublishSourceType> | null;
+    sourceName?: string | null;
+    source?: string | null;
+  }
 >({
   list,
   teamId,
@@ -108,6 +115,7 @@ export const extendChatPublishSources = async <
   return list.map((item) => {
     const source = item.publishSource;
     const name = getChatPublishSourceName({
+      type: getChatPublishSourceType(item),
       name: source?.id ? names.get(`${source.type}:${source.id}`) : undefined,
       sourceName: item.sourceName
     });
