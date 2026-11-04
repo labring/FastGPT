@@ -397,6 +397,8 @@
   "supported_python_libraries": "已支持 Python 模块库",
   "supported_node_js_libraries": "已支持 Node.js / JavaScript 模块库",
   "ai_proxy_health_check_endpoint": "AI Proxy 健康检查端点",
+  "enable_ai_proxy": "启用 AI Proxy",
+  "enable_ai_proxy_tip": "关闭后系统模型请求回落到 https://api.openai.com/v1；开启后使用下方端点，例如 aiproxy 服务。",
   "plugin_gateway_health_check_endpoint": "插件网关健康检查端点",
   "enable_plugin_remote_debug_channel": "开启插件远程调试通道 (Remote Debug)",
   "mcp_sse_proxy_url": "MCP SSE 代理地址",

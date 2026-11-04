@@ -7,7 +7,9 @@ const importConfig = async () => {
 };
 beforeEach(() => {
   global.systemInstanceConfig = resolveSystemInstanceConfig({
-    subservice: { aiProxy: { endpoint: 'http://aiproxy:3000', token: 'aiproxy-token' } }
+    subservice: {
+      aiProxy: { enabled: true, endpoint: 'http://aiproxy:3000', token: 'aiproxy-token' }
+    }
   });
 });
 afterEach(() => vi.unstubAllEnvs());
@@ -25,9 +27,23 @@ describe('AI config instance source', () => {
     getTestInstanceConfig().subservice.aiProxy.endpoint = 'https://new-proxy.example.com';
     expect(getOpenaiBaseUrl()).toBe('https://new-proxy.example.com/v1');
   });
+  it('ignores a configured endpoint while AI Proxy is disabled', async () => {
+    // endpoint 的 Schema 默认值是 compose 便利用的 http://localhost:3000；只看 endpoint 会让
+    // 没装 AI Proxy 的部署把系统模型流量发到本机 3000，且永远拿不到 OpenAI 兜底。
+    global.systemInstanceConfig = resolveSystemInstanceConfig({
+      subservice: { aiProxy: { enabled: false, endpoint: 'http://localhost:3000' } }
+    });
+    const { getAiProxyBaseUrl, getOpenaiBaseUrl } = await importConfig();
+
+    expect(getAiProxyBaseUrl()).toBeUndefined();
+    expect(getOpenaiBaseUrl()).toBe('https://api.openai.com/v1');
+  });
+
   it('normalizes configured proxy addresses before building request URLs', async () => {
     global.systemInstanceConfig = resolveSystemInstanceConfig({
-      subservice: { aiProxy: { endpoint: 'http://aiproxy:3000///', token: 'aiproxy-token' } }
+      subservice: {
+        aiProxy: { enabled: true, endpoint: 'http://aiproxy:3000///', token: 'aiproxy-token' }
+      }
     });
     const { getOpenaiBaseUrl } = await importConfig();
     expect(getOpenaiBaseUrl()).toBe('http://aiproxy:3000/v1');

@@ -397,6 +397,8 @@
   "supported_python_libraries": "Supported Python Libraries",
   "supported_node_js_libraries": "Supported Node.js Libraries",
   "ai_proxy_health_check_endpoint": "AI Proxy Health Check Endpoint",
+  "enable_ai_proxy": "Enable AI Proxy",
+  "enable_ai_proxy_tip": "When disabled, system model requests fall back to https://api.openai.com/v1; when enabled they use the configured endpoint.",
   "plugin_gateway_health_check_endpoint": "Plugin Gateway Health Check Endpoint",
   "enable_plugin_remote_debug_channel": "Enable Plugin Remote Debug Channel",
   "mcp_sse_proxy_url": "MCP SSE Proxy URL",

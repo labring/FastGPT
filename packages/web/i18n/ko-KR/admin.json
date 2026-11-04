@@ -397,6 +397,8 @@
   "supported_python_libraries": "지원되는 Python 라이브러리",
   "supported_node_js_libraries": "지원되는 Node.js 라이브러리",
   "ai_proxy_health_check_endpoint": "AI Proxy 헬스체크 엔드포인트",
+  "enable_ai_proxy": "AI Proxy 사용",
+  "enable_ai_proxy_tip": "비활성화하면 시스템 모델 요청이 https://api.openai.com/v1로 대체됩니다.",
   "plugin_gateway_health_check_endpoint": "플러그인 게이트웨이 헬스체크 엔드포인트",
   "enable_plugin_remote_debug_channel": "플러그인 원격 디버깅 채널 활성화 (Remote Debug)",
   "mcp_sse_proxy_url": "MCP SSE 프록시 URL",
