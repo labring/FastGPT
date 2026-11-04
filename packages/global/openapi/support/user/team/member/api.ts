@@ -122,8 +122,8 @@ export type ListTeamMembersBodyType = z.infer<typeof ListTeamMembersBodySchema>;
 export const TeamMemberListItemSchema = z
   .object({
     userId: ObjectIdSchema.meta({ description: '用户 ID' }),
-    username: z.string().optional().meta({
-      description: '登录用户名；关联用户记录缺失时不返回',
+    username: z.string().meta({
+      description: '登录用户名',
       example: 'zhangsan'
     }),
     tmbId: TeamMemberIdSchema,
