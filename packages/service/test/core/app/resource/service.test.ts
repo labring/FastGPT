@@ -1,10 +1,10 @@
+import { assertAppDatasetIndexModelsAvailable } from '@fastgpt/service/core/dataset/model';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import {
   getAppDraftResourceBaseline,
   prepareAppWorkflowResources,
   authTargetModelResource,
-  resolveAppResourcesByPermission,
-  assertAppDatasetIndexModelsAvailable
+  resolveAppResourcesByPermission
 } from '@fastgpt/service/core/app/resource/service';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import {
@@ -253,6 +253,42 @@ describe('App dataset references require an available index model', () => {
         authorizedIds: new Set<string>()
       })
     ).rejects.toMatchObject({ message: ModelErrEnum.unAuthModel });
+  });
+
+  it('rejects a disabled embedding model', async () => {
+    const modelId = 'disabled-embedding-model';
+    const dataset = await MongoDataset.create({
+      name: 'Dataset with an unauthorized index model',
+      teamId,
+      tmbId,
+      vectorModelId: modelId
+    });
+    const handle = createModelHandle({
+      models: [
+        AIModelDataSchema.parse({
+          scope: 'system',
+          modelId,
+          model: 'text-embedding-3-small',
+          name: 'Text embedding 3 small',
+          provider: 'openai',
+          type: 'embedding',
+          isActive: false,
+          config: { defaultToken: 100, maxToken: 100, weight: 0 }
+        })
+      ],
+      configuredDefaultModelIds: {},
+      revision: 1,
+      version: 'unauthorized-dataset-index-model'
+    });
+
+    await expect(
+      assertAppDatasetIndexModelsAvailable({
+        resources: [{ type: 'dataset', id: String(dataset._id) }],
+        teamId,
+        modelHandle: handle,
+        authorizedIds: new Set([modelId])
+      })
+    ).rejects.toMatchObject({ message: ModelErrEnum.unExist });
   });
 
   it('skips model lookup when no knowledge base is referenced', async () => {

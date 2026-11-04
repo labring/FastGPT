@@ -4,6 +4,13 @@ import type {
   CreateModelDeprecationInformResponseType,
   ListModelDeprecationInformQueryType,
   ListModelDeprecationInformResponseType,
+  ListModelDeprecationInformFailuresBodyType,
+  ListModelDeprecationInformFailuresResponseType,
+  ModelDeprecationInformRunBodyType,
+  RetryModelDeprecationInformRunResponseType,
+  ModelDeprecationInformRunResponseType,
+  TerminateModelDeprecationInformPlanBodyType,
+  TerminateModelDeprecationInformPlanResponseType,
   SendSystemInformBodyType,
   UpdateSystemModalBodyType,
   UpdateOperationalAdBodyType,
@@ -25,6 +32,34 @@ export const postCreateModelDeprecationInform = (data: CreateModelDeprecationInf
 export const postListModelDeprecationInforms = (data: ListModelDeprecationInformQueryType) =>
   POST<ListModelDeprecationInformResponseType>(
     '/proApi/admin/system/inform/modelDeprecation/list',
+    data
+  );
+
+export const postListModelDeprecationFailures = (
+  data: ListModelDeprecationInformFailuresBodyType
+) =>
+  POST<ListModelDeprecationInformFailuresResponseType>(
+    '/proApi/admin/system/inform/modelDeprecation/failures',
+    data
+  );
+
+export const postRetryModelDeprecationInformRun = (data: ModelDeprecationInformRunBodyType) =>
+  POST<RetryModelDeprecationInformRunResponseType>(
+    '/proApi/admin/system/inform/modelDeprecation/retry',
+    data
+  );
+
+export const postRecoverModelDeprecationInformRun = (data: ModelDeprecationInformRunBodyType) =>
+  POST<ModelDeprecationInformRunResponseType>(
+    '/proApi/admin/system/inform/modelDeprecation/recover',
+    data
+  );
+
+export const postTerminateModelDeprecationInform = (
+  data: TerminateModelDeprecationInformPlanBodyType
+) =>
+  POST<TerminateModelDeprecationInformPlanResponseType>(
+    '/proApi/admin/system/inform/modelDeprecation/terminate',
     data
   );
 
