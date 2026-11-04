@@ -2,7 +2,6 @@ import z from 'zod';
 import { OutLinkChatAuthSchema } from '../../../../support/permission/chat';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
 import { OpenObjectOpenApiMeta } from '../../../../common/zod/openapi';
-import { queryArrayParam } from '../../../../common/zod';
 import { DatasetCiteItemSchema } from '../../../../core/dataset/type';
 import { LinkedListResponseSchema, LinkedPaginationSchema } from '../../../api';
 import { ChatItemMiniSchema } from '../../../../core/chat/type';
@@ -20,8 +19,6 @@ const GetRecordTypeSchema = z.enum([
   GetChatTypeEnum.outLink,
   GetChatTypeEnum.home
 ]);
-
-const QueryStringArraySchema = queryArrayParam(z.array(z.string().trim()).optional());
 
 /* ============================================================================
  * API: 获取对话响应详细数据
@@ -48,20 +45,20 @@ export type GetResDataQueryRuntimeType = z.infer<typeof GetResDataQuerySchema>;
  * Tags: ['Chat', 'Delete']
  * ============================================================================ */
 
-const DeleteChatRecordPropsSchema = {
+export const DeleteChatRecordBodyRawSchema = createOutLinkChatTargetInputSchema({
   chatId: z.string().meta({ example: 'chat123', description: '会话 ID' }),
   contentId: z.string().optional().meta({
     example: 'content123',
     description: '要删除的消息 ID'
   }),
-  contentIds: QueryStringArraySchema.meta({
-    example: ['content123', 'content456'],
-    description: '要删除的消息 ID 列表'
-  })
-};
-export const DeleteChatRecordBodyRawSchema = createOutLinkChatTargetInputSchema(
-  DeleteChatRecordPropsSchema
-);
+  contentIds: z
+    .array(z.string().trim())
+    .optional()
+    .meta({
+      example: ['content123', 'content456'],
+      description: '要删除的消息 ID 列表'
+    })
+});
 export const DeleteChatRecordBodySchema = DeleteChatRecordBodyRawSchema.transform(
   transformChatAuthTargetInput
 );
@@ -94,9 +91,6 @@ export const GetQuoteBodyRawSchema = createOutLinkChatTargetInputSchema(QuoteBod
 export const GetQuoteBodySchema = GetQuoteBodyRawSchema.transform(transformChatAuthTargetInput);
 export type GetQuoteBodyType = z.infer<typeof GetQuoteBodyRawSchema>;
 export type GetQuoteBodyRuntimeType = z.infer<typeof GetQuoteBodySchema>;
-
-export const DeleteChatRecordResponseSchema = z.undefined().meta({ description: '删除成功' });
-export type DeleteChatRecordResponseType = z.infer<typeof DeleteChatRecordResponseSchema>;
 
 /* ============================================================================
  * API: 获取对话引用数据
