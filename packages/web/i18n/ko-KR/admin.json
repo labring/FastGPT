@@ -392,6 +392,8 @@
   "websocket_reverse_proxy_url_ws_wss": "WebSocket 리버스 프록시 URL (ws/wss)",
   "http_preview_reverse_proxy_url_http_https": "HTTP 미리보기 리버스 프록시 URL (http/https)",
   "code_sandbox_health_check_endpoint": "코드 샌드박스 헬스체크 엔드포인트",
+  "enable_code_sandbox": "Code Sandbox 사용",
+  "enable_code_sandbox_tip": "비활성화하면 워크플로의 코드 실행 노드가 '서비스가 구성되지 않았거나 비활성화됨'을 반환하고 요청을 보내지 않습니다.",
   "supported_python_libraries": "지원되는 Python 라이브러리",
   "supported_node_js_libraries": "지원되는 Node.js 라이브러리",
   "ai_proxy_health_check_endpoint": "AI Proxy 헬스체크 엔드포인트",

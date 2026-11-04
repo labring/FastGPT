@@ -392,6 +392,8 @@
   "websocket_reverse_proxy_url_ws_wss": "WebSocket Reverse Proxy URL (ws/wss)",
   "http_preview_reverse_proxy_url_http_https": "HTTP Preview Reverse Proxy URL (http/https)",
   "code_sandbox_health_check_endpoint": "Code Sandbox Health Check Endpoint",
+  "enable_code_sandbox": "Enable Code Sandbox",
+  "enable_code_sandbox_tip": "When disabled, code execution nodes return 'not configured or disabled' without calling the sandbox service.",
   "supported_python_libraries": "Supported Python Libraries",
   "supported_node_js_libraries": "Supported Node.js Libraries",
   "ai_proxy_health_check_endpoint": "AI Proxy Health Check Endpoint",

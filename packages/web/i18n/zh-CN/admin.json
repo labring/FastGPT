@@ -392,6 +392,8 @@
   "websocket_reverse_proxy_url_ws_wss": "WebSocket 反向代理地址 (ws/wss)",
   "http_preview_reverse_proxy_url_http_https": "HTTP 预览反向代理地址 (http/https)",
   "code_sandbox_health_check_endpoint": "代码沙箱健康检查端点",
+  "enable_code_sandbox": "启用 Code Sandbox",
+  "enable_code_sandbox_tip": "关闭后工作流中的代码执行节点会直接返回「服务未配置或已禁用」，不会向下游发起请求。",
   "supported_python_libraries": "已支持 Python 模块库",
   "supported_node_js_libraries": "已支持 Node.js / JavaScript 模块库",
   "ai_proxy_health_check_endpoint": "AI Proxy 健康检查端点",

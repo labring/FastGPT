@@ -1,12 +1,17 @@
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
-import React from 'react';
+import React, { useEffect, useMemo } from 'react';
+import { Controller, useForm } from 'react-hook-form';
 import { useDomainConfig } from '@/web/common/system/useDomainConfig';
 import { Box, Wrap, Tag } from '@chakra-ui/react';
 import AdminSettingPage from '@/pageComponents/admin/settings/AdminSettingPage';
 import AdminSettingSection from '@/pageComponents/admin/settings/AdminSettingSection';
 import AdminFormItem from '@/pageComponents/admin/settings/AdminFormItem';
+import AdminSwitchRow from '@/pageComponents/admin/settings/AdminSwitchRow';
 import ConnectivityTestInput from '@/pageComponents/admin/settings/ConnectivityTestInput';
 import type { SettingTOCItem } from '@/pageComponents/admin/settings/AdminSettingTOC';
+import type { SystemInstanceConfigDomainMap } from '@fastgpt/global/common/system/config/type';
+
+type SubserviceConfigForm = SystemInstanceConfigDomainMap['subservice'];
 
 const pythonBuiltins = [
   'math',
@@ -24,23 +29,55 @@ const nodeBuiltins = ['crypto', 'path', 'url', 'lodash', 'dayjs', 'axios', 'qs']
 
 const CodeSandboxSubserviceComponent = () => {
   const { t } = useSafeTranslation();
-  const { effectiveConfig, isLoading } = useDomainConfig('subservice');
+  const { effectiveConfig, isLoading, isUpdating, patchConfig } = useDomainConfig('subservice');
   const baseUrl = effectiveConfig?.codeSandbox?.baseUrl || 'http://localhost:3002';
   const sandboxHealthUrl = baseUrl.replace(/\/+$/, '') + '/health';
 
-  const tocItems: SettingTOCItem[] = [
-    { id: 'connection', label: t('admin:connection_connectivity') },
-    { id: 'modules', label: t('admin:runtime_module_support') }
-  ];
+  const tocItems: SettingTOCItem[] = useMemo(
+    () => [
+      { id: 'connection', label: t('admin:connection_connectivity') },
+      { id: 'modules', label: t('admin:runtime_module_support') }
+    ],
+    [t]
+  );
+
+  const { control, handleSubmit, reset } = useForm<SubserviceConfigForm>({
+    defaultValues: effectiveConfig
+  });
+
+  useEffect(() => {
+    if (effectiveConfig && Object.keys(effectiveConfig).length > 0) {
+      reset(effectiveConfig);
+    }
+  }, [effectiveConfig, reset]);
+
+  const onSave = handleSubmit(async (formData) => {
+    await patchConfig({ codeSandbox: formData.codeSandbox });
+  });
 
   return (
     <AdminSettingPage
       headerTitle={t('admin:page_title_code_sandbox')}
       tocItems={tocItems}
       isLoading={isLoading}
+      isSaving={isUpdating}
+      onSave={onSave}
     >
       {/* 1. 连接与连通性 */}
       <AdminSettingSection id="connection" title={t('admin:connection_connectivity')}>
+        <Controller
+          name="codeSandbox.enabled"
+          control={control}
+          render={({ field }) => (
+            <AdminSwitchRow
+              label={t('admin:enable_code_sandbox')}
+              tooltip={t('admin:enable_code_sandbox_tip')}
+              isChecked={field.value}
+              onChange={field.onChange}
+            />
+          )}
+        />
+
         <AdminFormItem
           label={t('admin:code_sandbox_health_check_endpoint')}
           tooltip={t('admin:full_endpoint_fastgpt_uses_to_probe_the_code_sandbox_process')}
