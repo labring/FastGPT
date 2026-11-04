@@ -242,7 +242,7 @@ const PlansSettingSection = forwardRef<PlansSettingSectionHandle, PlansSettingSe
       return { subPlans: (formData.subPlans as Record<string, unknown>) ?? {} };
     }, [handleSubmit, subPlansLoaded]);
 
-    // reload 透给父级后多以 void 调用，沿用同一层 rejection 兜底，避免保存/冲突刷新后的重复异常
+    // reload 透给父级后多以 void 调用，沿用同一层 rejection 兜底，避免保存后刷新产生重复异常
     useImperativeHandle(ref, () => ({ getSubPlansData, reload: loadPlans }), [
       getSubPlansData,
       loadPlans

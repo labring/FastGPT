@@ -115,11 +115,7 @@ const CommercialSettingComponent = () => {
       // admin:save_success 从未在任何语言定义（显示字面量 key）；改用与
       // auth/core/limits 页一致的 raw key 风格，useRequest 内部会走 i18n
       successToast: 'admin:settings_saved',
-      errorToast: 'admin:failed_to_save_settings',
-      onConflict: () => {
-        void refetch();
-        void plansRef.current?.reload();
-      }
+      errorToast: 'admin:failed_to_save_settings'
     }
   );
 

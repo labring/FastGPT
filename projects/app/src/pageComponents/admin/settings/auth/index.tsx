@@ -128,10 +128,6 @@ const AuthSettingComponent = () => {
     {
       successToast: 'admin:settings_saved',
       errorToast: 'admin:failed_to_save_settings',
-      onConflict: () => {
-        void auth.refetch();
-        void security.refetch();
-      },
       onSuccess: () => {
         void auth.refetch();
         void security.refetch();

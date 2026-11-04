@@ -1120,7 +1120,7 @@
   "storage_cdn_endpoint_tip": "可选。配置后 short-redirect 临时下载地址会改写为该 CDN 域名；需同时配置外部访问端点。留空则回落到环境变量 STORAGE_S3_CDN_ENDPOINT。",
   "storage_redirect_ttl_seconds": "重定向地址有效期（秒）",
   "storage_redirect_ttl_seconds_tip": "short-redirect 模式下 302 下发的预签名下载地址的最大有效期。",
-  "revision_conflict_refreshing": "配置已被他人修改，正在刷新至最新版本",
+  "revision_conflict_refresh_required": "配置已被他人修改，请先保留当前修改，再刷新页面重新编辑并保存。",
   "feature_section_display": "展示配置",
   "page_title_inform": "通知管理",
   "page_description_inform": "系统公告强提示、站内广播通知与运营活动广告管理",

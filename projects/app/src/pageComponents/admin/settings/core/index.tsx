@@ -191,12 +191,6 @@ const CoreSettingComponent = () => {
     {
       successToast: 'admin:settings_saved',
       errorToast: 'admin:failed_to_save_settings',
-      onConflict: () => {
-        void auth.refetch();
-        void feature.refetch();
-        void storage.refetch();
-        void site.refetch();
-      },
       onSuccess: () => {
         void auth.refetch();
         void feature.refetch();

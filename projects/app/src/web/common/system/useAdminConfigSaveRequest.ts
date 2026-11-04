@@ -2,25 +2,23 @@ import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getErrText, ToastHandledError } from '@fastgpt/global/common/error/utils';
 
-type AdminConfigSaveOptions = {
+type AdminConfigSaveOptions<TData, TParams extends any[]> = {
   successToast?: string;
   errorToast?: string;
-  onSuccess?: (data: unknown, params: any[]) => void;
-  onError?: (err: any, params: any[]) => void;
-  /** revision 冲突后由页面触发配置重新拉取。 */
-  onConflict?: () => void;
+  onSuccess?: (data: TData, params: TParams) => void;
+  onError?: (err: Error, params: TParams) => void;
 };
 
 /**
  * Admin 实例配置保存请求的通用错误提示。
  *
- * 多域保存直接调用 updateDomainConfigApi，没有经过 useDomainConfig 的冲突处理；
- * 这里统一补齐 revision 冲突提示，避免用户只看到笼统的“保存失败”。
- * 其它错误仍使用页面传入的通用提示。
+ * 单域与多域保存共用此入口。revision 冲突仅提示用户刷新后重新编辑，
+ * 不重新拉取配置、不更新 revision，也不重提旧表单，保留页面当前草稿。
+ * 其它错误仍使用页面传入的通用提示，已处理的提示不重复展示。
  */
 export const useAdminConfigSaveRequest = <TData, TParams extends any[]>(
   server: (...params: TParams) => Promise<TData>,
-  options: AdminConfigSaveOptions = {}
+  options: AdminConfigSaveOptions<TData, TParams> = {}
 ) => {
   const { toast } = useToast();
 
@@ -33,9 +31,8 @@ export const useAdminConfigSaveRequest = <TData, TParams extends any[]>(
 
       const message = getErrText(err, '');
       if (message.includes('Revision conflict')) {
-        options.onConflict?.();
         toast({
-          title: 'admin:revision_conflict_refreshing',
+          title: 'admin:revision_conflict_refresh_required',
           status: 'warning'
         });
         return;

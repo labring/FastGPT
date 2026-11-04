@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { useAdminConfigSaveRequest } from './useAdminConfigSaveRequest';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { GET, POST } from '@/web/common/api/request';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
@@ -51,10 +51,12 @@ export const useDomainConfig = <T extends SystemInstanceConfigDomainKey>(domain:
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['domainConfig', domain],
     queryFn: () => getDomainConfigApi(domain),
-    refetchOnWindowFocus: false
+    refetchOnWindowFocus: false,
+    // 网络恢复也不能替换用户正在编辑的快照；冲突后由用户刷新页面重新读取。
+    refetchOnReconnect: false
   });
 
-  const { runAsync: submitOverrides, loading: isUpdating } = useRequest(
+  const { runAsync: submitOverrides, loading: isUpdating } = useAdminConfigSaveRequest(
     async ({
       overrides: nextOverrides,
       silent
@@ -64,8 +66,10 @@ export const useDomainConfig = <T extends SystemInstanceConfigDomainKey>(domain:
     }) => {
       // 数据未就绪时禁止提交：否则 expectedRevision 会误用 0 触发无谓冲突，
       // 且整域提交会以空/半空表单覆盖库中全部配置。
-      // ToastHandledError 表示本 hook 的 onError 已展示提示，抑制通用层的重复 toast。
+      // 提示在当前分支展示；ToastHandledError 让通用保存入口跳过重复 toast。
       if (!data) {
+        toast({ status: 'warning', title: 'admin:loading' });
+        void refetch();
         throw new ToastHandledError('Domain config not loaded yet');
       }
       const res = await updateDomainConfigApi({
@@ -90,26 +94,7 @@ export const useDomainConfig = <T extends SystemInstanceConfigDomainKey>(domain:
         }
         void refetch();
       },
-      errorToast: 'admin:failed_to_save_settings',
-      onError: (err: any) => {
-        const errorMsg = typeof err === 'string' ? err : err?.message || '';
-        // 数据尚未加载完成时提示重新加载，而不是误报保存失败
-        if (errorMsg.includes('not loaded yet')) {
-          toast({
-            status: 'warning',
-            title: 'admin:loading'
-          });
-          void refetch();
-          return;
-        }
-        if (errorMsg.includes('Revision conflict')) {
-          toast({
-            status: 'warning',
-            title: 'admin:revision_conflict_refreshing'
-          });
-          void refetch();
-        }
-      }
+      errorToast: 'admin:failed_to_save_settings'
     }
   );
 

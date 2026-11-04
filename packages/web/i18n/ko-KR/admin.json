@@ -1120,7 +1120,7 @@
   "storage_cdn_endpoint_tip": "선택 사항입니다. 설정하면 short-redirect 임시 다운로드 주소가 이 CDN 도메인으로 재작성되며, 외부 접근 엔드포인트가 함께 필요합니다. 비워 두면 STORAGE_S3_CDN_ENDPOINT 환경 변수로 대체됩니다.",
   "storage_redirect_ttl_seconds": "리다이렉트 URL TTL (초)",
   "storage_redirect_ttl_seconds_tip": "short-redirect 모드에서 302로 발급되는 서명된 다운로드 URL의 최대 유효 기간입니다.",
-  "revision_conflict_refreshing": "다른 사용자가 설정을 수정했습니다. 최신 버전으로 새로 고칩니다.",
+  "revision_conflict_refresh_required": "다른 사용자가 설정을 수정했습니다. 필요한 변경 내용을 먼저 복사한 다음 페이지를 새로 고치고 변경 사항을 다시 확인한 후 저장해 주세요.",
   "feature_section_display": "표시 설정",
   "page_title_inform": "알림 관리",
   "page_description_inform": "시스템 공지 팝업, 인앱 브로드캐스트 알림 및 프로모션 광고 관리",

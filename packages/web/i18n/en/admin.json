@@ -1120,7 +1120,7 @@
   "storage_cdn_endpoint_tip": "Optional. When set, short-redirect download URLs are rewritten to this CDN domain; requires an external endpoint. Falls back to STORAGE_S3_CDN_ENDPOINT when empty.",
   "storage_redirect_ttl_seconds": "Redirect URL TTL (seconds)",
   "storage_redirect_ttl_seconds_tip": "Max lifetime of the pre-signed URL issued by the 302 redirect in short-redirect mode.",
-  "revision_conflict_refreshing": "The configuration was modified elsewhere. Refreshing to the latest revision.",
+  "revision_conflict_refresh_required": "The configuration was modified elsewhere. Copy any edits you want to keep, then refresh the page and review your changes before saving again.",
   "feature_section_display": "Display Configuration",
   "page_title_inform": "Notifications",
   "page_description_inform": "Manage system announcements, broadcast notifications, and campaign ads",

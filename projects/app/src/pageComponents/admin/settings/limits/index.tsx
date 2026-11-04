@@ -195,13 +195,6 @@ const LimitsSettingComponent = () => {
     {
       successToast: 'admin:settings_saved',
       errorToast: 'admin:failed_to_save_settings',
-      onConflict: () => {
-        void resource.refetch();
-        void performance.refetch();
-        void auth.refetch();
-        void storage.refetch();
-        void vector.refetch();
-      },
       onSuccess: () => {
         void resource.refetch();
         void performance.refetch();
