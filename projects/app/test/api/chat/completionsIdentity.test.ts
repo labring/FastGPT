@@ -8,6 +8,9 @@ import { MongoTeam } from '@fastgpt/service/support/user/team/teamSchema';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
+import { MongoOutLink } from '@fastgpt/service/support/outLink/schema';
+import { Types } from '@fastgpt/service/common/mongo';
+import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 import { Call } from '@test/utils/request';
 import { dispatchWorkFlow } from '@fastgpt/service/core/workflow/dispatch';
 import { jsonRes, sseErrRes } from '@fastgpt/service/common/response';
@@ -143,4 +146,68 @@ describe.each([
     expect(dispatchWorkFlow).not.toHaveBeenCalled();
     expect(await MongoChat.countDocuments()).toBe(0);
   });
+
+  it.each(['missing', 'type-only', 'id-only', 'same', 'other-channel', 'other-user'] as const)(
+    'checks sharing by publishSource and UID, ignoring legacy shareId: %s',
+    async (scenario) => {
+      const link = await MongoOutLink.create({
+        teamId: auth.teamId,
+        tmbId: auth.tmbId,
+        appId,
+        shareId: 'current-share',
+        type: 'share',
+        name: 'Current share',
+        allowAnonymous: true
+      });
+      const publishSource = (() => {
+        if (scenario === 'missing') return undefined;
+        if (scenario === 'type-only') return { type: 'share' };
+        if (scenario === 'id-only') return { id: new Types.ObjectId() };
+        return {
+          type: 'share',
+          id: scenario === 'other-channel' ? new Types.ObjectId() : link._id
+        };
+      })();
+      // 旧 BSON 可缺 type/id，且旧 shareId 与当前链接不同；绕过当前 Schema 保留原始形态。
+      await MongoChat.collection.insertOne({
+        teamId: new Types.ObjectId(auth.teamId),
+        tmbId: new Types.ObjectId(auth.tmbId),
+        appId: new Types.ObjectId(appId),
+        sourceType: 'app',
+        chatId: 'share-chat',
+        source: 'share',
+        shareId: 'legacy-other-share',
+        outLinkUid: 'u1',
+        ...(publishSource ? { publishSource } : {})
+      });
+      const before = await MongoChat.findOne({ appId, chatId: 'share-chat' }).lean();
+      await Call(handler, {
+        headers: {},
+        body: {
+          chatId: 'share-chat',
+          outLinkAuthData: {
+            shareId: 'current-share',
+            outLinkUid: scenario === 'other-user' ? 'u2' : 'u1'
+          },
+          messages: [{ role: 'user', content: 'hi' }]
+        }
+      });
+      const after = await MongoChat.findOne({ appId, chatId: 'share-chat' }).lean();
+      if (scenario === 'other-channel' || scenario === 'other-user') {
+        expect(jsonRes).toHaveBeenCalledWith(
+          expect.anything(),
+          expect.objectContaining({ error: ChatErrEnum.unAuthChat })
+        );
+        expect(dispatchWorkFlow).not.toHaveBeenCalled();
+        expect(after).toEqual(before);
+      } else {
+        expect(jsonRes).not.toHaveBeenCalled();
+        expect(sseErrRes).not.toHaveBeenCalled();
+        expect(dispatchWorkFlow).toHaveBeenCalledWith(expect.objectContaining({ uid: 'u1' }));
+        expect(after?.publishSource?.type).toBe('share');
+        expect(String(after?.publishSource?.id)).toBe(String(link._id));
+        expect(after?.shareId).toBe('current-share');
+      }
+    }
+  );
 });

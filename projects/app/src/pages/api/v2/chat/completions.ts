@@ -635,10 +635,7 @@ const authShareChat = async ({
   }).lean();
   if (chat) {
     assertChatPublishSource({ previous: chat.publishSource, current: publishSource });
-    if (
-      chat.outLinkUid !== uid ||
-      ((!chat.publishSource?.type || !chat.publishSource.id) && chat.shareId !== data.shareId)
-    ) {
+    if (chat.outLinkUid !== uid) {
       return Promise.reject(ChatErrEnum.unAuthChat);
     }
   }

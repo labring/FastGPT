@@ -54,17 +54,13 @@ export const updateChatPublishSource = async (
 
   for (let attempt = 0; attempt < 3; attempt++) {
     const chat = await MongoChat.findOne(sourceQuery)
-      .select('_id teamId publishSource shareId outLinkUid')
+      .select('_id teamId publishSource outLinkUid')
       .lean();
     if (chat) {
       if (String(chat.teamId) !== params.teamId) throw ChatErrEnum.unAuthChat;
       assertChatPublishSource({ previous: chat.publishSource, current });
-      // 来源兼容不能绕过外链访客身份；旧会话继续保留已有 shareId 约束。
-      if (
-        current.type === ChatSourceEnum.share &&
-        (chat.outLinkUid !== params.outLinkUid ||
-          ((!chat.publishSource?.type || !chat.publishSource.id) && chat.shareId !== shareId))
-      ) {
+      // 渠道只按 publishSource 判断；缺字段兼容仍不能绕过外链访客身份。
+      if (current.type === ChatSourceEnum.share && chat.outLinkUid !== params.outLinkUid) {
         throw ChatErrEnum.unAuthChat;
       }
       const result = await MongoChat.updateOne(
@@ -75,8 +71,7 @@ export const updateChatPublishSource = async (
             ? {
                 'publishSource.type': chat.publishSource?.type ?? null,
                 'publishSource.id': chat.publishSource?.id ?? null,
-                outLinkUid: chat.outLinkUid ?? null,
-                shareId: chat.shareId ?? null
+                outLinkUid: chat.outLinkUid ?? null
               }
             : {})
         },

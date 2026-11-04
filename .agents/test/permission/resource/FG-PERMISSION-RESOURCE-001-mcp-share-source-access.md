@@ -54,7 +54,7 @@ routes:
 related:
   - "FG-CHAT-CONVERSATION-001"
   - "FG-INTEGRATION-OPENAPI-001"
-baseline: "c413874c6a1cf47f3c35fc94d8b074130db50f8a"
+baseline: "4acd710f001a095cf8863956f51e17ce9d53ff9b"
 ---
 
 # MCP 与分享按最新来源校验，其他入口沿用原有权限
@@ -66,7 +66,7 @@ baseline: "c413874c6a1cf47f3c35fc94d8b074130db50f8a"
 ## 前置准备
 
 - 依据简版设计的“仅当前 MCP/分享检查、缺任一旧字段兼容、preChat 原子复核”规则。复用 CONVERSATION-001 的 D2 身份/渠道清单和请求/证据方法；每个独立场景恢复新副本 G0，连续场景明确承接前一步，不能复用已被其他行改变的最新来源。
-- G0：S1 下已完成的对话 Cs，publishSource=`{type:share,id:S1.id}`、outLinkUid=u1。G1：Ka 下已完成对话 Ca，来源 api/Ka。G2：隔离库夹具克隆 G0，只改 publishSource 为缺失、`{type:share}`、`{id:S1.id}`，旧 shareId/outLinkUid 和原有权限仍满足；不得用“缺新字段”顺便移除旧校验。
+- G0：S1 下已完成的对话 Cs，publishSource=`{type:share,id:S1.id}`、outLinkUid=u1。G1：Ka 下已完成对话 Ca，来源 api/Ka。G2：隔离库夹具克隆 G0，publishSource 分别为缺失、`{type:share}`、`{id:S2.id}`，旧 shareId 为空或指向 S2；保留 outLinkUid=u1 和合法资源权限。渠道检查只使用 publishSource，不因旧 shareId 不同拒绝；访客身份仍须匹配。
 - 分享请求使用真实 `outLinkAuthData:{shareId,outLinkUid}`，受保护分享还需有效登录身份；不得把 customUid 代替 outLinkUid。记录 body 中伪造来源不影响服务端通道判断。
 - 先存 chats 的来源、uid、状态与本例 chatitems/dataId 集合；拒绝时同时验证不返回历史内容/文件信息且不改来源。原有 Key 使用时间、请求日志、分享鉴权前置检查可能更新，不断言所有用量/日志绝对不变。
 - 实施入口：assertChatPublishSource 用于历史读取前校验，updateChatPublishSource 在 preChat 以 Mongo 快照条件更新复核。MCP toolCall 不接收 chatId，每次新建。C7 先通过实际 toolCall 验证 M1 有效且绑定 W，再在同一隔离资源下用真实 Mongo 与 `updateChatPublishSource` 验证已有会话：固定 `sourceType=app, sourceId=W, teamId=T, tmbId=A, source=mcp`，publishSource 由已验证 M1 的数据库 ID 构造。该部分属于服务集成，不是 MCP 多轮 HTTP 测试。不得给现有 toolCall 发臆造 chatId 并声称覆盖了已有会话，也不为测试扩展产品能力。
@@ -82,7 +82,7 @@ baseline: "c413874c6a1cf47f3c35fc94d8b074130db50f8a"
 | C1 | 允许；G0 | S1/u1 续聊；同链接以 u2 访问另一个恢复的 G0。 |
 | C2 | 拒绝；恢复 G0 | S2/u1 请求 Cs；分别验证 completions 与分享端已有的历史/恢复/文件请求。 |
 | C3 | 连续状态；恢复 G0 | Ka 续聊 Cs 并保存后，再用原 S1/u1 续聊。 |
-| C4 | 缺字段；G2 各变体独立 | S1/u1 请求；再在旧来源 type=api 但无 id 的变体上执行原有分享校验可通过的请求。 |
+| C4 | 缺字段；G2 各变体独立 | S1/u1 请求；再在旧来源 type=api 但无 id 的变体上请求。复位后以 S1/u2 请求一个缺字段变体作身份反例。 |
 | C5 | 请求通道；恢复 G0 | S2/u1 请求 Cs，在 metadata/variables 中伪造 type=api、scene=admin 和 S1 的 publishSource；实际仍由 S2 鉴权。普通 API/网页跨来源的正向流程引用 CONVERSATION-001 C2/C3，不重复执行矩阵。 |
 | C6 | 原权限拒绝；G2/完整来源 | 使用失效分享、受保护分享缺登录或无应用权限；使用无权 API Key 或其他团队成员；缺 type/id 也重复一个权限拒绝代表。 |
 | C7 | MCP；真实服务集成 | 沿用上述 M1 可信上下文，调用真实 updateChatPublishSource：旧记录分别为 mcp/M1、mcp/M2、api/Ka、缺 type、缺 id；再验证 M1 当前可信来源缺必需 ID 不能绕过完整旧来源。 |
@@ -99,7 +99,7 @@ baseline: "c413874c6a1cf47f3c35fc94d8b074130db50f8a"
 | C1 | S1/u1 允许；换 u2 仍由原有访客身份规则拒绝，不因同来源放宽 UID。 | 响应、Cs 的新增轮次或无变化差集。 |
 | C2 | S2 被拒绝，type 相同也不能忽略 id。拒绝发生在返回受保护内容和改写来源之前；不能先改 S2 再比较。 | 请求/业务错误、历史正文不泄漏、来源/items 快照。 |
 | C3 | Ka 通过原权限可写入最新 api/Ka；之后 S1 因与“最新来源”不同拒绝，不按最初创建来源放行。 | 两次响应及中间/最终快照。 |
-| C4 | 所有旧字段缺失变体跳过新增检查，不单独强制 type；通过原有校验后，来源更新为本次 share/S1。 | 各初态/终态 BSON 与业务结果。 |
+| C4 | 新来源缺 type 或 id 时跳过渠道检查，不回退旧 shareId；合法 S1/u1 可续聊并更新为 share/S1，即使旧 shareId 不同或缺失。u2 仍被身份校验拒绝，不改来源和消息。 | 各初态/终态 BSON 与业务结果。 |
 | C5 | 伪造 scene/type 不把真实分享变成普通 API；S2 仍被拒绝，不能按客户端来源跳过校验。 | 当前凭证入口、响应、无本轮消息差集。 |
 | C6 | 缺来源不授予权限；原有拒绝保持，不能靠 source 兼容、customUid 或伪造发布者绕过。 | 真实业务错误及无消息写入。 |
 | C7 | 完整且相同允许；完整但 Key/type 不同拒绝；旧任一缺失跳过；当前可信字段缺失不能绕过完整旧来源。当前来源缺 ID 在进入数据写入前失败。 | 真实 MCP 鉴权响应、服务入参及 Mongo 前后快照。 |

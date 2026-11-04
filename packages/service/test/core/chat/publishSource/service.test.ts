@@ -46,7 +46,7 @@ describe('updateChatPublishSource', () => {
     expect(chat).not.toHaveProperty('outLinkUid');
   });
 
-  it('分享兼容旧字段仍校验 UID，完整新来源按当前渠道比较', async () => {
+  it('分享渠道只按新来源比较，缺字段忽略旧 shareId 但仍校验 UID', async () => {
     const id = oid();
     const params = {
       ...scope,
@@ -61,10 +61,16 @@ describe('updateChatPublishSource', () => {
       appId: scope.sourceId,
       chatId,
       source: 'share',
-      shareId: 'public',
+      shareId: 'legacy-other-channel',
       outLinkUid: 'u1'
     });
+    await expect(updateChatPublishSource({ ...params, outLinkUid: 'u2' })).rejects.toBe(
+      ChatErrEnum.unAuthChat
+    );
     await updateChatPublishSource(params);
+    const migrated = await MongoChat.findOne({ chatId }).lean();
+    expect(migrated?.shareId).toBe('public');
+    expect(String(migrated?.publishSource?.id)).toBe(id);
     await expect(updateChatPublishSource({ ...params, outLinkUid: 'u2' })).rejects.toBe(
       ChatErrEnum.unAuthChat
     );
