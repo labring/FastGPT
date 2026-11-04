@@ -25,6 +25,7 @@ PG partial indexes require `halfvec` support, a fixed vector dimension in the `1
 
 - **Workflow memory**: Memory keys for content extraction, question classification, and Pi Agents now include the source and call path. Custom integrations that read or write `ChatItem.memories` directly must support the new keys instead of relying on `agentLoopMemory-${nodeId}` or child Workflow keys without a call path.
 - **API identity parameters**: Existing calls to `chat/completions` that send both `customUid` and `authProxy` must keep only one, depending on whether they identify a user or run as a Team member. Sending both now returns a parameter error, even when `customUid` is an empty string.
+- **Message deletion API**: `DELETE /api/core/chat/record/delete` no longer reads URL query parameters. Existing integrations must send parameters in a JSON request body and replace comma-separated `contentIds` strings with arrays.
 - **Log CSV exports**: Scripts that parse Team members from the “User” column must support `ID:name` instead of the previous member name; when a member has no name, the column contains only the ID.
 
 ## 🚀 New features
@@ -53,16 +54,17 @@ PG partial indexes require `halfvec` support, a fixed vector dimension in the `1
 6. **[Workflows and Agents]** Fixed Skill exports failing when the edit sandbox was not running: when initialization is allowed, the server starts or resumes the sandbox and waits until it is ready before packaging. Members with write permission must wait for the sandbox to be ready; read-only collaborators can access export regardless of their local edit sandbox state.
 7. **[Workflows and Agents]** Fixed cursor resets in multiline text fields that disrupted input method composition and candidate confirmation.
 8. **[Workflows and Agents]** Fixed scrolling in Tool and form parameter configuration dialogs when their content exceeds the available space.
-9. **[Chat experience]** Fixed the header variable panel in shared chats without login using regular chat visibility rules. External variables are now hidden from share visitors.
-10. **[Chat experience]** Fixed model selectors in global variables and interaction forms in shared chats without login failing to load the model list or selected model name because share authentication was missing.
-11. **[Chat experience]** Fixed images being missed when their Markdown descriptions contain paired square brackets, such as `![Image [1]](...)`; image extraction and replacement now handle these descriptions correctly.
-12. **[Chat experience]** Added missing Simplified Chinese, Traditional Chinese, English, and Korean translations for sandbox connection and file errors, Skill generation status, and Tool version labels, fixing untranslated text or internal keys appearing in some screens.
-13. **[Teams and permissions]** Fixed App creation, JSON imports, copies, and conversions to new Workflow copies failing when they include unreadable or missing resources. The initial version snapshots only readable resources; any remaining unusable Node references are marked as errors in the detail view for later correction.
-14. **[Teams and permissions]** Fixed the login and member name forms submitting when Enter was used to confirm an input method candidate during composition. Pressing Enter again after confirmation submits the form.
-15. **[Teams and permissions]** Fixed the “Cancel” button in the account deletion confirmation dialog not following the current interface language.
-16. **[System and operations]** Fixed the Commercial edition's admin configuration page showing values that differ from the running configuration when the database has no system configuration or an older record lacks `systemEnv`. Valid `config.json` settings now initialize the running configuration, and the page fills only missing sections while preserving existing site and plan settings, preventing defaults from overwriting them on save.
-17. **[System and operations]** Fixed user, feedback, and session search filters overwriting one another in chat logs; the list and CSV export now apply all selected conditions together.
-18. **[Tools and channels]** Fixed blank text in some Tool names, descriptions, and tags when their Traditional Chinese translation is empty. These values fall back to Simplified Chinese, then English if no usable text is available.
+9. **[Chat experience]** Fixed an authentication data format error in shared chats that prevented message deletion and caused retries and sending edited messages to fail.
+10. **[Chat experience]** Fixed the header variable panel in shared chats without login using regular chat visibility rules. External variables are now hidden from share visitors.
+11. **[Chat experience]** Fixed model selectors in global variables and interaction forms in shared chats without login failing to load the model list or selected model name because share authentication was missing.
+12. **[Chat experience]** Fixed images being missed when their Markdown descriptions contain paired square brackets, such as `![Image [1]](...)`; image extraction and replacement now handle these descriptions correctly.
+13. **[Chat experience]** Added missing Simplified Chinese, Traditional Chinese, English, and Korean translations for sandbox connection and file errors, Skill generation status, and Tool version labels, fixing untranslated text or internal keys appearing in some screens.
+14. **[Teams and permissions]** Fixed App creation, JSON imports, copies, and conversions to new Workflow copies failing when they include unreadable or missing resources. The initial version snapshots only readable resources; any remaining unusable Node references are marked as errors in the detail view for later correction.
+15. **[Teams and permissions]** Fixed the login and member name forms submitting when Enter was used to confirm an input method candidate during composition. Pressing Enter again after confirmation submits the form.
+16. **[Teams and permissions]** Fixed the “Cancel” button in the account deletion confirmation dialog not following the current interface language.
+17. **[System and operations]** Fixed the Commercial edition's admin configuration page showing values that differ from the running configuration when the database has no system configuration or an older record lacks `systemEnv`. Valid `config.json` settings now initialize the running configuration, and the page fills only missing sections while preserving existing site and plan settings, preventing defaults from overwriting them on save.
+18. **[System and operations]** Fixed user, feedback, and session search filters overwriting one another in chat logs; the list and CSV export now apply all selected conditions together.
+19. **[Tools and channels]** Fixed blank text in some Tool names, descriptions, and tags when their Traditional Chinese translation is empty. These values fall back to Simplified Chinese, then English if no usable text is available.
 
 ## 🛠️ Code improvements
 
