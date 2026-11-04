@@ -571,6 +571,31 @@ describe('getAgentRuntimeTools schema loading', () => {
     }
   };
 
+  appMap.plugin_with_reference_only_input = {
+    ...createPersonalApp({ id: 'plugin_with_reference_only_input', type: AppTypeEnum.workflow }),
+    type: AppTypeEnum.workflowTool,
+    modules: [
+      {
+        nodeId: 'plugin-input',
+        flowNodeType: FlowNodeTypeEnum.pluginInput,
+        name: 'Input',
+        inputs: [
+          {
+            key: 'ref_param',
+            label: 'Reference Param',
+            description: 'Ref param description',
+            value: '',
+            valueType: WorkflowIOValueTypeEnum.string,
+            required: true,
+            renderTypeList: [FlowNodeInputTypeEnum.reference],
+            selectedType: FlowNodeInputTypeEnum.reference
+          }
+        ],
+        outputs: []
+      }
+    ]
+  };
+
   it.each(['simple_app', 'chat_agent_app', 'workflow_app'] as const)(
     'loads %s as a callable tool with agent-generated user input',
     async (appId) => {
@@ -597,6 +622,24 @@ describe('getAgentRuntimeTools schema loading', () => {
     });
 
     expect(tools).toEqual([]);
+  });
+
+  it('keeps plugin tools whose start node has reference-only inputs without toolDescription', async () => {
+    const tools = await getAgentRuntimeTools({
+      tmbId: 'tmb_1',
+      tools: [{ id: 'plugin_with_reference_only_input', config: {} }]
+    });
+
+    expect(tools).toHaveLength(1);
+    expect(tools[0].agentGeneratedInputKeys).toContain('ref_param');
+    expect(tools[0].requestSchema.function.parameters).toMatchObject({
+      type: 'object',
+      properties: {
+        ref_param: expect.objectContaining({
+          description: 'Ref param description'
+        })
+      }
+    });
   });
 
   it('keeps external variables that project to supported manual inputs', async () => {
