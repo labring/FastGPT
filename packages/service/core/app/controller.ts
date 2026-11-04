@@ -28,13 +28,13 @@ import { type ClientSession } from '../../common/mongo';
 import { getLogger, LogCategories } from '../../common/logger';
 import { deleteAppSandboxes } from '../ai/sandbox/interface/resource/sourceCleanup';
 import { MongoSystemTool } from '../plugin/tool/systemToolSchema';
-import { StoredSelectedDatasetSchema } from '@fastgpt/global/core/workflow/type/io';
 import {
   StoredSelectedAgentSkillItemTypeSchema,
   type AppFormEditFormType
 } from '@fastgpt/global/core/app/formEdit/type';
 import z from 'zod';
 import { nodeInputIsReference } from '@fastgpt/global/common/workflow/reference';
+import { normalizeDatasetSelectValue } from '@fastgpt/global/common/workflow/input';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { deleteChatResourcesBySource } from '../chat/delete';
 
@@ -61,16 +61,10 @@ export const beforeUpdateAppFormat = async ({
    * 引用模式由调用处判断并跳过，避免把 [nodeId, key] 误压缩成空数组。
    * 未配置的草稿节点按空数组保存，仍由发布/运行前的工作流校验提示必填。
    * 兼容历史单选格式 { datasetId }，避免旧应用再次保存时丢失知识库配置。
+   * 过滤无效项，避免旧引用值或导入脏数据阻断保存；不展开嵌套数组猜测其业务语义。
    */
   const formatDatasetSelectValue = (value: unknown) => {
-    if (value === undefined || value === null) return [];
-
-    const datasetReferenceSchema = StoredSelectedDatasetSchema.pick({ datasetId: true });
-    const datasets = z
-      .union([datasetReferenceSchema, z.array(datasetReferenceSchema)])
-      .parse(value);
-
-    return Array.isArray(datasets) ? datasets : [datasets];
+    return normalizeDatasetSelectValue(value).map(({ datasetId }) => ({ datasetId }));
   };
 
   nodes.forEach((node) => {

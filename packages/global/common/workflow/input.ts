@@ -4,8 +4,25 @@ import {
   WorkflowIOValueTypeEnum,
   VariableInputEnum
 } from '../../core/workflow/constants';
-import type { FlowNodeInputItemType } from '../../core/workflow/type/io';
+import {
+  StoredSelectedDatasetSchema,
+  type FlowNodeInputItemType
+} from '../../core/workflow/type/io';
 import type { VariableItemType } from '../../core/app/variable/type';
+
+/**
+ * 归一手动知识库选择值，兼容历史单对象，并过滤引用元组、嵌套数组和缺少有效 ID 的项。
+ * 保留展示快照及资源错误标记，不根据知识库是否存在或可访问过滤；引用模式由调用方跳过。
+ */
+export const normalizeDatasetSelectValue = (value: unknown) => {
+  const datasetSchema = StoredSelectedDatasetSchema.pick({ datasetId: true }).loose();
+  const datasets = Array.isArray(value) ? value : [value];
+
+  return datasets.flatMap((item) => {
+    const parsed = datasetSchema.safeParse(item);
+    return parsed.success && parsed.data.datasetId.trim().length > 0 ? [parsed.data] : [];
+  });
+};
 
 /**
  * 根据节点类型和系统 key 确认凭据容器，迁移与保存共用，禁止仅凭同名业务字段推断。
