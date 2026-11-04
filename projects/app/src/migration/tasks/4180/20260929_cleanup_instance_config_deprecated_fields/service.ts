@@ -36,6 +36,8 @@ export const deprecatedOverridePaths: Partial<
   subservice: [
     // plugin.enabled 没有消费点：启停实际由 baseUrl/token 是否存在决定，删除冗余开关
     ['plugin', 'enabled'],
+    // mcp.enabled 冗余：SSE 接入地址按 sseProxyUrl 是否为空生成
+    ['mcp', 'enabled'],
     ['agentSandbox', 'proxy', 'wsUrl'],
     ['agentSandbox', 'proxy', 'httpUrl']
   ],

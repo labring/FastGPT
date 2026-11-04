@@ -9,7 +9,6 @@ import {
 } from './primitives';
 
 const McpSubserviceConfigSchema = z.strictObject({
-  enabled: z.boolean().default(false),
   sseProxyUrl: urlWithDefault()
 });
 

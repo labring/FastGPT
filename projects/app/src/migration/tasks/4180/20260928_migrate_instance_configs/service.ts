@@ -372,7 +372,6 @@ export const buildLegacyDomainOverrides = ({
       token: optionalText(legacyEnv.CODE_SANDBOX_TOKEN)
     }),
     mcp: compact({
-      enabled: legacyEnv.SSE_MCP_SERVER_PROXY_ENDPOINT ? true : undefined,
       sseProxyUrl: optionalText(legacyEnv.SSE_MCP_SERVER_PROXY_ENDPOINT)
     }),
     aiProxy: compact({

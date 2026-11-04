@@ -343,7 +343,6 @@ export const systemInstanceConfigRegistry: readonly SystemInstanceConfigRegistry
       'codeSandbox.baseUrl',
       'aiProxy.enabled',
       'aiProxy.endpoint',
-      'mcp.enabled',
       'mcp.sseProxyUrl',
       'agentSandbox.provider',
       'agentSandbox.common.cpuCount',
