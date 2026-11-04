@@ -1,3 +1,4 @@
+import { normalizeAppLogKeys } from '@fastgpt/global/core/app/logs/utils';
 import MyPopover from '@fastgpt/web/components/common/MyPopover';
 import { Box, Button, Flex } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -61,7 +62,7 @@ const SyncLogKeysPopover = ({
                 variant={'outline'}
                 size={'sm'}
                 onClick={() => {
-                  setLogKeys(teamLogKeys);
+                  setLogKeys(normalizeAppLogKeys(teamLogKeys));
                   onClose();
                 }}
               >
@@ -73,7 +74,7 @@ const SyncLogKeysPopover = ({
                 onClick={async () => {
                   await updateList({
                     appId: appId,
-                    logKeys
+                    logKeys: normalizeAppLogKeys(logKeys)
                   });
                   onClose();
                 }}

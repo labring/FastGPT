@@ -1,3 +1,4 @@
+import { getLogIdentity, normalizeAppLogKeys } from '@fastgpt/global/core/app/logs/utils';
 import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import {
   Box,
@@ -109,9 +110,10 @@ const LogTable = ({
   const [chatSearch, setChatSearch] = useState('');
 
   // log keys
-  const [logKeys = DefaultAppLogKeys, setLogKeys] = useLocalStorageState<AppLogKeysType[]>(
+  const [storedLogKeys, setLogKeys] = useLocalStorageState<AppLogKeysType[]>(
     `app_log_keys_${appId}`
   );
+  const logKeys = useMemo(() => normalizeAppLogKeys(storedLogKeys), [storedLogKeys]);
   const { runAsync: fetchLogKeys, data: teamLogKeys } = useRequest(
     async () => {
       return getLogKeys({ appId });
@@ -120,9 +122,9 @@ const LogTable = ({
       manual: false,
       refreshDeps: [appId],
       onSuccess: (res) => {
-        if (logKeys.length > 0) return;
+        if (storedLogKeys?.length) return;
         if (res.logKeys.length > 0) {
-          setLogKeys(res.logKeys);
+          setLogKeys(normalizeAppLogKeys(res.logKeys));
         } else if (res.logKeys.length === 0) {
           setLogKeys(DefaultAppLogKeys);
         }
@@ -130,9 +132,7 @@ const LogTable = ({
     }
   );
   const showSyncPopover = useMemo(() => {
-    const teamLogKeysList = (
-      teamLogKeys?.logKeys?.length ? teamLogKeys?.logKeys : DefaultAppLogKeys
-    ).filter((item) => item.enable);
+    const teamLogKeysList = normalizeAppLogKeys(teamLogKeys?.logKeys).filter((item) => item.enable);
     const personalLogKeysList = logKeys.filter((item) => item.enable);
     return !isEqual(teamLogKeysList, personalLogKeysList);
   }, [teamLogKeys, logKeys]);
@@ -261,7 +261,10 @@ const LogTable = ({
           {t('app:logs_keys_lastConversationTime')}
         </Th>
       ),
-      [AppLogKeysEnum.USER]: <Th key={AppLogKeysEnum.USER}>{t('app:logs_chat_user')}</Th>,
+      [AppLogKeysEnum.USER]: <Th key={AppLogKeysEnum.USER}>{t('app:logs_keys_user')}</Th>,
+      [AppLogKeysEnum.AUTH_USER]: (
+        <Th key={AppLogKeysEnum.AUTH_USER}>{t('app:logs_keys_auth_user')}</Th>
+      ),
       [AppLogKeysEnum.REGION]: (
         <Th key={AppLogKeysEnum.REGION}>
           <UserIpTypeFilter
@@ -365,15 +368,20 @@ const LogTable = ({
       ),
       [AppLogKeysEnum.USER]: (
         <Td key={AppLogKeysEnum.USER}>
-          <Box>
-            {item.sourceMember ? (
-              <UserBox sourceMember={item.sourceMember} />
-            ) : !!item.outLinkUid ? (
-              item.outLinkUid
-            ) : (
-              '-'
-            )}
-          </Box>
+          {getLogIdentity(item).member ? (
+            <UserBox sourceMember={getLogIdentity(item).member!} />
+          ) : (
+            getLogIdentity(item).name
+          )}
+        </Td>
+      ),
+      [AppLogKeysEnum.AUTH_USER]: (
+        <Td key={AppLogKeysEnum.AUTH_USER}>
+          {item.authMember ? (
+            <UserBox sourceMember={item.authMember} />
+          ) : (
+            getLogIdentity({ ...item, isAuthorizer: true }).name
+          )}
         </Td>
       ),
       [AppLogKeysEnum.REGION]: (
@@ -566,8 +574,7 @@ const LogTable = ({
                     onClick: () =>
                       setDetailLogData({
                         chatId: item.chatId,
-                        feedbackUserName:
-                          item.outLinkUid || item.sourceMember?.name || item.tmbId || undefined
+                        feedbackUserName: getLogIdentity(item).name
                       })
                   })}
                 >

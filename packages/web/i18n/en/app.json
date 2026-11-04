@@ -258,6 +258,7 @@
   "logs_keys_sessionId": "Session ID",
   "logs_keys_source": "Source",
   "logs_keys_title": "Title",
+  "logs_keys_auth_user": "Authorizer",
   "logs_keys_user": "User",
   "logs_keys_versionName": "Version Name",
   "logs_message_total": "Total Messages",

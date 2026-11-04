@@ -434,6 +434,7 @@ const InputTypeConfig = ({
         alignContent={'start'}
         textAlign={'left'}
         p={8}
+        h={'full'}
         flex={'0 1 auto'}
         overflow={'auto'}
       >

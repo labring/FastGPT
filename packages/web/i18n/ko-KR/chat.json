@@ -305,5 +305,7 @@
   "interactive.agent_ask.waiting": "질문 중",
   "interactive.agent_ask.asked_questions": "{{count}}개 질문 완료",
   "view_all_citations": "모두 보기",
-  "view_citations": "인용 보기"
+  "view_citations": "인용 보기",
+  "sandbox_connection_closed": "샌드박스 연결이 종료되었습니다",
+  "sandbox_invalid_file_name": "파일 이름이 올바르지 않습니다"
 }

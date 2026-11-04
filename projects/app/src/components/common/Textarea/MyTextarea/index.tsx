@@ -90,6 +90,8 @@ const Editor = React.memo(function Editor({
   textareaRef,
   autoHeight = false,
   onChange,
+  onCompositionStart,
+  onCompositionEnd,
   maxH,
   minH,
   showResize,
@@ -101,14 +103,30 @@ const Editor = React.memo(function Editor({
 }) {
   const { t } = useTranslation();
   const cursorPositionRef = useRef<number | null>(null);
+  const isComposingRef = useRef(false);
+  const lastCompositionValueRef = useRef<string | null>(null);
+  const compositionEndValueRef = useRef<string | null>(null);
 
   // 使用 useRef 保存 onChange,避免依赖变化导致 handleChange 重新创建
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
 
+  // 父组件重置或改写受控值后，旧组合输入的尾随事件不再有效。
+  useLayoutEffect(() => {
+    if (compositionEndValueRef.current !== null && props.value !== compositionEndValueRef.current) {
+      compositionEndValueRef.current = null;
+      lastCompositionValueRef.current = null;
+    }
+  }, [props.value]);
+
   // 使用 useLayoutEffect 同步恢复光标位置,避免闪烁
   useLayoutEffect(() => {
-    if (textareaRef.current && cursorPositionRef.current !== null) {
+    if (
+      textareaRef.current &&
+      cursorPositionRef.current !== null &&
+      !isComposingRef.current &&
+      compositionEndValueRef.current === null
+    ) {
       const pos = cursorPositionRef.current;
       textareaRef.current.setSelectionRange(pos, pos);
       cursorPositionRef.current = null;
@@ -117,10 +135,50 @@ const Editor = React.memo(function Editor({
 
   // 移除 onChange 依赖,使 handleChange 引用永远稳定
   const handleChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    // 保存光标位置
+    const value = e.currentTarget.value;
+
+    if (isComposingRef.current) {
+      cursorPositionRef.current = null;
+      if (value !== lastCompositionValueRef.current) {
+        lastCompositionValueRef.current = value;
+        onChangeRef.current?.(e);
+      }
+      return;
+    }
+
+    // 尾随 input 可能晚于 compositionend；同值仍保护光标，但必须转发重置后的真实输入。
+    if (compositionEndValueRef.current === value) {
+      cursorPositionRef.current = null;
+      onChangeRef.current?.(e);
+      return;
+    }
+
+    compositionEndValueRef.current = null;
+    lastCompositionValueRef.current = null;
     cursorPositionRef.current = e.target.selectionStart;
     onChangeRef.current?.(e);
   }, []);
+
+  const handleCompositionStart = useCallback(
+    (e: React.CompositionEvent<HTMLTextAreaElement>) => {
+      isComposingRef.current = true;
+      lastCompositionValueRef.current = e.currentTarget.value;
+      compositionEndValueRef.current = null;
+      cursorPositionRef.current = null;
+      onCompositionStart?.(e);
+    },
+    [onCompositionStart]
+  );
+
+  const handleCompositionEnd = useCallback(
+    (e: React.CompositionEvent<HTMLTextAreaElement>) => {
+      isComposingRef.current = false;
+      compositionEndValueRef.current = e.currentTarget.value;
+      cursorPositionRef.current = null;
+      onCompositionEnd?.(e);
+    },
+    [onCompositionEnd]
+  );
 
   return (
     <Box h={'100%'} w={'100%'}>
@@ -143,6 +201,8 @@ const Editor = React.memo(function Editor({
           maxH={`${maxH}px`}
           minH={`${minH}px`}
           onChange={handleChange}
+          onCompositionStart={handleCompositionStart}
+          onCompositionEnd={handleCompositionEnd}
         />
         {onOpenModal &&
           maxH &&
