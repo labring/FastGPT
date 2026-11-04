@@ -23,7 +23,10 @@ import { getCachedSystemModelHandle } from '@fastgpt/service/core/ai/model/catal
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
-import { enableDatasetCollectionPermissions } from '@fastgpt/service/support/permission/collection/enable';
+import {
+  disableDatasetCollectionPermissions,
+  enableDatasetCollectionPermissions
+} from '@fastgpt/service/support/permission/collection/enable';
 import {
   createResourceDefaultCollaborators,
   getResourceOwnedClbs
@@ -31,7 +34,7 @@ import {
 import { updateResourceCollaborators } from '@fastgpt/service/support/permission/resourcePermissionService';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import { MongoTeamAudit } from '@fastgpt/service/support/user/audit/schema';
-import { getFakeUsers } from '@test/datas/users';
+import { getFakeUsers, getRootUser, getUser } from '@test/datas/users';
 import { getModelTestDefaults, setModelTestSnapshot } from '@test/modelCache';
 import { Call } from '@test/utils/request';
 import { Types } from 'mongoose';
@@ -40,6 +43,25 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const { enqueueDatasetPermissionSync } = vi.hoisted(() => ({
   enqueueDatasetPermissionSync: vi.fn()
 }));
+
+const { beforeUpdateTransaction } = vi.hoisted(() => ({
+  beforeUpdateTransaction: { current: null as null | (() => Promise<void>) }
+}));
+
+// 在 authDataset 之后、handler 事务开始之前插入一次外部写入，复现并发请求的提交时序。
+vi.mock('@fastgpt/service/support/permission/model/auth', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('@fastgpt/service/support/permission/model/auth')>();
+  return {
+    ...actual,
+    assertAuthModels: async (props: Parameters<typeof actual.assertAuthModels>[0]) => {
+      const hook = beforeUpdateTransaction.current;
+      beforeUpdateTransaction.current = null;
+      if (hook) await hook();
+      return actual.assertAuthModels(props);
+    }
+  };
+});
 
 vi.mock('@fastgpt/service/core/dataset/datasetPermissionSync', async (importOriginal) => {
   const actual =
@@ -872,6 +894,7 @@ describe('update dataset', () => {
 describe('dataset permission sync switch', () => {
   beforeEach(() => {
     enqueueDatasetPermissionSync.mockClear();
+    beforeUpdateTransaction.current = null;
   });
 
   const permissionSyncBody = {
@@ -946,6 +969,96 @@ describe('dataset permission sync switch', () => {
     expect(res.code).toBe(200);
     expect((await MongoDataset.findById(dataset._id).lean())?.collectionPermissionEnabled).toBe(
       true
+    );
+    expect(enqueueDatasetPermissionSync).toHaveBeenCalledWith({
+      datasetId: String(dataset._id)
+    });
+  });
+
+  it('re-enables collection permissions when a concurrent disable commits after the config snapshot', async () => {
+    const { owner } = await getFakeUsers(1);
+    const teamId = String(owner.teamId);
+    const dataset = await createDatasetWithOwnerSnapshot({
+      teamId,
+      tmbId: String(owner.tmbId),
+      name: 'stale-switch-dataset',
+      type: DatasetTypeEnum.dataset
+    });
+    const collection = await MongoDatasetCollection.create({
+      teamId,
+      tmbId: String(owner.tmbId),
+      datasetId: String(dataset._id),
+      name: 'file',
+      type: DatasetCollectionTypeEnum.file
+    });
+    // 读取侧快照看到「开关已开」；随后并发请求关闭开关并清空 ACL，再轮到本次更新提交
+    await enableDatasetCollectionPermissions({ teamId, datasetId: String(dataset._id) });
+    beforeUpdateTransaction.current = async () => {
+      await disableDatasetCollectionPermissions({ teamId, datasetId: String(dataset._id) });
+    };
+
+    const res = await Call<UpdateDatasetBody, Record<string, never>, string>(updateHandler, {
+      auth: owner,
+      body: { id: String(dataset._id), ...permissionSyncBody }
+    });
+
+    expect(res.error).toBeUndefined();
+    expect(res.code).toBe(200);
+    const updated = await MongoDataset.findById(dataset._id).lean();
+    expect(updated?.apiDatasetServer?.permissionSync).toBe(true);
+    // 托管开启 ⇒ 开关必须为 on 且快照完整，否则同步结果与读取路径都失去依据
+    expect(updated?.collectionPermissionEnabled).toBe(true);
+    await expect(
+      getResourceOwnedClbs({
+        teamId,
+        resourceId: String(collection._id),
+        resourceType: PerResourceTypeEnum.collection
+      }).then(toPermissionRows)
+    ).resolves.toEqual(
+      toPermissionRows([{ tmbId: String(owner.tmbId), permission: OwnerRoleVal }])
+    );
+    expect(enqueueDatasetPermissionSync).toHaveBeenCalledWith({
+      datasetId: String(dataset._id)
+    });
+  });
+
+  it('lets a root user update and enable managed mode on another team dataset', async () => {
+    const root = await getRootUser();
+    const otherTeamOwner = await getUser('other-team-owner');
+    const teamId = String(otherTeamOwner.teamId);
+    const dataset = await createDatasetWithOwnerSnapshot({
+      teamId,
+      tmbId: String(otherTeamOwner.tmbId),
+      name: 'cross-team-dataset',
+      type: DatasetTypeEnum.dataset
+    });
+    const collection = await MongoDatasetCollection.create({
+      teamId,
+      tmbId: String(otherTeamOwner.tmbId),
+      datasetId: String(dataset._id),
+      name: 'file',
+      type: DatasetCollectionTypeEnum.file
+    });
+
+    // root 的 header team 与 dataset 归属团队不同：锁库与物化都必须按 dataset 团队作用域
+    const res = await Call<UpdateDatasetBody, Record<string, never>, string>(updateHandler, {
+      auth: root,
+      body: { id: String(dataset._id), name: 'renamed', ...permissionSyncBody }
+    });
+
+    expect(res.error).toBeUndefined();
+    expect(res.code).toBe(200);
+    const updated = await MongoDataset.findById(dataset._id).lean();
+    expect(updated?.name).toBe('renamed');
+    expect(updated?.collectionPermissionEnabled).toBe(true);
+    await expect(
+      getResourceOwnedClbs({
+        teamId,
+        resourceId: String(collection._id),
+        resourceType: PerResourceTypeEnum.collection
+      }).then(toPermissionRows)
+    ).resolves.toEqual(
+      toPermissionRows([{ tmbId: String(otherTeamOwner.tmbId), permission: OwnerRoleVal }])
     );
     expect(enqueueDatasetPermissionSync).toHaveBeenCalledWith({
       datasetId: String(dataset._id)
