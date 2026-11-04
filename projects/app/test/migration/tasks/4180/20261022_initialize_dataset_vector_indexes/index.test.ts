@@ -3,7 +3,7 @@ import { Types } from '@fastgpt/service/common/mongo';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import type { SystemMigrationContext } from '@/migration/registry';
-import { initializeDatasetVectorIndexes } from '@/migration/tasks/4174/20261022_initialize_dataset_vector_indexes';
+import { initializeDatasetVectorIndexes } from '@/migration/tasks/4180/20261022_initialize_dataset_vector_indexes';
 
 const mocks = vi.hoisted(() => ({
   count: vi.fn(),
@@ -11,7 +11,7 @@ const mocks = vi.hoisted(() => ({
   removeLegacy: vi.fn(),
   provider: 'pg'
 }));
-vi.mock('@/migration/tasks/4174/20261022_initialize_dataset_vector_indexes/service', () => ({
+vi.mock('@/migration/tasks/4180/20261022_initialize_dataset_vector_indexes/service', () => ({
   removeLegacyPgVectorIndex: mocks.removeLegacy
 }));
 vi.mock('@fastgpt/service/common/vectorDB/controller', () => ({ getVectorCount: mocks.count }));
@@ -106,7 +106,7 @@ describe('initializeDatasetVectorIndexes', () => {
       [{ key: 'legacyIndex', status: 'succeeded' }],
       [{ key: 'datasets', status: 'running' }],
       [{ key: 'datasets', status: 'running', current: 2 }],
-      [{ key: 'datasets', status: 'succeeded' }]
+      [{ key: 'datasets', status: 'succeeded', current: 2 }]
     ]);
     expect(checkpoint()).toMatchObject({ lastId: id(2), endId: id(2) });
     expect(await initializeDatasetVectorIndexes(context)).toEqual({
@@ -245,7 +245,8 @@ describe('initializeDatasetVectorIndexes', () => {
     });
     expect(context.reportProgress).toHaveBeenLastCalledWith({
       key: 'datasets',
-      status: 'succeeded'
+      status: 'succeeded',
+      ...(pg ? { current: 0 } : {})
     });
     expect(mocks.count).not.toHaveBeenCalled();
     expect(mocks.removeLegacy).toHaveBeenCalledTimes(pg ? 1 : 0);

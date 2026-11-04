@@ -111,12 +111,14 @@ const MigrationProgressStage = ({
           {t(progress.labelKey as any, progress.params as any)}
         </Box>
         <Flex flexShrink={0} alignItems={'center'} gap={2}>
-          {progress.current !== undefined && progress.total !== undefined && (
+          {progress.current !== undefined && (
             <Box fontSize={'xs'} color={'myGray.500'}>
-              {t('system_migration:progress_count', {
-                current: progress.current,
-                total: progress.total
-              })}
+              {progress.total === undefined
+                ? t('system_migration:progress_processed', { current: progress.current })
+                : t('system_migration:progress_count', {
+                    current: progress.current,
+                    total: progress.total
+                  })}
             </Box>
           )}
           <Badge

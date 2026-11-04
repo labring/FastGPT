@@ -110,7 +110,11 @@ export const initializeDatasetVectorIndexes = async (context: SystemMigrationCon
   }
 
   await context.assertActive();
-  await context.reportProgress({ key: 'datasets', status: SystemMigrationStatusEnum.succeeded });
+  await context.reportProgress({
+    key: 'datasets',
+    status: SystemMigrationStatusEnum.succeeded,
+    current: checkpoint.scannedCount
+  });
 
   const result = { scannedCount: checkpoint.scannedCount, eligibleCount: checkpoint.eligibleCount };
   context.logger.info('Historical dataset vector counts and index scheduling completed', result);

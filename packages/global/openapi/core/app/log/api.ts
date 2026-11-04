@@ -1,3 +1,4 @@
+import { ChatPublishSourceResponseSchema } from '../../../../core/chat/publishSource/type';
 import z from 'zod';
 import { PaginationResponseSchema, createPaginationSchema } from '../../../api';
 import { AppLogKeysEnum, AppLogTimespanEnum } from '../../../../core/app/logs/constants';
@@ -57,12 +58,21 @@ export type updateLogKeysResponseType = z.infer<typeof UpdateLogKeysResponseSche
 
 // Chat Log Item Schema (based on AppChatLogSchema)
 export const ChatLogItemSchema = z.object({
+  publishSource: ChatPublishSourceResponseSchema.optional(),
   _id: z.string().meta({ example: '68ad85a7463006c963799a05', description: '对话日志 ID' }),
   chatId: z.string().meta({ example: 'chat123', description: '对话 ID' }),
   title: z.string().nullish().meta({ example: '用户对话', description: '对话标题' }),
   customTitle: z.string().nullish().meta({ example: '自定义标题', description: '自定义对话标题' }),
-  source: z.enum(ChatSourceEnum).meta({ example: ChatSourceEnum.api, description: '对话来源' }),
-  sourceName: z.string().nullish().meta({ example: 'API调用', description: '来源名称' }),
+  source: z.enum(ChatSourceEnum).meta({
+    example: ChatSourceEnum.api,
+    deprecated: true,
+    description: '旧调用渠道类型，兼容保留；使用 publishSource.type'
+  }),
+  sourceName: z.string().nullish().meta({
+    example: '客服后端',
+    deprecated: true,
+    description: '旧渠道名称，兼容保留；使用 publishSource.name'
+  }),
   updateTime: z.coerce
     .date()
     .meta({ example: '2024-01-01T00:30:00.000Z', description: '更新时间' }),

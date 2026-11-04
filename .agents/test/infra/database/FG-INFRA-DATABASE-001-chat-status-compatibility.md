@@ -25,7 +25,7 @@ routes:
   - "POST /api/v2/chat/completions"
   - "POST /api/core/chat/history/getHistories"
   - "POST /api/core/chat/history/getHistoryStatus"
-related: [FG-CHAT-CONVERSATION-001, FG-CHAT-HISTORY-001]
+related: [FG-CHAT-CONVERSATION-005, FG-CHAT-HISTORY-001]
 baseline: "5a5211f70998f5311cd40b0e5362a1414be6fbdf"
 ---
 

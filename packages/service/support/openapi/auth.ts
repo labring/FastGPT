@@ -73,6 +73,7 @@ export async function authOpenApiKey({
 
     return {
       apikey: realApiKey,
+      apiKeyId: String(openApi._id),
       teamId: String(openApi.teamId),
       tmbId: String(openApi.tmbId),
       legacyAppId: openApi.appId || '',

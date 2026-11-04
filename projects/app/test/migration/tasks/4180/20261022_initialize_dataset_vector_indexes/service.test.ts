@@ -22,7 +22,7 @@ vi.mock('pg', async (importOriginal) => {
   }
   return { ...actual, default: { ...driver, Client: MockClient } };
 });
-import { removeLegacyPgVectorIndex } from '@/migration/tasks/4174/20261022_initialize_dataset_vector_indexes/service';
+import { removeLegacyPgVectorIndex } from '@/migration/tasks/4180/20261022_initialize_dataset_vector_indexes/service';
 
 const ownedIndex = {
   on_table: true,

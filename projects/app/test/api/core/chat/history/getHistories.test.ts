@@ -366,7 +366,7 @@ describe('getHistories api test', () => {
     const shareChatId = getNanoid();
     const otherShareChatId = getNanoid();
 
-    await MongoOutLink.create({
+    const link = await MongoOutLink.create({
       shareId,
       teamId: testUser.teamId,
       tmbId: testUser.tmbId,
@@ -390,7 +390,7 @@ describe('getHistories api test', () => {
         appId,
         chatId: shareChatId,
         source: ChatSourceEnum.share,
-        shareId,
+        publishSource: { type: ChatSourceEnum.share, id: link._id },
         outLinkUid,
         title: 'Current Share Chat'
       }),
@@ -401,11 +401,34 @@ describe('getHistories api test', () => {
         appId,
         chatId: otherShareChatId,
         source: ChatSourceEnum.share,
-        shareId,
+        publishSource: { type: ChatSourceEnum.share, id: link._id },
         outLinkUid: otherOutLinkUid,
         title: 'Other Share Chat'
       })
     ]);
+
+    // 同访客的其他渠道与缺来源记录均不可被当前分享列表查询到。
+    await MongoChat.create({
+      teamId: testUser.teamId,
+      tmbId: testUser.tmbId,
+      sourceType: ChatSourceTypeEnum.app,
+      appId,
+      chatId: getNanoid(),
+      source: ChatSourceEnum.share,
+      publishSource: { type: ChatSourceEnum.share, id: appId },
+      outLinkUid,
+      title: 'Other Channel Chat'
+    });
+    await MongoChat.collection.insertOne({
+      teamId: link.teamId,
+      tmbId: link.tmbId,
+      appId: link.appId,
+      sourceType: ChatSourceTypeEnum.app,
+      chatId: getNanoid(),
+      shareId,
+      outLinkUid,
+      updateTime: new Date()
+    });
 
     const res = await Call<unknown, unknown, GetHistoriesResponseType>(handler, {
       body: {

@@ -74,7 +74,7 @@ describe('delete chat record api', () => {
   it('deletes anonymous outlink messages through Body while rejecting another visitor', async () => {
     const shareId = getNanoid();
     const outLinkUid = 'current-visitor';
-    await MongoOutLink.create({
+    const link = await MongoOutLink.create({
       shareId,
       appId,
       teamId: testUser.teamId,
@@ -83,7 +83,10 @@ describe('delete chat record api', () => {
       name: 'Anonymous chat',
       allowAnonymous: true
     });
-    await MongoChat.updateOne({ appId, chatId }, { $set: { shareId, outLinkUid } });
+    await MongoChat.updateOne(
+      { appId, chatId },
+      { $set: { publishSource: { type: 'share', id: link._id }, outLinkUid } }
+    );
     await Promise.all([createChatItem('delete-1'), createChatItem('keep-1')]);
 
     const request = (visitor: string) => ({

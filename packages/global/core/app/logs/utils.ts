@@ -1,3 +1,4 @@
+import { getChatPublishSourceType } from '../../../common/chat/publishSource';
 import dayjs from 'dayjs';
 import { AppLogKeysEnum, AppLogTimespanEnum, DefaultAppLogKeys } from './constants';
 import { AppLogKeysSchema, type AppLogKeysType } from './type';
@@ -90,6 +91,11 @@ export const normalizeAppLogKeys = (keys?: unknown): AppLogKeysType[] => {
   }
   DefaultAppLogKeys.forEach((item) => {
     if (seen.has(item.key)) return;
+    const sourceIndex = result.findIndex(({ key }) => key === AppLogKeysEnum.SOURCE);
+    if (item.key === AppLogKeysEnum.PUBLISH_SOURCE_TYPE && sourceIndex >= 0) {
+      result.splice(sourceIndex, 0, { ...item });
+      return;
+    }
     const userIndex = result.findIndex(({ key }) => key === AppLogKeysEnum.USER);
     if (item.key === AppLogKeysEnum.AUTH_USER && userIndex >= 0) {
       result.splice(userIndex + 1, 0, { ...item });
@@ -105,6 +111,7 @@ export const getLogIdentity = ({
   tmbId,
   outLinkUid,
   source,
+  publishSource,
   sourceMember,
   authMember,
   isAuthorizer = false
@@ -112,12 +119,16 @@ export const getLogIdentity = ({
   tmbId?: string | null;
   outLinkUid?: string | null;
   source?: string | null;
+  publishSource?: { type?: string | null } | null;
   sourceMember?: SourceMemberType | null;
   authMember?: SourceMemberType | null;
   isAuthorizer?: boolean;
 }): { name: string; member?: SourceMemberType } => {
   if (!isAuthorizer && outLinkUid) {
-    if (source === ChatSourceEnum.share && sourceMember) {
+    if (
+      getChatPublishSourceType({ source, publishSource }) === ChatSourceEnum.share &&
+      sourceMember
+    ) {
       return { name: sourceMember.name, member: sourceMember };
     }
     return { name: outLinkUid };

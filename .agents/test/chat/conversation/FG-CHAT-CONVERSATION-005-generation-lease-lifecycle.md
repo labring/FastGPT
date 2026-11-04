@@ -1,6 +1,7 @@
 ---
 case_version: 1
-id: "FG-CHAT-CONVERSATION-001"
+# PR #8044 的原编号与先合入的 publishSource 用例冲突；001 保留给原用例，本租约用例使用 005。
+id: "FG-CHAT-CONVERSATION-005"
 title: "持久化对话的生成互斥与租约生命周期"
 business: "chat/conversation"
 types: [api, e2e, integration]
@@ -34,7 +35,7 @@ routes:
   - "POST /api/core/ai/skill/debugChat"
   - "POST /api/core/chat/chatHome"
   - "POST /api/core/chat/chatAgentHelper/completions"
-related: [FG-CHAT-CONVERSATION-002, FG-CHAT-CONVERSATION-003, FG-INFRA-RUNTIME-001]
+related: [FG-CHAT-CONVERSATION-002, FG-CHAT-CONVERSATION-003, FG-INFRA-RUNTIME-002]
 baseline: "5a5211f70998f5311cd40b0e5362a1414be6fbdf"
 ---
 

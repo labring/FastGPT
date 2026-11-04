@@ -1,3 +1,5 @@
+import { extendChatPublishSources } from '@fastgpt/service/core/chat/publishSource/service';
+import { getChatPublishSourceType } from '@fastgpt/global/common/chat/publishSource';
 import { buildAppChatLogFilter } from '@fastgpt/service/core/app/logs/utils';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { Types } from '@fastgpt/service/common/mongo';
@@ -20,6 +22,7 @@ import { AppVersionCollectionName } from '@fastgpt/service/core/app/version/sche
 import {
   GetAppChatLogsBodySchema,
   GetAppChatLogsResponseSchema,
+  type AppLogsListItemType,
   type getAppChatLogsResponseType
 } from '@fastgpt/global/openapi/core/app/log/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
@@ -79,7 +82,7 @@ async function handler(req: ApiRequestProps): Promise<getAppChatLogsResponseType
   // Execute both queries
   const [listResult, total] = await Promise.all([
     // Execute the main aggregation
-    MongoChat.aggregate(
+    MongoChat.aggregate<AppLogsListItemType>(
       [
         { $match: where },
         { $sort: { updateTime: -1 } },
@@ -249,6 +252,7 @@ async function handler(req: ApiRequestProps): Promise<getAppChatLogsResponseType
             customTitle: 1,
             source: 1,
             sourceName: 1,
+            publishSource: 1,
             updateTime: 1,
             createTime: 1,
             messageCount: 1,
@@ -278,11 +282,11 @@ async function handler(req: ApiRequestProps): Promise<getAppChatLogsResponseType
     MongoChat.countDocuments(where, { ...readFromSecondary })
   ]);
 
-  const list = listResult;
+  const list = await extendChatPublishSources({ list: listResult, teamId, appId });
 
   const listWithRegion = list.map((item) => {
     const ip = item.region;
-    const region = getLocationFromIp(ip, getLocale(req));
+    const region = getLocationFromIp(ip ?? undefined, getLocale(req));
 
     return {
       ...item,
@@ -295,7 +299,9 @@ async function handler(req: ApiRequestProps): Promise<getAppChatLogsResponseType
   const memberIds = listWithRegion
     .flatMap((item) => [
       item.tmbId,
-      ...(item.source === ChatSourceEnum.share && item.outLinkUid ? [item.outLinkUid] : [])
+      ...(getChatPublishSourceType(item) === ChatSourceEnum.share && item.outLinkUid
+        ? [item.outLinkUid]
+        : [])
     ])
     .filter((id): id is string => typeof id === 'string');
   const memberMap = await getTeamMemberMap({
@@ -309,7 +315,8 @@ async function handler(req: ApiRequestProps): Promise<getAppChatLogsResponseType
     const authMember = member ? formatSourceMember(member) : undefined;
     // sourceMember 保留旧接口语义；authMember 始终属于 tmbId，不被外链访客覆盖。
     const sourceMember = (() => {
-      if (item.source !== ChatSourceEnum.share || !item.outLinkUid) return authMember;
+      if (getChatPublishSourceType(item) !== ChatSourceEnum.share || !item.outLinkUid)
+        return authMember;
       const visitor = memberMap.get(String(item.outLinkUid));
       return visitor ? formatSourceMember(visitor) : undefined;
     })();
