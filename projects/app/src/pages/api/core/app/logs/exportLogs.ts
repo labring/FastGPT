@@ -18,7 +18,7 @@ import {
   ChatItemResponseCollectionName
 } from '@fastgpt/service/core/chat/constants';
 import { getTeamMemberMap } from '@fastgpt/service/support/user/team/utils';
-import { ChatSourceTypeEnum, type ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatSourceTypeEnum, ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import { AppLogKeysEnum } from '@fastgpt/global/core/app/logs/constants';
 import { sanitizeCsvField } from '@fastgpt/service/common/file/csv';
 import { AppReadChatLogPerVal } from '@fastgpt/global/support/permission/app/constant';
@@ -427,7 +427,9 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
     const valueMap: Record<string, () => any> = {
       [AppLogKeysEnum.PUBLISH_SOURCE_TYPE]: () => source,
       [AppLogKeysEnum.SOURCE]: () =>
-        doc.publishSource?.name || doc.sourceName || deletedChannelName,
+        doc.publishSource?.type === ChatSourceEnum.online
+          ? '-'
+          : doc.publishSource?.name || doc.sourceName || deletedChannelName,
       [AppLogKeysEnum.CREATED_TIME]: () => createdTime,
       [AppLogKeysEnum.LAST_CONVERSATION_TIME]: () => lastConversationTime,
       [AppLogKeysEnum.USER]: () => doc.outLinkUid || authorizer,

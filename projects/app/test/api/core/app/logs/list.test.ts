@@ -110,6 +110,13 @@ describe('logs list API - errorFilter', () => {
           publishSource: { type: 'api', id: new Types.ObjectId() },
           source: 'api',
           sourceName: ' '
+        },
+        { chatId: 'channel-online', publishSource: { type: 'online' }, source: 'online' },
+        {
+          chatId: 'channel-online-legacy',
+          publishSource: { type: 'online' },
+          source: 'api',
+          sourceName: '不应作为渠道名的旧应用名'
         }
       ].map((row) => ({
         ...row,
@@ -149,7 +156,8 @@ describe('logs list API - errorFilter', () => {
       body: {
         ...body,
         title: 'source-test',
-        sourcesMap: { api: { label: 'API调用' } },
+        sources: ['api', 'online'],
+        sourcesMap: { api: { label: 'API调用' }, online: { label: '在线使用' } },
         logKeys: [
           AppLogKeysEnum.SESSION_ID,
           AppLogKeysEnum.PUBLISH_SOURCE_TYPE,
@@ -160,6 +168,9 @@ describe('logs list API - errorFilter', () => {
     expect(exported.raw).toContain('channel-api,API调用,当前名称');
     expect(exported.raw).toContain("channel-old,'-,历史入口");
     expect(exported.raw).toContain('channel-deleted,API调用,Channel deleted');
+    expect(exported.raw).toContain("channel-online,在线使用,'-");
+    expect(exported.raw).toContain("channel-online-legacy,在线使用,'-");
+    expect(exported.raw).not.toContain('不应作为渠道名的旧应用名');
     expect(
       (await Call(listApi.default, { auth: authUser, headers: {}, body: { ...body, sources: [] } }))
         .data.total

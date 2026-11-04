@@ -202,6 +202,31 @@ describe('LogTable identity columns UI', () => {
     [...container.querySelectorAll('button[aria-label="invisible"]')].find((button) =>
       button.parentElement?.textContent?.includes('app:logs_keys_auth_user')
     );
+  it('shows a dash for online channel names while keeping other channel name rules', async () => {
+    localStorage.setItem('app_log_keys_app-1', JSON.stringify([{ key: 'source', enable: true }]));
+    const base = getLogRows()[0];
+    getLogRows.mockReturnValue(
+      [
+        { publishSource: { type: 'online' } },
+        {
+          publishSource: { type: 'online', name: 'Old app name' },
+          sourceName: 'Legacy app name'
+        },
+        { publishSource: { type: 'api', id: 'deleted-key' } },
+        { publishSource: { type: 'test' }, sourceName: '调试-对话' }
+      ].map((row, i) => ({ ...base, ...row, _id: `row-${i}`, chatId: `chat-${i}` }))
+    );
+    await render();
+    const column = [...container.querySelectorAll('thead th')].findIndex(
+      (cell) => cell.textContent === 'app:logs_keys_source'
+    );
+    expect(column).toBeGreaterThanOrEqual(0);
+    expect(
+      [...container.querySelectorAll('tbody tr')].map(
+        (row) => row.querySelectorAll('td')[column]?.textContent
+      )
+    ).toEqual(['-', '-', 'app:logs_publish_source_deleted', '调试-对话']);
+  });
   it('defaults to user only; toggles authorizer, persists and exports selected columns', async () => {
     await render();
     expect(container.querySelector('thead')?.textContent).toContain('app:logs_keys_user');

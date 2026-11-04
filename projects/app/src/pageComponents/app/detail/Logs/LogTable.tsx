@@ -15,8 +15,7 @@ import {
   Tr,
   Checkbox
 } from '@chakra-ui/react';
-import type { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
-import { ChatSourceMap } from '@fastgpt/global/core/chat/constants';
+import { ChatSourceEnum, ChatSourceMap } from '@fastgpt/global/core/chat/constants';
 import DateRangePicker from '@fastgpt/web/components/common/DateRangePicker';
 import {
   FilterInput,
@@ -372,10 +371,12 @@ const LogTable = ({
             }
           >
             <Box as="span">
-              {getChatPublishSourceName({
-                name: item.publishSource?.name,
-                sourceName: item.sourceName
-              }) ?? t('app:logs_publish_source_deleted')}
+              {item.publishSource?.type === ChatSourceEnum.online
+                ? '-'
+                : (getChatPublishSourceName({
+                    name: item.publishSource?.name,
+                    sourceName: item.sourceName
+                  }) ?? t('app:logs_publish_source_deleted'))}
             </Box>
           </MyTooltip>
         </Td>
