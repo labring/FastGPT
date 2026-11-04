@@ -19,7 +19,8 @@ export default defineConfig({
   reporter: [['line'], ['json', { outputFile: path.join(runDirectory, 'playwright.json') }]],
   use: {
     browserName: 'chromium',
-    headless: true,
+    headless: process.env.FASTGPT_TEST_HEADED !== '1',
+    launchOptions: { slowMo: Number(process.env.FASTGPT_TEST_SLOW_MO ?? 0) },
     baseURL: process.env.FASTGPT_TEST_BASE_URL,
     storageState: process.env.FASTGPT_TEST_STORAGE_STATE,
     viewport: { width: 1600, height: 1000 },

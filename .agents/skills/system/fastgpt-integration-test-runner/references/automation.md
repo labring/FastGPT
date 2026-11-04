@@ -25,6 +25,8 @@ Node 使用 `runner: node` 和仓库内 `.mjs` 入口。脚本与用例放在同
 pnpm exec playwright install chromium --only-shell
 pnpm test:cases --report /实际临时目录/report.html --plan
 pnpm test:cases --report /实际临时目录/report.html
+# 在本机显示浏览器窗口，并放慢操作以便观察（首次需 pnpm exec playwright install chromium）
+FASTGPT_TEST_HEADED=1 FASTGPT_TEST_SLOW_MO=150 pnpm test:cases --report /实际临时目录/report.html
 # AI 复核并修正脚本后，显式重跑失败项；历史结果和证据保留
 pnpm test:cases --report /实际临时目录/report.html --case FG-APP-WORKFLOW-007 --items C1
 ```
