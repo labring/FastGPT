@@ -8,6 +8,10 @@ category: basic
 scenario: success
 priority: P1
 status: ready
+automation:
+  - runner: node
+    script: .agents/test/chat/conversation/FG-CHAT-CONVERSATION-003.mjs
+    items: [C1, C2, C3, C4, C5, C6]
 tags: [pr-8044, stream-resume, opt-in, 覆盖基础场景, 覆盖异常场景, 覆盖边界场景]
 evidence: [response, ui, database, cache]
 sources:
@@ -36,6 +40,8 @@ baseline: "5a5211f70998f5311cd40b0e5362a1414be6fbdf"
 需要恢复的流回复主动开启镜像，浏览器断开后后台执行和租约继续运行。重连应从缓存补齐已有内容并跟随后续输出；没有镜像或镜像不可用时，也应正确等待、读取持久化结果并结束连接。
 
 ## 前置准备
+
+- 脚本配置见 [流、列表与数据库测试配置](../../../skills/system/fastgpt-integration-test-runner/references/stream-history-database.md)。使用专用主站、Mongo、Redis 和正常发布的 55 段确定回复/gate/尾段工作流；脚本内部启动真实 Chromium。C5 内存限制仅修改带本轮 marker 的私有 Redis，结束恢复原配置。
 
 - 复用 FG-CHAT-CONVERSATION-001 的数据隔离、鉴权、查询和清理；D0 增加两个 gate：先输出 RUN 的第一段，再等待，再输出第二段。需要 replay 分页时用受控输出产生至少 51 条实际缓存事件。
 - 记录 `STREAM_RESUME_TTL_SECONDS`、`STREAM_RESUME_POST_COMPLETE_TTL_SECONDS`、内存阈值和检查缓存间隔；不把 mirror TTL 写成 lease 的 60 秒。使用 `getStreamResumeRedisKeys`/adapter 确认物理 key，读取 `XRANGE/XLEN/TTL` 和 active/unavailable 状态。

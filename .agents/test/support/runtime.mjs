@@ -55,20 +55,42 @@ export async function runNodeCase(caseId, handlers) {
     finalizers: [],
     cleanups: [],
     resources: new Map(),
-    secrets: new Set()
+    secrets: new Set(),
+    directory
   };
   const { sanitize } = await import('./scenario.mjs');
   for (const itemId of ids) {
-    const observations = [];
+    const observations = [],
+      attachments = [],
+      itemFinalizers = [];
     let result = 'passed',
       note;
     try {
       if (initialError) throw initialError;
-      note = await handlers[itemId]({ ...shared, itemId, observations });
+      note = await handlers[itemId]({
+        ...shared,
+        itemId,
+        observations,
+        attachments,
+        itemFinalizers
+      });
       assert.ok(observations.length, '通过判定必须有本次响应或数据证据');
     } catch (error) {
       result = error instanceof Blocked ? 'blocked' : 'failed';
       note = `${error.name}: ${error.message}`;
+    }
+    // 业务任务逐项收尾；共享连接留到整份用例结束，失败不能污染下一个场景。
+    const itemCleanupErrors = [];
+    for (const cleanup of itemFinalizers.reverse())
+      try {
+        await cleanup();
+      } catch (error) {
+        itemCleanupErrors.push({ name: error.name, message: error.message });
+      }
+    if (itemCleanupErrors.length) {
+      observations.push({ label: '子场景收尾失败', value: itemCleanupErrors });
+      if (result === 'passed') result = 'blocked';
+      note += '；本项收尾未完成';
     }
     const evidence = `${itemId}-evidence.json`;
     note = sanitize(note, shared.secrets);
@@ -85,7 +107,7 @@ export async function runNodeCase(caseId, handlers) {
       itemId,
       result,
       note,
-      evidence: [{ path: evidence, label: '实际请求与数据核对' }]
+      evidence: [{ path: evidence, label: '实际请求与数据核对' }, ...attachments]
     });
   }
   const cleanupResults = [],

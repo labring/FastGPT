@@ -188,3 +188,52 @@ test('真实 HTTP 分块 SSE 保留中文与多行 data，并识别错误和完�
     await new Promise((resolve) => server.close(resolve));
   }
 });
+
+test('证据脱敏遇到循环资源也能完成，不丢失已执行的场景结果', async () => {
+  const { sanitize } = await import('./scenario.mjs');
+  const resource = { token: 'private-value' };
+  resource.self = resource;
+  assert.deepEqual(sanitize(resource), { token: '[REDACTED]', self: '[Circular]' });
+});
+
+test('一个场景失败后先执行该项收尾，再运行下一场景，防止忙任务污染后续', async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'fg-item-finalizer-'));
+  try {
+    const fixture = path.join(directory, 'fixture.json'),
+      entry = path.join(directory, 'entry.mjs'),
+      results = path.join(directory, 'results.json');
+    await writeFile(
+      fixture,
+      JSON.stringify({
+        version: 1,
+        isolated: true,
+        teamId: '000000000000000000000001',
+        baseUrl: 'http://127.0.0.1:1'
+      })
+    );
+    await writeFile(
+      entry,
+      `import assert from 'node:assert/strict';import{runNodeCase}from ${JSON.stringify(new URL('./runtime.mjs', import.meta.url).href)};await runNodeCase('FG-ITEM-FINALLY',{C1:async c=>{c.resources.set('busy',true);c.itemFinalizers.push(async()=>c.resources.set('busy',false));throw Error('expected first failure');},C2:async c=>{assert.equal(c.resources.get('busy'),false);c.observations.push({idle:true});return 'next is isolated';}});`
+    );
+    const run = spawnSync(process.execPath, [entry], {
+      env: {
+        ...process.env,
+        FASTGPT_TEST_FIXTURE: fixture,
+        FASTGPT_TEST_BASE_URL: 'http://127.0.0.1:1',
+        FASTGPT_TEST_CASE_ID: 'FG-ITEM-FINALLY',
+        FASTGPT_TEST_ITEMS: '["C1","C2"]',
+        FASTGPT_TEST_RUN_DIR: directory,
+        FASTGPT_TEST_RESULTS_FILE: results
+      },
+      encoding: 'utf8',
+      timeout: 5000
+    });
+    assert.equal(run.status, 1);
+    assert.deepEqual(
+      JSON.parse(await readFile(results, 'utf8')).map((row) => row.result),
+      ['failed', 'passed']
+    );
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});

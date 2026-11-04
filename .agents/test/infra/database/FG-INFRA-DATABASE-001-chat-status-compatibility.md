@@ -8,6 +8,10 @@ category: boundary
 scenario: special
 priority: P1
 status: ready
+automation:
+  - runner: node
+    script: .agents/test/infra/database/FG-INFRA-DATABASE-001.mjs
+    items: [C1, C2, C3]
 tags: [pr-8044, mongo-index, legacy-chat-status, 覆盖基础场景, 覆盖边界场景]
 evidence: [response, database, cache, log]
 sources:
@@ -36,6 +40,8 @@ baseline: "5a5211f70998f5311cd40b0e5362a1414be6fbdf"
 历史会话仍可能保留 Mongo 状态字段及旧扫描索引。新版本应只使用 Redis lease 决定运行状态，同时安全删除明确废弃的项目索引，保留客户自建索引和历史业务数据。
 
 ## 前置准备
+
+- 脚本配置见 [流、列表与数据库测试配置](../../../skills/system/fastgpt-integration-test-runner/references/stream-history-database.md)。环境准备器同时建立数据库名称与 marker 保护；历史变量需在测试应用中声明，避免产品正常过滤未声明变量被误判为兼容问题。索引脚本复用当前 Chat Schema，不能复制 Schema 丢失废弃索引声明。
 
 - 必须使用独立 Mongo 测试库/集合和专用进程；索引是集合级操作，不能因为文档带 RUN 就在共享 DEV 集合中测试删除索引。准备和清理均只在私有库进行。
 - 使用新建测试应用和正常入口创建记录，再用原生 collection 写入测试专有历史字段：分别为 `chatGenerateStatus=0/1/2`，包含有/无 sourceType 的 App 历史文档。保存完整文档和 `getIndexes()` 快照；避免 Mongoose strict 模式丢弃待构造字段。

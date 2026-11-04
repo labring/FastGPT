@@ -8,6 +8,10 @@ category: boundary
 scenario: special
 priority: P0
 status: ready
+automation:
+  - runner: node
+    script: .agents/test/chat/history-feedback/FG-CHAT-HISTORY-001.mjs
+    items: [C1, C2, C3, C4, C5, C6, C7]
 tags: [pr-8044, history-status, polling, permission, 覆盖基础场景, 覆盖异常场景, 覆盖边界场景]
 evidence: [response, ui, database, cache]
 sources:
@@ -34,6 +38,8 @@ baseline: "5a5211f70998f5311cd40b0e5362a1414be6fbdf"
 会话列表通过批量读取 lease 显示运行中或空闲，同时保留 Mongo 提供的标题、已读和时间。轮询失败时整个旧快照应保持，依赖恢复后继续更新；批量接口不能泄露当前身份无权查看的会话。
 
 ## 前置准备
+
+- 脚本配置见 [流、列表与数据库测试配置](../../../skills/system/fastgpt-integration-test-runner/references/stream-history-database.md)。环境准备器通过正常接口创建 201 条历史；C1 额外需要 Skill、Helper、Builder 的真实生成请求和页面配置，缺少时整行阻塞并保留已执行的 App 证据。
 
 - 复用 FG-CHAT-CONVERSATION-001 的查询和清理；准备当前成员两个会话（A busy、B idle）、同应用其他成员会话、其他团队/资源会话、已软删除会话和不存在的 chatId。保存各自访问范围，不因账号有应用读权限就认定能看他人成员历史。
 - 另建 201 个当前成员可见的独立测试会话，通过正常分页滚动加载；记录 chatId、title、top、updateTime、hasBeenRead、chatGenerateStatus 原快照。测试长列表不能只向单个 HTTP 请求塞 201 项代替客户端分批。

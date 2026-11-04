@@ -71,6 +71,7 @@ export function createScenario(context) {
   const secretValues = context.secrets;
   const record = (label, value) =>
     observations.push({ label, value: sanitize(value, secretValues) });
+  resources.set('record', record);
   const actor = (name) => required(fixture.actors?.[name], 'actors.' + name);
   const secret = (name) => {
     const value = required(process.env[required(name, '环境变量名')], name);
@@ -88,6 +89,8 @@ export function createScenario(context) {
     keyValue,
     kind,
     metadataOnly = false,
+    raw = false,
+    signal,
     baseUrl = fixture.baseUrl,
     extraHeaders = {}
   }) {
@@ -130,8 +133,19 @@ export function createScenario(context) {
       headers,
       ...(body === undefined ? {} : { body: JSON.stringify(body) }),
       redirect: 'error',
-      signal: AbortSignal.timeout(120000)
+      signal: signal ?? AbortSignal.timeout(120000)
     });
+    if (raw) {
+      record('HTTP 流连接', {
+        method,
+        route,
+        role,
+        body,
+        http: response.status,
+        contentType: response.headers.get('content-type')
+      });
+      return response;
+    }
     const result = await readHttpResult(response);
     record('HTTP', {
       method,
@@ -335,7 +349,10 @@ export function createScenario(context) {
     question,
     extra = {},
     baseUrl,
-    extraHeaders
+    extraHeaders,
+    raw,
+    signal,
+    kind = 'key'
   }) {
     if (!resources.has('disposable:' + appId)) await snapshot(appId, [chatId]);
     trackChat(appId, chatId);
@@ -350,7 +367,9 @@ export function createScenario(context) {
     }
     return request({
       role,
-      kind: 'key',
+      kind,
+      raw,
+      signal,
       baseUrl,
       extraHeaders,
       route: `/api/${version}/chat/completions`,
@@ -432,23 +451,33 @@ export async function poll(observe, timeout = 30000) {
 
 /** 证据中的认证材料脱敏；保留业务 UID、请求与数据库差集用于验收。 */
 export function sanitize(value, secrets = new Set()) {
-  if (typeof value === 'string') {
-    let result = value;
-    for (const secret of secrets)
-      if (secret.length >= 6) result = result.split(secret).join('[REDACTED]');
-    return result.replace(/mongodb(?:\+srv)?:\/\/[^\s"']+/g, '[REDACTED_MONGO_URI]');
+  const ancestors = new Set();
+  function visit(value) {
+    if (typeof value === 'string') {
+      let result = value;
+      for (const secret of secrets)
+        if (secret.length >= 6) result = result.split(secret).join('[REDACTED]');
+      return result.replace(/mongodb(?:\+srv)?:\/\/[^\s"']+/g, '[REDACTED_MONGO_URI]');
+    }
+    if (value?.toHexString) return value.toHexString();
+    if (value instanceof Date) return value.toISOString();
+    if (value && typeof value === 'object') {
+      if (ancestors.has(value)) return '[Circular]';
+      ancestors.add(value);
+      const result = Array.isArray(value)
+        ? value.map(visit)
+        : Object.fromEntries(
+            Object.entries(value).map(([key, item]) => [
+              key,
+              /^(authorization|cookie|set-cookie|password|token|apiKey|ticket)$/i.test(key)
+                ? '[REDACTED]'
+                : visit(item)
+            ])
+          );
+      ancestors.delete(value);
+      return result;
+    }
+    return value;
   }
-  if (Array.isArray(value)) return value.map((item) => sanitize(item, secrets));
-  if (value?.toHexString) return value.toHexString();
-  if (value instanceof Date) return value.toISOString();
-  if (value && typeof value === 'object')
-    return Object.fromEntries(
-      Object.entries(value).map(([key, item]) => [
-        key,
-        /^(authorization|cookie|set-cookie|password|token|apiKey|ticket)$/i.test(key)
-          ? '[REDACTED]'
-          : sanitize(item, secrets)
-      ])
-    );
-  return value;
+  return visit(value);
 }

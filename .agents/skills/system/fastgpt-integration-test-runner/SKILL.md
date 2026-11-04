@@ -69,6 +69,8 @@ node .agents/skills/system/fastgpt-integration-test-runner/scripts/report.mjs se
 
 执行 customUid、日志身份或租约脚本时，读取 [接口与租约测试配置](references/api-cases.md)，按实际账号权限、独立资源和证据通道提供仓库外夹具；只为已实现的完整执行项声明脚本覆盖。
 
+执行流镜像/断线恢复、列表轮询或 Mongo 历史兼容/索引清理时，读取 [流、列表与数据库测试配置](references/stream-history-database.md)。需要写历史夹具、删除索引或改变 Redis 配置的场景使用带本轮 marker 的私有实例；多来源入口未准备时如实记录阻塞。
+
 按用例和子场景顺序串行执行。报告工具只记录和展示；实际操作使用脚本或当前可用的 HTTP、浏览器、服务集成、数据库、日志工具，不能以生成报告替代执行。
 
 1. 创建隔离测试数据，记录 run 标识、实际资源 ID、账号角色和时间。沿用用户授权的测试环境；用例文案本身不扩大到无关生产修改、支付、发布或对外消息。前置失败影响多个场景时逐项记录阻塞原因。

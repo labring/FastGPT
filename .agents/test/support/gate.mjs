@@ -38,7 +38,7 @@ export async function getGate(context, scenario) {
         return;
       }
       entry.responses.push(res);
-      scenario.record('gate 进入', { runId, at: Date.now() });
+      (context.resources.get('record') ?? scenario.record)('gate 进入', { runId, at: Date.now() });
       // 清理可能早于在途 HTTP 节点到达，迟到连接也必须放行，才能先收尾再删数据。
       if (closing)
         res.writeHead(200, { 'content-type': 'application/json' }).end('{"cleanup":true}');
@@ -62,14 +62,20 @@ export async function getGate(context, scenario) {
       return {
         count: () => entry.responses.length,
         entered: () => poll(() => assert.ok(entry.responses.length), 30000),
-        release: () => {
+        release: ({ status = 200, value = { marker: runId } } = {}) => {
           for (const res of entry.responses)
             if (!res.writableEnded)
               res
-                .writeHead(200, { 'content-type': 'application/json' })
-                .end(JSON.stringify({ marker: runId }));
+                .writeHead(status, { 'content-type': 'application/json' })
+                .end(JSON.stringify(value));
         }
       };
+    },
+    releaseAll() {
+      for (const entry of held.values())
+        for (const res of entry.responses)
+          if (!res.writableEnded)
+            res.writeHead(200, { 'content-type': 'application/json' }).end('{"cleanup":true}');
     },
     track(promise) {
       const outcome = promise.then(
