@@ -67,6 +67,7 @@ export async function parseHeaderCert({
       legacyAppId = '',
       parsedAppId = '',
       authProxy,
+      apiKeyId,
       sourceName
     } = await authOpenApiKey({
       apikey,
@@ -82,6 +83,7 @@ export async function parseHeaderCert({
       legacyAppId,
       parsedAppId,
       apiKeyAuthProxy: authProxy,
+      apiKeyId,
       sourceName
     };
   }
@@ -106,7 +108,8 @@ export async function parseHeaderCert({
     sessionId,
     legacyAppId,
     parsedAppId,
-    apiKeyAuthProxy
+    apiKeyAuthProxy,
+    apiKeyId
   } = await (async () => {
     if (authApiKey && authorization) {
       // apikey from authorization
@@ -121,6 +124,7 @@ export async function parseHeaderCert({
         openApiKey: authResponse.apikey,
         authType: AuthUserTypeEnum.apikey,
         apiKeyAuthProxy: authResponse.apiKeyAuthProxy,
+        apiKeyId: authResponse.apiKeyId,
         sourceName: authResponse.sourceName
       };
     }
@@ -180,6 +184,7 @@ export async function parseHeaderCert({
     legacyAppId,
     parsedAppId,
     apiKeyAuthProxy,
+    apiKeyId,
     apikey: openApiKey,
     isRoot: !!isRoot,
     sessionId

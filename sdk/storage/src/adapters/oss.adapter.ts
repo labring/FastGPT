@@ -144,8 +144,11 @@ export class OssStorageAdapter implements IStorage {
     await this.client.put(key, uploadBody, {
       headers,
       mime: contentType,
-      meta
-    });
+      meta,
+      // ali-oss 对 Readable body 会走 putStream：未传 contentLength 时额外写入
+      // Transfer-Encoding: chunked，与上面的 Content-Length 冲突，provider 会直接拒绝请求。
+      ...(uploadBody instanceof Readable && contentLength !== undefined ? { contentLength } : {})
+    } as OSS.PutObjectOptions & { contentLength?: number });
 
     return {
       key,

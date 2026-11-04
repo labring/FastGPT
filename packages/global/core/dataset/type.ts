@@ -637,6 +637,8 @@ export const SearchDataResponseItemSchema = DatasetDataItemSchema.omit({
       )
       .meta({ description: '评分列表' }),
     metadata: z.record(z.string(), z.any()).optional().meta({ description: '自定义元数据' }),
+    // 重排前的召回序列位置（0 起步），供调用方对比召回与重排；未参与文本召回的条目不写入。
+    retrievalRank: z.number().optional().meta({ description: '检索排名' }),
     synonymMappings: z
       .record(z.string(), z.string())
       .optional()
@@ -652,7 +654,8 @@ export const SearchDataResponseQuoteItemSchema = SearchDataResponseItemSchema.pi
   collectionId: true,
   sourceId: true,
   sourceName: true,
-  score: true
+  score: true,
+  retrievalRank: true
 }).meta({ description: '搜索数据引用响应项（精简）' });
 export type SearchDataResponseQuoteItemType = z.infer<typeof SearchDataResponseQuoteItemSchema>;
 

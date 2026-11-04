@@ -1,3 +1,4 @@
+import { buildChatPublishSourceFilter } from '@fastgpt/service/core/chat/publishSource/utils';
 import { MongoAppChatLog } from '@fastgpt/service/core/app/logs/chatLogsSchema';
 import { Types } from '@fastgpt/service/common/mongo';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
@@ -115,7 +116,7 @@ async function handler(req: ApiRequestProps): Promise<GetLogUsersResponse> {
             $lte: new Date(dateEnd)
           },
           userId: { $exists: true, $nin: [null, ''] },
-          ...(sources?.length && { source: { $in: sources } }),
+          $and: [buildChatPublishSourceFilter(sources)],
           ...userMatch
         }
       },
@@ -123,7 +124,7 @@ async function handler(req: ApiRequestProps): Promise<GetLogUsersResponse> {
         $group: {
           _id: {
             userId: '$userId',
-            source: '$source'
+            source: { $ifNull: ['$publishSource.type', '$source'] }
           },
           count: { $sum: 1 }
         }
