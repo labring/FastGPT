@@ -60,8 +60,24 @@ test.beforeEach(async ({ page }) => {
   page.on('dialog', (dialog) => {
     void dialog.dismiss();
   });
+  // 新浏览器上下文可能显示公告和工作流引导；经真实按钮关闭，恢复画布的可访问状态。
+  await page.addLocatorHandler(
+    page.getByRole('dialog', { name: '系统消息', exact: true }),
+    async (dialog) => {
+      await dialog.getByRole('button', { name: '已读', exact: true }).click();
+    }
+  );
+  await page.addLocatorHandler(
+    page.getByRole('dialog').filter({ hasText: '系统配置移到这里啦~' }),
+    async (dialog) => {
+      await dialog.getByRole('button', { name: '知道了', exact: true }).click();
+    }
+  );
   await page.goto('/app/detail?appId=' + appId);
-  await expect(page.getByRole('button', { name: 'Expand', exact: true })).toBeVisible();
+  // 登录恢复和首次编译属于页面准备；本地服务可能超过默认 10 秒，业务断言仍使用原超时。
+  await expect(page.getByRole('button', { name: 'Expand', exact: true })).toBeVisible({
+    timeout: 30_000
+  });
 });
 
 test('[' + caseId + '/C1] 自连、重复同端口和纯串行回环', async ({ page }, testInfo) => {

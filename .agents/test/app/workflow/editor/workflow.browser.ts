@@ -148,10 +148,10 @@ export function workflowEditor(page: Page, testInfo: TestInfo) {
     expect(parents(after)).toEqual(parents(before));
   }
 
-  /** 通过真实键盘删除选中节点，并等待画布卸载；不调用节点删除内部函数。 */
+  /** 从节点操作菜单删除，避免点击可编辑标题后将删除键发给文本框。 */
   async function deleteNode(id: string) {
-    await nodeById(id).getByText(id, { exact: true }).first().click();
-    await page.keyboard.press('Delete');
+    await nodeById(id).hover();
+    await nodeById(id).getByRole('button', { name: '删除', exact: true }).click();
     await expect(nodeById(id)).toHaveCount(0);
   }
   return { importGraph, exportGraph, drag, deleteNode, tupleSet };
