@@ -10,12 +10,26 @@ export enum ModelDeprecationInformChannelEnum {
   email = 'email'
 }
 
-export enum ModelDeprecationInformJobStatusEnum {
+export enum ModelDeprecationInformRunKindEnum {
+  delivery = 'delivery',
+  retry = 'retry'
+}
+
+export enum ModelDeprecationInformRunStatusEnum {
   scheduled = 'scheduled',
   running = 'running',
   completed = 'completed',
-  skipped = 'skipped',
-  failed = 'failed'
+  failed = 'failed',
+  interrupted = 'interrupted',
+  terminated = 'terminated',
+  skipped = 'skipped'
+}
+
+export enum ModelDeprecationInformFailureStatusEnum {
+  unresolved = 'unresolved',
+  resolved = 'resolved',
+  superseded = 'superseded',
+  notApplicable = 'not_applicable'
 }
 
 export const InformLevelMap = {
