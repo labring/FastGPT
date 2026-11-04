@@ -663,7 +663,7 @@ describe('default recall dataset search', () => {
 
     it('为召回候选写入 retrievalRank，重排后最终结果仍可回溯召回位置', async () => {
       arrangeTwoCandidates();
-      serviceEnv.RETRIEVAL_RESULTS_LIMIT = 20;
+      getTestInstanceConfig().performance.dataset.retrievalResultsLimit = 20;
 
       const result = await runSearch({ usingReRank: true, rerankWeight: 1 });
 
