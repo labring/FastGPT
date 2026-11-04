@@ -38,8 +38,13 @@ describe('chat schema indexes', () => {
     expect(sourceAwareIndex?.[1]?.unique).toBe(true);
   });
 
-  it('only registers the obsolete Mongo generation status index for automatic cleanup', () => {
+  it('registers obsolete share and Mongo generation status indexes for automatic cleanup', () => {
     expect(getSchemaDeprecatedMongoIndexes(MongoChat.schema)).toMatchObject([
+      {
+        indexName: 'shareId_1_outLinkUid_1_updateTime_-1',
+        key: { shareId: 1, outLinkUid: 1, updateTime: -1 },
+        options: { partialFilterExpression: { shareId: { $exists: true } } }
+      },
       {
         indexName: 'chatGenerateStatus_1_updateTime_1',
         key: { chatGenerateStatus: 1, updateTime: 1 },
