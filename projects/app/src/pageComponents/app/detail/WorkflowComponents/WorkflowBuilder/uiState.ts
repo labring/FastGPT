@@ -3,7 +3,7 @@ import {
   getWorkflowBuilderPreviewDecision
 } from '@fastgpt/global/core/workflow/builder/utils';
 import { useEffect, useState } from 'react';
-import { ChatGenerateStatusEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { ChatItemObjItemType } from '@fastgpt/global/core/chat/type';
 import {
   extractDeepestInteractive,
@@ -212,39 +212,17 @@ export const getWorkflowBuilderPendingInteractiveKey = (
   ].join(':');
 };
 
-/**
- * 生成失败时使用本次运行的末条聊天记录标识错误提醒。
- * 即使恢复流错误没有保留空 AI 消息，末条用户消息仍能稳定区分不同运行。
- */
-export const getWorkflowBuilderErrorAttentionKey = ({
-  chatRecords,
-  chatGenerateStatus
-}: {
-  chatRecords: readonly (ChatItemObjItemType & { dataId: string })[];
-  chatGenerateStatus?: ChatGenerateStatusEnum;
-}) => {
-  if (chatGenerateStatus !== ChatGenerateStatusEnum.error) return;
-
-  const failedRunRecord = chatRecords.at(-1);
-  if (!failedRunRecord) return;
-
-  return `error:${failedRunRecord.dataId}`;
-};
-
-/** 将当前待交互、待应用版本和运行错误整理成可独立确认已查看的提醒 key。 */
+/** 将当前待交互和待应用版本整理成可独立确认已查看的提醒 key。 */
 export const getWorkflowBuilderAttentionKeys = ({
   pendingInteractiveKey,
-  pendingVersionChecksum,
-  errorAttentionKey
+  pendingVersionChecksum
 }: {
   pendingInteractiveKey?: string;
   pendingVersionChecksum?: string;
-  errorAttentionKey?: string;
 }) =>
   [
     pendingInteractiveKey,
-    pendingVersionChecksum ? `version:${pendingVersionChecksum}` : undefined,
-    errorAttentionKey
+    pendingVersionChecksum ? `version:${pendingVersionChecksum}` : undefined
   ].filter((key): key is string => Boolean(key));
 
 /** 当前任一待处理事项尚未被本页面查看时展示红点。 */

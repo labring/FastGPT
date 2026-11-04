@@ -1,3 +1,4 @@
+import { CHAT_GENERATION_STATUS_BATCH_SIZE } from '@fastgpt/global/core/chat/constants';
 import { POST, PUT, DELETE } from '@/web/common/api/request';
 import { toChatAuthQueryInput } from '@/web/core/chat/utils';
 import type {
@@ -15,8 +16,24 @@ import type {
 export const getChatHistories = (data: GetHistoriesBodyType) =>
   POST<GetHistoriesResponseType>('/core/chat/history/getHistories', data);
 
-export const getChatHistoryStatus = (data: GetHistoryStatusBodyType) =>
-  POST<GetHistoryStatusResponseType>('/core/chat/history/getHistoryStatus', data);
+/**
+ * 批量刷新会话 lease 状态。滚动加载的列表可能超过接口上限，去重后分批请求并合并结果。
+ * 任一批失败向上传递，由调用方保留整轮原状态并重试；空列表不发送请求。
+ */
+export const getChatHistoryStatus = async (
+  data: GetHistoryStatusBodyType
+): Promise<GetHistoryStatusResponseType> => {
+  const chatIds = [...new Set(data.chatIds)];
+  const list: GetHistoryStatusResponseType['list'] = [];
+  for (let offset = 0; offset < chatIds.length; offset += CHAT_GENERATION_STATUS_BATCH_SIZE) {
+    const result = await POST<GetHistoryStatusResponseType>('/core/chat/history/getHistoryStatus', {
+      ...data,
+      chatIds: chatIds.slice(offset, offset + CHAT_GENERATION_STATUS_BATCH_SIZE)
+    });
+    list.push(...result.list);
+  }
+  return { list };
+};
 
 export const postMarkChatRead = (data: MarkChatReadBodyType) =>
   POST<void>('/core/chat/history/markRead', data);

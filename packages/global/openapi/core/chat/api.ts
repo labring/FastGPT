@@ -12,7 +12,7 @@ import { createPaginationSchema } from '../../api';
 
 export const ChatGenerateStatusSchema = z
   .enum(ChatGenerateStatusEnum)
-  .describe('对话生成状态：0=generating（生成中），1=done（已完成），2=error（生成异常）');
+  .describe('由 Redis 生成租约计算的运行状态：0=generating（生成中），1=done（空闲）');
 
 const ChatTargetInputShape = {
   appId: ObjectIdSchema.optional().meta({

@@ -1,11 +1,7 @@
 import { connectionMongo, defineIndex, getMongoModel } from '../../common/mongo';
 const { Schema } = connectionMongo;
 import { type ChatSchemaType } from '@fastgpt/global/core/chat/type';
-import {
-  ChatGenerateStatusEnum,
-  ChatSourceEnum,
-  ChatSourceTypeEnum
-} from '@fastgpt/global/core/chat/constants';
+import { ChatSourceEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import {
   TeamCollectionName,
   TeamMemberCollectionName
@@ -128,15 +124,6 @@ const ChatSchema = new Schema({
     select: false
   },
 
-  chatGenerateStatus: {
-    type: Number,
-    enum: [
-      ChatGenerateStatusEnum.generating,
-      ChatGenerateStatusEnum.done,
-      ChatGenerateStatusEnum.error
-    ],
-    default: ChatGenerateStatusEnum.done
-  },
   hasBeenRead: {
     type: Boolean,
     default: false
@@ -192,14 +179,15 @@ defineIndex(ChatSchema, { key: { appId: 1, tmbId: 1, updateTime: -1 } });
 defineIndex(ChatSchema, {
   key: { appId: 1, source: 1, tmbId: 1, updateTime: -1 }
 });
-// Periodic cleanup for chats stuck in generating state.
+// 旧版 generating 清理索引已由 Redis lease 取代；仅登记本项目创建过的索引供自动清理。
 defineIndex(ChatSchema, {
   key: { chatGenerateStatus: 1, updateTime: 1 },
   options: {
     partialFilterExpression: {
-      chatGenerateStatus: ChatGenerateStatusEnum.generating
+      chatGenerateStatus: 0
     }
-  }
+  },
+  deprecated: true
 });
 
 /* 反馈过滤的索引 */

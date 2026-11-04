@@ -145,11 +145,6 @@ export const ChatSchema = z.object({
   /** 会话累计的 LLM token 摘要，不包含 embedding/rerank 等非 LLM token。 */
   summary: ChatSummarySchema,
 
-  /** 旧数据可能无此字段；业务上按 done 处理 */
-  chatGenerateStatus: z
-    .enum(ChatGenerateStatusEnum)
-    .default(ChatGenerateStatusEnum.done)
-    .meta({ description: '生成状态' }),
   hasBeenRead: z.boolean().default(true),
 
   deleteTime: z.coerce.date().nullish()
