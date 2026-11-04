@@ -18,8 +18,8 @@ vi.mock('@/web/core/ai/model/catalogApi', () => ({
 vi.mock('@/web/core/ai/model/useModelQuery', () => ({ useModelQuery: mocks.useModelQuery }));
 vi.mock('@fastgpt/web/hooks/useRequest', () => ({ useRequest: mocks.useRequest }));
 vi.mock('@/web/support/user/useUserStore', () => ({ useUserStore: () => ({}) }));
-vi.mock('@fastgpt/web/hooks/useSafeTranslation', () => ({
-  useSafeTranslation: () => ({ t: (key: string) => key, i18n: { language: 'en' } })
+vi.mock('next-i18next', () => ({
+  useTranslation: () => ({ t: (key: string) => key, i18n: { language: 'en' } })
 }));
 vi.mock('@fastgpt/web/hooks/useVirtualList', () => ({
   useStaticVirtualList: ({ data }: { data: unknown[] }) => ({
@@ -49,8 +49,20 @@ const providers = ['a', 'b'].map((provider) => ({
   avatar: ''
 }));
 const models = [
-  { name: 'team-b', scope: ModelScopeEnum.team, provider: 'b', tmbId: 'member' },
-  { name: 'team-a', scope: ModelScopeEnum.team, provider: 'a', tmbId: 'member' },
+  {
+    name: 'team-b',
+    scope: ModelScopeEnum.team,
+    provider: 'b',
+    tmbId: 'member',
+    sourceMember: { name: 'Creator B', avatar: '/avatar-b.png', status: 'active' as const }
+  },
+  {
+    name: 'team-a',
+    scope: ModelScopeEnum.team,
+    provider: 'a',
+    tmbId: 'member',
+    sourceMember: { name: 'Creator A', avatar: '/avatar-a.png', status: 'active' as const }
+  },
   { name: 'shared-b', scope: ModelScopeEnum.team, provider: 'b', tmbId: 'other-member' },
   { name: 'shared-a', scope: ModelScopeEnum.team, provider: 'a', tmbId: 'other-member' },
   { name: 'system-b', scope: ModelScopeEnum.system, provider: 'b' },
@@ -64,8 +76,8 @@ const models = [
   isActive: true
 }));
 
-/** 渲染真实表体，虚拟窗口展开全部 fixture，直接验证用户看到的行顺序。 */
-const renderNames = (permissionConfig: boolean) => {
+/** 渲染真实表体，虚拟窗口展开全部 fixture，直接验证用户看到的行顺序与创建人列内容。 */
+const renderTable = (permissionConfig: boolean) => {
   const dom = new JSDOM(
     renderToStaticMarkup(
       React.createElement(
@@ -75,12 +87,12 @@ const renderNames = (permissionConfig: boolean) => {
       )
     )
   );
-  const names = Array.from(
-    dom.window.document.querySelectorAll('tbody tr'),
-    (row) => row.querySelector('td span')?.textContent
-  );
+  dom.window.document.querySelectorAll('style').forEach((style) => style.remove());
+  const rows = Array.from(dom.window.document.querySelectorAll('tbody tr'));
+  const names = rows.map((row) => row.querySelector('td span')?.textContent);
+  const creators = rows.map((row) => row.querySelectorAll('td')[2]?.textContent);
   dom.window.close();
-  return names;
+  return { names, creators };
 };
 
 describe('ModelTable display ordering', () => {
@@ -94,24 +106,30 @@ describe('ModelTable display ordering', () => {
     mocks.getUserModelCatalog.mockResolvedValue({ version: 'custom-version', data: catalog });
   });
 
-  it('requests the custom display catalog and renders its order across providers', async () => {
-    expect(renderNames(true)).toEqual([
-      'team-b',
-      'team-a',
-      'shared-b',
-      'shared-a',
-      'system-b',
-      'system-a'
+  it('requests the custom display catalog and renders its order and creator column across providers', async () => {
+    const { names, creators } = renderTable(true);
+    expect(names).toEqual(['team-b', 'team-a', 'shared-b', 'shared-a', 'system-b', 'system-a']);
+    expect(creators).toEqual([
+      'Creator B',
+      'Creator A',
+      '-',
+      '-',
+      'config_model:system_model',
+      'config_model:system_model'
     ]);
     const query = mocks.useModelQuery.mock.calls[0][0];
     expect(query).toEqual(expect.objectContaining({ enabled: true, observeCatalog: false }));
     await query.read();
-    expect(mocks.getUserModelCatalog).toHaveBeenCalledWith({ orderBy: 'custom' });
+    expect(mocks.getUserModelCatalog).toHaveBeenCalledWith({
+      orderBy: 'custom',
+      includeSourceMember: true
+    });
     expect(mocks.useRequest).toHaveBeenCalledWith(mocks.getPublicModelCatalog, { manual: true });
   });
 
-  it('retains provider ordering for the public price table', () => {
-    expect(renderNames(false)).toEqual(['system-a', 'system-b']);
+  it('retains provider ordering for the public price table without creator or scope columns', () => {
+    const { names } = renderTable(false);
+    expect(names).toEqual(['system-a', 'system-b']);
     expect(mocks.useModelQuery).toHaveBeenCalledWith(expect.objectContaining({ enabled: false }));
     expect(mocks.useRequest).toHaveBeenCalledWith(mocks.getPublicModelCatalog, { manual: false });
   });

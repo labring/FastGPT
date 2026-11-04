@@ -3,6 +3,7 @@ import { Box, Flex, Skeleton, type BoxProps } from '@chakra-ui/react';
 import AvatarGroup, {
   type AvatarGroupItemType
 } from '@fastgpt/web/components/common/Avatar/AvatarGroup';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import { LazyCollaboratorProvider } from '@/components/support/permission/MemberManager/context';
 import {
   getModelCollaborators,
@@ -60,6 +61,11 @@ const ModelScopeCell = ({
   const isShared = isTeam && !isOwner;
   // 共享接收方只展示授权关系，不请求其无权查看的完整协作者名单。
   const { clbs, failed } = useModelCollaborators(isShared ? undefined : modelId);
+  const canManage = isTeam ? isOwner : hasManagePer && (!isAccountConfig || !isSystem);
+  const teamPermission = userInfo?.team?.permission;
+  const canOpenManageModal = Boolean(
+    canManage && modelId && feConfigs.isPlus && clbs !== undefined && teamPermission
+  );
 
   const renderContent = () => {
     if (!modelId || !feConfigs.isPlus) {
@@ -72,7 +78,7 @@ const ModelScopeCell = ({
 
     if (isShared) {
       return (
-        <Box color={'myGray.700'} fontSize={'sm'}>
+        <Box color={'myGray.600'} fontSize={'mini'} lineHeight={'16px'}>
           {t('config_model:shared_with_me')}
         </Box>
       );
@@ -83,7 +89,8 @@ const ModelScopeCell = ({
         <Box
           as="button"
           color="myGray.500"
-          fontSize="sm"
+          fontSize="mini"
+          lineHeight="16px"
           data-row-action
           onClick={() => clearModelCollaboratorsCache(modelId)}
         >
@@ -105,29 +112,33 @@ const ModelScopeCell = ({
       return <AvatarGroup items={items} max={3} total={clbs.length} size={'20px'} offset={6} />;
     }
 
-    // 系统模型未配置可用范围时，默认回退到全员可用
-    if (isSystem) {
-      return (
-        <Box color={'myGray.700'} fontSize={'sm'}>
-          {t('config_model:available_to_all')}
-        </Box>
-      );
-    }
+    // 未配置可用范围时：系统模型回退到“全员可用”，团队模型回退到“仅自己可用”；可打开配置弹窗时展示前置图标
+    const fallbackLabel = isSystem
+      ? t('config_model:available_to_all')
+      : t('config_model:only_available_to_self');
 
-    // 团队模型未配置可用范围时，默认回退到仅自己可用
     return (
-      <Box color={'myGray.700'} fontSize={'sm'}>
-        {t('config_model:only_available_to_self')}
-      </Box>
+      <Flex
+        alignItems={'center'}
+        gap={1}
+        fontSize={'mini'}
+        lineHeight={'16px'}
+        fontWeight={canOpenManageModal ? '500' : '400'}
+      >
+        {canOpenManageModal && <MyIcon name={'common/administrator'} w={'16px'} h={'16px'} />}
+        <Box>{fallbackLabel}</Box>
+      </Flex>
     );
   };
 
   const content = renderContent();
-  const canManage = isTeam ? isOwner : hasManagePer && (!isAccountConfig || !isSystem);
-  const teamPermission = userInfo?.team?.permission;
 
-  if (!canManage || !modelId || !feConfigs.isPlus || clbs === undefined || !teamPermission) {
-    return <Box {...props}>{content}</Box>;
+  if (!canOpenManageModal || !modelId || !teamPermission || clbs === undefined) {
+    return (
+      <Box color={'myGray.600'} {...props}>
+        {content}
+      </Box>
+    );
   }
 
   return (
@@ -155,6 +166,13 @@ const ModelScopeCell = ({
             alignItems={'center'}
             cursor={'pointer'}
             w={'fit-content'}
+            color={'myGray.600'}
+            {...(clbs.length === 0 && {
+              p: 1,
+              ml: -1,
+              borderRadius: 'sm',
+              _hover: { bg: 'myGray.05', color: 'primary.700' }
+            })}
             data-row-action
             onClick={onOpenManageModal}
           >
