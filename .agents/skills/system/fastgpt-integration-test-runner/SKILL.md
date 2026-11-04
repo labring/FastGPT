@@ -1,0 +1,111 @@
+---
+name: fastgpt-integration-test-runner
+description: 筛选并实际执行 FastGPT 用例库中的接口、UI、端到端或服务集成用例，创建临时 HTML 测试报告，逐个子场景更新执行结果、说明和证据。适用于执行已有用例、变更回归和复测；仅编写用例或单元测试时不使用。
+---
+
+# FastGPT 用例执行
+
+使用 `.agents/test/` 中已有用例；按本轮相关范围筛选、先生成报告、再逐项执行并更新。不复制维护第二份用例库，不把历史报告当作当前测试证据。
+
+## 筛选本轮用例
+
+先读取仓库 `AGENTS.md`、`.agents/code/syntax.md`，沿用会话中已确认的环境和授权。以下命令在仓库根目录运行，需要已安装仓库依赖；复用相邻 [用例生成 skill](../fastgpt-integration-test-case/SKILL.md) 的扫描器和 `.agents/test/index.html` 的离线渲染库。
+
+1. 结合用户指定功能、变更文件和依赖，查询 `sources`、`routes`、`tags`、正文及必要的 `related` 回归。只读完整相关实现后判断，不以一个文件名或关键词命中直接断言范围。工作区有其他改动时，先区分本次范围。
+2. 用例是合并后的业务验收目标，一个文件可含多个场景。完整阅读所选用例的四节正文，确定公共准备、子场景、参数变体、复位或承接关系、清理方式。选中承接场景时，包含必要前序步骤，或提供经过验证的等效初态；避免重复执行通用边界。
+3. 写明选择和排除原因。`category` 是主类型，跨类型覆盖还需查 `覆盖基础场景`、`覆盖异常场景`、`覆盖边界场景` 标签和矩阵。不要默认执行全库，也不主动运行全量产品测试。
+
+```bash
+node .agents/skills/system/fastgpt-integration-test-case/scripts/catalog.mjs list --business app/workflow --tag 覆盖异常场景
+```
+
+精确到子场景时，在临时目录创建 selection JSON。省略 `items` 表示该用例全部场景；省略 `itemScope` 表示选中行的全部参数变体。若缩小变体范围，必须明确列出，结果只代表该范围。
+
+```json
+{
+  "cases": [
+    {
+      "id": "FG-APP-WORKFLOW-007",
+      "reason": "本轮验证普通连线重复判定及删除后的拓扑变化",
+      "items": ["C1", "C4"],
+      "itemScope": { "C1": "仅重复同端口变体；自连、串行回环不纳入本轮" }
+    }
+  ]
+}
+```
+
+## 先生成临时报告
+
+在执行任何场景前生成，即使当前缺少环境也先记录选择范围。环境、测试账号角色、可用工具、目标部署版本及验证渠道必须如实确认；本地 HEAD 只是参考，不能替代实际部署版本。缺少必要入口或凭证时记录阻塞，向用户询问缺失信息，同时继续可以独立执行的场景。已有明确授权时不重复请求。
+
+```bash
+node .agents/skills/system/fastgpt-integration-test-runner/scripts/report.mjs init --selection /tmp/selection.json --reason "本轮连线变更回归" --environment "独立测试环境" --base-url http://127.0.0.1:3000 --target-version "实际核实的部署版本"
+
+# 或按明确 ID / 与查询工具相同的条件选择整个用例
+node .agents/skills/system/fastgpt-integration-test-runner/scripts/report.mjs init --ids FG-APP-WORKFLOW-007 --reason "普通连线规则回归"
+```
+
+命令返回系统临时目录中的 `report.html` 和 `evidenceDirectory`。报告默认用多列表格展示，一行一个业务用例，列出业务、用例类型、测试方式、优先级、场景进度、**执行结果、结果说明**；点击行才展开完整用例、各子场景结果、证据及复测历史。运行信息默认折叠，不使用统计卡片或平铺长正文。
+
+报告复制完整 Markdown 快照（含原元数据、路径、哈希和基线），展开后在「预期结果」矩阵追加执行结果、结果说明两列；没有编号矩阵时增加 `CASE` 整体验证项。未选子场景保留原文并标注未纳入范围。草稿和废弃定义初始化为阻塞，不自动执行；完善定义后新建报告。
+
+HTML 是报告状态的唯一存储，可直接打开；更新后刷新。需要自动展示进展时启动本机只读预览，页面每 2 秒同步：
+
+```bash
+node .agents/skills/system/fastgpt-integration-test-runner/scripts/report.mjs serve --report /实际临时目录/report.html --port 4318
+```
+
+创建时未知的环境信息核实后，用 `report.mjs context --report <HTML> --environment <环境> --base-url <入口> --target-version <部署版本>` 补齐；不会改变已有执行结果。
+
+测试报告及证据保留在仓库外，不纳入 PR。报告旁的 `evidence/` 一并交付；不在报告里嵌入凭证或未脱敏的用户数据。
+
+## 逐项执行并更新
+
+按用例和子场景顺序串行执行。报告工具只记录和展示；实际操作使用当前可用的 HTTP、浏览器、服务集成、数据库或日志工具，不能以生成报告替代执行。
+
+1. 创建隔离测试数据，记录 run 标识、实际资源 ID、账号角色和时间。沿用用户授权的测试环境；用例文案本身不扩大到无关生产修改、支付、发布或对外消息。前置失败影响多个场景时逐项记录阻塞原因。
+2. 每项操作前写入 `running`。按步骤实际调用接口或操作 UI，按规则复位；同一行多个选中变体逐一执行，记录各自实际值和结果。不要只测第一种变体就整行通过。
+3. 验证所有本轮必需断言：响应业务字段及持久化副作用、UI 状态和保存/刷新效果、数据库精确记录、可获取的日志/trace，或队列/存储等链路结果。通过响应码、边数或截图观感不能替代用例要求的精确集合、字段值和禁止副作用。
+4. 保存脱敏后的实际观察到 `evidence/`，如响应 JSON、DOM/配置快照、截图、只读数据库查询及返回值、日志片段。文件名区分场景、变体及尝试次数，复测不覆盖旧证据。写明资源 ID、时间范围、查询条件；日志不可获取就明确说明。可选渠道缺失不凭空阻塞；必需断言缺少证据必须阻塞。单测/mock、代码阅读和旧报告不能冒充本轮集成结果。
+5. 立即更新该项。结果说明包含实际与预期对照、执行过的变体、异常及相关证据；部分变体失败则整行失败，其余未执行变体写清。仅缺少执行条件则阻塞。业务预期拒绝且实际符合要求应判通过，`scenario: failure` 不等于执行失败，定义 `status: ready` 也不等于通过。
+6. 复测先检查写入是否已成功、是否支持幂等；不盲目重放非幂等操作。从失败/阻塞再次执行时先更新 `running`，开始新一次尝试，报告保留先前结果和证据。报告已结束则新建一轮。
+
+将更新内容写入临时 JSON，通过文件参数传入，避免 shell 转义损坏说明或泄漏凭证。每次一项：
+
+```json
+{
+  "caseId": "FG-APP-WORKFLOW-007",
+  "itemId": "C1",
+  "result": "running",
+  "note": "开始重复同端口变体；已恢复 G1 并保存 E0"
+}
+```
+
+```bash
+node .agents/skills/system/fastgpt-integration-test-runner/scripts/report.mjs update --report /实际临时目录/report.html --record /tmp/update.json
+```
+
+终态记录格式如下。以下内容只是字段示意，必须替换为本轮真实观察；证据文件需实际存在于本轮 `evidence/` 中。工具要求通过/失败前先进入 running，并提供证据文件；它不会自动判断文件是否证明了业务断言，执行方须检查内容。
+
+```json
+{
+  "caseId": "FG-APP-WORKFLOW-007",
+  "itemId": "C1",
+  "result": "passed",
+  "note": "重复同端口变体：目标不可连接，实际释放后 E=E0；已对比四元组集合。其余变体不在本轮范围。",
+  "evidence": [{ "path": "evidence/C1-observation.json", "label": "DOM、E0 与释放后关系集合" }]
+}
+```
+
+结果取值为 `pending` 待执行、`running` 执行中、`passed` 通过、`failed` 失败、`blocked` 阻塞、`skipped` 跳过。初始化后不手动退回 pending；跳过要写原因，不能用跳过掩盖失败。只在所有选中项都通过时汇总通过；未纳入项不计入分母，报告始终说明范围。
+
+## 清理和交付
+
+按原用例清理实际创建的资源，保留失败证据。清理失败或需保留现场时记录资源 ID 和原因；检查先前失败不会污染后续场景。不要为清理删除本轮以外的资源。
+
+```bash
+node .agents/skills/system/fastgpt-integration-test-runner/scripts/report.mjs show --report /实际临时目录/report.html
+node .agents/skills/system/fastgpt-integration-test-runner/scripts/report.mjs finish --report /实际临时目录/report.html --note "实际清理结果及遗留资源"
+```
+
+结束命令拒绝尚有待执行/执行中项的正常收尾。用户终止或不可继续时加 `--interrupted "原因"`，保留未完成状态，不自动改为通过或跳过。最终简洁给出报告绝对路径链接、执行范围、通过/失败/阻塞/跳过数量及必要遗留事项，不另写总结文档，不将执行结果回写用例库。
