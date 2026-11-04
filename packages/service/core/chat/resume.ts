@@ -209,7 +209,7 @@ const chunkToString = (chunk: string | Buffer | Uint8Array, encoding?: BufferEnc
 };
 
 export const mirrorChatStream = (params: StreamResumeRedisKeysParams) => {
-  const mirror = streamResumeCache.createMirror(params);
+  const mirror = getStreamResumeCache().createMirror(params);
 
   return {
     ...getStreamResumeRedisKeys(params),
@@ -248,7 +248,7 @@ export const getStreamResumeMirror = async ({
   if (!isStreamResumeMirrorRequested(resumeRequestHeaderValue)) return;
 
   if (await isRedisMemoryPressureBlockingStreamResume()) {
-    await streamResumeCache
+    await getStreamResumeCache()
       .setUnavailable(params, {
         reason: StreamResumeUnavailableReasonEnum.memoryPressure
       })
@@ -311,7 +311,7 @@ export const catchUpAllHistoryItems = async ({
   while (!isResponseClosed(res)) {
     const rangeStart = lastStreamId ? `(${lastStreamId}` : '-';
 
-    const historyItems = await streamResumeCache.range({
+    const historyItems = await getStreamResumeCache().range({
       params,
       start: rangeStart,
       end: '+',
@@ -352,7 +352,7 @@ export const _resume = async ({
   let cursor = initialCursor ?? '';
 
   if (cursor) {
-    const currentItems = await streamResumeCache.range({
+    const currentItems = await getStreamResumeCache().range({
       params,
       start: cursor,
       end: cursor,
@@ -364,7 +364,7 @@ export const _resume = async ({
     }
   }
 
-  return streamResumeCache.withBlockingReader({
+  return getStreamResumeCache().withBlockingReader({
     params,
     blockMs: STREAM_RESUME_BLOCK_MS,
     count: 1,
