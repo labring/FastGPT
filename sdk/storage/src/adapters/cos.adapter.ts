@@ -8,6 +8,7 @@ import {
   bindAbortSignalToReadable,
   encodeObjectKeyPath,
   formatHttpByteRangeHeader,
+  getAbortSignalError,
   throwIfStorageAborted,
   throwIfStorageDownloadAborted
 } from '../utils';
@@ -162,11 +163,26 @@ export class CosStorageAdapter implements IStorage {
     assertStorageObjectKey(key);
     throwIfStorageAborted(abortSignal);
 
-    // COS SDK 只监听 body 的 error 来中止请求；把取消绑定到 body 才能释放底层连接。
-    const uploadBody = abortSignal && !(body instanceof Readable) ? Readable.from([body]) : body;
-    if (uploadBody instanceof Readable) {
-      bindAbortSignalToReadable({ readable: uploadBody, abortSignal });
+    // COS SDK 只监听 body 的 error 来中止请求。autoDestroy=false 的中间流可以在 body
+    // 已经读完后继续保留，取消时再注入 error 触发 sender.abort，覆盖等待响应的阶段。
+    const uploadBody: Storage.StorageUploadBody = abortSignal
+      ? new PassThrough({ autoDestroy: false })
+      : body;
+    if (abortSignal && uploadBody instanceof PassThrough) {
+      if (body instanceof Readable) {
+        body.once('error', (error) => uploadBody.destroy(error));
+        body.pipe(uploadBody);
+      } else {
+        uploadBody.end(body);
+      }
     }
+    const abortUpload = () => {
+      // 原始 body 可能仍被 pipe 到这个中间流；取消时一并停止读取。
+      if (body instanceof Readable && !body.destroyed) body.destroy();
+      if (!(uploadBody instanceof Readable) || uploadBody.destroyed) return;
+      uploadBody.destroy(getAbortSignalError(abortSignal!));
+    };
+    abortSignal?.addEventListener('abort', abortUpload, { once: true });
 
     const headers: Record<string, string> = {};
     if (contentDisposition) headers['Content-Disposition'] = contentDisposition;
@@ -178,25 +194,34 @@ export class CosStorageAdapter implements IStorage {
       }
     }
 
-    await new Promise<COS.PutObjectResult>((resolve, reject) => {
-      this.client.putObject(
-        {
-          Bucket: this.options.bucket,
-          Region: this.options.region,
-          Key: key,
-          Body: uploadBody,
-          ContentType: contentType,
-          ContentLength: contentLength,
-          Headers: Object.keys(headers).length ? headers : undefined
-        },
-        (err, data) => {
-          if (err) {
-            return reject(this.handleCosError(err));
+    try {
+      await new Promise<COS.PutObjectResult>((resolve, reject) => {
+        this.client.putObject(
+          {
+            Bucket: this.options.bucket,
+            Region: this.options.region,
+            Key: key,
+            Body: uploadBody,
+            ContentType: contentType,
+            ContentLength: contentLength,
+            Headers: Object.keys(headers).length ? headers : undefined
+          },
+          (err, data) => {
+            if (err) {
+              return reject(
+                abortSignal?.aborted ? getAbortSignalError(abortSignal) : this.handleCosError(err)
+              );
+            }
+            resolve(data);
           }
-          resolve(data);
-        }
-      );
-    });
+        );
+      });
+    } finally {
+      abortSignal?.removeEventListener('abort', abortUpload);
+      if (uploadBody !== body && uploadBody instanceof Readable && !uploadBody.destroyed) {
+        uploadBody.destroy();
+      }
+    }
 
     return {
       key,
