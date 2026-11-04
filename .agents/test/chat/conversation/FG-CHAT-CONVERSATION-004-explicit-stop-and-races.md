@@ -22,7 +22,7 @@ sources:
 routes:
   - "POST /api/v2/chat/stop"
   - "POST /api/v2/chat/completions"
-related: [FG-CHAT-CONVERSATION-001, FG-INFRA-RUNTIME-001]
+related: [FG-CHAT-CONVERSATION-005, FG-INFRA-RUNTIME-002]
 baseline: "5a5211f70998f5311cd40b0e5362a1414be6fbdf"
 ---
 
@@ -34,7 +34,7 @@ baseline: "5a5211f70998f5311cd40b0e5362a1414be6fbdf"
 
 ## 前置准备
 
-- 复用 FG-CHAT-CONVERSATION-001 的独立资源、查询和清理。两个测试实例共享私有 Mongo/Redis，能分别指定发起生成及停止的实例；Workflow、Helper、Builder 各准备一个有可控等待的任务。
+- 复用 FG-CHAT-CONVERSATION-005 的独立资源、查询和清理。两个测试实例共享私有 Mongo/Redis，能分别指定发起生成及停止的实例；Workflow、Helper、Builder 各准备一个有可控等待的任务。
 - stop logical key 为 `agent_runtime_stopping:{sourceType}:{sourceId}:{chatId}`，物理前缀通过 adapter 确认；记录每次 `GET/PTTL`。新值是不同的版本字符串，TTL 60 秒；历史值 `1` 单独验证。
 - 私有 Redis 协议代理能够只延迟本轮获取 Lua 的执行/返回，或只延迟比较清理 Lua；记录命令发出、实际执行、回复时刻，区分“响应迟到”和“命令迟到”。不能靠固定 sleep 推断竞态已发生。
 - 正常停止的 gate 放行后，最长 30 秒观察协作停止与收尾；工具执行本身不能强杀时记录实际边界，不要求 100ms 内整条任务退出。日志仅使用测试进程已配置的 sink，按 sourceType/sourceId/chatId 和测试时间窗关联。
