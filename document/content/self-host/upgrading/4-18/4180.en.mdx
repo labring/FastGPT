@@ -33,11 +33,12 @@ PG partial indexes require `halfvec` support, a fixed vector dimension in the `1
 
 1. **[Datasets and files]** PostgreSQL now maintains FP16 partial HNSW indexes per Dataset, building them on demand above `10000` vector rows and removing them below `5000`; the existing state is retained between these thresholds. Datasets without a ready index use exact search, and candidates from all groups are ranked by FP32 distance without changing the precision of stored vectors.
 2. **[Datasets and files]** In the Commercial edition, moved tag filtering for simple Apps and ChatAgents to the “Search filter” tab in Dataset search settings and added a dedicated toggle. Turning it off in manual input mode preserves conditions for later editing; the settings summary now reflects whether the toggle is on.
-3. **[Models and billing]** Consistently place models in test mode last in the mobile model selector, speech playback, channel bindings, and model log and dashboard filters, preserving catalog order within each group.
-4. **[Models and billing]** Aligned header and body column widths in the model management table and isolated edit dialog state by row, reducing full-table rerenders when opening a dialog in a large list.
-5. **[Chat experience]** Optimized scroll pagination to reduce rerenders caused by scrolling; scrolling can still load more items after content shrinks to less than one screen.
-6. **[Teams and permissions]** Aligned the close button position and style in the contact information and notification account dialogs.
-7. **[System and operations]** Added OpenSandbox startup troubleshooting guidance for host seccomp restrictions that can leave `/workspace` unwritable even when volume permissions are correct.
+3. **[Datasets and files]** Tripled the per-minute file upload rate limit for each upload identity, reducing “Too many requests” errors during repeated or batch uploads.
+4. **[Models and billing]** Consistently place models in test mode last in the mobile model selector, speech playback, channel bindings, and model log and dashboard filters, preserving catalog order within each group.
+5. **[Models and billing]** Aligned header and body column widths in the model management table and isolated edit dialog state by row, reducing full-table rerenders when opening a dialog in a large list.
+6. **[Chat experience]** Optimized scroll pagination to reduce rerenders caused by scrolling; scrolling can still load more items after content shrinks to less than one screen.
+7. **[Teams and permissions]** Aligned the close button position and style in the contact information and notification account dialogs.
+8. **[System and operations]** Added OpenSandbox startup troubleshooting guidance for host seccomp restrictions that can leave `/workspace` unwritable even when volume permissions are correct.
 
 ## 🐛 Fixes
 
@@ -46,13 +47,16 @@ PG partial indexes require `halfvec` support, a fixed vector dimension in the `1
 3. **[Workflows and Agents]** Fixed memory propagation and failure isolation in loops and parallel runs. Loops pass memory between successful iterations and preserve checkpoints when paused for interaction; failed iterations do not commit updates. Parallel runs merge only successful task results, keep failed attempts from affecting retries, and merge in input order, with later successful tasks taking precedence for the same memory key.
 4. **[Workflows and Agents]** Fixed nested Pi Agents failing to resume question interactions when history is set to 0 or an empty custom history array. Resumes restore the state saved by the parent Workflow.
 5. **[Workflows and Agents]** Fixed Skill exports failing when the edit sandbox was not running: when initialization is allowed, the server starts or resumes the sandbox and waits until it is ready before packaging. Members with write permission must wait for the sandbox to be ready; read-only collaborators can access export regardless of their local edit sandbox state.
-6. **[Chat experience]** Fixed the header variable panel in shared chats without login using regular chat visibility rules. External variables are now hidden from share visitors.
-7. **[Chat experience]** Fixed model selectors in global variables and interaction forms in shared chats without login failing to load the model list or selected model name because share authentication was missing.
-8. **[Chat experience]** Fixed images being missed when their Markdown descriptions contain paired square brackets, such as `![Image [1]](...)`; image extraction and replacement now handle these descriptions correctly.
-9. **[Chat experience]** Added missing Simplified Chinese, Traditional Chinese, English, and Korean translations for sandbox connection and file errors, Skill generation status, and Tool version labels, fixing untranslated text or internal keys appearing in some screens.
-10. **[Teams and permissions]** Fixed the login and member name forms submitting when Enter was used to confirm an input method candidate during composition. Pressing Enter again after confirmation submits the form.
-11. **[Teams and permissions]** Fixed the “Cancel” button in the account deletion confirmation dialog not following the current interface language.
-12. **[Tools and channels]** Fixed blank text in some Tool names, descriptions, and tags when their Traditional Chinese translation is empty. These values fall back to Simplified Chinese, then English if no usable text is available.
+6. **[Workflows and Agents]** Fixed cursor resets in multiline text fields that disrupted input method composition and candidate confirmation.
+7. **[Workflows and Agents]** Fixed scrolling in Tool and form parameter configuration dialogs when their content exceeds the available space.
+8. **[Chat experience]** Fixed the header variable panel in shared chats without login using regular chat visibility rules. External variables are now hidden from share visitors.
+9. **[Chat experience]** Fixed model selectors in global variables and interaction forms in shared chats without login failing to load the model list or selected model name because share authentication was missing.
+10. **[Chat experience]** Fixed images being missed when their Markdown descriptions contain paired square brackets, such as `![Image [1]](...)`; image extraction and replacement now handle these descriptions correctly.
+11. **[Chat experience]** Added missing Simplified Chinese, Traditional Chinese, English, and Korean translations for sandbox connection and file errors, Skill generation status, and Tool version labels, fixing untranslated text or internal keys appearing in some screens.
+12. **[Teams and permissions]** Fixed App creation, JSON imports, copies, and conversions to new Workflow copies failing when they include unreadable or missing resources. The initial version snapshots only readable resources; any remaining unusable Node references are marked as errors in the detail view for later correction.
+13. **[Teams and permissions]** Fixed the login and member name forms submitting when Enter was used to confirm an input method candidate during composition. Pressing Enter again after confirmation submits the form.
+14. **[Teams and permissions]** Fixed the “Cancel” button in the account deletion confirmation dialog not following the current interface language.
+15. **[Tools and channels]** Fixed blank text in some Tool names, descriptions, and tags when their Traditional Chinese translation is empty. These values fall back to Simplified Chinese, then English if no usable text is available.
 
 ## 🛠️ Code improvements
 
