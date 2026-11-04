@@ -4,8 +4,7 @@ import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/next/type';
 import {
   DeleteChatRecordBodySchema,
-  DeleteChatRecordResponseSchema,
-  type DeleteChatRecordResponseType
+  DeleteChatRecordQuerySchema
 } from '@fastgpt/global/openapi/core/chat/record/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
@@ -14,10 +13,11 @@ import { WritePermissionVal } from '@fastgpt/global/support/permission/constant'
 const hasRequestBodyPayload = (body: unknown) =>
   !!body && typeof body === 'object' && Object.keys(body).length > 0;
 
-async function handler(req: ApiRequestProps): Promise<DeleteChatRecordResponseType> {
+/** 优先解析 JSON Body；仅 Body 为空时兼容旧 Query，解析失败不得回退到另一套身份。 */
+async function handler(req: ApiRequestProps): Promise<void> {
   const params = hasRequestBodyPayload(req.body)
     ? parseApiInput({ req, bodySchema: DeleteChatRecordBodySchema }).body
-    : parseApiInput({ req, querySchema: DeleteChatRecordBodySchema }).query;
+    : parseApiInput({ req, querySchema: DeleteChatRecordQuerySchema }).query;
   const { sourceType, sourceId, chatId, contentId, contentIds, outLinkAuthData } = params;
   const authRes = await authChatTargetCrud({
     req,
@@ -36,7 +36,7 @@ async function handler(req: ApiRequestProps): Promise<DeleteChatRecordResponseTy
   );
 
   if (targetContentIds.length === 0) {
-    return DeleteChatRecordResponseSchema.parse(undefined);
+    return;
   }
 
   await softDeleteChatItems({
@@ -45,8 +45,6 @@ async function handler(req: ApiRequestProps): Promise<DeleteChatRecordResponseTy
     chatId,
     contentIds: targetContentIds
   });
-
-  return DeleteChatRecordResponseSchema.parse(undefined);
 }
 
 export default NextAPI(handler);

@@ -20,6 +20,9 @@ import {
   PerResourceTypeEnum,
   ReadPermissionVal
 } from '@fastgpt/global/support/permission/constant';
+import { MongoOutLink } from '@fastgpt/service/support/outLink/schema';
+import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
+import { ApiRequestInputParseError } from '@fastgpt/service/common/zod/requestParseError';
 
 describe('delete chat record api', () => {
   let testUser: Awaited<ReturnType<typeof getUser>>;
@@ -67,6 +70,79 @@ describe('delete chat record api', () => {
       source: ChatSourceEnum.test
     });
   });
+
+  it.each(['body', 'query'] as const)(
+    'deletes anonymous outlink messages through %s while rejecting another visitor',
+    async (inputSource) => {
+      const shareId = getNanoid();
+      const outLinkUid = 'current-visitor';
+      await MongoOutLink.create({
+        shareId,
+        appId,
+        teamId: testUser.teamId,
+        tmbId: testUser.tmbId,
+        type: PublishChannelEnum.share,
+        name: 'Anonymous chat',
+        allowAnonymous: true
+      });
+      await MongoChat.updateOne({ appId, chatId }, { $set: { shareId, outLinkUid } });
+      await Promise.all([createChatItem('delete-1'), createChatItem('keep-1')]);
+
+      // 只替换访客身份，确保两种传输路径都继续执行会话归属校验。
+      const request = (visitor: string) => ({
+        [inputSource]: {
+          chatId,
+          contentIds: inputSource === 'query' ? 'delete-1' : ['delete-1'],
+          outLinkAuthData:
+            inputSource === 'query'
+              ? JSON.stringify({ shareId, outLinkUid: visitor })
+              : { shareId, outLinkUid: visitor }
+        }
+      });
+
+      const denied = await Call(handler, request('another-visitor'));
+      expect(denied.code).not.toBe(200);
+      expect(await MongoChatItem.countDocuments({ appId, chatId, deleteTime: null })).toBe(2);
+
+      const res = await Call(handler, request(outLinkUid));
+      expect(res.code).toBe(200);
+      expect(res.error).toBeUndefined();
+      expect(
+        (await MongoChatItem.findOne({ appId, chatId, dataId: 'delete-1' }).lean())?.deleteTime
+      ).toBeInstanceOf(Date);
+      expect(
+        (await MongoChatItem.findOne({ appId, chatId, dataId: 'keep-1' }).lean())?.deleteTime
+      ).toBeNull();
+    }
+  );
+
+  it.each([
+    {
+      inputSource: 'body',
+      outLinkAuthData: JSON.stringify({ shareId: 'share', outLinkUid: 'uid' })
+    },
+    { inputSource: 'query', outLinkAuthData: { shareId: 'share', outLinkUid: 'uid' } },
+    { inputSource: 'query', outLinkAuthData: 'invalid-json' }
+  ] as const)(
+    'rejects invalid $inputSource auth encoding without falling back to token or Query',
+    async ({ inputSource, outLinkAuthData }) => {
+      await createChatItem('keep-invalid-auth');
+      const params = { appId, chatId, contentId: 'keep-invalid-auth' };
+      const res = await Call(handler, {
+        auth: testUser,
+        query: params,
+        [inputSource]: { ...params, outLinkAuthData }
+      });
+
+      expect(res.code).not.toBe(200);
+      expect(res.error).toBeInstanceOf(ApiRequestInputParseError);
+      expect(res.error.context.inputSource).toBe(inputSource);
+      expect(
+        (await MongoChatItem.findOne({ appId, chatId, dataId: 'keep-invalid-auth' }).lean())
+          ?.deleteTime
+      ).toBeNull();
+    }
+  );
 
   it('should soft delete body contentIds and de-duplicate repeated ids', async () => {
     await Promise.all([

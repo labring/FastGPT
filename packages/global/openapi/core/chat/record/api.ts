@@ -68,6 +68,16 @@ export const DeleteChatRecordBodySchema = DeleteChatRecordBodyRawSchema.transfor
 export type DeleteChatRecordBodyType = z.infer<typeof DeleteChatRecordBodyRawSchema>;
 export type DeleteChatRecordBodyRuntimeType = z.infer<typeof DeleteChatRecordBodySchema>;
 
+// 兼容旧客户端通过 Query 删除消息；外链凭证在 Query 中为 JSON 字符串，Body 中仍为对象。
+export const DeleteChatRecordQueryRawSchema = createOutLinkChatTargetQuerySchema(
+  DeleteChatRecordPropsSchema
+);
+export const DeleteChatRecordQuerySchema = DeleteChatRecordQueryRawSchema.transform(
+  transformChatAuthTargetInput
+);
+export type DeleteChatRecordQueryType = z.input<typeof DeleteChatRecordQueryRawSchema>;
+export type DeleteChatRecordQueryRuntimeType = z.infer<typeof DeleteChatRecordQuerySchema>;
+
 const QuoteBodyPropsSchema = {
   chatId: z.string().min(1).max(256).describe('会话ID'),
   chatItemDataId: z.string().min(1).max(256).meta({
@@ -94,9 +104,6 @@ export const GetQuoteBodyRawSchema = createOutLinkChatTargetInputSchema(QuoteBod
 export const GetQuoteBodySchema = GetQuoteBodyRawSchema.transform(transformChatAuthTargetInput);
 export type GetQuoteBodyType = z.infer<typeof GetQuoteBodyRawSchema>;
 export type GetQuoteBodyRuntimeType = z.infer<typeof GetQuoteBodySchema>;
-
-export const DeleteChatRecordResponseSchema = z.undefined().meta({ description: '删除成功' });
-export type DeleteChatRecordResponseType = z.infer<typeof DeleteChatRecordResponseSchema>;
 
 /* ============================================================================
  * API: 获取对话引用数据
