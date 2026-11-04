@@ -12,7 +12,10 @@ import type { OutLinkSchemaType, WechatAppType } from '@fastgpt/global/support/o
 import { MongoOutLink } from '../../../support/outLink/schema';
 import { wechatPollingFailureCache } from '@fastgpt/dal/redis/caches';
 import { groupMessagesByUser } from './messageParser';
-import { getSystemInstanceConfig } from '../../../common/system/systemInstanceConfig/runtime';
+import {
+  getSystemInstanceConfig,
+  onSystemInstanceConfigSnapshot
+} from '../../../common/system/systemInstanceConfig/runtime';
 import { batchRun, retryFn } from '@fastgpt/global/common/system/utils';
 import { wechatOutlinkProvider } from './provider';
 
@@ -222,10 +225,18 @@ async function shouldContinuePolling(shareId: string): Promise<boolean> {
 
 /* ============ 对外接口 ============ */
 
+let unsubscribeSnapshot: (() => void) | undefined;
+
 /**
  * 初始化微信轮询 / 回复 Worker
  */
 export const initWechatPollWorker = async () => {
+  // 快照重载后把新并发同步到已存在的 poll/reply Worker；DAL 命中缓存时原地更新 concurrency。
+  unsubscribeSnapshot ??= onSystemInstanceConfigSnapshot(() => {
+    const next = getSystemInstanceConfig().performance.channel.wechatConcurrency;
+    wechatMQService.getPollWorker(processWechatPollJob, { concurrency: next });
+    wechatMQService.getReplyWorker(processWechatReplyJob, { concurrency: next });
+  });
   // 渠道并发只读实例配置 performance.channel。
   const concurrency = getSystemInstanceConfig().performance.channel.wechatConcurrency;
 

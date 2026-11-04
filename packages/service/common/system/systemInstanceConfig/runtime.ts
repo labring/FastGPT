@@ -48,6 +48,34 @@ export const getSystemInstanceConfig = (): SystemInstanceConfig => {
   return snapshot;
 };
 
+type SystemInstanceConfigSnapshotListener = (snapshot: SystemInstanceConfig) => void;
+
+/**
+ * 订阅集合挂在 global 上：Next 的路由 bundle 可能各自加载一份本模块，
+ * 模块级集合会让发布方（某个 route）与订阅方（另一个 route）互相看不到。
+ */
+const getSnapshotListeners = (): Set<SystemInstanceConfigSnapshotListener> => {
+  const store = global as typeof global & {
+    systemInstanceConfigListeners?: Set<SystemInstanceConfigSnapshotListener>;
+  };
+  store.systemInstanceConfigListeners ??= new Set();
+  return store.systemInstanceConfigListeners;
+};
+
+/**
+ * 订阅快照发布，用于「声明 applyMode: reload、但资源只能在创建时传入参数」的消费者
+ * （典型是 BullMQ Worker 的 concurrency）。
+ * 回调必须是同步、轻量、可重复执行；抛错只记录，不影响其它订阅者与发布本身。
+ * @returns 取消订阅函数
+ */
+export const onSystemInstanceConfigSnapshot = (
+  listener: SystemInstanceConfigSnapshotListener
+): (() => void) => {
+  const listeners = getSnapshotListeners();
+  listeners.add(listener);
+  return () => listeners.delete(listener);
+};
+
 /**
  * 发布新的运行时快照和版本标记。
  * 由 reload 在数据库合成成功后调用；只更新 global，不发起数据库读取或业务刷新。
@@ -62,5 +90,15 @@ export const publishSystemInstanceConfigSnapshot = ({
   global.systemInstanceConfig = snapshot;
   if (versionTag !== undefined) {
     (global as any).systemInstanceConfigVersionTag = versionTag;
+  }
+
+  // 订阅者用来重新绑定那些只在创建时接收参数的资源（如 Worker concurrency）。
+  for (const listener of getSnapshotListeners()) {
+    try {
+      listener(snapshot);
+    } catch (error) {
+      // 单个订阅者失败不能阻断配置发布或其它订阅者
+      console.error('[systemInstanceConfig] snapshot listener failed', error);
+    }
   }
 };

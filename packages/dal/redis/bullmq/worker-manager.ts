@@ -37,7 +37,18 @@ export class BullMQWorkerManager {
     opts?: Omit<WorkerOptions, 'connection'>
   ): Worker<DataType, ReturnType> {
     const existing = this.workers.get(name);
-    if (existing) return existing as Worker<DataType, ReturnType>;
+    if (existing) {
+      /**
+       * 缓存命中时 opts 会被忽略，但并发是允许运行时调整的（BullMQ 提供公开 setter）。
+       * 不在这里同步的话，registry 声明 applyMode: reload 的字段（评测 / 微信渠道并发）
+       * 只有重启进程才生效，后台改完看起来「保存成功但不生效」。
+       * 只处理显式传入 concurrency 的调用方，其它 worker 参数仍以首次创建为准。
+       */
+      if (opts?.concurrency !== undefined && existing.concurrency !== opts.concurrency) {
+        existing.concurrency = opts.concurrency;
+      }
+      return existing as Worker<DataType, ReturnType>;
+    }
     if (this.restartingWorkers.has(name)) {
       throw new Error(`BullMQ worker ${name} is restarting`);
     }
