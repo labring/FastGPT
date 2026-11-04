@@ -319,3 +319,38 @@ describe('ChatHome OpenAPI contract', () => {
     });
   });
 });
+
+describe('CompletionsPropsSchema customUid', () => {
+  const appId = '68ad85a7463006c963799a05';
+  it.each([undefined, null, '', '0', ' customer-42 ', 'a'.repeat(1024)])(
+    'preserves UID semantics: %j',
+    (customUid) => {
+      expect(CompletionsPropsSchema.parse({ appId, customUid }).customUid).toBe(
+        customUid ?? undefined
+      );
+    }
+  );
+  it.each(['customer-42', '', '0'])('rejects customUid=%j together with authProxy', (customUid) => {
+    const result = CompletionsPropsSchema.safeParse({
+      appId,
+      customUid,
+      authProxy: { tmbId: appId }
+    });
+    expect(result.success).toBe(false);
+    if (!result.success)
+      expect(result.error.issues).toContainEqual(
+        expect.objectContaining({
+          path: ['customUid'],
+          message: 'customUid and authProxy are mutually exclusive'
+        })
+      );
+  });
+  it.each([undefined, null])('allows proxy with omitted UID %j', (customUid) => {
+    expect(
+      CompletionsPropsSchema.parse({ appId, customUid, authProxy: { tmbId: appId } }).authProxy
+    ).toEqual({ tmbId: appId });
+  });
+  it.each([123, {}, 'a'.repeat(1025)])('rejects invalid UID %j', (customUid) => {
+    expect(CompletionsPropsSchema.safeParse({ appId, customUid }).success).toBe(false);
+  });
+});

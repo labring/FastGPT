@@ -1,10 +1,10 @@
+import { buildAppChatLogFilter } from '@fastgpt/service/core/app/logs/utils';
 import type { NextApiResponse } from 'next';
 import { responseWriteController } from '@fastgpt/service/common/response';
 import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import dayjs from 'dayjs';
 import { type ApiRequestProps } from '@fastgpt/next/type';
-import { replaceRegChars } from '@fastgpt/global/common/string/tools';
 import { NextAPI } from '@/service/middleware/entry';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { Types } from '@fastgpt/service/common/mongo';
@@ -33,12 +33,9 @@ import { getLocale } from '@fastgpt/service/common/middle/i18n';
 import { AppVersionCollectionName } from '@fastgpt/service/core/app/version/schema';
 import { ExportChatLogsBodySchema } from '@fastgpt/global/openapi/core/app/log/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
-import { isUnselectedLogUserFilter } from '@fastgpt/global/core/app/logs/utils';
+import { formatSourceMember } from '@fastgpt/service/support/user/utils';
+import { getLogIdentity, isUnselectedLogUserFilter } from '@fastgpt/global/core/app/logs/utils';
 const logger = getLogger(LogCategories.MODULE.APP.LOGS);
-
-const appChatSourceMatch = {
-  $or: [{ sourceType: ChatSourceTypeEnum.app }, { sourceType: { $exists: false } }]
-};
 
 const formatJsonString = (data: any) => {
   if (data == null) return '';
@@ -109,67 +106,20 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
   }
 
   // Get members
-  const memberDisplayMap = await getTeamMemberMap({ teamId, fields: '_id name' });
+  const memberDisplayMap = await getTeamMemberMap({ teamId, fields: '_id name avatar status' });
 
-  const where = {
-    appId: new Types.ObjectId(appId),
-    $and: [appChatSourceMatch],
-    // Feedback type filtering (BEFORE pagination for performance)
-    ...(feedbackType === 'has_feedback' &&
-      !unreadOnly && {
-        $or: [{ hasGoodFeedback: true }, { hasBadFeedback: true }]
-      }),
-    ...(feedbackType === 'has_feedback' &&
-      unreadOnly && {
-        $or: [{ hasUnreadGoodFeedback: true }, { hasUnreadBadFeedback: true }]
-      }),
-    ...(feedbackType === 'good' &&
-      !unreadOnly && {
-        hasGoodFeedback: true
-      }),
-    ...(feedbackType === 'good' &&
-      unreadOnly && {
-        hasUnreadGoodFeedback: true
-      }),
-    ...(feedbackType === 'bad' &&
-      !unreadOnly && {
-        hasBadFeedback: true
-      }),
-    ...(feedbackType === 'bad' &&
-      unreadOnly && {
-        hasUnreadBadFeedback: true
-      }),
-    ...(sources && { source: { $in: sources } }),
-    ...(tmbIds || outLinkUids
-      ? {
-          $or: [
-            ...(tmbIds?.length
-              ? [
-                  {
-                    tmbId: { $in: tmbIds.map((item) => new Types.ObjectId(item)) },
-                    $or: [{ outLinkUid: { $exists: false } }, { outLinkUid: { $in: [null, ''] } }]
-                  }
-                ]
-              : []),
-            ...(outLinkUids?.length ? [{ outLinkUid: { $in: outLinkUids } }] : [])
-          ]
-        }
-      : {}),
-    updateTime: {
-      $gte: new Date(dateStart),
-      $lte: new Date(dateEnd)
-    },
-    ...(chatSearch
-      ? {
-          $or: [
-            { chatId: { $regex: new RegExp(`${replaceRegChars(chatSearch)}`, 'i') } },
-            { title: { $regex: new RegExp(`${replaceRegChars(chatSearch)}`, 'i') } },
-            { customTitle: { $regex: new RegExp(`${replaceRegChars(chatSearch)}`, 'i') } }
-          ]
-        }
-      : undefined),
-    ...(errorFilter === 'has_error' && { errorCount: { $gt: 0 } })
-  };
+  const where = buildAppChatLogFilter({
+    appId,
+    dateStart,
+    dateEnd,
+    sources,
+    tmbIds,
+    outLinkUids,
+    chatSearch,
+    feedbackType,
+    unreadOnly,
+    errorFilter
+  });
 
   res.setHeader('Content-Type', 'text/csv; charset=utf-8;');
   res.setHeader('Content-Disposition', 'attachment; filename=usage.csv; ');
@@ -446,14 +396,20 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
       : '';
     const source = sourcesMap[doc.source as ChatSourceEnum]?.label || doc.source;
     const titleStr = getDisplayChatTitle({ customTitle: doc.customTitle, title: doc.title });
-    const tmbName = doc.outLinkUid ? doc.outLinkUid : memberDisplayMap.get(String(doc.tmbId))?.name;
+    const member = memberDisplayMap.get(String(doc.tmbId));
+    const identity = {
+      tmbId: String(doc.tmbId ?? ''),
+      outLinkUid: doc.outLinkUid,
+      authMember: member ? formatSourceMember(member) : undefined
+    };
     const region = getLocationFromIp(doc.originIp, locale);
 
     const valueMap: Record<string, () => any> = {
       [AppLogKeysEnum.SOURCE]: () => source,
       [AppLogKeysEnum.CREATED_TIME]: () => createdTime,
       [AppLogKeysEnum.LAST_CONVERSATION_TIME]: () => lastConversationTime,
-      [AppLogKeysEnum.USER]: () => tmbName || '-',
+      [AppLogKeysEnum.USER]: () => getLogIdentity(identity).name,
+      [AppLogKeysEnum.AUTH_USER]: () => getLogIdentity({ ...identity, isAuthorizer: true }).name,
       [AppLogKeysEnum.TITLE]: () => titleStr,
       [AppLogKeysEnum.SESSION_ID]: () => doc.id || '-',
       [AppLogKeysEnum.MESSAGE_COUNT]: () => doc.messageCount,

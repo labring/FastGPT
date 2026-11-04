@@ -81,6 +81,7 @@ export const ChatCompletionPath: OpenAPIPath = {
 
 **注意事项**
 
+- 接入方后端可传入 \`customUid\` 标记自己的使用者，值会传递给工作流的 \`userId\`；它不改变 API Key 的鉴权成员，且与 \`authProxy\` 互斥。最长 1024 字符，空字符串使用默认成员身份。
 - 传入的 \`model\`、\`temperature\` 等参数字段均无效，这些字段由编排决定，不会根据 API 参数改变。
 - 不会返回实际消耗 \`Token\` 值。如果需要，可以设置 \`detail=true\`，并手动计算 \`responseData\` 里的 \`tokens\` 值。
 
@@ -174,6 +175,7 @@ export const ChatCompletionPath: OpenAPIPath = {
 
 **注意事项**
 
+- 接入方后端可传入 \`customUid\` 标记自己的使用者，值会传递给工作流的 \`userId\`；它不改变 API Key 的鉴权成员，且与 \`authProxy\` 互斥。最长 1024 字符，空字符串使用默认成员身份。
 - 如需通过 \`authProxy\` 代理团队成员身份，需要团队所有者在创建或编辑该 key 时开启 \`authProxy\`；代理身份仍需要具备目标应用和会话权限。（仅适用于 FastGPT >= v4.15.0）
 - 传入的 \`model\`，\`temperature\` 等参数字段均无效，这些字段由编排决定，不会根据 API 参数改变。
 - 不会返回实际消耗 \`Token\` 值，如果需要，可以设置 \`detail=true\`，并手动计算 \`responseData\` 里的 \`tokens\` 值。

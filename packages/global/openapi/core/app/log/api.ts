@@ -81,9 +81,20 @@ export const ChatLogItemSchema = z.object({
   }),
   errorCount: IntSchema.nullish().meta({ example: 0, description: '错误次数' }),
   totalPoints: NumSchema.nullish().meta({ example: 150.5, description: '总积分消耗' }),
-  outLinkUid: z.string().nullish().meta({ example: 'outLink123', description: '外链用户 ID' }),
-  tmbId: z.string().nullish().meta({ example: 'tmb123', description: '团队成员 ID' }),
-  sourceMember: SourceMemberSchema.nullish().meta({ description: '来源成员信息' }),
+  outLinkUid: z.string().nullish().meta({
+    example: 'outLink123',
+    description: '使用者 ID，外链访客或 API customUid；非空时优先于 tmbId'
+  }),
+  tmbId: z
+    .string()
+    .nullish()
+    .meta({ example: 'tmb123', description: '本次实际鉴权成员 ID，代理调用时为被代理成员' }),
+  sourceMember: SourceMemberSchema.nullish().meta({
+    description: '来源成员信息（兼容字段，分享来源可能为访客）'
+  }),
+  authMember: SourceMemberSchema.nullish().meta({
+    description: '按 tmbId 解析的鉴权成员信息，仅用于展示'
+  }),
   versionName: z.string().nullish().meta({ example: 'v1.0.0', description: '版本名称' }),
   originIp: z.string().nullish().meta({ example: '192.168.1.1', description: '原始 IP 地址' }),
   region: z.string().nullish().meta({ example: '中国', description: '区域' })
@@ -357,8 +368,14 @@ export const GetLogUsersBodySchema = createPaginationSchema({
 export type GetLogUsersBody = z.infer<typeof GetLogUsersBodySchema>;
 
 export const LogUserSchema = z.object({
-  outLinkUid: z.string().nullable().meta({ example: 'outLink123', description: '外链用户 ID' }),
-  tmbId: z.string().nullable().meta({ example: 'tmb123', description: '团队成员 ID' }),
+  outLinkUid: z.string().nullable().meta({
+    example: 'outLink123',
+    description: '使用者 ID，外链访客或 API customUid；非空时优先于 tmbId'
+  }),
+  tmbId: z
+    .string()
+    .nullable()
+    .meta({ example: 'tmb123', description: '本次实际鉴权成员 ID，代理调用时为被代理成员' }),
   name: z.string().meta({ example: '用户名', description: '用户名称' }),
   avatar: z
     .string()

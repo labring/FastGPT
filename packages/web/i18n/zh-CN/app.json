@@ -258,6 +258,7 @@
   "logs_keys_sessionId": "会话 ID",
   "logs_keys_source": "来源",
   "logs_keys_title": "标题",
+  "logs_keys_auth_user": "鉴权者",
   "logs_keys_user": "使用者",
   "logs_keys_versionName": "版本名",
   "logs_message_total": "消息总数",
