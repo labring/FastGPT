@@ -43,8 +43,8 @@ catalogs:
       specifier: ^11
       version: 11.11.0
     '@fastgpt-plugin/sdk-client':
-      specifier: 1.2.0-alpha.4
-      version: 1.2.0-alpha.4
+      specifier: 1.2.0-alpha.5
+      version: 1.2.0-alpha.5
     '@fastgpt-sdk/anydoc':
       specifier: 0.2.5
       version: 0.2.5
@@ -516,7 +516,7 @@ importers:
         version: 1.2.8
       '@fastgpt-plugin/sdk-client':
         specifier: 'catalog:'
-        version: 1.2.0-alpha.4(zod@4.1.12)
+        version: 1.2.0-alpha.5(zod@4.1.12)
       '@fastgpt-sdk/sandbox-adapter':
         specifier: workspace:*
         version: link:../../sdk/sandbox-adapter
@@ -3828,10 +3828,10 @@ packages:
     resolution: {integrity: sha512-43/qtrDUokr7LJqoF2c3+RInu/t4zfrpYdoSDfYyhg52rwLV6TnOvdG4fXm7IkSB3wErkcmJS9iEhjVtOSEjjA==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
 
-  '@fastgpt-plugin/sdk-client@1.2.0-alpha.4':
-    resolution: {integrity: sha512-OCraDZftRVifigNXFt0VzYJ7Qf4wbbh5d4Lqp99LSX60IgZLpF8aBP0FMRiC50E6tEdPi7i94L6kAO1hM6esTA==}
+  '@fastgpt-plugin/sdk-client@1.2.0-alpha.5':
+    resolution: {integrity: sha512-RyY2u5nElA19zTJED87mP+YVtTn/kJWiVu3DCgfKQpmuKoVQkR9Sjoh5n55PwdgDeBiI44ZdAIxEQLzuqVYAcg==}
     peerDependencies:
-      zod: 4.1.12
+      zod: ^4
 
   '@fastgpt-sdk/anydoc-darwin-arm64@0.2.5':
     resolution: {integrity: sha512-WuIpwzpGJp+Iz9qHzOTjz2uKTuVteRaf0iJA/GvdRoOoCkI0MUFGRZ0Bt/sl4UWiKxfSknTKwLLyRvOo6LxQ4A==}
@@ -17559,7 +17559,7 @@ snapshots:
       '@eslint/core': 0.17.0
       levn: 0.4.1
 
-  '@fastgpt-plugin/sdk-client@1.2.0-alpha.4(zod@4.1.12)':
+  '@fastgpt-plugin/sdk-client@1.2.0-alpha.5(zod@4.1.12)':
     dependencies:
       zod: 4.1.12
 
