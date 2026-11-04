@@ -35,7 +35,7 @@ import {
  * ============================================================================ */
 
 // 入参 Schema
-export const CreateDatasetBodySchema = z.object({
+const CreateDatasetBodyObjectSchema = z.object({
   parentId: ParentIdSchema.meta({
     example: '68ad85a7463006c963799a05',
     description: '父级文件夹 ID,不传则创建在根目录'
@@ -88,6 +88,18 @@ export const CreateDatasetBodySchema = z.object({
     description: '外部文档解析开关(页眉页脚/附录/图片识别/图转表),仅对 customPdfParse 解析路径生效'
   }),
   inheritPermission: InheritPermissionInputSchema
+});
+
+export const CreateDatasetBodySchema = CreateDatasetBodyObjectSchema.superRefine((data, ctx) => {
+  // folder 只承载子知识库、没有自己的 collection：托管开关不会被任何同步消费，
+  // 反而会让 ACL 级联把它当托管库剪掉整棵子树。
+  if (data.type === DatasetTypeEnum.folder && data.apiDatasetServer?.permissionSync === true) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['apiDatasetServer', 'permissionSync'],
+      message: 'permissionSync is not supported for folder datasets'
+    });
+  }
 });
 
 export type CreateDatasetBody = WithOptionalInheritPermission<
