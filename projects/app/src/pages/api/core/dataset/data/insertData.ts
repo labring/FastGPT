@@ -1,5 +1,8 @@
 import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/catalog/service';
-import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
+import {
+  assertAppDatasetIndexModelsAvailable,
+  getAssertedDatasetEmbeddingModel
+} from '@fastgpt/service/core/dataset/model';
 /*
   insert one data to dataset (immediately insert)
   manual input or mark data
@@ -61,10 +64,13 @@ async function handler(req: ApiRequestProps): Promise<InsertDataResponse> {
     actor: { teamId, tmbId, isRoot },
     handle: modelHandle
   });
-  const vectorModelData = modelHandle.getModelData(getDatasetModelReference(dataset, 'embedding'), {
-    type: 'embedding',
+  const embeddingModels = await assertAppDatasetIndexModelsAvailable({
+    resources: [{ type: 'dataset', id: String(dataset._id) }],
+    teamId,
+    modelHandle,
     authorizedIds
   });
+  const vectorModelData = getAssertedDatasetEmbeddingModel(embeddingModels, String(dataset._id));
 
   await hasSameValue({
     teamId,

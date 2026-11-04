@@ -1,5 +1,9 @@
+import {
+  assertAppDatasetIndexModelsAvailable,
+  getAssertedDatasetEmbeddingModel,
+  getDatasetModelReference
+} from '@fastgpt/service/core/dataset/model';
 import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/catalog/service';
-import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
 /* push data to training queue */
 import { NextAPI } from '@/service/middleware/entry';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
@@ -47,9 +51,15 @@ async function handler(req: ApiRequestProps): Promise<PushDataResponseType> {
     actor: { teamId, tmbId, isRoot },
     handle: modelHandle
   });
-  const vectorModelData = modelHandle.getModelData(
-    getDatasetModelReference(collection.dataset, 'embedding'),
-    { type: 'embedding', authorizedIds }
+  const embeddingModels = await assertAppDatasetIndexModelsAvailable({
+    resources: [{ type: 'dataset', id: String(collection.datasetId) }],
+    teamId,
+    modelHandle,
+    authorizedIds
+  });
+  const vectorModelData = getAssertedDatasetEmbeddingModel(
+    embeddingModels,
+    String(collection.datasetId)
   );
   const agentModelData = modelHandle.getModelData(
     getDatasetModelReference(collection.dataset, 'agent'),

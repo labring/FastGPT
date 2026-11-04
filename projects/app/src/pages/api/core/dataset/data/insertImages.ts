@@ -1,3 +1,7 @@
+import {
+  assertAppDatasetIndexModelsAvailable,
+  getAssertedDatasetEmbeddingModel
+} from '@fastgpt/service/core/dataset/model';
 import { getFileUploadLimits } from '@fastgpt/global/common/file/limit';
 import { NextAPI } from '@/service/middleware/entry';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
@@ -56,10 +60,13 @@ async function handler(req: ApiRequestProps): Promise<InsertImagesResponse> {
       actor: { teamId, tmbId, isRoot },
       handle: modelHandle
     });
-    const vectorModelData = modelHandle.getModelData(
-      getDatasetModelReference(dataset, 'embedding'),
-      { type: 'embedding', authorizedIds }
-    );
+    const embeddingModels = await assertAppDatasetIndexModelsAvailable({
+      resources: [{ type: 'dataset', id: String(dataset._id) }],
+      teamId,
+      modelHandle,
+      authorizedIds
+    });
+    const vectorModelData = getAssertedDatasetEmbeddingModel(embeddingModels, String(dataset._id));
     const agentModelData = modelHandle.getModelData(getDatasetModelReference(dataset, 'agent'), {
       type: 'llm'
     });

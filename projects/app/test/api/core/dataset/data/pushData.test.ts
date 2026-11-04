@@ -1,3 +1,13 @@
+vi.mock('@fastgpt/service/core/dataset/entity', () => ({
+  findDatasetIndexModelReferences: vi.fn().mockResolvedValue([
+    {
+      _id: '507f1f77bcf86cd799439011',
+      vectorModelId: 'vec-model',
+      vectorModel: 'vec-model'
+    }
+  ])
+}));
+
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
