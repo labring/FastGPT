@@ -24,7 +24,6 @@ evidence:
 sources:
   - "projects/app/src/pages/api/admin/migrations/failedRecords.ts"
   - "projects/app/src/pages/api/admin/migrations/retry.ts"
-  - "projects/app/src/pages/api/admin/migrations/start.ts"
   - "projects/app/src/pages/api/admin/migrations/list.ts"
   - "packages/global/migration/schema.ts"
   - "projects/app/src/migration/tasks/4180/20261104_backfill_chat_publish_source/utils.ts"
@@ -45,14 +44,13 @@ sources:
   - "packages/service/common/mongo/indexManager.ts"
 routes:
   - "GET /api/admin/migrations/list"
-  - "POST /api/admin/migrations/start"
   - "POST /api/admin/migrations/retry"
   - "GET /api/admin/migrations/failedRecords"
 related:
   - "FG-CHAT-CONVERSATION-001"
   - "FG-PERMISSION-RESOURCE-001"
   - "FG-CHAT-HISTORY-FEEDBACK-002"
-baseline: "c413874c6a1cf47f3c35fc94d8b074130db50f8a"
+baseline: "940be9119306e3d6d7ffb5cf7f769e04ca442405"
 ---
 
 # publishSource 历史回填、兼容上线与断点恢复
@@ -63,8 +61,8 @@ baseline: "c413874c6a1cf47f3c35fc94d8b074130db50f8a"
 
 ## 前置准备
 
-- 版本为 4.18.0 及以上，按设计先暂停新运行、排空旧写入、全部写节点升级后恢复，再手动回填。固定任务 ID=`20261104_backfill_chat_publish_source`，目录 `projects/app/src/migration/tasks/4180/20261104_backfill_chat_publish_source/`；任务不阻塞启动，无前置依赖，按主库 chats / 日志库 chatLogs 两阶段分批断点续跑，最终 validation 校验。
-- Root 管理员通过 `GET /api/admin/migrations/list` 确认任务处于 waiting，再调用 `POST /api/admin/migrations/start`，body 为 `{migrationId:"20261104_backfill_chat_publish_source"}`。失败重试为 `POST /api/admin/migrations/retry`，相同 body；按 `GET /api/admin/migrations/failedRecords?migrationId=20261104_backfill_chat_publish_source&stageKey=chats` 读取错误，chatLogs 阶段使用对应 stageKey。按 NextAPI 的 code/data 与实际任务状态判断成功，不直接修改框架状态集合。
+- 版本为 4.18.0 及以上，先暂停新运行，排空并停止全部旧写节点，再启动新版本节点自动回填并恢复流量。固定任务 ID=`20261104_backfill_chat_publish_source`，目录 `projects/app/src/migration/tasks/4180/20261104_backfill_chat_publish_source/`；任务使用 independent 模式，无迁移前置、不阻塞启动，不等待普通后台队列，竞争集群共享的 3 个独立任务名额。按主库 chats / 日志库 chatLogs 两阶段分批断点续跑，最终 validation 校验；框架不检测整个集群是否升级完成。
+- Root 管理员通过 `GET /api/admin/migrations/list` 观察自动任务的 pending/running/终态，无需调用 start。失败重试为 `POST /api/admin/migrations/retry`，body 为 `{migrationId:"20261104_backfill_chat_publish_source"}`；按 `GET /api/admin/migrations/failedRecords?migrationId=20261104_backfill_chat_publish_source&stageKey=chats` 读取错误，chatLogs 阶段使用对应 stageKey。按 NextAPI 的 code/data 与实际任务状态判断成功，不直接修改框架状态集合。
 - 必须用独立可回收环境/库，包含主库和实际日志库。记录部署拓扑，能暂停/重启单个迁移 worker、读取任务进度/错误与 checkpoint，并控制一批业务写入提交后至 checkpoint 前的中断；缺观测或故障注入能力时相关行阻塞。
 - 夹具 H：H1 source=share、shareId 能在同 T/W 唯一匹配现存 S1；H2 为已删除外链；H3 为旧 api/mcp，无 Key ID但名称与多个 Key 相同；H4 online/test/cronJob，online 额外带残留 shareId；H5 已有最新完整 publishSource，并备一份已有合法 type-only 来源；H6 跨团队/类型冲突或无法唯一匹配的异常数据。第三方外链补一份对应 type 的有效引用及类型冲突对照。均保留 sourceName 原值及完整前快照。
 - 在 app_chat_logs 放两个不同历史时间桶，分别保留 source=share/api；对应 Chat 当前来源为 API B。记录所有计数、总积分、token、时间等原值。统计桶只允许使用自身已有分类，不从当前 Chat 逆推 ID。
@@ -75,11 +73,11 @@ baseline: "c413874c6a1cf47f3c35fc94d8b074130db50f8a"
 
 | 子场景 | 类型与起始状态 | 操作 |
 | --- | --- | --- |
-| C1 | 回填；H 初态 | 所有相关节点已运行兼容版本后，通过已注册任务的实际管理员入口触发，轮询进度每 2 秒、最长 10 分钟；超时保存状态不擅自重置。 |
+| C1 | 自动独立回填；启动前准备 H | 同时启动多个新版本 App 节点，等待启动链完成，观察任务自动执行，不调用 start；轮询进度每 2 秒、最长 10 分钟，超时保存状态不擅自重置。 |
 | C2 | 并发；恢复 H | 扫描读取 H5/某旧记录后，用真实授权 API 运行保存新的来源，再让迁移提交该批。 |
 | C3 | 重试；独立 H 副本 | 在业务批次已提交、checkpoint 尚未保存时中断 worker，恢复后重新调度；再演练存在失败记录且 checkpoint 已前进的重试。 |
 | C4 | 错误恢复；H6 | 观察结构异常记录和任务终态；通过确定的业务修复/测试夹具修复后，使用框架重试入口，不直接修改任务状态集合。 |
-| C5 | 上线兼容；升级前后同 H | 保存升级前快照；暂停新运行并确认旧请求/队列排空，全部相关写节点升级后恢复流量，再按实际入口触发回填。升级后回填前、回填后分别查询来源/名称、筛选与统计；旧 API 会话以授权 API 续聊，旧 MCP 缺 ID 的访问兼容复用 RESOURCE-001 真实服务集成，不给 toolCall 虚构 chatId。 |
+| C5 | 上线兼容；升级前后同 H | 保存升级前快照；暂停新运行，确认旧请求/队列排空并停止所有旧写节点，再启动新版本节点、恢复流量并观察自动回填。用准备阶段的 worker 控制能力留出回填前观测窗口，前后分别查询来源/名称、筛选与统计；旧 API 会话以授权 API 续聊，旧 MCP 缺 ID 的访问兼容复用 RESOURCE-001 真实服务集成，不给 toolCall 虚构 chatId。 |
 | C6 | 保留与回滚；回填完成后的独立副本 | 检查旧字段及 defineIndex 当前/废弃定义、真实索引；核对兼容查询仍需的旧索引及预置客户自建索引保留。回到已确定的兼容版本，读取同一 H 和迁移恢复数据；不执行后续物理清理任务。 |
 
 ## 预期结果
@@ -88,7 +86,7 @@ baseline: "c413874c6a1cf47f3c35fc94d8b074130db50f8a"
 
 | 子场景 | 特有预期 | 证据 |
 | --- | --- | --- |
-| C1 | H1→share/S1._id；H2保留分类无 id；H3仅分类不按名称猜 Key；H4保留原分类且不由残留 shareId 重判；H5 完整及合法 type-only 均保留；H6记录异常，第三方引用也须唯一且类型一致。统计桶只回填自身 type，无当前 Chat 的新渠道 ID；所有历史数值计数不变。 | H→目标逐条投影、各分类计数和任务结果。 |
+| C1 | 无需人工入队，任务展示 independent=true、blockStartup=false，不进入 waiting；同一时刻仅一个节点持有该任务 lease。H1→share/S1._id；H2保留分类无 id；H3仅分类不按名称猜 Key；H4保留原分类且不由残留 shareId 重判；H5 完整及合法 type-only 均保留；H6记录异常，第三方引用也须唯一且类型一致。统计桶只回填自身 type，无当前 Chat 的新渠道 ID；所有历史数值计数不变。 | 多节点调度/lease、H→目标逐条投影、各分类计数和任务结果。 |
 | C2 | CAS 冲突后重读/核验，不用旧来源覆盖新运行；不能把未验证的跳过项直接算成功。 | 并发时间线、前后来源与 task 进度。 |
 | C3 | 重放幂等、不重复计数；完整未解决错误快照在断点推进前持久化，恢复时先重试已跳过错误，再续扫，Checkpoint 不含业务正文。 | 实际 checkpoint/错误快照和不重复的目标数据。 |
 | C4 | 未解决结构问题不能标记成功；修复并重试后达到声明的完成条件，框架收敛结果/错误。无法恢复的历史 id 不被伪造。 | 管理页面终态及精确错误记录。 |

@@ -21,7 +21,7 @@ const CursorSchema = z.object({
 const CheckpointSchema = z.object({ chats: CursorSchema, chatLogs: CursorSchema });
 
 /**
- * 手动分批断点回填，先重试历史失败项，再按两库各自的固定 _id 上界扫描。
+ * 独立后台分批断点回填，先重试历史失败项，再按两库各自的固定 _id 上界扫描。
  * 每条条件写入可重放；完整错误快照先于 checkpoint 保存，避免跳过坏数据后永久遗漏。
  * 仅追加来源，不改旧名称、身份、消息或统计计数；无依赖，不阻塞业务启动。
  */

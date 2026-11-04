@@ -607,7 +607,8 @@ export const systemMigrations = [
   {
     id: '20261104_backfill_chat_publish_source',
     version: '4.18.0',
-    manual: true,
+    // 仅追加历史来源且无迁移前置，独立调度避免等待普通后台长任务。
+    independent: true,
     nameKey: i18nT('system_migration:migrations.20261104_backfill_chat_publish_source.name'),
     descriptionKey: i18nT(
       'system_migration:migrations.20261104_backfill_chat_publish_source.description'

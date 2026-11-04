@@ -142,7 +142,7 @@
   "migrations.20261022_initialize_dataset_vector_indexes.datasets": "统计知识库并投递索引任务",
   "migrations.20261022_initialize_dataset_vector_indexes.legacyIndex": "清理旧全局 HNSW 索引",
   "migrations.20261104_backfill_chat_publish_source.name": "回填对话调用来源",
-  "migrations.20261104_backfill_chat_publish_source.description": "将历史来源回填为 publishSource；请在所有写节点升级并排空旧运行后手动执行。",
+  "migrations.20261104_backfill_chat_publish_source.description": "启动后独立后台回填历史来源；启动新版本前须排空并停止旧写节点。",
   "migrations.20261104_backfill_chat_publish_source.result": "已扫描 {{chats}} 个会话、{{chatLogs}} 个统计桶，{{missingChannelIds}} 条历史来源无法恢复渠道 ID",
   "migrations.20261104_backfill_chat_publish_source.chats": "对话来源",
   "migrations.20261104_backfill_chat_publish_source.chatLogs": "统计桶来源",

@@ -45,11 +45,7 @@ describe('validateSystemMigrationRegistry', () => {
     ]);
     expect(
       systemMigrations.filter((task: SystemMigration) => task.manual).map(({ id }) => id)
-    ).toEqual([
-      '20261008_migrate_chunk_training',
-      '20261009_migrate_dataset_rebuild_status',
-      '20261104_backfill_chat_publish_source'
-    ]);
+    ).toEqual(['20261008_migrate_chunk_training', '20261009_migrate_dataset_rebuild_status']);
     expect(
       systemMigrations.find(({ id }) => id === '20261009_migrate_dataset_rebuild_status')
     ).toMatchObject({
@@ -84,17 +80,18 @@ describe('validateSystemMigrationRegistry', () => {
     expect(task).not.toHaveProperty('onFailure');
   });
 
-  it('在4.18.0末尾登记手动来源回填，保持启动非阻塞且无依赖', () => {
+  it('在4.18.0末尾登记独立自动来源回填，保持启动非阻塞且无依赖', () => {
     const task = systemMigrations.at(-1);
     expect(task).toMatchObject({
       id: '20261104_backfill_chat_publish_source',
       version: '4.18.0',
-      manual: true,
+      independent: true,
       progressSteps: [{ key: 'chats' }, { key: 'chatLogs' }, { key: 'validation' }]
     });
     expect(task).not.toHaveProperty('blockStartup', true);
     expect(task).not.toHaveProperty('dependsOn');
-    expect(task).not.toHaveProperty('independent');
+    expect(task).not.toHaveProperty('manual');
+    expect(task).not.toHaveProperty('delay');
   });
 
   it('runs only the selected production tasks independently', () => {
@@ -107,7 +104,8 @@ describe('validateSystemMigrationRegistry', () => {
       '20260928_backfill_member_name_set',
       '20261009_backfill_agent_sandbox_team_id',
       '20261022_backfill_folder_ancestor_ids',
-      '20261025_token_prices_per_million'
+      '20261025_token_prices_per_million',
+      '20261104_backfill_chat_publish_source'
     ]);
   });
 
