@@ -249,10 +249,16 @@ describe('MongoIndexManager.syncModelIndexes', () => {
     );
   });
 
-  it('removes the declared legacy chat generating index after runtime state moves to Redis', async () => {
+  it('replaces legacy chat share and generating indexes while preserving customer indexes', async () => {
     const schema = new Schema({}, { autoIndex: false });
+    const [key, options] = MongoChat.schema.indexes().find(([key]) => 'publishSource.id' in key)!;
+    defineIndex(schema, { key, options });
     defineDeprecatedTestIndexes(schema, getSchemaDeprecatedMongoIndexes(MongoChat.schema));
     const model = createModel({ schema, prefix: 'ChatLeaseIndex' });
+    await model.collection.createIndex(
+      { shareId: 1, outLinkUid: 1, updateTime: -1 },
+      { partialFilterExpression: { shareId: { $exists: true } } }
+    );
     await model.collection.createIndex(
       { chatGenerateStatus: 1, updateTime: 1 },
       {
@@ -261,18 +267,33 @@ describe('MongoIndexManager.syncModelIndexes', () => {
       }
     );
     await model.collection.createIndex({ customerField: 1 }, { name: 'customer_chat_index' });
+    await model.collection.createIndex({ shareId: 1 }, { name: 'customer_share_index' });
 
     const result = await MongoIndexManager.syncModelIndexes({ model, logger });
     const indexNames = await getIndexNames(model);
     expect(indexNames).not.toContain('chatGenerateStatus_1_updateTime_1');
+    expect(indexNames).not.toContain('shareId_1_outLinkUid_1_updateTime_-1');
+    expect(indexNames).toContain(
+      'publishSource.type_1_publishSource.id_1_outLinkUid_1_updateTime_-1'
+    );
     expect(indexNames).toContain('customer_chat_index');
-    expect(result.cleanupReport.items).toEqual([
-      expect.objectContaining({
-        action: 'drop',
-        applied: true,
-        indexName: 'chatGenerateStatus_1_updateTime_1'
-      })
-    ]);
+    expect(indexNames).toContain('customer_share_index');
+    expect(result.cleanupReport.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          action: 'drop',
+          applied: true,
+          indexName: 'shareId_1_outLinkUid_1_updateTime_-1'
+        }),
+        expect.objectContaining({
+          action: 'drop',
+          applied: true,
+          indexName: 'chatGenerateStatus_1_updateTime_1'
+        })
+      ])
+    );
+    expect(MongoChat.schema.path('shareId')).toBeUndefined();
+    expect(MongoChat.schema.indexes().some(([key]) => 'shareId' in key)).toBe(false);
     expect(MongoChat.schema.path('chatGenerateStatus')).toBeUndefined();
     expect(MongoChat.schema.indexes().some(([key]) => 'chatGenerateStatus' in key)).toBe(false);
   });

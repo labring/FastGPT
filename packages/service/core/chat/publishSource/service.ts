@@ -23,13 +23,11 @@ export const updateChatPublishSource = async (
     source: string;
     publishSource?: ChatPublishSourceType;
     sourceName?: string;
-    shareId?: string;
     outLinkUid?: string;
   }
 ) => {
   const current = resolveCurrentChatPublishSource(params);
   const name = current.id ? getChatPublishSourceName({ name: params.sourceName }) : undefined;
-  const shareId = current.id && params.shareId ? params.shareId : undefined;
   const guarded = current.type === ChatSourceEnum.share || current.type === ChatSourceEnum.mcp;
   const sourceQuery = { ...buildChatSourceQuery(params), chatId: params.chatId };
   const now = new Date();
@@ -41,14 +39,12 @@ export const updateChatPublishSource = async (
     publishSource: current,
     source: current.type,
     ...(name ? { sourceName: name } : {}),
-    ...(shareId ? { shareId } : {}),
     ...(params.outLinkUid !== undefined ? { outLinkUid: params.outLinkUid } : {}),
     updateTime: now,
     hasBeenRead: false
   };
   const $unset = {
     ...(!name ? { sourceName: '' } : {}),
-    ...(!shareId ? { shareId: '' } : {}),
     ...(params.outLinkUid === undefined ? { outLinkUid: '' } : {})
   };
 

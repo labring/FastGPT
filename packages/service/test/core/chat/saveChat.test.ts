@@ -161,7 +161,6 @@ describe('pushChatRecords', () => {
             source: 'api',
             publishSource: { type: ChatSourceEnum.api, id: testTmbId },
             sourceName: '旧渠道',
-            shareId: 'old-share',
             userContent: { dataId, obj: ChatRoleEnum.Human, value: [] },
             aiContent: { dataId, obj: ChatRoleEnum.AI, value: [] }
           },
@@ -170,8 +169,7 @@ describe('pushChatRecords', () => {
         const latest = {
           publishSource: { type: ChatSourceEnum.share, id: testAppId },
           source: 'share',
-          sourceName: '新渠道',
-          shareId: 'new-share'
+          sourceName: '新渠道'
         };
         await MongoChat.create({
           appId: testAppId,
@@ -200,7 +198,7 @@ describe('pushChatRecords', () => {
         const saved = await MongoChat.findOne({ appId: testAppId, chatId: props.chatId }).lean();
         expect(saved?.source).toBe(latest.source);
         expect(saved?.sourceName).toBe(latest.sourceName);
-        expect(saved?.shareId).toBe(latest.shareId);
+        expect(saved).not.toHaveProperty('shareId');
         expect(saved?.publishSource?.type).toBe(latest.publishSource.type);
         expect(String(saved?.publishSource?.id)).toBe(testAppId);
       }

@@ -1,7 +1,4 @@
-import {
-  buildChatPublishSourceFilter,
-  buildSharePublishSourceFilter
-} from '@fastgpt/service/core/chat/publishSource/utils';
+import { buildChatPublishSourceFilter } from '@fastgpt/service/core/chat/publishSource/utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { buildChatHistoryMatch, buildClearChatHistoriesMatch } from '@/service/core/chat/history';
 import { authChatTargetCrud } from '@fastgpt/service/core/chat/auth';
@@ -84,7 +81,8 @@ describe('chat history access', () => {
       outLinkAuthData: { shareId: 'share-1', outLinkUid: 'external' }
     });
     expect(match).toMatchObject({
-      $and: [buildSharePublishSourceFilter({ id: '6909d3c4b6a72185d0f08101', shareId: 'share-1' })],
+      'publishSource.type': ChatSourceEnum.share,
+      'publishSource.id': '6909d3c4b6a72185d0f08101',
       outLinkUid: 'external',
       updateTime: { $gte: expect.any(Date) }
     });

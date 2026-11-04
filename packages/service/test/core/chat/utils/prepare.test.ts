@@ -120,7 +120,6 @@ describe('prepare chat round', () => {
       tmbId: testTmbId,
       source: params.source,
       sourceName: params.sourceName,
-      shareId: params.shareId,
       outLinkUid: params.outLinkUid,
       userContent: params.userContent,
       responseChatItemId: params.responseChatItemId
@@ -434,7 +433,6 @@ describe('prepare chat round', () => {
         tmbId: testTmbId,
         source: params.source,
         sourceName: params.sourceName,
-        shareId: params.shareId,
         outLinkUid: params.outLinkUid,
         userContent: params.userContent,
         responseChatItemId: params.responseChatItemId
@@ -491,7 +489,6 @@ describe('prepare chat round', () => {
       tmbId: testTmbId,
       source: params.source,
       sourceName: params.sourceName,
-      shareId: params.shareId,
       outLinkUid: params.outLinkUid,
       userContent: params.userContent,
       responseChatItemId: params.responseChatItemId,
@@ -775,7 +772,6 @@ describe('prepare chat round', () => {
       tmbId: testTmbId,
       source: params.source,
       sourceName: params.sourceName,
-      shareId: params.shareId,
       outLinkUid: params.outLinkUid,
       userContent: params.userContent,
       responseChatItemId
@@ -826,7 +822,6 @@ describe('prepare chat round', () => {
       tmbId: testTmbId,
       source: params.source,
       sourceName: params.sourceName,
-      shareId: params.shareId,
       outLinkUid: params.outLinkUid,
       userContent: params.userContent,
       responseChatItemId: params.responseChatItemId!

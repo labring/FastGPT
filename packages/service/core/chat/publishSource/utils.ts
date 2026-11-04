@@ -46,19 +46,3 @@ export const buildChatPublishSourceFilter = (sources?: readonly string[]) =>
           { 'publishSource.type': null, source: { $in: [...sources] } }
         ]
       };
-
-/** 分享历史完整新来源按渠道 ID 匹配，旧字段只服务缺 type/id 的历史记录。 */
-export const buildSharePublishSourceFilter = ({
-  id,
-  shareId
-}: {
-  id: string;
-  shareId: string;
-}) => ({
-  $or: [
-    { 'publishSource.type': ChatSourceEnum.share, 'publishSource.id': id },
-    {
-      $and: [{ $or: [{ 'publishSource.type': null }, { 'publishSource.id': null }] }, { shareId }]
-    }
-  ]
-});

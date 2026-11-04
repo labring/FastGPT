@@ -55,7 +55,6 @@ export type PrepareChatRoundParams = ChatSourceParams & {
   source: `${ChatSourceEnum}`;
   publishSource?: ChatPublishSourceType;
   sourceName?: string;
-  shareId?: string;
   outLinkUid?: string;
   userContent: UserChatItemType & { dataId?: string };
   responseChatItemId: string;

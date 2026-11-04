@@ -23,7 +23,7 @@ const CheckpointSchema = z.object({ chats: CursorSchema, chatLogs: CursorSchema 
 /**
  * 独立后台分批断点回填，先重试历史失败项，再按两库各自的固定 _id 上界扫描。
  * 每条条件写入可重放；完整错误快照先于 checkpoint 保存，避免跳过坏数据后永久遗漏。
- * 仅追加来源，不改旧名称、身份、消息或统计计数；无依赖，不阻塞业务启动。
+ * 回填来源并清除旧 shareId，不改旧名称、身份、消息或统计计数；无依赖，不阻塞业务启动。
  */
 export const backfillChatPublishSource = async (context: SystemMigrationContext) => {
   const stages = ['chats', 'chatLogs'] as const;
@@ -132,11 +132,14 @@ export const backfillChatPublishSource = async (context: SystemMigrationContext)
     const range = { _id: { $lte: new Types.ObjectId(endId) } };
     const invalid = await collection.countDocuments({
       ...range,
-      'publishSource.type': { $nin: Object.values(ChatSourceEnum) }
+      $or: [
+        { 'publishSource.type': { $nin: Object.values(ChatSourceEnum) } },
+        { shareId: { $exists: true } }
+      ]
     });
     if (invalid)
       await context.fail({
-        message: `${stage} still contains ${invalid} records without a valid publish source`,
+        message: `${stage} still contains ${invalid} records with invalid publishSource or legacy shareId`,
         failedRecords: [...failures.values()]
       });
     missingChannelIds += await collection.countDocuments({

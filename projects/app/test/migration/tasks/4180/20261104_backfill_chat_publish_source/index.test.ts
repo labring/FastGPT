@@ -72,7 +72,7 @@ describe('backfillChatPublishSource', () => {
     const mcp = await seed({ source: 'mcp' });
     const online = await seed({ source: 'online', shareId: 'public' });
     const deleted = await seed({ source: 'share', shareId: 'deleted' });
-    const existing = await seed({ publishSource: { type: 'api' } });
+    const existing = await seed({ publishSource: { type: 'api' }, shareId: 'stale' });
     const logId = oid();
     await MongoAppChatLog.collection.insertOne({
       _id: logId,
@@ -99,6 +99,8 @@ describe('backfillChatPublishSource', () => {
     expect((await read(deleted._id))?.publishSource).toEqual({ type: 'share' });
     expect((await read(existing._id))?.publishSource).toEqual({ type: 'api' });
     expect((await read(shared._id))?.sourceName).toBe('历史入口');
+    expect(await MongoChat.collection.countDocuments({ shareId: { $exists: true } })).toBe(0);
+    expect((await MongoOutLink.findById(channel._id).lean())?.shareId).toBe('public');
     expect(await MongoAppChatLog.collection.findOne({ _id: logId })).toMatchObject({
       publishSource: { type: 'share' },
       sourceName: '历史桶',
@@ -113,9 +115,9 @@ describe('backfillChatPublishSource', () => {
   });
 
   it('提交后、checkpoint 前中断可重放，扫描和计数不重复', async () => {
-    await seed();
-    await seed();
-    await seed();
+    await seed({ shareId: 'stale' });
+    await seed({ shareId: 'stale' });
+    await seed({ shareId: 'stale' });
     const { context } = createContext();
     const save = context.saveCheckpoint.getMockImplementation()!;
     context.saveCheckpoint.mockImplementationOnce(save).mockRejectedValueOnce(new Error('crash'));
@@ -125,13 +127,17 @@ describe('backfillChatPublishSource', () => {
     const result = await backfillChatPublishSource(context);
     expect(result).toEqual({ chats: 3, chatLogs: 0, missingChannelIds: 3 });
     expect(await MongoChat.countDocuments({})).toBe(3);
+    expect(await MongoChat.collection.countDocuments({ shareId: { $exists: true } })).toBe(0);
   });
 
   it('错误快照在断点前保存，重试优先修复已跳过记录', async () => {
-    const bad = await seed({ source: 'unknown' });
+    const bad = await seed({ source: 'unknown', shareId: 'keep-until-repaired' });
     await seed();
     const state = createContext();
     await expect(backfillChatPublishSource(state.context)).rejects.toThrow('require repair');
+    expect((await MongoChat.collection.findOne({ _id: bad._id }))?.shareId).toBe(
+      'keep-until-repaired'
+    );
     expect(state.failures()).toEqual([
       expect.objectContaining({ stageKey: 'chats', data: { id: String(bad._id) } })
     ]);
@@ -146,6 +152,7 @@ describe('backfillChatPublishSource', () => {
       missingChannelIds: 2
     });
     expect(state.failures()).toEqual([]);
+    expect((await MongoChat.collection.findOne({ _id: bad._id }))?.shareId).toBeUndefined();
   });
 
   it('失去执行权时不写业务数据，也不标记成功', async () => {
@@ -187,7 +194,7 @@ describe('backfillPublishSourceRecord', () => {
   });
 
   it('CAS 冲突后重读，保留并发运行写入的最新来源', async () => {
-    const record = await seed();
+    const record = await seed({ shareId: 'stale' });
     const next = { type: 'api', id: oid() };
     const original = MongoChat.collection.updateOne.bind(MongoChat.collection);
     const write = vi
@@ -208,5 +215,6 @@ describe('backfillPublishSourceRecord', () => {
       publishSource: next,
       sourceName: '最新入口'
     });
+    expect((await MongoChat.collection.findOne({ _id: record._id }))?.shareId).toBeUndefined();
   });
 });

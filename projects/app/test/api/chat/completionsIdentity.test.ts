@@ -148,7 +148,7 @@ describe.each([
   });
 
   it.each(['missing', 'type-only', 'id-only', 'same', 'other-channel', 'other-user'] as const)(
-    'checks sharing by publishSource and UID, ignoring legacy shareId: %s',
+    'checks sharing by publishSource and UID without storing shareId: %s',
     async (scenario) => {
       const link = await MongoOutLink.create({
         teamId: auth.teamId,
@@ -168,7 +168,7 @@ describe.each([
           id: scenario === 'other-channel' ? new Types.ObjectId() : link._id
         };
       })();
-      // 旧 BSON 可缺 type/id，且旧 shareId 与当前链接不同；绕过当前 Schema 保留原始形态。
+      // 历史来源可缺 type/id；原生写入保留该形态，会话不再存储 shareId。
       await MongoChat.collection.insertOne({
         teamId: new Types.ObjectId(auth.teamId),
         tmbId: new Types.ObjectId(auth.tmbId),
@@ -176,7 +176,6 @@ describe.each([
         sourceType: 'app',
         chatId: 'share-chat',
         source: 'share',
-        shareId: 'legacy-other-share',
         outLinkUid: 'u1',
         ...(publishSource ? { publishSource } : {})
       });
@@ -206,7 +205,7 @@ describe.each([
         expect(dispatchWorkFlow).toHaveBeenCalledWith(expect.objectContaining({ uid: 'u1' }));
         expect(after?.publishSource?.type).toBe('share');
         expect(String(after?.publishSource?.id)).toBe(String(link._id));
-        expect(after?.shareId).toBe('current-share');
+        expect(after).not.toHaveProperty('shareId');
       }
     }
   );

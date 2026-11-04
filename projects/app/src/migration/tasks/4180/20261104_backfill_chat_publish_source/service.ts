@@ -15,6 +15,7 @@ export const getPublishSourceMigrationModel = (stage: PublishSourceMigrationStag
 /**
  * 按稳定 ID 重读并 CAS 回填单条数据，支持批次重放和与正常对话并发执行。
  * 仅绑定同团队/应用唯一且类型一致的旧外链；已删除引用允许缺 ID，结构冲突必须报错。
+ * 来源校验通过后清除 Chat 的旧 shareId，保留 OutLink 上的外部鉴权凭证。
  */
 export const backfillPublishSourceRecord = async ({
   stage,
@@ -43,7 +44,13 @@ export const backfillPublishSourceRecord = async ({
     // 已有新来源是权威值；旧 source 再异常也不能覆盖它。
     if (raw.publishSource !== undefined && raw.publishSource !== null) {
       ChatPublishSourceSchema.parse(raw.publishSource);
-      return;
+      if (!Object.hasOwn(raw, 'shareId')) return;
+      const result = await collection.updateOne(
+        { _id: raw._id, publishSource: raw.publishSource, shareId: raw.shareId ?? null },
+        { $unset: { shareId: '' } }
+      );
+      if (result.matchedCount) return;
+      continue;
     }
     const record = LegacyPublishSourceRecordSchema.parse(raw);
     let restoredId: string | undefined;
@@ -79,7 +86,8 @@ export const backfillPublishSourceRecord = async ({
             type: record.source,
             ...(restoredId ? { id: new Types.ObjectId(restoredId) } : {})
           }
-        }
+        },
+        $unset: { shareId: '' }
       }
     );
     if (result.matchedCount) return;

@@ -54,7 +54,7 @@ routes:
 related:
   - "FG-CHAT-CONVERSATION-001"
   - "FG-INTEGRATION-OPENAPI-001"
-baseline: "4acd710f001a095cf8863956f51e17ce9d53ff9b"
+baseline: "528b3ad09c909d7fabe1f19210ce2673cdc093e3"
 ---
 
 # MCP 与分享按最新来源校验，其他入口沿用原有权限
@@ -104,5 +104,5 @@ baseline: "4acd710f001a095cf8863956f51e17ce9d53ff9b"
 | C6 | 缺来源不授予权限；原有拒绝保持，不能靠 source 兼容、customUid 或伪造发布者绕过。 | 真实业务错误及无消息写入。 |
 | C7 | 完整且相同允许；完整但 Key/type 不同拒绝；旧任一缺失跳过；当前可信字段缺失不能绕过完整旧来源。当前来源缺 ID 在进入数据写入前失败。 | 真实 MCP 鉴权响应、服务入参及 Mongo 前后快照。 |
 | C8 | L 按管理权限可查跨渠道日志，查看不更新来源；N 不可查。 | UI/API、来源前后相等。 |
-| C9 | S1 列表仅含 H1/H4/H5/H6；完整新来源不同的 H2/H3 即使残留旧 shareId 也不可见，H7 不可见。缺字段才沿旧 shareId 限定；列表读取不刷新来源。 | data.list 全分页 chatId 集合/total、各初始来源快照；S2 对照只包含 H2。 |
+| C9 | S1 列表仅含 H1；H2/H3 和缺完整渠道来源的 H4/H5/H6 即使残留旧 shareId 也不可见，H7 不可见。列表不回退旧 shareId、不刷新来源。 | data.list 全分页 chatId 集合/total、各初始来源快照；S2 对照只包含 H2。 |
 | C10 | S1 必须按最新 api/Ka 重新判定并拒绝，初始缺 id 也不能绕过并发写入后的完整来源；不创建消息、不覆盖 Ka 来源，不将条件未命中当新会话 upsert。 | 服务鉴权→HTTP Ka→服务 preChat 的时序、Ka 完成快照、S1 错误、最终来源和 item 精确差集。 |

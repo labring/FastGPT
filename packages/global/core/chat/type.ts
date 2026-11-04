@@ -134,10 +134,6 @@ export const ChatSchema = z.object({
     description: '旧渠道名称，仅用于兼容及历史名称回退；日志展示使用扩展的 publishSource.name'
   }),
 
-  shareId: z.string().optional().meta({
-    deprecated: true,
-    description: '旧分享渠道标识，仅用于存量会话兼容和回填；渠道关联使用 publishSource.id'
-  }),
   outLinkUid: z.string().optional(),
 
   variableList: z.array(VariableItemTypeSchema).optional(),

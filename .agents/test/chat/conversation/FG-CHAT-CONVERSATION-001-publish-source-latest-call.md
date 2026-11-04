@@ -53,7 +53,7 @@ related:
   - "FG-PERMISSION-RESOURCE-001"
   - "FG-CHAT-HISTORY-FEEDBACK-002"
   - "FG-ADMIN-MAINTENANCE-001"
-baseline: "c413874c6a1cf47f3c35fc94d8b074130db50f8a"
+baseline: "528b3ad09c909d7fabe1f19210ce2673cdc093e3"
 ---
 
 # preChat 记录最新 publishSource 并贯通运行链路
@@ -99,6 +99,6 @@ baseline: "c413874c6a1cf47f3c35fc94d8b074130db50f8a"
 | C4 | metadata/variables 中的伪造值不改变可信来源。当前 Zod 合约忽略未知顶层字段，若该策略保持则请求正常执行且来源仍是 Ka；若实现调整未知字段策略，先补定稿合约再验顶层变体，不能将任意拒绝当作整行通过。 | 脱敏请求、按实际合约判断的响应、DB type/id。 |
 | C5 | 精确映射实际入口；调试为 test，网页为 online，定时为 cronJob；provider 使用对应配置的真实 ID。 | 调用入口证据与来源对照。 |
 | C6 | 交互续跑复用原 AI，preChat 后已是 Kb 来源；W2 也须在最终成功/失败保存之前变为 Kb，失败保存后仍为 Kb。不能只在 finalize/fail 补写，也不能沿用 Ka 或回落 online。 | 暂停点/终态 BSON、交互复用 AI dataId、错误响应及记录。 |
-| C7 | 明确租约占用时 Kb 被拒绝，不改 Ka 来源、不新增本轮消息；后续 Kb 正常运行后来源变 B。隔离服务夹具中，各尾部保存均不得改变最新 publishSource 及 source/sourceName/shareId 的 B 快照；本行不扩展断言其他生命周期字段。Key 最近使用时间、审计等鉴权变化允许发生。 | 正常 HTTP 时序与 item 差集；另存服务实际调用参数、前后来源字段快照。 |
+| C7 | 明确租约占用时 Kb 被拒绝，不改 Ka 来源、不新增本轮消息；后续 Kb 正常运行后来源变 B。隔离服务夹具中，各尾部保存均不得改变最新 publishSource 及 source/sourceName 的 B 快照，且不再写入 shareId；本行不扩展断言其他生命周期字段。Key 最近使用时间、审计等鉴权变化允许发生。 | 正常 HTTP 时序与 item 差集；另存服务实际调用参数、前后来源字段快照。 |
 | C8 | 仅查看/改标题/改渠道配置不把来源改成操作者或其他渠道；渠道 id/type 保持，展示名可动态变化。 | 动作前后 type/id。 |
 | C9 | 请求按既有不保存历史语义完成；不创建或改写哨兵的 Chat 来源，不新增 chats/chatitems。 | 根响应/SSE、限定 W 的 BSON 精确差集。 |

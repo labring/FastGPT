@@ -384,7 +384,6 @@ export async function runOutlinkRuntime<T extends OutlinkAppType>({
         id: String(outLinkConfig._id)
       },
       sourceName: outLinkConfig.name,
-      shareId: outLinkConfig.shareId,
       outLinkUid: chatUserId,
       userContent,
       responseChatItemId: messageId
@@ -466,7 +465,6 @@ export async function runOutlinkRuntime<T extends OutlinkAppType>({
       nodes,
       appChatConfig: chatConfig,
       variables: newVariables,
-      shareId: outLinkConfig.shareId,
       source: getChatSourceByPublishChannel(outLinkConfig.type),
       publishSource: preparedRound.publishSource,
       sourceName: outLinkConfig.name,

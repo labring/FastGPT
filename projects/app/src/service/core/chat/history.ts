@@ -1,7 +1,4 @@
-import {
-  buildChatPublishSourceFilter,
-  buildSharePublishSourceFilter
-} from '@fastgpt/service/core/chat/publishSource/utils';
+import { buildChatPublishSourceFilter } from '@fastgpt/service/core/chat/publishSource/utils';
 import { addMonths } from 'date-fns';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 import { isAuxiliaryGenerationSourceType } from '@fastgpt/global/common/chat/source';
@@ -72,12 +69,8 @@ async function getChatHistoryContext({
     authType === AuthUserTypeEnum.outLink
       ? {
           ...buildChatSourceQuery({ sourceType: resolvedSourceType, sourceId: resolvedSourceId }),
-          $and: [
-            buildSharePublishSourceFilter({
-              id: publishSource!.id!,
-              shareId: outLinkAuthData!.shareId
-            })
-          ],
+          'publishSource.type': ChatSourceEnum.share,
+          'publishSource.id': publishSource!.id!,
           outLinkUid: uid,
           updateTime: { $gte: addMonths(new Date(), -1) }
         }
@@ -122,7 +115,7 @@ export async function buildClearChatHistoriesMatch({
   if (authType === AuthUserTypeEnum.token)
     return {
       ...match,
-      $and: [...(match.$and ?? []), buildChatPublishSourceFilter([ChatSourceEnum.online])]
+      $and: [buildChatPublishSourceFilter([ChatSourceEnum.online])]
     };
   if (authType === AuthUserTypeEnum.apikey) {
     // 普通 App 的 API 清空保留原有整应用 api 记录语义。

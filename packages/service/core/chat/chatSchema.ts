@@ -67,9 +67,6 @@ const ChatSchema = new Schema({
     enum: Object.values(ChatSourceEnum)
   },
   sourceName: String,
-  shareId: {
-    type: String
-  },
   outLinkUid: {
     type: String
   },
@@ -162,17 +159,18 @@ defineIndex(ChatSchema, {
   }
 });
 
-// get share chat history
+// 分享历史已改用 publishSource；清理由旧版 FastGPT 创建的 shareId 索引。
 defineIndex(ChatSchema, {
   key: { shareId: 1, outLinkUid: 1, updateTime: -1 },
   options: {
     partialFilterExpression: {
       shareId: { $exists: true }
     }
-  }
+  },
+  deprecated: true
 });
 
-// 新来源分享历史；旧 shareId 索引仍服务兼容查询。
+// 分享历史按发布渠道记录 ID 和访客身份查询。
 defineIndex(ChatSchema, {
   key: { 'publishSource.type': 1, 'publishSource.id': 1, outLinkUid: 1, updateTime: -1 },
   options: { partialFilterExpression: { 'publishSource.id': { $exists: true } } }

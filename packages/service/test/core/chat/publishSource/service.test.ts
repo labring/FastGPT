@@ -10,10 +10,7 @@ import {
   extendChatPublishSources,
   updateChatPublishSource
 } from '@fastgpt/service/core/chat/publishSource/service';
-import {
-  buildChatPublishSourceFilter,
-  buildSharePublishSourceFilter
-} from '@fastgpt/service/core/chat/publishSource/utils';
+import { buildChatPublishSourceFilter } from '@fastgpt/service/core/chat/publishSource/utils';
 
 const oid = () => new Types.ObjectId().toString();
 let scope: { teamId: string; tmbId: string; sourceId: string; sourceType: ChatSourceTypeEnum };
@@ -46,13 +43,12 @@ describe('updateChatPublishSource', () => {
     expect(chat).not.toHaveProperty('outLinkUid');
   });
 
-  it('分享渠道只按新来源比较，缺字段忽略旧 shareId 但仍校验 UID', async () => {
+  it('分享渠道只按新来源比较，缺字段仍校验 UID 且不写旧 shareId', async () => {
     const id = oid();
     const params = {
       ...scope,
       chatId,
       source: 'share',
-      shareId: 'public',
       outLinkUid: 'u1',
       publishSource: { type: ChatSourceEnum.share, id }
     };
@@ -61,7 +57,6 @@ describe('updateChatPublishSource', () => {
       appId: scope.sourceId,
       chatId,
       source: 'share',
-      shareId: 'legacy-other-channel',
       outLinkUid: 'u1'
     });
     await expect(updateChatPublishSource({ ...params, outLinkUid: 'u2' })).rejects.toBe(
@@ -69,7 +64,7 @@ describe('updateChatPublishSource', () => {
     );
     await updateChatPublishSource(params);
     const migrated = await MongoChat.findOne({ chatId }).lean();
-    expect(migrated?.shareId).toBe('public');
+    expect(migrated).not.toHaveProperty('shareId');
     expect(String(migrated?.publishSource?.id)).toBe(id);
     await expect(updateChatPublishSource({ ...params, outLinkUid: 'u2' })).rejects.toBe(
       ChatErrEnum.unAuthChat
@@ -253,7 +248,6 @@ describe('来源查询兼容的 Mongo 语义', () => {
       appId: new Types.ObjectId(scope.sourceId),
       sourceType: scope.sourceType,
       source: 'api',
-      shareId: 'public',
       outLinkUid: 'u1'
     };
     // 原生写入用于保留旧记录缺 type / null 的真实形态，不经过当前 Schema 修正。
@@ -264,33 +258,14 @@ describe('来源查询兼容的 Mongo 语义', () => {
       { chatId: 'type-only', publishSource: { type: 'share' } },
       { chatId: 'id-only', source: 'share', publishSource: { id } },
       { chatId: 'null-source', source: 'share', publishSource: null },
-      { chatId: 'other-share', publishSource: { type: 'share', id: new Types.ObjectId() } },
-      { chatId: 'new-api', source: 'share', publishSource: { type: 'api', id } },
-      { chatId: 'other-legacy', source: 'share', shareId: 'other' }
+      { chatId: 'new-api', source: 'share', publishSource: { type: 'api', id } }
     ];
     await MongoChat.collection.insertMany(records.map((record) => ({ ...base, ...record })));
     expect(
       (await MongoChat.find(buildChatPublishSourceFilter(['share'])).lean())
         .map((c) => c.chatId)
         .sort()
-    ).toEqual([
-      'id-only',
-      'legacy-share',
-      'new-share',
-      'null-source',
-      'other-legacy',
-      'other-share',
-      'type-only'
-    ]);
-    expect(
-      (
-        await MongoChat.find(
-          buildSharePublishSourceFilter({ id: String(id), shareId: 'public' })
-        ).lean()
-      )
-        .map((c) => c.chatId)
-        .sort()
-    ).toEqual(['id-only', 'legacy-api', 'legacy-share', 'new-share', 'null-source', 'type-only']);
+    ).toEqual(['id-only', 'legacy-share', 'new-share', 'null-source', 'type-only']);
     expect(await MongoChat.countDocuments(buildChatPublishSourceFilter())).toBe(records.length);
     expect(await MongoChat.countDocuments(buildChatPublishSourceFilter([]))).toBe(0);
   });
