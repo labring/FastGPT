@@ -40,7 +40,7 @@ export const AccountCancellationConfirmModal = ({
       footer={
         <>
           <Button {...footerButtonStyles} w={16} variant="whiteBase" onClick={onClose}>
-            {t('common:cancel', '取消')}
+            {t('common:Cancel')}
           </Button>
           <Button {...footerButtonStyles} onClick={onConfirm}>
             {t('account_info:account_cancellation_continue', '已知晓，下一步')}

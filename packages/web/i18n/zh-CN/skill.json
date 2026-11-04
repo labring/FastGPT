@@ -23,6 +23,7 @@
   "export_config": "导出配置",
   "export_failed": "导出失败",
   "export_success": "导出成功",
+  "export_sandbox_wait": "请等待沙盒就绪后再导出技能",
   "history_versions": "历史版本",
   "import_existing_skill": "导入已有技能",
   "import_existing_skill_desc": "将外部的常用技能直接导入平台，支持zip格式",
@@ -97,5 +98,6 @@
   "delete_skills_confirm_title": "确认删除 {{count}} 个技能",
   "delete_folders_confirm_title": "确认删除 {{count}} 个文件夹",
   "delete_following_skills_tip": "删除以下技能后将无法恢复。",
-  "delete_following_folders_tip": "删除后，这些文件夹及其包含的全部技能将被一并删除。"
+  "delete_following_folders_tip": "删除后，这些文件夹及其包含的全部技能将被一并删除。",
+  "generating": "生成中"
 }

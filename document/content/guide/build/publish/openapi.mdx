@@ -9,6 +9,24 @@ import { Alert } from '@/components/docs/Alert';
 
 调用当前应用的 `chat/completions` 接口时，推荐在请求体传入 `appId`。如果第三方应用只能配置 OpenAI SDK 风格的密钥，也可以使用 `apiKey-appId` 兼容格式。完整说明可以[查看 OpenAPI 介绍](../../../openapi/intro.mdx)。
 
+## 对接自己的用户系统
+
+**版本要求：FastGPT 4.18.0 及以上。**
+
+APIKey 由接入方后端保管。后端完成用户认证后，可通过 `customUid` 传入自己的使用者 ID：
+
+```json
+{
+  "appId": "68ad85a7463006c963799a05",
+  "customUid": "customer-42",
+  "messages": [{ "role": "user", "content": "你好" }]
+}
+```
+
+`customUid` 最长 1024 字符，原值传递给工作流的 `userId`，并记录为对话日志的使用者；未传、`null` 或空字符串时使用默认成员身份。它不改变 APIKey 的鉴权成员与权限。`customUid` 与代表团队成员调用的 `authProxy` 互斥，同时提供会返回参数错误。
+
+对话日志默认展示使用者；可在列设置中开启默认隐藏的“鉴权者”。CSV 按所选列导出。此参数用于身份标记，接入方后端仍需管理用户认证和可访问的会话。
+
 ## 获取 APIKey
 
 依次选择应用 ->「发布渠道」->「API」，然后点击「新建」创建密钥。

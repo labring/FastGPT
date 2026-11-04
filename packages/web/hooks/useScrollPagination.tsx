@@ -2,7 +2,7 @@ import React, { type ReactNode, type RefObject, useEffect, useRef, useState } fr
 import { Box, type BoxProps } from '@chakra-ui/react';
 import { useToast } from './useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { useBoolean, useMemoizedFn, useScroll, useThrottleEffect } from 'ahooks';
+import { useBoolean, useEventListener, useMemoizedFn, useThrottleFn } from 'ahooks';
 import { useTranslation } from 'next-i18next';
 import { useRequest } from './useRequest';
 import {
@@ -235,6 +235,22 @@ export function useScrollPagination<
   }, []);
 
   const ScrollRef = useRef<HTMLDivElement>(null);
+  // 放在外层 hook，确保消费方通过 selector/memo 跳过 ScrollData 重渲染时仍读取最新分页与错误状态。
+  const { run: checkScrollPosition } = useThrottleFn(
+    (ref: RefObject<HTMLDivElement>) => {
+      if (!ref?.current || noMore || isLoading || error || data.length === 0) return;
+      const { scrollTop, scrollHeight, clientHeight } = ref.current;
+
+      if (
+        (scrollLoadType === 'bottom' && scrollTop + clientHeight >= scrollHeight - thresholdVal) ||
+        (scrollLoadType === 'top' && scrollTop < thresholdVal)
+      ) {
+        loadData({ init: false, ScrollContainerRef: ref });
+      }
+    },
+    { wait: 50 }
+  );
+
   const ScrollData = useMemoizedFn(
     ({
       children,
@@ -252,25 +268,11 @@ export function useScrollPagination<
         return t('common:request_more');
       })();
 
-      const scroll = useScroll(ref);
-
       // Watch scroll position
-      useThrottleEffect(
-        () => {
-          if (!ref?.current || noMore || isLoading || error || data.length === 0) return;
-          const { scrollTop, scrollHeight, clientHeight } = ref.current;
-
-          if (
-            (scrollLoadType === 'bottom' &&
-              scrollTop + clientHeight >= scrollHeight - thresholdVal) ||
-            (scrollLoadType === 'top' && scrollTop < thresholdVal)
-          ) {
-            loadData({ init: false, ScrollContainerRef: ref });
-          }
-        },
-        [error, scroll],
-        { wait: 50 }
-      );
+      useEventListener('scroll', () => checkScrollPosition(ref), {
+        target: ref,
+        passive: true
+      });
 
       return (
         <Box

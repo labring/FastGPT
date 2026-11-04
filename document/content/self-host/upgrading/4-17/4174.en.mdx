@@ -8,19 +8,26 @@ sidebarTag: In progress
 
 ### Configuration changes
 
-These fixes require no new or updated environment variables or system settings.
+This update requires no new or updated environment variables or system settings.
 
 ### Image updates
 
 ### Upgrade scripts
 
-These fixes do not involve upgrade scripts.
+This update does not involve upgrade scripts.
 
 ### Compatibility notes
 
 No manual data migration or changes to existing App configurations are required.
 
+## ⚡ Improvements
+
+1. **[List experience]** Optimized scroll pagination listeners to reduce component rerenders and improve scrolling performance.
+
 ## 🐛 Bug fixes
 
 1. **[Chat experience]** Fixed model lists or selected model names failing to load when a model selector is used in global variables or interactive forms in login-free shared chats. Requests now include the current share credentials.
 2. **[Chat experience]** Fixed the variable panel in the shared chat header using regular chat visibility rules. External variables are now hidden from users of login-free links.
+3. **[List experience]** Fixed some lists failing to load more items after their content shrinks, and automatically retrying failed pagination requests.
+4. **[Account and Team]** Fixed the close button in the contact details modal shifting or being clipped when its content scrolls.
+5. **[Account and Team]** Fixed Enter submitting the login or member name form while confirming a Chinese input method candidate. Pressing Enter again after confirming the candidate submits the form normally.
