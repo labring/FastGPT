@@ -51,9 +51,9 @@ async function handler(
     bodySchema: GetMarketplaceToolsBodySchema
   });
   const { pageSize, offset } = parsePaginationRequest(req);
-  const { searchKey, tags, source } = body;
+  const { searchKey, tags, source, type = 'tool' } = body;
 
-  const data = await getToolList();
+  const data = await getToolList({ type });
   const filteredData = data.filter((item) => {
     if (item.parentId) {
       return false;

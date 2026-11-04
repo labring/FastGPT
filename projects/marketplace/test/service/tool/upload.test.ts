@@ -29,7 +29,10 @@ const dataMocks = vi.hoisted(() => ({
   refreshToolList: vi.fn()
 }));
 
-vi.mock('@fastgpt/global/sdk/fastgpt-plugin', () => sdkMocks);
+vi.mock('@fastgpt/global/sdk/fastgpt-plugin', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@fastgpt/global/sdk/fastgpt-plugin')>()),
+  ...sdkMocks
+}));
 
 vi.mock('../../../src/service/plugin/repo', () => ({
   pluginRepo: repoMocks

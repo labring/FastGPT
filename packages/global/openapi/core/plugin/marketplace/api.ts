@@ -46,7 +46,7 @@ export const MarketplaceToolDetailChildSchema = MarketplaceToolChildSchema.exten
 export type MarketplaceToolDetailChildType = z.infer<typeof MarketplaceToolDetailChildSchema>;
 
 export const MarketplaceToolBaseSchema = z.object({
-  type: z.literal('tool').meta({ example: 'tool', description: '插件类型' }),
+  type: z.enum(['tool', 'moderation']).meta({ example: 'tool', description: '插件类型' }),
   id: z.string().meta({ example: 'fastgpt-web-search', description: '市场工具记录 ID' }),
   toolId: z.string().meta({ example: 'fastgpt-web-search', description: '市场工具 ID' }),
   pluginId: z.string().meta({ example: 'fastgpt-web-search', description: '插件 ID' }),
@@ -178,6 +178,10 @@ export const MarketplaceToolDetailSchema = z.object({
  * ============================================================================ */
 
 export const GetMarketplaceToolsBodySchema = createPaginationSchema({
+  type: z.enum(['tool', 'moderation']).optional().meta({
+    example: 'tool',
+    description: '插件类型：系统工具 (tool) 或内容审核 (moderation)'
+  }),
   searchKey: z.string().optional().meta({
     example: 'search',
     description: '按工具名称、简介或 ID 搜索'

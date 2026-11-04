@@ -97,8 +97,9 @@ export const uploadMarketplacePkg = async ({
     throw new Error(formatPkgParseError(parseError || 'Parse pkg failed'));
   }
 
-  if (parsedPkg.info.type !== 'tool') {
-    throw new Error(`Unsupported plugin type: ${parsedPkg.info.type}`);
+  const pluginType = (parsedPkg.info as { type?: string }).type;
+  if (pluginType !== 'tool' && pluginType !== 'moderation') {
+    throw new Error(`Unsupported plugin type: ${pluginType}`);
   }
 
   const tool = parsedPkg.info as ToolDetailType;
@@ -154,7 +155,7 @@ export const uploadMarketplacePkg = async ({
 
   const now = new Date();
   const record = MarketplaceToolManifestZodSchema.parse({
-    type: 'tool',
+    type: parsedPkg.info.type,
     pluginId: tool.pluginId,
     version: tool.version,
     etag: tool.etag,
