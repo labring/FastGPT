@@ -14,7 +14,7 @@ import {
   type ChatFileValueInput
 } from '../../../chat/fileStoreValue';
 import { getWorkflowFileContext, getWorkflowFileRegistrar } from '../../utils/context';
-import { checkOutputTextModeration } from '../../../plugin/moderation';
+import { checkOutputTextModeration } from '../../../plugin/moderation/output';
 import { getNodeErrResponse } from '../utils';
 import { MODERATION_BLOCKED_ERROR_MESSAGE } from '@fastgpt/global/core/plugin/moderation/constants';
 import type { WorkflowFileRegistrar } from '../../utils/fileContext';
@@ -164,17 +164,35 @@ export const dispatchFormInput = async (props: Props): Promise<FormInputResponse
 
     if (Array.isArray(resolvedInputForms)) {
       for (const formItem of resolvedInputForms) {
-        const textToCheck = formItem.label || formItem.defaultValue;
-        if (typeof textToCheck === 'string' && textToCheck.trim()) {
-          const checkItem = await checkOutputTextModeration({
-            text: textToCheck,
-            targetField: `formInput.${formItem.key}`,
-            context: moderationContext
-          });
-          if (!checkItem.isPass) {
-            return getNodeErrResponse({
-              error: checkItem.blockErrorMessage || MODERATION_BLOCKED_ERROR_MESSAGE
+        const candidateValues: Array<{ field: string; value: unknown }> = [
+          { field: `formInput.${formItem.key}.label`, value: formItem.label },
+          { field: `formInput.${formItem.key}.defaultValue`, value: formItem.defaultValue }
+        ];
+        if (Array.isArray(formItem.list)) {
+          for (const option of formItem.list) {
+            candidateValues.push({
+              field: `formInput.${formItem.key}.option`,
+              value: option?.label
             });
+            candidateValues.push({
+              field: `formInput.${formItem.key}.option`,
+              value: option?.value
+            });
+          }
+        }
+
+        for (const candidate of candidateValues) {
+          if (typeof candidate.value === 'string' && candidate.value.trim()) {
+            const checkItem = await checkOutputTextModeration({
+              text: candidate.value,
+              targetField: candidate.field,
+              context: moderationContext
+            });
+            if (!checkItem.isPass) {
+              return getNodeErrResponse({
+                error: checkItem.blockErrorMessage || MODERATION_BLOCKED_ERROR_MESSAGE
+              });
+            }
           }
         }
       }

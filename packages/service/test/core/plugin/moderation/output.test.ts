@@ -5,9 +5,9 @@ import {
   ModerationActionEnum,
   ModerationExceptionActionEnum,
   ModerationRiskActionEnum,
-  ModerationStageEnum,
-  type SystemModerationPolicyType
-} from '@fastgpt/global/core/plugin/moderation/type';
+  ModerationStageEnum
+} from '@fastgpt/global/core/plugin/moderation/constants';
+import type { SystemModerationPolicyType } from '@fastgpt/global/core/plugin/moderation/type';
 import * as checkerMod from '../../../../core/plugin/moderation/checker';
 import * as serviceMod from '../../../../core/plugin/moderation/service';
 import {
@@ -180,13 +180,61 @@ describe('Output / Stream Guard (Anchor 3)', () => {
       await buffer.push('123456');
       expect(approvedTexts).toEqual([]);
 
-      // 2. Push 6 chars: total 12 chars -> triggers 10 chars chunk
+      // 2. Push 6 chars: total 12 chars -> triggers 10 chars cumulative window
       await buffer.push('7890ab');
       expect(approvedTexts).toEqual(['1234567890']);
+      expect(checkerMod.checkContentByPolicy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          text: '1234567890',
+          partial: true,
+          sessionId: expect.any(String)
+        })
+      );
 
-      // 3. Flush remaining 2 chars ('ab')
+      // 3. Flush remaining 2 chars ('ab') with full cumulative content and partial: false
       await buffer.flush();
       expect(approvedTexts).toEqual(['1234567890', 'ab']);
+      expect(checkerMod.checkContentByPolicy).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          text: '1234567890ab',
+          partial: false,
+          sessionId: expect.any(String)
+        })
+      );
+    });
+
+    it('detects sensitive words split across chunk boundaries via cumulative windowing', async () => {
+      const approvedTexts: string[] = [];
+      vi.spyOn(checkerMod, 'checkContentByPolicy').mockImplementation(async ({ text }) => {
+        if (text.includes('炸药')) {
+          return {
+            action: ModerationActionEnum.block,
+            isPass: false,
+            text
+          };
+        }
+        return {
+          action: ModerationActionEnum.pass,
+          isPass: true,
+          text
+        };
+      });
+
+      const buffer = new StreamModerationBuffer({
+        streamInterval: 4,
+        isEnabled: true,
+        policy: basePolicy,
+        onApprovedText: (t) => approvedTexts.push(t)
+      });
+
+      // 第一块末端含“炸”（'安全测试炸' 的前 4 字为 '安全测试'，剩余 '炸' 在缓冲区）
+      await buffer.push('123炸');
+      expect(approvedTexts).toEqual(['123炸']);
+
+      // 第二块首字为“药”，跨边界拼成“炸药”应被累积窗口检出并拦截
+      await expect(buffer.push('药abc')).rejects.toThrow(
+        new UserError(MODERATION_BLOCKED_ERROR_MESSAGE)
+      );
     });
 
     it('aborts model generation, stops emitting, and throws UserError when stream chunk is blocked', async () => {

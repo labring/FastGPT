@@ -3,7 +3,7 @@ import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import {
   ModerationActionEnum,
   ModerationStageEnum
-} from '@fastgpt/global/core/plugin/moderation/type';
+} from '@fastgpt/global/core/plugin/moderation/constants';
 import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import {

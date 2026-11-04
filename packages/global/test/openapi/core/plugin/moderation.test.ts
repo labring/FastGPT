@@ -80,10 +80,10 @@ describe('moderation admin OpenAPI contracts', () => {
     expect(SaveModerationConfigBodySchema.safeParse({}).success).toBe(false);
 
     expect(DeleteModerationPluginBodySchema.safeParse({ pluginId: 'x' }).success).toBe(true);
-    expect(GetModerationPluginListQuerySchema.safeParse({ includeDeleted: 'true' }).success).toBe(
-      true
-    );
-    expect(GetModerationPluginListQuerySchema.safeParse({ includeDeleted: '1' }).success).toBe(
+    expect(GetModerationPluginListQuerySchema.safeParse({ includeDeleted: 'true' }).data).toEqual({
+      includeDeleted: true
+    });
+    expect(GetModerationPluginListQuerySchema.safeParse({ includeDeleted: {} }).success).toBe(
       false
     );
   });

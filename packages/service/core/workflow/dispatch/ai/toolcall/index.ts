@@ -32,7 +32,7 @@ import { useToolMessages } from './hooks/useToolMessages';
 import { useToolNodeList } from './hooks/useToolNodeList';
 import { runToolCall } from './toolCall';
 import { type DispatchToolModuleProps } from './type';
-import { checkModelPromptAndInput } from '../../../../plugin/moderation';
+import { checkModelPromptAndInput } from '../../../../plugin/moderation/modelInput';
 import { MODERATION_BLOCKED_ERROR_MESSAGE } from '@fastgpt/global/core/plugin/moderation/constants';
 
 type Response = DispatchNodeResultType<{

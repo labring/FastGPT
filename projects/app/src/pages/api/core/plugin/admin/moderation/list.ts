@@ -32,7 +32,7 @@ export async function handler(
 
   return getAdminModerationPluginList({
     lang: getLocale(req),
-    includeDeleted: includeDeleted === 'true'
+    includeDeleted: Boolean(includeDeleted)
   });
 }
 

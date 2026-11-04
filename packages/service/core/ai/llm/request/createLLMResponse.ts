@@ -26,7 +26,7 @@ import {
   checkOutputTextModeration,
   checkToolParamsModeration,
   createStreamModerationBuffer
-} from '../../../plugin/moderation';
+} from '../../../plugin/moderation/output';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { MODERATION_BLOCKED_ERROR_MESSAGE } from '@fastgpt/global/core/plugin/moderation/constants';
 

@@ -3,8 +3,11 @@ import type { UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import {
   getModerationBlockErrorMessage,
   ModerationActionEnum,
-  ModerationStageEnum,
-  type SystemModerationPolicyType
+  ModerationStageEnum
+} from '@fastgpt/global/core/plugin/moderation/constants';
+import type {
+  ModerationRuntimeContext,
+  SystemModerationPolicyType
 } from '@fastgpt/global/core/plugin/moderation/type';
 import { checkContentByPolicy, isModerationHookEnabled } from './checker';
 import { ensureNodeModerationRecord } from './collector';
@@ -18,16 +21,7 @@ export type CheckEntryModerationParams = {
   /** 全局审核策略（可选） */
   policy?: SystemModerationPolicyType;
   /** 业务上下文 */
-  context?: {
-    teamId?: string;
-    tmbId?: string;
-    appId?: string;
-    chatId?: string;
-    responseChatItemId?: string;
-    requestId?: string;
-    nodeId?: string;
-    nodeName?: string;
-  };
+  context?: ModerationRuntimeContext;
 };
 
 /**

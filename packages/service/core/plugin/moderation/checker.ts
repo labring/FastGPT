@@ -2,14 +2,16 @@ import {
   ModerationActionEnum,
   ModerationExceptionActionEnum,
   ModerationRiskActionEnum,
-  ModerationStageEnum,
-  type CheckContentByPolicyParams,
-  type CheckContentByPolicyResult,
-  type SystemModerationPolicyType
+  ModerationStageEnum
+} from '@fastgpt/global/core/plugin/moderation/constants';
+import type {
+  CheckContentByPolicyParams,
+  CheckContentByPolicyResult,
+  SystemModerationPolicyType
 } from '@fastgpt/global/core/plugin/moderation/type';
 import { checkModerationContent } from '../../../thirdProvider/fastgptPlugin/moderation';
 import { getEnabledModerationRuntime, getModerationPolicy } from './service';
-import { recordModerationEvent } from './record';
+import { recordModerationEvent } from './record/entity';
 import { appendNodeModerationRecord } from './collector';
 
 /**
@@ -54,6 +56,9 @@ export const checkContentByPolicy = async ({
   stage,
   targetField,
   policy: inputPolicy,
+  actionOnBlock = ModerationActionEnum.block,
+  sessionId,
+  partial,
   context
 }: CheckContentByPolicyParams): Promise<CheckContentByPolicyResult> => {
   // 1. 空内容直接放行
@@ -88,6 +93,7 @@ export const checkContentByPolicy = async ({
       text,
       stage: currentStage,
       targetField,
+      actionOnBlock,
       context,
       duration: 0
     });
@@ -100,6 +106,7 @@ export const checkContentByPolicy = async ({
       text,
       stage: currentStage,
       targetField,
+      actionOnBlock,
       context,
       duration: 0
     });
@@ -119,34 +126,38 @@ export const checkContentByPolicy = async ({
         invokeToken: '',
         time: new Date().toISOString()
       },
-      input: { content: text }
+      input: {
+        content: text,
+        ...(sessionId ? { sessionId } : {}),
+        ...(partial !== undefined ? { partial } : {})
+      }
     });
 
     const duration = Date.now() - startTime;
 
-    // 5. 依据裁决结果与策略判定最终动作（pass 或 block）
+    // 5. 依据裁决结果与策略判定最终动作（pass / block / replace）
     let action: ModerationActionEnum;
     switch (moderationResult.verdict) {
       case 'pass':
         action = ModerationActionEnum.pass;
         break;
       case 'block':
-        action = ModerationActionEnum.block;
+        action = actionOnBlock;
         break;
       case 'suspected':
         action =
           policy.strategy.suspectedRiskAction === ModerationRiskActionEnum.passAndLog
             ? ModerationActionEnum.pass
-            : ModerationActionEnum.block;
+            : actionOnBlock;
         break;
       case 'error':
         action =
           policy.strategy.serviceExceptionAction === ModerationExceptionActionEnum.pass
             ? ModerationActionEnum.pass
-            : ModerationActionEnum.block;
+            : actionOnBlock;
         break;
       default:
-        action = ModerationActionEnum.block;
+        action = actionOnBlock;
         break;
     }
 
@@ -194,7 +205,7 @@ export const checkContentByPolicy = async ({
       provider: moderationResult.provider
     };
 
-    if (action === ModerationActionEnum.block) {
+    if (action !== ModerationActionEnum.pass) {
       appendNodeModerationRecord(
         {
           stage: currentStage,
@@ -219,6 +230,7 @@ export const checkContentByPolicy = async ({
       text,
       stage: currentStage,
       targetField,
+      actionOnBlock,
       context,
       duration,
       pluginId: runtime.pluginId
@@ -235,6 +247,7 @@ const handleServiceException = ({
   text,
   stage,
   targetField,
+  actionOnBlock = ModerationActionEnum.block,
   context,
   duration,
   pluginId
@@ -244,6 +257,7 @@ const handleServiceException = ({
   text: string;
   stage: ModerationStageEnum;
   targetField?: string;
+  actionOnBlock?: ModerationActionEnum.block | ModerationActionEnum.replace;
   context?: CheckContentByPolicyParams['context'];
   duration?: number;
   pluginId?: string;
@@ -252,7 +266,7 @@ const handleServiceException = ({
   const action =
     policy.strategy.serviceExceptionAction === ModerationExceptionActionEnum.pass
       ? ModerationActionEnum.pass
-      : ModerationActionEnum.block;
+      : actionOnBlock;
 
   recordModerationEvent({
     teamId: context?.teamId,
@@ -286,7 +300,7 @@ const handleServiceException = ({
     pluginId
   };
 
-  if (action === ModerationActionEnum.block) {
+  if (action !== ModerationActionEnum.pass) {
     appendNodeModerationRecord(
       {
         stage,

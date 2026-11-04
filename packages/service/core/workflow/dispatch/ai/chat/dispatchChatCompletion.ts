@@ -15,7 +15,7 @@ import { getChatMessages } from './chatMessages';
 import { getDatasetCiteData } from './datasetCite';
 import { getAIChatFileContextConfig, getInputFiles } from './fileContext';
 import type { ChatProps, ChatResponse } from './type';
-import { checkModelPromptAndInput } from '../../../../plugin/moderation';
+import { checkModelPromptAndInput } from '../../../../plugin/moderation/modelInput';
 import { MODERATION_BLOCKED_ERROR_MESSAGE } from '@fastgpt/global/core/plugin/moderation/constants';
 
 /**

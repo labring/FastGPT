@@ -4,9 +4,9 @@ import {
   MODERATION_BLOCKED_ERROR_MESSAGE,
   ModerationActionEnum,
   ModerationExceptionActionEnum,
-  ModerationRiskActionEnum,
-  type SystemModerationPolicyType
-} from '@fastgpt/global/core/plugin/moderation/type';
+  ModerationRiskActionEnum
+} from '@fastgpt/global/core/plugin/moderation/constants';
+import type { SystemModerationPolicyType } from '@fastgpt/global/core/plugin/moderation/type';
 import * as checkerMod from '../../../../core/plugin/moderation/checker';
 import * as serviceMod from '../../../../core/plugin/moderation/service';
 import {

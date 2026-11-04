@@ -24,7 +24,10 @@ vi.mock('@fastgpt/service/core/plugin/moderation/service', () => ({
   deleteModerationPlugin: mocks.deleteModerationPlugin,
   checkModerationForTest: mocks.checkModerationForTest,
   getModerationPolicy: vi.fn(),
-  updateModerationPolicy: vi.fn(),
+  updateModerationPolicy: vi.fn()
+}));
+
+vi.mock('@fastgpt/service/core/plugin/moderation/record/entity', () => ({
   findModerationRecords: vi.fn()
 }));
 
@@ -35,6 +38,7 @@ import { handler as checkHandler } from '@/pages/api/core/plugin/admin/moderatio
 import { handler as policyHandler } from '@/pages/api/core/plugin/admin/moderation/policy';
 import { handler as recordsHandler } from '@/pages/api/core/plugin/admin/moderation/records';
 import * as moderationService from '@fastgpt/service/core/plugin/moderation/service';
+import * as moderationRecordEntity from '@fastgpt/service/core/plugin/moderation/record/entity';
 
 const makeReq = <B, Q>({ body = {} as B, query = {} as Q }: { body?: B; query?: Q }) =>
   ({ body, query }) as unknown as ApiRequestProps<B, Q>;
@@ -73,7 +77,7 @@ describe('admin moderation list handler', () => {
   });
 
   it('passes includeDeleted through when requested', async () => {
-    await listHandler(makeReq({ body: {}, query: { includeDeleted: 'true' } }), res);
+    await listHandler(makeReq({ body: {}, query: { includeDeleted: true } }), res);
 
     expect(mocks.getAdminModerationPluginList).toHaveBeenCalledWith({
       lang: 'zh-CN',
@@ -92,7 +96,7 @@ describe('admin moderation list handler', () => {
 
   it('rejects an invalid includeDeleted value', async () => {
     await expect(
-      listHandler(makeReq({ body: {}, query: { includeDeleted: 'yes' } }), res)
+      listHandler(makeReq({ body: {}, query: { includeDeleted: {} as any } }), res)
     ).rejects.toBeTruthy();
     expect(mocks.getAdminModerationPluginList).not.toHaveBeenCalled();
   });
@@ -147,7 +151,7 @@ describe('admin moderation delete handler', () => {
       pluginId: 'baidu-moderation',
       tmbId: 'tmb-1'
     });
-    expect(result).toEqual({});
+    expect(result).toBeUndefined();
   });
 
   it('propagates the service refusal for an enabled plugin', async () => {
@@ -297,7 +301,7 @@ describe('admin moderation records handler', () => {
   });
 
   it('handles query and forwards parameters to service', async () => {
-    const findSpy = vi.spyOn(moderationService, 'findModerationRecords').mockResolvedValueOnce({
+    const findSpy = vi.spyOn(moderationRecordEntity, 'findModerationRecords').mockResolvedValueOnce({
       total: 1,
       list: [
         {

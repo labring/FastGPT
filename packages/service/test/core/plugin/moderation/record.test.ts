@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   ModerationActionEnum,
   ModerationStageEnum
-} from '@fastgpt/global/core/plugin/moderation/type';
+} from '@fastgpt/global/core/plugin/moderation/constants';
 import {
   collectionName,
   MongoSystemModerationRecord
@@ -71,7 +71,7 @@ describe('moderation record schema & entity', () => {
 
       const createSpy = vi
         .spyOn(MongoSystemModerationRecord, 'create')
-        .mockResolvedValue(mockCreated as any);
+        .mockResolvedValue([mockCreated] as any);
 
       const record = await createModerationRecord({
         teamId: 'team_1',
@@ -87,14 +87,17 @@ describe('moderation record schema & entity', () => {
       });
 
       expect(createSpy).toHaveBeenCalledWith(
-        expect.objectContaining({
-          teamId: 'team_1',
-          appId: 'app_1',
-          stage: ModerationStageEnum.entry,
-          content: 'test text',
-          verdict: 'pass',
-          actionTaken: ModerationActionEnum.pass
-        })
+        [
+          expect.objectContaining({
+            teamId: 'team_1',
+            appId: 'app_1',
+            stage: ModerationStageEnum.entry,
+            content: 'test text',
+            verdict: 'pass',
+            actionTaken: ModerationActionEnum.pass
+          })
+        ],
+        { session: undefined }
       );
       expect(record._id).toBe('rec_1');
     });
@@ -104,7 +107,7 @@ describe('moderation record schema & entity', () => {
     it('persists record without throwing when successful', async () => {
       const createSpy = vi
         .spyOn(MongoSystemModerationRecord, 'create')
-        .mockResolvedValue({ toObject: () => ({ _id: 'ok' }) } as any);
+        .mockResolvedValue([{ toObject: () => ({ _id: 'ok' }) }] as any);
 
       await expect(
         recordModerationEvent({

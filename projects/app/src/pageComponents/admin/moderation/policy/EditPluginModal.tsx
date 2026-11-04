@@ -17,10 +17,8 @@ import HiddenInput from '@/components/common/HiddenInput';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { jsonSchema2SecretInput } from '@fastgpt/global/core/app/jsonschema';
-import {
-  ModerationSecretMaskedValue,
-  type AdminModerationPluginItemType
-} from '@fastgpt/global/core/plugin/moderation/type';
+import { ModerationSecretMaskedValue } from '@fastgpt/global/core/plugin/moderation/constants';
+import type { AdminModerationPluginItemType } from '@fastgpt/global/core/plugin/moderation/type';
 import { postAdminSaveModerationConfig } from '@/web/core/plugin/admin/moderation/api';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 

@@ -3,7 +3,7 @@ import { UserError } from '@fastgpt/global/common/error/utils';
 import {
   MODERATION_BLOCKED_ERROR_MESSAGE,
   ModerationActionEnum
-} from '@fastgpt/global/core/plugin/moderation/type';
+} from '@fastgpt/global/core/plugin/moderation/constants';
 import * as checkerMod from '../../../../core/plugin/moderation/checker';
 import * as serviceMod from '../../../../core/plugin/moderation/service';
 import { dispatchWorkFlow } from '../../../../core/workflow/dispatch';

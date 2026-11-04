@@ -3,11 +3,8 @@ import {
   ModerationActionEnum,
   ModerationExceptionActionEnum,
   ModerationRiskActionEnum,
-  ModerationSecretMaskedValue,
   ModerationStageEnum
 } from './constants';
-
-export * from './constants';
 
 /**
  * 内容审查插件的本地配置记录。
@@ -167,7 +164,7 @@ export const ModerationRecordSchema = z.object({
   actionTaken: z
     .nativeEnum(ModerationActionEnum)
     .meta({
-      description: '实际执行动作：直接放行 (pass) | 拦截阻断 (block)'
+      description: '实际执行动作：直接放行 (pass) | 拦截阻断 (block) | 替换脱敏文本 (replace)'
     }),
 
   duration: z.number().optional().meta({ description: '审查耗时 (ms)' }),
@@ -201,6 +198,18 @@ export const NodeModerationRecordSchema = z.object({
 });
 export type NodeModerationRecordType = z.infer<typeof NodeModerationRecordSchema>;
 
+/** 运行时审查业务上下文（用于持久化审计与追踪） */
+export type ModerationRuntimeContext = {
+  teamId?: string;
+  tmbId?: string;
+  appId?: string;
+  chatId?: string;
+  responseChatItemId?: string;
+  requestId?: string;
+  nodeId?: string;
+  nodeName?: string;
+};
+
 /** 运行时审查调用参数 */
 export type CheckContentByPolicyParams = {
   /** 待审查的文本内容 */
@@ -211,22 +220,19 @@ export type CheckContentByPolicyParams = {
   targetField?: string;
   /** 全局审核策略（可选；若未传入则自动读取最新配置） */
   policy?: SystemModerationPolicyType;
+  /** 违规时的实际执行动作（默认 block；当上层将违规内容替换为脱敏文本时传 replace） */
+  actionOnBlock?: ModerationActionEnum.block | ModerationActionEnum.replace;
+  /** 流式窗口上下文关联 ID（流式审查复用同一 sessionId） */
+  sessionId?: string;
+  /** 标记文本是否仍在流式增长 */
+  partial?: boolean;
   /** 业务上下文（用于持久化审计与追踪） */
-  context?: {
-    teamId?: string;
-    tmbId?: string;
-    appId?: string;
-    chatId?: string;
-    responseChatItemId?: string;
-    requestId?: string;
-    nodeId?: string;
-    nodeName?: string;
-  };
+  context?: ModerationRuntimeContext;
 };
 
 /** 运行时审查判定结果 */
 export type CheckContentByPolicyResult = {
-  /** 最终执行动作：通过 (pass) 或拦截 (block) */
+  /** 最终执行动作：通过 (pass)、拦截 (block) 或替换 (replace) */
   action: `${ModerationActionEnum}` | ModerationActionEnum;
   /** 是否放行 */
   isPass: boolean;

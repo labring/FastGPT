@@ -8,7 +8,7 @@ import type { ReferenceValueType } from '@fastgpt/global/core/workflow/type/io';
 import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
 import { resolveDynamicOptionStrings } from './dynamicOptions';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
-import { checkOutputTextModeration } from '../../../plugin/moderation';
+import { checkOutputTextModeration } from '../../../plugin/moderation/output';
 import { getNodeErrResponse } from '../utils';
 import { MODERATION_BLOCKED_ERROR_MESSAGE } from '@fastgpt/global/core/plugin/moderation/constants';
 

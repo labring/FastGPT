@@ -4,10 +4,11 @@ import {
   ModerationActionEnum,
   ModerationExceptionActionEnum,
   ModerationRiskActionEnum,
-  ModerationStageEnum,
-  type SystemModerationPolicyType
-} from '@fastgpt/global/core/plugin/moderation/type';
+  ModerationStageEnum
+} from '@fastgpt/global/core/plugin/moderation/constants';
+import type { SystemModerationPolicyType } from '@fastgpt/global/core/plugin/moderation/type';
 import * as checkerMod from '../../../../core/plugin/moderation/checker';
+import * as serviceMod from '../../../../core/plugin/moderation/service';
 import {
   checkFileContentModeration,
   checkModelPromptAndInput,
@@ -167,6 +168,7 @@ describe('Model Input Guard (Anchor 2)', () => {
 
   describe('checkToolResultModeration (Agent Loop Tool Result)', () => {
     it('returns original response when tool result passes', async () => {
+      vi.spyOn(serviceMod, 'getModerationPolicy').mockResolvedValue(basePolicy);
       vi.spyOn(checkerMod, 'checkContentByPolicy').mockResolvedValue({
         action: ModerationActionEnum.pass,
         isPass: true,
@@ -181,8 +183,9 @@ describe('Model Input Guard (Anchor 2)', () => {
     });
 
     it('replaces tool response with MODERATION_BLOCKED_REPLACE_TEXT when tool result is blocked', async () => {
+      vi.spyOn(serviceMod, 'getModerationPolicy').mockResolvedValue(basePolicy);
       vi.spyOn(checkerMod, 'checkContentByPolicy').mockResolvedValue({
-        action: ModerationActionEnum.block,
+        action: ModerationActionEnum.replace,
         isPass: false,
         text: 'toxic web search result'
       });
@@ -191,6 +194,35 @@ describe('Model Input Guard (Anchor 2)', () => {
         response: 'toxic web search result'
       });
 
+      expect(result).toBe(MODERATION_BLOCKED_REPLACE_TEXT);
+    });
+
+    it('checks tool result under finalOutput stage when only finalOutput hook is enabled', async () => {
+      vi.spyOn(serviceMod, 'getModerationPolicy').mockResolvedValue({
+        ...basePolicy,
+        hooks: {
+          userInput: false,
+          modelInput: false,
+          finalOutput: true
+        }
+      });
+      const checkSpy = vi.spyOn(checkerMod, 'checkContentByPolicy').mockResolvedValue({
+        action: ModerationActionEnum.replace,
+        isPass: false,
+        text: 'sensitive tool output'
+      });
+
+      const result = await checkToolResultModeration({
+        response: 'sensitive tool output'
+      });
+
+      expect(checkSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          stage: ModerationStageEnum.output,
+          targetField: 'toolResult',
+          actionOnBlock: ModerationActionEnum.replace
+        })
+      );
       expect(result).toBe(MODERATION_BLOCKED_REPLACE_TEXT);
     });
   });

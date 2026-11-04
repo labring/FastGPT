@@ -1,9 +1,11 @@
 import { AsyncLocalStorage } from 'async_hooks';
 import {
   ModerationActionEnum,
-  type CheckContentByPolicyResult,
-  type ModerationStageEnum,
-  type NodeModerationRecordType
+  type ModerationStageEnum
+} from '@fastgpt/global/core/plugin/moderation/constants';
+import type {
+  CheckContentByPolicyResult,
+  NodeModerationRecordType
 } from '@fastgpt/global/core/plugin/moderation/type';
 
 const ModerationNodeCollectorStorage = new AsyncLocalStorage<NodeModerationRecordType[]>();
@@ -70,16 +72,21 @@ export const ensureNodeModerationRecord = (
     stage: `${ModerationStageEnum}` | ModerationStageEnum;
     targetField?: string;
     content?: string;
+    actionTaken?: ModerationActionEnum;
   }
 ): void => {
-  if (res.action !== ModerationActionEnum.block) return;
+  if (res.action === ModerationActionEnum.pass) return;
 
   appendNodeModerationRecord(
     {
       stage: fallback.stage as ModerationStageEnum,
       targetField: fallback.targetField,
       verdict: res.verdict ?? 'block',
-      actionTaken: ModerationActionEnum.block,
+      actionTaken:
+        fallback.actionTaken ??
+        (res.action === ModerationActionEnum.replace
+          ? ModerationActionEnum.replace
+          : ModerationActionEnum.block),
       hits: res.hits ?? [],
       keywords: res.keywords ?? [],
       content: res.text ?? fallback.content,

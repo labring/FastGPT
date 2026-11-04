@@ -1,11 +1,14 @@
 import { UserError } from '@fastgpt/global/common/error/utils';
+import { getNanoid } from '@fastgpt/global/common/string/tools';
 import {
   getModerationBlockErrorMessage,
   MODERATION_BLOCKED_ERROR_MESSAGE,
   ModerationActionEnum,
-  ModerationStageEnum,
-  type CheckContentByPolicyParams,
-  type SystemModerationPolicyType
+  ModerationStageEnum
+} from '@fastgpt/global/core/plugin/moderation/constants';
+import type {
+  CheckContentByPolicyParams,
+  SystemModerationPolicyType
 } from '@fastgpt/global/core/plugin/moderation/type';
 import type { ChatCompletionMessageToolCall } from '@fastgpt/global/core/ai/llm/type';
 import { checkContentByPolicy, isModerationHookEnabled } from './checker';
@@ -149,12 +152,15 @@ export type StreamModerationBufferOptions = {
 /**
  * 流式审查缓冲器（StreamModerationBuffer）
  *
- * 按 strategy.streamInterval（默认 50 字符/次）滑动分块送审。
+ * 按 strategy.streamInterval（默认 50 字符/次）触发窗口审查，
+ * 每次送审累积的完整内容以防止跨分块边界敏感词被截断漏检，并复用同一 sessionId 标记 partial。
  * 一旦命中拦截：立即停止向客户端发送后续 token，向客户端发送拦截中断事件，
  * 并立即调用 abortController.abort() 终止模型生成，丢弃未展示内容。
  */
 export class StreamModerationBuffer {
   private buffer = '';
+  private accumulatedText = '';
+  private sessionId: string;
   private streamInterval: number;
   private isEnabled: boolean;
   private isBlocked = false;
@@ -180,6 +186,7 @@ export class StreamModerationBuffer {
     this.onApprovedText = onApprovedText;
     this.onBlocked = onBlocked;
     this.abortController = abortController;
+    this.sessionId = context?.requestId || getNanoid(16);
   }
 
   get blocked(): boolean {
@@ -202,12 +209,15 @@ export class StreamModerationBuffer {
     while (this.buffer.length >= this.streamInterval) {
       const chunkToCheck = this.buffer.slice(0, this.streamInterval);
       const remaining = this.buffer.slice(this.streamInterval);
+      const windowContent = this.accumulatedText + chunkToCheck;
 
       const checkRes = await checkContentByPolicy({
-        text: chunkToCheck,
+        text: windowContent,
         stage: ModerationStageEnum.output,
         targetField: 'streamOutput',
         policy: this.policy,
+        sessionId: this.sessionId,
+        partial: true,
         context: this.context
       });
 
@@ -215,13 +225,14 @@ export class StreamModerationBuffer {
         ensureNodeModerationRecord(checkRes, {
           stage: ModerationStageEnum.output,
           targetField: 'streamOutput',
-          content: chunkToCheck
+          content: windowContent
         });
         const errMessage = getModerationBlockErrorMessage(checkRes.verdict);
         this.triggerBlock(errMessage);
         throw new UserError(errMessage);
       }
 
+      this.accumulatedText = windowContent;
       this.onApprovedText(chunkToCheck);
       this.buffer = remaining;
     }
@@ -240,12 +251,15 @@ export class StreamModerationBuffer {
     if (this.buffer.length > 0) {
       const remainingChunk = this.buffer;
       this.buffer = '';
+      const windowContent = this.accumulatedText + remainingChunk;
 
       const checkRes = await checkContentByPolicy({
-        text: remainingChunk,
+        text: windowContent,
         stage: ModerationStageEnum.output,
         targetField: 'streamOutput',
         policy: this.policy,
+        sessionId: this.sessionId,
+        partial: false,
         context: this.context
       });
 
@@ -253,13 +267,14 @@ export class StreamModerationBuffer {
         ensureNodeModerationRecord(checkRes, {
           stage: ModerationStageEnum.output,
           targetField: 'streamOutput',
-          content: remainingChunk
+          content: windowContent
         });
         const errMessage = getModerationBlockErrorMessage(checkRes.verdict);
         this.triggerBlock(errMessage);
         throw new UserError(errMessage);
       }
 
+      this.accumulatedText = windowContent;
       this.onApprovedText(remainingChunk);
     }
   }

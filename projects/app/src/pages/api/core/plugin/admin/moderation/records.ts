@@ -7,7 +7,7 @@ import {
   type GetModerationRecordsBodyType,
   type GetModerationRecordsResponseType
 } from '@fastgpt/global/openapi/core/plugin/admin/moderation/api';
-import { findModerationRecords } from '@fastgpt/service/core/plugin/moderation/service';
+import { findModerationRecords } from '@fastgpt/service/core/plugin/moderation/record/entity';
 
 export type AdminModerationRecordsQuery = Record<string, never>;
 export type AdminModerationRecordsBody = GetModerationRecordsBodyType;

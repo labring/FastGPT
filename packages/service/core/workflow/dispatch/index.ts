@@ -91,10 +91,8 @@ import { getWorkflowSource } from './utils/source';
 import { WorkflowMemoryState } from '../memory/state';
 import { prepareWorkflowFileContext } from '../utils/fileContext';
 import { markProfileError, profileStage } from '../../../common/profiling';
-import {
-  checkEntryModeration,
-  runWithNodeModerationContext
-} from '../../plugin/moderation/service';
+import { checkEntryModeration } from '../../plugin/moderation/entry';
+import { runWithNodeModerationContext } from '../../plugin/moderation/collector';
 import type { NodeModerationRecordType } from '@fastgpt/global/core/plugin/moderation/type';
 
 const logger = getLogger(LogCategories.MODULE.WORKFLOW.DISPATCH);
