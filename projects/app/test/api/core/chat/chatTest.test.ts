@@ -77,10 +77,6 @@ vi.mock('@fastgpt/service/core/chat/utils/prepare', () => ({
   preChatRound: vi.fn()
 }));
 
-vi.mock('@fastgpt/service/core/chat/chatGenerateStatus', () => ({
-  updateChatGenerateStatus: vi.fn()
-}));
-
 vi.mock('@fastgpt/service/support/user/team/utils', () => ({
   getRunningUserInfoByTmbId: vi.fn()
 }));

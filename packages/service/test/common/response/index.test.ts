@@ -9,6 +9,8 @@ import { SandboxErrEnum } from '@fastgpt/global/common/error/code/sandbox';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { EventEmitter } from 'node:events';
+import { ChatGeneratingConflictError } from '@fastgpt/global/core/chat/error';
+import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 
 vi.unmock('@fastgpt/service/common/response');
 
@@ -34,6 +36,39 @@ vi.mock('@fastgpt/service/common/profiling', () => profilingMocks);
 
 const { getSseErrorResponse, jsonRes, processError, responseWrite, sseErrRes } =
   await import('../../../common/response');
+
+describe('chat generating conflict recovery target', () => {
+  it.each([{ responseChatItemId: 'active-A' }, { reusePreviousAi: true as const }])(
+    'preserves the recovery target in both JSON and SSE errors: %o',
+    (data) => {
+      const error = new ChatGeneratingConflictError(data);
+      const res = { status: vi.fn().mockReturnThis(), json: vi.fn() };
+      jsonRes(res as unknown as Parameters<typeof jsonRes>[0], { code: 409, error });
+      expect(res.status).toHaveBeenCalledWith(409);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          statusText: ChatErrEnum.chatIsGenerating,
+          data
+        })
+      );
+      expect(JSON.parse(getSseErrorResponse(error).data)).toMatchObject({
+        statusText: ChatErrEnum.chatIsGenerating,
+        data
+      });
+    }
+  );
+
+  it('does not expose arbitrary data attached to ordinary business errors', () => {
+    expect(
+      processError({
+        error: {
+          message: ChatErrEnum.chatIsGenerating,
+          data: { responseChatItemId: 'untrusted' }
+        }
+      }).data
+    ).toBeNull();
+  });
+});
 
 function buildZodError() {
   try {

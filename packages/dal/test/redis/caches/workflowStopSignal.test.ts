@@ -4,7 +4,7 @@ import {
   WorkflowStopSignalCache,
   getWorkflowStopSignalKey,
   WORKFLOW_STOP_SIGNAL_TTL_SECONDS
-} from '@fastgpt/dal/redis/caches';
+} from '@fastgpt/dal/redis/caches/workflowStopSignal';
 
 const params = {
   sourceType: ChatSourceTypeEnum.app,
@@ -16,6 +16,7 @@ describe('WorkflowStopSignalCache', () => {
   const logger = { warn: vi.fn() };
   const redis = {
     delete: vi.fn(),
+    evalScript: vi.fn(),
     get: vi.fn(),
     set: vi.fn()
   } as any;
@@ -23,6 +24,7 @@ describe('WorkflowStopSignalCache', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     redis.delete.mockResolvedValue(true);
+    redis.evalScript.mockResolvedValue(1);
     redis.get.mockResolvedValue(null);
     redis.set.mockResolvedValue(undefined);
   });
@@ -34,16 +36,24 @@ describe('WorkflowStopSignalCache', () => {
     );
   });
 
-  it('writes the historical value with a one-minute TTL', async () => {
+  it('normalizes Mongo source IDs like the generation lease', () => {
+    expect(getWorkflowStopSignalKey({ ...params, sourceId: '507F1F77BCF86CD799439012' })).toBe(
+      'agent_runtime_stopping:app:507f1f77bcf86cd799439012:chat-1'
+    );
+  });
+
+  it('writes a new stop version for each request with a one-minute TTL', async () => {
     const cache = new WorkflowStopSignalCache({ redis, logger });
 
+    await cache.set(params);
     await cache.set(params);
 
     expect(redis.set).toHaveBeenCalledWith({
       key: 'agent_runtime_stopping:app:app-1:chat-1',
-      value: '1',
+      value: expect.any(String),
       ttlMs: WORKFLOW_STOP_SIGNAL_TTL_SECONDS * 1000
     });
+    expect(redis.set.mock.calls[0][0].value).not.toBe(redis.set.mock.calls[1][0].value);
   });
 
   it('reads present and missing stop signals', async () => {
@@ -82,6 +92,18 @@ describe('WorkflowStopSignalCache', () => {
     const cache = new WorkflowStopSignalCache({ redis, logger });
 
     await expect(cache.set(params)).rejects.toBe(error);
+  });
+
+  it('conditionally clears only the observed stop version without a separate read', async () => {
+    const cache = new WorkflowStopSignalCache({ redis, logger });
+    await cache.clear(params, 'observed-stop');
+    expect(redis.evalScript).toHaveBeenCalledWith({
+      script: expect.any(String),
+      keys: ['agent_runtime_stopping:app:app-1:chat-1'],
+      args: ['observed-stop']
+    });
+    expect(redis.get).not.toHaveBeenCalled();
+    expect(redis.delete).not.toHaveBeenCalled();
   });
 
   it.each([

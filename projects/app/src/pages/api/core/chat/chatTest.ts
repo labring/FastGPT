@@ -33,8 +33,7 @@ import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import {
   ChatRoleEnum,
   ChatSourceEnum,
-  ChatSourceTypeEnum,
-  ChatGenerateStatusEnum
+  ChatSourceTypeEnum
 } from '@fastgpt/global/core/chat/constants';
 import {
   failChatRound,
@@ -50,7 +49,6 @@ import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { ChatTestPropsSchema } from '@fastgpt/global/openapi/core/chat/completion/api';
-import { updateChatGenerateStatus } from '@fastgpt/service/core/chat/chatGenerateStatus';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   createWorkflowStreamResponseContext,
@@ -333,15 +331,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     } else if (preparedRound.shouldFinalizePreparedRound) {
       await finalizeChatRound(params);
     }
-
-    if (!preparedRound.shouldFinalizePreparedRound && preparedRound.shouldPersistChatRound) {
-      // 与线上流式一致：会话结束后必须落 done，否则前端会认为仍在 generating 并不断请求 /api/core/chat/resume
-      await updateChatGenerateStatus({
-        ...chatSource,
-        chatId: runningChatId,
-        status: ChatGenerateStatusEnum.done
-      });
-    }
   } catch (err: any) {
     const { preparedRound } = roundState;
     if (preparedRound?.shouldPersistChatRound && roundState.sourceId && roundState.chatId) {
@@ -353,13 +342,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           responseChatItemId: roundState.responseChatItemId,
           error: err
         });
-      } else {
-        await updateChatGenerateStatus({
-          sourceType: ChatSourceTypeEnum.app,
-          sourceId: roundState.sourceId,
-          chatId: roundState.chatId,
-          status: ChatGenerateStatusEnum.error
-        });
       }
     }
     res.status(500);
@@ -369,9 +351,13 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       sseErrRes(res, err);
     }
   } finally {
-    // 错误状态写入再次失败时，也要等待续流缓存收尾后再关闭响应。
-    await streamResponseContext?.flushResume();
-    res.end();
+    try {
+      // 错误状态写入再次失败时，也要等待续流缓存收尾后再关闭响应。
+      await streamResponseContext?.flushResume();
+      res.end();
+    } finally {
+      await roundState.preparedRound?.releaseGenerationLease?.();
+    }
   }
 }
 

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { StreamResumeCache } from '@fastgpt/dal/redis/caches';
+import { StreamResumeCache } from '@fastgpt/dal/redis/lease/chat/streamResume';
 import { asRedisLogicalKey } from '@fastgpt/dal/redis/adapter';
 import type { RedisCacheLogger } from '@fastgpt/dal/redis/types';
 

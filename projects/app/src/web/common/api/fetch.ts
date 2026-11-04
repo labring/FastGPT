@@ -11,6 +11,11 @@ import {
   STREAM_RESUME_REQUEST_HEADER_ENABLED
 } from '@fastgpt/global/core/chat/constants';
 import { getErrResponse, getErrText } from '@fastgpt/global/common/error/utils';
+import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
+import {
+  ChatGeneratingConflictDataSchema,
+  type ChatGeneratingConflictData
+} from '@fastgpt/global/core/chat/error';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import type { StartChatFnProps } from '@/components/core/chat/ChatContainer/type';
 import { toChatAuthQueryTarget, type ChatAuthTargetInput } from '@/web/core/chat/utils';
@@ -46,6 +51,7 @@ export type StreamFetchErrorType = {
   responseText: string;
   statusText?: string;
   code?: number;
+  data?: ChatGeneratingConflictData;
 };
 export type ResumeStreamResponseType = StreamResponseType & {
   completedChat?: StreamNoNeedToBeResumeType;
@@ -78,6 +84,7 @@ export const createStreamFetchError = ({
   responseText: string;
 }): StreamFetchErrorType => {
   const errorResponse = getErrResponse(error);
+  const conflictData = ChatGeneratingConflictDataSchema.safeParse(errorResponse?.data);
 
   return {
     message: getSafeStreamErrorText(error, fallbackMessage),
@@ -85,7 +92,10 @@ export const createStreamFetchError = ({
     ...(typeof errorResponse?.statusText === 'string'
       ? { statusText: errorResponse.statusText }
       : {}),
-    ...(typeof errorResponse?.code === 'number' ? { code: errorResponse.code } : {})
+    ...(typeof errorResponse?.code === 'number' ? { code: errorResponse.code } : {}),
+    ...(errorResponse?.statusText === ChatErrEnum.chatIsGenerating && conflictData.success
+      ? { data: conflictData.data }
+      : {})
   };
 };
 

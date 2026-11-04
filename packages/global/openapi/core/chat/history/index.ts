@@ -42,7 +42,7 @@ export const ChatHistoryPath: OpenAPIPath = {
     post: {
       summary: '批量获取会话状态（生成中/已读）',
       description:
-        '按 chatId 列表返回 chatGenerateStatus、hasBeenRead、updateTime，用于侧栏轻量轮询同步',
+        '按 chatId 批量读取 Redis lease 运行状态，并返回 hasBeenRead、updateTime，用于侧栏轻量轮询同步。读取异常时返回错误，调用方保留上次状态并稍后重试。',
       tags: [DevApiTagsMap.chatHistory, SystemOpenApiTagMap.chatHistory],
       requestBody: {
         content: {

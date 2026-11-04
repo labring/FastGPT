@@ -1,5 +1,5 @@
 import z from 'zod';
-import { ChatSourceEnum } from '../../../../core/chat/constants';
+import { CHAT_GENERATION_STATUS_BATCH_SIZE, ChatSourceEnum } from '../../../../core/chat/constants';
 import { PaginationResponseSchema } from '../../../api';
 import {
   ChatGenerateStatusSchema,
@@ -41,7 +41,11 @@ export const GetHistoriesResponseSchema = PaginationResponseSchema(GetHistoriesR
 export type GetHistoriesResponseType = z.infer<typeof GetHistoriesResponseSchema>;
 
 const GetHistoryStatusPropsSchema = {
-  chatIds: z.array(z.string().min(1)).min(1).max(200).describe('需要刷新状态的会话 ID 列表')
+  chatIds: z
+    .array(z.string().min(1))
+    .min(1)
+    .max(CHAT_GENERATION_STATUS_BATCH_SIZE)
+    .describe('需要刷新状态的会话 ID 列表')
 };
 export const GetHistoryStatusBodyRawSchema = createOutLinkChatTargetInputSchema(
   GetHistoryStatusPropsSchema
