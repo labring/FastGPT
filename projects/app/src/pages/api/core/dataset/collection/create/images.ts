@@ -1,3 +1,7 @@
+import {
+  assertAppDatasetIndexModelsAvailable,
+  getAssertedDatasetEmbeddingModel
+} from '@fastgpt/service/core/dataset/model';
 import { getFileUploadLimits } from '@fastgpt/global/common/file/limit';
 import { NextAPI } from '@/service/middleware/entry';
 import { datasetImageCollectionFileType } from '@fastgpt/global/common/file/constants';
@@ -73,11 +77,14 @@ async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResult
       actor: { teamId, tmbId, isRoot },
       handle: modelHandle
     });
+    const embeddingModels = await assertAppDatasetIndexModelsAvailable({
+      resources: [{ type: 'dataset', id: String(datasetId) }],
+      teamId,
+      modelHandle,
+      authorizedIds
+    });
     const { supportVlm, supportImageEmbedding } = getDatasetImageIndexCapability({
-      vectorModel: modelHandle.getModelData(getDatasetModelReference(dataset, 'embedding'), {
-        type: 'embedding',
-        authorizedIds
-      }),
+      vectorModel: getAssertedDatasetEmbeddingModel(embeddingModels, String(datasetId)),
       vlmModel: modelHandle.getModelData(getDatasetModelReference(dataset, 'vlm'), {
         type: 'llm',
         vision: true,
