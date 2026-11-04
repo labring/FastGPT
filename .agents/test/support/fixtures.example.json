@@ -1,0 +1,100 @@
+{
+  "version": 1,
+  "isolated": true,
+  "baseUrl": "http://127.0.0.1:3000",
+  "teamId": "REPLACE_WITH_TEAM_OBJECT_ID",
+  "echoTemplate": "\n{{question}}|{{userId}}",
+  "apps": {
+    "identity": "REPLACE_WITH_W_ID",
+    "deniedForA": "REPLACE_WITH_X_ID",
+    "deniedForB": "REPLACE_WITH_Y_ID",
+    "gate": "REPLACE_WITH_GATE_WORKFLOW_ID"
+  },
+  "lifecycle": {
+    "disposeApps": [
+      "REPLACE_WITH_W_ID",
+      "REPLACE_WITH_X_ID",
+      "REPLACE_WITH_Y_ID",
+      "REPLACE_WITH_GATE_WORKFLOW_ID"
+    ]
+  },
+  "actors": {
+    "owner": { "stateEnv": "FASTGPT_TEST_OWNER_STATE" },
+    "A": {
+      "tmbId": "A_MEMBER_ID",
+      "name": "A_NAME",
+      "username": "A_USERNAME",
+      "keyEnv": "FASTGPT_TEST_A_KEY"
+    },
+    "B": { "tmbId": "B_MEMBER_ID", "name": "B_NAME", "username": "B_USERNAME" },
+    "proxy": { "tmbId": "PROXY_KEY_CREATOR_MEMBER_ID", "keyEnv": "FASTGPT_TEST_PROXY_KEY" },
+    "logViewer": {
+      "tmbId": "L_MEMBER_ID",
+      "keyEnv": "FASTGPT_TEST_LOG_VIEWER_KEY",
+      "stateEnv": "FASTGPT_TEST_LOG_VIEWER_STATE"
+    },
+    "N": {
+      "tmbId": "NO_LOG_PERMISSION_MEMBER_ID",
+      "keyEnv": "FASTGPT_TEST_NO_LOG_KEY",
+      "stateEnv": "FASTGPT_TEST_NO_LOG_STATE"
+    }
+  },
+  "members": { "foreign": "OTHER_TEAM_MEMBER_ID", "departed": "SAME_TEAM_DEPARTED_MEMBER_ID" },
+  "mongo": { "uriEnv": "FASTGPT_TEST_MONGO_URI", "logUriEnv": "FASTGPT_TEST_MONGO_LOG_URI" },
+  "redis": { "uriEnv": "FASTGPT_TEST_REDIS_URI" },
+  "gate": { "port": 4711, "bindHost": "127.0.0.1", "tokenEnv": "FASTGPT_TEST_GATE_TOKEN" },
+  "lease": { "instances": ["http://127.0.0.1:3000", "http://127.0.0.1:3010"] },
+  "logs": {
+    "appId": "REPLACE_WITH_LOG_WORKFLOW_ID",
+    "foreignAppId": "REPLACE_WITH_OTHER_TEAM_APP_ID",
+    "dateStart": "REPLACE_WITH_ISO_START",
+    "dateEnd": "REPLACE_WITH_ISO_END",
+    "searchPrefix": "RUN-R3-SEARCH",
+    "records": [
+      { "ref": "R1", "chatId": "RUN-R1", "tmbId": "A_MEMBER_ID", "source": "api" },
+      {
+        "ref": "R2",
+        "chatId": "RUN-R2",
+        "tmbId": "A_MEMBER_ID",
+        "outLinkUid": "RUN-u1",
+        "source": "api",
+        "hasGoodFeedback": true
+      },
+      {
+        "ref": "R3",
+        "chatId": "RUN-R3-SEARCH",
+        "tmbId": "A_MEMBER_ID",
+        "outLinkUid": "RUN-u2",
+        "source": "api"
+      },
+      {
+        "ref": "R4",
+        "chatId": "RUN-R4",
+        "tmbId": "B_MEMBER_ID",
+        "outLinkUid": "RUN-u1",
+        "source": "api"
+      },
+      {
+        "ref": "R5",
+        "chatId": "RUN-R5",
+        "tmbId": "A_MEMBER_ID",
+        "outLinkUid": "B_MEMBER_ID",
+        "source": "api"
+      },
+      {
+        "ref": "R6",
+        "chatId": "RUN-R6",
+        "tmbId": "B_MEMBER_ID",
+        "outLinkUid": "B_MEMBER_ID",
+        "source": "share"
+      },
+      {
+        "ref": "R7",
+        "chatId": "RUN-R7",
+        "tmbId": "A_MEMBER_ID",
+        "outLinkUid": "B_MEMBER_ID",
+        "source": "share"
+      }
+    ]
+  }
+}

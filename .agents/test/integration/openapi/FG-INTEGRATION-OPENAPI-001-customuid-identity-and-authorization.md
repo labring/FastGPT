@@ -10,6 +10,10 @@ category: "basic"
 scenario: "success"
 priority: "P0"
 status: "ready"
+automation:
+  - runner: node
+    script: .agents/test/integration/openapi/FG-INTEGRATION-OPENAPI-001.mjs
+    items: [C1, C2, C3, C4, C5, C6, C7, C8]
 tags:
   - "customuid-publishsource"
   - "phase1"
@@ -38,7 +42,7 @@ routes:
   - "POST /api/v2/chat/completions"
 related:
   - "FG-CHAT-HISTORY-FEEDBACK-001"
-  - "FG-INFRA-RUNTIME-001"
+  - "FG-INFRA-RUNTIME-002"
 baseline: "dd3cc357757bfb7c11a607c279a69a5f73a48c74"
 ---
 
@@ -49,6 +53,8 @@ baseline: "dd3cc357757bfb7c11a607c279a69a5f73a48c74"
 接入方后端用同一个 API Key 为多个用户调用应用，通过 customUid 传递使用者身份。本例验证工作流和存档使用该值，同时应用权限仍取实际鉴权成员；authProxy 与 customUid 互斥，代理调用按被代理成员校验权限。
 
 ## 前置准备
+
+- 脚本配置：按执行 skill 的 `references/api-cases.md` 提供仓库外 `FASTGPT_TEST_FIXTURE`，其中登记本例独立应用、A/B/owner/proxy 凭证引用、跨团队与离职成员、回显模板及主/日志库只读连接。脚本逐行执行所选完整场景，缺少该行必要配置时记录阻塞；写入应用必须登记在 `lifecycle.disposeApps` 且名称以 `FG-TEST-` 开头；结束后经正常会话与应用删除入口回收本轮独立应用、消息和统计。
 
 - 环境 D0：FastGPT 4.18.0 及以上、真实 App/Redis/Mongo；记录 BASE_URL、部署版本和 RUN=`uid-日期-随机串`。代码沙箱如被回显工作流使用，须已连通；不需要真实模型生成自然语言。
 - 团队 T：有效成员 A、B，B 可读取临时应用 W，但无全应用日志管理权限；另备应用 X（B 可读、A 不可读）和 Y（B 不可读、Kp 创建者可读）。使用团队 owner 创建且 authProxy 已开启的无旧 appId 绑定 Key Kp，以及 A 的普通 Key Ka。凭证仅保存在环境变量中，截图与证据脱敏。

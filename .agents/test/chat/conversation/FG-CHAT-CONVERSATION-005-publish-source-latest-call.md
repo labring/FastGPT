@@ -1,6 +1,6 @@
 ---
 case_version: 1
-id: "FG-CHAT-CONVERSATION-001"
+id: "FG-CHAT-CONVERSATION-005"
 title: "对话保存最新 publishSource 并贯通运行链路"
 business: "chat/conversation"
 types:

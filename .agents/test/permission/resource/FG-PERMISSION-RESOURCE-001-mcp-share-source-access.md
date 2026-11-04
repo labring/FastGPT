@@ -44,7 +44,7 @@ routes:
   - "POST /api/core/app/logs/list"
   - "POST /api/support/mcp/server/toolCall"
 related:
-  - "FG-CHAT-CONVERSATION-001"
+  - "FG-CHAT-CONVERSATION-005"
   - "FG-INTEGRATION-OPENAPI-001"
 baseline: "dd3cc357757bfb7c11a607c279a69a5f73a48c74"
 ---
@@ -57,13 +57,13 @@ baseline: "dd3cc357757bfb7c11a607c279a69a5f73a48c74"
 
 ## 前置准备
 
-- 复用 CONVERSATION-001 的 D2 身份/渠道清单；每个独立场景从新的副本会话恢复 G0，不能让前一场景的最新来源影响后续独立场景。
+- 复用 CONVERSATION-005 的 D2 身份/渠道清单；每个独立场景从新的副本会话恢复 G0，不能让前一场景的最新来源影响后续独立场景。
 - G0：S1 下已完成的对话 Cs，publishSource=`{type:share,id:S1.id}`、outLinkUid=u1。G1：Ka 下已完成对话 Ca，来源 api/Ka。G2：隔离库夹具克隆 G0，只改 publishSource 为缺失、`{type:share}`、`{id:S1.id}`，旧 shareId/outLinkUid 和原有权限仍满足；不得用“缺新字段”顺便移除旧校验。
 - 分享请求使用真实 `outLinkAuthData:{shareId,outLinkUid}`，受保护分享还需有效登录身份；不得把 customUid 代替 outLinkUid。记录 body 中伪造来源不影响服务端通道判断。
 - 先存 chats 的来源、uid、状态与本例 chatitems/dataId 集合；拒绝时同时验证不返回历史内容/文件信息且不改来源。原有 Key 使用时间、请求日志、分享鉴权前置检查可能更新，不断言所有用量/日志绝对不变。
 - 阻塞：基线未实现新来源守卫；先补实际共享守卫/入口后执行。MCP toolCall 当前不接收 chatId，每次新建；C7 的“已有会话”服务集成需在实现后指定真实可调用的守卫及真实 Mongo/鉴权上下文，当前阻塞。不得给现有 toolCall 发臆造 chatId 并声称覆盖了已有会话，也不为测试扩展产品能力。
 - 操作历史/恢复/文件时复用页面产生的真实请求；resume 仅对已有运行/已完成会话使用其既有 query schema。后台用有 AppReadChatLogPer 权限的 L；反例用没有该权限的 N。
-- 证据、超时与清理沿用 CONVERSATION-001，所有数据库快照限定 appId+精确 chatId。
+- 证据、超时与清理沿用 CONVERSATION-005，所有数据库快照限定 appId+精确 chatId。
 
 ## 测试步骤
 

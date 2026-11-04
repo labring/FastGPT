@@ -33,7 +33,7 @@ sources:
   - "packages/service/common/mongo/indexManager.ts"
 routes: []
 related:
-  - "FG-CHAT-CONVERSATION-001"
+  - "FG-CHAT-CONVERSATION-005"
   - "FG-PERMISSION-RESOURCE-001"
   - "FG-CHAT-HISTORY-FEEDBACK-002"
 baseline: "dd3cc357757bfb7c11a607c279a69a5f73a48c74"

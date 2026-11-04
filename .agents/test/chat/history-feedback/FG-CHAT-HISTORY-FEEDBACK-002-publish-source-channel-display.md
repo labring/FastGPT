@@ -46,7 +46,7 @@ routes:
   - "PUT /api/core/app/logs/updateLogKeys"
 related:
   - "FG-CHAT-HISTORY-FEEDBACK-001"
-  - "FG-CHAT-CONVERSATION-001"
+  - "FG-CHAT-CONVERSATION-005"
   - "FG-ADMIN-MAINTENANCE-001"
 baseline: "dd3cc357757bfb7c11a607c279a69a5f73a48c74"
 ---
@@ -60,7 +60,7 @@ baseline: "dd3cc357757bfb7c11a607c279a69a5f73a48c74"
 ## 前置准备
 
 - 需求以本聊天最终确认为准。基线无扩展 publishSource 响应与两列 UI，保持 draft；实现完成、调用渠道枚举与列配置落实后执行，不臆造列配置 key。
-- 沿用 CONVERSATION-001 的临时资源，使用对 W 有日志读取权限的登录成员 L；新建 R1(api/Ka)、R2(share/S1)、R3(mcp/M1)；R4 为仅旧 sourceName=“历史入口”且无 publishSource 的旧记录；R5 旧/新名称均缺失；R6 type=api 无 id、有旧 sourceName；R7 来源记录不存在、旧名称缺失但 publishSource.id 存在；R8 对应记录不存在、有旧 sourceName。另备旧名称空串/空白变体。
+- 沿用 CONVERSATION-005 的临时资源，使用对 W 有日志读取权限的登录成员 L；新建 R1(api/Ka)、R2(share/S1)、R3(mcp/M1)；R4 为仅旧 sourceName=“历史入口”且无 publishSource 的旧记录；R5 旧/新名称均缺失；R6 type=api 无 id、有旧 sourceName；R7 来源记录不存在、旧名称缺失但 publishSource.id 存在；R8 对应记录不存在、有旧 sourceName。另备旧名称空串/空白变体。
 - 夹具均由本例独立 appId/chatId 白名单管理，保存 BSON 初态。无 publishSource 的展示夹具在本子场景结束前不跑迁移，以免 type 被回填改变“缺失”条件。
 - 页面入口“应用详情 → 对话日志”，按可见列名“调用渠道”“渠道名”及显示文本定位。记录 list 原始 data.list 项，确认 id 字符串等于渠道真实 _id。API 仅扩展 `{type,id,name}`，缺失属性可省略；展示兜底文案由客户端生成。
 - rename/delete 只针对临时渠道；通过其真实管理页面操作并保存网络证据，刷新后观察。有关联的 app/type/team 不匹配夹具只在隔离库创建，不借此读取其他团队数据。
@@ -75,7 +75,7 @@ baseline: "dd3cc357757bfb7c11a607c279a69a5f73a48c74"
 | C3 | 生命周期；R1、R7、R8 | 修改 Ka 名称后刷新；删除另一临时 Key 生成对应无关联记录；分别有/无旧名称，hover 最终显示文本。 |
 | C4 | 关联隔离；临时异常夹具 | 来源 id 指向其他团队/不匹配应用的渠道，或两个集合中具有相同 ObjectId 的不同类型渠道；L 查询日志。 |
 | C5 | 历史与身份；相同数据集 | 用 sources、使用者及时间范围筛选 list/getUsers，再按同筛选导出；回归 HISTORY-FEEDBACK-001 已证明的身份展示，重点核对分享访客识别与两列来源值。 |
-| C6 | 来源更新；承接 CONVERSATION-001 C2/C3 | 来源从分享到 API、从 API 到 online 后刷新；检查渠道名和 tooltip 不残留前一 ID/name。 |
+| C6 | 来源更新；承接 CONVERSATION-005 C2/C3 | 来源从分享到 API、从 API 到 online 后刷新；检查渠道名和 tooltip 不残留前一 ID/name。 |
 | C7 | 性能；独立性能应用 | 在旧/新版本相同基础设施、相同索引和 100000 条临时数据下，预热后对固定 pageSize=20 的首屏/深分页/来源+使用者筛选各采样 30 次，记录 P50/P95、错误率、DB 查询次数及 explain。样本生成不得依靠真实模型调用。 |
 
 ## 预期结果
