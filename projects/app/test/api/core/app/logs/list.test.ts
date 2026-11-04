@@ -1,4 +1,9 @@
-import { describe, expect, it, beforeEach } from 'vitest';
+import exportLogs from '@/pages/api/core/app/logs/exportLogs';
+import { AppLogKeysEnum } from '@fastgpt/global/core/app/logs/constants';
+import { MongoAppLogKeys } from '@fastgpt/service/core/app/logs/logkeysSchema';
+import getLogKeys from '@/pages/api/core/app/logs/getLogKeys';
+import updateLogKeys from '@/pages/api/core/app/logs/updateLogKeys';
+import { describe, expect, it, beforeEach, vi } from 'vitest';
 import * as listApi from '@/pages/api/core/app/logs/list';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
@@ -8,13 +13,21 @@ import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSc
 import { MongoTeam } from '@fastgpt/service/support/user/team/teamSchema';
 import { MongoUser } from '@fastgpt/service/support/user/schema';
 import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
-import { Call } from '@test/utils/request';
+import { Call, StreamCall } from '@test/utils/request';
 import type {
   getAppChatLogsBody,
   getAppChatLogsResponseType
 } from '@fastgpt/global/openapi/core/app/log/api';
 import { ChatRoleEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { Types } from '@fastgpt/service/common/mongo';
+
+vi.unmock('@fastgpt/service/common/response');
+vi.mock('@fastgpt/service/common/rateLimit/interface/member', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@fastgpt/service/common/rateLimit/interface/member')>()),
+  // 连续导出验证查询一致性；成员导出的频控由 rateLimit 自身的用例覆盖。
+  assertMemberRateLimit: vi.fn(async () => {})
+}));
 
 type EmptyQuery = Record<string, never>;
 
@@ -152,7 +165,7 @@ describe('logs list API - errorFilter', () => {
       }
     );
 
-    expect(res.code).toBe(200);
+    expect(res.code, String(res.error)).toBe(200);
     expect(res.data.total).toBe(2);
     expect(res.data.list).toHaveLength(2);
   });
@@ -258,7 +271,7 @@ describe('logs list API - errorFilter', () => {
       }
     );
 
-    expect(res.code).toBe(200);
+    expect(res.code, String(res.error)).toBe(200);
     expect(res.data.total).toBe(1);
     expect(res.data.list).toHaveLength(1);
     expect(res.data.list[0].chatId).toBe('chat-error-filter-2');
@@ -356,7 +369,7 @@ describe('logs list API - errorFilter', () => {
       }
     );
 
-    expect(res.code).toBe(200);
+    expect(res.code, String(res.error)).toBe(200);
     expect(res.data.total).toBe(5); // Total chats with errors
     expect(res.data.list).toHaveLength(3); // First page
     res.data.list.forEach((item) => {
@@ -493,7 +506,7 @@ describe('logs list API - errorFilter', () => {
       }
     );
 
-    expect(res.code).toBe(200);
+    expect(res.code, String(res.error)).toBe(200);
     expect(res.data.total).toBe(1);
     expect(res.data.list).toHaveLength(1);
     expect(res.data.list[0].chatId).toBe('chat-user-error-1');
@@ -529,7 +542,7 @@ describe('logs list API - errorFilter', () => {
       }
     );
 
-    expect(res.code).toBe(200);
+    expect(res.code, String(res.error)).toBe(200);
     expect(res.data).toEqual({ list: [], total: 0 });
   });
 
@@ -607,13 +620,16 @@ describe('logs list API - errorFilter', () => {
       }
     );
 
-    expect(res.code).toBe(200);
+    expect(res.code, String(res.error)).toBe(200);
     expect(res.data.list.find((item) => item.chatId === 'share-foreign-member')?.sourceMember).toBe(
       undefined
     );
     expect(
       res.data.list.find((item) => item.chatId === 'share-inactive-member')?.sourceMember
     ).toEqual(expect.objectContaining({ name: 'Inactive Member', status: 'leave' }));
+    expect(
+      res.data.list.find((item) => item.chatId === 'share-inactive-member')?.authMember
+    ).toEqual(expect.objectContaining({ name: 'Test Member Logs List', status: 'active' }));
   });
 
   it('uses the source-member fallback for a share visitor with a missing name', async () => {
@@ -657,9 +673,249 @@ describe('logs list API - errorFilter', () => {
       }
     );
 
-    expect(res.code).toBe(200);
+    expect(res.code, String(res.error)).toBe(200);
     expect(
       res.data.list.find((item) => item.chatId === 'share-nameless-member')?.sourceMember
     ).toEqual(expect.objectContaining({ name: 'unknown', status: 'active' }));
+  });
+  it('keeps API authorizer independent of customUid and excludes foreign authorizers', async () => {
+    const foreignUser = await MongoUser.create({
+      username: 'foreign-authorizer',
+      password: 'password'
+    });
+    const foreignTeam = await MongoTeam.create({ name: 'Foreign', ownerId: foreignUser._id });
+    const foreign = await MongoTeamMember.create({
+      teamId: foreignTeam._id,
+      userId: foreignUser._id,
+      name: 'Foreign secret',
+      role: 'owner',
+      status: 'active'
+    });
+    await MongoChat.create([
+      {
+        chatId: 'api-custom',
+        appId: testAppId,
+        teamId: testTeamId,
+        tmbId: testTmbId,
+        sourceType: 'app',
+        source: 'api',
+        outLinkUid: 'customer-42'
+      },
+      {
+        chatId: 'foreign-authorizer',
+        appId: testAppId,
+        teamId: testTeamId,
+        tmbId: foreign._id,
+        sourceType: 'app',
+        source: 'api'
+      }
+    ]);
+    const res = await Call(listApi.default, {
+      auth: authUser,
+      headers: {},
+      body: { appId: testAppId, dateStart: '2020-01-01', dateEnd: '2099-01-01' }
+    });
+    expect(res.code, String(res.error)).toBe(200);
+    expect(res.data.list.find((item: any) => item.chatId === 'api-custom')).toMatchObject({
+      tmbId: testTmbId,
+      outLinkUid: 'customer-42',
+      authMember: { name: 'Test Member Logs List' }
+    });
+    expect(
+      res.data.list.find((item: any) => item.chatId === 'foreign-authorizer').authMember
+    ).toBeUndefined();
+  });
+
+  it('lists and exports the same users with feedback, search and source filters combined', async () => {
+    const base = {
+      appId: testAppId,
+      teamId: testTeamId,
+      tmbId: testTmbId,
+      sourceType: 'app',
+      source: 'api',
+      title: 'needle',
+      outLinkUid: 'customer,"42"',
+      hasGoodFeedback: true,
+      errorCount: 1
+    };
+    await MongoChat.create([
+      { ...base, chatId: 'match' },
+      { ...base, chatId: 'wrong-user', outLinkUid: 'another' },
+      { ...base, chatId: 'no-feedback', hasGoodFeedback: false },
+      { ...base, chatId: 'wrong-title', title: 'unrelated' },
+      { ...base, chatId: 'wrong-source', source: 'share' },
+      { ...base, chatId: 'wrong-resource', sourceType: ChatSourceTypeEnum.skillEdit }
+    ]);
+    const body = {
+      appId: testAppId,
+      dateStart: '2020-01-01',
+      dateEnd: '2099-01-01',
+      tmbIds: [],
+      outLinkUids: ['customer,"42"'],
+      chatSearch: 'needle',
+      feedbackType: 'has_feedback',
+      sources: ['api'],
+      errorFilter: 'has_error'
+    };
+    const listed = await Call(listApi.default, { auth: authUser, headers: {}, body });
+    expect(listed.code, String(listed.error)).toBe(200);
+    expect(listed.data.list.map((item: any) => item.chatId)).toEqual(['match']);
+    const exported = await StreamCall(exportLogs, {
+      auth: authUser,
+      headers: {},
+      body: {
+        ...body,
+        title: 'User,Authorizer,Session,Details',
+        sourcesMap: {},
+        logKeys: [AppLogKeysEnum.USER, AppLogKeysEnum.AUTH_USER, AppLogKeysEnum.SESSION_ID]
+      }
+    });
+    expect(exported.code).toBe(200);
+    expect(exported.raw).toContain(`"customer,""42""",${testTmbId}:Test Member Logs List,match,`);
+    expect(exported.raw).not.toMatch(/wrong-|no-feedback/);
+    expect(exported.raw.split('\n')).toHaveLength(2);
+  });
+
+  it('exports identities as id:name and keeps only the ID when no member name is available', async () => {
+    const missingId = String(new Types.ObjectId());
+    const base = {
+      appId: testAppId,
+      teamId: testTeamId,
+      tmbId: testTmbId,
+      sourceType: ChatSourceTypeEnum.app,
+      source: 'api'
+    };
+    await MongoChat.create([
+      { ...base, chatId: 'member-identity' },
+      { ...base, chatId: 'external-identity', outLinkUid: 'customer-42' },
+      { ...base, chatId: 'missing-identity', tmbId: missingId }
+    ]);
+
+    const exportIdentities = () =>
+      StreamCall(exportLogs, {
+        auth: authUser,
+        headers: {},
+        body: {
+          appId: testAppId,
+          dateStart: '2020-01-01',
+          dateEnd: '2099-01-01',
+          title: 'User,Authorizer,Session,Details',
+          sourcesMap: {},
+          logKeys: [AppLogKeysEnum.USER, AppLogKeysEnum.AUTH_USER, AppLogKeysEnum.SESSION_ID]
+        }
+      });
+    const named = await exportIdentities();
+    expect(named.code).toBe(200);
+    const memberIdentity = `${testTmbId}:Test Member Logs List`;
+    expect(named.raw).toContain(`\n${memberIdentity},${memberIdentity},member-identity,`);
+    expect(named.raw).toContain(`\ncustomer-42,${memberIdentity},external-identity,`);
+    expect(named.raw).toContain(`\n${missingId},${missingId},missing-identity,`);
+
+    for (const name of ['   ', undefined]) {
+      await MongoTeamMember.updateOne(
+        { _id: testTmbId },
+        name === undefined ? { $unset: { name: 1 } } : { $set: { name } }
+      );
+      const nameless = await exportIdentities();
+      expect(nameless.code).toBe(200);
+      expect(nameless.raw).toContain(`\n${testTmbId},${testTmbId},member-identity,`);
+      expect(nameless.raw).toContain(`\ncustomer-42,${testTmbId},external-identity,`);
+    }
+  });
+
+  it('normalizes old team columns on read and write while retaining explicit choices', async () => {
+    await MongoAppLogKeys.create({
+      teamId: testTeamId,
+      appId: testAppId,
+      logKeys: [
+        { key: 'user', enable: false },
+        { key: 'title', enable: true }
+      ]
+    });
+    const res = await Call(getLogKeys, { auth: authUser, query: { appId: testAppId } });
+    expect(res.code, String(res.error)).toBe(200);
+    expect(res.data.logKeys.slice(0, 3)).toEqual([
+      { key: 'user', enable: false },
+      { key: 'authUser', enable: false },
+      { key: 'title', enable: true }
+    ]);
+    expect((await MongoAppLogKeys.findOne({ appId: testAppId }))?.logKeys).toHaveLength(2);
+    const saved = await Call(updateLogKeys, {
+      auth: authUser,
+      headers: {},
+      body: {
+        appId: testAppId,
+        logKeys: [
+          { key: 'authUser', enable: true },
+          { key: 'user', enable: false }
+        ]
+      }
+    });
+    expect(saved.code).toBe(200);
+    const refreshed = await Call(getLogKeys, { auth: authUser, query: { appId: testAppId } });
+    expect(refreshed.data.logKeys.slice(0, 2)).toEqual([
+      { key: 'authUser', enable: true },
+      { key: 'user', enable: false }
+    ]);
+  });
+
+  it('keeps feedback and unread filters consistent in the list and CSV', async () => {
+    const base = {
+      appId: testAppId,
+      teamId: testTeamId,
+      tmbId: testTmbId,
+      sourceType: ChatSourceTypeEnum.app,
+      source: 'api',
+      title: 'feedback needle',
+      outLinkUid: 'customer-42'
+    };
+    await MongoChat.create([
+      { ...base, chatId: 'read-good', hasGoodFeedback: true },
+      { ...base, chatId: 'read-bad', hasBadFeedback: true },
+      { ...base, chatId: 'unread-good', hasGoodFeedback: true, hasUnreadGoodFeedback: true },
+      { ...base, chatId: 'unread-bad', hasBadFeedback: true, hasUnreadBadFeedback: true },
+      { ...base, chatId: 'another-user', outLinkUid: 'another', hasUnreadBadFeedback: true }
+    ]);
+    // 旧数据没有 sourceType，也必须参与相同的筛选和导出。
+    await MongoChat.updateOne(
+      { appId: testAppId, chatId: 'read-good' },
+      { $unset: { sourceType: 1 } }
+    );
+    for (const { feedbackType, unreadOnly, expected } of [
+      { feedbackType: 'has_feedback', unreadOnly: true, expected: ['unread-bad', 'unread-good'] },
+      { feedbackType: 'good', unreadOnly: false, expected: ['read-good', 'unread-good'] },
+      { feedbackType: 'bad', unreadOnly: true, expected: ['unread-bad'] }
+    ]) {
+      const body = {
+        appId: testAppId,
+        dateStart: '2020-01-01',
+        dateEnd: '2099-01-01',
+        outLinkUids: ['customer-42'],
+        chatSearch: 'needle',
+        feedbackType,
+        unreadOnly
+      };
+      const listed = await Call(listApi.default, { auth: authUser, headers: {}, body });
+      expect(listed.code, String(listed.error)).toBe(200);
+      expect(listed.data.list.map((item: any) => item.chatId).sort()).toEqual(expected);
+      const exported = await StreamCall(exportLogs, {
+        auth: authUser,
+        headers: {},
+        body: {
+          ...body,
+          title: 'Session,Details',
+          sourcesMap: {},
+          logKeys: [AppLogKeysEnum.SESSION_ID]
+        }
+      });
+      expect(exported.code).toBe(200);
+      expect(
+        exported.raw
+          .split('\n')
+          .slice(1)
+          .map((line) => line.split(',')[0])
+          .sort()
+      ).toEqual(expected);
+    }
   });
 });

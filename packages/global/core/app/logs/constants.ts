@@ -3,6 +3,7 @@ import { i18nT } from '../../../common/i18n/utils';
 export enum AppLogKeysEnum {
   SOURCE = 'source',
   USER = 'user',
+  AUTH_USER = 'authUser',
   TITLE = 'title',
   SESSION_ID = 'sessionId',
   CREATED_TIME = 'createdTime',
@@ -21,6 +22,7 @@ export enum AppLogKeysEnum {
 export const AppLogKeysEnumMap = {
   [AppLogKeysEnum.SOURCE]: i18nT('app:logs_keys_source'),
   [AppLogKeysEnum.USER]: i18nT('app:logs_keys_user'),
+  [AppLogKeysEnum.AUTH_USER]: i18nT('app:logs_keys_auth_user'),
   [AppLogKeysEnum.TITLE]: i18nT('app:logs_keys_title'),
   [AppLogKeysEnum.SESSION_ID]: i18nT('app:logs_keys_sessionId'),
   [AppLogKeysEnum.CREATED_TIME]: i18nT('app:logs_keys_createdTime'),
@@ -39,6 +41,7 @@ export const AppLogKeysEnumMap = {
 export const DefaultAppLogKeys = [
   { key: AppLogKeysEnum.SOURCE, enable: false },
   { key: AppLogKeysEnum.USER, enable: true },
+  { key: AppLogKeysEnum.AUTH_USER, enable: false },
   { key: AppLogKeysEnum.TITLE, enable: true },
   { key: AppLogKeysEnum.SESSION_ID, enable: false },
   { key: AppLogKeysEnum.CREATED_TIME, enable: false },
