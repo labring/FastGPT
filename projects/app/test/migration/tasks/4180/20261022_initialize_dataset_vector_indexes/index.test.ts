@@ -106,7 +106,7 @@ describe('initializeDatasetVectorIndexes', () => {
       [{ key: 'legacyIndex', status: 'succeeded' }],
       [{ key: 'datasets', status: 'running' }],
       [{ key: 'datasets', status: 'running', current: 2 }],
-      [{ key: 'datasets', status: 'succeeded' }]
+      [{ key: 'datasets', status: 'succeeded', current: 2 }]
     ]);
     expect(checkpoint()).toMatchObject({ lastId: id(2), endId: id(2) });
     expect(await initializeDatasetVectorIndexes(context)).toEqual({
@@ -245,7 +245,8 @@ describe('initializeDatasetVectorIndexes', () => {
     });
     expect(context.reportProgress).toHaveBeenLastCalledWith({
       key: 'datasets',
-      status: 'succeeded'
+      status: 'succeeded',
+      ...(pg ? { current: 0 } : {})
     });
     expect(mocks.count).not.toHaveBeenCalled();
     expect(mocks.removeLegacy).toHaveBeenCalledTimes(pg ? 1 : 0);

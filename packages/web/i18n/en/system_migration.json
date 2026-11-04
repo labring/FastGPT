@@ -32,6 +32,7 @@
   "completed_at": "Completed at",
   "stages": "Execution stages",
   "progress_count": "{{current}} / {{total}}",
+  "progress_processed": "Processed {{current}} records",
   "last_error": "Latest error",
   "error_run": "Run {{runId}}",
   "refresh": "Refresh",
@@ -142,8 +143,8 @@
   "migrations.20261022_initialize_dataset_vector_indexes.datasets": "Count dataset vectors and schedule index builds",
   "migrations.20261022_initialize_dataset_vector_indexes.legacyIndex": "Remove the legacy global HNSW index",
   "migrations.20261104_backfill_chat_publish_source.name": "Backfill chat call sources",
-  "migrations.20261104_backfill_chat_publish_source.description": "Automatically backfill legacy sources in an independent background task after startup. Drain and stop old writers before starting the new version.",
-  "migrations.20261104_backfill_chat_publish_source.result": "Scanned {{chats}} chats and {{chatLogs}} log buckets; {{missingChannelIds}} legacy sources have no recoverable channel ID",
+  "migrations.20261104_backfill_chat_publish_source.description": "Backfill historical call sources in an independent background task after startup, preserving all legacy fields.",
+  "migrations.20261104_backfill_chat_publish_source.result": "Scanned {{chats}} chats and {{chatLogs}} log buckets",
   "migrations.20261104_backfill_chat_publish_source.chats": "Chat sources",
   "migrations.20261104_backfill_chat_publish_source.chatLogs": "Log bucket sources",
   "migrations.20261104_backfill_chat_publish_source.validation": "Validate backfill"
