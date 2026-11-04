@@ -3,7 +3,7 @@ import type { IAwsS3CompatibleStorageOptions, IStorage } from '../interface';
 import type * as Storage from '../types';
 import { Upload } from '@aws-sdk/lib-storage';
 import { EmptyObjectError } from '../errors';
-import type { Readable } from 'node:stream';
+import { Readable } from 'node:stream';
 import { camelCase, chunk, isNotNil, kebabCase, trim } from 'es-toolkit';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { AWS_S3_COMPATIBLE_VENDORS, DEFAULT_PRESIGNED_URL_EXPIRED_SECONDS } from '../constants';
