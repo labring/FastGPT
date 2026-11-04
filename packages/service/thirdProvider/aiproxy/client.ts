@@ -3,8 +3,10 @@ import { isAiproxyNotFoundError } from './error';
 import { getAIProxyAdminConfig } from './config';
 import {
   AIPROXY_LIST_PAGE_SIZE,
+  AiproxyChannelModelsSchema,
   type AddChannelData,
   type AiproxyChannel,
+  type AiproxyChannelModel,
   type AiproxyDashboardParams,
   type AiproxyDashboardPoint,
   type AiproxyEnvelope,
@@ -252,6 +254,10 @@ export class AIProxyClient {
     logs: this.createLogOperations('/api/logs'),
     dashboard: this.createDashboardOperations((query) => `/api/dashboardv2/${query}`)
   };
+
+  public async getSystemChannelModels(id: number): Promise<AiproxyChannelModel[]> {
+    return AiproxyChannelModelsSchema.parse(await this.get<unknown>(`/api/channel/${id}/models`));
+  }
 
   /* ═══ Group Scope Operations ═══ */
 
