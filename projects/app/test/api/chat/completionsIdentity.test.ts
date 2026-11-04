@@ -9,7 +9,7 @@ import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { Call } from '@test/utils/request';
 import { dispatchWorkFlow } from '@fastgpt/service/core/workflow/dispatch';
-import { sseErrRes } from '@fastgpt/service/common/response';
+import { jsonRes, sseErrRes } from '@fastgpt/service/common/response';
 
 vi.mock('@fastgpt/service/core/workflow/dispatch', () => ({ dispatchWorkFlow: vi.fn() }));
 vi.mock('@fastgpt/service/common/api/frequencyLimit', () => ({
@@ -86,6 +86,7 @@ describe.each([
         }
       });
       expect(result.code, String(result.error)).toBe(200);
+      expect(jsonRes).not.toHaveBeenCalled();
       expect(sseErrRes).not.toHaveBeenCalled();
       expect(dispatchWorkFlow).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -110,6 +111,7 @@ describe.each([
         messages: [{ role: 'user', content: 'hi' }]
       }
     });
+    expect(jsonRes).not.toHaveBeenCalled();
     expect(sseErrRes).not.toHaveBeenCalled();
     expect(dispatchWorkFlow).toHaveBeenCalledWith(expect.objectContaining({ uid: proxyId }));
     const chat = await MongoChat.findOne({ appId, chatId: 'proxy-chat' }).lean();
