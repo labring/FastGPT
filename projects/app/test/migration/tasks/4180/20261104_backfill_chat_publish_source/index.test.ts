@@ -85,6 +85,7 @@ describe('backfillChatPublishSource', () => {
       chatItemCount: 3,
       totalPoints: 4
     } as any);
+    const beforeChats = await MongoChat.collection.find({}).toArray();
     const { context } = createContext();
     expect(await backfillChatPublishSource(context)).toEqual({
       chats: 6,
@@ -99,7 +100,13 @@ describe('backfillChatPublishSource', () => {
     expect((await read(deleted._id))?.publishSource).toEqual({ type: 'share' });
     expect((await read(existing._id))?.publishSource).toEqual({ type: 'api' });
     expect((await read(shared._id))?.sourceName).toBe('历史入口');
-    expect(await MongoChat.collection.countDocuments({ shareId: { $exists: true } })).toBe(0);
+    for (const before of beforeChats) {
+      const after = await read(before._id);
+      expect({ ...after, publishSource: undefined }).toEqual({
+        ...before,
+        publishSource: undefined
+      });
+    }
     expect((await MongoOutLink.findById(channel._id).lean())?.shareId).toBe('public');
     expect(await MongoAppChatLog.collection.findOne({ _id: logId })).toMatchObject({
       publishSource: { type: 'share' },
@@ -127,7 +134,7 @@ describe('backfillChatPublishSource', () => {
     const result = await backfillChatPublishSource(context);
     expect(result).toEqual({ chats: 3, chatLogs: 0, missingChannelIds: 3 });
     expect(await MongoChat.countDocuments({})).toBe(3);
-    expect(await MongoChat.collection.countDocuments({ shareId: { $exists: true } })).toBe(0);
+    expect(await MongoChat.collection.countDocuments({ shareId: 'stale' })).toBe(3);
   });
 
   it('错误快照在断点前保存，重试优先修复已跳过记录', async () => {
@@ -152,7 +159,9 @@ describe('backfillChatPublishSource', () => {
       missingChannelIds: 2
     });
     expect(state.failures()).toEqual([]);
-    expect((await MongoChat.collection.findOne({ _id: bad._id }))?.shareId).toBeUndefined();
+    expect((await MongoChat.collection.findOne({ _id: bad._id }))?.shareId).toBe(
+      'keep-until-repaired'
+    );
   });
 
   it('失去执行权时不写业务数据，也不标记成功', async () => {
@@ -215,6 +224,6 @@ describe('backfillPublishSourceRecord', () => {
       publishSource: next,
       sourceName: '最新入口'
     });
-    expect((await MongoChat.collection.findOne({ _id: record._id }))?.shareId).toBeUndefined();
+    expect((await MongoChat.collection.findOne({ _id: record._id }))?.shareId).toBe('stale');
   });
 });

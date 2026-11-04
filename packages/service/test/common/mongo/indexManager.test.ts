@@ -249,10 +249,14 @@ describe('MongoIndexManager.syncModelIndexes', () => {
     );
   });
 
-  it('replaces legacy chat share and generating indexes while preserving customer indexes', async () => {
+  it('keeps legacy share and customer indexes while removing the obsolete generating index', async () => {
     const schema = new Schema({}, { autoIndex: false });
     const [key, options] = MongoChat.schema.indexes().find(([key]) => 'publishSource.id' in key)!;
     defineIndex(schema, { key, options });
+    const [legacyKey, legacyOptions] = MongoChat.schema
+      .indexes()
+      .find(([key]) => 'shareId' in key)!;
+    defineIndex(schema, { key: legacyKey, options: legacyOptions });
     defineDeprecatedTestIndexes(schema, getSchemaDeprecatedMongoIndexes(MongoChat.schema));
     const model = createModel({ schema, prefix: 'ChatLeaseIndex' });
     await model.collection.createIndex(
@@ -272,7 +276,7 @@ describe('MongoIndexManager.syncModelIndexes', () => {
     const result = await MongoIndexManager.syncModelIndexes({ model, logger });
     const indexNames = await getIndexNames(model);
     expect(indexNames).not.toContain('chatGenerateStatus_1_updateTime_1');
-    expect(indexNames).not.toContain('shareId_1_outLinkUid_1_updateTime_-1');
+    expect(indexNames).toContain('shareId_1_outLinkUid_1_updateTime_-1');
     expect(indexNames).toContain(
       'publishSource.type_1_publishSource.id_1_outLinkUid_1_updateTime_-1'
     );
@@ -283,17 +287,12 @@ describe('MongoIndexManager.syncModelIndexes', () => {
         expect.objectContaining({
           action: 'drop',
           applied: true,
-          indexName: 'shareId_1_outLinkUid_1_updateTime_-1'
-        }),
-        expect.objectContaining({
-          action: 'drop',
-          applied: true,
           indexName: 'chatGenerateStatus_1_updateTime_1'
         })
       ])
     );
-    expect(MongoChat.schema.path('shareId')).toBeUndefined();
-    expect(MongoChat.schema.indexes().some(([key]) => 'shareId' in key)).toBe(false);
+    expect(MongoChat.schema.path('shareId')).toBeDefined();
+    expect(MongoChat.schema.indexes().some(([key]) => 'shareId' in key)).toBe(true);
     expect(MongoChat.schema.path('chatGenerateStatus')).toBeUndefined();
     expect(MongoChat.schema.indexes().some(([key]) => 'chatGenerateStatus' in key)).toBe(false);
   });
