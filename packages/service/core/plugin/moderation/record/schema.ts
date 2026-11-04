@@ -1,9 +1,9 @@
 import { defineIndex, connectionMongo, getMongoModel } from '../../../../common/mongo/index';
 import {
   ModerationActionEnum,
-  ModerationStageEnum,
-  type ModerationRecordType
-} from '@fastgpt/global/core/plugin/moderation/type';
+  ModerationStageEnum
+} from '@fastgpt/global/core/plugin/moderation/constants';
+import type { ModerationRecordType } from '@fastgpt/global/core/plugin/moderation/type';
 
 const { Schema } = connectionMongo;
 

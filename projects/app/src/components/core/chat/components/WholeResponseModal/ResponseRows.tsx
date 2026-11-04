@@ -10,9 +10,9 @@ import { getFileIcon } from '@fastgpt/global/common/file/icon';
 import { completionFinishReasonMap } from '@fastgpt/global/core/ai/constants';
 import {
   formatModerationLabel,
-  ModerationStageEnum,
-  type NodeModerationRecordType
-} from '@fastgpt/global/core/plugin/moderation/type';
+  ModerationStageEnum
+} from '@fastgpt/global/core/plugin/moderation/constants';
+import type { NodeModerationRecordType } from '@fastgpt/global/core/plugin/moderation/type';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';

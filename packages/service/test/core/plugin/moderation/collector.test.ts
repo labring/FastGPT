@@ -5,7 +5,7 @@ import {
   MODERATION_ERROR_BLOCKED_MESSAGE,
   ModerationActionEnum,
   ModerationStageEnum
-} from '@fastgpt/global/core/plugin/moderation/type';
+} from '@fastgpt/global/core/plugin/moderation/constants';
 import { stripModerationRecordsFromNodeResponses } from '@fastgpt/global/core/chat/utils';
 import {
   appendNodeModerationRecord,

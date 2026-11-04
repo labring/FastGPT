@@ -4,7 +4,7 @@ import type {
   AgentLoopCoreToolRunResult
 } from '../../domain/toolProvider';
 import { normalizeAgentLoopCoreToolRunResult } from '../../domain/toolProvider';
-import { checkToolResultModeration } from '../../../../../../plugin/moderation';
+import { checkToolResultModeration } from '../../../../../../plugin/moderation/modelInput';
 import type { CheckContentByPolicyParams } from '@fastgpt/global/core/plugin/moderation/type';
 
 export type CreateAgentLoopCoreToolRuntimeParams<TChildrenResponse = unknown> = {

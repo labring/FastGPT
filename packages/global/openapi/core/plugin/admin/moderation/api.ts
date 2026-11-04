@@ -3,10 +3,11 @@ import {
   ModerationCheckInputSchema,
   ModerationResultSchema
 } from '@fastgpt-plugin/sdk-client';
+import { BoolSchema, IntSchema } from '../../../../../common/zod';
+import { ModerationStageEnum } from '../../../../../core/plugin/moderation/constants';
 import {
   AdminModerationPluginItemSchema,
   ModerationRecordSchema,
-  ModerationStageEnum,
   SystemModerationPolicySchema
 } from '../../../../../core/plugin/moderation/type';
 
@@ -20,10 +21,7 @@ import {
 
 export const GetModerationPluginListQuerySchema = z.object({
   /** 包含已软删除的记录，用于管理页的「已删除」视图 */
-  includeDeleted: z
-    .enum(['true', 'false'])
-    .optional()
-    .meta({ description: '是否包含已删除的插件记录' })
+  includeDeleted: BoolSchema.optional().meta({ description: '是否包含已删除的插件记录' })
 });
 export type GetModerationPluginListQueryType = z.infer<typeof GetModerationPluginListQuerySchema>;
 
@@ -110,9 +108,6 @@ export type DeleteModerationPluginBodyType = z.infer<typeof DeleteModerationPlug
  * Tags: ['PluginAdmin', 'Read']
  * ============================================================================ */
 
-export const GetModerationPolicyQuerySchema = z.object({});
-export type GetModerationPolicyQueryType = z.infer<typeof GetModerationPolicyQuerySchema>;
-
 export const GetModerationPolicyResponseSchema = SystemModerationPolicySchema;
 export type GetModerationPolicyResponseType = z.infer<typeof GetModerationPolicyResponseSchema>;
 
@@ -143,8 +138,8 @@ export type UpdateModerationPolicyResponseType = z.infer<
 export const GetModerationRecordsBodySchema = z.object({
   stage: z.nativeEnum(ModerationStageEnum).optional().meta({ description: '审核环节' }),
   verdict: z.enum(['pass', 'suspected', 'block', 'error']).optional().meta({ description: '裁决结果' }),
-  offset: z.number().min(0).default(0).meta({ description: '分页 offset' }),
-  limit: z.number().min(1).max(100).default(20).meta({ description: '分页 limit' })
+  offset: IntSchema.default(0).meta({ description: '分页 offset' }),
+  limit: IntSchema.min(1).max(100).default(20).meta({ description: '分页 limit' })
 });
 export type GetModerationRecordsBodyType = z.infer<typeof GetModerationRecordsBodySchema>;
 

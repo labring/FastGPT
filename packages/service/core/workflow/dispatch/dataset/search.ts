@@ -28,7 +28,7 @@ import {
 } from './nodeResponse';
 import { normalizeDatasetSearchInput } from './utils';
 import { formatDatasetSearchToolResponse } from './toolResponse';
-import { checkDatasetQuotesModeration } from '../../../plugin/moderation';
+import { checkDatasetQuotesModeration } from '../../../plugin/moderation/modelInput';
 
 const logger = getLogger(LogCategories.MODULE.WORKFLOW.DATASET);
 

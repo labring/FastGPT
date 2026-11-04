@@ -11,11 +11,12 @@ export enum ModerationStageEnum {
 
 /**
  * 内容审查最终动作枚举
- * 审查引擎本身只负责合规裁决（通过或拦截），不包含上层业务的文本替换逻辑
+ * pass: 直接放行；block: 拦截阻断；replace: 替换为统一脱敏文案
  */
 export enum ModerationActionEnum {
   pass = 'pass',
-  block = 'block'
+  block = 'block',
+  replace = 'replace'
 }
 
 /** 疑似风险处理策略枚举 */

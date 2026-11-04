@@ -153,7 +153,7 @@ T1 升级 sdk-client
 - [x] **T7 admin 导航与页面框架（审核策略配置）（M）** — DONE
   - **需求与原型**：
     - 在 `AdminContainer` 新增独立一级菜单「内容审核」（商业版才展示，未激活 License 时受 `unlicensedAdminRoutes` 拦截与自动过滤）。
-    - 第一版二级子目录包含「审核策略配置」（`/admin/moderation/policy`），以及「审核记录」（`/admin/moderation/records`，占位）与「审核服务日志」（`/admin/moderation/logs`，占位）。
+    - 第一版二级子目录包含「审核策略配置」（`/admin/moderation/policy`）、「审核记录」（`/admin/moderation/records`）与「审核服务日志」（`/admin/moderation/logs`，占位）。
     - 页面采用 `SettingPage` 构建，右侧四级锚点（审核服务、审核生效环节、处理策略、审核效果测试）与全局保存按钮联动。
     - 持久化：全局策略配置存储于 `MongoSystemConfigs`（`type: moderationPolicy`），通过 `/api/core/plugin/admin/moderation/policy`（GET/POST）与插件启用状态联动。
   - **实施细节**：

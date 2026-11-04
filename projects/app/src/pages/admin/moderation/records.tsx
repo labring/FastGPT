@@ -24,18 +24,22 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import { postAdminGetModerationRecords } from '@/web/core/plugin/admin/moderation/api';
 import {
+  formatModerationLabel,
   ModerationActionEnum,
-  ModerationStageEnum,
-  type ModerationRecordType
-} from '@fastgpt/global/core/plugin/moderation/type';
-import { formatModerationLabel } from '@fastgpt/global/core/plugin/moderation/constants';
+  ModerationStageEnum
+} from '@fastgpt/global/core/plugin/moderation/constants';
+import type { ModerationRecordType } from '@fastgpt/global/core/plugin/moderation/type';
+import type { GetModerationRecordsBodyType } from '@fastgpt/global/openapi/core/plugin/admin/moderation/api';
 import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
+
+type StageFilterValue = 'all' | `${ModerationStageEnum}`;
+type VerdictFilterValue = 'all' | NonNullable<GetModerationRecordsBodyType['verdict']>;
 
 const ModerationRecords = () => {
   const { t } = useTranslation();
-  const [stageFilter, setStageFilter] = useState<string>('all');
+  const [stageFilter, setStageFilter] = useState<StageFilterValue>('all');
 
-  const [verdictFilter, setVerdictFilter] = useState<string>('all');
+  const [verdictFilter, setVerdictFilter] = useState<VerdictFilterValue>('all');
 
   const {
     data: records,
@@ -43,11 +47,11 @@ const ModerationRecords = () => {
     Pagination,
     total,
     getData
-  } = usePagination<any, ModerationRecordType>(
+  } = usePagination<Record<string, never>, ModerationRecordType>(
     async ({ pageNum = 1, pageSize }) => {
       const res = await postAdminGetModerationRecords({
-        stage: stageFilter === 'all' ? undefined : (stageFilter as any),
-        verdict: verdictFilter === 'all' ? undefined : (verdictFilter as any),
+        stage: stageFilter === 'all' ? undefined : (stageFilter as ModerationStageEnum),
+        verdict: verdictFilter === 'all' ? undefined : verdictFilter,
         offset: (pageNum - 1) * pageSize,
         limit: pageSize
       });
@@ -133,6 +137,12 @@ const ModerationRecords = () => {
             拦截
           </Text>
         );
+      case ModerationActionEnum.replace:
+        return (
+          <Text fontSize={'xs'} color={'orange.600'} fontWeight={'medium'}>
+            替换
+          </Text>
+        );
       default:
         return <Text fontSize={'xs'}>{action}</Text>;
     }
@@ -173,7 +183,7 @@ const ModerationRecords = () => {
                 { label: '模型输入', value: ModerationStageEnum.modelInput },
                 { label: '最终输出', value: ModerationStageEnum.output }
               ]}
-              onChange={(val) => setStageFilter(val)}
+              onChange={(val) => setStageFilter(val as StageFilterValue)}
             />
 
             {/* 裁决结果筛选 */}
@@ -188,7 +198,7 @@ const ModerationRecords = () => {
                 { label: '拦截 (Block)', value: 'block' },
                 { label: '异常 (Error)', value: 'error' }
               ]}
-              onChange={(val) => setVerdictFilter(val)}
+              onChange={(val) => setVerdictFilter(val as VerdictFilterValue)}
             />
 
             {/* 刷新按钮 */}

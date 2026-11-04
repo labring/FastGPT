@@ -2,9 +2,9 @@ import {
   getModerationBlockErrorMessage,
   MODERATION_BLOCKED_REPLACE_TEXT,
   ModerationActionEnum,
-  ModerationStageEnum,
-  type CheckContentByPolicyParams
-} from '@fastgpt/global/core/plugin/moderation/type';
+  ModerationStageEnum
+} from '@fastgpt/global/core/plugin/moderation/constants';
+import type { CheckContentByPolicyParams } from '@fastgpt/global/core/plugin/moderation/type';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import { checkContentByPolicy, isModerationHookEnabled } from './checker';
 import { ensureNodeModerationRecord } from './collector';
@@ -71,14 +71,16 @@ export const checkModelPromptAndInput = async ({
       text: systemPrompt,
       stage: ModerationStageEnum.modelInput,
       targetField: 'systemPrompt',
+      actionOnBlock: ModerationActionEnum.replace,
       context
     });
 
-    if (res.action === ModerationActionEnum.block) {
+    if (res.action !== ModerationActionEnum.pass) {
       ensureNodeModerationRecord(res, {
         stage: ModerationStageEnum.modelInput,
         targetField: 'systemPrompt',
-        content: systemPrompt
+        content: systemPrompt,
+        actionTaken: ModerationActionEnum.replace
       });
       effectiveSystemPrompt = MODERATION_BLOCKED_REPLACE_TEXT;
     }
@@ -90,14 +92,16 @@ export const checkModelPromptAndInput = async ({
       text: datasetCitePrompt,
       stage: ModerationStageEnum.modelInput,
       targetField: 'datasetCite',
+      actionOnBlock: ModerationActionEnum.replace,
       context
     });
 
-    if (res.action === ModerationActionEnum.block) {
+    if (res.action !== ModerationActionEnum.pass) {
       ensureNodeModerationRecord(res, {
         stage: ModerationStageEnum.modelInput,
         targetField: 'datasetCite',
-        content: datasetCitePrompt
+        content: datasetCitePrompt,
+        actionTaken: ModerationActionEnum.replace
       });
       effectiveDatasetCitePrompt = MODERATION_BLOCKED_REPLACE_TEXT;
     }
@@ -140,15 +144,17 @@ export const checkDatasetQuotesModeration = async ({
         text: combinedText,
         stage: ModerationStageEnum.modelInput,
         targetField: 'datasetCite',
+        actionOnBlock: ModerationActionEnum.replace,
         policy,
         context
       });
 
-      if (res.action === ModerationActionEnum.block) {
+      if (res.action !== ModerationActionEnum.pass) {
         ensureNodeModerationRecord(res, {
           stage: ModerationStageEnum.modelInput,
           targetField: 'datasetCite',
-          content: combinedText
+          content: combinedText,
+          actionTaken: ModerationActionEnum.replace
         });
         return {
           ...item,
@@ -183,14 +189,16 @@ export const checkFileContentModeration = async ({
     text: content,
     stage: ModerationStageEnum.modelInput,
     targetField,
+    actionOnBlock: ModerationActionEnum.replace,
     context
   });
 
-  if (res.action === ModerationActionEnum.block) {
+  if (res.action !== ModerationActionEnum.pass) {
     ensureNodeModerationRecord(res, {
       stage: ModerationStageEnum.modelInput,
       targetField,
-      content
+      content,
+      actionTaken: ModerationActionEnum.replace
     });
     return MODERATION_BLOCKED_REPLACE_TEXT;
   }
@@ -202,6 +210,7 @@ export const checkFileContentModeration = async ({
  * Agent Loop 内工具响应结果审查
  *
  * - 审查项：工具执行返回的字符串结果 (toolResponse)
+ * - 生效条件：hooks.modelInput（进入模型）或 hooks.finalOutput（工具结果对外响应）任一开启
  * - 违规处理：替换为统一脱敏提示文案，不中断 Agent 运行
  */
 export const checkToolResultModeration = async ({
@@ -213,18 +222,27 @@ export const checkToolResultModeration = async ({
 }): Promise<string> => {
   if (!response || !response.trim()) return response || '';
 
+  const policy = await getModerationPolicy();
+  const stage =
+    policy.enabled && !policy.hooks.modelInput && policy.hooks.finalOutput
+      ? ModerationStageEnum.output
+      : ModerationStageEnum.modelInput;
+
   const res = await checkContentByPolicy({
     text: response,
-    stage: ModerationStageEnum.modelInput,
+    stage,
     targetField: 'toolResult',
+    actionOnBlock: ModerationActionEnum.replace,
+    policy,
     context
   });
 
-  if (res.action === ModerationActionEnum.block) {
+  if (res.action !== ModerationActionEnum.pass) {
     ensureNodeModerationRecord(res, {
-      stage: ModerationStageEnum.modelInput,
+      stage,
       targetField: 'toolResult',
-      content: response
+      content: response,
+      actionTaken: ModerationActionEnum.replace
     });
     return MODERATION_BLOCKED_REPLACE_TEXT;
   }

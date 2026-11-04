@@ -4,7 +4,6 @@ import {
   DeleteModerationPluginBodySchema,
   GetModerationPluginListQuerySchema,
   GetModerationPluginListResponseSchema,
-  GetModerationPolicyQuerySchema,
   GetModerationPolicyResponseSchema,
   RawModerationCheckBodySchema,
   RawModerationCheckResponseSchema,
@@ -117,9 +116,6 @@ export const AdminPluginModerationPath: OpenAPIPath = {
       summary: '获取全局内容审核策略',
       description: '获取当前全局内容审核策略配置（生效环节、处理策略、开启状态等），需要系统管理员权限',
       tags: [DevApiTagsMap.pluginAdmin],
-      requestParams: {
-        query: GetModerationPolicyQuerySchema
-      },
       responses: {
         200: {
           description: '成功获取全局策略',

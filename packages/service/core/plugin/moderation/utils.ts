@@ -1,9 +1,5 @@
-import {
-  ModerationSecretMaskedValue,
-  type ModerationPluginConfigType
-} from '@fastgpt/global/core/plugin/moderation/type';
-
-export { ModerationSecretMaskedValue };
+import { ModerationSecretMaskedValue } from '@fastgpt/global/core/plugin/moderation/constants';
+import type { ModerationPluginConfigType } from '@fastgpt/global/core/plugin/moderation/type';
 
 
 /**

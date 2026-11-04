@@ -13,7 +13,7 @@ import {
   rewriteChatMessagesWithFileContext
 } from '../../../../chat/fileContext';
 import { getWorkflowFileContext } from '../../../utils/context';
-import { checkFileContentModeration } from '../../../../plugin/moderation';
+import { checkFileContentModeration } from '../../../../plugin/moderation/modelInput';
 
 /**
  * 组装系统提示、历史、当前输入和文件上下文，并按模型上下文限制裁剪为 LLM 消息。

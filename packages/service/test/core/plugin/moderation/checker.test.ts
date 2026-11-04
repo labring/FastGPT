@@ -3,12 +3,12 @@ import {
   ModerationActionEnum,
   ModerationExceptionActionEnum,
   ModerationRiskActionEnum,
-  ModerationStageEnum,
-  type SystemModerationPolicyType
-} from '@fastgpt/global/core/plugin/moderation/type';
+  ModerationStageEnum
+} from '@fastgpt/global/core/plugin/moderation/constants';
+import type { SystemModerationPolicyType } from '@fastgpt/global/core/plugin/moderation/type';
 import * as service from '../../../../core/plugin/moderation/service';
 import * as fastgptPluginMod from '../../../../thirdProvider/fastgptPlugin/moderation';
-import * as recordMod from '../../../../core/plugin/moderation/record';
+import * as recordMod from '../../../../core/plugin/moderation/record/entity';
 import { checkContentByPolicy, isModerationHookEnabled } from '../../../../core/plugin/moderation/checker';
 
 describe('moderation checker (checkContentByPolicy)', () => {

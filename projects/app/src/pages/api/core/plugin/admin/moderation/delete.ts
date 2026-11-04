@@ -10,7 +10,6 @@ import { deleteModerationPlugin } from '@fastgpt/service/core/plugin/moderation/
 
 export type AdminModerationDeleteQuery = Record<string, never>;
 export type AdminModerationDeleteBody = DeleteModerationPluginBodyType;
-export type AdminModerationDeleteResponse = Record<string, never>;
 
 /**
  * 软删除（卸载）内容审查插件的本地配置记录。
@@ -20,7 +19,7 @@ export type AdminModerationDeleteResponse = Record<string, never>;
 export async function handler(
   req: ApiRequestProps<AdminModerationDeleteBody, AdminModerationDeleteQuery>,
   _res: ApiResponseType<any>
-): Promise<AdminModerationDeleteResponse> {
+): Promise<void> {
   const auth = await authSystemAdmin({ req });
 
   const { pluginId } = parseApiInput({
@@ -29,8 +28,6 @@ export async function handler(
   }).body;
 
   await deleteModerationPlugin({ pluginId, tmbId: auth.tmbId });
-
-  return {};
 }
 
 export default NextAPI(handler);

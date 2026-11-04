@@ -9,7 +9,7 @@ import { getNodeErrResponse } from '../utils';
 import { parseFileContentFromUrls } from '../../../chat/fileContext';
 import { sliceStrStartEnd } from '@fastgpt/global/common/string/tools';
 import { getWorkflowFileContext, getWorkflowFileMaxAmount } from '../../utils/context';
-import { checkFileContentModeration } from '../../../plugin/moderation';
+import { checkFileContentModeration } from '../../../plugin/moderation/modelInput';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.fileUrlList]: string[];

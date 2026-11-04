@@ -26,9 +26,11 @@ import {
   postAdminUpdateModerationPolicy
 } from '@/web/core/plugin/admin/moderation/api';
 import {
-  DefaultSystemModerationPolicy,
   ModerationRiskActionEnum,
-  ModerationExceptionActionEnum,
+  ModerationExceptionActionEnum
+} from '@fastgpt/global/core/plugin/moderation/constants';
+import {
+  DefaultSystemModerationPolicy,
   type AdminModerationPluginItemType,
   type SystemModerationPolicyType
 } from '@fastgpt/global/core/plugin/moderation/type';

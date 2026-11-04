@@ -6,10 +6,10 @@ import {
   updateModerationPolicy
 } from '../../../../core/plugin/moderation/service';
 import {
-  DefaultSystemModerationPolicy,
   ModerationRiskActionEnum,
   ModerationExceptionActionEnum
-} from '@fastgpt/global/core/plugin/moderation/type';
+} from '@fastgpt/global/core/plugin/moderation/constants';
+import { DefaultSystemModerationPolicy } from '@fastgpt/global/core/plugin/moderation/type';
 
 describe('moderation policy service', () => {
   afterEach(() => {

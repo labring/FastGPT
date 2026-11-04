@@ -1,9 +1,10 @@
 import { MongoSystemModerationRecord } from './schema';
+import type { ClientSession } from '../../../../common/mongo';
 import type {
   ModerationActionEnum,
-  ModerationRecordType,
   ModerationStageEnum
-} from '@fastgpt/global/core/plugin/moderation/type';
+} from '@fastgpt/global/core/plugin/moderation/constants';
+import type { ModerationRecordType } from '@fastgpt/global/core/plugin/moderation/type';
 import { getLogger, LogCategories } from '../../../../common/logger';
 
 const logger = getLogger(LogCategories.INFRA.MONGO);
@@ -26,12 +27,18 @@ export type FindModerationRecordsQuery = {
  * 插入单条内容审查审计记录
  */
 export const createModerationRecord = async (
-  params: RecordModerationEventParams
+  params: RecordModerationEventParams,
+  session?: ClientSession
 ): Promise<ModerationRecordType> => {
-  const record = await MongoSystemModerationRecord.create({
-    ...params,
-    createTime: new Date()
-  });
+  const [record] = await MongoSystemModerationRecord.create(
+    [
+      {
+        ...params,
+        createTime: new Date()
+      }
+    ],
+    { session }
+  );
 
   return record.toObject();
 };
@@ -41,12 +48,15 @@ export const createModerationRecord = async (
  *
  * 采用静默落库原则，内部捕获所有持久化异常并通过 logger 告警，绝不中断或抛出异常影响业务链路。
  */
-export const recordModerationEvent = async (params: RecordModerationEventParams): Promise<void> => {
+export const recordModerationEvent = async (
+  params: RecordModerationEventParams,
+  session?: ClientSession
+): Promise<void> => {
   try {
-    await createModerationRecord(params);
-  } catch (err) {
+    await createModerationRecord(params, session);
+  } catch (error) {
     logger.error('Failed to asynchronously persist moderation record', {
-      err,
+      error,
       stage: params.stage,
       targetField: params.targetField,
       pluginId: params.pluginId

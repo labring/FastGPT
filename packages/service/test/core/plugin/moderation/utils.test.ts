@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import {
-  ModerationSecretMaskedValue,
   decryptModerationSecrets,
   encryptModerationSecrets,
   getModerationSecretKeys,
@@ -8,7 +7,10 @@ import {
   maskModerationSecrets,
   mergeModerationSecretsForUpdate
 } from '../../../../core/plugin/moderation/utils';
-import { formatModerationLabel } from '@fastgpt/global/core/plugin/moderation/constants';
+import {
+  formatModerationLabel,
+  ModerationSecretMaskedValue
+} from '@fastgpt/global/core/plugin/moderation/constants';
 
 /** 测试用可逆加解密，避免依赖 AES 密钥环境 */
 const fakeEncrypt = (plain: string) => `enc:${plain}`;
