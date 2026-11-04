@@ -99,6 +99,10 @@ const createMultipartStalledServer = () => {
   const partReceived = new Promise<void>((resolve) => {
     notifyPart = resolve;
   });
+  let notifyAbort: (() => void) | undefined;
+  const abortReceived = new Promise<void>((resolve) => {
+    notifyAbort = resolve;
+  });
   let resolvePartClosed: (() => void) | undefined;
   const partClosed = new Promise<void>((resolve) => {
     resolvePartClosed = resolve;
@@ -111,6 +115,13 @@ const createMultipartStalledServer = () => {
       response.end(
         '<InitiateMultipartUploadResult><Bucket>test-bucket</Bucket><Key>abort/upload.bin</Key><UploadId>upload-1</UploadId></InitiateMultipartUploadResult>'
       );
+      return;
+    }
+    if (request.method === 'DELETE') {
+      request.resume();
+      notifyAbort?.();
+      response.writeHead(204);
+      response.end();
       return;
     }
     if (request.method === 'PUT' && url.searchParams.get('partNumber') === '1') {
@@ -126,7 +137,7 @@ const createMultipartStalledServer = () => {
     socket.once('close', () => sockets.delete(socket));
   });
 
-  return { server, sockets, partReceived, partClosed };
+  return { server, sockets, partReceived, partClosed, abortReceived };
 };
 
 const withTimeout = async <T>(promise: Promise<T>, message: string): Promise<T> => {
@@ -390,7 +401,7 @@ describe('provider upload abort transport integration', () => {
   });
 
   it('aborts an in-flight AWS multipart part and closes its socket', async () => {
-    const { server, partReceived, partClosed } = createMultipartStalledServer();
+    const { server, partReceived, partClosed, abortReceived } = createMultipartStalledServer();
     const port = await listen(server);
     const storage = new AwsS3StorageAdapter({
       vendor: 'aws-s3',
@@ -425,6 +436,7 @@ describe('provider upload abort transport integration', () => {
     expect(error).toMatchObject({ name: 'AbortError' });
     expect(body.destroyed).toBe(true);
     await withTimeout(partClosed, 'AWS multipart part socket did not close after abort');
+    await withTimeout(abortReceived, 'AWS did not send AbortMultipartUpload after cancel');
     await storage.destroy();
     await closeServer(server);
   });

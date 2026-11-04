@@ -154,8 +154,16 @@ export class AwsS3StorageAdapter implements IStorage {
     const uploadClient = new Proxy(this.client, {
       get: (target, property, receiver) => {
         if (property === 'send') {
-          return (command: any, options?: any) =>
-            target.send(command, { ...options, abortSignal: uploadAbortController.signal });
+          return (command: any, options?: any) => {
+            // lib-storage 在失败/取消后会发送 AbortMultipartUploadCommand 清理分片；
+            // 该请求不能复用已取消的信号，否则 provider 的 Multipart 会话会残留。
+            if (command instanceof AWS.AbortMultipartUploadCommand) {
+              const cleanupOptions = { ...options };
+              delete cleanupOptions.abortSignal;
+              return target.send(command, cleanupOptions);
+            }
+            return target.send(command, { ...options, abortSignal: uploadAbortController.signal });
+          };
         }
         return Reflect.get(target, property, receiver);
       }
