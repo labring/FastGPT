@@ -128,6 +128,20 @@ const SiteSettingComponent = () => {
           >
             <Input {...register('loginGuideDocUrl')} placeholder="https://..." />
           </AdminFormItem>
+
+          <AdminFormItem
+            label={t('admin:custom_api_domain')}
+            tooltip={t('admin:custom_api_domain_tip')}
+          >
+            <Input {...register('customApiDomain')} placeholder="https://api.example.com" />
+          </AdminFormItem>
+
+          <AdminFormItem
+            label={t('admin:custom_share_page_domain')}
+            tooltip={t('admin:custom_share_page_domain_tip')}
+          >
+            <Input {...register('customSharePageDomain')} placeholder="https://share.example.com" />
+          </AdminFormItem>
         </SimpleGrid>
       </AdminSettingSection>
 
