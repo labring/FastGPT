@@ -58,7 +58,7 @@ describe('support/openapi/list', () => {
     expect(result.data[0].canCopy).toBe(true);
   });
 
-  it('旧 appId 查询参数只用于置顶排序，不扩大可见范围', async () => {
+  it('应用列表包括其他成员的绑定 Key，个人列表不包括应用 Key', async () => {
     const { owner, members } = await getFakeUsers(1);
     const [member] = members;
     const app = await MongoApp.create({
@@ -96,17 +96,22 @@ describe('support/openapi/list', () => {
     const result = await Call(handler, {
       auth: owner,
       query: {
+        type: 'app',
         appId: String(app._id)
       }
     });
 
     expect(result.code).toBe(200);
     expect(result.data).toHaveLength(2);
-    expect(result.data[0].name).toBe('legacy app key');
+    expect(result.data.map((item) => item.name).sort()).toEqual([
+      'legacy app key',
+      'member legacy app key'
+    ]);
     expect(result.data[0].apiKey).toBe('******cret');
     expect(result.data[0].canCopy).toBe(true);
     expect(result.data[0].authProxy).toBe(false);
-    expect(result.data[1].name).toBe('new global key');
+    const personal = await Call(handler, { auth: owner, query: { appId: String(app._id) } });
+    expect(personal.data.map((item) => item.name)).toEqual(['new global key']);
   });
 
   it('团队级 APIKey 列表返回 authProxy 状态', async () => {
@@ -265,7 +270,8 @@ describe('support/openapi/list', () => {
     });
 
     const result = await Call(handler, {
-      auth: user
+      auth: user,
+      query: { type: 'app', appId: String(app._id) }
     });
 
     expect(result.code).toBe(200);
@@ -278,7 +284,7 @@ describe('support/openapi/list', () => {
     expect(updated?.appName).toBeUndefined();
   });
 
-  it('sorts by last used time with appId priority first', async () => {
+  it('sorts personal keys by last used time without mixing bound keys', async () => {
     const user = await getRootUser();
     const app = await MongoApp.create({
       teamId: user.teamId,
@@ -321,11 +327,7 @@ describe('support/openapi/list', () => {
     });
 
     expect(result.code).toBe(200);
-    expect(result.data.map((item) => item.name)).toEqual([
-      'app old used',
-      'global new used',
-      'global middle used'
-    ]);
+    expect(result.data.map((item) => item.name)).toEqual(['global new used', 'global middle used']);
   });
 
   it('sorts by remaining points ascending with unlimited keys last', async () => {
@@ -402,8 +404,6 @@ describe('support/openapi/list', () => {
 
     expect(result.code).toBe(200);
     expect(result.data.map((item) => item.name)).toEqual([
-      'app limited remaining',
-      'app unlimited remaining',
       'low remaining',
       'high remaining',
       'unlimited remaining'

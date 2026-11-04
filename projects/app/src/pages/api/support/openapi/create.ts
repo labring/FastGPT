@@ -17,12 +17,19 @@ import {
   type CreateApiKeyBodyType,
   type CreateApiKeyResponseType
 } from '@fastgpt/global/openapi/support/openapi/api';
+import { ApiKeyTypeEnum } from '@fastgpt/global/support/openapi/constants';
+import { getOpenApiTypeFilter } from '@fastgpt/service/support/openapi/utils';
+import { authAppByTmbId } from '@fastgpt/service/support/permission/app/auth';
+import { ManagePermissionVal } from '@fastgpt/global/support/permission/constant';
+import { AppTypeList } from '@fastgpt/global/core/app/constants';
 
 async function handler(
   req: ApiRequestProps<CreateApiKeyBodyType>
 ): Promise<CreateApiKeyResponseType> {
   const {
     name,
+    type = ApiKeyTypeEnum.personal,
+    appId,
     limit,
     authProxy = false,
     tags
@@ -40,7 +47,16 @@ async function handler(
     return Promise.reject(TeamErrEnum.unPermission);
   }
 
-  const count = await MongoOpenApi.find({ tmbId }).countDocuments();
+  if (type === ApiKeyTypeEnum.app) {
+    const { app } = await authAppByTmbId({ appId: appId!, tmbId, per: ManagePermissionVal });
+    if (!AppTypeList.includes(app.type)) throw OpenApiErrEnum.unAuth;
+  }
+
+  const count = await MongoOpenApi.countDocuments({
+    teamId,
+    ...getOpenApiTypeFilter(type),
+    ...(type === ApiKeyTypeEnum.app ? { appId } : { tmbId })
+  });
 
   if (count >= appEnv.OPENAPI_KEY_MAX_COUNT) {
     return Promise.reject(OpenApiErrEnum.exceedLimit);
@@ -56,9 +72,11 @@ async function handler(
       })
     : [];
 
-  await MongoOpenApi.create({
+  const key = await MongoOpenApi.create({
     teamId,
     tmbId,
+    type,
+    ...(type === ApiKeyTypeEnum.app ? { appId } : {}),
     apiKey,
     authProxy,
     name,
@@ -72,7 +90,10 @@ async function handler(
       teamId,
       event: AuditEventEnum.CREATE_API_KEY,
       params: {
-        keyName: name
+        keyName: name,
+        keyId: String(key._id),
+        keyType: type,
+        ...(appId ? { appId } : {})
       }
     });
   })();

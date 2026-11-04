@@ -74,6 +74,7 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
   const { teamId, tmbId, app } = await authApp({
     req,
     authToken: true,
+    authAppApiKey: true,
     appId,
     per: AppReadChatLogPerVal
   });

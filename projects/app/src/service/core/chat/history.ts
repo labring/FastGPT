@@ -9,6 +9,7 @@ import type { ApiRequestProps } from '@fastgpt/next/type';
 import { buildChatSourceQuery } from '@fastgpt/service/core/chat/source';
 import { authChatTargetCrud } from '@fastgpt/service/core/chat/auth';
 import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
+import { ApiKeyTypeEnum } from '@fastgpt/global/support/openapi/constants';
 
 type ChatHistoryAuthProps = {
   req: ApiRequestProps;
@@ -53,7 +54,8 @@ async function getChatHistoryContext({
     uid,
     authType,
     publishSource,
-    scope
+    scope,
+    apiKeyType
   } = await authChatTargetCrud({
     req,
     authToken: true,
@@ -77,10 +79,10 @@ async function getChatHistoryContext({
       : {
           ...buildChatSourceQuery({ sourceType: resolvedSourceType, sourceId: resolvedSourceId }),
           ...scope,
-          tmbId,
+          ...(apiKeyType === ApiKeyTypeEnum.app ? {} : { tmbId }),
           ...(source && { $and: [buildChatPublishSourceFilter([source])] })
         };
-  return { match, authType, resolvedSourceType, resolvedSourceId };
+  return { match, authType, resolvedSourceType, resolvedSourceId, apiKeyType };
 }
 
 /** 历史列表、改名和软删除默认使用当前成员范围；外链沿用发布身份和时间范围。 */
@@ -102,7 +104,7 @@ export async function buildClearChatHistoriesMatch({
 }: ClearChatHistoriesAuthProps) {
   const context = await getChatHistoryContext({ req, sourceType, sourceId, outLinkAuthData });
   if (!context) return undefined;
-  const { match, authType, resolvedSourceType, resolvedSourceId } = context;
+  const { match, authType, resolvedSourceType, resolvedSourceId, apiKeyType } = context;
 
   // 辅助生成和 Skill 的会话不按 online/api 入口分组，直接复用同一次鉴权的成员范围。
   if (
@@ -120,6 +122,7 @@ export async function buildClearChatHistoriesMatch({
   if (authType === AuthUserTypeEnum.apikey) {
     // 普通 App 的 API 清空保留原有整应用 api 记录语义。
     return {
+      ...(apiKeyType === ApiKeyTypeEnum.app ? match : {}),
       ...buildChatSourceQuery({ sourceType: resolvedSourceType, sourceId: resolvedSourceId }),
       $and: [buildChatPublishSourceFilter([ChatSourceEnum.api])]
     };

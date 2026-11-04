@@ -31,5 +31,16 @@
   "edit_api_key": "編輯金鑰細節",
   "key_alias": "金鑰別名，僅供顯示",
   "create_link_error": "建立連結發生錯誤",
-  "update_link_error": "更新連結發生錯誤"
+  "update_link_error": "更新連結發生錯誤",
+  "app_key": "應用 Key",
+  "personal_key": "個人密鑰",
+  "app_key_tip": "僅可用於目前應用的對話與對話管理。成員離職後，由應用負責人接管。",
+  "personal_key_tip": "以你的成員身分呼叫開放介面，可存取範圍取決於你的權限。",
+  "app_key_manage_required": "應用 Key 僅應用管理員可管理。",
+  "create_app_key": "新增應用 Key",
+  "owner_member": "歸屬成員",
+  "bound_app_id": "綁定應用 ID",
+  "app_key_empty": "暫無應用 Key，建立後可供業務後端接入目前應用。",
+  "call_example": "呼叫範例",
+  "delete_key_tip": "刪除後，使用此 Key 的呼叫將立即失效。"
 }

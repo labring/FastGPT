@@ -26,6 +26,8 @@ import {
 } from '../resourcePermissionPolicy';
 import { checkIsAgentUser } from '../../user/systemUser';
 import type { TeamTmbItemType } from '@fastgpt/global/support/user/team/type';
+import { ApiKeyTypeEnum } from '@fastgpt/global/support/openapi/constants';
+import { getAppByApiKey } from '../../openapi/auth';
 
 export const authWorkflowToolByTmbId = async ({
   tmbId,
@@ -171,12 +173,14 @@ export const authApp = async ({
     return Promise.reject(AppErrEnum.unExist);
   }
 
-  const { app } = await authAppByTmbId({
-    tmbId,
-    appId,
-    per,
-    isRoot: result.isRoot
-  });
+  const app = await (async () => {
+    if (result.apiKeyType === ApiKeyTypeEnum.app) {
+      const app = await getAppByApiKey({ ...result, appId });
+      // 这表示凭证可读应用基础信息，不把归属成员伪装成 owner；对话管理范围由可信 Key 类型表达。
+      return { ...app, permission: new AppPermission({ role: ReadRoleVal }) };
+    }
+    return (await authAppByTmbId({ tmbId, appId, per, isRoot: result.isRoot })).app;
+  })();
 
   return {
     ...result,

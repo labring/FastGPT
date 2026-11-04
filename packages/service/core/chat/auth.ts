@@ -18,6 +18,7 @@ import { authSkill } from '../../support/permission/skill/auth';
 import { MongoChat } from './chatSchema';
 import { buildChatSourceQuery } from './source';
 import { authOutLink } from '../../support/permission/publish/authChat';
+import { ApiKeyTypeEnum } from '@fastgpt/global/support/openapi/constants';
 import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 
 /** 已通过资源鉴权的会话访问范围；省略成员表示允许访问该资源下同团队的会话。 */
@@ -49,6 +50,7 @@ type AuthChatTargetCrudResult = {
   publishSource?: ChatPublishSourceType;
   isRoot: boolean;
   authType?: `${AuthUserTypeEnum}`;
+  apiKeyType?: ApiKeyTypeEnum;
 } & (typeof chatSourceResponseOptions)[ChatSourceTypeEnum];
 
 /** 校验实际记录的归属；先查记录再检查，避免把无权访问的 chatId 当成新会话。 */
@@ -132,7 +134,12 @@ export const authChatTargetCrud = async ({
     const auth = await authApp({
       // 普通 App 保持旧入口同时支持 Token/API Key；辅助生成继续使用调用方指定的认证方式。
       ...(sourceType === ChatSourceTypeEnum.app
-        ? { req: props.req, authToken: true, authApiKey: true }
+        ? {
+            req: props.req,
+            authToken: true,
+            authApiKey: true,
+            authAppApiKey: props.authAppApiKey ?? true
+          }
         : props),
       appId: sourceId,
       per: sourceType === ChatSourceTypeEnum.workflowBuilder ? WritePermissionVal : per
@@ -146,6 +153,7 @@ export const authChatTargetCrud = async ({
   const memberOnly =
     sourceType === ChatSourceTypeEnum.workflowBuilder ||
     (sourceType !== ChatSourceTypeEnum.skillEdit &&
+      resource.apiKeyType !== ApiKeyTypeEnum.app &&
       !('hasReadChatLogPer' in resource.permission && resource.permission.hasReadChatLogPer));
   const scope: ChatAccessScope = {
     teamId: resource.teamId,
@@ -173,6 +181,7 @@ export const authChatTargetCrud = async ({
     skill: resource.skill,
     isRoot: resource.isRoot,
     authType: resource.authType,
+    apiKeyType: resource.apiKeyType,
     ...chatSourceResponseOptions[sourceType]
   };
 };

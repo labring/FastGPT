@@ -22,7 +22,7 @@ describe('support/openapi/create', () => {
     mockAppEnv.OPENAPI_KEY_MAX_COUNT = 100;
   });
 
-  it('creates system APIKeys and ignores legacy appId input', async () => {
+  it('creates personal and app keys with explicit immutable types', async () => {
     const users = await getFakeUsers(2);
     await MongoResourcePermission.create(
       users.members.map((member) => ({
@@ -62,7 +62,8 @@ describe('support/openapi/create', () => {
     const res2 = await Call<EditApiKeyProps>(createapi.default, {
       auth: users.members[1],
       body: {
-        appId: app._id,
+        type: 'app',
+        appId: String(app._id),
         name: 'legacy appId input key',
         limit: {
           maxUsagePoints: 1000
@@ -77,7 +78,8 @@ describe('support/openapi/create', () => {
       tmbId: users.members[1].tmbId,
       name: 'legacy appId input key'
     }).lean();
-    expect(legacyInputKey?.appId).toBeUndefined();
+    expect(legacyInputKey?.appId).toBe(String(app._id));
+    expect(legacyInputKey?.type).toBe('app');
   });
 
   it('team owner can create global APIKey with authProxy enabled', async () => {
@@ -129,7 +131,7 @@ describe('support/openapi/create', () => {
     expect(await MongoOpenApi.findOne({ name: 'member auth proxy key' })).toBeNull();
   });
 
-  it('legacy appId input is ignored when owner enables authProxy', async () => {
+  it('rejects appId on a personal credential', async () => {
     const users = await getFakeUsers(1);
     const app = await MongoApp.create({
       name: 'auth proxy app',
@@ -150,16 +152,14 @@ describe('support/openapi/create', () => {
       } as EditApiKeyProps
     });
 
-    expect(res.error).toBeUndefined();
-    expect(res.code).toBe(200);
+    expect(res.code).toBe(500);
 
     const openapi = await MongoOpenApi.findOne({
       teamId: users.owner.teamId,
       tmbId: users.owner.tmbId,
       name: 'app auth proxy key'
     }).lean();
-    expect(openapi?.authProxy).toBe(true);
-    expect(openapi?.appId).toBeUndefined();
+    expect(openapi).toBeNull();
   });
 
   it('uses OPENAPI_KEY_MAX_COUNT from app env as create limit', async () => {

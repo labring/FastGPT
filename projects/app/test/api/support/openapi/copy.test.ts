@@ -44,7 +44,9 @@ describe('support/openapi/copy', () => {
       teamId: auth.teamId,
       event: AuditEventEnum.COPY_API_KEY,
       params: {
-        keyName: 'team key'
+        keyName: 'team key',
+        keyId: String(openapi._id),
+        keyType: 'personal'
       }
     });
     expect(JSON.stringify(vi.mocked(addAuditLog).mock.calls)).not.toContain('fastgpt-team-secret');
@@ -88,7 +90,10 @@ describe('support/openapi/copy', () => {
       teamId: auth.teamId,
       event: AuditEventEnum.COPY_API_KEY,
       params: {
-        keyName: 'app key'
+        keyName: 'app key',
+        keyId: String(openapi._id),
+        keyType: 'app',
+        appId: String(app._id)
       }
     });
     expect(JSON.stringify(vi.mocked(addAuditLog).mock.calls)).not.toContain('fastgpt-app-secret');

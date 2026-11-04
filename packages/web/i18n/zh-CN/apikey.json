@@ -31,5 +31,16 @@
   "edit_api_key": "编辑 key 信息",
   "key_alias": "key 的别名，仅用于展示",
   "create_link_error": "创建链接异常",
-  "update_link_error": "更新链接异常"
+  "update_link_error": "更新链接异常",
+  "app_key": "应用 Key",
+  "personal_key": "个人密钥",
+  "app_key_tip": "仅可用于当前应用的对话与对话管理。成员离职后，由应用负责人接管。",
+  "personal_key_tip": "以你的成员身份调用开放接口，可访问范围取决于你的权限。",
+  "app_key_manage_required": "应用 Key 仅应用管理员可管理。",
+  "create_app_key": "新建应用 Key",
+  "owner_member": "归属成员",
+  "bound_app_id": "绑定应用 ID",
+  "app_key_empty": "暂无应用 Key，创建后可供业务后端接入当前应用。",
+  "call_example": "调用示例",
+  "delete_key_tip": "删除后，使用此 Key 的调用将立即失效。"
 }

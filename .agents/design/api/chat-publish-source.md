@@ -2,7 +2,7 @@
 
 > 首发版本：4.18.0。HTML 阅读稿：`/Volumes/code/FastGPT/local/tmp/chat-publish-source.html`。
 
-本次把对话上的 `source / sourceName / shareId` 收敛为 `publishSource`，记录**最近一次运行来自哪个渠道**，并调整对应鉴权和日志展示。应用 Key 分类、绑定和离职交接另期实现。
+本次把对话上的 `source / sourceName / shareId` 收敛为 `publishSource`，记录**最近一次运行来自哪个渠道**，并调整对应鉴权和日志展示。应用 Key 分类、绑定和离职交接见[第三阶段设计](./app-api-key.md)。
 
 ## 1. 字段怎么改
 

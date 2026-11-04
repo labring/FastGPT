@@ -30,7 +30,7 @@ export const ApiKeyPath: OpenAPIPath = {
   '/support/openapi/create': {
     post: {
       summary: '创建 API Key',
-      description: '创建 API Key',
+      description: '登录后创建个人密钥或绑定应用的应用 Key；应用 Key 还需要对应应用的管理权限。',
       tags: [DevApiTagsMap.apiKey],
       requestBody: {
         content: {

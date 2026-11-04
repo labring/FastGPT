@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest';
+vi.unmock('@fastgpt/service/support/permission/auth/common');
+import { describe, expect, it, vi } from 'vitest';
 import { handler } from '@/pages/api/support/openapi/health';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoOpenApi } from '@fastgpt/service/support/openapi/schema';
@@ -34,6 +35,7 @@ describe('support/openapi/health', () => {
 
     expect(result).toEqual({
       valid: true,
+      type: 'app',
       usagePoints: 25,
       maxUsagePoints: 1000,
       appId: String(app._id)
@@ -57,6 +59,7 @@ describe('support/openapi/health', () => {
 
     expect(result).toEqual({
       valid: true,
+      type: 'personal',
       usagePoints: 0,
       maxUsagePoints: -1
     });
