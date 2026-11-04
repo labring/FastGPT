@@ -175,6 +175,8 @@ export class CosStorageAdapter implements IStorage {
       }
     }
     const abortUpload = () => {
+      // 原始 body 可能仍被 pipe 到这个中间流；取消时一并停止读取。
+      if (body instanceof Readable && !body.destroyed) body.destroy();
       if (!(uploadBody instanceof Readable) || uploadBody.destroyed) return;
       uploadBody.destroy(getAbortSignalError(abortSignal!));
     };

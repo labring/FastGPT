@@ -359,10 +359,10 @@ describe('OssStorageAdapter.uploadObject', () => {
     const put = vi.fn(
       (_key: string, stream: PassThrough) =>
         new Promise((_resolve, reject) => {
-          stream.once('error', reject);
+          stream.once('close', () => reject(new Error('stream closed')));
         })
     );
-    (adapter as any).client.put = put;
+    vi.spyOn(adapter as any, 'createClient').mockReturnValue({ put } as any);
     const controller = new AbortController();
 
     const uploadPromise = adapter.uploadObject({
