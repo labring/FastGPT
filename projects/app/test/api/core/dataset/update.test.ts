@@ -1022,6 +1022,58 @@ describe('dataset permission sync switch', () => {
     });
   });
 
+  it('does not re-enable collection permissions when a partial patch writes no config', async () => {
+    const { owner } = await getFakeUsers(1);
+    const teamId = String(owner.teamId);
+    const dataset = await createDatasetWithOwnerSnapshot({
+      teamId,
+      tmbId: String(owner.tmbId),
+      name: 'empty-patch-race',
+      type: DatasetTypeEnum.dataset
+    });
+    const collection = await MongoDatasetCollection.create({
+      teamId,
+      tmbId: String(owner.tmbId),
+      datasetId: String(dataset._id),
+      name: 'file',
+      type: DatasetCollectionTypeEnum.file
+    });
+    // 读取侧快照：托管开启且文件权限已开
+    await MongoDataset.findByIdAndUpdate(dataset._id, {
+      $set: { apiDatasetServer: permissionSyncBody.apiDatasetServer }
+    });
+    await enableDatasetCollectionPermissions({ teamId, datasetId: String(dataset._id) });
+
+    // 并发请求 B 退出托管并关闭文件权限；随后 A 才拿到锁
+    beforeUpdateTransaction.current = async () => {
+      await MongoDataset.findByIdAndUpdate(dataset._id, {
+        $set: { 'apiDatasetServer.permissionSync': false }
+      });
+      await disableDatasetCollectionPermissions({ teamId, datasetId: String(dataset._id) });
+    };
+
+    const res = await Call<UpdateDatasetBody, Record<string, never>, string>(updateHandler, {
+      auth: owner,
+      body: { id: String(dataset._id), name: 'renamed', apiDatasetServer: {} }
+    });
+
+    expect(res.error).toBeUndefined();
+    expect(res.code).toBe(200);
+    const updated = await MongoDataset.findById(dataset._id).lean();
+    expect(updated?.name).toBe('renamed');
+    // 空 patch 不产生配置写入：必须沿用锁后的关闭状态，而不是旧快照里的开启意图
+    expect(updated?.apiDatasetServer?.permissionSync).toBe(false);
+    expect(updated?.collectionPermissionEnabled).not.toBe(true);
+    await expect(
+      getResourceOwnedClbs({
+        teamId,
+        resourceId: String(collection._id),
+        resourceType: PerResourceTypeEnum.collection
+      }).then(toPermissionRows)
+    ).resolves.toEqual([]);
+    expect(enqueueDatasetPermissionSync).not.toHaveBeenCalled();
+  });
+
   it('lets a root user update and enable managed mode on another team dataset', async () => {
     const root = await getRootUser();
     const otherTeamOwner = await getUser('other-team-owner');
