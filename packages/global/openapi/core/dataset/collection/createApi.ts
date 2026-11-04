@@ -248,7 +248,11 @@ export const CreateBackupCollectionMultipartSchema = z.object({
 export const CreateTemplateCollectionFormSchema = z.object({
   datasetId: z.string().meta({ description: '数据集 ID' }),
   parentId: ParentIdSchema.optional().meta({ description: '父级目录 ID' }),
-  tags: CollectionTagsInputSchema
+  tags: CollectionTagsInputSchema,
+  autoIndexes: z
+    .boolean()
+    .optional()
+    .meta({ description: '模板 FAQ 导入是否生成自动索引（需 pro 服务支持）' })
 });
 export type CreateTemplateCollectionFormType = z.infer<typeof CreateTemplateCollectionFormSchema>;
 
