@@ -54,7 +54,9 @@ const workflowCheckMessageKeys = {
     'common:core.workflow.check.context_extract_empty'
   ),
   [WorkflowCheckIssueCodeEnum.toolCallEmpty]: i18nT('common:core.workflow.check.tool_call_empty'),
-  [WorkflowCheckIssueCodeEnum.toolSetNotConfigured]: i18nT('common:core.workflow.check.tool_set_not_configured'),
+  [WorkflowCheckIssueCodeEnum.toolSetNotConfigured]: i18nT(
+    'common:core.workflow.check.tool_set_not_configured'
+  ),
   [WorkflowCheckIssueCodeEnum.toolInactive]: i18nT('common:core.workflow.check.tool_inactive'),
   [WorkflowCheckIssueCodeEnum.toolMissing]: i18nT('common:core.workflow.check.tool_missing'),
   [WorkflowCheckIssueCodeEnum.toolLoadFailed]: i18nT('common:core.workflow.check.tool_load_failed'),

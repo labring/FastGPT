@@ -118,7 +118,7 @@ export const config = {
 
 /**
  * 将创建、复制或转换传入的工作流统一迁移为当前 canonical 结构，
- * 并按团队模型目录与操作人可用模型完成 fallback 格式化及敏感字段处理。
+ * 按应用类型保留源工具集 App 的完整根配置，再按团队模型目录与操作人可用模型完成 fallback 及敏感字段处理。
  */
 const formatAppWorkflowForSave = async ({
   nodes,
@@ -137,11 +137,14 @@ const formatAppWorkflowForSave = async ({
   tmbId: string;
   isRoot?: boolean;
 }) => {
-  const workflow = normalizeAppWorkflow({
-    nodes: nodes ?? [],
-    edges: edges ?? [],
-    chatConfig
-  }, appType);
+  const workflow = normalizeAppWorkflow(
+    {
+      nodes: nodes ?? [],
+      edges: edges ?? [],
+      chatConfig
+    },
+    appType
+  );
   const modelHandle = await getTeamModelHandle({ teamId });
   const authorizedIds = await getAuthorizedModelIds({
     actor: { teamId, tmbId, isRoot: Boolean(isRoot) },
