@@ -2,10 +2,10 @@ import { Schema } from 'mongoose';
 import z from 'zod';
 import { defineIndex, getMongoModel } from '..';
 
-export const pluginTypeEnum = z.enum(['tool']);
+export const pluginTypeEnum = z.enum(['tool', 'moderation']);
 
 export const PluginZodSchema = z.object({
-  type: z.literal('tool'),
+  type: pluginTypeEnum,
   toolId: z.string(),
   downloadCount: z.number(),
   time: z.coerce.date()

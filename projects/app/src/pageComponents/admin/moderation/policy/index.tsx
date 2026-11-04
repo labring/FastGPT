@@ -1,16 +1,8 @@
 'use client';
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import {
-  Box,
-  Button,
-  Flex,
-  Grid,
-  HStack,
-  Switch,
-  Text,
-  useDisclosure
-} from '@chakra-ui/react';
+import { useRouter } from 'next/router';
+import { Box, Button, Flex, Grid, HStack, Switch, Text, useDisclosure } from '@chakra-ui/react';
 import SettingPage from '@/pageComponents/admin/settings/SettingPage';
 import FirstTitle from '@/pageComponents/admin/settings/FirstTitle';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -39,11 +31,10 @@ import EditPluginModal from './EditPluginModal';
 import ModerationTestCard from './ModerationTestCard';
 import dynamic from 'next/dynamic';
 
-const ImportPluginModal = dynamic(
-  () => import('@/pageComponents/admin/config/ImportPluginModal')
-);
+const ImportPluginModal = dynamic(() => import('@/pageComponents/admin/config/ImportPluginModal'));
 
 export const ModerationPolicy = () => {
+  const router = useRouter();
   const { toast } = useToast();
 
   const [policy, setPolicy] = useState<SystemModerationPolicyType>(DefaultSystemModerationPolicy);
@@ -53,25 +44,23 @@ export const ModerationPolicy = () => {
 
   const [editingPlugin, setEditingPlugin] = useState<AdminModerationPluginItemType | null>(null);
 
-  const {
-    isOpen: isImportOpen,
-    onOpen: onOpenImport,
-    onClose: onCloseImport
-  } = useDisclosure();
+  const { isOpen: isImportOpen, onOpen: onOpenImport, onClose: onCloseImport } = useDisclosure();
 
   // 1. 获取全局策略与插件列表
-  const { loading: loadingPolicy, runAsync: fetchPolicy } = useRequest(
-    getAdminModerationPolicy,
-    {
-      onSuccess: (data) => {
-        if (data) {
-          setPolicy(data);
+  const { loading: loadingPolicy, runAsync: fetchPolicy } = useRequest(getAdminModerationPolicy, {
+    onSuccess: (data) => {
+      if (data) {
+        setPolicy(data);
+        // 标注 2 特殊状态规则：若当前有审核服务在生效，列表默认收起；若未选择，默认展开
+        if (!hasInitializedCollapse.current) {
+          setIsListCollapsed(Boolean(data.activePluginId));
+          hasInitializedCollapse.current = true;
         }
-      },
-      errorToast: '获取内容审核策略失败',
-      manual: false
-    }
-  );
+      }
+    },
+    errorToast: '获取内容审核策略失败',
+    manual: false
+  });
 
   const { loading: loadingPlugins, runAsync: fetchPlugins } = useRequest(
     getAdminModerationPluginList,
@@ -85,18 +74,6 @@ export const ModerationPolicy = () => {
       manual: false
     }
   );
-
-  // 标注 2 特殊状态规则：若当前有审核服务在生效，列表默认收起；若未选择，默认展开
-  useEffect(() => {
-    if (!hasInitializedCollapse.current && !loadingPolicy && !loadingPlugins) {
-      if (policy.activePluginId) {
-        setIsListCollapsed(true);
-      } else {
-        setIsListCollapsed(false);
-      }
-      hasInitializedCollapse.current = true;
-    }
-  }, [loadingPolicy, loadingPlugins, policy.activePluginId]);
 
   // 当前生效服务对象
   const activePlugin = useMemo(() => {
@@ -155,10 +132,7 @@ export const ModerationPolicy = () => {
   };
 
   const handleAddFromMarket = () => {
-    toast({
-      status: 'info',
-      title: '内容审核插件市场即将上线，目前支持从本地安装'
-    });
+    router.push('/config/tool/marketplace?type=moderation');
   };
 
   // SettingPage 标题列表：审核服务未开启时，下面 3 个板块全部隐藏
@@ -359,7 +333,6 @@ export const ModerationPolicy = () => {
             </>
           )}
         </Box>
-
 
         {/* ================= 下方 3 个板块仅在开启内容审核时显示 ================= */}
         {policy.enabled && (

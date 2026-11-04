@@ -25,6 +25,7 @@ import { MarketplaceOfficialSource } from '@fastgpt/global/openapi/core/plugin/m
 const logger = getLogger(LogCategories.MODULE.API);
 
 type ToolIndexFilter = {
+  type?: 'tool' | 'moderation';
   toolId?: string;
   version?: string;
 };
@@ -101,7 +102,7 @@ const getLatestToolIndexes = (indexes: MarketplaceToolIndexSchemaType[]) => {
 export class PluginRepo {
   async listToolIndexes(filter: ToolIndexFilter = {}) {
     const indexes = await MongoMarketplaceTool.find({
-      type: 'tool',
+      type: filter.type || 'tool',
       ...(filter.toolId ? { pluginId: filter.toolId } : {}),
       ...(filter.version ? { version: filter.version } : {})
     }).lean();
@@ -203,13 +204,14 @@ export class PluginRepo {
     }
   }
 
-  async listToolVersionIndexes(toolId?: string) {
-    const indexes = await this.listToolIndexes(toolId ? { toolId } : {});
+  async listToolVersionIndexes(toolId?: string, type?: 'tool' | 'moderation') {
+    const indexes = await this.listToolIndexes(toolId ? { toolId, type } : { type });
     return toolId ? indexes : getLatestToolIndexes(indexes);
   }
 
   async listToolManifests(params: ToolListParams = {}) {
     const indexes = await this.listToolIndexes({
+      type: params.type,
       toolId: params.toolId,
       version: params.version
     });
