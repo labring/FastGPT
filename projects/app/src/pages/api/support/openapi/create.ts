@@ -1,3 +1,5 @@
+import { withTeamLock } from '@fastgpt/service/support/user/lock';
+import { parseHeaderCert } from '@fastgpt/service/support/permission/auth/common';
 import { MongoOpenApi } from '@fastgpt/service/support/openapi/schema';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
@@ -18,12 +20,15 @@ import {
   type CreateApiKeyResponseType
 } from '@fastgpt/global/openapi/support/openapi/api';
 import { ApiKeyTypeEnum } from '@fastgpt/global/support/openapi/constants';
-import { getOpenApiTypeFilter } from '@fastgpt/service/support/openapi/utils';
+import {
+  getOpenApiTypeFilter,
+  getOpenApiAppIdFilter
+} from '@fastgpt/service/support/openapi/utils';
 import { authAppByTmbId } from '@fastgpt/service/support/permission/app/auth';
 import { ManagePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { AppTypeList } from '@fastgpt/global/core/app/constants';
 
-async function handler(
+export async function handler(
   req: ApiRequestProps<CreateApiKeyBodyType>
 ): Promise<CreateApiKeyResponseType> {
   const {
@@ -37,68 +42,78 @@ async function handler(
     req,
     bodySchema: CreateApiKeyBodySchema
   }).body;
-  const { teamId, tmbId, permission } = await authUserPer({
-    req,
-    authToken: true,
-    per: TeamApikeyCreatePermissionVal
-  });
-
-  if (authProxy && !permission.isOwner) {
-    return Promise.reject(TeamErrEnum.unPermission);
-  }
-
-  if (type === ApiKeyTypeEnum.app) {
-    const { app } = await authAppByTmbId({ appId: appId!, tmbId, per: ManagePermissionVal });
-    if (!AppTypeList.includes(app.type)) throw OpenApiErrEnum.unAuth;
-  }
-
-  const count = await MongoOpenApi.countDocuments({
-    teamId,
-    ...getOpenApiTypeFilter(type),
-    ...(type === ApiKeyTypeEnum.app ? { appId } : { tmbId })
-  });
-
-  if (count >= appEnv.OPENAPI_KEY_MAX_COUNT) {
-    return Promise.reject(OpenApiErrEnum.exceedLimit);
-  }
-
-  const nanoid = getNanoid(Math.floor(Math.random() * 14) + 52);
-  const apiKey = `${global.systemEnv?.openapiPrefix || 'fastgpt'}-${nanoid}`;
-  const tagIds = tags
-    ? await validateOpenApiTags({
-        teamId,
-        tmbId,
-        tags
-      })
-    : [];
-
-  const key = await MongoOpenApi.create({
-    teamId,
-    tmbId,
-    type,
-    ...(type === ApiKeyTypeEnum.app ? { appId } : {}),
-    apiKey,
-    authProxy,
-    name,
-    tagIds,
-    limit
-  });
-
-  (async () => {
-    addAuditLog({
-      tmbId,
-      teamId,
-      event: AuditEventEnum.CREATE_API_KEY,
-      params: {
-        keyName: name,
-        keyId: String(key._id),
-        keyType: type,
-        ...(appId ? { appId } : {})
-      }
+  /** 权限复查、额度统计和写入同处团队锁内，不能在交接完成后再创建归属离职者的 Key。 */
+  const createKey = async () => {
+    const { teamId, tmbId, permission } = await authUserPer({
+      req,
+      authToken: true,
+      per: TeamApikeyCreatePermissionVal
     });
-  })();
 
-  return CreateApiKeyResponseSchema.parse(apiKey);
+    if (authProxy && !permission.isOwner) {
+      return Promise.reject(TeamErrEnum.unPermission);
+    }
+
+    let boundAppId: string | undefined;
+    if (type === ApiKeyTypeEnum.app) {
+      const { app } = await authAppByTmbId({ appId: appId!, tmbId, per: ManagePermissionVal });
+      if (!AppTypeList.includes(app.type)) throw OpenApiErrEnum.unAuth;
+      boundAppId = String(app._id);
+    }
+
+    const count = await MongoOpenApi.countDocuments({
+      teamId,
+      ...getOpenApiTypeFilter(type),
+      ...(type === ApiKeyTypeEnum.app ? { appId: getOpenApiAppIdFilter([boundAppId!]) } : { tmbId })
+    });
+
+    if (count >= appEnv.OPENAPI_KEY_MAX_COUNT) {
+      return Promise.reject(OpenApiErrEnum.exceedLimit);
+    }
+
+    const nanoid = getNanoid(Math.floor(Math.random() * 14) + 52);
+    const apiKey = `${global.systemEnv?.openapiPrefix || 'fastgpt'}-${nanoid}`;
+    const tagIds = tags
+      ? await validateOpenApiTags({
+          teamId,
+          tmbId,
+          tags
+        })
+      : [];
+
+    const key = await MongoOpenApi.create({
+      teamId,
+      tmbId,
+      type,
+      ...(boundAppId ? { appId: boundAppId } : {}),
+      apiKey,
+      authProxy,
+      name,
+      tagIds,
+      limit
+    });
+
+    (async () => {
+      addAuditLog({
+        tmbId,
+        teamId,
+        event: AuditEventEnum.CREATE_API_KEY,
+        params: {
+          keyName: name,
+          keyId: String(key._id),
+          keyType: type,
+          ...(boundAppId ? { appId: boundAppId } : {})
+        }
+      });
+    })();
+
+    return CreateApiKeyResponseSchema.parse(apiKey);
+  };
+  if (type === ApiKeyTypeEnum.app) {
+    const { teamId } = await parseHeaderCert({ req, authToken: true });
+    return withTeamLock(teamId, createKey);
+  }
+  return createKey();
 }
 
 export default NextAPI(handler);

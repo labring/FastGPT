@@ -73,7 +73,7 @@ describe('support/openapi/list', () => {
         teamId: owner.teamId,
         tmbId: owner.tmbId,
         createTime: new Date('2024-01-01T00:00:00.000Z'),
-        appId: String(app._id),
+        appId: String(app._id).toUpperCase(),
         apiKey: 'fastgpt-app-secret',
         name: 'legacy app key'
       },

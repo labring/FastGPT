@@ -112,6 +112,7 @@ type ApiKeyScope =
 ```
 
 - 新建显式写 type；应用类型要求有效 appId 且同团队、非删除、支持发布的应用，个人类型拒绝 appId。禁止给缺失 type 的旧记录直接套 personal 默认值。
+- 新建绑定保存鉴权加载出的规范小写 ObjectId；历史大小写字符串按同一个应用匹配，保留原始字段，不拆分数量统计、交接或清理范围。
 - type/appId 创建后不可变，不提供绑定修改、跨应用转移或个人/应用 Key 相互转换；更新接口独立定义可写字段，不能直接继承创建 Schema 的 partial 而允许改绑定。
 - 统一 `resolveApiKeyScope` 供鉴权、列表、CRUD、health、交接与清理使用：先尊重显式 type，仅在 type 缺失时按历史 appId 推断。空值规则与回填一致；非法类型、非法绑定一律失败。
 - 历史 appName 只作兼容展示；应用归属和权限以真实 appId 查询为准。历史 tagIds 保留，个人标签列表、计数、修改与清理仅处理 personal Key。
@@ -178,6 +179,8 @@ authAppApiKey?: boolean; // 接受应用 Key，默认 false
 创建、复制、修改、删除及交接均记录实际操作者、Key 记录 ID、类型、应用 ID；交接另记录 from/to tmbId。日志和审计中不写 Key 明文。所有新增/修改入参通过 `parseApiInput`，契约与 OpenAPI 描述同步，中英日韩页面文案走现有 i18n。
 
 ### 4. 转交和清理：复用事务与团队锁
+
+应用 Key 的创建也共用团队锁；成员权限、应用管理权限复查、额度统计与插入都在锁内执行，防止成员交接后写入遗漏交接的新 Key。
 
 1. `removeUserFromTeam` 沿用团队锁和 Mongo session；先完成离职成员的应用所有权转移。
 2. 读取该成员剩余的应用 Key，按实际绑定应用当前 owner 分组；检查接收成员 active、同团队、具有应用所有权，再条件更新 tmbId。

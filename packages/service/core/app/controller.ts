@@ -11,7 +11,7 @@ import { MongoEvaluation } from './evaluation/evalSchema';
 import { removeEvaluationJob } from './evaluation/mq';
 import { MongoOutLink } from '../../support/outLink/schema';
 import { MongoOpenApi } from '../../support/openapi/schema';
-import { getOpenApiTypeFilter } from '../../support/openapi/utils';
+import { getOpenApiTypeFilter, getOpenApiAppIdFilter } from '../../support/openapi/utils';
 import { ApiKeyTypeEnum } from '@fastgpt/global/support/openapi/constants';
 import { MongoAppVersion } from './version/schema';
 import { MongoChatInputGuide } from '../chat/inputGuide/schema';
@@ -284,7 +284,7 @@ export const cleanupAppDirectRefs = async ({
 
   // 应用凭证随绑定应用删除，不能解除绑定后提升为个人凭证。
   await MongoOpenApi.deleteMany(
-    { teamId, ...getOpenApiTypeFilter(ApiKeyTypeEnum.app), appId: { $in: appIds } },
+    { teamId, ...getOpenApiTypeFilter(ApiKeyTypeEnum.app), appId: getOpenApiAppIdFilter(appIds) },
     { session }
   );
   // 删除分享链接

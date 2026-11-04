@@ -13,7 +13,11 @@ import {
 } from '@fastgpt/global/openapi/support/openapi/api';
 import type { OpenApiSchema } from '@fastgpt/global/support/openapi/type';
 import { ApiKeyTypeEnum } from '@fastgpt/global/support/openapi/constants';
-import { getOpenApiTypeFilter, resolveApiKeyScope } from '@fastgpt/service/support/openapi/utils';
+import {
+  getOpenApiTypeFilter,
+  getOpenApiAppIdFilter,
+  resolveApiKeyScope
+} from '@fastgpt/service/support/openapi/utils';
 import { authAppByTmbId } from '@fastgpt/service/support/permission/app/auth';
 import { ManagePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { getTeamMemberMap } from '@fastgpt/service/support/user/team/utils';
@@ -119,7 +123,7 @@ async function handler(
   const findResponse = await MongoOpenApi.find({
     teamId,
     ...getOpenApiTypeFilter(type),
-    ...(type === ApiKeyTypeEnum.app ? { appId } : { tmbId }),
+    ...(type === ApiKeyTypeEnum.app ? { appId: getOpenApiAppIdFilter([appId!]) } : { tmbId }),
     ...(tags && tags.length > 0
       ? {
           tagIds: {

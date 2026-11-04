@@ -8,6 +8,15 @@ import { MongoResourcePermission } from '@fastgpt/service/support/permission/sch
 import { getFakeUsers } from '@test/datas/users';
 import { Call } from '@test/utils/request';
 import { beforeEach, describe, it, expect, vi } from 'vitest';
+import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
+
+const lock = vi.hoisted(() => ({ beforeCreate: undefined as undefined | (() => Promise<void>) }));
+vi.mock('@fastgpt/service/support/user/lock', () => ({
+  withTeamLock: vi.fn(async (_teamId, fn) => {
+    await lock.beforeCreate?.();
+    return fn();
+  })
+}));
 
 const mockAppEnv = vi.hoisted(() => ({
   OPENAPI_KEY_MAX_COUNT: 100
@@ -20,6 +29,7 @@ vi.mock('@/env', () => ({
 describe('support/openapi/create', () => {
   beforeEach(() => {
     mockAppEnv.OPENAPI_KEY_MAX_COUNT = 100;
+    lock.beforeCreate = undefined;
   });
 
   it('creates personal and app keys with explicit immutable types', async () => {
@@ -63,7 +73,7 @@ describe('support/openapi/create', () => {
       auth: users.members[1],
       body: {
         type: 'app',
-        appId: String(app._id),
+        appId: String(app._id).toUpperCase(),
         name: 'legacy appId input key',
         limit: {
           maxUsagePoints: 1000
@@ -80,6 +90,57 @@ describe('support/openapi/create', () => {
     }).lean();
     expect(legacyInputKey?.appId).toBe(String(app._id));
     expect(legacyInputKey?.type).toBe('app');
+  });
+
+  it('counts historical uppercase bindings against the same application quota', async () => {
+    const { owner } = await getFakeUsers();
+    const app = await MongoApp.create({
+      teamId: owner.teamId,
+      tmbId: owner.tmbId,
+      name: 'quota app',
+      type: 'simple'
+    });
+    await MongoOpenApi.collection.insertOne({
+      teamId: app.teamId,
+      tmbId: app.tmbId,
+      appId: String(app._id).toUpperCase(),
+      apiKey: 'legacy-uppercase-quota'
+    });
+    mockAppEnv.OPENAPI_KEY_MAX_COUNT = 1;
+    const result = await Call(createapi.default, {
+      auth: owner,
+      body: { type: 'app', appId: String(app._id), name: 'over quota' }
+    });
+    expect(result.error).toBeDefined();
+    expect(await MongoOpenApi.countDocuments({ teamId: owner.teamId })).toBe(1);
+  });
+
+  it('rechecks membership inside the team lease after a completed handover', async () => {
+    const users = await getFakeUsers(1);
+    const member = users.members[0];
+    await MongoResourcePermission.create({
+      resourceType: 'team',
+      teamId: member.teamId,
+      resourceId: null,
+      tmbId: member.tmbId,
+      permission: TeamApikeyCreatePermissionVal
+    });
+    const app = await MongoApp.create({
+      name: 'owned app',
+      type: 'simple',
+      teamId: member.teamId,
+      tmbId: member.tmbId
+    });
+    lock.beforeCreate = async () => {
+      await MongoApp.updateOne({ _id: app._id }, { $set: { tmbId: users.owner.tmbId } });
+      await MongoTeamMember.updateOne({ _id: member.tmbId }, { $set: { status: 'leave' } });
+    };
+    const res = await Call(createapi.default, {
+      auth: member,
+      body: { type: 'app', appId: String(app._id), name: 'late key' }
+    });
+    expect(res.error).toBeDefined();
+    expect(await MongoOpenApi.countDocuments({ appId: String(app._id) })).toBe(0);
   });
 
   it('team owner can create global APIKey with authProxy enabled', async () => {

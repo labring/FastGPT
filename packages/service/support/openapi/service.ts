@@ -5,7 +5,7 @@ import type { ClientSession } from '../../common/mongo';
 import { MongoApp } from '../../core/app/schema';
 import { MongoTeamMember } from '../user/team/teamMemberSchema';
 import { MongoOpenApi } from './schema';
-import { getOpenApiTypeFilter } from './utils';
+import { getOpenApiTypeFilter, getOpenApiAppIdFilter } from './utils';
 import { addAuditLog } from '../user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 
@@ -30,7 +30,7 @@ export const transferAppApiKeys = async ({
       teamId,
       ...getOpenApiTypeFilter(ApiKeyTypeEnum.app),
       tmbId: { $in: fromTmbIds },
-      ...(appIds ? { appId: { $in: appIds } } : {})
+      ...(appIds ? { appId: getOpenApiAppIdFilter(appIds) } : {})
     },
     '_id name appId tmbId',
     { session }
@@ -49,7 +49,7 @@ export const transferAppApiKeys = async ({
   const ownerIds = new Set(owners.map((owner) => String(owner._id)));
   const changes: ApiKeyAuditParams[] = [];
   for (const key of keys) {
-    const nextOwner = appMap.get(key.appId!);
+    const nextOwner = appMap.get(key.appId!.toLowerCase());
     if (!nextOwner || !ownerIds.has(nextOwner)) throw new Error('Application Key owner is invalid');
     if (nextOwner === String(key.tmbId)) continue;
     const result = await MongoOpenApi.updateOne(
@@ -62,7 +62,7 @@ export const transferAppApiKeys = async ({
       keyId: String(key._id),
       keyName: key.name,
       keyType: ApiKeyTypeEnum.app,
-      appId: key.appId,
+      appId: key.appId!.toLowerCase(),
       fromTmbId: String(key.tmbId),
       toTmbId: nextOwner
     });

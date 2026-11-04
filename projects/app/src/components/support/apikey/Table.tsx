@@ -497,7 +497,7 @@ const ApiKeyTable = ({
             : accountTitleTextStyles)}
         >
           {isPublishMode
-            ? `${t(isAppKey ? 'apikey:app_key' : 'apikey:personal_key')} (${apiKeys.length})`
+            ? `${isAppKey ? t('apikey:app_key') : t('apikey:personal_key')} (${apiKeys.length})`
             : `${t('account:api_key')} (${apiKeys.length})`}
         </Box>
         <Flex alignItems={'center'} gap={2} ml={3}>

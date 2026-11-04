@@ -21,7 +21,7 @@ const API = ({ appId }: { appId: string }) => {
         </TabList>
       </Tabs>
       <Box px={6} pt={3} color="myGray.600" fontSize="sm">
-        {t(keyType === ApiKeyTypeEnum.app ? 'apikey:app_key_tip' : 'apikey:personal_key_tip')}
+        {keyType === ApiKeyTypeEnum.app ? t('apikey:app_key_tip') : t('apikey:personal_key_tip')}
       </Box>
       <Box as="details" mx={6} mt={2} fontSize="sm">
         <Box as="summary" cursor="pointer">

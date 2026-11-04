@@ -10,7 +10,7 @@ import type { FilterQuery } from 'mongoose';
  */
 export const resolveApiKeyScope = (record: { type?: unknown; appId?: unknown }): ApiKeyScope => {
   const hasAppId = record.appId !== undefined && record.appId !== null && record.appId !== '';
-  return ApiKeyScopeSchema.parse({
+  const scope = ApiKeyScopeSchema.parse({
     type:
       record.type === undefined
         ? hasAppId
@@ -19,6 +19,7 @@ export const resolveApiKeyScope = (record: { type?: unknown; appId?: unknown }):
         : record.type,
     ...(hasAppId ? { appId: record.appId } : {})
   });
+  return scope.type === ApiKeyTypeEnum.app ? { ...scope, appId: scope.appId.toLowerCase() } : scope;
 };
 
 /** 列表、限额、标签和清理统一兼容尚未完成回填的记录，不将异常显式类型纳入个人集合。 */
@@ -28,4 +29,12 @@ export const getOpenApiTypeFilter = (type: ApiKeyTypeEnum): FilterQuery<OpenApiS
     type === ApiKeyTypeEnum.personal
       ? { $in: [null, ''] }
       : { $type: 'string', $regex: /^[a-fA-F0-9]{24}$/ }
+});
+
+/** 旧绑定为 String 且可能含大写；按 ObjectId 语义匹配，保留原字段而不漏掉历史 Key。 */
+export const getOpenApiAppIdFilter = (appIds: string[]) => ({
+  $in: appIds.map((id) => {
+    if (!/^[a-fA-F0-9]{24}$/.test(id)) throw new Error('Invalid application ID');
+    return new RegExp(`^${id}$`, 'i');
+  })
 });

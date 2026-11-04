@@ -6,7 +6,11 @@ import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { MongoOpenApi } from '@fastgpt/service/support/openapi/schema';
-import { resolveApiKeyScope, getOpenApiTypeFilter } from '@fastgpt/service/support/openapi/utils';
+import {
+  resolveApiKeyScope,
+  getOpenApiTypeFilter,
+  getOpenApiAppIdFilter
+} from '@fastgpt/service/support/openapi/utils';
 import { transferAppApiKeys } from '@fastgpt/service/support/openapi/service';
 import { getAppByApiKey } from '@fastgpt/service/support/openapi/auth';
 import { getFakeUsers } from '@test/datas/users';
@@ -148,6 +152,31 @@ describe('application API key boundaries', () => {
     expect(String(result.chat?.tmbId)).toBe(owner.tmbId);
     expect(result.tmbId).toBe(member.tmbId);
     expect(result.app?.permission.isOwner).toBe(false);
+  });
+  it('legacy uppercase bindings keep ObjectId semantics through query, handover and deletion', async () => {
+    const { owner, member, appId, appKey } = await fixture();
+    const stored = appId.toUpperCase();
+    await MongoOpenApi.updateOne({ _id: appKey._id }, { $set: { appId: stored } });
+    expect(resolveApiKeyScope({ appId: stored })).toEqual({ type: 'app', appId });
+    expect(
+      await MongoOpenApi.countDocuments({
+        teamId: owner.teamId,
+        ...getOpenApiTypeFilter(ApiKeyTypeEnum.app),
+        appId: getOpenApiAppIdFilter([appId])
+      })
+    ).toBe(1);
+    const changes = await transferAppApiKeys({
+      teamId: owner.teamId,
+      fromTmbIds: [member.tmbId],
+      appIds: [appId],
+      session: undefined as any
+    });
+    expect(changes[0]).toMatchObject({ appId, toTmbId: owner.tmbId });
+    expect((await MongoOpenApi.findById(appKey._id).lean())?.appId).toBe(stored);
+    const { cleanupAppDirectRefs } = await import('@fastgpt/service/core/app/controller');
+    await cleanupAppDirectRefs({ teamId: owner.teamId, appIds: [appId] });
+    expect(await MongoOpenApi.exists({ _id: appKey._id })).toBeNull();
+    expect(await MongoOpenApi.countDocuments({ type: 'personal' })).toBe(1);
   });
   it('handover changes only ownership for selected apps and skips other members keys', async () => {
     const { owner, member, appId, appKey } = await fixture();
