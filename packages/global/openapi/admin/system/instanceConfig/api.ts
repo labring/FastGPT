@@ -38,7 +38,7 @@ export type GetDomainConfigResponse = z.infer<typeof GetDomainConfigResponseSche
  * API: 更新一个或多个 Domain 的稀疏覆盖配置
  * Route: POST /api/admin/system/config/update
  * Method: POST
- * Description: 一次请求、一个事务保存一个或多个配置域；支持同时提交套餐配置，任意域冲突则整体回滚
+ * Description: 一次请求、一个事务保存一个或多个配置域；商业版支持同时提交套餐，社区版携带套餐返回 403，任意域冲突则整体回滚
  * Tags: ['Admin', 'InstanceConfig', 'Write']
  * ============================================================================ */
 
@@ -58,7 +58,7 @@ export const UpdateDomainConfigBodySchema = z.object({
     description: '待保存的配置域列表，任意一项冲突则整体回滚'
   }),
   subPlans: z.record(z.string(), z.unknown()).optional().meta({
-    description: '与配置域同事务保存的套餐配置'
+    description: '仅商业版支持，与配置域同事务保存；社区版携带此字段（包括空对象）返回 403'
   })
 });
 export type UpdateDomainConfigBody = z.infer<typeof UpdateDomainConfigBodySchema>;
@@ -101,7 +101,7 @@ export const AdminInstanceConfigPath: OpenAPIPath = {
     post: {
       summary: '更新一个或多个 Domain 的实例配置',
       description:
-        '一次请求、一个事务保存一个或多个配置域；支持同时提交套餐配置，任意域冲突则整体回滚',
+        '一次请求、一个事务保存一个或多个配置域；仅商业版可同时提交套餐，任意域冲突则整体回滚',
       tags: [DevApiTagsMap.adminSettings],
       requestBody: {
         content: {
@@ -118,6 +118,9 @@ export const AdminInstanceConfigPath: OpenAPIPath = {
               schema: UpdateDomainConfigResponseSchema
             }
           }
+        },
+        403: {
+          description: '部署版本不允许提交的配置字段，或社区版请求携带了 subPlans（包括空对象）'
         }
       }
     }

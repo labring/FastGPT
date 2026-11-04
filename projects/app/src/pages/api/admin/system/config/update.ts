@@ -43,6 +43,14 @@ async function handler(
 
   // 1. 服务端版本边界：当前部署版本不允许的字段直接拒绝
   const edition = getServiceEdition();
+  // 套餐不属于实例配置的 11 个域，必须单独校验；包含空对象也代表替换套餐的写入意图。
+  // 在读取旧站点配置或开启事务之前拒绝，保证同批普通配置也不会被部分保存。
+  if (edition === 'community' && subPlans !== undefined) {
+    throw new ApiHttpError(
+      403,
+      'Edition boundary violation: subPlans is only available in pro edition'
+    );
+  }
   for (const item of items) {
     const notAllowedKeys = findOverridesNotAllowedByEdition(item.domain, item.overrides, edition);
     if (notAllowedKeys.length > 0) {

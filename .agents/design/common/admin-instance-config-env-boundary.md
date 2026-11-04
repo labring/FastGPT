@@ -1,6 +1,6 @@
-# Admin 实例配置与环境变量边界草案
+# Admin 实例配置与环境变量边界
 
-> 状态：讨论稿，暂不实施。
+> 状态：已实现，2026-11-04 逐字段复核。第 13 章是当前版本、页面与 API 契约；前文保留迁移背景与早期盘点，不应把历史 ENV 名视为当前运行期来源。
 >
 > 目标：为 `/admin` 配置中心和运行时配置加载确定边界。当前阶段不做加密，进入 MongoDB 的敏感字段暂时明文保存，但配置注册表必须保留 `secret` 元数据，为后续加密迁移保留空间。
 
@@ -40,14 +40,13 @@
 | `SERVICE` | 否 | 否（第一阶段） | 独立子服务自己的端口、进程池、OS 隔离和启动认证 |
 | `BUILD` | 否 | 否 | 构建期、测试期、迁移脚本和操作系统继承变量 |
 
-第 10 章是当前完整的变量盘点和迁移对照表。后续新增环境变量时，必须先在该表
-中归类，再决定是否增加 Admin 配置字段；不能只修改某一个 `env.ts`。
+第 10 章保留迁移前的变量盘点及方案背景，当前字段清单以第 13.6 节为准。后续新增环境变量时，必须先确认 ENV／实例配置边界并同步文档，不能只修改某一个 `env.ts`。
 
 ## 2. 目标配置树
 
 ```text
-system_instance_configs（一实例一个 document）
-└── config
+system_instance_configs（按 11 个 Domain 分别保存文档）
+└── 合成后的运行时快照
     ├── site                 站点、品牌和可编辑的公开入口
     ├── auth                 注册、登录和账号策略
     ├── security             安全策略和访问限制
@@ -68,7 +67,7 @@ system_instance_configs（一实例一个 document）
 └── standalone-service       独立进程自身的监听和启动参数
 ```
 
-`config` 中的字段保存当前完整生效值。没有管理员修改的字段也写入默认值，不使用 `overrides` 或 `secretOverrides`。
+每个文档保存 `domain`、稀疏 `overrides`、`explicitDefaultPaths` 与 `revision` 等元数据；完整生效快照由 Schema 默认值与各域覆盖值合成。默认值不要求全量落库，显式清空／恢复默认的意图由 `explicitDefaultPaths` 保留。前文迁移表中的 `config.<domain>.*` 表示合成快照路径，不是当前 Mongo 文档的物理结构。
 
 ## 3. 建议进入 MongoDB 的配置
 
@@ -233,7 +232,7 @@ bootstrapEnvSchema.parse(process.env)
 连接 MongoDB，读取 system_instance_configs
         |
         v
-SystemInstanceConfigSchema.parse(document.config)
+resolveSystemInstanceConfig(overridesByDomain)
         |
         v
 合并 bootstrapEnv + systemInstanceConfig
@@ -435,7 +434,7 @@ MONGODB_URI 环境变量
 
 建议顺序：
 
-1. 先建立配置注册表和一实例一个文档的 Schema，默认值初始化到文档。
+1. 先建立配置注册表及按 Domain 保存稀疏 overrides 的 Schema，以 Schema 默认值合成初始快照。
 2. 先迁移站点、功能开关、认证策略、并发限制等无外部连接的配置。
 3. 再迁移 PDF/分块、AI Proxy、插件和 Agent Sandbox 等外部提供商配置。
 4. 最后迁移对象存储和向量数据库，并把初始化从 import 阶段改为读取配置后的显式初始化。
@@ -445,8 +444,8 @@ MONGODB_URI 环境变量
 
 以下内容已经按本轮讨论确定，后续实现不应再次反向设计：
 
-1. `system_instance_configs` 使用“一实例一个完整大文档”，不使用 `namespace`、`overrides`、`secretOverrides` 或按配置分片的多个文档。
-2. 未被管理员修改的字段也直接保存默认值；数据库文档始终代表完整的当前生效快照。
+1. `system_instance_configs` 按 11 个 Domain 分别保存文档，每个文档有独立 revision，配置内容保存为稀疏 overrides。
+2. 未修改字段由 Schema 默认值补齐；数据库保存覆盖值，运行时加载后发布完整快照。
 3. 配置校验采用独立的 `SystemInstanceConfigSchema`，不把 MongoDB 文档直接塞入 `createEnv({ runtimeEnv })`；启动环境和实例配置分别校验。
 4. 当前阶段敏感字段允许明文存储，但必须保留 `secret: true` 元数据，并在查询、审计、日志和导出时脱敏。
 5. MongoDB、Redis、对象存储、向量数据库的连接信息，以及安全根、跨进程密钥、部署域名拓扑继续通过环境变量注入。
@@ -454,9 +453,9 @@ MONGODB_URI 环境变量
 7. 开源版/商业版使用注册表进行菜单、字段、读写 API 和运行时消费的统一过滤；开源版采用隐藏（`hide`）而不是只展示禁用状态。
 8. `PRO_URL`、`PRO_TOKEN` 当前继续作为环境变量，作为商业服务和授权边界，不作为普通 Admin 配置项。
 
-## 10. 完整环境变量与实例配置对照
+## 10. 历史环境变量盘点与迁移背景
 
-本章是当前代码的变量盘点，覆盖以下来源：
+本章保留迁移前盘点，部分目标位置已在后续讨论中调整，不作为当前配置或导入契约。当前实例字段见第 13.6 节；实际兼容导入以 `projects/app/src/migration/tasks/4180/20260928_migrate_instance_configs/env.ts` 和 `service.ts` 为准。历史盘点覆盖以下来源：
 
 - `packages/service/env.ts`：主站共享服务配置；
 - `projects/app/src/env.ts`：App 配置；
@@ -494,7 +493,7 @@ BUILD    -> 构建、测试、脚本或操作系统继承变量，不属于运�
 | `PAY_FORM_URL` | `config.commercial.payFormUrl` | 空字符串表示未配置 |
 | `SHOW_COUPON` | `config.commercial.showCoupon` | 受 edition 过滤 |
 | `SHOW_DISCOUNT_COUPON` | `config.commercial.showDiscountCoupon` | 受 edition 过滤 |
-| `AGENT_SANDBOX_FREE_TIP` | `config.commercial.agentSandboxFreeTip` | 受 edition 过滤 |
+| `AGENT_SANDBOX_FREE_TIP` | 已废弃，改用 ENV `AGENT_SANDBOX_SHOW_FREE_TIP` | 不进入实例配置表单 |
 | `HIDE_CHAT_COPYRIGHT_SETTING` | `config.feature.hideChatCopyrightSetting` | 站点功能开关 |
 
 #### 安全与功能开关
@@ -997,7 +996,7 @@ Server、Agent Sandbox Proxy 和 IDE Agent 的运行时变量。为了避免“�
 1. 接受上述 Admin 菜单树作为下一轮设计基线；原「概览 → 许可证」折叠分组压平为单级菜单「系统概览」（现有管理员主页），页内顶部展示 app 版本信息（原独立“系统版本”菜单项已取消）。
 2. 数据面板使用 Tab 组织全局统计、流量、活跃、付费和成本。
 3. 通知管理后续更名为运营管理；系统配置拆细，子服务配置作为独立菜单。
-4. 单实例配置采用一个完整 MongoDB document，默认值直接落库，不使用 overrides。
+4. 实例配置按 Domain 稀疏保存 overrides，跨域保存使用同一事务；各域携带独立 revision。
 5. 必须保留在环境变量中的基础设施、安全根、部署拓扑和独立进程参数不因为有默认值而迁移到 Admin。
 6. 开源版对商业菜单和字段采用隐藏策略，且后端 API 和运行时也必须过滤。
 7. 当前阶段敏感配置暂不加密，但仍按 secret 字段脱敏和审计。
@@ -1005,7 +1004,7 @@ Server、Agent Sandbox Proxy 和 IDE Agent 的运行时变量。为了避免“�
 9. `/admin` 入口页按部署形态与授权状态分发默认落地页：社区版固定 `/admin/license`；商业版 License 可授权时 `/admin/dashboard`，未激活或已过期时 `/admin/license`。导航栏“配置”入口统一指向 `/admin`。
 10. 「资源限制」与「性能与并发」合并为「限制与并发」（新增「核心配置」页同时落地）；「向量检索策略」页删除：量化等级与语言识别引擎改由环境变量提供，HNSW 索引参数并入限制与并发，向量库连接为部署拓扑不再单独成页。
 11. 「登录防护」由安全策略页移入账号与登录页；跨页字段搬迁后，页面保存改用「与库中现值合并的局部提交」，避免整域覆盖把同域其它页面的配置重置为默认值。
-12. 英文短信模板全站去除，页面只保留中文模板：支付配置页去掉 5 组账单通知英文模板，账号与登录页去掉 8 项（登录 / 注册 / 找回密码 / 修改密码 / 绑定通知 + 注销申请 / 注销提醒 / 当日注销）。字段与 registry 条目暂留（仅页面移除），真正删除需随 schema 清理一并处理。
+12. 英文短信模板全站去除，页面只保留中文模板：支付配置页去掉 5 组账单通知英文模板，账号与登录页去掉 8 项（登录 / 注册 / 找回密码 / 修改密码 / 绑定通知 + 注销申请 / 注销提醒 / 当日注销）。英文模板字段已从 Schema 和 registry 清理，当前只登记中文模板。
 
 ### 仍待确认
 
@@ -1020,10 +1019,10 @@ Server、Agent Sandbox Proxy 和 IDE Agent 的运行时变量。为了避免“�
 ### 13.1 单一数据源与防回退原则（Single Source of Truth）
 
 1. **废除运行时兜底回退**：全面消除 `getSystemInstanceConfig().x ?? serviceEnv.X` 或 `|| serviceEnv.X` 级联回退代码。
-2. **环境变量角色转为初始种子（Seed）**：旧环境变量仅在系统首次启动、且数据库中尚无配置记录时，通过迁移程序写入 `system_instance_configs` 默认文档。一旦写入完成，MongoDB 成为运行时的唯一权威来源。
+2. **环境变量角色转为初始种子（Seed）**：旧环境变量只用于迁移时初始化缺失域或回填新增字段，不覆盖已有 overrides 或显式默认意图；完成导入后，运行期只读取实例配置快照。
 3. **保留在环境变量中的配置**：
    - 基础设施与拓扑：MongoDB、Redis、VectorDB、S3 存储桶连接参数、端口与外部网关。
-   - 安全根密钥：`ROOT_KEY`、`TOKEN_KEY`、`SANDBOX_JWT_SECRET` 等。
+   - 安全根密钥：`ROOT_KEY`、`FILE_TOKEN_KEY`、`INVOKE_TOKEN_SECRET`、`AGENT_SANDBOX_PROXY_SECRET` 等。
    - 部署与构建：`SHOW_GIT`（Git 提交信息展示开关）、构建路径。
    - 实验性与未进表单配置：`DATASET_SYNONYM_ENABLED`（同义词开关暂留 ENV，不进实例配置表单）。
 
@@ -1036,17 +1035,17 @@ Server、Agent Sandbox Proxy 和 IDE Agent 的运行时变量。为了避免“�
    - 优惠券与折扣券入口：`commercial.showCoupon`、`showDiscountCoupon`
    - 对公充值表单：`commercial.payFormUrl`
    - 企业微信服务商售卖运营字段：`auth.loginProviders.wecom` 中的服务商套件凭据（`providerSecret`、`buyerUserId`、`basicVersionId`、`advancedVersionId`、`paySecret`）
-   - 免费团队清理通知模板：`commercial.billingNotify.freeClean`
-   - 沙箱限时免费营销提示：`commercial.agentSandboxFreeTip`
+   - 免费团队清理通知模板：`commercial.billingNotify.freeClean.zh`
+   - 沙箱限时免费提示继续只读 `AGENT_SANDBOX_SHOW_FREE_TIP` 环境变量，不登记为实例配置字段。
 3. **私有化保留的商业化配置**：
    - 支付通道配置（微信支付、支付宝）
    - 套餐管理、积分充值包、用量限额
-   - 内部额度不足提醒模板：`commercial.billingNotify.insufficientBalance`
+   - 内部额度不足提醒模板：`commercial.billingNotify.lackOfPoints.zh`
    - 外部工单与企业认证入口：由实际服务配置（如 `WORKORDER_BASE_URL` 或 `hasEnterpriseAuthServiceConfig()`）决定展示，杜绝无配置时根据 `PRO_URL` 强行露出。
 
 ### 13.3 动态菜单自动隐藏规范（Dynamic Menu Auto-Hide）
 
-1. **路由与字段映射**：在 `packages/global/common/system/config/pageFields.ts` 中维护 `adminConfigPageFieldsMap`，声明每个 `/admin/settings/*` 页面包含的配置字段列表。
+1. **路由与字段映射**：在 `packages/global/common/system/config/pageFields.ts` 中维护 `adminConfigPageFieldsMap`，登记每个配置页面真实的可编辑控件和只读地址；仅 API 字段不放入页面映射，同一字段可在多个页面登记。
 2. **可见性统计与页面过滤**：
    - 使用 `countPageVisibleFields(route, { edition, enableSaasAdminConfig })` 计算页面可见字段数。
    - 若某页面可见字段数为 0，则该页面在当前版本/环境下自动隐藏。
@@ -1055,35 +1054,296 @@ Server、Agent Sandbox Proxy 和 IDE Agent 的运行时变量。为了避免“�
 ### 13.4 单事务统一保存架构（`/api/admin/system/config/update`）
 
 1. **统一端点**：废弃并移除 `batchUpdate.ts`，统一收敛至 `POST /api/admin/system/config/update`。
-2. **原子性多域提交**：入参支持 `items: Array<{ domain, config }>` 与可选的 `subPlans`，在单个 MongoDB 会话事务中执行校验、锁检测和保存，避免跨域页面（如账号与安全）多次请求引发并发冲突。
+2. **原子性多域提交**：入参支持 `items: Array<{ domain, expectedRevision, overrides }>` 与可选的 `subPlans`，在单个 MongoDB 会话事务中执行校验、锁检测和保存，避免跨域页面（如账号与安全）多次请求引发并发冲突。
 3. **保存与重载解耦**：数据库事务提交成功即代表操作完成并返回成功；后台工作进程配置重载采用非阻塞方式触发，重载失败记录告警日志，不使已入库的保存操作报错。
-4. **乐观锁机制**：前端携带 `revision`，发生并发修改时返回 `409 Conflict`，明确提示管理员刷新最新配置，不进行静默重试。
+4. **乐观锁机制**：前端携带 `expectedRevision`，冲突时返回 `409 Conflict`，仅提示管理员人工刷新；保留当前表单和旧 revision，不自动 refetch、不换版本号重试旧表单。
 
 ### 13.5 运行时读写分离（`runtime.ts`）
 
 创建 `packages/service/common/system/systemInstanceConfig/runtime.ts`，将轻量级内存快照读取（`getSystemInstanceConfig()`、`publishSystemInstanceConfigSnapshot()`）与复杂的数据库持久化控制器解耦，消除全局业务代码对数据库驱动的直接依赖。
 
-### 13.6 核心配置字段与版本支持矩阵
+### 13.6 逐字段版本、表单与页面映射
 
-| 配置路径 | 字段含义 | 社区版 | 商业版 (私有化) | 商业版 (SaaS) | 说明 |
-| :--- | :--- | :---: | :---: | :---: | :--- |
-| `site.title` | 站点名称 | ✅ | ✅ | ✅ | 品牌定制 |
-| `site.favicon` / `logo` | 站点图标 | ✅ | ✅ | ✅ | 品牌定制 |
-| `auth.register.methods` | 注册方式（邮箱/手机等） | ✅ | ✅ | ✅ | 基础认证 |
-| `auth.loginProviders.oauth` | 通用 OIDC / OAuth2 登录 | ❌ | ✅ | ✅ | 企业 SSO |
-| `auth.loginProviders.wecom` | 企微内部自建应用登录 | ❌ | ✅ | ✅ | 企业内部协同 |
-| `auth.loginProviders.wecom.providerSecret` 等 | 企微第三方应用服务商套件 | ❌ | ❌ | ✅ | 仅 SaaS 运营 |
-| `security.maxLoginSession` | 最大多端登录数量 | ✅ | ✅ | ✅ | 会话安全 |
-| `security.useIpLimit` | IP 请求频率限制 | ✅ | ✅ | ✅ | 防刷限制 |
-| `security.allowedOrigins` | 跨域允许来源列表 | ✅ | ✅ | ✅ | CORS 安全 |
-| `feature.app.chatHistory` 等 | 聊天记录保存等核心功能开关 | ✅ | ✅ | ✅ | 功能控制 |
-| `commercial.pay.channel` | 支付通道（微信/支付宝） | ❌ | ✅ | ✅ | 私有化支持多租户自费/充值 |
-| `commercial.showCoupon` | 优惠券展示入口 | ❌ | ❌ | ✅ | 仅 SaaS 营销运营 |
-| `commercial.payFormUrl` | 大额对公汇款登记表单 | ❌ | ❌ | ✅ | 仅 SaaS 运营 |
-| `commercial.agentSandboxFreeTip` | 沙箱限时免费营销文案 | ❌ | ❌ | ✅ | 仅 SaaS 营销 |
-| `commercial.billingNotify.insufficientBalance` | 余额不足告警模板 | ❌ | ✅ | ✅ | 私有化团队限额提醒 |
-| `commercial.billingNotify.freeClean` | 免费账号不活跃清理通知 | ❌ | ❌ | ✅ | 仅 SaaS 运营 |
-| `performance.workflow.*` | 工作流最大循环次数与并发度 | ✅ | ✅ | ✅ | 资源安全基准 |
-| `providers.documentParse` | PDF 与文档解析 Provider | ✅ | ✅ | ✅ | 包含开源与商业解析扩展 |
-| `subservice.codeSandbox` | 代码沙箱客户端连接配置 | ✅ | ✅ | ✅ | 统一动态配置 |
-| `subservice.agentSandbox` | 智能体沙箱配额与阈值 | ❌ | ✅ | ✅ | 商业版高级隔离环境 |
+本表逐项覆盖注册表的 **207 个配置叶子**，不使用通配符或虚构的聚合字段。字段定义与默认值以 `schemas/*.ts` 为准，版本、敏感项和 SaaS 显示条件以 `registry.ts` 为准；页面归属与 `pageFields.ts`、实际表单保持一致。
+
+- 社区版／商业版的勾选表示配置 API 的读写权限；商业版按是否配置 `PRO_URL` 判定，不依赖 License 是否激活。
+- “仅 SaaS 显示”表示 `ENABLE_SAAS_ADMIN_CONFIG=true` 才显示对应控件，**不收紧商业版 API 权限**。标为“仅 API”的字段当前没有新表单，开启显示开关也不会产生控件。
+- 页面路径指当前实例配置表单；“只读”仅展示根据地址生成的健康检查链接，不能编辑地址。旧 `basic/user` 页面仍写旧 `system_configs`，不算本表的有效编辑入口。
+- 全部字段属于数据库实例配置；“仅 API”不表示回落 ENV。保留在 ENV 的连接、密钥根及部署参数不混入本表。
+- “业务未接入”表示注册／表单存在但当前消费者未使用；版本勾选不代表热更新已生效，也不代表该字段应继续保留。
+
+<!-- instance-config-field-matrix:start -->
+
+#### 站点（site）
+
+| 配置字段 | 用途 | 社区版 | 商业版 | 仅 SaaS 显示 | 敏感项 | 当前管理入口 |
+| --- | --- | :---: | :---: | :---: | :---: | --- |
+| `site.name` | 站点名称 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/site` |
+| `site.description` | 站点描述 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/site` |
+| `site.favicon` | 站点图标 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/site` |
+| `site.marketplaceUrl` | 插件市场地址 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/site` |
+| `site.docUrl` | 使用帮助文档地址 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/site` |
+| `site.openApiDocUrl` | OpenAPI 文档地址 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/site` |
+| `site.openApiPrefix` | OpenAPI Key 前缀 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/core` |
+| `site.concatMd` | 联系我们弹窗内容 (Markdown) | ✅ | ✅ | — | — | 可编辑：`/admin/settings/site` |
+| `site.navbarItems` | 自定义导航链接 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/site` |
+| `site.appTemplateCourse` | 应用模板使用教程地址 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/site` |
+| `site.loginGuideDocUrl` | 登录引导帮助文档地址 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/site` |
+| `site.customApiDomain` | 自定义 API 域名 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/site` |
+| `site.customSharePageDomain` | 自定义分享链接域名 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/site` |
+| `site.scripts` | 第三方脚本列表 | ✅ | ✅ | — | — | 仅 API（暂无新表单） |
+
+#### 账号与登录（auth）
+
+| 配置字段 | 用途 | 社区版 | 商业版 | 仅 SaaS 显示 | 敏感项 | 当前管理入口 |
+| --- | --- | :---: | :---: | :---: | :---: | --- |
+| `auth.openApiKeyMaxCount` | OpenAPI Key 数量上限 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
+| `auth.passwordExpiredMonth` | 密码有效周期（月） | ✅ | ✅ | — | — | 可编辑：`/admin/settings/auth` |
+| `auth.wecomLoginAutoRedirect` | 企业微信自动跳转 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/auth` |
+| `auth.defaultTeamBasicPermissionsEnabled` | 新团队默认开启基础权限 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/core` |
+| `auth.teamMode` | 团队模式 | — | ✅ | — | — | 可编辑：`/admin/settings/core` |
+| `auth.fastLogin` | 快捷登录方式 | — | ✅ | — | — | 仅 API（暂无新表单） |
+| `auth.loginProviders.email.smtp` | SMTP 服务地址 | — | ✅ | — | — | 可编辑：`/admin/settings/core` |
+| `auth.loginProviders.email.user` | 发件邮箱账号 | — | ✅ | — | — | 可编辑：`/admin/settings/core` |
+| `auth.loginProviders.email.port` | SMTP 端口 | — | ✅ | — | — | 可编辑：`/admin/settings/core` |
+| `auth.loginProviders.email.secure` | 启用 SSL 加密连接 | — | ✅ | — | — | 可编辑：`/admin/settings/core` |
+| `auth.loginProviders.email.register` | 开放邮箱自助注册 | — | ✅ | — | — | 可编辑：`/admin/settings/core`<br>`/admin/settings/auth` |
+| `auth.loginProviders.sms.login.zh` | 登录验证码 · 中文模板 | — | ✅ | — | — | 可编辑：`/admin/settings/auth` |
+| `auth.loginProviders.sms.register.zh` | 注册验证码 · 中文模板 | — | ✅ | — | — | 可编辑：`/admin/settings/auth` |
+| `auth.loginProviders.sms.resetPassword.zh` | 找回密码 · 中文模板 | — | ✅ | — | — | 可编辑：`/admin/settings/auth` |
+| `auth.loginProviders.sms.changePassword.zh` | 修改密码 · 中文模板 | — | ✅ | — | — | 可编辑：`/admin/settings/auth` |
+| `auth.loginProviders.sms.bindNotification.zh` | 绑定通知 · 中文模板 | — | ✅ | — | — | 可编辑：`/admin/settings/auth` |
+| `auth.loginProviders.phone.accessKeyId` | 阿里云 AccessKeyId | — | ✅ | — | — | 可编辑：`/admin/settings/core` |
+| `auth.loginProviders.phone.signName` | 短信签名 | — | ✅ | — | — | 可编辑：`/admin/settings/core` |
+| `auth.loginProviders.wechat.appId` | 微信服务号 AppId | — | ✅ | — | — | 可编辑：`/admin/settings/auth` |
+| `auth.loginProviders.wecom.suiteId` | SuiteId | — | ✅ | — | — | 可编辑：`/admin/settings/auth` |
+| `auth.loginProviders.wecom.corpId` | 企业 CorpId | — | ✅ | — | — | 可编辑：`/admin/settings/auth` |
+| `auth.loginProviders.github.clientId` | GitHub Client ID | — | ✅ | — | — | 可编辑：`/admin/settings/auth` |
+| `auth.loginProviders.google.clientId` | Google Client ID | — | ✅ | — | — | 可编辑：`/admin/settings/auth` |
+| `auth.loginProviders.microsoft.clientId` | Microsoft Client ID | — | ✅ | — | — | 可编辑：`/admin/settings/auth` |
+| `auth.loginProviders.microsoft.tenantId` | Microsoft Tenant ID | — | ✅ | — | — | 可编辑：`/admin/settings/auth` |
+| `auth.loginProviders.microsoft.customButton` | Microsoft 自定义按钮文案 | — | ✅ | — | — | 可编辑：`/admin/settings/auth` |
+| `auth.loginProviders.dingtalk.clientId` | 钉钉 Client ID | — | ✅ | — | — | 可编辑：`/admin/settings/auth`；业务未接入 |
+| `auth.accountCancellation.enabled` | 开放账号注销 | — | ✅ | — | — | 可编辑：`/admin/settings/auth` |
+| `auth.accountCancellation.cancellationSm.zh` | 注销申请 · 中文模板 | — | ✅ | — | — | 可编辑：`/admin/settings/auth` |
+| `auth.accountCancellation.reminderSm.zh` | 注销提醒 · 中文模板 | — | ✅ | — | — | 可编辑：`/admin/settings/auth` |
+| `auth.accountCancellation.todaySm.zh` | 当日注销 · 中文模板 | — | ✅ | — | — | 可编辑：`/admin/settings/auth` |
+| `auth.loginProviders.wecom.buyerUserId` | 企微买方用户 ID | — | ✅ | ✅ | — | 仅 API（暂无新表单） |
+| `auth.loginProviders.wecom.basicVersionId` | 企微基础版本 ID | — | ✅ | ✅ | — | 仅 API（暂无新表单） |
+| `auth.loginProviders.wecom.advancedVersionId` | 企微高级版本 ID | — | ✅ | ✅ | — | 仅 API（暂无新表单） |
+| `auth.loginProviders.email.pass` | 邮箱授权码 / 密码 | — | ✅ | — | ✅ | 可编辑：`/admin/settings/core` |
+| `auth.loginProviders.phone.accessKeySecret` | 阿里云 AccessKeySecret | — | ✅ | — | ✅ | 可编辑：`/admin/settings/core` |
+| `auth.loginProviders.wechat.appSecret` | 微信服务号 AppSecret | — | ✅ | — | ✅ | 可编辑：`/admin/settings/auth` |
+| `auth.loginProviders.wecom.secret` | SuiteSecret | — | ✅ | — | ✅ | 可编辑：`/admin/settings/auth` |
+| `auth.loginProviders.wecom.token` | Token | — | ✅ | — | ✅ | 可编辑：`/admin/settings/auth` |
+| `auth.loginProviders.wecom.encodingAESKey` | EncodingAESKey | — | ✅ | — | ✅ | 可编辑：`/admin/settings/auth` |
+| `auth.loginProviders.github.secret` | GitHub Client Secret | — | ✅ | — | ✅ | 可编辑：`/admin/settings/auth` |
+| `auth.loginProviders.google.secret` | Google Client Secret | — | ✅ | — | ✅ | 可编辑：`/admin/settings/auth` |
+| `auth.loginProviders.microsoft.secret` | Microsoft Client Secret | — | ✅ | — | ✅ | 可编辑：`/admin/settings/auth` |
+| `auth.loginProviders.dingtalk.secret` | 钉钉 Client Secret | — | ✅ | — | ✅ | 可编辑：`/admin/settings/auth`；业务未接入 |
+| `auth.loginProviders.wecom.providerSecret` | 服务商 Secret | — | ✅ | ✅ | ✅ | 可编辑：`/admin/settings/auth` |
+| `auth.loginProviders.wecom.paySecret` | 企微支付密钥 | — | ✅ | ✅ | ✅ | 仅 API（暂无新表单） |
+
+#### 安全策略（security）
+
+| 配置字段 | 用途 | 社区版 | 商业版 | 仅 SaaS 显示 | 敏感项 | 当前管理入口 |
+| --- | --- | :---: | :---: | :---: | :---: | --- |
+| `security.useIpLimit` | IP 限流保护 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/security` |
+| `security.checkInternalIp` | 内网 IP 访问拦截 (SSRF) | ✅ | ✅ | — | — | 可编辑：`/admin/settings/security` |
+| `security.csrfEnabled` | CSRF 严格校验 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/security` |
+| `security.passwordLoginMinuteLimitCount` | 密码登录分钟限流次数 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/auth` |
+| `security.maxLoginSession` | 最大登录会话数 (Max Sessions) | ✅ | ✅ | — | — | 可编辑：`/admin/settings/auth` |
+| `security.allowedOrigins` | 允许的跨域来源 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/security` |
+| `security.skipFileTypeCheck` | 跳过文件类型检查 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/security` |
+| `security.censor.baiduClientId` | 百度内容审查 ClientId | ✅ | ✅ | — | — | 可编辑：`/admin/settings/security` |
+| `security.censor.customCensorUrl` | 自定义内容审查服务地址 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/security` |
+| `security.workflowHttpNode.ignoreHttpsCertificate` | HTTP 节点忽略 HTTPS 证书校验 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/security` |
+| `security.fileUrlWhitelist` | 外部文件 URL 白名单 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/security` |
+| `security.censor.baiduClientSecret` | 百度内容审查 ClientSecret | ✅ | ✅ | — | ✅ | 可编辑：`/admin/settings/security` |
+
+#### 功能（feature）
+
+| 配置字段 | 用途 | 社区版 | 商业版 | 仅 SaaS 显示 | 敏感项 | 当前管理入口 |
+| --- | --- | :---: | :---: | :---: | :---: | --- |
+| `feature.hideChatCopyrightSetting` | 隐藏聊天版权设置 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/feature` |
+| `feature.multipleDataToBase64` | 发送给模型的多模态内容转换为 base64 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/core` |
+| `feature.agentEngine` | Agent 执行引擎 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/core` |
+| `feature.disableCache` | 关闭运行时缓存 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/feature` |
+| `feature.enableTeamPluginUpload` | 允许团队上传插件 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/feature` |
+| `feature.showDatasetFeishu` | 知识库接入飞书 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/feature` |
+| `feature.showDatasetYuque` | 知识库接入语雀 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/feature` |
+| `feature.showDatasetDingtalk` | 知识库接入钉钉 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/feature` |
+| `feature.showPublishFeishu` | 发布渠道 - 飞书 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/feature` |
+| `feature.showPublishDingtalk` | 发布渠道 - 钉钉 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/feature` |
+| `feature.showPublishWecom` | 发布渠道 - 企业微信 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/feature` |
+| `feature.showPublishOffiaccount` | 发布渠道 - 公众号 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/feature` |
+| `feature.showPublishWechat` | 发布渠道 - 微信客服 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/feature` |
+| `feature.showComplianceCopywriting` | 展示合规文案 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/feature` |
+
+#### 商业与支付（commercial）
+
+| 配置字段 | 用途 | 社区版 | 商业版 | 仅 SaaS 显示 | 敏感项 | 当前管理入口 |
+| --- | --- | :---: | :---: | :---: | :---: | --- |
+| `commercial.showCoupon` | 展示充值优惠券 | — | ✅ | ✅ | — | 可编辑：`/admin/settings/pay` |
+| `commercial.showDiscountCoupon` | 展示满减折扣券 | — | ✅ | ✅ | — | 可编辑：`/admin/settings/pay` |
+| `commercial.payFormUrl` | 企业汇款表单地址 | — | ✅ | ✅ | — | 可编辑：`/admin/settings/pay` |
+| `commercial.payment.wx.appId` | AppId | — | ✅ | — | — | 可编辑：`/admin/settings/pay` |
+| `commercial.payment.wx.mchId` | 商户号 MchId | — | ✅ | — | — | 可编辑：`/admin/settings/pay` |
+| `commercial.payment.wx.serialNo` | 证书序列号 SerialNo | — | ✅ | — | — | 可编辑：`/admin/settings/pay` |
+| `commercial.payment.wx.notifyUrl` | 支付回调地址 | — | ✅ | — | — | 可编辑：`/admin/settings/pay` |
+| `commercial.payment.alipay.appId` | AppId | — | ✅ | — | — | 可编辑：`/admin/settings/pay` |
+| `commercial.payment.alipay.gateway` | 网关地址 | — | ✅ | — | — | 可编辑：`/admin/settings/pay` |
+| `commercial.payment.alipay.endpoint` | 备用 Endpoint | — | ✅ | — | — | 可编辑：`/admin/settings/pay`；业务未接入 |
+| `commercial.payment.alipay.notifyUrl` | 支付回调地址 | — | ✅ | — | — | 可编辑：`/admin/settings/pay`；业务未接入 |
+| `commercial.payment.bank.description` | 对公转账说明文案 | — | ✅ | — | — | 可编辑：`/admin/settings/pay` |
+| `commercial.billingNotify.paymentReceived.zh` | 充值到账 · 中文模板 | — | ✅ | — | — | 可编辑：`/admin/settings/pay`；业务未接入 |
+| `commercial.billingNotify.lackOfPoints.zh` | 余额不足预警 · 中文模板 | — | ✅ | — | — | 可编辑：`/admin/settings/pay` |
+| `commercial.billingNotify.pointsThirtyPercentRemain.zh` | 积分剩余 30% 中文短信模板 | — | ✅ | — | — | 可编辑：`/admin/settings/pay` |
+| `commercial.billingNotify.pointsTenPercentRemain.zh` | 积分即将耗尽 · 中文模板 | — | ✅ | — | — | 可编辑：`/admin/settings/pay` |
+| `commercial.billingNotify.expireSoon.zh` | 套餐即将到期 · 中文模板 | — | ✅ | — | — | 可编辑：`/admin/settings/pay` |
+| `commercial.billingNotify.expired.zh` | 套餐已到期 · 中文模板 | — | ✅ | — | — | 可编辑：`/admin/settings/pay` |
+| `commercial.billingNotify.freeClean.zh` | 免费版知识库清理中文短信模板 | — | ✅ | ✅ | — | 可编辑：`/admin/settings/pay` |
+| `commercial.payment.wx.apiV3Key` | APIv3 密钥 | — | ✅ | — | ✅ | 可编辑：`/admin/settings/pay` |
+| `commercial.payment.wx.privateKey` | 商户私钥 (PEM, 多行文本) | — | ✅ | — | ✅ | 可编辑：`/admin/settings/pay` |
+| `commercial.payment.alipay.appPrivateKey` | 应用私钥 | — | ✅ | — | ✅ | 可编辑：`/admin/settings/pay` |
+| `commercial.payment.alipay.appCertContent` | 应用公钥证书 | — | ✅ | — | ✅ | 可编辑：`/admin/settings/pay` |
+| `commercial.payment.alipay.rootCertContent` | 支付宝根证书 | — | ✅ | — | ✅ | 可编辑：`/admin/settings/pay` |
+| `commercial.payment.alipay.publicCertContent` | 支付宝公钥证书 | — | ✅ | — | ✅ | 可编辑：`/admin/settings/pay` |
+
+#### 资源限制（resource）
+
+| 配置字段 | 用途 | 社区版 | 商业版 | 仅 SaaS 显示 | 敏感项 | 当前管理入口 |
+| --- | --- | :---: | :---: | :---: | :---: | --- |
+| `resource.serviceRequestMaxContentLength` | 服务端请求体上限 (MB) | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
+| `resource.maxFolderDepth` | 最大目录层级深度 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
+| `resource.appFolderMaxAmount` | 应用文件夹数量上限 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
+| `resource.datasetFolderMaxAmount` | 知识库文件夹数量上限 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
+| `resource.uploadFileMaxSize` | 单文件上传体积上限 (MB) | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
+| `resource.uploadFileMaxAmount` | 批量上传文件数量上限 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
+| `resource.systemMaxStringLengthM` | 同步字符串处理最大字符数 (M) | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
+| `resource.exportDatasetLimitMinutes` | 知识库导出冷却时间（分钟） | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
+| `resource.websiteSyncLimitMinuted` | 网站同步冷却时间（分钟） | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
+| `resource.datasetArchive.maxFiles` | 归档下载文件数上限 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
+| `resource.datasetArchive.maxSourceSizeMiB` | 归档源文件总大小上限（MiB） | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
+| `resource.datasetArchive.maxConcurrency` | 归档下载并发上限 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
+| `resource.datasetArchive.prepareTimeoutSeconds` | 归档下载准备超时（秒） | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
+
+#### 性能与并发（performance）
+
+| 配置字段 | 用途 | 社区版 | 商业版 | 仅 SaaS 显示 | 敏感项 | 当前管理入口 |
+| --- | --- | :---: | :---: | :---: | :---: | --- |
+| `performance.workflow.maxRunTimes` | 单次最大运行次数 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
+| `performance.workflow.maxLoopTimes` | 最大循环/数组长度 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
+| `performance.workflow.parallelMaxConcurrency` | 并行节点并发上限 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
+| `performance.parse.fileTimeoutSeconds` | 文件解析超时 (秒) | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
+| `performance.parse.xlsxMaxRows` | XLSX 最大行数 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
+| `performance.parse.xlsxMaxColumns` | XLSX 最大列数 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
+| `performance.parse.xlsxMaxCells` | XLSX 最大单元格数 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
+| `performance.parse.xlsxMaxMergedCells` | XLSX 最大合并单元格数 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
+| `performance.parse.maxHtmlTransformChars` | HTML 转换最大字符数 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
+| `performance.dataset.parseMaxProcess` | 文档解析并发数 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
+| `performance.dataset.vectorMaxProcess` | 向量化处理并发数 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
+| `performance.dataset.qaMaxProcess` | QA 自动生成并发数 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
+| `performance.dataset.vlmMaxProcess` | 多模态理解并发数 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
+| `performance.dataset.retrievalResultsLimit` | 知识库检索中间结果数量上限 | ✅ | ✅ | — | — | 仅 API（暂无新表单） |
+| `performance.chat.maxQpm` | 对话 QPM 上限 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
+| `performance.streamResume.ttlSeconds` | 流会话保留时长 (秒) | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
+| `performance.streamResume.postCompleteTtlSeconds` | 对话完成后保留时长 (秒) | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
+| `performance.streamResume.redisMaxmemoryRatio` | Redis 内存占用比例上限 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
+| `performance.streamResume.redisMemoryCheckIntervalMs` | Redis 内存检查间隔 (毫秒) | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
+| `performance.tracking.batchUpdateTime` | 埋点批量写入间隔 (毫秒) | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
+| `performance.tracking.retentionHours` | LLM 追踪保留时长 (小时) | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
+| `performance.task.evalConcurrency` | 评估任务并发上限 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
+| `performance.channel.wechatConcurrency` | 公众号渠道消息处理并发 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
+
+#### 存储策略（storage）
+
+| 配置字段 | 用途 | 社区版 | 商业版 | 仅 SaaS 显示 | 敏感项 | 当前管理入口 |
+| --- | --- | :---: | :---: | :---: | :---: | --- |
+| `storage.downloadMode` | 下载链接工作模式 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/core` |
+| `storage.externalEndpoint` | 存储外部访问端点 (Endpoint) | ✅ | ✅ | — | — | 可编辑：`/admin/settings/core` |
+| `storage.cdnEndpoint` | CDN 加速地址 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/core` |
+| `storage.fileUrlExpiredDays` | 对话临时文件有效天数 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
+| `storage.redirectTtlSeconds` | 重定向地址有效期（秒） | ✅ | ✅ | — | — | 可编辑：`/admin/settings/core` |
+
+#### 向量检索（vector）
+
+| 配置字段 | 用途 | 社区版 | 商业版 | 仅 SaaS 显示 | 敏感项 | 当前管理入口 |
+| --- | --- | :---: | :---: | :---: | :---: | --- |
+| `vector.hnswEfSearch` | HNSW ef_search | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
+| `vector.vectorRecallConcurrency` | 向量检索最大并发数 | — | ✅ | — | — | 可编辑：`/admin/settings/limits` |
+
+#### 解析与数据源（providers）
+
+| 配置字段 | 用途 | 社区版 | 商业版 | 仅 SaaS 显示 | 敏感项 | 当前管理入口 |
+| --- | --- | :---: | :---: | :---: | :---: | --- |
+| `providers.documentParse.provider` | 解析服务提供方 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/providers` |
+| `providers.documentParse.customPdf.url` | 自建 PDF 解析服务地址 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/providers` |
+| `providers.documentParse.sangfor.url` | 深信服解析接口地址 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/providers` |
+| `providers.documentParse.sangfor.extensions` | 支持的格式扩展名 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/providers` |
+| `providers.documentParse.sangfor.timeoutSeconds` | 请求超时时间 (秒) | ✅ | ✅ | — | — | 可编辑：`/admin/settings/providers` |
+| `providers.dataSource.feishuBaseUrl` | 飞书平台地址 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/providers` |
+| `providers.dataSource.dingtalkBaseUrl` | 钉钉平台地址 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/providers` |
+| `providers.dataSource.dingtalkOapiBaseUrl` | 钉钉 OAPI 平台地址 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/providers` |
+| `providers.dataSource.yuqueDatasetBaseUrl` | 语雀平台地址 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/providers` |
+| `providers.externalProviderWorkflowVariables` | 外部工作流变量提供方 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/providers` |
+| `providers.documentParse.customPdf.key` | 自建服务认证 Key | ✅ | ✅ | — | ✅ | 可编辑：`/admin/settings/providers` |
+| `providers.documentParse.customPdf.somarkApiKey` | Somark API Key | ✅ | ✅ | — | ✅ | 可编辑：`/admin/settings/providers` |
+| `providers.documentParse.customPdf.doc2xKey` | Doc2X Key | ✅ | ✅ | — | ✅ | 可编辑：`/admin/settings/providers` |
+| `providers.documentParse.customPdf.textinAppId` | TextIn AppId | ✅ | ✅ | — | ✅ | 可编辑：`/admin/settings/providers` |
+| `providers.documentParse.customPdf.textinSecretCode` | TextIn Secret Code | ✅ | ✅ | — | ✅ | 可编辑：`/admin/settings/providers` |
+| `providers.documentParse.sangfor.key` | 深信服服务密钥 | ✅ | ✅ | — | ✅ | 可编辑：`/admin/settings/providers` |
+
+#### 子服务客户端（subservice）
+
+| 配置字段 | 用途 | 社区版 | 商业版 | 仅 SaaS 显示 | 敏感项 | 当前管理入口 |
+| --- | --- | :---: | :---: | :---: | :---: | --- |
+| `subservice.plugin.baseUrl` | 插件服务地址 | — | ✅ | — | — | 只读：`/admin/subservice/plugin` |
+| `subservice.plugin.remoteDebug` | 开启插件远程调试通道 (Remote Debug) | — | ✅ | — | — | 可编辑：`/admin/subservice/plugin` |
+| `subservice.plugin.remoteDebugUrl` | 远程调试服务地址 | — | ✅ | — | — | 可编辑：`/admin/subservice/plugin`；业务未接入 |
+| `subservice.codeSandbox.enabled` | 启用 Code Sandbox | — | ✅ | — | — | 可编辑：`/admin/subservice/code-sandbox`；业务未接入 |
+| `subservice.codeSandbox.baseUrl` | 代码沙箱服务地址 | — | ✅ | — | — | 只读：`/admin/subservice/code-sandbox` |
+| `subservice.aiProxy.enabled` | 启用 AI Proxy | — | ✅ | — | — | 可编辑：`/admin/subservice/ai-proxy`；业务未接入 |
+| `subservice.aiProxy.endpoint` | AI Proxy 地址 | — | ✅ | — | — | 只读：`/admin/subservice/ai-proxy` |
+| `subservice.mcp.sseProxyUrl` | MCP SSE 代理地址 | — | ✅ | — | — | 仅 API（暂无新表单） |
+| `subservice.agentSandbox.provider` | 当前沙箱 Provider | — | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
+| `subservice.agentSandbox.common.cpuCount` | CPU 核心数 (Core) | — | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
+| `subservice.agentSandbox.common.memoryMiB` | 内存规格 (MiB) | — | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
+| `subservice.agentSandbox.common.storageSizeGi` | 存储卷大小 (Gi) | — | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
+| `subservice.agentSandbox.common.suspendMinutes` | 无操作自动挂起 (分钟) | — | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
+| `subservice.agentSandbox.common.archiveInactiveDays` | 不活跃自动归档 (天) | — | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
+| `subservice.agentSandbox.common.maxEditDebug` | 编辑调试实例上限 | — | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
+| `subservice.agentSandbox.common.maxPerTeam` | 单团队 Sandbox 活跃实例配额 | — | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
+| `subservice.agentSandbox.common.entrypointTimeoutSeconds` | 容器入口执行超时 (秒) | — | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
+| `subservice.agentSandbox.common.wsMaxMessageBytes` | WebSocket 消息上限 (Bytes) | — | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
+| `subservice.agentSandbox.common.wsMaxFrameBytes` | WebSocket 帧上限 (Bytes) | — | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
+| `subservice.agentSandbox.common.npmRegistry` | npm Registry 源 | — | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
+| `subservice.agentSandbox.common.pypiIndexUrl` | PyPI 镜像源地址 | — | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
+| `subservice.agentSandbox.common.aptMirror` | APT 镜像源地址 | — | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
+| `subservice.agentSandbox.sealosdevbox.baseUrl` | Sealos Devbox 服务地址 | — | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
+| `subservice.agentSandbox.sealosdevbox.workDirectory` | 工作空间工作目录 | — | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
+| `subservice.agentSandbox.sealosdevbox.image` | 默认开发镜像 | — | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
+| `subservice.agentSandbox.opensandbox.baseUrl` | OpenSandbox 服务地址 | — | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
+| `subservice.agentSandbox.opensandbox.runtime` | 底层容器运行时 | — | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
+| `subservice.agentSandbox.opensandbox.image` | 默认容器镜像 | — | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
+| `subservice.agentSandbox.opensandbox.useServerProxy` | 使用主站反向代理模式 | — | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
+| `subservice.agentSandbox.opensandbox.volumeManagerUrl` | 持久卷管理器地址 (Volume Manager) | — | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
+| `subservice.agentSandbox.opensandbox.volumeNamePrefix` | 存储卷名前缀 | — | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
+| `subservice.plugin.token` | 插件访问凭证 | — | ✅ | — | ✅ | 仅 API（暂无新表单） |
+| `subservice.codeSandbox.token` | 代码沙箱访问凭证 | — | ✅ | — | ✅ | 仅 API（暂无新表单） |
+| `subservice.aiProxy.token` | AI Proxy 访问凭证 | — | ✅ | — | ✅ | 仅 API（暂无新表单） |
+| `subservice.agentSandbox.sealosdevbox.token` | Sealos 访问 Token | — | ✅ | — | ✅ | 可编辑：`/admin/subservice/agent-sandbox` |
+| `subservice.agentSandbox.opensandbox.apiKey` | OpenSandbox API Key | — | ✅ | — | ✅ | 可编辑：`/admin/subservice/agent-sandbox` |
+| `subservice.agentSandbox.opensandbox.volumeManagerToken` | 卷管理器 Token | — | ✅ | — | ✅ | 可编辑：`/admin/subservice/agent-sandbox` |
+
+<!-- instance-config-field-matrix:end -->
+
+### 13.7 套餐配置的独立边界
+
+`subPlans` 保留在旧 `system_configs` 的 FastGPT 记录中，不属于上述 11 个实例配置域，但必须与商业配置页面采用相同部署版本边界。
+
+| 保存能力 | 社区版 | 商业版 | 管理入口 |
+| --- | :---: | :---: | --- |
+| `subPlans` 套餐、积分包及用量配置 | — | ✅ | `/admin/settings/pay` 的套餐区块 |
+
+社区版请求携带 `subPlans`（包括 `{}`）时，在读取旧配置或进入事务前返回 **403**，同批普通配置也不保存。商业版可与配置域一起原子提交；省略此键表示不修改现有套餐，与 `ENABLE_SAAS_ADMIN_CONFIG` 无关。
