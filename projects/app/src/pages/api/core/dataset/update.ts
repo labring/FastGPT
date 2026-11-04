@@ -163,24 +163,10 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
   // 外部权限同步开启 ⇒ collection 权限必须开启：否则快照没有读者，同步结果等于白写。
   // 只经唯一入口 enableDatasetCollectionPermissions 开启，禁止直写开关（否则会出现
   // 「开关已开但 collection 尚无快照」的窗口，读路径会整库不可见）。
-  // 未传 apiDatasetServer 时沿用库中配置，保证异常组合（permissionSync=true 但开关未开）能被顺带修复。
-  const effectiveApiDatasetServer = (
-    apiDatasetServer === undefined
-      ? dataset.apiDatasetServer
-      : apiDatasetServerPatch?.effectiveValue
-  ) as ApiDatasetServerType | undefined;
-  // 请求体只是局部 patch：permissionSync 依赖 apiServer 的组合约束必须在合并后判断，
-  // 否则存量 apiServer 配置无法单独打开开关。仅校验实际产生写入的配置：空对象 / null 按既有契约
-  // 不落库，未配置的库带着空 patch 更新其它字段时不应被必填 schema 拒绝。
-  if (
+  // 有效值一律在事务内按锁后配置重算：事务外快照可能已被并发启停改写。
+  const hasApiDatasetServerUpdate =
     apiDatasetServerPatch !== undefined &&
-    Object.keys(apiDatasetServerPatch.updateFields).length > 0
-  ) {
-    const parsed = ApiDatasetServerSchema.safeParse(effectiveApiDatasetServer);
-    if (!parsed.success) {
-      throw new ApiRequestInputParseError(parsed.error, { inputSource: 'body' });
-    }
-  }
+    Object.keys(apiDatasetServerPatch.updateFields).length > 0;
   // folder 只承载子知识库、没有自己的 collection：托管开关写入后既没有 collection 可物化，
   // 又会让 ACL 级联把整棵子树当成托管库剪掉。允许传 false，便于清理存量脏数据。
   if (
@@ -242,10 +228,25 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
       .lean();
     if (!lockedDataset) throw DatasetErrEnum.unExist;
 
-    // 未传 apiDatasetServer 时沿用库中配置，也必须以锁后值为准。
+    // 局部 patch 必须在锁后配置上重新合并：事务外快照可能已被并发启停改写，
+    // 用它算出的有效值会重新开启刚被关闭的文件权限。空 patch 不产生写入，沿用锁后配置。
     const lockedApiDatasetServer = (
-      apiDatasetServer === undefined ? lockedDataset.apiDatasetServer : effectiveApiDatasetServer
+      apiDatasetServer === undefined
+        ? lockedDataset.apiDatasetServer
+        : buildDatasetConfigUpdatePatch({
+            currentValue: lockedDataset.apiDatasetServer,
+            patchValue: apiDatasetServer,
+            rootPath: 'apiDatasetServer'
+          }).effectiveValue
     ) as ApiDatasetServerType | undefined;
+    // 请求体只是局部 patch：permissionSync 依赖 apiServer 的组合约束必须在合并后判断，
+    // 且以锁后值为准。仅校验实际产生写入的配置：空对象 / null 不落库，不应被必填 schema 拒绝。
+    if (hasApiDatasetServerUpdate) {
+      const parsed = ApiDatasetServerSchema.safeParse(lockedApiDatasetServer);
+      if (!parsed.success) {
+        throw new ApiRequestInputParseError(parsed.error, { inputSource: 'body' });
+      }
+    }
     const needsEnableCollectionPermission =
       lockedApiDatasetServer?.permissionSync === true &&
       // folder 类型 dataset 永远不开启 collection 权限（它只承载子知识库，没有自己的 collection）
