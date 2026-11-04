@@ -305,7 +305,7 @@ describe('normalizeAppLogKeys', () => {
 
 describe('getLogIdentity', () => {
   const authMember = { name: 'Member A', status: TeamMemberStatusEnum.active };
-  it.each(['customer-42', '0', ' Member A '])(
+  it.each(['customer-42', '0', ' Member A ', '68ad85a7463006c963799a05'])(
     'uses raw external UID %j while keeping authorizer',
     (outLinkUid) => {
       expect(getLogIdentity({ tmbId: 'member-a', outLinkUid, authMember })).toEqual({
@@ -324,5 +324,29 @@ describe('getLogIdentity', () => {
     const member = { name: 'Former member', status: TeamMemberStatusEnum.leave };
     expect(getLogIdentity({ authMember: member }).member).toBe(member);
     expect(getLogIdentity({})).toEqual({ name: '-' });
+  });
+  it.each([TeamMemberStatusEnum.active, TeamMemberStatusEnum.leave])(
+    'keeps the resolved share visitor and status %s separate from the authorizer',
+    (status) => {
+      const visitor = { name: 'Share Visitor', avatar: '/share-visitor.svg', status };
+      const log = {
+        source: 'share',
+        tmbId: 'member-a',
+        outLinkUid: '68ad85a7463006c963799a05',
+        sourceMember: visitor,
+        authMember
+      };
+      expect(getLogIdentity(log)).toEqual({ name: 'Share Visitor', member: visitor });
+      expect(getLogIdentity({ ...log, isAuthorizer: true })).toEqual({
+        name: 'Member A',
+        member: authMember
+      });
+      expect(getLogIdentity({ ...log, source: 'api' })).toEqual({ name: log.outLinkUid });
+    }
+  );
+  it('keeps an unresolved share UID instead of falling back to its authorizer', () => {
+    expect(getLogIdentity({ source: 'share', outLinkUid: 'external-visitor', authMember })).toEqual(
+      { name: 'external-visitor' }
+    );
   });
 });

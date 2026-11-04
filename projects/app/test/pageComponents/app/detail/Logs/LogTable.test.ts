@@ -5,6 +5,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { downloadFetch } from '@/web/common/system/utils';
 import { getLogKeys, updateLogKeys } from '@/web/core/app/api/log';
 
+const getLogRows = vi.hoisted(() => vi.fn());
+
 vi.mock('next-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
 vi.mock('next/dynamic', () => ({ default: () => () => null }));
 vi.mock('@/web/common/system/useSystemStore', () => ({
@@ -39,18 +41,7 @@ vi.mock('@fastgpt/web/hooks/useRequest', async () => {
 });
 vi.mock('@fastgpt/web/hooks/usePagination', () => ({
   usePagination: () => ({
-    data: [
-      {
-        _id: 'row',
-        chatId: 'chat',
-        tmbId: 'member-a',
-        source: 'api',
-        outLinkUid: 'customer-42',
-        sourceMember: { name: 'Member A', status: 'active' },
-        authMember: { name: 'Member A', status: 'active' },
-        title: 'Question'
-      }
-    ],
+    data: getLogRows(),
     Pagination: () => null,
     getData: vi.fn(),
     pageNum: 1,
@@ -95,7 +86,10 @@ vi.mock('@fastgpt/web/components/common/Icon', async () => {
       onClick ? React.createElement('button', { onClick, 'aria-label': name }, name) : null
   };
 });
-vi.mock('@fastgpt/web/components/common/Avatar', () => ({ default: () => null }));
+vi.mock('@fastgpt/web/components/common/Avatar', async () => {
+  const React = await import('react');
+  return { default: ({ src }: { src?: string }) => React.createElement('img', { src, alt: '' }) };
+});
 vi.mock('@fastgpt/web/components/common/MyPopover', async () => {
   const React = await import('react');
   return {
@@ -160,6 +154,18 @@ describe('LogTable identity columns UI', () => {
     localStorage.clear();
     vi.clearAllMocks();
     vi.mocked(getLogKeys).mockResolvedValue({ logKeys: [] });
+    getLogRows.mockReturnValue([
+      {
+        _id: 'row',
+        chatId: 'chat',
+        tmbId: 'member-a',
+        source: 'api',
+        outLinkUid: 'customer-42',
+        sourceMember: { name: 'Member A', status: 'active' },
+        authMember: { name: 'Member A', status: 'active' },
+        title: 'Question'
+      }
+    ]);
     container = document.createElement('div');
     document.body.appendChild(container);
     root = createRoot(container);
@@ -219,6 +225,29 @@ describe('LogTable identity columns UI', () => {
     root = createRoot(container);
     await render();
     expect(container.querySelector('thead')?.textContent).toContain('app:logs_keys_auth_user');
+  });
+  it.each(['active', 'leave'])('shows a resolved share visitor with status %s', async (status) => {
+    const visitorId = '68ad85a7463006c963799a05';
+    getLogRows.mockReturnValue([
+      {
+        ...getLogRows()[0],
+        source: 'share',
+        outLinkUid: visitorId,
+        sourceMember: { name: 'Share Visitor', avatar: '/share-visitor.svg', status }
+      }
+    ]);
+    await render();
+    const body = container.querySelector('tbody');
+    expect(body?.textContent).toContain('Share Visitor');
+    expect(body?.textContent).not.toContain(visitorId);
+    expect(body?.textContent).not.toContain('Member A');
+    expect(body?.querySelector('img')?.getAttribute('src')).toBe('/share-visitor.svg');
+    expect(body?.textContent?.includes('common:user_leaved')).toBe(status === 'leave');
+
+    await click(authorizerToggle());
+    expect(container.querySelector('thead')?.textContent).toContain('app:logs_keys_auth_user');
+    expect(container.querySelector('tbody')?.textContent).toContain('Member A');
+    expect(container.querySelector('tbody')?.textContent).toContain('Share Visitor');
   });
   it('adds authorizer disabled to old local settings without re-enabling hidden user', async () => {
     localStorage.setItem(

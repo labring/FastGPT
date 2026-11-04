@@ -170,7 +170,8 @@ export const GetAppChatLogsResponseSchema = z
 export type getAppChatLogsResponseType = z.infer<typeof GetAppChatLogsResponseSchema>;
 
 export const ExportChatLogsResponseSchema = z.string().meta({
-  description: '导出的 CSV 文件内容'
+  description:
+    '导出的 CSV 文件内容；鉴权者及回落到 tmbId 的使用者以 id:成员名 展示，无成员名时仅展示 ID；outLinkUid 保留原值'
 });
 export type exportChatLogsResponseType = z.infer<typeof ExportChatLogsResponseSchema>;
 

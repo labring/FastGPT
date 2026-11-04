@@ -2,6 +2,7 @@ import dayjs from 'dayjs';
 import { AppLogKeysEnum, AppLogTimespanEnum, DefaultAppLogKeys } from './constants';
 import { AppLogKeysSchema, type AppLogKeysType } from './type';
 import type { SourceMemberType } from '../../../support/user/type';
+import { ChatSourceEnum } from '../../chat/constants';
 
 /**
  * 用户筛选「未选择」会同时传两个空数组。两者都省略才是不过滤。
@@ -99,19 +100,28 @@ export const normalizeAppLogKeys = (keys?: unknown): AppLogKeysType[] => {
   return result;
 };
 
-/** 返回日志的实际使用者或鉴权者；外部 UID 原值展示，无法解析的成员保留 ID。 */
+/** 分享访客使用已解析的团队成员信息，API customUid 保留原值；鉴权者始终取 tmbId。 */
 export const getLogIdentity = ({
   tmbId,
   outLinkUid,
+  source,
+  sourceMember,
   authMember,
   isAuthorizer = false
 }: {
   tmbId?: string | null;
   outLinkUid?: string | null;
+  source?: string | null;
+  sourceMember?: SourceMemberType | null;
   authMember?: SourceMemberType | null;
   isAuthorizer?: boolean;
 }): { name: string; member?: SourceMemberType } => {
-  if (!isAuthorizer && outLinkUid) return { name: outLinkUid };
+  if (!isAuthorizer && outLinkUid) {
+    if (source === ChatSourceEnum.share && sourceMember) {
+      return { name: sourceMember.name, member: sourceMember };
+    }
+    return { name: outLinkUid };
+  }
   if (authMember) return { name: authMember.name, member: authMember };
   return { name: tmbId || '-' };
 };

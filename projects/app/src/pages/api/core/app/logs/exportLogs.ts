@@ -33,8 +33,7 @@ import { getLocale } from '@fastgpt/service/common/middle/i18n';
 import { AppVersionCollectionName } from '@fastgpt/service/core/app/version/schema';
 import { ExportChatLogsBodySchema } from '@fastgpt/global/openapi/core/app/log/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
-import { formatSourceMember } from '@fastgpt/service/support/user/utils';
-import { getLogIdentity, isUnselectedLogUserFilter } from '@fastgpt/global/core/app/logs/utils';
+import { isUnselectedLogUserFilter } from '@fastgpt/global/core/app/logs/utils';
 const logger = getLogger(LogCategories.MODULE.APP.LOGS);
 
 const formatJsonString = (data: any) => {
@@ -106,7 +105,7 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
   }
 
   // Get members
-  const memberDisplayMap = await getTeamMemberMap({ teamId, fields: '_id name avatar status' });
+  const memberDisplayMap = await getTeamMemberMap({ teamId, fields: '_id name' });
 
   const where = buildAppChatLogFilter({
     appId,
@@ -396,20 +395,20 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
       : '';
     const source = sourcesMap[doc.source as ChatSourceEnum]?.label || doc.source;
     const titleStr = getDisplayChatTitle({ customTitle: doc.customTitle, title: doc.title });
-    const member = memberDisplayMap.get(String(doc.tmbId));
-    const identity = {
-      tmbId: String(doc.tmbId ?? ''),
-      outLinkUid: doc.outLinkUid,
-      authMember: member ? formatSourceMember(member) : undefined
-    };
+    const authorizerId = String(doc.tmbId ?? '');
+    const member = memberDisplayMap.get(authorizerId);
+    // CSV 保留成员 ID；仅拼接原始姓名，避免缺名成员被展示为 id:unknown。
+    const authorizer = member?.name?.trim()
+      ? `${authorizerId}:${member.name}`
+      : authorizerId || '-';
     const region = getLocationFromIp(doc.originIp, locale);
 
     const valueMap: Record<string, () => any> = {
       [AppLogKeysEnum.SOURCE]: () => source,
       [AppLogKeysEnum.CREATED_TIME]: () => createdTime,
       [AppLogKeysEnum.LAST_CONVERSATION_TIME]: () => lastConversationTime,
-      [AppLogKeysEnum.USER]: () => getLogIdentity(identity).name,
-      [AppLogKeysEnum.AUTH_USER]: () => getLogIdentity({ ...identity, isAuthorizer: true }).name,
+      [AppLogKeysEnum.USER]: () => doc.outLinkUid || authorizer,
+      [AppLogKeysEnum.AUTH_USER]: () => authorizer,
       [AppLogKeysEnum.TITLE]: () => titleStr,
       [AppLogKeysEnum.SESSION_ID]: () => doc.id || '-',
       [AppLogKeysEnum.MESSAGE_COUNT]: () => doc.messageCount,

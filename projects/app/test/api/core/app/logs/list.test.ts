@@ -20,6 +20,7 @@ import type {
 } from '@fastgpt/global/openapi/core/app/log/api';
 import { ChatRoleEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { Types } from '@fastgpt/service/common/mongo';
 
 vi.unmock('@fastgpt/service/common/response');
 vi.mock('@fastgpt/service/common/rateLimit/interface/member', async (importOriginal) => ({
@@ -770,9 +771,56 @@ describe('logs list API - errorFilter', () => {
       }
     });
     expect(exported.code).toBe(200);
-    expect(exported.raw).toContain('"customer,""42""",Test Member Logs List,match,');
+    expect(exported.raw).toContain(`"customer,""42""",${testTmbId}:Test Member Logs List,match,`);
     expect(exported.raw).not.toMatch(/wrong-|no-feedback/);
     expect(exported.raw.split('\n')).toHaveLength(2);
+  });
+
+  it('exports identities as id:name and keeps only the ID when no member name is available', async () => {
+    const missingId = String(new Types.ObjectId());
+    const base = {
+      appId: testAppId,
+      teamId: testTeamId,
+      tmbId: testTmbId,
+      sourceType: ChatSourceTypeEnum.app,
+      source: 'api'
+    };
+    await MongoChat.create([
+      { ...base, chatId: 'member-identity' },
+      { ...base, chatId: 'external-identity', outLinkUid: 'customer-42' },
+      { ...base, chatId: 'missing-identity', tmbId: missingId }
+    ]);
+
+    const exportIdentities = () =>
+      StreamCall(exportLogs, {
+        auth: authUser,
+        headers: {},
+        body: {
+          appId: testAppId,
+          dateStart: '2020-01-01',
+          dateEnd: '2099-01-01',
+          title: 'User,Authorizer,Session,Details',
+          sourcesMap: {},
+          logKeys: [AppLogKeysEnum.USER, AppLogKeysEnum.AUTH_USER, AppLogKeysEnum.SESSION_ID]
+        }
+      });
+    const named = await exportIdentities();
+    expect(named.code).toBe(200);
+    const memberIdentity = `${testTmbId}:Test Member Logs List`;
+    expect(named.raw).toContain(`\n${memberIdentity},${memberIdentity},member-identity,`);
+    expect(named.raw).toContain(`\ncustomer-42,${memberIdentity},external-identity,`);
+    expect(named.raw).toContain(`\n${missingId},${missingId},missing-identity,`);
+
+    for (const name of ['   ', undefined]) {
+      await MongoTeamMember.updateOne(
+        { _id: testTmbId },
+        name === undefined ? { $unset: { name: 1 } } : { $set: { name } }
+      );
+      const nameless = await exportIdentities();
+      expect(nameless.code).toBe(200);
+      expect(nameless.raw).toContain(`\n${testTmbId},${testTmbId},member-identity,`);
+      expect(nameless.raw).toContain(`\ncustomer-42,${testTmbId},external-identity,`);
+    }
   });
 
   it('normalizes old team columns on read and write while retaining explicit choices', async () => {
