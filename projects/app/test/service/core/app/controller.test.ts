@@ -349,6 +349,7 @@ describe('beforeUpdateAppFormat', () => {
             key: NodeInputKeyEnum.datasetParams,
             value: {
               datasets: [
+                ['source-node', 'datasets'],
                 {
                   datasetId: 'dataset-1',
                   avatar: 'avatar.png',
@@ -380,8 +381,15 @@ describe('beforeUpdateAppFormat', () => {
     });
   });
 
-  it('保存前保留知识库选择输入的引用模式值', async () => {
-    const referenceValue = ['sourceNode', 'datasets'];
+  it.each([
+    { referenceValue: ['sourceNode', 'datasets'] },
+    {
+      referenceValue: [
+        ['source-a', 'datasets'],
+        ['source-b', 'datasets']
+      ]
+    }
+  ])('保存前保留知识库选择输入的引用模式值 %#', async ({ referenceValue }) => {
     const nodes = [
       {
         nodeId: 'dataset-node',
@@ -425,27 +433,41 @@ describe('beforeUpdateAppFormat', () => {
     expect(nodes[0].inputs[0].value).toEqual([]);
   });
 
-  it('保存前遇到非法知识库选择项时抛错，避免清空后继续保存', async () => {
-    const nodes = [
-      {
-        flowNodeType: FlowNodeTypeEnum.datasetSearchNode,
-        inputs: [
-          {
-            key: NodeInputKeyEnum.datasetSelectList,
-            renderTypeList: [FlowNodeInputTypeEnum.selectDataset, FlowNodeInputTypeEnum.reference],
-            selectedType: FlowNodeInputTypeEnum.selectDataset,
-            value: [
-              {
-                name: 'Invalid Dataset'
-              }
-            ]
-          }
-        ]
-      } as StoreNodeItemType
-    ];
+  it.each([FlowNodeTypeEnum.datasetSearchNode, FlowNodeTypeEnum.agent])(
+    '保存 %s 时过滤非法知识库选择项并保留有效项',
+    async (flowNodeType) => {
+      const nodes = [
+        {
+          flowNodeType,
+          inputs: [
+            {
+              key: NodeInputKeyEnum.datasetSelectList,
+              renderTypeList: [
+                FlowNodeInputTypeEnum.selectDataset,
+                FlowNodeInputTypeEnum.reference
+              ],
+              selectedType: FlowNodeInputTypeEnum.selectDataset,
+              value: [
+                ['source-a', 'datasets'],
+                ['source-b', 'datasets'],
+                {
+                  name: 'Invalid Dataset'
+                },
+                {
+                  datasetId: 'dataset-1',
+                  name: 'Dataset'
+                }
+              ]
+            }
+          ]
+        } as StoreNodeItemType
+      ];
 
-    await expect(beforeUpdateAppFormat({ nodes, teamId: 'team-1' })).rejects.toThrow();
-  });
+      await beforeUpdateAppFormat({ nodes, teamId: 'team-1' });
+
+      expect(nodes[0].inputs[0].value).toEqual([{ datasetId: 'dataset-1' }]);
+    }
+  );
 
   it('保存前移除 Agent Skill 的编辑态删除标记并保留展示快照字段', async () => {
     const nodes = [
