@@ -304,14 +304,15 @@ describe('useChatGenerate.sendPrompt', () => {
   const edit = async (text: string, files: (typeof file)[] = []) =>
     act(async () => input.resetInputVal({ text, files }));
   const send = async ({ clearInput = true, text = 'submitted', autoTTSResponse = false } = {}) =>
-    act(async () =>
+    act(async () => {
       generate.sendPrompt({
         text,
         files: input.chatForm.getValues('files'),
         clearInput,
         autoTTSResponse
-      })
-    );
+      });
+      await vi.advanceTimersByTimeAsync(0);
+    });
 
   beforeEach(() => {
     dom = new JSDOM('<div id="root"></div>', {
@@ -850,10 +851,107 @@ describe('useChatGenerate.sendPrompt', () => {
     expect(input.chatForm.getValues('files')).toEqual([]);
     expect(readChatInputDraft(identity)).toBeUndefined();
 
-    await act(async () => request.reject(new Error('network')));
+    await act(async () => {
+      request.reject(new Error('network'));
+      await vi.advanceTimersByTimeAsync(0);
+    });
     expect(input.chatForm.getValues('input')).toBe('spoken input');
     expect(input.chatForm.getValues('files')[0].key).toBe(file.key);
     expect(readChatInputDraft(identity)?.files).toHaveLength(1);
+  });
+
+  it.each([
+    { outcome: 'resolve', nextDraft: '' },
+    { outcome: 'reject', nextDraft: '' },
+    { outcome: 'reject', nextDraft: 'next unsent draft' }
+  ] as const)(
+    'preserves only new drafts after refresh ($outcome, nextDraft: "$nextDraft")',
+    async ({ outcome, nextDraft }) => {
+      const request = Promise.withResolvers<{ responseText: string }>();
+      mocks.start.mockReturnValueOnce(request.promise);
+      await render({ withComposer: true });
+      await edit('', [file]);
+      // 直接输入后立刻发送，覆盖尚未完成防抖保存的文字和已上传附件。
+      await act(async () => input.chatForm.setValue('input', 'submitted'));
+      await send();
+      expect(mocks.start).toHaveBeenCalledOnce();
+      expect(input.chatForm.getValues('input')).toBe('');
+      expect(input.chatForm.getValues('files')).toEqual([]);
+      if (nextDraft) await act(async () => input.chatForm.setValue('input', nextDraft));
+
+      for (const event of ['beforeunload', 'pagehide']) {
+        await act(async () => window.dispatchEvent(new window.Event(event)));
+      }
+      const controller = mocks.start.mock.calls[0][0].controller as AbortController;
+      expect(controller.signal.aborted).toBe(true);
+      expect(controller.signal.reason.message).toBe('leave');
+      // 某些流库在关闭时正常返回，另一些以网络错误结束，两者都不能复活已发送内容。
+      await act(async () => {
+        if (outcome === 'resolve') request.resolve({ responseText: '' });
+        else request.reject(new TypeError('Failed to fetch'));
+      });
+      await act(async () => vi.advanceTimersByTimeAsync(1000));
+      expect(input.chatForm.getValues('input')).toBe(nextDraft);
+      expect(readChatInputDraft(identity)?.text).toBe(nextDraft || undefined);
+      expect(mocks.finishStatus).not.toHaveBeenCalled();
+      expect(mocks.createGuide).not.toHaveBeenCalled();
+
+      // 同一 sessionStorage 重挂载输入区，模拟刷新后读取草稿。
+      await act(async () => root.unmount());
+      root = createRoot(document.getElementById('root')!);
+      await render({ withComposer: true });
+      expect(input.chatForm.getValues('input')).toBe(nextDraft);
+      expect(document.querySelector('textarea')?.value).toBe(nextDraft);
+      expect(input.chatForm.getValues('files')).toEqual([]);
+    }
+  );
+
+  it.each(['cancelled-unload', 'back-forward-cache'] as const)(
+    'keeps a stream active for %s and still restores a real failure',
+    async (lifecycle) => {
+      const request = Promise.withResolvers<{ responseText: string }>();
+      mocks.start.mockReturnValueOnce(request.promise);
+      await render();
+      await edit('submitted', [file]);
+      await send();
+      await act(async () => window.dispatchEvent(new window.Event('beforeunload')));
+      if (lifecycle === 'back-forward-cache') {
+        await act(async () =>
+          window.dispatchEvent(new window.PageTransitionEvent('pagehide', { persisted: true }))
+        );
+        await act(async () =>
+          window.dispatchEvent(new window.PageTransitionEvent('pageshow', { persisted: true }))
+        );
+      }
+      const controller = mocks.start.mock.calls[0][0].controller as AbortController;
+      expect(controller.signal.aborted).toBe(false);
+      await act(async () => {
+        request.reject(new Error('network'));
+        await vi.advanceTimersByTimeAsync(0);
+      });
+      expect(input.chatForm.getValues('input')).toBe('submitted');
+      expect(input.chatForm.getValues('files')[0].key).toBe(file.key);
+      expect(readChatInputDraft(identity)?.text).toBe('submitted');
+    }
+  );
+
+  it('does not restore a draft when browser navigation rejects fetch before pagehide', async () => {
+    const request = Promise.withResolvers<{ responseText: string }>();
+    mocks.start.mockReturnValueOnce(request.promise);
+    await render();
+    await edit('submitted', [file]);
+    await send();
+    await act(async () => {
+      request.reject(new TypeError('Failed to fetch'));
+      // 真实浏览器先运行 fetch reject 的微任务，随后才通知页面离开。
+      await Promise.resolve();
+      window.dispatchEvent(new window.PageTransitionEvent('pagehide', { persisted: false }));
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    expect(input.chatForm.getValues('input')).toBe('');
+    expect(input.chatForm.getValues('files')).toEqual([]);
+    expect(readChatInputDraft(identity)).toBeUndefined();
+    expect(mocks.finishStatus).not.toHaveBeenCalled();
   });
 
   it('does not restore a submission that already received a partial reply', async () => {
@@ -896,7 +994,10 @@ describe('useChatGenerate.sendPrompt', () => {
         icon: 'icon'
       };
       await act(async () => input.chatForm.setValue('files', [pendingFile]));
-      await act(async () => audio.resolve());
+      await act(async () => {
+        audio.resolve();
+        await vi.advanceTimersByTimeAsync(0);
+      });
 
       expect(mocks.start).toHaveBeenCalledOnce();
       expect(records.find((item) => item.obj === ChatRoleEnum.Human)?.value).toEqual([
