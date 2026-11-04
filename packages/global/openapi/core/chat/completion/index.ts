@@ -1,5 +1,8 @@
 import { getChatCompletionResponseExamples } from './examples';
-import type { OpenAPIPath } from '../../../type';
+import { getErrorResponse, type OpenAPIPath } from '../../../type';
+import { ChatGeneratingConflictDataSchema } from '../../../../core/chat/error';
+import { ChatErrEnum } from '../../../../common/error/code/chat';
+import { ERROR_RESPONSE } from '../../../../common/error/errorCode';
 import { DevApiTagsMap, SystemOpenApiTagMap } from '../../../tag';
 import {
   ChatHomeBodySchema,
@@ -68,6 +71,18 @@ const userInputInteractiveRequestExample = {
 
 const v1ResponseExamples = getChatCompletionResponseExamples('v1');
 const v2ResponseExamples = getChatCompletionResponseExamples('v2');
+
+const chatGeneratingConflictResponse = {
+  description:
+    '同会话已有生成时拒绝本次发送，本次消息不会写入数据库。非流式请求返回 HTTP 409；流式请求通过 error 事件返回同一错误结构。data.responseChatItemId 是应恢复的已有 AI 消息 ID；交互续跑返回 data.reusePreviousAi=true，表示刷新记录后复用最新 AI。客户端应先回填被拒绝的输入，再恢复原有轮次。',
+  content: {
+    'application/json': {
+      schema: getErrorResponse(ERROR_RESPONSE[ChatErrEnum.chatIsGenerating]).extend({
+        data: ChatGeneratingConflictDataSchema
+      })
+    }
+  }
+};
 
 /* =============== OpenAPI Path =============== */
 
@@ -142,6 +157,7 @@ export const ChatCompletionPath: OpenAPIPath = {
         }
       },
       responses: {
+        409: chatGeneratingConflictResponse,
         200: {
           content: {
             'application/json': {
@@ -239,6 +255,7 @@ Share 调用沿用相同的逐条事件协议，但会先按分享配置过滤�
         }
       },
       responses: {
+        409: chatGeneratingConflictResponse,
         200: {
           content: {
             'application/json': {

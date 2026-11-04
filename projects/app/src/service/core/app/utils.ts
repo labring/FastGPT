@@ -3,7 +3,6 @@ import { getNextTimeByCronStringAndTimezone } from '@fastgpt/global/common/strin
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { batchRun, retryFn } from '@fastgpt/global/common/system/utils';
 import {
-  ChatGenerateStatusEnum,
   ChatRoleEnum,
   ChatSourceEnum,
   ChatSourceTypeEnum
@@ -29,8 +28,7 @@ import {
   type Props as SaveChatProps
 } from '@fastgpt/service/core/chat/saveChat';
 import { preChatRound } from '@fastgpt/service/core/chat/utils/prepare';
-import { updateChatGenerateStatus } from '@fastgpt/service/core/chat/chatGenerateStatus';
-import { getWorkflowMaxRunTimes } from '@fastgpt/service/core/workflow/constants';
+import { WORKFLOW_MAX_RUN_TIMES } from '@fastgpt/service/core/workflow/constants';
 import { dispatchWorkFlow } from '@fastgpt/service/core/workflow/dispatch';
 import { prepareWorkflowFileQuery } from '@fastgpt/service/core/workflow/utils/fileLimits';
 import { getRunningUserInfoByTmbId } from '@fastgpt/service/support/user/team/utils';
@@ -202,7 +200,7 @@ export const getScheduleTriggerApp = async () => {
             chatConfig,
             histories: [],
             stream: false,
-            maxRunTimes: getWorkflowMaxRunTimes(),
+            maxRunTimes: WORKFLOW_MAX_RUN_TIMES,
             nodeResponseWriteConfig: {
               persistToDb: true,
               retainInMemory: false
@@ -238,27 +236,25 @@ export const getScheduleTriggerApp = async () => {
               responseChatItemId: preparedRound.responseChatItemId,
               error
             }).catch();
-          } else {
-            await updateChatGenerateStatus({
-              ...chatSource,
-              chatId: preparedRound.chatId,
-              status: ChatGenerateStatusEnum.error
-            }).catch();
           }
         }
       } finally {
-        // update next time
-        const nextTime = getNextTimeByCronStringAndTimezone(app.scheduledTriggerConfig);
-        await retryFn(() =>
-          MongoApp.updateOne({ _id: app._id }, { $set: { scheduledTriggerNextTime: nextTime } })
-        ).catch((err) => {
-          logger.error('Schedule trigger update next time failed', {
-            error: err,
-            appId: app._id,
-            appName: app.name,
-            nextTime
+        try {
+          // update next time
+          const nextTime = getNextTimeByCronStringAndTimezone(app.scheduledTriggerConfig);
+          await retryFn(() =>
+            MongoApp.updateOne({ _id: app._id }, { $set: { scheduledTriggerNextTime: nextTime } })
+          ).catch((err) => {
+            logger.error('Schedule trigger update next time failed', {
+              error: err,
+              appId: app._id,
+              appName: app.name,
+              nextTime
+            });
           });
-        });
+        } finally {
+          await preparedRound?.releaseGenerationLease?.();
+        }
       }
     },
     50

@@ -1,9 +1,5 @@
 import { Readable } from 'node:stream';
-import {
-  ChatGenerateStatusEnum,
-  ChatRoleEnum,
-  ChatSourceTypeEnum
-} from '@fastgpt/global/core/chat/constants';
+import { ChatRoleEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import type { UserChatItemType } from '@fastgpt/global/core/chat/type';
 import {
   getWorkflowEntryNodeIds,
@@ -34,7 +30,6 @@ import {
   type Props as SaveChatProps
 } from '../../../core/chat/saveChat';
 import { preChatRound, type PreChatRoundResult } from '../../../core/chat/utils/prepare';
-import { updateChatGenerateStatus } from '../../../core/chat/chatGenerateStatus';
 import { dispatchWorkFlow } from '../../../core/workflow/dispatch';
 import { getWorkflowMaxRunTimes } from '../../../core/workflow/constants';
 import {
@@ -506,20 +501,6 @@ export async function runOutlinkRuntime<T extends OutlinkAppType>({
             error: saveError
           });
         });
-      } else {
-        await updateChatGenerateStatus({
-          sourceType: ChatSourceTypeEnum.app,
-          sourceId: roundState.sourceId,
-          chatId: preparedRound.chatId,
-          status: ChatGenerateStatusEnum.error
-        }).catch((saveError) => {
-          logger.error('Outlink runtime unlock failed', {
-            shareId: outLinkConfig.shareId,
-            chatId,
-            messageId,
-            error: saveError
-          });
-        });
       }
     }
 
@@ -544,5 +525,7 @@ export async function runOutlinkRuntime<T extends OutlinkAppType>({
       });
     }
     return { status: 'handled' };
+  } finally {
+    await roundState.preparedRound?.releaseGenerationLease?.();
   }
 }

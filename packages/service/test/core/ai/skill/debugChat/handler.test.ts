@@ -14,10 +14,10 @@ const mocks = vi.hoisted(() => ({
   getRunningSkillEditSandbox: vi.fn(),
   getChatItems: vi.fn(),
   preChatRound: vi.fn(),
+  releaseGenerationLease: vi.fn(),
   finalizeChatRound: vi.fn(),
   failChatRound: vi.fn(),
   updateInteractiveChat: vi.fn(),
-  updateChatGenerateStatus: vi.fn(),
   getRunningUserInfoByTmbId: vi.fn(),
   dispatchWorkFlow: vi.fn(),
   teamFrequencyLimit: vi.fn(),
@@ -38,9 +38,6 @@ vi.mock('@fastgpt/service/core/chat/saveChat', () => ({
   finalizeChatRound: mocks.finalizeChatRound,
   failChatRound: mocks.failChatRound,
   updateInteractiveChat: mocks.updateInteractiveChat
-}));
-vi.mock('@fastgpt/service/core/chat/chatGenerateStatus', () => ({
-  updateChatGenerateStatus: mocks.updateChatGenerateStatus
 }));
 vi.mock('@fastgpt/service/support/user/team/utils', () => ({
   getRunningUserInfoByTmbId: mocks.getRunningUserInfoByTmbId
@@ -104,6 +101,7 @@ beforeEach(() => {
   mocks.preChatRound.mockResolvedValue({
     chatId: 'chat-1',
     responseChatItemId: 'response-1',
+    releaseGenerationLease: mocks.releaseGenerationLease,
     shouldPersistChatRound: true,
     shouldFinalizePreparedRound: true
   });
@@ -140,6 +138,7 @@ describe('runSkillDebugChat', () => {
       })
     );
     expect(mocks.finalizeChatRound).toHaveBeenCalledOnce();
+    expect(mocks.releaseGenerationLease).toHaveBeenCalledOnce();
     expect(streamContext.flushResume).toHaveBeenCalledOnce();
     expect(mocks.teamFrequencyLimit).not.toHaveBeenCalled();
     expect(mocks.createWorkflowStreamResponseContext).not.toHaveBeenCalled();
@@ -246,20 +245,20 @@ describe('runSkillDebugChat', () => {
     expect(sseErrRes).not.toHaveBeenCalled();
   });
 
-  it('flushes the stream even when persisting interactive failure status rejects', async () => {
+  it('flushes the stream even when persisting round failure rejects', async () => {
     const error = new Error('Failure status persistence failed');
     mocks.preChatRound.mockResolvedValueOnce({
       chatId: 'chat-1',
       responseChatItemId: 'response-1',
       shouldPersistChatRound: true,
-      shouldFinalizePreparedRound: false
+      shouldFinalizePreparedRound: true
     });
     mocks.dispatchWorkFlow.mockRejectedValueOnce(new Error('Workflow failed'));
-    mocks.updateChatGenerateStatus.mockRejectedValueOnce(error);
+    mocks.failChatRound.mockRejectedValueOnce(error);
 
     await expect(runSkillDebugChat({ req, body, options: createTransport() })).rejects.toBe(error);
 
-    expect(mocks.updateChatGenerateStatus).toHaveBeenCalledOnce();
+    expect(mocks.failChatRound).toHaveBeenCalledOnce();
     expect(streamContext.flushResume).toHaveBeenCalledOnce();
   });
 });

@@ -3,9 +3,9 @@ import {
   redisCacheAdapter,
   type RedisLogicalKey,
   type RedisCacheAdapter
-} from '../adapter';
-import { PositiveSafeIntegerSchema } from '../runtime/schema';
-import type { RedisCacheLogger, RedisStreamEntry } from '../types';
+} from '../../adapter';
+import { PositiveSafeIntegerSchema } from '../../runtime/schema';
+import type { RedisCacheLogger, RedisStreamEntry } from '../../types';
 import { z } from 'zod';
 
 const STREAM_RESUME_NAMESPACE = 'stream:resume';
@@ -118,7 +118,7 @@ export class StreamResumeCache {
     };
   };
 
-  private touchState = async (keys: StreamResumeKeys) => {
+  private touchStreamTtl = async (keys: StreamResumeKeys) => {
     await Promise.all([
       this.redis.expireStream({ key: keys.keyOfStream, ttlSeconds: this.parsedStreamTtlSeconds }),
       this.redis.set({
@@ -197,7 +197,7 @@ export class StreamResumeCache {
           });
           const now = Date.now();
           if (lastTouchedAt === 0 || now - lastTouchedAt >= this.parsedTtlTouchIntervalMs) {
-            await this.touchState(keys);
+            await this.touchStreamTtl(keys);
             lastTouchedAt = now;
           }
         })
@@ -211,9 +211,25 @@ export class StreamResumeCache {
       return queue;
     };
 
+    const touch = () => {
+      queue = queue
+        .then(async () => {
+          await this.touchStreamTtl(keys);
+        })
+        .catch((error) => {
+          this.logger.error('Failed to touch stream resume redis ttl', {
+            params: parsedParams,
+            error
+          });
+        });
+
+      return queue;
+    };
+
     return {
       ...keys,
       enqueueRaw,
+      touch,
       flush: async () => {
         await queue;
       },

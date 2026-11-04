@@ -4,7 +4,6 @@ import { getNanoid } from '@fastgpt/global/common/string/tools';
 import type { SkillDebugChatBody } from '@fastgpt/global/core/ai/skill/api';
 import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
 import {
-  ChatGenerateStatusEnum,
   ChatRoleEnum,
   ChatSourceEnum,
   ChatSourceTypeEnum
@@ -35,7 +34,6 @@ import { getRunningUserInfoByTmbId } from '../../../../support/user/team/utils';
 import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';
 
 import type { AppFileSelectConfigType } from '@fastgpt/global/core/app/type/config.schema';
-import { updateChatGenerateStatus } from '../../../chat/chatGenerateStatus';
 import { getChatItems } from '../../../chat/controller';
 import {
   failChatRound,
@@ -349,14 +347,6 @@ export async function runSkillDebugChat({
     }
     roundState.finalized = true;
 
-    if (!preparedRound.shouldFinalizePreparedRound && preparedRound.shouldPersistChatRound) {
-      await updateChatGenerateStatus({
-        ...chatSource,
-        chatId: runningChatId,
-        status: ChatGenerateStatusEnum.done
-      });
-    }
-
     streamResponseContext.responseWrite(workflowSseEvent.done(SseResponseEventEnum.answer));
   } catch (err: any) {
     const { preparedRound } = roundState;
@@ -375,13 +365,6 @@ export async function runSkillDebugChat({
           responseChatItemId: roundState.responseChatItemId,
           error: err
         });
-      } else {
-        await updateChatGenerateStatus({
-          sourceType: roundState.sourceType,
-          sourceId: roundState.sourceId,
-          chatId: roundState.chatId,
-          status: ChatGenerateStatusEnum.error
-        });
       }
     }
 
@@ -389,8 +372,12 @@ export async function runSkillDebugChat({
 
     streamResponseContext.writeStreamError(err);
   } finally {
-    // runner 统一等待缓存收尾，HTTP 响应仍由调用方关闭。
-    await streamResponseContext?.flushResume();
+    try {
+      // runner 统一等待缓存收尾，HTTP 响应仍由调用方关闭。
+      await streamResponseContext?.flushResume();
+    } finally {
+      await roundState.preparedRound?.releaseGenerationLease?.();
+    }
   }
 }
 

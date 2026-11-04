@@ -34,7 +34,6 @@ import { ChatGenerateStatusEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/
 import type { WorkflowBuilderActivity } from './context';
 import { useTranslation } from 'next-i18next';
 import {
-  getWorkflowBuilderErrorAttentionKey,
   getWorkflowBuilderPendingInteractiveKey,
   getWorkflowBuilderWatchChatId,
   isWorkflowBuilderVersionGenerating
@@ -259,10 +258,6 @@ const WorkflowBuilderChatContent = ({
       isBuildingWorkflow,
       pendingInteractiveKey: getWorkflowBuilderPendingInteractiveKey(chatRecords, {
         isBuildingWorkflow
-      }),
-      errorAttentionKey: getWorkflowBuilderErrorAttentionKey({
-        chatRecords,
-        chatGenerateStatus: chatBoxData.chatGenerateStatus
       }),
       latestVersion
     });

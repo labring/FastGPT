@@ -2,7 +2,6 @@ import {
   AUTO_EXECUTE_QUERY_SENTINEL,
   CHAT_FIXED_TITLE_I18N,
   ChatFileTypeEnum,
-  ChatGenerateStatusEnum,
   ChatRoleEnum,
   ChatSourceEnum,
   ChatSourceTypeEnum
@@ -11,7 +10,6 @@ import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/cons
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import type { UserChatItemType } from '@fastgpt/global/core/chat/type';
 import { redisCacheAdapter } from '@fastgpt/dal/redis/adapter';
-import { updateChatGenerateStatus } from '@fastgpt/service/core/chat/chatGenerateStatus';
 import { preChatRound } from '@fastgpt/service/core/chat/utils/prepare';
 import {
   CHAT_TITLE_GENERATION_TIMEOUT_MS,
@@ -164,35 +162,42 @@ describe('syncGeneratedChatTitleFromUserContent', () => {
     const pending = deferTitleResponse();
     const params = { ...base, source: ChatSourceEnum.online, userContent: textContent('First') };
     const first = await preChatRound({ ...params, responseChatItemId: 'first-round' });
-    await pending.started;
-    const sender = createGeneratedChatTitleSender({
-      titleGeneration: first.titleGeneration,
-      stream: true,
-      detail: true
-    });
-    sender.close();
-
     try {
-      for (const fixedTitle of [undefined, 'Plugin Run']) {
-        // 主回答已完成、响应已关闭，但标题任务仍在运行；下一轮应跳过普通和固定标题。
-        await updateChatGenerateStatus({ ...base, status: ChatGenerateStatusEnum.done });
-        const next = await preChatRound({
-          ...params,
-          fixedTitle,
-          responseChatItemId: fixedTitle ?? 'second-round'
-        });
-        expect(await next.titleGeneration).toBeUndefined();
-        expect(createLLMResponseMock).toHaveBeenCalledTimes(1);
-        expect(await readStoredTitle()).toBe('');
-      }
-    } finally {
-      pending.resolve({ answerText: 'First Title' });
-      expect(await first.titleGeneration).toBe('First Title');
-    }
+      await pending.started;
+      const sender = createGeneratedChatTitleSender({
+        titleGeneration: first.titleGeneration,
+        stream: true,
+        detail: true
+      });
+      sender.close();
+      await first.releaseGenerationLease?.();
 
-    // 即使调用方仍传旧的生成资格，lease 内也要重查已落库的有效标题。
-    expect(await syncGeneratedChatTitleFromUserContent(params)).toBeUndefined();
-    expect(createLLMResponseMock).toHaveBeenCalledTimes(1);
+      try {
+        for (const fixedTitle of [undefined, 'Plugin Run']) {
+          const next = await preChatRound({
+            ...params,
+            fixedTitle,
+            responseChatItemId: fixedTitle ?? 'second-round'
+          });
+          try {
+            expect(await next.titleGeneration).toBeUndefined();
+            expect(createLLMResponseMock).toHaveBeenCalledTimes(1);
+            expect(await readStoredTitle()).toBe('');
+          } finally {
+            await next.releaseGenerationLease?.();
+          }
+        }
+      } finally {
+        pending.resolve({ answerText: 'First Title' });
+        expect(await first.titleGeneration).toBe('First Title');
+      }
+
+      // 即使调用方仍传旧的生成资格，lease 内也要重查已落库的有效标题。
+      expect(await syncGeneratedChatTitleFromUserContent(params)).toBeUndefined();
+      expect(createLLMResponseMock).toHaveBeenCalledTimes(1);
+    } finally {
+      await first.releaseGenerationLease?.();
+    }
   });
 
   it.each([
@@ -291,9 +296,13 @@ describe('syncGeneratedChatTitleFromUserContent', () => {
       userContent: textContent('Plugin question'),
       fixedTitle
     });
-    expect(await prepared.titleGeneration).toBe(expected);
-    expect(await readStoredTitle()).toBe(expected ?? '');
-    expect(createLLMResponseMock).not.toHaveBeenCalled();
+    try {
+      expect(await prepared.titleGeneration).toBe(expected);
+      expect(await readStoredTitle()).toBe(expected ?? '');
+      expect(createLLMResponseMock).not.toHaveBeenCalled();
+    } finally {
+      await prepared.releaseGenerationLease?.();
+    }
   });
 
   it('does not write or return a title when title generation fails', async () => {

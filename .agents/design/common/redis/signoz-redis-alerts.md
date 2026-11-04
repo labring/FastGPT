@@ -173,6 +173,7 @@ Failed to invalidate team vector count cache
 ```text
 Failed to clear stream resume redis keys before mirror
 Failed to mirror stream response to redis
+Failed to touch stream resume redis ttl
 Failed to shrink stream resume redis ttl
 ```
 
@@ -183,7 +184,12 @@ Failed to shrink stream resume redis ttl
 Disabling new stream resume mirrors due to Redis memory pressure
 Failed to inspect Redis memory pressure for stream resume mirror
 Failed to persist stream resume unavailable state
-cleanStaleGeneratingChats: failed to inspect stream resume activity
+Stream resume mirror keepalive failed
+Chat generation lease renewal failed
+Chat generation lease acquisition failed; proceeding without lease
+Chat generation lease expired before request completed
+Chat generation lease release failed
+Chat generation lease status read failed; treating chats as idle
 ```
 
 - 阈值：内存压力状态变化 `>= 1/10 分钟`；检查或状态写入失败 `>= 3/5 分钟`。

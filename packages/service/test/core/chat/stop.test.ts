@@ -1,13 +1,89 @@
-import { describe, test, expect, beforeEach } from 'vitest';
+import { describe, test, expect, beforeEach, afterEach, it, vi } from 'vitest';
+import { WorkflowStopSignalCache } from '@fastgpt/dal/redis/caches/workflowStopSignal';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import {
+  createChatStopController,
   setAgentRuntimeStop,
   delAgentRuntimeStopSign,
   shouldWorkflowStop,
   waitForWorkflowComplete,
   getRuntimeStatusKey
-} from '@fastgpt/service/core/workflow/dispatch/workflowStatus';
+} from '@fastgpt/service/core/chat/stop';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+
+describe('createChatStopController', () => {
+  const params = { sourceType: ChatSourceTypeEnum.app, sourceId: 'app-1', chatId: 'chat-1' };
+  const controllers: Awaited<ReturnType<typeof createChatStopController>>[] = [];
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.spyOn(WorkflowStopSignalCache.prototype, 'isStopping').mockResolvedValue(false);
+    vi.spyOn(WorkflowStopSignalCache.prototype, 'clear').mockResolvedValue(undefined);
+  });
+  afterEach(async () => {
+    for (const controller of controllers.splice(0)) await controller.cleanup();
+    vi.restoreAllMocks();
+    vi.useRealTimers();
+  });
+
+  it('preserves a stop requested during preparation without clearing it on startup', async () => {
+    const read = vi.mocked(WorkflowStopSignalCache.prototype.isStopping).mockResolvedValue(true);
+    const controller = await createChatStopController(params);
+    controllers.push(controller);
+
+    expect(controller.checkIsStopping()).toBe(true);
+    expect(WorkflowStopSignalCache.prototype.clear).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(500);
+    expect(read).toHaveBeenCalledOnce();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('serializes slow reads and latches stop until cleanup', async () => {
+    const pending = Promise.withResolvers<boolean>();
+    const read = vi
+      .mocked(WorkflowStopSignalCache.prototype.isStopping)
+      .mockResolvedValueOnce(false)
+      .mockImplementationOnce(() => pending.promise)
+      .mockResolvedValueOnce(true);
+    const controller = await createChatStopController(params);
+    controllers.push(controller);
+
+    await vi.advanceTimersByTimeAsync(500);
+    expect(read).toHaveBeenCalledTimes(2);
+    expect(controller.checkIsStopping()).toBe(false);
+    pending.resolve(false);
+    await pending.promise;
+    await vi.advanceTimersByTimeAsync(100);
+    expect(controller.checkIsStopping()).toBe(true);
+
+    read.mockResolvedValue(false);
+    await vi.advanceTimersByTimeAsync(500);
+    expect(controller.checkIsStopping()).toBe(true);
+    expect(read).toHaveBeenCalledTimes(3);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('cleans up once and ignores a read that finishes after disposal', async () => {
+    const pending = Promise.withResolvers<boolean>();
+    const read = vi
+      .mocked(WorkflowStopSignalCache.prototype.isStopping)
+      .mockResolvedValueOnce(false)
+      .mockImplementationOnce(() => pending.promise);
+    const controller = await createChatStopController(params);
+    controllers.push(controller);
+    await vi.advanceTimersByTimeAsync(100);
+
+    await Promise.all([controller.cleanup(), controller.cleanup()]);
+    pending.resolve(true);
+    await pending.promise;
+    await vi.advanceTimersByTimeAsync(500);
+
+    expect(controller.checkIsStopping()).toBe(false);
+    expect(WorkflowStopSignalCache.prototype.clear).toHaveBeenCalledOnce();
+    expect(read).toHaveBeenCalledTimes(2);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+});
 
 describe('Workflow Status Redis Functions', () => {
   const testAppId = 'test_app_123';
