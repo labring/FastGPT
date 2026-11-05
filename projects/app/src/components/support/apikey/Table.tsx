@@ -53,6 +53,7 @@ import {
 import TagMultiSelect from './TagMultiSelect';
 import TagManageModal from './TagManageModal';
 import { useDebounce } from 'ahooks';
+import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 
 type EditProps = EditApiKeyProps & { _id?: string };
 const defaultEditData: EditProps = {
@@ -82,6 +83,7 @@ type ApiKeyTableProps = {
   mode?: 'account' | 'publish';
   appId?: string;
   keyType?: ApiKeyTypeEnum;
+  title?: React.ReactNode;
 };
 
 const apiKeyTableFields = [
@@ -193,7 +195,8 @@ const ApiKeyTagEditor = ({
 const ApiKeyTable = ({
   mode = 'account',
   appId,
-  keyType = ApiKeyTypeEnum.personal
+  keyType = ApiKeyTypeEnum.personal,
+  title
 }: ApiKeyTableProps) => {
   const isAppKey = keyType === ApiKeyTypeEnum.app;
   const { t } = useSafeTranslation();
@@ -496,9 +499,12 @@ const ApiKeyTable = ({
               }
             : accountTitleTextStyles)}
         >
-          {isPublishMode
-            ? `${isAppKey ? t('apikey:app_key') : t('apikey:personal_key')} (${apiKeys.length})`
-            : `${t('account:api_key')} (${apiKeys.length})`}
+          {title ??
+            (isPublishMode
+              ? isAppKey
+                ? t('apikey:app_key')
+                : t('apikey:personal_key')
+              : `${t('account:api_key')} (${apiKeys.length})`)}
         </Box>
         <Flex alignItems={'center'} gap={2} ml={3}>
           {feConfigs?.docUrl && (
@@ -654,9 +660,11 @@ const ApiKeyTable = ({
               </Tr>
             </Thead>
             <Tbody fontSize={'sm'}>
-              {isAppKey && apiKeys.length === 0 && (
+              {!isGetting && apiKeys.length === 0 && (
                 <Tr>
-                  <Td colSpan={tableColumns.length}>{t('apikey:app_key_empty')}</Td>
+                  <Td colSpan={tableColumns.length} p={0}>
+                    <EmptyTip text={isAppKey ? t('apikey:app_key_empty') : undefined} />
+                  </Td>
                 </Tr>
               )}
               {apiKeys.map((item) => (

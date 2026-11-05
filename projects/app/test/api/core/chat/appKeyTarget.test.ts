@@ -83,10 +83,7 @@ describe('app API key implicit targets through real request handlers', () => {
   it('reads and updates the bound application across authors without granting the creator ACL', async () => {
     const list = await Call(getHistories, { headers, body: {} });
     expect(list.error).toBeUndefined();
-    expect(list.data.list.map((chat: { chatId: string }) => chat.chatId).sort()).toEqual([
-      'bound-api',
-      'bound-online'
-    ]);
+    expect(list.data.list.map((chat: { chatId: string }) => chat.chatId)).toEqual(['bound-api']);
     const update = await Call(updateHistory, {
       headers,
       body: { chatId: 'bound-api', customTitle: 'renamed' }
@@ -110,7 +107,9 @@ describe('app API key implicit targets through real request handlers', () => {
   it('rejects non-App targets and implicit personal/session targets', async () => {
     for (const body of [
       { skillId: otherAppId },
-      { sourceType: ChatSourceTypeEnum.workflowBuilder }
+      { sourceType: ChatSourceTypeEnum.workflowBuilder },
+      { source: ChatSourceEnum.api },
+      { source: ChatSourceEnum.online }
     ]) {
       const result = await Call(getHistories, { headers, body });
       expect(result.error).toBeDefined();
@@ -134,10 +133,7 @@ describe('app API key implicit targets through real request handlers', () => {
     }
     const list = await Call(getHistories, { headers, body: { appId: otherAppId } });
     expect(list.error).toBeUndefined();
-    expect(list.data.list.map((chat: { chatId: string }) => chat.chatId).sort()).toEqual([
-      'bound-api',
-      'bound-online'
-    ]);
+    expect(list.data.list.map((chat: { chatId: string }) => chat.chatId)).toEqual(['bound-api']);
     const logs = await Call(listLogs, {
       headers,
       body: {
@@ -159,6 +155,26 @@ describe('app API key implicit targets through real request handlers', () => {
     expect(
       (await MongoChat.findOne({ appId: otherAppId, chatId: 'other-api' }).lean())?.customTitle
     ).toBeUndefined();
+  });
+
+  it('fixes the list to API source even when the explicit-appId branch supplies another source', async () => {
+    const list = await Call(getHistories, {
+      headers,
+      body: { appId: otherAppId, source: ChatSourceEnum.online }
+    });
+    expect(list.error).toBeUndefined();
+    expect(list.data.total).toBe(1);
+    expect(list.data.list.map((chat: { chatId: string }) => chat.chatId)).toEqual(['bound-api']);
+
+    // 固定列表筛选不缩小按 ID 管理会话的既有权限。
+    const update = await Call(updateHistory, {
+      headers,
+      body: { chatId: 'bound-online', customTitle: 'managed by app key' }
+    });
+    expect(update.error).toBeUndefined();
+    expect((await MongoChat.findOne({ appId, chatId: 'bound-online' }).lean())?.customTitle).toBe(
+      'managed by app key'
+    );
   });
 
   it('clears only API conversations in the bound application when the request omits appId', async () => {

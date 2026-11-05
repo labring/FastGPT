@@ -355,7 +355,17 @@ async function execute(context) {
   const d = await seed();
   if (context.itemId === 'D1') {
     const histories = await call('/core/chat/history/getHistories', { pageNum: 1, pageSize: 100 });
-    assert.deepEqual(histories.list.map((row) => row.chatId).sort(), [...d.ids].sort());
+    const apiIds = [d.one.chatId, d.two.chatId].sort();
+    assert.deepEqual(histories.list.map((row) => row.chatId).sort(), apiIds);
+    assert.equal(histories.total, 2);
+    for (const source of ['api', 'online']) {
+      await w.denied(
+        await w.keyRequest(Ka, '/api/core/chat/history/getHistories', { source }),
+        true
+      );
+      const explicit = await call('/core/chat/history/getHistories', { appId: X, source });
+      assert.deepEqual(explicit.list.map((row) => row.chatId).sort(), apiIds);
+    }
     for (const chatId of d.ids) {
       assert.equal((await get('/core/chat/init', { chatId })).appId, W);
       const fetched = [];
@@ -378,7 +388,7 @@ async function execute(context) {
       const details = await get('/core/chat/record/getResData', { chatId, dataId: ai.dataId });
       assert.ok(details.some((row) => row.textOutput?.includes(c.run)));
     }
-    return '不同作者、Key、在线/分享来源会话均可读取；分页合并和消息详情与真实记录一致';
+    return '列表固定绑定应用的 API 来源，隐式来源筛选拒绝、显式冲突不能覆盖；按 ID 仍可读取在线/分享会话，分页和消息详情与真实记录一致';
   }
   if (context.itemId === 'D2') {
     const listed = await call('/core/app/logs/list', { ...dates(), pageSize: 100 });
@@ -628,7 +638,7 @@ async function execute(context) {
         })
       );
       const expected = (await w.snapshot(appId, base.ids)).chats
-        .filter((row) => !row.deleteTime)
+        .filter((row) => !row.deleteTime && row.publishSource?.type === 'api')
         .map((row) => row.chatId)
         .sort();
       const visible = await call('/core/chat/history/getHistories', { pageSize: 100 }, 'POST', a);

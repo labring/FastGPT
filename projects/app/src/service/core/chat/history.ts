@@ -93,6 +93,17 @@ export async function buildChatHistoryMatch(props: ChatHistoryAuthProps) {
   return (await getChatHistoryContext(props))?.match;
 }
 
+/** 应用 Key 的会话列表固定为 API 来源，显式 appId 分支携带的 source 也不能改变查询范围。 */
+export async function buildChatHistoryListMatch(props: ChatHistoryAuthProps) {
+  const context = await getChatHistoryContext(props);
+  if (context?.apiKeyType !== ApiKeyTypeEnum.app) return context?.match;
+
+  return {
+    ...context.match,
+    $and: [buildChatPublishSourceFilter([ChatSourceEnum.api])]
+  };
+}
+
 /**
  * 构造“清空历史”接口的范围。
  *

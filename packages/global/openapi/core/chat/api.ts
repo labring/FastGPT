@@ -255,12 +255,13 @@ export const transformOptionalChatAuthTargetInput = transformOptionalChatTargetI
 const appApiKeyTargetMeta = {
   title: '应用 API Key（无需 appId）',
   description:
-    'Authorization 使用绑定应用的 APP API Key 时无需传 appId，服务端从 Key 绑定取得应用。个人密钥和登录态不能使用此省略方式；显式传入 appId 时仍以 Key 绑定为准。',
+    'Authorization 使用绑定应用的 APP API Key 时无需传 appId 或 sourceType，服务端从 Key 绑定取得应用，sourceType 固定为 app。个人密钥和登录态不能使用此省略方式；显式传入 appId 时仍以 Key 绑定为准。',
   override: ({ jsonSchema }) => {
     delete jsonSchema.properties?.appId;
     delete jsonSchema.properties?.skillId;
     delete jsonSchema.properties?.shareId;
     delete jsonSchema.properties?.outLinkUid;
+    delete jsonSchema.properties?.sourceType;
   }
 } satisfies ZodOpenApiMetadata;
 
@@ -308,6 +309,7 @@ const createChatTargetBranches = <T extends z.ZodRawShape>(schema: z.ZodObject<T
         appId: z.never().optional(),
         skillId: z.never().optional(),
         sourceType: z.literal(ChatSourceTypeEnum.app).optional(),
+        source: z.never().optional(),
         shareId: z.never().optional(),
         outLinkUid: z.never().optional()
       })
@@ -390,15 +392,19 @@ export const createOutLinkChatTargetQuerySchema = <T extends z.ZodRawShape>(shap
 export const createOptionalOutLinkChatTargetInputSchema = <T extends z.ZodRawShape>(shape: T) =>
   z.union([createNoChatTargetSchema(shape), ...createOutLinkChatTargetInputSchema(shape).options]);
 
-/** 会话身份先展示，分页方式随后选择；两部分独立校验，保留身份优先级和 offset 优先规则。 */
+/** 先选择会话身份，再展示分页方式及参数，最后展示业务筛选；保留身份优先级和 offset 优先规则。 */
 export const createPaginatedChatTargetInputSchema = <T extends z.ZodRawShape>(shape: T) => {
   const [app, skill, outLink, appApiKey] = createOutLinkChatTargetInputSchema({}).options;
   const pagination = createPaginationSchema(shape);
+  // 筛选字段跟随分页参数展示；应用 Key 不接受来源筛选，校验和文档共用同一约束。
+  const appApiKeyFilters = appApiKey
+    .extend({ ...shape, source: z.never().optional() })
+    .meta(appApiKey.meta() ?? {});
   return z.union([
     z.intersection(app, pagination).meta(app.meta() ?? {}),
     z.intersection(skill, pagination).meta(skill.meta() ?? {}),
     z.intersection(outLink, pagination).meta(outLink.meta() ?? {}),
-    z.intersection(appApiKey, pagination).meta(appApiKey.meta() ?? {})
+    z.intersection(createPaginationSchema(), appApiKeyFilters).meta(appApiKey.meta() ?? {})
   ]);
 };
 

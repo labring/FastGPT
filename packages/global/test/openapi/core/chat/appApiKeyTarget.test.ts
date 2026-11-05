@@ -20,6 +20,7 @@ import {
 import { GetQuoteDataBodySchema } from '@fastgpt/global/openapi/core/dataset/data/api';
 import { openAPIDocument } from '@fastgpt/global/openapi/provider/devapi';
 import { AppLogTimespanEnum } from '@fastgpt/global/core/app/logs/constants';
+import { ChatSourceEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 
 const id = '68ad85a7463006c963799a05';
 const chat = { chatId: 'chat-1' };
@@ -146,11 +147,41 @@ describe('application API key targets across dialogue APIs', () => {
   );
 
   it('publishes the no-appId union branch in every dialogue operation', () => {
+    /** 检查最终生成的文档，避免 union/intersection 合并后重新暴露服务端固定字段。 */
+    const checkAppKeyBranch = (value: unknown, path: string) => {
+      if (!value || typeof value !== 'object') return;
+      if ('title' in value && value.title === '应用 API Key（无需 appId）') {
+        expect(JSON.stringify(value), path).not.toMatch(/"sourceType":/);
+        if (path === '/core/chat/history/getHistories')
+          expect(JSON.stringify(value), path).not.toMatch(/"source":/);
+        return;
+      }
+      Object.values(value).forEach((child) => checkAppKeyBranch(child, path));
+    };
+
     for (const [path] of cases) {
       const operation = openAPIDocument.paths?.[path];
       expect(operation, path).toBeDefined();
       expect(JSON.stringify(operation), path).toMatch(/API Key（无需 appId/);
+      checkAppKeyBranch(operation, path);
     }
+  });
+
+  it('derives the App target without accepting caller-controlled type or history source', () => {
+    expect(history.GetHistoriesBodySchema.parse({})).toMatchObject({
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: undefined
+    });
+    // 兼容旧客户端显式传 app，但不允许切换到其他资源类型。
+    expect(
+      history.GetHistoriesBodySchema.parse({ sourceType: ChatSourceTypeEnum.app })
+    ).toMatchObject({ sourceType: ChatSourceTypeEnum.app, sourceId: undefined });
+    for (const input of [{ source: ChatSourceEnum.api }, { source: ChatSourceEnum.online }])
+      expect(history.GetHistoriesBodySchema.safeParse(input).success).toBe(false);
+
+    expect(
+      history.GetHistoriesBodySchema.parse({ appId: id, source: ChatSourceEnum.online })
+    ).toMatchObject({ source: ChatSourceEnum.online });
   });
 
   it('retains invalid-target guards and keeps draft/editor uploads explicit', () => {

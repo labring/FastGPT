@@ -47,11 +47,10 @@ async function execute(context) {
       { timeout: 120000, waitUntil: 'domcontentloaded' }
     );
     await ui.page.getByText('API 访问', { exact: true }).click({ timeout: 120000 });
-    await expect(ui.page.getByRole('tab', { name: '应用 Key', exact: true })).toHaveAttribute(
-      'aria-selected',
-      'true',
-      { timeout: 60000 }
-    );
+    await expect(ui.page.getByRole('button', { name: '新建应用 Key', exact: true })).toBeVisible({
+      timeout: 60000
+    });
+    await expect(ui.page.getByRole('row').filter({ hasText: Ka.name })).toBeVisible();
     return ui;
   }
   function form(page) {
@@ -116,7 +115,7 @@ async function execute(context) {
       await expect(page.getByRole('row').filter({ hasText: createdApp.name })).toBeVisible();
       await ui.capture('app-list');
       await w.acl('A', null, roles.createKey, 'team');
-      await page.getByRole('tab', { name: '个人密钥', exact: true }).click();
+      await page.getByText('个人密钥', { exact: true }).click();
       await expect(search).toHaveValue('');
       const createdPersonal = await uiCreate(ui, false);
       await search.fill(createdPersonal.name);
@@ -124,10 +123,7 @@ async function execute(context) {
       await ui.capture('personal-list');
       await page.reload();
       await page.getByText('API 访问', { exact: true }).click();
-      await expect(page.getByRole('tab', { name: '应用 Key', exact: true })).toHaveAttribute(
-        'aria-selected',
-        'true'
-      );
+      await expect(page.getByRole('button', { name: '新建应用 Key', exact: true })).toBeVisible();
       await expect(page.getByRole('row').filter({ hasText: createdApp.name })).toBeVisible();
       assert.deepEqual(
         (await list('A')).map((key) => key._id).sort(),
@@ -453,8 +449,8 @@ async function execute(context) {
       const ui = await openUI(),
         page = ui.page,
         search = page.getByPlaceholder('按 Key 名称或 Key 片段搜索');
-      await page.getByText('调用示例', { exact: true }).click();
-      await expect(page.locator('pre')).not.toContainText('appId');
+      await expect(page.getByText('调用示例', { exact: true })).toHaveCount(0);
+      await expect(page.locator('pre')).toHaveCount(0);
       await page
         .getByRole('row')
         .filter({ hasText: Ka.name })
@@ -463,10 +459,9 @@ async function execute(context) {
       const appForm = await checkForm(page, true);
       await appForm.getByRole('button', { name: '关闭', exact: true }).click();
       await search.fill(Ka.name);
-      await page.getByRole('tab', { name: '个人密钥', exact: true }).click();
+      await page.getByText('个人密钥', { exact: true }).click();
       await expect(search).toHaveValue('');
-      await expect(page.locator('pre')).toContainText('appId');
-      await expect(page.locator('pre')).toContainText(W);
+      await expect(page.locator('pre')).toHaveCount(0);
       await page
         .getByRole('row')
         .filter({ hasText: row.name })
@@ -475,14 +470,19 @@ async function execute(context) {
       const personalForm = await checkForm(page, false);
       await personalForm.getByRole('button', { name: '关闭', exact: true }).click();
       await search.fill(row.name);
-      await page.getByRole('tab', { name: '应用 Key', exact: true }).click();
+      await page.getByText('应用 Key', { exact: true }).click();
       await expect(search).toHaveValue('');
-      await expect(page.locator('pre')).not.toContainText('appId');
+      await expect(page.locator('pre')).toHaveCount(0);
       await expect(page.getByRole('row').filter({ hasText: Ka.name })).toBeVisible();
       await expect(page.getByRole('row').filter({ hasText: Kb.name })).toBeVisible();
       await expect(page.getByRole('row').filter({ hasText: row.name })).toHaveCount(0);
-      await ui.capture('tabs-and-examples');
-      return '省略 type 保持个人范围，标签计数只统计个人；真实页面验证编辑表单、筛选和调用示例切 Tab 不串用';
+      await expect(page.getByRole('link', { name: '使用教程', exact: true })).toBeVisible();
+      await expect(page.getByRole('link', { name: 'OpenAPI 文档', exact: true })).toHaveAttribute(
+        'href',
+        '/apidoc/systemopenapi'
+      );
+      await ui.capture('tabs-and-forms');
+      return '省略 type 保持个人范围，标签计数只统计个人；真实页面验证编辑表单和筛选切 Tab 不串用，调用示例统一使用文档入口';
     }
     case 'M6': {
       const max = c.fixture.appKeys?.maxKeyCount;
