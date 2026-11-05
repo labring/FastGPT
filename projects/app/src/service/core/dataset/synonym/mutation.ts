@@ -25,7 +25,10 @@ import {
   assertDatasetSynonymEnabled,
   invalidateDatasetSynonymMatcherCache
 } from '@fastgpt/service/core/dataset/synonym/entity';
-import { hasDatasetTrainingTask } from '@fastgpt/service/core/dataset/training/entity';
+import {
+  hasDatasetTrainingTask,
+  hasRetryableTrainingTask
+} from '@fastgpt/service/core/dataset/training/entity';
 import { createTrainingUsage } from '@fastgpt/service/support/wallet/usage/controller';
 import { seedDatasetSynonymRebuildTasks } from '../queues/rebuildSynonym';
 
@@ -78,9 +81,10 @@ export const createDatasetSynonymMutation = async ({
     datasetId,
     per: WritePermissionVal
   });
-  const [current, hasTrainingTask] = await Promise.all([
+  const [current, hasTrainingTask, hasRetryableTraining] = await Promise.all([
     MongoDatasetSynonym.findOne({ teamId, datasetId }).lean(),
-    hasDatasetTrainingTask({ teamId, datasetId })
+    hasDatasetTrainingTask({ teamId, datasetId }),
+    hasRetryableTrainingTask({ teamId, datasetId })
   ]);
 
   if (type === DatasetSynonymMutationTypeEnum.delete && !current) {
@@ -92,7 +96,7 @@ export const createDatasetSynonymMutation = async ({
   ) {
     throw new Error('同义词配置已变化，请刷新页面后重试');
   }
-  if (hasTrainingTask) {
+  if (hasTrainingTask || hasRetryableTraining) {
     throw new Error('知识库正在训练或者重建中，请稍后再修改同义词');
   }
   if (type === DatasetSynonymMutationTypeEnum.upload && current?.enabled) {

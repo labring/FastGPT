@@ -2,7 +2,7 @@ import type { ClientSession } from '../../../common/mongo';
 import { normalizePagination } from '../../../common/api/pagination';
 import { MongoDatasetSynonym, MongoDatasetSynonymMapping } from './schema';
 import { MongoDatasetData } from '../data/schema';
-import { hasDatasetTrainingTask } from '../training/entity';
+import { hasDatasetTrainingTask, hasRetryableTrainingTask } from '../training/entity';
 import { assertDatasetSynonymEnabled, invalidateDatasetSynonymMatcherCache } from './entity';
 import { serviceEnv } from '../../../env';
 
@@ -42,13 +42,15 @@ export const getDatasetSynonymDetail = async ({
 }) => {
   assertDatasetSynonymEnabled();
 
-  const [file, hasTrainingTask] = await Promise.all([
+  const [file, hasTrainingTask, hasRetryableTraining] = await Promise.all([
     MongoDatasetSynonym.findOne({ teamId, datasetId }).lean(),
-    hasDatasetTrainingTask({ teamId, datasetId })
+    hasDatasetTrainingTask({ teamId, datasetId }),
+    hasRetryableTrainingTask({ teamId, datasetId })
   ]);
   return {
     file: file ?? undefined,
-    rebuilding: hasTrainingTask
+    // 欠费暂停等 retryCount > 0 的任务仍会恢复执行，同义词变更必须继续阻塞
+    rebuilding: hasTrainingTask || hasRetryableTraining
   };
 };
 

@@ -44,6 +44,18 @@ export const hasDatasetTrainingTask = async ({
   return !!training;
 };
 
+/**
+ * 是否仍有可继续处理或等待恢复的训练任务（含普通与重建阶段）。
+ * retryCount > 0 覆盖排队/训练中/欠费暂停；最终失败 retryCount=0 不计。
+ */
+export const hasRetryableTrainingTask = async ({
+  teamId,
+  datasetId
+}: {
+  teamId: string;
+  datasetId: string;
+}) => !!(await MongoDatasetTraining.exists({ teamId, datasetId, retryCount: { $gt: 0 } }));
+
 /** 原子领取任务，返回更新后的租约；领取不消耗业务重试次数。 */
 export type FindAndLockTrainingTaskOptions = {
   mode: TrainingModeEnum;

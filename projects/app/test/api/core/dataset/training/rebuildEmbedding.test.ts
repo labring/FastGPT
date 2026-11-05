@@ -500,6 +500,32 @@ describe('POST /api/core/dataset/training/rebuildEmbedding', () => {
     ).resolves.toBe(1);
   });
 
+  it('rejects switching while a paused synonym rebuild exists', async () => {
+    const { root, dataset, collection } = await createDatasetContext();
+    await MongoDatasetTraining.create({
+      teamId: root.teamId,
+      tmbId: root.tmbId,
+      datasetId: dataset._id,
+      collectionId: collection._id,
+      billId: 'synonym-bill',
+      mode: TrainingModeEnum.rebuildSynonym,
+      retryCount: 1,
+      lockTime: new Date('2050-01-01'),
+      errorMsg: 'AI points not enough'
+    });
+
+    const res = await Call(handler, {
+      auth: root,
+      body: {
+        datasetId: String(dataset._id),
+        vectorModelId: visionEmbeddingModel.modelId
+      }
+    });
+
+    expect(res.code).toBe(500);
+    expect(String(res.error)).toContain('同义词重建等待恢复');
+  });
+
   it('should reject model rebuilding while an active training task exists', async () => {
     const { root, dataset, collection } = await createDatasetContext();
     await MongoDatasetTraining.create({

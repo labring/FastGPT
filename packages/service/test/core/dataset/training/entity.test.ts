@@ -4,7 +4,10 @@ import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
-import { hasDatasetTrainingTask } from '@fastgpt/service/core/dataset/training/entity';
+import {
+  hasDatasetTrainingTask,
+  hasRetryableTrainingTask
+} from '@fastgpt/service/core/dataset/training/entity';
 
 const teamId = new Types.ObjectId();
 const tmbId = new Types.ObjectId();
@@ -37,10 +40,7 @@ const createData = (indexStatus: DatasetDataIndexStatusEnum) =>
   });
 
 afterEach(async () => {
-  await Promise.all([
-    MongoDatasetTraining.deleteMany(scope),
-    MongoDatasetData.deleteMany(scope)
-  ]);
+  await Promise.all([MongoDatasetTraining.deleteMany(scope), MongoDatasetData.deleteMany(scope)]);
 });
 
 describe('hasDatasetTrainingTask', () => {
@@ -77,5 +77,22 @@ describe('hasDatasetTrainingTask', () => {
       $set: { indexStatus: DatasetDataIndexStatusEnum.rebuildIndexFailed }
     });
     await expect(hasDatasetTrainingTask(query())).resolves.toBe(false);
+  });
+});
+
+describe('hasRetryableTrainingTask', () => {
+  it('counts used or paused retries but not final errors', async () => {
+    await createTraining({ retryCount: 3, lockTime: new Date('2000-01-01') });
+    await createTraining({
+      retryCount: 3,
+      lockTime: new Date('2050-01-01'),
+      errorMsg: 'AI points not enough'
+    });
+
+    await expect(hasRetryableTrainingTask(query())).resolves.toBe(true);
+
+    await MongoDatasetTraining.deleteMany(scope);
+    await createTraining({ retryCount: 0, lockTime: new Date(), errorMsg: 'failed' });
+    await expect(hasRetryableTrainingTask(query())).resolves.toBe(false);
   });
 });
