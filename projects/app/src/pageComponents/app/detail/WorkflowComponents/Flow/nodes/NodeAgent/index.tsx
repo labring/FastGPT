@@ -7,7 +7,6 @@ import type { CanvasNodeProps } from '@/web/core/workflow/editor/canvas/canvasTy
 import { splitNodeOutputs, splitToolInputsByMode } from '@/web/core/workflow/utils';
 import { useNode } from '@/web/core/workflow/editor/react/useNode';
 import type { WorkflowNodeData } from '@fastgpt/global/core/workflow/editor/types';
-import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import Container from '../../components/Container';
 import IOTitle from '../../components/IOTitle';
 import NodeCard from '../render/NodeCard';
@@ -92,7 +91,7 @@ const AgentNodeContent = ({ data, selected }: CanvasNodeProps) => {
 };
 
 const NodeAgent = (props: CanvasNodeProps) => (
-  <AgentNodeInputProvider data={props.data as FlowNodeItemType}>
+  <AgentNodeInputProvider nodeId={props.data.nodeId}>
     <AgentNodeContent {...props} />
   </AgentNodeInputProvider>
 );

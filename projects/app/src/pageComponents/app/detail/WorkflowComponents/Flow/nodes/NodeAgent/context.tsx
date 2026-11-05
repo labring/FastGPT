@@ -6,7 +6,7 @@ import React, { createContext, useCallback, useContext, useMemo } from 'react';
 import { useContextSelector } from 'use-context-selector';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import type { WorkflowNodeData } from '@fastgpt/global/core/workflow/editor/types';
 import type {
   SelectedAgentSkillItemType,
   SelectedToolItemType
@@ -20,15 +20,19 @@ import { RechargeModal } from '@/components/support/wallet/NotSufficientModal';
 import { AppContext } from '@/pageComponents/app/detail/context';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useUserStore } from '@/web/support/user/useUserStore';
-import { useNodeActions } from '@/web/core/workflow/editor/react/useNode';
+import { useNode, useNodeActions } from '@/web/core/workflow/editor/react/useNode';
 import { useFieldActions } from '@/web/core/workflow/editor/react/useField';
 import { useNodeWorkflowDocument } from '../render/useWorkflowDocument';
 import { getEditorVariables } from '../../../utils';
 
+const emptyInputs: WorkflowNodeData['inputs'] = [];
+
 /** 仅适配 Agent 节点的输入更新、提示词资源和共享选择逻辑，不维护另一套表单渲染。 */
-const useAgentNodeInputs = ({ nodeId, inputs }: FlowNodeItemType) => {
+const useAgentNodeInputs = (nodeId: string) => {
   const { t } = useTranslation();
   const nodeActions = useNodeActions(nodeId);
+  const inputs =
+    useNode<WorkflowNodeData['inputs']>(nodeId, (node) => node?.data.inputs) ?? emptyInputs;
   const promptField = useFieldActions({
     nodeId,
     fieldKey: NodeInputKeyEnum.aiSystemPrompt,
@@ -220,13 +224,13 @@ export const useAgentNodeInputContext = () => {
 
 /** 向模板渲染器提供 Agent 上下文，并统一挂载配置/套餐提示弹窗。 */
 export const AgentNodeInputProvider = ({
-  data,
+  nodeId,
   children
 }: {
-  data: FlowNodeItemType;
+  nodeId: string;
   children: React.ReactNode;
 }) => {
-  const context = useAgentNodeInputs(data);
+  const context = useAgentNodeInputs(nodeId);
   const { ConfirmModal, isOpenRecharge, onCloseRecharge } = context.skillSelection;
   return (
     <AgentNodeInputContext.Provider value={context}>
