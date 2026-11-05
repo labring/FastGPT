@@ -7,7 +7,6 @@ import { adminConfigPageFieldsMap } from '@fastgpt/global/common/system/config/p
 
 const projectRoot = process.cwd();
 const readonlyFields: Record<string, string> = {
-  '/admin/subservice/plugin': 'subservice.plugin.baseUrl',
   '/admin/subservice/code-sandbox': 'subservice.codeSandbox.baseUrl',
   '/admin/subservice/ai-proxy': 'subservice.aiProxy.endpoint'
 };

@@ -13,12 +13,8 @@ const defaultableIntSchema = (defaultValue: number) =>
  * 不让退役 ENV 再影响业务读取或全局 ENV 初始化。AI Proxy 可缺省，启用条件由迁移和配置校验负责。
  */
 const LegacyInstanceConfigEnvSchema = z.object({
-  PLUGIN_BASE_URL: UrlSchema.default('http://localhost:3004'),
-  PLUGIN_TOKEN: z.string().default('token'),
   CODE_SANDBOX_URL: UrlSchema.default('http://localhost:3002'),
-  CODE_SANDBOX_TOKEN: z.string().default('codesandbox'),
   AIPROXY_API_ENDPOINT: UrlSchema.optional(),
-  AIPROXY_API_TOKEN: z.string().trim().min(1).optional(),
   AGENT_SANDBOX_PROVIDER: z.enum(agentSandboxProviderList).optional().meta({
     description: 'Agent 沙箱提供方，可选 sealosdevbox 或 opensandbox；为空时不启用沙箱'
   }),

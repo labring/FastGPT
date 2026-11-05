@@ -40,7 +40,8 @@ export const adminConfigPageFieldsMap: Record<string, readonly string[]> = {
     'site.appTemplateCourse',
     'site.loginGuideDocUrl',
     'site.customApiDomain',
-    'site.customSharePageDomain'
+    'site.customSharePageDomain',
+    'site.scripts'
   ],
   '/admin/settings/feature': [
     'feature.hideChatCopyrightSetting',
@@ -77,6 +78,7 @@ export const adminConfigPageFieldsMap: Record<string, readonly string[]> = {
     'auth.accountCancellation.cancellationSm.zh',
     'auth.accountCancellation.reminderSm.zh',
     'auth.accountCancellation.todaySm.zh',
+    'auth.fastLogin',
     'auth.loginProviders.wechat.appSecret',
     'auth.loginProviders.wecom.secret',
     'auth.loginProviders.wecom.token',
@@ -85,6 +87,10 @@ export const adminConfigPageFieldsMap: Record<string, readonly string[]> = {
     'auth.loginProviders.google.secret',
     'auth.loginProviders.microsoft.secret',
     'auth.loginProviders.wecom.providerSecret',
+    'auth.loginProviders.wecom.buyerUserId',
+    'auth.loginProviders.wecom.basicVersionId',
+    'auth.loginProviders.wecom.advancedVersionId',
+    'auth.loginProviders.wecom.paySecret',
     'security.passwordLoginMinuteLimitCount',
     'security.maxLoginSession'
   ],
@@ -128,6 +134,7 @@ export const adminConfigPageFieldsMap: Record<string, readonly string[]> = {
     'performance.dataset.vectorMaxProcess',
     'performance.dataset.qaMaxProcess',
     'performance.dataset.vlmMaxProcess',
+    'performance.dataset.retrievalResultsLimit',
     'performance.chat.maxQpm',
     'performance.streamResume.ttlSeconds',
     'performance.streamResume.postCompleteTtlSeconds',
@@ -184,16 +191,13 @@ export const adminConfigPageFieldsMap: Record<string, readonly string[]> = {
     'commercial.payment.alipay.rootCertContent',
     'commercial.payment.alipay.publicCertContent'
   ],
-  '/admin/subservice/plugin': [
-    'subservice.plugin.baseUrl',
-    'subservice.plugin.token',
-    'subservice.plugin.remoteDebug'
-  ],
+  '/admin/subservice/plugin': ['subservice.plugin.remoteDebug'],
   '/admin/subservice/code-sandbox': [
     'subservice.codeSandbox.enabled',
     'subservice.codeSandbox.baseUrl'
   ],
   '/admin/subservice/ai-proxy': ['subservice.aiProxy.enabled', 'subservice.aiProxy.endpoint'],
+  '/admin/subservice/mcp': ['subservice.mcp.sseProxyUrl'],
   '/admin/subservice/agent-sandbox': [
     'subservice.agentSandbox.provider',
     'subservice.agentSandbox.common.cpuCount',

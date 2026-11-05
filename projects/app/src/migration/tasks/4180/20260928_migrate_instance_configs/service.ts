@@ -356,28 +356,21 @@ export const buildLegacyDomainOverrides = ({
   }) as DomainOverrides['providers'];
 
   // ---------- subservice ----------
-  const pluginBaseUrl = optionalText(legacyEnv.PLUGIN_BASE_URL);
   const codeSandboxBaseUrl = optionalText(legacyEnv.CODE_SANDBOX_URL);
   const aiProxyEndpoint = optionalText(legacyEnv.AIPROXY_API_ENDPOINT);
   const agentSandboxProvider = optionalText(legacyEnv.AGENT_SANDBOX_PROVIDER);
 
   overrides.subservice = compact({
-    plugin: compact({
-      baseUrl: pluginBaseUrl,
-      token: optionalText(legacyEnv.PLUGIN_TOKEN)
-    }),
     codeSandbox: compact({
       enabled: codeSandboxBaseUrl ? true : undefined,
-      baseUrl: codeSandboxBaseUrl,
-      token: optionalText(legacyEnv.CODE_SANDBOX_TOKEN)
+      baseUrl: codeSandboxBaseUrl
     }),
     mcp: compact({
       sseProxyUrl: optionalText(legacyEnv.SSE_MCP_SERVER_PROXY_ENDPOINT)
     }),
     aiProxy: compact({
       enabled: aiProxyEndpoint ? true : undefined,
-      endpoint: aiProxyEndpoint,
-      token: optionalText(legacyEnv.AIPROXY_API_TOKEN)
+      endpoint: aiProxyEndpoint
     }),
     agentSandbox: compact({
       provider: agentSandboxProvider,

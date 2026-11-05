@@ -4,6 +4,7 @@ import { type OpenaiAccountType } from '@fastgpt/global/support/user/team/type';
 import type { AIModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import { isSystemModel } from '@fastgpt/global/core/ai/model/utils';
 import { getSystemInstanceConfig } from '../../common/system/systemInstanceConfig/runtime';
+import { serviceEnv } from '../../env';
 import { getMemberGroupId } from '../../thirdProvider/aiproxy/group';
 import { getLegacyOpenAIRequestOptions, getLegacyAxiosRequestConfig } from './legacy/requestUrl';
 
@@ -32,11 +33,11 @@ export const getOpenaiBaseUrl = () => {
   return getAiProxyBaseUrl() || 'https://api.openai.com/v1';
 };
 export const getOpenaiBaseKey = () => {
-  const { enabled, token } = getSystemInstanceConfig().subservice.aiProxy;
+  const { enabled } = getSystemInstanceConfig().subservice.aiProxy;
   // 地址与凭据必须绑定同一启用状态：禁用代理时请求会回落到 api.openai.com，
   // 此时若仍返回保留的代理 token，就会把私有凭据发给外部服务。
   if (!enabled) return '';
-  return token?.trim() ?? '';
+  return serviceEnv.AIPROXY_API_TOKEN?.trim() ?? '';
 };
 export const defaultUserOpenAIBaseUrl = 'https://api.openai.com/v1';
 

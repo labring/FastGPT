@@ -1,13 +1,10 @@
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import React, { useEffect, useMemo } from 'react';
-import { Input } from '@chakra-ui/react';
-import { useForm, Controller, useWatch } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { useDomainConfig } from '@/web/common/system/useDomainConfig';
 import AdminSettingPage from '@/pageComponents/admin/settings/AdminSettingPage';
 import AdminSettingSection from '@/pageComponents/admin/settings/AdminSettingSection';
-import AdminFormItem from '@/pageComponents/admin/settings/AdminFormItem';
 import AdminSwitchRow from '@/pageComponents/admin/settings/AdminSwitchRow';
-import ConnectivityTestInput from '@/pageComponents/admin/settings/ConnectivityTestInput';
 import type { SettingTOCItem } from '@/pageComponents/admin/settings/AdminSettingTOC';
 import type { SystemInstanceConfigDomainMap } from '@fastgpt/global/common/system/config/type';
 
@@ -18,14 +15,11 @@ const PluginSubserviceComponent = () => {
   const { effectiveConfig, isLoading, isUpdating, patchConfig } = useDomainConfig('subservice');
 
   const tocItems: SettingTOCItem[] = useMemo(
-    () => [
-      { id: 'connection', label: t('admin:connection_status') },
-      { id: 'features', label: t('admin:runtime_features') }
-    ],
+    () => [{ id: 'features', label: t('admin:runtime_features') }],
     [t]
   );
 
-  const { control, handleSubmit, reset, register } = useForm<SubserviceConfigForm>({
+  const { control, handleSubmit, reset } = useForm<SubserviceConfigForm>({
     defaultValues: effectiveConfig
   });
 
@@ -34,13 +28,6 @@ const PluginSubserviceComponent = () => {
       reset(effectiveConfig);
     }
   }, [effectiveConfig, reset]);
-
-  const baseUrl =
-    useWatch({ control, name: 'plugin.baseUrl' }) ||
-    effectiveConfig?.plugin?.baseUrl ||
-    'http://localhost:3004';
-  const pluginHealthUrl = baseUrl.replace(/\/+$/, '') + '/health';
-  const remoteDebug = useWatch({ control, name: 'plugin.remoteDebug' });
 
   const onSave = handleSubmit(async (formData) => {
     await patchConfig({ plugin: formData.plugin });
@@ -54,41 +41,8 @@ const PluginSubserviceComponent = () => {
       isSaving={isUpdating}
       onSave={onSave}
     >
-      {/* 1. 连接与状态 */}
-      <AdminSettingSection id="connection" title={t('admin:connection_status')}>
-        <AdminFormItem
-          label={t('admin:plugin_service_base_url')}
-          tooltip={t('admin:plugin_service_base_url_tip')}
-          isRequired
-          mb={6}
-        >
-          <Input {...register('plugin.baseUrl')} placeholder="http://plugin:3004" />
-        </AdminFormItem>
-
-        <AdminFormItem
-          label={t('admin:plugin_service_token')}
-          tooltip={t('admin:plugin_service_token_tip')}
-          mb={6}
-        >
-          <Input
-            type="password"
-            {...register('plugin.token')}
-            placeholder="******"
-            autoComplete="new-password"
-          />
-        </AdminFormItem>
-
-        <AdminFormItem
-          label={t('admin:plugin_gateway_health_check_endpoint')}
-          tooltip={t('admin:plugin_service_liveness_probe_url_inside_docker_k8s_built_fr')}
-          mb={0}
-        >
-          <ConnectivityTestInput url={pluginHealthUrl} placeholder="http://plugin:3004/health" />
-        </AdminFormItem>
-      </AdminSettingSection>
-
-      {/* 2. 运行时特性 */}
-      <AdminSettingSection id="features" title={t('admin:runtime_features')} showDivider>
+      {/* 运行时特性 */}
+      <AdminSettingSection id="features" title={t('admin:runtime_features')}>
         <Controller
           name="plugin.remoteDebug"
           control={control}

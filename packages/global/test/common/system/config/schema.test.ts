@@ -360,7 +360,7 @@ describe('systemInstanceConfigRegistry', () => {
     expect(new Set(keys).size).toBe(keys.length);
     expect(systemInstanceConfigRegistry).toContainEqual(
       expect.objectContaining({
-        key: 'subservice.aiProxy.token',
+        key: 'subservice.agentSandbox.opensandbox.apiKey',
         secret: true
       })
     );

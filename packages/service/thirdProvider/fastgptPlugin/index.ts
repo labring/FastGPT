@@ -1,4 +1,4 @@
-import { getSystemInstanceConfig } from '../../common/system/systemInstanceConfig/runtime';
+import { serviceEnv } from '../../env';
 import {
   FastGPTPluginClient,
   type ToolAnswerType,
@@ -8,10 +8,13 @@ import type { localeType } from '@fastgpt/global/common/i18n/type';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import { AsyncLocalStorage } from 'async_hooks';
 
-const getPluginConfig = () => getSystemInstanceConfig().subservice.plugin;
+const getPluginConfig = () => ({
+  baseUrl: serviceEnv.PLUGIN_BASE_URL,
+  token: serviceEnv.PLUGIN_TOKEN
+});
 
-export const PLUGIN_BASE_URL = '';
-export const PLUGIN_TOKEN = '';
+export const PLUGIN_BASE_URL = serviceEnv.PLUGIN_BASE_URL;
+export const PLUGIN_TOKEN = serviceEnv.PLUGIN_TOKEN;
 
 const PluginClientLocaleContext = new AsyncLocalStorage<localeType | undefined>();
 

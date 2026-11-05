@@ -42,6 +42,20 @@ export const serviceEnv = createEnv({
 
     PRO_URL: UrlSchema.optional(),
     PRO_TOKEN: z.string().min(32, 'PRO_TOKEN must be at least 32 characters').optional(),
+
+    // 子服务客户端地址与凭据：这些属于部署拓扑/进程间认证，由环境变量提供。
+    PLUGIN_BASE_URL: UrlSchema.default('http://localhost:3004').meta({
+      description: 'FastGPT Plugin 服务地址'
+    }),
+    PLUGIN_TOKEN: z.string().default('token').meta({
+      description: 'FastGPT Plugin 服务访问 Token，需与插件服务 AUTH_TOKEN 一致'
+    }),
+    CODE_SANDBOX_TOKEN: z.string().default('codesandbox').meta({
+      description: 'Code Sandbox 服务访问 Token'
+    }),
+    AIPROXY_API_TOKEN: z.string().trim().optional().meta({
+      description: 'AI Proxy 访问 Token；启用 AI Proxy 时必填'
+    }),
     AGENT_USERS: z.string().optional(),
     DEFAULT_AGENT_PSW: z.string().optional(),
 

@@ -944,6 +944,33 @@ const LimitsSettingComponent = () => {
               )}
             />
           </AdminFormItem>
+
+          <AdminFormItem
+            label={t('admin:retrieval_candidate_limit')}
+            tooltip={t('admin:retrieval_candidate_limit_tip')}
+            isRequired
+          >
+            <Controller
+              name="dataset.retrievalResultsLimit"
+              control={control}
+              render={({ field }) => (
+                <NumberInput
+                  {...numberInputProps}
+                  min={0}
+                  max={10000}
+                  value={field.value ?? 0}
+                  // 0 表示不记录召回候选集，不能用 || 兜底
+                  onChange={(valueAsString, val) => field.onChange(valueAsString === '' ? 0 : val)}
+                >
+                  <NumberInputField />
+                  <NumberInputStepper>
+                    <NumberIncrementStepper />
+                    <NumberDecrementStepper />
+                  </NumberInputStepper>
+                </NumberInput>
+              )}
+            />
+          </AdminFormItem>
         </SimpleGrid>
       </AdminSettingSection>
 

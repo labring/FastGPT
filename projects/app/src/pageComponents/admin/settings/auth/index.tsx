@@ -1,5 +1,5 @@
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Input,
   NumberInput,
@@ -8,13 +8,15 @@ import {
   NumberIncrementStepper,
   NumberDecrementStepper,
   SimpleGrid,
-  Text
+  Text,
+  Textarea
 } from '@chakra-ui/react';
 import { useForm, Controller, useWatch } from 'react-hook-form';
 import { useDomainConfig, updateDomainConfigApi } from '@/web/common/system/useDomainConfig';
 import { useAdminPermission } from '@/pageComponents/admin/useAdminPermission';
 import { deepMergeConfig } from '@fastgpt/global/common/system/config/merge';
 import { useAdminConfigSaveRequest } from '@/web/common/system/useAdminConfigSaveRequest';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 import AdminSettingPage from '@/pageComponents/admin/settings/AdminSettingPage';
 import AdminSettingSection from '@/pageComponents/admin/settings/AdminSettingSection';
 import AdminFormItem from '@/pageComponents/admin/settings/AdminFormItem';
@@ -22,7 +24,7 @@ import AdminSwitchRow from '@/pageComponents/admin/settings/AdminSwitchRow';
 import type { SettingTOCItem } from '@/pageComponents/admin/settings/AdminSettingTOC';
 import type { SystemInstanceConfigDomainMap } from '@fastgpt/global/common/system/config/type';
 
-type AuthConfigForm = Omit<SystemInstanceConfigDomainMap['auth'], 'fastLogin'> & {
+type AuthConfigForm = SystemInstanceConfigDomainMap['auth'] & {
   /** 登录防护字段属 security 域，页面迁入后在此一并编辑 */
   passwordLoginMinuteLimitCount: SystemInstanceConfigDomainMap['security']['passwordLoginMinuteLimitCount'];
   maxLoginSession: SystemInstanceConfigDomainMap['security']['maxLoginSession'];
@@ -31,6 +33,7 @@ type AuthConfigForm = Omit<SystemInstanceConfigDomainMap['auth'], 'fastLogin'> &
 const AuthSettingComponent = () => {
   const { t } = useSafeTranslation();
   const { isFieldVisible, filterConfigData, filterConfigDataByEdition } = useAdminPermission();
+  const { toast } = useToast();
 
   const showEmail = isFieldVisible('auth.loginProviders.email.register');
   const showSms = isFieldVisible('auth.loginProviders.sms.login.zh');
@@ -38,6 +41,8 @@ const AuthSettingComponent = () => {
   const showOauth = isFieldVisible('auth.loginProviders.github.clientId');
   const showCancellation = isFieldVisible('auth.accountCancellation.enabled');
   const showWecomProviderSecret = isFieldVisible('auth.loginProviders.wecom.providerSecret');
+  const showWecomSaaS = isFieldVisible('auth.loginProviders.wecom.buyerUserId');
+  const showFastLogin = isFieldVisible('auth.fastLogin');
 
   const tocItems: SettingTOCItem[] = useMemo(
     () => [
@@ -50,11 +55,12 @@ const AuthSettingComponent = () => {
         ? [{ id: 'wechatLogin', label: t('admin:wechat_service_account_wecom') }]
         : []),
       ...(showOauth ? [{ id: 'oauthLogin', label: t('admin:oauth_login') }] : []),
+      ...(showFastLogin ? [{ id: 'fastLogin', label: t('admin:fast_login_entries_json') }] : []),
       ...(showCancellation
         ? [{ id: 'accountCancellation', label: t('admin:account_cancellation') }]
         : [])
     ],
-    [t, showEmail, showSms, showWechat, showOauth, showCancellation]
+    [t, showEmail, showSms, showWechat, showOauth, showFastLogin, showCancellation]
   );
 
   const auth = useDomainConfig('auth');
@@ -71,6 +77,7 @@ const AuthSettingComponent = () => {
   });
 
   const emailRegister = useWatch({ control, name: 'loginProviders.email.register' });
+  const [fastLoginText, setFastLoginText] = useState('');
 
   useEffect(() => {
     if (effectiveConfig && Object.keys(effectiveConfig).length > 0) {
@@ -80,12 +87,33 @@ const AuthSettingComponent = () => {
           security.effectiveConfig?.passwordLoginMinuteLimitCount ?? 10,
         maxLoginSession: security.effectiveConfig?.maxLoginSession ?? 10
       });
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setFastLoginText(JSON.stringify(effectiveConfig.fastLogin ?? [], null, 2));
     }
   }, [effectiveConfig, security.effectiveConfig, reset]);
 
   const { runAsync: submitAuthConfig, loading: isSaving } = useAdminConfigSaveRequest(
     async (formData: AuthConfigForm) => {
       const { passwordLoginMinuteLimitCount, maxLoginSession, ...rest } = formData;
+      let fastLogin: unknown;
+      if (showFastLogin) {
+        try {
+          fastLogin = JSON.parse(fastLoginText || '[]');
+        } catch {
+          toast({
+            status: 'error',
+            title: t('admin:fast_login_entries_must_be_valid_json_array')
+          });
+          return;
+        }
+        if (!Array.isArray(fastLogin)) {
+          toast({
+            status: 'error',
+            title: t('admin:fast_login_entries_must_be_valid_json_array')
+          });
+          return;
+        }
+      }
 
       // 单次请求、单个数据库事务原子保存 auth 与 security 两个域，避免分步提交导致半写状态。
       // 深度合并保留同域未在当前页编辑的字段（如 teamMode、OpenAPI Key 上限、CORS 等）及密钥。
@@ -98,7 +126,8 @@ const AuthSettingComponent = () => {
               ? Number(rest.passwordExpiredMonth)
               : null,
           loginProviders: rest.loginProviders,
-          accountCancellation: rest.accountCancellation
+          accountCancellation: rest.accountCancellation,
+          ...(showFastLogin ? { fastLogin } : {})
         })
       );
 
@@ -403,6 +432,32 @@ const AuthSettingComponent = () => {
                 />
               </AdminFormItem>
             )}
+            {showWecomSaaS && (
+              <>
+                <AdminFormItem label={t('admin:wecom_buyer_user_id')}>
+                  <Input {...register('loginProviders.wecom.buyerUserId')} placeholder="userid" />
+                </AdminFormItem>
+                <AdminFormItem label={t('admin:wecom_basic_version_id')}>
+                  <Input
+                    {...register('loginProviders.wecom.basicVersionId')}
+                    placeholder="基础版版本ID"
+                  />
+                </AdminFormItem>
+                <AdminFormItem label={t('admin:wecom_advanced_version_id')}>
+                  <Input
+                    {...register('loginProviders.wecom.advancedVersionId')}
+                    placeholder="高级版版本ID"
+                  />
+                </AdminFormItem>
+                <AdminFormItem label={t('admin:wecom_pay_secret')}>
+                  <Input
+                    type="password"
+                    {...register('loginProviders.wecom.paySecret')}
+                    placeholder="******"
+                  />
+                </AdminFormItem>
+              </>
+            )}
           </SimpleGrid>
         </AdminSettingSection>
       )}
@@ -469,6 +524,31 @@ const AuthSettingComponent = () => {
               />
             </AdminFormItem>
           </SimpleGrid>
+        </AdminSettingSection>
+      )}
+
+      {/* 8. 快速登录 */}
+      {showFastLogin && (
+        <AdminSettingSection id="fastLogin" title={t('admin:fast_login_entries_json')} showDivider>
+          <AdminFormItem
+            label={t('admin:fast_login_entries_json')}
+            tooltip={t('admin:array_format_each_item_contains_key_authurl_used_for_custom')}
+            mb={0}
+          >
+            <Controller
+              name="fastLogin"
+              control={control}
+              render={() => (
+                <Textarea
+                  value={fastLoginText}
+                  onChange={(event) => setFastLoginText(event.target.value)}
+                  rows={8}
+                  fontFamily={'mono'}
+                  placeholder='[{"key":"sso","authUrl":"https://example.com/login"}]'
+                />
+              )}
+            />
+          </AdminFormItem>
         </AdminSettingSection>
       )}
 

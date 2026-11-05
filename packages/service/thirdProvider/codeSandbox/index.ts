@@ -3,6 +3,7 @@ import type { AxiosInstance } from 'axios';
 import { createProxyAxios } from '../../common/api/axios';
 import { getLogger, LogCategories } from '../../common/logger';
 import { getSystemInstanceConfig } from '../../common/system/systemInstanceConfig/runtime';
+import { serviceEnv } from '../../env';
 const logger = getLogger(LogCategories.MODULE.WORKFLOW.CODE_SANDBOX);
 
 export type SanndboxPackagesResponse = {
@@ -17,7 +18,8 @@ export class CodeSandbox {
   private currentToken = '';
 
   private getClient(): AxiosInstance {
-    const { baseUrl, token } = getSystemInstanceConfig().subservice.codeSandbox;
+    const { baseUrl } = getSystemInstanceConfig().subservice.codeSandbox;
+    const token = serviceEnv.CODE_SANDBOX_TOKEN;
 
     if (!this.client || this.currentBaseUrl !== baseUrl || this.currentToken !== token) {
       this.currentBaseUrl = baseUrl;

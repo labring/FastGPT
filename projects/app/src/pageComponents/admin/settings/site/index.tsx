@@ -1,7 +1,8 @@
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Box, Input, Textarea, SimpleGrid } from '@chakra-ui/react';
-import { useForm, useWatch } from 'react-hook-form';
+import { useForm, useWatch, Controller } from 'react-hook-form';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useDomainConfig } from '@/web/common/system/useDomainConfig';
 import { useAdminPermission } from '@/pageComponents/admin/useAdminPermission';
 import AdminSettingPage from '@/pageComponents/admin/settings/AdminSettingPage';
@@ -10,6 +11,7 @@ import AdminFormItem from '@/pageComponents/admin/settings/AdminFormItem';
 import type { SettingTOCItem } from '@/pageComponents/admin/settings/AdminSettingTOC';
 import ImageInput from '@/pageComponents/admin/settings/ImageInput';
 import NavbarItems from '@/pageComponents/admin/config/components/FormField/NavbarItems';
+import JsonEditor from '@fastgpt/web/components/common/Textarea/JsonEditor';
 import type { SystemInstanceConfigDomainMap } from '@fastgpt/global/common/system/config/type';
 
 type SiteConfigForm = SystemInstanceConfigDomainMap['site'];
@@ -17,6 +19,7 @@ type SiteConfigForm = SystemInstanceConfigDomainMap['site'];
 const SiteSettingComponent = () => {
   const { t } = useSafeTranslation();
   const { filterConfigData } = useAdminPermission();
+  const { toast } = useToast();
   const tocItems: SettingTOCItem[] = useMemo(
     () => [
       { id: 'brand', label: t('admin:site_section_brand') },
@@ -32,17 +35,34 @@ const SiteSettingComponent = () => {
     defaultValues: effectiveConfig
   });
 
+  const [scriptsText, setScriptsText] = useState('');
+  const navbarItems = useWatch({ control, name: 'navbarItems' });
+
   // 当服务端返回生效配置后，重置表单为最新值
   useEffect(() => {
     if (effectiveConfig && Object.keys(effectiveConfig).length > 0) {
       reset(effectiveConfig);
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setScriptsText(JSON.stringify(effectiveConfig.scripts ?? [], null, 2));
     }
   }, [effectiveConfig, reset]);
 
-  const navbarItems = useWatch({ control, name: 'navbarItems' });
-
   const onSave = handleSubmit(async (formData) => {
-    await patchConfig(filterConfigData('site', formData) as Record<string, unknown>);
+    let scripts: unknown;
+    try {
+      scripts = JSON.parse(scriptsText || '[]');
+    } catch {
+      toast({ status: 'error', title: t('admin:site_scripts_must_be_valid_json_array') });
+      return;
+    }
+    if (!Array.isArray(scripts)) {
+      toast({ status: 'error', title: t('admin:site_scripts_must_be_valid_json_array') });
+      return;
+    }
+
+    await patchConfig(
+      filterConfigData('site', { ...formData, scripts }) as Record<string, unknown>
+    );
   });
 
   return (
@@ -166,6 +186,21 @@ const SiteSettingComponent = () => {
             description={t('admin:add_custom_external_link_entries_to_the_left_navigation_bar')}
           />
         </Box>
+
+        <AdminFormItem label={t('admin:site_scripts')} tooltip={t('admin:site_scripts_tip')}>
+          <Controller
+            name="scripts"
+            control={control}
+            render={({ field }) => (
+              <JsonEditor
+                value={scriptsText || JSON.stringify(field.value ?? [], null, 2)}
+                onChange={setScriptsText}
+                defaultHeight={220}
+                resize
+              />
+            )}
+          />
+        </AdminFormItem>
       </AdminSettingSection>
     </AdminSettingPage>
   );

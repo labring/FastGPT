@@ -38,12 +38,10 @@ describe('legacy instance config ENV import', () => {
     vi.stubEnv('PASSWORD_LOGIN_MINUTE_LIMIT_COUNT', '');
     vi.stubEnv('CUSTOM_PDF_PARSE_KEY', '');
     vi.stubEnv('AIPROXY_API_ENDPOINT', undefined);
-    vi.stubEnv('AIPROXY_API_TOKEN', undefined);
     const legacy = readLegacyInstanceConfigEnv();
     expect(legacy.PASSWORD_LOGIN_MINUTE_LIMIT_COUNT).toBe(10);
     expect(legacy.CUSTOM_PDF_PARSE_KEY).toBeUndefined();
     expect(legacy.AIPROXY_API_ENDPOINT).toBeUndefined();
-    expect(legacy.AIPROXY_API_TOKEN).toBeUndefined();
   });
 
   it('validates imported numbers and URLs without including secret values in errors', () => {

@@ -13,21 +13,17 @@ const McpSubserviceConfigSchema = z.strictObject({
 });
 
 const PluginSubserviceConfigSchema = z.strictObject({
-  baseUrl: urlWithDefault('http://localhost:3004'),
-  token: textWithDefault('token'),
   remoteDebug: z.boolean().default(false)
 });
 
 const CodeSandboxSubserviceConfigSchema = z.strictObject({
   enabled: z.boolean().default(true),
-  baseUrl: urlWithDefault('http://localhost:3002'),
-  token: textWithDefault('codesandbox')
+  baseUrl: urlWithDefault('http://localhost:3002')
 });
 
 const AiProxySubserviceConfigSchema = z.strictObject({
   enabled: z.boolean().default(false),
-  endpoint: urlWithDefault('http://localhost:3000'),
-  token: textWithDefault()
+  endpoint: urlWithDefault('http://localhost:3000')
 });
 
 const AgentSandboxSubserviceConfigSchema = z.strictObject({

@@ -38,7 +38,11 @@ describe('deprecatedOverridePaths', () => {
         'auth.accountCancellation.cancellationSm.en',
         'commercial.payment.alipay.notifyUrl',
         'commercial.billingNotify.paymentReceived',
-        'subservice.plugin.remoteDebugUrl'
+        'subservice.plugin.remoteDebugUrl',
+        'subservice.plugin.baseUrl',
+        'subservice.plugin.token',
+        'subservice.codeSandbox.token',
+        'subservice.aiProxy.token'
       ])
     );
   });

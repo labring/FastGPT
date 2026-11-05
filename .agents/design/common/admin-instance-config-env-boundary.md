@@ -1064,7 +1064,7 @@ Server、Agent Sandbox Proxy 和 IDE Agent 的运行时变量。为了避免“�
 
 ### 13.6 逐字段版本、表单与页面映射
 
-本表逐项覆盖注册表的 **207 个配置叶子**，不使用通配符或虚构的聚合字段。字段定义与默认值以 `schemas/*.ts` 为准，版本、敏感项和 SaaS 显示条件以 `registry.ts` 为准；页面归属与 `pageFields.ts`、实际表单保持一致。
+本表逐项覆盖注册表的 **198 个配置叶子**，不使用通配符或虚构的聚合字段。字段定义与默认值以 `schemas/*.ts` 为准，版本、敏感项和 SaaS 显示条件以 `registry.ts` 为准；页面归属与 `pageFields.ts`、实际表单保持一致。
 
 - 社区版／商业版的勾选表示配置 API 的读写权限；商业版按是否配置 `PRO_URL` 判定，不依赖 License 是否激活。
 - “仅 SaaS 显示”表示 `ENABLE_SAAS_ADMIN_CONFIG=true` 才显示对应控件，**不收紧商业版 API 权限**。标为“仅 API”的字段当前没有新表单，开启显示开关也不会产生控件。
@@ -1091,7 +1091,7 @@ Server、Agent Sandbox Proxy 和 IDE Agent 的运行时变量。为了避免“�
 | `site.loginGuideDocUrl` | 登录引导帮助文档地址 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/site` |
 | `site.customApiDomain` | 自定义 API 域名 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/site` |
 | `site.customSharePageDomain` | 自定义分享链接域名 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/site` |
-| `site.scripts` | 第三方脚本列表 | ✅ | ✅ | — | — | 仅 API（暂无新表单） |
+| `site.scripts` | 第三方脚本列表 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/site` |
 
 #### 账号与登录（auth）
 
@@ -1102,7 +1102,7 @@ Server、Agent Sandbox Proxy 和 IDE Agent 的运行时变量。为了避免“�
 | `auth.wecomLoginAutoRedirect` | 企业微信自动跳转 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/auth` |
 | `auth.defaultTeamBasicPermissionsEnabled` | 新团队默认开启基础权限 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/core` |
 | `auth.teamMode` | 团队模式 | — | ✅ | — | — | 可编辑：`/admin/settings/core` |
-| `auth.fastLogin` | 快捷登录方式 | — | ✅ | — | — | 仅 API（暂无新表单） |
+| `auth.fastLogin` | 快捷登录方式 | — | ✅ | — | — | 可编辑：`/admin/settings/auth` |
 | `auth.loginProviders.email.smtp` | SMTP 服务地址 | — | ✅ | — | — | 可编辑：`/admin/settings/core` |
 | `auth.loginProviders.email.user` | 发件邮箱账号 | — | ✅ | — | — | 可编辑：`/admin/settings/core` |
 | `auth.loginProviders.email.port` | SMTP 端口 | — | ✅ | — | — | 可编辑：`/admin/settings/core` |
@@ -1127,9 +1127,9 @@ Server、Agent Sandbox Proxy 和 IDE Agent 的运行时变量。为了避免“�
 | `auth.accountCancellation.cancellationSm.zh` | 注销申请 · 中文模板 | — | ✅ | — | — | 可编辑：`/admin/settings/auth` |
 | `auth.accountCancellation.reminderSm.zh` | 注销提醒 · 中文模板 | — | ✅ | — | — | 可编辑：`/admin/settings/auth` |
 | `auth.accountCancellation.todaySm.zh` | 当日注销 · 中文模板 | — | ✅ | — | — | 可编辑：`/admin/settings/auth` |
-| `auth.loginProviders.wecom.buyerUserId` | 企微买方用户 ID | — | ✅ | ✅ | — | 仅 API（暂无新表单） |
-| `auth.loginProviders.wecom.basicVersionId` | 企微基础版本 ID | — | ✅ | ✅ | — | 仅 API（暂无新表单） |
-| `auth.loginProviders.wecom.advancedVersionId` | 企微高级版本 ID | — | ✅ | ✅ | — | 仅 API（暂无新表单） |
+| `auth.loginProviders.wecom.buyerUserId` | 企微买方用户 ID | — | ✅ | ✅ | — | 可编辑：`/admin/settings/auth` |
+| `auth.loginProviders.wecom.basicVersionId` | 企微基础版本 ID | — | ✅ | ✅ | — | 可编辑：`/admin/settings/auth` |
+| `auth.loginProviders.wecom.advancedVersionId` | 企微高级版本 ID | — | ✅ | ✅ | — | 可编辑：`/admin/settings/auth` |
 | `auth.loginProviders.email.pass` | 邮箱授权码 / 密码 | — | ✅ | — | ✅ | 可编辑：`/admin/settings/core` |
 | `auth.loginProviders.phone.accessKeySecret` | 阿里云 AccessKeySecret | — | ✅ | — | ✅ | 可编辑：`/admin/settings/core` |
 | `auth.loginProviders.wechat.appSecret` | 微信服务号 AppSecret | — | ✅ | — | ✅ | 可编辑：`/admin/settings/auth` |
@@ -1140,7 +1140,7 @@ Server、Agent Sandbox Proxy 和 IDE Agent 的运行时变量。为了避免“�
 | `auth.loginProviders.google.secret` | Google Client Secret | — | ✅ | — | ✅ | 可编辑：`/admin/settings/auth` |
 | `auth.loginProviders.microsoft.secret` | Microsoft Client Secret | — | ✅ | — | ✅ | 可编辑：`/admin/settings/auth` |
 | `auth.loginProviders.wecom.providerSecret` | 服务商 Secret | — | ✅ | ✅ | ✅ | 可编辑：`/admin/settings/auth` |
-| `auth.loginProviders.wecom.paySecret` | 企微支付密钥 | — | ✅ | ✅ | ✅ | 仅 API（暂无新表单） |
+| `auth.loginProviders.wecom.paySecret` | 企微支付密钥 | — | ✅ | ✅ | ✅ | 可编辑：`/admin/settings/auth` |
 
 #### 安全策略（security）
 
@@ -1241,7 +1241,7 @@ Server、Agent Sandbox Proxy 和 IDE Agent 的运行时变量。为了避免“�
 | `performance.dataset.vectorMaxProcess` | 向量化处理并发数 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
 | `performance.dataset.qaMaxProcess` | QA 自动生成并发数 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
 | `performance.dataset.vlmMaxProcess` | 多模态理解并发数 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
-| `performance.dataset.retrievalResultsLimit` | 知识库检索中间结果数量上限 | ✅ | ✅ | — | — | 仅 API（暂无新表单） |
+| `performance.dataset.retrievalResultsLimit` | 知识库检索中间结果数量上限 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
 | `performance.chat.maxQpm` | 对话 QPM 上限 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
 | `performance.streamResume.ttlSeconds` | 流会话保留时长 (秒) | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
 | `performance.streamResume.postCompleteTtlSeconds` | 对话完成后保留时长 (秒) | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
@@ -1294,13 +1294,12 @@ Server、Agent Sandbox Proxy 和 IDE Agent 的运行时变量。为了避免“�
 
 | 配置字段 | 用途 | 社区版 | 商业版 | 仅 SaaS 显示 | 敏感项 | 当前管理入口 |
 | --- | --- | :---: | :---: | :---: | :---: | --- |
-| `subservice.plugin.baseUrl` | 插件服务地址 | — | ✅ | — | — | 只读：`/admin/subservice/plugin` |
 | `subservice.plugin.remoteDebug` | 开启插件远程调试通道 (Remote Debug) | — | ✅ | — | — | 可编辑：`/admin/subservice/plugin` |
 | `subservice.codeSandbox.enabled` | 启用 Code Sandbox | — | ✅ | — | — | 可编辑：`/admin/subservice/code-sandbox` |
 | `subservice.codeSandbox.baseUrl` | 代码沙箱服务地址 | — | ✅ | — | — | 只读：`/admin/subservice/code-sandbox` |
 | `subservice.aiProxy.enabled` | 启用 AI Proxy | — | ✅ | — | — | 可编辑：`/admin/subservice/ai-proxy` |
 | `subservice.aiProxy.endpoint` | AI Proxy 地址 | — | ✅ | — | — | 只读：`/admin/subservice/ai-proxy` |
-| `subservice.mcp.sseProxyUrl` | MCP SSE 代理地址 | — | ✅ | — | — | 仅 API（暂无新表单） |
+| `subservice.mcp.sseProxyUrl` | MCP SSE 代理地址 | — | ✅ | — | — | 可编辑：`/admin/subservice/mcp` |
 | `subservice.agentSandbox.provider` | 当前沙箱 Provider | — | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
 | `subservice.agentSandbox.common.cpuCount` | CPU 核心数 (Core) | — | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
 | `subservice.agentSandbox.common.memoryMiB` | 内存规格 (MiB) | — | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
@@ -1324,9 +1323,6 @@ Server、Agent Sandbox Proxy 和 IDE Agent 的运行时变量。为了避免“�
 | `subservice.agentSandbox.opensandbox.useServerProxy` | 使用主站反向代理模式 | — | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
 | `subservice.agentSandbox.opensandbox.volumeManagerUrl` | 持久卷管理器地址 (Volume Manager) | — | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
 | `subservice.agentSandbox.opensandbox.volumeNamePrefix` | 存储卷名前缀 | — | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
-| `subservice.plugin.token` | 插件访问凭证 | — | ✅ | — | ✅ | 仅 API（暂无新表单） |
-| `subservice.codeSandbox.token` | 代码沙箱访问凭证 | — | ✅ | — | ✅ | 仅 API（暂无新表单） |
-| `subservice.aiProxy.token` | AI Proxy 访问凭证 | — | ✅ | — | ✅ | 仅 API（暂无新表单） |
 | `subservice.agentSandbox.sealosdevbox.token` | Sealos 访问 Token | — | ✅ | — | ✅ | 可编辑：`/admin/subservice/agent-sandbox` |
 | `subservice.agentSandbox.opensandbox.apiKey` | OpenSandbox API Key | — | ✅ | — | ✅ | 可编辑：`/admin/subservice/agent-sandbox` |
 | `subservice.agentSandbox.opensandbox.volumeManagerToken` | 卷管理器 Token | — | ✅ | — | ✅ | 可编辑：`/admin/subservice/agent-sandbox` |

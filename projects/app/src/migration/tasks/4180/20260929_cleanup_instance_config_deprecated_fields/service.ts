@@ -36,8 +36,13 @@ export const deprecatedOverridePaths: Partial<
   subservice: [
     // plugin.enabled 没有消费点：启停实际由 baseUrl/token 是否存在决定，删除冗余开关
     ['plugin', 'enabled'],
+    // 插件服务地址/Token 改由 ENV 提供
+    ['plugin', 'baseUrl'],
+    ['plugin', 'token'],
     // 远程调试链接由请求域名/NEXT_PUBLIC_BASE_URL 生成，不再读取该字段
     ['plugin', 'remoteDebugUrl'],
+    ['codeSandbox', 'token'],
+    ['aiProxy', 'token'],
     // mcp.enabled 冗余：SSE 接入地址按 sseProxyUrl 是否为空生成
     ['mcp', 'enabled'],
     ['agentSandbox', 'proxy', 'wsUrl'],

@@ -76,7 +76,8 @@ describe('getAdminMenuList', () => {
       '/admin/subservice/plugin',
       '/admin/subservice/code-sandbox',
       '/admin/subservice/ai-proxy',
-      '/admin/subservice/agent-sandbox'
+      '/admin/subservice/agent-sandbox',
+      '/admin/subservice/mcp'
     ]);
 
     // 验证系统配置的二级项：「资源限制」+「性能与并发」合并为「限制与并发」，

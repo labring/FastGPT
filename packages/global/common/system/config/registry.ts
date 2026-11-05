@@ -332,7 +332,6 @@ export const systemInstanceConfigRegistry: readonly SystemInstanceConfigRegistry
   ...createEntries(
     'subservice',
     [
-      'plugin.baseUrl',
       'plugin.remoteDebug',
       'codeSandbox.enabled',
       'codeSandbox.baseUrl',
@@ -368,9 +367,6 @@ export const systemInstanceConfigRegistry: readonly SystemInstanceConfigRegistry
   ...createEntries(
     'subservice',
     [
-      'plugin.token',
-      'codeSandbox.token',
-      'aiProxy.token',
       'agentSandbox.sealosdevbox.token',
       'agentSandbox.opensandbox.apiKey',
       'agentSandbox.opensandbox.volumeManagerToken'

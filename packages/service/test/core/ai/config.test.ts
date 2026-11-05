@@ -6,17 +6,17 @@ const importConfig = async () => {
   return import('@fastgpt/service/core/ai/config');
 };
 beforeEach(() => {
+  vi.stubEnv('AIPROXY_API_TOKEN', 'aiproxy-token');
   global.systemInstanceConfig = resolveSystemInstanceConfig({
     subservice: {
-      aiProxy: { enabled: true, endpoint: 'http://aiproxy:3000', token: 'aiproxy-token' }
+      aiProxy: { enabled: true, endpoint: 'http://aiproxy:3000' }
     }
   });
 });
 afterEach(() => vi.unstubAllEnvs());
 describe('AI config instance source', () => {
-  it('uses the configured proxy and ignores old ENV credentials', async () => {
+  it('uses the configured endpoint and ENV token', async () => {
     vi.stubEnv('AIPROXY_API_ENDPOINT', 'https://retired.example.com');
-    vi.stubEnv('AIPROXY_API_TOKEN', 'old-token');
     const { getOpenaiBaseUrl, getOpenaiBaseKey, getAxiosConfig } = await importConfig();
     expect(getOpenaiBaseUrl()).toBe('http://aiproxy:3000/v1');
     expect(getOpenaiBaseKey()).toBe('aiproxy-token');
@@ -32,7 +32,7 @@ describe('AI config instance source', () => {
     // 没装 AI Proxy 的部署把系统模型流量发到本机 3000，且永远拿不到 OpenAI 兜底。
     global.systemInstanceConfig = resolveSystemInstanceConfig({
       subservice: {
-        aiProxy: { enabled: false, endpoint: 'http://localhost:3000', token: 'private-proxy-token' }
+        aiProxy: { enabled: false, endpoint: 'http://localhost:3000' }
       }
     });
     const { getAiProxyBaseUrl, getOpenaiBaseUrl, getOpenaiBaseKey } = await importConfig();
@@ -46,7 +46,7 @@ describe('AI config instance source', () => {
   it('normalizes configured proxy addresses before building request URLs', async () => {
     global.systemInstanceConfig = resolveSystemInstanceConfig({
       subservice: {
-        aiProxy: { enabled: true, endpoint: 'http://aiproxy:3000///', token: 'aiproxy-token' }
+        aiProxy: { enabled: true, endpoint: 'http://aiproxy:3000///' }
       }
     });
     const { getOpenaiBaseUrl } = await importConfig();
