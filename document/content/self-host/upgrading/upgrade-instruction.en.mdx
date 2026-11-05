@@ -9,7 +9,7 @@ Starting with 4.14.11, FastGPT uses separate version names for stable releases a
 
 1. Two stable release lines are maintained. For example, while new features are developed in 4.16.x, fixes are maintained for 4.14.x and 4.15.x.
 2. Stable releases have no suffix, such as 4.14.11, 4.14.12, 4.15.0, and 4.15.1. A fix for 4.14.11 is released as 4.14.12 and applied to the 4.15.x stable line. These maintenance releases contain fixes and preserve the existing feature set.
-3. Rapid-development releases use a beta suffix, such as 4.16.0-beta.1, 4.16.0-beta.2, and 4.16.0-beta.3.
+3. Rapid-development releases use a beta suffix, such as 4.16.0-beta1, 4.16.0-beta2, and 4.16.0-beta3.
 4. A development line becomes a stable release approximately every 2 months. A consolidated upgrade script lets you apply all migrations from that development cycle with one request.
 
 For stable deployments, choose releases without a beta suffix. Dedicated maintenance releases provide fixes while preserving the existing feature set.
@@ -28,7 +28,10 @@ Upgrading FastGPT usually involves two steps:
 - FastGPT main image: ghcr.io/labring/fastgpt
 - Plugin image: ghcr.io/labring/fastgpt-plugin
 - Code sandbox image: ghcr.io/labring/fastgpt-code-sandbox
-- MCP SSE server image: ghcr.io/labring/fastgpt-mcp_server
+- AI Proxy image: ghcr.io/labring/aiproxy
+- Agent Sandbox Volume Manager image: ghcr.io/labring/fastgpt-agent-volume-manager
+- Agent Sandbox image: ghcr.io/labring/fastgpt-agent-sandbox
+- Agent Sandbox Proxy image: ghcr.io/labring/fastgpt-agent-sandbox-proxy
 - Commercial edition image: ghcr.io/c121914yu/fastgpt-pro
 
 **Alibaba Cloud**
@@ -36,7 +39,10 @@ Upgrading FastGPT usually involves two steps:
 - FastGPT main image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt
 - Plugin image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-plugin
 - Code sandbox image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-code-sandbox
-- MCP SSE server image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-mcp_server
+- AI Proxy image: registry.cn-hangzhou.aliyuncs.com/labring/aiproxy
+- Agent Sandbox Volume Manager image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-volume-manager
+- Agent Sandbox image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-sandbox
+- Agent Sandbox Proxy image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-sandbox-proxy
 - Commercial edition image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-pro
 
 Pin each service to the image tag specified in the target release deployment template. Companion services may use different version tags; record the complete image set and configuration before upgrading.
@@ -68,13 +74,13 @@ docker-compose up -d
 
 ## Running the Upgrade Initialization Script
 
-After updating the images, check the version notes in the documentation. Versions that require an upgrade script are typically labeled with "includes upgrade script". Open the corresponding documentation and follow the instructions to run the **upgrade script** -- in most cases, you just need to send a `POST` request.
+After updating the images, check the release notes for the target version. Versions that require an upgrade script carry the `MIGRATION` tag. Open the corresponding page and follow its instructions: starting with 4.17.0, registered migration tasks run automatically after the main app starts, and manual tasks are run from **Admin > System upgrade** (`版本升级`). For 4.16.x and earlier, most upgrade scripts require sending a `POST` request.
 
 ## FAQ
 
 ### Why do I need to run an upgrade script?
 
-Starting with FastGPT 4.17+, the application automatically runs a distributed startup migration executor. Nodes coordinate via MongoDB leases to run registered schema transformations sequentially with checkpoint cursors. For large datasets, schedule upgrades during maintenance windows to allow sufficient time for data backfill.
+Upgrade scripts migrate and backfill existing data into the structures used by the new version. Starting with FastGPT 4.17+, the application automatically runs a distributed startup migration executor. Nodes coordinate via MongoDB leases to run registered schema transformations sequentially with checkpoint cursors. For large datasets, schedule upgrades during maintenance windows to allow sufficient time for data backfill.
 
 ### What is `{{host}}`?
 
@@ -86,7 +92,7 @@ On Sealos, open the app details and look under **Network Configuration**. The **
 
 ### How to get the rootkey
 
-You can find it in the `environment` section of your `docker-compose.yml` file -- it's the value of `ROOT_KEY`.
+Find the value of `ROOT_KEY` in your `docker-compose.yml` file. The official template sets `ROOT_KEY: *x-system-key`; the actual value is on the `x-system-key` line at the top of the file.
 
 On Sealos, you can find it in the environment variables panel shown in the image above.
 

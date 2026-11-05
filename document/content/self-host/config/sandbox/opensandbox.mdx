@@ -43,8 +43,8 @@ Docker compose yml 文件里均已带默认值，这里补充做每个变量的�
 | `PORT`                             | `1006`                                   | Proxy 容器监听端口，默认映射到宿主机 `3006`。                                                           |
 | `PREVIEW_PORT`                     | 与 `PORT` 相同                           | 4.16 可单独指定 HTTP 预览监听端口；修改后需同步调整宿主机端口映射和 `AGENT_SANDBOX_PREVIEW_PROXY_URL`。 |
 | `AGENT_SANDBOX_PROXY_SECRET`       | 无                                       | 与 FastGPT 主服务共用的密钥，至少 32 位。                                                               |
-| `FASTGPT_APP_URL`                  | `http://fastgpt-app:3000`                | Proxy 回源 FastGPT 主服务的内网地址。                                                                   |
-| `FASTGPT_APP_REQUEST_TIMEOUT_SECS` | `10`                                     | Proxy 回源请求超时时间，单位秒；沙盒冷启动较慢时可适当调大。                                            |
+| `FASTGPT_APP_URL`                  | `http://localhost:3000`                  | Proxy 回源 FastGPT 主服务的内网地址；官方 Compose 模板设置为 `http://fastgpt-app:3000`。                |
+| `FASTGPT_APP_REQUEST_TIMEOUT_SECS` | `10`                                     | Proxy 回源请求超时时间，单位秒；官方 Compose 模板设置为 `60`，沙盒冷启动较慢时可适当调大。              |
 | `RUST_LOG`                         | `info,fastgpt_agent_sandbox_proxy=debug` | Proxy 服务日志级别。                                                                                    |
 
 4.16 默认使用同一个端口提供 WebSocket 和 HTTP 预览。如果网关不支持同端口转发，可设置 `PREVIEW_PORT` 为其他容器端口（例如 `1007`），并将 Compose 端口映射改为 `3007:1007`，同时把 `AGENT_SANDBOX_PREVIEW_PROXY_URL` 指向新的 3007 端口。

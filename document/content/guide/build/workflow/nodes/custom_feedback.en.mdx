@@ -32,8 +32,8 @@ The Custom Feedback node works like event tracking in software development, lett
 
 ## Configuration, results, and example
 
-The required input is **Feedback text**, a string entered directly or referenced from an upstream variable. The node adds it to this run's custom feedback for saved conversation logs. The template exposes execution connections and has no declared data-output fields.
+The required input is **Feedback Text**, a string entered directly or referenced from an upstream variable. The node adds it to this run's custom feedback for saved conversation logs. The template exposes execution connections and has no declared data-output fields.
 
-For example, add Custom Feedback to a branch needing human review, set the text to `needs_review`, then connect Specified Reply with `Your request is awaiting review.` Inspect the feedback text in debug execution details. After publishing, complete a new conversation through an actual channel and check its log for the marker.
+For example, add Custom Feedback to a branch needing human review, set the text to `needs_review`, then connect Assigned Reply with `Your request is awaiting review.` Inspect the feedback text in debug execution details. After publishing, complete a new conversation through an actual channel and check its log for the marker.
 
 Use short, searchable business markers. For missing feedback, verify that the branch ran, the input reference had a value, and the conversation saved successfully. Continue with [conversation logs](/en/guide/build/logs).

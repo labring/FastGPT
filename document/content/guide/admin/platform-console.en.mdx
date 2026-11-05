@@ -3,7 +3,7 @@ title: Root Platform Administration Console Guide
 description: Reference for root administrators managing global dashboards, users, teams, model channels, marketplaces, billing, audit logs, and migrations.
 ---
 
-In self-hosted Commercial Edition deployments, signing in with the `root` administrator account and clicking **Admin** in the lower-left sidebar opens the **Platform Administration Console**, organized into nine top-level navigation sections for governing tenants, system resources, model routing, billing, and system upgrade migrations.
+In self-hosted Commercial Edition deployments, signing in with the `root` administrator account and clicking **Admin** in the left navigation bar opens the **Platform Administration Console**, organized into nine top-level navigation sections for governing tenants, system resources, model routing, billing, and system upgrade migrations.
 
 ## 1. Dashboard, Notifications, and User & Resource Governance
 
@@ -25,11 +25,11 @@ In self-hosted Commercial Edition deployments, signing in with the `root` admini
 
 Manage platform-wide model infrastructure across five tabs (see [Model Configuration](/en/self-host/config/model/intro) for setup procedures):
 
-- **Active Models**: Manage enabled LLM, Embedding, Rerank, TTS, and STT models, configuring context windows, capability tags, platform default models, and `pricing` rules.
-- **All Models**: Browse all built-in presets and custom models to enable or register new models.
-- **Model Channels**: Configure provider endpoints, API keys, model mappings, and channel routing priority weights.
-- **Call Logs**: Search underlying model requests by request ID, channel, model name, or HTTP status to inspect latency and error payloads.
-- **Model Test**: Run batch connectivity probes and configure automated health checks and alert webhooks.
+- **Model configuration**: Browse and manage LLM, Embedding, Rerank, TTS, and STT presets and model instances, configuring context windows, capability tags, platform default models, and `pricing` rules.
+- **Model provider**: Configure provider endpoints, API keys, model mappings, and channel routing priority weights.
+- **Call log**: Search underlying model requests by request ID, channel, model name, or HTTP status to inspect latency and error payloads.
+- **Monitoring**: Inspect channel call success rates, throughput, and latency metrics.
+- **Model probes**: Run batch connectivity probes and configure automated health checks and alert webhooks.
 
 ### 2. System Tools and App Templates
 
@@ -43,10 +43,10 @@ Manage platform-wide model infrastructure across five tabs (see [Model Configura
 ### 1. System Config
 
 - **System Config → Basic Config**: Configure site title, branding logos, help links, **Max Vector Recall Concurrency** (`systemEnv.vectorRecallConcurrency`, integer `0–1000`, defaulting to `0` for unlimited), and **PDF Parsing Config** (such as MinerU, Marker, or Doc2x).
-- **System Config → Feature Flags**: Toggle team model management (`enable_team_model`), team plugin uploads (`enable_team_upload_plugin`), registration policies, and background sync features.
+- **System Config → Feature Flags**: Toggle team model management (`enable_team_model`), team plugin uploads (`enable_team_plugin_upload`), and background sync features.
 - **System Config → Security Config**: Manage password policies, session security, and access protection rules.
 - **System Config → Third-Party Providers**: Configure SMS/email gateways and external provider credentials.
-- **System Config → User Config**: Configure OAuth2/OIDC/SAML SSO and directory sync (see [SSO & External Member Sync](/en/guide/admin/sso) and [Team Mode](/en/guide/admin/teamMode)).
+- **System Config → User Config**: Configure registration methods, team mode, OAuth2/OIDC/SAML SSO, and directory sync (see [SSO & External Member Sync](/en/guide/admin/sso) and [Team Mode](/en/guide/admin/teamMode)).
 - **System Config → Plans & Pricing**: Configure standard subscription tiers, extra AI point or dataset index add-on packs, and payment gateway credentials.
 
 ### 2. Version Upgrade, Audit Logs, and License

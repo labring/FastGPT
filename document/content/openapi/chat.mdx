@@ -24,7 +24,7 @@ import { Alert } from '@/components/docs/Alert';
 
 在首次请求中改为 `"stream": true`，并给 curl 加 `--no-buffer`。成功建立流后，按 SSE 帧处理 `event:` 与 `data:`，跨网络读取保留未完成的帧；文本片段通常位于 `choices[0].delta.content`。遇到 `[DONE]` 完成读取。
 
-设置 `detail: true` 可接收详细事件。运行时定义以下 17 类事件，具体返回内容取决于接口、运行时版本和应用配置。`detail: false` 时，回答帧使用 SSE 默认消息事件。客户端应兼容未知事件类型。
+设置 `detail: true` 可接收详细事件。运行时定义以下 18 类事件，具体返回内容取决于接口、运行时版本和应用配置。`detail: false` 时，回答帧使用 SSE 默认消息事件。客户端应兼容未知事件类型。
 
 | 事件名称 | `data` 载荷内容 | 业务含义与消费方式 |
 |---|---|---|
@@ -45,6 +45,7 @@ import { Alert } from '@/components/docs/Alert';
 | `error` | `Record<string, any>` | 运行错误，客户端标记本次执行失败 |
 | `skillCall` | `{ skill: SkillModuleResponseItemType }` | 运行时发送的技能调用通知 |
 | `sandboxStatus` | `SandboxStatusItemType` | Agent 虚拟机沙箱生命周期状态（预热、挂载、升级） |
+| `workflowBuilderVersion` | `{ version: number }` | 工作流构建器版本变更通知 |
 
 生成期间，服务端每隔 10 秒发送空回答块作为心跳。反向代理仍需配置流式转发和空闲超时。错误或断网可能使流在 `[DONE]` 前关闭，客户端需分别跟踪完成与失败状态。
 
@@ -66,7 +67,7 @@ import { Alert } from '@/components/docs/Alert';
 
 ## 开放接口端点参考（System OpenAPI—对话、会话、记录与反馈）
 
-除 `/api/v1/chat/completions` 与 `/api/v2/chat/completions` 支持在 `Bearer <apiKey>-<appId>` 中附带应用 ID 外，其余会话、记录与反馈接口均推荐在请求体或查询参数中**显式传入 `appId`**。
+除 `/api/v1/chat/completions` 与 `/api/v2/chat/completions` 支持在 `Bearer <apiKey>-<appId>` 中附带应用 ID 外，其余会话、记录与反馈接口可通过 `appId`、`skillId` 或 `outLinkAuthData` 任一方式定位目标资源。
 
 ### 1. 对话生成与运行控制（`chatController`）
 
@@ -95,8 +96,8 @@ import { Alert } from '@/components/docs/Alert';
 | --- | --- | --- | --- |
 | `POST` | `/api/core/chat/record/getPaginationRecords` | 分页获取会话内的对话消息列表 | Body: `appId`（必填）、`chatId`（必填）、`offset` / `pageNum`、`pageSize`、`loadCustomFeedbacks` |
 | `POST` | `/api/core/chat/record/getRecords_v2` | 按消息锚点游标获取对话消息列表 | Body: `appId`（必填）、`chatId`（必填）、`pageSize`、`initialId`、`prevId`、`nextId` |
-| `GET` | `/api/core/chat/record/getResData` | 获取单条 AI 回复的完整节点执行详情（`responseData`） | Query: `appId`（必填）、`chatId`（必填）、`dataId`（消息记录 ID，必填） |
-| `POST` | `/api/core/chat/record/getQuote` | 根据数据块 ID 列表获取对话引用的知识分块详情 | Body: `appId`（必填）、`chatId`（必填）、`chatItemDataId`（必填）、`datasetDataIdList` |
+| `GET` | `/api/core/chat/record/getResData` | 获取单条 AI 回复的完整节点执行详情（`responseData`） | Query: `appId` / `skillId` / `outLinkAuthData`（三选一）、`chatId`（可选）、`dataId`（消息记录 ID，必填） |
+| `POST` | `/api/core/chat/record/getQuote` | 根据数据块 ID 列表获取对话引用的知识分块详情 | Body: `appId` / `skillId` / `outLinkAuthData`（三选一）、`chatId`（必填）、`chatItemDataId`（必填）、`collectionIdList`（必填）、`datasetDataIdList`（必填） |
 | `POST` | `/api/core/chat/record/getCollectionQuote` | 分页获取引用来源集合的全文数据块（用于分块阅读器） | Body: `appId`（必填）、`chatId`（必填）、`chatItemDataId`（必填）、`collectionId`（必填）、`pageSize` |
 | `DELETE` | `/api/core/chat/record/delete` | 删除单条对话消息记录 | Query: `appId`（必填）、`chatId`（必填）、`contentId`（必填） |
 

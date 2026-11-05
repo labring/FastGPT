@@ -105,7 +105,7 @@ curl --location --request POST 'http://localhost:3000/api/v1/chat/completions' \
 - headers.Authorization: Bearer [apikey]
 - chatId: string | undefined。
   - 为时（不传入），不使用 FastGpt 提供的上下文功能，完全通过传入的 messages 构建上下文。
-  - 为 `非空字符串` 时，意味着使用 chatId 进行对话，自动从 FastGpt 数据库取会话，并使用 messages 数组最后一个内容作为用户问题，其余 message 会被忽略。请自行确保 chatId 唯一，长度小于 250，通常可以是自己系统的对话框 ID。
+  - 为 `非空字符串` 时，意味着使用 chatId 进行对话，自动从 FastGpt 数据库取会话，并使用 messages 数组最后一个内容作为用户问题，其余 message 会被忽略。请自行确保 chatId 唯一，长度不超过 1024，通常可以是自己系统的对话框 ID。
 - messages: 结构与 [GPT 接口](https://platform.openai.com/docs/api-reference/chat/object) chat 模式一致。
 - responseChatItemId: string | undefined。如果传入，则会将该值作为本次对话的响应消息的 ID，FastGPT 会自动将该 ID 存入数据库。请确保，在当前 `chatId` 下，`responseChatItemId` 是唯一的。
 - detail: 是否返回中间值（模块状态，响应的完整结果等），`stream 模式` 下会通过 `event` 进行区分，`非 stream 模式` 结果保存在 `responseData` 中。
@@ -447,7 +447,7 @@ curl --location --request POST 'http://localhost:3000/api/v1/chat/completions' \
 - 无需传入 `chatId`，因为插件只能运行一轮。
 - 无需传入 `messages`。
 - 通过传递 `variables` 来代表插件的输入。
-- 通过获取 `pluginData` 来获取插件输出。
+- 通过 `responseData` 中 `moduleType="pluginOutput"` 的节点条目获取插件输出。
 
 ### 请求示例
 
@@ -1153,7 +1153,7 @@ curl --location --request POST 'http://localhost:3000/api/core/chat/feedback/upd
 
 **4.8.16 后新版接口**
 
-新版猜你想问必须包含 appId 和 chatId 参数。系统会根据 chatId 拉取最近 6 轮对话作为上下文来引导回答。
+新版猜你想问必须包含 `chatId` 参数，并提供 `appId`、`skillId` 或 `outLinkAuthData` 之一。系统会根据 `chatId` 拉取最近 6 轮对话作为上下文来引导回答。
 
 <Tabs items={['请求示例','参数说明','响应示例']}>
 <Tab value="请求示例">

@@ -126,6 +126,7 @@ test('published SVGs reproduce their sources, embed illustrations, and preserve 
     );
   for (const file of (await readdir(sources)).filter((file) => /\.(en|zh-CN)\.json$/.test(file))) {
     const spec = JSON.parse(await readFile(new URL(file, sources)));
+    const layout = layoutDiagram(spec);
     for (const theme of ['light', 'dark']) {
       const svg = await readFile(
         new URL(`../public/imgs/diagrams/${file.slice(0, -5)}.${theme}.svg`, import.meta.url),
@@ -151,6 +152,13 @@ test('published SVGs reproduce their sources, embed illustrations, and preserve 
       ].map(([, from, to, kind, label]) => [from, to, decode(label), decode(kind)]);
       assert.deepEqual(edges, spec.edges ?? spec.messages, file);
       assert.equal((svg.match(/marker-end="url\(#arrow\)"/g) ?? []).length, edges.length, file);
+      if (!layout.sequence && !layout.wide) {
+        assert.ok(
+          svg.includes(`fill="${theme === 'dark' ? '#07101F' : '#B1C9EA'}" opacity="0.22"`),
+          file
+        );
+      }
+      assert.doesNotMatch(svg, /feDropShadow|filter="url\(#shadow\)"/, file);
       assert.ok(svg.includes('data:image/webp;base64,'), file);
       assert.doesNotMatch(svg, /\d+ components · \d+ connections|\d+ 个节点 · \d+ 条连线/, file);
       assert.ok(!/<script|https?:\/\/[^"\s]+\.(webp|png)/.test(svg), file);

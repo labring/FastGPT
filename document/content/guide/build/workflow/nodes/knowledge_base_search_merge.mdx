@@ -15,8 +15,8 @@ description: FastGPT 知识库搜索引用合并模块介绍
 | 项目 | 内部 Key | 数据类型 | 说明 |
 | --- | --- | --- | --- |
 | **最大 Tokens** | `limit` | `Number` | 合并后保留的引用内容总 Token 上限，超出部分按 RRF 排名从低到高截断 |
-| **知识库引用输入（动态）** | `system_datasetQuoteList` | `DatasetQuote` | 接收两个或更多上游知识库搜索节点的 `quoteQA` 输出列表 |
-| **引用内容输出** | `quoteQA` | `DatasetQuote` | 去重、RRF 融合排序并裁剪后的最终引用列表，可直接传给 AI 对话节点 |
+| **引用-1、引用-2…（动态）** | `system_datasetQuoteList` | `DatasetQuote` | 接收两个或更多上游知识库搜索节点的 `quoteQA` 输出列表 |
+| **知识库引用** | `quoteQA` | `DatasetQuote` | 去重、RRF 融合排序并裁剪后的最终引用列表，可直接传给 AI 对话节点 |
 
 ## 使用方法
 

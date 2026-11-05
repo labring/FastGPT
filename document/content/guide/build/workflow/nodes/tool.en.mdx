@@ -1,6 +1,6 @@
 ---
-title: Tool Calling & Termination
-description: "Configure the FastGPT Workflow Tool Calling and Termination nodes so LLMs can invoke workflow tools, system plugins, and MCP tools."
+title: Tool calling & Stop Tool calling
+description: "Configure the FastGPT Workflow Tool calling and Stop Tool calling nodes so LLMs can invoke workflow tools, system plugins, and MCP tools."
 ---
 
 ![Tool Calling & Termination — interface example](/imgs/optimized/current/node-tool-call.png.webp)
@@ -40,7 +40,7 @@ The loop runs for at most 50 rounds and returns ordinary tool errors to the mode
 
 ### How to Use
 
-Connect the tool-call node's bottom diamond to the top diamond of a tool. For detailed connection types, tool entry ownership, and workflow boundary rules, see [Workflow validation rules](/en/guide/build/workflow/rules). The example below connects **Custom Tool Variables** as a tool, then passes the generated `service` value to **Specified Reply** and **Tool Call Stop**.
+Connect the tool-call node's bottom diamond to the top diamond of a tool. For detailed connection types, tool entry ownership, and workflow boundary rules, see [Workflow validation rules](/en/guide/build/workflow/rules). The example below connects **Custom Tool Variable** as a tool, then passes the generated `service` value to **Assigned Reply** and **Stop Tool calling**.
 
 ![Tool connection and termination workflow](/imgs/optimized/current/tool-connections.png.webp)
 
@@ -48,37 +48,37 @@ Give the tool a clear description and define required arguments. This example as
 
 #### Use Cases
 
-By default, after the tool calling node invokes a tool, it returns the tool's output to the AI for summarization. To finish immediately after the tool branch, place a **Tool Calling Termination** node at its end.
+By default, after the Tool calling node invokes a tool, it returns the tool's output to the AI for summarization. To finish immediately after the tool branch, place a **Stop Tool calling** node at its end.
 
-In this verified example, the request `Please call support.` produces `support` through Specified Reply and then reaches Tool Call Stop:
+In this verified example, the request `Please call support.` produces `support` through Assigned Reply and then reaches Stop Tool calling:
 
 ![Reply followed by Tool Call Stop](/imgs/optimized/current/tool-connections.png.webp)
 
 ### Additional Nodes
 
-When you use the tool calling node, a Tool Calling Termination node and a Custom Variable node also become available, further enhancing the tool calling experience.
+When you use the Tool calling node, a Stop Tool calling node and a Custom Tool Variable node also become available, further enhancing the tool calling experience.
 
-#### Tool Calling Termination
+#### Stop Tool calling
 
-Tool Calling Termination ends the current call cycle. Place it after a tool node. When the workflow reaches this node, it forcibly ends the current tool call -- no further tools are invoked, and the AI won't generate a summary based on tool results.
+Stop Tool calling ends the current call cycle. Place it after a tool node. When the workflow reaches this node, it forcibly ends the current tool call -- no further tools are invoked, and the AI won't generate a summary based on tool results.
 
-![Tool Calling Termination — interface example](/imgs/optimized/current/tool-stop.png.webp)
+![Stop Tool calling — interface example](/imgs/optimized/current/tool-stop.png.webp)
 
-### Custom Tool Variables
+### Custom Tool Variable
 
-Custom variables extend tool input capabilities. For nodes that aren't recognized as tool parameters or can't be directly tool-called, you can define custom tool variables with appropriate parameter descriptions. The tool calling node will then invoke this node and its downstream workflow accordingly.
+Custom Tool Variable extends tool input capabilities. For nodes that aren't recognized as tool parameters or can't be directly tool-called, you can define custom tool variables with appropriate parameter descriptions. The Tool calling node will then invoke this node and its downstream workflow accordingly.
 
-![Custom Tool Variables — interface example](/imgs/optimized/current/tool-variables.png.webp)
+![Custom Tool Variable — interface example](/imgs/optimized/current/tool-variables.png.webp)
 
 ## Inputs, outputs, and boundaries
 
-Configure the model, prompt, history, file links, and user question. The model needs tool-call support, and the execution identity needs access to tools and their resources. Attach tools through their tool connection handles and check descriptions, required arguments, and fixed inputs. See [Agent node](/en/guide/build/workflow/nodes/agent) for autonomous planning and Skill configuration.
+Configure the model, prompt, history, file links, and user question. The model needs tool-call support (confirm **Tool call: Supported** in the AI settings modal after selecting a model; choosing a model without tool-call support causes tool invocation to be skipped or fail), and the execution identity needs access to tools and their resources. Attach tools through their tool connection handles and check descriptions, required arguments, and fixed inputs. See [Agent node](/en/guide/build/workflow/nodes/agent) for autonomous planning and Skill configuration.
 
-The main output is AI response content as a string, with error text for node error handling. Tool Calling Termination signals the current tool-call loop to stop. To show a fixed result, connect Specified Reply before termination.
+The main output is AI Response Content as a string, with Error text for node error handling. Stop Tool calling signals the current tool-call loop to stop. To show a fixed result, connect Assigned Reply before termination.
 
 ## Example: retrieve a policy on demand
 
-1. Connect Start to Tool Calling. Reference the starting user question and select a model supporting tool calls.
+1. Connect Start to Tool calling. Reference the starting user question and select a model showing **Tool call: Supported** in the AI settings modal.
 2. Attach Dataset search through the tool handle and select the processed Travel Policy knowledge base. Describe the tool as retrieving travel reimbursement deadlines and required documents.
 3. Instruct the model to retrieve before answering policy questions. Ask “How soon after returning must I submit travel expenses?”
 4. Inspect tool arguments and citations in execution details. Confirm that retrieval returns `15 calendar days` and that the final answer preserves that deadline.

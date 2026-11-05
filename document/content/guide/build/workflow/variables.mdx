@@ -16,7 +16,7 @@ description: 全面掌握工作流开始节点输出、12 种全局变量配置�
 
 ## 二、全局变量（Global Variables）
 
-全局变量在工作流左上角“系统配置 → 变量”或对话 Agent 的“变量”面板中声明，可在全画布任意节点通过变量选择器引用，也可通过[变量更新节点](/zh-CN/guide/build/workflow/nodes/variable_update)在运行中修改。
+全局变量在工作流左上角“系统配置 → 全局变量”或对话 Agent 的“全局变量”区块中声明，可在全画布任意节点通过变量选择器引用，也可通过[变量更新节点](/zh-CN/guide/build/workflow/nodes/variable_update)在运行中修改。
 
 ### 1. 表单交互变量（对话前由用户填写）
 
@@ -24,7 +24,7 @@ description: 全面掌握工作流开始节点输出、12 种全局变量配置�
 
 | 变量类型 | 枚举标识 | 默认值类型 | 典型用途 |
 | --- | --- | --- | --- |
-| **文本输入框** | `input` / `textarea` | `String`（可选 `Object` 或各类数组） | 填入姓名、单号、背景描述或结构化参数 |
+| **文本输入框** | `input` | `String`（可选 `Object` 或各类数组） | 填入姓名、单号、背景描述或结构化参数 |
 | **数字输入框** | `numberInput` | `Number` | 控制生成条数、预算上限、阈值参数 |
 | **单选框** | `select` | `String` | 选择业务类型、输出语言、报告风格 |
 | **多选框** | `multipleSelect` | `Array<string>` | 勾选多个核查维度或目标渠道 |
@@ -33,14 +33,13 @@ description: 全面掌握工作流开始节点输出、12 种全局变量配置�
 | **时间点** | `timePointSelect` | `String` | 选择指定截止时间或查询时间戳 |
 | **时间范围** | `timeRangeSelect` | `Array<string>` | 选择起止时间区间（起止两个时间字符串） |
 | **对话模型选择** | `llmSelect` | `String` | 允许使用者在指定范围内切换底层对话模型 |
-| **知识库选择** | `datasetSelect` | `SelectDataset` | 允许使用者在预设范围内选择对话关联的知识库 |
-| **文件** | `file` | `Array<string>` | 对话开始前传入前置附件文件链接 |
+| **文件上传** | `file` | `Array<string>` | 对话开始前传入前置附件文件链接 |
 
 ### 2. 隐藏与状态变量（后台传参或内部流转）
 
 | 变量类型 | 枚举标识 | 可见性 | 传值与修改方式 |
 | --- | --- | --- | --- |
-| **免输入（Custom）** | `custom` | 对终端用户隐藏 | 由嵌入页面 URL 参数、分享鉴权回调或 OpenAPI 请求体 `variables` 传入 |
+| **外部变量（Custom）** | `custom` | 仅在分享链接中隐藏；站内对话和运行预览中显示输入框 | 由嵌入页面 URL 参数、分享鉴权回调或 OpenAPI 请求体 `variables` 传入 |
 | **内部变量（Internal）** | `internal` | 对终端用户和外部 API 均隐藏 | 仅在工作流内部使用默认值初始化，通过[变量更新节点](/zh-CN/guide/build/workflow/nodes/variable_update)跨节点、跨循环读写状态 |
 
 ![配置数字类型全局变量与比较操作](/imgs/optimized/current/variable-number-operators.png.webp)
@@ -68,7 +67,7 @@ description: 全面掌握工作流开始节点输出、12 种全局变量配置�
 | `object` | `Object` | JSON 对象（键值对） |
 | `arrayString` / `arrayNumber` / `arrayBoolean` / `arrayObject` | `Array<T>` | 强类型数组，可直接作为[循环执行](/zh-CN/guide/build/workflow/nodes/loop_run)或[并行执行](/zh-CN/guide/build/workflow/nodes/parallel_run)的迭代输入 |
 | `arrayAny` / `any` | `Array` / `Any` | 通用数组或动态任意类型（常见于代码运行或 HTTP 节点动态输出） |
-| `chatHistory` | 聊天记录 | 对话上下文数组，供 AI 对话或问题分类节点承接多轮记忆 |
+| `chatHistory` | 历史记录 | 对话上下文数组，供 AI 对话或问题分类节点承接多轮记忆 |
 | `datasetQuote` | 知识库引用 | 结构为 `{ id, datasetId, collectionId, sourceName, q, a }[]` 的检索分块数组 |
 | `selectDataset` | 选择知识库 | 由工作流工具传入的目标知识库 ID 列表 |
 

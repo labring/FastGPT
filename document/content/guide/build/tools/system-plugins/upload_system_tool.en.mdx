@@ -13,15 +13,15 @@ description: "Upload, install, and update packaged custom system tool plugins in
 
 ## Supported File Formats
 
-- **File type**: `.pkg` files
-- **File size**: Maximum 100 MB
-- **File count**: Up to 15 files per upload
+- **File type**: `.pkg` files, or `.zip` files containing multiple `.pkg` files
+- **File size**: Controlled by the `UPLOAD_FILE_MAX_SIZE` environment variable, 1000 MB by default
+- **File count**: Controlled by the `UPLOAD_FILE_MAX_AMOUNT` environment variable, up to 1000 files per upload by default
 
 ## Upload Steps
 
 ### 1. Access the Configuration Page
 
-Log in as `root`, open **Admin → System Resources → System Tools**, click **+ Install Tool** in the upper-right corner, and select **Install from Local** from the dropdown menu (which also provides **Install from Marketplace**).
+Log in as `root`, open **Admin → System Resources → System Tools**, click **+ New Tool** in the upper-right corner, and select **Install from local** from the dropdown menu (which also provides **Install from Plugin Marketplace**).
 
 ![Configuration resource library and Add Resource entry](/imgs/optimized/plugins/entry.png.webp)
 
@@ -33,10 +33,10 @@ Prepare a `.pkg` file from a trusted author and confirm compatibility with the t
 
 ### 3. Upload
 
-1. Click **+ Install Tool → Install from Local** in the upper-right corner
-2. In the **Import/Update Plugin** drawer that opens, click the file selection area
-3. Select your prepared `.pkg` tool files
-4. After confirming the file details, click **Confirm** at the bottom
+1. Click **+ New Tool → Install from local** in the upper-right corner
+2. In the **Import/update Plugin** drawer that opens, click the file selection area
+3. Select your prepared `.pkg` or `.zip` tool files
+4. After confirming the file details, click **Confirm import** at the bottom
 
 ### 4. Upload Process
 
@@ -66,7 +66,7 @@ Root administrators configure system secrets centrally. The FastGPT server store
 
 ## FAQ
 
-### Q: Can't see the "+ Install Tool → Install from Local" option
+### Q: Can't see the "+ New Tool → Install from local" option
 
 **Reason:** The current user is not a root user
 

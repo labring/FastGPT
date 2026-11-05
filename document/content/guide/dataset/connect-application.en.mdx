@@ -15,13 +15,13 @@ Connecting a validated knowledge base to an application allows models to retriev
 
 Chat Agents (both standard Chat Agent and Chat Agent V2) support mounting single or multiple knowledge bases directly:
 
-1. Go to **Studio → Agent** and open your target Chat Agent.
-2. In the application configuration panel, locate the **Dataset** section and click **+ Select**.
+1. Go to **Studio → Agents** and open your target Chat Agent.
+2. In the application configuration panel, locate the **Dataset** section and click **+ Choose**.
 3. Check the target knowledge bases you want to connect. FastGPT supports multi-dataset attachments (for example, simultaneously attaching both a Product Manual and a Service Policy).
-4. **Configure Search Parameters**:
-   - **Citation Limit**: Set the retrieved-context token budget according to chunk size and model context capacity.
-   - **Minimum Similarity**: Calibrate the threshold with labeled questions and verify that score filtering is active.
-   - **Search Mode**: Select "Hybrid Search" to combine semantic generalization and keyword matching.
+4. Click **Parameters** in the Dataset section to open the **Dataset search settings** modal and configure:
+   - **Search Method**: Select **Hybrid search** to combine semantic generalization and keyword matching.
+   - **Citation cap**: Set the retrieved-context token budget according to chunk size and model context capacity.
+   - **Lowest correlation**: Calibrate the threshold with labeled questions and verify that score filtering is active.
 
 ![Attach knowledge bases in Chat Agent](/imgs/optimized/current/agent-prompt-reference.png.webp)
 
@@ -29,16 +29,16 @@ Chat Agents (both standard Chat Agent and Chat Agent V2) support mounting single
 
 In workflows, knowledge base search operates as a discrete functional node, connecting with upstream and downstream components across the visual canvas:
 
-1. Open your target workflow canvas, click the **`+`** button on the left, and choose **Dataset Search** under **Basic Nodes**.
-2. Connect an incoming execution edge from an upstream node (such as **Workflow Start** or **Question Classification**).
+1. Open your target workflow canvas, click the **`+`** button on the left, and choose **Dataset Search** under **Basic → AI capability**.
+2. Connect an incoming execution edge from an upstream node (such as **Start** or **Classify**).
 3. **Configure Node Inputs**:
-   - **Search query** (`userChatInput`): Click the variable picker and bind to **User question** on **Workflow Start**, or link to a rewritten query from an upstream node.
-   - **Select Datasets** (`datasets`): Select one or more target datasets.
-   - **Search Settings**: Set the citation token budget and similarity threshold.
+   - **Select Dataset** (`datasets`): Select one or more target datasets.
+   - **Search Settings**: Set the search method, citation cap, and lowest correlation.
+   - **Search Text** (`datasetSearchInput`): Click the variable picker and bind to **User Question** on **Start**, or link to a rewritten query from an upstream node.
 4. **Merge Multi-Dataset Searches**:
-   When parallel retrieval branches query multiple datasets, add a **Dataset Search Citation Merge** (`datasetConcatNode`) node downstream to consolidate and deduplicate results.
+   When parallel retrieval branches query multiple datasets, add a **Dataset search citation merge** (`datasetConcatNode`) node downstream to consolidate and deduplicate results.
 5. **Downstream Execution Flow**:
-   Connect the execution output of the search node to an **AI Chat** node, and bind the search node's **Search results** (`quoteQA`) output to the **Dataset citations** (`quoteQA`) input of the AI Chat node.
+   Connect the execution output of the search node to an **AI Chat** node, and bind the search node's **Dataset citations** (`quoteQA`) output to the **Dataset citations** (`quoteQA`) input of the AI Chat node.
 
 ![Workflow knowledge base search node configuration](/imgs/optimized/current/node-dataset-search.png.webp)
 
@@ -68,7 +68,7 @@ Bind search results to the AI Chat node's knowledge input. The dedicated knowled
    - Verify that the knowledge base search node triggered successfully.
    - Confirm that recalled chunks align closely with the query topic.
    - Verify that the generated answer incorporates the retrieved facts faithfully.
-3. Once the output meets production standards, click **Save → Save and publish** in the top-right corner to freeze the configuration into the active production version.
+3. Once the output meets production standards, click **Save → Save and Publish** in the top-right corner to freeze the configuration into the active production version.
 
 ## Next Steps
 

@@ -50,7 +50,13 @@ LOG_ENABLE_OTEL=true # 是否开启 OTEL 日志收集
 LOG_OTEL_LEVEL=info # OTEL 日志收集的最低日志等级
 LOG_OTEL_SERVICE_NAME=fastgpt-client # 传递给 OTLP 收集器的服务名称
 LOG_OTEL_URL=http://localhost:4318/v1/logs # 你的 OTLP 收集器的地址，不要把 /v1/logs 遗漏了
+TRACING_ENABLE_OTEL=true # 是否开启 OTEL 链路追踪
+TRACING_OTEL_URL=http://localhost:4318/v1/traces # 链路追踪上报地址，不要把 /v1/traces 遗漏了
+METRICS_ENABLE_OTEL=true # 是否开启 OTEL 指标上报
+METRICS_OTEL_URL=http://localhost:4318/v1/metrics # 指标上报地址，不要把 /v1/metrics 遗漏了
 ```
+
+`LOG_*` 只上报日志；链路追踪和指标需要分别配置 `TRACING_*` 与 `METRICS_*`。生产环境（`NODE_ENV=production`）链路追踪默认采样率为 `0.01`，可通过 `TRACING_OTEL_SAMPLE_RATIO`（`0` 到 `1`）调整。
 
 2. 重启 FastGPT
 
@@ -66,7 +72,7 @@ LOG_OTEL_URL=http://localhost:4318/v1/logs # 你的 OTLP 收集器的地址，�
 
 ![查看效果：界面示例](/imgs/optimized/image-116.png.webp)
 
-登录进去后，如果看到右侧 COMPLETED 的步骤条中，logs 和 traces 亮起，则说明配置成功。
+登录进去后，如果看到右侧 COMPLETED 的步骤条中 logs 亮起，说明日志上报成功；配置了 `TRACING_*` 变量且已有请求被采样时，traces 也会亮起。
 
 ![查看效果：界面示例](/imgs/optimized/image-117.png.webp)
 

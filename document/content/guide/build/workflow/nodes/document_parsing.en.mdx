@@ -1,5 +1,5 @@
 ---
-title: Document parsing
+title: Document Parse
 description: Parse file links into text and pass the result to downstream nodes.
 ---
 
@@ -15,10 +15,11 @@ The document-parsing node reads a list of file links and outputs text for a mode
 
 | Item | Type | Meaning |
 | --- | --- | --- |
-| File links | String array | URLs to parse, referencing uploaded files or upstream results |
-| Parsed result | String | Text for downstream nodes |
-| Raw response | Object array | Original per-file parsing results for further processing |
-| Error message | String | Failure information for troubleshooting or an error branch |
+| Document Link | String array | URLs to parse, referencing uploaded files or upstream results |
+| Document Parsing Result | String | Text for downstream nodes |
+| Raw Response | Object array | Original per-file parsing results for further processing |
+
+If parsing fails, check the error in Run Details.
 
 ## Purpose
 
@@ -27,9 +28,9 @@ Use parsing before summarization, extraction, or question answering. Knowledge-b
 ## Example: summarize an uploaded file
 
 1. Enable uploads in application file-input settings and prepare a short document containing readable text.
-2. Connect the start node to Document Parsing and then to AI Chat.
-3. Reference the start node's file-link list as the parsing input.
-4. Reference the parsed result in AI Chat and set instructions to `Summarize the supplied document in three bullet points. Preserve dates and amounts.`
+2. Connect the start node to Document Parse and then to AI Chat.
+3. Reference the start node's file-link list as the **Document Link** input.
+4. Reference the **Document Parsing Result** in AI Chat and set instructions to `Summarize the supplied document in three bullet points. Preserve dates and amounts.`
 5. Upload the file in debug preview. Inspect the parsed text before checking the summary.
 
 Compare every date and amount with the source. For empty text, inspect scans, source content, and parsing services. For reading failures, check URL reachability, expiration, and upload limits. See [file input](/en/guide/build/general/fileInput) for the full capability guide.

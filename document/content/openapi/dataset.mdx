@@ -68,7 +68,7 @@ EOF
 | 方法 | 完整路径 | 摘要与用途 | 核心请求字段（Query / Body） |
 | --- | --- | --- | --- |
 | `POST` | `/api/core/dataset/create` | 创建知识库或知识库文件夹 | Body: `name`（必填）、`type`（`dataset` / `folder` / `websiteDataset` / `externalFile` 等）、`vectorModel`、`agentModel`、`vlmModel`、`parentId`、`intro` |
-| `POST` | `/api/core/dataset/list` | 获取当前成员可访问的知识库列表 | Body: `parentId`、`type`、`searchKey` |
+| `POST` | `/api/core/dataset/list` | 获取当前成员可访问的知识库列表（已弃用，推荐使用 `listV2`） | Body: `parentId`、`type`、`searchKey` |
 | `POST` | `/api/core/dataset/listV2` | 分页获取知识库列表（含不含文件夹的文件数统计） | Body: `parentId`、`type`、`searchKey`、`offset` / `pageNum`、`pageSize` |
 | `GET` | `/api/core/dataset/detail` | 获取知识库详情（模型配置、权限、同步状态） | Query: `id`（知识库 ID，必填） |
 | `DELETE` | `/api/core/dataset/delete` | 删除知识库及其子资源（需所有者权限） | Query: `id`（知识库 ID，必填） |
@@ -79,11 +79,11 @@ EOF
 
 | 方法 | 完整路径 | 摘要与用途 | 核心请求字段（Body / Form） |
 | --- | --- | --- | --- |
-| `POST` | `/api/core/dataset/collection/create` | 创建空集合或子文件夹 | Body: `datasetId`（必填）、`name`（必填）、`type`（`folder` / `virtual`）、`parentId`、`tags`、`metadata` |
+| `POST` | `/api/core/dataset/collection/create` | 创建空集合或子文件夹 | Body: `datasetId`（必填）、`name`（必填）、`type`（`folder` / `virtual`）、`parentId`、`tags` |
 | `POST` | `/api/core/dataset/collection/create/localFile` | 上传本地文件创建集合并触发异步训练 | `multipart/form-data` : `file`（二进制文件）+ `data`（JSON 字符串，含 `datasetId`、`trainingType`、`chunkSize`、`tags` 等） |
 | `POST` | `/api/core/dataset/collection/create/text` | 通过纯文本创建集合并触发异步训练 | Body: `datasetId`（必填）、`name`（必填）、`text`（必填）、`trainingType`、`chunkSettingMode`、`tags` |
 | `POST` | `/api/core/dataset/collection/create/link` | 抓取指定网页 URL 创建集合并触发训练 | Body: `datasetId`（必填）、`link`（必填）、`trainingType`、`metadata`（含 `webPageSelector`） |
-| `POST` | `/api/core/dataset/collection/create/apiCollection` | 从第三方 API 文件库拉取单文件创建集合 | Body: `datasetId`（必填）、`name`（必填）、`apiFileId`（必填）、`trainingType` |
+| `POST` | `/api/core/dataset/collection/create/apiCollection` | 从第三方 API 文件库拉取单文件创建集合（已弃用） | Body: `datasetId`（必填）、`name`（必填）、`apiFileId`（必填）、`trainingType` |
 
 ### 3. 集合查询、维护与批量下载（`datasetCollection`）
 
@@ -105,7 +105,7 @@ EOF
 | `GET` | `/api/core/dataset/data/detail` | 获取单条数据块详情及其关联的向量索引列表 | Query: `id`（数据块 ID，必填） |
 | `PUT` | `/api/core/dataset/data/update` | 更新单条数据块的 `q`、`a` 或 `indexes` 并重新向量化 | Body: `dataId`（必填）、`q`、`a`、`indexes` |
 | `DELETE` | `/api/core/dataset/data/delete` | 删除单条数据块及其检索索引 | Query: `id`（数据块 ID，必填） |
-| `POST` | `/api/core/dataset/searchTest` | 对知识库执行检索测试（支持语义/全文/混合、重排与标签过滤） | Body: `datasetId`（必填）、`text`、`limit`（最大 Token）、`similarity`、`searchMode`、`usingReRank`、`collectionFilterMatch` |
+| `POST` | `/api/core/dataset/searchTest` | 对知识库执行检索测试（支持语义/全文/混合、图片与重排） | Body: `datasetId`（必填）、`text`、`queryImageUrls`、`limit`（最大 Token）、`similarity`、`searchMode`、`usingReRank` |
 
 <details>
 <summary>原有章节入口</summary>

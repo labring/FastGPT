@@ -27,8 +27,11 @@ You need application creation permission, a model supporting tool calls, an avai
 
 ### 4.3 Configuration Steps
 
-1. Go to **Studio → Agent**, click the first **Create** card in the list, select **Chat Agent**, enter the name `Intelligent Data Analysis Agent`, and click **Create** in the lower-right corner.
-2. Choose a model supporting tool calls and enable Virtual Machine. This example uses built-in file and command tools; Associated Skills can remain empty.
+1. Go to **Studio → Agents**, click the first **New** card in the list (or **Create your first Agent** in the center of the page when the list is empty), select **Chat Agent V2**, enter `Intelligent Data Analysis Agent` in the name box, and click **Create** to the right of the name box.
+
+   ![Select Chat Agent V2 on the Create Agent page](/imgs/optimized/current/app-types.png.webp)
+
+2. Choose a model supporting tool calls and enable **Computer**. This example uses built-in file and command tools; **Skills** can remain empty.
 3. Enter this prompt:
 
    ```text
@@ -37,7 +40,7 @@ You need application creation permission, a model supporting tool calls, an avai
 
 4. Upload `sales.csv` in debug preview and wait for completion. Ask: “Analyze the attached file: aggregate units by product and revenue, advertising cost, and advertising ROI by channel. Generate a summary CSV and revenue chart.”
 5. Expand Processed to inspect file reads, commands, and their results. For missing dependencies, check installation output or configure a [startup script](/en/guide/build/agentv2/vm#virtual-machine-lifecycle).
-6. Click the **Virtual Machine** icon button at the upper right of debug preview. Check `channel_summary.csv` and `revenue.png`. Preview and download the image in the file panel; use the file link in the answer to download the CSV.
+6. Click the **View Sandbox files** icon button at the upper right of debug preview. Check `channel_summary.csv` and `revenue.png`. Preview and download the image in the file panel; use the file link in the answer to download the CSV.
 
 ![Sales analysis configuration and results: product units and channel advertising ROI](/imgs/optimized/current/data-analysis-result.png.webp)
 

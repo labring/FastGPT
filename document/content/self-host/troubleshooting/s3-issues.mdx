@@ -22,13 +22,13 @@ description: FastGPT 私有部署存储桶问题排查方式
 
 ## 2. 上传对话文件 / 知识库文件报错
 
-### 2.1 SignatureDoesNotMatched
-- 签名不一致，大部分情况是因为 Nginx 配置错误
+### 2.1 SignatureDoesNotMatch
+- 签名不一致。当前文件上传由 FastGPT 后端代理到对象存储，FastGPT 入口的 Nginx 不参与 S3 签名；需要检查的是 FastGPT 与对象存储之间、位于对象存储前面的反向代理
 
 ### 可能的错误
-- Nginx 转发时未透传必要的请求头（如 Headers、Host）
+- 对象存储前置的反向代理（如 Nginx）转发时未透传 `Host` 请求头，导致对象存储收到的 Host 与 FastGPT 签名时使用的 `STORAGE_S3_ENDPOINT` 主机不一致
 
 ### 解决
-- 配置 proxy_set_header Host $http_host，不要设置成 $host，Nginx 的 $host内置变量会把端口去掉，要设置成 $http_host
+- 在对象存储前置的 Nginx 中配置 `proxy_set_header Host $http_host;`。Nginx 的 `$host` 内置变量会去掉端口，需使用 `$http_host`
 
 ---

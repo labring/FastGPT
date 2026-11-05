@@ -3,7 +3,7 @@ title: Use applications through the portal
 description: Configure portal access and response visibility, then verify the experience as a user.
 ---
 
-Click **Portal** in the main left navigation bar to open the unified conversation workspace for signed-in team members, bringing together New Chat, My Apps, Team Apps, Favorites, and conversation history. The published App version governs runtime logic (such as file uploads, which follow the **File Input** setting configured in the App's AI or System settings), while Portal visibility settings control how much execution detail and Dataset citation depth members can inspect.
+Click **Portal** in the main left navigation bar to open the unified conversation workspace for signed-in team members, with **Home** (commercial edition), **All Apps**, and the **Recently Used** app list in the left pane, plus conversation history. The published App version governs runtime logic (such as file uploads, which follow the **File Upload** setting configured in the App's AI or System settings), while Portal visibility settings control how much execution detail and Dataset citation depth members can inspect.
 
 ![Portal visibility controls](/imgs/optimized/current/portal-visibility.png.webp)
 
@@ -26,8 +26,8 @@ Click **Portal** in the main left navigation bar to open the unified conversatio
 
 ## Portal Navigation and Deep Links
 
-- **Workspace navigation**: Switch between Recent Chats, My Applications, Team Applications, and Favorites in the left pane, and bookmark frequently used team apps.
-- **Direct URL parameters**: Open a specific application directly via `/chat?appId=<appId>`, or pass the `pane` query parameter to open the team application directory.
+- **Workspace navigation**: The left pane contains **Home** (commercial edition), **All Apps**, and the **Recently Used** list; **All Apps** has **Favourite Apps** and **Team Apps** tabs.
+- **Direct URL parameters**: Open a specific application directly via `/chat?appId=<appId>`, or pass the `pane` query parameter to open a sidebar page: `h` for Home (commercial edition), `aa` for All Apps, `ra` for Recently Used, and `s` for Settings.
 - **Permission checks**: When a member encounters an access error, verify the active team, application collaborator permissions ([Team Permissions](/en/guide/workspace/team/team_roles_permissions)), and [collection-level permissions](/en/guide/dataset/collection_permission) on referenced knowledge bases.
 
 Next: [published versions](/en/guide/build/publish/versions), [team permissions](/en/guide/workspace/team/team_roles_permissions), and [conversation logs](/en/guide/build/logs).

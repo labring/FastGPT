@@ -199,7 +199,7 @@ export function renderDiagram(spec, { theme, illustrations }) {
   const parts = [
     `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" role="img" aria-labelledby="title description" lang="${spec.lang}">`,
     `<title id="title">${escape(spec.title)}</title><desc id="description">${escape(nodes.map(({ label, sub }) => [label, sub].filter(Boolean).join(': ')).join('; '))}. ${escape(edges.map(({ from, to, label }) => `${from} → ${to}${label ? `: ${label}` : ''}`).join('; '))}</desc>`,
-    `<defs><linearGradient id="canvas" x2="0.8" y2="1"><stop stop-color="${color.bg}"/><stop offset="1" stop-color="${color.end}"/></linearGradient><linearGradient id="card" x2="0" y2="1"><stop stop-color="${color.panel}"/><stop offset="1" stop-color="${color.end}"/></linearGradient><linearGradient id="brand"><stop stop-color="#3370FF"/><stop offset="1" stop-color="#245BDB"/></linearGradient><pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse" patternTransform="skewY(-15)"><path d="M40 0H0V40" fill="none" stroke="${color.grid}" stroke-width="0.6"/></pattern><filter id="shadow" x="-20%" y="-30%" width="140%" height="170%"><feDropShadow dx="0" dy="7" stdDeviation="9" flood-color="${color.shadow}" flood-opacity="0.45"/></filter><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M1 1L9 5L1 9Z" fill="${color.blue}"/></marker><clipPath id="clip"><rect width="${width}" height="${height}" rx="24"/></clipPath>`,
+    `<defs><linearGradient id="canvas" x2="0.8" y2="1"><stop stop-color="${color.bg}"/><stop offset="1" stop-color="${color.end}"/></linearGradient><linearGradient id="card" x2="0" y2="1"><stop stop-color="${color.panel}"/><stop offset="1" stop-color="${color.end}"/></linearGradient><linearGradient id="brand"><stop stop-color="#3370FF"/><stop offset="1" stop-color="#245BDB"/></linearGradient><pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse" patternTransform="skewY(-15)"><path d="M40 0H0V40" fill="none" stroke="${color.grid}" stroke-width="0.6"/></pattern><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M1 1L9 5L1 9Z" fill="${color.blue}"/></marker><clipPath id="clip"><rect width="${width}" height="${height}" rx="24"/></clipPath>`,
     ...used.map((name) => {
       assert.ok(illustrations[name], `Missing illustration asset: ${name}`);
       return `<image id="icon-${name}" width="256" height="256" href="data:image/webp;base64,${illustrations[name]}"/>`;
@@ -295,8 +295,9 @@ export function renderDiagram(spec, { theme, illustrations }) {
           weight: 400
         });
     } else {
+      // Safari flickers when compositing SVG drop-shadow filters during scroll.
       parts.push(
-        `<rect x="${node.x}" y="${node.y + 6}" width="${node.w}" height="${node.h}" rx="22" fill="${color.border}" opacity="0.6"/><rect x="${node.x}" y="${node.y}" width="${node.w}" height="${node.h}" rx="22" fill="url(#card)" stroke="${node.focal ? color.blue : color.border}" stroke-width="${node.focal ? 2.5 : 1.3}" filter="url(#shadow)"/><use href="#icon-${node.illustration}" transform="translate(${node.x + 6} ${node.y + 16}) scale(${108 / 256})"/>`
+        `<rect x="${node.x}" y="${node.y + 10}" width="${node.w}" height="${node.h}" rx="22" fill="${color.shadow}" opacity="0.22"/><rect x="${node.x}" y="${node.y}" width="${node.w}" height="${node.h}" rx="22" fill="url(#card)" stroke="${node.focal ? color.blue : color.border}" stroke-width="${node.focal ? 2.5 : 1.3}"/><use href="#icon-${node.illustration}" transform="translate(${node.x + 6} ${node.y + 16}) scale(${108 / 256})"/>`
       );
       const labelLines = wrap(node.label, { width: 188, size: 21 });
       const subLines = node.sub ? wrap(node.sub, { width: 188, size: 16 }) : [];

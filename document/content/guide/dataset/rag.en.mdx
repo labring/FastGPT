@@ -57,7 +57,7 @@ Evaluating knowledge base RAG performance centers around four key dimensions:
 | Metric | Definition and Focus | Optimization Levers |
 | --- | --- | --- |
 | **Recall** | Whether the chunk containing the ground truth was successfully retrieved | Adjust chunk boundaries, enable hybrid search, tune embedding models |
-| **Precision** | Proportion of retrieved chunks that provide direct factual value | Integrate Rerank models for second-pass scoring; increase minimum similarity thresholds |
+| **Precision** | Proportion of retrieved chunks that provide direct factual value | Integrate Rerank models for second-pass scoring; increase Lowest correlation thresholds |
 | **Context Redundancy** | Density of irrelevant information in the model context | Refine chunk size limits, lower citation token budgets, eliminate duplicate data chunks |
 | **Factual Faithfulness** | Degree of alignment between model statements and cited reference material | Strengthen prompt constraints, select models with strong instruction-following capabilities |
 
@@ -88,8 +88,8 @@ When the references do not record the requested information, respond that the do
 Do not infer unrecorded figures, deadlines, or promises from external knowledge.
 ```
 
-### 2. Hard Similarity Threshold Filtering (Min Score)
-Calibrate similarity thresholds using labeled queries and verify the active score-filter mode. Configure and test an empty-result branch or insufficient-evidence prompt in the application.
+### 2. Hard Lowest Correlation Threshold Filtering
+Calibrate **Lowest correlation** thresholds using labeled queries and verify the active score-filter mode. Configure and test an empty-result branch or insufficient-evidence prompt in the application.
 
 ### 3. End-to-End Citation Transparency
 During response generation, the engine tracks and outputs the source file name, chunk text, and collection ID for each used candidate. Front-end chat widgets render clickable citation pills, enabling business users to verify statements against source text.

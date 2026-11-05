@@ -15,8 +15,8 @@ A Workflow Tool packages a multi-step canvas flow—combining HTTP requests, kno
 ## Step 1: Create a Workflow Tool and Declare Inputs
 
 1. Go to **Studio → My Tools**, click the first **Create** card in the list, and select **Workflow Tool** (the upper-right toolbar provides **Batch Manage**, **+ Folder**, and **Import**).
-2. The canvas initializes with two contract nodes: **Plugin Input (`pluginInput`)** and **Plugin Output (`pluginOutput`)**.
-3. Click **Add Field** on the **Plugin Input** node to declare each parameter:
+2. The canvas initializes with two contract nodes: **Plugin start (`pluginInput`)** and **Custom Plugin output (`pluginOutput`)**, which contain the **Custom Inputs** and **Custom Outputs** sections.
+3. Click **New** in the **Custom Inputs** section of the **Plugin start** node to declare each parameter:
 
 | Setting | Description |
 | --- | --- |
@@ -28,15 +28,15 @@ A Workflow Tool packages a multi-step canvas flow—combining HTTP requests, kno
 
 ## Step 2: Orchestrate Nodes and Bind Outputs
 
-1. Add processing nodes (such as HTTP Request, Dataset Search, Code Run, or AI Chat) to the canvas and connect the execution handle from **Plugin Input** to your first processing step.
+1. Add processing nodes (such as HTTP Request, Dataset Search, Code Run, or AI Chat) to the canvas and connect the execution handle from **Plugin start** to your first processing step.
 2. Reference the declared input fields in your processing nodes using the variable picker.
-3. Connect the final processing step to **Plugin Output (`pluginOutput`)**.
-4. Click **Add Output Field** on **Plugin Output**, define return field names (such as `resultSummary` or `statusCode`), and bind each field to the corresponding upstream node output. See [Call Application and Workflow Tool I/O Nodes](/en/guide/build/workflow/nodes/run_app) for node reference details.
+3. Connect the final processing step to **Custom Plugin output (`pluginOutput`)**.
+4. Click **New** in the **Custom Outputs** section of **Custom Plugin output**, define return field names (such as `resultSummary` or `statusCode`), and bind each field to the corresponding upstream node output. See [Call Application and Workflow Tool I/O Nodes](/en/guide/build/workflow/nodes/run_app) for node reference details.
 
 ## Step 3: Debug Independently and Publish
 
 1. Click **Run** in the top-right corner, supply known test values in the input form, and run the flow.
-2. Expand run details to verify that **Plugin Input** values were received, intermediate nodes succeeded, and **Plugin Output** returned the expected fields.
+2. Expand run details to verify that **Plugin start** values were received, intermediate nodes succeeded, and **Custom Plugin output** returned the expected fields.
 3. Click **Save and Publish** in the top-right corner. Calling applications always execute the active **Published version** of the workflow tool.
 
 ## Step 4: Attach and Invoke in Applications
@@ -49,8 +49,8 @@ A Workflow Tool packages a multi-step canvas flow—combining HTTP requests, kno
 
 | Symptom | Check |
 | --- | --- |
-| Model omits arguments or passes invalid formats | Refine the tool description and parameter descriptions in **Plugin Input** with explicit format examples (such as `YYYY-MM-DD`) |
-| Tool runs but the Agent receives an empty return value | Verify that internal node outputs are wired into **Plugin Output (`pluginOutput`)** and republish |
+| Model omits arguments or passes invalid formats | Refine the tool description and parameter descriptions in **Custom Inputs** with explicit format examples (such as `YYYY-MM-DD`) |
+| Tool runs but the Agent receives an empty return value | Verify that internal node outputs are wired into **Custom Plugin output (`pluginOutput`)** and republish |
 | Internal tool edits do not take effect in callers | Click **Save and Publish** inside the workflow tool editor to update the published snapshot |
 
 Next: Compare tool types in [Choose Tools and Skills](/en/guide/build/tools/overview) or configure [HTTP Tool Sets](/en/guide/build/tools/http_tools).

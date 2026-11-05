@@ -8,7 +8,7 @@ description: "排查 FastGPT 自部署环境中模型调用超时、流式响应
 
 1. 私有部署模型，先确认部署的模型是否正常。
 2. 通过 CURL 请求，直接测试上游模型是否正常运行（云端模型或私有模型均进行测试）
-3. 在模型提供商页面测试 AI Proxy 渠道；若渠道后方连接了 OneAPI 等中转，再分别检查该中转。
+3. 在 **管理员 → 系统资源 → 系统模型** 页面的“模型渠道”标签测试 AI Proxy 渠道；若渠道后方连接了 OneAPI 等中转，再分别检查该中转。
 4. 在 FastGPT 中使用该模型进行测试。
 
 下面示例直接测试上游服务。将地址、模型与凭证替换为当前渠道支持的值；记录错误时移除凭证。FastGPT 渠道配置见[模型配置](/zh-CN/self-host/config/model/intro)。
@@ -77,9 +77,8 @@ curl https://api.openai.com/v1/audio/speech \
 ```bash
 curl https://api.openai.com/v1/audio/transcriptions \
   -H "Authorization: Bearer $OPENAI_API_KEY" \
-  -H "Content-Type: multipart/form-data" \
   -F file="@/path/to/file/audio.mp3" \
-  -F model="gpt-transcribe"
+  -F model="whisper-1"
 ```
   </Tab>
 </Tabs>

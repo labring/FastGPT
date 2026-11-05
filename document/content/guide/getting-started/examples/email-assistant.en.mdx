@@ -3,7 +3,7 @@ title: "Case 1: Conversational Agent — Corporate Email Writing Assistant"
 description: "Case 1: Conversational Agent — Corporate Email Writing Assistant"
 ---
 
-This example uses models and external services. Prepare the required permissions and quota, debug and verify results, then publish application configuration.
+This example relies solely on your team's chat model, system prompt, and conversation opening — zero SMTP authorization codes or external service credentials are required.
 
 ## Case 1: Conversational Agent — Corporate Email Writing Assistant
 
@@ -13,23 +13,27 @@ Chat Agents are suitable for lightweight Q&A, content generation, copy refinemen
 
 Employees often need to handle emails for project updates, cross-departmental collaboration, customer replies, meeting minutes, and more. Using AI to standardize email formats and expression styles can improve writing efficiency and maintain the professionalism of external corporate communications.
 
-The focus of this case is consolidating the stable requirements of corporate email writing into the prompt, such as subject lines, salutations, body structure, action items, and risk reminders. For beginners, it serves as a minimal closed loop for understanding FastGPT App configuration: define the role, constrain the output structure and safety boundaries, and optionally click **+ Choose** in the **Tools** section later to attach email delivery tools.
+The focus of this case is consolidating the stable requirements of corporate email writing into the prompt, such as subject lines, salutations, body structure, action items, and risk reminders. For beginners, it serves as a minimal closed loop for understanding FastGPT App configuration: define the role, constrain the output structure and safety boundaries, and optionally click **+ Choose → System Tools** in the **Tools** section to attach zero-credential built-in tools such as "Get Current Time" to date-stamp drafts automatically.
 
 ### 1.2 Configuration Steps
 
 1. **Create a Chat Agent**
 
-   Go to **Studio → Agent**, click the first **Create** card in the list, select **Chat Agent**, name the App `Corporate Email Writing Assistant`, and click **Create** in the lower-right corner.
+   Go to **Studio → Agents**, click the first **New** card in the list (or **Create your first Agent** in the center of the page when the list is empty), select **Chat Agent**, enter `Corporate Email Writing Assistant` in the name box, and click **Create** to the right of the name box.
+
+   ![Select Chat Agent and enter the application name](/imgs/optimized/current/app-create.png.webp)
 
 2. **Open the App Configuration Page**
 
-   After creation, open the app configuration page. The page is usually divided into left and right columns: the left is AI configuration, and the right is Debug Preview.
+   After creation, open the app configuration page. The page is usually divided into left and right columns: the left is AI configuration, and the right is Debug preview.
 
 3. **Select a Model**
 
    In the AI configuration, select the base model for the Conversational Agent. This case was tested with qwen3.8-flash, but you can replace it with other available models configured in your current environment.
 
    When selecting a model, prioritize two aspects: first, whether the model is good at business writing, and second, whether it consistently follows the required format. Email writing is a low-risk, low-structure task, so you usually do not need the strongest model available, but you should still choose one with a natural tone and reliable instruction following.
+
+   ![Choose an active chat model in AI settings](/imgs/optimized/current/ai-model-selector.png.webp)
 
 4. **Write the Prompt**
 
@@ -62,7 +66,7 @@ The focus of this case is consolidating the stable requirements of corporate ema
 
 5. **Set the Conversation Opening**
 
-   The conversation opening is used to tell users what this AI assistant can do. You can fill in:
+   The conversation opening is used to tell users what this AI assistant can do. Expand the **Conversation Opening** collapsible section on the left side of the configuration page and fill in:
 
    ```text
    Hello! I am the Email Writing Assistant 📧
@@ -73,6 +77,8 @@ The focus of this case is consolidating the stable requirements of corporate ema
    ```
 
    After filling it out, you can see the effect in the preview area on the right.
+
+   ![Expand the Conversation Opening section to configure greeting text and preset questions](/imgs/optimized/current/welcome-config.png.webp)
 
 6. **Validate the Result**
 

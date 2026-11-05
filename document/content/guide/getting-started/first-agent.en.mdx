@@ -16,15 +16,15 @@ After finishing this tutorial, you will understand the core execution model of C
 
 Before starting, verify the following prerequisites:
 - Resource creation permissions and knowledge base read permissions in your active team.
-- An available chat model (default preset models in FastGPT Cloud already support tool calling; in self-hosted environments, ensure tool calling is enabled for the model under "Account → Model Providers").
+- An available chat model (default preset models in FastGPT Cloud already support tool calling; in self-hosted environments, select the model in the "AI Settings" dialog and confirm that the "Tool call" column shows "Support").
 - Completion of the [Quick Start Tutorial](/en/guide/getting-started/quick-start), ensuring the `Corporate Travel Policy` knowledge base exists in your team.
 
 ## Step 1: Create a Chat Agent V2
 
-1. Log in to FastGPT and click "Studio" (or "Workbench") in the left navigation bar.
+1. Log in to FastGPT and click "Studio" in the left navigation bar.
 2. Click "Create your first Agent" in the center of the page (or the "New" card in the list if applications already exist) to open the "Create Agent" page.
-3. Select "Chat Agent V2" under "Agent Type", name it `Expense Check Assistant` under "Icon & Name", and click "Create".
-4. In the "App Config" view, keep the default model under "AI Settings → AI Model" (such as `qwen3.8-flash`), or select a mainstream model such as Qwen, DeepSeek, Doubao, or ChatGLM from the dropdown.
+3. Select "Chat Agent V2" under "Agent Type", enter `Expense Check Assistant` as the name in the icon & name area, and click "Create".
+4. In the "App settings" view, keep the default model under "AI Settings → Model" (such as `qwen3.8-flash`), or select a mainstream model such as Qwen, DeepSeek, Doubao, or ChatGLM from the dropdown.
 
 ![Select Chat Agent V2 when creating an application](/imgs/optimized/current/app-types.png.webp)
 
@@ -38,15 +38,15 @@ Retrieve the travel policy before answering. Return exactly four short bullet po
 
 ## Step 3: Attach Knowledge Base and External Tools
 
-1. Under the "Knowledge Base" section at the bottom of the configuration panel, click "+ Select" on the right and select `Corporate Travel Policy`. Attaching a knowledge base automatically enables knowledge base retrieval for Chat Agent V2.
-2. To attach additional skills or external tools, click "+ Select" on the right side of the "Associated Skills" or "Tools" section.
-3. Type `@` inside the "Prompt" editor to open the capability reference menu (shown below), where you can directly reference "Dataset Search", "Sandbox", "Document Parsing", or other tools and skills from "System Tools", "My Tools", "My Agents", or "Associated Skills".
+1. Under the "Dataset" section at the bottom of the configuration panel, click "+ Choose" on the right and select `Corporate Travel Policy`. Attaching a knowledge base automatically enables knowledge base retrieval for Chat Agent V2.
+2. To attach additional skills or external tools, click "+ Choose" on the right side of the "Skills" or "Tool" section.
+3. Type `@` inside the "Prompt" editor to open the capability reference menu (shown below), where you can directly reference "DatasetSearch", "Sandbox", "FileParsing", or other tools and skills from "System Tools", "Tools", "My Agents", or "Skills".
 
 ![Attach tools and knowledge bases](/imgs/optimized/current/agent-prompt-reference.png.webp)
 
 ## Step 4: Test in Workspace and Trace Execution
 
-Enter the following test inquiry in the right-hand "Debug Preview" panel:
+Enter the following test inquiry in the right-hand "Debug preview" panel:
 
 ```text
 Please check my reimbursement readiness: submission deadline, required documents, Finance review time, and missing policy information.
@@ -64,7 +64,7 @@ Click "Run Details" below the response to inspect tool inputs, raw tool outputs,
 
 ## Step 5: Save and Publish the Active Version
 
-1. Once the test output satisfies your requirements, click "Save" in the top right corner and choose "Save and publish" from the dropdown.
+1. Once the test output satisfies your requirements, click "Save" in the top right corner and choose "Save and Publish" from the dropdown.
 2. Enter a version name (for example, `Expense Check Assistant v1`) in the dialog and click "Confirm".
 3. The platform points the active production pointer to this release, updating all external channels immediately.
 

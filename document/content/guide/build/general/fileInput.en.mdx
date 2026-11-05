@@ -19,11 +19,11 @@ Once enabled, a file selection icon appears in the chat input area. Click it to 
 
 **Behavior**
 
-Starting from version 4.8.13, Chat Agent (Simple Mode) forces file parsing and injects the content into the system prompt so multi-turn conversations consistently reference uploaded documents.
+Starting from version 4.8.13, Chat Agent (Simple Mode) forces file parsing and merges the content into the corresponding user message so multi-turn conversations consistently reference uploaded documents.
 
 ## Using in Workflows
 
-In Workflows, find the `File Input` option in the system configuration panel and click the `Enable`/`Disable` toggle to open the configuration dialog.
+In Workflows, find the `File Upload` option in the system configuration panel and click the `Enable`/`Disable` toggle to open the configuration dialog.
 
 ![Enable file upload](/imgs/optimized/current/file-upload-settings.png.webp)
 
@@ -43,12 +43,11 @@ In FastGPT's chat history, messages with role=user store their value in this str
 
 ```ts
 type UserChatItemValueItemType = {
-  type: 'text' | 'file';
   text?: {
     content: string;
   };
   file?: {
-    type: 'image' | 'audio' | 'video' | 'file';
+    type: 'image' | 'audio' | 'video' | 'document' | 'unknown'; // 'file' is kept only for legacy data
     name?: string;
     key?: string;
     url: string;
@@ -75,26 +74,30 @@ The document parsing node accepts an `array<string>` input (file URLs) and outpu
 - **The document parsing node only processes files from the current workflow run, not files from chat history.**
 - How multiple documents are concatenated:
 
-Multiple files are concatenated using the following template — filename + content, separated by `\n******\n`:
+Multiple files are concatenated using the following template — filename + content, joined by `\n\n`:
 
 ```
-File: ${filename}
-<Content>
+## ${filename}
 ${content}
-</Content>
 ```
 
 ### How to use Document Citation in the AI Chat node
 
 In Workflows, the **AI Chat** node provides a **Document Citation** input port where you can select the **File URLs** output from the **Start** node (or any string array of document URLs) to parse and cite documents directly.
 
-It accepts an `Array<string>` input. The URLs are parsed and injected into a system message using this prompt template:
+It accepts an `Array<string>` input. The URLs are parsed and merged into the corresponding user message, with each file listed in a `<file>` block. The prompt template is (the built-in text is in Chinese):
 
 ```
-Use the content in <FilesContent></FilesContent> as reference for this conversation:
-<FilesContent>
-{{quote}}
-</FilesContent>
+## 对话文件
+用户本次对话上传的文件，用途：
+1. 可通过 read_files 读取文档内容。
+2. 可把 url 作为模型参数。
+
+<file>
+<name>${filename}</name>
+<url>${fileUrl}</url>
+<content>${content}</content>
+</file>
 ```
 
 ## Changes to File Upload in Version 4.8.13

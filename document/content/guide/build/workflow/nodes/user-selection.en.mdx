@@ -1,6 +1,6 @@
 ---
-title: User Selection
-description: "Configure the FastGPT Workflow User Selection interactive node to present static or variable-driven choices and resume on user selection."
+title: User Select
+description: "Configure the FastGPT Workflow User Select interactive node to present static or variable-driven choices and resume on user selection."
 ---
 
 ## Features
@@ -13,11 +13,11 @@ description: "Configure the FastGPT Workflow User Selection interactive node to 
 
 ## Function
 
-The "User Selection" node is an interactive node. When triggered, the conversation enters an "interactive" state -- the workflow state is saved and execution pauses until the user completes the interaction.
+The "User Select" node is an interactive node. When triggered, the conversation enters an "interactive" state -- the workflow state is saved and execution pauses until the user completes the interaction.
 
 ![Function — interface example](/imgs/optimized/current/selection-await-input.png.webp)
 
-In the example above, when the User Selection node triggers, the chat input is hidden and the conversation enters interactive mode.
+In the example above, when the User Select node triggers, the chat input is hidden and the conversation enters interactive mode.
 
 ![Function — interface example](/imgs/optimized/current/selection-complete.png.webp)
 
@@ -29,15 +29,15 @@ The basic pattern is to present a question that requires a user decision, then r
 
 ## Options and output
 
-Enter the user-facing description, add option text, and connect each option's execution handle to its branch. Each option has its own key. The chosen option text becomes the string **Selection result**; resumed execution follows the selected branch.
+Enter the user-facing description, add option text, and connect each option's execution handle to its branch. Each option has its own key. The chosen option text becomes the string **Selected Result**; resumed execution follows the selected branch.
 
 In addition to manually configuring fixed options, the node supports dynamically generating option lists via variable references (such as an array output from an upstream Code or HTTP node). Dynamic options share a single dynamic option exit. If the resolved dynamic option list is empty, the node returns a clear error to avoid invalid waiting without selectable options.
 
 ## Example: confirm or cancel
 
-1. Connect Start to User Selection and enter `Continue this task?` as the description.
-2. Keep two options, `Confirm` and `Cancel`. Connect them to Specified Reply nodes containing `Confirmed` and `Cancelled`.
-3. Debug and choose `Confirm`. Expect selection result `Confirm` and reply `Confirmed`.
+1. Connect Start to User Select and enter `Continue this task?` as the description.
+2. Keep two options, `Confirm` and `Cancel`. Connect them to Assigned Reply nodes containing `Confirmed` and `Cancelled`.
+3. Debug and choose `Confirm`. Expect **Selected Result** `Confirm` and reply `Confirmed`.
 4. Start a new conversation and choose `Cancel`. Verify that only the cancellation branch runs.
 
-The access channel must support interaction. Parallel Run containers restrict this node. If selection fails to resume execution, inspect option connections and the conversation used for resumption. Use [Form Input](/en/guide/build/workflow/nodes/form_input) to collect multiple structured fields.
+The access channel must support interaction. Parallel Run containers restrict this node. If selection fails to resume execution, inspect option connections and the conversation used for resumption. Use [Form input](/en/guide/build/workflow/nodes/form_input) to collect multiple structured fields.

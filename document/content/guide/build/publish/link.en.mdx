@@ -17,7 +17,7 @@ Prepare Application editing and channel-management permissions, available models
 
 ### 1. Create a Link
 
-Go to `App Details` -> `Publishing Channels` -> `Login-Free Window`, then click **New** (or **Create Link**) in the upper-right corner.
+Go to `App Details` -> `Publishing Channels` -> `Login-Free Window`, then click **Create New Link** in the upper-right corner and fill in the **Create Link** dialog.
 
 Enter a recognizable name and set the required expiry time, QPM, and points limit. This task checks the source text: enable **View citation snippets** in the visibility configuration, then confirm creation. Check the expiry time and points limit displayed in the list. The name is only used for display in the record list.
 
@@ -50,7 +50,6 @@ Some parameters are only available in the commercial edition.
 - **View citation snippets**: Controls access to retrieved Dataset snippets for verifying answer evidence.
 - **View full citation**: Allows visitors to view the complete document text containing the citation.
 - **Download/open source original text**: Allows visitors to download original Dataset files or open source websites; verify the sharing scope of your materials before enabling.
-- **Show skill citations**: Allows visitors to view cited Skills and their loading progress.
 
 ## Share Link Authentication
 
@@ -60,7 +59,7 @@ Share link authentication is designed to quickly and securely integrate FastGPT'
 
 ### Usage Guide
 
-In the share link configuration, you can optionally fill in the `Identity Verification` field. This is the root URL for a `POST` request. Once configured, share link initialization, chat start, and chat completion will all send requests to specific endpoints under this URL. Below, we use `host` to represent the `identity verification root URL`. For the initialization and pre-chat checks, return `success` and the required `data.uid`. You can include `message` or `msg` to explain a failed check. Use this response format:
+In the share link configuration, you can optionally fill in the `Token Authentication` field. This is the root URL for a `POST` request. Once configured, share link initialization, chat start, and chat completion will all send requests to specific endpoints under this URL. Below, we use `host` to represent the `Token Authentication root URL`. For the initialization and pre-chat checks, return `success` and the required `data.uid`. You can include `message` or `msg` to explain a failed check. Use this response format:
 
 #### Unified Response Format
 
@@ -89,7 +88,7 @@ Initialization requires `success=true` and a valid string `uid`. The commercial 
 
 ### Configuration Guide
 
-#### 1. Configure the Identity Verification URL
+#### 1. Configure the Token Authentication URL
 
 Once configured, every time the share link is used, verification and reporting requests will be sent to the corresponding endpoints.
 
@@ -199,7 +198,7 @@ curl --location --request POST '{{host}}/shareAuth/start' \
 
 This endpoint has no required response format.
 
-The response data follows the same format as the [chat endpoint](/en/openapi/intro#response), with an additional `token` field.
+FastGPT sends the request body `{ token, appName, responseData, chatId }`: `responseData` uses the same format as the response details of the [chat endpoint](/en/openapi/intro#response), `appName` is the app name, and `chatId` is the conversation ID.
 
 Inspect `totalPoints` (AI points) and `tokens` (model context tokens) within `responseData`. The top-level `token` is the business authentication credential.
 
@@ -208,6 +207,7 @@ curl --location --request POST '{{host}}/shareAuth/finish' \
 --header 'Content-Type: application/json' \
 --data-raw '{
     "token": "[authToken]",
+    "appName": "[App name]",
     "responseData": [
         {
             "moduleName": "core.module.template.Dataset search",
@@ -269,8 +269,8 @@ curl --location --request POST '{{host}}/shareAuth/finish' \
             "contextTotalLen": 2,
             "runningTime": 1.32
         }
-    ]
-
+    ],
+    "chatId": "[chatId]"
 }'
 ```
 
@@ -397,7 +397,7 @@ export default async function (ctx: FunctionContext) {
 
 #### 2. Configure the Verification URL
 
-Copy any of the 3 endpoint URLs, e.g. `https://d8dns0.laf.dev/shareAuth/finish`, remove the `/shareAuth/finish` part, and enter the root URL `https://d8dns0.laf.dev` in the `Identity Verification` field.
+Copy any of the 3 endpoint URLs, e.g. `https://d8dns0.laf.dev/shareAuth/finish`, remove the `/shareAuth/finish` part, and enter the root URL `https://d8dns0.laf.dev` in the `Token Authentication` field.
 
 #### 3. Modify the Share Link Parameters
 

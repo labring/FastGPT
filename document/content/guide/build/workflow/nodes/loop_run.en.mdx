@@ -34,8 +34,8 @@ The Loop Node provides two running modes.
 
 ### 3. Error Handling & User Interaction
 
-- **Preserving Prior Run Logs**: If a loop fails at some point, the logs and results from previous successful iterations are kept. You can inspect the step-by-step trace in "Execution Details" to easily spot what went wrong.
-- **User Interaction Support**: Supports nodes that require user input (like Form Input) inside the loop. The loop will temporarily pause when reaching these nodes and automatically resume running from where it paused once the user completes the input.
+- **Preserving Prior Run Logs**: If a loop fails at some point, the logs and results from previous successful iterations are kept. You can inspect the step-by-step trace in "Run Details" to easily spot what went wrong.
+- **User Interaction Support**: Supports nodes that require user input (like Form input) inside the loop. The loop will temporarily pause when reaching these nodes and automatically resume running from where it paused once the user completes the input.
 
 ---
 
@@ -83,7 +83,7 @@ For self-hosted developers or operators, you can adjust the execution limits of 
 
 | Environment Variable      | Default | Description                                                                                                                            |
 | :------------------------ | :------ | :------------------------------------------------------------------------------------------------------------------------------------- |
-| `WORKFLOW_MAX_LOOP_TIMES` | 100     | The maximum length of input arrays and the maximum iteration limit for Conditional Loops (shared by both Loop and Parallel Run nodes). |
+| `WORKFLOW_MAX_LOOP_TIMES` | 100     | The maximum length of input arrays and the maximum iteration limit for Conditional Loops (shared by Loop Node, Parallel Run, and the deprecated Batch Run). |
 
 ## Example Scenario: AI Copy Refinement Until Approval
 
@@ -95,16 +95,16 @@ Validate the data flow with an array loop before extending it to AI rewriting. T
 
 1. Add an array variable `captureItems` in system configuration and enter `["alpha", "beta"]`.
 2. Select **Array Loop** and reference `captureItems` as the input array.
-3. Connect **Loop Start** to **Specified Reply** inside the loop. Reference the current item as the reply content.
+3. Connect **Loop Start** to **Assigned Reply** inside the loop. Reference the current item as the reply content.
 4. Add a custom output `lastItem` and reference the current item from Loop Start. Its final value is `beta`.
 5. To extend this to AI rewriting, select **Conditional Loop** and connect rewriting, scoring, and condition nodes inside the body. The passing branch outputs the text and reaches **Loop Break**; the other branch continues the next iteration. Store text and scores needed across iterations in variables.
 
 #### Execution Flow & Details
 
-This screenshot records two successful iterations of the array validation example. Expand the loop in **Full Response** to inspect the iteration count, history, and per-iteration custom outputs:
+This screenshot records two successful iterations of the array validation example. Expand the loop in **Complete Response** to inspect the iteration count, history, and per-iteration custom outputs:
 
 ![Two array-loop iterations and the final output](/imgs/optimized/current/loop-array-detail.png.webp)
 
-1. The first current item is `alpha`; Specified Reply outputs `alpha`.
-2. The second current item is `beta`; Specified Reply outputs `beta`.
+1. The first current item is `alpha`; Assigned Reply outputs `alpha`.
+2. The second current item is `beta`; Assigned Reply outputs `beta`.
 3. The loop finishes with `lastItem = "beta"`. AI scoring in a conditional loop depends on the model and prompt; test its passing and termination paths separately.

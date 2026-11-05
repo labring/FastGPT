@@ -273,7 +273,7 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/collectio
 
 <Tab value="响应示例" >
 
-data 为集合的 ID。
+`data` 为包含集合 ID（`collectionId`）与分块插入统计（`results.insertLen`）的对象。
 
 ```json
 {
@@ -478,7 +478,7 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/collectio
 </Tab>
 <Tab value="参数说明" >
 
-需要使用 POST form-data 的格式上传。包含 file 和 data 两个字段。
+使用 POST JSON 格式请求体提交以下字段：
 
 - name: 集合名，建议就用文件名，必填。
 - apiFileId: 文件的 ID，必填。
@@ -1198,8 +1198,10 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/searchTes
 {
   "code": 200,
   "statusText": "",
-  "data": [
-    {
+  "message": "",
+  "data": {
+    "list": [
+      {
         "id": "65599c54a5c814fb803363cb",
         "q": "你是谁",
         "a": "我是FastGPT助手",
@@ -1207,10 +1209,20 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/searchTes
         "collectionId": "6556cd795e4b663e770bb66d",
         "sourceName": "GBT 15104-2021 装饰单板贴面人造板.pdf",
         "sourceId": "6556cd775e4b663e770bb65c",
-        "score": 0.8050316572189331
-    },
-    ......
-  ]
+        "score": [
+          {
+            "type": "embedding",
+            "value": 0.8050316572189331,
+            "index": 0
+          }
+        ]
+      }
+    ],
+    "duration": "0.12s",
+    "queryExtensionModel": "",
+    "usingReRank": false,
+    "usingSimilarityFilter": false
+  }
 }
 ```
 

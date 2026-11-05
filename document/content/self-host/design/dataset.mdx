@@ -17,7 +17,7 @@ description: 了解知识库集合、MongoDB 数据块、对象存储文件及�
 
 | 存储组件 | 核心集合 / 表 / 桶 | 承载数据内容 | 丢失或不一致时的影响 |
 | --- | --- | --- | --- |
-| **MongoDB** | `datasets`、`dataset_collections`、`dataset_datas`、`dataset_trainings` | 知识库配置、集合树、数据块原文（`q` / `a`）、BM25 全文分词与训练队列 | 知识库列表、数据块正文与引用阅读器内容不可见 |
+| **MongoDB** | `datasets`、`dataset_collections`、`dataset_datas`、`dataset_data_texts`、`dataset_trainings` | 知识库配置、集合树、数据块原文（`q` / `a`）、全文检索分词（`dataset_data_texts`，非 Milvus 向量库使用 MongoDB `$text` 检索；Milvus 的 BM25 由 `modeldata_v2` 承担）与训练队列 | 知识库列表、数据块正文与引用阅读器内容不可见 |
 | **VectorDB（PG / Milvus / OceanBase / SeekDB / OpenGauss）** | `modeldata` / `modeldata_v2` | 高维浮点向量、团队/知识库/集合过滤标量及索引 ID（`dataId`） | 语义检索与混合检索召回为空；需触发索引重建恢复 |
 | **S3 对象存储（MinIO / 云存储）** | 私有桶（Private Bucket）与公开桶（Public Bucket） | 用户上传的原始 PDF/Word/表格文件、文档内提取出的图片资源 | 原文下载失败或回答中的知识库内嵌图片无法加载 |
 | **Redis** | BullMQ 队列与缓存键 | 大集合删除、同步调度与分布式锁状态 | 异步任务停滞，重启并恢复 Redis 连接后可继续消费 |

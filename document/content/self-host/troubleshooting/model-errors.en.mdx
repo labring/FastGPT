@@ -8,7 +8,7 @@ description: Diagnose and fix LLM, embedding, rerank, and tool-calling errors in
 
 1. For privately deployed models, first confirm whether the deployed model is normal.
 2. Directly test whether the upstream model is running normally through CURL request (cloud model or private model are both tested).
-3. Test the AI Proxy channel in Model Providers. If that channel uses a relay such as OneAPI, inspect the relay separately.
+3. Test the AI Proxy channel on the **Model provider** tab of **Admin → System Resources → System Models**. If that channel uses a relay such as OneAPI, inspect the relay separately.
 4. Use the model for testing in FastGPT.
 
 These examples call upstream services directly. Replace the endpoint, model, and credentials with values supported by your channel. Remove credentials from recorded errors. See [model configuration](/en/self-host/config/model/intro).
@@ -77,9 +77,8 @@ curl https://api.openai.com/v1/audio/speech \
 ```bash
 curl https://api.openai.com/v1/audio/transcriptions \
   -H "Authorization: Bearer $OPENAI_API_KEY" \
-  -H "Content-Type: multipart/form-data" \
   -F file="@/path/to/file/audio.mp3" \
-  -F model="gpt-transcribe"
+  -F model="whisper-1"
 ```
   </Tab>
 </Tabs>

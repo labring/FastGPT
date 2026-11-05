@@ -19,11 +19,11 @@ description: "在 FastGPT 对话 Agent 与工作流中启用文件上传功能�
 
 **工作模式**
 
-从 4.8.13 版本起，对话 Agent（简易版）的文件读取会强制解析文件并放入 system 提示词中，确保多轮连续对话稳定引用上传文档内容。
+从 4.8.13 版本起，对话 Agent（简易版）的文件读取会强制解析文件并合并进对应的用户消息中，确保多轮连续对话稳定引用上传文档内容。
 
 ## 工作流中使用
 
-工作流中，可以在系统配置中，找到 `文件输入` 配置项，点击其右侧的 `开启` / `关闭` 按键，即可打开配置弹窗。
+工作流中，可以在系统配置中，找到 `文件上传` 配置项，点击其右侧的 `开启` / `关闭` 按键，即可打开配置弹窗。
 
 ![打开文件上传](/imgs/optimized/current/file-upload-settings.png.webp)
 
@@ -43,12 +43,11 @@ FastGPT 的对话记录存储结构中，role=user 的消息，value 值会按�
 
 ```ts
 type UserChatItemValueItemType = {
-  type: 'text' | 'file';
   text?: {
     content: string;
   };
   file?: {
-    type: 'image' | 'audio' | 'video' | 'file';
+    type: 'image' | 'audio' | 'video' | 'document' | 'unknown'; // 'file' 仅兼容历史数据
     name?: string;
     key?: string;
     url: string;
@@ -75,27 +74,33 @@ type UserChatItemValueItemType = {
 - **文档解析节点，只会解析本轮工作流接收的文件，不会解析历史记录的文件。**
 - 多个文档内容如何拼接的
 
-按下列的模板，对多个文件进行拼接，即文件名+文件内容的形式组成一个字符串，不同文档之间通过分隔符：`\n******\n` 进行分割。
+按下列的模板，对多个文件进行拼接，即文件名+文件内容的形式组成一个字符串，不同文档之间用 `\n\n` 连接。
 
 ```
-File: ${filename}
-<Content>
+## ${filename}
 ${content}
-</Content>
 ```
 
 ### AI 对话节点中如何使用文档引用
 
 在工作流的 **AI 对话** 节点中，提供了 **文档引用** 输入端口，可直接选择 **流程开始** 节点输出的 **文件链接**（或上游节点输出的文档 URL 数组），实现文档内容的自动解析与引用。
 
-它接收一个 `Array<string>` 类型的输入，最终这些 URL 会被解析，并进行提示词拼接，放置在 role=system 的消息中。提示词模板如下：
+它接收一个 `Array<string>` 类型的输入，最终这些 URL 会被解析，并进行提示词拼接，合并进对应的用户消息中。每个文件按 `<file>` 结构列出，提示词模板如下：
 
 ```
-将 <FilesContent></FilesContent> 中的内容作为本次对话的参考:
-<FilesContent>
-{{quote}}
-</FilesContent>
+## 对话文件
+用户本次对话上传的文件，用途：
+1. 可通过 read_files 读取文档内容。
+2. 可把 url 作为模型参数。
+
+<file>
+<name>${文件名}</name>
+<url>${文件 URL}</url>
+<content>${文件正文}</content>
+</file>
 ```
+
+<span id="4813版本起关于文件上传的更新" />
 
 ## 4.8.13 版本起，关于文件上传的更新
 

@@ -16,7 +16,7 @@ description: FastGPT 代码运行节点介绍（适用于 4.14.8 及以上版本
 
 **注意事项**
 
-- 私有化用户需要部署 `fastgpt-sandbox` 镜像，并配置 `CODE_SANDBOX_URL` 环境变量。
+- 私有化用户需要部署 `fastgpt-code-sandbox` 镜像，并配置 `CODE_SANDBOX_URL` 与 `CODE_SANDBOX_TOKEN` 环境变量。
 - 沙盒默认最大运行 60s，可通过配置调整。
 - 代码运行在隔离的进程池中，无法访问文件系统和内网。
 
@@ -108,8 +108,10 @@ def main(url):
 | `crypto-js` | 加密库 | `const CryptoJS = require('crypto-js')` |
 | `uuid` | UUID 生成 | `const { v4 } = require('uuid')` |
 | `qs` | 查询字符串解析 | `const qs = require('qs')` |
+| `url` | URL 解析与格式化 | `const url = require('url')` |
+| `querystring` | 查询字符串编解码 | `const querystring = require('querystring')` |
 
-其他模块（如 `fs`, `child_process`, `net` 等）被禁止使用。
+可通过代码沙盒服务的 `SANDBOX_JS_ALLOWED_MODULES` 环境变量调整 JS 模块白名单。未列入白名单的模块（如 `fs`, `child_process`, `net` 等）被禁止使用。
 
 ### Python 白名单模块
 
@@ -208,7 +210,7 @@ def main(url):
 | `pandas` | 数据分析 |
 | `matplotlib` | 数据可视化 |
 
-**禁止使用的模块：** `os`, `sys`, `subprocess`, `socket`, `urllib`, `http`, `requests` 等涉及系统调用、网络访问、文件系统的模块。
+**模块控制：** 可通过代码沙盒服务的 `SANDBOX_PYTHON_ALLOWED_MODULES` 环境变量调整 Python 模块白名单。`os`, `sys`, `subprocess`, `socket`, `urllib`, `http`, `requests` 等涉及系统调用、网络访问、文件系统的模块默认禁止使用。
 
 ## 安全限制
 

@@ -190,7 +190,7 @@ App ID 和 App Secret
 
 ```yaml
 fastgpt-sso:
-  image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-sso-service:v4.14.16
+  image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-sso-service:latest
   container_name: fastgpt-sso
   restart: always
   networks:
@@ -240,7 +240,7 @@ CLIENT_ID 与 CLIENT_SECRET
 
 ```yaml
 fastgpt-sso:
-  image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-sso-service:v4.14.16
+  image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-sso-service:latest
   container_name: fastgpt-sso
   restart: always
   networks:
@@ -422,7 +422,7 @@ fastgpt-sso:
 
 ```yaml
 fastgpt-sso:
-  image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-sso-service:v4.14.16
+  image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-sso-service:latest
   container_name: fastgpt-sso
   restart: always
   networks:
@@ -462,7 +462,7 @@ LDAP provider 只负责同步用户和组织，不提供登录能力。推荐将
 
 ```yaml
 fastgpt-sso:
-  image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-sso-service:v4.14.16
+  image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-sso-service:latest
   environment:
     - SSO_PROVIDER=oauth2
     - SSO_SYNC_PROVIDER=ldap
@@ -844,6 +844,6 @@ curl 示例
 
 ## 如何对接非标准系统
 
-1. 客户自己开发：按 fastgpt 提供的标准接口进行开发，并将部署后的服务地址填入 FastGPT 前台的 `管理员` -> `系统配置` -> `用户配置`
+1. 客户自己开发：按 FastGPT 提供的标准接口进行开发，并通过环境变量 `EXTERNAL_USER_SYSTEM_BASE_URL` 配置部署后的服务地址（`管理员` -> `系统配置` -> `用户配置` 中只读展示该服务地址）
    可以参考该模版库：[fastgpt-sso-template](https://github.com/labring/fastgpt-sso-template) 进行开发
 2. 由 fastgpt 团队定制开发：a. 提供系统的 SSO 文档、获取成员和组织的文档、以及外网测试地址。b. 在 fastgpt-sso-service 中，增加对应的 provider 和环境变量，并编写代码来对接。

@@ -16,7 +16,7 @@ Every main workflow canvas contains a single **Workflow Start** node that serves
 
 ## 2. Global Variables
 
-Declare global variables under **System Config → Variables** in the workflow editor or in the **Variables** section of a Chat Agent. Global variables can be referenced in any node via the variable picker and updated at runtime by the [Variable Update](/en/guide/build/workflow/nodes/variable_update) node.
+Declare global variables under **System configuration → Global Variable** in the workflow editor or in the **Global Variable** section of a Chat Agent. Global variables can be referenced in any node via the variable picker and updated at runtime by the [Variable Update](/en/guide/build/workflow/nodes/variable_update) node.
 
 ### 1. Pre-Chat Form Variables (User-Facing)
 
@@ -24,24 +24,23 @@ When configured, users see the corresponding form controls before starting a new
 
 | Variable Type | Enum Key | Default Value Type | Typical Use Case |
 | --- | --- | --- | --- |
-| **Text Box** | `input` / `textarea` | `String` (or `Object` / typed arrays) | Name, ticket number, background context, or structured input |
-| **Number Input** | `numberInput` | `Number` | Result count limit, budget cap, or numeric threshold |
-| **Single Select** | `select` | `String` | Business category, target language, or output tone |
-| **Multi Select** | `multipleSelect` | `Array<string>` | Multiple review dimensions or delivery channels |
+| **Text Input box** | `input` | `String` (or `Object` / typed arrays) | Name, ticket number, background context, or structured input |
+| **Number Input Box** | `numberInput` | `Number` | Result count limit, budget cap, or numeric threshold |
+| **Single Select Box** | `select` | `String` | Business category, target language, or output tone |
+| **Multiple selection boxes** | `multipleSelect` | `Array<string>` | Multiple review dimensions or delivery channels |
 | **Switch** | `switch` | `Boolean` | Toggle web search, deep analysis, or strict review branches |
 | **Password** | `password` | `String` | Masked temporary access token or secret |
-| **Point in Time** | `timePointSelect` | `String` | Specific deadline or query timestamp |
-| **Time Range** | `timeRangeSelect` | `Array<string>` | Start and end time pair |
-| **Chat Model Select** | `llmSelect` | `String` | Allow the user to switch the underlying chat model |
-| **Dataset Select** | `datasetSelect` | `SelectDataset` | Allow the user to select datasets within a preset scope |
-| **File** | `file` | `Array<string>` | Supply pre-chat attachment file URLs |
+| **Time point** | `timePointSelect` | `String` | Specific deadline or query timestamp |
+| **Time range** | `timeRangeSelect` | `Array<string>` | Start and end time pair |
+| **Chat Model Selection** | `llmSelect` | `String` | Allow the user to switch the underlying chat model |
+| **File upload** | `file` | `Array<string>` | Supply pre-chat attachment file URLs |
 
 ### 2. Hidden and Internal State Variables
 
 | Variable Type | Enum Key | Visibility | Initialization and Update |
 | --- | --- | --- | --- |
-| **No Input Required (Custom)** | `custom` | Hidden from end users | Supplied via embedded URL query parameters, share-auth callbacks, or OpenAPI `variables` |
-| **Internal variable (Internal)** | `internal` | Hidden from end users and external APIs | Initialized with its default value inside the workflow and mutated across nodes or loop iterations via [Variable Update](/en/guide/build/workflow/nodes/variable_update) |
+| **External Variable (Custom)** | `custom` | Hidden only in share links; the input box is shown in in-app chat and run preview | Supplied via embedded URL query parameters, share-auth callbacks, or OpenAPI `variables` |
+| **Internal variables (Internal)** | `internal` | Hidden from end users and external APIs | Initialized with its default value inside the workflow and mutated across nodes or loop iterations via [Variable Update](/en/guide/build/workflow/nodes/variable_update) |
 
 ![Configure numeric global variables and comparison operators](/imgs/optimized/current/variable-number-operators.png.webp)
 
@@ -68,8 +67,8 @@ Canvas connections and variable pickers validate compatibility using the declare
 | `object` | `Object` | JSON key-value object |
 | `arrayString` / `arrayNumber` / `arrayBoolean` / `arrayObject` | `Array<T>` | Strongly typed arrays used directly by [Loop](/en/guide/build/workflow/nodes/loop_run) or [Parallel Run](/en/guide/build/workflow/nodes/parallel_run) |
 | `arrayAny` / `any` | `Array` / `Any` | Untyped array or dynamic value (common in Code Run and HTTP Request outputs) |
-| `chatHistory` | Chat History | Multi-turn context array consumed by AI Chat and Question Classification |
-| `datasetQuote` | Dataset Quote | Retrieved chunk array `{ id, datasetId, collectionId, sourceName, q, a }[]` |
+| `chatHistory` | History | Multi-turn context array consumed by AI Chat and Question Classification |
+| `datasetQuote` | Dataset citations | Retrieved chunk array `{ id, datasetId, collectionId, sourceName, q, a }[]` |
 | `selectDataset` | Select Dataset | Target knowledge base ID list passed into a workflow tool |
 
 Next: Learn how to mutate state with [Variable Update](/en/guide/build/workflow/nodes/variable_update) or check [Workflow Connection Rules](/en/guide/build/workflow/rules).

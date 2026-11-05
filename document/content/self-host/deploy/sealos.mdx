@@ -71,13 +71,13 @@ import { Alert } from '@/components/docs/Alert';
 
 用户名：`root`
 
-密码使用模板中配置的管理员初始密码；旧模板字段名为 `root_password`。
+v4.17.3 及以上版本首次登录会弹出“账号激活”窗口，要求设置新密码后才能继续使用，新实例的初始密码为 `123456`。v4.17.2 及更早版本的密码使用模板中配置的管理员初始密码；旧模板字段名为 `root_password`。
 
 ### 3. 配置模型
 
-登录后在模型提供商页面配置语言模型；知识库检索还需要向量模型。先测试渠道连通性，再测试具体模型。
+登录后在 **管理员 → 系统资源 → 系统模型** 页面配置语言模型；知识库检索还需要向量模型。先在“模型渠道”标签测试渠道连通性，再测试具体模型。
 
-### 4. 配置模型
+### 4. 验证知识库问答
 
 模型可用后，完成[首个知识库问答](/zh-CN/guide/getting-started/knowledge-qa)，验证文件导入、索引、回答与引用。
 
@@ -156,7 +156,6 @@ Sealos 采用按量计费的方式，也就是申请了多少 cpu、内存、磁
 SYSTEM_NAME=FastGPT
 SYSTEM_DESCRIPTION=
 SYSTEM_FAVICON=/favicon.ico
-HOME_URL=/dashboard/agent
 ```
 
 SYSTEM_FAVICON 可以是一个网络地址
@@ -165,7 +164,9 @@ SYSTEM_FAVICON 可以是一个网络地址
 
 ### 挂载 logo
 
-品牌定制先核对[许可证条件](/zh-CN/guide/version/opensource/license)与当前商业管理界面。以下旧版 SVG 挂载示例仅适用于保留该路径的镜像：`/app/projects/app/public/icon/logo.svg`。
+品牌定制先核对[许可证条件](/zh-CN/guide/version/opensource/license)与当前商业管理界面。以下旧版 SVG 挂载示例仅适用于保留该路径的镜像。
+
+添加挂载文件，路径为 `/app/projects/app/public/icon/logo.svg`，值为 SVG 内容。
 
 ![挂载 logo：界面示例](/imgs/optimized/onsealos7.png.webp)
 
@@ -184,4 +185,4 @@ SYSTEM_FAVICON 可以是一个网络地址
 
 ### One API 使用
 
-历史 OneAPI 集成可从[当前模型配置与迁移说明](/zh-CN/self-host/config/model/intro)
+历史 OneAPI 集成请参考[当前模型配置与迁移说明](/zh-CN/self-host/config/model/intro)。

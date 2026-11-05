@@ -170,8 +170,8 @@ Configure the `key` to extract values from FastGPT's parsed format, following st
 
 - **Raw response** (`httpRawResponse`, `Any`): Built-in output port containing the complete raw response payload.
 - **Custom extracted fields**: Output ports configured via JSONPath expressions.
-- **Error message** (`error`, `String`): Available when **Error capture** is enabled; outputs the failure reason string.
-- **Full error** (`system_httpRawError`, `Object`): Available when **Error capture** is enabled; outputs the structured error object.
+- **Error text** (`error`, `String`): Available when **Error catch** is enabled; outputs the failure reason string.
+- **Full error** (`system_httpRawError`, `Object`): Available when **Error catch** is enabled; outputs the structured error object.
 
 ### Error responses and troubleshooting
 
@@ -179,7 +179,7 @@ When the HTTP node receives a non-2xx response whose body lacks `message` or `ms
 
 ### Auto-format Output
 
-Starting from FastGPT v4.6.8, output formatting was added, primarily converting `JSON` to `string`. If you select `string` as the output type, the HTTP node will convert the corresponding key's value to a JSON string. This lets you pipe HTTP output directly into a `Text Processing` node, append appropriate prompts, and feed the result into `AI Chat`.
+Starting from FastGPT v4.6.8, output formatting was added, primarily converting `JSON` to `string`. If you select `string` as the output type, the HTTP node will convert the corresponding key's value to a JSON string. This lets you pipe HTTP output directly into a `Text Editor` node, append appropriate prompts, and feed the result into `AI Chat`.
 
 <Alert context="warning">
   The HTTP node is extremely versatile. You can integrate public APIs to extend your workflow

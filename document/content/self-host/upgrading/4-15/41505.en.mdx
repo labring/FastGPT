@@ -50,13 +50,13 @@ fastgpt-agent-sandbox-proxy:
   ports:
     - 3006:1006
   networks:
-    - fastgpt
+    - app
   environment:
     PORT: 1006
     # Must exactly match AGENT_SANDBOX_PROXY_SECRET in fastgpt.
     AGENT_SANDBOX_PROXY_SECRET: replace_with_32_chars_random_secret
-    # Internal URL of the main app container. If your service name is not fastgpt, update it accordingly.
-    FASTGPT_APP_URL: http://fastgpt:3000
+    # Internal URL of the main app container. If your service name is not fastgpt-app, update it accordingly.
+    FASTGPT_APP_URL: http://fastgpt-app:3000
     FASTGPT_APP_REQUEST_TIMEOUT_SECS: 10
     RUST_LOG: info,fastgpt_agent_sandbox_proxy=debug
     # Configure this only when the upstream sandbox endpoint returns localhost/127.0.0.1 and the proxy container cannot reach it.

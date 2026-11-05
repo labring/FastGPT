@@ -3,7 +3,7 @@ title: "Case 2: Dataset + Conversational Agent — Civil Code Q&A Assistant"
 description: "Case 2: Dataset + Conversational Agent — Civil Code Q&A Assistant"
 ---
 
-This example uses models and external services. Prepare the required permissions and quota, debug and verify results, then publish application configuration.
+This example imports a local statutory excerpt and uses your team's built-in embedding and chat models without requiring external API credentials.
 
 ## Case 2: Dataset + Conversational Agent — Civil Code Q&A Assistant
 
@@ -25,15 +25,17 @@ Think of the Dataset as a "reference room" configured for the AI. The model itse
 
 1. **Create a Dataset**
 
-   Click **Dataset** in the left navigation bar, click **New** in the upper-right corner, and select **General Dataset** from the dropdown menu. Name the Dataset `Civil Code Lease Articles`, select an available embedding model and text understanding model for your team, and click **Confirm**.
+   Click **Dataset** in the left navigation bar, click **New** in the upper-right corner, and select **General Dataset** from the dropdown menu. Name the Dataset `Civil Code Lease Articles`, select an available **Embedding model** and **File read model** for your team, and click **Create**.
+
+   ![Create a general dataset and select the embedding model](/imgs/optimized/current/knowledge-create.png.webp)
 
 2. **Create a Text Collection**
 
-   Click **New**, then select **Text Collection** to import local documents.
+   Click **Create/Import**, then select **Text Collection** to import local documents.
 
 3. **Upload a Local File**
 
-   Click **Upload Local File** and select the example file. In real use, you can upload multiple files at once; for this case, we upload only one file as a demonstration.
+   Select **Local File** and confirm, then click the upload area and select the example file. In real use, you can upload multiple files at once; for this case, we upload only one file as a demonstration.
 
 4. **Set Parsing Parameters**
 
@@ -53,15 +55,19 @@ Think of the Dataset as a "reference room" configured for the AI. The model itse
 
    When previewing chunks, focus on three things: whether paragraphs are abnormally cut off, whether titles and body text remain within the same semantic range, and whether tables, clauses, or numbering are still readable. If the quality of these knowledge fragments is unstable, even a well-written Prompt in the app will struggle to consistently produce accurate answers.
 
+   ![Lease article source, version, and chunk preview](/imgs/optimized/current/civil-code-preview.png.webp)
+
 6. **Wait for the Dataset to Be Ready**
 
    Once the data status changes to "Ready," apps can use the Dataset.
 
 7. **Create and Link a Conversational Agent**
 
-   Go to **Studio → Agent**, click the **Create** card, select **Chat Agent**, and name it `Civil Code Q&A Assistant`. In the **Dataset** section on the left, click **+ Choose** and link the Dataset created in Step 1.
+   Go to **Studio → Agents**, click the first **New** card in the list (or **Create your first Agent** in the center of the page when the list is empty), select **Chat Agent**, enter `Civil Code Q&A Assistant` in the name box, and click **Create** to the right of the name box. In the **Dataset** section on the left, click **+ Choose** and link the Dataset created in Step 1.
 
    After linking the Dataset, the app's response flow changes from simple chat to "user question → Dataset search → model summarizes answer." This is the key difference between Case 1 and Case 2: Case 1 emphasizes content generation, while Case 2 emphasizes answering based on provided materials.
+
+   ![Configure dataset search mode and reranking parameters](/imgs/optimized/current/dataset-search-mode.png.webp)
 
 8. **Configure the Q&A Prompt**
 
@@ -75,7 +81,7 @@ Think of the Dataset as a "reference room" configured for the AI. The model itse
 
 9. **Configure the Opening Message**
 
-   Open the **Welcome Message** configuration modal and enter the greeting text in the message box:
+   Expand the **Conversation Opening** collapsible section on the left side of the configuration page and enter the greeting text in the message box:
 
    ```text
    Hello! I'm the Civil Code Q&A Assistant ⚖️
@@ -90,6 +96,8 @@ Think of the Dataset as a "reference room" configured for the AI. The model itse
    - `I received a product I bought online and it was broken, but the seller won't accept a return. What does the law say?`
    - `The upstairs neighbor's leak soaked my ceiling. Can I claim compensation?`
 
+   ![Configure conversation opening text and preset questions](/imgs/optimized/current/welcome-config.png.webp)
+
 10. **Verify Q&A Performance**
 
     Ask a question related to the Civil Code and check whether the answer includes a legal conclusion, article citation, plain-language explanation, and disclaimer.
@@ -98,11 +106,9 @@ Think of the Dataset as a "reference room" configured for the AI. The model itse
 
 ### Sample acceptance
 
-![Lease article source, version, and chunk preview](/imgs/optimized/current/civil-code-preview.png.webp)
-
 ![The Civil Code assistant answers a landlord-sale question using the lease excerpt](/imgs/optimized/current/civil-code-answer.png.webp)
 
-Ask: “My landlord wants to sell the property before my lease ends. What should I do?” Expect Article 725 on ownership changes and lease validity, plus Article 726 on the right of first refusal and its exceptions. Check Articles 727 and 728 for auction notice and compensation. An out-of-scope question such as “What is the longest employment probation period?” should identify the missing evidence in this lease-only sample.
+Ask: “My lease isn't up yet, but the landlord wants to sell the house. What should I do?” Expect Article 725 on ownership changes and lease validity, plus Article 726 on the right of first refusal and its exceptions. Check Articles 727 and 728 for auction notice and compensation. An out-of-scope question such as “What is the longest employment probation period?” should identify the missing evidence in this lease-only sample.
 
 ### 2.4 Business Value
 

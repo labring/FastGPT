@@ -7,13 +7,40 @@ FastGPT Community Edition is the free version of FastGPT, designed for individua
 
 ## Community Edition vs. Commercial Edition
 
+The checklist below details every capability included in FastGPT Community Edition (✅) alongside the enterprise capabilities available in [Commercial Edition](/en/guide/version/commercial) and [FastGPT Cloud](/en/guide/version/cloud/intro) (❌):
+
+| Category | Feature | Community Edition (Open Source) | Commercial Edition (Self-Hosted) | Cloud Service |
+| --- | --- | --- | --- | --- |
+| **App Building** | Chat Agent, Chat Agent V2, Visual Workflow orchestration | ✅ | ✅ | ✅ |
+| **App Building** | System Tools, HTTP Tools, MCP Tools, and Agent Skills | ✅ | ✅ | ✅ |
+| **App Building** | Login-free share window, OpenAPI, and MCP service publishing | ✅ | ✅ | ✅ |
+| **App Building** | Share link security controls (QPM/point quotas, expiration, auth webhooks) | ❌ | ✅ | ✅ |
+| **App Building** | Third-party channel publishing (Lark, WeCom, DingTalk, Official Account) | ❌ | ✅ | ✅ |
+| **App Building** | Application run log and analytics dashboard | ❌ | ✅ | ✅ |
+| **App Building** | Automated App Evaluation | ❌ | ✅ | ✅ |
+| **App Building** | AI-assisted Workflow, Agent, and Skill generation | ❌ | ✅ | ✅ |
+| **App Building** | System tool remote debugging suite | ❌ | ✅ | ✅ |
+| **Datasets & RAG** | Local file, single-URL fetch, and CSV template import | ✅ | ✅ | ✅ |
+| **Datasets & RAG** | Semantic, full-text, hybrid search (RRF), and Rerank | ✅ | ✅ | ✅ |
+| **Datasets & RAG** | Third-party datasets (Lark, Yuque, DingTalk, API Dataset) & scheduled sync | ❌ | ✅ | ✅ |
+| **Datasets & RAG** | Website crawler synchronization | ❌ | ✅ | ✅ |
+| **Datasets & RAG** | Image Dataset and index enhancement (auto-summary, QA generation, image indexing) | ❌ | ✅ | ✅ |
+| **Datasets & RAG** | Collection-level permissions and tag filtering | ❌ | ✅ | ✅ |
+| **Models & General** | Multi-model configuration and parameter tuning | ✅ | ✅ | ✅ |
+| **Models & General** | Model call logs and monitoring dashboard | ✅ | ✅ | ✅ |
+| **Models & General** | Model input/output content moderation | ❌ | ✅ | ✅ |
+| **Enterprise Governance** | Single-team workspace | ✅ | ✅ | ✅ |
+| **Enterprise Governance** | Multi-team spaces, department trees, member groups, and granular RBAC | ❌ | ✅ | ✅ |
+| **Enterprise Governance** | Multi-tenant billing, subscription plans, and resource packs | ❌ | ✅ | ✅ |
+| **Enterprise Governance** | Enterprise SSO login and custom branding | ❌ | ✅ | Planned |
+| **Enterprise Governance** | [Root Platform Administration Console](/en/guide/admin/platform-console) and audit logs | ❌ | ✅ | Managed |
 | Capability | FastGPT Community Edition (Open Source) | FastGPT Commercial Edition (Enterprise Self-Hosted / Cloud) |
 | --- | --- | --- |
 | **Core Orchestration** | Full support for Chat Agent, Chat Agent V2, Visual Workflow, System Tools, HTTP/MCP Tools, and Agent Skills | Full support for all core orchestration capabilities |
-| **Knowledge Base & RAG** | Local file, URL, and CSV template import; semantic, full-text, and hybrid search with Rerank | Adds Feishu/Yuque/DingTalk/API external datasets, collection-level permissions, and scheduled web sync |
-| **Multi-Tenancy & IAM** | Single-team workspace | Multi-team mode, department hierarchy, member groups, granular role matrices, and enterprise SSO |
+| **Knowledge Base & RAG** | Local file, single-URL fetch, and CSV template import; semantic, full-text, and hybrid search with Rerank | Adds Feishu/Yuque/DingTalk/API third-party datasets, Website sync, Image Dataset, index enhancement, collection-level permissions, and scheduled sync |
+| **Multi-Tenancy & IAM** | Single-team workspace | Multi-team mode, department hierarchy, member groups, granular role matrices, plus enterprise SSO on self-hosted Commercial Edition |
 | **Publishing & Governance** | Share links, OpenAPI, and MCP service publishing | Adds share link QPM/point quotas, expiration dates, external auth webhooks, and custom domains |
-| **Platform Administration** | Configuration files and model setup | Full [Root Platform Administration Console](/en/guide/admin/platform-console), audit logs, billing plans, and custom branding |
+| **Platform Administration** | Environment variables and System Models setup | Self-hosted Commercial Edition provides the full [Root Platform Administration Console](/en/guide/admin/platform-console), audit logs, billing plans, and custom branding (see [Commercial Edition comparison](/en/guide/version/commercial)) |
 
 ## Open Source License and Commercial Terms
 

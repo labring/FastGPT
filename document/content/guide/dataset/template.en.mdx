@@ -67,8 +67,8 @@ The `metadata` column stores operational tags, department codes, timestamps, and
 
 ## Formula Injection Escape Protection
 
-To prevent formula execution vulnerabilities when spreadsheets are opened in desktop spreadsheet software, FastGPT's export and import utilities implement automatic escaping:
-- Cell values starting with `=`, `+`, `-`, `@`, or `|` receive a prepended single quote `'` upon export.
+To prevent formula execution vulnerabilities when spreadsheets are opened in desktop spreadsheet software, FastGPT's CSV export utility implements automatic escaping:
+- Cell values starting with `=`, `+`, `-`, `@`, or `|` receive a prepended single quote `'` upon export (template import parsing retains this leading single quote as literal text; review or remove added leading `'` characters before re-importing an exported CSV via Template import).
 - Fields containing commas, quotation marks, or line breaks are enclosed in double quotes following RFC 4180 standards.
 
 ---
@@ -83,7 +83,7 @@ What is the company billing name?,The billing name is FastGPT Technologies Inc.,
 
 ## Import Procedure
 
-1. Open your target dataset and click **New / Import → Template Import**.
+1. Open your target dataset and click **Create/Import → Template import**.
 2. In the dialog, click **Download CSV Template** if you need the sample header format, then select or drag in your prepared `.csv` or `.xlsx` file.
 3. Once the file finishes uploading, click **Confirm Import** in the lower-right corner to create the collection and start background indexing.
 

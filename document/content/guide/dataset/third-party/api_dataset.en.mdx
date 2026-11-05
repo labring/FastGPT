@@ -126,7 +126,7 @@ curl --location --request GET '{{baseURL}}/v1/file/content?id=xx' \
 
 <Alert icon=" " context="success">
 
-- **title** - File title, optional. Used to display the file name. If not provided, the system will attempt to parse the filename from `previewUrl`.
+- **title** - File title, optional. Used to display the file name. If not provided, the system falls back in order: downloaded response filename → `name` returned by `/v1/file/detail` → filename parsed from the `previewUrl` path → random ID.
 - **content** - The text content of the file, optional. Returns the complete text content of the file directly, which the system will use for indexing and retrieval.
 - **previewUrl** - The access link to the file, optional. Provides an accessible file URL, and the system will automatically request this address to download the file and extract its content. Supports various file formats (such as PDF, Word, Markdown, etc.).
 

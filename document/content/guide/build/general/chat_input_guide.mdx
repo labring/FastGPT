@@ -13,15 +13,15 @@ description: "在 FastGPT 对话应用中配置输入框问题补全与词库引
 
 ## 自定义词库接口
 
-需要保证这个接口可以被用户浏览器访问，需要注意允许跨域。
+需要保证这个接口可以被用户浏览器访问，需要注意允许跨域。配置自定义接口地址后，用户输入时浏览器会对该地址发起 GET 请求；输入超过 20 个字符时不发起请求。
 
 **请求：**
 
 ```bash
-curl --location --request GET 'http://localhost:3000/api/core/chat/inputGuide/query?appId=663c75302caf8315b1c00194&searchKey=你'
+curl --location --request GET 'https://your-domain.com/api/input-guide?sourceType=app&sourceId=663c75302caf8315b1c00194&searchKey=你'
 ```
 
-其中 `appId` 为应用 ID，`searchKey` 为搜索关键字，最多是 50 个字符。
+其中 `sourceType` 为对话来源类型（应用对话为 `app`），`sourceId` 为应用 ID，`searchKey` 为搜索关键字。通过免登录窗口访问时，请求还会附带 `outLinkAuthData`（分享鉴权信息的 JSON 字符串）。
 
 **响应**
 
@@ -34,9 +34,11 @@ curl --location --request GET 'http://localhost:3000/api/core/chat/inputGuide/qu
 }
 ```
 
-data 是一个数组，包含了搜索到的问题，最多只需要返回 5 个问题。
+data 是一个数组，包含了搜索到的问题，返回数量由自建接口自行约定（FastGPT 内置词库最多返回 6 个）。
 
 **参数说明：**
 
-- appId - 应用 ID
+- sourceType - 对话来源类型，应用对话为 `app`
+- sourceId - 应用 ID
 - searchKey - 搜索关键字
+- outLinkAuthData - 仅免登录窗口场景附带，分享鉴权信息的 JSON 字符串

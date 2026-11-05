@@ -18,16 +18,16 @@ System prompts provide the operational blueprint guiding the agent's goal decomp
 - **Role and Boundaries**: Define the agent's domain expertise, tone, and service scope explicitly.
 - **Decision Workflow**: Instruct the model to execute tasks following the ReAct sequence: "Reason → Select Tool → Observe Output → Conclude".
 - **Formatting Standards**: Establish structured presentation criteria (such as enumerated bullet points, preserved quantitative data, and markdown tables).
-- **In-Prompt Resource Citations**: Type `@` within the prompt input to open the resource menu, allowing direct references to built-in system capabilities (**Dataset search**, **Sub-apps**, **Sandbox**, **File parsing**) as well as associated Datasets, Skills, and Tools.
+- **In-Prompt Resource Citations**: Type `@` within the prompt input to open the resource menu, grouped into **System Tools** (including **Sandbox**, **FileParsing**, **DatasetSearch**, and other system tools), **Tools**, **My Agents**, and **Skills**.
 
-Click the settings button next to the model selector to open the model configuration dialog, which provides **AI Model** and **Memory Turns** settings in Chat Agent V2. For general model parameter descriptions, refer to [AI Settings](/en/guide/build/general/ai_settings).
+Click the settings button next to the model selector to open the model configuration dialog, which provides **Model** selection and **Reasoning settings** in Chat Agent V2. For general model parameter descriptions, refer to [AI Settings](/en/guide/build/general/ai_settings).
 
 ---
 
 ## 2. Tools and Datasets Configuration
 
 In the left configuration panel, Tools and Datasets are configured in dedicated sections:
-- **Attaching Tools**: In the **Tools** section, click **+ Choose** to select from **System Tools** and **My Tools** (workflow tools, HTTP toolkits, and MCP toolkits) in the modal.
+- **Attaching Tools**: In the **Tools** section, click **+ Choose**, then click **Add** on tools in the **System Tools**, **Tools** (workflow tools, HTTP toolkits, and MCP toolkits), and **Agent** tabs of the modal.
 - **Associating Datasets**: In the separate **Dataset** section below, click **+ Choose** to link team Datasets and click **Parameters** to configure search mode, citation limits, and relevance thresholds.
 
 ---
@@ -44,7 +44,7 @@ Enabling the Virtual Machine (VM) grants the agent programmatic code execution, 
 ## 4. Skill Extension Packages
 
 Skills are versioned bundles combining expert instructions, reference templates, and executable scripts:
-- **Attaching Published Skills**: Check published skill versions available in your workspace team.
+- **Attaching Published Skills**: In the **Skills** section, click **+ Choose**, then click **Add** next to a published skill in your team.
 - **Environment Automation**: Attaching a skill activates the virtual machine sandbox automatically and injects the corresponding skill package.
 - To author, debug, and publish custom skills, consult [Skill Development and Debugging](/en/guide/build/skill/development).
 

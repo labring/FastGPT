@@ -24,7 +24,7 @@ Access to an existing conversation checks team and conversation permissions. [Id
 
 Change the first request to `"stream": true` and add curl's `--no-buffer`. After the stream opens, parse SSE frames containing `event:` and `data:`. Retain incomplete frames across network reads. Text fragments typically appear in `choices[0].delta.content`. Finish when `[DONE]` arrives.
 
-Set `detail: true` to receive detailed events. The runtime defines the following 17 event types; the endpoint, runtime version, and application determine which are emitted. With `detail: false`, answer frames use the default SSE message event. Clients should tolerate unknown event types.
+Set `detail: true` to receive detailed events. The runtime defines the following 18 event types; the endpoint, runtime version, and application determine which are emitted. With `detail: false`, answer frames use the default SSE message event. Clients should tolerate unknown event types.
 
 | Event Name | `data` Payload | Business Meaning and Processing |
 |---|---|---|
@@ -45,6 +45,7 @@ Set `detail: true` to receive detailed events. The runtime defines the following
 | `error` | `Record<string, any>` | Runtime error; mark the run as failed |
 | `skillCall` | `{ skill: SkillModuleResponseItemType }` | Skill invocation notification, when emitted by the runtime |
 | `sandboxStatus` | `SandboxStatusItemType` | Agent sandbox lifecycle status (provisioning, mount, upgrading) |
+| `workflowBuilderVersion` | `{ version: number }` | Workflow builder version update notification |
 
 During generation, the server sends an empty answer chunk every 10 seconds as a heartbeat. Configure proxy buffering and idle timeouts accordingly. Errors and network failures may close the stream before `[DONE]`; track completion and failure separately.
 
@@ -66,7 +67,7 @@ Use the same input to verify JSON and streaming outputs satisfy application rule
 
 ## System OpenAPI Endpoint Reference (Chat, Sessions, Records, and Feedback)
 
-Aside from `/api/v1/chat/completions` and `/api/v2/chat/completions` (which also accept `Bearer <apiKey>-<appId>`), all session, record, and feedback endpoints require **`appId` to be passed explicitly** in the request body or query string.
+Aside from `/api/v1/chat/completions` and `/api/v2/chat/completions` (which also accept `Bearer <apiKey>-<appId>`), session, record, and feedback endpoints locate the target resource using any of `appId`, `skillId`, or `outLinkAuthData`.
 
 ### 1. Chat Generation and Execution Control (`chatController`)
 
@@ -95,8 +96,8 @@ Aside from `/api/v1/chat/completions` and `/api/v2/chat/completions` (which also
 | --- | --- | --- | --- |
 | `POST` | `/api/core/chat/record/getPaginationRecords` | List paginated message records in a session | Body: `appId` (required), `chatId` (required), `offset`/`pageNum`, `pageSize`, `loadCustomFeedbacks` |
 | `POST` | `/api/core/chat/record/getRecords_v2` | Fetch message records around a cursor anchor | Body: `appId` (required), `chatId` (required), `pageSize`, `initialId`, `prevId`, `nextId` |
-| `GET` | `/api/core/chat/record/getResData` | Fetch full node execution details (`responseData`) for a message | Query: `appId` (required), `chatId` (required), `dataId` (message record ID, required) |
-| `POST` | `/api/core/chat/record/getQuote` | Fetch cited knowledge chunks by chunk ID list | Body: `appId` (required), `chatId` (required), `chatItemDataId` (required), `datasetDataIdList` |
+| `GET` | `/api/core/chat/record/getResData` | Fetch full node execution details (`responseData`) for a message | Query: `appId` / `skillId` / `outLinkAuthData` (one required), `chatId` (optional), `dataId` (message record ID, required) |
+| `POST` | `/api/core/chat/record/getQuote` | Fetch cited knowledge chunks by chunk ID list | Body: `appId` / `skillId` / `outLinkAuthData` (one required), `chatId` (required), `chatItemDataId` (required), `collectionIdList` (required), `datasetDataIdList` (required) |
 | `POST` | `/api/core/chat/record/getCollectionQuote` | Fetch paginated collection chunks for the full-text citation reader | Body: `appId` (required), `chatId` (required), `chatItemDataId` (required), `collectionId` (required), `pageSize` |
 | `DELETE` | `/api/core/chat/record/delete` | Delete a single message record | Query: `appId` (required), `chatId` (required), `contentId` (required) |
 

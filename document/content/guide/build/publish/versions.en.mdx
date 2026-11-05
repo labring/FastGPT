@@ -17,7 +17,7 @@ The published snapshot contains workflow nodes, edges, and chat configuration. C
 | --- | --- | --- | --- |
 | **Editor Draft** | Application editor canvas and the right-hand Debug Preview drawer | Current canvas nodes, edges, AI parameters, prompts, and tool bindings | Takes effect immediately in editor debugging after auto-save or clicking **Save Only** |
 | **Published Version** | Portal, share links, API (`/v1/chat/completions`), MCP services, WeCom/Feishu/DingTalk/WeChat channels, and scheduled triggers | Workflow topology, system configuration, and resource snapshot captured at publish time | Takes effect across all external channels immediately after clicking **Save → Save and Publish** |
-| **Version History** | "Version History" drawer in the top-right corner of the editor | Version names, timestamps, and snapshots of previous releases | Restoring a historical version updates the editor draft; click **Save and Publish** again to make it the live version |
+| **Version History** | Panel opened from the clock icon in the top-right corner of the editor (**My Edit** / **Team Cloud** tabs) | Version names, timestamps, and snapshots of previous releases | Clicking an entry switches the editor draft to that version; click **Save and Publish** again to make it the live version |
 
 ## Publish a change
 
@@ -34,6 +34,6 @@ After editing material, follow [Update material](/en/guide/dataset/update-data) 
 
 When debug and actual access differ, check the last published version, the application selected by the channel, conversation history, model settings, and knowledge processing status. Model wording can vary; assess facts, format, and business rules. Correct the affected configuration, complete any required publishing, and verify the answer and citation in a new conversation through the same channel.
 
-When restoring configuration from version history, read the restore and publish prompts and verify actual access again. See [Skill versions and publishing](/en/guide/build/skill/version) for the separate Skill lifecycle.
+After clicking an entry in the clock icon panel to switch versions, save and publish again to update the live version, then verify actual access again. See [Skill versions and publishing](/en/guide/build/skill/version) for the separate Skill lifecycle.
 
 Next: [conversation logs](/en/guide/build/logs).

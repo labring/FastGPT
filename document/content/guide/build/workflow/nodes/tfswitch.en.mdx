@@ -1,6 +1,6 @@
 ---
-title: Conditional (IF/ELSE)
-description: "Use the FastGPT Workflow Conditional (IF/ELSE) node to evaluate variable rules and route execution across matching branches."
+title: Condition (IF/ELSE)
+description: "Use the FastGPT Workflow Condition (IF/ELSE) node to evaluate variable rules and route execution across matching branches."
 ---
 
 ## Features
@@ -29,9 +29,9 @@ For each condition, select a variable, an operator supported by its type, and a 
 
 ## Example: handle empty retrieval
 
-1. Connect Dataset search to Conditional.
-2. In the first branch, reference the citation output, choose **Length equals**, and enter `0`.
-3. Connect that branch to Specified Reply containing `Please provide more detail.` Connect ELSE to AI Chat configured with the retrieved citations.
+1. Connect Dataset Search to Condition.
+2. In the first branch, reference the **Dataset citations** output, choose **Length Equal To**, and enter `0`.
+3. Connect that branch to Assigned Reply containing `Please provide more detail.` Connect ELSE to AI Chat configured with the retrieved citations.
 4. Test one query returning chunks and one returning an empty array. Inspect judgment result and downstream execution in run details.
 
 For unexpected routing, inspect actual variable types and values, then operators and branch order. Numeric comparisons need values convertible to numbers; regular expressions need valid syntax. Continue with [Dataset search](/en/guide/build/workflow/nodes/dataset_search).

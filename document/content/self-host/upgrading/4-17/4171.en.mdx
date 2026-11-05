@@ -15,18 +15,18 @@ releaseTime: '2026-09-30'
 
 ### AI Proxy environment configuration
 
-When upgrading the AI Proxy image, also add `ENABLE_ADMIN_BYPASS_CHANNEL_MODEL_CHECK=true` to the **AI Proxy service** environment. This variable is disabled by default. Enabling it lets administrators test a channel that has no models assigned by specifying the channel and model identifier, without first adding the model to the channel's model list. Without this setting, the channel's model list check rejects these tests.
+When upgrading the AI Proxy image, also add `ENABLE_ADMIN_BYPASS_CHANNEL_MODEL_CHECK=true` to the **AI Proxy service** environment. This variable is disabled by default. Enabling it lets administrators test a channel that has no models assigned by specifying the channel and model identifier, without first adding the model to the channel's model list. Without this setting, the channel's model list check rejects these tests. The official docker-compose template does not include this variable, so add it manually.
 
-For Docker Compose deployments, append the following entry to the `aiproxy` service's `environment` section, keeping the existing environment variables:
+For Docker Compose deployments, append the following entry to the `fastgpt-aiproxy` service's `environment` section, keeping the existing environment variables:
 
 ```yaml
 services:
-  aiproxy:
+  fastgpt-aiproxy:
     environment:
-      - ENABLE_ADMIN_BYPASS_CHANNEL_MODEL_CHECK=true
+      ENABLE_ADMIN_BYPASS_CHANNEL_MODEL_CHECK: 'true'
 ```
 
-Save the configuration and run `docker compose up -d aiproxy` to recreate the AI Proxy container with the new environment variable. Then test the model on the admin system models page.
+Save the configuration and run `docker compose up -d fastgpt-aiproxy` to recreate the AI Proxy container with the new environment variable. Then test the model on the admin system models page.
 
 ### Upgrade scripts
 

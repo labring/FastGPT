@@ -16,7 +16,7 @@ upgradeTags:
 - 更新 FastGPT 镜像 tag: v4.9.0
 - 更新 FastGPT 商业版镜像 tag: v4.9.0
 - Sandbox 镜像，可以不更新
-- 更新 PG 容器为 v0.8.0-pg15, 可以查看[最新的 yml](https://raw.githubusercontent.com/labring/FastGPT/main/document/public/deploy/docker/main/global/docker-compose.pg.yml)
+- 更新 PG 容器为 v0.8.0-pg15, 可以查看[v4.9.0 的 yml](https://raw.githubusercontent.com/labring/FastGPT/v4.9.0/deploy/docker/docker-compose-pgvector.yml)
 
 ### 3. 替换 OneAPI（可选）
 
@@ -24,7 +24,7 @@ upgradeTags:
 
 #### 1. 修改 yml 文件
 
-参考[最新的 yml](https://raw.githubusercontent.com/labring/FastGPT/main/document/public/deploy/docker/main/global/docker-compose.pg.yml) 文件。里面已移除 OneAPI 并添加了 AIProxy 配置。包含一个服务和一个 PgSQL 数据库。将 `aiproxy` 的配置 `追加` 到 OneAPI 的配置后面（先不要删除 OneAPI，有一个初始化会自动同步 OneAPI 的配置）
+参考 [v4.9.0 的 yml](https://raw.githubusercontent.com/labring/FastGPT/v4.9.0/deploy/docker/docker-compose-pgvector.yml) 文件。里面已移除 OneAPI 并添加了 AIProxy 配置。包含一个服务和一个 PgSQL 数据库。将 `aiproxy` 的配置 `追加` 到 OneAPI 的配置后面（先不要删除 OneAPI，有一个初始化会自动同步 OneAPI 的配置）
 
 <details>
 <summary>AI Proxy Yml 配置</summary>

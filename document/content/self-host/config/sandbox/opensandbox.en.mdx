@@ -44,8 +44,8 @@ If the host uses `HTTP_PROXY` or `HTTPS_PROXY`, explicitly set `NO_PROXY` and `n
 | `PORT`                             | `1006`                                   | Proxy container port, mapped to port `3006` on the host by default.                                                             |
 | `PREVIEW_PORT`                     | Same as `PORT`                           | In 4.16, sets a separate HTTP preview listener; update the host port mapping and `AGENT_SANDBOX_PREVIEW_PROXY_URL` accordingly. |
 | `AGENT_SANDBOX_PROXY_SECRET`       | None                                     | Secret shared with the FastGPT main service. Must be at least 32 characters.                                                    |
-| `FASTGPT_APP_URL`                  | `http://fastgpt-app:3000`                | Internal FastGPT URL used by the proxy.                                                                                         |
-| `FASTGPT_APP_REQUEST_TIMEOUT_SECS` | `10`                                     | Timeout for proxy requests to FastGPT, in seconds. Increase for slow cold starts.                                               |
+| `FASTGPT_APP_URL`                  | `http://localhost:3000`                  | Internal FastGPT URL used by the proxy. The official Compose template sets it to `http://fastgpt-app:3000`.                     |
+| `FASTGPT_APP_REQUEST_TIMEOUT_SECS` | `10`                                     | Timeout for proxy requests to FastGPT, in seconds. The official Compose template sets it to `60`. Increase for slow cold starts. |
 | `RUST_LOG`                         | `info,fastgpt_agent_sandbox_proxy=debug` | Proxy service log level.                                                                                                        |
 
 In 4.16, WebSocket and HTTP preview traffic use the same port by default. If your gateway cannot route both protocols on one port, set `PREVIEW_PORT` to another container port (for example, `1007`), change the Compose mapping to `3007:1007`, and point `AGENT_SANDBOX_PREVIEW_PROXY_URL` to port 3007.

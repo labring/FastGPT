@@ -37,7 +37,7 @@ Security is paramount when rendering HTML. Because server-side CSRF defenses can
 - **Executable Scripts Blocked**: All `<script>` tags and external script loaders are stripped.
 - **Inline Events Stripped**: All `on*` attributes (such as `onclick`, `onerror`, `onload`) are completely removed.
 - **Inline Styles Disallowed**: Generic inline `style` attributes are rejected to eliminate phishing overlays and layout spoofing.
-- **Strict Protocol Whitelist**: URL attributes (`src`, `href`, `poster`, etc.) only permit safe protocols like `http`, `https`, `mailto`, `tel`, `cite`, and `quote`. Dangerous schemes like `javascript:`, `vbscript:`, `data:text/html`, and `file:` are blocked.
+- **Strict Protocol Whitelist**: `href` only permits `http`, `https`, `mailto`, `tel`, `cite`, and `quote`; `src` and `poster` only permit `http` and `https`. Dangerous schemes like `javascript:`, `vbscript:`, `data:text/html`, and `file:` are blocked.
 - **Restricted Form Controls**: Input elements are limited to static display; `type="file"` and `type="password"` are strictly forbidden.
 
 #### 1.3 Limitations
@@ -59,7 +59,7 @@ The supported HTML tags and allowed attributes are summarized below:
 | **Typography & Highlighting** | `<mark>`, `<kbd>`, `<font>`, `<sub>`, `<sup>`, `<abbr>`, `<ruby>`, `<rt>`, `<rp>`, `<s>`, `<del>` | `font: ['color', 'size', 'face']`<br/>`abbr: ['title']`                                                        | Text highlighter, keyboard keycaps, font color/size, subscripts/superscripts, ruby annotations |
 | **Metrics & Figures**         | `<progress>`, `<meter>`, `<figure>`, `<figcaption>`                                               | `progress: ['value', 'max']`<br/>`meter: ['value', 'min', 'max', 'low', 'high', 'optimum']`                    | Native progress indicators, scalar gauges, and captioned illustrations                         |
 | **Extended Tables**           | `<table>`, `<thead>`, `<tbody>`, `<tr>`, `<th>`, `<td>`, `<caption>`, `<colgroup>`, `<col>`       | `th/td: ['rowspan', 'colspan', 'align']`<br/>`col: ['span', 'width']`                                          | Complex table layouts with cell row/column spanning (rowspan/colspan) and alignment            |
-| **Static Input Elements**     | `<button>`, `<input>`, `<textarea>`, `<label>`                                                    | `input: [['type', 'checkbox', 'radio', 'text'], 'value', 'checked', 'disabled', 'readOnly']`                   | Checkboxes, radio buttons, and read-only text fields for structured display                    |
+| **Static Input Elements**     | `<button>`, `<input>`, `<textarea>`, `<label>`                                                    | `input: [['type', 'text', 'checkbox', 'radio', 'number', 'range'], 'name', 'value', 'placeholder', 'checked', 'disabled', 'readOnly']`                   | Checkboxes, radio buttons, and read-only text fields for structured display                    |
 
 ---
 
@@ -72,7 +72,7 @@ Beyond standard HTML tags, FastGPT incorporates custom-built components tailored
 Built-in code renderer supporting syntax highlighting alongside a full-screen image gallery:
 
 - **Syntax Highlighting Code Block**: Supports dozens of programming languages, language badges, one-click copying, line numbers, and smooth horizontal scrolling.
-- **Image Gallery**: Supports standard Markdown `![3.1 Syntax Highlighting Code Block & Image Gallery (CodeBlock & PhotoView) — interface example]()` and HTML `<img>` tags with full-screen zoom, rotation, and multi-image gallery switching.
+- **Image Gallery**: Supports standard Markdown `![alt](url)` and HTML `<img>` tags with full-screen zoom, rotation, and multi-image gallery switching.
 - **Demonstration**:
 
 ![3.1 Syntax Highlighting Code Block & Image Gallery (CodeBlock & PhotoView) — interface example](/imgs/optimized/current/rich-code-image.png.webp)

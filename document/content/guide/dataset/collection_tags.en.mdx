@@ -23,26 +23,26 @@ Organize orthogonal tag dimensions around organizational governance:
 
 ## Step 1: Create and Manage Tag Definitions
 
-1. Open your target knowledge base and click "Tag Management" in the top navigation (requires Write permission on the knowledge base).
+1. Open your target knowledge base and click **Tagging** in the button group to the right of the collection list header (requires Write permission on the knowledge base).
 2. Click "+ Add Tag", enter a tag name (up to 20 characters), and select a tag attribute (the attribute type is fixed once created, while the tag name can be renamed at any time; deleting a tag removes its bound values from all collections in the knowledge base):
 
 | Tag Attribute | Use Case | Assignment and Limits | Example |
 | :--- | :--- | :--- | :--- |
 | **Option** | Fixed categories or one-to-many classifications | Multiple options per file (up to 64 options per file, up to 256 characters per option) | `Department` (`Finance`, `Support`, `HR`) |
-| **Number** | Quantitative indicators compared by value or range | One numeric value per file (integers or decimals) | `Confidentiality` (`1`, `2`, `3`) |
+| **Number** | Quantitative indicators compared by value or range | One integer value per file | `Confidentiality` (`1`, `2`, `3`) |
 | **Date** | Time-sensitive document milestones | One date-time value per file (accurate to `YYYY-MM-DD HH:mm`) | `EffectiveDate` (`2026-01-01 09:00`) |
 
 3. **Option management**: Click the settings icon (`⚙`) on an Option tag row to preset standard option values, rename options (automatically updating all collections assigned that option), or delete options (removing that option value from bound collections). When tagging a file, you can also type a new option name directly and press Enter to create and bind it immediately.
 4. **Shared tag behavior across multiple knowledge bases**: When an application or workflow attaches multiple knowledge bases, the custom tag dropdown displays only tags whose **names and attribute types match exactly** across all selected knowledge bases (the available option values represent the union of options from each knowledge base).
-5. **Legacy tag upgrade**: When upgrading from older versions, legacy string tags are automatically migrated into an Option tag named `default_tag`, preserving all existing tagging associations. You can rename `default_tag` to your preferred business name in Tag Management.
+5. **Legacy tag upgrade**: When upgrading from older versions, legacy string tags are automatically migrated into an Option tag named `default_tag`, preserving all existing tagging associations. You can rename `default_tag` to your preferred business name in **Tagging**.
 6. **Rename impact**: Filter conditions match on tag names and option text. When renaming a tag or option, update saved filter configurations in related applications and workflows.
 
 ## Step 2: Assign Tags to Collections
 
 1. In the knowledge base collection list, select the target file or folder collection.
-2. Click "Edit Tags" from the collection action menu.
+2. Click **Tag Settings** from the collection row's `···` action menu.
 3. Check the tags applicable to this collection, such as tagging `travel-policy.txt` with `Department: Finance`.
-4. Click "Save". Retrieval uses collection metadata to select eligible chunks.
+4. Click **Confirm**. Retrieval uses collection metadata to select eligible chunks.
 
 ![Assign Finance tag to travel policy collection](/imgs/optimized/current/tags-finance.png.webp)
 
@@ -66,7 +66,7 @@ In the application editor's Knowledge Base section, click **Parameters** to open
 
 ### 2. Dynamic Tag Routing in Workflows
 
-In the workflow canvas, locate the **Dataset Search** node and enable **Tag Filter** to expand the condition builder. Pass a business category from a question classifier into the search node's filter to route topic-specific queries. User identity must come from a trusted backend authentication flow. Enforce sensitive-document access through member authentication and collection permissions; tags describe the retrieval scope.
+In the workflow canvas, locate the **Dataset Search** node and enable **Tag Filter** to expand the condition builder. Pass a business category from a question classifier into the search node's filter to route topic-specific queries. Enforce per-member access to sensitive documents by combining **Auth member** with collection permissions; tags describe the retrieval scope.
 
 ![Support filter admits only customer support material](/imgs/optimized/current/tags-support-result.png.webp)
 
@@ -138,11 +138,11 @@ When an application or workflow node attaches multiple knowledge bases, the Cust
 
 ### 2. Where did my legacy string tags go after upgrading?
 
-During upgrade, legacy string tags are migrated without data loss into an **Option** tag named `default_tag`, preserving all existing file associations. Rename `default_tag` in Tag Management to your preferred business label (such as `Category`).
+During upgrade, legacy string tags are migrated without data loss into an **Option** tag named `default_tag`, preserving all existing file associations. Rename `default_tag` in **Tagging** to your preferred business label (such as `Category`).
 
 ### 3. Does renaming a tag or option affect existing Tag Filters?
 
-Tag Filters match by tag name and option text. After renaming a tag or option in Tag Management, update the corresponding filter conditions in your applications and workflows.
+Tag Filters match by tag name and option text. After renaming a tag or option in **Tagging**, update the corresponding filter conditions in your applications and workflows.
 
 ## Acceptance Checklist
 

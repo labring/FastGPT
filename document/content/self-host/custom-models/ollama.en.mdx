@@ -18,10 +18,10 @@ docker pull ollama/ollama
 docker run --rm -d --name ollama -p 11434:11434 ollama/ollama
 ```
 
-If your FastGPT is deployed in Docker, make sure the Ollama container is on the same network as FastGPT. Otherwise, FastGPT may not be able to access it:
+If your FastGPT is deployed in Docker, put the Ollama container on the same network as the AI Proxy container (`fastgpt-aiproxy`). Starting with v4.17, AI Proxy sends model requests, and in the official Compose file AI Proxy joins only the `fastgpt_aiproxy` network:
 
 ```bash
-docker run --rm -d --name ollama --network (your FastGPT container network) -p 11434:11434 ollama/ollama
+docker run --rm -d --name ollama --network fastgpt_aiproxy -p 11434:11434 ollama/ollama
 ```
 
 ### Host Installation
@@ -83,11 +83,10 @@ ollama pull [model name]
 
 ### Test Communication
 
-After installation, verify connectivity by entering the FastGPT container and trying to reach Ollama:
+After installation, verify connectivity by starting a temporary curl container on the `fastgpt_aiproxy` network used by AI Proxy and trying to reach Ollama:
 
 ```bash
-docker exec -it [FastGPT container name] /bin/sh
-curl http://XXX.XXX.XXX.XXX:11434  # Container: "http://[container name]:[port]", Host: "http://[host IP]:[port]" (host IP cannot be localhost)
+docker run --rm --network fastgpt_aiproxy curlimages/curl http://XXX.XXX.XXX.XXX:11434  # Container: "http://[container name]:[port]", Host: "http://[host IP]:[port]" (host IP cannot be localhost)
 ```
 
 If you see that the Ollama service is running, communication is working.
@@ -111,17 +110,17 @@ If you're using FastGPT's default configuration from [here](/en/self-host/deploy
 
 
 
-Make sure your FastGPT can access the Ollama container. If not, refer to the [installation section](#installing-ollama) above -- check whether the host isn't listening on 0.0.0.0 or the containers aren't on the same network.
+Make sure AI Proxy can access the Ollama container. If not, refer to the [installation section](#installing-ollama) above -- check that the host listens on 0.0.0.0 and that the Ollama container joined the `fastgpt_aiproxy` network.
 
 ![2. AI Proxy Integration — interface example](/imgs/optimized/Ollama-aiproxy2.png.webp)
 
-In FastGPT, go to Admin -> Model provider -> Model configuration -> Add model. Make sure the model ID matches the model name in OneAPI. See details [here](/en/self-host/config/model/intro).
+In FastGPT, go to Admin -> System Resources -> System Models -> Model configuration -> Add model. Make sure the model ID matches the model name in OneAPI. See details [here](/en/self-host/config/model/intro).
 
 ![2. AI Proxy Integration — interface example](/imgs/optimized/Ollama-models2.png.webp)
 
 ![2. AI Proxy Integration — interface example](/imgs/optimized/Ollama-models3.png.webp)
 
-Run FastGPT, then go to Admin -> Model provider -> Model providers -> Add channel. Select Ollama as the channel type, add your pulled model, and fill in the proxy address. For container-deployed Ollama, the address is http://address:port. Note: container deployment uses "http://[container name]:[port]", host installation uses "http://[host IP]:[port]" (host IP cannot be localhost).
+Run FastGPT, then go to Admin -> System Resources -> System Models -> Model provider -> Add channel. Select Ollama as the channel type, add your pulled model, and fill in the proxy address. For container-deployed Ollama, the address is http://address:port. Note: container deployment uses "http://[container name]:[port]", host installation uses "http://[host IP]:[port]" (host IP cannot be localhost).
 
 ![2. AI Proxy Integration — interface example](/imgs/optimized/Ollama-aiproxy3.png.webp)
 
@@ -131,15 +130,7 @@ Create an app in Studio and select the model you added. The model name shown is 
 
 ### 3. OneAPI Integration
 
-If you want to use OneAPI, pull the OneAPI image and run it on the same network as FastGPT:
-
-```bash
-# Pull the OneAPI image
-docker pull intel/oneapi-hpckit
-
-# Run the container on the FastGPT network
-docker run -it --network [FastGPT network] --name container_name intel/oneapi-hpckit /bin/bash
-```
+This section applies when you already run a OneAPI service. Deploy OneAPI according to its official documentation and make sure AI Proxy can reach it. For new deployments, use [AI Proxy Integration](#2-ai-proxy-integration) above or [Direct Integration](#4-direct-integration) below.
 
 In the OneAPI page, add a new channel with type Ollama. Enter your Ollama model name (must match exactly), then fill in the Ollama proxy address below -- default is http://address:port, without /v1. Test the channel after adding. This example uses Docker-deployed Ollama; for host-installed Ollama, use http://[host IP]:[port].
 
@@ -165,7 +156,7 @@ After completing the setup, [click here](#5-model-addition-and-usage) to add and
 
 ### 5. Model Addition and Usage
 
-In FastGPT, go to Admin -> Model provider -> Model configuration -> Add model. Make sure the model ID matches the model name in OneAPI.
+In FastGPT, go to Admin -> System Resources -> System Models -> Model configuration -> Add model. Make sure the model ID matches the model name in OneAPI.
 
 ![5. Model Addition and Usage — interface example](/imgs/optimized/Ollama-models2.png.webp)
 

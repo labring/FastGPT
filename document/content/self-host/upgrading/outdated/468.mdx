@@ -46,13 +46,13 @@ mongo:
       exec docker-entrypoint.sh "$@" &
 
       # 等待MongoDB服务启动
-      until mongo -u myusername -p mypassword --authenticationDatabase admin --eval "print('waited for connection')" > /dev/null 2>&1; do
+      until mongo -u username -p password --authenticationDatabase admin --eval "print('waited for connection')" > /dev/null 2>&1; do
         echo "Waiting for MongoDB to start..."
         sleep 2
       done
 
       # 执行初始化副本集的脚本
-      mongo -u myusername -p mypassword --authenticationDatabase admin /data/initReplicaSet.js
+      mongo -u username -p password --authenticationDatabase admin /data/initReplicaSet.js
 
       # 等待docker-entrypoint.sh脚本执行的MongoDB服务进程
       wait $!

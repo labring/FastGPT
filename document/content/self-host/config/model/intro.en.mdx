@@ -45,7 +45,7 @@ When FastGPT requests a model such as `gpt-5`, AI Proxy finds the channels confi
 
 ## Adding Channels and Models
 
-You can configure models from `Admin - Model provider` in FastGPT.
+You can configure models from `Admin → System Resources → System Models` in FastGPT.
 
 ### 1. Create a Channel
 
@@ -155,7 +155,7 @@ Only system models use these prices; team models are free. Pricing is stored und
   "metadata": {
     "isCustom": true, // Whether this is a custom model
     "isActive": true, // Whether the model is enabled
-    "provider": "OpenAI", // Model provider, used for categorization. Built-in providers: https://github.com/labring/FastGPT/blob/main/packages/global/core/ai/provider.ts. You can submit a PR for new providers, or use "Other"
+    "provider": "OpenAI", // Model provider, used for categorization. Built-in providers: https://github.com/labring/FastGPT/blob/main/packages/global/core/ai/model/provider.ts. You can submit a PR for new providers, or use "Other"
     "model": "gpt-5", // Model ID (corresponds to the model name in the channel)
     "name": "gpt-5", // Display name
     "maxContext": 125000, // Maximum context length
@@ -251,13 +251,13 @@ Only system models use these prices; team models are free. Pricing is stored und
 
 ```json
 {
-  "model": "gpt-transcribe",
+  "model": "whisper-1",
   "metadata": {
     "isActive": true, // Whether the model is enabled
     "isCustom": true, // Whether this is a custom model
     "provider": "OpenAI", // Model provider
-    "model": "gpt-transcribe", // Model ID
-    "name": "gpt-transcribe", // Display name
+    "model": "whisper-1", // Model ID
+    "name": "whisper-1", // Display name
     "pricing": { "unitPrice": 0 }, // Points per 60 seconds
     "type": "stt" // Model type
   }

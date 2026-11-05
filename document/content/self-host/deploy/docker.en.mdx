@@ -131,7 +131,7 @@ Refer to https://doc.fastgpt.cn/deploy/SKILL.md and deploy FastGPT with Docker f
 
 #### Method 2: Interactive Script Deployment
 
-Run in Linux/MacOS/Windows WSL. The script guides you through selecting deployment environment, vector database version, IP address, etc.
+Run in Linux/MacOS/Windows WSL. The script prompts for the deployment version, image registry, vector database, and whether to generate credentials automatically, then asks for the FastGPT access URL, the Sandbox WebSocket / preview URLs, and host ports before the final confirmation.
 
 ```bash
 FASTGPT_DEPLOY_BASE_URL=https://doc.fastgpt.cn bash <(curl -fsSL https://doc.fastgpt.cn/deploy/install.sh)
@@ -139,13 +139,9 @@ FASTGPT_DEPLOY_BASE_URL=https://doc.fastgpt.cn bash <(curl -fsSL https://doc.fas
 
 <CurrentOriginCodeBlockUpdater />
 
-If the documentation site uses a custom domain, an internal domain, or a local address, set `FASTGPT_DEPLOY_BASE_URL` to choose the download source. You can provide either the site root or a URL ending in `/deploy`; the script downloads YAML and `config.json` from that source:
+If the documentation site uses a custom domain, an internal domain, or a local address, set `FASTGPT_DEPLOY_BASE_URL` to choose the download source. You can provide either the site root or a URL ending in `/deploy`; the script downloads `docker-compose.yml` from that source, as in the command above. When an older compose file still mounts `config.json`, the script downloads that file too.
 
-```bash
-FASTGPT_DEPLOY_BASE_URL=https://doc.fastgpt.cn bash <(curl -fsSL https://doc.fastgpt.cn/deploy/install.sh)
-```
-
-<CurrentOriginCodeBlockUpdater />
+Set `FASTGPT_NON_INTERACTIVE=true` to run in non-interactive mode. The script skips the prompts and reads options from variables such as `FASTGPT_DEPLOY_VERSION`, `FASTGPT_REGION`, `FASTGPT_VECTOR`, and `FASTGPT_AUTO_GENERATE_CREDENTIALS`; unset options default to `main`, `cn`, `pg`, and automatic credential generation. If the script cannot detect the image version, set `FASTGPT_IMAGE_TAG` or `FASTGPT_ROOT_ACTIVATION`.
 
 Non-interactive mode also requires `FASTGPT_FE_DOMAIN`, the full URL users use to access FastGPT, such as `https://fastgpt.example.com`.
 Versions with Agent/Skill Sandbox also require `FASTGPT_SANDBOX_PROXY_URL`, the Sandbox WebSocket URL, such as `wss://sandbox-proxy.example.com`;
@@ -156,11 +152,11 @@ Access URLs and host ports are configured independently. For direct access, set 
 **The script automatically performs the following actions**:
 
 - Downloads `docker-compose.yml`.
-- Guides you through selecting externally accessible S3 and MCP addresses, then writes them into the config files.
-- Generates a random `root` login password, service tokens, app keys, and component passwords, then writes them into `docker-compose.yml`.
+- When deploying v4.14, or when the local compose file contains `STORAGE_EXTERNAL_ENDPOINT`, prompts for the externally accessible S3 address and writes it into the config files.
+- Generates random service tokens, app keys, and component passwords, then writes them into `docker-compose.yml`. For v4.17.2 and earlier, it also generates a random `root` login password.
 - Detects the host Docker socket path and updates the mount path in `docker-compose.yml` when needed.
 
-After the script finishes, the terminal prints the generated `root` login password. Keep the generated `docker-compose.yml` safe. For future upgrades, start from this file so you do not lose the generated passwords and keys.
+After the script finishes, the terminal prints the `root` login details: for v4.17.3 and later, the initial password is fixed at `123456` and you set a new password through first-login account activation; for earlier versions, it prints the randomly generated password. Keep the generated `docker-compose.yml` safe. For future upgrades, start from this file so you do not lose the generated passwords and keys.
 
 To use an existing local `docker-compose.yml` file, for example when testing a version that has not been published to the docs site yet, choose `Local docker-compose.yml` in the deployment version step and enter the local file path. You can also pass the path with an environment variable:
 
@@ -172,7 +168,7 @@ FASTGPT_LOCAL_COMPOSE_PATH=/path/to/docker-compose.yml bash <(curl -fsSL https:/
 
 #### Method 3: Manual Download
 
-If you need to pin deployment to a specific `docker-compose.yml` file, we recommend downloading both `docker-compose.yml` and `install.sh`, then using the script's local compose mode to generate the final config. This keeps the script's random credential generation, S3/MCP address updates, and Docker socket detection.
+If you need to pin deployment to a specific `docker-compose.yml` file, we recommend downloading both `docker-compose.yml` and `install.sh`, then using the script's local compose mode to generate the final config. This keeps the script's random credential generation, S3 address updates, and Docker socket detection.
 
 1. Download the required `docker-compose.yml` file to the server, for example:
 
@@ -217,9 +213,9 @@ curl -fsSL https://doc.fastgpt.cn/deploy/install.sh -o install.sh
 FASTGPT_LOCAL_COMPOSE_PATH=./docker-compose.source.yml bash install.sh
 ```
 
-The script copies this compose file to the final `docker-compose.yml`, then generates login passwords and credentials, and writes the S3/MCP addresses. After generation, log in with the root password printed in the terminal.
+The script copies this compose file to the final `docker-compose.yml`, then generates credentials and writes the S3 address when needed. After generation, log in with the root login details printed in the terminal.
 
-For a fully offline environment, prepare `docker-compose.yml` and `install.sh` in advance. If the script cannot run, manually update service tokens, database passwords, and S3/MCP addresses (`v4.17.3+` initializes with `123456` and requires changing the password in the first-login activation modal; `v4.17.2` and earlier use `DEFAULT_ROOT_PSW`).
+For a fully offline environment, prepare `docker-compose.yml` and `install.sh` in advance. If the script cannot run, manually update service tokens, database passwords, and S3 addresses (`v4.17.3+` initializes with `123456` and requires changing the password in the first-login activation modal; `v4.17.2` and earlier use `DEFAULT_ROOT_PSW`).
 
 #### Deploy with a Custom Image Registry
 
@@ -238,7 +234,7 @@ You must set `FE_DOMAIN` in `fastgpt-app` to the complete external URL accessibl
 When Agent/Skill Sandbox is enabled, also configure:
 
 - `AGENT_SANDBOX_PROXY_URL`: the browser-accessible Sandbox Proxy WebSocket URL using `ws://` or `wss://`, such as `wss://sandbox-proxy.example.com`, which must be forwarded to the Sandbox Proxy host port (default `3006`).
-- Version 4.16 additionally requires `AGENT_SANDBOX_PREVIEW_PROXY_URL`: the browser-accessible HTTP(S) URL for sandbox file previews, such as `https://sandbox-proxy.example.com`, forwarded to the same host port.
+- Version 4.16 and later additionally require `AGENT_SANDBOX_PREVIEW_PROXY_URL`: the browser-accessible HTTP(S) URL for sandbox file previews, such as `https://sandbox-proxy.example.com`, forwarded to the same host port.
 
 The interactive install script prompts for these addresses before the final confirmation.
 
@@ -251,7 +247,6 @@ The following services must be reachable. For direct access, open the host ports
 1. Port 3000 by default (FastGPT main service; change the host port with `FASTGPT_PORT`)
 2. Port 9000 (S3 service)
 3. Port 3006 by default (FastGPT Agent Sandbox Proxy service; change the host port with `FASTGPT_SANDBOX_PROXY_PORT`)
-4. Port 3003 (FastGPT SSE MCP server service; you can leave this port closed if you don't need it.)
 
 ### 4. Start Containers
 
@@ -311,7 +306,7 @@ Inspect `docker compose ps` and the MongoDB initialization logs. Verify the repl
 
 Starting with V4.17.0, **you must deploy or connect to AI Proxy** and set these environment variables in the FastGPT container:
 
-- `AIPROXY_API_ENDPOINT`: The AI Proxy service root URL reachable from FastGPT, such as `http://aiproxy:3000`. Do not append `/v1`; FastGPT adds the path required by each API.
+- `AIPROXY_API_ENDPOINT`: The AI Proxy service root URL reachable from FastGPT, such as `http://fastgpt-aiproxy:3000`. Do not append `/v1`; FastGPT adds the path required by each API.
 - `AIPROXY_API_TOKEN`: The AI Proxy administrator token matching credentials configured on the AI Proxy server.
 
 AI Proxy supplies model routing and channel management. Configure upstream provider endpoints and keys in the Admin channel interface; verify any model-specific request overrides separately.
@@ -343,7 +338,7 @@ Edit the `environment` section of `fastgpt-app` in `docker-compose.yml`, then ru
 
 ### How to Check if Environment Variables Loaded
 
-1. `docker exec -it fastgpt sh` to enter the container.
+1. `docker exec -it fastgpt-app sh` to enter the container.
 2. Run `env` to view all environment variables.
 
 ### Why Can't I Connect to Local Model Images
@@ -390,7 +385,7 @@ Inspect the failed browser request and FastGPT logs for its HTTP status and unde
 
 ### How to Change Password
 
-- **Web UI**: Log in as `root`, navigate to **Account Info** from the top right avatar, and update your password in the security settings.
+- **Web UI**: Log in as `root`, open **Account → Personal information** in the left navigation, and click **Change** on the **Password** row under **General information**.
 - **CLI Reset (Forgotten Password)**: Run `docker compose exec fastgpt-app node /app/scripts/reset-root-password.cjs 'your_new_password'` inside the application container to reset the password without restarting.
 - **Legacy versions (v4.17.2 and earlier)**: Update `DEFAULT_ROOT_PSW` in `docker-compose.yml` and restart the container.
 

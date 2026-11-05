@@ -49,13 +49,13 @@ fastgpt-agent-sandbox-proxy:
   ports:
     - 3006:1006
   networks:
-    - fastgpt
+    - app
   environment:
     PORT: 1006
     # 必须与 fastgpt 中的 AGENT_SANDBOX_PROXY_SECRET 完全一致
     AGENT_SANDBOX_PROXY_SECRET: replace_with_32_chars_random_secret
-    # 主站容器内网地址；如果服务名不是 fastgpt，请按实际 docker-compose 服务名调整
-    FASTGPT_APP_URL: http://fastgpt:3000
+    # 主站容器内网地址；如果服务名不是 fastgpt-app，请按实际 docker-compose 服务名调整
+    FASTGPT_APP_URL: http://fastgpt-app:3000
     FASTGPT_APP_REQUEST_TIMEOUT_SECS: 10
     RUST_LOG: info,fastgpt_agent_sandbox_proxy=debug
     # 当上游 sandbox endpoint 返回 localhost/127.0.0.1 且 proxy 容器无法访问时再配置

@@ -84,9 +84,9 @@ In search testing and application configuration, these parameters govern retriev
 
 | Parameter | Valid Range | Recommendation and Behavior |
 | --- | --- | --- |
-| **Search Mode** | Vector / Full-Text / Hybrid | Hybrid search is the recommended default, providing semantic generalization and exact term matching. |
-| **Citation Limit (`limit`)** | Token budget | Controls retrieved context size; tune with chunk size and the application context window. |
-| **Minimum Similarity** | Follow the current UI or contract | Uses rerank scores when reranking succeeds, or embedding scores in pure vector mode. Other modes may skip score filtering; inspect `usingReRank` and `usingSimilarityFilter` where exposed. |
+| **Search Method** | Semantic search / Full-text search / Hybrid search | Hybrid search is the recommended default, providing semantic generalization and exact term matching. |
+| **Citation cap (`limit`)** | Token budget | Controls retrieved context size; tune with chunk size and the application context window. |
+| **Lowest correlation** | Follow the current UI or contract | Uses rerank scores when reranking succeeds, or embedding scores in pure semantic search mode. Other modes may skip score filtering; inspect `usingReRank` and `usingSimilarityFilter` where exposed. |
 
 ![Search parameters and score threshold configuration](/imgs/optimized/current/dataset-search-filter.png.webp)
 
@@ -112,10 +112,10 @@ Knowledge base retrieval supports image inputs across two indexing and recall pa
 
 | Symptom | Recommended Checks and Adjustments |
 | --- | --- |
-| **No relevant chunks returned** | Confirm collection indexing is complete; lower Minimum Similarity; raise the Citation Limit (`limit`); check whether the query is too short or missing subject context |
-| **Results are overly broad or off-topic** | Raise Minimum Similarity; reduce Citation Limit to trim noisy chunks; refine chunk splitting size; apply Tag Filters to narrow the collection scope |
-| **Serial numbers, article codes, or error codes miss** | Switch to **Hybrid Search** or **Full-Text Search**; increase full-text weight; disable query rewriting on exact code queries to preserve literal terms |
-| **Conversational or paraphrased queries miss** | Enable **Hybrid Search** with a Rerank model; enable query rewriting to resolve multi-turn coreferences; add custom index questions to high-value chunks |
+| **No relevant chunks returned** | Confirm collection indexing is complete; lower Lowest correlation; raise the Citation cap (`limit`); check whether the query is too short or missing subject context |
+| **Results are overly broad or off-topic** | Raise Lowest correlation; reduce Citation cap to trim noisy chunks; refine chunk splitting size; apply Tag Filters to narrow the collection scope |
+| **Serial numbers, article codes, or error codes miss** | Switch to **Hybrid search** or **Full-text search**; increase full-text weight; disable query rewriting on exact code queries to preserve literal terms |
+| **Conversational or paraphrased queries miss** | Enable **Hybrid search** with a Rerank model; enable query rewriting to resolve multi-turn coreferences; add custom index questions to high-value chunks |
 | **Noticeable latency after enabling query rewriting** | Query rewriting adds an LLM call before retrieval; switch to a lower-latency model or enable it selectively for multi-turn follow-up scenarios |
 | **Ranking remains inaccurate with Rerank enabled** | Verify that the user query forms a complete statement; confirm first-stage recall returns enough candidates; calibrate similarity thresholds against run details |
 | **Weak image-to-image recall** | Confirm the knowledge base uses a multimodal Embedding model or Vision model and that images generated valid image indexes during import |

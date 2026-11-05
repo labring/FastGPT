@@ -35,11 +35,7 @@ This diagram covers collaborator permission resolution for one resource. Surroun
 
 ### Resource Permissions
 
-Different **resources** have different permissions.
-
-Resources refer to concepts like apps, datasets, teams, etc.
-
-The table below shows the manageable permissions for different resources.
+FastGPT defines assignable permission scopes by **resource category** (Team, App, Dataset, and Collection file/folder), as detailed in the table below:
 
 <table>
   <thead>
@@ -76,29 +72,33 @@ The table below shows the manageable permissions for different resources.
       <td>Invite or remove members, manage departments and groups, and assign team permissions</td>
     </tr>
     <tr>
-      <td rowSpan="3">App</td>
-      <td>Can Use</td>
+      <td rowSpan="4">App</td>
+      <td>Chat only</td>
       <td>Allows conversation interaction</td>
     </tr>
     <tr>
-      <td>Can Edit</td>
+      <td>Write permission</td>
       <td>Modify basic info, workflow orchestration, etc.</td>
     </tr>
     <tr>
-      <td>Can Manage</td>
+      <td>Administrator</td>
       <td>Add or remove collaborators</td>
     </tr>
     <tr>
+      <td>View chat logs</td>
+      <td>Granted separately; view the app's chat logs</td>
+    </tr>
+    <tr>
       <td rowSpan="3">Dataset</td>
-      <td>Can Use</td>
+      <td>Read permission</td>
       <td>Can call this Dataset in apps</td>
     </tr>
     <tr>
-      <td>Can Edit</td>
+      <td>Write permission</td>
       <td>Modify Dataset content (import data, sync, adjust training parameters)</td>
     </tr>
     <tr>
-      <td>Can Manage</td>
+      <td>Administrator</td>
       <td>Modify Dataset basic info and model settings, add or remove collaborators</td>
     </tr>
     <tr>
@@ -107,17 +107,17 @@ The table below shows the manageable permissions for different resources.
         <br />
         (Collection)
       </td>
-      <td>Can View</td>
+      <td>Read permission</td>
       <td>
         Can view this file/folder's content. Requires collection permission enabled on the Dataset
       </td>
     </tr>
     <tr>
-      <td>Can Edit</td>
+      <td>Write permission</td>
       <td>Modify content, update, sync, adjust training parameters</td>
     </tr>
     <tr>
-      <td>Can Manage</td>
+      <td>Administrator</td>
       <td>Modify file/folder metadata (rename, tags, disabled state), add or remove collaborators; deletion is Owner-only</td>
     </tr>
   </tbody>
@@ -125,40 +125,44 @@ The table below shows the manageable permissions for different resources.
 
 ### Collaborators
 
-Open **Add Collaborators**, select the members, departments, or groups, choose a permission level, and click **Confirm**. You can then manage their permissions on the resource.
+Before assigning permissions to members, departments, or groups, add them as **collaborators** on the target resource:
 
-When managing team permissions, first select members/organizations/groups, then configure permissions.
-
-For resources like apps and datasets, you can directly modify member permissions.
-
-Team permissions are set on a dedicated permissions page.
+- **Team-level permissions**: Navigate to **Account → Team management → Permissions** in the left navigation bar, click **Add**, select the target members, departments, or groups, and check the corresponding team permission boxes.
+- **App and Dataset permissions**: Open the target App or Dataset, open the **Collaborators** dialog, and assign Read, Write, or Administrator permissions to the selected members, departments, or groups.
 
 ## Special Permissions
 
+The table below clarifies how the three privileged roles (Admin, Owner, and Root) are assigned and how to identify your current role in the interface:
+
+| Role | Definition and Assignment | How to Verify in the UI |
+| --- | --- | --- |
+| **Root (System Super Admin)** | Built-in system administrator account in self-hosted deployments with username `root` (initial password configured via `DEFAULT_ROOT_PSW`). FastGPT Cloud is operated by the official platform team and does not expose a tenant `root` account. | Check whether the **Admin** (Platform Administration Console) entry appears at the bottom of the left navigation bar, or verify whether the username under **Account → Profile** is `root`. |
+| **Owner** | **Team Owner**: The account that created the team (`root` by default in single-team mode, or the registering user in cloud and multi-team modes).<br />**Resource Owner**: The member who created the specific App, Dataset, or Collection. | **Team Owner**: Open **Account → Team management → Members** and locate the member labeled **Owner**.<br />**Resource Owner**: Open the resource's **Collaborators** dialog and check for the **Owner** role badge. |
+| **Admin (Administrator)** | **Team Admin**: A member, department, or group granted the **Admin** permission by the Team Owner.<br />**Resource Admin**: A collaborator granted **Administrator** access on a specific App, Dataset, or Collection by its Owner. | **Team Admin**: Open **Account → Team management → Permissions** and check whether the **Admin** column is enabled for your account.<br />**Resource Admin**: Open the resource's **Collaborators** dialog and check whether your permission level is **Administrator**. |
+
 ### Admin Permissions
 
-Admins primarily manage resource collaboration relationships, with these limitations:
+Team Admins manage member invitations, removals, departments, groups, and team permissions; Resource Admins manage collaborator access on individual Apps or Datasets. Admin permissions observe the following boundaries:
 
-- Cannot modify or remove their own permissions
-- Cannot modify or remove other admins' permissions
-- Cannot grant admin permissions to other collaborators
+- Cannot modify or remove their own Admin permissions.
+- Cannot modify or remove the permissions of other peer Admins.
+- Cannot grant Admin permissions to other collaborators (only the Owner or Root can appoint Admins).
 
 ### Owner Permissions
 
-Each resource has a unique Owner with the highest permissions for that resource. Owners can transfer ownership, but will lose all permissions to the resource after transfer.
-In folder hierarchies, a parent folder's Owner inherits `Can Manage` (`manage`) permission on child resources while each child resource keeps its own single Owner; when a member is granted access only to a descendant resource, ancestor folders appear as read-only navigation entries.
+Every team and every resource (App, Dataset, or Collection) has a single unique Owner with full control and admin-appointment rights. An Owner can transfer ownership to another team member, relinquishing exclusive ownership upon transfer. In folder hierarchies, a parent folder's Owner inherits `Can Manage` (`manage`) permission on child resources while each child resource keeps its own single Owner; when a member is granted access only to a descendant resource, ancestor folders appear as read-only navigation entries.
 
 ### Root Permissions
 
-Root is the system's only super admin account, with complete access and management rights to all resources across all teams.
+`root` is the sole system-level super administrator account in self-hosted deployments, responsible for global model channels, system plugins, tenant quotas, and platform configuration, with full access and management rights within its team.
 
 ## Tips
 
 ### 1. Set Default Team Permissions
 
-Use the "All Members Group" to quickly set baseline permissions for the entire team. For example, grant everyone access to an app.
+Use the default group (shown with the team name in the UI) to quickly set baseline permissions for the entire team. For example, grant everyone access to an app.
 
-**Note**: Individual member permissions override all-member group permissions. For example, if App A has all-member edit permissions, but User M is individually set to use-only, User M receives use-only access.
+**Note**: Individual member permissions override default group permissions. For example, if App A grants edit permission to the default group, but User M is individually set to use-only, User M receives use-only access.
 
 ### 2. Batch Permission Management
 
@@ -178,7 +182,7 @@ Permission information is stored in MongoDB's resource_permissions collection, w
 
 - teamId: Team identifier
 - tmbId/groupId/orgId: Permission subject (one of three)
-- resourceType: Resource type (team/app/dataset/agentSkill/collection)
+- resourceType: Resource type (team/app/dataset/model/agentSkill/collection)
 - permission: Permission value (number)
 - resourceId: Resource ID (null for team resources)
 

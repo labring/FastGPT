@@ -30,11 +30,11 @@ According to official data, generating 8192 tokens requires 12.8GB VRAM at FP16,
 
 Recommended configurations:
 
-| Type | RAM    | VRAM   | Disk Space | Start Command           |
-| ---- | ------ | ------ | ---------- | ----------------------- |
-| fp16 | >=16GB | >=16GB | >=25GB     | python openai_api.py 16 |
-| int8 | >=16GB | >=9GB  | >=25GB     | python openai_api.py 8  |
-| int4 | >=16GB | >=6GB  | >=25GB     | python openai_api.py 4  |
+| Type | RAM    | VRAM   | Disk Space | Start Command                        |
+| ---- | ------ | ------ | ---------- | ------------------------------------ |
+| fp16 | >=16GB | >=16GB | >=25GB     | python openai_api.py --model_name 16 |
+| int8 | >=16GB | >=9GB  | >=25GB     | python openai_api.py --model_name 8  |
+| int4 | >=16GB | >=6GB  | >=25GB     | python openai_api.py --model_name 4  |
 
 ## Deployment
 
@@ -47,7 +47,7 @@ Recommended configurations:
 ### Source Code Deployment
 
 1. Set up the environment as described above;
-2. Download the [Python file](https://github.com/labring/FastGPT/blob/main/plugins/model/llm-ChatGLM2/openai_api.py)
+2. Download the [Python file](https://github.com/labring/FastGPT/blob/v4.14.7/plugins/model/llm-ChatGLM2/openai_api.py) and the [requirements.txt](https://github.com/labring/FastGPT/blob/v4.14.7/plugins/model/llm-ChatGLM2/requirements.txt) in the same directory
 3. Run `pip install -r requirements.txt`;
 4. Open the Python file and configure the token in the `verify_token` method -- this adds a layer of authentication to prevent unauthorized access;
 5. Run `python openai_api.py --model_name 16`. Choose the number based on the configuration table above.

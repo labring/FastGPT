@@ -28,10 +28,10 @@ FastGPT 支持 MinIO、AWS S3、Alibaba Cloud OSS、Tencent Cloud COS 和 Cloudf
 
 > MinIO 对 AWS S3 协议支持比较完整，适合本地开发和自部署场景。理论上任何对 AWS S3 协议的支持程度至少和 MinIO 相当的对象存储服务也可以使用，比如 SeaweedFS、RustFS。
 
-- `STORAGE_S3_ENDPOINT` 内网连接地址，可以是容器 ID 连接，比如 `http://fastgpt-minio:9000`
+- `STORAGE_S3_ENDPOINT` 内网连接地址，可以使用 Compose 服务名或容器名连接，比如官方模板自带 RustFS 的 `http://fastgpt-rustfs:9000`
 - `STORAGE_EXTERNAL_ENDPOINT` 一个**服务器**和**客户端**均可访问到存储桶的地址，可以是固定的宿主机 IP 或者域名，注意不要填写成 127.0.0.1 或者 localhost 等本地回环地址(因为容器里无法使用)。该变量不会自动改变下载模式。
 - `STORAGE_S3_CDN_ENDPOINT`【可选】`short-redirect` 临时下载地址使用的 CDN 地址。该变量不会改变默认下载模式，且配置时必须同时配置 `STORAGE_EXTERNAL_ENDPOINT`。上传仍走 FastGPT 后端代理，不会使用 CDN。
-- `STORAGE_S3_FORCE_PATH_STYLE`【可选】虚拟主机风格路由或路径路由风格，其中如果厂商填写了 `minio` 的话，该值被固定为 `true`
+- `STORAGE_S3_FORCE_PATH_STYLE`【可选】虚拟主机风格路由或路径路由风格，默认 `false`（虚拟主机风格）。自建 MinIO / RustFS 通常需要显式设置为 `true`，官方模板已设置
 - `STORAGE_S3_MAX_RETRIES`【可选】请求最大尝试次数，默认为 3 次
 
 若在 Kubernetes 或 Docker 中暴露 MinIO，需将 `STORAGE_EXTERNAL_ENDPOINT` 配置为客户端浏览器与 FastGPT 服务均可解析的静态宿主机 IP 或独立域名，确保插件 Logo 等公开桶资源正常访问。
@@ -47,7 +47,7 @@ STORAGE_ACCESS_KEY_ID=your_access_key
 STORAGE_SECRET_ACCESS_KEY=your_secret_key
 STORAGE_PUBLIC_BUCKET=fastgpt-public
 STORAGE_PRIVATE_BUCKET=fastgpt-private
-STORAGE_S3_ENDPOINT=http://127.0.0.1:9000
+STORAGE_S3_ENDPOINT=http://fastgpt-rustfs:9000
 STORAGE_S3_FORCE_PATH_STYLE=true
 STORAGE_S3_MAX_RETRIES=3
 ```

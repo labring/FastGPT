@@ -71,13 +71,13 @@ To bind a custom domain or modify deployment parameters, click **Change** in the
 
 Username: `root`
 
-Password: the initial administrator password configured in the template; older templates call this `root_password`.
+Password: for v4.17.3 and later, the first login opens the **Account activation** modal and requires a new password before you continue; new instances start with the initial password `123456`. For v4.17.2 and earlier, use the initial administrator password configured in the template; older templates call this `root_password`.
 
 ### 3. Configure Models
 
-After login, configure a language model in Model Providers. Knowledge retrieval also requires an embedding model. Test channel connectivity and then the selected models.
+After login, configure a language model in **Admin → System Resources → System Models**. Knowledge retrieval also requires an embedding model. Test channel connectivity on the **Model provider** tab and then the selected models.
 
-### 4. Configure Models
+### 4. Verify Knowledge-Base Q&A
 
 Complete [your first knowledge-base Q&A](/en/guide/getting-started/knowledge-qa) to verify file ingestion, indexing, answers, and citations.
 
@@ -156,7 +156,6 @@ Add these environment variables to the app:
 SYSTEM_NAME=FastGPT
 SYSTEM_DESCRIPTION=
 SYSTEM_FAVICON=/favicon.ico
-HOME_URL=/dashboard/agent
 ```
 
 SYSTEM_FAVICON can be a URL.

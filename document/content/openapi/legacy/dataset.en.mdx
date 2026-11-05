@@ -273,7 +273,7 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/collectio
 
 <Tab value="Response Example" >
 
-data is the collection ID.
+`data` is an object containing the created `collectionId` and insertion statistics (`results.insertLen`).
 
 ```json
 {
@@ -487,7 +487,7 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/collectio
 </Tab>
 <Tab value="Parameters" >
 
-Use POST form-data format for upload. Contains file and data fields.
+Send a POST request with a JSON body containing the following fields:
 
 - name: Collection name, recommended to use filename, required.
 - apiFileId: File ID, required.
@@ -1216,8 +1216,10 @@ Returns top k results. limit is the maximum tokens, up to 20000 tokens.
 {
   "code": 200,
   "statusText": "",
-  "data": [
-    {
+  "message": "",
+  "data": {
+    "list": [
+      {
         "id": "65599c54a5c814fb803363cb",
         "q": "你是谁",
         "a": "I'm FastGPT Assistant",
@@ -1225,10 +1227,20 @@ Returns top k results. limit is the maximum tokens, up to 20000 tokens.
         "collectionId": "6556cd795e4b663e770bb66d",
         "sourceName": "GBT 15104-2021 装饰单板贴面人造板.pdf",
         "sourceId": "6556cd775e4b663e770bb65c",
-        "score": 0.8050316572189331
-    },
-    ......
-  ]
+        "score": [
+          {
+            "type": "embedding",
+            "value": 0.8050316572189331,
+            "index": 0
+          }
+        ]
+      }
+    ],
+    "duration": "0.12s",
+    "queryExtensionModel": "",
+    "usingReRank": false,
+    "usingSimilarityFilter": false
+  }
 }
 ```
 

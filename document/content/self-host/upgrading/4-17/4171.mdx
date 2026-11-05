@@ -15,18 +15,18 @@ releaseTime: '2026-09-30'
 
 ### AI Proxy 环境变量配置
 
-升级 AI Proxy 镜像时，还需在 **AI Proxy 服务**中添加环境变量 `ENABLE_ADMIN_BYPASS_CHANNEL_MODEL_CHECK=true`。该变量默认为 `false`，开启后允许管理员在渠道尚未绑定模型时，指定该渠道和模型标识符进行测试，无需先将模型加入渠道的模型列表；未配置时，此类测试会被渠道模型列表校验拒绝。
+升级 AI Proxy 镜像时，还需在 **AI Proxy 服务**中添加环境变量 `ENABLE_ADMIN_BYPASS_CHANNEL_MODEL_CHECK=true`。该变量默认为 `false`，开启后允许管理员在渠道尚未绑定模型时，指定该渠道和模型标识符进行测试，无需先将模型加入渠道的模型列表；未配置时，此类测试会被渠道模型列表校验拒绝。官方 docker-compose 模板未内置该变量，需手动添加。
 
-使用 Docker Compose 部署时，在 `aiproxy` 服务的 `environment` 中追加以下配置，保留已有环境变量：
+使用 Docker Compose 部署时，在 `fastgpt-aiproxy` 服务的 `environment` 中追加以下配置，保留已有环境变量：
 
 ```yaml
 services:
-  aiproxy:
+  fastgpt-aiproxy:
     environment:
-      - ENABLE_ADMIN_BYPASS_CHANNEL_MODEL_CHECK=true
+      ENABLE_ADMIN_BYPASS_CHANNEL_MODEL_CHECK: 'true'
 ```
 
-保存配置后执行 `docker compose up -d aiproxy`，重新创建 AI Proxy 容器使环境变量生效，再到管理员的系统模型页面进行测试。
+保存配置后执行 `docker compose up -d fastgpt-aiproxy`，重新创建 AI Proxy 容器使环境变量生效，再到管理员的系统模型页面进行测试。
 
 ### 升级脚本
 

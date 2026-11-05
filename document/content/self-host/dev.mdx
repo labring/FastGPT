@@ -63,26 +63,20 @@ pwd
 **1. 环境变量**
 
 复制 `.env.template` 文件，在同级目录下生成一个 `.env.local` 文件，修改 `.env.local` 里内容才是有效的变量。变量说明见 `.env.template`
-如果没有修改 docker-compose.yaml 中的变量，`.env.template` 中的默认值就可以，不需要进行修改，否则需要和 `yml` 中的变量一致。
+模板中的 `FILE_TOKEN_KEY=` 为空，而该变量必填（至少 6 位），需要先在 `.env.local` 中填写随机字符串，否则启动会报 `Invalid environment variables`。其余变量如果没有修改 docker-compose.yaml 中的值，使用 `.env.template` 中的默认值即可，否则需要和 `yml` 中的变量一致。
 
 ```bash
 cp .env.template .env.local
 ```
 
-**2. config.json 配置文件**
+**2. 系统参数**
 
-复制 `data/config.json` 文件，生成一个 `data/config.local.json` 配置文件，具体配置参数说明，可参考 [config 配置说明](/zh-CN/self-host/config/model/intro)
+从 4.15.0 起开源版不再读取 `config.json`，`projects/app/data/` 下也没有该文件。原 `systemEnv` 中的参数已改为环境变量，按需在 `.env.local` 中配置，完整说明见[环境变量说明](/zh-CN/self-host/config/env)：
 
-```bash
-cp data/config.json data/config.local.json
-```
-
-这个文件大部分时候不需要修改。只需要关注 `systemEnv` 里的参数：
-
-- `vectorMaxProcess` : 向量生成最大进程，根据数据库和 key 的并发数来决定，通常单个 120 号，2c4g 服务器设置 10~15。
-- `qaMaxProcess` : QA 生成最大进程
-- `vlmMaxProcess` : 图片理解模型最大进程
-- `hnswEfSearch` : 向量搜索参数，仅对 PG 和 OB 生效；数值越大搜索精度越高，相应检索延迟也会增加。
+- `VECTOR_MAX_PROCESS` : 向量生成最大进程，根据数据库和 key 的并发数来决定，通常单个 120 号，2c4g 服务器设置 10~15。
+- `QA_MAX_PROCESS` : QA 生成最大进程
+- `VLM_MAX_PROCESS` : 图片理解模型最大进程
+- `HNSW_EF_SEARCH` : 向量搜索参数，仅对 PG、OceanBase 和 openGauss 生效；数值越大搜索精度越高，相应检索延迟也会增加。
 
 ### 5. 运行
 
@@ -105,9 +99,9 @@ pnpm dev
 
 ```bash
 # 没有 Proxy
-docker build -f ./projects/app/Dockerfile -t fastgpt . --build-arg name=app
-# Taobao Proxy
-docker build -f ./projects/app/Dockerfile -t fastgpt. --build-arg name=app --build-arg proxy=taobao
+docker build -f ./projects/app/Dockerfile -t fastgpt .
+# 使用国内镜像源（proxy 非空即切换到 ustc apt 源和 npmmirror npm 源）
+docker build -f ./projects/app/Dockerfile -t fastgpt . --build-arg proxy=1
 ```
 
 如果不使用 `docker` 打包，需要手动把 `Dockerfile` 里 run 阶段的内容全部手动执行一遍（非常不推荐）。
@@ -136,7 +130,7 @@ docker build -f ./projects/app/Dockerfile -t fastgpt. --build-arg name=app --bui
 
 ### sh ./scripts/postinstall.sh 没权限
 
-FastGPT 在 `pnpm i` 后会执行 `postinstall` 脚本，用于自动生成 `ChakraUI` 的 `Type`。如果没有权限，可以先执行 `chmod -R +x ./scripts/`，再执行 `pnpm i`。
+FastGPT 在 `pnpm i` 后会执行根目录 `package.json` 中的 `postinstall` 脚本，用于生成 `ChakraUI` 的 `Type`，并构建 sdk 与工作流相关子包。如果没有权限，可以先执行 `chmod -R +x ./scripts/`，再执行 `pnpm i`。
 
 仍不可行的话，可以手动执行 `./scripts/postinstall.sh` 里的内容。_如果是 Windows 下的话，可以使用 git bash 给 `postinstall` 脚本添加执行权限并执行 sh 脚本_
 
@@ -145,8 +139,8 @@ FastGPT 在 `pnpm i` 后会执行 `postinstall` 脚本，用于自动生成 `Cha
 核对仓库要求的 Node.js >=20 与 pnpm 10.x，检查 React 依赖版本是否一致，再按锁文件重新安装依赖。本地开发流程：
 
 1. 根目录: `pnpm i`
-2. 复制 `config.json` -> `config.local.json`
-3. 复制 `.env.template` -> `.env.local`
+2. 复制 `.env.template` -> `.env.local`，并填写 `FILE_TOKEN_KEY`
+3. 按需在 `.env.local` 中配置其他环境变量
 4. `cd projects/app`
 5. `pnpm dev`
 
@@ -175,12 +169,12 @@ FastGPT 使用了 nextjs 的 page route 作为框架。为了区分好前后端�
 
 FastGPT 采用 pnpm workspace 方式构建 monorepo 项目，主要分为两个部分：
 
-- projects/app - FastGPT 主项目
+- projects/ - 应用项目，`app` 为 FastGPT 主项目，另有 code-sandbox、agent-sandbox、agent-sandbox-proxy、volume-manager、mcp_server、marketplace 等服务
 - packages/ - 子模块
   - global - 共用代码，通常是放一些前后端都能执行的函数、类型声明、常量。
   - service - 服务端代码
   - web - 前端代码
-  - plugin - 工作流自定义插件的代码
+  - dal、next、workflow-cli、workflow-core - 其他共享子包
 
 ### 领域驱动模式（DDD）
 
@@ -197,28 +191,38 @@ FastGPT 在代码模块划分时，按 DDD 的思想进行划分，主要分为�
 .
 ├── .github                      // github 相关配置
 ├── .husky                       // 格式化配置
-├── document                      // 文档
-├── files                        // 一些外部文件，例如 docker-compose, helm
+├── deploy                       // 部署模板源文件（docker-compose、k8s 等）
+├── document                     // 文档
 ├── packages                     // 子包
+│   ├── dal
 │   ├── global                   // 前后端通用子包
-│   ├── plugins                  // 工作流插件（需要自定义包时候使用到）
+│   ├── next
 │   ├── service                  // 后端子包
-│   └── web                      // 前端子包
+│   ├── web                      // 前端子包
+│   ├── workflow-cli
+│   └── workflow-core
 ├── projects
-│   └── app                      // FastGPT 主项目
-├── python                       // 存放一些模型代码，和 FastGPT 本身无关
-└── scripts                      // 一些自动化脚本
-    ├── icon                     // icon预览脚本，可以在顶层 pnpm initIcon(把svg写入到代码中), pnpm previewIcon（预览icon）
-    └── postinstall.sh           // chakraUI自定义theme初始化 ts 类型
+│   ├── app                      // FastGPT 主项目
+│   ├── agent-sandbox            // Agent 沙盒镜像
+│   ├── agent-sandbox-proxy      // Agent 沙盒代理
+│   ├── code-sandbox             // 代码运行沙盒
+│   ├── fastgpt-ide-agent
+│   ├── marketplace              // 插件市场
+│   ├── mcp_server               // MCP Server
+│   └── volume-manager           // OpenSandbox 持久卷管理
+├── sdk                          // otel、sandbox-adapter、storage 等 SDK
+├── scripts                      // 一些自动化脚本
+│   ├── icon                     // icon预览脚本，可以在顶层 pnpm initIcon(把svg写入到代码中), pnpm previewIcon（预览icon）
+│   └── postinstall.sh           // chakraUI自定义theme初始化 ts 类型
+├── test                         // 测试
 ├── package.json                 // 顶层monorepo
 ├── pnpm-lock.yaml
 ├── pnpm-workspace.yaml          // monorepo 声明
-├── Dockerfile
 ├── LICENSE
 ├── README.md
 ├── README_en.md
 ├── README_ja.md
-├── dev.md
+└── dev.md
 ```
 
 </details>

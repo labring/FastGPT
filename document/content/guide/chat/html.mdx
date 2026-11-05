@@ -36,7 +36,7 @@ FastGPT 现已全面升级为**原生受控 HTML 流水线**：
 - **坚决剔除可执行脚本**：彻底禁止 `<script>` 标签以及任何外部脚本加载。
 - **禁用全部行内事件**：严格过滤所有 `on*` 属性（如 `onclick`、`onerror`、`onload` 等），拦截事件注入。
 - **禁止全局内联样式**：不开放通用 `style` 属性注入，杜绝利用 CSS 实现全屏欺诈遮罩或样式污染。
-- **严格协议白名单**：URL 资源路径（如 `src`、`href`、`poster` 等）仅允许 `http`、`https`、`mailto`、`tel`、`cite`、`quote` 等安全协议，严格封锁 `javascript:`、`vbscript:`、`data:text/html`、`file:` 等高危伪协议。
+- **严格协议白名单**：`href` 仅允许 `http`、`https`、`mailto`、`tel`、`cite`、`quote` 协议，`src`、`poster` 仅允许 `http`、`https`，严格封锁 `javascript:`、`vbscript:`、`data:text/html`、`file:` 等高危伪协议。
 - **受限表单输入**：表单组件仅供只读与交互状态展示，严厉封禁 `type="file"` 与 `type="password"`。
 
 #### 1.3 限制说明
@@ -58,7 +58,7 @@ FastGPT 现已全面升级为**原生受控 HTML 流水线**：
 | **文本排版与高亮** | `<mark>` , `<kbd>` , `<font>` , `<sub>` , `<sup>` , `<abbr>` , `<ruby>` , `<rt>` , `<rp>` , `<s>` , `<del>` | `font: ['color', 'size', 'face']`<br/>`abbr: ['title']`                                                                   | 支持荧光笔标记高亮、快捷键按键样式、字号颜色调整、上下角标及注音排版  |
 | **数据指标展示**   | `<progress>` , `<meter>` , `<figure>` , `<figcaption>`                                                      | `progress: ['value', 'max']`<br/>`meter: ['value', 'min', 'max', 'low', 'high', 'optimum']`                               | 提供原生进度指示条、数值度量刻度及带图注的排版结构                    |
 | **复杂表格扩展**   | `<table>` , `<thead>` , `<tbody>` , `<tr>` , `<th>` , `<td>` , `<caption>` , `<colgroup>` , `<col>`         | `th/td: ['rowspan', 'colspan', 'align']`<br/>`col: ['span', 'width']`                                                     | 弥补标准 Markdown 无法跨行、跨列合并单元格（rowspan / colspan）的不足 |
-| **静态交互控件**   | `<button>` , `<input>` , `<textarea>` , `<label>`                                                           | `input: [['type', 'checkbox', 'radio', 'text'], 'value', 'checked', 'disabled', 'readOnly']`                              | 支持复选框、单选框及文本输入框的静态排版与禁用态展示                  |
+| **静态交互控件**   | `<button>` , `<input>` , `<textarea>` , `<label>`                                                           | `input: [['type', 'text', 'checkbox', 'radio', 'number', 'range'], 'name', 'value', 'placeholder', 'checked', 'disabled', 'readOnly']`                              | 支持复选框、单选框及文本输入框的静态排版与禁用态展示                  |
 
 ---
 
@@ -71,7 +71,7 @@ FastGPT 现已全面升级为**原生受控 HTML 流水线**：
 对话框内置专业代码高亮渲染器与图片画廊预览：
 
 - **语法高亮代码块**：支持数十种主流编程语言的语法解析，顶部展示语言标识，支持一键复制代码内容、行号高亮与横向平滑滚动。
-- **图片画廊**：支持标准 Markdown 图片语法 `![3.1 语法高亮代码块与图片画廊 (CodeBlock & Image PhotoView)：界面示例]()` 及 HTML `<img>` 标签。集成全屏图片预览画廊（PhotoView），支持手势缩放、滚轮放大、多角度旋转与多图快速翻页切换。
+- **图片画廊**：支持标准 Markdown 图片语法 `![alt](url)` 及 HTML `<img>` 标签。集成全屏图片预览画廊（PhotoView），支持手势缩放、滚轮放大、多角度旋转与多图快速翻页切换。
 - **效果演示**：
 
 ![3.1 语法高亮代码块与图片画廊 (CodeBlock & Image PhotoView)：界面示例](/imgs/optimized/current/rich-code-image.png.webp)

@@ -13,7 +13,7 @@ The system supports three evaluation metrics: answer accuracy, question relevanc
 
 ![Create app evaluation](/imgs/optimized/current/evaluation-entry.png.webp)
 
-In the left Studio sidebar, click **Agent Evaluation (Beta)** to open the **App Evaluation (Beta)** page, then click **Create Task** in the upper-right corner.
+App evaluation is available only in the commercial edition. In the left Studio sidebar, click **App Evaluation(Beta)** to open the **App evaluation** page, then click **Create a task** in the upper-right corner.
 
 ### Fill in Evaluation Details
 
@@ -21,9 +21,9 @@ In the left Studio sidebar, click **Agent Evaluation (Beta)** to open the **App 
 
 On the task creation page, provide the following:
 
-- **Task Name**: A label to identify this evaluation
-- **Evaluation Model**: The model used for scoring
-- **Target App**: The app to be evaluated
+- **Task name**: A label to identify this evaluation
+- **Evaluation model**: The model used for scoring
+- **Evaluation app**: The app to be evaluated
 
 ### Prepare Evaluation Data
 
@@ -41,7 +41,7 @@ After selecting the target app, a button appears to download the CSV template. T
 - Maximum of 1,000 QA pairs
 - Follow the template format when filling in data
 
-Upload the completed file and click "Start Evaluation" to create the task.
+Upload the completed file and click **Start the evaluation** to create the task.
 
 ## View Evaluation Results
 
@@ -52,8 +52,8 @@ Upload the completed file and click "Start Evaluation" to create the task.
 The evaluation list shows all tasks with key information:
 
 - **Progress**: Current execution status
-- **Created By**: The user who created the task
-- **Target App**: The app being evaluated
+- **Executor**: The user who created the task
+- **Evaluation app**: The app being evaluated
 - **Start/End Time**: Execution time range
 - **Overall Score**: The task's aggregate score
 
@@ -65,12 +65,12 @@ Use this to compare results across iterations as you improve your app.
 
 The screenshot shows an evaluation interrupted by a model HTTP 429 rate limit. Failed records display the error; resolve the rate or quota limit and retry before comparing valid scores.
 
-Click "View Details" to open the detail page:
+Click **Detail** to open the **Task Details** dialog:
 
-**Task Overview**: The top section shows overall task information, including evaluation configuration and summary statistics.
+**Task Overview**: The top of the dialog shows overall task information, including evaluation configuration and summary statistics.
 
-**Detailed Results**: The bottom section lists each QA pair with its score, showing:
+**Detailed Results**: The lower part of the dialog lists each QA pair with its score, showing:
 
 - User question
-- Expected output
+- Standard output
 - App output

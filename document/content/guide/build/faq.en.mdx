@@ -17,15 +17,17 @@ If a user opens a shared link and stays on the page, scheduled execution still w
 
 ## Changes Not Applied
 
-After changing an app, click **Publish**. Chat and published channels only use the updated app configuration after publishing.
+After changing an app, click **Save → Save and Publish**. Chat and published channels only use the updated app configuration after publishing.
 
 ## Disable Markdown Formatting
 
-Open AI configuration in the application editor and inspect formatting rules in the main prompt and knowledge-reference prompt. Remove the Markdown instruction, test the same question in preview, then publish and repeat through the shared link:
+Open the application editor and inspect formatting rules in the prompt. For workflow apps, also open **Citation prompt** on the AI Chat node and inspect the **Citation Template Prompt**. Remove the Markdown instruction, test the same question in preview, then publish and repeat through the shared link:
 
 ![Disable Markdown Formatting — interface example](/imgs/optimized/current/node-ai-chat.png.webp)
 
 ![Disable Markdown Formatting — interface example](/imgs/optimized/current/citation-prompt-settings.png.webp)
+
+Without a custom **Citation Template Prompt**, the default template is used, and it asks the model to format answers in Markdown. Customize the template to remove that instruction.
 
 ## Inconsistent App Results
 
@@ -36,8 +38,6 @@ A: Open conversation logs and locate both executions by conversation and request
 ![Inconsistent App Results — interface example](/imgs/optimized/current/feedback-log.png.webp)
 
 ![Inconsistent App Results — interface example](/imgs/optimized/current/model-request-response.png.webp)
-
-The Dataset response settings require a custom prompt. Without one, the default prompt (which includes Markdown formatting instructions) is used.
 
 ## Skip Classification for Follow-Ups
 

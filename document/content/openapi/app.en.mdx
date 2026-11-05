@@ -50,10 +50,10 @@ The endpoints below accept team-level `Authorization: Bearer <apiKey>` authentic
 
 | Method | Path | Summary | Key Parameters (Query / Body) |
 | --- | --- | --- | --- |
-| `POST` | `/api/core/app/logs/list` | List paginated application conversation logs | Body: `appId` (required), `dateStart`, `dateEnd`, `sources`, `logUser`, `errorFilter`, `unreadOnly`, `offset`/`pageNum`, `pageSize` |
+| `POST` | `/api/core/app/logs/list` | List paginated application conversation logs | Body: `appId` (required), `dateStart`, `dateEnd`, `sources`, `tmbIds`, `outLinkUids`, `chatSearch`, `feedbackType`, `errorFilter`, `unreadOnly`, `offset`/`pageNum`, `pageSize` |
 | `POST` | `/api/core/app/logs/getUsers` | List users recorded in application logs | Body: `appId` (required), `dateStart`, `dateEnd`, `searchKey` |
 | `GET` | `/api/proApi/core/app/logs/getTotalData` | Get cumulative application totals (users, chats, consumed points) | Query: `appId` (required) |
-| `POST` | `/api/proApi/core/app/logs/getChartData` | Get time-series chart metrics (users, turns, feedback, token usage) | Body: `appId` (required), `dateStart`, `dateEnd`, `source` |
+| `POST` | `/api/proApi/core/app/logs/getChartData` | Get time-series chart metrics (users, turns, feedback, token usage) | Body: `appId` (required), `dateStart`, `dateEnd`, `source`, `userTimespan` (required), `chatTimespan` (required), `appTimespan` (required), `offset` (default `1`) |
 
 [Historical application parameters](/en/openapi/legacy/app) preserve earlier log-interface documentation for maintaining existing integrations.
 

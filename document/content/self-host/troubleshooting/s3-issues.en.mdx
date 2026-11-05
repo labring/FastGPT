@@ -26,16 +26,16 @@ Example
 
 ## 2. Upload conversation file / Dataset file error
 
-### 2.1 SignatureDoesNotMatched
+### 2.1 SignatureDoesNotMatch
 
-- A signature mismatch is often caused by the Nginx proxy configuration.
+- A signature mismatch. FastGPT's backend proxies file uploads to object storage, so the Nginx in front of FastGPT does not take part in S3 signing. Check the reverse proxy that sits in front of the object storage, between FastGPT and the storage service.
 
 ### Possible Errors
 
-- Check whether Nginx forwards the required request headers, especially `Host`.
+- The reverse proxy in front of the object storage (such as Nginx) does not forward the `Host` header, so the host received by the object storage differs from the `STORAGE_S3_ENDPOINT` host FastGPT used for signing.
 
 ### Solution
 
-- Set `proxy_set_header Host $http_host;` in Nginx to preserve the original host and port used to sign the request. Nginx's `$host` variable strips the port.
+- Set `proxy_set_header Host $http_host;` in the Nginx in front of the object storage to preserve the original host and port used to sign the request. Nginx's `$host` variable strips the port.
 
 ---

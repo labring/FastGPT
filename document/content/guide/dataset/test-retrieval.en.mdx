@@ -15,25 +15,25 @@ Before attaching a knowledge base to conversational applications, use the standa
 ## Step 1: Open the Search Test Interface
 
 1. Navigate to your target knowledge base and click the "Search Test" tab in the top navigation bar.
-2. The view displays a test query input, search mode selectors, similarity score sliders, and candidate result cards.
+2. The view displays a test input area, a **Search settings** button in the top-right corner, a **Test** button, test history, and candidate result cards. Click **Search settings** to open the **Dataset search settings** modal and configure **Search Method** and **Lowest correlation**.
 3. Enter a representative operational inquiry, such as: `How many days do I have to submit travel expenses after returning?`.
 
 ![Search test returns original text containing reimbursement deadline](/imgs/optimized/current/knowledge-search.png.webp)
 
-## Step 2: Compare Retrieval Modes
+## Step 2: Compare Search Methods
 
-Switch between retrieval modes at the top of the testing panel to observe differences across candidate ranks:
+Switch between options under **Search Method** in the **Dataset search settings** modal to observe differences across candidate ranks:
 
-1. **Vector Search (Semantic Matching)**:
+1. **Semantic search**:
    Enter a query with synonymous phrasing (e.g., `What is the deadline for filing trip expenses?`). The engine uses geometric distance in dense vector space to recall chunks containing "15 calendar days".
-2. **Full-Text Search (Keyword Matching)**:
+2. **Full-text search**:
    Enter a query featuring specialized codes or exact references (e.g., `Policy Rule FIN-2026-03 Section 15`). Check whether full-text search retrieves the document section containing the identifier.
-3. **Hybrid Search (Recommended)**:
+3. **Hybrid search (Recommended)**:
    Combines semantic generalization and exact term matching. The engine merges multi-route candidates and optionally reranks them when a rerank model is configured.
 
 ![Search mode selection and reranking scores](/imgs/optimized/current/dataset-result-scores.png.webp)
 
-## Step 3: Analyze Scores and Calibrate Similarity Floors
+## Step 3: Analyze Scores and Calibrate Lowest Correlation
 
 Use scores to compare candidates within the same model and retrieval configuration. Build a labeled test set containing answerable questions, paraphrases, exact identifiers, and questions outside the knowledge base. Record the expected source chunk for each answerable question.
 
@@ -52,9 +52,9 @@ When an expected query fails to return target chunks, follow this four-step diag
 | Step | Diagnostic Focus | Actionable Fix |
 | --- | --- | --- |
 | **1. Chunk Completeness** | Search for the clause in the collection's data chunk list | Confirm the fact is ingested and was not split awkwardly across boundaries |
-| **2. Index Readiness** | Inspect the collection's index status in the file list | Verify the collection status is "Ready"; if in "Error", click retry |
-| **3. Tokenization Coverage** | Check if proper nouns were fragmented during full-text tokenization | Query using complete standardized terms, or configure specialized dictionaries |
-| **4. Supplementary Indexes** | Add query variations to the target chunk | Click the chunk card to open the edit dialog, click **+ Add Index** under **Indexes**, and add 3 to 5 common user question patterns |
+| **2. Index Readiness** | Inspect the collection's index status in the file list | Verify the collection status is **Ready**; if **Indexing error**, retry from the **Error list** modal |
+| **3. Tokenization Coverage** | Check if proper nouns were fragmented during full-text tokenization | Query using complete standardized terms, or switch to **Hybrid search** (on Milvus, adjust analyzer language detection via `MILVUS_LANGUAGE_IDENTIFIER`) |
+| **4. Supplementary Indexes** | Add query variations to the target chunk | Click the chunk card to open the edit dialog, click **New** under **Data Index (N)**, and add 3 to 5 common user question patterns |
 
 ## Next Steps
 

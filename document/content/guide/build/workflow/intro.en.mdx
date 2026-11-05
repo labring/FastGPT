@@ -38,7 +38,7 @@ Every edge on the canvas assumes one of three discrete states during execution:
 | `skipped` | Skipped state. Upstream conditional branches omitted this route, propagating skips downstream. |
 
 ### 3. Skip Propagation Mechanics
-When an upstream condition or classifier selects a route, its other outlets become `skipped`. A node skips execution and propagates `skipped` through its outlets when every incoming edge group is skipped. A qualifying incoming group makes the node runnable; remaining states keep it waiting.
+When an upstream Condition or Classify node selects a route, its other outlets become `skipped`. A node skips execution and propagates `skipped` through its outlets when every incoming edge group is skipped. A qualifying incoming group makes the node runnable; remaining states keep it waiting.
 
 ![Workflow node structure and connection ports](/imgs/optimized/current/node-ai-chat.png.webp)
 
@@ -48,8 +48,8 @@ When an upstream condition or classifier selects a route, its other outlets beco
 
 To maintain workflow resilience against upstream service degradation, the platform provides explicit exception paths:
 
-1. **Explicit Exception Outlets**: For nodes equipped with exception ports (such as HTTP Request or Code Sandbox), execution errors or timeouts trigger the exception edge immediately, skipping standard business outputs and routing error diagnostics to fallback nodes.
-2. **Default Error Interception**: When nodes lacking exception outlets encounter errors, the system skips downstream edges automatically while recording execution traces, allowing parallel branches to finalize cleanly.
+1. **Explicit Exception Outlets**: For nodes with "Error catch" enabled (such as HTTP or Code run), execution errors or timeouts trigger the exception edge immediately, skipping standard business outputs and routing error diagnostics to fallback nodes.
+2. **Default Error Interception**: When nodes without "Error catch" enabled encounter errors, the system skips downstream edges automatically while recording execution traces, allowing parallel branches to finalize cleanly.
 3. **Execution Step Quotas**: To guard against infinite loops, each request enforces a maximum step limit. Upon reaching this quota, the scheduler halts further node execution and records the termination in the execution result.
 
 ---
@@ -60,14 +60,14 @@ FastGPT supports human-in-the-loop interactions and state checkpoints during wor
 
 ![Pause and resume on the next request](/imgs/diagrams/workflow-interaction.en.light.svg)
 
-1. **Execution Suspension**: On the first visit to a "User Selection" or "Form Input" node, the system returns the interactive payload and saves entry nodes, edge states, node outputs, the skip queue, and usage identifiers in the chat interaction record.
+1. **Execution Suspension**: On the first visit to a "User Select" or "Form input" node, the system returns the interactive payload and saves entry nodes, edge states, node outputs, the skip queue, and usage identifiers in the chat interaction record.
 2. **State Restoration**: After the user submits a selection or form, the next request restores the saved conversation state. The interaction node consumes the new input, then downstream execution continues.
 3. **Cooperative Cancellation**: When users click "Stop" during streamed responses, the system writes a cancellation flag. The scheduler exits cooperatively at the next scheduling cycle and persists all generated records.
 
 ## Orchestration Best Practices
 
 1. **Left-to-Right Layout**: Structure pipelines to flow naturally from "Workflow Start" on the left toward response nodes on the right.
-2. **Single-Exit Aggregation**: Use a "Specified Response" node to govern final message presentation, avoiding fragmented outputs from scattered nodes.
+2. **Single-Exit Aggregation**: Use an "Assigned Reply" node to govern final message presentation, avoiding fragmented outputs from scattered nodes.
 3. **Standard Variable Naming**: Define clean identifiers in start nodes and global settings to support reliable downstream variable referencing.
 
 ## Next Steps

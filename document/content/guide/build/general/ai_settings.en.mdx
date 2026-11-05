@@ -37,7 +37,7 @@ Select the AI model used by the current app or node. Different models vary in re
 
 The model section displays several types of information:
 
-- **Point cost**: A reference cost for model calls. Input content and model output are usually priced separately.
+- **AI points billing**: A reference cost for model calls. Input content and model output are usually priced separately.
 - **Max context**: The amount of content the model can reference in one request. A larger context window is better for long documents and long conversations.
 - **Tool calling**: If supported, the model can use selected app tools to query data, run calculations, or call external capabilities.
 - **Multimodal capability**: If the model supports image, audio, or video input, you can enable the corresponding multimodal recognition capability in AI Settings. Different models may support different media types. Use the capabilities shown in the settings modal as the source of truth.
@@ -73,7 +73,7 @@ When enabled, the AI Chat node converts matching uploaded files, or matching med
 Keep these limits in mind:
 
 1. Even after a type is enabled, the request is filtered again by the actual model capability before it is sent. Unsupported media types are not sent to the model.
-2. Media links in the user's question are only parsed when "Extract multimodal files from links" is enabled. Currently, extraction is attempted only when the user's question is under 500 characters, with at most 4 media links processed at a time.
+2. Media links in the user's question are only parsed when "Extract chat files" is enabled. Currently, extraction is attempted only when the user's question is under 500 characters; if more than 4 media links are detected, the whole question is sent as plain text and no links are extracted.
 3. Regular document files are not sent directly to the LLM as multimodal input. Documents still need to be parsed into text first.
 4. Multimodal recognition depends on the model's own capability. If the modal says the model does not support multimodal recognition, switch to a model that supports the needed media type.
 
@@ -195,7 +195,7 @@ For Moonshot / Kimi, whether `thinking.type` can be written depends on the actua
 
 Some models may not fully support every reasoning option. If an error occurs after switching the option, change it back to Default.
 
-### Hide AI Reasoning
+### Hide reasoning output
 
 When enabled, users only see the final answer and do not see the AI's reasoning process. During app debugging, you can temporarily disable this option to inspect the model's intermediate reasoning.
 

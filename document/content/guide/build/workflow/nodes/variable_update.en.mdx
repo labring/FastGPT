@@ -30,7 +30,7 @@ description: "Use the FastGPT Workflow Variable Update node to mutate global var
 
 Common scenarios include:
 
-- Assign a value to a "Custom Variable" type global variable, so the global variable doesn't require user input
+- Assign a value to an "Internal Variable" type global variable, so the global variable doesn't require user input
 - Update a workflow node's output upstream of the Variable Update node, so downstream nodes use the new value
 
 ## Configuration, order, and boundaries
@@ -41,9 +41,9 @@ Updates within one node run in order; later updates can read earlier changes. Th
 
 ## Example: record processing status
 
-1. Create a string global variable named `status` with the custom-variable type.
-2. Connect Start → Variable Update → Specified Reply.
+1. Create a string global variable named `status` with the **Internal Variable** type.
+2. Connect Start → Variable Update → Assigned Reply.
 3. Select `status` as the update target, choose manual input, and enter `ready`.
-4. Reference global variable `status` in Specified Reply. Debug and expect `ready`, with the same value in execution details.
+4. Reference global variable `status` in Assigned Reply. Debug and expect `ready`, with the same value in execution details.
 
 For an unchanged value, inspect target references and types. Parallel tasks writing the same target produce completion-order-dependent values; use the parallel node's aggregate output for deterministic results. See [Loop](/en/guide/build/workflow/nodes/loop_run) and [Parallel Run](/en/guide/build/workflow/nodes/parallel_run) for container writeback behavior.

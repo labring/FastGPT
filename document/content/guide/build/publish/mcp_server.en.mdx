@@ -17,23 +17,23 @@ FastGPT supports the `Streamable HTTP` transport. Self-hosted deployments can al
 
 ### 1. Create an MCP Server
 
-After logging into FastGPT, open `Studio` and click `MCP Server` to access the management page. Here you can see all your MCP Servers and the number of apps each one manages.
+After logging into FastGPT, open `Studio` and click `MCP Services` to access the management page. Here you can see all your MCP Servers and the number of apps each one manages.
 
 You can customize the MCP Server name and select which apps to associate.
 
 ![MCP service creation form with an exposed demo application](/imgs/optimized/current/mcp-create.png.webp)
 
-Under Exposed applications, select Manage, choose an application, and enter a clear tool name and description. The screenshot shows the completed form; verify client calls separately.
+Under `Published Apps`, select `manage`, choose an application, and enter a clear tool name and description. The screenshot shows the completed form; verify client calls separately.
 
 ### 2. Get the MCP Server URL
 
-After creating an MCP Server, click `Start Using` to get the access URL.
+After creating an MCP Server, click `Get started` to get the access URL.
 
 ### 3. Use the MCP Server
 
 Use the URL in any MCP-compatible client to call your FastGPT apps — for example, `Cursor` or `Cherry Studio`. Here's how to set it up in Cursor.
 
-Open Cursor's settings page and click MCP to enter the MCP configuration page. Click the new MCP Server button to open a JSON configuration file. Paste the `integration script` from step 2 into the `JSON file` and save.
+Open Cursor's settings page and click MCP to enter the MCP configuration page. Click the new MCP Server button to open a JSON configuration file. Paste the `Access script` from step 2 into the `JSON file` and save.
 
 Return to Cursor's MCP management page and you'll see your MCP Server listed. Make sure to set it to `enabled`.
 
@@ -112,19 +112,19 @@ Self-hosted FastGPT deployments require version `v4.9.6` or higher to use MCP Se
 
 ### Update docker-compose.yml
 
-Add the `fastgpt-mcp-server` service to your `docker-compose.yml`:
+The official v4.15 compose template already includes the `fastgpt-mcp-server` service (port `3003:3000`), so you only need to set the environment variable in the next step. The current `main` branch template does not include this service; add `fastgpt-mcp-server` to your `docker-compose.yml` (`networks` and `FASTGPT_ENDPOINT` must match the network and service name of the FastGPT main service in your compose file; the official template uses `app` and `fastgpt-app`):
 
 ```yml
 fastgpt-mcp-server:
   container_name: fastgpt-mcp-server
   image: ghcr.io/labring/fastgpt-mcp_server:latest
   ports:
-    - 3005:3000
+    - 3003:3000
   networks:
-    - fastgpt
+    - app
   restart: always
   environment:
-    - FASTGPT_ENDPOINT=http://fastgpt:3000
+    - FASTGPT_ENDPOINT=http://fastgpt-app:3000
 ```
 
 ### Update FastGPT Container Environment Variables
@@ -145,4 +145,4 @@ docker-compose down
 docker-compose up -d
 ```
 
-After restarting, the MCP Server option will appear in Studio.
+The **MCP Services** entry in the Studio sidebar is always visible. This variable only affects the SSE access address in the **Get started** dialog. When it is not set, the SSE option shows "The system does not configure SSE access service", while `Streamable HTTP` keeps working.

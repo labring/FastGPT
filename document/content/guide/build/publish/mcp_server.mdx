@@ -112,19 +112,19 @@ SSE 地址使用相同的请求头。SSE 服务会在建立连接时保存代理
 
 ### 修改 docker-compose.yml 文件
 
-在 `docker-compose.yml` 文件中，加入 `fastgpt-mcp-server` 服务:
+v4.15 版本的官方 compose 模板已内置 `fastgpt-mcp-server` 服务（端口 `3003:3000`），无需重复添加，直接配置下一步的环境变量即可。当前 `main` 分支的模板不含该服务，需要在 `docker-compose.yml` 文件中加入 `fastgpt-mcp-server` 服务（`networks` 与 `FASTGPT_ENDPOINT` 需与你的 compose 中 FastGPT 主服务所在网络和服务名一致，官方模板分别为 `app` 和 `fastgpt-app`）:
 
 ```yml
 fastgpt-mcp-server:
   container_name: fastgpt-mcp-server
   image: ghcr.io/labring/fastgpt-mcp_server:latest
   ports:
-    - 3005:3000
+    - 3003:3000
   networks:
-    - fastgpt
+    - app
   restart: always
   environment:
-    - FASTGPT_ENDPOINT=http://fastgpt:3000
+    - FASTGPT_ENDPOINT=http://fastgpt-app:3000
 ```
 
 ### 修改 FastGPT 容器环境变量
@@ -138,7 +138,7 @@ environment:
 
 ### 重启 FastGPT 容器
 
-修改环境变量后，需要重启 FastGPT 服务。启动后，可以在工作台看到 MCP server 服务选项。
+修改环境变量后，需要重启 FastGPT 服务。工作台侧栏的 **MCP 服务** 入口始终显示；该变量只影响 **开始使用** 弹窗中的 SSE 接入地址。未配置时 SSE 方式显示“系统未配置 SSE 接入服务”，`Streamable HTTP` 方式照常可用。
 
 ```bash
 docker-compose down

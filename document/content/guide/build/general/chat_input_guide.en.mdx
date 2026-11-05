@@ -13,15 +13,15 @@ You can configure the question list directly in FastGPT or provide a custom API 
 
 ## Custom Question List API
 
-The endpoint must be accessible from the user's browser. Configure cross-origin resource sharing (CORS) to allow requests from the chat page's origin.
+The endpoint must be accessible from the user's browser. Configure cross-origin resource sharing (CORS) to allow requests from the chat page's origin. After you set a custom API URL, the browser sends a GET request to it as the user types; no request is sent when the input exceeds 20 characters.
 
 **Request:**
 
 ```bash
-curl --location --request GET 'http://localhost:3000/api/core/chat/inputGuide/query?appId=663c75302caf8315b1c00194&searchKey=you'
+curl --location --request GET 'https://your-domain.com/api/input-guide?sourceType=app&sourceId=663c75302caf8315b1c00194&searchKey=you'
 ```
 
-Where `appId` is the app ID and `searchKey` is the search keyword (max 50 characters).
+Where `sourceType` is the chat source type (`app` for app chats), `sourceId` is the app ID, and `searchKey` is the search keyword. Requests from a share link also include `outLinkAuthData` (the share authentication data as a JSON string).
 
 **Response**
 
@@ -34,9 +34,11 @@ Where `appId` is the app ID and `searchKey` is the search keyword (max 50 charac
 }
 ```
 
-`data` is an array of matched questions. Return at most 5 results.
+`data` is an array of matched questions. Your endpoint decides how many to return (the built-in FastGPT lexicon returns up to 6).
 
 **Parameters:**
 
-- appId - App ID
+- sourceType - Chat source type, `app` for app chats
+- sourceId - App ID
 - searchKey - Search keyword
+- outLinkAuthData - Share authentication data as a JSON string, sent only from share links

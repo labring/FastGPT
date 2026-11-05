@@ -27,33 +27,33 @@ This manual compiles typical issues encountered during knowledge base ingestion,
 - **Diagnostic Focus**: Check whether the document is password-protected or restricted against copying; verify whether the PDF is a scanned image without a text layer.
 - **Actionable Fix**: Decrypt encrypted files prior to upload. For scanned PDFs, run optical character recognition (OCR) locally to embed a searchable text layer before importing.
 
-### Issue: Table import reports "Missing required column q or a"
+### Issue: Table import reports "Invalid file format. Check the headers and content"
 - **Diagnostic Focus**: Spreadsheet headers contain leading or trailing whitespace, typos, or multiple worksheets containing merged cells.
-- **Actionable Fix**: Review [Structured Dataset Template Specifications](/en/guide/dataset/template). Ensure the workbook contains exactly one worksheet, the first two columns in the header row are named `q` and `a`, and no merged cells exist.
+- **Actionable Fix**: Review [Structured Dataset Template Specifications](/en/guide/dataset/template). Ensure headers are `q`, `a`, `index`, `metadata` (`index` may repeat; `metadata` is optional), and Excel files contain a single worksheet with no merged cells.
 
 ---
 
 ## 2. Background Training and Index Construction
 
-### Issue: Collection status remains stuck on "Processing (0%)"
+### Issue: Collection status remains stuck on "Queue" or training stages (such as "Parsing" or "Index vectorization")
 - **Diagnostic Focus**: Background worker consumers are inactive, Redis task queues are backed up, or model API keys have expired.
 - **Actionable Fix**:
   1. Check your team's model quota and account balance.
   2. Verify network connectivity to upstream AI proxies or model providers.
-  3. In self-hosted environments, inspect worker logs for BullMQ consumer health.
+  3. In self-hosted environments, inspect `fastgpt-app` (and `fastgpt-pro` in commercial deployments) container logs for training consumer health.
 
-### Issue: Training fails with "Lease Expired" and retries repeatedly
+### Issue: Training tasks retry repeatedly due to lost lock leases (`TrainingLeaseLostError`)
 - **Diagnostic Focus**: Chunk batch sizes are too large or remote embedding endpoints exhibit high latency, causing workers to exceed lease windows before committing.
-- **Actionable Fix**: Inspect worker health, model latency, and lease-renewal logs. Reduce supported training concurrency settings when overloaded, then retry failed tasks after recovery.
+- **Actionable Fix**: Inspect application container health, model latency, and lease-renewal logs. When overloaded, lower the `VECTOR_MAX_PROCESS`, `QA_MAX_PROCESS`, or `VLM_MAX_PROCESS` environment variables, then retry failed tasks from the **Error list** modal after recovery.
 
 ---
 
 ## 3. Retrieval Recall and Answer Quality
 
 ### Issue: Search test returns zero results (empty recall)
-- **Diagnostic Focus**: Similarity thresholds are set too high, collections are not yet in a ready state, or an unmatched tag filter is active.
+- **Diagnostic Focus**: Lowest correlation thresholds are set too high, collections are not yet in a ready state, or an unmatched tag filter is active.
 - **Actionable Fix**:
-  1. Lower the "Minimum Similarity (Min Score)" slider to 0.1 to probe candidate boundaries.
+  1. Lower the **Lowest correlation** slider to 0.1 to probe candidate boundaries.
   2. Confirm collection status displays a green "Ready" badge and chunk text is readable.
   3. Check whether tag filters are active; clear tags temporarily and rerun the search.
 

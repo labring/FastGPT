@@ -991,7 +991,7 @@ get_version_label() {
     elif [ "$version" == "v4.14" ]; then
         echo "稳定版 v4.14 (不再维护)"
     elif [ "$version" == "main" ]; then
-        echo "稳定版 v4.16"
+        echo "稳定版 v4.17"
     else
         echo "稳定版 $version"
     fi
@@ -1605,7 +1605,7 @@ if LC_ALL=C grep -q "opensandbox-agent-sandbox-image" docker-compose.yml; then
     fi
     echo "  4. 访问服务:   $FE_DOMAIN_INPUT"
     print_login_credentials
-    echo "  6. 配置模型:   在 '账号-模型提供商' 页面，进行模型配置"
+    echo "  6. 配置模型:   在 '管理员-系统资源-系统模型' 页面，进行模型配置"
 else
     echo "  1. 预拉取镜像: docker compose pull"
     echo "  2. 启动服务:   docker compose up -d"
@@ -1616,7 +1616,7 @@ else
     fi
     echo "  4. 访问服务:   $FE_DOMAIN_INPUT"
     print_login_credentials
-    echo "  6. 配置模型:   在 '账号-模型提供商' 页面，进行模型配置"
+    echo "  6. 配置模型:   在 '管理员-系统资源-系统模型' 页面，进行模型配置"
 fi
 echo ""
 print_host_port docker-compose.yml fastgpt-app 3000 "FastGPT"

@@ -17,7 +17,7 @@ description: 创建分享链接，在新会话核对发布配置、答案和引�
 
 ### 1. 创建链接
 
-在 `应用详情` - `发布渠道` - `免登录窗口` 页面点击右上角 **新增**（或 **创建链接**）。
+在 `应用详情` - `发布渠道` - `免登录窗口` 页面点击右上角 **创建新链接**，在弹出的 **创建链接** 弹窗中填写配置。
 
 填写便于识别的名称，设置所需的过期时间、QPM 和积分上限。本任务需要核对原文，在可见度配置中开启 **查看引用片段**，然后确认创建。创建后核对列表显示的过期时间和积分上限。名称仅用于记录展示。
 
@@ -25,7 +25,7 @@ description: 创建分享链接，在新会话核对发布配置、答案和引�
 
 ### 2. 复制链接
 
-在链接列表右侧操作栏点击 **开始使用**（旁边的 **...** 菜单支持 **编辑信息** 与 **删除**），在弹窗中选择“直接使用”复制分享链接，或切换至“嵌入网页”获取 iframe 嵌入代码。
+在链接列表右侧操作栏点击 **开始使用**（旁边的 **...** 菜单支持 **编辑** 与 **删除**），在 **选择使用方式** 弹窗中选择使用方式，复制分享链接或获取 iframe / script 嵌入代码。
 
 ### 3. 验证新会话与引用
 
@@ -50,7 +50,8 @@ description: 创建分享链接，在新会话核对发布配置、答案和引�
 - **查看引用片段**：控制访问者查看知识库检索引用片段的入口，用于核对答案依据。
 - **查看引用全文**：允许访问者查看引用内容所属的完整文档正文。
 - **下载/打开来源原文**：允许访问者下载知识库原始文件或跳转来源网站；开启前请核对资料的可分享范围。
-- **查看技能引用**：允许访问者查看引用的技能及加载过程。
+
+<span id="分享链接身份鉴权" />
 
 ## 身份验证说明
 
@@ -58,7 +59,7 @@ description: 创建分享链接，在新会话核对发布配置、答案和引�
 
 ### 使用说明
 
-免登录链接配置中，你可以选择填写 `身份验证` 栏。这是一个 `POST` 请求的根地址。在填写该地址后，分享链接的初始化、开始对话以及对话结束都会向该地址的特定接口发送一条请求。下面以 `host` 来表示 `凭身份验证根地址`。服务器接口仅需返回是否校验成功即可，不需要返回其他数据，格式如下：
+免登录链接配置中，你可以选择填写 `身份验证` 栏。这是一个 `POST` 请求的根地址。在填写该地址后，分享链接的初始化、开始对话以及对话结束都会向该地址的特定接口发送一条请求。下面以 `host` 来表示 `身份验证根地址`。服务器接口仅需返回是否校验成功即可，不需要返回其他数据，格式如下：
 
 #### 接口统一响应格式
 
@@ -127,7 +128,7 @@ curl --location --request POST '{{host}}/shareAuth/init' \
 }
 ```
 
-系统会拉取该分享链接下，uid 为 username123 的对话记录。
+系统会拉取该分享链接下，uid 为接口返回值（示例中的“用户唯一凭证”）的对话记录。
 
   </Tab>
 
@@ -195,7 +196,7 @@ curl --location --request POST '{{host}}/shareAuth/start' \
 
 该接口无规定返回值。
 
-响应值与 [chat 接口格式相同](/zh-CN/openapi/intro#响应)，仅多了一个 `token`。
+FastGPT 发送的请求 body 为 `{ token, appName, responseData, chatId }`：`responseData` 与 [chat 接口](/zh-CN/openapi/intro#响应) 返回的响应详情格式相同，`appName` 为应用名称，`chatId` 为对话 ID。
 
 重点关注 `responseData` 中的 `totalPoints`（AI 积分）与 `tokens`（模型上下文 token 数）。顶层 `token` 是业务身份凭证，按鉴权约定处理。
 
@@ -204,6 +205,7 @@ curl --location --request POST '{{host}}/shareAuth/finish' \
 --header 'Content-Type: application/json' \
 --data-raw '{
     "token": "[authToken]",
+    "appName": "[应用名称]",
     "responseData": [
         {
             "moduleName": "core.module.template.Dataset search",
@@ -265,8 +267,8 @@ curl --location --request POST '{{host}}/shareAuth/finish' \
             "contextTotalLen": 2,
             "runningTime": 1.32
         }
-    ]
-
+    ],
+    "chatId": "[chatId]"
 }'
 ```
 
@@ -393,7 +395,7 @@ export default async function (ctx: FunctionContext) {
 
 #### 2. 配置校验地址
 
-我们随便复制 3 个地址中一个接口: `https://d8dns0.laf.dev/shareAuth/finish` , 去除 `/shareAuth/finish` 后填入 `身份校验` : `https://d8dns0.laf.dev`
+我们随便复制 3 个地址中一个接口: `https://d8dns0.laf.dev/shareAuth/finish` , 去除 `/shareAuth/finish` 后填入 `身份验证` : `https://d8dns0.laf.dev`
 
 #### 3. 修改分享链接参数
 

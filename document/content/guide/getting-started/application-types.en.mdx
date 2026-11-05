@@ -23,7 +23,7 @@ This design delivers fast setup and transparent execution paths, making it ideal
 
 Chat Agent V2 employs an autonomous ReAct (Reasoning + Acting) execution loop. In this architecture, the model functions as an active decision orchestrator:
 - **Goal Decomposition**: Analyzes incoming tasks and determines necessary information and tools.
-- **Tool Execution**: Dynamically calls built-in system tools (Dataset search, sub-apps, sandbox, file parsing), associated Skills, and custom Tools.
+- **Tool Execution**: Dynamically calls built-in capabilities (DatasetSearch, Sandbox, FileParsing), My Agents, Skills, and custom Tools.
 - **Observation**: Ingests tool outputs and updates internal reasoning traces.
 - **Iteration**: Repeats the thought-action loop until achieving the target objective, returning the final conclusion to the user.
 

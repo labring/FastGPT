@@ -50,7 +50,13 @@ LOG_ENABLE_OTEL=true # Enable OTEL log collection
 LOG_OTEL_LEVEL=info # Minimum log level for OTEL collection
 LOG_OTEL_SERVICE_NAME=fastgpt-client # Service name passed to the OTLP collector
 LOG_OTEL_URL=http://localhost:4318/v1/logs # Your OTLP collector address — don't omit /v1/logs
+TRACING_ENABLE_OTEL=true # Enable OTEL tracing
+TRACING_OTEL_URL=http://localhost:4318/v1/traces # Trace export address — don't omit /v1/traces
+METRICS_ENABLE_OTEL=true # Enable OTEL metrics
+METRICS_OTEL_URL=http://localhost:4318/v1/metrics # Metrics export address — don't omit /v1/metrics
 ```
+
+`LOG_*` exports logs only; traces and metrics require `TRACING_*` and `METRICS_*` respectively. In production (`NODE_ENV=production`), the default trace sample ratio is `0.01`; adjust it with `TRACING_OTEL_SAMPLE_RATIO` (`0` to `1`).
 
 2. Restart FastGPT
 
@@ -66,7 +72,7 @@ On your first visit, create an account for this SigNoz instance. Account data is
 
 ![Verify the Setup — interface example](/imgs/optimized/image-116.png.webp)
 
-After logging in, if `logs` and `traces` are lit up in the COMPLETED steps on the right side, the configuration is successful.
+After logging in, if `logs` is lit up in the COMPLETED steps on the right side, log export works. `traces` lights up as well once the `TRACING_*` variables are set and requests have been sampled.
 
 ![Verify the Setup — interface example](/imgs/optimized/image-117.png.webp)
 

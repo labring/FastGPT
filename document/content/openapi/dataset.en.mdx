@@ -68,7 +68,7 @@ The 24 endpoints below form the Knowledge Base OpenAPI surface and authenticate 
 | Method | Path | Summary | Key Parameters (Query / Body) |
 | --- | --- | --- | --- |
 | `POST` | `/api/core/dataset/create` | Create a knowledge base or folder | Body: `name` (required), `type` (`dataset`/`folder`/`websiteDataset`/`externalFile`), `vectorModel`, `agentModel`, `vlmModel`, `parentId`, `intro` |
-| `POST` | `/api/core/dataset/list` | List accessible knowledge bases | Body: `parentId`, `type`, `searchKey` |
+| `POST` | `/api/core/dataset/list` | List accessible knowledge bases (deprecated; use `listV2`) | Body: `parentId`, `type`, `searchKey` |
 | `POST` | `/api/core/dataset/listV2` | List paginated knowledge bases (includes non-folder file counts) | Body: `parentId`, `type`, `searchKey`, `offset`/`pageNum`, `pageSize` |
 | `GET` | `/api/core/dataset/detail` | Get knowledge base details (models, permissions, sync status) | Query: `id` (knowledge base ID, required) |
 | `DELETE` | `/api/core/dataset/delete` | Delete a knowledge base and child resources (owner only) | Query: `id` (knowledge base ID, required) |
@@ -79,11 +79,11 @@ The 24 endpoints below form the Knowledge Base OpenAPI surface and authenticate 
 
 | Method | Path | Summary | Key Parameters (Body / Form) |
 | --- | --- | --- | --- |
-| `POST` | `/api/core/dataset/collection/create` | Create an empty collection or folder | Body: `datasetId` (required), `name` (required), `type` (`folder`/`virtual`), `parentId`, `tags`, `metadata` |
+| `POST` | `/api/core/dataset/collection/create` | Create an empty collection or folder | Body: `datasetId` (required), `name` (required), `type` (`folder`/`virtual`), `parentId`, `tags` |
 | `POST` | `/api/core/dataset/collection/create/localFile` | Upload a local file to create a collection and start training | `multipart/form-data`: `file` (binary) + `data` (JSON string with `datasetId`, `trainingType`, `chunkSize`, `tags`) |
 | `POST` | `/api/core/dataset/collection/create/text` | Create a collection from raw text and start training | Body: `datasetId` (required), `name` (required), `text` (required), `trainingType`, `chunkSettingMode`, `tags` |
 | `POST` | `/api/core/dataset/collection/create/link` | Crawl a web URL to create a collection and start training | Body: `datasetId` (required), `link` (required), `trainingType`, `metadata` (`webPageSelector`) |
-| `POST` | `/api/core/dataset/collection/create/apiCollection` | Create a collection from an external API dataset file | Body: `datasetId` (required), `name` (required), `apiFileId` (required), `trainingType` |
+| `POST` | `/api/core/dataset/collection/create/apiCollection` | Create a collection from an external API dataset file (deprecated) | Body: `datasetId` (required), `name` (required), `apiFileId` (required), `trainingType` |
 
 ### 3. Collection Query, Update, and Archive Download (`datasetCollection`)
 
@@ -105,7 +105,7 @@ The 24 endpoints below form the Knowledge Base OpenAPI surface and authenticate 
 | `GET` | `/api/core/dataset/data/detail` | Get a single data chunk and its vector indexes | Query: `id` (data chunk ID, required) |
 | `PUT` | `/api/core/dataset/data/update` | Update a chunk's `q`, `a`, or `indexes` and re-embed | Body: `dataId` (required), `q`, `a`, `indexes` |
 | `DELETE` | `/api/core/dataset/data/delete` | Delete a single data chunk and its indexes | Query: `id` (data chunk ID, required) |
-| `POST` | `/api/core/dataset/searchTest` | Run a retrieval test (semantic/full-text/hybrid, rerank, tag filter) | Body: `datasetId` (required), `text`, `limit` (max tokens), `similarity`, `searchMode`, `usingReRank`, `collectionFilterMatch` |
+| `POST` | `/api/core/dataset/searchTest` | Run a retrieval test (semantic/full-text/hybrid, image query, rerank) | Body: `datasetId` (required), `text`, `queryImageUrls`, `limit` (max tokens), `similarity`, `searchMode`, `usingReRank` |
 
 <details>
 <summary>Earlier section links</summary>

@@ -56,7 +56,7 @@ Beneath each generated AI message bubble, click the **Run Details** icon button 
 4. **Performance and Quota Auditing**:
    Inspect available model, latency, and usage fields. Record the request identifier when present and reconcile cost with usage records.
 5. **Pre-Rerank Retrieval Candidate Snapshot (`retrievalResults`)**:
-   When an Agent's Dataset search enables reranking (`usingReRank`) with a positive candidate limit, the run details expose both the pre-rerank recall snapshot (`retrievalResults`) and the post-rerank citation list (`quoteList`), enabling side-by-side comparison between initial recall and reranking.
+   When an Agent's Dataset search enables reranking (`usingReRank`) and the `RETRIEVAL_RESULTS_LIMIT` environment variable (default `0`) is greater than `0`, the node response data includes the pre-rerank recall snapshot (`retrievalResults`) in addition to the post-rerank citation list (`quoteList`). The run details UI does not display this field; read it from API responses with response details enabled to compare initial recall and reranking.
 
 ---
 

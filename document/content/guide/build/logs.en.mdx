@@ -3,23 +3,23 @@ title: Inspect conversation logs and execution details
 description: Trace user feedback to retrieval, node inputs and outputs, and runtime errors.
 ---
 
-The **Conversation Logs** tab (`/app/detail?appId=<id>&currentTab=logs`) in App details provides **Data board PRO** and **Log details** sub-tabs to monitor live traffic, AI points consumption, user feedback, and node-by-node execution traces.
+The **Conversation Logs** tab (`/app/detail?appId=<id>&currentTab=logs`) in App details provides **Data board** (with a PRO badge) and **Log details** sub-tabs to monitor live traffic, AI points consumption, user feedback, and node-by-node execution traces.
 
-## Data Board PRO
+## Data Board
 
-Switch to the **Data board PRO** sub-tab and filter by source channel, date range, and aggregation interval (day, week, month, or quarter) across three dashboard sections:
+Switch to the **Data board** sub-tab and filter by source channel, date range, and aggregation interval (day, week, month, or quarter) across three dashboard sections:
 
 | Metric Category | Key Indicators | Operational Use |
 | --- | --- | --- |
 | **User data** | Active user trends, new user trends, retained users, cumulative users, plus points consumed, channel users, and token consumption trends | Evaluate user growth, retention, and activity across channels |
-| **Chat data** | Conversation count, question/session count, average questions per conversation, error conversation count, and chat error rate | Detect error spikes caused by upstream API timeouts or model rate limits |
-| **App performance** | Points consumed, average points per question, total citations, average response duration (`qpm`), and good/bad feedback trends | Track cost per query, citation coverage, latency, and user satisfaction |
+| **Chat data** | Number of conversations, number of sessions, chat error rate (with total errors), and average points consumption per session | Detect error spikes caused by upstream API timeouts or model rate limits, and track cost per session |
+| **App performance** | User feedback (good/bad trends) and average run time | Track latency and user satisfaction |
 
 ## Filter, Customize Columns, and Export Logs
 
 In the **Log details** view, narrow down target conversations using the filter bar:
 
-1. **Multi-dimensional filters**: Filter by **Source channel** (Debug, Portal, Share Link, API, Lark/WeCom/DingTalk/WeChat, Scheduled Trigger), **Date range**, **Title or Session ID**, **Feedback status** (**All**, **Has Feedback**, **Good Feedback**, **Bad Feedback**, and the **Unread Only** checkbox), and **Errors only**.
+1. **Multi-dimensional filters**: Filter by **Source channel** (Online debugging, Online Use, External Link Call, API Call, Scheduled run, Lark, Official Account, WeChat Work, WeChat, MCP call), **Date range**, **Title or Session ID**, **Feedback status** (**All Records**, **Has Feedback**, **Has Good Feedback**, **Has Bad Feedback**, and the **Unread Only** checkbox), and **Errors only**.
 2. **Customizable columns**: Click the column settings icon to toggle session title, source, user, message count, feedback badges, custom feedback, error count, client IP, and published version name.
 3. **Export to CSV**: Click **Export** and confirm the matched conversation count (up to 100 messages per conversation) to download a CSV for offline review or [Agent Evaluation](/en/guide/build/evaluation) dataset preparation.
 

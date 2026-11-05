@@ -20,7 +20,7 @@ You need tool creation permission, an external service URL and credentials, and 
 2. Enter the provider's MCP URL and required request headers.
 3. Parse the service, inspect the returned tool names, purposes, and parameters, then create the set.
 
-The current client tries Streamable HTTP first. A 4xx protocol error from that transport triggers an SSE compatibility attempt. Diagnose authentication, network, and service failures from their errors; changing a URL suffix alone does not establish transport compatibility.
+The current client tries Streamable HTTP first. Any 4xx status code other than 429 from that transport triggers a fallback attempt over SSE. Diagnose authentication, network, and service failures from their errors; changing a URL suffix alone does not establish transport compatibility.
 
 ## Connect an authenticated Streamable HTTP service
 

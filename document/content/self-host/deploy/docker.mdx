@@ -131,13 +131,17 @@ brew install orbstack
 
 #### 方法二：使用交互式脚本部署
 
-需要在 Linux/MacOS/Windows WSL 环境下执行，引导用户选择部署环境、向量库版本，IP 地址等。
+需要在 Linux/MacOS/Windows WSL 环境下执行。脚本依次引导选择部署版本、镜像源、向量库、是否自动生成密钥，再输入 FastGPT 访问地址、Sandbox WebSocket / 预览地址和宿主机端口，最后确认配置。
 
 ```bash
 FASTGPT_DEPLOY_BASE_URL=https://doc.fastgpt.cn bash <(curl -fsSL https://doc.fastgpt.cn/deploy/install.sh)
 ```
 
 <CurrentOriginCodeBlockUpdater />
+
+如果文档站使用自定义域名、内网地址或本地地址，可通过 `FASTGPT_DEPLOY_BASE_URL` 指定下载源，取值可以是站点根地址，也可以是以 `/deploy` 结尾的地址；脚本会从该地址下载 `docker-compose.yml`；旧版 compose 仍挂载 `config.json` 时，也会一并下载该文件。
+
+设置 `FASTGPT_NON_INTERACTIVE=true` 可进入非交互模式，脚本不再逐项询问，改从 `FASTGPT_DEPLOY_VERSION`、`FASTGPT_REGION`、`FASTGPT_VECTOR`、`FASTGPT_AUTO_GENERATE_CREDENTIALS` 等变量读取选项，未设置时依次使用 `main`、`cn`、`pg` 和自动生成密钥。识别不了镜像版本时，可用 `FASTGPT_IMAGE_TAG` 或 `FASTGPT_ROOT_ACTIVATION` 指定版本能力。
 
 非交互模式还必须通过 `FASTGPT_FE_DOMAIN` 指定用户访问 FastGPT 的完整地址，例如 `https://fastgpt.example.com`。
 启用 Agent/Skill 沙盒的版本还需要通过 `FASTGPT_SANDBOX_PROXY_URL` 指定沙盒 WebSocket 地址，例如 `wss://sandbox-proxy.example.com`；
@@ -148,15 +152,23 @@ FASTGPT_DEPLOY_BASE_URL=https://doc.fastgpt.cn bash <(curl -fsSL https://doc.fas
 **脚本会自动完成以下操作**：
 
 - 下载 `docker-compose.yml`。
-- 引导选择 S3 与 MCP 的外部访问地址，并写入配置文件。
-- 随机生成 `root` 登录密码、服务间 Token、应用密钥和组件密码，并写入 `docker-compose.yml`。
+- 部署 v4.14 版本，或本地 compose 包含 `STORAGE_EXTERNAL_ENDPOINT` 时，引导选择 S3 外部访问地址，并写入配置文件。
+- 随机生成服务间 Token、应用密钥和组件密码，并写入 `docker-compose.yml`；v4.17.2 及更早版本还会随机生成 `root` 登录密码。
 - 自动检测宿主机 Docker socket 路径，必要时替换 `docker-compose.yml` 中的挂载路径。
 
-执行完成后，终端会输出本次生成的 `root` 登录密码，请妥善保存生成后的 `docker-compose.yml`。后续升级时建议基于该文件调整，不要直接丢失已生成的密码和密钥。
+执行完成后，终端会输出 `root` 登录信息：v4.17.3 及以上版本初始密码固定为 `123456`，首次登录需完成账号激活并设置新密码；更早版本输出本次随机生成的密码。请妥善保存生成后的 `docker-compose.yml`。后续升级时建议基于该文件调整，不要直接丢失已生成的密码和密钥。
+
+如果要使用已有的本地 `docker-compose.yml`（例如测试尚未发布到文档站的版本），在部署版本步骤选择“本地 docker-compose.yml”并输入文件路径，也可以通过环境变量传入路径：
+
+```bash
+FASTGPT_LOCAL_COMPOSE_PATH=/path/to/docker-compose.yml bash <(curl -fsSL https://doc.fastgpt.cn/deploy/install.sh)
+```
+
+<CurrentOriginCodeBlockUpdater />
 
 #### 方法三：手动下载部署
 
-如果需要固定使用某个 `docker-compose.yml` 文件，推荐先手动下载 `docker-compose.yml` 和 `install.sh`，再通过 `install.sh` 的本地 compose 模式生成最终配置。这样仍然可以复用脚本里的随机密码、S3/MCP 地址写入、Docker socket 检测等能力。
+如果需要固定使用某个 `docker-compose.yml` 文件，推荐先手动下载 `docker-compose.yml` 和 `install.sh`，再通过 `install.sh` 的本地 compose 模式生成最终配置。这样仍然可以复用脚本里的随机凭证、S3 地址写入、Docker socket 检测等能力。
 
 1. 下载所需的 `docker-compose.yml` 文件到服务器，例如：
 
@@ -201,9 +213,9 @@ curl -fsSL https://doc.fastgpt.cn/deploy/install.sh -o install.sh
 FASTGPT_LOCAL_COMPOSE_PATH=./docker-compose.source.yml bash install.sh
 ```
 
-脚本会复制该 compose 文件为最终的 `docker-compose.yml`，并继续随机生成登录密码和各类凭证、写入 S3/MCP 地址。生成完成后，按终端输出的 root 密码登录。
+脚本会复制该 compose 文件为最终的 `docker-compose.yml`，并继续随机生成各类凭证，需要时写入 S3 地址。生成完成后，按终端输出的 root 登录信息登录。
 
-完全离线环境下，需要同时准备 `docker-compose.yml` 和 `install.sh`。如果无法运行脚本，则需要手动修改服务 Token、数据库密码、S3/MCP 地址等配置（`v4.17.3+` 新实例初始密码固定为 `123456`，首次登录通过激活弹窗修改密码；`v4.17.2` 及更早版本通过 `DEFAULT_ROOT_PSW` 设置）。
+完全离线环境下，需要同时准备 `docker-compose.yml` 和 `install.sh`。如果无法运行脚本，则需要手动修改服务 Token、数据库密码、S3 地址等配置（`v4.17.3+` 新实例初始密码固定为 `123456`，首次登录通过激活弹窗修改密码；`v4.17.2` 及更早版本通过 `DEFAULT_ROOT_PSW` 设置）。
 
 #### 自定义镜像源部署
 
@@ -222,7 +234,7 @@ FASTGPT_LOCAL_COMPOSE_PATH=./docker-compose.yml bash install.sh
 启用 Agent/Skill 沙盒时还必须配置：
 
 - `AGENT_SANDBOX_PROXY_URL`：浏览器访问 Sandbox Proxy 的 WebSocket 地址，使用 `ws://` 或 `wss://`，例如 `wss://sandbox-proxy.example.com`，需要由反向代理转发到 Sandbox Proxy 的宿主机端口（默认 `3006`）。
-- 4.16 版本额外配置 `AGENT_SANDBOX_PREVIEW_PROXY_URL`：浏览器访问沙盒文件预览的 HTTP(S) 地址，例如 `https://sandbox-proxy.example.com`，同样需要转发到该宿主机端口。
+- 4.16 及以上版本额外配置 `AGENT_SANDBOX_PREVIEW_PROXY_URL`：浏览器访问沙盒文件预览的 HTTP(S) 地址，例如 `https://sandbox-proxy.example.com`，同样需要转发到该宿主机端口。
 
 使用交互式安装脚本时，脚本会在确认部署前询问这些地址。
 
@@ -235,7 +247,6 @@ FASTGPT_LOCAL_COMPOSE_PATH=./docker-compose.yml bash install.sh
 1. 默认 `3000` 端口（FastGPT 主服务；可通过 `FASTGPT_PORT` 修改宿主机端口）
 2. 9000 端口（S3 服务）
 3. 默认 `3006` 端口（FastGPT Agent Sandbox Proxy 服务；可通过 `FASTGPT_SANDBOX_PROXY_PORT` 修改宿主机端口）
-4. 3003 端口（FastGPT SSE MCP server 服务，不需要的话可以不开通。）
 
 ### 4. 启动容器
 
@@ -295,7 +306,7 @@ docker compose up -d
 
 从 V4.17.0 起，**必须部署或接入 AI Proxy**，并在 FastGPT 容器中配置以下环境变量：
 
-- `AIPROXY_API_ENDPOINT`：FastGPT 可访问的 AI Proxy 服务根地址，例如 `http://aiproxy:3000`，不要附加 `/v1`；FastGPT 会按接口补充路径。
+- `AIPROXY_API_ENDPOINT`：FastGPT 可访问的 AI Proxy 服务根地址，例如 `http://fastgpt-aiproxy:3000`，不要附加 `/v1`；FastGPT 会按接口补充路径。
 - `AIPROXY_API_TOKEN`：AI Proxy 管理员 Token，必须与 AI Proxy 服务端的管理员凭证一致。
 
 AI Proxy 提供模型路由与渠道管理。模型服务商的地址和密钥在管理员渠道配置中维护；模型级请求覆盖配置应单独核对。
@@ -327,7 +338,7 @@ docker compose up -d
 
 ### 如何检查环境变量是否正常加载
 
-1. `docker exec -it fastgpt sh` 进入 FastGPT 容器。
+1. `docker exec -it fastgpt-app sh` 进入 FastGPT 容器。
 2. 直接输入 `env` 命令查看所有环境变量。
 
 ### 为什么无法连接 `本地模型` 镜像
@@ -374,7 +385,7 @@ PG 数据库没有连接上/初始化失败，可以查看日志。FastGPT 会�
 
 ### 如何修改密码
 
-- **Web 界面修改**：以 `root` 登录后，进入右上角「个人信息」页面，在安全设置中修改密码。
+- **Web 界面修改**：以 `root` 登录后，进入左侧导航栏「账号 → 个人信息」，在「通用信息」区的「密码」行点击「变更」。
 - **命令行重置（忘记密码）**：在服务器容器内执行 `docker compose exec fastgpt-app node /app/scripts/reset-root-password.cjs '新密码'` 即可直接重置，无需重启容器。
 - **旧版本（v4.17.2 及更早）**：修改 `docker-compose.yml` 中的 `DEFAULT_ROOT_PSW` 并重启容器。
 

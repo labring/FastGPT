@@ -40,7 +40,9 @@ curl --location --request GET 'https://cloud.fastgpt.cn/api/proApi/core/app/logs
       "data": {
           "totalUsers": 0,
           "totalChats": 0,
-          "totalPoints": 0
+          "totalPoints": 0,
+          "totalInputTokens": 0,
+          "totalOutputTokens": 0
       }
   }
 ```
@@ -58,6 +60,8 @@ curl --location --request GET 'https://cloud.fastgpt.cn/api/proApi/core/app/logs
 - totalUsers: Total number of users
 - totalChats: Total number of chats
 - totalPoints: Total points consumed
+- totalInputTokens: Total input tokens consumed
+- totalOutputTokens: Total output tokens consumed
 
 </Tab>
 
@@ -84,7 +88,7 @@ curl --location --request POST 'https://cloud.fastgpt.cn/api/proApi/core/app/log
       "share",
       "api",
       "cronJob",
-      "team",
+      "wechat",
       "feishu",
       "official_account",
       "wecom",
@@ -120,7 +124,7 @@ curl --location --request POST 'https://cloud.fastgpt.cn/api/proApi/core/app/log
                         "share": 0,
                         "api": 0,
                         "cronJob": 0,
-                        "team": 0,
+                        "wechat": 0,
                         "feishu": 0,
                         "official_account": 0,
                         "wecom": 0,
@@ -136,7 +140,9 @@ curl --location --request POST 'https://cloud.fastgpt.cn/api/proApi/core/app/log
                     "chatItemCount": 1,
                     "chatCount": 1,
                     "errorCount": 0,
-                    "points": 1.1132600000000001
+                    "points": 1.1132600000000001,
+                    "inputTokens": 120,
+                    "outputTokens": 80
                 }
             }
         ],
@@ -187,6 +193,8 @@ curl --location --request POST 'https://cloud.fastgpt.cn/api/proApi/core/app/log
     - chatCount: Session count
     - errorCount: Error count
     - points: Total points consumed
+    - inputTokens: Total input tokens consumed
+    - outputTokens: Total output tokens consumed
 - appData: App data array
   - timestamp: Timestamp
   - summary: Summary data object

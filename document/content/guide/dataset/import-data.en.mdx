@@ -14,17 +14,17 @@ This guide walks you through importing enterprise local documents (such as polic
 
 ## Supported Document Formats
 
-FastGPT natively parses the following document types:
-- **Plain Text and Lightweight Markup**: `.txt`, `.md`
-- **Office Documents**: `.pdf`, `.docx`, `.pptx`
-- **Web and Structured Exports**: `.html`, `.csv`
+FastGPT supports importing and parsing the following document types:
+- **Plain Text, Web, and eBooks**: `.txt`, `.md`, `.html`, `.rtf`, `.epub`
+- **Office and Fixed-Layout Documents**: `.pdf`, `.ofd`, `.docx`, `.doc`, `.wps`, `.docm`, `.odt`, `.pptx`, `.ppt`, `.pps`, `.pot`, `.pptm`, `.ppsx`, `.ppsm`, `.odp`
+- **Spreadsheets and Structured Exports**: `.csv`, `.xlsx`, `.xls`, `.xlsm`, `.xlsb`, `.ods` (extended formats such as `.doc`, `.wps`, `.ppt`, `.xls`, `.odt`, `.rtf`, and `.epub` are parsed when the document parsing service is configured)
 
 Keep individual file sizes under 50 MB for optimal processing. For large scanned files, run local OCR prior to upload to ensure clean text extraction.
 
 ## Step 1: Upload Local Files
 
-1. Open the target dataset and click **New / Import** in the upper right corner, then select **File Import** (or **Text Dataset**).
-2. Choose local file upload as the source.
+1. Open the target dataset and click **Create/Import** in the upper right corner, then select **Text Collection**.
+2. In the source selection modal, select **Local File** and click **Confirm**.
 3. Drag and drop or browse local files. The platform supports batch uploading multiple files simultaneously.
 4. Wait until upload progress reaches 100%, then click **Next**.
 
@@ -53,15 +53,15 @@ Click "Next" to open the data preview screen. Inspect chunk quality before writi
 
 1. **Paragraph Coherence**: Click file items on the left and check whether sentences end naturally within chunks on the right.
 2. **Tables and Lists**: Confirm that Markdown tables, numbering sequences, and section headers remain aligned.
-3. **Parameter Tuning**: If chunks appear overly fragmented or excessively long, click "Back" in the lower left to modify token limits and recompute the preview instantly.
+3. **Parameter Tuning**: If chunks appear overly fragmented or excessively long, click **Previous** at the top-left of the import page to modify token limits and recompute the preview instantly.
 
 ## Step 4: Submit Training and Track Progress
 
-1. Once the preview meets your quality standards, click **Confirm Upload**.
+1. Once the preview meets your quality standards, click **Start Upload**.
 2. The platform queues asynchronous background tasks. Monitor progress in the collection list:
-   - "Processing (X%)" indicates active text extraction and vector generation.
-   - Status changing to "Ready" confirms that both vector and full-text indexes are persisted.
-3. If training errors occur, click **Error List** in the top-right corner of the collection list to inspect failure details, or open the collection row's **`...`** menu and click **Retry**.
+   - Stage badges such as **Queue**, **Parsing**, **Image analysis**, **Index vectorization**, **Q&A extraction**, **Automatic index generation**, or **Image index generation** indicate active processing.
+   - Status changing to **Ready** confirms that both vector and full-text indexes are persisted; failures display **Indexing error**.
+3. If training errors occur, click **Error list** in the top-right corner of the collection list to inspect failure details, then retry individual items or click **Retry all** inside the modal.
 
 ## Next Steps
 

@@ -7,17 +7,17 @@ HTTP tools convert internal REST services or third-party HTTP APIs into callable
 
 ## Prerequisites and Creation Modes
 
-You need tool creation permission in the active team and network reachability from the FastGPT server to the target API.
+You need tool creation permission in the active team and network reachability from the FastGPT server to the target API. Both modes are options under **Create Type** when you create an HTTP tool set, and the choice cannot be changed afterward.
 
 | Creation Mode | Best For | Key Characteristics |
 | --- | --- | --- |
-| **HTTP Tool Set (Batch / Schema Import)** | A service exposing multiple related endpoints (such as order lookup, creation, and cancellation) | Shares a common Base URL and auth headers; parses OpenAPI 3.0 / Swagger JSON or YAML into child tools automatically |
-| **Single HTTP Tool (Manual)** | Connecting one standalone endpoint | Directly configures HTTP method (`GET`/`POST`/`PUT`/`DELETE`/`PATCH`), URL, query parameters, and body template |
+| **Bulk creation** (OpenAPI Schema) | A service exposing multiple related endpoints (such as order lookup, creation, and cancellation) | Shares a common Base URL and auth headers; paste OpenAPI 3.0 / Swagger JSON or YAML, or import it from a URL, to parse child tools automatically |
+| **Create manually** (curl import or manual entry) | Connecting one standalone endpoint | Imports a curl command, or directly configures HTTP method (`GET`/`POST`/`PUT`/`DELETE`/`PATCH`), URL, query parameters, and body template |
 
 ## Configure
 
-1. Create an HTTP tool set in the workspace. Add a tool manually or use the API Schema configuration offered by the interface.
-2. Enter the service address, tool name, and description. In manual mode, set method and path; in Schema mode, inspect the parsed tool list.
+1. Create an HTTP tool set in the workspace and choose **Bulk creation** or **Create manually** under **Create Type**.
+2. Enter the service address, tool name, and description. In manual mode, import a curl command or set method and path; in bulk mode, inspect the parsed tool list.
 3. Configure authentication headers (None, `Bearer Token`, `Basic Auth`, or custom Header key-value pairs), keeping fixed credentials in authentication settings. Define caller-supplied arguments, types, descriptions, and required fields.
 4. Inspect request parameters, body, and output structure, then save.
 5. Select a tool, supply known arguments in its debug panel, run it, and inspect the response or error.

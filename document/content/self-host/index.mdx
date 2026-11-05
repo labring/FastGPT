@@ -50,6 +50,6 @@ FastGPT 私有化部署由核心应用层、辅助执行层与四维数据底座
 
 - **系统配置**：查阅 [环境变量字典](/zh-CN/self-host/config/env)、[对象存储双桶配置](/zh-CN/self-host/config/object-storage) 与 [持久沙箱运行环境](/zh-CN/self-host/config/sandbox/opensandbox)。
 - **模型接入**：通过 [模型服务与 AI Proxy](/zh-CN/self-host/config/model/intro) 统一接入商业模型与 [本地 Ollama / Xinference](/zh-CN/self-host/custom-models/ollama)。
-- **监控观测**：接入 [SigNoz 全链路追踪](/zh-CN/self-host/config/signoz) 监控 API 耗时与系统调用指标。
+- **监控观测**：接入 [SigNoz](/zh-CN/self-host/config/signoz) 收集日志、链路追踪与指标，监控 API 耗时与系统调用情况；链路追踪和指标需单独开启。
 - **数据与升级**：了解 [存储全景设计](/zh-CN/self-host/design/dataset)、[冷热数据迁移备份](/zh-CN/self-host/migration/docker_db) 与 [平滑升级指令](/zh-CN/self-host/upgrading/upgrade-instruction)。
 - **故障排查**：依据 [运维排障手册](/zh-CN/self-host/troubleshooting/methods) 快速定位启动与接口异常。

@@ -47,11 +47,11 @@ Once file upload succeeds, the system processes assets asynchronously using a di
 
 Waiting, parsing and chunking, optional enhancement, and indexing describe processing stages in the diagram. Queued tasks wait for consumption; processing failures enter retry or troubleshooting paths.
 
-The collection summary uses three status values:
+The collection status uses three enum values and displays stage-specific badges in the UI:
 
-- **Processing (`running`)**: Tasks remain in progress, including waiting, parsing, enhancement, and indexing.
-- **Ready (`ready`)**: Processing is complete and chunks are available for retrieval.
-- **Error (`error`)**: Processing errors require inspection. Fix file, model balance, or network prerequisites using the recorded diagnostics, then retry.
+- **In progress (`running`)**: Tasks remain in progress, displaying stage badges such as **Queue**, **Parsing**, **Image analysis**, **Index vectorization**, **Q&A extraction**, **Automatic index generation**, **Image index generation**, **Index rebuilding**, or synonym rebuilding.
+- **Ready (`ready`)**: Displays **Ready**; processing is complete and chunks are available for retrieval.
+- **Indexing error (`error`)**: Displays **Indexing error**; inspect diagnostics in the **Error list** modal, fix file, model balance, or network prerequisites, and retry.
 
 ---
 
