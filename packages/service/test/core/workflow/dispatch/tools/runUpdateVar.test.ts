@@ -151,7 +151,7 @@ describe('WorkflowVariableState file variable updates', () => {
       {
         url: 'https://external.example.com/report.unknown',
         name: 'report.unknown',
-        type: ChatFileTypeEnum.file
+        type: ChatFileTypeEnum.unknown
       }
     ]);
   });

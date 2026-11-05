@@ -24,6 +24,7 @@ import { useSandboxEditor, useSandboxStatus } from '@/pageComponents/chat/Sandbo
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { getAppChatSourceKey } from '@/web/core/chat/utils';
 import type { GetPaginationRecordsBodyType } from '@fastgpt/global/openapi/core/chat/record/api';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 
 const PluginRunBox = dynamic(() => import('@/components/core/chat/ChatContainer/PluginRunBox'));
 const ChatBox = dynamic(() => import('@/components/core/chat/ChatContainer/ChatBox'));
@@ -104,9 +105,9 @@ const DetailLogsModal = ({
         flexDirection={'column'}
         zIndex={1000}
         position={['fixed', 'absolute']}
-        top={[0, '2%']}
+        top={0}
         right={0}
-        h={['100%', '96%']}
+        h={'100%'}
         w={'100%'}
         maxW={datasetCiteData ? ['100%', '1080px'] : ['100%', '600px']}
         bg={'white'}
@@ -143,13 +144,18 @@ const DetailLogsModal = ({
               fontSize={'sm'}
             />
 
-            <IconButton
-              variant={'whiteBase'}
-              size={'smSquare'}
-              icon={<MyIcon name={'common/closeLight'} w={'16px'} />}
-              onClick={onClose}
-              aria-label="Close"
-            />
+            <MyTooltip label={t('common:Close')}>
+              <IconButton
+                size={'smSquare'}
+                icon={<MyIcon name={'common/closeLight'} w={'20px'} />}
+                variant={'ghost'}
+                bg={'transparent'}
+                borderRadius={'md'}
+                _hover={{ bg: 'myGray.05' }}
+                aria-label={t('common:Close')}
+                onClick={onClose}
+              />
+            </MyTooltip>
           </Flex>
         ) : (
           <Flex alignItems={'center'} gap={2} px={[4, 5]} h={['48px', '56px']} color={'myGray.900'}>
@@ -173,19 +179,18 @@ const DetailLogsModal = ({
             )}
 
             <SandboxEntryIcon size={'smSquare'} onOpen={onOpenSandboxModal} />
-            <IconButton
-              variant={'ghost'}
-              w={'32px'}
-              h={'32px'}
-              minW={'32px'}
-              p={0}
-              bg={'transparent'}
-              border={'none'}
-              boxShadow={'none'}
-              aria-label="Close"
-              icon={<MyIcon name={'common/closeLight'} w={'16px'} />}
-              onClick={onClose}
-            />
+            <MyTooltip label={t('common:Close')}>
+              <IconButton
+                size={'smSquare'}
+                icon={<MyIcon name={'common/closeLight'} w={'20px'} />}
+                variant={'ghost'}
+                bg={'transparent'}
+                borderRadius={'md'}
+                _hover={{ bg: 'myGray.05' }}
+                aria-label={t('common:Close')}
+                onClick={onClose}
+              />
+            </MyTooltip>
           </Flex>
         )}
 

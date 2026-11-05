@@ -10,9 +10,12 @@ import {
   type BoxProps
 } from '@chakra-ui/react';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
+import type {
+  AppFormEditFormType,
+  SelectedToolItemType
+} from '@fastgpt/global/core/app/formEdit/type';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
-import React, { useCallback, useMemo, useTransition } from 'react';
+import React, { useCallback, useMemo, useState, useTransition } from 'react';
 import OptimizerPopover from '@/components/common/PromptEditor/OptimizerPopover';
 import VariableTip from '@/components/common/Textarea/MyTextarea/VariableTip';
 import SettingLLMModel from '@/components/core/ai/SettingLLMModel';
@@ -41,6 +44,7 @@ import { useInitializeQueryExtensionModel } from '../FormComponent/useInitialize
 
 const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSelectModal'));
 const DatasetParamsModal = dynamic(() => import('@/components/core/app/DatasetParamsModal'));
+const ConfigToolModal = dynamic(() => import('../component/ConfigToolModal'));
 const TTSSelect = dynamic(() => import('@/components/core/app/TTSSelect'));
 const QGConfig = dynamic(() => import('@/components/core/app/QGConfig'));
 const WhisperConfig = dynamic(() => import('@/components/core/app/WhisperConfig'));
@@ -85,6 +89,7 @@ const EditForm = ({
   });
   const [, startTst] = useTransition();
   const isAgentSandboxEnabled = !!appForm.aiSettings.useAgentSandbox;
+  const [configTool, setConfigTool] = useState<SelectedToolItemType>();
   const { isWelcomeTextFolded, toggleWelcomeTextFold } = useWelcomeTextFoldState(appDetail._id);
 
   const {
@@ -178,6 +183,7 @@ const EditForm = ({
             <Box {...LabelStyles}>{t('common:core.ai.Model')}</Box>
             <Box flex={'1 0 0'}>
               <SettingLLMModel
+                appId={appDetail._id}
                 bg="myGray.50"
                 defaultData={{
                   modelId:
@@ -295,13 +301,7 @@ const EditForm = ({
                 selectedTools: [e, ...(state.selectedTools || [])]
               }));
             }}
-            onUpdateTool={(e) => {
-              setAppForm((state) => ({
-                ...state,
-                selectedTools:
-                  state.selectedTools?.map((item) => (item.id === e.id ? e : item)) || []
-              }));
-            }}
+            onConfigTool={setConfigTool}
             onRemoveTool={(id, source) => {
               setAppForm((state) => ({
                 ...state,
@@ -492,6 +492,7 @@ const EditForm = ({
         {/* question guide */}
         <Box {...BoxStyles}>
           <QGConfig
+            appId={appDetail._id}
             value={appForm.chatConfig.questionGuide}
             onChange={(e) => {
               setAppForm((state) => ({
@@ -523,6 +524,18 @@ const EditForm = ({
         </Box>
       </Box>
 
+      {configTool && (
+        <ConfigToolModal
+          configTool={configTool}
+          onCloseConfigTool={() => setConfigTool(undefined)}
+          onAddTool={(tool) => {
+            setAppForm((state) => ({
+              ...state,
+              selectedTools: state.selectedTools.map((item) => (item.id === tool.id ? tool : item))
+            }));
+          }}
+        />
+      )}
       {isOpenDatasetSelect && (
         <DatasetSelectModal
           defaultSelectedDatasets={selectDatasets.map((item) => ({
@@ -547,6 +560,7 @@ const EditForm = ({
       {isOpenDatasetParams && (
         <DatasetParamsModal
           {...appForm.dataset}
+          appId={appDetail._id}
           maxTokens={tokenLimit}
           showTagFilter={!!feConfigs?.isPlus}
           datasetIds={datasetIds}

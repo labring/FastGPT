@@ -91,6 +91,8 @@ type Props = ChatProviderProps &
     isReady: boolean;
     features?: ChatBoxFeatures;
     active?: boolean; // can use
+    /** 初始化遮罩由聊天布局控制，关闭后允许历史请求期间先展示欢迎内容或变量表单。 */
+    showInitialLoading?: boolean;
     disabledSendTip?: string;
 
     onStartChat?: (e: StartChatFnProps) => Promise<
@@ -153,6 +155,7 @@ const ChatBox = ({
   isReady = true,
   features,
   active = true,
+  showInitialLoading = true,
   disabledSendTip,
   onStartChat,
   onGeneratingMessage,
@@ -199,6 +202,11 @@ const ChatBox = ({
   const setIsVariableVisible = useContextSelector(ChatItemContext, (v) => v.setIsVariableVisible);
 
   const isLoadingRecords = useContextSelector(ChatRecordContext, (v) => v.isLoadingRecords);
+  const isInitialLoadingRecords = useContextSelector(
+    ChatRecordContext,
+    (v) => v.isInitialLoadingRecords
+  );
+  const paginationLoading = useContextSelector(ChatRecordContext, (v) => v.paginationLoading);
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
   const setChatRecords = useContextSelector(ChatRecordContext, (v) => v.setChatRecords);
   const isChatRecordsLoaded = useContextSelector(ChatRecordContext, (v) => v.isChatRecordsLoaded);
@@ -726,7 +734,7 @@ const ChatBox = ({
           {/* chat box container */}
           {isHomeRender ? (
             <MyBox
-              isLoading={isLoadingRecords}
+              isLoading={showInitialLoading && isInitialLoadingRecords}
               display="flex"
               flexDirection="column"
               flex={'1 0 0'}
@@ -743,6 +751,8 @@ const ChatBox = ({
           ) : (
             <>
               <AppChatMain
+                isLoading={showInitialLoading && isInitialLoadingRecords}
+                paginationLoading={paginationLoading}
                 ScrollData={ScrollData}
                 ScrollContainerRef={ScrollContainerRef}
                 welcomeText={welcomeText}

@@ -277,8 +277,10 @@ function QuestionGuide({ setAppDetail }: ComponentProps) {
     AppContext,
     (v) => v.appDetail.chatConfig?.questionGuide ?? defaultQGConfig
   );
+  const appId = useContextSelector(AppContext, (v) => v.appDetail._id);
   return (
     <QGConfig
+      appId={appId || undefined}
       value={questionGuide}
       onChange={(e) => {
         setAppDetail((state) => ({

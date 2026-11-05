@@ -22,6 +22,7 @@ import { ToolParamsNode } from '@fastgpt/global/core/workflow/template/system/to
 import { RunToolSetNode } from '@fastgpt/global/core/workflow/template/system/runToolSet';
 import { UserSelectNode } from '@fastgpt/global/core/workflow/template/system/interactive/userSelect';
 import { WorkflowStart } from '@fastgpt/global/core/workflow/template/system/workflowStart';
+import { AgentNode } from '@fastgpt/global/core/workflow/template/system/agent';
 import type { NodeTemplateContext } from '@fastgpt/global/core/workflow/type/node';
 
 const ctx = (patch: Partial<NodeTemplateContext>): NodeTemplateContext => ({
@@ -327,6 +328,12 @@ describe('template context', () => {
     ).toBe('can_not_parallel');
     expect(
       getNodeContainerCheckError({
+        node: { flowNodeType: FlowNodeTypeEnum.agent },
+        context
+      })
+    ).toBe('can_not_parallel');
+    expect(
+      getNodeContainerCheckError({
         node: LoopRunBreakNode,
         context
       })
@@ -411,7 +418,7 @@ describe('template context', () => {
     ).toBe(false);
   });
 
-  it('userSelect 不在批量执行内部可见', () => {
+  it('userSelect/agent 不在批量执行内部可见', () => {
     expect(isTemplateVisible(UserSelectNode, null)).toBe(true);
     expect(
       isTemplateVisible(UserSelectNode, ctx({ parentType: FlowNodeTypeEnum.parallelRun }))
@@ -419,6 +426,11 @@ describe('template context', () => {
     expect(isTemplateVisible(UserSelectNode, ctx({ parentType: FlowNodeTypeEnum.loopRun }))).toBe(
       true
     );
+    expect(isTemplateVisible(AgentNode, null)).toBe(true);
+    expect(isTemplateVisible(AgentNode, ctx({ parentType: FlowNodeTypeEnum.parallelRun }))).toBe(
+      false
+    );
+    expect(isTemplateVisible(AgentNode, ctx({ parentType: FlowNodeTypeEnum.loopRun }))).toBe(true);
   });
 
   it('loopRun/parallelRun 不在嵌套容器内部可见', () => {

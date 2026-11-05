@@ -452,6 +452,77 @@ describe('auto-fill input variables after connecting from workflow start', () =>
 });
 
 describe('storeNode2FlowNode', () => {
+  it.each([
+    { datasets: [], expected: [] },
+    {
+      datasets: [{ datasetId: 'dataset-1', name: 'Dataset' }],
+      expected: [{ datasetId: 'dataset-1', name: 'Dataset' }]
+    }
+  ])('Agent 知识库手动选择模式下清理混入的旧引用值 %#', ({ datasets, expected }) => {
+    const node = storeNode2FlowNode({
+      item: {
+        ...AgentNode,
+        nodeId: 'legacy-agent',
+        inputs: AgentNode.inputs.map((input) =>
+          input.key === NodeInputKeyEnum.datasetSelectList
+            ? {
+                ...input,
+                renderTypeList: [
+                  FlowNodeInputTypeEnum.selectDataset,
+                  FlowNodeInputTypeEnum.reference
+                ],
+                selectedType: FlowNodeInputTypeEnum.selectDataset,
+                value: [['source-a', 'datasets'], ['source-b', 'datasets'], ...datasets]
+              }
+            : input
+        )
+      },
+      t: ((key: string) => key) as any
+    });
+    const stored = uiWorkflow2StoreWorkflow({ nodes: [node], edges: [] });
+
+    expect(
+      node.data.inputs.find((input) => input.key === NodeInputKeyEnum.datasetSelectList)
+    ).toMatchObject({
+      selectedType: FlowNodeInputTypeEnum.selectDataset,
+      value: expected
+    });
+    expect(
+      stored.nodes[0].inputs.find((input) => input.key === NodeInputKeyEnum.datasetSelectList)
+        ?.value
+    ).toEqual(expected);
+  });
+
+  it('Agent 知识库引用模式下保留引用值', () => {
+    const referenceValue = [
+      ['source-a', 'datasets'],
+      ['source-b', 'datasets']
+    ];
+    const node = storeNode2FlowNode({
+      item: {
+        ...AgentNode,
+        nodeId: 'agent-reference-datasets',
+        inputs: AgentNode.inputs.map((input) =>
+          input.key === NodeInputKeyEnum.datasetSelectList
+            ? {
+                ...input,
+                selectedType: FlowNodeInputTypeEnum.reference,
+                value: referenceValue
+              }
+            : input
+        )
+      },
+      t: ((key: string) => key) as any
+    });
+
+    expect(
+      node.data.inputs.find((input) => input.key === NodeInputKeyEnum.datasetSelectList)
+    ).toMatchObject({
+      selectedType: FlowNodeInputTypeEnum.reference,
+      value: referenceValue
+    });
+  });
+
   it('preserves saved query extension settings despite the new disabled template default', () => {
     const node = storeNode2FlowNode({
       item: {

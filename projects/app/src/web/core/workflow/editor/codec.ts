@@ -20,7 +20,8 @@ import {
   normalizeFlowNodeInputType,
   serializeAgentTool
 } from '@fastgpt/global/core/app/formEdit/utils';
-import { SelectedToolItemTypeSchema } from '@fastgpt/global/core/app/formEdit/type';
+import type { SelectedToolItemType } from '@fastgpt/global/core/app/formEdit/type';
+import type { AgentToolType } from '@fastgpt/global/core/app/tool/type';
 import { storeNode2FlowNode } from '@/web/core/workflow/utils';
 import type { Edge, Node } from '@xyflow/react';
 import {
@@ -82,12 +83,11 @@ export const uiWorkflow2StoreWorkflow = ({
       !nodeInputIsReference(selectedToolsInput) &&
       Array.isArray(selectedToolsInput.value)
     ) {
-      const serializedTools: any[] = [];
-      for (const tool of selectedToolsInput.value as any[]) {
-        const parsed = SelectedToolItemTypeSchema.safeParse(tool);
-        if (parsed.success) serializedTools.push(serializeAgentTool({ tool: parsed.data }));
-      }
-      selectedToolsInput.value = serializedTools as any;
+      // 展开态独有 flowNodeType；存储态原样保留，避免稀疏/失败工具在保存时被 Schema 过滤。
+      selectedToolsInput.value = selectedToolsInput.value.map(
+        (tool: SelectedToolItemType | AgentToolType) =>
+          'flowNodeType' in tool ? serializeAgentTool({ tool }) : tool
+      );
     }
 
     return {

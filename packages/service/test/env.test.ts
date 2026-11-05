@@ -5,6 +5,8 @@ const validInvokeTokenSecret = 'fastgpt_test_invoke_token_secret_32';
 const originalEnv = {
   AUXILIARY_GENERATION_SHOW_RUN_DETAIL: process.env.AUXILIARY_GENERATION_SHOW_RUN_DETAIL,
   DB_MAX_LINK: process.env.DB_MAX_LINK,
+  HNSW_MAX_SCAN_TUPLES: process.env.HNSW_MAX_SCAN_TUPLES,
+  HNSW_EF_SEARCH: process.env.HNSW_EF_SEARCH,
   SYSTEM_MIGRATION_BATCH_SIZE: process.env.SYSTEM_MIGRATION_BATCH_SIZE,
   SYSTEM_MIGRATION_DELAY_SECONDS: process.env.SYSTEM_MIGRATION_DELAY_SECONDS,
   SYSTEM_MAX_STRING_LENGTH_M: process.env.SYSTEM_MAX_STRING_LENGTH_M,
@@ -68,6 +70,8 @@ describe('serviceEnv', () => {
       originalEnv.AUXILIARY_GENERATION_SHOW_RUN_DETAIL
     );
     vi.stubEnv('DB_MAX_LINK', originalEnv.DB_MAX_LINK);
+    vi.stubEnv('HNSW_MAX_SCAN_TUPLES', originalEnv.HNSW_MAX_SCAN_TUPLES);
+    vi.stubEnv('HNSW_EF_SEARCH', originalEnv.HNSW_EF_SEARCH);
     vi.stubEnv('SYSTEM_MIGRATION_BATCH_SIZE', originalEnv.SYSTEM_MIGRATION_BATCH_SIZE);
     vi.stubEnv('SYSTEM_MIGRATION_DELAY_SECONDS', originalEnv.SYSTEM_MIGRATION_DELAY_SECONDS);
     vi.stubEnv('SYSTEM_MAX_STRING_LENGTH_M', originalEnv.SYSTEM_MAX_STRING_LENGTH_M);
@@ -141,6 +145,18 @@ describe('serviceEnv', () => {
     vi.stubEnv('AUXILIARY_GENERATION_SHOW_RUN_DETAIL', value);
     const { serviceEnv } = await importServiceEnv();
     expect(serviceEnv.AUXILIARY_GENERATION_SHOW_RUN_DETAIL).toBe(expected);
+  });
+
+  it('ignores the retired HNSW scan budget environment variable', async () => {
+    vi.stubEnv('HNSW_MAX_SCAN_TUPLES', 'no-longer-used');
+    const { serviceEnv } = await importServiceEnv();
+    expect(serviceEnv).not.toHaveProperty('HNSW_MAX_SCAN_TUPLES');
+  });
+
+  it.each([undefined, '100', '400'])('loads HNSW search width %j', async (configured) => {
+    vi.stubEnv('HNSW_EF_SEARCH', configured);
+    const { serviceEnv } = await importServiceEnv();
+    expect(serviceEnv.HNSW_EF_SEARCH).toBe(configured === undefined ? 200 : Number(configured));
   });
 
   it('clamps DB_MAX_LINK to the supported connection pool range', async () => {

@@ -23,6 +23,7 @@
   "export_config": "설정 내보내기",
   "export_failed": "내보내기 실패",
   "export_success": "내보내기 성공",
+  "export_sandbox_wait": "샌드박스가 준비된 후 스킬을 내보내세요.",
   "history_versions": "버전 기록",
   "import_existing_skill": "기존 스킬 가져오기",
   "import_existing_skill_desc": "외부에서 자주 사용하는 스킬을 플랫폼으로 바로 가져옵니다. .zip 형식을 지원합니다.",
@@ -96,5 +97,6 @@
   "delete_skills_confirm_title": "{{count}}개 스킬 삭제 확인",
   "delete_folders_confirm_title": "{{count}}개 폴더 삭제 확인",
   "delete_following_skills_tip": "다음 스킬을 삭제하면 복구할 수 없습니다.",
-  "delete_following_folders_tip": "삭제 후 해당 폴더와 내부의 모든 스킬이 함께 삭제됩니다."
+  "delete_following_folders_tip": "삭제 후 해당 폴더와 내부의 모든 스킬이 함께 삭제됩니다.",
+  "generating": "생성 중"
 }

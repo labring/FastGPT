@@ -1,9 +1,11 @@
 import DatasetParamsModal from '@/components/core/app/DatasetParamsModal';
 import SearchParamsTip from '@/components/core/dataset/SearchParamsTip';
+import { AppContext } from '@/pageComponents/app/detail/context';
 import { Flex, useDisclosure } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
 import React, { useMemo } from 'react';
+import { useContextSelector } from 'use-context-selector';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { useNode, useNodeActions } from '@/web/core/workflow/editor/react/useNode';
@@ -17,6 +19,7 @@ const SelectDatasetParam = ({ nodeId }: RenderInputProps) => {
   const nodeActions = useNodeActions(nodeId);
   const currentInputs =
     useNode<FlowNodeInputItemType[]>(nodeId, (node) => node?.data.inputs) ?? emptyInputs;
+  const appId = useContextSelector(AppContext, (v) => v.appId);
   const llmMaxQuoteContext = useWorkflowQuoteLimit();
   const { t } = useTranslation();
   const data = useMemo(() => {
@@ -72,6 +75,7 @@ const SelectDatasetParam = ({ nodeId }: RenderInputProps) => {
       {isOpen && (
         <DatasetParamsModal
           {...data}
+          appId={appId || undefined}
           maxTokens={llmMaxQuoteContext}
           onClose={onClose}
           onSuccess={(e) => {

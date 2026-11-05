@@ -102,7 +102,7 @@ function List() {
     scrollContainerRef,
     estimatedRowHeight: 160,
     estimatedRowGap: 20,
-    loadingItemCount: isFetchingDatasets ? pageSize : 0,
+    loadingItemCount: isInitialLoading ? pageSize : 0,
     renderLoadingItem: () => <ResourceCardSkeleton />
   });
 
@@ -463,7 +463,6 @@ function List() {
       minH={0}
       pr={folderDetail ? [3, 2] : [3, 6]}
       mr={folderDetail ? [-3, -2] : [-3, -6]}
-      showLoadingOverlay={false}
     >
       <>
         {isInitialLoading ? (

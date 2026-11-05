@@ -125,6 +125,7 @@ const NodeVariableUpdate = ({ data, selected }: CanvasNodeProps) => {
             return {
               inputType: it,
               formParams: {
+                appId: appDetail._id,
                 maxLength: variable.maxLength,
                 minLength: variable.minLength,
                 min: variable.min,

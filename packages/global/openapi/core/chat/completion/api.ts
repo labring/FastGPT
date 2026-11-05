@@ -1,3 +1,4 @@
+import { ChatPublishSourceSchema } from '../../../../core/chat/publishSource/type';
 import { OpenObjectOpenApiMeta } from '../../../../common/zod/openapi';
 import z from 'zod';
 import type { ZodOpenApiMetadata } from 'zod-openapi';
@@ -58,7 +59,9 @@ const WebCompletionsSchema = z.object({
       description: '会话 ID；未传入或传入空字符串时自动生成新会话 ID'
     }),
   customUid: optionalNullToUndefined(z.string().max(1024)).meta({
-    description: '自定义用户ID(分享链接)'
+    example: 'customer-42',
+    description:
+      '接入方后端提供的使用者 ID（FastGPT 4.18.0 及以上版本支持），最长 1024 字符；不改变鉴权成员，与 authProxy 互斥。空字符串沿用默认使用者'
   }),
   metadata: optionalNullToUndefined(z.record(z.string(), z.any())).meta({
     description: '元数据'
@@ -111,7 +114,7 @@ const CompletionsBodySchema = WebCompletionsSchema.extend({
   ...ChatCompletionCreateParamsSchema.shape,
   authProxy: optionalNullToUndefined(ChatCompletionAuthProxySchema).meta({
     description:
-      'API Key 代理调用身份，外链会话不支持。按团队成员 ID 或用户名指定；二者同时传入时优先使用 tmbId，解析时过滤 username；tmbId 无效时不回退到用户名'
+      'API Key 代理调用身份，与 customUid 互斥，外链会话不支持。按团队成员 ID 或用户名指定；二者同时传入时优先使用 tmbId，解析时过滤 username；tmbId 无效时不回退到用户名'
   }),
   variables: nullishToUndefined(z.record(z.string(), z.any()).default({})).meta({
     description: '全局变量或插件输入'
@@ -139,41 +142,52 @@ const CompletionsBodySchema = WebCompletionsSchema.extend({
  * Completions 仅支持应用和外链会话，身份字段先于公共运行参数展示。
  * 应用 ID 允许由 API Key 请求头补足；外链优先并忽略 appId，但无效外链数据不得回退。
  */
-export const CompletionsPropsSchema = z.union([
-  z
-    .object({
-      appId: optionalNullToUndefined(ObjectIdSchema).meta({
-        example: '68ad85a7463006c963799a05',
+export const CompletionsPropsSchema = z
+  .union([
+    z
+      .object({
+        appId: optionalNullToUndefined(ObjectIdSchema).meta({
+          example: '68ad85a7463006c963799a05',
+          description:
+            '应用 ID。推荐在请求体中传入；APIKey 调用时优先级为 body.appId > Authorization 中的 apiKey-appId 后缀 > 旧 APIKey 绑定 appId。apiKey-appId 仅用于兼容 OpenAI SDK，不会写入数据库'
+        }),
+        outLinkAuthData: optionalNullToUndefined(z.never()),
+        ...CompletionsBodySchema.shape
+      })
+      .meta({
+        title: '应用会话',
         description:
-          '应用 ID。推荐在请求体中传入；APIKey 调用时优先级为 body.appId > Authorization 中的 apiKey-appId 后缀 > 旧 APIKey 绑定 appId。apiKey-appId 仅用于兼容 OpenAI SDK，不会写入数据库'
-      }),
-      outLinkAuthData: optionalNullToUndefined(z.never()),
-      ...CompletionsBodySchema.shape
-    })
-    .meta({
-      title: '应用会话',
-      description:
-        '通过 appId 定位应用，使用 API Key 或登录态鉴权。API Key 调用可省略 body.appId，由请求头的 apiKey-appId 后缀或旧 API Key 绑定应用补足；登录态调用必须传 appId。',
-      override: ({ jsonSchema }) => {
-        // 保留 null 兼容守卫，但不把禁用的外链字段展示为应用会话参数。
-        delete jsonSchema.properties?.outLinkAuthData;
-      }
-    } satisfies ZodOpenApiMetadata),
-  z
-    .object({
-      outLinkAuthData: OutLinkChatAuthSchema.meta({
+          '通过 appId 定位应用，使用 API Key 或登录态鉴权。API Key 调用可省略 body.appId，由请求头的 apiKey-appId 后缀或旧 API Key 绑定应用补足；登录态调用必须传 appId。',
+        override: ({ jsonSchema }) => {
+          // 保留 null 兼容守卫，但不把禁用的外链字段展示为应用会话参数。
+          delete jsonSchema.properties?.outLinkAuthData;
+        }
+      } satisfies ZodOpenApiMetadata),
+    z
+      .object({
+        outLinkAuthData: OutLinkChatAuthSchema.meta({
+          description:
+            '外链鉴权对象，包含 shareId 和 outLinkUid。优先于 appId，忽略低优先级字段；允许同时携带 token/Cookie，受保护外链仍需校验登录态。'
+        }),
+        appId: z.never().optional().catch(undefined),
+        ...CompletionsBodySchema.shape
+      })
+      .meta({
+        title: '外链会话',
         description:
-          '外链鉴权对象，包含 shareId 和 outLinkUid。优先于 appId，忽略低优先级字段；允许同时携带 token/Cookie，受保护外链仍需校验登录态。'
-      }),
-      appId: z.never().optional().catch(undefined),
-      ...CompletionsBodySchema.shape
-    })
-    .meta({
-      title: '外链会话',
-      description:
-        '通过 outLinkAuthData 解析真实应用，优先于 appId 和请求头身份；受保护外链仍需 token/Cookie 校验登录态。外链校验失败时不会回退到普通应用鉴权，且不支持 authProxy。'
-    })
-]);
+          '通过 outLinkAuthData 解析真实应用，优先于 appId 和请求头身份；受保护外链仍需 token/Cookie 校验登录态。外链校验失败时不会回退到普通应用鉴权，且不支持 authProxy。'
+      })
+  ])
+  .superRefine((data, ctx) => {
+    // 在最终 union 校验，避免中间对象被 .shape 展开后丢失字段间约束。
+    if (data.customUid !== undefined && data.authProxy !== undefined) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['customUid'],
+        message: 'customUid and authProxy are mutually exclusive'
+      });
+    }
+  });
 export type CompletionsProps = z.infer<typeof CompletionsPropsSchema>;
 
 /* =============== Response =============== */
@@ -231,11 +245,12 @@ export type CompletionsResponseType = z.infer<typeof CompletionsResponseSchema>;
 export const ChatWorkflowSseResponseSchema = z.string().meta({
   example: 'event: answer\ndata: {"choices":[...]}\n\n',
   description:
-    '工作流 SSE 事件流；根据接口版本和 detail 配置返回 answer、flowNodeResponse、interactive 等事件，最后以 [DONE] 结束'
+    '工作流 SSE 事件流；根据接口版本和 detail 配置返回 answer、flowNodeResponse、interactive 等事件，最后以 [DONE] 结束。同会话已有生成时，error 事件的 statusText 为 chatIsGenerating，data.responseChatItemId 提供当前服务端 AI 消息 ID；交互续跑返回 data.reusePreviousAi=true，表示刷新并复用最新 AI。本次被拒绝的消息未写入数据库，客户端应回填输入并恢复原有轮次。'
 });
 export type ChatWorkflowSseResponseType = z.infer<typeof ChatWorkflowSseResponseSchema>;
 
 export const AuthResponseSchema = z.object({
+  publishSource: ChatPublishSourceSchema.optional(),
   teamId: ObjectIdSchema.meta({ description: '团队ID' }),
   tmbId: ObjectIdSchema.meta({ description: '团队成员ID' }),
   app: AppSchemaTypeSchema.meta({ description: '应用' }),

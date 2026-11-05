@@ -260,9 +260,15 @@ export const InputConfigTypeSchema = z.object({
   inputType: InputConfigInputTypeSchema.meta({
     description: '输入配置渲染组件类型'
   }),
-  value: SecretValueTypeSchema.optional().meta({
-    description: '输入配置默认值或密钥值'
-  }),
+  value: z
+    .union([
+      SecretValueTypeSchema,
+      z.object({ value: z.union([z.number(), z.boolean()]) }).strict()
+    ])
+    .optional()
+    .meta({
+      description: '输入配置默认值或密钥值'
+    }),
 
   // Selector
   list: z

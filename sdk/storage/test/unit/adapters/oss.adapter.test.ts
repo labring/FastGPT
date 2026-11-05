@@ -1,4 +1,4 @@
-import { PassThrough } from 'node:stream';
+import { PassThrough, Readable } from 'node:stream';
 import { describe, expect, it, vi } from 'vitest';
 import { OssStorageAdapter } from '../../../src/adapters/oss.adapter';
 
@@ -330,5 +330,26 @@ describe('OssStorageAdapter.generatePublicGetUrl', () => {
     });
 
     expect(adapter.generatePublicGetUrl({ key: 'folder #/file+.txt' }).url).toBe(expectedUrl);
+  });
+});
+
+describe('OssStorageAdapter.uploadObject', () => {
+  it('passes known stream length so ali-oss does not add chunked encoding', async () => {
+    const adapter = createAdapter();
+    const put = vi.fn().mockResolvedValue({});
+    (adapter as any).client.put = put;
+    const body = Readable.from([Buffer.from('test')]);
+
+    await adapter.uploadObject({
+      key: 'dataset/team/file.txt',
+      body,
+      contentLength: 4
+    });
+
+    expect(put).toHaveBeenCalledWith(
+      'dataset/team/file.txt',
+      body,
+      expect.objectContaining({ contentLength: 4 })
+    );
   });
 });

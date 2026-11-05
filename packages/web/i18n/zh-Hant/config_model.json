@@ -272,6 +272,8 @@
   "available_to_all": "全員可用",
   "only_available_to_self": "僅自己可用",
   "shared_with_me": "與我共用",
+  "creator": "建立者",
+  "system_model": "系統模型",
   "system_model_tag": "系統",
   "replace_invalid_title": "替換已失效模型",
   "replace_invalid_review": "確認",
@@ -294,5 +296,8 @@
   "replace_invalid_failed_samples": "失敗樣例",
   "replace_invalid_retry": "重新執行",
   "replace_invalid_retry_note": "可使用相同對應再次執行，以處理未完成的失效引用。",
-  "replace_invalid_request_failed": "替換請求失敗；已寫入的記錄不會自動回復，可重新執行。"
+  "replace_invalid_request_failed": "替換請求失敗；已寫入的記錄不會自動回復，可重新執行。",
+  "model.custom_sort": "自訂排序",
+  "model.cancel_sort": "取消",
+  "model.save_sort": "儲存排序"
 }

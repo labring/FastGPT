@@ -876,7 +876,7 @@ describe('parseFileContentFromUrls (external fetch)', () => {
 });
 
 /** 构造消息附件，保持名称、类型和 URL 明确，不复制生产去重或重写逻辑。 */
-const attachment = (url: string, type = ChatFileTypeEnum.file): UserChatItemValueItemType => ({
+const attachment = (url: string, type = ChatFileTypeEnum.document): UserChatItemValueItemType => ({
   file: { url, name: url.split('/').pop()!, type }
 });
 
@@ -891,6 +891,35 @@ describe('formatAIChatUserQueryWithFiles', () => {
     const query = [...text, attachment('/missing.pdf')];
     expect(await formatAIChatUserQueryWithFiles({ userQuery: query, parseFileFn })).toBe(query);
     expect(parseFileFn).toHaveBeenCalledWith(['/missing.pdf']);
+  });
+
+  it('历史 file 按名称归类，文档别名和下载接口进入解析，未知格式跳过且不修改原输入', async () => {
+    const documentUrls = [
+      'https://files.example.com/a.pdf',
+      'https://files.example.com/page.HtM',
+      'https://files.example.com/README.MARKDOWN',
+      'https://files.example.com/download.php?id=42'
+    ];
+    const parseFileFn = vi.fn(async () => []);
+    const query = [
+      attachment(documentUrls[0], ChatFileTypeEnum.file),
+      attachment('https://files.example.com/archive.zip', ChatFileTypeEnum.file),
+      attachment(documentUrls[1], ChatFileTypeEnum.file),
+      attachment(documentUrls[2], ChatFileTypeEnum.file),
+      { file: { name: 'report.pdf', url: documentUrls[3], type: ChatFileTypeEnum.file } }
+    ];
+    const result = await formatAIChatUserQueryWithFiles({ userQuery: query, parseFileFn });
+    expect(result.map((item) => item.file?.type)).toEqual([
+      ChatFileTypeEnum.document,
+      ChatFileTypeEnum.unknown,
+      ChatFileTypeEnum.document,
+      ChatFileTypeEnum.document,
+      ChatFileTypeEnum.document
+    ]);
+    expect(parseFileFn).toHaveBeenCalledExactlyOnceWith(documentUrls);
+    expect(query.map((item) => item.file?.type)).toEqual(
+      Array(query.length).fill(ChatFileTypeEnum.file)
+    );
   });
 
   it.each([false, true])(
@@ -942,7 +971,10 @@ describe('formatAIChatUserQueryWithFiles', () => {
                 filename: outcome === 'image/jpeg' ? '原图.jpeg' : 'report.pdf'
               }
         );
-      const file = attachment(`https://files.example.com/api/system/file/d/${alias}`);
+      const file = attachment(
+        `https://files.example.com/api/system/file/d/${alias}`,
+        ChatFileTypeEnum.file
+      );
       file.file!.name = '';
       const parseFileFn = vi.fn(async () => []);
       const result = await formatAIChatUserQueryWithFiles({ userQuery: [file], parseFileFn });
@@ -951,9 +983,15 @@ describe('formatAIChatUserQueryWithFiles', () => {
         expect(result[0].file).toMatchObject({ name: '原图.jpeg', type: ChatFileTypeEnum.image });
         expect(file.file?.type).toBe(ChatFileTypeEnum.file);
         expect(parseFileFn).not.toHaveBeenCalled();
-      } else {
-        expect(result[0]).toBe(file);
+      } else if (outcome === 'application/pdf') {
+        expect(result[0].file).toMatchObject({
+          name: 'report.pdf',
+          type: ChatFileTypeEnum.document
+        });
         expect(parseFileFn).toHaveBeenCalledWith([file.file!.url]);
+      } else {
+        expect(result[0].file?.type).toBe(ChatFileTypeEnum.unknown);
+        expect(parseFileFn).not.toHaveBeenCalled();
       }
     }
   );

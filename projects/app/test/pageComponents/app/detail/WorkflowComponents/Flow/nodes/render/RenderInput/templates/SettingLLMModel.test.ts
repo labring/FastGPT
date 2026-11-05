@@ -28,6 +28,11 @@ vi.mock('@/web/core/workflow/editor/react/useNode', () => ({
 vi.mock('@/web/core/workflow/editor/react/useField', () => ({
   useField: () => undefined
 }));
+vi.mock('@/pageComponents/app/detail/context', () => ({ AppContext: {} }));
+vi.mock('use-context-selector', () => ({
+  useContextSelector: (_: unknown, selector: (value: unknown) => unknown) =>
+    selector({ appId: 'app' })
+}));
 vi.mock('@/components/core/ai/SettingLLMModel', () => ({ default: 'model-settings' }));
 import Wrapper from '@/pageComponents/app/detail/WorkflowComponents/Flow/nodes/render/RenderInput/templates/SettingLLMModel';
 

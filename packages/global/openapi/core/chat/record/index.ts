@@ -4,7 +4,6 @@ import { DevApiTagsMap, SystemOpenApiTagMap } from '../../../tag';
 import {
   GetResDataQueryRawSchema,
   DeleteChatRecordBodyRawSchema,
-  DeleteChatRecordResponseSchema,
   GetQuoteBodyRawSchema,
   GetQuoteResponseSchema,
   GetCollectionQuoteBodyRawSchema,
@@ -134,9 +133,10 @@ export const ChatRecordPath: OpenAPIPath = {
     delete: {
       summary: '删除对话',
       description:
-        '软删除指定消息。Ask/Preview 的待回答状态由剩余消息推导；删除末轮回答及后续 AI 后可重新回答。',
+        '通过 JSON Body 软删除指定消息，outLinkAuthData 传对象，contentIds 传数组。Ask/Preview 的待回答状态由剩余消息推导；删除末轮回答及后续 AI 后可重新回答。',
       tags: [DevApiTagsMap.chatRecord, SystemOpenApiTagMap.chat],
       requestBody: {
+        required: true,
         content: {
           'application/json': {
             schema: DeleteChatRecordBodyRawSchema
@@ -145,12 +145,7 @@ export const ChatRecordPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '删除成功',
-          content: {
-            'application/json': {
-              schema: DeleteChatRecordResponseSchema
-            }
-          }
+          description: '删除成功'
         }
       }
     }

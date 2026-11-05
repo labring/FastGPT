@@ -1,10 +1,7 @@
 import { AppTypeEnum } from './constants';
 import { NodeInputKeyEnum } from '../workflow/constants';
 import { DatasetSearchModeEnum } from '../dataset/constants';
-import {
-  DatasetTagFilterValueSchema,
-  DatasetTagFilterVersionSchema
-} from '../dataset/search/tagFilter';
+import { DatasetTagFilterValueSchema } from '../dataset/search/tagFilter';
 import type { ReasoningEffort } from '../ai/llm/type';
 import type { AppPermission } from '../../support/permission/app/controller';
 import {
@@ -420,8 +417,7 @@ export const AppDatasetSearchParamsTypeSchema = z.object({
   datasetSearchExtensionBg: z.string().optional(),
   [NodeInputKeyEnum.authTmbId]: BoolSchema.optional(),
 
-  collectionFilterMatch: z.union([z.string(), DatasetTagFilterValueSchema]).optional(),
-  [NodeInputKeyEnum.collectionFilterVersion]: DatasetTagFilterVersionSchema.optional()
+  collectionFilterMatch: z.union([z.string(), DatasetTagFilterValueSchema]).optional()
 });
 export type AppDatasetSearchParamsType = z.infer<typeof AppDatasetSearchParamsTypeSchema>;
 

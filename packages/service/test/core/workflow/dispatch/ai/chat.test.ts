@@ -82,7 +82,7 @@ describe('getAIChatFileContextConfig', () => {
 });
 
 describe('getInputFiles', () => {
-  it('保留音频显示名称，无后缀 URL 仍发送音频且不按名称猜 format', async () => {
+  it('保留显式音频类型，无后缀 URL 按显示名称补充 format', async () => {
     const url = 'https://files.example.com/opaque-short-token';
     let userFiles = [] as Awaited<ReturnType<typeof getInputFiles>>;
 
@@ -136,7 +136,8 @@ describe('getInputFiles', () => {
       {
         type: 'input_audio',
         input_audio: {
-          data: url
+          data: url,
+          format: 'mp3'
         }
       }
     ]);
@@ -154,6 +155,7 @@ describe('getInputFiles', () => {
       {
         type: ChatFileTypeEnum.image,
         name: url,
+        filename: 'get-image.jpg',
         url
       }
     ]);

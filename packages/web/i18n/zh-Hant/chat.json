@@ -1,4 +1,5 @@
 {
+  "source_dingtalk": "釘釘",
   "AI_input_is_empty": "傳送至 AI 節點的內容為空",
   "LLM_model_response_empty": "模型響應為空，請查看模型詳情請求",
   "Next": "下一個",
@@ -305,5 +306,7 @@
   "interactive.agent_ask.waiting": "正在詢問",
   "interactive.agent_ask.asked_questions": "已詢問 {{count}} 個問題",
   "view_all_citations": "查看全部",
-  "view_citations": "檢視引用"
+  "view_citations": "檢視引用",
+  "sandbox_connection_closed": "沙箱連線已中斷",
+  "sandbox_invalid_file_name": "檔名不合法"
 }

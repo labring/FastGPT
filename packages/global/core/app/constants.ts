@@ -6,6 +6,7 @@ import {
 } from './type';
 import type { AppFileSelectConfigType } from './type/config.schema';
 import { documentFileExtensions } from '../../common/file/constants';
+import type { ChatFileTypeEnum } from '../chat/constants';
 import z from 'zod';
 
 export enum AppTypeEnum {
@@ -158,7 +159,7 @@ export const isChatFileAllowedBySelectConfig = ({
 }: {
   filename: string;
   contentType?: string;
-  fileType: 'image' | 'audio' | 'video' | 'file';
+  fileType: `${ChatFileTypeEnum}`;
   fileSelectConfig: AppFileSelectConfigType;
 }) => {
   const allowedExtensions = getUploadFileType(fileSelectConfig)

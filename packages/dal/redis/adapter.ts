@@ -484,6 +484,29 @@ export class RedisCacheAdapter {
       }
     });
 
+  /** 批量读取字符串 key，保持输入顺序；空列表不访问 Redis，读取失败不能当作全部 miss。 */
+  getMany = async (keys: readonly RedisLogicalKey[]): Promise<(string | null)[]> => {
+    if (keys.length === 0) return [];
+
+    return this.operationExecutor.read({
+      operation: 'string.getMany',
+      execute: async () => {
+        const values = await this.getCommandClient().mget(...keys.map(toPhysicalRedisKey));
+        if (
+          !Array.isArray(values) ||
+          values.length !== keys.length ||
+          values.some((value) => value !== null && typeof value !== 'string')
+        ) {
+          throw new RedisInvalidResponseError({
+            operation: 'string.getMany',
+            message: 'Redis MGET returned an unsupported response'
+          });
+        }
+        return values;
+      }
+    });
+  };
+
   /**
    * 原子读取并删除字符串 key。优先使用 Redis GETDEL；旧版本 Redis 不支持时，
    * 在 Adapter 内部降级为等价 Lua 原子操作，业务 Cache 不感知具体实现。

@@ -58,7 +58,7 @@ export const useNodeTemplates = (context: NodeTemplateContext | null = null) => 
 
   const {
     data: teamTemplates,
-    isLoading: teamTemplatesIsLoading,
+    isInitialLoading: teamTemplatesIsLoading,
     ScrollData: TeamScrollData
   } = useScrollPagination(getTeamAppTemplatesV2, {
     params: {

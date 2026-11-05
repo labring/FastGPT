@@ -52,6 +52,8 @@ import InputSlider from '@fastgpt/web/components/common/MySlider/InputSlider';
 import RadioGroup from '@fastgpt/web/components/common/Radio/RadioGroup';
 import { FileTypeSelectorPanel } from '@fastgpt/web/components/core/app/FileTypeSelector';
 import NodeInputSelect from '@fastgpt/web/components/core/workflow/NodeInputSelect';
+import { useContextSelector } from 'use-context-selector';
+import { AppContext } from '@/pageComponents/app/detail/context';
 import { ReferSelector, useReference } from '../render/RenderInput/templates/Reference';
 
 const inputFormGridTemplateColumns = 'minmax(64px, max-content) minmax(0, 1fr)';
@@ -116,6 +118,7 @@ const InputTypeConfig = ({
 }) => {
   const { t } = useTranslation();
   const { maxUploadFileCount } = useFileUploadLimits();
+  const appId = useContextSelector(AppContext, (v) => v.appId);
 
   const typeLabels = useMemo(() => {
     return {
@@ -431,6 +434,7 @@ const InputTypeConfig = ({
         alignContent={'start'}
         textAlign={'left'}
         p={8}
+        h={'full'}
         flex={'0 1 auto'}
         overflow={'auto'}
       >
@@ -746,6 +750,7 @@ const InputTypeConfig = ({
                 <Box flex={'1'}>
                   <AIModelSelector
                     modelType={ModelTypeEnum.llm}
+                    appId={appId || undefined}
                     value={defaultValue}
                     onChange={(model) => {
                       setValue('defaultValue', model);

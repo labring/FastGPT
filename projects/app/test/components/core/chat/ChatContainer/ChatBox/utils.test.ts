@@ -795,7 +795,7 @@ describe('refreshSubmittedFormInteractiveValues', () => {
       {
         key: 'chat/app/user/chat/report_xxx.pdf',
         name: 'report.pdf',
-        type: ChatFileTypeEnum.file
+        type: ChatFileTypeEnum.document
       }
     ]);
   });

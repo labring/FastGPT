@@ -331,6 +331,8 @@ describe('runPiAgentLoop', () => {
     expect(agentConstructorArgs[0].initialState.systemPrompt).toBe('system prompt');
     expect(agentConstructorArgs[0].toolExecution).toBe('sequential');
     expect(agentConstructorArgs[0].initialState.messages).toEqual([]);
+    expect(result.assistantMessages[0]).toHaveProperty('reasoning_content', '');
+    expect(result.completeMessages.at(-1)).toHaveProperty('reasoning_content', '');
     expect(result).toMatchObject({
       status: 'done',
       completeMessages: [

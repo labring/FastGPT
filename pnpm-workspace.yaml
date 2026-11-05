@@ -6,7 +6,6 @@ packages:
   - projects/marketplace
   - projects/mcp_server
   - projects/volume-manager
-  - pro/llm_benchmark/content_benchmark
   - pro/admin
   - pro/sso
   - pro/browser-sandbox
@@ -35,6 +34,7 @@ catalog:
   '@llamaindex/liteparse-wasm': 2.0.8
   '@modelcontextprotocol/sdk': ^1
   '@node-rs/jieba': 2.0.1
+  '@playwright/test': 1.64.1
   '@scalar/components': 0.27.10
   '@svgr/webpack': ^6.5.1
   '@t3-oss/env-core': 0.13.10

@@ -22,6 +22,9 @@ export enum ChatFileTypeEnum {
   image = 'image',
   audio = 'audio',
   video = 'video',
+  document = 'document',
+  unknown = 'unknown',
+  /** @deprecated 只兼容历史数据和旧客户端入参，新文件须推测为 document、unknown 或媒体类型。 */
   file = 'file'
 }
 
@@ -35,7 +38,8 @@ export enum ChatSourceEnum {
   official_account = 'official_account',
   wecom = 'wecom',
   wechat = 'wechat',
-  mcp = 'mcp'
+  mcp = 'mcp',
+  dingtalk = 'dingtalk'
 }
 
 /**
@@ -117,6 +121,10 @@ export const ChatSourceMap = {
     name: i18nT('common:core.chat.logs.wechat'),
     color: '#07C160'
   },
+  [ChatSourceEnum.dingtalk]: {
+    name: i18nT('chat:source_dingtalk'),
+    color: '#0089FF'
+  },
   [ChatSourceEnum.mcp]: {
     name: i18nT('common:core.chat.logs.mcp'),
     color: '#F97066'
@@ -135,10 +143,12 @@ export enum GetChatTypeEnum {
   home = 'home'
 }
 
+/** 列表和轮询的单次运行状态查询上限。 */
+export const CHAT_GENERATION_STATUS_BATCH_SIZE = 200;
+
 export enum ChatGenerateStatusEnum {
   generating = 0,
-  done = 1,
-  error = 2
+  done = 1
 }
 
 /**

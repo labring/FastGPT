@@ -5,28 +5,38 @@ import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { LinkedPaginationProps } from '@fastgpt/global/openapi/api';
 import { useLinkedScroll } from '../../hooks/useLinkedScroll';
+import MyBox from '../../components/common/MyBox';
 
 vi.mock('next-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
 vi.mock('../../hooks/useToast', () => ({ useToast: () => ({ toast: vi.fn() }) }));
-vi.mock('../../components/common/MyBox', () => ({
-  default: React.forwardRef<HTMLDivElement, { isLoading: boolean; children: React.ReactNode }>(
-    function ScrollContainer({ isLoading, children }, ref) {
-      return React.createElement(
-        'div',
-        {
-          ref: (element: HTMLDivElement | null) => {
-            if (element) element.scrollTo = vi.fn();
-            if (typeof ref === 'function') ref(element);
-            else if (ref) ref.current = element;
-          },
-          'data-loading': String(isLoading)
-        },
-        children
-      );
-    }
-  )
+vi.mock('../../components/common/MyLoading', () => ({
+  default: () => React.createElement('div', { 'data-loading-overlay': '' })
 }));
-vi.mock('@chakra-ui/react', () => ({ Box: () => null }));
+vi.mock('@chakra-ui/react', () => ({
+  Box: React.forwardRef<
+    HTMLDivElement,
+    React.PropsWithChildren<{
+      id?: string;
+      overflow?: string;
+      onScroll?: React.UIEventHandler<HTMLDivElement>;
+    }>
+  >(function ScrollContainer({ children, id, overflow, onScroll }, ref) {
+    return React.createElement(
+      'div',
+      {
+        id,
+        onScroll,
+        'data-overflow': overflow,
+        ref: (element: HTMLDivElement | null) => {
+          if (element && !element.scrollTo) element.scrollTo = vi.fn();
+          if (typeof ref === 'function') ref(element);
+          else if (ref) ref.current = element;
+        }
+      },
+      children
+    );
+  })
+}));
 
 type Response = {
   list: { id: string }[];
@@ -34,6 +44,13 @@ type Response = {
   hasMoreNext: boolean;
 };
 type Params = LinkedPaginationProps<{ chatId: string }>;
+type HarnessProps = {
+  chatId: string;
+  currentData?: { id: string };
+  renderInitialOverlay?: boolean;
+  scrollRef?: React.RefObject<HTMLDivElement>;
+  onScroll?: React.UIEventHandler<HTMLDivElement>;
+};
 
 describe('useLinkedScroll', () => {
   let root: Root;
@@ -46,16 +63,20 @@ describe('useLinkedScroll', () => {
   );
   const Harness = ({
     chatId,
-    showInitialLoading
-  }: {
-    chatId: string;
-    showInitialLoading?: boolean;
-  }) => {
+    currentData,
+    renderInitialOverlay = true,
+    scrollRef,
+    onScroll
+  }: HarnessProps) => {
     const params = useMemo(() => ({ chatId }), [chatId]);
-    state = useLinkedScroll(api, { params, showErrorToast: false, showInitialLoading });
+    state = useLinkedScroll(api, { params, currentData, showErrorToast: false });
     const scrollProps = {
+      id: 'scroll-viewport',
+      ScrollContainerRef: scrollRef,
+      onScroll,
       children: [
         'Composer',
+        React.createElement('input', { key: 'draft', defaultValue: 'draft' }),
         ...state.dataList.map(({ id }) =>
           React.createElement('div', {
             key: id,
@@ -66,12 +87,19 @@ describe('useLinkedScroll', () => {
         )
       ]
     };
-    return React.createElement(state.ScrollData, scrollProps);
-  };
-  const render = async (chatId: string, showInitialLoading?: boolean) => {
-    await act(async () =>
-      root.render(React.createElement(Harness, { chatId, showInitialLoading }))
+    return React.createElement(
+      MyBox,
+      {
+        id: 'scroll-shell',
+        position: 'relative',
+        overflow: 'hidden',
+        isLoading: renderInitialOverlay && state.isInitialLoading
+      },
+      React.createElement(state.ScrollData, scrollProps)
     );
+  };
+  const render = async (chatId: string, props: Omit<HarnessProps, 'chatId'> = {}) => {
+    await act(async () => root.render(React.createElement(Harness, { chatId, ...props })));
   };
   const resolve = async (index: number, id: string) => {
     await act(async () =>
@@ -93,6 +121,88 @@ describe('useLinkedScroll', () => {
     vi.restoreAllMocks();
     vi.useRealTimers();
     vi.unstubAllGlobals();
+  });
+
+  it.each(['prev', 'next'] as const)(
+    'ignores an older %s page after a complete refresh replaces the window',
+    async (direction) => {
+      vi.useFakeTimers();
+      await render('first');
+      await act(async () =>
+        requests[0].resolve({
+          list: [{ id: 'old-anchor' }],
+          hasMorePrev: direction === 'prev',
+          hasMoreNext: direction === 'next'
+        })
+      );
+      await act(async () => vi.advanceTimersByTimeAsync(250));
+      expect(requests[1].params[direction === 'prev' ? 'prevId' : 'nextId']).toBe('old-anchor');
+
+      await act(async () => {
+        void state.loadInitData({ refresh: true, scrollWhenFinish: false });
+      });
+      await resolve(2, 'fresh-record');
+      await act(async () =>
+        requests[1].resolve({
+          list: [{ id: 'stale-page' }],
+          hasMorePrev: true,
+          hasMoreNext: true
+        })
+      );
+      expect(state.dataList).toEqual([{ id: 'fresh-record' }]);
+      expect(state.hasMorePrev).toBe(false);
+      expect(state.hasMoreNext).toBe(false);
+      await act(async () => vi.advanceTimersByTimeAsync(250));
+      expect(requests).toHaveLength(3);
+    }
+  );
+
+  it('keeps the latest complete refresh when responses finish in reverse order', async () => {
+    await render('first');
+    await resolve(0, 'first-record');
+    await act(async () => {
+      void state.loadInitData({ refresh: true, scrollWhenFinish: false });
+      void state.loadInitData({ refresh: true, scrollWhenFinish: false });
+    });
+    expect(requests).toHaveLength(3);
+
+    await resolve(2, 'fresh-record');
+    await act(async () =>
+      requests[1].resolve({
+        list: [{ id: 'stale-refresh' }],
+        hasMorePrev: true,
+        hasMoreNext: true
+      })
+    );
+    expect(state.dataList).toEqual([{ id: 'fresh-record' }]);
+    expect(state.hasMorePrev).toBe(false);
+    expect(state.hasMoreNext).toBe(false);
+    expect(container.querySelector('[data-loading-overlay]')).toBeNull();
+  });
+
+  it('keeps an in-flight page when focusing an already loaded record', async () => {
+    vi.useFakeTimers();
+    const scrollRef = React.createRef<HTMLDivElement>();
+    await render('first', { currentData: { id: 'first-record' }, scrollRef });
+    await act(async () =>
+      requests[0].resolve({
+        list: [{ id: 'first-record' }],
+        hasMorePrev: true,
+        hasMoreNext: false
+      })
+    );
+    await act(async () => vi.advanceTimersByTimeAsync(250));
+    expect(requests[1].params.prevId).toBe('first-record');
+
+    vi.mocked(scrollRef.current!.scrollTo).mockClear();
+    await act(async () => {
+      await state.loadInitData();
+    });
+    expect(requests).toHaveLength(2);
+    expect(scrollRef.current!.scrollTo).toHaveBeenCalledOnce();
+
+    await resolve(1, 'previous-record');
+    expect(state.dataList).toEqual([{ id: 'previous-record' }, { id: 'first-record' }]);
   });
 
   it('keeps local replacement and new anchors when an older pagination request finishes', async () => {
@@ -178,20 +288,93 @@ describe('useLinkedScroll', () => {
   });
 
   it.each([undefined, false])(
-    'preserves default initial loading and allows callers to disable only the first overlay: %s',
-    async (showInitialLoading) => {
-      await render('first', showInitialLoading);
-      expect(container.querySelector('[data-loading]')?.getAttribute('data-loading')).toBe(
-        String(showInitialLoading !== false)
+    'leaves initial loading presentation to the outer layout: %s',
+    async (renderInitialOverlay) => {
+      await render('first', { renderInitialOverlay });
+      expect(!!container.querySelector('[data-loading-overlay]')).toBe(
+        renderInitialOverlay !== false
       );
       expect(container.textContent).toBe('Composer');
       await resolve(0, 'first-record');
-      expect(container.querySelector('[data-loading]')?.getAttribute('data-loading')).toBe('false');
+      expect(container.querySelector('[data-loading-overlay]')).toBeNull();
 
-      await render('second', showInitialLoading);
-      expect(container.querySelector('[data-loading]')?.getAttribute('data-loading')).toBe('true');
+      await render('second', { renderInitialOverlay });
+      expect(!!container.querySelector('[data-loading-overlay]')).toBe(
+        renderInitialOverlay !== false
+      );
       await resolve(1, 'second-record');
-      expect(container.querySelector('[data-loading]')?.getAttribute('data-loading')).toBe('false');
+      expect(container.querySelector('[data-loading-overlay]')).toBeNull();
     }
   );
+
+  it('keeps the overlay outside the viewport and preserves its ref, draft and scroll position across refreshes', async () => {
+    const scrollRef = React.createRef<HTMLDivElement>();
+    const scrollTargets: EventTarget[] = [];
+    const onScroll = vi.fn((event: React.UIEvent<HTMLDivElement>) => {
+      scrollTargets.push(event.currentTarget);
+    });
+    await render('first', { scrollRef, onScroll });
+    const component = state.ScrollData;
+    const viewport = scrollRef.current!;
+    const draft = container.querySelector('input')!;
+    const shell = container.querySelector('#scroll-shell');
+    expect(viewport.id).toBe('scroll-viewport');
+    expect(viewport.parentElement).toBe(shell);
+    expect(viewport.getAttribute('data-overflow')).toBe('auto');
+    expect(shell?.getAttribute('data-overflow')).toBe('hidden');
+    expect(container.querySelector('[data-loading-overlay]')?.parentElement).toBe(shell);
+    viewport.scrollTop = 300;
+    draft.value = 'unsaved draft';
+
+    await resolve(0, 'first-record');
+    expect(state.ScrollData).toBe(component);
+    expect(scrollRef.current).toBe(viewport);
+    expect(container.querySelector('input')).toBe(draft);
+    expect(draft.value).toBe('unsaved draft');
+    expect(viewport.scrollTop).toBe(300);
+    expect(container.querySelector('[data-loading-overlay]')).toBeNull();
+
+    await act(async () => {
+      void state.loadInitData({ refresh: true, scrollWhenFinish: false });
+    });
+    const overlay = container.querySelector('[data-loading-overlay]');
+    expect(overlay?.parentElement).toBe(shell);
+    expect(viewport.contains(overlay)).toBe(false);
+    expect(scrollRef.current).toBe(viewport);
+    await resolve(1, 'refreshed-record');
+    expect(scrollRef.current).toBe(viewport);
+    expect(viewport.scrollTop).toBe(300);
+    expect(draft.value).toBe('unsaved draft');
+    await act(async () => viewport.dispatchEvent(new Event('scroll')));
+    expect(onScroll).toHaveBeenCalledOnce();
+    expect(scrollTargets).toEqual([viewport]);
+  });
+
+  it('exposes append loading separately from initialization and clears the request text', async () => {
+    vi.useFakeTimers();
+    const scrollRef = React.createRef<HTMLDivElement>();
+    await render('first', { scrollRef });
+    expect(container.querySelector('[data-loading-overlay]')).not.toBeNull();
+    await act(async () =>
+      requests[0].resolve({
+        list: [{ id: 'first-record' }],
+        hasMorePrev: false,
+        hasMoreNext: true
+      })
+    );
+    const viewport = scrollRef.current!;
+    viewport.scrollTop = 300;
+    await act(async () => vi.advanceTimersByTimeAsync(250));
+    expect(requests[1].params.nextId).toBe('first-record');
+    expect(state.isLoading).toBe(true);
+    expect(state.isInitialLoading).toBe(false);
+    expect(state.isLoadingMore).toBe(true);
+    expect(container.querySelector('[data-loading-overlay]')).toBeNull();
+    expect(container.textContent).toContain('common:is_requesting');
+
+    await resolve(1, 'next-record');
+    expect(state.dataList).toEqual([{ id: 'first-record' }, { id: 'next-record' }]);
+    expect(container.textContent).not.toContain('common:is_requesting');
+    expect(state.isLoadingMore).toBe(false);
+  });
 });

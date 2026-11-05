@@ -3,6 +3,7 @@ import { isAuxiliaryGenerationSourceType } from '@fastgpt/global/common/chat/sou
 import { isChatFileAllowedBySelectConfig as isGlobalChatFileAllowedBySelectConfig } from '@fastgpt/global/core/app/constants';
 import type { AppFileSelectConfigType } from '@fastgpt/global/core/app/type/config.schema';
 import { ChatTypeEnum } from '../constants';
+import { getChatFileTypeByFilename } from '@fastgpt/global/core/chat/file/utils';
 
 /**
  * 决定 Chat 文件上传使用正式策略还是客户端草稿策略。
@@ -26,7 +27,7 @@ export const getUploadChatFileType = (file: File) => {
   if (file.type.includes('image')) return ChatFileTypeEnum.image;
   if (file.type.includes('audio')) return ChatFileTypeEnum.audio;
   if (file.type.includes('video')) return ChatFileTypeEnum.video;
-  return ChatFileTypeEnum.file;
+  return getChatFileTypeByFilename(file.name);
 };
 
 /**

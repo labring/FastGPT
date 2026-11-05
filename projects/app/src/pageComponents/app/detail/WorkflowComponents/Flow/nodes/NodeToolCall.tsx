@@ -121,12 +121,10 @@ const NodeToolCall = ({ data, selected }: CanvasNodeProps) => {
         <IOTitle text={t('common:Input')} />
         <RenderInput nodeId={nodeId} flowInputList={beforeSandboxInputs} isTool={isTool} />
         <WorkflowSandboxConfig
-          nodeId={nodeId}
           sandboxInput={sandboxInput}
           sandboxEntrypointInput={sandboxEntrypointInput}
           showSandbox={!!showSandbox}
           enableSandbox={enableSandbox}
-          isPlus={feConfigs?.isPlus}
           onChangeSandbox={onChangeSandbox}
           onChangeEntrypoint={(value) => {
             // 已有入口字段只改值；字段缺失时按模板补一条记录（记录级变更走 updateNode）。

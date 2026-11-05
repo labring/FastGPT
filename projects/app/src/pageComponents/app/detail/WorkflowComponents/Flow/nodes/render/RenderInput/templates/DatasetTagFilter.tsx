@@ -6,13 +6,14 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   createEmptyTagFilterValue,
+  getNextDatasetTagFilterValue,
   isDatasetTagFilterOpen,
-  isDatasetTagFilterValue,
   normalizeLegacyDatasetTagFilterValue,
   type DatasetTagFilterValue
 } from '@fastgpt/global/core/dataset/search/tagFilter';
 import { getSelectedInputRenderType } from '@fastgpt/global/common/workflow/reference';
 import { useReference } from './Reference';
+import { getStaticDatasetIds } from './SelectDatasetParams.utils';
 import DatasetTagFilterRows, {
   DatasetTagFilterDeprecated,
   DatasetTagFilterUpgradeButton
@@ -52,17 +53,7 @@ const DatasetTagFilterRender = ({ item, nodeId }: RenderInputProps) => {
     nodeId,
     valueType: WorkflowIOValueTypeEnum.any
   });
-  const datasetIds = useMemo(() => {
-    const datasetValue = datasetSelectInput?.value;
-    if (!Array.isArray(datasetValue)) return [];
-    return datasetValue
-      .map((dataset) =>
-        dataset && typeof dataset === 'object' && 'datasetId' in dataset
-          ? String(dataset.datasetId ?? '')
-          : ''
-      )
-      .filter(Boolean);
-  }, [datasetSelectInput?.value]);
+  const datasetIds = useMemo(() => getStaticDatasetIds(datasetSelectInput), [datasetSelectInput]);
 
   const editorVariables = useMemoEnhance(() => {
     if (!workflow || !graph) return [];
@@ -159,6 +150,9 @@ export const DatasetTagFilterLogic = React.memo(function DatasetTagFilterLogic({
             description:
               DatasetSearchModule.inputs.find((input) => input.key === item.key)?.description ??
               item.description,
+            valueDesc:
+              DatasetSearchModule.inputs.find((input) => input.key === item.key)?.valueDesc ??
+              item.valueDesc,
             value: {
               ...createEmptyTagFilterValue(),
               open: true
@@ -189,19 +183,11 @@ export const DatasetTagFilterLogic = React.memo(function DatasetTagFilterLogic({
   const isOpen = isDatasetTagFilterOpen(fieldInput.value);
 
   const handleToggle = () => {
-    const nextOpen = !isOpen;
-    const renderType = getSelectedInputRenderType(item);
-    const nextValue =
-      renderType === FlowNodeInputTypeEnum.reference
-        ? nextOpen
-          ? []
-          : undefined
-        : {
-            ...(isDatasetTagFilterValue(fieldInput.value)
-              ? fieldInput.value
-              : createEmptyTagFilterValue()),
-            open: nextOpen
-          };
+    const nextValue = getNextDatasetTagFilterValue({
+      value: fieldInput.value,
+      isReference: getSelectedInputRenderType(item) === FlowNodeInputTypeEnum.reference,
+      open: !isOpen
+    });
 
     fieldActions.setValue(nextValue);
   };

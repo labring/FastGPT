@@ -27,8 +27,6 @@ import {
   resolveModelSelectorSelection,
   sortModelSelectorModels
 } from './AIModelSelector.utils';
-import { useContextSelector } from 'use-context-selector';
-import { AppContext } from '@/pageComponents/app/detail/context';
 import { ModelStatusLabel } from './ModelStatusLabel';
 
 type Props = Omit<SelectProps, 'list'> & {
@@ -134,8 +132,6 @@ const AIModelSelector = ({
 }: Props) => {
   const { t, i18n } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
-  const contextAppId = useContextSelector(AppContext, (e) => e?.appId);
-  const effectiveAppId = appId ?? (contextAppId || undefined);
 
   const {
     modelList,
@@ -162,7 +158,7 @@ const AIModelSelector = ({
   const currentValue = isEmptyModelValue(props.value) ? '' : String(props.value);
   const detailState = useModelSummary({
     modelId: currentValue,
-    appId: effectiveAppId,
+    appId,
     outLinkAuthData
   });
 
@@ -200,16 +196,16 @@ const AIModelSelector = ({
       return;
     }
     if (!currentValue) return;
-    const key = JSON.stringify([catalogVersion, currentValue, effectiveAppId]);
+    const key = JSON.stringify([catalogVersion, currentValue, appId]);
     if (checkedCatalogRef.current === key) return;
     checkedCatalogRef.current = key;
     const currentModel = modelList.find((model) => model.modelId === currentValue);
     if (currentModel) setFromCatalog(currentModel);
   }, [
+    appId,
     catalogError,
     catalogVersion,
     currentValue,
-    effectiveAppId,
     setFromCatalog,
     isOpen,
     loading,

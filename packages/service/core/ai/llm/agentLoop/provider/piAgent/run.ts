@@ -596,7 +596,7 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
       const standardAssistantMessage: ChatCompletionMessageParam = {
         role: ChatCompletionRequestMessageRoleEnum.Assistant,
         content: removeDatasetCiteText(messageData.answerText, retainDatasetCite) || null,
-        ...(messageData.reasoningText
+        ...(modelData.config.reasoning || messageData.reasoningText
           ? {
               reasoning_content: removeDatasetCiteText(messageData.reasoningText, retainDatasetCite)
             }

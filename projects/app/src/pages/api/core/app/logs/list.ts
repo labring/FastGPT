@@ -1,3 +1,6 @@
+import { extendChatPublishSources } from '@fastgpt/service/core/chat/publishSource/service';
+import { getChatPublishSourceType } from '@fastgpt/global/common/chat/publishSource';
+import { buildAppChatLogFilter } from '@fastgpt/service/core/app/logs/utils';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { Types } from '@fastgpt/service/common/mongo';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
@@ -8,9 +11,8 @@ import {
 import { NextAPI } from '@/service/middleware/entry';
 import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
 import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
-import { addSourceMember, formatSourceMember } from '@fastgpt/service/support/user/utils';
+import { formatSourceMember } from '@fastgpt/service/support/user/utils';
 import { getTeamMemberMap } from '@fastgpt/service/support/user/team/utils';
-import { replaceRegChars } from '@fastgpt/global/common/string/tools';
 import { getLocationFromIp } from '@fastgpt/service/common/geo';
 import { AppReadChatLogPerVal } from '@fastgpt/global/support/permission/app/constant';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
@@ -20,16 +22,13 @@ import { AppVersionCollectionName } from '@fastgpt/service/core/app/version/sche
 import {
   GetAppChatLogsBodySchema,
   GetAppChatLogsResponseSchema,
+  type AppLogsListItemType,
   type getAppChatLogsResponseType
 } from '@fastgpt/global/openapi/core/app/log/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { ChatSourceEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { isUnselectedLogUserFilter } from '@fastgpt/global/core/app/logs/utils';
 import { getDisplayChatTitle } from '@fastgpt/service/core/chat/title';
-
-const appChatSourceMatch = {
-  $or: [{ sourceType: ChatSourceTypeEnum.app }, { sourceType: { $exists: false } }]
-};
 
 async function handler(req: ApiRequestProps): Promise<getAppChatLogsResponseType> {
   const {
@@ -67,71 +66,23 @@ async function handler(req: ApiRequestProps): Promise<getAppChatLogsResponseType
     return GetAppChatLogsResponseSchema.parse({ list: [], total: 0 });
   }
 
-  const where = {
-    appId: new Types.ObjectId(appId),
-    $and: [appChatSourceMatch],
-    // Feedback type filtering (BEFORE pagination for performance)
-    ...(feedbackType === 'has_feedback' &&
-      !unreadOnly && {
-        $or: [{ hasGoodFeedback: true }, { hasBadFeedback: true }]
-      }),
-    ...(feedbackType === 'has_feedback' &&
-      unreadOnly && {
-        $or: [{ hasUnreadGoodFeedback: true }, { hasUnreadBadFeedback: true }]
-      }),
-    ...(feedbackType === 'good' &&
-      !unreadOnly && {
-        hasGoodFeedback: true
-      }),
-    ...(feedbackType === 'good' &&
-      unreadOnly && {
-        hasUnreadGoodFeedback: true
-      }),
-    ...(feedbackType === 'bad' &&
-      !unreadOnly && {
-        hasBadFeedback: true
-      }),
-    ...(feedbackType === 'bad' &&
-      unreadOnly && {
-        hasUnreadBadFeedback: true
-      }),
-    ...(errorFilter === 'has_error' && {
-      errorCount: { $gt: 0 }
-    }),
-    ...(sources && { source: { $in: sources } }),
-    // User filter: tmbIds(排除外链用户) 或 outLinkUids
-    ...((tmbIds?.length || outLinkUids?.length) && {
-      $or: [
-        ...(tmbIds?.length
-          ? [
-              {
-                tmbId: { $in: tmbIds.map((id) => new Types.ObjectId(id)) },
-                outLinkUid: { $in: [null, ''] }
-              }
-            ]
-          : []),
-        ...(outLinkUids?.length ? [{ outLinkUid: { $in: outLinkUids } }] : [])
-      ]
-    }),
-    updateTime: {
-      $gte: new Date(dateStart),
-      $lte: new Date(dateEnd)
-    },
-    ...(chatSearch
-      ? {
-          $or: [
-            { chatId: { $regex: new RegExp(`${replaceRegChars(chatSearch)}`, 'i') } },
-            { title: { $regex: new RegExp(`${replaceRegChars(chatSearch)}`, 'i') } },
-            { customTitle: { $regex: new RegExp(`${replaceRegChars(chatSearch)}`, 'i') } }
-          ]
-        }
-      : undefined)
-  };
+  const where = buildAppChatLogFilter({
+    appId,
+    dateStart,
+    dateEnd,
+    sources,
+    tmbIds,
+    outLinkUids,
+    chatSearch,
+    feedbackType,
+    unreadOnly,
+    errorFilter
+  });
 
   // Execute both queries
   const [listResult, total] = await Promise.all([
     // Execute the main aggregation
-    MongoChat.aggregate(
+    MongoChat.aggregate<AppLogsListItemType>(
       [
         { $match: where },
         { $sort: { updateTime: -1 } },
@@ -301,6 +252,7 @@ async function handler(req: ApiRequestProps): Promise<getAppChatLogsResponseType
             customTitle: 1,
             source: 1,
             sourceName: 1,
+            publishSource: 1,
             updateTime: 1,
             createTime: 1,
             messageCount: 1,
@@ -330,11 +282,11 @@ async function handler(req: ApiRequestProps): Promise<getAppChatLogsResponseType
     MongoChat.countDocuments(where, { ...readFromSecondary })
   ]);
 
-  const list = listResult;
+  const list = await extendChatPublishSources({ list: listResult, teamId, appId });
 
   const listWithRegion = list.map((item) => {
     const ip = item.region;
-    const region = getLocationFromIp(ip, getLocale(req));
+    const region = getLocationFromIp(ip ?? undefined, getLocale(req));
 
     return {
       ...item,
@@ -343,36 +295,36 @@ async function handler(req: ApiRequestProps): Promise<getAppChatLogsResponseType
     };
   });
 
-  // Resolve the normal online/API member first. Share rows get their member from outLinkUid below.
-  const listWithSourceMember = await addSourceMember({ list: listWithRegion });
-  const sourceMemberMap = new Map(listWithSourceMember.map((item) => [String(item._id), item]));
-
-  // Protected share links put the visitor's member ID in outLinkUid. Keep former members
-  // visible with their status, matching the regular chat log member lookup.
-  const shareItemsWithOutLinkUid = listWithRegion.filter(
-    (item) => item.source === ChatSourceEnum.share && item.outLinkUid
-  );
-  const candidateTmbIds = shareItemsWithOutLinkUid
-    .filter((item) => Types.ObjectId.isValid(item.outLinkUid))
-    .map((item) => new Types.ObjectId(item.outLinkUid));
-  const outLinkMemberMap = await getTeamMemberMap({
-    teamId: new Types.ObjectId(teamId),
-    memberIds: candidateTmbIds,
+  // 一次读取本页鉴权者及分享访客，且限制在已鉴权团队中。
+  const memberIds = listWithRegion
+    .flatMap((item) => [
+      item.tmbId,
+      ...(getChatPublishSourceType(item) === ChatSourceEnum.share && item.outLinkUid
+        ? [item.outLinkUid]
+        : [])
+    ])
+    .filter((id): id is string => typeof id === 'string');
+  const memberMap = await getTeamMemberMap({
+    teamId,
+    memberIds,
     fields: '_id name avatar status'
   });
 
   const finalList = listWithRegion.map((item) => {
-    const result = sourceMemberMap.get(String(item._id)) || { ...item, sourceMember: undefined };
-    const resultWithTitle = {
-      ...result,
-      title: getDisplayChatTitle({ customTitle: item.customTitle, title: item.title })
-    };
-    if (item.source !== ChatSourceEnum.share || !item.outLinkUid) return resultWithTitle;
-
-    const member = outLinkMemberMap.get(String(item.outLinkUid));
+    const member = memberMap.get(String(item.tmbId));
+    const authMember = member ? formatSourceMember(member) : undefined;
+    // sourceMember 保留旧接口语义；authMember 始终属于 tmbId，不被外链访客覆盖。
+    const sourceMember = (() => {
+      if (getChatPublishSourceType(item) !== ChatSourceEnum.share || !item.outLinkUid)
+        return authMember;
+      const visitor = memberMap.get(String(item.outLinkUid));
+      return visitor ? formatSourceMember(visitor) : undefined;
+    })();
     return {
-      ...resultWithTitle,
-      sourceMember: member ? formatSourceMember(member) : undefined
+      ...item,
+      authMember,
+      sourceMember,
+      title: getDisplayChatTitle({ customTitle: item.customTitle, title: item.title })
     };
   });
 

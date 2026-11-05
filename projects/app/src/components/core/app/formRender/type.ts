@@ -52,6 +52,7 @@ export type SpecificProps = {
   path?: string;
 
   // selectLLMModel
+  appId?: string;
   outLinkAuthData?: OutLinkChatAuthProps;
 
   // fileSelect

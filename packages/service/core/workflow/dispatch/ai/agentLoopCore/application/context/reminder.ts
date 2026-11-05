@@ -22,16 +22,18 @@ const escapeXml = (value: string) =>
 
 /**
  * 生成当前输入文件的模型可见提示。
- * 文档可通过 read_files 读取；其他多模态文件同时保留 URL，供模型或工具引用。
+ * 文件分类已在统一推测入口完成，此处只序列化类型与文件元信息，不再推断扩展名。
  */
 export const buildAgentLoopCoreInputFilesPrompt = (files: AgentLoopCoreInputFile[] = []) => {
   if (files.length === 0) return '';
 
   return `## 对话文件
 
-用户本次对话上传的文件，用途：
-1. 可通过 ${READ_FILES_TOOL_NAME} 读取文档内容。
-2. 可把 url 作为模型参数。
+用户本次对话上传的文件，按 type 使用：
+1. document：当前解析器支持的文档，可通过 ${READ_FILES_TOOL_NAME} 读取内容。
+2. image、audio、video：图片、音频、视频，由支持对应能力的模型或工具处理。
+3. unknown：当前文档解析器不支持或无法识别的格式，不要使用 ${READ_FILES_TOOL_NAME} 读取；应选择适合该格式的其他工具处理。
+4. 可把 url 作为模型或工具参数；有 sandboxPath 时，也可通过沙箱工具处理文件。
 
 ${files
   .map(

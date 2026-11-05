@@ -31,7 +31,8 @@ export const getWorkflowInputValueForValidation = ({
     return config;
   }
   if (
-    getSelectedInputRenderType(input) === FlowNodeInputTypeEnum.datasetTagFilter &&
+    (input.key === NodeInputKeyEnum.collectionFilterMatch ||
+      getSelectedInputRenderType(input) === FlowNodeInputTypeEnum.datasetTagFilter) &&
     isDatasetTagFilterValue(value)
   ) {
     return formatCollectionFilterMatchParam({ value }) ?? '';

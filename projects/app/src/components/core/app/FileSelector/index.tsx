@@ -128,7 +128,6 @@ const formatFileSelectorInternalValue = (
       const previewUrl =
         (inputUrl && !inputUrl.startsWith('data:') ? inputUrl : valueFile?.url) ||
         existingFile?.url;
-      const renderType = valueFile?.type || inputFile?.type || ChatFileTypeEnum.file;
       const fileName =
         valueFile?.name ||
         inputFile?.name ||
@@ -137,6 +136,7 @@ const formatFileSelectorInternalValue = (
         rawFile?.name ||
         previewUrl ||
         '';
+      const renderType = valueFile?.type || inputFile?.type || inferFileSelectorType(fileName);
       const fileIcon = inputFile?.icon || existingFile?.icon;
 
       return {
@@ -530,7 +530,7 @@ const FileSelector = ({
                 resolve({
                   id: getNanoid(6),
                   rawFile: file,
-                  type: ChatFileTypeEnum.file,
+                  type: inferFileSelectorType(file.name),
                   name: file?.name,
                   icon: getFileIcon(file?.name),
                   status: 0

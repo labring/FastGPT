@@ -344,7 +344,7 @@ const OutLink = (props: Props) => {
                     <ChatWindowHeader
                       title={chatWindowTitle}
                       history={chatRecords}
-                      chatType={ChatTypeEnum.chat}
+                      chatType={ChatTypeEnum.share}
                       rightActions={<SandboxEntryIcon onOpen={onOpenSandboxModal} />}
                     />
                   ) : (

@@ -22,7 +22,7 @@ import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
-import { type ComponentProps, useMemo, useState } from 'react';
+import { useState } from 'react';
 import MemberTag from '@/components/support/user/team/Info/MemberTag';
 import { deleteOrg, deleteOrgMember } from '@/web/support/user/team/org/api';
 
@@ -94,15 +94,6 @@ function OrgTable({ Tabs }: { Tabs: React.ReactNode }) {
     searchKey
   } = useOrg();
 
-  // 部门和成员请求由外层统一显示 loading；保持容器引用稳定，避免重挂载重置滚动位置。
-  const MemberScrollContainer = useMemo(
-    () =>
-      function MemberScrollContainer(props: ComponentProps<typeof MemberScrollData>) {
-        return <MemberScrollData {...props} showLoadingOverlay={false} />;
-      },
-    [MemberScrollData]
-  );
-
   // Delete org
   const { ConfirmModal: ConfirmDeleteOrgModal, openConfirm: openDeleteOrgModal } = useConfirm({
     type: 'delete',
@@ -168,7 +159,7 @@ function OrgTable({ Tabs }: { Tabs: React.ReactNode }) {
         </Box>
         <Flex flex={['0 0 auto', '1 0 0']} h={['auto', 0]} minH={0} w={'100%'} gap={'4'}>
           <FixedTableContainer
-            scrollContainer={MemberScrollContainer}
+            scrollContainer={MemberScrollData}
             maxH="none"
             minH={0}
             flex={['0 0 auto', '1 0 0']}

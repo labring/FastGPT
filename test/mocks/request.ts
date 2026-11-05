@@ -50,6 +50,7 @@ export type parseHeaderCertRet = {
   sourceName: string | undefined;
   apikey: string;
   apiKeyAuthProxy?: boolean;
+  apiKeyId?: string;
   isRoot: boolean;
   sessionId: string;
 };

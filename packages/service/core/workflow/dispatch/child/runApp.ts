@@ -12,7 +12,7 @@ import { storeNodes2RuntimeNodes } from '@fastgpt/global/common/workflow/runtime
 import { type NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import { getNodeErrResponse, getHistories } from '../utils';
+import { getNodeErrResponse, getHistories, removeUnfinishedInteractiveHistories } from '../utils';
 import { getWorkflowFileVariableInputs, WorkflowVariableState } from '../utils/variables';
 import { chatValue2RuntimePrompt, runtimePrompt2ChatsValue } from '@fastgpt/global/core/chat/adapt';
 import type { DispatchNodeResultType, ModuleDispatchProps } from '../../types/runtime';
@@ -20,13 +20,13 @@ import { prepareWorkflowFiles, runWithDerivedWorkflowFileContext } from '../../u
 import { loadChildWorkflowWithResource } from '../../resource/service';
 import { getUserChatInfo } from '../../../../support/user/team/utils';
 import { getWorkflowRuntimeSummary } from '../utils/summary';
+import { WorkflowMemoryState } from '../../memory/state';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.userChatInput]: string;
   [NodeInputKeyEnum.history]?: ChatItemMiniType[] | number;
   [NodeInputKeyEnum.fileUrlList]?: string[];
   [NodeInputKeyEnum.forbidStream]?: boolean;
-  [NodeInputKeyEnum.fileUrlList]?: string[];
 }>;
 type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.answerText]: string;
@@ -112,8 +112,8 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
     const childRunningAppInfo = {
       sourceType: ChatSourceTypeEnum.app,
       sourceId: String(appData._id),
-      teamId: appData.teamId,
-      tmbId: appData.tmbId,
+      teamId: String(appData.teamId),
+      tmbId: String(appData.tmbId),
       name: appData.name,
       isChildApp: true
     };
@@ -153,8 +153,18 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
           resolveInputFile
         });
 
+        const childrenMemoryState = WorkflowMemoryState.fromWorkflow(props).fork(
+          props.node?.nodeId ? `node:${props.node.nodeId}` : undefined,
+          {
+            history,
+            histories: childHistories,
+            hasInteractiveResume: !!childrenInteractive
+          }
+        );
+
         return runWorkflow({
           ...props,
+          memoryState: childrenMemoryState,
           lastInteractive: childrenInteractive,
           // Rewrite stream mode
           ...(system_forbid_stream
@@ -163,14 +173,7 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
                 workflowStreamResponse: undefined
               }
             : {}),
-          runningAppInfo: {
-            sourceType: ChatSourceTypeEnum.app,
-            sourceId: String(appData._id),
-            name: appData.name,
-            teamId: String(appData.teamId),
-            tmbId: String(appData.tmbId),
-            isChildApp: true
-          },
+          runningAppInfo: childRunningAppInfo,
           runtimeNodes,
           runtimeEdges,
           histories: childHistories,
@@ -236,6 +239,12 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
             }
           }
         : undefined,
+      ...(!workflowInteractiveResponse && lastInteractive
+        ? {
+            [DispatchNodeResponseKeyEnum.rewriteHistories]:
+              removeUnfinishedInteractiveHistories(histories)
+          }
+        : {}),
       assistantResponses: system_forbid_stream ? [] : assistantResponses,
       [DispatchNodeResponseKeyEnum.runTimes]: runTimes,
       [DispatchNodeResponseKeyEnum.nodeResponse]: {

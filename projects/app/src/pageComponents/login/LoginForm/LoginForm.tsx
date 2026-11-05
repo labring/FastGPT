@@ -322,7 +322,14 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
           <Box
             mt={[0, 8]}
             onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey && !requesting) {
+              // 输入法确认候选词的回车不应触发登录，229 兼容部分浏览器的组合输入事件。
+              if (
+                e.key === 'Enter' &&
+                !e.nativeEvent.isComposing &&
+                e.keyCode !== 229 &&
+                !e.shiftKey &&
+                !requesting
+              ) {
                 handleSubmit(onclickLogin)();
               }
             }}

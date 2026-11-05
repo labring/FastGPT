@@ -272,6 +272,8 @@
   "available_to_all": "모든 멤버가 사용 가능",
   "only_available_to_self": "본인만 사용 가능",
   "shared_with_me": "나와 공유됨",
+  "creator": "생성자",
+  "system_model": "시스템 모델",
   "system_model_tag": "시스템",
   "replace_invalid_title": "사용할 수 없는 모델 교체",
   "replace_invalid_review": "확인",
@@ -294,5 +296,8 @@
   "replace_invalid_failed_samples": "실패 예시",
   "replace_invalid_retry": "다시 실행",
   "replace_invalid_retry_note": "동일한 매핑으로 다시 실행하여 남은 참조를 처리할 수 있습니다.",
-  "replace_invalid_request_failed": "교체 요청에 실패했습니다. 이미 저장된 변경 사항은 되돌리지 않으며 다시 실행할 수 있습니다."
+  "replace_invalid_request_failed": "교체 요청에 실패했습니다. 이미 저장된 변경 사항은 되돌리지 않으며 다시 실행할 수 있습니다.",
+  "model.custom_sort": "사용자 지정 정렬",
+  "model.cancel_sort": "취소",
+  "model.save_sort": "정렬 저장"
 }

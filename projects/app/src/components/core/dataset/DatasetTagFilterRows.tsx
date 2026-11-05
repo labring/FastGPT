@@ -19,12 +19,12 @@ import {
   intersectWorkflowTagOptions,
   isDatasetTagFilterValue,
   isTagFilterAttributeField,
+  isTagFilterOpWithoutValue,
   pruneTagFilterConditions,
   type DatasetTagFilterCondition,
   type DatasetTagFilterValue,
   type WorkflowTagFilterOption
 } from '@fastgpt/global/core/dataset/search/tagFilter';
-import { isTagFilterOpWithoutValue } from '@fastgpt/global/core/dataset/search/tagFilter/normalizer';
 import type {
   ReferenceItemValueType,
   EditorVariablePickerType
@@ -221,6 +221,25 @@ export const isTagFilterValueTypeCompatible = (
 };
 
 /**
+ * 按允许的目标变量类型过滤引用变量树，供整段标签过滤引用选择器与单行条件值引用选择器共用。
+ */
+export const filterTagFilterReferenceList = (
+  referenceList: TagFilterReferenceList,
+  allowedTypes: WorkflowIOValueTypeEnum[]
+): TagFilterReferenceList => {
+  if (allowedTypes.length === 0) return referenceList;
+
+  return referenceList
+    .map((group) => ({
+      ...group,
+      children: group.children.filter((child) =>
+        isTagFilterValueTypeCompatible(child.valueType, allowedTypes)
+      )
+    }))
+    .filter((group) => group.children.length > 0);
+};
+
+/**
  * 判断条件行是否已选中具体属性或标签，未选定时禁用取值模式切换。
  */
 export const isTagFilterAttrSelected = (condition: DatasetTagFilterCondition): boolean =>
@@ -247,19 +266,10 @@ const TagFilterValueCell = ({
   const isOpDisabled = isTagFilterOpWithoutValue(condition.op);
   const canSwitchMode = isAttrSelected && !isOpDisabled;
 
-  const filteredReferenceList = useMemo(() => {
-    const allowedTypes = getTagFilterAllowedValueTypes(condition);
-    if (allowedTypes.length === 0) return referenceList;
-
-    return referenceList
-      .map((group) => ({
-        ...group,
-        children: group.children.filter((child) =>
-          isTagFilterValueTypeCompatible(child.valueType, allowedTypes)
-        )
-      }))
-      .filter((group) => group.children.length > 0);
-  }, [condition, referenceList]);
+  const filteredReferenceList = useMemo(
+    () => filterTagFilterReferenceList(referenceList, getTagFilterAllowedValueTypes(condition)),
+    [condition, referenceList]
+  );
 
   const literalInput = (() => {
     if (!condition.tagType) {
@@ -518,25 +528,27 @@ export const useDatasetTagFilterPrune = ({
   onChange,
   fetchWhenEmptyValue = false
 }: {
-  datasetIds: string[];
+  datasetIds?: string[];
   value: unknown;
   onChange: (value: DatasetTagFilterValue) => void;
   fetchWhenEmptyValue?: boolean;
 }) => {
   const { feConfigs } = useSystemStore();
-  const datasetIdsKey = datasetIds.join(',');
+  const hasStaticDatasetIds = Array.isArray(datasetIds);
+  const resolvedDatasetIds = hasStaticDatasetIds ? datasetIds : [];
+  const datasetIdsKey = resolvedDatasetIds.join(',');
   const hasCustomTagCondition =
     isDatasetTagFilterValue(value) &&
     value.conditions.some((item) => !isTagFilterAttributeField(item.field) && Boolean(item.tag));
   const shouldFetch =
     Boolean(feConfigs?.isPlus) &&
-    datasetIds.length > 0 &&
+    resolvedDatasetIds.length > 0 &&
     (fetchWhenEmptyValue || hasCustomTagCondition);
 
   const { data, loading, error } = useRequest(
     async () => {
       if (!shouldFetch) return undefined;
-      const results = await Promise.all(datasetIds.map(getAllTags));
+      const results = await Promise.all(resolvedDatasetIds.map(getAllTags));
       return {
         key: datasetIdsKey,
         tagLists: results.map(({ list }) => list)
@@ -550,25 +562,39 @@ export const useDatasetTagFilterPrune = ({
   );
 
   const options = useMemo(
-    () => (datasetIds.length === 0 ? [] : intersectWorkflowTagOptions(data?.tagLists ?? [])),
-    [data?.tagLists, datasetIds.length]
+    () =>
+      resolvedDatasetIds.length === 0 ? [] : intersectWorkflowTagOptions(data?.tagLists ?? []),
+    [data?.tagLists, resolvedDatasetIds.length]
   );
 
   useEffect(() => {
-    if (
-      loading ||
-      error ||
-      !shouldFetch ||
-      data?.key !== datasetIdsKey ||
-      !isDatasetTagFilterValue(value)
-    ) {
+    if (!hasStaticDatasetIds || !isDatasetTagFilterValue(value)) return;
+    if (resolvedDatasetIds.length === 0) {
+      const next = pruneTagFilterConditions(value, []);
+      if (JSON.stringify(next) !== JSON.stringify(value)) {
+        onChange(next);
+      }
+      return;
+    }
+    if (loading || error || !shouldFetch || data?.key !== datasetIdsKey) {
       return;
     }
 
     const next = pruneTagFilterConditions(value, options);
     if (JSON.stringify(next) === JSON.stringify(value)) return;
     onChange(next);
-  }, [data?.key, datasetIdsKey, error, loading, onChange, options, shouldFetch, value]);
+  }, [
+    data?.key,
+    datasetIdsKey,
+    error,
+    hasStaticDatasetIds,
+    loading,
+    onChange,
+    options,
+    resolvedDatasetIds.length,
+    shouldFetch,
+    value
+  ]);
 
   return { options };
 };
@@ -587,7 +613,7 @@ const DatasetTagFilterRows = ({
 }: {
   value: unknown;
   onChange: (value: DatasetTagFilterValue) => void;
-  datasetIds: string[];
+  datasetIds?: string[];
   referenceList: TagFilterReferenceList;
   usePortal?: boolean;
 }) => {

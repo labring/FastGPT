@@ -17,6 +17,14 @@ describe('TeamMemberNameSchema', () => {
     expect(TeamMemberNameSchema.safeParse('a'.repeat(21)).success).toBe(false);
   });
 
+  it.each([null, undefined, ''])(
+    'rejects an unset name %j in interactive updates',
+    (memberName) => {
+      expect(TeamMemberNameSchema.safeParse(memberName).success).toBe(false);
+      expect(getValidTeamMemberName(memberName)).toBeUndefined();
+    }
+  );
+
   it('separates strict normalization from fallback validation', () => {
     expect(normalizeTeamMemberName(' Bob ')).toBe('Bob');
     expect(getValidTeamMemberName('')).toBeUndefined();

@@ -89,14 +89,15 @@ const AIResponseBox = ({
   const reasoningContent = value.reasoning?.content || '';
   const textContent = value.text?.content || '';
 
-  if (value.hideInUI) return null;
+  if (value.hideInUI && !value.interactive) return null;
 
   const responseBlocks: React.ReactNode[] = [];
   const foldableProcessingBlocks: React.ReactNode[] = [];
   const standaloneProcessingBlocks: React.ReactNode[] = [];
 
-  const showFoldableProcessing = showProcessing && showFoldableProcessingProp;
-  const showStandaloneProcessing = showProcessing && showStandaloneProcessingProp;
+  const showFoldableProcessing = !value.hideInUI && showProcessing && showFoldableProcessingProp;
+  const showStandaloneProcessing =
+    !value.hideInUI && showProcessing && showStandaloneProcessingProp;
 
   if (showFoldableProcessing && reasoningContent && !value.hideReason) {
     foldableProcessingBlocks.push(
@@ -177,7 +178,7 @@ const AIResponseBox = ({
 
   responseBlocks.push(...standaloneProcessingBlocks);
 
-  if (showAnswer && value.text && textContent) {
+  if (!value.hideInUI && showAnswer && value.text && textContent) {
     responseBlocks.push(
       <RenderText
         {...markdownActions}
@@ -222,7 +223,7 @@ const AIResponseBox = ({
     }
   }
 
-  if (value.chatAgentBuilderVersion) {
+  if (!value.hideInUI && value.chatAgentBuilderVersion) {
     responseBlocks.push(
       <RenderChatAgentBuilderVersion
         key={`chatAgentBuilderVersion-${value.chatAgentBuilderVersion.s3Key}`}
@@ -233,7 +234,7 @@ const AIResponseBox = ({
     );
   }
 
-  if (showWorkflowBuilderVersion && value.workflowBuilderVersion) {
+  if (!value.hideInUI && showWorkflowBuilderVersion && value.workflowBuilderVersion) {
     responseBlocks.push(
       <RenderWorkflowBuilderVersion
         key={`workflowBuilderVersion-${value.workflowBuilderVersion.checksum}-${value.workflowBuilderVersion.s3Key ?? 'ready'}-${value.workflowBuilderVersion.expiresAt ?? ''}`}

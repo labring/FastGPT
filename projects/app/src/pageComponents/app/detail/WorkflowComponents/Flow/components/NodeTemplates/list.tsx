@@ -461,6 +461,7 @@ const NodeTemplateList = ({
     },
     [
       computedNewNodeName,
+      i18n.language,
       getNodeById,
       handleParams,
       isToolSelector,
@@ -493,9 +494,6 @@ const NodeTemplateList = ({
         }, {});
 
         templates.forEach((item) => {
-          if (item.flowNodeType === FlowNodeTypeEnum.agent) {
-            return;
-          }
           if (item.templateType && map[item.templateType]) {
             map[item.templateType].list.push({
               ...item,
@@ -621,7 +619,7 @@ const NodeTemplateList = ({
 
   if (ScrollData) {
     return (
-      <ScrollData flex={1} minH={0} showLoadingOverlay={false}>
+      <ScrollData flex={1} minH={0}>
         <Box flexShrink={0} px={formatTemplatesArrayData.length > 1 ? 2 : 5}>
           {listContent}
         </Box>

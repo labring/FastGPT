@@ -60,6 +60,10 @@ const vlmModel = {
   }
 };
 
+vi.mock('@fastgpt/service/core/dataset/vectorData/service', () => ({
+  getDatasetVectorSearchData: vi.fn(async () => undefined)
+}));
+
 vi.mock('@fastgpt/service/core/ai/embedding', () => ({
   getVectors: mockGetVectors
 }));
@@ -604,6 +608,23 @@ describe('default recall dataset search', () => {
       expect(result.retrievalResults?.every((item) => item.synonymMappings === undefined)).toBe(
         true
       );
+    });
+
+    it('为召回候选写入 retrievalRank，重排后最终结果仍可回溯召回位置', async () => {
+      arrangeTwoCandidates();
+      serviceEnv.RETRIEVAL_RESULTS_LIMIT = 20;
+
+      const result = await runSearch({ usingReRank: true, rerankWeight: 1 });
+
+      // 快照顺序即重排前召回顺序，retrievalRank 从 0 起
+      expect(result.retrievalResults?.map((item) => [item.id, item.retrievalRank])).toEqual([
+        ['data-a', 0],
+        ['data-b', 1]
+      ]);
+      // 重排淘汰 data-b，但保留的 data-a 仍能回溯到召回位置
+      expect(result.searchRes.map((item) => [item.id, item.retrievalRank])).toEqual([
+        ['data-a', 0]
+      ]);
     });
 
     it('重排未生效时不产出候选集，避免占用内存又最终不用', async () => {

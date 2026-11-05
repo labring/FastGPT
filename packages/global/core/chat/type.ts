@@ -1,3 +1,4 @@
+import { ChatPublishSourceSchema } from './publishSource/type';
 import { SearchDataResponseQuoteListItemSchema } from '../dataset/type';
 import {
   ChatFileTypeEnum,
@@ -123,10 +124,19 @@ export const ChatSchema = z.object({
   title: z.string(),
   customTitle: z.string().optional(),
   top: z.boolean().default(false),
-  source: z.enum(ChatSourceEnum),
-  sourceName: z.string().optional(),
-
-  shareId: z.string().optional(),
+  publishSource: ChatPublishSourceSchema.optional(),
+  source: z.enum(ChatSourceEnum).meta({
+    deprecated: true,
+    description: '旧调用渠道类型，仅作兼容；使用 publishSource.type'
+  }),
+  sourceName: z.string().optional().meta({
+    deprecated: true,
+    description: '旧渠道名称，仅用于兼容及历史名称回退；日志展示使用扩展的 publishSource.name'
+  }),
+  shareId: z.string().optional().meta({
+    deprecated: true,
+    description: '旧分享渠道标识，仅保留历史数据及迁移读取；当前渠道关联使用 publishSource.id'
+  }),
   outLinkUid: z.string().optional(),
 
   variableList: z.array(VariableItemTypeSchema).optional(),
@@ -145,11 +155,6 @@ export const ChatSchema = z.object({
   /** 会话累计的 LLM token 摘要，不包含 embedding/rerank 等非 LLM token。 */
   summary: ChatSummarySchema,
 
-  /** 旧数据可能无此字段；业务上按 done 处理 */
-  chatGenerateStatus: z
-    .enum(ChatGenerateStatusEnum)
-    .default(ChatGenerateStatusEnum.done)
-    .meta({ description: '生成状态' }),
   hasBeenRead: z.boolean().default(true),
 
   deleteTime: z.coerce.date().nullish()

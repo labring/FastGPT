@@ -15,12 +15,14 @@ import {
   TTSModelDocumentSchema
 } from '../../../../core/ai/model/schema';
 import z from 'zod';
-import { IntSchema } from '../../../../common/zod';
+import { BoolSchema, IntSchema } from '../../../../common/zod';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
 import { I18nStringSchema } from '../../../../common/i18n/type';
 import { ModelDefaultIdsSchema } from '../../../../core/ai/model/default';
 import { OutLinkChatAuthQuerySchema } from '../../../../support/permission/chat';
 import { ChannelTypeSchema } from '../../../../core/ai/model/scope';
+import { ModelOrderIdsSchema } from '../../../../core/ai/model/order';
+import { SourceMemberSchema } from '../../../../support/user/type';
 
 export const ModelChannelSummarySchema = z.object({
   id: IntSchema.positive().meta({ example: 1, description: 'AI Proxy 渠道 ID' }),
@@ -39,7 +41,11 @@ const MyModelBaseSchema = z.object({
   name: z.string().meta({ description: '模型展示名称' }),
   provider: z.string().meta({ description: '模型提供商标识' }),
   scope: z.nativeEnum(ModelScopeEnum).meta({ description: '模型实例作用域' }),
+  sortOrder: LLMModelDocumentSchema.shape.sortOrder,
   tmbId: z.string().optional().meta({ description: '模型归属成员 ID' }),
+  sourceMember: SourceMemberSchema.optional().meta({
+    description: '创建人资料，仅成员展示请求返回'
+  }),
   avatar: z.string().optional().meta({ description: '模型图标' }),
   isActive: z.boolean().optional().meta({ description: '模型是否启用' }),
   testMode: z.boolean().optional().meta({ description: '是否为测试模式' }),
@@ -114,6 +120,15 @@ export const ModelProviderSchema = z.object({
 
 export const GetModelCatalogQuerySchema = z.object({
   version: z.string().trim().min(1).optional().meta({ description: '客户端已有目录版本' }),
+  includeSourceMember: BoolSchema.optional().meta({
+    example: true,
+    description: '补充创建人资料；仅成员生效，开启后始终返回完整目录，不使用版本缓存'
+  }),
+  orderBy: z.literal('custom').optional().meta({
+    example: 'custom',
+    description:
+      '可用模型页展示排序：自己的团队模型、共享给我的团队模型、系统模型依次展示，各组按自定义 rank 排列；省略时保留运行时顺序'
+  }),
   outLinkAuthData: OutLinkChatAuthQuerySchema.optional().meta({
     example: JSON.stringify({ shareId: 'share-id', outLinkUid: 'out-link-user-id' }),
     description: '分享链接鉴权数据；存在时使用发布链接绑定的成员身份计算模型权限'
@@ -130,7 +145,7 @@ export const GetModelCatalogResponseSchema = z.object({
       defaultModelIds: ModelDefaultIdsSchema
     })
     .optional()
-    .meta({ description: '版本变化时返回的完整目录；版本一致时省略' })
+    .meta({ description: '版本变化或成员显式请求创建人资料时返回完整目录；否则版本一致时省略' })
 });
 export type GetModelCatalogResponse = z.infer<typeof GetModelCatalogResponseSchema>;
 
@@ -355,9 +370,19 @@ export const UpdateModelChannelsBodySchema = z.object({
 export type UpdateModelChannelsBody = z.infer<typeof UpdateModelChannelsBodySchema>;
 
 /* POST /api/core/ai/model/create */
+// 展示 rank 由排序接口维护，创建配置不接受客户端指定顺序。
+export const CreateModelDataSchema = z.discriminatedUnion('type', [
+  LLMModelDocumentSchema.omit({ sortOrder: true }),
+  EmbeddingModelDocumentSchema.omit({ sortOrder: true }),
+  TTSModelDocumentSchema.omit({ sortOrder: true }),
+  STTModelDocumentSchema.omit({ sortOrder: true }),
+  RerankModelDocumentSchema.omit({ sortOrder: true })
+]);
+export type CreateModelData = z.infer<typeof CreateModelDataSchema>;
+
 export const CreateModelBodySchema = z.object({
-  modelData: AIModelDocumentDataSchema.meta({
-    description: '完整模型配置；未声明字段会被忽略，modelId 始终由服务端生成'
+  modelData: CreateModelDataSchema.meta({
+    description: '模型配置；未声明字段及 sortOrder 会被忽略，modelId 始终由服务端生成'
   }),
   channelType: ModelChannelTypeSchema,
   channelIds: z.array(IntSchema.positive()).optional().meta({
@@ -422,11 +447,21 @@ const UpdateModelField = {
 
 export const UpdateModelDataSchema = z
   .discriminatedUnion('type', [
-    LLMModelDocumentSchema.omit({ tmbId: true, teamId: true }).extend(UpdateModelField),
-    EmbeddingModelDocumentSchema.omit({ tmbId: true, teamId: true }).extend(UpdateModelField),
-    TTSModelDocumentSchema.omit({ tmbId: true, teamId: true }).extend(UpdateModelField),
-    STTModelDocumentSchema.omit({ tmbId: true, teamId: true }).extend(UpdateModelField),
-    RerankModelDocumentSchema.omit({ tmbId: true, teamId: true }).extend(UpdateModelField)
+    LLMModelDocumentSchema.omit({ tmbId: true, teamId: true, sortOrder: true }).extend(
+      UpdateModelField
+    ),
+    EmbeddingModelDocumentSchema.omit({ tmbId: true, teamId: true, sortOrder: true }).extend(
+      UpdateModelField
+    ),
+    TTSModelDocumentSchema.omit({ tmbId: true, teamId: true, sortOrder: true }).extend(
+      UpdateModelField
+    ),
+    STTModelDocumentSchema.omit({ tmbId: true, teamId: true, sortOrder: true }).extend(
+      UpdateModelField
+    ),
+    RerankModelDocumentSchema.omit({ tmbId: true, teamId: true, sortOrder: true }).extend(
+      UpdateModelField
+    )
   ])
   .meta({
     description: '模型可编辑参数；model 为可选更新，type 仅用于分支校验不参与类型变更'
@@ -447,6 +482,19 @@ export const UpdateModelStatusBodySchema = z.object({
   channelType: ModelChannelTypeSchema
 });
 export type UpdateModelStatusBody = z.infer<typeof UpdateModelStatusBodySchema>;
+
+/* ============================================================================
+ * API: 更新模型展示顺序
+ * Route: PUT /api/core/ai/model/updateOrder
+ * Method: PUT
+ * Description: 按完整模型 ID 列表更新模型展示顺序，服务端写入连续 rank
+ * Tags: ['Model', 'Admin', 'Write']
+ * ============================================================================ */
+export const UpdateModelOrderBodySchema = z.object({
+  modelIds: ModelOrderIdsSchema,
+  channelType: ModelChannelTypeSchema
+});
+export type UpdateModelOrderBody = z.infer<typeof UpdateModelOrderBodySchema>;
 
 /* ============================================================================
  * API: 获取系统模型管理配置
@@ -490,15 +538,25 @@ const ImportedModelIdField = {
   scope: z.literal(ModelScopeEnum.system).meta({ description: '系统模型作用域' })
 };
 
+// JSON 仅替换模型配置；旧文件中的 rank 作为未知字段忽略，不覆盖本实例的展示顺序。
 export const ImportedSystemModelSchema = z.discriminatedUnion('type', [
-  LLMModelDocumentSchema.extend({ ...ImportedModelIdField, config: LLMModelConfigSchema }),
-  EmbeddingModelDocumentSchema.extend({
+  LLMModelDocumentSchema.omit({ sortOrder: true }).extend({
+    ...ImportedModelIdField,
+    config: LLMModelConfigSchema
+  }),
+  EmbeddingModelDocumentSchema.omit({ sortOrder: true }).extend({
     ...ImportedModelIdField,
     config: EmbeddingModelConfigSchema
   }),
-  TTSModelDocumentSchema.extend({ ...ImportedModelIdField, config: TTSModelConfigSchema }),
-  STTModelDocumentSchema.extend({ ...ImportedModelIdField, config: STTModelConfigSchema }),
-  RerankModelDocumentSchema.extend({
+  TTSModelDocumentSchema.omit({ sortOrder: true }).extend({
+    ...ImportedModelIdField,
+    config: TTSModelConfigSchema
+  }),
+  STTModelDocumentSchema.omit({ sortOrder: true }).extend({
+    ...ImportedModelIdField,
+    config: STTModelConfigSchema
+  }),
+  RerankModelDocumentSchema.omit({ sortOrder: true }).extend({
     ...ImportedModelIdField,
     config: RerankModelConfigSchema
   })
@@ -519,7 +577,8 @@ export const UpdateSystemModelsWithJsonBodySchema = z.object({
   config: JsonSystemModelListSchema.pipe(z.array(ImportedSystemModelSchema)).meta({
     example:
       '[{"modelId":"68ad85a7463006c963799a05","scope":"system","type":"llm","provider":"OpenAI","model":"gpt-5","name":"GPT-5","isActive":true,"config":{"maxContext":400000,"maxResponse":128000,"quoteMaxToken":300000,"toolChoice":true}}]',
-    description: '完整系统模型配置 JSON，每条记录必须包含源实例模型 ID'
+    description:
+      '完整系统模型配置 JSON，每条记录必须包含源实例模型 ID；sortOrder 会被忽略，已有展示顺序保持不变'
   })
 });
 export type UpdateSystemModelsWithJsonBody = z.input<typeof UpdateSystemModelsWithJsonBodySchema>;

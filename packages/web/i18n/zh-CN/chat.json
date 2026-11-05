@@ -1,4 +1,5 @@
 {
+  "source_dingtalk": "钉钉",
   "AI_input_is_empty": "传入 AI 节点的内容为空",
   "LLM_model_response_empty": "模型响应为空，请查看模型详情请求",
   "Next": "下一个",
@@ -305,5 +306,7 @@
   "interactive.agent_ask.waiting": "正在询问",
   "interactive.agent_ask.asked_questions": "已询问 {{count}} 个问题",
   "view_all_citations": "查看全部",
-  "view_citations": "查看引用"
+  "view_citations": "查看引用",
+  "sandbox_connection_closed": "沙箱连接已断开",
+  "sandbox_invalid_file_name": "文件名不合法"
 }

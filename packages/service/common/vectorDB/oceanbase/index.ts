@@ -28,7 +28,7 @@ export class ObVectorCtrl implements VectorControllerType {
         );
       `);
       await this.obClient.query(
-        `CREATE VECTOR INDEX IF NOT EXISTS vector_index ON ${DatasetVectorTableName}(vector) WITH (distance=${OceanBaseIndexConfig.distance}, type=${OceanBaseIndexConfig.type}, m=16, ef_construction=200);`
+        `CREATE VECTOR INDEX IF NOT EXISTS vector_index ON ${DatasetVectorTableName}(vector) WITH (distance=${OceanBaseIndexConfig.distance}, type=${OceanBaseIndexConfig.type}, m=32, ef_construction=256);`
       );
       await this.obClient.query(
         `CREATE INDEX IF NOT EXISTS team_dataset_collection_index ON ${DatasetVectorTableName}(team_id, dataset_id, collection_id);`
@@ -155,7 +155,7 @@ export class ObVectorCtrl implements VectorControllerType {
         } & RowDataPacket)[][]
       >(
         `BEGIN;
-          SET ob_hnsw_ef_search = ${global.systemEnv?.hnswEfSearch || 100};
+          SET ob_hnsw_ef_search = ${global.systemEnv?.hnswEfSearch || 200};
           SELECT id, collection_id, ${OceanBaseIndexConfig.distanceFunc}(vector, [${vector}]) AS score
             FROM ${DatasetVectorTableName}
             WHERE team_id='${teamId}'

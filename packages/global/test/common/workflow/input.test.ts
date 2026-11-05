@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   getOrInitModuleInputValue,
   getWorkflowSecretInputKind,
+  normalizeDatasetSelectValue,
   projectExternalVariableInput
 } from '@fastgpt/global/common/workflow/input';
 import { isToolParamInput } from '@fastgpt/global/common/workflow/editor/utils';
@@ -29,6 +30,50 @@ describe('isToolParamInput', () => {
     expect(isToolParamInput({ ...input, canAgentGenerated: false })).toBe(false);
     expect(isToolParamInput({ ...input, canEdit: false })).toBe(false);
     expect(isToolParamInput({ ...input, defaultToAgentGenerated: false })).toBe(false);
+  });
+});
+
+describe('normalizeDatasetSelectValue', () => {
+  it('兼容历史单对象并保留展示快照和资源错误标记', () => {
+    const dataset = {
+      datasetId: 'dataset-1',
+      name: 'Dataset',
+      avatar: 'avatar.png',
+      vectorModel: { model: 'embedding' },
+      error: 'resource_missing'
+    };
+
+    expect(normalizeDatasetSelectValue(dataset)).toEqual([dataset]);
+  });
+
+  it.each([undefined, null, 'dataset-id', {}, []])(
+    '将无效或未配置的值 %# 归一为空列表',
+    (value) => {
+      expect(normalizeDatasetSelectValue(value)).toEqual([]);
+    }
+  );
+
+  it('过滤无效列表项并保留有效知识库的顺序，不展开嵌套数组', () => {
+    const first = { datasetId: 'dataset-1', name: 'First' };
+    const second = { datasetId: 'dataset-2', error: 'resource_no_permission' };
+    const value = [
+      first,
+      ['source-node', 'datasets'],
+      [{ datasetId: 'nested-dataset' }],
+      null,
+      undefined,
+      false,
+      0,
+      'dataset-id',
+      {},
+      { datasetId: 123 },
+      { datasetId: '' },
+      { datasetId: ' \t' },
+      second
+    ];
+
+    expect(normalizeDatasetSelectValue(value)).toEqual([first, second]);
+    expect(value).toHaveLength(13);
   });
 });
 

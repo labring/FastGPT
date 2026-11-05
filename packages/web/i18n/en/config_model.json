@@ -272,6 +272,8 @@
   "available_to_all": "Available to all",
   "only_available_to_self": "Only available to self",
   "shared_with_me": "Shared with me",
+  "creator": "Creator",
+  "system_model": "System model",
   "system_model_tag": "System",
   "replace_invalid_title": "Replace unavailable models",
   "replace_invalid_review": "Confirm",
@@ -294,5 +296,8 @@
   "replace_invalid_failed_samples": "Failure samples",
   "replace_invalid_retry": "Run again",
   "replace_invalid_retry_note": "Run the same mapping again to handle remaining unavailable references.",
-  "replace_invalid_request_failed": "Replacement request failed. Saved changes are not rolled back; you can run it again."
+  "replace_invalid_request_failed": "Replacement request failed. Saved changes are not rolled back; you can run it again.",
+  "model.custom_sort": "Custom sort",
+  "model.cancel_sort": "Cancel",
+  "model.save_sort": "Save order"
 }

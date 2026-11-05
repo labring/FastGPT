@@ -35,7 +35,7 @@ import { isPluginSystemTemplate } from '@fastgpt/service/core/app/templates/regi
 import { MongoAppTemplate } from '@fastgpt/service/core/app/templates/templateSchema';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
-import { checkAppResourceReadPermissions } from '@fastgpt/service/support/permission/app/resource';
+import { filterAuthorizedAppResources } from '@fastgpt/service/support/permission/app/resource';
 import { createResourceDefaultCollaborators } from '@fastgpt/service/support/permission/controller';
 import { getAuthorizedModelIds } from '@fastgpt/service/support/permission/model/auth';
 import { checkTeamAppTypeLimit } from '@fastgpt/service/support/permission/teamLimit';
@@ -129,6 +129,50 @@ export const config = {
 };
 
 /**
+ * 将创建、复制或转换传入的工作流统一迁移为当前 canonical 结构，
+ * 并按团队模型目录与操作人可用模型完成 fallback 格式化及敏感字段处理。
+ */
+const formatAppWorkflowForSave = async ({
+  nodes,
+  edges,
+  chatConfig,
+  referenceSnapshots,
+  teamId,
+  tmbId,
+  isRoot
+}: {
+  nodes?: unknown[];
+  edges?: AppVersionSchemaType['edges'];
+  chatConfig?: AppVersionSchemaType['chatConfig'];
+  referenceSnapshots?: AppVersionSchemaType['referenceSnapshots'];
+  teamId: string;
+  tmbId: string;
+  isRoot?: boolean;
+}) => {
+  const workflow = migrateWorkflowToCurrent({
+    nodes: nodes ?? [],
+    edges: edges ?? [],
+    chatConfig,
+    referenceSnapshots
+  });
+  const modelHandle = await getTeamModelHandle({ teamId });
+  const authorizedIds = await getAuthorizedModelIds({
+    actor: { teamId, tmbId, isRoot: Boolean(isRoot) },
+    handle: modelHandle
+  });
+  formatModels({
+    nodes: workflow.nodes,
+    chatConfig: workflow.chatConfig,
+    models: modelHandle.getActiveModels(),
+    defaultModelIds: modelHandle.getDefaultModelIds(authorizedIds),
+    modelReferencePolicy: 'fallback'
+  });
+  await beforeUpdateAppFormat({ nodes: workflow.nodes, teamId });
+
+  return { workflow, modelHandle };
+};
+
+/**
  * 新建应用及初始版本、默认协作者。所有新增入口统一校验配额、父链与目录深度，
  * 新建文件夹同时写入祖先路径；
  * 复制、转换新建和工具集创建传入的 session 会继续复用，原地转换不走此入口。
@@ -172,14 +216,12 @@ export const onCreateApp = async ({
   isRoot?: boolean;
   session?: ClientSession;
 }) => {
+  const isFolder = AppFolderTypeList.includes(type);
+
   // 配额属于新增资源的约束，放在共享入口，避免复制或转换新建绕过路由校验。
   await checkTeamAppTypeLimit({
     teamId,
-    appCheckType: AppFolderTypeList.includes(type)
-      ? 'folder'
-      : ToolTypeList.includes(type)
-        ? 'tool'
-        : 'app'
+    appCheckType: isFolder ? 'folder' : ToolTypeList.includes(type) ? 'tool' : 'app'
   });
 
   // 普通应用与工具分属两棵目录树，父文件夹类型必须是同一棵树内的文件夹。
@@ -192,45 +234,38 @@ export const onCreateApp = async ({
       MongoApp.findOne({ _id: id, teamId }, '_id parentId type')
         .session(session ?? null)
         .lean(),
-    isFolder: AppFolderTypeList.includes(type),
+    isFolder,
     isFolderType: (parentType) =>
       AppFolderTypeList.includes(parentType as AppTypeEnum) &&
       (!folderTree || getAppFolderTree(parentType) === folderTree)
   });
 
-  // Copy 和 Transition 会传入历史数据库记录；写入前统一转换为 canonical 并格式化敏感字段。
-  const normalizedWorkflow = migrateWorkflowToCurrent({
-    nodes: nodes ?? [],
-    edges: edges ?? [],
-    chatConfig,
-    referenceSnapshots
-  });
-  const modelHandle = await getTeamModelHandle({ teamId });
-  const authorizedIds = await getAuthorizedModelIds({
-    actor: { teamId, tmbId, isRoot: Boolean(isRoot) },
-    handle: modelHandle
-  });
-  formatModels({
-    nodes: normalizedWorkflow.nodes,
-    chatConfig: normalizedWorkflow.chatConfig,
-    models: modelHandle.getActiveModels(),
-    defaultModelIds: modelHandle.getDefaultModelIds(authorizedIds),
-    modelReferencePolicy: 'fallback'
-  });
-  await beforeUpdateAppFormat({ nodes: normalizedWorkflow.nodes, teamId });
-  const resources = extractAppResources({
-    nodes: normalizedWorkflow.nodes,
-    chatConfig: normalizedWorkflow.chatConfig
-  });
-  if (!AppFolderTypeList.includes(type!)) {
-    await checkAppResourceReadPermissions({
-      resources,
-      tmbId,
-      teamId,
-      isRoot,
-      modelHandle
-    });
-  }
+  // 文件夹不创建版本记录，跳过工作流迁移、模型目录读取与资源权限过滤。
+  const preparedVersion = isFolder
+    ? undefined
+    : await (async () => {
+        const { workflow, modelHandle } = await formatAppWorkflowForSave({
+          nodes,
+          edges,
+          chatConfig,
+          referenceSnapshots,
+          teamId,
+          tmbId,
+          isRoot
+        });
+        // 新建、导入或复制应用时，仅将操作人有权限读取的资源写入初始快照，无权限或不存在的资源不阻断创建。
+        const resources = await filterAuthorizedAppResources({
+          resources: extractAppResources({
+            nodes: workflow.nodes,
+            chatConfig: workflow.chatConfig
+          }),
+          tmbId,
+          teamId,
+          isRoot,
+          modelHandle
+        });
+        return { workflow, resources };
+      })();
 
   const create = async (session: ClientSession) => {
     const _avatar = await (async () => {
@@ -252,7 +287,7 @@ export const onCreateApp = async ({
       });
     })();
 
-    const ancestorIds = AppFolderTypeList.includes(type)
+    const ancestorIds = isFolder
       ? await getFolderAncestorIdsFromParentId({
           parentId: parentId ? String(parentId) : null,
           findFolder: (id) =>
@@ -284,21 +319,21 @@ export const onCreateApp = async ({
 
     const appId = String(app._id);
 
-    if (!AppFolderTypeList.includes(type!)) {
+    if (preparedVersion) {
       const [version] = await MongoAppVersion.create(
         [
           {
             tmbId,
             appId,
-            nodes: storageNodes ?? normalizedWorkflow.nodes,
-            edges: normalizedWorkflow.edges,
-            chatConfig: normalizedWorkflow.chatConfig,
-            referenceSnapshots: normalizedWorkflow.referenceSnapshots,
+            nodes: storageNodes ?? preparedVersion.workflow.nodes,
+            edges: preparedVersion.workflow.edges,
+            chatConfig: preparedVersion.workflow.chatConfig,
+            referenceSnapshots: preparedVersion.workflow.referenceSnapshots,
             versionName: name,
             username,
             avatar: userAvatar,
             isPublish: true,
-            resources
+            resources: preparedVersion.resources
           }
         ],
         { session, ordered: true }
@@ -366,6 +401,7 @@ export const onUpdateAppWorkflow = async ({
   resources,
   teamId,
   tmbId,
+  isRoot,
   session
 }: {
   appId: string;
@@ -376,27 +412,18 @@ export const onUpdateAppWorkflow = async ({
   resources: AppResourcesType;
   teamId: string;
   tmbId: string;
+  isRoot?: boolean;
   session?: ClientSession;
 }) => {
-  const workflow = migrateWorkflowToCurrent({
-    nodes: nodes ?? [],
-    edges: edges ?? [],
+  const { workflow } = await formatAppWorkflowForSave({
+    nodes,
+    edges,
     chatConfig,
-    referenceSnapshots
+    referenceSnapshots,
+    teamId,
+    tmbId,
+    isRoot
   });
-  const modelHandle = await getTeamModelHandle({ teamId });
-  const authorizedIds = await getAuthorizedModelIds({
-    actor: { teamId, tmbId, isRoot: false },
-    handle: modelHandle
-  });
-  formatModels({
-    nodes: workflow.nodes,
-    chatConfig: workflow.chatConfig,
-    models: modelHandle.getActiveModels(),
-    defaultModelIds: modelHandle.getDefaultModelIds(authorizedIds),
-    modelReferencePolicy: 'fallback'
-  });
-  await beforeUpdateAppFormat({ nodes: workflow.nodes, teamId });
 
   await MongoAppVersion.findOneAndUpdate(
     { appId, isAutoSave: true },

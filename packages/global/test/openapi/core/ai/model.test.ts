@@ -6,6 +6,7 @@ import {
   DeleteModelsBodySchema,
   TestModelQuerySchema,
   UpdateModelBodySchema,
+  UpdateModelOrderBodySchema,
   UpdateModelStatusBodySchema,
   ImportedSystemModelSchema
 } from '../../../../openapi/core/ai/model/api';
@@ -80,6 +81,27 @@ describe('admin system model API schemas', () => {
     ).toThrow();
   });
 
+  it('validates a complete model order without the batch-operation limit', () => {
+    const first = '68ad85a7463006c963799a05';
+    const second = '68ad85a7463006c963799a06';
+
+    expect(
+      UpdateModelOrderBodySchema.parse({
+        modelIds: [second, first],
+        channelType: 'team'
+      })
+    ).toEqual({
+      modelIds: [second, first],
+      channelType: 'team'
+    });
+    expect(() =>
+      UpdateModelOrderBodySchema.parse({
+        modelIds: [first, first],
+        channelType: 'system'
+      })
+    ).toThrow('modelIds must be unique');
+  });
+
   it('enforces the template creation batch boundary', () => {
     const templates = Array.from({ length: 501 }, (_, index) => ({
       type: 'llm' as const,
@@ -126,6 +148,38 @@ describe('admin system model API schemas', () => {
       })
     ).toEqual({ modelData, channelType: 'system' });
   });
+
+  it.each([
+    { type: 'llm', config: { maxContext: 16000, maxResponse: 8000, quoteMaxToken: 12000 } },
+    { type: 'embedding', config: { defaultToken: 512, maxToken: 8192, weight: 0 } },
+    { type: 'rerank', config: {} },
+    { type: 'tts', config: { voices: [] } },
+    { type: 'stt', config: {} }
+  ])(
+    'excludes display ranks from $type configuration writes and JSON exports',
+    ({ type, config }) => {
+      const modelId = '68ad85a7463006c963799a05';
+      const modelData = {
+        type,
+        config,
+        provider: 'OpenAI',
+        model: 'test-model',
+        name: 'Test',
+        scope: 'system',
+        sortOrder: 123
+      };
+
+      expect(
+        CreateModelBodySchema.parse({ modelData, channelType: 'system' }).modelData
+      ).not.toHaveProperty('sortOrder');
+      expect(
+        UpdateModelBodySchema.parse({ modelId, modelData, channelType: 'system' }).modelData
+      ).not.toHaveProperty('sortOrder');
+      expect(ImportedSystemModelSchema.parse({ ...modelData, modelId })).not.toHaveProperty(
+        'sortOrder'
+      );
+    }
+  );
 
   it('accepts optional model identifier in update data and rejects empty strings', () => {
     const modelId = '68ad85a7463006c963799a05';

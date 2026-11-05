@@ -31,14 +31,15 @@ async function handler(req: ApiRequestProps<CopyAppBodyType>): Promise<CopyAppRe
     bodySchema: CopyAppBodySchema
   }).body;
 
-  const { app, teamId } = await authApp({
+  const { app } = await authApp({
     req,
     authToken: true,
     per: WritePermissionVal,
     appId: sourceAppId
   });
+  const teamId = String(app.teamId);
 
-  const { tmbId } = app.parentId
+  const { tmbId, isRoot } = app.parentId
     ? await authApp({ req, appId: app.parentId, per: WritePermissionVal, authToken: true })
     : await authUserPer({ req, authToken: true, per: TeamAppCreatePermissionVal });
 
@@ -73,8 +74,9 @@ async function handler(req: ApiRequestProps<CopyAppBodyType>): Promise<CopyAppRe
       edges: draftWorkflow.edges,
       chatConfig: draftWorkflow.chatConfig,
       referenceSnapshots: draftWorkflow.referenceSnapshots,
-      teamId: app.teamId,
+      teamId,
       tmbId,
+      isRoot,
       pluginData: app.pluginData,
       session
     });

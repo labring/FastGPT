@@ -4,6 +4,8 @@ import type { SettingAIDataType } from '@fastgpt/global/core/app/type';
 import SettingLLMModel from '@/components/core/ai/SettingLLMModel';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { useNode, useNodeActions } from '@/web/core/workflow/editor/react/useNode';
+import { useContextSelector } from 'use-context-selector';
+import { AppContext } from '@/pageComponents/app/detail/context';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { useLocalStorageState } from 'ahooks';
 import { Input_Template_SettingAiModel } from '@fastgpt/global/core/workflow/template/input';
@@ -14,6 +16,7 @@ import { Input_Template_SettingAiModel } from '@fastgpt/global/core/workflow/tem
  * 保证一次交互只产生一条可撤销历史。
  */
 const SelectAiModelRender = ({ nodeId, settingLLMModelProps }: RenderInputProps) => {
+  const appId = useContextSelector(AppContext, (v) => v.appId);
   const nodeActions = useNodeActions(nodeId);
   const currentInputs = useNode(nodeId, (node) => node?.data.inputs) ?? [];
   const getCurrentInput = (key: string) => currentInputs.find((input) => input.key === key);
@@ -127,6 +130,7 @@ const SelectAiModelRender = ({ nodeId, settingLLMModelProps }: RenderInputProps)
 
   return (
     <SettingLLMModel
+      appId={appId || undefined}
       defaultData={llmModelData}
       onChange={onChangeModel}
       {...settingLLMModelProps}

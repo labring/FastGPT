@@ -1,6 +1,7 @@
 import { getNodeAllSource } from '@/web/core/workflow/utils';
 import { getGlobalVariableNode } from '@/web/core/workflow/adapt';
 import { workflowSystemVariables } from '@/web/core/app/utils';
+import type { AgentToolType } from '@fastgpt/global/core/app/tool/type';
 import {
   DYNAMIC_OPTION_EXCLUDED_VALUE_TYPES,
   workflowReferenceValueIsSelectable,
@@ -9,13 +10,17 @@ import {
 } from '@fastgpt/global/common/workflow/reference';
 import { type AppChatConfigType } from '@fastgpt/global/core/app/type';
 import type { DeepReadonly } from '@fastgpt/global/core/workflow/editor/types';
-import { NodeInputKeyEnum, NodeOutputKeyEnum, VARIABLE_NODE_ID } from '@fastgpt/global/core/workflow/constants';
-import { FlowNodeOutputTypeEnum, FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import {
+  NodeInputKeyEnum,
+  NodeOutputKeyEnum,
+  VARIABLE_NODE_ID
+} from '@fastgpt/global/core/workflow/constants';
+import {
+  FlowNodeOutputTypeEnum,
+  FlowNodeTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
 import type { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
-import type {
-  FlowNodeItemType,
-  StoreNodeItemType
-} from '@fastgpt/global/core/workflow/type/node';
+import type { FlowNodeItemType, StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { isReferenceOptionFormItem } from '@fastgpt/global/core/workflow/template/system/interactive/constants';
 import type { UserInputFormItemType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import type {
@@ -28,7 +33,7 @@ import {
   normalizeFlowNodeInputType,
   serializeAgentTool
 } from '@fastgpt/global/core/app/formEdit/utils';
-import { SelectedToolItemTypeSchema } from '@fastgpt/global/core/app/formEdit/type';
+import type { SelectedToolItemType } from '@fastgpt/global/core/app/formEdit/type';
 import { type TFunction } from 'i18next';
 import type { Edge, Node } from '@xyflow/react';
 
@@ -92,12 +97,11 @@ export const uiWorkflow2StoreWorkflow = ({
       !nodeInputIsReference(selectedToolsInput) &&
       Array.isArray(selectedToolsInput.value)
     ) {
-      const serializedTools: any[] = [];
-      for (const tool of selectedToolsInput.value as any[]) {
-        const parsed = SelectedToolItemTypeSchema.safeParse(tool);
-        if (parsed.success) serializedTools.push(serializeAgentTool({ tool: parsed.data }));
-      }
-      selectedToolsInput.value = serializedTools as any;
+      // 展开态独有 flowNodeType；保存只提取配置，存储态原样保留，不因展示字段缺失而丢工具。
+      selectedToolsInput.value = selectedToolsInput.value.map(
+        (tool: SelectedToolItemType | AgentToolType) =>
+          'flowNodeType' in tool ? serializeAgentTool({ tool }) : tool
+      );
     }
 
     return {

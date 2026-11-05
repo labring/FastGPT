@@ -3,17 +3,32 @@ import { OgClient } from '@fastgpt/service/common/vectorDB/opengauss/controller'
 import { OpenGaussVectorCtrl } from '@fastgpt/service/common/vectorDB/opengauss';
 
 vi.mock('@fastgpt/service/common/vectorDB/opengauss/controller', () => ({
+  connectOg: vi.fn(),
   OgClient: { query: vi.fn() }
 }));
 
+describe('OpenGaussVectorCtrl.init', () => {
+  it('creates the vector index with the agreed HNSW build parameters', async () => {
+    vi.mocked(OgClient.query)
+      .mockReset()
+      .mockResolvedValue({ rows: [] } as any);
+    await new OpenGaussVectorCtrl().init();
+    expect(OgClient.query).toHaveBeenCalledWith(
+      expect.stringContaining('WITH (m = 32, ef_construction = 256)')
+    );
+  });
+});
+
 describe('OpenGaussVectorCtrl.embRecall', () => {
   beforeEach(() => {
+    global.systemEnv = {} as any;
     vi.mocked(OgClient.query)
       .mockReset()
       .mockResolvedValue([{}, { rows: [] }] as any);
   });
 
-  it('scopes the query to the team and datasets', async () => {
+  it.each([undefined, 100])('scopes the query and applies search width %j', async (configured) => {
+    if (configured !== undefined) global.systemEnv.hnswEfSearch = configured;
     await new OpenGaussVectorCtrl().embRecall({
       teamId: 'team-a',
       datasetIds: ['dataset-a', 'dataset-b'],
@@ -27,6 +42,7 @@ describe('OpenGaussVectorCtrl.embRecall', () => {
     const [query] = vi.mocked(OgClient.query).mock.calls[0];
     expect(query).toMatchObject({ query_timeout: 120_000 });
     const sql = typeof query === 'string' ? query : query.text;
+    expect(sql).toContain(`SET LOCAL hnsw.ef_search = ${configured ?? 200};`);
     expect(sql).toMatch(
       /WHERE\s+team_id = 'team-a'\s+AND dataset_id IN \('dataset-a','dataset-b'\)/
     );
