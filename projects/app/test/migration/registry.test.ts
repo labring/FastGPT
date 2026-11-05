@@ -4,7 +4,7 @@ import { systemMigrations, validateSystemMigrationRegistry } from '@/migration/r
 
 const createMigration = (id: string): SystemMigration => ({
   id,
-  version: '4.17.0',
+  version: '4.18.0',
   nameKey: `system_migration:migrations.${id}.name`,
   descriptionKey: `system_migration:migrations.${id}.description`,
   resultKey: `system_migration:migrations.${id}.result`,
@@ -13,54 +13,17 @@ const createMigration = (id: string): SystemMigration => ({
 });
 
 describe('validateSystemMigrationRegistry', () => {
-  it('preserves the published task order and validates the production registry', () => {
+  it('keeps only the current release tasks without legacy startup dependencies', () => {
     expect(systemMigrations.map(({ id }) => id)).toEqual([
-      '20260907_cleanup_team_member_roles',
-      '20260903_migrate_legacy_system_models',
-      '20260903_backfill_model_permissions',
-      '20260903_backfill_dataset_model_references',
-      '20260903_backfill_evaluation_model_references',
-      '20260903_backfill_app_model_references',
-      '20260903_backfill_resource_create_time',
-      '20260905_backfill_bill_metadata',
-      '20260905_backfill_resource_owner_acl',
-      '20260908_cleanup_legacy_invited_members',
-      '20260907_migrate_dataset_tags_v2',
-      '20260916_backfill_app_resource_snapshots',
-      '20260923_enable_channel_reasoning_mapping',
-      '20260928_backfill_member_name_set',
-      '20261008_migrate_chunk_training',
-      '20261009_migrate_dataset_rebuild_status',
-      '20261009_backfill_agent_sandbox_team_id',
-      '20261022_backfill_folder_ancestor_ids',
-      '20261025_token_prices_per_million',
       '20261022_initialize_dataset_vector_indexes',
       '20261104_backfill_chat_publish_source'
     ]);
     expect(
-      systemMigrations.filter((task: SystemMigration) => task.delay).map(({ id }) => id)
-    ).toEqual([
-      '20260916_backfill_app_resource_snapshots',
-      '20260923_enable_channel_reasoning_mapping'
-    ]);
-    expect(
-      systemMigrations.filter((task: SystemMigration) => task.manual).map(({ id }) => id)
-    ).toEqual(['20261008_migrate_chunk_training', '20261009_migrate_dataset_rebuild_status']);
-    expect(
-      systemMigrations.find(({ id }) => id === '20261009_migrate_dataset_rebuild_status')
-    ).toMatchObject({
-      dependsOn: ['20261008_migrate_chunk_training']
-    });
-    expect(
-      systemMigrations.filter((task: SystemMigration) => task.blockStartup).map(({ id }) => id)
-    ).toEqual(['20260903_migrate_legacy_system_models']);
-    expect(
-      systemMigrations.find(({ id }) => id === '20261025_token_prices_per_million')
-    ).toMatchObject({
-      id: '20261025_token_prices_per_million',
-      version: '4.17.3',
-      progressSteps: [{ key: 'models' }]
-    });
+      systemMigrations.filter(
+        (task: SystemMigration) =>
+          task.blockStartup || task.manual || task.delay || task.dependsOn?.length
+      )
+    ).toEqual([]);
     expect(() => validateSystemMigrationRegistry(systemMigrations)).not.toThrow();
   });
 
@@ -97,31 +60,8 @@ describe('validateSystemMigrationRegistry', () => {
   it('runs only the selected production tasks independently', () => {
     const independentTasks = systemMigrations.filter((task: SystemMigration) => task.independent);
     expect(independentTasks.map((task) => task.id)).toEqual([
-      '20260907_cleanup_team_member_roles',
-      '20260903_backfill_resource_create_time',
-      '20260905_backfill_bill_metadata',
-      '20260907_migrate_dataset_tags_v2',
-      '20260928_backfill_member_name_set',
-      '20261009_backfill_agent_sandbox_team_id',
-      '20261022_backfill_folder_ancestor_ids',
-      '20261025_token_prices_per_million',
       '20261104_backfill_chat_publish_source'
     ]);
-  });
-
-  it('makes the model catalog prerequisite explicit for every model reference task', () => {
-    const referenceTasks = systemMigrations.slice(2, 6);
-    expect(referenceTasks).toHaveLength(4);
-    for (const task of referenceTasks) {
-      expect(task).toMatchObject({ dependsOn: ['20260903_migrate_legacy_system_models'] });
-    }
-    expect(systemMigrations[1]).not.toHaveProperty('dependsOn');
-    expect(
-      systemMigrations.find((task) => task.id === '20260903_backfill_resource_create_time')
-    ).not.toHaveProperty('dependsOn');
-    expect(
-      systemMigrations.find((task) => task.id === '20260916_backfill_app_resource_snapshots')
-    ).toMatchObject({ dependsOn: ['20260903_backfill_app_model_references'] });
   });
 
   it('rejects delayed manual execution', () => {
