@@ -190,6 +190,7 @@ export const adminConfigPageFieldsMap: Record<string, readonly string[]> = {
   ],
   '/admin/subservice/plugin': [
     'subservice.plugin.baseUrl',
+    'subservice.plugin.token',
     'subservice.plugin.remoteDebug',
     'subservice.plugin.remoteDebugUrl'
   ],

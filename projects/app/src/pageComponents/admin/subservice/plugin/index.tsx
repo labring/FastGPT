@@ -35,7 +35,10 @@ const PluginSubserviceComponent = () => {
     }
   }, [effectiveConfig, reset]);
 
-  const baseUrl = effectiveConfig?.plugin?.baseUrl || 'http://localhost:3004';
+  const baseUrl =
+    useWatch({ control, name: 'plugin.baseUrl' }) ||
+    effectiveConfig?.plugin?.baseUrl ||
+    'http://localhost:3004';
   const pluginHealthUrl = baseUrl.replace(/\/+$/, '') + '/health';
   const remoteDebug = useWatch({ control, name: 'plugin.remoteDebug' });
 
@@ -53,6 +56,28 @@ const PluginSubserviceComponent = () => {
     >
       {/* 1. 连接与状态 */}
       <AdminSettingSection id="connection" title={t('admin:connection_status')}>
+        <AdminFormItem
+          label={t('admin:plugin_service_base_url')}
+          tooltip={t('admin:plugin_service_base_url_tip')}
+          isRequired
+          mb={6}
+        >
+          <Input {...register('plugin.baseUrl')} placeholder="http://plugin:3004" />
+        </AdminFormItem>
+
+        <AdminFormItem
+          label={t('admin:plugin_service_token')}
+          tooltip={t('admin:plugin_service_token_tip')}
+          mb={6}
+        >
+          <Input
+            type="password"
+            {...register('plugin.token')}
+            placeholder="******"
+            autoComplete="new-password"
+          />
+        </AdminFormItem>
+
         <AdminFormItem
           label={t('admin:plugin_gateway_health_check_endpoint')}
           tooltip={t('admin:plugin_service_liveness_probe_url_inside_docker_k8s_built_fr')}
