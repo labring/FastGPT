@@ -86,6 +86,43 @@ describe('checkWorkflowNodeIssues', () => {
     ]
   });
 
+  it('allows a system tool configuration containing a variable reference when publishing', () => {
+    const tool = makeNode('tool', FlowNodeTypeEnum.tool, {
+      inputs: [
+        {
+          key: NodeInputKeyEnum.systemInputConfig,
+          label: '',
+          valueType: WorkflowIOValueTypeEnum.any,
+          selectedType: FlowNodeInputTypeEnum.hidden,
+          renderTypeList: [FlowNodeInputTypeEnum.hidden],
+          inputList: [
+            { key: 'smtpHost', label: 'Host', inputType: 'input', required: true },
+            { key: 'smtpPort', label: 'Port', inputType: 'input', required: true },
+            { key: 'SSL', label: 'SSL', inputType: 'switch', required: false },
+            { key: 'smtpUser', label: 'User', inputType: 'input', required: true },
+            { key: 'smtpPass', label: 'Password', inputType: 'secret', required: true }
+          ],
+          value: {
+            type: 'manual',
+            value: {
+              smtpHost: { value: 'host' },
+              smtpPort: { value: '12313' },
+              SSL: { value: false },
+              smtpUser: { ref: [VARIABLE_NODE_ID, 'chatId'] },
+              smtpPass: { secret: 'cipher-placeholder' }
+            }
+          }
+        }
+      ]
+    });
+    expect(
+      checkWorkflowBeforeRunOrPublish({
+        nodes: [startNode, tool],
+        edges: [{ id: 'edge', source: 'start', target: 'tool' }]
+      })
+    ).toMatchObject({ hasError: false, issueMap: {} });
+  });
+
   it('accepts the blank tag-filter row shown by the dataset-search editor under both checker policies', () => {
     const search = makeNode('search', FlowNodeTypeEnum.datasetSearchNode, {
       ...DatasetSearchModule,

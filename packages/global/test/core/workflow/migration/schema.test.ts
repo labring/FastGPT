@@ -63,11 +63,16 @@ describe('workflow migration boundary', () => {
               renderTypeList: [],
               inputList: [
                 { key: 'count', label: 'Count', inputType: 'numberInput', value: { value: 0 } },
-                { key: 'enabled', label: 'Enabled', inputType: 'switch', value: { value: false } }
+                { key: 'enabled', label: 'Enabled', inputType: 'switch', value: { value: false } },
+                { key: 'optional', label: 'Optional', inputType: 'numberInput' }
               ],
               value: {
                 type: 'manual',
-                value: { count: { value: '12' }, enabled: { value: 'false' } }
+                value: {
+                  count: { value: '12' },
+                  enabled: { value: 'false' },
+                  optional: { value: '' }
+                }
               }
             }
           ]
@@ -75,9 +80,10 @@ describe('workflow migration boundary', () => {
       ]
     });
     expect(result.nodes[0].inputs[0]).toMatchObject({
-      inputList: [{ value: { value: 0 } }, { value: { value: false } }],
+      inputList: [{ value: { value: 0 } }, { value: { value: false } }, { key: 'optional' }],
       value: { value: { count: { value: 12 }, enabled: { value: false } } }
     });
+    expect(result.nodes[0].inputs[0].value.value).not.toHaveProperty('optional');
     expect(migrateWorkflowToCurrent(result)).toEqual(result);
   });
 

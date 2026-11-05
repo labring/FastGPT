@@ -194,6 +194,30 @@ describe('SecretInputForm authorization output', () => {
     expect(onChange).toHaveBeenLastCalledWith(expected);
     expect(await submit()).toEqual(expected);
   });
+
+  it.each([{ value: 'draft' }, { secret: 'existing-ciphertext' }])(
+    'clears the old draft immediately when switching to reference mode: %j',
+    async (apiKey) => {
+      await act(async () =>
+        root.render(
+          React.createElement(SecretInputForm, {
+            inputConfig: { ...input, value: { type: 'manual', value: { apiKey } } },
+            renderReference: () => React.createElement('span', null, 'Select reference'),
+            onChange,
+            onSubmit,
+            formId: 'authorization'
+          })
+        )
+      );
+      await act(async () =>
+        (
+          dom.window.document.querySelector('[data-testid="switch-mode"]') as HTMLButtonElement
+        ).click()
+      );
+      expect(onChange.mock.lastCall?.[0].value?.apiKey).toBeUndefined();
+      expect((await submit()).value?.apiKey).toBeUndefined();
+    }
+  );
 });
 
 const referenceList: SecretReferenceList = [
@@ -264,13 +288,22 @@ describe('SecretInputForm', () => {
             referenceList,
             renderReference: ({ onSelect }) =>
               createElement(
-                'button',
-                {
+                React.Fragment,
+                null,
+                createElement(
+                  'button',
+                  {
+                    type: 'button',
+                    'data-testid': 'select-reference',
+                    onClick: () => onSelect(['node', 'token'])
+                  },
+                  'Select reference'
+                ),
+                createElement('button', {
                   type: 'button',
-                  'data-testid': 'select-reference',
-                  onClick: () => onSelect(['node', 'token'])
-                },
-                'Select reference'
+                  'data-testid': 'clear-reference',
+                  onClick: () => onSelect(undefined)
+                })
               ),
             inputConfig: {
               key: 'system_input_config',
@@ -316,6 +349,12 @@ describe('SecretInputForm', () => {
           enabled: { value: false }
         }
       });
+
+      await act(async () => {
+        container.querySelector<HTMLButtonElement>('[data-testid="clear-reference"]')?.click();
+        form?.dispatchEvent(new dom.window.Event('submit', { bubbles: true, cancelable: true }));
+      });
+      expect(onSubmit).toHaveBeenCalledTimes(1);
 
       // 回到手动模式必须清除 ref，并恢复空必填密码的校验。
       await act(async () => {

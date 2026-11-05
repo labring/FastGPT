@@ -4,6 +4,7 @@ import { NodeInputKeyEnum } from '../constants';
 import { FlowNodeInputTypeEnum, FlowNodeTypeEnum } from '../node/constant';
 import { normalizeToolInputValue } from '../../app/tool/systemTool/codec';
 import { InputConfigInputTypeSchema } from '../type/io';
+import { BoolSchema } from '../../../common/zod';
 
 type RecordValue = Record<string, unknown>;
 
@@ -66,17 +67,32 @@ const migrateSystemInputConfigSecrets = (value: RecordValue, inputList: unknown)
   return {
     ...value,
     value: Object.fromEntries(
-      Object.entries(value.value).map(([key, item]) => {
+      Object.entries(value.value).flatMap(([key, item]) => {
         const config = Array.isArray(inputList)
           ? inputList.find((entry) => isRecord(entry) && entry.key === key)
           : undefined;
         const inputType = InputConfigInputTypeSchema.safeParse(config?.inputType);
-        return [
-          key,
-          inputType.success
-            ? (normalizeToolInputValue({ value: item, inputType: inputType.data }) ?? item)
-            : migrateSecretValueToCurrent(item)
-        ];
+        if (!inputType.success) return [[key, migrateSecretValueToCurrent(item)]];
+
+        const normalized = normalizeToolInputValue({ value: item, inputType: inputType.data });
+        const optional =
+          config?.required === undefined || BoolSchema.safeParse(config.required).data === false;
+        if (optional && (inputType.data === 'numberInput' || inputType.data === 'switch')) {
+          const parsed = CompatibleSecretValueSchema.safeParse(item);
+          const raw = parsed.success && 'value' in parsed.data ? parsed.data.value : item;
+          const isStatic = parsed.success
+            ? 'value' in parsed.data
+            : item === null || typeof item !== 'object';
+          const valid =
+            inputType.data === 'numberInput'
+              ? typeof raw === 'number'
+                ? Number.isFinite(raw)
+                : typeof raw === 'string' && raw.trim() !== '' && Number.isFinite(Number(raw))
+              : typeof raw === 'boolean' || raw === 'true' || raw === 'false';
+          // 非必填静态值无效时省略，交给工具使用默认值；引用和无法识别的对象不改动。
+          if (isStatic && !valid) return [];
+        }
+        return [[key, normalized ?? item]];
       })
     )
   };
