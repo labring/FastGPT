@@ -8,6 +8,10 @@ import {
   type DatasetArchiveManifest
 } from '@fastgpt/service/core/dataset/collection/archive/service';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import {
+  createDefaultInstanceConfig,
+  getTestInstanceConfig
+} from '@test/utils/instanceConfigSnapshot';
 
 const preparationMocks = vi.hoisted(() => ({
   findArchiveCollectionsByIds: vi.fn(),
@@ -132,6 +136,7 @@ describe('prepareDatasetArchive', () => {
   const options = { teamId: 'team', datasetId, datasetName: 'KB', collectionIds: [file._id] };
   beforeEach(() => {
     vi.clearAllMocks();
+    global.systemInstanceConfig = createDefaultInstanceConfig();
     preparationMocks.iterateArchiveCollectionsByParentIds.mockImplementation(() =>
       (async function* () {})()
     );
@@ -141,6 +146,50 @@ describe('prepareDatasetArchive', () => {
     preparationMocks.getFileMetadata.mockResolvedValue({ filename: 'file.txt', contentLength: 1 });
   });
   afterEach(() => vi.useRealTimers());
+
+  it('按实例配置限制文件数和原始大小，后续预检读取更新值', async () => {
+    const files = [file, { ...file, _id: 'second-file', fileId: `dataset/${datasetId}/second` }];
+    const input = {
+      ...options,
+      collectionIds: files.map((item) => item._id),
+      signal: new AbortController().signal
+    };
+    preparationMocks.findArchiveCollectionsByIds.mockResolvedValue(files);
+    preparationMocks.getFileMetadata.mockResolvedValue({
+      filename: 'file.txt',
+      contentLength: 2 * 1024 * 1024
+    });
+    const config = getTestInstanceConfig().resource.datasetArchive;
+    config.maxFiles = 1;
+    await expect(prepareDatasetArchive(input)).rejects.toBe(DatasetErrEnum.archiveLimitExceeded);
+    expect(preparationMocks.getFileMetadata).not.toHaveBeenCalled();
+
+    config.maxFiles = 2;
+    config.maxSourceSizeMiB = 1;
+    await expect(prepareDatasetArchive(input)).rejects.toBe(DatasetErrEnum.archiveLimitExceeded);
+
+    // 两个 2 MiB 文件恰好达到总大小上限，确认 MiB 到字节的换算和边界。
+    config.maxSourceSizeMiB = 4;
+    const manifest = await prepareDatasetArchive(input);
+    expect(manifest.files).toHaveLength(2);
+  });
+
+  it('进行中的预检固定本次限额，不受后续快照替换影响', async () => {
+    const files = [file, { ...file, _id: 'second-file', fileId: `dataset/${datasetId}/second` }];
+    getTestInstanceConfig().resource.datasetArchive.maxFiles = 1;
+    preparationMocks.findArchiveCollectionsByIds.mockImplementationOnce(async () => {
+      global.systemInstanceConfig = createDefaultInstanceConfig();
+      return files;
+    });
+    await expect(
+      prepareDatasetArchive({
+        ...options,
+        collectionIds: files.map((item) => item._id),
+        signal: new AbortController().signal
+      })
+    ).rejects.toBe(DatasetErrEnum.archiveLimitExceeded);
+    expect(preparationMocks.getFileMetadata).not.toHaveBeenCalled();
+  });
 
   it('releases preparation on lease cancellation before an outstanding Mongo read returns', async () => {
     let completeRead!: (value: unknown[]) => void;
@@ -236,8 +285,9 @@ describe('prepareDatasetArchive', () => {
     expect(assertCollectionsReadable).toHaveBeenCalledWith([child._id]);
   });
 
-  it('enforces the entire 300-second preparation deadline while the first Mongo read is pending', async () => {
+  it('使用实例配置的准备超时，中止尚未完成的 Mongo 读取', async () => {
     vi.useFakeTimers();
+    getTestInstanceConfig().resource.datasetArchive.prepareTimeoutSeconds = 2;
     let completeRead!: (value: unknown[]) => void;
     preparationMocks.findArchiveCollectionsByIds.mockImplementationOnce(
       () =>
@@ -257,7 +307,7 @@ describe('prepareDatasetArchive', () => {
         outcome = error;
       }
     );
-    await vi.advanceTimersByTimeAsync(300_000);
+    await vi.advanceTimersByTimeAsync(2_000);
     const deadlineOutcome = outcome;
     completeRead([file]);
     await pending;

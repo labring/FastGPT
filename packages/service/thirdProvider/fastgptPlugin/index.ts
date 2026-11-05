@@ -8,7 +8,12 @@ import type { localeType } from '@fastgpt/global/common/i18n/type';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import { AsyncLocalStorage } from 'async_hooks';
 
-export const PLUGIN_BASE_URL = serviceEnv.PLUGIN_BASE_URL ?? '';
+const getPluginConfig = () => ({
+  baseUrl: serviceEnv.PLUGIN_BASE_URL,
+  token: serviceEnv.PLUGIN_TOKEN
+});
+
+export const PLUGIN_BASE_URL = serviceEnv.PLUGIN_BASE_URL;
 export const PLUGIN_TOKEN = serviceEnv.PLUGIN_TOKEN;
 
 const PluginClientLocaleContext = new AsyncLocalStorage<localeType | undefined>();
@@ -54,10 +59,33 @@ const localizedFetch: typeof globalThis.fetch = async (input, init) => {
   return localizePluginErrorResponse(response);
 };
 
-export const pluginClient = new FastGPTPluginClient({
-  baseUrl: PLUGIN_BASE_URL,
-  token: PLUGIN_TOKEN,
-  fetch: localizedFetch
+let cachedClient: FastGPTPluginClient | undefined;
+let cachedBaseUrl = '';
+let cachedToken = '';
+
+export const getPluginClient = (): FastGPTPluginClient => {
+  const { baseUrl, token } = getPluginConfig();
+  if (!cachedClient || cachedBaseUrl !== baseUrl || cachedToken !== token) {
+    cachedBaseUrl = baseUrl;
+    cachedToken = token;
+    cachedClient = new FastGPTPluginClient({
+      baseUrl,
+      token,
+      fetch: localizedFetch
+    });
+  }
+  return cachedClient;
+};
+
+export const pluginClient = new Proxy({} as FastGPTPluginClient, {
+  get(_target, prop) {
+    const client = getPluginClient();
+    const val = (client as any)[prop];
+    if (typeof val === 'function') {
+      return val.bind(client);
+    }
+    return val;
+  }
 });
 
 type RunPluginToolStreamParams = {
@@ -86,8 +114,9 @@ type ToolStreamMessage =
     };
 
 const buildPluginApiUrl = (path: string) => {
-  const baseUrl = PLUGIN_BASE_URL.endsWith('/') ? PLUGIN_BASE_URL.slice(0, -1) : PLUGIN_BASE_URL;
-  return `${baseUrl}${path}`;
+  const { baseUrl } = getPluginConfig();
+  const trimmed = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
+  return `${trimmed}${path}`;
 };
 
 const parseSseData = (chunk: string): ToolStreamMessage | null => {
@@ -113,10 +142,11 @@ export const runPluginToolStream = async ({
   output?: ToolHandlerReturnType;
   error?: unknown;
 }> => {
+  const { token } = getPluginConfig();
   const response = await fetch(buildPluginApiUrl('/api/tool/runStream'), {
     method: 'POST',
     headers: {
-      ...(PLUGIN_TOKEN ? { Authorization: `Bearer ${PLUGIN_TOKEN}` } : {}),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       Accept: 'text/event-stream',
       'Content-Type': 'application/json'
     },

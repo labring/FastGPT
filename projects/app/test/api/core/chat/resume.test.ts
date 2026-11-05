@@ -1,3 +1,4 @@
+import { createDefaultInstanceConfig } from '@test/utils/instanceConfigSnapshot';
 import { getChatGenerationStatuses } from '@fastgpt/service/core/chat/generationLease';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Call } from '@test/utils/request';
@@ -27,11 +28,14 @@ import {
   mirrorChatStream,
   resetStreamResumeMirrorGuardForTest,
   getStreamResumeRedisKeys,
-  STREAM_RESUME_POST_COMPLETE_TTL_SECONDS,
-  STREAM_RESUME_REDIS_MAXMEMORY_RATIO,
-  STREAM_RESUME_TTL_SECONDS,
+  getStreamResumePostCompleteTtlSeconds,
+  getStreamResumeRedisMaxmemoryRatio,
+  getStreamResumeTtlSeconds,
   STREAM_RESUME_TTL_TOUCH_INTERVAL_MS
 } from '@fastgpt/service/core/chat/resume';
+
+// TTL 与内存阈值改为实例配置驱动，测试用默认快照保持与生产一致的叶子齐全
+(global as any).systemInstanceConfig = createDefaultInstanceConfig();
 
 vi.mock('@fastgpt/service/core/chat/generationLease', () => ({
   getChatGenerationStatuses: vi.fn()
@@ -651,7 +655,7 @@ describe('stream resume api', () => {
       } as any);
 
       const redis = getRedisRuntime().getCommandConnection() as any;
-      const usedMemory = Math.ceil(STREAM_RESUME_REDIS_MAXMEMORY_RATIO * 100) + 1;
+      const usedMemory = Math.ceil(getStreamResumeRedisMaxmemoryRatio() * 100) + 1;
       redis.info = vi.fn().mockResolvedValue(`used_memory:${usedMemory}\r\nmaxmemory:100\r\n`);
 
       await getStreamResumeMirror({
@@ -747,7 +751,7 @@ describe('stream resume api', () => {
       );
 
       const redis = getRedisRuntime().getCommandConnection() as any;
-      const usedMemory = Math.ceil(STREAM_RESUME_REDIS_MAXMEMORY_RATIO * 100) + 1;
+      const usedMemory = Math.ceil(getStreamResumeRedisMaxmemoryRatio() * 100) + 1;
       redis.info = vi.fn().mockResolvedValue(`used_memory:${usedMemory}\r\nmaxmemory:100\r\n`);
 
       await getStreamResumeMirror({
@@ -773,7 +777,7 @@ describe('stream resume api', () => {
         }
       );
 
-      await vi.advanceTimersByTimeAsync(STREAM_RESUME_TTL_SECONDS * 1000 + 1);
+      await vi.advanceTimersByTimeAsync(getStreamResumeTtlSeconds() * 1000 + 1);
 
       const { chunks, res } = await responsePromise;
 
@@ -896,14 +900,14 @@ describe('stream resume helpers', () => {
 
       expect(redis.expire).toHaveBeenCalledWith(
         `${FASTGPT_REDIS_PREFIX}${keys.keyOfStream}`,
-        STREAM_RESUME_TTL_SECONDS
+        getStreamResumeTtlSeconds()
       );
       expect(redis.expire).toHaveBeenCalledTimes(1);
       expect(redis.set).toHaveBeenCalledWith(
         `${FASTGPT_REDIS_PREFIX}${keys.keyOfActive}`,
         expect.stringMatching(/^\{"updatedAt":\d+\}$/),
         'PX',
-        STREAM_RESUME_TTL_SECONDS * 1000
+        getStreamResumeTtlSeconds() * 1000
       );
 
       vi.advanceTimersByTime(STREAM_RESUME_TTL_TOUCH_INTERVAL_MS);
@@ -927,11 +931,11 @@ describe('stream resume helpers', () => {
     await mirror.shrinkTTLAfterComplete();
     expect(redis.expire).toHaveBeenCalledWith(
       `${FASTGPT_REDIS_PREFIX}${keys.keyOfStream}`,
-      STREAM_RESUME_POST_COMPLETE_TTL_SECONDS
+      getStreamResumePostCompleteTtlSeconds()
     );
     expect(redis.expire).toHaveBeenCalledWith(
       `${FASTGPT_REDIS_PREFIX}${keys.keyOfActive}`,
-      STREAM_RESUME_POST_COMPLETE_TTL_SECONDS
+      getStreamResumePostCompleteTtlSeconds()
     );
     expect(redis.expire).toHaveBeenCalledTimes(2);
   });
@@ -1017,7 +1021,7 @@ describe('stream resume helpers', () => {
 
   it('should skip creating a mirror when redis memory usage crosses the watermark', async () => {
     const redis = getRedisRuntime().getCommandConnection() as any;
-    const usedMemory = Math.ceil(STREAM_RESUME_REDIS_MAXMEMORY_RATIO * 100) + 1;
+    const usedMemory = Math.ceil(getStreamResumeRedisMaxmemoryRatio() * 100) + 1;
     redis.set.mockClear?.();
     redis.info = vi.fn().mockResolvedValue(`used_memory:${usedMemory}\r\nmaxmemory:100\r\n`);
 
@@ -1036,7 +1040,7 @@ describe('stream resume helpers', () => {
         reason: StreamResumeUnavailableReasonEnum.memoryPressure
       }),
       'PX',
-      STREAM_RESUME_TTL_SECONDS * 1000
+      getStreamResumeTtlSeconds() * 1000
     );
   });
 

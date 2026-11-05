@@ -1,16 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock('@fastgpt/service/env', () => ({
-  hasAgentSandboxConfig: vi.fn(() => false),
+const { serviceEnv } = vi.hoisted(() => ({
   serviceEnv: {
-    AGENT_SANDBOX_SHOW_FREE_TIP: false,
-    UPLOAD_FILE_MAX_SIZE: 1000,
-    UPLOAD_FILE_MAX_AMOUNT: 1000,
-    MAX_FOLDER_DEPTH: 4
+    AGENT_SANDBOX_SHOW_FREE_TIP: false
   }
 }));
 
+vi.mock('@fastgpt/service/env', () => ({ serviceEnv }));
+
 vi.mock('@fastgpt/service/core/ai/sandbox/config', () => ({
+  getAgentSandboxProvider: vi.fn(() => 'none'),
   getAgentSandboxSkillMaxBytes: vi.fn(() => 512)
 }));
 
@@ -40,6 +39,7 @@ describe('initFastGPTConfig', () => {
     expect(global.feConfigs.sso).toEqual({ enabled: false });
   });
   beforeEach(() => {
+    serviceEnv.AGENT_SANDBOX_SHOW_FREE_TIP = false;
     global.feConfigs = {} as any;
     global.systemEnv = {} as any;
   });
@@ -73,18 +73,13 @@ describe('initFastGPTConfig', () => {
     expect(global.systemEnv.datasetParseMaxProcess).toBe('not_a_number');
   });
 
-  it('正确挂载 show_agent_sandbox_free_tip 配置', () => {
+  it.each([false, true])('免费提示仅由 ENV 控制：%s，忽略旧配置', (enabled) => {
+    serviceEnv.AGENT_SANDBOX_SHOW_FREE_TIP = enabled;
     initFastGPTConfig({
-      feConfigs: {},
+      feConfigs: { agentSandboxFree: !enabled, show_agent_sandbox_free_tip: !enabled },
       systemEnv: {}
     } as any);
-    expect(global.feConfigs.show_agent_sandbox_free_tip).toBe(false);
-
-    initFastGPTConfig({
-      feConfigs: { agentSandboxFree: true },
-      systemEnv: {}
-    } as any);
-    expect(global.feConfigs.show_agent_sandbox_free_tip).toBe(true);
+    expect(global.feConfigs.show_agent_sandbox_free_tip).toBe(enabled);
   });
 
   it.each(['agentSandboxMax', 'agentSandboxMaxPerTeam', 'vectorRecallConcurrency'])(
@@ -121,7 +116,8 @@ describe('initFastGPTConfig', () => {
     expect(global.systemEnv).toMatchObject({
       datasetParseMaxProcess: 'not_a_number',
       agentSandboxMax: 12,
-      agentSandboxMaxPerTeam: undefined,
+      // null 是显式"不限量"，必须保留而不是归一为 undefined
+      agentSandboxMaxPerTeam: null,
       vectorRecallConcurrency: 8,
       customSetting: 7
     });
@@ -142,8 +138,8 @@ describe('initFastGPTConfig', () => {
       expect(global.systemEnv.fileUrlWhitelist).toEqual(fileUrlWhitelist);
       expect(global.systemEnv.ip_whitelist).toBe('10.0.0.1');
       expect(global.feConfigs.limit).toMatchObject({
-        uploadFileMaxAmount: 1000,
-        uploadFileMaxSize: 1000,
+        uploadFileMaxAmount: 7,
+        uploadFileMaxSize: 32,
         skillSandboxMaxBytes: 512,
         maxFolderDepth: 4,
         workflowParallelRunMaxConcurrency: 20

@@ -6,7 +6,7 @@ import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 
 export type SecondaryNavigationTab<ValueType extends string> = {
-  icon: string;
+  icon?: string;
   label: string;
   value: ValueType;
   /** 分组子项：有 children 时渲染为可展开的分组父级，否则为单级项（兼容账号页） */
@@ -22,7 +22,6 @@ type SecondaryNavigationContainerProps<ValueType extends string> = {
   isLoading?: boolean;
   /** tabs 依赖异步数据且尚未确定时置为 true：菜单渲染骨架，避免先渲染通用菜单再收缩导致的闪烁 */
   isMenuLoading?: boolean;
-  footer?: React.ReactNode;
 };
 
 /** 菜单骨架占位行数：仅用于填充首屏侧栏，避免菜单数据到达前出现空白 */
@@ -45,8 +44,7 @@ const SecondaryNavigationContainer = <ValueType extends string>({
   onChange,
   mobileScrollPositionKey,
   isLoading,
-  isMenuLoading,
-  footer
+  isMenuLoading
 }: SecondaryNavigationContainerProps<ValueType>) => {
   const { isPc } = useSystem();
 
@@ -110,7 +108,6 @@ const SecondaryNavigationContainer = <ValueType extends string>({
                 onChange={onChange}
               />
             )}
-            {footer}
           </Flex>
         ) : (
           <Box mb={3}>

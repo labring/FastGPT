@@ -1,7 +1,16 @@
+import {
+  getTestInstanceConfig,
+  createDefaultInstanceConfig
+} from '@test/utils/instanceConfigSnapshot';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { getDomainDefaultConfig } from '@fastgpt/global/common/system/config/schema';
+
+(global as any).systemInstanceConfig = createDefaultInstanceConfig();
+
 import { DatasetSearchModeEnum, SearchScoreTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import type { FullTextSearchProps } from '@fastgpt/service/common/vectorDB/type';
-import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import type { EmbeddingModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import { serviceEnv } from '@fastgpt/service/env';
 
 const mockGetVectors = vi.hoisted(() => vi.fn());
@@ -26,15 +35,15 @@ const mockCreateS3DownloadAccessUrls = vi.hoisted(() =>
   )
 );
 
-const originalMultipleDataToBase64 = serviceEnv.MULTIPLE_DATA_TO_BASE64;
+const originalMultipleDataToBase64 = getTestInstanceConfig().feature.multipleDataToBase64;
 
-const embeddingModel = {
+const embeddingModel: EmbeddingModelDataType = {
   modelId: '507f1f77bcf86cd799439017',
   provider: 'openai',
   model: 'mock-embedding-model',
   name: 'Mock Embedding Model',
   type: ModelTypeEnum.embedding,
-  scope: 'system' as const,
+  scope: ModelScopeEnum.system,
   isActive: true,
   config: {
     defaultToken: 100,
@@ -153,16 +162,18 @@ import { searchDatasetData } from '../../../../core/dataset/search/defaultRecall
 import { fullTextRecall } from '../../../../core/dataset/search/defaultRecall/fullTextRecall';
 
 afterEach(() => {
-  serviceEnv.MULTIPLE_DATA_TO_BASE64 = originalMultipleDataToBase64;
+  getTestInstanceConfig().feature.multipleDataToBase64 = originalMultipleDataToBase64;
 });
 
 describe('default recall dataset search', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    global.systemInstanceConfig!.vector = getDomainDefaultConfig('vector');
+    global.systemInstanceConfig!.feature.multipleDataToBase64 = originalMultipleDataToBase64;
     // 重置 getFullTextStore 可切换 mock(ISSUE-015):默认走 mongo 委托,避免 milvus 用例污染
     mockUseMilvusStore.value = false;
     mockFullTextStoreSearch.mockReset();
-    serviceEnv.MULTIPLE_DATA_TO_BASE64 = originalMultipleDataToBase64;
+    getTestInstanceConfig().feature.multipleDataToBase64 = originalMultipleDataToBase64;
     mockCountPromptTokensBatch.mockImplementation(async (prompts: string[]) =>
       prompts.map((prompt) => prompt.length)
     );
@@ -192,6 +203,43 @@ describe('default recall dataset search', () => {
       lean: vi.fn().mockResolvedValue([])
     });
     mockMongoDatasetDataTextAggregate.mockResolvedValue([]);
+  });
+
+  it.each([
+    { configured: undefined, expected: 200 },
+    { configured: 99, expected: 100 },
+    { configured: 100, expected: 100 },
+    { configured: 400, expected: 400 },
+    { configured: 1000, expected: 1000 },
+    { configured: 1001, expected: 1000 }
+  ])('bounds HNSW search width once for all recall tasks: %j', async ({ configured, expected }) => {
+    if (configured !== undefined) global.systemInstanceConfig!.vector.hnswEfSearch = configured;
+    mockRecallFromVectorStore.mockImplementation(async () => {
+      // 首个 query 执行后配置变化，本轮其他 query 仍需使用入口读取的同一份参数。
+      global.systemInstanceConfig!.vector.hnswEfSearch = 800;
+      return { results: [] };
+    });
+
+    await searchDatasetData({
+      histories: [],
+      teamId: '507f1f77bcf86cd799439011',
+      model: embeddingModel,
+      datasetIds: ['507f1f77bcf86cd799439012'],
+      reRankQuery: 'first query',
+      textQueries: ['first query', 'second query'],
+      imageQueries: [],
+      limit: 5000,
+      searchMode: DatasetSearchModeEnum.mixedRecall,
+      embeddingWeight: 0.5,
+      usingReRank: false
+    });
+
+    expect(mockRecallFromVectorStore).toHaveBeenCalledTimes(2);
+    expect(mockRecallFromVectorStore.mock.calls[0][0].limit).toBe(80);
+    expect(mockRecallFromVectorStore.mock.calls.map(([props]) => props.hnswEfSearch)).toEqual([
+      expected,
+      expected
+    ]);
   });
 
   it('should ignore failed image caption and continue dataset search', async () => {
@@ -373,7 +421,8 @@ describe('default recall dataset search', () => {
 
   it('should ignore failed image embedding normalization and keep text recall', async () => {
     embeddingModel.config.vision = true;
-    serviceEnv.MULTIPLE_DATA_TO_BASE64 = true;
+    getTestInstanceConfig().feature.multipleDataToBase64 = true;
+    global.systemInstanceConfig!.feature.multipleDataToBase64 = true;
     mockGetImageBase64.mockRejectedValueOnce(new Error('expired image'));
     mockGetVectors.mockResolvedValueOnce({
       tokens: 12,
@@ -584,16 +633,18 @@ describe('default recall dataset search', () => {
         ...params
       });
 
-    const originalLimit = serviceEnv.RETRIEVAL_RESULTS_LIMIT;
+    const originalLimit = getTestInstanceConfig().performance.dataset.retrievalResultsLimit;
     const originalSynonymEnabled = serviceEnv.DATASET_SYNONYM_ENABLED;
     afterEach(() => {
-      serviceEnv.RETRIEVAL_RESULTS_LIMIT = originalLimit;
+      getTestInstanceConfig().performance.dataset.retrievalResultsLimit = originalLimit;
       serviceEnv.DATASET_SYNONYM_ENABLED = originalSynonymEnabled;
+      global.systemInstanceConfig!.performance.dataset.retrievalResultsLimit = originalLimit;
     });
 
     it('重排生效时产出重排前的召回快照，含被重排淘汰的候选，且同义词只装饰最终结果', async () => {
       arrangeTwoCandidates();
-      serviceEnv.RETRIEVAL_RESULTS_LIMIT = 20;
+      getTestInstanceConfig().performance.dataset.retrievalResultsLimit = 20;
+      global.systemInstanceConfig!.performance.dataset.retrievalResultsLimit = 20;
       serviceEnv.DATASET_SYNONYM_ENABLED = true;
 
       const result = await runSearch({ usingReRank: true, rerankWeight: 1 });
@@ -612,7 +663,7 @@ describe('default recall dataset search', () => {
 
     it('为召回候选写入 retrievalRank，重排后最终结果仍可回溯召回位置', async () => {
       arrangeTwoCandidates();
-      serviceEnv.RETRIEVAL_RESULTS_LIMIT = 20;
+      getTestInstanceConfig().performance.dataset.retrievalResultsLimit = 20;
 
       const result = await runSearch({ usingReRank: true, rerankWeight: 1 });
 
@@ -629,7 +680,8 @@ describe('default recall dataset search', () => {
 
     it('重排未生效时不产出候选集，避免占用内存又最终不用', async () => {
       arrangeTwoCandidates();
-      serviceEnv.RETRIEVAL_RESULTS_LIMIT = 20;
+      getTestInstanceConfig().performance.dataset.retrievalResultsLimit = 20;
+      global.systemInstanceConfig!.performance.dataset.retrievalResultsLimit = 20;
 
       const result = await runSearch({ usingReRank: false });
 
@@ -641,7 +693,8 @@ describe('default recall dataset search', () => {
 
     it('重排请求但 rerank 模型缺失时不产出候选集', async () => {
       arrangeTwoCandidates();
-      serviceEnv.RETRIEVAL_RESULTS_LIMIT = 20;
+      getTestInstanceConfig().performance.dataset.retrievalResultsLimit = 20;
+      global.systemInstanceConfig!.performance.dataset.retrievalResultsLimit = 20;
 
       const result = await runSearch({ usingReRank: true, rerankModel: undefined });
 
@@ -653,7 +706,8 @@ describe('default recall dataset search', () => {
 
     it('RETRIEVAL_RESULTS_LIMIT 为 0 时不产出候选集', async () => {
       arrangeTwoCandidates();
-      serviceEnv.RETRIEVAL_RESULTS_LIMIT = 0;
+      getTestInstanceConfig().performance.dataset.retrievalResultsLimit = 0;
+      global.systemInstanceConfig!.performance.dataset.retrievalResultsLimit = 0;
 
       const result = await runSearch({ usingReRank: true, rerankWeight: 1 });
 
@@ -663,7 +717,8 @@ describe('default recall dataset search', () => {
 
     it('候选数超过上限时按上限截断', async () => {
       arrangeTwoCandidates();
-      serviceEnv.RETRIEVAL_RESULTS_LIMIT = 1;
+      getTestInstanceConfig().performance.dataset.retrievalResultsLimit = 1;
+      global.systemInstanceConfig!.performance.dataset.retrievalResultsLimit = 1;
 
       const result = await runSearch({ usingReRank: true, rerankWeight: 1 });
 

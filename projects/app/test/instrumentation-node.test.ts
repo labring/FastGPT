@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   cron: vi.fn(),
   training: vi.fn(),
   tracks: vi.fn(),
+  loadSystemModels: vi.fn(),
   reloadModels: vi.fn()
 }));
 
@@ -41,7 +42,7 @@ vi.mock('@fastgpt/service/common/vectorDB/controller', async (importOriginal) =>
 vi.mock('@fastgpt/service/support/user/systemUser', () => ({ initSystemUser: vi.fn() }));
 vi.mock('@fastgpt/service/core/ai/model/catalog/service', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@fastgpt/service/core/ai/model/catalog/service')>()),
-  loadSystemModels: vi.fn(),
+  loadSystemModels: mocks.loadSystemModels,
   loadInstalledModels: mocks.reloadModels
 }));
 vi.mock('@fastgpt/service/core/ai/model/template', async (importOriginal) => ({
@@ -168,6 +169,8 @@ describe('registerNodeInstrumentation', () => {
         SystemMigrationStatusEnum.pending
       );
       expect(redisScripts).not.toHaveBeenCalled();
+      // 阻塞迁移未完成前不能加载系统模型，否则旧部署会用 Schema 默认的插件地址请求 Provider
+      expect(mocks.loadSystemModels).not.toHaveBeenCalled();
       expect(mocks.watch).not.toHaveBeenCalled();
       expect(await MongoAIModel.collection.findOne({ _id: insertedId })).toBeNull();
 
@@ -178,6 +181,7 @@ describe('registerNodeInstrumentation', () => {
         SystemMigrationStatusEnum.succeeded
       );
       expect(mocks.reloadModels).toHaveBeenCalledTimes(2);
+      expect(mocks.loadSystemModels).toHaveBeenCalledTimes(1);
       expect(redisScripts).toHaveBeenCalled();
       expect((await MongoSystemMigrationState.findById(migration.id).lean())?.status).not.toBe(
         SystemMigrationStatusEnum.succeeded

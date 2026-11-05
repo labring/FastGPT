@@ -2,10 +2,18 @@ import {
   createInternalAddressChecker,
   PRIVATE_URL_TEXT
 } from '@fastgpt/global/common/system/network';
-import { serviceEnv } from '../../env';
+import { getSystemInstanceConfig } from './systemInstanceConfig/runtime';
+import { logInstanceConfigRead } from './migrationCoverageLog';
 
 const { isInternalAddress, isInternalResolvedIP } = createInternalAddressChecker({
-  checkInternalIp: () => serviceEnv.CHECK_INTERNAL_IP
+  checkInternalIp: () => {
+    const value = getSystemInstanceConfig().security.checkInternalIp;
+    logInstanceConfigRead({
+      callsite: 'runtime.common.system.utils.isInternalAddress',
+      fields: [{ path: 'security.checkInternalIp', value }]
+    });
+    return value;
+  }
 });
 
 export { isInternalAddress, isInternalResolvedIP, PRIVATE_URL_TEXT };

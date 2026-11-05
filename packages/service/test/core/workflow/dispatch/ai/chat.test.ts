@@ -1,3 +1,4 @@
+import { getTestInstanceConfig } from '@test/utils/instanceConfigSnapshot';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ChatFileTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
@@ -126,7 +127,7 @@ describe('getInputFiles', () => {
       ],
       reserveId: true
     });
-    const previousMultipleDataToBase64 = serviceEnv.MULTIPLE_DATA_TO_BASE64;
+    const previousMultipleDataToBase64 = getTestInstanceConfig().feature.multipleDataToBase64;
     (serviceEnv as any).MULTIPLE_DATA_TO_BASE64 = false;
     const requestMessages = await loadRequestMessages({ messages, useAudio: true }).finally(() => {
       (serviceEnv as any).MULTIPLE_DATA_TO_BASE64 = previousMultipleDataToBase64;

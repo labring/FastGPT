@@ -4,11 +4,13 @@ import type {
   SystemEnvType
 } from '@fastgpt/global/common/system/types';
 import type { SubPlanType } from '@fastgpt/global/support/wallet/sub/type';
+import type { SystemInstanceConfig } from '@fastgpt/global/common/system/config/schema';
 import type { WorkerNameEnum } from './worker/utils';
 
 declare global {
   var countTrackQueue: Map<string, { event: string; count: number; data: Record<string, any> }>;
   var systemInitBufferId: string | undefined;
+  var systemInstanceConfig: SystemInstanceConfig | undefined;
 
   var systemVersion: string;
   var feConfigs: FastGPTFeConfigsType;

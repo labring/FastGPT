@@ -148,6 +148,7 @@ describeStorage('local PG FP16 dataset index with %s storage', (storage) => {
       datasetIds: [datasetId, ...smallIds],
       vector,
       limit: 3,
+      hnswEfSearch: 200,
       forbidCollectionIdList: ['hidden'],
       datasetVectorData: [{ datasetId, rows: 10004, pgIndex: 'pending' as const }]
     };
@@ -188,6 +189,7 @@ describeStorage('local PG FP16 dataset index with %s storage', (storage) => {
       datasetIds: [datasetId, ...smallIds],
       vector,
       limit: 100,
+      hnswEfSearch: 200,
       forbidCollectionIdList: ['hidden'],
       datasetVectorData: [{ datasetId, rows: 10004, pgIndex: 'ready' }]
     });
@@ -207,6 +209,7 @@ describeStorage('local PG FP16 dataset index with %s storage', (storage) => {
       datasetIds: [datasetId, ...smallIds],
       vector,
       limit: 3,
+      hnswEfSearch: 200,
       forbidCollectionIdList: ['hidden'],
       datasetVectorData: [{ datasetId, rows: 10004, pgIndex: 'ready' as const }]
     };
@@ -244,6 +247,7 @@ describeStorage('local PG FP16 dataset index with %s storage', (storage) => {
         datasetIds: [datasetId],
         vector,
         limit: 3,
+        hnswEfSearch: 200,
         forbidCollectionIdList: ['hidden'],
         datasetVectorData: [{ datasetId, rows: count + 1, pgIndex: 'ready' as const }]
       };
@@ -314,6 +318,7 @@ describeStorage('local PG FP16 dataset index with %s storage', (storage) => {
       datasetIds: [datasetId, repairId, ...smallIds],
       vector,
       limit: 3,
+      hnswEfSearch: 200,
       forbidCollectionIdList: ['hidden'],
       datasetVectorData: [datasetId, repairId].map((datasetId) => ({
         datasetId,
@@ -366,6 +371,7 @@ describeStorage('local PG FP16 dataset index with %s storage', (storage) => {
       datasetIds: [datasetId, ...smallIds],
       vector,
       limit: 100,
+      hnswEfSearch: 200,
       forbidCollectionIdList: ['hidden'],
       datasetVectorData: [{ datasetId, rows, pgIndex }]
     });

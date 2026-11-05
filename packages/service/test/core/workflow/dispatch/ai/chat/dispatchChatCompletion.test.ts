@@ -1,3 +1,4 @@
+import { getTestInstanceConfig } from '@test/utils/instanceConfigSnapshot';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { dispatchChatCompletion } from '@fastgpt/service/core/workflow/dispatch/ai/chat/dispatchChatCompletion';
 import { createNodeSummary } from '@fastgpt/service/core/workflow/dispatch/utils/summary';
@@ -12,7 +13,6 @@ import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/llm/typ
 import { loadRequestMessages } from '@fastgpt/service/core/ai/llm/utils';
 import { runWithContext } from '@fastgpt/service/core/workflow/utils/context';
 import { prepareWorkflowFileContext } from '@fastgpt/service/core/workflow/utils/fileContext';
-import { serviceEnv } from '@fastgpt/service/env';
 import { axios } from '@fastgpt/service/common/api/axios';
 import { WorkflowVariableState } from '@fastgpt/service/core/workflow/dispatch/utils/variables';
 
@@ -153,14 +153,13 @@ describe('dispatchChatCompletion token summary', () => {
 });
 
 describe('dispatchChatCompletion media file inputs', () => {
-  const originalMultipleDataToBase64 = serviceEnv.MULTIPLE_DATA_TO_BASE64;
-  const multimediaEnv: { MULTIPLE_DATA_TO_BASE64: boolean } = serviceEnv;
+  const originalMultipleDataToBase64 = getTestInstanceConfig().feature.multipleDataToBase64;
 
   afterEach(() => {
     fixture.useRealFileFlow = false;
     fixture.modelSupportsAudio = false;
     fixture.modelSupportsVideo = false;
-    multimediaEnv.MULTIPLE_DATA_TO_BASE64 = originalMultipleDataToBase64;
+    getTestInstanceConfig().feature.multipleDataToBase64 = originalMultipleDataToBase64;
     vi.restoreAllMocks();
   });
 
@@ -189,7 +188,7 @@ describe('dispatchChatCompletion media file inputs', () => {
       fixture.useRealFileFlow = true;
       fixture.modelSupportsAudio = media === 'audio' && modelMedia;
       fixture.modelSupportsVideo = media === 'video' && modelMedia;
-      multimediaEnv.MULTIPLE_DATA_TO_BASE64 = false;
+      getTestInstanceConfig().feature.multipleDataToBase64 = false;
       const head = vi.spyOn(axios, 'head').mockResolvedValue({
         headers: { 'content-type': 'video/mp4' }
       });

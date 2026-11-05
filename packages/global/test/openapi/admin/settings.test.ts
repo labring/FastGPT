@@ -86,7 +86,7 @@ describe('UpdateConfigBodySchema', () => {
     });
     expect(result.fastgpt.systemEnv).toEqual({
       agentSandboxMax: 12,
-      agentSandboxMaxPerTeam: undefined,
+      agentSandboxMaxPerTeam: null,
       vectorRecallConcurrency: 0,
       customSetting: 7
     });

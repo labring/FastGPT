@@ -1,59 +1,24 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-
 const importAppEnv = async () => {
   vi.resetModules();
   return import('../src/env');
 };
+afterEach(() => vi.unstubAllEnvs());
 
-describe('app env validation', () => {
-  afterEach(() => {
-    vi.unstubAllEnvs();
-    vi.resetModules();
+describe('app deployment ENV', () => {
+  it('keeps Git visibility in ENV with its community default', async () => {
+    vi.stubEnv('SHOW_GIT', undefined);
+    expect((await importAppEnv()).appEnv.SHOW_GIT).toBe(true);
+    vi.stubEnv('SHOW_GIT', 'false');
+    expect((await importAppEnv()).appEnv.SHOW_GIT).toBe(false);
   });
-
-  it('OPENAPI_KEY_MAX_COUNT 默认值为 100，且允许配置为最小值 1', async () => {
-    vi.stubEnv('OPENAPI_KEY_MAX_COUNT', '');
-
-    await expect(importAppEnv()).resolves.toMatchObject({
-      appEnv: expect.objectContaining({
-        OPENAPI_KEY_MAX_COUNT: 100
-      })
-    });
-
-    vi.stubEnv('OPENAPI_KEY_MAX_COUNT', '1');
-
-    await expect(importAppEnv()).resolves.toMatchObject({
-      appEnv: expect.objectContaining({
-        OPENAPI_KEY_MAX_COUNT: 1
-      })
-    });
-  });
-
-  it('WECOM_LOGIN_AUTO_REDIRECT 默认关闭，且支持显式开启', async () => {
-    vi.stubEnv('WECOM_LOGIN_AUTO_REDIRECT', '');
-
-    await expect(importAppEnv()).resolves.toMatchObject({
-      appEnv: expect.objectContaining({
-        WECOM_LOGIN_AUTO_REDIRECT: false
-      })
-    });
-
-    vi.stubEnv('WECOM_LOGIN_AUTO_REDIRECT', 'true');
-
-    await expect(importAppEnv()).resolves.toMatchObject({
-      appEnv: expect.objectContaining({
-        WECOM_LOGIN_AUTO_REDIRECT: true
-      })
-    });
-  });
-
-  it('OPENAPI_KEY_MAX_COUNT 必须是大于等于 1 的整数', async () => {
-    vi.stubEnv('OPENAPI_KEY_MAX_COUNT', '0');
-
-    await expect(importAppEnv()).rejects.toThrow('OPENAPI_KEY_MAX_COUNT');
-
-    vi.stubEnv('OPENAPI_KEY_MAX_COUNT', '1.5');
-
-    await expect(importAppEnv()).rejects.toThrow('OPENAPI_KEY_MAX_COUNT');
+  it('does not declare or validate retired form configuration', async () => {
+    vi.stubEnv('OPENAPI_KEY_MAX_COUNT', '-1');
+    vi.stubEnv('WECOM_LOGIN_AUTO_REDIRECT', 'invalid-legacy-value');
+    vi.stubEnv('SYSTEM_NAME', 'retired-name');
+    const { appEnv } = await importAppEnv();
+    expect(Object.keys(appEnv).sort()).toEqual(
+      ['CHINESE_IP_REDIRECT_URL', 'SHOW_GIT', 'DISABLE_MARKETPLACE'].sort()
+    );
   });
 });

@@ -1,4 +1,11 @@
+import {
+  getTestInstanceConfig,
+  createDefaultInstanceConfig
+} from '@test/utils/instanceConfigSnapshot';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+(global as any).systemInstanceConfig = createDefaultInstanceConfig();
+
 import { useIPFrequencyLimit } from '@fastgpt/service/common/middle/reqFrequencyLimit';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { serviceEnv } from '@fastgpt/service/env';
@@ -9,7 +16,7 @@ import {
 } from '@fastgpt/dal/redis/runtime';
 import { RATE_LIMIT_KEY_PREFIX } from '@fastgpt/service/common/rateLimit/core';
 
-const originalUseIpLimit = serviceEnv.USE_IP_LIMIT;
+const originalUseIpLimit = getTestInstanceConfig().security.useIpLimit;
 const originalTrustedProxyEnable = serviceEnv.TRUSTED_PROXY_ENABLE;
 
 const getIPFrequencyLimitKey = (id: string, ip: string) =>
@@ -23,7 +30,11 @@ const getIPFrequencyLimitKey = (id: string, ip: string) =>
 const getRedisConnection = () => getRedisRuntime().getCommandConnection();
 
 const setUseIpLimit = (value: boolean) => {
-  serviceEnv.USE_IP_LIMIT = value;
+  getTestInstanceConfig().security.useIpLimit = value;
+  if (!(global as any).systemInstanceConfig) {
+    (global as any).systemInstanceConfig = createDefaultInstanceConfig();
+  }
+  (global as any).systemInstanceConfig.security.useIpLimit = value;
 };
 
 const setTrustedProxyEnable = (value: boolean) => {

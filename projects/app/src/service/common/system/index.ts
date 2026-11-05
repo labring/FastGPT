@@ -3,6 +3,11 @@ import type { FastGPTFeConfigsType } from '@fastgpt/global/common/system/types/i
 import type { FastGPTConfigFileType } from '@fastgpt/global/common/system/types/index';
 import { getFastGPTConfigFromDB } from '@fastgpt/service/common/system/config/controller';
 import { initFastGPTConfig } from '@fastgpt/service/common/system/tools';
+import { reloadSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/controller';
+import {
+  computeSystemInitBufferId,
+  getInstanceConfigVersionTag
+} from '@fastgpt/service/common/system/systemInstanceConfig/runtime';
 import json5 from 'json5';
 import { defaultTemplateTypes } from '@fastgpt/web/core/workflow/constants';
 import { MongoPluginToolTag } from '@fastgpt/service/core/plugin/tool/tagSchema';
@@ -20,17 +25,26 @@ import type {
 } from '@fastgpt/global/support/wallet/usage/api';
 import { isProVersion } from '@fastgpt/service/common/system/constants';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
+import { refreshLLMRequestRecordTTL } from '@fastgpt/service/core/ai/record/service';
 import { getAgentSandboxSkillMaxBytes } from '@fastgpt/service/core/ai/sandbox/config';
 import { serviceEnv } from '@fastgpt/service/env';
 import { appEnv } from '@/env';
 import { pluginTagList } from '@fastgpt/global/sdk/fastgpt-plugin';
 import { pluginClient } from '@fastgpt/service/thirdProvider/fastgptPlugin';
 import { isLicenseActive } from '@fastgpt/global/common/system/license/utils';
+import { applyRuntimeStorageConfig } from '@fastgpt/service/common/s3/config/constants';
+import { initS3Buckets } from '@fastgpt/service/common/s3';
+import { logInstanceConfigRead } from '@fastgpt/service/common/system/migrationCoverageLog';
+import { buildAuthoritativeSystemEnv } from './buildAuthoritativeSystemEnv';
+import {
+  buildOauthFeConfig,
+  buildPayConfig,
+  buildRegisterMethods,
+  hasPayChannel
+} from '@fastgpt/global/common/system/config/frontendProjection';
 
 const logger = getLogger(LogCategories.SYSTEM);
 const pluginFeaturesProbeTimeoutMs = 3000;
-const defaultOpenSourceLoginGuideDocUrl =
-  'https://doc.fastgpt.io/zh-CN/guide/version/cloud/faq#%E8%B4%A6%E5%8F%B7%E7%99%BB%E5%BD%95%E9%97%AE%E9%A2%98';
 
 /* Init global variables */
 export function initGlobalVariables() {
@@ -99,11 +113,11 @@ const defaultFeConfigs: FastGPTFeConfigsType = {
   limit: {
     exportDatasetLimitMinutes: 0,
     websiteSyncLimitMinuted: 0,
-    uploadFileMaxSize: serviceEnv.UPLOAD_FILE_MAX_SIZE,
-    uploadFileMaxAmount: serviceEnv.UPLOAD_FILE_MAX_AMOUNT,
+    uploadFileMaxSize: 1000,
+    uploadFileMaxAmount: 1000,
     skillSandboxMaxBytes: getAgentSandboxSkillMaxBytes(),
-    workflowParallelRunMaxConcurrency: serviceEnv.WORKFLOW_PARALLEL_MAX_CONCURRENCY,
-    maxFolderDepth: serviceEnv.MAX_FOLDER_DEPTH
+    workflowParallelRunMaxConcurrency: 10,
+    maxFolderDepth: 4
   },
   scripts: [],
   favicon: '/favicon.ico',
@@ -122,84 +136,181 @@ async function getPluginRemoteDebugEnabled() {
   }
 }
 
-export async function initSystemConfig() {
-  const [{ fastgptConfig, licenseData }, pluginRemoteDebug] = await Promise.all([
+let initConfigQueue: Promise<void> = Promise.resolve();
+
+/**
+ * 重新加载并应用全站系统配置。
+ * 使用串行队列排队执行，确保并发重载按序完成，避免较早的重载在外部 I/O 慢时逆序覆写较新的运行时状态。
+ */
+export function initSystemConfig(): Promise<void> {
+  const current = initConfigQueue.then(() => doInitSystemConfig());
+  initConfigQueue = current.catch(() => {});
+  return current;
+}
+
+async function doInitSystemConfig() {
+  const [
+    { fastgptConfig, fastgptConfigTime, licenseData, licenseUpdateTime },
+    pluginRemoteDebug,
+    instanceConfig
+  ] = await Promise.all([
     getFastGPTConfigFromDB(),
-    getPluginRemoteDebugEnabled()
+    getPluginRemoteDebugEnabled(),
+    reloadSystemInstanceConfig()
   ]);
+  logInstanceConfigRead({
+    callsite: 'startup.app.system.initSystemConfig.snapshot',
+    fields: [
+      { path: 'site', value: instanceConfig.site },
+      { path: 'auth', value: instanceConfig.auth },
+      { path: 'security', value: instanceConfig.security },
+      { path: 'feature', value: instanceConfig.feature },
+      { path: 'commercial', value: instanceConfig.commercial },
+      { path: 'resource', value: instanceConfig.resource },
+      { path: 'performance', value: instanceConfig.performance },
+      { path: 'storage', value: instanceConfig.storage },
+      { path: 'vector', value: instanceConfig.vector },
+      { path: 'providers', value: instanceConfig.providers },
+      { path: 'subservice', value: instanceConfig.subservice }
+    ]
+  });
   // global 保留快照（含已到期），功能开关按授权是否有效计算，
   // 避免过期的商业版授权继续开启商业能力；前端据此可区分「未激活」与「已到期」。
   global.licenseData = licenseData;
   const isPlus = isLicenseActive(licenseData);
+  // 支付渠道是实例配置的派生能力：旧库 feConfigs.payConfig 只是历史快照，
+  // 新增渠道不可选、删除渠道后旧入口仍可见，必须在这里统一重算。
+  const payConfig = buildPayConfig(instanceConfig.commercial);
 
   const config: FastGPTConfigFileType = {
     feConfigs: {
       ...defaultFeConfigs,
       ...(fastgptConfig.feConfigs || {}),
-      mcpServerProxyEndpoint: appEnv.SSE_MCP_SERVER_PROXY_ENDPOINT,
+
+      // 权威数据源：优先从 SystemInstanceConfig 读取
+      systemTitle: instanceConfig.site.name,
+      systemDescription: instanceConfig.site.description,
+      favicon: instanceConfig.site.favicon || '/favicon.ico',
+      docUrl: instanceConfig.site.docUrl,
+      openAPIDocUrl: instanceConfig.site.openApiDocUrl,
+      loginGuideDocUrl: instanceConfig.site.loginGuideDocUrl,
+      concatMd: instanceConfig.site.concatMd,
+      appTemplateCourse: instanceConfig.site.appTemplateCourse,
+      marketplaceUrl: instanceConfig.site.marketplaceUrl,
+      navbarItems: instanceConfig.site.navbarItems,
+
+      // 团队模式与 Pro getProTeamMode 共用同一份实例配置；社区版移除该 Pro 字段时
+      // 保留旧库值，避免降级后把历史 multi/sync 模式误判为默认值。
+      teamMode: instanceConfig.auth.teamMode ?? fastgptConfig.feConfigs?.teamMode,
+      wecomLoginAutoRedirect: instanceConfig.auth.wecomLoginAutoRedirect,
+      oauth: buildOauthFeConfig(instanceConfig.auth),
+      register_method: buildRegisterMethods({
+        legacyMethods: fastgptConfig.feConfigs?.register_method,
+        auth: instanceConfig.auth
+      }),
+      accountCancellation: {
+        enabled: instanceConfig.auth.accountCancellation.enabled
+      },
+
+      hideChatCopyrightSetting: instanceConfig.feature.hideChatCopyrightSetting,
+      enable_team_plugin_upload: instanceConfig.feature.enableTeamPluginUpload,
+      // Pro 保留其 ENV 下发值（默认 false），社区版使用 App ENV（默认 true）。
+      show_git: serviceEnv.PRO_URL ? (fastgptConfig.feConfigs?.show_git ?? false) : appEnv.SHOW_GIT,
+      show_dataset_feishu: instanceConfig.feature.showDatasetFeishu,
+      show_dataset_yuque: instanceConfig.feature.showDatasetYuque,
+      show_dataset_dingtalk: instanceConfig.feature.showDatasetDingtalk,
+      show_publish_feishu: instanceConfig.feature.showPublishFeishu,
+      show_publish_dingtalk: instanceConfig.feature.showPublishDingtalk,
+      show_publish_wecom: instanceConfig.feature.showPublishWecom,
+      show_publish_offiaccount: instanceConfig.feature.showPublishOffiaccount,
+      show_publish_wechat: instanceConfig.feature.showPublishWechat,
+      show_compliance_copywriting: instanceConfig.feature.showComplianceCopywriting,
+      // 工单与企业认证入口由 Pro 根据实际服务配置决定，不按 PRO_URL 盲目展示
+      show_workorder: Boolean(fastgptConfig.feConfigs?.show_workorder),
+      show_enterprise_auth: Boolean(fastgptConfig.feConfigs?.show_enterprise_auth),
+      enableSaasAdminConfig: serviceEnv.ENABLE_SAAS_ADMIN_CONFIG,
+
+      show_coupon: instanceConfig.commercial.showCoupon,
+      show_discount_coupon: instanceConfig.commercial.showDiscountCoupon,
+      show_pay: hasPayChannel(payConfig),
+      payConfig,
+      payFormUrl: instanceConfig.commercial.payFormUrl,
+      // 沙箱免费提示仍以 ENV 为权威，未迁入实例配置（Schema 无消费点）。
+      agentSandboxFree: serviceEnv.AGENT_SANDBOX_SHOW_FREE_TIP,
+
+      uploadFileMaxSize: instanceConfig.resource.uploadFileMaxSize,
+      uploadFileMaxAmount: instanceConfig.resource.uploadFileMaxAmount,
+
+      fileUrlWhitelist: instanceConfig.security.fileUrlWhitelist,
+      externalProviderWorkflowVariables: instanceConfig.providers.externalProviderWorkflowVariables,
+
+      // 权威数据源：实例配置优先（含已迁入的 ENV 初值及管理员显式清空的空值）
+      customApiDomain: instanceConfig.site.customApiDomain,
+      customSharePageDomain: instanceConfig.site.customSharePageDomain,
+      scripts: instanceConfig.site.scripts,
+      mcpServerProxyEndpoint: instanceConfig.subservice.mcp.sseProxyUrl,
       limit: {
         ...defaultFeConfigs.limit,
-        ...(fastgptConfig.feConfigs?.limit || {})
+        ...(fastgptConfig.feConfigs?.limit || {}),
+        uploadFileMaxSize: instanceConfig.resource.uploadFileMaxSize,
+        uploadFileMaxAmount: instanceConfig.resource.uploadFileMaxAmount,
+        maxFolderDepth: instanceConfig.resource.maxFolderDepth,
+        exportDatasetLimitMinutes: instanceConfig.resource.exportDatasetLimitMinutes,
+        websiteSyncLimitMinuted: instanceConfig.resource.websiteSyncLimitMinuted,
+        workflowParallelRunMaxConcurrency:
+          instanceConfig.performance.workflow.parallelMaxConcurrency
       },
       isPlus,
       // 仅表示是否接入 pro 服务（PRO_URL 已配置），与授权是否有效无关
       isProService: !!serviceEnv.PRO_URL,
       datasetSynonymEnabled: serviceEnv.DATASET_SYNONYM_ENABLED,
-      hideChatCopyrightSetting: appEnv.HIDE_CHAT_COPYRIGHT_SETTING,
-      wecomLoginAutoRedirect: appEnv.WECOM_LOGIN_AUTO_REDIRECT,
-      show_coupon: appEnv.SHOW_COUPON,
-      show_discount_coupon: appEnv.SHOW_DISCOUNT_COUPON,
       show_dataset_enhance: licenseData?.functions?.datasetEnhance,
       show_intelligent_chunking: !!serviceEnv.SANGFOR_CHUNK_URL,
       show_batch_eval: licenseData?.functions?.eval,
-      pluginRemoteDebug,
-      payFormUrl: appEnv.PAY_FORM_URL || '',
-      marketplaceUrl: appEnv.MARKETPLACE_URL,
+      pluginRemoteDebug: instanceConfig.subservice.plugin.remoteDebug || pluginRemoteDebug,
       disableMarketplace: appEnv.DISABLE_MARKETPLACE,
-
-      agentSandboxFree: appEnv.AGENT_SANDBOX_SHOW_FREE_TIP || appEnv.AGENT_SANDBOX_FREE_TIP,
-      show_agent_sandbox_free_tip:
-        appEnv.AGENT_SANDBOX_SHOW_FREE_TIP || appEnv.AGENT_SANDBOX_FREE_TIP
+      show_agent_sandbox_free_tip: serviceEnv.AGENT_SANDBOX_SHOW_FREE_TIP,
+      agentSandboxProxyUrl: serviceEnv.AGENT_SANDBOX_PROXY_URL
     },
-    systemEnv: Object.assign(
-      {
-        agentSandboxMax: serviceEnv.AGENT_SANDBOX_MAX,
-        agentSandboxMaxPerTeam: serviceEnv.AGENT_SANDBOX_MAX_PER_TEAM,
-        datasetParseMaxProcess: serviceEnv.DATASET_PARSE_MAX_PROCESS,
-        vectorMaxProcess: serviceEnv.VECTOR_MAX_PROCESS,
-        qaMaxProcess: serviceEnv.QA_MAX_PROCESS,
-        vlmMaxProcess: serviceEnv.VLM_MAX_PROCESS,
-        hnswEfSearch: serviceEnv.HNSW_EF_SEARCH,
-        customPdfParse: {
-          url: serviceEnv.CUSTOM_PDF_PARSE_URL,
-          key: serviceEnv.CUSTOM_PDF_PARSE_KEY,
-          somarkApiKey: serviceEnv.SOMARK_API_KEY,
-          doc2xKey: serviceEnv.DOC2X_KEY,
-          textinAppId: serviceEnv.TEXTIN_APP_ID,
-          textinSecretCode: serviceEnv.TEXTIN_SECRET_CODE
-        }
-      },
-      fastgptConfig.systemEnv || {} // 商业版数据存在数据库里
-    ),
+    // 权威数据源：实例配置派生值盖过旧库 systemEnv，旧库仅保留 schema 外扩展键
+    systemEnv: buildAuthoritativeSystemEnv({
+      legacySystemEnv: fastgptConfig.systemEnv,
+      instanceConfig
+    }),
     subPlans: fastgptConfig.subPlans
   };
 
-  if (!isPlus) {
-    config.feConfigs.loginGuideDocUrl = defaultOpenSourceLoginGuideDocUrl;
-  }
-
   // set config
   initFastGPTConfig(config);
+
+  // 启动和 Watch/API 触发的 reload 共用此入口；TTL 失败由日志业务记录，不反向影响配置保存。
+  await refreshLLMRequestRecordTTL();
+
+  // 存储运行策略（下载模式 / 公开地址）以实例配置为准，注入后按需重建 S3 bucket。
+  // 启动首次调用时全局 bucket 尚未创建，由 instrumentation 的 init-s3-buckets 步骤完成构造。
+  const storageConfigChanged = applyRuntimeStorageConfig(instanceConfig.storage);
+  if (storageConfigChanged) {
+    initS3Buckets();
+  }
+
   const { refreshLangfuseTracing } = await import('@fastgpt/service/common/langfuse');
   await refreshLangfuseTracing();
 
+  // 全部加载完成后统一设置确定性全局缓存标记，结合实例配置多域版本、实际授权版本和套餐版本
+  global.systemInitBufferId = computeSystemInitBufferId({
+    instanceVersionTag: getInstanceConfigVersionTag(),
+    licenseUpdateTime,
+    subPlansUpdateTime: fastgptConfigTime
+  });
+
   logger.info('System config loaded', {
-    fastgpt: {
-      feConfigs: global.feConfigs,
-      systemEnv: global.systemEnv,
-      subPlans: global.subPlans,
-      licenseData: global.licenseData
-    }
+    instanceConfigVersion: getInstanceConfigVersionTag(),
+    instanceConfigDomains: Object.keys(instanceConfig),
+    feConfigCount: Object.keys(global.feConfigs ?? {}).length,
+    systemEnvCount: Object.keys(global.systemEnv ?? {}).length,
+    isPlus,
+    isProService: !!serviceEnv.PRO_URL,
+    storageConfigChanged
   });
 }
 

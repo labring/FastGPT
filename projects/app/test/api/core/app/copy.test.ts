@@ -1,3 +1,4 @@
+import { getTestInstanceConfig } from '@test/utils/instanceConfigSnapshot';
 import * as copyapi from '@/pages/api/core/app/copy';
 import * as createapi from '@/pages/api/core/app/create';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
@@ -326,7 +327,7 @@ describe('Copy', () => {
         });
       expect((await copy()).code).toBe(200);
       await MongoApp.insertMany(
-        Array.from({ length: serviceEnv.APP_FOLDER_MAX_AMOUNT - 2 }, () => ({
+        Array.from({ length: getTestInstanceConfig().resource.appFolderMaxAmount - 2 }, () => ({
           teamId: owner.teamId,
           tmbId: owner.tmbId,
           name: 'existing folder',
@@ -335,7 +336,7 @@ describe('Copy', () => {
       );
       expect((await copy()).error).toBe(TeamErrEnum.appFolderAmountNotEnough);
       expect(await MongoApp.countDocuments({ teamId: owner.teamId, type })).toBe(
-        serviceEnv.APP_FOLDER_MAX_AMOUNT
+        getTestInstanceConfig().resource.appFolderMaxAmount
       );
     }
   );

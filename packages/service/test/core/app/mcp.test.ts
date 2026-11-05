@@ -1,3 +1,4 @@
+import { getTestInstanceConfig } from '@test/utils/instanceConfigSnapshot';
 import { afterEach, describe, it, expect, vi, beforeEach } from 'vitest';
 import http from 'http';
 import os from 'os';
@@ -30,7 +31,6 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { MongoApp } from '../../../core/app/schema';
 import type { AppPublishedWorkflow } from '../../../core/app/version/controller';
 import { PRIVATE_URL_TEXT } from '../../../common/system/utils';
-import { serviceEnv } from '../../../env';
 import { getLogger, LogCategories } from '../../../common/logger';
 
 // Access private client via prototype for spying
@@ -47,11 +47,10 @@ beforeEach(() => {
   vi.restoreAllMocks();
 });
 
-const mutableServiceEnv = serviceEnv as { CHECK_INTERNAL_IP: boolean };
-const originalCheckInternalIp = serviceEnv.CHECK_INTERNAL_IP;
+const originalCheckInternalIp = getTestInstanceConfig().security.checkInternalIp;
 
 afterEach(() => {
-  mutableServiceEnv.CHECK_INTERNAL_IP = originalCheckInternalIp;
+  getTestInstanceConfig().security.checkInternalIp = originalCheckInternalIp;
   vi.unstubAllEnvs();
 });
 
@@ -960,7 +959,7 @@ describe('createMcpSafeFetch', () => {
   });
 
   it('should reject a DNS rebinding answer before sending the request', async () => {
-    mutableServiceEnv.CHECK_INTERNAL_IP = true;
+    getTestInstanceConfig().security.checkInternalIp = true;
     vi.spyOn(dns, 'resolve4').mockResolvedValue(['8.8.8.8']);
     vi.spyOn(dns, 'resolve6').mockResolvedValue([]);
     vi.spyOn(dns, 'lookup').mockResolvedValue([{ address: '127.0.0.1', family: 4 }]);
@@ -976,7 +975,7 @@ describe('createMcpSafeFetch', () => {
   });
 
   it('should reject mixed public and private DNS answers', async () => {
-    mutableServiceEnv.CHECK_INTERNAL_IP = true;
+    getTestInstanceConfig().security.checkInternalIp = true;
     vi.spyOn(dns, 'resolve4').mockResolvedValue(['8.8.8.8']);
     vi.spyOn(dns, 'resolve6').mockResolvedValue([]);
     vi.spyOn(dns, 'lookup').mockResolvedValue([
@@ -995,7 +994,7 @@ describe('createMcpSafeFetch', () => {
   });
 
   it('should validate the socket address again for every redirect target', async () => {
-    mutableServiceEnv.CHECK_INTERNAL_IP = true;
+    getTestInstanceConfig().security.checkInternalIp = true;
     vi.spyOn(dns, 'resolve4').mockResolvedValue(['8.8.8.8']);
     vi.spyOn(dns, 'resolve6').mockResolvedValue([]);
     vi.spyOn(dns, 'lookup')
@@ -1035,7 +1034,7 @@ describe('createMcpSafeFetch', () => {
   });
 
   it('should connect using the validated IP without another DNS lookup', async () => {
-    mutableServiceEnv.CHECK_INTERNAL_IP = false;
+    getTestInstanceConfig().security.checkInternalIp = false;
     const carrierHost = getReachablePrivateHost();
     if (!carrierHost) return;
 
@@ -1075,7 +1074,7 @@ describe('createMcpSafeFetch', () => {
   });
 
   it('should follow safe redirects hop by hop', async () => {
-    mutableServiceEnv.CHECK_INTERNAL_IP = false;
+    getTestInstanceConfig().security.checkInternalIp = false;
     const carrierHost = getReachablePrivateHost();
     if (!carrierHost) {
       return;
@@ -1104,7 +1103,7 @@ describe('createMcpSafeFetch', () => {
   });
 
   it('should block redirects to loopback addresses', async () => {
-    mutableServiceEnv.CHECK_INTERNAL_IP = false;
+    getTestInstanceConfig().security.checkInternalIp = false;
     const carrierHost = getReachablePrivateHost();
     if (!carrierHost) {
       return;
@@ -1133,7 +1132,7 @@ describe('createMcpSafeFetch', () => {
   });
 
   it('should enforce max redirect count', async () => {
-    mutableServiceEnv.CHECK_INTERNAL_IP = false;
+    getTestInstanceConfig().security.checkInternalIp = false;
     const carrierHost = getReachablePrivateHost();
     if (!carrierHost) {
       return;
@@ -1157,7 +1156,7 @@ describe('createMcpSafeFetch', () => {
   });
 
   it('should drop sensitive headers when redirect target changes', async () => {
-    mutableServiceEnv.CHECK_INTERNAL_IP = false;
+    getTestInstanceConfig().security.checkInternalIp = false;
     const carrierHost = getReachablePrivateHost();
     if (!carrierHost) {
       return;

@@ -9,7 +9,8 @@ import { TeamApikeyCreatePermissionVal } from '@fastgpt/global/support/permissio
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
-import { appEnv } from '@/env';
+import { getSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/runtime';
+import { logInstanceConfigRead } from '@fastgpt/service/common/system/migrationCoverageLog';
 import { validateOpenApiTags } from '@fastgpt/service/support/openapi/tag/service';
 import {
   CreateApiKeyBodySchema,
@@ -41,12 +42,22 @@ async function handler(
   }
 
   const count = await MongoOpenApi.find({ tmbId }).countDocuments();
+  const maxCount = getSystemInstanceConfig().auth.openApiKeyMaxCount;
+  logInstanceConfigRead({
+    callsite: 'runtime.app.openapi.create',
+    fields: [{ path: 'auth.openApiKeyMaxCount', value: maxCount }]
+  });
 
-  if (count >= appEnv.OPENAPI_KEY_MAX_COUNT) {
+  if (count >= maxCount) {
     return Promise.reject(OpenApiErrEnum.exceedLimit);
   }
 
   const nanoid = getNanoid(Math.floor(Math.random() * 14) + 52);
+  logInstanceConfigRead({
+    callsite: 'runtime.app.openapi.create.apiKeyPrefix',
+    source: 'bridged-system-env',
+    fields: [{ path: 'site.openApiPrefix', value: global.systemEnv?.openapiPrefix || 'fastgpt' }]
+  });
   const apiKey = `${global.systemEnv?.openapiPrefix || 'fastgpt'}-${nanoid}`;
   const tagIds = tags
     ? await validateOpenApiTags({

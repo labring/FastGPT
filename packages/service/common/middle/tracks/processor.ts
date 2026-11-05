@@ -2,11 +2,12 @@ import { delay } from '@fastgpt/global/common/system/utils';
 import { TrackModel } from './schema';
 import { TrackEnum } from '@fastgpt/global/common/middle/tracks/constants';
 import { getLogger, LogCategories } from '../../logger';
-import { serviceEnv } from '../../../env';
+import { getSystemInstanceConfig } from '../../system/systemInstanceConfig/runtime';
 
 const logger = getLogger(LogCategories.EVENT.TRACK);
 
-const batchUpdateTime = serviceEnv.TRACK_BATCH_UPDATE_TIME;
+/** 批量刷新间隔只读实例配置 performance.tracking.batchUpdateTime。 */
+const getBatchUpdateTime = () => getSystemInstanceConfig().performance.tracking.batchUpdateTime;
 
 const getCurrentTenMinuteBoundary = () => {
   const now = new Date();
@@ -28,7 +29,8 @@ const getCurrentMinuteBoundary = () => {
 export const trackTimerProcess = async () => {
   while (true) {
     await countTrackTimer();
-    await delay(batchUpdateTime);
+    // 每轮重新读取，Admin 保存后无需重启即可生效
+    await delay(getBatchUpdateTime());
   }
 };
 

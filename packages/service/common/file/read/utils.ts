@@ -14,9 +14,11 @@ import { parseFromSangfor, useSangforParse } from '../../../thirdProvider/sangfo
 import { appendIultmzhFileParseFields } from '../../../thirdProvider/sangfor/parseConfig';
 import { readRawContentFromBuffer, readRawContentFromSource } from '../../../worker/function';
 import { getLogger, LogCategories } from '../../logger';
+import { logInstanceConfigRead } from '../../system/migrationCoverageLog';
 import { getImageBuffer } from '../image/utils';
 import { uploadParsedPdfImage } from './image';
 import { getBackendFileOperationTimeoutMs } from '../parseTimeout';
+import { getSystemInstanceConfig } from '../../system/systemInstanceConfig/runtime';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import type { FileSource } from './source';
@@ -402,12 +404,75 @@ const readFileContent = async ({
   // Custom read file service
   const pdfParseFn = async (): Promise<ReadFileResponse> => {
     if (!customPdfParse) return systemParse();
-    if (global.systemEnv.customPdfParse?.url) return parsePdfFromCustomService();
-    if (global.systemEnv.customPdfParse?.somarkApiKey) return parsePdfFromSomark();
-    if (global.systemEnv.customPdfParse?.textinAppId) return parsePdfFromTextin();
-    if (global.systemEnv.customPdfParse?.doc2xKey) return parsePdfFromDoc2x();
 
-    return systemParse();
+    // 旧运行时按 custom → somark → textin → doc2x 的固定顺序挑第一个已配置凭据，
+    // 管理员切换 provider 后仍会被旧凭据抢占。这里改为按选中的 provider 分派；
+    // 运行期只使用实例配置中的 provider 和凭据，不读取历史 ENV。
+    const documentParse = getSystemInstanceConfig().providers.documentParse;
+    const provider = documentParse.provider;
+
+    logInstanceConfigRead({
+      callsite: 'runtime.common.file.read.pdfParseFn',
+      source: 'instance-config',
+      fields: [
+        { path: 'providers.documentParse.provider', value: provider },
+        {
+          path: 'providers.documentParse.customPdf.url',
+          value: global.systemEnv.customPdfParse?.url
+        },
+        {
+          path: 'providers.documentParse.customPdf.key',
+          value: global.systemEnv.customPdfParse?.key
+        },
+        {
+          path: 'providers.documentParse.customPdf.somarkApiKey',
+          value: global.systemEnv.customPdfParse?.somarkApiKey
+        },
+        {
+          path: 'providers.documentParse.customPdf.textinAppId',
+          value: global.systemEnv.customPdfParse?.textinAppId
+        },
+        {
+          path: 'providers.documentParse.customPdf.textinSecretCode',
+          value: global.systemEnv.customPdfParse?.textinSecretCode
+        },
+        {
+          path: 'providers.documentParse.customPdf.doc2xKey',
+          value: global.systemEnv.customPdfParse?.doc2xKey
+        }
+      ]
+    });
+
+    /** 旧部署没有 provider 选择：保持 custom → somark → textin → doc2x 的历史顺序。 */
+    const parseWithLegacyProviderOrder = () => {
+      if (global.systemEnv.customPdfParse?.url) return parsePdfFromCustomService();
+      if (global.systemEnv.customPdfParse?.somarkApiKey) return parsePdfFromSomark();
+      if (global.systemEnv.customPdfParse?.textinAppId) return parsePdfFromTextin();
+      if (global.systemEnv.customPdfParse?.doc2xKey) return parsePdfFromDoc2x();
+      return systemParse();
+    };
+
+    switch (provider) {
+      case 'customPdf':
+      case 'custom':
+        return parsePdfFromCustomService();
+      case 'somark':
+        return parsePdfFromSomark();
+      case 'textin':
+      case 'textln':
+        return parsePdfFromTextin();
+      case 'doc2x':
+        return parsePdfFromDoc2x();
+      case 'sangfor':
+        // sangfor 是“按扩展名接管”的叠加 provider：命中的扩展名已在前面走 sangfor，
+        // 未命中的 PDF 保持历史行为，继续按旧凭据链选择解析器。
+        return parseWithLegacyProviderOrder();
+      case 'none':
+      default:
+        // 未选择 provider（迁移完成前的旧快照或旧部署）保持历史固定顺序；
+        // 一旦管理员选中了具体 provider，就只按该 provider 分派，不再被其它旧凭据抢占。
+        return parseWithLegacyProviderOrder();
+    }
   };
 
   const start = Date.now();

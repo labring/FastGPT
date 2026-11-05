@@ -5,7 +5,7 @@
  */
 import type { ISandbox } from '@fastgpt-sdk/sandbox-adapter';
 import { getLogger, LogCategories } from '../../../../../common/logger';
-import { serviceEnv } from '../../../../../env';
+import { getAgentSandboxCommonConfig } from '../../config';
 import { buildRuntimeHash, joinSandboxPath } from '../../utils';
 import {
   getRuntimeStateValue,
@@ -49,11 +49,15 @@ export type SandboxRuntimeMirrorsConfig = {
   aptMirror?: string;
 };
 
-export const getSandboxRuntimeMirrorsConfig = (): SandboxRuntimeMirrorsConfig => ({
-  npmRegistry: serviceEnv.AGENT_SANDBOX_NPM_REGISTRY,
-  pypiIndexUrl: serviceEnv.AGENT_SANDBOX_PYPI_INDEX_URL,
-  aptMirror: serviceEnv.AGENT_SANDBOX_APT_MIRROR
-});
+export const getSandboxRuntimeMirrorsConfig = (): SandboxRuntimeMirrorsConfig => {
+  const common = getAgentSandboxCommonConfig();
+
+  return {
+    npmRegistry: common.npmRegistry,
+    pypiIndexUrl: common.pypiIndexUrl,
+    aptMirror: common.aptMirror
+  };
+};
 
 export const prepareSandboxRuntimeMirrors = async ({
   sandbox,

@@ -4,6 +4,7 @@ import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { MemberRateLimitPolicy } from '@fastgpt/service/common/rateLimit/interface/member';
+import { createDefaultInstanceConfig } from '@test/utils/instanceConfigSnapshot';
 
 const mocks = vi.hoisted(() => ({
   assertDatasetArchiveCollectionsReadable: vi.fn(),
@@ -49,6 +50,8 @@ const createRequest = (body = { datasetId, collectionIds }) =>
 describe('POST /core/dataset/collection/getDownloadTicket', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    global.systemInstanceConfig = createDefaultInstanceConfig();
+    global.systemInstanceConfig.resource.datasetArchive.maxConcurrency = 7;
     mocks.authDataset.mockResolvedValue({
       dataset: {
         _id: datasetId,
@@ -83,6 +86,9 @@ describe('POST /core/dataset/collection/getDownloadTicket', () => {
       policy: MemberRateLimitPolicy.DownloadDatasetArchive,
       memberId: 'member-1'
     });
+    expect(mocks.withDatasetArchiveResources).toHaveBeenCalledWith(
+      expect.objectContaining({ concurrency: 7 })
+    );
     expect(mocks.prepareDatasetArchive).toHaveBeenCalledWith(
       expect.objectContaining({
         teamId: 'team-1',

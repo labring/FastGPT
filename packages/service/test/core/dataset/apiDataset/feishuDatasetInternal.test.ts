@@ -1,6 +1,12 @@
+import {
+  getTestInstanceConfig,
+  createDefaultInstanceConfig
+} from '@test/utils/instanceConfigSnapshot';
 import http from 'http';
 import os from 'os';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+
+(global as any).systemInstanceConfig = createDefaultInstanceConfig();
 
 const proxyEnvKeys = [
   'HTTP_PROXY',
@@ -28,7 +34,8 @@ describe('useFeishuDatasetRequest 访问内网飞书服务', () => {
         process.env[key] = value;
       }
     });
-    vi.stubEnv('CHECK_INTERNAL_IP', originalCheckInternalIp ?? '');
+    getTestInstanceConfig().security.checkInternalIp =
+      ((originalCheckInternalIp ?? '' === 'true') || originalCheckInternalIp) ?? '' === '1';
     vi.unstubAllEnvs();
     vi.resetModules();
   });
@@ -135,8 +142,10 @@ describe('useFeishuDatasetRequest 访问内网飞书服务', () => {
 
       try {
         // serviceEnv 在模块加载时解析 process.env，必须先 stub 再导入，无法使用静态 import。
-        vi.stubEnv('FEISHU_BASE_URL', `http://${privateHost}:${address.port}`);
-        vi.stubEnv('CHECK_INTERNAL_IP', 'true');
+        getTestInstanceConfig().providers.dataSource.feishuBaseUrl =
+          `http://${privateHost}:${address.port}` ??
+          createDefaultInstanceConfig().providers.dataSource.feishuBaseUrl;
+        getTestInstanceConfig().security.checkInternalIp = true;
         vi.resetModules();
         const { useFeishuDatasetRequest } =
           await import('@fastgpt/service/core/dataset/apiDataset/feishuDataset/api');

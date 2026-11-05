@@ -18,13 +18,6 @@ import {
   signS3DownloadAlias
 } from '@fastgpt/service/common/s3/accessLink';
 
-const originalStorageEnv = {
-  STORAGE_DOWNLOAD_URL_MODE: process.env.STORAGE_DOWNLOAD_URL_MODE,
-  STORAGE_DOWNLOAD_REDIRECT_TTL_SECONDS: process.env.STORAGE_DOWNLOAD_REDIRECT_TTL_SECONDS,
-  STORAGE_EXTERNAL_ENDPOINT: process.env.STORAGE_EXTERNAL_ENDPOINT,
-  STORAGE_S3_CDN_ENDPOINT: process.env.STORAGE_S3_CDN_ENDPOINT
-};
-
 const makeMockRes = () => {
   const headers: Record<string, string | number> = {};
   const chunks: Buffer[] = [];
@@ -290,19 +283,25 @@ describe('s3 short access link api', () => {
   });
 
   it('redirects a valid short download alias to a short-lived presigned S3 URL in short-redirect mode', async () => {
-    vi.stubEnv('STORAGE_DOWNLOAD_URL_MODE', 'short-redirect');
-    vi.stubEnv('STORAGE_DOWNLOAD_REDIRECT_TTL_SECONDS', '120');
-    vi.stubEnv('STORAGE_EXTERNAL_ENDPOINT', 'https://s3.example.com');
-    vi.stubEnv('STORAGE_S3_CDN_ENDPOINT', 'https://cdn.example.com/files');
     vi.resetModules();
     setupDynamicResponseMock();
 
     try {
-      const [{ default: redirectDownloadAccessHandler }, { createS3DownloadAccessUrl }] =
-        await Promise.all([
-          import('@/pages/api/system/file/d/[signedAlias]'),
-          import('@fastgpt/service/common/s3/accessLink')
-        ]);
+      const [
+        { default: redirectDownloadAccessHandler },
+        { createS3DownloadAccessUrl },
+        { getSystemInstanceConfig }
+      ] = await Promise.all([
+        import('@/pages/api/system/file/d/[signedAlias]'),
+        import('@fastgpt/service/common/s3/accessLink'),
+        import('@fastgpt/service/common/system/systemInstanceConfig/runtime')
+      ]);
+      // 下载模式与公开地址以实例配置为唯一来源；直接写快照，等价于路由 bundle 的请求期读取
+      const storage = getSystemInstanceConfig().storage;
+      storage.downloadMode = 'short-redirect';
+      storage.externalEndpoint = 'https://s3.example.com';
+      storage.cdnEndpoint = 'https://cdn.example.com/files';
+      storage.redirectTtlSeconds = 120;
       const url = await createS3DownloadAccessUrl({
         bucketName: 'fastgpt-private',
         objectKey: 'dataset/team/page%20one.md',
@@ -339,20 +338,11 @@ describe('s3 short access link api', () => {
         responseContentType: 'text/markdown; charset=utf-8'
       });
     } finally {
-      vi.stubEnv('STORAGE_DOWNLOAD_URL_MODE', originalStorageEnv.STORAGE_DOWNLOAD_URL_MODE);
-      vi.stubEnv(
-        'STORAGE_DOWNLOAD_REDIRECT_TTL_SECONDS',
-        originalStorageEnv.STORAGE_DOWNLOAD_REDIRECT_TTL_SECONDS
-      );
-      vi.stubEnv('STORAGE_EXTERNAL_ENDPOINT', originalStorageEnv.STORAGE_EXTERNAL_ENDPOINT);
-      vi.stubEnv('STORAGE_S3_CDN_ENDPOINT', originalStorageEnv.STORAGE_S3_CDN_ENDPOINT);
       vi.resetModules();
     }
   });
 
   it('does not generate presigned URLs when a short-redirect alias is invalid or revoked', async () => {
-    vi.stubEnv('STORAGE_DOWNLOAD_URL_MODE', 'short-redirect');
-    vi.stubEnv('STORAGE_EXTERNAL_ENDPOINT', 'https://s3.example.com');
     vi.resetModules();
     setupDynamicResponseMock();
 
@@ -365,12 +355,18 @@ describe('s3 short access link api', () => {
           revokeS3DownloadAlias,
           signS3DownloadAlias
         },
-        { jsonRes: freshJsonRes }
+        { jsonRes: freshJsonRes },
+        { applyRuntimeStorageConfig }
       ] = await Promise.all([
         import('@/pages/api/system/file/d/[signedAlias]'),
         import('@fastgpt/service/common/s3/accessLink'),
-        import('@fastgpt/service/common/response')
+        import('@fastgpt/service/common/response'),
+        import('@fastgpt/service/common/s3/config/constants')
       ]);
+      applyRuntimeStorageConfig({
+        downloadMode: 'short-redirect',
+        externalEndpoint: 'https://s3.example.com'
+      });
       setupJsonResMock(freshJsonRes);
       const aliasId = 'R7mQG0Yh2kVxP9Za';
       const expMinute36 = encodeExpiresAtMinute(getFutureDate(10));
@@ -409,8 +405,6 @@ describe('s3 short access link api', () => {
       }
       expect(generatePresignedGetUrl).not.toHaveBeenCalled();
     } finally {
-      vi.stubEnv('STORAGE_DOWNLOAD_URL_MODE', originalStorageEnv.STORAGE_DOWNLOAD_URL_MODE);
-      vi.stubEnv('STORAGE_EXTERNAL_ENDPOINT', originalStorageEnv.STORAGE_EXTERNAL_ENDPOINT);
       vi.resetModules();
     }
   });

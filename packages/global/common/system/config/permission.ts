@@ -1,0 +1,289 @@
+import { type SystemInstanceConfigEdition, systemInstanceConfigRegistry } from './registry';
+import type { SystemInstanceConfigDomainKey } from './schema';
+
+/**
+ * 判断当前系统部署版本。
+ * 权威规则：只要存在 PRO_URL（即 isProService 为 true），即为商业版，否则为开源社区版。
+ */
+export const getSystemEdition = (isProService?: boolean): 'community' | 'pro' =>
+  isProService ? 'pro' : 'community';
+
+/**
+ * 是否为开源社区版部署。
+ */
+export const isCommunityEdition = (isProService?: boolean): boolean => !isProService;
+
+/**
+ * 是否为商业版部署。
+ */
+export const isProEdition = (isProService?: boolean): boolean => !!isProService;
+
+// 预构建各版本允许访问的配置 Key 集合，实现 O(1) 快速检索
+const allowedKeysByEdition: Record<SystemInstanceConfigEdition, Set<string>> = {
+  community: new Set(
+    systemInstanceConfigRegistry
+      .filter((item) => item.edition === 'all' || item.edition === 'community')
+      .map((item) => item.key)
+  ),
+  pro: new Set(systemInstanceConfigRegistry.map((item) => item.key)),
+  all: new Set(systemInstanceConfigRegistry.map((item) => item.key))
+};
+
+/**
+ * 判断指定完整配置 Key（如 "commercial.showCoupon"）在给定版本下是否允许访问（API 边界鉴权）。
+ */
+export const isConfigFieldAllowed = (
+  key: string,
+  edition: SystemInstanceConfigEdition
+): boolean => {
+  const allowedSet = allowedKeysByEdition[edition] ?? allowedKeysByEdition.community;
+  return allowedSet.has(key);
+};
+
+/**
+ * 判断指定完整配置 Key 在管理端表单和 UI 中是否可见。
+ * 结合版本权限与 ENABLE_SAAS_ADMIN_CONFIG 显示控制开关。
+ * 注意：该方法只控制 UI 展示，不控制 API 读写边界。
+ */
+export const isConfigFieldVisible = (
+  key: string,
+  options: {
+    edition: SystemInstanceConfigEdition;
+    enableSaasAdminConfig?: boolean;
+  }
+): boolean => {
+  const item = systemInstanceConfigRegistry.find((r) => r.key === key);
+  if (!item) return false;
+
+  const editionAllowed =
+    options.edition === 'all' || item.edition === 'all' || item.edition === options.edition;
+  if (!editionAllowed) return false;
+
+  if (item.isSaasOnly && !options.enableSaasAdminConfig) {
+    return false;
+  }
+
+  return true;
+};
+
+/**
+ * 获取指定 Domain 下当前版本和显示条件所有可见的相对字段路径集合（用于前端表单与 TOC 展示）。
+ */
+export const getDomainVisibleKeys = (
+  domain: SystemInstanceConfigDomainKey,
+  options: {
+    edition: SystemInstanceConfigEdition;
+    enableSaasAdminConfig?: boolean;
+  }
+): Set<string> => {
+  const prefix = `${domain}.`;
+  const result = new Set<string>();
+
+  for (const item of systemInstanceConfigRegistry) {
+    if (item.key.startsWith(prefix) && isConfigFieldVisible(item.key, options)) {
+      result.add(item.key.slice(prefix.length));
+    }
+  }
+
+  return result;
+};
+
+/**
+ * 获取指定 Domain 下当前版本所有被允许的相对字段路径集合。
+ */
+export const getDomainAllowedKeys = (
+  domain: SystemInstanceConfigDomainKey,
+  edition: SystemInstanceConfigEdition
+): Set<string> => {
+  const allowedSet = allowedKeysByEdition[edition] ?? allowedKeysByEdition.community;
+  const prefix = `${domain}.`;
+  const result = new Set<string>();
+
+  for (const key of allowedSet) {
+    if (key.startsWith(prefix)) {
+      result.add(key.slice(prefix.length));
+    }
+  }
+
+  return result;
+};
+
+const isPlainObject = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' &&
+  value !== null &&
+  !Array.isArray(value) &&
+  !(value instanceof Date) &&
+  !(value instanceof RegExp);
+
+/**
+ * 递归清洗某个 Domain 的配置数据或 overrides 对象，
+ * 剔除当前版本下不允许访问的字段，防止商业版配置被开源版读取或越权写入。
+ */
+const filterDomainDataByAllowedKeys = <T>(
+  data: T,
+  allowedRelativeKeys: Set<string>
+): Partial<T> => {
+  if (!isPlainObject(data)) {
+    return data;
+  }
+
+  const cleanObject = (obj: Record<string, unknown>, currentPath = ''): Record<string, unknown> => {
+    const result: Record<string, unknown> = {};
+
+    for (const [key, value] of Object.entries(obj)) {
+      if (value === undefined) continue;
+
+      const path = currentPath ? `${currentPath}.${key}` : key;
+
+      if (isPlainObject(value)) {
+        const cleanedNested = cleanObject(value, path);
+        if (Object.keys(cleanedNested).length > 0) {
+          result[key] = cleanedNested;
+        }
+      } else {
+        // 叶子节点：检查是否在允许列表中
+        if (allowedRelativeKeys.has(path)) {
+          result[key] = value;
+        }
+      }
+    }
+
+    return result;
+  };
+
+  return cleanObject(data) as Partial<T>;
+};
+
+/**
+ * 按部署版本过滤配置数据，保留该版本 API 允许的全部字段（包括 SaaS 显示开关隐藏的字段）。
+ */
+export const filterDomainDataByEdition = <T>(
+  domain: SystemInstanceConfigDomainKey,
+  data: T,
+  edition: SystemInstanceConfigEdition
+): Partial<T> => filterDomainDataByAllowedKeys(data, getDomainAllowedKeys(domain, edition));
+
+/**
+ * 按部署版本与 SaaS 显示开关过滤配置数据，用于表单展示和用户可编辑值。
+ */
+export const filterDomainDataByVisibleKeys = <T>(
+  domain: SystemInstanceConfigDomainKey,
+  data: T,
+  options: {
+    edition: SystemInstanceConfigEdition;
+    enableSaasAdminConfig?: boolean;
+  }
+): Partial<T> => filterDomainDataByAllowedKeys(data, getDomainVisibleKeys(domain, options));
+
+export const SECRET_MASK = '******';
+
+const secretKeysByDomain: Record<SystemInstanceConfigDomainKey, Set<string>> = (() => {
+  const result: Record<string, Set<string>> = {};
+  for (const item of systemInstanceConfigRegistry) {
+    if (!item.secret) continue;
+    const [domain, ...rest] = item.key.split('.');
+    const relativeKey = rest.join('.');
+    if (!result[domain]) {
+      result[domain] = new Set();
+    }
+    result[domain].add(relativeKey);
+  }
+  return result as Record<SystemInstanceConfigDomainKey, Set<string>>;
+})();
+
+/**
+ * 获取指定 Domain 下所有标记为 secret: true 的相对字段路径。
+ */
+export const getDomainSecretKeys = (domain: SystemInstanceConfigDomainKey): Set<string> => {
+  return secretKeysByDomain[domain] ?? new Set();
+};
+
+/**
+ * 对配置数据中的敏感字段进行脱敏，非空敏感字符串替换为 '******'。
+ */
+export const maskDomainSecrets = <T>(domain: SystemInstanceConfigDomainKey, data: T): T => {
+  if (!isPlainObject(data)) {
+    return data;
+  }
+
+  const secretKeys = getDomainSecretKeys(domain);
+  if (secretKeys.size === 0) {
+    return structuredClone(data);
+  }
+
+  const maskObject = (obj: Record<string, unknown>, currentPath = ''): Record<string, unknown> => {
+    const result: Record<string, unknown> = {};
+
+    for (const [key, value] of Object.entries(obj)) {
+      if (value === undefined) continue;
+
+      const path = currentPath ? `${currentPath}.${key}` : key;
+
+      if (isPlainObject(value)) {
+        result[key] = maskObject(value, path);
+      } else if (secretKeys.has(path) && typeof value === 'string' && value.trim().length > 0) {
+        result[key] = SECRET_MASK;
+      } else {
+        result[key] = value;
+      }
+    }
+
+    return result;
+  };
+
+  return maskObject(data) as T;
+};
+
+/**
+ * 当客户端提交保存时，若敏感字段提交了掩码 '******'，则自动从上一版本恢复已有密钥，避免误覆写。
+ * 掩码只表示「保持原值」：上一版本没有可恢复的真实值时（首次保存，或该值来自 Schema 默认值），
+ * 必须将该字段视为未提交并丢弃，否则 '******' 会被当作真实密钥写入 DB 覆盖默认值。
+ */
+export const restorePreservedSecrets = <T>(
+  domain: SystemInstanceConfigDomainKey,
+  submitted: T,
+  previous?: unknown
+): T => {
+  if (!isPlainObject(submitted)) {
+    return submitted;
+  }
+
+  const secretKeys = getDomainSecretKeys(domain);
+  if (secretKeys.size === 0) {
+    return submitted;
+  }
+
+  // 首次保存没有上一版本可恢复，按空对象处理，掩码字段将被丢弃
+  const previousObj: Record<string, unknown> = isPlainObject(previous) ? previous : {};
+
+  const restoreObject = (
+    subObj: Record<string, unknown>,
+    prevObj: Record<string, unknown>,
+    currentPath = ''
+  ): Record<string, unknown> => {
+    const result: Record<string, unknown> = {};
+
+    for (const [key, value] of Object.entries(subObj)) {
+      if (value === undefined) continue;
+
+      const path = currentPath ? `${currentPath}.${key}` : key;
+      const prevValue = prevObj[key];
+
+      if (isPlainObject(value)) {
+        // 无对应上一版本时传空对象继续递归，确保嵌套层的掩码同样被清洗
+        result[key] = restoreObject(value, isPlainObject(prevValue) ? prevValue : {}, path);
+      } else if (secretKeys.has(path) && value === SECRET_MASK) {
+        // 仅当上一版本存在非掩码的字符串值时恢复；否则丢弃该字段（按未提交处理）
+        if (typeof prevValue === 'string' && prevValue !== SECRET_MASK) {
+          result[key] = prevValue;
+        }
+      } else {
+        result[key] = value;
+      }
+    }
+
+    return result;
+  };
+
+  return restoreObject(submitted, previousObj) as T;
+};

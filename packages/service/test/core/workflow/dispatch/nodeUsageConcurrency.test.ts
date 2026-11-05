@@ -7,7 +7,6 @@ import { runWorkflow } from '@fastgpt/service/core/workflow/dispatch';
 import { callbackMap } from '@fastgpt/service/core/workflow/dispatch/constants';
 import { WorkflowVariableState } from '@fastgpt/service/core/workflow/dispatch/utils/variables';
 
-
 const langfuseMocks = vi.hoisted(() => ({
   onWorkflowNodeEnd: vi.fn()
 }));
@@ -169,7 +168,7 @@ describe('Node usage isolation under workflow concurrency', () => {
 
         return { data: {} };
       }
-    ) as typeof callbackMap[typeof FlowNodeTypeEnum.agent];
+    ) as (typeof callbackMap)[typeof FlowNodeTypeEnum.agent];
 
     await runWorkflowWithConcurrentAgents();
 

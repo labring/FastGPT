@@ -1,7 +1,9 @@
+import { getTestInstanceConfig } from '@test/utils/instanceConfigSnapshot';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { generateSandboxId } from '@fastgpt/global/core/ai/sandbox/constants';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { serviceEnv } from '@fastgpt/service/env';
+import { resolveSystemInstanceConfig } from '@fastgpt/global/common/system/config/schema';
 
 const redisMock = vi.hoisted(() => ({
   evalScript: vi.fn(),
@@ -29,7 +31,7 @@ import {
 const originalEnv = {
   AGENT_SANDBOX_PROXY_URL: serviceEnv.AGENT_SANDBOX_PROXY_URL,
   AGENT_SANDBOX_PREVIEW_PROXY_URL: serviceEnv.AGENT_SANDBOX_PREVIEW_PROXY_URL,
-  AGENT_SANDBOX_PROVIDER: serviceEnv.AGENT_SANDBOX_PROVIDER
+  AGENT_SANDBOX_PROVIDER: getTestInstanceConfig().subservice.agentSandbox.provider
 };
 const sandboxId = generateSandboxId({
   sourceType: ChatSourceTypeEnum.app,
@@ -46,17 +48,32 @@ const sessionContext = {
 
 describe('sandbox preview application', () => {
   beforeEach(() => {
+    // Provider 由实例配置管理；只有代理连接地址仍由 ENV 提供。
+    global.systemInstanceConfig = resolveSystemInstanceConfig({
+      subservice: {
+        agentSandbox: {
+          provider: 'opensandbox',
+          opensandbox: { baseUrl: 'https://sandbox.example.com' }
+        }
+      }
+    });
+    Object.assign(getTestInstanceConfig().subservice.agentSandbox, { provider: 'opensandbox' });
     Object.assign(serviceEnv, {
       AGENT_SANDBOX_PROXY_URL: 'wss://agent-proxy.example.com/base/',
-      AGENT_SANDBOX_PREVIEW_PROXY_URL: 'https://agent-preview.example.com:3007/base/',
-      AGENT_SANDBOX_PROVIDER: 'opensandbox'
+      AGENT_SANDBOX_PREVIEW_PROXY_URL: 'https://agent-preview.example.com:3007/base/'
     });
     vi.resetAllMocks();
     redisMock.evalScript.mockResolvedValue(1);
   });
 
   afterEach(() => {
-    Object.assign(serviceEnv, originalEnv);
+    Object.assign(getTestInstanceConfig().subservice.agentSandbox, {
+      provider: originalEnv.AGENT_SANDBOX_PROVIDER
+    });
+    Object.assign(serviceEnv, {
+      AGENT_SANDBOX_PROXY_URL: originalEnv.AGENT_SANDBOX_PROXY_URL,
+      AGENT_SANDBOX_PREVIEW_PROXY_URL: originalEnv.AGENT_SANDBOX_PREVIEW_PROXY_URL
+    });
   });
 
   it('atomically indexes and creates a 24-character session', async () => {
