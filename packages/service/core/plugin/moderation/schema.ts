@@ -37,7 +37,7 @@ const SystemModerationPluginSchema = new Schema({
    * 密钥字段以 `{ secret }` 结构存储，非密钥字段保持原值。
    */
   secretsVal: Object,
-  /** 软删除标记。与系统工具一致，删除只标记不物理删除 */
+  /** Soft-uninstall marker; credentials are retained for restoration. */
   deleted: {
     type: Boolean,
     default: false
@@ -54,7 +54,7 @@ const SystemModerationPluginSchema = new Schema({
   }
 });
 
-// 同一插件只保留一条记录（软删除后重新安装时复用该条）
+// Keep one local configuration per plugin and source.
 defineIndex(SystemModerationPluginSchema, {
   key: { pluginId: 1, source: 1 },
   options: { unique: true }

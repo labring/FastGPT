@@ -43,7 +43,8 @@ import {
 } from '@/web/core/plugin/marketplace/api';
 import {
   getAdminModerationPluginList,
-  postAdminDeleteModerationPlugin
+  postAdminDeleteModerationPlugin,
+  postAdminRestoreModerationPlugin
 } from '@/web/core/plugin/admin/moderation/api';
 import {
   MarketplaceOfficialSource,
@@ -344,7 +345,7 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
       // mode === 'admin'
       const [tools, moderationList] = await Promise.all([
         getAdminSystemTools({}),
-        getAdminModerationPluginList().catch(() => [])
+        getAdminModerationPluginList({ includeDeleted: true }).catch(() => [])
       ]);
 
       const allSystemPluginTools = tools.flatMap((tool) => {
@@ -370,7 +371,7 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
       const moderationInstalledTools = moderationList.map((item) => ({
         id: item.pluginId,
         systemToolId: item.pluginId,
-        status: PluginStatusEnum.Normal,
+        status: item.deleted ? PluginStatusEnum.Offline : PluginStatusEnum.Normal,
         version: item.version || '',
         etag: '',
         name: { en: item.name, 'zh-CN': item.name },
@@ -447,6 +448,8 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
                 }
               ]
             });
+          } else if (activeTab === 'moderation' && shouldReinstallOfflineTool) {
+            await postAdminRestoreModerationPlugin({ pluginId: tool.id });
           } else if (shouldReinstallOfflineTool && offlineTool) {
             await updateSystemToolStatus(offlineTool.systemToolId, PluginStatusEnum.Normal);
           } else {
@@ -463,7 +466,7 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
           } else if (selectedTool?.id === tool.id) {
             setSelectedTool((prev) => (prev ? { ...prev, installed: true, update: false } : null));
           }
-          if (mode === 'team' || !shouldReinstallOfflineTool) {
+          if (mode === 'team' || activeTab === 'moderation' || !shouldReinstallOfflineTool) {
             await refreshInstalledPlugins();
           }
           toast({

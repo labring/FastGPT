@@ -1,11 +1,16 @@
+import {
+  disableSystemPlugin,
+  restoreSystemPlugin,
+  getRetainedModerationDetail
+} from '../../../thirdProvider/fastgptPlugin/lifecycle';
 import { mongoSessionRun } from '../../../common/mongo/sessionRun';
 import { decryptSecret, encryptSecret } from '../../../common/secret/aes256gcm';
 import {
-  findActiveModerationConfigs,
   findAllModerationConfigs,
   findEnabledModerationConfig,
   findModerationConfig,
   softDeleteModerationConfig,
+  restoreModerationConfigs,
   upsertModerationConfig,
   disableOtherModerationConfigs,
   disableAllModerationConfigs,
@@ -58,9 +63,7 @@ const buildAdminItem = ({
     version: detail.version,
     isLatestVersion: detail.isLatestVersion,
     name: parseI18nString(detail.name, lang),
-    description: detail.description
-      ? parseI18nString(detail.description, lang)
-      : undefined,
+    description: detail.description ? parseI18nString(detail.description, lang) : undefined,
     icon: detail.icon,
     author: detail.author,
     provider: detail.meta.provider,
@@ -73,6 +76,7 @@ const buildAdminItem = ({
       secretKeys
     }),
     enabled: config?.enabled ?? false,
+    deleted: config?.deleted ?? false,
     available: true
   };
 };
@@ -92,31 +96,41 @@ export const getAdminModerationPluginList = async ({
   includeDeleted?: boolean;
 } = {}): Promise<AdminModerationPluginItemType[]> => {
   const [plugins, allConfigs] = await Promise.all([
-    listModerationPlugins({ lang }),
+    listModerationPlugins({ lang, ...(includeDeleted ? { includeDisabled: true } : {}) }),
     findAllModerationConfigs()
   ]);
 
-  const configMap = new Map(allConfigs.map((item) => [item.pluginId, item]));
-
-  // 如果不包含已删除项，则过滤掉已标记删除的插件
+  // Records arrive newest first. Legacy source-less records must not overwrite a newer save.
+  const configMap = new Map<string, ModerationConfigRecord>();
+  for (const item of allConfigs) {
+    const key = `${item.source ?? 'system'}:${item.pluginId}`;
+    if (!configMap.has(key)) configMap.set(key, item);
+  }
+  const getConfig = (plugin: { pluginId: string; source: string }) =>
+    configMap.get(`${plugin.source}:${plugin.pluginId}`);
   const visiblePlugins = includeDeleted
     ? plugins
-    : plugins.filter((plugin) => {
-        const config = configMap.get(plugin.pluginId);
-        return !config?.deleted;
-      });
-
+    : plugins.filter((plugin) => !getConfig(plugin)?.deleted);
   const items = await Promise.all(
     visiblePlugins.map(async (plugin) => {
-      const config = configMap.get(plugin.pluginId);
+      const config = getConfig(plugin);
+      const deleted =
+        config?.deleted ||
+        ('installationStatus' in plugin && plugin.installationStatus === 'disabled');
 
       try {
-        const detail = await getModerationPluginDetail({
-          pluginId: plugin.pluginId,
-          source: plugin.source,
+        const detail = deleted
+          ? await getRetainedModerationDetail(plugin.pluginId, plugin.source)
+          : await getModerationPluginDetail({
+              pluginId: plugin.pluginId,
+              source: plugin.source,
+              lang
+            });
+        return buildAdminItem({
+          detail,
+          config: { ...config, pluginId: plugin.pluginId, deleted: Boolean(deleted) },
           lang
         });
-        return buildAdminItem({ detail, config, lang });
       } catch {
         // 插件在 registry 中存在但读不到详情（版本损坏 / 服务不可用）：保底展示基本信息
         return {
@@ -124,39 +138,42 @@ export const getAdminModerationPluginList = async ({
           source: plugin.source,
           version: plugin.version,
           name: parseI18nString(plugin.name, lang),
-          description: plugin.description
-            ? parseI18nString(plugin.description, lang)
-            : undefined,
+          description: plugin.description ? parseI18nString(plugin.description, lang) : undefined,
           icon: plugin.icon,
           author: plugin.author,
           readmeUrl: plugin.readmeUrl,
           provider: 'unknown',
           enabled: config?.enabled ?? false,
+          deleted: Boolean(deleted),
           available: false
         } satisfies AdminModerationPluginItemType;
       }
     })
   );
 
-  // 保留已删除记录（includeDeleted 时），它们在 plugin service 中已不存在
-  const deletedItems = includeDeleted
+  // Retain a recovery entry after prune; restoration will explain that a new package is required.
+  const prunedItems: AdminModerationPluginItemType[] = includeDeleted
     ? allConfigs
-        .filter((item) => item.deleted && !plugins.some((p) => p.pluginId === item.pluginId))
-        .map(
-          (item) =>
-            ({
-              pluginId: item.pluginId,
-              source: item.source ?? 'system',
-              version: item.version,
-              name: item.pluginId,
-              provider: 'unknown',
-              enabled: false,
-              available: false
-            }) satisfies AdminModerationPluginItemType
+        .filter(
+          (config) =>
+            config.deleted &&
+            !plugins.some(
+              (plugin) =>
+                plugin.pluginId === config.pluginId && plugin.source === (config.source ?? 'system')
+            )
         )
+        .map((config) => ({
+          pluginId: config.pluginId,
+          source: config.source ?? 'system',
+          version: config.version,
+          name: config.pluginId,
+          provider: 'unknown',
+          deleted: true,
+          enabled: false,
+          available: false
+        }))
     : [];
-
-  return [...items, ...deletedItems];
+  return [...items, ...prunedItems];
 };
 
 /**
@@ -188,7 +205,7 @@ export const saveModerationConfig = async ({
   }
 
   const secretKeys = getModerationSecretKeys(detail.secretSchema);
-  const existing = await findModerationConfig({ pluginId, source });
+  const existing = await findModerationConfig({ pluginId, source: detail.source });
 
   // 2. 合并并加密配置值：掩码不回写，空值删除，真实值加密
   const merged = mergeModerationSecretsForUpdate({
@@ -212,7 +229,7 @@ export const saveModerationConfig = async ({
   const saved = await mongoSessionRun(async (session) => {
     const record = await upsertModerationConfig({
       pluginId,
-      source,
+      source: detail.source,
       data,
       session
     });
@@ -227,18 +244,13 @@ export const saveModerationConfig = async ({
   return buildAdminItem({ detail, config: saved, lang });
 };
 
-/**
- * 软删除审查插件。已启用的插件不允许直接删除，必须先停用——
- * 否则运行时会出现「配置指向一个已删除插件」的悬空状态。
- */
+/** Soft-uninstall a disabled plugin while preserving its configuration for restoration. */
 export const deleteModerationPlugin = async ({
   pluginId,
-  source,
-  tmbId
+  source
 }: {
   pluginId: string;
   source?: string;
-  tmbId?: string;
 }): Promise<void> => {
   const existing = await findModerationConfig({ pluginId, source });
 
@@ -246,7 +258,25 @@ export const deleteModerationPlugin = async ({
     return Promise.reject('Disable the moderation plugin before deleting it');
   }
 
-  await softDeleteModerationConfig({ pluginId, source, tmbId });
+  if (source && source !== 'system')
+    throw new Error('Only system moderation plugins can be uninstalled here');
+  await disableSystemPlugin(pluginId);
+  await softDeleteModerationConfig({ pluginId, source });
+};
+
+/** Validate the installed package before restoring its local state; keep it disabled. */
+export const restoreModerationPlugin = async ({
+  pluginId,
+  source = 'system'
+}: {
+  pluginId: string;
+  source?: string;
+}) => {
+  if (source !== 'system') throw new Error('Only system moderation plugins can be restored here');
+  const detail = await getRetainedModerationDetail(pluginId, source);
+  if (detail.type !== 'moderation') throw new Error('Not a moderation plugin');
+  await restoreSystemPlugin(pluginId);
+  await restoreModerationConfigs({ pluginIds: [pluginId], source });
 };
 
 /**
@@ -266,7 +296,7 @@ export const getEnabledModerationRuntime = async ({
 
   const detail = await getModerationPluginDetail({
     pluginId: config.pluginId,
-    source: config.source,
+    source: config.source ?? 'system',
     version: config.version,
     lang
   });
@@ -280,7 +310,7 @@ export const getEnabledModerationRuntime = async ({
 
   return {
     pluginId: config.pluginId,
-    source: config.source,
+    source: config.source ?? 'system',
     version: detail.version,
     secrets
   };
@@ -311,9 +341,8 @@ export const checkModerationForTest = async ({
   const secretKeys = getModerationSecretKeys(detail.secretSchema);
 
   // 临时 secrets 优先；未传则解密已保存配置
-  const resolvedSecrets =
-    secrets ?
-      mergeModerationSecretsForUpdate({
+  const resolvedSecrets = secrets
+    ? mergeModerationSecretsForUpdate({
         incoming: secrets,
         existing: existing?.secretsVal,
         secretKeys
@@ -385,6 +414,11 @@ export const updateModerationPolicy = async (
   input: SystemModerationPolicyType
 ): Promise<SystemModerationPolicyType> => {
   const validated = SystemModerationPolicySchema.parse(input);
+
+  // Reject incomplete enabled policies before changing plugin state or persisting configuration.
+  if (validated.enabled && !validated.activePluginId) {
+    throw new Error('请选择一个审核插件后再保存');
+  }
 
   // 1. 同步插件启用状态
   if (validated.enabled && validated.activePluginId) {

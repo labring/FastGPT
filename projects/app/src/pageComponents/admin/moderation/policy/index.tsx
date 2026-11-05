@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/router';
 import { Box, Button, Flex, Grid, HStack, Switch, Text, useDisclosure } from '@chakra-ui/react';
 import SettingPage from '@/pageComponents/admin/settings/SettingPage';
@@ -26,6 +26,7 @@ import {
   type AdminModerationPluginItemType,
   type SystemModerationPolicyType
 } from '@fastgpt/global/core/plugin/moderation/type';
+import { useModerationPolicyDraftStore } from '@/web/core/plugin/admin/moderation/policyDraft';
 import PluginItemRow from './PluginItemRow';
 import EditPluginModal from './EditPluginModal';
 import ModerationTestCard from './ModerationTestCard';
@@ -41,6 +42,7 @@ export const ModerationPolicy = () => {
   const [plugins, setPlugins] = useState<AdminModerationPluginItemType[]>([]);
   const [isListCollapsed, setIsListCollapsed] = useState(false);
   const hasInitializedCollapse = useRef(false);
+  const marketplaceDraft = useRef(useModerationPolicyDraftStore.getState().draft);
 
   const [editingPlugin, setEditingPlugin] = useState<AdminModerationPluginItemType | null>(null);
 
@@ -50,10 +52,13 @@ export const ModerationPolicy = () => {
   const { loading: loadingPolicy, runAsync: fetchPolicy } = useRequest(getAdminModerationPolicy, {
     onSuccess: (data) => {
       if (data) {
-        setPolicy(data);
+        const restoredPolicy = marketplaceDraft.current ?? data;
+        setPolicy(restoredPolicy);
+        marketplaceDraft.current = undefined;
+        useModerationPolicyDraftStore.getState().setDraft(undefined);
         // 标注 2 特殊状态规则：若当前有审核服务在生效，列表默认收起；若未选择，默认展开
         if (!hasInitializedCollapse.current) {
-          setIsListCollapsed(Boolean(data.activePluginId));
+          setIsListCollapsed(Boolean(restoredPolicy.activePluginId));
           hasInitializedCollapse.current = true;
         }
       }
@@ -63,7 +68,7 @@ export const ModerationPolicy = () => {
   });
 
   const { loading: loadingPlugins, runAsync: fetchPlugins } = useRequest(
-    getAdminModerationPluginList,
+    () => getAdminModerationPluginList(),
     {
       onSuccess: (data) => {
         if (data) {
@@ -77,7 +82,7 @@ export const ModerationPolicy = () => {
 
   // 当前生效服务对象
   const activePlugin = useMemo(() => {
-    return plugins.find((p) => p.pluginId === policy.activePluginId);
+    return plugins.find((p) => !p.deleted && p.pluginId === policy.activePluginId);
   }, [plugins, policy.activePluginId]);
 
   // 保存全局策略配置
@@ -95,6 +100,10 @@ export const ModerationPolicy = () => {
   );
 
   const handleSubmit = () => {
+    if (policy.enabled && !activePlugin) {
+      toast({ status: 'error', title: '请选择一个审核插件后再保存' });
+      return;
+    }
     void savePolicy(policy);
   };
 
@@ -107,20 +116,18 @@ export const ModerationPolicy = () => {
   };
 
   // 删除插件
-  const handleDeletePlugin = async (pluginId: string) => {
+  const handleDeletePlugin = async (plugin: AdminModerationPluginItemType) => {
     try {
-      // 若当前删除的插件处于启用生效状态，先在本地更新 activePluginId
-      if (policy.activePluginId === pluginId) {
-        setPolicy((prev) => ({
-          ...prev,
-          activePluginId: undefined
-        }));
+      await postAdminDeleteModerationPlugin({
+        pluginId: plugin.pluginId,
+        source: plugin.source
+      });
+      if (policy.activePluginId === plugin.pluginId) {
+        setPolicy((prev) => ({ ...prev, activePluginId: undefined }));
       }
-
-      await postAdminDeleteModerationPlugin({ pluginId });
       toast({
         status: 'success',
-        title: '删除成功'
+        title: '卸载成功'
       });
       void fetchPlugins();
     } catch (err: any) {
@@ -131,8 +138,10 @@ export const ModerationPolicy = () => {
     }
   };
 
+  /** Preserve all unsaved fields while visiting the marketplace to install a plugin. */
   const handleAddFromMarket = () => {
-    router.push('/config/tool/marketplace?type=moderation');
+    useModerationPolicyDraftStore.getState().setDraft(policy);
+    void router.push('/config/tool/marketplace?type=moderation');
   };
 
   // SettingPage 标题列表：审核服务未开启时，下面 3 个板块全部隐藏
@@ -151,14 +160,13 @@ export const ModerationPolicy = () => {
         titles={visibleTitles}
         loading={loadingPolicy || loadingPlugins || savingPolicy}
         onSubmit={handleSubmit}
-        maxW={'840px'}
       >
         {/* ================= 1. 审核服务 ================= */}
         <FirstTitle title="审核服务" />
 
-        <Box py={2}>
-          <Flex alignItems={'center'} justifyContent={'space-between'} mb={4}>
-            <Box>
+        <Box>
+          <Flex alignItems={'center'} minH={'32px'}>
+            <Box w={'240px'} maxW={'calc(100% - 36px)'}>
               <Text fontSize={'md'} fontWeight={'medium'} color={'myGray.900'}>
                 是否开启内容审核
               </Text>
@@ -179,23 +187,12 @@ export const ModerationPolicy = () => {
           {policy.enabled && (
             <>
               {/* 当前生效服务 & 全部收起/展开 */}
-              <Flex
-                alignItems={'center'}
-                justifyContent={'space-between'}
-                mb={3}
-                p={3.5}
-                borderRadius={'md'}
-                bg={'myGray.50'}
-              >
+              <Flex alignItems={'center'} justifyContent={'space-between'} mt={4} minH={'32px'}>
                 <Flex alignItems={'center'} gap={2}>
-                  <Text fontSize={'sm'} fontWeight={'medium'} color={'myGray.900'}>
-                    当前生效服务:
+                  <Text fontSize={'md'} fontWeight={'medium'} color={'myGray.900'}>
+                    当前生效服务
                   </Text>
-                  <Text
-                    fontSize={'sm'}
-                    fontWeight={'bold'}
-                    color={activePlugin ? 'primary.600' : 'myGray.500'}
-                  >
+                  <Text fontSize={'md'} color={'myGray.600'}>
                     {activePlugin?.name || policy.activePluginId || '请先添加审核插件'}
                   </Text>
                 </Flex>
@@ -211,10 +208,10 @@ export const ModerationPolicy = () => {
                     userSelect={'none'}
                     onClick={() => setIsListCollapsed((prev) => !prev)}
                   >
-                    <Text>{isListCollapsed ? '展开列表' : '全部收起'}</Text>
                     <MyIcon
-                      name="common/downArrowFill"
-                      w={'12px'}
+                      name="core/chat/chevronDown"
+                      w={'24px'}
+                      aria-label={isListCollapsed ? '展开列表' : '全部收起'}
                       transform={isListCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)'}
                       transition={'transform 0.2s'}
                     />
@@ -224,109 +221,122 @@ export const ModerationPolicy = () => {
 
               {/* 插件管理列表 (受折叠状态控制) */}
               {!isListCollapsed && (
-                <Box mb={2}>
+                <Box mt={5}>
                   {plugins.length === 0 ? (
                     /* 空态提示 */
                     <Box
-                      p={8}
+                      py={'26px'}
+                      px={4}
                       borderRadius={'md'}
-                      border={'1px dashed'}
-                      borderColor={'myGray.300'}
-                      bg={'myGray.50'}
+                      border={'1px solid'}
+                      borderColor={'myGray.200'}
                       textAlign={'center'}
                     >
-                      <Flex
-                        w={'44px'}
-                        h={'44px'}
-                        borderRadius={'full'}
-                        bg={'primary.50'}
-                        color={'primary.600'}
-                        alignItems={'center'}
-                        justifyContent={'center'}
-                        mx={'auto'}
-                        mb={3}
-                      >
-                        <MyIcon name="common/addLight" w={'22px'} />
-                      </Flex>
-                      <Text fontSize={'sm'} color={'myGray.600'} fontWeight={'medium'} mb={4}>
+                      <Box w={'80px'} h={'80px'} mx={'auto'} borderRadius={'full'} bg={'myGray.50'}>
+                        <MyIcon
+                          name="empty"
+                          w={'80px'}
+                          h={'80px'}
+                          color={'transparent'}
+                          sx={{ '& circle': { display: 'none' } }}
+                        />
+                      </Box>
+                      <Text fontSize={'sm'} color={'myGray.500'} mt={4} mb={4}>
                         您还没有审核插件
                       </Text>
                       <HStack spacing={3} justifyContent={'center'}>
-                        <Button variant={'whiteBase'} size={'sm'} onClick={handleAddFromMarket}>
-                          + 从插件市场添加
+                        <Button
+                          variant={'whiteBase'}
+                          size={'md'}
+                          h={'36px'}
+                          leftIcon={<MyIcon name="common/addLight" w={'16px'} />}
+                          onClick={handleAddFromMarket}
+                        >
+                          从插件市场添加
                         </Button>
-                        <Button variant={'whiteBase'} size={'sm'} onClick={onOpenImport}>
-                          + 从本地安装
+                        <Button
+                          variant={'whiteBase'}
+                          size={'md'}
+                          h={'36px'}
+                          leftIcon={<MyIcon name="common/addLight" w={'16px'} />}
+                          onClick={onOpenImport}
+                        >
+                          从本地安装
                         </Button>
                       </HStack>
                     </Box>
                   ) : (
                     /* 插件表格 */
-                    <Box
-                      borderRadius={'md'}
-                      border={'1px solid'}
-                      borderColor={'myGray.200'}
-                      bg={'white'}
-                      overflow={'hidden'}
-                    >
-                      {/* 表头 (5列) */}
-                      <Flex
-                        h={'40px'}
-                        bg={'myGray.50'}
-                        px={4}
-                        alignItems={'center'}
-                        borderBottom={'1px solid'}
+                    <>
+                      <Box
+                        borderRadius={'md'}
+                        border={'1px solid'}
                         borderColor={'myGray.200'}
-                        fontSize={'xs'}
-                        fontWeight={'medium'}
-                        color={'myGray.600'}
-                      >
-                        <Box w={'40px'} flexShrink={0} />
-                        <Box w={'200px'} flexShrink={0} pr={2}>
-                          审核插件名称
-                        </Box>
-                        <Box flex={'1 1 0'} minW={0} pr={4}>
-                          描述
-                        </Box>
-                        <Box w={'80px'} flexShrink={0}>
-                          操作
-                        </Box>
-                        <Box w={'80px'} flexShrink={0}>
-                          状态
-                        </Box>
-                      </Flex>
-
-                      {/* 表格数据行 */}
-                      <Box>
-                        {plugins.map((plugin) => (
-                          <PluginItemRow
-                            key={plugin.pluginId}
-                            plugin={plugin}
-                            isActive={policy.activePluginId === plugin.pluginId}
-                            onSelect={() => handleToggleActivePlugin(plugin.pluginId)}
-                            onEdit={() => setEditingPlugin(plugin)}
-                            onDelete={() => handleDeletePlugin(plugin.pluginId)}
-                          />
-                        ))}
-                      </Box>
-
-                      {/* 列表底部添加/安装操作 */}
-                      <Flex
-                        justifyContent={'flex-end'}
-                        gap={3}
-                        p={3.5}
                         bg={'white'}
-                        borderTop={'1px solid'}
-                        borderColor={'myGray.100'}
+                        overflow={'hidden'}
                       >
-                        <Button variant={'whiteBase'} size={'sm'} onClick={handleAddFromMarket}>
-                          + 从插件市场添加
+                        {/* 表头 (5列) */}
+                        <Flex
+                          h={'40px'}
+                          bg={'myGray.50'}
+                          alignItems={'center'}
+                          borderBottom={'1px solid'}
+                          borderColor={'myGray.200'}
+                          fontSize={'xs'}
+                          fontWeight={'medium'}
+                          color={'myGray.600'}
+                        >
+                          <Box w={'48px'} flexShrink={0} />
+                          <Box w={'180px'} flexShrink={0} px={6}>
+                            审核插件名称
+                          </Box>
+                          <Box flex={'1 1 0'} minW={0} px={6}>
+                            描述
+                          </Box>
+                          <Box w={'100px'} flexShrink={0} px={6}>
+                            状态
+                          </Box>
+                          <Box w={'100px'} flexShrink={0} px={6}>
+                            操作
+                          </Box>
+                        </Flex>
+
+                        {/* 表格数据行 */}
+                        <Box>
+                          {plugins.map((plugin) => (
+                            <PluginItemRow
+                              key={plugin.pluginId}
+                              plugin={plugin}
+                              isActive={policy.activePluginId === plugin.pluginId}
+                              onSelect={() => handleToggleActivePlugin(plugin.pluginId)}
+                              onEdit={() => setEditingPlugin(plugin)}
+                              onDelete={() => handleDeletePlugin(plugin)}
+                            />
+                          ))}
+                        </Box>
+                      </Box>
+                      {/* 列表底部添加/安装操作 */}
+                      <Flex justifyContent={'flex-end'} gap={3} pt={4} bg={'white'}>
+                        <Button
+                          variant={'whiteBase'}
+                          size={'md'}
+                          h={'36px'}
+                          leftIcon={<MyIcon name="common/addLight" w={'16px'} />}
+                          onClick={handleAddFromMarket}
+                        >
+                          从插件市场添加
                         </Button>
-                        <Button variant={'whiteBase'} size={'sm'} onClick={onOpenImport}>
-                          + 从本地安装
+                        <Button
+                          variant={'whiteBase'}
+                          size={'md'}
+                          h={'36px'}
+                          leftIcon={<MyIcon name="common/addLight" w={'16px'} />}
+                          onClick={onOpenImport}
+                        >
+                          从本地安装
                         </Button>
                       </Flex>
-                    </Box>
+                    </>
                   )}
                 </Box>
               )}
@@ -530,7 +540,7 @@ export const ModerationPolicy = () => {
             {/* ================= 4. 审核效果测试 ================= */}
             <FirstTitle title="审核效果测试" />
 
-            <Box py={2}>
+            <Box>
               <ModerationTestCard activePlugin={activePlugin} />
             </Box>
           </>

@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   getAdminModerationPluginList: vi.fn(),
   saveModerationConfig: vi.fn(),
   deleteModerationPlugin: vi.fn(),
+  restoreModerationPlugin: vi.fn(),
   checkModerationForTest: vi.fn()
 }));
 
@@ -22,6 +23,7 @@ vi.mock('@fastgpt/service/core/plugin/moderation/service', () => ({
   getAdminModerationPluginList: mocks.getAdminModerationPluginList,
   saveModerationConfig: mocks.saveModerationConfig,
   deleteModerationPlugin: mocks.deleteModerationPlugin,
+  restoreModerationPlugin: mocks.restoreModerationPlugin,
   checkModerationForTest: mocks.checkModerationForTest,
   getModerationPolicy: vi.fn(),
   updateModerationPolicy: vi.fn()
@@ -34,6 +36,7 @@ vi.mock('@fastgpt/service/core/plugin/moderation/record/entity', () => ({
 import { handler as listHandler } from '@/pages/api/core/plugin/admin/moderation/list';
 import { handler as configHandler } from '@/pages/api/core/plugin/admin/moderation/config';
 import { handler as deleteHandler } from '@/pages/api/core/plugin/admin/moderation/delete';
+import { handler as restoreHandler } from '@/pages/api/core/plugin/admin/moderation/restore';
 import { handler as checkHandler } from '@/pages/api/core/plugin/admin/moderation/check';
 import { handler as policyHandler } from '@/pages/api/core/plugin/admin/moderation/policy';
 import { handler as recordsHandler } from '@/pages/api/core/plugin/admin/moderation/records';
@@ -72,11 +75,11 @@ describe('admin moderation list handler', () => {
     expect(result[0].pluginId).toBe('baidu-moderation');
     expect(mocks.getAdminModerationPluginList).toHaveBeenCalledWith({
       lang: 'zh-CN',
-      includeDeleted: false
+      includeDeleted: undefined
     });
   });
 
-  it('passes includeDeleted through when requested', async () => {
+  it('requests uninstalled plugins for the marketplace restore flow', async () => {
     await listHandler(makeReq({ body: {}, query: { includeDeleted: true } }), res);
 
     expect(mocks.getAdminModerationPluginList).toHaveBeenCalledWith({
@@ -144,12 +147,15 @@ describe('admin moderation delete handler', () => {
     mocks.deleteModerationPlugin.mockResolvedValue(undefined);
   });
 
-  it('deletes by pluginId and records the operator', async () => {
-    const result = await deleteHandler(makeReq({ body: { pluginId: 'baidu-moderation' } }), res);
+  it('deletes by pluginId and source', async () => {
+    const result = await deleteHandler(
+      makeReq({ body: { pluginId: 'baidu-moderation', source: 'local' } }),
+      res
+    );
 
-    expect(mocks.deleteModerationPlugin).toHaveBeenCalledWith({
+    expect(moderationService.deleteModerationPlugin).toHaveBeenCalledWith({
       pluginId: 'baidu-moderation',
-      tmbId: 'tmb-1'
+      source: 'local'
     });
     expect(result).toBeUndefined();
   });
@@ -162,6 +168,29 @@ describe('admin moderation delete handler', () => {
     await expect(
       deleteHandler(makeReq({ body: { pluginId: 'baidu-moderation' } }), res)
     ).rejects.toBe('Disable the moderation plugin before deleting it');
+  });
+});
+
+describe('admin moderation restore handler', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.authSystemAdmin.mockResolvedValue({ tmbId: 'tmb-1' });
+  });
+
+  it('restores the selected source without passing enablement or credentials', async () => {
+    await restoreHandler(makeReq({ body: { pluginId: 'keyword', source: 'system' } }));
+    expect(mocks.restoreModerationPlugin).toHaveBeenCalledWith({
+      pluginId: 'keyword',
+      source: 'system'
+    });
+  });
+
+  it('rejects unauthorized restoration', async () => {
+    mocks.authSystemAdmin.mockRejectedValueOnce('unAuthorization');
+    await expect(restoreHandler(makeReq({ body: { pluginId: 'keyword' } }))).rejects.toBe(
+      'unAuthorization'
+    );
+    expect(mocks.restoreModerationPlugin).not.toHaveBeenCalled();
   });
 });
 
@@ -213,10 +242,7 @@ describe('admin moderation check handler', () => {
     mocks.checkModerationForTest.mockRejectedValueOnce('plugin not found');
 
     await expect(
-      checkHandler(
-        makeReq({ body: { pluginId: 'missing', input: { content: 'hello' } } }),
-        res
-      )
+      checkHandler(makeReq({ body: { pluginId: 'missing', input: { content: 'hello' } } }), res)
     ).rejects.toBe('plugin not found');
   });
 
@@ -251,10 +277,7 @@ describe('admin moderation policy handler', () => {
       }
     });
 
-    const result = await policyHandler(
-      { method: 'GET', body: {}, query: {} } as any,
-      res
-    );
+    const result = await policyHandler({ method: 'GET', body: {}, query: {} } as any, res);
 
     expect(result.enabled).toBe(true);
     expect((result as any).activePluginId).toBe('test-plugin');
@@ -301,21 +324,23 @@ describe('admin moderation records handler', () => {
   });
 
   it('handles query and forwards parameters to service', async () => {
-    const findSpy = vi.spyOn(moderationRecordEntity, 'findModerationRecords').mockResolvedValueOnce({
-      total: 1,
-      list: [
-        {
-          _id: 'rec-1',
-          stage: 'entry',
-          content: 'test text',
-          verdict: 'pass',
-          keywords: [],
-          hits: [],
-          actionTaken: 'pass',
-          createTime: new Date()
-        }
-      ] as any
-    });
+    const findSpy = vi
+      .spyOn(moderationRecordEntity, 'findModerationRecords')
+      .mockResolvedValueOnce({
+        total: 1,
+        list: [
+          {
+            _id: 'rec-1',
+            stage: 'entry',
+            content: 'test text',
+            verdict: 'pass',
+            keywords: [],
+            hits: [],
+            actionTaken: 'pass',
+            createTime: new Date()
+          }
+        ] as any
+      });
 
     const result = await recordsHandler(
       makeReq({

@@ -42,16 +42,15 @@ const PluginItemRow: React.FC<PluginItemRowProps> = ({
   return (
     <Flex
       alignItems={'center'}
-      py={3.5}
-      px={4}
+      minH={'56px'}
       borderBottom={'1px solid'}
       borderColor={'myGray.100'}
       _last={{ borderBottom: 'none' }}
       _hover={{ bg: 'myGray.50' }}
       transition={'background 0.2s'}
     >
-      {/* 1. 单选列 (40px) */}
-      <Flex w={'40px'} alignItems={'center'} justifyContent={'center'} flexShrink={0}>
+      {/* Selection column (48px). */}
+      <Flex w={'48px'} alignItems={'center'} justifyContent={'center'} flexShrink={0}>
         <Radio
           isChecked={isActive}
           aria-label={plugin.name || plugin.pluginId}
@@ -60,15 +59,9 @@ const PluginItemRow: React.FC<PluginItemRowProps> = ({
         />
       </Flex>
 
-      {/* 2. 审核插件名称 (200px) */}
-      <Flex w={'200px'} alignItems={'center'} gap={2.5} flexShrink={0} pr={2}>
-        <Avatar
-          src={plugin.icon}
-          w={'24px'}
-          h={'24px'}
-          borderRadius={'md'}
-          flexShrink={0}
-        />
+      {/* Plugin name column (180px). */}
+      <Flex w={'180px'} alignItems={'center'} gap={2} flexShrink={0} px={6} minW={0}>
+        <Avatar src={plugin.icon} w={'20px'} h={'20px'} borderRadius={'md'} flexShrink={0} />
         <Text
           fontSize={'sm'}
           fontWeight={'medium'}
@@ -81,7 +74,7 @@ const PluginItemRow: React.FC<PluginItemRowProps> = ({
       </Flex>
 
       {/* 3. 描述 (自适应 flex: 1，严格单行超出省略) */}
-      <Box flex={'1 1 0'} minW={0} pr={4} overflow={'hidden'}>
+      <Box flex={'1 1 0'} minW={0} px={6} overflow={'hidden'}>
         <MyTooltip
           label={plugin.description || ''}
           placement="top"
@@ -94,16 +87,26 @@ const PluginItemRow: React.FC<PluginItemRowProps> = ({
         </MyTooltip>
       </Box>
 
-      {/* 4. 操作 (80px) */}
-      <Flex w={'80px'} alignItems={'center'} flexShrink={0}>
+      {/* Status column (100px), before the actions as in the header. */}
+      <Flex w={'100px'} px={6} alignItems={'center'} flexShrink={0}>
+        <Text
+          fontSize={'sm'}
+          fontWeight={'medium'}
+          color={isConfigured ? 'primary.600' : 'red.600'}
+        >
+          {isConfigured ? '已配置' : '待配置'}
+        </Text>
+      </Flex>
+      {/* Actions column (100px). */}
+      <Flex w={'100px'} justifyContent={'center'} alignItems={'center'} flexShrink={0}>
         <HStack spacing={2}>
           {/* 编辑配置按钮 */}
           <MyIconButton
-            icon="edit"
+            icon="common/setting"
             tip="配置参数"
-            size={'15px'}
-            w={'28px'}
-            h={'28px'}
+            size={'16px'}
+            w={'24px'}
+            h={'24px'}
             onClick={(e) => {
               e.stopPropagation();
               onEdit();
@@ -113,32 +116,21 @@ const PluginItemRow: React.FC<PluginItemRowProps> = ({
           {/* 删除插件按钮二次确认气泡 */}
           <PopoverConfirm
             type="delete"
-            content="删除插件操作无法撤销，是否确认删除？"
+            content="确认卸载该审核插件？已保存的配置将保留，可从插件市场重新安装恢复。"
             onConfirm={onDelete}
             Trigger={
               <MyIconButton
-                icon="delete"
-                tip="删除插件"
-                size={'15px'}
-                w={'28px'}
-                h={'28px'}
+                icon="common/trash"
+                tip="卸载插件"
+                size={'16px'}
+                w={'24px'}
+                h={'24px'}
                 hoverBg="red.50"
                 hoverColor="red.600"
               />
             }
           />
         </HStack>
-      </Flex>
-
-      {/* 5. 状态 (80px) */}
-      <Flex w={'80px'} alignItems={'center'} flexShrink={0}>
-        <Text
-          fontSize={'sm'}
-          fontWeight={'medium'}
-          color={isConfigured ? 'primary.600' : 'red.600'}
-        >
-          {isConfigured ? '已配置' : '待配置'}
-        </Text>
       </Flex>
     </Flex>
   );

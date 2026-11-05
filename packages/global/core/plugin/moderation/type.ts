@@ -32,7 +32,7 @@ export const ModerationPluginConfigSchema = z.object({
    * 读取时按 `secretSchema` 决定哪些字段脱敏，API 响应中不返回明文。
    */
   secretsVal: z.record(z.string(), z.unknown()).nullish(),
-  /** 软删除标记。与系统工具一致，删除只标记不物理删除 */
+  /** Soft-uninstall marker; configuration is retained for restoration. */
   deleted: z.boolean().optional(),
   deletedAt: z.date().optional(),
   deletedByTmbId: z.string().optional(),
@@ -61,13 +61,17 @@ export const AdminModerationPluginItemSchema = z.object({
   /** 插件声明的配置项（JSON Schema），用于渲染配置表单 */
   secretSchema: z.unknown().optional().meta({ description: '配置项 JSON Schema' }),
   /** 合并后的配置值。密钥字段为脱敏占位值 */
-  secretsVal: z.record(z.string(), z.unknown()).optional().meta({ description: '已保存的配置值（密钥脱敏）' }),
+  secretsVal: z
+    .record(z.string(), z.unknown())
+    .optional()
+    .meta({ description: '已保存的配置值（密钥脱敏）' }),
   hasConfiguredSecrets: z
     .boolean()
     .optional()
     .meta({ description: '是否已保存过配置。用于区分「未配置」与「配置为空」' }),
   enabled: z.boolean().optional().meta({ description: '是否启用。全局同一时间只有一个插件启用' }),
   /** 是否允许在当前环境启用。插件缺失或加载失败时为 false */
+  deleted: z.boolean().optional().meta({ description: '是否已卸载（保留配置可恢复）' }),
   available: z.boolean().optional().meta({ description: '插件是否可用（服务侧解析成功）' })
 });
 export type AdminModerationPluginItemType = z.infer<typeof AdminModerationPluginItemSchema>;
@@ -129,11 +133,9 @@ export const ModerationRecordSchema = z.object({
   requestId: z.string().optional().meta({ description: '全局请求追踪 ID' }),
 
   // 1. 审核环节与上下文
-  stage: z
-    .nativeEnum(ModerationStageEnum)
-    .meta({
-      description: '审核环节：信息接入平台 | 信息进入模型 | 输出检查'
-    }),
+  stage: z.nativeEnum(ModerationStageEnum).meta({
+    description: '审核环节：信息接入平台 | 信息进入模型 | 输出检查'
+  }),
   nodeId: z.string().optional().meta({ description: '触发节点 ID' }),
   nodeName: z.string().optional().meta({ description: '触发节点名称' }),
   targetField: z.string().optional().meta({
@@ -144,9 +146,7 @@ export const ModerationRecordSchema = z.object({
   content: z.string().meta({ description: '送审的文本内容（供管理端审计调取）' }),
   pluginId: z.string().optional().meta({ description: '调用的审查插件 ID' }),
   provider: z.string().optional().meta({ description: '审查服务提供商' }),
-  verdict: z
-    .enum(['pass', 'suspected', 'block', 'error'])
-    .meta({ description: '裁决结果' }),
+  verdict: z.enum(['pass', 'suspected', 'block', 'error']).meta({ description: '裁决结果' }),
   keywords: z.array(z.string()).default([]).meta({ description: '命中的敏感词' }),
   hits: z
     .array(
@@ -161,11 +161,9 @@ export const ModerationRecordSchema = z.object({
   errorMessage: z.string().optional(),
 
   // 3. 平台最终采取的执行策略与动作
-  actionTaken: z
-    .nativeEnum(ModerationActionEnum)
-    .meta({
-      description: '实际执行动作：直接放行 (pass) | 拦截阻断 (block) | 替换脱敏文本 (replace)'
-    }),
+  actionTaken: z.nativeEnum(ModerationActionEnum).meta({
+    description: '实际执行动作：直接放行 (pass) | 拦截阻断 (block) | 替换脱敏文本 (replace)'
+  }),
 
   duration: z.number().optional().meta({ description: '审查耗时 (ms)' }),
   createTime: z.date().default(() => new Date())

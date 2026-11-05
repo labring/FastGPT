@@ -1,3 +1,8 @@
+import {
+  disableSystemPlugin,
+  restoreSystemPlugin
+} from '@fastgpt/service/thirdProvider/fastgptPlugin/lifecycle';
+import { PluginStatusEnum } from '@fastgpt/global/core/plugin/type';
 import { NextAPI } from '@/service/middleware/entry';
 import { MongoSystemTool } from '@fastgpt/service/core/plugin/tool/systemToolSchema';
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/type';
@@ -45,6 +50,17 @@ export async function handler(
 
   if (plugin?.customConfig?.associatedPluginId) {
     return Promise.reject('Workflow tool should be updated through app update api');
+  }
+
+  // Remote lifecycle must succeed before committing the local business status.
+  if (pluginId.startsWith('systemTool-')) {
+    const rawPluginId = pluginId.slice('systemTool-'.length).split('/')[0];
+    if (updateFields.status === PluginStatusEnum.Offline) await disableSystemPlugin(rawPluginId);
+    else if (
+      updateFields.status === PluginStatusEnum.Normal &&
+      plugin?.status === PluginStatusEnum.Offline
+    )
+      await restoreSystemPlugin(rawPluginId);
   }
 
   const storedSecretsVal = await (async () => {

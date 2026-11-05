@@ -63,10 +63,43 @@ describe('moderation policy service', () => {
   });
 
   describe('updateModerationPolicy', () => {
+    it.each([undefined, ''])(
+      'rejects enabling without an active plugin (%s) before any writes',
+      async (activePluginId) => {
+        const upsertSpy = vi
+          .spyOn(MongoSystemConfigs, 'findOneAndUpdate')
+          .mockResolvedValue({} as any);
+        const enableSpy = vi
+          .spyOn(entity, 'enableSingleModerationConfig')
+          .mockResolvedValue(undefined);
+        const disableSpy = vi
+          .spyOn(entity, 'disableAllModerationConfigs')
+          .mockResolvedValue({} as any);
+
+        await expect(
+          updateModerationPolicy({
+            ...DefaultSystemModerationPolicy,
+            enabled: true,
+            activePluginId
+          })
+        ).rejects.toThrow('请选择一个审核插件后再保存');
+
+        expect(upsertSpy).not.toHaveBeenCalled();
+        expect(enableSpy).not.toHaveBeenCalled();
+        expect(disableSpy).not.toHaveBeenCalled();
+      }
+    );
+
     it('enables the active plugin when policy is enabled', async () => {
-      const upsertSpy = vi.spyOn(MongoSystemConfigs, 'findOneAndUpdate').mockResolvedValue({} as any);
-      const enableSpy = vi.spyOn(entity, 'enableSingleModerationConfig').mockResolvedValue(undefined);
-      const disableSpy = vi.spyOn(entity, 'disableAllModerationConfigs').mockResolvedValue({} as any);
+      const upsertSpy = vi
+        .spyOn(MongoSystemConfigs, 'findOneAndUpdate')
+        .mockResolvedValue({} as any);
+      const enableSpy = vi
+        .spyOn(entity, 'enableSingleModerationConfig')
+        .mockResolvedValue(undefined);
+      const disableSpy = vi
+        .spyOn(entity, 'disableAllModerationConfigs')
+        .mockResolvedValue({} as any);
 
       const updated = await updateModerationPolicy({
         enabled: true,
@@ -87,8 +120,12 @@ describe('moderation policy service', () => {
 
     it('disables all plugins when policy is disabled', async () => {
       vi.spyOn(MongoSystemConfigs, 'findOneAndUpdate').mockResolvedValue({} as any);
-      const enableSpy = vi.spyOn(entity, 'enableSingleModerationConfig').mockResolvedValue(undefined);
-      const disableSpy = vi.spyOn(entity, 'disableAllModerationConfigs').mockResolvedValue({} as any);
+      const enableSpy = vi
+        .spyOn(entity, 'enableSingleModerationConfig')
+        .mockResolvedValue(undefined);
+      const disableSpy = vi
+        .spyOn(entity, 'disableAllModerationConfigs')
+        .mockResolvedValue({} as any);
 
       const updated = await updateModerationPolicy({
         enabled: false,

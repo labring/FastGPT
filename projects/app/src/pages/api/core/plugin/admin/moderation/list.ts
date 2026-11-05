@@ -24,15 +24,11 @@ export async function handler(
   _res: ApiResponseType<any>
 ): Promise<AdminModerationListResponse> {
   await authSystemAdmin({ req });
-
-  const { includeDeleted } = parseApiInput({
-    req,
-    querySchema: GetModerationPluginListQuerySchema
-  }).query;
+  const { query } = parseApiInput({ req, querySchema: GetModerationPluginListQuerySchema });
 
   return getAdminModerationPluginList({
     lang: getLocale(req),
-    includeDeleted: Boolean(includeDeleted)
+    includeDeleted: query.includeDeleted
   });
 }
 

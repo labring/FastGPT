@@ -12,7 +12,7 @@ export type AdminModerationDeleteQuery = Record<string, never>;
 export type AdminModerationDeleteBody = DeleteModerationPluginBodyType;
 
 /**
- * 软删除（卸载）内容审查插件的本地配置记录。
+ * 软卸载内容审查插件，保留本地配置供恢复。
  *
  * 已启用的插件需先停用，否则会出现「配置指向已删除插件」的悬空状态。
  */
@@ -20,14 +20,14 @@ export async function handler(
   req: ApiRequestProps<AdminModerationDeleteBody, AdminModerationDeleteQuery>,
   _res: ApiResponseType<any>
 ): Promise<void> {
-  const auth = await authSystemAdmin({ req });
+  await authSystemAdmin({ req });
 
-  const { pluginId } = parseApiInput({
+  const { pluginId, source } = parseApiInput({
     req,
     bodySchema: DeleteModerationPluginBodySchema
   }).body;
 
-  await deleteModerationPlugin({ pluginId, tmbId: auth.tmbId });
+  await deleteModerationPlugin({ pluginId, source });
 }
 
 export default NextAPI(handler);

@@ -1,3 +1,4 @@
+import type { RestoreModerationPluginBodyType } from '@fastgpt/global/openapi/core/plugin/admin/moderation/api';
 import { GET, POST } from '@/web/common/api/request';
 import type {
   GetModerationPluginListQueryType,
@@ -22,7 +23,7 @@ export const getAdminModerationPluginList = (data?: GetModerationPluginListQuery
 export const postAdminSaveModerationConfig = (data: SaveModerationConfigBodyType) =>
   POST<SaveModerationConfigResponseType>('/core/plugin/admin/moderation/config', data);
 
-/** 软删除内容审查插件配置 */
+/** 软卸载内容审查插件，保留本地配置 */
 export const postAdminDeleteModerationPlugin = (data: DeleteModerationPluginBodyType) =>
   POST<void>('/core/plugin/admin/moderation/delete', data);
 
@@ -41,3 +42,7 @@ export const postAdminUpdateModerationPolicy = (data: UpdateModerationPolicyBody
 /** 分页查询内容审核记录 */
 export const postAdminGetModerationRecords = (data: GetModerationRecordsBodyType) =>
   POST<GetModerationRecordsResponseType>('/core/plugin/admin/moderation/records', data);
+
+/** Restore an installed plugin while retaining its saved configuration. */
+export const postAdminRestoreModerationPlugin = (data: RestoreModerationPluginBodyType) =>
+  POST<void>('/core/plugin/admin/moderation/restore', data);
