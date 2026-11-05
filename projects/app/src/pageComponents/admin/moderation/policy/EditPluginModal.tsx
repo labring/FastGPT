@@ -1,9 +1,10 @@
 import React, { useMemo, useState } from 'react';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
-import { Box, Button, Flex, Input, ModalBody, ModalFooter, Switch, Text } from '@chakra-ui/react';
-import MyModal from '@fastgpt/web/components/common/MyModal';
+import { Box, Button, Flex, Input, Switch, Text } from '@chakra-ui/react';
+import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MySelect from '@fastgpt/web/components/common/MySelect';
+import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
 import HiddenInput from '@/components/common/HiddenInput';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
@@ -94,7 +95,15 @@ const EditPluginModal: React.FC<EditPluginModalProps> = ({ plugin, onClose, onSu
     },
     {
       manual: true,
-      errorToast: '保存配置失败'
+      // Provider responses may contain technical details; show actionable guidance instead.
+      errorToast: '',
+      onError: () => {
+        toast({
+          status: 'error',
+          title: '配置保存失败',
+          description: '未能完成配置检测或保存。请检查凭据、接口地址及服务权限，稍后重试。'
+        });
+      }
     }
   );
 
@@ -104,111 +113,121 @@ const EditPluginModal: React.FC<EditPluginModalProps> = ({ plugin, onClose, onSu
       onClose={onClose}
       title={plugin.name || plugin.pluginId}
       isCentered
-      maxW={['90vw', '480px']}
+      w={'480px'}
+      footer={
+        <>
+          <Button variant={'whiteBase'} onClick={onClose} isDisabled={saving}>
+            取消
+          </Button>
+          <Button onClick={() => void handleSave().catch(() => {})} isLoading={saving}>
+            保存
+          </Button>
+        </>
+      }
     >
-      <ModalBody pt={2} pb={4}>
-        <Flex flexDirection={'column'} gap={5}>
-          {inputList.length === 0 ? (
-            <Text color={'myGray.500'} fontSize={'sm'}>
-              该插件无需配置附加参数。
-            </Text>
-          ) : (
-            inputList.map((item) => {
-              const val = formValues[item.key];
-              const isMasked =
-                item.inputType === 'secret' &&
-                val === ModerationSecretMaskedValue &&
-                !clearedSecretKeys.has(item.key);
+      <Flex flexDirection={'column'} gap={5}>
+        {inputList.length === 0 ? (
+          <Text color={'myGray.500'} fontSize={'sm'}>
+            该插件无需配置附加参数。
+          </Text>
+        ) : (
+          inputList.map((item) => {
+            const val = formValues[item.key];
+            const isMasked =
+              item.inputType === 'secret' &&
+              val === ModerationSecretMaskedValue &&
+              !clearedSecretKeys.has(item.key);
 
-              return (
-                <Box key={item.key}>
-                  <Flex alignItems={'center'} gap={1} mb={2}>
-                    <Text fontSize={'sm'} fontWeight={'medium'} color={'myGray.900'}>
-                      {item.label || item.key}
+            return (
+              <Box key={item.key}>
+                <Flex alignItems={'center'} gap={1} mb={2}>
+                  <Text fontSize={'sm'} fontWeight={'medium'} color={'myGray.900'}>
+                    {item.label || item.key}
+                  </Text>
+                  {item.required && (
+                    <Text color={'red.500'} fontSize={'sm'}>
+                      *
                     </Text>
-                    {item.required && (
-                      <Text color={'red.500'} fontSize={'sm'}>
-                        *
-                      </Text>
-                    )}
-                    {item.description && <QuestionTip label={item.description} />}
-                  </Flex>
-
-                  {/* 针对不同类型的输入项分别渲染 */}
-                  {isMasked ? (
-                    <Flex alignItems={'center'} gap={2}>
-                      <Flex
-                        flex={1}
-                        h={'38px'}
-                        px={3}
-                        borderRadius={'md'}
-                        border={'1px solid'}
-                        borderColor={'primary.200'}
-                        bg={'primary.50'}
-                        alignItems={'center'}
-                        gap={2}
-                      >
-                        <MyIcon name="checkCircle" w={'16px'} color={'primary.600'} />
-                        <Text fontSize={'sm'} color={'primary.700'}>
-                          已配置凭据
-                        </Text>
-                      </Flex>
-                      <Button
-                        size={'sm'}
-                        variant={'whiteBase'}
-                        onClick={() => handleClearSecret(item.key)}
-                      >
-                        修改
-                      </Button>
-                    </Flex>
-                  ) : item.inputType === 'secret' ? (
-                    <HiddenInput
-                      h={'38px'}
-                      placeholder={item.placeholder ?? `请输入 ${item.label || item.key}`}
-                      value={typeof val === 'string' ? val : ''}
-                      onChange={(e: any) => handleFieldChange(item.key, e.target.value)}
-                    />
-                  ) : item.inputType === 'switch' ? (
-                    <Switch
-                      isChecked={!!val}
-                      onChange={(e) => handleFieldChange(item.key, e.target.checked)}
-                    />
-                  ) : item.inputType === 'select' ? (
-                    <MySelect
-                      width={'100%'}
-                      placeholder={item.placeholder ?? `请选择 ${item.label || item.key}`}
-                      value={val}
-                      list={
-                        item.list?.map((opt) => ({
-                          label: opt.label,
-                          value: opt.value
-                        })) ?? []
-                      }
-                      onChange={(newVal) => handleFieldChange(item.key, newVal)}
-                    />
-                  ) : (
-                    <Input
-                      h={'38px'}
-                      placeholder={item.placeholder ?? `请输入 ${item.label || item.key}`}
-                      value={val ?? ''}
-                      onChange={(e) => handleFieldChange(item.key, e.target.value)}
-                    />
                   )}
-                </Box>
-              );
-            })
-          )}
-        </Flex>
-      </ModalBody>
+                  {item.description && <QuestionTip label={item.description} />}
+                </Flex>
 
-      <ModalFooter>
-        <Button variant={'whiteBase'} mr={3} onClick={onClose} isDisabled={saving}>
-          取消
-        </Button>
-        <Button onClick={handleSave} isLoading={saving}>
-          保存
-        </Button>
-      </ModalFooter>
+                {/* 针对不同类型的输入项分别渲染 */}
+                {isMasked ? (
+                  <Flex alignItems={'center'} gap={2}>
+                    <Flex
+                      flex={1}
+                      h={'36px'}
+                      px={3}
+                      borderRadius={'md'}
+                      border={'1px solid'}
+                      borderColor={'primary.200'}
+                      bg={'primary.50'}
+                      alignItems={'center'}
+                      gap={2}
+                    >
+                      <MyIcon name="checkCircle" w={'16px'} color={'primary.600'} />
+                      <Text fontSize={'sm'} color={'primary.700'}>
+                        已配置凭据
+                      </Text>
+                    </Flex>
+                    <Button
+                      size={'sm'}
+                      variant={'whiteBase'}
+                      onClick={() => handleClearSecret(item.key)}
+                    >
+                      修改
+                    </Button>
+                  </Flex>
+                ) : item.inputType === 'secret' ? (
+                  <HiddenInput
+                    h={'36px'}
+                    placeholder={item.placeholder ?? `请输入 ${item.label || item.key}`}
+                    value={typeof val === 'string' ? val : ''}
+                    onChange={(e) => handleFieldChange(item.key, e.target.value)}
+                  />
+                ) : item.inputType === 'switch' ? (
+                  <Switch
+                    isChecked={!!val}
+                    onChange={(e) => handleFieldChange(item.key, e.target.checked)}
+                  />
+                ) : item.inputType === 'numberInput' ? (
+                  <MyNumberInput
+                    h={'36px'}
+                    w={'100%'}
+                    placeholder={item.placeholder ?? `请输入 ${item.label || item.key}`}
+                    value={val ?? ''}
+                    onChange={(value) => {
+                      // Optional cleared numbers must be omitted, not submitted as empty strings.
+                      handleFieldChange(item.key, typeof value === 'number' ? value : undefined);
+                    }}
+                  />
+                ) : item.inputType === 'select' ? (
+                  <MySelect
+                    width={'100%'}
+                    placeholder={item.placeholder ?? `请选择 ${item.label || item.key}`}
+                    value={val}
+                    list={
+                      item.list?.map((opt) => ({
+                        label: opt.label,
+                        value: opt.value
+                      })) ?? []
+                    }
+                    onChange={(newVal) => handleFieldChange(item.key, newVal)}
+                  />
+                ) : (
+                  <Input
+                    h={'36px'}
+                    placeholder={item.placeholder ?? `请输入 ${item.label || item.key}`}
+                    value={val ?? ''}
+                    onChange={(e) => handleFieldChange(item.key, e.target.value)}
+                  />
+                )}
+              </Box>
+            );
+          })
+        )}
+      </Flex>
     </MyModal>
   );
 };

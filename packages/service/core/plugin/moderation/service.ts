@@ -180,7 +180,8 @@ export const getAdminModerationPluginList = async ({
  * 保存审查插件配置。
  *
  * 启用是全局互斥的：传 `enabled: true` 会先把其他插件置为停用。
- * 不能启用一个读不到详情的插件，否则运行时一定失败。
+ * Saving synchronously probes the resolved configuration before any writes or enablement.
+ * A block/suspected verdict is a healthy response; provider errors and runtime failures reject the save.
  */
 export const saveModerationConfig = async ({
   pluginId,
@@ -218,6 +219,28 @@ export const saveModerationConfig = async ({
     secretKeys,
     encrypt: encryptSecret
   });
+
+  // Probe outside the transaction: use merged credentials, never masked values or ciphertext.
+  const result = await checkModerationContent({
+    pluginId: detail.pluginId,
+    source: detail.source,
+    version: detail.version,
+    secrets: decryptModerationSecrets({
+      secretsVal: encrypted,
+      secretKeys,
+      decrypt: decryptSecret
+    }),
+    input: { content: 'Hello, this is a content moderation configuration check.' },
+    systemVar: {
+      app: { id: 'moderation-config-check', name: 'Moderation Configuration Check' },
+      chat: { chatId: `moderation-config-check-${Date.now()}` },
+      invokeToken: '',
+      time: new Date().toISOString()
+    }
+  });
+  if (result.verdict === 'error') {
+    throw new Error(result.errorMessage || '内容审核插件配置检测失败');
+  }
 
   const data = {
     version: detail.version,

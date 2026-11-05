@@ -33,7 +33,8 @@ export type GetModerationPluginListResponseType = z.infer<
  * API: 保存内容审查插件配置
  * Route: POST /api/core/plugin/admin/moderation/config
  * Method: POST
- * Description: 保存插件配置（凭据、策略 ID）与启用状态。启用是全局互斥的，
+ * Description: 同步调用插件检测配置后保存凭据、策略 ID 与启用状态，检测失败不写入。
+ *              检测使用固定测试文本，可能产生厂商 API 调用费用；拦截/疑似裁决视为正常响应。
  *              启用一个插件会同时停用其他插件。需要系统管理员权限
  * Tags: ['PluginAdmin', 'Write']
  * ============================================================================ */
