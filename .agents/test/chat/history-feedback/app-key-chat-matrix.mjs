@@ -732,6 +732,22 @@ async function routeMatrix(w, context, { userScope = false, proxyScope = false }
         );
       } else rejected(wrong);
       assert.deepEqual(await w.snapshot(w.W, ids), before);
+      if (route.route.endsWith('/closeCustom')) {
+        // 个人密钥同样支持 customUid，不能在会话鉴权后又退回只接受 Cookie 的旧入口。
+        await w.acl('A', w.W, 4);
+        try {
+          const result = await f.call(
+            route.route,
+            { ...payload, appId: w.W, customUid },
+            route.method,
+            w.personal()
+          );
+          await route.check(result, payload);
+        } finally {
+          await w.acl('A', w.W, 0);
+        }
+        await route.prepare?.();
+      }
       const input = { ...payload, customUid };
       const result = await f.call(route.route, input, route.method);
       await route.check(result, input);

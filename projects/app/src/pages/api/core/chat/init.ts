@@ -135,6 +135,7 @@ async function handler(req: NextApiRequest): Promise<InitChatResponseType> {
   } catch (error) {
     if (
       sourceType === ChatSourceTypeEnum.app &&
+      authProxy === undefined &&
       requestedSourceId &&
       error === AppErrEnum.unAuthApp
     ) {
