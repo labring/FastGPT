@@ -18,15 +18,20 @@ const CursorSchema = z.object({
   lastId: ObjectIdSchema.nullable(),
   scanned: IntSchema
 });
-const CheckpointSchema = z.object({ chats: CursorSchema, chatLogs: CursorSchema });
+const CheckpointSchema = z.object({
+  chats: CursorSchema.extend({ total: IntSchema.optional() }),
+  chatLogs: CursorSchema
+});
 
 /**
  * 独立后台分批断点回填，先重试历史失败项，再按两库各自的固定 _id 上界扫描。
  * 每条条件写入可重放；完整错误快照先于 checkpoint 保存，避免跳过坏数据后永久遗漏。
  * 仅追加来源，不修改旧字段、身份、消息或统计计数；无依赖，不阻塞业务启动。
+ * 对话总量保存在断点中，旧断点按已处理数加剩余数补齐；统计桶仍仅上报已处理数量。
  */
 export const backfillChatPublishSource = async (context: SystemMigrationContext) => {
   const stages = ['chats', 'chatLogs'] as const;
+  await context.reportProgress({ key: 'chats', status: SystemMigrationStatusEnum.running });
   let checkpoint = await context.getCheckpoint(CheckpointSchema);
   if (!checkpoint) {
     const cursor = async (stage: PublishSourceMigrationStage) => {
@@ -37,6 +42,20 @@ export const backfillChatPublishSource = async (context: SystemMigrationContext)
       return { endId: last ? String(last._id) : null, lastId: null, scanned: 0 };
     };
     checkpoint = { chats: await cursor('chats'), chatLogs: await cursor('chatLogs') };
+  }
+  if (checkpoint.chats.total === undefined) {
+    await context.assertActive();
+    const { endId, lastId, scanned } = checkpoint.chats;
+    // current 累计的是扫描条数，补算旧断点时只统计尚未扫描的范围。
+    const remaining = endId
+      ? await getPublishSourceMigrationModel('chats').countDocuments({
+          _id: {
+            $lte: new Types.ObjectId(endId),
+            ...(lastId ? { $gt: new Types.ObjectId(lastId) } : {})
+          }
+        })
+      : 0;
+    checkpoint.chats.total = scanned + remaining;
     await context.saveCheckpoint(checkpoint);
   }
   const failures = new Map<string, SystemMigrationFailedRecord>();
@@ -64,7 +83,13 @@ export const backfillChatPublishSource = async (context: SystemMigrationContext)
   };
 
   for (const stage of stages) {
-    await context.reportProgress({ key: stage, status: SystemMigrationStatusEnum.running });
+    await context.reportProgress({
+      key: stage,
+      status: SystemMigrationStatusEnum.running,
+      ...(stage === 'chats'
+        ? { current: checkpoint.chats.scanned, total: checkpoint.chats.total }
+        : {})
+    });
     for (const failure of [...failures.values()].filter((item) => item.stageKey === stage)) {
       await processRecord(stage, String(failure.data.id));
     }
@@ -103,17 +128,28 @@ export const backfillChatPublishSource = async (context: SystemMigrationContext)
         lastId: String(records.at(-1)!._id),
         scanned: cursor.scanned + records.length
       };
+      if (stage === 'chats') {
+        // 兼容扫描期间插入上界内记录，避免进度超过总量而被框架拒绝。
+        checkpoint.chats.total = Math.max(checkpoint.chats.total ?? 0, checkpoint.chats.scanned);
+      }
       await context.saveCheckpoint(checkpoint);
       await context.reportProgress({
         key: stage,
         status: SystemMigrationStatusEnum.running,
-        current: checkpoint[stage].scanned
+        current: checkpoint[stage].scanned,
+        ...(stage === 'chats' ? { total: checkpoint.chats.total } : {})
       });
+    }
+    if (stage === 'chats' && checkpoint.chats.total !== checkpoint.chats.scanned) {
+      // 扫描范围已经耗尽，校准执行期间物理删除记录造成的总量偏差。
+      checkpoint.chats.total = checkpoint.chats.scanned;
+      await context.saveCheckpoint(checkpoint);
     }
     await context.reportProgress({
       key: stage,
       status: SystemMigrationStatusEnum.succeeded,
-      current: checkpoint[stage].scanned
+      current: checkpoint[stage].scanned,
+      ...(stage === 'chats' ? { total: checkpoint.chats.total } : {})
     });
   }
 
