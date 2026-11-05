@@ -33,6 +33,31 @@ describe('input mutation services', () => {
     document = WorkflowDocumentSchema.parse(aiWorkflow);
   });
 
+  it.each(['', 'true', 'false'])(
+    'writes persisted database authorization without coercing SSL value %j',
+    (ssl) => {
+      const input: FlowNodeInputItemType = {
+        key: NodeInputKeyEnum.systemInputConfig,
+        label: '',
+        renderTypeList: [FlowNodeInputTypeEnum.hidden],
+        inputList: [
+          { key: 'port', label: 'Port', inputType: 'numberInput', required: true },
+          { key: 'ssl', label: 'SSL', inputType: 'switch' }
+        ]
+      };
+      document.nodes.find((node) => node.nodeId === 'ai')!.inputs.push(input);
+      const value = {
+        type: 'manual',
+        value: { port: { value: '3306' }, ssl: { value: ssl } }
+      };
+      const before = structuredClone(value);
+      setInputValue({ document, nodeId: 'ai', inputKey: input.key, value });
+      expect(input.value).toEqual(before);
+      expect(value).toEqual(before);
+      expect(validateWorkflow(document, { invalidReferencePolicy: 'error' })).toEqual([]);
+    }
+  );
+
   it('sets and replaces tool authorization while preserving unrelated credentials', () => {
     const input: FlowNodeInputItemType = {
       key: NodeInputKeyEnum.systemInputConfig,

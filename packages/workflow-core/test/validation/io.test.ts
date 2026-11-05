@@ -856,6 +856,35 @@ describe('validateNodeIO', () => {
     expect(check(node, isTool)).toEqual([]);
   });
 
+  it.each(['', 'true', 'false'])(
+    'accepts persisted database authorization with SSL value %j',
+    (ssl) => {
+      const value = {
+        type: 'manual',
+        value: { port: { value: '3306' }, ssl: { value: ssl } }
+      };
+      const node = makeNode({
+        flowNodeType: FlowNodeTypeEnum.toolSet,
+        inputs: [
+          {
+            key: NodeInputKeyEnum.systemInputConfig,
+            label: '',
+            selectedType: FlowNodeInputTypeEnum.hidden,
+            renderTypeList: [FlowNodeInputTypeEnum.hidden],
+            inputList: [
+              { key: 'port', label: 'Port', inputType: 'numberInput', required: true },
+              { key: 'ssl', label: 'SSL', inputType: 'switch' }
+            ],
+            value
+          }
+        ]
+      });
+      const before = structuredClone(node);
+      expect(check(node, true)).toEqual([]);
+      expect(node).toEqual(before);
+    }
+  );
+
   it.each([false, true])(
     'validates configured authorization without leaking its value (mounted: %s)',
     (isTool) => {

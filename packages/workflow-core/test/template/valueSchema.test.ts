@@ -27,6 +27,11 @@ describe('getNodeInputValueSchema', () => {
     { type: 'manual', value: { appSecret: { value: '', secret: 'existing-ciphertext' } } },
     { type: 'manual', value: { appSecret: { value: 'demo-secret', secret: '' } } },
     { type: 'manual', value: { limit: { value: 0 }, enabled: { value: false } } },
+    { type: 'manual', value: { limit: { value: '3306' }, enabled: { value: 'false' } } },
+    { type: 'manual', value: { limit: { value: '0' }, enabled: { value: 'true' } } },
+    { type: 'manual', value: { limit: { value: '-1.5e+2' } } },
+    { type: 'manual', value: { limit: { value: '.5' } } },
+    { type: 'manual', value: { limit: { value: '1.' } } },
     { type: 'manual', value: { region: { value: 'us' }, custom: { value: 'custom' } } },
     {
       type: 'manual',
@@ -54,6 +59,27 @@ describe('getNodeInputValueSchema', () => {
     { type: 'manual', value: { region: { value: 'unknown-region' } } }
   ])('rejects shapes the authorization runtime cannot consume: %j', (value) => {
     expect(valueMatchesSchema(value, getNodeInputValueSchema({ input })!)).toBe(false);
+  });
+
+  it.each(['NaN', 'Infinity', '1e', '12px', ' ', '0x10', '1\n'])(
+    'rejects malformed decimal strings: %j',
+    (value) => {
+      expect(
+        valueMatchesSchema(
+          { type: 'manual', value: { limit: { value } } },
+          getNodeInputValueSchema({ input })!
+        )
+      ).toBe(false);
+    }
+  );
+
+  it.each(['0', '1', 'False', 'TRUE'])('rejects noncanonical boolean strings: %j', (value) => {
+    expect(
+      valueMatchesSchema(
+        { type: 'manual', value: { enabled: { value } } },
+        getNodeInputValueSchema({ input })!
+      )
+    ).toBe(false);
   });
 
   it('preserves explicit schemas and leaves unrelated inputs unchanged', () => {

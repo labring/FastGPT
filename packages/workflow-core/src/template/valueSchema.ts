@@ -24,8 +24,24 @@ export const getNodeInputValueSchema = ({
   const properties = Object.fromEntries(
     (input.inputList ?? []).map((item) => {
       const valueSchema = (() => {
-        if (item.inputType === 'numberInput') return { type: 'number' };
-        if (item.inputType === 'switch') return { type: 'boolean' };
+        // 授权明文按字符串持久化，运行时再转换；同时兼容旧版数字和布尔值。
+        if (item.inputType === 'numberInput') {
+          return {
+            anyOf: [
+              { type: 'number' },
+              {
+                type: 'string',
+                // 使用绝对结尾，避免 $ 接受数字后的换行符。
+                pattern: '^[+-]?(?:[0-9]+(?:\\.[0-9]*)?|\\.[0-9]+)(?:[eE][+-]?[0-9]+)?(?![\\s\\S])'
+              }
+            ]
+          };
+        }
+        if (item.inputType === 'switch') {
+          return {
+            anyOf: [{ type: 'boolean' }, { type: 'string', enum: ['true', 'false'] }]
+          };
+        }
         if (item.inputType === 'select' && item.list?.length) {
           return { type: 'string', enum: item.list.map(({ value }) => value) };
         }
