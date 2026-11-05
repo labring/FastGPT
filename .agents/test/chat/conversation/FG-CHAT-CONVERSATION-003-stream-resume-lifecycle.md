@@ -8,6 +8,10 @@ category: basic
 scenario: success
 priority: P1
 status: ready
+automation:
+  - runner: node
+    script: .agents/test/chat/conversation/FG-CHAT-CONVERSATION-003.mjs
+    items: [C1, C2, C3, C4, C5, C6]
 tags: [pr-8044, stream-resume, opt-in, 覆盖基础场景, 覆盖异常场景, 覆盖边界场景]
 evidence: [response, ui, database, cache]
 sources:
@@ -25,7 +29,7 @@ routes:
   - "POST /api/v1/chat/completions"
   - "POST /api/v2/chat/completions"
   - "GET /api/core/chat/resume"
-related: [FG-CHAT-CONVERSATION-005, FG-CHAT-CONVERSATION-002, FG-INFRA-RUNTIME-002]
+related: [FG-CHAT-CONVERSATION-001, FG-CHAT-CONVERSATION-002, FG-INFRA-RUNTIME-001]
 baseline: "5a5211f70998f5311cd40b0e5362a1414be6fbdf"
 ---
 
@@ -37,11 +41,13 @@ baseline: "5a5211f70998f5311cd40b0e5362a1414be6fbdf"
 
 ## 前置准备
 
-- 复用 FG-CHAT-CONVERSATION-005 的数据隔离、鉴权、查询和清理；D0 增加两个 gate：先输出 RUN 的第一段，再等待，再输出第二段。需要 replay 分页时用受控输出产生至少 51 条实际缓存事件。
+- 脚本配置见 [流、列表与数据库测试配置](../../../skills/system/fastgpt-integration-test-runner/references/stream-history-database.md)。使用专用主站、Mongo、Redis 和正常发布的 55 段确定回复/gate/尾段工作流；脚本内部启动真实 Chromium。C5 内存限制仅修改带本轮 marker 的私有 Redis，结束恢复原配置。
+
+- 复用 FG-CHAT-CONVERSATION-001 的数据隔离、鉴权、查询和清理；D0 增加两个 gate：先输出 RUN 的第一段，再等待，再输出第二段。需要 replay 分页时用受控输出产生至少 51 条实际缓存事件。
 - 记录 `STREAM_RESUME_TTL_SECONDS`、`STREAM_RESUME_POST_COMPLETE_TTL_SECONDS`、内存阈值和检查缓存间隔；不把 mirror TTL 写成 lease 的 60 秒。使用 `getStreamResumeRedisKeys`/adapter 确认物理 key，读取 `XRANGE/XLEN/TTL` 和 active/unavailable 状态。
 - App 请求使用实际 appId，Skill 使用 skillId，辅助生成使用 appId 加实际 sourceType；分享恢复 GET 的 `outLinkAuthData` 按真实页面请求 JSON 序列化。凭证不写进证据正文。
 - 恢复请求带 `Accept: text/event-stream`；独立变体不带该 Accept。浏览器优先使用无扩展干扰的干净会话，保存原始 SSE 与页面截图。
-- 只在私有 Redis/专用实例模拟内存压力或缓存缺失；先保存本轮 key 和配置快照，测试后还原。进程退出与 Redis 读取故障的时序集中在 FG-INFRA-RUNTIME-002，不在本例重复注入。
+- 只在私有 Redis/专用实例模拟内存压力或缓存缺失；先保存本轮 key 和配置快照，测试后还原。进程退出与 Redis 读取故障的时序集中在 FG-INFRA-RUNTIME-001，不在本例重复注入。
 - 正常流程最长 120 秒；无镜像等待最长按已记录 stream TTL 加 10 秒；正常收尾后的空 XREAD 状态检查允许一个 30 秒阻塞周期加 5 秒网络余量。
 
 ## 测试步骤

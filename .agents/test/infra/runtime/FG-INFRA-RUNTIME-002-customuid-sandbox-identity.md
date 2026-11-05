@@ -1,6 +1,6 @@
 ---
 case_version: 1
-id: "FG-INFRA-RUNTIME-001"
+id: "FG-INFRA-RUNTIME-002"
 title: "customUid 在工作流与沙箱中保持使用者归属"
 business: "infra/runtime"
 types:

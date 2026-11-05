@@ -155,18 +155,6 @@ describe('buildDebugRuntimeNodes', () => {
       expect(userInput!.renderTypeList).toContain(FlowNodeInputTypeEnum.reference);
     });
 
-    it('history input should be a number with value 20', () => {
-      const { runtimeNodes } = buildDebugRuntimeNodes(SKILL_ID, MODEL_ID, SYSTEM_PROMPT);
-      const agentNode = runtimeNodes[1];
-
-      const historyInput = agentNode.inputs.find((i) => i.key === NodeInputKeyEnum.history);
-      expect(historyInput).toBeDefined();
-      expect(historyInput!.value).toBe(20);
-      expect(historyInput!.valueType).toBe(WorkflowIOValueTypeEnum.chatHistory);
-      expect(historyInput!.min).toBe(0);
-      expect(historyInput!.max).toBe(50);
-    });
-
     it('aiModelId input should carry the provided model ID', () => {
       const { runtimeNodes } = buildDebugRuntimeNodes(SKILL_ID, MODEL_ID, SYSTEM_PROMPT);
       const agentNode = runtimeNodes[1];

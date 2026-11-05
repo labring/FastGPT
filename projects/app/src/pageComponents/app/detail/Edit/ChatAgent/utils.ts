@@ -5,10 +5,7 @@ import {
   type AppFormEditFormType
 } from '@fastgpt/global/core/app/formEdit/type';
 import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
-import type {
-  FlowNodeTemplateType,
-  StoreNodeItemType
-} from '@fastgpt/global/core/workflow/type/node';
+import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import {
   FlowNodeInputTypeEnum,
   FlowNodeTypeEnum
@@ -29,10 +26,7 @@ import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/i
 import { getAppChatConfig } from '@fastgpt/global/common/app/chat';
 import { Input_Template_File_Link } from '@fastgpt/global/core/workflow/template/input';
 import {
-  canInputBeAgentGenerated,
-  filterToolConfiguredParams,
-  getAgentToolInputMode,
-  getToolConfigStatus,
+  serializeAgentTool,
   validateToolConfiguration
 } from '@fastgpt/global/core/app/formEdit/utils';
 import { getNewToolPreviewNode } from '@/web/core/app/api/tool';
@@ -81,12 +75,11 @@ export const appWorkflow2AgentForm = ({
         NodeInputKeyEnum.sandboxEntrypoint
       );
 
-      const tools = inputMap.get(NodeInputKeyEnum.selectedTools) as FlowNodeTemplateType[];
+      const tools = inputMap.get(NodeInputKeyEnum.selectedTools) as SelectedToolItemType[];
       if (tools) {
         defaultAppForm.selectedTools = tools.map((tool) => ({
           ...tool,
-          id: tool.pluginId!,
-          configStatus: getToolConfigStatus({ tool }).status
+          id: tool.pluginId ?? tool.id
         }));
       }
 
@@ -118,28 +111,6 @@ export const appWorkflow2AgentForm = ({
 export type WorkflowType = {
   nodes: StoreNodeItemType[];
   edges: StoreEdgeItemType[];
-};
-
-/**
- * 判断 ChatAgent 是否处于历史遗留的 Skill + 虚拟机不可用状态。
- * 该状态允许普通保存草稿，但不能继续发布或运行，因为 Skill 运行依赖虚拟机环境。
- */
-export const checkAgentSkillSandboxUnavailable = ({
-  appForm,
-  showSandbox,
-  enableSandbox
-}: {
-  appForm: Pick<AppFormEditFormType, 'aiSettings' | 'selectedAgentSkills'>;
-  showSandbox?: boolean;
-  enableSandbox?: boolean;
-}) => {
-  const hasSelectedAgentSkills = (appForm.selectedAgentSkills?.length || 0) > 0;
-
-  return (
-    hasSelectedAgentSkills &&
-    !appForm.aiSettings.useAgentSandbox &&
-    (!showSandbox || !enableSandbox)
-  );
 };
 
 /** 将 Agent 表单转换为工作流，并通过共用 Schema 校验和归一化知识库参数。 */
@@ -293,41 +264,12 @@ export function agentForm2AppWorkflow(
               renderTypeList: [FlowNodeInputTypeEnum.hidden], // Set in the pop-up window
               label: '',
               valueType: WorkflowIOValueTypeEnum.arrayObject,
-              value: data.selectedTools.map((tool) => {
-                const config = tool.inputs.reduce(
-                  (acc, input) => {
-                    if (input.key === NodeInputKeyEnum.forbidStream) {
-                      return acc;
-                    }
-                    // Special tool
-                    if (
-                      tool.flowNodeType === FlowNodeTypeEnum.appModule &&
-                      input.key === NodeInputKeyEnum.history
-                    ) {
-                      acc[input.key] = data.aiSettings.maxHistories;
-                    }
-                    acc[input.key] = input.value;
-                    return acc;
-                  },
-                  {} as Record<string, any>
-                );
-
-                return {
-                  id: tool.pluginId,
-                  name: tool.name,
-                  avatar: tool.avatar,
-                  version: tool.version,
-                  source: tool.source,
-                  metadataLocale: tool.metadataLocale,
-                  toolConfig: tool.toolConfig,
-                  inputs: tool.inputs.filter(canInputBeAgentGenerated).map((input) => ({
-                    key: input.key,
-                    mode: getAgentToolInputMode(input)
-                  })),
-
-                  config: filterToolConfiguredParams({ params: config, inputs: tool.inputs })
-                };
-              })
+              value: data.selectedTools.map((tool) =>
+                serializeAgentTool({
+                  tool,
+                  maxHistories: data.aiSettings.maxHistories
+                })
+              )
             },
             // Dataset configuration
             {
@@ -493,8 +435,7 @@ export const loadGeneratedTools = async ({
         return {
           ...inheritedTool,
           id: toolId,
-          source,
-          configStatus: getToolConfigStatus({ tool: inheritedTool }).status
+          source
         };
       })
     )

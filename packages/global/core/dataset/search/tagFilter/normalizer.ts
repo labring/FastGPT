@@ -289,7 +289,7 @@ const resolveConditionValue = (
 
 /**
  * 搜索入口归一化构造器：
- * 将客户端多样化配置（老版 string 数组、深信服/外部带 $ref 的 string/对象、表单 AST 结构化数组）
+ * 将客户端多样化配置（整项变量引用、老版 string 数组、外部带 $ref 的 string/对象、表单 AST）
  * 统一归一化为标准的底层检索 JSON 字符串（只包含结构化 TagCondition 数组）。
  */
 export const formatCollectionFilterMatchParam = ({
@@ -299,11 +299,13 @@ export const formatCollectionFilterMatchParam = ({
   value: unknown;
   resolveReference?: (value: unknown) => unknown;
 }): string | undefined => {
-  if (value === undefined || value === null || value === '') return undefined;
+  // 隐藏的嵌套 datasetParams 不经过通用输入引用解析，需在这里使用同一解析器解出整项 JSON。
+  const sourceValue = isReferenceTuple(value) ? resolveReference(value) : value;
+  if (sourceValue === undefined || sourceValue === null || sourceValue === '') return undefined;
 
-  let parsed: unknown = value;
-  if (typeof value === 'string') {
-    const trimmed = value.trim();
+  let parsed: unknown = sourceValue;
+  if (typeof sourceValue === 'string') {
+    const trimmed = sourceValue.trim();
     if (!trimmed) return undefined;
     try {
       parsed = json5.parse(trimmed);
@@ -405,10 +407,10 @@ export const formatCollectionFilterMatchParam = ({
   }
 
   // 3. 纯单字符串老标签输入（如 "产品文档"）
-  if (typeof value === 'string' && value.trim()) {
+  if (typeof sourceValue === 'string' && sourceValue.trim()) {
     return JSON.stringify({
       tags: {
-        $and: [{ [FROM_MIGRATION_CARRIER]: { $contains: value.trim() } }]
+        $and: [{ [FROM_MIGRATION_CARRIER]: { $contains: sourceValue.trim() } }]
       }
     });
   }

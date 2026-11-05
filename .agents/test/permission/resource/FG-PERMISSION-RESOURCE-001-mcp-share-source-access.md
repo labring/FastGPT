@@ -52,7 +52,7 @@ routes:
   - "POST /api/core/app/logs/list"
   - "POST /api/support/mcp/server/toolCall"
 related:
-  - "FG-CHAT-CONVERSATION-001"
+  - "FG-CHAT-CONVERSATION-005"
   - "FG-INTEGRATION-OPENAPI-001"
 baseline: "528b3ad09c909d7fabe1f19210ce2673cdc093e3"
 ---
@@ -65,7 +65,7 @@ baseline: "528b3ad09c909d7fabe1f19210ce2673cdc093e3"
 
 ## 前置准备
 
-- 依据简版设计的“仅当前 MCP/分享检查、缺任一旧字段兼容、preChat 原子复核”规则。复用 CONVERSATION-001 的 D2 身份/渠道清单和请求/证据方法；每个独立场景恢复新副本 G0，连续场景明确承接前一步，不能复用已被其他行改变的最新来源。
+- 依据简版设计的“仅当前 MCP/分享检查、缺任一旧字段兼容、preChat 原子复核”规则。复用 CONVERSATION-005 的 D2 身份/渠道清单和请求/证据方法；每个独立场景恢复新副本 G0，连续场景明确承接前一步，不能复用已被其他行改变的最新来源。
 - G0：S1 下已完成的对话 Cs，publishSource=`{type:share,id:S1.id}`、outLinkUid=u1。G1：Ka 下已完成对话 Ca，来源 api/Ka。G2：隔离库夹具克隆 G0，publishSource 分别为缺失、`{type:share}`、`{id:S2.id}`，旧 shareId 为空或指向 S2；保留 outLinkUid=u1 和合法资源权限。渠道检查只使用 publishSource，不因旧 shareId 不同拒绝；访客身份仍须匹配。
 - 分享请求使用真实 `outLinkAuthData:{shareId,outLinkUid}`，受保护分享还需有效登录身份；不得把 customUid 代替 outLinkUid。记录 body 中伪造来源不影响服务端通道判断。
 - 先存 chats 的来源、uid、状态与本例 chatitems/dataId 集合；拒绝时同时验证不返回历史内容/文件信息且不改来源。原有 Key 使用时间、请求日志、分享鉴权前置检查可能更新，不断言所有用量/日志绝对不变。
@@ -73,7 +73,7 @@ baseline: "528b3ad09c909d7fabe1f19210ce2673cdc093e3"
 - 操作历史/恢复/文件时，先以 S1/u1 记录一次可成功的真实分页请求、已上传文件的签名请求及 resume query，再替换渠道；resume 的 outLinkAuthData 按 schema JSON 序列化。不得以错误 key 或未就绪运行造成的失败代替来源拒绝。后台用有 AppReadChatLogPer 的 L，无该权限的 N 为反例。
 - C9 单独复建一组 D2 资源，只保留 H 清单中的会话；列表夹具均在该 W/u1、最近一个月且未软删：H1 完整 share/S1；H2 完整 share/S2 但残留 shareId=S1；H3 完整 api/Ka 但残留 shareId=S1；H4 无 publishSource、shareId=S1；H5 type-only、shareId=S1；H6 id-only、shareId=S1；H7 为另一 UID 或另一应用的对照。保存各 chatId 清单。H2/H3 的残留值只用于隔离兼容验证，不通过真实续聊制造。
 - C10 用确定性的两阶段服务集成复现来源变化：先调用真实 `authChatTargetCrud` 校验 S1/u1 并保留可信返回上下文，随后让授权 Ka 通过真实 HTTP 完成同会话续聊，最后将已保留的分享来源、身份和资源传入真实 `preChatRound`。使用实际 Mongo/Redis，独立 responseChatItemId；不得 mock 来源守卫或先手工改 Chat，再声称完成了 HTTP 并发。
-- 证据、超时与清理沿用 CONVERSATION-001，所有数据库快照限定 appId+精确 chatId。
+- 证据、超时与清理沿用 CONVERSATION-005，所有数据库快照限定 appId+精确 chatId。
 
 ## 测试步骤
 
@@ -83,7 +83,7 @@ baseline: "528b3ad09c909d7fabe1f19210ce2673cdc093e3"
 | C2 | 拒绝；恢复 G0 | S2/u1 请求 Cs；分别验证 completions 与分享端已有的历史/恢复/文件请求。 |
 | C3 | 连续状态；恢复 G0 | Ka 续聊 Cs 并保存后，再用原 S1/u1 续聊。 |
 | C4 | 缺字段；G2 各变体独立 | S1/u1 请求；再在旧来源 type=api 但无 id 的变体上请求。复位后以 S1/u2 请求一个缺字段变体作身份反例。 |
-| C5 | 请求通道；恢复 G0 | S2/u1 请求 Cs，在 metadata/variables 中伪造 type=api、scene=admin 和 S1 的 publishSource；实际仍由 S2 鉴权。普通 API/网页跨来源的正向流程引用 CONVERSATION-001 C2/C3，不重复执行矩阵。 |
+| C5 | 请求通道；恢复 G0 | S2/u1 请求 Cs，在 metadata/variables 中伪造 type=api、scene=admin 和 S1 的 publishSource；实际仍由 S2 鉴权。普通 API/网页跨来源的正向流程引用 CONVERSATION-005 C2/C3，不重复执行矩阵。 |
 | C6 | 原权限拒绝；G2/完整来源 | 使用失效分享、受保护分享缺登录或无应用权限；使用无权 API Key 或其他团队成员；缺 type/id 也重复一个权限拒绝代表。 |
 | C7 | MCP；真实服务集成 | 沿用上述 M1 可信上下文，调用真实 updateChatPublishSource：旧记录分别为 mcp/M1、mcp/M2、api/Ka、缺 type、缺 id；再验证 M1 当前可信来源缺必需 ID 不能绕过完整旧来源。 |
 | C8 | 后台管理；G0/G1 | L 从网页后台读取两种来源的日志及详情；N 请求同管理入口。 |

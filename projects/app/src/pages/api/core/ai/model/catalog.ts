@@ -15,15 +15,17 @@ import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/catalog/servi
 import { getModelProviderMetadata } from '@fastgpt/service/core/ai/model/provider/controller';
 import { desensitizeModel } from '@fastgpt/service/core/ai/model/transform';
 import { getAuthorizedModelIds } from '@fastgpt/service/support/permission/model/auth';
+import { addSourceMember } from '@fastgpt/service/support/user/utils';
 
-/** 返回当前成员完整模型目录；展示排序单独计算内容版本，避免影响运行时顺序与默认模型。 */
+/** 返回当前身份可用的模型目录；创建人资料仅供成员展示页实时读取，不参与通用目录缓存。 */
 export async function handler(
   req: ApiRequestProps<Record<string, never>, GetModelCatalogQuery>
 ): Promise<GetModelCatalogResponse> {
   const {
     version: clientVersion,
     outLinkAuthData,
-    orderBy
+    orderBy,
+    includeSourceMember
   } = parseApiInput({
     req,
     querySchema: GetModelCatalogQuerySchema
@@ -40,7 +42,8 @@ export async function handler(
   const permissionVersion = hashStr(
     [modelHandle.version, ...[...authorizedIds].toSorted()].join('\n')
   );
-  const runtimeVersion = `3:${modelHandle.version}:${permissionVersion}`;
+  // 默认目录不再携带创建人资料，升级响应版本以替换旧客户端持久缓存中的冗余字段。
+  const runtimeVersion = `4:${modelHandle.version}:${permissionVersion}`;
   const availableModels = modelHandle
     .getActiveModels()
     .filter((model) => authorizedIds.has(model.modelId));
@@ -71,14 +74,27 @@ export async function handler(
       ? `${runtimeVersion}:custom:${hashStr(JSON.stringify(models.map((model) => model.modelId)))}`
       : runtimeVersion;
 
-  if (clientVersion === version) {
+  const withSourceMember = includeSourceMember && catalogIdentity.source !== 'outLink';
+  // 展示资料随成员记录变化，显式请求时始终读取最新资料，不复用通用目录的版本缓存。
+  if (!withSourceMember && clientVersion === version) {
     return GetModelCatalogResponseSchema.parse({ version });
   }
+
+  const desensitizedModels = models.map(desensitizeModel);
+  const memberModels = withSourceMember
+    ? await addSourceMember({
+        list: desensitizedModels.filter(
+          (model): model is typeof model & { tmbId: string } =>
+            model.scope === ModelScopeEnum.team && Boolean(model.tmbId)
+        )
+      })
+    : [];
+  const memberModelMap = new Map(memberModels.map((model) => [model.modelId, model]));
 
   return GetModelCatalogResponseSchema.parse({
     version,
     data: {
-      models: models.map(desensitizeModel),
+      models: desensitizedModels.map((model) => memberModelMap.get(model.modelId) ?? model),
       providers,
       defaultModelIds: modelHandle.getDefaultModelIds(authorizedIds)
     }

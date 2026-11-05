@@ -15,7 +15,12 @@ import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { runWorkflow } from '..';
 import { getWorkflowMaxLoopTimes } from '../../constants';
 import type { DispatchFlowResponse } from '../type';
-import { collectResponseFeedbacks, getNodeErrResponse, pushSubWorkflowUsage } from '../utils';
+import {
+  collectResponseFeedbacks,
+  getNodeErrResponse,
+  pushSubWorkflowUsage,
+  removeUnfinishedInteractiveHistories
+} from '../utils';
 import {
   getWorkflowRuntimeSummary,
   mergeWorkflowRuntimeSummary,
@@ -138,6 +143,7 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
 
   const resumeIteration = interactiveData?.iteration;
   let iteration = resumeIteration ?? 1;
+  let iterationHistories = props.histories;
   const loopMemoryState = WorkflowMemoryState.fromWorkflow(props).fork();
   while (true) {
     if (checkIsStopping()) {
@@ -193,6 +199,7 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
     });
     const response = await runWorkflow({
       ...props,
+      histories: iterationHistories,
       variableState: iterationVariableState,
       memoryState: iterationMemoryState,
       lastInteractive: interactiveData?.childrenResponse,
@@ -322,6 +329,7 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
           n.isEntry = false;
         }
       });
+      iterationHistories = removeUnfinishedInteractiveHistories(iterationHistories);
     }
     interactiveData = undefined;
     pendingIterationSummary = undefined;
@@ -356,6 +364,12 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
           }
         }
       : undefined,
+    ...(!interactiveResponse && lastInteractive
+      ? {
+          [DispatchNodeResponseKeyEnum.rewriteHistories]:
+            removeUnfinishedInteractiveHistories(iterationHistories)
+        }
+      : {}),
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
       loopRunInput: mode === LoopRunModeEnum.array ? inputArray : undefined,
       loopRunIterations: loopHistory.length,

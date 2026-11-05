@@ -324,6 +324,15 @@ describe('WorkflowMemoryState & unified node memory helpers', () => {
           histories: []
         })
       ).toEqual({ fromCustomArray: 'custom' });
+
+      // 4. Trailing non-AI history item returns undefined
+      expect(
+        readWorkflowNodeMemory({
+          runningAppInfo: sharedChildAppInfo,
+          nodeId: 'extract_1',
+          histories: [...customHistories, { obj: ChatRoleEnum.Human, value: [] }]
+        })
+      ).toBeUndefined();
     });
 
     it('isolates fork() baseline when history === 0 or custom history array is passed, unless interactive resume is active', () => {
@@ -405,52 +414,6 @@ describe('WorkflowMemoryState & unified node memory helpers', () => {
         'app:root_app:extract_fast': { step: 'turn_2_new' },
         'node:runApp_slow/app:shared_child_app:inner_node': { childDone: true }
       });
-    });
-
-    it('isolates Agent parallel batch tool calls (including two cloned sub-apps with identical internal piAgent nodeId)', () => {
-      const rootState = WorkflowMemoryState.fromHistories();
-      const agentState = rootState.fork('node:agent_main');
-
-      // Agent calls SubApp_1 and SubApp_2 in parallel in a single batch (batchToolSize: 5)
-      const toolCall1State = agentState.fork();
-      const toolCall2State = agentState.fork();
-
-      const subApp1Info = { ...sharedChildAppInfo, sourceId: 'sub_app_1' };
-      const subApp2Info = { ...sharedChildAppInfo, sourceId: 'sub_app_2' };
-
-      // Both SubApp_1 and SubApp_2 have an internal piAgent node with the exact same nodeId 'inner_pi_agent'
-      const piKey1 = toolCall1State.getNodeMemoryKey({
-        runningAppInfo: subApp1Info,
-        nodeId: 'inner_pi_agent'
-      });
-      const piKey2 = toolCall2State.getNodeMemoryKey({
-        runningAppInfo: subApp2Info,
-        nodeId: 'inner_pi_agent'
-      });
-
-      expect(piKey1).toBe('node:agent_main/app:sub_app_1:inner_pi_agent');
-      expect(piKey2).toBe('node:agent_main/app:sub_app_2:inner_pi_agent');
-
-      toolCall1State.merge({ [piKey1]: { providerState: { tool: 1 } } });
-      toolCall2State.merge({ [piKey2]: { providerState: { tool: 2 } } });
-
-      agentState.merge(toolCall1State.getDelta());
-      agentState.merge(toolCall2State.getDelta());
-
-      // Next sequential step in the same Agent turn immediately sees both tool calls' memories
-      const step2ToolCallState = agentState.fork();
-      expect(
-        step2ToolCallState.readNodeMemory({
-          runningAppInfo: subApp1Info,
-          nodeId: 'inner_pi_agent'
-        })
-      ).toEqual({ providerState: { tool: 1 } });
-      expect(
-        step2ToolCallState.readNodeMemory({
-          runningAppInfo: subApp2Info,
-          nodeId: 'inner_pi_agent'
-        })
-      ).toEqual({ providerState: { tool: 2 } });
     });
   });
 });

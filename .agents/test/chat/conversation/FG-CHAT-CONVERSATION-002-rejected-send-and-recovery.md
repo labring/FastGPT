@@ -26,7 +26,7 @@ sources:
 routes:
   - "POST /api/v2/chat/completions"
   - "GET /api/core/chat/resume"
-related: [FG-CHAT-CONVERSATION-005, FG-CHAT-CONVERSATION-003, FG-INFRA-RUNTIME-002]
+related: [FG-CHAT-CONVERSATION-001, FG-CHAT-CONVERSATION-003, FG-INFRA-RUNTIME-001]
 baseline: "5a5211f70998f5311cd40b0e5362a1414be6fbdf"
 ---
 
@@ -38,7 +38,7 @@ baseline: "5a5211f70998f5311cd40b0e5362a1414be6fbdf"
 
 ## 前置准备
 
-- 复用 FG-CHAT-CONVERSATION-005 的 D0、限定查询和清理方式；每行使用新 chatId。两个窗口登录同一测试身份，当前页面启用产品自带自动恢复。
+- 复用 FG-CHAT-CONVERSATION-001 的 D0、限定查询和清理方式；每行使用新 chatId。两个窗口登录同一测试身份，当前页面启用产品自带自动恢复。
 - B 为带 RUN 的独特文本，附一个通过真实上传入口成功上传的小文件；记录其 file key、名称及大小，不把文件本体或真实凭证写入用例。B 的请求消息 ID 与 A 不同。
 - 在测试专用 HTTP 代理中只延迟 B 的冲突响应、历史读取或恢复连接；能按请求放行及返回一次 HTTP 503。它是测试夹具，不是产品新增接口。需要主动制造本地空闲时，只在测试页面临时模拟状态响应，不修改服务端 A 的 lease；保存被替代的响应与操作记录。
 - D1：A 已有持久化占位并在 gate 等待，页面可能加载过 A。D2：A 的 lease 已取得，但通过暂停 Mongo 事务提交让占位尚不可见；只对独立测试数据库制造该时序。

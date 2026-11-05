@@ -1,7 +1,8 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Types } from '@fastgpt/service/common/mongo';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import { SystemMigrationProgressInputSchema } from '@fastgpt/global/migration/schema';
 import type { SystemMigrationContext } from '@/migration/registry';
 import { initializeDatasetVectorIndexes } from '@/migration/tasks/4180/20261022_initialize_dataset_vector_indexes';
 
@@ -25,8 +26,8 @@ vi.mock('@fastgpt/service/common/vectorDB/constants', async (importOriginal) => 
 vi.mock('@/migration/constants', () => ({ systemMigrationBatchSize: 2 }));
 
 /** Context 只模拟断点持久化；读取顺序、软删除和类型过滤使用真实测试 Mongo。 */
-const createContext = () => {
-  let checkpoint: Record<string, unknown> | undefined;
+const createContext = (initialCheckpoint?: Record<string, unknown>) => {
+  let checkpoint = initialCheckpoint;
   const context = {
     migrationId: '20261022_initialize_dataset_vector_indexes',
     runId: 'test',
@@ -36,7 +37,9 @@ const createContext = () => {
     saveCheckpoint: vi.fn(async (value: Record<string, unknown>) => {
       checkpoint = structuredClone(value);
     }),
-    reportProgress: vi.fn(async () => {}),
+    reportProgress: vi.fn<SystemMigrationContext['reportProgress']>(async (progress) => {
+      SystemMigrationProgressInputSchema.parse(progress);
+    }),
     assertActive: vi.fn(async () => {}),
     getFailedRecords: vi.fn(async () => []),
     reportFailedRecords: vi.fn(async () => {}),
@@ -65,6 +68,7 @@ beforeEach(() => {
   mocks.counted.mockReset().mockResolvedValue(undefined);
   mocks.removeLegacy.mockReset().mockResolvedValue(undefined);
 });
+afterEach(() => vi.restoreAllMocks());
 
 describe('initializeDatasetVectorIndexes', () => {
   it('scans a fixed snapshot in batches, refreshes counts and only records delivered batches', async () => {
@@ -105,16 +109,84 @@ describe('initializeDatasetVectorIndexes', () => {
       [{ key: 'legacyIndex', status: 'running' }],
       [{ key: 'legacyIndex', status: 'succeeded' }],
       [{ key: 'datasets', status: 'running' }],
-      [{ key: 'datasets', status: 'running', current: 2 }],
-      [{ key: 'datasets', status: 'succeeded', current: 2 }]
+      [{ key: 'datasets', status: 'running', current: 0, total: 2 }],
+      [{ key: 'datasets', status: 'running', current: 2, total: 2 }],
+      [{ key: 'datasets', status: 'succeeded', current: 2, total: 2 }]
     ]);
-    expect(checkpoint()).toMatchObject({ lastId: id(2), endId: id(2) });
+    expect(checkpoint()).toMatchObject({ lastId: id(2), endId: id(2), total: 2 });
     expect(await initializeDatasetVectorIndexes(context)).toEqual({
       scannedCount: 2,
       eligibleCount: 1
     });
     expect(mocks.count).toHaveBeenCalledTimes(2);
   });
+
+  it('fills a legacy checkpoint total from committed progress and remaining datasets, then reuses it', async () => {
+    await seed(1);
+    await seed(3);
+    await seed(4);
+    await seed(5);
+    const count = vi.spyOn(MongoDataset, 'countDocuments');
+    const { context, checkpoint } = createContext({
+      endId: id(4),
+      lastId: id(2),
+      scannedCount: 2,
+      eligibleCount: 1
+    });
+
+    expect(await initializeDatasetVectorIndexes(context)).toEqual({
+      scannedCount: 4,
+      eligibleCount: 3
+    });
+    expect(context.reportProgress).toHaveBeenCalledWith({
+      key: 'datasets',
+      status: 'running',
+      current: 2,
+      total: 4
+    });
+    expect(checkpoint()).toMatchObject({ endId: id(4), lastId: id(4), total: 4 });
+    expect(mocks.counted.mock.calls.map(([scope]) => scope.datasetId)).toEqual([id(3), id(4)]);
+
+    await initializeDatasetVectorIndexes(context);
+    expect(count).toHaveBeenCalledTimes(1);
+    expect(mocks.counted).toHaveBeenCalledTimes(2);
+  });
+
+  it.each(['delete', 'restore'] as const)(
+    'keeps valid progress and finishes at 100%% when a dataset changes during scanning (%s)',
+    async (change) => {
+      await seed(1);
+      await seed(2);
+      await seed(3, { deleteTime: change === 'restore' ? new Date() : null });
+      await seed(4);
+      mocks.counted.mockImplementationOnce(async () => {
+        await MongoDataset.updateOne(
+          { _id: id(3) },
+          { $set: { deleteTime: change === 'restore' ? null : new Date() } }
+        );
+      });
+      const { context, checkpoint } = createContext();
+      const total = change === 'restore' ? 4 : 3;
+
+      expect(await initializeDatasetVectorIndexes(context)).toEqual({
+        scannedCount: total,
+        eligibleCount: total
+      });
+      expect(context.reportProgress).toHaveBeenCalledWith({
+        key: 'datasets',
+        status: 'running',
+        current: 0,
+        total: change === 'restore' ? 3 : 4
+      });
+      expect(context.reportProgress).toHaveBeenLastCalledWith({
+        key: 'datasets',
+        status: 'succeeded',
+        current: total,
+        total
+      });
+      expect(checkpoint()).toMatchObject({ total });
+    }
+  );
 
   it('starts no scan or enqueue until legacy index cleanup succeeds on retry', async () => {
     await seed(1);
@@ -246,7 +318,7 @@ describe('initializeDatasetVectorIndexes', () => {
     expect(context.reportProgress).toHaveBeenLastCalledWith({
       key: 'datasets',
       status: 'succeeded',
-      ...(pg ? { current: 0 } : {})
+      ...(pg ? { current: 0, total: 0 } : {})
     });
     expect(mocks.count).not.toHaveBeenCalled();
     expect(mocks.removeLegacy).toHaveBeenCalledTimes(pg ? 1 : 0);

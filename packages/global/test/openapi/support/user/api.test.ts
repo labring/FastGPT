@@ -455,6 +455,7 @@ describe('support user OpenAPI contracts', () => {
           list: [
             {
               userId: objectId,
+              username: 'member-account',
               tmbId: objectId,
               teamId: objectId,
               memberName,
@@ -628,6 +629,33 @@ describe('support user OpenAPI contracts', () => {
     expect(ListTeamMembersBodySchema.safeParse({ tmbIds: ['not-an-id'] }).success).toBe(false);
   });
 
+  it('requires a login username in team member responses', () => {
+    const member = {
+      userId: objectId,
+      tmbId: objectId,
+      teamId: objectId,
+      memberName: 'Member',
+      status: 'active',
+      createTime: '2025-01-13T05:34:31.329Z'
+    };
+
+    expect(
+      ListTeamMembersResponseSchema.parse({
+        total: 1,
+        list: [{ ...member, username: 'member-account' }]
+      }).list[0].username
+    ).toBe('member-account');
+
+    for (const username of [undefined, null]) {
+      expect(
+        ListTeamMembersResponseSchema.safeParse({
+          total: 1,
+          list: [{ ...member, username }]
+        }).success
+      ).toBe(false);
+    }
+  });
+
   it('accepts nullable contact values for historical team members', () => {
     expect(
       ListTeamMembersResponseSchema.parse({
@@ -635,6 +663,7 @@ describe('support user OpenAPI contracts', () => {
         list: [
           {
             userId: objectId,
+            username: 'member-account',
             tmbId: objectId,
             teamId: objectId,
             memberName: '历史成员',
@@ -656,6 +685,7 @@ describe('support user OpenAPI contracts', () => {
         list: [
           {
             userId: objectId,
+            username: 'member-account',
             tmbId: objectId,
             teamId: objectId,
             memberName: '历史成员',

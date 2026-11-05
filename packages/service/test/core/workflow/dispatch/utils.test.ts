@@ -7,6 +7,7 @@ import {
   filterToolNodeIdByEdges,
   getAgentLoopHistories,
   getHistories,
+  removeUnfinishedInteractiveHistories,
   checkQuoteQAValue,
   filterSystemVariables,
   formatHttpError,
@@ -32,6 +33,7 @@ import {
   SseResponseEventEnum,
   DispatchNodeResponseKeyEnum
 } from '@fastgpt/global/core/workflow/runtime/constants';
+import { appendWorkflowInteractiveValue } from '@fastgpt/global/core/workflow/runtime/utils';
 import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
 import {
   FlowNodeInputTypeEnum,
@@ -764,6 +766,10 @@ describe('getHistories', () => {
     expect(getAgentLoopHistories(0, [...pendingRound.slice(0, -1), checkpointAsk])).toEqual([
       checkpointAsk
     ]);
+    expect(removeUnfinishedInteractiveHistories([...MockHistories, ...pendingRound])).toEqual(
+      MockHistories
+    );
+    expect(removeUnfinishedInteractiveHistories(MockHistories)).toEqual(MockHistories);
   });
 
   it('should use default empty histories', () => {
@@ -2444,5 +2450,52 @@ describe('runtimeSummaryToNodeSummary', () => {
       errorCount: 1,
       errorText: 'failed'
     });
+  });
+});
+
+describe('appendWorkflowInteractiveValue', () => {
+  it('does not create circular references when nodeOutputs share the existing interactive value item', () => {
+    const childAskInteractive = {
+      type: 'agentAsk' as const,
+      params: {
+        toolCallId: 'call_ask_1',
+        arguments: '{"questions":[]}'
+      }
+    };
+    const sharedValueItem: any = {
+      interactive: childAskInteractive
+    };
+    const values: any[] = [sharedValueItem];
+    const rootInteractive: any = {
+      type: 'childrenInteractive',
+      params: {
+        childrenResponse: childAskInteractive
+      },
+      entryNodeIds: ['sub_wf'],
+      memoryEdges: [],
+      nodeOutputs: [
+        {
+          nodeId: 'sub_wf',
+          key: NodeOutputKeyEnum.history,
+          value: [
+            {
+              obj: ChatRoleEnum.AI,
+              value: [sharedValueItem]
+            }
+          ]
+        }
+      ]
+    };
+
+    appendWorkflowInteractiveValue({
+      values,
+      interactive: rootInteractive
+    });
+
+    expect(values[0]).not.toBe(sharedValueItem);
+    expect(values[0].interactive).toBe(rootInteractive);
+    expect(sharedValueItem.interactive).toBe(childAskInteractive);
+    expect(() => JSON.stringify(values)).not.toThrow();
+    expect(() => JSON.stringify(rootInteractive)).not.toThrow();
   });
 });

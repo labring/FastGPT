@@ -104,7 +104,6 @@ const getUserContextMessagesForTest = async ({
   });
 
   return {
-    chatHistories: context.chatHistories,
     queryInput: context.queryInput,
     ...messages,
     currentFiles: context.currentFiles
@@ -364,7 +363,6 @@ describe('useUserContext', () => {
           files: [{ name: 'old.pdf', url: 'https://files.example.com/old.pdf' }]
         });
         const result = await getUserContextMessagesForTest({
-          history: 6,
           parseHistoryFiles: true,
           histories: [history, createSystemMessage(), createAiMessage('history_ai_1')],
           currentFiles: [
@@ -437,7 +435,6 @@ describe('useUserContext', () => {
       },
       async () => {
         const result = await getUserContextMessagesForTest({
-          history: 6,
           parseHistoryFiles: true,
           histories: [
             createHumanMessage({
@@ -492,7 +489,6 @@ describe('useUserContext', () => {
       },
       async () => {
         const result = await getUserContextMessagesForTest({
-          history: 0,
           histories: [],
           currentUserInput: '当前问题',
           currentDataId: 'current_chat_item',
@@ -545,7 +541,6 @@ describe('useUserContext', () => {
       },
       async () => {
         const result = await getUserContextMessagesForTest({
-          history: 0,
           histories: [],
           currentUserInput: '当前问题',
           currentDataId: 'current_chat_item',
@@ -587,7 +582,6 @@ describe('useUserContext', () => {
       },
       async () => {
         const result = await getUserContextMessagesForTest({
-          history: 6,
           parseHistoryFiles: true,
           histories: [
             createHumanMessage({
@@ -617,7 +611,6 @@ describe('useUserContext', () => {
       },
       async () => {
         const result = await getUserContextMessagesForTest({
-          history: 6,
           histories: [],
           currentFiles: ['https://files.example.com/current.pdf'],
           currentUserInput: '当前问题',
@@ -659,7 +652,6 @@ describe('useUserContext', () => {
       },
       async () => {
         const result = await getUserContextMessagesForTest({
-          history: 6,
           parseHistoryFiles: true,
           histories: [
             createSystemMessage(),
@@ -685,13 +677,13 @@ describe('useUserContext', () => {
     );
   });
 
-  it('accepts explicit history arrays and respects maxFileAmount per message', async () => {
+  it('respects maxFileAmount per message across history and current input', async () => {
     await runWithContextAsync(
       {
         mcpClientMemory: {}
       },
       async () => {
-        const explicitHistory = [
+        const histories = [
           createHumanMessage({
             dataId: 'history_human',
             text: '历史问题',
@@ -704,9 +696,8 @@ describe('useUserContext', () => {
         ];
 
         const result = await getUserContextMessagesForTest({
-          history: explicitHistory,
           parseHistoryFiles: true,
-          histories: [],
+          histories,
           currentFiles: ['https://files.example.com/c.pdf', 'https://files.example.com/a.pdf'],
           currentUserInput: '当前问题',
           currentDataId: 'current_ai',
@@ -715,7 +706,6 @@ describe('useUserContext', () => {
           maxFileAmount: 1
         });
 
-        expect(result.chatHistories).toBe(explicitHistory);
         const { text: historyText } = chatValue2RuntimePrompt(result.rewrittenHistories[0].value);
         const { text: currentText } = chatValue2RuntimePrompt(result.currentUserMessage.value);
         expect(historyText).toContain('<url>https://files.example.com/a.pdf</url>');
@@ -733,7 +723,6 @@ describe('useUserContext', () => {
       },
       async () => {
         const result = await getUserContextMessagesForTest({
-          history: 6,
           parseHistoryFiles: false,
           histories: [
             createHumanMessage({
@@ -774,7 +763,6 @@ describe('useUserContext', () => {
       },
       async () => {
         const result = await getUserContextMessagesForTest({
-          history: 6,
           histories: [],
           currentFiles: [
             'not-a-url',
@@ -842,7 +830,6 @@ describe('useUserContext', () => {
       },
       async () => {
         const result = await getUserContextMessagesForTest({
-          history: 6,
           histories: [],
           currentFiles: ['https://files.example.com/doc.pdf'],
           currentUserInput: '分析文件',
@@ -867,7 +854,6 @@ describe('useUserContext', () => {
       },
       async () => {
         const result = await getUserContextMessagesForTest({
-          history: 6,
           histories: [],
           currentUserInput: '总结报告',
           currentDataId: 'current_ai',
@@ -907,7 +893,6 @@ describe('useUserContext', () => {
       },
       async () => {
         const result = await getUserContextMessagesForTest({
-          history: 6,
           histories: [],
           currentUserInput: '读取无扩展名文件',
           currentDataId: 'current_ai',
@@ -949,7 +934,6 @@ describe('useUserContext', () => {
       },
       async () => {
         const result = await getUserContextMessagesForTest({
-          history: 6,
           histories: [],
           currentFiles: ['https://files.example.com/nameless'],
           currentUserInput: '读取文件',
@@ -973,16 +957,16 @@ describe('useUserContext', () => {
         mcpClientMemory: {}
       },
       async () => {
+        const histories = [
+          createHumanMessage({
+            dataId: 'history_human',
+            text: '历史问题',
+            files: [{ name: 'broken.pdf', url: 123 as any }]
+          })
+        ];
         const result = await getUserContextMessagesForTest({
-          history: 6,
           parseHistoryFiles: true,
-          histories: [
-            createHumanMessage({
-              dataId: 'history_human',
-              text: '历史问题',
-              files: [{ name: 'broken.pdf', url: 123 as any }]
-            })
-          ],
+          histories,
           currentUserInput: '当前问题',
           currentDataId: 'current_ai',
           currentQuery: runtimePrompt2ChatsValue({
@@ -1001,7 +985,7 @@ describe('useUserContext', () => {
         });
 
         expect(result.currentFiles).toEqual([]);
-        expect(result.rewrittenHistories[0]).toBe(result.chatHistories[0]);
+        expect(result.rewrittenHistories[0]).toBe(histories[0]);
 
         const { text } = chatValue2RuntimePrompt(result.currentUserMessage.value);
         expect(text).not.toContain('## 对话文件');
@@ -1017,21 +1001,13 @@ describe('useUserContext', () => {
       },
       async () => {
         const result = await getUserContextMessagesForTest({
-          history: 0,
-          histories: [
-            createHumanMessage({
-              dataId: 'ignored_history',
-              text: '不会进入历史',
-              files: [{ name: 'ignored.pdf', url: '/ignored.pdf' }]
-            })
-          ],
+          histories: [],
           currentUserInput: '只问一个问题',
           tmbId: 'tmb_1',
           timezone: 'Asia/Shanghai',
           maxFileAmount: 20
         });
 
-        expect(result.chatHistories).toEqual([]);
         expect(result.rewrittenHistories).toEqual([]);
         expect(result.queryInput).toBe('');
         expect(result.currentFiles).toEqual([]);
@@ -1041,70 +1017,6 @@ describe('useUserContext', () => {
         expect(text).toContain('当前时间');
         expect(text).toContain('只问一个问题');
         expect(text).not.toContain('## 对话文件');
-      }
-    );
-  });
-
-  it('keeps the last pending interactive round when history is 0', async () => {
-    await runWithContextAsync(
-      {
-        mcpClientMemory: {}
-      },
-      async () => {
-        const histories: ChatItemMiniType[] = [
-          createHumanMessage({
-            dataId: 'question_1',
-            text: 'Need a choice'
-          }),
-          {
-            obj: ChatRoleEnum.AI,
-            memories: {
-              'agentLoopMemory-agent_1': {
-                providerState: {
-                  pendingMainContext: {
-                    messages: []
-                  }
-                }
-              }
-            },
-            value: [
-              {
-                interactive: {
-                  type: 'agentAsk',
-
-                  params: {
-                    toolCallId: 'ask_1',
-                    arguments: JSON.stringify({
-                      reason: 'Choose one',
-                      blockerType: 'user_choice',
-                      questions: [
-                        {
-                          question: 'Choose one?',
-                          options: [
-                            { summary: 'A', value: 'A' },
-                            { summary: 'B', value: 'B' }
-                          ]
-                        }
-                      ]
-                    })
-                  }
-                } as any
-              }
-            ]
-          }
-        ];
-
-        const result = await getUserContextMessagesForTest({
-          history: 0,
-          histories,
-          currentUserInput: 'A',
-          tmbId: 'tmb_1',
-          timezone: 'Asia/Shanghai',
-          maxFileAmount: 20
-        });
-
-        expect(result.chatHistories).toEqual(histories);
-        expect(result.rewrittenHistories).toEqual(histories);
       }
     );
   });

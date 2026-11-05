@@ -1,7 +1,6 @@
 ---
 case_version: 1
-# PR #8044 的原编号与先合入的 publishSource 用例冲突；001 保留给原用例，本租约用例使用 005。
-id: "FG-CHAT-CONVERSATION-005"
+id: "FG-CHAT-CONVERSATION-001"
 title: "持久化对话的生成互斥与租约生命周期"
 business: "chat/conversation"
 types: [api, e2e, integration]
@@ -9,6 +8,10 @@ category: basic
 scenario: success
 priority: P0
 status: ready
+automation:
+  - runner: node
+    script: .agents/test/chat/conversation/FG-CHAT-CONVERSATION-001.mjs
+    items: [C1-API, C2]
 tags: [pr-8044, generation-lease, 覆盖基础场景, 覆盖异常场景, 覆盖边界场景]
 evidence: [response, database, cache]
 sources:
@@ -35,7 +38,7 @@ routes:
   - "POST /api/core/ai/skill/debugChat"
   - "POST /api/core/chat/chatHome"
   - "POST /api/core/chat/chatAgentHelper/completions"
-related: [FG-CHAT-CONVERSATION-002, FG-CHAT-CONVERSATION-003, FG-INFRA-RUNTIME-002]
+related: [FG-CHAT-CONVERSATION-002, FG-CHAT-CONVERSATION-003, FG-INFRA-RUNTIME-001]
 baseline: "5a5211f70998f5311cd40b0e5362a1414be6fbdf"
 ---
 
@@ -46,6 +49,8 @@ baseline: "5a5211f70998f5311cd40b0e5362a1414be6fbdf"
 同一会话正在生成时，另一条发送应在写入消息前被拦截；不同会话可以独立运行。生成租约在执行期间独立续期，保存与流缓存收尾后释放，不能依赖浏览器在线或工具持续输出。
 
 ## 前置准备
+
+- 脚本配置沿用执行 skill 的 `references/api-cases.md`。C1-API 自动覆盖标准 v1/v2 链路；C1-ENTRY 保留入口矩阵的其他实际入口，不以主站 API 的结果替代 Pro/Skill/MCP/定时执行。C2 必须配置两个独立服务实例地址，否则整行阻塞。gate 只接受本轮注册 RUN 的真实 HTTP 请求，通过本进程屏障放行；Redis 仅 GET/PTTL，物理 key 使用当前 DAL helper 生成。
 
 - 版本：记录 `BASE_URL`、主仓 commit、Pro commit 和部署类型；本基线 Pro 为 `31a941cec82fc27b0568236f1575ea3a9be37e7b`。每个子场景使用 `RUN=pr8044-日期-随机串` 下独立的 chatId，不复用历史验收数据。
 - 权限：测试团队内有应用编辑、调试、对话和删除权限的成员；API Key、外链身份、Pro 和 MCP 权限按入口分别准备，凭证只通过环境变量或已登录浏览器提供。
@@ -66,12 +71,11 @@ db.chats.find(q, {chatId: 1, variables: 1, updateTime: 1, hasBeenRead: 1, chatGe
 db.chatitems.find(q, {_id: 1, dataId: 1, obj: 1, value: 1, errorMsg: 1}).sort({_id: 1});
 ```
 
-入口矩阵复用 C1/C2 的验证方法；每行单独记录结果，未具备授权或组件的行记阻塞，不能把主站结果视为 Pro 通过：
+入口矩阵复用 C1-API/C2 的验证方法；标准 API 由 C1-API 承担，C1-ENTRY 只补其余入口差异，已证明的通用边界不重铺。每行单独记录结果，未具备授权或组件的行记阻塞，不能把主站结果视为 Pro 通过：
 
 | 入口 | 触发方式与差异 |
 | --- | --- |
 | v2 普通对话、外链 | 从已登录聊天页或独立分享页发送，保存实际 `/api/v2/chat/completions` 请求；外链携带页面真实鉴权字段。 |
-| v1 API | 用测试应用 API Key 调用 `/api/v1/chat/completions`；保留连接至收尾，v1 不提供恢复镜像。 |
 | 工作流调试 | 从应用调试面板发送，确认实际 `/api/core/chat/chatTest` 请求中的 chatId 为持久化值。 |
 | Skill 调试 | 从 Skill 调试面板发送 `/api/core/ai/skill/debugChat`，确认来源为 `skillEdit`，不是伪装的 App 会话。 |
 | MCP、定时触发 | 分别调用已发布测试应用的 MCP 工具、创建仅运行一次的临时定时任务；从响应或限定查询取得实际 chatId，完成后删除任务。只断言持久化执行，不能臆造 HTTP completion 路由。 |
@@ -82,7 +86,8 @@ db.chatitems.find(q, {_id: 1, dataId: 1, obj: 1, value: 1, errorMsg: 1}).sort({_
 
 | 子场景 | 类型与起始状态 | 输入与操作 |
 | --- | --- | --- |
-| C1 | 基础场景；D0 | 启动 A，等待 gate 确认已进入；在 0、11、22、65 秒采集 lease 值和 PTTL。放行，等最终结果落库与 lease 消失；再发送下一轮。入口矩阵逐行复用这条主链路。 |
+| C1-API | 基础场景；D0 | v1/v2 标准流式调用分别启动 A，等待 gate 确认已进入；持续采样 lease/PTTL，包含 0、11、22、65 秒。放行，等最终结果落库与 lease 消失；同 chatId 再发送一轮。 |
+| C1-ENTRY | 基础场景；D0 | 按上方矩阵补充网页登录/分享、工作流与 Skill 调试、MCP/定时、Pro 入口；复用 C1-API 的续租与收尾方法，分别核实来源和数据，不重复 v1 API。 |
 | C2 | 异常场景；新 D0，A 停在 gate | 从第二连接对同 sourceType/sourceId/chatId 发送带独立 dataId 的 B；再用两个服务实例并发竞争一个全新 chatId。 |
 | C3 | 边界场景；新 D0 | A 等待期间分别向同应用不同 chatId、不同应用同 chatId、同资源 ID 不同 sourceType 发起有效请求；每个请求使用独立消息 ID。另以大小写不同的同一 ObjectId sourceId 竞争同一会话。 |
 | C4 | 异常场景；新 D0 | 分别在准备阶段让消息事务失败、执行阶段让 gate 返回错误、最终保存时让 Mongo 写入失败；最后一个变体再区分错误标记补写成功/也失败。只在私有库故障注入，保存失败阶段及前后快照，独立恢复依赖后再发送下一轮。 |
@@ -94,7 +99,8 @@ db.chatitems.find(q, {_id: 1, dataId: 1, obj: 1, value: 1, errorMsg: 1}).sort({_
 
 | 子场景 | 验证方式 | 特有预期与证据 |
 | --- | --- | --- |
-| C1 | API、数据库、缓存 | lease 初始 TTL 60 秒，每 10 秒续租；采样能看到 TTL 回升、同一值持续有效，65 秒仍占用。无业务输出也续租。保存和 mirror 收尾后才释放；下一轮成功，消息集合精确新增一对 Human/AI。保留时间序列、gate 记录和消息快照。 |
+| C1-API | API、数据库、缓存 | lease 初始 TTL 60 秒，每 10 秒续租；采样能看到 TTL 回升、同一值持续有效，65 秒仍占用。无业务输出也续租。保存和 mirror 收尾后才释放；下一轮成功，消息集合精确新增一对 Human/AI。保留时间序列、gate 记录和消息快照。 |
+| C1-ENTRY | API、数据库、缓存 | 各真实入口沿用相同租约与持久化约定，来源、资源及 chatId 正确。只执行已具备环境的入口，不将缺失的 Pro/Skill/MCP/定时入口记为通过。 |
 | C2 | API、数据库、缓存 | 明确占用返回 `chatIsGenerating`（业务 code `504001`）；B 的 dataId 没有任何 Mongo 消息，owner lease 值不变。跨实例竞争只有一个执行进入 gate；另一个被拒绝。JSON/SSE 和 UI 回填在 FG-CHAT-CONVERSATION-002 验证。 |
 | C3 | API、数据库、缓存 | 三种不同完整标识可独立持有租约，消息和结果各归所属资源；ObjectId 大小写等价不能绕过同一租约，chatId 不被额外归一化。 |
 | C4 | API、数据库、缓存 | 准备事务失败不留下半对消息，已取得 lease 被释放；执行失败允许保留该轮消息、错误及实际用量。最终保存失败即使错误标记也无法补写，finally 仍释放 lease，不能按已保存成功验收；保留占位与错误可见性的实际快照。各变体依赖恢复后下一轮可发送，不把“所有费用不变”当作通用预期。 |

@@ -161,6 +161,12 @@ async function initialize(options) {
     const choice = chosen?.find((item) => item.id === testCase.id);
     const parsed = await executionItems(testCase);
     if (
+      testCase.automation?.some((entry) =>
+        entry.items.some((id) => !parsed.items.some((item) => item.id === id))
+      )
+    )
+      throw new Error(`${testCase.id} 的 automation 包含不存在的子场景`);
+    if (
       choice?.items &&
       (!Array.isArray(choice.items) ||
         !choice.items.length ||
@@ -189,7 +195,23 @@ async function initialize(options) {
           : `源用例状态为 ${testCase.status}，需先完善定义再创建执行报告`;
       const scope = choice?.itemScope?.[item.id] ?? '完整子场景（含全部参数变体）';
       if (typeof scope !== 'string' || !scope.trim()) throw new Error('itemScope 必须为非空说明');
-      return { ...item, selected, scope, result, note, evidence: [], attempt: 0, history: [] };
+      const plannedExecutor =
+        scope === '完整子场景（含全部参数变体）' &&
+        testCase.automation?.some((entry) => entry.items.includes(item.id))
+          ? 'script'
+          : 'ai';
+      return {
+        ...item,
+        selected,
+        scope,
+        result,
+        note,
+        plannedExecutor,
+        executor: null,
+        evidence: [],
+        attempt: 0,
+        history: []
+      };
     });
     snapshots.push({
       ...testCase,

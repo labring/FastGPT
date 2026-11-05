@@ -88,6 +88,8 @@ export type TeamMemberItemType<
   } = { withPermission: true; withOrgs: true; withGroupRole: false }
 > = {
   userId: string;
+  /** 登录用户名，仅在查询了关联用户的接口中返回。 */
+  username?: string;
   tmbId: string;
   teamId: string;
   memberName: string;

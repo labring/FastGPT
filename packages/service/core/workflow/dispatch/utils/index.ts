@@ -256,6 +256,36 @@ export const getHistories = (
   return [...systemHistories, ...filterHistories];
 };
 
+const getInteractiveChainStartIndex = (histories: ChatItemMiniType[] = []) => {
+  const lastAIIndex = histories.findLastIndex((item) => item.obj === ChatRoleEnum.AI);
+  if (lastAIIndex < 0) return -1;
+  if (!getLastInteractiveValue(histories)) return -1;
+
+  let startIndex = lastAIIndex;
+  for (let index = lastAIIndex - 1; index >= 0; index--) {
+    if (histories[index].obj !== ChatRoleEnum.Human) continue;
+    startIndex = index;
+    // 紧邻交互之后的 Human 是该工具的回答，继续回溯到本次任务的原始输入。
+    const previous = histories[index - 1];
+    if (!previous || !getLastInteractiveValue([previous])) break;
+  }
+
+  return startIndex;
+};
+
+/**
+ * 移除 histories 末尾未完成的交互链，返回进入本次交互前的历史记录。
+ *
+ * 交互节点在恢复完成并继续流向下游节点或下一轮循环迭代时，需清理本次运行暂停期间
+ * 写入的临时交互记录，避免下游节点把自身输入误当作上一交互节点的回答。
+ */
+export const removeUnfinishedInteractiveHistories = (
+  histories: ChatItemMiniType[] = []
+): ChatItemMiniType[] => {
+  const startIndex = getInteractiveChainStartIndex(histories);
+  return startIndex >= 0 ? histories.slice(0, startIndex) : histories;
+};
+
 /**
  * Agent loop 的交互恢复上下文不能被 history=0 一并裁掉。
  *
@@ -267,17 +297,8 @@ export const getAgentLoopHistories = (
   histories: ChatItemMiniType[] = []
 ) => {
   const filteredHistories = getHistories(history, histories);
-  if (Array.isArray(history) || !getLastInteractiveValue(histories)) return filteredHistories;
-
-  const lastAIIndex = histories.findLastIndex((item) => item.obj === ChatRoleEnum.AI);
-  let startIndex = lastAIIndex;
-  for (let index = lastAIIndex - 1; index >= 0; index--) {
-    if (histories[index].obj !== ChatRoleEnum.Human) continue;
-    startIndex = index;
-    // 紧邻交互之后的 Human 是该工具的回答，继续回溯到本次任务的原始输入。
-    const previous = histories[index - 1];
-    if (!previous || !getLastInteractiveValue([previous])) break;
-  }
+  const startIndex = Array.isArray(history) ? -1 : getInteractiveChainStartIndex(histories);
+  if (startIndex < 0) return filteredHistories;
 
   const originalHistories = getHistories(history, histories.slice(0, startIndex));
   const checkpointIndex = histories.findLastIndex(hasContextCheckpoint);

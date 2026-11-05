@@ -472,7 +472,7 @@ export const appendWorkflowInteractiveValue = ({
 }) => {
   const latest = extractDeepestInteractive(interactive);
   if (isAskInteractive(latest)) {
-    const existing = values.find((value) => {
+    const existingIndex = values.findIndex((value) => {
       if (value.displayOnly || !value.interactive) return false;
       const current = extractDeepestInteractive(value.interactive);
       return isAgentAskInteractive(latest)
@@ -482,8 +482,12 @@ export const appendWorkflowInteractiveValue = ({
         : current?.type === 'workflowBuilderPreview' &&
             current.params.toolCallId === latest.params.toolCallId;
     });
-    if (existing) {
-      existing.interactive = interactive;
+    if (existingIndex !== -1) {
+      // 避免原地修改被子流程 nodeOutputs（如 history 输出）共享引用的 item，防止形成循环引用
+      values[existingIndex] = {
+        ...values[existingIndex],
+        interactive
+      };
       return;
     }
   }

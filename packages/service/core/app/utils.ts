@@ -302,14 +302,9 @@ export async function rewriteAppWorkflowToDetail({
       value: hasSavedValue ? savedInput.value : normalizedInput.value
     });
   };
-  type DatasetLoadResult = {
-    datasets: SelectedDatasetType[];
-    errors: string[];
-  };
-
   const formatSelectedDatasetValue = async (
     value?: SelectedDatasetSnapshot[] | SelectedDatasetSnapshot
-  ): Promise<DatasetLoadResult | undefined> => {
+  ): Promise<SelectedDatasetType[] | undefined> => {
     const loadDatasetInfo = async (
       snapshot: SelectedDatasetSnapshot
     ): Promise<SelectedDatasetType> => {
@@ -363,13 +358,7 @@ export async function rewriteAppWorkflowToDetail({
 
     if (!value) return;
     const datasets = Array.isArray(value) ? value : [value];
-    const results = await Promise.allSettled(datasets.map(loadDatasetInfo));
-    return {
-      datasets: results.flatMap((result) => (result.status === 'fulfilled' ? [result.value] : [])),
-      errors: results.flatMap((result) =>
-        result.status === 'rejected' ? [getErrText(result.reason, '', lang)] : []
-      )
-    };
+    return Promise.all(datasets.map(loadDatasetInfo));
   };
 
   await Promise.all(
@@ -537,10 +526,12 @@ export async function rewriteAppWorkflowToDetail({
 
                 return {
                   ...toolData,
+                  id: toolData.pluginId ?? toolData.id,
                   ...(tool.metadataLocale !== undefined
                     ? { metadataLocale: tool.metadataLocale }
                     : {}),
                   name: tool.name ?? data.name,
+                  avatar: tool.avatar ?? data.avatar,
                   source: tool.source ?? data.source,
                   toolConfig:
                     (tool.toolConfig?.mcpToolSet && 'toolId' in tool.toolConfig.mcpToolSet) ||
@@ -555,9 +546,11 @@ export async function rewriteAppWorkflowToDetail({
                   pluginId: tool.id,
                   source: tool.source,
                   version: tool.version ?? '',
+                  metadataLocale: tool.metadataLocale,
                   toolConfig: tool.toolConfig,
                   config: tool.config ?? {},
-                  inputs: tool.inputs ?? [],
+                  inputs: [],
+                  rawInputs: tool.inputs,
                   templateType: 'personalTool' as const,
                   flowNodeType: FlowNodeTypeEnum.tool,
                   name: tool.name ?? 'Invalid',
@@ -567,7 +560,6 @@ export async function rewriteAppWorkflowToDetail({
                   weight: 0,
                   isTool: true,
                   outputs: [],
-                  configStatus: 'invalid' as const,
                   pluginData: {
                     error: result.error
                   }
@@ -593,44 +585,31 @@ export async function rewriteAppWorkflowToDetail({
         node.flowNodeType === FlowNodeTypeEnum.datasetSearchNode ||
         node.flowNodeType === FlowNodeTypeEnum.agent
       ) {
-        const datasetErrors: string[] = [];
         await Promise.all(
           node.inputs.map(async (input) => {
             if (nodeInputIsReference(input)) return;
-            try {
-              // Agent
-              if (input.key === NodeInputKeyEnum.datasetSelectList) {
-                const result = await formatSelectedDatasetValue(input.value);
-                if (result) {
-                  input.value = result.datasets;
-                  datasetErrors.push(...result.errors);
-                }
+            // Agent / DatasetSearch
+            if (input.key === NodeInputKeyEnum.datasetSelectList) {
+              const datasets = await formatSelectedDatasetValue(input.value);
+              if (datasets) {
+                input.value = datasets;
               }
-              // workflow
-              if (input.key === NodeInputKeyEnum.datasetParams) {
-                const datasetParams = input.value as AppFormEditFormType['dataset'] | undefined;
-                if (datasetParams?.datasets) {
-                  const result = await formatSelectedDatasetValue(datasetParams.datasets);
-                  if (!result) return;
+            }
+            // Legacy Agent datasetParams
+            if (input.key === NodeInputKeyEnum.datasetParams) {
+              const datasetParams = input.value as AppFormEditFormType['dataset'] | undefined;
+              if (datasetParams?.datasets) {
+                const datasets = await formatSelectedDatasetValue(datasetParams.datasets);
+                if (!datasets) return;
 
-                  input.value = {
-                    ...datasetParams,
-                    datasets: result.datasets
-                  };
-                  datasetErrors.push(...result.errors);
-                }
+                input.value = {
+                  ...datasetParams,
+                  datasets
+                };
               }
-            } catch (error) {
-              datasetErrors.push(getErrText(error, '', lang));
             }
           })
         );
-        if (datasetErrors.length > 0) {
-          node.pluginData = {
-            ...node.pluginData,
-            error: [node.pluginData?.error, ...datasetErrors].filter(Boolean).join('\n')
-          };
-        }
       }
     })
   );

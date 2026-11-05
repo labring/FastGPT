@@ -140,6 +140,7 @@ const isAbortByLeave = (reason: unknown) => {
  * - Ask/Preview 回复会新建 user/AI 轮次并回写旧交互状态；表单等 submit 交互继续使用原 AI。
  * - 发送失败且后端没有返回 `responseText` 时恢复用户输入，并回滚本轮 human/AI placeholder。
  * - `abortRequest('leave')` 后无论流正常返回或抛错，都保留服务端生成状态，不更新当前会话。
+ * - 刷新销毁页面时也按 leave 中断本地订阅，避免浏览器断流错误回填已发送的草稿。
  */
 export const useChatGenerate = ({
   onStartChat,
@@ -660,6 +661,16 @@ export const useChatGenerate = ({
     safeAbortController(resumeControllerRef.current, abortReason);
   });
 
+  useEffect(() => {
+    // 刷新不保证触发 React 卸载；先标记为离开，避免断流被当作发送失败而复活已清理的草稿。
+    // beforeunload 可能被用户取消，往返缓存中的页面也可能恢复，只在页面销毁时断开本地订阅。
+    const onPageHide = (event: PageTransitionEvent) => {
+      if (!event.persisted) abortRequest('leave');
+    };
+    window.addEventListener('pagehide', onPageHide);
+    return () => window.removeEventListener('pagehide', onPageHide);
+  }, [abortRequest]);
+
   const sendPrompt = useMemoizedFn<SendPromptFnType>(
     ({
       text = '',
@@ -912,6 +923,9 @@ export const useChatGenerate = ({
                 state.sourceKey === sourceKey && state.chatId === chatId
             });
           } catch (err: any) {
+            // 浏览器刷新会先拒绝 fetch，再派发 pagehide。让出当前任务，等离页监听标记 leave，
+            // 避免在页面销毁前的微任务里把已发送内容重新写入草稿；取消离页仍正常处理真实错误。
+            await new Promise<void>((resolve) => setTimeout(resolve, 0));
             // 流可能将中断包装为 AbortError，需同时检查 controller 上保留的离开原因。
             if (isLeaveAborted() || isAbortByLeave(err)) return;
 
