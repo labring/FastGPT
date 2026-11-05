@@ -76,6 +76,7 @@ export default function PlanEditModal(props: {
       customDomain: undefined,
       maxUploadFileSize: undefined,
       maxUploadFileCount: undefined,
+      canHideShareBrandOverride: undefined,
       enableSandbox: undefined
     }
   });
@@ -115,6 +116,7 @@ export default function PlanEditModal(props: {
         customDomain: formatOptionalNumber(formData.customDomain),
         maxUploadFileSize: formatOptionalNumber(formData.maxUploadFileSize),
         maxUploadFileCount: formatOptionalNumber(formData.maxUploadFileCount),
+        canHideShareBrandOverride: formData.canHideShareBrandOverride,
         enableSandbox: formData.enableSandbox
       });
       toast({
@@ -155,6 +157,7 @@ export default function PlanEditModal(props: {
             customDomain: data.customDomain ?? undefined,
             maxUploadFileSize: data.maxUploadFileSize ?? undefined,
             maxUploadFileCount: data.maxUploadFileCount ?? undefined,
+            canHideShareBrandOverride: data.canHideShareBrandOverride ?? undefined,
             enableSandbox: data.enableSandbox ?? undefined
           });
         }}
@@ -443,6 +446,29 @@ export default function PlanEditModal(props: {
                 variant="outline"
                 placeholder="跟随套餐"
                 type="number"
+              />
+            </FormControl>
+            <FormControl mt={4}>
+              <FormLabel htmlFor="canHideShareBrandOverride" fontWeight={'bold'}>
+                控制是否展示免登录品牌标识
+              </FormLabel>
+              <Controller
+                control={control}
+                name="canHideShareBrandOverride"
+                render={({ field: { value, onChange } }) => (
+                  <Select
+                    id="canHideShareBrandOverride"
+                    value={value === undefined ? 'inherit' : value ? 'enabled' : 'disabled'}
+                    onChange={(e) => {
+                      const selectValue = e.target.value;
+                      onChange(selectValue === 'inherit' ? undefined : selectValue === 'enabled');
+                    }}
+                  >
+                    <option value="inherit">跟随套餐</option>
+                    <option value="enabled">启用</option>
+                    <option value="disabled">禁止</option>
+                  </Select>
+                )}
               />
             </FormControl>
             <FormControl mt={4}>

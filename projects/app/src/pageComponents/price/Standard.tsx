@@ -326,6 +326,15 @@ const Standard = ({
     myStandardPlan?.maxDatasetAmount
   ]);
 
+  useEffect(() => {
+    if (!highlightShareBrand || !feConfigs.show_outlink_brand) return;
+
+    // 多个套餐可同时高亮，只定位第一个实际展示的权益，避免滚动互相覆盖。
+    planContainerRef.current
+      ?.querySelector('[data-plan-feature="share-brand"]')
+      ?.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' });
+  }, [highlightShareBrand, feConfigs.show_outlink_brand, standardSubList]);
+
   // Pay code
   const [qrPayData, setQRPayData] = useState<QRPayProps>();
 
@@ -791,7 +800,9 @@ const Standard = ({
                 {/* function list */}
                 {item.level === StandardSubLevelEnum.custom ? (
                   <Grid gap={4} fontSize={'sm'}>
-                    {shareBrandPlacement === 'first' && <ShareBrandFeature level={item.level} />}
+                    {shareBrandPlacement === 'first' && (
+                      <ShareBrandFeature level={item.level} highlight={highlightShareBrand} />
+                    )}
                     <Flex alignItems={'center'}>
                       <MyIcon name={'price/right'} w={'16px'} mr={3} color={'primary.600'} />
                       <Box color={'myGray.600'}>{t('price:custom_plan_feature_1')}</Box>
@@ -808,7 +819,9 @@ const Standard = ({
                       <MyIcon name={'price/right'} w={'16px'} mr={3} color={'primary.600'} />
                       <Box color={'myGray.600'}>{t('price:custom_plan_feature_4')}</Box>
                     </Flex>
-                    {shareBrandPlacement === 'last' && <ShareBrandFeature level={item.level} />}
+                    {shareBrandPlacement === 'last' && (
+                      <ShareBrandFeature level={item.level} highlight={highlightShareBrand} />
+                    )}
                   </Grid>
                 ) : (
                   <StandardPlanContentList

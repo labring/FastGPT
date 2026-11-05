@@ -70,6 +70,19 @@ describe('Admin plan schemas', () => {
   });
 
   describe('UpdatePlanBodySchema', () => {
+    it.each([true, false, undefined])('preserves branding override %s', (override) => {
+      const parsed = UpdatePlanBodySchema.parse({
+        ...basePlan,
+        id: '68ad85a7463006c963799a05',
+        type: SubTypeEnum.standard,
+        level: StandardSubLevelEnum.basic,
+        canHideShareBrandOverride: override
+      });
+      expect(parsed.type === SubTypeEnum.standard && parsed.canHideShareBrandOverride).toBe(
+        override
+      );
+    });
+
     it('validates standard plan updates and preserves zero limits', () => {
       const valid = UpdatePlanBodySchema.parse({
         ...basePlan,

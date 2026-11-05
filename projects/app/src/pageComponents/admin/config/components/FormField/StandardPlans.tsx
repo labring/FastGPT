@@ -1,4 +1,4 @@
-import { Box, Button, Flex, Grid, Input, Switch } from '@chakra-ui/react';
+import { Box, Button, Flex, Grid, Input } from '@chakra-ui/react';
 import {
   StandardSubLevelEnum,
   standardSubLevelMap
@@ -29,7 +29,6 @@ const CustomPlanModal = ({
   onChange: (e: StandSubPlanLevelMapType) => void;
 }) => {
   const { t } = useTranslation();
-  const { feConfigs } = useSystemStore();
   const level = StandardSubLevelEnum.custom;
   const { handleSubmit, watch, setValue } = useForm({
     defaultValues: planMap[level]
@@ -106,15 +105,6 @@ const CustomPlanModal = ({
       </Flex>
 
       {/* 购买链接 */}
-      {feConfigs.show_outlink_brand && (
-        <Flex alignItems="center" gap={8} mb={6}>
-          <FormLabel flex="0 0 160px">{t('common:share_brand_control')}</FormLabel>
-          <Switch
-            isChecked={watch('canHideShareBrand') ?? false}
-            onChange={(e) => setValue('canHideShareBrand', e.target.checked)}
-          />
-        </Flex>
-      )}
       <Flex mb={6} pb={6} gap={8}>
         <FormLabel fontSize={'md'} fontWeight={'medium'} flex={'0 0 160px'}>
           购买链接

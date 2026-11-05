@@ -206,6 +206,7 @@ export const TeamSubSchema = z.object({
   customDomain: z.int().nullish(),
   maxUploadFileSize: z.int().nullish(),
   maxUploadFileCount: z.int().nullish(),
+  canHideShareBrandOverride: z.boolean().optional(),
   enableSandbox: z.boolean().optional() // 虚拟机
 });
 export type TeamSubSchemaType = z.infer<typeof TeamSubSchema>;

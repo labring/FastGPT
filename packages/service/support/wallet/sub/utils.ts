@@ -89,7 +89,7 @@ export const buildStandardPlan = (
   enableSandbox: standard?.enableSandbox ?? standardConstants.enableSandbox
 });
 
-/** 按传入时间筛选有效标准套餐，沿用套餐优先级并仅解析当前配置，不读取订阅快照权益。 */
+/** 按有效订阅优先级解析品牌权益，显式覆盖优先于对应等级的实时配置。 */
 export const getPlansCanHideShareBrand = ({
   plans,
   standardPlans,
@@ -103,7 +103,11 @@ export const getPlansCanHideShareBrand = ({
     (plan) => plan.type === SubTypeEnum.standard && new Date(plan.expiredTime).getTime() > now
   );
   const plan = sortStandPlans(activePlans)[0];
-  return !!plan && standardPlans?.[plan.currentSubLevel]?.canHideShareBrand === true;
+  return (
+    !!plan &&
+    (plan.canHideShareBrandOverride ?? standardPlans?.[plan.currentSubLevel]?.canHideShareBrand) ===
+      true
+  );
 };
 
 export const initTeamFreePlan = async ({

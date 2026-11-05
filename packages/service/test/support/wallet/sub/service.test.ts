@@ -45,6 +45,26 @@ describe('getTeamCanHideShareBrand', () => {
     expect(await getTeamCanHideShareBrand(teamId)).toBe(false);
   });
 
+  it('reads explicit overrides and resumes following live configuration when cleared', async () => {
+    const plan = await MongoTeamSub.create({
+      teamId,
+      type: SubTypeEnum.standard,
+      currentSubLevel: StandardSubLevelEnum.basic,
+      expiredTime: new Date('2099-01-01'),
+      canHideShareBrandOverride: false
+    });
+    expect(await getTeamCanHideShareBrand(teamId)).toBe(false);
+
+    await MongoTeamSub.updateOne({ _id: plan._id }, { $set: { canHideShareBrandOverride: true } });
+    global.subPlans!.standard!.basic!.canHideShareBrand = false;
+    expect(await getTeamCanHideShareBrand(teamId)).toBe(true);
+
+    await MongoTeamSub.updateOne({ _id: plan._id }, { $unset: { canHideShareBrandOverride: 1 } });
+    expect(await getTeamCanHideShareBrand(teamId)).toBe(false);
+    global.subPlans!.standard!.basic!.canHideShareBrand = true;
+    expect(await getTeamCanHideShareBrand(teamId)).toBe(true);
+  });
+
   it.each([StandardSubLevelEnum.custom, StandardSubLevelEnum.free])(
     'does not inherit branding permission from other levels for %s',
     async (currentSubLevel) => {

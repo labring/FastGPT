@@ -114,10 +114,17 @@ const StandardPlanContentList = ({
     feConfigs.limit.uploadFileMaxAmount
   ]);
 
+  // 个人套餐使用团队实际权益；购买页没有订阅快照，继续展示套餐模板配置。
+  const canHideShareBrand = standplan ? standplan.canHideShareBrand === true : undefined;
+
   return planContent ? (
     <Grid gap={4} fontSize={'sm'} fontWeight={500}>
       {shareBrandPlacement === 'first' && (
-        <ShareBrandFeature level={level} highlight={highlightShareBrand} />
+        <ShareBrandFeature
+          level={level}
+          highlight={highlightShareBrand}
+          canHideShareBrand={canHideShareBrand}
+        />
       )}
       <Flex alignItems={'center'}>
         <MyIcon
@@ -286,7 +293,11 @@ const StandardPlanContentList = ({
         </Flex>
       )}
       {shareBrandPlacement === 'last' && (
-        <ShareBrandFeature level={level} highlight={highlightShareBrand} />
+        <ShareBrandFeature
+          level={level}
+          highlight={highlightShareBrand}
+          canHideShareBrand={canHideShareBrand}
+        />
       )}
     </Grid>
   ) : null;

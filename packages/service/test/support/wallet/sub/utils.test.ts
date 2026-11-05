@@ -112,6 +112,38 @@ describe('getPlansCanHideShareBrand', () => {
       StandardSubLevelEnum.advanced
     ]);
   });
+
+  it.each([
+    [true, false, true],
+    [false, true, false],
+    [undefined, true, true],
+    [undefined, false, false]
+  ])('applies override %s over configured entitlement %s', (override, configured, expected) => {
+    expect(
+      getPlansCanHideShareBrand({
+        plans: [{ ...activePlan, canHideShareBrandOverride: override }],
+        standardPlans: { basic: { ...baseConstants, canHideShareBrand: configured } },
+        now
+      })
+    ).toBe(expected);
+  });
+
+  it('uses only the selected active subscription override', () => {
+    expect(
+      getPlansCanHideShareBrand({
+        plans: [
+          { ...activePlan, canHideShareBrandOverride: true },
+          {
+            ...activePlan,
+            currentSubLevel: StandardSubLevelEnum.advanced,
+            canHideShareBrandOverride: false
+          }
+        ],
+        standardPlans,
+        now
+      })
+    ).toBe(false);
+  });
 });
 
 describe('getStandardPlansConfig', () => {
@@ -822,6 +854,36 @@ describe('getTeamStandPlan', () => {
     vi.clearAllMocks();
     delete (global as any).subPlans;
   });
+
+  it.each([
+    [true, false, false],
+    [false, true, true],
+    [true, undefined, true],
+    [false, undefined, false]
+  ])(
+    'returns team override %s/%s consistently in both status queries',
+    async (configured, override, expected) => {
+      const plan = {
+        ...baseStandard,
+        expiredTime: new Date('2099-01-01'),
+        canHideShareBrandOverride: override
+      };
+      const find = vi.spyOn(MongoTeamSub, 'find').mockReturnValue({
+        lean: vi.fn().mockResolvedValue([plan])
+      } as any);
+      global.subPlans = {
+        standard: { basic: { ...baseConstants, canHideShareBrand: configured } }
+      };
+      try {
+        const compact = await getTeamStandPlan({ teamId: mockTeamId });
+        const full = await getTeamPlanStatus({ teamId: mockTeamId });
+        expect(compact.standard?.canHideShareBrand).toBe(expected);
+        expect(full.standard?.canHideShareBrand).toBe(expected);
+      } finally {
+        find.mockRestore();
+      }
+    }
+  );
 
   it.each([
     { advancedExpired: true, basicEntitled: true, advancedEntitled: false, expected: true },

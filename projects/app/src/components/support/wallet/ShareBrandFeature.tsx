@@ -1,31 +1,30 @@
-import React, { useEffect, useRef } from 'react';
+import React from 'react';
 import { Box, Flex } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { StandardSubLevelEnum } from '@fastgpt/global/support/wallet/sub/constants';
+import type { StandardSubLevelEnum } from '@fastgpt/global/support/wallet/sub/constants';
 
-/** 所有前台套餐入口共用的权益行；定位只允许高级版自身授权的条目。 */
+/** 所有前台套餐入口共用的权益行，按各套餐配置决定展示与高亮。 */
 const ShareBrandFeature = ({
   level,
-  highlight = false
+  highlight = false,
+  canHideShareBrand
 }: {
   level: `${StandardSubLevelEnum}`;
   highlight?: boolean;
+  canHideShareBrand?: boolean;
 }) => {
   const { t } = useSafeTranslation();
   const { feConfigs, subPlans } = useSystemStore();
-  const ref = useRef<HTMLDivElement>(null);
   const visible =
-    !!feConfigs.show_outlink_brand && subPlans?.standard?.[level]?.canHideShareBrand === true;
-  const focused = visible && highlight && level === StandardSubLevelEnum.advanced;
-  useEffect(() => {
-    if (focused) ref.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-  }, [focused]);
+    !!feConfigs.show_outlink_brand &&
+    (canHideShareBrand ?? subPlans?.standard?.[level]?.canHideShareBrand) === true;
+  const focused = visible && highlight;
 
   return visible ? (
-    <Flex ref={ref} data-plan-feature="share-brand" data-plan-level={level} alignItems="center">
+    <Flex data-plan-feature="share-brand" data-plan-level={level} alignItems="center">
       <MyIcon name="price/right" w="16px" mr={3} color="primary.600" />
       <Box
         color="myGray.600"
