@@ -13,6 +13,7 @@ evidence: [ui]
 sources: []
 routes: []
 related: []
+automation: []
 baseline: "填写实际分析的 commit"
 ---
 

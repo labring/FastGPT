@@ -51,7 +51,7 @@ routes:
   - "PUT /api/core/app/logs/updateLogKeys"
 related:
   - "FG-CHAT-HISTORY-FEEDBACK-001"
-  - "FG-CHAT-CONVERSATION-001"
+  - "FG-CHAT-CONVERSATION-005"
   - "FG-ADMIN-MAINTENANCE-001"
 baseline: "6b36b406219523b03f5d944b8b5380eeebd26e8a"
 ---
@@ -65,7 +65,7 @@ baseline: "6b36b406219523b03f5d944b8b5380eeebd26e8a"
 ## 前置准备
 
 - 环境为 4.18.0 及以上版本，依据 `.agents/design/api/chat-publish-source.md` 的两列、名称回退与 ID Tooltip 规则。新增列 key=`publishSourceType`，默认开启；原 `source` 列继续控制渠道名，保留已有开关和顺序。
-- 沿用 CONVERSATION-001 的临时资源，使用对 W 有日志读取权限的登录成员 L；新建 R1(api/Ka)、R2(share/S1)、R3(mcp/M1)；R4 为仅旧 sourceName=“历史入口”且无 publishSource 的旧记录；R5 旧/新名称均缺失；R6 type=api 无 id、有旧 sourceName；R7 来源记录不存在、旧名称缺失但 publishSource.id 存在；R8 对应记录不存在、有旧 sourceName。R10 为 online/test/cronJob，分别备名称缺失及旧 sourceName/返回 name 有应用名的变体。另备旧名称 null/空串/空白变体。R9 为仅 UI 的未来未知 type 响应夹具，通过测试专用 HTTP 代理仅替换本例 logs/list 响应中 R9 的 publishSource.type 为 future 提供，保存原始/替换响应，不向真实 Schema 强行写非法枚举后把接口报错当成 UI 验收。
+- 沿用 CONVERSATION-005 的临时资源，使用对 W 有日志读取权限的登录成员 L；新建 R1(api/Ka)、R2(share/S1)、R3(mcp/M1)；R4 为仅旧 sourceName=“历史入口”且无 publishSource 的旧记录；R5 旧/新名称均缺失；R6 type=api 无 id、有旧 sourceName；R7 来源记录不存在、旧名称缺失但 publishSource.id 存在；R8 对应记录不存在、有旧 sourceName。R10 为 online/test/cronJob，分别备名称缺失及旧 sourceName/返回 name 有应用名的变体。另备旧名称 null/空串/空白变体。R9 为仅 UI 的未来未知 type 响应夹具，通过测试专用 HTTP 代理仅替换本例 logs/list 响应中 R9 的 publishSource.type 为 future 提供，保存原始/替换响应，不向真实 Schema 强行写非法枚举后把接口报错当成 UI 验收。
 - 夹具均由本例独立 appId/chatId 白名单管理，保存 BSON 初态。无 publishSource 的展示夹具在本子场景结束前不跑迁移，以免 type 被回填改变“缺失”条件。
 - 页面入口“应用详情 → 对话日志”，按可见列名“调用渠道”“渠道名”及显示文本定位。记录 list 原始 data.list 项，确认 id 字符串等于渠道真实 _id。API 仅扩展 `{type,id,name}`，缺失属性可省略；展示兜底文案由客户端生成。
 - rename/delete 只针对临时渠道；通过真实管理页面操作并保存网络证据，刷新后观察。跨团队/类型冲突夹具只在隔离库创建；不匹配应用仅用于确有应用归属约束的 OutLink/MCP，不把个人 API Key 的旧默认 appId 当新绑定权限。
@@ -82,7 +82,7 @@ baseline: "6b36b406219523b03f5d944b8b5380eeebd26e8a"
 | C3 | 生命周期；R1、R7、R8 | 修改 Ka 名称后刷新；删除另一临时 Key 生成对应无关联记录；分别有/无旧名称，hover 最终显示文本。 |
 | C4 | 关联隔离；临时异常夹具 | 来源 id 指向其他团队/不匹配应用的渠道，或两个集合中具有相同 ObjectId 的不同类型渠道；L 查询日志。 |
 | C5 | 筛选、统计与身份；按上述 Chat/日志桶各自基线 | 对 api/share 来源、使用者和时间范围分别查询 list/getUsers、导出，并在可用 Pro 页面查图表；对照新 type 缺失回退旧 source、新 type 与旧 source 冲突，以及来源筛选省略/空数组。运行 Ka→Kb 同桶与新桶对照；身份展示仅回归分享访客和默认双身份，不重复第一阶段完整 UID 矩阵。 |
-| C6 | 来源更新；承接 CONVERSATION-001 C2/C3 | 来源从分享到 API、从 API 到 online 后刷新；检查渠道名和 tooltip 不残留前一 ID/name。 |
+| C6 | 来源更新；承接 CONVERSATION-005 C2/C3 | 来源从分享到 API、从 API 到 online 后刷新；检查渠道名和 tooltip 不残留前一 ID/name。 |
 | C7 | 性能；独立性能应用 | 固定相同基础设施和 100000 条临时数据，保存旧/新版本各自索引清单；预热后 pageSize=20，首屏/深分页/来源+使用者筛选各采样 30 次，记录 P50/P95、错误率、查询次数与 explain。先在可比较索引下对比，若采用新索引再单独记录效果，不混作一个结论。样本不依赖模型调用。 |
 | C8 | 列偏好；恢复已备份旧配置，默认用户用独立账号 | 打开“应用详情 → 对话日志”的列配置；检查旧开关/顺序，显示两列后拖动并保存、刷新重载。另以未保存偏好的测试账号检查身份列默认状态，新调用渠道列默认开启。 |
 

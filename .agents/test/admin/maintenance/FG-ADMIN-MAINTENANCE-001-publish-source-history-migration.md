@@ -47,7 +47,7 @@ routes:
   - "POST /api/admin/migrations/retry"
   - "GET /api/admin/migrations/failedRecords"
 related:
-  - "FG-CHAT-CONVERSATION-001"
+  - "FG-CHAT-CONVERSATION-005"
   - "FG-PERMISSION-RESOURCE-001"
   - "FG-CHAT-HISTORY-FEEDBACK-002"
 baseline: "d6edd8058f68ab8fb48d1a258ad05d3fb87b83fb"

@@ -245,14 +245,15 @@
       <div class="table-scroll">
         <table id="case-table" aria-label="用例执行列表">
           <colgroup>
-            <col style="width: 24%" />
-            <col style="width: 11%" />
+            <col style="width: 22%" />
+            <col style="width: 10%" />
             <col style="width: 8%" />
+            <col style="width: 7%" />
             <col style="width: 8%" />
-            <col style="width: 6%" />
+            <col style="width: 5%" />
             <col style="width: 9%" />
-            <col style="width: 8%" />
-            <col style="width: 26%" />
+            <col style="width: 7%" />
+            <col style="width: 24%" />
           </colgroup>
           <thead>
             <tr>
@@ -260,6 +261,7 @@
               <th scope="col">业务</th>
               <th scope="col">用例类型</th>
               <th scope="col">测试方式</th>
+              <th scope="col">执行方</th>
               <th scope="col">优先级</th>
               <th scope="col">场景进度</th>
               <th scope="col">执行结果</th>
@@ -277,7 +279,7 @@
     <!-- REPORT_VENDORS -->
     <!-- REPORT_STATE -->
     <script>
-      const { labels, summarize } = FastGPTTestRun;
+      const { labels, executors, executorLabel, summarize } = FastGPTTestRun;
       const categories = { basic: '基础场景', abnormal: '异常场景', boundary: '边界场景' };
       const methods = { api: '接口', ui: 'UI', e2e: '端到端', integration: '服务集成' };
       let run = JSON.parse(document.getElementById('run-data').textContent);
@@ -365,14 +367,19 @@
           );
           body.append(element('p', '执行记录（完整预期保留在上方）', 'muted'), table);
         }
-        table.tHead.rows[0].append(element('th', '执行结果'), element('th', '结果说明'));
+        table.tHead.rows[0].append(
+          element('th', '执行方'),
+          element('th', '执行结果'),
+          element('th', '结果说明')
+        );
         Array.from(table.tBodies[0].rows).forEach((row, i) => {
           const item = testCase.items[i];
           const result = element('td', undefined, 'execution-result');
+          const executor = element('td', undefined, 'execution-executor');
           const note = element('td', undefined, 'execution-note');
-          row.append(result, note);
+          row.append(executor, result, note);
           if (!item.selected) row.classList.add('excluded');
-          cells.set(testCase.id + '/' + item.id, { result, note });
+          cells.set(testCase.id + '/' + item.id, { executor, result, note });
         });
         body.querySelectorAll('table').forEach((entry) => {
           const wrap = element('div', undefined, 'table-scroll');
@@ -411,6 +418,7 @@
           button.setAttribute('aria-controls', 'detail-' + index);
           title.append(button, element('small', testCase.id, 'case-id'));
           const progress = element('td');
+          const executor = element('td');
           const result = element('td');
           const note = element('div', undefined, 'case-note');
           const noteCell = element('td');
@@ -420,6 +428,7 @@
             element('td', testCase.business),
             element('td', categories[testCase.category]),
             element('td', testCase.types.map((type) => methods[type]).join(' / ')),
+            executor,
             element('td', testCase.priority),
             progress,
             result,
@@ -429,7 +438,7 @@
           detail.id = 'detail-' + index;
           detail.hidden = true;
           const content = element('td');
-          content.colSpan = 8;
+          content.colSpan = 9;
           detail.append(content);
           button.addEventListener('click', () => {
             const current = run.cases.find((entry) => entry.id === testCase.id);
@@ -443,7 +452,7 @@
           row.addEventListener('click', (event) => {
             if (!event.target.closest('button')) button.click();
           });
-          rows.set(testCase.id, { progress, result, note });
+          rows.set(testCase.id, { executor, progress, result, note });
           document.getElementById('case-rows').append(row, detail);
         });
       }
@@ -453,6 +462,7 @@
         testCase.items.forEach((item) => {
           const cell = cells.get(testCase.id + '/' + item.id);
           if (!cell) return;
+          cell.executor.textContent = executorLabel(item);
           const historyOpen = cell.note.querySelector('details')?.open ?? false;
           cell.result.replaceChildren(
             badge(item.result),
@@ -472,7 +482,14 @@
               entry.append(
                 element(
                   'small',
-                  time(event.at) + ' · 尝试 ' + event.attempt + ' · ' + labels[event.result]
+                  time(event.at) +
+                    ' · 尝试 ' +
+                    event.attempt +
+                    ' · ' +
+                    labels[event.result] +
+                    ' · ' +
+                    executors[event.executor ?? 'ai'] +
+                    (event.reviewer ? ' · AI 复核' : '')
                 ),
                 element('div', event.note, 'actual-note'),
                 evidenceLinks(event.evidence)
@@ -525,6 +542,13 @@
           );
           row.result.replaceChildren(badge(summary.result));
           const selected = testCase.items.filter((item) => item.selected);
+          const methods = [
+            ...new Set(selected.map((item) => item.executor ?? item.plannedExecutor ?? 'ai'))
+          ];
+          row.executor.textContent =
+            methods.length > 1 ? '混合：脚本 / AI' : (executors[methods[0]] ?? '未纳入');
+          if (selected.some((item) => !item.attempt))
+            row.executor.append(element('small', '含未执行项'));
           const issues = selected.filter((item) => ['failed', 'blocked'].includes(item.result));
           const observed = selected.filter((item) => item.result !== 'pending');
           const notes = issues.length ? issues : observed;

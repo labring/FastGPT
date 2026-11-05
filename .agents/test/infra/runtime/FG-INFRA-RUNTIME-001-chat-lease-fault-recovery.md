@@ -1,7 +1,6 @@
 ---
 case_version: 1
-# PR #8044 的原编号与先合入的 customUid 沙箱用例冲突；001 保留给原用例，本租约用例使用 002。
-id: "FG-INFRA-RUNTIME-002"
+id: "FG-INFRA-RUNTIME-001"
 title: "生成租约在进程退出与 Redis 故障下的降级和回收"
 business: "infra/runtime"
 types: [api, integration]
@@ -24,7 +23,7 @@ routes:
   - "POST /api/v2/chat/completions"
   - "POST /api/core/chat/history/getHistoryStatus"
   - "GET /api/core/chat/resume"
-related: [FG-CHAT-CONVERSATION-005, FG-CHAT-CONVERSATION-002, FG-CHAT-HISTORY-001]
+related: [FG-CHAT-CONVERSATION-001, FG-CHAT-CONVERSATION-002, FG-CHAT-HISTORY-001]
 baseline: "5a5211f70998f5311cd40b0e5362a1414be6fbdf"
 ---
 
@@ -36,7 +35,7 @@ baseline: "5a5211f70998f5311cd40b0e5362a1414be6fbdf"
 
 ## 前置准备
 
-- 复用 FG-CHAT-CONVERSATION-005 的确定性工作流、限定查询和清理，但必须使用可重启的专用实例和私有 Redis。另一个观察进程直连 Redis，不经过故障代理；不能重启共享 Redis 或阻断整台 DEV 的网络。
+- 复用 FG-CHAT-CONVERSATION-001 的确定性工作流、限定查询和清理，但必须使用可重启的专用实例和私有 Redis。另一个观察进程直连 Redis，不经过故障代理；不能重启共享 Redis 或阻断整台 DEV 的网络。
 - RESP 协议代理按本轮 key 和获取/续租/释放/MGET 命令分别注入错误、超时、延迟执行、延迟响应。记录单调时间、实际执行及回复，故障只作用指定命令；Mongo、gate 和观察连接保持健康。
 - 每个场景使用新 chatId，开始前保存 owner 值、PTTL 和消息快照。观察 `GET/PTTL` 每秒一次，以消失或恢复为判据；TTL 从最后一次实际成功续租/迟到获取执行时计算，而非从发起请求时计算。
 - 时间上限：租约回收为最后成功写入后 60 秒加 5 秒观察余量；恢复流无终止事件时，再允许一个 30 秒 XREAD 阻塞周期及 5 秒网络余量。获取等待上限来自 DAL 默认 3 秒，不要求整个生成请求 3 秒结束。
