@@ -324,6 +324,98 @@ describe('POST /api/core/dataset/training/rebuildEmbedding', () => {
     expect(res.code).toBe(200);
   });
 
+  it('rebuilds first-index failed data with the new model and clears old failure records', async () => {
+    const { root, dataset, collection } = await createDatasetContext();
+    const failedData = await MongoDatasetData.create({
+      teamId: root.teamId,
+      tmbId: root.tmbId,
+      datasetId: dataset._id,
+      collectionId: collection._id,
+      q: 'failed content',
+      indexes: [],
+      indexStatus: 'error',
+      indexErrorMsg: '404 old model does not exist'
+    });
+    const indexedData = await MongoDatasetData.create({
+      teamId: root.teamId,
+      tmbId: root.tmbId,
+      datasetId: dataset._id,
+      collectionId: collection._id,
+      q: 'indexed content',
+      indexes: [],
+      indexStatus: 'indexed'
+    });
+    await MongoDatasetTraining.create({
+      teamId: root.teamId,
+      tmbId: root.tmbId,
+      datasetId: dataset._id,
+      collectionId: collection._id,
+      billId: 'old-bill',
+      mode: TrainingModeEnum.index,
+      retryCount: 0,
+      lockTime: new Date(),
+      errorMsg: '404 old model does not exist'
+    });
+    // 解析失败与 embedding 无关，切换模型不能清掉
+    await MongoDatasetTraining.create({
+      teamId: root.teamId,
+      tmbId: root.tmbId,
+      datasetId: dataset._id,
+      collectionId: collection._id,
+      billId: 'parse-bill',
+      mode: TrainingModeEnum.parse,
+      retryCount: 0,
+      lockTime: new Date(),
+      errorMsg: 'parse failed'
+    });
+
+    const res = await Call(handler, {
+      auth: root,
+      body: {
+        datasetId: String(dataset._id),
+        vectorModelId: visionEmbeddingModel.modelId
+      }
+    });
+
+    expect(res.error).toBeUndefined();
+    expect(res.code).toBe(200);
+
+    // 首次索引失败的数据按新模型重新走首次索引，错误信息被清空
+    const failedAfter = await MongoDatasetData.findById(failedData._id).lean();
+    expect(failedAfter?.indexStatus).toBe('indexing');
+    expect(failedAfter?.indexErrorMsg).toBeUndefined();
+    const failedTask = await MongoDatasetTraining.findOne({
+      dataId: failedData._id,
+      mode: TrainingModeEnum.index
+    }).lean();
+    expect(failedTask).toEqual(expect.objectContaining({ retryCount: 3 }));
+
+    // 已成功索引的数据仍走 rebuildIndex（seed 后可能已被领取为 running）
+    const indexedAfter = await MongoDatasetData.findById(indexedData._id).lean();
+    expect(['rebuildIndexPending', 'rebuildIndexRunning']).toContain(indexedAfter?.indexStatus);
+    await expect(
+      MongoDatasetTraining.countDocuments({
+        dataId: indexedData._id,
+        mode: TrainingModeEnum.rebuildIndex
+      })
+    ).resolves.toBeGreaterThan(0);
+
+    // 旧模型的最终失败详情与重试入口被清空
+    await expect(
+      MongoDatasetTraining.countDocuments({
+        datasetId: dataset._id,
+        errorMsg: '404 old model does not exist'
+      })
+    ).resolves.toBe(0);
+    // 解析失败与 embedding 切换无关，保留失败详情与重试入口
+    await expect(
+      MongoDatasetTraining.countDocuments({
+        datasetId: dataset._id,
+        errorMsg: 'parse failed'
+      })
+    ).resolves.toBe(1);
+  });
+
   it('should reject model rebuilding while an active training task exists', async () => {
     const { root, dataset, collection } = await createDatasetContext();
     await MongoDatasetTraining.create({

@@ -8,6 +8,10 @@ import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { hasDatasetTrainingTask } from '@fastgpt/service/core/dataset/training/entity';
+import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
+import { finalErrorTrainingMatch } from '@fastgpt/service/core/dataset/training/query';
+import { pushDataListToTrainingQueue } from '@fastgpt/service/core/dataset/training/controller';
+import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { assertAuthModels } from '@fastgpt/service/support/permission/model/auth';
@@ -71,6 +75,17 @@ async function handler(req: ApiRequestProps): Promise<RebuildEmbeddingResponse> 
     vectorModelId: vectorModelData.modelId!
   });
 
+  // 首次索引失败的数据没有可用索引，rebuildIndex 只能重算已有索引；
+  // 这类数据要随新模型重新走一遍首次索引。
+  const failedDataList = await MongoDatasetData.find(
+    {
+      teamId,
+      datasetId,
+      indexStatus: DatasetDataIndexStatusEnum.error
+    },
+    { _id: 1, collectionId: 1, q: 1, a: 1, imageId: 1, indexes: 1, chunkIndex: 1 }
+  ).lean();
+
   // update vector model and dataset.data rebuild field
   await mongoSessionRun(async (session) => {
     await MongoDataset.findByIdAndUpdate(
@@ -97,6 +112,17 @@ async function handler(req: ApiRequestProps): Promise<RebuildEmbeddingResponse> 
         { session }
       );
     }
+    // 只清理向量模型导致的 index/rebuildIndex 最终失败；解析、QA、VLM、同义词失败
+    // 与 embedding 切换无关，必须保留其失败详情和手动重试入口。
+    await MongoDatasetTraining.deleteMany(
+      {
+        teamId,
+        datasetId,
+        mode: { $in: [TrainingModeEnum.index, TrainingModeEnum.rebuildIndex] },
+        ...finalErrorTrainingMatch
+      },
+      { session }
+    );
     await MongoDatasetData.updateMany(
       {
         teamId,
@@ -108,12 +134,57 @@ async function handler(req: ApiRequestProps): Promise<RebuildEmbeddingResponse> 
       {
         $set: {
           indexStatus: DatasetDataIndexStatusEnum.rebuildIndexPending
-        }
+        },
+        $unset: { indexErrorMsg: '' }
       },
       {
         session
       }
     );
+
+    if (failedDataList.length) {
+      // 首次索引失败的 data 进入普通 index 队列，按新模型重新生成索引与向量。
+      await MongoDatasetData.updateMany(
+        {
+          teamId,
+          datasetId,
+          _id: { $in: failedDataList.map((item) => item._id) }
+        },
+        {
+          $set: { indexStatus: DatasetDataIndexStatusEnum.indexing },
+          $unset: { indexErrorMsg: '' }
+        },
+        { session }
+      );
+
+      const dataByCollection = new Map<string, typeof failedDataList>();
+      failedDataList.forEach((item) => {
+        const collectionId = String(item.collectionId);
+        const list = dataByCollection.get(collectionId) ?? [];
+        list.push(item);
+        dataByCollection.set(collectionId, list);
+      });
+      for (const [collectionId, data] of dataByCollection) {
+        await pushDataListToTrainingQueue({
+          teamId,
+          tmbId,
+          datasetId,
+          collectionId,
+          vectorModel: vectorModelData,
+          mode: TrainingModeEnum.index,
+          billId: String(usageId),
+          session,
+          data: data.map((item) => ({
+            q: item.q,
+            a: item.a,
+            imageId: item.imageId,
+            dataId: String(item._id),
+            chunkIndex: item.chunkIndex,
+            indexes: item.indexes
+          }))
+        });
+      }
+    }
   });
 
   await seedDatasetRebuildTasks({
