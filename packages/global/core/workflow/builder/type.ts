@@ -81,9 +81,12 @@ export const WorkflowBuilderPreviewSectionSchema = z.object({
 });
 export type WorkflowBuilderPreviewSection = z.infer<typeof WorkflowBuilderPreviewSectionSchema>;
 
-/** Preview 展示与服务端校验共用的工具参数，解析结果不重复持久化。 */
+/** Preview 展示与历史恢复共用的参数；summary 可缺省以兼容历史记录，解析结果不重复持久化。 */
 export const WorkflowBuilderPreviewPayloadSchema = z.object({
   title: z.string().trim().min(1),
+  summary: z.string().trim().min(1).optional().meta({
+    description: '用两三句话说明工作流的输入、主要处理和最终结果；历史预览可缺省'
+  }),
   mermaid: z.string().trim().min(1),
   sections: z.array(WorkflowBuilderPreviewSectionSchema).min(1)
 });

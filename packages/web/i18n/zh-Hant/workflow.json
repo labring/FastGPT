@@ -385,5 +385,7 @@
   "workflow_builder_preview_confirm": "確認並開始搭建",
   "workflow_builder_preview_revise": "修改方案",
   "workflow_builder_preview_cancel": "取消本次搭建",
-  "workflow_builder_preview_revise_placeholder": "請說明需要調整的節點或流程"
+  "workflow_builder_preview_revise_placeholder": "請說明需要調整的節點或流程",
+  "workflow_builder_preview_pending": "待確認",
+  "workflow_builder_preview_flow": "流程預覽"
 }
