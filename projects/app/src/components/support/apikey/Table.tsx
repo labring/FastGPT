@@ -85,6 +85,7 @@ type ApiKeyTableProps = {
   appId?: string;
   keyType?: ApiKeyTypeEnum;
   title?: React.ReactNode;
+  hideHeader?: boolean;
 };
 
 const apiKeyTableFields = [
@@ -193,11 +194,75 @@ const ApiKeyTagEditor = ({
   );
 };
 
+/** 稳定挂载的密钥页标题与文档入口；发布页切换类型时仅重建下方表格。 */
+export const ApiKeyTableHeader = ({
+  title,
+  isPublishMode = false
+}: {
+  title: React.ReactNode;
+  isPublishMode?: boolean;
+}) => {
+  const { t } = useSafeTranslation();
+  const { feConfigs } = useSystemStore();
+  return (
+    <Flex
+      flexShrink={0}
+      minW={0}
+      alignItems={'center'}
+      justifyContent={'space-between'}
+      h={isPublishMode ? 'auto' : '64px'}
+      px={isPublishMode ? 0 : [4, 6]}
+      borderBottom={isPublishMode ? 'none' : '1px solid'}
+      borderColor={'myGray.200'}
+    >
+      <Box
+        as={isPublishMode ? undefined : 'h1'}
+        {...(isPublishMode
+          ? {
+              color: 'myGray.900',
+              fontWeight: 'medium',
+              fontSize: 'lg'
+            }
+          : accountTitleTextStyles)}
+      >
+        {title}
+      </Box>
+      <Flex alignItems={'center'} gap={2} ml={3}>
+        {feConfigs?.docUrl && (
+          <Button
+            as={Link}
+            href={feConfigs.openAPIDocUrl || getDocPath('/openapi/intro')}
+            target={'_blank'}
+            size={'sm'}
+            variant={'whitePrimary'}
+            textDecoration={'none'}
+            _hover={{ textDecoration: 'none' }}
+          >
+            {t('apikey:usage_tutorial')}
+          </Button>
+        )}
+        <Button
+          as={Link}
+          href={'/apidoc/systemopenapi'}
+          target={'_blank'}
+          size={'sm'}
+          variant={'primary'}
+          textDecoration={'none'}
+          _hover={{ textDecoration: 'none' }}
+        >
+          {t('apikey:openapi_document')}
+        </Button>
+      </Flex>
+    </Flex>
+  );
+};
+
 const ApiKeyTable = ({
   mode = 'account',
   appId,
   keyType = ApiKeyTypeEnum.personal,
-  title
+  title,
+  hideHeader = false
 }: ApiKeyTableProps) => {
   const isAppKey = keyType === ApiKeyTypeEnum.app;
   const { t } = useSafeTranslation();
@@ -483,61 +548,21 @@ const ApiKeyTable = ({
       minH={0}
       position={'relative'}
       p={isPublishMode ? 6 : 0}
+      pt={hideHeader ? 0 : undefined}
     >
-      <Flex
-        flexShrink={0}
-        minW={0}
-        alignItems={'center'}
-        justifyContent={'space-between'}
-        h={isPublishMode ? 'auto' : '64px'}
-        px={isPublishMode ? 0 : [4, 6]}
-        borderBottom={isPublishMode ? 'none' : '1px solid'}
-        borderColor={'myGray.200'}
-      >
-        <Box
-          as={isPublishMode ? undefined : 'h1'}
-          {...(isPublishMode
-            ? {
-                color: 'myGray.900',
-                fontWeight: 'medium',
-                fontSize: 'lg'
-              }
-            : accountTitleTextStyles)}
-        >
-          {title ??
+      {!hideHeader && (
+        <ApiKeyTableHeader
+          isPublishMode={isPublishMode}
+          title={
+            title ??
             (isPublishMode
               ? isAppKey
                 ? t('apikey:app_key')
                 : t('apikey:personal_key')
-              : `${t('account:api_key')} (${apiKeys.length})`)}
-        </Box>
-        <Flex alignItems={'center'} gap={2} ml={3}>
-          {feConfigs?.docUrl && (
-            <Button
-              as={Link}
-              href={feConfigs.openAPIDocUrl || getDocPath('/openapi/intro')}
-              target={'_blank'}
-              size={'sm'}
-              variant={'whitePrimary'}
-              textDecoration={'none'}
-              _hover={{ textDecoration: 'none' }}
-            >
-              {t('apikey:usage_tutorial')}
-            </Button>
-          )}
-          <Button
-            as={Link}
-            href={'/apidoc/systemopenapi'}
-            target={'_blank'}
-            size={'sm'}
-            variant={'primary'}
-            textDecoration={'none'}
-            _hover={{ textDecoration: 'none' }}
-          >
-            {t('apikey:openapi_document')}
-          </Button>
-        </Flex>
-      </Flex>
+              : `${t('account:api_key')} (${apiKeys.length})`)
+          }
+        />
+      )}
       <Flex
         flexDirection={'column'}
         flex={isPublishMode ? '1 0 0' : ['0 0 auto', '1 0 0']}
