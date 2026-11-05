@@ -13,10 +13,7 @@ import type {
 } from '@fastgpt/global/core/workflow/type/io';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { useForm, Controller, useWatch } from 'react-hook-form';
-import {
-  type SecretValueType,
-  type StoreSecretValueType
-} from '@fastgpt/global/common/secret/type';
+import { type SecretValueType } from '@fastgpt/global/common/secret/type';
 import {
   formatSecretReference,
   getSecretReferenceValue,
@@ -38,7 +35,7 @@ import { selectPluginText } from '@fastgpt/global/common/i18n/utils';
 
 export type ToolParamsFormType = {
   type: SystemToolSecretInputTypeEnum;
-  value?: StoreSecretValueType;
+  value?: Record<string, SecretInputValue>;
 };
 
 type SecretInputFormProps = {
@@ -66,7 +63,7 @@ type SecretInputFormProps = {
   onSubmit?: (data: ToolParamsFormType) => void;
 };
 
-type SecretInputValue = SecretValueType;
+type SecretInputValue = SecretValueType | { value: number | boolean };
 type FieldMode = 'manual' | 'reference';
 
 const secretInputModeTypeMap = {
@@ -89,16 +86,13 @@ export type SecretReferenceList = {
   }[];
 }[];
 
-/** 编辑器先复用凭据解析；旧数字/开关配置仅在声明的非密钥字段中转换为字符串。 */
+/** 编辑器兼容旧数字和开关配置。 */
 export const normalizeInputValue = (
   value: unknown,
   inputType: InputConfigType['inputType'] = 'secret'
 ): SecretInputValue => {
   return normalizeToolInputValue({ value, inputType }) ?? { value: '' };
 };
-
-export const formatManualInputValue = (value: unknown) =>
-  value === undefined || value === null ? '' : String(value);
 
 export const filterReferenceListByInputType = (
   referenceList: SecretReferenceList,
@@ -153,11 +147,17 @@ export const SecretInputForm = ({
   const [fieldModes, setFieldModes] = useState<Record<string, FieldMode>>({});
 
   /** 平台授权没有凭证字段；同时清理旧表单遗留值，保证提交与实时保存使用同一契约。 */
-  const normalizeFormValue = useCallback(
-    (data: ToolParamsFormType): ToolParamsFormType =>
-      data.type === SystemToolSecretInputTypeEnum.manual ? data : { type: data.type },
-    []
-  );
+  const normalizeFormValue = useCallback((data: ToolParamsFormType): ToolParamsFormType => {
+    if (data.type !== SystemToolSecretInputTypeEnum.manual) return { type: data.type };
+    return data.value
+      ? {
+          ...data,
+          value: Object.fromEntries(
+            Object.entries(data.value).filter(([, value]) => value !== null)
+          )
+        }
+      : data;
+  }, []);
 
   const form = useForm<ToolParamsFormType>({
     defaultValues: (() => {
@@ -229,7 +229,8 @@ export const SecretInputForm = ({
     const fieldPath = `value.${key}` as any;
     const fieldValuePath = `value.${key}.value` as any;
     unregister(fieldValuePath);
-    setValue(fieldPath, undefined);
+    // null 阻止引用控件回退到旧默认值，同时保留必填校验。
+    setValue(fieldPath, null);
 
     if (mode === 'manual') {
       setValue(fieldValuePath, '');
@@ -495,7 +496,7 @@ export const SecretInputForm = ({
                                     renderReference({
                                       list: fieldReferenceList,
                                       value: getSecretReferenceValue(referenceValue),
-                                      onSelect: (ref) => onChange(ref ? { ref } : undefined)
+                                      onSelect: (ref) => onChange(ref ? { ref } : null)
                                     })
                                   ) : (
                                     <Box
@@ -609,10 +610,8 @@ export const SecretInputForm = ({
                                   return (
                                     <InputRender
                                       inputType={secretInputTypeToInputType(item.inputType)}
-                                      value={item.inputType === 'switch' ? value === 'true' : value}
-                                      onChange={(nextValue) =>
-                                        onChange(formatManualInputValue(nextValue))
-                                      }
+                                      value={value}
+                                      onChange={onChange}
                                       placeholder={
                                         item.inputType === 'numberInput'
                                           ? (item.placeholder ?? fieldLabel)

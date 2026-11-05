@@ -47,9 +47,14 @@ export const resolveToolInputValues = ({
         ? normalizeToolInputValue({ value: rawValue, inputType: input.inputType })
         : parseSecretValue(rawValue);
       // 在解析引用前判断来源是否已配置，避免空静态项覆盖默认值，也保留有效引用的空结果。
-      if (secretValue && !isSecretValueConfigured(secretValue)) return [];
+      if (secretValue && 'value' in secretValue && secretValue.value === '') return [];
+      if (secretValue && !('value' in secretValue) && !isSecretValueConfigured(secretValue))
+        return [];
       const resolvedValue = resolveSecretValue({
-        value: secretValue ?? rawValue,
+        value:
+          secretValue && 'value' in secretValue && typeof secretValue.value !== 'string'
+            ? secretValue.value
+            : (secretValue ?? rawValue),
         resolveReference
       });
       if (!input) return [[key, resolvedValue]];
