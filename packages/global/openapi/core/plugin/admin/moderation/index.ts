@@ -53,7 +53,8 @@ export const AdminPluginModerationPath: OpenAPIPath = {
   '/core/plugin/admin/moderation/config': {
     post: {
       summary: '保存内容审查插件配置',
-      description: '保存插件凭据与启用状态。启用是全局互斥的：启用一个插件会同时停用其他审查插件',
+      description:
+        '使用提交配置同步检测插件运行，成功后保存凭据与启用状态；检测失败不写入。可能产生厂商 API 调用费用。启用一个插件会同时停用其他审查插件',
       tags: [DevApiTagsMap.pluginAdmin],
       requestBody: {
         required: true,
