@@ -500,7 +500,7 @@ describe('POST /api/core/dataset/training/rebuildEmbedding', () => {
     ).resolves.toBe(1);
   });
 
-  it('rejects switching while an unresolved synonym rebuild exists', async () => {
+  it('rejects switching while a paused synonym rebuild can still resume', async () => {
     const { root, dataset, collection } = await createDatasetContext();
     await MongoDatasetTraining.create({
       teamId: root.teamId,
@@ -509,9 +509,9 @@ describe('POST /api/core/dataset/training/rebuildEmbedding', () => {
       collectionId: collection._id,
       billId: 'synonym-bill',
       mode: TrainingModeEnum.rebuildSynonym,
-      retryCount: 0,
-      lockTime: new Date(),
-      errorMsg: 'synonym rebuild failed'
+      retryCount: 3,
+      lockTime: new Date('2050-01-01'),
+      errorMsg: 'AI points not enough'
     });
 
     const res = await Call(handler, {
@@ -524,6 +524,58 @@ describe('POST /api/core/dataset/training/rebuildEmbedding', () => {
 
     expect(res.code).toBe(500);
     expect(String(res.error)).toContain('同义词重建未完成');
+  });
+
+  it('replaces a final-error synonym rebuild with the full rebuild', async () => {
+    const { root, dataset, collection } = await createDatasetContext();
+    const data = await MongoDatasetData.create({
+      teamId: root.teamId,
+      tmbId: root.tmbId,
+      datasetId: dataset._id,
+      collectionId: collection._id,
+      q: 'synonym failed data',
+      indexes: [],
+      indexStatus: 'rebuildSynonymFailed',
+      indexErrorMsg: 'synonym rebuild failed'
+    });
+    await MongoDatasetTraining.create({
+      teamId: root.teamId,
+      tmbId: root.tmbId,
+      datasetId: dataset._id,
+      collectionId: collection._id,
+      billId: 'synonym-bill',
+      mode: TrainingModeEnum.rebuildSynonym,
+      dataId: data._id,
+      retryCount: 0,
+      lockTime: new Date(),
+      errorMsg: 'synonym rebuild failed',
+      expireAt: null
+    });
+
+    const res = await Call(handler, {
+      auth: root,
+      body: {
+        datasetId: String(dataset._id),
+        vectorModelId: visionEmbeddingModel.modelId
+      }
+    });
+
+    expect(res.error).toBeUndefined();
+    expect(res.code).toBe(200);
+    await expect(
+      MongoDatasetTraining.countDocuments({
+        datasetId: dataset._id,
+        mode: TrainingModeEnum.rebuildSynonym
+      })
+    ).resolves.toBe(0);
+    const updatedData = await MongoDatasetData.findById(data._id).lean();
+    expect(['rebuildIndexPending', 'rebuildIndexRunning']).toContain(updatedData?.indexStatus);
+    await expect(
+      MongoDatasetTraining.countDocuments({
+        datasetId: dataset._id,
+        mode: TrainingModeEnum.rebuildIndex
+      })
+    ).resolves.toBe(1);
   });
 
   it('should reject model rebuilding while an active training task exists', async () => {

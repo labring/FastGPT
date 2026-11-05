@@ -62,13 +62,14 @@ async function handler(req: ApiRequestProps): Promise<RebuildEmbeddingResponse> 
   if (await hasDatasetTrainingTask({ teamId, datasetId })) {
     return Promise.reject('数据集正在训练或者重建中，请稍后再试');
   }
-  // 未清理的同义词重建任务（含最终失败待重试）与本次重建会改同一批 data：
-  // 换模型会把 data 改走 rebuildIndex，后续重试同义词任务会与新任务冲突。
+  // 仍可重试的同义词重建任务（含欠费暂停）之后会被重试执行，并与本次重建改同一批 data；
+  // 若放行，它会与新建的 rebuildIndex 任务双写同一批 data，必须先等它结束。
   if (
     await MongoDatasetTraining.exists({
       teamId,
       datasetId,
-      mode: TrainingModeEnum.rebuildSynonym
+      mode: TrainingModeEnum.rebuildSynonym,
+      retryCount: { $gt: 0 }
     })
   ) {
     return Promise.reject('同义词重建未完成，请稍后再切换模型');
@@ -141,7 +142,9 @@ async function handler(req: ApiRequestProps): Promise<RebuildEmbeddingResponse> 
     }
     // 只删除本次已原子替换的任务：
     // - error 数据的 index 失败任务（下面会重新入队）；
-    // - rebuildIndex 失败/暂停任务（其 data 会重新标记 pending 并生成新任务）。
+    // - rebuildIndex 失败/暂停任务（其 data 会重新标记 pending 并生成新任务）；
+    // - 最终失败的同义词重建任务：其 data 是 rebuildSynonymFailed，会随全量重建重新入队；
+    //   保留它会让用户在切换后重试旧任务，与 rebuildIndex 双写同一 data。
     // 欠费暂停的普通 index 任务（data 仍为 indexing）不在任何重排路径里，必须保留，
     // 否则数据会变成“无任务、无索引、无重试入口”的孤儿。
     await MongoDatasetTraining.deleteMany(
@@ -150,7 +153,8 @@ async function handler(req: ApiRequestProps): Promise<RebuildEmbeddingResponse> 
         datasetId,
         $or: [
           { mode: TrainingModeEnum.index, dataId: { $in: failedDataIds } },
-          { mode: TrainingModeEnum.rebuildIndex }
+          { mode: TrainingModeEnum.rebuildIndex },
+          { mode: TrainingModeEnum.rebuildSynonym, retryCount: { $lte: 0 } }
         ],
         ...finalErrorTrainingMatch
       },
