@@ -468,10 +468,15 @@ export const createWorkflowEditor = (
           meta.affectedNodeIds.add(field.nodeId);
           addFieldIdentity(meta.affectedFieldIds, field);
         });
+        const structureInvalidationFields = reference.getStructureInvalidationFields(meta);
+        structureInvalidationFields.forEach((field) => {
+          meta.affectedNodeIds.add(field.nodeId);
+          addFieldIdentity(meta.affectedFieldIds, field);
+        });
         snapshots.invalidateFieldCaches([
           ...meta.changedFieldIds.values(),
           ...cacheOnlyFieldIds.values(),
-          ...reference.getStructureInvalidationFields(meta),
+          ...structureInvalidationFields,
           ...outputInvalidationFields
         ]);
         if (meta.candidateSourcesChanged.size > 0) snapshots.clearReferenceOptions();

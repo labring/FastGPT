@@ -586,20 +586,35 @@ export const createReferenceModule = (document: DocumentReadApi) => {
     return cacheOnlyFieldIds;
   };
 
-  /**
-   * 结构变化后需要额外丢弃引用状态缓存的 affected input 字段。
-   * 只有真正持有引用的 input 才可能因为结构变化改变状态，其余字段无需失效。
-   */
+  /** 结构变化后失效关联容器的引用字段缓存，sibling 增删会改变子画布候选。 */
   const getStructureInvalidationFields = (meta: MutationMeta): WorkflowFieldIdentity[] => {
     if (!meta.structureChanged) return [];
-    return [...meta.affectedFieldIds.values()].filter((field) => {
-      if (field.kind !== 'input') return false;
-      const input = document
-        .getNodeIndex()
-        .get(field.nodeId)
-        ?.record.data.inputs.find((item) => item.key === field.key);
-      return input ? getInputReferences(input).length > 0 : false;
+    const { childrenByParent, parentByChild } = document.getGraphIndex();
+    const nodeIds = new Set([...meta.affectedNodeIds, ...meta.changedNodeIds]);
+    const queue = [...nodeIds];
+    for (let index = 0; index < queue.length; index++) {
+      const nodeId = queue[index]!;
+      const parentId = parentByChild.get(nodeId);
+      if (parentId) {
+        [parentId, ...(childrenByParent.get(parentId) ?? [])].forEach((id) => {
+          if (!nodeIds.has(id)) queue.push(id);
+          nodeIds.add(id);
+        });
+      }
+      childrenByParent.get(nodeId)?.forEach((childId) => {
+        if (!nodeIds.has(childId)) queue.push(childId);
+        nodeIds.add(childId);
+      });
+    }
+    const fields = new Map<string, WorkflowFieldIdentity>();
+    nodeIds.forEach((nodeId) => {
+      document.getNodeById(nodeId)?.data.inputs.forEach((input) => {
+        if (!('renderTypeList' in input)) return;
+        const identity = { nodeId, key: input.key, kind: 'input' as const };
+        fields.set(getFieldIdentityKey(identity), identity);
+      });
     });
+    return [...fields.values()];
   };
 
   /** 输出有效性变化会改变候选来源；空字段没有引用依赖，仍需刷新候选快照。 */
