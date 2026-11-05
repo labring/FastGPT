@@ -20,8 +20,64 @@ import { getInputAutomationMeta } from '@fastgpt/global/core/workflow/template/a
 import { getNodeInputCapability, type NodeParameterInputMode } from '../template/descriptor';
 import { assertValueSchema, getNodeInputValueSchema } from '../template/valueSchema';
 import { getWorkflowInputValueForValidation } from '../template/inputValue';
+import {
+  getWorkflowSecretInputKind,
+  inputTypeValueTypeMap
+} from '@fastgpt/global/common/workflow/input';
+import { getSecretReferenceValue } from '@fastgpt/global/common/secret/utils';
 
 export type WorkflowReferenceValue = [string, string];
+
+/** 提取 Secret 容器里的引用，并按内部输入类型返回校验目标。 */
+export const getWorkflowSecretReferences = ({
+  flowNodeType,
+  input
+}: {
+  flowNodeType: unknown;
+  input: FlowNodeInputItemType;
+}) => {
+  const kind = getWorkflowSecretInputKind({ flowNodeType, inputKey: input.key });
+  if (!kind) return [];
+  if (
+    kind === 'systemConfig' &&
+    (!input.value ||
+      typeof input.value !== 'object' ||
+      Array.isArray(input.value) ||
+      !('type' in input.value) ||
+      input.value.type !== 'manual')
+  ) {
+    return [];
+  }
+
+  const source =
+    kind === 'systemConfig' &&
+    typeof input.value === 'object' &&
+    input.value !== null &&
+    !Array.isArray(input.value) &&
+    'type' in input.value &&
+    input.value.type === 'manual' &&
+    typeof input.value.value === 'object' &&
+    input.value.value !== null &&
+    !Array.isArray(input.value.value)
+      ? input.value.value
+      : input.value;
+  if (typeof source !== 'object' || source === null) return [];
+
+  return Object.entries(source).flatMap(([key, value]) => {
+    const reference = getSecretReferenceValue(value);
+    if (!reference) return [];
+    const inputType =
+      kind === 'systemConfig'
+        ? input.inputList?.find((item) => item.key === key)?.inputType
+        : 'secret';
+    return [
+      {
+        value: reference,
+        valueType: inputType ? inputTypeValueTypeMap[inputType] : WorkflowIOValueTypeEnum.string
+      }
+    ];
+  });
+};
 
 /** 判断单个引用元组的结构；来源是否存在由引用校验统一判断。 */
 export const isWorkflowReferenceValue = (value: unknown): value is WorkflowReferenceValue =>

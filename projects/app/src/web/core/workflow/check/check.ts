@@ -38,7 +38,7 @@ type WorkflowCheckInput = {
 /**
  * 所有 Web 场景共用一次 Core 扫描；Web 只补资源状态和展示，不维护另一套输入、模型或图规则。
  * 无节点归属的诊断单独保留，避免“已阻断但没有具体提示”；原始诊断原样返回供调用方排查。
- * 客户端把失效引用视为未引用，输入、模型和资源检查共用有效值快照，不改写画布。
+ * 客户端把普通失效引用视为未引用；Secret 引用保留，供发布校验拒绝，输入、模型和资源检查共用快照。
  */
 const checkWorkflow = ({
   nodes,
@@ -58,7 +58,7 @@ const checkWorkflow = ({
   });
   const diagnostics = [
     ...projected.diagnostics,
-    // 快照已按 asEmpty 收敛；Core 直接校验有效值，不再次清理引用。
+    // 普通引用已按 asEmpty 收敛；Secret 引用保留给 Core 严格校验，不再次清理引用。
     ...validateWorkflow(document, {
       invalidReferencePolicy: 'error',
       modelCheck: { modelData, templates: moduleTemplatesFlat }

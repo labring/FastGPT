@@ -87,6 +87,7 @@ import { useField, useFieldActions } from '@/web/core/workflow/editor/react/useF
 import { useNode, useNodeActions } from '@/web/core/workflow/editor/react/useNode';
 import { useWorkflowActions } from '@/web/core/workflow/editor/react/useWorkflow';
 import { canvasNodeToStoreNode } from '@/web/core/workflow/editor/canvas/canvasTypes';
+import { WorkflowFieldScope } from '@/web/core/workflow/editor/WorkflowFieldScope';
 
 import { useWorkflowUIValue } from '../../canvas/canvasState';
 import { useWorkflowCanvasValue } from '../../canvas/workflowCanvasContext';
@@ -1310,25 +1311,27 @@ const NodeSecret = React.memo(function NodeSecret({
       </Flex>
 
       {inputConfig && isOpenToolParamConfigModal && (
-        <SecretInputModal
-          referenceList={referenceList as SecretReferenceList}
-          renderReference={({ list, value, onSelect }) => (
-            <ReferSelector list={list} value={value} onSelect={onSelect} />
-          )}
-          isFolder={isFolder}
-          onClose={onCloseToolParamConfigModal}
-          onSubmit={(data) => {
-            inputFieldActions.setValue(data);
-            onCloseToolParamConfigModal();
-          }}
-          courseUrl={courseUrl}
-          readmeUrl={readmeUrl}
-          inputConfig={inputConfig}
-          hasSystemSecret={hasSystemSecret}
-          parentId={pluginId}
-          source={source}
-          secretCost={systemKeyCost}
-        />
+        <WorkflowFieldScope nodeId={nodeId} fieldKey={NodeInputKeyEnum.systemInputConfig}>
+          <SecretInputModal
+            referenceList={referenceList as SecretReferenceList}
+            renderReference={({ list, value, onSelect }) => (
+              <ReferSelector list={list} value={value} onSelect={onSelect} />
+            )}
+            isFolder={isFolder}
+            onClose={onCloseToolParamConfigModal}
+            onSubmit={(data) => {
+              inputFieldActions.setValue(data);
+              onCloseToolParamConfigModal();
+            }}
+            courseUrl={courseUrl}
+            readmeUrl={readmeUrl}
+            inputConfig={inputConfig}
+            hasSystemSecret={hasSystemSecret}
+            parentId={pluginId}
+            source={source}
+            secretCost={systemKeyCost}
+          />
+        </WorkflowFieldScope>
       )}
     </>
   );

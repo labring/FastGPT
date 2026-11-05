@@ -29,6 +29,7 @@ import type {
 import type { AppChatConfigType } from '../../../core/app/type';
 import type { WorkflowReferenceStatus } from '../../../core/workflow/editor/types';
 import { getWorkflowGlobalVariables } from './variables';
+import { getSecretReferenceValue } from '../../secret/utils';
 import type { LLMModelDataType } from '../../../core/ai/model/schema';
 import type { WorkflowEnvironmentModel } from '../../../core/workflow/editor/types';
 
@@ -438,6 +439,12 @@ export const getWorkflowReferenceItemsFromValue = (
   const visited = new WeakSet<object>();
 
   const visit = (item: unknown) => {
+    const secretReference = getSecretReferenceValue(item);
+    if (secretReference) {
+      getWorkflowReferenceItems(secretReference).forEach((reference) => references.push(reference));
+      return;
+    }
+
     if (includeCanonicalReferences && isWorkflowReferenceItem(item)) {
       references.push(item);
       return;

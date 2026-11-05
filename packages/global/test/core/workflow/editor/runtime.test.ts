@@ -27,6 +27,7 @@ import type {
 } from '@fastgpt/global/core/workflow/editor/types';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { getHandleId } from '@fastgpt/global/common/workflow/reference';
+import { getInputReferences } from '@fastgpt/global/common/workflow/editor/runtime/kernel';
 import { USER_SELECT_REFERENCE_HANDLE_KEY } from '@fastgpt/global/core/workflow/template/system/interactive/userSelect';
 
 const createRuntime = (): WorkflowRuntimePort => {
@@ -729,6 +730,162 @@ describe('workflow editor runtime modules', () => {
     expect(editor.getNode('answer')?.issues.map((issue) => issue.code)).toEqual([
       'invalid_reference'
     ]);
+  });
+
+  it('resolves secret references through the runtime reference graph', () => {
+    const editor = createWorkflowEditor({
+      nodes: [
+        {
+          nodeId: 'start',
+          flowNodeType: FlowNodeTypeEnum.workflowStart,
+          name: 'Start',
+          inputs: [],
+          outputs: [
+            {
+              id: 'userChatInput',
+              key: 'userChatInput',
+              type: FlowNodeOutputTypeEnum.source,
+              valueType: WorkflowIOValueTypeEnum.string
+            }
+          ]
+        },
+        {
+          nodeId: 'http',
+          flowNodeType: FlowNodeTypeEnum.httpRequest468,
+          name: 'HTTP',
+          inputs: [
+            {
+              key: NodeInputKeyEnum.httpReqUrl,
+              label: 'URL',
+              renderTypeList: [FlowNodeInputTypeEnum.hidden],
+              valueType: WorkflowIOValueTypeEnum.string,
+              value: 'https://example.com'
+            },
+            {
+              key: NodeInputKeyEnum.headerSecret,
+              label: 'Headers',
+              renderTypeList: [FlowNodeInputTypeEnum.hidden],
+              valueType: WorkflowIOValueTypeEnum.object,
+              value: { Authorization: { ref: ['start', 'userChatInput'] } }
+            }
+          ],
+          outputs: []
+        }
+      ],
+      edges: [
+        {
+          source: 'start',
+          target: 'http',
+          sourceHandle: 'source',
+          targetHandle: 'target'
+        }
+      ],
+      chatConfig: {}
+    });
+    const query = { nodeId: 'http', fieldKey: NodeInputKeyEnum.headerSecret };
+    expect(
+      getInputReferences(
+        editor.getNode('http')!.inputs.find((input) => input.key === query.fieldKey)!
+      )
+    ).toEqual([['start', 'userChatInput']]);
+
+    expect(editor.getField(query)?.references).toEqual([
+      expect.objectContaining({ code: 'valid', sourceType: WorkflowIOValueTypeEnum.string })
+    ]);
+    expect(editor.getNode('http')?.issues).toEqual([]);
+
+    editor.dispatch({ type: 'removeNodes', nodeIds: ['start'] });
+    expect(editor.getField(query)?.references).toEqual([
+      expect.objectContaining({ code: 'invalid_reference' })
+    ]);
+    expect(editor.getWorkflowData().referenceSnapshots).toEqual([
+      expect.objectContaining({
+        reference: ['start', 'userChatInput'],
+        sourceLabel: 'Start'
+      })
+    ]);
+    expect(editor.getNode('http')?.issues.map((issue) => issue.code)).toContain(
+      'invalid_reference'
+    );
+  });
+
+  it('checks and snapshots system input secret references by input type', () => {
+    const editor = createWorkflowEditor({
+      nodes: [
+        {
+          nodeId: 'start',
+          flowNodeType: FlowNodeTypeEnum.workflowStart,
+          name: 'Start',
+          inputs: [],
+          outputs: [
+            {
+              id: 'text',
+              key: 'text',
+              type: FlowNodeOutputTypeEnum.source,
+              valueType: WorkflowIOValueTypeEnum.string
+            },
+            {
+              id: 'count',
+              key: 'count',
+              type: FlowNodeOutputTypeEnum.source,
+              valueType: WorkflowIOValueTypeEnum.number
+            }
+          ]
+        },
+        {
+          nodeId: 'tool',
+          flowNodeType: FlowNodeTypeEnum.tool,
+          name: 'Tool',
+          inputs: [
+            {
+              key: NodeInputKeyEnum.systemInputConfig,
+              label: 'Authorization',
+              renderTypeList: [FlowNodeInputTypeEnum.hidden],
+              valueType: WorkflowIOValueTypeEnum.object,
+              inputList: [
+                { key: 'apiKey', label: 'API key', inputType: 'secret' },
+                { key: 'limit', label: 'Limit', inputType: 'numberInput' }
+              ],
+              value: {
+                type: 'manual',
+                value: {
+                  apiKey: { ref: ['start', 'text'] },
+                  limit: { ref: ['start', 'count'] }
+                }
+              }
+            }
+          ],
+          outputs: []
+        }
+      ],
+      edges: [
+        {
+          source: 'start',
+          target: 'tool',
+          sourceHandle: 'source',
+          targetHandle: 'target'
+        }
+      ],
+      chatConfig: {}
+    });
+    const query = { nodeId: 'tool', fieldKey: NodeInputKeyEnum.systemInputConfig };
+
+    expect(editor.getField(query)?.references).toEqual([
+      expect.objectContaining({ code: 'valid', sourceType: WorkflowIOValueTypeEnum.string }),
+      expect.objectContaining({ code: 'valid', sourceType: WorkflowIOValueTypeEnum.number })
+    ]);
+    expect(editor.getNode('tool')?.issues).toEqual([]);
+
+    editor.dispatch({ type: 'removeNodes', nodeIds: ['start'] });
+    expect(editor.getWorkflowData().referenceSnapshots).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ reference: ['start', 'text'], sourceLabel: 'Start' }),
+        expect.objectContaining({ reference: ['start', 'count'], sourceLabel: 'Start' })
+      ])
+    );
+    expect(editor.getNode('tool')?.issues.map((issue) => issue.code)).toContain(
+      'invalid_reference'
+    );
   });
 
   it('keeps UserSelect reference edges as valid execution branches', () => {

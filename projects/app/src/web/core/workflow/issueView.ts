@@ -13,6 +13,7 @@ import type {
   WorkflowRuntimePort
 } from '@fastgpt/global/core/workflow/editor/types';
 import type { WorkflowCheckIssue } from '@fastgpt/global/core/workflow/type/node';
+import { WorkflowDiagnosticCodeEnum } from '@fastgpt/global/core/workflow/diagnostic/constants';
 
 /** Issue 渲染入参：节点问题与工作流级问题共用 code + params 约定。 */
 export type WorkflowIssueLike = WorkflowCheckIssue | WorkflowConfigIssue;
@@ -24,6 +25,7 @@ const PENDING_HANDLE_CODES = new Set<string>([
   'invalid_reference',
   'invalid_reference_type',
   'unreachable_reference',
+  WorkflowDiagnosticCodeEnum.referenceTypeMismatch,
   'tool_missing',
   'tool_load_failed',
   'tool_no_permission',
@@ -116,6 +118,23 @@ export const collectWorkflowErrorIssues = (runtime: WorkflowRuntimePort) => {
  * i18next 解析；未命中时保留原文。`params.nodeName` 是工作流自身信息，`model` 是纯数据。
  */
 export const renderWorkflowIssueMessage = (issue: WorkflowIssueLike, t: TFunction) => {
+  if (issue.code === WorkflowIssueCode.invalidReferenceType) {
+    return t('common:core.workflow.check.invalid_reference_type', {
+      ...issue.params,
+      inputName: issue.params?.inputName
+        ? t(issue.params.inputName as any)
+        : t('common:core.workflow.inputType.Reference')
+    });
+  }
+  if (issue.code === WorkflowDiagnosticCodeEnum.referenceTypeMismatch) {
+    return t('common:core.workflow.check.reference_type_mismatch', {
+      ...issue.params,
+      inputName: issue.params?.inputName
+        ? t(issue.params.inputName as any)
+        : t('common:core.workflow.inputType.Reference')
+    });
+  }
+
   const params = issue.params
     ? {
         ...issue.params,
@@ -132,8 +151,6 @@ export const renderWorkflowIssueMessage = (issue: WorkflowIssueLike, t: TFunctio
       return t('common:core.workflow.check.no_upstream', params);
     case WorkflowIssueCode.invalidReference:
       return t('common:core.workflow.check.invalid_reference', params);
-    case WorkflowIssueCode.invalidReferenceType:
-      return t('common:core.workflow.check.invalid_reference_type', params);
     case WorkflowIssueCode.unreachableReference:
       return t('common:core.workflow.check.unreachable_reference', params);
     case WorkflowIssueCode.ifElseIncomplete:

@@ -65,6 +65,7 @@ export type ReferenceListItem = {
 
 type CommonSelectProps = {
   placeholder?: string;
+  inputName?: string;
   list: ReferenceListItem[];
   popDirection?: 'top' | 'bottom';
   ButtonProps?: ButtonProps;
@@ -217,6 +218,7 @@ const Reference = ({ item, nodeId }: RenderInputProps) => {
               ? t('workflow:please_select_variable')
               : t('common:select_reference_variable'))
           }
+          inputName={currentInput.label}
           list={referenceList}
           value={currentInput.value}
           onSelect={onSelect}
@@ -255,15 +257,22 @@ const getReferenceStatus = (
 
 const getInvalidReason = (
   status: { readonly code: WorkflowReferenceStatus['code'] } | undefined,
-  t: TFunction
+  t: TFunction,
+  inputName?: string
 ) => {
   switch (status?.code) {
     case 'invalid_reference':
-      return t('common:core.workflow.check.reference_deleted');
+      return t('common:core.workflow.check.invalid_reference', {
+        inputName: inputName || t('common:core.workflow.inputType.Reference')
+      });
     case 'unreachable_reference':
-      return t('common:core.workflow.check.reference_unreachable');
+      return t('common:core.workflow.check.unreachable_reference', {
+        inputName: inputName || t('common:core.workflow.inputType.Reference')
+      });
     case 'invalid_reference_type':
-      return t('common:core.workflow.check.reference_type_mismatch');
+      return t('common:core.workflow.check.invalid_reference_type', {
+        inputName: inputName || t('common:core.workflow.inputType.Reference')
+      });
     default:
       return t('common:invalid_variable');
   }
@@ -274,6 +283,7 @@ const getReferenceTitle = (value: ReferenceItemValueType | undefined) =>
 
 const SingleReferenceSelector = ({
   placeholder,
+  inputName,
   value,
   list = [],
   onSelect,
@@ -333,7 +343,7 @@ const SingleReferenceSelector = ({
     (status
       ? status.code !== 'valid' || !getSelectValue(selectorVal)
       : !getSelectValue(selectorVal));
-  const invalidReason = getInvalidReason(status, t);
+  const invalidReason = getInvalidReason(status, t, inputName);
   const referenceTitle = getReferenceTitle(selectorVal);
 
   const ItemSelector = useMemo(() => {
@@ -426,6 +436,7 @@ const SingleReferenceSelector = ({
 };
 const MultipleReferenceSelector = ({
   placeholder,
+  inputName,
   value,
   list = [],
   onSelect,
@@ -517,7 +528,7 @@ const MultipleReferenceSelector = ({
                   ? status.code === 'valid' && Boolean(nodeName && outputName)
                   : Boolean(nodeName && outputName);
                 const isInvalidReference = !isValidReference;
-                const invalidReason = getInvalidReason(status, t);
+                const invalidReason = getInvalidReason(status, t, inputName);
                 const referenceTitle = getReferenceTitle(rawValue);
                 const row = (
                   <Flex
@@ -627,7 +638,18 @@ const MultipleReferenceSelector = ({
         ButtonProps={ButtonProps}
       />
     );
-  }, [arrayVal, ButtonProps, formatList, list, onOpenList, onSelect, placeholder, popDirection, t]);
+  }, [
+    arrayVal,
+    ButtonProps,
+    formatList,
+    inputName,
+    list,
+    onOpenList,
+    onSelect,
+    placeholder,
+    popDirection,
+    t
+  ]);
 
   return ArraySelector;
 };

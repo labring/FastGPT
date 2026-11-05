@@ -147,6 +147,13 @@ describe('reference snapshots', () => {
     targetHandle: 'target'
   };
 
+  it.each([{ ref: ['mid', 'text'] }, { ref: [['mid', 'text']] }])(
+    'extracts workflow references from secret values: %j',
+    (value) => {
+      expect(getWorkflowReferenceItemsFromValue(value)).toEqual([['mid', 'text']]);
+    }
+  );
+
   it('captures one snapshot per missing source and shares it across consumers', () => {
     const editor = createSnapshotRuntime();
     expect(editor.getWorkflowData().referenceSnapshots).toEqual([]);

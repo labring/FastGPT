@@ -1,8 +1,8 @@
-import type { WorkflowIOValueTypeEnum } from '../../../../core/workflow/constants';
 import {
   NodeInputKeyEnum,
   NodeOutputKeyEnum,
-  VARIABLE_NODE_ID
+  VARIABLE_NODE_ID,
+  WorkflowIOValueTypeEnum
 } from '../../../../core/workflow/constants';
 import {
   FlowNodeInputTypeEnum,
@@ -20,6 +20,8 @@ import {
   workflowValueTypeIsCompatible
 } from '../utils';
 import { getWorkflowGlobalVariables } from '../variables';
+import { getWorkflowSecretInputKind, inputTypeValueTypeMap } from '../../input';
+import { SystemToolSecretInputTypeEnum } from '../../../../core/app/tool/systemTool/constants';
 import type {
   FlowNodeInputItemType,
   FlowNodeOutputItemType,
@@ -725,7 +727,6 @@ export const createReferenceModule = (document: DocumentReadApi) => {
         if (targetId !== targetNodeId && containerNodeIdSet.has(targetId)) {
           const container = document.getNodeById(targetId);
           for (const input of container?.data.inputs ?? []) {
-            if (!nodeInputIsReference(input)) continue;
             for (const [candidateSourceId] of getInputReferences(input)) {
               if (
                 candidateSourceId === VARIABLE_NODE_ID ||
@@ -829,7 +830,45 @@ export const createReferenceModule = (document: DocumentReadApi) => {
       fieldStatusCache.set(cacheKey, { field, statuses: [] });
       return [];
     }
-    const targetType = 'renderTypeList' in field ? field.valueType : undefined;
+    const secretInputKind = getWorkflowSecretInputKind({
+      flowNodeType: document.getNodeById(nodeId)?.data.flowNodeType,
+      inputKey: field.key
+    });
+    const getSecretInputValueType = (key: string) => {
+      const inputType = field.inputList?.find((item) => item.key === key)?.inputType;
+      return inputType ? inputTypeValueTypeMap[inputType] : field.valueType;
+    };
+    const getTargetType = (reference: ReferenceItemValueType) => {
+      if (secretInputKind === 'headers') return WorkflowIOValueTypeEnum.string;
+      if (
+        secretInputKind === 'systemConfig' &&
+        typeof value === 'object' &&
+        value !== null &&
+        !Array.isArray(value)
+      ) {
+        const secretValues =
+          'type' in value &&
+          value.type === SystemToolSecretInputTypeEnum.manual &&
+          typeof value.value === 'object' &&
+          value.value !== null &&
+          !Array.isArray(value.value)
+            ? value.value
+            : value;
+        for (const [key, itemValue] of Object.entries(secretValues)) {
+          if (
+            getWorkflowReferenceItemsFromValue(itemValue, {
+              includeCanonicalReferences: true
+            }).some(
+              ([sourceNodeId, outputId]) =>
+                sourceNodeId === reference[0] && outputId === reference[1]
+            )
+          ) {
+            return getSecretInputValueType(key);
+          }
+        }
+      }
+      return field.valueType;
+    };
     const allowLoopRunChildSource =
       field.canEdit === true &&
       document.getNodeById(nodeId)?.data.flowNodeType === FlowNodeTypeEnum.loopRun;
@@ -871,7 +910,7 @@ export const createReferenceModule = (document: DocumentReadApi) => {
         : references.map((reference) =>
             getReferenceStatus({
               reference,
-              targetType,
+              targetType: getTargetType(reference),
               targetNodeId: nodeId,
               allowLoopRunChildSource
             })

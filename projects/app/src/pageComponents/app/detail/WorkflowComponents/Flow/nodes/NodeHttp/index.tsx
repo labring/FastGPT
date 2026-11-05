@@ -323,22 +323,24 @@ export function RenderHttpProps({
             label={t('common:core.module.http.Props tip', { variable: variableText })}
           />
           <Flex flex={1} />
-          <HeaderAuthConfig
-            storeHeaderSecretConfig={headerSecret?.value}
-            renderReference={({ value, onChange, buttonProps }) => (
-              <ReferSelector
-                list={referenceList}
-                value={value}
-                isArray={false}
-                onSelect={onChange}
-                popDirection={'bottom'}
-                ButtonProps={buttonProps}
-              />
-            )}
-            onUpdate={(data) => {
-              headerSecretFieldActions.setValue(data);
-            }}
-          />
+          <WorkflowFieldScope nodeId={nodeId} fieldKey={NodeInputKeyEnum.headerSecret}>
+            <HeaderAuthConfig
+              storeHeaderSecretConfig={headerSecret?.value}
+              renderReference={({ value, onChange, buttonProps }) => (
+                <ReferSelector
+                  list={referenceList}
+                  value={value}
+                  isArray={false}
+                  onSelect={onChange}
+                  popDirection={'bottom'}
+                  ButtonProps={buttonProps}
+                />
+              )}
+              onUpdate={(data) => {
+                headerSecretFieldActions.setValue(data);
+              }}
+            />
+          </WorkflowFieldScope>
         </Flex>
         <LightRowTabs<TabEnum>
           width={'100%'}

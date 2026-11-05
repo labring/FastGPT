@@ -12,6 +12,7 @@ import SecretInputModal, {
 import { useFieldActions } from '@/web/core/workflow/editor/react/useField';
 import { useNode } from '@/web/core/workflow/editor/react/useNode';
 import { useWorkflowOverlayValue } from '@/web/core/workflow/editor/session/workflowSession';
+import { WorkflowFieldScope } from '@/web/core/workflow/editor/WorkflowFieldScope';
 import { ReferSelector, useReference } from '../nodes/render/RenderInput/templates/Reference';
 
 const ToolConfig = ({ nodeId, inputs }: { nodeId?: string; inputs?: FlowNodeInputItemType[] }) => {
@@ -73,22 +74,24 @@ const ToolConfig = ({ nodeId, inputs }: { nodeId?: string; inputs?: FlowNodeInpu
         {activeButtonText}
       </Button>
       {isOpen && (
-        <SecretInputModal
-          referenceList={referenceList as SecretReferenceList}
-          renderReference={({ list, value, onSelect }) => (
-            <ReferSelector list={list} value={value} onSelect={onSelect} />
-          )}
-          isFolder={nodeData?.isFolder}
-          inputConfig={inputConfig}
-          hasSystemSecret={nodeData?.hasSystemSecret}
-          secretCost={nodeData?.systemKeyCost}
-          courseUrl={courseUrl}
-          readmeUrl={nodeData?.readmeUrl}
-          parentId={nodeData?.pluginId}
-          source={nodeData?.source}
-          onClose={setFalse}
-          onSubmit={onSubmit}
-        />
+        <WorkflowFieldScope nodeId={nodeId} fieldKey={NodeInputKeyEnum.systemInputConfig}>
+          <SecretInputModal
+            referenceList={referenceList as SecretReferenceList}
+            renderReference={({ list, value, onSelect }) => (
+              <ReferSelector list={list} value={value} onSelect={onSelect} />
+            )}
+            isFolder={nodeData?.isFolder}
+            inputConfig={inputConfig}
+            hasSystemSecret={nodeData?.hasSystemSecret}
+            secretCost={nodeData?.systemKeyCost}
+            courseUrl={courseUrl}
+            readmeUrl={nodeData?.readmeUrl}
+            parentId={nodeData?.pluginId}
+            source={nodeData?.source}
+            onClose={setFalse}
+            onSubmit={onSubmit}
+          />
+        </WorkflowFieldScope>
       )}
     </>
   ) : null;

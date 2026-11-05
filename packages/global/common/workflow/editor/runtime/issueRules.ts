@@ -33,6 +33,7 @@ import {
   isToolParamInput,
   workflowValueTypeIsCompatible
 } from '../utils';
+import { getWorkflowSecretInputKind } from '../../input';
 import type { WorkflowIssueCode } from '../../../../core/workflow/editor/issueCode';
 import type {
   WorkflowConfigIssue,
@@ -710,6 +711,11 @@ export const collectNodeIssues = (
       }
 
       const isReferenceInput = nodeInputIsReference(input);
+      const isSecretInput =
+        getWorkflowSecretInputKind({
+          flowNodeType: data.flowNodeType,
+          inputKey: input.key
+        }) !== undefined;
       // 节点未显式配置时运行期会回退 defaultValue；检查必须与实际执行一致。
       const effectiveValue = input.value ?? input.defaultValue;
       // 混合模式字段（textarea/reference）可能存着引用元组而 selectedType 不是 reference，
@@ -719,15 +725,16 @@ export const collectNodeIssues = (
         getWorkflowReferenceItemsFromValue(effectiveValue).length > 0;
       // 独立 reference 字段复用字段身份缓存；ifElse、variableUpdate、动态入参等结构化值
       // 仍按值展开，保留其嵌套引用与畸形数组语义。
-      const referenceStatuses = isReferenceInput
-        ? reference.getFieldStatuses(nodeId, input)
-        : hasReferenceItems
-          ? reference.getValueStatuses({
-              value: effectiveValue,
-              targetNodeId: nodeId,
-              targetType: input.valueType
-            })
-          : [];
+      const referenceStatuses =
+        isReferenceInput || isSecretInput
+          ? reference.getFieldStatuses(nodeId, input)
+          : hasReferenceItems
+            ? reference.getValueStatuses({
+                value: effectiveValue,
+                targetNodeId: nodeId,
+                targetType: input.valueType
+              })
+            : [];
       const referenceIssueCode = pickReferenceIssueCode(referenceStatuses);
       if (referenceIssueCode) {
         addIssue({

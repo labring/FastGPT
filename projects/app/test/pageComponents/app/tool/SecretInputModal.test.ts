@@ -24,9 +24,20 @@ import {
 import { createWorkflowDocument } from '@fastgpt/workflow-core/domain/document';
 import { validateNodeIO } from '@fastgpt/workflow-core/validation/io';
 import type { WorkflowDiagnostic } from '@fastgpt/workflow-core/domain/diagnostic';
+import commonZh from '@fastgpt/web/i18n/zh-CN/common.json';
+import appZh from '@fastgpt/web/i18n/zh-CN/app.json';
+import workflowZh from '@fastgpt/web/i18n/zh-CN/workflow.json';
 
 vi.mock('next-i18next', () => ({
-  useTranslation: () => ({ t: (key: string) => key, i18n: { language: 'en' } })
+  useTranslation: () => ({
+    t: (key: string) => {
+      const [namespace, ...keyParts] = key.split(':');
+      const resources =
+        namespace === 'app' ? appZh : namespace === 'workflow' ? workflowZh : commonZh;
+      return (resources as Record<string, string>)[keyParts.join(':')] ?? key;
+    },
+    i18n: { language: 'zh-CN' }
+  })
 }));
 vi.mock('@chakra-ui/react', async () => {
   const { createElement, forwardRef } = await import('react');
@@ -105,6 +116,19 @@ const input: FlowNodeInputItemType = {
   inputList: [{ key: 'apiKey', label: 'API key', inputType: 'secret' }]
 };
 
+const localizedInput: FlowNodeInputItemType = {
+  ...input,
+  inputList: [
+    {
+      key: 'apiKey',
+      label: 'common:System',
+      description: 'common:Team',
+      placeholder: 'common:Manual',
+      inputType: 'secret'
+    }
+  ]
+};
+
 describe('SecretInputForm authorization output', () => {
   let dom: JSDOM;
   let root: ReturnType<typeof createRoot>;
@@ -124,11 +148,15 @@ describe('SecretInputForm authorization output', () => {
     dom.window.close();
     vi.unstubAllGlobals();
   });
-  const render = async (value?: ToolParamsFormType, hasSystemSecret = true) => {
+  const render = async (
+    value?: ToolParamsFormType,
+    hasSystemSecret = true,
+    inputConfig = input
+  ) => {
     await act(async () =>
       root.render(
         React.createElement(SecretInputForm, {
-          inputConfig: { ...input, value },
+          inputConfig: { ...inputConfig, value },
           hasSystemSecret,
           onChange,
           onSubmit,
@@ -193,6 +221,14 @@ describe('SecretInputForm authorization output', () => {
     const expected = { type: 'manual', value: { apiKey: { value: '' } } };
     expect(onChange).toHaveBeenLastCalledWith(expected);
     expect(await submit()).toEqual(expected);
+  });
+
+  it('translates namespaced field labels and placeholders', async () => {
+    await render(undefined, false, localizedInput);
+    expect(dom.window.document.body.textContent).toContain('系统');
+    expect(
+      dom.window.document.querySelector<HTMLInputElement>('input[placeholder="临时"]')
+    ).not.toBeNull();
   });
 
   it.each([{ value: 'draft' }, { secret: 'existing-ciphertext' }])(

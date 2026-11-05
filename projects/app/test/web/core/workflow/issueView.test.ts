@@ -48,6 +48,37 @@ const createIssue = (issue: Omit<WorkflowCheckIssue, 'nodeId' | 'level'>): Workf
 });
 
 describe('renderWorkflowIssueMessage', () => {
+  it('renders the runtime reference type mismatch without missing placeholders', () => {
+    expect(
+      renderWorkflowIssueMessage(
+        createIssue({
+          code: WorkflowIssueCode.invalidReferenceType,
+          message: 'stale translated message',
+          params: { inputName: 'common:core.ai.Model' }
+        }),
+        t
+      )
+    ).toBe('common:core.workflow.check.invalid_reference_type|inputName=模型');
+  });
+
+  it('renders a diagnostic reference type mismatch with expected and actual types', () => {
+    expect(
+      renderWorkflowIssueMessage(
+        createIssue({
+          code: WorkflowDiagnosticCodeEnum.referenceTypeMismatch,
+          params: {
+            inputName: 'common:core.ai.Model',
+            expected: 'string',
+            actual: 'number'
+          }
+        }),
+        t
+      )
+    ).toBe(
+      'common:core.workflow.check.reference_type_mismatch|inputName=模型,expected=string,actual=number'
+    );
+  });
+
   it('resolves the i18n key by code and translates inputName', () => {
     const message = renderWorkflowIssueMessage(
       createIssue({
@@ -84,7 +115,10 @@ describe('renderWorkflowIssueMessage', () => {
   it('falls back to the diagnostic message when a code has no UI translation', () => {
     expect(
       renderWorkflowIssueMessage(
-        createIssue({ code: WorkflowDiagnosticCodeEnum.cliArgumentInvalid, message: 'Invalid CLI argument' }),
+        createIssue({
+          code: WorkflowDiagnosticCodeEnum.cliArgumentInvalid,
+          message: 'Invalid CLI argument'
+        }),
         t
       )
     ).toBe('Invalid CLI argument');
@@ -97,6 +131,9 @@ describe('getWorkflowIssueUIStatus', () => {
     expect(getWorkflowIssueUIStatus(WorkflowIssueCode.resourceMissing)).toBe('pending_handle');
     expect(getWorkflowIssueUIStatus(WorkflowIssueCode.resourceNoPermission)).toBe('pending_handle');
     expect(getWorkflowIssueUIStatus(WorkflowIssueCode.toolOffline)).toBe('pending_handle');
+    expect(getWorkflowIssueUIStatus(WorkflowDiagnosticCodeEnum.referenceTypeMismatch)).toBe(
+      'pending_handle'
+    );
     expect(getWorkflowIssueUIStatus(WorkflowIssueCode.sandboxNotConfigured)).toBe('pending_handle');
   });
 
