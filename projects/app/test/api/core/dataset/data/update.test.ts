@@ -39,6 +39,13 @@ vi.mock('@fastgpt/service/support/permission/dataset/auth', () => ({
   authDatasetData: mockAuthDatasetData
 }));
 
+vi.mock('@fastgpt/service/core/dataset/entity', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@fastgpt/service/core/dataset/entity')>()),
+  findDatasetIndexModelReferences: vi.fn(async ({ datasetIds }: { datasetIds: string[] }) =>
+    datasetIds.map((_id) => ({ _id, vectorModel: 'vision-embedding' }))
+  )
+}));
+
 vi.mock('@fastgpt/service/support/permission/model/auth', () => ({
   getAuthorizedModelIds: mockGetAuthorizedModelIds
 }));
@@ -82,6 +89,7 @@ const buildAuthResult = () => ({
     imageIndex: true,
     type: DatasetCollectionTypeEnum.images,
     dataset: {
+      _id: 'dataset-id',
       name: 'Dataset',
       type: 'dataset',
       vectorModel: 'vision-embedding',

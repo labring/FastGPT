@@ -301,7 +301,7 @@ describe('App dataset references require an available index model', () => {
         modelHandle: { getModelData } as unknown as ModelHandle,
         authorizedIds: new Set<string>()
       })
-    ).resolves.toBeUndefined();
+    ).resolves.toEqual(new Map());
     expect(getModelData).not.toHaveBeenCalled();
   });
 });
