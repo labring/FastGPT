@@ -13,6 +13,7 @@ import { LANG_KEY, SHARE_LANG_KEY } from '@fastgpt/web/i18n/utils';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { getInitOutLinkChatInfo } from '@/web/core/chat/api';
 import { MongoOutLink } from '@fastgpt/service/support/outLink/schema';
+import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 
 import NextHead from '@/components/common/NextHead';
@@ -597,6 +598,7 @@ const Render = (props: Props) => {
 
 export default React.memo(Render);
 
+/** Load public share metadata without exposing other publishing channels. */
 export async function getServerSideProps(context: any) {
   const shareId = context?.query?.shareId || '';
   const authToken = context?.query?.authToken || '';
@@ -606,7 +608,9 @@ export async function getServerSideProps(context: any) {
     try {
       return MongoOutLink.findOne(
         {
-          shareId
+          shareId,
+          // 分享页只公开分享渠道，不能用其他渠道的 ID 读取应用信息。
+          type: PublishChannelEnum.share
         },
         'appId canDownloadSource showCite showFullText showRunningStatus showSkillReferences'
       )
