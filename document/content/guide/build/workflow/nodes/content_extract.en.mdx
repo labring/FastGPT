@@ -45,7 +45,7 @@ Required input. Typically references the Start node's **User Question** (`userCh
 
 ### Target Fields (`extractKeys`)
 
-Each target field adds an output handle whose key equals the field name and whose label is "Extraction Results-{key}":
+Each target field adds an output handle whose key equals the field name and whose label is `Extraction Results-{key}`:
 
 - **Must Return**: Marks the field as required and lets you configure a **Default Value** when the field is absent from the input.
 - **Data Type**: Supports 7 types: `string`, `number`, `boolean`, `array<string>`, `array<number>`, `array<boolean>`, and `object`.
@@ -59,5 +59,5 @@ Each target field adds an output handle whose key equals the field name and whos
 | --- | --- | --- | --- |
 | **Complete Extraction Result** | `fields` | `String` | JSON string containing all extracted key-value pairs |
 | **Full Field Extraction** | `success` | `Boolean` | `true` when all required target fields are extracted or populated by default values |
-| **Extraction Results-{key}** | Field name `key` | Configured **Data type** | Individual output port for each declared target field |
+| **Extraction Results-`{key}`** | Field name `key` | Configured **Data type** | Individual output port for each declared target field |
 | **Error text** | `system_error_text` | `String` | Available when **Error catch** is enabled; outputs the error reason when model execution fails |
