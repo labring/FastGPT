@@ -62,16 +62,16 @@ async function handler(req: ApiRequestProps): Promise<RebuildEmbeddingResponse> 
   if (await hasDatasetTrainingTask({ teamId, datasetId })) {
     return Promise.reject('数据集正在训练或者重建中，请稍后再试');
   }
-  // 暂停的同义词重建仍会恢复执行，换模型会把其 data 改走 rebuildIndex，两个任务会冲突。
+  // 未清理的同义词重建任务（含最终失败待重试）与本次重建会改同一批 data：
+  // 换模型会把 data 改走 rebuildIndex，后续重试同义词任务会与新任务冲突。
   if (
     await MongoDatasetTraining.exists({
       teamId,
       datasetId,
-      mode: TrainingModeEnum.rebuildSynonym,
-      retryCount: { $gt: 0 }
+      mode: TrainingModeEnum.rebuildSynonym
     })
   ) {
-    return Promise.reject('同义词重建等待恢复，请稍后再切换模型');
+    return Promise.reject('同义词重建未完成，请稍后再切换模型');
   }
 
   // 此处只维护后续导入的图片索引开关；重建本身不解析图片或查询 VLM 模型。
