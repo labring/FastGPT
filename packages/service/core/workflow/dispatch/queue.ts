@@ -21,7 +21,6 @@ import { getErrText, isUserConfigError } from '@fastgpt/global/common/error/util
 import {
   filterWorkflowEdges,
   valueTypeFormat,
-  appendWorkflowInteractiveValue,
   getReferenceVariableValue
 } from '@fastgpt/global/core/workflow/runtime/utils';
 import type {

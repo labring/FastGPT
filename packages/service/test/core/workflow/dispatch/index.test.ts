@@ -5,7 +5,10 @@ import * as teamLimit from '@fastgpt/service/support/permission/teamLimit';
 import { WorkflowStopSignalCache } from '@fastgpt/dal/redis/caches/workflowStopSignal';
 import { setAgentRuntimeStop, shouldWorkflowStop } from '@fastgpt/service/core/chat/stop';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
-import { createTestWorkflowDispatch, createTestVariableContext } from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
+import {
+  createTestWorkflowDispatch,
+  createTestVariableContext
+} from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
 import { WorkflowContext } from '@fastgpt/service/core/workflow/dispatch/context';
 import * as WorkflowNodeResponse from '@fastgpt/service/core/workflow/dispatch/context/nodeResponse';
 import * as Tracing from '@fastgpt/service/common/tracing';
@@ -129,7 +132,9 @@ describe('dispatchWorkFlow explicit stop lifecycle', () => {
     query: [],
     histories: [],
     stream: false,
-    maxRunTimes: 10,
+    maxFileAmount: 20,
+    maxBytesPerFile: 1024,
+    resourceContext: { isRoot: false, resourceMap: new Map() },
     nodeResponseWriteConfig: { persistToDb: false, retainInMemory: true }
   });
 
@@ -1317,7 +1322,7 @@ describe('runWorkflow catchError', () => {
               status: 'waiting'
             }
           ],
-          variableState: createWorkflowVariableState(),
+          variableContext: createTestVariableContext(),
           externalProvider: {},
           workflowDispatchDeep: 0,
           maxRunTimes: 10,
@@ -1820,7 +1825,7 @@ describe('Workflow runtime error summary', () => {
           chatConfig: {},
           runtimeNodes: nodes,
           runtimeEdges: [],
-          variableState: createWorkflowVariableState(),
+          variableContext: createTestVariableContext(),
           externalProvider: {},
           workflowDispatchDeep: 0,
           maxRunTimes: 10,
@@ -1888,7 +1893,7 @@ describe('Workflow runtime error summary', () => {
           chatConfig: {},
           runtimeNodes: [node],
           runtimeEdges: [],
-          variableState: createWorkflowVariableState(),
+          variableContext: createTestVariableContext(),
           externalProvider: {},
           workflowDispatchDeep: 0,
           maxRunTimes: 10,
@@ -1949,7 +1954,7 @@ describe('Workflow runtime error summary', () => {
         runtimeNodes: [node],
         isToolCall,
         runtimeEdges: [],
-        variableState: createWorkflowVariableState(),
+        variableContext: createTestVariableContext(),
         externalProvider: {},
         workflowDispatchDeep: 0,
         maxRunTimes: 10,
@@ -2025,7 +2030,7 @@ describe('Workflow raw error logging', () => {
             chatConfig: {},
             runtimeNodes: [parent],
             runtimeEdges: [],
-            variableState: createWorkflowVariableState(),
+            variableContext: createTestVariableContext(),
             externalProvider: {},
             workflowDispatchDeep: 0,
             maxRunTimes: 10,

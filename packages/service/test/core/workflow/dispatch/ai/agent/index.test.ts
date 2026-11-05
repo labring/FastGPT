@@ -419,6 +419,8 @@ describe('dispatchRunAgent user context', () => {
     let result: any;
     runWithContext(
       {
+        fileContext: await createTestWorkflowFileContext(),
+
         checkIsStopping: () => false,
         mcpClientMemory: {}
       },
@@ -459,9 +461,16 @@ describe('dispatchRunAgent user context', () => {
     ];
 
     let result: any;
-    runWithContext({ checkIsStopping: () => false, mcpClientMemory: {} }, () => {
-      result = dispatchRunAgent(props);
-    });
+    runWithContext(
+      {
+        fileContext: await createTestWorkflowFileContext(),
+        checkIsStopping: () => false,
+        mcpClientMemory: {}
+      },
+      () => {
+        result = dispatchRunAgent(props);
+      }
+    );
     await result;
 
     const loopInput = runAgentLoopMock.mock.calls[0][0].input;
@@ -503,9 +512,16 @@ describe('dispatchRunAgent user context', () => {
 
     const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
     let resultPromise: Promise<any>;
-    runWithContext({ checkIsStopping: () => false, mcpClientMemory: {} }, () => {
-      resultPromise = dispatchRunAgent(props);
-    });
+    runWithContext(
+      {
+        fileContext: await createTestWorkflowFileContext(),
+        checkIsStopping: () => false,
+        mcpClientMemory: {}
+      },
+      () => {
+        resultPromise = dispatchRunAgent(props);
+      }
+    );
     await resultPromise!;
 
     const systemPrompt = runAgentLoopMock.mock.calls[0][0].input.systemPrompt;
@@ -519,9 +535,16 @@ describe('dispatchRunAgent user context', () => {
 
     const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
     let resultPromise: Promise<any>;
-    runWithContext({ checkIsStopping: () => false, mcpClientMemory: {} }, () => {
-      resultPromise = dispatchRunAgent(props);
-    });
+    runWithContext(
+      {
+        fileContext: await createTestWorkflowFileContext(),
+        checkIsStopping: () => false,
+        mcpClientMemory: {}
+      },
+      () => {
+        resultPromise = dispatchRunAgent(props);
+      }
+    );
     const result = await resultPromise!;
 
     expect(result.error).toBeUndefined();
@@ -557,9 +580,16 @@ describe('dispatchRunAgent user context', () => {
     });
 
     let result: any;
-    runWithContext({ checkIsStopping: () => false, mcpClientMemory: {} }, () => {
-      result = dispatchRunAgent(props);
-    });
+    runWithContext(
+      {
+        fileContext: await createTestWorkflowFileContext(),
+        checkIsStopping: () => false,
+        mcpClientMemory: {}
+      },
+      () => {
+        result = dispatchRunAgent(props);
+      }
+    );
     await result;
 
     expect(getSandboxClientMock).toHaveBeenCalledWith({
@@ -621,6 +651,8 @@ describe('dispatchRunAgent user context', () => {
 
     const result = await runWithContext(
       {
+        fileContext: await createTestWorkflowFileContext(),
+
         checkIsStopping: () => false,
         mcpClientMemory: {}
       },
@@ -653,6 +685,8 @@ describe('dispatchRunAgent user context', () => {
     let resultPromise: Promise<any> | undefined;
     runWithContext(
       {
+        fileContext: await createTestWorkflowFileContext(),
+
         checkIsStopping: () => false,
         mcpClientMemory: {}
       },
@@ -691,9 +725,16 @@ describe('dispatchRunAgent user context', () => {
     ensureAppSandboxRuntimeReadyMock.mockRejectedValueOnce(new Error('archive upload failed'));
 
     let resultPromise: Promise<any> | undefined;
-    runWithContext({ checkIsStopping: () => false, mcpClientMemory: {} }, () => {
-      resultPromise = dispatchRunAgent(props);
-    });
+    runWithContext(
+      {
+        fileContext: await createTestWorkflowFileContext(),
+        checkIsStopping: () => false,
+        mcpClientMemory: {}
+      },
+      () => {
+        resultPromise = dispatchRunAgent(props);
+      }
+    );
     const result = await resultPromise!;
 
     expect(getSandboxClientMock).not.toHaveBeenCalled();
@@ -717,9 +758,16 @@ describe('dispatchRunAgent user context', () => {
     props.runningAppInfo.sourceId = 'edit_skill_1';
 
     let result: any;
-    runWithContext({ checkIsStopping: () => false, mcpClientMemory: {} }, () => {
-      result = dispatchRunAgent(props);
-    });
+    runWithContext(
+      {
+        fileContext: await createTestWorkflowFileContext(),
+        checkIsStopping: () => false,
+        mcpClientMemory: {}
+      },
+      () => {
+        result = dispatchRunAgent(props);
+      }
+    );
     await result;
 
     expect(getSandboxClientMock).toHaveBeenCalledWith({
@@ -778,9 +826,16 @@ describe('dispatchRunAgent user context', () => {
     });
 
     let resultPromise: Promise<any>;
-    runWithContext({ checkIsStopping: () => false, mcpClientMemory: {} }, () => {
-      resultPromise = dispatchRunAgent(createProps());
-    });
+    runWithContext(
+      {
+        fileContext: await createTestWorkflowFileContext(),
+        checkIsStopping: () => false,
+        mcpClientMemory: {}
+      },
+      () => {
+        resultPromise = dispatchRunAgent(createProps());
+      }
+    );
     const result = await resultPromise!;
 
     expect(result.data.answerText).toBe('我先查询工具。ok');
@@ -820,6 +875,9 @@ describe('dispatchRunAgent user context', () => {
       let resultPromise: Promise<any>;
       runWithContext(
         {
+          checkIsStopping: () => false,
+          fileContext: await createTestWorkflowFileContext(),
+
           mcpClientMemory: {}
         },
         () => {
@@ -1038,9 +1096,17 @@ describe('dispatchRunAgent user context', () => {
     });
 
     let resultPromise: Promise<any>;
-    runWithContext({ checkIsStopping: () => false, mcpClientMemory: {}, nodeResponseSink }, () => {
-      resultPromise = dispatchRunAgent(props);
-    });
+    runWithContext(
+      {
+        fileContext: await createTestWorkflowFileContext(),
+        checkIsStopping: () => false,
+        mcpClientMemory: {},
+        nodeResponseSink
+      },
+      () => {
+        resultPromise = dispatchRunAgent(props);
+      }
+    );
     await resultPromise!;
 
     expect(publishedResponses).toHaveLength(1);
@@ -1073,9 +1139,16 @@ describe('dispatchRunAgent user context', () => {
     });
 
     let resultPromise: Promise<any>;
-    runWithContext({ checkIsStopping: () => false, mcpClientMemory: {} }, () => {
-      resultPromise = dispatchRunAgent(props);
-    });
+    runWithContext(
+      {
+        fileContext: await createTestWorkflowFileContext(),
+        checkIsStopping: () => false,
+        mcpClientMemory: {}
+      },
+      () => {
+        resultPromise = dispatchRunAgent(props);
+      }
+    );
     const result = await resultPromise!;
 
     expect(runAgentLoopMock).toHaveBeenCalledWith(
@@ -1116,6 +1189,8 @@ describe('dispatchRunAgent user context', () => {
     let resultPromise: Promise<any>;
     runWithContext(
       {
+        fileContext: await createTestWorkflowFileContext(),
+        checkIsStopping: () => false,
         mcpClientMemory: {}
       },
       () => {
@@ -1207,6 +1282,8 @@ describe('dispatchRunAgent user context', () => {
     let resultPromise: Promise<any>;
     runWithContext(
       {
+        fileContext: await createTestWorkflowFileContext(),
+        checkIsStopping: () => false,
         mcpClientMemory: {}
       },
       () => {
@@ -1535,9 +1612,16 @@ describe('dispatchRunAgent user context', () => {
     });
 
     let resultPromise: Promise<any>;
-    runWithContext({ checkIsStopping: () => false, mcpClientMemory: {} }, () => {
-      resultPromise = dispatchRunAgent(props);
-    });
+    runWithContext(
+      {
+        fileContext: await createTestWorkflowFileContext(),
+        checkIsStopping: () => false,
+        mcpClientMemory: {}
+      },
+      () => {
+        resultPromise = dispatchRunAgent(props);
+      }
+    );
     const result = await resultPromise!;
 
     expect(runAgentLoopMock).toHaveBeenCalledWith(
@@ -1591,6 +1675,69 @@ describe('dispatchRunAgent user context', () => {
     );
   });
 
+  it('resumes a nested Pi ask with history=0 using the parent workflow checkpoint', async () => {
+    const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
+    const { WorkflowMemoryState } = await import('@fastgpt/service/core/workflow/memory/state');
+    serviceEnvMock.AGENT_ENGINE = 'piAgent';
+    const props = createProps();
+    props.params.history = 0;
+    props.histories = [];
+    props.lastInteractive = {
+      type: 'agentAsk',
+      entryNodeIds: [],
+      memoryEdges: [],
+      nodeOutputs: [],
+      params: {
+        toolCallId: 'nested_ask',
+        arguments: JSON.stringify({
+          reason: '',
+          blockerType: 'user_choice',
+          questions: [{ question: 'Continue?', options: [] }]
+        })
+      }
+    };
+    const providerState = {
+      pendingMainContext: {
+        askToolCallId: 'nested_ask',
+        messages: [
+          {
+            role: 'assistant',
+            content: null,
+            tool_calls: [
+              {
+                id: 'nested_ask',
+                type: 'function',
+                function: { name: 'ask_user', arguments: '{}' }
+              }
+            ]
+          }
+        ]
+      }
+    };
+    props.memoryState = WorkflowMemoryState.fromRecord(
+      {
+        'node:outer_agent/app:app_1:agent_node': { providerState }
+      },
+      { rootSource: { sourceType: ChatSourceTypeEnum.app, sourceId: 'parent-app' } }
+    )
+      .fork('node:outer_agent')
+      .fork('app:app_1');
+
+    await runWithContext(
+      {
+        checkIsStopping: () => false,
+        fileContext: await createTestWorkflowFileContext(),
+        mcpClientMemory: {}
+      },
+      () => dispatchRunAgent(props)
+    );
+    expect(runAgentLoopMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        provider: 'piAgent',
+        input: expect.objectContaining({ providerState, userAnswer: '前端原始问题' })
+      })
+    );
+  });
   it('keeps reasoning with hideReason when reasoning display is disabled', async () => {
     const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
     const props = createProps();
@@ -1609,9 +1756,16 @@ describe('dispatchRunAgent user context', () => {
     });
 
     let resultPromise: Promise<any>;
-    runWithContext({ checkIsStopping: () => false, mcpClientMemory: {} }, () => {
-      resultPromise = dispatchRunAgent(props);
-    });
+    runWithContext(
+      {
+        fileContext: await createTestWorkflowFileContext(),
+        checkIsStopping: () => false,
+        mcpClientMemory: {}
+      },
+      () => {
+        resultPromise = dispatchRunAgent(props);
+      }
+    );
     const result = await resultPromise!;
 
     expect(
@@ -1653,9 +1807,16 @@ describe('dispatchRunAgent user context', () => {
     configure(props);
 
     let promise: any;
-    runWithContext({ checkIsStopping: () => false, mcpClientMemory: {} }, () => {
-      promise = dispatchRunAgent(props);
-    });
+    runWithContext(
+      {
+        fileContext: await createTestWorkflowFileContext(),
+        checkIsStopping: () => false,
+        mcpClientMemory: {}
+      },
+      () => {
+        promise = dispatchRunAgent(props);
+      }
+    );
     const result = await promise;
 
     expect(result.error).toBeUndefined();
@@ -1681,9 +1842,16 @@ describe('dispatchRunAgent user context', () => {
     global.feConfigs = { ...global.feConfigs, show_agent_sandbox: false };
 
     let promise: Promise<any>;
-    runWithContext({ checkIsStopping: () => false, mcpClientMemory: {} }, () => {
-      promise = dispatchRunAgent(props);
-    });
+    runWithContext(
+      {
+        fileContext: await createTestWorkflowFileContext(),
+        checkIsStopping: () => false,
+        mcpClientMemory: {}
+      },
+      () => {
+        promise = dispatchRunAgent(props);
+      }
+    );
     const result = await promise!;
 
     expect(result.error?.system_error_text).toBe(

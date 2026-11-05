@@ -289,9 +289,9 @@ describe('WorkflowRunStateSnapshot', () => {
     await snapshot.commit();
 
     expect(parent.get('password')).toBe('after');
-    expect(parent.getStoreValue('password')).toEqual({ value: '', secret: expect.any(String) });
+    expect(parent.getStoreValue('password')).toEqual({ secret: expect.any(String) });
     expect(parent.getStoreValue('files')).toEqual([
-      { key: 'private-file', name: 'private.pdf', type: 'file' },
+      { key: 'private-file', name: 'private.pdf', type: 'document' },
       expect.objectContaining({ url: 'https://example.com/external.pdf' })
     ]);
   });

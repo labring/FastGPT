@@ -113,26 +113,33 @@ describe('parseWorkflowAIInputFiles', () => {
       derive: vi.fn()
     } as unknown as WorkflowFileContext;
 
-    await runWithContext({ mcpClientMemory: {}, fileContext }, async () => {
-      expect(
-        await parseWorkflowAIInputFiles({
-          files: [
-            {
-              type: ChatFileTypeEnum.file,
-              name: '',
-              url: inputUrl
-            }
-          ],
-          maxFileAmount: 20
-        })
-      ).toEqual([
-        {
-          name: 'report.pdf',
-          type: ChatFileTypeEnum.document,
-          url: modelUrl
-        }
-      ]);
-    });
+    await runWithContext(
+      {
+        checkIsStopping: () => false,
+        mcpClientMemory: {},
+        fileContext
+      },
+      async () => {
+        expect(
+          await parseWorkflowAIInputFiles({
+            files: [
+              {
+                type: ChatFileTypeEnum.file,
+                name: '',
+                url: inputUrl
+              }
+            ],
+            maxFileAmount: 20
+          })
+        ).toEqual([
+          {
+            name: 'report.pdf',
+            type: ChatFileTypeEnum.document,
+            url: modelUrl
+          }
+        ]);
+      }
+    );
   });
 });
 

@@ -706,12 +706,21 @@ describe('dispatchRunTool runtime toolset auth', () => {
     let token = 'token-a';
     const props = createRunToolProps({ mcpTool: { toolId: 'mcp-victim-toolset/search' } });
     props.runtimeNodesMap = {};
-    props.variableState.toRuntimeRecord = () => ({ token });
+    props.variableContext.toRuntimeRecord = () => ({ token });
 
-    await dispatchRunTool(props);
-    token = 'token-b';
-    await dispatchRunTool(props);
-    await dispatchRunTool(props);
+    await runWithTestWorkflowContext(
+      {
+        checkIsStopping: () => false,
+        fileContext: await createTestWorkflowFileContext(),
+        mcpClientMemory: workflowContextMock.mcpClientMemory as any
+      },
+      async () => {
+        await dispatchRunTool(props);
+        token = 'token-b';
+        await dispatchRunTool(props);
+        await dispatchRunTool(props);
+      }
+    );
 
     expect(MCPClient).toHaveBeenNthCalledWith(1, {
       url,

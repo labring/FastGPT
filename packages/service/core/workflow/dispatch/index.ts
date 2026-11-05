@@ -1,3 +1,7 @@
+import { createChatStopController } from '../../chat/stop';
+import { markProfileError, profileStage } from '../../../common/profiling';
+import { appendWorkflowInteractiveValue } from '@fastgpt/global/core/workflow/runtime/utils';
+
 import { SpanStatusCode } from '@opentelemetry/api';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
@@ -210,7 +214,7 @@ export async function dispatchWorkFlow({
         }),
         maxFileAmount: maxFileAmount,
         resolveInputFile: async (file) => {
-          const ref = await fileContext.register.registerInputFile({
+          const ref = await fileContext.register({
             file,
             source: 'variable'
           });
@@ -237,7 +241,12 @@ export async function dispatchWorkFlow({
 
     return await runWithContext(
       {
-        runtimeControl: { mode, maxRunTimes: WORKFLOW_MAX_RUN_TIMES, workflowDispatchDeep: 0, isToolCall: false },
+        runtimeControl: {
+          mode,
+          maxRunTimes: WORKFLOW_MAX_RUN_TIMES,
+          workflowDispatchDeep: 0,
+          isToolCall: false
+        },
         checkIsStopping,
         variableContext: variableState,
         nodeResponseSink,
@@ -483,7 +492,3 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
     }
   });
 };
-
-import { createChatStopController } from '../../chat/stop';
-import { markProfileError, profileStage } from '../../../common/profiling';
-import { appendWorkflowInteractiveValue } from '@fastgpt/global/core/workflow/runtime/utils';

@@ -11,7 +11,11 @@ import {
 } from '@fastgpt/global/core/workflow/constants';
 import { WorkflowVariableState } from '@fastgpt/service/core/workflow/dispatch/context/variables';
 import { summarizeRuntimeNodeResponses } from '@fastgpt/service/core/workflow/dispatch/utils/summary';
-import { ChatFileTypeEnum, ChatRoleEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import {
+  ChatFileTypeEnum,
+  ChatRoleEnum,
+  ChatSourceTypeEnum
+} from '@fastgpt/global/core/chat/constants';
 import { prepareWorkflowFileContext } from '@fastgpt/service/core/workflow/dispatch/context/file';
 import { getWorkflowFileContext } from '@fastgpt/service/core/workflow/dispatch/context';
 import { runWithTestWorkflowContext as runWithContext } from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';

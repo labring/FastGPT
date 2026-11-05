@@ -80,7 +80,13 @@ export const dispatchTool = async ({
   workflowStreamResponse
 }: Props): Promise<DispatchSubAppResponse> => {
   const { variableContext: variableState } = getWorkflowContext();
-  const resolveReference = (value: ReferenceValueType) => getReferenceVariableValue({ value, nodesMap: runtimeNodesMap ?? new Map(), variables: variableState.toRuntimeRecord(), isReferenceVal: true });
+  const resolveReference = (value: ReferenceValueType) =>
+    getReferenceVariableValue({
+      value,
+      nodesMap: runtimeNodesMap ?? new Map(),
+      variables: variableState.toRuntimeRecord(),
+      isReferenceVal: true
+    });
   const getNodeResponse = ({
     result,
     response

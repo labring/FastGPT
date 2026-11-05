@@ -121,7 +121,7 @@ const createWorkflowResponse = (overrides: Record<string, unknown> = {}) => ({
   flowUsages: [],
   assistantResponses: [],
   toolResponse: 'ok',
-  workflowRuntimeSummary: { hasError: false, hasToolStop: false, runningTime: 0 },
+  workflowRuntimeSummary: { errorCount: 0, hasToolStop: false, runningTime: 0 },
   ...overrides
 });
 
@@ -187,7 +187,7 @@ describe('createToolCallToolProvider', () => {
         if (outcome === 'stop') stopping = true;
         return createWorkflowResponse({
           ...(outcome === 'error'
-            ? { workflowRuntimeSummary: { hasError: true, errorText: 'tool failed' } }
+            ? { workflowRuntimeSummary: { errorCount: 1, errorText: 'tool failed' } }
             : {}),
           ...(outcome === 'pause'
             ? { workflowInteractiveResponse: { entryNodeIds: ['search'] } }

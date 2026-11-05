@@ -353,7 +353,6 @@ describe('createWorkflowEntryNodeResponseSink', () => {
     await sink.publish([{ response }]);
 
     expect(workflowRuntimeSummary).toMatchObject({
-      hasError: false,
       errorCount: 0,
       llmInputTokens: 11,
       llmOutputTokens: 4

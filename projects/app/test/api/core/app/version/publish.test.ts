@@ -32,9 +32,15 @@ import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { getWorkflowNodeRunParams } from '@fastgpt/service/core/workflow/dispatch/utils/runtime';
 import { WorkflowVariableState } from '@fastgpt/service/core/workflow/dispatch/context/variables';
-import { createTestWorkflowFileContext, runWithTestWorkflowContext as runWithContext } from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
+import {
+  createTestWorkflowFileContext,
+  runWithTestWorkflowContext as runWithContext
+} from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
 import { createWorkflowResourceContext } from '@fastgpt/service/core/workflow/dispatch/context/resource';
-import { loadWorkflowDatasetResource, loadWorkflowModelResource } from '@fastgpt/service/core/workflow/resource/service';
+import {
+  loadWorkflowDatasetResource,
+  loadWorkflowModelResource
+} from '@fastgpt/service/core/workflow/resource/service';
 import { prepareAppWorkflowResources } from '@fastgpt/service/core/app/resource/service';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import { getRootUser, getUser } from '@test/datas/users';
@@ -392,6 +398,8 @@ describe('publish manually selected datasets', () => {
     const loadedDataset = await runWithContext(
       {
         mcpClientMemory: {},
+        checkIsStopping: () => false,
+        fileContext: await createTestWorkflowFileContext(),
         resourceContext: createWorkflowResourceContext({
           resources: version.resources,
           teamId: owner.teamId

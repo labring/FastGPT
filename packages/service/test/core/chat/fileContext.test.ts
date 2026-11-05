@@ -95,7 +95,11 @@ import {
   getFileInfoFromUrl,
   type FileReadContext
 } from '@fastgpt/service/core/chat/fileContext';
-import { prepareWorkflowFileContext, type WorkflowFileContext, type WorkflowFileRef } from '@fastgpt/service/core/workflow/dispatch/context/file';
+import {
+  prepareWorkflowFileContext,
+  type WorkflowFileContext,
+  type WorkflowFileRef
+} from '@fastgpt/service/core/workflow/dispatch/context/file';
 import {
   createExternalHttpFileSource,
   createS3FileSource,

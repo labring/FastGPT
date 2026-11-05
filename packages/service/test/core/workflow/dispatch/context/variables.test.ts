@@ -140,7 +140,7 @@ describe('WorkflowVariableState', () => {
     const state = await createState({
       variablesConfig: [{ key: 'files', type: VariableInputEnum.file } as any],
       inputVariables: {
-        files: [{ key: 'chat/app/a.pdf', name: 'a.pdf', type: ChatFileTypeEnum.file }]
+        files: [{ key: 'chat/app/a.pdf', name: 'a.pdf', type: ChatFileTypeEnum.document }]
       }
     });
     await state.set('nested', { items: [{ count: 1 }] });
@@ -155,7 +155,7 @@ describe('WorkflowVariableState', () => {
     expect(state.getStoreValue('nested')).toEqual({ items: [{ count: 1 }] });
     expect(state.get('files')).toEqual([url]);
     expect(state.getStoreValue('files')).toEqual([
-      { key: 'chat/app/a.pdf', name: 'a.pdf', type: ChatFileTypeEnum.file }
+      { key: 'chat/app/a.pdf', name: 'a.pdf', type: ChatFileTypeEnum.document }
     ]);
     expect(state.getFileStoreValueByRuntimeUrl(url)?.name).toBe('a.pdf');
     expect(child.get('nested')).toEqual({ items: [{ count: 2 }] });
