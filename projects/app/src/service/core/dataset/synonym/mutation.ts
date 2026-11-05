@@ -18,9 +18,11 @@ import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import path from 'node:path';
 
 import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
+import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { rebuildableDatasetDataMatch } from '@fastgpt/global/core/dataset/data/utils';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { cleanupUnusedDatasetSynonymMappings } from '@fastgpt/service/core/dataset/synonym/controller';
+import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import {
   assertDatasetSynonymEnabled,
   invalidateDatasetSynonymMatcherCache
@@ -220,6 +222,17 @@ export const createDatasetSynonymMutation = async ({
       { session }
     );
     if (affectedDataCount > 0) {
+      // 新一轮重建覆盖这些 data 的全部索引；旧的最终失败重建任务已被取代，
+      // 保留会让用户重试旧任务，与新一轮任务双写同一条 data。
+      await MongoDatasetTraining.deleteMany(
+        {
+          teamId,
+          datasetId,
+          mode: { $in: [TrainingModeEnum.rebuildIndex, TrainingModeEnum.rebuildSynonym] },
+          retryCount: { $lte: 0 }
+        },
+        { session }
+      );
       await seedDatasetSynonymRebuildTasks(
         {
           teamId,

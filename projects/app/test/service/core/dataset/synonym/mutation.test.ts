@@ -435,6 +435,86 @@ describe('createDatasetSynonymMutation', () => {
     );
   });
 
+  it('replaces stale final-error rebuild tasks when a new synonym round starts', async () => {
+    const failedData = await MongoDatasetData.create({
+      teamId,
+      tmbId,
+      datasetId,
+      collectionId,
+      q: 'failed rebuild data',
+      indexes: [],
+      indexStatus: DatasetDataIndexStatusEnum.rebuildSynonymFailed
+    });
+    const indexingData = await MongoDatasetData.create({
+      teamId,
+      tmbId,
+      datasetId,
+      collectionId,
+      q: 'first index failed data',
+      indexes: [],
+      indexStatus: DatasetDataIndexStatusEnum.indexing
+    });
+    const [oldRebuildIndexTask, oldSynonymTask, indexTask] = await MongoDatasetTraining.create([
+      {
+        teamId,
+        tmbId,
+        datasetId,
+        collectionId,
+        billId: 'old-bill',
+        mode: TrainingModeEnum.rebuildIndex,
+        dataId: failedData._id,
+        retryCount: 0,
+        lockTime: new Date(),
+        errorMsg: 'rebuild failed'
+      },
+      {
+        teamId,
+        tmbId,
+        datasetId,
+        collectionId,
+        billId: 'old-bill',
+        mode: TrainingModeEnum.rebuildSynonym,
+        dataId: failedData._id,
+        retryCount: 0,
+        lockTime: new Date(),
+        errorMsg: 'synonym rebuild failed',
+        expireAt: null
+      },
+      {
+        teamId,
+        tmbId,
+        datasetId,
+        collectionId,
+        billId: 'old-bill',
+        mode: TrainingModeEnum.index,
+        dataId: indexingData._id,
+        retryCount: 0,
+        lockTime: new Date(),
+        errorMsg: 'index failed'
+      }
+    ]);
+
+    const result = await createDatasetSynonymMutation({
+      req: {} as never,
+      datasetId: String(datasetId),
+      mappings: [createMapping()],
+      fileName: 'recover.csv',
+      size: 10,
+      type: DatasetSynonymMutationTypeEnum.upload
+    });
+
+    expect(result.affectedDataCount).toBe(1);
+    await expect(
+      MongoDatasetTraining.countDocuments({
+        _id: { $in: [oldRebuildIndexTask._id, oldSynonymTask._id] }
+      })
+    ).resolves.toBe(0);
+    // 首次索引失败的任务不属于本轮重建范围，不能被误删。
+    await expect(
+      MongoDatasetTraining.exists({ _id: indexTask._id })
+    ).resolves.toBeTruthy();
+  });
+
   it('allows only one concurrent upload to activate a mapping snapshot', async () => {
     const createMutation = (term: string) =>
       createDatasetSynonymMutation({
