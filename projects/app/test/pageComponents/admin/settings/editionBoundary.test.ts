@@ -51,7 +51,8 @@ vi.mock('@chakra-ui/react', () => {
     NumberInputField: () => null,
     NumberInputStepper: element,
     NumberIncrementStepper: () => null,
-    NumberDecrementStepper: () => null
+    NumberDecrementStepper: () => null,
+    useToast: () => ({ toast: vi.fn() })
   };
 });
 vi.mock('@fastgpt/web/components/common/MySelect', () => ({ default: () => null }));

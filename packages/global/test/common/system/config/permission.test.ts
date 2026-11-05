@@ -50,8 +50,8 @@ describe('Field permissions by edition', () => {
     expect(isConfigFieldAllowed('commercial.payFormUrl', 'pro')).toBe(true);
 
     // subservice fields are pro-only
-    expect(isConfigFieldAllowed('subservice.plugin.token', 'community')).toBe(false);
-    expect(isConfigFieldAllowed('subservice.plugin.token', 'pro')).toBe(true);
+    expect(isConfigFieldAllowed('subservice.codeSandbox.enabled', 'community')).toBe(false);
+    expect(isConfigFieldAllowed('subservice.codeSandbox.enabled', 'pro')).toBe(true);
   });
 
   it('retrieves domain-scoped allowed keys for each edition', () => {
@@ -126,27 +126,31 @@ describe('restorePreservedSecrets', () => {
   it('drops mask when no previous value can restore it (first save)', () => {
     const result = restorePreservedSecrets(
       'subservice',
-      { plugin: { token: SECRET_MASK, baseUrl: 'https://plugin.example.com' } },
+      {
+        agentSandbox: {
+          sealosdevbox: { token: SECRET_MASK, baseUrl: 'https://sandbox.example.com' }
+        }
+      },
       undefined
     );
 
     // 无上一版本时掩码按未提交丢弃，绝不能把 '******' 写入 DB
     expect(result).toEqual({
-      plugin: { baseUrl: 'https://plugin.example.com' }
+      agentSandbox: { sealosdevbox: { baseUrl: 'https://sandbox.example.com' } }
     });
-    expect((result as any).plugin.token).toBeUndefined();
+    expect((result as any).agentSandbox.sealosdevbox.token).toBeUndefined();
   });
 
   it('drops mask when previous overrides lacks the secret key', () => {
     // 密钥值来自 Schema 默认值而非 DB overrides：prevObj 中没有该键
     const result = restorePreservedSecrets(
-      'subservice',
-      { codeSandbox: { token: SECRET_MASK } },
-      { codeSandbox: { baseUrl: 'https://sandbox.example.com' } }
+      'providers',
+      { documentParse: { customPdf: { key: SECRET_MASK } } },
+      { documentParse: { customPdf: { url: 'https://pdf.example.com' } } }
     );
 
-    expect(result).toEqual({ codeSandbox: {} });
-    expect((result as any).codeSandbox.token).toBeUndefined();
+    expect(result).toEqual({ documentParse: { customPdf: {} } });
+    expect((result as any).documentParse.customPdf.key).toBeUndefined();
   });
 
   it('drops nested mask fields under a new parent object', () => {
@@ -163,23 +167,29 @@ describe('restorePreservedSecrets', () => {
   it('drops mask when previous value is itself a mask', () => {
     // 防御上一版本存量为掩码的情况，避免掩码自我固化
     const result = restorePreservedSecrets(
-      'subservice',
-      { plugin: { token: SECRET_MASK } },
-      { plugin: { token: SECRET_MASK } }
+      'providers',
+      { documentParse: { customPdf: { key: SECRET_MASK } } },
+      { documentParse: { customPdf: { key: SECRET_MASK } } }
     );
 
-    expect(result).toEqual({ plugin: {} });
+    expect(result).toEqual({ documentParse: { customPdf: {} } });
   });
 
   it('keeps non-secret fields and real secret submissions untouched', () => {
     const result = restorePreservedSecrets(
-      'subservice',
-      { plugin: { token: 'new-real-token', baseUrl: 'https://plugin.example.com' } },
-      { plugin: { token: 'old-token' } }
+      'providers',
+      {
+        documentParse: {
+          customPdf: { key: 'new-real-key', url: 'https://pdf.example.com' }
+        }
+      },
+      { documentParse: { customPdf: { key: 'old-key' } } }
     );
 
     expect(result).toEqual({
-      plugin: { token: 'new-real-token', baseUrl: 'https://plugin.example.com' }
+      documentParse: {
+        customPdf: { key: 'new-real-key', url: 'https://pdf.example.com' }
+      }
     });
   });
 
