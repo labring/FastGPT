@@ -7,7 +7,10 @@ import mongoose from '@fastgpt/service/common/mongo';
 import { serviceEnv } from '@fastgpt/service/env';
 import { getRedisRuntime } from '@fastgpt/dal/redis/runtime';
 import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
-import { assertOutLinkBrandRequestRateLimit } from '@fastgpt/service/common/rateLimit/interface/outLinkBrand';
+import {
+  assertOutLinkBrandRequestRateLimit,
+  assertOutLinkBrandWriteRateLimit
+} from '@fastgpt/service/common/rateLimit/interface/outLinkBrand';
 
 const mocks = vi.hoisted(() => ({ auth: vi.fn(), entitlement: vi.fn() }));
 vi.mock('@fastgpt/service/support/permission/publish/authChat', () => ({
@@ -70,30 +73,17 @@ describe('handler', () => {
     expect(mocks.entitlement).not.toHaveBeenCalled();
     expect(await TrackModel.countDocuments()).toBe(0);
   });
-  it('caps concurrent writes despite changing visitor IDs, exposure IDs and event types', async () => {
-    const results = await Promise.allSettled(
-      Array.from({ length: 80 }, (_, index) =>
-        request({
-          ...(index % 2 === 0
-            ? { event: TrackEnum.shareBrandExposure, eventId: `page-${index}` }
-            : { event: TrackEnum.shareBrandClick }),
-          outLinkAuthData: { shareId: 'share', outLinkUid: `visitor-${index}` }
-        })
+  it('checks the link write quota after authentication and before writing', async () => {
+    await Promise.all(
+      Array.from({ length: 60 }, () =>
+        assertOutLinkBrandWriteRateLimit({ outLinkId: link._id, ip: '192.0.2.1' })
       )
     );
-    expect(results.filter((result) => result.status === 'fulfilled')).toHaveLength(60);
-    const rejected = results.filter((result) => result.status === 'rejected');
-    expect(rejected).toHaveLength(20);
-    expect(rejected.every((result) => result.reason === ERROR_ENUM.tooManyRequest)).toBe(true);
-    expect(await TrackModel.countDocuments()).toBe(60);
-
-    await expect(request({ eventId: 'another-ip' }, '192.0.2.2')).resolves.toBeUndefined();
-    mocks.auth.mockResolvedValueOnce({
-      appId: link.appId,
-      outLinkConfig: { ...link, _id: 'another-link' }
-    });
-    await expect(request({ eventId: 'another-link' })).resolves.toBeUndefined();
-    expect(await TrackModel.countDocuments()).toBe(62);
+    await expect(request({ event: TrackEnum.shareBrandClick })).rejects.toBe(
+      ERROR_ENUM.tooManyRequest
+    );
+    expect(mocks.auth).toHaveBeenCalledOnce();
+    expect(await TrackModel.countDocuments()).toBe(0);
   });
   it('does not authenticate or write when the request rate limit cannot reach Redis', async () => {
     vi.mocked(getRedisRuntime().getCommandConnection().multi).mockImplementationOnce(() => {

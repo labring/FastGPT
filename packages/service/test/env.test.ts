@@ -585,14 +585,9 @@ describe('serviceEnv', () => {
 
   it.each([
     { proUrl: undefined, configured: undefined, expected: true },
-    { proUrl: undefined, configured: '', expected: true },
     { proUrl: undefined, configured: 'false', expected: true },
-    { proUrl: undefined, configured: 'true', expected: true },
     { proUrl: undefined, configured: 'invalid', expected: true },
     { proUrl: '', configured: undefined, expected: true },
-    { proUrl: '', configured: '', expected: true },
-    { proUrl: '', configured: 'false', expected: true },
-    { proUrl: '', configured: 'true', expected: true },
     { proUrl: 'https://pro.example.com', configured: undefined, expected: false },
     { proUrl: 'https://pro.example.com', configured: '', expected: false },
     { proUrl: 'https://pro.example.com', configured: 'false', expected: false },

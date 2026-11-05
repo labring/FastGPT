@@ -123,18 +123,6 @@ describe('ShareBrand visible analytics', () => {
     await render();
     expect(mocks.track).toHaveBeenCalledOnce();
   });
-  it('waits for document visibility without requiring a third-party tracker', async () => {
-    Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'hidden' });
-    await render();
-    await enter();
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(1000);
-    });
-    expect(mocks.track).not.toHaveBeenCalled();
-    Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'visible' });
-    await act(async () => document.dispatchEvent(new dom.window.Event('visibilitychange')));
-    expect(mocks.track).toHaveBeenCalledOnce();
-  });
   it('requires an official floating handshake, pins the parent origin, and waits until expanded', async () => {
     window.name = 'fastgpt-chatbot-window';
     await render();
@@ -197,26 +185,6 @@ describe('ShareBrand visible analytics', () => {
       }
     }
   );
-  it('does not collect analytics in the open source edition and tolerates tracking errors', async () => {
-    mocks.isPlus = false;
-    await render();
-    await act(async () =>
-      container
-        .querySelector('a')!
-        .dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true, cancelable: true }))
-    );
-    expect(mocks.track).not.toHaveBeenCalled();
-    mocks.isPlus = true;
-    await act(async () => root.render(null));
-    await render();
-    mocks.track.mockRejectedValueOnce(new Error('unavailable'));
-    await enter();
-    expect(session.current.exposed).toBe(false);
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(1000);
-    });
-    expect(session.current.exposed).toBe(true);
-  });
   it('waits for a write acknowledgement and prevents concurrent exposure through remounts', async () => {
     let acknowledge!: () => void;
     mocks.track.mockImplementationOnce(
@@ -336,6 +304,11 @@ describe('ShareBrand visible analytics', () => {
   it('does not observe exposure in the open source edition and tolerates click failures', async () => {
     mocks.isPlus = false;
     await render();
+    await act(async () =>
+      container
+        .querySelector('a')!
+        .dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true, cancelable: true }))
+    );
     expect(mocks.track).not.toHaveBeenCalled();
     mocks.isPlus = true;
     await render(true);

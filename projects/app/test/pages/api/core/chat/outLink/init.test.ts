@@ -100,10 +100,7 @@ describe('outlink initialization branding', () => {
     expect((await request()).branding).toEqual({ enabled: true, showBrand: false });
     expect(mocks.correction).not.toHaveBeenCalled();
   });
-  it('preserves qualified hiding and globally disabled preferences', async () => {
-    auth(false);
-    mocks.entitlement.mockResolvedValue(true);
-    expect((await request()).branding.showBrand).toBe(false);
+  it('disables branding globally without writing the saved preference', async () => {
     mocks.brandingEnabled = false;
     auth(true);
     expect((await request()).branding).toEqual({ enabled: false, showBrand: false });

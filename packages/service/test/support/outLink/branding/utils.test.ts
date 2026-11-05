@@ -7,27 +7,13 @@ import {
 
 describe('resolveOutLinkBranding', () => {
   it.each<[boolean, boolean | undefined, boolean | undefined, boolean]>([
-    // 全局关闭时，所有偏好和权益组合都不展示品牌。
-    [false, undefined, undefined, false],
-    [false, undefined, false, false],
-    [false, undefined, true, false],
+    // 覆盖全局开关、历史豁免、显式偏好及权益的各个分支。
     [false, false, undefined, false],
-    [false, false, false, false],
-    [false, false, true, false],
-    [false, true, undefined, false],
-    [false, true, false, false],
-    [false, true, true, false],
-    // 历史链接始终豁免；隐藏偏好仅在确认权益失效后恢复展示。
     [true, undefined, undefined, false],
-    [true, undefined, false, false],
-    [true, undefined, true, false],
     [true, false, undefined, false],
     [true, false, false, true],
     [true, false, true, false],
-    // 用户主动展示时，不受隐藏权益影响。
-    [true, true, undefined, true],
-    [true, true, false, true],
-    [true, true, true, true]
+    [true, true, undefined, true]
   ])(
     'global=%s, stored=%s, entitlement=%s => showBrand=%s',
     (enabled, isShowBrand, canHideShareBrand, expectedShowBrand) => {

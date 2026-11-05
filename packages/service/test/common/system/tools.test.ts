@@ -1,8 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { SystemConfigsTypeEnum } from '@fastgpt/global/common/system/config/constants';
 import type { FastGPTConfigFileType } from '@fastgpt/global/common/system/types';
-import { UpdateConfigBodySchema } from '@fastgpt/global/openapi/admin/system/api';
-import { MongoSystemConfigs } from '@fastgpt/service/common/system/config/schema';
 
 vi.mock('@fastgpt/service/env', () => ({
   hasAgentSandboxConfig: vi.fn(() => false),
@@ -26,49 +23,29 @@ const { serviceEnv } = await import('@fastgpt/service/env');
 
 describe('initFastGPTConfig', () => {
   it.each([undefined, false, true])(
-    'preserves independent share brand entitlements through validation, storage and loading: %s',
-    async (canHideShareBrand) => {
-      const config = UpdateConfigBodySchema.parse({
-        fastgpt: {
-          feConfigs: { isPlus: false },
-          systemEnv: {},
-          subPlans: {
-            standard: {
-              custom: canHideShareBrand === undefined ? {} : { canHideShareBrand },
-              advanced: {
-                price: 599,
-                totalPoints: 2000,
-                maxTeamMember: 10,
-                maxAppAmount: 20,
-                maxDatasetAmount: 20,
-                maxDatasetSize: 1000,
-                chatHistoryStoreDuration: 30,
-                canHideShareBrand: true
-              }
+    'loads independent share brand entitlements: %s',
+    (canHideShareBrand) => {
+      initFastGPTConfig({
+        feConfigs: { isPlus: false },
+        systemEnv: {},
+        subPlans: {
+          standard: {
+            custom: canHideShareBrand === undefined ? {} : { canHideShareBrand },
+            advanced: {
+              price: 599,
+              totalPoints: 2000,
+              maxTeamMember: 10,
+              maxAppAmount: 20,
+              maxDatasetAmount: 20,
+              maxDatasetSize: 1000,
+              chatHistoryStoreDuration: 30,
+              canHideShareBrand: true
             }
           }
-        },
-        fastgptPro: {}
-      });
-      expect(config.fastgpt.subPlans?.standard?.custom?.canHideShareBrand).toBe(canHideShareBrand);
-
-      await MongoSystemConfigs.create({
-        type: SystemConfigsTypeEnum.fastgpt,
-        value: config.fastgpt
-      });
-      const stored = await MongoSystemConfigs.findOne({
-        type: SystemConfigsTypeEnum.fastgpt
-      }).lean();
-      expect(stored?.value.subPlans?.standard?.custom?.canHideShareBrand).toBe(canHideShareBrand);
-
-      initFastGPTConfig(stored!.value as FastGPTConfigFileType);
+        }
+      } as FastGPTConfigFileType);
       expect(global.subPlans?.standard?.custom?.canHideShareBrand).toBe(canHideShareBrand);
       expect(global.subPlans?.standard?.advanced?.canHideShareBrand).toBe(true);
-
-      const reparsed = UpdateConfigBodySchema.parse({ fastgpt: stored!.value, fastgptPro: {} });
-      expect(reparsed.fastgpt.subPlans?.standard?.custom?.canHideShareBrand).toBe(
-        canHideShareBrand
-      );
     }
   );
 

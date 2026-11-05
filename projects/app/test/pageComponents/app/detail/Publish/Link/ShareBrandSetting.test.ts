@@ -166,18 +166,14 @@ describe('ShareBrandSetting', () => {
     expect(mocks.recharge.highlightShareBrand).toBe(true);
     expect(checked()).toBe(true);
     expect(mocks.save).not.toHaveBeenCalled();
-  });
-  it('keeps an effectively enabled switch on after cancelling an upgrade for a saved hidden link', async () => {
-    const link = { ...share, _id: 'hidden-link', isShowBrand: false };
-    mocks.getBrand.mockResolvedValue({ isShowBrand: false, canHideShareBrand: false });
-    await render(link);
-    await toggle();
     await act(async () => mocks.recharge.onClose());
     expect(checked()).toBe(true);
-    expect(mocks.save).not.toHaveBeenCalled();
     expect(container.querySelector('#recharge')).toBeNull();
   });
   it('waits for entitlement loading before enabling the switch', async () => {
+    expect(mocks.getBrand).toHaveBeenCalledWith({ id: 'link' });
+    expect(mocks.list).not.toHaveBeenCalled();
+    expect(mocks.init).not.toHaveBeenCalled();
     await reset();
     let finish!: (status: unknown) => void;
     mocks.getBrand.mockReturnValue(
@@ -216,11 +212,6 @@ describe('ShareBrandSetting', () => {
       expect(container.querySelector('button')).toBeNull();
     }
   );
-  it('uses only the lightweight branding query instead of listing links and counting team usage', () => {
-    expect(mocks.getBrand).toHaveBeenCalledWith({ id: 'link' });
-    expect(mocks.list).not.toHaveBeenCalled();
-    expect(mocks.init).not.toHaveBeenCalled();
-  });
   it.each([null, undefined, new Error('plan unavailable')])(
     'preserves the last known state on a failed manual entitlement refresh (%s)',
     async (status) => {
@@ -320,14 +311,6 @@ describe('ShareBrandSetting', () => {
     expect(mocks.save).not.toHaveBeenCalled();
     expect(container.querySelector('#recharge')).toBeNull();
     expect((container.querySelector('input') as HTMLInputElement).disabled).toBe(true);
-  });
-  it('reopens the upgrade modal when a later manual toggle still has no entitlement', async () => {
-    await toggle();
-    await act(async () => mocks.recharge.onPaySuccess());
-    await toggle();
-    expect(mocks.save).not.toHaveBeenCalled();
-    expect(checked()).toBe(true);
-    expect(container.querySelector('#recharge')).toBeTruthy();
   });
   it('preserves the displayed state if a manual save fails', async () => {
     mocks.getBrand.mockResolvedValue({ isShowBrand: true, canHideShareBrand: true });
