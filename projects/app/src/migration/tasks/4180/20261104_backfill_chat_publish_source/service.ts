@@ -107,7 +107,8 @@ export const backfillPublishSourceBatch = async ({
               _id: raw._id,
               teamId: raw.teamId,
               appId: raw.appId,
-              sourceType: raw.sourceType ?? null,
+              // 按原值比较，避免未知旧值中的对象被解释成查询运算符。
+              sourceType: { $eq: raw.sourceType ?? null },
               publishSource: null,
               source: raw.source,
               shareId: raw.shareId ?? null,

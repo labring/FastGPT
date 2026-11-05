@@ -15,9 +15,12 @@ vi.mock('@/migration/constants', () => ({ systemMigrationBatchSize: 2 }));
 
 const oid = () => new Types.ObjectId();
 /** 仅模拟升级框架的持久恢复状态；业务记录读写使用真实隔离 Mongo。 */
-const createContext = (initialCheckpoint?: Record<string, unknown>) => {
+const createContext = (
+  initialCheckpoint?: Record<string, unknown>,
+  initialFailures: SystemMigrationFailedRecord[] = []
+) => {
   let checkpoint = initialCheckpoint;
-  let failures: SystemMigrationFailedRecord[] = [];
+  let failures = structuredClone(initialFailures);
   const context = {
     migrationId: '20261104_backfill_chat_publish_source',
     runId: 'test-run',
@@ -60,6 +63,40 @@ const seed = async (overrides: Record<string, unknown> = {}) => {
 afterEach(() => vi.restoreAllMocks());
 
 describe('backfillChatPublishSource', () => {
+  it('从已扫描断点重试旧资源类型错误，无需修改旧数据或重置进度', async () => {
+    const records = [];
+    for (const sourceType of [null, '', 'legacy-resource']) {
+      records.push(await seed({ sourceType }));
+    }
+    const endId = String(records.at(-1)!._id);
+    const { context, failures } = createContext(
+      {
+        chats: { endId, lastId: endId, scanned: 3, total: 3 },
+        chatLogs: { endId: null, lastId: null, scanned: 0 }
+      },
+      records.map((record) => ({
+        stageKey: 'chats',
+        data: { id: String(record._id) },
+        reason: { message: 'Invalid legacy sourceType' }
+      }))
+    );
+
+    for (let attempt = 0; attempt < 2; attempt++) {
+      expect(await backfillChatPublishSource(context)).toEqual({
+        chats: 3,
+        chatLogs: 0,
+        missingChannelIds: 3
+      });
+      expect(failures()).toEqual([]);
+      for (const record of records) {
+        expect(await MongoChat.collection.findOne({ _id: record._id })).toEqual({
+          ...record,
+          publishSource: { type: 'api' }
+        });
+      }
+    }
+  });
+
   it('回填可靠外链引用，API/MCP 仅保留分类，统计桶使用自身来源且数值不变', async () => {
     const teamId = oid(),
       appId = oid();

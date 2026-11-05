@@ -20,6 +20,61 @@ const seed = async (overrides: Record<string, unknown> = {}) => {
 };
 
 describe('backfillPublishSourceBatch', () => {
+  it('旧资源类型不阻断来源回填，仅明确归属应用的记录恢复外链 ID，旧值保持不变', async () => {
+    const channel = await MongoOutLink.create({
+      teamId: oid(),
+      appId: oid(),
+      tmbId: oid(),
+      type: 'share',
+      shareId: 'legacy-source-type',
+      name: '历史入口'
+    });
+    const sourceTypes = [
+      undefined,
+      'app',
+      'skillEdit',
+      'workflowBuilder',
+      'chatAgentHelper',
+      null,
+      '',
+      'legacy-resource',
+      false,
+      0,
+      { $eq: 'app' }
+    ];
+    const records = await Promise.all(
+      sourceTypes.map((sourceType) =>
+        seed({
+          teamId: channel.teamId,
+          appId: channel.appId,
+          source: 'share',
+          shareId: channel.shareId,
+          ...(sourceType === undefined ? {} : { sourceType })
+        })
+      )
+    );
+
+    expect(
+      (
+        await backfillPublishSourceBatch({
+          stage: 'chats',
+          ids: records.map((record) => String(record._id))
+        })
+      ).size
+    ).toBe(0);
+    for (const [index, record] of records.entries()) {
+      expect(await MongoChat.collection.findOne({ _id: record._id })).toEqual({
+        ...record,
+        publishSource: {
+          type: 'share',
+          ...(sourceTypes[index] === undefined || sourceTypes[index] === 'app'
+            ? { id: channel._id }
+            : {})
+        }
+      });
+    }
+  });
+
   it('100 条记录只批量读取和提交一次，不逐条 update，且不改旧字段', async () => {
     const records = await Promise.all(
       Array.from({ length: 100 }, (_, i) => seed({ source: i % 2 ? 'api' : 'online' }))
@@ -54,7 +109,7 @@ describe('backfillPublishSourceBatch', () => {
   it('已有新来源不受旧字段影响；无待回填数据不写库，坏数据按 ID 返回', async () => {
     const existing = await seed({ source: 'unknown', publishSource: { type: 'api', id: oid() } });
     const invalid = await seed({ publishSource: { type: 'unknown' } });
-    const invalidLegacy = await seed({ source: 'unknown' });
+    const invalidLegacy = await seed({ source: 'unknown', sourceType: 'legacy-resource' });
     const write = vi.spyOn(MongoChat.collection, 'bulkWrite');
     try {
       expect((await backfillPublishSourceBatch({ stage: 'chats', ids: [] })).size).toBe(0);
@@ -183,6 +238,7 @@ describe('backfillPublishSourceBatch', () => {
       teamId: oid(),
       appId: oid(),
       source: 'share',
+      sourceType: null,
       shareId: 'public',
       publishSource: null
     };
