@@ -382,6 +382,7 @@ export const WorkflowSessionProvider = ({
   const pendingSaveRevision = useRef<number | undefined>(undefined);
   const saveCoordinator = useMemo(() => createWorkflowSaveCoordinator(), []);
   const unsubscribeRef = useRef<(() => void) | undefined>(undefined);
+  const unsubscribeIssuesRef = useRef<(() => void) | undefined>(undefined);
   const leaveSaveSign = useRef(true);
   const [issueFocusNodeId, setIssueFocusNodeId] = useState<string>();
   const issueFocusRef = useRef<string | undefined>(undefined);
@@ -457,6 +458,8 @@ export const WorkflowSessionProvider = ({
     saveCoordinator.invalidate();
     unsubscribeRef.current?.();
     unsubscribeRef.current = undefined;
+    unsubscribeIssuesRef.current?.();
+    unsubscribeIssuesRef.current = undefined;
     if (runtimeRef.current && !runtimeRef.current.isDisposed()) {
       runtimeRef.current.dispose();
     }
@@ -487,6 +490,14 @@ export const WorkflowSessionProvider = ({
         recordVersionHistory(next);
       } else if (change.origin !== 'command') {
         syncLiveVersion(next);
+      }
+    });
+    unsubscribeIssuesRef.current = next.subscribeIssues(() => {
+      const focusedNodeId = issueFocusRef.current;
+      if (!focusedNodeId) return;
+      const focusedNode = next.getNode(focusedNodeId);
+      if (!focusedNode || !focusedNode.issues.some((issue) => issue.level === 'error')) {
+        focusIssueNode(undefined);
       }
     });
     setRuntime(next);

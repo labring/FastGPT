@@ -29,6 +29,7 @@ import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { getHandleId } from '@fastgpt/global/common/workflow/reference';
 import { getInputReferences } from '@fastgpt/global/common/workflow/editor/runtime/kernel';
 import { USER_SELECT_REFERENCE_HANDLE_KEY } from '@fastgpt/global/core/workflow/template/system/interactive/userSelect';
+import { StoreNodeItemTypeSchema } from '@fastgpt/global/core/workflow/type/node';
 
 const createRuntime = (): WorkflowRuntimePort => {
   const editor = createWorkflowEditor({
@@ -1915,6 +1916,52 @@ describe('workflow editor runtime modules', () => {
     ).toBe(true);
     expect(editor.getNode('target')?.issues).not.toContainEqual(
       expect.objectContaining({ code: 'unreachable_from_start' })
+    );
+  });
+
+  it.each([
+    ['add then connect', false],
+    ['add with edge', true]
+  ] as const)('clears the isolated start issue when %s', (_label, connectInBatch) => {
+    const editor = createWorkflowEditor({
+      nodes: [
+        {
+          nodeId: 'start',
+          flowNodeType: FlowNodeTypeEnum.workflowStart,
+          name: 'Start',
+          inputs: [],
+          outputs: []
+        }
+      ],
+      edges: [],
+      chatConfig: {}
+    });
+    expect(editor.getNode('start')?.issues.map((issue) => issue.code)).toContain('isolated_node');
+
+    const node = StoreNodeItemTypeSchema.parse({
+      nodeId: 'answer',
+      flowNodeType: FlowNodeTypeEnum.answerNode,
+      name: 'Answer',
+      inputs: [],
+      outputs: []
+    });
+    const edge = {
+      source: 'start',
+      target: 'answer',
+      sourceHandle: 'source',
+      targetHandle: 'target'
+    };
+    if (!connectInBatch) {
+      expect(editor.dispatch({ type: 'addNode', node }).ok).toBe(true);
+    }
+    const result = editor.dispatch([
+      ...(connectInBatch ? [{ type: 'addNode' as const, node }] : []),
+      { type: 'connectEdge', edge }
+    ] satisfies readonly WorkflowCommand[]);
+
+    expect(result.ok).toBe(true);
+    expect(editor.getNode('start')?.issues).not.toContainEqual(
+      expect.objectContaining({ code: 'isolated_node' })
     );
   });
 

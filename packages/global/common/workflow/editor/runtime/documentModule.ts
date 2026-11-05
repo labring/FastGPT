@@ -719,9 +719,11 @@ export const createDocumentModule = (initial: CanonicalResult) => {
       }
     });
     meta.addedEdges.forEach((edge) => {
+      seedNodeIds.add(edge.data.source);
       seedNodeIds.add(edge.data.target);
     });
     meta.removedEdges.forEach((edge) => {
+      seedNodeIds.add(edge.data.source);
       seedNodeIds.add(edge.data.target);
     });
 

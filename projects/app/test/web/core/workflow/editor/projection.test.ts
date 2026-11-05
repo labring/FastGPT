@@ -181,6 +181,14 @@ describe('workflow editor projection', () => {
     expect(http.data).not.toHaveProperty('isError');
   });
 
+  it('does not mark the focused node after its issue is resolved', () => {
+    const runtime = createRuntime();
+    const { nodes } = project(runtime, { errorNodeId: 'start' });
+
+    expect(runtime.getNode('start')?.issues).toEqual([]);
+    expect(nodeById(nodes, 'start').data).not.toHaveProperty('isError');
+  });
+
   it('preserves renderer interaction state and dragging position', () => {
     const runtime = createRuntime();
     runtime.dispatch({ type: 'commitGeometry', nodeId: 'http', position: { x: 320, y: 40 } });

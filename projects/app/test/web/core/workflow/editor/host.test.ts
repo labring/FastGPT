@@ -322,6 +322,99 @@ describe('WorkflowSessionProvider version history', () => {
     act(() => root.unmount());
   });
 
+  it('clears the initial issue focus after the environment resolves the error', async () => {
+    let modelsReady = false;
+    const initial = materializeWorkflow({
+      input: {
+        nodes: [
+          {
+            nodeId: 'start',
+            flowNodeType: FlowNodeTypeEnum.workflowStart,
+            name: 'Start',
+            position: { x: 0, y: 0 },
+            inputs: [],
+            outputs: []
+          },
+          {
+            nodeId: 'chat',
+            flowNodeType: FlowNodeTypeEnum.chatNode,
+            name: 'Chat',
+            position: { x: 100, y: 0 },
+            inputs: [
+              {
+                key: NodeInputKeyEnum.aiModelId,
+                label: 'Model',
+                renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel],
+                valueType: WorkflowIOValueTypeEnum.string,
+                value: 'model-1'
+              },
+              {
+                key: NodeInputKeyEnum.userChatInput,
+                label: 'Question',
+                renderTypeList: [FlowNodeInputTypeEnum.reference],
+                selectedType: FlowNodeInputTypeEnum.reference,
+                valueType: WorkflowIOValueTypeEnum.string,
+                value: ['start', NodeOutputKeyEnum.userChatInput]
+              }
+            ],
+            outputs: []
+          }
+        ],
+        edges: [
+          {
+            source: 'start',
+            target: 'chat',
+            sourceHandle: 'source',
+            targetHandle: 'target'
+          }
+        ]
+      },
+      chatConfig: {},
+      t
+    });
+    const runtime = hydrateWorkflowEditor(initial, {
+      getEnvironment: () => ({
+        models: modelsReady
+          ? [{ modelId: 'model-1', model: 'model-1', type: ModelTypeEnum.llm }]
+          : [],
+        sandbox: { configured: true, planSupported: true }
+      })
+    });
+    const { root, readHost } = await renderHost(initial.chatConfig, runtime);
+
+    await act(async () => vi.advanceTimersByTime(300));
+    expect(readHost().runtime!.getNode('chat')?.issues).toContainEqual(
+      expect.objectContaining({ code: 'model_unavailable' })
+    );
+    expect(readHost().issueFocusNodeId).toBe('chat');
+
+    act(() => {
+      modelsReady = true;
+      runtime.refreshIssues('all');
+    });
+
+    expect(readHost().runtime!.getNode('chat')?.issues).toEqual([]);
+    expect(readHost().issueFocusNodeId).toBeUndefined();
+    act(() => root.unmount());
+  });
+
+  it('keeps the focused node while it still has an error', async () => {
+    const initial = answerDocument();
+    const runtime = hydrateWorkflowEditor(initial);
+    const { root, readHost } = await renderHost(initial.chatConfig, runtime);
+
+    await act(async () => vi.advanceTimersByTime(300));
+    expect(readHost().issueFocusNodeId).toBe('answer');
+
+    act(() => {
+      runtime.refreshIssues('all');
+    });
+
+    expect(readHost().runtime!.getNode('answer')?.issues.length).toBeGreaterThan(0);
+    expect(readHost().issueFocusNodeId).toBe('answer');
+    act(() => root.unmount());
+  });
+
   it('records every command immediately without adding entries when switching versions', async () => {
     const initial = materializeWorkflow({ input: { nodes: [], edges: [] }, chatConfig: {}, t });
     const { root, appDetail, readHost } = await renderHost(initial.chatConfig);

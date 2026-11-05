@@ -151,7 +151,7 @@ export const projectRuntimeCanvas = ({
 }: {
   runtime: WorkflowRuntimePort;
   overlays: ViewDataOverlayMap;
-  /** host 问题焦点节点：该节点标红并强制选中，其余节点还原本地选中态。 */
+  /** host 问题焦点节点：仅在该节点仍有 error 时标红；其余节点还原本地选中态。 */
   errorNodeId?: string;
   localNodes: CanvasNode[];
   localEdges: Edge<any>[];
@@ -164,7 +164,8 @@ export const projectRuntimeCanvas = ({
     const nodeId = snapshot.nodeId;
     const view = runtime.getNodeView(nodeId);
     const overlay = overlays[nodeId];
-    const isError = errorNodeId === nodeId;
+    const isError =
+      errorNodeId === nodeId && snapshot.issues.some((issue) => issue.level === 'error');
     const local = localNodeById.get(nodeId);
     const selected = local?.selected;
     const dragging = local?.dragging;
