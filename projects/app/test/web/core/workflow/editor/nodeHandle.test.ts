@@ -89,8 +89,18 @@ describe('workflow shell handle topology', () => {
     expect(model.sourceHandles.map((handle) => handle.handleId)).toEqual([
       'node-1-source-option-a',
       'node-1-source-option-b',
-      'node-1-source-custom-output'
+      'node-1-source-custom-output',
+      'node-1-source_catch-right'
     ]);
-    expect(model.hasCatchSource).toBe(true);
+  });
+
+  it('measures the catch handle with ordinary source handles only when enabled', () => {
+    const enabled = getNodeShellHandleModel(createNode({ catchError: true }));
+    const disabled = getNodeShellHandleModel(createNode({ catchError: false }));
+
+    expect(enabled.sourceHandles.map((handle) => handle.handleId)).toEqual([
+      'node-1-source_catch-right'
+    ]);
+    expect(disabled.sourceHandles).toEqual([]);
   });
 });

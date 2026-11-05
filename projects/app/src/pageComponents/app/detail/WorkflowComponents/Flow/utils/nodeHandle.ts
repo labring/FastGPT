@@ -34,7 +34,6 @@ export type NodeShellSourceHandle = {
 
 export type NodeShellHandleModel = {
   sourceHandles: NodeShellSourceHandle[];
-  hasCatchSource: boolean;
   replacesDefaultSource: boolean;
 };
 
@@ -75,8 +74,12 @@ const getInputArray = <T>(node: NodeShellHandleData, key: string) => {
  */
 export const getNodeShellHandleModel = (node: NodeShellHandleData): NodeShellHandleModel => {
   const sourceHandles = new Map<string, [number, number]>();
-  const addSourceHandle = (handleKey: string, translate: [number, number]) => {
-    const handleId = getHandleId(node.nodeId, 'source', handleKey);
+  const addSourceHandle = (
+    handleKey: string,
+    translate: [number, number],
+    type: 'source' | 'source_catch' = 'source'
+  ) => {
+    const handleId = getHandleId(node.nodeId, type, handleKey);
     if (!sourceHandles.has(handleId)) sourceHandles.set(handleId, translate);
   };
 
@@ -109,6 +112,8 @@ export const getNodeShellHandleModel = (node: NodeShellHandleData): NodeShellHan
     }
   });
 
+  if (node.catchError === true) addSourceHandle('right', sourceHandleTranslate, 'source_catch');
+
   const sourceHandleEntries = [...sourceHandles];
   const sourceHandleCount = sourceHandleEntries.length;
   const shellSourceHandles = sourceHandleEntries.map(([handleId, translate], index) => ({
@@ -120,7 +125,6 @@ export const getNodeShellHandleModel = (node: NodeShellHandleData): NodeShellHan
 
   return {
     sourceHandles: shellSourceHandles,
-    hasCatchSource: node.catchError === true,
     replacesDefaultSource
   };
 };

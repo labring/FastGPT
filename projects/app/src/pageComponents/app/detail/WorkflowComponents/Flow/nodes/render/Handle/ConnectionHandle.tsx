@@ -16,6 +16,15 @@ import { getFoldedSourceHandleIds } from './utils';
 const sourceTranslate = [9, 0] as [number, number];
 const targetTranslate = [-9, 0] as [number, number];
 
+/** catch 端口独占错误分支，不受右侧 target 占用影响。 */
+export const canRenderSourceHandle = ({
+  sourceType,
+  rightTargetConnected
+}: {
+  sourceType: 'source' | 'source_catch';
+  rightTargetConnected: boolean;
+}) => sourceType === 'source_catch' || !rightTargetConnected;
+
 export const ConnectionSourceHandle = ({
   nodeId,
   sourceType = 'source'
@@ -79,7 +88,11 @@ export const ConnectionSourceHandle = ({
         ? moduleTemplatesFlat.find((item) => item.flowNodeType === node.flowNodeType)
             ?.showSourceHandle
         : undefined;
-      if (!node || !templateShowSourceHandle || rightTargetConnected) {
+      if (
+        !node ||
+        !templateShowSourceHandle ||
+        !canRenderSourceHandle({ sourceType, rightTargetConnected })
+      ) {
         return null;
       }
 

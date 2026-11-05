@@ -251,7 +251,7 @@ const NodeShell = React.memo(
     const updateNodeInternals = useUpdateNodeInternals();
     const isToolNode = useIsToolNode(props.id);
     const showToolSource = props.data.flowNodeType === FlowNodeTypeEnum.toolCall;
-    const { sourceHandles, hasCatchSource, replacesDefaultSource } = handleModel;
+    const { sourceHandles, replacesDefaultSource } = handleModel;
     const sourceHandleCenters = dimensions.sourceHandleCenters;
 
     useEffect(() => {
@@ -289,9 +289,6 @@ const NodeShell = React.memo(
               <ToolTargetHandle show={isToolNode} nodeId={props.id} />
               {!replacesDefaultSource && <ConnectionSourceHandle nodeId={props.id} />}
               <ConnectionTargetHandle nodeId={props.id} />
-              {hasCatchSource && (
-                <ConnectionSourceHandle nodeId={props.id} sourceType="source_catch" />
-              )}
               {showToolSource && <ToolSourceHandle nodeId={props.id} />}
               {sourceHandles.map(({ handleId, topPercent, translate }) => {
                 const center = sourceHandleCenters?.get(handleId);
@@ -505,10 +502,7 @@ const CanvasOverlays = React.memo(() => {
         <SearchButton inToolbar portalContainerRef={workflowCanvasRef} />
       </Flex>
       <SystemConfigDrawer />
-      <NodeTemplatesModal
-        isOpen={isOpenTemplate}
-        onClose={() => closeLeftPanel('nodeTemplates')}
-      />
+      <NodeTemplatesModal isOpen={isOpenTemplate} onClose={() => closeLeftPanel('nodeTemplates')} />
       <NodeTemplatesPopover />
     </>
   );

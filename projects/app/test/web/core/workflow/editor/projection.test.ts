@@ -22,6 +22,7 @@ import {
   type ProjectionCache,
   type ViewDataOverlayMap
 } from '@/web/core/workflow/editor/canvas/projectWorkflowCanvas';
+import { splitNodeOutputs } from '@/web/core/workflow/utils';
 
 const t = ((key: string) => key) as never;
 
@@ -125,6 +126,24 @@ const nodeById = (nodes: CanvasNode[], id: string) => {
 };
 
 describe('workflow editor projection', () => {
+  it('projects error outputs after catchError is enabled', () => {
+    const runtime = createRuntime();
+    expect(
+      runtime.dispatch({ type: 'updateNode', nodeId: 'http', patch: { catchError: true } })
+    ).toMatchObject({
+      ok: true
+    });
+
+    const snapshot = runtime.getNode('http');
+    const { errorOutputs } = splitNodeOutputs(snapshot?.outputs ?? []);
+
+    expect(snapshot?.catchError).toBe(true);
+    expect(errorOutputs.map((output) => output.key)).toEqual([
+      NodeOutputKeyEnum.httpRawError,
+      NodeOutputKeyEnum.error
+    ]);
+  });
+
   it('merges runtime snapshot with template-only display fields', () => {
     const runtime = createRuntime();
     const { nodes } = project(runtime);
