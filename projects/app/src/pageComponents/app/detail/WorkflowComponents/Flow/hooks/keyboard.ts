@@ -70,10 +70,18 @@ export const isWorkflowShortcutInputtingTarget = (target?: EventTarget | Node | 
  * 主动补齐释放事件，避免 xyflow 的按键状态粘滞。
  */
 export const resetWorkflowModifierKeyPress = (
-  event: Pick<KeyboardEvent, 'metaKey' | 'ctrlKey'>,
+  event: Pick<KeyboardEvent, 'metaKey' | 'ctrlKey' | 'shiftKey' | 'altKey'>,
   onReset?: () => void
 ) => {
-  if (event.metaKey || event.ctrlKey || typeof document === 'undefined') return;
+  // Shift 框选依赖 xyflow 内部的 keyup 状态；补发其他修饰键的 keyup 会被误判为 Shift 释放。
+  if (
+    event.metaKey ||
+    event.ctrlKey ||
+    event.shiftKey ||
+    event.altKey ||
+    typeof document === 'undefined'
+  )
+    return;
 
   onReset?.();
 

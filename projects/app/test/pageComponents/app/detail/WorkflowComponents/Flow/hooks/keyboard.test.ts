@@ -135,7 +135,10 @@ describe('resetWorkflowModifierKeyPress', () => {
       })
     );
 
-    resetWorkflowModifierKeyPress({ metaKey: false, ctrlKey: false }, onReset);
+    resetWorkflowModifierKeyPress(
+      { metaKey: false, ctrlKey: false, shiftKey: false, altKey: false },
+      onReset
+    );
 
     expect(onReset).toHaveBeenCalledOnce();
     expect(dispatchEvent).toHaveBeenCalledTimes(2);
@@ -154,8 +157,22 @@ describe('resetWorkflowModifierKeyPress', () => {
     const onReset = vi.fn();
     vi.stubGlobal('document', { dispatchEvent });
 
-    resetWorkflowModifierKeyPress({ metaKey: true, ctrlKey: false }, onReset);
-    resetWorkflowModifierKeyPress({ metaKey: false, ctrlKey: true }, onReset);
+    resetWorkflowModifierKeyPress(
+      { metaKey: true, ctrlKey: false, shiftKey: false, altKey: false },
+      onReset
+    );
+    resetWorkflowModifierKeyPress(
+      { metaKey: false, ctrlKey: true, shiftKey: false, altKey: false },
+      onReset
+    );
+    resetWorkflowModifierKeyPress(
+      { metaKey: false, ctrlKey: false, shiftKey: true, altKey: false },
+      onReset
+    );
+    resetWorkflowModifierKeyPress(
+      { metaKey: false, ctrlKey: false, shiftKey: false, altKey: true },
+      onReset
+    );
 
     expect(onReset).not.toHaveBeenCalled();
     expect(dispatchEvent).not.toHaveBeenCalled();

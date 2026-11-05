@@ -448,6 +448,21 @@ const ViewportObserver = () => {
 /** 画布背景：写成模块常量，内联字面量会让 ReactFlow 每次渲染都收到新的 style 对象。 */
 const canvasStyle = { background: '#F7F8FA' };
 
+/** 鼠标模式依赖 Shift 临时框选，触摸板模式改为直接拖动框选。 */
+export const getCanvasSelectionProps = (mode: 'drag' | 'select') =>
+  mode === 'select'
+    ? {
+        selectionMode: SelectionMode.Full,
+        selectNodesOnDrag: false,
+        selectionOnDrag: true,
+        selectionKeyCode: null,
+        panOnDrag: false,
+        panOnScroll: true
+      }
+    : {
+        selectionKeyCode: 'Shift'
+      };
+
 /** 画布工具栏共享 Builder 面板开合状态，同时把搜索层挂到画布容器。 */
 const CanvasOverlays = React.memo(() => {
   const { t } = useTranslation();
@@ -604,16 +619,7 @@ const WorkflowCanvas = () => {
           snapToGrid
           style={canvasStyle}
           multiSelectionKeyCode={['Meta', 'Control']}
-          {...(workflowControlMode === 'select'
-            ? {
-                selectionMode: SelectionMode.Full,
-                selectNodesOnDrag: false,
-                selectionOnDrag: true,
-                selectionKeyCode: null,
-                panOnDrag: false,
-                panOnScroll: true
-              }
-            : {})}
+          {...getCanvasSelectionProps(workflowControlMode)}
           onNodeDragStart={onNodeDragStart}
           onNodeDragStop={onNodeDragStop}
           noWheelClassName={
