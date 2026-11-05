@@ -289,6 +289,66 @@ describe('POST /api/core/dataset/training/rebuildEmbedding', () => {
     await expect(MongoDatasetTraining.countDocuments({ datasetId: dataset._id })).resolves.toBe(0);
   });
 
+  it('should ignore final-error training records when switching the embedding model', async () => {
+    const { root, dataset, collection } = await createDatasetContext();
+    await MongoDatasetData.create({
+      teamId: root.teamId,
+      tmbId: root.tmbId,
+      datasetId: dataset._id,
+      collectionId: collection._id,
+      q: 'failed',
+      indexes: [],
+      indexStatus: 'error'
+    });
+    await MongoDatasetTraining.create({
+      teamId: root.teamId,
+      tmbId: root.tmbId,
+      datasetId: dataset._id,
+      collectionId: collection._id,
+      billId: 'bill',
+      mode: TrainingModeEnum.index,
+      retryCount: 0,
+      lockTime: new Date(),
+      errorMsg: '404 The model does not exist'
+    });
+
+    const res = await Call(handler, {
+      auth: root,
+      body: {
+        datasetId: String(dataset._id),
+        vectorModelId: visionEmbeddingModel.modelId
+      }
+    });
+
+    expect(res.error).toBeUndefined();
+    expect(res.code).toBe(200);
+  });
+
+  it('should reject model rebuilding while an active training task exists', async () => {
+    const { root, dataset, collection } = await createDatasetContext();
+    await MongoDatasetTraining.create({
+      teamId: root.teamId,
+      tmbId: root.tmbId,
+      datasetId: dataset._id,
+      collectionId: collection._id,
+      billId: 'bill',
+      mode: TrainingModeEnum.index,
+      retryCount: 3,
+      lockTime: new Date('2000-01-01')
+    });
+
+    const res = await Call(handler, {
+      auth: root,
+      body: {
+        datasetId: String(dataset._id),
+        vectorModelId: visionEmbeddingModel.modelId
+      }
+    });
+
+    expect(res.code).toBe(500);
+    expect(String(res.error)).toContain('正在训练或者重建中');
+  });
+
   it('should keep the committed model switch and rebuild markers when seed creation fails', async () => {
     const { root, dataset, collection } = await createDatasetContext();
     const data = await MongoDatasetData.create({

@@ -1,9 +1,8 @@
-import { rebuildingDatasetDataMatch } from '@fastgpt/global/core/dataset/data/utils';
 import type { ClientSession } from '../../../common/mongo';
 import { normalizePagination } from '../../../common/api/pagination';
 import { MongoDatasetSynonym, MongoDatasetSynonymMapping } from './schema';
 import { MongoDatasetData } from '../data/schema';
-import { MongoDatasetTraining } from '../training/schema';
+import { hasDatasetTrainingTask } from '../training/entity';
 import { assertDatasetSynonymEnabled, invalidateDatasetSynonymMatcherCache } from './entity';
 import { serviceEnv } from '../../../env';
 
@@ -43,14 +42,13 @@ export const getDatasetSynonymDetail = async ({
 }) => {
   assertDatasetSynonymEnabled();
 
-  const [file, rebuildingData, training] = await Promise.all([
+  const [file, hasTrainingTask] = await Promise.all([
     MongoDatasetSynonym.findOne({ teamId, datasetId }).lean(),
-    MongoDatasetData.exists({ teamId, datasetId, ...rebuildingDatasetDataMatch }),
-    MongoDatasetTraining.exists({ teamId, datasetId })
+    hasDatasetTrainingTask({ teamId, datasetId })
   ]);
   return {
     file: file ?? undefined,
-    rebuilding: !!rebuildingData || !!training
+    rebuilding: hasTrainingTask
   };
 };
 

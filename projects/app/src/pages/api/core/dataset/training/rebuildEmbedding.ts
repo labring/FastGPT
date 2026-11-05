@@ -7,17 +7,14 @@ import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
-import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
+import { hasDatasetTrainingTask } from '@fastgpt/service/core/dataset/training/entity';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { assertAuthModels } from '@fastgpt/service/support/permission/model/auth';
 import { createTrainingUsage } from '@fastgpt/service/support/wallet/usage/controller';
 
 import { seedDatasetRebuildTasks } from '@/service/core/dataset/queues/rebuild';
-import {
-  rebuildableDatasetDataMatch,
-  rebuildingDatasetDataMatch
-} from '@fastgpt/global/core/dataset/data/utils';
+import { rebuildableDatasetDataMatch } from '@fastgpt/global/core/dataset/data/utils';
 import {
   RebuildEmbeddingBodySchema,
   RebuildEmbeddingResponseSchema,
@@ -57,13 +54,8 @@ async function handler(req: ApiRequestProps): Promise<RebuildEmbeddingResponse> 
     return Promise.reject('vectorModel 不合法');
   }
 
-  // check rebuilding or training
-  const [rebuilding, training] = await Promise.all([
-    MongoDatasetData.findOne({ teamId, datasetId, ...rebuildingDatasetDataMatch }),
-    MongoDatasetTraining.findOne({ teamId, datasetId })
-  ]);
-
-  if (rebuilding || training) {
+  // 只统计仍在处理中的训练/重建；最终失败或永久锁定的任务不阻塞切换。
+  if (await hasDatasetTrainingTask({ teamId, datasetId })) {
     return Promise.reject('数据集正在训练或者重建中，请稍后再试');
   }
 
