@@ -5,7 +5,7 @@ import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { PaginationProps, PaginationResponse } from '@fastgpt/global/openapi/api';
-import { usePagination } from '../../hooks/usePagination';
+import { scrollPaginationContentToTop, usePagination } from '../../hooks/usePagination';
 
 const reactGlobals = globalThis as typeof globalThis & {
   IS_REACT_ACT_ENVIRONMENT?: boolean;
@@ -46,13 +46,26 @@ vi.mock('../../components/common/MyMenu', () => ({
 
 vi.mock('@chakra-ui/react', () => ({
   Box: React.forwardRef<HTMLDivElement, React.PropsWithChildren<Record<string, unknown>>>(
-    function MockBox({ children, ...props }, ref) {
-      return React.createElement('div', { ...props, ref }, children);
+    function MockBox({ children, as = 'div', ...props }, ref) {
+      const domProps = Object.fromEntries(
+        Object.entries(props).filter(
+          ([key]) =>
+            ['id', 'type', 'disabled', 'onClick', 'onScroll', 'title'].includes(key) ||
+            key.startsWith('aria-')
+        )
+      );
+      return React.createElement(as as React.ElementType, { ...domProps, ref }, children);
     }
   ),
   Flex: React.forwardRef<HTMLDivElement, React.PropsWithChildren<Record<string, unknown>>>(
-    function MockFlex({ children, ...props }, ref) {
-      return React.createElement('div', { ...props, ref }, children);
+    function MockFlex({ children, as = 'div', ...props }, ref) {
+      const domProps = Object.fromEntries(
+        Object.entries(props).filter(
+          ([key]) =>
+            ['id', 'type', 'disabled', 'onClick', 'title'].includes(key) || key.startsWith('aria-')
+        )
+      );
+      return React.createElement(as as React.ElementType, { ...domProps, ref }, children);
     }
   )
 }));
@@ -78,6 +91,64 @@ vi.mock('ahooks', async () => {
       return { runAsync: service };
     }
   };
+});
+
+describe('scrollPaginationContentToTop', () => {
+  afterEach(() => {
+    document.body.replaceChildren();
+    vi.restoreAllMocks();
+  });
+
+  it('returns the desktop table body to the top without moving an outer scroller', () => {
+    const outer = document.createElement('div');
+    const body = document.createElement('div');
+    outer.append(body);
+    document.body.append(outer);
+    for (const element of [outer, body]) {
+      element.style.overflowY = 'auto';
+      Object.defineProperties(element, {
+        scrollHeight: { configurable: true, value: 1000 },
+        clientHeight: { configurable: true, value: 100 }
+      });
+      element.scrollTop = 500;
+    }
+    scrollPaginationContentToTop(body);
+    expect(body.scrollTop).toBe(0);
+    expect(outer.scrollTop).toBe(500);
+  });
+
+  it('returns the mobile page ancestor to the top when the table has no vertical overflow', () => {
+    const outer = document.createElement('div');
+    const body = document.createElement('div');
+    outer.append(body);
+    document.body.append(outer);
+    outer.style.overflowY = 'auto';
+    Object.defineProperties(outer, {
+      scrollHeight: { configurable: true, value: 1000 },
+      clientHeight: { configurable: true, value: 100 }
+    });
+    outer.scrollTop = 500;
+    scrollPaginationContentToTop(body);
+    expect(outer.scrollTop).toBe(0);
+  });
+
+  it('falls back to the document scroller and ignores a missing content target', () => {
+    const body = document.createElement('div');
+    document.body.append(body);
+    Object.defineProperty(document, 'scrollingElement', {
+      configurable: true,
+      value: document.documentElement
+    });
+    try {
+      document.documentElement.scrollTop = 500;
+      scrollPaginationContentToTop(undefined);
+      expect(document.documentElement.scrollTop).toBe(500);
+      scrollPaginationContentToTop(body);
+      expect(document.documentElement.scrollTop).toBe(0);
+    } finally {
+      Reflect.deleteProperty(document, 'scrollingElement');
+    }
+  });
 });
 
 type TestItem = string;
@@ -128,10 +199,15 @@ const Harness = ({ api, onState, type = 'scroll' }: HarnessProps) => {
   useEffect(() => onState(state), [onState, state]);
 
   return React.createElement(
-    state.ScrollData,
-    // children 由第三个参数传入，补齐 createElement 对必需 props 的类型约束。
-    { id: 'scroll-data' } as React.ComponentProps<typeof state.ScrollData>,
-    React.createElement('span', null, state.data.join(','))
+    React.Fragment,
+    null,
+    React.createElement(
+      state.ScrollData,
+      // children 由第三个参数传入，补齐 createElement 对必需 props 的类型约束。
+      { id: 'scroll-data' } as React.ComponentProps<typeof state.ScrollData>,
+      React.createElement('span', null, state.data.join(','))
+    ),
+    type === 'button' ? React.createElement(state.Pagination) : null
   );
 };
 
@@ -144,17 +220,22 @@ const renderHarness = async (root: Root, props: HarnessProps) => {
 
 describe('usePagination', () => {
   let root: Root;
+  let container: HTMLDivElement;
 
   beforeEach(() => {
     vi.stubGlobal('React', React);
     vi.useFakeTimers();
     mocks.router.query = {};
     mocks.toast.mockReset();
-    root = createRoot(document.createElement('div'));
+    container = document.createElement('div');
+    document.body.append(container);
+    root = createRoot(container);
   });
 
   afterEach(async () => {
     await act(async () => root.unmount());
+    container.remove();
+    vi.restoreAllMocks();
     vi.useRealTimers();
     vi.unstubAllGlobals();
   });
@@ -192,6 +273,36 @@ describe('usePagination', () => {
 
     expect(requests).toHaveLength(3);
     expect(requests[2]?.params.pageNum).toBe(2);
+  });
+
+  it('routes shared pagination clicks through the hook and scrolls after a successful page change', async () => {
+    const { api, requests } = createDeferredApi();
+    const onState = vi.fn();
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => {
+      callback(0);
+      return 0;
+    });
+    container.style.overflowY = 'auto';
+    Object.defineProperties(container, {
+      scrollHeight: { configurable: true, value: 1000 },
+      clientHeight: { configurable: true, value: 100 }
+    });
+    await renderHarness(root, { api, onState, type: 'button' });
+    await act(async () => requests[0].resolve({ list: ['first'], total: 3 }));
+    container.scrollTop = 500;
+
+    const next = () =>
+      container.querySelector<HTMLButtonElement>('[aria-label="common:next_page"]')!;
+    await act(async () => next().click());
+    expect(requests[1]?.params.pageNum).toBe(2);
+    expect(next().disabled).toBe(true);
+    await act(async () => next().click());
+    expect(requests).toHaveLength(2);
+    await act(async () => requests[1].resolve({ list: ['second'], total: 3 }));
+
+    expect(onState.mock.lastCall?.[0]).toMatchObject({ data: ['second'], pageNum: 2 });
+    expect(container.scrollTop).toBe(0);
+    expect(next().disabled).toBe(false);
   });
 
   it.each([

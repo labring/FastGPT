@@ -1,4 +1,8 @@
 {
+  "first_page": "第一頁",
+  "previous_page": "上一頁",
+  "next_page": "下一頁",
+  "last_page": "最後一頁",
   "not_set": "不設定",
   "Action": "操作",
   "Add": "新增",

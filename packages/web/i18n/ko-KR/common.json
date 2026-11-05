@@ -1,4 +1,8 @@
 {
+  "first_page": "첫 페이지",
+  "previous_page": "이전 페이지",
+  "next_page": "다음 페이지",
+  "last_page": "마지막 페이지",
   "not_set": "설정 안 함",
   "Action": "작업",
   "Add": "추가",
