@@ -17,10 +17,7 @@ import { codeSandbox } from '@fastgpt/service/thirdProvider/codeSandbox';
 import { UserConfigError } from '@fastgpt/global/common/error/utils';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import * as workflowMetrics from '@fastgpt/service/core/workflow/metrics';
-import {
-  internalRuntimeNodeType,
-  internalRuntimeNodeRunnerKey
-} from '@fastgpt/service/core/workflow/dispatch/internal/runtimeNode';
+import { callbackMap } from '@fastgpt/service/core/workflow/dispatch/constants';
 import {
   graphNode,
   graphEdge,
@@ -78,24 +75,23 @@ beforeEach(() => {
 });
 afterEach(() => vi.restoreAllMocks());
 
-// 这些场景直接运行完整生产调度，外部请求边界被替换；不覆盖 callbackMap，也不回放节点结果。
+// 首例用受控 callback 验证双分支返回契约；其余场景执行真实节点，只替换外部请求边界。
 describe('workflow data transfer through real nodes', () => {
   it('passes both output records through an intentional error branch without logging a fault', async () => {
     const stepObservation = vi.spyOn(workflowMetrics, 'observeWorkflowStep');
     const warn = vi.spyOn(getLogger(LogCategories.MODULE.WORKFLOW.DISPATCH), 'warn');
     warn.mockClear();
+    // 同时返回 data/error 只验证 Queue 的合并与路由，不恢复已删除的生产内部节点入口。
+    vi.spyOn(callbackMap, FlowNodeTypeEnum.code).mockResolvedValue({
+      data: { value: 0, shared: 'normal', nullable: null },
+      error: { reason: 'chosen branch', shared: false, message: '' },
+      responseData: { codeLog: 'intentional branch' }
+    });
     const source = graphNode({
       id: 'source',
-      type: internalRuntimeNodeType as FlowNodeTypeEnum,
+      type: FlowNodeTypeEnum.code,
       isEntry: true,
       catchError: true,
-      params: {
-        [internalRuntimeNodeRunnerKey]: () => ({
-          data: { value: 0, shared: 'normal', nullable: null },
-          error: { reason: 'chosen branch', shared: false, message: '' },
-          responseData: { codeLog: 'intentional branch' }
-        })
-      },
       outputs: ['value', 'shared', 'nullable', 'reason', 'message', 'rawError', 'stack']
     });
     source.outputs[0].id = 'value-output-id';
@@ -136,7 +132,7 @@ describe('workflow data transfer through real nodes', () => {
     expect(responses.find((response) => response.nodeId === 'source')?.errorCaptured).toBe(true);
     expect(warn).not.toHaveBeenCalled();
     const observationIndex = stepObservation.mock.calls.findIndex(
-      ([options]) => options.nodeType === internalRuntimeNodeType
+      ([options]) => options.nodeType === FlowNodeTypeEnum.code
     );
     expect(observationIndex).toBeGreaterThanOrEqual(0);
     const observed = await stepObservation.mock.results[observationIndex].value;
