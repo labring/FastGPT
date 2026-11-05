@@ -11,11 +11,17 @@ status: ready
 automation:
   - runner: node
     script: .agents/test/chat/history-feedback/FG-CHAT-HISTORY-FEEDBACK-003.mjs
-    items: [D1, D2, D3, D4, D5, D6, D7, D8, D9, D10, D11]
+    items: [D1, D2, D3, D4, D5, D6, D7, D8, D9, D10, D11, D12, D13, D14, D15, D16]
 tags: [phase3, app-api-key, customuid-publishsource, 对话管理, 文件隔离, 覆盖基础场景, 覆盖异常场景, 覆盖边界场景]
 evidence: [response, database, storage]
 sources:
   - ".agents/design/api/app-api-key.md"
+  - "packages/global/openapi/core/chat/api.ts"
+  - "packages/service/core/chat/publishSource/service.ts"
+  - "projects/app/src/service/support/permission/auth/chatCompletion.ts"
+  - "packages/global/openapi/core/chat/identity.ts"
+  - "packages/global/support/permission/chat.ts"
+  - "packages/service/core/chat/identity.ts"
   - "packages/service/core/chat/auth.ts"
   - "projects/app/src/service/core/chat/history.ts"
   - "packages/global/openapi/core/chat/history/api.ts"
@@ -54,6 +60,12 @@ sources:
   - "projects/app/src/pages/api/core/ai/sandbox/upload.ts"
   - "projects/app/src/pages/api/core/ai/sandbox/download.ts"
 routes:
+  - "POST /api/core/ai/agent/v2/createQuestionGuide"
+  - "POST /api/core/dataset/data/getQuoteData"
+  - "POST /api/core/dataset/collection/read"
+  - "POST /api/core/dataset/collection/export"
+  - "POST /api/v1/chat/completions"
+  - "POST /api/v2/chat/completions"
   - "GET /api/core/chat/init"
   - "GET /api/core/chat/resume"
   - "POST /api/v2/chat/stop"
@@ -92,7 +104,7 @@ related:
   - "FG-CHAT-CONVERSATION-003"
   - "FG-CHAT-CONVERSATION-004"
   - "FG-PERMISSION-TEAM-001"
-baseline: "b30ce09a922a3f47401a9b84b2542378a40b0b0b"
+baseline: "d62316ef1f6c6d9e52f6bdaa9fce72f5dc2f9d72"
 ---
 
 # 应用 Key 管理绑定应用的对话、日志与会话文件
@@ -120,6 +132,13 @@ baseline: "b30ce09a922a3f47401a9b84b2542378a40b0b0b"
 - D11 使用 dev 已配置且启用的真实 TTS/STT 模型，不改系统模型与渠道配置。TTS 经正常发布配置授权，首次生成的真实音频用于 multipart 识别；后续 TTS 矩阵复用本轮唯一文本的真实缓存，并按精确缓存键回收。识别只断言非空有效文本，不把模型自由转写逐字相等作为接口契约。
 - 覆盖清单：24 个标准管理入口在 D10 逐一执行；v1/v2 completions 的参数组合由 RESOURCE-002/A1–A2 执行；TTS 与 multipart STT 在 D11 执行，合计 28 个入口。6 个旧 chat 别名只做真实 HTTP 冒烟。日志与 Sandbox 沿用 D2/D5，不重复公共鉴权组合；编辑器配置接口不属于应用 Key 开放范围。
 
+- D12–D14 补充第三方使用者范围：仅普通 App 的 API Key 请求支持 `customUid`，精确匹配 `chats.outLinkUid`，不匹配 tmbId，也不改变凭证成员/应用授权。管理接口省略字段保留上述整应用兼容行为；续聊以首次对话绑定的使用者为准，已有 customUid 时漏传、null、空字符串或更换均拒绝，默认身份会话也不能中途改绑外部 UID；管理接口显式空字符串、null、非字符串和超 1024 字符拒绝，空白和特殊字符按原值匹配。登录态、Skill/Builder/Helper 和外链不得接受该参数后忽略。
+- 使用同一应用下 U1/U2 的真实 API 会话及默认成员会话；增加“tmbId=U1 但没有 outLinkUid”的对照，证明不会回退为成员匹配。U1 的不同 Key 及不同来源对话用于区分使用者和渠道。应用 Key 的列表/清空始终仅 API 来源；按 ID 操作保持现有来源规则。单会话错误 UID 拒绝，列表/状态批量只返回授权子集，批量物理删除属于日志管理接口，不解析 customUid/authProxy，只按实际凭证鉴日志权限。
+- D12–D14 使用真实本地 dev HTTP、Mongo、Redis 和 S3；音频复用 D11 的真实已启用模型。各行独立建立并回收夹具。拒绝用已知权限错误或对应字段 Zod 错误判定，不接受任意 500。不需要 UI 验收，不包含迁移。
+
+- D15/D16 复用三种互斥身份的统一 union：Body 中 authProxy 为对象，Query 中为 JSON 字符串（使用 URLSearchParams 编码），内部均解析为同一成员对象。只支持开启代理的个人密钥，应用 Key、登录态、Skill/辅助来源及分享身份拒绝；customUid 与 authProxy 同传拒绝。ID 优先，ID 无效不回退 username，跨团队、离职及无应用权限成员拒绝。
+- 代理夹具：仅在本轮临时团队将 A 暂设 owner，经正常接口创建开启代理的个人密钥后立即恢复 A 原角色；实际验收时 A 没有 W 权限，B 有应用管理权限。新会话由该 Key 代理 B 真实创建，tmbId/userId 为 B。Key 凭证仍归 A，不要求 A 有应用 ACL；列表、清空按 B 的历史范围；按 ID 读写沿用 B 实际具备的会话/日志权限；批量物理删除不读取代理身份，按实际凭证检查日志权限，不能借用创建人权限或由 API 清空兼容逻辑扩大范围。成员、角色及 Key 全部属于本轮清单并清理。
+
 ## 测试步骤
 
 | 子场景 | 类型与起始状态 | 输入与操作 |
@@ -135,10 +154,15 @@ baseline: "b30ce09a922a3f47401a9b84b2542378a40b0b0b"
 | D9 | 引用；真实会话引用 5 段文档 | 读取指定引用和文档前后分页；改写文档保留历史后读取会话时点版本；混入其他会话、错误消息与分页超限。 |
 | D10 | 公共鉴权参数；各接口的有效业务入参 | 按上述矩阵逐一调用 24 个标准入口，校验响应内容/落库和 X/Y 零差集；6 个旧别名执行真实 HTTP 冒烟。 |
 | D11 | 音频；真实已启用模型和已发布 TTS 配置 | 真实 TTS 生成、缓存回读与 multipart STT 转写；验证公共目标/凭证矩阵、旧 model/sourceId 协议、非法 voice/speed 和缺失 duration。 |
+| D12 | 使用者列表与续聊；U1/U2/默认成员及同值 tmbId 对照 | U1 查询列表/批量状态和分页；未传、不存在、特殊字符和 1024 边界对照；个人密钥显式 appId 同样筛选。v1/v2 各续聊同 UID；分别漏传、传 null/空字符串/错误 UID，并尝试将默认会话改绑外部 UID，比较拒绝前后记录。验证非法参数及不适用身份/来源；先上传/预览文件，再创建同 UID 会话并下载。 |
+| D13 | 逐接口范围；复用 D10 有效业务参数及真实文件/引用夹具 | 对 23 个会话接口补充同 UID 成功及错误 UID 拒绝/过滤。删除类单独建记录；批量物理删除不纳入使用者范围矩阵，在 D7/D15 按日志权限验证；清空只清该 UID 的 API 会话，其他 UID 和在线来源保留。 |
+| D14 | 运行及配套接口；真实 barrier 会话、音频与沙盒入口 | U1 运行中尝试 U2 resume/stop，再 U1 恢复/停止并等待终态。TTS/STT 使用真实音频验证传入 UID；对带 chatId 的音频、沙盒入口校验错误 UID 在下游调用前拒绝，沙盒关闭态继续受产品配置约束。 |
+| D15 | 代理成员管理；复用 D10 的 24 个入口和文件/引用夹具 | 除批量物理删除外，每个入口分别用成员 ID、username 成功调用，补充 3 个引用跳转路由的真实正文/URL/CSV 与拒绝对照；以未开启代理的个人密钥和应用 Key 拒绝对照。降低 B 为只读后混入其他成员 chatId 验证拒绝，再恢复权限；批量物理删除忽略 customUid/authProxy，实际调用者 A 无日志权限时拒绝且零写入，授予 A 日志权限后即使 authProxy 指向无权限成员也成功物理删除，清空仅影响 B/API；集中验证 JSON Query、错误 JSON、对象/字符串混用、互斥、跨团队、离职、ID 优先及无权限成员。 |
+| D16 | 代理运行及配套服务；B 的真实 barrier 会话和音频 | Key 创建人 A 无应用权限，代理 B 恢复/停止并等待租约释放；读取 B 会话文件。问题引导使用已配置默认 LLM 真实执行并核对用量归属 B；真实 TTS/STT 以代理身份成功执行；沙盒会话鉴权不退回 A，错误代理成员在连接服务前拒绝。 |
 
 ## 预期结果
 
-公共断言：Ka 的授权范围是团队+绑定应用，不是创建人、customUid 或 publishSource.id。读取不改变最新调用渠道，修改只产生对应业务字段变化；仅真正运行的轮次产生运行消耗，不能要求全部操作一律“用量不变”。API 成功须有数据/文件/状态变化证据，错误或空成功不能证明管理能力可用。
+公共断言：Ka 的授权范围是团队+绑定应用；可选 customUid 进一步缩小到精确使用者，不能扩大授权，也不是独立凭证。不传时不按创建人或 publishSource.id 限制。读取不改变最新调用渠道，修改只产生对应业务字段变化；仅真正运行的轮次产生运行消耗，不能要求全部操作一律“用量不变”。API 成功须有数据/文件/状态变化证据，错误或空成功不能证明管理能力可用。
 
 | 子场景 | 特有预期 | 证据获取方式 |
 | --- | --- | --- |
@@ -153,3 +177,8 @@ baseline: "b30ce09a922a3f47401a9b84b2542378a40b0b0b"
 | D9 | 返回指定引用及正确前后邻段，会话时点仍读取历史正文；没有当前会话引用关系、错误消息和超限分页拒绝，不泄漏其他文档。 | 真实引用响应、ID/正文对照、历史版本和拒绝结果。 |
 | D10 | 每个入口均从 Key 推导绑定 W；显式 X/Y 或 Key 后缀不能改变目标，非法来源、无效 Key，以及省略或显式目标但无应用权限的个人/登录凭证拒绝。写入具有实际效果，X/Y 无差集。旧别名真实 HTTP 与共用 handler 口径一致。 | 按 route/method/variant 记录通过点、请求响应与字段/集合差集。 |
 | D11 | TTS 返回真实二进制并与后续缓存回读摘要相同；真实 multipart STT 返回非空文本；目标绑定不被显式冲突覆盖；缺失目标的个人/登录身份和非法来源拒绝；兼容字段及音色/速度/duration 边界按契约处理。 | 音频长度/SHA-256、转写、请求参数与错误，不公开音频签名或凭证。 |
+| D12 | 列表 total/分页与状态集合只含 U1 的 API 会话；不存在 UID 返回空，不回退 tmbId。省略保持原集合。v1/v2 同 UID 续聊成功，漏传、空值或错误 UID 均不读历史、不改归属/来源、不新增消息或运行，默认身份会话不能改绑外部 UID；非法参数和不适用组合拒绝；首次上传采用 U1，建会话后真实下载摘要一致。 | HTTP 精确集合、完整主表/消息快照，Redis 租约及响应。 |
+| D13 | 23 个会话入口都真正传递并执行 customUid：同 UID 返回实数据或落库，错误 UID 不泄露正文/文件 URL、不修改他人记录；批量物理删除由 D7/D15 按实际凭证日志权限验证。清空只改变 U1/API 集合。已有会话上传下载采用该使用者路径，真实文件摘要一致。 | 按 route/method/variant 保存实际结果、Mongo 精确差集和 S3 SHA-256。 |
+| D14 | 错误 UID 无法恢复/停止运行，原租约仍在；正确 UID 完成恢复停止与 lease 释放。音频正常完成，带 chatId 时错 UID 拒绝；沙盒所有会话入口均校验用户，不能以关闭产品态掩盖越权鉴权。 | SSE、真实租约与终态、音频摘要/转写和沙盒拒绝响应。 |
+| D15 | 23 个使用者入口按 B 权限执行且有实数据/落库；批量物理删除不读取代理身份，Query JSON 与 Body 对象解析一致；A 无 ACL 不导致失败。不同身份模式及无效成员不能降级；列表只含 B，实际调用者无日志权限时批删零写入，传有权限成员的代理字段不能提权；实际调用者有日志权限时按选中 ID 物理删除；有日志权限时保留其他入口的跨成员按 ID 管理能力，清空保留其他成员及 B 的在线会话。 | route/method/身份参数矩阵、主表及子表精确差集、S3 摘要与角色恢复记录。 |
+| D16 | B 的有效代理可恢复、停止真实运行并释放租约；音频和文件走 B 身份，沙盒权限检查不改回创建人 A；错误成员拒绝且不影响运行/数据。 | SSE、Redis 租约终态、音频字节摘要/转写、文件和沙盒响应。 |

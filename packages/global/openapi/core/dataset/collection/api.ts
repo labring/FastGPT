@@ -60,6 +60,8 @@ const BasicExportSchema = z
   .superRefine((data, ctx) => {
     // 先检查原始键再清洗，避免无效聊天鉴权参数被 union 降级为普通登录态导出。
     const chatExportKeys = [
+      'customUid',
+      'authProxy',
       'appId',
       'skillId',
       'sourceType',

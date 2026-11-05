@@ -6,7 +6,7 @@ import { OpenAPIFlowNodeInputItemTypeSchema } from '../../workflow/node';
 import { OpenAPIAppChatConfigSchema } from '../../app/common/api';
 import {
   ChatGenerateStatusSchema,
-  createChatTargetInputSchema,
+  createChatTargetQuerySchema,
   createChatTargetResponseSchema,
   createOutLinkChatTargetInputSchema,
   transformChatAuthTargetInput,
@@ -18,7 +18,7 @@ import {
  * Route: GET /api/core/chat/init
  * Description: 通过 appId 或 skillId 初始化资源鉴权会话；外链初始化使用独立的 outLink/init 接口。
  * ============================================================================ */
-export const InitChatQueryRawSchema = createChatTargetInputSchema({
+export const InitChatQueryRawSchema = createChatTargetQuerySchema({
   chatId: z.string().min(1).describe('会话ID'),
   loadCustomFeedbacks: z.coerce.boolean().optional().describe('是否加载自定义反馈')
 }).meta({

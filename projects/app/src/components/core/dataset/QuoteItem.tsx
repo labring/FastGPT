@@ -88,6 +88,8 @@ const QuoteItem = ({
   skillId,
   sourceType,
   outLinkAuthData,
+  customUid,
+  authProxy,
   ...RawSourceBoxProps
 }: {
   quoteItem: SearchDataResponseQuoteItemType & {
@@ -216,7 +218,14 @@ const QuoteItem = ({
             rawSourceId={quoteItem.sourceId}
             canView={canDownloadSource}
             {...RawSourceBoxProps}
-            {...getChatAuthTargetInput({ appId, skillId, sourceType, outLinkAuthData })}
+            {...getChatAuthTargetInput({
+              appId,
+              skillId,
+              sourceType,
+              outLinkAuthData,
+              customUid,
+              authProxy
+            })}
           />
           <Box flex={1} />
           {quoteItem.id && canEditData && (

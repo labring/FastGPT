@@ -91,7 +91,7 @@ export const ChatCompletionPath: OpenAPIPath = {
     post: {
       tags: [DevApiTagsMap.chatController, SystemOpenApiTagMap.chatController],
       deprecated: true,
-      summary: '发起会话v1',
+      summary: '发起会话 v1',
       description: `v1 对话接口兼容 GPT 的接口。如果你的项目使用的是标准的 GPT 官方接口，可以直接通过修改 BaseUrl 和 Authorization 来访问 FastGPT 应用。
 
 **注意事项**
@@ -179,7 +179,7 @@ export const ChatCompletionPath: OpenAPIPath = {
   '/v2/chat/completions': {
     post: {
       tags: [DevApiTagsMap.chatController, SystemOpenApiTagMap.chatController],
-      summary: '发起对话 v2',
+      summary: '发起会话 v2',
       description: `v2 对话接口兼容 GPT 的接口规范。
 
 **密钥使用规范**

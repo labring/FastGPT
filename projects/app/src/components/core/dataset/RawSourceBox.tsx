@@ -30,6 +30,8 @@ const RawSourceBox = ({
   chatId,
   chatItemDataId,
   outLinkAuthData,
+  customUid,
+  authProxy,
 
   ...props
 }: Props) => {
@@ -43,7 +45,14 @@ const RawSourceBox = ({
   );
   const read = getCollectionSourceAndOpen({
     collectionId,
-    ...getChatAuthTargetInput({ appId, skillId, sourceType, outLinkAuthData }),
+    ...getChatAuthTargetInput({
+      appId,
+      skillId,
+      sourceType,
+      outLinkAuthData,
+      customUid,
+      authProxy
+    }),
     chatId,
     chatItemDataId
   });

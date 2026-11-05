@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { success, permissionDenied, poll } from '../../support/scenario.mjs';
 import {
   chatFixture,
+  proxyFixture,
   quoteFixture,
   runningFixture,
   audioFixture,
@@ -223,8 +224,9 @@ async function quoteParameters(w, context) {
 }
 
 /** 用固定清单覆盖每个标准 chat 路由；参数矩阵复用一次，写操作各自创建真实新会话。 */
-async function routeMatrix(w, context) {
-  const f = await chatFixture(w),
+async function routeMatrix(w, context, { userScope = false, proxyScope = false } = {}) {
+  const proxy = proxyScope ? await proxyFixture(w, context) : undefined;
+  const f = await chatFixture(w, proxy),
     q = await quoteFixture(w, context, f),
     foreign = await w.foreignApp();
   const controls = [await w.completion(w.Kx, w.X), await w.completion(foreign.key, foreign.appId)];
@@ -465,7 +467,7 @@ async function routeMatrix(w, context) {
       (r) => assert.equal(r.success, true)
     )
   ];
-  const fresh = async () => w.completion(w.Ka, w.W);
+  const fresh = async () => w.completion(proxy?.key ?? w.Ka, w.W, proxy?.completion);
   routes.push(
     descriptor(
       '/core/chat/record/delete',
@@ -516,6 +518,247 @@ async function routeMatrix(w, context) {
     )
   );
   assert.equal(routes.length, 24);
+  if (proxyScope) {
+    const other = await w.completion(w.Ka, w.W);
+    const onlineId = w.label('B-online');
+    success(
+      await w.c.request({
+        role: 'B',
+        kind: 'state',
+        route: '/api/v2/chat/completions',
+        body: {
+          appId: w.W,
+          chatId: onlineId,
+          stream: false,
+          messages: [{ role: 'user', content: onlineId }]
+        }
+      })
+    );
+    await poll(async () => assert.equal((await w.snapshot(w.W, [onlineId])).items.length, 2));
+    const controls = await w.snapshot(w.W, [other.chatId, onlineId]);
+    // 引用跳转使用独立 dataset 路由，不能绕过同一个代理会话鉴权。
+    const rawLink = 'https://example.test/' + w.label('source');
+    await w.db
+      .collection('dataset_collections')
+      .updateOne({ _id: w.oid(q.collectionId) }, { $set: { type: 'link', rawLink } });
+    for (const [route, input] of [
+      [
+        '/core/dataset/data/getQuoteData',
+        { id: String(q.data[2]._id), chatId: f.chatId, chatItemDataId: f.ai.dataId }
+      ],
+      [
+        '/core/dataset/collection/read',
+        { collectionId: q.collectionId, chatId: f.chatId, chatItemDataId: f.ai.dataId }
+      ],
+      [
+        '/core/dataset/collection/export',
+        { collectionId: q.collectionId, chatId: f.chatId, chatItemDataId: f.ai.dataId }
+      ]
+    ]) {
+      rejected(await f.request(route, { ...input, authProxy: { tmbId: w.c.actor('A').tmbId } }));
+      const response = await f.request(route, input);
+      if (route.endsWith('/export')) {
+        assert.equal(response.http, 200);
+        assert.equal(response.error, false);
+        assert.match(response.contentType, /text\/csv/);
+        assert.ok(response.raw.includes(context.run));
+      } else {
+        const result = success(response);
+        if (route.endsWith('/read')) assert.equal(result.value, rawLink);
+        else assert.equal(result.q, q.data[2].q);
+      }
+    }
+    for (const route of routes) {
+      if (route.route.endsWith('/batchDelete')) {
+        const payload = await route.payload();
+        const ids = [...payload.chatIds, other.chatId, onlineId];
+        const before = await w.snapshot(w.W, ids);
+        // 管理接口忽略使用者字段，仅检查 Key 实际归属 A 的日志权限。
+        const input = { ...payload, customUid: 'ignored-user', authProxy: proxy.authProxy };
+        rejected(await f.request(route.route, input, route.method));
+        assert.deepEqual(await w.snapshot(w.W, ids), before);
+        try {
+          await w.acl('A', w.W, 8);
+          const result = await f.call(
+            route.route,
+            { ...input, authProxy: { tmbId: w.c.actor('N').tmbId } },
+            route.method
+          );
+          await route.check(result, payload);
+          assert.equal(
+            await w.db
+              .collection('chatitems')
+              .countDocuments({ appId: w.oid(w.W), chatId: { $in: payload.chatIds } }),
+            0
+          );
+          assert.equal(
+            await w.db
+              .collection('chat_item_responses')
+              .countDocuments({ appId: w.oid(w.W), chatId: { $in: payload.chatIds } }),
+            0
+          );
+        } finally {
+          await w.acl('A', w.W, 0);
+        }
+        assert.deepEqual(await w.snapshot(w.W, [other.chatId, onlineId]), controls);
+        w.c.record('批量物理删除只检查实际凭证日志权限', {
+          actualMember: w.c.actor('A').tmbId,
+          ignoredProxyMember: w.c.actor('N').tmbId,
+          deletedChatIds: payload.chatIds
+        });
+        continue;
+      }
+      for (const authProxy of [{ tmbId: proxy.tmbId }, { username: w.c.actor('B').username }]) {
+        await route.prepare?.();
+        const payload = await route.payload();
+        const ids = [
+          f.chatId,
+          other.chatId,
+          onlineId,
+          payload.chatId,
+          ...(payload.chatIds ?? [])
+        ].filter(Boolean);
+        const before = await w.snapshot(w.W, ids);
+        for (const key of [w.personal(), w.Ka]) {
+          rejected(await f.request(route.route, { ...payload, authProxy }, route.method, key));
+        }
+        await w.acl('B', w.W, 4);
+        try {
+          if (payload.chatId && !route.route.endsWith('/clearHistories')) {
+            rejected(
+              await f.request(
+                route.route,
+                { ...payload, chatId: other.chatId, authProxy },
+                route.method
+              )
+            );
+          }
+        } finally {
+          await w.acl('B', w.W, 1);
+        }
+        assert.deepEqual(await w.snapshot(w.W, ids), before);
+        const result = await f.call(route.route, { ...payload, authProxy }, route.method);
+        await route.check(result, payload);
+        if (route.route.endsWith('/getHistories')) {
+          assert.ok(result.list.some((row) => row.chatId === f.chatId));
+          assert.ok(!result.list.some((row) => row.chatId === other.chatId));
+        }
+        assert.deepEqual(await w.snapshot(w.W, [other.chatId, onlineId]), controls);
+        w.c.record('代理接口矩阵通过', {
+          route: route.route,
+          method: route.method,
+          identity: 'tmbId' in authProxy ? 'member-id' : 'username'
+        });
+      }
+    }
+    const managed = await f.call('/core/chat/record/getPaginationRecords', {
+      chatId: other.chatId,
+      pageSize: 100
+    });
+    assert.equal(managed.total, 2, '代理成员有日志权限时保留其跨成员读取能力');
+    // 共性边界集中验证一次；Query 必须是 JSON 字符串，不能降级为默认身份。
+    for (const authProxy of [
+      '{',
+      'null',
+      JSON.stringify({ tmbId: 'invalid', username: w.c.actor('B').username })
+    ]) {
+      rejected(await f.request('/core/chat/init', { chatId: f.chatId, authProxy }, 'GET'));
+    }
+    for (const authProxy of [
+      JSON.stringify(proxy.authProxy),
+      { tmbId: w.c.actor('N').tmbId },
+      { tmbId: w.c.actor(foreign.role).tmbId }
+    ]) {
+      rejected(await f.request('/core/chat/history/getHistories', { authProxy }));
+    }
+    rejected(await f.request('/core/chat/history/getHistories', { customUid: 'conflict' }));
+    const byId = await f.call(
+      '/core/chat/init',
+      { chatId: onlineId, authProxy: { tmbId: proxy.tmbId, username: 'does-not-exist' } },
+      'GET'
+    );
+    assert.equal(byId.appId, w.W);
+    const memberId = w.oid(proxy.tmbId);
+    const member = await w.db.collection('team_members').findOne({ _id: memberId });
+    try {
+      await w.db
+        .collection('team_members')
+        .updateOne({ _id: memberId }, { $set: { status: 'leave' } });
+      rejected(await f.request('/core/chat/init', { chatId: onlineId }, 'GET'));
+    } finally {
+      await w.db
+        .collection('team_members')
+        .updateOne({ _id: memberId }, { $set: { status: member.status } });
+    }
+    return '23 个会话入口按代理成员 ID/username 执行；Query JSON、互斥、无权限/跨团队/离职校验通过；批量物理删除忽略使用者身份且只检查实际凭证日志权限，清空保留其他成员和在线来源';
+  }
+  if (userScope) {
+    const customUid = f.chat.uid;
+    const other = await w.completion(w.Ka, w.W, { uid: w.label('other-user') });
+    const online = await w.completion(w.Ka, w.W, { uid: customUid });
+    // 本行只构造来源对照，消息仍由真实接口产生；来源展示已由 D1/D7 验证。
+    await w.db
+      .collection('chats')
+      .updateOne(
+        { appId: w.oid(w.W), chatId: online.chatId },
+        { $set: { publishSource: { type: 'online' } } }
+      );
+    for (const route of routes) {
+      if (route.route.endsWith('/batchDelete')) continue;
+      await route.prepare?.();
+      const payload = await route.payload();
+      const ids = [
+        f.chatId,
+        other.chatId,
+        online.chatId,
+        payload.chatId,
+        ...(payload.chatIds ?? [])
+      ].filter(Boolean);
+      const before = await w.snapshot(w.W, ids);
+      const wrong = await f.request(
+        route.route,
+        { ...payload, customUid: w.label('absent-user') },
+        route.method
+      );
+      if (route.route.endsWith('/getHistories') || route.route.endsWith('/getHistoryStatus')) {
+        assert.deepEqual(success(wrong).list, []);
+        if (route.route.endsWith('/getHistories')) assert.equal(success(wrong).total, 0);
+      } else if (route.route.endsWith('/clearHistories')) success(wrong);
+      else if (route.route.endsWith('/inputGuide/query')) {
+        // 输入引导属于应用配置，不携带会话 ID；使用者不能改变这份公共配置。
+        assert.deepEqual(
+          success(wrong),
+          success(await f.request(route.route, { ...payload, customUid }, route.method))
+        );
+      } else rejected(wrong);
+      assert.deepEqual(await w.snapshot(w.W, ids), before);
+      const input = { ...payload, customUid };
+      const result = await f.call(route.route, input, route.method);
+      await route.check(result, input);
+      const remaining = await w.snapshot(w.W, [other.chatId, online.chatId]);
+      assert.equal(remaining.chats.length, 2);
+      assert.ok(remaining.chats.every((row) => !row.deleteTime));
+      if (route.route.endsWith('/getHistories')) {
+        assert.equal(result.total, 1);
+        assert.deepEqual(
+          result.list.map((r) => r.chatId),
+          [f.chatId]
+        );
+      }
+      w.c.record('使用者接口矩阵通过', {
+        route: route.route,
+        method: route.method,
+        variants: ['精确匹配', '不匹配拒绝或过滤'],
+        scope: 'conversation-user'
+      });
+    }
+    for (let i = 0; i < controls.length; i++)
+      assert.deepEqual(
+        await w.snapshot(i ? foreign.appId : w.X, [controls[i].chatId]),
+        controlBefore[i]
+      );
+    return '23 个会话接口验证 customUid 成功、拒绝/空集合及数据库差集；批量物理删除按资源日志权限单独验证，清空仅限该用户的 API 来源';
+  }
   const targets = [
     ['省略', {}],
     ['同应用', { appId: w.W }],
@@ -745,7 +988,12 @@ async function audioParameters(w, context) {
 
 /** 扩展现有用例的四组验收目标，所有真实操作由同一工作区的 HTTP/DB helper 执行。 */
 export async function runChatApiCoverage(w, context) {
-  return { D8: recordParameters, D9: quoteParameters, D10: routeMatrix, D11: audioParameters }[
-    context.itemId
-  ](w, context);
+  return {
+    D8: recordParameters,
+    D9: quoteParameters,
+    D10: routeMatrix,
+    D11: audioParameters,
+    D13: (w, context) => routeMatrix(w, context, { userScope: true }),
+    D15: (w, context) => routeMatrix(w, context, { proxyScope: true })
+  }[context.itemId](w, context);
 }

@@ -352,9 +352,14 @@ async function execute(context) {
     return 'S3 与真实 App 沙盒上传/下载字节摘要一致；个人权限与关闭产品态均拒绝，远端沙盒由删除流程清理';
   }
 
-  if (['D8', 'D9', 'D10', 'D11'].includes(context.itemId)) {
+  if (['D8', 'D9', 'D10', 'D11', 'D13', 'D15'].includes(context.itemId)) {
     const { runChatApiCoverage } = await import('./app-key-chat-matrix.mjs');
     return runChatApiCoverage(w, context);
+  }
+
+  if (['D12', 'D14', 'D16'].includes(context.itemId)) {
+    const { runCustomUidCoverage } = await import('./app-key-customuid.mjs');
+    return runCustomUidCoverage(w, context);
   }
 
   const d = await seed();
@@ -662,6 +667,23 @@ async function execute(context) {
 await runNodeCase(
   'FG-CHAT-HISTORY-FEEDBACK-003',
   Object.fromEntries(
-    ['D1', 'D2', 'D3', 'D4', 'D5', 'D6', 'D7', 'D8', 'D9', 'D10', 'D11'].map((id) => [id, execute])
+    [
+      'D1',
+      'D2',
+      'D3',
+      'D4',
+      'D5',
+      'D6',
+      'D7',
+      'D8',
+      'D9',
+      'D10',
+      'D11',
+      'D12',
+      'D13',
+      'D14',
+      'D15',
+      'D16'
+    ].map((id) => [id, execute])
   )
 );

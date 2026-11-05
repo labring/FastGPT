@@ -23,6 +23,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     const result = await multer.resolveFormData({ request: req });
     filepaths.push(result.fileMetadata.path);
     const {
+      customUid,
+      authProxy,
       sourceType,
       sourceId,
       chatId,
@@ -42,6 +44,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     const duration = rawDuration < 1 ? 1 : rawDuration;
 
     const { teamId, tmbId } = await authChatTargetCrud({
+      allowMissingChat: true,
+      customUid,
+      authProxy,
       req,
       authToken: true,
       sourceType,

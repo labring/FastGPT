@@ -4,7 +4,7 @@ import { PaginationResponseSchema } from '../../../api';
 import {
   ChatGenerateStatusSchema,
   createChatTargetResponseSchema,
-  createChatTargetInputSchema,
+  createChatManagementTargetInputSchema,
   createPaginatedChatTargetInputSchema,
   createOutLinkChatTargetInputSchema,
   createOutLinkChatTargetQuerySchema,
@@ -114,7 +114,7 @@ export type ClearChatHistoriesType = z.infer<typeof ClearChatHistoriesRawSchema>
 export type ClearChatHistoriesRuntimeType = z.infer<typeof ClearChatHistoriesSchema>;
 
 // Batch delete chat sessions schema (for log manager)
-export const ChatBatchDeleteBodyRawSchema = createChatTargetInputSchema({
+export const ChatBatchDeleteBodyRawSchema = createChatManagementTargetInputSchema({
   chatIds: z
     .array(z.string().min(1))
     .min(1)

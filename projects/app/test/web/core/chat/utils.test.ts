@@ -1,10 +1,30 @@
 import { describe, expect, it } from 'vitest';
 import {
+  getChatAuthTargetInput,
   toChatAuthQueryInput,
   hasChatAuthTargetInput,
   toChatAuthApiTarget
 } from '../../../../src/web/core/chat/utils';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+
+describe('proxy Query encoding', () => {
+  it.each([{ customUid: 'customer' }, { authProxy: { tmbId: 'member' } }])(
+    'preserves the user identity when extracting a citation target: %j',
+    (identity) => {
+      expect(getChatAuthTargetInput({ appId: 'app', ...identity })).toMatchObject({
+        appId: 'app',
+        ...identity
+      });
+      expect(() => getChatAuthTargetInput({ skillId: 'skill', ...identity })).toThrow();
+    }
+  );
+
+  it('encodes the normalized proxy as a JSON string while keeping chat fields', () => {
+    expect(
+      toChatAuthQueryInput({ appId: 'app', chatId: 'chat', authProxy: { tmbId: 'member' } })
+    ).toEqual({ appId: 'app', chatId: 'chat', authProxy: '{"tmbId":"member"}' });
+  });
+});
 
 describe('web/core/chat/utils', () => {
   it('recognizes only one complete chat context and preserves external priority when building requests', () => {

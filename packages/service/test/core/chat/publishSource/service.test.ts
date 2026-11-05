@@ -29,8 +29,7 @@ describe('updateChatPublishSource', () => {
       chatId,
       source: 'api',
       publishSource: { type: ChatSourceEnum.api, id },
-      sourceName: '后台',
-      outLinkUid: 'customer'
+      sourceName: '后台'
     });
     let chat = await MongoChat.findOne({ chatId }).lean();
     expect(String(chat?.publishSource?.id)).toBe(id);
@@ -42,6 +41,77 @@ describe('updateChatPublishSource', () => {
     expect(chat).not.toHaveProperty('sourceName');
     expect(chat).not.toHaveProperty('shareId');
     expect(chat).not.toHaveProperty('outLinkUid');
+  });
+
+  it('API 使用者在写入前再次校验，错误用户不改归属及来源', async () => {
+    const params = {
+      ...scope,
+      chatId,
+      source: 'api',
+      outLinkUid: 'u1',
+      publishSource: { type: ChatSourceEnum.api, id: oid() }
+    };
+    await updateChatPublishSource(params);
+    const before = await MongoChat.findOne({ chatId }).lean();
+    for (const outLinkUid of ['u2', undefined, '']) {
+      await expect(updateChatPublishSource({ ...params, outLinkUid })).rejects.toBe(
+        ChatErrEnum.unAuthChat
+      );
+      expect(await MongoChat.findOne({ chatId }).lean()).toEqual(before);
+    }
+    await expect(updateChatPublishSource({ ...scope, chatId, source: 'online' })).rejects.toBe(
+      ChatErrEnum.unAuthChat
+    );
+    expect(await MongoChat.findOne({ chatId }).lean()).toEqual(before);
+    await updateChatPublishSource({
+      ...params,
+      publishSource: { type: ChatSourceEnum.api, id: oid() }
+    });
+    expect((await MongoChat.findOne({ chatId }).lean())?.outLinkUid).toBe('u1');
+  });
+
+  it('默认身份可继续使用空值，但不能中途绑定外部用户', async () => {
+    const params = {
+      ...scope,
+      chatId,
+      source: 'api',
+      publishSource: { type: ChatSourceEnum.api, id: oid() }
+    };
+    await updateChatPublishSource(params);
+    await updateChatPublishSource({ ...params, outLinkUid: '' });
+    await updateChatPublishSource(params);
+    const before = await MongoChat.findOne({ chatId }).lean();
+    await expect(updateChatPublishSource({ ...params, outLinkUid: 'u1' })).rejects.toBe(
+      ChatErrEnum.unAuthChat
+    );
+    expect(await MongoChat.findOne({ chatId }).lean()).toEqual(before);
+  });
+
+  it('默认身份在读取后被其他请求绑定时，不覆盖并按新快照拒绝', async () => {
+    const params = {
+      ...scope,
+      chatId,
+      source: 'api',
+      publishSource: { type: ChatSourceEnum.api, id: oid() }
+    };
+    await updateChatPublishSource(params);
+    const updateOne = MongoChat.updateOne.bind(MongoChat);
+    const write = vi.spyOn(MongoChat, 'updateOne').mockImplementationOnce(((
+      query: any,
+      update: any,
+      options: any
+    ) => {
+      return (async () => {
+        await MongoChat.collection.updateOne({ chatId }, { $set: { outLinkUid: 'winner' } });
+        return updateOne(query, update, options);
+      })();
+    }) as any);
+    try {
+      await expect(updateChatPublishSource(params)).rejects.toBe(ChatErrEnum.unAuthChat);
+      expect((await MongoChat.findOne({ chatId }).lean())?.outLinkUid).toBe('winner');
+    } finally {
+      write.mockRestore();
+    }
   });
 
   it('分享渠道只按新来源比较，缺字段仍校验 UID 且不写旧 shareId', async () => {
@@ -80,6 +150,7 @@ describe('updateChatPublishSource', () => {
       ...scope,
       chatId,
       source: 'api',
+      outLinkUid: 'u1',
       publishSource: { type: ChatSourceEnum.api, id: oid() }
     });
     await expect(updateChatPublishSource(params)).rejects.toBe(ChatErrEnum.unAuthChat);
