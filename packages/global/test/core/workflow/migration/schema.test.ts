@@ -48,6 +48,45 @@ describe('workflow input schema boundaries', () => {
 });
 
 describe('workflow migration boundary', () => {
+  it('preserves typed system tool values through canonical migration', () => {
+    const result = migrateWorkflowToCurrent({
+      nodes: [
+        {
+          nodeId: 'tool',
+          name: 'Tool',
+          flowNodeType: 'tool',
+          outputs: [],
+          inputs: [
+            {
+              key: NodeInputKeyEnum.systemInputConfig,
+              label: 'Config',
+              renderTypeList: [],
+              inputList: [
+                { key: 'count', label: 'Count', inputType: 'numberInput', value: { value: 0 } },
+                { key: 'enabled', label: 'Enabled', inputType: 'switch', value: { value: false } },
+                { key: 'optional', label: 'Optional', inputType: 'numberInput' }
+              ],
+              value: {
+                type: 'manual',
+                value: {
+                  count: { value: '12' },
+                  enabled: { value: 'false' },
+                  optional: { value: '' }
+                }
+              }
+            }
+          ]
+        }
+      ]
+    });
+    expect(result.nodes[0].inputs[0]).toMatchObject({
+      inputList: [{ value: { value: 0 } }, { value: { value: false } }, { key: 'optional' }],
+      value: { value: { count: { value: 12 }, enabled: { value: false } } }
+    });
+    expect(result.nodes[0].inputs[0].value.value).not.toHaveProperty('optional');
+    expect(migrateWorkflowToCurrent(result)).toEqual(result);
+  });
+
   it('preserves ordinary business JSON containing credential-shaped fields', () => {
     const value = {
       headerSecret: { Authorization: { value: 'business-value', secret: 'business-secret' } },

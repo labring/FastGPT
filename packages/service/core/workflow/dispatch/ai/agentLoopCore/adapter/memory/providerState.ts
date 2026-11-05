@@ -1,5 +1,4 @@
-import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
-import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
+import type { AIChatItemValueItemType, ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import {
   getWorkflowNodeMemoryKey,
   readWorkflowNodeMemory,
@@ -9,51 +8,41 @@ import type { WorkflowMemorySource } from '../../../../../memory/utils';
 
 export type AgentLoopCoreProviderStateMemory = {
   providerState?: unknown;
+  assistantResponses?: AIChatItemValueItemType[];
 };
 
 const isObjectRecord = (value: unknown): value is Record<string, unknown> =>
   !!value && typeof value === 'object' && !Array.isArray(value);
 
 /**
- * 从当前工作流记忆状态（或上一条 AI history）中恢复 agent-loop providerState。
- * 普通请求遵守 history 配置且只读取 AI 轮次；显式交互恢复优先使用父流程传入的 checkpoint，
- * 避免子应用的空历史或 history=0 裁掉恢复状态。
+ * 从当前工作流记忆状态（或上一条 AI history）中恢复 agent-loop providerState 与暂停前已累积的节点输出。
  * 同时通过 WorkflowMemoryState 自动兼容旧版 `agentLoopMemory-${nodeId}` 键格式。
  */
 export const readAgentLoopCoreProviderStateMemory = ({
   memoryState,
-  history,
-  hasInteractiveResume = false,
   histories,
   runningAppInfo,
   nodeId
 }: {
   memoryState?: WorkflowMemoryState;
-  history?: ChatItemMiniType[] | number;
-  hasInteractiveResume?: boolean;
-  histories: ChatItemMiniType[];
+  histories?: ChatItemMiniType[];
   runningAppInfo?: WorkflowMemorySource;
   nodeId: string;
 }): AgentLoopCoreProviderStateMemory => {
-  const selectedHistories = Array.isArray(history) ? history : histories;
-  if (
-    !(hasInteractiveResume && memoryState) &&
-    selectedHistories.length > 0 &&
-    selectedHistories.at(-1)?.obj !== ChatRoleEnum.AI
-  )
-    return {};
-
   const storedMemory = readWorkflowNodeMemory({
     memoryState,
-    history,
     histories,
-    hasInteractiveResume,
     runningAppInfo,
     nodeId
   });
   if (!isObjectRecord(storedMemory)) return {};
 
-  return { providerState: storedMemory.providerState };
+  return {
+    providerState: storedMemory.providerState,
+    ...(Array.isArray(storedMemory.assistantResponses)
+      ? { assistantResponses: storedMemory.assistantResponses as AIChatItemValueItemType[] }
+      : {})
+  };
 };
 
 /**
@@ -76,21 +65,28 @@ export const prepareAgentLoopCoreProviderRunState = ({
 };
 
 /**
- * 暂停态 memory 统一保存完整 providerState。
+ * 暂停态 memory 统一保存完整 providerState 及当前节点已累积的 assistantResponses。
  */
 export const buildAgentLoopCorePausedMemories = ({
   memoryState,
   runningAppInfo,
   nodeId,
-  providerState
+  providerState,
+  assistantResponses
 }: {
   memoryState?: WorkflowMemoryState;
   runningAppInfo?: WorkflowMemorySource;
   nodeId: string;
   providerState: unknown;
+  assistantResponses?: AIChatItemValueItemType[];
 }) => ({
   [getWorkflowNodeMemoryKey({ memoryState, runningAppInfo, nodeId })]:
-    providerState === undefined ? undefined : { providerState }
+    providerState === undefined
+      ? undefined
+      : {
+          providerState,
+          ...(assistantResponses?.length ? { assistantResponses } : {})
+        }
 });
 
 /**

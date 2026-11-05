@@ -17,7 +17,7 @@
   "add_new_input": "add_new Input",
   "add_new_output": "New output",
   "agent.prompt_placeholder": "Type “/” to insert a variable reference; type “@” to insert a capability, including Skills, apps, tools, and Datasets.",
-  "agent.prompt_skill_tip": "@ to select Skills and tools, \"/\" to select variables",
+  "agent.prompt_skill_tip": "\"@\" to select Skills and tools, \"/\" to select variables",
   "agent.select_skill": "Select Skill",
   "agent.select_tool": "Select Tool",
   "agent.tools": "Tools",
@@ -385,5 +385,7 @@
   "workflow_builder_preview_confirm": "Confirm and build",
   "workflow_builder_preview_revise": "Revise the plan",
   "workflow_builder_preview_cancel": "Cancel this build",
-  "workflow_builder_preview_revise_placeholder": "Describe the nodes or logic to change"
+  "workflow_builder_preview_revise_placeholder": "Describe the nodes or logic to change",
+  "workflow_builder_preview_pending": "Awaiting confirmation",
+  "workflow_builder_preview_flow": "Workflow preview"
 }

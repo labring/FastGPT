@@ -1,6 +1,6 @@
 ---
 case_version: 1
-id: "FG-CHAT-CONVERSATION-005"
+id: "FG-CHAT-CONVERSATION-006"
 title: "发送后的草稿清理与刷新恢复"
 business: "chat/conversation"
 types: [ui, e2e]

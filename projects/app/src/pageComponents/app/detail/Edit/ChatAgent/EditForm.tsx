@@ -15,7 +15,7 @@ import { useTranslation } from 'next-i18next';
 import React, { useCallback, useMemo } from 'react';
 import SettingLLMModel from '@/components/core/ai/SettingLLMModel';
 import DatasetCard from '@/components/core/app/DatasetCard';
-import SkillCard from '@/components/core/app/SkillCard';
+import { AgentSkillCardList } from '@/components/core/app/SkillCard';
 import { useWelcomeTextFoldState } from '@/components/core/app/useAppEditorUIState';
 import SearchParamsTip from '@/components/core/dataset/SearchParamsTip';
 import { RechargeModal } from '@/components/support/wallet/NotSufficientModal';
@@ -25,7 +25,7 @@ import { useModelDetail } from '@/web/core/ai/model/useModelDetail';
 import { TTSTypeEnum } from '@/web/core/app/constants';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { SmallAddIcon } from '@chakra-ui/icons';
-import { AGENT_SANDBOX_TOOLSET_ID, SANDBOX_ICON } from '@fastgpt/global/core/ai/sandbox/tools';
+import { SANDBOX_ICON } from '@fastgpt/global/core/ai/sandbox/tools';
 import { getToolIdentityKey } from '@fastgpt/global/core/app/tool/utils';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
@@ -95,25 +95,26 @@ const EditForm = ({
     isOpenRecharge,
     onCloseRecharge
   } = useAgentSkillSelect({
-    appForm,
+    selectedAgentSkills: appForm.selectedAgentSkills ?? [],
+    useAgentSandbox: Boolean(appForm.aiSettings.useAgentSandbox),
     showSandbox,
     enableSandbox,
-    setAppForm
-  });
-
-  const { skillOption, selectedSkills, onClickSkill, onRemoveSkill, SkillModal } = useSkillManager({
-    selectedTools: appForm.selectedTools,
-    selectedAgentSkills,
-    onDeleteTool: (id, source) => {
+    onUpdateSkills: (update, enableSandbox) =>
       setAppForm((state) => ({
         ...state,
-        selectedTools:
-          state.selectedTools?.filter(
-            (item) =>
-              getToolIdentityKey(item.pluginId, item.source) !== getToolIdentityKey(id, source)
-          ) || []
-      }));
-    },
+        selectedAgentSkills: update(state.selectedAgentSkills ?? []),
+        aiSettings: { ...state.aiSettings, ...(enableSandbox ? { useAgentSandbox: true } : {}) }
+      })),
+    onUpdateSandbox: (checked) =>
+      setAppForm((state) => ({
+        ...state,
+        aiSettings: { ...state.aiSettings, useAgentSandbox: checked }
+      }))
+  });
+
+  const skillManager = useSkillManager({
+    selectedTools: appForm.selectedTools,
+    selectedAgentSkills,
     onUpdateOrAddTool: (tool) => {
       setAppForm((state) => {
         const toolKey = getToolIdentityKey(tool.pluginId, tool.source);
@@ -138,6 +139,8 @@ const EditForm = ({
       });
     },
     onAddAgentSkill,
+    onEnableSandbox: () => onChangeAgentSandbox(true),
+    currentAppId: appId,
     canUploadFile: !!(
       appForm.chatConfig.fileSelectConfig?.canSelectFile ||
       appForm.chatConfig.fileSelectConfig?.canSelectImg ||
@@ -156,6 +159,7 @@ const EditForm = ({
       onOpenKbSelect();
     }
   });
+  const { skillOption, selectedSkills, onClickSkill } = skillManager;
 
   const {
     isOpen: isOpenDatasetSelect,
@@ -174,30 +178,6 @@ const EditForm = ({
     modelType: ModelTypeEnum.llm
   });
   const selectedModel = configuredModel;
-  const promptSkillOption = useMemo(
-    () => ({
-      ...skillOption,
-      onSelect: async (id: string) => {
-        const option = await skillOption.onSelect?.(id);
-        if (!option?.onClick) return option;
-
-        return {
-          ...option,
-          onClick: async (toolId: string) => {
-            const result = await option.onClick?.(toolId);
-
-            // AgentV2 提示词 @虚拟机 时，同步打开下方虚拟机开关。
-            if (result?.id === AGENT_SANDBOX_TOOLSET_ID && !appForm.aiSettings.useAgentSandbox) {
-              onChangeAgentSandbox(true);
-            }
-
-            return result;
-          }
-        };
-      }
-    }),
-    [appForm.aiSettings.useAgentSandbox, onChangeAgentSandbox, skillOption]
-  );
   const tokenLimit = useMemo(() => {
     return getModelQuoteTokenLimit(configuredModel);
   }, [configuredModel]);
@@ -302,10 +282,9 @@ const EditForm = ({
                 isRichText={true}
                 placeholder={t('workflow:agent.prompt_placeholder')}
                 variableLabels={formatVariables}
-                skillOption={promptSkillOption}
+                skillOption={skillOption}
                 selectedSkills={selectedSkills}
                 onClickSkill={onClickSkill}
-                onRemoveSkill={onRemoveSkill}
                 value={appForm.aiSettings.systemPrompt}
                 onChange={(e) => {
                   setAppForm((state) => ({
@@ -384,9 +363,7 @@ const EditForm = ({
             gridTemplateColumns={'repeat(2, minmax(0, 1fr))'}
             gridGap={[2, 4]}
           >
-            {selectedAgentSkills.map((item) => (
-              <SkillCard key={item.skillId} skill={item} onDelete={onRemoveAgentSkill} />
-            ))}
+            <AgentSkillCardList skills={selectedAgentSkills} onDelete={onRemoveAgentSkill} />
           </Grid>
 
           {isOpenSkillSelect && (
@@ -411,16 +388,7 @@ const EditForm = ({
                 selectedTools: [e, ...(state.selectedTools || [])]
               }));
             }}
-            onUpdateTool={(e) => {
-              const toolKey = getToolIdentityKey(e.pluginId, e.source);
-              setAppForm((state) => ({
-                ...state,
-                selectedTools:
-                  state.selectedTools?.map((item) =>
-                    getToolIdentityKey(item.pluginId, item.source) === toolKey ? e : item
-                  ) || []
-              }));
-            }}
+            onConfigTool={skillManager.onOpenConfigTool}
             onRemoveTool={(id, source) => {
               setAppForm((state) => ({
                 ...state,
@@ -687,7 +655,7 @@ const EditForm = ({
       )}
       <ConfirmModal />
       {isOpenRecharge && <RechargeModal onClose={onCloseRecharge} onPaySuccess={onCloseRecharge} />}
-      <SkillModal />
+      {skillManager.toolConfigModal}
     </>
   );
 };

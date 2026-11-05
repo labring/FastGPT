@@ -51,7 +51,6 @@ const systemNodes: FlowNodeTemplateType[] = [
   ToolCallNode,
   ToolParamsNode,
   StopToolNode,
-  AgentNode,
   ReadFilesNode,
   HttpNode468,
   IfElseNode,
@@ -65,6 +64,7 @@ const systemNodes: FlowNodeTemplateType[] = [
 export const appSystemModuleTemplates: FlowNodeTemplateType[] = [
   WorkflowStart,
   ...systemNodes,
+  AgentNode,
   CustomFeedbackNode,
   UserSelectNode,
   FormInputNode

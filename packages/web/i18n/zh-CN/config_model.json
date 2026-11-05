@@ -272,6 +272,8 @@
   "available_to_all": "全员可用",
   "only_available_to_self": "仅自己可用",
   "shared_with_me": "与我共享",
+  "creator": "创建人",
+  "system_model": "系统模型",
   "system_model_tag": "系统",
   "replace_invalid_title": "替换已失效模型",
   "replace_invalid_review": "确认",

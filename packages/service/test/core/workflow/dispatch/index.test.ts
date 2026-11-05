@@ -554,6 +554,39 @@ describe('getWorkflowNodeRunParams', () => {
     };
   };
 
+  it('resolves the same whole-filter reference in Agent inputs and legacy nested settings', () => {
+    const filterJson = '{"tags":{"$and":[{"department":{"$in":["finance"]}}]}}';
+    const node = createNode('agent', FlowNodeTypeEnum.agent);
+    const reference = [VARIABLE_NODE_ID, 'filterJson'];
+    node.inputs = [
+      {
+        key: NodeInputKeyEnum.collectionFilterMatch,
+        label: '',
+        renderTypeList: [FlowNodeInputTypeEnum.hidden, FlowNodeInputTypeEnum.reference],
+        selectedType: FlowNodeInputTypeEnum.reference,
+        valueType: WorkflowIOValueTypeEnum.string,
+        value: reference
+      },
+      {
+        key: NodeInputKeyEnum.datasetParams,
+        label: '',
+        renderTypeList: [FlowNodeInputTypeEnum.hidden],
+        value: { datasets: [{ datasetId: 'dataset-1' }], collectionFilterMatch: reference }
+      }
+    ];
+
+    const params = getWorkflowNodeRunParams({
+      node,
+      runtimeNodesMap: new Map(),
+      variableState: createVariableState({ filterJson }).state
+    });
+    expect(params[NodeInputKeyEnum.collectionFilterMatch]).toBe(filterJson);
+    expect(params[NodeInputKeyEnum.datasetParams]).toEqual({
+      datasets: [{ datasetId: 'dataset-1' }],
+      collectionFilterMatch: filterJson
+    });
+  });
+
   it('静态 input 不应构造 runtimeVariables', () => {
     const variableState = createVariableState({ name: 'Ada' });
     const node = createNode('node1', FlowNodeTypeEnum.textEditor);

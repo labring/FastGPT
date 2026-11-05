@@ -4,8 +4,6 @@ import type {
   GetModelCatalogResponse,
   GetSystemModelsResponse
 } from '@fastgpt/global/openapi/core/ai/model/api';
-import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
-
 import type {
   GetModelSummariesBody,
   GetModelSummariesResponse
@@ -22,17 +20,15 @@ export const getPublicModelCatalog = () =>
 export const getUserModelCatalog = ({
   version,
   outLinkAuthData,
-  orderBy
-}: {
-  version?: string;
-  outLinkAuthData?: OutLinkChatAuthProps;
-  orderBy?: GetModelCatalogQuery['orderBy'];
-} = {}) =>
+  orderBy,
+  includeSourceMember
+}: GetModelCatalogQuery = {}) =>
   GET<GetModelCatalogResponse>(
     coreModelPath + '/catalog',
     {
       version,
       orderBy,
+      includeSourceMember,
       outLinkAuthData: outLinkAuthData ? JSON.stringify(outLinkAuthData) : undefined
     },
     { deduplicate: true }

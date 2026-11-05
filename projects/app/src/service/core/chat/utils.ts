@@ -134,7 +134,11 @@ export const formatCompletionResponseContent = ({
 
   /** 只投影公开展示字段；新增恢复元数据默认不出现在非流式 API 响应中。 */
   const publicValues = responseContent.flatMap((item): CompletionDetailValueItem[] => {
-    if (item.hideInUI) return [];
+    if (item.hideInUI) {
+      return item.interactive
+        ? [{ interactive: formatPublicCompletionInteractive(item.interactive) }]
+        : [];
+    }
     const value: CompletionDetailValueItem = pick(item, publicCompletionValueKeys);
     const formatPublicTool = (tool: NonNullable<AIChatItemValueItemType['tool']>) => {
       const publicTool = pick(tool, [

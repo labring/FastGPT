@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   checkAppFormBeforePublish,
   checkAppFormResourceIssues,
@@ -15,6 +15,10 @@ import {
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import type { SelectedToolItemType } from '@fastgpt/global/core/app/formEdit/type';
 import type { TFunction } from 'next-i18next';
+import * as resourceChecks from '@/web/core/workflow/check/resource';
+import { agentForm2AppWorkflow } from '@/pageComponents/app/detail/Edit/ChatAgent/utils';
+
+afterEach(() => vi.restoreAllMocks());
 
 vi.mock('@/web/core/workflow/modelData', () => ({
   getWorkflowModelCheckData: vi.fn().mockResolvedValue({ references: [], defaultModelIds: {} })
@@ -49,7 +53,6 @@ const createMockTool = (overrides: Partial<SelectedToolItemType> = {}): Selected
     inputs: [],
     outputs: [],
     templateType: 'personalTool' as any,
-    configStatus: 'configured',
     ...overrides
   }) as unknown as SelectedToolItemType;
 
@@ -101,16 +104,26 @@ describe('checkAppFormResourceIssues', () => {
       expect(result).toBe('该工具不存在或已被删除');
     });
 
-    it('should return publish_unExist_app when tool config is invalid', () => {
+    it('blocks incomplete required inputs and accepts the tool after they are configured', () => {
       const appForm = getDefaultAppForm();
-      appForm.selectedTools = [
-        createMockTool({
-          configStatus: 'invalid'
-        })
-      ];
-
-      const result = checkAppFormResourceIssues({ appForm, t: mockT });
-      expect(result).toBe('发布失败，请检查工具配置是否正确');
+      const tool = createMockTool({
+        inputs: [
+          {
+            key: 'token',
+            label: 'Token',
+            renderTypeList: [FlowNodeInputTypeEnum.input],
+            selectedType: FlowNodeInputTypeEnum.input,
+            required: true,
+            value: ''
+          }
+        ]
+      });
+      appForm.selectedTools = [tool];
+      expect(checkAppFormResourceIssues({ appForm, t: mockT })).toBe(
+        '发布失败，请检查工具配置是否正确'
+      );
+      tool.inputs[0].value = 'configured-token';
+      expect(checkAppFormResourceIssues({ appForm, t: mockT })).toBeUndefined();
     });
   });
 
@@ -148,34 +161,41 @@ describe('checkAppFormResourceIssues', () => {
   });
 
   describe('sandbox checks', () => {
-    it('should return error when useAgentSandbox is on but sandbox is not configured', () => {
+    it.each([
+      [{ showSandbox: false, enableSandbox: true }, '系统未配置虚拟机'],
+      [{ showSandbox: true, enableSandbox: false }, '免费版不支持虚拟机']
+    ])('returns %s sandbox issue when useAgentSandbox is enabled', (sandbox, expected) => {
       const appForm = getDefaultAppForm();
       appForm.aiSettings.useAgentSandbox = true;
 
-      const result = checkAppFormSandboxIssues({
-        appForm,
-        showSandbox: false,
-        enableSandbox: true,
-        t: mockT
-      });
-      expect(result).toBe('系统未配置虚拟机');
-    });
-
-    it('should return error when useAgentSandbox is on but free plan does not support sandbox', () => {
-      const appForm = getDefaultAppForm();
-      appForm.aiSettings.useAgentSandbox = true;
-
-      const result = checkAppFormSandboxIssues({
-        appForm,
-        showSandbox: true,
-        enableSandbox: false,
-        t: mockT
-      });
-      expect(result).toBe('免费版不支持虚拟机');
+      expect(
+        checkAppFormSandboxIssues({
+          appForm,
+          ...sandbox,
+          t: mockT
+        })
+      ).toBe(expected);
     });
   });
 
   describe('checkAppFormBeforePublish integrated checks', () => {
+    it('checks the original Agent resources and sandbox once, then still validates the model', async () => {
+      const sandboxCheck = vi.spyOn(resourceChecks, 'checkAgentSandboxIssues');
+      const resourceCheck = vi.spyOn(resourceChecks, 'checkAgentResourceIssues');
+      const appForm = getDefaultAppForm();
+      appForm.aiSettings.modelId = '';
+      const result = await checkAppFormBeforePublish({
+        appForm,
+        form2WorkflowFn: agentForm2AppWorkflow,
+        showSandbox: true,
+        enableSandbox: true,
+        t: mockT
+      });
+      expect(sandboxCheck).toHaveBeenCalledOnce();
+      expect(resourceCheck).toHaveBeenCalledOnce();
+      expect(result).toBe('common:core.workflow.check.model_required_short');
+    });
+
     it('should prioritize sandbox error if sandbox is unavailable', async () => {
       const appForm = getDefaultAppForm();
       appForm.aiSettings.useAgentSandbox = true;

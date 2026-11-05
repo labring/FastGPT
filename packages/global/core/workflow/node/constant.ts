@@ -375,7 +375,7 @@ export const NodeGradients = {
   skyBlue: 'linear-gradient(180deg, rgba(137, 229, 255, 0.20) 0%, rgba(255, 255, 255, 0.00) 100%)',
   salmon: 'linear-gradient(180deg, rgba(255, 160, 160, 0.20) 0%, rgba(255, 255, 255, 0.00) 100%)',
   gray: 'linear-gradient(180deg, rgba(136, 136, 136, 0.20) 0%, rgba(255, 255, 255, 0.00) 100%)',
-  emerald: 'linear-gradient(180deg, rgba(20, 168, 70, 0.20) 0%, rgba(255, 255, 255, 0.00) 100%)',
+  emerald: 'linear-gradient(180deg, rgba(83, 231, 206, 0.20) 0%, rgba(255, 255, 255, 0.00) 100%)',
   loopRun: 'linear-gradient(180deg, rgba(110, 231, 183, 0.20) 0%, rgba(255, 255, 255, 0.00) 100%)'
 };
 export const NodeBorderColors = {
@@ -398,7 +398,7 @@ export const NodeBorderColors = {
   skyBlue: 'rgba(137, 229, 255, 0.6)',
   salmon: 'rgba(255, 160, 160, 0.6)',
   gray: 'rgba(136, 136, 136, 0.6)',
-  emerald: 'rgba(20, 168, 70, 0.6)',
+  emerald: 'rgba(83, 231, 206, 0.6)',
   loopRun: 'rgba(110, 231, 183, 0.6)'
 };
 export const NodeColorSchemaEnum = [
@@ -438,7 +438,8 @@ export const isNestedParentNodeType = (flowNodeType: FlowNodeTypeEnum | string):
 /** 交互类节点类型集合（在 parallelRun 体内禁止使用；loopRun 允许）。 */
 export const INTERACTIVE_NODE_TYPES: ReadonlySet<FlowNodeTypeEnum> = new Set([
   FlowNodeTypeEnum.userSelect,
-  FlowNodeTypeEnum.formInput
+  FlowNodeTypeEnum.formInput,
+  FlowNodeTypeEnum.agent
 ]);
 
 export const isInteractiveNodeType = (flowNodeType: FlowNodeTypeEnum | string): boolean =>
