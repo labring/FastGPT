@@ -407,18 +407,23 @@ export const createPaginatedChatTargetInputSchema = <T extends z.ZodRawShape>(sh
  * query 仅是文档参数名，实际仍展开为 appId、skillId、chatId 等独立 Query 键；
  * 运行时继续使用原始 Schema 校验，代码示例由公共生成器取第一个分支。
  */
-export const createChatTargetQueryParameters = (schema: z.ZodType) => [
-  schema.meta({
-    ...schema.meta(),
-    param: {
-      name: 'query',
-      in: 'query',
-      required: !schema.safeParse({}).success,
-      style: 'form',
-      explode: true
-    }
-  })
-];
+export const createChatTargetQueryParameters = (schema: z.ZodType) => {
+  // zod-openapi 从 optional 包装判断整个参数是否必填；只设 param.required 不会生效。
+  const optionalQuery = schema.safeParse({}).success;
+  const query = optionalQuery ? schema.optional() : schema;
+  return [
+    query.meta({
+      ...schema.meta(),
+      param: {
+        name: 'query',
+        in: 'query',
+        required: !optionalQuery,
+        style: 'form',
+        explode: true
+      }
+    })
+  ];
+};
 
 /**
  * API route runtime schema helper.
