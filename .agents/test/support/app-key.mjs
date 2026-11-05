@@ -256,7 +256,8 @@ export async function appKeyWorld(context) {
       assert.equal(current.chats.length, 1);
       assert.equal(current.items.length, (options.round ?? 1) * 2);
       assert.equal(current.logs.length, 1);
-      assert.equal(current.logs[0].userId, uid);
+      // 同一统计桶保留首轮使用者；Key 交接后的默认身份可改变本轮鉴权成员。
+      assert.equal(current.logs[0].userId, options.bucketUserId ?? uid);
       assert.equal(current.logs[0].chatItemCount, options.round ?? 1);
       return current;
     });
