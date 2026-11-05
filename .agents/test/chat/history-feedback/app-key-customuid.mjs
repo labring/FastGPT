@@ -6,6 +6,7 @@ import {
   runningFixture,
   audioFixture,
   audioRequest,
+  draftFile,
   digest
 } from './app-key-chat-fixture.mjs';
 import { openEventStream } from '../../support/stream.mjs';
@@ -61,7 +62,27 @@ async function userScope(w, context) {
     own.list.map((r) => r.chatId),
     [f.chatId]
   );
+  await draftFile(w, {
+    context,
+    key: personal,
+    target: { appId: w.W },
+    chatId: legacyId,
+    uid: w.c.actor('A').tmbId
+  });
+  const draft = await draftFile(w, {
+    context,
+    key: personal,
+    target: { appId: w.W, customUid: uid },
+    chatId: f.chatId,
+    uid
+  });
+  await w.denied(
+    await w.keyRequest(w.Ka, '/api/core/chat/file/presignDraftChatFilePostUrl', draft)
+  );
   await w.acl('A', w.W, roles.none);
+  permissionDenied(
+    await w.keyRequest(personal, '/api/core/chat/file/presignDraftChatFilePostUrl', draft)
+  );
 
   for (const customUid of [' 客户+/a?=b ', 'x'.repeat(1024)]) {
     const row = await w.completion(w.Ka, w.W, { uid: customUid });
@@ -382,6 +403,111 @@ async function runtimeScope(w, context) {
   });
   assert.equal(disabled.exists, false);
   assert.ok(disabled.unavailableReason);
+  // 关闭态通过后，再在本轮应用开启真实 Sandbox，校验完整文件链路及实际 namespace。
+  const plan = await w.db
+    .collection('team_subscriptions')
+    .findOne({ teamId: w.teamId, type: 'standard' });
+  if (plan) {
+    await w.db
+      .collection('team_subscriptions')
+      .updateOne({ _id: plan._id }, { $set: { enableSandbox: true } });
+    context.itemFinalizers.push(() =>
+      w.db
+        .collection('team_subscriptions')
+        .updateOne(
+          { _id: plan._id },
+          Object.hasOwn(plan, 'enableSandbox')
+            ? { $set: { enableSandbox: plan.enableSandbox } }
+            : { $unset: { enableSandbox: 1 } }
+        )
+    );
+  }
+  const sandboxVersion = await w.db
+    .collection('app_versions')
+    .findOne({ appId: w.oid(w.W), isPublish: true }, { sort: { time: -1 } });
+  await w.db.collection('app_versions').updateOne(
+    { _id: sandboxVersion._id },
+    {
+      $set: {
+        nodes: [
+          ...sandboxVersion.nodes,
+          {
+            nodeId: 'FG-TEST-sandbox-capability',
+            flowNodeType: 'agent',
+            inputs: [
+              {
+                key: 'useAgentSandbox',
+                value: true,
+                renderTypeList: ['switch'],
+                valueType: 'boolean'
+              }
+            ],
+            outputs: []
+          }
+        ]
+      }
+    }
+  );
+  context.itemFinalizers.push(() =>
+    w.db
+      .collection('app_versions')
+      .updateOne({ _id: sandboxVersion._id }, { $set: { nodes: sandboxVersion.nodes } })
+  );
+  context.resources.set('sandbox:' + w.W, true);
+  const sandboxTarget = {
+    ...proxy?.target,
+    ...goodIdentity,
+    chatId: f.chatId,
+    path: w.label('sandbox-user') + '.txt'
+  };
+  const bytes = Buffer.from(w.label('sandbox-identity'));
+  const upload = await fetch(
+    w.c.fixture.baseUrl +
+      '/api/core/ai/sandbox/upload?' +
+      new URLSearchParams(
+        Object.entries(sandboxTarget).map(([key, value]) => [
+          key,
+          typeof value === 'object' ? JSON.stringify(value) : value
+        ])
+      ),
+    {
+      method: 'POST',
+      headers: {
+        authorization: 'Bearer ' + (proxy?.key.value ?? w.Ka.value),
+        'content-type': 'application/octet-stream'
+      },
+      body: bytes,
+      signal: AbortSignal.timeout(120000)
+    }
+  );
+  const uploaded = await upload.json();
+  assert.equal(upload.status, 200);
+  assert.equal(uploaded.code, 200);
+  assert.equal(uploaded.data.bytesWritten, bytes.length);
+  const download = await w.c.request({
+    role: 'A',
+    kind: 'key',
+    keyValue: proxy?.key.value ?? w.Ka.value,
+    route: '/api/core/ai/sandbox/download',
+    body: sandboxTarget,
+    raw: true
+  });
+  assert.equal(download.status, 200);
+  assert.equal(digest(Buffer.from(await download.arrayBuffer())), digest(bytes));
+  const instances = await w.db
+    .collection('agent_sandbox_instances_v2')
+    .find({ sourceType: 'app', sourceId: w.W })
+    .toArray();
+  assert.deepEqual(
+    instances.map((row) => row.userId),
+    [proxy?.tmbId ?? f.chat.uid]
+  );
+  w.c.record('真实 Sandbox 使用者及文件链路', {
+    userId: instances[0].userId,
+    sourceId: w.W,
+    bytes: bytes.length,
+    sha256: digest(bytes)
+  });
   w.c.record('运行和配套接口身份', {
     appId: r.appId,
     chatId: r.chatId,

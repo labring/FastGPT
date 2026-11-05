@@ -7,6 +7,7 @@ import {
   runningFixture,
   audioFixture,
   audioRequest,
+  draftFile,
   digest
 } from './app-key-chat-fixture.mjs';
 
@@ -519,6 +520,22 @@ async function routeMatrix(w, context, { userScope = false, proxyScope = false }
   );
   assert.equal(routes.length, 24);
   if (proxyScope) {
+    for (const authProxy of [proxy.authProxy, { username: w.c.actor('B').username }])
+      await draftFile(w, {
+        context,
+        key: proxy.key,
+        target: { appId: w.W, authProxy },
+        chatId: f.chatId,
+        uid: proxy.tmbId
+      });
+    // v2 的 JSON/SSE 在本行与 D16 覆盖；补齐旧 v1 真实协议及用户名代理。
+    for (const stream of [false, true])
+      await w.completion(proxy.key, w.W, {
+        ...proxy.completion,
+        version: 'v1',
+        stream,
+        body: { ...proxy.completion.body, authProxy: { username: w.c.actor('B').username } }
+      });
     const other = await w.completion(w.Ka, w.W);
     const onlineId = w.label('B-online');
     success(
@@ -678,6 +695,25 @@ async function routeMatrix(w, context, { userScope = false, proxyScope = false }
       'GET'
     );
     assert.equal(byId.appId, w.W);
+    const recordId = w.oid();
+    const record = {
+      _id: recordId,
+      teamId: w.teamId,
+      appId: w.oid(w.W),
+      tmbId: w.oid(w.c.actor('A').tmbId),
+      lastUsedTime: new Date()
+    };
+    await w.db.collection('app_records').deleteMany({ appId: record.appId, tmbId: record.tmbId });
+    await w.db.collection('app_records').insertOne(record);
+    try {
+      await w.acl('B', w.W, 0);
+      rejected(await f.request('/core/chat/init', { chatId: f.chatId }, 'GET'));
+      assert.deepEqual(await w.db.collection('app_records').findOne({ _id: recordId }), record);
+      w.c.record('代理鉴权失败不清理凭证创建人的应用入口', { recordId: String(recordId) });
+    } finally {
+      await w.acl('B', w.W, 1);
+      await w.db.collection('app_records').deleteOne({ _id: recordId });
+    }
     const memberId = w.oid(proxy.tmbId);
     const member = await w.db.collection('team_members').findOne({ _id: memberId });
     try {
@@ -703,6 +739,32 @@ async function routeMatrix(w, context, { userScope = false, proxyScope = false }
         { appId: w.oid(w.W), chatId: online.chatId },
         { $set: { publishSource: { type: 'online' } } }
       );
+    const rawLink = 'https://example.test/' + w.label('custom-source');
+    await w.db
+      .collection('dataset_collections')
+      .updateOne({ _id: w.oid(q.collectionId) }, { $set: { type: 'link', rawLink } });
+    for (const [route, input] of [
+      ['/core/dataset/data/getQuoteData', { id: String(q.data[2]._id) }],
+      ['/core/dataset/collection/read', { collectionId: q.collectionId }],
+      ['/core/dataset/collection/export', { collectionId: q.collectionId }]
+    ]) {
+      const target = { ...input, chatId: f.chatId, chatItemDataId: f.ai.dataId };
+      rejected(await f.request(route, { ...target, customUid: 'wrong-' + customUid }));
+      rejected(await f.request(route, { ...input, customUid }));
+      const response = await f.request(route, { ...target, customUid });
+      if (route.endsWith('/export')) {
+        assert.equal(response.http, 200);
+        assert.equal(response.error, false);
+        assert.match(response.contentType, /text\/csv/);
+        assert.ok(response.raw.includes(context.run));
+      } else {
+        const result = success(response);
+        assert.equal(
+          route.endsWith('/read') ? result.value : result.q,
+          route.endsWith('/read') ? rawLink : q.data[2].q
+        );
+      }
+    }
     for (const route of routes) {
       if (route.route.endsWith('/batchDelete')) continue;
       await route.prepare?.();

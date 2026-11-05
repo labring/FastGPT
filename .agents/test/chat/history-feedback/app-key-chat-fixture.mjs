@@ -8,6 +8,43 @@ import { openEventStream } from '../../support/stream.mjs';
 
 export const digest = (value) => createHash('sha256').update(value).digest('hex');
 
+/** 草稿签名仍要求成员写权限；实际上传后用同一身份下载，验证文件 namespace 与删除回收。 */
+export async function draftFile(w, { context, key, target, chatId, uid }) {
+  const bytes = Buffer.from(w.label('draft-file'));
+  const input = {
+    ...target,
+    chatId,
+    filename: w.label('draft') + '.txt',
+    size: bytes.length,
+    contentType: 'text/plain',
+    fileSelectConfig: { canSelectFile: true, canSelectImg: true, maxFiles: 5, maxFileSize: 5 }
+  };
+  const uploaded = success(
+    await w.keyRequest(key, '/api/core/chat/file/presignDraftChatFilePostUrl', input)
+  );
+  context.secrets.add(uploaded.url);
+  assert.ok(uploaded.key.includes(uid) || uploaded.key.includes(encodeURIComponent(uid)));
+  assert.ok(
+    (await fetch(uploaded.url, { method: 'PUT', headers: uploaded.headers, body: bytes })).ok
+  );
+  const url = success(
+    await w.keyRequest(key, '/api/core/chat/file/presignChatFileGetUrl', {
+      ...target,
+      chatId,
+      key: uploaded.key
+    })
+  );
+  context.secrets.add(url);
+  const response = await fetch(url);
+  assert.equal(response.status, 200);
+  assert.equal(digest(Buffer.from(await response.arrayBuffer())), digest(bytes));
+  const checks = context.resources.get('storage-check:' + w.W) ?? [];
+  checks.push(url);
+  context.resources.set('storage-check:' + w.W, checks);
+  w.c.record('草稿文件真实身份链路', { chatId, uid, key: uploaded.key, sha256: digest(bytes) });
+  return input;
+}
+
 /** 每个场景从真实 API 建立会话；业务参数夹具仅修改本轮消息，不伪造请求成功。 */
 export async function chatFixture(w, { key = w.Ka, target = {}, completion = {} } = {}) {
   const chat = await w.completion(key, w.W, completion);
@@ -155,9 +192,11 @@ export async function runningFixture(w, context, proxy) {
     await w.acl('B', appId, 1);
     await w.acl('A', appId, 0);
   }
-  const key = proxy?.key ?? (await w.createKey('owner', appId)),
+  if (!proxy) await w.acl('A', appId, 1);
+  const key = proxy?.key ?? (await w.createKey('A', appId)),
     question = w.label('barrier'),
     chatId = w.label('running');
+  if (!proxy) await w.acl('A', appId, 0);
   const barrier = gate.register(question),
     streams = [];
   context.itemFinalizers.push(async () => {
