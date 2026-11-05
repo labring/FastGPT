@@ -13,10 +13,7 @@ import type {
 } from '@fastgpt/global/core/workflow/type/io';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { useForm, Controller, useWatch } from 'react-hook-form';
-import {
-  type SecretValueType,
-  type StoreSecretValueType
-} from '@fastgpt/global/common/secret/type';
+import { type SecretValueType } from '@fastgpt/global/common/secret/type';
 import {
   formatSecretReference,
   getSecretReferenceValue,
@@ -38,7 +35,7 @@ import { selectPluginText } from '@fastgpt/global/common/i18n/utils';
 
 export type ToolParamsFormType = {
   type: SystemToolSecretInputTypeEnum;
-  value?: StoreSecretValueType;
+  value?: Record<string, SecretInputValue>;
 };
 
 type SecretInputFormProps = {
@@ -66,7 +63,7 @@ type SecretInputFormProps = {
   onSubmit?: (data: ToolParamsFormType) => void;
 };
 
-type SecretInputValue = SecretValueType;
+type SecretInputValue = SecretValueType | { value: number | boolean };
 type FieldMode = 'manual' | 'reference';
 
 const secretInputModeTypeMap = {
@@ -89,16 +86,13 @@ export type SecretReferenceList = {
   }[];
 }[];
 
-/** 编辑器先复用凭据解析；旧数字/开关配置仅在声明的非密钥字段中转换为字符串。 */
+/** 编辑器兼容旧数字和开关配置。 */
 export const normalizeInputValue = (
   value: unknown,
   inputType: InputConfigType['inputType'] = 'secret'
 ): SecretInputValue => {
   return normalizeToolInputValue({ value, inputType }) ?? { value: '' };
 };
-
-export const formatManualInputValue = (value: unknown) =>
-  value === undefined || value === null ? '' : String(value);
 
 export const filterReferenceListByInputType = (
   referenceList: SecretReferenceList,
@@ -609,10 +603,8 @@ export const SecretInputForm = ({
                                   return (
                                     <InputRender
                                       inputType={secretInputTypeToInputType(item.inputType)}
-                                      value={item.inputType === 'switch' ? value === 'true' : value}
-                                      onChange={(nextValue) =>
-                                        onChange(formatManualInputValue(nextValue))
-                                      }
+                                      value={value}
+                                      onChange={onChange}
                                       placeholder={
                                         item.inputType === 'numberInput'
                                           ? (item.placeholder ?? fieldLabel)

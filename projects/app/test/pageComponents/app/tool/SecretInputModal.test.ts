@@ -4,7 +4,6 @@ import { JSDOM } from 'jsdom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   filterReferenceListByInputType,
-  formatManualInputValue,
   normalizeInputValue,
   SecretInputForm,
   type SecretReferenceList,
@@ -217,15 +216,6 @@ describe('normalizeInputValue', () => {
   });
 });
 
-describe('formatManualInputValue', () => {
-  it('preserves falsy scalar values and clears missing changes', () => {
-    expect(formatManualInputValue(0)).toBe('0');
-    expect(formatManualInputValue(false)).toBe('false');
-    expect(formatManualInputValue(undefined)).toBe('');
-    expect(formatManualInputValue(null)).toBe('');
-  });
-});
-
 describe('filterReferenceListByInputType', () => {
   it('filters reference outputs to the existing input type contract', () => {
     expect(
@@ -322,8 +312,8 @@ describe('SecretInputForm', () => {
       expect(onSubmit.mock.calls[0]?.[0]).toMatchObject({
         value: {
           token: { ref: ['node', 'token'] },
-          count: { value: '0' },
-          enabled: { value: 'false' }
+          count: { value: 0 },
+          enabled: { value: false }
         }
       });
 

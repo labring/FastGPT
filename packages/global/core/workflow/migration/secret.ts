@@ -2,6 +2,8 @@ import { CompatibleSecretValueSchema } from '../../../common/secret/type';
 import { getWorkflowSecretInputKind } from '../../../common/workflow/input';
 import { NodeInputKeyEnum } from '../constants';
 import { FlowNodeInputTypeEnum, FlowNodeTypeEnum } from '../node/constant';
+import { normalizeToolInputValue } from '../../app/tool/systemTool/codec';
+import { InputConfigInputTypeSchema } from '../type/io';
 
 type RecordValue = Record<string, unknown>;
 
@@ -58,12 +60,25 @@ const migrateNodeToolConfigSecrets = (value: RecordValue): RecordValue => {
 };
 
 /** 迁移 system_input_config 的手工密钥表；system 分支历史上也可能带有 value。 */
-const migrateSystemInputConfigSecrets = (value: RecordValue): RecordValue => {
+const migrateSystemInputConfigSecrets = (value: RecordValue, inputList: unknown): RecordValue => {
   if (!isRecord(value.value)) return value;
 
   return {
     ...value,
-    value: migrateSecretStoreToCurrent(value.value)
+    value: Object.fromEntries(
+      Object.entries(value.value).map(([key, item]) => {
+        const config = Array.isArray(inputList)
+          ? inputList.find((entry) => isRecord(entry) && entry.key === key)
+          : undefined;
+        const inputType = InputConfigInputTypeSchema.safeParse(config?.inputType);
+        return [
+          key,
+          inputType.success
+            ? (normalizeToolInputValue({ value: item, inputType: inputType.data }) ?? item)
+            : migrateSecretValueToCurrent(item)
+        ];
+      })
+    )
   };
 };
 
@@ -84,8 +99,15 @@ const migrateInputSecrets = (value: unknown, flowNodeType: unknown): unknown => 
   const secretInputKind = getWorkflowSecretInputKind({ flowNodeType, inputKey: input.key });
   if (Array.isArray(input.inputList)) {
     input.inputList = input.inputList.map((item) => {
-      if (!isRecord(item) || item.inputType !== 'secret' || !('value' in item)) return item;
-      return { ...item, value: migrateSecretValueToCurrent(item.value) };
+      if (!isRecord(item) || !('value' in item)) return item;
+      const inputType = InputConfigInputTypeSchema.safeParse(item.inputType);
+      if (!inputType.success) return item;
+      if (secretInputKind !== 'systemConfig' && inputType.data !== 'secret') return item;
+      return {
+        ...item,
+        value:
+          normalizeToolInputValue({ value: item.value, inputType: inputType.data }) ?? item.value
+      };
     });
   }
   if (
@@ -99,7 +121,7 @@ const migrateInputSecrets = (value: unknown, flowNodeType: unknown): unknown => 
     input.value = migrateSecretStoreToCurrent(input.value);
   }
   if (secretInputKind === 'systemConfig' && isRecord(input.value)) {
-    input.value = migrateSystemInputConfigSecrets(input.value);
+    input.value = migrateSystemInputConfigSecrets(input.value, input.inputList);
   }
   if (flowNodeType === FlowNodeTypeEnum.agent && input.key === NodeInputKeyEnum.selectedTools) {
     input.value = migrateSelectedToolsSecrets(input.value);

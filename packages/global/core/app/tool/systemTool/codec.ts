@@ -4,18 +4,12 @@ import type { SystemPluginToolCollectionType } from '../../../plugin/tool/type';
 import { PluginStatusEnum } from '../../../plugin/type';
 import { SystemToolSystemSecretStatusEnum } from './constants';
 import { isDebugToolSource } from '../utils';
-import z from 'zod';
 import { CompatibleSecretValueSchema, type SecretValueType } from '../../../../common/secret/type';
 import type { InputConfigType } from '../../../workflow/type/io';
 
-// 旧表单给非密钥控件也保留 secret 字段；只接纳标量 wrapper，拒绝 ref 混用和业务扩展字段。
-const LegacyToolScalarValueSchema = z
-  .object({ value: z.union([z.number(), z.boolean()]), secret: z.string().optional() })
-  .strict();
-
 /**
  * 将工具配置边界的旧标量和双字段值包装为凭据来源，前端和运行时共用。
- * 密钥只接受字符串；数字/开关仅在对应非密钥字段中转成持久化字符串，非法对象不算已配置。
+ * 密钥只接受字符串；数字和开关兼容旧字符串，非法对象不算已配置。
  */
 export const normalizeToolInputValue = ({
   value,
@@ -23,20 +17,25 @@ export const normalizeToolInputValue = ({
 }: {
   value: unknown;
   inputType: InputConfigType['inputType'];
-}): SecretValueType | undefined => {
+}): SecretValueType | { value: number | boolean } | undefined => {
   const secretValue = CompatibleSecretValueSchema.safeParse(value);
-  if (secretValue.success) return secretValue.data;
-
-  const rawValue = (() => {
-    if (inputType === 'secret') return value;
-    const legacyScalar = LegacyToolScalarValueSchema.safeParse(value);
-    return legacyScalar.success ? legacyScalar.data.value : value;
-  })();
-
-  if (typeof rawValue === 'string') return { value: rawValue };
-  if (inputType !== 'secret' && (typeof rawValue === 'number' || typeof rawValue === 'boolean')) {
-    return { value: String(rawValue) };
+  const normalized = secretValue.success ? secretValue.data : { value };
+  if (!('value' in normalized)) return normalized;
+  const rawValue = normalized.value;
+  if (inputType === 'switch' && (rawValue === 'true' || rawValue === 'false')) {
+    return { value: rawValue === 'true' };
   }
+  if (
+    inputType === 'numberInput' &&
+    typeof rawValue === 'string' &&
+    rawValue.trim() !== '' &&
+    Number.isFinite(Number(rawValue))
+  ) {
+    return { value: Number(rawValue) };
+  }
+  if (typeof rawValue === 'string') return { value: rawValue };
+  if (inputType !== 'secret' && (typeof rawValue === 'number' || typeof rawValue === 'boolean'))
+    return { value: rawValue };
   return undefined;
 };
 
