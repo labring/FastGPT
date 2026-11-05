@@ -7,7 +7,8 @@ import {
 } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import { dispatchFormInput } from '@fastgpt/service/core/workflow/dispatch/interactive/formInput';
+import { createTestWorkflowDispatch } from '../context/fixtures';
+import { dispatchFormInput as dispatchFormInputWithoutContext } from '@fastgpt/service/core/workflow/dispatch/interactive/formInput';
 import { runWithTestWorkflowContext as runWithContext } from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
 import {
   UserInputInteractiveSchema,
@@ -35,6 +36,8 @@ vi.mock('@fastgpt/service/common/s3/sources/chat', () => ({
     return url;
   }
 }));
+
+const dispatchFormInput = createTestWorkflowDispatch(dispatchFormInputWithoutContext);
 
 describe('dispatchFormInput', () => {
   beforeEach(() => {
@@ -111,7 +114,7 @@ describe('dispatchFormInput', () => {
       histories: [],
       node: { isEntry: false },
       params: { description: 'Fill form', userInputForms: [formItem] },
-      variableState: { toRuntimeRecord: () => ({ cities: sourceValue }) },
+      variableContext: { toRuntimeRecord: () => ({ cities: sourceValue }) },
       query: []
     } as any);
   };

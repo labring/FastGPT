@@ -75,7 +75,7 @@ export const createToolCallToolProvider = async ({
    * 完成后立即提交，不等待更早发起的调用；同名变量按实际写回顺序覆盖。
    */
   const runWorkflowTool: CreateAgentLoopCoreWorkflowToolRunnerParams<WorkflowInteractiveResponseType>['runWorkflowTool'] =
-    async ({ callId, runtimeNodes, runtimeEdges, lastInteractive }) => {
+    async ({ runtimeNodes, runtimeEdges, lastInteractive }) => {
       const stateSnapshot = new WorkflowRunStateSnapshot({
         variableContext: parentVariableContext
       });

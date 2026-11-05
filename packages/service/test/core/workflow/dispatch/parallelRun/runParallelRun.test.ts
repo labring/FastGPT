@@ -1,5 +1,9 @@
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
-import { createTestWorkflowDispatch, captureTestWorkflowContext, getCapturedTestWorkflowContext } from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
+import {
+  createTestWorkflowDispatch,
+  captureTestWorkflowContext,
+  getCapturedTestWorkflowContext
+} from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   FlowNodeOutputTypeEnum,
@@ -146,7 +150,7 @@ describe('dispatchParallelRun', () => {
       warn.mockClear();
       const props = makeProps();
       props.params.loopInputArray = ['a', 'b'];
-      props.variableState.clone.mockImplementation(() => {
+      props.variableContext.clone.mockImplementation(() => {
         throw error;
       });
       try {
@@ -165,7 +169,7 @@ describe('dispatchParallelRun', () => {
   it('does not return an old task-local exception after a successful retry', async () => {
     const props = makeProps();
     props.params.parallelRunMaxRetryTimes = 1;
-    props.variableState.clone.mockImplementationOnce(() => {
+    props.variableContext.clone.mockImplementationOnce(() => {
       throw new Error('transient state clone failure');
     });
     runWorkflowMock.mockResolvedValueOnce(
@@ -181,7 +185,7 @@ describe('dispatchParallelRun', () => {
 
     const result = await dispatchParallelRun(props);
 
-    expect(props.variableState.clone).toHaveBeenCalledTimes(2);
+    expect(props.variableContext.clone).toHaveBeenCalledTimes(2);
     expect(Object.hasOwn(result, 'rawError')).toBe(false);
     expect(Object.hasOwn(props.nodeSummary, 'error')).toBe(false);
     expect(result.data?.[NodeOutputKeyEnum.parallelStatus]).toBe(ParallelRunStatusEnum.success);
