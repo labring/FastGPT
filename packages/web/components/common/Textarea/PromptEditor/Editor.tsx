@@ -90,7 +90,6 @@ export type EditorProps = {
   value: string;
 
   skillOption?: SkillOptionItemType;
-  onRemoveSkill?: (id: string) => void;
   onClickSkill?: (id: string) => void;
   selectedSkills?: SkillLabelItemType[];
 
@@ -126,7 +125,6 @@ export default function Editor({
   skillOption,
   selectedSkills,
   onClickSkill,
-  onRemoveSkill,
 
   onChange,
   onChangeText,
@@ -292,12 +290,11 @@ export default function Editor({
             </>
           )}
 
-          {skillOption && onClickSkill && onRemoveSkill && selectedSkills && (
+          {skillOption && onClickSkill && selectedSkills && (
             <>
               <SkillLabelPlugin
                 selectedSkills={selectedSkills}
                 onClickSkill={onClickSkill}
-                onRemoveSkill={onRemoveSkill}
                 pendingSkillsRef={pendingSkillsRef}
               />
               <SkillPickerPlugin

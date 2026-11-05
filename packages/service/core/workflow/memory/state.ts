@@ -158,24 +158,20 @@ export const getWorkflowNodeMemoryKey = ({
   nodeId: string;
 }): string => (memoryState ? memoryState.getNodeMemoryKey(params) : getWorkflowMemoryKey(params));
 
-/** 统一读取策略：恢复 checkpoint 优先，普通调用按 history=0、自定义历史和当前状态依次处理。 */
+/** 统一读取策略：普通调用按 history=0、自定义历史和当前状态依次处理。 */
 export const readWorkflowNodeMemory = <T = any>({
   memoryState,
   runningAppInfo,
   nodeId,
   history = 6,
-  histories,
-  hasInteractiveResume = false
+  histories
 }: {
   memoryState?: WorkflowMemoryState;
   runningAppInfo?: WorkflowMemorySource;
   nodeId: string;
   history?: ChatItemMiniType[] | number;
   histories?: ChatItemMiniType[];
-  hasInteractiveResume?: boolean;
 }): T | undefined => {
-  if (hasInteractiveResume && memoryState)
-    return memoryState.readNodeMemory<T>({ runningAppInfo, nodeId });
   if (history === 0) return undefined;
   const state = Array.isArray(history)
     ? WorkflowMemoryState.fromHistories(history, {

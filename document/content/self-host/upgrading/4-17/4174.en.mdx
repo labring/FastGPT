@@ -1,7 +1,7 @@
 ---
 title: V4.17.4
 description: FastGPT V4.17.4 release notes
-sidebarTag: In progress
+releaseTime: '2026-11-05'
 ---
 
 ## Upgrade guide
@@ -11,6 +11,9 @@ sidebarTag: In progress
 This update requires no new or updated environment variables or system settings.
 
 ### Image updates
+
+- Update the fastgpt-app (FastGPT main service) image tag to v4.17.4.
+- Update the fastgpt-pro (FastGPT Pro) image tag to v4.17.4.
 
 ### Upgrade scripts
 
@@ -32,3 +35,6 @@ No manual data migration or changes to existing App configurations are required.
 4. **[List experience]** Fixed some lists failing to load more items after their content shrinks, and automatically retrying failed pagination requests.
 5. **[Account and Team]** Fixed the close button in the contact details modal shifting or being clipped when its content scrolls.
 6. **[Account and Team]** Fixed Enter submitting the login or member name form while confirming a Chinese input method candidate. Pressing Enter again after confirming the candidate submits the form normally.
+7. **[Agent]** Fixed some Workflow tools being incorrectly filtered out at runtime and becoming unavailable despite valid editor configurations.
+8. **[Tool calling]** Fixed model requests failing because tool parameter JSON Schemas used an invalid format.
+9. **[Tool calling]** Fixed incorrect value types in system tool number and toggle settings, publishing failures with variable references, and cleared settings retaining old values.

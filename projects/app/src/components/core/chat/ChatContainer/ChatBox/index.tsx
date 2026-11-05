@@ -193,8 +193,13 @@ const ChatBox = ({
 
   const [questionGuides, setQuestionGuide] = useState<string[]>([]);
   const [expandedDeletedGroups, setExpandedDeletedGroups] = useState<Set<string>>(new Set());
-  const { ScrollContainerRef, scrollToBottom, generatingScroll, isScrollToBottomButtonVisible } =
-    useChatScroll();
+  const {
+    ScrollContainerRef,
+    scrollToBottom,
+    autoScrollToBottom,
+    generatingScroll,
+    isScrollToBottomButtonVisible
+  } = useChatScroll();
 
   const chatBoxData = useContextSelector(ChatItemContext, (v) => v.chatBoxData);
   const setChatBoxData = useContextSelector(ChatItemContext, (v) => v.setChatBoxData);
@@ -397,7 +402,7 @@ const ChatBox = ({
     restoreSubmittedInput,
     setQuestionGuide,
     createQuestionGuide,
-    scrollToBottom,
+    scrollToBottom: autoScrollToBottom,
     generatingScroll,
     notifyChatGenerateStatusChange,
     finishChatGenerateStatus,
@@ -465,8 +470,8 @@ const ChatBox = ({
     }
 
     lastRecordsLoadedScrollTargetRef.current = chatScrollTargetKey;
-    scrollToBottom('auto');
-  }, [chatScrollTargetKey, isChatRecordsLoaded, scrollToBottom]);
+    autoScrollToBottom('auto');
+  }, [chatScrollTargetKey, isChatRecordsLoaded, autoScrollToBottom]);
 
   const onChatGeneratingConflictRecovered = useMemoizedFn(() => {
     toast({
@@ -486,7 +491,7 @@ const ChatBox = ({
     resumeControllerRef: resumeController,
     generatingMessage,
     flushGeneratingMessages,
-    scrollToBottom,
+    scrollToBottom: autoScrollToBottom,
     finishChatGenerateStatus,
     onChatGeneratingConflictRecovered
   });

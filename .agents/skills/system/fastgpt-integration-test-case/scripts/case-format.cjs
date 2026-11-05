@@ -77,7 +77,8 @@
       'evidence',
       'sources',
       'routes',
-      'related'
+      'related',
+      'automation'
     ]);
     for (const key of Object.keys(meta))
       if (!fields.has(key)) errors.push(`不支持的元数据字段：${key}`);
@@ -101,6 +102,38 @@
         (!meta[key].length || meta[key].some((item) => !enums[key].includes(item)))
       )
         errors.push(`${key} 为空或有不支持的值`);
+    }
+    // 自动化只声明已实现的完整子场景；没有映射的场景仍由 AI 执行。
+    if (meta.automation !== undefined) {
+      const covered = new Set();
+      if (!Array.isArray(meta.automation)) errors.push('automation 必须为数组');
+      else
+        for (const entry of meta.automation) {
+          if (
+            !entry ||
+            typeof entry !== 'object' ||
+            Object.keys(entry).some((key) => !['runner', 'script', 'items'].includes(key)) ||
+            !['node', 'playwright'].includes(entry.runner) ||
+            typeof entry.script !== 'string' ||
+            !/^\.agents\/test\/[a-zA-Z0-9_./-]+$/.test(entry.script) ||
+            entry.script.split('/').some((part) => ['.', '..', ''].includes(part)) ||
+            !(entry.runner === 'node'
+              ? /\.mjs$/.test(entry.script)
+              : /\.browser\.spec\.ts$/.test(entry.script)) ||
+            !Array.isArray(entry.items) ||
+            !entry.items.length ||
+            entry.items.some((id) => typeof id !== 'string' || !/^[A-Za-z][\w.-]*$/.test(id))
+          ) {
+            errors.push(
+              'automation 需声明 runner、仓库内 script 和非空 items，Node 使用 .mjs，浏览器使用 .browser.spec.ts'
+            );
+            continue;
+          }
+          for (const id of entry.items) {
+            if (covered.has(id)) errors.push(`automation 重复覆盖子场景：${id}`);
+            covered.add(id);
+          }
+        }
     }
     const directory = path.split('/').slice(0, -1).join('/');
     if (meta.business !== directory) errors.push(`business 必须与目录一致：${directory}`);

@@ -110,6 +110,8 @@ export type UseUserContextResult = {
   }>;
 };
 
+const MAX_AGENT_HISTORIES = 50;
+
 /**
  * 准备 Agent 本轮 user context。
  *
@@ -118,7 +120,7 @@ export type UseUserContextResult = {
  * 元信息后，再通过 getCurrentMessages 生成最终模型 messages。
  */
 export const useUserContext = async ({
-  history,
+  history = MAX_AGENT_HISTORIES,
   histories,
   currentFiles = [],
   currentUserInput,

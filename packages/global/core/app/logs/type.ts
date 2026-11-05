@@ -1,3 +1,4 @@
+import { ChatPublishSourceSchema } from '../../chat/publishSource/type';
 import { ObjectIdSchema } from '../../../common/type/mongo';
 import { ChatSourceEnum } from '../../chat/constants';
 import { AppLogKeysEnum } from './constants';
@@ -29,8 +30,15 @@ export const AppChatLogSchema = z.object({
   teamId: ObjectIdSchema,
   chatId: z.string(),
   userId: z.string(),
-  source: z.enum(ChatSourceEnum),
-  sourceName: z.string().optional(),
+  publishSource: ChatPublishSourceSchema.optional(),
+  source: z.enum(ChatSourceEnum).meta({
+    deprecated: true,
+    description: '旧统计桶渠道类型，仅作兼容；使用 publishSource.type'
+  }),
+  sourceName: z.string().optional().meta({
+    deprecated: true,
+    description: '旧统计桶渠道名称，仅用于兼容及历史名称回退'
+  }),
   createTime: z.coerce.date(),
   updateTime: z.coerce.date(),
 

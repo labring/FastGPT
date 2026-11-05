@@ -13,10 +13,12 @@ import { createWorkflowRuntimeSummary, summarizeRuntimeNodeResponses } from '../
 export const createAgentNodeResponseCollector = ({
   nodeResponseSink,
   nodeResponses,
+  nodeResponseParentId,
   onNodeResponseSummary
 }: {
   nodeResponseSink?: WorkflowNodeResponseSinkLike;
   nodeResponses: ChatHistoryItemResType[];
+  nodeResponseParentId?: string;
   onNodeResponseSummary?: (summary: WorkflowRuntimeSummaryType) => void;
 }) => {
   let workflowRuntimeSummary: WorkflowRuntimeSummaryType = createWorkflowRuntimeSummary();
@@ -35,9 +37,19 @@ export const createAgentNodeResponseCollector = ({
       onNodeResponseSummary?.(responseSummary);
     }
     if (!nodeResponseSink) return;
+    // 工作流 Agent 节点会将内部产生的主模型、工具、规划、追问和压缩步骤挂载到当前 Agent 根响应下；
+    // 已自带 parentId 的步骤（如挂在具体工具下的 toolResponseCompress）保留自身层级。
+    const parentId = nodeResponse.parentId ?? nodeResponseParentId;
     // Agent runtime 可能连续同步 append 多条详情，这里串行交给共享 sink，避免乱序。
     writeQueue = writeQueue
-      .then(() => nodeResponseSink.publish([{ response: nodeResponse }]))
+      .then(() =>
+        nodeResponseSink.publish([
+          {
+            response: nodeResponse,
+            ...(parentId !== undefined ? { parentId } : {})
+          }
+        ])
+      )
       .then(
         () => undefined,
         () => undefined

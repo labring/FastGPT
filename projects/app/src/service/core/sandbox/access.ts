@@ -1,3 +1,4 @@
+import { getChatPublishSourceType } from '@fastgpt/global/common/chat/publishSource';
 import { APP_SANDBOX_ENABLED_CHAT_METADATA_KEY } from '@fastgpt/global/core/ai/sandbox/constants';
 import { ChatSourceEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { isAppSandboxEnabledInNodes } from '@fastgpt/global/common/app/workflow';
@@ -36,7 +37,7 @@ export async function resolveSandboxSessionAvailability(
     return resolveAppSandboxAvailability({ appEnabled: true, teamId: session.teamId });
   }
 
-  const isChatTest = session.chat?.source === ChatSourceEnum.test;
+  const isChatTest = getChatPublishSourceType(session.chat ?? {}) === ChatSourceEnum.test;
   const chatTestEnabled = session.chat?.metadata?.[APP_SANDBOX_ENABLED_CHAT_METADATA_KEY];
   if (isChatTest && typeof chatTestEnabled === 'boolean') {
     return resolveAppSandboxAvailability({ appEnabled: chatTestEnabled, teamId: session.teamId });

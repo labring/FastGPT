@@ -12,6 +12,10 @@ category: "basic"
 scenario: "success"
 priority: "P1"
 status: "ready"
+automation:
+  - runner: node
+    script: .agents/test/chat/history-feedback/FG-CHAT-HISTORY-FEEDBACK-001.mjs
+    items: [C3, C4, C6]
 tags:
   - "customuid-publishsource"
   - "phase1"
@@ -55,6 +59,8 @@ baseline: "dd3cc357757bfb7c11a607c279a69a5f73a48c74"
 应用管理者查看同一 Key 产生的多个用户对话时，应能区分实际使用者与鉴权成员。本例贯通日志页面、分页接口和 CSV，验证默认列、使用者筛选，以及分享访客和外部 UID 的不同展示规则。
 
 ## 前置准备
+
+- API 脚本仅覆盖 C3/C4/C6；C1/C2/C5 的真实页面列、hover、刷新与下载继续按原 UI 步骤执行。`FASTGPT_TEST_FIXTURE` 的 logs 配置登记完整 D1 manifest、精确时间窗、搜索前缀及跨团队应用；logViewer 使用有日志权限的 API Key，N 使用无日志权限的有效 Key。脚本先核验 D1 数据再查询，不用伪造权限错误或参数错误代替鉴权拒绝，配置见执行 skill 的 `references/api-cases.md`。
 
 - 环境：沿用 FG-INTEGRATION-OPENAPI-001 的 D0 资源准备；只复用准备与基础调用，不必重跑其参数/代理矩阵。日志操作用对 W 有日志读取权限的登录成员 L，并准备无该权限的成员 N。
 - 在独立 W 生成清单 D1：R1=A 鉴权/无 customUid；R2=A/RUN-u1；R3=A/RUN-u2；R4=B/RUN-u1；R5=A/customUid=B.tmbId。另在受保护分享链接下让有 W 权限的成员 B 访问生成 R6；旧分享访客夹具 R7 的 tmbId=A、outLinkUid=B.tmbId、source=share，用于验证旧展示语义，夹具仅限独立测试库并记录原始 BSON。

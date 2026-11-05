@@ -1,4 +1,10 @@
-import { ChatSourceTypeEnum, chatSourceResponseOptions } from '@fastgpt/global/core/chat/constants';
+import type { ChatPublishSourceType } from '@fastgpt/global/core/chat/publishSource/type';
+import { assertChatPublishSource } from './publishSource/utils';
+import {
+  ChatSourceEnum,
+  ChatSourceTypeEnum,
+  chatSourceResponseOptions
+} from '@fastgpt/global/core/chat/constants';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 import {
   AuthUserTypeEnum,
@@ -40,6 +46,7 @@ type AuthChatTargetCrudResult = {
   chat?: ChatSchemaType;
   /** 登录成员的访问范围；外链按已验证的 uid 和发布配置限制访问。 */
   scope?: ChatAccessScope;
+  publishSource?: ChatPublishSourceType;
   isRoot: boolean;
   authType?: `${AuthUserTypeEnum}`;
 } & (typeof chatSourceResponseOptions)[ChatSourceTypeEnum];
@@ -93,6 +100,8 @@ export const authChatTargetCrud = async ({
     if (sourceId && sourceId !== resolvedSourceId) throw ChatErrEnum.unAuthChat;
     const chat = await loadChat(resolvedSourceId);
     if (chat && chat.outLinkUid !== uid) throw ChatErrEnum.unAuthChat;
+    const publishSource = { type: ChatSourceEnum.share, id: String(outLinkConfig._id) };
+    if (chat) assertChatPublishSource({ previous: chat.publishSource, current: publishSource });
 
     return {
       sourceType,
@@ -100,6 +109,7 @@ export const authChatTargetCrud = async ({
       teamId: String(outLinkConfig.teamId),
       tmbId: String(outLinkConfig.tmbId),
       uid,
+      publishSource,
       chat,
       isRoot: false,
       authType: AuthUserTypeEnum.outLink,

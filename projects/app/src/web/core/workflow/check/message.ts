@@ -23,6 +23,13 @@ const fieldLabelKeys = {
 
 /** 每个翻译 key 保留静态字面量，避免清理脚本漏识别。 */
 const workflowCheckMessageKeys = {
+  [WorkflowCheckIssueCodeEnum.sandboxSkillUnavailable]: i18nT(
+    'skill:sandbox_skill_unavailable_toast'
+  ),
+  [WorkflowCheckIssueCodeEnum.sandboxSystemUnavailable]: i18nT(
+    'skill:sandbox_system_not_configured_toast'
+  ),
+  [WorkflowCheckIssueCodeEnum.sandboxPlanUnavailable]: i18nT('app:sandbox_free_not_support'),
   [WorkflowCheckIssueCodeEnum.requiredInputEmpty]: i18nT(
     'common:core.workflow.check.required_input_empty'
   ),
@@ -69,6 +76,15 @@ const workflowCheckMessageKeys = {
   [WorkflowCheckIssueCodeEnum.modelRequired]: i18nT(
     'common:core.workflow.check.model_required_short'
   ),
+  [WorkflowCheckIssueCodeEnum.agentDatasetAbnormal]: i18nT(
+    'common:core.workflow.check.agent_dataset_abnormal'
+  ),
+  [WorkflowCheckIssueCodeEnum.agentSkillAbnormal]: i18nT(
+    'common:core.workflow.check.agent_skill_abnormal'
+  ),
+  [WorkflowCheckIssueCodeEnum.agentToolAbnormal]: i18nT(
+    'common:core.workflow.check.agent_tool_abnormal'
+  ),
   [WorkflowCheckIssueCodeEnum.resourceMissing]: i18nT(
     'common:core.workflow.check.resource_missing'
   ),
@@ -94,6 +110,12 @@ const WORKFLOW_CHECK_MESSAGE_ALIASES: Partial<
 
 /** 待处理：引用无效、工具不可访问或加载失败。其余均为待完善。 */
 const WORKFLOW_CHECK_PENDING_HANDLE_CODES = new Set<WorkflowCheckIssue['code']>([
+  WorkflowCheckIssueCodeEnum.sandboxSkillUnavailable,
+  WorkflowCheckIssueCodeEnum.sandboxSystemUnavailable,
+  WorkflowCheckIssueCodeEnum.sandboxPlanUnavailable,
+  WorkflowCheckIssueCodeEnum.agentDatasetAbnormal,
+  WorkflowCheckIssueCodeEnum.agentSkillAbnormal,
+  WorkflowCheckIssueCodeEnum.agentToolAbnormal,
   WorkflowCheckIssueCodeEnum.invalidReference,
   WorkflowCheckIssueCodeEnum.toolMissing,
   WorkflowCheckIssueCodeEnum.toolLoadFailed,
@@ -135,6 +157,12 @@ export const getWorkflowCheckIssueMessage = ({
 
   // 有限文案逐项使用字面量翻译，确保清理脚本能直接识别实际调用的 key。
   switch (messageCode) {
+    case WorkflowCheckIssueCodeEnum.sandboxSkillUnavailable:
+      return t('skill:sandbox_skill_unavailable_toast');
+    case WorkflowCheckIssueCodeEnum.sandboxSystemUnavailable:
+      return t('skill:sandbox_system_not_configured_toast');
+    case WorkflowCheckIssueCodeEnum.sandboxPlanUnavailable:
+      return t('app:sandbox_free_not_support');
     case WorkflowCheckIssueCodeEnum.requiredInputEmpty:
       return t('common:core.workflow.check.required_input_empty', params);
     case WorkflowCheckIssueCodeEnum.noUpstream:
@@ -175,6 +203,12 @@ export const getWorkflowCheckIssueMessage = ({
       return t('common:core.workflow.check.model_unavailable_short', params);
     case WorkflowCheckIssueCodeEnum.modelRequired:
       return t('common:core.workflow.check.model_required_short', params);
+    case WorkflowCheckIssueCodeEnum.agentDatasetAbnormal:
+      return t('common:core.workflow.check.agent_dataset_abnormal', params);
+    case WorkflowCheckIssueCodeEnum.agentSkillAbnormal:
+      return t('common:core.workflow.check.agent_skill_abnormal', params);
+    case WorkflowCheckIssueCodeEnum.agentToolAbnormal:
+      return t('common:core.workflow.check.agent_tool_abnormal', params);
     case WorkflowCheckIssueCodeEnum.resourceMissing:
       return t('common:core.workflow.check.resource_missing', params);
     case WorkflowCheckIssueCodeEnum.resourceNoPermission:

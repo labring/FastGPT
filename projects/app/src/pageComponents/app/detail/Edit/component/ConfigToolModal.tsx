@@ -37,7 +37,6 @@ import {
   canInputBeManuallyConfigured,
   formatJsonEditorValue,
   getToolInputManualRenderType,
-  getToolConfigStatus,
   initToolInputTypeByDefaultMode,
   isAgentGeneratedToolInput,
   isToolInputValueConfigured,
@@ -244,7 +243,6 @@ const mergeConfiguredTool = ({
 
   const mergedTool = {
     ...inheritedNextTool,
-    configStatus: prevTool.configStatus,
     inputs: inheritedNextTool.inputs.map((input) => {
       const selectedInputType = input.renderTypeList.includes(
         formValues[inputTypeFormKey(input.key)]
@@ -273,8 +271,7 @@ const mergeConfiguredTool = ({
     ...mergedTool,
     name: prevTool.name ?? mergedTool.name,
     intro: prevTool.intro ?? mergedTool.intro,
-    metadataLocale: prevTool.metadataLocale ?? mergedTool.metadataLocale,
-    configStatus: getToolConfigStatus({ tool: mergedTool }).status
+    metadataLocale: prevTool.metadataLocale ?? mergedTool.metadataLocale
   };
 };
 
@@ -932,7 +929,7 @@ const ConfigToolModal = ({
   });
 
   const onSubmit = handleSubmit((data) => {
-    onAddTool({
+    const nextTool: SelectedToolItemType = {
       ...editingTool,
       inputs: editingTool.inputs.map((input) => {
         if (!shouldShowConfigInput(input)) {
@@ -965,7 +962,9 @@ const ConfigToolModal = ({
                 })()
         });
       })
-    });
+    };
+
+    onAddTool(nextTool);
     onCloseConfigTool();
   });
 

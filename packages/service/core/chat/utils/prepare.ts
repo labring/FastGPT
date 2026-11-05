@@ -1,3 +1,5 @@
+import type { ChatPublishSourceType } from '@fastgpt/global/core/chat/publishSource/type';
+import { updateChatPublishSource } from '../publishSource/service';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
@@ -51,8 +53,8 @@ export type PrepareChatRoundParams = ChatSourceParams & {
   teamId: string;
   tmbId: string;
   source: `${ChatSourceEnum}`;
+  publishSource?: ChatPublishSourceType;
   sourceName?: string;
-  shareId?: string;
   outLinkUid?: string;
   userContent: UserChatItemType & { dataId?: string };
   responseChatItemId: string;
@@ -72,6 +74,7 @@ export type PreChatRoundParams = Omit<PrepareChatRoundParams, 'chatId' | 'respon
 };
 
 export type PreChatRoundResult = {
+  publishSource?: ChatPublishSourceType;
   chatId: string;
   responseChatItemId: string;
   /** 请求退出时释放独立续租；不持久化或向 workflow 传递租约身份。 */
@@ -116,8 +119,7 @@ export const getPreparedRoundDataIds = ({
 export const prepareChatRound = async (
   params: PrepareChatRoundParams
 ): Promise<PrepareChatRoundResult> => {
-  const { chatId, teamId, tmbId, source, sourceName, shareId, outLinkUid, responseChatItemId } =
-    params;
+  const { chatId, teamId, tmbId, responseChatItemId } = params;
   const chatSource = {
     sourceType: params.sourceType,
     sourceId: params.sourceId
@@ -131,8 +133,6 @@ export const prepareChatRound = async (
   }
 
   params.userContent.dataId = responseChatItemId;
-  const now = new Date();
-
   const userPayload: UserChatItemType & { dataId: string; obj: typeof ChatRoleEnum.Human } = {
     ...params.userContent,
     value: params.userContent.value.map((item) => ({
@@ -152,40 +152,11 @@ export const prepareChatRound = async (
   let shouldGenerateTitle = false;
 
   await mongoSessionRun(async (session) => {
-    const previousChat = await MongoChat.findOneAndUpdate(
-      {
-        ...buildChatSourceQuery(chatSource),
-        chatId
-      },
-      {
-        $set: {
-          teamId,
-          tmbId,
-          ...sourceWriteFields,
-          chatId,
-          source,
-          sourceName,
-          shareId,
-          outLinkUid,
-          updateTime: now,
-          hasBeenRead: false
-        },
-        $setOnInsert: {
-          createTime: now,
-          summary: {
-            llmInputTokens: 0,
-            llmOutputTokens: 0
-          }
-        }
-      },
-      {
-        session,
-        upsert: true,
-        new: false
-      }
-    )
+    const previousChat = await MongoChat.findOne({ ...buildChatSourceQuery(chatSource), chatId })
       .select('title customTitle')
+      .session(session)
       .lean();
+    if (!previousChat) throw new Error(`Chat was not initialized by preChatRound: ${chatId}`);
 
     shouldGenerateTitle = canWriteGeneratedTitle(previousChat);
 
@@ -275,16 +246,14 @@ export const preChatRound = async (params: PreChatRoundParams): Promise<PreChatR
         throw new Error(`Interactive continue chat item not found: ${chatId}`);
       }
 
-      // 交互续跑复用原 AI 消息，仅刷新会话活动信息；互斥完全由外层 lease 负责。
-      await MongoChat.updateOne(
-        { ...buildChatSourceQuery(params), chatId },
-        { $set: { updateTime: new Date(), hasBeenRead: false } }
-      );
+      // 交互续跑复用原 AI，先确认记录有效，再在 preChat 中记录本次来源。
+      const publishSource = await updateChatPublishSource({ ...params, chatId });
 
       return {
         chatId,
         responseChatItemId: previousAiItem.dataId,
         releaseGenerationLease,
+        publishSource,
         shouldPersistChatRound: true,
         shouldFinalizePreparedRound: false
       };
@@ -297,6 +266,8 @@ export const preChatRound = async (params: PreChatRoundParams): Promise<PreChatR
       userContent: params.userContent,
       responseChatItemId
     });
+
+    const publishSource = await updateChatPublishSource({ ...params, chatId });
 
     const preparedChatRound = await prepareChatRound({
       ...params,
@@ -323,6 +294,7 @@ export const preChatRound = async (params: PreChatRoundParams): Promise<PreChatR
       chatId,
       responseChatItemId,
       releaseGenerationLease,
+      publishSource,
       shouldPersistChatRound: true,
       shouldFinalizePreparedRound: true,
       titleGeneration

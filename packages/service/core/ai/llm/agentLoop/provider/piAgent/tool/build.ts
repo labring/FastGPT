@@ -31,6 +31,7 @@ import {
 import { runSandboxTools } from '../../../../../sandbox/application/toolCall';
 import { createToolCall, normalizeToolArgs, stringifyJson } from '../message';
 import { getPiAgentRuntimeTools } from './catalog';
+import { sanitizeToolParametersForModel } from '@fastgpt/global/common/jsonSchema/utils';
 
 type PlanOperationEvent = Extract<AgentLoopEvent, { type: 'plan_operation' }>;
 
@@ -55,6 +56,10 @@ const pushAgentLoopUsages = <TChildrenResponse = unknown>(
   const normalizedUsages = normalizeAgentLoopUsages(usages);
   if (normalizedUsages.length > 0) runtime.usagePush?.(normalizedUsages);
 };
+
+/** pi-ai 会把工具参数原样交给模型供应商，需在进入 agent loop 前统一清理内部字段。 */
+const toPiToolParameters = (parameters: unknown) =>
+  Type.Unsafe<any>((sanitizeToolParametersForModel(parameters) as Record<string, unknown>) ?? {});
 
 /**
  * 将统一 runtime tools 和 piAgent 支持的系统工具转换为 pi-agent-core AgentTool。
@@ -146,7 +151,7 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
       label: toolName,
       description: tool.function.description || '',
       parameters: tool.function.parameters
-        ? Type.Unsafe<any>(tool.function.parameters as Record<string, unknown>)
+        ? toPiToolParameters(tool.function.parameters)
         : Type.Object({}, { additionalProperties: false }),
       execute: async (callId: string, args: unknown) => {
         const call = createToolCall({ id: callId, name: toolName, args: normalizeToolArgs(args) });
@@ -170,9 +175,7 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
         name: planTool.function.name,
         label: planTool.function.name,
         description: planTool.function.description || '',
-        parameters: Type.Unsafe<any>(
-          (planTool.function.parameters as Record<string, unknown>) ?? {}
-        ),
+        parameters: toPiToolParameters(planTool.function.parameters),
         execute: async (callId: string, args: unknown) => {
           const toolArgs = normalizeToolArgs(args);
           const params = stringifyJson(toolArgs);
@@ -228,7 +231,7 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
       name: askTool.function.name,
       label: askTool.function.name,
       description: askTool.function.description || '',
-      parameters: Type.Unsafe<any>((askTool.function.parameters as Record<string, unknown>) ?? {}),
+      parameters: toPiToolParameters(askTool.function.parameters),
       execute: async (callId: string, args: unknown) => {
         const toolArgs = normalizeToolArgs(args);
         const params = stringifyJson(toolArgs);
@@ -279,9 +282,7 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
         name: agentLoopToolName,
         label: agentLoopToolName,
         description: sandboxTool.function.description || '',
-        parameters: Type.Unsafe<any>(
-          (sandboxTool.function.parameters as Record<string, unknown>) ?? {}
-        ),
+        parameters: toPiToolParameters(sandboxTool.function.parameters),
         execute: async (callId: string, args: unknown) => {
           const call = createToolCall({
             id: callId,
@@ -319,9 +320,7 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
       name: readFileTool.function.name,
       label: readFileTool.function.name,
       description: readFileTool.function.description || '',
-      parameters: Type.Unsafe<any>(
-        (readFileTool.function.parameters as Record<string, unknown>) ?? {}
-      ),
+      parameters: toPiToolParameters(readFileTool.function.parameters),
       execute: async (callId: string, args: unknown) => {
         const call = createToolCall({
           id: callId,
@@ -355,9 +354,7 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
       name: datasetSearchTool.function.name,
       label: datasetSearchTool.function.name,
       description: datasetSearchTool.function.description || '',
-      parameters: Type.Unsafe<any>(
-        (datasetSearchTool.function.parameters as Record<string, unknown>) ?? {}
-      ),
+      parameters: toPiToolParameters(datasetSearchTool.function.parameters),
       execute: async (callId: string, args: unknown) => {
         const patchedArgs = patchDatasetSearchParams({
           args: stringifyJson(normalizeToolArgs(args)),

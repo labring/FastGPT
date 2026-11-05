@@ -158,6 +158,19 @@ describe('serializeDatasetTagFilterValue', () => {
 });
 
 describe('formatCollectionFilterMatchParam', () => {
+  it.each([
+    { tags: { $and: [{ department: { $in: ['finance'] } }] } },
+    '{"tags":{"$and":[{"department":{"$in":["finance"]}}]}}',
+    undefined
+  ])('resolves the whole filter before normalizing JSON or object payloads: %j', (payload) => {
+    expect(
+      formatCollectionFilterMatchParam({
+        value: ['upstream', 'filterJson'],
+        resolveReference: () => payload
+      })
+    ).toBe(payload ? '{"tags":{"$and":[{"department":{"$in":["finance"]}}]}}' : undefined);
+  });
+
   it('resolves structured row references and normalizes legacy strings to $fromMigration conditions', () => {
     expect(
       formatCollectionFilterMatchParam({

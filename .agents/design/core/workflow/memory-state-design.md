@@ -107,7 +107,7 @@ export class WorkflowMemoryState {
      1. 若根来源已知、目标来源与根不同、当前处于子作用域且 `baseline` 中尚不存在任何 `/${baseKey}` 结尾的带作用域键，回退读取旧版无前缀键 `${sourceType}:${sourceId}:${nodeId}`；
      2. 回退读取旧版 Agent 键 `agentLoopMemory-${nodeId}`。
 
-Pi 交互恢复使用显式的 `hasInteractiveResume`：已有 `memoryState` 时优先恢复 checkpoint，即使节点配置 `history=0` 或空自定义历史。普通新请求仍遵守历史隔离。Agent 子应用固定传入空聊天历史，因此不能用 `histories.length` 判断是否正在恢复。
+`fork` 在交互恢复时支持 `hasInteractiveResume`：当父节点（如 `ToolCall`）处于交互恢复时保留已有 `baseline` 快照，即使节点配置 `history=0` 或空自定义历史。普通新请求仍遵守历史隔离。
 
 ### 3.3 写入、删除与 Legacy 键自动清理
 

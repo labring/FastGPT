@@ -269,12 +269,12 @@ export const AIModelPath: OpenAPIPath = {
     get: {
       summary: '获取当前成员可用模型清单',
       description:
-        '通过登录态或外链身份一次返回对应成员完整可用模型、Provider 和有效默认模型 ID；支持内容版本协商。orderBy=custom 时按自己的团队模型、共享给我的团队模型、系统模型依次展示，各组按自定义 rank 排列；省略时保留运行时顺序，默认模型不受展示排序影响',
+        '通过登录态或外链身份一次返回对应成员完整可用模型、Provider 和有效默认模型 ID；支持内容版本协商。orderBy=custom 时按自己的团队模型、共享给我的团队模型、系统模型依次展示，各组按自定义 rank 排列；省略时保留运行时顺序，默认模型不受展示排序影响。成员展示页可通过 includeSourceMember=true 补充创建人资料，此时始终返回完整目录；外链忽略该参数',
       tags: [DevApiTagsMap.model, SystemOpenApiTagMap.model],
       requestParams: { query: GetModelCatalogQuerySchema },
       responses: {
         200: {
-          description: '版本变化时返回完整目录，未变化时仅返回版本',
+          description: '版本变化或成员显式请求创建人资料时返回完整目录，否则未变化时仅返回版本',
           content: { 'application/json': { schema: GetModelCatalogResponseSchema } }
         }
       }

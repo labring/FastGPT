@@ -1,3 +1,4 @@
+import { backfillChatPublishSource } from './tasks/4180/20261104_backfill_chat_publish_source';
 import type {
   SystemMigrationFailedRecord,
   SystemMigrationFailureInput,
@@ -6,26 +7,7 @@ import type {
 } from '@fastgpt/global/migration/schema';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import type { ZodType } from 'zod';
-import { migrateLegacySystemModels } from './tasks/4170/20260903_migrate_legacy_system_models';
-import { backfillModelPermissionReferences } from './tasks/4170/20260903_backfill_model_permissions';
-import { backfillDatasetModelReferences } from './tasks/4170/20260903_backfill_dataset_model_references';
-import { backfillEvaluationModelReferences } from './tasks/4170/20260903_backfill_evaluation_model_references';
-import { backfillAppModelReferences } from './tasks/4170/20260903_backfill_app_model_references';
-import { backfillResourceCreateTime } from './tasks/4170/20260903_backfill_resource_create_time';
-import { backfillBillMetadata } from './tasks/4170/20260905_backfill_bill_metadata';
-import { backfillResourceOwnerAcl } from './tasks/4170/20260905_backfill_resource_owner_acl';
-import { cleanupTeamMemberRoles } from './tasks/4170/20260907_cleanup_team_member_roles';
-import { cleanupLegacyInvitedMembers } from './tasks/4170/20260908_cleanup_legacy_invited_members';
-import { migrateDatasetTagsV2 } from './tasks/4171/20260907_migrate_dataset_tags_v2';
-import { backfillAppResourceSnapshots } from './tasks/4171/20260916_backfill_app_resource_snapshots';
-import { enableChannelReasoningMapping } from './tasks/4171/20260923_enable_channel_reasoning_mapping';
-import { backfillMemberNameSet } from './tasks/4171/20260928_backfill_member_name_set';
-import { migrateDatasetRebuildStatus } from './tasks/4171/20261009_migrate_dataset_rebuild_status';
-import { backfillFolderAncestorIds } from './tasks/4173/20261022_backfill_folder_ancestor_ids';
-import { migrateChunkTraining } from './tasks/4171/20261008_migrate_chunk_training';
-import { backfillAgentSandboxTeamId } from './tasks/4173/20261009_backfill_agent_sandbox_team_id';
-import { migrateTokenPricesPerMillion } from './tasks/4173/20261025_token_prices_per_million';
-import { initializeDatasetVectorIndexes } from './tasks/4174/20261022_initialize_dataset_vector_indexes';
+import { initializeDatasetVectorIndexes } from './tasks/4180/20261022_initialize_dataset_vector_indexes';
 
 export type SystemMigrationLogger = {
   info: (message: string, metadata?: Record<string, unknown>) => void;
@@ -104,481 +86,8 @@ export type SystemMigration = {
  */
 export const systemMigrations = [
   {
-    id: '20260907_cleanup_team_member_roles',
-    independent: true,
-    version: '4.17.0',
-    nameKey: i18nT('system_migration:migrations.20260907_cleanup_team_member_roles.name'),
-    descriptionKey: i18nT(
-      'system_migration:migrations.20260907_cleanup_team_member_roles.description'
-    ),
-    resultKey: i18nT('system_migration:migrations.20260907_cleanup_team_member_roles.result'),
-    progressSteps: [
-      {
-        key: 'members',
-        labelKey: i18nT('system_migration:migrations.20260907_cleanup_team_member_roles.members')
-      },
-      {
-        key: 'validation',
-        labelKey: i18nT('system_migration:migrations.20260907_cleanup_team_member_roles.validation')
-      }
-    ],
-    run: cleanupTeamMemberRoles
-  },
-  {
-    id: '20260903_migrate_legacy_system_models',
-    blockStartup: true,
-    version: '4.17.0',
-    nameKey: i18nT('system_migration:migrations.20260903_migrate_legacy_system_models.name'),
-    descriptionKey: i18nT(
-      'system_migration:migrations.20260903_migrate_legacy_system_models.description'
-    ),
-    resultKey: i18nT('system_migration:migrations.20260903_migrate_legacy_system_models.result'),
-    progressSteps: [
-      {
-        key: 'loading_templates',
-        labelKey: i18nT(
-          'system_migration:migrations.20260903_migrate_legacy_system_models.loading_templates'
-        )
-      },
-      {
-        key: 'migrating',
-        labelKey: i18nT(
-          'system_migration:migrations.20260903_migrate_legacy_system_models.migrating'
-        )
-      },
-      {
-        key: 'reloading_models',
-        labelKey: i18nT(
-          'system_migration:migrations.20260903_migrate_legacy_system_models.reloading_models'
-        )
-      }
-    ],
-    run: migrateLegacySystemModels
-  },
-  {
-    id: '20260903_backfill_model_permissions',
-    // 权限回填必须等模型目录迁移成功，避免将有效的旧名称权限误判为悬空权限。
-    dependsOn: ['20260903_migrate_legacy_system_models'],
-    version: '4.17.0',
-    nameKey: i18nT('system_migration:migrations.20260903_backfill_model_permissions.name'),
-    descriptionKey: i18nT(
-      'system_migration:migrations.20260903_backfill_model_permissions.description'
-    ),
-    resultKey: i18nT('system_migration:migrations.20260903_backfill_model_permissions.result'),
-    progressSteps: [
-      {
-        key: 'permissions',
-        labelKey: i18nT(
-          'system_migration:migrations.20260903_backfill_model_permissions.permissions'
-        )
-      }
-    ],
-    run: backfillModelPermissionReferences
-  },
-  {
-    id: '20260903_backfill_dataset_model_references',
-    // 引用回填必须使用迁移完成后的模型目录，避免根据不完整目录写入错误 ID。
-    dependsOn: ['20260903_migrate_legacy_system_models'],
-    version: '4.17.0',
-    nameKey: i18nT('system_migration:migrations.20260903_backfill_dataset_model_references.name'),
-    descriptionKey: i18nT(
-      'system_migration:migrations.20260903_backfill_dataset_model_references.description'
-    ),
-    resultKey: i18nT(
-      'system_migration:migrations.20260903_backfill_dataset_model_references.result'
-    ),
-    progressSteps: [
-      {
-        key: 'datasets',
-        labelKey: i18nT(
-          'system_migration:migrations.20260903_backfill_dataset_model_references.datasets'
-        )
-      }
-    ],
-    run: backfillDatasetModelReferences
-  },
-  {
-    id: '20260903_backfill_evaluation_model_references',
-    // 引用回填必须使用迁移完成后的模型目录，避免根据不完整目录写入错误 ID。
-    dependsOn: ['20260903_migrate_legacy_system_models'],
-    version: '4.17.0',
-    nameKey: i18nT(
-      'system_migration:migrations.20260903_backfill_evaluation_model_references.name'
-    ),
-    descriptionKey: i18nT(
-      'system_migration:migrations.20260903_backfill_evaluation_model_references.description'
-    ),
-    resultKey: i18nT(
-      'system_migration:migrations.20260903_backfill_evaluation_model_references.result'
-    ),
-    progressSteps: [
-      {
-        key: 'evaluations',
-        labelKey: i18nT(
-          'system_migration:migrations.20260903_backfill_evaluation_model_references.evaluations'
-        )
-      }
-    ],
-    run: backfillEvaluationModelReferences
-  },
-  {
-    id: '20260903_backfill_app_model_references',
-    // 引用回填必须使用迁移完成后的模型目录，避免根据不完整目录写入错误 ID。
-    dependsOn: ['20260903_migrate_legacy_system_models'],
-    version: '4.17.0',
-    nameKey: i18nT('system_migration:migrations.20260903_backfill_app_model_references.name'),
-    descriptionKey: i18nT(
-      'system_migration:migrations.20260903_backfill_app_model_references.description'
-    ),
-    resultKey: i18nT('system_migration:migrations.20260903_backfill_app_model_references.result'),
-    progressSteps: [
-      {
-        key: 'apps',
-        labelKey: i18nT('system_migration:migrations.20260903_backfill_app_model_references.apps')
-      },
-      {
-        key: 'app_versions',
-        labelKey: i18nT(
-          'system_migration:migrations.20260903_backfill_app_model_references.app_versions'
-        )
-      },
-      {
-        key: 'app_templates',
-        labelKey: i18nT(
-          'system_migration:migrations.20260903_backfill_app_model_references.app_templates'
-        )
-      }
-    ],
-    run: backfillAppModelReferences
-  },
-  {
-    id: '20260903_backfill_resource_create_time',
-    independent: true,
-    version: '4.17.0',
-    nameKey: i18nT('system_migration:migrations.20260903_backfill_resource_create_time.name'),
-    descriptionKey: i18nT(
-      'system_migration:migrations.20260903_backfill_resource_create_time.description'
-    ),
-    resultKey: i18nT('system_migration:migrations.20260903_backfill_resource_create_time.result'),
-    progressSteps: [
-      {
-        key: 'apps',
-        labelKey: i18nT('system_migration:migrations.20260903_backfill_resource_create_time.apps')
-      },
-      {
-        key: 'datasets',
-        labelKey: i18nT(
-          'system_migration:migrations.20260903_backfill_resource_create_time.datasets'
-        )
-      }
-    ],
-    run: backfillResourceCreateTime
-  },
-  {
-    id: '20260905_backfill_bill_metadata',
-    independent: true,
-    version: '4.17.0',
-    nameKey: i18nT('system_migration:migrations.20260905_backfill_bill_metadata.name'),
-    descriptionKey: i18nT(
-      'system_migration:migrations.20260905_backfill_bill_metadata.description'
-    ),
-    resultKey: i18nT('system_migration:migrations.20260905_backfill_bill_metadata.result'),
-    progressSteps: [
-      {
-        key: 'bills',
-        labelKey: i18nT('system_migration:migrations.20260905_backfill_bill_metadata.bills')
-      }
-    ],
-    run: backfillBillMetadata
-  },
-  {
-    id: '20260905_backfill_resource_owner_acl',
-    version: '4.17.0',
-    nameKey: i18nT('system_migration:migrations.20260905_backfill_resource_owner_acl.name'),
-    descriptionKey: i18nT(
-      'system_migration:migrations.20260905_backfill_resource_owner_acl.description'
-    ),
-    resultKey: i18nT('system_migration:migrations.20260905_backfill_resource_owner_acl.result'),
-    progressSteps: [
-      {
-        key: 'apps',
-        labelKey: i18nT('system_migration:migrations.20260905_backfill_resource_owner_acl.apps')
-      },
-      {
-        key: 'datasets',
-        labelKey: i18nT('system_migration:migrations.20260905_backfill_resource_owner_acl.datasets')
-      },
-      {
-        key: 'agent_skills',
-        labelKey: i18nT(
-          'system_migration:migrations.20260905_backfill_resource_owner_acl.agent_skills'
-        )
-      },
-      {
-        key: 'validation',
-        labelKey: i18nT(
-          'system_migration:migrations.20260905_backfill_resource_owner_acl.validation'
-        )
-      }
-    ],
-    run: backfillResourceOwnerAcl
-  },
-  {
-    id: '20260908_cleanup_legacy_invited_members',
-    version: '4.17.0',
-    nameKey: i18nT('system_migration:migrations.20260908_cleanup_legacy_invited_members.name'),
-    descriptionKey: i18nT(
-      'system_migration:migrations.20260908_cleanup_legacy_invited_members.description'
-    ),
-    resultKey: i18nT('system_migration:migrations.20260908_cleanup_legacy_invited_members.result'),
-    progressSteps: [
-      {
-        key: 'cleanup',
-        labelKey: i18nT(
-          'system_migration:migrations.20260908_cleanup_legacy_invited_members.cleanup'
-        )
-      },
-      {
-        key: 'validation',
-        labelKey: i18nT(
-          'system_migration:migrations.20260908_cleanup_legacy_invited_members.validation'
-        )
-      }
-    ],
-    run: cleanupLegacyInvitedMembers
-  },
-  {
-    id: '20260907_migrate_dataset_tags_v2',
-    independent: true,
-    version: '4.17.1',
-    nameKey: i18nT('system_migration:migrations.20260907_migrate_dataset_tags_v2.name'),
-    descriptionKey: i18nT(
-      'system_migration:migrations.20260907_migrate_dataset_tags_v2.description'
-    ),
-    resultKey: i18nT('system_migration:migrations.20260907_migrate_dataset_tags_v2.result'),
-    progressSteps: [
-      {
-        key: 'datasets',
-        labelKey: i18nT('system_migration:migrations.20260907_migrate_dataset_tags_v2.datasets')
-      },
-      {
-        key: 'collections',
-        labelKey: i18nT('system_migration:migrations.20260907_migrate_dataset_tags_v2.collections')
-      },
-      {
-        key: 'validation',
-        labelKey: i18nT('system_migration:migrations.20260907_migrate_dataset_tags_v2.validation')
-      }
-    ],
-    run: migrateDatasetTagsV2
-  },
-  {
-    id: '20260916_backfill_app_resource_snapshots',
-    // 资源提取只读取模型 ID，必须等 App、Version 和模板的模型引用回填全部成功。
-    dependsOn: ['20260903_backfill_app_model_references'],
-    version: '4.17.1',
-    nameKey: i18nT('system_migration:migrations.20260916_backfill_app_resource_snapshots.name'),
-    descriptionKey: i18nT(
-      'system_migration:migrations.20260916_backfill_app_resource_snapshots.description'
-    ),
-    resultKey: i18nT('system_migration:migrations.20260916_backfill_app_resource_snapshots.result'),
-    progressSteps: [
-      {
-        key: 'clean_v1_apps',
-        labelKey: i18nT(
-          'system_migration:migrations.20260916_backfill_app_resource_snapshots.clean_v1_apps'
-        )
-      },
-      {
-        key: 'versions',
-        labelKey: i18nT(
-          'system_migration:migrations.20260916_backfill_app_resource_snapshots.versions'
-        )
-      },
-      {
-        key: 'apps',
-        labelKey: i18nT('system_migration:migrations.20260916_backfill_app_resource_snapshots.apps')
-      },
-      {
-        key: 'validation',
-        labelKey: i18nT(
-          'system_migration:migrations.20260916_backfill_app_resource_snapshots.validation'
-        )
-      }
-    ],
-    delay: true,
-    run: backfillAppResourceSnapshots
-  },
-  {
-    id: '20260923_enable_channel_reasoning_mapping',
-    version: '4.17.1',
-    nameKey: i18nT('system_migration:migrations.20260923_enable_channel_reasoning_mapping.name'),
-    descriptionKey: i18nT(
-      'system_migration:migrations.20260923_enable_channel_reasoning_mapping.description'
-    ),
-    resultKey: i18nT(
-      'system_migration:migrations.20260923_enable_channel_reasoning_mapping.result'
-    ),
-    progressSteps: [
-      {
-        key: 'channels',
-        labelKey: i18nT(
-          'system_migration:migrations.20260923_enable_channel_reasoning_mapping.channels'
-        )
-      }
-    ],
-    delay: true,
-    run: enableChannelReasoningMapping
-  },
-  {
-    id: '20260928_backfill_member_name_set',
-    independent: true,
-    version: '4.17.1',
-    nameKey: i18nT('system_migration:migrations.20260928_backfill_member_name_set.name'),
-    descriptionKey: i18nT(
-      'system_migration:migrations.20260928_backfill_member_name_set.description'
-    ),
-    resultKey: i18nT('system_migration:migrations.20260928_backfill_member_name_set.result'),
-    progressSteps: [
-      {
-        key: 'members',
-        labelKey: i18nT('system_migration:migrations.20260928_backfill_member_name_set.members')
-      },
-      {
-        key: 'validation',
-        labelKey: i18nT('system_migration:migrations.20260928_backfill_member_name_set.validation')
-      }
-    ],
-    run: backfillMemberNameSet
-  },
-  {
-    id: '20261008_migrate_chunk_training',
-    version: '4.17.1',
-    nameKey: i18nT('system_migration:migrations.20261008_migrate_chunk_training.name'),
-    descriptionKey: i18nT(
-      'system_migration:migrations.20261008_migrate_chunk_training.description'
-    ),
-    resultKey: i18nT('system_migration:migrations.20261008_migrate_chunk_training.result'),
-    progressSteps: [
-      {
-        key: 'trainings',
-        labelKey: i18nT('system_migration:migrations.20261008_migrate_chunk_training.trainings')
-      },
-      {
-        key: 'validation',
-        labelKey: i18nT('system_migration:migrations.20261008_migrate_chunk_training.validation')
-      }
-    ],
-    manual: true,
-    run: migrateChunkTraining
-  },
-  {
-    id: '20261009_migrate_dataset_rebuild_status',
-    dependsOn: ['20261008_migrate_chunk_training'],
-    version: '4.17.1',
-    nameKey: i18nT('system_migration:migrations.20261009_migrate_dataset_rebuild_status.name'),
-    descriptionKey: i18nT(
-      'system_migration:migrations.20261009_migrate_dataset_rebuild_status.description'
-    ),
-    resultKey: i18nT('system_migration:migrations.20261009_migrate_dataset_rebuild_status.result'),
-    progressSteps: [
-      {
-        key: 'datas',
-        labelKey: i18nT('system_migration:migrations.20261009_migrate_dataset_rebuild_status.datas')
-      },
-      {
-        key: 'trainings',
-        labelKey: i18nT(
-          'system_migration:migrations.20261009_migrate_dataset_rebuild_status.trainings'
-        )
-      },
-      {
-        key: 'validation',
-        labelKey: i18nT(
-          'system_migration:migrations.20261009_migrate_dataset_rebuild_status.validation'
-        )
-      }
-    ],
-    manual: true,
-    run: migrateDatasetRebuildStatus
-  },
-  {
-    id: '20261009_backfill_agent_sandbox_team_id',
-    independent: true,
-    version: '4.17.3',
-    nameKey: i18nT('system_migration:migrations.20261009_backfill_agent_sandbox_team_id.name'),
-    descriptionKey: i18nT(
-      'system_migration:migrations.20261009_backfill_agent_sandbox_team_id.description'
-    ),
-    resultKey: i18nT('system_migration:migrations.20261009_backfill_agent_sandbox_team_id.result'),
-    progressSteps: [
-      {
-        key: 'instances',
-        labelKey: i18nT(
-          'system_migration:migrations.20261009_backfill_agent_sandbox_team_id.instances'
-        )
-      },
-      {
-        key: 'validation',
-        labelKey: i18nT(
-          'system_migration:migrations.20261009_backfill_agent_sandbox_team_id.validation'
-        )
-      }
-    ],
-    // 缺 teamId 只影响团队配额归属：app 会话与技能编辑共用系统总上限，且运行期会惰性补齐，
-    // 孤儿记录只跳过，来源异常或校验发现的遗漏由管理员修复后重试。
-    run: backfillAgentSandboxTeamId
-  },
-  {
-    id: '20261022_backfill_folder_ancestor_ids',
-    independent: true,
-    version: '4.17.3',
-    nameKey: i18nT('system_migration:migrations.20261022_backfill_folder_ancestor_ids.name'),
-    descriptionKey: i18nT(
-      'system_migration:migrations.20261022_backfill_folder_ancestor_ids.description'
-    ),
-    resultKey: i18nT('system_migration:migrations.20261022_backfill_folder_ancestor_ids.result'),
-    progressSteps: [
-      {
-        key: 'apps',
-        labelKey: i18nT('system_migration:migrations.20261022_backfill_folder_ancestor_ids.apps')
-      },
-      {
-        key: 'datasets',
-        labelKey: i18nT(
-          'system_migration:migrations.20261022_backfill_folder_ancestor_ids.datasets'
-        )
-      },
-      {
-        key: 'validation',
-        labelKey: i18nT(
-          'system_migration:migrations.20261022_backfill_folder_ancestor_ids.validation'
-        )
-      }
-    ],
-    run: backfillFolderAncestorIds
-  },
-  {
-    id: '20261025_token_prices_per_million',
-    version: '4.17.3',
-    nameKey: i18nT('system_migration:migrations.20261025_token_prices_per_million.name'),
-    descriptionKey: i18nT(
-      'system_migration:migrations.20261025_token_prices_per_million.description'
-    ),
-    resultKey: i18nT('system_migration:migrations.20261025_token_prices_per_million.result'),
-    progressSteps: [
-      {
-        key: 'models',
-        labelKey: i18nT('system_migration:migrations.20261025_token_prices_per_million.models')
-      }
-    ],
-    // 系统模型迁移由全局启动链保证先成功；计价转换随后独立运行，不阻塞业务或普通队列。
-    independent: true,
-    run: migrateTokenPricesPerMillion
-  },
-  {
     id: '20261022_initialize_dataset_vector_indexes',
-    version: '4.17.4',
+    version: '4.18.0',
     nameKey: i18nT('system_migration:migrations.20261022_initialize_dataset_vector_indexes.name'),
     descriptionKey: i18nT(
       'system_migration:migrations.20261022_initialize_dataset_vector_indexes.description'
@@ -602,6 +111,36 @@ export const systemMigrations = [
     ],
     blockStartup: false,
     run: initializeDatasetVectorIndexes
+  },
+  {
+    id: '20261104_backfill_chat_publish_source',
+    version: '4.18.0',
+    // 仅追加历史来源且无迁移前置，独立调度避免等待普通后台长任务。
+    independent: true,
+    nameKey: i18nT('system_migration:migrations.20261104_backfill_chat_publish_source.name'),
+    descriptionKey: i18nT(
+      'system_migration:migrations.20261104_backfill_chat_publish_source.description'
+    ),
+    resultKey: i18nT('system_migration:migrations.20261104_backfill_chat_publish_source.result'),
+    progressSteps: [
+      {
+        key: 'chats',
+        labelKey: i18nT('system_migration:migrations.20261104_backfill_chat_publish_source.chats')
+      },
+      {
+        key: 'chatLogs',
+        labelKey: i18nT(
+          'system_migration:migrations.20261104_backfill_chat_publish_source.chatLogs'
+        )
+      },
+      {
+        key: 'validation',
+        labelKey: i18nT(
+          'system_migration:migrations.20261104_backfill_chat_publish_source.validation'
+        )
+      }
+    ],
+    run: backfillChatPublishSource
   }
 ] as const satisfies readonly SystemMigration[];
 

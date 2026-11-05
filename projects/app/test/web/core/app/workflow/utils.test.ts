@@ -200,7 +200,7 @@ describe('storeNode2FlowNode', () => {
       datasets: [{ datasetId: 'dataset-1', name: 'Dataset' }],
       expected: [{ datasetId: 'dataset-1', name: 'Dataset' }]
     }
-  ])('旧 Agent 知识库引用回退为手动选择后清理旧引用值 %#', ({ datasets, expected }) => {
+  ])('Agent 知识库手动选择模式下清理混入的旧引用值 %#', ({ datasets, expected }) => {
     const node = storeNode2FlowNode({
       item: {
         ...AgentNode,
@@ -213,7 +213,7 @@ describe('storeNode2FlowNode', () => {
                   FlowNodeInputTypeEnum.selectDataset,
                   FlowNodeInputTypeEnum.reference
                 ],
-                selectedType: FlowNodeInputTypeEnum.reference,
+                selectedType: FlowNodeInputTypeEnum.selectDataset,
                 value: [['source-a', 'datasets'], ['source-b', 'datasets'], ...datasets]
               }
             : input
@@ -233,6 +233,36 @@ describe('storeNode2FlowNode', () => {
       stored.nodes[0].inputs.find((input) => input.key === NodeInputKeyEnum.datasetSelectList)
         ?.value
     ).toEqual(expected);
+  });
+
+  it('Agent 知识库引用模式下保留引用值', () => {
+    const referenceValue = [
+      ['source-a', 'datasets'],
+      ['source-b', 'datasets']
+    ];
+    const node = storeNode2FlowNode({
+      item: {
+        ...AgentNode,
+        nodeId: 'agent-reference-datasets',
+        inputs: AgentNode.inputs.map((input) =>
+          input.key === NodeInputKeyEnum.datasetSelectList
+            ? {
+                ...input,
+                selectedType: FlowNodeInputTypeEnum.reference,
+                value: referenceValue
+              }
+            : input
+        )
+      },
+      t: ((key: string) => key) as any
+    });
+
+    expect(
+      node.data.inputs.find((input) => input.key === NodeInputKeyEnum.datasetSelectList)
+    ).toMatchObject({
+      selectedType: FlowNodeInputTypeEnum.reference,
+      value: referenceValue
+    });
   });
 
   it('preserves saved query extension settings despite the new disabled template default', () => {

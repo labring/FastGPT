@@ -150,14 +150,7 @@ export const dispatchApp = async (props: Props): Promise<DispatchSubAppResponse>
       return runWorkflow({
         ...data,
         memoryState: childMemoryState,
-        runningAppInfo: {
-          sourceType: ChatSourceTypeEnum.app,
-          sourceId: String(appData._id),
-          name: appData.name,
-          teamId: String(appData.teamId),
-          tmbId: String(appData.tmbId),
-          isChildApp: true
-        },
+        runningAppInfo: childRunningAppInfo,
         runningUserInfo,
         runtimeNodes,
         runtimeEdges,
@@ -401,15 +394,7 @@ export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppRespon
       return runWorkflow({
         ...data,
         memoryState: childMemoryState,
-        runningAppInfo: {
-          sourceType: ChatSourceTypeEnum.app,
-          sourceId: childAppInfo.sourceId,
-          // 如果系统插件有 teamId 和 tmbId，则使用系统插件的 teamId 和 tmbId（管理员指定了插件作为系统插件）
-          name: childAppInfo.name,
-          teamId: childAppInfo.teamId || runningAppInfo.teamId,
-          tmbId: childAppInfo.tmbId || runningAppInfo.tmbId,
-          isChildApp: true
-        },
+        runningAppInfo: childRunningAppInfo,
         runningUserInfo,
         runtimeNodes,
         runtimeEdges: storeEdges2RuntimeEdges(edges, data.lastInteractive),

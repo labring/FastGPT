@@ -1,3 +1,5 @@
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { Box, Flex, IconButton } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
@@ -32,7 +34,9 @@ import { cardStyles } from '../../constants';
 import { AppContext } from '../../context';
 import { useChatTest } from '../../useChatTest';
 import type { Form2WorkflowFnType } from '../FormComponent/type';
-import { checkAgentSkillSandboxUnavailable, loadGeneratedTools } from './utils';
+import { loadGeneratedTools } from './utils';
+import { checkAgentSandboxIssues } from '@/web/core/workflow/check/resource';
+import { WorkflowCheckIssueCodeEnum } from '@fastgpt/global/core/workflow/diagnostic/constants';
 
 type Props = {
   appForm: AppFormEditFormType;
@@ -48,11 +52,13 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
   const { teamPlanStatus } = useUserStore();
   const enableSandbox = !teamPlanStatus?.standard || !!teamPlanStatus?.standard?.enableSandbox;
   const showSandbox = feConfigs.show_agent_sandbox;
-  const isAgentSkillSandboxUnavailable = checkAgentSkillSandboxUnavailable({
-    appForm,
-    showSandbox,
-    enableSandbox
-  });
+  const isAgentSkillSandboxUnavailable =
+    checkAgentSandboxIssues({
+      hasSkills: Boolean(appForm.selectedAgentSkills?.length),
+      useAgentSandbox: Boolean(appForm.aiSettings.useAgentSandbox),
+      showSandbox,
+      enableSandbox
+    })[0]?.code === WorkflowCheckIssueCodeEnum.sandboxSkillUnavailable;
 
   const canUseHelper = !!feConfigs?.isPlus;
   const activeTab = canUseHelper ? agentChatTestTab : AgentChatTestTabEnum.chatDebug;
@@ -70,10 +76,7 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
   const datasetCiteData = useContextSelector(ChatItemContext, (v) => v.datasetCiteData);
   const setCiteModalData = useContextSelector(ChatItemContext, (v) => v.setCiteModalData);
 
-  const [workflowData, setWorkflowData] = useSafeState({
-    nodes: appDetail.nodes || [],
-    edges: appDetail.edges || []
-  });
+  const workflowData = useMemo(() => form2WorkflowFn(appForm, t), [appForm, form2WorkflowFn, t]);
 
   const { model: defaultModel } = useModelDefault({
     modelType: ModelTypeEnum.llm,
@@ -119,11 +122,6 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
   });
 
   useEffect(() => {
-    const { nodes, edges } = form2WorkflowFn(appForm, t);
-    setWorkflowData({ nodes, edges });
-  }, [appForm, form2WorkflowFn, setWorkflowData, t]);
-
-  useEffect(() => {
     setRenderEdit(!datasetCiteData);
   }, [datasetCiteData, setRenderEdit]);
 
@@ -150,6 +148,19 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
 
   const { ChatContainer, restartChat } = useChatTest({
     ...workflowData,
+    getResourceNodes: () =>
+      workflowData.nodes
+        .filter((node) => node.flowNodeType === FlowNodeTypeEnum.agent)
+        .map((node) => ({
+          nodeId: node.nodeId,
+          inputs: node.inputs.map((input) =>
+            input.key === NodeInputKeyEnum.selectedTools
+              ? { ...input, value: appForm.selectedTools }
+              : input.key === NodeInputKeyEnum.skills
+                ? { ...input, value: appForm.selectedAgentSkills ?? [] }
+                : input
+          )
+        })),
     chatConfig: appForm.chatConfig,
     isReady: !isAgentSkillSandboxUnavailable
   });

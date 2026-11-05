@@ -1,3 +1,4 @@
+import { MongoOpenApi } from '@fastgpt/service/support/openapi/schema';
 import exportLogs from '@/pages/api/core/app/logs/exportLogs';
 import { AppLogKeysEnum } from '@fastgpt/global/core/app/logs/constants';
 import { MongoAppLogKeys } from '@fastgpt/service/core/app/logs/logkeysSchema';
@@ -85,6 +86,123 @@ describe('logs list API - errorFilter', () => {
       tmbId: testTmbId,
       isRoot: false
     };
+  });
+
+  it('扩展渠道当前名、兼容旧名，来源筛选与CSV使用最新分类', async () => {
+    const key = await MongoOpenApi.create({
+      teamId: testTeamId,
+      tmbId: testTmbId,
+      apiKey: 'logs-source-key',
+      name: '当前名称'
+    });
+    const now = new Date();
+    await MongoChat.create(
+      [
+        {
+          chatId: 'channel-api',
+          publishSource: { type: 'api', id: key._id },
+          source: 'share',
+          sourceName: '旧名称'
+        },
+        { chatId: 'channel-old', source: 'api', sourceName: '历史入口' },
+        {
+          chatId: 'channel-deleted',
+          publishSource: { type: 'api', id: new Types.ObjectId() },
+          source: 'api',
+          sourceName: ' '
+        },
+        { chatId: 'channel-online', publishSource: { type: 'online' }, source: 'online' },
+        {
+          chatId: 'channel-online-legacy',
+          publishSource: { type: 'online' },
+          source: 'api',
+          sourceName: '不应作为渠道名的旧应用名'
+        },
+        {
+          chatId: 'channel-test',
+          publishSource: { type: 'test' },
+          source: 'test',
+          sourceName: '不应作为渠道名的旧应用名'
+        },
+        {
+          chatId: 'channel-cron',
+          publishSource: { type: 'cronJob' },
+          source: 'cronJob',
+          sourceName: '不应作为渠道名的旧应用名'
+        }
+      ].map((row) => ({
+        ...row,
+        teamId: testTeamId,
+        tmbId: testTmbId,
+        appId: testAppId,
+        sourceType: ChatSourceTypeEnum.app,
+        createTime: now,
+        updateTime: now
+      }))
+    );
+    const body = {
+      appId: testAppId,
+      dateStart: new Date(now.getTime() - 1000).toISOString(),
+      dateEnd: new Date(now.getTime() + 1000).toISOString(),
+      sources: ['api'],
+      pageNum: 1,
+      pageSize: 20
+    };
+    const result = await Call(listApi.default, { auth: authUser, headers: {}, body });
+    expect(result.data.total).toBe(3);
+    const rows = result.data.list;
+    expect(rows.find((r: any) => r.chatId === 'channel-api')?.publishSource).toEqual({
+      type: 'api',
+      id: String(key._id),
+      name: '当前名称'
+    });
+    expect(rows.find((r: any) => r.chatId === 'channel-old')?.publishSource).toEqual({
+      name: '历史入口'
+    });
+    expect(
+      rows.find((r: any) => r.chatId === 'channel-deleted')?.publishSource?.name
+    ).toBeUndefined();
+    const internalRows = await Call(listApi.default, {
+      auth: authUser,
+      headers: {},
+      body: { ...body, sources: ['online', 'test', 'cronJob'] }
+    });
+    expect(internalRows.data.total).toBe(4);
+    expect(
+      internalRows.data.list.every((row: any) => !row.publishSource?.name && !row.sourceName)
+    ).toBe(true);
+    const exported = await StreamCall(exportLogs, {
+      auth: authUser,
+      headers: {},
+      body: {
+        ...body,
+        title: 'source-test',
+        sources: ['api', 'online', 'test', 'cronJob'],
+        sourcesMap: {
+          api: { label: 'API调用' },
+          online: { label: '在线使用' },
+          test: { label: '在线调试' },
+          cronJob: { label: '定时任务' }
+        },
+        logKeys: [
+          AppLogKeysEnum.SESSION_ID,
+          AppLogKeysEnum.PUBLISH_SOURCE_TYPE,
+          AppLogKeysEnum.SOURCE
+        ]
+      }
+    });
+    expect(exported.raw).toContain('channel-api,API调用,当前名称');
+    expect(exported.raw).toContain("channel-old,'-,历史入口");
+    expect(exported.raw).toContain("channel-deleted,API调用,'-");
+    expect(exported.raw).toContain("channel-online,在线使用,'-");
+    expect(exported.raw).toContain("channel-online-legacy,在线使用,'-");
+    expect(exported.raw).toContain("channel-test,在线调试,'-");
+    expect(exported.raw).toContain("channel-cron,定时任务,'-");
+    expect(exported.raw).not.toContain('不应作为渠道名的旧应用名');
+    expect(
+      (await Call(listApi.default, { auth: authUser, headers: {}, body: { ...body, sources: [] } }))
+        .data.total
+    ).toBe(0);
   });
 
   it('should return all chats when errorFilter is not set', async () => {
