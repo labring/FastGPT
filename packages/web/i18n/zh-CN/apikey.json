@@ -36,7 +36,7 @@
   "personal_key": "个人密钥",
   "app_key_tip": "仅可用于当前应用的对话与对话管理。成员离职后，由应用负责人接管。",
   "personal_key_tip": "以你的成员身份调用开放接口，可访问范围取决于你的权限。",
-  "app_key_manage_required": "应用 Key 仅应用管理员可管理。",
+  "app_key_manage_required": "仅应用管理员可查看、创建和管理应用 Key。",
   "create_app_key": "新建应用 Key",
   "owner_member": "归属成员",
   "bound_app_id": "绑定应用 ID",

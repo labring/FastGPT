@@ -47,7 +47,8 @@ export async function handler(
     const { teamId, tmbId, permission } = await authUserPer({
       req,
       authToken: true,
-      per: TeamApikeyCreatePermissionVal
+      // 应用 Key 由应用管理员授权创建；团队创建权限只限制个人密钥。
+      per: type === ApiKeyTypeEnum.personal ? TeamApikeyCreatePermissionVal : undefined
     });
 
     if (authProxy && !permission.isOwner) {

@@ -36,7 +36,7 @@
   "personal_key": "개인 키",
   "app_key_tip": "이 앱의 대화와 대화 관리에만 사용할 수 있습니다. 구성원이 떠나면 앱 소유자에게 이전됩니다.",
   "personal_key_tip": "구성원 권한에 따라 개인 자격으로 공개 API를 호출합니다.",
-  "app_key_manage_required": "앱 관리자만 앱 키를 관리할 수 있습니다.",
+  "app_key_manage_required": "앱 관리자만 앱 키를 조회, 생성 및 관리할 수 있습니다.",
   "create_app_key": "앱 키 만들기",
   "owner_member": "소유자",
   "bound_app_id": "연결된 앱 ID",

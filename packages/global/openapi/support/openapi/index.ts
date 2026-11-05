@@ -30,7 +30,8 @@ export const ApiKeyPath: OpenAPIPath = {
   '/support/openapi/create': {
     post: {
       summary: '创建 API Key',
-      description: '登录后创建个人密钥或绑定应用的应用 Key；应用 Key 还需要对应应用的管理权限。',
+      description:
+        '登录后创建 API Key：个人密钥要求团队创建权限；应用 Key 仅对应应用管理员可创建。',
       tags: [DevApiTagsMap.apiKey],
       requestBody: {
         content: {
@@ -54,7 +55,8 @@ export const ApiKeyPath: OpenAPIPath = {
   '/support/openapi/list': {
     get: {
       summary: '获取 API Key 列表',
-      description: '获取当前登录成员创建的 API Key 列表',
+      description:
+        '个人密钥仅查看本人；应用 Key 仅应用管理员可查看，返回该应用全部管理员创建的 Key。',
       tags: [DevApiTagsMap.apiKey],
       requestParams: {
         query: GetApiKeyListQuerySchema
@@ -74,7 +76,7 @@ export const ApiKeyPath: OpenAPIPath = {
   '/support/openapi/update': {
     put: {
       summary: '更新 API Key',
-      description: '更新 API Key 名称或使用限制',
+      description: '更新 API Key 名称或使用限制；应用管理员可修改该应用下其他管理员创建的 Key。',
       tags: [DevApiTagsMap.apiKey],
       requestBody: {
         content: {
@@ -98,7 +100,7 @@ export const ApiKeyPath: OpenAPIPath = {
   '/support/openapi/delete': {
     delete: {
       summary: '删除 API Key',
-      description: '删除指定 API Key',
+      description: '删除指定 API Key；应用管理员可删除该应用下其他管理员创建的 Key。',
       tags: [DevApiTagsMap.apiKey],
       requestParams: {
         query: DeleteApiKeyQuerySchema
@@ -118,7 +120,8 @@ export const ApiKeyPath: OpenAPIPath = {
   '/support/openapi/copy': {
     post: {
       summary: '复制 API Key',
-      description: '返回 API Key 明文并记录用户复制审计日志',
+      description:
+        '返回 API Key 明文并记录复制审计；应用管理员可复制该应用下其他管理员创建的 Key。',
       tags: [DevApiTagsMap.apiKey],
       requestBody: {
         content: {

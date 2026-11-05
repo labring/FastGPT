@@ -34,15 +34,13 @@ describe('support/openapi/create', () => {
 
   it('creates personal and app keys with explicit immutable types', async () => {
     const users = await getFakeUsers(2);
-    await MongoResourcePermission.create(
-      users.members.map((member) => ({
-        resourceType: 'team',
-        teamId: member.teamId,
-        resourceId: null,
-        tmbId: member.tmbId,
-        permission: TeamApikeyCreatePermissionVal
-      }))
-    );
+    await MongoResourcePermission.create({
+      resourceType: 'team',
+      teamId: users.members[0].teamId,
+      resourceId: null,
+      tmbId: users.members[0].tmbId,
+      permission: TeamApikeyCreatePermissionVal
+    });
 
     const res = await Call<EditApiKeyProps>(createapi.default, {
       auth: users.members[0],

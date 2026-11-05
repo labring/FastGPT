@@ -36,7 +36,7 @@
   "personal_key": "Personal keys",
   "app_key_tip": "For conversations and conversation management in this app. The app owner takes over when a member leaves.",
   "personal_key_tip": "Call open APIs as yourself. Access depends on your member permissions.",
-  "app_key_manage_required": "Only app managers can manage app keys.",
+  "app_key_manage_required": "Only app managers can view, create, and manage app keys.",
   "create_app_key": "Create app key",
   "owner_member": "Owner",
   "bound_app_id": "Bound app ID",
