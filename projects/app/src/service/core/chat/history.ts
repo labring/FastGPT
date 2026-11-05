@@ -43,7 +43,10 @@ async function getChatHistoryContext({
   const hasShareAuth = !!(outLinkAuthData?.shareId && outLinkAuthData?.outLinkUid);
   const authSourceType = sourceType ?? (hasShareAuth ? ChatSourceTypeEnum.app : undefined);
 
-  if (!authSourceType || (!sourceId && !hasShareAuth)) {
+  if (
+    !authSourceType ||
+    (!sourceId && !hasShareAuth && authSourceType !== ChatSourceTypeEnum.app)
+  ) {
     return undefined;
   }
 

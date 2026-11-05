@@ -50,7 +50,7 @@ const formatJsonString = (data: any) => {
 
 async function handler(req: ApiRequestProps, res: NextApiResponse) {
   const {
-    appId,
+    appId: requestedAppId,
     dateStart,
     dateEnd,
     sources,
@@ -75,9 +75,10 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
     req,
     authToken: true,
     authAppApiKey: true,
-    appId,
+    appId: requestedAppId,
     per: AppReadChatLogPerVal
   });
+  const appId = String(app._id);
   await assertMemberRateLimit({
     policy: MemberRateLimitPolicy.ExportChatLogs,
     memberId: String(tmbId)

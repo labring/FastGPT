@@ -33,7 +33,7 @@ const API = ({ appId }: { appId: string }) => {
           p={3}
           bg="myGray.50"
           overflowX="auto"
-        >{`curl -X POST 'https://your-fastgpt.example/api/v2/chat/completions' -H 'Authorization: Bearer ${keyType === ApiKeyTypeEnum.app ? 'APP_API_KEY' : 'PERSONAL_API_KEY'}' -H 'Content-Type: application/json' -d '${JSON.stringify({ appId, customUid: 'user-10001', messages: [{ role: 'user', content: 'Hello' }] })}'`}</Box>
+        >{`curl -X POST 'https://your-fastgpt.example/api/v2/chat/completions' -H 'Authorization: Bearer ${keyType === ApiKeyTypeEnum.app ? 'APP_API_KEY' : 'PERSONAL_API_KEY'}' -H 'Content-Type: application/json' -d '${JSON.stringify({ ...(keyType === ApiKeyTypeEnum.personal ? { appId } : {}), customUid: 'user-10001', messages: [{ role: 'user', content: 'Hello' }] })}'`}</Box>
       </Box>
       {keyType === ApiKeyTypeEnum.app && !canManage ? (
         <Box p={6}>{t('apikey:app_key_manage_required')}</Box>

@@ -1,5 +1,8 @@
 import { NextAPI } from '@/service/middleware/entry';
-import { authChatTargetCrud } from '@fastgpt/service/core/chat/auth';
+import {
+  authChatTargetCrud,
+  resolveOptionalAppApiKeyChatTarget
+} from '@fastgpt/service/core/chat/auth';
 import { authCollectionInChat } from '@/service/support/permission/auth/chat';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
@@ -18,8 +21,18 @@ import {
 } from '@fastgpt/global/openapi/core/dataset/data/api';
 
 async function handler(req: ApiRequestProps): Promise<GetQuoteDataResponse> {
-  const body = parseApiInput({ req, bodySchema: GetQuoteDataBodySchema }).body;
+  const input = parseApiInput({ req, bodySchema: GetQuoteDataBodySchema }).body;
+  const body = {
+    ...input,
+    ...(await resolveOptionalAppApiKeyChatTarget({
+      req,
+      sourceType: input.sourceType,
+      sourceId: input.sourceId
+    }))
+  };
   const { id: dataId } = body;
+
+  if (body.chatId && !body.sourceType) throw ChatErrEnum.unAuthChat;
 
   // Auth
   const { collection, q, a } = await (async () => {

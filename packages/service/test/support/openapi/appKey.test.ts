@@ -92,7 +92,7 @@ describe('application API key boundaries', () => {
         .sort()
     ).toEqual(['fixture-app', 'legacy-bound']);
   });
-  it('server flags independently accept each key type; app Key ignores creator ACL but checks every target ID', async () => {
+  it('server flags independently accept each key type; app Key ignores creator ACL but uses only its bound application', async () => {
     const { member, appId } = await fixture();
     for (const authApiKey of [false, true])
       for (const authAppApiKey of [false, true]) {
@@ -112,12 +112,7 @@ describe('application API key boundaries', () => {
       authAppApiKey: true
     });
     expect(cert.apiKeyAuthProxy).toBe(false);
-    expect(String((await getAppByApiKey({ ...cert, appId, parsedAppId: appId }))._id)).toBe(appId);
-    for (const ids of [
-      { appId: new Types.ObjectId().toString() },
-      { appId, parsedAppId: new Types.ObjectId().toString() }
-    ])
-      await expect(getAppByApiKey({ ...cert, ...ids })).rejects.toBeDefined();
+    expect(String((await getAppByApiKey(cert))._id)).toBe(appId);
     await MongoApp.updateOne({ _id: appId }, { $set: { deleteTime: new Date() } });
     await expect(getAppByApiKey(cert)).rejects.toBeDefined();
   });
@@ -144,14 +139,54 @@ describe('application API key boundaries', () => {
       req: {} as any,
       authToken: true,
       sourceType: ChatSourceTypeEnum.app,
-      sourceId: appId,
       chatId: 'other-author',
       per: ReadPermissionVal
     });
+    expect(result).toMatchObject({ sourceType: ChatSourceTypeEnum.app, sourceId: appId });
     expect(result.scope).toEqual({ teamId: owner.teamId });
     expect(String(result.chat?.tmbId)).toBe(owner.tmbId);
     expect(result.tmbId).toBe(member.tmbId);
     expect(result.app?.permission.isOwner).toBe(false);
+  });
+  it('only app credentials may infer targets; caller IDs do not override bindings and other source types remain constrained', async () => {
+    const { appId } = await fixture();
+    const { parseHeaderCert: mocked } =
+      await import('@fastgpt/service/support/permission/auth/common');
+    const { authChatTargetCrud, resolveOptionalAppApiKeyChatTarget } =
+      await import('@fastgpt/service/core/chat/auth');
+    const req = { headers: { authorization: 'Bearer fixture-app' } } as any;
+    const appCert = await parseHeaderCert({ req, authAppApiKey: true });
+    const target = { req, authToken: true as const, sourceType: ChatSourceTypeEnum.app };
+    vi.mocked(mocked).mockResolvedValueOnce(appCert);
+    expect(await resolveOptionalAppApiKeyChatTarget({ req })).toEqual({
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: appId
+    });
+    vi.mocked(mocked).mockResolvedValueOnce(appCert);
+    expect(
+      await authChatTargetCrud({ ...target, sourceId: new Types.ObjectId().toString() })
+    ).toMatchObject({ sourceType: ChatSourceTypeEnum.app, sourceId: appId });
+    for (const type of ['personal', 'token'] as const) {
+      const cert = await parseHeaderCert({
+        req: { headers: { authorization: 'Bearer fixture-personal' } } as any,
+        authApiKey: true
+      });
+      if (type === 'token') cert.authType = 'token' as any;
+      vi.mocked(mocked).mockResolvedValueOnce(cert);
+      await expect(authChatTargetCrud(target)).rejects.toBeDefined();
+      vi.mocked(mocked).mockResolvedValueOnce(cert);
+      expect(await resolveOptionalAppApiKeyChatTarget({ req })).toEqual({
+        sourceType: undefined,
+        sourceId: undefined
+      });
+    }
+    expect(
+      await resolveOptionalAppApiKeyChatTarget({
+        req,
+        sourceType: ChatSourceTypeEnum.skillEdit,
+        sourceId: appId
+      })
+    ).toEqual({ sourceType: ChatSourceTypeEnum.skillEdit, sourceId: appId });
   });
   it('legacy uppercase bindings keep ObjectId semantics through query, handover and deletion', async () => {
     const { owner, member, appId, appKey } = await fixture();

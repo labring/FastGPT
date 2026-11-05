@@ -110,24 +110,15 @@ export async function authOpenApiKey({
   }
 }
 
-/** 校验应用 Key 的实际目标及全部显式 ID，再加载绑定应用；不读取或授予成员应用 ACL。 */
+/** 应用 Key 的绑定是唯一目标；忽略调用方 appId/SDK 后缀，只校验绑定应用及团队，不授予成员 ACL。 */
 export const getAppByApiKey = async ({
   teamId,
-  boundAppId,
-  appId,
-  parsedAppId
+  boundAppId
 }: {
   teamId: string;
   boundAppId?: string;
-  appId?: string;
-  parsedAppId?: string;
 }) => {
-  if (
-    !boundAppId ||
-    [appId, parsedAppId].some((id) => id && id.toLowerCase() !== boundAppId.toLowerCase())
-  ) {
-    throw AppErrEnum.unAuthApp;
-  }
+  if (!boundAppId) throw AppErrEnum.unAuthApp;
   const app = await MongoApp.findOne({ _id: boundAppId, teamId, deleteTime: null }).lean();
   if (!app || !AppTypeList.includes(app.type)) throw AppErrEnum.unExist;
   return app;

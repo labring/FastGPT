@@ -159,7 +159,7 @@ export const authApp = async ({
   per,
   ...props
 }: AuthModeType & {
-  appId: ParentIdType;
+  appId?: ParentIdType;
   per: PermissionValueType;
 }): Promise<
   AuthResponseType<AppPermission> & {
@@ -169,16 +169,13 @@ export const authApp = async ({
   const result = await parseHeaderCert(props);
   const { tmbId } = result;
 
-  if (!appId) {
-    return Promise.reject(AppErrEnum.unExist);
-  }
-
   const app = await (async () => {
     if (result.apiKeyType === ApiKeyTypeEnum.app) {
-      const app = await getAppByApiKey({ ...result, appId });
+      const app = await getAppByApiKey(result);
       // 这表示凭证可读应用基础信息，不把归属成员伪装成 owner；对话管理范围由可信 Key 类型表达。
       return { ...app, permission: new AppPermission({ role: ReadRoleVal }) };
     }
+    if (!appId) throw AppErrEnum.unExist;
     return (await authAppByTmbId({ tmbId, appId, per, isRoot: result.isRoot })).app;
   })();
 

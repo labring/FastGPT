@@ -91,9 +91,9 @@ export const resolveChatCompletionEffectiveTmbId = async ({
 /**
  * 鉴权 Chat Completions 头部请求，并返回后续对话运行需要的应用、团队和成员上下文。
  *
- * API Key 先完成凭证鉴权，再按 body.appId > apiKey-appId > legacyAppId 解析应用。
+ * API Key 先完成凭证鉴权；应用 Key 使用绑定应用，个人密钥按 body.appId > apiKey-appId > legacyAppId 解析。
  * 个人密钥（含 authProxy）按 effective tmbId 校验 ACL；应用 Key 只按可信绑定授权，
- * 不依赖归属成员 ACL，也不支持 authProxy。所有显式应用 ID 均须与绑定一致。
+ * 不依赖归属成员 ACL，也不支持 authProxy。请求中的 appId 和 SDK 后缀均不覆盖应用 Key 的绑定。
  */
 export const authChatCompletionHeaderRequest = async ({
   req,
@@ -137,7 +137,11 @@ export const authChatCompletionHeaderRequest = async ({
   });
 
   const currentAppId =
-    authType === AuthUserTypeEnum.apikey ? appId || parsedAppId || legacyAppId : appId;
+    apiKeyType === ApiKeyTypeEnum.app
+      ? boundAppId
+      : authType === AuthUserTypeEnum.apikey
+        ? appId || parsedAppId || legacyAppId
+        : appId;
 
   if (!currentAppId) {
     return Promise.reject(new UserError('appId is empty'));
@@ -145,7 +149,7 @@ export const authChatCompletionHeaderRequest = async ({
 
   const { app, permission } = await (async () => {
     if (apiKeyType === ApiKeyTypeEnum.app) {
-      const app = await getAppByApiKey({ teamId, boundAppId, appId, parsedAppId });
+      const app = await getAppByApiKey({ teamId, boundAppId });
       return { app, permission: new AppPermission({ role: ReadRoleVal }) };
     }
     if (authType === AuthUserTypeEnum.apikey) {

@@ -48,24 +48,25 @@
 | 应用 Key 空态 | 暂无应用 Key，创建后可供业务后端接入当前应用。 |
 | 无应用管理权限 | 应用 Key 仅应用管理员可管理。个人密钥仍只展示本人数据。 |
 | 删除确认 | 删除后，使用此 Key 的调用将立即失效。 |
-| 调用示例 | 默认使用原始 Key，并显式传 body.appId；另保留 OpenAI SDK 兼容示例 |
+| 调用示例 | 应用 Key 示例省略 appId；个人密钥显式传 appId，保留 OpenAI SDK 兼容示例 |
 
 列表继续脱敏，复制明文沿用现有复制接口及审计。搜索、时间排序、额度展示复用现有能力；Tab 切换独立加载列表与表单，不混入上一类 Key。个人标签继续仅作用于个人密钥；应用 Key 本期不增加标签体系，也不展示历史个人标签。
 
 ### 3. 调用规则
 
+应用 Key 的调用示例：
+
 ```json
 {
-  "appId": "应用 ID",
   "chatId": "业务会话 ID",
   "customUid": "customer-10001",
   "messages": [{ "role": "user", "content": "你好" }]
 }
 ```
 
-- 应用 Key 的 **绑定 appId 是权威值**。请求中的 appId 或 `Bearer key-appId` 后缀，只要提供就必须与绑定值一致；不能指定另一个应用，也不能跨团队。
-- v1/v2 completions 为兼容旧调用和 OpenAI SDK，允许不传 appId，直接使用绑定值。其他接口保留现有显式 appId 入参，不扩大隐式默认值的范围。
-- 个人密钥保持现有解析规则：completions 使用 `body.appId > key-appId 后缀`，其他应用接口显式传 appId。
+- 应用 Key 的 **绑定 appId 是权威值**。请求中的 appId 或 `Bearer key-appId` 后缀都不覆盖绑定；即使不同，也只执行 Key 绑定应用，不因 ID 不一致报错。
+- 所有接受应用 Key 的对话、对话管理、日志和配套文件接口都允许省略 appId；鉴权统一读取 Key 绑定，返回固定的 `sourceType=app` 和 `sourceId=绑定 appId`，下游只使用该鉴权结果。语音和输入引导的旧 sourceType/sourceId 协议继续兼容。
+- 个人密钥保持现有解析规则：completions 使用 `body.appId > key-appId 后缀`，其他应用接口使用个人密钥或登录态时仍显式传 appId。
 - 两类 Key 的调用渠道都仍是“API调用”，渠道 ID 都是 OpenApi 记录的 `_id`；无需新增来源类型。渠道名、Tooltip、鉴权者/使用者沿用前两阶段规则。
 - API 会话不增加“必须由同一 Key 续聊”的限制；有效应用 Key 可访问绑定应用的对话，个人密钥继续按成员权限访问。原有 MCP、分享链接来源校验不变。
 
@@ -124,7 +125,7 @@ type ApiKeyScope =
 解析真实 Key → 区分类型
   ├─ 个人密钥：authApiKey 放行 → 成员权限 → 执行
   └─ 应用 Key：authAppApiKey 放行 → Key/团队/应用有效性
-                → 绑定 appId 一致 → 会话/文件归属一致 → 执行
+                → 使用 Key 绑定 appId → 会话/文件归属一致 → 执行
 ```
 
 `authOpenApiKey` 返回真实 `apiKeyId / apiKeyType / boundAppId / tmbId`，`boundAppId` 从数据库取得；凭证后缀仍只负责解析，不提供权限。类型、绑定关系、团队/应用可用性与现有商业版额度/有效期检查保持集中。
@@ -138,9 +139,9 @@ authAppApiKey?: boolean; // 接受应用 Key，默认 false
 
 这两个开关只由服务端接口声明，不接受客户端传入；两种 Key 都允许时同时设为 true。`authApiKey: true` 本身不再接受应用 Key；未开启 `authAppApiKey` 的接口默认拒绝应用 Key。
 
-`parseHeaderCert` 确认 Key 类型被接口接受，并返回可信绑定信息；`authApp / authChatCompletionHeaderRequest` 在读取或返回业务数据前校验实际 appId。普通对话接口必须显式提供 appId，只有 v1/v2 completions 沿用绑定值兜底。校验全部显式 appId，包括低优先级后缀；个人密钥保持原解析优先级。
+`parseHeaderCert` 确认 Key 类型被接口接受，并返回可信绑定信息；`authApp / authChatCompletionHeaderRequest` 在读取或返回业务数据前校验实际 appId。所有对话请求的 OpenAPI Schema 均以 union 声明“应用 API Key（无需 appId）”分支；该分支只放开请求形态，鉴权层仍要求真实应用 Key。应用 Key 忽略请求 appId 及 SDK 后缀，个人密钥保持原解析优先级。
 
-应用 Key 的权限条件为：**凭证有效 ∧ 接口显式接受应用 Key ∧ 团队/应用可用 ∧ 绑定应用一致 ∧ 目标会话/文件属于该应用**。该分支跳过 `authAppByTmbId` 与成员的 `per` 检查；个人密钥和登录态仍走原成员权限链。
+应用 Key 的权限条件为：**凭证有效 ∧ 接口显式接受应用 Key ∧ 团队/应用可用 ∧ 使用绑定应用 ∧ 目标会话/文件属于该应用**。该分支跳过 `authAppByTmbId` 与成员的 `per` 检查；个人密钥和登录态仍走原成员权限链。
 
 应用 Key 的 tmbId 只承担归属、审计、计费归因和日志鉴权者身份，不计算其调用权限。归属记录本身仍需合法，离职/禁用/注销由交接流程处理；不能把个人账号鉴权与应用 Key 的授权混在一起，使归属人的权限变更间接禁用 Key。
 
@@ -221,7 +222,7 @@ authAppApiKey?: boolean; // 接受应用 Key，默认 false
 | 组别 | 必须覆盖 |
 | --- | --- |
 | 类型与旧数据 | 两类新建；缺 type 的两种历史形态；非法/未知/冲突数据；新旧分类与列表一致 |
-| 范围与身份 | 两种鉴权开关独立生效；v1/v2 同应用成功；省略 appId 的兼容；body/后缀冲突；同团队其他应用/跨团队拒绝；同应用的配置/发布/知识库接口仍拒绝；customUid 与 authProxy 边界 |
+| 范围与身份 | 两种鉴权开关独立生效；v1/v2 同应用成功；省略 appId 的兼容；body/后缀冲突；显式其他应用 ID 仍执行绑定应用；同应用的配置/发布/知识库接口仍拒绝；customUid 与 authProxy 边界 |
 | 管理权限 | 应用管理员管理其他成员的应用 Key；普通成员不可复制；个人 Key 始终仅本人；伪造类型/应用/成员字段无效 |
 | 对话与文件 | 应用 Key 归属成员无应用/日志/写权限或其 ACL 被移除后仍可调用及管理对话；个人密钥仍受这些权限限制；覆盖续聊/停止/恢复、历史/日志/导出、反馈、批量删除/清空与文件读写；跨应用 chatId/S3 文件拒绝；无关 Skill/Builder 不放行 |
 | 生命周期 | 离职者在多个不同 owner 应用下的 Key 分别交接；owner 离职/主动转移/同步禁用/注销；异常回滚；原 Key 与 ID/额度不变；旧历史可访问；应用与团队删除 |

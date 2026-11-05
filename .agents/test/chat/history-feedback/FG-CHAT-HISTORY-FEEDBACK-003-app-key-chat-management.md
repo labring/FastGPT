@@ -84,11 +84,13 @@ baseline: "d09b4e8849d051182ef4011470945d2b71085807"
 
 - D0 复用 RESOURCE-002 的 T/W/Ka/Pa，A 为 active 普通成员、对 W 无应用/日志/写 ACL，Ka 有效；另备有日志权限的 owner O 作观测者。W 是独立普通应用，含 C1(A/Ka/u1)、C2(B/Kb/u2)、C3(B/online)、C4(share) 四份完成对话，各带 RUN 和两条消息，另备 Cfile、Crun。所有对话属于 W，使用者、作者、publishSource.id 有意不同。不要把 API 来源筛选默认带入全量管理查询。
 - 对照应用 X（同 T）和 Y（异团队），各有独立 CX/CY、消息和文件，记录真实 ID/数据摘要。历史和日志查询给完整时间范围与合法分页，预期 ID 集合来自本例 manifest；getUsers/Pro 图表的真值从实际日志库 app_chat_logs 的桶计算，不用 Chat 数量硬凑统计值。
-- 请求构造：历史 body/query 用 appId=W；改名 body 使用 chatId/customTitle；消息详情 query 使用 chatId/dataId；消息删除为 DELETE + JSON body 的 contentId/contentIds。adminUpdate 的 datasetId/feedbackDataId/q/a 只记录管理反馈引用，不把它当成知识库写入接口。所有额外字段按实际 Zod 和真实 UI 请求样本填充，不臆造消息 ID。
+- 请求构造：应用 Key 的历史 body/query 可省略 appId；改名 body 使用 chatId/customTitle；消息详情 query 使用 chatId/dataId；消息删除为 DELETE + JSON body 的 contentId/contentIds。adminUpdate 的 datasetId/feedbackDataId/q/a 只记录管理反馈引用，不把它当成知识库写入接口。所有额外字段按实际 Zod 和真实 UI 请求样本填充，不臆造消息 ID。
 - 文件行需真实 S3 上传/下载和已发布、实际可用的 App 沙盒，具有测试目录写入/清理能力；若基础设施未配置，只将该行阻塞，不伪造成功。保存上传字节及 SHA-256、返回的真实 key，沙盒使用 RUN 命名文件；不得把凭证或下载签名 URL 放入公开证据。关闭的产品态不因应用 Key 被绕过。
 - 运行控制行复用 CONVERSATION-003/004 的单会话流式准备、终态与实际事件判断，只测更换鉴权为 Ka，不复制断线/竞争全矩阵。轮询每 1 秒、最长 60 秒，超时保存状态并停止重放写请求。
 - 数据快照：主库 chats 按 `{teamId:ObjectId(T),appId:ObjectId(W),chatId:{$in:manifest}}`，chatitems 按 appId/chatId/dataId 白名单；保留 tmbId/outLinkUid/publishSource、标题、反馈、删除字段。日志库独立连接；允许保存延迟 1 秒轮询、最长 30 秒。只读操作可能更新已读状态，不要求所有字段绝对不变。
 - 每个独立行恢复其 D0 副本；删除/清空只能针对本例独立应用副本，X/Y 为负对照且始终保留。清理本例应用、存储对象、沙盒目录、运行租约及 Key，核对本例白名单无残留。
+
+- 应用 Key 的所有合法对话管理、日志和配套文件请求默认省略 appId（旧 sourceId 请求也可省略），由鉴权返回绑定的 sourceId 与固定 app 来源；显式传相同 appId 为兼容对照，传其他应用 ID 仍按 Key 绑定的 W 执行。个人密钥与登录态缺失目标仍拒绝；错误外链、Skill、Builder 来源不得回退成绑定应用。
 
 ## 测试步骤
 
@@ -113,5 +115,5 @@ baseline: "d09b4e8849d051182ef4011470945d2b71085807"
 | D3 | 每步落在 C2 目标记录；标题/已读/反馈按接口职责变化，closeCustom 能完成事务及反馈计数更新，不因仅登录态二次鉴权失败。管理反馈只保存引用，不产生未授权知识库修改；身份/来源不因管理请求改成 A/Ka。 | 每步字段差集、反馈计数、事务后重读；失败时精确定位到步骤。 |
 | D4 | Ka 可读取或停止绑定应用的运行；终态和重复读取遵循既有运行控制契约，stop 返回 accepted/success 不等于后台已收尾。不得因 A 缺成员 ACL 拒绝或停错另一个应用会话。 | SSE、stop 响应、实际生成状态与消息终态。 |
 | D5 | 上传/下载真实完成，字节数和 SHA-256 一致；App 沙盒写入不因 A 缺应用写权限拒绝。Pa 按原成员权限拒绝；关闭的沙盒仍被产品可用性层拒绝。文件使用会话 uid，交接场景复用 TEAM-001，不重做 UID 全矩阵。 | S3 返回协议/内容摘要、沙盒文件响应、权限对照与关闭态响应。 |
-| D6 | 显式 X/Y 必须拒绝；只混入外域 chatId/dataId 的查询不返回外域数据，修改/批量操作仅能影响 W 内匹配集合。未命中是拒绝还是空结果按实现后的单接口契约核对；不能只因成功 envelope 就断言发生越权。文件 key 不属于目标应用/会话时拒绝签名，不签发外域 URL。 | X/Y 与非目标会话零差集、W 合法差集、无外域正文/签名 URL。 |
+| D6 | 显式 X/Y 不覆盖 Key 的绑定，仍只作用于 W；只混入外域 chatId/dataId 的查询不返回外域数据，修改/批量操作仅能影响 W 内匹配集合。未命中是拒绝还是空结果按实现后的单接口契约核对；不能只因成功 envelope 就断言发生越权。文件 key 不属于目标应用/会话时拒绝签名，不签发外域 URL。 | X/Y 与非目标会话零差集、W 合法差集、无外域正文/签名 URL。 |
 | D7 | 消息/单会话按当前软删除规则处理；batchDelete 按既有资源清理流程完成，可管理 W 内不同来源的明确目标。clearHistories 只清 API 来源的目标集合，不因成员/UID/Key 不同漏项，不越过 W/team；结果 ID 差集精确等于目标集合，X/Y 不变。 | 删除前清单、可见列表与主库状态；资源清理 1 秒轮询、最长 60 秒，超时失败或环境阻塞。 |
