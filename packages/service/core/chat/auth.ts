@@ -164,7 +164,7 @@ export const authChatTargetCrud = async ({
     teamId: resource.teamId,
     ...(memberOnly ? { tmbId: resource.tmbId } : {})
   };
-  const resolvedSourceId = resource.app ? String(resource.app._id) : sourceId!;
+  const resolvedSourceId = resource.app ? resource.appId! : sourceId!;
   const chat = await loadChat(resolvedSourceId);
   if (chat) assertChatAccess({ chat, scope });
 

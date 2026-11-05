@@ -71,14 +71,13 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
   const locale = getLocale(req);
   const timezoneCode = getTimezoneCodeFromStr(dateStart);
 
-  const { teamId, tmbId, app } = await authApp({
+  const { teamId, tmbId, app, appId } = await authApp({
     req,
     authToken: true,
     authAppApiKey: true,
     appId: requestedAppId,
     per: AppReadChatLogPerVal
   });
-  const appId = String(app._id);
   await assertMemberRateLimit({
     policy: MemberRateLimitPolicy.ExportChatLogs,
     memberId: String(tmbId)

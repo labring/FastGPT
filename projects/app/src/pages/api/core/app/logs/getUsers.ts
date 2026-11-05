@@ -45,7 +45,7 @@ async function handler(req: ApiRequestProps): Promise<GetLogUsersResponse> {
   const { appId: requestedAppId, dateStart, dateEnd, searchKey, sources } = body;
   const { pageSize: resolvedPageSize, offset: resolvedOffset } = normalizePagination(body);
 
-  const { teamId, app } = await authApp({
+  const { teamId, appId } = await authApp({
     req,
     authToken: true,
     authApiKey: true,
@@ -53,7 +53,6 @@ async function handler(req: ApiRequestProps): Promise<GetLogUsersResponse> {
     appId: requestedAppId,
     per: AppReadChatLogPerVal
   });
-  const appId = String(app._id);
 
   const teamObjectId = new Types.ObjectId(teamId);
   const searchPattern = searchKey?.trim()

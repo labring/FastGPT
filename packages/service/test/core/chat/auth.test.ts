@@ -735,6 +735,7 @@ describe('authChatTargetCrud resource context', () => {
       tmbId: 'member-1',
       userId: 'user-1',
       app: { _id: 'app-1', name: 'App' },
+      appId: 'app-1',
       permission: new AppPermission({ role: 0 })
     } as any);
     vi.mocked(authSkill).mockResolvedValue({

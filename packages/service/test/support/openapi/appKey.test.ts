@@ -126,6 +126,18 @@ describe('application API key boundaries', () => {
     });
     expect(cert.apiKeyAuthProxy).toBe(false);
     expect(String((await getAppByApiKey(cert))._id)).toBe(appId);
+    const { parseHeaderCert: mocked } =
+      await import('@fastgpt/service/support/permission/auth/common');
+    const { authApp } = await import('@fastgpt/service/support/permission/app/auth');
+    vi.mocked(mocked).mockResolvedValueOnce(cert);
+    const authenticated = await authApp({
+      req: {} as any,
+      authAppApiKey: true,
+      appId: new Types.ObjectId().toString(),
+      per: ReadPermissionVal
+    });
+    expect(authenticated.appId).toBe(appId);
+    expect(String(authenticated.app._id)).toBe(authenticated.appId);
     await MongoApp.updateOne({ _id: appId }, { $set: { deleteTime: new Date() } });
     await expect(getAppByApiKey(cert)).rejects.toBeDefined();
   });

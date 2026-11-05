@@ -49,7 +49,7 @@ async function handler(req: ApiRequestProps): Promise<getAppChatLogsResponseType
   const { pageSize = 20, offset } = parsePaginationRequest(req);
 
   // 凭证校验
-  const { teamId, app } = await authApp({
+  const { teamId, appId } = await authApp({
     req,
     authToken: true,
     authApiKey: true,
@@ -57,7 +57,6 @@ async function handler(req: ApiRequestProps): Promise<getAppChatLogsResponseType
     appId: requestedAppId,
     per: AppReadChatLogPerVal
   });
-  const appId = String(app._id);
 
   if (isUnselectedLogUserFilter(tmbIds, outLinkUids)) {
     return GetAppChatLogsResponseSchema.parse({ list: [], total: 0 });

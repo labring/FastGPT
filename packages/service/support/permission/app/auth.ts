@@ -154,6 +154,10 @@ export const authAppByTmbId = async ({
   return { app };
 };
 
+/**
+ * 校验凭证及应用访问权限，返回应用详情和规范化的字符串 appId。
+ * appId 始终取已鉴权应用的实际 ID；应用 Key 使用绑定应用，不回传请求中的目标或凭证解析值。
+ */
 export const authApp = async ({
   appId,
   per,
@@ -164,6 +168,7 @@ export const authApp = async ({
 }): Promise<
   AuthResponseType<AppPermission> & {
     app: AppWithPermissionType;
+    appId: string;
   }
 > => {
   const result = await parseHeaderCert(props);
@@ -182,6 +187,7 @@ export const authApp = async ({
   return {
     ...result,
     permission: app.permission,
-    app
+    app,
+    appId: String(app._id)
   };
 };
