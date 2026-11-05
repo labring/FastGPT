@@ -62,7 +62,7 @@ baseline: "d09b4e8849d051182ef4011470945d2b71085807"
 - 准备 A/B/M 各自的个人密钥 Pa/Pb/Pm；A/M 在 W 的应用 Key Ka/Km，X 下 Kx 和 U 下 Ky。Key 明文只存环境变量或执行器内存，证据只记录 Key._id、名称和脱敏值。个人标签 ta 属于 A；所有名称带 RUN=`appkey-日期-随机串`。
 - 目标契约：create body 的 `{type:'app',appId:W,name}` 创建应用 Key，`{type:'personal',name}` 或省略 type 创建个人密钥；list 使用 `type=app&appId=W` 或 `type=personal`；update 使用 `_id`，copy body 使用 `id`，delete query 使用 `id`。创建/复制返回统一响应的 data 字符串，不能把完整 envelope 当 Key。
 - 证据保存 HTTP 状态、code/data、x-request-id、可见截图、刷新后的列表和精确记录快照。主库 Key 的物理集合名先以 `MongoOpenApi.collection.name` 获取后记为 Ckey，不能按 model 名猜单复数；只查本例 `_id` 白名单。读取 `{teamId,tmbId,type,appId,name,tagIds,authProxy,limit,usagePoints}`，不输出 apiKey。审计在实际日志库的 `operationLogs`，按 teamId、操作者 tmbId、时间窗和事件过滤；审计 metadata 记录 keyId/keyType/appId，操作人取日志顶层 tmbId，不记录明文。
-- 商业版限制使用该版本支持的到期时间/额度；数量边界在独立环境设置较小的现有 OPENAPI_KEY_MAX_COUNT，或准备至真实上限，不修改共享环境。数量行各用独立基线副本。
+- 商业版限制使用该版本支持的到期时间/额度；应用 Key 数量固定按每应用 100 个准备，个人密钥可在独立环境用较小的 OPENAPI_KEY_MAX_COUNT，不修改共享环境。数量行各用独立基线副本。
 - 清理通过已确认的 Key 删除及临时应用删除入口，恢复筛选、标签和环境配置。公共 D0 只建一次；每行新增名称独立，破坏性行用副本，不删除其他人资源。
 
 ## 测试步骤
@@ -88,5 +88,5 @@ baseline: "d09b4e8849d051182ef4011470945d2b71085807"
 | M3 | N、无登录态 Key 请求和伪造类型请求不能扩大管理范围；A 即使管理 W 也不能查看或复制 Pb。不得泄露目标明文，目标记录差集为空。 | 响应业务拒绝、目标记录及 Pb 精确列表查询。 |
 | M4 | 拒绝不合法创建和不可变字段修改；不能把 Ka 换应用、换类型或归属人，不得只改合法名称而偷偷接受受禁止的绑定修改。跨团队 Y 必须拒绝。新绑定统一保存规范小写 ID；历史大小写绑定属于同一个应用，不拆分列表或数量上限。 | 每个输入副本与前后 Key._id 集合/字段差集。 |
 | M5 | 省略 type 创建 personal；旧 list 不因 appId 返回全应用 Key。ta 及计数仅作用于 A 的个人密钥；应用 Key 不显示或编辑个人标签。排序/搜索只在当前授权集合内进行，页面不内嵌调用示例，保留教程及 OpenAPI 文档入口，复制不改存储值。 | 列表/标签响应、Tab 交替后的 UI、数据库。 |
-| M6 | 两种上限分别按“本人 personal”和“当前 app”计算，互不挤占；各自到限拒绝对应新建，转交数量规则由 TEAM-001 验证。应用管理员缺团队创建权限仍可新建应用 Key；个人密钥继续因缺团队创建权限拒绝。 | 数量前后差集、创建响应、实际配置及权限证据。 |
+| M6 | 每个应用固定最多 100 个应用 Key，所有管理员共用；本人 personal 按 OPENAPI_KEY_MAX_COUNT 单独计算，互不挤占，应用额度不受该配置影响。第 100 个允许、第 101 个拒绝；其他应用额度独立。转交数量规则由 TEAM-001 验证。应用管理员缺团队创建权限仍可新建应用 Key；个人密钥继续因缺团队创建权限拒绝。 | 数量前后差集、创建响应、实际配置及权限证据。 |
 | M7 | 删除成功后原 Key 不能再调用，目标应用列表移除；其他 Key 与应用保持原值。既有对话数据不因删 Key 被一起删除，渠道展示按第二阶段既有规则回归。 | 删除/重用响应、目标与对照快照；关联 HISTORY-FEEDBACK-002。 |

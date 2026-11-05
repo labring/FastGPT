@@ -9,6 +9,7 @@ import { getFakeUsers } from '@test/datas/users';
 import { Call } from '@test/utils/request';
 import { beforeEach, describe, it, expect, vi } from 'vitest';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
+import { OpenApiErrEnum } from '@fastgpt/global/common/error/code/openapi';
 
 const lock = vi.hoisted(() => ({ beforeCreate: undefined as undefined | (() => Promise<void>) }));
 vi.mock('@fastgpt/service/support/user/lock', () => ({
@@ -90,27 +91,64 @@ describe('support/openapi/create', () => {
     expect(legacyInputKey?.type).toBe('app');
   });
 
-  it('counts historical uppercase bindings against the same application quota', async () => {
-    const { owner } = await getFakeUsers();
-    const app = await MongoApp.create({
-      teamId: owner.teamId,
-      tmbId: owner.tmbId,
-      name: 'quota app',
-      type: 'simple'
-    });
+  it('limits each app to 100 keys across members and legacy bindings, independently of personal quota', async () => {
+    const { owner, members } = await getFakeUsers(1);
+    const [app, otherApp] = await MongoApp.create(
+      ['quota app', 'other app'].map((name) => ({
+        teamId: owner.teamId,
+        tmbId: owner.tmbId,
+        name,
+        type: 'simple'
+      }))
+    );
+    const appId = String(app._id);
+    await MongoOpenApi.create(
+      Array.from({ length: 98 }, (_, index) => ({
+        teamId: owner.teamId,
+        tmbId: members[0].tmbId,
+        type: 'app',
+        appId,
+        apiKey: `quota-key-${index}`
+      }))
+    );
     await MongoOpenApi.collection.insertOne({
       teamId: app.teamId,
       tmbId: app.tmbId,
-      appId: String(app._id).toUpperCase(),
+      appId: appId.toUpperCase(),
       apiKey: 'legacy-uppercase-quota'
     });
     mockAppEnv.OPENAPI_KEY_MAX_COUNT = 1;
+
+    const personal = await Call(createapi.default, {
+      auth: owner,
+      body: { name: 'personal independent of 99 app keys' }
+    });
+    expect(personal.error).toBeUndefined();
+    const last = await Call(createapi.default, {
+      auth: owner,
+      body: { type: 'app', appId, name: '100th app key with full personal quota' }
+    });
+    expect(last.error).toBeUndefined();
     const result = await Call(createapi.default, {
       auth: owner,
-      body: { type: 'app', appId: String(app._id), name: 'over quota' }
+      body: { type: 'app', appId, name: '101st app key' }
     });
-    expect(result.error).toBeDefined();
-    expect(await MongoOpenApi.countDocuments({ teamId: owner.teamId })).toBe(1);
+    expect(result.error).toBe(OpenApiErrEnum.exceedLimit);
+    expect(
+      await MongoOpenApi.countDocuments({ appId: { $in: [appId, appId.toUpperCase()] } })
+    ).toBe(100);
+
+    const other = await Call(createapi.default, {
+      auth: owner,
+      body: { type: 'app', appId: String(otherApp._id), name: 'other app has its own quota' }
+    });
+    expect(other.error).toBeUndefined();
+    const extraPersonal = await Call(createapi.default, {
+      auth: owner,
+      body: { name: 'personal remains limited to one' }
+    });
+    expect(extraPersonal.error).toBe(OpenApiErrEnum.exceedLimit);
+    expect(await MongoOpenApi.countDocuments({ tmbId: owner.tmbId, type: 'personal' })).toBe(1);
   });
 
   it('rechecks membership inside the team lease after a completed handover', async () => {

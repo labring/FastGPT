@@ -22,12 +22,12 @@ node .agents/test/support/environment.mjs --source-env /实际开发环境/.env.
   --directory /仓库外/本轮私有目录
 ```
 
-此 profile 不生成历史列表用例的 201 份无关数据，设置专用实例 `OPENAPI_KEY_MAX_COUNT=3`。默认不宣称商业版已启用；需要商业限制或 Pro 图表时另准备连接同一私有 Mongo/Redis 的真实 Pro，并核实被测版本。复制开发实例授权配置时，License 和 instanceId 必须配套，由 Pro 实际验签，不能只依赖快照中的 isPlus。环境目录包含私有 `secrets.json` 和 `fixture.json`，不作为报告证据。执行时在父进程按该 secrets 文件安全注入环境变量，不将其内容打印或提交。
+此 profile 不生成历史列表用例的 201 份无关数据，设置专用实例的个人密钥上限 `OPENAPI_KEY_MAX_COUNT=3`；`appKeys.maxKeyCount` 记录该个人上限，应用 Key 仍固定每应用 100 个。默认不宣称商业版已启用；需要商业限制或 Pro 图表时另准备连接同一私有 Mongo/Redis 的真实 Pro，并核实被测版本。复制开发实例授权配置时，License 和 instanceId 必须配套，由 Pro 实际验签，不能只依赖快照中的 isPlus。环境目录包含私有 `secrets.json` 和 `fixture.json`，不作为报告证据。执行时在父进程按该 secrets 文件安全注入环境变量，不将其内容打印或提交。
 
 额外配置位于 fixture.appKeys：
 
 - `templateAppId`：私有库内已发布的固定回显工作流；`echoTemplate` 同时含问题和 userId。模板应开启实际文件上传，脚本为新应用再次发布，不修改共享应用。
-- `maxKeyCount`：已在该实例实际生效的数量上限，范围 3～10；M4/M6 逐条验证真实上限，不 mock 计数。
+- `maxKeyCount`：已在该实例实际生效的个人密钥上限，范围 3～10；M4 的应用上限固定 100，M6 分别验证个人配置与应用上限，不 mock 计数。
 - `commercial:true`：仅在已核实商业版有效期/额度限制时填写，用于 A6；无效、过期、超额都调用真实 completions 和 health。
 - `datasetId/skillId`：可选的真实同团队资源，A 能读取知识库，owner 能访问 Skill 调试。省略时，A4 在已验证的私有库用当前 Mongo Model 创建最小真实资源、授予 A 读取权限，先跑正向对照再检查应用 Key 拒绝，结束精确回收资源及 ACL；预置资源由提供方回收。
 - `apps.historySwitch`、`gate`、`redis`：D4 复用既有 HTTP gate 模板；不以 sleep 或单纯 stop 成功替代真实生成中、恢复流和后台终态。

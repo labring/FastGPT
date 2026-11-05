@@ -340,13 +340,11 @@ async function execute(context) {
       context.secrets.add(legacy.apiKey);
       await w.db.collection('openapis').insertOne(legacy);
       assert.equal((await list('A')).filter((row) => row._id === String(legacy._id)).length, 1);
-      const max = c.fixture.appKeys?.maxKeyCount;
-      if (!Number.isInteger(max) || max < 3 || max > 10)
-        throw new Blocked('M4/M6 需要实际配置并核实 3～10 的私有 OPENAPI_KEY_MAX_COUNT');
+      const appMax = 100;
       while (
         (await w.db
           .collection('openapis')
-          .countDocuments({ appId: { $in: [W, W.toUpperCase()] } })) < max
+          .countDocuments({ appId: { $in: [W, W.toUpperCase()] } })) < appMax
       )
         await w.createKey('A', W);
       const refused = await c.request({
@@ -504,9 +502,10 @@ async function execute(context) {
       return '省略 type 保持个人范围，标签计数只统计个人；真实页面验证编辑表单和筛选切 Tab 不串用，调用示例统一使用文档入口';
     }
     case 'M6': {
-      const max = c.fixture.appKeys?.maxKeyCount;
-      if (!Number.isInteger(max) || max < 3 || max > 10)
-        throw new Blocked('需要真实私有实例 OPENAPI_KEY_MAX_COUNT=3～10');
+      const personalMax = c.fixture.appKeys?.maxKeyCount;
+      if (!Number.isInteger(personalMax) || personalMax < 3 || personalMax > 10)
+        throw new Blocked('需要真实私有实例将个人密钥 OPENAPI_KEY_MAX_COUNT 设置为 3～10');
+      const appMax = 100;
       await w.acl('A', null, roles.createKey, 'team');
       const personalIds = () =>
         w.db
@@ -520,7 +519,7 @@ async function execute(context) {
             { projection: { _id: 1 } }
           )
           .toArray();
-      while ((await personalIds()).length < max) await w.createKey('A');
+      while ((await personalIds()).length < personalMax) await w.createKey('A');
       const empty = await w.app('quota-empty');
       await w.acl('A', empty, roles.manage);
       await w.acl('N', empty, roles.manage);
@@ -546,7 +545,7 @@ async function execute(context) {
           route: '/api/support/openapi/delete?id=' + removable.id
         })
       );
-      while ((await list('A')).length < max) await w.createKey('A', W);
+      while ((await list('A')).length < appMax) await w.createKey('A', W);
       await w.createKey('A');
       await quotaDenied({ type: 'app', appId: W });
       await w.acl('N', null, roles.none, 'team');
@@ -559,7 +558,7 @@ async function execute(context) {
           body: { type: 'personal', name: w.keyName('requires-team-role') }
         })
       );
-      return '本人个人额度与应用额度分别计算；应用管理员无团队创建权限可建应用 Key，个人密钥仍拒绝';
+      return '每个应用固定 100 个，个人额度单独按配置计算且互不挤占；应用管理员无团队创建权限可建应用 Key，个人密钥仍拒绝';
     }
     case 'M7': {
       const foreign = await w.foreignApp(),

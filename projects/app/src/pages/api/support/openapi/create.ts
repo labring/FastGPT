@@ -68,7 +68,9 @@ export async function handler(
       ...(type === ApiKeyTypeEnum.app ? { appId: getOpenApiAppIdFilter([boundAppId!]) } : { tmbId })
     });
 
-    if (count >= appEnv.OPENAPI_KEY_MAX_COUNT) {
+    // 应用固定按每个应用 100 个计数，与成员个人密钥的配置额度互不占用。
+    const maxCount = type === ApiKeyTypeEnum.app ? 100 : appEnv.OPENAPI_KEY_MAX_COUNT;
+    if (count >= maxCount) {
       return Promise.reject(OpenApiErrEnum.exceedLimit);
     }
 
