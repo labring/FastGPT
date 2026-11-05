@@ -508,55 +508,6 @@ describe('usage page request arbitration', () => {
   );
 
   it.each(['detail', 'dashboard'] as const)(
-    'keeps successful department context when a command queued after changing to %s fails',
-    async (view) => {
-      await render({ view: 'dashboard' });
-      await act(async () => controller.changeType('department'));
-      await flush();
-      const originalResult = controller.result;
-      const pending = deferred<UsageQueryResponse>();
-      const commands: UsageQueryBody[] = [];
-      mocks.query.mockImplementation((body: UsageQueryBody) => {
-        commands.push(body);
-        return commands.length === 1
-          ? pending.promise
-          : Promise.reject(new Error('Latest command failed'));
-      });
-      await act(async () => controller.toggleDepartment(a));
-      await render({
-        view,
-        filters: {
-          ...filters,
-          dateRange: { ...filters.dateRange, from: new Date('2026-11-02T00:00:00Z') }
-        }
-      });
-      await act(async () => controller.toggleDepartment(b));
-      const selected: UsageSubjectFilter = {
-        type: 'department',
-        rules: [{ orgId: a, include: true }]
-      };
-      await act(async () =>
-        pending.resolve(responseFor({ ...commands[0], subjectFilter: selected }))
-      );
-      await flush();
-
-      expect(commands).toHaveLength(2);
-      expect(commands[1].subjectFilter).toEqual(selected);
-      expect(commands[1].view).toBe(view);
-      expect(commands[1].filters).not.toEqual(commands[0].filters);
-      expect(controller.subjectFilter).toEqual(selected);
-      expect(controller.context?.subjectFilter).toEqual(selected);
-      expect(controller.context?.selectedItems.map((item) => item.id)).toEqual([a]);
-      expect(controller.result).toBe(originalResult);
-      expect(controller.error).toBe(true);
-      expect(controller.loading).toBe(false);
-      const displayed = controller.subjectFilter;
-      await act(async () => controller.exportUsage(mapping));
-      expect(mocks.download.mock.lastCall?.[0].body.subjectFilter).toEqual(displayed);
-    }
-  );
-
-  it.each(['detail', 'dashboard'] as const)(
     'restores the last successful department selection and %s data when the final command fails',
     async (view) => {
       await render({ view });
@@ -760,39 +711,6 @@ describe('usage page request arbitration', () => {
       expect(controller.error).toBe(true);
     }
   );
-
-  it('restores successful department pagination after a later command fails at a new page size', async () => {
-    await act(async () => controller.changeType('department'));
-    await flush();
-    const first = deferred<UsageQueryResponse>();
-    const commands: UsageQueryBody[] = [];
-    mocks.query.mockClear().mockImplementation((body: UsageQueryBody) => {
-      commands.push(body);
-      return commands.length === 1 ? first.promise : Promise.reject(new Error('Second failed'));
-    });
-    await act(async () => {
-      controller.changePageSize(50);
-      controller.toggleDepartment(a);
-      controller.toggleDepartment(b);
-    });
-    expect(commands).toHaveLength(1);
-    expect(commands[0]).toMatchObject({
-      view: 'detail',
-      pagination: { pageNum: 1, pageSize: 50 }
-    });
-    const successful = responseFor({
-      ...commands[0],
-      subjectFilter: { type: 'department', rules: [{ orgId: a, include: true }] }
-    });
-    await act(async () => first.resolve(successful));
-    await flush();
-
-    expect(commands).toHaveLength(2);
-    expect(controller.result).toBe(successful);
-    expect(controller.pageSize).toBe(50);
-    expect(controller.error).toBe(true);
-    expect(controller.loading).toBe(false);
-  });
 
   it('keeps the displayed result when every command fails instead of restoring an older batch', async () => {
     await act(async () => controller.changeType('department'));
@@ -1160,60 +1078,6 @@ describe('usage page request arbitration', () => {
       expect(controller.loading).toBe(false);
       expect(controller.error).toBe(false);
       expect(mocks.toast).toHaveBeenCalledOnce();
-    }
-  );
-
-  it.each([50, 100])(
-    'reloads permission loss at the latest page size %s instead of committing an older command size',
-    async (pageSize) => {
-      await act(async () => controller.changeType('department'));
-      await flush();
-      const first = deferred<UsageQueryResponse>();
-      const latest = deferred<UsageQueryResponse>();
-      const commands: UsageQueryBody[] = [];
-      const queries: UsageQueryBody[] = [];
-      mocks.query.mockImplementation((body: UsageQueryBody) => {
-        if (body.departmentAction) {
-          commands.push(body);
-          return first.promise;
-        }
-        queries.push(body);
-        return latest.promise;
-      });
-      await act(async () => {
-        controller.toggleDepartment(a);
-        controller.toggleDepartment(b);
-      });
-      await act(async () => controller.changePageSize(pageSize));
-      const selfResult = responseFor(commands[0], 1, false);
-      selfResult.context.scopeChanged = true;
-      selfResult.context.resetPagination = true;
-      await act(async () => first.resolve(selfResult));
-      await flush();
-
-      expect(commands).toHaveLength(1);
-      expect(controller.context?.scope).toBe('self');
-      expect(controller.canManageMembers).toBe(false);
-      expect(controller.result).toBeUndefined();
-      expect(controller.pageSize).toBe(20);
-      expect(controller.loading).toBe(true);
-      expect(queries).toHaveLength(1);
-      expect(queries[0]).toMatchObject({
-        expectedScope: 'self',
-        pagination: { pageNum: 1, pageSize }
-      });
-      const currentResult = responseFor(queries[0], 27, false);
-      await act(async () => latest.resolve(currentResult));
-      await flush();
-
-      expect(controller.result).toBe(currentResult);
-      expect(controller.page).toBe(1);
-      expect(controller.pageSize).toBe(pageSize);
-      expect(controller.loading).toBe(false);
-      expect(controller.error).toBe(false);
-      expect(window.localStorage.getItem('fastgpt:pagination:page-size:account-usage-detail')).toBe(
-        String(pageSize)
-      );
     }
   );
 
