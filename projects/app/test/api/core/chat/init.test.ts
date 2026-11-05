@@ -47,6 +47,7 @@ describe('chat init API', () => {
     vi.clearAllMocks();
     vi.mocked(getChatGenerationStatuses).mockResolvedValue(new Map());
     mocks.authApp.mockResolvedValue({
+      appId,
       app: {
         _id: appId,
         name: 'Builder App',
