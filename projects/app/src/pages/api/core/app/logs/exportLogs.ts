@@ -50,7 +50,7 @@ const formatJsonString = (data: any) => {
 
 async function handler(req: ApiRequestProps, res: NextApiResponse) {
   const {
-    appId,
+    appId: requestedAppId,
     dateStart,
     dateEnd,
     sources,
@@ -71,10 +71,11 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
   const locale = getLocale(req);
   const timezoneCode = getTimezoneCodeFromStr(dateStart);
 
-  const { teamId, tmbId, app } = await authApp({
+  const { teamId, tmbId, app, appId } = await authApp({
     req,
     authToken: true,
-    appId,
+    authAppApiKey: true,
+    appId: requestedAppId,
     per: AppReadChatLogPerVal
   });
   await assertMemberRateLimit({

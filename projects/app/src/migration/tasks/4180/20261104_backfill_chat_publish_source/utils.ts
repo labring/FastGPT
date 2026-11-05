@@ -7,7 +7,8 @@ export const LegacyPublishSourceRecordSchema = z.object({
   _id: ObjectIdSchema,
   teamId: ObjectIdSchema,
   appId: ObjectIdSchema,
-  sourceType: z.enum(ChatSourceTypeEnum).optional(),
+  // 旧资源类型只用于判断能否恢复外链引用，不参与 publishSource.type 转换。
+  sourceType: z.unknown().optional(),
   source: z.enum(ChatSourceEnum),
   shareId: z.string().nullish(),
   sourceName: z.string().nullish(),
@@ -15,9 +16,9 @@ export const LegacyPublishSourceRecordSchema = z.object({
 });
 export type LegacyPublishSourceRecord = z.infer<typeof LegacyPublishSourceRecordSchema>;
 
-/** 旧内部入口即使残留 shareId 也不推断为外链；API/MCP 没有可靠旧引用。 */
+/** 仅明确 App 或缺失旧资源类型时恢复引用；未知类型不猜测归属，仍可回填来源分类。 */
 export const canRestoreOutLinkReference = (record: LegacyPublishSourceRecord) =>
-  (!record.sourceType || record.sourceType === ChatSourceTypeEnum.app) &&
+  (record.sourceType === undefined || record.sourceType === ChatSourceTypeEnum.app) &&
   !!record.shareId &&
   [
     ChatSourceEnum.share,

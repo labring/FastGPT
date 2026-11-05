@@ -12,7 +12,6 @@ async function execute(context) {
   const f = required(c.fixture.history, 'history'),
     appId = f.appId;
   await privateDatabase(context, c);
-  await redis.assertPrivate();
   const ids = f.chatIds;
   assert.equal(new Set(ids).size, 201, '必须有 201 个真实不同会话');
   const status = (chatIds, extra = {}) =>

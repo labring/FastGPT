@@ -1,10 +1,14 @@
+import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
-import { authChatTargetCrud } from '@fastgpt/service/core/chat/auth';
+import {
+  authChatTargetCrud,
+  resolveOptionalAppApiKeyChatTarget
+} from '@fastgpt/service/core/chat/auth';
 import { authCollectionInChat } from '@/service/support/permission/auth/chat';
 import { getCollectionWithDataset } from '@fastgpt/service/core/dataset/controller';
 import { getApiDatasetRequest } from '@fastgpt/service/core/dataset/apiDataset';
@@ -19,11 +23,24 @@ import {
 } from '@fastgpt/global/openapi/core/dataset/collection/api';
 
 async function handler(req: ApiRequestProps): Promise<ReadCollectionSourceResponseType> {
-  const { collectionId, sourceType, sourceId, chatId, chatItemDataId, outLinkAuthData } =
-    parseApiInput({
-      req,
-      bodySchema: ReadCollectionSourceBodySchema
-    }).body;
+  const {
+    collectionId,
+    sourceType: requestedSourceType,
+    sourceId: requestedSourceId,
+    chatId,
+    chatItemDataId,
+    outLinkAuthData
+  } = parseApiInput({
+    req,
+    bodySchema: ReadCollectionSourceBodySchema
+  }).body;
+  const { sourceType, sourceId } = await resolveOptionalAppApiKeyChatTarget({
+    req,
+    sourceType: requestedSourceType,
+    sourceId: requestedSourceId
+  });
+
+  if (chatId && chatItemDataId && !sourceType) throw ChatErrEnum.unAuthChat;
 
   const { collection } = await (async () => {
     if (!sourceType || !chatId || !chatItemDataId) {

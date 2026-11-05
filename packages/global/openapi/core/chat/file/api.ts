@@ -13,7 +13,7 @@ import { IntSchema } from '../../../../common/zod';
 const withChatFileTarget = <T extends z.ZodRawShape>(shape: T) =>
   createOutLinkChatTargetInputSchema(shape).transform(transformChatAuthTargetInput);
 const withInternalChatFileTarget = <T extends z.ZodRawShape>(shape: T) =>
-  createChatTargetInputSchema(shape).transform(transformChatTargetInput);
+  createChatTargetInputSchema(shape, { allowAppApiKey: false }).transform(transformChatTargetInput);
 
 export const PresignChatFileGetUrlRawSchema = createOutLinkChatTargetInputSchema({
   key: z.string().min(1).describe('文件key'),
@@ -67,11 +67,14 @@ export const PresignChatFilePostUrlSchema = withChatFileTarget({
 export type PresignChatFilePostUrlParams = z.input<typeof PresignChatFilePostUrlSchema>;
 export type PresignChatFilePostUrlRuntimeParams = z.output<typeof PresignChatFilePostUrlSchema>;
 
-export const PresignDraftChatFilePostUrlRawSchema = createChatTargetInputSchema({
-  ...ChatFileUploadHintShape,
-  chatId: z.string().min(1).describe('对话ID'),
-  fileSelectConfig: AppFileSelectConfigTypeSchema.describe('未保存草稿使用的文件选择配置')
-}).meta({
+export const PresignDraftChatFilePostUrlRawSchema = createChatTargetInputSchema(
+  {
+    ...ChatFileUploadHintShape,
+    chatId: z.string().min(1).describe('对话ID'),
+    fileSelectConfig: AppFileSelectConfigTypeSchema.describe('未保存草稿使用的文件选择配置')
+  },
+  { allowAppApiKey: false }
+).meta({
   example: {
     filename: 'draft.dat',
     appId: '68ad85a7463006c963799a05',

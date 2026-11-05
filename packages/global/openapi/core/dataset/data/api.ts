@@ -167,17 +167,13 @@ export const GetQuoteDataBodyRawSchema = createOptionalOutLinkChatTargetInputSch
   })
 }).refine(
   (d) =>
-    (!!d.chatId &&
-      (!!d.appId ||
-        !!d.skillId ||
-        !!(d.outLinkAuthData?.shareId && d.outLinkAuthData?.outLinkUid)) &&
-      !!d.chatItemDataId) ||
+    (!!d.chatId && !!d.chatItemDataId) ||
     (!d.chatId &&
       !d.appId &&
       !d.skillId &&
       !(d.outLinkAuthData?.shareId || d.outLinkAuthData?.outLinkUid) &&
       !d.chatItemDataId),
-  { message: '对话模式下 chat target / chatId / chatItemDataId 必须同时提供' }
+  { message: '对话模式下 chatId / chatItemDataId 必须同时提供；个人密钥和登录态还需 appId' }
 );
 export const GetQuoteDataBodySchema = GetQuoteDataBodyRawSchema.transform(
   transformOptionalChatAuthTargetInput

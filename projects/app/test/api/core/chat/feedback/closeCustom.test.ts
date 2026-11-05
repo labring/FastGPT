@@ -176,4 +176,30 @@ describe.sequential('closeCustom api test', () => {
     expect(updatedChatItem?.customFeedbacks).toHaveLength(2);
     expect(updatedChatItem?.customFeedbacks?.[1]).toBe('feedback2');
   });
+  it('only updates AI when Human and AI share the round dataId', async () => {
+    const original = await MongoChatItem.findOne({
+      appId,
+      chatId,
+      dataId,
+      obj: ChatRoleEnum.AI
+    }).lean();
+    await MongoChatItem.deleteOne({ _id: original!._id });
+    const human = await MongoChatItem.create({
+      ...original,
+      _id: undefined,
+      obj: ChatRoleEnum.Human,
+      adminFeedback: undefined,
+      customFeedbacks: ['human-keep']
+    });
+    const ai = await MongoChatItem.create({ ...original, _id: undefined });
+    const res = await Call(handler, { auth: testUser, body: { appId, chatId, dataId, index: 0 } });
+    expect(res.code).toBe(200);
+    const afterHuman = await MongoChatItem.findById(human._id).lean();
+    expect(afterHuman?.adminFeedback).toBeUndefined();
+    expect(afterHuman?.customFeedbacks).toEqual(['human-keep']);
+    expect((await MongoChatItem.findById(ai._id).lean())?.customFeedbacks).toEqual([
+      'feedback2',
+      'feedback3'
+    ]);
+  });
 });

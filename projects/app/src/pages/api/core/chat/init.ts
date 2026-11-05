@@ -31,7 +31,11 @@ import { getDisplayChatTitle } from '@fastgpt/service/core/chat/title';
 
 /** 统一初始化已授权来源的会话状态；来源差异仅用于解析配置和展示信息。 */
 async function handler(req: NextApiRequest): Promise<InitChatResponseType> {
-  const { sourceType, sourceId, chatId } = parseApiInput({
+  const {
+    sourceType,
+    sourceId: requestedSourceId,
+    chatId
+  } = parseApiInput({
     req,
     querySchema: InitChatQuerySchema
   }).query;
@@ -43,10 +47,10 @@ async function handler(req: NextApiRequest): Promise<InitChatResponseType> {
       authToken: true,
       authApiKey: true,
       sourceType,
-      sourceId,
+      sourceId: requestedSourceId,
       chatId
     });
-    const { app, skill, chat, teamId } = auth;
+    const { app, skill, chat, teamId, sourceId } = auth;
     const generationStatuses = await getChatGenerationStatuses({
       sourceType,
       sourceId,
@@ -124,9 +128,18 @@ async function handler(req: NextApiRequest): Promise<InitChatResponseType> {
       }
     });
   } catch (error) {
-    if (sourceType === ChatSourceTypeEnum.app && error === AppErrEnum.unAuthApp) {
-      const { tmbId } = await authCert({ req, authToken: true, authApiKey: true });
-      await MongoAppRecord.deleteOne({ tmbId, appId: sourceId });
+    if (
+      sourceType === ChatSourceTypeEnum.app &&
+      requestedSourceId &&
+      error === AppErrEnum.unAuthApp
+    ) {
+      const { tmbId } = await authCert({
+        req,
+        authToken: true,
+        authApiKey: true,
+        authAppApiKey: true
+      });
+      await MongoAppRecord.deleteOne({ tmbId, appId: requestedSourceId });
     }
     return Promise.reject(error);
   }

@@ -8,6 +8,16 @@ import { MongoResourcePermission } from '@fastgpt/service/support/permission/sch
 import { getFakeUsers } from '@test/datas/users';
 import { Call } from '@test/utils/request';
 import { beforeEach, describe, it, expect, vi } from 'vitest';
+import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
+import { OpenApiErrEnum } from '@fastgpt/global/common/error/code/openapi';
+
+const lock = vi.hoisted(() => ({ beforeCreate: undefined as undefined | (() => Promise<void>) }));
+vi.mock('@fastgpt/service/support/user/lock', () => ({
+  withTeamLock: vi.fn(async (_teamId, fn) => {
+    await lock.beforeCreate?.();
+    return fn();
+  })
+}));
 
 const mockAppEnv = vi.hoisted(() => ({
   OPENAPI_KEY_MAX_COUNT: 100
@@ -20,19 +30,18 @@ vi.mock('@/env', () => ({
 describe('support/openapi/create', () => {
   beforeEach(() => {
     mockAppEnv.OPENAPI_KEY_MAX_COUNT = 100;
+    lock.beforeCreate = undefined;
   });
 
-  it('creates system APIKeys and ignores legacy appId input', async () => {
+  it('creates personal and app keys with explicit immutable types', async () => {
     const users = await getFakeUsers(2);
-    await MongoResourcePermission.create(
-      users.members.map((member) => ({
-        resourceType: 'team',
-        teamId: member.teamId,
-        resourceId: null,
-        tmbId: member.tmbId,
-        permission: TeamApikeyCreatePermissionVal
-      }))
-    );
+    await MongoResourcePermission.create({
+      resourceType: 'team',
+      teamId: users.members[0].teamId,
+      resourceId: null,
+      tmbId: users.members[0].tmbId,
+      permission: TeamApikeyCreatePermissionVal
+    });
 
     const res = await Call<EditApiKeyProps>(createapi.default, {
       auth: users.members[0],
@@ -62,7 +71,8 @@ describe('support/openapi/create', () => {
     const res2 = await Call<EditApiKeyProps>(createapi.default, {
       auth: users.members[1],
       body: {
-        appId: app._id,
+        type: 'app',
+        appId: String(app._id).toUpperCase(),
         name: 'legacy appId input key',
         limit: {
           maxUsagePoints: 1000
@@ -77,7 +87,96 @@ describe('support/openapi/create', () => {
       tmbId: users.members[1].tmbId,
       name: 'legacy appId input key'
     }).lean();
-    expect(legacyInputKey?.appId).toBeUndefined();
+    expect(legacyInputKey?.appId).toBe(String(app._id));
+    expect(legacyInputKey?.type).toBe('app');
+  });
+
+  it('limits each app to 100 keys across members and legacy bindings, independently of personal quota', async () => {
+    const { owner, members } = await getFakeUsers(1);
+    const [app, otherApp] = await MongoApp.create(
+      ['quota app', 'other app'].map((name) => ({
+        teamId: owner.teamId,
+        tmbId: owner.tmbId,
+        name,
+        type: 'simple'
+      }))
+    );
+    const appId = String(app._id);
+    await MongoOpenApi.create(
+      Array.from({ length: 98 }, (_, index) => ({
+        teamId: owner.teamId,
+        tmbId: members[0].tmbId,
+        type: 'app',
+        appId,
+        apiKey: `quota-key-${index}`
+      }))
+    );
+    await MongoOpenApi.collection.insertOne({
+      teamId: app.teamId,
+      tmbId: app.tmbId,
+      appId: appId.toUpperCase(),
+      apiKey: 'legacy-uppercase-quota'
+    });
+    mockAppEnv.OPENAPI_KEY_MAX_COUNT = 1;
+
+    const personal = await Call(createapi.default, {
+      auth: owner,
+      body: { name: 'personal independent of 99 app keys' }
+    });
+    expect(personal.error).toBeUndefined();
+    const last = await Call(createapi.default, {
+      auth: owner,
+      body: { type: 'app', appId, name: '100th app key with full personal quota' }
+    });
+    expect(last.error).toBeUndefined();
+    const result = await Call(createapi.default, {
+      auth: owner,
+      body: { type: 'app', appId, name: '101st app key' }
+    });
+    expect(result.error).toBe(OpenApiErrEnum.exceedLimit);
+    expect(
+      await MongoOpenApi.countDocuments({ appId: { $in: [appId, appId.toUpperCase()] } })
+    ).toBe(100);
+
+    const other = await Call(createapi.default, {
+      auth: owner,
+      body: { type: 'app', appId: String(otherApp._id), name: 'other app has its own quota' }
+    });
+    expect(other.error).toBeUndefined();
+    const extraPersonal = await Call(createapi.default, {
+      auth: owner,
+      body: { name: 'personal remains limited to one' }
+    });
+    expect(extraPersonal.error).toBe(OpenApiErrEnum.exceedLimit);
+    expect(await MongoOpenApi.countDocuments({ tmbId: owner.tmbId, type: 'personal' })).toBe(1);
+  });
+
+  it('rechecks membership inside the team lease after a completed handover', async () => {
+    const users = await getFakeUsers(1);
+    const member = users.members[0];
+    await MongoResourcePermission.create({
+      resourceType: 'team',
+      teamId: member.teamId,
+      resourceId: null,
+      tmbId: member.tmbId,
+      permission: TeamApikeyCreatePermissionVal
+    });
+    const app = await MongoApp.create({
+      name: 'owned app',
+      type: 'simple',
+      teamId: member.teamId,
+      tmbId: member.tmbId
+    });
+    lock.beforeCreate = async () => {
+      await MongoApp.updateOne({ _id: app._id }, { $set: { tmbId: users.owner.tmbId } });
+      await MongoTeamMember.updateOne({ _id: member.tmbId }, { $set: { status: 'leave' } });
+    };
+    const res = await Call(createapi.default, {
+      auth: member,
+      body: { type: 'app', appId: String(app._id), name: 'late key' }
+    });
+    expect(res.error).toBeDefined();
+    expect(await MongoOpenApi.countDocuments({ appId: String(app._id) })).toBe(0);
   });
 
   it('team owner can create global APIKey with authProxy enabled', async () => {
@@ -129,7 +228,7 @@ describe('support/openapi/create', () => {
     expect(await MongoOpenApi.findOne({ name: 'member auth proxy key' })).toBeNull();
   });
 
-  it('legacy appId input is ignored when owner enables authProxy', async () => {
+  it('rejects appId on a personal credential', async () => {
     const users = await getFakeUsers(1);
     const app = await MongoApp.create({
       name: 'auth proxy app',
@@ -150,16 +249,14 @@ describe('support/openapi/create', () => {
       } as EditApiKeyProps
     });
 
-    expect(res.error).toBeUndefined();
-    expect(res.code).toBe(200);
+    expect(res.code).toBe(500);
 
     const openapi = await MongoOpenApi.findOne({
       teamId: users.owner.teamId,
       tmbId: users.owner.tmbId,
       name: 'app auth proxy key'
     }).lean();
-    expect(openapi?.authProxy).toBe(true);
-    expect(openapi?.appId).toBeUndefined();
+    expect(openapi).toBeNull();
   });
 
   it('uses OPENAPI_KEY_MAX_COUNT from app env as create limit', async () => {

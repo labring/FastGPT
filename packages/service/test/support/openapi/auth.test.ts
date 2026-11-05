@@ -1,4 +1,5 @@
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { ApiKeyTypeEnum } from '@fastgpt/global/support/openapi/constants';
 import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
@@ -23,6 +24,7 @@ const appId = new Types.ObjectId().toString();
 const parsedAppId = new Types.ObjectId().toString();
 
 const teamApiKey = {
+  type: ApiKeyTypeEnum.personal,
   teamId,
   tmbId,
   apiKey: 'fastgpt-team',
@@ -30,7 +32,8 @@ const teamApiKey = {
 };
 
 const legacyAppApiKey = {
-  ...teamApiKey,
+  teamId,
+  tmbId,
   apiKey: 'fastgpt-app',
   appId,
   name: 'legacy app key'
@@ -76,6 +79,8 @@ describe('openapi auth', () => {
       apiKeyId: String(openApi._id),
       teamId,
       tmbId,
+      apiKeyType: ApiKeyTypeEnum.personal,
+      boundAppId: undefined,
       legacyAppId: '',
       parsedAppId: '',
       authProxy: false,
@@ -85,11 +90,19 @@ describe('openapi auth', () => {
     expect(String(updateApiKeyUsedTimeSpy.mock.calls[0][0])).toBe(String(openApi._id));
   });
 
-  it('旧应用 APIKey 按系统 key 鉴权并返回 legacyAppId', async () => {
-    const openApi = await MongoOpenApi.create(legacyAppApiKey);
+  it('旧应用 APIKey 只通过显式应用授权入口，不能退化个人凭证', async () => {
+    const owner = await MongoUser.create({ username: 'legacy-owner', password: 'password' });
+    await MongoTeam.create({ _id: teamId, ownerId: owner._id, name: 'legacy team' });
+    await MongoTeamMember.create({ _id: tmbId, teamId, userId: owner._id, status: 'leave' });
+    // 用原始集合模拟旧版缺少 type 的记录，保留历史数据兼容验证。
+    const openApi = new MongoOpenApi(legacyAppApiKey);
+    await MongoOpenApi.collection.insertOne(openApi.toObject({ getters: false }));
 
+    await expect(authOpenApiKey({ apikey: 'fastgpt-app' })).rejects.toBe(ERROR_ENUM.unAuthApiKey);
     const result = await authOpenApiKey({
-      apikey: 'fastgpt-app'
+      apikey: 'fastgpt-app',
+      authApiKey: false,
+      authAppApiKey: true
     });
 
     expect(result).toEqual({
@@ -97,6 +110,8 @@ describe('openapi auth', () => {
       apiKeyId: String(openApi._id),
       teamId,
       tmbId,
+      apiKeyType: ApiKeyTypeEnum.app,
+      boundAppId: appId,
       legacyAppId: appId,
       parsedAppId: '',
       authProxy: false,

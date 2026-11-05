@@ -6,16 +6,23 @@ import {
   ApiKeyHealthResponseSchema
 } from '@fastgpt/global/openapi/support/openapi/api';
 import { MongoOpenApi } from '@fastgpt/service/support/openapi/schema';
-import { resolveOpenApiCredential } from '@fastgpt/service/support/openapi/auth';
+import { getAppByApiKey } from '@fastgpt/service/support/openapi/auth';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { parseHeaderCert } from '@fastgpt/service/support/permission/auth/common';
+import { ApiKeyTypeEnum } from '@fastgpt/global/support/openapi/constants';
 
 export async function handler(req: ApiRequestProps): Promise<ApiKeyHealthResponseType> {
   const { apiKey } = parseApiInput({
     req,
     querySchema: ApiKeyHealthParamsSchema
   }).query;
-  const { apikey } = resolveOpenApiCredential(apiKey);
-  const apiKeyDoc = await MongoOpenApi.findOne({ apiKey: apikey }).lean();
+  const certificate = await parseHeaderCert({
+    req: { ...req, headers: { authorization: `Bearer ${apiKey}` } },
+    authApiKey: true,
+    authAppApiKey: true
+  });
+  if (certificate.apiKeyType === ApiKeyTypeEnum.app) await getAppByApiKey(certificate);
+  const apiKeyDoc = await MongoOpenApi.findById(certificate.apiKeyId).lean();
 
   if (!apiKeyDoc) {
     return Promise.reject('APIKey invalid');
@@ -23,10 +30,11 @@ export async function handler(req: ApiRequestProps): Promise<ApiKeyHealthRespons
 
   return ApiKeyHealthResponseSchema.parse({
     valid: true,
+    type: certificate.apiKeyType,
     usagePoints: apiKeyDoc.usagePoints ?? 0,
     maxUsagePoints: apiKeyDoc.limit?.maxUsagePoints ?? -1,
-    appId: apiKeyDoc.appId
+    appId: certificate.boundAppId
   });
 }
 
-export default NextAPI(handler);
+export default NextAPI(handler, { redactQueryParams: ['apiKey'] });
