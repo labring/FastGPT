@@ -1,6 +1,8 @@
 name: 'Test FastGPT'
 on:
-  pull_request:
+  # 使用目标分支的固定 workflow，让外部 PR 无需人工批准即可启动测试。
+  pull_request_target:
+    types: [opened, synchronize, reopened]
     paths:
       - 'packages/global/**'
       - 'packages/service/**'
@@ -28,8 +30,11 @@ concurrency:
   cancel-in-progress: true
 
 permissions:
-  # Required to checkout the code
+  # PR 代码不可信，测试 job 只提供只读 token，禁止注入仓库 secrets。
   contents: read
+
+# 禁止 PR 测试向默认分支缓存写入内容。
+cache-mode: read
 
 jobs:
   detect-changes:
@@ -66,7 +71,7 @@ jobs:
               );
             };
 
-            if (context.eventName !== 'pull_request') {
+            if (context.eventName !== 'pull_request_target') {
               setOutputs({ global: true, service: true, web: true, app: true, workflowCore: true, workflowCli: true });
               return;
             }
@@ -132,9 +137,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.ref || github.ref }}
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           repository: ${{ github.event.pull_request.head.repo.full_name ||
             github.repository }}
+          allow-unsafe-pr-checkout: true
           persist-credentials: false
 
       - uses: pnpm/action-setup@v4
@@ -169,9 +175,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.ref || github.ref }}
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           repository: ${{ github.event.pull_request.head.repo.full_name ||
             github.repository }}
+          allow-unsafe-pr-checkout: true
           persist-credentials: false
 
       - uses: pnpm/action-setup@v4
@@ -206,9 +213,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.ref || github.ref }}
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           repository: ${{ github.event.pull_request.head.repo.full_name ||
             github.repository }}
+          allow-unsafe-pr-checkout: true
           persist-credentials: false
 
       - uses: pnpm/action-setup@v4
@@ -242,9 +250,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.ref || github.ref }}
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           repository: ${{ github.event.pull_request.head.repo.full_name ||
             github.repository }}
+          allow-unsafe-pr-checkout: true
           persist-credentials: false
 
       - uses: pnpm/action-setup@v4
@@ -278,9 +287,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.ref || github.ref }}
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           repository: ${{ github.event.pull_request.head.repo.full_name ||
             github.repository }}
+          allow-unsafe-pr-checkout: true
           persist-credentials: false
 
       - uses: pnpm/action-setup@v4
@@ -318,9 +328,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.ref || github.ref }}
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           repository: ${{ github.event.pull_request.head.repo.full_name ||
             github.repository }}
+          allow-unsafe-pr-checkout: true
           persist-credentials: false
 
       - uses: pnpm/action-setup@v4
@@ -377,7 +388,7 @@ jobs:
           pattern: coverage-*
 
       - name: 'Report Coverage'
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request_target'
         uses: actions/github-script@v7
         with:
           script: |
