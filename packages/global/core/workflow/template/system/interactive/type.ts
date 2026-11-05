@@ -5,11 +5,6 @@ import { WorkflowIOValueTypeEnum } from '../../../../../core/workflow/constants'
 import { AppFileSelectConfigTypeSchema } from '../../../../app/type/config.schema';
 import { RuntimeEdgeItemTypeSchema } from '../../../type/edge';
 import { ReferenceArrayValueTypeSchema } from '../../../type/io';
-import {
-  MAX_SELECT_OPTION_COUNT,
-  normalizeSelectOptionList,
-  truncateSelectOptionText
-} from '../../../optionLimit';
 import z from 'zod';
 import { JsonValueOpenApiMeta, OpenObjectOpenApiMeta } from '../../../../../common/zod/openapi';
 import { AgentAskInteractiveSchema } from '../../../../ai/agent/type';
@@ -136,7 +131,7 @@ export type LoopRunInteractive = InteractiveNodeType & {
 // User selector
 export const UserSelectOptionItemSchema = z.object({
   key: z.string(),
-  value: z.string().overwrite((val) => truncateSelectOptionText(val))
+  value: z.string()
 });
 export type UserSelectOptionItemType = z.infer<typeof UserSelectOptionItemSchema>;
 export const UserSelectInteractiveSchema = z.object({
@@ -144,13 +139,8 @@ export const UserSelectInteractiveSchema = z.object({
   params: z.object({
     // 空说明在 Mongo Mixed 更新后可能从 undefined 变为 null，读取旧快照时统一为空串。
     description: z.preprocess((value) => value ?? '', z.string()),
-    userSelectOptions: z
-      .array(UserSelectOptionItemSchema)
-      .overwrite((list) => list.slice(0, MAX_SELECT_OPTION_COUNT)),
-    userSelectedVal: z
-      .string()
-      .overwrite((val) => truncateSelectOptionText(val))
-      .optional()
+    userSelectOptions: z.array(UserSelectOptionItemSchema),
+    userSelectedVal: z.string().optional()
   })
 });
 export type UserSelectInteractive = z.infer<typeof UserSelectInteractiveSchema>;
@@ -173,10 +163,7 @@ export const UserInputFormItemSchema = AppFileSelectConfigTypeSchema.extend({
   minLength: z.number().optional(), // password
   max: z.number().optional(), // numberInput
   min: z.number().optional(), // numberInput
-  list: z
-    .array(z.object({ label: z.string(), value: z.string() }))
-    .overwrite((list) => normalizeSelectOptionList(list))
-    .optional(), // select
+  list: z.array(z.object({ label: z.string(), value: z.string() })).optional(), // select
   listInputType: z
     .enum([FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference])
     .optional()

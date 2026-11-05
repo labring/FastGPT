@@ -1,6 +1,5 @@
 import { WorkflowIOValueTypeEnum, NodeInputKeyEnum, NodeOutputKeyEnum } from '../constants';
 import { FlowNodeInputTypeEnum, FlowNodeOutputTypeEnum } from '../node/constant';
-import { normalizeSelectOptionList } from '../optionLimit';
 import { SecretValueTypeSchema } from '../../../common/secret/type';
 import z from 'zod';
 import { BoolSchema, IntSchema, NumSchema } from '../../../common/zod';
@@ -110,22 +109,26 @@ export const InputComponentPropsTypeSchema = z.object({
   }), // password
   list: z
     .array(
-      z.object({
-        label: z.string().optional().meta({
-          description: '变量选项展示名称'
-        }),
-        value: z.string().meta({
-          description: '变量选项实际值'
-        }),
-        icon: z.string().optional().meta({
-          description: '变量选项图标'
-        }),
-        description: z.string().optional().meta({
-          description: '变量选项说明'
+      z
+        .object({
+          label: z.string().optional().meta({
+            description: '变量选项展示名称'
+          }),
+          value: z.string().meta({
+            description: '变量选项实际值'
+          }),
+          icon: z.string().optional().meta({
+            description: '变量选项图标'
+          }),
+          description: z.string().optional().meta({
+            description: '变量选项说明'
+          })
         })
-      })
+        .transform((item) => ({
+          ...item,
+          label: item.label ?? item.value
+        }))
     )
-    .transform((list) => normalizeSelectOptionList(list))
     .optional()
     .meta({
       description: '选择类变量的可选项'
@@ -209,16 +212,20 @@ export const InputComponentPropsTypeSchema = z.object({
 
   enums: z
     .array(
-      z.object({
-        value: z.string().meta({
-          description: '枚举项实际值'
-        }),
-        label: z.string().optional().meta({
-          description: '枚举项展示名称'
+      z
+        .object({
+          value: z.string().meta({
+            description: '枚举项实际值'
+          }),
+          label: z.string().optional().meta({
+            description: '枚举项展示名称'
+          })
         })
-      })
+        .transform((item) => ({
+          ...item,
+          label: item.label ?? item.value
+        }))
     )
-    .transform((list) => normalizeSelectOptionList(list))
     .optional()
     .meta({
       description: '已废弃：旧版枚举变量选项',

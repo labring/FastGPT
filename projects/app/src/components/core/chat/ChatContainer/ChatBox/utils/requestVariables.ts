@@ -1,6 +1,5 @@
 import type { VariableItemType } from '@fastgpt/global/core/app/variable/type';
 import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
-import { normalizeSelectValue } from '@fastgpt/global/core/workflow/optionLimit';
 import { valueTypeFormat } from '@fastgpt/global/core/workflow/runtime/utils';
 import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 
@@ -45,10 +44,11 @@ export const formatChatRequestVariables = ({
     }
 
     // 最后按 valueType 收敛类型，避免表单字符串直接进入 workflow runtime。
-    requestVariables[item.key] = normalizeSelectValue({
-      value: valueTypeFormat(val, item.valueType, item.type === VariableInputEnum.password),
-      type: item.type
-    });
+    requestVariables[item.key] = valueTypeFormat(
+      val,
+      item.valueType,
+      item.type === VariableInputEnum.password
+    );
   });
 
   return requestVariables;

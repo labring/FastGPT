@@ -4,7 +4,6 @@ import {
   variableMap,
   WorkflowIOValueTypeEnum
 } from '../../workflow/constants';
-import { normalizeSelectValue } from '../../workflow/optionLimit';
 
 const workflowValueTypes = new Set(Object.values(WorkflowIOValueTypeEnum));
 
@@ -49,15 +48,7 @@ export const normalizeAndParseVariableList = (variableList: unknown): VariableIt
                 valueType: normalizeVariableValueType({
                   type: variable.type,
                   valueType: variable.valueType
-                }),
-                ...(variable.defaultValue !== undefined
-                  ? {
-                      defaultValue: normalizeSelectValue({
-                        value: variable.defaultValue,
-                        type: variable.type
-                      })
-                    }
-                  : {})
+                })
               }
             : variable
         )

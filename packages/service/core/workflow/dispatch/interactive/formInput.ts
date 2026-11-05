@@ -16,11 +16,6 @@ import {
 import { getWorkflowFileContext, getWorkflowFileRegistrar } from '../../utils/context';
 import type { WorkflowFileRegistrar } from '../../utils/fileContext';
 import { getModuleFileAmountLimit } from '@fastgpt/global/core/workflow/fileLimit';
-import {
-  isSelectInputType,
-  normalizeSelectOptionList,
-  normalizeSelectValue
-} from '@fastgpt/global/core/workflow/optionLimit';
 import { resolveDynamicOptionStrings } from './dynamicOptions';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 
@@ -112,23 +107,7 @@ export const dispatchFormInput = async (props: Props): Promise<FormInputResponse
     const resolvedInputForms: UserInputFormItemType[] = [];
     for (const item of userInputForms) {
       if (!isReferenceOptionFormItem(item)) {
-        if (!isSelectInputType(item.type)) {
-          resolvedInputForms.push(item);
-          continue;
-        }
-
-        resolvedInputForms.push({
-          ...item,
-          ...(item.list ? { list: normalizeSelectOptionList(item.list) } : {}),
-          ...(item.defaultValue !== undefined
-            ? {
-                defaultValue: normalizeSelectValue({
-                  value: item.defaultValue,
-                  type: item.type
-                })
-              }
-            : {})
-        });
+        resolvedInputForms.push(item);
         continue;
       }
 
@@ -207,7 +186,7 @@ export const dispatchFormInput = async (props: Props): Promise<FormInputResponse
           })
         ] as const;
       }
-      return [key, normalizeSelectValue({ value, type: inputConfig?.type })] as const;
+      return [key, value] as const;
     })
   );
   const userInputVal = Object.fromEntries(userInputEntries) as FormInputValueMap;

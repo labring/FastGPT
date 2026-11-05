@@ -254,50 +254,21 @@ describe('dispatchUserSelect', () => {
     });
   });
 
-  it('truncates options to 200 items / 100 chars and skips out-of-range handles on resume', async () => {
-    const manualOptions = Array.from({ length: 205 }, (_, i) => ({
-      key: `k_${i}`,
-      value: `opt_${i}_${'x'.repeat(110)}`
-    }));
-    const createNode = (selectedType: FlowNodeInputTypeEnum, isEntry: boolean) =>
-      ({
+  it('truncates dynamic reference options to 200 items and 100 chars', async () => {
+    const dynamicRaw = Array.from({ length: 205 }, (_, i) => `dyn_${i}_${'y'.repeat(110)}`);
+    const res = await dispatchUserSelect({
+      histories: [],
+      node: {
         nodeId: 'selectNode',
-        isEntry,
+        isEntry: false,
         inputs: [
           {
             key: NodeInputKeyEnum.userSelectOptions,
             renderTypeList: [FlowNodeInputTypeEnum.custom, FlowNodeInputTypeEnum.reference],
-            selectedType
+            selectedType: FlowNodeInputTypeEnum.reference
           }
         ]
-      }) as any;
-
-    const resumedManual = await dispatchUserSelect({
-      histories: [],
-      node: createNode(FlowNodeInputTypeEnum.custom, true),
-      runtimeNodesMap: new Map(),
-      params: {
-        [NodeInputKeyEnum.description]: 'Choose one',
-        [NodeInputKeyEnum.userSelectOptions]: manualOptions
-      },
-      query: [{ text: { content: manualOptions[0].value } }],
-      lastInteractive: { type: 'userSelect' }
-    } as any);
-
-    expect(resumedManual.data?.[NodeOutputKeyEnum.selectResult]).toBe(
-      manualOptions[0].value.slice(0, 100)
-    );
-    expect(resumedManual[DispatchNodeResponseKeyEnum.skipHandleId]).not.toContain(
-      'selectNode-source-k_0'
-    );
-    expect(resumedManual[DispatchNodeResponseKeyEnum.skipHandleId]).toContain(
-      'selectNode-source-k_200'
-    );
-
-    const dynamicRaw = Array.from({ length: 205 }, (_, i) => `dyn_${i}_${'y'.repeat(110)}`);
-    const initialDynamic = await dispatchUserSelect({
-      histories: [],
-      node: createNode(FlowNodeInputTypeEnum.reference, false),
+      } as any,
       runtimeNodesMap: new Map(),
       params: {
         [NodeInputKeyEnum.description]: 'Choose one',
@@ -306,8 +277,7 @@ describe('dispatchUserSelect', () => {
       query: []
     } as any);
 
-    const dynamicOptions =
-      initialDynamic[DispatchNodeResponseKeyEnum.interactive]?.params?.userSelectOptions;
+    const dynamicOptions = res[DispatchNodeResponseKeyEnum.interactive]?.params?.userSelectOptions;
     expect(dynamicOptions).toHaveLength(200);
     expect(dynamicOptions?.[0]).toEqual({
       key: 'option_1',

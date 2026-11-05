@@ -10,11 +10,6 @@ import {
   NodeOutputKeyEnum,
   NodeInputKeyEnum
 } from '../../core/workflow/constants';
-import {
-  isSelectInputType,
-  normalizeSelectOptionList,
-  normalizeSelectValue
-} from '../../core/workflow/optionLimit';
 import type { FlowNodeInputItemType, FlowNodeOutputItemType } from '../../core/workflow/type/io';
 import type { NodeToolConfigType, StoreNodeItemType } from '../../core/workflow/type/node';
 import { ToolSetToolSummarySchema } from '../../core/app/tool/toolSet/type';
@@ -47,27 +42,13 @@ export const pluginData2FlowNodeIO = ({
     inputs: pluginInput
       ? [
           Input_Template_Stream_MODE,
-          ...pluginInput.inputs.map((item) => {
-            const selectType = item.renderTypeList.find(isSelectInputType);
-            const defaultValue = normalizeSelectValue({
-              value: item.defaultValue,
-              type: selectType
-            });
-            const normalizedItem = {
+          ...pluginInput?.inputs.map((item) =>
+            projectExternalVariableInput({
               ...item,
-              ...(item.defaultValue !== undefined ? { defaultValue } : {}),
-              ...(selectType && item.list ? { list: normalizeSelectOptionList(item.list) } : {})
-            };
-
-            return projectExternalVariableInput({
-              ...normalizedItem,
-              value: normalizeSelectValue({
-                value: getOrInitModuleInputValue(normalizedItem),
-                type: selectType
-              }),
+              value: getOrInitModuleInputValue(item),
               canEdit: false
-            });
-          })
+            })
+          )
         ]
       : [],
     outputs: pluginOutput
@@ -94,11 +75,10 @@ export const appData2FlowNodeIO = ({
   const variableInput = !chatConfig?.variables
     ? []
     : chatConfig.variables.map(normalizeLegacyAppVariable).map((item) => {
-        const supportsOptions = isSelectInputType(item.type);
-        const normalizedDefaultValue = normalizeSelectValue({
-          value: item.defaultValue,
-          type: item.type
-        });
+        const supportsOptions = [
+          VariableInputEnum.select,
+          VariableInputEnum.multipleSelect
+        ].includes(item.type);
         return projectExternalVariableInput({
           key: item.key,
           renderTypeList: getAppVariableRenderTypeList({
@@ -110,17 +90,16 @@ export const appData2FlowNodeIO = ({
           description: item.description,
           valueType: item.valueType || WorkflowIOValueTypeEnum.any,
           required: item.required,
-          defaultValue: normalizedDefaultValue,
-          value: normalizedDefaultValue,
+          defaultValue: item.defaultValue,
+          value: item.defaultValue,
           ...(supportsOptions
             ? {
                 list: item.list
-                  ? normalizeSelectOptionList(
-                      item.list
-                        .filter((enumItem) => String(enumItem.value ?? '').trim().length > 0)
-                        .map((enumItem) => ({ value: enumItem.value }))
-                    )
-                  : undefined
+                  ?.map((enumItem) => ({
+                    label: enumItem.value,
+                    value: enumItem.value
+                  }))
+                  .filter((enumItem) => String(enumItem.value ?? '').trim().length > 0)
               }
             : {})
         });

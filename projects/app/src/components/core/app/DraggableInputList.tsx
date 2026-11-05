@@ -130,10 +130,7 @@ function DraggableInputList<T extends DraggableInputListItemType>({
         letterSpacing={0}
         leftIcon={<MyIcon name={'common/addLight'} w={'18px'} color={'myGray.600'} />}
         isDisabled={isMaxItemsReached}
-        onClick={() => {
-          if (isMaxItemsReached) return;
-          onAdd();
-        }}
+        onClick={onAdd}
       >
         {addText}
       </Button>
