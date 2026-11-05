@@ -352,9 +352,15 @@ describe('POST /api/core/dataset/training/rebuildEmbedding', () => {
       collectionId: collection._id,
       billId: 'old-bill',
       mode: TrainingModeEnum.index,
+      dataId: failedData._id,
       retryCount: 0,
       lockTime: new Date(),
-      errorMsg: '404 old model does not exist'
+      errorMsg: '404 old model does not exist',
+      indexes: [
+        { type: 'custom', text: 'user custom index', dataId: 'custom-1' },
+        { type: 'summary', text: 'draft summary', dataId: 'summary-1' }
+      ],
+      imageDescMap: { 'dataset/team/a.png': '图片描述' }
     });
     // 解析失败与 embedding 无关，切换模型不能清掉
     await MongoDatasetTraining.create({
@@ -389,6 +395,14 @@ describe('POST /api/core/dataset/training/rebuildEmbedding', () => {
       mode: TrainingModeEnum.index
     }).lean();
     expect(failedTask).toEqual(expect.objectContaining({ retryCount: 3 }));
+    // 失败任务里的索引草稿与图片描述必须恢复，不能被 deleteMany 静默丢弃
+    expect(failedTask?.indexes).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ type: 'custom', text: 'user custom index' }),
+        expect.objectContaining({ type: 'summary', text: 'draft summary' })
+      ])
+    );
+    expect(failedTask?.imageDescMap).toEqual({ 'dataset/team/a.png': '图片描述' });
 
     // 已成功索引的数据仍走 rebuildIndex（seed 后可能已被领取为 running）
     const indexedAfter = await MongoDatasetData.findById(indexedData._id).lean();

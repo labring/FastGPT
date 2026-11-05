@@ -30,6 +30,8 @@ const logger = getLogger(LogCategories.MODULE.DATASET.TRAINING);
 export type PushDataChunkWithDataIdType = PushDataChunkType & {
   /** 提前落库数据的 _id，写入训练任务用于下游定位同一条数据。 */
   dataId?: string;
+  /** 失败任务恢复时保留的图片描述映射。 */
+  imageDescMap?: Record<string, string>;
 };
 
 /** 各训练阶段的分块上限与权重，预落库与队列写入共用同一份口径。 */
@@ -291,6 +293,7 @@ export const pushDataListToTrainingQueue = async ({
           ...(item.q && { q: item.q }),
           ...(item.a && { a: item.a }),
           ...(item.imageId && { imageId: item.imageId }),
+          ...(item.imageDescMap && { imageDescMap: item.imageDescMap }),
           ...(item.dataId && { dataId: item.dataId }),
           ...(item.metadata && { dataMetadata: item.metadata }),
           chunkIndex: item.chunkIndex ?? 0,
@@ -426,9 +429,19 @@ export const preCreateDatasetDataAndPushToTrainingQueue = async ({
     vlmModel,
     vlmModelConfigured
   });
-  const dataList = filterTrainingDataList({ data, maxToken });
+  // 先只过滤空内容，再按模式上限拆分：auto 是可选增强，超长条目回退普通 index，
+  // 不能因为增强阶段的模型上限让知识内容静默消失。
+  const nonEmptyData = filterTrainingDataList({ data, maxToken: Infinity });
+  const dataList =
+    mode === TrainingModeEnum.auto
+      ? nonEmptyData.filter((item) => ((item.q || '') + (item.a || '')).length <= maxToken)
+      : filterTrainingDataList({ data, maxToken });
+  const fallbackData =
+    mode === TrainingModeEnum.auto
+      ? nonEmptyData.filter((item) => ((item.q || '') + (item.a || '')).length > maxToken)
+      : [];
 
-  if (dataList.length === 0) {
+  if (dataList.length === 0 && fallbackData.length === 0) {
     return { insertLen: 0, dataIds: [] };
   }
 
@@ -436,63 +449,78 @@ export const preCreateDatasetDataAndPushToTrainingQueue = async ({
     ? await getDatasetSynonymTransformContext({ teamId, datasetId })
     : undefined;
 
-  const dataWithIds: Array<PushDataChunkWithDataIdType> = [];
-
-  for (let i = 0; i < dataList.length; i += preCreateBatchSize) {
-    const batch = dataList.slice(i, i + preCreateBatchSize);
-
-    const createdData = await MongoDatasetData.create(
-      batch.map((item) => ({
-        teamId,
-        tmbId,
-        datasetId,
-        collectionId,
-        q: item.q || '',
-        a: item.a,
-        imageId: item.imageId,
-        ...(item.metadata && { metadata: item.metadata }),
-        chunkIndex: item.chunkIndex ?? 0,
-        indexes: [],
-        indexStatus: DatasetDataIndexStatusEnum.indexing,
-        ...(synonymContext && { synonymVersion: synonymContext.version })
-      })),
-      { session, ordered: true }
-    );
-
-    const imageKeys = batch
-      .map((item) => item.imageId)
-      .filter((id): id is string => Boolean(id) && isS3ObjectKey(id, 'dataset'));
-    if (imageKeys.length > 0) {
-      await removeS3TTL({ key: imageKeys, bucketName: 'private', session });
+  /** 创建 indexing 数据行并把对应任务写入队列；同一事务内可按不同 mode 分批调用。 */
+  const createAndPush = async (items: PushDataChunkType[], itemMode: TrainingModeEnum) => {
+    if (items.length === 0) {
+      return { insertLen: 0, dataIds: [] as string[] };
     }
 
-    dataWithIds.push(
-      ...createdData.map((item, index) => ({
-        ...batch[index],
-        dataId: String(item._id)
-      }))
-    );
-  }
+    const dataWithIds: Array<PushDataChunkWithDataIdType> = [];
 
-  const result = await pushDataListToTrainingQueue({
-    teamId,
-    tmbId,
-    datasetId,
-    collectionId,
-    agentModel,
-    vectorModel,
-    vlmModel,
-    vlmModelConfigured,
-    data: dataWithIds,
-    mode,
-    indexSize,
-    billId,
-    session
-  });
+    for (let i = 0; i < items.length; i += preCreateBatchSize) {
+      const batch = items.slice(i, i + preCreateBatchSize);
+
+      const createdData = await MongoDatasetData.create(
+        batch.map((item) => ({
+          teamId,
+          tmbId,
+          datasetId,
+          collectionId,
+          q: item.q || '',
+          a: item.a,
+          imageId: item.imageId,
+          ...(item.metadata && { metadata: item.metadata }),
+          chunkIndex: item.chunkIndex ?? 0,
+          indexes: [],
+          indexStatus: DatasetDataIndexStatusEnum.indexing,
+          ...(synonymContext && { synonymVersion: synonymContext.version })
+        })),
+        { session, ordered: true }
+      );
+
+      const imageKeys = batch
+        .map((item) => item.imageId)
+        .filter((id): id is string => Boolean(id) && isS3ObjectKey(id, 'dataset'));
+      if (imageKeys.length > 0) {
+        await removeS3TTL({ key: imageKeys, bucketName: 'private', session });
+      }
+
+      dataWithIds.push(
+        ...createdData.map((item, index) => ({
+          ...batch[index],
+          dataId: String(item._id)
+        }))
+      );
+    }
+
+    const result = await pushDataListToTrainingQueue({
+      teamId,
+      tmbId,
+      datasetId,
+      collectionId,
+      agentModel,
+      vectorModel,
+      vlmModel,
+      vlmModelConfigured,
+      data: dataWithIds,
+      mode: itemMode,
+      indexSize,
+      billId,
+      session
+    });
+
+    return {
+      ...result,
+      dataIds: dataWithIds.map((item) => item.dataId!).filter(Boolean)
+    };
+  };
+
+  const primary = await createAndPush(dataList, mode);
+  const fallback = await createAndPush(fallbackData, TrainingModeEnum.index);
 
   return {
-    ...result,
-    dataIds: dataWithIds.map((item) => item.dataId!).filter(Boolean)
+    insertLen: primary.insertLen + fallback.insertLen,
+    dataIds: [...primary.dataIds, ...fallback.dataIds]
   };
 };
 

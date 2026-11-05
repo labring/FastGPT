@@ -85,6 +85,19 @@ async function handler(req: ApiRequestProps): Promise<RebuildEmbeddingResponse> 
     },
     { _id: 1, collectionId: 1, q: 1, a: 1, imageId: 1, indexes: 1, chunkIndex: 1 }
   ).lean();
+  // 预落库数据的 data.indexes 为空，custom/question/summary 等草稿只保存在失败任务里；
+  // 删除旧任务前必须取回，否则换模型会静默丢失用户索引和增强结果。
+  const failedIndexTasks = await MongoDatasetTraining.find(
+    {
+      teamId,
+      datasetId,
+      mode: TrainingModeEnum.index,
+      dataId: { $exists: true },
+      ...finalErrorTrainingMatch
+    },
+    { dataId: 1, indexes: 1, imageDescMap: 1 }
+  ).lean();
+  const failedTaskByDataId = new Map(failedIndexTasks.map((task) => [String(task.dataId), task]));
 
   // update vector model and dataset.data rebuild field
   await mongoSessionRun(async (session) => {
@@ -174,14 +187,19 @@ async function handler(req: ApiRequestProps): Promise<RebuildEmbeddingResponse> 
           mode: TrainingModeEnum.index,
           billId: String(usageId),
           session,
-          data: data.map((item) => ({
-            q: item.q,
-            a: item.a,
-            imageId: item.imageId,
-            dataId: String(item._id),
-            chunkIndex: item.chunkIndex,
-            indexes: item.indexes
-          }))
+          data: data.map((item) => {
+            const failedTask = failedTaskByDataId.get(String(item._id));
+            return {
+              q: item.q,
+              a: item.a,
+              imageId: item.imageId,
+              dataId: String(item._id),
+              chunkIndex: item.chunkIndex,
+              // 优先恢复失败任务里的完整草稿（custom/question/summary/image）
+              indexes: failedTask?.indexes?.length ? failedTask.indexes : item.indexes,
+              ...(failedTask?.imageDescMap && { imageDescMap: failedTask.imageDescMap })
+            };
+          })
         });
       }
     }
