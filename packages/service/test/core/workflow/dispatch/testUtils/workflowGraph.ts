@@ -115,7 +115,7 @@ export const runGraph = async ({
 }: {
   nodes: RuntimeNodeItemType[];
   edges?: RuntimeEdgeItemType[];
-  overrides?: Partial<RunWorkflowProps>;
+  overrides?: Partial<Parameters<typeof runWorkflow>[0]>;
 }) => {
   const responses: ChatHistoryItemResType[] = [];
   const publish = vi.fn(async (items: Array<{ response: ChatHistoryItemResType }>) => {
@@ -178,7 +178,6 @@ export const runGraph = async ({
         externalProvider: {},
         maxRunTimes: 100,
         workflowDispatchDeep: 0,
-        checkIsStopping: () => false,
         ...overrides,
         variableContext: variableState,
         runtimeNodes: nodes,
