@@ -1,12 +1,9 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { FlowNodeTypeEnum, LoopRunModeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import type { RunWorkflowProps } from '@fastgpt/service/core/workflow/dispatch';
+import type { RunWorkflowProps } from '@fastgpt/service/core/workflow/dispatch/type';
 import { callbackMap } from '@fastgpt/service/core/workflow/dispatch/constants';
-import {
-  internalRuntimeNodeType,
-  internalRuntimeNodeRunnerKey
-} from '@fastgpt/service/core/workflow/dispatch/internal/runtimeNode';
+import { codeSandbox } from '@fastgpt/service/thirdProvider/codeSandbox';
 import {
   graphNode,
   graphEdge,
@@ -14,6 +11,16 @@ import {
   graphValues,
   runGraph
 } from './testUtils/workflowGraph';
+
+afterEach(() => vi.restoreAllMocks());
+
+vi.mock('@fastgpt/service/env', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@fastgpt/service/env')>();
+  return {
+    ...actual,
+    serviceEnv: { ...actual.serviceEnv, CODE_SANDBOX_URL: 'http://sandbox.test' }
+  };
+});
 
 vi.mock('@fastgpt/service/common/string/tiktoken/index', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@fastgpt/service/common/string/tiktoken/index')>()),
@@ -162,11 +169,6 @@ const cases: DataCase[] = [
   },
   { type: FlowNodeTypeEnum.loopRunBreak, expectedData: {} },
   {
-    type: internalRuntimeNodeType,
-    params: { [internalRuntimeNodeRunnerKey]: () => ({ data: { value: { nested: [1, false] } } }) },
-    expectedData: { value: { nested: [1, false] } }
-  },
-  {
     type: FlowNodeTypeEnum.loop,
     params: { loopInputArray: [], childrenNodeIdList: [] },
     expectedData: { [NodeOutputKeyEnum.nestedArrayResult]: [] }
@@ -210,11 +212,15 @@ describe('registered node data transfer', () => {
     for (const type of placeholders) expect(await callbackMap[type]()).toBeUndefined();
   });
 
-  it('internal runtime failures expose error outputs without leaking the original exception', async () => {
+  it('code failures expose error outputs without leaking the original exception', async () => {
+    vi.spyOn(codeSandbox, 'runCode').mockRejectedValueOnce(
+      new Error('sandbox execution failed', { cause: new Error('private cause') })
+    );
     const keys = [NodeOutputKeyEnum.errorText, 'rawError', 'stack', 'cause'];
     const source = graphNode({
       id: 'source',
-      type: internalRuntimeNodeType as FlowNodeTypeEnum,
+      type: FlowNodeTypeEnum.code,
+      params: { codeType: 'javascript', code: 'fixture' },
       isEntry: true,
       catchError: true,
       outputs: keys
@@ -230,7 +236,7 @@ describe('registered node data transfer', () => {
       edges: [graphEdge({ source: 'source', target: 'target', error: true })]
     });
     expect(graphValues(target)).toEqual({
-      [NodeOutputKeyEnum.errorText]: 'Internal runtime node runner is missing',
+      [NodeOutputKeyEnum.errorText]: 'sandbox execution failed',
       rawError: undefined,
       stack: undefined,
       cause: undefined
