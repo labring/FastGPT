@@ -97,6 +97,15 @@ describe('maskModerationSecrets', () => {
 describe('hasConfiguredModerationSecrets', () => {
   const secretKeys = getModerationSecretKeys(secretSchema);
 
+  it('accepts a saved empty configuration for credential-free plugins only', () => {
+    expect(hasConfiguredModerationSecrets({ secretsVal: {} })).toBe(true);
+    expect(hasConfiguredModerationSecrets({ secretsVal: { enabled: false } })).toBe(true);
+    expect(hasConfiguredModerationSecrets({ secretsVal: { limit: 0 } })).toBe(true);
+    expect(hasConfiguredModerationSecrets({ secretsVal: undefined })).toBe(false);
+    expect(hasConfiguredModerationSecrets({ secretsVal: null })).toBe(false);
+    expect(hasConfiguredModerationSecrets({ secretsVal: {}, secretKeys })).toBe(false);
+  });
+
   it('is true only when at least one secret field has a value', () => {
     expect(
       hasConfiguredModerationSecrets({ secretsVal: { accessKeyId: { secret: 'x' } }, secretKeys })
@@ -104,9 +113,9 @@ describe('hasConfiguredModerationSecrets', () => {
     expect(hasConfiguredModerationSecrets({ secretsVal: {}, secretKeys })).toBe(false);
     expect(hasConfiguredModerationSecrets({ secretsVal: undefined, secretKeys })).toBe(false);
     // 只有非密钥字段配置了，在插件声明了密钥时，不算「已配置密钥」
-    expect(
-      hasConfiguredModerationSecrets({ secretsVal: { strategyId: 'abc' }, secretKeys })
-    ).toBe(false);
+    expect(hasConfiguredModerationSecrets({ secretsVal: { strategyId: 'abc' }, secretKeys })).toBe(
+      false
+    );
 
     // 当插件未声明任何密钥字段时（例如关键词插件），配置了普通字段即算已配置
     expect(

@@ -1,7 +1,6 @@
 import { ModerationSecretMaskedValue } from '@fastgpt/global/core/plugin/moderation/constants';
 import type { ModerationPluginConfigType } from '@fastgpt/global/core/plugin/moderation/type';
 
-
 /**
  * 从插件声明的 JSON Schema `secretSchema` 中提取密钥字段名。
  *
@@ -135,7 +134,7 @@ export const maskModerationSecrets = ({
   );
 };
 
-/** 是否已保存过任意字段配置。用于区分「未配置」与「配置为空」 */
+/** A saved empty configuration is valid for credential-free plugins; secret plugins still need a credential. */
 export const hasConfiguredModerationSecrets = ({
   secretsVal,
   secretKeys = new Set()
@@ -148,8 +147,8 @@ export const hasConfiguredModerationSecrets = ({
   if (secretKeys.size > 0) {
     return [...secretKeys].some((key) => hasValue(secretsVal[key]));
   }
-  // 若插件未声明任何密钥字段（例如纯关键词等通用参数），只要任意字段有值即视为已配置
-  return Object.values(secretsVal).some((val) => hasValue(val));
+  // Credential-free plugins may intentionally use only their schema defaults.
+  return true;
 };
 
 /**

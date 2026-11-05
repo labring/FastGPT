@@ -1,3 +1,4 @@
+import { listRetainedPlugins } from './lifecycle';
 import { pluginClient, withPluginClientLocale } from './index';
 import type { LangEnum } from '@fastgpt/global/common/i18n/type';
 import type {
@@ -14,12 +15,14 @@ import type {
  * 返回的是轻量列表结构（不含 secretSchema 与 meta），渲染配置表单需要调用 getModeration。
  */
 export const listModerationPlugins = async ({
-  lang
+  lang,
+  includeDisabled
 }: {
   lang?: `${LangEnum}`;
+  includeDisabled?: boolean;
 } = {}) => {
   const plugins = await withPluginClientLocale(lang, () =>
-    pluginClient.listPlugins({ types: ['moderation'] })
+    includeDisabled ? listRetainedPlugins() : pluginClient.listPlugins({ types: ['moderation'] })
   );
 
   return plugins.filter((plugin) => plugin.type === 'moderation');

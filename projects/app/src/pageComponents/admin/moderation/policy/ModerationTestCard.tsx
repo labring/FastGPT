@@ -1,13 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'next-i18next';
-import {
-  Box,
-  Button,
-  Flex,
-  HStack,
-  Text,
-  Textarea
-} from '@chakra-ui/react';
+import { Box, Button, Flex, HStack, Text, Textarea } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
@@ -63,9 +56,7 @@ const renderHighlightedContent = (text: string, keywords: string[]) => {
   if (!keywords || keywords.length === 0 || !text) {
     return text;
   }
-  const escaped = keywords
-    .filter(Boolean)
-    .map((k) => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+  const escaped = keywords.filter(Boolean).map((k) => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
   if (escaped.length === 0) return text;
 
   const regex = new RegExp(`(${escaped.join('|')})`, 'gi');
@@ -161,7 +152,7 @@ const ModerationTestCard: React.FC<ModerationTestCardProps> = ({ activePlugin })
     const allKeywords = Array.from(
       new Set([
         ...(testResult.keywords ?? []),
-        ...((testResult.hits ?? []).flatMap((h) => h.keywords ?? []))
+        ...(testResult.hits ?? []).flatMap((h) => h.keywords ?? [])
       ])
     ).filter(Boolean);
 
@@ -287,14 +278,17 @@ const ModerationTestCard: React.FC<ModerationTestCardProps> = ({ activePlugin })
         />
 
         {/* 底部操作与结果标签行 */}
-        <Flex alignItems={'center'} justifyContent={'space-between'} mt={3}>
+        <Flex alignItems={'center'} justifyContent={'space-between'} mt={2}>
           {/* 左侧：审核结果标签 */}
           <Box minH={'36px'}>{testResult && renderVerdictTag(testResult.verdict)}</Box>
 
           {/* 右侧：操作按钮 */}
-          <HStack spacing={3}>
+          <HStack spacing={2}>
             <Button
-              size={'sm'}
+              size={'md'}
+              h={'36px'}
+              minW={'57px'}
+              px={3}
               variant={'whiteBase'}
               onClick={handleClear}
               isDisabled={runningTest || (!content && !testResult)}
@@ -302,7 +296,10 @@ const ModerationTestCard: React.FC<ModerationTestCardProps> = ({ activePlugin })
               清空
             </Button>
             <Button
-              size={'sm'}
+              size={'md'}
+              h={'36px'}
+              minW={'85px'}
+              px={3}
               onClick={handleRunTest}
               isLoading={runningTest}
               isDisabled={!activePlugin || !content.trim()}
@@ -345,9 +342,7 @@ const ModerationTestCard: React.FC<ModerationTestCardProps> = ({ activePlugin })
                   <Text w={'80px'} color={'myGray.600'} flexShrink={0} fontWeight={'medium'}>
                     命中标签
                   </Text>
-                  <Text color={'myGray.900'}>
-                    {flatDetail.hitLabels.join('、')}
-                  </Text>
+                  <Text color={'myGray.900'}>{flatDetail.hitLabels.join('、')}</Text>
                 </Flex>
               )}
 
@@ -357,9 +352,7 @@ const ModerationTestCard: React.FC<ModerationTestCardProps> = ({ activePlugin })
                   <Text w={'80px'} color={'myGray.600'} flexShrink={0} fontWeight={'medium'}>
                     关键词
                   </Text>
-                  <Text color={'myGray.900'}>
-                    {flatDetail.allKeywords.join('、')}
-                  </Text>
+                  <Text color={'myGray.900'}>{flatDetail.allKeywords.join('、')}</Text>
                 </Flex>
               )}
 
@@ -369,7 +362,12 @@ const ModerationTestCard: React.FC<ModerationTestCardProps> = ({ activePlugin })
                   <Text w={'80px'} color={'myGray.600'} flexShrink={0} fontWeight={'medium'}>
                     内容详情
                   </Text>
-                  <Box color={'myGray.900'} flex={1} whiteSpace={'pre-wrap'} wordBreak={'break-word'}>
+                  <Box
+                    color={'myGray.900'}
+                    flex={1}
+                    whiteSpace={'pre-wrap'}
+                    wordBreak={'break-word'}
+                  >
                     {renderHighlightedContent(
                       extractContentSnippet(content, flatDetail.allKeywords),
                       flatDetail.allKeywords

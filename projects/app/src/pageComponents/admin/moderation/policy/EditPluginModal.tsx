@@ -1,15 +1,6 @@
 import React, { useMemo, useState } from 'react';
-import {
-  Box,
-  Button,
-  Flex,
-  HStack,
-  Input,
-  ModalBody,
-  ModalFooter,
-  Switch,
-  Text
-} from '@chakra-ui/react';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
+import { Box, Button, Flex, Input, ModalBody, ModalFooter, Switch, Text } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MySelect from '@fastgpt/web/components/common/MySelect';
@@ -30,10 +21,12 @@ type EditPluginModalProps = {
 
 const EditPluginModal: React.FC<EditPluginModalProps> = ({ plugin, onClose, onSuccess }) => {
   const { toast } = useToast();
+  const { i18n } = useSafeTranslation();
 
   const inputList = useMemo(
-    () => jsonSchema2SecretInput({ jsonSchema: plugin.secretSchema as any }) ?? [],
-    [plugin.secretSchema]
+    () =>
+      jsonSchema2SecretInput({ jsonSchema: plugin.secretSchema as any, lang: i18n.language }) ?? [],
+    [plugin.secretSchema, i18n.language]
   );
 
   // 初始化表单状态：复用已保存的 secretsVal
@@ -72,7 +65,11 @@ const EditPluginModal: React.FC<EditPluginModalProps> = ({ plugin, onClose, onSu
             !clearedSecretKeys.has(field.key);
 
           if (!isConfiguredMasked) {
-            if (val === undefined || val === null || (typeof val === 'string' && val.trim() === '')) {
+            if (
+              val === undefined ||
+              val === null ||
+              (typeof val === 'string' && val.trim() === '')
+            ) {
               toast({
                 status: 'warning',
                 title: `请填写必填项: ${field.label || field.key}`
@@ -167,7 +164,7 @@ const EditPluginModal: React.FC<EditPluginModalProps> = ({ plugin, onClose, onSu
                   ) : item.inputType === 'secret' ? (
                     <HiddenInput
                       h={'38px'}
-                      placeholder={`请输入 ${item.label || item.key}`}
+                      placeholder={item.placeholder ?? `请输入 ${item.label || item.key}`}
                       value={typeof val === 'string' ? val : ''}
                       onChange={(e: any) => handleFieldChange(item.key, e.target.value)}
                     />
@@ -179,7 +176,7 @@ const EditPluginModal: React.FC<EditPluginModalProps> = ({ plugin, onClose, onSu
                   ) : item.inputType === 'select' ? (
                     <MySelect
                       width={'100%'}
-                      placeholder={`请选择 ${item.label || item.key}`}
+                      placeholder={item.placeholder ?? `请选择 ${item.label || item.key}`}
                       value={val}
                       list={
                         item.list?.map((opt) => ({
@@ -192,7 +189,7 @@ const EditPluginModal: React.FC<EditPluginModalProps> = ({ plugin, onClose, onSu
                   ) : (
                     <Input
                       h={'38px'}
-                      placeholder={`请输入 ${item.label || item.key}`}
+                      placeholder={item.placeholder ?? `请输入 ${item.label || item.key}`}
                       value={val ?? ''}
                       onChange={(e) => handleFieldChange(item.key, e.target.value)}
                     />

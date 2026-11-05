@@ -23,35 +23,44 @@ export type ModerationConfigRecord = {
 };
 
 /** 按插件标识读取本地配置记录。source 为空时按 system 处理（与安装时的默认来源一致） */
-export const findModerationConfig = (query: ModerationConfigQuery): Promise<ModerationConfigRecord | null> =>
+export const findModerationConfig = (
+  query: ModerationConfigQuery
+): Promise<ModerationConfigRecord | null> =>
   MongoSystemModerationPlugin.findOne({
     pluginId: query.pluginId,
-    ...(query.source ? { source: query.source } : {})
-  }).lean<ModerationConfigRecord>();
+    ...(query.source && query.source !== 'system'
+      ? { source: query.source }
+      : { $or: [{ source: 'system' }, { source: null }] })
+  })
+    .sort({ updateTime: -1, _id: -1 })
+    .lean<ModerationConfigRecord>();
 
-/** 读取全部未删除的配置记录 */
+/** 读取所有插件配置记录 */
 export const findActiveModerationConfigs = (): Promise<ModerationConfigRecord[]> =>
   MongoSystemModerationPlugin.find({
     deleted: { $ne: true }
   }).lean<ModerationConfigRecord[]>();
 
-/** 读取全部未删除与已删除的记录，用于「已删除」视图 */
+/** 读取所有插件配置记录 */
 export const findAllModerationConfigs = (): Promise<ModerationConfigRecord[]> =>
-  MongoSystemModerationPlugin.find({}).lean<ModerationConfigRecord[]>();
+  MongoSystemModerationPlugin.find({})
+    .sort({ updateTime: -1, _id: -1 })
+    .lean<ModerationConfigRecord[]>();
 
 /** 读取当前唯一启用的记录 */
 export const findEnabledModerationConfig = (): Promise<ModerationConfigRecord | null> =>
-  MongoSystemModerationPlugin.findOne({ enabled: true, deleted: { $ne: true } }).lean<
-    ModerationConfigRecord
-  >();
+  MongoSystemModerationPlugin.findOne({
+    enabled: true,
+    deleted: { $ne: true }
+  }).lean<ModerationConfigRecord>();
 
 /**
  * 写入一条配置记录（不存在则创建）。
- * 软删除后重新安装时复用同一条记录，因此先清空删除标记。
+ * 如果存在历史删除标记，安装或重新配置时会清除标记。
  */
 export const upsertModerationConfig = ({
   pluginId,
-  source,
+  source = 'system',
   data,
   session
 }: {
@@ -61,7 +70,7 @@ export const upsertModerationConfig = ({
   session?: ClientSession;
 }) =>
   MongoSystemModerationPlugin.findOneAndUpdate(
-    { pluginId, ...(source ? { source } : {}) },
+    { pluginId, source },
     {
       $set: {
         ...data,
@@ -70,7 +79,7 @@ export const upsertModerationConfig = ({
         deletedByTmbId: null,
         updateTime: new Date()
       },
-      $setOnInsert: { pluginId, ...(source ? { source } : {}) }
+      $setOnInsert: { pluginId, source }
     },
     { upsert: true, new: true, session }
   ).lean();
@@ -136,30 +145,39 @@ export const enableSingleModerationConfig = async ({
   await disableOtherModerationConfigs({ exceptPluginId: pluginId, session });
 };
 
-
-/** 软删除配置记录 */
+/** Soft-uninstall without discarding credentials or version selection. */
 export const softDeleteModerationConfig = ({
   pluginId,
   source,
-  tmbId,
   session
-}: {
-  pluginId: string;
-  source?: string;
-  tmbId?: string;
-  session?: ClientSession;
-}) =>
+}: ModerationConfigQuery & { session?: ClientSession }) =>
   MongoSystemModerationPlugin.findOneAndUpdate(
-    { pluginId, ...(source ? { source } : {}) },
     {
-      $set: {
-        deleted: true,
-        enabled: false,
-        deletedAt: new Date(),
-        ...(tmbId ? { deletedByTmbId: tmbId } : {}),
-        updateTime: new Date()
-      },
-      $setOnInsert: { pluginId, ...(source ? { source } : {}) }
+      pluginId,
+      ...(source && source !== 'system'
+        ? { source }
+        : { $or: [{ source: 'system' }, { source: { $exists: false } }] })
     },
+    { $set: { deleted: true, enabled: false, deletedAt: new Date(), updateTime: new Date() } },
     { upsert: true, new: true, session }
   ).lean();
+
+/** Restore only tombstones, preserving credentials and never enabling moderation implicitly. */
+export const restoreModerationConfigs = ({
+  pluginIds,
+  source = 'system'
+}: {
+  pluginIds: string[];
+  source?: string;
+}) =>
+  MongoSystemModerationPlugin.updateMany(
+    {
+      pluginId: { $in: pluginIds },
+      deleted: true,
+      ...(source === 'system' ? { $or: [{ source }, { source: { $exists: false } }] } : { source })
+    },
+    {
+      $set: { deleted: false, enabled: false, updateTime: new Date() },
+      $unset: { deletedAt: '', deletedByTmbId: '' }
+    }
+  );
