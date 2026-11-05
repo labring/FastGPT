@@ -128,7 +128,7 @@ What to do: before upgrading, follow [Milvus BM25 Full-Text Search Configuration
 
 Applies to: 4.16.0 and later. Since 4.16.0 the sandbox image is set only by `AGENT_SANDBOX_OPENSANDBOX_IMAGE`, and `AGENT_SANDBOX_PREVIEW_PROXY_URL` must be configured. Using a 4.15 or earlier docker-compose template with a newer image causes both errors.
 
-What to do: follow [Deploy with Docker Compose](/en/self-host/deploy/docker) and use the one-click script, or manually download the template that matches the image version (for the current version, use the `main` directory; there are no v4.16 or v4.17 directories).
+What to do: follow [Deploy with Docker Compose](/en/self-host/deploy/docker) and use the one-click script, or manually download the template that matches the image version (use `main` for 4.17.x and `v4.16` for 4.16.x).
 
 Note: running the one-click script again in a directory that is already deployed regenerates the database passwords and `AES256_SECRET_KEY` and overwrites `docker-compose.yml`. Back up the original file first. To keep your data, choose not to auto-generate passwords (or set `FASTGPT_AUTO_GENERATE_CREDENTIALS=false`) and copy the original passwords and secrets over.
 
