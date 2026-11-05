@@ -17,7 +17,7 @@
   "add_new_input": "新增輸入",
   "add_new_output": "新增輸出",
   "agent.prompt_placeholder": "輸入「/」插入引用變數；輸入「@」插入特定能力，包括技能、應用、工具、知識庫。",
-  "agent.prompt_skill_tip": "@選擇技能及工具，\"/\"選擇變數",
+  "agent.prompt_skill_tip": "\"@\"選擇技能及工具，\"/\"選擇變數",
   "agent.select_skill": "選擇技能",
   "agent.select_tool": "選擇工具",
   "agent.tools": "工具",

@@ -12,7 +12,7 @@ import {
 import { type NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import { getNodeErrResponse, getHistories } from '../utils';
+import { getNodeErrResponse, getHistories, removeUnfinishedInteractiveHistories } from '../utils';
 import { getWorkflowFileVariableInputs, WorkflowVariableState } from '../utils/variables';
 import { chatValue2RuntimePrompt, runtimePrompt2ChatsValue } from '@fastgpt/global/core/chat/adapt';
 import type { DispatchNodeResultType, ModuleDispatchProps } from '../../types/runtime';
@@ -27,7 +27,6 @@ type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.history]?: ChatItemMiniType[] | number;
   [NodeInputKeyEnum.fileUrlList]?: string[];
   [NodeInputKeyEnum.forbidStream]?: boolean;
-  [NodeInputKeyEnum.fileUrlList]?: string[];
 }>;
 type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.answerText]: string;
@@ -113,8 +112,8 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
     const childRunningAppInfo = {
       sourceType: ChatSourceTypeEnum.app,
       sourceId: String(appData._id),
-      teamId: appData.teamId,
-      tmbId: appData.tmbId,
+      teamId: String(appData.teamId),
+      tmbId: String(appData.tmbId),
       name: appData.name,
       isChildApp: true
     };
@@ -174,14 +173,7 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
                 workflowStreamResponse: undefined
               }
             : {}),
-          runningAppInfo: {
-            sourceType: ChatSourceTypeEnum.app,
-            sourceId: String(appData._id),
-            name: appData.name,
-            teamId: String(appData.teamId),
-            tmbId: String(appData.tmbId),
-            isChildApp: true
-          },
+          runningAppInfo: childRunningAppInfo,
           runtimeNodes,
           runtimeEdges,
           histories: childHistories,
@@ -247,6 +239,12 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
             }
           }
         : undefined,
+      ...(!workflowInteractiveResponse && lastInteractive
+        ? {
+            [DispatchNodeResponseKeyEnum.rewriteHistories]:
+              removeUnfinishedInteractiveHistories(histories)
+          }
+        : {}),
       assistantResponses: system_forbid_stream ? [] : assistantResponses,
       [DispatchNodeResponseKeyEnum.runTimes]: runTimes,
       [DispatchNodeResponseKeyEnum.nodeResponse]: {

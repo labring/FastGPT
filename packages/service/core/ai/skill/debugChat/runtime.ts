@@ -77,16 +77,6 @@ export function buildDebugRuntimeNodes(
           value: [START_NODE_ID, NodeOutputKeyEnum.userChatInput]
         },
         {
-          key: NodeInputKeyEnum.history,
-          renderTypeList: [FlowNodeInputTypeEnum.numberInput],
-          valueType: WorkflowIOValueTypeEnum.chatHistory,
-          label: 'Chat History',
-          required: true,
-          min: 0,
-          max: 50,
-          value: 20
-        },
-        {
           key: NodeInputKeyEnum.aiModelId,
           renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel],
           label: 'AI Model',

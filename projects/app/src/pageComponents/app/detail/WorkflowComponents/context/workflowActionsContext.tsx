@@ -1,3 +1,4 @@
+import { getWorkflowSandboxCheckData } from '@/web/core/workflow/sandbox';
 import { getWorkflowModelCheckData } from '@/web/core/workflow/modelData';
 import { checkWorkflowNodeIssues } from '@/web/core/workflow/check/check';
 import { collectWorkflowStartAutoFillRevertPatches } from '@/web/core/workflow/workflowStartAutoFill';
@@ -254,6 +255,7 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
       )
         return;
       const issueMap = checkWorkflowNodeIssues({
+        sandbox: getWorkflowSandboxCheckData(),
         nodes,
         edges,
         modelData,
@@ -325,7 +327,14 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
         )
       )
         return;
-      const issueMap = checkWorkflowNodeIssues({ nodes, edges, modelData, chatConfig, t });
+      const issueMap = checkWorkflowNodeIssues({
+        sandbox: getWorkflowSandboxCheckData(),
+        nodes,
+        edges,
+        modelData,
+        chatConfig,
+        t
+      });
       onSyncWorkflowCheckIssues(issueMap);
     }, 400);
   }, [appId, chatConfig, edges, getNodes, onSyncWorkflowCheckIssues, t]);

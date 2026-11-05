@@ -286,7 +286,17 @@ describe('checkWorkflowNodeIssues', () => {
   it('accepts sparse Agent tool and Skill snapshots and preserves explicit resource errors', () => {
     const values = new Map<string, unknown>([
       [NodeInputKeyEnum.aiModelId, 'llm-id'],
-      [NodeInputKeyEnum.selectedTools, [{ id: 'systemTool-search', config: {} }]],
+      [
+        NodeInputKeyEnum.selectedTools,
+        [
+          { id: 'systemTool-search', config: {}, inputs: [] },
+          {
+            id: 'plugin-search',
+            config: {},
+            inputs: [{ key: 'query', mode: 'agentGenerated' }]
+          }
+        ]
+      ],
       [NodeInputKeyEnum.skills, [{ skillId: 'skill-id' }]],
       [NodeInputKeyEnum.datasetSelectList, [{ datasetId: 'dataset-id' }]]
     ]);
@@ -310,6 +320,170 @@ describe('checkWorkflowNodeIssues', () => {
         inputKey: NodeInputKeyEnum.skills
       })
     ]);
+
+    const t = ((key: string, params?: Record<string, unknown>) => {
+      const text = (commonZh as Record<string, string>)[key.replace('common:', '')] ?? key;
+      return text.replace(/\{\{(\w+)\}\}/g, (_, name) => String(params?.[name] ?? ''));
+    }) as TFunction;
+
+    agent.data.inputs.find((input) => input.key === NodeInputKeyEnum.skills)!.value = [
+      { skillId: 'skill-id', error: WorkflowCheckIssueCodeEnum.resourceMissing }
+    ];
+    agent.data.inputs.find((input) => input.key === NodeInputKeyEnum.datasetSelectList)!.value = [
+      { datasetId: 'dataset-id', error: WorkflowCheckIssueCodeEnum.resourceMissing }
+    ];
+    agent.data.inputs.find((input) => input.key === NodeInputKeyEnum.selectedTools)!.value = [
+      {
+        id: 'systemTool-search',
+        config: {},
+        inputs: [
+          {
+            key: 'apiKey',
+            label: 'API Key',
+            renderTypeList: [FlowNodeInputTypeEnum.input],
+            selectedType: FlowNodeInputTypeEnum.input,
+            required: true,
+            value: ''
+          }
+        ]
+      }
+    ];
+
+    const abnormalResult = checkWorkflowBeforeRunOrPublish({ ...graph, t });
+    expect(abnormalResult.issueMap.agent).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: WorkflowCheckIssueCodeEnum.agentToolAbnormal,
+          inputKey: NodeInputKeyEnum.selectedTools,
+          message: '引用的工具存在异常，请处理'
+        }),
+        expect.objectContaining({
+          code: WorkflowCheckIssueCodeEnum.resourceMissing,
+          inputKey: NodeInputKeyEnum.skills,
+          message: '引用的技能存在异常，请处理'
+        }),
+        expect.objectContaining({
+          code: WorkflowCheckIssueCodeEnum.resourceMissing,
+          inputKey: NodeInputKeyEnum.datasetSelectList,
+          message: '引用的知识库存在异常，请处理'
+        })
+      ])
+    );
+
+    agent.data.inputs.push({
+      key: NodeInputKeyEnum.datasetParams,
+      label: '',
+      renderTypeList: [FlowNodeInputTypeEnum.hidden],
+      value: {
+        datasets: [{ datasetId: 'dataset-id', error: WorkflowCheckIssueCodeEnum.resourceMissing }]
+      }
+    });
+
+    const deduplicatedResult = checkWorkflowBeforeRunOrPublish({ ...graph, t });
+    expect(
+      deduplicatedResult.issueMap.agent.filter(
+        (issue) => issue.message === '引用的知识库存在异常，请处理'
+      )
+    ).toHaveLength(1);
+  });
+
+  it.each([FlowNodeTypeEnum.agent, FlowNodeTypeEnum.toolCall])(
+    'reports sandbox failures in scheduled and blocking checks for %s',
+    (flowNodeType) => {
+      const node = makeNode('sandbox-node', flowNodeType, {
+        inputs: [
+          {
+            key: NodeInputKeyEnum.useAgentSandbox,
+            label: '',
+            renderTypeList: [FlowNodeInputTypeEnum.switch],
+            value: true
+          }
+        ]
+      });
+      for (const [sandbox, code] of [
+        [
+          { showSandbox: false, enableSandbox: true },
+          WorkflowCheckIssueCodeEnum.sandboxSystemUnavailable
+        ],
+        [
+          { showSandbox: true, enableSandbox: false },
+          WorkflowCheckIssueCodeEnum.sandboxPlanUnavailable
+        ]
+      ] as const) {
+        const args = { nodes: [node], edges: [], sandbox };
+        expect(checkWorkflowNodeIssues(args)['sandbox-node']).toEqual(
+          expect.arrayContaining([expect.objectContaining({ code })])
+        );
+        expect(checkWorkflowBeforeRunOrPublish(args)).toMatchObject({
+          hasError: true,
+          issueMap: { 'sandbox-node': expect.arrayContaining([expect.objectContaining({ code })]) }
+        });
+      }
+      const available = checkWorkflowNodeIssues({
+        nodes: [node],
+        edges: [],
+        sandbox: { showSandbox: true, enableSandbox: true }
+      });
+      expect(
+        available['sandbox-node']?.some((issue) => issue.code.startsWith('sandbox_')) ?? false
+      ).toBe(false);
+    }
+  );
+
+  it('retains tool and skill diagnostic details after canonical tool serialization', () => {
+    const node = makeNode('agent', FlowNodeTypeEnum.agent, {
+      inputs: [
+        {
+          key: NodeInputKeyEnum.selectedTools,
+          label: '',
+          renderTypeList: [FlowNodeInputTypeEnum.selectTool],
+          value: [{ id: 'missing', inputs: [], config: {} }]
+        },
+        {
+          key: NodeInputKeyEnum.skills,
+          label: '',
+          renderTypeList: [FlowNodeInputTypeEnum.selectSkill],
+          value: [{ skillId: 'missing-skill' }]
+        },
+        {
+          key: NodeInputKeyEnum.useAgentSandbox,
+          label: '',
+          renderTypeList: [FlowNodeInputTypeEnum.switch],
+          value: false
+        }
+      ]
+    });
+    const resourceNodes = [
+      {
+        nodeId: 'agent',
+        inputs: node.data.inputs.map((input) =>
+          input.key === NodeInputKeyEnum.selectedTools
+            ? {
+                ...input,
+                value: [{ id: 'missing', inputs: [], pluginData: { error: 'tool_missing' } }]
+              }
+            : input.key === NodeInputKeyEnum.skills
+              ? { ...input, value: [{ skillId: 'missing-skill', error: 'resource_missing' }] }
+              : input
+        )
+      }
+    ];
+    const args = {
+      nodes: [node],
+      edges: [],
+      resourceNodes,
+      sandbox: { showSandbox: true, enableSandbox: true }
+    };
+    const expected = expect.arrayContaining([
+      expect.objectContaining({ code: WorkflowCheckIssueCodeEnum.agentToolAbnormal }),
+      expect.objectContaining({
+        code: WorkflowCheckIssueCodeEnum.resourceMissing,
+        inputKey: NodeInputKeyEnum.skills
+      }),
+      expect.objectContaining({ code: WorkflowCheckIssueCodeEnum.sandboxSkillUnavailable })
+    ]);
+    expect(checkWorkflowBeforeRunOrPublish(args).issueMap.agent).toEqual(expected);
+    expect(checkWorkflowNodeIssues(args).agent).toEqual(expected);
   });
 
   it('collects multiple node errors in one pass', () => {
@@ -1307,7 +1481,11 @@ describe('checkWorkflowNodeIssues', () => {
     );
   });
 
-  it('reports unavailable datasets nested in Agent datasetParams', () => {
+  it.each([
+    undefined,
+    WorkflowCheckIssueCodeEnum.resourceNoPermission,
+    WorkflowCheckIssueCodeEnum.resourceMissing
+  ])('checks the effective nested Agent datasets before the canonical list: %s', (error) => {
     const agentNode = makeNode('agent', FlowNodeTypeEnum.agent, {
       inputs: [
         {
@@ -1315,15 +1493,19 @@ describe('checkWorkflowNodeIssues', () => {
           label: '知识库配置',
           renderTypeList: [FlowNodeInputTypeEnum.custom],
           value: {
-            datasets: [
-              {
-                datasetId: 'd1',
-                name: 'no-perm',
-                error: WorkflowCheckIssueCodeEnum.resourceNoPermission
-              },
-              { datasetId: 'd2', name: 'gone', error: WorkflowCheckIssueCodeEnum.resourceMissing }
-            ]
+            datasets: [{ datasetId: 'legacy', error }]
           }
+        },
+        {
+          key: NodeInputKeyEnum.datasetSelectList,
+          label: '知识库',
+          renderTypeList: [FlowNodeInputTypeEnum.selectDataset],
+          value: [
+            {
+              datasetId: 'canonical',
+              error: error ? undefined : WorkflowCheckIssueCodeEnum.resourceMissing
+            }
+          ]
         }
       ]
     });
@@ -1333,17 +1515,16 @@ describe('checkWorkflowNodeIssues', () => {
       edges: [{ id: 'e1', source: 'start', target: 'agent', type: EDGE_TYPE }]
     });
 
-    expect(result.agent).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          code: WorkflowCheckIssueCodeEnum.resourceNoPermission,
-          inputKey: NodeInputKeyEnum.datasetParams
-        }),
-        expect.objectContaining({
-          code: WorkflowCheckIssueCodeEnum.resourceMissing,
-          inputKey: NodeInputKeyEnum.datasetParams
-        })
-      ])
+    expect(
+      (result.agent ?? []).filter(
+        ({ code }) =>
+          code === WorkflowCheckIssueCodeEnum.resourceNoPermission ||
+          code === WorkflowCheckIssueCodeEnum.resourceMissing
+      )
+    ).toEqual(
+      error
+        ? [expect.objectContaining({ code: error, inputKey: NodeInputKeyEnum.datasetParams })]
+        : []
     );
   });
 
@@ -2622,6 +2803,9 @@ describe('Web external resource bindings', () => {
       edges: [{ id: 'edge', source: 'start', target: 'target' }]
     };
     const missing = checkWorkflowBeforeRunOrPublish(graph);
+    expect(
+      checkWorkflowBeforeRunOrPublish({ ...graph, checkAgentResources: false }).issueMap
+    ).toEqual(missing.issueMap);
     expect(missing.diagnostics).toEqual([]);
     expect(missing.issueMap.target).toEqual([
       expect.objectContaining({

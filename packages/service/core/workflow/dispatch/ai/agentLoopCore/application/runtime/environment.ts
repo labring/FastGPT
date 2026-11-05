@@ -16,6 +16,7 @@ export type CreateAgentLoopCoreRuntimeEnvironmentParams = {
   node: {
     nodeId: string;
     flowNodeType: FlowNodeTypeEnum;
+    catchError?: boolean;
   };
   workflowStreamResponse?: WorkflowResponseType;
   streamAnswer?: boolean;

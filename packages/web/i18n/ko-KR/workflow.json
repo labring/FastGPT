@@ -17,7 +17,7 @@
   "add_new_input": "입력 추가",
   "add_new_output": "출력 추가",
   "agent.prompt_placeholder": "“/”를 입력해 참조 변수를 삽입하고, “@”를 입력해 스킬, 앱, 도구, 지식베이스 등의 기능을 삽입하세요.",
-  "agent.prompt_skill_tip": "@로 스킬과 도구 선택, \"/\"로 변수 선택",
+  "agent.prompt_skill_tip": "\"@\"로 스킬과 도구 선택, \"/\"로 변수 선택",
   "agent.select_skill": "스킬 선택",
   "agent.select_tool": "도구 선택",
   "agent.tools": "도구",

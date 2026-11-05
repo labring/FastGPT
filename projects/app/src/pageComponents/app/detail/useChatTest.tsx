@@ -30,13 +30,18 @@ export const useChatTest = ({
   edges,
   chatConfig = {},
   isReady,
-  boxBodyProps
+  boxBodyProps,
+  getResourceNodes
 }: {
   nodes: StoreNodeItemType[];
   edges: StoreEdgeItemType[];
   chatConfig: AppChatConfigType;
   isReady: boolean;
   boxBodyProps?: BoxProps;
+  /** 仅供本地检查的资源详情，避免序列化工具后丢失失效标记和必填输入定义。 */
+  getResourceNodes?: () => Parameters<
+    typeof checkStoreWorkflowBeforeRunOrPublish
+  >[0]['resourceNodes'];
 }) => {
   const { t } = useTranslation();
   const { userInfo } = useUserStore();
@@ -55,6 +60,7 @@ export const useChatTest = ({
 
       const checkResult = await checkStoreWorkflowBeforeRunOrPublish({
         appId,
+        resourceNodes: getResourceNodes?.(),
         nodes,
         edges,
         chatConfig,

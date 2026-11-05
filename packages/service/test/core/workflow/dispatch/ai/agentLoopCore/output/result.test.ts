@@ -11,11 +11,23 @@ describe('summarizeAgentLoopCoreResult', () => {
         assistantMessages: [
           {
             role: 'assistant',
+            content: 'step 1 ',
+            reasoning_content: 'think 1 ',
+            tool_calls: [
+              {
+                id: 'call_1',
+                type: 'function',
+                function: { name: 'search', arguments: '{}' }
+              }
+            ]
+          },
+          {
+            role: 'assistant',
             content: 'answer',
             reasoning_content: 'reason'
           }
         ],
-        assistantResponses: [{ text: { content: 'answer' } }],
+        assistantResponses: [{ text: { content: 'step 1 ' } }, { text: { content: 'answer' } }],
         finishReason: 'stop',
         usages: [
           {
@@ -36,7 +48,7 @@ describe('summarizeAgentLoopCoreResult', () => {
       expect.objectContaining({
         status: 'done',
         requestIds: ['req_1'],
-        assistantResponses: [{ text: { content: 'answer' } }],
+        assistantResponses: [{ text: { content: 'step 1 ' } }, { text: { content: 'answer' } }],
         finishReason: 'stop',
         usages: expect.arrayContaining([
           expect.objectContaining({ moduleName: 'account_usage:agent_call' }),
@@ -45,8 +57,8 @@ describe('summarizeAgentLoopCoreResult', () => {
         inputTokens: 10,
         outputTokens: 5,
         llmTotalPoints: 1,
-        finalText: 'answer',
-        reasoningText: 'reason'
+        finalText: 'step 1 answer',
+        reasoningText: 'think 1 reason'
       })
     );
   });
@@ -57,7 +69,19 @@ describe('summarizeAgentLoopCoreResult', () => {
         status: 'error',
         requestIds: [],
         completeMessages: [],
-        assistantMessages: [],
+        assistantMessages: [
+          {
+            role: 'assistant',
+            content: 'step 1 ',
+            tool_calls: [
+              {
+                id: 'call_1',
+                type: 'function',
+                function: { name: 'search', arguments: '{}' }
+              }
+            ]
+          }
+        ],
         assistantResponses: [],
         error: new Error('failed'),
         finishReason: 'stop',
@@ -67,7 +91,7 @@ describe('summarizeAgentLoopCoreResult', () => {
       expect.objectContaining({
         status: 'error',
         errorText: 'failed',
-        finalText: 'failed',
+        finalText: 'step 1 failed',
         finishReason: 'stop',
         inputTokens: 0,
         outputTokens: 0,
