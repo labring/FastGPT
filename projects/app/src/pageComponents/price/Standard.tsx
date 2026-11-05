@@ -1,3 +1,4 @@
+import ShareBrandFeature from '@/components/support/wallet/ShareBrandFeature';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { Box, Button, Flex, Grid } from '@chakra-ui/react';
@@ -135,6 +136,8 @@ export const BillingModeSwitch = ({
 const Standard = ({
   standardPlan: myStandardPlan,
   onPaySuccess,
+  highlightShareBrand = false,
+  shareBrandPlacement = 'last',
   selectSubMode: controlledSubMode,
   onSelectSubModeChange,
   onLoginRequired,
@@ -145,6 +148,8 @@ const Standard = ({
 }: {
   standardPlan?: TeamPlanStandardType;
   onPaySuccess?: () => void;
+  highlightShareBrand?: boolean;
+  shareBrandPlacement?: 'first' | 'last';
   selectSubMode?: `${SubModeEnum}`;
   onSelectSubModeChange?: (mode: `${SubModeEnum}`) => void;
   onLoginRequired?: (intent: PricePurchaseIntent) => void;
@@ -446,7 +451,7 @@ const Standard = ({
                 alignItems={'flex-start'}
                 flexShrink={0}
                 w={responsiveCardLayout ? '100%' : ['100%', '300px']}
-                h={['auto', '777px']}
+                minH={['auto', '777px']}
                 p={'28px'}
                 borderRadius={'16px'}
                 borderWidth={isCurrentPlan ? '2px' : '1.5px'}
@@ -786,6 +791,7 @@ const Standard = ({
                 {/* function list */}
                 {item.level === StandardSubLevelEnum.custom ? (
                   <Grid gap={4} fontSize={'sm'}>
+                    {shareBrandPlacement === 'first' && <ShareBrandFeature level={item.level} />}
                     <Flex alignItems={'center'}>
                       <MyIcon name={'price/right'} w={'16px'} mr={3} color={'primary.600'} />
                       <Box color={'myGray.600'}>{t('price:custom_plan_feature_1')}</Box>
@@ -802,9 +808,15 @@ const Standard = ({
                       <MyIcon name={'price/right'} w={'16px'} mr={3} color={'primary.600'} />
                       <Box color={'myGray.600'}>{t('price:custom_plan_feature_4')}</Box>
                     </Flex>
+                    {shareBrandPlacement === 'last' && <ShareBrandFeature level={item.level} />}
                   </Grid>
                 ) : (
-                  <StandardPlanContentList level={item.level} mode={selectSubMode} />
+                  <StandardPlanContentList
+                    level={item.level}
+                    mode={selectSubMode}
+                    shareBrandPlacement={shareBrandPlacement}
+                    highlightShareBrand={highlightShareBrand}
+                  />
                 )}
               </Box>
             );

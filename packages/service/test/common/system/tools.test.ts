@@ -1,8 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { SystemConfigsTypeEnum } from '@fastgpt/global/common/system/config/constants';
+import type { FastGPTConfigFileType } from '@fastgpt/global/common/system/types';
+import { UpdateConfigBodySchema } from '@fastgpt/global/openapi/admin/system/api';
+import { MongoSystemConfigs } from '@fastgpt/service/common/system/config/schema';
 
 vi.mock('@fastgpt/service/env', () => ({
   hasAgentSandboxConfig: vi.fn(() => false),
   serviceEnv: {
+    SHOW_OUTLINK_BRAND: false,
     AGENT_SANDBOX_SHOW_FREE_TIP: false,
     UPLOAD_FILE_MAX_SIZE: 1000,
     UPLOAD_FILE_MAX_AMOUNT: 1000,
@@ -17,8 +22,64 @@ vi.mock('@fastgpt/service/core/ai/sandbox/config', () => ({
 // setup 已加载过此模块，清缓存后才能使用本文件声明的环境与沙箱 mock。
 vi.resetModules();
 const { initFastGPTConfig } = await import('@fastgpt/service/common/system/tools');
+const { serviceEnv } = await import('@fastgpt/service/env');
 
 describe('initFastGPTConfig', () => {
+  it.each([undefined, false, true])(
+    'preserves independent share brand entitlements through validation, storage and loading: %s',
+    async (canHideShareBrand) => {
+      const config = UpdateConfigBodySchema.parse({
+        fastgpt: {
+          feConfigs: { isPlus: false },
+          systemEnv: {},
+          subPlans: {
+            standard: {
+              custom: canHideShareBrand === undefined ? {} : { canHideShareBrand },
+              advanced: {
+                price: 599,
+                totalPoints: 2000,
+                maxTeamMember: 10,
+                maxAppAmount: 20,
+                maxDatasetAmount: 20,
+                maxDatasetSize: 1000,
+                chatHistoryStoreDuration: 30,
+                canHideShareBrand: true
+              }
+            }
+          }
+        },
+        fastgptPro: {}
+      });
+      expect(config.fastgpt.subPlans?.standard?.custom?.canHideShareBrand).toBe(canHideShareBrand);
+
+      await MongoSystemConfigs.create({
+        type: SystemConfigsTypeEnum.fastgpt,
+        value: config.fastgpt
+      });
+      const stored = await MongoSystemConfigs.findOne({
+        type: SystemConfigsTypeEnum.fastgpt
+      }).lean();
+      expect(stored?.value.subPlans?.standard?.custom?.canHideShareBrand).toBe(canHideShareBrand);
+
+      initFastGPTConfig(stored!.value as FastGPTConfigFileType);
+      expect(global.subPlans?.standard?.custom?.canHideShareBrand).toBe(canHideShareBrand);
+      expect(global.subPlans?.standard?.advanced?.canHideShareBrand).toBe(true);
+
+      const reparsed = UpdateConfigBodySchema.parse({ fastgpt: stored!.value, fastgptPro: {} });
+      expect(reparsed.fastgpt.subPlans?.standard?.custom?.canHideShareBrand).toBe(
+        canHideShareBrand
+      );
+    }
+  );
+
+  it.each([false, true])(
+    'derives branding from environment and overrides stale file values=%s',
+    (enabled) => {
+      serviceEnv.SHOW_OUTLINK_BRAND = enabled;
+      initFastGPTConfig({ feConfigs: { show_outlink_brand: !enabled }, systemEnv: {} } as any);
+      expect(global.feConfigs.show_outlink_brand).toBe(enabled);
+    }
+  );
   it.each([false, true])(
     'keeps SSO addresses exclusively in systemEnv when other configuration validation fails=%s',
     (invalid) => {
@@ -40,6 +101,7 @@ describe('initFastGPTConfig', () => {
     expect(global.feConfigs.sso).toEqual({ enabled: false });
   });
   beforeEach(() => {
+    serviceEnv.SHOW_OUTLINK_BRAND = false;
     global.feConfigs = {} as any;
     global.systemEnv = {} as any;
   });

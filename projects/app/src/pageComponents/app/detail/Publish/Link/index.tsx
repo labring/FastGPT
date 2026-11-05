@@ -263,6 +263,7 @@ const Share = ({
       {!!selectedLinkData && (
         <SelectUsingWayModal
           share={selectedLinkData}
+          onRefresh={refetchShareChatList}
           onClose={() => setSelectedLinkData(undefined)}
         />
       )}

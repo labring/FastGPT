@@ -17,10 +17,12 @@ import type {
   OutLinkDeleteResponseType,
   OutLinkListQueryType,
   OutLinkListResponseType,
+  GetOutLinkBrandQueryType,
+  GetOutLinkBrandResponseType,
   OutLinkUpdateBodyType,
   OutLinkUpdateResponseType
 } from '@fastgpt/global/openapi/support/outLink/api';
-import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
+import type { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
 import { GET, POST, DELETE, PUT } from '@/web/common/api/request';
 
 type LegacyOutLinkCreateBodyType =
@@ -36,6 +38,10 @@ export function createShareChat(data: LegacyOutLinkCreateBodyType) {
 
 export const putShareChat = (data: OutLinkUpdateBodyType) =>
   PUT<OutLinkUpdateResponseType>(`/support/outLink/update`, data);
+
+/** 读取品牌偏好和实时权益，不触发完整套餐或团队资源统计。 */
+export const getOutLinkBrand = (query: GetOutLinkBrandQueryType) =>
+  GET<GetOutLinkBrandResponseType>('/support/outLink/branding', query);
 
 // get shareChat
 export function getShareChatList(data: OutLinkListQueryType): Promise<OutLinkListResponseType>;

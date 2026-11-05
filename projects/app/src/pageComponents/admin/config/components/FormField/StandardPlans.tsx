@@ -1,4 +1,4 @@
-import { Box, Button, Flex, Grid, Input } from '@chakra-ui/react';
+import { Box, Button, Flex, Grid, Input, Switch } from '@chakra-ui/react';
 import {
   StandardSubLevelEnum,
   standardSubLevelMap
@@ -17,6 +17,7 @@ import {
   getColumnFeatures,
   EditPlanModal
 } from '@/components/admin/Settings/PlanComponents';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 const CustomPlanModal = ({
   planMap,
@@ -28,6 +29,7 @@ const CustomPlanModal = ({
   onChange: (e: StandSubPlanLevelMapType) => void;
 }) => {
   const { t } = useTranslation();
+  const { feConfigs } = useSystemStore();
   const level = StandardSubLevelEnum.custom;
   const { handleSubmit, watch, setValue } = useForm({
     defaultValues: planMap[level]
@@ -104,6 +106,15 @@ const CustomPlanModal = ({
       </Flex>
 
       {/* 购买链接 */}
+      {feConfigs.show_outlink_brand && (
+        <Flex alignItems="center" gap={8} mb={6}>
+          <FormLabel flex="0 0 160px">{t('common:share_brand_control')}</FormLabel>
+          <Switch
+            isChecked={watch('canHideShareBrand') ?? false}
+            onChange={(e) => setValue('canHideShareBrand', e.target.checked)}
+          />
+        </Flex>
+      )}
       <Flex mb={6} pb={6} gap={8}>
         <FormLabel fontSize={'md'} fontWeight={'medium'} flex={'0 0 160px'}>
           购买链接
@@ -156,6 +167,7 @@ const StandardPlans = ({
   onChange: (value: StandSubPlanLevelMapType) => void;
 }) => {
   const { t } = useTranslation();
+  const { feConfigs } = useSystemStore();
   const [editedLevel, setEditedLevel] = useState<StandardSubLevelEnum | 'custom'>();
 
   const levels = useMemo(
@@ -177,10 +189,17 @@ const StandardPlans = ({
           t('common:custom_plan_feature_1'),
           t('common:custom_plan_feature_2'),
           t('common:custom_plan_feature_3'),
-          t('common:custom_plan_feature_4')
+          t('common:custom_plan_feature_4'),
+          ...(feConfigs.show_outlink_brand && customPlan?.canHideShareBrand === true
+            ? [t('common:share_brand_control')]
+            : [])
         ];
       }
-      return getColumnFeatures(value[level], t);
+      return getColumnFeatures({
+        plan: value[level],
+        t,
+        showShareBrand: feConfigs.show_outlink_brand
+      });
     };
 
     const columnsFeatures = levels.map((level) => getFeatures(level));
@@ -208,7 +227,7 @@ const StandardPlans = ({
       ),
       features: featureRows
     };
-  }, [value, t, levels]);
+  }, [value, t, levels, feConfigs.show_outlink_brand]);
 
   return (
     <>

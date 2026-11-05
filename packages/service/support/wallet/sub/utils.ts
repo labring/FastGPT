@@ -9,7 +9,8 @@ import type {
   TeamStandardSubPlanItemType,
   TeamPlanStatusType,
   TeamPlanStandardType,
-  TeamSubSchemaType
+  TeamSubSchemaType,
+  StandSubPlanLevelMapType
 } from '@fastgpt/global/support/wallet/sub/type';
 import dayjs from 'dayjs';
 import { type ClientSession } from '../../../common/mongo';
@@ -48,11 +49,12 @@ export const sortStandPlans = (plans: TeamSubSchemaType[]) => {
 /**
  * 将标准套餐的历史数据库记录与当前静态配置合并为完整的客户端格式。
  * 缺失的续订字段仅在读取结果中按当前套餐补齐，不回写原始订阅记录。
+ * 团队级品牌权益由调用方基于全部订阅统一解析，不在单条记录的格式转换中判断。
  */
 export const buildStandardPlan = (
   standard: TeamSubSchemaType,
   standardConstants: TeamStandardSubPlanItemType
-): TeamPlanStandardType => ({
+): Omit<TeamPlanStandardType, 'canHideShareBrand'> => ({
   ...standard,
   currentMode: standard.currentMode ?? SubModeEnum.month,
   nextMode: standard.nextMode ?? standard.currentMode ?? SubModeEnum.month,
@@ -86,6 +88,23 @@ export const buildStandardPlan = (
   }),
   enableSandbox: standard?.enableSandbox ?? standardConstants.enableSandbox
 });
+
+/** 按传入时间筛选有效标准套餐，沿用套餐优先级并仅解析当前配置，不读取订阅快照权益。 */
+export const getPlansCanHideShareBrand = ({
+  plans,
+  standardPlans,
+  now
+}: {
+  plans: TeamSubSchemaType[];
+  standardPlans?: StandSubPlanLevelMapType;
+  now: number;
+}): boolean => {
+  const activePlans = plans.filter(
+    (plan) => plan.type === SubTypeEnum.standard && new Date(plan.expiredTime).getTime() > now
+  );
+  const plan = sortStandPlans(activePlans)[0];
+  return !!plan && standardPlans?.[plan.currentSubLevel]?.canHideShareBrand === true;
+};
 
 export const initTeamFreePlan = async ({
   teamId,
@@ -213,7 +232,16 @@ export const getTeamStandPlan = async ({
 
   return {
     [SubTypeEnum.standard]:
-      standard && standardConstants ? buildStandardPlan(standard, standardConstants) : undefined
+      standard && standardConstants
+        ? {
+            ...buildStandardPlan(standard, standardConstants),
+            canHideShareBrand: getPlansCanHideShareBrand({
+              plans,
+              standardPlans,
+              now: Date.now()
+            })
+          }
+        : undefined
   };
 };
 
@@ -227,7 +255,9 @@ export const getTeamPlanStatus = async ({
   const standardPlans = global.subPlans?.standard;
 
   /* Get all plans and datasetSize */
-  const plans = await MongoTeamSub.find({ teamId }).lean();
+  const plans = await MongoTeamSub.find({ teamId }, undefined, {
+    readPreference: 'primary'
+  }).lean();
 
   /* Get all standardPlans and active standardPlan */
   const teamStandardPlans = sortStandPlans(
@@ -295,7 +325,14 @@ export const getTeamPlanStatus = async ({
 
   return {
     [SubTypeEnum.standard]: standardConstants
-      ? buildStandardPlan(standardPlan, standardConstants)
+      ? {
+          ...buildStandardPlan(standardPlan, standardConstants),
+          canHideShareBrand: getPlansCanHideShareBrand({
+            plans,
+            standardPlans: global.subPlans?.standard,
+            now: Date.now()
+          })
+        }
       : undefined,
 
     totalPoints,

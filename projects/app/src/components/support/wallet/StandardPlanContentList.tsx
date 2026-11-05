@@ -1,3 +1,4 @@
+import ShareBrandFeature from './ShareBrandFeature';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import type { StandardSubLevelEnum } from '@fastgpt/global/support/wallet/sub/constants';
 import { SubModeEnum } from '@fastgpt/global/support/wallet/sub/constants';
@@ -22,11 +23,15 @@ const ModelPriceModal = dynamic(() =>
 const StandardPlanContentList = ({
   level,
   mode,
-  standplan
+  standplan,
+  shareBrandPlacement = 'last',
+  highlightShareBrand = false
 }: {
   level: `${StandardSubLevelEnum}`;
   mode: `${SubModeEnum}`;
   standplan?: TeamPlanStandardType;
+  shareBrandPlacement?: 'first' | 'last';
+  highlightShareBrand?: boolean;
 }) => {
   const { t } = useSafeTranslation();
 
@@ -111,6 +116,9 @@ const StandardPlanContentList = ({
 
   return planContent ? (
     <Grid gap={4} fontSize={'sm'} fontWeight={500}>
+      {shareBrandPlacement === 'first' && (
+        <ShareBrandFeature level={level} highlight={highlightShareBrand} />
+      )}
       <Flex alignItems={'center'}>
         <MyIcon
           name={'price/right'}
@@ -276,6 +284,9 @@ const StandardPlanContentList = ({
           <MyIcon name={'price/right'} w={'16px'} mr={3} color={'primary.600'} />
           <Box color={'myGray.600'}>{t('common:enable_sandbox')}</Box>
         </Flex>
+      )}
+      {shareBrandPlacement === 'last' && (
+        <ShareBrandFeature level={level} highlight={highlightShareBrand} />
       )}
     </Grid>
   ) : null;

@@ -89,10 +89,12 @@ export default NotSufficientModal;
 export const RechargeModal = ({
   onClose,
   onPaySuccess,
+  highlightShareBrand = false,
   title
 }: {
   onClose: () => void;
   onPaySuccess: () => void;
+  highlightShareBrand?: boolean;
   title?: string;
 }) => {
   const { t } = useSafeTranslation();
@@ -259,6 +261,8 @@ export const RechargeModal = ({
             <StandardPlan
               standardPlan={teamPlanStatus?.standard}
               onPaySuccess={onPaySuccess}
+              highlightShareBrand={highlightShareBrand}
+              shareBrandPlacement="first"
               selectSubMode={selectSubMode}
               onSelectSubModeChange={setUserSubMode}
               hideBillingToggle

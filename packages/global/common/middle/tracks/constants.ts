@@ -12,6 +12,9 @@ export const ClientTrackEnum = {
 /** 完整事件集合；新事件按“业务.子业务.子业务.事件”命名，最多四级。 */
 export const TrackEnum = {
   ...ClientTrackEnum,
+  // 分享页通过外链专用接口上报，不开放通用登录态埋点接口。
+  shareBrandExposure: 'app.share.brand.exposure',
+  shareBrandClick: 'app.share.brand.click',
   login: 'login',
   dailyUserActive: 'dailyUserActive',
   createApp: 'createApp',

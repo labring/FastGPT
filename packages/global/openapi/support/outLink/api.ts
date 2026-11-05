@@ -1,7 +1,9 @@
 import z from 'zod';
 import { OpenObjectOpenApiMeta } from '../../../common/zod/openapi';
 import { PublishChannelEnum } from '../../../support/outLink/constant';
+import { OutLinkBrandConfigSchema } from '../../../support/outLink/branding';
 import { ObjectIdSchema } from '../../../common/type/mongo';
+import { BoolSchema } from '../../../common/zod';
 
 const OptionalDateSchema = z.preprocess((value) => {
   if (value === undefined || value === null || value === '') return undefined;
@@ -58,6 +60,7 @@ export const ShareOutLinkEditSchema = OutLinkEditSchema.extend({
 export type ShareOutLinkEditType = z.infer<typeof ShareOutLinkEditSchema>;
 
 export const OutLinkSchema = z.object({
+  ...OutLinkBrandConfigSchema.shape,
   _id: ObjectIdSchema.meta({ description: '发布渠道 ID' }),
   shareId: z.string().meta({ description: '发布渠道访问 ID' }),
   teamId: ObjectIdSchema.meta({ description: '团队 ID' }),
@@ -113,6 +116,29 @@ export const OutLinkListResponseSchema = z.array(OutLinkSchema).meta({
   description: '发布渠道列表'
 });
 export type OutLinkListResponseType = z.infer<typeof OutLinkListResponseSchema>;
+
+/* ============================================================================
+ * API: 获取分享链接品牌设置
+ * Route: GET /api/support/outLink/branding
+ * Method: GET
+ * Description: 查询保存的品牌偏好和所属团队的实时隐藏权益，不统计团队资源用量。
+ * Tags: ['发布渠道']
+ * ============================================================================ */
+export const GetOutLinkBrandQuerySchema = z.object({
+  id: ObjectIdSchema.meta({
+    description: '分享链接发布渠道 ID',
+    example: '68ad85a7463006c963799a05'
+  })
+});
+export type GetOutLinkBrandQueryType = z.infer<typeof GetOutLinkBrandQuerySchema>;
+
+export const GetOutLinkBrandResponseSchema = OutLinkBrandConfigSchema.extend({
+  canHideShareBrand: BoolSchema.meta({
+    description: '链接所属团队当前是否具有隐藏品牌权益',
+    example: false
+  })
+});
+export type GetOutLinkBrandResponseType = z.infer<typeof GetOutLinkBrandResponseSchema>;
 
 /* ============================================================================
  * API: 获取发布渠道连接数量
@@ -198,12 +224,17 @@ export type OutLinkCreateResponseType = z.infer<typeof OutLinkCreateResponseSche
  * API: 更新发布渠道
  * Route: PUT /api/support/outLink/update
  * Method: PUT
- * Description: 更新发布渠道配置。
+ * Description: 更新发布渠道配置；省略名称时保留原名称，允许单独更新品牌偏好。
  * Tags: ['发布渠道']
  * ============================================================================ */
 
 export const OutLinkUpdateBodySchema = OutLinkEditSchema.extend({
+  ...OutLinkBrandConfigSchema.shape,
   _id: ObjectIdSchema.meta({ description: '发布渠道 ID' }),
+  name: OutLinkEditSchema.shape.name.optional().meta({
+    description: '发布渠道名称；省略时保留原名称',
+    example: '公开访问链接'
+  }),
   allowAnonymous: z
     .boolean()
     .optional()

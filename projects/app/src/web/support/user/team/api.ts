@@ -14,10 +14,8 @@ import type {
   TeamMemberItemType,
   TeamMemberSchema
 } from '@fastgpt/global/support/user/team/type';
-import type {
-  ClientTeamPlanStatusType,
-  TeamSubSchemaType
-} from '@fastgpt/global/support/wallet/sub/type';
+import type { TeamSubSchemaType } from '@fastgpt/global/support/wallet/sub/type';
+import type { GetTeamPlanStatusResponse } from '@fastgpt/global/openapi/support/user/team/api';
 import type { TeamInvoiceHeaderType } from '@fastgpt/global/support/user/team/type';
 import type { PaginationProps, PaginationResponse } from '@fastgpt/global/openapi/api';
 import type {
@@ -115,7 +113,10 @@ export const checkTeamDatasetSizeLimit = (size: number) =>
 
 /* plans */
 export const getTeamPlanStatus = () =>
-  GET<ClientTeamPlanStatusType>(`/support/user/team/plan/getTeamPlanStatus`, { maxQuantity: 1 });
+  // 统一响应会将查询失败时的 undefined 转为 data: null。
+  GET<GetTeamPlanStatusResponse | null>(`/support/user/team/plan/getTeamPlanStatus`, {
+    maxQuantity: 1
+  });
 export const getTeamPlans = () =>
   GET<TeamSubSchemaType[]>(`/proApi/support/user/team/plan/getTeamPlans`);
 

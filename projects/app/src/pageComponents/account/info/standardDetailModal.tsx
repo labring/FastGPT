@@ -1,3 +1,4 @@
+import ShareBrandFeature from '@/components/support/wallet/ShareBrandFeature';
 import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import React, { useMemo } from 'react';
 import {
@@ -123,6 +124,11 @@ const StandDetailModal = ({ onClose }: { onClose: () => void }) => {
                           </Flex>
                           <StatusTag status={status as packageStatus} />
                         </Flex>
+                        {type === SubTypeEnum.standard && currentSubLevel && (
+                          <Box mt={2}>
+                            <ShareBrandFeature level={currentSubLevel} />
+                          </Box>
+                        )}
                       </Td>
                       <Td>{datasetSize ? `${datasetSize + t('account_info:group')}` : '-'}</Td>
                       <Td>

@@ -9,12 +9,32 @@ import {
   OutLinkDeleteResponseSchema,
   OutLinkListQuerySchema,
   OutLinkListResponseSchema,
+  GetOutLinkBrandQuerySchema,
+  GetOutLinkBrandResponseSchema,
   OutLinkUpdateBodySchema,
   OutLinkUpdateResponseSchema
 } from './api';
 import { WechatOutLinkPath } from './provider/wechat';
 
 export const OutLinkPath: OpenAPIPath = {
+  '/support/outLink/branding': {
+    get: {
+      summary: '获取分享链接品牌设置',
+      description: '校验链接管理权限后返回保存的品牌偏好和实时隐藏权益，不统计团队资源用量',
+      tags: [DevApiTagsMap.publishChannel],
+      requestParams: {
+        query: GetOutLinkBrandQuerySchema
+      },
+      responses: {
+        200: {
+          description: '成功返回品牌设置和权益',
+          content: {
+            'application/json': { schema: GetOutLinkBrandResponseSchema }
+          }
+        }
+      }
+    }
+  },
   '/support/outLink/count': {
     get: {
       summary: '获取应用的发布渠道连接数量',
@@ -82,7 +102,7 @@ export const OutLinkPath: OpenAPIPath = {
   '/support/outLink/update': {
     put: {
       summary: '更新发布渠道',
-      description: '更新发布渠道配置',
+      description: '更新发布渠道配置；省略名称时保留原名称，允许单独更新品牌偏好',
       tags: [DevApiTagsMap.publishChannel],
       requestBody: {
         content: {
