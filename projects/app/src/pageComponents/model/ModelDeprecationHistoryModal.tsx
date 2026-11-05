@@ -17,6 +17,7 @@ import React from 'react';
 import {
   postListModelDeprecationFailures,
   postListModelDeprecationInforms,
+  postRecoverModelDeprecationInformRun,
   postRetryModelDeprecationInformRun,
   postTerminateModelDeprecationInform
 } from '@/web/admin/system/inform/api';
@@ -226,7 +227,7 @@ const HistoryLines = ({ values }: { values: string[] }) => {
   );
 };
 
-const HistoryRow = ({
+export const HistoryRow = ({
   item,
   modelNames,
   channelLabels,
@@ -241,6 +242,10 @@ const HistoryRow = ({
   const [failureRunIndex, setFailureRunIndex] = React.useState<number>();
   const { openConfirm, ConfirmModal } = useConfirm();
   const { runAsync: retryRun } = useRequest(postRetryModelDeprecationInformRun, {
+    manual: true,
+    onSuccess: onRefresh
+  });
+  const { runAsync: recoverRun } = useRequest(postRecoverModelDeprecationInformRun, {
     manual: true,
     onSuccess: onRefresh
   });
@@ -290,11 +295,12 @@ const HistoryRow = ({
                 onShowFailures={() => setFailureRunIndex(run.runIndex)}
                 onRetry={
                   !planTerminated &&
-                  run.status === 'completed' &&
-                  run.failureCount > 0 &&
-                  !retriedRunIndexes.has(run.runIndex)
-                    ? () => retryRun({ campaignId: item.id, runIndex: run.runIndex })
-                    : undefined
+                  !retriedRunIndexes.has(run.runIndex) &&
+                  (run.status === 'failed' || run.status === 'interrupted')
+                    ? () => recoverRun({ campaignId: item.id, runIndex: run.runIndex })
+                    : !planTerminated && run.status === 'completed' && run.failureCount > 0
+                      ? () => retryRun({ campaignId: item.id, runIndex: run.runIndex })
+                      : undefined
                 }
               />
             ))}
@@ -357,6 +363,13 @@ const RunStatus = ({
     run.status === 'scheduled' || run.status === 'skipped'
       ? run.scheduledAt
       : (run.lastStatusAt ?? run.scheduledAt);
+  const statusLabels = {
+    running: t('config_model:model_deprecation.status_running'),
+    failed: t('config_model:model_deprecation.status_failed'),
+    interrupted: t('config_model:model_deprecation.status_interrupted'),
+    terminated: t('config_model:model_deprecation.status_terminated'),
+    skipped: t('config_model:model_deprecation.status_skipped')
+  };
   const statusLabel =
     run.failureCount > 0
       ? t('config_model:model_deprecation.failure_count', { count: run.failureCount })
@@ -364,7 +377,7 @@ const RunStatus = ({
         ? t('config_model:model_deprecation.all_completed')
         : run.status === 'scheduled'
           ? t('config_model:model_deprecation.waiting')
-          : t(`config_model:model_deprecation.status_${run.status}`);
+          : statusLabels[run.status];
 
   return (
     <HStack gap={'8px'} alignItems={'center'} minH={'20px'}>

@@ -51,7 +51,7 @@ describe('model deprecation inform OpenAPI contract', () => {
       models: ['68ad85a7463006c963799a05'],
       plannedDeprecationAt: '2026-12-31',
       createdAt: '2026-10-29T00:00:00.000Z',
-      jobs: []
+      runs: []
     };
 
     expect(
