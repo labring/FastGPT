@@ -95,7 +95,7 @@ async function handler(req: ApiRequestProps): Promise<RebuildEmbeddingResponse> 
       dataId: { $exists: true },
       ...finalErrorTrainingMatch
     },
-    { dataId: 1, indexes: 1, imageDescMap: 1 }
+    { dataId: 1, q: 1, a: 1, indexes: 1, imageDescMap: 1 }
   ).lean();
   const failedTaskByDataId = new Map(failedIndexTasks.map((task) => [String(task.dataId), task]));
 
@@ -125,13 +125,20 @@ async function handler(req: ApiRequestProps): Promise<RebuildEmbeddingResponse> 
         { session }
       );
     }
-    // 只清理向量模型导致的 index/rebuildIndex 最终失败；解析、QA、VLM、同义词失败
-    // 与 embedding 切换无关，必须保留其失败详情和手动重试入口。
+    // 只删除本次已原子替换的任务：
+    // - error 数据的 index 失败任务（下面会重新入队）；
+    // - rebuildIndex 失败/暂停任务（其 data 会重新标记 pending 并生成新任务）。
+    // 欠费暂停的普通 index 任务（data 仍为 indexing）不在任何重排路径里，必须保留，
+    // 否则数据会变成“无任务、无索引、无重试入口”的孤儿。
+    const failedDataIds = failedDataList.map((item) => item._id);
     await MongoDatasetTraining.deleteMany(
       {
         teamId,
         datasetId,
-        mode: { $in: [TrainingModeEnum.index, TrainingModeEnum.rebuildIndex] },
+        $or: [
+          { mode: TrainingModeEnum.index, dataId: { $in: failedDataIds } },
+          { mode: TrainingModeEnum.rebuildIndex }
+        ],
         ...finalErrorTrainingMatch
       },
       { session }
@@ -190,8 +197,10 @@ async function handler(req: ApiRequestProps): Promise<RebuildEmbeddingResponse> 
           data: data.map((item) => {
             const failedTask = failedTaskByDataId.get(String(item._id));
             return {
-              q: item.q,
-              a: item.a,
+              // data 有正文时以 data 为准（用户可修正失败数据）；data 为空时回退训练任务，
+              // 保留 imageParse 生成但尚未写回 data 的正文，同时保留空串语义。
+              q: item.q || failedTask?.q || '',
+              a: item.a || failedTask?.a,
               imageId: item.imageId,
               dataId: String(item._id),
               chunkIndex: item.chunkIndex,

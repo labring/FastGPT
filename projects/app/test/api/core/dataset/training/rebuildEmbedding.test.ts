@@ -331,7 +331,8 @@ describe('POST /api/core/dataset/training/rebuildEmbedding', () => {
       tmbId: root.tmbId,
       datasetId: dataset._id,
       collectionId: collection._id,
-      q: 'failed content',
+      // 图片导入预落库 q 为空，正文只在 imageParse 成功后的 training.q
+      q: '',
       indexes: [],
       indexStatus: 'error',
       indexErrorMsg: '404 old model does not exist'
@@ -345,6 +346,52 @@ describe('POST /api/core/dataset/training/rebuildEmbedding', () => {
       indexes: [],
       indexStatus: 'indexed'
     });
+    // 欠费暂停的普通 index 任务：data 仍为 indexing，换模型不能删掉它的重试入口
+    const pausedData = await MongoDatasetData.create({
+      teamId: root.teamId,
+      tmbId: root.tmbId,
+      datasetId: dataset._id,
+      collectionId: collection._id,
+      q: 'paused content',
+      indexes: [],
+      indexStatus: 'indexing'
+    });
+    await MongoDatasetTraining.create({
+      teamId: root.teamId,
+      tmbId: root.tmbId,
+      datasetId: dataset._id,
+      collectionId: collection._id,
+      billId: 'paused-bill',
+      mode: TrainingModeEnum.index,
+      dataId: pausedData._id,
+      retryCount: 1,
+      lockTime: new Date('2050-01-01'),
+      errorMsg: 'AI points not enough'
+    });
+    // 失败后用户修正过正文：换模型必须保留 data 的内容，不能被旧任务的 q 覆盖
+    const editedData = await MongoDatasetData.create({
+      teamId: root.teamId,
+      tmbId: root.tmbId,
+      datasetId: dataset._id,
+      collectionId: collection._id,
+      q: 'user edited content',
+      indexes: [],
+      indexStatus: 'error',
+      indexErrorMsg: '404 old model does not exist'
+    });
+    await MongoDatasetTraining.create({
+      teamId: root.teamId,
+      tmbId: root.tmbId,
+      datasetId: dataset._id,
+      collectionId: collection._id,
+      billId: 'edited-bill',
+      mode: TrainingModeEnum.index,
+      dataId: editedData._id,
+      retryCount: 0,
+      lockTime: new Date(),
+      errorMsg: '404 old model does not exist',
+      q: 'stale task content'
+    });
     await MongoDatasetTraining.create({
       teamId: root.teamId,
       tmbId: root.tmbId,
@@ -356,6 +403,8 @@ describe('POST /api/core/dataset/training/rebuildEmbedding', () => {
       retryCount: 0,
       lockTime: new Date(),
       errorMsg: '404 old model does not exist',
+      q: 'OCR parsed text',
+      a: '',
       indexes: [
         { type: 'custom', text: 'user custom index', dataId: 'custom-1' },
         { type: 'summary', text: 'draft summary', dataId: 'summary-1' }
@@ -403,6 +452,25 @@ describe('POST /api/core/dataset/training/rebuildEmbedding', () => {
       ])
     );
     expect(failedTask?.imageDescMap).toEqual({ 'dataset/team/a.png': '图片描述' });
+    // imageParse 生成的正文只存在旧 training.q，必须恢复到新任务
+    expect(failedTask?.q).toBe('OCR parsed text');
+    // 失败后 data 上的用户修正优先于旧任务正文
+    const editedTask = await MongoDatasetTraining.findOne({
+      dataId: editedData._id,
+      mode: TrainingModeEnum.index
+    }).lean();
+    expect(editedTask?.q).toBe('user edited content');
+
+    // 欠费暂停任务和对应 data 必须保留，否则数据既无索引也无重试入口
+    const pausedAfter = await MongoDatasetData.findById(pausedData._id).lean();
+    expect(pausedAfter?.indexStatus).toBe('indexing');
+    await expect(
+      MongoDatasetTraining.countDocuments({
+        dataId: pausedData._id,
+        mode: TrainingModeEnum.index,
+        errorMsg: 'AI points not enough'
+      })
+    ).resolves.toBe(1);
 
     // 已成功索引的数据仍走 rebuildIndex（seed 后可能已被领取为 running）
     const indexedAfter = await MongoDatasetData.findById(indexedData._id).lean();
