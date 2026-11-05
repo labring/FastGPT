@@ -1,3 +1,4 @@
+import { ApiKeyTypeEnum } from '@fastgpt/global/support/openapi/constants';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Types } from '@fastgpt/service/common/mongo';
 import { ChatSourceEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
@@ -175,6 +176,7 @@ describe('updateChatPublishSource', () => {
 describe('extendChatPublishSources', () => {
   it('按渠道批量关联当前名称，遵守团队和资源归属并兼容旧名', async () => {
     const key = await MongoOpenApi.create({
+      type: ApiKeyTypeEnum.app,
       teamId: scope.teamId,
       tmbId: scope.tmbId,
       apiKey: 'test-credential',
@@ -182,6 +184,7 @@ describe('extendChatPublishSources', () => {
       appId: oid()
     });
     const foreign = await MongoOpenApi.create({
+      type: ApiKeyTypeEnum.personal,
       teamId: oid(),
       tmbId: oid(),
       apiKey: 'foreign-credential',

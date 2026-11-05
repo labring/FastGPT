@@ -238,8 +238,11 @@ describe('openapi/core/chat target schema', () => {
     }
   );
 
-  it('rejects required target when appId and skillId are both missing', () => {
-    expect(() => MarkChatReadBodySchema.parse({ chatId: 'chat-1' })).toThrow();
+  it('accepts an unresolved app target for application API key authentication', () => {
+    expect(MarkChatReadBodySchema.parse({ chatId: 'chat-1' })).toMatchObject({
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: undefined
+    });
   });
 
   it('rejects top-level share auth without outLinkAuthData', () => {
@@ -585,8 +588,12 @@ describe('openapi/core/chat target schema', () => {
     ).toThrow();
   });
 
-  it('requires a target for session lists and preserves pagination priority in every auth mode', () => {
-    expect(() => GetHistoriesBodySchema.parse({ pageSize: 10, offset: 0 })).toThrow();
+  it('supports implicit app targets and preserves pagination priority in every auth mode', () => {
+    expect(GetHistoriesBodySchema.parse({ pageSize: 10, offset: 0 })).toMatchObject({
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: undefined,
+      offset: 0
+    });
     expect(GetHistoriesBodySchema.parse({ appId, skillId, offset: 0 })).toMatchObject({
       sourceType: ChatSourceTypeEnum.skillEdit,
       sourceId: skillId,
@@ -604,8 +611,11 @@ describe('openapi/core/chat target schema', () => {
     }
   });
 
-  it('requires a target or share auth when clearing chat histories', () => {
-    expect(() => ClearChatHistoriesSchema.parse({})).toThrow();
+  it('accepts application Key targets or share auth when clearing chat histories', () => {
+    expect(ClearChatHistoriesSchema.parse({})).toMatchObject({
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: undefined
+    });
 
     expect(ClearChatHistoriesSchema.parse({ appId })).toMatchObject({
       sourceType: ChatSourceTypeEnum.app,

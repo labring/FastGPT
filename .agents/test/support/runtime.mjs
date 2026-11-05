@@ -6,7 +6,7 @@ import { randomUUID } from 'node:crypto';
 /** 前置材料不足与产品断言失败分开记录；该错误不代表业务已执行。 */
 export class Blocked extends Error {}
 
-/** 只读取显式提供的隔离测试清单，不发现环境凭证或借用共享应用。 */
+/** 读取显式提供的本地 dev 资源清单，凭证仍从仓库外配置传入。 */
 export async function loadFixture() {
   if (!process.env.FASTGPT_TEST_FIXTURE)
     throw new Blocked('需要 FASTGPT_TEST_FIXTURE 指向仓库外的测试配置');
@@ -16,8 +16,7 @@ export async function loadFixture() {
   } catch (error) {
     throw new Blocked('FASTGPT_TEST_FIXTURE 无法读取或解析：' + error.name);
   }
-  if (fixture.version !== 1 || fixture.isolated !== true)
-    throw new Blocked('测试配置需 version=1、isolated=true，资源仅供本轮测试');
+  if (fixture.version !== 1) throw new Blocked('测试配置需 version=1');
   if (fixture.baseUrl?.replace(/\/$/, '') !== process.env.FASTGPT_TEST_BASE_URL?.replace(/\/$/, ''))
     throw new Blocked('配置 baseUrl 与报告目标不一致');
   if (!/^[0-9a-f]{24}$/i.test(fixture.teamId ?? ''))

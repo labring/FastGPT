@@ -1,3 +1,4 @@
+import { ApiKeyTypeEnum } from '@fastgpt/global/support/openapi/constants';
 import { MongoOpenApi } from '@fastgpt/service/support/openapi/schema';
 import exportLogs from '@/pages/api/core/app/logs/exportLogs';
 import { AppLogKeysEnum } from '@fastgpt/global/core/app/logs/constants';
@@ -90,6 +91,7 @@ describe('logs list API - errorFilter', () => {
 
   it('扩展渠道当前名、兼容旧名，来源筛选与CSV使用最新分类', async () => {
     const key = await MongoOpenApi.create({
+      type: ApiKeyTypeEnum.personal,
       teamId: testTeamId,
       tmbId: testTmbId,
       apiKey: 'logs-source-key',

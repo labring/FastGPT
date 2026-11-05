@@ -136,12 +136,12 @@ describe('registerNodeInstrumentation', () => {
     });
     // 仅替代 Redis Lua 边界，并暂停真实回填写入；Runner、启动编排和 Mongo 事务均真实执行。
     const redisScripts = vi.spyOn(redisCacheAdapter, 'evalScript').mockResolvedValue(1);
-    const updateOne = MongoChat.collection.updateOne.bind(MongoChat.collection);
+    const bulkWrite = MongoChat.collection.bulkWrite.bind(MongoChat.collection);
     const write = vi
-      .spyOn(MongoChat.collection, 'updateOne')
-      .mockImplementation(async (filter, update, options) => {
+      .spyOn(MongoChat.collection, 'bulkWrite')
+      .mockImplementation(async (operations, options) => {
         await gate;
-        return updateOne(filter, update, options);
+        return bulkWrite(operations, options);
       });
     const registration = registerNodeInstrumentation();
     try {

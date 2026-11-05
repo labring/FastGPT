@@ -10,7 +10,7 @@
 
 ## 配置与凭证
 
-复制 `.agents/test/support/fixtures.example.json` 到仓库外，填入真实测试资源，将路径设为 `FASTGPT_TEST_FIXTURE`。配置只保存环境变量名，不保存 Key、Cookie、数据库 URI。未选场景的额外配置可省略；选中行缺少必要配置时记录 blocked。配置的 BASE_URL 必须与报告一致，teamId 必须是实际团队 ID。
+使用已有本地 dev 及其配置，不新建应用实例、Mongo 或 Redis。复制 `.agents/test/support/fixtures.example.json` 到仓库外，填入真实测试资源，将路径设为 `FASTGPT_TEST_FIXTURE`。配置只保存环境变量名，不保存 Key、Cookie、数据库 URI。未选场景的额外配置可省略；选中行缺少必要配置时记录 blocked。配置的 BASE_URL 必须与报告一致，teamId 必须是实际团队 ID。
 
 - `actors.A/B`：原用例的鉴权成员；C7 需要两者真实用户名。`proxy` 是 owner 创建且开启代理的团队级 Key，tmbId 为 Key 创建者。普通 A Key 不开启代理。
 - `actors.owner.stateEnv` 指向已登录 owner 的 Playwright storage state 文件路径。owner 必须能清理所有测试应用内的运行记录。脚本不读取默认浏览器 Cookie 或自动发现环境凭证。
@@ -33,7 +33,7 @@
 
 脚本在该端口启动真实 HTTP 服务，只有本进程内的 barrier 能放行；未知 RUN/错误 token 拒绝访问。地址和 token 属于本轮测试配置，使用私有网络，避免代理改变协议。端口被占用时记录 blocked，不停止别人的服务。
 
-C1-API 对 v1/v2 各观察完整 65 秒，采样 owner/PTTL，确认续租后放行并验证下一轮。C2 必须提供两个独立 FastGPT 服务实例的地址，它们共享本例 Mongo/Redis；缺失时整行不执行。Redis 使用真实 DAL key helper 生成物理 key，只执行 GET/PTTL，不修改租约。
+C1-API 对 v1/v2 各观察完整 65 秒，采样 owner/PTTL，确认续租后放行并验证下一轮。C2 需要两个已运行的 dev 节点共享 Mongo/Redis；不为本用例另起实例，只有一个节点时应明确该并发变体未覆盖。Redis 使用真实 DAL key helper 生成物理 key，只执行 GET/PTTL，不修改租约。
 
 ## 运行与验证
 

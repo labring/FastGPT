@@ -47,6 +47,7 @@ describe('chat init API', () => {
     vi.clearAllMocks();
     vi.mocked(getChatGenerationStatuses).mockResolvedValue(new Map());
     mocks.authApp.mockResolvedValue({
+      appId,
       app: {
         _id: appId,
         name: 'Builder App',
@@ -59,6 +60,18 @@ describe('chat init API', () => {
       userId: 'user-1',
       permission: { hasReadChatLogPer: true }
     });
+  });
+
+  it('uses the authenticated app target for every initialization query when appId is omitted', async () => {
+    const appAuth = await mocks.authApp();
+    mocks.authApp.mockResolvedValue({ ...appAuth, apiKeyType: 'app' });
+    mocks.getAppLatestVersion.mockResolvedValue({ nodes: [], edges: [], chatConfig: {} });
+    const result = await handler({ query: { chatId: 'chat-1' } } as any);
+    expect(result).toMatchObject({ appId, chatId: 'chat-1' });
+    expect(getChatGenerationStatuses).toHaveBeenCalledWith(
+      expect.objectContaining({ sourceId: appId, sourceType: ChatSourceTypeEnum.app })
+    );
+    expect(mocks.findChat).toHaveBeenCalledWith(expect.objectContaining({ appId }));
   });
 
   it('initializes workflow builder chat with app write permission and isolated source', async () => {

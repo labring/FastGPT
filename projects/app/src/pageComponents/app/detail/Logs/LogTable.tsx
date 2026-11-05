@@ -578,7 +578,8 @@ const LogTable = ({
           </>
         }
       >
-        <Table variant={'simple'} fontSize={'sm'}>
+        {/* 按内容分配列宽，避免长 UID 将成员姓名压缩；不足一屏时仍铺满容器。 */}
+        <Table variant={'simple'} fontSize={'sm'} w={'max-content'} minW={'100%'}>
           <Thead>
             <Tr>
               <Th>

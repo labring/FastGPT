@@ -19,7 +19,9 @@ export const buildAppChatLogFilter = ({
   feedbackType,
   unreadOnly,
   errorFilter
-}: Omit<getAppChatLogsBody, 'pageNum' | 'pageSize'>): FilterQuery<ChatSchemaType> => {
+}: Omit<getAppChatLogsBody, 'pageNum' | 'pageSize'> & {
+  appId: string;
+}): FilterQuery<ChatSchemaType> => {
   const conditions: FilterQuery<ChatSchemaType>[] = [
     { $or: [{ sourceType: ChatSourceTypeEnum.app }, { sourceType: { $exists: false } }] }
   ];

@@ -33,6 +33,7 @@ async function handler(req: ApiRequestProps): Promise<CreatePostPresignedUrlResp
     req,
     authToken: true,
     authApiKey: true,
+    authAppApiKey: false,
     sourceType,
     sourceId,
     chatId,
