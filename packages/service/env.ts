@@ -437,7 +437,8 @@ export const serviceEnv = createEnv({
         '系统同步字符串处理最大字符数（M，1M=1,000,000 字符），用于变量替换等 CPU 密集文本操作'
     }),
     SHOW_OUTLINK_BRAND: BoolSchema.default(false).meta({
-      description: '是否展示免登录品牌标识'
+      description:
+        '是否展示免登录品牌标识；开源版始终开启，接入 Pro 服务后默认关闭，可设为 true 开启'
     }),
     CHAT_MAX_QPM: IntSchema.default(5000).meta({
       description: '聊天 QPM（若用户套餐有限制，这里不生效）'

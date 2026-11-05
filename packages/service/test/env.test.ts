@@ -37,6 +37,7 @@ const originalEnv = {
   SANGFOR_PARSE_TIMEOUT_SECONDS: process.env.SANGFOR_PARSE_TIMEOUT_SECONDS,
   PRO_URL: process.env.PRO_URL,
   PRO_TOKEN: process.env.PRO_TOKEN,
+  SHOW_OUTLINK_BRAND: process.env.SHOW_OUTLINK_BRAND,
   VITEST: process.env.VITEST,
   NODE_ENV: process.env.NODE_ENV,
   AGENT_SANDBOX_PROVIDER: process.env.AGENT_SANDBOX_PROVIDER,
@@ -114,6 +115,7 @@ describe('serviceEnv', () => {
     vi.stubEnv('SANGFOR_PARSE_TIMEOUT_SECONDS', originalEnv.SANGFOR_PARSE_TIMEOUT_SECONDS);
     vi.stubEnv('PRO_URL', originalEnv.PRO_URL);
     vi.stubEnv('PRO_TOKEN', originalEnv.PRO_TOKEN);
+    vi.stubEnv('SHOW_OUTLINK_BRAND', originalEnv.SHOW_OUTLINK_BRAND);
     vi.stubEnv('VITEST', originalEnv.VITEST);
     vi.stubEnv('NODE_ENV', originalEnv.NODE_ENV);
     vi.stubEnv('AGENT_SANDBOX_PROVIDER', originalEnv.AGENT_SANDBOX_PROVIDER);
@@ -580,6 +582,34 @@ describe('serviceEnv', () => {
       }
     });
   });
+
+  it.each([
+    { proUrl: undefined, configured: undefined, expected: true },
+    { proUrl: undefined, configured: '', expected: true },
+    { proUrl: undefined, configured: 'false', expected: true },
+    { proUrl: undefined, configured: 'true', expected: true },
+    { proUrl: undefined, configured: 'invalid', expected: true },
+    { proUrl: '', configured: undefined, expected: true },
+    { proUrl: '', configured: '', expected: true },
+    { proUrl: '', configured: 'false', expected: true },
+    { proUrl: '', configured: 'true', expected: true },
+    { proUrl: 'https://pro.example.com', configured: undefined, expected: false },
+    { proUrl: 'https://pro.example.com', configured: '', expected: false },
+    { proUrl: 'https://pro.example.com', configured: 'false', expected: false },
+    { proUrl: 'https://pro.example.com', configured: 'true', expected: true },
+    { proUrl: 'https://pro.example.com', configured: 'invalid', expected: false }
+  ])(
+    'resolves share branding with PRO_URL=$proUrl and SHOW_OUTLINK_BRAND=$configured as $expected',
+    async ({ proUrl, configured, expected }) => {
+      vi.stubEnv('PRO_URL', proUrl);
+      vi.stubEnv('PRO_TOKEN', 'custom_pro_token_32_chars_minimum');
+      vi.stubEnv('SHOW_OUTLINK_BRAND', configured);
+
+      const { serviceEnv } = await importServiceEnv();
+      expect(serviceEnv.SHOW_OUTLINK_BRAND).toBe(expected);
+      expect(process.env.SHOW_OUTLINK_BRAND).toBe(configured);
+    }
+  );
 
   it('validates shared Agent Sandbox resource limits during service env init', async () => {
     vi.stubEnv('FILE_TOKEN_KEY', 'filetokenkey');
