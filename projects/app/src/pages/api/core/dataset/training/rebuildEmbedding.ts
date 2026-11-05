@@ -4,6 +4,7 @@ import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/co
 import { DatasetAuditEventEnum } from '@fastgpt/global/core/dataset/audit/constants/event';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
+import type { ClientSession } from '@fastgpt/service/common/mongo';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
@@ -58,22 +59,26 @@ async function handler(req: ApiRequestProps): Promise<RebuildEmbeddingResponse> 
     return Promise.reject('vectorModel 不合法');
   }
 
-  // 只统计仍在处理中的训练/重建；最终失败或永久锁定的任务不阻塞切换。
-  if (await hasDatasetTrainingTask({ teamId, datasetId })) {
-    return Promise.reject('数据集正在训练或者重建中，请稍后再试');
-  }
-  // 仍可重试的同义词重建任务（含欠费暂停）之后会被重试执行，并与本次重建改同一批 data；
-  // 若放行，它会与新建的 rebuildIndex 任务双写同一批 data，必须先等它结束。
-  if (
-    await MongoDatasetTraining.exists({
-      teamId,
-      datasetId,
-      mode: TrainingModeEnum.rebuildSynonym,
-      retryCount: { $gt: 0 }
-    })
-  ) {
-    return Promise.reject('同义词重建未完成，请稍后再切换模型');
-  }
+  // 快速失败走从库；事务内会用同一快照再校验一次，避免并发导入/同义词提交后漏判。
+  const assertDatasetIdle = async (session?: ClientSession | null) => {
+    // 只统计仍在处理中的训练/重建；最终失败或永久锁定的任务不阻塞切换。
+    if (await hasDatasetTrainingTask({ teamId, datasetId }, { session })) {
+      throw new Error('数据集正在训练或者重建中，请稍后再试');
+    }
+    // 仍可重试的同义词重建任务（含欠费暂停）之后会被重试执行，并与本次重建改同一批 data；
+    // 若放行，它会与新建的 rebuildIndex 任务双写同一批 data，必须先等它结束。
+    if (
+      await MongoDatasetTraining.exists({
+        teamId,
+        datasetId,
+        mode: TrainingModeEnum.rebuildSynonym,
+        retryCount: { $gt: 0 }
+      }).session(session ?? null)
+    ) {
+      throw new Error('同义词重建未完成，请稍后再切换模型');
+    }
+  };
+  await assertDatasetIdle();
 
   // 此处只维护后续导入的图片索引开关；重建本身不解析图片或查询 VLM 模型。
   const supportImageIndex =
@@ -116,6 +121,8 @@ async function handler(req: ApiRequestProps): Promise<RebuildEmbeddingResponse> 
 
   // update vector model and dataset.data rebuild field
   await mongoSessionRun(async (session) => {
+    // 并发导入/同义词上传可能在上面的快速失败之后提交；写入前在同一事务快照内复核。
+    await assertDatasetIdle(session);
     await MongoDataset.findByIdAndUpdate(
       datasetId,
       {
@@ -141,7 +148,7 @@ async function handler(req: ApiRequestProps): Promise<RebuildEmbeddingResponse> 
       );
     }
     // 只删除本次已原子替换的任务：
-    // - error 数据的 index 失败任务（下面会重新入队）；
+    // - error 数据的 index 任务：这些 data 在本事务末尾会全部重新入队，旧任务（含并发重试的）都应作废；
     // - rebuildIndex 失败/暂停任务（其 data 会重新标记 pending 并生成新任务）；
     // - 最终失败的同义词重建任务：其 data 是 rebuildSynonymFailed，会随全量重建重新入队；
     //   保留它会让用户在切换后重试旧任务，与 rebuildIndex 双写同一 data。
@@ -153,10 +160,13 @@ async function handler(req: ApiRequestProps): Promise<RebuildEmbeddingResponse> 
         datasetId,
         $or: [
           { mode: TrainingModeEnum.index, dataId: { $in: failedDataIds } },
-          { mode: TrainingModeEnum.rebuildIndex },
-          { mode: TrainingModeEnum.rebuildSynonym, retryCount: { $lte: 0 } }
-        ],
-        ...finalErrorTrainingMatch
+          { mode: TrainingModeEnum.rebuildIndex, ...finalErrorTrainingMatch },
+          {
+            mode: TrainingModeEnum.rebuildSynonym,
+            retryCount: { $lte: 0 },
+            ...finalErrorTrainingMatch
+          }
+        ]
       },
       { session }
     );

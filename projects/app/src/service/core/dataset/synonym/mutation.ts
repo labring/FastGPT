@@ -122,6 +122,13 @@ export const createDatasetSynonymMutation = async ({
   });
 
   const affectedDataCount = await mongoSessionRun(async (session) => {
+    // 并发换模型/导入可能在上面的快速失败之后提交；写入前在同一事务快照内复核。
+    if (
+      (await hasDatasetTrainingTask({ teamId, datasetId }, { session })) ||
+      (await hasRetryableTrainingTask({ teamId, datasetId }, { session }))
+    ) {
+      throw new Error('知识库正在训练或者重建中，请稍后再修改同义词');
+    }
     // 分批发送 mapping，避免单个 bulkWrite 命令接近 MongoDB 的批量上限。
     for (let offset = 0; offset < mappings.length; offset += SYNONYM_MAPPING_BATCH_SIZE) {
       const batch = mappings.slice(offset, offset + SYNONYM_MAPPING_BATCH_SIZE);

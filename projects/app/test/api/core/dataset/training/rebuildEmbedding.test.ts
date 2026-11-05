@@ -16,6 +16,7 @@ import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
+import { hasDatasetTrainingTask } from '@fastgpt/service/core/dataset/training/entity';
 import { MongoTeamAudit } from '@fastgpt/service/support/user/audit/schema';
 import { getRootUser } from '@test/datas/users';
 import { addModelTestModel, getModelTestDefaults } from '@test/modelCache';
@@ -23,6 +24,15 @@ import { Call } from '@test/utils/request';
 import { beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest';
 vi.unmock('@fastgpt/service/core/ai/model/catalog/service');
 vi.unmock('@fastgpt/service/support/user/audit/util');
+vi.mock('@fastgpt/service/core/dataset/training/entity', async (importOriginal) => {
+  const actual = await importOriginal<
+    typeof import('@fastgpt/service/core/dataset/training/entity')
+  >();
+  return {
+    ...actual,
+    hasDatasetTrainingTask: vi.fn(actual.hasDatasetTrainingTask)
+  };
+});
 
 let testRoot: Awaited<ReturnType<typeof getRootUser>>;
 let visionEmbeddingModel: EmbeddingModelDataType;
@@ -574,6 +584,77 @@ describe('POST /api/core/dataset/training/rebuildEmbedding', () => {
       MongoDatasetTraining.countDocuments({
         datasetId: dataset._id,
         mode: TrainingModeEnum.rebuildIndex
+      })
+    ).resolves.toBe(1);
+  });
+
+  it('rechecks training state inside the rebuild transaction', async () => {
+    const { root, dataset } = await createDatasetContext();
+    // 第一次是事务外快速失败，第二次是事务内复核：模拟两次检查之间提交了训练任务。
+    vi.mocked(hasDatasetTrainingTask)
+      .mockResolvedValueOnce(false)
+      .mockResolvedValueOnce(true);
+
+    const res = await Call(handler, {
+      auth: root,
+      body: {
+        datasetId: String(dataset._id),
+        vectorModelId: visionEmbeddingModel.modelId
+      }
+    });
+
+    expect(res.code).toBe(500);
+    expect(String(res.error)).toContain('正在训练或者重建中');
+    await expect(MongoDataset.findById(dataset._id).lean()).resolves.toMatchObject({
+      vectorModelId: textOnlyEmbeddingModel.modelId
+    });
+  });
+
+  it('replaces a concurrently retried index task of first-index failed data', async () => {
+    const { root, dataset, collection } = await createDatasetContext();
+    const data = await MongoDatasetData.create({
+      teamId: root.teamId,
+      tmbId: root.tmbId,
+      datasetId: dataset._id,
+      collectionId: collection._id,
+      q: 'failed data',
+      indexes: [],
+      indexStatus: 'error'
+    });
+    // 模拟守卫读取之后、事务写入之前用户触发的重试任务；其 data 会被本事务重新入队。
+    const retriedTask = await MongoDatasetTraining.create({
+      teamId: root.teamId,
+      tmbId: root.tmbId,
+      datasetId: dataset._id,
+      collectionId: collection._id,
+      billId: 'retry-bill',
+      mode: TrainingModeEnum.index,
+      dataId: data._id,
+      retryCount: 3,
+      lockTime: new Date('2000-01-01'),
+      q: 'failed data',
+      indexes: []
+    });
+    vi.mocked(hasDatasetTrainingTask)
+      .mockResolvedValueOnce(false)
+      .mockResolvedValueOnce(false);
+
+    const res = await Call(handler, {
+      auth: root,
+      body: {
+        datasetId: String(dataset._id),
+        vectorModelId: visionEmbeddingModel.modelId
+      }
+    });
+
+    expect(res.error).toBeUndefined();
+    expect(res.code).toBe(200);
+    await expect(MongoDatasetTraining.exists({ _id: retriedTask._id })).resolves.toBeNull();
+    await expect(
+      MongoDatasetTraining.countDocuments({
+        datasetId: dataset._id,
+        dataId: data._id,
+        mode: TrainingModeEnum.index
       })
     ).resolves.toBe(1);
   });

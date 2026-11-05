@@ -515,6 +515,45 @@ describe('createDatasetSynonymMutation', () => {
     ).resolves.toBeTruthy();
   });
 
+  it('rechecks training state inside the write transaction', async () => {
+    await MongoDatasetData.create({
+      teamId,
+      tmbId,
+      datasetId,
+      collectionId,
+      q: 'indexed data',
+      indexes: [],
+      indexStatus: DatasetDataIndexStatusEnum.indexed
+    });
+    // 模拟快速失败之后、事务开始之前提交的训练任务。
+    mockCreateTrainingUsage.mockImplementationOnce(async () => {
+      await MongoDatasetTraining.create({
+        teamId,
+        tmbId,
+        datasetId,
+        collectionId,
+        billId: 'race-bill',
+        mode: TrainingModeEnum.index,
+        retryCount: 3,
+        lockTime: new Date('2000-01-01')
+      });
+      return { usageId: new Types.ObjectId() };
+    });
+
+    await expect(
+      createDatasetSynonymMutation({
+        req: {} as never,
+        datasetId: String(datasetId),
+        mappings: [createMapping()],
+        fileName: 'race.csv',
+        size: 10,
+        type: DatasetSynonymMutationTypeEnum.upload
+      })
+    ).rejects.toThrow('训练或者重建中');
+
+    await expect(MongoDatasetSynonym.findOne({ datasetId }).lean()).resolves.toBeNull();
+  });
+
   it('allows only one concurrent upload to activate a mapping snapshot', async () => {
     const createMutation = (term: string) =>
       createDatasetSynonymMutation({

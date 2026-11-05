@@ -6,20 +6,28 @@ import { TRAINING_LEASE_TIMEOUT_MS } from '@fastgpt/global/core/dataset/training
 import { MongoDatasetData } from '../data/schema';
 import { rebuildingDatasetDataMatch } from '@fastgpt/global/core/dataset/data/utils';
 import { readFromSecondary } from '../../../common/mongo/utils';
+import type { ClientSession } from '../../../common/mongo';
 import { activeTrainingMatch } from './query';
 
 /**
  * 判断知识库是否仍有“处理中”的训练任务，找到一条即停止，不计算数量或返回任务内容。
  * 重建以 data 状态为准，只统计 pending/running；最终失败不阻塞模型切换。
  * training 只查仍在队列中的普通任务，最终失败/残留的重建队列记录不计入。
+ *
+ * 展示/轮询路径走从库；写操作的守卫必须传入 session，随调用方事务读主库并共享快照。
  */
-export const hasDatasetTrainingTask = async ({
-  teamId,
-  datasetId
-}: {
-  teamId: string;
-  datasetId: string;
-}): Promise<boolean> => {
+export const hasDatasetTrainingTask = async (
+  {
+    teamId,
+    datasetId
+  }: {
+    teamId: string;
+    datasetId: string;
+  },
+  { session }: { session?: ClientSession | null } = {}
+): Promise<boolean> => {
+  // 事务内不允许 secondaryPreferred；有 session 时读主库。
+  const readOptions = session ? undefined : readFromSecondary;
   const rebuildData = await MongoDatasetData.findOne(
     {
       teamId,
@@ -27,8 +35,10 @@ export const hasDatasetTrainingTask = async ({
       ...rebuildingDatasetDataMatch
     },
     { _id: 1 },
-    readFromSecondary
-  ).lean();
+    readOptions
+  )
+    .session(session ?? null)
+    .lean();
   if (rebuildData) return true;
 
   const training = await MongoDatasetTraining.findOne(
@@ -39,8 +49,10 @@ export const hasDatasetTrainingTask = async ({
       ...activeTrainingMatch
     },
     { _id: 1 },
-    readFromSecondary
-  ).lean();
+    readOptions
+  )
+    .session(session ?? null)
+    .lean();
   return !!training;
 };
 
@@ -48,13 +60,23 @@ export const hasDatasetTrainingTask = async ({
  * 是否仍有可继续处理或等待恢复的训练任务（含普通与重建阶段）。
  * retryCount > 0 覆盖排队/训练中/欠费暂停；最终失败 retryCount=0 不计。
  */
-export const hasRetryableTrainingTask = async ({
-  teamId,
-  datasetId
-}: {
-  teamId: string;
-  datasetId: string;
-}) => !!(await MongoDatasetTraining.exists({ teamId, datasetId, retryCount: { $gt: 0 } }));
+export const hasRetryableTrainingTask = async (
+  {
+    teamId,
+    datasetId
+  }: {
+    teamId: string;
+    datasetId: string;
+  },
+  { session }: { session?: ClientSession | null } = {}
+) =>
+  !!(
+    await MongoDatasetTraining.exists({
+      teamId,
+      datasetId,
+      retryCount: { $gt: 0 }
+    }).session(session ?? null)
+  );
 
 /** 原子领取任务，返回更新后的租约；领取不消耗业务重试次数。 */
 export type FindAndLockTrainingTaskOptions = {
