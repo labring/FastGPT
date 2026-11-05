@@ -3,21 +3,11 @@ import type {
   ChatCompletionTool
 } from '@fastgpt/global/core/ai/llm/type';
 import { getLLMSupportParams } from '@fastgpt/global/core/ai/llm/utils';
-import { normalizeJsonSchema } from '@fastgpt/global/common/jsonSchema/utils';
+import { sanitizeToolParametersForModel } from '@fastgpt/global/common/jsonSchema/utils';
 import json5 from 'json5';
 import { computedMaxToken, computedTemperature } from '../../utils';
 import type { InferCompletionsBody, LLMRequestBodyType } from './types';
 import type { LLMModelDataType } from '@fastgpt/global/core/ai/model/schema';
-
-const privateToolSchemaKeys = new Set([
-  'toolDescription',
-  'x-tool-description',
-  'isToolParam',
-  'isSecret',
-  'x-i18n',
-  'x-fastgpt-node-input',
-  'x-fastgpt-node-output'
-]);
 
 /**
  * 在模型请求出口统一转换旧版 required 标记并清理内部元数据。
@@ -29,10 +19,9 @@ const sanitizeCompletionTools = (tools?: ChatCompletionTool[]): ChatCompletionTo
     ...tool,
     function: {
       ...tool.function,
-      parameters: normalizeJsonSchema({
-        schema: tool.function.parameters,
-        omitKeys: privateToolSchemaKeys
-      }) as ChatCompletionTool['function']['parameters']
+      parameters: sanitizeToolParametersForModel(
+        tool.function.parameters
+      ) as ChatCompletionTool['function']['parameters']
     }
   }));
 
