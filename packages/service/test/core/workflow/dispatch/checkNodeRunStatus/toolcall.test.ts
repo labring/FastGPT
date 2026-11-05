@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { WorkflowQueue } from '@fastgpt/service/core/workflow/dispatch/index';
+import { WorkflowQueue } from '@fastgpt/service/core/workflow/dispatch/queue';
 import { createNode, createEdge, setEdgeStatus } from '../../utils';
 
 describe('场景15: 工具调用 - 单工具场景', () => {

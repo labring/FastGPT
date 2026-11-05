@@ -52,7 +52,7 @@ vi.mock('@fastgpt/service/common/api/frequencyLimit', async (importOriginal) => 
 vi.mock('@fastgpt/service/support/wallet/sub/utils', () => ({
   getTeamPlanStatus: mocks.getTeamPlanStatus
 }));
-vi.mock('@fastgpt/service/core/workflow/utils/streamResponseContext', () => ({
+vi.mock('@fastgpt/service/core/workflow/dispatch/context/streamResponse', () => ({
   createWorkflowStreamResponseContext: mocks.createWorkflowStreamResponseContext
 }));
 

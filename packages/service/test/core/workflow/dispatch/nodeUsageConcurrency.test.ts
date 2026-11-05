@@ -3,10 +3,11 @@ import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/
 import type { RuntimeEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
-import { runWorkflow } from '@fastgpt/service/core/workflow/dispatch';
+import { runWorkflow as runWorkflowWithoutContext } from '@fastgpt/service/core/workflow/dispatch';
+import { createTestWorkflowDispatch } from './context/fixtures';
+const runWorkflow = createTestWorkflowDispatch(runWorkflowWithoutContext, { newWorkflow: true });
 import { callbackMap } from '@fastgpt/service/core/workflow/dispatch/constants';
-import { WorkflowVariableState } from '@fastgpt/service/core/workflow/dispatch/utils/variables';
-
+import { WorkflowVariableState } from '@fastgpt/service/core/workflow/dispatch/context/variables';
 
 const langfuseMocks = vi.hoisted(() => ({
   onWorkflowNodeEnd: vi.fn()
@@ -112,7 +113,7 @@ const runWorkflowWithConcurrentAgents = async () => {
     chatConfig: {},
     runtimeNodes,
     runtimeEdges,
-    variableState,
+    variableContext: variableState,
     externalProvider: {},
     workflowDispatchDeep: 0,
     maxRunTimes: 20,
@@ -169,7 +170,7 @@ describe('Node usage isolation under workflow concurrency', () => {
 
         return { data: {} };
       }
-    ) as typeof callbackMap[typeof FlowNodeTypeEnum.agent];
+    ) as (typeof callbackMap)[typeof FlowNodeTypeEnum.agent];
 
     await runWorkflowWithConcurrentAgents();
 

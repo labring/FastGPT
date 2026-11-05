@@ -1,5 +1,9 @@
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
-
+import {
+  createTestWorkflowDispatch,
+  captureTestWorkflowContext,
+  getCapturedTestWorkflowContext
+} from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   FlowNodeOutputTypeEnum,
@@ -29,7 +33,7 @@ vi.mock('@fastgpt/global/common/system/utils', async (importOriginal) => ({
 }));
 
 vi.mock('@fastgpt/service/core/workflow/dispatch', () => ({
-  runWorkflow: (args: any) => runWorkflowMock(args)
+  runWorkflow: (args: any) => runWorkflowMock(captureTestWorkflowContext(args))
 }));
 
 vi.mock('@fastgpt/service/env', async (importOriginal) => {
@@ -44,8 +48,10 @@ vi.mock('@fastgpt/service/env', async (importOriginal) => {
   };
 });
 
-import { dispatchParallelRun } from '@fastgpt/service/core/workflow/dispatch/parallelRun/runParallelRun';
+import { dispatchParallelRun as dispatchParallelRunWithoutContext } from '@fastgpt/service/core/workflow/dispatch/parallelRun/runParallelRun';
 import { UserConfigError } from '@fastgpt/global/common/error/utils';
+import { createTestWorkflowFileContext, runWithTestWorkflowContext } from '../context/fixtures';
+const dispatchParallelRun = createTestWorkflowDispatch(dispatchParallelRunWithoutContext);
 
 const createNodeResponseSinkMock = () => ({
   publish: vi.fn(async (inputs: Array<{ response: ChatHistoryItemResType; parentId?: string }>) =>
@@ -128,10 +134,10 @@ const makeProps = (override: Record<string, any> = {}) => {
     runtimeNodes,
     runtimeNodesMap: new Map(runtimeNodes.map((item) => [item.nodeId, item])),
     runtimeEdges: [],
-    variableState: makeVariableState(),
+    variableContext: makeVariableState(),
     usagePush: vi.fn(),
     nodeSummary: createNodeSummary(),
-    checkIsStopping: () => false,
+
     ...override
   } as any;
 };
@@ -144,7 +150,7 @@ describe('dispatchParallelRun', () => {
       warn.mockClear();
       const props = makeProps();
       props.params.loopInputArray = ['a', 'b'];
-      props.variableState.clone.mockImplementation(() => {
+      props.variableContext.clone.mockImplementation(() => {
         throw error;
       });
       try {
@@ -163,7 +169,7 @@ describe('dispatchParallelRun', () => {
   it('does not return an old task-local exception after a successful retry', async () => {
     const props = makeProps();
     props.params.parallelRunMaxRetryTimes = 1;
-    props.variableState.clone.mockImplementationOnce(() => {
+    props.variableContext.clone.mockImplementationOnce(() => {
       throw new Error('transient state clone failure');
     });
     runWorkflowMock.mockResolvedValueOnce(
@@ -179,7 +185,7 @@ describe('dispatchParallelRun', () => {
 
     const result = await dispatchParallelRun(props);
 
-    expect(props.variableState.clone).toHaveBeenCalledTimes(2);
+    expect(props.variableContext.clone).toHaveBeenCalledTimes(2);
     expect(Object.hasOwn(result, 'rawError')).toBe(false);
     expect(Object.hasOwn(props.nodeSummary, 'error')).toBe(false);
     expect(result.data?.[NodeOutputKeyEnum.parallelStatus]).toBe(ParallelRunStatusEnum.success);
@@ -227,6 +233,20 @@ describe('dispatchParallelRun', () => {
     vi.restoreAllMocks();
   });
 
+  it('从 WorkflowContext 读取停止检查，不启动并行任务', async () => {
+    const checkIsStopping = vi.fn(() => true);
+    const fileContext = await createTestWorkflowFileContext();
+    const props = makeProps();
+
+    await runWithTestWorkflowContext({ checkIsStopping, mcpClientMemory: {}, fileContext }, () =>
+      dispatchParallelRunWithoutContext(props)
+    );
+
+    expect(checkIsStopping).toHaveBeenCalled();
+    expect(runWorkflowMock).not.toHaveBeenCalled();
+    expect(props).not.toHaveProperty('checkIsStopping');
+  });
+
   it('共用 nodeResponseSink 时发布任务包装节点，父响应只保留轻量统计', async () => {
     const nodeResponseSink = createNodeResponseSinkMock();
     runWorkflowMock.mockResolvedValue(
@@ -259,7 +279,9 @@ describe('dispatchParallelRun', () => {
       'parallel-parent-response_task_0'
     );
     expect(nodeResponseSink.publish).toHaveBeenCalledTimes(1);
-    expect(nodeResponseSink.publish.mock.calls[0][0][0].parentId).toBe('parallel-parent-response');
+    expect(nodeResponseSink.publish.mock.calls[0][0][0].response.parentId).toBe(
+      'parallel-parent-response'
+    );
     expect(nodeResponseSink.publish.mock.calls[0][0][0].response).toMatchObject({
       id: 'parallel-parent-response_task_0',
       childResponseCount: 2,
@@ -401,7 +423,7 @@ describe('dispatchParallelRun', () => {
     parentVariableState.clone = vi.fn(() => taskVariableState);
     parentVariableState.set = vi.fn((key: string, value: unknown) => originalSet(key, value));
     runWorkflowMock.mockImplementation(async (args: any) => {
-      await args.variableState.set('count', 2);
+      await getCapturedTestWorkflowContext(args).variableContext.set('count', 2);
       return makeDispatchFlowResponse({
         nodeResponses: [
           makeResponseItem('nestedEnd', {
@@ -414,7 +436,7 @@ describe('dispatchParallelRun', () => {
 
     await dispatchParallelRun(
       makeProps({
-        variableState: parentVariableState
+        variableContext: parentVariableState
       })
     );
 
@@ -432,9 +454,9 @@ describe('dispatchParallelRun', () => {
       .mockReturnValueOnce(task1VariableState);
     runWorkflowMock.mockImplementation(async (args: any) => {
       if (args.nodeResponseParentId.endsWith('_task_0')) {
-        await args.variableState.set('first', 1);
+        await getCapturedTestWorkflowContext(args).variableContext.set('first', 1);
       } else {
-        await args.variableState.set('second', 2);
+        await getCapturedTestWorkflowContext(args).variableContext.set('second', 2);
       }
 
       return makeDispatchFlowResponse({
@@ -455,7 +477,7 @@ describe('dispatchParallelRun', () => {
           [NodeInputKeyEnum.parallelRunMaxConcurrency]: 2,
           [NodeInputKeyEnum.parallelRunMaxRetryTimes]: 0
         },
-        variableState: parentVariableState
+        variableContext: parentVariableState
       })
     );
 
@@ -595,7 +617,7 @@ describe('dispatchParallelRun', () => {
     parentVariableState.set = vi.fn((key: string, value: unknown) => originalSet(key, value));
     runWorkflowMock
       .mockImplementationOnce(async (args: any) => {
-        await args.variableState.set('count', 1);
+        await getCapturedTestWorkflowContext(args).variableContext.set('count', 1);
         return makeDispatchFlowResponse({
           nodeResponses: [
             makeResponseItem('failed-node', {
@@ -605,7 +627,7 @@ describe('dispatchParallelRun', () => {
         });
       })
       .mockImplementationOnce(async (args: any) => {
-        await args.variableState.set('count', 2);
+        await getCapturedTestWorkflowContext(args).variableContext.set('count', 2);
         return makeDispatchFlowResponse({
           nodeResponses: [
             makeResponseItem('nestedEnd', {
@@ -624,7 +646,7 @@ describe('dispatchParallelRun', () => {
           [NodeInputKeyEnum.parallelRunMaxConcurrency]: 1,
           [NodeInputKeyEnum.parallelRunMaxRetryTimes]: 1
         },
-        variableState: parentVariableState
+        variableContext: parentVariableState
       })
     );
 

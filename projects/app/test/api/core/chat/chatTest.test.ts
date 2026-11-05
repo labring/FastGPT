@@ -55,7 +55,7 @@ vi.mock('@fastgpt/service/core/workflow/utils/fileLimits', () => ({
   prepareWorkflowFileQuery: vi.fn()
 }));
 
-vi.mock('@fastgpt/service/core/workflow/utils/streamResponseContext', () => ({
+vi.mock('@fastgpt/service/core/workflow/dispatch/context/streamResponse', () => ({
   createWorkflowStreamResponseContext: vi.fn()
 }));
 

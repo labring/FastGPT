@@ -25,8 +25,12 @@ vi.mock('@fastgpt/service/core/app/mcp', async (importOriginal) => ({
     return { toolCall: mocks.call };
   })
 }));
-vi.mock('@fastgpt/service/core/workflow/utils/context', () => ({
-  getWorkflowContext: () => ({ mcpClientMemory: {} }),
+vi.mock('@fastgpt/service/core/workflow/dispatch/context', () => ({
+  getWorkflowContext: () => ({
+    checkIsStopping: () => false,
+    mcpClientMemory: {},
+    variableContext: new Map()
+  }),
   getWorkflowResourceContext: () => undefined
 }));
 const Call: typeof callAPI = (handler, props) => callAPI(handler, { headers: {}, ...props });
@@ -206,7 +210,6 @@ describe('legacy MCP resource compatibility after Version migration', () => {
         params: { query: 'allowed' },
         runningAppInfo,
         runningUserInfo,
-        variableState: new Map(),
         uid: auth.tmbId,
         chatId: 'debug',
         responseChatItemId: 'reply',
@@ -218,7 +221,6 @@ describe('legacy MCP resource compatibility after Version migration', () => {
         params: { query: 'allowed' },
         runningAppInfo,
         runningUserInfo,
-        variableState: new Map(),
         uid: auth.tmbId,
         chatId: 'debug'
       } as any);

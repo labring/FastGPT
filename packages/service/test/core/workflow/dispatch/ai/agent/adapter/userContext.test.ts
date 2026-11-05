@@ -3,8 +3,11 @@ import { ChatFileTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/consta
 import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import { chatValue2RuntimePrompt, runtimePrompt2ChatsValue } from '@fastgpt/global/core/chat/adapt';
 import type { SelectedDatasetType } from '@fastgpt/global/core/workflow/type/io';
-import * as workflowContext from '@fastgpt/service/core/workflow/utils/context';
-import { runWithContext } from '@fastgpt/service/core/workflow/utils/context';
+import { getWorkflowContext } from '@fastgpt/service/core/workflow/dispatch/context';
+import {
+  createTestWorkflowFileContext,
+  runWithTestWorkflowContext as runWithContext
+} from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { filterDatasetsByTmbId } from '@fastgpt/service/core/dataset/utils';
 import { useUserContext } from '@fastgpt/service/core/workflow/dispatch/ai/agent/adapter/userContext';
@@ -30,15 +33,20 @@ vi.mock('@fastgpt/service/core/dataset/utils', () => ({
   filterDatasetsByTmbId: vi.fn(async ({ datasetIds }) => datasetIds)
 }));
 
-const runWithContextAsync = <T>(
-  value: Parameters<typeof runWithContext>[0],
+/** 为消息改写用例注入完整文件能力，避免无 Context 兜底掩盖真实接入错误。 */
+const runWithContextAsync = async <T>(
+  value: Partial<Parameters<typeof runWithContext>[0]>,
   fn: (ctx: Parameters<Parameters<typeof runWithContext>[1]>[0]) => Promise<T>
 ): Promise<T> =>
-  new Promise<T>((resolve, reject) => {
-    runWithContext(value, () => {
-      fn(value as Parameters<Parameters<typeof runWithContext>[1]>[0]).then(resolve, reject);
-    });
-  });
+  runWithContext(
+    {
+      mcpClientMemory: {},
+      checkIsStopping: () => false,
+      fileContext: await createTestWorkflowFileContext(),
+      ...value
+    },
+    fn
+  );
 
 const createHumanMessage = ({
   dataId,
@@ -933,21 +941,19 @@ describe('useUserContext', () => {
   });
 
   it('uses url as the final defensive file name fallback when parser returns an empty name', async () => {
-    const prepareFilesSpy = vi
-      .spyOn(workflowContext, 'prepareWorkflowFiles')
-      .mockResolvedValueOnce([
-        {
-          name: '',
-          type: ChatFileTypeEnum.file,
-          url: 'https://files.example.com/nameless'
-        }
-      ]);
-
     await runWithContextAsync(
       {
         mcpClientMemory: {}
       },
       async () => {
+        vi.spyOn(getWorkflowContext().fileContext, 'prepareFiles').mockResolvedValueOnce([
+          {
+            name: '',
+            type: ChatFileTypeEnum.file,
+            url: 'https://files.example.com/nameless'
+          }
+        ]);
+
         const result = await getUserContextMessagesForTest({
           history: 6,
           histories: [],
@@ -963,8 +969,6 @@ describe('useUserContext', () => {
         expect(text).toContain('<name>nameless</name>');
       }
     );
-
-    prepareFilesSpy.mockRestore();
   });
 
   it('ignores non-string file urls defensively', async () => {

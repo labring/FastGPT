@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { WorkflowQueue } from '@fastgpt/service/core/workflow/dispatch/index';
+import { WorkflowQueue } from '@fastgpt/service/core/workflow/dispatch/queue';
 import { createNode, createEdge, setEdgeStatus } from '../../utils';
 
 describe('死循环避免 > 场景DA-1: 两节点互等死锁（基础互锁）', () => {

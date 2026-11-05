@@ -8,13 +8,12 @@ import { isReferenceOptionFormItem } from '@fastgpt/global/core/workflow/templat
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { anyValueDecrypt } from '../../../../common/secret/utils';
 import { getLogger, LogCategories } from '../../../../common/logger';
-import { createChatFilePreviewUrlGetter } from '../../../../common/s3/sources/chat';
 import {
   normalizeChatFileStoreValues,
   type ChatFileValueInput
 } from '../../../chat/fileStoreValue';
-import { getWorkflowFileContext, getWorkflowFileRegistrar } from '../../utils/context';
-import type { WorkflowFileRegistrar } from '../../utils/fileContext';
+import { getWorkflowContext } from '../context';
+import type { WorkflowFileRegister } from '../context/file';
 import { getModuleFileAmountLimit } from '@fastgpt/global/core/workflow/fileLimit';
 import { resolveDynamicOptionStrings } from './dynamicOptions';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
@@ -35,45 +34,31 @@ type FormInputResponse = DispatchNodeResultType<{
 const isFileSelectObject = (value: unknown): value is { key?: unknown; url?: unknown } =>
   !!value && typeof value === 'object' && !Array.isArray(value);
 
+/** 交互恢复的文件统一经过 Context 登记，不在节点内绕过根 scope 鉴权直接生成签名。 */
 const formatFileSelectRuntimeValue = async ({
   value,
   maxFiles,
-  getPreviewUrl,
-  fileRegistrar
+  registerFile
 }: {
   value: unknown;
   maxFiles?: number;
-  getPreviewUrl: (key: string) => Promise<string>;
-  fileRegistrar?: WorkflowFileRegistrar;
+  registerFile: WorkflowFileRegister;
 }) => {
   if (!Array.isArray(value)) return value;
 
   const urls = await Promise.all(
     value.slice(0, Math.max(maxFiles ?? DEFAULT_FORM_FILE_INPUT_MAX_FILES, 0)).map(async (file) => {
-      if (fileRegistrar) {
-        const storeValue = normalizeChatFileStoreValues([
-          typeof file === 'string'
-            ? { url: file }
-            : isFileSelectObject(file)
-              ? (file as ChatFileValueInput)
-              : {}
-        ])[0];
-        if (!storeValue) return;
+      const storeValue = normalizeChatFileStoreValues([
+        typeof file === 'string'
+          ? { url: file }
+          : isFileSelectObject(file)
+            ? (file as ChatFileValueInput)
+            : {}
+      ])[0];
+      if (!storeValue) return;
 
-        const ref = await fileRegistrar.registerInputFile({
-          file: storeValue,
-          source: 'interactive'
-        });
-        return ref?.modelUrl;
-      }
-
-      if (typeof file === 'string') return file;
-      if (!isFileSelectObject(file)) return;
-
-      if (typeof file.url === 'string' && file.url) return file.url;
-      if (typeof file.key !== 'string' || !file.key) return;
-
-      return getPreviewUrl(file.key);
+      const ref = await registerFile({ file: storeValue, source: 'interactive' });
+      return ref?.modelUrl;
     })
   );
 
@@ -89,11 +74,11 @@ export const dispatchFormInput = async (props: Props): Promise<FormInputResponse
     histories,
     node,
     runtimeNodesMap,
-    variableState,
     params: { description, userInputForms },
     query,
     lastInteractive
   } = props;
+  const { variableContext: variableState } = getWorkflowContext();
   const { isEntry } = node;
 
   // Interactive node is not the entry node, return interactive result
@@ -159,10 +144,8 @@ export const dispatchFormInput = async (props: Props): Promise<FormInputResponse
     }
   })();
 
-  const getPreviewUrl = createChatFilePreviewUrlGetter({ expiredHours: 1 });
-  const userMaxFileAmount =
-    getWorkflowFileContext()?.limits.maxFileAmount ?? DEFAULT_FORM_FILE_INPUT_MAX_FILES;
-  const fileRegistrar = getWorkflowFileRegistrar();
+  const { fileContext } = getWorkflowContext();
+  const userMaxFileAmount = fileContext.limits.maxFileAmount;
   const inputConfigMap = new Map(userInputForms.map((form) => [form.key, form]));
   const userInputEntries = await Promise.all(
     Object.entries(rawUserInputVal).map(async ([key, value]) => {
@@ -181,8 +164,7 @@ export const dispatchFormInput = async (props: Props): Promise<FormInputResponse
               moduleMaxFileAmount: inputConfig.maxFiles,
               defaultModuleMaxFileAmount: DEFAULT_FORM_FILE_INPUT_MAX_FILES
             }),
-            getPreviewUrl,
-            fileRegistrar
+            registerFile: fileContext.register.bind(fileContext)
           })
         ] as const;
       }

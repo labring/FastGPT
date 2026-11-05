@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { WorkflowQueue } from '@fastgpt/service/core/workflow/dispatch/index';
+import { WorkflowQueue } from '@fastgpt/service/core/workflow/dispatch/queue';
 import { createNode, createEdge, setEdgeStatus } from '../../utils';
 
 describe('1: 医疗记录工作流 - 非对称分支汇聚 + 中间节点循环', () => {

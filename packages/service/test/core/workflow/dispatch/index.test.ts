@@ -3,15 +3,23 @@ import * as teamLimit from '@fastgpt/service/support/permission/teamLimit';
 import { WorkflowStopSignalCache } from '@fastgpt/dal/redis/caches/workflowStopSignal';
 import { setAgentRuntimeStop, shouldWorkflowStop } from '@fastgpt/service/core/chat/stop';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import {
+  createTestWorkflowDispatch,
+  createTestVariableContext
+} from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
+import { WorkflowContext } from '@fastgpt/service/core/workflow/dispatch/context';
+import * as WorkflowNodeResponse from '@fastgpt/service/core/workflow/dispatch/context/nodeResponse';
+import * as Tracing from '@fastgpt/service/common/tracing';
 import { EventEmitter } from 'node:events';
 import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import {
   dispatchWorkFlow,
-  runWorkflow,
-  WorkflowQueue
+  runWorkflow as runWorkflowWithoutContext
 } from '@fastgpt/service/core/workflow/dispatch/index';
+import { WorkflowQueue } from '@fastgpt/service/core/workflow/dispatch/queue';
+import { WORKFLOW_MAX_RUN_TIMES } from '@fastgpt/service/core/workflow/constants';
 import { getWorkflowNodeRunParams } from '@fastgpt/service/core/workflow/dispatch/utils/runtime';
 import { createClientAbortTracker } from '@fastgpt/service/core/workflow/dispatch/utils/clientAbort';
 import { getWorkflowResponseWrite } from '@fastgpt/service/core/workflow/dispatch/utils';
@@ -26,12 +34,22 @@ import {
   FlowNodeInputTypeEnum,
   FlowNodeOutputTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
-import type { WorkflowVariableStateLike } from '@fastgpt/service/core/workflow/types/runtime';
+import type { WorkflowVariableStateLike } from '@fastgpt/service/core/workflow/dispatch/context/variables';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { callbackMap } from '@fastgpt/service/core/workflow/dispatch/constants';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { UserConfigError } from '@fastgpt/global/common/error/utils';
 import { getNodeErrResponse } from '@fastgpt/service/core/workflow/dispatch/utils';
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { getUser } from '@test/datas/users';
+import { getRunningUserInfoByTmbId } from '@fastgpt/service/support/user/team/utils';
+import { initWorkflowSseResponse } from '@fastgpt/service/core/workflow/dispatch/context/streamResponse';
+import {
+  getWorkflowContext,
+  getWorkflowFileContext
+} from '@fastgpt/service/core/workflow/dispatch/context';
+
+const runWorkflow = createTestWorkflowDispatch(runWorkflowWithoutContext, { newWorkflow: true });
 
 const waitWithTimeout = async <T>(promise: Promise<T>, timeoutMs: number, label: string) => {
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -51,21 +69,6 @@ const waitWithTimeout = async <T>(promise: Promise<T>, timeoutMs: number, label:
     }
   }
 };
-
-const createWorkflowVariableState = (
-  variables: Record<string, unknown> = {}
-): WorkflowVariableStateLike => ({
-  get: (key) => variables[key],
-  set: async (key, value) => {
-    variables[key] = value;
-    return value;
-  },
-  getStoreValue: (key) => variables[key],
-  getFileStoreValueByRuntimeUrl: () => undefined,
-  toRuntimeRecord: () => ({ ...variables }),
-  toStoreRecord: () => ({ ...variables }),
-  clone: () => createWorkflowVariableState({ ...variables })
-});
 
 describe('dispatchWorkFlow SSE initialization guard', () => {
   it('rejects stream responses when SSE was not initialized before dispatch', async () => {
@@ -127,7 +130,9 @@ describe('dispatchWorkFlow explicit stop lifecycle', () => {
     query: [],
     histories: [],
     stream: false,
-    maxRunTimes: 10,
+    maxFileAmount: 20,
+    maxBytesPerFile: 1024,
+    resourceContext: { isRoot: false, resourceMap: new Map() },
     nodeResponseWriteConfig: { persistToDb: false, retainInMemory: true }
   });
 
@@ -178,6 +183,145 @@ describe('dispatchWorkFlow explicit stop lifecycle', () => {
     const count = read.mock.calls.length;
     await new Promise((resolve) => setTimeout(resolve, 150));
     expect(read).toHaveBeenCalledTimes(count);
+  });
+});
+
+describe('dispatchWorkFlow entry context isolation', () => {
+  it.each([true, false])('stream=%s 时隔离入口参数，并保留断连检测和文件限额', async (stream) => {
+    const { teamId, tmbId } = await getUser('workflow-http-context');
+    const req = Object.assign(new EventEmitter(), {
+      aborted: false,
+      socket: new EventEmitter()
+    });
+    const res = Object.assign(new EventEmitter(), {
+      closed: false,
+      destroyed: false,
+      writableEnded: false,
+      writableFinished: false,
+      headersSent: false,
+      setHeader: vi.fn(),
+      end: vi.fn()
+    });
+    const workflowStreamResponse = getWorkflowResponseWrite({
+      res: res as any,
+      detail: true,
+      streamResponse: stream
+    });
+    initWorkflowSseResponse({ res: res as any, stream, responseWrite: workflowStreamResponse });
+
+    const node = createNode('http-context-node', FlowNodeTypeEnum.textEditor);
+    node.isEntry = true;
+    const executionContexts: Record<string, unknown>[] = [];
+    const fileContexts: ReturnType<typeof getWorkflowFileContext>[] = [];
+    const stoppingStates: boolean[] = [];
+    const variableValues: unknown[] = [];
+    const responseScopes: ReturnType<typeof getWorkflowContext>['nodeResponseSink'][] = [];
+    const runtimeControls: ReturnType<typeof getWorkflowContext>['runtimeControl'][] = [];
+    const contextRun = vi.spyOn(WorkflowContext, 'run');
+    const responseSinkFactory = vi.spyOn(
+      WorkflowNodeResponse,
+      'createWorkflowEntryNodeResponseSink'
+    );
+    const activeSpan = vi.spyOn(Tracing, 'withActiveSpan');
+    const callback = vi
+      .spyOn(callbackMap, FlowNodeTypeEnum.textEditor)
+      .mockImplementation(async (props) => {
+        executionContexts.push(props);
+        fileContexts.push(getWorkflowFileContext());
+        stoppingStates.push(getWorkflowContext().checkIsStopping());
+        variableValues.push(getWorkflowContext().variableContext.get('chatId'));
+        responseScopes.push(getWorkflowContext().nodeResponseSink);
+        runtimeControls.push(getWorkflowContext().runtimeControl);
+        res.emit('close');
+        stoppingStates.push(getWorkflowContext().checkIsStopping());
+        return {};
+      });
+
+    try {
+      const result = await dispatchWorkFlow({
+        req: req as any,
+        res: res as any,
+        apiVersion: 'v1',
+        responseAllData: stream,
+        responseDetail: !stream,
+        mode: 'test',
+        uid: tmbId,
+        runningAppInfo: {
+          sourceType: ChatSourceTypeEnum.app,
+          sourceId: '507f1f77bcf86cd799439120',
+          teamId,
+          tmbId,
+          name: 'HTTP context isolation'
+        },
+        runningUserInfo: await getRunningUserInfoByTmbId(tmbId),
+        chatId: 'http-context-chat',
+        responseChatItemId: 'http-context-response',
+        histories: [],
+        query: [],
+        variables: {},
+        runtimeNodes: [node],
+        runtimeEdges: [],
+        maxFileAmount: 5,
+        maxBytesPerFile: 1024,
+        stream,
+        workflowStreamResponse,
+        usageId: 'http-context-usage',
+        nodeResponseWriteConfig: { persistToDb: false, retainInMemory: false },
+        resourceContext: { teamId, isRoot: false, resourceMap: new Map() }
+      });
+
+      expect(executionContexts).toHaveLength(1);
+      expect(executionContexts[0]).not.toHaveProperty('req');
+      expect(executionContexts[0]).not.toHaveProperty('res');
+      expect(executionContexts[0]).not.toHaveProperty('maxFileAmount');
+      expect(executionContexts[0]).not.toHaveProperty('maxBytesPerFile');
+      expect(executionContexts[0]).not.toHaveProperty('apiVersion');
+      expect(executionContexts[0]).not.toHaveProperty('responseAllData');
+      expect(executionContexts[0]).not.toHaveProperty('responseDetail');
+      expect(executionContexts[0]).not.toHaveProperty('showSkillReferences');
+      expect(executionContexts[0]).not.toHaveProperty('mode');
+      expect(executionContexts[0]).not.toHaveProperty('maxRunTimes');
+      expect(executionContexts[0]).not.toHaveProperty('workflowDispatchDeep');
+      expect(executionContexts[0]).not.toHaveProperty('isToolCall');
+      expect(executionContexts[0]).not.toHaveProperty('runtimeControl');
+      expect(executionContexts[0]).not.toHaveProperty('checkIsStopping');
+      expect(executionContexts[0]).not.toHaveProperty('nodeResponseSink');
+      expect(executionContexts[0]).not.toHaveProperty('variableState');
+      expect(executionContexts[0]).not.toHaveProperty('variableContext');
+      expect(variableValues).toEqual(['http-context-chat']);
+      // 入口激活流程 Context；节点 callback 激活预算快照，runWorkflow 自身不再创建 Context。
+      expect(contextRun).toHaveBeenCalledTimes(2);
+      expect(runtimeControls[0]).toMatchObject({
+        mode: 'test',
+        maxRunTimes: WORKFLOW_MAX_RUN_TIMES,
+        workflowDispatchDeep: 1,
+        isToolCall: false
+      });
+      expect(responseScopes[0].workflowRuntimeSummary).toBe(result.workflowRuntimeSummary);
+      expect(fileContexts[0]?.limits).toEqual({ maxFileAmount: 5, maxBytesPerFile: 1024 });
+      expect(stoppingStates).toEqual([false, true]);
+      expect(responseSinkFactory).toHaveBeenCalledWith(
+        expect.objectContaining({
+          apiVersion: 'v1',
+          responseAllData: stream,
+          responseDetail: !stream
+        })
+      );
+      expect(activeSpan).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'workflow.run',
+          attributes: expect.objectContaining({ 'fastgpt.workflow.app_version': 'v1' })
+        }),
+        expect.any(Function)
+      );
+      expect(res.setHeader).toHaveBeenCalledTimes(stream ? 5 : 0);
+    } finally {
+      activeSpan.mockRestore();
+      responseSinkFactory.mockRestore();
+      contextRun.mockRestore();
+      callback.mockRestore();
+      res.emit('close');
+    }
   });
 });
 
@@ -1025,14 +1169,13 @@ describe('runWorkflow catchError', () => {
           createEdge('source', 'success', 'waiting', 'source-source-right'),
           createEdge('source', 'error', 'waiting', 'source-source_catch-right')
         ],
-        variableState: createWorkflowVariableState(),
+        variableContext: createTestVariableContext(),
         externalProvider: {},
         workflowDispatchDeep: 0,
         maxRunTimes: 10,
         stream: false,
         responseDetail: true,
-        responseAllData: true,
-        checkIsStopping: () => false
+        responseAllData: true
       } as any);
       expect(called).toEqual(['source', outcome === 'success' ? 'success' : 'error']);
       expect(source.outputs[0].value).toBe(
@@ -1144,7 +1287,7 @@ describe('runWorkflow catchError', () => {
               status: 'waiting'
             }
           ],
-          variableState: createWorkflowVariableState(),
+          variableContext: createTestVariableContext(),
           externalProvider: {},
           workflowDispatchDeep: 0,
           maxRunTimes: 10,
@@ -1220,14 +1363,13 @@ describe('runWorkflow assistant response aggregation', () => {
         chatConfig: {},
         runtimeNodes: [chatNode],
         runtimeEdges: [],
-        variableState: createWorkflowVariableState(),
+        variableContext: createTestVariableContext(),
         externalProvider: {},
         workflowDispatchDeep: 0,
         maxRunTimes: 10,
         stream: false,
         responseDetail: true,
-        responseAllData: true,
-        checkIsStopping: () => false
+        responseAllData: true
       } as any);
 
       expect(callbackMap[FlowNodeTypeEnum.chatNode]).toHaveBeenCalledTimes(1);
@@ -1521,7 +1663,15 @@ describe('Workflow runtime LLM token summary', () => {
       const publish = vi.fn(async (items: any[]) => items.map((item) => item.response));
       const node = createNode('summary-node', FlowNodeTypeEnum.textEditor);
       node.isEntry = true;
-      callbackMap[FlowNodeTypeEnum.textEditor] = async ({ nodeSummary }) => {
+      callbackMap[FlowNodeTypeEnum.textEditor] = async ({ nodeSummary, ...nodeProps }) => {
+        for (const key of [
+          'apiVersion',
+          'responseAllData',
+          'responseDetail',
+          'showSkillReferences'
+        ]) {
+          expect(nodeProps).not.toHaveProperty(key);
+        }
         nodeSummary.mergeNodeSummary({
           llmInputTokens: mode === 'throw' ? 10 : 30,
           llmOutputTokens: mode === 'throw' ? 3 : 7
@@ -1550,12 +1700,16 @@ describe('Workflow runtime LLM token summary', () => {
           chatConfig: {},
           runtimeNodes: [node],
           runtimeEdges: [],
-          variableState: createWorkflowVariableState(),
+          variableContext: createTestVariableContext(),
           externalProvider: {},
           workflowDispatchDeep: 0,
           maxRunTimes: 10,
-          checkIsStopping: () => false,
+
           isToolCall: mode === 'throw',
+          // 模拟旧调用方通过展开对象继续夹带入口字段，最终节点边界仍必须过滤。
+          responseAllData: true,
+          responseDetail: false,
+          showSkillReferences: true,
           nodeResponseSink: {
             publish
           }
@@ -1636,7 +1790,7 @@ describe('Workflow runtime error summary', () => {
           chatConfig: {},
           runtimeNodes: nodes,
           runtimeEdges: [],
-          variableState: createWorkflowVariableState(),
+          variableContext: createTestVariableContext(),
           externalProvider: {},
           workflowDispatchDeep: 0,
           maxRunTimes: 10,
@@ -1704,7 +1858,7 @@ describe('Workflow runtime error summary', () => {
           chatConfig: {},
           runtimeNodes: [node],
           runtimeEdges: [],
-          variableState: createWorkflowVariableState(),
+          variableContext: createTestVariableContext(),
           externalProvider: {},
           workflowDispatchDeep: 0,
           maxRunTimes: 10,
@@ -1765,7 +1919,7 @@ describe('Workflow runtime error summary', () => {
         runtimeNodes: [node],
         isToolCall,
         runtimeEdges: [],
-        variableState: createWorkflowVariableState(),
+        variableContext: createTestVariableContext(),
         externalProvider: {},
         workflowDispatchDeep: 0,
         maxRunTimes: 10,
@@ -1841,7 +1995,7 @@ describe('Workflow raw error logging', () => {
             chatConfig: {},
             runtimeNodes: [parent],
             runtimeEdges: [],
-            variableState: createWorkflowVariableState(),
+            variableContext: createTestVariableContext(),
             externalProvider: {},
             workflowDispatchDeep: 0,
             maxRunTimes: 10,

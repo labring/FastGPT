@@ -13,10 +13,13 @@ import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import type { RuntimeEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
-import { runWorkflow, type RunWorkflowProps } from '@fastgpt/service/core/workflow/dispatch';
-import { prepareWorkflowFileContext } from '@fastgpt/service/core/workflow/utils/fileContext';
-import { runWithContext } from '@fastgpt/service/core/workflow/utils/context';
-import { WorkflowVariableState } from '@fastgpt/service/core/workflow/dispatch/utils/variables';
+import { runWorkflow as runWorkflowWithoutContext } from '@fastgpt/service/core/workflow/dispatch';
+import type { RunWorkflowProps } from '@fastgpt/service/core/workflow/dispatch/type';
+import { createTestWorkflowDispatch } from '../context/fixtures';
+const runWorkflow = createTestWorkflowDispatch(runWorkflowWithoutContext, { newWorkflow: true });
+import { prepareWorkflowFileContext } from '@fastgpt/service/core/workflow/dispatch/context/file';
+import { runWithTestWorkflowContext as runWithContext } from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
+import { WorkflowVariableState } from '@fastgpt/service/core/workflow/dispatch/context/variables';
 
 /** 构造最小节点声明，输出默认使用 any，避免测试构造器提前改变待验证的数据。 */
 export const graphNode = ({
@@ -127,7 +130,7 @@ export const runGraph = async ({
     tmbId: '65ab7007462ada7dbb899948'
   };
   const variableState =
-    overrides.variableState ??
+    overrides.variableContext ??
     (await WorkflowVariableState.create({
       timezone: 'Asia/Shanghai',
       runningAppInfo,
@@ -136,7 +139,7 @@ export const runGraph = async ({
       histories: [],
       variablesConfig: []
     }));
-  const { fileContext, fileRegistrar } = await prepareWorkflowFileContext({
+  const { fileContext } = await prepareWorkflowFileContext({
     query: overrides.query ?? [],
     histories: overrides.histories ?? [],
     scope: {
@@ -145,41 +148,44 @@ export const runGraph = async ({
       uid: 'workflow-regression',
       chatId: 'workflow-chat'
     },
-    maxFileAmount: 20
+    maxFileAmount: 20,
+    maxBytesPerFile: 1024
   });
-  const result = await runWithContext({ mcpClientMemory: {}, fileContext, fileRegistrar }, () =>
-    runWorkflow({
-      apiVersion: 'v2',
-      mode: 'chat',
-      timezone: 'Asia/Shanghai',
-      lang: 'zh-CN',
-      runningAppInfo,
-      runningUserInfo: {
-        teamId: runningAppInfo.teamId,
-        tmbId: runningAppInfo.tmbId,
-        username: 'regression',
-        teamName: 'team',
-        memberName: 'member',
-        contact: ''
-      },
-      uid: 'workflow-regression',
-      chatId: 'workflow-chat',
-      responseChatItemId: 'workflow-response',
-      stream: false,
-      histories: [],
-      query: [],
-      chatConfig: {},
-      externalProvider: {},
-      maxRunTimes: 100,
-      workflowDispatchDeep: 0,
-      checkIsStopping: () => false,
-      ...overrides,
-      variableState,
-      runtimeNodes: nodes,
-      runtimeEdges: edges,
-      // 与生产 sink 一样接管明细，Queue 不再重复保留 responseData。
-      nodeResponseSink: { publish, hasOutput: true }
-    })
+  const result = await runWithContext(
+    { checkIsStopping: () => false, mcpClientMemory: {}, fileContext },
+    () =>
+      runWorkflow({
+        apiVersion: 'v2',
+        mode: 'chat',
+        timezone: 'Asia/Shanghai',
+        lang: 'zh-CN',
+        runningAppInfo,
+        runningUserInfo: {
+          teamId: runningAppInfo.teamId,
+          tmbId: runningAppInfo.tmbId,
+          username: 'regression',
+          teamName: 'team',
+          memberName: 'member',
+          contact: ''
+        },
+        uid: 'workflow-regression',
+        chatId: 'workflow-chat',
+        responseChatItemId: 'workflow-response',
+        stream: false,
+        histories: [],
+        query: [],
+        chatConfig: {},
+        externalProvider: {},
+        maxRunTimes: 100,
+        workflowDispatchDeep: 0,
+        checkIsStopping: () => false,
+        ...overrides,
+        variableContext: variableState,
+        runtimeNodes: nodes,
+        runtimeEdges: edges,
+        // 与生产 sink 一样接管明细，Queue 不再重复保留 responseData。
+        nodeResponseSink: { publish, hasOutput: true }
+      })
   );
   return { result, responses, publish, variableState };
 };
