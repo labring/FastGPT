@@ -36,6 +36,7 @@ export function useLinkedScroll<
     params = {},
     currentData,
     defaultScroll = 'top',
+    getScrollTarget,
     enablePagination = true,
     showPrevLoading = true,
     showErrorToast = true
@@ -44,6 +45,8 @@ export function useLinkedScroll<
     params?: Record<string, any>;
     currentData?: { id: string; anchor?: any };
     defaultScroll?: 'top' | 'bottom';
+    /** 列表项内部有更精确的阅读起点时，由业务返回实际需要对齐的元素。 */
+    getScrollTarget?: (element: HTMLElement) => HTMLElement;
     enablePagination?: boolean;
     showPrevLoading?: boolean;
     showErrorToast?: boolean;
@@ -88,7 +91,7 @@ export function useLinkedScroll<
           return;
         }
 
-        const elementRect = element.getBoundingClientRect();
+        const elementRect = (getScrollTarget?.(element) ?? element).getBoundingClientRect();
         const containerRect = containerRef.current.getBoundingClientRect();
 
         const scrollTop = containerRef.current.scrollTop + elementRect.top - containerRect.top;
@@ -100,7 +103,7 @@ export function useLinkedScroll<
 
       tryScroll();
     },
-    [dataList, defaultScroll]
+    [dataList, defaultScroll, getScrollTarget]
   );
 
   const scrollSign = useRef(false);
