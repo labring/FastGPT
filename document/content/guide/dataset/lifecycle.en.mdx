@@ -53,15 +53,6 @@ The collection status uses three enum values and displays stage-specific badges 
 - **Ready (`ready`)**: Displays **Ready**; processing is complete and chunks are available for retrieval.
 - **Indexing error (`error`)**: Displays **Indexing error**; inspect diagnostics in the **Error list** modal, fix file, model balance, or network prerequisites, and retry.
 
----
-
-## Stage Verification Checkpoints
-
-- [ ] **Ingestion Check**: Inspect preview chunks to verify that key rules and tables remain intact across boundaries.
-- [ ] **Readiness Check**: Collection status displays "Ready" and data chunk text is readable online.
-- [ ] **Retrieval Check**: Standalone "Search Test" places expected reference chunks at the top of the candidate list.
-- [ ] **Production Check**: Attached applications return grounded answers with verified citation pills in fresh sessions.
-
 ## Next Steps
 
 - Import procedures: Read [Document Ingestion and Chunking](/en/guide/dataset/import-data).

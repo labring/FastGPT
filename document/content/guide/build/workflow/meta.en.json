@@ -2,7 +2,7 @@
   "title": "Workflow",
   "description": "FastGPT workflow introduction and node guides.",
   "pages": [
-    "intro",
+    "!intro",
     "variables",
     "rules",
     "debug-and-error-handling",

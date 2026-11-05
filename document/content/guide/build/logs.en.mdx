@@ -9,6 +9,13 @@ The **Conversation Logs** tab (`/app/detail?appId=<id>&currentTab=logs`) in App 
 
 Switch to the **Data board** sub-tab and filter by source channel, date range, and aggregation interval (day, week, month, or quarter) across three dashboard sections:
 
+```mermaid
+flowchart LR
+  Filter["Global Filters<br/>Channel · Date Range · Interval"] --> User["User Data<br/>Active/New/Retained · Points & Token Trends"]
+  Filter --> Chat["Chat Data<br/>Conversations/Sessions · Error Rate · Avg Cost"]
+  Filter --> Effect["App Performance<br/>Good/Bad Feedback Trends · Avg Run Time"]
+```
+
 | Metric Category | Key Indicators | Operational Use |
 | --- | --- | --- |
 | **User data** | Active user trends, new user trends, retained users, cumulative users, plus points consumed, channel users, and token consumption trends | Evaluate user growth, retention, and activity across channels |

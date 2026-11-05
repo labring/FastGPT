@@ -1,9 +1,11 @@
 ---
-title: Inspect and choose team models
+title: Model Providers
 description: Select models by capabilities, access scope, and pricing, and find the relevant configuration entrance.
 ---
 
 Open **Account → Model provider** to inspect the active model catalog, filter by provider and model category, check tiered token pricing, and—when team model management is enabled—configure model channels.
+
+![Model routing and catalog invocation flow](/imgs/diagrams/model-routing.en.light.svg)
 
 ## Choose for the task
 
@@ -19,6 +21,8 @@ Open **Account → Model provider** to inspect the active model catalog, filter 
 | **Speech Model (STT / TTS)** | Microphone speech-to-text and assistant voice synthesis | Supported languages, voice presets, and `pricing.unitPrice` (per 1M characters for TTS, per 60 seconds for STT) |
 
 Display names, model instance identifiers, and provider model names serve different purposes. Use the exact identifier required by an API or configuration contract. Pricing and provider support follow the current environment. System models charge points according to `pricing`, while team-configured models are free of platform points.
+
+![Select an available team model and configure parameters in an application](/imgs/optimized/current/ai-model-selector.png.webp)
 
 ## Team and platform configuration
 

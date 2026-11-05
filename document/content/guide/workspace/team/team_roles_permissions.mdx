@@ -1,9 +1,18 @@
 ---
-title: 团队&成员组&权限
+title: 成员、部门、群组与权限
 description: 如何管理 FastGPT 团队、成员组及权限设置
 ---
 
-## 团队 & 成员组 & 权限
+## 团队管理入口与四个标签页
+
+进入左侧导航栏**账号 → 团队管理**，页面顶部按协作与治理流程划分为 **成员**、**部门**、**群组** 与 **权限** 四个标签页：
+
+- **成员**：查看当前团队全员名单、状态与所有者标识，点击右上角**邀请成员**生成邀请链接，或移除成员、转移团队所有权。
+- **部门**：构建多级组织架构树，将成员归入对应部门并指定部门负责人，便于按组织层级继承权限。
+- **群组**：创建跨部门的虚拟项目组（系统内置一个与团队同名的默认全员群组），实现按业务项目批量授权。
+- **权限**：按成员、部门或群组维度，集中勾选团队级资源创建与管理权限。
+
+![团队权限页面按成员、部门、群组配置资源创建和管理能力](/imgs/optimized/current/team-permissions.png.webp)
 
 ## 权限系统简介
 
@@ -168,66 +177,3 @@ FastGPT 按**资源类型**（团队、应用、知识库、集合文件/文件�
 ### 2. 批量权限管理
 
 通过创建群组或组织，可以高效管理多用户的权限配置。先将用户添加到群组，再对群组整体授权。
-
-### 开发者参考
-
-> 以下内容面向开发者，如不涉及二次开发可跳过。
-
-#### 权限设计原理
-
-FastGPT 权限系统参考 Linux 权限设计，采用二进制方式存储权限位。权限位为
-1 表示拥有该权限，为 0 表示无权限。Owner 权限特殊标记为全 1。
-
-#### 权限表
-
-权限信息存储在 MongoDB 的 resource_permissions 集合中，其主要字段包括：
-
-- teamId: 团队标识
-- tmbId/groupId/orgId: 权限主体(三选一)
-- resourceType: 资源类型(team/app/dataset/model/agentSkill/collection)
-- permission: 权限值(数字)
-- resourceId: 资源 ID(团队资源为 null)
-
-系统通过这一数据结构实现了灵活而精确的权限控制。
-
-对于这个表的 Schema 定义在 packages/service/support/permission/schema.ts
-文件中。定义如下：
-
-```typescript
-export const ResourcePermissionSchema = new Schema({
-  teamId: {
-    type: Schema.Types.ObjectId,
-    ref: TeamCollectionName
-  },
-  tmbId: {
-    type: Schema.Types.ObjectId,
-    ref: TeamMemberCollectionName
-  },
-  groupId: {
-    type: Schema.Types.ObjectId,
-    ref: MemberGroupCollectionName
-  },
-  orgId: {
-    type: Schema.Types.ObjectId,
-    ref: OrgCollectionName
-  },
-  resourceType: {
-    type: String,
-    enum: Object.values(PerResourceTypeEnum),
-    required: true
-  },
-  permission: {
-    type: Number,
-    required: true
-  },
-  // Resrouce ID: App or DataSet or any other resource type.
-  // It is null if the resourceType is team.
-  resourceId: {
-    type: Schema.Types.ObjectId
-  }
-});
-```
-
-![团队权限页面按成员、部门、群组配置资源创建和管理能力](/imgs/optimized/current/team-permissions.png.webp)
-
-入口为“账号 → 团队管理 → 权限”。图中搜索演示成员，展示权限列与分类；具体授权项随当前角色和部署变化。应用或知识库的协作者入口负责对应资源权限，见[集合权限](/zh-CN/guide/dataset/collection_permission)。

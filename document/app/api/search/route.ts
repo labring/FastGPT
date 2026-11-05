@@ -13,7 +13,7 @@ export const { GET } = createFromSource(source, {
         tokenizer: enhancedTokenizer()
       },
       search: {
-        threshold: 0,
+        threshold: 0.2,
         tolerance: 0
       }
     }

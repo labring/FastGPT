@@ -3,8 +3,8 @@
   "root": false,
   "pages": [
     "team",
-    "models",
     "usage-and-billing",
-    "customDomain"
+    "customDomain",
+    "models"
   ]
 }

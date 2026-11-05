@@ -6,9 +6,9 @@
     "quick-start",
     "first-agent",
     "first-workflow",
-    "concepts",
-    "application-types",
     "knowledge-qa",
-    "examples"
+    "examples",
+    "!concepts",
+    "!application-types"
   ]
 }

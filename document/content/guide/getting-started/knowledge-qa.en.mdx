@@ -105,9 +105,9 @@ Operational rules:
 
 ## Step 4: Test in Workspace and Verify Edge Cases
 
-Run two distinct tests in the right-hand testing drawer:
+Run two distinct tests in the "Debugging preview" panel on the right:
 1. **Factual Recall Test**: Ask "What receipts are required for reimbursement?". Confirm that the assistant lists invoices and approved request forms with accurate citations.
-2. **Boundary Test**: Ask "What is the daily hotel lodging allowance?". Confirm that the model states the policy lacks records on lodging rates, preventing hallucinated numbers.
+2. **Boundary Test**: Ask "How are overseas visa application fees reimbursed during a business trip?". Confirm that the model states the current policy contains no record of overseas visa reimbursement, preventing fabricated rules.
 
 ![Testing chat returns deadline, receipts, and source references](/imgs/optimized/current/knowledge-answer.png.webp)
 
@@ -119,13 +119,6 @@ Run two distinct tests in the right-hand testing drawer:
 4. Copy the URL and test the experience in an external browser tab.
 
 ![Published share window returns 15 calendar days deadline and required documents](/imgs/optimized/current/knowledge-published.png.webp)
-
-## Acceptance Checklist
-
-- [ ] Knowledge base collection status is ready and vector indexing is active.
-- [ ] Standalone search tests recall target chunks with high confidence scores.
-- [ ] The assistant answers grounded facts reliably and explicitly marks unrecorded questions.
-- [ ] Public share links display expandable citation pills that reveal source material.
 
 ## Next Steps
 

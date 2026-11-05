@@ -2,7 +2,7 @@
   "title": "技能",
   "root": false,
   "pages": [
-    "intro",
+    "!intro",
     "initialization",
     "development",
     "version",

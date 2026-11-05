@@ -1,9 +1,18 @@
 ---
-title: Teams, Groups & Permissions
+title: Members, Departments, Groups, and Permissions
 description: How to manage FastGPT teams, member groups, and permission settings
 ---
 
-## Teams, Groups & Permissions
+## Team Management Tabs
+
+Open **Account → Team management** from the left navigation bar. The page is organized into four tabs—**Members**, **Departments**, **Groups**, and **Permissions**:
+
+- **Members**: View all active team members, statuses, and the Team Owner badge; click **Invite Members** in the upper-right corner to generate invitation links, remove members, or transfer team ownership.
+- **Departments**: Build a hierarchical organization tree and assign members to departments for inherited access control.
+- **Groups**: Create cross-departmental member groups (including the built-in default group named after the team) for batch authorization.
+- **Permissions**: Grant team-level creation and administration permissions across members, departments, and groups.
+
+![Team permissions grouped by members, departments, and groups](/imgs/optimized/current/team-permissions.png.webp)
 
 ## Permission System Overview
 
@@ -167,64 +176,3 @@ Use the default group (shown with the team name in the UI) to quickly set baseli
 ### 2. Batch Permission Management
 
 Create groups or organizations to efficiently manage permissions for multiple users. Add users to a group, then grant permissions to the entire group.
-
-### Developer Reference
-
-> The following content is for developers. Skip if you're not doing custom development.
-
-#### Permission Design Principles
-
-FastGPT's permission system is inspired by Linux permissions, using binary storage for permission bits. A permission bit of 1 means the permission is granted, 0 means no permission. Owner permissions are specially marked as all 1s.
-
-#### Permission Table
-
-Permission information is stored in MongoDB's resource_permissions collection, with these main fields:
-
-- teamId: Team identifier
-- tmbId/groupId/orgId: Permission subject (one of three)
-- resourceType: Resource type (team/app/dataset/model/agentSkill/collection)
-- permission: Permission value (number)
-- resourceId: Resource ID (null for team resources)
-
-The system implements flexible and precise permission control through this data structure.
-
-The schema for this table is defined in packages/service/support/permission/schema.ts:
-
-```typescript
-export const ResourcePermissionSchema = new Schema({
-  teamId: {
-    type: Schema.Types.ObjectId,
-    ref: TeamCollectionName
-  },
-  tmbId: {
-    type: Schema.Types.ObjectId,
-    ref: TeamMemberCollectionName
-  },
-  groupId: {
-    type: Schema.Types.ObjectId,
-    ref: MemberGroupCollectionName
-  },
-  orgId: {
-    type: Schema.Types.ObjectId,
-    ref: OrgCollectionName
-  },
-  resourceType: {
-    type: String,
-    enum: Object.values(PerResourceTypeEnum),
-    required: true
-  },
-  permission: {
-    type: Number,
-    required: true
-  },
-  // Resrouce ID: App or DataSet or any other resource type.
-  // It is null if the resourceType is team.
-  resourceId: {
-    type: Schema.Types.ObjectId
-  }
-});
-```
-
-![Team permissions grouped by members, departments, and groups](/imgs/optimized/current/team-permissions.png.webp)
-
-Open Account → Team management → Permissions. The screenshot filters for a demo member and shows columns for creating applications, Skills, knowledge bases, API keys, installing models, and administration. Available controls depend on your role and deployment. Application and knowledge-base collaborator dialogs manage their resource permissions; see [collection permissions](/en/guide/dataset/collection_permission).

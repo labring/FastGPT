@@ -34,7 +34,12 @@ const files = fs.readdirSync(root, { recursive: true })
     return { type: 'meta', path: name, data: JSON.parse(raw) };
   });
 const source = loader({ baseUrl: '/', i18n: { defaultLanguage: 'zh-CN', languages: ['zh-CN', 'en'], hideLocale: 'never' }, source: { files } });
-const compatibilityLandings = new Set(['toc.mdx', 'guide/chat/htmlRendering.mdx']);
+const compatibilityLandings = new Set([
+  'toc.mdx',
+  'guide/chat/htmlRendering.mdx',
+  'guide/dataset/collection_tags_legacy.mdx',
+  'faq/chat.mdx'
+]);
 for (const locale of ['zh-CN', 'en']) {
   const tree = source.pageTree[locale];
   assert.equal(tree.children.length, 4, 'Four reader entrances');

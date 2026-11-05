@@ -1,7 +1,9 @@
 ---
-title: App Building FAQ
-description: Common FastGPT app building questions, including Chat Agent, workflows, and tools
+title: App, Chat, and Plugin FAQ
+description: Common questions and troubleshooting for FastGPT app building, chat interface, and team plugin management
 ---
+
+## App Building and Orchestration
 
 ## Multi-Turn Classification
 
@@ -53,3 +55,45 @@ Add a prompt to guide the model to output formulas in LaTeX/Markdown format:
 Latex inline: \(x^2\)
 Latex block: $$e=mc^2$$
 ```
+
+## Chat Interface and Interaction
+
+### Browser Does Not Support Voice Input
+
+1. Verify that microphone permissions are enabled in both the browser and operating system settings.
+2. Confirm the site is permitted to access the microphone and the active input device is selected.
+3. Serve the site over HTTPS (SSL certificate), as modern browsers restrict microphone access to secure contexts.
+
+### Model Thinking Process Is Hidden in Chat (Before v4.15)
+
+Applies to v4.9.1–v4.14.x. FastGPT recognizes the upstream `reasoning_content` field or text wrapped in `<think></think>` tags (when "Supports thinking output" is enabled in the model settings).
+
+Add the upstream relay's thinking toggle to the model's "Additional Body parameters" (such as `{"enable_thinking": true}` or `{"chat_template_kwargs": {"enable_thinking": true}}`), save, and start a new chat.
+
+### Tapping "Open the original text" in a Citation Does Nothing on iOS
+
+Applies up to v4.17.0. iOS Safari (including WeCom's built-in browser) blocks new windows opened asynchronously after fetching a source URL.
+
+Workaround: tap "…" in the upper-right corner to open in the system browser, or allow pop-ups in the browser settings.
+
+## Team Plugin Installation and Management
+
+### Why is the + Install Tool button missing?
+
+Team plugin installation, updates, and removal require the team administrator or team owner role. Regular team members can use already installed plugins in workflows and Agents.
+
+### Why is Install from Local missing?
+
+The system administrator must enable **Allow teams to upload plugins** under **Admin → System Config → Feature Flags** before team administrators can install plugins from Marketplace or local packages.
+
+### Why is an uploaded plugin unavailable?
+
+Complete the installation confirmation step after package parsing, and configure any required secrets or runtime parameters before calling the plugin.
+
+### Does removing a team plugin affect the system plugin?
+
+Team installations and system installations use separate sources. Removing a team plugin only deletes the current team's installation record.
+
+### Does a team plugin inherit system plugin secrets?
+
+Team plugins are isolated from system plugins and require their own runtime parameters and secrets.

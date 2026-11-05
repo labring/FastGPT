@@ -89,31 +89,10 @@ When the same plugin is installed at both levels:
 
 Use clear internal conventions when both copies exist, especially when they have different versions or configuration.
 
-## FAQ
-
-### Why is the + Install Tool button missing?
-
-Only team administrators and team owners can manage team plugins.
-
-### Why is Install from Local missing?
-
-The system administrator has disabled **Allow teams to upload plugins** under **Admin → System Config → Feature Flags**. Marketplace installation, local uploads, and installation confirmation are rejected while it is disabled. The page remains accessible by direct URL, but installations cannot be completed. Ask the system administrator to enable this option before installing a team plugin.
-
-### Why is an uploaded plugin unavailable?
-
-Complete the confirmation step after package parsing. Plugins that require secrets or runtime parameters must also be configured before use.
-
-### Does removing a team plugin remove the system plugin?
-
-No. Team and system installations use independent sources. Removal affects only the current team's installation.
-
-### Does a team plugin inherit system plugin secrets?
-
-No. Team plugins are configured independently.
-
 ## Security Recommendations
 
 - Install packages only from trusted sources and review requested permissions.
 - Apply your team's data security policy when a plugin accesses external URLs, accounts, or secrets.
 - Review release notes and test compatibility before upgrading.
 - Check workflow and Agent references before removing a plugin.
+- For troubleshooting team plugin installation, permissions, and secret isolation, see [App, Chat, and Plugin FAQ](/en/guide/build/faq#team-plugin-installation-and-management).
