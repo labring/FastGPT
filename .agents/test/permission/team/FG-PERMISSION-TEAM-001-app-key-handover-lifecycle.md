@@ -8,6 +8,10 @@ category: boundary
 scenario: special
 priority: P0
 status: ready
+automation:
+  - runner: node
+    script: .agents/test/permission/team/FG-PERMISSION-TEAM-001.mjs
+    items: [T1, T2, T3, T4, T5, T6, T7]
 tags: [phase3, app-api-key, customuid-publishsource, 离职交接, Pro, 覆盖基础场景, 覆盖异常场景, 覆盖边界场景]
 evidence: [response, database, storage]
 sources:
@@ -46,11 +50,13 @@ baseline: "d09b4e8849d051182ef4011470945d2b71085807"
 
 ## 前置准备
 
+- 使用本地 dev 主站、Pro 及已有 Mongo/Redis/S3 配置；脚本逐项新建可回收的测试团队、账号、应用与 Key，不新建独立服务或数据库。执行约定见[应用 Key 脚本配置](../../../skills/system/fastgpt-integration-test-runner/references/app-key-cases.md)。
+
 - L0：独立 T，团队 owner O；普通成员 A，应用 W owner=B、应用 X owner=C、应用 V owner=A；A 持有 W 的 Kw、X 的 Kx、V 的 Kv 和个人 Pa。B/C 另有自己的应用 Key，另一团队 U 有负对照 Key。给接收人的 personal Key 数量准备“已满”变体，不能影响应用交接。
 - 为 Kw/Kx/Kv 保存明文于执行器私有内存并记录 `_id/type/appId/tmbId/createTime/limit/usagePoints` 快照，证据中只保存不可逆摘要或内存恒等比较结论。用各 Key 创建已完成会话及含 customUid 的文件；另备无 customUid 的历史文件变体，按会话实际 uid 保存。历史 Chat.tmbId/outLinkUid 前快照不可省略。
 - API 移出使用登录 owner 的 `DELETE .../member/delete?tmbId=A`；主动离开为 A 登录态 DELETE leave；主动转让 body 为 `{appId:W,ownerId:新成员真实tmbId}`。各行用独立 L0 副本，调用后重新登录仍有效的观测者，不能用已撤销的离职者 Cookie 推断 Key 失效。
-- 同步边界：基线的批量同步删除另有分支，并受 TRANSFER_RESOURCE_ON_MEMBER_LEAVE 控制，不等于调用 removeUserFromTeam。开启时目标为同一应用 owner 交接规则；关闭时应用及其应用 Key 均不交接，保留现有绑定与归属；恢复成员不夺回已交接 Key。真实同步输入按实际同步协议构造，不增加虚构的 disable API。
-- 注销仅针对可回收账号。T7 使用真实 Mongo 与 `cleanupAccountCancellationTeams(userId)`、`checkAccountCancellationResiduals(userId)` 的隔离服务集成，测试账号已满足其生命周期前置；不绕过真实用户验证/等待期，不将这段服务测试宣称为完整注销端到端通过。
+- 同步边界：基线的批量同步删除另有分支，并受 TRANSFER_RESOURCE_ON_MEMBER_LEAVE 控制，不等于调用 removeUserFromTeam。开启时目标为同一应用 owner 交接规则；关闭时应用及其应用 Key 均不交接，保留现有绑定与归属；恢复成员不夺回已交接 Key。通过真实同步服务传入本轮用户列表；开关仅在该服务子进程中切换，不修改共享 dev 配置，不增加虚构的 disable API。
+- 注销仅针对可回收账号。T7 使用真实 Mongo 与 `cleanupAccountCancellationTeams(userId)`、`checkAccountCancellationResiduals(userId)` 的服务集成，测试入口从最终清理阶段开始；不覆盖用户验证、等待期及完整注销端到端。
 - 事务行需要可控地让接收 owner 不合法或在一组 Key 条件写入后、事务提交前触发真实失败；不 mock 所有 DB。记录快照、注入位置和会话边界。同步/故障/注销验证能力缺失时仅相关行阻塞。
 - 只读检查按本次 teamId、appId、Key._id、memberId 白名单，集合从实际 Model 取得；日志库 operationLogs 按团队/时间/操作者核查。API 调用后允许额度与最近使用时间真实增加；比较“交接本身不改额度”时先暂停业务调用，分别保留交接前后与复用调用后的快照。
 - 删除与异步清理 1 秒轮询、最长 60 秒；注销服务检查用实际返回结果判断，不人为推进框架状态。结束后移除临时团队/应用/账号与存储对象，恢复所有故障与同步配置。

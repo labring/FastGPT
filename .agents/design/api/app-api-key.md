@@ -250,4 +250,4 @@ authAppApiKey?: boolean; // 接受应用 Key，默认 false
 - [应用独立授权与绑定边界](../../test/permission/resource/FG-PERMISSION-RESOURCE-002-app-key-application-grant.md)
 - [对话管理、日志与会话文件](../../test/chat/history-feedback/FG-CHAT-HISTORY-FEEDBACK-003-app-key-chat-management.md)
 - [成员交接、转让与注销](../../test/permission/team/FG-PERMISSION-TEAM-001-app-key-handover-lifecycle.md)
-- [历史类型回填与恢复](../../test/admin/maintenance/FG-ADMIN-MAINTENANCE-002-openapi-key-type-migration.md)
+历史类型回填由迁移目录下的 Vitest / 真实 Mongo 专项测试验证，不纳入业务集成用例库。

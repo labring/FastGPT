@@ -1,176 +1,190 @@
-import { spawn, execFileSync } from 'node:child_process';
+import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
-import { readFile, writeFile, mkdir, mkdtemp, chmod } from 'node:fs/promises';
-import { createWriteStream } from 'node:fs';
-import { createServer as netServer } from 'node:net';
-import { createServer } from 'node:http';
-import { once } from 'node:events';
+import { readFile, writeFile, mkdir, mkdtemp, chmod, rm } from 'node:fs/promises';
 import { randomUUID, randomBytes, createHash } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createRedisProxy } from './redis-proxy.mjs';
+import { poll } from './scenario.mjs';
 
 const repo = fileURLToPath(new URL('../../../', import.meta.url));
 
-/** 启动本轮专用 Mongo replica set、Redis 和主站；只复制显式环境文件的连接配置，不复制业务数据。 */
-export async function startPrivateEnvironment({
+/** 只读取显式指定的 dev 配置，连接值仅进入私有夹具文件，不输出到报告或命令行。 */
+export async function readDevEnvironment(sourceEnv) {
+  const req = createRequire(path.join(repo, 'projects/app/package.json'));
+  const { processEnv } = createRequire(req.resolve('next/package.json'))('@next/env');
+  const previous = { ...process.env };
+  try {
+    const [, env] = processEnv(
+      [{ path: path.basename(sourceEnv), contents: await readFile(sourceEnv, 'utf8'), env: {} }],
+      path.dirname(sourceEnv),
+      {
+        info() {},
+        error() {
+          throw Error('dev 环境文件解析失败');
+        }
+      },
+      true
+    );
+    return { ...previous, ...env };
+  } finally {
+    // @next/env 会改当前进程环境；解析完成即恢复，保留执行器协议与前一资源副本的凭证引用。
+    for (const key of Object.keys(process.env)) if (!(key in previous)) delete process.env[key];
+    Object.assign(process.env, previous);
+  }
+}
+
+/**
+ * 在现有本地 dev 中准备可回收的团队、账号和回显模板，不启动应用、数据库或 Redis。
+ * 仅回收本函数记录的 ID；成员交接场景可逐项创建资源副本，共享 dev 配置保持不变。
+ */
+export async function prepareDevEnvironment({
   sourceEnv,
-  port = 3100,
-  mongoBinary,
+  baseUrl = 'http://localhost:3000',
   directory,
-  serverRoot = repo,
-  profile = 'history'
+  roles = ['owner', 'A', 'B', 'N', 'C', 'M']
 }) {
-  if (!['history', 'app-key'].includes(profile)) throw Error('未知测试环境 profile');
+  assert.ok(
+    ['localhost', '127.0.0.1', '[::1]'].includes(new URL(baseUrl).hostname),
+    '使用本地 dev 入口'
+  );
+  const env = await readDevEnvironment(sourceEnv);
+  assert.ok(env.MONGODB_URI, 'dev 需要已有 Mongo 配置');
   const req = createRequire(path.join(repo, 'package.json'));
   const appReq = createRequire(path.join(repo, 'projects/app/package.json'));
   const { MongoClient, ObjectId } = createRequire(path.join(repo, 'packages/service/package.json'))(
     'mongoose'
   ).mongo;
   const { request } = req('@playwright/test');
-  const envText = await readFile(sourceEnv, 'utf8');
-  const { processEnv } = createRequire(appReq.resolve('next/package.json'))('@next/env');
-  const [, inherited] = processEnv(
-    [{ path: path.basename(sourceEnv), contents: envText, env: {} }],
-    path.dirname(sourceEnv),
-    {
-      info() {},
-      error() {
-        throw Error('环境文件解析失败');
-      }
-    },
-    true
-  );
+  const client = await new MongoClient(env.MONGODB_URI).connect();
+  const db = client.db();
   const id = randomUUID().replaceAll('-', '');
-  const database = 'fg_it_' + id,
-    nonce = randomBytes(24).toString('hex');
-  const rootPassword = randomBytes(18).toString('hex');
-  const hash = (value) => createHash('sha256').update(value).digest('hex');
-  directory ??= await mkdtemp(path.join(tmpdir(), 'fastgpt-private-'));
+  const prefix = 'fgtest' + id;
+  directory ??= await mkdtemp(path.join(tmpdir(), 'fastgpt-dev-'));
   await mkdir(directory, { recursive: true, mode: 0o700 });
   await chmod(directory, 0o700);
-  const resources = [],
-    ledger = {
-      id,
-      database,
-      directory,
-      port,
-      parentPid: process.pid,
-      children: [],
-      container: 'fg-it-' + id
-    };
+  const password = randomBytes(18).toString('hex');
+  const hash = (value) => createHash('sha256').update(value).digest('hex');
+  const teamId = new ObjectId();
+  const actors = {},
+    secrets = {},
+    sessions = new Map(),
+    appIds = [];
+  let closed = false;
+  const ledger = {
+    id,
+    parentPid: process.pid,
+    teamIds: [String(teamId)],
+    userIds: [],
+    memberIds: [],
+    appIds
+  };
   const save = () =>
-    writeFile(path.join(directory, 'ledger.json'), JSON.stringify(ledger, null, 2), {
+    writeFile(path.join(directory, 'resources.json'), JSON.stringify(ledger, null, 2), {
       mode: 0o600
     });
-  await save();
-
-  async function freePort() {
-    const server = netServer();
-    server.listen(0, '127.0.0.1');
-    await once(server, 'listening');
-    const value = server.address().port;
-    await new Promise((resolve) => server.close(resolve));
-    return value;
-  }
-  function child({ command, args, ...options }) {
-    const stream = createWriteStream(path.join(directory, options.log ?? 'process.log'), {
-      mode: 0o600
-    });
-    const process = spawn(command, args, { ...options, stdio: ['ignore', 'pipe', 'pipe'] });
-    process.stdout.pipe(stream);
-    process.stderr.pipe(stream);
-    ledger.children.push({ pid: process.pid, command, args });
-    resources.push(async () => {
-      if (process.exitCode === null) {
-        process.kill('SIGTERM');
-        await Promise.race([
-          once(process, 'exit'),
-          new Promise((resolve) => setTimeout(resolve, 10000))
-        ]);
-        if (process.exitCode === null) process.kill('SIGKILL');
+  const context = (role) => sessions.get(role);
+  const business = async (session, route, body, method = 'post') => {
+    const response = await session[method](route, body === undefined ? {} : { data: body });
+    const result = await response.json();
+    assert.equal(result.code, 200, route + ': ' + (result.statusText ?? result.code));
+    return result.data;
+  };
+  /** 先经正常应用删除入口回收业务资源，再精确回收本轮账号和团队夹具。 */
+  async function close() {
+    if (closed) return;
+    closed = true;
+    const errors = [];
+    try {
+      for (const appId of [...appIds].reverse()) {
+        const app = await db.collection('apps').findOne({ _id: new ObjectId(appId), teamId });
+        if (app && !app.deleteTime) {
+          try {
+            await business(
+              context('owner'),
+              '/api/core/app/del?appId=' + appId,
+              undefined,
+              'delete'
+            );
+          } catch (error) {
+            errors.push(error.message);
+          }
+        }
+        try {
+          await poll(async () => {
+            assert.equal(
+              await db.collection('apps').countDocuments({ _id: new ObjectId(appId), teamId }),
+              0
+            );
+          }, 60000);
+        } catch (error) {
+          errors.push('template cleanup: ' + error.message);
+        }
       }
-      stream.end();
-    });
-    return process;
-  }
-  let closing;
-  function close() {
-    return (closing ??= (async () => {
-      const errors = [];
-      for (const cleanup of [...resources].reverse())
-        await cleanup().catch((error) => errors.push(error.message));
-      await writeFile(
-        path.join(directory, 'environment-cleanup.json'),
-        JSON.stringify({ id, errors, closedAt: new Date().toISOString() }, null, 2)
-      );
-      if (errors.length) throw Error('私有环境清理失败：' + errors.join(';'));
-    })());
-  }
-  // 启动阶段也处理退出，避免首次编译时中断遗留本轮 mongod/容器。
-  for (const signal of ['SIGINT', 'SIGTERM'])
-    process.once(signal, () =>
-      close().then(
-        () => process.exit(0),
-        () => process.exit(1)
-      )
-    );
-  try {
-    // 所有进程由本次 ledger 所有，禁止复用或终止共享服务。
-    const mongoPort = await freePort();
-    await mkdir(path.join(directory, 'mongo'));
-    child({
-      command: mongoBinary,
-      args: [
-        '--dbpath',
-        path.join(directory, 'mongo'),
-        '--bind_ip',
-        '127.0.0.1',
-        '--port',
-        String(mongoPort),
-        '--replSet',
-        'fgtest',
-        '--setParameter',
-        'enableTestCommands=1'
-      ],
-      log: 'mongo.log'
-    });
-    const mongoAddress = `mongodb://127.0.0.1:${mongoPort}`;
-    let admin;
-    for (let index = 0; index < 100; index++) {
+      // 这些用户由本轮新建；登出只影响各自唯一的测试 session。
+      for (const [role, session] of sessions) {
+        try {
+          await session.get('/api/support/user/account/loginout');
+        } catch (error) {
+          errors.push(role + ': ' + error.name);
+        }
+      }
+      const userIds = ledger.userIds.map((value) => new ObjectId(value));
+      const foreignMemberships = await db
+        .collection('team_members')
+        .countDocuments({ userId: { $in: userIds }, teamId: { $ne: teamId } });
+      assert.equal(foreignMemberships, 0, '不删除已产生清单外成员关系的用户');
+      for (const name of [
+        'resource_permissions',
+        'team_members',
+        'openapis',
+        'outlinks',
+        'usages',
+        'usage_items',
+        'team_subscriptions',
+        'team_member_groups',
+        'team_org_members',
+        'team_orgs'
+      ])
+        await db.collection(name).deleteMany({ teamId });
+      await db
+        .collection('team_group_members')
+        .deleteMany({ tmbId: { $in: ledger.memberIds.map((value) => new ObjectId(value)) } });
+      const logClient = await new MongoClient(env.MONGODB_LOG_URI ?? env.MONGODB_URI).connect();
       try {
-        admin = await new MongoClient(mongoAddress + '/?directConnection=true', {
-          serverSelectionTimeoutMS: 300
-        }).connect();
-        break;
-      } catch {
-        await new Promise((resolve) => setTimeout(resolve, 200));
+        await logClient.db().collection('operationlogs').deleteMany({ teamId });
+      } finally {
+        await logClient.close();
       }
+      await db.collection('teams').deleteOne({ _id: teamId });
+      await db
+        .collection('users')
+        .deleteMany({ _id: { $in: userIds }, username: { $regex: '^' + prefix + '-' } });
+      assert.equal(await db.collection('openapis').countDocuments({ teamId }), 0);
+      assert.equal(await db.collection('team_members').countDocuments({ teamId }), 0);
+      assert.equal(await db.collection('users').countDocuments({ _id: { $in: userIds } }), 0);
+    } finally {
+      for (const session of sessions.values()) await session.dispose().catch(() => {});
+      await client.close();
+      await writeFile(
+        path.join(directory, 'cleanup.json'),
+        JSON.stringify({ id, errors, closedAt: new Date().toISOString() }, null, 2),
+        { mode: 0o600 }
+      );
     }
-    if (!admin) throw Error('私有 Mongo 未启动');
-    resources.push(async () => admin.close());
-    await admin.db('admin').command({
-      replSetInitiate: { _id: 'fgtest', members: [{ _id: 0, host: `127.0.0.1:${mongoPort}` }] }
-    });
-    while (!(await admin.db('admin').command({ hello: 1 })).isWritablePrimary)
-      await new Promise((resolve) => setTimeout(resolve, 200));
-    const uri = `${mongoAddress}/${database}?replicaSet=fgtest`,
-      logUri = `${mongoAddress}/${database}_log?replicaSet=fgtest`;
-    const db = admin.db(database);
-    await db.collection('fg_test_environment').insertOne({ _id: id, nonce });
-    const teamId = new ObjectId(),
-      now = new Date();
-    const actors = {};
-    for (const role of ['owner', 'A', 'B', 'N']) {
+    assert.deepEqual(errors, [], '本轮 dev 资源必须清理完成');
+    return { teamId: String(teamId), users: ledger.userIds.length, cleaned: true };
+  }
+  try {
+    const now = new Date();
+    for (const role of roles) {
       const userId = new ObjectId(),
-        tmbId = new ObjectId();
-      const username =
-        role === 'owner' ? 'root' : 'fgtest-' + role.toLowerCase() + '-' + id.slice(0, 8);
+        tmbId = new ObjectId(),
+        username = prefix + '-' + role.toLowerCase();
       await db.collection('users').insertOne({
         _id: userId,
         username,
-        password: hash(hash(rootPassword)),
+        password: hash(hash(password)),
         status: 'active',
         language: 'zh-CN',
         timezone: 'Asia/Shanghai',
@@ -184,7 +198,7 @@ export async function startPrivateEnvironment({
         name: 'FG-TEST-' + role,
         isSetMemberName: true,
         status: 'active',
-        role: role === 'owner' ? 'owner' : 'member',
+        ...(role === 'owner' ? { role: 'owner' } : {}),
         defaultTeam: role === 'owner',
         createTime: now,
         avatar: '/icon/logo.svg'
@@ -195,382 +209,176 @@ export async function startPrivateEnvironment({
         userId: String(userId),
         name: 'FG-TEST-' + role
       };
+      ledger.userIds.push(String(userId));
+      ledger.memberIds.push(String(tmbId));
+      await save();
     }
     await db.collection('teams').insertOne({
       _id: teamId,
       ownerId: new ObjectId(actors.owner.userId),
-      name: 'FG-TEST private team',
+      name: 'FG-TEST-' + id,
       avatar: '/icon/logo.svg',
       balance: 1000000,
       createTime: now
     });
-    execFileSync(
-      'docker',
-      [
-        'run',
-        '--rm',
-        '-d',
-        '--name',
-        ledger.container,
-        '-p',
-        '127.0.0.1::6379',
-        'redis:7.2-alpine',
-        'redis-server',
-        '--save',
-        '',
-        '--appendonly',
-        'no'
-      ],
-      { stdio: 'pipe' }
-    );
-    resources.push(async () => {
-      execFileSync('docker', ['stop', ledger.container], { stdio: 'pipe' });
-    });
-    const publishedPort = execFileSync('docker', ['port', ledger.container, '6379/tcp'], {
-      encoding: 'utf8'
-    })
-      .trim()
-      .split(':')
-      .at(-1);
-    const redisUri = 'redis://127.0.0.1:' + publishedPort;
-    const proxy = await createRedisProxy({ upstream: redisUri });
-    resources.push(() => proxy.close());
-    const Redis = createRequire(path.join(repo, 'packages/dal/package.json'))('ioredis');
-    const redis = new Redis(redisUri);
-    resources.push(async () => redis.disconnect());
-    await redis.set('fgtest:environment:' + id, nonce);
-    const gatePort = await freePort();
-    const control = createServer(async (req, res) => {
-      if (req.method !== 'POST' || req.headers.authorization !== 'Bearer ' + nonce) {
-        res.writeHead(403).end();
-        return;
-      }
-      try {
-        const chunks = [];
-        for await (const chunk of req) chunks.push(chunk);
-        const body = JSON.parse(Buffer.concat(chunks));
-        if (body.action === 'rule') proxy.setRule(body.rule);
-        if (body.action === 'clear') proxy.setRule(undefined);
-        res
-          .writeHead(200, { 'content-type': 'application/json' })
-          .end(JSON.stringify({ observations: proxy.observations.slice(body.after ?? 0) }));
-      } catch {
-        res.writeHead(400).end();
-      }
-    });
-    control.listen(0, '127.0.0.1');
-    await once(control, 'listening');
-    resources.push(async () => {
-      control.closeAllConnections();
-      await new Promise((resolve) => control.close(resolve));
-    });
-    const env = {
-      ...process.env,
-      ...inherited,
-      NODE_ENV: 'development',
-      MONGODB_URI: uri,
-      MONGODB_LOG_URI: logUri,
-      REDIS_URL: proxy.url,
-      AGENT_USERS: '',
-      SYNC_INDEX: 'false',
-      STREAM_RESUME_TTL_SECONDS: '30',
-      STREAM_RESUME_POST_COMPLETE_TTL_SECONDS: '4',
-      STREAM_RESUME_REDIS_MEMORY_CHECK_INTERVAL_MS: '20',
-      STREAM_RESUME_REDIS_MAXMEMORY_RATIO: '0.5',
-      ...(profile === 'app-key' ? { OPENAPI_KEY_MAX_COUNT: '3' } : {})
-    };
-    await writeFile(path.join(directory, 'service-env.json'), JSON.stringify(env), { mode: 0o600 });
-    const app = child({
-      command: process.execPath,
-      args: [appReq.resolve('next/dist/bin/next'), 'dev', '--port', String(port)],
-      cwd: path.join(serverRoot, 'projects/app'),
-      env,
-      log: 'app.log'
-    });
-    const baseUrl = 'http://127.0.0.1:' + port;
-    for (let index = 0; index < 180; index++) {
-      if (app.exitCode !== null) throw Error('私有主站已退出，见 app.log');
-      try {
-        const r = await fetch(baseUrl + '/api/support/user/account/preLogin?username=root', {
-          signal: AbortSignal.timeout(1500)
-        });
-        if (r.status === 200) break;
-      } catch {}
-      if (index === 179) throw Error('私有主站启动超时，见 app.log');
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-    }
-
-    const secrets = {
-      FASTGPT_TEST_SERVICE_ENV: path.join(directory, 'service-env.json'),
-      FASTGPT_TEST_MONGO_URI: uri,
-      FASTGPT_TEST_MONGO_LOG_URI: logUri,
-      FASTGPT_TEST_MONGO_WRITE_URI: uri,
-      FASTGPT_TEST_REDIS_URI: redisUri,
-      FASTGPT_TEST_PRIVATE_NONCE: nonce,
-      FASTGPT_TEST_GATE_TOKEN: nonce
-    };
     for (const [role, actor] of Object.entries(actors)) {
-      const context = await request.newContext({
+      const session = await request.newContext({
         baseURL: baseUrl,
         extraHTTPHeaders: { 'fastgpt-web-request': '1' },
         timeout: 120000
       });
-      try {
-        const pre = await (
-          await context.get('/api/support/user/account/preLogin?username=' + actor.username)
-        ).json();
-        const login = await (
-          await context.post('/api/support/user/account/loginByPassword', {
-            data: {
-              username: actor.username,
-              password: hash(rootPassword),
-              code: pre.data?.code,
-              language: 'zh-CN'
-            }
-          })
-        ).json();
-        if (login.code !== 200 || !login.data?.user)
-          throw Error(role + ' 私有登录失败，业务码 ' + login.code);
-        actor.stateEnv = 'FASTGPT_TEST_' + role.toUpperCase() + '_STATE';
-        secrets[actor.stateEnv] = path.join(directory, role + '-state.json');
-        await context.storageState({ path: secrets[actor.stateEnv] });
-        await chmod(secrets[actor.stateEnv], 0o600);
-      } finally {
-        await context.dispose();
-      }
+      sessions.set(role, session);
+      const pre = await business(
+        session,
+        '/api/support/user/account/preLogin?username=' + actor.username,
+        undefined,
+        'get'
+      );
+      await business(session, '/api/support/user/account/loginByPassword', {
+        username: actor.username,
+        password: hash(password),
+        code: pre?.code,
+        language: 'zh-CN'
+      });
+      actor.stateEnv = 'FASTGPT_TEST_' + id.toUpperCase() + '_' + role + '_STATE';
+      secrets[actor.stateEnv] = path.join(directory, role + '-state.json');
+      await session.storageState({ path: secrets[actor.stateEnv] });
+      await chmod(secrets[actor.stateEnv], 0o600);
     }
-    const owner = await request.newContext({
-      baseURL: baseUrl,
-      storageState: secrets.FASTGPT_TEST_OWNER_STATE,
-      extraHTTPHeaders: { 'fastgpt-web-request': '1' },
-      timeout: 120000
-    });
-    resources.push(() => owner.dispose());
-    const tsx = appReq('tsx/cjs/api'),
-      load = (file) =>
-        tsx.require(path.join(repo, file), path.join(repo, 'projects/app/probe.cjs'));
+    process.env.TSX_TSCONFIG_PATH = path.join(repo, 'projects/app/tsconfig.json');
+    const tsx = appReq('tsx/cjs/api');
+    const load = (file) =>
+      tsx.require(path.join(repo, file), path.join(repo, 'projects/app/probe.cjs'));
     const { WorkflowStart } = load(
       'packages/global/core/workflow/template/system/workflowStart.ts'
     );
     const { AssignedAnswerModule } = load(
       'packages/global/core/workflow/template/system/assignedAnswer.ts'
     );
-    const { HttpNode468 } = load('packages/global/core/workflow/template/system/http468.ts');
     const { NodeInputKeyEnum } = load('packages/global/core/workflow/constants.ts');
-    const { ReadRoleVal, OwnerRoleVal } = load('packages/global/support/permission/constant.ts');
-    const edge = (source, target) => ({
-      source,
-      sourceHandle: source + '-source-right',
-      target,
-      targetHandle: target + '-target-left'
-    });
-    function graph({ stages = false, pieces = 1, legacyVariables = false } = {}) {
-      const nodes = [
+    const answer = structuredClone(AssignedAnswerModule);
+    answer.nodeId = 'Reply';
+    answer.position = { x: 300, y: 0 };
+    answer.inputs.find((input) => input.key === NodeInputKeyEnum.answerText).value =
+      '{{$Start.userChatInput$}}|{{$VARIABLE_NODE_ID.userId$}}';
+    const graph = {
+      nodes: [
+        { ...structuredClone(WorkflowStart), nodeId: 'Start', position: { x: 0, y: 0 } },
+        answer
+      ],
+      edges: [
         {
-          ...structuredClone(WorkflowStart),
-          nodeId: 'Start',
-          name: 'Start',
-          position: { x: 0, y: 0 }
+          source: 'Start',
+          sourceHandle: 'Start-source-right',
+          target: 'Reply',
+          targetHandle: 'Reply-target-left'
         }
-      ];
-      function answer(id, text) {
-        const node = {
-          ...structuredClone(AssignedAnswerModule),
-          nodeId: id,
-          name: id,
-          position: { x: nodes.length * 300, y: 0 }
-        };
-        node.inputs.find((input) => input.key === NodeInputKeyEnum.answerText).value = text;
-        nodes.push(node);
+      ],
+      chatConfig: {
+        fileSelectConfig: { canSelectFile: true, canSelectImg: true, maxFiles: 5, maxFileSize: 5 }
       }
-      if (stages) {
-        for (let index = 0; index < pieces; index++)
-          answer('Prefix' + index, '{{$Start.userChatInput$}}|P' + String(index).padStart(2, '0'));
-        const gate = {
-          ...structuredClone(HttpNode468),
-          nodeId: 'Gate',
-          name: 'Gate',
-          position: { x: nodes.length * 300, y: 0 }
-        };
-        for (const [key, value] of [
-          [NodeInputKeyEnum.httpReqUrl, `http://127.0.0.1:${gatePort}/wait`],
-          [NodeInputKeyEnum.httpTimeout, 100],
-          [NodeInputKeyEnum.httpHeaders, [{ key: 'x-fastgpt-test-token', value: nonce }]],
-          [NodeInputKeyEnum.httpJsonBody, JSON.stringify({ runId: '{{$Start.userChatInput$}}' })]
-        ])
-          gate.inputs.find((input) => input.key === key).value = value;
-        nodes.push(gate);
-        answer('Tail', '{{$Start.userChatInput$}}|TAIL');
-      } else answer('Reply', '{{$Start.userChatInput$}}|{{$VARIABLE_NODE_ID.userId$}}');
-      return {
-        nodes,
-        edges: nodes.slice(1).map((node, index) => edge(nodes[index].nodeId, node.nodeId)),
-        chatConfig: legacyVariables
-          ? {
-              variables: [
-                {
-                  key: 'fgFixture',
-                  label: '历史测试变量',
-                  type: 'input',
-                  valueType: 'string',
-                  description: '独立库历史变量保留验证',
-                  required: false,
-                  defaultValue: ''
-                }
-              ]
-            }
-          : {}
-      };
-    }
-    const apps = {};
-    async function publish(appId, value) {
-      const r = await (
-        await owner.post('/api/core/app/version/publish?appId=' + appId, {
-          data: { ...value, isPublish: true, versionName: 'FG-TEST private' }
-        })
-      ).json();
-      if (r.code !== 200) throw Error('私有发布失败 ' + r.code);
-    }
-    for (const name of profile === 'app-key'
-      ? ['history', 'historySwitch', 'other', 'empty']
-      : ['resume', 'history', 'historySwitch', 'database', 'other', 'empty']) {
-      const g = graph({
-        stages: ['resume', 'historySwitch', 'database'].includes(name),
-        pieces: name === 'resume' ? 55 : 1,
-        legacyVariables: name === 'database'
-      });
-      const r = await (
-        await owner.post('/api/core/app/create', {
-          data: { type: 'advanced', name: 'FG-TEST-' + id + '-' + name, ...g }
-        })
-      ).json();
-      if (r.code !== 200) throw Error('私有应用创建失败 ' + r.code);
-      apps[name] = r.data;
-      await publish(r.data, g);
-      await db
-        .collection('apps')
-        .updateOne(
-          { _id: new ObjectId(r.data) },
-          { $set: { tmbId: new ObjectId(actors[name === 'other' ? 'B' : 'A'].tmbId) } }
-        );
-      // 原生夹具转移 owner 后同步其 ACL，保持列表查询与详情鉴权一致。
-      await db.collection('resource_permissions').updateOne(
-        {
-          teamId,
-          resourceId: new ObjectId(r.data),
-          resourceType: 'app',
-          tmbId: new ObjectId(actors[name === 'other' ? 'B' : 'A'].tmbId)
-        },
-        { $set: { permission: OwnerRoleVal } },
-        { upsert: true }
-      );
-      if (name !== 'other')
-        await db.collection('resource_permissions').insertOne({
-          teamId,
-          resourceId: new ObjectId(r.data),
-          resourceType: 'app',
-          tmbId: new ObjectId(actors.B.tmbId),
-          permission: ReadRoleVal
-        });
-    }
-    for (const role of ['A', 'B', 'N']) {
-      const r = await (
-        await owner.post('/api/support/openapi/create', {
-          data: { name: 'FG-TEST-' + id + '-' + role }
-        })
-      ).json();
-      if (r.code !== 200) throw Error('私有 Key 创建失败 ' + r.code);
-      await db
-        .collection('openapis')
-        .updateOne({ apiKey: r.data }, { $set: { tmbId: new ObjectId(actors[role].tmbId) } });
-      actors[role].keyEnv = 'FASTGPT_TEST_' + role + '_KEY';
-      secrets[actors[role].keyEnv] = r.data;
-    }
-    const a = await request.newContext({
-      baseURL: baseUrl,
-      storageState: secrets.FASTGPT_TEST_A_STATE,
-      extraHTTPHeaders: { 'fastgpt-web-request': '1' },
-      timeout: 120000
+    };
+    const templateAppId = await business(context('owner'), '/api/core/app/create', {
+      type: 'advanced',
+      name: 'FG-TEST-' + id + '-template',
+      ...graph
     });
-    resources.push(() => a.dispose());
-    const records = [];
-    for (let index = 0; index < (profile === 'app-key' ? 0 : 201); index++) {
-      const chatId = 'fgfixture-' + id + '-' + String(index).padStart(3, '0');
-      const r = await (
-        await a.post('/api/v2/chat/completions', {
-          data: {
-            appId: apps.history,
-            chatId,
-            stream: false,
-            messages: [
-              { role: 'user', content: 'FG-TEST history ' + String(index).padStart(3, '0') }
-            ]
-          }
-        })
-      ).json();
-      if (!r.choices)
-        throw Error(
-          '私有历史准备失败 ' + JSON.stringify({ code: r.code, statusText: r.statusText })
-        );
-      records.push(chatId);
+    appIds.push(templateAppId);
+    await save();
+    await business(context('owner'), '/api/core/app/version/publish?appId=' + templateAppId, {
+      ...graph,
+      isPublish: true,
+      versionName: 'FG-TEST dev'
+    });
+    for (const role of ['A', 'B']) {
+      const permission = {
+        teamId,
+        resourceType: 'team',
+        resourceId: null,
+        tmbId: new ObjectId(actors[role].tmbId)
+      };
+      await db
+        .collection('resource_permissions')
+        .updateOne(permission, { $set: { permission: 32 } }, { upsert: true });
+      const value = await business(context(role), '/api/support/openapi/create', {
+        name: 'FG-TEST-' + id + '-' + role
+      });
+      actors[role].keyEnv = 'FASTGPT_TEST_' + id.toUpperCase() + '_' + role + '_KEY';
+      secrets[actors[role].keyEnv] = value;
+      await db.collection('resource_permissions').deleteMany(permission);
     }
-    await publish(apps.history, graph({ stages: true }));
-    const shared = await (
-      await owner.post('/api/support/outLink/create', {
-        data: {
-          appId: apps.history,
-          type: 'share',
-          name: 'FG-TEST history visitors',
-          allowAnonymous: true,
-          app: {}
-        }
-      })
-    ).json();
-    if (shared.code !== 200) throw Error('私有分享创建失败 ' + shared.code);
+    secrets.FASTGPT_TEST_SERVICE_ENV = path.join(directory, 'service-env.json');
+    secrets.FASTGPT_TEST_MONGO_URI = env.MONGODB_URI;
+    secrets.FASTGPT_TEST_MONGO_WRITE_URI = env.MONGODB_URI;
+    secrets.FASTGPT_TEST_MONGO_LOG_URI = env.MONGODB_LOG_URI ?? env.MONGODB_URI;
+    secrets.FASTGPT_TEST_REDIS_URI = env.REDIS_URL;
+    await writeFile(secrets.FASTGPT_TEST_SERVICE_ENV, JSON.stringify(env), { mode: 0o600 });
     const fixture = {
       version: 1,
-      isolated: true,
+      environment: 'local-dev',
       baseUrl,
       teamId: String(teamId),
       actors,
-      apps: { ...apps, gate: apps.database, identity: apps.database },
-      lifecycle: { disposeApps: Object.values(apps) },
       echoTemplate: '\n{{question}}|{{userId}}',
+      apps: { empty: templateAppId, identity: templateAppId },
+      lifecycle: { disposeApps: appIds },
+      ownedResources: ledger,
       mongo: {
         uriEnv: 'FASTGPT_TEST_MONGO_URI',
         logUriEnv: 'FASTGPT_TEST_MONGO_LOG_URI',
         writeUriEnv: 'FASTGPT_TEST_MONGO_WRITE_URI'
       },
       redis: { uriEnv: 'FASTGPT_TEST_REDIS_URI' },
-      gate: { port: gatePort, bindHost: '127.0.0.1', tokenEnv: 'FASTGPT_TEST_GATE_TOKEN' },
-      privateEnvironment: {
-        id,
-        database,
-        nonceEnv: 'FASTGPT_TEST_PRIVATE_NONCE',
-        serviceEnvFileEnv: 'FASTGPT_TEST_SERVICE_ENV',
-        controlUrl: `http://127.0.0.1:${control.address().port}`
+      serviceEnvFileEnv: 'FASTGPT_TEST_SERVICE_ENV',
+      appKeys: {
+        templateAppId,
+        maxKeyCount: Number(env.OPENAPI_KEY_MAX_COUNT || 100),
+        commercial: false
       },
-      stream: { prefixPieces: 55, postCompleteTtl: 4, streamTtl: 30 },
-      history: {
-        appId: apps.history,
-        switchAppId: apps.historySwitch,
-        otherAppId: apps.other,
-        chatIds: records,
-        url: '/chat?appId=' + apps.history
+      devSourceEnv: sourceEnv
+    };
+    secrets.FASTGPT_TEST_FIXTURE = path.join(directory, 'fixture.json');
+    await writeFile(secrets.FASTGPT_TEST_FIXTURE, JSON.stringify(fixture, null, 2), {
+      mode: 0o600
+    });
+    await writeFile(path.join(directory, 'secrets.json'), JSON.stringify(secrets), { mode: 0o600 });
+    return {
+      fixture,
+      secrets,
+      directory,
+      close,
+      async relogin(role) {
+        const actor = actors[role],
+          session = context(role);
+        const pre = await business(
+          session,
+          '/api/support/user/account/preLogin?username=' + actor.username,
+          undefined,
+          'get'
+        );
+        await business(session, '/api/support/user/account/loginByPassword', {
+          username: actor.username,
+          password: hash(password),
+          code: pre?.code,
+          language: 'zh-CN'
+        });
+        await session.storageState({ path: secrets[actor.stateEnv] });
+      },
+      async dispose() {
+        const result = await close();
+        await rm(directory, { recursive: true });
+        return result;
       }
     };
-    if (profile === 'app-key')
-      fixture.appKeys = { templateAppId: apps.empty, maxKeyCount: 3, commercial: false };
-    fixture.history.shareId = shared.data;
-    fixture.history.url += '&pane=ra';
-    const fixturePath = path.join(directory, 'fixture.json');
-    secrets.FASTGPT_TEST_FIXTURE = fixturePath;
-    await writeFile(fixturePath, JSON.stringify(fixture, null, 2), { mode: 0o600 });
-    await writeFile(path.join(directory, 'secrets.json'), JSON.stringify(secrets), { mode: 0o600 });
-    await save();
-    return { fixture, secrets, directory, close };
   } catch (error) {
-    await close().catch(() => {});
+    try {
+      await close();
+    } catch (cleanupError) {
+      throw new AggregateError(
+        [error, cleanupError],
+        'dev 准备失败且清理未完成，资源清单：' + path.join(directory, 'resources.json')
+      );
+    }
     throw error;
   }
 }
@@ -578,28 +386,35 @@ export async function startPrivateEnvironment({
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const args = {};
   for (let index = 2; index < process.argv.length; index += 2) {
-    const key = process.argv[index]?.slice(2),
+    const key = process.argv[index].slice(2),
       value = process.argv[index + 1];
-    if (
-      !['source-env', 'mongo-binary', 'port', 'directory', 'app-root', 'profile'].includes(key) ||
-      !value
-    )
-      throw Error('无效环境参数');
+    assert.ok(['source-env', 'base-url', 'directory'].includes(key) && value, '无效 dev 配置参数');
     args[key] = value;
   }
-  const environment = await startPrivateEnvironment({
+  const prepared = await prepareDevEnvironment({
     sourceEnv: args['source-env'],
-    mongoBinary: args['mongo-binary'],
-    port: Number(args.port ?? 3100),
-    directory: args.directory,
-    serverRoot: args['app-root'],
-    profile: args.profile ?? 'history'
+    baseUrl: args['base-url'],
+    directory: args.directory
   });
   console.log(
     JSON.stringify({
       prepared: true,
-      directory: environment.directory,
-      baseUrl: environment.fixture.baseUrl
+      environment: 'local-dev',
+      directory: prepared.directory,
+      baseUrl: prepared.fixture.baseUrl
     })
   );
+  let stopping = false;
+  for (const signal of ['SIGINT', 'SIGTERM'])
+    process.on(signal, async () => {
+      if (stopping) return;
+      stopping = true;
+      try {
+        await prepared.dispose();
+        process.exit(0);
+      } catch (error) {
+        console.error('dev 测试资源未完全清理：' + error.name);
+        process.exit(1);
+      }
+    });
 }

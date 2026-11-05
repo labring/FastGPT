@@ -9,6 +9,10 @@ description: 筛选并执行 FastGPT 集成用例，优先运行 Node 或无头 
 
 这些用例仅在用户要求执行时手动运行，不接入 CI、`pnpm test`、构建或安装脚本；调度器自检也按需手动运行。浏览器和登录环境由本轮执行准备，不能让日常 CI 依赖这些条件。
 
+统一使用本地 dev 环境和现有配置，不自动启动独立 Mongo、Redis 或另一套测试环境，也不以缺少私有库/marker 为由阻塞。每轮新建并记录测试团队、应用及数据的 ID，只操作并清理本轮清单；沿用已有本地账号时保留其原有资源和配置。
+
+系统升级迁移与历史回填不通过本用例库执行；相关验证归迁移代码及专项 Vitest 测试。业务接口的历史数据兼容不因此移除。
+
 ## 筛选本轮用例
 
 先读取仓库 `AGENTS.md`、`.agents/code/syntax.md`，沿用会话中已确认的环境和授权。以下命令在仓库根目录运行，需要已安装仓库依赖；复用相邻 [用例生成 skill](../fastgpt-integration-test-case/SKILL.md) 的扫描器和 `.agents/test/index.html` 的离线渲染库。
@@ -41,7 +45,7 @@ node .agents/skills/system/fastgpt-integration-test-case/scripts/catalog.mjs lis
 在执行任何场景前生成，即使当前缺少环境也先记录选择范围。环境、测试账号角色、可用工具、目标部署版本及验证渠道必须如实确认；本地 HEAD 只是参考，不能替代实际部署版本。缺少必要入口或凭证时记录阻塞，向用户询问缺失信息，同时继续可以独立执行的场景。已有明确授权时不重复请求。
 
 ```bash
-node .agents/skills/system/fastgpt-integration-test-runner/scripts/report.mjs init --selection /tmp/selection.json --reason "本轮连线变更回归" --environment "独立测试环境" --base-url http://127.0.0.1:3000 --target-version "实际核实的部署版本"
+node .agents/skills/system/fastgpt-integration-test-runner/scripts/report.mjs init --selection /tmp/selection.json --reason "本轮连线变更回归" --environment "本地 dev 环境" --base-url http://127.0.0.1:3000 --target-version "实际核实的部署版本"
 
 # 或按明确 ID / 与查询工具相同的条件选择整个用例
 node .agents/skills/system/fastgpt-integration-test-runner/scripts/report.mjs init --ids FG-APP-WORKFLOW-007 --reason "普通连线规则回归"
@@ -71,7 +75,7 @@ node .agents/skills/system/fastgpt-integration-test-runner/scripts/report.mjs se
 
 执行 customUid、日志身份或租约脚本时，读取 [接口与租约测试配置](references/api-cases.md)，按实际账号权限、独立资源和证据通道提供仓库外夹具；只为已实现的完整执行项声明脚本覆盖。
 
-执行流镜像/断线恢复、列表轮询或 Mongo 历史兼容/索引清理时，读取 [流、列表与数据库测试配置](references/stream-history-database.md)。需要写历史夹具、删除索引或改变 Redis 配置的场景使用带本轮 marker 的私有实例；多来源入口未准备时如实记录阻塞。
+执行流镜像/断线恢复、列表轮询或 Mongo 历史兼容时，读取 [流、列表与数据库测试配置](references/stream-history-database.md)。历史夹具只写入本轮资源清单；索引升级和全局 Redis 故障不在共享 dev 的业务用例中注入，归相应代码专项测试；多来源入口未准备时如实记录阻塞。
 
 按用例和子场景顺序串行执行。报告工具只记录和展示；实际操作使用脚本或当前可用的 HTTP、浏览器、服务集成、数据库、日志工具，不能以生成报告替代执行。
 

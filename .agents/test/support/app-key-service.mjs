@@ -1,18 +1,57 @@
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+import { readFile, writeFile, rm } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
+import path from 'node:path';
 
-// 专用服务进程只接受固定操作；凭证从 stdin 进入，不进入命令行或执行证据。
+// 服务子进程复用本地 dev 配置；凭证从 stdin 进入，只接受限定团队下的固定操作。
 let rawInput = '';
 for await (const chunk of process.stdin) rawInput += chunk;
 const input = JSON.parse(rawInput);
 const env = JSON.parse(await readFile(input.environmentFile, 'utf8'));
+if (typeof input.transferResources === 'boolean')
+  env.TRANSFER_RESOURCE_ON_MEMBER_LEAVE = String(input.transferResources);
 Object.assign(process.env, env);
-process.env.TSX_TSCONFIG_PATH = fileURLToPath(
-  new URL('../../../projects/app/tsconfig.json', import.meta.url)
-);
+const appConfig = fileURLToPath(new URL('../../../projects/app/tsconfig.json', import.meta.url));
+let temporaryConfig;
+if (input.operation === 'lifecycle') {
+  // Pro 子模块的相对 SDK alias 面向其部署布局；本仓库脚本复用 app 的实际 SDK 路径，仅切换 @/ 到 Pro。
+  const config = JSON.parse(await readFile(appConfig, 'utf8'));
+  const paths = Object.fromEntries(
+    Object.entries(config.compilerOptions.paths).map(([key, values]) => [
+      key,
+      values.map((value) => path.resolve(path.dirname(appConfig), value))
+    ])
+  );
+  paths['@/*'] = [fileURLToPath(new URL('../../../pro/admin/src/*', import.meta.url))];
+  paths['@fastgpt-plugin/sdk-client'] = [
+    fileURLToPath(
+      new URL(
+        '../../../packages/global/node_modules/@fastgpt-plugin/sdk-client/dist/index.js',
+        import.meta.url
+      )
+    )
+  ];
+  paths['@fastgpt-sdk/sandbox-adapter'] = [
+    fileURLToPath(new URL('../../../sdk/sandbox-adapter/src/index.ts', import.meta.url))
+  ];
+  temporaryConfig = path.join(
+    path.dirname(input.environmentFile),
+    'service-tsconfig-' + process.pid + '.json'
+  );
+  await writeFile(
+    temporaryConfig,
+    JSON.stringify({ extends: appConfig, compilerOptions: { paths } }),
+    { mode: 0o600 }
+  );
+}
+process.env.TSX_TSCONFIG_PATH = temporaryConfig ?? appConfig;
 const req = createRequire(new URL('../../../projects/app/package.json', import.meta.url));
+// Pro 间接加载的词典使用动态 JSON import；同时启用真实 ESM loader，沿用应用打包时的解析语义。
+const unregisterEsm =
+  input.operation === 'lifecycle'
+    ? req('tsx/esm/api').register({ tsconfig: process.env.TSX_TSCONFIG_PATH })
+    : undefined;
 const tsx = req('tsx/cjs/api');
 const load = (file) =>
   tsx.require(
@@ -25,10 +64,10 @@ try {
   await mongo.connectionMongo.connect(env.MONGODB_URI);
   await mongo.connectionLogMongo.connect(env.MONGODB_LOG_URI ?? env.MONGODB_URI);
   const db = mongo.connectionMongo.connection.db;
-  assert.match(db.databaseName, /^fg_it_[a-z0-9_]+$/);
-  assert.equal(db.databaseName, input.database);
-  const marker = await db.collection('fg_test_environment').findOne({ _id: input.environmentId });
-  assert.equal(marker?.nonce, input.nonce);
+  const team = await db
+    .collection('teams')
+    .findOne({ _id: new mongo.Types.ObjectId(input.teamId) });
+  assert.ok(team && /^FG-TEST(?:[- ])/.test(team.name ?? ''), '服务操作仅限本轮测试团队');
   redis = load('packages/dal/redis/runtime/index.ts');
   await redis.configureRedisRuntime({ redisUrl: env.REDIS_URL });
   let result;
@@ -124,15 +163,22 @@ try {
       }
     }
     result = { appId: input.appId, remaining, remoteResourcesChecked: input.resources.length };
+  } else if (input.operation === 'lifecycle') {
+    const { runLifecycleOperation } = await import('./app-key-lifecycle-service.mjs');
+    result = await runLifecycleOperation({ input, load, mongo, db });
   } else throw Error('Unsupported operation');
   process.stdout.write('\nFG_TEST_RESULT=' + JSON.stringify(result) + '\n');
   process.exitCode = 0;
 } catch (error) {
-  process.stdout.write('\nFG_TEST_ERROR=' + error.name + '\n');
+  process.stdout.write(
+    '\nFG_TEST_ERROR=' + JSON.stringify({ name: error.name, message: error.message }) + '\n'
+  );
   process.exitCode = 1;
 } finally {
   await mongo?.connectionMongo.disconnect();
   await mongo?.connectionLogMongo.disconnect();
+  await unregisterEsm?.();
+  if (temporaryConfig) await rm(temporaryConfig, { force: true });
   // DAL 客户端由本子进程拥有，不让全局 logger/定时器阻止进程结束。
   process.exit(process.exitCode ?? 1);
 }

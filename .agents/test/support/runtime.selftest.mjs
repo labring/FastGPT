@@ -128,7 +128,7 @@ test('清理失败仍继续回收其他资源，并将成功场景降为阻塞�
       fixture,
       JSON.stringify({
         version: 1,
-        isolated: true,
+        environment: 'local-dev',
         teamId: '000000000000000000000001',
         baseUrl: 'http://127.0.0.1:1'
       })
@@ -207,7 +207,7 @@ test('一个场景失败后先执行该项收尾，再运行下一场景，防�
       fixture,
       JSON.stringify({
         version: 1,
-        isolated: true,
+        environment: 'local-dev',
         teamId: '000000000000000000000001',
         baseUrl: 'http://127.0.0.1:1'
       })
@@ -279,5 +279,31 @@ test('显式匿名入口不从已有角色注入 Key 或 Cookie', async () => {
     assert.equal((await scenario.request({ kind: 'anonymous', route: '/probe' })).json.data, true);
   } finally {
     await new Promise((resolve) => server.close(resolve));
+  }
+});
+
+test('读取多份 dev 配置不会清除执行协议或前一资源副本的凭证变量', async () => {
+  const { readDevEnvironment } = await import('./environment.mjs');
+  const directory = await mkdtemp(path.join(tmpdir(), 'fastgpt-dev-env-selfcheck-'));
+  const marker = 'FASTGPT_TEST_ENV_SELFTEST';
+  const previous = process.env[marker];
+  try {
+    const filename = path.join(directory, '.env.local');
+    await writeFile(filename, 'FASTGPT_TEST_ENV_SOURCE=first\n');
+    process.env[marker] = 'first-context';
+    assert.equal((await readDevEnvironment(filename)).FASTGPT_TEST_ENV_SOURCE, 'first');
+    assert.equal(process.env[marker], 'first-context');
+    assert.equal(process.env.FASTGPT_TEST_ENV_SOURCE, undefined);
+    await writeFile(filename, 'FASTGPT_TEST_ENV_SOURCE=second\n');
+    process.env[marker] = 'second-context';
+    const second = await readDevEnvironment(filename);
+    assert.equal(second.FASTGPT_TEST_ENV_SOURCE, 'second');
+    assert.equal(second[marker], 'second-context');
+    assert.equal(process.env[marker], 'second-context');
+    assert.equal(process.env.FASTGPT_TEST_ENV_SOURCE, undefined);
+  } finally {
+    if (previous === undefined) delete process.env[marker];
+    else process.env[marker] = previous;
+    await rm(directory, { recursive: true, force: true });
   }
 });

@@ -3,7 +3,7 @@ import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { createHash, randomBytes } from 'node:crypto';
 import { createRequire } from 'node:module';
-import { rm, chmod } from 'node:fs/promises';
+import { readFile, rm, chmod } from 'node:fs/promises';
 import path from 'node:path';
 import { createScenario, poll, required, success, permissionDenied } from './scenario.mjs';
 import { privateDatabase } from './private.mjs';
@@ -12,38 +12,51 @@ import { Blocked } from './runtime.mjs';
 // 输入为真实 ACL 角色，不替代服务端权限计算；来源：global/support/permission/{constant,user/constant,app/constant}.ts。
 export const roles = { none: 0, manage: 1, write: 2, read: 4, logs: 8, createKey: 32 };
 
-/** 固定服务操作使用私有环境配置；只返回脱敏协议结果，不把进程日志当业务证据。 */
+/** 真实服务操作复用 dev 配置，限定本轮团队；凭证经 stdin 传递，进程日志不作为业务证据。 */
 export async function appKeyService(context, c, operation, extra = {}) {
-  const config = required(c.fixture.privateEnvironment, 'privateEnvironment');
   const child = spawn(
     process.execPath,
     [fileURLToPath(new URL('./app-key-service.mjs', import.meta.url))],
     { stdio: ['pipe', 'pipe', 'pipe'] }
   );
   let output = '';
+  let stderr = '';
   child.stdout.on('data', (value) => {
     output += value;
   });
-  child.stderr.resume();
+  child.stderr.on('data', (value) => {
+    stderr += value;
+  });
   const timer = setTimeout(() => child.kill('SIGTERM'), 120000);
   child.stdin.end(
     JSON.stringify({
       operation,
-      environmentFile: c.secret(config.serviceEnvFileEnv),
-      database: config.database,
-      environmentId: config.id,
-      nonce: c.secret(config.nonceEnv),
+      environmentFile: c.secret(
+        c.fixture.serviceEnvFileEnv ?? c.fixture.privateEnvironment?.serviceEnvFileEnv
+      ),
+      teamId: c.fixture.teamId,
       ...extra
     })
   );
+  let exitSignal;
   const code = await new Promise((resolve, reject) => {
-    child.once('exit', resolve);
+    child.once('exit', (code, signal) => {
+      exitSignal = signal;
+      resolve(code);
+    });
     child.once('error', reject);
   }).finally(() => clearTimeout(timer));
+  const errorCode = stderr.match(/\bERR_[A-Z_]+\b/)?.[0];
+  if (code !== 0) c.record('服务进程异常退出', { operation, code, signal: exitSignal, errorCode });
+  const errorLine = output.split('\n').find((line) => line.startsWith('FG_TEST_ERROR='));
+  const serviceError = errorLine ? JSON.parse(errorLine.slice('FG_TEST_ERROR='.length)) : undefined;
   assert.equal(
     code,
     0,
-    '私有服务操作失败：' + (output.match(/FG_TEST_ERROR=(\w+)/)?.[1] ?? '查看环境依赖')
+    'dev 服务操作失败：' +
+      (serviceError
+        ? serviceError.name + ': ' + serviceError.message
+        : (errorCode ?? exitSignal ?? '查看环境依赖'))
   );
   const line = output.split('\n').find((line) => line.startsWith('FG_TEST_RESULT='));
   assert.ok(line, '服务操作没有返回业务验证结果');
@@ -52,7 +65,7 @@ export async function appKeyService(context, c, operation, extra = {}) {
   return result;
 }
 
-/** 每个验收项使用独立应用/Key；凭证只存内存，权限夹具仅写 marker 验证过的私有库。 */
+/** 每项新建应用/Key；凭证只存内存，权限夹具和清理只涉及本轮 dev 资源 ID。 */
 export async function appKeyWorld(context) {
   const c = createScenario(context);
   const { db, ObjectId } = await privateDatabase(context, c);
@@ -89,7 +102,7 @@ export async function appKeyWorld(context) {
   context.cleanups.unshift(() => logClient.close());
   const log = logClient.db();
 
-  /** 初态在私有库准备；保存原 BSON，清理时逐条还原，不能影响下一验收项。 */
+  /** 初态只写本轮资源；保存原 BSON，清理时逐条还原，不能影响下一验收项。 */
   async function acl(role, resourceId, permission, resourceType = 'app') {
     const query = {
       teamId,
@@ -258,7 +271,46 @@ export async function appKeyWorld(context) {
     const password = randomBytes(24).toString('hex'),
       hash = (v) => createHash('sha256').update(v).digest('hex');
     context.secrets.add(password);
-    const username = 'FG-TEST-' + label('foreign');
+    const username = 'FG-TEST-' + label('foreign') + '-' + randomBytes(6).toString('hex');
+    const stateEnv = 'FASTGPT_TEST_FOREIGN_' + randomBytes(6).toString('hex');
+    const privatePath = path.join(
+      path.dirname(
+        c.secret(c.fixture.serviceEnvFileEnv ?? c.fixture.privateEnvironment?.serviceEnvFileEnv)
+      ),
+      stateEnv + '.json'
+    );
+    const role = 'foreign-' + context.itemId;
+    temporary.push(async () => {
+      const state = await readFile(privatePath, 'utf8').catch(() => undefined);
+      if (state) {
+        await fetch(c.fixture.baseUrl + '/api/support/user/account/loginout', {
+          headers: {
+            Cookie: JSON.parse(state)
+              .cookies.map((cookie) => `${cookie.name}=${cookie.value}`)
+              .join('; ')
+          }
+        });
+      }
+      await rm(privatePath, { force: true });
+      delete process.env[stateEnv];
+      delete c.fixture.actors[role];
+      for (const collection of [
+        'resource_permissions',
+        'team_member_groups',
+        'team_subscriptions',
+        'usages',
+        'usage_items',
+        'team_orgs',
+        'team_org_members'
+      ]) {
+        await db.collection(collection).deleteMany({ teamId: foreignTeam });
+      }
+      await db.collection('team_group_members').deleteMany({ tmbId });
+      await log.collection('operationlogs').deleteMany({ teamId: foreignTeam });
+      await db.collection('users').deleteOne({ _id: userId });
+      await db.collection('team_members').deleteOne({ _id: tmbId });
+      await db.collection('teams').deleteOne({ _id: foreignTeam });
+    });
     await db.collection('users').insertOne({
       _id: userId,
       username,
@@ -289,20 +341,6 @@ export async function appKeyWorld(context) {
     const session = await request.newContext({
       baseURL: c.fixture.baseUrl,
       extraHTTPHeaders: { 'fastgpt-web-request': '1' }
-    });
-    const role = 'foreign-' + context.itemId;
-    const stateEnv = 'FASTGPT_TEST_FOREIGN_' + randomBytes(6).toString('hex');
-    const privatePath = path.join(
-      path.dirname(c.secret(c.fixture.privateEnvironment.serviceEnvFileEnv)),
-      stateEnv + '.json'
-    );
-    temporary.push(async () => {
-      await rm(privatePath, { force: true });
-      delete process.env[stateEnv];
-      delete c.fixture.actors[role];
-      await db.collection('users').deleteOne({ _id: userId });
-      await db.collection('team_members').deleteOne({ _id: tmbId });
-      await db.collection('teams').deleteOne({ _id: foreignTeam });
     });
     try {
       const pre = await (

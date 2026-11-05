@@ -503,8 +503,8 @@ async function execute(context) {
     }
     case 'M6': {
       const personalMax = c.fixture.appKeys?.maxKeyCount;
-      if (!Number.isInteger(personalMax) || personalMax < 3 || personalMax > 10)
-        throw new Blocked('需要真实私有实例将个人密钥 OPENAPI_KEY_MAX_COUNT 设置为 3～10');
+      if (!Number.isInteger(personalMax) || personalMax < 1)
+        throw new Blocked('需要核实本地 dev 的个人密钥 OPENAPI_KEY_MAX_COUNT');
       const appMax = 100;
       await w.acl('A', null, roles.createKey, 'team');
       const personalIds = () =>
