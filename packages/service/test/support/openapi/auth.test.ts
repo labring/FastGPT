@@ -24,6 +24,7 @@ const appId = new Types.ObjectId().toString();
 const parsedAppId = new Types.ObjectId().toString();
 
 const teamApiKey = {
+  type: ApiKeyTypeEnum.personal,
   teamId,
   tmbId,
   apiKey: 'fastgpt-team',
@@ -31,7 +32,8 @@ const teamApiKey = {
 };
 
 const legacyAppApiKey = {
-  ...teamApiKey,
+  teamId,
+  tmbId,
   apiKey: 'fastgpt-app',
   appId,
   name: 'legacy app key'
@@ -92,7 +94,9 @@ describe('openapi auth', () => {
     const owner = await MongoUser.create({ username: 'legacy-owner', password: 'password' });
     await MongoTeam.create({ _id: teamId, ownerId: owner._id, name: 'legacy team' });
     await MongoTeamMember.create({ _id: tmbId, teamId, userId: owner._id, status: 'leave' });
-    const openApi = await MongoOpenApi.create(legacyAppApiKey);
+    // 用原始集合模拟旧版缺少 type 的记录，保留历史数据兼容验证。
+    const openApi = new MongoOpenApi(legacyAppApiKey);
+    await MongoOpenApi.collection.insertOne(openApi.toObject({ getters: false }));
 
     await expect(authOpenApiKey({ apikey: 'fastgpt-app' })).rejects.toBe(ERROR_ENUM.unAuthApiKey);
     const result = await authOpenApiKey({

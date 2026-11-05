@@ -26,7 +26,8 @@ const OpenApiSchema = new Schema(
     },
     type: {
       type: String,
-      enum: Object.values(ApiKeyTypeEnum)
+      enum: Object.values(ApiKeyTypeEnum),
+      required: true
     },
     createTime: {
       type: Date,

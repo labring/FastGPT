@@ -1,3 +1,4 @@
+import { ApiKeyTypeEnum } from '@fastgpt/global/support/openapi/constants';
 import { describe, expect, it } from 'vitest';
 import handler from '@/pages/api/support/openapi/list';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
@@ -18,6 +19,7 @@ describe('support/openapi/list', () => {
       }
     );
     await MongoOpenApi.create({
+      type: ApiKeyTypeEnum.personal,
       teamId: user.teamId,
       tmbId: user.tmbId,
       apiKey: 'fastgpt-team-secret',
@@ -47,12 +49,14 @@ describe('support/openapi/list', () => {
 
     await MongoOpenApi.create([
       {
+        type: ApiKeyTypeEnum.personal,
         teamId: manager.teamId,
         tmbId: manager.tmbId,
         apiKey: 'fastgpt-manager-secret',
         name: 'manager key'
       },
       {
+        type: ApiKeyTypeEnum.personal,
         teamId: member.teamId,
         tmbId: member.tmbId,
         apiKey: 'fastgpt-member-secret',
@@ -87,30 +91,32 @@ describe('support/openapi/list', () => {
       type: AppTypeEnum.simple
     });
 
-    await MongoOpenApi.create([
-      {
-        teamId: owner.teamId,
-        tmbId: owner.tmbId,
-        createTime: new Date('2024-01-01T00:00:00.000Z'),
-        appId: String(app._id).toUpperCase(),
-        apiKey: 'fastgpt-app-secret',
-        name: 'legacy app key'
-      },
-      {
-        teamId: owner.teamId,
-        tmbId: owner.tmbId,
-        createTime: new Date('2025-01-01T00:00:00.000Z'),
-        apiKey: 'fastgpt-new-global-secret',
-        name: 'new global key'
-      },
-      {
-        teamId: member.teamId,
-        tmbId: member.tmbId,
-        appId: String(app._id),
-        apiKey: 'fastgpt-member-app-secret',
-        name: 'member legacy app key'
-      }
-    ]);
+    await MongoOpenApi.collection.insertMany(
+      [
+        {
+          teamId: owner.teamId,
+          tmbId: owner.tmbId,
+          createTime: new Date('2024-01-01T00:00:00.000Z'),
+          appId: String(app._id).toUpperCase(),
+          apiKey: 'fastgpt-app-secret',
+          name: 'legacy app key'
+        },
+        {
+          teamId: owner.teamId,
+          tmbId: owner.tmbId,
+          createTime: new Date('2025-01-01T00:00:00.000Z'),
+          apiKey: 'fastgpt-new-global-secret',
+          name: 'new global key'
+        },
+        {
+          teamId: member.teamId,
+          tmbId: member.tmbId,
+          appId: String(app._id),
+          apiKey: 'fastgpt-member-app-secret',
+          name: 'member legacy app key'
+        }
+      ].map((record) => new MongoOpenApi(record).toObject({ getters: false }))
+    );
 
     const result = await Call(handler, {
       auth: owner,
@@ -141,6 +147,7 @@ describe('support/openapi/list', () => {
   it('团队级 APIKey 列表返回 authProxy 状态', async () => {
     const user = await getRootUser();
     await MongoOpenApi.create({
+      type: ApiKeyTypeEnum.personal,
       teamId: user.teamId,
       tmbId: user.tmbId,
       apiKey: 'fastgpt-auth-proxy-secret',
@@ -208,6 +215,7 @@ describe('support/openapi/list', () => {
     ]);
     await MongoOpenApi.create([
       {
+        type: ApiKeyTypeEnum.personal,
         teamId: user.teamId,
         tmbId: user.tmbId,
         apiKey: 'fastgpt-production-secret',
@@ -215,6 +223,7 @@ describe('support/openapi/list', () => {
         tagIds: [prodTag._id, customerTag._id]
       },
       {
+        type: ApiKeyTypeEnum.personal,
         teamId: user.teamId,
         tmbId: user.tmbId,
         apiKey: 'fastgpt-debug-secret',
@@ -251,12 +260,14 @@ describe('support/openapi/list', () => {
     const user = await getRootUser();
     await MongoOpenApi.create([
       {
+        type: ApiKeyTypeEnum.personal,
         teamId: user.teamId,
         tmbId: user.tmbId,
         apiKey: 'fastgpt-search-value-secret',
         name: 'normal name'
       },
       {
+        type: ApiKeyTypeEnum.personal,
         teamId: user.teamId,
         tmbId: user.tmbId,
         apiKey: 'fastgpt-other-secret',
@@ -307,6 +318,7 @@ describe('support/openapi/list', () => {
       type: AppTypeEnum.simple
     });
     const openapi = await MongoOpenApi.create({
+      type: ApiKeyTypeEnum.app,
       teamId: user.teamId,
       tmbId: user.tmbId,
       appId: String(app._id),
@@ -314,6 +326,7 @@ describe('support/openapi/list', () => {
       name: 'legacy appName key'
     });
     await MongoOpenApi.create({
+      type: ApiKeyTypeEnum.app,
       teamId: user.teamId,
       tmbId: user.tmbId,
       appId: String(app._id),
@@ -348,6 +361,7 @@ describe('support/openapi/list', () => {
 
     await MongoOpenApi.create([
       {
+        type: ApiKeyTypeEnum.app,
         teamId: user.teamId,
         tmbId: user.tmbId,
         appId: String(app._id),
@@ -356,6 +370,7 @@ describe('support/openapi/list', () => {
         lastUsedTime: new Date('2024-01-01T00:00:00.000Z')
       },
       {
+        type: ApiKeyTypeEnum.personal,
         teamId: user.teamId,
         tmbId: user.tmbId,
         apiKey: 'fastgpt-global-new-used',
@@ -363,6 +378,7 @@ describe('support/openapi/list', () => {
         lastUsedTime: new Date('2026-01-01T00:00:00.000Z')
       },
       {
+        type: ApiKeyTypeEnum.personal,
         teamId: user.teamId,
         tmbId: user.tmbId,
         apiKey: 'fastgpt-global-middle-used',
@@ -394,6 +410,7 @@ describe('support/openapi/list', () => {
 
     await MongoOpenApi.create([
       {
+        type: ApiKeyTypeEnum.app,
         teamId: user.teamId,
         tmbId: user.tmbId,
         appId: String(app._id),
@@ -405,6 +422,7 @@ describe('support/openapi/list', () => {
         }
       },
       {
+        type: ApiKeyTypeEnum.app,
         teamId: user.teamId,
         tmbId: user.tmbId,
         appId: String(app._id),
@@ -416,6 +434,7 @@ describe('support/openapi/list', () => {
         }
       },
       {
+        type: ApiKeyTypeEnum.personal,
         teamId: user.teamId,
         tmbId: user.tmbId,
         apiKey: 'fastgpt-low-remaining',
@@ -426,6 +445,7 @@ describe('support/openapi/list', () => {
         }
       },
       {
+        type: ApiKeyTypeEnum.personal,
         teamId: user.teamId,
         tmbId: user.tmbId,
         apiKey: 'fastgpt-high-remaining',
@@ -436,6 +456,7 @@ describe('support/openapi/list', () => {
         }
       },
       {
+        type: ApiKeyTypeEnum.personal,
         teamId: user.teamId,
         tmbId: user.tmbId,
         apiKey: 'fastgpt-unlimited',

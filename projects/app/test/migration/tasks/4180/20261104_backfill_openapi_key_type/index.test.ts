@@ -27,7 +27,7 @@ const createContext = () => {
       failures = structuredClone(value);
     }),
     assertActive: vi.fn(async () => undefined),
-    reportProgress: vi.fn(async () => undefined),
+    reportProgress: vi.fn<SystemMigrationContext['reportProgress']>(async () => undefined),
     fail: vi.fn(async (input: SystemMigrationFailureInput): Promise<never> => {
       failures = structuredClone(input.failedRecords ?? failures);
       throw new Error(input.message);
@@ -49,6 +49,27 @@ const seed = async (overrides: Record<string, unknown> = {}) => {
   return record;
 };
 describe('backfillOpenApiKeyType', () => {
+  it('keeps validation failures behind the cursor recoverable until every type is valid', async () => {
+    const key = await seed();
+    const state = createContext();
+    state.context.reportProgress.mockImplementation(async ({ key: stage, status }) => {
+      if (stage === 'validation' && status === 'running')
+        await MongoOpenApi.collection.updateOne({ _id: key._id }, { $set: { type: null } });
+    });
+    await expect(backfillOpenApiKeyType(state.context)).rejects.toThrow('incomplete');
+    expect(state.failures()).toEqual([
+      expect.objectContaining({ stageKey: 'validation', data: { id: String(key._id) } })
+    ]);
+    expect(state.context.reportProgress).not.toHaveBeenCalledWith({
+      key: 'validation',
+      status: 'succeeded'
+    });
+    state.context.reportProgress.mockReset();
+    await MongoOpenApi.collection.updateOne({ _id: key._id }, { $unset: { type: 1 } });
+    expect(await backfillOpenApiKeyType(state.context)).toEqual({ keys: 1 });
+    expect((await MongoOpenApi.collection.findOne({ _id: key._id }))?.type).toBe('personal');
+    expect(state.failures()).toEqual([]);
+  });
   it('classifies legacy keys without changing credentials, metadata or explicit types; replay is idempotent', async () => {
     const records = [];
     for (const appId of [undefined, null, '', new Types.ObjectId().toString()])

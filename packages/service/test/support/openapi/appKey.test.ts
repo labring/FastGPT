@@ -47,6 +47,19 @@ const fixture = async () => {
 };
 
 describe('application API key boundaries', () => {
+  it('new keys require an explicit type instead of defaulting a bound key to personal', async () => {
+    for (const appId of [undefined, new Types.ObjectId().toString()]) {
+      await expect(
+        MongoOpenApi.create({
+          teamId: new Types.ObjectId(),
+          tmbId: new Types.ObjectId(),
+          apiKey: 'missing-type-key',
+          ...(appId ? { appId } : {})
+        })
+      ).rejects.toThrow('type');
+    }
+    expect(await MongoOpenApi.countDocuments({ apiKey: 'missing-type-key' })).toBe(0);
+  });
   it('legacy classification is shared by queries and authorization, with no fallback for conflicting records', async () => {
     const id = new Types.ObjectId().toString();
     for (const appId of [undefined, null, ''])

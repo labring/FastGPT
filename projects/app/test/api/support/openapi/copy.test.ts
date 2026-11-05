@@ -1,3 +1,4 @@
+import { ApiKeyTypeEnum } from '@fastgpt/global/support/openapi/constants';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import handler from '@/pages/api/support/openapi/copy';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
@@ -17,6 +18,7 @@ describe('support/openapi/copy', () => {
   it('记录团队级 APIKey 复制审计并返回明文密钥', async () => {
     const user = await getRootUser();
     const openapi = await MongoOpenApi.create({
+      type: ApiKeyTypeEnum.personal,
       teamId: user.teamId,
       tmbId: user.tmbId,
       apiKey: 'fastgpt-team-secret',
@@ -61,13 +63,15 @@ describe('support/openapi/copy', () => {
       type: AppTypeEnum.simple
     });
 
-    const openapi = await MongoOpenApi.create({
+    // 用原始集合模拟旧版缺少 type 的记录，保留历史数据兼容验证。
+    const openapi = new MongoOpenApi({
       teamId: user.teamId,
       tmbId: user.tmbId,
       appId: String(app._id),
       apiKey: 'fastgpt-app-secret',
       name: 'app key'
     });
+    await MongoOpenApi.collection.insertOne(openapi.toObject({ getters: false }));
 
     const auth = {
       ...user,
@@ -102,6 +106,7 @@ describe('support/openapi/copy', () => {
   it('审计写入失败时不返回明文密钥', async () => {
     const user = await getRootUser();
     const openapi = await MongoOpenApi.create({
+      type: ApiKeyTypeEnum.personal,
       teamId: user.teamId,
       tmbId: user.tmbId,
       apiKey: 'fastgpt-audit-failed-secret',
@@ -131,6 +136,7 @@ describe('support/openapi/copy', () => {
     const { owner, members } = await getFakeUsers(1);
     const [member] = members;
     const openapi = await MongoOpenApi.create({
+      type: ApiKeyTypeEnum.personal,
       teamId: member.teamId,
       tmbId: member.tmbId,
       apiKey: 'fastgpt-member-private-secret',

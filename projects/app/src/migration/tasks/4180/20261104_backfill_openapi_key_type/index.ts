@@ -8,6 +8,7 @@ import { MongoOpenApi } from '@fastgpt/service/support/openapi/schema';
 import { systemMigrationBatchSize } from '@/migration/constants';
 import type { SystemMigrationContext } from '@/migration/registry';
 import { backfillOpenApiKeyTypeRecord } from './service';
+import { ApiKeyTypeEnum } from '@fastgpt/global/support/openapi/constants';
 
 const CheckpointSchema = z.object({
   endId: ObjectIdSchema.nullable(),
@@ -18,6 +19,7 @@ const CheckpointSchema = z.object({
 /**
  * 独立自动回填旧 Key 类型，以固定上界和 _id 游标断点续跑。
  * 错误快照先于 checkpoint 持久化，重试先处理已跳过的坏数据；不删除或转换旧字段。
+ * 完成校验要求扫描范围内 type 均为有效枚举，校验阶段的新异常也保留 ID 供断点后重试。
  */
 export const backfillOpenApiKeyType = async (context: SystemMigrationContext) => {
   const collection = MongoOpenApi.collection;
@@ -101,16 +103,29 @@ export const backfillOpenApiKeyType = async (context: SystemMigrationContext) =>
     current: checkpoint.scanned
   });
   await context.reportProgress({ key: 'validation', status: SystemMigrationStatusEnum.running });
-  const missing = checkpoint.endId
-    ? await collection.countDocuments({
-        _id: { $lte: new Types.ObjectId(checkpoint.endId) },
-        type: { $exists: false }
-      })
-    : 0;
-  if (missing)
+  await context.assertActive();
+  const invalid = checkpoint.endId
+    ? await collection
+        .find(
+          {
+            _id: { $lte: new Types.ObjectId(checkpoint.endId) },
+            type: { $nin: Object.values(ApiKeyTypeEnum) }
+          },
+          { projection: { _id: 1 } }
+        )
+        .sort({ _id: 1 })
+        .limit(systemMigrationBatchSize)
+        .toArray()
+    : [];
+  if (invalid.length)
     await context.fail({
       message: 'API Key type backfill is incomplete',
-      failedRecords: [...failures.values()]
+      // 分批报告新发现的异常；修复并重试后继续校验，避免断点已越过该记录而无法恢复。
+      failedRecords: invalid.map(({ _id }) => ({
+        stageKey: 'validation',
+        data: { id: String(_id) },
+        reason: { message: 'API Key type is missing or invalid; repair before retrying' }
+      }))
     });
   await context.reportProgress({ key: 'validation', status: SystemMigrationStatusEnum.succeeded });
   return { keys: checkpoint.scanned };

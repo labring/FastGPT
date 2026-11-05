@@ -1,3 +1,4 @@
+import { ApiKeyTypeEnum } from '@fastgpt/global/support/openapi/constants';
 vi.unmock('@fastgpt/service/support/permission/auth/common');
 import { describe, expect, it, vi } from 'vitest';
 import { handler } from '@/pages/api/support/openapi/health';
@@ -15,17 +16,20 @@ describe('support/openapi/health', () => {
       name: 'legacy app',
       type: AppTypeEnum.simple
     });
-    await MongoOpenApi.create({
-      teamId: user.teamId,
-      tmbId: user.tmbId,
-      appId: String(app._id),
-      apiKey: 'fastgpt-legacy-app-key',
-      name: 'legacy app key',
-      usagePoints: 25,
-      limit: {
-        maxUsagePoints: 1000
-      }
-    });
+    // 用原始集合模拟旧版缺少 type 的记录，保留历史数据兼容验证。
+    await MongoOpenApi.collection.insertOne(
+      new MongoOpenApi({
+        teamId: user.teamId,
+        tmbId: user.tmbId,
+        appId: String(app._id),
+        apiKey: 'fastgpt-legacy-app-key',
+        name: 'legacy app key',
+        usagePoints: 25,
+        limit: {
+          maxUsagePoints: 1000
+        }
+      }).toObject({ getters: false })
+    );
 
     const result = await handler({
       query: {
@@ -45,6 +49,7 @@ describe('support/openapi/health', () => {
   it('omits appId for system APIKey', async () => {
     const user = await getRootUser();
     await MongoOpenApi.create({
+      type: ApiKeyTypeEnum.personal,
       teamId: user.teamId,
       tmbId: user.tmbId,
       apiKey: 'fastgpt-system-key',
