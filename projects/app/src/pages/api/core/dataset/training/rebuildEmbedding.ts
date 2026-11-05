@@ -87,16 +87,19 @@ async function handler(req: ApiRequestProps): Promise<RebuildEmbeddingResponse> 
   ).lean();
   // 预落库数据的 data.indexes 为空，custom/question/summary 等草稿只保存在失败任务里；
   // 删除旧任务前必须取回，否则换模型会静默丢失用户索引和增强结果。
-  const failedIndexTasks = await MongoDatasetTraining.find(
-    {
-      teamId,
-      datasetId,
-      mode: TrainingModeEnum.index,
-      dataId: { $exists: true },
-      ...finalErrorTrainingMatch
-    },
-    { dataId: 1, q: 1, a: 1, indexes: 1, imageDescMap: 1 }
-  ).lean();
+  const failedDataIds = failedDataList.map((item) => item._id);
+  const failedIndexTasks = failedDataIds.length
+    ? await MongoDatasetTraining.find(
+        {
+          teamId,
+          datasetId,
+          mode: TrainingModeEnum.index,
+          dataId: { $in: failedDataIds },
+          ...finalErrorTrainingMatch
+        },
+        { dataId: 1, q: 1, a: 1, indexSize: 1, indexes: 1, imageDescMap: 1 }
+      ).lean()
+    : [];
   const failedTaskByDataId = new Map(failedIndexTasks.map((task) => [String(task.dataId), task]));
 
   // update vector model and dataset.data rebuild field
@@ -130,7 +133,6 @@ async function handler(req: ApiRequestProps): Promise<RebuildEmbeddingResponse> 
     // - rebuildIndex 失败/暂停任务（其 data 会重新标记 pending 并生成新任务）。
     // 欠费暂停的普通 index 任务（data 仍为 indexing）不在任何重排路径里，必须保留，
     // 否则数据会变成“无任务、无索引、无重试入口”的孤儿。
-    const failedDataIds = failedDataList.map((item) => item._id);
     await MongoDatasetTraining.deleteMany(
       {
         teamId,
@@ -204,6 +206,8 @@ async function handler(req: ApiRequestProps): Promise<RebuildEmbeddingResponse> 
               imageId: item.imageId,
               dataId: String(item._id),
               chunkIndex: item.chunkIndex,
+              // 保留失败任务原本的向量切分大小；缺失时由队列按模型默认值补齐
+              indexSize: failedTask?.indexSize,
               // 优先恢复失败任务里的完整草稿（custom/question/summary/image）
               indexes: failedTask?.indexes?.length ? failedTask.indexes : item.indexes,
               ...(failedTask?.imageDescMap && { imageDescMap: failedTask.imageDescMap })

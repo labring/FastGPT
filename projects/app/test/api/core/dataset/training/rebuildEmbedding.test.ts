@@ -405,6 +405,7 @@ describe('POST /api/core/dataset/training/rebuildEmbedding', () => {
       errorMsg: '404 old model does not exist',
       q: 'OCR parsed text',
       a: '',
+      indexSize: 768,
       indexes: [
         { type: 'custom', text: 'user custom index', dataId: 'custom-1' },
         { type: 'summary', text: 'draft summary', dataId: 'summary-1' }
@@ -454,6 +455,7 @@ describe('POST /api/core/dataset/training/rebuildEmbedding', () => {
     expect(failedTask?.imageDescMap).toEqual({ 'dataset/team/a.png': '图片描述' });
     // imageParse 生成的正文只存在旧 training.q，必须恢复到新任务
     expect(failedTask?.q).toBe('OCR parsed text');
+    expect(failedTask?.indexSize).toBe(768);
     // 失败后 data 上的用户修正优先于旧任务正文
     const editedTask = await MongoDatasetTraining.findOne({
       dataId: editedData._id,

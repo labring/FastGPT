@@ -32,6 +32,8 @@ export type PushDataChunkWithDataIdType = PushDataChunkType & {
   dataId?: string;
   /** 失败任务恢复时保留的图片描述映射。 */
   imageDescMap?: Record<string, string>;
+  /** 失败任务恢复时保留的单条索引切分大小。 */
+  indexSize?: number;
 };
 
 /** 各训练阶段的分块上限与权重，预落库与队列写入共用同一份口径。 */
@@ -297,7 +299,7 @@ export const pushDataListToTrainingQueue = async ({
           ...(item.dataId && { dataId: item.dataId }),
           ...(item.metadata && { dataMetadata: item.metadata }),
           chunkIndex: item.chunkIndex ?? 0,
-          indexSize,
+          indexSize: item.indexSize ?? indexSize,
           weight: weight ?? 0,
           indexes: item.indexes,
           retryCount: 3
