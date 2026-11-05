@@ -10,7 +10,6 @@ import type {
   GetAdminSystemToolVersionsQueryType,
   GetAdminSystemToolVersionsResponseType,
   GetAllSystemAppsBodyType,
-  DeleteSystemToolQueryType,
   GetAllSystemAppTypeToolsResponse,
   CreateAppToolBodyType,
   UpdateToolRuntimeConfigBodyType,
@@ -42,9 +41,6 @@ export const putAdminUpdateWorkflowTool = (data: UpdateWorkflowToolBodyType) =>
 
 export const putAdminUpdateToolOrder = (data: UpdateToolOrderBodyType) =>
   PUT('/core/plugin/admin/tool/updateOrder', data);
-
-export const delAdminSystemTool = (data: DeleteSystemToolQueryType) =>
-  DELETE('/core/plugin/admin/tool/delete', data);
 
 export const putAdminUpdateToolRuntimeConfig = (data: UpdateToolRuntimeConfigBodyType) =>
   PUT('/core/plugin/admin/tool/runtimeConfig/update', data);
