@@ -145,7 +145,7 @@ async function handler(
     getTeamMemberMap({
       teamId,
       memberIds: openApis.map((item) => String(item.tmbId)),
-      fields: '_id name'
+      fields: '_id name avatar status'
     })
   ]);
   const responseList = sortOpenApiList({
@@ -155,7 +155,7 @@ async function handler(
         ...item,
         appId: scope.type === ApiKeyTypeEnum.app ? scope.appId : undefined,
         ...scope,
-        tmbName: members.get(String(item.tmbId))?.name,
+        sourceMember: members.get(String(item.tmbId)),
         apiKey: maskApiKey(item.apiKey),
         authProxy: scope.type === ApiKeyTypeEnum.personal && !!item.authProxy,
         tagIds: type === ApiKeyTypeEnum.personal ? (item.tagIds ?? []) : [],

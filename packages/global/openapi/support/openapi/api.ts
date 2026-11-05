@@ -6,6 +6,7 @@ import { OpenApiTagSchema, OpenApiTagsInputSchema } from './tag';
 import { BoolSchema, queryArrayParam } from '../../../common/zod';
 import { ApiKeyTypeSchema } from '../../../support/openapi/schema';
 import { ApiKeyTypeEnum } from '../../../support/openapi/constants';
+import { SourceMemberSchema } from '../../../support/user/type';
 
 const OptionalDateSchema = z.preprocess((value) => {
   if (value === undefined || value === null || value === '') return undefined;
@@ -36,7 +37,7 @@ export const OpenApiKeySchema = z.object({
     description: '应用 Key 绑定的应用 ID',
     example: '68ad85a7463006c963799a05'
   }),
-  tmbName: z.string().optional().meta({ description: '密钥当前归属成员名称', example: '张三' }),
+  sourceMember: SourceMemberSchema.optional().meta({ description: '密钥当前归属成员' }),
   createTime: z.coerce.date().meta({ description: '创建时间' }),
   lastUsedTime: z.coerce.date().optional().meta({ description: '最后使用时间' }),
   apiKey: z.string().meta({

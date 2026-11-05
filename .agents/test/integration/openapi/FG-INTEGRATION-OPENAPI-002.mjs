@@ -112,7 +112,26 @@ async function execute(context) {
       const createdApp = await uiCreate(ui, true);
       const search = page.getByPlaceholder('按 Key 名称或 Key 片段搜索');
       await search.fill(createdApp.name);
-      await expect(page.getByRole('row').filter({ hasText: createdApp.name })).toBeVisible();
+      const createdRow = page.getByRole('row').filter({ hasText: createdApp.name });
+      await expect(createdRow).toBeVisible();
+      const member = await w.db
+        .collection('team_members')
+        .findOne({ _id: w.oid(c.actor('A').tmbId) });
+      const createdKey = (await list('A')).find((key) => key._id === createdApp.id);
+      assert.deepEqual(createdKey.sourceMember, {
+        name: member.name,
+        avatar: member.avatar,
+        status: member.status
+      });
+      assert.equal(Object.hasOwn(createdKey, 'tmbName'), false);
+      await expect(createdRow.locator('img')).toBeVisible();
+      await expect(createdRow.locator('img')).toHaveAttribute('src', member.avatar);
+      await expect
+        .poll(() =>
+          createdRow.locator('img').evaluate((img) => img.complete && img.naturalWidth > 0)
+        )
+        .toBe(true);
+      c.record('归属成员及头像', { keyId: createdApp.id, sourceMember: createdKey.sourceMember });
       await ui.capture('app-list');
       await w.acl('A', null, roles.createKey, 'team');
       await page.getByText('个人密钥', { exact: true }).click();

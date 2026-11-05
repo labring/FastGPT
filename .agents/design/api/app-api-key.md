@@ -173,7 +173,7 @@ authAppApiKey?: boolean; // 接受应用 Key，默认 false
 | GET list | 增加 type（缺省 personal）；app 类型必填 appId，按 teamId+appId 查全部应用 Key并检查应用管理权限；personal 只查本人 |
 | PUT update | 只改名称、使用限制；个人类型保留标签/authProxy；应用类型拒绝这些字段以及任何 type/appId/tmbId 修改 |
 | copy / delete | 先由记录的真实类型决定权限：personal 本人；app 绑定应用管理权限；不能信任请求自行声明类型 |
-| list / health 出参 | 增加 type、appId；列表保留脱敏值，并返回当前归属成员 ID/显示名及 canCopy |
+| list / health 出参 | 增加 type、appId；列表保留脱敏值，并返回 tmbId、sourceMember（名称/头像/状态）及 canCopy |
 
 旧 list 的 appId 仅用于个人密钥列表置顶的行为退出；显式 type 决定列表。过渡旧客户端不传 type 时仍只取本人的 personal Key，不能因传了 appId 就扩大可见范围。
 

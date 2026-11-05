@@ -54,6 +54,7 @@ import TagMultiSelect from './TagMultiSelect';
 import TagManageModal from './TagManageModal';
 import { useDebounce } from 'ahooks';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
+import UserBox from '@fastgpt/web/components/common/UserBox';
 
 type EditProps = EditApiKeyProps & { _id?: string };
 const defaultEditData: EditProps = {
@@ -89,7 +90,7 @@ type ApiKeyTableProps = {
 const apiKeyTableFields = [
   'name',
   'apiKey',
-  'tmbName',
+  'sourceMember',
   'usagePoints',
   'expiredTime',
   'lastUsedTime',
@@ -314,7 +315,7 @@ const ApiKeyTable = ({
   const tableHeaders: Record<ApiKeyTableField, { label: React.ReactNode; width?: string }> = {
     name: { label: t('common:Name'), width: '240px' },
     apiKey: { label: 'API KEY', width: '130px' },
-    tmbName: { label: t('apikey:owner_member'), width: '140px' },
+    sourceMember: { label: t('apikey:owner_member'), width: '140px' },
     usagePoints: { label: t('common:support.outlink.Usage points'), width: '150px' },
     expiredTime: { label: t('common:expired_time'), width: '120px' },
     lastUsedTime: { label: t('apikey:last_used_time'), width: '160px' },
@@ -324,7 +325,7 @@ const ApiKeyTable = ({
   const tableColumns = apiKeyTableFields
     .filter((field) => {
       if (field === 'usagePoints' || field === 'expiredTime') return hasUsagePlan;
-      if (field === 'tmbName') return isAppKey;
+      if (field === 'sourceMember') return isAppKey;
       return field !== 'createTime' || !isPublishMode || isAppKey;
     })
     .map((field) => ({ field, ...tableHeaders[field] }));
@@ -366,8 +367,12 @@ const ApiKeyTable = ({
             </Flex>
           </Td>
         );
-      case 'tmbName':
-        return <Td key={field}>{item.tmbName || '-'}</Td>;
+      case 'sourceMember':
+        return (
+          <Td key={field}>
+            {item.sourceMember ? <UserBox sourceMember={item.sourceMember} /> : '-'}
+          </Td>
+        );
       case 'apiKey':
         return (
           <Td key={field} maxW={'130px'}>

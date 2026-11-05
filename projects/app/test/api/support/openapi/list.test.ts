@@ -6,10 +6,17 @@ import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { getFakeUsers, getRootUser } from '@test/datas/users';
 import { Call } from '@test/utils/request';
 import { MongoOpenApiTag } from '@fastgpt/service/support/openapi/tag/schema';
+import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
 
 describe('support/openapi/list', () => {
   it('团队级 APIKey 列表对有复制权限的记录返回脱敏值和复制权限', async () => {
     const user = await getRootUser();
+    await MongoTeamMember.updateOne(
+      { _id: user.tmbId },
+      {
+        $set: { name: '当前成员', avatar: '/imgs/member.png' }
+      }
+    );
     await MongoOpenApi.create({
       teamId: user.teamId,
       tmbId: user.tmbId,
@@ -26,6 +33,12 @@ describe('support/openapi/list', () => {
     expect(result.data[0].apiKey).toBe('******cret');
     expect(result.data[0].canCopy).toBe(true);
     expect(result.data[0].authProxy).toBe(false);
+    expect(result.data[0].sourceMember).toEqual({
+      name: '当前成员',
+      avatar: '/imgs/member.png',
+      status: 'active'
+    });
+    expect(result.data[0]).not.toHaveProperty('tmbName');
   });
 
   it('团队级 APIKey 列表只返回当前登录成员自己的记录', async () => {
@@ -61,6 +74,12 @@ describe('support/openapi/list', () => {
   it('应用列表包括其他成员的绑定 Key，个人列表不包括应用 Key', async () => {
     const { owner, members } = await getFakeUsers(1);
     const [member] = members;
+    await MongoTeamMember.updateOne(
+      { _id: member.tmbId },
+      {
+        $set: { name: '归属成员', avatar: '/imgs/owner.png', status: 'leave' }
+      }
+    );
     const app = await MongoApp.create({
       teamId: owner.teamId,
       tmbId: owner.tmbId,
@@ -110,6 +129,11 @@ describe('support/openapi/list', () => {
     expect(result.data[0].apiKey).toBe('******cret');
     expect(result.data[0].canCopy).toBe(true);
     expect(result.data[0].authProxy).toBe(false);
+    expect(result.data.find((item) => item.tmbId === member.tmbId)?.sourceMember).toEqual({
+      name: '归属成员',
+      avatar: '/imgs/owner.png',
+      status: 'leave'
+    });
     const personal = await Call(handler, { auth: owner, query: { appId: String(app._id) } });
     expect(personal.data.map((item) => item.name)).toEqual(['new global key']);
   });
@@ -131,6 +155,35 @@ describe('support/openapi/list', () => {
     expect(result.code).toBe(200);
     expect(result.data).toHaveLength(1);
     expect(result.data[0].authProxy).toBe(true);
+  });
+
+  it('归属成员缺失时仍可管理应用 Key，且不返回伪造的成员信息', async () => {
+    const {
+      owner,
+      members: [member]
+    } = await getFakeUsers(1);
+    const app = await MongoApp.create({
+      teamId: owner.teamId,
+      tmbId: owner.tmbId,
+      name: 'app',
+      type: AppTypeEnum.simple
+    });
+    await MongoOpenApi.create({
+      teamId: owner.teamId,
+      tmbId: member.tmbId,
+      type: 'app',
+      appId: String(app._id),
+      apiKey: 'missing-member-key'
+    });
+    await MongoTeamMember.deleteOne({ _id: member.tmbId });
+    const result = await Call(handler, {
+      auth: owner,
+      query: { type: 'app', appId: String(app._id) }
+    });
+    expect(result.code).toBe(200);
+    expect(result.data).toHaveLength(1);
+    expect(result.data[0].sourceMember).toBeUndefined();
+    expect(result.data[0]).not.toHaveProperty('tmbName');
   });
 
   it('returns tags and filters APIKeys by keyword and tags', async () => {
