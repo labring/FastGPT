@@ -1,10 +1,17 @@
 import { z } from 'zod';
+import { randomUUID } from 'node:crypto';
 import { asRedisLogicalKey, redisCacheAdapter, type RedisCacheAdapter } from '../adapter';
 import { RedisInvalidArgumentError } from '../runtime/errors';
 import type { RedisCacheLogger } from '../types';
 
 const WORKFLOW_STOP_SIGNAL_PREFIX = 'agent_runtime_stopping';
 export const WORKFLOW_STOP_SIGNAL_TTL_SECONDS = 60;
+const CLEAR_STOP_SIGNAL_IF_UNCHANGED_SCRIPT = `
+if redis.call("get", KEYS[1]) == ARGV[1] then
+  return redis.call("del", KEYS[1])
+end
+return 0
+`;
 
 export const WorkflowStopSignalParamsSchema = z.object({
   sourceType: z.string().min(1),
@@ -33,8 +40,12 @@ export const getWorkflowStopSignalKey = ({
     });
   }
 
+  // 与会话租约使用相同的 ObjectId 规范化，保证停止 API 和生成入口能命中同一信号。
+  const normalizedSourceId = /^[0-9a-f]{24}$/i.test(parsed.data.sourceId)
+    ? parsed.data.sourceId.toLowerCase()
+    : parsed.data.sourceId;
   return asRedisLogicalKey(
-    `${WORKFLOW_STOP_SIGNAL_PREFIX}:${parsed.data.sourceType}:${parsed.data.sourceId}:${parsed.data.chatId}`
+    `${WORKFLOW_STOP_SIGNAL_PREFIX}:${parsed.data.sourceType}:${normalizedSourceId}:${parsed.data.chatId}`
   );
 };
 
@@ -53,11 +64,11 @@ export class WorkflowStopSignalCache {
     this.logger = logger;
   }
 
-  /** 设置 60 秒停止标记；Redis 错误继续向上抛出。 */
+  /** 设置 60 秒停止标记，每次写入使用不同版本，避免迟到清理删除新的停止请求；写入错误上抛。 */
   async set(params: WorkflowStopSignalParams) {
     await this.redis.set({
       key: getWorkflowStopSignalKey(params),
-      value: '1',
+      value: randomUUID(),
       ttlMs: WORKFLOW_STOP_SIGNAL_TTL_SECONDS * 1000
     });
   }
@@ -74,11 +85,19 @@ export class WorkflowStopSignalCache {
     }
   }
 
-  /** 删除停止标记；清理失败只记录 warning，不覆盖业务结果。 */
-  async clear(params: WorkflowStopSignalParams) {
+  /** 删除停止标记；提供 expectedValue 时只清理相同版本，迟到操作也不会删除新 stop。失败仅记录日志。 */
+  async clear(params: WorkflowStopSignalParams, expectedValue?: string) {
     const key = getWorkflowStopSignalKey(params);
     try {
-      await this.redis.delete(key);
+      if (expectedValue === undefined) {
+        await this.redis.delete(key);
+      } else {
+        await this.redis.evalScript({
+          script: CLEAR_STOP_SIGNAL_IF_UNCHANGED_SCRIPT,
+          keys: [key],
+          args: [expectedValue]
+        });
+      }
     } catch (error) {
       this.logger.warn('Workflow stop signal clear failed', { key, error });
     }

@@ -7,7 +7,6 @@ import type {
 } from '@fastgpt/global/core/chat/type';
 import {
   type ChatSourceEnum,
-  ChatGenerateStatusEnum,
   ChatRoleEnum,
   ChatSourceTypeEnum
 } from '@fastgpt/global/core/chat/constants';
@@ -240,9 +239,9 @@ type FailChatRoundParams = ChatSourceParams & {
 /**
  * 完成一轮已经 prepare 的对话保存。
  *
- * preChatRound 会先创建 chat 记录和本轮 Human/AI 两条占位 chat items，并把会话标记为
- * generating。workflow 真正运行结束后，这里负责把占位 item 更新为最终消息内容、补齐
- * chat 的标题/变量/插件输入/统计信息，并把 chatGenerateStatus 改成 done。
+ * preChatRound 会先创建 chat 记录和本轮 Human/AI 两条占位 chat items。workflow 真正
+ * 运行结束后，这里负责把占位 item 更新为最终消息内容、补齐 chat 的标题/变量/插件输入/统计信息。
+ * 运行状态由请求持有的 Redis lease 提供，保存完成后仍由请求 finally 释放。
  *
  * 这个方法只处理“已经预创建”的新运行轮次；未接入 prepare 的旧兼容路径仍由
  * pushChatRecords 单独处理。
@@ -382,8 +381,7 @@ export const finalizeChatRound = async (props: Props) => {
           outLinkUid,
           metadata: metadataUpdate,
           updateTime: now,
-          hasBeenRead: false,
-          chatGenerateStatus: ChatGenerateStatusEnum.done
+          hasBeenRead: false
         },
         $inc: {
           'summary.llmInputTokens': runtimeChatSummary.llmInputTokens,
@@ -496,7 +494,6 @@ export const failChatRound = async (params: FailChatRoundParams) => {
         { ...buildChatSourceQuery(chatSource), chatId },
         {
           $set: {
-            chatGenerateStatus: ChatGenerateStatusEnum.error,
             updateTime: now,
             hasBeenRead: false
           }
@@ -626,8 +623,7 @@ export const pushChatRecords = async (props: Props) => {
             shareId,
             outLinkUid,
             metadata: metadataUpdate,
-            updateTime: new Date(),
-            chatGenerateStatus: ChatGenerateStatusEnum.done
+            updateTime: new Date()
           },
           $setOnInsert: {
             createTime: new Date()

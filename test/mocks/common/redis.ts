@@ -119,6 +119,13 @@ const createRedisStorage = () => {
       const key = keys[0];
       const expectedValue = argv[0];
 
+      if (_script.includes('redis.call("SET", KEYS[1]')) {
+        if (!isExpired(key) && storage.has(key)) return [0, storage.get(key)];
+        storage.set(key, expectedValue);
+        expiryMap.set(key, Date.now() + Number(argv[1]));
+        return [1, isExpired(keys[1]) ? null : (storage.get(keys[1]) ?? null)];
+      }
+
       if (isExpired(key) || storage.get(key) !== expectedValue) {
         return 0;
       }
@@ -154,6 +161,11 @@ const createSharedMockRedisClient = () => {
 
     // Key-value operations with shared storage
     get: vi.fn().mockImplementation((key: string) => Promise.resolve(globalRedisStorage.get(key))),
+    mget: vi
+      .fn()
+      .mockImplementation((...keys: string[]) =>
+        Promise.resolve(keys.map((key) => globalRedisStorage.get(key)))
+      ),
     set: vi
       .fn()
       .mockImplementation((key: string, value: any, ...args: any[]) =>

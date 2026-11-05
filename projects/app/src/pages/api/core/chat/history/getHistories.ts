@@ -1,3 +1,4 @@
+import { getChatGenerationStatuses } from '@fastgpt/service/core/chat/generationLease';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { ChatGenerateStatusEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { buildChatTargetResponse } from '@fastgpt/global/openapi/core/chat/api';
@@ -64,16 +65,20 @@ export async function handler(req: ApiRequestProps): Promise<GetHistoriesRespons
   const mergeMatch = { ...match, ...timeMatch, deleteTime: null };
 
   const [data, total] = await Promise.all([
-    await MongoChat.find(
-      mergeMatch,
-      'chatId title top customTitle appId updateTime chatGenerateStatus hasBeenRead'
-    )
+    await MongoChat.find(mergeMatch, 'chatId title top customTitle appId updateTime hasBeenRead')
       .sort({ top: -1, updateTime: -1 })
       .skip(offset)
       .limit(pageSize)
       .lean(),
     MongoChat.countDocuments(mergeMatch)
   ]);
+
+  // 只查询权限过滤后的会话，一次 MGET 为列表和轮询补充实时运行状态。
+  const generationStatuses = await getChatGenerationStatuses({
+    sourceType: sourceType ?? ChatSourceTypeEnum.app,
+    sourceId: String(match.appId),
+    chatIds: data.map((item) => item.chatId)
+  });
 
   return GetHistoriesResponseSchema.parse({
     list: data.map((item) => ({
@@ -86,7 +91,7 @@ export async function handler(req: ApiRequestProps): Promise<GetHistoriesRespons
       customTitle: item.customTitle,
       title: item.title,
       top: item.top,
-      chatGenerateStatus: item.chatGenerateStatus ?? ChatGenerateStatusEnum.done,
+      chatGenerateStatus: generationStatuses.get(item.chatId) ?? ChatGenerateStatusEnum.done,
       hasBeenRead: item.hasBeenRead
     })),
     total

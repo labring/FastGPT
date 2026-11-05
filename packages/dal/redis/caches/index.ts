@@ -60,20 +60,6 @@ export type {
 } from './workflowStopSignal';
 
 export {
-  StreamResumeActiveStateSchema,
-  StreamResumeCache,
-  StreamResumeParamsSchema,
-  StreamResumeUnavailableStateSchema
-} from './streamResume';
-export type {
-  StreamResumeActiveState,
-  StreamResumeCacheOptions,
-  StreamResumeKeys,
-  StreamResumeParams,
-  StreamResumeUnavailableState
-} from './streamResume';
-
-export {
   OUTLINK_STREAM_CONTENT_TTL_SECONDS,
   OUTLINK_STREAM_END_FLAG,
   OUTLINK_STREAM_INITIAL_TTL_SECONDS,

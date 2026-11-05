@@ -1,3 +1,4 @@
+import { getChatGenerationStatuses } from '@fastgpt/service/core/chat/generationLease';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { ChatGenerateStatusEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
@@ -10,6 +11,10 @@ const mocks = vi.hoisted(() => ({
   getAppLatestVersion: vi.fn(),
   findChat: vi.fn(),
   updateChat: vi.fn()
+}));
+
+vi.mock('@fastgpt/service/core/chat/generationLease', () => ({
+  getChatGenerationStatuses: vi.fn()
 }));
 
 vi.mock('@/service/middleware/entry', () => ({
@@ -40,6 +45,7 @@ describe('chat init API', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(getChatGenerationStatuses).mockResolvedValue(new Map());
     mocks.authApp.mockResolvedValue({
       app: {
         _id: appId,
@@ -145,6 +151,9 @@ describe('chat init API', () => {
   });
 
   it('does not mark a generating conversation read', async () => {
+    vi.mocked(getChatGenerationStatuses).mockResolvedValue(
+      new Map([['chat-1', ChatGenerateStatusEnum.generating]])
+    );
     mocks.findChat.mockResolvedValue({
       teamId: '65f000000000000000000001',
       tmbId: 'member-1',
@@ -207,7 +216,7 @@ describe('chat init API', () => {
     expect(mocks.getAppLatestVersion).not.toHaveBeenCalled();
   });
 
-  it('uses Skill metadata and the existing optional status fields', async () => {
+  it('uses Skill metadata and derives an idle runtime status without a Mongo field', async () => {
     mocks.authSkill.mockResolvedValue({
       teamId: '65f000000000000000000001',
       tmbId: 'member-1',
@@ -223,7 +232,7 @@ describe('chat init API', () => {
         chatConfig: { fileSelectConfig: { canSelectFile: false } }
       }
     });
-    expect(result.chatGenerateStatus).toBeUndefined();
+    expect(result.chatGenerateStatus).toBe(ChatGenerateStatusEnum.done);
     expect(result.hasBeenRead).toBeUndefined();
     expect(mocks.authApp).not.toHaveBeenCalled();
   });

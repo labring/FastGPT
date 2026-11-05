@@ -15,6 +15,7 @@ import {
   MongoDatasetSynonymMapping
 } from '@fastgpt/service/core/dataset/synonym/schema';
 import { MongoSandboxInstance } from '@fastgpt/service/core/ai/sandbox/infrastructure/instance/schema';
+import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { MongoModelStatusProbeRecord } from '@fastgpt/service/core/ai/modelStatus/schema';
 
 const logger = {
@@ -246,6 +247,34 @@ describe('MongoIndexManager.syncModelIndexes', () => {
         })
       ])
     );
+  });
+
+  it('removes the declared legacy chat generating index after runtime state moves to Redis', async () => {
+    const schema = new Schema({}, { autoIndex: false });
+    defineDeprecatedTestIndexes(schema, getSchemaDeprecatedMongoIndexes(MongoChat.schema));
+    const model = createModel({ schema, prefix: 'ChatLeaseIndex' });
+    await model.collection.createIndex(
+      { chatGenerateStatus: 1, updateTime: 1 },
+      {
+        name: 'chatGenerateStatus_1_updateTime_1',
+        partialFilterExpression: { chatGenerateStatus: 0 }
+      }
+    );
+    await model.collection.createIndex({ customerField: 1 }, { name: 'customer_chat_index' });
+
+    const result = await MongoIndexManager.syncModelIndexes({ model, logger });
+    const indexNames = await getIndexNames(model);
+    expect(indexNames).not.toContain('chatGenerateStatus_1_updateTime_1');
+    expect(indexNames).toContain('customer_chat_index');
+    expect(result.cleanupReport.items).toEqual([
+      expect.objectContaining({
+        action: 'drop',
+        applied: true,
+        indexName: 'chatGenerateStatus_1_updateTime_1'
+      })
+    ]);
+    expect(MongoChat.schema.path('chatGenerateStatus')).toBeUndefined();
+    expect(MongoChat.schema.indexes().some(([key]) => 'chatGenerateStatus' in key)).toBe(false);
   });
 
   it('replaces model status testedAt indexes with requestEndedAt indexes', async () => {

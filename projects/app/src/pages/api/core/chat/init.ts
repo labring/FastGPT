@@ -1,3 +1,4 @@
+import { getChatGenerationStatuses } from '@fastgpt/service/core/chat/generationLease';
 import type { NextApiRequest } from 'next';
 import { NextAPI } from '@/service/middleware/entry';
 import { getAppChatConfig } from '@fastgpt/global/common/app/chat';
@@ -46,7 +47,12 @@ async function handler(req: NextApiRequest): Promise<InitChatResponseType> {
       chatId
     });
     const { app, skill, chat, teamId } = auth;
-    const chatGenerateStatus = chat?.chatGenerateStatus ?? ChatGenerateStatusEnum.done;
+    const generationStatuses = await getChatGenerationStatuses({
+      sourceType,
+      sourceId,
+      chatIds: chatId ? [chatId] : []
+    });
+    const chatGenerateStatus = generationStatuses.get(chatId) ?? ChatGenerateStatusEnum.done;
     if (chat?.hasBeenRead === false && chatGenerateStatus !== ChatGenerateStatusEnum.generating) {
       await MongoChat.updateOne(
         { ...buildChatSourceQuery({ sourceType, sourceId }), ...auth.scope, chatId },
@@ -104,10 +110,7 @@ async function handler(req: NextApiRequest): Promise<InitChatResponseType> {
       title: getDisplayChatTitle({ customTitle: chat?.customTitle, title: chat?.title }),
       userAvatar: undefined,
       variables,
-      // 保持普通 App/Skill 的旧响应；辅助生成在新会话时明确返回默认状态。
-      chatGenerateStatus: isAuxiliaryGenerationSourceType(sourceType)
-        ? chatGenerateStatus
-        : chat?.chatGenerateStatus,
+      chatGenerateStatus,
       hasBeenRead: isAuxiliaryGenerationSourceType(sourceType)
         ? (chat?.hasBeenRead ?? true)
         : chat?.hasBeenRead,
