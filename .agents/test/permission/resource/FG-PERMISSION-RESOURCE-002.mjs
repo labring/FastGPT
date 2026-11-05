@@ -45,25 +45,27 @@ async function execute(context) {
         { name: '跨团队 body', body: { appId: foreign.appId } },
         { name: '跨团队后缀', suffix: foreign.appId }
       ];
-      for (const input of inputs) {
-        const chatId = fresh('binding');
-        const beforeX = await w.snapshot(X, [chatId]),
-          beforeY = await w.snapshot(foreign.appId, [chatId]);
-        await w.completion(Ka, W, {
-          chatId,
-          body: input.body,
-          credential: Ka.value + (input.suffix ? '-' + input.suffix : '')
-        });
-        assert.deepEqual(await w.snapshot(X, [chatId]), beforeX);
-        assert.deepEqual(await w.snapshot(foreign.appId, [chatId]), beforeY);
-        c.record('绑定输入矩阵', input);
-      }
+      for (const version of ['v1', 'v2'])
+        for (const input of inputs) {
+          const chatId = fresh('binding');
+          const beforeX = await w.snapshot(X, [chatId]),
+            beforeY = await w.snapshot(foreign.appId, [chatId]);
+          await w.completion(Ka, W, {
+            chatId,
+            body: input.body,
+            version,
+            credential: Ka.value + (input.suffix ? '-' + input.suffix : '')
+          });
+          assert.deepEqual(await w.snapshot(X, [chatId]), beforeX);
+          assert.deepEqual(await w.snapshot(foreign.appId, [chatId]), beforeY);
+          c.record('绑定输入矩阵', { version, ...input });
+        }
       // B 是普通成员，对 W/X 均有实际应用权限，验证个人密钥仍使用 body 优先。
       await w.completion(w.personal('B'), W, {
         body: { appId: W },
         credential: w.personal('B').value + '-' + X
       });
-      return '全部显式/省略/后缀冲突均执行 W；X/Y 零差集，个人密钥保留 body 优先';
+      return 'v1/v2 全部显式/省略/后缀冲突均执行 W；X/Y 零差集，个人密钥保留 body 优先';
     }
     case 'A3': {
       const personal = w.personal();

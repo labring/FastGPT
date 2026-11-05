@@ -307,3 +307,51 @@ test('读取多份 dev 配置不会清除执行协议或前一资源副本的凭
     await rm(directory, { recursive: true, force: true });
   }
 });
+
+test('multipart 请求由 fetch 生成 boundary，并保留真实文件与 JSON 参数', async () => {
+  const { createScenario } = await import('./scenario.mjs');
+  const server = createServer(async (request, response) => {
+    const chunks = [];
+    for await (const chunk of request) chunks.push(chunk);
+    const body = Buffer.concat(chunks).toString();
+    response.setHeader('content-type', 'application/json');
+    response.end(
+      JSON.stringify({
+        code: 200,
+        data: {
+          contentType: request.headers['content-type'],
+          file: body.includes('filename="sample.txt"') && body.includes('sample-file'),
+          data: body.includes('{"chatId":"fgtest-chat"}')
+        }
+      })
+    );
+  });
+  server.listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  try {
+    const c = createScenario({
+      fixture: { baseUrl: 'http://127.0.0.1:' + server.address().port, actors: { owner: {} } },
+      observations: [],
+      run: 'fgtest-multipart',
+      resources: new Map(),
+      cleanups: [],
+      secrets: new Set()
+    });
+    const form = new FormData();
+    form.set('data', JSON.stringify({ chatId: 'fgtest-chat' }));
+    form.set('file', new Blob(['sample-file']), 'sample.txt');
+    const result = await c.request({
+      kind: 'anonymous',
+      route: '/upload',
+      body: { chatId: 'fgtest-chat' },
+      formData: form
+    });
+    assert.equal(result.error, false);
+    assert.match(result.json.data.contentType, /^multipart\/form-data; boundary=/);
+    assert.equal(result.json.data.file, true);
+    assert.equal(result.json.data.data, true);
+  } finally {
+    server.closeAllConnections();
+    await new Promise((resolve) => server.close(resolve));
+  }
+});

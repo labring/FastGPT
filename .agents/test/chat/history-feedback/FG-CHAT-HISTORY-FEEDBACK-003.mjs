@@ -352,6 +352,11 @@ async function execute(context) {
     return 'S3 与真实 App 沙盒上传/下载字节摘要一致；个人权限与关闭产品态均拒绝，远端沙盒由删除流程清理';
   }
 
+  if (['D8', 'D9', 'D10', 'D11'].includes(context.itemId)) {
+    const { runChatApiCoverage } = await import('./app-key-chat-matrix.mjs');
+    return runChatApiCoverage(w, context);
+  }
+
   const d = await seed();
   if (context.itemId === 'D1') {
     const histories = await call('/core/chat/history/getHistories', { pageNum: 1, pageSize: 100 });
@@ -656,5 +661,7 @@ async function execute(context) {
 }
 await runNodeCase(
   'FG-CHAT-HISTORY-FEEDBACK-003',
-  Object.fromEntries(['D1', 'D2', 'D3', 'D4', 'D5', 'D6', 'D7'].map((id) => [id, execute]))
+  Object.fromEntries(
+    ['D1', 'D2', 'D3', 'D4', 'D5', 'D6', 'D7', 'D8', 'D9', 'D10', 'D11'].map((id) => [id, execute])
+  )
 );

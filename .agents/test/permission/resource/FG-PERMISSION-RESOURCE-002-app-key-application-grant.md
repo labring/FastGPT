@@ -43,7 +43,7 @@ related:
   - "FG-INTEGRATION-OPENAPI-001"
   - "FG-INTEGRATION-OPENAPI-002"
   - "FG-CHAT-HISTORY-FEEDBACK-003"
-baseline: "d09b4e8849d051182ef4011470945d2b71085807"
+baseline: "b30ce09a922a3f47401a9b84b2542378a40b0b0b"
 ---
 
 # 应用 Key 独立授权、绑定应用与接口范围隔离
@@ -68,7 +68,7 @@ baseline: "d09b4e8849d051182ef4011470945d2b71085807"
 | 子场景 | 类型与起始状态 | 输入与操作 |
 | --- | --- | --- |
 | A1 | 核心边界；Ka 创建后撤销 A 的 W ACL | 用 Ka 对 W 发起 v1/v2 × JSON/SSE 四个代表请求，再用 Pa 发等价请求；由 owner 核对 A 的实际权限，读取 Ka 和新会话。 |
-| A2 | 应用 ID 边界；恢复 D0，每变体新 chatId | 对 Ka 测：body=W；省略 body appId/无后缀；只带正确后缀 W；body=W+后缀=X；body=X+后缀=W；仅 body=X；body/后缀指定 Y。另对有 W/X 权限的个人密钥测 body=W+后缀=X。 |
+| A2 | 应用 ID 边界；恢复 D0，每变体新 chatId | 对 v1/v2 分别用 Ka 测：body=W；省略 body appId/无后缀；只带正确后缀 W；body=W+后缀=X；body=X+后缀=W；仅 body=X；body/后缀指定 Y。另对有 W/X 权限的个人密钥测 body=W+后缀=X。 |
 | A3 | 类型接受边界；隔离服务夹具 | Ka/Pa 分别经过开关组合 `(authApiKey,authAppApiKey)=(false,false)/(true,false)/(false,true)/(true,true)`，每次新请求；未配置开关分别按默认值处理。再在 A4 的 HTTP 请求中伪造 `authAppApiKey:true`，验证客户端不能开启入口。 |
 | A4 | 接口范围；A 对 X/D 有权限，Ka 仅绑定 W | 用 Ka 读取 D、修改 W 应用配置，并调用已支持的会话接口但指定真实 Skill 或 Builder/Helper target；操作前先由有权凭证/登录态验证输入合法。伪造 flags、换请求 appId 重试。Key 管理拒绝复用 OPENAPI-002 M3。 |
 | A5 | 身份与来源；新会话，另备绑定 W 的 Kb | Ka 携带 RUN-u1 完成并续聊；再用 Kb 续聊同一 W/chatId/UID。另以 Ka 单独传 authProxy，以及 customUid+authProxy 同传。 |
@@ -81,7 +81,7 @@ baseline: "d09b4e8849d051182ef4011470945d2b71085807"
 | 子场景 | 特有预期 | 证据获取方式 |
 | --- | --- | --- |
 | A1 | 四条 Ka 路径仍成功，Pa 因 A 无 W 权限拒绝。Ka.tmbId 仍为 A，不靠改成 owner/补 ACL 通过；新 chats.tmbId=A，outLinkUid/userId=RUN-u1，publishSource=api/Ka._id。 | 撤权前后 ACL/有效权限、两类响应、Ka/Chat/item/统计快照。 |
-| A2 | Ka 省略 appId、指定相同或不同的 body/后缀均成功，实际只执行绑定的 W，不写入 X/Y。个人密钥保持 body 优先，矩阵对照执行 W。 | 输入矩阵、实际执行 appId、W/X/Y 每个新 chatId 的差集。 |
+| A2 | v1/v2 下 Ka 省略 appId、指定相同或不同的 body/后缀均成功，实际只执行绑定的 W，不写入 X/Y。个人密钥保持 body 优先，矩阵对照执行 W。 | 输入矩阵、实际执行 appId、W/X/Y 每个新 chatId 的差集。 |
 | A3 | Ka 仅在 authAppApiKey=true 时通过类型认证，Pa 仅在 authApiKey=true 时通过；均开启才接受两类。缺省不隐式接受。HTTP 客户端伪造开关不能改变服务端策略。 | 真实服务调用参数/返回和认证记录；A4 的拒绝 HTTP 证据。 |
 | A4 | 即使创建人有 D 或其他应用权限，Ka 仍不能调用这些接口或辅助对话；不返回配置/知识库/外域会话内容，不修改其数据。日志/文件等已确认对话管理范围由 HISTORY-FEEDBACK-003 验证，不因“管理”二字一概拒绝。 | 有权输入对照、Ka 拒绝响应、目标白名单快照。 |
 | A5 | 同绑定应用不要求同一 Key：续聊成功，最近来源更新到 Kb，UID 不变，tmbId 沿用现有 preChat 规则，不把 Kb._id 当使用者。应用 Key 的 authProxy 单传也拒绝；互斥参数按已发布 schema 拒绝；不代理成员执行。 | 连续响应、来源/身份快照；参数全矩阵复用 OPENAPI-001。 |

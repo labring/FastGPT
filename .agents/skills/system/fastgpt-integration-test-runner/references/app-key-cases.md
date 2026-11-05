@@ -6,7 +6,7 @@
 | --- | --- | --- |
 | FG-PERMISSION-RESOURCE-002 | A1–A6 | 真实 HTTP；A3 在服务子进程核验鉴权开关 |
 | FG-INTEGRATION-OPENAPI-002 | M1–M7 | HTTP、Mongo；M1/M5 操作真实页面 |
-| FG-CHAT-HISTORY-FEEDBACK-003 | D1–D7 | HTTP、SSE、日志库、Pro、S3、Sandbox |
+| FG-CHAT-HISTORY-FEEDBACK-003 | D1–D11 | HTTP、SSE、日志库、Pro、S3、Sandbox |
 | FG-PERMISSION-TEAM-001 | T1–T7 | 实际移出/离开/转让/删除 API，事务、同步与注销清理服务 |
 
 ## 本地 dev 准备
@@ -47,6 +47,8 @@ try {
 - `appKeys.datasetId/skillId`：可选同团队资源；缺省时 A4 在本轮团队创建最小资源和 ACL，先验证正向对照，结束精确回收。
 - `apps.historySwitch/gate/redis`：D4 需要真实 HTTP gate 和 SSE，不能只凭 stop 成功判通过。
 - `serviceEnvFileEnv/devSourceEnv`：服务子进程配置及明确的本地 dev 环境文件路径。T1–T7 需要可读的 Pro 源码及依赖。
+
+D8–D11 的逐接口矩阵、引用与音频夹具由脚本在本轮资源内准备。D11 需要 dev 已启用真实 TTS/STT 模型；不通过新增模拟上游或改动共享模型配置代替验证。
 
 D2 必须有真实日志库和 Pro 图表；D5/D6 必须有实际 S3 上传下载，D5 还需 App Sandbox。文件逐字节比较 SHA-256，签名 URL 与 Key 不进入公开证据。
 

@@ -95,7 +95,8 @@ export function createScenario(context) {
     raw = false,
     signal,
     baseUrl = fixture.baseUrl,
-    extraHeaders = {}
+    extraHeaders = {},
+    formData
   }) {
     const identity = actor(role);
     if (kind === 'state') required(identity.stateEnv, role + '.stateEnv');
@@ -134,10 +135,12 @@ export function createScenario(context) {
       secretValues.add(headers.Cookie);
       for (const cookie of state.cookies) secretValues.add(cookie.value);
     }
+    // multipart 由 fetch 生成 boundary，仍复用同一条凭证与脱敏取证链路。
+    if (formData) delete headers['content-type'];
     const response = await fetch(url, {
       method,
       headers,
-      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+      ...(formData ? { body: formData } : body === undefined ? {} : { body: JSON.stringify(body) }),
       redirect: 'error',
       signal: signal ?? AbortSignal.timeout(120000)
     });
