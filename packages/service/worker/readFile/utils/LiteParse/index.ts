@@ -3,6 +3,8 @@ import { createRequire } from 'node:module';
 import path from 'node:path';
 import { type ReadFileResponse, type ReadRawTextByBuffer, type ParsedPage } from '../../type';
 import { postprocessPdfPages } from '../pdf/pdfTextPostprocess';
+import { workerEnv } from '../../../env';
+import { createHttpOcrEngine } from './ocrEngine';
 
 const LITE_PARSE_MAX_PAGES = 100000;
 const LITE_PARSE_BATCH_PAGES = 100;
@@ -38,9 +40,31 @@ const loadLiteParseWasm = () => {
 };
 
 /**
+ * 构建 LiteParse 的 OCR 配置。
+ *
+ * 未配置 LITEPARSE_OCR_SERVER_URL 时保持关闭，避免普通解析路径产生额外耗时和外部依赖；
+ * 配置后只对无文本/稀疏文本页和嵌入图片做 OCR（LiteParse 自行判断），不会整篇重跑。
+ * WASM 构建不读取 ocrServerUrl，必须通过 ocrEngine 回调接入外部服务。
+ */
+const getOcrConfig = () => {
+  const url = workerEnv.LITEPARSE_OCR_SERVER_URL;
+  if (!url) return { ocrEnabled: false };
+
+  return {
+    ocrEnabled: true,
+    ocrLanguage: workerEnv.LITEPARSE_OCR_LANGUAGE,
+    ocrEngine: createHttpOcrEngine({
+      url,
+      key: workerEnv.LITEPARSE_OCR_SERVER_KEY,
+      timeoutMs: workerEnv.LITEPARSE_OCR_TIMEOUT_MS
+    })
+  };
+};
+
+/**
  * 使用 LiteParse WASM 解析普通 PDF 文本。
  *
- * OCR 默认关闭，避免普通系统解析路径产生额外耗时和 OCR 资源依赖；LiteParse 只输出文本
+ * OCR 默认关闭，只有配置了外部 OCR 服务地址时才对扫描页启用；LiteParse 只输出文本
  * 和 textItems，本路径不会返回图片或 Markdown。PDF 按页分批解析，降低 PDFium/WASM
  * 一次性持有大量页面结构的内存峰值；最后仍统一后处理全部 pages，保持现有文本清理行为。
  */
@@ -48,12 +72,13 @@ export const readPdfByLiteParse = async ({
   buffer
 }: ReadRawTextByBuffer): Promise<ReadFileResponse> => {
   const { LiteParse } = await loadLiteParseWasm();
+  const ocrConfig = getOcrConfig();
   const pages: ParsedPage[] = [];
 
   for (let pageStart = 1; pageStart <= LITE_PARSE_MAX_PAGES; pageStart += LITE_PARSE_BATCH_PAGES) {
     const pageEnd = pageStart + LITE_PARSE_BATCH_PAGES - 1;
     const parser = new LiteParse({
-      ocrEnabled: false,
+      ...ocrConfig,
       maxPages: LITE_PARSE_MAX_PAGES,
       targetPages: `${pageStart}-${pageEnd}`,
       quiet: true

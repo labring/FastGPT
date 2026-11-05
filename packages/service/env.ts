@@ -420,6 +420,19 @@ export const serviceEnv = createEnv({
     PARSE_FILE_TIMEOUT_SECONDS: IntSchema.min(60).max(6000).default(600).meta({
       description: '文件解析单任务超时时间（秒）'
     }),
+    LITEPARSE_OCR_SERVER_URL: UrlSchema.optional().meta({
+      description:
+        'LiteParse 兼容 OCR 服务地址（POST /ocr，multipart 字段 file + language）；配置后 PDF 解析对无文本页和嵌入图片启用 OCR'
+    }),
+    LITEPARSE_OCR_SERVER_KEY: z.string().optional().meta({
+      description: 'LiteParse OCR 服务密钥，请求时以 Authorization: Bearer 发送'
+    }),
+    LITEPARSE_OCR_LANGUAGE: z.string().min(1).default('eng').meta({
+      description: 'LiteParse OCR 语言代码，由 OCR 服务解释，默认 eng'
+    }),
+    LITEPARSE_OCR_TIMEOUT_MS: IntSchema.min(1000).default(120_000).meta({
+      description: '单页 OCR 请求超时时间（毫秒）'
+    }),
     WORKFLOW_MAX_RUN_TIMES: IntSchema.default(500).meta({
       description: '工作流最大运行次数，避免极端死循环'
     }),
