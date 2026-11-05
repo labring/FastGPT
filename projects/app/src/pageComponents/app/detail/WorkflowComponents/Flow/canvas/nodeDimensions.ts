@@ -21,6 +21,7 @@ export type NodeDimensions = {
     x: number;
     y: number;
   };
+  containerContentSize?: NodeCardDimension;
 };
 
 type NodeSourceHandleCenter = {
@@ -91,10 +92,14 @@ type RenderableGraphClassification = ViewportNodeClassification & {
 // region dimensionProjection Canvas viewport classification and fit calculation
 
 const WORKFLOW_VIEWPORT_OVERSCAN = 240;
+export const WORKFLOW_FULL_RENDER_NODE_LIMIT = 50;
 export const WORKFLOW_NODE_MEASUREMENT_ESTIMATE: NodeDimensions = {
   card: { width: 300, height: 120 },
   occupied: { width: 300, height: 120 }
 };
+
+export const shouldRenderWorkflowNodesFully = (nodeCount: number) =>
+  nodeCount <= WORKFLOW_FULL_RENDER_NODE_LIMIT;
 
 /**
  * 把屏幕像素 overscan 转成画布坐标范围；尺寸估算只服务裁剪，不写入 Dimension Index。
@@ -690,6 +695,13 @@ const normalizeDimension = (dimension: NodeDimensions) => {
     Number.isFinite(dimension.containerContentOffset.x) &&
     Number.isFinite(dimension.containerContentOffset.y)
       ? { containerContentOffset: { ...dimension.containerContentOffset } }
+      : {}),
+    ...(dimension.containerContentSize &&
+    Number.isFinite(dimension.containerContentSize.width) &&
+    Number.isFinite(dimension.containerContentSize.height) &&
+    dimension.containerContentSize.width >= 0 &&
+    dimension.containerContentSize.height >= 0
+      ? { containerContentSize: { ...dimension.containerContentSize } }
       : {})
   };
 };

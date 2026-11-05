@@ -32,7 +32,10 @@ const NodeParallelRun = ({ data, selected }: CanvasNodeProps) => {
   const isFolded = node?.view.isFolded ?? false;
   const { feConfigs } = useSystemStore();
 
-  const { nodeWidth, nodeHeight, inputBoxRef } = useNestedNode({ nodeId, inputs });
+  const { nodeWidth, nodeHeight, inputBoxRef } = useNestedNode({
+    nodeId,
+    inputs
+  });
 
   // Inject max into parallelRunMaxConcurrency input from feConfigs.
   // Fall back to 10 (backend default) when feConfigs is not yet available,
@@ -47,7 +50,7 @@ const NodeParallelRun = ({ data, selected }: CanvasNodeProps) => {
   }, [inputs, concurrencyMax]);
 
   return (
-    <NodeCard selected={selected} maxW="full" menuForbid={{ copy: true }} {...data}>
+    <NodeCard selected={selected} w="max-content" maxW="none" menuForbid={{ copy: true }} {...data}>
       <Container position={'relative'} flex={1}>
         <IOTitle text={t('common:Input')} />
 
@@ -67,8 +70,9 @@ const NodeParallelRun = ({ data, selected }: CanvasNodeProps) => {
             bg={'myGray.100'}
             rounded={'8px'}
             {...(!isFolded && {
-              minW: nodeWidth,
-              minH: nodeHeight
+              w: `${nodeWidth}px`,
+              minH: nodeHeight,
+              flexShrink: 0
             })}
           />
         </>

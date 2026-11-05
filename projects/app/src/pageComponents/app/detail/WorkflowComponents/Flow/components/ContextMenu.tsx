@@ -15,6 +15,7 @@ import {
 } from '@/web/core/workflow/editor/session/workflowSession';
 import { useWorkflowUIValue } from '../canvas/canvasState';
 import { useClearCanvasSelection } from '../canvas/useCanvasController';
+import { shouldRenderWorkflowNodesFully } from '../canvas/nodeDimensions';
 import { useWorkflowAutoLayout } from '../hooks/useWorkflowAutoLayout';
 
 const ContextMenuItem = ({
@@ -115,12 +116,14 @@ const ContextMenu = () => {
         p={1}
         zIndex={10}
       >
-        <ContextMenuItem
-          mb={1}
-          icon="alignLeft"
-          label={t('workflow:auto_align')}
-          onClick={autoLayout}
-        />
+        {shouldRenderWorkflowNodesFully(workflow?.nodes.length ?? 0) && (
+          <ContextMenuItem
+            mb={1}
+            icon="alignLeft"
+            label={t('workflow:auto_align')}
+            onClick={autoLayout}
+          />
+        )}
         <ContextMenuItem
           mb={1}
           icon="comment"

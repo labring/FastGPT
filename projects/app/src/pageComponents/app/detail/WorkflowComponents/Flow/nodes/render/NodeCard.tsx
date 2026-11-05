@@ -421,6 +421,7 @@ const NodeCard = (props: Props) => {
     <Flex
       data-workflow-node-occupied="true"
       position={'relative'}
+      flexShrink={0}
       outline={selected && (presentationMode || isFolded) ? '16px solid' : undefined}
       outlineColor={'rgba(17, 24, 36, 0.05)'}
       borderRadius={isFolded ? 26 : 'lg'}
@@ -431,6 +432,7 @@ const NodeCard = (props: Props) => {
         data-workflow-node-card="true"
         hidden={hidden}
         flexDirection={'column'}
+        flexShrink={0}
         {...(isFolded
           ? {
               w: '240px',

@@ -35,6 +35,7 @@ import {
   hasValidSourceHandleMeasurement,
   getUnmeasuredViewportFitNodeIds,
   getViewportFitNodeIds,
+  shouldRenderWorkflowNodesFully,
   shouldRenderMeasurementNode,
   type CanvasViewport,
   type DimensionMeasurement,
@@ -414,6 +415,8 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
         parentId,
         getNodeDimension: getDimension,
         previousChildBounds: hasMatchingContentOffset ? previousLayout?.childBounds : undefined,
+        containerContentOffset: contentOffset,
+        containerContentSize: dimensions.get(parentId)?.containerContentSize,
         previousParentPosition:
           hasMatchingContentOffset && previousLayout
             ? { x: previousLayout.parentX, y: previousLayout.parentY }
@@ -440,7 +443,9 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
             getNodeDimension: getDimension,
             previousChildBounds: undefined,
             previousParentPosition: undefined,
-            initialChildBounds
+            initialChildBounds,
+            containerContentOffset: contentOffset,
+            containerContentSize: dimensions.get(parentId)?.containerContentSize
           });
           newContainerIdsRef.current.delete(parentId);
         }
@@ -496,6 +501,8 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
         previous?.occupied.height === update.dimension.occupied.height &&
         previous?.containerContentOffset?.x === update.dimension.containerContentOffset?.x &&
         previous?.containerContentOffset?.y === update.dimension.containerContentOffset?.y &&
+        previous?.containerContentSize?.width === update.dimension.containerContentSize?.width &&
+        previous?.containerContentSize?.height === update.dimension.containerContentSize?.height &&
         areSourceHandleCentersEqual(
           previous?.sourceHandleCenters,
           update.dimension.sourceHandleCenters
@@ -590,6 +597,21 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
         focusPinnedNodeIdsRef.current.has(node.id) ||
         focusRequestPinnedNodeIdsRef.current.has(node.id)
     }));
+    if (shouldRenderWorkflowNodesFully(nextNodes.length)) {
+      // 全量挂载只排除折叠后代；离屏容器也必须挂载，才能完成自动布局所需的测量。
+      const renderedNodeIds = new Set(getViewportFitNodeIds({ nodes: viewportNodes }));
+      publishRenderModes(new Map(nextNodes.map((node) => [node.id, 'full' as WorkflowRenderMode])));
+      publishMeasurementNodeIds(new Set());
+      measurementQueueRef.current.clear();
+      publishRenderedGraph(
+        nextNodes.filter((node) => renderedNodeIds.has(node.id)),
+        edgesRef.current.filter(
+          (edge) => renderedNodeIds.has(edge.source) && renderedNodeIds.has(edge.target)
+        )
+      );
+      return;
+    }
+
     const renderedGraph = classifyRenderableGraph({
       nodes: viewportNodes,
       edges: edgesRef.current,
@@ -803,6 +825,7 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const setCanvasNodes = (next: CanvasNode[]) => {
+    const wasFullRender = shouldRenderWorkflowNodesFully(nodesRef.current.length);
     const activeNodeIds = new Set(next.map((node) => node.id));
     syncNodeIdentities(next);
     activeNodeIdsRef.current = activeNodeIds;
@@ -810,7 +833,8 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
     const nextNodes = updateContainerLayouts(next, nodeDimensionsRef.current);
     nodesRef.current = nextNodes;
     setNodesRaw(nextNodes);
-    if (renderModesRef.current.size === 0) {
+    const fullRender = shouldRenderWorkflowNodesFully(nextNodes.length);
+    if (renderModesRef.current.size === 0 || fullRender !== wasFullRender) {
       reconcileRenderState(nextNodes);
     } else {
       scheduleRenderStateFrame();

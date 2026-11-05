@@ -25,10 +25,13 @@ const NodeLoop = ({ data, selected }: CanvasNodeProps) => {
   const outputs = node?.data.outputs ?? [];
   const isFolded = node?.view.isFolded ?? false;
 
-  const { nodeWidth, nodeHeight, inputBoxRef } = useNestedNode({ nodeId, inputs });
+  const { nodeWidth, nodeHeight, inputBoxRef } = useNestedNode({
+    nodeId,
+    inputs
+  });
 
   return (
-    <NodeCard selected={selected} maxW="full" menuForbid={{ copy: true }} {...data}>
+    <NodeCard selected={selected} w="max-content" maxW="none" menuForbid={{ copy: true }} {...data}>
       <Container position={'relative'} flex={1}>
         <IOTitle text={t('common:Input')} />
 
@@ -48,8 +51,9 @@ const NodeLoop = ({ data, selected }: CanvasNodeProps) => {
             bg={'myGray.100'}
             rounded={'8px'}
             {...(!isFolded && {
-              minW: nodeWidth,
-              minH: nodeHeight
+              w: `${nodeWidth}px`,
+              minH: nodeHeight,
+              flexShrink: 0
             })}
           />
         </>

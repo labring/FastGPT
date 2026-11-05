@@ -83,7 +83,11 @@ const NodeLoopRun = ({ data, selected }: CanvasNodeProps) => {
   const arrayInputKey =
     mode === LoopRunModeEnum.array ? NodeInputKeyEnum.loopRunInputArray : undefined;
 
-  const { nodeWidth, nodeHeight, inputBoxRef } = useNestedNode({ nodeId, inputs, arrayInputKey });
+  const { nodeWidth, nodeHeight, inputBoxRef } = useNestedNode({
+    nodeId,
+    inputs,
+    arrayInputKey
+  });
 
   const inputAreaInputs = useMemo(
     () =>
@@ -260,7 +264,7 @@ const NodeLoopRun = ({ data, selected }: CanvasNodeProps) => {
   }, [getEdges, inputs, nodeActions, nodeId, outputs]);
 
   return (
-    <NodeCard selected={selected} maxW="full" menuForbid={{ copy: true }} {...data}>
+    <NodeCard selected={selected} w="max-content" maxW="none" menuForbid={{ copy: true }} {...data}>
       <Container position={'relative'} flex={1}>
         <IOTitle text={t('common:Input')} />
 
@@ -280,8 +284,9 @@ const NodeLoopRun = ({ data, selected }: CanvasNodeProps) => {
             bg={'myGray.100'}
             rounded={'8px'}
             {...(!isFolded && {
-              minW: nodeWidth,
-              minH: nodeHeight
+              w: `${nodeWidth}px`,
+              minH: nodeHeight,
+              flexShrink: 0
             })}
           />
         </>

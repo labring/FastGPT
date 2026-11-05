@@ -24,7 +24,8 @@ const mocks = vi.hoisted(() => ({
   getNodes: vi.fn(),
   getEdges: vi.fn(),
   fitNodes: vi.fn(),
-  getNodeDimension: vi.fn()
+  getNodeDimension: vi.fn(),
+  getNodeDimensions: vi.fn()
 }));
 vi.mock('@xyflow/react', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@xyflow/react')>()),
@@ -35,14 +36,21 @@ vi.mock('@/web/core/workflow/editor/react/useWorkflow', () => ({
   useWorkflowActions: () => ({ commitGeometry: mocks.commitGeometry })
 }));
 vi.mock('@/web/core/workflow/editor/session/workflowSession', () => ({
-  useWorkflowRuntime: () => ({ getWorkflow: () => mocks.workflowSnapshot, isDisposed: () => false }),
+  useWorkflowRuntime: () => ({
+    getWorkflow: () => mocks.workflowSnapshot,
+    isDisposed: () => false
+  }),
   useWorkflowSnapshot: () => mocks.workflowSnapshot
 }));
 vi.mock('@/pageComponents/app/detail/WorkflowComponents/Flow/canvas/workflowCanvasContext', () => ({
   useWorkflowCanvasRendererValue: (selector: (value: unknown) => unknown) =>
     selector({ getNodes: mocks.getNodes, edges: mocks.edges, replaceNodes: mocks.replaceNodes }),
   useWorkflowCanvasValue: (selector: (value: unknown) => unknown) =>
-    selector({ fitNodes: mocks.fitNodes, getNodeDimension: mocks.getNodeDimension })
+    selector({
+      fitNodes: mocks.fitNodes,
+      getNodeDimension: mocks.getNodeDimension,
+      getNodeDimensions: mocks.getNodeDimensions
+    })
 }));
 
 const node = (id: string, extra: Partial<Node<FlowNodeItemType>> = {}): Node<FlowNodeItemType> => ({
@@ -128,8 +136,16 @@ describe('workflow layout data compatibility', () => {
       ]
     });
     expect(result.map(({ id }) => id)).toEqual(['loop', 'child', 'new']);
-    expect(result[0]).toMatchObject({ width: 420, height: 240, position: { x: 20, y: 30 } });
-    expect(result[1]).toMatchObject({ width: 420, data: { name: 'latest name' } });
+    expect(result[0]).toMatchObject({
+      width: undefined,
+      height: undefined,
+      position: { x: 20, y: 30 }
+    });
+    expect(result[1]).toMatchObject({
+      width: undefined,
+      height: undefined,
+      data: { name: 'latest name' }
+    });
     expect(result[1].position).toEqual({ x: 50, y: 60 });
     expect(result[1].data).toBe(child.data);
     expect(result[2]).toBe(added);
@@ -187,11 +203,17 @@ describe('useWorkflowAutoLayout', () => {
       mocks.nodes = nodes as Node<FlowNodeItemType>[];
     });
     mocks.fitNodes.mockReturnValue(true);
+    const dimensions = new Map<string, { width: number; height: number }>();
     mocks.getNodeDimension.mockImplementation((nodeId) => {
       const current = mocks.nodes.find(({ id }) => id === nodeId);
-      return current?.width && current?.height
-        ? { width: current.width, height: current.height }
-        : undefined;
+      if (current?.width && current?.height) {
+        dimensions.set(nodeId, { width: current.width, height: current.height });
+      }
+      return dimensions.get(nodeId);
+    });
+    mocks.getNodeDimensions.mockImplementation((nodeId) => {
+      const dimension = mocks.getNodeDimension(nodeId);
+      return dimension ? { card: dimension, occupied: dimension } : undefined;
     });
     dom = new JSDOM('<!doctype html><div id="root"></div>', { pretendToBeVisual: true });
     vi.stubGlobal('window', dom.window);
@@ -222,7 +244,7 @@ describe('useWorkflowAutoLayout', () => {
     await expect(result).resolves.toBe('applied');
     expect(mocks.nodes[0].position).toEqual(original[0].position);
     expect(mocks.nodes[1].position.x).toBeGreaterThan(mocks.nodes[0].position.x);
-    expect(mocks.nodes[2]).toEqual(original[2]);
+    expect(mocks.nodes[2]).toEqual({ ...original[2], width: undefined, height: undefined });
     expect(mocks.nodes.map(({ data }) => data)).toEqual(original.map(({ data }) => data));
     expect(mocks.fitNodes).toHaveBeenCalledOnce();
   });
@@ -233,6 +255,24 @@ describe('useWorkflowAutoLayout', () => {
     await expect(layout.autoLayout()).resolves.toBe('failed');
     expect(mocks.replaceNodes).not.toHaveBeenCalled();
     expect(mocks.fitNodes).not.toHaveBeenCalled();
+  });
+
+  it('uses measured canvas dimensions when React Flow has not filled node sizes', async () => {
+    setCanvasNodes([node('start', { width: undefined, height: undefined }), node('answer')]);
+    mocks.getNodeDimensions.mockImplementation((nodeId) =>
+      nodeId === 'start'
+        ? {
+            card: { width: 420, height: 240 },
+            occupied: { width: 420, height: 240 }
+          }
+        : undefined
+    );
+    await render();
+    const result = layout.autoLayout();
+    await frame();
+    await frame();
+    await expect(result).resolves.toBe('applied');
+    expect(mocks.replaceNodes).toHaveBeenCalledOnce();
   });
 
   it('keeps user-selection branches in option order when laying out an ordinary canvas', async () => {
@@ -291,14 +331,80 @@ describe('useWorkflowAutoLayout', () => {
     await frame();
     await expect(result).resolves.toBe('applied');
     const parent = mocks.nodes.find(({ id }) => id === 'loop')!;
-    expect(parent.width).toBe(420);
-    expect(parent.height).toBe(240);
+    expect(parent.width).toBeUndefined();
+    expect(parent.height).toBeUndefined();
     for (const child of mocks.nodes.filter(({ data }) => data.parentNodeId === 'loop')) {
       expect(child.position).not.toEqual(originalChildPositions.get(child.id));
     }
     expect(loop).toEqual(original[1]);
     expect(children).toEqual(original.slice(2));
     expect(mocks.commitGeometry).toHaveBeenCalledOnce();
+  });
+
+  it('lays out outer nodes with the container size computed after its children move', async () => {
+    const loop = node('loop');
+    loop.data.flowNodeType = FlowNodeTypeEnum.loop;
+    const children = Array.from({ length: 4 }, (_, index) => {
+      const child = node(`child-${index}`, {
+        position: { x: 100, y: 200 + index * 300 },
+        width: 420,
+        height: 240
+      });
+      child.data.parentNodeId = 'loop';
+      return child;
+    });
+    const answer = node('answer');
+    setCanvasNodes([node('start'), loop, ...children, answer]);
+    const dimensions = new Map(
+      mocks.nodes.map(({ id, width, height }) => [id, { width: width!, height: height! }])
+    );
+    dimensions.set('loop', { width: 420, height: 240 });
+    mocks.edges = [
+      { id: 'entry', source: 'start', target: 'loop' },
+      { id: 'exit', source: 'loop', target: answer.id }
+    ];
+    mocks.getNodeDimension.mockImplementation((nodeId) => dimensions.get(nodeId));
+    mocks.getNodeDimensions.mockImplementation((nodeId) => {
+      const dimension = dimensions.get(nodeId);
+      return dimension
+        ? {
+            card: dimension,
+            occupied: dimension,
+            ...(nodeId === 'loop'
+              ? {
+                  containerContentOffset: { x: 33, y: 100 },
+                  containerContentSize: { width: 354, height: 40 }
+                }
+              : {})
+          }
+        : undefined;
+    });
+    await render();
+    const result = layout.autoLayout();
+    await frame();
+    await frame();
+    await expect(result).resolves.toBe('applied');
+    const reorderedChildren = mocks.nodes.filter(({ data }) => data.parentNodeId === 'loop');
+    const parent = mocks.nodes.find(({ id }) => id === 'loop')!;
+    const contentLeft = parent.position.x + 33;
+    const contentTop = parent.position.y + 100;
+    const right = Math.max(...reorderedChildren.map((child) => child.position.x + 420));
+    const bottom = Math.max(...reorderedChildren.map((child) => child.position.y + 240));
+    expect(Math.min(...reorderedChildren.map((child) => child.position.x)) - contentLeft).toBe(32);
+    expect(Math.min(...reorderedChildren.map((child) => child.position.y)) - contentTop).toBe(32);
+    expect(parent.position.x + 550 - 33 - right).toBe(32);
+    expect(parent.position.y + 1404 - 100 - bottom).toBe(32);
+    expect(mocks.nodes.find(({ id }) => id === 'answer')!.position.x).toBe(
+      parent.position.x + 550 + 200
+    );
+    expect(reorderedChildren.at(-1)!.position.y - reorderedChildren[0].position.y).toBeGreaterThan(
+      800
+    );
+    expect(parent.width).toBeUndefined();
+    expect(parent.height).toBeUndefined();
+    expect(mocks.nodes.find(({ id }) => id === 'answer')?.position.y).toBeGreaterThan(
+      mocks.nodes.find(({ id }) => id === 'loop')!.position.y
+    );
   });
 
   it('stops a manual layout from focusing a replaced or unmounted canvas', async () => {
@@ -350,8 +456,7 @@ describe('useWorkflowAutoLayout', () => {
     await frame();
     await frame();
     await expect(result).resolves.toBe('degraded');
-    expect(mocks.nodes[1].width).toBeUndefined();
-    expect(mocks.nodes[1].height).toBeUndefined();
+    expect(mocks.getNodeDimensions).toHaveBeenCalled();
     expect(mocks.fitNodes).toHaveBeenCalledWith(['start', 'isolated'], { padding: 0.3 });
   });
 

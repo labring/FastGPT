@@ -9,6 +9,7 @@ import {
   getUnmeasuredViewportFitNodeIds,
   getViewportForNodeIds,
   hasValidSourceHandleMeasurement,
+  shouldRenderWorkflowNodesFully,
   shouldRenderMeasurementNode,
   type DimensionMeasurement
 } from '@/pageComponents/app/detail/WorkflowComponents/Flow/canvas/nodeDimensions';
@@ -131,7 +132,8 @@ describe('workflow dimension batcher', () => {
         card: { width: 300, height: 200 },
         occupied: { width: 300, height: 200 },
         sourceHandleCenters: new Map([['else', { x: 304, y: 180 }]]),
-        containerContentOffset: { x: 33, y: 310 }
+        containerContentOffset: { x: 33, y: 310 },
+        containerContentSize: { width: 234, height: 0 }
       }
     });
 
@@ -141,6 +143,7 @@ describe('workflow dimension batcher', () => {
       new Map([['else', { x: 304, y: 180 }]])
     );
     expect(flushed[0]?.[0]?.dimension.containerContentOffset).toEqual({ x: 33, y: 310 });
+    expect(flushed[0]?.[0]?.dimension.containerContentSize).toEqual({ width: 234, height: 0 });
   });
 });
 
@@ -164,6 +167,11 @@ describe('workflow dimension geometry', () => {
 });
 
 describe('workflow viewport measurement scheduling', () => {
+  it('only virtualizes workflows above 50 nodes', () => {
+    expect(shouldRenderWorkflowNodesFully(50)).toBe(true);
+    expect(shouldRenderWorkflowNodesFully(51)).toBe(false);
+  });
+
   it('renders overscan nodes so their measurements can complete', () => {
     const result = classifyRenderableGraph({
       viewport: { x: 0, y: 0, zoom: 1, width: 100, height: 100 },

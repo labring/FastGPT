@@ -16,7 +16,53 @@ const node = (id: string, parentNodeId?: string, x = 0, y = 0) =>
   }) as any;
 
 describe('getParentNodeSizeAndPosition', () => {
-  it('uses Dimension Index sizes for parent layout', () => {
+  it('keeps 32px on every content edge and includes the card chrome in its full size', () => {
+    const nodes = [
+      node('parent', undefined, 100, 50),
+      node('first', 'parent', 200, 150),
+      node('last', 'parent', 600, 250)
+    ];
+    const layout = getParentNodeSizeAndPosition({
+      nodes,
+      parentId: 'parent',
+      getNodeDimension: (nodeId) =>
+        nodeId === 'parent' ? { width: 1466, height: 800 } : { width: 100, height: 80 },
+      containerContentOffset: { x: 33, y: 100 },
+      containerContentSize: { width: 1400, height: 600 }
+    })!;
+
+    const contentLeft = layout.parentX + 33;
+    const contentTop = layout.parentY + 100;
+    expect(200 - contentLeft).toBe(32);
+    expect(150 - contentTop).toBe(32);
+    expect(contentLeft + layout.childWidth - 700).toBe(32);
+    expect(contentTop + layout.childHeight - 330).toBe(32);
+    expect(layout.nodeWidth).toBe(layout.childWidth + 66);
+    expect(layout.nodeHeight).toBe(layout.childHeight + 200);
+    expect(layout.parentX + layout.nodeWidth).toBe(contentLeft + layout.childWidth + 33);
+
+    nodes[0].position = { x: layout.parentX, y: layout.parentY };
+    expect(
+      getParentNodeSizeAndPosition({
+        nodes,
+        parentId: 'parent',
+        getNodeDimension: (nodeId) =>
+          nodeId === 'parent'
+            ? { width: layout.nodeWidth, height: layout.nodeHeight }
+            : { width: 100, height: 80 },
+        containerContentOffset: { x: 33, y: 100 },
+        containerContentSize: { width: layout.childWidth, height: layout.childHeight }
+      })
+    ).toMatchObject({
+      parentX: layout.parentX,
+      parentY: layout.parentY,
+      nodeWidth: layout.nodeWidth,
+      nodeHeight: layout.nodeHeight,
+      positionDelta: { x: 0, y: 0 }
+    });
+  });
+
+  it('recomputes parent size from child bounds instead of retaining stale dimensions', () => {
     const dimensions = new Map([
       ['parent', { width: 1200, height: 480 }],
       ['child', { width: 120, height: 80 }]
@@ -31,10 +77,24 @@ describe('getParentNodeSizeAndPosition', () => {
     ).toMatchObject({
       childWidth: 120 + CONTAINER_CHILD_PADDING * 2,
       childHeight: 80 + CONTAINER_CHILD_PADDING * 2,
-      nodeWidth: 1200,
-      nodeHeight: 480,
+      nodeWidth: 120 + CONTAINER_CHILD_PADDING * 2,
+      nodeHeight: 80 + CONTAINER_CHILD_PADDING * 2,
       positionDelta: { x: 0, y: 0 },
       folded: false
+    });
+  });
+
+  it('does not preserve an oversized measured width after children move together', () => {
+    expect(
+      getParentNodeSizeAndPosition({
+        nodes: [node('parent'), node('child', 'parent', 10, 20)],
+        parentId: 'parent',
+        getNodeDimension: (nodeId) =>
+          nodeId === 'parent' ? { width: 1200, height: 480 } : { width: 120, height: 80 }
+      })
+    ).toMatchObject({
+      childWidth: 120 + CONTAINER_CHILD_PADDING * 2,
+      nodeWidth: 120 + CONTAINER_CHILD_PADDING * 2
     });
   });
 
@@ -54,6 +114,24 @@ describe('getParentNodeSizeAndPosition', () => {
     });
   });
 
+  it('derives container size from children before the container itself is measured', () => {
+    const child = node('child', 'parent', 100, 50);
+    const sibling = node('sibling', 'parent', 600, 50);
+    const getNodeDimension = (nodeId: string) =>
+      nodeId === 'child' || nodeId === 'sibling' ? { width: 300, height: 200 } : undefined;
+
+    expect(
+      getParentNodeSizeAndPosition({
+        nodes: [node('parent', undefined, 0, 0), child, sibling],
+        parentId: 'parent',
+        getNodeDimension
+      })
+    ).toMatchObject({
+      childWidth: 800 + CONTAINER_CHILD_PADDING * 2,
+      childHeight: 200 + CONTAINER_CHILD_PADDING * 2
+    });
+  });
+
   it('corrects the first measured position from the content origin', () => {
     const layout = getParentNodeSizeAndPosition({
       nodes: [node('parent', undefined, 200, 100), node('child', 'parent', 310, 240)],
@@ -67,6 +145,21 @@ describe('getParentNodeSizeAndPosition', () => {
       parentX: 278,
       parentY: 208,
       positionDelta: { x: 78, y: 108 }
+    });
+  });
+
+  it('anchors the container from the measured content offset', () => {
+    expect(
+      getParentNodeSizeAndPosition({
+        nodes: [node('parent', undefined, 100, 50), node('child', 'parent', 200, 150)],
+        parentId: 'parent',
+        getNodeDimension: (nodeId) =>
+          nodeId === 'parent' ? { width: 300, height: 200 } : { width: 100, height: 100 },
+        containerContentOffset: { x: 20, y: 100 }
+      })
+    ).toMatchObject({
+      parentX: 148,
+      parentY: 18
     });
   });
 
@@ -162,6 +255,59 @@ describe('getParentNodeSizeAndPosition', () => {
     ).toMatchObject({
       childWidth: 40 + CONTAINER_CHILD_PADDING * 2,
       childHeight: 30 + CONTAINER_CHILD_PADDING * 2
+    });
+  });
+
+  it('expands the container width and shifts its position when a child moves horizontally', () => {
+    const dimensions = new Map([
+      ['parent', { width: 300, height: 200 }],
+      ['child', { width: 120, height: 80 }]
+    ]);
+    const parent = node('parent', undefined, 100, 50);
+    const child = node('child', 'parent', 100, 20);
+
+    expect(
+      getParentNodeSizeAndPosition({
+        nodes: [parent, child],
+        parentId: 'parent',
+        getNodeDimension: (nodeId) => dimensions.get(nodeId),
+        previousChildBounds: {
+          left: 132,
+          top: 52,
+          right: 252,
+          bottom: 132,
+          width: 120,
+          height: 80
+        },
+        previousParentPosition: { x: 100, y: 50 }
+      })
+    ).toMatchObject({
+      childWidth: 120 + CONTAINER_CHILD_PADDING * 2,
+      parentX: 68,
+      parentY: 18,
+      positionDelta: { x: -32, y: -32 }
+    });
+
+    expect(
+      getParentNodeSizeAndPosition({
+        nodes: [parent, child, node('right-child', 'parent', 300, 20)],
+        parentId: 'parent',
+        getNodeDimension: (nodeId) =>
+          nodeId === 'right-child' ? dimensions.get('child') : dimensions.get(nodeId),
+        previousChildBounds: {
+          left: 132,
+          top: 52,
+          right: 420,
+          bottom: 132,
+          width: 288,
+          height: 80
+        },
+        previousParentPosition: { x: 100, y: 50 }
+      })
+    ).toMatchObject({
+      childWidth: 320 + CONTAINER_CHILD_PADDING * 2,
+      parentX: 68,
+      positionDelta: { x: -32, y: -32 }
     });
   });
 

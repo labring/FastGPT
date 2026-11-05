@@ -30,14 +30,16 @@ export const CONTAINER_CHILD_PADDING = 32;
  * 按子节点包围盒计算容器（Loop 系列）节点应有的位置与尺寸。
  *
  * 纯函数：只读传入的画布节点数组，不写文档、不依赖 Context，调用方自行决定如何使用结果。
- * 任一节点还没进入 Dimension Index 时返回 undefined，由调用方在尺寸到齐后重试。
- * 容器自身尺寸来自已测量卡片，子节点区域只取直接子节点包围盒并补 32px padding。
+ * 子节点未完成测量时返回 undefined；展开容器可先由子节点尺寸启动布局。
+ * childWidth/childHeight 是带四边 32px padding 的内容区；nodeWidth/nodeHeight 还包含卡片标题、表单和外层留白。
  */
 export const getParentNodeSizeAndPosition = ({
   nodes,
   parentId,
   getNodeDimension,
   previousChildBounds,
+  containerContentOffset,
+  containerContentSize,
   initialChildBounds,
   previousParentPosition
 }: {
@@ -45,6 +47,8 @@ export const getParentNodeSizeAndPosition = ({
   parentId: string;
   getNodeDimension: DimensionReader;
   previousChildBounds?: ContainerBounds;
+  containerContentOffset?: { x: number; y: number };
+  containerContentSize?: { width: number; height: number };
   initialChildBounds?: Pick<ContainerBounds, 'left' | 'top'>;
   previousParentPosition?: { x: number; y: number };
 }): ParentNodeLayout | undefined => {
@@ -66,10 +70,9 @@ export const getParentNodeSizeAndPosition = ({
 
   if (!loopNode) return;
   const loopNodeRect = getNodeRect(loopNode, getNodeDimension(loopNode.id));
-  if (!loopNodeRect) return;
-
   const folded = loopNode.data.isFolded === true;
   if (folded || childNodes.length === 0) {
+    if (!loopNodeRect) return;
     return {
       parentX: loopNode.position.x,
       parentY: loopNode.position.y,
@@ -99,31 +102,54 @@ export const getParentNodeSizeAndPosition = ({
   };
   const childWidth = childBounds.width + CONTAINER_CHILD_PADDING * 2;
   const childHeight = childBounds.height + CONTAINER_CHILD_PADDING * 2;
-  const positionDelta = previousChildBounds
-    ? {
-        x:
-          childBounds.left -
-          previousChildBounds.left -
-          (loopNode.position.x - (previousParentPosition?.x ?? loopNode.position.x)),
-        y:
-          childBounds.top -
-          previousChildBounds.top -
-          (loopNode.position.y - (previousParentPosition?.y ?? loopNode.position.y))
-      }
-    : initialChildBounds
-      ? {
-          x: childBounds.left - initialChildBounds.left,
-          y: childBounds.top - initialChildBounds.top
-        }
-      : { x: 0, y: 0 };
+  // 从同一帧的卡片与内容区测量中扣除旧内容尺寸，避免旧包围盒阻止容器收缩。
+  const cardExtraWidth =
+    loopNodeRect && containerContentSize
+      ? Math.max(0, loopNodeRect.width - containerContentSize.width)
+      : 0;
+  const cardExtraHeight =
+    loopNodeRect && containerContentSize
+      ? Math.max(0, loopNodeRect.height - containerContentSize.height)
+      : 0;
+  const positionDelta =
+    containerContentOffset === undefined
+      ? previousChildBounds
+        ? {
+            x:
+              childBounds.left -
+              previousChildBounds.left -
+              (loopNode.position.x - (previousParentPosition?.x ?? loopNode.position.x)),
+            y:
+              childBounds.top -
+              previousChildBounds.top -
+              (loopNode.position.y - (previousParentPosition?.y ?? loopNode.position.y))
+          }
+        : initialChildBounds
+          ? {
+              x: childBounds.left - initialChildBounds.left,
+              y: childBounds.top - initialChildBounds.top
+            }
+          : { x: 0, y: 0 }
+      : {
+          x:
+            childBounds.left -
+            containerContentOffset.x -
+            CONTAINER_CHILD_PADDING -
+            loopNode.position.x,
+          y:
+            childBounds.top -
+            containerContentOffset.y -
+            CONTAINER_CHILD_PADDING -
+            loopNode.position.y
+        };
 
   return {
     parentX: loopNode.position.x + positionDelta.x,
     parentY: loopNode.position.y + positionDelta.y,
     childWidth,
     childHeight,
-    nodeWidth: Math.max(loopNodeRect.width, childWidth),
-    nodeHeight: Math.max(loopNodeRect.height, childHeight),
+    nodeWidth: childWidth + cardExtraWidth,
+    nodeHeight: childHeight + cardExtraHeight,
     childBounds,
     positionDelta,
     folded

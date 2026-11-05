@@ -49,7 +49,12 @@ type RequestAutoLayoutOptions = {
 };
 
 type IdentifiedNode = { id: string; width?: number; height?: number };
-type PositionedNode = { id: string; position: { x: number; y: number } };
+type PositionedNode = {
+  id: string;
+  position: { x: number; y: number };
+  width?: number;
+  height?: number;
+};
 
 /** 判断当前画布是否已经完整加载了本次 Builder 应用的节点集合。 */
 export const matchesWorkflowAutoLayoutRequest = <T extends IdentifiedNode>({
@@ -81,7 +86,7 @@ export const getWorkflowAutoLayoutNodeSizeSignature = <T extends IdentifiedNode>
 };
 
 /**
- * 把布局坐标合并到画布当前投影；节点语义始终由 Runtime 持有。
+ * 把布局坐标合并到画布当前投影；尺寸由 DOM 测量，避免 Dagre 临时尺寸锁住容器伸缩。
  */
 export const mergeWorkflowLayoutNodes = <T extends PositionedNode>({
   currentNodes,
@@ -90,11 +95,18 @@ export const mergeWorkflowLayoutNodes = <T extends PositionedNode>({
   currentNodes: T[];
   layoutedNodes: T[];
 }) => {
-  const layoutedPositions = new Map(layoutedNodes.map((node) => [node.id, node.position]));
+  const layoutedNodesById = new Map(layoutedNodes.map((node) => [node.id, node]));
 
-  return currentNodes.map((node) =>
-    layoutedPositions.has(node.id) ? { ...node, position: layoutedPositions.get(node.id)! } : node
-  );
+  return currentNodes.map((node) => {
+    const layoutedNode = layoutedNodesById.get(node.id);
+    if (!layoutedNode) return node;
+    return {
+      ...node,
+      position: layoutedNode.position,
+      width: undefined,
+      height: undefined
+    };
+  });
 };
 
 /**
@@ -110,6 +122,7 @@ export const useWorkflowAutoLayout = () => {
   const replaceNodes = useWorkflowCanvasRendererValue((value) => value.replaceNodes);
   const fitNodes = useWorkflowCanvasValue((value) => value.fitNodes);
   const getNodeDimension = useWorkflowCanvasValue((value) => value.getNodeDimension);
+  const getNodeDimensions = useWorkflowCanvasValue((value) => value.getNodeDimensions);
   const renderedNodes = useNodes<CanvasNode>();
   const nodesInitialized = useNodesInitialized();
   const pendingRequestRef = useRef<PendingAutoLayoutRequest>();
@@ -135,19 +148,23 @@ export const useWorkflowAutoLayout = () => {
       }
 
       let usedFallbackDimensions = false;
-      const newNodes = cloneDeep(currentNodes);
+      const newNodes = cloneDeep(currentNodes).map((node) => {
+        const dimension = getNodeDimensions(node.id)?.card;
+        return dimension
+          ? {
+              ...node,
+              width: dimension.width,
+              height: dimension.height
+            }
+          : node;
+      });
 
       if (allowFallbackDimensions) {
         newNodes.forEach((node) => {
-          if (!node.width) {
-            node.width = defaultNodeWidth;
-            usedFallbackDimensions = true;
-          }
-          if (!node.height) {
-            node.height = defaultNodeHeight;
-            usedFallbackDimensions = true;
-          }
+          node.width = node.width ?? defaultNodeWidth;
+          node.height = node.height ?? defaultNodeHeight;
         });
+        usedFallbackDimensions = newNodes.some((node) => !getNodeDimensions(node.id)?.card);
       }
 
       if (newNodes.some((node) => !node.width || !node.height)) {
@@ -295,10 +312,14 @@ export const useWorkflowAutoLayout = () => {
           const size = getParentNodeSizeAndPosition({
             nodes: toLayoutNodes(newNodes),
             parentId: node.id,
-            getNodeDimension
+            getNodeDimension,
+            containerContentOffset: getNodeDimensions(node.id)?.containerContentOffset,
+            containerContentSize: getNodeDimensions(node.id)?.containerContentSize
           });
           if (!size) return;
           node.position = { x: size.parentX, y: size.parentY };
+          node.width = size.nodeWidth;
+          node.height = size.nodeHeight;
         });
 
       const startNode =
@@ -339,7 +360,7 @@ export const useWorkflowAutoLayout = () => {
       ) {
         return 'failed' as const;
       }
-      const validNodes = getNodes().filter((node) => node.width && node.height);
+      const validNodes = getNodes().filter((node) => getNodeDimension(node.id));
       fitNodes(
         validNodes.map((node) => node.id),
         { padding: 0.3 }
@@ -347,7 +368,17 @@ export const useWorkflowAutoLayout = () => {
 
       return usedFallbackDimensions ? ('degraded' as const) : ('applied' as const);
     },
-    [actions, edges, fitNodes, getNodeDimension, getNodes, replaceNodes, runtime, workflowSnapshot]
+    [
+      actions,
+      edges,
+      fitNodes,
+      getNodeDimension,
+      getNodeDimensions,
+      getNodes,
+      replaceNodes,
+      runtime,
+      workflowSnapshot
+    ]
   );
 
   const finishPendingRequest = useCallback(

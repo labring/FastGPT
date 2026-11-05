@@ -180,8 +180,9 @@ const MeasuredNode = React.memo(
           card: getLayoutDimension(card),
           occupied: getLayoutDimension(occupied),
           sourceHandleCenters: centers,
-          ...(contentRect
+          ...(content && contentRect
             ? {
+                containerContentSize: getLayoutDimension(content),
                 containerContentOffset: {
                   x: (contentRect.left - cardRect.left) / scaleX,
                   y: (contentRect.top - cardRect.top) / scaleY
@@ -248,6 +249,12 @@ const NodeShell = React.memo(
     const dimensions =
       useWorkflowCanvasValue((v) => v.nodeDimensions.get(props.id)) ??
       WORKFLOW_NODE_MEASUREMENT_ESTIMATE;
+    const containerWidth = useWorkflowCanvasValue(
+      (v) => v.containerLayouts.get(props.id)?.childWidth
+    );
+    const containerHeight = useWorkflowCanvasValue(
+      (v) => v.containerLayouts.get(props.id)?.childHeight
+    );
     const updateNodeInternals = useUpdateNodeInternals();
     const isToolNode = useIsToolNode(props.id);
     const showToolSource = props.data.flowNodeType === FlowNodeTypeEnum.toolCall;
@@ -262,6 +269,8 @@ const NodeShell = React.memo(
       dimensions.card.width,
       dimensions.occupied.height,
       dimensions.occupied.width,
+      containerWidth,
+      containerHeight,
       overlay,
       props.data,
       props.id,
