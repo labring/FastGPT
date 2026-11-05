@@ -19,8 +19,10 @@ export async function startPrivateEnvironment({
   port = 3100,
   mongoBinary,
   directory,
-  serverRoot = repo
+  serverRoot = repo,
+  profile = 'history'
 }) {
+  if (!['history', 'app-key'].includes(profile)) throw Error('未知测试环境 profile');
   const req = createRequire(path.join(repo, 'package.json'));
   const appReq = createRequire(path.join(repo, 'projects/app/package.json'));
   const { MongoClient, ObjectId } = createRequire(path.join(repo, 'packages/service/package.json'))(
@@ -274,7 +276,8 @@ export async function startPrivateEnvironment({
       STREAM_RESUME_TTL_SECONDS: '30',
       STREAM_RESUME_POST_COMPLETE_TTL_SECONDS: '4',
       STREAM_RESUME_REDIS_MEMORY_CHECK_INTERVAL_MS: '20',
-      STREAM_RESUME_REDIS_MAXMEMORY_RATIO: '0.5'
+      STREAM_RESUME_REDIS_MAXMEMORY_RATIO: '0.5',
+      ...(profile === 'app-key' ? { OPENAPI_KEY_MAX_COUNT: '3' } : {})
     };
     await writeFile(path.join(directory, 'service-env.json'), JSON.stringify(env), { mode: 0o600 });
     const app = child({
@@ -428,7 +431,9 @@ export async function startPrivateEnvironment({
       ).json();
       if (r.code !== 200) throw Error('私有发布失败 ' + r.code);
     }
-    for (const name of ['resume', 'history', 'historySwitch', 'database', 'other', 'empty']) {
+    for (const name of profile === 'app-key'
+      ? ['history', 'historySwitch', 'other', 'empty']
+      : ['resume', 'history', 'historySwitch', 'database', 'other', 'empty']) {
       const g = graph({
         stages: ['resume', 'historySwitch', 'database'].includes(name),
         pieces: name === 'resume' ? 55 : 1,
@@ -489,7 +494,7 @@ export async function startPrivateEnvironment({
     });
     resources.push(() => a.dispose());
     const records = [];
-    for (let index = 0; index < 201; index++) {
+    for (let index = 0; index < (profile === 'app-key' ? 0 : 201); index++) {
       const chatId = 'fgfixture-' + id + '-' + String(index).padStart(3, '0');
       const r = await (
         await a.post('/api/v2/chat/completions', {
@@ -554,6 +559,8 @@ export async function startPrivateEnvironment({
         url: '/chat?appId=' + apps.history
       }
     };
+    if (profile === 'app-key')
+      fixture.appKeys = { templateAppId: apps.empty, maxKeyCount: 3, commercial: false };
     fixture.history.shareId = shared.data;
     fixture.history.url += '&pane=ra';
     const fixturePath = path.join(directory, 'fixture.json');
@@ -573,7 +580,10 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   for (let index = 2; index < process.argv.length; index += 2) {
     const key = process.argv[index]?.slice(2),
       value = process.argv[index + 1];
-    if (!['source-env', 'mongo-binary', 'port', 'directory', 'app-root'].includes(key) || !value)
+    if (
+      !['source-env', 'mongo-binary', 'port', 'directory', 'app-root', 'profile'].includes(key) ||
+      !value
+    )
       throw Error('无效环境参数');
     args[key] = value;
   }
@@ -582,7 +592,8 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     mongoBinary: args['mongo-binary'],
     port: Number(args.port ?? 3100),
     directory: args.directory,
-    serverRoot: args['app-root']
+    serverRoot: args['app-root'],
+    profile: args.profile ?? 'history'
   });
   console.log(
     JSON.stringify({

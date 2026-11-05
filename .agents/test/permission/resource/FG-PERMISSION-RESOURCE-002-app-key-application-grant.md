@@ -8,6 +8,10 @@ category: boundary
 scenario: special
 priority: P0
 status: ready
+automation:
+  - runner: node
+    script: .agents/test/permission/resource/FG-PERMISSION-RESOURCE-002.mjs
+    items: [A1, A2, A3, A4, A5, A6]
 tags: [phase3, app-api-key, customuid-publishsource, authAppApiKey, 应用独立授权, 覆盖基础场景, 覆盖异常场景, 覆盖边界场景]
 evidence: [response, database]
 sources:
@@ -50,6 +54,8 @@ baseline: "d09b4e8849d051182ef4011470945d2b71085807"
 应用 Key 自身授权绑定应用的对话与对话管理，创建人被移除应用权限后仍应能调用。它不能借创建人、请求 appId 或兼容后缀访问其他应用，也不能进入未接受应用 Key 的管理接口；个人密钥继续受成员权限约束。
 
 ## 前置准备
+
+- 自动执行约定见 [应用 Key 脚本配置](../../../skills/system/fastgpt-integration-test-runner/references/app-key-cases.md)。脚本仅在 marker 匹配的独立数据库准备资源，每个子场景重新建立基线；固定回显模板和登录材料由显式夹具提供，沿用本例所有响应、持久化与清理断言。
 
 - D0 复用 OPENAPI-002 的独立 T/W 与 A，A 为普通 active 成员且不是应用/团队 owner，创建时拥有 W 管理权限及合法 Ka（type=app,appId=W）、个人 Pa。由 owner 撤销 A 对 W 的直接、组织/组及继承授权，确认 Pa 不能访问 W；A 仍在团队且 Ka 本身有效。另备 A 可访问的同团队 X、另一团队 Y，以及 A 可读取的临时知识库 D，避免“拒绝”仅由原成员权限不足造成。
 - W 发布可控回显工作流：输出 RUN 与系统变量 userId，不依赖随机模型文案。每个独立输入用新 chatId，Ka 的自定义用户为 RUN-u1。复用 OPENAPI-001 的协议和 UID 观测方法，不重跑完整长度/类型矩阵。基线请求：`{chatId:'RUN-Ax',customUid:'RUN-u1',messages:[{role:'user',content:'probe'}],stream:false,detail:true}`。

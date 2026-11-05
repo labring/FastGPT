@@ -8,6 +8,10 @@ category: basic
 scenario: success
 priority: P0
 status: ready
+automation:
+  - runner: node
+    script: .agents/test/chat/history-feedback/FG-CHAT-HISTORY-FEEDBACK-003.mjs
+    items: [D1, D2, D3, D4, D5, D6, D7]
 tags: [phase3, app-api-key, customuid-publishsource, 对话管理, 文件隔离, 覆盖基础场景, 覆盖异常场景, 覆盖边界场景]
 evidence: [response, database, storage]
 sources:
@@ -81,6 +85,8 @@ baseline: "d09b4e8849d051182ef4011470945d2b71085807"
 业务后端使用应用 Key 查询和管理绑定应用内不同使用者、不同发布渠道产生的对话。即使 Key 归属成员没有应用、日志或写权限，这些操作仍由应用 Key 授权；同时不能访问其他应用或其他会话的文件，也不能因二次鉴权重新依赖成员 ACL。
 
 ## 前置准备
+
+- 自动执行约定见 [应用 Key 脚本配置](../../../skills/system/fastgpt-integration-test-runner/references/app-key-cases.md)。脚本仅在 marker 匹配的独立数据库准备资源，每个子场景重新建立基线；固定回显模板和登录材料由显式夹具提供，沿用本例所有响应、持久化与清理断言。
 
 - D0 复用 RESOURCE-002 的 T/W/Ka/Pa，A 为 active 普通成员、对 W 无应用/日志/写 ACL，Ka 有效；另备有日志权限的 owner O 作观测者。W 是独立普通应用，含 C1(A/Ka/u1)、C2(B/Kb/u2)、C3(B/online)、C4(share) 四份完成对话，各带 RUN 和两条消息，另备 Cfile、Crun。所有对话属于 W，使用者、作者、publishSource.id 有意不同。不要把 API 来源筛选默认带入全量管理查询。
 - 对照应用 X（同 T）和 Y（异团队），各有独立 CX/CY、消息和文件，记录真实 ID/数据摘要。历史和日志查询给完整时间范围与合法分页，预期 ID 集合来自本例 manifest；getUsers/Pro 图表的真值从实际日志库 app_chat_logs 的桶计算，不用 Chat 数量硬凑统计值。

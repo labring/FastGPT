@@ -57,6 +57,7 @@ test('任意 500 和入参错误不能作为权限拒绝的通过证据', async 
   );
   assert.throws(() => permissionDenied({ error: true, http: 400, json: { code: 400 } }));
   permissionDenied({ error: true, http: 500, json: { code: 502001, statusText: 'unAuthApp' } });
+  permissionDenied({ error: true, http: 500, json: { code: 500004, statusText: 'unAuthTeam' } });
 });
 
 test('真实 gate 只接受本轮 RUN 与 token，收尾会放行未完成连接并关闭端口', async () => {
@@ -235,5 +236,48 @@ test('一个场景失败后先执行该项收尾，再运行下一场景，防�
     );
   } finally {
     await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test('鉴权早退的无 Content-Type SSE error 必须按实际错误码识别', async () => {
+  const { readHttpResult, permissionDenied, success } = await import('./scenario.mjs');
+  const response = await readHttpResult(
+    new Response('event: error\ndata: {"code":502001,"statusText":"unAuthApp"}\n\n', {
+      status: 200
+    })
+  );
+  assert.equal(response.error, true);
+  permissionDenied(response);
+  assert.throws(() => success(response));
+  const other = await readHttpResult(
+    new Response('event: error\ndata: {"code":500,"statusText":"database error"}\n\n')
+  );
+  assert.throws(() => permissionDenied(other));
+});
+
+test('显式匿名入口不从已有角色注入 Key 或 Cookie', async () => {
+  const { createScenario } = await import('./scenario.mjs');
+  const server = createServer((req, res) => {
+    assert.equal(req.headers.authorization, undefined);
+    assert.equal(req.headers.cookie, undefined);
+    res.writeHead(200, { 'content-type': 'application/json' }).end('{"code":200,"data":true}');
+  });
+  server.listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  try {
+    const scenario = createScenario({
+      fixture: {
+        baseUrl: 'http://127.0.0.1:' + server.address().port,
+        actors: { owner: { stateEnv: 'INTENTIONALLY_UNSET_COOKIE_FILE' } }
+      },
+      observations: [],
+      run: 'fgtest-anonymous',
+      cleanups: [],
+      resources: new Map(),
+      secrets: new Set()
+    });
+    assert.equal((await scenario.request({ kind: 'anonymous', route: '/probe' })).json.data, true);
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
   }
 });

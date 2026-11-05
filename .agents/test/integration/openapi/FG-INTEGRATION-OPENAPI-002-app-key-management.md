@@ -8,6 +8,10 @@ category: basic
 scenario: success
 priority: P0
 status: ready
+automation:
+  - runner: node
+    script: .agents/test/integration/openapi/FG-INTEGRATION-OPENAPI-002.mjs
+    items: [M1, M2, M3, M4, M5, M6, M7]
 tags: [phase3, app-api-key, customuid-publishsource, 密钥管理, 覆盖基础场景, 覆盖异常场景, 覆盖边界场景]
 evidence: [response, ui, database]
 sources:
@@ -51,6 +55,8 @@ baseline: "d09b4e8849d051182ef4011470945d2b71085807"
 应用管理员在发布页分别管理当前应用的应用 Key 和本人的个人密钥。两类列表、新建表单和调用示例必须保持隔离，应用管理权限不能扩展到其他成员的个人密钥；复制与修改应用 Key 则依据应用管理权限，而不是 Key 的创建人。
 
 ## 前置准备
+
+- 自动执行约定见 [应用 Key 脚本配置](../../../skills/system/fastgpt-integration-test-runner/references/app-key-cases.md)。脚本仅在 marker 匹配的独立数据库准备资源，每个子场景重新建立基线；固定回显模板和登录材料由显式夹具提供，沿用本例所有响应、持久化与清理断言。
 
 - D0：独立团队 T，owner O；应用 W 的 owner B，管理员 A、M；成员 N 无 W 管理权限。A/M 均仅有 W 管理权限，缺团队“创建 API Key”权限；个人密钥创建步骤另给 A 授权。另备同团队应用 X、另一团队 U 的应用 Y；记录真实资源 ID，别名不能直接发送。用真实登录态做管理请求；无登录态对照只带 Key，不能保留浏览器 Cookie。
 - 准备 A/B/M 各自的个人密钥 Pa/Pb/Pm；A/M 在 W 的应用 Key Ka/Km，X 下 Kx 和 U 下 Ky。Key 明文只存环境变量或执行器内存，证据只记录 Key._id、名称和脱敏值。个人标签 ta 属于 A；所有名称带 RUN=`appkey-日期-随机串`。
