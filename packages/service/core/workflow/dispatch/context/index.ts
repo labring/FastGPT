@@ -287,22 +287,3 @@ export const runWithDerivedWorkflowFileContext = async <T>({
     })
   );
 };
-
-import { prepareChatFiles, type ChatFileInput } from '../../../chat/file/service';
-export const prepareWorkflowFiles = ({
-  files,
-  maxFiles,
-  allowDataUrl
-}: {
-  files: ChatFileInput[];
-  maxFiles?: number;
-  allowDataUrl?: boolean;
-}) => {
-  const fileContext = getWorkflowFileContext();
-  return prepareChatFiles({
-    files,
-    maxFiles: maxFiles ?? fileContext?.limits.maxFileAmount ?? files.length,
-    fileContext,
-    allowDataUrl: allowDataUrl ?? !fileContext
-  });
-};

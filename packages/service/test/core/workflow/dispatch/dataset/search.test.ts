@@ -1,3 +1,4 @@
+import { createTestWorkflowFileContext } from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { UserError } from '@fastgpt/global/common/error/utils';
@@ -6,7 +7,7 @@ import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { createNodeSummary } from '@fastgpt/service/core/workflow/dispatch/utils/summary';
-import { createWorkflowResourceContext } from '@fastgpt/service/core/workflow/resource/context';
+import { createWorkflowResourceContext } from '@fastgpt/service/core/workflow/dispatch/context/resource';
 import { WorkflowResourceError } from '@fastgpt/service/core/workflow/resource/service';
 import { runWithTestWorkflowContext as runWithContext } from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -124,9 +125,13 @@ vi.mock('@fastgpt/service/support/permission/model/auth', () => ({
   getAuthorizedModelIds: vi.fn(async () => new Set())
 }));
 
-import { dispatchDatasetSearch as dispatchDatasetSearchWithoutContext, isDatasetResourceMissingError } from '../../../../../core/workflow/dispatch/dataset/search';
+import {
+  dispatchDatasetSearch as dispatchDatasetSearchWithoutContext,
+  isDatasetResourceMissingError
+} from '../../../../../core/workflow/dispatch/dataset/search';
 import { serviceEnv } from '../../../../../env';
-const dispatchDatasetSearch: typeof dispatchDatasetSearchWithoutContext = (props) => runInTestWorkflowContext(() => dispatchDatasetSearchWithoutContext(props));
+const dispatchDatasetSearch: typeof dispatchDatasetSearchWithoutContext = (props) =>
+  runInTestWorkflowContext(() => dispatchDatasetSearchWithoutContext(props));
 
 describe('dispatchDatasetSearch', () => {
   const runSearch = (params: Record<string, unknown> = {}, nodeSummary = createNodeSummary()) =>
@@ -152,6 +157,9 @@ describe('dispatchDatasetSearch', () => {
 
     return runWithContext(
       {
+        checkIsStopping: () => false,
+        fileContext: await createTestWorkflowFileContext(),
+
         mcpClientMemory: {},
         resourceContext: createWorkflowResourceContext({
           resources: [{ type: 'dataset', id: 'dataset_1' }],

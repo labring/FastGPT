@@ -148,7 +148,7 @@ describe('WorkflowFileContext 文件操作', () => {
       });
       const fileContext = kind === 'root' ? root : await root.derive([]);
       expect(await fileContext.prepareFiles({ files })).toHaveLength(1);
-      expect(fileContext.resolve(files[0].url)?.type).toBe(ChatFileTypeEnum.file);
+      expect(fileContext.resolve(files[0].url)?.type).toBe(ChatFileTypeEnum.document);
       expect(await fileContext.prepareFiles({ files, maxFiles: 0 })).toEqual([]);
       expect(await fileContext.prepareFiles({ files, maxFiles: 3 })).toHaveLength(2);
       expect(
@@ -169,7 +169,7 @@ describe('WorkflowFileContext 文件操作', () => {
     const child = await root.derive([url]);
     const prepared = await child.prepareFiles({ files: [{ url }, { url }], maxFiles: 2 });
     expect(prepared).toEqual([
-      { name: 'report.pdf', type: ChatFileTypeEnum.file, key: privateKey, url }
+      { name: 'report.pdf', type: ChatFileTypeEnum.document, key: privateKey, url }
     ]);
     const externalUrl = 'https://child.example.com/new.pdf';
     await child.prepareFiles({ files: [{ url: externalUrl }] });
@@ -1090,11 +1090,10 @@ describe('prepareWorkflowFileContext — 外链登记与派生', () => {
         data: Readable.from([Buffer.from('file content')]),
         headers: { 'content-type': 'text/plain; charset=utf-8' }
       }));
-      const { fileContext, fileRegistrar } = await prepare(entry === 'query' ? [{ file }] : []);
+      const { fileContext } = await prepare(entry === 'query' ? [{ file }] : []);
       const context = await (async () => {
         if (entry === 'child') return fileContext.derive([file]);
-        if (entry === 'variable')
-          await fileRegistrar.registerInputFile({ file, source: 'variable' });
+        if (entry === 'variable') await fileContext.register({ file, source: 'variable' });
         return fileContext;
       })();
 
@@ -1115,8 +1114,8 @@ describe('prepareWorkflowFileContext — 外链登记与派生', () => {
       data: Readable.from([Buffer.from('plain text')]),
       headers: {}
     }));
-    const { fileContext, fileRegistrar } = await prepare();
-    await fileRegistrar.registerInputFile({
+    const { fileContext } = await prepare();
+    await fileContext.register({
       file: { url, name: url, type: ChatFileTypeEnum.file },
       source: 'variable'
     });

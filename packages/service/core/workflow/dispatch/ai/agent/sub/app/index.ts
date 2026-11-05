@@ -71,14 +71,8 @@ type Props = Pick<
 };
 
 export const dispatchApp = async (props: Props): Promise<DispatchSubAppResponse> => {
-  const {
-    runningAppInfo,
-    runningUserInfo,
-    app,
-    customAppVariables,
-    userChatInput,
-    ...data
-  } = props;
+  const { runningAppInfo, runningUserInfo, app, customAppVariables, userChatInput, ...data } =
+    props;
   const memoryState = WorkflowMemoryState.fromWorkflow(props);
   const { variableContext: variableState } = getWorkflowContext();
 
@@ -142,50 +136,51 @@ export const dispatchApp = async (props: Props): Promise<DispatchSubAppResponse>
       // 应用身份属于调用路径，后代插件即使来自同一模板也必须按调用方隔离。
       const childMemoryState = memoryState.fork(`app:${childRunningAppInfo.sourceId}`);
 
-        const childContext = getWorkflowContext().getChildContext({
-          runtimeControl: { isToolCall: true },
-          variableContext: childrenVariableState,
-          nodeResponseSink: getWorkflowContext().nodeResponseSink.getChildContext({
-            workflowRuntimeSummary: createWorkflowRuntimeSummary(),
-            ...(data.nodeResponseParentId !== undefined
-              ? { defaultParentId: data.nodeResponseParentId }
-              : {})
-          })
-        });
-        return runWithContext(childContext, () =>
-          runWorkflow({
-            ...data,
+      const childContext = getWorkflowContext().getChildContext({
+        runtimeControl: { isToolCall: true },
+        variableContext: childrenVariableState,
+        nodeResponseSink: getWorkflowContext().nodeResponseSink.getChildContext({
+          workflowRuntimeSummary: createWorkflowRuntimeSummary(),
+          ...(data.nodeResponseParentId !== undefined
+            ? { defaultParentId: data.nodeResponseParentId }
+            : {})
+        })
+      });
+      return runWithContext(childContext, () =>
+        runWorkflow({
+          ...data,
           memoryState: childMemoryState,
-            runningAppInfo: {
-              sourceType: ChatSourceTypeEnum.app,
-              sourceId: String(appData._id),
-              name: appData.name,
-              teamId: String(appData.teamId),
-              tmbId: String(appData.tmbId),
-              isChildApp: true
-            },
-            runningUserInfo,
-            runtimeNodes,
-            runtimeEdges,
-            chatConfig,
-            histories: [],
-            // 初次调用使用工具参数；交互恢复时必须使用当前外层用户输入，
-            // 其中包含表单/选择节点提交的 JSON，否则子流程会从暂停节点再次生成交互。
-            query: data.lastInteractive
-              ? data.query
-              : [
-                  {
-                    text: {
-                      content: userChatInput
-                    }
+          runningAppInfo: {
+            sourceType: ChatSourceTypeEnum.app,
+            sourceId: String(appData._id),
+            name: appData.name,
+            teamId: String(appData.teamId),
+            tmbId: String(appData.tmbId),
+            isChildApp: true
+          },
+          runningUserInfo,
+          runtimeNodes,
+          runtimeEdges,
+          chatConfig,
+          histories: [],
+          // 初次调用使用工具参数；交互恢复时必须使用当前外层用户输入，
+          // 其中包含表单/选择节点提交的 JSON，否则子流程会从暂停节点再次生成交互。
+          query: data.lastInteractive
+            ? data.query
+            : [
+                {
+                  text: {
+                    content: userChatInput
                   }
-                ],
-            stream: false,
-            workflowStreamResponse: undefined
-          })
-        );
-      }
-    });
+                }
+              ],
+          stream: false,
+          workflowStreamResponse: undefined
+        })
+      );
+    }
+  });
+  memoryState.merge(system_memories);
 
   const { text } = chatValue2RuntimePrompt(assistantResponses);
   const runtimeSummary = getWorkflowRuntimeSummary({
@@ -218,14 +213,8 @@ export const dispatchApp = async (props: Props): Promise<DispatchSubAppResponse>
 };
 
 export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppResponse> => {
-  const {
-    runningAppInfo,
-    runningUserInfo,
-    app,
-    customAppVariables,
-    userChatInput,
-    ...data
-  } = props;
+  const { runningAppInfo, runningUserInfo, app, customAppVariables, userChatInput, ...data } =
+    props;
   const memoryState = WorkflowMemoryState.fromWorkflow(props);
   const { variableContext: variableState } = getWorkflowContext();
   // plugin 子应用不接收普通 userChatInput；这里解构只为了避免透传给 runWorkflow。

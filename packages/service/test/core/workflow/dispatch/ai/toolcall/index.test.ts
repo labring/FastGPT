@@ -5,7 +5,7 @@ import type { AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { getRunningSandboxId } from '@fastgpt/service/core/ai/sandbox/utils/id';
-import { dispatchRunTools } from '@fastgpt/service/core/workflow/dispatch/ai/toolcall';
+import { dispatchRunTools as dispatchRunToolsWithoutContext } from '@fastgpt/service/core/workflow/dispatch/ai/toolcall';
 import { buildAgentLoopCoreRequestMessages } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/application/context/messages';
 import {
   createNodeSummary,

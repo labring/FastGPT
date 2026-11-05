@@ -18,7 +18,7 @@ import type {
 } from '../types/runtime';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import { getErrText, isUserConfigError } from '@fastgpt/global/common/error/utils';
-import { filterWorkflowEdges, valueTypeFormat, appendWorkflowInteractiveValue } from '@fastgpt/global/core/workflow/runtime/utils';
+import { filterWorkflowEdges, valueTypeFormat } from '@fastgpt/global/core/workflow/runtime/utils';
 import type {
   InteractiveNodeResponseType,
   WorkflowInteractiveResponseType
