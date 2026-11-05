@@ -32,6 +32,10 @@ import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
 import type { ClientSession } from '../../common/mongo';
 import { removeS3TTL } from '../../common/s3/utils';
 import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
+import {
+  normalizeSelectValue,
+  truncateSelectOptionText
+} from '@fastgpt/global/core/workflow/optionLimit';
 import { encryptSecretValue, anyValueDecrypt } from '../../common/secret/utils';
 import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { getErrText } from '@fastgpt/global/common/error/utils';
@@ -919,7 +923,7 @@ export const updateInteractiveChat = async ({
   // Update interactive value
   {
     if (finalInteractive.type === 'userSelect') {
-      finalInteractive.params.userSelectedVal = userInteractiveVal;
+      finalInteractive.params.userSelectedVal = truncateSelectOptionText(userInteractiveVal);
     } else if (
       finalInteractive.type === 'userInput' &&
       typeof parsedUserInteractiveVal === 'object'
@@ -952,7 +956,10 @@ export const updateInteractiveChat = async ({
 
         return {
           ...item,
-          value: itemValue
+          value: normalizeSelectValue({
+            value: itemValue,
+            type: item.type
+          })
         };
       });
       finalInteractive.params.submitted = true;

@@ -6,6 +6,10 @@ import type { UserSelectOptionItemType } from '@fastgpt/global/core/workflow/tem
 import { USER_SELECT_REFERENCE_HANDLE_KEY } from '@fastgpt/global/core/workflow/template/system/interactive/userSelect';
 import type { ReferenceValueType } from '@fastgpt/global/core/workflow/type/io';
 import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
+import {
+  MAX_SELECT_OPTION_COUNT,
+  truncateSelectOptionText
+} from '@fastgpt/global/core/workflow/optionLimit';
 import { resolveDynamicOptionStrings } from './dynamicOptions';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 
@@ -49,7 +53,12 @@ export const dispatchUserSelect = async (props: Props): Promise<UserSelectRespon
           key: `option_${index + 1}`,
           value
         }))
-      : (userSelectOptions as UserSelectOptionItemType[]);
+      : (Array.isArray(userSelectOptions) ? (userSelectOptions as UserSelectOptionItemType[]) : [])
+          .slice(0, MAX_SELECT_OPTION_COUNT)
+          .map((item) => ({
+            ...item,
+            value: truncateSelectOptionText(String(item.value ?? ''))
+          }));
 
     if (isReferenceMode && resolvedOptions.length === 0) {
       const errorText = i18nT('workflow:user_select_no_available_options');
@@ -72,8 +81,12 @@ export const dispatchUserSelect = async (props: Props): Promise<UserSelectRespon
 
   node.isEntry = false;
 
-  const { text: userSelectedVal } = chatValue2RuntimePrompt(query);
-  const manualOptions = userSelectOptions as UserSelectOptionItemType[];
+  const { text: rawUserSelectedVal } = chatValue2RuntimePrompt(query);
+  const userSelectedVal =
+    rawUserSelectedVal !== undefined ? truncateSelectOptionText(rawUserSelectedVal) : undefined;
+  const manualOptions = Array.isArray(userSelectOptions)
+    ? (userSelectOptions as UserSelectOptionItemType[])
+    : [];
 
   // Error status
   if (userSelectedVal === undefined) {
@@ -92,7 +105,11 @@ export const dispatchUserSelect = async (props: Props): Promise<UserSelectRespon
     [DispatchNodeResponseKeyEnum.skipHandleId]: isReferenceMode
       ? []
       : manualOptions
-          .filter((item) => item.value !== userSelectedVal)
+          .filter(
+            (item, index) =>
+              index >= MAX_SELECT_OPTION_COUNT ||
+              truncateSelectOptionText(String(item.value ?? '')) !== userSelectedVal
+          )
           .map((item: any) => getHandleId(nodeId, 'source', item.key)),
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
       userSelectResult: userSelectedVal

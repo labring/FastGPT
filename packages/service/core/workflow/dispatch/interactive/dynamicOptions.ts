@@ -1,5 +1,9 @@
 import { isValidReferenceValueFormat } from '@fastgpt/global/common/workflow/reference';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
+import {
+  MAX_SELECT_OPTION_COUNT,
+  truncateSelectOptionText
+} from '@fastgpt/global/core/workflow/optionLimit';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import {
   getReferenceVariableValue,
@@ -42,6 +46,9 @@ export const resolveDynamicOptionStrings = ({
 
   return rawList
     .filter((item) => item !== undefined && item !== null)
-    .map((item) => String(valueTypeFormat(item, WorkflowIOValueTypeEnum.string)).trim())
-    .filter(Boolean);
+    .map((item) =>
+      truncateSelectOptionText(String(valueTypeFormat(item, WorkflowIOValueTypeEnum.string)).trim())
+    )
+    .filter(Boolean)
+    .slice(0, MAX_SELECT_OPTION_COUNT);
 };

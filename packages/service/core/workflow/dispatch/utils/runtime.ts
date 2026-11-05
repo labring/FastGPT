@@ -16,6 +16,7 @@ import {
 } from '@fastgpt/global/common/workflow/reference';
 import { getSecretReferenceValue } from '@fastgpt/global/common/secret/utils';
 import { formatCollectionFilterMatchParam } from '@fastgpt/global/core/dataset/search/tagFilter';
+import { isSelectInputType, normalizeSelectValue } from '@fastgpt/global/core/workflow/optionLimit';
 import { replaceEditorVariable } from './replaceEditorVariable';
 
 /**
@@ -57,11 +58,14 @@ export const getWorkflowNodeRunParams = ({
       // 内部变量不从工具参数进入，缺少 runtime value 时使用节点声明的默认值。
       const value = item.value ?? item.defaultValue;
       const isSecretInput = getSelectedInputRenderType(item) === FlowNodeInputTypeEnum.password;
-      acc[item.key] = valueTypeFormat(
-        isSecretInput ? resolveSecretInputReference(value) : value,
-        item.valueType,
-        isSecretInput
-      );
+      acc[item.key] = normalizeSelectValue({
+        value: valueTypeFormat(
+          isSecretInput ? resolveSecretInputReference(value) : value,
+          item.valueType,
+          isSecretInput
+        ),
+        type: item.renderTypeList.find(isSelectInputType)
+      });
       return acc;
     }, {});
   }

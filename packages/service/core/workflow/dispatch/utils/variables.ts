@@ -21,6 +21,7 @@ import {
 import { getWorkflowFileContext } from '../../utils/context';
 import { isAbsoluteHttpUrl } from '../../../chat/file/utils';
 import { getModuleFileAmountLimit } from '@fastgpt/global/core/workflow/fileLimit';
+import { normalizeSelectValue } from '@fastgpt/global/core/workflow/optionLimit';
 
 const DEFAULT_VARIABLE_FILE_INPUT_MAX_FILES = 5;
 
@@ -413,7 +414,10 @@ export class WorkflowVariableState implements WorkflowVariableStateLike {
       return;
     }
 
-    const runtimeValue = valueTypeFormat(value, config.valueType);
+    const runtimeValue = normalizeSelectValue({
+      value: valueTypeFormat(value, config.valueType),
+      type: config.type
+    });
     this.state.set(config.key, {
       key: config.key,
       config,

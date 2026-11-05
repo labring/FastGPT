@@ -253,4 +253,65 @@ describe('dispatchUserSelect', () => {
       }
     });
   });
+
+  it('truncates options to 200 items / 100 chars and skips out-of-range handles on resume', async () => {
+    const manualOptions = Array.from({ length: 205 }, (_, i) => ({
+      key: `k_${i}`,
+      value: `opt_${i}_${'x'.repeat(110)}`
+    }));
+    const createNode = (selectedType: FlowNodeInputTypeEnum, isEntry: boolean) =>
+      ({
+        nodeId: 'selectNode',
+        isEntry,
+        inputs: [
+          {
+            key: NodeInputKeyEnum.userSelectOptions,
+            renderTypeList: [FlowNodeInputTypeEnum.custom, FlowNodeInputTypeEnum.reference],
+            selectedType
+          }
+        ]
+      }) as any;
+
+    const resumedManual = await dispatchUserSelect({
+      histories: [],
+      node: createNode(FlowNodeInputTypeEnum.custom, true),
+      runtimeNodesMap: new Map(),
+      params: {
+        [NodeInputKeyEnum.description]: 'Choose one',
+        [NodeInputKeyEnum.userSelectOptions]: manualOptions
+      },
+      query: [{ text: { content: manualOptions[0].value } }],
+      lastInteractive: { type: 'userSelect' }
+    } as any);
+
+    expect(resumedManual.data?.[NodeOutputKeyEnum.selectResult]).toBe(
+      manualOptions[0].value.slice(0, 100)
+    );
+    expect(resumedManual[DispatchNodeResponseKeyEnum.skipHandleId]).not.toContain(
+      'selectNode-source-k_0'
+    );
+    expect(resumedManual[DispatchNodeResponseKeyEnum.skipHandleId]).toContain(
+      'selectNode-source-k_200'
+    );
+
+    const dynamicRaw = Array.from({ length: 205 }, (_, i) => `dyn_${i}_${'y'.repeat(110)}`);
+    const initialDynamic = await dispatchUserSelect({
+      histories: [],
+      node: createNode(FlowNodeInputTypeEnum.reference, false),
+      runtimeNodesMap: new Map(),
+      params: {
+        [NodeInputKeyEnum.description]: 'Choose one',
+        [NodeInputKeyEnum.userSelectOptions]: dynamicRaw
+      },
+      query: []
+    } as any);
+
+    const dynamicOptions =
+      initialDynamic[DispatchNodeResponseKeyEnum.interactive]?.params?.userSelectOptions;
+    expect(dynamicOptions).toHaveLength(200);
+    expect(dynamicOptions?.[0]).toEqual({
+      key: 'option_1',
+      value: dynamicRaw[0].slice(0, 100)
+    });
+  });
 });

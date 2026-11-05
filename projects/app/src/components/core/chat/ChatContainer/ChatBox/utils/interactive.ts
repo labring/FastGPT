@@ -15,6 +15,10 @@ import { AgentAskInteractiveSchema } from '@fastgpt/global/core/ai/agent/type';
 import { WorkflowBuilderPreviewInteractiveSchema } from '@fastgpt/global/core/workflow/builder/type';
 import { checkInteractiveResponseStatus } from '@fastgpt/global/core/chat/utils';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import {
+  normalizeSelectValue,
+  truncateSelectOptionText
+} from '@fastgpt/global/core/workflow/optionLimit';
 import { resolveFormInputFileValues } from '../../../components/FormInputResult';
 import type { ChatSiteItemType } from '../type';
 
@@ -289,15 +293,17 @@ export const rewriteHistoriesByInteractiveResponse = ({
       if (!isValidInteractive(finalInteractive)) return val;
 
       if (finalInteractive.type === 'userSelect') {
+        const normalizedInteractiveVal = truncateSelectOptionText(interactiveVal);
+        const matchedOption = finalInteractive.params.userSelectOptions.find(
+          (item) => truncateSelectOptionText(item.value) === normalizedInteractiveVal
+        );
         return {
           ...val,
           interactive: {
             ...finalInteractive,
             params: {
               ...finalInteractive.params,
-              userSelectedVal: finalInteractive.params.userSelectOptions.find(
-                (item) => item.value === interactiveVal
-              )?.value
+              userSelectedVal: matchedOption ? normalizedInteractiveVal : undefined
             }
           }
         };
@@ -315,7 +321,10 @@ export const rewriteHistoriesByInteractiveResponse = ({
         // 更新 inputForm 中的 value。
         const updatedInputForm = finalInteractive.params.inputForm.map((item) => ({
           ...item,
-          value: submittedData[item.key] ?? item.value
+          value: normalizeSelectValue({
+            value: submittedData[item.key] ?? item.value,
+            type: item.type
+          })
         }));
 
         return {
