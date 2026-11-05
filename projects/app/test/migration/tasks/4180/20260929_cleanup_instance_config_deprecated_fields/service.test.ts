@@ -33,9 +33,12 @@ describe('deprecatedOverridePaths', () => {
         'vector.hnswMaxScanTuples',
         'providers.chunk',
         'providers.crm',
+        'auth.loginProviders.dingtalk',
         'auth.loginProviders.sms.login.en',
         'auth.accountCancellation.cancellationSm.en',
-        'commercial.billingNotify.paymentReceived.en'
+        'commercial.payment.alipay.notifyUrl',
+        'commercial.billingNotify.paymentReceived',
+        'subservice.plugin.remoteDebugUrl'
       ])
     );
   });

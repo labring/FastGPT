@@ -468,22 +468,6 @@ const AuthSettingComponent = () => {
                 placeholder={t('admin:sign_in_with_microsoft')}
               />
             </AdminFormItem>
-            <AdminFormItem
-              label={t('admin:dingtalk_client_id')}
-              tooltip={t('admin:dingtalk_open_platform_app_client_id')}
-            >
-              <Input {...register('loginProviders.dingtalk.clientId')} placeholder="ding******" />
-            </AdminFormItem>
-            <AdminFormItem
-              label={t('admin:dingtalk_client_secret')}
-              tooltip={t('admin:dingtalk_open_platform_app_secret')}
-            >
-              <Input
-                type="password"
-                {...register('loginProviders.dingtalk.secret')}
-                placeholder="******"
-              />
-            </AdminFormItem>
           </SimpleGrid>
         </AdminSettingSection>
       )}

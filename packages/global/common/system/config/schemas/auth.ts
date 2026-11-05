@@ -84,8 +84,7 @@ export const AuthConfigSchema = z.strictObject({
       wecom: WecomLoginConfigSchema.prefault({}),
       github: OAuthConfigSchema.prefault({}),
       google: OAuthConfigSchema.prefault({}),
-      microsoft: MicrosoftOAuthConfigSchema.prefault({}),
-      dingtalk: OAuthConfigSchema.prefault({})
+      microsoft: MicrosoftOAuthConfigSchema.prefault({})
     })
     .prefault({}),
   // 免登入口列表：key 为自定义标识，authUrl 为跳转地址

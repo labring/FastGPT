@@ -19,8 +19,7 @@ const AlipayConfigSchema = z.strictObject({
   gateway: textWithDefault(),
   rootCertContent: textWithDefault(),
   publicCertContent: textWithDefault(),
-  endpoint: textWithDefault(),
-  notifyUrl: urlWithDefault()
+  endpoint: textWithDefault()
 });
 
 /** 对公转账说明。 */
@@ -33,8 +32,6 @@ const BillingNotifySmsTemplateSchema = z.strictObject({
 });
 
 const BillingNotifyConfigSchema = z.strictObject({
-  // 充值到账通知模板
-  paymentReceived: BillingNotifySmsTemplateSchema.prefault({}),
   // 余额不足预警模板
   lackOfPoints: BillingNotifySmsTemplateSchema.prefault({}),
   // 积分剩余 30% 预警模板

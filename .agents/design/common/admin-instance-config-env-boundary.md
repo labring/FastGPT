@@ -1123,7 +1123,6 @@ Server、Agent Sandbox Proxy 和 IDE Agent 的运行时变量。为了避免“�
 | `auth.loginProviders.microsoft.clientId` | Microsoft Client ID | — | ✅ | — | — | 可编辑：`/admin/settings/auth` |
 | `auth.loginProviders.microsoft.tenantId` | Microsoft Tenant ID | — | ✅ | — | — | 可编辑：`/admin/settings/auth` |
 | `auth.loginProviders.microsoft.customButton` | Microsoft 自定义按钮文案 | — | ✅ | — | — | 可编辑：`/admin/settings/auth` |
-| `auth.loginProviders.dingtalk.clientId` | 钉钉 Client ID | — | ✅ | — | — | 可编辑：`/admin/settings/auth`；业务未接入 |
 | `auth.accountCancellation.enabled` | 开放账号注销 | — | ✅ | — | — | 可编辑：`/admin/settings/auth` |
 | `auth.accountCancellation.cancellationSm.zh` | 注销申请 · 中文模板 | — | ✅ | — | — | 可编辑：`/admin/settings/auth` |
 | `auth.accountCancellation.reminderSm.zh` | 注销提醒 · 中文模板 | — | ✅ | — | — | 可编辑：`/admin/settings/auth` |
@@ -1140,7 +1139,6 @@ Server、Agent Sandbox Proxy 和 IDE Agent 的运行时变量。为了避免“�
 | `auth.loginProviders.github.secret` | GitHub Client Secret | — | ✅ | — | ✅ | 可编辑：`/admin/settings/auth` |
 | `auth.loginProviders.google.secret` | Google Client Secret | — | ✅ | — | ✅ | 可编辑：`/admin/settings/auth` |
 | `auth.loginProviders.microsoft.secret` | Microsoft Client Secret | — | ✅ | — | ✅ | 可编辑：`/admin/settings/auth` |
-| `auth.loginProviders.dingtalk.secret` | 钉钉 Client Secret | — | ✅ | — | ✅ | 可编辑：`/admin/settings/auth`；业务未接入 |
 | `auth.loginProviders.wecom.providerSecret` | 服务商 Secret | — | ✅ | ✅ | ✅ | 可编辑：`/admin/settings/auth` |
 | `auth.loginProviders.wecom.paySecret` | 企微支付密钥 | — | ✅ | ✅ | ✅ | 仅 API（暂无新表单） |
 
@@ -1194,9 +1192,7 @@ Server、Agent Sandbox Proxy 和 IDE Agent 的运行时变量。为了避免“�
 | `commercial.payment.alipay.appId` | AppId | — | ✅ | — | — | 可编辑：`/admin/settings/pay` |
 | `commercial.payment.alipay.gateway` | 网关地址 | — | ✅ | — | — | 可编辑：`/admin/settings/pay` |
 | `commercial.payment.alipay.endpoint` | 备用 Endpoint | — | ✅ | — | — | 可编辑：`/admin/settings/pay`；业务未接入 |
-| `commercial.payment.alipay.notifyUrl` | 支付回调地址 | — | ✅ | — | — | 可编辑：`/admin/settings/pay`；业务未接入 |
 | `commercial.payment.bank.description` | 对公转账说明文案 | — | ✅ | — | — | 可编辑：`/admin/settings/pay` |
-| `commercial.billingNotify.paymentReceived.zh` | 充值到账 · 中文模板 | — | ✅ | — | — | 可编辑：`/admin/settings/pay`；业务未接入 |
 | `commercial.billingNotify.lackOfPoints.zh` | 余额不足预警 · 中文模板 | — | ✅ | — | — | 可编辑：`/admin/settings/pay` |
 | `commercial.billingNotify.pointsThirtyPercentRemain.zh` | 积分剩余 30% 中文短信模板 | — | ✅ | — | — | 可编辑：`/admin/settings/pay` |
 | `commercial.billingNotify.pointsTenPercentRemain.zh` | 积分即将耗尽 · 中文模板 | — | ✅ | — | — | 可编辑：`/admin/settings/pay` |
@@ -1300,7 +1296,6 @@ Server、Agent Sandbox Proxy 和 IDE Agent 的运行时变量。为了避免“�
 | --- | --- | :---: | :---: | :---: | :---: | --- |
 | `subservice.plugin.baseUrl` | 插件服务地址 | — | ✅ | — | — | 只读：`/admin/subservice/plugin` |
 | `subservice.plugin.remoteDebug` | 开启插件远程调试通道 (Remote Debug) | — | ✅ | — | — | 可编辑：`/admin/subservice/plugin` |
-| `subservice.plugin.remoteDebugUrl` | 远程调试服务地址 | — | ✅ | — | — | 可编辑：`/admin/subservice/plugin`；业务未接入 |
 | `subservice.codeSandbox.enabled` | 启用 Code Sandbox | — | ✅ | — | — | 可编辑：`/admin/subservice/code-sandbox` |
 | `subservice.codeSandbox.baseUrl` | 代码沙箱服务地址 | — | ✅ | — | — | 只读：`/admin/subservice/code-sandbox` |
 | `subservice.aiProxy.enabled` | 启用 AI Proxy | — | ✅ | — | — | 可编辑：`/admin/subservice/ai-proxy` |

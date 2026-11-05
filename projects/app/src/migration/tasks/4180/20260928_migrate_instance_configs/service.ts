@@ -532,7 +532,6 @@ export const buildLegacyProOverrides = (pro: LegacyProConfig): DomainOverrides =
   const github = (auth.github ?? {}) as LegacyProConfig;
   const google = (auth.google ?? {}) as LegacyProConfig;
   const microsoft = (auth.microsoft ?? {}) as LegacyProConfig;
-  const dingtalk = (auth.dingtalk ?? {}) as LegacyProConfig;
   const cancellation = (pro.accountCancellation ?? {}) as LegacyProConfig;
 
   /** 短信模板已只保留中文：英文模板仅在中文缺失时作为兜底来源。 */
@@ -596,10 +595,6 @@ export const buildLegacyProOverrides = (pro: LegacyProConfig): DomainOverrides =
         secret: optionalText(microsoft.secret),
         tenantId: optionalText(microsoft.tenantId),
         customButton: optionalText(microsoft.customButton)
-      }),
-      dingtalk: compact({
-        clientId: optionalText(dingtalk.clientId),
-        secret: optionalText(dingtalk.secret)
       })
     }),
     fastLogin: normalizeFastLogin(pro.fastLogin),
@@ -643,13 +638,11 @@ export const buildLegacyProOverrides = (pro: LegacyProConfig): DomainOverrides =
         gateway: optionalText(alipay.ALIPAY_GATEWAY),
         rootCertContent: optionalText(alipay.ALIPAY_ROOT_CERT_CONTENT),
         publicCertContent: optionalText(alipay.ALIPAY_PUBLIC_CERT_CONTENT),
-        endpoint: optionalText(alipay.ALIPAY_ENDPOINT),
-        notifyUrl: optionalText(alipay.ALIPAY_NOTIFY_URL)
+        endpoint: optionalText(alipay.ALIPAY_ENDPOINT)
       }),
       bank: compact({ description: optionalText(bank.description) })
     }),
     billingNotify: compact({
-      paymentReceived: undefined,
       lackOfPoints: pair(sms.LACK_OF_POINTS, sms.LACK_OF_POINTS_EN),
       pointsThirtyPercentRemain: pair(
         sms.POINTS_THIRTY_PERCENT_REMAIN,

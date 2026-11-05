@@ -15,8 +15,7 @@ const McpSubserviceConfigSchema = z.strictObject({
 const PluginSubserviceConfigSchema = z.strictObject({
   baseUrl: urlWithDefault('http://localhost:3004'),
   token: textWithDefault('token'),
-  remoteDebug: z.boolean().default(false),
-  remoteDebugUrl: textWithDefault()
+  remoteDebug: z.boolean().default(false)
 });
 
 const CodeSandboxSubserviceConfigSchema = z.strictObject({

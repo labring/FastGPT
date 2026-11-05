@@ -73,7 +73,6 @@ export const adminConfigPageFieldsMap: Record<string, readonly string[]> = {
     'auth.loginProviders.microsoft.clientId',
     'auth.loginProviders.microsoft.tenantId',
     'auth.loginProviders.microsoft.customButton',
-    'auth.loginProviders.dingtalk.clientId',
     'auth.accountCancellation.enabled',
     'auth.accountCancellation.cancellationSm.zh',
     'auth.accountCancellation.reminderSm.zh',
@@ -85,7 +84,6 @@ export const adminConfigPageFieldsMap: Record<string, readonly string[]> = {
     'auth.loginProviders.github.secret',
     'auth.loginProviders.google.secret',
     'auth.loginProviders.microsoft.secret',
-    'auth.loginProviders.dingtalk.secret',
     'auth.loginProviders.wecom.providerSecret',
     'security.passwordLoginMinuteLimitCount',
     'security.maxLoginSession'
@@ -172,9 +170,7 @@ export const adminConfigPageFieldsMap: Record<string, readonly string[]> = {
     'commercial.payment.alipay.appId',
     'commercial.payment.alipay.gateway',
     'commercial.payment.alipay.endpoint',
-    'commercial.payment.alipay.notifyUrl',
     'commercial.payment.bank.description',
-    'commercial.billingNotify.paymentReceived.zh',
     'commercial.billingNotify.lackOfPoints.zh',
     'commercial.billingNotify.pointsThirtyPercentRemain.zh',
     'commercial.billingNotify.pointsTenPercentRemain.zh',
@@ -191,8 +187,7 @@ export const adminConfigPageFieldsMap: Record<string, readonly string[]> = {
   '/admin/subservice/plugin': [
     'subservice.plugin.baseUrl',
     'subservice.plugin.token',
-    'subservice.plugin.remoteDebug',
-    'subservice.plugin.remoteDebugUrl'
+    'subservice.plugin.remoteDebug'
   ],
   '/admin/subservice/code-sandbox': [
     'subservice.codeSandbox.enabled',

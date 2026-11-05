@@ -36,12 +36,16 @@ export const deprecatedOverridePaths: Partial<
   subservice: [
     // plugin.enabled 没有消费点：启停实际由 baseUrl/token 是否存在决定，删除冗余开关
     ['plugin', 'enabled'],
+    // 远程调试链接由请求域名/NEXT_PUBLIC_BASE_URL 生成，不再读取该字段
+    ['plugin', 'remoteDebugUrl'],
     // mcp.enabled 冗余：SSE 接入地址按 sseProxyUrl 是否为空生成
     ['mcp', 'enabled'],
     ['agentSandbox', 'proxy', 'wsUrl'],
     ['agentSandbox', 'proxy', 'httpUrl']
   ],
   auth: [
+    // 钉钉登录未实现，Provider 字段已从 Schema 删除
+    ['loginProviders', 'dingtalk'],
     ['loginProviders', 'sms', 'login', 'en'],
     ['loginProviders', 'sms', 'register', 'en'],
     ['loginProviders', 'sms', 'resetPassword', 'en'],
@@ -54,7 +58,9 @@ export const deprecatedOverridePaths: Partial<
   commercial: [
     // 沙箱免费提示改回 ENV 权威，字段已从 Schema 删除；开发期迁移写过该 key 的库必须清掉
     ['agentSandboxFreeTip'],
-    ['billingNotify', 'paymentReceived', 'en'],
+    // 支付宝异步通知未接入，充值到账通知模板没有消费点，字段已从 Schema 删除
+    ['payment', 'alipay', 'notifyUrl'],
+    ['billingNotify', 'paymentReceived'],
     ['billingNotify', 'lackOfPoints', 'en'],
     ['billingNotify', 'pointsTenPercentRemain', 'en'],
     ['billingNotify', 'expireSoon', 'en'],

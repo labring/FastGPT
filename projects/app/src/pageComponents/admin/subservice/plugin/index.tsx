@@ -101,17 +101,6 @@ const PluginSubserviceComponent = () => {
             />
           )}
         />
-
-        {remoteDebug && (
-          <AdminFormItem
-            label={t('admin:plugin_remote_debug_url')}
-            tooltip={t('admin:plugin_remote_debug_url_tip')}
-            isRequired
-            mb={0}
-          >
-            <Input {...register('plugin.remoteDebugUrl')} placeholder="https://debug.example.com" />
-          </AdminFormItem>
-        )}
       </AdminSettingSection>
     </AdminSettingPage>
   );

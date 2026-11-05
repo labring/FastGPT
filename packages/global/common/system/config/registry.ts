@@ -116,7 +116,6 @@ export const systemInstanceConfigRegistry: readonly SystemInstanceConfigRegistry
       'loginProviders.microsoft.clientId',
       'loginProviders.microsoft.tenantId',
       'loginProviders.microsoft.customButton',
-      'loginProviders.dingtalk.clientId',
       'accountCancellation.enabled',
       'accountCancellation.cancellationSm.zh',
       'accountCancellation.reminderSm.zh',
@@ -145,8 +144,7 @@ export const systemInstanceConfigRegistry: readonly SystemInstanceConfigRegistry
       'loginProviders.wecom.encodingAESKey',
       'loginProviders.github.secret',
       'loginProviders.google.secret',
-      'loginProviders.microsoft.secret',
-      'loginProviders.dingtalk.secret'
+      'loginProviders.microsoft.secret'
     ],
     { edition: 'pro', secret: true, applyMode: 'live' }
   ),
@@ -214,9 +212,7 @@ export const systemInstanceConfigRegistry: readonly SystemInstanceConfigRegistry
       'payment.alipay.appId',
       'payment.alipay.gateway',
       'payment.alipay.endpoint',
-      'payment.alipay.notifyUrl',
       'payment.bank.description',
-      'billingNotify.paymentReceived.zh',
       'billingNotify.lackOfPoints.zh',
       'billingNotify.pointsThirtyPercentRemain.zh',
       'billingNotify.pointsTenPercentRemain.zh',
@@ -338,7 +334,6 @@ export const systemInstanceConfigRegistry: readonly SystemInstanceConfigRegistry
     [
       'plugin.baseUrl',
       'plugin.remoteDebug',
-      'plugin.remoteDebugUrl',
       'codeSandbox.enabled',
       'codeSandbox.baseUrl',
       'aiProxy.enabled',

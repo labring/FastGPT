@@ -251,15 +251,6 @@ const CommercialSettingComponent = () => {
             />
           </AdminFormItem>
           <AdminFormItem
-            label={t('admin:payment_callback_url')}
-            tooltip={t('admin:alipay_async_notification_url')}
-          >
-            <Input
-              {...register('payment.alipay.notifyUrl')}
-              placeholder="https://example.com/api/pay/alipay"
-            />
-          </AdminFormItem>
-          <AdminFormItem
             label={t('admin:fallback_endpoint')}
             tooltip={t('admin:custom_endpoint_for_private_or_special_scenarios')}
           >
@@ -332,12 +323,6 @@ const CommercialSettingComponent = () => {
         </Text>
 
         <SimpleGrid columns={[1, 2]} spacing={5}>
-          <AdminFormItem
-            label={t('admin:top_up_received_chinese_template')}
-            tooltip={t('admin:sms_template_id_for_successful_top_up_notification_chinese')}
-          >
-            <Input {...register('billingNotify.paymentReceived.zh')} placeholder="SMS_xxx" />
-          </AdminFormItem>
           <AdminFormItem
             label={t('admin:low_balance_alert_chinese_template')}
             tooltip={t('admin:sms_template_id_for_low_points_balance_alert_chinese')}
