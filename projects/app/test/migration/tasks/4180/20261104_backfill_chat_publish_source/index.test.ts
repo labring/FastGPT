@@ -4,7 +4,6 @@ import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { MongoAppChatLog } from '@fastgpt/service/core/app/logs/chatLogsSchema';
 import { MongoOutLink } from '@fastgpt/service/support/outLink/schema';
 import { backfillChatPublishSource } from '@/migration/tasks/4180/20261104_backfill_chat_publish_source';
-import { backfillPublishSourceRecord } from '@/migration/tasks/4180/20261104_backfill_chat_publish_source/service';
 import type { SystemMigrationContext } from '@/migration/registry';
 import {
   SystemMigrationProgressInputSchema,
@@ -92,11 +91,17 @@ describe('backfillChatPublishSource', () => {
     } as any);
     const beforeChats = await MongoChat.collection.find({}).toArray();
     const { context } = createContext();
+    const chatWrites = vi.spyOn(MongoChat.collection, 'bulkWrite');
+    const logWrites = vi.spyOn(MongoAppChatLog.collection, 'bulkWrite');
     expect(await backfillChatPublishSource(context)).toEqual({
       chats: 6,
       chatLogs: 1,
       missingChannelIds: 5
     });
+    expect(chatWrites).toHaveBeenCalledTimes(3);
+    expect(logWrites).toHaveBeenCalledTimes(1);
+    chatWrites.mockRestore();
+    logWrites.mockRestore();
     expect(context.reportProgress).toHaveBeenCalledWith({
       key: 'chats',
       status: 'running',
@@ -275,56 +280,51 @@ describe('backfillChatPublishSource', () => {
       { key: 'validation', status: 'succeeded' }
     ]);
   });
-});
 
-describe('backfillPublishSourceRecord', () => {
-  it('拒绝跨团队、重复匹配和类型冲突，不写任意引用', async () => {
-    const record = await seed({ source: 'share', shareId: 'public' });
-    const base = {
-      teamId: record.teamId,
-      appId: record.appId,
-      tmbId: oid(),
-      shareId: 'public',
-      name: '入口'
-    };
-    const channel = await MongoOutLink.create({ ...base, teamId: oid(), type: 'share' });
-    const run = () => backfillPublishSourceRecord({ stage: 'chats', id: String(record._id) });
-    await expect(run()).rejects.toThrow('another team');
-    await MongoOutLink.updateOne(
-      { _id: channel._id },
-      { $set: { teamId: record.teamId, type: 'feishu' } }
-    );
-    await expect(run()).rejects.toThrow('type does not match');
-    await MongoOutLink.updateOne({ _id: channel._id }, { $set: { type: 'share' } });
-    await MongoOutLink.create({ ...base, type: 'share' });
-    await expect(run()).rejects.toThrow('multiple channels');
-    expect(
-      (await MongoChat.collection.findOne({ _id: record._id }))?.publishSource
-    ).toBeUndefined();
-  });
-
-  it('CAS 冲突后重读，保留并发运行写入的最新来源', async () => {
-    const record = await seed({ shareId: 'stale' });
-    const next = { type: 'api', id: oid() };
-    const original = MongoChat.collection.updateOne.bind(MongoChat.collection);
+  it('批量写入部分成功后异常，不推进该批断点，恢复时安全重放', async () => {
+    for (let i = 0; i < 4; i++) await seed();
+    const { context, failures } = createContext();
+    const original = MongoChat.collection.bulkWrite.bind(MongoChat.collection);
     const write = vi
-      .spyOn(MongoChat.collection, 'updateOne')
-      .mockImplementationOnce(async (...args) => {
-        await original(
-          { _id: record._id },
-          { $set: { publishSource: next, sourceName: '最新入口' } }
-        );
-        return original(...args);
+      .spyOn(MongoChat.collection, 'bulkWrite')
+      .mockImplementationOnce((...args) => original(...args))
+      .mockImplementationOnce(async (operations, options) => {
+        await original(operations.slice(0, 1), options);
+        throw new Error('write interrupted');
       });
     try {
-      await backfillPublishSourceRecord({ stage: 'chats', id: String(record._id) });
+      await expect(backfillChatPublishSource(context)).rejects.toThrow('write interrupted');
     } finally {
       write.mockRestore();
     }
-    expect(await MongoChat.collection.findOne({ _id: record._id })).toMatchObject({
-      publishSource: next,
-      sourceName: '最新入口'
+    expect(context.saveCheckpoint.mock.calls.at(-1)?.[0]).toMatchObject({ chats: { scanned: 2 } });
+    expect(failures()).toEqual([]);
+    expect(await MongoChat.countDocuments({ 'publishSource.type': 'api' })).toBe(3);
+    expect(await backfillChatPublishSource(context)).toEqual({
+      chats: 4,
+      chatLogs: 0,
+      missingChannelIds: 4
     });
-    expect((await MongoChat.collection.findOne({ _id: record._id }))?.shareId).toBe('stale');
+    expect(await MongoChat.countDocuments({ 'publishSource.type': 'api' })).toBe(4);
+  });
+
+  it('历史错误也按批重试，不逐条提交写入', async () => {
+    for (let i = 0; i < 3; i++) await seed({ source: 'unknown' });
+    const { context, failures } = createContext();
+    await expect(backfillChatPublishSource(context)).rejects.toThrow('require repair');
+    expect(failures()).toHaveLength(3);
+    await MongoChat.collection.updateMany({}, { $set: { source: 'api' } });
+    const write = vi.spyOn(MongoChat.collection, 'bulkWrite');
+    try {
+      expect(await backfillChatPublishSource(context)).toEqual({
+        chats: 3,
+        chatLogs: 0,
+        missingChannelIds: 3
+      });
+      expect(write.mock.calls.map(([operations]) => operations.length)).toEqual([2, 1]);
+    } finally {
+      write.mockRestore();
+    }
+    expect(failures()).toEqual([]);
   });
 });

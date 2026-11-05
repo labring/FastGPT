@@ -13,21 +13,27 @@ export const getPublishSourceMigrationModel = (stage: PublishSourceMigrationStag
   stage === 'chats' ? MongoChat.collection : MongoAppChatLog.collection;
 
 /**
- * 按稳定 ID 重读并 CAS 回填单条数据，支持批次重放和与正常对话并发执行。
+ * 按稳定 ID 批量重读，整批只提交一次带 CAS 条件的 bulkWrite。
  * 仅绑定同团队/应用唯一且类型一致的旧外链；已删除引用允许缺 ID，结构冲突必须报错。
- * 仅追加 publishSource，不修改或删除旧字段，避免破坏已有读取和回滚依据。
+ * 返回可定位的逐条数据错误；数据库异常直接抛出，阻止推进断点。
+ * CAS 未全部命中时批量重读，保留正常对话写入的新来源，尚未回填的记录留待重试。
+ * 仅追加 publishSource，不修改或删除旧字段，支持批次重放。
  */
-export const backfillPublishSourceRecord = async ({
+export const backfillPublishSourceBatch = async ({
   stage,
-  id
+  ids
 }: {
   stage: PublishSourceMigrationStage;
-  id: string;
+  ids: string[];
 }) => {
   const collection = getPublishSourceMigrationModel(stage);
-  for (let attempt = 0; attempt < 3; attempt++) {
-    const raw = await collection.findOne(
-      { _id: new Types.ObjectId(id) },
+  const failures = new Map<string, unknown>();
+  if (!ids.length) return failures;
+
+  // 1. 一次读取整批，仅校验待回填记录；已有新来源始终是权威值。
+  const rawRecords = await collection
+    .find(
+      { _id: { $in: ids.map((id) => new Types.ObjectId(id)) } },
       {
         projection: {
           teamId: 1,
@@ -39,52 +45,110 @@ export const backfillPublishSourceRecord = async ({
           publishSource: 1
         }
       }
-    );
-    if (!raw) return;
-    // 已有新来源是权威值；旧 source 再异常也不能覆盖它。
-    if (raw.publishSource !== undefined && raw.publishSource !== null) {
-      ChatPublishSourceSchema.parse(raw.publishSource);
-      return;
-    }
-    const record = LegacyPublishSourceRecordSchema.parse(raw);
-    let restoredId: string | undefined;
-    if (stage === 'chats' && canRestoreOutLinkReference(record)) {
-      const candidates = await MongoOutLink.find(
-        { teamId: record.teamId, appId: record.appId, shareId: record.shareId },
-        '_id type'
-      )
-        .limit(2)
-        .lean();
-      if (candidates.length > 1) throw new Error('Legacy shareId matches multiple channels');
-      const channel = candidates[0];
-      if (channel) {
-        if (getChatSourceByPublishChannel(channel.type) !== record.source) {
-          throw new Error('Legacy channel type does not match the conversation');
-        }
-        restoredId = String(channel._id);
-      } else if (await MongoOutLink.exists({ shareId: record.shareId })) {
-        throw new Error('Legacy channel belongs to another team or application');
+    )
+    .toArray();
+  const records = rawRecords.flatMap((raw) => {
+    try {
+      if (raw.publishSource !== undefined && raw.publishSource !== null) {
+        ChatPublishSourceSchema.parse(raw.publishSource);
+        return [];
       }
+      return [{ raw, record: LegacyPublishSourceRecordSchema.parse(raw) }];
+    } catch (error) {
+      failures.set(String(raw._id), error);
+      return [];
     }
-    const result = await collection.updateOne(
-      {
-        _id: raw._id,
-        publishSource: null,
-        source: raw.source,
-        shareId: raw.shareId ?? null,
-        sourceName: raw.sourceName ?? null
-      },
-      {
-        $set: {
-          publishSource: {
-            type: record.source,
-            ...(restoredId ? { id: new Types.ObjectId(restoredId) } : {})
+  });
+
+  // 2. 外链引用也按批查询，统计桶不使用当前外链反推历史来源。
+  const shareIds = [
+    ...new Set(
+      records.flatMap(({ record }) =>
+        stage === 'chats' && canRestoreOutLinkReference(record) ? [record.shareId!] : []
+      )
+    )
+  ];
+  const channels = shareIds.length
+    ? await MongoOutLink.find(
+        { shareId: { $in: shareIds } },
+        '_id type shareId teamId appId'
+      ).lean()
+    : [];
+  const channelsByShareId = new Map<string, typeof channels>();
+  for (const channel of channels) {
+    const group = channelsByShareId.get(channel.shareId) ?? [];
+    group.push(channel);
+    channelsByShareId.set(channel.shareId, group);
+  }
+  const operations = records.flatMap(({ raw, record }) => {
+    try {
+      const restoredId = (() => {
+        if (stage !== 'chats' || !canRestoreOutLinkReference(record)) return;
+        const related = channelsByShareId.get(record.shareId!) ?? [];
+        const candidates = related.filter(
+          (channel) =>
+            String(channel.teamId) === record.teamId && String(channel.appId) === record.appId
+        );
+        if (candidates.length > 1) throw new Error('Legacy shareId matches multiple channels');
+        const channel = candidates[0];
+        if (channel) {
+          if (getChatSourceByPublishChannel(channel.type) !== record.source) {
+            throw new Error('Legacy channel type does not match the conversation');
+          }
+          return new Types.ObjectId(String(channel._id));
+        }
+        if (related.length)
+          throw new Error('Legacy channel belongs to another team or application');
+      })();
+      return [
+        {
+          updateOne: {
+            filter: {
+              _id: raw._id,
+              teamId: raw.teamId,
+              appId: raw.appId,
+              sourceType: raw.sourceType ?? null,
+              publishSource: null,
+              source: raw.source,
+              shareId: raw.shareId ?? null,
+              sourceName: raw.sourceName ?? null
+            },
+            update: {
+              $set: {
+                publishSource: {
+                  type: record.source,
+                  ...(restoredId ? { id: restoredId } : {})
+                }
+              }
+            }
           }
         }
+      ];
+    } catch (error) {
+      failures.set(String(raw._id), error);
+      return [];
+    }
+  });
+
+  // 3. 全部命中不再读库；部分未命中时一次核验整批，不能把 CAS 冲突记为成功。
+  if (!operations.length) return failures;
+  const result = await collection.bulkWrite(operations, { ordered: false });
+  if (result.matchedCount === operations.length) return failures;
+  const latest = await collection
+    .find(
+      { _id: { $in: operations.map(({ updateOne }) => updateOne.filter._id) } },
+      { projection: { publishSource: 1 } }
+    )
+    .toArray();
+  for (const raw of latest) {
+    try {
+      if (raw.publishSource === undefined || raw.publishSource === null) {
+        throw new Error('Conversation source changed while backfilling; retry required');
       }
-    );
-    if (result.matchedCount) return;
-    // 条件未命中不能记为迁移成功；重新读取并核验是否已有合法的新来源。
+      ChatPublishSourceSchema.parse(raw.publishSource);
+    } catch (error) {
+      failures.set(String(raw._id), error);
+    }
   }
-  throw new Error('Conversation source changed repeatedly while backfilling');
+  return failures;
 };
