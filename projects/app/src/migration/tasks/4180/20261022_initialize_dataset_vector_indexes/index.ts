@@ -20,7 +20,8 @@ const CheckpointSchema = z
     endId: CursorSchema,
     lastId: CursorSchema,
     scannedCount: IntSchema,
-    eligibleCount: IntSchema
+    eligibleCount: IntSchema,
+    total: IntSchema.optional()
   })
   .refine(({ endId, lastId }) => !lastId || (!!endId && lastId <= endId));
 
@@ -29,6 +30,7 @@ const CheckpointSchema = z
  * 先核验并在线删除旧全局 HNSW，成功后才开始统计和投递，避免本次迁移的建图与旧索引清理交错。
  * 清理失败不扫描、不投递；扫描重试先幂等确认旧索引已删除，再沿用断点继续。
  * 迁移投递后立即进入全局串行建图队列；任务成功不表示局部索引已就绪，不阻塞系统启动。
+ * 总量仅初始化一次；兼容旧断点，以已处理数加剩余数补齐，扫描结束后校准并发删除造成的偏差。
  */
 export const initializeDatasetVectorIndexes = async (context: SystemMigrationContext) => {
   const isPg = getVectorType() === 'pg';
@@ -59,8 +61,30 @@ export const initializeDatasetVectorIndexes = async (context: SystemMigrationCon
       scannedCount: 0,
       eligibleCount: 0
     };
+  }
+
+  if (checkpoint.total === undefined) {
+    await context.assertActive();
+    // 仅统计尚未提交的游标范围，已处理记录即使被删除也不能从累计进度中扣除。
+    const remaining = checkpoint.endId
+      ? await MongoDataset.countDocuments({
+          ...filter,
+          _id: {
+            $lte: checkpoint.endId,
+            ...(checkpoint.lastId ? { $gt: checkpoint.lastId } : {})
+          }
+        })
+      : 0;
+    checkpoint.total = checkpoint.scannedCount + remaining;
     await context.saveCheckpoint(checkpoint);
   }
+
+  await context.reportProgress({
+    key: 'datasets',
+    status: SystemMigrationStatusEnum.running,
+    current: checkpoint.scannedCount,
+    total: checkpoint.total
+  });
 
   while (checkpoint.endId) {
     context.signal.throwIfAborted();
@@ -99,21 +123,30 @@ export const initializeDatasetVectorIndexes = async (context: SystemMigrationCon
       ...checkpoint,
       lastId: String(datasets.at(-1)!._id),
       scannedCount: checkpoint.scannedCount + datasets.length,
-      eligibleCount: checkpoint.eligibleCount + eligible
+      eligibleCount: checkpoint.eligibleCount + eligible,
+      // 并发恢复软删除记录可能增加扫描数量，保证 current 始终不超过 total。
+      total: Math.max(checkpoint.total ?? 0, checkpoint.scannedCount + datasets.length)
     };
     await context.saveCheckpoint(checkpoint);
     await context.reportProgress({
       key: 'datasets',
       status: SystemMigrationStatusEnum.running,
-      current: checkpoint.scannedCount
+      current: checkpoint.scannedCount,
+      total: checkpoint.total
     });
   }
 
   await context.assertActive();
+  // 游标耗尽才校准总量，避免扫描期间删除知识库导致成功阶段停留在不足 100%。
+  if (checkpoint.total !== checkpoint.scannedCount) {
+    checkpoint.total = checkpoint.scannedCount;
+    await context.saveCheckpoint(checkpoint);
+  }
   await context.reportProgress({
     key: 'datasets',
     status: SystemMigrationStatusEnum.succeeded,
-    current: checkpoint.scannedCount
+    current: checkpoint.scannedCount,
+    total: checkpoint.total
   });
 
   const result = { scannedCount: checkpoint.scannedCount, eligibleCount: checkpoint.eligibleCount };

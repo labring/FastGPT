@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Types } from '@fastgpt/service/common/mongo';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { MongoAppChatLog } from '@fastgpt/service/core/app/logs/chatLogsSchema';
@@ -6,17 +6,18 @@ import { MongoOutLink } from '@fastgpt/service/support/outLink/schema';
 import { backfillChatPublishSource } from '@/migration/tasks/4180/20261104_backfill_chat_publish_source';
 import { backfillPublishSourceRecord } from '@/migration/tasks/4180/20261104_backfill_chat_publish_source/service';
 import type { SystemMigrationContext } from '@/migration/registry';
-import type {
-  SystemMigrationFailedRecord,
-  SystemMigrationFailureInput
+import {
+  SystemMigrationProgressInputSchema,
+  type SystemMigrationFailedRecord,
+  type SystemMigrationFailureInput
 } from '@fastgpt/global/migration/schema';
 
 vi.mock('@/migration/constants', () => ({ systemMigrationBatchSize: 2 }));
 
 const oid = () => new Types.ObjectId();
 /** 仅模拟升级框架的持久恢复状态；业务记录读写使用真实隔离 Mongo。 */
-const createContext = () => {
-  let checkpoint: Record<string, unknown> | undefined;
+const createContext = (initialCheckpoint?: Record<string, unknown>) => {
+  let checkpoint = initialCheckpoint;
   let failures: SystemMigrationFailedRecord[] = [];
   const context = {
     migrationId: '20261104_backfill_chat_publish_source',
@@ -32,14 +33,16 @@ const createContext = () => {
       failures = structuredClone(value);
     }),
     assertActive: vi.fn(async () => undefined),
-    reportProgress: vi.fn(async () => undefined),
+    reportProgress: vi.fn<SystemMigrationContext['reportProgress']>(async (progress) => {
+      SystemMigrationProgressInputSchema.parse(progress);
+    }),
     fail: vi.fn(async (input: SystemMigrationFailureInput): Promise<never> => {
       failures = structuredClone(input.failedRecords ?? failures);
       throw new Error(input.message);
     }),
     logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() }
   } satisfies SystemMigrationContext;
-  return { context, failures: () => failures };
+  return { context, failures: () => failures, checkpoint: () => checkpoint };
 };
 
 const seed = async (overrides: Record<string, unknown> = {}) => {
@@ -54,6 +57,8 @@ const seed = async (overrides: Record<string, unknown> = {}) => {
   await MongoChat.collection.insertOne(record as any);
   return record;
 };
+
+afterEach(() => vi.restoreAllMocks());
 
 describe('backfillChatPublishSource', () => {
   it('回填可靠外链引用，API/MCP 仅保留分类，统计桶使用自身来源且数值不变', async () => {
@@ -92,6 +97,21 @@ describe('backfillChatPublishSource', () => {
       chatLogs: 1,
       missingChannelIds: 5
     });
+    expect(context.reportProgress).toHaveBeenCalledWith({
+      key: 'chats',
+      status: 'running',
+      current: 0,
+      total: 6
+    });
+    expect(context.reportProgress).toHaveBeenCalledWith({
+      key: 'chats',
+      status: 'succeeded',
+      current: 6,
+      total: 6
+    });
+    for (const [progress] of context.reportProgress.mock.calls) {
+      if (progress.key === 'chatLogs') expect(progress).not.toHaveProperty('total');
+    }
     const read = (id: Types.ObjectId) => MongoChat.collection.findOne({ _id: id });
     expect(String((await read(shared._id))?.publishSource.id)).toBe(String(channel._id));
     expect((await read(api._id))?.publishSource).toEqual({ type: 'api' });
@@ -119,6 +139,87 @@ describe('backfillChatPublishSource', () => {
       chatLogs: 1,
       missingChannelIds: 5
     });
+  });
+
+  it('补算旧断点时保留已处理数量，按原上界统计剩余对话，续跑不重复计数', async () => {
+    const id = (n: number) => new Types.ObjectId(n.toString(16).padStart(24, '0'));
+    await seed({ _id: id(1), publishSource: { type: 'api' } });
+    await seed({ _id: id(3) });
+    await seed({ _id: id(4) });
+    await seed({ _id: id(5) });
+    const count = vi.spyOn(MongoChat.collection, 'countDocuments');
+    const { context, checkpoint } = createContext({
+      chats: { endId: String(id(4)), lastId: String(id(2)), scanned: 2 },
+      chatLogs: { endId: null, lastId: null, scanned: 0 }
+    });
+
+    expect(await backfillChatPublishSource(context)).toMatchObject({ chats: 4, chatLogs: 0 });
+    expect(context.reportProgress).toHaveBeenCalledWith({
+      key: 'chats',
+      status: 'running',
+      current: 2,
+      total: 4
+    });
+    expect(checkpoint()).toMatchObject({ chats: { total: 4, lastId: String(id(4)) } });
+    expect((await MongoChat.collection.findOne({ _id: id(5) }))?.publishSource).toBeUndefined();
+
+    await backfillChatPublishSource(context);
+    // 只有补算进度时使用纯 _id 范围计数；完成校验的计数均带有来源条件。
+    expect(
+      count.mock.calls.filter(([filter]) => Object.keys(filter ?? {}).length === 1)
+    ).toHaveLength(1);
+  });
+
+  it.each(['delete', 'insert'] as const)(
+    '扫描期间%s对话时保持进度范围合法，并在耗尽游标后校准总量',
+    async (change) => {
+      const id = (n: number) => new Types.ObjectId(n.toString(16).padStart(24, '0'));
+      for (const n of [1, 2, 4, 5]) await seed({ _id: id(n) });
+      const { context, checkpoint } = createContext();
+      context.reportProgress.mockImplementation(async (progress) => {
+        SystemMigrationProgressInputSchema.parse(progress);
+        if (progress.key === 'chats' && progress.status === 'running' && progress.current === 2) {
+          if (change === 'delete') {
+            await MongoChat.collection.deleteOne({ _id: id(4) });
+          } else {
+            await seed({ _id: id(3) });
+          }
+        }
+      });
+
+      const total = change === 'insert' ? 5 : 3;
+      expect(await backfillChatPublishSource(context)).toMatchObject({ chats: total, chatLogs: 0 });
+      expect(context.reportProgress).toHaveBeenCalledWith({
+        key: 'chats',
+        status: 'running',
+        current: 0,
+        total: 4
+      });
+      expect(context.reportProgress).toHaveBeenCalledWith({
+        key: 'chats',
+        status: 'succeeded',
+        current: total,
+        total
+      });
+      expect(checkpoint()).toMatchObject({ chats: { total } });
+    }
+  );
+
+  it('空对话集合上报 0/0，统计桶不补充 total', async () => {
+    const { context, checkpoint } = createContext();
+    expect(await backfillChatPublishSource(context)).toEqual({
+      chats: 0,
+      chatLogs: 0,
+      missingChannelIds: 0
+    });
+    expect(context.reportProgress).toHaveBeenCalledWith({
+      key: 'chats',
+      status: 'succeeded',
+      current: 0,
+      total: 0
+    });
+    expect(checkpoint()).toMatchObject({ chats: { total: 0 } });
+    expect(checkpoint()?.chatLogs).not.toHaveProperty('total');
   });
 
   it('提交后、checkpoint 前中断可重放，扫描和计数不重复', async () => {
