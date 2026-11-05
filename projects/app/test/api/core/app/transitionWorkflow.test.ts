@@ -109,7 +109,9 @@ describe('Transition workflow', () => {
     expect(input?.selectedType).toBe(FlowNodeInputTypeEnum.reference);
     expect(input).not.toHaveProperty('selectedTypeIndex');
     expect(version?.referenceSnapshots).toEqual(referenceSnapshots);
-    expect(version?.resources).toEqual(createNew ? [] : copiedResources);
+    expect(version?.resources).toEqual(
+      createNew ? [{ type: 'skill', id: skillId }] : copiedResources
+    );
   });
 
   it('rejects a new workflow at the Agent limit but allows conversion in place', async () => {

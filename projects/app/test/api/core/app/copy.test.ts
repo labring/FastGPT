@@ -234,10 +234,7 @@ describe('Copy', () => {
         value: expectedFallbackModelId
       })
     ]);
-    expect(copiedVersion?.resources).toEqual([
-      { type: 'dataset', id: String(readableDataset._id) },
-      { type: 'model', id: expectedFallbackModelId }
-    ]);
+    expect(copiedVersion?.resources).toEqual([{ type: 'model', id: expectedFallbackModelId }]);
   });
 
   it.each([AppTypeEnum.simple, AppTypeEnum.chatAgent, AppTypeEnum.workflow])(
