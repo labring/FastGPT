@@ -64,14 +64,6 @@ export const LoopRunStartNode: FlowNodeTemplateType = {
       description: i18nT('workflow:current_item_desc'),
       type: FlowNodeOutputTypeEnum.static,
       valueType: WorkflowIOValueTypeEnum.any
-    },
-    {
-      id: NodeOutputKeyEnum.currentIteration,
-      key: NodeOutputKeyEnum.currentIteration,
-      label: i18nT('workflow:current_iteration'),
-      description: i18nT('workflow:current_iteration_desc'),
-      type: FlowNodeOutputTypeEnum.static,
-      valueType: WorkflowIOValueTypeEnum.number
     }
   ]
 };

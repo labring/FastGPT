@@ -1,9 +1,9 @@
 import {
   FlowNodeInputTypeEnum,
   FlowNodeOutputTypeEnum,
-  isNestedParentNodeType,
-  workflowSystemVariables
+  isNestedParentNodeType
 } from '../../core/workflow/node/constant';
+import { mergeWorkflowSystemVariables } from './editor/variables';
 import {
   NodeOutputKeyEnum,
   VARIABLE_NODE_ID,
@@ -27,11 +27,7 @@ export const getWorkflowReferenceVariables = ({
 }: {
   chatConfig: AppChatConfigType;
 }): EditorVariablePickerType[] => {
-  const variables = new Map<string, EditorVariablePickerType>(
-    (chatConfig.variables ?? []).map((variable) => [variable.key, variable])
-  );
-  for (const variable of workflowSystemVariables) variables.set(variable.key, variable);
-  return [...variables.values()];
+  return mergeWorkflowSystemVariables(chatConfig.variables ?? []);
 };
 
 /**

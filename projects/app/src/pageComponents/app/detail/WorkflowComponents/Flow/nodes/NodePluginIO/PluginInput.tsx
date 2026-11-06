@@ -1,7 +1,7 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { type NodeProps } from 'reactflow';
+import type { CanvasNodeProps } from '@/web/core/workflow/editor/canvas/canvasTypes';
 import NodeCard from '../render/NodeCard';
-import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import type { WorkflowNodeData } from '@fastgpt/global/core/workflow/editor/types';
 import { Box, Button, HStack } from '@chakra-ui/react';
 import { SmallAddIcon } from '@chakra-ui/icons';
 import {
@@ -17,12 +17,13 @@ import {
 } from '@fastgpt/global/core/workflow/node/constant';
 import { FlowValueTypeMap } from '@fastgpt/global/core/workflow/node/constant';
 import VariableTable from './VariableTable';
-import { useContextSelector } from 'use-context-selector';
 import IOTitle from '../../components/IOTitle';
 import dynamic from 'next/dynamic';
 import { defaultInput } from './InputEditModal';
 import RenderOutput from '../render/RenderOutput';
-import { WorkflowActionsContext } from '../../../context/workflowActionsContext';
+import { getOutputDisconnectCommands } from '@/web/core/workflow/utils';
+import { useNode, useNodeActions } from '@/web/core/workflow/editor/react/useNode';
+import { useWorkflowActions } from '@/web/core/workflow/editor/react/useWorkflow';
 
 const FieldEditModal = dynamic(() => import('./InputEditModal'));
 
@@ -32,60 +33,66 @@ const FieldEditModal = dynamic(() => import('./InputEditModal'));
     3. When the plug-in is run, the external will calculate the value of the custom input and throw it to the output of the custom input node to start running the plug-in.
 */
 
-const NodePluginInput = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
+const NodePluginInput = ({ data, selected }: CanvasNodeProps) => {
   const { t } = useSafeTranslation();
-  const { nodeId, inputs = [], outputs } = data;
-
-  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
+  const { nodeId } = data;
+  const { inputs = [], outputs = [] } =
+    useNode<WorkflowNodeData>(nodeId, (node) => node?.data) ?? {};
+  const nodeActions = useNodeActions(nodeId);
+  // 边集合只在提交/删除自定义输入的回调里读，走非订阅 getter：点击时取当前值，组件不订阅结构变更。
+  const { getEdges } = useWorkflowActions();
   const [editField, setEditField] = useState<FlowNodeInputItemType>();
 
+  /**
+   * 提交插件自定义输入：input 与对称 output 必须同一事务写入，撤销才不会拆成两步。
+   * 编辑按原 key 整体替换记录，新增走追加；只有改名时旧 handle 上的连线才需要一起断开。
+   */
   const onSubmit = useCallback(
     (data: FlowNodeInputItemType) => {
       if (!editField) return;
 
-      if (editField?.key) {
-        const output = outputs.find((output) => output.key === editField.key);
-        const newOutput: FlowNodeOutputItemType = {
-          ...(output as FlowNodeOutputItemType),
-          valueType: data.valueType,
-          key: data.key,
-          label: data.label
-        };
-        onChangeNode({
-          nodeId,
-          type: 'replaceInput',
-          key: editField.key,
-          value: data
-        });
-        onChangeNode({
-          nodeId,
-          type: 'replaceOutput',
-          key: editField.key,
-          value: newOutput
-        });
-      } else {
-        const newOutput: FlowNodeOutputItemType = {
-          id: data.key,
-          valueType: data.valueType,
-          key: data.key,
-          label: data.label,
-          type: FlowNodeOutputTypeEnum.hidden
-        };
+      const editKey = editField.key;
 
-        // add_new_input
-        onChangeNode({
-          nodeId,
-          type: 'addInput',
-          value: data
-        });
-        onChangeNode({
-          nodeId,
-          type: 'addOutput',
-          value: newOutput
-        });
-      }
+      nodeActions?.updateNode(
+        (current) => {
+          const newOutput: FlowNodeOutputItemType = editKey
+            ? {
+                ...(current.outputs.find(
+                  (output) => output.key === editKey
+                ) as FlowNodeOutputItemType),
+                valueType: data.valueType,
+                key: data.key,
+                label: data.label
+              }
+            : {
+                id: data.key,
+                valueType: data.valueType,
+                key: data.key,
+                label: data.label,
+                type: FlowNodeOutputTypeEnum.hidden
+              };
+
+          return {
+            inputs: editKey
+              ? current.inputs.map((input) => (input.key === editKey ? data : input))
+              : current.inputs.concat(data),
+            outputs: editKey
+              ? current.outputs.map((output) => (output.key === editKey ? newOutput : output))
+              : current.outputs.concat(newOutput)
+          };
+        },
+        editKey && editKey !== data.key
+          ? {
+              disconnectEdges: getOutputDisconnectCommands({
+                edges: getEdges(),
+                nodeId,
+                outputKey: editKey
+              })
+            }
+          : undefined
+      );
     },
-    [editField, nodeId, onChangeNode, outputs]
+    [editField, getEdges, nodeActions, nodeId]
   );
 
   const Render = useMemo(() => {
@@ -129,16 +136,20 @@ const NodePluginInput = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
               setEditField(input);
             }}
             onDelete={(key) => {
-              onChangeNode({
-                nodeId,
-                type: 'delInput',
-                key
-              });
-              onChangeNode({
-                nodeId,
-                type: 'delOutput',
-                key
-              });
+              // 删除字段时其对称 output 与 handle 连线同事务消失，撤销一步恢复。
+              nodeActions?.updateNode(
+                (current) => ({
+                  inputs: current.inputs.filter((input) => input.key !== key),
+                  outputs: current.outputs.filter((output) => output.key !== key)
+                }),
+                {
+                  disconnectEdges: getOutputDisconnectCommands({
+                    edges: getEdges(),
+                    nodeId,
+                    outputKey: key
+                  })
+                }
+              );
             }}
           />
         </Container>
@@ -150,7 +161,7 @@ const NodePluginInput = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         )}
       </NodeCard>
     );
-  }, [data, inputs, nodeId, onChangeNode, outputs, selected, t]);
+  }, [data, getEdges, inputs, nodeActions, nodeId, outputs, selected, t]);
 
   return (
     <>

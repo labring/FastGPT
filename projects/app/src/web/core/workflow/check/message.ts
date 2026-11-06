@@ -1,4 +1,7 @@
-import { WorkflowCheckIssueCodeEnum } from '@fastgpt/global/core/workflow/diagnostic/constants';
+import {
+  WorkflowCheckIssueCodeEnum,
+  WorkflowDiagnosticCodeEnum
+} from '@fastgpt/global/core/workflow/diagnostic/constants';
 import type { WorkflowCheckIssue, FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { TFunction } from 'next-i18next';
@@ -96,11 +99,10 @@ const workflowCheckMessageKeys = {
 type WorkflowCheckMessageCode = keyof typeof workflowCheckMessageKeys;
 
 /** 只声明问题代码与展示文案不一致的别名，其他代码直接使用对应文案。 */
-const WORKFLOW_CHECK_MESSAGE_ALIASES: Partial<
-  Record<WorkflowCheckIssue['code'], WorkflowCheckMessageCode>
-> = {
+const WORKFLOW_CHECK_MESSAGE_ALIASES: Partial<Record<string, WorkflowCheckMessageCode>> = {
   [WorkflowCheckIssueCodeEnum.isolatedNode]: WorkflowCheckIssueCodeEnum.noUpstream,
   [WorkflowCheckIssueCodeEnum.unreachableFromStart]: WorkflowCheckIssueCodeEnum.noUpstream,
+  [WorkflowDiagnosticCodeEnum.nodeNotReachable]: WorkflowCheckIssueCodeEnum.noUpstream,
   [WorkflowCheckIssueCodeEnum.toolWaitingConfig]: WorkflowCheckIssueCodeEnum.toolInactive,
   [WorkflowCheckIssueCodeEnum.toolOffline]: WorkflowCheckIssueCodeEnum.toolMissing,
   [WorkflowCheckIssueCodeEnum.loopRunMissingBreak]: WorkflowCheckIssueCodeEnum.ifElseIncomplete,
@@ -295,6 +297,7 @@ export const formatWorkflowRuleIssue = ({
     level: issue.level ?? 'error',
     code: issue.code,
     inputKey: node ? issue.inputKey : inputName,
+    params: issue.params,
     message:
       issue.message ??
       getWorkflowCheckIssueMessage({

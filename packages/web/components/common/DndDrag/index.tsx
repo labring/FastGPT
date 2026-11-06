@@ -68,7 +68,6 @@ type Props<T = any> = {
     snapshot: DroppableStateSnapshot;
   }) => ReactElement;
   dataList: T[];
-  zoom?: number;
   renderInnerPlaceholder?: boolean;
 };
 
@@ -81,7 +80,6 @@ function DndDrag<T>({
   onBeforeCapture,
   onDragEnd,
   dataList,
-  zoom = 1,
   renderInnerPlaceholder = true
 }: Props<T>) {
   const [draggingItemHeight, setDraggingItemHeight] = useState(0);
@@ -94,7 +92,9 @@ function DndDrag<T>({
     if (mode === 'virtual') return;
 
     const draggingNode = document.querySelector(`[data-rbd-draggable-id="${start.draggableId}"]`);
-    setDraggingItemHeight(draggingNode?.getBoundingClientRect().height || 0);
+    // offsetHeight 是不受 CSS transform 影响的布局高度；占位和被拖行处在同一个缩放容器里，
+    // 直接用它就能在任意画布缩放下对齐，不需要外部传 zoom。
+    setDraggingItemHeight((draggingNode as HTMLElement | null)?.offsetHeight || 0);
   };
 
   const handleDragEnd = (result: DropResult) => {
@@ -130,7 +130,7 @@ function DndDrag<T>({
           <>
             {children({ provided, snapshot })}
             {snapshot.isDraggingOver && renderInnerPlaceholder && mode === 'standard' && (
-              <Box height={`${draggingItemHeight / zoom}px`} />
+              <Box height={`${draggingItemHeight}px`} />
             )}
           </>
         )}

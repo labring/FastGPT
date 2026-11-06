@@ -3,24 +3,14 @@ import MyModal from '@fastgpt/web/components/common/MyModal';
 import { ModalBody, Button, ModalFooter, Textarea } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { type FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useForm } from 'react-hook-form';
-import { useContextSelector } from 'use-context-selector';
 import { parseCurl } from '@fastgpt/global/common/string/http';
-import { WorkflowActionsContext } from '../../../context/workflowActionsContext';
+import { useNodeActions } from '@/web/core/workflow/editor/react/useNode';
 
-const CurlImportModal = ({
-  nodeId,
-  inputs,
-  onClose
-}: {
-  nodeId: string;
-  inputs: FlowNodeInputItemType[];
-  onClose: () => void;
-}) => {
+const CurlImportModal = ({ nodeId, onClose }: { nodeId: string; onClose: () => void }) => {
   const { t } = useTranslation();
-  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
+  const nodeActions = useNodeActions(nodeId);
 
   const { register, handleSubmit } = useForm({
     defaultValues: {
@@ -32,65 +22,22 @@ const CurlImportModal = ({
 
   const handleFileProcessing = async (content: string) => {
     try {
-      const requestUrl = inputs.find((item) => item.key === NodeInputKeyEnum.httpReqUrl);
-      const requestMethod = inputs.find((item) => item.key === NodeInputKeyEnum.httpMethod);
-      const params = inputs.find((item) => item.key === NodeInputKeyEnum.httpParams);
-      const headers = inputs.find((item) => item.key === NodeInputKeyEnum.httpHeaders);
-      const jsonBody = inputs.find((item) => item.key === NodeInputKeyEnum.httpJsonBody);
-
-      if (!requestUrl || !requestMethod || !params || !headers || !jsonBody) return;
-
+      if (!nodeActions) return;
       const parsed = parseCurl(content);
 
-      onChangeNode({
-        nodeId,
-        type: 'updateInput',
-        key: NodeInputKeyEnum.httpReqUrl,
-        value: {
-          ...requestUrl,
-          value: parsed.url
-        }
-      });
-
-      onChangeNode({
-        nodeId,
-        type: 'updateInput',
-        key: NodeInputKeyEnum.httpMethod,
-        value: {
-          ...requestMethod,
-          value: parsed.method
-        }
-      });
-
-      onChangeNode({
-        nodeId,
-        type: 'updateInput',
-        key: NodeInputKeyEnum.httpParams,
-        value: {
-          ...params,
-          value: parsed.params
-        }
-      });
-
-      onChangeNode({
-        nodeId,
-        type: 'updateInput',
-        key: NodeInputKeyEnum.httpHeaders,
-        value: {
-          ...headers,
-          value: parsed.headers
-        }
-      });
-
-      onChangeNode({
-        nodeId,
-        type: 'updateInput',
-        key: NodeInputKeyEnum.httpJsonBody,
-        value: {
-          ...jsonBody,
-          value: parsed.body
-        }
-      });
+      // 一次导入覆盖五个字段：同一事务提交，撤销一次回到导入前。
+      const parsedValues: Record<string, unknown> = {
+        [NodeInputKeyEnum.httpReqUrl]: parsed.url,
+        [NodeInputKeyEnum.httpMethod]: parsed.method,
+        [NodeInputKeyEnum.httpParams]: parsed.params,
+        [NodeInputKeyEnum.httpHeaders]: parsed.headers,
+        [NodeInputKeyEnum.httpJsonBody]: parsed.body
+      };
+      nodeActions.updateNode((current) => ({
+        inputs: current.inputs.map((input) =>
+          input.key in parsedValues ? { ...input, value: parsedValues[input.key] } : input
+        )
+      }));
 
       onClose();
 

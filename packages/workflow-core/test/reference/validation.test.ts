@@ -1,6 +1,7 @@
 import { WorkflowDiagnosticCodeEnum } from '@fastgpt/global/core/workflow/diagnostic/constants';
 import { describe, expect, it } from 'vitest';
 import {
+  NodeInputKeyEnum,
   VARIABLE_NODE_ID,
   VariableInputEnum,
   WorkflowIOValueTypeEnum
@@ -114,6 +115,152 @@ describe('getWorkflowInputReferenceDiagnostics', () => {
     document.nodes[0].catchError = true;
     input.value = ['start', 'error'];
     expect(getWorkflowInputReferenceDiagnostics({ document, nodeId: 'target', input })).toEqual([]);
+  });
+});
+
+describe('Secret reference validation', () => {
+  it.each([
+    {
+      flowNodeType: FlowNodeTypeEnum.httpRequest468,
+      key: NodeInputKeyEnum.headerSecret,
+      value: { Authorization: { ref: ['start', 'text'] } }
+    },
+    {
+      flowNodeType: FlowNodeTypeEnum.tool,
+      key: NodeInputKeyEnum.systemInputConfig,
+      inputList: [
+        { key: 'token', label: 'Token', inputType: 'secret' as const },
+        { key: 'count', label: 'Count', inputType: 'numberInput' as const }
+      ],
+      value: {
+        type: 'manual',
+        value: {
+          token: { ref: ['start', 'text'] },
+          count: { ref: ['start', 'count'] }
+        }
+      }
+    }
+  ])('accepts $flowNodeType secret references', (fixture) => {
+    const document = createWorkflowDocument({
+      nodes: [
+        {
+          nodeId: 'start',
+          name: 'Start',
+          flowNodeType: FlowNodeTypeEnum.workflowStart,
+          inputs: [],
+          outputs: [
+            {
+              id: 'text',
+              key: 'text',
+              type: FlowNodeOutputTypeEnum.static,
+              valueType: WorkflowIOValueTypeEnum.string
+            },
+            {
+              id: 'count',
+              key: 'count',
+              type: FlowNodeOutputTypeEnum.static,
+              valueType: WorkflowIOValueTypeEnum.number
+            }
+          ]
+        },
+        {
+          nodeId: 'target',
+          name: 'Target',
+          flowNodeType: fixture.flowNodeType,
+          inputs: [
+            ...(fixture.flowNodeType === FlowNodeTypeEnum.httpRequest468
+              ? [
+                  {
+                    key: NodeInputKeyEnum.httpReqUrl,
+                    label: 'URL',
+                    renderTypeList: [FlowNodeInputTypeEnum.hidden],
+                    valueType: WorkflowIOValueTypeEnum.string,
+                    value: 'https://example.com'
+                  }
+                ]
+              : []),
+            {
+              key: fixture.key,
+              label: 'Secret',
+              renderTypeList: [FlowNodeInputTypeEnum.hidden],
+              valueType: WorkflowIOValueTypeEnum.object,
+              inputList: fixture.inputList,
+              value: fixture.value
+            }
+          ],
+          outputs: []
+        }
+      ],
+      executionEdges: [
+        { source: { kind: 'next', nodeId: 'start' }, target: { kind: 'target', nodeId: 'target' } }
+      ]
+    });
+
+    expect(validateWorkflow(document, { invalidReferencePolicy: 'error' })).toEqual([]);
+  });
+
+  it('preserves invalid secret references in the validation snapshot', () => {
+    const document = createWorkflowDocument({
+      nodes: [
+        {
+          nodeId: 'start',
+          name: 'Start',
+          flowNodeType: FlowNodeTypeEnum.workflowStart,
+          inputs: [],
+          outputs: [
+            {
+              id: 'text',
+              key: 'text',
+              type: FlowNodeOutputTypeEnum.static,
+              valueType: WorkflowIOValueTypeEnum.string
+            }
+          ]
+        },
+        {
+          nodeId: 'target',
+          name: 'Target',
+          flowNodeType: FlowNodeTypeEnum.tool,
+          inputs: [
+            {
+              key: NodeInputKeyEnum.systemInputConfig,
+              label: 'Secret',
+              renderTypeList: [FlowNodeInputTypeEnum.hidden],
+              valueType: WorkflowIOValueTypeEnum.object,
+              inputList: [
+                { key: 'token', label: 'Token', inputType: 'secret' },
+                { key: 'other', label: 'Other', inputType: 'secret' }
+              ],
+              value: {
+                type: 'manual',
+                value: {
+                  token: { ref: ['deleted', 'text'] },
+                  other: { value: 'keep' }
+                }
+              }
+            }
+          ],
+          outputs: []
+        }
+      ],
+      executionEdges: [
+        { source: { kind: 'next', nodeId: 'start' }, target: { kind: 'target', nodeId: 'target' } }
+      ]
+    });
+    const before = structuredClone(document);
+    const resolved = resolveWorkflowReferenceDocument({
+      document,
+      invalidReferencePolicy: 'asEmpty'
+    });
+
+    expect(resolved).toBe(document);
+    expect(validateWorkflow(document, { invalidReferencePolicy: 'error' })).toContainEqual(
+      expect.objectContaining({
+        code: WorkflowDiagnosticCodeEnum.referenceOutputNotFound,
+        nodeId: 'target',
+        inputKey: NodeInputKeyEnum.systemInputConfig
+      })
+    );
+    expect(document).toEqual(before);
   });
 });
 

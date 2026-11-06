@@ -4,6 +4,7 @@ import { Box, type BoxProps, Button, Flex, ModalFooter, useDisclosure } from '@c
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useForm } from 'react-hook-form';
 import { type PromptTemplateItem } from '@fastgpt/global/core/ai/llm/type';
+import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { ModalBody } from '@chakra-ui/react';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
@@ -20,14 +21,7 @@ import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Reference from './Reference';
 import ValueTypeLabel from '../../ValueTypeLabel';
-import { useContextSelector } from 'use-context-selector';
-import {
-  WorkflowBufferDataContext,
-  WorkflowNodeDataContext
-} from '../../../../../context/workflowInitContext';
 import { getWorkflowGlobalVariables } from '@/web/core/workflow/utils';
-import { useCreation } from 'ahooks';
-import { AppContext } from '@/pageComponents/app/detail/context';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import { datasetQuoteValueDesc } from '@fastgpt/global/core/workflow/node/constant';
@@ -39,8 +33,9 @@ import {
 } from '@fastgpt/global/core/workflow/template/system/aiChat';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import LightTip from '@fastgpt/web/components/common/LightTip';
-import { WorkflowActionsContext } from '@/pageComponents/app/detail/WorkflowComponents/context/workflowActionsContext';
+import { useNode, useNodeActions } from '@/web/core/workflow/editor/react/useNode';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
+import { useNodeWorkflowDocument } from '../../useWorkflowDocument';
 
 const LabelStyles: BoxProps = {
   fontSize: ['sm', 'md']
@@ -51,37 +46,44 @@ const selectTemplateBtn: BoxProps = {
 };
 
 const EditModal = ({ onClose, ...props }: RenderInputProps & { onClose: () => void }) => {
-  const { inputs = [], nodeId } = props;
+  const { nodeId } = props;
   const { t } = useSafeTranslation();
-  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
-  const node = useContextSelector(WorkflowBufferDataContext, (v) => v.getNodeById(nodeId));
-  const nodeVersion = node?.version;
+  const nodeActions = useNodeActions(nodeId);
+  const currentInputs = useNode(nodeId, (node) => node?.data.inputs) ?? [];
+  const { workflow } = useNodeWorkflowDocument({ nodeId });
+  const nodeVersion = workflow?.nodes.find((node) => node.nodeId === nodeId)?.version;
+
+  const quoteTemplateInput = currentInputs.find(
+    (input) => input.key === NodeInputKeyEnum.aiChatQuoteTemplate
+  );
+  const quotePromptInput = currentInputs.find(
+    (input) => input.key === NodeInputKeyEnum.aiChatQuotePrompt
+  );
+  const quoteRoleInput = currentInputs.find(
+    (input) => input.key === NodeInputKeyEnum.aiChatQuoteRole
+  );
 
   const { watch, setValue, handleSubmit } = useForm({
     defaultValues: {
-      quoteTemplate:
-        inputs.find((input) => input.key === NodeInputKeyEnum.aiChatQuoteTemplate)?.value || '',
-      quotePrompt:
-        inputs.find((input) => input.key === NodeInputKeyEnum.aiChatQuotePrompt)?.value || '',
-      quoteRole: (inputs.find((input) => input.key === NodeInputKeyEnum.aiChatQuoteRole)?.value ||
-        'system') as AiChatQuoteRoleType
+      quoteTemplate: quoteTemplateInput?.value || '',
+      quotePrompt: quotePromptInput?.value || '',
+      quoteRole: (quoteRoleInput?.value || 'system') as AiChatQuoteRoleType
     }
   });
   const aiChatQuoteTemplate = watch('quoteTemplate');
   const aiChatQuotePrompt = watch('quotePrompt');
   const aiChatQuoteRole = watch('quoteRole');
-  const { appDetail } = useContextSelector(AppContext, (v) => v);
-
   const variables = useMemoEnhance(() => {
+    if (!workflow) return [];
     const globalVariables = getWorkflowGlobalVariables({
-      chatConfig: appDetail.chatConfig
+      chatConfig: workflow.chatConfig as AppChatConfigType
     });
 
     return globalVariables.map((item) => ({
       ...item,
       label: t(item.label as any)
     }));
-  }, [appDetail.chatConfig, t]);
+  }, [t, workflow]);
 
   const [selectTemplateData, setSelectTemplateData] = useState<{
     title: string;
@@ -151,37 +153,27 @@ const EditModal = ({ onClose, ...props }: RenderInputProps & { onClose: () => vo
 
   const onSubmit = useCallback(
     (data: { quoteTemplate: string; quotePrompt: string; quoteRole: AiChatQuoteRoleType }) => {
-      onChangeNode({
-        nodeId,
-        type: 'replaceInput',
-        key: NodeInputKeyEnum.aiChatQuoteRole,
-        value: {
-          ...AiChatQuoteRole,
-          value: data.quoteRole || 'system'
-        }
-      });
-      onChangeNode({
-        nodeId,
-        type: 'replaceInput',
-        key: NodeInputKeyEnum.aiChatQuoteTemplate,
-        value: {
-          ...AiChatQuoteTemplate,
-          value: data.quoteTemplate
-        }
-      });
-      onChangeNode({
-        nodeId,
-        type: 'replaceInput',
-        key: NodeInputKeyEnum.aiChatQuotePrompt,
-        value: {
-          ...AiChatQuotePrompt,
-          value: data.quotePrompt
-        }
+      // 三条引用配置记录一次提交：已存在的按模板整条替换，缺失的追加，与旧 replaceInput 一致。
+      // 基线取派发瞬间的 inputs，避免覆盖同一 tick 内的其他写入。
+      nodeActions?.updateNode((current) => {
+        const nextInputs = [...current.inputs];
+        (
+          [
+            { record: AiChatQuoteRole, value: data.quoteRole || 'system' },
+            { record: AiChatQuoteTemplate, value: data.quoteTemplate },
+            { record: AiChatQuotePrompt, value: data.quotePrompt }
+          ] as const
+        ).forEach(({ record, value }) => {
+          const index = nextInputs.findIndex((input) => input.key === record.key);
+          if (index >= 0) nextInputs[index] = { ...record, value };
+          else nextInputs.push({ ...record, value });
+        });
+        return { inputs: nextInputs };
       });
 
       onClose();
     },
-    [nodeId, onChangeNode, onClose]
+    [nodeActions, onClose]
   );
 
   const quotePromptTemplates =

@@ -18,7 +18,6 @@ export type DraggableInputListItemType = {
 
 type DraggableInputListProps<T extends DraggableInputListItemType> = {
   items: T[];
-  zoom?: number;
   placeholder?: string;
   /** 指定新建后需要自动聚焦的项 key，仅对列表内真实输入项生效 */
   autoFocusKey?: string;
@@ -42,7 +41,6 @@ type DraggableInputListProps<T extends DraggableInputListItemType> = {
  */
 function DraggableInputList<T extends DraggableInputListItemType>({
   items,
-  zoom,
   placeholder,
   autoFocusKey,
   addText,
@@ -63,7 +61,6 @@ function DraggableInputList<T extends DraggableInputListItemType>({
       {/* 关闭 DndDrag 在列表底部追加的整行空白占位，改用 rbd 原生 placeholder 精确占位 */}
       <DndDrag<T>
         dataList={items}
-        zoom={zoom}
         onDragEndCb={onDragEnd}
         onBeforeCapture={onBeforeCapture}
         onDragEnd={onDragFinish}

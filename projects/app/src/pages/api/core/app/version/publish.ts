@@ -3,7 +3,8 @@ import { NextAPI } from '@/service/middleware/entry';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { getNextTimeByCronStringAndTimezone } from '@fastgpt/global/common/string/time';
-import { migrateWorkflowToCurrent } from '@fastgpt/global/core/workflow/migration';
+import { getInputReferences } from '@fastgpt/global/common/workflow/editor/runtime/kernel';
+import { migrateWorkflowToCurrent } from '@fastgpt/global/common/workflow/migration';
 import { formatModels } from '@fastgpt/global/common/workflow/model';
 import {
   PublishAppBodySchema,
@@ -15,6 +16,7 @@ import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { type ApiRequestProps } from '@fastgpt/next/type';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import type { ClientSession } from '@fastgpt/service/common/mongo';
 import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/catalog/service';
 import {
   beforeUpdateAppFormat,
@@ -23,6 +25,7 @@ import {
 import { extractAppResources } from '@fastgpt/service/core/app/resource/utils';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
+import { getAppDraftVersion } from '@fastgpt/service/core/app/version/controller';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { getAuthorizedModelIds } from '@fastgpt/service/support/permission/model/auth';
 import { resolveAppResourcesByPermission } from '@fastgpt/service/core/app/resource/service';
@@ -32,7 +35,15 @@ import { addAuditLog, getI18nAppType } from '@fastgpt/service/support/user/audit
 async function handler(req: ApiRequestProps<PostPublishAppProps>) {
   const {
     query: { appId },
-    body: { nodes = [], edges = [], chatConfig, isPublish, versionName, autoSave }
+    body: {
+      nodes = [],
+      edges = [],
+      chatConfig,
+      referenceSnapshots,
+      isPublish,
+      versionName,
+      autoSave
+    }
   } = parseApiInput({
     req,
     querySchema: PublishAppQuerySchema,
@@ -46,9 +57,14 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>) {
     authToken: true
   });
 
-  // Root 可管理其他团队的应用；登录团队不能替代应用团队决定资源归属、默认模型和审计范围。
+  // Root 可管理其他团队的应用；资源归属与默认模型以应用团队为边界。
   const teamId = String(app.teamId);
-  const normalizedWorkflow = migrateWorkflowToCurrent({ nodes, edges, chatConfig });
+  const normalizedWorkflow = migrateWorkflowToCurrent({
+    nodes,
+    edges,
+    chatConfig,
+    referenceSnapshots
+  });
   const modelHandle = await getTeamModelHandle({ teamId });
   const authorizedIds = await getAuthorizedModelIds({
     actor: { teamId, tmbId, isRoot },
@@ -69,9 +85,36 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>) {
     nodes: normalizedWorkflow.nodes,
     chatConfig: normalizedWorkflow.chatConfig
   });
+
+  /** 请求省略快照时，从事务内最新草稿继承仍被引用且当前来源不可解析的展示元数据。 */
+  const resolveReferenceSnapshots = async (session: ClientSession) => {
+    if (referenceSnapshots !== undefined) return normalizedWorkflow.referenceSnapshots;
+
+    const draft = await getAppDraftVersion(appId, session);
+    const references = new Set(
+      normalizedWorkflow.nodes.flatMap((node) =>
+        node.inputs.flatMap((input) =>
+          getInputReferences(input).map((reference) => reference.join('\0'))
+        )
+      )
+    );
+    const outputsByNode = new Map(
+      normalizedWorkflow.nodes.map(
+        (node) => [node.nodeId, new Set(node.outputs?.map((output) => output.id) ?? [])] as const
+      )
+    );
+
+    return (draft?.referenceSnapshots ?? []).filter(({ reference }) => {
+      if (!references.has(reference.join('\0'))) return false;
+      const outputId = reference[1];
+      return outputId === undefined || !outputsByNode.get(reference[0])?.has(outputId);
+    });
+  };
+
   if (autoSave) {
     await mongoSessionRun(async (session) => {
       // baseline 必须在事务内读取，事务重试时才能按最新草稿重新计算资源快照。
+      const resolvedReferenceSnapshots = await resolveReferenceSnapshots(session);
       const resources = await resolveAppResourcesByPermission({
         appId,
         extracted,
@@ -94,6 +137,7 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>) {
           nodes: normalizedWorkflow.nodes,
           edges: normalizedWorkflow.edges,
           chatConfig: normalizedWorkflow.chatConfig,
+          referenceSnapshots: resolvedReferenceSnapshots,
           versionName: i18nT('app:auto_save'),
           time: new Date(),
           resources
@@ -131,6 +175,7 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>) {
 
   await mongoSessionRun(async (session) => {
     // baseline 必须在事务内读取，事务重试时才能按最新草稿重新计算资源快照。
+    const resolvedReferenceSnapshots = await resolveReferenceSnapshots(session);
     const resources = await resolveAppResourcesByPermission({
       appId,
       extracted,
@@ -150,6 +195,7 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>) {
           nodes: normalizedWorkflow.nodes,
           edges: normalizedWorkflow.edges,
           chatConfig: normalizedWorkflow.chatConfig,
+          referenceSnapshots: resolvedReferenceSnapshots,
           isPublish,
           versionName,
           tmbId,

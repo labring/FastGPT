@@ -5,12 +5,33 @@ import {
   normalizeDatasetSelectValue,
   projectExternalVariableInput
 } from '@fastgpt/global/common/workflow/input';
+import { isToolParamInput } from '@fastgpt/global/common/workflow/editor/utils';
 import {
   FlowNodeInputTypeEnum,
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
+
+describe('isToolParamInput', () => {
+  const input = {
+    key: 'query',
+    canEdit: true,
+    defaultToAgentGenerated: true,
+    renderTypeList: [FlowNodeInputTypeEnum.input]
+  };
+
+  it('accepts editable inputs that default to Agent generation', () => {
+    expect(isToolParamInput(input)).toBe(true);
+  });
+
+  it('rejects inputs that cannot be Agent generated', () => {
+    expect(isToolParamInput({ ...input, key: NodeInputKeyEnum.forbidStream })).toBe(false);
+    expect(isToolParamInput({ ...input, canAgentGenerated: false })).toBe(false);
+    expect(isToolParamInput({ ...input, canEdit: false })).toBe(false);
+    expect(isToolParamInput({ ...input, defaultToAgentGenerated: false })).toBe(false);
+  });
+});
 
 describe('normalizeDatasetSelectValue', () => {
   it('兼容历史单对象并保留展示快照和资源错误标记', () => {

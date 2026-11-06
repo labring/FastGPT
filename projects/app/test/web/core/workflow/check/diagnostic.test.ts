@@ -182,4 +182,34 @@ describe('formatWorkflowDiagnostic', () => {
       }).message
     ).toBe(WorkflowDiagnosticCodeEnum.outputReferencesRemain);
   });
+
+  it('renders a reference type mismatch with its input and both value types', () => {
+    const issue = formatWorkflowDiagnostic({
+      diagnostic: {
+        code: WorkflowDiagnosticCodeEnum.referenceTypeMismatch,
+        severity: 'error',
+        nodeId: 'target',
+        inputKey: 'question',
+        params: { expected: 'string', actual: 'number' }
+      },
+      node: {
+        ...node,
+        inputs: [
+          {
+            key: 'question',
+            label: '问题',
+            renderTypeList: [FlowNodeInputTypeEnum.reference]
+          }
+        ]
+      },
+      t
+    });
+    expect(issue.message).toBe('输入项 问题 引用的变量类型不匹配，应为 string，实际为 number');
+    expect(issue.params).toEqual({
+      expected: 'string',
+      actual: 'number',
+      inputName: '问题',
+      nodeId: 'target'
+    });
+  });
 });

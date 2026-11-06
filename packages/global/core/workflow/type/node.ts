@@ -12,6 +12,7 @@ import { PluginStatusSchema, PluginTextSchema } from '../../plugin/type';
 import { SourceMemberSchema } from '../../../support/user/type';
 import z from 'zod';
 import { BoolSchema, NumSchema } from '../../../common/zod';
+import { WorkflowIssueCodeSchema } from '../editor/issueCode';
 import { LanguageSchema } from '../../../common/i18n/type';
 
 export const McpToolSetRuntimeConfigSchema = z.object({
@@ -44,7 +45,6 @@ export const HttpToolSetRuntimeConfigSchema = z.object({
     description: 'HTTP 工具集请求头密钥配置'
   })
 });
-export type HttpToolSetRuntimeConfigType = z.infer<typeof HttpToolSetRuntimeConfigSchema>;
 
 const ToolSetReferenceSchema = z.object({
   toolId: z.string().min(1).meta({
@@ -210,8 +210,6 @@ export const FlowNodeCommonTypeSchema = z.object({
   hasSystemSecret: BoolSchema.optional(),
   readmeUrl: z.string().optional()
 });
-export type FlowNodeCommonType = z.infer<typeof FlowNodeCommonTypeSchema>;
-
 const HandleTypeSchema = z.object({
   left: BoolSchema,
   right: BoolSchema,
@@ -261,16 +259,20 @@ export type NodeTemplateContext = {
   isSidebar: boolean;
   sourceNodeId: string | null;
   sourceType: FlowNodeTypeEnum | null;
-  sourceIsTool: boolean;
   /** 源节点是否已被 selectedTools 边挂载到工具调用（工具子流程）。 */
   isConnectedTool: boolean;
   handleId: string | null;
   /** 源节点所在容器（loopRun/parallelRun 等）的节点类型。 */
   parentType: FlowNodeTypeEnum | null;
-  /** 画布上是否已有工具调用节点。 */
+  /** 目标父容器（root context 即文档根）的直接子节点里是否已有工具调用节点。 */
   hasToolNode: boolean;
-  /** 画布上是否已有循环执行节点。 */
+  /** 目标父容器（root context 即文档根）的直接子节点里是否已有循环执行节点。 */
   hasLoopRunNode: boolean;
+  /**
+   * 目标作用域内已被占用的唯一节点类型：root context 是根级唯一节点（workflowStart/pluginInput/pluginOutput），
+   * 容器 context 是容器内系统子节点（nestedStart/nestedEnd/loopRunStart）。模板目录据此过滤 unique 模板。
+   */
+  takenUniqueTypes: FlowNodeTypeEnum[];
 };
 export type NodeTemplateContextPredicate = (ctx: NodeTemplateContext | null) => boolean;
 
@@ -319,24 +321,32 @@ export type NodeTemplateListType = z.infer<typeof NodeTemplateListTypeSchema>;
 export const WorkflowCheckIssueLevelSchema = z.enum(['error', 'warning']);
 export type WorkflowCheckIssueLevel = z.infer<typeof WorkflowCheckIssueLevelSchema>;
 
+/**
+ * 一条工作流问题：只携带稳定标识与插值参数，不携带文案。
+ * 文案由渲染层按 code 查 i18n key，并对 params.inputName 再翻译一次（label 原样是 i18n key），
+ * 因此语言切换不需要重算 Issue View。
+ */
 export const WorkflowCheckIssueSchema = z.object({
   nodeId: z.string(),
   nodeName: z.string().optional(),
-  nodeType: z.enum(FlowNodeTypeEnum),
+  nodeType: z.enum(FlowNodeTypeEnum).optional(),
   level: WorkflowCheckIssueLevelSchema,
-  code: z.union([z.enum(WorkflowDiagnosticCodeEnum), z.enum(WorkflowCheckIssueCodeEnum)]),
-  message: z.string(),
-  inputKey: z.string().optional()
+  code: z.union([
+    WorkflowIssueCodeSchema,
+    z.enum(WorkflowDiagnosticCodeEnum),
+    z.enum(WorkflowCheckIssueCodeEnum)
+  ]),
+  message: z.string().optional(),
+  inputKey: z.string().optional(),
+  params: z.record(z.string(), z.string()).optional()
 });
 export type WorkflowCheckIssue = z.infer<typeof WorkflowCheckIssueSchema>;
-export type WorkflowCheckNodeIssueMap = Record<string, WorkflowCheckIssue[]>;
 
 // react flow node type
 export const FlowNodeItemSchema = FlowNodeTemplateTypeSchema.extend({
   nodeId: z.string(),
   parentNodeId: z.string().optional(),
   isError: BoolSchema.optional(),
-  workflowCheckIssues: z.array(WorkflowCheckIssueSchema).optional(),
   searchedText: z.string().optional(),
   debugResult: z
     .object({

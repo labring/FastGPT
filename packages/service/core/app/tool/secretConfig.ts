@@ -1,4 +1,3 @@
-import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import type { FlowNodeInputItemType, InputConfigType } from '@fastgpt/global/core/workflow/type/io';
 import {
   FlowNodeInputTypeEnum,
@@ -17,15 +16,10 @@ import {
 } from '@fastgpt/global/common/secret/utils';
 import { valueTypeFormat } from '@fastgpt/global/core/workflow/runtime/utils';
 import { normalizeToolInputValue } from '@fastgpt/global/core/app/tool/systemTool/codec';
-import { getWorkflowSecretInputKind } from '@fastgpt/global/common/workflow/input';
-
-const inputTypeValueTypeMap: Record<InputConfigType['inputType'], WorkflowIOValueTypeEnum> = {
-  input: WorkflowIOValueTypeEnum.string,
-  numberInput: WorkflowIOValueTypeEnum.number,
-  secret: WorkflowIOValueTypeEnum.string,
-  switch: WorkflowIOValueTypeEnum.boolean,
-  select: WorkflowIOValueTypeEnum.string
-};
+import {
+  getWorkflowSecretInputKind,
+  inputTypeValueTypeMap
+} from '@fastgpt/global/common/workflow/input';
 
 /** 解析系统工具手工输入；未配置的静态项省略，显式 0/false 和引用结果保留。 */
 export const resolveToolInputValues = ({

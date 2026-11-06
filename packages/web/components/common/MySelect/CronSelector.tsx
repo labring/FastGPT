@@ -1,4 +1,4 @@
-import React, { useCallback, useRef } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import MultipleRowSelect from './MultipleRowSelect';
 import { useTranslation } from 'next-i18next';
 import { type MultipleSelectProps } from './type';
@@ -94,52 +94,64 @@ const CronSelector = ({
 }) => {
   const { t } = useTranslation();
 
-  const get24HoursOptions = () => {
-    return Array.from({ length: 24 }, (_, i) => ({
-      label: `${i < 10 ? '0' : ''}${i}:00`,
-      value: i
-    }));
-  };
-  const getRoute = (i: number) => {
-    const { t } = useTranslation();
-    switch (i) {
-      case 0:
-        return t('app:week.Sunday');
-      case 1:
-        return t('app:week.Monday');
-      case 2:
-        return t('app:week.Tuesday');
-      case 3:
-        return t('app:week.Wednesday');
-      case 4:
-        return t('app:week.Thursday');
-      case 5:
-        return t('app:week.Friday');
-      case 6:
-        return t('app:week.Saturday');
-      default:
-        return t('app:week.Sunday');
-    }
-  };
-  const getWeekOptions = () => {
-    return Array.from({ length: 7 }, (_, i) => {
-      return {
-        label: getRoute(i),
-        value: i,
-        children: get24HoursOptions()
-      };
-    });
-  };
-  const getMonthOptions = () => {
-    return Array.from({ length: 28 }, (_, i) => ({
-      label: i + 1 + t('app:month.unit'),
-      value: i + 1,
-      children: get24HoursOptions()
-    }));
-  };
-  const getInterValOptions = () => {
-    // 每n小时
+  const hoursOptions = useMemo(
+    () =>
+      Array.from({ length: 24 }, (_, i) => ({
+        label: `${i < 10 ? '0' : ''}${i}:00`,
+        value: i
+      })),
+    []
+  );
+  const weekOptions = useMemo(() => {
     return [
+      {
+        label: t('app:week.Sunday'),
+        value: 0,
+        children: hoursOptions
+      },
+      {
+        label: t('app:week.Monday'),
+        value: 1,
+        children: hoursOptions
+      },
+      {
+        label: t('app:week.Tuesday'),
+        value: 2,
+        children: hoursOptions
+      },
+      {
+        label: t('app:week.Wednesday'),
+        value: 3,
+        children: hoursOptions
+      },
+      {
+        label: t('app:week.Thursday'),
+        value: 4,
+        children: hoursOptions
+      },
+      {
+        label: t('app:week.Friday'),
+        value: 5,
+        children: hoursOptions
+      },
+      {
+        label: t('app:week.Saturday'),
+        value: 6,
+        children: hoursOptions
+      }
+    ];
+  }, [hoursOptions, t]);
+  const monthOptions = useMemo(
+    () =>
+      Array.from({ length: 28 }, (_, i) => ({
+        label: i + 1 + t('app:month.unit'),
+        value: i + 1,
+        children: hoursOptions
+      })),
+    [hoursOptions, t]
+  );
+  const intervalOptions = useMemo(
+    () => [
       {
         label: t('app:interval.per_hour'),
         value: 1
@@ -164,8 +176,9 @@ const CronSelector = ({
         label: t('app:interval.12_hours'),
         value: 12
       }
-    ];
-  };
+    ],
+    [t]
+  );
 
   const cronField = cronString2Fields(cronString) as CronFieldType;
 
@@ -191,34 +204,37 @@ const CronSelector = ({
     [onChange]
   );
 
-  const cronSelectList = useRef<MultipleSelectProps['list']>([
-    {
-      label: t('app:cron.every_day'),
-      value: CronJobTypeEnum.day,
-      children: get24HoursOptions()
-    },
-    {
-      label: t('app:cron.every_week'),
-      value: CronJobTypeEnum.week,
-      children: getWeekOptions()
-    },
-    {
-      label: t('app:cron.every_month'),
-      value: CronJobTypeEnum.month,
-      children: getMonthOptions()
-    },
-    {
-      label: t('app:cron.interval'),
-      value: CronJobTypeEnum.interval,
-      children: getInterValOptions()
-    }
-  ]);
+  const cronSelectList = useMemo<MultipleSelectProps['list']>(
+    () => [
+      {
+        label: t('app:cron.every_day'),
+        value: CronJobTypeEnum.day,
+        children: hoursOptions
+      },
+      {
+        label: t('app:cron.every_week'),
+        value: CronJobTypeEnum.week,
+        children: weekOptions
+      },
+      {
+        label: t('app:cron.every_month'),
+        value: CronJobTypeEnum.month,
+        children: monthOptions
+      },
+      {
+        label: t('app:cron.interval'),
+        value: CronJobTypeEnum.interval,
+        children: intervalOptions
+      }
+    ],
+    [hoursOptions, intervalOptions, monthOptions, t, weekOptions]
+  );
 
   return (
     <MultipleRowSelect
       label={formatLabel}
       value={cronField}
-      list={cronSelectList.current}
+      list={cronSelectList}
       onSelect={(e) => {
         cronConfig2cronString(e as CronFieldType);
       }}

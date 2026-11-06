@@ -3,7 +3,7 @@ import type {
   FlowNodeItemType,
   FlowNodeTemplateType
 } from '@fastgpt/global/core/workflow/type/node';
-import type { Node, Edge } from 'reactflow';
+import type { Node, Edge } from '@xyflow/react';
 import {
   FlowNodeTypeEnum,
   FlowNodeInputTypeEnum,
@@ -16,10 +16,10 @@ import {
   VARIABLE_NODE_ID
 } from '@fastgpt/global/core/workflow/constants';
 import {
-  applyWorkflowStartInputAutoFill,
   collectWorkflowStartInputAutoFillPatches,
   collectWorkflowStartOutputAutoFillRevertPatches
 } from '@/web/core/workflow/workflowStartAutoFill';
+import { applyWorkflowStartInputAutoFill } from '@fastgpt/global/common/workflow/editor/startAutoFill';
 import { AiChatModule } from '@fastgpt/global/core/workflow/template/system/aiChat';
 import { DatasetSearchModule } from '@fastgpt/global/core/workflow/template/system/datasetSearch';
 import { ClassifyQuestionModule } from '@fastgpt/global/core/workflow/template/system/classifyQuestion';

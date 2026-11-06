@@ -302,15 +302,25 @@ export class WorkflowNodeResponseSink implements WorkflowNodeResponseSinkLike {
   async publish(inputs: WorkflowNodeResponseInput[]): Promise<ChatHistoryItemResType[]> {
     if (inputs.length === 0) return [];
 
-    const responses = inputs.map(({ response, parentId }) => {
+    const normalizedResponses = inputs.map(({ response, parentId }) => {
       const normalizedParentId = response.parentId ?? parentId;
 
       const normalizedResponse = normalizeNodeResponseChildren({
         ...response,
         ...(normalizedParentId !== undefined ? { parentId: normalizedParentId } : {})
       });
-      return removePublishedChildren(normalizedResponse, this.publishedResponseKeys);
+      return normalizedResponse;
     });
+    const publishedResponseKeys = new Set(this.publishedResponseKeys);
+    normalizedResponses.forEach((response, index) => {
+      const input = inputs[index];
+      if ((input?.record !== false || input?.emit !== false) && response.id) {
+        publishedResponseKeys.add(getNodeResponseIdentityKey(response));
+      }
+    });
+    const responses = normalizedResponses.map((response) =>
+      removePublishedChildren(response, publishedResponseKeys)
+    );
     const responsesToRecord = responses.filter((_, index) => inputs[index]?.record !== false);
     const recordedResponses =
       responsesToRecord.length > 0 ? await this.writer.record(responsesToRecord) : [];
@@ -322,11 +332,8 @@ export class WorkflowNodeResponseSink implements WorkflowNodeResponseSinkLike {
       return recordedResponse ?? response;
     });
 
-    responses.forEach((response) => {
-      if (response.id) {
-        this.publishedResponseKeys.add(getNodeResponseIdentityKey(response));
-      }
-    });
+    this.publishedResponseKeys.clear();
+    publishedResponseKeys.forEach((key) => this.publishedResponseKeys.add(key));
 
     if (this.apiVersion !== 'v2' || !this.workflowStreamResponse) {
       return outputResponses;

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { migrateWorkflowToCurrent } from '@fastgpt/global/core/workflow/migration';
+import { migrateWorkflowToCurrent } from '@fastgpt/global/common/workflow/migration';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { parseWorkflowImportConfig } from '@/pageComponents/dashboard/agent/utils/appTemplateParse';

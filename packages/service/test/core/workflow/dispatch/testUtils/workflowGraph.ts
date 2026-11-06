@@ -17,6 +17,7 @@ import { runWorkflow, type RunWorkflowProps } from '@fastgpt/service/core/workfl
 import { prepareWorkflowFileContext } from '@fastgpt/service/core/workflow/utils/fileContext';
 import { runWithContext } from '@fastgpt/service/core/workflow/utils/context';
 import { WorkflowVariableState } from '@fastgpt/service/core/workflow/dispatch/utils/variables';
+import { getHandleId } from '@fastgpt/global/common/workflow/reference';
 
 /** 构造最小节点声明，输出默认使用 any，避免测试构造器提前改变待验证的数据。 */
 export const graphNode = ({
@@ -92,8 +93,10 @@ export const graphEdge = ({
 }): RuntimeEdgeItemType => ({
   source,
   target,
-  sourceHandle: error ? `${source}-source_catch-right` : `${source}-source-${handle}`,
-  targetHandle: `${target}-target-left`,
+  sourceHandle: error
+    ? getHandleId(source, 'source_catch', 'right')
+    : getHandleId(source, 'source', handle),
+  targetHandle: getHandleId(target, 'target', 'left'),
   status: 'waiting'
 });
 

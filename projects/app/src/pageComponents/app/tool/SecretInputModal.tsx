@@ -449,7 +449,13 @@ export const SecretInputForm = ({
                           item.inputType
                         );
                         const showInput = !isSecretValueConfigured(value) || editIndex === i;
-                        const fieldLabel = item.label;
+                        const fieldLabel = t(item.label as any);
+                        const fieldDescription = item.description
+                          ? t(item.description as any)
+                          : undefined;
+                        const fieldPlaceholder = item.placeholder
+                          ? t(item.placeholder as any)
+                          : fieldLabel;
 
                         return (
                           <Box key={item.key} mb={inputList.length - 1 === i ? 2 : 5}>
@@ -457,7 +463,7 @@ export const SecretInputForm = ({
                               <FormLabel required={item.required} color={'myGray.600'}>
                                 {fieldLabel}
                               </FormLabel>
-                              {item.description && <QuestionTip label={item.description} />}
+                              {fieldDescription && <QuestionTip label={fieldDescription} />}
                               {renderReference && (
                                 <Box ml={2} className="nodrag">
                                   <NodeInputSelect
@@ -526,7 +532,7 @@ export const SecretInputForm = ({
                                     alignItems={'center'}
                                     lineHeight={'normal'}
                                     _placeholder={{ lineHeight: 'normal' }}
-                                    placeholder={item.placeholder ?? fieldLabel}
+                                    placeholder={fieldPlaceholder}
                                     {...register(inputKey, {
                                       required: item.required
                                     })}
@@ -582,7 +588,7 @@ export const SecretInputForm = ({
                                     py={0}
                                     lineHeight={'normal'}
                                     _placeholder={{ lineHeight: 'normal' }}
-                                    placeholder={item.placeholder ?? fieldLabel}
+                                    placeholder={fieldPlaceholder}
                                     isInvalid={!!error}
                                   />
                                 )}
@@ -614,7 +620,7 @@ export const SecretInputForm = ({
                                       onChange={onChange}
                                       placeholder={
                                         item.inputType === 'numberInput'
-                                          ? (item.placeholder ?? fieldLabel)
+                                          ? fieldPlaceholder
                                           : fieldLabel
                                       }
                                       bg={'myGray.50'}

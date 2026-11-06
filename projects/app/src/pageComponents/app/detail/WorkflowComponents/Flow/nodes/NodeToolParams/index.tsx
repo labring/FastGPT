@@ -1,6 +1,6 @@
 import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
-import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import { type NodeProps } from 'reactflow';
+import type { WorkflowNodeData } from '@fastgpt/global/core/workflow/editor/types';
+import type { CanvasNodeProps } from '@/web/core/workflow/editor/canvas/canvasTypes';
 import NodeCard from '../render/NodeCard';
 import React, { useMemo, useState } from 'react';
 import Container from '../../components/Container';
@@ -10,15 +10,22 @@ import { SmallAddIcon } from '@chakra-ui/icons';
 import { type FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import ToolParamsEditModal from '../components/ToolParamsEditModal';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { useContextSelector } from 'use-context-selector';
-import { WorkflowActionsContext } from '../../../context/workflowActionsContext';
 import { defaultToolParamFormData } from '../components/ToolParamsEditModal/constants';
+import { getOutputDisconnectCommands } from '@/web/core/workflow/utils';
+import { useNode, useNodeActions } from '@/web/core/workflow/editor/react/useNode';
+import { useWorkflowActions } from '@/web/core/workflow/editor/react/useWorkflow';
 
-const NodeToolParams = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
+const emptyInputs: WorkflowNodeData['inputs'] = [];
+
+const NodeToolParams = ({ data, selected }: CanvasNodeProps) => {
   const { t } = useTranslation();
   const [editField, setEditField] = useState<FlowNodeInputItemType>();
-  const { nodeId, inputs } = data;
-  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
+  const { nodeId } = data;
+  const inputs =
+    useNode<WorkflowNodeData['inputs']>(nodeId, (node) => node?.data.inputs) ?? emptyInputs;
+  const nodeActions = useNodeActions(nodeId);
+  // 边集合只在删除参数的回调里读，走非订阅 getter：点击时取当前值，组件不订阅结构变更。
+  const { getEdges } = useWorkflowActions();
 
   const Render = useMemo(() => {
     return (
@@ -82,16 +89,22 @@ const NodeToolParams = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                             w={'16px'}
                             cursor={'pointer'}
                             onClick={() => {
-                              onChangeNode({
-                                nodeId,
-                                type: 'delInput',
-                                key: item.key
-                              });
-                              onChangeNode({
-                                nodeId,
-                                type: 'delOutput',
-                                key: item.key
-                              });
+                              // 参数与其同名 output 一起删除，旧 handle 连线同事务断开。
+                              nodeActions?.updateNode(
+                                (current) => ({
+                                  inputs: current.inputs.filter((input) => input.key !== item.key),
+                                  outputs: current.outputs.filter(
+                                    (output) => output.key !== item.key
+                                  )
+                                }),
+                                {
+                                  disconnectEdges: getOutputDisconnectCommands({
+                                    edges: getEdges(),
+                                    nodeId,
+                                    outputKey: item.key
+                                  })
+                                }
+                              );
                             }}
                           />
                         </Flex>
@@ -105,7 +118,7 @@ const NodeToolParams = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         </Container>
       </NodeCard>
     );
-  }, [selected, data, t, editField, inputs, onChangeNode, nodeId]);
+  }, [selected, data, t, editField, inputs, nodeActions, getEdges, nodeId]);
 
   return Render;
 };

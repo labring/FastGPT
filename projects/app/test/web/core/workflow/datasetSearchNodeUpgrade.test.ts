@@ -52,11 +52,11 @@ describe('dataset search node upgrade', () => {
     expect(commit).not.toHaveBeenCalled();
   });
 
-  it('persists and commits one canonical upgraded node without changing shared node data', async () => {
-    const persist = vi.fn(async () => undefined);
+  it('does not commit the local upgrade when persistence returns false', async () => {
     const commit = vi.fn();
+    const persist = vi.fn().mockResolvedValue(false);
 
-    await persistLegacyDatasetSearchNodeUpgrade({
+    const result = await persistLegacyDatasetSearchNodeUpgrade({
       nodes: [legacyNode],
       nodeId: legacyNode.nodeId,
       filterInput: upgradedInput,
@@ -64,6 +64,23 @@ describe('dataset search node upgrade', () => {
       commit
     });
 
+    expect(result).toBe(false);
+    expect(commit).not.toHaveBeenCalled();
+  });
+
+  it('persists and commits one canonical upgraded node without changing shared node data', async () => {
+    const persist = vi.fn(async () => true);
+    const commit = vi.fn();
+
+    const result = await persistLegacyDatasetSearchNodeUpgrade({
+      nodes: [legacyNode],
+      nodeId: legacyNode.nodeId,
+      filterInput: upgradedInput,
+      persist,
+      commit
+    });
+
+    expect(result).toBe(true);
     const persistedNode = persist.mock.calls[0][0][0];
     expect(commit).toHaveBeenCalledWith(persistedNode);
     expect(persistedNode).toMatchObject({

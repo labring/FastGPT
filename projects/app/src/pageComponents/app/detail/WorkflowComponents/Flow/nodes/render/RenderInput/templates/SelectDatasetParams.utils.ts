@@ -6,8 +6,10 @@ import {
   isValidReferenceValueFormat,
   nodeInputIsReference
 } from '@fastgpt/global/common/workflow/reference';
+import type { DeepReadonly } from '@fastgpt/global/core/workflow/editor/types';
 import { DatasetSearchModule } from '@fastgpt/global/core/workflow/template/system/datasetSearch';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
+import { cloneDeep } from 'lodash-es';
 
 /**
  * 解析静态选择的知识库 ID 列表。
@@ -71,23 +73,21 @@ export const getDatasetSearchParamInputs = ({
   inputs,
   values
 }: {
-  inputs: FlowNodeInputItemType[];
+  inputs: readonly DeepReadonly<FlowNodeInputItemType>[];
   values: Partial<DatasetParamsModalFormType>;
 }): FlowNodeInputItemType[] => {
   return Object.entries(values).flatMap(([key, value]) => {
     const currentInput = inputs.find((input) => input.key === key);
     const templateInput = DatasetSearchModule.inputs.find((input) => input.key === key);
-    const input =
-      currentInput ??
-      (templateInput
-        ? {
-            ...templateInput,
-            renderTypeList: [FlowNodeInputTypeEnum.hidden],
-            selectedType: FlowNodeInputTypeEnum.hidden,
-            label: ''
-          }
-        : undefined);
-    if (!input) return [];
+    if (!currentInput && !templateInput) return [];
+    const input: FlowNodeInputItemType = currentInput
+      ? (currentInput as FlowNodeInputItemType)
+      : {
+          ...cloneDeep(templateInput!),
+          renderTypeList: [FlowNodeInputTypeEnum.hidden],
+          selectedType: FlowNodeInputTypeEnum.hidden,
+          label: ''
+        };
     if (key === NodeInputKeyEnum.collectionFilterMatch) {
       return [
         {
@@ -100,6 +100,6 @@ export const getDatasetSearchParamInputs = ({
         }
       ];
     }
-    return [{ ...input, value }];
+    return [{ ...input, value } as unknown as FlowNodeInputItemType];
   });
 };

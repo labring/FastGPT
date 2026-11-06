@@ -5,19 +5,25 @@ import { Box, Flex } from '@chakra-ui/react';
 import { FlowNodeOutputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { MySourceHandle } from '../Handle';
 import { getHandleId } from '@fastgpt/global/common/workflow/reference';
-import { Position } from 'reactflow';
+import { Position } from '@xyflow/react';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import ValueTypeLabel from '../ValueTypeLabel';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import { useContextSelector } from 'use-context-selector';
-import { WorkflowActionsContext } from '../../../../context/workflowActionsContext';
+import { useNodeActions } from '@/web/core/workflow/editor/react/useNode';
+import { useWorkflowActions } from '@/web/core/workflow/editor/react/useWorkflow';
+import { getOutputDisconnectCommands } from '@/web/core/workflow/utils';
+
+/** 输出源柄的平移量：模块级常量，避免每次渲染换数组身份打穿 MySourceHandle 的 React.memo。 */
+const sourceTranslate = [9, 0] as [number, number];
 
 const OutputLabel = ({ nodeId, output }: { nodeId: string; output: FlowNodeOutputItemType }) => {
   const { t } = useSafeTranslation();
   const { label = '', description, valueType, valueDesc } = output;
 
-  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
+  const nodeActions = useNodeActions(nodeId);
+  // 边集合只在删除废弃输出字段的回调里读，走非订阅 getter：点击时取当前值，组件不订阅结构变更。
+  const { getEdges } = useWorkflowActions();
 
   return (
     <Box position={'relative'}>
@@ -59,11 +65,19 @@ const OutputLabel = ({ nodeId, output }: { nodeId: string; output: FlowNodeOutpu
                   bg: 'adora.100'
                 }}
                 onClick={() => {
-                  onChangeNode({
-                    nodeId,
-                    type: 'delOutput',
-                    key: output.key
-                  });
+                  // 输出字段删除是记录级变更；其 source handle 上的连线必须同事务断开。
+                  nodeActions?.updateNode(
+                    (current) => ({
+                      outputs: current.outputs.filter((item) => item.key !== output.key)
+                    }),
+                    {
+                      disconnectEdges: getOutputDisconnectCommands({
+                        edges: getEdges(),
+                        nodeId,
+                        outputKey: output.key
+                      })
+                    }
+                  );
                 }}
               >
                 <MyIcon name={'common/info'} color={'adora.600'} w={4} mr={1} />
@@ -77,7 +91,7 @@ const OutputLabel = ({ nodeId, output }: { nodeId: string; output: FlowNodeOutpu
         <MySourceHandle
           nodeId={nodeId}
           handleId={getHandleId(nodeId, 'source', output.key)}
-          translate={[34, 0]}
+          translate={sourceTranslate}
           position={Position.Right}
         />
       )}

@@ -71,11 +71,18 @@ vi.mock('use-context-selector', () => ({
 vi.mock('@/pageComponents/app/detail/context', () => ({
   AppContext: { value: { appDetail: { _id: 'current-app' } } }
 }));
-vi.mock('@/pageComponents/app/detail/WorkflowComponents/context/workflowInitContext', () => ({
-  WorkflowBufferDataContext: {
-    value: { basicNodeTemplates: [], getNodeList: () => [], nodeAmount: 0 }
-  }
-}));
+// 本测试只关心分页路由，桩掉文档读取入口即可，
+// 同时避免引入 editor/session 模块链（上面的 adapter mock 未提供 createContext）。
+vi.mock(
+  '@/pageComponents/app/detail/WorkflowComponents/Flow/nodes/render/useWorkflowDocument',
+  () => ({
+    useWorkflowDocument: () => ({
+      workflow: undefined,
+      getNodeById: () => undefined,
+      graph: undefined
+    })
+  })
+);
 vi.mock(
   '@/pageComponents/app/detail/WorkflowComponents/Flow/components/NodeTemplates/header',
   () => ({

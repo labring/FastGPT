@@ -27,13 +27,12 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import PublishHistories from '../PublishHistoriesSlider';
 import SaveButton from '../Workflow/components/SaveButton';
 import AppCard from '../WorkflowComponents/AppCard';
-import { WorkflowModalContext } from '../WorkflowComponents/context/workflowModalContext';
-import { WorkflowPersistenceContext } from '../WorkflowComponents/context/workflowPersistenceContext';
+import { useWorkflowModalValue } from '../WorkflowComponents/Flow/panels/workflowPanelState';
 import {
-  WorkflowSnapshotContext,
-  type WorkflowSnapshotsType
-} from '../WorkflowComponents/context/workflowSnapshotContext';
-import { WorkflowUtilsContext } from '../WorkflowComponents/context/workflowUtilsContext';
+  useWorkflowHistory,
+  useWorkflowPersistence
+} from '@/web/core/workflow/editor/session/workflowSession';
+import type { WorkflowVersionEntry } from '@/web/core/workflow/editor/session/workflowHistory';
 
 const Header = () => {
   const { t } = useTranslation();
@@ -45,37 +44,31 @@ const Header = () => {
     }
   });
 
-  const { appDetail, onSaveApp, currentTab } = useContextSelector(AppContext, (v) => v);
+  const onSaveApp = useContextSelector(AppContext, (v) => v.onSaveApp);
+  const appId = useContextSelector(AppContext, (v) => v.appId);
+  const currentTab = useContextSelector(AppContext, (v) => v.currentTab);
+  const parentId = useContextSelector(AppContext, (v) => v.appDetail.parentId);
   const {
     isOpen: isOpenBackConfirm,
     onOpen: onOpenBackConfirm,
     onClose: onCloseBackConfirm
   } = useDisclosure();
 
-  const { flowData2StoreData, flowData2StoreDataAndCheck } = useContextSelector(
-    WorkflowUtilsContext,
-    (v) => v
-  );
+  const {
+    serializeWorkflow: flowData2StoreData,
+    serializeWorkflowAndCheck: flowData2StoreDataAndCheck
+  } = useWorkflowPersistence();
 
-  const setWorkflowTestData = useContextSelector(
-    WorkflowModalContext,
-    (v) => v.setWorkflowTestData
-  );
-  const { past, setPast, onSwitchTmpVersion, onSwitchCloudVersion } = useContextSelector(
-    WorkflowSnapshotContext,
-    (v) => v
-  );
+  const openWorkflowTest = useWorkflowModalValue((v) => v.openWorkflowTest);
+  const { versions, switchVersion, switchCloudVersion } = useWorkflowHistory();
+  const { isSaved, leaveSaveSign, createSaveRequest, isCurrentSaveRequest, markSaved } =
+    useWorkflowPersistence();
+  const leaveSaveSignRef = leaveSaveSign;
 
-  const { activePanel, setActivePanel } = useContextSelector(WorkflowModalContext, (v) => ({
-    activePanel: v.activePanel,
-    setActivePanel: v.setActivePanel
-  }));
+  const activePanel = useWorkflowModalValue((v) => v.activePanel);
+  const openPanel = useWorkflowModalValue((v) => v.openPanel);
+  const closePanel = useWorkflowModalValue((v) => v.closePanel);
   const showHistoryModal = activePanel === 'history';
-
-  const { isSaved, leaveSaveSign: leaveSaveSignRef } = useContextSelector(
-    WorkflowPersistenceContext,
-    (v) => v
-  );
 
   const { lastAppListRouteType } = useSystemStore();
 
@@ -87,33 +80,33 @@ const Header = () => {
       isPublish?: boolean;
       versionName?: string;
     }) => {
-      const data = flowData2StoreData();
-      if (data) {
-        await onSaveApp({
-          ...data,
+      const request = createSaveRequest(appId);
+      if (!request) return false;
+
+      const saved = await onSaveApp(
+        {
+          ...request.data,
           isPublish,
           versionName,
-          chatConfig: appDetail.chatConfig,
           //@ts-ignore
           version: 'v2'
-        });
-        // Mark the current snapshot as saved
-        setPast((prevPast) =>
-          prevPast.map((item, index) =>
-            index === 0
-              ? {
-                  ...item,
-                  isSaved: true
-                }
-              : item
-          )
-        );
-      }
+        },
+        request
+      );
+      if (!saved || !isCurrentSaveRequest(request)) return false;
+
+      return markSaved(request);
     },
     {
       manual: true,
-      refreshDeps: [onSaveApp, setPast, flowData2StoreData, appDetail.chatConfig]
+      refreshDeps: [appId, onSaveApp, createSaveRequest, isCurrentSaveRequest, markSaved]
     }
+  );
+  const onClickSaveForButton = useCallback(
+    async (options: { isPublish?: boolean; versionName?: string }) => {
+      return onClickSave(options);
+    },
+    [onClickSave]
   );
 
   const onBack = useCallback(async () => {
@@ -121,11 +114,11 @@ const Header = () => {
     router.push({
       pathname: '/dashboard/tool',
       query: {
-        parentId: appDetail.parentId,
+        parentId,
         type: lastAppListRouteType
       }
     });
-  }, [appDetail.parentId, lastAppListRouteType, leaveSaveSignRef, router]);
+  }, [lastAppListRouteType, leaveSaveSignRef, parentId, router]);
 
   const Render = useMemo(() => {
     return (
@@ -182,7 +175,7 @@ const Header = () => {
                 w={'34px'}
                 h={'34px'}
                 variant={'whitePrimary'}
-                onClick={() => setActivePanel(showHistoryModal ? null : 'history')}
+                onClick={() => (showHistoryModal ? closePanel() : openPanel('history'))}
               />
               <Button
                 leftIcon={<MyIcon name={'core/workflow/debug'} w={['14px', '16px']} />}
@@ -191,9 +184,9 @@ const Header = () => {
                 variant={'whitePrimary'}
                 flexShrink={0}
                 onClick={async () => {
-                  const data = await flowData2StoreDataAndCheck();
+                  const data = flowData2StoreData();
                   if (data) {
-                    setWorkflowTestData(data);
+                    openWorkflowTest(data);
                   }
                 }}
               >
@@ -203,7 +196,7 @@ const Header = () => {
                 colorSchema={'black'}
                 isLoading={loading}
                 isDisabled={showHistoryModal}
-                onClickSave={onClickSave}
+                onClickSave={onClickSaveForButton}
                 checkData={async () => !!(await flowData2StoreDataAndCheck())}
               />
             </HStack>
@@ -220,24 +213,26 @@ const Header = () => {
     showHistoryModal,
     t,
     loading,
-    onClickSave,
-    setActivePanel,
+    onClickSaveForButton,
+    openPanel,
+    closePanel,
     flowData2StoreDataAndCheck,
-    setWorkflowTestData
+    flowData2StoreData,
+    openWorkflowTest
   ]);
 
   return (
     <>
       {Render}
       {currentTab === TabEnum.appEdit && (
-        <PublishHistories<WorkflowSnapshotsType>
+        <PublishHistories<WorkflowVersionEntry>
           isOpen={showHistoryModal}
           onClose={() => {
-            setActivePanel(null);
+            closePanel();
           }}
-          past={past}
-          onSwitchCloudVersion={onSwitchCloudVersion}
-          onSwitchTmpVersion={onSwitchTmpVersion}
+          past={versions}
+          onSwitchCloudVersion={switchCloudVersion}
+          onSwitchTmpVersion={switchVersion}
         />
       )}
 
@@ -245,6 +240,7 @@ const Header = () => {
         isOpen={isOpenBackConfirm}
         onClose={onCloseBackConfirm}
         iconSrc="common/warn"
+        iconColor="#F79009"
         title={t('common:Exit')}
         w={'400px'}
       >
@@ -259,7 +255,8 @@ const Header = () => {
             isLoading={loading}
             onClick={async () => {
               try {
-                await onClickSave({});
+                const saved = await onClickSave({});
+                if (!saved) return;
                 onCloseBackConfirm();
                 onBack();
                 backSaveToast({

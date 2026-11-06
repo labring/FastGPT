@@ -1,6 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import {
+  FlowNodeOutputTypeEnum,
+  FlowNodeTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
+import {
+  NodeOutputKeyEnum,
+  WorkflowIOValueTypeEnum
+} from '@fastgpt/global/core/workflow/constants';
 import {
   graphNode,
   graphEdge,
@@ -78,7 +84,16 @@ describe('AI nodes in complete workflow graphs', () => {
         id: 'ai',
         type,
         params,
-        outputs: [NodeOutputKeyEnum.errorText, 'stack'],
+        outputs: [
+          {
+            id: NodeOutputKeyEnum.errorText,
+            key: NodeOutputKeyEnum.errorText,
+            label: 'errorText',
+            type: FlowNodeOutputTypeEnum.error,
+            valueType: WorkflowIOValueTypeEnum.any
+          },
+          'stack'
+        ],
         isEntry: true,
         catchError: true
       });

@@ -30,6 +30,7 @@ import {
 import { normalizeToolInputValue } from '@fastgpt/global/core/app/tool/systemTool/codec';
 import { getWorkflowInputReferenceDiagnostics } from '../reference/validation';
 import { getWorkflowInputValueForValidation } from '../template/inputValue';
+import { getWorkflowSecretReferences } from '../reference/service';
 
 /**
  * 按 Web 的默认值、输入方式及工具生成策略校验必填项；保留 Core 的 IO 唯一性、类型和 Schema 检查。
@@ -95,6 +96,18 @@ export const validateNodeIO = ({
             allowUserChatInputAgentGenerated: isToolNode
           })
         : input;
+    getWorkflowSecretReferences({
+      flowNodeType: node.flowNodeType,
+      input: normalizedInput
+    }).forEach(({ value, valueType }) => {
+      diagnostics.push(
+        ...getWorkflowInputReferenceDiagnostics({
+          document,
+          nodeId: node.nodeId,
+          input: { ...normalizedInput, value, valueType }
+        })
+      );
+    });
     const selectedType = getSelectedInputRenderType(normalizedInput);
     if (selectedType === undefined) {
       diagnostics.push({

@@ -13,7 +13,7 @@ import type {
   FlowNodeItemType,
   FlowNodeTemplateType
 } from '@fastgpt/global/core/workflow/type/node';
-import type { Node, Edge } from 'reactflow';
+import type { Node, Edge } from '@xyflow/react';
 import {
   FlowNodeTypeEnum,
   FlowNodeInputTypeEnum,
@@ -1044,6 +1044,10 @@ describe('checkWorkflowNodeIssues', () => {
   });
 
   it('uses fixed design copy for mapped issue codes', () => {
+    const t = ((key: string, params?: Record<string, unknown>) => {
+      const text = (commonZh as Record<string, string>)[key.replace('common:', '')] ?? key;
+      return text.replace(/\{\{(\w+)\}\}/g, (_, name) => String(params?.[name] ?? ''));
+    }) as TFunction;
     const disconnectedNode = makeNode('disconnected', FlowNodeTypeEnum.textEditor);
     const unreachableNode = makeNode('unreachable', FlowNodeTypeEnum.answerNode);
     const requiredNode = makeNode('required', FlowNodeTypeEnum.answerNode, {
@@ -1061,22 +1065,20 @@ describe('checkWorkflowNodeIssues', () => {
 
     const unreachableResult = checkWorkflowNodeIssues({
       nodes: [startNode, disconnectedNode, unreachableNode],
-      edges: [{ id: 'e1', source: 'disconnected', target: 'unreachable', type: EDGE_TYPE }]
+      edges: [{ id: 'e1', source: 'disconnected', target: 'unreachable', type: EDGE_TYPE }],
+      t
     });
     const requiredResult = checkWorkflowNodeIssues({
       nodes: [startNode, requiredNode],
-      edges: [{ id: 'e1', source: 'start', target: 'required', type: EDGE_TYPE }]
+      edges: [{ id: 'e1', source: 'start', target: 'required', type: EDGE_TYPE }],
+      t
     });
 
     expect(unreachableResult.unreachable[0]?.code).toBe(
       WorkflowCheckIssueCodeEnum.unreachableFromStart
     );
-    expect(unreachableResult.unreachable[0]?.message).toBe(
-      'common:core.workflow.check.no_upstream'
-    );
-    expect(requiredResult.required[0]?.message).toBe(
-      'common:core.workflow.check.required_input_empty'
-    );
+    expect(unreachableResult.unreachable[0]?.message).toBe('未与其他节点连线');
+    expect(requiredResult.required[0]?.message).toBe('需填写必填项 answer');
   });
 
   it('does not treat non-latest tool versions as inactive', () => {

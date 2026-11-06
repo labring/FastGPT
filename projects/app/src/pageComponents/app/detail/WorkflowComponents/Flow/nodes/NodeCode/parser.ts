@@ -1,4 +1,10 @@
-/** 从助手 Markdown 和 JSDoc 提取代码、参数 key、类型及引用；属性名与 return key 的一致性由生成提示词约束。 */
+import {
+  extractCodeInputDefinitions,
+  extractCodeOutputDefinitions
+} from '@fastgpt/workflow-core/code/io';
+import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
+
+/** 复用 Core 解析真实代码 IO；Markdown 和输入引用注解只在 Web 边界处理。 */
 export const extractCodeFromMarkdown = (
   markdownContent: string
 ): {
@@ -14,18 +20,31 @@ export const extractCodeFromMarkdown = (
   const paramMatches = [
     ...code.matchAll(/@param\s*\{([^}]+)\}\s*(\w+)\s*(?:\[([^\]]+)\])?\s*-?\s*.*/g)
   ];
-  const inputs = paramMatches.map((paramMatch) => ({
+  const documentedInputs = paramMatches.map((paramMatch) => ({
     key: paramMatch[2].trim(),
     type: paramMatch[1].trim(),
     reference: paramMatch[3] ? paramMatch[3].trim() : undefined
   }));
 
-  const outputs = [...code.matchAll(/@property\s*\{([^}]+)\}\s*(\S+)\s*-?\s*.*/g)].map(
+  const documentedOutputs = [...code.matchAll(/@property\s*\{([^}]+)\}\s*(\S+)\s*-?\s*.*/g)].map(
     (propertyMatch) => ({
       key: propertyMatch[2].trim(),
       type: propertyMatch[1].trim()
     })
   );
+  const inputs =
+    extractCodeInputDefinitions(code)?.map(({ key, valueType }) => ({
+      key,
+      type: valueType ?? WorkflowIOValueTypeEnum.any,
+      reference: documentedInputs.find((input) => input.key === key)?.reference
+    })) ?? documentedInputs;
+  // 动态 return 无法静态推断时保留注解，避免应用代码时误删已有输出。
+  const outputs =
+    extractCodeOutputDefinitions(code)?.map(({ key, valueType }) => ({
+      key,
+      type: valueType ?? WorkflowIOValueTypeEnum.any
+    })) ?? documentedOutputs;
+
   // JSDoc 已转换为节点配置，实际代码保留原有去除注释的行为。
   const cleanCode = code.replace(/\/\*\*[\s\S]*?\*\//g, '').trim();
 

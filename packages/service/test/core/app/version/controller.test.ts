@@ -128,6 +128,7 @@ describe('getAppLatestVersion', () => {
         }
       ],
       chatConfig: {},
+      referenceSnapshots: [{ reference: ['deleted-node', 'output'], sourceLabel: 'Deleted node' }],
       resources: []
     };
     const leanMock = vi.fn().mockResolvedValue(version);
@@ -140,6 +141,7 @@ describe('getAppLatestVersion', () => {
     expect(result.nodes.map((node) => node.nodeId)).toEqual(['start']);
     expect(result.edges).toEqual([]);
     expect(result.chatConfig.scheduledTriggerConfig).toEqual(scheduledTriggerConfig);
+    expect(result.referenceSnapshots).toEqual(version.referenceSnapshots);
     expect(result.nodes[0].inputs[0].selectedType).toBe(FlowNodeInputTypeEnum.reference);
     expect(result.nodes[0].inputs[0].inputList?.[0]).not.toHaveProperty('value');
   });
@@ -151,12 +153,15 @@ describe('getAppLatestVersion', () => {
 
     const result = await getAppLatestVersion('app-id', {
       name: 'App without version',
+      pluginData: { nodeVersion: 'legacy-version-id' },
       modules: createAgentVersion().nodes,
       edges: [],
       chatConfig: {}
     } as any);
 
     expect(result.nodes.map((node) => node.nodeId)).toEqual(['agent-node']);
+    expect(result.versionId).toBe('legacy-version-id');
+    expect(result.versionName).toBe('App without version');
     expect(result.resources).toEqual([{ type: 'agent', id: 'legacy-agent-id' }]);
   });
 
@@ -263,7 +268,7 @@ describe('getAppDraftVersion', () => {
     vi.clearAllMocks();
   });
 
-  it('always reads the latest Version by time instead of an App pointer', async () => {
+  it('sorts by latest write time before auto-save status', async () => {
     const version = createAgentVersion([]);
     const sortMock = vi.fn().mockReturnValue({
       lean: vi.fn().mockResolvedValue(version)
@@ -273,7 +278,7 @@ describe('getAppDraftVersion', () => {
     const result = await getAppDraftVersion('app-id');
 
     expect(findOneMock).toHaveBeenCalledWith({ appId: 'app-id' });
-    expect(sortMock).toHaveBeenCalledWith({ time: -1, _id: -1 });
+    expect(sortMock).toHaveBeenCalledWith({ time: -1, isAutoSave: -1, _id: -1 });
     expect(findAppByIdMock).not.toHaveBeenCalled();
     expect(result).toBe(version);
   });
@@ -301,6 +306,24 @@ describe('getAppDraftWorkflow', () => {
     vi.clearAllMocks();
   });
 
+  it('reads the Version selected by the timestamp-first draft query', async () => {
+    const version = {
+      ...createAgentVersion([{ type: 'agent', id: 'saved-agent' }]),
+      isAutoSave: false,
+      versionName: 'Saved V2'
+    };
+    const sortMock = vi.fn().mockReturnValue({
+      lean: vi.fn().mockResolvedValue(version)
+    });
+    findOneMock.mockReturnValue({ sort: sortMock });
+
+    const result = await getAppDraftWorkflow('app-id');
+
+    expect(sortMock).toHaveBeenCalledWith({ time: -1, isAutoSave: -1, _id: -1 });
+    expect(result.versionName).toBe('Saved V2');
+    expect(result.resources).toEqual([{ type: 'agent', id: 'saved-agent' }]);
+  });
+
   it('reads the legacy App workflow before the zero-Version migration completes', async () => {
     findOneMock.mockReturnValue({
       sort: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue(undefined) })
@@ -322,6 +345,29 @@ describe('getAppDraftWorkflow', () => {
       { type: 'agent', id: 'legacy-agent-id' },
       { type: 'skill', id: 'legacy-skill' }
     ]);
+  });
+});
+
+describe('getAppDraftVersion', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('uses the timestamp-first draft query for resource authorization', async () => {
+    const resources = [{ type: 'agent', id: 'saved-agent' }];
+    const version = {
+      ...createAgentVersion(resources),
+      isAutoSave: false
+    };
+    const sortMock = vi.fn().mockReturnValue({
+      lean: vi.fn().mockResolvedValue(version)
+    });
+    findOneMock.mockReturnValue({ sort: sortMock });
+
+    const result = await getAppDraftVersion('app-id');
+
+    expect(sortMock).toHaveBeenCalledWith({ time: -1, isAutoSave: -1, _id: -1 });
+    expect(result).toEqual(version);
   });
 });
 

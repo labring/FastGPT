@@ -8,7 +8,7 @@ import {
   useRef,
   useState
 } from 'react';
-import { useStore, useStoreApi } from 'reactflow';
+import { useStore, useStoreApi } from '@xyflow/react';
 
 const canvasStyle: CSSProperties = {
   width: '100%',

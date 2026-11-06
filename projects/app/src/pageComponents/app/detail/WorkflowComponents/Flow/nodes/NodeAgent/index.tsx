@@ -1,19 +1,20 @@
 import React from 'react';
-import { type NodeProps } from 'reactflow';
 import { useTranslation } from 'next-i18next';
-import { useContextSelector } from 'use-context-selector';
-import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
-import { WorkflowUtilsContext } from '../../../context/workflowUtilsContext';
+import type { CanvasNodeProps } from '@/web/core/workflow/editor/canvas/canvasTypes';
+import { splitNodeOutputs, splitToolInputsByMode } from '@/web/core/workflow/utils';
+import { useNode } from '@/web/core/workflow/editor/react/useNode';
+import type { WorkflowNodeData } from '@fastgpt/global/core/workflow/editor/types';
 import Container from '../../components/Container';
 import IOTitle from '../../components/IOTitle';
 import NodeCard from '../render/NodeCard';
 import RenderInput from '../render/RenderInput';
 import RenderOutput from '../render/RenderOutput';
 import CatchError from '../render/RenderOutput/CatchError';
-import RenderToolInput, { hasDynamicToolInput } from '../render/RenderToolInput';
+import RenderToolInput, { useHasDynamicToolInput } from '../render/RenderToolInput';
+import { useIsToolNode } from '../render/useWorkflowDocument';
 import { AgentNodeInputProvider, useAgentNodeInputContext } from './context';
 import { AgentPromptInput, AgentPromptLabel } from './AgentInputs';
 
@@ -30,24 +31,31 @@ const agentModelSettingProps = {
   showResponseFormat: false
 };
 
-/** 节点仅组织输入、输出与错误分支；Agent 表单能力由上下文和标准模板组合。 */
-const AgentNodeContent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
-  const { nodeId, catchError, inputs, outputs } = data;
+/** 节点只组织 Agent 的标准输入、输出与错误分支；具体资源编辑由 Provider 适配 Runtime。 */
+const AgentNodeContent = ({ data, selected }: CanvasNodeProps) => {
+  const { nodeId } = data;
   const { t } = useTranslation();
   const { skillSelection } = useAgentNodeInputContext();
-  const { splitToolInputs, splitOutput } = useContextSelector(WorkflowUtilsContext, (ctx) => ctx);
-  const { isTool, commonInputs } = useMemoEnhance(
-    () => splitToolInputs(inputs, nodeId),
-    [inputs, nodeId, splitToolInputs]
+  const {
+    inputs = [],
+    outputs = [],
+    catchError = false
+  } = useNode<WorkflowNodeData>(nodeId, (node) => node?.data) ?? {};
+  const isTool = useIsToolNode(nodeId);
+  const hasDynamicInput = useHasDynamicToolInput(nodeId);
+  const { commonInputs } = useMemoEnhance(
+    () => splitToolInputsByMode(inputs, isTool),
+    [inputs, isTool]
   );
   const { successOutputs, errorOutputs } = useMemoEnhance(
-    () => splitOutput(outputs),
-    [splitOutput, outputs]
+    () => splitNodeOutputs(outputs),
+    [outputs]
   );
   const promptInput = inputs.find((input) => input.key === NodeInputKeyEnum.aiSystemPrompt);
+
   return (
     <NodeCard minW={'524px'} selected={selected} {...data}>
-      {isTool && hasDynamicToolInput(data) && (
+      {isTool && hasDynamicInput && (
         <Container>
           <RenderToolInput nodeId={nodeId} inputs={inputs} />
         </Container>
@@ -82,8 +90,8 @@ const AgentNodeContent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   );
 };
 
-const NodeAgent = (props: NodeProps<FlowNodeItemType>) => (
-  <AgentNodeInputProvider data={props.data}>
+const NodeAgent = (props: CanvasNodeProps) => (
+  <AgentNodeInputProvider nodeId={props.data.nodeId}>
     <AgentNodeContent {...props} />
   </AgentNodeInputProvider>
 );

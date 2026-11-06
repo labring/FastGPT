@@ -31,6 +31,20 @@ describe('workflow dropdown outside click', () => {
   let container: HTMLDivElement;
   let scrollToDescriptor: PropertyDescriptor | undefined;
 
+  const waitFor = async (assertion: () => void) => {
+    for (let attempt = 0; attempt < 20; attempt += 1) {
+      try {
+        assertion();
+        return;
+      } catch (error) {
+        if (attempt === 19) throw error;
+        await act(async () => {
+          await new Promise((resolve) => window.setTimeout(resolve, 0));
+        });
+      }
+    }
+  };
+
   const render = async (kind: DropdownKind) => {
     const menu =
       kind === 'MyMenu'
@@ -126,16 +140,24 @@ describe('workflow dropdown outside click', () => {
       );
     });
 
-    const trigger =
+    const getTrigger = () =>
       kind === 'DateTimePicker'
         ? container.querySelector<HTMLElement>('[data-testid="date-picker-trigger"]')
-        : container.querySelector<HTMLElement>('[aria-haspopup="menu"]');
+        : (container.querySelector<HTMLElement>('[aria-haspopup="menu"]') ??
+          container.querySelector<HTMLElement>('button, [role="button"]'));
+    let trigger = getTrigger();
     if (!trigger) throw new Error(`Missing ${kind} trigger`);
 
-    await act(async () => trigger.click());
+    await act(async () => {
+      trigger.click();
+      await new Promise((resolve) => window.requestAnimationFrame(resolve));
+    });
+    trigger = getTrigger();
+    if (!trigger) throw new Error(`Missing ${kind} trigger after opening`);
 
     return {
       trigger,
+      isOpen: () => getTrigger()?.getAttribute('aria-expanded') === 'true',
       dragArea: container.querySelector<HTMLElement>('[data-testid="drag-area"]')!,
       noDragArea: container.querySelector<HTMLElement>('[data-testid="no-drag-area"]')!,
       canvasBackground: container.querySelector<HTMLElement>('[data-testid="canvas-background"]')!,
@@ -195,12 +217,12 @@ describe('workflow dropdown outside click', () => {
     'MultipleRowSelect',
     'MultipleRowArraySelect'
   ] as const)('closes %s when clicking outside on a draggable node area', async (kind) => {
-    const { trigger, dragArea } = await render(kind);
-    expect(trigger.getAttribute('aria-expanded')).toBe('true');
+    const { dragArea, isOpen } = await render(kind);
+    await waitFor(() => expect(isOpen()).toBe(true));
 
     await clickNodeArea(dragArea);
 
-    expect(trigger.getAttribute('aria-expanded')).toBe('false');
+    await waitFor(() => expect(isOpen()).toBe(false));
   });
 
   it.each([
@@ -210,12 +232,12 @@ describe('workflow dropdown outside click', () => {
     'MultipleRowSelect',
     'MultipleRowArraySelect'
   ] as const)('closes %s when starting a canvas drag from the pane', async (kind) => {
-    const { trigger, canvasBackground, flowPane } = await render(kind);
+    const { canvasBackground, flowPane, isOpen } = await render(kind);
     let paneMouseDown = false;
     flowPane.addEventListener('mousedown', () => {
       paneMouseDown = true;
     });
-    expect(trigger.getAttribute('aria-expanded')).toBe('true');
+    await waitFor(() => expect(isOpen()).toBe(true));
 
     await act(async () => {
       canvasBackground.dispatchEvent(new Event('pointerdown', { bubbles: true, cancelable: true }));
@@ -224,7 +246,7 @@ describe('workflow dropdown outside click', () => {
       );
     });
 
-    expect(trigger.getAttribute('aria-expanded')).toBe('false');
+    await waitFor(() => expect(isOpen()).toBe(false));
     expect(paneMouseDown).toBe(true);
   });
 
@@ -235,12 +257,12 @@ describe('workflow dropdown outside click', () => {
     'MultipleRowSelect',
     'MultipleRowArraySelect'
   ] as const)('closes %s when clicking outside on a non-draggable node area', async (kind) => {
-    const { trigger, noDragArea } = await render(kind);
-    expect(trigger.getAttribute('aria-expanded')).toBe('true');
+    const { noDragArea, isOpen } = await render(kind);
+    await waitFor(() => expect(isOpen()).toBe(true));
 
     await clickNodeArea(noDragArea);
 
-    expect(trigger.getAttribute('aria-expanded')).toBe('false');
+    await waitFor(() => expect(isOpen()).toBe(false));
   });
 
   it('keeps MyMenu open for targets marked to ignore outside clicks', async () => {

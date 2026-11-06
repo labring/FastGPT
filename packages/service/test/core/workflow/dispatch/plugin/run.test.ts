@@ -370,15 +370,20 @@ describe('dispatchRunPlugin', () => {
       [DispatchNodeResponseKeyEnum.runTimes]: 1,
       [DispatchNodeResponseKeyEnum.toolResponse]: {},
       [DispatchNodeResponseKeyEnum.newVariables]: {},
-      workflowRuntimeSummary: summarizeRuntimeNodeResponses(undefined, [
-        {
-          id: 'pluginOutputResponse',
-          nodeId: 'pluginOutput',
-          moduleName: 'Output',
-          moduleType: FlowNodeTypeEnum.pluginOutput,
-          pluginOutput: { result: 'ok' }
-        }
-      ])
+      workflowRuntimeSummary: {
+        ...summarizeRuntimeNodeResponses(undefined, [
+          {
+            id: 'pluginOutputResponse',
+            nodeId: 'pluginOutput',
+            moduleName: 'Output',
+            moduleType: FlowNodeTypeEnum.pluginOutput,
+            pluginOutput: { result: 'ok' }
+          }
+        ]),
+        llmInputTokens: 13,
+        llmOutputTokens: 5,
+        citeCollectionIds: ['hidden-system-cite']
+      }
     });
     const nodeResponseSink = { publish: vi.fn() } as any;
     const nodeSummary = createNodeSummary();
@@ -432,7 +437,12 @@ describe('dispatchRunPlugin', () => {
       moduleLogo: 'system-avatar',
       childResponseCount: 1
     });
-    expect(nodeSummary).toMatchObject({ llmInputTokens: 0, llmOutputTokens: 0 });
+    expect(nodeSummary).toMatchObject({
+      llmInputTokens: 13,
+      llmOutputTokens: 5,
+      totalPoints: 1,
+      citeCollectionIds: ['hidden-system-cite']
+    });
     expect(result.error?.[NodeOutputKeyEnum.errorText]).toBeUndefined();
   });
 

@@ -4,14 +4,15 @@ import type {
 } from '@fastgpt/global/core/chat/type';
 import type { AgentLoopEvent } from '../../../../../../ai/llm/agentLoop/domain/event';
 import type { AgentLoopCoreToolDisplayInfo } from '../../domain/toolInfo';
+import { getNanoid } from '@fastgpt/global/common/string/tools';
+import { AgentAskInteractiveSchema } from '@fastgpt/global/core/ai/agent/type';
+import { WorkflowBuilderPreviewInteractiveSchema } from '@fastgpt/global/core/workflow/builder/type';
+
 type AgentLoopCoreAssistantMetaEventNames = {
   setPlanToolName?: string;
   updatePlanToolName?: string;
   askToolName?: string;
 };
-import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { AgentAskInteractiveSchema } from '@fastgpt/global/core/ai/agent/type';
-import { WorkflowBuilderPreviewInteractiveSchema } from '@fastgpt/global/core/workflow/builder/type';
 
 export type CreateAgentLoopCoreAssistantEventCollectorParams = {
   assistantResponses?: AIChatItemValueItemType[];

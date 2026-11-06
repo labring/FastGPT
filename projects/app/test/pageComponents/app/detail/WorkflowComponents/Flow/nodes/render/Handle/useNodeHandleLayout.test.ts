@@ -7,7 +7,7 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { useNodeHandleLayout } from '@/pageComponents/app/detail/WorkflowComponents/Flow/nodes/render/Handle/useNodeHandleLayout';
 
 const mocks = vi.hoisted(() => ({ update: vi.fn() }));
-vi.mock('reactflow', () => ({ useUpdateNodeInternals: () => mocks.update }));
+vi.mock('@xyflow/react', () => ({ useUpdateNodeInternals: () => mocks.update }));
 
 describe('useNodeHandleLayout', () => {
   let dom: JSDOM;

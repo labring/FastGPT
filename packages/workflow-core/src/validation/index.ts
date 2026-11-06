@@ -460,7 +460,8 @@ const validateSpecialNode = ({
  * CLI、辅助生成及运行/发布入口统一执行完整检查，包括主入口与嵌套入口的孤立检查。
  * 返回诊断供调用方决定阻断或展示；保存草稿不调用此检查。
  * 仅显式传入 modelCheck 时检查模型；CLI 生成不传，Web 注入目录和模板。资源状态由 Web/服务端补充。
- * 调用方必须显式选择引用策略：error 保留失效引用报错；asEmpty 剔除失效项后再执行必填及模型检查。
+ * 调用方必须显式选择引用策略：error 保留失效引用报错；asEmpty 剔除普通失效项后再执行必填及模型检查。
+ * 结构化 Secret 引用不受 asEmpty 清理，发布校验仍会拒绝失效来源。
  */
 export const validateWorkflow = (
   sourceDocument: WorkflowDocument,

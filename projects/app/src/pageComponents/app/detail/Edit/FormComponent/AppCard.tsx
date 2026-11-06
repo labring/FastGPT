@@ -14,6 +14,7 @@ import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type
 import { useTranslation } from 'next-i18next';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';
+import { ToastHandledError } from '@fastgpt/global/common/error/utils';
 import { AppContext } from '@/pageComponents/app/detail/context';
 import { useContextSelector } from 'use-context-selector';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
@@ -52,13 +53,14 @@ const AppCard = ({
   const { runAsync: onTransition, loading: transiting } = useRequest(
     async () => {
       const { nodes, edges } = form2WorkflowFn(appForm, t);
-      await onSaveApp({
+      const saved = await onSaveApp({
         nodes,
         edges,
         chatConfig: appForm.chatConfig,
         isPublish: false,
         versionName: t('app:transition_to_workflow')
       });
+      if (!saved) return Promise.reject(new ToastHandledError('Workflow save failed'));
 
       return postTransition2Workflow({ appId, createNew: transitionCreateNew });
     },

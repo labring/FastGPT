@@ -6,19 +6,41 @@ import {
   getFlowValueTypeMeta
 } from '@fastgpt/global/core/workflow/node/constant';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
+import type { TFunction } from 'i18next';
 import { useTranslation } from 'next-i18next';
-import { useContextSelector } from 'use-context-selector';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { WorkflowActionsContext } from '../../../../context/workflowActionsContext';
+import { useNodeActions } from '@/web/core/workflow/editor/react/useNode';
+import { useWorkflowActions } from '@/web/core/workflow/editor/react/useWorkflow';
+import { getOutputDisconnectCommands } from '@/web/core/workflow/utils';
 
 type DynamicOutputsProps = {
   nodeId: string;
   outputs: FlowNodeOutputItemType[];
   addOutput: FlowNodeOutputItemType;
 };
+
+/** 只在 source handle key 变化或字段删除时断开旧输出连线。 */
+export const getDynamicOutputDisconnectCommands = ({
+  edges,
+  nodeId,
+  originalKey,
+  nextKey
+}: {
+  edges: Parameters<typeof getOutputDisconnectCommands>[0]['edges'];
+  nodeId: string;
+  originalKey: string;
+  nextKey?: string;
+}) =>
+  nextKey === originalKey
+    ? []
+    : getOutputDisconnectCommands({
+        edges,
+        nodeId,
+        outputKey: originalKey
+      });
 
 const defaultOutput: FlowNodeOutputItemType = {
   id: '',
@@ -30,42 +52,85 @@ const defaultOutput: FlowNodeOutputItemType = {
   description: ''
 };
 
+const getValueTypeLabel = (t: TFunction, valueType: WorkflowIOValueTypeEnum) => {
+  switch (valueType) {
+    case WorkflowIOValueTypeEnum.string:
+      return t('String');
+    case WorkflowIOValueTypeEnum.number:
+      return t('Number');
+    case WorkflowIOValueTypeEnum.boolean:
+      return t('Boolean');
+    case WorkflowIOValueTypeEnum.object:
+      return t('Object');
+    case WorkflowIOValueTypeEnum.arrayString:
+      return t('Array<string>');
+    case WorkflowIOValueTypeEnum.arrayNumber:
+      return t('Array<number>');
+    case WorkflowIOValueTypeEnum.arrayBoolean:
+      return t('Array<boolean>');
+    case WorkflowIOValueTypeEnum.arrayObject:
+      return t('Array<object>');
+    case WorkflowIOValueTypeEnum.arrayAny:
+      return t('Array');
+    case WorkflowIOValueTypeEnum.chatHistory:
+      return t('common:core.chat.History');
+    case WorkflowIOValueTypeEnum.datasetQuote:
+      return t('common:core.workflow.Dataset quote');
+    case WorkflowIOValueTypeEnum.selectDataset:
+      return t('common:core.chat.Select dataset');
+    default:
+      return t('Any');
+  }
+};
+
 const DynamicOutputs = ({ nodeId, outputs, addOutput }: DynamicOutputsProps) => {
   const { t } = useTranslation();
-  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
+  const nodeActions = useNodeActions(nodeId);
+  // 边集合只在改/删输出字段的回调里读，走非订阅 getter：点击时取当前值，组件不订阅结构变更。
+  const { getEdges } = useWorkflowActions();
 
+  // 输出字段的增删改都是记录级变更：读文档当前 outputs、拼完整数组后走 updateNode。
+  // 只有旧 source handle 失效时断连；值类型、标签、类型变化保留原连线。
   const handleUpdateOutput = useCallback(
     (originalKey: string, updatedOutput: FlowNodeOutputItemType) => {
-      onChangeNode({
-        nodeId,
-        type: 'replaceOutput',
-        key: originalKey,
-        value: updatedOutput
-      });
+      nodeActions?.updateNode(
+        (current) => ({
+          outputs: current.outputs.map((item) => (item.key === originalKey ? updatedOutput : item))
+        }),
+        {
+          disconnectEdges: getDynamicOutputDisconnectCommands({
+            edges: getEdges(),
+            nodeId,
+            originalKey,
+            nextKey: updatedOutput.key
+          })
+        }
+      );
     },
-    [nodeId, onChangeNode]
+    [getEdges, nodeActions, nodeId]
   );
 
   const handleDeleteOutput = useCallback(
     (key: string) => {
-      onChangeNode({
-        nodeId,
-        type: 'delOutput',
-        key
-      });
+      nodeActions?.updateNode(
+        (current) => ({ outputs: current.outputs.filter((item) => item.key !== key) }),
+        {
+          disconnectEdges: getDynamicOutputDisconnectCommands({
+            edges: getEdges(),
+            nodeId,
+            originalKey: key
+          })
+        }
+      );
     },
-    [nodeId, onChangeNode]
+    [getEdges, nodeActions, nodeId]
   );
 
   const handleAddOutput = useCallback(
     (newOutput: FlowNodeOutputItemType) => {
-      onChangeNode({
-        nodeId,
-        type: 'addOutput',
-        value: newOutput
-      });
+      nodeActions?.updateNode((current) => ({ outputs: [...current.outputs, newOutput] }));
     },
-    [nodeId, onChangeNode]
+    [nodeActions]
   );
 
   const Render = useMemo(() => {
@@ -135,7 +200,7 @@ const DynamicOutputItem = ({
           type !== WorkflowIOValueTypeEnum.selectApp && type !== WorkflowIOValueTypeEnum.dynamic
       )
       .map((item) => ({
-        label: t(getFlowValueTypeMeta(item).label),
+        label: getValueTypeLabel(t, item),
         value: item
       }));
   }, [t]);

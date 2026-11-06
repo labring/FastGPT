@@ -1,23 +1,23 @@
 import React, { useCallback, useMemo } from 'react';
 import type { RenderInputProps } from '../type';
 import { Box, Button, Flex, Grid, Switch, useDisclosure } from '@chakra-ui/react';
-import { type SelectedDatasetType } from '@fastgpt/global/core/workflow/type/io';
+import type { SelectedDatasetType } from '@fastgpt/global/core/workflow/type/io';
 import { useTranslation } from 'next-i18next';
 import dynamic from 'next/dynamic';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import { useContextSelector } from 'use-context-selector';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
+import { useContextSelector } from 'use-context-selector';
 import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { getSelectedInputRenderType } from '@fastgpt/global/common/workflow/reference';
 import type { DatasetTagFilterValue } from '@fastgpt/global/core/dataset/search/tagFilter';
-import { WorkflowActionsContext } from '@/pageComponents/app/detail/WorkflowComponents/context/workflowActionsContext';
 import { AppContext } from '@/pageComponents/app/detail/context';
 import type { DatasetParamsModalFormType } from '@/components/core/app/DatasetParamsModal';
 import DatasetCard from '@/components/core/app/DatasetCard';
 import { useDatasetTagFilterPrune } from '@/components/core/dataset/DatasetTagFilterRows';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useField, useFieldActions } from '@/web/core/workflow/editor/react/useField';
+import { useNodeActions } from '@/web/core/workflow/editor/react/useNode';
 import { useWorkflowQuoteLimit } from '../../../../hooks/useWorkflowQuoteLimit';
 import { useReference } from './Reference';
 import {
@@ -32,7 +32,7 @@ const DatasetParamsModal = dynamic(() => import('@/components/core/app/DatasetPa
 
 // Agent 节点将 datasetSimilarity 设为 hidden，使用紧凑卡片样式并将参数入口内联在标题右侧。
 const hasInlineDatasetParamsInput = (inputs: RenderInputProps['inputs'] = []) => {
-  const similarityInput = inputs.find((v) => v.key === NodeInputKeyEnum.datasetSimilarity);
+  const similarityInput = inputs.find((item) => item.key === NodeInputKeyEnum.datasetSimilarity);
   return Boolean(
     similarityInput && getSelectedInputRenderType(similarityInput) === FlowNodeInputTypeEnum.hidden
   );
@@ -44,9 +44,9 @@ export const SelectDatasetRender = React.memo(function SelectDatasetRender({
   nodeId
 }: RenderInputProps) {
   const { t } = useTranslation();
-  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
+  const currentInput = useField(nodeId, item.key, 'input', (field) => field?.data.input);
+  const fieldActions = useFieldActions({ nodeId, fieldKey: item.key, kind: 'input' });
   const hasInlineDatasetParams = useMemo(() => hasInlineDatasetParamsInput(inputs), [inputs]);
-
   const {
     isOpen: isOpenDatasetSelect,
     onOpen: onOpenDatasetSelect,
@@ -54,25 +54,16 @@ export const SelectDatasetRender = React.memo(function SelectDatasetRender({
   } = useDisclosure();
 
   const selectedDatasets = useMemo(() => {
-    if (Array.isArray(item.value)) return item.value as SelectedDatasetType[];
+    if (Array.isArray(currentInput?.value)) return currentInput.value as SelectedDatasetType[];
     return [] as SelectedDatasetType[];
-  }, [item.value]);
+  }, [currentInput?.value]);
 
   const updateDatasets = useCallback(
     (nextDatasets: SelectedDatasetType[]) => {
-      onChangeNode({
-        nodeId,
-        key: item.key,
-        type: 'updateInput',
-        value: {
-          ...item,
-          value: nextDatasets
-        }
-      });
+      fieldActions.setValue(nextDatasets);
     },
-    [item, nodeId, onChangeNode]
+    [fieldActions]
   );
-
   const onDeleteDataset = useCallback(
     (datasetId: string) => {
       updateDatasets(selectedDatasets.filter((dataset) => dataset.datasetId !== datasetId));
@@ -80,68 +71,56 @@ export const SelectDatasetRender = React.memo(function SelectDatasetRender({
     [selectedDatasets, updateDatasets]
   );
 
-  const Render = useMemo(() => {
-    return (
-      <>
-        <Grid
-          gridTemplateColumns={'repeat(2, minmax(0, 1fr))'}
-          gridGap={hasInlineDatasetParams ? 3 : 4}
-          minW={'350px'}
-          w={'100%'}
-        >
-          {hasInlineDatasetParams ? (
-            <AgentChooseButton
-              tip={t('common:core.chat.Select dataset')}
-              data-dataset-select-trigger={nodeId}
-              onClick={onOpenDatasetSelect}
-            />
-          ) : (
-            <Button
-              h={10}
-              leftIcon={<MyIcon name={'common/selectLight'} w={'14px'} />}
-              data-dataset-select-trigger={nodeId}
-              onClick={onOpenDatasetSelect}
-            >
-              {t('common:Choose')}
-            </Button>
-          )}
-          {selectedDatasets.map((dataset) => (
-            <DatasetCard
-              key={dataset.datasetId}
-              dataset={dataset}
-              compact={hasInlineDatasetParams}
-              onDelete={onDeleteDataset}
-            />
-          ))}
-        </Grid>
-        {isOpenDatasetSelect && (
-          <DatasetSelectModal
-            defaultSelectedDatasets={selectedDatasets.map((item) => ({
-              datasetId: item.datasetId,
-              name: item.name,
-              avatar: item.avatar,
-              vectorModel: item.vectorModel,
-              error: item.error
-            }))}
-            onChange={updateDatasets}
-            onClose={onCloseDatasetSelect}
-          />
-        )}
-      </>
-    );
-  }, [
-    hasInlineDatasetParams,
-    isOpenDatasetSelect,
-    nodeId,
-    onCloseDatasetSelect,
-    onOpenDatasetSelect,
-    onDeleteDataset,
-    selectedDatasets,
-    t,
-    updateDatasets
-  ]);
+  if (!currentInput) return null;
 
-  return Render;
+  return (
+    <>
+      <Grid
+        gridTemplateColumns={'repeat(2, minmax(0, 1fr))'}
+        gridGap={hasInlineDatasetParams ? 3 : 4}
+        minW={'350px'}
+        w={'100%'}
+      >
+        {hasInlineDatasetParams ? (
+          <AgentChooseButton
+            tip={t('common:core.chat.Select dataset')}
+            data-dataset-select-trigger={nodeId}
+            onClick={onOpenDatasetSelect}
+          />
+        ) : (
+          <Button
+            h={10}
+            leftIcon={<MyIcon name={'common/selectLight'} w={'14px'} />}
+            data-dataset-select-trigger={nodeId}
+            onClick={onOpenDatasetSelect}
+          >
+            {t('common:Choose')}
+          </Button>
+        )}
+        {selectedDatasets.map((dataset) => (
+          <DatasetCard
+            key={dataset.datasetId}
+            dataset={dataset}
+            compact={hasInlineDatasetParams}
+            onDelete={onDeleteDataset}
+          />
+        ))}
+      </Grid>
+      {isOpenDatasetSelect && (
+        <DatasetSelectModal
+          defaultSelectedDatasets={selectedDatasets.map((dataset) => ({
+            datasetId: dataset.datasetId,
+            name: dataset.name,
+            avatar: dataset.avatar,
+            vectorModel: dataset.vectorModel,
+            error: dataset.error
+          }))}
+          onChange={updateDatasets}
+          onClose={onCloseDatasetSelect}
+        />
+      )}
+    </>
+  );
 });
 
 export const SwitchAuthTmb = React.memo(function SwitchAuthTmb({
@@ -152,7 +131,13 @@ export const SwitchAuthTmb = React.memo(function SwitchAuthTmb({
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
   const appId = useContextSelector(AppContext, (v) => v.appId);
-  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
+  const nodeActions = useNodeActions(nodeId);
+  const authTmbIdInput = useField(
+    nodeId,
+    NodeInputKeyEnum.authTmbId,
+    'input',
+    (field) => field?.data.input
+  );
   const llmMaxQuoteContext = useWorkflowQuoteLimit();
   const { referenceList } = useReference({
     nodeId,
@@ -164,26 +149,24 @@ export const SwitchAuthTmb = React.memo(function SwitchAuthTmb({
     onClose: onCloseDatasetParams
   } = useDisclosure();
 
-  const authTmbIdInput = useMemo(
-    () => inputs.find((v) => v.key === NodeInputKeyEnum.authTmbId),
-    [inputs]
-  );
   const hasInlineDatasetParams = useMemo(() => hasInlineDatasetParamsInput(inputs), [inputs]);
   const datasetIds = useMemo(() => getStaticDatasetIds(item), [item]);
   const datasetParams = useMemo(() => getDatasetSearchParams(inputs), [inputs]);
 
-  // 参数编辑、权限开关和失效标签清理共用顶层输入回写入口。
+  // 参数编辑、权限开关和失效标签清理共用一次 Runtime 记录级提交。
   const onChangeDatasetParams = useCallback(
     (values: Partial<DatasetParamsModalFormType>) => {
-      onChangeNode(
-        getDatasetSearchParamInputs({ inputs, values }).map((input) =>
-          inputs.some((item) => item.key === input.key)
-            ? { nodeId, type: 'updateInput' as const, key: input.key, value: input }
-            : { nodeId, type: 'addInput' as const, value: input }
-        )
-      );
+      nodeActions?.updateNode((current) => {
+        const nextInputs = [...current.inputs];
+        getDatasetSearchParamInputs({ inputs: current.inputs, values }).forEach((input) => {
+          const index = nextInputs.findIndex((item) => item.key === input.key);
+          if (index >= 0) nextInputs[index] = input;
+          else nextInputs.push(input);
+        });
+        return { inputs: nextInputs };
+      });
     },
-    [inputs, nodeId, onChangeNode]
+    [nodeActions]
   );
   const handlePruneTagFilter = useCallback(
     (collectionFilterMatch: DatasetTagFilterValue) =>
