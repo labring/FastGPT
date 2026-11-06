@@ -52,7 +52,9 @@ export const findEnabledModerationConfig = (): Promise<ModerationConfigRecord | 
   MongoSystemModerationPlugin.findOne({
     enabled: true,
     deleted: { $ne: true }
-  }).lean<ModerationConfigRecord>();
+  })
+    .sort({ updateTime: -1 })
+    .lean<ModerationConfigRecord>();
 
 /**
  * 写入一条配置记录（不存在则创建）。

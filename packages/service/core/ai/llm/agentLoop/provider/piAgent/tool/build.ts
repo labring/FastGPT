@@ -8,6 +8,7 @@ import type {
   ChatCompletionMessageToolCall
 } from '@fastgpt/global/core/ai/llm/type';
 import { getErrText } from '@fastgpt/global/common/error/utils';
+import { checkToolResultModeration } from '../../../../../../plugin/moderation/modelInput';
 import { createAskUserAgentTool } from '../../../domain/systemTool/ask';
 import {
   applyPlanUpdate,
@@ -318,8 +319,15 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
                 sandboxClient: sandbox.client,
                 validate: sandbox.validate
               });
+              let response = sandboxResult.response;
+              if (response) {
+                response = await checkToolResultModeration({
+                  response,
+                  context: { teamId: runtime.teamId }
+                });
+              }
               return {
-                response: sandboxResult.response,
+                response,
                 assistantMessages: [],
                 usages: [],
                 errorMessage: sandboxResult.success ? undefined : sandboxResult.response

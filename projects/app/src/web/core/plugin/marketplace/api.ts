@@ -19,10 +19,15 @@ export const getMarketplaceToolDetail = (data: GetMarketplaceToolDetailQueryType
 export const getMarketPlaceToolTags = () =>
   GET<GetMarketplaceToolTagsResponseType>('/marketplace/api/tool/tags');
 
-export const getMarketplaceDownloadURL = (toolId: string, version?: string) =>
+export const getMarketplaceDownloadURL = (
+  toolId: string,
+  version?: string,
+  type?: 'tool' | 'moderation'
+) =>
   GET<GetMarketplaceDownloadUrlResponseType>('/marketplace/api/tool/getDownloadUrl', {
     toolId,
-    ...(version ? { version } : {})
+    ...(version ? { version } : {}),
+    ...(type ? { type } : {})
   });
 
 export const getMarketplaceDownloadURLs = (toolIds: string[]) =>
@@ -30,7 +35,8 @@ export const getMarketplaceDownloadURLs = (toolIds: string[]) =>
     toolIds
   });
 
-export const getMarketplaceToolVersions = (toolId?: string) =>
+export const getMarketplaceToolVersions = (toolId?: string, type?: 'tool' | 'moderation') =>
   GET<GetMarketplaceToolVersionsResponseType>('/marketplace/api/tool/versions', {
-    ...(toolId ? { toolId } : {})
+    ...(toolId ? { toolId } : {}),
+    ...(type ? { type } : {})
   });

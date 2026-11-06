@@ -164,6 +164,7 @@ export class StreamModerationBuffer {
   private streamInterval: number;
   private isEnabled: boolean;
   private isBlocked = false;
+  private queue: Promise<void> = Promise.resolve();
   private context?: CheckContentByPolicyParams['context'];
   private policy?: SystemModerationPolicyType;
   private onApprovedText: (text: string) => void;
@@ -201,86 +202,96 @@ export class StreamModerationBuffer {
    * 推入新生成的流式增量文本
    */
   async push(deltaText: string): Promise<void> {
-    if (this.isBlocked) return;
+    const run = async () => {
+      if (this.isBlocked) return;
 
-    if (!this.isEnabled) {
-      this.onApprovedText(deltaText);
-      return;
-    }
-
-    this.buffer += deltaText;
-
-    while (this.buffer.length >= this.streamInterval) {
-      const chunkToCheck = this.buffer.slice(0, this.streamInterval);
-      const remaining = this.buffer.slice(this.streamInterval);
-      const windowContent = this.accumulatedText + chunkToCheck;
-
-      const checkRes = await checkContentByPolicy({
-        text: windowContent,
-        stage: ModerationStageEnum.output,
-        targetField: 'streamOutput',
-        policy: this.policy,
-        sessionId: this.sessionId,
-        partial: true,
-        context: this.context
-      });
-
-      if (checkRes.action === ModerationActionEnum.block) {
-        ensureNodeModerationRecord(checkRes, {
-          stage: ModerationStageEnum.output,
-          targetField: 'streamOutput',
-          content: windowContent
-        });
-        const errMessage = getModerationBlockErrorMessage(checkRes.verdict);
-        this.triggerBlock(errMessage);
-        throw new UserError(errMessage);
+      if (!this.isEnabled) {
+        this.onApprovedText(deltaText);
+        return;
       }
 
-      this.accumulatedText = windowContent;
-      this.onApprovedText(chunkToCheck);
-      this.buffer = remaining;
-    }
+      this.buffer += deltaText;
+
+      while (this.buffer.length >= this.streamInterval) {
+        const chunkToCheck = this.buffer.slice(0, this.streamInterval);
+        const remaining = this.buffer.slice(this.streamInterval);
+        const windowContent = this.accumulatedText + chunkToCheck;
+
+        const checkRes = await checkContentByPolicy({
+          text: windowContent,
+          stage: ModerationStageEnum.output,
+          targetField: 'streamOutput',
+          policy: this.policy,
+          sessionId: this.sessionId,
+          partial: true,
+          context: this.context
+        });
+
+        if (checkRes.action === ModerationActionEnum.block) {
+          ensureNodeModerationRecord(checkRes, {
+            stage: ModerationStageEnum.output,
+            targetField: 'streamOutput',
+            content: windowContent
+          });
+          const errMessage = getModerationBlockErrorMessage(checkRes.verdict);
+          this.triggerBlock(errMessage);
+          throw new UserError(errMessage);
+        }
+
+        this.accumulatedText = windowContent;
+        this.onApprovedText(chunkToCheck);
+        this.buffer = remaining;
+      }
+    };
+
+    this.queue = this.queue.then(run, run);
+    return this.queue;
   }
 
   /**
    * 流式生成完毕后冲刷缓冲区残留内容
    */
   async flush(): Promise<void> {
-    if (this.isBlocked) return;
+    const run = async () => {
+      if (this.isBlocked) return;
 
-    if (!this.isEnabled) {
-      return;
-    }
-
-    if (this.buffer.length > 0) {
-      const remainingChunk = this.buffer;
-      this.buffer = '';
-      const windowContent = this.accumulatedText + remainingChunk;
-
-      const checkRes = await checkContentByPolicy({
-        text: windowContent,
-        stage: ModerationStageEnum.output,
-        targetField: 'streamOutput',
-        policy: this.policy,
-        sessionId: this.sessionId,
-        partial: false,
-        context: this.context
-      });
-
-      if (checkRes.action === ModerationActionEnum.block) {
-        ensureNodeModerationRecord(checkRes, {
-          stage: ModerationStageEnum.output,
-          targetField: 'streamOutput',
-          content: windowContent
-        });
-        const errMessage = getModerationBlockErrorMessage(checkRes.verdict);
-        this.triggerBlock(errMessage);
-        throw new UserError(errMessage);
+      if (!this.isEnabled) {
+        return;
       }
 
-      this.accumulatedText = windowContent;
-      this.onApprovedText(remainingChunk);
-    }
+      if (this.buffer.length > 0) {
+        const remainingChunk = this.buffer;
+        this.buffer = '';
+        const windowContent = this.accumulatedText + remainingChunk;
+
+        const checkRes = await checkContentByPolicy({
+          text: windowContent,
+          stage: ModerationStageEnum.output,
+          targetField: 'streamOutput',
+          policy: this.policy,
+          sessionId: this.sessionId,
+          partial: false,
+          context: this.context
+        });
+
+        if (checkRes.action === ModerationActionEnum.block) {
+          ensureNodeModerationRecord(checkRes, {
+            stage: ModerationStageEnum.output,
+            targetField: 'streamOutput',
+            content: windowContent
+          });
+          const errMessage = getModerationBlockErrorMessage(checkRes.verdict);
+          this.triggerBlock(errMessage);
+          throw new UserError(errMessage);
+        }
+
+        this.accumulatedText = windowContent;
+        this.onApprovedText(remainingChunk);
+      }
+    };
+
+    this.queue = this.queue.then(run, run);
+    return this.queue;
   }
 
   private triggerBlock(reason: string = MODERATION_BLOCKED_ERROR_MESSAGE) {
