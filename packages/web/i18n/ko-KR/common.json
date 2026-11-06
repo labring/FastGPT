@@ -1,5 +1,12 @@
 {
   "not_set": "설정 안 함",
+  "share_brand": "FastGPT 워터마크",
+  "share_brand_control": "로그인 없는 공유 링크의 브랜드 표시 제어",
+  "share_brand_tip": "기본적으로 채팅 페이지에 FastGPT 브랜드가 표시됩니다.",
+  "share_brand_requires_plan": "현재 요금제에는 FastGPT 워터마크 숨기기 권한이 없습니다",
+  "share_brand_plan_load_failed": "요금제 정보를 불러오지 못했습니다",
+  "share_brand_visit": "FastGPT로 이동",
+  "share_brand_dismiss": "이번 방문에서 FastGPT 브랜드 표시 숨기기",
   "Action": "작업",
   "Add": "추가",
   "Add_new_input": "새 입력 추가",

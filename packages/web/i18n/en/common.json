@@ -1,5 +1,12 @@
 {
   "not_set": "Not set",
+  "share_brand": "FastGPT watermark",
+  "share_brand_control": "Control branding display on public share links",
+  "share_brand_tip": "FastGPT branding is displayed on the chat page by default.",
+  "share_brand_requires_plan": "Your current plan does not include hiding the FastGPT watermark",
+  "share_brand_plan_load_failed": "Failed to load plan details",
+  "share_brand_visit": "Go to FastGPT",
+  "share_brand_dismiss": "Hide FastGPT branding for this visit",
   "Action": "Action",
   "Add": "Add",
   "Add_new_input": "Add new input",

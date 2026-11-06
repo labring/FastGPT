@@ -88,6 +88,8 @@ const WorkorderEntrance = dynamic(() => import('@/pageComponents/chat/WorkorderE
 
 type Props = ChatProviderProps &
   BoxProps & {
+    /** 分享页品牌位于底部时，合规提示由外层移至顶部。 */
+    complianceTipPlacement?: 'default' | 'external';
     isReady: boolean;
     features?: ChatBoxFeatures;
     active?: boolean; // can use
@@ -152,6 +154,7 @@ const resolveChatBoxFeatures = (features?: ChatBoxFeatures): Required<ChatBoxFea
 });
 
 const ChatBox = ({
+  complianceTipPlacement = 'default',
   isReady = true,
   features,
   active = true,
@@ -751,7 +754,9 @@ const ChatBox = ({
               ) : (
                 <MobileHomeLayout inputSlot={HomeChatInput} />
               )}
-              {!isLogMode && <ComplianceTip type={'chat'} pt={0} pb={4} />}
+              {!isLogMode && complianceTipPlacement !== 'external' && (
+                <ComplianceTip type={'chat'} pt={0} pb={4} />
+              )}
             </MyBox>
           ) : (
             <>
@@ -840,7 +845,9 @@ const ChatBox = ({
                     </Box>
                   </>
                 )}
-                {!isLogMode && <ComplianceTip type={'chat'} pt={0} pb={4} />}
+                {!isLogMode && complianceTipPlacement !== 'external' && (
+                  <ComplianceTip type={'chat'} pt={0} pb={4} />
+                )}
               </Box>
             </>
           )}
