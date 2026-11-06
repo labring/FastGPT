@@ -59,24 +59,17 @@ export function buildPiModel(
       ? normalizeBaseUrl(legacyEndpoint.baseUrl) || openaiBaseUrl
       : openaiBaseUrl;
 
-  const apiKey = hasUserOpenAIKey
-    ? userKey.key
+  const authorization = hasUserOpenAIKey
+    ? `Bearer ${userKey.key}`
     : legacyEndpoint
-      ? legacyEndpoint.apiKey
-      : openaiBaseKey;
-
-  // pi-ai 把空 apiKey 当作缺失并回退宿主 OPENAI_API_KEY；
-  // 无鉴权端点用哨兵值占位，再通过 headers 中的 null 清除实际 Authorization。
-  const isUnauthenticatedEndpoint = !!legacyEndpoint && !legacyEndpoint.apiKey;
-  const effectiveApiKey = isUnauthenticatedEndpoint ? NO_AUTH_API_KEY : apiKey;
+      ? (legacyEndpoint.authorization ?? null)
+      : openaiBaseKey
+        ? `Bearer ${openaiBaseKey}`
+        : undefined;
 
   const scopeHeaders = getAiproxyScopeHeaders(modelData, baseUrl);
   const headers: Record<string, string | null> = {
-    ...(isUnauthenticatedEndpoint
-      ? { Authorization: null }
-      : effectiveApiKey
-        ? { Authorization: `Bearer ${effectiveApiKey}` }
-        : {}),
+    ...(authorization !== undefined ? { Authorization: authorization } : {}),
     ...scopeHeaders
   };
 

@@ -1,5 +1,6 @@
 import { getErrText, UserConfigError } from '@fastgpt/global/common/error/utils';
 import type { UnStreamResponseType } from '@fastgpt/global/core/ai/llm/type';
+import { isTeamModel } from '@fastgpt/global/core/ai/model/utils';
 import OpenAI from '@fastgpt/global/core/ai';
 import { getAIApi, getModelOpenAIOptions, type AIApiRequestMeta } from '../../config';
 import { normalizeRelayNoChannelError } from '../../../../thirdProvider/aiproxy/error';
@@ -64,7 +65,7 @@ export const createChatCompletion = async ({
   const { ai, requestMeta } = getAIApi({
     userKey,
     timeout: formatTimeout,
-    model: modelData
+    ...(isTeamModel(modelData) ? { model: modelData } : {})
   });
 
   try {

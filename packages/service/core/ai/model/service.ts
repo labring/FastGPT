@@ -24,8 +24,11 @@ import { deleteModelRecords } from './cleanup';
 import { importSystemModels as importSystemModelRecords } from './import';
 import { MongoAIModel } from './schema';
 import { refreshModelTemplates } from './template';
-import { assertTeamModelRequestUrlSafe } from './requestUrlSafety';
-import { getModelConfigUpdate, sanitizeTeamModelData } from './utils';
+import {
+  assertTeamModelRequestUrlSafe,
+  getModelConfigUpdate,
+  sanitizeTeamModelData
+} from './utils';
 
 const logger = getLogger(LogCategories.MODULE.AI.MODEL);
 
@@ -94,29 +97,13 @@ export const updateModel = async ({
     )
       throw new UserError(ModelErrEnum.alreadyExists);
     const normalizedModelData = normalizeModelPricingForSave({ ...modelData, model: newModel });
-    const hasRequestUrl = Object.prototype.hasOwnProperty.call(normalizedModelData, 'requestUrl');
-    const hasRequestAuth = Object.prototype.hasOwnProperty.call(normalizedModelData, 'requestAuth');
-    const requestUrlValue = (normalizedModelData as { requestUrl?: unknown }).requestUrl;
-    // 团队模型表单不提供端点配置，缺失字段表示保持原值；显式清空 URL 时，
-    // 未提交的旧鉴权也不能保留，避免后续换地址时把旧密钥带到新地址。
-    const clearsRequestUrl =
-      hasRequestUrl &&
-      (requestUrlValue === null ||
-        requestUrlValue === undefined ||
-        (typeof requestUrlValue === 'string' && requestUrlValue.trim() === ''));
-    const modelDataForUpdate =
-      context.scope === ModelScopeEnum.team
-        ? sanitizeTeamModelData({
-            ...normalizedModelData,
-            ...(!hasRequestUrl ? { requestUrl: existing.requestUrl ?? undefined } : {}),
-            ...(!hasRequestAuth && !clearsRequestUrl
-              ? { requestAuth: existing.requestAuth ?? undefined }
-              : {})
-          })
-        : normalizedModelData;
     await MongoAIModel.updateOne(
       { _id: modelId, ...filter },
-      getModelConfigUpdate(modelDataForUpdate),
+      getModelConfigUpdate(
+        context.scope === ModelScopeEnum.team
+          ? sanitizeTeamModelData(normalizedModelData)
+          : normalizedModelData
+      ),
       { session }
     );
     return { modelId, oldModel: existing.model, newModel };
@@ -216,7 +203,7 @@ export const updateModelOrder = async ({
   if (changed) await refreshMutationCatalog(context);
 };
 
-/** 创建时覆盖归属并忽略展示 rank；团队模型去除直连配置，唯一索引负责并发重名兜底。 */
+/** 创建时覆盖归属并忽略展示 rank；团队模型清洗测试模式并保留过渡期直连配置，唯一索引负责并发重名兜底。 */
 export const createModel = async ({
   modelData,
   channelIds,

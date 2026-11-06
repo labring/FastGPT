@@ -87,32 +87,7 @@ describe('Legacy requestUrl compatibility', () => {
       });
     });
 
-    it('does not attach AI Proxy scope headers when a team model uses its own endpoint', () => {
-      const options = getLegacyOpenAIRequestOptions({
-        model: {
-          scope: ModelScopeEnum.team,
-          tmbId: 'tmb-123',
-          requestUrl: 'https://api.custom.com/v1',
-          requestAuth: 'sk-team'
-        },
-        usedUserOpenAIKey: false,
-        headers: { 'X-Custom': 'val' },
-        scopeHeaders: {
-          'X-Aiproxy-Group': 'group-a',
-          'X-Aiproxy-Group-Channel-Mode': 'own'
-        }
-      });
-
-      expect(options).toEqual({
-        path: 'https://api.custom.com/v1',
-        headers: {
-          'X-Custom': 'val',
-          Authorization: 'Bearer sk-team'
-        }
-      });
-    });
-
-    it('strips the client default Authorization when the endpoint has no auth', () => {
+    it('strips the client default Authorization and scope headers when the endpoint has no auth', () => {
       const options = getLegacyOpenAIRequestOptions({
         model: {
           scope: ModelScopeEnum.team,

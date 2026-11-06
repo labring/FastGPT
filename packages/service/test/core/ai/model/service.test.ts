@@ -291,121 +291,16 @@ describe('team model writes', () => {
       expect(await readModelCatalogRevision(context)).toBe(1);
       expect(await readModelCatalogRevision({ scope: ModelScopeEnum.system })).toBe(0);
     });
-    it('rejects a team model whose custom endpoint points at a metadata address', async () => {
+    it('validates, persists and clears team custom endpoints across create, update and template install', async () => {
+      const unsafeUrl = 'http://169.254.169.254/latest/meta-data';
       await expect(
-        createModel({
-          ...owner,
-          modelData: {
-            ...draft,
-            requestUrl: 'http://169.254.169.254/latest/meta-data'
-          }
-        })
+        createModel({ ...owner, modelData: { ...draft, requestUrl: unsafeUrl } })
       ).rejects.toThrow('requestUrl');
 
-      expect(await MongoAIModel.countDocuments({})).toBe(0);
-    });
-    it('persists a safe team custom endpoint', async () => {
-      const result = await createModel({
-        ...owner,
-        modelData: {
-          ...draft,
-          requestUrl: 'https://93.184.216.34/v1',
-          requestAuth: 'sk-team'
-        }
-      });
-
-      expect(await MongoAIModel.findById(result.modelId).lean()).toMatchObject({
-        requestUrl: 'https://93.184.216.34/v1',
-        requestAuth: 'sk-team'
-      });
-    });
-    it('keeps an existing endpoint when editing other fields', async () => {
-      const created = await createModel({
-        ...owner,
-        modelData: {
-          ...draft,
-          requestUrl: 'https://93.184.216.34/v1',
-          requestAuth: 'sk-team'
-        }
-      });
-
-      // 表单不提供端点配置，只提交其他字段时不能清空已有端点。
-      await updateModel({
-        ...owner,
-        modelId: created.modelId,
-        modelData: { ...draft, name: 'Renamed' }
-      });
-
-      expect(await MongoAIModel.findById(created.modelId).lean()).toMatchObject({
-        name: 'Renamed',
-        requestUrl: 'https://93.184.216.34/v1',
-        requestAuth: 'sk-team'
-      });
-    });
-    it('clears auth when the endpoint URL is explicitly removed', async () => {
-      const created = await createModel({
-        ...owner,
-        modelData: {
-          ...draft,
-          requestUrl: 'https://93.184.216.34/v1',
-          requestAuth: 'sk-team'
-        }
-      });
-
-      await updateModel({
-        ...owner,
-        modelId: created.modelId,
-        modelData: { ...draft, requestUrl: '' }
-      });
-
-      const stored = await MongoAIModel.findById(created.modelId).lean();
-      expect(stored?.requestUrl).toBeUndefined();
-      expect(stored?.requestAuth).toBeUndefined();
-    });
-    it('validates and clears team endpoints on update', async () => {
-      const created = await createModel({
-        ...owner,
-        modelData: {
-          ...draft,
-          requestUrl: 'https://93.184.216.34/v1',
-          requestAuth: 'sk-team'
-        }
-      });
-
-      await expect(
-        updateModel({
-          ...owner,
-          modelId: created.modelId,
-          modelData: {
-            ...draft,
-            requestUrl: 'http://169.254.169.254/latest/meta-data'
-          }
-        })
-      ).rejects.toThrow('requestUrl');
-
-      await updateModel({
-        ...owner,
-        modelId: created.modelId,
-        modelData: {
-          ...draft,
-          requestUrl: '',
-          requestAuth: ''
-        }
-      });
-
-      const stored = await MongoAIModel.findById(created.modelId).lean();
-      expect(stored?.requestUrl).toBeUndefined();
-      expect(stored?.requestAuth).toBeUndefined();
-    });
-    it('rejects an unsafe endpoint carried by a team model template', async () => {
       const templateModule = await import('@fastgpt/service/core/ai/model/template');
-      const unsafeTemplate = {
-        ...draft,
-        requestUrl: 'http://169.254.169.254/latest/meta-data'
-      };
       const templateSpy = vi
         .spyOn(templateModule, 'refreshModelTemplates')
-        .mockResolvedValue([unsafeTemplate]);
+        .mockResolvedValue([{ ...draft, requestUrl: unsafeUrl }]);
       try {
         await expect(
           createModelsFromTemplates({
@@ -413,10 +308,40 @@ describe('team model writes', () => {
             templates: [{ model: draft.model, type: draft.type }]
           })
         ).rejects.toThrow('requestUrl');
-        expect(await MongoAIModel.countDocuments({})).toBe(0);
       } finally {
         templateSpy.mockRestore();
       }
+      expect(await MongoAIModel.countDocuments({})).toBe(0);
+
+      const created = await createModel({
+        ...owner,
+        modelData: {
+          ...draft,
+          requestUrl: 'https://93.184.216.34/v1',
+          requestAuth: 'sk-team'
+        }
+      });
+      expect(await MongoAIModel.findById(created.modelId).lean()).toMatchObject({
+        requestUrl: 'https://93.184.216.34/v1',
+        requestAuth: 'sk-team'
+      });
+
+      await expect(
+        updateModel({
+          ...owner,
+          modelId: created.modelId,
+          modelData: { ...draft, requestUrl: unsafeUrl }
+        })
+      ).rejects.toThrow('requestUrl');
+
+      await updateModel({
+        ...owner,
+        modelId: created.modelId,
+        modelData: { ...draft, requestUrl: '', requestAuth: '' }
+      });
+      const stored = await MongoAIModel.findById(created.modelId).lean();
+      expect(stored?.requestUrl).toBeUndefined();
+      expect(stored?.requestAuth).toBeUndefined();
     });
     it('keeps team model order isolated to the owning member', async () => {
       const ownFirst = await createModel({ ...owner, modelData: draft });

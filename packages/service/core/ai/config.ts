@@ -95,7 +95,9 @@ export const getAiproxyScopeHeaders = (
   modelData: AiproxyScopeModelInput,
   baseUrl: string | undefined
 ): Record<string, string> => {
-  if (!baseUrl || baseUrl !== aiProxyBaseUrl || !modelData) return {};
+  if (!baseUrl || baseUrl !== aiProxyBaseUrl || !modelData || hasLegacyRequestUrl(modelData)) {
+    return {};
+  }
 
   // System models are served by system channels only (global scope).
   if (isSystemModel(modelData)) {
@@ -116,7 +118,7 @@ export const getAiproxyScopeHeaders = (
 
 /**
  * 统一生成传给 OpenAI SDK 方法的 options（path、Authorization 及 AI Proxy 路由标头）。
- * 内部自动通过 legacy 模块处理系统模型自带的 requestUrl/requestAuth 兼容逻辑。
+ * 内部自动通过 legacy 模块处理模型自带的 requestUrl/requestAuth 兼容逻辑。
  */
 export const getModelOpenAIOptions = ({
   model,
@@ -155,7 +157,7 @@ export const getModelOpenAIOptions = ({
 
 /**
  * 统一生成传给 Axios 方法的目标 URL 与标头（如 Rerank、STT）。
- * 内部自动通过 legacy 模块处理系统模型自带的 requestUrl/requestAuth 兼容逻辑。
+ * 内部自动通过 legacy 模块处理模型自带的 requestUrl/requestAuth 兼容逻辑。
  */
 export const getModelAxiosConfig = ({
   model,
@@ -183,8 +185,7 @@ export const getModelAxiosConfig = ({
 
 /**
  * 选择模型请求使用的 Axios 实例。
- * 团队模型命中自定义端点时使用带 SSRF 拦截的实例，避免运行时 DNS rebinding/重定向进入内网；
- * 系统模型（root 配置）和 AI Proxy 请求保持 axiosWithoutSSRF。
+ * 团队模型命中自定义端点时使用带 SSRF 拦截的实例，系统模型和 AI Proxy 请求保持 axiosWithoutSSRF。
  */
 export const getModelRequestClient = (model?: AiproxyScopeModelInput) =>
   hasLegacyRequestUrl(model) && isTeamModel(model) ? axios : axiosWithoutSSRF;

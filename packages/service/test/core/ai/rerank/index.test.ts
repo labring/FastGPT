@@ -25,7 +25,6 @@ vi.mock('@fastgpt/service/core/ai/config', async (importOriginal) => ({
   })
 }));
 
-// rerank 自定义端点走带 SSRF 拦截的 axios，其余走 axiosWithoutSSRF；两者共用同一 mock。
 vi.mock('@fastgpt/service/common/api/axios', () => {
   const createClient = () => ({
     post: (...args: any[]) => Promise.resolve(mockAxiosPost(...args)).then((data) => ({ data }))

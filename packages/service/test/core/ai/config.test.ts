@@ -185,15 +185,21 @@ describe('AI config user OpenAI account', () => {
       baseUrl: 'https://user.example.com/v1'
     });
   });
-});
 
-describe('model request client selection', () => {
-  it('uses the SSRF-protected axios when a custom endpoint is configured', async () => {
-    vi.resetModules();
-    const [{ getModelRequestClient }, axiosModule] = await Promise.all([
-      import('@fastgpt/service/core/ai/config'),
-      import('@fastgpt/service/common/api/axios')
-    ]);
+  it('omits AI Proxy scope headers and selects SSRF-protected axios only for team custom endpoints', async () => {
+    const [{ getAiproxyScopeHeaders, getModelRequestClient, openaiBaseUrl }, axiosModule] =
+      await Promise.all([importConfig(), import('@fastgpt/service/common/api/axios')]);
+
+    expect(
+      getAiproxyScopeHeaders(
+        {
+          scope: 'team',
+          tmbId: 'tmb-1',
+          requestUrl: 'https://custom.example.com/v1'
+        } as any,
+        openaiBaseUrl
+      )
+    ).toEqual({});
 
     expect(
       getModelRequestClient({
@@ -201,25 +207,7 @@ describe('model request client selection', () => {
         requestUrl: 'https://api.example.com/v1'
       })
     ).toBe(axiosModule.axios);
-  });
-
-  it('keeps axiosWithoutSSRF for models served by AI Proxy', async () => {
-    vi.resetModules();
-    const [{ getModelRequestClient }, axiosModule] = await Promise.all([
-      import('@fastgpt/service/core/ai/config'),
-      import('@fastgpt/service/common/api/axios')
-    ]);
-
     expect(getModelRequestClient({ scope: 'team' })).toBe(axiosModule.axiosWithoutSSRF);
-  });
-
-  it('keeps the original transport for system models with custom endpoints', async () => {
-    vi.resetModules();
-    const [{ getModelRequestClient }, axiosModule] = await Promise.all([
-      import('@fastgpt/service/core/ai/config'),
-      import('@fastgpt/service/common/api/axios')
-    ]);
-
     expect(
       getModelRequestClient({ scope: 'system', requestUrl: 'https://api.example.com/v1' })
     ).toBe(axiosModule.axiosWithoutSSRF);

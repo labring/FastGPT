@@ -3,6 +3,7 @@ import { getAIApi, getModelOpenAIOptions } from '../config';
 import { normalizeRelayNoChannelError } from '../../../thirdProvider/aiproxy/error';
 import { Readable } from 'stream';
 import type { TTSModelDataType } from '@fastgpt/global/core/ai/model/schema';
+import { isTeamModel } from '@fastgpt/global/core/ai/model/utils';
 
 /** 生产播报与模型探测共用的 TTS 请求入口，统一路由、超时、取消和无可用渠道错误。 */
 export const requestSpeech = async ({
@@ -26,10 +27,14 @@ export const requestSpeech = async ({
   maxRetries?: number;
   onRequestStart?: () => void;
 }) => {
-  const { ai, requestMeta } = getAIApi({
-    ...(timeoutMs === undefined ? {} : { timeout: timeoutMs }),
-    model
-  });
+  const { ai, requestMeta } = getAIApi(
+    timeoutMs === undefined && !isTeamModel(model)
+      ? undefined
+      : {
+          ...(timeoutMs === undefined ? {} : { timeout: timeoutMs }),
+          ...(isTeamModel(model) ? { model } : {})
+        }
+  );
   onRequestStart?.();
   try {
     return await ai.audio.speech.create(

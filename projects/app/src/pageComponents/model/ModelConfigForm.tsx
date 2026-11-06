@@ -500,9 +500,6 @@ const ModelConfigForm = ({
         if (val === null || val === undefined) delete modelData[key];
       }
       if (isTeamModel) {
-        // 端点配置不在 UI 中展示；移除后由服务端保留原值，避免重复校验和密钥回传。
-        delete modelData.requestUrl;
-        delete modelData.requestAuth;
         delete modelData.testMode;
       }
 
