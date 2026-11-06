@@ -8,24 +8,83 @@ import { getBackendFileOperationTimeoutMs } from '../../common/file/parseTimeout
 const MINICPM_OCR_DEFAULT_BASE_URL = 'https://api.modelbest.cn/v1';
 const MINICPM_OCR_POLL_INTERVAL_MS = 2000;
 const MINICPM_OCR_REQUEST_TIMEOUT_MS = 60000;
+const MINICPM_OCR_CANCEL_TIMEOUT_MS = 10000;
+const MINICPM_OCR_MAX_SUBMIT_ATTEMPTS = 20;
+const MINICPM_OCR_MAX_BACKOFF_MS = 30000;
+
+/**
+ * 这些块不参与整页 Markdown，识别失败不会造成正文缺失，因此不阻断整篇解析。
+ * skipped_no_vlm（图片）和 skipped_seal（关闭印章识别）是正常跳过状态，不在此列。
+ */
+const MINICPM_OCR_NON_MARKDOWN_LABELS = new Set([
+  'header',
+  'footer',
+  'number',
+  'footnote',
+  'aside_text',
+  'image',
+  'seal'
+]);
+
+type MiniCPMOcrBlock = {
+  label?: string;
+  status?: string;
+};
+
+type MiniCPMOcrPage = {
+  choices?: {
+    message?: {
+      content?: string;
+    };
+  }[];
+  ocr?: {
+    blocks?: MiniCPMOcrBlock[];
+  };
+};
 
 type MiniCPMOcrJobResponse = {
   id?: string;
   status?: string;
   pages_total?: number;
   markdown?: string;
-  pages?: {
-    choices?: {
-      message?: {
-        content?: string;
-      };
-    }[];
-  }[];
+  pages?: MiniCPMOcrPage[];
   error?:
     | string
     | {
         message?: string;
       };
+};
+
+const getErrorStatus = (error: any): number | undefined => {
+  const status = error?.response?.status;
+  return typeof status === 'number' ? status : undefined;
+};
+
+/** 读取 Retry-After（秒数或 HTTP 日期），缺失或非法时使用调用方提供的退避时间。 */
+const getRetryAfterMs = (headers: any, fallbackMs: number) => {
+  const raw =
+    typeof headers?.get === 'function'
+      ? headers.get('retry-after')
+      : (headers?.['retry-after'] ?? headers?.['Retry-After']);
+
+  if (typeof raw === 'number' && Number.isFinite(raw) && raw >= 0) {
+    return raw * 1000;
+  }
+  if (typeof raw === 'string') {
+    const seconds = Number(raw);
+    if (Number.isFinite(seconds) && seconds >= 0) return seconds * 1000;
+
+    const date = Date.parse(raw);
+    if (!Number.isNaN(date)) return Math.max(0, date - Date.now());
+  }
+
+  return fallbackMs;
+};
+
+/** 无 Retry-After 时使用有上限的指数退避，并加少量抖动避免并发任务同时重试。 */
+const getBackoffMs = (attempt: number) => {
+  const baseMs = Math.min(1000 * 2 ** (attempt - 1), MINICPM_OCR_MAX_BACKOFF_MS);
+  return baseMs + Math.floor(Math.random() * Math.min(1000, baseMs));
 };
 
 /**
@@ -34,6 +93,9 @@ type MiniCPMOcrJobResponse = {
  * 解析接口是异步任务：先上传文件拿到 job id，再轮询任务状态，成功后读取
  * 顶层 markdown 和 pages_total。接口地址默认使用 ModelBest 国内站，可通过
  * baseURL 切换到国际站或兼容该协议的服务。
+ *
+ * 官方限制每个用户/项目最多 2 个活动任务，FastGPT 默认解析并发为 10，因此
+ * 提交和轮询遇到 429 时都会在总截止时间内退避重试，而不是直接失败。
  */
 export const useMiniCPMOcrServer = ({ apiKey, baseURL }: { apiKey: string; baseURL?: string }) => {
   const logger = getLogger(LogCategories.MODULE.DATASET.FILE);
@@ -78,15 +140,36 @@ export const useMiniCPMOcrServer = ({ apiKey, baseURL }: { apiKey: string; baseU
   };
 
   /**
+   * 任务 Success 时仍可能有内容块识别失败（status=failed）。这些块会缺内容但
+   * 整页 Markdown 仍会返回，必须在入库前显式报错，避免把不完整文档当成完整结果。
+   */
+  const getFailedBlockLabels = (data: MiniCPMOcrJobResponse) => {
+    const labels = new Set<string>();
+
+    for (const page of data.pages ?? []) {
+      for (const block of page.ocr?.blocks ?? []) {
+        if (block.status !== 'failed') continue;
+
+        const label = block.label?.trim() || 'unknown';
+        if (MINICPM_OCR_NON_MARKDOWN_LABELS.has(label)) continue;
+        labels.add(label);
+      }
+    }
+
+    return Array.from(labels);
+  };
+
+  /**
    * MiniCPM-OCR 对图片区域只输出空的图片占位符，不返回图片内容。保留占位符
    * 会在 FastGPT 里显示为破图，这里直接删除。
    */
   const removeEmptyImagePlaceholders = (text: string) => text.replace(/!\[[^\]]*\]\(\s*\)/g, '');
 
+  /** 尽力取消任务；取消失败只记录日志，不覆盖原始解析错误。 */
   const cancelJob = async (jobId: string) => {
     try {
       await instance.delete(`/document-parse/jobs/${encodeURIComponent(jobId)}`, {
-        timeout: MINICPM_OCR_REQUEST_TIMEOUT_MS
+        timeout: MINICPM_OCR_CANCEL_TIMEOUT_MS
       });
     } catch (error) {
       logger.warn('MiniCPM-OCR cancel job failed', {
@@ -96,6 +179,12 @@ export const useMiniCPMOcrServer = ({ apiKey, baseURL }: { apiKey: string; baseU
     }
   };
 
+  /**
+   * 解析 PDF：提交异步任务、轮询结果、校验分块状态并返回 Markdown。
+   *
+   * 所有等待都共享同一个总截止时间；429 按 Retry-After 或有界指数退避重试，
+   * 401/403/404 等永久错误快速失败。任务未结束时会在 finally 中取消。
+   */
   const parsePDF = async (fileBuffer: Buffer) => {
     logger.debug('MiniCPM-OCR PDF parse started');
     const startTime = Date.now();
@@ -108,46 +197,69 @@ export const useMiniCPMOcrServer = ({ apiKey, baseURL }: { apiKey: string; baseU
       }
       return Math.min(maxTimeoutMs, remainingMs);
     };
-    const waitForNextPoll = async () => {
+    const waitBeforeRetry = async (waitMs: number) => {
       const remainingMs = getRemainingMs();
       if (remainingMs <= 0) return false;
 
-      await delay(Math.min(MINICPM_OCR_POLL_INTERVAL_MS, remainingMs));
+      await delay(Math.min(waitMs, remainingMs));
       return getRemainingMs() > 0;
     };
 
-    // 1. 提交解析任务，服务端会立即返回 job id。
-    const form = new FormData();
-    form.append('file', fileBuffer, {
-      filename: 'file.pdf',
-      contentType: 'application/pdf'
-    });
-
-    const jobId = await (async () => {
-      try {
-        const { data } = await instance.post<MiniCPMOcrJobResponse>('/document-parse/jobs', form, {
-          headers: form.getHeaders(),
-          timeout: getRequestTimeout(getBackendFileOperationTimeoutMs())
+    // 1. 提交解析任务，遇到 429 时在总截止时间内退避重试。
+    const submitJob = async () => {
+      for (let attempt = 1; attempt <= MINICPM_OCR_MAX_SUBMIT_ATTEMPTS; attempt += 1) {
+        const form = new FormData();
+        form.append('file', fileBuffer, {
+          filename: 'file.pdf',
+          contentType: 'application/pdf'
         });
 
-        if (data?.error) {
-          const message =
-            typeof data.error === 'string' ? data.error : data.error.message || 'Unknown error';
-          throw new Error(message);
-        }
-        if (typeof data?.id !== 'string' || !data.id) {
-          throw new Error('No job id in response');
-        }
+        try {
+          const { data } = await instance.post<MiniCPMOcrJobResponse>(
+            '/document-parse/jobs',
+            form,
+            {
+              headers: form.getHeaders(),
+              timeout: getRequestTimeout(getBackendFileOperationTimeoutMs())
+            }
+          );
 
-        return data.id;
-      } catch (error) {
-        if (error instanceof Error && error.message.startsWith('[MiniCPM-OCR]')) throw error;
-        throw new Error(`[MiniCPM-OCR] Failed to submit job: ${getErrorMessage(error)}`);
+          if (data?.error) {
+            const message =
+              typeof data.error === 'string' ? data.error : data.error.message || 'Unknown error';
+            throw new Error(message);
+          }
+          if (typeof data?.id !== 'string' || !data.id) {
+            throw new Error('No job id in response');
+          }
+
+          return data.id;
+        } catch (error) {
+          if (error instanceof Error && error.message.startsWith('[MiniCPM-OCR]')) throw error;
+
+          const status = getErrorStatus(error);
+          if (status === 429 && attempt < MINICPM_OCR_MAX_SUBMIT_ATTEMPTS) {
+            const responseHeaders = (error as any)?.response?.headers;
+            const waitMs = getRetryAfterMs(responseHeaders, getBackoffMs(attempt));
+            logger.warn('MiniCPM-OCR submit rate limited', { attempt, waitMs });
+            if (!(await waitBeforeRetry(waitMs))) {
+              throw new Error('[MiniCPM-OCR] Process timeout');
+            }
+            continue;
+          }
+
+          throw new Error(`[MiniCPM-OCR] Failed to submit job: ${getErrorMessage(error)}`);
+        }
       }
-    })();
+
+      throw new Error('[MiniCPM-OCR] Failed to submit job: rate limited');
+    };
+
+    const jobId = await submitJob();
 
     // 2. 轮询任务，直到成功、失败或超时。
     let jobFinished = false;
+    let pollAttempt = 0;
     try {
       while (getRemainingMs() > 0) {
         const { data } = await instance
@@ -155,14 +267,32 @@ export const useMiniCPMOcrServer = ({ apiKey, baseURL }: { apiKey: string; baseU
             timeout: getRequestTimeout(MINICPM_OCR_REQUEST_TIMEOUT_MS)
           })
           .catch(async (error) => {
-            // 4xx 通常是密钥失效或任务不存在，重试没有意义；其余错误按网络抖动处理。
-            const status = error?.response?.status;
+            const status = getErrorStatus(error);
+
+            // 429 是临时限流，继续查询同一个 job，不能取消已提交的任务。
+            if (status === 429) {
+              pollAttempt += 1;
+              const waitMs = getRetryAfterMs(error?.response?.headers, getBackoffMs(pollAttempt));
+              logger.warn('MiniCPM-OCR poll rate limited', {
+                jobId,
+                attempt: pollAttempt,
+                waitMs
+              });
+              if (!(await waitBeforeRetry(waitMs))) {
+                throw new Error('[MiniCPM-OCR] Process timeout');
+              }
+              return { data: undefined };
+            }
+
+            // 401/403/404 等永久错误重试没有意义。
             if (typeof status === 'number' && status >= 400 && status < 500) {
               throw new Error(`[MiniCPM-OCR] Failed to get job: ${getErrorMessage(error)}`);
             }
 
+            // 其余错误按网络抖动处理，继续重试到总超时。
+            pollAttempt += 1;
             logger.warn('MiniCPM-OCR poll failed', { jobId, error: getErrText(error) });
-            if (!(await waitForNextPoll())) {
+            if (!(await waitBeforeRetry(MINICPM_OCR_POLL_INTERVAL_MS))) {
               throw new Error('[MiniCPM-OCR] Process timeout');
             }
             return { data: undefined };
@@ -172,6 +302,14 @@ export const useMiniCPMOcrServer = ({ apiKey, baseURL }: { apiKey: string; baseU
 
         if (data.status === 'Success') {
           jobFinished = true;
+
+          const failedLabels = getFailedBlockLabels(data);
+          if (failedLabels.length > 0) {
+            throw new Error(
+              `[MiniCPM-OCR] Some content blocks failed to parse: ${failedLabels.join(', ')}`
+            );
+          }
+
           const text = getMarkdown(data);
           if (text === undefined) {
             throw new Error('[MiniCPM-OCR] No markdown content in response');
@@ -200,7 +338,7 @@ export const useMiniCPMOcrServer = ({ apiKey, baseURL }: { apiKey: string; baseU
           throw new Error(`[MiniCPM-OCR] Job ${data.status.toLowerCase()}: ${message}`);
         }
 
-        if (!(await waitForNextPoll())) break;
+        if (!(await waitBeforeRetry(MINICPM_OCR_POLL_INTERVAL_MS))) break;
       }
 
       throw new Error('[MiniCPM-OCR] Process timeout');

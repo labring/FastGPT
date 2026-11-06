@@ -208,6 +208,177 @@ describe('useMiniCPMOcrServer', () => {
     ).rejects.toThrow('[MiniCPM-OCR] Job cancelled: Unknown error');
   });
 
+  it('提交遇到 429 后退避重试并成功', async () => {
+    postMock
+      .mockRejectedValueOnce({
+        response: {
+          status: 429,
+          headers: {
+            'retry-after': '0'
+          },
+          data: {
+            error: {
+              message: 'rate limited'
+            }
+          }
+        }
+      })
+      .mockResolvedValueOnce({
+        data: {
+          id: 'job-1',
+          status: 'Running'
+        }
+      });
+    getMock.mockResolvedValueOnce({
+      data: {
+        status: 'Success',
+        markdown: 'retried submit',
+        pages_total: 1
+      }
+    });
+
+    const result = await useMiniCPMOcrServer({ apiKey: 'sk-test' }).parsePDF(
+      Buffer.from('pdf-content')
+    );
+
+    expect(result.text).toBe('retried submit');
+    expect(postMock).toHaveBeenCalledTimes(2);
+    expect(delayMock).toHaveBeenCalled();
+  });
+
+  it('提交连续 429 达到上限后返回限流错误', async () => {
+    postMock.mockRejectedValue({
+      response: {
+        status: 429,
+        headers: {
+          'retry-after': '0'
+        },
+        data: {
+          error: {
+            message: 'rate limited'
+          }
+        }
+      }
+    });
+
+    await expect(
+      useMiniCPMOcrServer({ apiKey: 'sk-test' }).parsePDF(Buffer.from('pdf-content'))
+    ).rejects.toThrow('[MiniCPM-OCR] Failed to submit job: rate limited');
+    expect(postMock).toHaveBeenCalledTimes(20);
+  });
+
+  it('轮询遇到 429 后退避重试并继续同一个任务', async () => {
+    mockSubmit();
+    getMock
+      .mockRejectedValueOnce({
+        response: {
+          status: 429,
+          headers: {
+            'retry-after': '0'
+          }
+        }
+      })
+      .mockResolvedValueOnce({
+        data: {
+          status: 'Success',
+          markdown: 'retried poll',
+          pages_total: 1
+        }
+      });
+
+    const result = await useMiniCPMOcrServer({ apiKey: 'sk-test' }).parsePDF(
+      Buffer.from('pdf-content')
+    );
+
+    expect(result.text).toBe('retried poll');
+    expect(getMock).toHaveBeenCalledTimes(2);
+    expect(getMock).toHaveBeenNthCalledWith(
+      1,
+      '/document-parse/jobs/job-1',
+      expect.objectContaining({ timeout: expect.any(Number) })
+    );
+    expect(getMock).toHaveBeenNthCalledWith(
+      2,
+      '/document-parse/jobs/job-1',
+      expect.objectContaining({ timeout: expect.any(Number) })
+    );
+    expect(deleteMock).not.toHaveBeenCalled();
+  });
+
+  it('轮询遇到 401 时快速失败，不继续重试', async () => {
+    mockSubmit();
+    getMock.mockRejectedValueOnce({
+      response: {
+        status: 401,
+        data: {
+          error: {
+            message: 'invalid api key'
+          }
+        }
+      }
+    });
+
+    await expect(
+      useMiniCPMOcrServer({ apiKey: 'sk-test' }).parsePDF(Buffer.from('pdf-content'))
+    ).rejects.toThrow('[MiniCPM-OCR] Failed to get job: invalid api key');
+    expect(getMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('Success 但正文块识别失败时拒绝结果', async () => {
+    mockSubmit();
+    getMock.mockResolvedValueOnce({
+      data: {
+        status: 'Success',
+        markdown: '# Heading',
+        pages_total: 1,
+        pages: [
+          {
+            ocr: {
+              blocks: [
+                { label: 'doc_title', status: 'ok' },
+                { label: 'text', status: 'failed' },
+                { label: 'table', status: 'failed' }
+              ]
+            }
+          }
+        ]
+      }
+    });
+
+    await expect(
+      useMiniCPMOcrServer({ apiKey: 'sk-test' }).parsePDF(Buffer.from('pdf-content'))
+    ).rejects.toThrow('[MiniCPM-OCR] Some content blocks failed to parse: text, table');
+  });
+
+  it('skipped_no_vlm、skipped_seal 和非正文块失败不阻断解析', async () => {
+    mockSubmit();
+    getMock.mockResolvedValueOnce({
+      data: {
+        status: 'Success',
+        markdown: '# Heading\n\nBody',
+        pages_total: 1,
+        pages: [
+          {
+            ocr: {
+              blocks: [
+                { label: 'header', status: 'failed' },
+                { label: 'image', status: 'skipped_no_vlm' },
+                { label: 'seal', status: 'skipped_seal' },
+                { label: 'text', status: 'ok' }
+              ]
+            }
+          }
+        ]
+      }
+    });
+
+    const result = await useMiniCPMOcrServer({ apiKey: 'sk-test' }).parsePDF(
+      Buffer.from('pdf-content')
+    );
+
+    expect(result.text).toBe('# Heading\n\nBody');
+  });
+
   it('提交失败时保留服务端错误信息', async () => {
     postMock.mockRejectedValueOnce({
       response: {
