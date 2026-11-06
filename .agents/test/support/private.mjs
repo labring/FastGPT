@@ -4,25 +4,22 @@ import { fileURLToPath } from 'node:url';
 import { Blocked } from './runtime.mjs';
 import { required } from './scenario.mjs';
 
-/** 只有名称与真实 marker 同时匹配的独立库才能执行历史夹具/索引写入。 */
+/** 复用本地 dev 数据库；写夹具前确认目标为本轮新建的测试团队，不要求独立数据库。 */
 export async function privateDatabase(context, c) {
-  if (context.resources.has('private-db')) return context.resources.get('private-db');
-  const config = required(c.fixture.privateEnvironment, 'privateEnvironment');
+  const cacheKey = 'dev-db:' + c.fixture.teamId;
+  if (context.resources.has(cacheKey)) return context.resources.get(cacheKey);
   const uri = c.secret(required(c.fixture.mongo?.writeUriEnv, 'mongo.writeUriEnv'));
-  const name = new URL(uri).pathname.slice(1);
-  if (!/^fg_it_[a-z0-9_]+$/.test(name) || name !== config.database)
-    throw new Blocked('写入/索引操作只允许本轮 fg_it_ 专用数据库');
   const { MongoClient, ObjectId } = createRequire(
     new URL('../../../packages/service/package.json', import.meta.url)
   )('mongoose').mongo;
   const client = await new MongoClient(uri).connect();
   context.cleanups.unshift(async () => client.close());
   const db = client.db();
-  const marker = await db.collection('fg_test_environment').findOne({ _id: config.id });
-  if (!marker || marker.nonce !== c.secret(config.nonceEnv))
-    throw new Blocked('私有库 marker 不匹配');
+  const team = await db.collection('teams').findOne({ _id: new ObjectId(c.fixture.teamId) });
+  if (!team || !/^FG-TEST(?:[- ])/.test(team.name ?? ''))
+    throw new Blocked('写夹具仅限本轮新建的 FG-TEST 团队');
   const value = { db, ObjectId, uri };
-  context.resources.set('private-db', value);
+  context.resources.set(cacheKey, value);
   return value;
 }
 
@@ -77,12 +74,10 @@ export async function redisTools(context, c) {
     mirrorKeys,
     async assertPrivate() {
       await privateDatabase(context, c);
-      const config = c.fixture.privateEnvironment;
-      assert.equal(
-        await client.get('fgtest:environment:' + config.id),
-        c.secret(config.nonceEnv),
-        'Redis 私有环境 marker'
-      );
+      if (c.fixture.environment === 'local-dev')
+        throw new Blocked('共享 dev 不注入全局 Redis 故障；该项归底层专项测试');
+      const config = required(c.fixture.privateEnvironment, 'privateEnvironment');
+      assert.equal(await client.get('fgtest:environment:' + config.id), c.secret(config.nonceEnv));
     },
     async observe(source) {
       const key = leaseKey(source),

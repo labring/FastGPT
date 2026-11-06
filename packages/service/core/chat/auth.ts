@@ -1,3 +1,4 @@
+import { parseHeaderCert } from '../../support/permission/auth/common';
 import type { ChatPublishSourceType } from '@fastgpt/global/core/chat/publishSource/type';
 import { assertChatPublishSource } from './publishSource/utils';
 import {
@@ -18,6 +19,7 @@ import { authSkill } from '../../support/permission/skill/auth';
 import { MongoChat } from './chatSchema';
 import { buildChatSourceQuery } from './source';
 import { authOutLink } from '../../support/permission/publish/authChat';
+import { ApiKeyTypeEnum } from '@fastgpt/global/support/openapi/constants';
 import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 
 /** 已通过资源鉴权的会话访问范围；省略成员表示允许访问该资源下同团队的会话。 */
@@ -49,6 +51,7 @@ type AuthChatTargetCrudResult = {
   publishSource?: ChatPublishSourceType;
   isRoot: boolean;
   authType?: `${AuthUserTypeEnum}`;
+  apiKeyType?: ApiKeyTypeEnum;
 } & (typeof chatSourceResponseOptions)[ChatSourceTypeEnum];
 
 /** 校验实际记录的归属；先查记录再检查，避免把无权访问的 chatId 当成新会话。 */
@@ -121,19 +124,24 @@ export const authChatTargetCrud = async ({
     };
   }
 
-  if (!sourceId) throw ChatErrEnum.unAuthChat;
+  if (!sourceId && sourceType !== ChatSourceTypeEnum.app) throw ChatErrEnum.unAuthChat;
 
   const resource = await (async () => {
     if (sourceType === ChatSourceTypeEnum.skillEdit) {
-      const auth = await authSkill({ ...props, skillId: sourceId, per });
+      const auth = await authSkill({ ...props, authAppApiKey: false, skillId: sourceId!, per });
       return { ...auth, app: undefined };
     }
 
     const auth = await authApp({
       // 普通 App 保持旧入口同时支持 Token/API Key；辅助生成继续使用调用方指定的认证方式。
       ...(sourceType === ChatSourceTypeEnum.app
-        ? { req: props.req, authToken: true, authApiKey: true }
-        : props),
+        ? {
+            req: props.req,
+            authToken: true,
+            authApiKey: true,
+            authAppApiKey: props.authAppApiKey ?? true
+          }
+        : { ...props, authAppApiKey: false }),
       appId: sourceId,
       per: sourceType === ChatSourceTypeEnum.workflowBuilder ? WritePermissionVal : per
     });
@@ -143,15 +151,21 @@ export const authChatTargetCrud = async ({
     return { ...auth, skill: undefined };
   })();
 
+  if (!sourceId && resource.apiKeyType !== ApiKeyTypeEnum.app) throw ChatErrEnum.unAuthChat;
+  if (resource.apiKeyType === ApiKeyTypeEnum.app && sourceType !== ChatSourceTypeEnum.app)
+    throw ChatErrEnum.unAuthChat;
+
   const memberOnly =
     sourceType === ChatSourceTypeEnum.workflowBuilder ||
     (sourceType !== ChatSourceTypeEnum.skillEdit &&
+      resource.apiKeyType !== ApiKeyTypeEnum.app &&
       !('hasReadChatLogPer' in resource.permission && resource.permission.hasReadChatLogPer));
   const scope: ChatAccessScope = {
     teamId: resource.teamId,
     ...(memberOnly ? { tmbId: resource.tmbId } : {})
   };
-  const chat = await loadChat(sourceId);
+  const resolvedSourceId = resource.app ? resource.appId! : sourceId!;
+  const chat = await loadChat(resolvedSourceId);
   if (chat) assertChatAccess({ chat, scope });
 
   const uid = (() => {
@@ -162,7 +176,7 @@ export const authChatTargetCrud = async ({
 
   return {
     sourceType,
-    sourceId,
+    sourceId: resolvedSourceId,
     userId: resource.userId,
     teamId: resource.teamId,
     tmbId: resource.tmbId,
@@ -173,6 +187,33 @@ export const authChatTargetCrud = async ({
     skill: resource.skill,
     isRoot: resource.isRoot,
     authType: resource.authType,
+    apiKeyType: resource.apiKeyType,
     ...chatSourceResponseOptions[sourceType]
   };
+};
+
+/**
+ * 引用接口同时支持直接访问知识库与对话上下文；仅可信应用 Key 可补出缺失的 App target。
+ * 已提供的 Skill/外链/辅助来源保持原优先级；个人密钥和登录态不被改成应用会话。
+ * 这里只解析身份，实际资源及会话权限仍由 authChatTargetCrud 重新确认。
+ */
+export const resolveOptionalAppApiKeyChatTarget = async ({
+  req,
+  sourceType,
+  sourceId
+}: {
+  req: AuthModeType['req'];
+  sourceType?: ChatSourceTypeEnum;
+  sourceId?: string;
+}) => {
+  if (sourceType || sourceId || !req.headers?.authorization) return { sourceType, sourceId };
+  const certificate = await parseHeaderCert({
+    req,
+    authToken: true,
+    authApiKey: true,
+    authAppApiKey: true
+  });
+  return certificate.apiKeyType === ApiKeyTypeEnum.app
+    ? { sourceType: ChatSourceTypeEnum.app, sourceId: certificate.boundAppId }
+    : { sourceType, sourceId };
 };

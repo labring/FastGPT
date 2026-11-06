@@ -45,8 +45,8 @@ async function handler(req: ApiRequestProps) {
   });
 
   await deleteChatResourcesBySource({
-    sourceType,
-    sourceId,
+    sourceType: authResult.sourceType,
+    sourceId: authResult.sourceId,
     chatIds,
     scope: authResult.scope
   });

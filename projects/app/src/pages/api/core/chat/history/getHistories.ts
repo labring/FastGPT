@@ -13,7 +13,7 @@ import {
 import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
 import { ObjectIdSchema } from '@fastgpt/global/common/type/mongo';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
-import { buildChatHistoryMatch } from '@/service/core/chat/history';
+import { buildChatHistoryListMatch } from '@/service/core/chat/history';
 
 /* get chat histories list */
 export async function handler(req: ApiRequestProps): Promise<GetHistoriesResponseType> {
@@ -29,7 +29,7 @@ export async function handler(req: ApiRequestProps): Promise<GetHistoriesRespons
   } = parseApiInput({ req, bodySchema: GetHistoriesBodySchema }).body;
   const { offset, pageSize } = parsePaginationRequest(req);
 
-  const match = await buildChatHistoryMatch({
+  const match = await buildChatHistoryListMatch({
     req,
     sourceType,
     sourceId,

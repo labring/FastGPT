@@ -10,6 +10,7 @@ import { initializeDatasetVectorIndexes } from './tasks/4180/20261022_initialize
 import { migrateInstanceConfigs } from './tasks/4180/20260928_migrate_instance_configs';
 import { cleanupInstanceConfigDeprecatedFieldsTask } from './tasks/4180/20260929_cleanup_instance_config_deprecated_fields';
 import { backfillChatPublishSource } from './tasks/4180/20261104_backfill_chat_publish_source';
+import { backfillOpenApiKeyType } from './tasks/4180/20261104_backfill_openapi_key_type';
 
 export type SystemMigrationLogger = {
   info: (message: string, metadata?: Record<string, unknown>) => void;
@@ -152,6 +153,27 @@ export const systemMigrations = [
       }
     ],
     run: backfillChatPublishSource
+  },
+  {
+    id: '20261104_backfill_openapi_key_type',
+    version: '4.18.0',
+    independent: true,
+    nameKey: i18nT('system_migration:migrations.20261104_backfill_openapi_key_type.name'),
+    descriptionKey: i18nT(
+      'system_migration:migrations.20261104_backfill_openapi_key_type.description'
+    ),
+    resultKey: i18nT('system_migration:migrations.20261104_backfill_openapi_key_type.result'),
+    progressSteps: [
+      {
+        key: 'keys',
+        labelKey: i18nT('system_migration:migrations.20261104_backfill_openapi_key_type.keys')
+      },
+      {
+        key: 'validation',
+        labelKey: i18nT('system_migration:migrations.20261104_backfill_openapi_key_type.validation')
+      }
+    ],
+    run: backfillOpenApiKeyType
   },
   {
     id: '20260928_migrate_instance_configs',

@@ -8,7 +8,6 @@ import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSc
 import { getTeamMemberMap } from '@fastgpt/service/support/user/team/utils';
 import { MongoUser } from '@fastgpt/service/support/user/schema';
 import { AppReadChatLogPerVal } from '@fastgpt/global/support/permission/app/constant';
-import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
 import {
@@ -43,18 +42,15 @@ async function handler(req: ApiRequestProps): Promise<GetLogUsersResponse> {
     req,
     bodySchema: GetLogUsersBodySchema
   });
-  const { appId, dateStart, dateEnd, searchKey, sources } = body;
+  const { appId: requestedAppId, dateStart, dateEnd, searchKey, sources } = body;
   const { pageSize: resolvedPageSize, offset: resolvedOffset } = normalizePagination(body);
 
-  if (!appId) {
-    return Promise.reject(CommonErrEnum.missingParams);
-  }
-
-  const { teamId } = await authApp({
+  const { teamId, appId } = await authApp({
     req,
     authToken: true,
     authApiKey: true,
-    appId,
+    authAppApiKey: true,
+    appId: requestedAppId,
     per: AppReadChatLogPerVal
   });
 

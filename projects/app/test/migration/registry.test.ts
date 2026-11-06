@@ -17,6 +17,7 @@ describe('validateSystemMigrationRegistry', () => {
     expect(systemMigrations.map(({ id }) => id)).toEqual([
       '20261022_initialize_dataset_vector_indexes',
       '20261104_backfill_chat_publish_source',
+      '20261104_backfill_openapi_key_type',
       '20260928_migrate_instance_configs',
       '20260929_cleanup_instance_config_deprecated_fields'
     ]);
@@ -86,10 +87,25 @@ describe('validateSystemMigrationRegistry', () => {
     expect(task).not.toHaveProperty('delay');
   });
 
+  it('在4.18.0登记独立自动 Key 类型回填，保持启动非阻塞且无依赖', () => {
+    const task = systemMigrations.find(({ id }) => id === '20261104_backfill_openapi_key_type');
+    expect(task).toMatchObject({
+      id: '20261104_backfill_openapi_key_type',
+      version: '4.18.0',
+      independent: true,
+      progressSteps: [{ key: 'keys' }, { key: 'validation' }]
+    });
+    expect(task).not.toHaveProperty('blockStartup', true);
+    expect(task).not.toHaveProperty('dependsOn');
+    expect(task).not.toHaveProperty('manual');
+    expect(task).not.toHaveProperty('delay');
+  });
+
   it('runs only the selected production tasks independently', () => {
     const independentTasks = systemMigrations.filter((task: SystemMigration) => task.independent);
     expect(independentTasks.map((task) => task.id)).toEqual([
-      '20261104_backfill_chat_publish_source'
+      '20261104_backfill_chat_publish_source',
+      '20261104_backfill_openapi_key_type'
     ]);
   });
 

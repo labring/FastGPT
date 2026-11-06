@@ -57,6 +57,7 @@ test('任意 500 和入参错误不能作为权限拒绝的通过证据', async 
   );
   assert.throws(() => permissionDenied({ error: true, http: 400, json: { code: 400 } }));
   permissionDenied({ error: true, http: 500, json: { code: 502001, statusText: 'unAuthApp' } });
+  permissionDenied({ error: true, http: 500, json: { code: 500004, statusText: 'unAuthTeam' } });
 });
 
 test('真实 gate 只接受本轮 RUN 与 token，收尾会放行未完成连接并关闭端口', async () => {
@@ -127,7 +128,7 @@ test('清理失败仍继续回收其他资源，并将成功场景降为阻塞�
       fixture,
       JSON.stringify({
         version: 1,
-        isolated: true,
+        environment: 'local-dev',
         teamId: '000000000000000000000001',
         baseUrl: 'http://127.0.0.1:1'
       })
@@ -206,7 +207,7 @@ test('一个场景失败后先执行该项收尾，再运行下一场景，防�
       fixture,
       JSON.stringify({
         version: 1,
-        isolated: true,
+        environment: 'local-dev',
         teamId: '000000000000000000000001',
         baseUrl: 'http://127.0.0.1:1'
       })
@@ -235,5 +236,122 @@ test('一个场景失败后先执行该项收尾，再运行下一场景，防�
     );
   } finally {
     await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test('鉴权早退的无 Content-Type SSE error 必须按实际错误码识别', async () => {
+  const { readHttpResult, permissionDenied, success } = await import('./scenario.mjs');
+  const response = await readHttpResult(
+    new Response('event: error\ndata: {"code":502001,"statusText":"unAuthApp"}\n\n', {
+      status: 200
+    })
+  );
+  assert.equal(response.error, true);
+  permissionDenied(response);
+  assert.throws(() => success(response));
+  const other = await readHttpResult(
+    new Response('event: error\ndata: {"code":500,"statusText":"database error"}\n\n')
+  );
+  assert.throws(() => permissionDenied(other));
+});
+
+test('显式匿名入口不从已有角色注入 Key 或 Cookie', async () => {
+  const { createScenario } = await import('./scenario.mjs');
+  const server = createServer((req, res) => {
+    assert.equal(req.headers.authorization, undefined);
+    assert.equal(req.headers.cookie, undefined);
+    res.writeHead(200, { 'content-type': 'application/json' }).end('{"code":200,"data":true}');
+  });
+  server.listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  try {
+    const scenario = createScenario({
+      fixture: {
+        baseUrl: 'http://127.0.0.1:' + server.address().port,
+        actors: { owner: { stateEnv: 'INTENTIONALLY_UNSET_COOKIE_FILE' } }
+      },
+      observations: [],
+      run: 'fgtest-anonymous',
+      cleanups: [],
+      resources: new Map(),
+      secrets: new Set()
+    });
+    assert.equal((await scenario.request({ kind: 'anonymous', route: '/probe' })).json.data, true);
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+  }
+});
+
+test('读取多份 dev 配置不会清除执行协议或前一资源副本的凭证变量', async () => {
+  const { readDevEnvironment } = await import('./environment.mjs');
+  const directory = await mkdtemp(path.join(tmpdir(), 'fastgpt-dev-env-selfcheck-'));
+  const marker = 'FASTGPT_TEST_ENV_SELFTEST';
+  const previous = process.env[marker];
+  try {
+    const filename = path.join(directory, '.env.local');
+    await writeFile(filename, 'FASTGPT_TEST_ENV_SOURCE=first\n');
+    process.env[marker] = 'first-context';
+    assert.equal((await readDevEnvironment(filename)).FASTGPT_TEST_ENV_SOURCE, 'first');
+    assert.equal(process.env[marker], 'first-context');
+    assert.equal(process.env.FASTGPT_TEST_ENV_SOURCE, undefined);
+    await writeFile(filename, 'FASTGPT_TEST_ENV_SOURCE=second\n');
+    process.env[marker] = 'second-context';
+    const second = await readDevEnvironment(filename);
+    assert.equal(second.FASTGPT_TEST_ENV_SOURCE, 'second');
+    assert.equal(second[marker], 'second-context');
+    assert.equal(process.env[marker], 'second-context');
+    assert.equal(process.env.FASTGPT_TEST_ENV_SOURCE, undefined);
+  } finally {
+    if (previous === undefined) delete process.env[marker];
+    else process.env[marker] = previous;
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test('multipart 请求由 fetch 生成 boundary，并保留真实文件与 JSON 参数', async () => {
+  const { createScenario } = await import('./scenario.mjs');
+  const server = createServer(async (request, response) => {
+    const chunks = [];
+    for await (const chunk of request) chunks.push(chunk);
+    const body = Buffer.concat(chunks).toString();
+    response.setHeader('content-type', 'application/json');
+    response.end(
+      JSON.stringify({
+        code: 200,
+        data: {
+          contentType: request.headers['content-type'],
+          file: body.includes('filename="sample.txt"') && body.includes('sample-file'),
+          data: body.includes('{"chatId":"fgtest-chat"}')
+        }
+      })
+    );
+  });
+  server.listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  try {
+    const c = createScenario({
+      fixture: { baseUrl: 'http://127.0.0.1:' + server.address().port, actors: { owner: {} } },
+      observations: [],
+      run: 'fgtest-multipart',
+      resources: new Map(),
+      cleanups: [],
+      secrets: new Set()
+    });
+    const form = new FormData();
+    form.set('data', JSON.stringify({ chatId: 'fgtest-chat' }));
+    form.set('file', new Blob(['sample-file']), 'sample.txt');
+    const result = await c.request({
+      kind: 'anonymous',
+      route: '/upload',
+      body: { chatId: 'fgtest-chat' },
+      formData: form
+    });
+    assert.equal(result.error, false);
+    assert.match(result.json.data.contentType, /^multipart\/form-data; boundary=/);
+    assert.equal(result.json.data.file, true);
+    assert.equal(result.json.data.data, true);
+  } finally {
+    server.closeAllConnections();
+    await new Promise((resolve) => server.close(resolve));
   }
 });

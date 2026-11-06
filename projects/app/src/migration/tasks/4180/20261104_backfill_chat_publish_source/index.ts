@@ -8,7 +8,7 @@ import { Types } from '@fastgpt/service/common/mongo';
 import { systemMigrationBatchSize } from '@/migration/constants';
 import type { SystemMigrationContext } from '@/migration/registry';
 import {
-  backfillPublishSourceRecord,
+  backfillPublishSourceBatch,
   getPublishSourceMigrationModel,
   type PublishSourceMigrationStage
 } from './service';
@@ -64,15 +64,13 @@ export const backfillChatPublishSource = async (context: SystemMigrationContext)
   }
 
   /** 只保存必要 ID 与原因；达到错误上界即中止，避免一次扫描积累无界错误列表。 */
-  const processRecord = async (stage: PublishSourceMigrationStage, id: string) => {
-    const key = `${stage}:${id}`;
+  const processBatch = async (stage: PublishSourceMigrationStage, ids: string[]) => {
+    context.signal.throwIfAborted();
     await context.assertActive();
-    try {
-      await backfillPublishSourceRecord({ stage, id });
-      failures.delete(key);
-    } catch (error) {
-      context.signal.throwIfAborted();
-      failures.set(key, {
+    const batchFailures = await backfillPublishSourceBatch({ stage, ids });
+    for (const id of ids) failures.delete(`${stage}:${id}`);
+    for (const [id, error] of batchFailures) {
+      failures.set(`${stage}:${id}`, {
         stageKey: stage,
         data: { id },
         reason: {
@@ -90,8 +88,12 @@ export const backfillChatPublishSource = async (context: SystemMigrationContext)
         ? { current: checkpoint.chats.scanned, total: checkpoint.chats.total }
         : {})
     });
-    for (const failure of [...failures.values()].filter((item) => item.stageKey === stage)) {
-      await processRecord(stage, String(failure.data.id));
+    const retryIds = [...failures.values()]
+      .filter((item) => item.stageKey === stage)
+      .map((failure) => String(failure.data.id));
+    for (let offset = 0; offset < retryIds.length; offset += systemMigrationBatchSize) {
+      await processBatch(stage, retryIds.slice(offset, offset + systemMigrationBatchSize));
+      await context.reportFailedRecords([...failures.values()]);
     }
     await context.reportFailedRecords([...failures.values()]);
     while (checkpoint[stage].endId) {
@@ -112,14 +114,15 @@ export const backfillChatPublishSource = async (context: SystemMigrationContext)
         .limit(systemMigrationBatchSize)
         .toArray();
       if (!records.length) break;
-      for (const record of records) {
-        await processRecord(stage, String(record._id));
-        if (failures.size >= systemMigrationBatchSize * 10) {
-          await context.fail({
-            message: 'Too many invalid legacy sources; repair reported records before retrying',
-            failedRecords: [...failures.values()]
-          });
-        }
+      await processBatch(
+        stage,
+        records.map((record) => String(record._id))
+      );
+      if (failures.size >= systemMigrationBatchSize * 10) {
+        await context.fail({
+          message: 'Too many invalid legacy sources; repair reported records before retrying',
+          failedRecords: [...failures.values()]
+        });
       }
       // 失败快照在断点之前持久化，提交后中断时重扫该批仍保持正确。
       await context.reportFailedRecords([...failures.values()]);

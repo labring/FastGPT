@@ -74,5 +74,10 @@
   "migrations.20261104_backfill_chat_publish_source.result": "대화 {{chats}}개와 통계 버킷 {{chatLogs}}개 확인",
   "migrations.20261104_backfill_chat_publish_source.chats": "대화 출처",
   "migrations.20261104_backfill_chat_publish_source.chatLogs": "통계 버킷 출처",
-  "migrations.20261104_backfill_chat_publish_source.validation": "결과 검증"
+  "migrations.20261104_backfill_chat_publish_source.validation": "결과 검증",
+  "migrations.20261104_backfill_openapi_key_type.name": "API 키 유형 보완",
+  "migrations.20261104_backfill_openapi_key_type.description": "기존 연결, 인증 정보 및 필드를 유지하면서 개인 키와 앱 키 유형을 백그라운드에서 보완합니다.",
+  "migrations.20261104_backfill_openapi_key_type.result": "키 {{keys}}개 검색 완료",
+  "migrations.20261104_backfill_openapi_key_type.keys": "키 유형",
+  "migrations.20261104_backfill_openapi_key_type.validation": "결과 검증"
 }

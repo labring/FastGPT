@@ -1,13 +1,14 @@
 import z from 'zod';
-import { OutLinkChatAuthSchema } from '../../../../support/permission/chat';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
 import { OpenObjectOpenApiMeta } from '../../../../common/zod/openapi';
 import { DatasetCiteItemSchema } from '../../../../core/dataset/type';
 import { LinkedListResponseSchema, LinkedPaginationSchema } from '../../../api';
 import { ChatItemMiniSchema } from '../../../../core/chat/type';
 import { AppTTSConfigInputSchema } from '../../app/common/api';
-import { ChatSourceTypeEnum, GetChatTypeEnum } from '../../../../core/chat/constants';
+import { GetChatTypeEnum } from '../../../../core/chat/constants';
 import {
+  createChatSourceInputSchema,
+  transformChatSourceInput,
   createOutLinkChatTargetInputSchema,
   createOutLinkChatTargetQuerySchema,
   createPaginatedChatTargetInputSchema,
@@ -220,14 +221,15 @@ export type GetChatSpeechBodyType = z.infer<typeof GetChatSpeechBodySchema>;
  * Description: 将 multipart 表单里的音频转换为文本
  * ============================================================================ */
 
-export const AudioTranscriptionsDataRawSchema = z.object({
-  sourceType: z.enum(ChatSourceTypeEnum).describe('会话归属资源类型'),
-  sourceId: ObjectIdSchema.describe('会话归属资源 ID'),
+const AudioTranscriptionsProps = {
   chatId: z.string().min(1).max(256).describe('会话 ID'),
-  outLinkAuthData: OutLinkChatAuthSchema.optional().describe('外链鉴权数据'),
   duration: z.coerce.number().optional().describe('录音时长，单位秒')
-});
-export const AudioTranscriptionsDataSchema = AudioTranscriptionsDataRawSchema;
+};
+export const AudioTranscriptionsDataRawSchema =
+  createChatSourceInputSchema(AudioTranscriptionsProps);
+export const AudioTranscriptionsDataSchema =
+  AudioTranscriptionsDataRawSchema.transform(transformChatSourceInput);
+
 export type AudioTranscriptionsDataType = z.infer<typeof AudioTranscriptionsDataRawSchema>;
 export type AudioTranscriptionsDataRuntimeType = z.infer<typeof AudioTranscriptionsDataSchema>;
 

@@ -1,3 +1,4 @@
+import { createChatTargetQueryParameters } from '../../chat/api';
 import type { OpenAPIPath } from '../../../type';
 import { DevApiTagsMap, SystemOpenApiTagMap } from '../../../tag';
 import {
@@ -115,9 +116,7 @@ export const AppLogPath: OpenAPIPath = {
       summary: '获取应用总体数据统计',
       description: '获取应用的总体数据统计，包括总用户数、总对话数、总积分消耗',
       tags: [DevApiTagsMap.appLog, SystemOpenApiTagMap.appLog],
-      requestParams: {
-        query: GetTotalDataQuerySchema
-      },
+      parameters: createChatTargetQueryParameters(GetTotalDataQuerySchema),
       responses: {
         200: {
           description: '成功获取应用总体数据',

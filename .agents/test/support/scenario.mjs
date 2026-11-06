@@ -6,7 +6,10 @@ import { Blocked } from './runtime.mjs';
 /** 解析真实 JSON 或 SSE；多行 data、CRLF、中文分块与错误事件均保留。 */
 export async function readHttpResult(response) {
   const raw = await response.text();
-  const sse = response.headers.get('content-type')?.includes('text/event-stream');
+  // 鉴权早退的 sseErrRes 可能尚未写 Content-Type；仍按实际 SSE 帧解析错误。
+  const sse =
+    response.headers.get('content-type')?.includes('text/event-stream') ||
+    /^(?:event: [^\r\n]+\r?\n)?data:/.test(raw.trimStart());
   const events = [];
   let json;
   if (sse) {
@@ -92,14 +95,18 @@ export function createScenario(context) {
     raw = false,
     signal,
     baseUrl = fixture.baseUrl,
-    extraHeaders = {}
+    extraHeaders = {},
+    formData
   }) {
     const identity = actor(role);
     if (kind === 'state') required(identity.stateEnv, role + '.stateEnv');
     const url = new URL(baseUrl.replace(/\/$/, '') + '/' + route.replace(/^\//, ''));
     const headers = { 'content-type': 'application/json', 'fastgpt-web-request': '1' };
     Object.assign(headers, extraHeaders);
-    if (kind === 'key' || keyEnv || keyValue || !identity.stateEnv) {
+    // 匿名分享的基线不能附带 owner 的 Cookie/Key。
+    if (kind === 'anonymous') {
+      // 显式空凭证分支，仅保留业务请求头。
+    } else if (kind === 'key' || keyEnv || keyValue || !identity.stateEnv) {
       const value = keyValue ?? secret(keyEnv ?? identity.keyEnv);
       secretValues.add(value);
       headers.Authorization = 'Bearer ' + value;
@@ -128,10 +135,12 @@ export function createScenario(context) {
       secretValues.add(headers.Cookie);
       for (const cookie of state.cookies) secretValues.add(cookie.value);
     }
+    // multipart 由 fetch 生成 boundary，仍复用同一条凭证与脱敏取证链路。
+    if (formData) delete headers['content-type'];
     const response = await fetch(url, {
       method,
       headers,
-      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+      ...(formData ? { body: formData } : body === undefined ? {} : { body: JSON.stringify(body) }),
       redirect: 'error',
       signal: signal ?? AbortSignal.timeout(120000)
     });
@@ -421,18 +430,21 @@ export function success(result) {
 /** 权限反例必须是已知鉴权错误；参数错误、余额不足和任意 500 均不能冒充权限验证。 */
 export function permissionDenied(result) {
   assert.equal(result.error, true);
+  const error = result.json ?? result.events?.find((event) => event.event === 'error')?.data;
   assert.ok(
-    result.json &&
-      (['unAuthApp', 'unAuthChat', 'unAuthorization', 'openapiUnExist', 'openapiUnAuth'].includes(
-        result.json.statusText
-      ) ||
-        [401, 403].includes(result.json.code)),
+    error &&
+      ([
+        'unAuthApp',
+        'unAuthChat',
+        'unAuthTeam',
+        'unAuthorization',
+        'unAuthApiKey',
+        'openapiUnExist',
+        'openapiUnAuth'
+      ].includes(error.statusText) ||
+        [401, 403].includes(error.code)),
     '不是已知鉴权拒绝：' +
-      JSON.stringify({
-        http: result.http,
-        code: result.json?.code,
-        statusText: result.json?.statusText
-      })
+      JSON.stringify({ http: result.http, code: error?.code, statusText: error?.statusText })
   );
 }
 
