@@ -1,4 +1,8 @@
 {
+  "first_page": "First page",
+  "previous_page": "Previous page",
+  "next_page": "Next page",
+  "last_page": "Last page",
   "not_set": "Not set",
   "Action": "Action",
   "Add": "Add",

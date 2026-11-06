@@ -7,10 +7,7 @@ import {
   useMemo,
   useEffect
 } from 'react';
-import type { FlexProps } from '@chakra-ui/react';
-import { Flex, Box, type BoxProps } from '@chakra-ui/react';
-import MyIcon from '../components/common/Icon';
-import type { IconNameType } from '../components/common/Icon/type';
+import { Box, type BoxProps } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { useToast } from './useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
@@ -24,8 +21,7 @@ import {
 } from 'ahooks';
 
 import { type PaginationProps, type PaginationResponse } from '@fastgpt/global/openapi/api';
-import MyMenu from '../components/common/MyMenu';
-import { useSystem } from './useSystem';
+import PaginationControls from '../components/common/Pagination';
 import { useRouter } from 'next/router';
 
 const thresholdVal = 200;
@@ -34,7 +30,7 @@ const thresholdVal = 200;
  * 从分页内容区向上定位实际的纵向滚动容器并回到顶部。
  * 桌面端通常由表格接管滚动，移动端则可能由更外层页面统一滚动。
  */
-const scrollPaginationContentToTop = (target?: HTMLElement | null) => {
+export const scrollPaginationContentToTop = (target?: HTMLElement | null) => {
   if (!target || typeof window === 'undefined') return;
 
   let currentElement: HTMLElement | null = target;
@@ -92,7 +88,6 @@ export function usePagination<DataT, ResT = unknown>(
   const numPage = Number(page);
 
   const { toast } = useToast();
-  const { isPc } = useSystem();
   const { t } = useTranslation();
 
   const [isLoading, { setTrue, setFalse }] = useBoolean(false);
@@ -224,131 +219,21 @@ export function usePagination<DataT, ResT = unknown>(
   );
 
   // Button pagination
-  const Pagination = useCallback(() => {
-    const maxPage = Math.ceil(totalDataLength / pageSize);
-
-    const IconButton = ({
-      icon,
-      isDisabled,
-      onClick,
-      ...props
-    }: {
-      icon: IconNameType;
-      isDisabled?: boolean;
-      onClick: () => void;
-    } & FlexProps) => {
-      isDisabled = isDisabled || isLoading;
-      return (
-        <Flex
-          alignItems={'center'}
-          justifyContent={'center'}
-          borderRadius={'full'}
-          w={'24px'}
-          h={'24px'}
-          cursor={'pointer'}
-          bg={'myGray.150'}
-          {...(isDisabled
-            ? {
-                opacity: 0.5
-              }
-            : {
-                onClick
-              })}
-          {...props}
-        >
-          <MyIcon name={icon} w={'6px'} color={'myGray.900'} />
-        </Flex>
-      );
-    };
-
-    return (
-      <Flex
+  const Pagination = useCallback(
+    () => (
+      <PaginationControls
         ref={paginationRef}
-        alignItems={'center'}
-        justifyContent={'center'}
-        fontSize={'sm'}
-        userSelect={'none'}
-      >
-        {isPc && <Box color={'myGray.500'}>{t('common:total_num', { num: totalDataLength })}</Box>}
-
-        <Flex alignItems={'center'} ml={6} mr={4}>
-          {isPc && (
-            <IconButton
-              mr={2}
-              isDisabled={pageNum === 1}
-              icon="common/first_page"
-              onClick={() => fetchData(1, undefined, true)}
-            />
-          )}
-          <IconButton
-            isDisabled={pageNum === 1}
-            icon="common/leftArrowLight"
-            onClick={() => fetchData(pageNum - 1, undefined, true)}
-          />
-          <Box ml={4} color={'myGray.500'}>
-            {pageNum}
-          </Box>
-          <Box mx={1} color={'myGray.500'}>
-            /
-          </Box>
-          <Box mr={4} color={'myGray.900'}>
-            {maxPage}
-          </Box>
-
-          <IconButton
-            isDisabled={pageNum === maxPage}
-            icon="common/rightArrow"
-            onClick={() => fetchData(pageNum + 1, undefined, true)}
-          />
-          {isPc && (
-            <IconButton
-              ml={2}
-              isDisabled={pageNum === maxPage}
-              icon="common/latest_page"
-              onClick={() => fetchData(maxPage, undefined, true)}
-            />
-          )}
-        </Flex>
-
-        {isPc && (
-          <MyMenu
-            menuList={[
-              {
-                label: '',
-                children: pageSizeOptions.map((item) => ({
-                  label: `${item}`,
-                  isActive: pageSize === item,
-                  menuItemStyles:
-                    pageSize === item ? { color: 'primary.700', fontWeight: 'bold' } : undefined,
-                  onClick: () => updatePageSize(item)
-                }))
-              }
-            ]}
-            Button={
-              <Flex alignItems={'center'} cursor={'pointer'}>
-                <Box color={'myGray.900'}>{pageSize}</Box>
-                <Box mx={1} color={'myGray.500'}>
-                  /
-                </Box>
-                <Box color={'myGray.500'}>{t('common:page')}</Box>
-                <MyIcon ml={1} name={'core/chat/chevronDown'} w={'14px'} color={'myGray.900'} />
-              </Flex>
-            }
-          />
-        )}
-      </Flex>
-    );
-  }, [
-    totalDataLength,
-    isPc,
-    pageSize,
-    t,
-    pageNum,
-    pageSizeOptions,
-    isLoading,
-    fetchData,
-    updatePageSize
-  ]);
+        total={totalDataLength}
+        page={pageNum}
+        pageSize={pageSize}
+        pageSizeOptions={pageSizeOptions}
+        isLoading={isLoading}
+        onPageChange={(nextPage) => void fetchData(nextPage, undefined, true)}
+        onPageSizeChange={updatePageSize}
+      />
+    ),
+    [totalDataLength, pageSize, pageNum, pageSizeOptions, isLoading, fetchData, updatePageSize]
+  );
 
   // Scroll pagination
   const DefaultRef = useRef<HTMLDivElement>(null);

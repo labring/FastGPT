@@ -1,49 +1,34 @@
-import { getDashboardData } from '@/web/support/wallet/usage/api';
 import { Box, Flex } from '@chakra-ui/react';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import React, { useMemo } from 'react';
-import { type UsageFilterParams } from './type';
-import { toMultiSelectFilterQuery } from '@fastgpt/web/components/common/TagFilter';
 import dayjs from 'dayjs';
 import dynamic from 'next/dynamic';
 import { accountContentScrollStyles } from '@/pageComponents/account/styles';
+import type { UsageFilterController } from './useUsageFilterController';
+import UsageExportButton from './UsageExportButton';
 
 const DashboardChart = dynamic(() => import('./DashboardChart'), {
   ssr: false
 });
 
 const UsageDashboard = ({
-  filterParams,
+  controller,
   Tabs,
   Selectors
 }: {
-  filterParams: UsageFilterParams;
+  controller: UsageFilterController;
   Tabs: React.ReactNode;
   Selectors: React.ReactNode;
 }) => {
-  const { dateRange, memberFilter, sourceFilter, unit } = filterParams;
-
-  const { data: totalPoints = [], loading: totalPointsLoading } = useRequest(
+  const totalPoints = useMemo(
     () =>
-      getDashboardData({
-        dateStart: dateRange.from
-          ? dayjs(dateRange.from.setHours(0, 0, 0, 0)).format()
-          : dayjs(new Date().setHours(0, 0, 0, 0)).format(),
-        dateEnd: dateRange.to ? dayjs(dateRange.to).format() : dayjs(new Date()).format(),
-        sources: toMultiSelectFilterQuery(sourceFilter),
-        teamMemberIds: toMultiSelectFilterQuery(memberFilter),
-        unit
-      }).then((res) =>
-        res.map((item) => ({
-          ...item,
-          date: dayjs(item.date).format('YYYY-MM-DD')
-        }))
-      ),
-    {
-      manual: false,
-      refreshDeps: [filterParams]
-    }
+      controller.result?.view === 'dashboard'
+        ? controller.result.data.map((item) => ({
+            ...item,
+            date: dayjs(item.date).format('YYYY-MM-DD')
+          }))
+        : [],
+    [controller.result]
   );
 
   const totalUsage = useMemo(() => {
@@ -62,11 +47,12 @@ const UsageDashboard = ({
         gap={[4, 6]}
       >
         <Box flexShrink={0}>{Tabs}</Box>
-        <Box flex={'0 0 auto'} minW={0}>
+        <Flex flex={'0 0 auto'} minW={0} gap={3} flexWrap={'wrap'} justifyContent={'flex-end'}>
           {Selectors}
-        </Box>
+          <UsageExportButton controller={controller} />
+        </Flex>
       </Flex>
-      <MyBox {...accountContentScrollStyles} px={[3, 6]} isLoading={totalPointsLoading}>
+      <MyBox {...accountContentScrollStyles} px={[3, 6]} isLoading={controller.loading}>
         <DashboardChart totalPoints={totalPoints} totalUsage={totalUsage} />
       </MyBox>
     </>

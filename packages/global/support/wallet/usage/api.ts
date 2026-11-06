@@ -1,15 +1,20 @@
-import type { UsageItemTypeEnum, UsageSourceEnum } from './constants';
-import type { UsageItemCountType, UsageItemType, UsageListItemType, UsageSchemaType } from './type';
+import type { UsageItemTypeEnum } from './constants';
+import type { UsageCommonFilters, UsageSubjectFilter } from './filter';
+import type { UsageItemCountType, UsageItemType, UsageSchemaType } from './type';
 
-export type GetUsageProps = {
-  dateStart: string;
-  dateEnd: string;
-  sources?: UsageSourceEnum[];
+type LegacyUsageFilterProps = {
+  dateStart?: UsageCommonFilters['dateStart'];
+  dateEnd?: UsageCommonFilters['dateEnd'];
+  sources?: UsageCommonFilters['sources'];
   teamMemberIds?: string[];
-  projectName?: string;
+  projectName?: UsageCommonFilters['projectName'];
+  subjectFilter?: UsageSubjectFilter;
 };
 
-export type GetUsageDashboardProps = GetUsageProps & {
+export type GetUsageProps = LegacyUsageFilterProps;
+export type GetUsageDashboardProps = LegacyUsageFilterProps & {
+  dateStart: UsageCommonFilters['dateStart'];
+  dateEnd: UsageCommonFilters['dateEnd'];
   unit: 'day' | 'month';
 };
 export type GetUsageDashboardResponseItem = {

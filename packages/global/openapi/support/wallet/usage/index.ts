@@ -6,10 +6,47 @@ import {
   GetUsageBodySchema,
   GetUsageDashboardBodySchema,
   GetUsageDashboardResponseSchema,
-  GetUsageResponseSchema
+  GetUsageResponseSchema,
+  UsageQueryBodySchema,
+  UsageQueryResponseSchema,
+  UsageFilterOptionsBodySchema,
+  UsageFilterOptionsResponseSchema,
+  UsageExportConflictSchema
 } from './api';
 
 export const WalletUsagePath: OpenAPIPath = {
+  '/proApi/support/wallet/usage/query': {
+    post: {
+      summary: '查询当前范围的使用记录或日统计',
+      tags: [DevApiTagsMap.walletUsage],
+      requestBody: { content: { 'application/json': { schema: UsageQueryBodySchema } } },
+      responses: {
+        200: {
+          description: '数据和最新筛选上下文',
+          content: { 'application/json': { schema: UsageQueryResponseSchema } }
+        },
+        400: { description: '请求参数无效' },
+        401: { description: '未登录' },
+        403: { description: '无读取权限' }
+      }
+    }
+  },
+  '/proApi/support/wallet/usage/filterOptions': {
+    post: {
+      summary: '浏览使用记录筛选选项或校验导出范围',
+      tags: [DevApiTagsMap.walletUsage],
+      requestBody: { content: { 'application/json': { schema: UsageFilterOptionsBodySchema } } },
+      responses: {
+        200: {
+          description: '只读选项及筛选上下文',
+          content: { 'application/json': { schema: UsageFilterOptionsResponseSchema } }
+        },
+        400: { description: '请求参数无效' },
+        401: { description: '未登录' },
+        403: { description: '无读取权限' }
+      }
+    }
+  },
   '/proApi/support/wallet/usage/exportUsage': {
     post: {
       summary: '导出使用记录',
@@ -19,6 +56,13 @@ export const WalletUsagePath: OpenAPIPath = {
         content: { 'application/json': { schema: ExportUsageBodySchema } }
       },
       responses: {
+        400: { description: '请求参数无效' },
+        401: { description: '未登录' },
+        403: { description: '无读取权限' },
+        409: {
+          description: '筛选或权限范围改变，本次没有生成 CSV；data 包含最新上下文',
+          content: { 'application/json': { schema: UsageExportConflictSchema } }
+        },
         200: {
           description: '成功返回使用记录 CSV 文件',
           content: { 'text/csv': { schema: ExportUsageContentSchema } }

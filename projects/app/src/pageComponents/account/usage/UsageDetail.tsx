@@ -8,6 +8,7 @@ import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import { formatNumber } from '@fastgpt/global/common/math/tools';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
+import { UsageMember } from './UsageMember';
 
 const UsageDetail = ({ usage, onClose }: { usage: UsageListItemType; onClose: () => void }) => {
   const { t } = useSafeTranslation();
@@ -84,6 +85,10 @@ const UsageDetail = ({ usage, onClose }: { usage: UsageListItemType; onClose: ()
       <Flex alignItems={'center'} pb={4}>
         <FormLabel flex={'0 0 80px'}>{t('account_usage:generation_time')}:</FormLabel>
         <Box>{dayjs(usage.time).format('YYYY/MM/DD HH:mm:ss')}</Box>
+      </Flex>
+      <Flex alignItems={'center'} pb={4}>
+        <FormLabel flex={'0 0 80px'}>{t('account_usage:member')}:</FormLabel>
+        <UsageMember member={usage.sourceMember} />
       </Flex>
       <Flex alignItems={'center'} pb={4}>
         <FormLabel flex={'0 0 80px'}>{t('account_usage:app_name')}:</FormLabel>
