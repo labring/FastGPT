@@ -1,3 +1,4 @@
+import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
@@ -12,6 +13,7 @@ import {
   type CloseCustomFeedbackResponseType
 } from '@fastgpt/global/openapi/core/chat/feedback/api';
 import { buildChatSourceQuery } from '@fastgpt/service/core/chat/source';
+import { ApiKeyTypeEnum } from '@fastgpt/global/support/openapi/constants';
 
 async function handler(req: ApiRequestProps): Promise<CloseCustomFeedbackResponseType> {
   const { sourceType, sourceId, chatId, dataId, index, outLinkAuthData } = parseApiInput({
@@ -30,19 +32,20 @@ async function handler(req: ApiRequestProps): Promise<CloseCustomFeedbackRespons
   });
   const resolvedSourceId = authRes.sourceId;
   const chatSourceQuery = buildChatSourceQuery({ sourceType, sourceId: resolvedSourceId });
-  await authCert({ req, authToken: true });
+  if (authRes.apiKeyType !== ApiKeyTypeEnum.app) await authCert({ req, authToken: true });
 
   await mongoSessionRun(async (session) => {
+    // 同一轮 Human/AI 共用 dataId，两个写入都必须限定 AI，避免命中用户消息。
     // Remove custom feedback at index
     await MongoChatItem.findOneAndUpdate(
-      { ...chatSourceQuery, chatId, dataId },
+      { ...chatSourceQuery, chatId, dataId, obj: ChatRoleEnum.AI },
       { $unset: { [`customFeedbacks.${index}`]: 1 } },
       { session }
     );
 
     // Remove null values from array
     await MongoChatItem.updateOne(
-      { ...chatSourceQuery, chatId, dataId },
+      { ...chatSourceQuery, chatId, dataId, obj: ChatRoleEnum.AI },
       { $pull: { customFeedbacks: null } },
       { session }
     );

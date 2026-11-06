@@ -14,6 +14,10 @@ import { MongoUser } from '@fastgpt/service/support/user/schema';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
 import { ChatSourceEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { UserError } from '@fastgpt/global/common/error/utils';
+import { ApiKeyTypeEnum } from '@fastgpt/global/support/openapi/constants';
+import { getAppByApiKey } from '@fastgpt/service/support/openapi/auth';
+import { AppPermission } from '@fastgpt/global/support/permission/app/controller';
+import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
 
 /**
  * 解析 Chat Completions 请求最终应归属的团队成员。
@@ -87,9 +91,9 @@ export const resolveChatCompletionEffectiveTmbId = async ({
 /**
  * 鉴权 Chat Completions 头部请求，并返回后续对话运行需要的应用、团队和成员上下文。
  *
- * API Key 先完成凭证鉴权，再按 body.appId > apiKey-appId > legacyAppId 解析应用。
- * authProxy 只改变本次 completions 的 effective tmbId；应用和会话权限继续按
- * effective tmbId 走现有权限链路，不能因为 APIKey 创建者有权限而绕过代理成员权限。
+ * API Key 先完成凭证鉴权；应用 Key 使用绑定应用，个人密钥按 body.appId > apiKey-appId > legacyAppId 解析。
+ * 个人密钥（含 authProxy）按 effective tmbId 校验 ACL；应用 Key 只按可信绑定授权，
+ * 不依赖归属成员 ACL，也不支持 authProxy。请求中的 appId 和 SDK 后缀均不覆盖应用 Key 的绑定。
  */
 export const authChatCompletionHeaderRequest = async ({
   req,
@@ -113,11 +117,14 @@ export const authChatCompletionHeaderRequest = async ({
     authType,
     sourceName,
     apikey,
-    apiKeyId
+    apiKeyId,
+    apiKeyType,
+    boundAppId
   } = await authCert({
     req,
     authToken: true,
-    authApiKey: true
+    authApiKey: true,
+    authAppApiKey: true
   });
 
   const { tmbId: effectiveTmbId } = await resolveChatCompletionEffectiveTmbId({
@@ -130,13 +137,21 @@ export const authChatCompletionHeaderRequest = async ({
   });
 
   const currentAppId =
-    authType === AuthUserTypeEnum.apikey ? appId || parsedAppId || legacyAppId : appId;
+    apiKeyType === ApiKeyTypeEnum.app
+      ? boundAppId
+      : authType === AuthUserTypeEnum.apikey
+        ? appId || parsedAppId || legacyAppId
+        : appId;
 
   if (!currentAppId) {
     return Promise.reject(new UserError('appId is empty'));
   }
 
   const { app, permission } = await (async () => {
+    if (apiKeyType === ApiKeyTypeEnum.app) {
+      const app = await getAppByApiKey({ teamId, boundAppId });
+      return { app, permission: new AppPermission({ role: ReadRoleVal }) };
+    }
     if (authType === AuthUserTypeEnum.apikey) {
       const { app } = await authAppByTmbId({
         tmbId: effectiveTmbId,
@@ -174,7 +189,9 @@ export const authChatCompletionHeaderRequest = async ({
   if (
     chat &&
     (String(chat.teamId) !== teamId ||
-      (!permission.hasReadChatLogPer && String(chat.tmbId) !== effectiveTmbId))
+      (apiKeyType !== ApiKeyTypeEnum.app &&
+        !permission.hasReadChatLogPer &&
+        String(chat.tmbId) !== effectiveTmbId))
   ) {
     return Promise.reject(ChatErrEnum.unAuthChat);
   }

@@ -1,3 +1,4 @@
+import { ApiKeyTypeEnum } from '@fastgpt/global/support/openapi/constants';
 import { MongoOpenApi } from '@fastgpt/service/support/openapi/schema';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -59,6 +60,7 @@ describe.each([
     });
     appId = String(app._id);
     const key = await MongoOpenApi.create({
+      type: ApiKeyTypeEnum.personal,
       teamId: team._id,
       tmbId: member._id,
       apiKey: 'identity-test-key',

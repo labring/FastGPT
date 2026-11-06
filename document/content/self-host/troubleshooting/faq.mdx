@@ -130,7 +130,7 @@ description: FastGPT 私有部署常见问题排查方式
 
 适用版本：4.16.0 及以后。从 4.16.0 起，沙箱镜像只用 `AGENT_SANDBOX_OPENSANDBOX_IMAGE` 这一个变量，并且必须配置 `AGENT_SANDBOX_PREVIEW_PROXY_URL`。用 4.15 或更早的 compose 模板搭配新版镜像，就会报这两个错。
 
-怎么做：按 [Docker Compose 部署](/self-host/deploy/docker) 使用一键脚本，或手动下载和镜像同一版本的模板（当前版本用 `main` 目录，没有 v4.16、v4.17 目录）。
+怎么做：按 [Docker Compose 部署](/self-host/deploy/docker) 使用一键脚本，或手动下载和镜像同一版本的模板（4.17.x 使用 `main` 目录，4.16.x 使用 `v4.16` 目录）。
 
 注意：在已经部署过的目录里重新运行一键脚本，会重新生成数据库密码和 `AES256_SECRET_KEY`，并覆盖 `docker-compose.yml`。请先备份原文件；要保留数据，就选择不自动生成密码（或设置 `FASTGPT_AUTO_GENERATE_CREDENTIALS=false`），并把原来的密码和密钥拷过去。
 

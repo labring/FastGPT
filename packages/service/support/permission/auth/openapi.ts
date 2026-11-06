@@ -4,12 +4,16 @@ import { getTmbInfoByTmbId } from '../../user/team/controller';
 import { MongoOpenApi } from '../../openapi/schema';
 import { OpenApiErrEnum } from '@fastgpt/global/common/error/code/openapi';
 import { parseHeaderCert } from './common';
+import { ApiKeyTypeEnum } from '@fastgpt/global/support/openapi/constants';
+import { resolveApiKeyScope } from '../../openapi/utils';
+import { authAppByTmbId } from '../app/auth';
+import { ManagePermissionVal } from '@fastgpt/global/support/permission/constant';
 
 /**
  * 校验当前登录成员是否可以管理指定 APIKey。
  *
- * 新版 APIKey 只属于创建它的团队成员，team owner 或 app owner 不再拥有跨成员
- * 查看、复制、更新、删除的特权。返回的团队权限仅用于调用点判断 authProxy 开关。
+ * 个人密钥仅本人；应用 Key 要求绑定应用的管理权限，可跨归属成员管理。
+ * 此入口仅接受登录态，Key 自身不能管理其他密钥。团队权限仅用于个人 authProxy 开关。
  */
 export async function authOpenApiKeyCrud({
   id,
@@ -21,7 +25,7 @@ export async function authOpenApiKeyCrud({
     openapi: OpenApiSchema;
   }
 > {
-  const result = await parseHeaderCert(props);
+  const result = await parseHeaderCert({ req: props.req, authToken: true });
   const { tmbId, teamId } = result;
   const { permission: tmbPer } = await getTmbInfoByTmbId({ tmbId });
 
@@ -35,7 +39,10 @@ export async function authOpenApiKeyCrud({
       return Promise.reject(OpenApiErrEnum.unAuth);
     }
 
-    if (String(openapi.tmbId) !== tmbId) {
+    const scope = resolveApiKeyScope(openapi);
+    if (scope.type === ApiKeyTypeEnum.app) {
+      await authAppByTmbId({ tmbId, appId: scope.appId, per: ManagePermissionVal });
+    } else if (String(openapi.tmbId) !== tmbId) {
       return Promise.reject(OpenApiErrEnum.unAuth);
     }
 

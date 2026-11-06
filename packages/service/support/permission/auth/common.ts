@@ -10,14 +10,15 @@ import { assertCancellation } from '../../../support/user/account/cancellation/g
 import { getUserIdByTmbId } from '../../../support/user/team/utils';
 import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { serviceEnv } from '../../../env';
+import { ApiKeyTypeEnum } from '@fastgpt/global/support/openapi/constants';
 
 export const authCert = async (props: AuthModeType) => {
   const result = await parseHeaderCert(props);
 
   return {
     ...result,
-    isOwner: true,
-    canWrite: true
+    isOwner: result.apiKeyType !== ApiKeyTypeEnum.app,
+    canWrite: result.apiKeyType !== ApiKeyTypeEnum.app
   };
 };
 
@@ -33,6 +34,7 @@ export async function parseHeaderCert({
   authToken = false,
   authRoot = false,
   authApiKey = false,
+  authAppApiKey = false,
   allowAccountCancellation = false
 }: AuthModeType) {
   // parse jwt
@@ -68,10 +70,13 @@ export async function parseHeaderCert({
       parsedAppId = '',
       authProxy,
       apiKeyId,
+      apiKeyType,
+      boundAppId,
       sourceName
     } = await authOpenApiKey({
       apikey,
-      authApiKey
+      authApiKey,
+      authAppApiKey
     });
     const userId = await getUserIdByTmbId(tmbId);
 
@@ -84,6 +89,8 @@ export async function parseHeaderCert({
       parsedAppId,
       apiKeyAuthProxy: authProxy,
       apiKeyId,
+      apiKeyType,
+      boundAppId,
       sourceName
     };
   }
@@ -109,9 +116,11 @@ export async function parseHeaderCert({
     legacyAppId,
     parsedAppId,
     apiKeyAuthProxy,
-    apiKeyId
+    apiKeyId,
+    apiKeyType,
+    boundAppId
   } = await (async () => {
-    if (authApiKey && authorization) {
+    if ((authApiKey || authAppApiKey) && authorization) {
       // apikey from authorization
       const authResponse = await parseAuthorization(authorization);
       return {
@@ -125,6 +134,8 @@ export async function parseHeaderCert({
         authType: AuthUserTypeEnum.apikey,
         apiKeyAuthProxy: authResponse.apiKeyAuthProxy,
         apiKeyId: authResponse.apiKeyId,
+        apiKeyType: authResponse.apiKeyType,
+        boundAppId: authResponse.boundAppId,
         sourceName: authResponse.sourceName
       };
     }
@@ -170,7 +181,8 @@ export async function parseHeaderCert({
   if (shouldAssertCancellation) {
     await assertCancellation({
       teamId: String(teamId),
-      userId: String(uid)
+      // 应用凭证不受归属人的个人注销/ACL 支配，团队注销仍必须阻止应用访问。
+      userId: apiKeyType === ApiKeyTypeEnum.app ? undefined : String(uid)
     });
   }
 
@@ -185,6 +197,8 @@ export async function parseHeaderCert({
     parsedAppId,
     apiKeyAuthProxy,
     apiKeyId,
+    apiKeyType,
+    boundAppId,
     apikey: openApiKey,
     isRoot: !!isRoot,
     sessionId

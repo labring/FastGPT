@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "isolated": true,
+  "environment": "local-dev",
   "baseUrl": "http://127.0.0.1:3000",
   "teamId": "REPLACE_WITH_TEAM_OBJECT_ID",
   "echoTemplate": "\n{{question}}|{{userId}}",
@@ -19,15 +19,24 @@
     ]
   },
   "actors": {
-    "owner": { "stateEnv": "FASTGPT_TEST_OWNER_STATE" },
+    "owner": {
+      "stateEnv": "FASTGPT_TEST_OWNER_STATE"
+    },
     "A": {
       "tmbId": "A_MEMBER_ID",
       "name": "A_NAME",
       "username": "A_USERNAME",
       "keyEnv": "FASTGPT_TEST_A_KEY"
     },
-    "B": { "tmbId": "B_MEMBER_ID", "name": "B_NAME", "username": "B_USERNAME" },
-    "proxy": { "tmbId": "PROXY_KEY_CREATOR_MEMBER_ID", "keyEnv": "FASTGPT_TEST_PROXY_KEY" },
+    "B": {
+      "tmbId": "B_MEMBER_ID",
+      "name": "B_NAME",
+      "username": "B_USERNAME"
+    },
+    "proxy": {
+      "tmbId": "PROXY_KEY_CREATOR_MEMBER_ID",
+      "keyEnv": "FASTGPT_TEST_PROXY_KEY"
+    },
     "logViewer": {
       "tmbId": "L_MEMBER_ID",
       "keyEnv": "FASTGPT_TEST_LOG_VIEWER_KEY",
@@ -39,11 +48,26 @@
       "stateEnv": "FASTGPT_TEST_NO_LOG_STATE"
     }
   },
-  "members": { "foreign": "OTHER_TEAM_MEMBER_ID", "departed": "SAME_TEAM_DEPARTED_MEMBER_ID" },
-  "mongo": { "uriEnv": "FASTGPT_TEST_MONGO_URI", "logUriEnv": "FASTGPT_TEST_MONGO_LOG_URI" },
-  "redis": { "uriEnv": "FASTGPT_TEST_REDIS_URI" },
-  "gate": { "port": 4711, "bindHost": "127.0.0.1", "tokenEnv": "FASTGPT_TEST_GATE_TOKEN" },
-  "lease": { "instances": ["http://127.0.0.1:3000", "http://127.0.0.1:3010"] },
+  "members": {
+    "foreign": "OTHER_TEAM_MEMBER_ID",
+    "departed": "SAME_TEAM_DEPARTED_MEMBER_ID"
+  },
+  "mongo": {
+    "uriEnv": "FASTGPT_TEST_MONGO_URI",
+    "logUriEnv": "FASTGPT_TEST_MONGO_LOG_URI",
+    "writeUriEnv": "FASTGPT_TEST_MONGO_WRITE_URI"
+  },
+  "redis": {
+    "uriEnv": "FASTGPT_TEST_REDIS_URI"
+  },
+  "gate": {
+    "port": 4711,
+    "bindHost": "127.0.0.1",
+    "tokenEnv": "FASTGPT_TEST_GATE_TOKEN"
+  },
+  "lease": {
+    "instances": ["http://127.0.0.1:3000", "http://127.0.0.1:3010"]
+  },
   "logs": {
     "appId": "REPLACE_WITH_LOG_WORKFLOW_ID",
     "foreignAppId": "REPLACE_WITH_OTHER_TEAM_APP_ID",
@@ -51,7 +75,12 @@
     "dateEnd": "REPLACE_WITH_ISO_END",
     "searchPrefix": "RUN-R3-SEARCH",
     "records": [
-      { "ref": "R1", "chatId": "RUN-R1", "tmbId": "A_MEMBER_ID", "source": "api" },
+      {
+        "ref": "R1",
+        "chatId": "RUN-R1",
+        "tmbId": "A_MEMBER_ID",
+        "source": "api"
+      },
       {
         "ref": "R2",
         "chatId": "RUN-R2",
@@ -96,5 +125,12 @@
         "source": "share"
       }
     ]
+  },
+  "serviceEnvFileEnv": "FASTGPT_TEST_SERVICE_ENV",
+  "devSourceEnv": "/ABSOLUTE_DEV_PATH/projects/app/.env.local",
+  "appKeys": {
+    "templateAppId": "REPLACE_WITH_PUBLISHED_ECHO_APP_ID",
+    "maxKeyCount": 100,
+    "commercial": false
   }
 }

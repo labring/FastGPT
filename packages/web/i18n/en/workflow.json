@@ -385,5 +385,7 @@
   "workflow_builder_preview_confirm": "Confirm and build",
   "workflow_builder_preview_revise": "Revise the plan",
   "workflow_builder_preview_cancel": "Cancel this build",
-  "workflow_builder_preview_revise_placeholder": "Describe the nodes or logic to change"
+  "workflow_builder_preview_revise_placeholder": "Describe the nodes or logic to change",
+  "workflow_builder_preview_pending": "Awaiting confirmation",
+  "workflow_builder_preview_flow": "Workflow preview"
 }

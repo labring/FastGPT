@@ -61,6 +61,7 @@ export async function authSandboxSession({
       req,
       authToken: true,
       authApiKey: true,
+      authAppApiKey: true,
       appId: authResult.sourceId,
       per
     });

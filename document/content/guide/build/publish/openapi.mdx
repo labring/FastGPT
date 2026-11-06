@@ -5,35 +5,38 @@ description: 通过 API 访问 FastGPT 应用
 
 import { Alert } from '@/components/docs/Alert';
 
-在 FastGPT 中，发布渠道里的 API 入口展示当前登录成员可用的 **APIKey**。APIKey 是团队成员的开放接口调用凭证，不再按应用创建专属密钥。
+**FastGPT 4.18.0 及以上支持应用 Key。** 发布渠道里的「API 访问」可切换「应用 Key」和「个人密钥」：
 
-调用当前应用的 `chat/completions` 接口时，推荐在请求体传入 `appId`。如果第三方应用只能配置 OpenAI SDK 风格的密钥，也可以使用 `apiKey-appId` 兼容格式。完整说明可以[查看 OpenAPI 介绍](../../../openapi/intro.mdx)。
+- **应用 Key**：绑定当前应用，仅用于该应用的对话与对话管理。只有应用管理员可查看、创建和管理；不同管理员可以操作其他管理员创建的 Key。调用授权来自 Key 本身，不依赖归属成员是否仍有该应用的访问权限。
+- **个人密钥**：以当前成员身份访问开放接口，权限随该成员的权限变化；仅展示和管理本人的密钥。
+
+应用 Key 调用支持的对话接口时无需传 `appId` 或 `sourceType`，服务端使用绑定应用和固定的 `sourceType=app`。请求中的 `appId` 或 `apiKey-appId` 后缀不会覆盖绑定。个人密钥调用 `chat/completions` 时推荐传 `body.appId`，也可使用 `apiKey-appId` 兼容格式。
+
+获取会话列表时，应用 Key 固定查询 API 来源，不能传 `source` 切换来源。分页参数及请求示例见 [OpenAPI 介绍](../../../openapi/intro.mdx)。
 
 ## 对接自己的用户系统
 
 **版本要求：FastGPT 4.18.0 及以上。**
 
-APIKey 由接入方后端保管。后端完成用户认证后，可通过 `customUid` 传入自己的使用者 ID：
+APIKey 由接入方后端保管。后端完成用户认证后，可通过 `customUid` 传入自己的使用者 ID。以下使用应用 Key，无需传 `appId`：
 
 ```json
 {
-  "appId": "68ad85a7463006c963799a05",
   "customUid": "customer-42",
   "messages": [{ "role": "user", "content": "你好" }]
 }
 ```
 
-`customUid` 最长 1024 字符，原值传递给工作流的 `userId`，并记录为对话日志的使用者；未传、`null` 或空字符串时使用默认成员身份。它不改变 APIKey 的鉴权成员与权限。`customUid` 与代表团队成员调用的 `authProxy` 互斥，同时提供会返回参数错误。
+`customUid` 最长 1024 字符，原值传递给工作流的 `userId`，并记录为对话日志的使用者；未传、`null` 或空字符串时使用默认成员身份。它不改变 APIKey 的鉴权成员或授权范围。个人密钥支持的 `authProxy` 与 `customUid` 互斥，同时提供会返回参数错误；应用 Key 不支持 `authProxy`。
 
 对话日志默认展示使用者；可在列设置中开启默认隐藏的“鉴权者”。CSV 按所选列导出。此参数用于身份标记，接入方后端仍需管理用户认证和可访问的会话。
 
 ## 获取 APIKey
 
-依次选择应用 ->「发布渠道」->「API」，然后点击「新建」创建密钥。
+依次选择应用 ->「发布渠道」->「API 访问」，切换密钥类型后点击新建。创建应用 Key 只需应用管理员权限，不要求团队的「创建 API Key」权限；个人密钥仍遵循团队权限限制。
 
 <Alert context="warning">
-  APIKey 代表当前登录成员的开放接口调用凭证。请妥善保管密钥；如需再次复制，可在 API
-  列表中点击复制按钮。
+  请在业务后端保管密钥，避免暴露到浏览器或客户端。如需再次复制，可在 API 列表中点击复制按钮。
 </Alert>
 
 ![](/imgs/fastgpt-api1.jpg)
@@ -46,7 +49,7 @@ APIKey 由接入方后端保管。后端完成用户认证后，可通过 `custo
 
 ```bash
 OPENAI_API_BASE_URL: http://localhost:3000/api (改成自己部署的域名)
-OPENAI_API_KEY = 上一步获取到的密钥（推荐在请求体传 appId；如第三方应用只能配置密钥，可填 apiKey-appId 兼容格式）
+OPENAI_API_KEY = 上一步获取到的密钥（应用 Key 直接使用原值；个人密钥推荐在请求体传 appId，也可使用 apiKey-appId 兼容格式）
 ```
 
 **[ChatGPT Next Web](https://github.com/Yidadaa/ChatGPT-Next-Web) 示例：**
