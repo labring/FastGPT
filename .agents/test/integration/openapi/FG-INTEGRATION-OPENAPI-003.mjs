@@ -5,6 +5,12 @@ import { createScenario, success } from '../../support/scenario.mjs';
 import { browserSession } from '../../support/chat.mjs';
 import { appKeyWorld } from '../../support/app-key.mjs';
 import path from 'node:path';
+import { readFile } from 'node:fs/promises';
+import { createRequire } from 'node:module';
+
+const matter = createRequire(new URL('../../../../document/package.json', import.meta.url))(
+  'gray-matter'
+);
 
 /** 按教程走真实应用 Key 主链路，按 UID 校验列表及删除差集。 */
 async function tutorial(context) {
@@ -126,6 +132,26 @@ async function docs(context) {
     ]) {
       await p.goto(base + '/' + locale + '/openapi/intro', { timeout: 120000 });
       const link = p.getByRole('link', { name: title, exact: true }).first();
+      const suffix = locale === 'en' ? '.en' : '';
+      const { data } = matter(
+        await readFile(
+          new URL(
+            '../../../../document/content/openapi/best-practices/app-integration' + suffix + '.mdx',
+            import.meta.url
+          ),
+          'utf8'
+        )
+      );
+      if (data.draft === true) {
+        await expect(link).toHaveCount(0);
+        const target = '/' + locale + '/openapi/best-practices/app-integration';
+        const response = await p.goto(base + target, { timeout: 120000 });
+        assert.equal(response.status(), 404);
+        await expect(p.getByRole('heading', { name: title, exact: true })).toHaveCount(0);
+        await capture(locale + '-draft');
+        c.record('未发布教程不可访问', { locale, route: target, status: response.status() });
+        continue;
+      }
       if (!(await link.isVisible())) await p.getByText(group, { exact: true }).first().click();
       await link.click();
       await expect(p.getByRole('heading', { name: title, exact: true }).first()).toBeVisible();
