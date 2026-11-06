@@ -255,6 +255,14 @@ export const serviceEnv = createEnv({
       description: 'Milvus 语言识别引擎(BM25 analyzer): lingua(默认) | whatlang'
     }),
     OPENGAUSS_URL: z.string().optional().meta({ description: 'openGauss 向量库连接参数' }),
+    DXMT_URL: z
+      .string()
+      .optional()
+      .meta({ description: 'DXMT 向量库地址，例如 http://localhost:9999' }),
+    DXMT_API_KEY: z
+      .string()
+      .optional()
+      .meta({ description: 'DXMT 向量库 API Key（服务端开启鉴权时填写）' }),
     HNSW_EF_SEARCH: IntSchema.min(1).default(200).meta({
       description: 'HNSW 向量检索搜索宽度，对 PG / Milvus / OceanBase / SeekDB / OpenGauss 生效'
     }),

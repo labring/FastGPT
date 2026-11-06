@@ -4,6 +4,7 @@ import { PgVectorCtrl } from './pg';
 import { ObVectorCtrl } from './oceanbase';
 import { SeekVectorCtrl } from './seekdb';
 import { OpenGaussVectorCtrl } from './opengauss';
+import { DxmtVectorCtrl } from './dxmt';
 import { getVectors } from '../../core/ai/embedding';
 import type { GetVectorsProps } from '../../core/ai/embedding';
 import type {
@@ -31,6 +32,8 @@ const getVectorObj = (): VectorControllerType => {
       return new MilvusCtrl();
     case 'opengauss':
       return new OpenGaussVectorCtrl();
+    case 'dxmt':
+      return new DxmtVectorCtrl();
     case 'pg':
     default:
       return new PgVectorCtrl();

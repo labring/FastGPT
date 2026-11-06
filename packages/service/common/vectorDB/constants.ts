@@ -5,6 +5,8 @@ export const DatasetVectorTableName = 'modeldata';
 
 export const PG_ADDRESS = serviceEnv.PG_URL;
 export const OPENGAUSS_ADDRESS = serviceEnv.OPENGAUSS_URL;
+export const DXMT_ADDRESS = serviceEnv.DXMT_URL;
+export const DXMT_API_KEY = serviceEnv.DXMT_API_KEY;
 export const OCEANBASE_ADDRESS = serviceEnv.OCEANBASE_URL;
 export const SEEKDB_ADDRESS = serviceEnv.SEEKDB_URL;
 export const MILVUS_ADDRESS = serviceEnv.MILVUS_ADDRESS;
@@ -90,7 +92,7 @@ export const DatasetVectorTableNameV2 = 'modeldata_v2';
 /** mongo 全文批量写入分片上限 */
 export const FULL_TEXT_WRITE_BATCH_SIZE = 50;
 
-export type VectorType = 'seekdb' | 'oceanbase' | 'pg' | 'milvus' | 'opengauss';
+export type VectorType = 'seekdb' | 'oceanbase' | 'pg' | 'milvus' | 'opengauss' | 'dxmt';
 
 export const getVectorType = (): VectorType => {
   if (SEEKDB_ADDRESS) return 'seekdb';
@@ -98,6 +100,7 @@ export const getVectorType = (): VectorType => {
   if (PG_ADDRESS) return 'pg';
   if (MILVUS_ADDRESS) return 'milvus';
   if (OPENGAUSS_ADDRESS) return 'opengauss';
+  if (DXMT_ADDRESS) return 'dxmt';
   return 'pg';
 };
 
