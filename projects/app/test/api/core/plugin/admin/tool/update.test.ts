@@ -128,6 +128,20 @@ describe('admin system tool update handler', () => {
     );
   });
 
+  it('does not invoke remote lifecycle when updating status of a child tool', async () => {
+    await handler(
+      { body: { id: 'systemTool-weather/forecast', status: PluginStatusEnum.Offline } } as any,
+      {} as any
+    );
+    expect(mocks.disableSystemPlugin).not.toHaveBeenCalled();
+    expect(mocks.restoreSystemPlugin).not.toHaveBeenCalled();
+    expect(mocks.updateOne).toHaveBeenCalledWith(
+      { pluginId: 'systemTool-weather/forecast' },
+      expect.objectContaining({ status: PluginStatusEnum.Offline }),
+      expect.anything()
+    );
+  });
+
   it('保存系统工具配置', async () => {
     mocks.findOne.mockResolvedValue({
       pluginId: 'systemTool-weather',

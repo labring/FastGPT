@@ -198,8 +198,8 @@ const EditPluginModal: React.FC<EditPluginModalProps> = ({ plugin, onClose, onSu
                     placeholder={item.placeholder ?? `请输入 ${item.label || item.key}`}
                     value={val ?? ''}
                     onChange={(value) => {
-                      // Optional cleared numbers must be omitted, not submitted as empty strings.
-                      handleFieldChange(item.key, typeof value === 'number' ? value : undefined);
+                      // Optional cleared numbers must submit null to explicitly delete the stored field in JSON.
+                      handleFieldChange(item.key, typeof value === 'number' ? value : null);
                     }}
                   />
                 ) : item.inputType === 'select' ? (

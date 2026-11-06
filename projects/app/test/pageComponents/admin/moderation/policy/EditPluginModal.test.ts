@@ -137,7 +137,7 @@ describe('moderation numeric configuration', () => {
         await act(async () => saveButton?.click());
         expect(mocks.save).toHaveBeenCalledWith({
           pluginId: 'baidu',
-          secretsVal: { strategyId: typeof value === 'number' ? value : undefined }
+          secretsVal: { strategyId: typeof value === 'number' ? value : null }
         });
       } finally {
         await act(async () => root.unmount());
