@@ -7,7 +7,10 @@ import {
   bundleOpenAPISchema,
   parseOpenAPISchemaString
 } from '@fastgpt/global/common/string/swagger';
-import { rewriteRuntimeWorkFlow } from '@fastgpt/service/core/workflow/dispatch/utils';
+import {
+  rewriteRuntimeWorkFlow,
+  getInlineMcpToolSetRuntimeNodes
+} from '@fastgpt/service/core/workflow/dispatch/utils';
 
 const mocks = vi.hoisted(() => ({
   loadWorkflowAppResource: vi.fn(),
@@ -197,6 +200,19 @@ describe('rewriteRuntimeWorkFlow external toolsets', () => {
 });
 
 describe('rewriteRuntimeWorkFlow independent toolsets', () => {
+  it('keeps inline MCP references unresolved during workflow initialization', async () => {
+    const toolSetNode = createMcpToolSetNode([], { Authorization: { ref: ['login', 'token'] } });
+    const nodes = [toolSetNode];
+    const edges = [createSelectedToolEdge()];
+
+    await rewriteRuntimeWorkFlow({ teamId: 'team-1', tmbId: 'member-1', nodes, edges });
+
+    expect(nodes).toEqual([toolSetNode]);
+    expect(edges).toEqual([createSelectedToolEdge()]);
+    expect(mocks.getSecretValue).not.toHaveBeenCalled();
+    expect(mocks.getMcpTools).not.toHaveBeenCalled();
+  });
+
   it('resolves workflow references for inline MCP headers', async () => {
     const reference: [string, string] = ['variables', 'apiToken'];
     const resolveReference = vi.fn().mockReturnValue('mcp-token');
@@ -216,13 +232,7 @@ describe('rewriteRuntimeWorkFlow independent toolsets', () => {
       })
     ];
 
-    await rewriteRuntimeWorkFlow({
-      teamId: 'team-1',
-      tmbId: 'member-1',
-      nodes,
-      edges: [],
-      resolveReference
-    });
+    await getInlineMcpToolSetRuntimeNodes({ toolSetNode: nodes[0], resolveReference });
 
     expect(resolveReference).toHaveBeenCalledWith(reference);
     expect(mocks.getMcpTools).toHaveBeenCalledWith({
@@ -248,18 +258,14 @@ describe('rewriteRuntimeWorkFlow independent toolsets', () => {
     mocks.getMcpTools.mockResolvedValue(remoteTools);
 
     const run = async () => {
-      const nodes = [
-        createMcpToolSetNode([
-          { name: 'search', description: 'Local search' },
-          { name: 'removed', description: 'Stale summary' }
-        ])
-      ];
-      const edges = [createSelectedToolEdge()];
-      await rewriteRuntimeWorkFlow({ teamId: 'team-1', tmbId: 'member-1', nodes, edges });
-      return { nodes, edges };
+      const toolSetNode = createMcpToolSetNode([
+        { name: 'search', description: 'Local search' },
+        { name: 'removed', description: 'Stale summary' }
+      ]);
+      return getInlineMcpToolSetRuntimeNodes({ toolSetNode });
     };
 
-    const { nodes, edges } = await run();
+    const nodes = await run();
     await run();
 
     expect(mocks.getMcpTools).toHaveBeenCalledTimes(2);
@@ -277,16 +283,15 @@ describe('rewriteRuntimeWorkFlow independent toolsets', () => {
       url: 'https://mcp.example.com',
       headerSecret: { Authorization: { secret: 'encrypted-token' } }
     });
-    expect(edges.map((edge) => edge.target)).toEqual(nodes.map((node) => node.nodeId));
   });
 
   it('propagates MCP list failures without falling back to saved summaries', async () => {
     mocks.getMcpTools.mockRejectedValue(new Error('MCP unavailable'));
     const nodes = [createMcpToolSetNode([{ name: 'search', description: 'Saved tool' }])];
 
-    await expect(
-      rewriteRuntimeWorkFlow({ teamId: 'team-1', tmbId: 'member-1', nodes, edges: [] })
-    ).rejects.toThrow('MCP unavailable');
+    await expect(getInlineMcpToolSetRuntimeNodes({ toolSetNode: nodes[0] })).rejects.toThrow(
+      'MCP unavailable'
+    );
   });
 
   it('fetches the full HTTP list, ignores stale summaries, and overrides descriptions by name', async () => {
@@ -331,7 +336,7 @@ describe('rewriteRuntimeWorkFlow independent toolsets', () => {
     expect(edges.map((edge) => edge.target)).toEqual(nodes.map((node) => node.nodeId));
   });
 
-  it('maps legacy index child IDs to the current tool position', async () => {
+  it('restores the parent connection from legacy child edges without discovering MCP tools', async () => {
     mocks.getMcpTools.mockResolvedValue([
       { name: 'search', description: 'Search', inputSchema: { type: 'object' } }
     ]);
@@ -348,10 +353,13 @@ describe('rewriteRuntimeWorkFlow independent toolsets', () => {
     await rewriteRuntimeWorkFlow({ teamId: 'team-1', tmbId: 'member-1', nodes, edges });
 
     expect(nodes).toHaveLength(1);
-    expect(edges[0].target).toBe(nodes[0].nodeId);
+    expect(nodes[0].nodeId).toBe('mcp-set');
+    expect(edges[0].target).toBe('mcp-set0');
+    expect(edges[1].target).toBe('mcp-set');
+    expect(mocks.getMcpTools).not.toHaveBeenCalled();
   });
 
-  it('does not collide with another toolset whose ID starts with the same prefix', async () => {
+  it('retains multiple inline MCP toolsets until their ToolCall executes', async () => {
     mocks.getMcpTools.mockResolvedValue([
       { name: 'search', description: 'Search', inputSchema: { type: 'object' } }
     ]);
@@ -361,8 +369,8 @@ describe('rewriteRuntimeWorkFlow independent toolsets', () => {
 
     await rewriteRuntimeWorkFlow({ teamId: 'team-1', tmbId: 'member-1', nodes, edges: [] });
 
-    expect(new Set(nodes.map((node) => node.nodeId)).size).toBe(nodes.length);
-    expect(nodes.every((node) => node.flowNodeType === FlowNodeTypeEnum.tool)).toBe(true);
+    expect(nodes).toEqual([first, second]);
+    expect(mocks.getMcpTools).not.toHaveBeenCalled();
   });
 
   it('does not remap an edge that already targets a real node with the legacy child ID', async () => {

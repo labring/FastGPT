@@ -294,6 +294,40 @@ describe('NodeToolSet', () => {
     });
   };
 
+  it('parses on the first click after saving a changed MCP URL on blur', async () => {
+    const initialNode = {
+      nodeId: 'node-mcp',
+      toolConfig: {
+        mcpToolSet: { url: '', headerSecret: {}, toolList: [] }
+      }
+    };
+    mocks.onChangeNode.mockImplementation(({ value }) => {
+      root.render(
+        React.createElement(NodeToolSet, {
+          data: { ...initialNode, toolConfig: value },
+          selected: false
+        } as any)
+      );
+    });
+    await renderNode(initialNode);
+    await click('app:toolset_config');
+    const input = container.querySelector('input');
+    const parseButton = Array.from(container.querySelectorAll('button')).find(
+      (button) => button.textContent === 'common:Parse'
+    );
+    if (!input || !parseButton) throw new Error('Missing MCP configuration controls');
+
+    await setFieldValue(input, 'https://tools.example/mcp');
+    await act(async () => Simulate.blur(input));
+    await act(async () => parseButton.click());
+
+    expect(mocks.getMCPTools).toHaveBeenCalledOnce();
+    expect(mocks.getMCPTools).toHaveBeenCalledWith({
+      url: 'https://tools.example/mcp',
+      headerSecret: {}
+    });
+  });
+
   it('refreshes MCP tools from the URL and stores summaries with local descriptions', async () => {
     await renderNode({
       nodeId: 'node-mcp',
@@ -364,6 +398,41 @@ describe('NodeToolSet', () => {
     await click('app:toolset_config');
     expect(container.querySelector('input')?.value).toBe('https://current.example/mcp');
   });
+
+  it.each(['url', 'authentication'] as const)(
+    'ignores an MCP parse result after its %s changes',
+    async (changedField) => {
+      let resolveTools: ((tools: typeof mocks.remoteMcpTools) => void) | undefined;
+      mocks.getMCPTools.mockReturnValueOnce(
+        new Promise((resolve) => {
+          resolveTools = resolve;
+        })
+      );
+      await renderNode({
+        nodeId: 'node-mcp',
+        toolConfig: {
+          mcpToolSet: { url: 'https://old.example/mcp', headerSecret: {}, toolList: [] }
+        }
+      });
+      await click('app:toolset_config');
+      await click('common:Parse');
+      if (changedField === 'url') {
+        const input = container.querySelector('input');
+        if (!input) throw new Error('Missing MCP URL input');
+        await setFieldValue(input, 'https://new.example/mcp');
+      } else {
+        await click('common:auth_config');
+      }
+      mocks.onChangeNode.mockClear();
+
+      await act(async () => {
+        resolveTools?.(mocks.remoteMcpTools);
+        await Promise.resolve();
+      });
+
+      expect(mocks.onChangeNode).not.toHaveBeenCalled();
+    }
+  );
 
   it('drops an MCP parse result that arrives after the form is closed', async () => {
     let resolveTools: ((tools: typeof mocks.remoteMcpTools) => void) | undefined;
