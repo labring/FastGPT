@@ -184,6 +184,12 @@ export const serviceEnv = createEnv({
     DOC2X_KEY: z.string().optional().meta({
       description: 'Doc2x PDF 解析服务密钥'
     }),
+    MINICPM_OCR_KEY: z.string().optional().meta({
+      description: 'MiniCPM-OCR PDF 解析服务密钥'
+    }),
+    MINICPM_OCR_BASE_URL: UrlSchema.optional().meta({
+      description: 'MiniCPM-OCR 解析服务地址，默认使用国内站地址'
+    }),
     TEXTIN_APP_ID: z.string().optional().meta({
       description: '合合信息 Textin 服务 App ID'
     }),

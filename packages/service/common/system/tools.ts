@@ -46,7 +46,8 @@ export const initFastGPTConfig = (config?: FastGPTConfigFileType) => {
     !!config.systemEnv.customPdfParse?.url ||
     !!config.systemEnv.customPdfParse?.somarkApiKey ||
     !!config.systemEnv.customPdfParse?.textinAppId ||
-    !!config.systemEnv.customPdfParse?.doc2xKey;
+    !!config.systemEnv.customPdfParse?.doc2xKey ||
+    !!config.systemEnv.customPdfParse?.minicpmOcrKey;
   config.feConfigs.customPdfParsePrice = config.systemEnv.customPdfParse?.price || 0;
   config.feConfigs.show_agent_sandbox = hasAgentSandboxConfig();
   config.feConfigs.show_agent_sandbox_free_tip =

@@ -14,6 +14,8 @@ const {
   mockReadExternalFileBuffer,
   mockSomarkParsePDF,
   mockDoc2xParsePDF,
+  mockMiniCPMOcrParsePDF,
+  mockUseMiniCPMOcrServer,
   mockTextinParsePDF,
   mockSangforParseDocument,
   mockUploadImage2S3Bucket,
@@ -57,6 +59,11 @@ const {
     pages: 1,
     text: 'doc2x-parsed-text'
   }),
+  mockMiniCPMOcrParsePDF: vi.fn().mockResolvedValue({
+    pages: 1,
+    text: 'minicpm-ocr-parsed-text'
+  }),
+  mockUseMiniCPMOcrServer: vi.fn(),
   mockTextinParsePDF: vi.fn().mockResolvedValue({
     pages: 1,
     text: 'textin-parsed-text'
@@ -104,6 +111,14 @@ vi.mock('@fastgpt/service/thirdProvider/somark', () => ({
   useSomarkServer: vi.fn(() => ({
     parsePDF: mockSomarkParsePDF
   }))
+}));
+
+vi.mock('@fastgpt/service/thirdProvider/minicpmOcr', () => ({
+  useMiniCPMOcrServer: mockUseMiniCPMOcrServer
+}));
+
+mockUseMiniCPMOcrServer.mockImplementation(() => ({
+  parsePDF: mockMiniCPMOcrParsePDF
 }));
 
 vi.mock('@fastgpt/service/thirdProvider/textin', () => ({
@@ -620,7 +635,32 @@ describe('readFileContentByBuffer', () => {
     expect(result.rawText).toContain('https://s3.example.com/uploaded-image.png');
   });
 
-  it('should prefer custom URL, SoMark, Textin, and Doc2x in that order', async () => {
+  it('should use MiniCPM-OCR service for pdf when minicpmOcrKey is configured', async () => {
+    global.systemEnv = {
+      customPdfParse: {
+        minicpmOcrKey: 'minicpm-key',
+        minicpmOcrBaseUrl: 'https://api.modelbest.ai/v1'
+      }
+    } as any;
+
+    const result = await readFileContentByBuffer({
+      teamId,
+      tmbId,
+      extension: 'pdf',
+      buffer: Buffer.from('pdf content'),
+      encoding: 'utf-8',
+      customPdfParse: true
+    });
+
+    expect(mockUseMiniCPMOcrServer).toHaveBeenCalledWith({
+      apiKey: 'minicpm-key',
+      baseURL: 'https://api.modelbest.ai/v1'
+    });
+    expect(mockMiniCPMOcrParsePDF).toHaveBeenCalledWith(Buffer.from('pdf content'));
+    expect(result.rawText).toBe('minicpm-ocr-parsed-text');
+  });
+
+  it('should prefer custom URL, SoMark, Textin, Doc2x, and MiniCPM-OCR in that order', async () => {
     global.systemEnv = {
       customPdfParse: {
         url: 'http://custom-pdf-service.com/parse',
@@ -628,7 +668,8 @@ describe('readFileContentByBuffer', () => {
         somarkApiKey: 'sk-test',
         textinAppId: 'app-id',
         textinSecretCode: 'secret',
-        doc2xKey: 'doc2x-key'
+        doc2xKey: 'doc2x-key',
+        minicpmOcrKey: 'minicpm-key'
       }
     } as any;
     mockAxiosPost.mockResolvedValueOnce({
@@ -684,6 +725,18 @@ describe('readFileContentByBuffer', () => {
       customPdfParse: true
     });
     expect(doc2xResult.rawText).toBe('doc2x-parsed-text');
+    expect(mockMiniCPMOcrParsePDF).not.toHaveBeenCalled();
+
+    providerConfig.doc2xKey = undefined;
+    const minicpmResult = await readFileContentByBuffer({
+      teamId,
+      tmbId,
+      extension: 'pdf',
+      buffer: Buffer.from('pdf content'),
+      encoding: 'utf-8',
+      customPdfParse: true
+    });
+    expect(minicpmResult.rawText).toBe('minicpm-ocr-parsed-text');
   });
 
   it('should pass Textin image upload handler when imageKeyOptions is provided', async () => {

@@ -8,6 +8,7 @@ import { axios } from '../../api/axios';
 import { parseMarkdownBase64Images } from '@fastgpt/global/common/string/markdown';
 import { createPdfParseUsage } from '../../../support/wallet/usage/controller';
 import { useDoc2xServer } from '../../../thirdProvider/doc2x';
+import { useMiniCPMOcrServer } from '../../../thirdProvider/minicpmOcr';
 import { useTextinServer } from '../../../thirdProvider/textin';
 import { useSomarkServer } from '../../../thirdProvider/somark';
 import { parseFromSangfor, useSangforParse } from '../../../thirdProvider/sangfor';
@@ -382,6 +383,25 @@ const readFileContent = async ({
       formatText: text
     };
   };
+  // MiniCPM-OCR api
+  const parsePdfFromMiniCPMOcr = async (): Promise<ReadFileResponse> => {
+    const { minicpmOcrKey, minicpmOcrBaseUrl } = global.systemEnv.customPdfParse ?? {};
+    if (!minicpmOcrKey) return systemParse();
+
+    const { buffer } = await getMaterializedFile();
+    const { pages, text: rawText } = await useMiniCPMOcrServer({
+      apiKey: minicpmOcrKey,
+      baseURL: minicpmOcrBaseUrl
+    }).parsePDF(buffer);
+    const text = await parseMarkdownImages(rawText);
+
+    reportPdfParseUsage(pages);
+
+    return {
+      rawText: text,
+      formatText: text
+    };
+  };
   // Sangfor service
   const parseDocumentFromSangfor = async (): Promise<ReadFileResponse> => {
     const { buffer, extension: materializedExtension } = await getMaterializedFile();
@@ -406,6 +426,7 @@ const readFileContent = async ({
     if (global.systemEnv.customPdfParse?.somarkApiKey) return parsePdfFromSomark();
     if (global.systemEnv.customPdfParse?.textinAppId) return parsePdfFromTextin();
     if (global.systemEnv.customPdfParse?.doc2xKey) return parsePdfFromDoc2x();
+    if (global.systemEnv.customPdfParse?.minicpmOcrKey) return parsePdfFromMiniCPMOcr();
 
     return systemParse();
   };

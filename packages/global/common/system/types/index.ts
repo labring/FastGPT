@@ -349,6 +349,8 @@ export const CustomPdfParseSchema = z.looseObject({
   key: z.string().optional(),
   somarkApiKey: z.string().optional(),
   doc2xKey: z.string().optional(),
+  minicpmOcrKey: z.string().optional(),
+  minicpmOcrBaseUrl: z.string().optional(),
   textinAppId: z.string().optional(),
   textinSecretCode: z.string().optional(),
   price: NumSchema.optional()

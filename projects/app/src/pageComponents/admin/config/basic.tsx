@@ -228,6 +228,18 @@ export const Settings = () => {
       <FormItem title="Doc2x pdf 解析密钥 (第四优先级)" description="">
         <Input {...register('systemEnv.customPdfParse.doc2xKey')} placeholder="" />
       </FormItem>
+      <FormItem
+        title="MiniCPM-OCR 解析密钥 (第五优先级)"
+        description="在 https://platform.modelbest.cn/console/keys 创建 API Key"
+      >
+        <Input {...register('systemEnv.customPdfParse.minicpmOcrKey')} placeholder="" />
+      </FormItem>
+      <FormItem
+        title="MiniCPM-OCR 服务地址"
+        description="留空使用默认地址 https://api.modelbest.cn/v1，国际站可填写 https://api.modelbest.ai/v1"
+      >
+        <Input {...register('systemEnv.customPdfParse.minicpmOcrBaseUrl')} placeholder="" />
+      </FormItem>
 
       <FormItem title="自定义 PDF 解析价格(n 积分/页)" description="">
         <Input

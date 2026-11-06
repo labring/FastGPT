@@ -32,6 +32,8 @@ const originalEnv = {
   AES256_SECRET_KEY: process.env.AES256_SECRET_KEY,
   INVOKE_TOKEN_SECRET: process.env.INVOKE_TOKEN_SECRET,
   SOMARK_API_KEY: process.env.SOMARK_API_KEY,
+  MINICPM_OCR_KEY: process.env.MINICPM_OCR_KEY,
+  MINICPM_OCR_BASE_URL: process.env.MINICPM_OCR_BASE_URL,
   DOCUMENT_PARSE_PROVIDER: process.env.DOCUMENT_PARSE_PROVIDER,
   SANGFOR_PARSE_EXTENSIONS: process.env.SANGFOR_PARSE_EXTENSIONS,
   SANGFOR_PARSE_TIMEOUT_SECONDS: process.env.SANGFOR_PARSE_TIMEOUT_SECONDS,
@@ -109,6 +111,8 @@ describe('serviceEnv', () => {
     vi.stubEnv('AES256_SECRET_KEY', originalEnv.AES256_SECRET_KEY);
     vi.stubEnv('INVOKE_TOKEN_SECRET', originalEnv.INVOKE_TOKEN_SECRET);
     vi.stubEnv('SOMARK_API_KEY', originalEnv.SOMARK_API_KEY);
+    vi.stubEnv('MINICPM_OCR_KEY', originalEnv.MINICPM_OCR_KEY);
+    vi.stubEnv('MINICPM_OCR_BASE_URL', originalEnv.MINICPM_OCR_BASE_URL);
     vi.stubEnv('DOCUMENT_PARSE_PROVIDER', originalEnv.DOCUMENT_PARSE_PROVIDER);
     vi.stubEnv('SANGFOR_PARSE_EXTENSIONS', originalEnv.SANGFOR_PARSE_EXTENSIONS);
     vi.stubEnv('SANGFOR_PARSE_TIMEOUT_SECONDS', originalEnv.SANGFOR_PARSE_TIMEOUT_SECONDS);
@@ -145,6 +149,24 @@ describe('serviceEnv', () => {
     vi.stubEnv('AUXILIARY_GENERATION_SHOW_RUN_DETAIL', value);
     const { serviceEnv } = await importServiceEnv();
     expect(serviceEnv.AUXILIARY_GENERATION_SHOW_RUN_DETAIL).toBe(expected);
+  });
+
+  it('loads the MiniCPM-OCR PDF parsing configuration', async () => {
+    vi.stubEnv('FILE_TOKEN_KEY', 'filetokenkey');
+    vi.stubEnv('AES256_SECRET_KEY', 'fastgptsecret');
+    vi.stubEnv('INVOKE_TOKEN_SECRET', validInvokeTokenSecret);
+
+    vi.stubEnv('MINICPM_OCR_KEY', 'sk-test');
+    vi.stubEnv('MINICPM_OCR_BASE_URL', 'https://api.modelbest.ai/v1/');
+    await expect(importServiceEnv()).resolves.toMatchObject({
+      serviceEnv: {
+        MINICPM_OCR_KEY: 'sk-test',
+        MINICPM_OCR_BASE_URL: 'https://api.modelbest.ai/v1'
+      }
+    });
+
+    vi.stubEnv('MINICPM_OCR_BASE_URL', 'not-a-valid-url');
+    await expect(importServiceEnv()).rejects.toThrow(/MINICPM_OCR_BASE_URL/);
   });
 
   it('ignores the retired HNSW scan budget environment variable', async () => {

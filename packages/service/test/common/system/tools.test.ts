@@ -44,6 +44,20 @@ describe('initFastGPTConfig', () => {
     global.systemEnv = {} as any;
   });
 
+  it('只配置 MiniCPM-OCR 时开启 PDF 增强解析入口', () => {
+    initFastGPTConfig({
+      feConfigs: {},
+      systemEnv: {
+        customPdfParse: {
+          minicpmOcrKey: 'sk-test'
+        }
+      }
+    } as any);
+
+    expect(global.feConfigs.showCustomPdfParse).toBe(true);
+    expect(global.systemEnv.customPdfParse?.minicpmOcrKey).toBe('sk-test');
+  });
+
   it('只配置 SoMark 时开启 PDF 增强解析入口', () => {
     initFastGPTConfig({
       feConfigs: {},
