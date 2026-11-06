@@ -1,3 +1,4 @@
+import { ChatIdSchema } from '../../../../core/chat/schema';
 import { ChatAuthProxySchema } from '../../../../support/permission/chat';
 import { withChatApiIdentity } from '../identity';
 import { ChatPublishSourceSchema } from '../../../../core/chat/publishSource/type';
@@ -52,10 +53,7 @@ const WebCompletionsSchema = z.object({
         value === null || value === undefined || (typeof value === 'string' && !value.trim())
           ? undefined
           : value,
-      z
-        .string()
-        .max(1024)
-        .default(() => getNanoid(24))
+      ChatIdSchema.default(() => getNanoid(24))
     )
     .meta({
       description: '会话 ID；未传入或传入空字符串时自动生成新会话 ID'
@@ -284,7 +282,7 @@ export const ChatTestPropsSchema = z.object({
     example: '主页助手',
     description: '应用名称'
   }),
-  chatId: z.string().meta({
+  chatId: ChatIdSchema.meta({
     example: 'chat-id',
     description: '会话 ID'
   })

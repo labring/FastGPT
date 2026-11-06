@@ -32,7 +32,11 @@ function loadModule(file, imports) {
 }
 
 /** 两种语言均含草稿、显式发布和默认发布页面；meta 保留草稿顺序以覆盖真实导航配置。 */
-function createSource(asFunction) {
+function createSource(
+  asFunction,
+  draftStates = { 'zh-CN': true, en: true },
+  missingEnglishDraft = false
+) {
   const files = ['zh-CN', 'en'].flatMap((lang) => {
     const suffix = lang === 'en' ? '.en' : '';
     return [
@@ -46,10 +50,13 @@ function createSource(asFunction) {
         ['draft', true],
         ['published', false],
         ['default', undefined]
-      ].map(([name, draft]) => ({
+      ].filter(([name]) => !(missingEnglishDraft && lang === 'en' && name === 'draft')).map(([name, draft]) => ({
         type: 'page',
         path: `guide/${name}${suffix}.mdx`,
-        data: { title: `${name}-${lang}`, ...(draft === undefined ? {} : { draft }) }
+        data: {
+          title: `${name}-${lang}`,
+          ...(name === 'draft' ? { draft: draftStates[lang] } : draft === undefined ? {} : { draft })
+        }
       }))
     ];
   });
@@ -69,6 +76,52 @@ function createSource(asFunction) {
     }
   }).source;
 }
+
+for (const asFunction of [true, false]) {
+  for (const zhDraft of [true, false]) {
+    test(`locale publication is independent (lazy: ${asFunction}, zh draft: ${zhDraft})`, () => {
+      const draftStates = { 'zh-CN': zhDraft, en: !zhDraft };
+      const source = createSource(asFunction, draftStates);
+      for (const language of ['zh-CN', 'en']) {
+        const expectedPublished = !draftStates[language];
+        const url = `/${language}/guide/draft`;
+        assert.equal(Boolean(source.getPage(['guide', 'draft'], language)), expectedPublished);
+        assert.equal(
+          Boolean(source.getNodePage({ type: 'page', name: 'Draft', url, $ref: { file: 'guide/draft.mdx' } }, language)),
+          expectedPublished
+        );
+        assert.equal(Boolean(source.getPageByHref(url, { language })), expectedPublished);
+        assert.equal(
+          Boolean(source.getPageByHref('./draft.mdx', { dir: 'guide', language })),
+          expectedPublished
+        );
+        assert.equal(source.getPages(language).some((page) => page.url === url), expectedPublished);
+        assert.equal(
+          source.getLanguages().find((entry) => entry.language === language).pages.some((page) => page.url === url),
+          expectedPublished
+        );
+        assert.equal(JSON.stringify(source.getPageTree(language)).includes(url), expectedPublished);
+        for (const [slugKey, langKey] of [['slug', 'lang'], ['path', 'locale']]) {
+          assert.equal(
+            source.generateParams(slugKey, langKey).some((params) => params[langKey] === language && params[slugKey].join('/') === 'guide/draft'),
+            expectedPublished
+          );
+        }
+      }
+      const language = zhDraft ? 'en' : 'zh-CN';
+      assert.equal(source.getPage(['guide', 'draft'], language).data.title, `draft-${language}`);
+    });
+  }
+}
+
+test('missing translations fall back only to published default pages', () => {
+  for (const zhDraft of [false, true]) {
+    const source = createSource(true, { 'zh-CN': zhDraft }, true);
+    const page = source.getPage(['guide', 'draft'], 'en');
+    assert.equal(Boolean(page), !zhDraft);
+    if (page) assert.equal(page.data.title, 'draft-zh-CN');
+  }
+});
 
 for (const asFunction of [true, false]) {
   test(`drafts are absent from lookup, navigation and discovery (lazy files: ${asFunction})`, () => {

@@ -14,8 +14,12 @@ import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 import { AudioTranscriptionsDataSchema } from '@fastgpt/global/openapi/core/chat/record/api';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { multer } from '@fastgpt/service/common/file/multer';
-import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import {
+  ApiRequestInputParseError,
+  parseApiInput
+} from '@fastgpt/service/common/zod/requestParseError';
 
+/** 解析音频表单并记录有效成员用量；入参错误交由统一入口返回 400，临时文件始终清理。 */
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   const filepaths: string[] = [];
 
@@ -76,7 +80,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       data: transcriptionsResult.text
     });
   } catch (err) {
-    if (err === ERROR_ENUM.tooManyRequest) {
+    if (err instanceof ApiRequestInputParseError || err === ERROR_ENUM.tooManyRequest) {
       throw err;
     }
     jsonRes(res, {

@@ -404,8 +404,24 @@ const createNoChatTargetSchema = <T extends z.ZodRawShape>(shape: T) =>
     .meta({
       ...hideCustomUidMeta,
       title: '直接访问资源',
-      description: '不使用会话上下文，按资源自身权限鉴权。'
-    });
+      description:
+        '不使用会话上下文，按资源自身权限鉴权；不接受 customUid、authProxy 等会话身份字段。',
+      override: (context) => {
+        hideCustomUidMeta.override(context);
+        const { jsonSchema } = context;
+        // never 字段会在文档中隐藏，另保留禁止出现的约束，不能让身份请求匹配直接访问分支。
+        jsonSchema.not = {
+          anyOf: [
+            'appId',
+            'skillId',
+            'customUid',
+            'authProxy',
+            'sourceType',
+            'outLinkAuthData'
+          ].map((key) => ({ required: [key] }))
+        };
+      }
+    } satisfies ZodOpenApiMetadata);
 
 /** 资源 target 共用具名 union，兼容 skillId 优先；运行时转换为 sourceType/sourceId。 */
 export const createChatTargetInputSchema = <T extends z.ZodRawShape>(
@@ -448,17 +464,20 @@ export const createOptionalChatTargetInputSchema = <T extends z.ZodRawShape>(sha
   z.union([createNoChatTargetSchema(shape), ...createChatTargetInputSchema(shape).options]);
 
 /** 外链、Skill、App 按原优先级选择，应用 Key 可省略目标；登录态可与外链数据共存。 */
-export const createOutLinkChatTargetInputSchema = <T extends z.ZodRawShape>(shape: T) =>
+export const createOutLinkChatTargetInputSchema = <T extends z.ZodRawShape>(
+  shape: T,
+  { requiredIdentityFields = [] }: { requiredIdentityFields?: string[] } = {}
+) =>
   (() => {
     const [app, skill, share, appKey] = createOutLinkChatTargetBranches(
       shape,
       OutLinkChatAuthSchema
     );
     return z.union([
-      withChatApiIdentity(app),
+      withChatApiIdentity(app, { requiredIdentityFields }),
       skill,
       share,
-      withChatApiIdentity(appKey, { showProxy: false })
+      withChatApiIdentity(appKey, { showProxy: false, requiredIdentityFields })
     ]);
   })();
 
@@ -479,8 +498,14 @@ export const createOutLinkChatTargetQuerySchema = <T extends z.ZodRawShape>(shap
   })();
 
 /** 资源直接访问或会话上下文；错误的显式鉴权数据不会降级为直接访问。 */
-export const createOptionalOutLinkChatTargetInputSchema = <T extends z.ZodRawShape>(shape: T) =>
-  z.union([createNoChatTargetSchema(shape), ...createOutLinkChatTargetInputSchema(shape).options]);
+export const createOptionalOutLinkChatTargetInputSchema = <T extends z.ZodRawShape>(
+  shape: T,
+  options: { requiredIdentityFields?: string[] } = {}
+) =>
+  z.union([
+    createNoChatTargetSchema(shape),
+    ...createOutLinkChatTargetInputSchema(shape, options).options
+  ]);
 
 /** 先选择会话身份，再展示分页方式及参数，最后展示业务筛选；保留身份优先级和 offset 优先规则。 */
 export const createPaginatedChatTargetInputSchema = <T extends z.ZodRawShape>(shape: T) => {

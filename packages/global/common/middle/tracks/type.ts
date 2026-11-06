@@ -1,3 +1,4 @@
+import { ChatIdSchema } from '../../../core/chat/schema';
 import { TrackEnum } from './constants';
 import { z } from 'zod';
 
@@ -6,7 +7,7 @@ export const WorkflowBuilderTrackDataSchema = z.object({
   teamId: z.string(),
   tmbId: z.string(),
   appId: z.string(),
-  chatId: z.string(),
+  chatId: ChatIdSchema,
   event: z.enum([
     TrackEnum.workflowBuilderMessageAccepted,
     TrackEnum.workflowBuilderPreviewGenerated,

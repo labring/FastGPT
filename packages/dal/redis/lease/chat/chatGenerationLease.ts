@@ -1,3 +1,4 @@
+import { ChatIdSchema } from '@fastgpt/global/core/chat/schema';
 import { z } from 'zod';
 import { asRedisLogicalKey, redisCacheAdapter, type RedisCacheAdapter } from '../../adapter';
 import { getWorkflowStopSignalKey } from '../../caches/workflowStopSignal';
@@ -19,7 +20,7 @@ const AcquireResponseSchema = z.tuple([
 export const ChatGenerationLeaseParamsSchema = z.object({
   sourceType: z.string().min(1),
   sourceId: z.string().min(1),
-  chatId: z.string().min(1)
+  chatId: ChatIdSchema.min(1)
 });
 export type ChatGenerationLeaseParams = z.infer<typeof ChatGenerationLeaseParamsSchema>;
 

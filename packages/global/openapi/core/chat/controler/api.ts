@@ -1,3 +1,4 @@
+import { ChatIdSchema } from '../../../../core/chat/schema';
 import { OutLinkChatAuthSchema } from '../../../../support/permission/chat';
 import z from 'zod';
 import { AppTypeEnum } from '../../../../core/app/constants';
@@ -19,7 +20,7 @@ import {
  * Description: 通过 appId 或 skillId 初始化资源鉴权会话；外链初始化使用独立的 outLink/init 接口。
  * ============================================================================ */
 export const InitChatQueryRawSchema = createChatTargetQuerySchema({
-  chatId: z.string().min(1).describe('会话ID'),
+  chatId: ChatIdSchema.min(1).describe('会话ID'),
   loadCustomFeedbacks: z.coerce.boolean().optional().describe('是否加载自定义反馈')
 }).meta({
   example: {
@@ -33,7 +34,7 @@ export type InitChatQueryType = z.infer<typeof InitChatQueryRawSchema>;
 export type InitChatQueryRuntimeType = z.infer<typeof InitChatQuerySchema>;
 
 export const InitChatResponseSchema = createChatTargetResponseSchema({
-  chatId: z.string().optional().describe('会话ID'),
+  chatId: ChatIdSchema.optional().describe('会话ID'),
   userAvatar: z.string().optional().describe('用户头像'),
   title: z.string().describe('对话标题'),
   variables: z.record(z.string(), z.any()).optional().describe('全局变量值'),
@@ -63,7 +64,7 @@ export type InitChatResponseType = z.infer<typeof InitChatResponseSchema>;
  * Tags: ['Chat', 'Workflow', 'Write']
  * ============================================================================ */
 export const StopV2ChatRawSchema = createOutLinkChatTargetInputSchema({
-  chatId: z.string().min(1).describe('会话ID'),
+  chatId: ChatIdSchema.min(1).describe('会话ID'),
   outLinkAuthData: OutLinkChatAuthSchema.optional().describe('外链鉴权数据')
 }).meta({
   example: {

@@ -1,3 +1,4 @@
+import { ChatIdSchema } from './schema';
 import { ChatPublishSourceSchema } from './publishSource/type';
 import { SearchDataResponseQuoteListItemSchema } from '../dataset/type';
 import {
@@ -108,7 +109,7 @@ export type ChatSummaryType = z.infer<typeof ChatSummarySchema>;
 
 export const ChatSchema = z.object({
   _id: ObjectIdSchema,
-  chatId: z.string(),
+  chatId: ChatIdSchema,
   userId: ObjectIdSchema,
   teamId: ObjectIdSchema,
   tmbId: ObjectIdSchema,
@@ -328,7 +329,7 @@ export type ChatItemObjItemType = z.infer<typeof ChatItemObjItemSchema>;
 export const ChatItemDBSchema = ChatItemObjItemSchema.and(
   z.object({
     dataId: z.string(),
-    chatId: z.string(),
+    chatId: ChatIdSchema,
     userId: z.string(),
     teamId: z.string(),
     tmbId: z.string(),
@@ -352,7 +353,7 @@ export const ChatItemResponseSchema = z.object({
   teamId: z.string(),
   sourceType: z.enum(ChatSourceTypeEnum).default(ChatSourceTypeEnum.app),
   appId: z.string(),
-  chatId: z.string(),
+  chatId: ChatIdSchema,
   chatItemDataId: z.string(),
   time: z.coerce.date().optional(),
   data: ChatHistoryItemResSchema
@@ -369,7 +370,7 @@ export type ChatAppListSchemaType = z.infer<typeof ChatAppListSchema>;
 
 /* ---------- history ------------- */
 export const HistoryItemSchema = z.object({
-  chatId: z.string(),
+  chatId: ChatIdSchema,
   updateTime: z.coerce.date(),
   customTitle: z.string().optional(),
   title: z.string()

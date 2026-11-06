@@ -103,7 +103,7 @@ export const ChatCompletionPath: OpenAPIPath = {
 **chatId 行为**
 
 - 不传入（或为空）：不使用 FastGPT 提供的上下文功能，完全通过传入的 \`messages\` 构建上下文。
-- 非空字符串：使用 chatId 进行对话，自动从 FastGPT 数据库取会话中的对话，并使用 \`messages\` 数组最后一个内容作为用户问题，其余 message 会被忽略。请自行确保 chatId 唯一，长度小于 250。
+- 非空字符串：使用 chatId 进行对话，自动从 FastGPT 数据库取会话中的对话，并使用 \`messages\` 数组最后一个内容作为用户问题，其余 message 会被忽略。请自行确保 chatId 唯一，长度最多 1024 字符。
 
 **stream / detail 组合**
 
@@ -199,7 +199,7 @@ export const ChatCompletionPath: OpenAPIPath = {
 **chatId 行为**
 
 - 不传入（或为空）：不使用 FastGPT 提供的上下文功能，完全通过传入的 \`messages\` 构建上下文。
-- 非空字符串：使用 chatId 进行对话，自动从 FastGPT 数据库取会话中的对话，并使用 \`messages\` 数组最后一个内容作为用户问题，其余 message 会被忽略。请自行确保 chatId 唯一，长度小于 250。
+- 非空字符串：使用 chatId 进行对话，自动从 FastGPT 数据库取会话中的对话，并使用 \`messages\` 数组最后一个内容作为用户问题，其余 message 会被忽略。请自行确保 chatId 唯一，长度最多 1024 字符。
 
 **stream / detail 组合**
 
