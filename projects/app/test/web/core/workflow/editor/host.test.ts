@@ -58,9 +58,10 @@ vi.mock('@/web/core/workflow/localDraft/useWorkflowDraftLifecycle', () => ({
 vi.mock('@/web/core/workflow/modelData', () => ({
   // 目录未就绪：Runtime 跳过模型规则，host 版本历史行为不受影响。
   getWorkflowModelDetails: vi.fn(async () => []),
+  getWorkflowModelCheckData: vi.fn(async () => ({ references: [], defaultModelIds: {} })),
   peekWorkflowEnvironmentModels: vi.fn(() => undefined)
 }));
-// gate 只等目录就绪；Issue 判定全在 Runtime，这里不再 mock 任何检查器。
+// gate 使用真实 Core 检查，仅替换异步模型目录和权限读取。
 vi.mock('@/web/core/ai/model/modelData', async (importOriginal) => ({
   ...(await importOriginal<object>()),
   ensureModelCatalog: vi.fn(async () => ({}))
@@ -463,7 +464,8 @@ describe('WorkflowSessionProvider version history', () => {
     expect(appDetail.current.chatConfig.welcomeText).toBeUndefined();
 
     const serialized = await readHost().serializeWorkflowAndCheck(true);
-    expect(serialized).toEqual(expect.objectContaining({ nodes: [], edges: [] }));
+    // 空工作流仍可保存草稿，Core 发布校验要求一个入口。
+    expect(serialized).toBeUndefined();
 
     act(() => root.unmount());
   });
@@ -773,7 +775,7 @@ describe('WorkflowSessionProvider version history', () => {
     expect(host?.runtime?.getWorkflowIssues().issues.map((issue) => issue.code)).toContain(
       'required_input_empty'
     );
-    // gate 只读 Issue View：有 error 时不序列化。
+    // gate 合并 Core 完整检查与 Runtime Issue View。
     expect(await host?.serializeWorkflowAndCheck(true)).toBeUndefined();
 
     act(() => root.unmount());

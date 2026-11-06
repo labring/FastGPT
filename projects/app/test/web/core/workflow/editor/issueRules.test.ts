@@ -159,147 +159,168 @@ const sorted = (set: ReadonlySet<string>) => [...set].sort();
  */
 const EXPECTED_ISSUES: Record<string, { nodes: string[]; config: string[] }> = {
   'template:workflowStart:workflow:template.workflow_start': {
-    nodes: ['n0|isolated_node|'],
+    nodes: ['workflowStart|isolated_node|'],
     config: []
   },
   'template:chatNode:workflow:template.ai_chat': {
     nodes: [
-      'n1|model_required|modelId',
-      'n1|no_upstream|',
-      'n1|required_input_empty|userChatInput'
+      'chatNode|model_required|modelId',
+      'chatNode|no_upstream|',
+      'chatNode|required_input_empty|userChatInput'
     ],
     config: []
   },
   'template:textEditor:workflow:text_concatenation': {
-    nodes: ['n2|no_upstream|', 'n2|required_input_empty|system_textareaInput'],
+    nodes: ['textEditor|no_upstream|', 'textEditor|required_input_empty|system_textareaInput'],
     config: []
   },
   'template:answerNode:workflow:assigned_reply': {
-    nodes: ['n3|no_upstream|', 'n3|required_input_empty|text'],
+    nodes: ['answerNode|no_upstream|', 'answerNode|required_input_empty|text'],
     config: []
   },
   'template:datasetSearchNode:workflow:template.dataset_search': {
     nodes: [
-      'n4|no_upstream|',
-      'n4|required_input_empty|datasetSearchInput',
-      'n4|required_input_empty|datasets'
+      'datasetSearchNode|no_upstream|',
+      'datasetSearchNode|required_input_empty|datasetSearchInput',
+      'datasetSearchNode|required_input_empty|datasets'
     ],
     config: []
   },
   'template:classifyQuestion:workflow:question_classification': {
     nodes: [
-      'n5|model_required|modelId',
-      'n5|no_upstream|',
-      'n5|required_input_empty|modelId',
-      'n5|required_input_empty|userChatInput'
+      'classifyQuestion|model_required|modelId',
+      'classifyQuestion|no_upstream|',
+      'classifyQuestion|required_input_empty|modelId',
+      'classifyQuestion|required_input_empty|userChatInput'
     ],
     config: []
   },
   'template:contentExtract:workflow:text_content_extraction': {
     nodes: [
-      'n6|context_extract_empty|extractKeys',
-      'n6|model_required|modelId',
-      'n6|no_upstream|',
-      'n6|required_input_empty|content',
-      'n6|required_input_empty|modelId'
+      'contentExtract|context_extract_empty|extractKeys',
+      'contentExtract|model_required|modelId',
+      'contentExtract|no_upstream|',
+      'contentExtract|required_input_empty|content',
+      'contentExtract|required_input_empty|modelId'
     ],
     config: []
   },
   'template:datasetConcatNode:workflow:knowledge_base_search_merge': {
-    nodes: ['n7|no_upstream|', 'n7|required_input_empty|system_datasetQuoteList'],
+    nodes: [
+      'datasetConcatNode|no_upstream|',
+      'datasetConcatNode|required_input_empty|system_datasetQuoteList'
+    ],
     config: []
   },
   'template:tools:workflow:template.agent': {
     nodes: [
-      'n8|model_required|modelId',
-      'n8|no_upstream|',
-      'n8|required_input_empty|userChatInput',
-      'n8|tool_call_empty|useAgentSandbox'
+      'tools|model_required|modelId',
+      'tools|no_upstream|',
+      'tools|required_input_empty|userChatInput',
+      'tools|tool_call_empty|useAgentSandbox'
     ],
     config: []
   },
-  'template:toolParams:workflow:tool_custom_field': { nodes: ['n9|no_upstream|'], config: [] },
-  'template:stopTool:workflow:tool_call_termination': { nodes: ['n10|no_upstream|'], config: [] },
+  'template:toolParams:workflow:tool_custom_field': {
+    nodes: ['toolParams|no_upstream|'],
+    config: []
+  },
+  'template:stopTool:workflow:tool_call_termination': {
+    nodes: ['stopTool|no_upstream|'],
+    config: []
+  },
   'template:agent:workflow:template.agent_module': {
     nodes: [
-      'n11|model_required|modelId',
-      'n11|no_upstream|',
-      'n11|required_input_empty|userChatInput'
+      'agent|model_required|modelId',
+      'agent|no_upstream|',
+      'agent|required_input_empty|userChatInput'
     ],
     config: []
   },
   'template:readFiles:app:workflow.read_files': {
-    nodes: ['n12|no_upstream|', 'n12|required_input_empty|fileUrlList'],
+    nodes: ['readFiles|no_upstream|', 'readFiles|required_input_empty|fileUrlList'],
     config: []
   },
   'template:httpRequest468:workflow:http_request': {
-    nodes: ['n13|http_url_empty|system_httpReqUrl', 'n13|no_upstream|'],
+    nodes: ['httpRequest468|http_url_empty|system_httpReqUrl', 'httpRequest468|no_upstream|'],
     config: []
   },
   'template:ifElseNode:workflow:condition_checker': {
-    nodes: ['n14|if_else_incomplete|ifElseList', 'n14|no_upstream|'],
+    nodes: ['ifElseNode|if_else_incomplete|ifElseList', 'ifElseNode|no_upstream|'],
     config: []
   },
   'template:variableUpdate:workflow:variable_update': {
-    nodes: ['n15|no_upstream|', 'n15|required_input_empty|updateList'],
+    nodes: ['variableUpdate|no_upstream|', 'variableUpdate|required_input_empty|updateList'],
     config: []
   },
   'template:code:workflow:code_execution': {
-    nodes: ['n16|code_input_incomplete|', 'n16|no_upstream|'],
+    nodes: ['code|code_input_incomplete|', 'code|no_upstream|'],
     config: []
   },
   'template:parallelRun:workflow:parallel_run': {
-    nodes: ['n17|no_upstream|', 'n17|required_input_empty|loopInputArray'],
+    nodes: ['parallelRun|no_upstream|', 'parallelRun|required_input_empty|loopInputArray'],
     config: []
   },
   'template:loopRun:workflow:loop_run': {
-    nodes: ['n18|no_upstream|', 'n18|required_input_empty|loopRunInputArray'],
+    nodes: ['loopRun|no_upstream|', 'loopRun|required_input_empty|loopRunInputArray'],
     config: []
   },
-  'template:loopRunBreak:workflow:loop_run_break': { nodes: ['n19|no_upstream|'], config: [] },
+  'template:loopRunBreak:workflow:loop_run_break': {
+    nodes: ['loopRunBreak|no_upstream|'],
+    config: []
+  },
   'template:customFeedback:workflow:custom_feedback': {
-    nodes: ['n20|no_upstream|', 'n20|required_input_empty|system_textareaInput'],
+    nodes: [
+      'customFeedback|no_upstream|',
+      'customFeedback|required_input_empty|system_textareaInput'
+    ],
     config: []
   },
-  'template:userSelect:app:workflow.user_select': { nodes: ['n21|no_upstream|'], config: [] },
+  'template:userSelect:app:workflow.user_select': {
+    nodes: ['userSelect|no_upstream|'],
+    config: []
+  },
   'template:formInput:app:workflow.form_input': {
-    nodes: ['n22|form_input_empty|userInputForms', 'n22|no_upstream|'],
+    nodes: ['formInput|form_input_empty|userInputForms', 'formInput|no_upstream|'],
     config: []
   },
-  'template:pluginInput:workflow:plugin_input': { nodes: ['n23|isolated_node|'], config: [] },
+  'template:pluginInput:workflow:plugin_input': {
+    nodes: ['pluginInput|isolated_node|'],
+    config: []
+  },
   'template:pluginOutput:workflow:template.plugin_output': {
-    nodes: ['n24|no_upstream|'],
+    nodes: ['pluginOutput|no_upstream|'],
     config: []
   },
   'template:emptyNode:': { nodes: [], config: [] },
-  'template:pluginModule:': { nodes: ['n26|no_upstream|'], config: [] },
-  'template:appModule:': { nodes: ['n27|no_upstream|'], config: [] },
+  'template:pluginModule:': { nodes: ['pluginModule|no_upstream|'], config: [] },
+  'template:appModule:': { nodes: ['appModule|no_upstream|'], config: [] },
   'template:app:workflow:application_call': {
     nodes: [
-      'n28|no_upstream|',
-      'n28|required_input_empty|app',
-      'n28|required_input_empty|userChatInput'
+      'app|no_upstream|',
+      'app|required_input_empty|app',
+      'app|required_input_empty|userChatInput'
     ],
     config: []
   },
   'template:loop:workflow:loop': {
-    nodes: ['n29|no_upstream|', 'n29|required_input_empty|loopInputArray'],
+    nodes: ['loop|no_upstream|', 'loop|required_input_empty|loopInputArray'],
     config: []
   },
   'template:loopStart:workflow:loop_start': { nodes: [], config: [] },
   'template:loopEnd:workflow:loop_end': {
-    nodes: ['n31|no_upstream|', 'n31|required_input_empty|loopEndInput'],
+    nodes: ['loopEnd|no_upstream|', 'loopEnd|required_input_empty|loopEndInput'],
     config: []
   },
   'template:loopRunStart:workflow:loop_run_start': { nodes: [], config: [] },
-  'template:tool:': { nodes: ['n33|no_upstream|'], config: [] },
-  'template:toolSet:': { nodes: ['n34|no_upstream|'], config: [] },
+  'template:tool:': { nodes: ['tool|no_upstream|'], config: [] },
+  'template:toolSet:': { nodes: ['toolSet|no_upstream|'], config: [] },
   'template:cfr:workflow:question_optimization': {
     nodes: [
-      'n35|model_required|modelId',
-      'n35|no_upstream|',
-      'n35|required_input_empty|modelId',
-      'n35|required_input_empty|userChatInput'
+      'cfr|model_required|modelId',
+      'cfr|no_upstream|',
+      'cfr|required_input_empty|modelId',
+      'cfr|required_input_empty|userChatInput'
     ],
     config: []
   },
@@ -536,12 +557,12 @@ const check = (fixture: Fixture) => {
   });
 };
 
-/** 语料 A：每个模板一份默认节点，覆盖面靠模板数量而不是手写用例；nodeId 固定成序号，期望集合才可复现。 */
-const templateFixtures: Fixture[] = moduleTemplatesFlat.map((template, index) => ({
+/** 语料 A：每个模板一份默认节点，覆盖面靠模板数量而不是手写用例；nodeId 使用节点类型，模板顺序调整不影响期望。 */
+const templateFixtures: Fixture[] = moduleTemplatesFlat.map((template) => ({
   name: `template:${template.flowNodeType}:${template.name}`,
   nodes: [
     flowNode(template, (node) => {
-      node.data.nodeId = `n${index}`;
+      node.data.nodeId = template.flowNodeType;
     })
   ]
 }));

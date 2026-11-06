@@ -6,7 +6,12 @@ import {
 } from '../../../core/workflow/constants';
 import { FlowNodeOutputTypeEnum, FlowNodeTypeEnum } from '../../../core/workflow/node/constant';
 import { ModelTypeEnum } from '../../../core/ai/constants';
-import { getHandleId, nodeInputIsReference } from '../reference';
+import {
+  areWorkflowValueTypesCompatible,
+  filterWorkflowNodeOutputsByType,
+  getHandleId,
+  nodeInputIsReference
+} from '../reference';
 import { USER_SELECT_REFERENCE_HANDLE_KEY } from '../../../core/workflow/template/system/interactive/userSelect';
 import { moduleTemplatesFlat } from '../../../core/workflow/template/constants';
 import { canInputBeAgentGenerated } from '../../../core/app/formEdit/utils';
@@ -92,98 +97,6 @@ export const updateWorkflowNodeOutputValidity = ({
   });
   return nextOutputs;
 };
-
-// region valueCompatibility Workflow value compatibility rules
-
-const workflowValueTypeCompatMap: Record<WorkflowIOValueTypeEnum, WorkflowIOValueTypeEnum[]> = {
-  // Runtime formats every non-null source value as a string when the target is string.
-  [WorkflowIOValueTypeEnum.string]: [
-    WorkflowIOValueTypeEnum.string,
-    WorkflowIOValueTypeEnum.number,
-    WorkflowIOValueTypeEnum.boolean,
-    WorkflowIOValueTypeEnum.object,
-    WorkflowIOValueTypeEnum.arrayString,
-    WorkflowIOValueTypeEnum.arrayNumber,
-    WorkflowIOValueTypeEnum.arrayBoolean,
-    WorkflowIOValueTypeEnum.arrayObject,
-    WorkflowIOValueTypeEnum.arrayAny,
-    WorkflowIOValueTypeEnum.chatHistory,
-    WorkflowIOValueTypeEnum.datasetQuote,
-    WorkflowIOValueTypeEnum.dynamic,
-    WorkflowIOValueTypeEnum.selectDataset,
-    WorkflowIOValueTypeEnum.selectApp
-  ],
-  [WorkflowIOValueTypeEnum.number]: [WorkflowIOValueTypeEnum.number],
-  [WorkflowIOValueTypeEnum.boolean]: [WorkflowIOValueTypeEnum.boolean],
-  [WorkflowIOValueTypeEnum.object]: [WorkflowIOValueTypeEnum.object],
-  [WorkflowIOValueTypeEnum.arrayString]: [
-    WorkflowIOValueTypeEnum.string,
-    WorkflowIOValueTypeEnum.arrayString,
-    WorkflowIOValueTypeEnum.arrayAny
-  ],
-  [WorkflowIOValueTypeEnum.arrayNumber]: [
-    WorkflowIOValueTypeEnum.number,
-    WorkflowIOValueTypeEnum.arrayNumber,
-    WorkflowIOValueTypeEnum.arrayAny
-  ],
-  [WorkflowIOValueTypeEnum.arrayBoolean]: [
-    WorkflowIOValueTypeEnum.boolean,
-    WorkflowIOValueTypeEnum.arrayBoolean,
-    WorkflowIOValueTypeEnum.arrayAny
-  ],
-  [WorkflowIOValueTypeEnum.arrayObject]: [
-    WorkflowIOValueTypeEnum.object,
-    WorkflowIOValueTypeEnum.arrayObject,
-    WorkflowIOValueTypeEnum.arrayAny,
-    WorkflowIOValueTypeEnum.chatHistory,
-    WorkflowIOValueTypeEnum.datasetQuote,
-    WorkflowIOValueTypeEnum.dynamic,
-    WorkflowIOValueTypeEnum.selectDataset,
-    WorkflowIOValueTypeEnum.selectApp
-  ],
-  [WorkflowIOValueTypeEnum.chatHistory]: [
-    WorkflowIOValueTypeEnum.chatHistory,
-    WorkflowIOValueTypeEnum.arrayAny
-  ],
-  [WorkflowIOValueTypeEnum.datasetQuote]: [
-    WorkflowIOValueTypeEnum.datasetQuote,
-    WorkflowIOValueTypeEnum.arrayAny
-  ],
-  [WorkflowIOValueTypeEnum.dynamic]: [
-    WorkflowIOValueTypeEnum.dynamic,
-    WorkflowIOValueTypeEnum.arrayAny
-  ],
-  [WorkflowIOValueTypeEnum.selectDataset]: [
-    WorkflowIOValueTypeEnum.selectDataset,
-    WorkflowIOValueTypeEnum.arrayAny
-  ],
-  [WorkflowIOValueTypeEnum.selectApp]: [
-    WorkflowIOValueTypeEnum.selectApp,
-    WorkflowIOValueTypeEnum.arrayAny
-  ],
-  [WorkflowIOValueTypeEnum.arrayAny]: [WorkflowIOValueTypeEnum.arrayAny],
-  [WorkflowIOValueTypeEnum.any]: [WorkflowIOValueTypeEnum.arrayAny]
-};
-
-/** 判断来源类型能否赋值给目标类型；与引用选择器和工作流检查共用。 */
-export const workflowValueTypeIsCompatible = (
-  sourceType: WorkflowIOValueTypeEnum | undefined,
-  targetType: WorkflowIOValueTypeEnum | undefined
-): boolean =>
-  !targetType ||
-  targetType === WorkflowIOValueTypeEnum.any ||
-  targetType === WorkflowIOValueTypeEnum.arrayAny ||
-  !sourceType ||
-  sourceType === WorkflowIOValueTypeEnum.any ||
-  workflowValueTypeCompatMap[targetType]?.includes(sourceType) === true;
-
-export const filterWorkflowNodeOutputsByType = (
-  outputs: FlowNodeOutputItemType[],
-  valueType: WorkflowIOValueTypeEnum
-): FlowNodeOutputItemType[] =>
-  outputs.filter((output) => workflowValueTypeIsCompatible(output.valueType, valueType));
-
-// endregion
 
 // region referenceValidation Reference source and target validation
 
@@ -534,7 +447,9 @@ export const getWorkflowReferenceStatus = ({
         (variable) => variable.key === outputId
       );
       if (!globalVariable) return { code: 'invalid_reference' };
-      if (!workflowValueTypeIsCompatible(globalVariable.valueType, valueType)) {
+      if (
+        !areWorkflowValueTypesCompatible({ actual: globalVariable.valueType, expected: valueType })
+      ) {
         return { code: 'invalid_reference_type', sourceType: globalVariable.valueType };
       }
       return { code: 'valid', sourceType: globalVariable.valueType };
@@ -563,7 +478,7 @@ export const getWorkflowReferenceStatus = ({
     return { code: 'unreachable_reference', sourceType: sourceOutput.valueType };
   }
 
-  if (!workflowValueTypeIsCompatible(sourceOutput.valueType, valueType)) {
+  if (!areWorkflowValueTypesCompatible({ actual: sourceOutput.valueType, expected: valueType })) {
     return { code: 'invalid_reference_type', sourceType: sourceOutput.valueType };
   }
 

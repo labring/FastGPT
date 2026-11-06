@@ -428,3 +428,60 @@ describe('workflow editor codec', () => {
     );
   });
 });
+
+describe('workflow-core reference boundary', () => {
+  it('normalizes key references to ids before runtime indexing and preserves them on save', () => {
+    const workflow = createStoreWorkflow();
+    workflow.nodes = workflow.nodes.slice(0, 2);
+    workflow.edges = [
+      {
+        source: 'start',
+        target: 'answer',
+        sourceHandle: 'start-source-right',
+        targetHandle: 'answer-target-left'
+      }
+    ];
+    workflow.nodes[0].outputs[0].id = 'stable-output-id';
+    const runtime = hydrateRuntime({ input: workflow, t });
+    const value = runtime
+      .getNode('answer')!
+      .inputs.find((input) => input.key === NodeInputKeyEnum.answerText)!.value;
+    expect(value).toEqual(['start', 'stable-output-id']);
+    expect(
+      runtime.getField({ nodeId: 'answer', kind: 'input', fieldKey: NodeInputKeyEnum.answerText })!
+        .references
+    ).toEqual(expect.arrayContaining([expect.objectContaining({ code: 'valid' })]));
+    const saved = serializeRuntime(runtime);
+    expect(
+      saved.nodes[1].inputs.find((input) => input.key === NodeInputKeyEnum.answerText)!.value
+    ).toEqual(['start', 'stable-output-id']);
+    expect(
+      hydrateRuntime({ input: saved, t })
+        .getNode('answer')!
+        .inputs.find((input) => input.key === NodeInputKeyEnum.answerText)!.value
+    ).toEqual(['start', 'stable-output-id']);
+    expect(workflow.nodes[1].inputs[0].value).toEqual(['start', NodeOutputKeyEnum.userChatInput]);
+  });
+  it('keeps an existing id when another output key has the same name', () => {
+    const workflow = createStoreWorkflow();
+    workflow.nodes = workflow.nodes.slice(0, 2);
+    workflow.edges = [];
+    workflow.nodes[0].outputs[0].id = 'stable-output-id';
+    workflow.nodes[0].outputs.push({
+      id: 'other-id',
+      key: 'stable-output-id',
+      type: FlowNodeOutputTypeEnum.static,
+      valueType: WorkflowIOValueTypeEnum.string
+    });
+    workflow.nodes[1].inputs[0].value = ['start', 'stable-output-id'];
+    const materialized = materializeWorkflow({ input: workflow, t });
+    expect(
+      materialized.nodes[1].inputs.find((input) => input.key === NodeInputKeyEnum.answerText)!.value
+    ).toEqual(['start', 'stable-output-id']);
+    expect(
+      materializeWorkflow({ input: materialized, t }).nodes[1].inputs.find(
+        (input) => input.key === NodeInputKeyEnum.answerText
+      )!.value
+    ).toEqual(['start', 'stable-output-id']);
+  });
+});

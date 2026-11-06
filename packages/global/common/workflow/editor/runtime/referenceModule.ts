@@ -9,15 +9,18 @@ import {
   FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
 } from '../../../../core/workflow/node/constant';
-import { getSelectedInputRenderType, nodeInputIsReference } from '../../reference';
+import {
+  areWorkflowValueTypesCompatible,
+  getSelectedInputRenderType,
+  nodeInputIsReference
+} from '../../reference';
 import { i18nT } from '../../../i18n/utils';
 import {
   filterSelectableWorkflowNodeOutputs,
   getHTTPToolParamOutputs,
   getWorkflowReferenceItemsFromValue,
   isWorkflowReferenceItem,
-  isToolParamInput,
-  workflowValueTypeIsCompatible
+  isToolParamInput
 } from '../utils';
 import { getWorkflowGlobalVariables } from '../variables';
 import { getWorkflowSecretInputKind, inputTypeValueTypeMap } from '../../input';
@@ -783,7 +786,10 @@ export const createReferenceModule = (document: DocumentReadApi) => {
     };
     if (sourceNodeId === VARIABLE_NODE_ID) {
       if (!source.output) return { code: 'invalid_reference', reference, ...sourceMetadata };
-      return workflowValueTypeIsCompatible(source.output.valueType, targetType)
+      return areWorkflowValueTypesCompatible({
+        actual: source.output.valueType,
+        expected: targetType
+      })
         ? { code: 'valid', sourceType: source.output.valueType, reference, ...sourceMetadata }
         : {
             code: 'invalid_reference_type',
@@ -815,7 +821,7 @@ export const createReferenceModule = (document: DocumentReadApi) => {
         ...sourceMetadata
       };
     }
-    return workflowValueTypeIsCompatible(sourceOutput.valueType, targetType)
+    return areWorkflowValueTypesCompatible({ actual: sourceOutput.valueType, expected: targetType })
       ? { code: 'valid', sourceType: sourceOutput.valueType, reference, ...sourceMetadata }
       : {
           code: 'invalid_reference_type',
@@ -1021,7 +1027,8 @@ export const createReferenceModule = (document: DocumentReadApi) => {
 
     getWorkflowGlobalVariables({ chatConfig: document.getDocument().chatConfig }).forEach(
       (variable) => {
-        if (!workflowValueTypeIsCompatible(variable.valueType, valueType)) return;
+        if (!areWorkflowValueTypesCompatible({ actual: variable.valueType, expected: valueType }))
+          return;
         options.push({
           reference: [VARIABLE_NODE_ID, variable.key],
           sourceType: variable.valueType,

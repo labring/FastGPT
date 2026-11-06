@@ -1,3 +1,5 @@
+import { compileStoreWorkflow } from '@fastgpt/workflow-core/store/compile';
+import { decompileStoreWorkflow } from '@fastgpt/workflow-core/store/decompile';
 import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { TFunction } from 'i18next';
@@ -182,9 +184,13 @@ export const materializeWorkflow = ({
     // 第二次 migration 只会保留声明过的根字段，快照必须显式带上。
     referenceSnapshots: workflow.referenceSnapshots
   });
+  // 复用 Core 的 Store ↔ Document 编解码统一引用；连线保持编辑器兼容规则，回调在转换后补回。
+  const normalizedNodes = compileStoreWorkflow(
+    decompileStoreWorkflow({ workflow: { ...canonical, edges: [] } })
+  ).nodes;
   return {
     ...canonical,
-    nodes: canonical.nodes.map((node) => ({
+    nodes: normalizedNodes.map((node) => ({
       ...node,
       // Runtime 需要模板回调重算输出可用性；出站 codec 会剥离它，不进持久化数据。
       outputs: node.outputs.map((output) => {

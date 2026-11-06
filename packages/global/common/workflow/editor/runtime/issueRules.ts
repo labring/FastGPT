@@ -8,7 +8,11 @@ import {
   FlowNodeTypeEnum,
   LoopRunModeEnum
 } from '../../../../core/workflow/node/constant';
-import { getSelectedInputRenderType, nodeInputIsReference } from '../../reference';
+import {
+  areWorkflowValueTypesCompatible,
+  getSelectedInputRenderType,
+  nodeInputIsReference
+} from '../../reference';
 import { isWorkflowSystemModelInput } from '../../model';
 import { workflowModelKeyMappings } from '../../../../core/workflow/model/constants';
 import { moduleTemplatesFlat } from '../../../../core/workflow/template/constants';
@@ -30,8 +34,7 @@ import {
   getWorkflowReferenceItemsFromValue,
   isConfiguredReferenceValue,
   isEmptyReferenceValue,
-  isToolParamInput,
-  workflowValueTypeIsCompatible
+  isToolParamInput
 } from '../utils';
 import { getWorkflowSecretInputKind } from '../../input';
 import type { WorkflowIssueCode } from '../../../../core/workflow/editor/issueCode';
@@ -668,7 +671,7 @@ export const collectNodeIssues = (
             addUpdateIssue({ field: 'variable', index, code: variableCode });
           } else if (
             item.valueType &&
-            !workflowValueTypeIsCompatible(item.valueType, variableType)
+            !areWorkflowValueTypesCompatible({ actual: item.valueType, expected: variableType })
           ) {
             addUpdateIssue({ field: 'variable', index, code: 'invalid_reference_type' });
           }

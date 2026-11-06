@@ -596,6 +596,7 @@ export const WorkflowSessionProvider = ({
   const serializeWorkflowAndCheck = useMemoizedFn((hideTip = false) =>
     serializeWorkflowAndCheckData({
       runtimeRef,
+      appId,
       pendingSaveRevisionRef: pendingSaveRevision,
       hideTip,
       toast,

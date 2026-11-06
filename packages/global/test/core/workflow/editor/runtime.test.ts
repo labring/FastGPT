@@ -945,7 +945,7 @@ describe('workflow editor runtime modules', () => {
     );
   });
 
-  it('accepts array string references in string inputs after runtime formatting', () => {
+  it('rejects array references in string inputs consistently with workflow-core', () => {
     const editor = createRuntime();
     const start = editor.getNode('start');
     expect(start).toBeDefined();
@@ -977,9 +977,14 @@ describe('workflow editor runtime modules', () => {
     });
 
     expect(editor.getField(query)?.references).toEqual([
-      expect.objectContaining({ code: 'valid', sourceType: WorkflowIOValueTypeEnum.arrayString })
+      expect.objectContaining({
+        code: 'invalid_reference_type',
+        sourceType: WorkflowIOValueTypeEnum.arrayString
+      })
     ]);
-    expect(editor.getNode('answer')?.issues).toEqual([]);
+    expect(editor.getNode('answer')?.issues).toContainEqual(
+      expect.objectContaining({ code: 'invalid_reference_type' })
+    );
   });
 
   it('keeps malformed reference arrays consistent between field status and issue rules', () => {
