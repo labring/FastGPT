@@ -10,7 +10,6 @@ import type {
   RuntimeNodeItemType,
   WorkflowResourceContext
 } from '@fastgpt/global/core/workflow/runtime/type';
-import type { ReferenceValue } from '@fastgpt/global/common/secret/type';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
@@ -43,7 +42,12 @@ import type {
   WorkflowRuntimeSummaryType,
   WorkflowDebugResponse
 } from './type';
-import { rewriteRuntimeWorkFlow, filterOrphanEdges } from './utils/index';
+import {
+  rewriteRuntimeWorkFlow,
+  filterOrphanEdges,
+  filterToolNodeIdByEdges,
+  getInlineMcpToolSetRuntimeNodes
+} from './utils/index';
 import {
   createWorkflowRuntimeSummary,
   createNodeSummary,
@@ -368,6 +372,7 @@ export class WorkflowQueue {
   private data: RunWorkflowProps;
   isRootRuntime: boolean;
   private runtimeNodesMap: Map<string, RuntimeNodeItemType>;
+  private inlineMcpExpansions = new Map<string, Promise<void>>();
   // Workflow variables
   workflowRunTimes = 0;
   workflowRuntimeSummary: WorkflowRuntimeSummaryType;
@@ -816,6 +821,63 @@ export class WorkflowQueue {
   }
 
   /* ===== runtime ===== */
+  /** 内联 MCP 到 ToolCall 可运行时才发现工具；共享工具集的并发入口复用同一次展开。 */
+  private async prepareInlineMcpToolSets(nodeId: string) {
+    const toolNodeIds = filterToolNodeIdByEdges({ nodeId, edges: this.data.runtimeEdges });
+    await Promise.all(
+      toolNodeIds.map(async (toolSetId) => {
+        const toolSetNode = this.runtimeNodesMap.get(toolSetId);
+        if (
+          toolSetNode?.flowNodeType !== FlowNodeTypeEnum.toolSet ||
+          toolSetNode.pluginId ||
+          !toolSetNode.toolConfig?.mcpToolSet
+        ) {
+          return;
+        }
+
+        let expansion = this.inlineMcpExpansions.get(toolSetId);
+        if (!expansion) {
+          expansion = (async () => {
+            const incomingEdges = this.data.runtimeEdges.filter(
+              (edge) => edge.target === toolSetId
+            );
+            const nodes = await getInlineMcpToolSetRuntimeNodes({
+              toolSetNode,
+              resolveReference: (reference) =>
+                getReferenceVariableValue({
+                  value: reference,
+                  nodesMap: this.runtimeNodesMap,
+                  variables: this.data.variableState.toRuntimeRecord()
+                })
+            });
+
+            // 只替换 selectedTools 子图；普通调度边未变化，保留已构建的队列索引。
+            const index = this.data.runtimeNodes.indexOf(toolSetNode);
+            this.data.runtimeNodes.splice(index, 1, ...nodes);
+            this.runtimeNodesMap.delete(toolSetId);
+            nodes.forEach((node) => this.runtimeNodesMap.set(node.nodeId, node));
+            for (let i = this.data.runtimeEdges.length - 1; i >= 0; i--) {
+              if (this.data.runtimeEdges[i].target === toolSetId) {
+                this.data.runtimeEdges.splice(i, 1);
+              }
+            }
+            this.data.runtimeEdges.push(
+              ...incomingEdges.flatMap((edge) =>
+                nodes.map((node) => ({
+                  ...edge,
+                  target: node.nodeId,
+                  targetHandle: NodeOutputKeyEnum.selectedTools
+                }))
+              )
+            );
+          })();
+          this.inlineMcpExpansions.set(toolSetId, expansion);
+        }
+        await expansion;
+      })
+    );
+  }
+
   private async nodeRunWithActive(node: RuntimeNodeItemType): Promise<{
     node: RuntimeNodeItemType;
     runStatus: 'run';
@@ -884,6 +946,9 @@ export class WorkflowQueue {
           const errorHandleId = getHandleId(node.nodeId, 'source_catch', 'right');
 
           try {
+            if (node.flowNodeType === FlowNodeTypeEnum.toolCall) {
+              await this.prepareInlineMcpToolSets(node.nodeId);
+            }
             const result = (await callbackMap[node.flowNodeType](dispatchData)) as NodeResponseType;
             // 原始异常缺少故障详情时补展示文本；错误分支的数据不参与异常判定。
             if (
@@ -1620,27 +1685,15 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
         async (workflowSpan) => {
           const startTime = Date.now();
           try {
-            let runtimeVariables: Record<string, unknown> | undefined;
-            const resolveSecretReference = (reference: ReferenceValue) => {
-              runtimeVariables ??= data.variableState.toRuntimeRecord();
-              return getReferenceVariableValue({
-                value: reference,
-                nodesMap: new Map(data.runtimeNodes.map((node) => [node.nodeId, node])),
-                variables: runtimeVariables
-              });
-            };
-
             await rewriteRuntimeWorkFlow({
               teamId: data.runningAppInfo.teamId,
               tmbId: data.runningUserInfo.tmbId,
               nodes: data.runtimeNodes,
               edges: data.runtimeEdges,
-              lang: data.lang,
-              resolveReference: resolveSecretReference
+              lang: data.lang
             });
-            // ToolSet 会在运行态展开为临时 Tool 节点；交互暂停保存的 memoryEdges 也会指向这些
-            // 临时节点。孤儿边过滤必须等展开完成后执行，否则续跑时会先删除 ToolCall -> Tool 的
-            // selectedTools 边，导致 ToolCall 拿不到已挂载的 MCP/HTTP ToolSet 子工具。
+            // 外部工具集和 HTTP 已展开；内联 MCP 的旧暂停边先还原为聚合连接，
+            // 待 ToolCall 可运行后再读取当前鉴权，避免启动阶段消费尚未产生的上游输出。
             data.runtimeEdges = filterOrphanEdges({
               edges: data.runtimeEdges,
               nodes: data.runtimeNodes,

@@ -134,7 +134,7 @@ const NodeToolSet = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
       </Container>
       {editingToolSet === 'mcp' && localMcpToolSet && (
         <McpToolSetForm
-          key={`${data.nodeId}:${JSON.stringify(localMcpToolSet)}`}
+          key={data.nodeId}
           initialConfig={localMcpToolSet}
           onUpdateConfig={onSaveMcpToolSet}
           onClose={() => setEditingToolSet(undefined)}
@@ -169,6 +169,7 @@ const McpToolSetForm = ({
     initialConfig.headerSecret ?? {}
   );
   const closingRef = useRef(false);
+  const parseGenerationRef = useRef(0);
   useEffect(
     () => () => {
       closingRef.current = true;
@@ -176,15 +177,16 @@ const McpToolSetForm = ({
     []
   );
   const { runAsync: parseTools, loading } = useRequest(
-    async () =>
-      getMCPTools({
-        url: url.trim(),
-        headerSecret
-      }),
+    async () => {
+      const generation = parseGenerationRef.current;
+      const tools = await getMCPTools({ url: url.trim(), headerSecret });
+      return { generation, tools };
+    },
     {
       manual: true,
-      onSuccess: (tools) => {
-        if (closingRef.current) return;
+      onSuccess: ({ generation, tools }) => {
+        // 表单保持挂载；URL 或鉴权变更后，旧请求不得覆盖当前配置。
+        if (closingRef.current || generation !== parseGenerationRef.current) return;
 
         const savedDescriptions = new Map(
           initialConfig.toolList.map((tool) => [tool.name, tool.description])
@@ -205,6 +207,7 @@ const McpToolSetForm = ({
     }
   );
   const onUpdateHeaderSecret = (nextHeaderSecret: StoreSecretValueType) => {
+    parseGenerationRef.current += 1;
     setHeaderSecret(nextHeaderSecret);
     onUpdateConfig({ ...initialConfig, url: url.trim(), headerSecret: nextHeaderSecret });
   };
@@ -227,7 +230,10 @@ const McpToolSetForm = ({
           size={'sm'}
           placeholder={t('app:MCP_tools_url_placeholder')}
           value={url}
-          onChange={(event) => setUrl(event.target.value)}
+          onChange={(event) => {
+            parseGenerationRef.current += 1;
+            setUrl(event.target.value);
+          }}
           onBlur={() => {
             if (closingRef.current) return;
             onUpdateConfig({ ...initialConfig, url: url.trim(), headerSecret });
