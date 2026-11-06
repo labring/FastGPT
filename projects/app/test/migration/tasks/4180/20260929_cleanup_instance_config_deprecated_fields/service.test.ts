@@ -42,7 +42,9 @@ describe('deprecatedOverridePaths', () => {
         'subservice.plugin.baseUrl',
         'subservice.plugin.token',
         'subservice.codeSandbox.token',
-        'subservice.aiProxy.token'
+        'subservice.codeSandbox.baseUrl',
+        'subservice.aiProxy.token',
+        'subservice.aiProxy.endpoint'
       ])
     );
   });

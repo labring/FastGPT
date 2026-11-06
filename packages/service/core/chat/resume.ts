@@ -35,10 +35,12 @@ const getStreamResumeRedisMemoryCheckIntervalMs = () =>
  */
 export const STREAM_RESUME_BLOCK_MS = 30000;
 export const STREAM_RESUME_TTL_TOUCH_INTERVAL_MS = 1000;
-export const STREAM_RESUME_MIRROR_KEEPALIVE_INTERVAL_MS = Math.max(
-  1_000,
-  Math.min(30_000, (getStreamResumeTtlSeconds() * 1000) / 3)
-);
+const getStreamResumeMirrorKeepaliveIntervalMs = () =>
+  Math.max(1_000, Math.min(30_000, (getStreamResumeTtlSeconds() * 1000) / 3));
+
+/** 默认配置下的保活间隔，保留导出供测试与兼容使用；实际定时器在创建时按当前 TTL 计算。 */
+export const STREAM_RESUME_MIRROR_KEEPALIVE_INTERVAL_MS =
+  getStreamResumeMirrorKeepaliveIntervalMs();
 
 let streamResumeCache: StreamResumeCache | undefined;
 let streamResumeCacheTtlKey = '';
@@ -231,11 +233,13 @@ export const startStreamResumeMirrorKeepAlive = (
   const touch = mirror?.touch;
   if (!touch) return () => undefined;
 
+  // 保活间隔跟随创建 mirror 时的 TTL；配置变更只影响之后创建的 mirror，
+  // 进行中的 mirror 保持创建时策略，避免运行中突然改变续期节奏。
   const timer = setInterval(() => {
     void touch().catch((error) => {
       logger.warn('Stream resume mirror keepalive failed', { error });
     });
-  }, STREAM_RESUME_MIRROR_KEEPALIVE_INTERVAL_MS);
+  }, getStreamResumeMirrorKeepaliveIntervalMs());
   timer.unref?.();
 
   return () => clearInterval(timer);

@@ -18,7 +18,11 @@ import {
   STREAM_RESUME_REQUEST_HEADER
 } from '@fastgpt/global/core/chat/constants';
 
-const { getStreamResumeRedisKeys, STREAM_RESUME_MIRROR_KEEPALIVE_INTERVAL_MS } = streamResume;
+const {
+  getStreamResumeRedisKeys,
+  STREAM_RESUME_MIRROR_KEEPALIVE_INTERVAL_MS,
+  startStreamResumeMirrorKeepAlive
+} = streamResume;
 
 const clearCookieMock = vi.hoisted(() => vi.fn());
 const responseWriteMock = vi.hoisted(() => vi.fn());
@@ -303,6 +307,23 @@ describe('createWorkflowStreamResponseContext', () => {
     redis.expire.mockClear();
     await vi.advanceTimersByTimeAsync(STREAM_RESUME_MIRROR_KEEPALIVE_INTERVAL_MS);
     expect(redis.expire).not.toHaveBeenCalled();
+  });
+
+  it('uses the current mirror TTL for the keepalive interval', async () => {
+    vi.useFakeTimers();
+    global.systemInstanceConfig!.performance.streamResume.ttlSeconds = 3;
+    const touch = vi.fn().mockResolvedValue(undefined);
+    const stop = startStreamResumeMirrorKeepAlive({ touch });
+
+    try {
+      await vi.advanceTimersByTimeAsync(999);
+      expect(touch).not.toHaveBeenCalled();
+      await vi.advanceTimersByTimeAsync(1);
+      expect(touch).toHaveBeenCalledTimes(1);
+    } finally {
+      stop();
+      global.systemInstanceConfig!.performance.streamResume.ttlSeconds = 180;
+    }
   });
 
   it('should stop the resume mirror keepalive when the response finishes', async () => {

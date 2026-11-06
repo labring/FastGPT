@@ -6,10 +6,7 @@ import { systemInstanceConfigRegistry } from '@fastgpt/global/common/system/conf
 import { adminConfigPageFieldsMap } from '@fastgpt/global/common/system/config/pageFields';
 
 const projectRoot = process.cwd();
-const readonlyFields: Record<string, string> = {
-  '/admin/subservice/code-sandbox': 'subservice.codeSandbox.baseUrl',
-  '/admin/subservice/ai-proxy': 'subservice.aiProxy.endpoint'
-};
+const readonlyFields: Record<string, string> = {};
 
 /**
  * 从真实输入绑定采集页面字段，不把接口回读、默认值或保存时透传的隐藏字段当作控件。

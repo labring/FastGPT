@@ -155,7 +155,7 @@ export async function registerNodeInstrumentation() {
     // 加载初始化配置
     await runInitializationStep({
       step: 'get-init-config',
-      action: () => getInitConfig(),
+      action: () => getInitConfig({ refreshLLMRequestRecordTTL: false }),
       logger,
       getErrText
     });
@@ -307,6 +307,9 @@ export async function registerNodeInstrumentation() {
           logger,
           getErrText
         });
+      },
+      onMigrationsSettled: async () => {
+        await getInitConfig();
       },
       startBusinessServices
     });

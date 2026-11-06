@@ -279,12 +279,10 @@ describe('serviceEnv bootstrap configuration', () => {
     vi.stubEnv('WORKFLOW_MAX_RUN_TIMES', '-100');
     vi.stubEnv('DATASET_ARCHIVE_MAX_FILES', '0');
     vi.stubEnv('AGENT_SANDBOX_PROVIDER', 'invalid-provider');
-    vi.stubEnv('AIPROXY_API_ENDPOINT', 'not-a-url');
     const { serviceEnv } = await importServiceEnv();
     for (const key of [
       'WORKFLOW_MAX_RUN_TIMES',
       'AGENT_SANDBOX_PROVIDER',
-      'AIPROXY_API_ENDPOINT',
       'STORAGE_EXTERNAL_ENDPOINT',
       'USE_IP_LIMIT',
       'FILE_URL_EXPIRED_DAYS',

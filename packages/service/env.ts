@@ -50,8 +50,14 @@ export const serviceEnv = createEnv({
     PLUGIN_TOKEN: z.string().default('token').meta({
       description: 'FastGPT Plugin 服务访问 Token，需与插件服务 AUTH_TOKEN 一致'
     }),
+    CODE_SANDBOX_URL: UrlSchema.default('http://localhost:3002').meta({
+      description: 'Code Sandbox 服务地址'
+    }),
     CODE_SANDBOX_TOKEN: z.string().default('codesandbox').meta({
       description: 'Code Sandbox 服务访问 Token'
+    }),
+    AIPROXY_API_ENDPOINT: UrlSchema.optional().meta({
+      description: 'AI Proxy 服务地址'
     }),
     AIPROXY_API_TOKEN: z.string().trim().optional().meta({
       description: 'AI Proxy 访问 Token；启用 AI Proxy 时必填'

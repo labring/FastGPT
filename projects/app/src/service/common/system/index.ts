@@ -77,7 +77,11 @@ export function initGlobalVariables() {
 }
 
 /* Init system data(Need to connected db). It only needs to run once */
-export async function getInitConfig() {
+export async function getInitConfig({
+  refreshLLMRequestRecordTTL = true
+}: {
+  refreshLLMRequestRecordTTL?: boolean;
+} = {}) {
   const getSystemVersion = async () => {
     if (global.systemVersion) return;
     try {
@@ -96,7 +100,7 @@ export async function getInitConfig() {
     }
   };
 
-  await Promise.all([initSystemConfig(), getSystemVersion()]);
+  await Promise.all([initSystemConfig({ refreshLLMRequestRecordTTL }), getSystemVersion()]);
 }
 
 const defaultFeConfigs: FastGPTFeConfigsType = {
@@ -142,13 +146,21 @@ let initConfigQueue: Promise<void> = Promise.resolve();
  * 重新加载并应用全站系统配置。
  * 使用串行队列排队执行，确保并发重载按序完成，避免较早的重载在外部 I/O 慢时逆序覆写较新的运行时状态。
  */
-export function initSystemConfig(): Promise<void> {
-  const current = initConfigQueue.then(() => doInitSystemConfig());
+export function initSystemConfig({
+  refreshLLMRequestRecordTTL = true
+}: {
+  refreshLLMRequestRecordTTL?: boolean;
+} = {}): Promise<void> {
+  const current = initConfigQueue.then(() => doInitSystemConfig({ refreshLLMRequestRecordTTL }));
   initConfigQueue = current.catch(() => {});
   return current;
 }
 
-async function doInitSystemConfig() {
+async function doInitSystemConfig({
+  refreshLLMRequestRecordTTL: shouldRefreshLLMRequestRecordTTL
+}: {
+  refreshLLMRequestRecordTTL: boolean;
+}) {
   const [
     { fastgptConfig, fastgptConfigTime, licenseData, licenseUpdateTime },
     pluginRemoteDebug,
@@ -283,8 +295,11 @@ async function doInitSystemConfig() {
   // set config
   initFastGPTConfig(config);
 
-  // 启动和 Watch/API 触发的 reload 共用此入口；TTL 失败由日志业务记录，不反向影响配置保存。
-  await refreshLLMRequestRecordTTL();
+  // 启动首次加载时实例配置迁移尚未完成，不能拿 Schema 默认值修改 Mongo TTL 索引；
+  // 迁移后的 reload 以及 Watch/API 触发的普通 reload 才执行 TTL 同步。
+  if (shouldRefreshLLMRequestRecordTTL) {
+    await refreshLLMRequestRecordTTL();
+  }
 
   // 存储运行策略（下载模式 / 公开地址）以实例配置为准，注入后按需重建 S3 bucket。
   // 启动首次调用时全局 bucket 尚未创建，由 instrumentation 的 init-s3-buckets 步骤完成构造。

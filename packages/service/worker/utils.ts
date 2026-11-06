@@ -127,6 +127,8 @@ type WorkerQueueItem<Props = Record<string, any>> = {
   idleTimeoutId?: NodeJS.Timeout;
   handlers?: WorkerRunHandlers;
   currentTask?: WorkerRunTaskType<Props>;
+  /** 线程创建时的配置版本；版本变化后完成当前任务即回收。 */
+  envVersion?: string;
 };
 type WorkerResponse<T = any> = {
   id: string;
@@ -357,7 +359,7 @@ export class WorkerPool<Props = Record<string, any>, Response = any> {
    *
    * taskTimeoutMs 对后续任务立即生效；worker 进程的环境变量只在创建线程时注入，
    * 因此 workerEnvVersion 变化时回收空闲线程，让后续任务使用新配置。
-   * 运行中的线程保持不动，避免中断用户任务；它们会在达到任务数上限后自然回收。
+   * 运行中的线程保持当前任务，但在任务完成后不再接单，避免下一次任务继续使用旧环境。
    */
   refreshRuntimeConfig({
     taskTimeoutMs,
@@ -803,7 +805,8 @@ export class WorkerPool<Props = Record<string, any>, Response = any> {
       status: 'idle',
       taskTime: Date.now(),
       tasksCompleted: 0,
-      handlers: undefined
+      handlers: undefined,
+      envVersion: this.workerEnvVersion
     };
     this.workerQueue.push(item);
     logger.debug('Worker thread created', {
@@ -963,6 +966,11 @@ export class WorkerPool<Props = Record<string, any>, Response = any> {
       task.resolve(result.data);
     } else {
       task.reject(result.data);
+    }
+
+    if (item.envVersion !== this.workerEnvVersion) {
+      this.deleteWorker(item.id, undefined, 'config_change');
+      return;
     }
 
     if (item.tasksCompleted >= this.maxTasksPerWorker) {

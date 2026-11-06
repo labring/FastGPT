@@ -4,9 +4,7 @@ import { Controller, useForm } from 'react-hook-form';
 import { useDomainConfig } from '@/web/common/system/useDomainConfig';
 import AdminSettingPage from '@/pageComponents/admin/settings/AdminSettingPage';
 import AdminSettingSection from '@/pageComponents/admin/settings/AdminSettingSection';
-import AdminFormItem from '@/pageComponents/admin/settings/AdminFormItem';
 import AdminSwitchRow from '@/pageComponents/admin/settings/AdminSwitchRow';
-import ConnectivityTestInput from '@/pageComponents/admin/settings/ConnectivityTestInput';
 import type { SettingTOCItem } from '@/pageComponents/admin/settings/AdminSettingTOC';
 import type { SystemInstanceConfigDomainMap } from '@fastgpt/global/common/system/config/type';
 
@@ -15,8 +13,6 @@ type SubserviceConfigForm = SystemInstanceConfigDomainMap['subservice'];
 const AiProxySubserviceComponent = () => {
   const { t } = useSafeTranslation();
   const { effectiveConfig, isLoading, isUpdating, patchConfig } = useDomainConfig('subservice');
-  const endpoint = effectiveConfig?.aiProxy?.endpoint || 'http://localhost:3000';
-  const aiProxyHealthUrl = endpoint.replace(/\/+$/, '') + '/api/status';
 
   const tocItems: SettingTOCItem[] = useMemo(
     () => [{ id: 'connection', label: t('admin:connection_connectivity') }],
@@ -59,17 +55,6 @@ const AiProxySubserviceComponent = () => {
             />
           )}
         />
-
-        <AdminFormItem
-          label={t('admin:ai_proxy_health_check_endpoint')}
-          tooltip={t('admin:full_endpoint_the_main_site_uses_to_call_the_ai_proxy_and_pr')}
-          mb={0}
-        >
-          <ConnectivityTestInput
-            url={aiProxyHealthUrl}
-            placeholder="http://aiproxy:3000/api/status"
-          />
-        </AdminFormItem>
       </AdminSettingSection>
     </AdminSettingPage>
   );

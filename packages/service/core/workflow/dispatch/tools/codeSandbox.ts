@@ -4,6 +4,7 @@ import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runti
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { codeSandbox } from '../../../../thirdProvider/codeSandbox';
 import { getSystemInstanceConfig } from '../../../../common/system/systemInstanceConfig/runtime';
+import { serviceEnv } from '../../../../env';
 import { getNodeErrResponse } from '../utils';
 
 type RunCodeType = ModuleDispatchProps<{
@@ -30,7 +31,7 @@ export const dispatchCodeSandbox = async (props: RunCodeType): Promise<RunCodeRe
   } = props;
 
   const sandboxConfig = getSystemInstanceConfig().subservice.codeSandbox;
-  if (!sandboxConfig.enabled || !sandboxConfig.baseUrl) {
+  if (!sandboxConfig.enabled || !serviceEnv.CODE_SANDBOX_URL) {
     return getNodeErrResponse({
       error: 'Code sandbox service is not configured or disabled',
       customErr: {

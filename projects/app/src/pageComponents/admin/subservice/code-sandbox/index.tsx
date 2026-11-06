@@ -7,7 +7,6 @@ import AdminSettingPage from '@/pageComponents/admin/settings/AdminSettingPage';
 import AdminSettingSection from '@/pageComponents/admin/settings/AdminSettingSection';
 import AdminFormItem from '@/pageComponents/admin/settings/AdminFormItem';
 import AdminSwitchRow from '@/pageComponents/admin/settings/AdminSwitchRow';
-import ConnectivityTestInput from '@/pageComponents/admin/settings/ConnectivityTestInput';
 import type { SettingTOCItem } from '@/pageComponents/admin/settings/AdminSettingTOC';
 import type { SystemInstanceConfigDomainMap } from '@fastgpt/global/common/system/config/type';
 
@@ -30,8 +29,6 @@ const nodeBuiltins = ['crypto', 'path', 'url', 'lodash', 'dayjs', 'axios', 'qs']
 const CodeSandboxSubserviceComponent = () => {
   const { t } = useSafeTranslation();
   const { effectiveConfig, isLoading, isUpdating, patchConfig } = useDomainConfig('subservice');
-  const baseUrl = effectiveConfig?.codeSandbox?.baseUrl || 'http://localhost:3002';
-  const sandboxHealthUrl = baseUrl.replace(/\/+$/, '') + '/health';
 
   const tocItems: SettingTOCItem[] = useMemo(
     () => [
@@ -77,14 +74,6 @@ const CodeSandboxSubserviceComponent = () => {
             />
           )}
         />
-
-        <AdminFormItem
-          label={t('admin:code_sandbox_health_check_endpoint')}
-          tooltip={t('admin:full_endpoint_fastgpt_uses_to_probe_the_code_sandbox_process')}
-          mb={0}
-        >
-          <ConnectivityTestInput url={sandboxHealthUrl} placeholder="http://sandbox:3002/health" />
-        </AdminFormItem>
       </AdminSettingSection>
 
       {/* 2. 运行时模块支持 */}

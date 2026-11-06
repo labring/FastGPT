@@ -334,9 +334,7 @@ export const systemInstanceConfigRegistry: readonly SystemInstanceConfigRegistry
     [
       'plugin.remoteDebug',
       'codeSandbox.enabled',
-      'codeSandbox.baseUrl',
       'aiProxy.enabled',
-      'aiProxy.endpoint',
       'mcp.sseProxyUrl',
       'agentSandbox.provider',
       'agentSandbox.common.cpuCount',

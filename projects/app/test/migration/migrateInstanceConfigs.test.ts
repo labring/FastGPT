@@ -642,8 +642,6 @@ describe('migration env wiring', () => {
       ['providers.dataSource.dingtalkOapiBaseUrl', legacyEnv.DINGTALK_OAPI_BASE_URL],
       ['providers.dataSource.yuqueDatasetBaseUrl', legacyEnv.YUQUE_DATASET_BASE_URL],
       // subservice
-      ['subservice.codeSandbox.baseUrl', legacyEnv.CODE_SANDBOX_URL],
-      ['subservice.aiProxy.endpoint', legacyEnv.AIPROXY_API_ENDPOINT],
       ['subservice.mcp.sseProxyUrl', legacyEnv.SSE_MCP_SERVER_PROXY_ENDPOINT],
       ['subservice.agentSandbox.provider', legacyEnv.AGENT_SANDBOX_PROVIDER],
       ['subservice.agentSandbox.common.cpuCount', legacyEnv.AGENT_SANDBOX_CPU_COUNT],

@@ -17,13 +17,11 @@ const PluginSubserviceConfigSchema = z.strictObject({
 });
 
 const CodeSandboxSubserviceConfigSchema = z.strictObject({
-  enabled: z.boolean().default(true),
-  baseUrl: urlWithDefault('http://localhost:3002')
+  enabled: z.boolean().default(true)
 });
 
 const AiProxySubserviceConfigSchema = z.strictObject({
-  enabled: z.boolean().default(false),
-  endpoint: urlWithDefault('http://localhost:3000')
+  enabled: z.boolean().default(false)
 });
 
 const AgentSandboxSubserviceConfigSchema = z.strictObject({

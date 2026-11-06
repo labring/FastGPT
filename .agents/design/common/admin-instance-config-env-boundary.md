@@ -166,9 +166,9 @@ config.resource
 
 | 配置项 | 当前环境变量 | 目标位置 | 敏感性 | 说明 |
 | --- | --- | --- | --- | --- |
-| 插件服务地址和访问 Token | `PLUGIN_BASE_URL`、`PLUGIN_TOKEN` | `config.subservice.plugin` | Token 是敏感字段 | 目标为 DB，插件服务需要增加配置读取/刷新机制 |
-| Code Sandbox 地址和访问 Token | `CODE_SANDBOX_URL`、`CODE_SANDBOX_TOKEN` | `config.subservice.codeSandbox` | Token 是敏感字段 | 主站客户端配置进入 DB，Sandbox 进程自己的监听认证另行保留启动配置 |
-| AI Proxy 地址和 Token | `AIPROXY_API_ENDPOINT`、`AIPROXY_API_TOKEN` | `config.subservice.aiProxy` | Token 是敏感字段 | 需要从模块加载时读取改为运行时配置快照 |
+| 插件服务地址和访问 Token | `PLUGIN_BASE_URL`、`PLUGIN_TOKEN` | **环境变量** | Token 是敏感字段 | 运行时由部署 ENV 提供，不进入实例配置表单 |
+| Code Sandbox 地址和访问 Token | `CODE_SANDBOX_URL`、`CODE_SANDBOX_TOKEN` | **环境变量** | Token 是敏感字段 | 主站客户端地址与凭据由部署 ENV 提供；Sandbox 进程自身的监听认证另行保留启动配置 |
+| AI Proxy 地址和 Token | `AIPROXY_API_ENDPOINT`、`AIPROXY_API_TOKEN` | **环境变量** | Token 是敏感字段 | 由部署 ENV 提供；数据库只保留是否启用 AI Proxy |
 | Agent Sandbox Provider 与参数 | `AGENT_SANDBOX_PROVIDER`、各 `AGENT_SANDBOX_*` | `config.subservice.agentSandbox` | 多个 Token/Key | 主站调用侧的 Provider、地址、CPU、内存、存储、镜像、超时和代理地址均属于实例配置；独立 Sandbox 进程自身的启动参数见第 5 节 |
 | Agent Sandbox Proxy HMAC 密钥 | `AGENT_SANDBOX_PROXY_SECRET` | 环境变量 | 高敏感 | 主站和独立 Proxy 之间的跨进程信任根，暂不进入 Admin |
 | PDF 增强解析服务 | `CUSTOM_PDF_PARSE_*`、`SOMARK_API_KEY`、`DOC2X_KEY`、`TEXTIN_*` | `config.providers.documentParse` | Key 是敏感字段 | 暂时明文，但 UI/API 必须按 secret 字段处理 |
@@ -1064,7 +1064,7 @@ Server、Agent Sandbox Proxy 和 IDE Agent 的运行时变量。为了避免“�
 
 ### 13.6 逐字段版本、表单与页面映射
 
-本表逐项覆盖注册表的 **198 个配置叶子**，不使用通配符或虚构的聚合字段。字段定义与默认值以 `schemas/*.ts` 为准，版本、敏感项和 SaaS 显示条件以 `registry.ts` 为准；页面归属与 `pageFields.ts`、实际表单保持一致。
+本表逐项覆盖注册表的 **196 个配置叶子**，不使用通配符或虚构的聚合字段。字段定义与默认值以 `schemas/*.ts` 为准，版本、敏感项和 SaaS 显示条件以 `registry.ts` 为准；页面归属与 `pageFields.ts`、实际表单保持一致。
 
 - 社区版／商业版的勾选表示配置 API 的读写权限；商业版按是否配置 `PRO_URL` 判定，不依赖 License 是否激活。
 - “仅 SaaS 显示”表示 `ENABLE_SAAS_ADMIN_CONFIG=true` 才显示对应控件，**不收紧商业版 API 权限**。标为“仅 API”的字段当前没有新表单，开启显示开关也不会产生控件。
@@ -1296,9 +1296,7 @@ Server、Agent Sandbox Proxy 和 IDE Agent 的运行时变量。为了避免“�
 | --- | --- | :---: | :---: | :---: | :---: | --- |
 | `subservice.plugin.remoteDebug` | 开启插件远程调试通道 (Remote Debug) | — | ✅ | — | — | 可编辑：`/admin/subservice/plugin` |
 | `subservice.codeSandbox.enabled` | 启用 Code Sandbox | — | ✅ | — | — | 可编辑：`/admin/subservice/code-sandbox` |
-| `subservice.codeSandbox.baseUrl` | 代码沙箱服务地址 | — | ✅ | — | — | 只读：`/admin/subservice/code-sandbox` |
 | `subservice.aiProxy.enabled` | 启用 AI Proxy | — | ✅ | — | — | 可编辑：`/admin/subservice/ai-proxy` |
-| `subservice.aiProxy.endpoint` | AI Proxy 地址 | — | ✅ | — | — | 只读：`/admin/subservice/ai-proxy` |
 | `subservice.mcp.sseProxyUrl` | MCP SSE 代理地址 | — | ✅ | — | — | 可编辑：`/admin/subservice/mcp` |
 | `subservice.agentSandbox.provider` | 当前沙箱 Provider | — | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
 | `subservice.agentSandbox.common.cpuCount` | CPU 核心数 (Core) | — | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |

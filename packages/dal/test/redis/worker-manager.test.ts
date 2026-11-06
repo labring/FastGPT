@@ -28,6 +28,28 @@ describe('BullMQWorkerManager.getWorker', () => {
     expect(worker.concurrency).toBe(9);
   });
 
+  it('preserves creation-only options while hot-updating concurrency', () => {
+    const manager = createManager();
+    const worker = createWorkerStub(3);
+    (manager as any).workers.set('wechatPoll', worker);
+    (manager as any).workerOpts.set('wechatPoll', {
+      concurrency: 3,
+      lockDuration: 120_000,
+      stalledInterval: 60_000,
+      removeOnFail: { count: 10_000 }
+    });
+
+    manager.getWorker('wechatPoll', (async () => undefined) as any, { concurrency: 9 });
+
+    expect(worker.concurrency).toBe(9);
+    expect((manager as any).workerOpts.get('wechatPoll')).toEqual({
+      concurrency: 9,
+      lockDuration: 120_000,
+      stalledInterval: 60_000,
+      removeOnFail: { count: 10_000 }
+    });
+  });
+
   it('leaves the cached concurrency untouched when the caller does not pass one', () => {
     const manager = createManager();
     const worker = createWorkerStub(3);

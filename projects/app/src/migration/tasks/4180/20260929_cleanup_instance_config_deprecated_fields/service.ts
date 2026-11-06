@@ -42,7 +42,9 @@ export const deprecatedOverridePaths: Partial<
     // 远程调试链接由请求域名/NEXT_PUBLIC_BASE_URL 生成，不再读取该字段
     ['plugin', 'remoteDebugUrl'],
     ['codeSandbox', 'token'],
+    ['codeSandbox', 'baseUrl'],
     ['aiProxy', 'token'],
+    ['aiProxy', 'endpoint'],
     // mcp.enabled 冗余：SSE 接入地址按 sseProxyUrl 是否为空生成
     ['mcp', 'enabled'],
     ['agentSandbox', 'proxy', 'wsUrl'],

@@ -9,23 +9,19 @@ import { getMemberGroupId } from '../../thirdProvider/aiproxy/group';
 import { getLegacyOpenAIRequestOptions, getLegacyAxiosRequestConfig } from './legacy/requestUrl';
 
 /**
- * AI Proxy 请求基地址（`${endpoint}/v1`），来源只有实例配置 subservice.aiProxy.endpoint。
+ * AI Proxy 请求基地址（`${endpoint}/v1`），地址和 Token 都由 ENV 提供。
  *
- * 这里保留旧 ENV 链路（`AIPROXY_API_ENDPOINT: UrlSchema`）的两个归一化约定：
- *  - 去尾部斜杠：配置 Schema 的 `urlWithDefault()` 只做 z.url() 校验，不会去掉 `http://x/` 的尾斜杠，
- *    直接拼接会变成 `http://x//v1`，多数网关按不同路由处理，导致全部模型调用 404；
- *  - token 去首尾空白：Admin 粘贴 Key 时极易带上换行/空格，旧 ENV 用 `.trim()` 兜住，
- *    改为 DB 来源后必须在读取时归一，否则鉴权静默失败且难以排查。
- *  - 以 `enabled` 为准入门槛：endpoint 的 Schema 默认值是 `http://localhost:3000`（compose 便利值），
- *    只看 endpoint 会让没装 AI Proxy 的部署把系统模型流量发到本机 3000 端口并用空 Key 鉴权，
- *    永远拿不到 `https://api.openai.com/v1` 兜底。迁移任务按 `AIPROXY_API_ENDPOINT` 是否配置写入
- *    `enabled`，因此以 enabled 判定与旧 ENV 语义一致。
+ * 地址与 Token 都由 ENV 提供；这里仍需保留两个归一化约定：
+ *  - 去尾部斜杠：避免 `http://x/` 与 `/v1` 拼成 `http://x//v1`；
+ *  - token 去首尾空白：避免粘贴 Key 时带入换行/空格导致鉴权静默失败。
+ *  - 以实例配置的 `enabled` 作为准入门槛；迁移任务按 `AIPROXY_API_ENDPOINT` 是否配置写入
+ *    `enabled`，因此未安装 AI Proxy 的部署仍会回落到 OpenAI 官方地址。
  */
 export const getAiProxyBaseUrl = () => {
-  const { enabled, endpoint } = getSystemInstanceConfig().subservice.aiProxy;
+  const { enabled } = getSystemInstanceConfig().subservice.aiProxy;
   if (!enabled) return undefined;
 
-  const normalizedEndpoint = stripUrlTrailingSlash(endpoint);
+  const normalizedEndpoint = stripUrlTrailingSlash(serviceEnv.AIPROXY_API_ENDPOINT ?? '');
   return normalizedEndpoint ? `${normalizedEndpoint}/v1` : undefined;
 };
 

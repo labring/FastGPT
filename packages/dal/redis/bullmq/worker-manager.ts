@@ -50,7 +50,10 @@ export class BullMQWorkerManager {
         if (existing.concurrency !== opts.concurrency) {
           existing.concurrency = opts.concurrency;
         }
-        this.workerOpts.set(name, { ...this.workerOpts.get(name), ...opts });
+        this.workerOpts.set(name, {
+          ...this.workerOpts.get(name),
+          concurrency: opts.concurrency
+        });
       }
       return existing as Worker<DataType, ReturnType>;
     }

@@ -15,6 +15,7 @@ import { useForm, Controller, useWatch } from 'react-hook-form';
 import { useDomainConfig, updateDomainConfigApi } from '@/web/common/system/useDomainConfig';
 import { useAdminPermission } from '@/pageComponents/admin/useAdminPermission';
 import { deepMergeConfig } from '@fastgpt/global/common/system/config/merge';
+import { ToastHandledError } from '@fastgpt/global/common/error/utils';
 import { useAdminConfigSaveRequest } from '@/web/common/system/useAdminConfigSaveRequest';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import AdminSettingPage from '@/pageComponents/admin/settings/AdminSettingPage';
@@ -104,14 +105,14 @@ const AuthSettingComponent = () => {
             status: 'error',
             title: t('admin:fast_login_entries_must_be_valid_json_array')
           });
-          return;
+          throw new ToastHandledError('Invalid fastLogin JSON');
         }
         if (!Array.isArray(fastLogin)) {
           toast({
             status: 'error',
             title: t('admin:fast_login_entries_must_be_valid_json_array')
           });
-          return;
+          throw new ToastHandledError('Invalid fastLogin JSON');
         }
       }
 
