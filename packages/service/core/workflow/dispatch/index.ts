@@ -244,7 +244,7 @@ export async function dispatchWorkFlow({
       }
       throw error;
     }
-  
+
     /* Init function */
     // Check point
     await profileStage({ event: 'wf.points.check' }, () =>

@@ -325,7 +325,6 @@ describe('PluginRepo', () => {
     );
 
     expect(modelMocks.findOne).toHaveBeenNthCalledWith(2, {
-      type: 'tool',
       pluginId: 'tool-a',
       source: { $ne: 'community' }
     });
@@ -364,7 +363,6 @@ describe('PluginRepo', () => {
     );
 
     expect(modelMocks.findOne).toHaveBeenNthCalledWith(2, {
-      type: 'moderation',
       pluginId: 'tool-a',
       source: { $ne: 'community' }
     });

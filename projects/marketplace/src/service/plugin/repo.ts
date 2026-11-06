@@ -202,7 +202,6 @@ export class PluginRepo {
     if (record.source === MarketplaceOfficialSource) return;
 
     const existing = await MongoMarketplaceTool.findOne({
-      type: record.type,
       pluginId: record.pluginId,
       source: { $ne: record.source }
     }).lean();
@@ -236,6 +235,9 @@ export class PluginRepo {
       version: record.version,
       type: record.type
     });
+    if (existing && existing.type !== record.type) {
+      throw new Error(`Marketplace plugin type cannot be changed: ${record.pluginId}`);
+    }
     const recordToPublish = existing ? { ...record, createTime: existing.createTime } : record;
     const manifestObjectKey = getToolManifestObjectKey(record);
 

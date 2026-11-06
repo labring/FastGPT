@@ -9,6 +9,8 @@ import type {
 } from '@fastgpt/global/core/ai/llm/type';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { checkToolResultModeration } from '../../../../../../plugin/moderation/modelInput';
+import { checkToolParamsModeration } from '../../../../../../plugin/moderation/output';
+import { MODERATION_BLOCKED_ERROR_MESSAGE } from '@fastgpt/global/core/plugin/moderation/constants';
 import { createAskUserAgentTool } from '../../../domain/systemTool/ask';
 import {
   applyPlanUpdate,
@@ -112,6 +114,23 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
       metadata?: unknown;
     }>;
   }) => {
+    // 检查工具参数是否违规，违规不派发调用、不触发 start 事件且不执行工具
+    const paramCheck = await checkToolParamsModeration({
+      toolCalls: [call],
+      context: { teamId: runtime.teamId }
+    });
+    if (!paramCheck.isPass) {
+      const errorMessage = paramCheck.blockErrorMessage || MODERATION_BLOCKED_ERROR_MESSAGE;
+      onToolResult({ call, response: errorMessage, assistantMessages: [] });
+      return {
+        response: errorMessage,
+        assistantMessages: [],
+        usages: [],
+        errorMessage,
+        stop: true
+      };
+    }
+
     const startedAt = Date.now();
     onToolCall(call);
     runtime.emitEvent?.({ type: 'tool_run_start', call });

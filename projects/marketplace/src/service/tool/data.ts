@@ -33,7 +33,8 @@ export const getToolVersionList = async (toolId?: string, type?: 'tool' | 'moder
     .map((record) => ({
       toolId: record.pluginId,
       version: record.version,
-      etag: record.etag
+      etag: record.etag,
+      type: record.type
     }));
 };
 
