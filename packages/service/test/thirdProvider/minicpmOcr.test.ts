@@ -350,6 +350,58 @@ describe('useMiniCPMOcrServer', () => {
     ).rejects.toThrow('[MiniCPM-OCR] Some content blocks failed to parse: text, table');
   });
 
+  it('印章块 failed 时拒绝结果', async () => {
+    mockSubmit();
+    getMock.mockResolvedValueOnce({
+      data: {
+        status: 'Success',
+        markdown: '# Heading\n\nBody\n\nSeal text',
+        pages_total: 1,
+        pages: [
+          {
+            ocr: {
+              blocks: [
+                { label: 'text', status: 'ok' },
+                { label: 'seal', status: 'failed' }
+              ]
+            }
+          }
+        ]
+      }
+    });
+
+    await expect(
+      useMiniCPMOcrServer({ apiKey: 'sk-test' }).parsePDF(Buffer.from('pdf-content'))
+    ).rejects.toThrow('[MiniCPM-OCR] Some content blocks failed to parse: seal');
+  });
+
+  it('印章识别被主动关闭时正常返回', async () => {
+    mockSubmit();
+    getMock.mockResolvedValueOnce({
+      data: {
+        status: 'Success',
+        markdown: '# Heading\n\nBody',
+        pages_total: 1,
+        pages: [
+          {
+            ocr: {
+              blocks: [
+                { label: 'text', status: 'ok' },
+                { label: 'seal', status: 'skipped_seal' }
+              ]
+            }
+          }
+        ]
+      }
+    });
+
+    const result = await useMiniCPMOcrServer({ apiKey: 'sk-test' }).parsePDF(
+      Buffer.from('pdf-content')
+    );
+
+    expect(result.text).toBe('# Heading\n\nBody');
+  });
+
   it('skipped_no_vlm、skipped_seal 和非正文块失败不阻断解析', async () => {
     mockSubmit();
     getMock.mockResolvedValueOnce({

@@ -349,8 +349,12 @@ export const CustomPdfParseSchema = z.looseObject({
   key: z.string().optional(),
   somarkApiKey: z.string().optional(),
   doc2xKey: z.string().optional(),
-  minicpmOcrKey: z.string().optional(),
-  minicpmOcrBaseUrl: z.string().optional(),
+  minicpmOcrKey: z.string().optional().meta({
+    description: 'MiniCPM-OCR PDF 解析服务密钥'
+  }),
+  minicpmOcrBaseUrl: z.string().optional().meta({
+    description: 'MiniCPM-OCR PDF 解析服务地址'
+  }),
   textinAppId: z.string().optional(),
   textinSecretCode: z.string().optional(),
   price: NumSchema.optional()

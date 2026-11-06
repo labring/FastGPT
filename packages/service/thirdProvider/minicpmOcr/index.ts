@@ -14,7 +14,9 @@ const MINICPM_OCR_MAX_BACKOFF_MS = 30000;
 
 /**
  * 这些块不参与整页 Markdown，识别失败不会造成正文缺失，因此不阻断整篇解析。
- * skipped_no_vlm（图片）和 skipped_seal（关闭印章识别）是正常跳过状态，不在此列。
+ *
+ * seal 不能放进这里：recognize_seal 默认开启，印章识别文本会写入 Markdown；
+ * 主动关闭印章识别时状态是 skipped_seal，不是 failed，仍会正常通过。
  */
 const MINICPM_OCR_NON_MARKDOWN_LABELS = new Set([
   'header',
@@ -22,8 +24,7 @@ const MINICPM_OCR_NON_MARKDOWN_LABELS = new Set([
   'number',
   'footnote',
   'aside_text',
-  'image',
-  'seal'
+  'image'
 ]);
 
 type MiniCPMOcrBlock = {
