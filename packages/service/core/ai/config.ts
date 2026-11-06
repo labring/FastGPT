@@ -30,9 +30,9 @@ export const getOpenaiBaseUrl = () => {
 };
 export const getOpenaiBaseKey = () => {
   const { enabled } = getSystemInstanceConfig().subservice.aiProxy;
-  // 地址与凭据必须绑定同一启用状态：禁用代理时请求会回落到 api.openai.com，
-  // 此时若仍返回保留的代理 token，就会把私有凭据发给外部服务。
-  if (!enabled) return '';
+  // 地址与凭据必须绑定同一连接配置：禁用或缺少有效代理地址时请求会回落到
+  // api.openai.com，此时绝不能携带保留的私有代理 token。
+  if (!enabled || !getAiProxyBaseUrl()) return '';
   return serviceEnv.AIPROXY_API_TOKEN?.trim() ?? '';
 };
 export const defaultUserOpenAIBaseUrl = 'https://api.openai.com/v1';

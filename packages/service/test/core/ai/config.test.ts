@@ -45,6 +45,17 @@ describe('AI config instance source', () => {
     expect(getOpenaiBaseKey()).toBe('');
   });
 
+  it('does not send a proxy token when AI Proxy is enabled without an endpoint', async () => {
+    vi.stubEnv('AIPROXY_API_ENDPOINT', undefined);
+    vi.stubEnv('AIPROXY_API_TOKEN', 'private-proxy-token');
+    const { getOpenaiBaseUrl, getOpenaiBaseKey, getAxiosConfig } = await importConfig();
+
+    expect(getOpenaiBaseUrl()).toBe('https://api.openai.com/v1');
+    expect(getOpenaiBaseKey()).toBe('');
+    expect(getAxiosConfig().authorization).toBe('Bearer ');
+    expect(getAxiosConfig().authorization).not.toContain('private-proxy-token');
+  });
+
   it('normalizes ENV proxy addresses before building request URLs', async () => {
     vi.stubEnv('AIPROXY_API_ENDPOINT', 'http://aiproxy:3000///');
     global.systemInstanceConfig = resolveSystemInstanceConfig({
