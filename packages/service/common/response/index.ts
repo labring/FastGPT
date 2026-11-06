@@ -9,6 +9,7 @@ import type Stream from 'node:stream';
 import { getLogger, LogCategories } from '../logger';
 import { ApiRequestInputParseError, getZodError } from '../zod/requestParseError';
 import { markProfileError } from '../profiling';
+import { ChatGeneratingConflictError } from '@fastgpt/global/core/chat/error';
 
 const logger = getLogger(LogCategories.HTTP.ERROR);
 
@@ -105,6 +106,11 @@ export function processError(params: {
       error instanceof UserError && error.displayMessage
         ? replaceSensitiveText(error.displayMessage)
         : ERROR_RESPONSE[errResponseKey].message;
+    // 只允许已知的生成冲突错误携带恢复信息，其他业务错误继续使用固定映射，避免透传任意数据。
+    const data =
+      error instanceof ChatGeneratingConflictError
+        ? error.data
+        : ERROR_RESPONSE[errResponseKey].data;
 
     // 记录业务侧错误日志
     logger.info('API response error', {
@@ -119,8 +125,11 @@ export function processError(params: {
       code: ERROR_RESPONSE[errResponseKey].code || defaultCode,
       statusText: ERROR_RESPONSE[errResponseKey].statusText || 'error',
       message,
-      data: ERROR_RESPONSE[errResponseKey].data,
-      httpStatus: ERROR_RESPONSE[errResponseKey].httpStatus ?? 500,
+      data,
+      httpStatus:
+        error instanceof ChatGeneratingConflictError
+          ? 409
+          : (ERROR_RESPONSE[errResponseKey].httpStatus ?? 500),
       shouldClearCookie
     };
   }
@@ -237,7 +246,11 @@ export const getSseErrorResponse = (
   if (ERROR_RESPONSE[errResponseKey]) {
     return {
       event: SseResponseEventEnum.error,
-      data: JSON.stringify({ ...ERROR_RESPONSE[errResponseKey], message: processedError.message }),
+      data: JSON.stringify({
+        ...ERROR_RESPONSE[errResponseKey],
+        message: processedError.message,
+        data: processedError.data
+      }),
       shouldClearCookie: processedError.shouldClearCookie
     };
   }

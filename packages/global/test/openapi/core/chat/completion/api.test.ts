@@ -107,10 +107,16 @@ describe('CompletionsPropsSchema identity', () => {
       const media = body.content['application/json'];
       const schema = media.schema!;
       if ('$ref' in schema) throw new Error('Unexpected body schema reference');
-      expect(schema.anyOf?.map((branch) => branch.title)).toEqual(['应用会话', '外链会话']);
-      const [app, outLink] = schema.anyOf!;
+      expect(schema.anyOf?.map((branch) => branch.title)).toEqual([
+        '应用会话',
+        'APP API Key（无需 appId）',
+        '外链会话'
+      ]);
+      const [app, appKey, outLink] = schema.anyOf!;
+      expect(appKey.required ?? []).not.toContain('appId');
+      expect(appKey.description).toContain('APP API Key');
       expect(Object.keys(app.properties!)[0]).toBe('appId');
-      expect(app.required).not.toContain('appId');
+      expect(app.required).toContain('appId');
       expect(app.properties).not.toHaveProperty('outLinkAuthData');
       expect(Object.keys(outLink.properties!)[0]).toBe('outLinkAuthData');
       expect(outLink.required).toContain('outLinkAuthData');
@@ -119,8 +125,8 @@ describe('CompletionsPropsSchema identity', () => {
         type: 'object',
         required: ['shareId', 'outLinkUid']
       });
-      // 应用 ID 可由请求头补足，最小示例不混入其他身份，也不强制要求 body.appId。
-      expect(media.example).toEqual({});
+      // 默认示例为显式应用分支；应用 Key 的省略方式通过独立 union 分支声明。
+      expect(media.example).toEqual({ appId });
       expect(media.examples).toBeUndefined();
       expect(CompletionsPropsSchema.safeParse(media.example).success).toBe(true);
     }

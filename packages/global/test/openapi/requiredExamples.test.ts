@@ -87,7 +87,8 @@ describe('setRequiredRequestExamples', () => {
     expect(schema.anyOf?.map((branch) => branch.title)).toEqual([
       '应用会话',
       'Skill 调试会话',
-      '外链会话'
+      '外链会话',
+      '应用 API Key（无需 appId）'
     ]);
     expect(schema.anyOf?.[0].allOf?.[1].anyOf?.map((branch) => branch.title)).toEqual([
       '按偏移量获取',
@@ -223,7 +224,7 @@ describe('conditional required API examples', () => {
       expect(parameter).toMatchObject({
         name: 'query',
         in: 'query',
-        required: true,
+        required: !schema.safeParse({}).success,
         style: 'form',
         explode: true
       });
@@ -232,15 +233,18 @@ describe('conditional required API examples', () => {
         createSchema(schema, { io: 'input', opts: openApiDocumentOptions }).schema
       );
       if (path !== '/core/chat/init') {
-        expect(parameter.schema).toMatchObject({
-          anyOf: [{}, {}, { properties: { outLinkAuthData: { type: 'string' } } }]
+        expect(parameter.schema).toHaveProperty('anyOf');
+        expect(
+          parameter.schema?.anyOf?.find((branch) => branch.title === '外链会话')
+        ).toMatchObject({
+          properties: { outLinkAuthData: { type: 'string' } }
         });
         expect(parameter.schema).not.toHaveProperty('anyOf.2.properties.outLinkAuthData.anyOf');
       }
       expect(Object.keys(parameter.examples!)).toEqual(['default']);
       const example = parameter.examples!.default;
       if ('$ref' in example) throw new Error('Unexpected example reference');
-      expect(example['x-disabled']).toBe(false);
+      expect(example['x-disabled']).toBe(schema.safeParse({}).success);
       expect(Object.keys(example.value).sort()).toEqual([...expectedFields].sort());
       expect(schema.safeParse(example.value).success).toBe(true);
     }
@@ -251,20 +255,14 @@ describe('conditional required API examples', () => {
       io: 'input',
       opts: openApiDocumentOptions
     });
-    expect(schema).toMatchObject({
-      anyOf: [
-        {},
-        {},
-        {
-          properties: {
-            outLinkAuthData: {
-              type: 'object',
-              required: ['shareId', 'outLinkUid'],
-              properties: { shareId: { type: 'string' }, outLinkUid: { type: 'string' } }
-            }
-          }
+    expect(schema.anyOf?.find((branch) => branch.title === '外链会话')).toMatchObject({
+      properties: {
+        outLinkAuthData: {
+          type: 'object',
+          required: ['shareId', 'outLinkUid'],
+          properties: { shareId: { type: 'string' }, outLinkUid: { type: 'string' } }
         }
-      ]
+      }
     });
     expect(schema).not.toHaveProperty('anyOf.2.properties.outLinkAuthData.anyOf');
   });

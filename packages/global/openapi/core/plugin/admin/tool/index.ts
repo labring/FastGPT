@@ -1,7 +1,6 @@
 import type { OpenAPIPath } from '../../../../type';
 import {
   CreateAppToolBodySchema,
-  DeleteSystemToolQuerySchema,
   GetAdminSystemToolDetailQuerySchema,
   GetAdminSystemToolVersionsQuerySchema,
   GetAdminSystemToolVersionsResponseSchema,
@@ -191,26 +190,6 @@ export const AdminPluginToolPath: OpenAPIPath = {
       responses: {
         200: {
           description: '成功重置工具运行时配置',
-          content: {
-            'application/json': {
-              schema: z.object({})
-            }
-          }
-        }
-      }
-    }
-  },
-  '/core/plugin/admin/tool/delete': {
-    delete: {
-      summary: '删除系统工具',
-      description: '根据ID删除系统工具，需要系统管理员权限',
-      tags: [DevApiTagsMap.pluginToolAdmin],
-      requestParams: {
-        query: DeleteSystemToolQuerySchema
-      },
-      responses: {
-        200: {
-          description: '成功删除系统工具',
           content: {
             'application/json': {
               schema: z.object({})

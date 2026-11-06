@@ -61,17 +61,21 @@ describe('authChatTargetCrud App and share access', () => {
   });
 
   describe('validation', () => {
-    it.each(['', undefined, null])('rejects an invalid appId: %s', async (sourceId) => {
-      await expect(
-        authChatTargetCrud({
-          sourceId: sourceId as string,
-          req: {} as any,
-          authToken: true,
-          sourceType: ChatSourceTypeEnum.app
-        })
-      ).rejects.toBe(ChatErrEnum.unAuthChat);
-      expect(authApp).not.toHaveBeenCalled();
-    });
+    it.each(['', undefined, null])(
+      'delegates an omitted appId to authentication: %s',
+      async (sourceId) => {
+        vi.mocked(authApp).mockRejectedValueOnce(ChatErrEnum.unAuthChat);
+        await expect(
+          authChatTargetCrud({
+            sourceId: sourceId as string,
+            req: {} as any,
+            authToken: true,
+            sourceType: ChatSourceTypeEnum.app
+          })
+        ).rejects.toBe(ChatErrEnum.unAuthChat);
+        expect(authApp).toHaveBeenCalled();
+      }
+    );
   });
 
   describe('outLink authentication', () => {
@@ -730,7 +734,8 @@ describe('authChatTargetCrud resource context', () => {
       teamId: 'team-1',
       tmbId: 'member-1',
       userId: 'user-1',
-      app: { name: 'App' },
+      app: { _id: 'app-1', name: 'App' },
+      appId: 'app-1',
       permission: new AppPermission({ role: 0 })
     } as any);
     vi.mocked(authSkill).mockResolvedValue({
@@ -836,7 +841,7 @@ describe('authChatTargetCrud resource context', () => {
     await expect(
       authChatTargetCrud({ ...params, sourceType: ChatSourceTypeEnum.app, sourceId: '' })
     ).rejects.toBe(ChatErrEnum.unAuthChat);
-    expect(authApp).toHaveBeenCalledTimes(1);
+    expect(authApp).toHaveBeenCalledTimes(2);
   });
 });
 

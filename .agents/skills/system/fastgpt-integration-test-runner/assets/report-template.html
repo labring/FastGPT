@@ -1,0 +1,583 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" href="data:," />
+    <title>FastGPT 测试执行报告</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --line: #dde3e8;
+        --muted: #687481;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        color: #263442;
+        background: #fff;
+        font:
+          14px/1.6 system-ui,
+          -apple-system,
+          'PingFang SC',
+          sans-serif;
+      }
+      main {
+        padding: 24px;
+        max-width: 1800px;
+        margin: auto;
+      }
+      h1 {
+        margin: 0 0 6px;
+        font-size: 23px;
+      }
+      p {
+        margin: 8px 0;
+      }
+      .muted,
+      small {
+        color: var(--muted);
+      }
+      #progress {
+        margin: 14px 0;
+      }
+      #meta,
+      #closure,
+      .actual-note {
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+      }
+      .table-scroll {
+        width: 100%;
+        overflow: auto;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+      }
+      th,
+      td {
+        text-align: left;
+        vertical-align: top;
+        padding: 10px 12px;
+        border: 1px solid var(--line);
+      }
+      th {
+        background: #f5f7f9;
+        font-weight: 600;
+        white-space: nowrap;
+      }
+      #case-table {
+        min-width: 1200px;
+        table-layout: fixed;
+      }
+      .case-row {
+        cursor: pointer;
+      }
+      .case-row:hover,
+      .case-row.open {
+        background: #f4f8fc;
+      }
+      .case-link {
+        border: 0;
+        padding: 0;
+        color: #1d5e9f;
+        background: none;
+        cursor: pointer;
+        font: inherit;
+        font-weight: 550;
+        text-align: left;
+      }
+      .case-link:focus-visible {
+        outline: 2px solid #286baf;
+        outline-offset: 3px;
+      }
+      .case-id {
+        display: block;
+        margin-top: 4px;
+        font-size: 11px;
+      }
+      .case-note {
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
+        overflow: hidden;
+        overflow-wrap: anywhere;
+      }
+      .badge {
+        display: inline-block;
+        white-space: nowrap;
+        padding: 1px 7px;
+        border-radius: 3px;
+        background: #edf0f3;
+        color: #586674;
+        font-size: 12px;
+      }
+      .passed {
+        background: #e1f3e9;
+        color: #1c6a43;
+      }
+      .failed {
+        background: #fde7e7;
+        color: #a32d37;
+      }
+      .blocked {
+        background: #fff0d8;
+        color: #8c5b10;
+      }
+      .running {
+        background: #e4effc;
+        color: #2a609c;
+      }
+      .detail-row > td {
+        padding: 0;
+      }
+      .case-detail {
+        padding: 18px 24px;
+        background: #fafbfc;
+      }
+      .case-detail h1 {
+        font-size: 20px;
+      }
+      .case-detail h2 {
+        font-size: 17px;
+        margin: 24px 0 8px;
+      }
+      .case-detail h3 {
+        font-size: 15px;
+      }
+      .case-detail table {
+        background: white;
+      }
+      .case-detail .table-scroll {
+        margin: 14px 0;
+      }
+      .execution-result {
+        min-width: 95px;
+      }
+      .execution-note {
+        min-width: 280px;
+        width: 32%;
+      }
+      .scope {
+        margin-top: 6px;
+        font-size: 12px;
+        color: var(--muted);
+      }
+      .excluded {
+        opacity: 0.65;
+      }
+      a {
+        color: #1d5e9f;
+      }
+      .evidence a {
+        display: block;
+        font-size: 12px;
+      }
+      details {
+        margin: 10px 0;
+      }
+      summary {
+        cursor: pointer;
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .history {
+        padding: 8px 0;
+        border-bottom: 1px dashed var(--line);
+      }
+      .history small {
+        display: block;
+      }
+      code {
+        padding: 1px 4px;
+        background: #edf1f5;
+        border-radius: 3px;
+      }
+      pre {
+        overflow: auto;
+        padding: 12px;
+        background: #eff2f5;
+        line-height: 1.6;
+      }
+      pre code {
+        padding: 0;
+      }
+      .snapshot {
+        max-height: 360px;
+        font-size: 12px;
+      }
+      blockquote {
+        margin-left: 0;
+        border-left: 3px solid var(--line);
+        padding-left: 12px;
+        color: var(--muted);
+      }
+      footer {
+        margin-top: 12px;
+        font-size: 12px;
+        color: var(--muted);
+      }
+      @media (max-width: 700px) {
+        main {
+          padding: 16px 12px;
+        }
+        .case-detail {
+          padding: 14px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>FastGPT 测试执行报告</h1>
+      <p id="scope" class="muted"></p>
+      <p id="progress"></p>
+      <details>
+        <summary>运行信息</summary>
+        <p id="meta" class="muted"></p>
+        <p id="closure"></p>
+        <p id="sync" class="muted">离线报告，刷新页面读取最新结果。</p>
+      </details>
+      <div class="table-scroll">
+        <table id="case-table" aria-label="用例执行列表">
+          <colgroup>
+            <col style="width: 22%" />
+            <col style="width: 10%" />
+            <col style="width: 8%" />
+            <col style="width: 7%" />
+            <col style="width: 8%" />
+            <col style="width: 5%" />
+            <col style="width: 9%" />
+            <col style="width: 7%" />
+            <col style="width: 24%" />
+          </colgroup>
+          <thead>
+            <tr>
+              <th scope="col">用例</th>
+              <th scope="col">业务</th>
+              <th scope="col">用例类型</th>
+              <th scope="col">测试方式</th>
+              <th scope="col">执行方</th>
+              <th scope="col">优先级</th>
+              <th scope="col">场景进度</th>
+              <th scope="col">执行结果</th>
+              <th scope="col">结果说明</th>
+            </tr>
+          </thead>
+          <tbody id="case-rows"></tbody>
+        </table>
+      </div>
+      <footer>
+        点击用例行展开详情；未纳入场景不计入本轮统计。转交报告时一并保留同目录 evidence/。
+      </footer>
+    </main>
+    <!-- REPORT_DATA -->
+    <!-- REPORT_VENDORS -->
+    <!-- REPORT_STATE -->
+    <script>
+      const { labels, executors, executorLabel, summarize } = FastGPTTestRun;
+      const categories = { basic: '基础场景', abnormal: '异常场景', boundary: '边界场景' };
+      const methods = { api: '接口', ui: 'UI', e2e: '端到端', integration: '服务集成' };
+      let run = JSON.parse(document.getElementById('run-data').textContent);
+      const rows = new Map();
+      const cells = new Map();
+
+      /** 说明和观察以 textContent 写入；用例 Markdown 只在展开时经过净化渲染。 */
+      function element(tag, text, className) {
+        const node = document.createElement(tag);
+        if (text !== undefined) node.textContent = text;
+        if (className) node.className = className;
+        return node;
+      }
+      function badge(result) {
+        return element('span', labels[result], 'badge ' + result);
+      }
+      function time(value) {
+        return new Date(value).toLocaleString('zh-CN', { hour12: false });
+      }
+
+      function evidenceLinks(files) {
+        const list = element('div', undefined, 'evidence');
+        files.forEach((file) => {
+          if (
+            !file.path.startsWith('evidence/') ||
+            file.path.includes('\\') ||
+            file.path.split('/').includes('..')
+          )
+            return;
+          const link = element('a', file.label);
+          link.href = file.path.split('/').map(encodeURIComponent).join('/');
+          link.target = '_blank';
+          link.rel = 'noopener noreferrer';
+          list.append(link);
+        });
+        return list;
+      }
+
+      /** 展开后保留完整原文，仅在预期矩阵追加执行结果和说明，不重复维护子场景。 */
+      function mountDetail(testCase) {
+        const body = element('div', undefined, 'case-detail');
+        body.innerHTML = DOMPurify.sanitize(marked.parse(testCase.body, { gfm: true }), {
+          USE_PROFILES: { html: true },
+          FORBID_TAGS: [
+            'img',
+            'style',
+            'iframe',
+            'form',
+            'input',
+            'button',
+            'video',
+            'audio',
+            'source'
+          ],
+          FORBID_ATTR: ['style', 'id', 'name', 'srcset']
+        });
+        body.querySelectorAll('a').forEach((link) => {
+          link.target = '_blank';
+          link.rel = 'noopener noreferrer';
+        });
+        let inExpected = false;
+        let table;
+        for (const child of body.children) {
+          if (child.tagName === 'H2') inExpected = child.textContent.trim() === '预期结果';
+          if (inExpected && child.tagName === 'TABLE' && testCase.mode === 'matrix') {
+            const entries = Array.from(child.querySelectorAll('tbody > tr'));
+            if (
+              entries.length === testCase.items.length &&
+              entries.every((row, i) => row.cells[0].textContent.trim() === testCase.items[i].id)
+            ) {
+              table = child;
+              break;
+            }
+          }
+        }
+        if (!table) {
+          table = element('table');
+          table
+            .createTHead()
+            .insertRow()
+            .append(element('th', '执行项'), element('th', '预期范围'));
+          const tbody = table.createTBody();
+          testCase.items.forEach((item) =>
+            tbody.insertRow().append(element('td', item.id), element('td', item.expected))
+          );
+          body.append(element('p', '执行记录（完整预期保留在上方）', 'muted'), table);
+        }
+        table.tHead.rows[0].append(
+          element('th', '执行方'),
+          element('th', '执行结果'),
+          element('th', '结果说明')
+        );
+        Array.from(table.tBodies[0].rows).forEach((row, i) => {
+          const item = testCase.items[i];
+          const result = element('td', undefined, 'execution-result');
+          const executor = element('td', undefined, 'execution-executor');
+          const note = element('td', undefined, 'execution-note');
+          row.append(executor, result, note);
+          if (!item.selected) row.classList.add('excluded');
+          cells.set(testCase.id + '/' + item.id, { executor, result, note });
+        });
+        body.querySelectorAll('table').forEach((entry) => {
+          const wrap = element('div', undefined, 'table-scroll');
+          entry.replaceWith(wrap);
+          wrap.append(entry);
+        });
+        const snapshot = element('details');
+        snapshot.append(
+          element('summary', '来源与完整 Markdown 快照'),
+          element(
+            'p',
+            '筛选原因：' +
+              testCase.reason +
+              '\n来源：' +
+              testCase.path +
+              '\n基线：' +
+              testCase.baseline +
+              '\nSHA-256：' +
+              testCase.sha256,
+            'actual-note'
+          ),
+          element('pre', testCase.content, 'snapshot')
+        );
+        body.append(snapshot);
+        return body;
+      }
+
+      /** 一行一个业务用例；正文按需挂载，展开与收起不会影响执行状态。 */
+      function mountCases() {
+        run.cases.forEach((testCase, index) => {
+          const row = element('tr', undefined, 'case-row');
+          const title = element('td');
+          const button = element('button', '▸ ' + testCase.title, 'case-link');
+          button.type = 'button';
+          button.setAttribute('aria-expanded', 'false');
+          button.setAttribute('aria-controls', 'detail-' + index);
+          title.append(button, element('small', testCase.id, 'case-id'));
+          const progress = element('td');
+          const executor = element('td');
+          const result = element('td');
+          const note = element('div', undefined, 'case-note');
+          const noteCell = element('td');
+          noteCell.append(note);
+          row.append(
+            title,
+            element('td', testCase.business),
+            element('td', categories[testCase.category]),
+            element('td', testCase.types.map((type) => methods[type]).join(' / ')),
+            executor,
+            element('td', testCase.priority),
+            progress,
+            result,
+            noteCell
+          );
+          const detail = element('tr', undefined, 'detail-row');
+          detail.id = 'detail-' + index;
+          detail.hidden = true;
+          const content = element('td');
+          content.colSpan = 9;
+          detail.append(content);
+          button.addEventListener('click', () => {
+            const current = run.cases.find((entry) => entry.id === testCase.id);
+            if (!content.childElementCount) content.append(mountDetail(current));
+            detail.hidden = !detail.hidden;
+            button.setAttribute('aria-expanded', String(!detail.hidden));
+            button.textContent = (detail.hidden ? '▸ ' : '▾ ') + testCase.title;
+            row.classList.toggle('open', !detail.hidden);
+            refreshItems(current);
+          });
+          row.addEventListener('click', (event) => {
+            if (!event.target.closest('button')) button.click();
+          });
+          rows.set(testCase.id, { executor, progress, result, note });
+          document.getElementById('case-rows').append(row, detail);
+        });
+      }
+
+      /** 更新已挂载的子场景结果，保留用户展开的历史记录。 */
+      function refreshItems(testCase) {
+        testCase.items.forEach((item) => {
+          const cell = cells.get(testCase.id + '/' + item.id);
+          if (!cell) return;
+          cell.executor.textContent = executorLabel(item);
+          const historyOpen = cell.note.querySelector('details')?.open ?? false;
+          cell.result.replaceChildren(
+            badge(item.result),
+            element('div', item.attempt ? '第 ' + item.attempt + ' 次尝试' : '尚未执行', 'scope')
+          );
+          cell.note.replaceChildren(
+            element('div', item.note, 'actual-note'),
+            evidenceLinks(item.evidence),
+            element('div', '本轮范围：' + (item.selected ? item.scope : '未纳入本轮范围'), 'scope')
+          );
+          if (item.history.length) {
+            const history = element('details');
+            history.open = historyOpen;
+            history.append(element('summary', '执行历史 · ' + item.history.length + ' 条'));
+            item.history.forEach((event) => {
+              const entry = element('div', undefined, 'history');
+              entry.append(
+                element(
+                  'small',
+                  time(event.at) +
+                    ' · 尝试 ' +
+                    event.attempt +
+                    ' · ' +
+                    labels[event.result] +
+                    ' · ' +
+                    executors[event.executor ?? 'ai'] +
+                    (event.reviewer ? ' · AI 复核' : '')
+                ),
+                element('div', event.note, 'actual-note'),
+                evidenceLinks(event.evidence)
+              );
+              history.append(entry);
+            });
+            cell.note.append(history);
+          }
+        });
+      }
+
+      /** 自动同步只更新表格中的进度和说明，保留行展开状态及滚动位置。 */
+      function refresh() {
+        document.getElementById('scope').textContent = run.reason;
+        document.getElementById('meta').textContent =
+          '环境：' +
+          run.environment +
+          '\n入口：' +
+          run.baseUrl +
+          '\n目标部署版本：' +
+          run.targetVersion +
+          '\n本地参考提交：' +
+          run.local.commit +
+          '（' +
+          (run.local.dirty === null
+            ? '工作区状态未知'
+            : run.local.dirty
+              ? '有未提交改动'
+              : '工作区干净') +
+          '）\n创建：' +
+          time(run.createdAt) +
+          '　更新：' +
+          time(run.updatedAt) +
+          '（浏览器本地时区）';
+        const total = summarize(run.cases.flatMap((entry) => entry.items));
+        const counts = Object.entries(labels)
+          .map(([key, label]) => label + ' ' + total.counts[key])
+          .join(' / ');
+        document.getElementById('progress').textContent =
+          `${run.cases.length} 个用例 · 本轮 ${total.total} 个子场景 · ${counts} · 未纳入 ${total.excluded} 项${run.closedAt ? (run.interrupted ? ' · 已中断：' + run.interrupted : ' · 已结束') : ''}`;
+        document.getElementById('closure').textContent = run.closedAt
+          ? '结束：' + time(run.closedAt) + '\n清理与遗留：' + run.closureNote
+          : '';
+        run.cases.forEach((testCase) => {
+          const summary = summarize(testCase.items);
+          const row = rows.get(testCase.id);
+          row.progress.replaceChildren(
+            element('div', `${summary.counts.passed}/${summary.total} 通过`),
+            element('small', summary.excluded ? '未纳入 ' + summary.excluded + ' 项' : '')
+          );
+          row.result.replaceChildren(badge(summary.result));
+          const selected = testCase.items.filter((item) => item.selected);
+          const methods = [
+            ...new Set(selected.map((item) => item.executor ?? item.plannedExecutor ?? 'ai'))
+          ];
+          row.executor.textContent =
+            methods.length > 1 ? '混合：脚本 / AI' : (executors[methods[0]] ?? '未纳入');
+          if (selected.some((item) => !item.attempt))
+            row.executor.append(element('small', '含未执行项'));
+          const issues = selected.filter((item) => ['failed', 'blocked'].includes(item.result));
+          const observed = selected.filter((item) => item.result !== 'pending');
+          const notes = issues.length ? issues : observed;
+          row.note.textContent = notes.length
+            ? notes.map((item) => item.id + '：' + item.note).join('；')
+            : '尚未执行';
+          row.note.title = row.note.textContent;
+          refreshItems(testCase);
+        });
+      }
+      mountCases();
+      refresh();
+      if (location.protocol === 'http:' || location.protocol === 'https:') {
+        setInterval(async () => {
+          try {
+            const response = await fetch('./state.json', { cache: 'no-store' });
+            if (!response.ok) throw new Error('HTTP ' + response.status);
+            const next = await response.json();
+            if (next.revision > run.revision) {
+              run = next;
+              refresh();
+            }
+            document.getElementById('sync').textContent = '自动同步已连接 · ' + time(Date.now());
+          } catch {
+            document.getElementById('sync').textContent = '同步中断，当前显示最后读取的结果。';
+          }
+        }, 2000);
+      }
+    </script>
+    <!-- REPORT_LICENSES -->
+  </body>
+</html>

@@ -19,8 +19,8 @@ import { MongoChatItemResponse } from '@fastgpt/service/core/chat/chatItemRespon
 import { MongoS3TTL } from '@fastgpt/service/common/s3/models/ttl';
 import { S3Buckets } from '@fastgpt/service/common/s3/config/constants';
 import {
+  ChatSourceEnum,
   ChatFileTypeEnum,
-  ChatGenerateStatusEnum,
   ChatRoleEnum,
   ChatSourceTypeEnum
 } from '@fastgpt/global/core/chat/constants';
@@ -151,6 +151,97 @@ describe('pushChatRecords', () => {
     serviceEnv.CHAT_LOG_SOURCE_ID_PREFIX = originalChatLogSourceIdPrefix;
   });
 
+  describe('publishSource 保存边界', () => {
+    it.each(['finalize', 'fail', 'legacy'] as const)(
+      '%s 尾部保存不回写旧来源和兼容字段',
+      async (kind) => {
+        const dataId = 'source-tail-round';
+        const props = createMockProps(
+          {
+            source: 'api',
+            publishSource: { type: ChatSourceEnum.api, id: testTmbId },
+            sourceName: '旧渠道',
+            userContent: { dataId, obj: ChatRoleEnum.Human, value: [] },
+            aiContent: { dataId, obj: ChatRoleEnum.AI, value: [] }
+          },
+          { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
+        );
+        const latest = {
+          publishSource: { type: ChatSourceEnum.share, id: testAppId },
+          source: 'share',
+          sourceName: '新渠道'
+        };
+        await MongoChat.create({
+          appId: testAppId,
+          sourceType: ChatSourceTypeEnum.app,
+          teamId: testTeamId,
+          tmbId: testTmbId,
+          chatId: props.chatId,
+          ...latest
+        });
+        await MongoChatItem.create(
+          [ChatRoleEnum.Human, ChatRoleEnum.AI].map((obj) => ({
+            appId: testAppId,
+            sourceType: ChatSourceTypeEnum.app,
+            teamId: testTeamId,
+            tmbId: testTmbId,
+            chatId: props.chatId,
+            dataId,
+            obj,
+            value: []
+          }))
+        );
+        if (kind === 'finalize') await finalizeChatRound(props);
+        if (kind === 'fail')
+          await failChatRound({ ...props, responseChatItemId: dataId, error: new Error('failed') });
+        if (kind === 'legacy') await pushChatRecords(props);
+        const saved = await MongoChat.findOne({ appId: testAppId, chatId: props.chatId }).lean();
+        expect(saved?.source).toBe(latest.source);
+        expect(saved?.sourceName).toBe(latest.sourceName);
+        expect(saved).not.toHaveProperty('shareId');
+        expect(saved?.publishSource?.type).toBe(latest.publishSource.type);
+        expect(String(saved?.publishSource?.id)).toBe(testAppId);
+      }
+    );
+
+    it('同一统计桶保留首条来源，新桶记录本次来源', async () => {
+      const props = createMockProps(
+        {
+          source: 'api',
+          publishSource: { type: ChatSourceEnum.api, id: testTmbId },
+          sourceName: '首条渠道'
+        },
+        { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
+      );
+      await pushChatRecords(props);
+      await pushChatRecords({
+        ...props,
+        publishSource: { type: ChatSourceEnum.api, id: testAppId },
+        sourceName: '第二渠道'
+      });
+      let buckets = await MongoAppChatLog.find({ appId: testAppId, chatId: props.chatId }).lean();
+      expect(buckets).toHaveLength(1);
+      expect(String(buckets[0].publishSource?.id)).toBe(testTmbId);
+      expect(buckets[0].sourceName).toBe('首条渠道');
+      expect(buckets[0].chatItemCount).toBe(2);
+      await MongoAppChatLog.updateOne(
+        { _id: buckets[0]._id },
+        { $set: { updateTime: new Date(Date.now() - 16 * 60 * 1000) } }
+      );
+      await pushChatRecords({
+        ...props,
+        publishSource: { type: ChatSourceEnum.api, id: testAppId },
+        sourceName: '新桶渠道'
+      });
+      buckets = await MongoAppChatLog.find({ appId: testAppId, chatId: props.chatId })
+        .sort({ _id: 1 })
+        .lean();
+      expect(buckets).toHaveLength(2);
+      expect(String(buckets[1].publishSource?.id)).toBe(testAppId);
+      expect(buckets[1].sourceName).toBe('新桶渠道');
+      expect(buckets[1].chatItemCount).toBe(1);
+    });
+  });
   describe('pushChatRecords function', () => {
     it('should skip saving if chatId is empty', async () => {
       const props = createMockProps(
@@ -681,7 +772,6 @@ describe('pushChatRecords', () => {
         tmbId: testTmbId,
         sourceType: ChatSourceTypeEnum.app,
         source: props.source,
-        chatGenerateStatus: ChatGenerateStatusEnum.generating,
         hasBeenRead: false
       });
       await MongoChatItem.create([
@@ -710,7 +800,7 @@ describe('pushChatRecords', () => {
       await finalizeChatRound(props);
 
       const chat = await MongoChat.findOne({ appId: testAppId, chatId: props.chatId }).lean();
-      expect(chat?.chatGenerateStatus).toBe(ChatGenerateStatusEnum.done);
+      expect(chat).not.toHaveProperty('chatGenerateStatus');
       expect(chat?.hasBeenRead).toBe(false);
       expect(chat?.summary).toEqual({
         llmInputTokens: 13,
@@ -782,7 +872,6 @@ describe('pushChatRecords', () => {
         tmbId: testTmbId,
         sourceType: ChatSourceTypeEnum.skillEdit,
         source: props.source,
-        chatGenerateStatus: ChatGenerateStatusEnum.generating,
         hasBeenRead: false
       });
       await MongoChatItem.create([
@@ -841,7 +930,6 @@ describe('pushChatRecords', () => {
         tmbId: testTmbId,
         sourceType: ChatSourceTypeEnum.app,
         source: props.source,
-        chatGenerateStatus: ChatGenerateStatusEnum.generating,
         hasBeenRead: false
       });
       await MongoChatItem.create({
@@ -864,7 +952,7 @@ describe('pushChatRecords', () => {
       });
 
       const chat = await MongoChat.findOne({ appId: testAppId, chatId: props.chatId });
-      expect(chat?.chatGenerateStatus).toBe(ChatGenerateStatusEnum.error);
+      expect(chat).not.toHaveProperty('chatGenerateStatus');
       expect(chat?.hasBeenRead).toBe(false);
 
       const aiItem = await MongoChatItem.findOne({
@@ -1580,20 +1668,24 @@ describe('pushChatRecords', () => {
           responseChatItemId: 'new-round',
           interactive
         });
-        expect(prepared.shouldFinalizePreparedRound).toBe(true);
-        await updateInteractiveChat({ ...props, interactive, shouldFinalizePreparedRound: true });
-        const records = await MongoChatItem.find({ ...source, deleteTime: null })
-          .sort({ _id: 1 })
-          .lean();
-        expect(records.map((item) => item.obj)).toEqual([
-          ChatRoleEnum.AI,
-          ChatRoleEnum.Human,
-          ChatRoleEnum.AI
-        ]);
-        expect(records[0].value).toEqual(original);
-        expect(records[1].value).toEqual([{ select }]);
-        expect(records[1].dataId).toBe('new-round');
-        expect(records[2].value[0].text?.content).toBe('Continued');
+        try {
+          expect(prepared.shouldFinalizePreparedRound).toBe(true);
+          await updateInteractiveChat({ ...props, interactive, shouldFinalizePreparedRound: true });
+          const records = await MongoChatItem.find({ ...source, deleteTime: null })
+            .sort({ _id: 1 })
+            .lean();
+          expect(records.map((item) => item.obj)).toEqual([
+            ChatRoleEnum.AI,
+            ChatRoleEnum.Human,
+            ChatRoleEnum.AI
+          ]);
+          expect(records[0].value).toEqual(original);
+          expect(records[1].value).toEqual([{ select }]);
+          expect(records[1].dataId).toBe('new-round');
+          expect(records[2].value[0].text?.content).toBe('Continued');
+        } finally {
+          await prepared.releaseGenerationLease?.();
+        }
       }
     );
 

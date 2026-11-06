@@ -25,6 +25,7 @@ import {
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import CopyBox from '@fastgpt/web/components/common/String/CopyBox';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
+import UserBox from '@fastgpt/web/components/common/UserBox';
 import { FixedTableLayout } from '@fastgpt/web/components/common/FixedTable';
 import { useStaticVirtualList } from '@fastgpt/web/hooks/useVirtualList';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
@@ -62,7 +63,11 @@ const ModelTable = ({
     enabled: permissionConfig,
     observeCatalog: false,
     queryKey: 'available-models:custom',
-    read: useCallback(async () => (await getUserModelCatalog({ orderBy: 'custom' })).data, [])
+    read: useCallback(
+      async () =>
+        (await getUserModelCatalog({ orderBy: 'custom', includeSourceMember: true })).data,
+      []
+    )
   });
   const { data: publicCatalog } = useRequest(getPublicModelCatalog, {
     manual: permissionConfig
@@ -119,7 +124,16 @@ const ModelTable = ({
   useEffect(() => {
     scrollToTop();
   }, [modelType, provider, search, scrollToTop]);
-  const tableColumnCount = permissionConfig ? 4 : 3;
+  const columnWidths = permissionConfig ? [304, 180, 180, 180, 240] : [320, 160, 300];
+  const tableColumnCount = columnWidths.length;
+  const tableMinW = permissionConfig ? '1080px' : '790px';
+  const columnGroup = (
+    <colgroup>
+      {columnWidths.map((width, index) => (
+        <col key={index} style={{ width: `${width}px` }} />
+      ))}
+    </colgroup>
+  );
 
   return (
     <Flex flexDirection={'column'} h={contentPx === undefined ? '100%' : ['auto', '100%']} minW={0}>
@@ -166,19 +180,15 @@ const ModelTable = ({
         renderHeader={({ headerTableWidth }) => (
           <Table
             w={'100%'}
-            minW={permissionConfig ? '980px' : '790px'}
+            minW={tableMinW}
             sx={{ tableLayout: 'fixed', width: `${headerTableWidth} !important` }}
           >
-            <colgroup>
-              <col style={{ width: '320px' }} />
-              <col style={{ width: '160px' }} />
-              {permissionConfig && <col style={{ width: '200px' }} />}
-              <col style={{ width: '300px' }} />
-            </colgroup>
+            {columnGroup}
             <Thead>
               <Tr color={'myGray.600'}>
                 <Th fontSize={'xs'}>{t('common:model.name')}</Th>
                 <Th fontSize={'xs'}>{t('common:model.model_type')}</Th>
+                {permissionConfig && <Th fontSize={'xs'}>{t('config_model:creator')}</Th>}
                 {permissionConfig && <Th fontSize={'xs'}>{t('config_model:available_range')}</Th>}
                 <Th fontSize={'xs'}>{t('common:model.billing')}</Th>
               </Tr>
@@ -186,17 +196,8 @@ const ModelTable = ({
           </Table>
         )}
         renderBody={() => (
-          <Table
-            w={'100%'}
-            minW={permissionConfig ? '980px' : '790px'}
-            sx={{ tableLayout: 'fixed' }}
-          >
-            <colgroup>
-              <col style={{ width: '320px' }} />
-              <col style={{ width: '160px' }} />
-              {permissionConfig && <col style={{ width: '200px' }} />}
-              <col style={{ width: '300px' }} />
-            </colgroup>
+          <Table w={'100%'} minW={tableMinW} sx={{ tableLayout: 'fixed' }}>
+            {columnGroup}
             <Tbody>
               {topPlaceholderHeight > 0 && (
                 <Tr aria-hidden>
@@ -222,7 +223,17 @@ const ModelTable = ({
                           {item.name}
                         </CopyBox>
                         {item.scope === ModelScopeEnum.system && (
-                          <MyTag type={'borderFill'} colorSchema={'gray'}>
+                          <MyTag
+                            type={'fill'}
+                            colorSchema={'gray'}
+                            bg={'myGray.100'}
+                            px={2}
+                            py={1}
+                            borderRadius={'sm'}
+                            fontSize={'10px'}
+                            lineHeight={'14px'}
+                            fontWeight={500}
+                          >
                             {t('config_model:system_model_tag')}
                           </MyTag>
                         )}
@@ -241,6 +252,21 @@ const ModelTable = ({
                   <Td>
                     <MyTag colorSchema={item.tagColor}>{item.typeLabel}</MyTag>
                   </Td>
+                  {permissionConfig && (
+                    <Td fontSize={'sm'} color={'myGray.700'}>
+                      {item.scope === ModelScopeEnum.system ? (
+                        t('config_model:system_model')
+                      ) : 'sourceMember' in item && item.sourceMember ? (
+                        <UserBox
+                          sourceMember={item.sourceMember}
+                          avatarBorderRadius={'50%'}
+                          spacing={1}
+                        />
+                      ) : (
+                        '-'
+                      )}
+                    </Td>
+                  )}
                   {permissionConfig && (
                     <Td fontSize={'sm'}>
                       <ModelScopeCell

@@ -1,3 +1,4 @@
+import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import type { AuthOutLinkChatProps } from '@fastgpt/global/support/outLink/api';
 import { type ShareChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import { authOutLinkValid } from './authLink';
@@ -105,6 +106,7 @@ export async function authOutLinkChatStart({
   // 需登录链接下 appAccess.tmbId 是校验过的访客，运行身份（runningUserInfo）与存档
   // 归属都取访客；免登录链接 appAccess 为 undefined，回退发布者。
   return {
+    publishSource: { type: ChatSourceEnum.share, id: String(outLinkConfig._id) },
     sourceName: outLinkConfig.name,
     teamId: outLinkConfig.teamId,
     tmbId: appAccess?.tmbId ?? outLinkConfig.tmbId,

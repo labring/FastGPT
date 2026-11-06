@@ -508,6 +508,7 @@ const NodeTemplateList = ({
     },
     [
       computedNewNodeName,
+      i18n.language,
       getNodeById,
       getNodes,
       edges,
@@ -541,9 +542,6 @@ const NodeTemplateList = ({
         }, {});
 
         templates.forEach((item) => {
-          if (item.flowNodeType === FlowNodeTypeEnum.agent) {
-            return;
-          }
           if (item.templateType && map[item.templateType]) {
             map[item.templateType].list.push({
               ...item,

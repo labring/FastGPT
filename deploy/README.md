@@ -1,18 +1,27 @@
 ## 更新 docker compose 脚本
 
+当前部署版本：
+
+| 目录 | FastGPT 版本 | 对象存储 |
+| --- | --- | --- |
+| `main` | `v4.17.4` | RustFS |
+| `v4.16` | `v4.16.2` | RustFS |
+
+`main` 对应当前 4.17 稳定版；`v4.16` 模板以 V4.16.2 发布配置为基础，按发布说明同步镜像版本，并统一使用 RustFS 对象存储。更新维护版本时，同步对应目录的镜像参数。
+
 ### 正常更新（不动服务，只改版本）
 
-1. 更新 `version/{version}/args.json` 中的版本号，例如 `version/v4.14/args.json` 或 `version/main/args.json`
+1. 更新 `version/{version}/args.json` 中的版本号，例如 `version/v4.16/args.json` 或 `version/main/args.json`
 2. 在 `FastGPT` 目录执行 `node deploy/init.mjs` 即可
 3. 脚本会同时更新 `deploy/dev`、`document/public/deploy/install.sh` 和 `document/public/deploy/docker/{version}` 下的 Docker 部署文件
 
 ### 加版本
 
-比如要添加 `v4.15` 稳定版：
-1. 创建 `version/v4.15`
-2. 添加 `version/v4.15/args.json`
-3. 添加 `version/v4.15/docker-compose.template.yml`
-4. 执行 `node deploy/init.mjs`，脚本会自动扫描并生成 `document/public/deploy/docker/v4.15`
+比如将来需要保留 `v4.17` 维护版：
+1. 创建 `version/v4.17`
+2. 添加 `version/v4.17/args.json`
+3. 添加 `version/v4.17/docker-compose.template.yml`
+4. 执行 `node deploy/init.mjs`，脚本会自动扫描并生成 `document/public/deploy/docker/v4.17`
 
 ### 加服务
 

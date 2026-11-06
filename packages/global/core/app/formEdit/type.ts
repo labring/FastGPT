@@ -4,8 +4,7 @@ import { AppChatConfigTypeSchema, AppDatasetSearchParamsTypeSchema } from '../ty
 import { FlowNodeTemplateTypeSchema } from '../../workflow/type/node';
 import { NodeInputKeyEnum } from '../../workflow/constants';
 import { SANDBOX_ENTRYPOINT_MAX_LENGTH } from '../../ai/sandbox/constants';
-
-export type AgentSubAppItemType = object;
+import { AgentToolSchema } from '../tool/type';
 
 /* ===== Agent Skill ===== */
 export const SelectedAgentSkillItemTypeSchema = z.object({
@@ -28,14 +27,12 @@ export type StoredSelectedAgentSkillItemType = z.infer<
 >;
 
 /* ===== Tool ===== */
-const SelectedToolItemBaseSchema = FlowNodeTemplateTypeSchema.extend({
-  configStatus: z.enum(['noConfig', 'waitingForConfig', 'configured', 'invalid']).optional(),
+export const SelectedToolItemTypeSchema = FlowNodeTemplateTypeSchema.extend({
+  /** 工具加载失败时保留持久化输入来源；不冒充可编辑的完整 NodeIO。 */
+  rawInputs: AgentToolSchema.shape.inputs,
   config: z.record(z.string(), z.unknown()).optional()
 });
-
-export const SelectedToolItemTypeSchema = SelectedToolItemBaseSchema;
 export type SelectedToolItemType = z.infer<typeof SelectedToolItemTypeSchema>;
-export type AvailableSelectedToolItemType = SelectedToolItemType;
 
 export const AppFormEditFormV1TypeSchema = z.object({
   aiSettings: z.object({

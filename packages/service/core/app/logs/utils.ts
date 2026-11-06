@@ -1,3 +1,4 @@
+import { buildChatPublishSourceFilter } from '../../chat/publishSource/utils';
 import { Types } from '../../../common/mongo';
 import type { FilterQuery } from 'mongoose';
 import type { ChatSchemaType } from '@fastgpt/global/core/chat/type';
@@ -18,10 +19,13 @@ export const buildAppChatLogFilter = ({
   feedbackType,
   unreadOnly,
   errorFilter
-}: Omit<getAppChatLogsBody, 'pageNum' | 'pageSize'>): FilterQuery<ChatSchemaType> => {
+}: Omit<getAppChatLogsBody, 'pageNum' | 'pageSize'> & {
+  appId: string;
+}): FilterQuery<ChatSchemaType> => {
   const conditions: FilterQuery<ChatSchemaType>[] = [
     { $or: [{ sourceType: ChatSourceTypeEnum.app }, { sourceType: { $exists: false } }] }
   ];
+  if (sources !== undefined) conditions.push(buildChatPublishSourceFilter(sources));
   const goodField = unreadOnly ? 'hasUnreadGoodFeedback' : 'hasGoodFeedback';
   const badField = unreadOnly ? 'hasUnreadBadFeedback' : 'hasBadFeedback';
   if (feedbackType === 'has_feedback') {
@@ -51,7 +55,6 @@ export const buildAppChatLogFilter = ({
   return {
     appId: new Types.ObjectId(appId),
     updateTime: { $gte: new Date(dateStart), $lte: new Date(dateEnd) },
-    ...(sources ? { source: { $in: sources } } : {}),
     ...(errorFilter === 'has_error' ? { errorCount: { $gt: 0 } } : {}),
     $and: conditions
   };

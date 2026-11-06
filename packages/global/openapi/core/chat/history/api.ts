@@ -1,5 +1,5 @@
 import z from 'zod';
-import { ChatSourceEnum } from '../../../../core/chat/constants';
+import { CHAT_GENERATION_STATUS_BATCH_SIZE, ChatSourceEnum } from '../../../../core/chat/constants';
 import { PaginationResponseSchema } from '../../../api';
 import {
   ChatGenerateStatusSchema,
@@ -14,7 +14,10 @@ import {
 
 // Get chat sessions schema
 const GetHistoriesPropsSchema = {
-  source: z.enum(ChatSourceEnum).optional().describe('对话来源'),
+  source: z
+    .enum(ChatSourceEnum)
+    .optional()
+    .describe('对话来源筛选；应用 API Key 固定查询 API 来源，无需传入'),
   startCreateTime: z.string().optional().describe('创建时间开始'),
   endCreateTime: z.string().optional().describe('创建时间结束'),
   startUpdateTime: z.string().optional().describe('更新时间开始'),
@@ -41,7 +44,11 @@ export const GetHistoriesResponseSchema = PaginationResponseSchema(GetHistoriesR
 export type GetHistoriesResponseType = z.infer<typeof GetHistoriesResponseSchema>;
 
 const GetHistoryStatusPropsSchema = {
-  chatIds: z.array(z.string().min(1)).min(1).max(200).describe('需要刷新状态的会话 ID 列表')
+  chatIds: z
+    .array(z.string().min(1))
+    .min(1)
+    .max(CHAT_GENERATION_STATUS_BATCH_SIZE)
+    .describe('需要刷新状态的会话 ID 列表')
 };
 export const GetHistoryStatusBodyRawSchema = createOutLinkChatTargetInputSchema(
   GetHistoryStatusPropsSchema

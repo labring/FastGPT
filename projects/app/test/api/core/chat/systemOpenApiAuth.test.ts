@@ -26,11 +26,11 @@ import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
-import { setAgentRuntimeStop } from '@fastgpt/service/core/workflow/dispatch/workflowStatus';
+import { setAgentRuntimeStop } from '@fastgpt/service/core/chat/stop';
 import { getUser } from '@test/datas/users';
 import { Call } from '@test/utils/request';
 
-vi.mock('@fastgpt/service/core/workflow/dispatch/workflowStatus', () => ({
+vi.mock('@fastgpt/service/core/chat/stop', () => ({
   setAgentRuntimeStop: vi.fn()
 }));
 

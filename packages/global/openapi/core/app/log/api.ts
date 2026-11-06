@@ -1,3 +1,5 @@
+import { createAppApiKeyInputSchema } from '../../chat/api';
+import { ChatPublishSourceResponseSchema } from '../../../../core/chat/publishSource/type';
 import z from 'zod';
 import { PaginationResponseSchema, createPaginationSchema } from '../../../api';
 import { AppLogKeysEnum, AppLogTimespanEnum } from '../../../../core/app/logs/constants';
@@ -5,6 +7,17 @@ import { ChatSourceEnum } from '../../../../core/chat/constants';
 import { AppLogKeysSchema } from '../../../../core/app/logs/type';
 import { SourceMemberSchema } from '../../../../support/user/type';
 import { BoolSchema, IntSchema, NumSchema } from '../../../../common/zod';
+
+/** 保留 offset/page 两种分页方式，并为每种方式提供应用 Key 免 appId 分支。 */
+const createPaginatedAppLogInputSchema = <T extends z.ZodRawShape & { appId: z.ZodString }>(
+  shape: T
+) => {
+  const { appId, ...filters } = shape;
+  return z.intersection(
+    createAppApiKeyInputSchema(z.object({ appId })),
+    createPaginationSchema(filters)
+  );
+};
 
 const AppLogKeysItemSchema = AppLogKeysSchema.meta({
   description: '应用日志列配置'
@@ -57,12 +70,21 @@ export type updateLogKeysResponseType = z.infer<typeof UpdateLogKeysResponseSche
 
 // Chat Log Item Schema (based on AppChatLogSchema)
 export const ChatLogItemSchema = z.object({
+  publishSource: ChatPublishSourceResponseSchema.optional(),
   _id: z.string().meta({ example: '68ad85a7463006c963799a05', description: '对话日志 ID' }),
   chatId: z.string().meta({ example: 'chat123', description: '对话 ID' }),
   title: z.string().nullish().meta({ example: '用户对话', description: '对话标题' }),
   customTitle: z.string().nullish().meta({ example: '自定义标题', description: '自定义对话标题' }),
-  source: z.enum(ChatSourceEnum).meta({ example: ChatSourceEnum.api, description: '对话来源' }),
-  sourceName: z.string().nullish().meta({ example: 'API调用', description: '来源名称' }),
+  source: z.enum(ChatSourceEnum).meta({
+    example: ChatSourceEnum.api,
+    deprecated: true,
+    description: '旧调用渠道类型，兼容保留；使用 publishSource.type'
+  }),
+  sourceName: z.string().nullish().meta({
+    example: '客服后端',
+    deprecated: true,
+    description: '旧渠道名称，兼容保留；使用 publishSource.name'
+  }),
   updateTime: z.coerce
     .date()
     .meta({ example: '2024-01-01T00:30:00.000Z', description: '更新时间' }),
@@ -118,7 +140,7 @@ const FeedbackLogParamSchema = z.object({
 });
 // Get App Chat Logs Query Parameters (based on GetAppChatLogsProps)
 const AppChatLogsFilterSchema = FeedbackLogParamSchema.extend({
-  appId: z.string().meta({
+  appId: z.string().min(1).meta({
     example: '68ad85a7463006c963799a05',
     description: '应用 ID'
   }),
@@ -156,7 +178,9 @@ const AppChatLogsFilterSchema = FeedbackLogParamSchema.extend({
     description: '对话内容搜索关键词'
   })
 });
-export const GetAppChatLogsBodySchema = createPaginationSchema(AppChatLogsFilterSchema.shape);
+export const GetAppChatLogsBodySchema = createPaginatedAppLogInputSchema(
+  AppChatLogsFilterSchema.shape
+);
 export type getAppChatLogsBody = z.infer<typeof GetAppChatLogsBodySchema>;
 // Get App Chat Logs Response
 export const GetAppChatLogsResponseSchema = z
@@ -176,70 +200,74 @@ export const ExportChatLogsResponseSchema = z.string().meta({
 export type exportChatLogsResponseType = z.infer<typeof ExportChatLogsResponseSchema>;
 
 /* Export chat log */
-export const ExportChatLogsBodySchema = AppChatLogsFilterSchema.safeExtend({
-  title: z.string().meta({
-    example: 'chat logs',
-    description: '标题'
-  }),
-  sourcesMap: z
-    .record(
-      z.string(),
-      z.object({
-        label: z.string().meta({
-          example: 'API',
-          description: '来源在导出文件中的展示名称'
-        })
-      })
-    )
-    .meta({
-      example: { api: { label: 'API' }, online: { label: '在线' } },
-      description: '来源映射'
+export const ExportChatLogsBodySchema = createAppApiKeyInputSchema(
+  AppChatLogsFilterSchema.safeExtend({
+    title: z.string().meta({
+      example: 'chat logs',
+      description: '标题'
     }),
-  logKeys: z.array(z.enum(AppLogKeysEnum)).meta({
-    example: [AppLogKeysEnum.SOURCE, AppLogKeysEnum.CREATED_TIME],
-    description: '日志键'
+    sourcesMap: z
+      .record(
+        z.string(),
+        z.object({
+          label: z.string().meta({
+            example: 'API',
+            description: '来源在导出文件中的展示名称'
+          })
+        })
+      )
+      .meta({
+        example: { api: { label: 'API' }, online: { label: '在线' } },
+        description: '来源映射'
+      }),
+    logKeys: z.array(z.enum(AppLogKeysEnum)).meta({
+      example: [AppLogKeysEnum.SOURCE, AppLogKeysEnum.CREATED_TIME],
+      description: '日志键'
+    })
   })
-});
+);
 
 /* Get chart data */
 // Get Chart Data Request Body (based on getChartDataBody)
-export const GetChartDataBodySchema = z.object({
-  appId: z.string().meta({
-    example: '68ad85a7463006c963799a05',
-    description: '应用 ID'
-  }),
-  dateStart: z.coerce.date().meta({
-    example: '2024-01-01T00:00:00.000Z',
-    description: '开始日期'
-  }),
-  dateEnd: z.coerce.date().meta({
-    example: '2024-12-31T23:59:59.999Z',
-    description: '结束日期'
-  }),
-  source: z
-    .array(z.nativeEnum(ChatSourceEnum))
-    .optional()
-    .meta({
-      example: [ChatSourceEnum.api, ChatSourceEnum.online],
-      description: '对话来源筛选；省略表示全部来源，空数组表示无匹配'
+export const GetChartDataBodySchema = createAppApiKeyInputSchema(
+  z.object({
+    appId: z.string().min(1).meta({
+      example: '68ad85a7463006c963799a05',
+      description: '应用 ID'
     }),
-  offset: NumSchema.optional().default(1).meta({
-    example: 1,
-    description: '用户留存偏移量，单位随 userTimespan 变化；未传时默认 1'
-  }),
-  userTimespan: z.nativeEnum(AppLogTimespanEnum).meta({
-    example: AppLogTimespanEnum.day,
-    description: '用户数据时间跨度'
-  }),
-  chatTimespan: z.nativeEnum(AppLogTimespanEnum).meta({
-    example: AppLogTimespanEnum.day,
-    description: '对话数据时间跨度'
-  }),
-  appTimespan: z.nativeEnum(AppLogTimespanEnum).meta({
-    example: AppLogTimespanEnum.day,
-    description: '应用数据时间跨度'
+    dateStart: z.coerce.date().meta({
+      example: '2024-01-01T00:00:00.000Z',
+      description: '开始日期'
+    }),
+    dateEnd: z.coerce.date().meta({
+      example: '2024-12-31T23:59:59.999Z',
+      description: '结束日期'
+    }),
+    source: z
+      .array(z.nativeEnum(ChatSourceEnum))
+      .optional()
+      .meta({
+        example: [ChatSourceEnum.api, ChatSourceEnum.online],
+        description: '对话来源筛选；省略表示全部来源，空数组表示无匹配'
+      }),
+    offset: NumSchema.optional().default(1).meta({
+      example: 1,
+      description: '用户留存偏移量，单位随 userTimespan 变化；未传时默认 1'
+    }),
+    userTimespan: z.nativeEnum(AppLogTimespanEnum).meta({
+      example: AppLogTimespanEnum.day,
+      description: '用户数据时间跨度'
+    }),
+    chatTimespan: z.nativeEnum(AppLogTimespanEnum).meta({
+      example: AppLogTimespanEnum.day,
+      description: '对话数据时间跨度'
+    }),
+    appTimespan: z.nativeEnum(AppLogTimespanEnum).meta({
+      example: AppLogTimespanEnum.day,
+      description: '应用数据时间跨度'
+    })
   })
-});
+);
 export type getChartDataBody = z.infer<typeof GetChartDataBodySchema>;
 
 // User Statistics Data Point (based on AppChatLogUserData)
@@ -307,12 +335,14 @@ export const GetChartDataResponseSchema = z.object({
 export type getChartDataResponse = z.infer<typeof GetChartDataResponseSchema>;
 
 // Get Total Data Query Parameters (based on getTotalDataQuery)
-export const GetTotalDataQuerySchema = z.object({
-  appId: z.string().meta({
-    example: '68ad85a7463006c963799a05',
-    description: '应用 ID'
+export const GetTotalDataQuerySchema = createAppApiKeyInputSchema(
+  z.object({
+    appId: z.string().min(1).meta({
+      example: '68ad85a7463006c963799a05',
+      description: '应用 ID'
+    })
   })
-});
+);
 export type getTotalDataQuery = z.infer<typeof GetTotalDataQuerySchema>;
 
 // Get Total Data Response (based on getTotalDataResponse)
@@ -341,8 +371,8 @@ export const GetTotalDataResponseSchema = z.object({
 export type getTotalDataResponse = z.infer<typeof GetTotalDataResponseSchema>;
 
 /* Get log users */
-export const GetLogUsersBodySchema = createPaginationSchema({
-  appId: z.string().meta({
+export const GetLogUsersBodySchema = createPaginatedAppLogInputSchema({
+  appId: z.string().min(1).meta({
     example: '68ad85a7463006c963799a05',
     description: '应用 ID'
   }),

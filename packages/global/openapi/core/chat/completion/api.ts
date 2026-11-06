@@ -1,3 +1,4 @@
+import { ChatPublishSourceSchema } from '../../../../core/chat/publishSource/type';
 import { OpenObjectOpenApiMeta } from '../../../../common/zod/openapi';
 import z from 'zod';
 import type { ZodOpenApiMetadata } from 'zod-openapi';
@@ -145,10 +146,10 @@ export const CompletionsPropsSchema = z
   .union([
     z
       .object({
-        appId: optionalNullToUndefined(ObjectIdSchema).meta({
+        appId: ObjectIdSchema.meta({
           example: '68ad85a7463006c963799a05',
           description:
-            '应用 ID。推荐在请求体中传入；APIKey 调用时优先级为 body.appId > Authorization 中的 apiKey-appId 后缀 > 旧 APIKey 绑定 appId。apiKey-appId 仅用于兼容 OpenAI SDK，不会写入数据库'
+            '应用 ID。APP API Key 忽略该字段及 SDK 后缀，以 Key 绑定应用为准；个人密钥按 body.appId > Authorization 的 key-appId 后缀解析。后缀不写入数据库'
         }),
         outLinkAuthData: optionalNullToUndefined(z.never()),
         ...CompletionsBodySchema.shape
@@ -159,6 +160,21 @@ export const CompletionsPropsSchema = z
           '通过 appId 定位应用，使用 API Key 或登录态鉴权。API Key 调用可省略 body.appId，由请求头的 apiKey-appId 后缀或旧 API Key 绑定应用补足；登录态调用必须传 appId。',
         override: ({ jsonSchema }) => {
           // 保留 null 兼容守卫，但不把禁用的外链字段展示为应用会话参数。
+          delete jsonSchema.properties?.outLinkAuthData;
+        }
+      } satisfies ZodOpenApiMetadata),
+    z
+      .object({
+        appId: optionalNullToUndefined(z.never()),
+        outLinkAuthData: optionalNullToUndefined(z.never()),
+        ...CompletionsBodySchema.shape
+      })
+      .meta({
+        title: 'APP API Key（无需 appId）',
+        description:
+          '使用绑定应用的 APP API Key 时不需要 appId，直接使用 Key 的绑定。兼容个人密钥的 OpenAI SDK key-appId 后缀；普通个人密钥或登录态必须显式提供 appId。',
+        override: ({ jsonSchema }) => {
+          delete jsonSchema.properties?.appId;
           delete jsonSchema.properties?.outLinkAuthData;
         }
       } satisfies ZodOpenApiMetadata),
@@ -244,11 +260,12 @@ export type CompletionsResponseType = z.infer<typeof CompletionsResponseSchema>;
 export const ChatWorkflowSseResponseSchema = z.string().meta({
   example: 'event: answer\ndata: {"choices":[...]}\n\n',
   description:
-    '工作流 SSE 事件流；根据接口版本和 detail 配置返回 answer、flowNodeResponse、interactive 等事件，最后以 [DONE] 结束'
+    '工作流 SSE 事件流；根据接口版本和 detail 配置返回 answer、flowNodeResponse、interactive 等事件，最后以 [DONE] 结束。同会话已有生成时，error 事件的 statusText 为 chatIsGenerating，data.responseChatItemId 提供当前服务端 AI 消息 ID；交互续跑返回 data.reusePreviousAi=true，表示刷新并复用最新 AI。本次被拒绝的消息未写入数据库，客户端应回填输入并恢复原有轮次。'
 });
 export type ChatWorkflowSseResponseType = z.infer<typeof ChatWorkflowSseResponseSchema>;
 
 export const AuthResponseSchema = z.object({
+  publishSource: ChatPublishSourceSchema.optional(),
   teamId: ObjectIdSchema.meta({ description: '团队ID' }),
   tmbId: ObjectIdSchema.meta({ description: '团队成员ID' }),
   app: AppSchemaTypeSchema.meta({ description: '应用' }),

@@ -14,6 +14,7 @@ import {
 import { getSelectedInputRenderType } from '@fastgpt/global/common/workflow/reference';
 import { WorkflowActionsContext } from '@/pageComponents/app/detail/WorkflowComponents/context/workflowActionsContext';
 import { useReference } from './Reference';
+import { getStaticDatasetIds } from './SelectDatasetParams.utils';
 import DatasetTagFilterRows, {
   DatasetTagFilterDeprecated,
   DatasetTagFilterUpgradeButton
@@ -44,19 +45,11 @@ const DatasetTagFilterRender = ({ inputs = [], item, nodeId }: RenderInputProps)
     nodeId,
     valueType: WorkflowIOValueTypeEnum.any
   });
-  const datasetIds = useMemo(() => {
-    const datasetValue = inputs.find(
-      (input) => input.key === NodeInputKeyEnum.datasetSelectList
-    )?.value;
-    if (!Array.isArray(datasetValue)) return [];
-    return datasetValue
-      .map((dataset) =>
-        dataset && typeof dataset === 'object' && 'datasetId' in dataset
-          ? String(dataset.datasetId ?? '')
-          : ''
-      )
-      .filter(Boolean);
-  }, [inputs]);
+  const datasetIds = useMemo(
+    () =>
+      getStaticDatasetIds(inputs.find((input) => input.key === NodeInputKeyEnum.datasetSelectList)),
+    [inputs]
+  );
 
   const editorVariables = useMemoEnhance(() => {
     return getEditorVariables({

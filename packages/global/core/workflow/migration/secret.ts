@@ -2,6 +2,9 @@ import { CompatibleSecretValueSchema } from '../../../common/secret/type';
 import { getWorkflowSecretInputKind } from '../../../common/workflow/input';
 import { NodeInputKeyEnum } from '../constants';
 import { FlowNodeInputTypeEnum, FlowNodeTypeEnum } from '../node/constant';
+import { normalizeToolInputValue } from '../../app/tool/systemTool/codec';
+import { InputConfigInputTypeSchema } from '../type/io';
+import { BoolSchema } from '../../../common/zod';
 
 type RecordValue = Record<string, unknown>;
 
@@ -58,12 +61,40 @@ const migrateNodeToolConfigSecrets = (value: RecordValue): RecordValue => {
 };
 
 /** 迁移 system_input_config 的手工密钥表；system 分支历史上也可能带有 value。 */
-const migrateSystemInputConfigSecrets = (value: RecordValue): RecordValue => {
+const migrateSystemInputConfigSecrets = (value: RecordValue, inputList: unknown): RecordValue => {
   if (!isRecord(value.value)) return value;
 
   return {
     ...value,
-    value: migrateSecretStoreToCurrent(value.value)
+    value: Object.fromEntries(
+      Object.entries(value.value).flatMap(([key, item]) => {
+        const config = Array.isArray(inputList)
+          ? inputList.find((entry) => isRecord(entry) && entry.key === key)
+          : undefined;
+        const inputType = InputConfigInputTypeSchema.safeParse(config?.inputType);
+        if (!inputType.success) return [[key, migrateSecretValueToCurrent(item)]];
+
+        const normalized = normalizeToolInputValue({ value: item, inputType: inputType.data });
+        const optional =
+          config?.required === undefined || BoolSchema.safeParse(config.required).data === false;
+        if (optional && (inputType.data === 'numberInput' || inputType.data === 'switch')) {
+          const parsed = CompatibleSecretValueSchema.safeParse(item);
+          const raw = parsed.success && 'value' in parsed.data ? parsed.data.value : item;
+          const isStatic = parsed.success
+            ? 'value' in parsed.data
+            : item === null || typeof item !== 'object';
+          const valid =
+            inputType.data === 'numberInput'
+              ? typeof raw === 'number'
+                ? Number.isFinite(raw)
+                : typeof raw === 'string' && raw.trim() !== '' && Number.isFinite(Number(raw))
+              : typeof raw === 'boolean' || raw === 'true' || raw === 'false';
+          // 非必填静态值无效时省略，交给工具使用默认值；引用和无法识别的对象不改动。
+          if (isStatic && !valid) return [];
+        }
+        return [[key, normalized ?? item]];
+      })
+    )
   };
 };
 
@@ -84,8 +115,15 @@ const migrateInputSecrets = (value: unknown, flowNodeType: unknown): unknown => 
   const secretInputKind = getWorkflowSecretInputKind({ flowNodeType, inputKey: input.key });
   if (Array.isArray(input.inputList)) {
     input.inputList = input.inputList.map((item) => {
-      if (!isRecord(item) || item.inputType !== 'secret' || !('value' in item)) return item;
-      return { ...item, value: migrateSecretValueToCurrent(item.value) };
+      if (!isRecord(item) || !('value' in item)) return item;
+      const inputType = InputConfigInputTypeSchema.safeParse(item.inputType);
+      if (!inputType.success) return item;
+      if (secretInputKind !== 'systemConfig' && inputType.data !== 'secret') return item;
+      return {
+        ...item,
+        value:
+          normalizeToolInputValue({ value: item.value, inputType: inputType.data }) ?? item.value
+      };
     });
   }
   if (
@@ -99,7 +137,7 @@ const migrateInputSecrets = (value: unknown, flowNodeType: unknown): unknown => 
     input.value = migrateSecretStoreToCurrent(input.value);
   }
   if (secretInputKind === 'systemConfig' && isRecord(input.value)) {
-    input.value = migrateSystemInputConfigSecrets(input.value);
+    input.value = migrateSystemInputConfigSecrets(input.value, input.inputList);
   }
   if (flowNodeType === FlowNodeTypeEnum.agent && input.key === NodeInputKeyEnum.selectedTools) {
     input.value = migrateSelectedToolsSecrets(input.value);

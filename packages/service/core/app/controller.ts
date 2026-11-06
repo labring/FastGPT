@@ -14,6 +14,8 @@ import { MongoEvaluation } from './evaluation/evalSchema';
 import { removeEvaluationJob } from './evaluation/mq';
 import { MongoOutLink } from '../../support/outLink/schema';
 import { MongoOpenApi } from '../../support/openapi/schema';
+import { getOpenApiTypeFilter, getOpenApiAppIdFilter } from '../../support/openapi/utils';
+import { ApiKeyTypeEnum } from '@fastgpt/global/support/openapi/constants';
 import { MongoAppVersion } from './version/schema';
 import { MongoChatInputGuide } from '../chat/inputGuide/schema';
 import { MongoChatFavouriteApp } from '../chat/favouriteApp/schema';
@@ -279,8 +281,6 @@ export const deleteAppDataProcessor = async ({
   await cleanupAppDirectRefs({ teamId, appIds: [appId] });
 
   {
-    // 旧应用 APIKey 保留为系统 APIKey，仅移除 deprecated appId 兼容字段。
-    await MongoOpenApi.updateMany({ appId }, { $unset: { appId: '' } });
     // 删除应用版本
     await MongoAppVersion.deleteMany({ appId });
     // 删除聊天输入引导
@@ -316,6 +316,11 @@ export const cleanupAppDirectRefs = async ({
 }) => {
   if (appIds.length === 0) return;
 
+  // 应用凭证随绑定应用删除，不能解除绑定后提升为个人凭证。
+  await MongoOpenApi.deleteMany(
+    { teamId, ...getOpenApiTypeFilter(ApiKeyTypeEnum.app), appId: getOpenApiAppIdFilter(appIds) },
+    { session }
+  );
   // 删除分享链接
   await MongoOutLink.deleteMany({ teamId, appId: { $in: appIds } }, { session });
   // 删除精选应用记录

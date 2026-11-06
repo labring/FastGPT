@@ -12,6 +12,7 @@ import {
   type DeleteApiKeyQueryType,
   type DeleteApiKeyResponseType
 } from '@fastgpt/global/openapi/support/openapi/api';
+import { resolveApiKeyScope } from '@fastgpt/service/support/openapi/utils';
 
 async function handler(
   req: ApiRequestProps<Record<string, never>, DeleteApiKeyQueryType>
@@ -31,13 +32,17 @@ async function handler(
     id
   });
 
+  const scope = resolveApiKeyScope(openapi);
   (async () => {
     addAuditLog({
       tmbId,
       teamId,
       event: AuditEventEnum.DELETE_API_KEY,
       params: {
-        keyName: openapi.name
+        keyName: openapi.name,
+        keyId: String(openapi._id),
+        keyType: scope.type,
+        ...('appId' in scope ? { appId: scope.appId } : {})
       }
     });
   })();

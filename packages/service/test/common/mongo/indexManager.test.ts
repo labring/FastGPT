@@ -15,6 +15,7 @@ import {
   MongoDatasetSynonymMapping
 } from '@fastgpt/service/core/dataset/synonym/schema';
 import { MongoSandboxInstance } from '@fastgpt/service/core/ai/sandbox/infrastructure/instance/schema';
+import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { MongoModelStatusProbeRecord } from '@fastgpt/service/core/ai/modelStatus/schema';
 
 const logger = {
@@ -246,6 +247,54 @@ describe('MongoIndexManager.syncModelIndexes', () => {
         })
       ])
     );
+  });
+
+  it('keeps legacy share and customer indexes while removing the obsolete generating index', async () => {
+    const schema = new Schema({}, { autoIndex: false });
+    const [key, options] = MongoChat.schema.indexes().find(([key]) => 'publishSource.id' in key)!;
+    defineIndex(schema, { key, options });
+    const [legacyKey, legacyOptions] = MongoChat.schema
+      .indexes()
+      .find(([key]) => 'shareId' in key)!;
+    defineIndex(schema, { key: legacyKey, options: legacyOptions });
+    defineDeprecatedTestIndexes(schema, getSchemaDeprecatedMongoIndexes(MongoChat.schema));
+    const model = createModel({ schema, prefix: 'ChatLeaseIndex' });
+    await model.collection.createIndex(
+      { shareId: 1, outLinkUid: 1, updateTime: -1 },
+      { partialFilterExpression: { shareId: { $exists: true } } }
+    );
+    await model.collection.createIndex(
+      { chatGenerateStatus: 1, updateTime: 1 },
+      {
+        name: 'chatGenerateStatus_1_updateTime_1',
+        partialFilterExpression: { chatGenerateStatus: 0 }
+      }
+    );
+    await model.collection.createIndex({ customerField: 1 }, { name: 'customer_chat_index' });
+    await model.collection.createIndex({ shareId: 1 }, { name: 'customer_share_index' });
+
+    const result = await MongoIndexManager.syncModelIndexes({ model, logger });
+    const indexNames = await getIndexNames(model);
+    expect(indexNames).not.toContain('chatGenerateStatus_1_updateTime_1');
+    expect(indexNames).toContain('shareId_1_outLinkUid_1_updateTime_-1');
+    expect(indexNames).toContain(
+      'publishSource.type_1_publishSource.id_1_outLinkUid_1_updateTime_-1'
+    );
+    expect(indexNames).toContain('customer_chat_index');
+    expect(indexNames).toContain('customer_share_index');
+    expect(result.cleanupReport.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          action: 'drop',
+          applied: true,
+          indexName: 'chatGenerateStatus_1_updateTime_1'
+        })
+      ])
+    );
+    expect(MongoChat.schema.path('shareId')).toBeDefined();
+    expect(MongoChat.schema.indexes().some(([key]) => 'shareId' in key)).toBe(true);
+    expect(MongoChat.schema.path('chatGenerateStatus')).toBeUndefined();
+    expect(MongoChat.schema.indexes().some(([key]) => 'chatGenerateStatus' in key)).toBe(false);
   });
 
   it('replaces model status testedAt indexes with requestEndedAt indexes', async () => {

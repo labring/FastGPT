@@ -1,4 +1,8 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import * as teamLimit from '@fastgpt/service/support/permission/teamLimit';
+import { WorkflowStopSignalCache } from '@fastgpt/dal/redis/caches/workflowStopSignal';
+import { setAgentRuntimeStop, shouldWorkflowStop } from '@fastgpt/service/core/chat/stop';
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { EventEmitter } from 'node:events';
 import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
@@ -90,6 +94,90 @@ describe('dispatchWorkFlow SSE initialization guard', () => {
         responseChatItemId: 'response-id'
       } as any)
     ).rejects.toThrow('Workflow SSE response must be initialized before dispatchWorkFlow');
+  });
+});
+
+describe('dispatchWorkFlow explicit stop lifecycle', () => {
+  const chatSource = { sourceType: ChatSourceTypeEnum.app, sourceId: '507f1f77bcf86cd799439012' };
+  const params = { ...chatSource, chatId: 'stop-lifecycle-chat' };
+  const createParams = (apiVersion?: 'v1' | 'v2'): Parameters<typeof dispatchWorkFlow>[0] => ({
+    apiVersion,
+    chatId: params.chatId,
+    responseChatItemId: 'stop-lifecycle-round',
+    mode: 'chat',
+    runningAppInfo: {
+      ...chatSource,
+      name: 'Test',
+      teamId: chatSource.sourceId,
+      tmbId: chatSource.sourceId
+    },
+    runningUserInfo: {
+      username: 'test-user',
+      teamName: 'Test team',
+      memberName: 'Test member',
+      contact: '',
+      teamId: chatSource.sourceId,
+      tmbId: chatSource.sourceId,
+      externalProvider: {}
+    },
+    uid: chatSource.sourceId,
+    runtimeNodes: [{ ...createNode('start', FlowNodeTypeEnum.workflowStart), isEntry: true }],
+    runtimeEdges: [],
+    variables: {},
+    query: [],
+    histories: [],
+    stream: false,
+    maxRunTimes: 10,
+    nodeResponseWriteConfig: { persistToDb: false, retainInMemory: true }
+  });
+
+  beforeEach(() => {
+    vi.spyOn(teamLimit, 'checkTeamAIPoints').mockResolvedValue(undefined);
+  });
+  afterEach(() => vi.restoreAllMocks());
+
+  it.each([undefined, 'v2'] as const)(
+    'honors an early stop for API version %s and cleans up before returning',
+    async (version) => {
+      await setAgentRuntimeStop(params);
+      const start = vi.spyOn(callbackMap, FlowNodeTypeEnum.workflowStart);
+
+      await dispatchWorkFlow(createParams(version));
+
+      expect(start).not.toHaveBeenCalled();
+      expect(await shouldWorkflowStop(params)).toBe(false);
+    }
+  );
+
+  it('keeps a headless run alive after response close and stops on the shared Redis signal', async () => {
+    const res = new EventEmitter();
+    const start = vi
+      .spyOn(callbackMap, FlowNodeTypeEnum.workflowStart)
+      .mockImplementationOnce(async ({ checkIsStopping }) => {
+        res.emit('close');
+        expect(checkIsStopping()).toBe(false);
+        await setAgentRuntimeStop(params);
+        await vi.waitFor(() => expect(checkIsStopping()).toBe(true));
+        return {};
+      });
+
+    await dispatchWorkFlow({ ...createParams(), res: res as any });
+
+    expect(start).toHaveBeenCalledOnce();
+    expect(await shouldWorkflowStop(params)).toBe(false);
+  });
+
+  it('cleans up the stop monitor if initialization fails', async () => {
+    const error = new Error('points unavailable');
+    vi.mocked(teamLimit.checkTeamAIPoints).mockRejectedValueOnce(error);
+    const read = vi.spyOn(WorkflowStopSignalCache.prototype, 'isStopping');
+    const clear = vi.spyOn(WorkflowStopSignalCache.prototype, 'clear');
+
+    await expect(dispatchWorkFlow(createParams())).rejects.toBe(error);
+    expect(clear).toHaveBeenCalledOnce();
+    const count = read.mock.calls.length;
+    await new Promise((resolve) => setTimeout(resolve, 150));
+    expect(read).toHaveBeenCalledTimes(count);
   });
 });
 
@@ -465,6 +553,39 @@ describe('getWorkflowNodeRunParams', () => {
       getToRuntimeRecordCount: () => toRuntimeRecordCount
     };
   };
+
+  it('resolves the same whole-filter reference in Agent inputs and legacy nested settings', () => {
+    const filterJson = '{"tags":{"$and":[{"department":{"$in":["finance"]}}]}}';
+    const node = createNode('agent', FlowNodeTypeEnum.agent);
+    const reference = [VARIABLE_NODE_ID, 'filterJson'];
+    node.inputs = [
+      {
+        key: NodeInputKeyEnum.collectionFilterMatch,
+        label: '',
+        renderTypeList: [FlowNodeInputTypeEnum.hidden, FlowNodeInputTypeEnum.reference],
+        selectedType: FlowNodeInputTypeEnum.reference,
+        valueType: WorkflowIOValueTypeEnum.string,
+        value: reference
+      },
+      {
+        key: NodeInputKeyEnum.datasetParams,
+        label: '',
+        renderTypeList: [FlowNodeInputTypeEnum.hidden],
+        value: { datasets: [{ datasetId: 'dataset-1' }], collectionFilterMatch: reference }
+      }
+    ];
+
+    const params = getWorkflowNodeRunParams({
+      node,
+      runtimeNodesMap: new Map(),
+      variableState: createVariableState({ filterJson }).state
+    });
+    expect(params[NodeInputKeyEnum.collectionFilterMatch]).toBe(filterJson);
+    expect(params[NodeInputKeyEnum.datasetParams]).toEqual({
+      datasets: [{ datasetId: 'dataset-1' }],
+      collectionFilterMatch: filterJson
+    });
+  });
 
   it('静态 input 不应构造 runtimeVariables', () => {
     const variableState = createVariableState({ name: 'Ada' });

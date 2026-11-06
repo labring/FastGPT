@@ -74,6 +74,11 @@ const ChatRecordContextProvider = ({
   const [totalRecordsCount, setTotalRecordsCount] = useState(0);
 
   const currentData = useMemoEnhance(() => ({ id: feedbackRecordId || '' }), [feedbackRecordId]);
+  // 恢复待确认方案时对齐卡片顶部，避免分页列表的初始定位覆盖 ChatBox 的阅读起点。
+  const getScrollTarget = useMemoizedFn(
+    (element: HTMLElement) =>
+      element.querySelector<HTMLElement>('[data-chat-scroll-anchor]') ?? element
+  );
   const {
     dataList: chatRecords,
     setDataList: setChatRecords,
@@ -125,6 +130,7 @@ const ChatRecordContextProvider = ({
       params,
       currentData,
       defaultScroll: 'bottom',
+      getScrollTarget,
       showErrorToast: false,
       showPrevLoading
     }

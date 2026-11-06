@@ -34,7 +34,8 @@ import { getAppChatConfig } from '@fastgpt/global/common/app/chat';
 import {
   getSelectedInputRenderType,
   getWorkflowReferenceSourceNodes,
-  getWorkflowReferenceVariables
+  getWorkflowReferenceVariables,
+  nodeInputIsReference
 } from '@fastgpt/global/common/workflow/reference';
 import { isWorkflowSystemModelInput } from '@fastgpt/global/common/workflow/model';
 import { workflowModelKeyMappings } from '@fastgpt/global/core/workflow/model/constants';
@@ -476,8 +477,36 @@ export const filterSensitiveNodesData = (nodes: StoreNodeItemType[]) => {
     // selected dataset
     if (node.flowNodeType === FlowNodeTypeEnum.datasetSearchNode) {
       node.inputs.forEach((input) => {
-        if (input.key === NodeInputKeyEnum.datasetSelectList) {
+        if (input.key === NodeInputKeyEnum.datasetSelectList && !nodeInputIsReference(input)) {
           input.value = [];
+        }
+      });
+    }
+
+    if (node.flowNodeType === FlowNodeTypeEnum.agent) {
+      node.inputs.forEach((input) => {
+        if (input.key === NodeInputKeyEnum.skills || input.key === NodeInputKeyEnum.selectedTools) {
+          input.value = [];
+        } else if (
+          input.key === NodeInputKeyEnum.datasetSelectList &&
+          !nodeInputIsReference(input)
+        ) {
+          input.value = [];
+        } else if (
+          input.key === NodeInputKeyEnum.datasetParams &&
+          input.value &&
+          typeof input.value === 'object' &&
+          !Array.isArray(input.value)
+        ) {
+          input.value = {
+            ...input.value,
+            datasets: []
+          };
+        } else if (
+          input.key === NodeInputKeyEnum.aiSystemPrompt &&
+          typeof input.value === 'string'
+        ) {
+          input.value = input.value.replace(/\{\{@[^@{}]+@\}\}/g, '');
         }
       });
     }

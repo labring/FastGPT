@@ -2,6 +2,7 @@ import { i18nT } from '../../../common/i18n/utils';
 
 export enum AppLogKeysEnum {
   SOURCE = 'source',
+  PUBLISH_SOURCE_TYPE = 'publishSourceType',
   USER = 'user',
   AUTH_USER = 'authUser',
   TITLE = 'title',
@@ -20,6 +21,7 @@ export enum AppLogKeysEnum {
 }
 
 export const AppLogKeysEnumMap = {
+  [AppLogKeysEnum.PUBLISH_SOURCE_TYPE]: i18nT('app:logs_keys_publish_source_type'),
   [AppLogKeysEnum.SOURCE]: i18nT('app:logs_keys_source'),
   [AppLogKeysEnum.USER]: i18nT('app:logs_keys_user'),
   [AppLogKeysEnum.AUTH_USER]: i18nT('app:logs_keys_auth_user'),
@@ -39,6 +41,7 @@ export const AppLogKeysEnumMap = {
 };
 
 export const DefaultAppLogKeys = [
+  { key: AppLogKeysEnum.PUBLISH_SOURCE_TYPE, enable: true },
   { key: AppLogKeysEnum.SOURCE, enable: false },
   { key: AppLogKeysEnum.USER, enable: true },
   { key: AppLogKeysEnum.AUTH_USER, enable: false },
@@ -107,7 +110,8 @@ export const fakeChartData = {
         feishu: 0,
         official_account: 1,
         wecom: 1,
-        mcp: 0
+        mcp: 0,
+        dingtalk: 0
       }
     },
     {
@@ -130,7 +134,8 @@ export const fakeChartData = {
         feishu: 0,
         official_account: 1,
         wecom: 1,
-        mcp: 0
+        mcp: 0,
+        dingtalk: 0
       }
     },
     {
@@ -153,7 +158,8 @@ export const fakeChartData = {
         feishu: 0,
         official_account: 1,
         wecom: 1,
-        mcp: 0
+        mcp: 0,
+        dingtalk: 0
       }
     },
     {
@@ -176,7 +182,8 @@ export const fakeChartData = {
         feishu: 1,
         official_account: 1,
         wecom: 0,
-        mcp: 0
+        mcp: 0,
+        dingtalk: 0
       }
     },
     {
@@ -199,7 +206,8 @@ export const fakeChartData = {
         feishu: 1,
         official_account: 1,
         wecom: 0,
-        mcp: 0
+        mcp: 0,
+        dingtalk: 0
       }
     },
     {
@@ -222,7 +230,8 @@ export const fakeChartData = {
         feishu: 1,
         official_account: 1,
         wecom: 0,
-        mcp: 0
+        mcp: 0,
+        dingtalk: 0
       }
     },
     {
@@ -245,7 +254,8 @@ export const fakeChartData = {
         feishu: 1,
         official_account: 1,
         wecom: 0,
-        mcp: 0
+        mcp: 0,
+        dingtalk: 0
       }
     }
   ],

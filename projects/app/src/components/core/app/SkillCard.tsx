@@ -13,6 +13,7 @@ type SkillCardProps = {
   flexProps?: FlexProps;
   avatarSize?: string;
   nameFontWeight?: string;
+  compact?: boolean;
 };
 
 /**
@@ -22,11 +23,13 @@ const SkillCard = React.memo(function SkillCard({
   skill,
   onDelete,
   flexProps,
-  avatarSize = '1.5rem',
-  nameFontWeight
+  avatarSize,
+  nameFontWeight,
+  compact = false
 }: SkillCardProps) {
   const { t } = useTranslation();
   const hasError = !!skill.error;
+  const resolvedAvatarSize = avatarSize || (compact ? '18px' : '1.5rem');
 
   const errorText = (() => {
     if (skill.error === 'resource_no_permission') {
@@ -50,19 +53,26 @@ const SkillCard = React.memo(function SkillCard({
 
   return (
     <FormResourceCard
+      compact={compact}
       avatar={
         skill.avatar ? (
-          <Avatar src={skill.avatar} w={avatarSize} h={avatarSize} borderRadius={'sm'} />
+          <Avatar
+            src={skill.avatar}
+            w={resolvedAvatarSize}
+            h={resolvedAvatarSize}
+            borderRadius={'sm'}
+          />
         ) : (
-          <MyIcon name={'core/skill/default'} w={avatarSize} h={avatarSize} />
+          <MyIcon name={'core/skill/default'} w={resolvedAvatarSize} h={resolvedAvatarSize} />
         )
       }
       name={skill.name}
       nameFontWeight={nameFontWeight}
       isUnavailable={hasError}
       tooltipLabel={tooltipLabel}
+      showTooltipOnlyWhenOverflow={!hasError && !skill.description}
       errorText={errorText}
-      flexProps={{ p: 2.5, ...flexProps }}
+      flexProps={compact ? flexProps : { p: 2.5, ...flexProps }}
       actions={
         onDelete ? (
           <MyIconButton
@@ -79,5 +89,22 @@ const SkillCard = React.memo(function SkillCard({
     />
   );
 });
+
+/** 已选技能列表的共同入口；紧凑样式用于工作流节点，错误态和删除行为保持一致。 */
+export const AgentSkillCardList = ({
+  skills,
+  onDelete,
+  compact = false
+}: {
+  skills: SelectedAgentSkillItemType[];
+  onDelete: (skillId: string) => void;
+  compact?: boolean;
+}) => (
+  <>
+    {skills.map((skill) => (
+      <SkillCard key={skill.skillId} skill={skill} onDelete={onDelete} compact={compact} />
+    ))}
+  </>
+);
 
 export default SkillCard;

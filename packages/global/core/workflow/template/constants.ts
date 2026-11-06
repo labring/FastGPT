@@ -53,7 +53,6 @@ const systemNodes: FlowNodeTemplateType[] = [
   ToolCallNode,
   ToolParamsNode,
   StopToolNode,
-  AgentNode,
   ReadFilesNode,
   HttpNode468,
   IfElseNode,
@@ -69,6 +68,7 @@ export const appSystemModuleTemplates: FlowNodeTemplateType[] = [
   ...systemNodes,
   McpToolSetNode,
   HttpToolSetNode,
+  AgentNode,
   CustomFeedbackNode,
   UserSelectNode,
   FormInputNode

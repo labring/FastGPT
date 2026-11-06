@@ -43,7 +43,6 @@ const debugChatMocks = vi.hoisted(() => ({
   finalizeChatRound: vi.fn(),
   failChatRound: vi.fn(),
   updateInteractiveChat: vi.fn(),
-  updateChatGenerateStatus: vi.fn(),
   getRunningUserInfoByTmbId: vi.fn(),
   responseWrite: vi.fn(),
   flushResume: vi.fn(),
@@ -80,10 +79,6 @@ vi.mock('@fastgpt/service/core/chat/saveChat', () => ({
   finalizeChatRound: debugChatMocks.finalizeChatRound,
   failChatRound: debugChatMocks.failChatRound,
   updateInteractiveChat: debugChatMocks.updateInteractiveChat
-}));
-
-vi.mock('@fastgpt/service/core/chat/chatGenerateStatus', () => ({
-  updateChatGenerateStatus: debugChatMocks.updateChatGenerateStatus
 }));
 
 vi.mock('@fastgpt/service/support/user/team/utils', () => ({
@@ -174,18 +169,6 @@ describe('buildDebugRuntimeNodes', () => {
       // Reference format: [nodeId, outputKey]
       expect(userInput!.value).toEqual([START_NODE_ID, NodeOutputKeyEnum.userChatInput]);
       expect(userInput!.renderTypeList).toContain(FlowNodeInputTypeEnum.reference);
-    });
-
-    it('history input should be a number with value 20', () => {
-      const { runtimeNodes } = buildDebugRuntimeNodes(SKILL_ID, MODEL_ID, SYSTEM_PROMPT);
-      const agentNode = runtimeNodes[1];
-
-      const historyInput = agentNode.inputs.find((i) => i.key === NodeInputKeyEnum.history);
-      expect(historyInput).toBeDefined();
-      expect(historyInput!.value).toBe(20);
-      expect(historyInput!.valueType).toBe(WorkflowIOValueTypeEnum.chatHistory);
-      expect(historyInput!.min).toBe(0);
-      expect(historyInput!.max).toBe(50);
     });
 
     it('aiModelId input should carry the provided model ID', () => {
@@ -371,7 +354,6 @@ describe('debugChat handler — parameter validation', () => {
     debugChatMocks.finalizeChatRound.mockResolvedValue(undefined);
     debugChatMocks.failChatRound.mockResolvedValue(undefined);
     debugChatMocks.updateInteractiveChat.mockResolvedValue(undefined);
-    debugChatMocks.updateChatGenerateStatus.mockResolvedValue(undefined);
     debugChatMocks.getRunningUserInfoByTmbId.mockResolvedValue({
       teamId: testUser.teamId,
       tmbId: testUser.tmbId

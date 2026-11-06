@@ -47,6 +47,8 @@ const createApiKeyAuth = ({
   ...owner,
   appId: appId || '',
   legacyAppId: legacyAppId || '',
+  apiKeyType: legacyAppId ? 'app' : 'personal',
+  boundAppId: legacyAppId || undefined,
   parsedAppId: parsedAppId || '',
   authType: AuthUserTypeEnum.apikey,
   apikey: 'test-api-key',
@@ -432,7 +434,7 @@ describe('authChatCompletionHeaderRequest', () => {
     ).rejects.toBe(ChatErrEnum.unAuthChat);
   });
 
-  it('uses body appId before legacyAppId and checks the key member app permission', async () => {
+  it('uses the app API key binding before a different body appId', async () => {
     const owner = await getUser('completion-header-owner-app-key-same-team');
     const boundApp = await createApiApp(owner);
     const requestApp = await createApiApp(owner);
@@ -448,29 +450,28 @@ describe('authChatCompletionHeaderRequest', () => {
       appId: String(requestApp._id)
     });
 
-    expect(String(result.app._id)).toBe(String(requestApp._id));
+    expect(String(result.app._id)).toBe(String(boundApp._id));
     expect(result.teamId).toBe(owner.teamId);
     expect(result.tmbId).toBe(owner.tmbId);
   });
 
-  it('rejects app APIKey body appId from another team', async () => {
+  it('ignores a foreign body appId and executes the app API key binding', async () => {
     const owner = await getUser('completion-header-owner-app-key-cross-team');
     const outsider = await getUser('completion-header-outsider-app-key-cross-team');
     const boundApp = await createApiApp(owner);
     const outsiderApp = await createApiApp(outsider);
 
-    await expect(
-      authChatCompletionHeaderRequest({
-        req: {
-          auth: createApiKeyAuth({
-            owner,
-            appId: String(boundApp._id),
-            legacyAppId: String(boundApp._id)
-          })
-        } as any,
-        appId: String(outsiderApp._id)
-      })
-    ).rejects.toBe(AppErrEnum.unAuthApp);
+    const result = await authChatCompletionHeaderRequest({
+      req: {
+        auth: createApiKeyAuth({
+          owner,
+          appId: String(boundApp._id),
+          legacyAppId: String(boundApp._id)
+        })
+      } as any,
+      appId: String(outsiderApp._id)
+    });
+    expect(String(result.app._id)).toBe(String(boundApp._id));
   });
 
   it('rejects authProxy when the proxied member lacks target app permission', async () => {

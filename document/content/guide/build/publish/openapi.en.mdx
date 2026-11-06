@@ -5,38 +5,42 @@ description: Access FastGPT app via API
 
 import { Alert } from '@/components/docs/Alert';
 
-In FastGPT, the API entry under Publish Channels shows **API Keys** available to the current signed-in member. API Keys are member credentials for OpenAPI calls and are no longer created as app-scoped keys.
+**App keys require FastGPT 4.18.0 or later.** Under **Publishing Channels → API Access**, switch between **App keys** and **Personal keys**:
 
-When calling this app through `chat/completions`, passing `appId` in the request body is recommended. If a third-party app only supports OpenAI SDK-style key configuration, you can use the `apiKey-appId` compatibility format. For details, [see the OpenAPI Introduction](/en/openapi/intro).
+- **App key**: bound to the current app and limited to its chat and chat management endpoints. Only app administrators can view, create, and manage keys, including keys created by other administrators. The key grants access independently of its owning member's app permissions.
+- **Personal key**: accesses supported endpoints as the current member. Access changes with that member's permissions. Members see and manage only their own keys.
+
+With an app key, omit `appId` and `sourceType` from supported chat endpoints. The server uses the bound app and fixes `sourceType` to `app`. An `appId` in the request or the `apiKey-appId` suffix cannot override the binding. With a personal key, pass `body.appId` to `chat/completions` whenever possible, or use the `apiKey-appId` compatibility format.
+
+When listing sessions, an app key selects only API-source sessions. You cannot use `source` to select another channel. See the [OpenAPI Introduction](/en/openapi/intro) for pagination parameters and a request example.
 
 ## Connect your user system
 
 **Requires FastGPT 4.18.0 or later.**
 
-Keep the APIKey on your backend. After authenticating a user, pass your user ID as `customUid`:
+Keep the APIKey on your backend. After authenticating a user, pass your user ID as `customUid`. This example uses an app key, so `appId` is omitted:
 
 ```json
 {
-  "appId": "68ad85a7463006c963799a05",
   "customUid": "customer-42",
   "messages": [{ "role": "user", "content": "Hello" }]
 }
 ```
 
-`customUid` accepts up to 1,024 characters. FastGPT passes the value unchanged to the Workflow's `userId` and records it as the user in chat logs. An omitted, `null`, or empty value uses the default member identity. It does not change the APIKey's authenticated member or permissions. `customUid` and `authProxy`, which runs a call as a Team member, are mutually exclusive. Providing both returns a parameter error.
+`customUid` accepts up to 1,024 characters. FastGPT passes the value unchanged to the Workflow's `userId` and records it as the user in chat logs. An omitted, `null`, or empty value uses the default member identity. It does not change the APIKey's authenticated member or scope. Personal keys support `authProxy`, which is mutually exclusive with `customUid`; providing both returns a parameter error. App keys do not support `authProxy`.
 
 Chat logs show the user by default. Enable the hidden **Authorizer** column in column settings to see the authenticated member. CSV exports follow your selected columns. This parameter identifies users; your backend remains responsible for user authentication and access to sessions.
 
 ## Get an API Key
 
-Go to App -> "Publish Channels" -> "API", then click "New" to create a key.
+Go to **App → Publishing Channels → API Access**, select the key type, and create a key. Creating an app key requires only app administrator permissions, without the team's **Create API Key** permission. Personal keys still follow team permission requirements.
 
 <Alert context="warning">
-  An API Key represents the current signed-in member's OpenAPI credential. Keep your key safe. To
-  copy it again later, use the copy button in the API list.
+  Keep keys on your backend, out of browsers and client apps. To copy a key again later, use the
+  copy button in the API list.
 </Alert>
 
-![Create or copy a member API Key](/imgs/fastgpt-api1.jpg)
+![Create or copy an API Key](/imgs/fastgpt-api1.jpg)
 
 <Alert icon="🍅" context="success">
   Tip: For security, you can set a quota or expiration time to prevent key abuse.
@@ -46,7 +50,7 @@ Go to App -> "Publish Channels" -> "API", then click "New" to create a key.
 
 ```bash
 OPENAI_API_BASE_URL: http://localhost:3000/api (replace with your deployed domain)
-OPENAI_API_KEY = the key obtained in the previous step (passing appId in the request body is recommended; if the third-party app only accepts a key, use the apiKey-appId compatibility format)
+OPENAI_API_KEY = the key obtained in the previous step (use an app key as-is; for a personal key, pass appId in the request body or use the apiKey-appId compatibility format)
 ```
 
 **[ChatGPT Next Web](https://github.com/Yidadaa/ChatGPT-Next-Web) Example:**

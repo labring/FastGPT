@@ -162,6 +162,8 @@ describe('createAgentLoopCoreEventStream', () => {
       toolCallId: 'call_search',
       response: 'response'
     });
+    disabled.streamPlanStatus('generating');
+    disabled.streamPlan({ planId: 'plan_1' });
 
     expect(workflowStreamResponse).not.toHaveBeenCalled();
   });
