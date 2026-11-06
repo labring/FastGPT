@@ -102,6 +102,20 @@ describe('runFastAgentLoop', () => {
     }));
   });
 
+  it('passes the business recovery hook through the real fastAgent compression path', async () => {
+    const getCheckpointContext = vi.fn(async () => 'task-memory/index.json');
+    mockCreateLLMResponseQueue(createLLMResponseMock, [
+      text({ requestId: 'recovery-hook', content: 'done' })
+    ]);
+    await runFastAgentLoop({
+      input: { messages: [{ role: 'user', content: 'continue' }] },
+      runtime: createRuntime({ getCheckpointContext })
+    });
+    expect(compressRequestMessagesMock).toHaveBeenCalledWith(
+      expect.objectContaining({ getCheckpointContext })
+    );
+  });
+
   it('uses the final input systemPrompt without injecting provider defaults', async () => {
     mockCreateLLMResponseQueue(createLLMResponseMock, [
       text({
