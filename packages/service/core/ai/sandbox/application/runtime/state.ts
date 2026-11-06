@@ -91,8 +91,7 @@ export const writeSandboxRuntimeState = async (
         data: JSON.stringify(state, null, 2)
       }
     ]);
-    if (!result) throw new Error('Sandbox runtime state write returned no result');
-    if (result.error) throw result.error;
+    if (result?.error) throw result.error;
   } catch (error) {
     logger.warn('[Sandbox Runtime] Failed to write runtime state file', { statePath, error });
   }

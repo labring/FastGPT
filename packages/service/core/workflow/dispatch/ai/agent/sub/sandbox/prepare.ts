@@ -29,8 +29,13 @@ import {
   withAgentSandboxInitLease
 } from '../../../../../../ai/sandbox/application/runtime/entrypoint';
 import { type SandboxClient } from '../../../../../../ai/sandbox/application/runtime/client';
+import {
+  buildSandboxInputFileScopeKey,
+  getSandboxInputFileNameAllocation
+} from '../../../../../../ai/sandbox/utils';
+import { getRunningSandboxId } from '../../../../../../ai/sandbox/utils/id';
 import type { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
-import { readWorkflowFileBuffer } from '../../../../../utils/context';
+import { readWorkflowFileBuffer, WorkflowContext } from '../../../../../utils/context';
 
 export type AgentSandboxPrepareContext = SandboxPrepareContext & {
   sandboxClient: SandboxClient;
@@ -89,25 +94,39 @@ export async function ensureAgentSandboxRuntime({
     };
   }
 
-  const sandboxContext = await prepareAgentSandboxRuntime({
+  const readInputFile = (url: string) => readWorkflowFileBuffer({ url });
+  const workflowSandboxContext = WorkflowContext.getStore()?.sandboxContext;
+  const scopeKey = buildSandboxInputFileScopeKey({
     sourceType,
     sourceId,
     userId,
     chatId
   });
-  const readInputFile = (url: string) => readWorkflowFileBuffer({ url });
-  const preparedContext = await withAgentSandboxInitLease({
-    sandboxId: sandboxContext.sandboxClient.getSandboxId(),
-    fn: () => {
+  return withAgentSandboxInitLease({
+    sandboxId: getRunningSandboxId({ sourceType, sourceId, userId }),
+    fn: async () => {
+      const sandboxContext = await prepareAgentSandboxRuntime({
+        sourceType,
+        sourceId,
+        userId,
+        chatId
+      });
+      const inputFileAllocation = getSandboxInputFileNameAllocation({
+        scopeKey,
+        contextOwner: workflowSandboxContext,
+        sandbox: sandboxContext.sandboxClient.provider,
+        workDirectory: sandboxContext.workDirectory
+      });
       const context = {
         ...sandboxContext,
         sandbox: sandboxContext.sandboxClient.provider,
+        inputFileAllocation,
         deployedSkillVersions: [],
         skillInfos: [],
         skillScanDirectories: []
       };
 
-      return editSkillId
+      const preparedContext = await (editSkillId
         ? prepareSandbox(
             context,
             preparePackageMirrors(),
@@ -128,15 +147,15 @@ export async function ensureAgentSandboxRuntime({
             runSandboxEntrypoint({ sandboxEntrypoint, scope: sandboxEntrypointScope }),
             runSelectedSkillEntrypoints(),
             scanSelectedSkillInfos()
-          );
+          ));
+
+      return {
+        sandboxClient: sandboxContext.sandboxClient,
+        currentWorkingDirectory: sandboxContext.workDirectory,
+        skillInfos: preparedContext.skillInfos
+      };
     }
   });
-
-  return {
-    sandboxClient: sandboxContext.sandboxClient,
-    currentWorkingDirectory: sandboxContext.workDirectory,
-    skillInfos: preparedContext.skillInfos
-  };
 }
 
 /**

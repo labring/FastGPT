@@ -9,7 +9,6 @@ import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { Types } from '@fastgpt/service/common/mongo';
 import { ensureWorkflowSandboxReadyForUse } from '@fastgpt/service/core/workflow/dispatch/ai/sandbox';
-import { markChatSandboxEnabled } from '@fastgpt/service/core/chat/sandbox/service';
 
 const mocks = vi.hoisted(() => ({
   assertSandboxAvailable: vi.fn(),
@@ -303,7 +302,6 @@ describe('authSandboxRuntimeSession', () => {
       }
     });
 
-    await markChatSandboxEnabled(source);
     await MongoChat.updateOne(
       { chatId: source.chatId },
       {

@@ -1,6 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
 import { type ExecuteResult } from '@fastgpt-sdk/sandbox-adapter';
-import { runAgentSandboxEntrypoint } from '@fastgpt/service/core/ai/sandbox/application/runtime/entrypoint';
+import { LeaseCache, RedisLeaseUnavailableError } from '@fastgpt/dal/redis/caches';
+import { SandboxErrEnum } from '@fastgpt/global/common/error/code/sandbox';
+import {
+  runAgentSandboxEntrypoint,
+  withAgentSandboxInitLease
+} from '@fastgpt/service/core/ai/sandbox/application/runtime/entrypoint';
 import { runAgentSkillVersionEntrypoints } from '@fastgpt/service/core/ai/sandbox/application/runtime/skill/entrypoint';
 
 /** 用可恢复的执行结果和持久化内容模拟同一个 Sandbox，验证多次初始化的实际行为。 */
@@ -122,5 +127,63 @@ describe('runtime entrypoint', () => {
     await runAgentSandboxEntrypoint(params);
     expect(startupCalls(sandbox)).toHaveLength(3);
     expect(sandbox.writeFiles).toHaveBeenCalledOnce();
+  });
+
+  it('serializes concurrent initializations on a shared sandboxId and times out when the lock never releases', async () => {
+    const heldKeys = new Set<string>();
+    const withLeaseSpy = vi
+      .spyOn(LeaseCache.prototype, 'withLease')
+      .mockImplementation(async ({ key, label, fn }) => {
+        if (heldKeys.has(key)) throw new RedisLeaseUnavailableError({ key, label });
+        heldKeys.add(key);
+        try {
+          return await fn({ signal: new AbortController().signal, assertValid: () => undefined });
+        } finally {
+          heldKeys.delete(key);
+        }
+      });
+
+    try {
+      const order: string[] = [];
+      let releaseFirst!: () => void;
+      const firstGate = new Promise<void>((resolve) => {
+        releaseFirst = resolve;
+      });
+      const runWithLease = (name: string, wait?: Promise<void>) =>
+        withAgentSandboxInitLease({
+          sandboxId: 'shared-root-sandbox',
+          retryIntervalMs: 10,
+          fn: async () => {
+            order.push(`${name}:start`);
+            await wait;
+            order.push(`${name}:end`);
+            return `${name}-done`;
+          }
+        });
+
+      const firstPromise = runWithLease('first', firstGate);
+      const secondPromise = runWithLease('second');
+      await new Promise<void>((resolve) => setTimeout(resolve, 25));
+      expect(order).toEqual(['first:start']);
+      releaseFirst();
+
+      await expect(Promise.all([firstPromise, secondPromise])).resolves.toEqual([
+        'first-done',
+        'second-done'
+      ]);
+      expect(order).toEqual(['first:start', 'first:end', 'second:start', 'second:end']);
+
+      heldKeys.add('agent-sandbox:init:stuck-sandbox');
+      await expect(
+        withAgentSandboxInitLease({
+          sandboxId: 'stuck-sandbox',
+          waitTimeoutMs: 25,
+          retryIntervalMs: 10,
+          fn: async () => 'unreachable'
+        })
+      ).rejects.toThrow(SandboxErrEnum.agentSandboxInitializing);
+    } finally {
+      withLeaseSpy.mockRestore();
+    }
   });
 });

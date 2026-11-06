@@ -109,10 +109,15 @@ export type ToolDispatchContext = Pick<
   streamResponseFn?: (args: WorkflowResponseItemType) => void | undefined;
 };
 
-const filterAgentWorkflowRuntimeParams = (params: Record<string, any>) => {
+const filterAgentWorkflowRuntimeParams = (
+  params: Record<string, any>,
+  options: { omitHistory?: boolean } = {}
+) => {
   const runtimeParams = { ...params };
   delete runtimeParams[NodeInputKeyEnum.forbidStream];
-  delete runtimeParams[NodeInputKeyEnum.history];
+  if (options.omitHistory) {
+    delete runtimeParams[NodeInputKeyEnum.history];
+  }
   return runtimeParams;
 };
 
@@ -262,7 +267,9 @@ export const getExecuteTool = ({
             errorMessage
           };
         } else if (tool.type === 'workflow') {
-          const { userChatInput, ...params } = filterAgentWorkflowRuntimeParams(requestParams);
+          const { userChatInput, ...params } = filterAgentWorkflowRuntimeParams(requestParams, {
+            omitHistory: true
+          });
 
           const {
             response,

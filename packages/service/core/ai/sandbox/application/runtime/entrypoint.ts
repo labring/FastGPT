@@ -8,12 +8,18 @@ import {
   SANDBOX_ENTRYPOINT_STATE_HASH_KEY,
   MAX_ENTRYPOINT_OUTPUT_BYTES,
   SANDBOX_INIT_LEASE_TTL_MS,
-  SANDBOX_INIT_LEASE_RENEW_INTERVAL_MS
+  SANDBOX_INIT_LEASE_RENEW_INTERVAL_MS,
+  SANDBOX_INIT_LEASE_WAIT_TIMEOUT_MS,
+  SANDBOX_INIT_LEASE_RETRY_INTERVAL_MS
 } from '../../constants';
 
 import type { ISandbox } from '@fastgpt-sdk/sandbox-adapter';
 import { shellQuote } from '@fastgpt/global/common/string/utils';
-import { LeaseCache, isRedisLeaseError } from '@fastgpt/dal/redis/caches';
+import {
+  LeaseCache,
+  RedisLeaseUnavailableError,
+  isRedisLeaseError
+} from '@fastgpt/dal/redis/caches';
 import { getLogger, LogCategories } from '../../../../../common/logger';
 import { serviceEnv } from '../../../../../env';
 import { createAgentSandboxInitializingError } from '../../error';
@@ -32,30 +38,53 @@ const leaseCache = new LeaseCache();
 /**
  * 保护同一个 sandbox 的运行态初始化流程。
  *
- * 同一个 sandbox 内并发初始化时，如果文件部署、entrypoint 和扫描交错，可能互相污染。
+ * 同一个 sandbox 内并发初始化时（如父 Agent 并发调用多个启用沙盒的子应用工具），
+ * 如果文件部署、entrypoint 和扫描交错，可能互相污染。
+ * 锁被占用时按重试间隔有界等待，超时或租约异常再转为标准 initializing 错误。
  * 锁只存在于服务端 Redis，不写入 sandbox 文件系统。
  */
 export const withAgentSandboxInitLease = async <T>({
   sandboxId,
+  waitTimeoutMs = SANDBOX_INIT_LEASE_WAIT_TIMEOUT_MS,
+  retryIntervalMs = SANDBOX_INIT_LEASE_RETRY_INTERVAL_MS,
   fn
 }: {
   sandboxId: string;
+  waitTimeoutMs?: number;
+  retryIntervalMs?: number;
   fn: () => Promise<T>;
 }): Promise<T> => {
-  return leaseCache
-    .withLease({
-      key: `agent-sandbox:init:${sandboxId}`,
-      label: 'agent-sandbox-init',
-      ttlMs: SANDBOX_INIT_LEASE_TTL_MS,
-      renewIntervalMs: SANDBOX_INIT_LEASE_RENEW_INTERVAL_MS,
-      fn
-    })
-    .catch((error) => {
+  const deadline = Date.now() + waitTimeoutMs;
+
+  while (true) {
+    let entered = false;
+    try {
+      return await leaseCache.withLease({
+        key: `agent-sandbox:init:${sandboxId}`,
+        label: 'agent-sandbox-init',
+        ttlMs: SANDBOX_INIT_LEASE_TTL_MS,
+        renewIntervalMs: SANDBOX_INIT_LEASE_RENEW_INTERVAL_MS,
+        fn: async () => {
+          entered = true;
+          return await fn();
+        }
+      });
+    } catch (error) {
+      if (!entered && error instanceof RedisLeaseUnavailableError) {
+        const remainingMs = deadline - Date.now();
+        if (remainingMs > 0) {
+          await new Promise<void>((resolve) =>
+            setTimeout(resolve, Math.min(retryIntervalMs, remainingMs))
+          );
+          continue;
+        }
+      }
       if (isRedisLeaseError(error)) {
         throw createAgentSandboxInitializingError();
       }
       throw error;
-    });
+    }
+  }
 };
 
 /**

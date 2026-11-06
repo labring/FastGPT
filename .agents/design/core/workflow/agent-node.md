@@ -64,7 +64,7 @@
 
 `rawInputs` 复用 `AgentToolSchema.shape.inputs`，只用于保留无法展开的历史输入来源。保存时 `serializeAgentTool` 根据 `pluginData.error` 回写原始 `rawInputs` 与 `config`，包括未保存 `inputs` 的旧协议，避免一次打开/保存就清空配置或改变历史默认来源。
 
-可用工具按当前完整输入投影稀疏来源配置，过滤最终由 Agent 生成的固定值，且不持久化或透传 `history`（`NodeInputKeyEnum.history`）输入项。
+可用工具按当前完整输入投影稀疏来源配置，过滤最终由 Agent 生成的固定值，且对子应用工具（`appModule`）不持久化或透传内置 `history`（`NodeInputKeyEnum.history`）输入项（插件与普通工具声明的同名业务字段正常保留）。
 
 画布保存先识别完整编辑详情并调用统一序列化器；已是 `AgentToolSchema` 的稀疏记录直接保留。禁止把稀疏输入强制断言为 NodeIO 再序列化。
 

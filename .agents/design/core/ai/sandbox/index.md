@@ -104,14 +104,14 @@ runtime preparation 不再接受绕过权限检查的布尔参数。随后根据
 agent-sandbox:init:<sandboxId>
 ```
 
-锁覆盖文件部署、entrypoint 和 Skill 扫描，避免并发请求交错修改同一工作区。租约会自动续期，获取失败转换为标准 initializing 错误。
+锁覆盖文件部署、entrypoint 和 Skill 扫描，避免并发请求交错修改同一工作区。租约会自动续期；锁被并发子调用占用时有界等待重试，等待超时或租约异常再转换为标准 initializing 错误。
 
 ### Prepare pipeline
 
 Sandbox 初始化使用 `prepareSandbox(context, ...steps)` 顺序组合步骤。可复用步骤包括：
 
 - 创建或检查工作目录。
-- 注入本轮输入文件到 `user_files`。
+- 注入本轮输入文件到 `user_files`（同一会话沙盒内跨父子/兄弟节点按文件 URL 去重分配文件名，相同 URL 复用原名，不同 URL 的同名文件自动递增后缀并同步回写 `name` / `sandboxPath`，避免互相覆盖）。
 - 配置 npm/pnpm/yarn/bun/pip/uv 镜像。
 - 同步内置 Skill。
 - 注入已发布 Skill 版本。

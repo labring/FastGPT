@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ChatFileTypeEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { getRunningSandboxId } from '@fastgpt/service/core/ai/sandbox/utils/id';
 
 const {
   prepareAgentSandboxRuntimeMock,
@@ -175,9 +176,16 @@ describe('ensureAgentSandboxRuntime', () => {
     });
 
     expect(withAgentSandboxInitLeaseMock).toHaveBeenCalledWith({
-      sandboxId: 'sandbox_1',
+      sandboxId: getRunningSandboxId({
+        sourceType: ChatSourceTypeEnum.app,
+        sourceId: 'app_1',
+        userId: 'user_1'
+      }),
       fn: expect.any(Function)
     });
+    expect(withAgentSandboxInitLeaseMock.mock.invocationCallOrder[0]).toBeLessThan(
+      prepareAgentSandboxRuntimeMock.mock.invocationCallOrder[0]
+    );
     expect(loadWorkflowSkillResourcesMock).toHaveBeenCalledWith({
       skillIds: ['skill_1'],
       tmbId: 'tmb_1'

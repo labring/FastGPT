@@ -1,5 +1,5 @@
 import { NodeInputKeyEnum } from '../../workflow/constants';
-import { FlowNodeInputTypeEnum } from '../../workflow/node/constant';
+import { FlowNodeInputTypeEnum, FlowNodeTypeEnum } from '../../workflow/node/constant';
 import type { FlowNodeInputItemType } from '../../workflow/type/io';
 import type { FlowNodeTemplateType } from '../../workflow/type/node';
 import type { CanonicalFlowNodeInputItem } from '../../workflow/migration';
@@ -414,7 +414,11 @@ export const serializeAgentTool = ({ tool }: { tool: SelectedToolItemType }) => 
   const config = isInvalidTool
     ? (tool.config ?? {})
     : tool.inputs.reduce<Record<string, unknown>>((acc, input) => {
-        if (input.key === NodeInputKeyEnum.forbidStream || input.key === NodeInputKeyEnum.history) {
+        if (
+          input.key === NodeInputKeyEnum.forbidStream ||
+          (tool.flowNodeType === FlowNodeTypeEnum.appModule &&
+            input.key === NodeInputKeyEnum.history)
+        ) {
           return acc;
         }
         acc[input.key] = input.value;
