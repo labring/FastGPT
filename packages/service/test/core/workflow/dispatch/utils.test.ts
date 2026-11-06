@@ -1356,7 +1356,7 @@ describe('rewriteRuntimeWorkFlow', () => {
     await rewriteRuntimeWorkFlow({ teamId: 'team1', tmbId: 'tmb1', nodes, edges });
     const filteredEdges = filterOrphanEdges({ nodes, edges, workflowId: 'workflow-app' });
 
-    expect(edges[0].target).not.toBe('ts20');
+    expect(edges[0].target).toBe('ts20');
     expect(nodes.find((n) => n.nodeId === edges[0].target)?.jsonSchema).toEqual(fullSchema);
     expect(nodes.find((n) => n.nodeId === edges[0].target)?.toolConfig).not.toHaveProperty(
       'mcpToolSet'
@@ -1442,6 +1442,7 @@ describe('rewriteRuntimeWorkFlow', () => {
 
       expect(nodes.find((n) => n.nodeId === 'ts4')).toBeUndefined();
       const childNodeIds = edges.map((edge) => edge.target);
+      expect(childNodeIds).toEqual(['ts40', 'ts41']);
       expect(nodes.find((n) => n.nodeId === childNodeIds[0])?.inputs).toEqual(
         expect.arrayContaining([
           expect.objectContaining({

@@ -6,7 +6,6 @@ import { runWorkflow, type RunWorkflowProps } from '../../../../../../../core/wo
 import {
   getWorkflowEntryNodeIds,
   rewriteNodeOutputByHistories,
-  rewriteLegacyInteractiveToolSetNodeIds,
   storeEdges2RuntimeEdges,
   storeNodes2RuntimeNodes
 } from '@fastgpt/global/core/workflow/runtime/utils';
@@ -253,13 +252,9 @@ export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppRespon
         resolveInputFile
       });
       const runtimeVariables = childrenVariableState.toRuntimeRecord();
-      const restoredInteractive = rewriteLegacyInteractiveToolSetNodeIds({
-        lastInteractive: data.lastInteractive,
-        nodes
-      });
       const restoredRuntimeNodes = rewriteNodeOutputByHistories(
-        storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes, restoredInteractive)),
-        restoredInteractive
+        storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes, data.lastInteractive)),
+        data.lastInteractive
       );
       const runtimeNodes = restoredRuntimeNodes.map((node) => {
         // Update plugin input value
@@ -308,13 +303,13 @@ export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppRespon
         runningAppInfo: childRunningAppInfo,
         runningUserInfo,
         runtimeNodes,
-        runtimeEdges: storeEdges2RuntimeEdges(edges, restoredInteractive),
+        runtimeEdges: storeEdges2RuntimeEdges(edges, data.lastInteractive),
         chatConfig,
         histories: [],
         variableState: childrenVariableState,
         isToolCall: true,
-        lastInteractive: restoredInteractive,
-        query: restoredInteractive
+        lastInteractive: data.lastInteractive,
+        query: data.lastInteractive
           ? data.query
           : serverGetWorkflowToolRunUserQuery({
               pluginInputs,

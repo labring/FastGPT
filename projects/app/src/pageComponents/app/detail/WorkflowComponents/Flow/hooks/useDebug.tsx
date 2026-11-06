@@ -242,38 +242,6 @@ export const useDebug = () => {
       };
     }, [toolPreviewId]);
 
-    useEffect(() => {
-      if (!runtimeNode || !isIndependentToolSet || !hasToolSetSummary) {
-        setIsLoadingToolSet(false);
-        setToolSetDebugData(undefined);
-        return;
-      }
-      let cancelled = false;
-      setIsLoadingToolSet(true);
-      setToolSetDebugError(undefined);
-      setToolSetDebugData(undefined);
-      getToolSetDebugData(runtimeNode)
-        .then((data) => {
-          if (cancelled) return;
-          setToolIndex(0);
-          setToolSetDebugData({ nodeId: runtimeNode.nodeId, data });
-        })
-        .catch((error) => {
-          if (!cancelled) {
-            const message = getErrText(error);
-            setToolSetDebugError(message);
-            toast({ status: 'error', title: message });
-          }
-        })
-        .finally(() => {
-          if (!cancelled) setIsLoadingToolSet(false);
-        });
-
-      return () => {
-        cancelled = true;
-      };
-    }, [runtimeNode, isIndependentToolSet, hasToolSetSummary, toast, toolSetReloadKey]);
-
     const debugNode = useMemo(() => {
       if (!runtimeNode) return;
       if (!isToolSet) return runtimeNode;
@@ -328,6 +296,47 @@ export const useDebug = () => {
       }
     });
     const { handleSubmit, resetField } = variablesForm;
+    const debugVariables = variablesForm.watch('variables');
+
+    useEffect(() => {
+      if (!runtimeNode || !isIndependentToolSet || !hasToolSetSummary) {
+        setIsLoadingToolSet(false);
+        setToolSetDebugData(undefined);
+        return;
+      }
+      let cancelled = false;
+      setIsLoadingToolSet(true);
+      setToolSetDebugError(undefined);
+      setToolSetDebugData(undefined);
+      getToolSetDebugData(runtimeNode, { runtimeNodes, variables: debugVariables })
+        .then((data) => {
+          if (cancelled) return;
+          setToolIndex(0);
+          setToolSetDebugData({ nodeId: runtimeNode.nodeId, data });
+        })
+        .catch((error) => {
+          if (!cancelled) {
+            const message = getErrText(error);
+            setToolSetDebugError(message);
+            toast({ status: 'error', title: message });
+          }
+        })
+        .finally(() => {
+          if (!cancelled) setIsLoadingToolSet(false);
+        });
+
+      return () => {
+        cancelled = true;
+      };
+    }, [
+      runtimeNode,
+      runtimeNodes,
+      debugVariables,
+      isIndependentToolSet,
+      hasToolSetSummary,
+      toast,
+      toolSetReloadKey
+    ]);
 
     useEffect(() => {
       resetDebugNodeVariables({ resetField, inputs: renderInputs });

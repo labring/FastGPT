@@ -331,44 +331,6 @@ describe('rewriteRuntimeWorkFlow independent toolsets', () => {
     expect(edges.map((edge) => edge.target)).toEqual(nodes.map((node) => node.nodeId));
   });
 
-  it('keeps the selected tool when remote tool order changes between resume attempts', async () => {
-    const inputSchema = { type: 'object' };
-    const search = { name: 'search', description: 'Search', inputSchema };
-    const remove = { name: 'delete', description: 'Delete', inputSchema };
-
-    mocks.getMcpTools.mockResolvedValueOnce([search, remove]);
-    const firstNodes = [createMcpToolSetNode([])];
-    const firstEdges = [createSelectedToolEdge()];
-    await rewriteRuntimeWorkFlow({
-      teamId: 'team-1',
-      tmbId: 'member-1',
-      nodes: firstNodes,
-      edges: firstEdges
-    });
-    const selectedTarget = firstNodes.find((node) => node.name.endsWith('/search'))!.nodeId;
-
-    mocks.getMcpTools.mockResolvedValueOnce([remove, search]);
-    const resumedNodes = [createMcpToolSetNode([])];
-    const resumedEdges = [
-      {
-        source: 'tool-call',
-        sourceHandle: 'selectedTools',
-        target: selectedTarget,
-        targetHandle: NodeOutputKeyEnum.selectedTools
-      }
-    ];
-    await rewriteRuntimeWorkFlow({
-      teamId: 'team-1',
-      tmbId: 'member-1',
-      nodes: resumedNodes,
-      edges: resumedEdges
-    });
-
-    expect(
-      resumedNodes.find((node) => node.nodeId === resumedEdges[0].target)?.toolConfig?.mcpTool
-    ).toMatchObject({ name: 'search' });
-  });
-
   it('maps legacy index child IDs to the current tool position', async () => {
     mocks.getMcpTools.mockResolvedValue([
       { name: 'search', description: 'Search', inputSchema: { type: 'object' } }
@@ -387,40 +349,6 @@ describe('rewriteRuntimeWorkFlow independent toolsets', () => {
 
     expect(nodes).toHaveLength(1);
     expect(edges[0].target).toBe(nodes[0].nodeId);
-  });
-
-  it('rewrites every legacy toolset runtime reference to the stable node', async () => {
-    mocks.getMcpTools.mockResolvedValue([
-      { name: 'search', description: 'Search', inputSchema: { type: 'object' } }
-    ]);
-    const nodes = [createMcpToolSetNode([])];
-    const edges = [
-      {
-        source: 'tool-call',
-        sourceHandle: 'selectedTools',
-        target: 'mcp-set0',
-        targetHandle: NodeOutputKeyEnum.selectedTools
-      }
-    ];
-    const interactive = {
-      type: 'userSelect',
-      entryNodeIds: ['tool-call'],
-      memoryEdges: edges,
-      nodeOutputs: [{ nodeId: 'mcp-set0', key: 'rawResponse', value: 'ok' }],
-      params: { description: '', userSelectOptions: [] }
-    } as any;
-
-    const rewrittenInteractive = await rewriteRuntimeWorkFlow({
-      teamId: 'team-1',
-      tmbId: 'member-1',
-      nodes,
-      edges,
-      lastInteractive: interactive
-    });
-
-    expect(rewrittenInteractive?.entryNodeIds).toEqual(['tool-call']);
-    expect(rewrittenInteractive?.memoryEdges?.[0].target).toBe(nodes[0].nodeId);
-    expect(rewrittenInteractive?.nodeOutputs?.[0].nodeId).toBe(nodes[0].nodeId);
   });
 
   it('does not collide with another toolset whose ID starts with the same prefix', async () => {

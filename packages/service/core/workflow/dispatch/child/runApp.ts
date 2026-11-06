@@ -8,7 +8,6 @@ import {
   getWorkflowEntryNodeIds,
   storeEdges2RuntimeEdges,
   rewriteNodeOutputByHistories,
-  rewriteLegacyInteractiveToolSetNodeIds,
   storeNodes2RuntimeNodes
 } from '@fastgpt/global/core/workflow/runtime/utils';
 import { type NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
