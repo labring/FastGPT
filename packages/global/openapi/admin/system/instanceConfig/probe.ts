@@ -20,12 +20,24 @@ export const ProbeConnectionBodySchema = z.object({
 });
 export type ProbeConnectionBody = z.infer<typeof ProbeConnectionBodySchema>;
 
+export const ProbeConnectionErrorCodeSchema = z.enum([
+  'protocol',
+  'timeout',
+  'refused',
+  'dns',
+  'unknown'
+]);
+export type ProbeConnectionErrorCode = z.infer<typeof ProbeConnectionErrorCodeSchema>;
+
 export const ProbeConnectionResponseSchema = z.object({
   connected: z.boolean().meta({ description: '是否连通成功' }),
   status: z.number().int().optional().meta({ description: 'HTTP 响应状态码' }),
   statusText: z.string().optional().meta({ description: 'HTTP 状态文本' }),
   responseTimeMs: z.number().nonnegative().meta({ description: '探测往返耗时（毫秒）' }),
-  error: z.string().optional().meta({ description: '失败异常说明（若失败）' })
+  error: z.string().optional().meta({ description: '失败异常说明（若失败）' }),
+  errorCode: ProbeConnectionErrorCodeSchema.optional().meta({
+    description: '失败类型，用于前端本地化展示'
+  })
 });
 export type ProbeConnectionResponse = z.infer<typeof ProbeConnectionResponseSchema>;
 

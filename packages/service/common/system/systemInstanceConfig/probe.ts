@@ -1,5 +1,6 @@
 import type {
   ProbeConnectionBody,
+  ProbeConnectionErrorCode,
   ProbeConnectionResponse
 } from '@fastgpt/global/openapi/admin/system/instanceConfig/probe';
 import { axiosWithoutSSRF } from '../../api/axios';
@@ -58,14 +59,20 @@ export const probeUrlConnection = async ({
     };
   } catch (error: any) {
     const responseTimeMs = Date.now() - startTime;
-    const errorCode = error?.code || error?.name || '';
+    const rawCode = error?.code || error?.name || '';
     let errorMessage = error?.message || 'Connection failed';
+    let errorCode: ProbeConnectionErrorCode = 'unknown';
 
-    if (errorCode === 'ECONNABORTED' || errorMessage.includes('timeout')) {
+    if (errorMessage.includes('Only HTTP and HTTPS')) {
+      errorCode = 'protocol';
+    } else if (rawCode === 'ECONNABORTED' || errorMessage.includes('timeout')) {
+      errorCode = 'timeout';
       errorMessage = `连接超时（超过 ${timeoutMs}ms 未响应）`;
-    } else if (errorCode === 'ECONNREFUSED') {
+    } else if (rawCode === 'ECONNREFUSED') {
+      errorCode = 'refused';
       errorMessage = '连接被拒绝（目标服务未启动或网络不通）';
-    } else if (errorCode === 'ENOTFOUND') {
+    } else if (rawCode === 'ENOTFOUND') {
+      errorCode = 'dns';
       errorMessage = '无法解析的主机名或域名';
     }
 
@@ -74,7 +81,8 @@ export const probeUrlConnection = async ({
       status: error?.response?.status,
       statusText: error?.response?.statusText,
       responseTimeMs,
-      error: errorMessage
+      error: errorMessage,
+      errorCode
     };
   }
 };

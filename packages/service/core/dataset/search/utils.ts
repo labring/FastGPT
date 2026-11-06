@@ -200,14 +200,18 @@ export const isImageEmbeddingIndex = (index: { type?: string | number }) =>
  * data URL 或外部 HTTP(S) 链接，其余格式（包括 temp/*、chat/*、本地路径等）一律拒绝。
  * toBase64 语义同 normalizeImageToBase64：批量入口一次求值下传，避免混合形态。
  */
-export const normalizeDatasetIndexImageToModelInput = async (
-  imageUrl: string,
-  datasetId: string,
-  toBase64?: boolean
-) => {
+export const normalizeDatasetIndexImageToModelInput = async ({
+  imageUrl,
+  datasetId,
+  toBase64
+}: {
+  imageUrl: string;
+  datasetId?: string;
+  toBase64?: boolean;
+}) => {
   if (isS3ObjectKey(imageUrl, 'dataset')) {
     // 知识库图片必须绑定当前 dataset；缺少 datasetId 时也拒绝读取，避免兼容分支绕过鉴权。
-    if (!isAuthorizedDatasetFileS3Key({ key: imageUrl, datasetId })) {
+    if (!isAuthorizedDatasetFileS3Key({ key: imageUrl, datasetId: datasetId ?? '' })) {
       throw new Error('Invalid dataset file key');
     }
     // 与 normalizeImageToBase64 共用同一开关：Admin 切换后两条图片链路行为一致

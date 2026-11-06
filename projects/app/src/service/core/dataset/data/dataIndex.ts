@@ -540,7 +540,11 @@ export class DatasetDataIndexOperation {
               item: index,
               input: {
                 type: 'image' as const,
-                input: await normalizeDatasetIndexImageToModelInput(index.text, datasetId, toBase64)
+                input: await normalizeDatasetIndexImageToModelInput({
+                  imageUrl: index.text,
+                  datasetId,
+                  toBase64
+                })
               }
             };
           } catch {

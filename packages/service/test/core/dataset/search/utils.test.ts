@@ -222,7 +222,10 @@ describe('normalizeDatasetIndexImageToModelInput', () => {
   it('should read S3 base64 image when datasetId matches key and MULTIPLE_DATA_TO_BASE64 is true', async () => {
     getTestInstanceConfig().feature.multipleDataToBase64 = true;
     const key = 'dataset/507f1f77bcf86cd799439011/image.png';
-    const result = await normalizeDatasetIndexImageToModelInput(key, '507f1f77bcf86cd799439011');
+    const result = await normalizeDatasetIndexImageToModelInput({
+      imageUrl: key,
+      datasetId: '507f1f77bcf86cd799439011'
+    });
 
     expect(result).toBe('data:image/png;base64,dataset_img');
     expect(mockGetDatasetBase64Image).toHaveBeenCalledWith(key);
@@ -231,7 +234,10 @@ describe('normalizeDatasetIndexImageToModelInput', () => {
   it('should create signed S3 download URL when datasetId matches key and MULTIPLE_DATA_TO_BASE64 is false', async () => {
     getTestInstanceConfig().feature.multipleDataToBase64 = false;
     const key = 'dataset/507f1f77bcf86cd799439011/image.png';
-    const result = await normalizeDatasetIndexImageToModelInput(key, '507f1f77bcf86cd799439011');
+    const result = await normalizeDatasetIndexImageToModelInput({
+      imageUrl: key,
+      datasetId: '507f1f77bcf86cd799439011'
+    });
 
     expect(result).toMatch(/\/api\/system\/file\/d\//);
     expect(mockGetDatasetBase64Image).not.toHaveBeenCalled();
@@ -240,7 +246,10 @@ describe('normalizeDatasetIndexImageToModelInput', () => {
   it('should throw error when datasetId does not match key', async () => {
     const key = 'dataset/507f1f77bcf86cd799439099/foreign.png';
     await expect(
-      normalizeDatasetIndexImageToModelInput(key, '507f1f77bcf86cd799439011')
+      normalizeDatasetIndexImageToModelInput({
+        imageUrl: key,
+        datasetId: '507f1f77bcf86cd799439011'
+      })
     ).rejects.toThrow('Invalid dataset file key');
     expect(mockGetDatasetBase64Image).not.toHaveBeenCalled();
   });
@@ -248,7 +257,7 @@ describe('normalizeDatasetIndexImageToModelInput', () => {
   it('should reject dataset S3 image when datasetId is omitted', async () => {
     const key = 'dataset/507f1f77bcf86cd799439011/image.png';
 
-    await expect(normalizeDatasetIndexImageToModelInput(key)).rejects.toThrow(
+    await expect(normalizeDatasetIndexImageToModelInput({ imageUrl: key })).rejects.toThrow(
       'Invalid dataset file key'
     );
     expect(mockGetDatasetBase64Image).not.toHaveBeenCalled();
@@ -258,7 +267,10 @@ describe('normalizeDatasetIndexImageToModelInput', () => {
     'should reject %s without reading private S3 data',
     async (key) => {
       await expect(
-        normalizeDatasetIndexImageToModelInput(key, '507f1f77bcf86cd799439011')
+        normalizeDatasetIndexImageToModelInput({
+          imageUrl: key,
+          datasetId: '507f1f77bcf86cd799439011'
+        })
       ).rejects.toThrow('Invalid dataset file key');
       expect(mockGetDatasetBase64Image).not.toHaveBeenCalled();
     }
@@ -267,19 +279,28 @@ describe('normalizeDatasetIndexImageToModelInput', () => {
   it('should accept data URL and external http image sources', async () => {
     const dataUrl = 'data:image/png;base64,inline';
     await expect(
-      normalizeDatasetIndexImageToModelInput(dataUrl, '507f1f77bcf86cd799439011')
+      normalizeDatasetIndexImageToModelInput({
+        imageUrl: dataUrl,
+        datasetId: '507f1f77bcf86cd799439011'
+      })
     ).resolves.toBe(dataUrl);
 
     getTestInstanceConfig().feature.multipleDataToBase64 = false;
     const httpUrl = 'https://example.com/pic.png';
     await expect(
-      normalizeDatasetIndexImageToModelInput(httpUrl, '507f1f77bcf86cd799439011')
+      normalizeDatasetIndexImageToModelInput({
+        imageUrl: httpUrl,
+        datasetId: '507f1f77bcf86cd799439011'
+      })
     ).resolves.toBe(httpUrl);
   });
 
   it('should reject local or arbitrary non-url image paths', async () => {
     await expect(
-      normalizeDatasetIndexImageToModelInput('/local/file.png', '507f1f77bcf86cd799439011')
+      normalizeDatasetIndexImageToModelInput({
+        imageUrl: '/local/file.png',
+        datasetId: '507f1f77bcf86cd799439011'
+      })
     ).rejects.toThrow('Invalid dataset file key');
   });
 
@@ -290,11 +311,11 @@ describe('normalizeDatasetIndexImageToModelInput', () => {
     mockGetImageBase64.mockResolvedValue({ completeBase64: 'data:image/png;base64,x' });
 
     const httpUrl = 'https://example.com/pic.png';
-    const result = await normalizeDatasetIndexImageToModelInput(
-      httpUrl,
-      '507f1f77bcf86cd799439011',
-      true
-    );
+    const result = await normalizeDatasetIndexImageToModelInput({
+      imageUrl: httpUrl,
+      datasetId: '507f1f77bcf86cd799439011',
+      toBase64: true
+    });
 
     expect(result).toBe('data:image/png;base64,x');
     expect(mockGetImageBase64).toHaveBeenCalledWith(httpUrl);

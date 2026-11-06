@@ -2,7 +2,10 @@ import React, { useState } from 'react';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { Box, Button, HStack, Input, Tag, Text, type InputProps } from '@chakra-ui/react';
 import { POST } from '@/web/common/api/request';
-import type { ProbeConnectionResponse } from '@fastgpt/global/openapi/admin/system/instanceConfig/probe';
+import type {
+  ProbeConnectionErrorCode,
+  ProbeConnectionResponse
+} from '@fastgpt/global/openapi/admin/system/instanceConfig/probe';
 import AdminReadonlyInput from './AdminReadonlyInput';
 
 export type ConnectivityTestInputProps = Omit<InputProps, 'value' | 'onChange'> & {
@@ -23,6 +26,14 @@ export type ConnectivityTestInputProps = Omit<InputProps, 'value' | 'onChange'> 
  * - 支持只读展示或直接编辑输入（通过 isEditable 控制），右侧集成测试按钮；
  * - 接收 url 或 value 参数，点击按钮后由后端服务发起实际 HTTP 探测并展示连通状态与延迟结果。
  */
+const probeErrorKeys: Record<ProbeConnectionErrorCode, string> = {
+  protocol: 'admin:probe_error_protocol',
+  timeout: 'admin:probe_error_timeout',
+  refused: 'admin:probe_error_refused',
+  dns: 'admin:probe_error_dns',
+  unknown: 'admin:probe_error_unknown'
+};
+
 const ConnectivityTestInput = ({
   url,
   value,
@@ -144,7 +155,7 @@ const ConnectivityTestInput = ({
                 {t('admin:probe_failed')}
               </Tag>
               <Text fontSize={'xs'} color={'red.500'}>
-                {result.error}
+                {result.errorCode ? t(probeErrorKeys[result.errorCode]) : result.error}
               </Text>
             </>
           )}
