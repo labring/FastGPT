@@ -85,6 +85,15 @@ draft: true
 
 各语言独立控制发布状态。缺少翻译文件时仍可展示已发布的默认语言内容；该语言文件明确标记 `draft: true` 时返回 404，不回退到默认语言，也不影响另一语言的已发布页面。
 
+验收草稿前需要启动独立文档服务，并将测试夹具 `docsBaseUrl` 指向该服务；主站未部署文档路由时的 404 不能作为草稿证据。在仓库根目录可执行以下命令，对真实服务检查双语公开页、教程发布状态、导航、搜索、sitemap、静态索引和 `llms.txt`：
+
+```bash
+pnpm --filter @fastgpt/document build
+pnpm --filter @fastgpt/document exec next start --hostname 127.0.0.1 --port 3005
+# 在另一终端执行；也可通过 DOCS_BASE_URL 指定已有 QA 文档站
+node document/script/check-doc-publication.mjs --base-url http://127.0.0.1:3005
+```
+
 ## 特殊配置
 
 ### 增加顶层导航栏

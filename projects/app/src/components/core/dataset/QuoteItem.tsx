@@ -88,8 +88,6 @@ const QuoteItem = ({
   skillId,
   sourceType,
   outLinkAuthData,
-  customUid,
-  authProxy,
   ...RawSourceBoxProps
 }: {
   quoteItem: SearchDataResponseQuoteItemType & {
@@ -100,7 +98,7 @@ const QuoteItem = ({
   canDownloadSource?: boolean;
   canEditData?: boolean;
   canEditDataset?: boolean;
-} & Omit<ReadCollectionSourceBodyType, 'collectionId'>) => {
+} & Omit<ReadCollectionSourceBodyType, 'collectionId' | 'customUid' | 'authProxy'>) => {
   const { t } = useTranslation();
   const [editInputData, setEditInputData] = useState<{ dataId: string; collectionId: string }>();
 
@@ -218,14 +216,7 @@ const QuoteItem = ({
             rawSourceId={quoteItem.sourceId}
             canView={canDownloadSource}
             {...RawSourceBoxProps}
-            {...getChatAuthTargetInput({
-              appId,
-              skillId,
-              sourceType,
-              outLinkAuthData,
-              customUid,
-              authProxy
-            })}
+            {...getChatAuthTargetInput({ appId, skillId, sourceType, outLinkAuthData })}
           />
           <Box flex={1} />
           {quoteItem.id && canEditData && (

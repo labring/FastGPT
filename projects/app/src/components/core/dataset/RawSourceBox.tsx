@@ -10,7 +10,7 @@ import type { ReadCollectionSourceBodyType } from '@fastgpt/global/openapi/core/
 import type { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 
 type Props = BoxProps &
-  ReadCollectionSourceBodyType & {
+  Omit<ReadCollectionSourceBodyType, 'customUid' | 'authProxy'> & {
     collectionType?: DatasetCollectionTypeEnum;
     rawSourceName?: string;
     rawSourceId?: string;
@@ -30,8 +30,6 @@ const RawSourceBox = ({
   chatId,
   chatItemDataId,
   outLinkAuthData,
-  customUid,
-  authProxy,
 
   ...props
 }: Props) => {
@@ -45,14 +43,7 @@ const RawSourceBox = ({
   );
   const read = getCollectionSourceAndOpen({
     collectionId,
-    ...getChatAuthTargetInput({
-      appId,
-      skillId,
-      sourceType,
-      outLinkAuthData,
-      customUid,
-      authProxy
-    }),
+    ...getChatAuthTargetInput({ appId, skillId, sourceType, outLinkAuthData }),
     chatId,
     chatItemDataId
   });

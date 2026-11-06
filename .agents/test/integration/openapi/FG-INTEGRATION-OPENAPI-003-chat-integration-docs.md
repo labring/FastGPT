@@ -24,6 +24,8 @@ sources:
   - projects/app/src/pageComponents/apidoc/UnionParameterCard.ts
   - document/content/openapi/best-practices/app-integration.mdx
   - document/content/openapi/best-practices/app-integration.en.mdx
+  - document/script/check-doc-publication.mjs
+  - document/middleware.ts
 routes:
   - GET /api/apidoc/systemopenapi.json
   - GET /api/apidoc/devapi.json
@@ -51,6 +53,7 @@ baseline: "feed8765429044a2f630358441e584d50f068a20"
 - 复用脚本公共成功判断；真实响应、Chat/item 白名单快照和删除差集共同判定，HTTP 200 本身不代表通过。接口的全部负向/边界矩阵复用 HISTORY-FEEDBACK-003，不在教程中复制。
 - 每行记录本轮 DOM/截图或 HTTP/数据库证据。页面 JS 异常失败；单页等待最长 120 秒。U5 应用、会话、Key 随本轮清单通过正常业务入口回收。配图为明确占位，不能按缺图判失败。
 - U4 按教程当前 frontmatter 验收发布状态：`draft: true` 时导航不含教程、直接访问 404；移除标记或设为 false 后，继续执行完整双语正文、导航、刷新和站内链接验收。不能把页面因错误意外不可用判成草稿通过。
+- U4 必须先确认两种语言的 `/openapi/intro` 均为 HTTP 200 且正文标题正确。`docsBaseUrl` 指向独立文档服务；未部署或误指向主站时不得判为通过。可先执行 `node document/script/check-doc-publication.mjs --base-url <文档服务地址>`，核对真实路由、导航、搜索、sitemap、静态索引和 LLM 导出。
 
 ## 测试步骤
 

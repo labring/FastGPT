@@ -22,8 +22,6 @@ type ChatAuthQueryInputSource = Partial<Record<'appId' | 'skillId', string>> &
   };
 export type ChatAuthTargetInput = OptionalChatTargetInput & {
   outLinkAuthData?: OutLinkChatAuthProps;
-  customUid?: string;
-  authProxy?: ChatAuthProxy;
 };
 export type ChatAuthQueryTargetInput = OptionalChatTargetInput & {
   outLinkAuthData?: string;
@@ -103,7 +101,7 @@ export const toChatAuthApiTarget = ({
  * 从已是 OpenAPI raw 格式的对象中提取 chat 鉴权 target。
  *
  * 引用详情、原文件读取等 metadata 会把数据集 sourceId/sourceName 一起携带；
- * 保留 chat 资源及互斥使用者身份，避免和数据集来源字段混用或在引用跳转时丢失用户范围。
+ * 这里只保留 Web 登录态或分享的 chat 鉴权字段，避免和数据集来源字段混用。
  */
 export function getChatAuthTargetInput(
   target: ResolvedChatAuthTargetInput
@@ -111,19 +109,6 @@ export function getChatAuthTargetInput(
 export function getChatAuthTargetInput(target: ChatAuthTargetInput): OptionalChatAuthTargetInput;
 export function getChatAuthTargetInput(target: ChatAuthTargetInput): OptionalChatAuthTargetInput {
   const outLinkAuthData = target.outLinkAuthData;
-  const hasUserIdentity = target.customUid !== undefined || target.authProxy !== undefined;
-  if (
-    hasUserIdentity &&
-    (target.outLinkAuthData || target.skillId || isAuxiliaryGenerationSourceType(target.sourceType))
-  ) {
-    throw new Error('User identity requires an ordinary App chat');
-  }
-  if (target.customUid !== undefined && target.authProxy !== undefined) {
-    throw new Error('customUid and authProxy are mutually exclusive');
-  }
-  const identity = target.authProxy
-    ? { authProxy: target.authProxy, customUid: undefined }
-    : { customUid: target.customUid, authProxy: undefined };
   if (outLinkAuthData?.shareId && outLinkAuthData.outLinkUid) {
     return { outLinkAuthData };
   }
@@ -135,11 +120,9 @@ export function getChatAuthTargetInput(target: ChatAuthTargetInput): OptionalCha
   if (target.appId) {
     return isAuxiliaryGenerationSourceType(target.sourceType)
       ? { appId: target.appId, sourceType: target.sourceType }
-      : { appId: target.appId, ...identity };
+      : { appId: target.appId };
   }
 
-  if (target.authProxy !== undefined) return { authProxy: target.authProxy };
-  if (target.customUid !== undefined) return { customUid: target.customUid };
   return {};
 }
 

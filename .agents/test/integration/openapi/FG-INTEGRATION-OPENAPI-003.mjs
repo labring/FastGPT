@@ -7,6 +7,7 @@ import { appKeyWorld } from '../../support/app-key.mjs';
 import path from 'node:path';
 import { readFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
+import { checkDocumentPublication } from '../../../../document/script/check-doc-publication.mjs';
 
 const matter = createRequire(new URL('../../../../document/package.json', import.meta.url))(
   'gray-matter'
@@ -80,6 +81,12 @@ async function tutorial(context) {
 /** 真实 Scalar 与双语文档页面操作；字段断言只使用当前分支可见内容。 */
 async function docs(context) {
   const c = createScenario(context);
+  if (context.itemId === 'U4') {
+    const publication = await checkDocumentPublication({
+      baseUrl: c.fixture.docsBaseUrl ?? 'http://localhost:3005'
+    });
+    c.record('文档发布真实 HTTP 检查', publication);
+  }
   const ui = await browserSession(context, { scenario: c, role: 'owner' });
   const p = ui.page,
     errors = [];
@@ -130,7 +137,15 @@ async function docs(context) {
       ['zh-CN', '应用对接', '最佳实践'],
       ['en', 'App integration', 'Best practices']
     ]) {
-      await p.goto(base + '/' + locale + '/openapi/intro', { timeout: 120000 });
+      const intro = await p.goto(base + '/' + locale + '/openapi/intro', { timeout: 120000 });
+      assert.equal(
+        intro.status(),
+        200,
+        '文档服务必须已部署且公开介绍页可用，不能把统一 404 当作草稿通过'
+      );
+      await expect(p.locator('main h1').first()).toContainText(
+        locale === 'en' ? 'API Documentation Introduction' : 'API 文档介绍'
+      );
       const link = p.getByRole('link', { name: title, exact: true }).first();
       const suffix = locale === 'en' ? '.en' : '';
       const { data } = matter(
