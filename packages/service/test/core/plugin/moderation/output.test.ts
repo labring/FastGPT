@@ -323,9 +323,7 @@ describe('Output / Stream Guard (Anchor 3)', () => {
       });
 
       expect(streamSpy).not.toHaveBeenCalled();
-      expect(res.error?.[NodeOutputKeyEnum.errorText]).toBe(
-        MODERATION_BLOCKED_ERROR_MESSAGE
-      );
+      expect(res.error?.[NodeOutputKeyEnum.errorText]).toBe(MODERATION_BLOCKED_ERROR_MESSAGE);
     });
   });
 
@@ -377,9 +375,184 @@ describe('Output / Stream Guard (Anchor 3)', () => {
         }
       } as any);
 
-      expect(res.error?.[NodeOutputKeyEnum.errorText]).toBe(
-        MODERATION_BLOCKED_ERROR_MESSAGE
-      );
+      expect(res.error?.[NodeOutputKeyEnum.errorText]).toBe(MODERATION_BLOCKED_ERROR_MESSAGE);
+    });
+  });
+
+  describe('createLLMResponse output & reasoning moderation & usage preservation', () => {
+    it('blocks non-stream toxic answer, suppresses onStreaming/onReasoning, and retains usage when throwError=false', async () => {
+      vi.spyOn(checkerMod, 'checkContentByPolicy').mockImplementation(async ({ text }) => {
+        if (text === 'toxic answer') {
+          return { action: ModerationActionEnum.block, isPass: false, text };
+        }
+        return { action: ModerationActionEnum.pass, isPass: true, text };
+      });
+
+      const createChatCompletionMod =
+        await import('../../../../core/ai/llm/request/createChatCompletion');
+      vi.spyOn(createChatCompletionMod, 'createChatCompletion').mockResolvedValue({
+        isStreamResponse: false,
+        requestMeta: { usedUserOpenAIKey: false },
+        response: {
+          id: 'test',
+          choices: [
+            {
+              finish_reason: 'stop',
+              message: { role: 'assistant', content: 'toxic answer' }
+            }
+          ],
+          usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 }
+        } as any
+      });
+
+      const { createLLMResponse } =
+        await import('../../../../core/ai/llm/request/createLLMResponse');
+      const onStreaming = vi.fn();
+      const onReasoning = vi.fn();
+      const modelItem = {
+        model: 'gpt-4o',
+        name: 'GPT-4o',
+        config: { reasoning: false }
+      } as any;
+      const result = await createLLMResponse({
+        throwError: false,
+        modelData: modelItem,
+        body: {
+          model: modelItem,
+          messages: [{ role: 'user', content: 'hello' }]
+        } as any,
+        onStreaming,
+        onReasoning
+      });
+
+      expect(onStreaming).not.toHaveBeenCalled();
+      expect(onReasoning).not.toHaveBeenCalled();
+      expect(result.answerText).toBe('');
+      expect(result.error).toBeInstanceOf(UserError);
+      expect(result.usage.inputTokens).toBe(10);
+      expect(result.usage.outputTokens).toBe(5);
+    });
+
+    it('blocks non-stream toxic reasoning, suppresses callbacks, and retains usage when throwError=false', async () => {
+      vi.spyOn(checkerMod, 'checkContentByPolicy').mockImplementation(async ({ text }) => {
+        if (text === 'toxic thought') {
+          return { action: ModerationActionEnum.block, isPass: false, text };
+        }
+        return { action: ModerationActionEnum.pass, isPass: true, text };
+      });
+
+      const createChatCompletionMod =
+        await import('../../../../core/ai/llm/request/createChatCompletion');
+      vi.spyOn(createChatCompletionMod, 'createChatCompletion').mockResolvedValue({
+        isStreamResponse: false,
+        requestMeta: { usedUserOpenAIKey: false },
+        response: {
+          id: 'test',
+          choices: [
+            {
+              finish_reason: 'stop',
+              message: {
+                role: 'assistant',
+                content: 'safe answer',
+                reasoning_content: 'toxic thought'
+              }
+            }
+          ],
+          usage: { prompt_tokens: 10, completion_tokens: 8, total_tokens: 18 }
+        } as any
+      });
+
+      const { createLLMResponse } =
+        await import('../../../../core/ai/llm/request/createLLMResponse');
+      const onStreaming = vi.fn();
+      const onReasoning = vi.fn();
+      const modelItem = {
+        model: 'gpt-4o',
+        name: 'GPT-4o',
+        config: { reasoning: true }
+      } as any;
+      const result = await createLLMResponse({
+        throwError: false,
+        modelData: modelItem,
+        body: {
+          model: modelItem,
+          messages: [{ role: 'user', content: 'hello' }]
+        } as any,
+        onStreaming,
+        onReasoning
+      });
+
+      expect(onStreaming).not.toHaveBeenCalled();
+      expect(onReasoning).not.toHaveBeenCalled();
+      expect(result.answerText).toBe('');
+      expect(result.reasoningText).toBe('');
+      expect(result.error).toBeInstanceOf(UserError);
+      expect(result.usage.inputTokens).toBe(10);
+      expect(result.usage.outputTokens).toBe(8);
+    });
+
+    it('blocks toxic tool parameters, suppresses onToolCall, and retains usage when throwError=false', async () => {
+      vi.spyOn(checkerMod, 'checkContentByPolicy').mockImplementation(async ({ text }) => {
+        if (text.includes('toxic param')) {
+          return { action: ModerationActionEnum.block, isPass: false, text };
+        }
+        return { action: ModerationActionEnum.pass, isPass: true, text };
+      });
+
+      const createChatCompletionMod =
+        await import('../../../../core/ai/llm/request/createChatCompletion');
+      vi.spyOn(createChatCompletionMod, 'createChatCompletion').mockResolvedValue({
+        isStreamResponse: false,
+        requestMeta: { usedUserOpenAIKey: false },
+        response: {
+          id: 'test',
+          choices: [
+            {
+              finish_reason: 'tool_calls',
+              message: {
+                role: 'assistant',
+                content: null,
+                tool_calls: [
+                  {
+                    id: 'call_1',
+                    type: 'function',
+                    function: {
+                      name: 'search',
+                      arguments: JSON.stringify({ query: 'toxic param' })
+                    }
+                  }
+                ]
+              }
+            }
+          ],
+          usage: { prompt_tokens: 15, completion_tokens: 12, total_tokens: 27 }
+        } as any
+      });
+
+      const { createLLMResponse } =
+        await import('../../../../core/ai/llm/request/createLLMResponse');
+      const onToolCall = vi.fn();
+      const modelItem = {
+        model: 'gpt-4o',
+        name: 'GPT-4o',
+        config: { reasoning: false }
+      } as any;
+      const result = await createLLMResponse({
+        throwError: false,
+        modelData: modelItem,
+        body: {
+          model: modelItem,
+          messages: [{ role: 'user', content: 'search' }],
+          tools: [{ type: 'function', function: { name: 'search', parameters: {} } }]
+        } as any,
+        onToolCall
+      });
+
+      expect(onToolCall).not.toHaveBeenCalled();
+      expect(result.toolCalls ?? []).toEqual([]);
+      expect(result.error).toBeInstanceOf(UserError);
+      expect(result.usage.inputTokens).toBe(15);
+      expect(result.usage.outputTokens).toBe(12);
     });
   });
 });

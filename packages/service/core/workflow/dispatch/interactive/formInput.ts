@@ -158,6 +158,8 @@ export const dispatchFormInput = async (props: Props): Promise<FormInputResponse
       for (const formItem of resolvedInputForms) {
         const candidateValues: Array<{ field: string; value: unknown }> = [
           { field: `formInput.${formItem.key}.label`, value: formItem.label },
+          { field: `formInput.${formItem.key}.description`, value: formItem.description },
+          { field: `formInput.${formItem.key}.value`, value: formItem.value },
           { field: `formInput.${formItem.key}.defaultValue`, value: formItem.defaultValue }
         ];
         if (Array.isArray(formItem.list)) {

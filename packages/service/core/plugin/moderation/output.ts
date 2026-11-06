@@ -193,6 +193,10 @@ export class StreamModerationBuffer {
     return this.isBlocked;
   }
 
+  get enabled(): boolean {
+    return this.isEnabled;
+  }
+
   /**
    * 推入新生成的流式增量文本
    */
