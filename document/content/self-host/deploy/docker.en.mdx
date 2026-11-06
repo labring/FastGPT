@@ -266,7 +266,6 @@ docker compose up -d
 ### 5. Access FastGPT
 
 Access FastGPT via the port/domain opened in step 3. The login username is `root`:
-
 - **Version v4.17.3 and later**: The initial password is fixed at `123456`. An activation modal requires setting a new password upon first login. If forgotten, reset the password using the built-in CLI script. See [Modify and Reset Root Password](/en/self-host/config/root-password).
 - **Legacy versions (v4.17.2 and earlier)**: The password is set via `DEFAULT_ROOT_PSW` in `docker-compose.yml`. When deploying with the interactive script, a random password is generated and displayed upon completion. Each container restart updates the password to this value.
 

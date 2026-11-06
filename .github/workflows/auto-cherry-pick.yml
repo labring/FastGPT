@@ -53,7 +53,7 @@ jobs:
           title: ${{ fromJSON(steps.pr_title.outputs.result) }}
           body: |
             fix(cherry-pick): Automated CherryPick ${{ inputs.prNumber }} for ${{ inputs.target }}
-
+            
             Automated changes by [create-pull-request](https://github.com/peter-evans/create-pull-request) GitHub action
           commit-message: |
             🤖 cherry-pick to ${{ inputs.target }} using robot.
