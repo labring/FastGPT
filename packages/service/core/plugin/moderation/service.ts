@@ -363,18 +363,22 @@ export const checkModerationForTest = async ({
   const detail = await getModerationPluginDetail({ pluginId, version, lang });
   const secretKeys = getModerationSecretKeys(detail.secretSchema);
 
-  // 临时 secrets 优先；未传则解密已保存配置
+  const decryptedExisting = existing?.secretsVal
+    ? decryptModerationSecrets({
+        secretsVal: existing.secretsVal,
+        secretKeys,
+        decrypt: decryptSecret
+      })
+    : undefined;
+
+  // 临时 secrets 优先（与解密后的已有配置合并，保留未编辑掩码代表的明文凭据）；未传则直接使用解密配置
   const resolvedSecrets = secrets
     ? mergeModerationSecretsForUpdate({
         incoming: secrets,
-        existing: existing?.secretsVal,
+        existing: decryptedExisting,
         secretKeys
       })
-    : decryptModerationSecrets({
-        secretsVal: existing?.secretsVal,
-        secretKeys,
-        decrypt: decryptSecret
-      });
+    : decryptedExisting;
 
   return checkModerationContent({
     pluginId,

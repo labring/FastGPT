@@ -449,7 +449,16 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
               ]
             });
           } else if (activeTab === 'moderation' && shouldReinstallOfflineTool) {
-            await postAdminRestoreModerationPlugin({ pluginId: tool.id });
+            try {
+              await postAdminRestoreModerationPlugin({ pluginId: tool.id });
+            } catch (err) {
+              const downloadUrl = await getMarketplaceDownloadURL(tool.id, version);
+              if (!downloadUrl) throw err;
+
+              await intallPluginWithUrl({
+                downloadUrls: [downloadUrl]
+              });
+            }
           } else if (shouldReinstallOfflineTool && offlineTool) {
             await updateSystemToolStatus(offlineTool.systemToolId, PluginStatusEnum.Normal);
           } else {

@@ -53,8 +53,10 @@ export async function handler(
   }
 
   // Remote lifecycle must succeed before committing the local business status.
-  if (pluginId.startsWith('systemTool-')) {
-    const rawPluginId = pluginId.slice('systemTool-'.length).split('/')[0];
+  // Only bundle-level system tools invoke remote lifecycle; child tools only update local state.
+  const isChildTool = pluginId.slice('systemTool-'.length).includes('/');
+  if (pluginId.startsWith('systemTool-') && !isChildTool) {
+    const rawPluginId = pluginId.slice('systemTool-'.length);
     if (updateFields.status === PluginStatusEnum.Offline) await disableSystemPlugin(rawPluginId);
     else if (
       updateFields.status === PluginStatusEnum.Normal &&
