@@ -29,7 +29,10 @@ export type IFileSystem = {
   deleteDirectories(paths: string[]): Promise<void>;
   listDirectory(path: string): Promise<DirectoryEntry[]>;
 
-  /** Returns metadata for found paths; missing paths are omitted from the map. */
+  /**
+   * 返回已找到路径的元数据，仅省略确定不存在（ENOENT）的路径。
+   * 权限、传输、命令及响应校验错误必须抛出，整批查询失败时不返回部分 Map。
+   */
   getFileInfo(paths: string[]): Promise<Map<string, FileInfo>>;
   setPermissions(entries: PermissionEntry[]): Promise<void>;
   search(pattern: string, path?: string): Promise<SearchResult[]>;
