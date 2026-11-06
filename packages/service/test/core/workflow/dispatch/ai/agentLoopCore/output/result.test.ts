@@ -184,6 +184,51 @@ describe('summarizeAgentLoopCoreResult', () => {
     );
   });
 
+  it('keeps time granularity config on userInput form fields', () => {
+    const inputForm = [
+      {
+        type: 'timePointSelect',
+        key: 'startAt',
+        label: '开始时间',
+        value: '',
+        valueType: 'string',
+        required: true,
+        timeGranularity: 'day',
+        timeRangeStart: '2026-01-01 00:00:00',
+        timeRangeEnd: '2026-12-31 23:59:59'
+      }
+    ];
+
+    expect(
+      summarizeAgentLoopCoreResult({
+        status: 'interactive',
+        requestIds: [],
+        completeMessages: [],
+        assistantMessages: [],
+        assistantResponses: [],
+        finishReason: 'stop',
+        usages: [],
+        pause: {
+          toolCallId: 'call_form',
+          interactive: {
+            type: 'userInput',
+            params: {
+              description: '',
+              inputForm
+            }
+          }
+        }
+      }).interactive
+    ).toEqual(
+      expect.objectContaining({
+        type: 'userInput',
+        params: expect.objectContaining({
+          inputForm: [expect.objectContaining(inputForm[0])]
+        })
+      })
+    );
+  });
+
   it('passes explicitly wrapped workflow state through without adding a wrapper', () => {
     const childrenResponse = {
       type: 'userSelect'
