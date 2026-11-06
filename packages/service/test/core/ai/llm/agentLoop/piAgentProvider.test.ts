@@ -2004,5 +2004,58 @@ describe('runPiAgentLoop', () => {
     expect(emittedEvents.some((e) => e.type === 'answer_delta' && e.text.includes('toxic'))).toBe(
       false
     );
+    expect(result.assistantMessages.every((msg) => !msg.content || msg.content === '')).toBe(true);
+    expect(
+      result.completeMessages.every(
+        (msg) => msg.role !== 'assistant' || !msg.content || msg.content === ''
+      )
+    ).toBe(true);
+    const endEvent = emittedEvents.find((e) => e.type === 'llm_request_end');
+    expect(endEvent?.answerText).toBe('');
+    expect(endEvent?.toolCalls).toEqual([]);
+  });
+
+  it('blocks toxic tool parameters in piAgent and stops tool execution', async () => {
+    const outputMod = await import('@fastgpt/service/core/plugin/moderation/output');
+    vi.spyOn(outputMod, 'checkToolParamsModeration').mockResolvedValue({
+      isPass: false,
+      blockErrorMessage: 'Tool param violated moderation'
+    });
+
+    const executeTool = vi.fn();
+    const emittedEvents: any[] = [];
+    agentToolToExecute.value = {
+      name: 'search',
+      callId: 'call_toxic_param',
+      args: { q: 'toxic parameter' }
+    };
+
+    const result = await runPiAgentLoop({
+      input: {
+        messages: [{ role: 'user', content: 'hello' }]
+      },
+      runtime: {
+        llmParams: { model: 'gpt-5' },
+        toolCatalog: {
+          runtimeTools: [
+            {
+              type: 'function',
+              function: {
+                name: 'search',
+                description: 'Search',
+                parameters: { type: 'object', properties: {} }
+              }
+            }
+          ]
+        },
+        executeTool,
+        checkIsStopping: vi.fn(() => false),
+        teamId: 'test_team',
+        emitEvent: (e) => emittedEvents.push(e)
+      }
+    });
+
+    expect(executeTool).not.toHaveBeenCalled();
+    expect(emittedEvents.some((e) => e.type === 'tool_run_start')).toBe(false);
   });
 });

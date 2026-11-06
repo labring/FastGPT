@@ -4,6 +4,7 @@ import {
   getRetainedModerationDetail
 } from '../../../thirdProvider/fastgptPlugin/lifecycle';
 import { mongoSessionRun } from '../../../common/mongo/sessionRun';
+import type { ClientSession } from '../../../common/mongo';
 import { decryptSecret, encryptSecret } from '../../../common/secret/aes256gcm';
 import {
   findAllModerationConfigs,
@@ -183,6 +184,63 @@ export const getAdminModerationPluginList = async ({
  * Saving synchronously probes the resolved configuration before any writes or enablement.
  * A block/suspected verdict is a healthy response; provider errors and runtime failures reject the save.
  */
+/**
+ * 权威策略记录竞争点：所有启用操作均争用同一条 moderationPolicy 记录，
+ * 通过在同一事务内更新合法字段（value / createTime）产生排他行锁或写冲突，避免并发双启用。
+ */
+const syncPolicyContentionRecord = async ({
+  session,
+  activePluginId,
+  policy
+}: {
+  session?: ClientSession | null;
+  activePluginId?: string;
+  policy?: SystemModerationPolicyType;
+}) => {
+  const existing = await MongoSystemConfigs.findOne({
+    type: SystemConfigsTypeEnum.moderationPolicy
+  })
+    .sort({ createTime: 1 })
+    .select('_id value')
+    .session(session ?? null)
+    .lean();
+
+  if (existing) {
+    await MongoSystemConfigs.findOneAndUpdate(
+      { _id: existing._id },
+      {
+        $set: {
+          ...(policy
+            ? { value: policy }
+            : activePluginId
+              ? { 'value.activePluginId': activePluginId }
+              : {}),
+          createTime: new Date()
+        }
+      },
+      { new: true, session }
+    );
+  } else {
+    const value = policy ?? {
+      ...DefaultSystemModerationPolicy,
+      ...(activePluginId ? { activePluginId } : {})
+    };
+    await MongoSystemConfigs.findOneAndUpdate(
+      { type: SystemConfigsTypeEnum.moderationPolicy },
+      {
+        $set: {
+          value,
+          createTime: new Date()
+        },
+        $setOnInsert: {
+          type: SystemConfigsTypeEnum.moderationPolicy
+        }
+      },
+      { upsert: true, new: true, session }
+    );
+  }
+};
+
 export const saveModerationConfig = async ({
   pluginId,
   source,
@@ -251,12 +309,7 @@ export const saveModerationConfig = async ({
   // 3. 写入。启用时在同一事务内停用其他插件，避免出现两个同时启用的窗口
   const saved = await mongoSessionRun(async (session) => {
     if (enabled === true) {
-      // 竞争点：所有启用操作均争用同一条 moderationPolicy 权威全局记录，确保并发启用产生排他行锁或写冲突
-      await MongoSystemConfigs.findOneAndUpdate(
-        { type: SystemConfigsTypeEnum.moderationPolicy },
-        { $set: { updateTime: new Date() } },
-        { upsert: true, session }
-      );
+      await syncPolicyContentionRecord({ session, activePluginId: pluginId });
     }
 
     const record = await upsertModerationConfig({
@@ -458,17 +511,7 @@ export const updateModerationPolicy = async (
 
   // 1. 同步插件启用状态并保存全局策略记录（在同一事务内争用权威记录，避免并发双启用）
   return await mongoSessionRun(async (session) => {
-    await MongoSystemConfigs.findOneAndUpdate(
-      { type: SystemConfigsTypeEnum.moderationPolicy },
-      {
-        $set: {
-          value: validated,
-          createTime: new Date(),
-          updateTime: new Date()
-        }
-      },
-      { upsert: true, new: true, session }
-    );
+    await syncPolicyContentionRecord({ session, policy: validated });
 
     if (validated.enabled && validated.activePluginId) {
       await enableSingleModerationConfig({ pluginId: validated.activePluginId, session });

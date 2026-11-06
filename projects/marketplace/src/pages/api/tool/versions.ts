@@ -8,7 +8,12 @@ export type ToolListQuery = {
 };
 export type ToolListBody = {};
 
-export type ToolListResponse = { toolId: string; version: string; etag?: string }[];
+export type ToolListResponse = {
+  toolId: string;
+  version: string;
+  etag?: string;
+  type?: 'tool' | 'moderation';
+}[];
 
 async function handler(
   req: ApiRequestProps<ToolListBody, ToolListQuery>,

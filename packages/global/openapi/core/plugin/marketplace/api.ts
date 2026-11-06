@@ -387,6 +387,10 @@ export type GetMarketplaceToolVersionsQueryType = z.infer<
   typeof GetMarketplaceToolVersionsQuerySchema
 >;
 export const MarketplaceToolVersionSchema = z.object({
+  type: z.enum(['tool', 'moderation']).optional().meta({
+    example: 'tool',
+    description: '插件类型'
+  }),
   toolId: z.string().meta({ example: 'fastgpt-web-search', description: '工具 ID' }),
   version: z.string().meta({ example: '1.0.0', description: '插件版本' }),
   etag: z.string().optional().meta({

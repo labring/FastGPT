@@ -400,9 +400,13 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
     manual: false
   });
 
-  const { data: marketplaceVersions } = useRequest(getMarketplaceToolVersions, {
-    manual: false
-  });
+  const { data: marketplaceVersions } = useRequest(
+    () => getMarketplaceToolVersions(undefined, activeTab),
+    {
+      manual: false,
+      refreshDeps: [activeTab]
+    }
+  );
 
   // Controler
   const { runAsync: handleInstallTool } = useRequest(
@@ -434,11 +438,7 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
 
         try {
           if (mode === 'team') {
-            const downloadUrl = await getMarketplaceDownloadURL(
-              tool.id,
-              version,
-              (tool as any).type
-            );
+            const downloadUrl = await getMarketplaceDownloadURL(tool.id, version, tool.type);
             if (!downloadUrl) return;
             await installTeamPluginWithUrl({
               downloadUrls: [downloadUrl],
@@ -459,7 +459,7 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
               const downloadUrl = await getMarketplaceDownloadURL(
                 tool.id,
                 version,
-                (tool as any).type || 'moderation'
+                tool.type || 'moderation'
               );
               if (!downloadUrl) throw err;
 
@@ -470,11 +470,7 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
           } else if (shouldReinstallOfflineTool && offlineTool) {
             await updateSystemToolStatus(offlineTool.systemToolId, PluginStatusEnum.Normal);
           } else {
-            const downloadUrl = await getMarketplaceDownloadURL(
-              tool.id,
-              version,
-              (tool as any).type
-            );
+            const downloadUrl = await getMarketplaceDownloadURL(tool.id, version, tool.type);
             if (!downloadUrl) return;
 
             await intallPluginWithUrl({
@@ -521,7 +517,7 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
 
         try {
           // Get download URL
-          const downloadUrl = await getMarketplaceDownloadURL(tool.id, version, (tool as any).type);
+          const downloadUrl = await getMarketplaceDownloadURL(tool.id, version, tool.type);
           if (!downloadUrl) return;
 
           // Call install interface for update
@@ -698,7 +694,8 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
             etag: tool.etag,
             source: tool.source,
             associatedPluginId: installedTool?.systemToolId,
-            downloadCount: tool.downloadCount
+            downloadCount: tool.downloadCount,
+            type: tool.type
           };
         })
         ?.filter((tool) => {
@@ -741,7 +738,8 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
           update: true,
           version: marketplaceTool?.version,
           etag: marketplaceTool?.etag,
-          downloadCount: 0
+          downloadCount: 0,
+          type: (installedPlugin as any).type ?? marketplaceTool?.type
         };
       });
 
@@ -1283,10 +1281,10 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
           // TODO：这里复用 plugin 的类型，可以去掉 ts-ignore
           //@ts-ignore
           onFetchDetail={async (toolId: string, version?: string) =>
-            await getMarketplaceToolDetail({ toolId, version, type: (selectedTool as any).type })
+            await getMarketplaceToolDetail({ toolId, version, type: selectedTool.type })
           }
           onFetchVersions={(toolId?: string) =>
-            getMarketplaceToolVersions(toolId, (selectedTool as any).type)
+            getMarketplaceToolVersions(toolId, selectedTool.type)
           }
         />
       )}
@@ -1303,10 +1301,14 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
           singleUpdatingToolIds={updatingToolIds}
           deletingToolIds={installingOrDeletingToolIds}
           //@ts-ignore
-          onFetchDetail={async (toolId: string, version?: string) =>
-            await getMarketplaceToolDetail({ toolId, version })
-          }
-          onFetchVersions={getMarketplaceToolVersions}
+          onFetchDetail={async (toolId: string, version?: string) => {
+            const current = updatableTools.find((t) => t.id === toolId);
+            return await getMarketplaceToolDetail({ toolId, version, type: current?.type });
+          }}
+          onFetchVersions={(toolId?: string) => {
+            const current = updatableTools.find((t) => t.id === toolId);
+            return getMarketplaceToolVersions(toolId, current?.type);
+          }}
         />
       )}
       <UninstallConfirmModal />
