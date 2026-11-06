@@ -79,7 +79,9 @@ export enum AuditEventEnum {
   EXPORT_DATASET = 'EXPORT_DATASET',
   CREATE_DATASET_FOLDER = 'CREATE_DATASET_FOLDER',
   //Collection
+  /** @deprecated 创建集合已统一由 DatasetAuditEventEnum.DATASET_COLLECTION_CREATE 记录，保留枚举仅为兼容历史日志展示。 */
   CREATE_COLLECTION = 'CREATE_COLLECTION',
+  /** @deprecated 集合更新已统一由 DatasetAuditEventEnum.DATASET_COLLECTION_UPDATE 记录，保留枚举仅为兼容历史日志展示。 */
   UPDATE_COLLECTION = 'UPDATE_COLLECTION',
   DELETE_COLLECTION = 'DELETE_COLLECTION',
   RETRAIN_COLLECTION = 'RETRAIN_COLLECTION',

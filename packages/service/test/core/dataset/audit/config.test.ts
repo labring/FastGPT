@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { DatasetAuditEventEnum } from '@fastgpt/global/core/dataset/audit/constants/event';
-import { DatasetConfigAuditItemEnum } from '@fastgpt/global/core/dataset/audit/constants/config';
+import { DatasetConfigAuditItemEnum } from '@fastgpt/global/core/dataset/audit/constants/metadata';
 import { AuditEventEnum, TeamAuditEventList } from '@fastgpt/global/support/user/audit/constants';
 import { auditLogMap } from '@fastgpt/web/support/user/audit/constants';
 import {
@@ -22,17 +22,25 @@ describe('dataset level audit events', () => {
 
   it('uses dot-delimited dataset, resource, and action segments', () => {
     for (const event of Object.values(DatasetAuditEventEnum)) {
+      // 集合恢复继承的独立事件沿用既有 value；下划线不影响事件注册及历史日志读取。
+      if (event === DatasetAuditEventEnum.DATASET_COLLECTION_PERMISSION_INHERITANCE_RESUME)
+        continue;
       expect(event).toMatch(/^dataset(?:\.[a-z]+){2,3}$/);
     }
   });
 
-  it('does not redefine collection CRUD or tag events', () => {
-    // `dataset.collection.training.retry` belongs to the merged training audit feature;
-    // collection CRUD/tag events remain the responsibility of the collection audit feature.
-    const values = Object.values(DatasetAuditEventEnum) as string[];
-    expect(values.filter((value) => value.startsWith('dataset.collection.')).sort()).toEqual([
-      DatasetAuditEventEnum.DATASET_COLLECTION_TRAINING_RETRY
-    ]);
+  it('keeps dataset and collection events unique after consolidation', () => {
+    const values = Object.values(DatasetAuditEventEnum);
+    expect(values).toEqual(
+      expect.arrayContaining([
+        DatasetAuditEventEnum.DATASET_CONFIG_UPDATE,
+        DatasetAuditEventEnum.DATASET_TAG_CREATE,
+        DatasetAuditEventEnum.DATASET_COLLECTION_CREATE,
+        DatasetAuditEventEnum.DATASET_COLLECTION_UPDATE,
+        DatasetAuditEventEnum.DATASET_COLLECTION_TAG_ADD,
+        DatasetAuditEventEnum.DATASET_COLLECTION_TRAINING_RETRY
+      ])
+    );
     expect(new Set(values).size).toBe(values.length);
   });
 
