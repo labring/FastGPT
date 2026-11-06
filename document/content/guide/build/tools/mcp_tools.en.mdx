@@ -16,23 +16,23 @@ MCP tool sets bring external capabilities into FastGPT. To expose FastGPT applic
 
 You need tool creation permission, an external service URL and credentials, and network access from the FastGPT server.
 
-1. Create an MCP tool set in the workspace.
-2. Enter the provider's MCP URL and required request headers.
+1. Go to **Studio → My Tools** and click **New → MCP Tools** in the upper-right corner.
+2. Enter the provider's **MCP Address** and **Auth Configuration** (**Auth Type** supports None, `Bearer`, `Basic`, or Custom).
 3. Parse the service, inspect the returned tool names, purposes, and parameters, then create the set.
 
 The current client tries Streamable HTTP first. Any 4xx status code other than 429 from that transport triggers a fallback attempt over SSE. Diagnose authentication, network, and service failures from their errors; changing a URL suffix alone does not establish transport compatibility.
 
 ## Connect an authenticated Streamable HTTP service
 
-The current client also supports Streamable HTTP. For example, [Baizhi Cloud Browser (also known as CapyBrowser)](https://baizhibrowser.cloud/) lets FastGPT inspect the current credential identity, prices, and cloud browser run status without an additional FastGPT plugin.
+For example, [Baizhi Cloud Browser (also known as CapyBrowser)](https://baizhibrowser.cloud/) lets FastGPT inspect the current credential identity, prices, and cloud browser run status without an additional FastGPT plugin.
 
-Prepare an API key you are authorized to use in the [Baizhi Cloud console](https://capybrowser.app.baizhi.cloud/) and review the [integration guide](https://capybrowser.app.baizhi.cloud/docs/installation.md). Create an MCP Toolkit, fill in the following settings, then click Parse and create the Toolkit.
+Prepare an API key you are authorized to use in the [Baizhi Cloud console](https://capybrowser.app.baizhi.cloud/) and review the [integration guide](https://capybrowser.app.baizhi.cloud/docs/installation.md). Create an **MCP Tools** item, fill in the following settings, then click **Parse** and complete creation.
 
 | Setting                    | Value                                       |
 | -------------------------- | ------------------------------------------- |
-| MCP URL                    | `https://capybrowser.app.baizhi.cloud/mcp`  |
-| Header authentication type | `Bearer`                                    |
-| Authentication value       | The raw API key, without a `Bearer ` prefix |
+| MCP Address                | `https://capybrowser.app.baizhi.cloud/mcp`  |
+| Auth Type                  | `Bearer` (under **Auth Configuration**)     |
+| Bearer Token / Secret      | The raw API key, without a `Bearer ` prefix |
 
 Bearer mode generates `Authorization: Bearer <API_KEY>`. For a custom header, use the name `Authorization` and the complete value `Bearer <API_KEY>` instead. Choose one method to avoid a duplicate prefix. Keep the key in the authentication settings, out of URLs, chat messages, and public workflows.
 

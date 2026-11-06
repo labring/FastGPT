@@ -81,11 +81,11 @@ Multiple files are concatenated using the following template — filename + cont
 ${content}
 ```
 
-### How to use Document Citation in the AI Chat node
+### How to pass File Links to the AI Chat node
 
-In Workflows, the **AI Chat** node provides a **Document Citation** input port where you can select the **File URLs** output from the **Start** node (or any string array of document URLs) to parse and cite documents directly.
+In Workflows, the **AI Chat** node provides a **File Link** (called "Document Citation" in earlier versions) input port where you can select the **File Link** output from the **Start** node (or any string array of document URLs) to parse and cite documents directly.
 
-It accepts an `Array<string>` input. The URLs are parsed and merged into the corresponding user message, with each file listed in a `<file>` block. The prompt template is (the built-in text is in Chinese):
+It accepts an `Array<string>` input. The URLs are parsed and merged into the corresponding user message, with each file listed in a `<file>` block (`<sandboxPath>` is optional and `<content>` appears only when document text has been parsed). The prompt template is (the built-in text is in Chinese):
 
 ```
 ## 对话文件
@@ -106,7 +106,7 @@ There are some differences from version 4.8.9. We've maintained backward compati
 
 1. Chat Agent (Simple Mode) forces file parsing and injects document content into the prompt, ensuring documents are always referenced.
 2. Document parsing: no longer parses files from chat history.
-3. AI Chat node: supports selecting **File URLs** from the **Start** node directly in the **Document Citation** input port, and automatically parses files from chat history.
+3. AI Chat node: supports selecting **File Link** from the **Start** node directly in the **File Link** (formerly "Document Citation") input port, and automatically parses files from chat history.
 4. Standalone plugin execution: plugin inputs support file-type configuration for receiving uploaded files.
 5. **Workflow calling plugins: bind the file URL variable explicitly to the plugin input.**
 6. **Workflow calling sub-workflows: manually select which file URLs to pass to the sub-workflow.**

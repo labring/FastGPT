@@ -25,9 +25,9 @@ You can use [SigNoz](https://signoz.io/) cloud service or self-host it. Here's h
 
 2. Enable external access for SigNoz
 
-After deployment, click **Details** in P1 to open the app details page, then click **Change** in the top right and enable the external address for port 4318 (skip this step if using internal network).
+After deployment, click **Details** on the target service in the app list to open the app details page, click **Change** in the top right, and enable external access for port 4318 (use the internal address directly when connecting over the internal cluster network).
 
-| P1 | P2 | P3 |
+| Open App Details | Click Change | Enable External Access on 4318 |
 | --- | --- | --- |
 | ![Deploy SigNoz — interface example](/imgs/optimized/image-112.png.webp) | ![Deploy SigNoz — interface example](/imgs/optimized/image-110.png.webp) | ![Deploy SigNoz — interface example](/imgs/optimized/image-111.png.webp) |
 
@@ -43,17 +43,19 @@ After the change completes, wait for the public address to be ready, copy it, an
 
 **Log level options**: `trace` | `debug` | `info` | `warning` | `error` | `fatal`
 
+Replace `<signoz-otlp-endpoint>` below with the public or internal SigNoz OTLP address obtained in the previous step (when FastGPT runs in a container, `localhost` refers to the FastGPT container itself, so use a reachable host or service address):
+
 ```dotenv
 LOG_ENABLE_CONSOLE=true # Enable console logging
 LOG_CONSOLE_LEVEL=debug # Minimum log level for console output
 LOG_ENABLE_OTEL=true # Enable OTEL log collection
 LOG_OTEL_LEVEL=info # Minimum log level for OTEL collection
 LOG_OTEL_SERVICE_NAME=fastgpt-client # Service name passed to the OTLP collector
-LOG_OTEL_URL=http://localhost:4318/v1/logs # Your OTLP collector address — don't omit /v1/logs
+LOG_OTEL_URL=https://<signoz-otlp-endpoint>/v1/logs # OTLP collector address (keep /v1/logs)
 TRACING_ENABLE_OTEL=true # Enable OTEL tracing
-TRACING_OTEL_URL=http://localhost:4318/v1/traces # Trace export address — don't omit /v1/traces
+TRACING_OTEL_URL=https://<signoz-otlp-endpoint>/v1/traces # Trace export address (keep /v1/traces)
 METRICS_ENABLE_OTEL=true # Enable OTEL metrics
-METRICS_OTEL_URL=http://localhost:4318/v1/metrics # Metrics export address — don't omit /v1/metrics
+METRICS_OTEL_URL=https://<signoz-otlp-endpoint>/v1/metrics # Metrics export address (keep /v1/metrics)
 ```
 
 `LOG_*` exports logs only; traces and metrics require `TRACING_*` and `METRICS_*` respectively. In production (`NODE_ENV=production`), the default trace sample ratio is `0.01`; adjust it with `TRACING_OTEL_SAMPLE_RATIO` (`0` to `1`).
@@ -82,6 +84,6 @@ After logging in, if `logs` is lit up in the COMPLETED steps on the right side, 
 
 1. Adjust log retention period
 
-SigNoz monitoring is very disk-intensive. First, avoid storing FastGPT debug logs in SigNoz. Also consider setting the log retention period to 7 days. If SigNoz data stops growing while memory keeps increasing, the disk is full — expand capacity.
+SigNoz is disk-intensive. Keep `LOG_OTEL_LEVEL` at `info` or higher and set the log retention period to 7 days. If disk usage reaches capacity and new telemetry data stops appearing, expand the storage volume.
 
 ![Notes — interface example](/imgs/optimized/image-119.png.webp)

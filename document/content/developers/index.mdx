@@ -23,7 +23,7 @@ API Key 保存在可信服务端。身份代理按需启用，要求接口支持
 
 ## 凭证体系与鉴权方式
 
-各接口分别声明接受的凭证类型，接入前按生成契约确认鉴权要求。
+各接口分别声明接受的凭证类型，接入前在 `/apidoc/systemopenapi` 或 `/apidoc/devapi` 中确认该接口的鉴权方式。
 
 | 凭证类型 | 传输位置 | 权限作用域 | 适用场景 |
 |---|---|---|---|
@@ -47,6 +47,7 @@ API Key 保存在可信服务端。身份代理按需启用，要求接口支持
 - [系统工具开发](/zh-CN/plugin/system-tool-development)：使用 `@fastgpt-plugin/cli` 研发单工具（`defineTool`）与工具集（`defineToolSet`）。
 - [模型预设扩展](/zh-CN/plugin/model-presets)：为新模型供应商添加静态配置与 AIProxy 渠道映射。
 - [插件包与 SDK 参考](/zh-CN/plugin/package-reference)：查阅插件目录规范、打包产物格式与 SDK 类型定义。
+- [技能开发教程](/zh-CN/guide/build/skill/development)：在沙箱中编写自定义技能并绑定到 Agent。
 
 ## 机器可读 OpenAPI 契约
 

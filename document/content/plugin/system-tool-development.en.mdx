@@ -72,8 +72,8 @@ When developing or maintaining SDK/CLI in the `fastgpt-plugin` repository, also 
 
 Recommended environment:
 
-- Node.js version that satisfies the target plugin repository.
-- `pnpm`; the `fastgpt-plugin` repository uses pnpm workspace.
+- Node.js 22 (`>= 22.23.2`).
+- `pnpm` 10; the `fastgpt-plugin` repository uses pnpm workspace.
 - Git.
 - GitHub CLI `gh`, used for forking, creating repositories, and submitting PRs.
 
@@ -115,14 +115,17 @@ pnpx @fastgpt-plugin/cli create
 
 The CLI creates the plugin directory and common files:
 
-| File               | Purpose                                                                   |
-| ------------------ | ------------------------------------------------------------------------- |
-| `index.ts`         | Plugin entry, default-exporting `defineTool()` or `defineToolSet()`.      |
-| `package.json`     | Plugin dependencies and `build`, `build:dev`, `pack`, and `test` scripts. |
-| `tsconfig.json`    | TypeScript config.                                                        |
-| `vitest.config.ts` | Test config.                                                              |
-| `README.md`        | Plugin description.                                                       |
-| `logo.svg`         | Main plugin icon.                                                         |
+| File               | Purpose                                                                                                     |
+| ------------------ | ----------------------------------------------------------------------------------------------------------- |
+| `index.ts`         | Plugin entry, default-exporting `defineTool()` or `defineToolSet()`.                                        |
+| `index.spec.ts`    | Unit test file.                                                                                             |
+| `package.json`     | Plugin dependencies and `build`, `build:dev`, `check`, `dev`, `debug`, `debug:run`, `pack`, and `test` scripts. |
+| `tsconfig.json`    | TypeScript config.                                                                                          |
+| `vitest.config.ts` | Test config.                                                                                                |
+| `README.md`        | Default plugin documentation.                                                                               |
+| `README.zh-CN.md`  | Simplified Chinese plugin documentation.                                                                    |
+| `README.en.md`     | English plugin documentation.                                                                               |
+| `logo.svg`         | Main plugin icon.                                                                                           |
 
 ## 3. Implement Single Tool
 

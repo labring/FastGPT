@@ -4,7 +4,7 @@ description: "排查 FastGPT 自部署环境中模型调用超时、流式响应
 ---
 
 
-### (1)如何检查模型可用性问题
+### (1) 如何检查模型可用性问题
 
 1. 私有部署模型，先确认部署的模型是否正常。
 2. 通过 CURL 请求，直接测试上游模型是否正常运行（云端模型或私有模型均进行测试）
@@ -13,8 +13,8 @@ description: "排查 FastGPT 自部署环境中模型调用超时、流式响应
 
 下面示例直接测试上游服务。将地址、模型与凭证替换为当前渠道支持的值；记录错误时移除凭证。FastGPT 渠道配置见[模型配置](/zh-CN/self-host/config/model/intro)。
 
-<Tabs items={['LLM模型','Embedding模型','Rerank 模型','TTS 模型','语音识别模型']}>
-  <Tab value="LLM模型">
+<Tabs items={['LLM 模型','Embedding 模型','Rerank 模型','TTS 模型','语音识别模型']}>
+  <Tab value="LLM 模型">
 ```bash
 curl https://api.openai.com/v1/chat/completions \
   -H "Content-Type: application/json" \
@@ -34,7 +34,7 @@ curl https://api.openai.com/v1/chat/completions \
   }'
 ```
   </Tab>
-  <Tab value="Embedding模型">
+  <Tab value="Embedding 模型">
 ```bash
 curl https://api.openai.com/v1/embeddings \
   -H "Authorization: Bearer $OPENAI_API_KEY" \
@@ -85,7 +85,7 @@ curl https://api.openai.com/v1/audio/transcriptions \
 
 ---
 
-### (2)报错 - 模型响应为空/模型报错
+### (2) 报错 - 模型响应为空/模型报错
 
 空响应可能来自上游拒绝请求、参数不兼容或事件流提前结束。检查 FastGPT 模型调用日志，核对实际请求与上游返回。分别验证 JSON 与流式模式；`stream: false` 有时能返回更完整的错误信息。
 
@@ -117,13 +117,13 @@ curl --location --request POST 'https://api.openai.com/v1/chat/completions' \
 ```
 ---
 
-### (3)如何测试模型是否支持工具调用
+### (3) 如何测试模型是否支持工具调用
 
 模型和所选渠道均需支持工具调用。先验证普通对话，再验证以下两轮协议。示例中的地址代表支持 OpenAI Chat Completions 的模型服务或中转地址。
 
 <span id="1-通过-curl-向-oneapi-发起第一轮-stream-模式的-tool-测试" />
 
-##### 1. 通过 `curl` 向模型渠道 发起第一轮 stream 模式的 tool 测试。
+#### 1. 通过 `curl` 向模型渠道发起第一轮 stream 模式的 tool 测试
 
 ```bash
 curl --location --request POST 'https://model.example.com/v1/chat/completions' \
@@ -159,7 +159,7 @@ curl --location --request POST 'https://model.example.com/v1/chat/completions' \
 ```
 
 
-##### 2. 检查响应参数
+#### 2. 检查响应参数
 
 模型决定调用工具时，流式响应中的 `choices[0].delta.tool_calls` 提供调用信息。按索引合并分片中的函数名和参数 JSON，保存实际 `id`。下面是完整片段形状示例：
 
@@ -184,7 +184,7 @@ curl --location --request POST 'https://model.example.com/v1/chat/completions' \
 
 <span id="3-通过-curl-向-oneapi-发起第二轮-stream-模式的-tool-测试" />
 
-##### 3. 通过 `curl` 向模型渠道 发起第二轮 stream 模式的 tool 测试。
+#### 3. 通过 `curl` 向模型渠道发起第二轮 stream 模式的 tool 测试
 
 第二轮把工具结果发送给模型。使用第一轮实际返回的调用 ID、函数名与参数；`example-call-id` 是占位符。预期响应会结合工具结果继续回答；模型也可能继续请求工具。
 
@@ -242,7 +242,7 @@ curl --location --request POST 'https://model.example.com/v1/chat/completions' \
 
 ---
 
-### (4)向量检索得分大于 1
+### (4) 向量检索得分大于 1
 
 核对向量模型的归一化设置、向量后端使用的相似度度量及是否启用重排。分数含义随后端和模型变化；用固定样本确认排序与阈值，参见[检索参数](/zh-CN/guide/dataset/dataset_engine)。
 
@@ -250,11 +250,11 @@ curl --location --request POST 'https://model.example.com/v1/chat/completions' \
 
 ### (5) 当前分组上游负载已饱和，请稍后再试
 
-该报错常来自 OneAPI 等上游中转。检查渠道并发、限流、额度与服务健康；记录请求标识后联系相应服务管理员。切换模型前验证其能力和应用行为。
+该报错来自 AI Proxy 渠道所连的上游服务（如 OneAPI 等中转或模型服务商）。检查渠道并发、限流、额度与服务健康；记录请求标识后联系相应服务管理员。切换模型前验证其能力和应用行为。
 
 ---
 
-### (6) 使用API时在日志中报错 Connection Error 
+### (6) 使用 API 时在日志中报错 Connection Error
 
 从实际发起请求的服务检查 DNS、端口、TLS、代理地址及网络策略，再核对凭证。分别测试上游和 AI Proxy 渠道，确定失败发生在哪一跳。
 

@@ -4,13 +4,14 @@ description: "FastGPT V4.17.0 release notes covering container image updates, up
 releaseTime: '2026-09-11'
 upgradeTags:
   - CONFIG
+  - MIGRATION
 ---
 
 ## Upgrade notes
 
 **Before upgrading to V4.17.0, upgrade to V4.16.x and complete all legacy upgrade scripts required by that release.** The automatic upgrade system in V4.17.0 only manages tasks registered from this release onward. It does not run historical scripts from earlier releases.
 
-Starting with V4.17.0, tasks registered with the system upgrade manager run automatically. FastGPT uses leases to prevent concurrent execution across multiple nodes and heartbeats to check whether each script is still active. You can view each upgrade script's status under **Admin > System upgrade** (`版本升级`).
+Starting with V4.17.0, tasks registered with the system upgrade manager run automatically. FastGPT uses leases to prevent concurrent execution across multiple nodes and heartbeats to check whether each script is still active. You can view each upgrade script's status under **Admin > System upgrade**.
 
 Migration tasks process `100` records per batch by default. For larger deployments, set `SYSTEM_MIGRATION_BATCH_SIZE` to a value from `50` to `1000`.
 

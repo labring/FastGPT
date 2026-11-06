@@ -77,16 +77,16 @@ services:
       CONNECTION_GATEWAY_WS_PORT: 3001
       CONNECTION_GATEWAY_WS_PATH: /connection-gateway/v1
     ports:
-      - '3010:3000'
-      - '3011:3001'
+      - '3020:3000'
+      - '3021:3001'
 ```
 
 Port notes:
 
 | Port   | Purpose                                                                                                | Exposure requirement                                                                                              |
 | ------ | ------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------- |
-| `3010` | Gateway HTTP API, mapped to container port `3000`, including `/health`, `/internal/*`, and `/metrics`. | Public exposure is not required. Plugin Server only needs private network access.                                 |
-| `3011` | Gateway WebSocket, mapped to container port `3001`, default path `/connection-gateway/v1`.             | Must be reachable from the developer's local CLI, usually exposed as a public `wss://` URL through reverse proxy. |
+| `3020` | Gateway HTTP API, mapped to container port `3000`, including `/health`, `/internal/*`, and `/metrics`. | Public exposure is not required. Plugin Server only needs private network access (avoids port `3010` used by dev AI Proxy). |
+| `3021` | Gateway WebSocket, mapped to container port `3001`, default path `/connection-gateway/v1`.             | Must be reachable from the developer's local CLI, usually exposed as a public `wss://` URL through reverse proxy. |
 | Redis  | Stores Gateway sessions, source owner leases, and mailboxes.                                           | Public exposure is not required. The Redis version must support Stream.                                           |
 
 ## Configure Plugin Server
@@ -118,7 +118,7 @@ PLUGIN_BASE_URL=http://fastgpt-plugin:3000
 PLUGIN_TOKEN=replace-with-the-same-value-as-plugin-auth-token
 ```
 
-The debug connection link takes its origin from the `Host`, `X-Forwarded-Host`, and `X-Forwarded-Proto` request headers, and falls back to `FE_DOMAIN` when they are missing. Behind a reverse proxy, make sure the proxy forwards these headers. `NEXT_PUBLIC_BASE_URL` is only for sub-path deployments (for example, `/fastgpt`); it is prepended to the link path, so set it to the path prefix only.
+The debug connection link takes its origin from the `Host`, `X-Forwarded-Host`, and `X-Forwarded-Proto` request headers, and falls back to `FE_DOMAIN` when they are missing. When `X-Forwarded-Proto` is absent and `Host` is a non-loopback address (other than `localhost` or `127.0.0.1`), the server defaults to `https`; for HTTP LAN deployments behind a proxy, forward `X-Forwarded-Proto: http`. `NEXT_PUBLIC_BASE_URL` is only for sub-path deployments (for example, `/fastgpt`); it is prepended to the link path, so set it to the path prefix only.
 
 ## Configure Reverse Proxy
 
@@ -156,10 +156,10 @@ debug:tmbId:{tmbId}
 
 ## Verification
 
-1. Check Gateway health:
+1. Check Gateway health (use `http://connection-gateway:3000/health` from a container on the same Compose network, or the mapped host port `localhost:3020` from the host):
 
 ```bash
-curl http://connection-gateway:3000/health
+curl http://localhost:3020/health
 ```
 
 2. Enable the debug channel in FastGPT and confirm the status changes from `enabled` to `connected`.

@@ -5,31 +5,29 @@ description: '使用 FastGPT 应用效果评测功能，构建测试数据集并
 
 FastGPT v4.11.0 版本开始支持应用批量评测功能。通过传入多组问答对，系统会对应用执行结果进行自动打分，实现应用运行效果的定量评估。
 
-系统支持三种评估指标：回答准确性、问题相关性和语义准确性。当前测试版仅包含回答准确性这一个指标，其余指标将在后续版本中补充完善。
+系统对评测集中的每组问答自动打分，并在任务列表中汇总展示**综合评分**。
 
 ## 创建应用评测
 
 ### 进入评测页面
 
-![创建应用评测](/imgs/optimized/current/evaluation-entry.png.webp)
+![应用评测入口与任务列表](/imgs/optimized/current/evaluation-entry.png.webp)
 
 应用评测仅商业版提供。在左侧工作台导航栏中点击 **Agent 评测(Beta)** 进入 **应用评测** 页面，点击右上角的 **创建任务** 按钮。
 
 ### 填写评测信息
 
-![创建应用评测](/imgs/optimized/current/evaluation-create.png.webp)
+![填写评测任务名称、评测模型与评测应用（界面示意）](/imgs/optimized/current/evaluation-create.png.webp)
 
 在创建任务页面中，需要填写以下信息：
 
 - **任务名**：任务的标识名称
 - **评测模型**：用于本次任务打分的模型
-- **评测应用**：需要被打分的应用
+- **评测应用**：需要被打分的应用（支持简易应用即对话 Agent，以及不含用户交互节点的工作流；暂不支持插件与对话 Agent V2）
 
 ### 准备评测数据
 
-![创建应用评测](/imgs/optimized/current/evaluation-create.png.webp)
-
-选择评测应用后，系统会弹出下载CSV模板的按钮。模板包含以下字段：
+点击弹窗中的 **点击下载该应用的 CSV 模板** 按钮下载模板文件。模板包含以下字段：
 
 - 全局变量
 - q（问题）
@@ -41,13 +39,13 @@ FastGPT v4.11.0 版本开始支持应用批量评测功能。通过传入多组�
 - 最多支持1000组问答对
 - 请按照模板格式填写数据
 
-填写完成后上传文件并点击"开始评测"，即可创建一个应用评测任务
+填写完成后上传文件并点击“开始评测”，即可创建一个应用评测任务。
 
 ## 查看应用评测
 
 ### 评测列表
 
-![查看应用评测](/imgs/optimized/current/evaluation-list.png.webp)
+![评测任务列表展示执行进度与综合评分](/imgs/optimized/current/evaluation-list.png.webp)
 
 评测列表页面显示所有评测任务，包含以下关键信息：
 
@@ -61,7 +59,7 @@ FastGPT v4.11.0 版本开始支持应用批量评测功能。通过传入多组�
 
 ### 评测详情
 
-![查看应用评测](/imgs/optimized/current/evaluation-error-detail.png.webp)
+![评测任务详情与模型 429 限流异常记录示例](/imgs/optimized/current/evaluation-error-detail.png.webp)
 
 上图为一次模型返回 429 限流的异常示例。异常记录会显示错误原因；修复模型限流或额度问题后重试，再比较有效评分。
 

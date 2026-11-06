@@ -9,8 +9,7 @@ description: 介绍 FastGPT 私有部署的后端容器日志查看、前端控�
 
 ### (1)获取后端错误
 
-1. `docker ps -a` 查看所有容器运行状态，检查是否全部 running，如有异常，尝试 `docker logs 容器名` 查看对应日志。
-2. 容器都运行正常的，`docker logs 容器名` 查看报错日志
+执行 `docker compose ps` 检查所有容器运行状态，并通过 `docker logs` 查看异常退出或运行中容器的报错日志：
 
 ```bash
 # 查看近 200 行主服务与插件服务实时日志
@@ -32,7 +31,7 @@ docker logs --tail 200 -f fastgpt-plugin
 | 故障现象                                                | 优先检查组件与日志                                                                                                                            | 对应专项排查手册                                                                                                                     |
 | ------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
 | **服务启动失败 / 反复重启**                             | 检查 `fastgpt-app` 容器启动日志中的 MongoDB、PostgreSQL/Milvus、Redis 与 S3 连通性自检报错                                                    | [排查注意事项](/zh-CN/self-host/troubleshooting/attention) · [通用问题排查](/zh-CN/self-host/troubleshooting/faq)                    |
-| **对话或向量化报 401/404/429/500**                      | 进入 `/admin/resources/model` 执行渠道连通性测试，核对 AIProxy / OneAPI 转发地址与模型名                                                      | [模型问题排查](/zh-CN/self-host/troubleshooting/model-errors)                                                                        |
+| **对话或向量化报 401/404/429/500**                      | 进入 `/admin/resources/model` 执行渠道连通性测试，核对 `AIPROXY_API_ENDPOINT`、`AIPROXY_API_TOKEN` 及渠道上游地址与模型名                    | [模型问题排查](/zh-CN/self-host/troubleshooting/model-errors)                                                                        |
 | **文件上传失败 / 图片裂图 / 403 SignatureDoesNotMatch** | 检查对象存储公网访问端点（`STORAGE_EXTERNAL_ENDPOINT`）、内部端点（`STORAGE_S3_ENDPOINT`）、路径寻址（`STORAGE_S3_FORCE_PATH_STYLE`）与桶策略 | [存储桶问题排查](/zh-CN/self-host/troubleshooting/s3-issues) · [对象存储配置](/zh-CN/self-host/config/object-storage)                |
 | **系统工具列表为空或执行报错**                          | 检查 `fastgpt-plugin` 容器运行状态与 `PLUGIN_BASE_URL`、`PLUGIN_TOKEN` 是否两端一致                                                           | [插件运行时配置](/zh-CN/plugin/runtime)                                                                                              |
 | **工作流代码运行节点不可用**                            | 检查 `fastgpt-code-sandbox` 容器状态，以及 `CODE_SANDBOX_URL`、`CODE_SANDBOX_TOKEN` 与沙箱端 `SANDBOX_TOKEN` 是否一致                         | [环境变量配置](/zh-CN/self-host/config/env) · [代码运行节点](/zh-CN/guide/build/workflow/nodes/sandbox-v2)                           |

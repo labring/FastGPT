@@ -124,6 +124,15 @@ After the CLI reports that remote debugging is ready, return to the FastGPT test
 
 The debug tool `source` is bound to the currently signed-in member, so other members do not see that debug plugin by default.
 
+### Troubleshooting Remote Debugging
+
+| Symptom | Cause | Action |
+| --- | --- | --- |
+| WSS connection fails or times out | Connection Key or network routing | Click **Refresh Link** in FastGPT, and verify connectivity and firewall rules from your dev machine to the Gateway port |
+| Debug tool does not appear in FastGPT | Debug account and channel binding | A debug tool is visible only to the member who generated the debug link; verify the signed-in account matches the CLI key |
+| `Input validation error` | Zod schema constraints | Check required fields, types, minimum values, and string constraints in `inputSchema`, then adjust test inputs |
+| Secret values are empty | `ctx.secrets` delivery | Confirm the secrets are filled in the tool configuration of the app, workflow, or Agent, or passed via `--secrets` / `--secrets-file` in local CLI |
+
 ### 2.4 End the debug session
 
 <span id="24-end-the-session" />

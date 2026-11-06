@@ -3,7 +3,7 @@ title: Model Providers
 description: Select models by capabilities, access scope, and pricing, and find the relevant configuration entrance.
 ---
 
-Open **Account → Model provider** to inspect the active model catalog, filter by provider and model category, check tiered token pricing, and—when team model management is enabled—configure model channels.
+Open **Account → Model provider** (available in Commercial Edition and FastGPT Cloud; Community Edition manages models under the Admin console) to inspect the active model catalog, filter by provider and model category, and check tiered token pricing. When `feConfigs.enable_team_model` is enabled, the page exposes five team model management tabs; otherwise, it displays the **Available models** catalog.
 
 ![Model routing and catalog invocation flow](/imgs/diagrams/model-routing.en.light.svg)
 
@@ -15,18 +15,18 @@ Open **Account → Model provider** to inspect the active model catalog, filter 
 
 | Model Category | Where It Is Used | Key Attributes to Verify |
 | --- | --- | --- |
-| **Language Model (LLM)** | Chat Agent, Agent V2, Workflow AI Chat / Question Classification / Content Extraction / Query Extension | Max context window, max output tokens, Function Calling support, vision/audio badges, reasoning support, and tiered M-Token `pricing.tiers` rates |
-| **Embedding Model** | Vector index building and semantic search in datasets | Vector dimensions, chunk token limit, and per-M-Token `pricing.unitPrice` (after creation, you can switch the **Index Model** in the dataset's right-side info panel to rebuild vector indexes automatically) |
-| **Rerank Model** | Second-stage relevance reranking during knowledge retrieval | Context window and per-M-Token `pricing.unitPrice` |
-| **Speech Model (STT / TTS)** | Microphone speech-to-text and assistant voice synthesis | Supported languages, voice presets, and `pricing.unitPrice` (per 1M characters for TTS, per 60 seconds for STT) |
+| **Language Model (LLM)** | Chat Agent, Agent V2, Workflow AI Chat / Question Classification / Content Extraction / Query Extension | Max context window, max output tokens, Function Calling support, vision/audio badges, reasoning support, and tiered input/output rates per million tokens (M Tokens) |
+| **Embedding Model** | Vector index building and semantic search in datasets | Vector dimensions, chunk token limit, and unit price per million tokens (after creation, you can switch the **Index Model** in the dataset's right-side info panel to rebuild vector indexes automatically) |
+| **Rerank Model** | Second-stage relevance reranking during knowledge retrieval | Context window and unit price per million tokens |
+| **Speech Model (STT / TTS)** | Microphone speech-to-text and assistant voice synthesis | Supported languages, voice presets, and unit price (per 1M characters for TTS, per 60 seconds for STT) |
 
-Display names, model instance identifiers, and provider model names serve different purposes. Use the exact identifier required by an API or configuration contract. Pricing and provider support follow the current environment. System models charge points according to `pricing`, while team-configured models are free of platform points.
+Display names, model instance identifiers, and provider model names serve different purposes. Use the exact identifier required by an API or configuration contract. Pricing and provider support follow the current environment. System models deduct AI points according to the listed rates, while team-configured models are free of platform points.
 
 ![Select an available team model and configure parameters in an application](/imgs/optimized/current/ai-model-selector.png.webp)
 
 ## Team and platform configuration
 
-Members with model-installation permission can configure team models through the templates and channels offered by the interface. Root administrators manage system models under **Admin → System Resources → System Models**. SaaS accounts may expose only the available catalog. See [model configuration](/en/self-host/config/model/intro) for self-hosted administration.
+Members granted the **Install Models** permission under **Account → Team management → Permissions** (see [Members, Departments, Groups, and Permissions](/en/guide/workspace/team/team_roles_permissions)) can configure team models when `feConfigs.enable_team_model` is enabled. System models are managed by the self-hosted `root` system administrator account (which displays the **Admin** entry at the bottom of the left navigation bar; FastGPT Cloud does not expose this entry to tenants) under **Admin → System Resources → System Models** (**Admin → System Models** in Community Edition). See [model configuration](/en/self-host/config/model/intro) for self-hosted administration.
 
 - **Available Model Catalog**: Displayed in all environments; filter by provider (such as Qwen, DeepSeek, OpenAI, GLM, MiniMax) and model type, and hover over pricing cells to inspect tiered input/output rates.
 - **Team Model Administration (when `feConfigs.enable_team_model` is enabled under Account → Model provider)**: Exposes **Available models**, **Model configuration**, **Model provider**, **Call log**, and **Monitoring** tabs.

@@ -26,15 +26,17 @@ description: 掌握网页 URL 导入规则、正文 CSS 选择器提取、分块
 
 ![创建网站知识库](/imgs/optimized/current/website-dataset-create.png.webp)
 
+![新建网站知识库后点击开始配置](/imgs/optimized/current/website-dataset-empty.png.webp)
+
 ## 步骤二：配置根地址与抓取范围
 
-填写起始页面 URL，例如 `https://docs.example.com/guide`。站点同步会发现同域子页面，当前发现上限为 200 页。同步后通过集合列表核对覆盖范围；单页面资料可使用网页链接导入流程。
+在 **Web 站点配置** 弹窗的 **网站信息** 步骤中，填写 **根地址**（例如 `https://docs.example.com/guide`）。站点同步会发现同域子页面，当前发现上限为 200 页。同步后通过集合列表核对覆盖范围；单页面资料可使用网页链接导入流程。
 
 ![根地址和正文选择器配置](/imgs/optimized/current/website-dataset-url.png.webp)
 
 ## 步骤三：选择正文区域
 
-检查目标页面的 HTML，在正文选择器中填写 `article`、`main` 或 `#content` 等 CSS 选择器，选中有用的正文容器。标题与正文分离时，可用逗号组合选择器，例如 `h1.page-title, article`。
+检查目标页面的 HTML，在 **选择器（可选）** 中填写 `article`、`main` 或 `#content` 等 CSS 选择器，选中有用的正文容器。标题与正文分离时，可用逗号组合选择器，例如 `h1.page-title, article`。
 
 在浏览器开发者工具中核对选中元素，再抽查导入的数据块，确认正文完整并清理重复导航。网站改版后重新验证选择器。
 
@@ -43,11 +45,9 @@ description: 掌握网页 URL 导入规则、正文 CSS 选择器提取、分块
 1. 点击 **下一步**，选择分块存储或问答对提取，配置当前界面提供的处理与索引选项。
 2. 开始同步，等待集合生成与训练完成。
 3. 使用已知答案的问题测试，打开引用核对来源。
-4. 周期更新按当前部署提供的自动同步设置配置。来源变化后检查最近同步结果和处理状态；哈希更新可能重建集合并重新训练，详见[数据维护](/zh-CN/guide/dataset/update-data)。
+4. 需要周期性更新时，在知识库右侧信息栏开启 **定时同步** 开关（系统每天轮询更新，同步重建期间对应集合可能暂时无法被检索）。来源变化后检查最近同步结果和处理状态，详见[数据维护](/zh-CN/guide/dataset/update-data)。
 
 ![网站知识库分块与索引配置](/imgs/optimized/current/website-dataset-settings.png.webp)
-
-![网站知识库同步配置入口](/imgs/optimized/current/website-dataset-empty.png.webp)
 
 ## 抓取排障与常见问题
 

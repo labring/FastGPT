@@ -13,7 +13,7 @@ description: "通过服务器回调或主动回复接口将 FastGPT 应用接入
 
 ## 1. 在 FastGPT 新建发布渠道
 
-在 FastGPT 中选择想要接入的应用，在 _发布渠道_ 页面，新建一个接入微信公众号的发布渠道，填写好基础信息。
+在 FastGPT 中选择想要接入的应用，在 **发布渠道 → 微信公众号** 页面点击右上角 **新增**，填写基础信息。
 
 ## 2. 获取 AppID 、 Secret和Token
 
@@ -25,7 +25,7 @@ description: "通过服务器回调或主动回复接口将 FastGPT 应用接入
 
 开发者可以使用[微信公众平台接口测试号](https://mp.weixin.qq.com/debug/cgi-bin/sandbox?t=sandbox/login)核验接入。测试号的可用能力与生产公众号不同，请按平台展示的字段配置加密方式。
 
-### 2. 把3个参数填入 FastGPT 配置弹窗中。
+### 2. 填写 App ID、Secret、Token（AES Key 选填）
 
 FastGPT 配置弹窗中 App ID、Secret、Token 为必填，AES Key 为选填。Token 与 AES Key 由你在公众平台的服务器配置中自行设定或随机生成，FastGPT 与公众平台两边需填写相同的值。
 

@@ -40,7 +40,7 @@ Every edge on the canvas assumes one of three discrete states during execution:
 ### 3. Skip Propagation Mechanics
 When an upstream Condition or Classify node selects a route, its other outlets become `skipped`. A node skips execution and propagates `skipped` through its outlets when every incoming edge group is skipped. A qualifying incoming group makes the node runnable; remaining states keep it waiting.
 
-![Workflow node structure and connection ports](/imgs/optimized/current/node-ai-chat.png.webp)
+![AI Chat node structure and input/output ports](/imgs/optimized/current/node-ai-chat.png.webp)
 
 ---
 
@@ -67,7 +67,7 @@ FastGPT supports human-in-the-loop interactions and state checkpoints during wor
 ## Orchestration Best Practices
 
 1. **Left-to-Right Layout**: Structure pipelines to flow naturally from "Workflow Start" on the left toward response nodes on the right.
-2. **Single-Exit Aggregation**: Use an "Assigned Reply" node to govern final message presentation, avoiding fragmented outputs from scattered nodes.
+2. **Output Control and Aggregation**: Let "AI Chat" reply directly in simple flows; when combining static copy or multiple node outputs, enable **Hide AI output** on upstream AI nodes and emit the final response from an **Assigned Reply** node.
 3. **Standard Variable Naming**: Define clean identifiers in start nodes and global settings to support reliable downstream variable referencing.
 
 ## Next Steps

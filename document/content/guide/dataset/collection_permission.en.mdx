@@ -26,12 +26,12 @@ Collection-level permissions are a commercial capability. They control individua
 | Concept | UI and Documentation Term | Description |
 | --- | --- | --- |
 | `dataset` | Knowledge base | Resource type `dataset` in the permission model; knowledge base Read permission is the prerequisite gate for accessing any internal collection |
-| `collection` | File / Folder / Collection | A single file or folder inside a knowledge base, represented as resource type `collection` |
+| `collection` | File / Folder / Collection ("dataset" in modal descriptions) | A single file or folder inside a knowledge base, represented as resource type `collection` |
 | Collection permission | Dataset permission configuration / File-level permission | Fine-grained collaborator access control for individual files and folders inside a knowledge base |
 
 ## Permission Inheritance
 
-With collection permissions disabled, files and folders use knowledge base permissions. Enabling the feature materializes permission snapshots for existing collections. Inheriting collections follow their parent; independently configured collections retain their own permissions.
+With collection permissions disabled, files and folders use knowledge base permissions. Enabling the feature copies the current knowledge base collaborator configuration to existing collections. Inheriting collections follow their parent; independently configured collections retain their own permissions.
 
 ![Enable collection permissions](/imgs/optimized/current/collection-permission-enable.png.webp)
 
@@ -54,12 +54,12 @@ Choose Member, Organization, or Group and assign roles:
 
 | Role | Scope |
 |---|---|
-| Read permission | View collection content |
-| Write permission | Modify collection content (sync / adjust training params) |
-| Administrator | Manage the collection's info and permissions |
-| Owner | Own the collection; deletion and ownership transfer require this role |
+| Read permission | View the current file or folder (collection) content |
+| Write permission | Modify the current collection's content (sync / adjust training params) |
+| Administrator | Manage the current collection's metadata and collaborator permissions |
+| Owner (Creator) | Hold collection ownership; deletion and ownership transfer require this role |
 
-Renaming, disabling, or otherwise changing the knowledge base or collection itself requires Administrator permission; Write permission allows changing knowledge content, including synchronization and training parameters. Collaborator updates replace the submitted list in full. Preserve the existing owner entry. Modifying inherited grants may require confirming a switch to independent permissions. Restoring inheritance retains grants unique to that collection and synchronizes its subtree.
+Renaming, disabling, or otherwise changing the knowledge base or collection itself requires Administrator permission; Write permission allows changing collection content, including synchronization and training parameters. Saving in the collaborator modal applies the list shown in the modal, so keep the existing owner entry. Modifying inherited grants may require confirming a switch to independent permissions. Restoring inheritance retains grants unique to that collection and synchronizes its subtree.
 
 ![Configure file and folder collaborators](/imgs/optimized/current/collection-collaborators.png.webp)
 
@@ -86,7 +86,7 @@ Renaming, disabling, or otherwise changing the knowledge base or collection itse
 
 1. **Member-authenticated retrieval**: Search tests and application search with **Auth member** enabled compute readable collections for the current member and intersect them with metadata filters.
 2. **Application-selected knowledge**: When **Auth member** is disabled, retrieval follows application access settings and skips member-specific collection filtering. To enforce per-member document access, enable **Auth member** (commercial edition) in the application's Dataset section, to the right of **Select Dataset** on the Dataset Search node, or on the Agent node.
-3. **Special identities**: Team owners and authorized system-root operations have elevated access. Team administrators still follow resource collaborator permissions.
+3. **Special identities**: Team owners (the account that created the team, shown as **Owner** under **Account → Team → Members**) and the system `root` account in self-hosted deployments have elevated access. Team administrators (members granted **Admin** permission under **Account → Team → Permission**) still follow resource collaborator permissions.
 4. **Source file links**: Download and preview links use the storage service's authorization and signing rules. Signed links can grant access to their holders until expiry; handle them as sensitive credentials.
 
 ## FAQ

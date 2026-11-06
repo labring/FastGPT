@@ -9,7 +9,7 @@ description: Common questions and troubleshooting for FastGPT app building, chat
 
 The Question Classification node has access to conversation context. When two consecutive questions are closely related, the model can usually classify them accurately based on their connection. For example, if a user asks "How do I use this feature?" followed by "What are the limitations?", the model uses that context to interpret the follow-up.
 
-However, when consecutive questions have little relation to each other, classification accuracy may drop. To handle this, you can use a global variable to store the classification result. In subsequent classification steps, check the global variable first — if a result exists, reuse it; otherwise, let the model classify on its own.
+When consecutive questions have little relation to each other, add a global variable (such as `category`) under **System Settings → Global Variables**: after the first pass through **Question Classification**, use a **Variable Update** node to store the category value; place an **If/Else** node right after **Start** to check that global variable so populated sessions go directly to the target branch while empty sessions enter **Question Classification**.
 
 Tip: Build batch test scripts to evaluate your question classification accuracy.
 
@@ -25,9 +25,9 @@ After changing an app, click **Save → Save and Publish**. Chat and published c
 
 Open the application editor and inspect formatting rules in the prompt. For workflow apps, also open **Citation prompt** on the AI Chat node and inspect the **Citation Template Prompt**. Remove the Markdown instruction, test the same question in preview, then publish and repeat through the shared link:
 
-![Disable Markdown Formatting — interface example](/imgs/optimized/current/node-ai-chat.png.webp)
+![AI Chat node configuration interface](/imgs/optimized/current/node-ai-chat.png.webp)
 
-![Disable Markdown Formatting — interface example](/imgs/optimized/current/citation-prompt-settings.png.webp)
+![Inspect Citation Template Prompt in Citation prompt settings](/imgs/optimized/current/citation-prompt-settings.png.webp)
 
 Without a custom **Citation Template Prompt**, the default template is used, and it asks the model to format answers in Markdown. Customize the template to remove that instruction.
 
@@ -37,19 +37,19 @@ Q: The app produces different results in debug mode vs. production, or when call
 
 A: Open conversation logs and locate both executions by conversation and request time. Compare published version, input, history, variables, retrieved passages, model settings, and tool results in run details. Repeat with fixed inputs; see [log troubleshooting](/en/guide/build/logs).
 
-![Inconsistent App Results — interface example](/imgs/optimized/current/feedback-log.png.webp)
+![Locate session records in conversation logs](/imgs/optimized/current/feedback-log.png.webp)
 
-![Inconsistent App Results — interface example](/imgs/optimized/current/model-request-response.png.webp)
+![Compare full model request and response payloads in run details](/imgs/optimized/current/model-request-response.png.webp)
 
 ## Skip Classification for Follow-Ups
 
 Scenario: A workflow starts with a Question Classification node that routes to different branches, each with its own Dataset and AI Chat. After the first AI response, you want subsequent questions to skip classification and go straight to the Dataset with chat history as context.
 
-Solution: Add a condition check — if it's the first message (history count is 0), route through Question Classification. Otherwise, go directly to the Dataset and AI Chat.
+Solution: Add an **If/Else** node after **Start** and bind the condition variable to `Start > Chat history`: when its length is `0` (first turn), route through **Question Classification**; when greater than `0`, connect directly to **Dataset Search** and **AI Chat**.
 
 ## Formula Rendering Issues
 
-Add a prompt to guide the model to output formulas in LaTeX/Markdown format:
+Add formatting instructions in the application's **Prompt** (or the **Prompt** field on the AI Chat node) to guide the model to output formulas in LaTeX/Markdown syntax:
 
 ```bash
 Latex inline: \(x^2\)
@@ -80,11 +80,11 @@ Workaround: tap "…" in the upper-right corner to open in the system browser, o
 
 ### Why is the + Install Tool button missing?
 
-Team plugin installation, updates, and removal require the team administrator or team owner role. Regular team members can use already installed plugins in workflows and Agents.
+The button appears only when two conditions are met: your account is a team administrator or team owner, and the system administrator has enabled **Allow teams to upload plugins** under **Admin → System Config → Feature Flags** (commercial edition only; when disabled, the entire button is hidden). Regular team members can use already installed plugins in workflows and Agents.
 
-### Why is Install from Local missing?
+### Why is Install from Marketplace missing?
 
-The system administrator must enable **Allow teams to upload plugins** under **Admin → System Config → Feature Flags** before team administrators can install plugins from Marketplace or local packages.
+When the install button is visible, **Install from local** is always available; if **Install from Marketplace** is absent, the deployment has disabled the marketplace (`DISABLE_MARKETPLACE`).
 
 ### Why is an uploaded plugin unavailable?
 

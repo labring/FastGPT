@@ -11,7 +11,7 @@ import { Alert } from '@/components/docs/Alert';
 
 为了方便地接入**外部成员系统**，FastGPT 提供一套接入外部系统的**标准接口**，以及一个 FastGPT-SSO-Service 镜像作为**适配器**。
 
-通过这套标准接口，你可以可以实现：
+通过这套标准接口，你可以实现：
 
 1. SSO 登录。从外部系统回调后，在 FastGPT 中创建一个用户。
 2. 成员和组织架构同步（下面都简称成员同步）。
@@ -107,6 +107,8 @@ env:
 
 #### 2. 在 FastGPT 前台的 `管理员` -> `系统配置` -> `用户配置` 中配置按钮文字，图标等。
 
+在“自定义用户系统配置”区域可查看只读的 SSO 服务地址，并设置 **SSO 登录按钮标题**、**SSO 登录按钮图标** 与 **自动跳转** 开关。下方三张品牌图标可直接下载并上传作为登录按钮图标：
+
 <table className="table-hover table-striped-columns text-center">
   <thead>
     <tr>
@@ -126,7 +128,7 @@ env:
 
 #### 3. 开启成员同步（可选）
 
-如果需要同步外部系统的成员，可以选择开启成员同步。团队模式具体可参考：[团队模式说明文档](/zh-CN/guide/admin/teamMode)
+如果需要同步外部系统的成员，请在 **管理员 → 系统配置 → 用户配置** 的 **团队模式设置** 下拉框中选择 **同步模式**（需已配置 `EXTERNAL_USER_SYSTEM_BASE_URL` 且商业版 License 具备 SSO 能力）。团队模式规则可参考：[团队模式说明文档](/zh-CN/guide/admin/teamMode)。
 
 ![3. 开启成员同步（可选）：界面示例](/imgs/optimized/sso1.png.webp)
 
@@ -204,8 +206,8 @@ fastgpt-sso:
     - FEISHU_TOKEN_URL=https://open.feishu.cn/open-apis/authen/v2/oauth/token
     # 获取用户信息接口
     - FEISHU_GET_USER_INFO_URL=https://open.feishu.cn/open-apis/authen/v1/user_info
-    # 重定向地址，设置为上面第三部中一模一样的地址
-    - FEISHU_REDIRECT_URI=https://fastgpt.cn/login/provider
+    # 重定向地址，设置为上面第三步中一模一样的地址
+    - FEISHU_REDIRECT_URI=https://www.fastgpt.cn/login/provider
     # 飞书APP的应用ID，一般以cli开头
     - FEISHU_APP_ID=xxx
     # 飞书APP的应用密钥
@@ -218,7 +220,7 @@ fastgpt-sso:
 
 CLIENT_ID 与 CLIENT_SECRET
 
-进入钉钉开放平台，点击应用开发，选择自己的应用进入，记录在凭证与基础信息页面下的 \`Client ID\` 与 \`Client secret\`。![1. 参数获取：界面示例](/imgs/optimized/sso6.png.webp)
+进入钉钉开放平台，点击应用开发，选择自己的应用进入，记录在凭证与基础信息页面下的 `Client ID` 与 `Client secret`。![1. 参数获取：界面示例](/imgs/optimized/sso6.png.webp)
 
 #### 2. 权限配置
 
@@ -498,7 +500,7 @@ env:
   - SYNC_MEMBER_CRON=0 0 * * *
 ```
 
-然后在 FastGPT 前台的 `管理员` -> `系统配置` -> `用户配置` 中开启成员同步。SYNC_MEMBER_CRON 使用 UTC 时区；留空表示不执行定时同步。
+然后在 FastGPT 前台的 `管理员` -> `系统配置` -> `用户配置` 中将 **团队模式设置** 切换为 **同步模式**。`SYNC_MEMBER_CRON` 使用 UTC 时区；留空表示不执行定时同步。
 
 #### LDAP 连接配置
 
@@ -656,7 +658,7 @@ FastGPT 提供如下标准接口支持：
   <Tab value="请求示例" >
 
 ```bash
-curl -X GET "https://redict.example/login/oauth/getAuthURL?redirect_uri=xxx&state=xxxx" \
+curl -X GET "https://redirect.example/login/oauth/getAuthURL?redirect_uri=xxx&state=xxxx" \
 -H "Authorization: Bearer your_token_here" \
 -H "Content-Type: application/json"
 ```
@@ -814,7 +816,7 @@ type UserListResponseListType = {
 };
 ```
 
-curl 示例
+响应示例
 
 ```json
 {

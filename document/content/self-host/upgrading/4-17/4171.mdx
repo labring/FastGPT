@@ -2,6 +2,9 @@
 title: 'V4.17.1'
 description: 'FastGPT V4.17.1 更新说明'
 releaseTime: '2026-09-30'
+upgradeTags:
+  - 配置变更
+  - 升级脚本
 ---
 
 ## 📦 升级指南
@@ -30,12 +33,12 @@ services:
 
 ### 升级脚本
 
-本次升级包含以下自动化脚本
+本次升级包含以下自动化脚本：
 
-1. 回填应用资源权限快照，清理遗留 V1 应用及版本数据，并校验应用正式版本；迁移任务不阻塞服务启动，可在系统升级任务中查看进度和失败记录。
-2. 为兼容渠道启用 reasoning 映射：为现有 AIProxy OpenAI 协议渠道开启 `map_reasoning_to_reasoning_content: true` 的响应字段转换，解决深度思考模型（如 DeepSeek-R1）的思考内容字段兼容问题，并保留渠道的原有配置；已配置该项的渠道不会重复更新，迁移任务不阻塞服务启动。
-3. 升级知识库标签数据：将存量 Collection 标签迁移为类型化标签，并清理重复标签定义；迁移任务不阻塞服务启动。
-4. 回填团队成员名设置标记：为历史团队成员回填 `isSetMemberName` 标记；owner 始终标记为已设置，非 owner 中与登录用户名相同的成员名标记为需要补充；迁移任务不阻塞服务启动。
+1. **回填应用资源快照**（`20260916_backfill_app_resource_snapshots`）：回填应用资源权限快照，清理遗留 V1 应用及版本数据，并校验应用正式版本；迁移任务不阻塞服务启动，可在「管理员 > 版本升级」中查看进度和失败记录。
+2. **为 OpenAI 协议渠道启用 reasoning 映射**（`20260923_enable_channel_reasoning_mapping`）：为现有 AIProxy OpenAI 协议渠道开启 `map_reasoning_to_reasoning_content: true` 的响应字段转换，解决深度思考模型（如 DeepSeek-R1）的思考内容字段兼容问题，并保留渠道的原有配置；已配置该项的渠道不会重复更新，迁移任务不阻塞服务启动。
+3. **升级知识库标签数据**（`20260907_migrate_dataset_tags_v2`）：将存量 Collection 标签迁移为类型化标签，并清理重复标签定义；迁移任务不阻塞服务启动。
+4. **回填团队成员名设置标记**（`20260928_backfill_member_name_set`）：为历史团队成员回填 `isSetMemberName` 标记；owner 始终标记为已设置，非 owner 中与登录用户名相同的成员名标记为需要补充；迁移任务不阻塞服务启动。
 
 ## 管理员入口调整
 

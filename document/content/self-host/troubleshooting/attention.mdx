@@ -11,7 +11,7 @@ description: "汇总 FastGPT 自部署运维中的版本升级检查、标准排
 
 很多已知问题已在最新版本中得到修复。在反馈问题前，请务必确认您的版本情况：
 
-- **检查版本**：在 FastGPT 首页或管理后台查看当前运行的版本号。
+- **检查版本**：在左侧导航栏底部、「管理员 → 版本升级」页面或部署目录 `docker-compose.yml` 的 `fastgpt-app` 镜像 Tag 中查看当前运行的版本号。
 - **版本建议**：参考 [更新指南](/zh-CN/self-host/upgrading/upgrade-instruction) 保持部署版本处于最新稳定版。
 
 ## 2. 问题排查步骤
@@ -105,7 +105,7 @@ nginx -t && nginx -s reload
 curl -H 'X-Forwarded-For: 6.6.6.6' -H 'X-Real-IP: 6.6.6.6' https://fastgpt.example.com
 ```
 
-配置生效后，FastGPT 将正确记录与校验真实的客户端原始 IP。
+随后在应用的「对话日志」或服务端请求日志中查看该请求的客户端 IP，配置生效后会记录发起请求的真实出口 IP（忽略伪造的 `6.6.6.6`）。
 
 ## 4. 联系技术支持
 

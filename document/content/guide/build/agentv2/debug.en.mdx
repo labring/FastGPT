@@ -32,14 +32,15 @@ In the **Assisted Generation** tab at the top of the right panel, the Commercial
 
 ---
 
-## Step 2: Track Execution Progress with Plan Cards
+## Step 2: Track Execution Progress with Plan Step Indicators
 
-For complex multi-step tasks, planning-enabled models output structured "Plan Cards" streamed in real time:
+For complex multi-step tasks, planning-enabled models stream structured plan steps in real time and indicate each step's status with a colored dot:
 
-- **In Progress**: Highlights the active sub-action (such as calling a specific tool or running an inline Python script).
-- **Completed**: Marks successfully finalized steps that returned valid outputs.
-- **Pending**: Lists subsequent tasks queued for future evaluation.
-- **Blocked**: Appears when a tool throws errors, network connections time out, or parameters are missing. Use the diagnostic hint to locate bottlenecks and refine prompt instructions.
+- **Gray dot (Pending)**: Lists subsequent tasks queued for execution.
+- **Blue dot (In progress)**: Highlights the active sub-action (such as calling a specific tool or running a Python script).
+- **Green dot (Completed)**: Marks steps that finished and returned valid outputs.
+- **Red dot (Blocked)**: Indicates that a tool threw an error, a network connection timed out, or parameters were missing. Inspect Run Details to locate bottlenecks and refine prompt instructions.
+- **Orange dot (Skipped)**: Marks steps bypassed when earlier steps already satisfied the goal or branch conditions changed.
 
 ---
 
@@ -65,7 +66,7 @@ Beneath each generated AI message bubble, click the **Run Details** icon button 
 The toolbar beneath each AI message offers quick utilities:
 - **Copy**: Copy raw generated Markdown text.
 - **Read Aloud**: Play text back using text-to-speech synthesis.
-- **Annotate**: Click the annotate button to save the current query and a corrected answer directly into an associated Dataset, reinforcing factual accuracy in subsequent turns through RAG.
+- **Mark**: Click the **Mark** button to save the current query and a corrected expected answer directly into an associated Dataset, reinforcing factual accuracy in subsequent turns through RAG.
 - **Retry**: Re-run planning and generation independently against the preceding query.
 
 ## Next Steps

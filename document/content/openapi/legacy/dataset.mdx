@@ -8,7 +8,7 @@ description: 保留生成文档迁移前的知识库、集合与数据块接口�
 本页保留手写参考的历史语境，部分字段、端点及模型名称属于旧版。当前任务请阅读[当前集成指南](/zh-CN/openapi/dataset)，接口参数以部署实例的生成参考为准。
 
 
-| 如何获取知识库 ID（datasetId）          | 如何获取文件集合 ID（collection_id）       |
+| 如何获取知识库 ID（datasetId）          | 如何获取文件集合 ID（collectionId）        |
 | --------------------------------------- | ------------------------------------------ |
 | ![获取知识库 ID](/imgs/optimized/getDatasetId.png.webp) | ![获取文件集合 ID](/imgs/optimized/getCollectionId.png.webp) |
 
@@ -39,9 +39,9 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/create' \
 <Tab value="参数说明" >
 
 - parentId - 父级 ID，用于构建目录结构。通常可以为 null 或者直接不传。
-- type - `dataset` 或者 `folder`，代表普通知识库和文件夹。不传则代表创建普通知识库。
+- type - `dataset` 或者 `folder`，代表普通知识库和文件夹（当前版本 Schema 中必填）。
 - name - 知识库名（必填）
-- intro - 介绍（可选）
+- intro - 介绍（当前版本 Schema 中必填）
 - avatar - 头像地址（可选）
 - vectorModel - 向量模型（建议传空，用系统默认的）
 - agentModel - 文本处理模型（建议传空，用系统默认的）
@@ -219,7 +219,7 @@ curl --location --request DELETE 'http://localhost:3000/api/core/dataset/delete?
 | ---------------- | ------------------------------------------------------------------------------------------------------------ | ---- |
 | datasetId        | 知识库 ID                                                                                                    | ✅   |
 | parentId         | 父级 ID，不填则默认为根目录                                                                                  |      |
-| trainingType     | 数据处理方式。chunk: 按文本长度进行分割;qa: 问答对提取                                                       | ✅   |
+| trainingType     | 数据处理方式（选填，默认 `chunk`）。`chunk`: 按文本长度进行分割；`qa`: 问答对提取                            |      |
 | indexPrefixTitle | 是否自动生成标题索引                                                                                         |      |
 | customPdfParse   | 是否开启 PDF 增强解析, 默认 false: 关闭;true: 开启;                                                          |      |
 | autoIndexes      | 是否自动生成索引(仅商业版支持)                                                                               |      |
@@ -267,13 +267,13 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/collectio
 - type:
   - folder：文件夹
   - virtual：虚拟集合（手动集合）
-- metadata：元数据（暂时没啥用）
+- metadata：自定义元数据对象（可选）
 
 </Tab>
 
 <Tab value="响应示例" >
 
-`data` 为包含集合 ID（`collectionId`）与分块插入统计（`results.insertLen`）的对象。
+`data` 为新建集合的 ID（字符串）。
 
 ```json
 {
@@ -319,13 +319,13 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/collectio
 - datasetId: 知识库的 ID（必填）
 - parentId：父级 ID，不填则默认为根目录
 - name: 集合名称（必填）
-- metadata：元数据（暂时没啥用）
+- metadata：自定义元数据对象（可选）
 
 </Tab>
 
 <Tab value="响应示例" >
 
-data 为集合的 ID。
+`data` 为包含集合 ID（`collectionId`）与分块插入统计（`results.insertLen`）的对象。
 
 ```json
 {
@@ -382,7 +382,7 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/collectio
 
 <Tab value="响应示例" >
 
-data 为集合的 ID。
+`data` 为包含集合 ID（`collectionId`）与分块插入统计（`results.insertLen`）的对象。
 
 ```json
 {
@@ -429,7 +429,7 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/collectio
 
 <Tab value="响应示例" >
 
-data 为集合的 ID。
+`data` 为包含集合 ID（`collectionId`）与分块插入统计（`results.insertLen`）的对象。
 
 ```json
 {
@@ -493,7 +493,7 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/collectio
 
 <Tab value="响应示例" >
 
-data 为集合的 ID。
+`data` 为包含集合 ID（`collectionId`）与分块插入统计（`results.insertLen`）的对象。
 
 ```json
 {
@@ -553,7 +553,7 @@ curl --location --request POST 'http://localhost:3000/api/proApi/core/dataset/co
 
 <Tab value="响应示例" >
 
-data 为集合的 ID。
+`data` 为包含集合 ID（`collectionId`）与分块插入统计（`results.insertLen`）的对象。
 
 ```json
 {
@@ -846,7 +846,7 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/collectio
 | fullTextToken | String  | 分词      | ✖    |
 | indexes       | Index[] | 向量索引  | ✅   |
 | updateTime    | Date    | 更新时间  | ✅   |
-| chunkIndex    | Number  | 分块下表  | ✖    |
+| chunkIndex    | Number  | 分块下标  | ✖    |
 
 **Index 结构**
 
@@ -864,7 +864,7 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/collectio
 
 注意，每次最多推送 200 组数据。训练账单会在接口调用时自动创建，无需手动传入 `billId`。
 
-<Tabs items={['请求示例','参数说明','响应示例']}>
+<Tabs items={['请求示例','参数说明','响应示例','QA Prompt 模板']}>
 <Tab value="请求示例" >
 
 ```bash
@@ -901,7 +901,7 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/data/push
 <Tab value="参数说明" >
 
 - collectionId: 集合 ID（必填）
-- trainingType:训练模式（必填）
+- trainingType: 训练模式（选填，默认 `chunk`）
 - prompt: 自定义 QA 拆分提示词，需严格按照模板，建议不要传入。（选填）
 - data：（具体数据）
 
@@ -911,7 +911,7 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/data/push
 
 </Tab>
 
-<Tab value="响应例子" >
+<Tab value="响应示例" >
 
 ```json
 {
@@ -1099,9 +1099,9 @@ curl --location --request PUT 'http://localhost:3000/api/core/dataset/data/updat
 <Tab value="参数说明" >
 
 - dataId: 数据的 ID
-- q: 主要数据（选填）
+- q: 主要数据（当前版本必填）
 - a: 辅助数据（选填）
-- indexes: 自定义索引（选填），类型参考 `为集合批量添加添加数据`。如果创建时候有自定义索引，
+- indexes: 自定义索引（选填），结构参考上方“推送数据到训练队列”；若保留原有向量索引，需传入带对应 `dataId` 的索引项。
 
 </Tab>
 

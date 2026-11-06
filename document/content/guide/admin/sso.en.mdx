@@ -218,7 +218,7 @@ fastgpt-sso:
     # User info endpoint
     - FEISHU_GET_USER_INFO_URL=https://open.feishu.cn/open-apis/authen/v1/user_info
     # Redirect address — must match the URL from step 3 exactly
-    - FEISHU_REDIRECT_URI=https://fastgpt.cn/login/provider
+    - FEISHU_REDIRECT_URI=https://www.fastgpt.cn/login/provider
     # Lark App ID, usually starts with cli
     - FEISHU_APP_ID=xxx
     # Lark App Secret
@@ -511,7 +511,7 @@ env:
   - SYNC_MEMBER_CRON=0 0 * * *
 ```
 
-Enable member synchronization in the FastGPT frontend under `Admin` -> `System Configuration` -> `User Configuration`. SYNC_MEMBER_CRON uses UTC; leaving it empty disables scheduled synchronization.
+Select **Member sync mode** under **Team mode settings** in the FastGPT frontend at `Admin` -> `System Configuration` -> `User Configuration`. `SYNC_MEMBER_CRON` uses UTC; leaving it empty disables scheduled synchronization.
 
 #### LDAP Connection Configuration
 
@@ -648,7 +648,7 @@ Returns a redirect login URL. FastGPT will automatically redirect to this URL. T
   <Tab value="Request Example" >
 
 ```bash
-curl -X GET "https://redict.example/login/oauth/getAuthURL?redirect_uri=xxx&state=xxxx" \
+curl -X GET "https://redirect.example/login/oauth/getAuthURL?redirect_uri=xxx&state=xxxx" \
 -H "Authorization: Bearer your_token_here" \
 -H "Content-Type: application/json"
 ```

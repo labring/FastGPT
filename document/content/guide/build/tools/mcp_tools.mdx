@@ -9,23 +9,23 @@ MCP 工具集把外部服务能力接入 FastGPT。向外部客户端提供 Fast
 
 需要工具创建权限、外部服务地址及认证信息，并确保 FastGPT 服务端能访问该地址。
 
-1. 在工作台创建 MCP 工具集。
-2. 填写服务提供方给出的 MCP URL 和所需请求头。
+1. 进入 **工作台 → 我的工具**，点击右上角 **新建 → MCP 工具**。
+2. 填写服务提供方给出的 **MCP 地址** 和 **鉴权配置**（鉴权类型支持无、`Bearer`、`Basic` 或自定义）。
 3. 点击解析，检查返回的工具名称、用途与参数，再创建工具集。
 
 当前连接优先使用 Streamable HTTP。当该传输返回 429 以外的任意 4xx 状态码时，客户端回退尝试 SSE。认证、网络或服务端问题仍需根据返回错误处理；仅修改 URL 后缀无法确认协议兼容。
 
 ## 接入需要鉴权的 Streamable HTTP 服务
 
-当前客户端也支持 Streamable HTTP。以[百智云浏览器（Baizhi Cloud Browser，也即 CapyBrowser）](https://baizhibrowser.cloud/)为例，可以在 FastGPT 中查询本次凭据的身份、价格和云浏览器运行状态，无需额外安装 FastGPT 插件。
+以[百智云浏览器（Baizhi Cloud Browser，也即 CapyBrowser）](https://baizhibrowser.cloud/)为例，可以在 FastGPT 中查询本次凭据的身份、价格和云浏览器运行状态，无需额外安装 FastGPT 插件。
 
-先在[百智云控制台](https://capybrowser.app.baizhi.cloud/)准备本人有权使用的 API Key，并核对[正式接入指南](https://capybrowser.app.baizhi.cloud/docs/installation.md)。新建 MCP 工具集，按下表填写，再点击「解析」并创建工具集。
+先在[百智云控制台](https://capybrowser.app.baizhi.cloud/)准备本人有权使用的 API Key，并核对[正式接入指南](https://capybrowser.app.baizhi.cloud/docs/installation.md)。新建 **MCP 工具**，按下表填写，再点击 **解析** 并完成创建。
 
 | 配置项         | 填写内容                                   |
 | -------------- | ------------------------------------------ |
-| MCP URL        | `https://capybrowser.app.baizhi.cloud/mcp` |
-| 请求头鉴权类型 | `Bearer`                                   |
-| 鉴权值         | 原始 API Key，不加 `Bearer ` 前缀          |
+| MCP 地址       | `https://capybrowser.app.baizhi.cloud/mcp` |
+| 鉴权类型       | `Bearer`（在 **鉴权配置** 中选择）         |
+| Bearer Token / 密钥值 | 原始 API Key，不加 `Bearer ` 前缀   |
 
 Bearer 模式会自动生成 `Authorization: Bearer <API_KEY>`。如果选择自定义请求头，则名称填写 `Authorization`，值填写完整的 `Bearer <API_KEY>`；两种方式选一种，避免重复前缀。Key 放在鉴权配置中，不放入 URL、聊天消息或公开工作流。
 

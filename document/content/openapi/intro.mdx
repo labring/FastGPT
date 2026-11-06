@@ -19,19 +19,19 @@ description: 配置服务地址、成员密钥和应用 ID，调用已发布应�
 
 ## 前置准备
 
-准备一个已调试并发布的应用、该应用的读取权限及模型额度。在“账号 → API 密钥”或“应用 → 发布渠道 → API”中创建当前成员的团队级 API Key。密钥可访问该成员在当前团队中拥有权限且允许 API Key 调用的资源。
+准备一个已调试并发布的应用、该应用的读取权限及模型额度。在**账号 → API 密钥**（仅对具备“创建 API 密钥”权限的成员显示；若未看到该入口，请联系团队管理员在**账号 → 团队管理 → 权限**中勾选**创建 API 密钥**）或**工作台 → 目标应用 → 发布渠道 → API 访问**中创建当前成员的团队级 API Key。密钥可访问该成员在当前团队中拥有权限且允许 API Key 调用的资源。
 
-密钥由创建成员管理。积分上限和过期时间字段受商业能力配置影响；按当前界面和部署契约确认可用控制。将密钥保存在可信服务端或密钥管理系统。
+密钥由创建成员管理。当团队开通套餐用量计划后，可在创建或编辑密钥时设置**积分上限**与**过期时间**。请将密钥保存在可信服务端或密钥管理系统。
 
 ## 首次请求
 
-将 `FASTGPT_ORIGIN` 替换为自己的 FastGPT 访问地址，复制应用详情 URL 中的 `appId`。下面请求通过 `/api/v1/chat/completions` 调用发布版本：
+将 `FASTGPT_ORIGIN` 替换为自己的 FastGPT 访问地址，复制应用详情 URL 中的 `appId`。下面请求通过 `/api/v2/chat/completions`（推荐使用 v2；`/api/v1/chat/completions` 仅保留历史兼容）调用发布版本：
 
 ```bash
 export FASTGPT_ORIGIN='https://cloud.fastgpt.cn'
 export FASTGPT_API_KEY='YOUR_API_KEY'
 export FASTGPT_APP_ID='YOUR_APP_ID'
-curl --fail-with-body "$FASTGPT_ORIGIN/api/v1/chat/completions" \
+curl --fail-with-body "$FASTGPT_ORIGIN/api/v2/chat/completions" \
   -H "Authorization: Bearer $FASTGPT_API_KEY" \
   -H 'Content-Type: application/json' \
   --data @- <<EOF
@@ -47,12 +47,12 @@ EOF
 | --- | --- |
 | 认证或权限错误 | 密钥、所属团队、成员状态及目标资源权限 |
 | 应用标识错误 | `appId` 是否复制完整且属于当前可访问资源 |
-| 404 | 地址是否为 FastGPT 实例，路径是否为 `/api/v1/chat/completions` |
+| 404 | 地址是否为 FastGPT 实例，路径是否为 `/api/v2/chat/completions` |
 | 模型或额度错误 | 应用模型配置、服务状态及可用额度 |
 
 ## 应用选择与 SDK
 
-对话补全接口支持 OpenAI 兼容请求与普通文本响应；详细事件及其他接口遵循 FastGPT 自身契约。通过标准 OpenAI SDK 接入时，可将 `baseURL` 设置为 FastGPT 实例地址加 `/api/v1`，并在请求体中显式传递 `appId`：
+对话补全接口支持 OpenAI 兼容请求与普通文本响应；详细事件及其他接口遵循 FastGPT 自身契约。通过标准 OpenAI SDK 接入时，可将 `baseURL` 设置为 FastGPT 实例地址加 `/api/v2`，并在请求体中显式传递 `appId`：
 
 <Tabs items={['Python SDK', 'Node.js SDK']}>
   <Tab value="Python SDK">
@@ -62,7 +62,7 @@ from openai import OpenAI
 
 client = OpenAI(
     api_key=os.environ["FASTGPT_API_KEY"],
-    base_url=f"{os.environ['FASTGPT_ORIGIN'].rstrip('/')}/api/v1"
+    base_url=f"{os.environ['FASTGPT_ORIGIN'].rstrip('/')}/api/v2"
 )
 
 response = client.chat.completions.create(
@@ -82,7 +82,7 @@ import OpenAI from 'openai';
 
 const client = new OpenAI({
   apiKey: process.env.FASTGPT_API_KEY!,
-  baseURL: `${process.env.FASTGPT_ORIGIN!.replace(/\/$/, '')}/api/v1`
+  baseURL: `${process.env.FASTGPT_ORIGIN!.replace(/\/$/, '')}/api/v2`
 });
 
 async function main() {

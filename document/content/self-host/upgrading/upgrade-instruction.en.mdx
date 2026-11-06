@@ -7,10 +7,10 @@ description: "Follow the standard FastGPT self-hosted upgrade procedure covering
 
 Starting with 4.14.11, FastGPT uses separate version names for stable releases and rapid-development releases:
 
-1. Two stable release lines are maintained. For example, while new features are developed in 4.16.x, fixes are maintained for 4.14.x and 4.15.x.
-2. Stable releases have no suffix, such as 4.14.11, 4.14.12, 4.15.0, and 4.15.1. A fix for 4.14.11 is released as 4.14.12 and applied to the 4.15.x stable line. These maintenance releases contain fixes and preserve the existing feature set.
-3. Rapid-development releases use a beta suffix, such as 4.16.0-beta1, 4.16.0-beta2, and 4.16.0-beta3.
-4. A development line becomes a stable release approximately every 2 months. A consolidated upgrade script lets you apply all migrations from that development cycle with one request.
+1. Two stable release lines are maintained. For example, while new features are developed in 4.17.x, fixes are maintained for 4.14.x and 4.15.x.
+2. Stable releases have no suffix, such as 4.15.0, 4.15.1, 4.17.0, and 4.17.3. A fix for 4.15.0 is released as 4.15.1 and applied to the active stable lines. These maintenance releases contain fixes and preserve the existing feature set.
+3. Rapid-development releases use a beta suffix, such as 4.17.0-beta1, 4.17.0-beta2, and 4.17.0-beta3.
+4. A development line becomes a stable release approximately every 2 months. Starting with 4.17.0, registered system migration tasks run automatically when the main app starts; for 4.16.x and earlier, a consolidated upgrade script applies all migrations from that development cycle with one request.
 
 For stable deployments, choose releases without a beta suffix. Dedicated maintenance releases provide fixes while preserving the existing feature set.
 
@@ -68,13 +68,13 @@ Pin each service to the image tag specified in the target release deployment tem
 Simply modify the `image:` field in the `yml` file, then run:
 
 ```bash
-docker-compose pull
-docker-compose up -d
+docker compose pull
+docker compose up -d
 ```
 
 ## Running the Upgrade Initialization Script
 
-After updating the images, check the release notes for the target version. Versions that require an upgrade script carry the `MIGRATION` tag. Open the corresponding page and follow its instructions: starting with 4.17.0, registered migration tasks run automatically after the main app starts, and manual tasks are run from **Admin > System upgrade** (`版本升级`). For 4.16.x and earlier, most upgrade scripts require sending a `POST` request.
+After updating the images, check the release notes for the target version. Versions that require an upgrade script carry the `MIGRATION` tag. Open the corresponding page and follow its instructions: starting with 4.17.0, registered migration tasks run automatically after the main app starts, and manual tasks are run from **Admin > System upgrade**. For 4.16.x and earlier, most upgrade scripts require sending a `POST` request.
 
 ## FAQ
 

@@ -3,7 +3,10 @@ title: Root Platform Administration Console Guide
 description: Reference for root administrators managing global dashboards, users, teams, model channels, marketplaces, billing, audit logs, and migrations.
 ---
 
-In self-hosted Commercial Edition deployments, signing in with the `root` administrator account and clicking **Admin** in the left navigation bar opens the **Platform Administration Console**, organized into nine top-level navigation sections for governing tenants, system resources, model routing, billing, and system upgrade migrations.
+In self-hosted deployments, signing in with the `root` administrator account and clicking **Admin** at the bottom of the left navigation bar opens the **Platform Administration Console**:
+
+- **Community Edition (without an active commercial license)**: Exposes four top-level management pages: **System Models**, **System Tools**, **Version Upgrade**, and **License**.
+- **Commercial Edition (with an active commercial license)**: Exposes nine top-level navigation sections for governing tenants, system resources, model routing, billing, and system upgrade migrations; **User Management → Team Plans / Orders / Invoices** and **System Config → Plans & Pricing** appear when the license includes payment capabilities.
 
 ## 1. Dashboard, Notifications, and User & Resource Governance
 
@@ -42,12 +45,12 @@ Manage platform-wide model infrastructure across five tabs (see [Model Configura
 
 ### 1. System Config
 
-- **System Config → Basic Config**: Configure site title, branding logos, help links, **Max Vector Recall Concurrency** (`systemEnv.vectorRecallConcurrency`, integer `0–1000`, defaulting to `0` for unlimited), and **PDF Parsing Config** (such as MinerU, Marker, or Doc2x).
+- **System Config → Basic Config**: Configure site title, branding logos, help links, **Max Vector Recall Concurrency** (`systemEnv.vectorRecallConcurrency`, integer `0–1000`, defaulting to `0` for unlimited), and **PDF Parsing Config** (prioritized as: Custom PDF Parsing URL (Priority 1), Doc2x Key, and Textin (Priority 3)).
 - **System Config → Feature Flags**: Toggle team model management (`enable_team_model`), team plugin uploads (`enable_team_plugin_upload`), and background sync features.
-- **System Config → Security Config**: Manage password policies, session security, and access protection rules.
-- **System Config → Third-Party Providers**: Configure SMS/email gateways and external provider credentials.
-- **System Config → User Config**: Configure registration methods, team mode, OAuth2/OIDC/SAML SSO, and directory sync (see [SSO & External Member Sync](/en/guide/admin/sso) and [Team Mode](/en/guide/admin/teamMode)).
-- **System Config → Plans & Pricing**: Configure standard subscription tiers, extra AI point or dataset index add-on packs, and payment gateway credentials.
+- **System Config → Security Config**: Configure ignoring HTTPS certificate verification in workflow nodes, model content safety review (Baidu Content Moderation ID/Secret and custom safety check URL), and file URL whitelists.
+- **System Config → Third-Party Providers**: Configure custom global workflow variables (reusable external provider credential variables).
+- **System Config → User Config**: Configure team mode, custom user system settings (read-only SSO service URL, SSO login button title, icon, and auto-redirect), email and Alibaba Cloud SMS gateways, and quick login providers (WeChat Official Account, WeCom, GitHub, Google, Microsoft; see [SSO & External Member Sync](/en/guide/admin/sso) and [Team Mode](/en/guide/admin/teamMode)).
+- **System Config → Plans & Pricing**: Configure the four standard subscription tiers (`Free`, `Basic`, `Advanced`, and `Custom`, alongside legacy `Experience` / `Team` / `Enterprise` tiers), extra AI point or dataset index add-on packs, and payment gateway credentials.
 
 ### 2. Version Upgrade, Audit Logs, and License
 
@@ -55,4 +58,4 @@ Manage platform-wide model infrastructure across five tabs (see [Model Configura
 | --- | --- |
 | **Version Upgrade** | Inspect registered automated migration tasks (System Migration), progress counters, and saved checkpoints, and trigger or resume migrations after confirming database backups; see [Upgrade Instructions](/en/self-host/upgrading/upgrade-instruction) |
 | **Audit Logs** | Query platform-wide administrative and operational audit events by actor, team, event type, and time range |
-| **License** | Inspect the Instance ID, upload or renew Commercial Edition license keys, and verify licensed capabilities and expiration dates |
+| **License** | Inspect tenant name, resource quotas, licensed capabilities, and expiration date, and activate or update Commercial Edition license keys |

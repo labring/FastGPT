@@ -72,8 +72,8 @@ https://raw.githubusercontent.com/labring/fastgpt-official-plugins/refs/heads/ma
 
 推荐环境：
 
-- Node.js 版本满足目标插件仓库要求。
-- `pnpm`，当前 `fastgpt-plugin` 仓库使用 pnpm workspace。
+- Node.js 22（`>= 22.23.2`）。
+- `pnpm` 10，当前 `fastgpt-plugin` 仓库使用 pnpm workspace。
 - Git。
 - GitHub CLI `gh`，用于 fork、创建仓库和提交 PR。
 
@@ -115,14 +115,17 @@ pnpx @fastgpt-plugin/cli create
 
 CLI 会创建插件目录，并生成常见文件：
 
-| 文件               | 作用                                                     |
-| ------------------ | -------------------------------------------------------- |
-| `index.ts`         | 插件入口，默认导出 `defineTool()` 或 `defineToolSet()`。 |
-| `package.json`     | 插件依赖和 `build`、`build:dev`、`pack`、`test` 脚本。   |
-| `tsconfig.json`    | TypeScript 配置。                                        |
-| `vitest.config.ts` | 测试配置。                                               |
-| `README.md`        | 插件说明。                                               |
-| `logo.svg`         | 插件主图标。                                             |
+| 文件               | 作用                                                                                       |
+| ------------------ | ------------------------------------------------------------------------------------------ |
+| `index.ts`         | 插件入口，默认导出 `defineTool()` 或 `defineToolSet()`。                                   |
+| `index.spec.ts`    | 单元测试文件。                                                                             |
+| `package.json`     | 插件依赖和 `build`、`build:dev`、`check`、`dev`、`debug`、`debug:run`、`pack`、`test` 脚本。 |
+| `tsconfig.json`    | TypeScript 配置。                                                                          |
+| `vitest.config.ts` | 测试配置。                                                                                 |
+| `README.md`        | 默认插件说明。                                                                             |
+| `README.zh-CN.md`  | 简体中文插件说明。                                                                         |
+| `README.en.md`     | 英文插件说明。                                                                             |
+| `logo.svg`         | 插件主图标。                                                                               |
 
 ## 3. 实现单工具
 

@@ -26,15 +26,17 @@ Website knowledge bases discover pages under the same domain and ingest their te
 
 ![Create a website dataset](/imgs/optimized/current/website-dataset-create.png.webp)
 
+![Click Start Configuration in a new website dataset](/imgs/optimized/current/website-dataset-empty.png.webp)
+
 ## Step 2: Configure the Root URL
 
-Enter the starting page URL, such as `https://docs.example.com/guide`. The site-sync flow discovers same-domain child pages, with a current discovery limit of 200 pages. Review the discovered collections to verify coverage. Use the web-link import flow for individual pages.
+In the **Website Info** step of the **Web site configuration** modal, enter the **Base URL** (such as `https://docs.example.com/guide`). The site-sync flow discovers same-domain child pages, with a current discovery limit of 200 pages. Review the discovered collections to verify coverage. Use the web-link import flow for individual pages.
 
 ![Configure root URL and content selector](/imgs/optimized/current/website-dataset-url.png.webp)
 
 ## Step 3: Select the Article Body
 
-Inspect the target page's HTML and enter a CSS selector such as `article`, `main`, or `#content`. Choose a container holding the useful body text. Combine selectors with commas when the title and article are separate, for example `h1.page-title, article`.
+Inspect the target page's HTML and enter a CSS selector such as `article`, `main`, or `#content` in **Selector (optional)**. Choose a container holding the useful body text. Combine selectors with commas when the title and article are separate, for example `h1.page-title, article`.
 
 Check the selected elements in browser developer tools, then inspect imported chunks for complete text and repeated navigation. Recheck selectors after a website redesign.
 
@@ -43,11 +45,9 @@ Check the selected elements in browser developer tools, then inspect imported ch
 1. Click **Next**, choose chunk storage or Q&A extraction, and configure the processing and index options supported by the current UI.
 2. Start synchronization and wait for collection creation and training to finish.
 3. Test a question with a known answer and inspect the cited source.
-4. Follow the current deployment's automatic-sync controls for recurring updates. Verify the last sync result and processing status after source changes. Hash-based updates can recreate collections and require retraining; see [Data Maintenance](/en/guide/dataset/update-data).
+4. For recurring updates, enable **Scheduled sync** in the right-hand dataset information panel (the system polls daily, and collections being rebuilt may be temporarily unavailable during sync). Verify the last sync result and processing status after source changes; see [Data Maintenance](/en/guide/dataset/update-data).
 
 ![Website dataset chunk and index settings](/imgs/optimized/current/website-dataset-settings.png.webp)
-
-![Website dataset configuration entry](/imgs/optimized/current/website-dataset-empty.png.webp)
 
 ## Scraping Troubleshooting
 

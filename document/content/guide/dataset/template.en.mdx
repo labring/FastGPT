@@ -20,6 +20,7 @@ The platform enforces strict validation rules on uploaded spreadsheet files:
 | Check Item | Specification Rule |
 | --- | --- |
 | **File Format** | Standard CSV files (UTF-8 encoding without BOM recommended) or `.xlsx` workbooks |
+| **Upload Limit** | Up to 1 file per upload, with a maximum file size of 50 MB |
 | **Sheet Structure** | XLSX workbooks must contain exactly one worksheet and must not include merged cells |
 | **Header Matching** | The parser trims whitespace and normalizes column headers to lowercase before matching |
 | **Empty Rows** | Rows where both `q` and `a` cells are empty are skipped automatically |
@@ -61,7 +62,7 @@ The `metadata` column stores operational tags, department codes, timestamps, and
 ```
 
 - Top-level keys of valid JSON objects are merged directly into the chunk's `metadata` property.
-- If formatting is invalid or non-object, the cell's raw text is retained as a string value.
+- If formatting is invalid or non-object, the cell's raw text is retained as a string value under the key `metadata_<column_index>`.
 
 ---
 

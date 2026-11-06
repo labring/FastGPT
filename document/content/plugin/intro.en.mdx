@@ -14,9 +14,9 @@ Plugin development is part of the FastGPT developer documentation. Choose a guid
 | Add model or provider presets | [Model preset guide](/en/plugin/model-presets) | Update static configuration in the plugin repository and submit the changes |
 | Develop Agent Skills | [Skill development tutorial](/en/guide/build/skill/development) | Author code in sandbox and bind to Agent |
 
-To install existing plugins, see [team installation and management](/en/plugin/team-installation). System administrators can use [system tool management](/en/guide/build/tools/system-plugins/upload_system_tool) and [plugin runtime configuration](/en/plugin/runtime).
+To install existing plugins, see [team installation and management](/en/plugin/team-installation). System administrators (users signed in with the `root` account, with the **Admin** entry at the bottom-left of the sidebar) can use [system tool management](/en/guide/build/tools/system-plugins/upload_system_tool) and [plugin runtime configuration](/en/plugin/runtime).
 
-Recommended development baseline: FastGPT v4.15.0+, FastGPT Plugin v1.0.0+, Node.js >= 20.x (LTS 20 or 22), pnpm >= 9.x.
+Recommended development baseline: FastGPT v4.15.0+, FastGPT Plugin v1.0.0+, Node.js 22 (`>= 22.23.2`), pnpm 10.
 
 ## Background
 
@@ -74,25 +74,16 @@ After verification, tool authors follow the [publishing workflow](/en/plugin/deb
 | Scope | Responsible role | Guide |
 | --- | --- | --- |
 | Team installation, updates, and removal | Team administrator or owner | [Install and manage team plugins](/en/plugin/team-installation) |
-| System-wide installation and configuration | Root administrator | [System tool management](/en/guide/build/tools/system-plugins/upload_system_tool) |
+| System-wide installation and configuration | System administrator (`root` account) | [System tool management](/en/guide/build/tools/system-plugins/upload_system_tool) |
 | Runtime capacity, environment variables, and troubleshooting | Deployment operator | [Plugin runtime configuration](/en/plugin/runtime) |
 
 ### Localized Plugin Metadata
 
-FastGPT preserves localized plugin metadata and selects text at the UI presentation boundary, falling back from the active locale to Simplified Chinese and then English. Legacy string values remain supported for older plugins and cached responses.
+When you provide `{ en, 'zh-CN' }` locale objects in `manifest` and schemas along with localized README files (`README.zh-CN.md`, `README.en.md`), the FastGPT UI displays the active locale and falls back to Simplified Chinese and then English.
 
-- Plugin names, introductions, toolkit child metadata, and `x-i18n` text in input, output, and secret schemas are used in the UI; ordinary schema text remains the fallback for older plugins.
-- A tool's model function description combines its name with the introduction resolved for the UI/metadata locale; FastGPT no longer selects a separate description by dispatch request language.
-- README selection prefers the active locale in `readmeUrls`, then Simplified Chinese, English, and the legacy `readmeUrl`.
-- Workflow nodes and Agent tool selections retain the metadata locale snapshot from when the plugin tool was added; changing the UI locale does not rewrite existing snapshots. Built-in Workflow templates remain unchanged.
+## Packaging and Runtime
 
-## `.pkg` Plugin Package Protocol
-
-Tool plugins are delivered as `.pkg` files. Authors maintain the entry point, metadata, and schemas. See [package and SDK reference](/en/plugin/package-reference) for artifacts and SDK entry points.
-
-## local-pool Runtime
-
-The plugin service manages worker processes and request queues for tool plugins. Process counts, concurrency, and runtime settings belong to the deployment environment. See [plugin runtime configuration](/en/plugin/runtime#local-pool-runtime).
+Tool plugins are delivered as `.pkg` packages and executed in the plugin service's `local-pool` process pool. See [package and SDK reference](/en/plugin/package-reference) for build artifacts and SDK entry points, and [plugin runtime configuration](/en/plugin/runtime#local-pool-runtime) for worker pool capacity and environment variables.
 
 ## Development And Distribution
 

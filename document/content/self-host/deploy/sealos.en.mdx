@@ -53,7 +53,7 @@ Before selecting Beijing, verify connectivity for your users and required model 
 
 Since databases need to be deployed, wait 2–4 minutes after deployment before accessing. The default uses minimal resources, so the first access may be slow.
 
-Inspect initial administrator credentials, databases, object storage, and AI Proxy settings. Older templates may expose `root_password` and `openai`/`oneapi` fields; the selected template defines the current parameters.
+Inspect initial administrator credentials, databases, object storage, and AI Proxy settings. Older templates may expose `root_password`, `base_url`, and `api_key` fields; the selected template defines the current parameters.
 
 ![1. Start Deployment — interface example](/imgs/optimized/sealos1.png.webp)
 
@@ -111,9 +111,7 @@ In **App Launchpad**, select FastGPT, click **Change**, and you'll see environme
 
 ### How to Update/Upgrade FastGPT
 
-[Upgrade script documentation](/en/self-host/upgrading/upgrade-instruction) — read the docs first to determine which version to upgrade to. Do not skip versions.
-
-For example, if you're on version 4.5 and want to upgrade to 4.5.1: change the image version to v4.5.1, run the upgrade script, wait for completion, then continue upgrading. If the target version doesn't require initialization, skip it.
+Before upgrading, review the [Upgrade Instructions](/en/self-host/upgrading/upgrade-instruction), upgrade sequentially through minor versions (for example, from v4.17.2 to v4.17.3), and check whether any system migration tasks require attention after each version.
 
 Upgrade steps:
 
@@ -174,11 +172,13 @@ Add a mounted file with path: `/app/projects/app/public/icon/logo.svg`, with the
 
 ### Commercial Edition Config File
 
-```
+Legacy commercial images that mount `config.json` use the following structure (in v4.15.0 and later, configure the commercial license and branding under **Admin → System Config**):
+
+```json
 {
   "license": "",
   "system": {
-    "title": "" // System name
+    "title": ""
   }
 }
 ```

@@ -5,9 +5,7 @@ description: Connect an external REST file service to FastGPT as an API Dataset 
 
 import { Alert } from '@/components/docs/Alert';
 
-|                         |                         |
-| ----------------------- | ----------------------- |
-| ![API File Library — interface example](/imgs/optimized/current/api-dataset-create.png.webp) | ![API File Library — interface example](/imgs/optimized/image-19.png.webp) |
+![API File Library — interface example](/imgs/optimized/current/api-dataset-create.png.webp)
 
 ## Background
 
@@ -17,13 +15,15 @@ The API File Library lets you integrate your existing document library seamlessl
 
 ## How to Use the API File Library
 
-When creating a Dataset, select the API File Library type and configure the key parameters: the baseURL of your file service and the request header for authentication. As long as your endpoints conform to FastGPT's specification, the system will automatically fetch and display the complete file list for selective import.
+Go to **Knowledge Bases → New → Third-Party Dataset → API File Library** and configure the service connection parameters. Once your endpoints implement the specification below, FastGPT fetches and displays the file tree for selective import.
 
-You need to provide three parameters:
+The creation modal fields map to the configuration parameters as follows:
 
-- baseURL: The base URL of your file service
-- authorization: The authentication request header, sent as `Authorization: Bearer <token>`
-- basePath: Optional, the root directory path to specify the starting position of the file tree
+| UI Field | Config Parameter | Description |
+| --- | --- | --- |
+| **API URL** | `baseURL` | Root URL of your external file service (e.g., `https://files.example.com/api`) |
+| **Authorization** | `authorization` | Authentication token; FastGPT automatically prepends `Bearer ` (`Authorization: Bearer <token>`) |
+| **Base URL** | `basePath` | Optional root directory (`parentId`) for the file tree; click **Select** after filling in the URL and token |
 
 ## API Specification
 

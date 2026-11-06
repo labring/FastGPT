@@ -31,14 +31,14 @@ FastGPT Plugin 默认使用本地进程池运行时 `local-pool`，按插件服�
 
 ### 单服务运行参数
 
-FastGPT 的工具配置接口接受以下四个字段。当前值以配置页面读取到的插件服务配置为准；调整前应结合宿主机资源与工具的外部 API 限流进行测试。
+系统管理员可在**管理员 →（商业版：系统资源 →）系统工具**中打开目标工具的配置弹窗，切换到**运行时配置**标签页调整以下四个字段。当前值以配置页面读取到的插件服务配置为准；调整前应结合宿主机资源与工具的外部 API 限流进行测试。
 
 | 参数 | 约束 | 说明 |
 | --- | --- | --- |
 | 最小工作节点数 (`minPods`) | 非负整数 | 服务保留的最小 Pod 数量 |
 | 最大工作节点数 (`maxPods`) | 正整数 | 服务可运行的 Pod 数量上限 |
-| 节点超时时间 (`podTimeout`) | 正整数，毫秒 | Pod 超时配置；触发与回收行为以部署的插件服务版本为准 |
-| 每节点最大并发数 (`maxConcurrentRequestsPerPod`) | 正整数 | 单个 Pod 同时处理的请求数量上限 |
+| Pod 超时时间 (`podTimeout`) | 正整数，毫秒 | 单次工具请求在 Pod 内的执行超时时间（空闲 Pod 的回收等待时间由环境变量 `POOL_SERVICE_IDLE_TIMEOUT` 控制） |
+| 单 Pod 最大并发请求数 (`maxConcurrentRequestsPerPod`) | 正整数 | 单个 Pod 同时处理的请求数量上限 |
 
 `minPods` 必须小于或等于 `maxPods`。增加 Pod 数量和单节点并发会增加资源消耗，也可能更快触发外部服务的限流。
 
@@ -52,14 +52,17 @@ FastGPT 的工具配置接口接受以下四个字段。当前值以配置页面
 | `POOL_MAX_TOTAL_PODS` | 当前 Server 进程中所有插件 Pod 的总数上限 |
 | `POOL_SERVICE_MIN_PODS` | 单插件服务的默认最小工作节点数 |
 | `POOL_SERVICE_MAX_PODS` | 单插件服务的默认最大工作节点数 |
-| `POOL_SERVICE_IDLE_TIMEOUT` | 空闲 Pod 回收等待时间，单位毫秒 |
-| `POOL_SERVICE_POD_TIMEOUT` | 默认 Pod 超时配置，单位毫秒；行为以插件服务版本为准 |
+| `POOL_SERVICE_IDLE_TIMEOUT` | 空闲 Pod 回收等待时间，单位毫秒（决定空闲工作进程何时销毁） |
+| `POOL_SERVICE_POD_TIMEOUT` | 默认单次请求 Pod 执行超时时间，单位毫秒 |
 | `POOL_SERVICE_MAX_CONCURRENT_REQUESTS_PER_POD` | 单个 Pod 的默认最大并发请求数 |
 | `POOL_SERVICE_MAX_REQUESTS_PER_POD` | 单个 Pod 累计处理的请求数上限 |
 | `POOL_SERVICE_MAX_QUEUE_SIZE` | 单插件服务的请求队列容量上限 |
 | `POOL_SERVICE_QUEUE_TIMEOUT` | 请求等待可用 Pod 的超时时间，单位毫秒 |
 | `POOL_SERVICE_STARTUP_RETRY_BASE_DELAY` | Pod 启动重试的基础退避延迟，单位毫秒 |
 | `POOL_SERVICE_STARTUP_RETRY_MAX_DELAY` | Pod 启动重试的最大退避延迟，单位毫秒 |
+| `POOL_SERVICE_POD_MAX_OLD_SPACE_SIZE_MB` | 单个 Pod 工作进程的 V8 老生代内存上限（MB） |
+| `POOL_SERVICE_POD_ALLOW_NET` | 是否允许 Pod 工作进程发起网络访问（默认 `false`，需调用外部 API 时应开启） |
+| `POOL_SERVICE_POD_TERMINATION_GRACE_PERIOD` | Pod 终止前的优雅退出等待时间，单位毫秒 |
 
 ## 错误处理与启动熔断
 

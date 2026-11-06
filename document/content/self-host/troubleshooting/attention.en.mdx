@@ -11,7 +11,7 @@ If you encounter issues while using FastGPT, follow the steps below to troublesh
 
 Many known issues are fixed in newer releases. Before reporting a problem, verify your version first:
 
-- **Check version:** View the current running version on the FastGPT homepage or in the admin panel.
+- **Check version:** View the current running FastGPT version at the bottom of the left navigation bar, under **Admin → System upgrade**, or in the `fastgpt-app` image tag in `docker-compose.yml`.
 - **Version recommendation:** Follow the [Upgrade Guide](/en/self-host/upgrading/upgrade-instruction) to keep the deployment on the latest stable release.
 
 ## 2. Troubleshooting Steps
@@ -105,7 +105,7 @@ You can verify the setup with spoofed headers:
 curl -H 'X-Forwarded-For: 6.6.6.6' -H 'X-Real-IP: 6.6.6.6' https://fastgpt.example.com
 ```
 
-With correct configuration, FastGPT records and validates the genuine client origin IP.
+Then inspect the client IP in the App's **Chat logs** or server request logs; with the configuration active, FastGPT records the real egress IP of the client and ignores the spoofed `6.6.6.6` value.
 
 ## 4. Contact Technical Support
 

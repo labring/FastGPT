@@ -104,8 +104,8 @@ curl --location --request POST 'http://localhost:3000/api/v1/chat/completions' \
 
 - headers.Authorization: Bearer [apikey]
 - chatId: string | undefined。
-  - 为时（不传入），不使用 FastGpt 提供的上下文功能，完全通过传入的 messages 构建上下文。
-  - 为 `非空字符串` 时，意味着使用 chatId 进行对话，自动从 FastGpt 数据库取会话，并使用 messages 数组最后一个内容作为用户问题，其余 message 会被忽略。请自行确保 chatId 唯一，长度不超过 1024，通常可以是自己系统的对话框 ID。
+  - 为空或不传入时，当前版本会自动生成新的会话 ID 并保存记录（早期历史版本不传入时仅通过传入的 `messages` 构建上下文）。
+  - 为 `非空字符串` 时，意味着使用 `chatId` 进行对话，自动从 FastGPT 数据库取会话，并使用 `messages` 数组最后一个内容作为用户问题，其余 `message` 会被忽略。请自行确保 `chatId` 唯一，长度不超过 1024，通常可以是自己系统的对话框 ID。
 - messages: 结构与 [GPT 接口](https://platform.openai.com/docs/api-reference/chat/object) chat 模式一致。
 - responseChatItemId: string | undefined。如果传入，则会将该值作为本次对话的响应消息的 ID，FastGPT 会自动将该 ID 存入数据库。请确保，在当前 `chatId` 下，`responseChatItemId` 是唯一的。
 - detail: 是否返回中间值（模块状态，响应的完整结果等），`stream 模式` 下会通过 `event` 进行区分，`非 stream 模式` 结果保存在 `responseData` 中。
@@ -283,7 +283,7 @@ data: [{"moduleName":"知识库搜索","moduleType":"datasetSearchNode","running
 </Tab>
 <Tab value="event值">
 
-event 取值：
+event 取值（仅列出历史版本事件，当前 18 种完整运行时事件见[对话与流式响应](/zh-CN/openapi/chat)）：
 
     - answer: 返回给客户端的文本（最终会算作回答）
     - chatTitle: 根据本轮用户问题生成的对话标题
@@ -388,7 +388,7 @@ event 取值：
 
 ### 交互节点继续运行
 
-紧接着上一节，当你接收到交互节点信息后，可以根据这些数据进行 UI 渲染，引导用户输入或选择相关信息。然后需要再次发起会话，来继续工作流。调用的接口与仍是该接口，你需要按以下格式来发起请求：
+紧接着上一节，当你接收到交互节点信息后，可以根据这些数据进行 UI 渲染，引导用户输入或选择相关信息。然后需要再次发起会话，来继续工作流。调用的仍是该接口，你需要按以下格式来发起请求：
 
 <Tabs items={['用户选择','表单输入']}>
 <Tab value="用户选择">
@@ -439,7 +439,9 @@ curl --location --request POST 'http://localhost:3000/api/v1/chat/completions' \
 </Tab>
 </Tabs>
 
-## 请求插件
+<span id="请求插件" />
+
+## 请求工作流工具（原插件）
 
 插件的接口与对话接口一致，仅请求参数略有区别，有以下规定：
 
@@ -458,7 +460,6 @@ curl --location --request POST 'http://localhost:3000/api/v1/chat/completions' \
 --data-raw '{
     "appId": "your_app_id",
     "stream": false,
-    "chatId": "test",
     "variables": {
         "query":"你好" # 我的插件输入有一个参数，变量名叫 query
     }
@@ -600,7 +601,7 @@ data: [{"nodeId":"fdDgXQ6SYn8v","moduleName":"AI 对话","moduleType":"chatNode"
 </Tab>
 <Tab value="输出获取">
 
-event 取值：
+event 取值（仅列出历史版本事件，完整列表见[对话与流式响应](/zh-CN/openapi/chat)）：
 
     - answer: 返回给客户端的文本（最终会算作回答）
     - fastAnswer: 指定回复返回给客户端的文本（最终会算作回答）
@@ -835,7 +836,7 @@ curl --location --request DELETE 'http://localhost:3000/api/core/chat/history/cl
 
 ## 对话管理
 
-指的是某个会话下的会话操作。
+指的是某个会话下单条对话消息（`dataId`）的操作。
 
 ### 获取会话基本信息
 
@@ -1153,7 +1154,7 @@ curl --location --request POST 'http://localhost:3000/api/core/chat/feedback/upd
 
 **4.8.16 后新版接口**
 
-新版猜你想问必须包含 `chatId` 参数，并提供 `appId`、`skillId` 或 `outLinkAuthData` 之一。系统会根据 `chatId` 拉取最近 6 轮对话作为上下文来引导回答。
+新版猜你想问必须包含 `chatId` 参数，并提供 `appId`、`skillId` 或 `outLinkAuthData` 之一。系统会根据 `chatId` 拉取最近 6 条消息（约 3 轮问答）作为上下文来引导回答。
 
 <Tabs items={['请求示例','参数说明','响应示例']}>
 <Tab value="请求示例">

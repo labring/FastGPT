@@ -1,9 +1,10 @@
 ---
 title: 接入 Marker PDF 文档解析（历史归档）
+deprecated: true
 description: 使用 Marker 解析 PDF 文档，可实现图片提取和布局识别
 ---
 
-本页归档历史接入方案。当前模型服务登记、渠道和权限配置请阅读[模型配置](/zh-CN/self-host/config/model/intro)，并按部署版本核对文件解析接口。
+本页归档历史接入方案。4.15.0 起开源版改用 `CUSTOM_PDF_PARSE_URL` 与 `CUSTOM_PDF_PARSE_KEY` 环境变量配置自定义 PDF 解析服务，详见[环境变量说明](/zh-CN/self-host/config/env#pdf-增强解析配置)；模型服务登记与渠道管理请阅读[模型配置](/zh-CN/self-host/config/model/intro)。
 
 ## 背景
 
@@ -21,7 +22,7 @@ PDF 是一个相对复杂的文件格式，在 FastGPT 内置的 pdf 解析器�
 
 这里介绍快速 Docker 安装的方法：
 
-```dockerfile
+```bash
 docker pull crpi-h3snc261q1dosroc.cn-hangzhou.personal.cr.aliyuncs.com/marker11/marker_images:v0.2
 docker run --gpus all -itd -p 7231:7232 --name model_pdf_v2 -e PROCESSES_PER_GPU="2" crpi-h3snc261q1dosroc.cn-hangzhou.personal.cr.aliyuncs.com/marker11/marker_images:v0.2
 ```
@@ -85,7 +86,7 @@ FastGPT V4.9.0 版本之前，可以用以下方式，试用 Marker 解析服务
 
 安装和运行 Marker 服务：
 
-```dockerfile
+```bash
 docker pull crpi-h3snc261q1dosroc.cn-hangzhou.personal.cr.aliyuncs.com/marker11/marker_images:v0.1
 docker run --gpus all -itd -p 7231:7231 --name model_pdf_v1 -e PROCESSES_PER_GPU="2" crpi-h3snc261q1dosroc.cn-hangzhou.personal.cr.aliyuncs.com/marker11/marker_images:v0.1
 ```

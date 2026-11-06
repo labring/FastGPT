@@ -9,8 +9,8 @@ description: 创建问候工具，验证输入与输出，并构建可安装的�
 
 开始前请确认本地环境已具备：
 
-- **Node.js**：版本 20.x 及以上（推荐 Node.js 20 或 22 LTS）。
-- **pnpm**：推荐使用 pnpm 9.x 及以上管理依赖。
+- **Node.js**：Node.js 22（`>= 22.23.2`）。
+- **pnpm**：pnpm 10。
 - **FastGPT**：v4.15.0 及以上版本运行实例。
 - **FastGPT Plugin**：v1.0.0 及以上版本插件服务。
 - **Git**：用于版本控制与代码提交。
@@ -27,12 +27,15 @@ pnpx @fastgpt-plugin/cli create hello-tool --type tool
 
 ```text
 hello-tool/
-├── index.ts          # Plugin entry, default export is defineTool
-├── package.json      # Build and test scripts
-├── tsconfig.json     # TypeScript configuration
-├── vitest.config.ts  # Test configuration
-├── logo.svg          # Plugin icon
-└── README.md         # Plugin documentation
+├── index.ts          # 插件入口，默认导出 defineTool
+├── index.spec.ts     # 单元测试文件
+├── package.json      # 构建、检查、调试与打包脚本
+├── tsconfig.json     # TypeScript 配置
+├── vitest.config.ts  # 测试配置
+├── logo.svg          # 插件图标
+├── README.md         # 默认插件说明
+├── README.zh-CN.md   # 简体中文说明
+└── README.en.md      # 英文说明
 ```
 
 进入目录并安装依赖：
@@ -62,8 +65,15 @@ const handler = createToolHandler({
       .min(1)
       .default('FastGPT')
       .meta({
-        title: '用户名称',
-        description: '输入需要问候的用户名称'
+        title: {
+          en: 'User Name',
+          'zh-CN': '用户名称'
+        },
+        description: {
+          en: 'Name of the user to greet',
+          'zh-CN': '输入需要问候的用户名称'
+        },
+        isToolParam: true
       } satisfies InputSchemaMetaType)
   }),
   outputSchema: z.object({
@@ -146,19 +156,17 @@ pnpx @fastgpt-plugin/cli check --entry . --output ./dist
 pnpm run pack
 ```
 
-命令执行后会生成 `.pkg` 安装文件，输出位置以生成项目的 `pack` 脚本为准（通常输出至 `dist/hello-tool.pkg`）。产物内容见[插件包与 SDK 参考](/zh-CN/plugin/package-reference#构建产物)。
+命令执行后会在插件根目录生成 `hello-tool.pkg` 安装文件（可通过 `--output` 指定其他输出目录）。产物内容见[插件包与 SDK 参考](/zh-CN/plugin/package-reference#构建产物)。
 
 ## 步骤 6：在 FastGPT 中安装与调用验证
 
 生成 `.pkg` 插件包后，即可在 FastGPT 中完成端到端安装与调用验收：
 
-1. **本地固定入参调试**：在本地工程目录通过 CLI 传入固定 JSON 入参验证工具输出：
-   ```bash
-   pnpx @fastgpt-plugin/cli debug --run --input '{"name":"FastGPT"}'
-   ```
-2. **安装插件**：进入 FastGPT **工作台 → 系统工具**，点击右上角 **+ 安装工具 → 从本地安装**，选择刚构建的 `dist/hello-tool.pkg` 上传并确认安装（系统管理员也可在**管理员 → 系统资源 → 系统工具 → + 安装工具**中导入）。
-3. **应用配置**：进入任意工作流或对话 Agent 应用的编辑画布，在工具列表中选择并添加刚安装的“问候工具”（`hello-tool`）。
-4. **验证执行结果**：在应用调试预览中发起对话触发工具调用，并在运行详情中查看节点输出。成功输出包含：
+1. **安装插件**：
+   - **开源社区版**：使用 `root` 系统管理员账号登录，进入左下角**管理员 → 系统工具**，点击右上角**安装工具 → 从本地安装**，上传刚构建的 `hello-tool.pkg` 并点击**确认导入**。
+   - **商业版**：系统管理员可在**管理员 → 系统资源 → 系统工具 → 安装工具 → 从本地安装**中导入；若系统管理员已在**管理员 → 系统配置 → 功能清单**中开启**允许团队上传插件**，团队管理员或所有者也可在**工作台 → 系统工具 → + 安装工具 → 从本地安装**中导入。
+2. **应用配置**：进入任意工作流或对话 Agent 应用的编辑画布，在工具列表中选择并添加刚安装的“问候工具”（`hello-tool`）。
+3. **验证执行结果**：在应用调试预览中发起对话触发工具调用，并在运行详情中查看节点输出。成功输出包含：
 
 ```json
 {

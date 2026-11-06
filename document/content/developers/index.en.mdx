@@ -23,7 +23,7 @@ Keep API keys on a trusted server. Identity proxy is optional and requires endpo
 
 ## Credential Types and Authentication
 
-Each endpoint declares the credentials it accepts. Use the generated contract to verify authentication requirements.
+Each endpoint declares the credentials it accepts. Check the authentication method for each endpoint in `/apidoc/systemopenapi` or `/apidoc/devapi` before integrating.
 
 | Credential | Transport Location | Permission Scope | Recommended Scenario |
 |---|---|---|---|
@@ -47,6 +47,7 @@ Each endpoint declares the credentials it accepts. Use the generated contract to
 - [System Tool Development](/en/plugin/system-tool-development): Build single tools (`defineTool`) and tool suites (`defineToolSet`) with `@fastgpt-plugin/cli`.
 - [Model Presets](/en/plugin/model-presets): Register new model providers and map AIProxy channels.
 - [Package and SDK Reference](/en/plugin/package-reference): Inspect plugin directory conventions, package archive formats, and SDK type definitions.
+- [Skill Development Tutorial](/en/guide/build/skill/development): Author custom Skills in the sandbox and bind them to an Agent.
 
 ## Machine-Readable OpenAPI Contracts
 

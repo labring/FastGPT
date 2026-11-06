@@ -8,7 +8,7 @@ description: Archived handwritten knowledge base, collection, and data chunk API
 This archive preserves historical handwritten reference material. Some fields, endpoints, and model names belong to older releases. Follow the [current integration guide](/en/openapi/dataset) and your deployment’s generated contract for current work.
 
 
-| How to Get Dataset ID (datasetId)       | How to Get Collection ID (collection_id)   |
+| How to Get Dataset ID (datasetId)       | How to Get Collection ID (collectionId)    |
 | --------------------------------------- | ------------------------------------------ |
 | ![Locate the Dataset ID in the URL](/imgs/optimized/getDatasetId.png.webp) | ![Locate the Collection ID in the interface](/imgs/optimized/getCollectionId.png.webp) |
 
@@ -39,9 +39,9 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/create' \
 <Tab value="Parameters" >
 
 - parentId - Parent ID for building directory structure. Usually can be null or omitted.
-- type - `dataset` or `folder`, represents regular dataset or folder. If not provided, creates a regular dataset.
+- type - `dataset` or `folder`, represents regular dataset or folder (required in current Schema).
 - name - Dataset name (required)
-- intro - Description (optional)
+- intro - Description (required in current Schema)
 - avatar - Avatar URL (optional)
 - vectorModel - Vector model (recommended to leave empty, use system default)
 - agentModel - Text processing model (recommended to leave empty, use system default)
@@ -219,7 +219,7 @@ curl --location --request DELETE 'http://localhost:3000/api/core/dataset/delete?
 | ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
 | datasetId        | Dataset ID                                                                                                                                      | ✅       |
 | parentId：       | Parent ID. Defaults to root directory if not provided                                                                                           |          |
-| trainingType     | Data processing method. chunk: split by text length; qa: Q&A extraction                                                                         | ✅       |
+| trainingType     | Data processing method (optional, defaults to `chunk`). `chunk`: split by text length; `qa`: Q&A extraction                                     |          |
 | indexPrefixTitle | Whether to auto-generate title index                                                                                                            |          |
 | customPdfParse   | Whether to enable enhanced PDF parsing. Default false: disabled; true: enabled                                                                  |          |
 | autoIndexes      | Whether to auto-generate indexes (commercial version only)                                                                                      |          |
@@ -267,13 +267,13 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/collectio
 - type:
   - folder: Folder
   - virtual: Virtual collection (manual collection)
-- metadata: Metadata (not currently used)
+- metadata: Custom metadata object (optional)
 
 </Tab>
 
 <Tab value="Response Example" >
 
-`data` is an object containing the created `collectionId` and insertion statistics (`results.insertLen`).
+`data` is the created collection ID string.
 
 ```json
 {
@@ -319,13 +319,13 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/collectio
 - datasetId: Dataset ID (required)
 - parentId: Parent ID. Defaults to root directory if not provided
 - name: Collection name (required)
-- metadata: Metadata (not currently used)
+- metadata: Custom metadata object (optional)
 
 </Tab>
 
 <Tab value="Response Example" >
 
-data is the collection ID.
+`data` is an object containing `collectionId` and `results.insertLen`.
 
 ```json
 {
@@ -385,7 +385,7 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/collectio
 
 <Tab value="Response Example" >
 
-data is the collection ID.
+`data` is an object containing `collectionId` and `results.insertLen`.
 
 ```json
 {
@@ -435,7 +435,7 @@ Use POST form-data format for upload. Contains file and data fields.
 
 <Tab value="Response Example" >
 
-data is the collection ID.
+`data` is an object containing `collectionId` and `results.insertLen`.
 
 ```json
 {
@@ -502,7 +502,7 @@ Send a POST request with a JSON body containing the following fields:
 
 <Tab value="Response Example" >
 
-data is the collection ID.
+`data` is an object containing `collectionId` and `results.insertLen`.
 
 ```json
 {
@@ -565,7 +565,7 @@ curl --location --request POST 'http://localhost:3000/api/proApi/core/dataset/co
 
 <Tab value="Response Example" >
 
-data is the collection ID.
+`data` is an object containing `collectionId` and `results.insertLen`.
 
 ```json
 {
@@ -879,7 +879,7 @@ Maximum 5 custom indexes per data group
 
 Each request can push up to 200 data groups. FastGPT automatically creates the processing usage record, so you do not need to provide `billId`.
 
-<Tabs items={['Request Example','Parameters','Response Example']}>
+<Tabs items={['Request Example','Parameters','Response Example','QA Prompt Template']}>
 <Tab value="Request Example" >
 
 ```bash
@@ -916,7 +916,7 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/data/push
 <Tab value="Parameters" >
 
 - collectionId: Collection ID (required)
-- trainingType: Indexing mode (required)
+- trainingType: Indexing mode (optional, defaults to `chunk`)
 - prompt: Custom QA split prompt. Must follow template strictly. Recommended not to pass. (optional)
 - data：(Specific data)
 
@@ -1117,9 +1117,9 @@ curl --location --request PUT 'http://localhost:3000/api/core/dataset/data/updat
 <Tab value="Parameters" >
 
 - dataId: Data ID
-- q: Primary data (optional)
+- q: Primary data (required in current Schema)
 - a: Auxiliary data (optional)
-- indexes: Custom indexes (optional). See `Batch Add Data to Collection` for types. If custom indexes exist when created,
+- indexes: Custom indexes (optional). See `Push Data to Processing Queue` above for structure; include the existing `dataId` when preserving an existing vector index.
 
 </Tab>
 

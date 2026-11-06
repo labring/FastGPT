@@ -24,7 +24,7 @@ The conversation endpoint accepts `authProxy.username` or `authProxy.tmbId` in t
 }
 ```
 
-The username is the member's login username. When both identifiers are supplied, they must resolve to the same member. Omitting proxy fields uses the credential's member. Server-side permission checks determine access after membership or conversation ownership changes.
+The username is the member's login username. When both `tmbId` and `username` are supplied in the API request body, `tmbId` takes precedence; if `tmbId` is invalid, the request fails directly and `username` is ignored. Omitting proxy fields uses the credential's member. Server-side permission checks determine access after membership or conversation ownership changes.
 
 ## MCP headers
 
@@ -42,4 +42,4 @@ Alternatively, use `x-fastgpt-auth-proxy-tmb-id`. Both headers must identify the
 
 Call as a member with read access and inspect conversation ownership. Then verify rejection using a test member lacking access. Check enablement, team, member status, identifier agreement, and resource permissions. An MCP tool list establishes metadata visibility; execution performs further permission checks.
 
-The trusted server holds credentials and generates proxy fields. The user-facing client supplies business identity and the server authorizes its mapping. Current generated MCP references may omit proxy-header declarations; this guide preserves verified names. Check them against the deployed implementation and returned errors.
+The trusted server holds credentials and generates proxy fields. The user-facing client supplies business identity and the server authorizes its mapping. MCP identity proxying passes the member identifier through the `x-fastgpt-auth-proxy-username` or `x-fastgpt-auth-proxy-tmb-id` request header.

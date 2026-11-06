@@ -29,7 +29,7 @@ Click **Start Using** in the action column on the right side of the list (the ad
 
 ### 3. Verify a New Conversation and Citations
 
-Open the link and start a new conversation with the same known questions used in debug. For the travel example, verify 15 calendar days, an invoice, and the approved travel request. The hotel-allowance question should receive a missing-information response. Open the cited passage and check its source and supporting text.
+Open the link and start a new conversation with the same known questions used in debug. For the travel example, verify 15 calendar days, an invoice, and the approved travel request. Questions outside the material (such as how to reimburse overseas visa fees) receive a missing-information response. Open the cited passage and check its source and supporting text.
 
 If the citation action is missing, check the link's citation-visibility settings and the visitor's permissions. Enable the permitted viewing options needed by the audience, then verify again in a new conversation through the link.
 
@@ -47,6 +47,7 @@ Some parameters are only available in the commercial edition.
 - **Points limit**: The maximum billable AI points allowed for this link.
 - **Token Authentication**: Integrates with third-party systems for identity authentication and chat callbacks.
 - **Real-time running status**: Whether to display currently running nodes during generation.
+- **View skill references**: Controls whether visitors can view skill invocation reference details.
 - **View citation snippets**: Controls access to retrieved Dataset snippets for verifying answer evidence.
 - **View full citation**: Allows visitors to view the complete document text containing the citation.
 - **Download/open source original text**: Allows visitors to download original Dataset files or open source websites; verify the sharing scope of your materials before enabling.
@@ -200,7 +201,7 @@ This endpoint has no required response format.
 
 FastGPT sends the request body `{ token, appName, responseData, chatId }`: `responseData` uses the same format as the response details of the [chat endpoint](/en/openapi/intro#response), `appName` is the app name, and `chatId` is the conversation ID.
 
-Inspect `totalPoints` (AI points) and `tokens` (model context tokens) within `responseData`. The top-level `token` is the business authentication credential.
+Inspect `totalPoints` (AI points) and `tokens` (model context tokens) within `responseData`. The top-level `token` is the business authentication credential. Model and module names in the payload below illustrate the field structure:
 
 ```bash
 curl --location --request POST '{{host}}/shareAuth/finish' \
@@ -210,17 +211,17 @@ curl --location --request POST '{{host}}/shareAuth/finish' \
     "appName": "[App name]",
     "responseData": [
         {
-            "moduleName": "core.module.template.Dataset search",
+            "moduleName": "Dataset Search",
             "moduleType": "datasetSearchNode",
             "totalPoints": 1.5278,
             "query": "Who is the director\nWho is the director of Suzume?\nWho directed this film?\nWho directed Suzume?",
-            "model": "Embedding-2(旧版，不推荐使用)",
+            "model": "text-embedding-v4",
             "tokens": 1524,
             "similarity": 0.83,
             "limit": 400,
             "searchMode": "embedding",
             "searchUsingReRank": false,
-            "extensionModel": "FastAI-4k",
+            "extensionModel": "qwen3.8-flash",
             "extensionResult": "Who is the director of Suzume?\nWho directed this film?\nWho directed Suzume?",
             "runningTime": 2.15
         },
@@ -228,7 +229,7 @@ curl --location --request POST '{{host}}/shareAuth/finish' \
             "moduleName": "AI Chat",
             "moduleType": "chatNode",
             "totalPoints": 0.593,
-            "model": "FastAI-4k",
+            "model": "qwen3.8-flash",
             "tokens": 593,
             "query": "Who is the director",
             "maxToken": 2000,
@@ -351,7 +352,7 @@ export default async function (ctx: FunctionContext) {
 
   <Tab value="/shareAuth/start" >
 
-In this endpoint, we require `token` to equal `fastgpt` to pass verification. The example also rejects questions containing the Chinese character `你` ("you") to demonstrate content moderation.
+In this endpoint, we require `token` to equal `fastgpt` to pass verification. The example also rejects questions containing a restricted keyword to demonstrate content moderation.
 
 ```ts
 import cloud from '@lafjs/cloud';
@@ -408,7 +409,7 @@ Modified: `https://share.fastgpt.io/chat/share?shareId=64be36376a438af0311e599c&
 #### 4. Test the Result
 
 1. Opening the original link or a link where `authToken` does not equal `fastgpt` will show an authentication error.
-2. Sending a message containing `你` will show a content policy violation error.
+2. Sending a message containing the restricted keyword will show a content policy violation error.
 
 ### Use Cases
 

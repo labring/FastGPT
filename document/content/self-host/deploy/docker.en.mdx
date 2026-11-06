@@ -18,7 +18,7 @@ import { CurrentOriginCodeBlockUpdater } from '@/components/docs/CurrentOriginCo
 <Alert icon="🤖" context="success">
 
 - MongoDB: Stores business metadata, Collections, and chunks; object storage holds source files and other assets.
-- PostgreSQL/Milvus/Oceanbase/SeekDB: Stores vector data
+- PostgreSQL/Milvus/OceanBase/SeekDB/OpenGauss: Stores vector data
 - AI Proxy: Required for proxying model requests and managing providers in the Admin interface.
 
 </Alert>
@@ -83,17 +83,14 @@ The FastGPT SeekDB adapter provides the following capabilities, subject to the s
 <Tabs items={['Linux','MacOS','Windows']}>
   <Tab value="Linux">
 ```bash
-# Install Docker
+# Install Docker (includes the Docker Compose V2 plugin)
 curl -fsSL https://get.docker.com | bash -s docker --mirror Aliyun
 systemctl enable --now docker
-# Install docker-compose
-curl -L https://github.com/docker/compose/releases/download/v2.20.3/docker-compose-`uname -s`-`uname -m` -o /usr/local/bin/docker-compose
-chmod +x /usr/local/bin/docker-compose
 # Verify installation
 docker -v
-docker compose -v
-# If it fails, search online for solutions
+docker compose version
 ```
+If installation fails, refer to the [official Docker installation guide](https://docs.docker.com/engine/install/).
   </Tab>
   <Tab value="MacOS">
 We recommend [Orbstack](https://orbstack.dev/). Install via Homebrew:
@@ -196,6 +193,9 @@ curl -fsSL https://doc.fastgpt.cn/deploy/docker/main/cn/docker-compose.pg.yml -o
 - **SeekDB**
   - China mirror (Alibaba Cloud): [docker-compose.seekdb.yml](/deploy/docker/main/cn/docker-compose.seekdb.yml)
   - Global mirror (dockerhub, ghcr): [docker-compose.seekdb.yml](/deploy/docker/main/global/docker-compose.seekdb.yml)
+- **OpenGauss**
+  - China mirror (Alibaba Cloud): [docker-compose.opengauss.yml](/deploy/docker/main/cn/docker-compose.opengauss.yml)
+  - Global mirror (dockerhub, ghcr): [docker-compose.opengauss.yml](/deploy/docker/main/global/docker-compose.opengauss.yml)
 
 </details>
 
@@ -245,7 +245,7 @@ For `Zilliz version`, you also need credentials — see [Deploy Zilliz Version: 
 The following services must be reachable. For direct access, open the host ports printed by the script; with a reverse proxy, the proxy owns the public ports:
 
 1. Port 3000 by default (FastGPT main service; change the host port with `FASTGPT_PORT`)
-2. Port 9000 (S3 service)
+2. Port 9000 (S3 object storage service; in default `short-proxy` mode FastGPT proxies private files, while `short-redirect` mode or direct browser access to public bucket assets such as plugin logos requires configuring `STORAGE_EXTERNAL_ENDPOINT` in Compose and opening port 9000)
 3. Port 3006 by default (FastGPT Agent Sandbox Proxy service; change the host port with `FASTGPT_SANDBOX_PROXY_PORT`)
 
 ### 4. Start Containers
@@ -263,18 +263,18 @@ docker compose up -d
 ### 5. Access FastGPT
 
 Access FastGPT via the port/domain opened in step 3. The login username is `root`:
-- **Version v4.17.3 and later**: The initial password is fixed at `123456`. An activation modal requires setting a new password upon first login. If forgotten, reset the password using the built-in CLI script. See [Modify and Reset Root Password](/en/self-host/config/root-password).
+- **Version v4.17.3 and later**: The initial password is fixed at `123456`. An activation modal requires setting a new password upon first login (any residual `DEFAULT_ROOT_PSW` variable in `v4.17.3+` Compose templates is ignored). If forgotten, reset the password using the built-in CLI script. See [Modify and Reset Root Password](/en/self-host/config/root-password).
 - **Legacy versions (v4.17.2 and earlier)**: The password is set via `DEFAULT_ROOT_PSW` in `docker-compose.yml`. When deploying with the interactive script, a random password is generated and displayed upon completion. Each container restart updates the password to this value.
 
 ### 6. Configure Models
 
-- After first login, the system prompts that `Language Model` and `Embedding model` are not configured and automatically redirects to the model configuration page. At least these two model types are required.
+- After first login, if models are not yet configured, the system prompts that related models or embedding models are not configured and guides you to the model configuration page. At least a language model and an embedding model are required.
 - If the redirect doesn't happen, go to **Admin → System Resources → System Models** to configure models. [View tutorial](/en/self-host/config/model/intro)
 - Known issue: after first entering the system, the browser tab may become unresponsive. Close the tab and reopen it.
 
 ### 7. Install System Plugins as Needed
 
-Starting from V4.14.0, the fastgpt-plugin image only provides the runtime environment without pre-installed system plugins. All FastGPT systems must manually install system plugins.
+Starting from V4.14.0, the `fastgpt-plugin` image provides the runtime environment, and administrators can install system plugins on demand under **Admin → (Commercial Edition: System Resources →) System Tools**:
 
 - Install via the plugin marketplace — by default it fetches from the public FastGPT Marketplace.
 - If your FastGPT can't access the marketplace, visit [FastGPT Plugin Marketplace](https://marketplace.fastgpt.cn/), download .pkg files, and import them via file upload.
@@ -292,7 +292,7 @@ Use the component image versions bundled in the Compose template for your target
 
 Check the storage endpoint reachable from FastGPT first. With the default `short-proxy` mode, FastGPT validates short links and proxies private-file downloads. For `short-redirect` and directly served public resources such as plugin logos, configure an external address reachable by the required clients and services. Verify signing hosts and proxy paths when diagnosing 403 responses.
 
-See [Object Storage Configuration](/en/self-host/config/object-storage).
+See [Object Storage Configuration](/en/self-host/config/object-storage) and [Migrate Docker Compose from MinIO to RustFS](/en/self-host/docker_minio_to_rustfs) when upgrading an existing MinIO deployment to the RustFS template.
 
 ### Browser Unresponsive After Login
 
@@ -353,8 +353,6 @@ In bridge mode, container running ports don't conflict, but mapped ports can. Ch
 
 If `container1` needs to connect to `container2`, use `container2:running_port`.
 
-(Brush up on Docker basics as needed)
-
 ### relation "modeldata" does not exist
 
 PG database not connected or initialization failed — check logs. FastGPT initializes tables on each PG connection. Errors will appear in the logs.
@@ -386,7 +384,7 @@ Inspect the failed browser request and FastGPT logs for its HTTP status and unde
 ### How to Change Password
 
 - **Web UI**: Log in as `root`, open **Account → Personal information** in the left navigation, and click **Change** on the **Password** row under **General information**.
-- **CLI Reset (Forgotten Password)**: Run `docker compose exec fastgpt-app node /app/scripts/reset-root-password.cjs 'your_new_password'` inside the application container to reset the password without restarting.
+- **CLI Reset (Forgotten Password)**: From the directory containing `docker-compose.yml` on the host, run `docker compose exec fastgpt-app node /app/scripts/reset-root-password.cjs 'your_new_password'` to reset the password without restarting.
 - **Legacy versions (v4.17.2 and earlier)**: Update `DEFAULT_ROOT_PSW` in `docker-compose.yml` and restart the container.
 
 For more details, see [Modify and Reset Root Password](/en/self-host/config/root-password).

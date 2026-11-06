@@ -17,18 +17,24 @@ Prepare a published Skill, resource access permissions, a model supporting tool 
 
 Open the App editor, click **+ Choose** in the **Skills** section on the left, and select published Skills. Confirm the virtual-machine settings. Associating Skills enables the required virtual machine and keeps that capability enabled while Skills remain associated. Set clear task instructions, save, and debug.
 
-Associate Extract Emails from the [development tutorial](/en/guide/build/skill/development). Instruct the Agent to run the Skill's Python script, then enter `Contact alice@example.com and bob@example.org; CC alice@example.com`. Expect two unique addresses: `alice@example.com` and `bob@example.org`. Expand Processed, then Virtual machine / Execute command to inspect the script input and result.
+Associate Extract Emails from the [development tutorial](/en/guide/build/skill/development) (the screenshot below reuses the `Expense Check Assistant` demo app to illustrate attaching the Skill). Set the system prompt:
+
+```text
+When the user provides text, run the Python script in the extract-emails skill to extract all email addresses, deduplicate them in first-seen order, and return one address per line.
+```
+
+Enter `Contact alice@example.com and bob@example.org; CC alice@example.com` in the debug panel. Expect two unique addresses: `alice@example.com` and `bob@example.org`. Expand Processed, then Virtual machine / Execute command to inspect the script input and result.
 
 ![Agent with the published Extract Emails Skill returns two unique addresses](/imgs/optimized/current/skill-agent-result.png.webp)
 
-### Workflow Agent node
+### Workflow invocation (App Call or legacy Agent node)
 
-Open the Workflow canvas, add or select an Agent node, and click **+ Choose** in its **Skill** field to select published Skills. Confirm the model, user question, and virtual-machine settings. Reference the upstream task in the node input and inspect its output. See [Agent node](/en/guide/build/workflow/nodes/agent).
+In new workflows, bind the Skill to a **Chat Agent V2** app first, then open the **+** node panel on the workflow canvas, switch to the **Agent** tab, and add that Chat Agent V2 app (App Call node). In legacy workflows that already contain a standalone **Agent node**, select the Agent node on the canvas and click **+ Choose** in its **Skill** field to attach published Skills. See [Agent node](/en/guide/build/workflow/nodes/agent).
 
 | Host Carrier | Configuration Entry | Sandbox and Execution Scope | Typical Use Case |
 | --- | --- | --- | --- |
 | **Chat Agent V2** | Left panel of the App editor → **Skills** → **+ Choose** | Session-scoped sandbox (`sessions/<chatId>`), preserving workspace files and initialized Skill environments across multi-turn chats | Open-ended multi-turn spreadsheet analysis, interactive report generation, and iterative file processing |
-| **Workflow Agent Node** | Workflow canvas → select Agent node → **Skill** → **+ Choose** | Provisions the sandbox for the workflow session, accepts upstream variables and file URLs, and passes its output to downstream nodes | Embedding an autonomous script-execution or Skill-driven step inside a deterministic business pipeline |
+| **Workflow (App Call / Legacy Agent Node)** | New workflows: canvas **+** → **Agent** tab → select a Skill-enabled Chat Agent V2; legacy workflows: select Agent node → **Skill** → **+ Choose** | Provisions the sandbox for the workflow session, accepts upstream variables and file URLs, and passes its output to downstream nodes | Embedding an autonomous script-execution or Skill-driven step inside a deterministic business pipeline |
 
 ## How Agents use Skills
 

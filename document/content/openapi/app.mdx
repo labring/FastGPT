@@ -18,7 +18,7 @@ import { Alert } from '@/components/docs/Alert';
 
 ## 对话应用
 
-通过 `/api/v1/chat/completions` 指定 `appId`，在 `messages` 中传入用户问题。适用于当前接口支持的对话 Agent、对话 Agent V2 和工作流应用。界面选型与 API 中的资源标识分开理解：接口还识别工作流工具类型。
+通过 `/api/v2/chat/completions` 指定 `appId`，在 `messages` 中传入用户问题。适用于当前接口支持的对话 Agent、对话 Agent V2 和工作流应用。界面选型与 API 中的资源标识分开理解：接口还识别工作流工具类型。
 
 需要全局变量时在 `variables` 中提供与应用声明匹配的键和值。先用应用中的固定测试输入比对 API 结果，再加入业务侧数据。
 
@@ -50,10 +50,10 @@ import { Alert } from '@/components/docs/Alert';
 
 | 方法 | 完整路径 | 摘要与用途 | 核心请求参数（Query / Body） |
 | --- | --- | --- | --- |
-| `POST` | `/api/core/app/logs/list` | 分页获取应用对话日志列表 | Body: `appId`（必填）、`dateStart`、`dateEnd`、`sources`、`tmbIds`、`outLinkUids`、`chatSearch`、`feedbackType`、`errorFilter`、`unreadOnly`、`offset` / `pageNum`、`pageSize` |
-| `POST` | `/api/core/app/logs/getUsers` | 获取应用日志中的活跃用户列表 | Body: `appId`（必填）、`dateStart`、`dateEnd`、`searchKey` |
+| `POST` | `/api/core/app/logs/list` | 分页获取应用对话日志列表 | Body: `appId`（必填）、`dateStart`（必填）、`dateEnd`（必填）、`sources`、`tmbIds`、`outLinkUids`、`chatSearch`、`feedbackType`、`errorFilter`、`unreadOnly`、`offset` / `pageNum`、`pageSize` |
+| `POST` | `/api/core/app/logs/getUsers` | 获取应用日志中的活跃用户列表 | Body: `appId`（必填）、`dateStart`（必填）、`dateEnd`（必填）、`sources`、`searchKey`、`offset` / `pageNum`、`pageSize` |
 | `GET` | `/api/proApi/core/app/logs/getTotalData` | 获取应用总体统计数据（总用户数、总对话数、总积分消耗） | Query: `appId`（必填） |
-| `POST` | `/api/proApi/core/app/logs/getChartData` | 获取应用时序图表统计数据（用户、对话、效果与消耗趋势） | Body: `appId`（必填）、`dateStart`、`dateEnd`、`source`、`userTimespan`（必填）、`chatTimespan`（必填）、`appTimespan`（必填）、`offset`（默认 `1`） |
+| `POST` | `/api/proApi/core/app/logs/getChartData` | 获取应用时序图表统计数据（用户、对话、效果与消耗趋势） | Body: `appId`（必填）、`dateStart`（必填）、`dateEnd`（必填）、`source`、`userTimespan`（必填）、`chatTimespan`（必填）、`appTimespan`（必填）、`offset`（默认 `1`） |
 
 [历史应用参数](/zh-CN/openapi/legacy/app)保留旧日志接口说明，供维护已有集成时对照。
 

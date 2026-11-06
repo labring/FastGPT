@@ -6,13 +6,13 @@ description: FastGPT 使用 Sealos Devbox 沙盒
 import { Alert } from '@/components/docs/Alert';
 
 <Alert icon="⚠️" context="warning">
-  仅商业版用户支持，可联系客服申请密钥，计费方式为按量计费，扣除 sealos 余额。
+  仅商业版用户支持，可通过[商业版购买与支持渠道](/zh-CN/guide/version/commercial)联系商务或技术支持申请密钥，计费方式为按量计费，扣除 Sealos 余额。
 </Alert>
 
 ## 前置准备
 
 1. 已部署 FastGPT 商业版，并确认团队拥有 Agent Sandbox 使用权限。
-2. 向客服申请 Sealos Devbox 接入信息：Devbox 服务地址、访问 Token、运行态镜像。
+2. 向商业支持团队申请 Sealos Devbox 接入信息：Devbox 服务地址、访问 Token、运行态镜像。
 3. 参考 [OpenSandbox 配置](/zh-CN/self-host/config/sandbox/opensandbox) 部署 `fastgpt-agent-sandbox-proxy` 服务。
 
 ## 配置 FastGPT 环境变量
@@ -51,11 +51,15 @@ AGENT_SANDBOX_APT_MIRROR=https://mirrors.tuna.tsinghua.edu.cn/debian
 
 ## 常见问题
 
-### 提示 AGENT_SANDBOX_PROXY_URL 或 AGENT_SANDBOX_PREVIEW_PROXY_URL is required
+<span id="提示-agent_sandbox_proxy_url-或-agent_sandbox_preview_proxy_url-is-required" />
+
+### 提示 Invalid Agent Sandbox proxy environment variables: AGENT_SANDBOX_PROXY_SECRET, AGENT_SANDBOX_PROXY_URL, AGENT_SANDBOX_PREVIEW_PROXY_URL are required when AGENT_SANDBOX_PROVIDER is sealosdevbox
 
 启用 `AGENT_SANDBOX_PROVIDER=sealosdevbox` 后，`fastgpt-app` 必须配置 `AGENT_SANDBOX_PROXY_SECRET`、`AGENT_SANDBOX_PROXY_URL` 和 `AGENT_SANDBOX_PREVIEW_PROXY_URL`，`fastgpt-pro` 必须配置 `AGENT_SANDBOX_PREVIEW_PROXY_URL`。Proxy Secret 需与 `fastgpt-agent-sandbox-proxy` 服务中的值一致，且不少于 32 位。
 
-### 提示 AGENT_SANDBOX_SEALOS_IMAGE is required
+<span id="提示-agent_sandbox_sealos_image-is-required" />
+
+### 提示 Invalid Agent Sandbox environment variables: AGENT_SANDBOX_SEALOS_IMAGE are required when AGENT_SANDBOX_PROVIDER is sealosdevbox
 
 `sealosdevbox` provider 启用后必须配置 `AGENT_SANDBOX_SEALOS_IMAGE`。请使用客服提供或与当前 FastGPT 版本匹配的 Agent Sandbox 运行态镜像。
 

@@ -26,11 +26,11 @@ Verify compatibility between FastGPT, MongoDB, and MongoDB Database Tools before
 
 ## 1. Prepare the Source and Backup Directory
 
-The examples assume a MongoDB container named `mongo` and a database named `fastgpt`; replace them for your deployment. Confirm that a compatible `mongodump` is installed in the container and the backup account has export permissions. The commands omit the password parameter so the tool prompts interactively.
+The examples use the official template's default MongoDB container name `fastgpt-mongo` and database name `fastgpt`; replace them if customized in your deployment. Confirm that a compatible `mongodump` is installed in the container and the backup account has export permissions. The commands omit the password parameter so the tool prompts interactively.
 
 ```bash
-docker exec mongo mongodump --version
-docker exec mongo mkdir -p /tmp/fastgpt-backup
+docker exec fastgpt-mongo mongodump --version
+docker exec fastgpt-mongo mkdir -p /tmp/fastgpt-backup
 mkdir -p ./fastgpt-backup
 ```
 
@@ -41,11 +41,11 @@ Copy the archive explicitly to the host. Inspect deployment configuration for ac
 Run on the source host A:
 
 ```bash
-docker exec -it mongo mongodump --db fastgpt --username BACKUP_USER --authenticationDatabase admin --archive=/tmp/fastgpt-backup/fastgpt.archive.gz --gzip
-docker cp mongo:/tmp/fastgpt-backup/fastgpt.archive.gz ./fastgpt-backup/fastgpt.archive.gz
+docker exec -it fastgpt-mongo mongodump --db fastgpt --username BACKUP_USER --authenticationDatabase admin --archive=/tmp/fastgpt-backup/fastgpt.archive.gz --gzip
+docker cp fastgpt-mongo:/tmp/fastgpt-backup/fastgpt.archive.gz ./fastgpt-backup/fastgpt.archive.gz
 ```
 
-Check the command exit status and export logs, then calculate a SHA-256 checksum. Use `sha256sum` on Linux or `shasum -a 256` on macOS. Copy the archive and checksum to C and B, and compare a newly calculated checksum after transfer. Back up a separate logging database separately.
+Check the command exit status and export logs, then calculate a SHA-256 checksum. Use `sha256sum` on Linux or `shasum -a 256` on macOS. Copy the archive and checksum to C and B, and compare a newly calculated checksum after transfer. If `MONGODB_LOG_URI` is configured for a separate logging database, run `mongodump` for that database separately.
 
 ```bash
 sha256sum ./fastgpt-backup/fastgpt.archive.gz
@@ -57,8 +57,8 @@ scp ./fastgpt-backup/fastgpt.archive.gz operator@target-host:/path/to/backup/
 Initialize the target MongoDB accounts and replica set according to the selected template. Keep FastGPT business services stopped. Check MongoDB logs and replica-set health, then copy the archive into the target MongoDB container:
 
 ```bash
-docker cp /path/to/backup/fastgpt.archive.gz mongo:/tmp/fastgpt.archive.gz
-docker exec -it mongo mongorestore --username RESTORE_USER --authenticationDatabase admin --archive=/tmp/fastgpt.archive.gz --gzip --nsInclude='fastgpt.*'
+docker cp /path/to/backup/fastgpt.archive.gz fastgpt-mongo:/tmp/fastgpt.archive.gz
+docker exec -it fastgpt-mongo mongorestore --username RESTORE_USER --authenticationDatabase admin --archive=/tmp/fastgpt.archive.gz --gzip --nsInclude='fastgpt.*'
 ```
 
 Use an account with restore permissions. Check successful and failed record counts in restoration logs. Restore into a clean, isolated database. If duplicate keys or namespace conflicts occur, preserve the state and inspect the target and backup. When renaming databases, first verify Database Tools namespace-mapping options.

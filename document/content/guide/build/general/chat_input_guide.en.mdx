@@ -1,17 +1,23 @@
 ---
-title: Chat Input Guide
+title: Input Guide
 description: "Configure input autocomplete suggestions and prompt lexicon guidance in FastGPT chat applications to help users ask effective questions."
 ---
 
-![Chat Input Guide — interface example](/imgs/optimized/current/input-guide-suggestions.png.webp)
+<span id="what-is-custom-question-guidance" />
+<span id="custom-question-list-api" />
 
-## What is Custom Question Guidance?
+![Input Guide — interface example](/imgs/optimized/current/input-guide-suggestions.png.webp)
+
+## What is Input Guide?
 
 You can preset questions for your app. As users type, the system dynamically searches these questions based on their input and displays them as suggestions, helping users ask questions faster.
 
-You can configure the question list directly in FastGPT or provide a custom API endpoint.
+## Configuration Entry
 
-## Custom Question List API
+1. Open the Chat Agent or Workflow editor, locate **Input Guide** in the left configuration panel (or under **System Settings** in a Workflow), and turn on the toggle.
+2. Click **Configure Lexicon** to add or import preset questions directly in FastGPT, or click **Custom Lexicon URL** to specify an external API endpoint.
+
+## Custom Lexicon URL Specification
 
 The endpoint must be accessible from the user's browser. Configure cross-origin resource sharing (CORS) to allow requests from the chat page's origin. After you set a custom API URL, the browser sends a GET request to it as the user types; no request is sent when the input exceeds 20 characters.
 

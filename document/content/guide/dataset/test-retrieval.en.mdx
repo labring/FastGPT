@@ -15,7 +15,7 @@ Before attaching a knowledge base to conversational applications, use the standa
 ## Step 1: Open the Search Test Interface
 
 1. Navigate to your target knowledge base and click the "Search Test" tab in the top navigation bar.
-2. The view displays a test input area, a **Search settings** button in the top-right corner, a **Test** button, test history, and candidate result cards. Click **Search settings** to open the **Dataset search settings** modal and configure **Search Method** and **Lowest correlation**.
+2. The view displays a test input area, a **Search settings** button in the top-right corner, a **Test** button, test history, and candidate result cards. Click **Search settings** to open the **Dataset search settings** modal, choose the retrieval mode under **Search Method**, and configure **Citation cap** and **Lowest correlation** under **Search Filter**.
 3. Enter a representative operational inquiry, such as: `How many days do I have to submit travel expenses after returning?`.
 
 ![Search test returns original text containing reimbursement deadline](/imgs/optimized/current/knowledge-search.png.webp)
@@ -31,7 +31,7 @@ Switch between options under **Search Method** in the **Dataset search settings*
 3. **Hybrid search (Recommended)**:
    Combines semantic generalization and exact term matching. The engine merges multi-route candidates and optionally reranks them when a rerank model is configured.
 
-![Search mode selection and reranking scores](/imgs/optimized/current/dataset-result-scores.png.webp)
+![Hybrid search and reranking score details](/imgs/optimized/current/dataset-result-scores.png.webp)
 
 ## Step 3: Analyze Scores and Calibrate Lowest Correlation
 

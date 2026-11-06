@@ -40,15 +40,15 @@ description: 导入可运行示例，验证内容分类、改写、拦截和人�
 3. 在“内容分类”和“改写建议”中分别选择本团队可用模型。示例携带模型名称，导入后的匹配结果需要核对。
 4. 检查“内容分类”：用户问题引用“流程开始 → 用户问题”；背景知识是上面的演示规则；三个分类选项分别连到对应节点。
 
-   ![问题分类节点配置背景知识与分类分支](/imgs/optimized/current/node-question-classify.png.webp)
+   ![问题分类节点字段结构示意（导入 JSON 后自动填入审核规则与三个分类）](/imgs/optimized/current/node-question-classify.png.webp)
 
 5. 检查“改写建议”：用户问题仍引用开始节点原文，提示词要求删除缺少依据的排名、百分比、认证和效果承诺，保留可核实事实，信息不足时标记待核实项。保持模型设置中的“隐藏 AI 输出”关闭，让用户看到改写稿。
 
-   ![AI 对话节点配置改写指令与变量引用](/imgs/optimized/current/node-ai-chat.png.webp)
+   ![AI 对话节点字段结构示意（导入 JSON 后自动填入改写提示词与变量引用）](/imgs/optimized/current/node-ai-chat.png.webp)
 
 6. 检查“人工确认”：接受和放弃分别连接确认结果与结束审核节点。点击运行，每个测试使用新对话。
 
-   ![用户选择节点配置人工确认交互分支](/imgs/optimized/current/node-user-selection.png.webp)
+   ![用户选择节点字段结构示意（导入 JSON 后显示接受改写与放弃两个选项）](/imgs/optimized/current/node-user-selection.png.webp)
 
 ### 测试与预期结果
 

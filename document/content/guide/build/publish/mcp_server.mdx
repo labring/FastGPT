@@ -7,7 +7,7 @@ description: 快速了解 FastGPT MCP server
 
 MCP 协议（Model Context Protocol），是由 Anthropic 在 2024 年 11 月初发布的协议。它的目的在于统一 AI 模型与外部系统之间的通信方式，从而简化 AI 模型与外部系统之间的通信问题。随着 OpenAI 官宣支持 MCP 协议，越来越多的 AI 厂商开始支持 MCP 协议。
 
-MCP 协议主要包含 Client 和 Server 两部分。简单来说，Client 是使用 AI 模型的一方，它通过 MCP Client 可以给模型提供一些调用外部系统的能能力；Server 是提供外部系统调用的一方，也就是实际运行外部系统的一方。
+MCP 协议主要包含 Client 和 Server 两部分。简单来说，Client 是使用 AI 模型的一方，它通过 MCP Client 可以给模型提供一些调用外部系统的能力；Server 是提供外部系统调用的一方，也就是实际运行外部系统的一方。
 
 FastGPT MCP Server 功能允许你选择 `多个` 在 FastGPT 上构建好的应用，以 MCP 协议对外提供调用 FastGPT 应用的能力。
 
@@ -37,7 +37,7 @@ FastGPT 支持 `Streamable HTTP` 协议；私有化部署还可以通过独立�
 
 此时返回 Cursor 的 MCP 管理页面，即可看到你创建的 MCP server，记得设成 `enabled` 状态。
 
-打开 Cursor 的对话框，切换成 `Agent` 模型，选择具备工具调用能力的模式和模型，并按当前客户端界面启用该服务。
+打开 Cursor 的对话框，切换到 `Agent` 模式并选择支持工具调用的模型，按当前客户端界面启用该服务。
 发送一个关于 `fastgpt` 的问题后，可以看到，cursor 调用了一个 MCP 工具（描述为：查询 fastgpt 知识库），也就是调用 FastGPT 应用去进行处理该问题，并返回了结果。
 
 ## 配置身份代理

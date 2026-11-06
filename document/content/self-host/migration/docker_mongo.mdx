@@ -22,11 +22,11 @@ description: MongoDB 逻辑备份、隔离恢复与 FastGPT 迁移验收
 
 ## 1. 准备源端与备份目录
 
-示例假设 MongoDB 容器名为 `mongo`、业务数据库为 `fastgpt`；请按实际部署替换。确认容器中安装了匹配版本的 `mongodump`，并确认备份账号具备导出权限。命令省略密码参数，由工具交互提示输入密码。
+示例使用官方模板的默认 MongoDB 容器名 `fastgpt-mongo`、业务数据库名 `fastgpt`；若自定义了名称请按实际部署替换。确认容器中安装了匹配版本的 `mongodump`，并确认备份账号具备导出权限。命令省略密码参数，由工具交互提示输入密码。
 
 ```bash
-docker exec mongo mongodump --version
-docker exec mongo mkdir -p /tmp/fastgpt-backup
+docker exec fastgpt-mongo mongodump --version
+docker exec fastgpt-mongo mkdir -p /tmp/fastgpt-backup
 mkdir -p ./fastgpt-backup
 ```
 
@@ -37,11 +37,11 @@ mkdir -p ./fastgpt-backup
 在 A 的宿主机执行：
 
 ```bash
-docker exec -it mongo mongodump --db fastgpt --username BACKUP_USER --authenticationDatabase admin --archive=/tmp/fastgpt-backup/fastgpt.archive.gz --gzip
-docker cp mongo:/tmp/fastgpt-backup/fastgpt.archive.gz ./fastgpt-backup/fastgpt.archive.gz
+docker exec -it fastgpt-mongo mongodump --db fastgpt --username BACKUP_USER --authenticationDatabase admin --archive=/tmp/fastgpt-backup/fastgpt.archive.gz --gzip
+docker cp fastgpt-mongo:/tmp/fastgpt-backup/fastgpt.archive.gz ./fastgpt-backup/fastgpt.archive.gz
 ```
 
-检查命令退出状态和导出日志，并为归档计算 SHA-256 校验值。在 Linux 使用 `sha256sum`，在 macOS 使用 `shasum -a 256`。将归档及校验值复制到 C 和 B，传输后重新计算并比较。独立日志数据库也需要单独备份。
+检查命令退出状态和导出日志，并为归档计算 SHA-256 校验值。在 Linux 使用 `sha256sum`，在 macOS 使用 `shasum -a 256`。将归档及校验值复制到 C 和 B，传输后重新计算并比较。若配置了 `MONGODB_LOG_URI`（独立日志数据库），需对该数据库单独执行 `mongodump` 备份。
 
 ```bash
 sha256sum ./fastgpt-backup/fastgpt.archive.gz
@@ -53,8 +53,8 @@ scp ./fastgpt-backup/fastgpt.archive.gz operator@target-host:/path/to/backup/
 B 的 MongoDB 应完成对应模板要求的账号和副本集初始化，FastGPT 业务服务保持停止。先检查 MongoDB 日志和副本集健康状态，再将归档复制到目标 MongoDB 容器：
 
 ```bash
-docker cp /path/to/backup/fastgpt.archive.gz mongo:/tmp/fastgpt.archive.gz
-docker exec -it mongo mongorestore --username RESTORE_USER --authenticationDatabase admin --archive=/tmp/fastgpt.archive.gz --gzip --nsInclude='fastgpt.*'
+docker cp /path/to/backup/fastgpt.archive.gz fastgpt-mongo:/tmp/fastgpt.archive.gz
+docker exec -it fastgpt-mongo mongorestore --username RESTORE_USER --authenticationDatabase admin --archive=/tmp/fastgpt.archive.gz --gzip --nsInclude='fastgpt.*'
 ```
 
 使用具备恢复权限的账号，检查恢复日志中的成功与失败记录数。在干净的隔离数据库执行恢复；出现重复键或命名空间冲突时，保留现场并检查目标实例和备份内容。源数据库名变化时，先核对 Database Tools 的命名空间映射参数。

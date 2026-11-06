@@ -129,7 +129,7 @@ CLI 显示远程调试已就绪后，回到 FastGPT 测试环境：
 | WSS 连接建立失败或超时 | Connection Key 或网络路由 | 在 FastGPT 界面点击“刷新链接”，检查开发机到 Gateway 端口连通性与防火墙配置 |
 | FastGPT 页面看不到调试工具 | 调试账号与通道绑定 | 调试工具仅对生成调试链接的当前成员可见，核对登录账号与 CLI 连接所用 Key 是否同属一人 |
 | 输入参数验证报错 `Input validation error` | Zod Schema 约束 | 对照 `inputSchema` 检查字段必填项、类型、最小值及字符串约束，调整测试参数 |
-| 密钥读取结果为空 | `ctx.secrets` 传递状态 | 确认已在 FastGPT 调试弹窗中填写对应密钥，或使用 `--secrets` / `--secrets-file` 传入 |
+| 密钥读取结果为空 | `ctx.secrets` 传递状态 | 确认已在应用、工作流或 Agent 的工具配置中填写对应密钥，或在本地 CLI 使用 `--secrets` / `--secrets-file` 传入 |
 
 ### 2.4 结束联调会话
 

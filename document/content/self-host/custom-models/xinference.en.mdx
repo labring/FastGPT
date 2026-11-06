@@ -102,9 +102,9 @@ Beyond WebUI and CLI, Xinference also provides Python SDK and RESTful API. For m
 
 ## Integrate Local Models with One API
 
-For One API deployment and setup, refer to [here](/en/self-host/config/model/intro).
+The legacy One API workflow is shown below. For current versions, connect your service through an AI Proxy channel in [Model configuration](/en/self-host/config/model/intro).
 
-Add a channel for qwen1.5-chat. Set the Base URL to the Xinference service endpoint and register qwen-chat (the model's UID).
+Add a channel for `qwen-chat`. Set the Base URL to the Xinference service endpoint and register `qwen-chat` (the model's UID).
 
 ![Integrate Local Models with One API — interface example](/imgs/optimized/one-api-add-xinference-models.jpg.webp)
 
@@ -137,7 +137,7 @@ Add the qwen-chat model to the `llmModels` section of FastGPT's `config.json`:
       "maxResponse": 4000, // Max response length
       "quoteMaxToken": 120000, // Max citation content tokens
       "maxTemperature": 1.2, // Max temperature
-      "pricing": { "tiers": [{ "inputPrice": 0, "outputPrice": 0 }] }, // Points per M Tokens (Commercial Edition)
+      "charsPointsPrice": 0, // Points per 1K characters (legacy Commercial Edition field)
       "censor": false, // Enable content moderation (Commercial Edition)
       "vision": true, // Supports image input
       "toolChoice": true, // Supports tool choice (used in classification, extraction, tool calling)

@@ -25,20 +25,19 @@ All built-in document libraries are extensions of the standard API File Library.
 
 ## Building a Third-Party File Library
 
-This walkthrough uses a Lark Knowledge Dataset (`FeishuKnowledgeDataset`) as the example integration. The screenshots show earlier source layouts and authentication variants. Match the server type, form fields, and request adapter to the version you are extending; the steps below identify the code responsibilities to update.
+The code snippets below use the Yuque Dataset (`YuqueServerSchema`, `yuqueDataset/api.ts`) to show the current Zod schema and adapter contract, while the screenshots illustrate file locations from an earlier Lark Dataset implementation. Match the server schema, form fields, and request adapter to the current source tree.
 
 ### 1. Add Third-Party Document Library Parameters
-
-The screenshots below show an earlier implementation. Use the current files and text instructions as the implementation reference.
 
 First, go to `FastGPT\packages\global\core\dataset\apiDataset\type.ts` in the FastGPT project and add a Zod schema for the provider configuration and infer its TypeScript type. Include the schema in `ApiDatasetServerSchema`. Design the fields based on your needs. For example, the Yuque Dataset requires `userId` and `token` for authentication.
 
 ```ts
-export type YuqueServer = {
-  userId: string;
-  token?: string;
-  basePath?: string;
-};
+export const YuqueServerSchema = z.object({
+  userId: z.string(),
+  token: z.string().optional(),
+  basePath: z.string().optional()
+});
+export type YuqueServerType = z.infer<typeof YuqueServerSchema>;
 ```
 
 <Alert icon="🤖" context="success">
@@ -53,7 +52,7 @@ Add the new server configuration as an optional property on `ApiDatasetServerTyp
 
 ### 2. Create the Hook File
 
-Each third-party document library uses a Hook pattern to maintain a set of API endpoints. The adapter returns four methods; follow the current `yuqueDataset/api.ts` contract.
+Each third-party document library adapter returns four core methods (plus an optional `getFileRawId` helper); follow the current `yuqueDataset/api.ts` contract.
 
 - Create a folder for your document library under `FastGPT\packages\service\core\dataset\apiDataset\`, then create an `api.ts` file inside it
 - In `api.ts`, define the following four methods:
@@ -82,7 +81,7 @@ In `packages/service/core/dataset/apiDataset/index.ts`, add a branch in `getApiD
 
 ## Adding the Frontend
 
-Add your i18n translations in `FastGPT\packages\web\i18n\zh-CN\dataset.json`, `FastGPT\packages\web\i18n\en\dataset.json`, and `FastGPT\packages\web\i18n\zh-Hant\dataset.json`. Add a Dataset name, a configuration-form title, and a description. The example keys are `feishu_knowledge_dataset`, `feishu_knowledge_dataset_config`, and `feishu_knowledge_dataset_desc`; provide values for each locale.
+Add your i18n translations in `dataset.json` across `packages/web/i18n/{zh-CN,en,zh-Hant,ko-KR}/`. Add a Dataset name, a configuration-form title, and a description, providing values for each locale.
 
 ![Add Dataset name, configuration title, and description translations](/imgs/optimized/thirddataset-5.png.webp)
 
@@ -92,7 +91,7 @@ In `FastGPT\packages\service\support\user/audit\util.ts`, add a branch to `getI1
 
 <Alert icon="🤖" context="success">
 
-The i18n translation content is stored in `FastGPT\packages\web\i18n\zh-Hant\account_team.json`, `FastGPT\packages\web\i18n\zh-CN\account_team.json`, and `FastGPT\packages\web\i18n\en\account_team.json`. The field format is `dataset.XXX_dataset`. For example, for the Lark Dataset, the field value is `dataset.feishu_knowledge_dataset`.
+Audit-log dataset labels are stored in `packages/web/i18n/{zh-CN,en,zh-Hant,ko-KR}/account_team.json` under the key pattern `dataset.XXX_dataset` (for example, `dataset.feishu_dataset` for Lark Dataset and `dataset.yuque_dataset` for Yuque Dataset).
 
 </Alert>
 
@@ -140,7 +139,7 @@ In `FastGPT\projects\app\src\pageComponents\dataset\ApiDatasetForm.tsx`, add the
 For adapters with root directory support, include `renderBaseUrlSelector()` and `renderDirectoryModal()` to display the current path and folder picker. Directory details come from the adapter's `getFileDetail` implementation. The user clicks **Select**, chooses a folder, and clicks **Confirm**; the selected path then appears in the form.
 
 ```
-{renderBaseUrlSelector()} // Renders the `Base URL` field
+{renderBaseUrlSelector()} // Renders the root directory (`basePath`) selector (labeled `Base URL` in the UI)
 {renderDirectoryModal()} // The `Select Root Directory` modal that appears when clicking `Select` (see image)
 ```
 

@@ -18,7 +18,7 @@ Complete [your first request](/en/openapi/intro) and confirm that the current me
 
 ## Conversational applications
 
-Call `/api/v1/chat/completions` with `appId` and a user question in `messages`. The interface supports Chat Agent, Chat Agent V2, and Workflow applications as implemented by your version. Product application types and API resource scope have separate purposes: this endpoint also recognizes workflow-tool resources.
+Call `/api/v2/chat/completions` with `appId` and a user question in `messages`. The interface supports Chat Agent, Chat Agent V2, and Workflow applications as implemented by your version. Product application types and API resource scope have separate purposes: this endpoint also recognizes workflow-tool resources.
 
 Supply declared global variables through `variables` using matching keys and values. Compare API results with a fixed input tested in the application before adding business data.
 
@@ -50,10 +50,10 @@ The endpoints below accept team-level `Authorization: Bearer <apiKey>` authentic
 
 | Method | Path | Summary | Key Parameters (Query / Body) |
 | --- | --- | --- | --- |
-| `POST` | `/api/core/app/logs/list` | List paginated application conversation logs | Body: `appId` (required), `dateStart`, `dateEnd`, `sources`, `tmbIds`, `outLinkUids`, `chatSearch`, `feedbackType`, `errorFilter`, `unreadOnly`, `offset`/`pageNum`, `pageSize` |
-| `POST` | `/api/core/app/logs/getUsers` | List users recorded in application logs | Body: `appId` (required), `dateStart`, `dateEnd`, `searchKey` |
+| `POST` | `/api/core/app/logs/list` | List paginated application conversation logs | Body: `appId` (required), `dateStart` (required), `dateEnd` (required), `sources`, `tmbIds`, `outLinkUids`, `chatSearch`, `feedbackType`, `errorFilter`, `unreadOnly`, `offset`/`pageNum`, `pageSize` |
+| `POST` | `/api/core/app/logs/getUsers` | List users recorded in application logs | Body: `appId` (required), `dateStart` (required), `dateEnd` (required), `sources`, `searchKey`, `offset`/`pageNum`, `pageSize` |
 | `GET` | `/api/proApi/core/app/logs/getTotalData` | Get cumulative application totals (users, chats, consumed points) | Query: `appId` (required) |
-| `POST` | `/api/proApi/core/app/logs/getChartData` | Get time-series chart metrics (users, turns, feedback, token usage) | Body: `appId` (required), `dateStart`, `dateEnd`, `source`, `userTimespan` (required), `chatTimespan` (required), `appTimespan` (required), `offset` (default `1`) |
+| `POST` | `/api/proApi/core/app/logs/getChartData` | Get time-series chart metrics (users, turns, feedback, token usage) | Body: `appId` (required), `dateStart` (required), `dateEnd` (required), `source`, `userTimespan` (required), `chatTimespan` (required), `appTimespan` (required), `offset` (default `1`) |
 
 [Historical application parameters](/en/openapi/legacy/app) preserve earlier log-interface documentation for maintaining existing integrations.
 

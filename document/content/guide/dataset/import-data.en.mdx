@@ -19,7 +19,7 @@ FastGPT supports importing and parsing the following document types:
 - **Office and Fixed-Layout Documents**: `.pdf`, `.ofd`, `.docx`, `.doc`, `.wps`, `.docm`, `.odt`, `.pptx`, `.ppt`, `.pps`, `.pot`, `.pptm`, `.ppsx`, `.ppsm`, `.odp`
 - **Spreadsheets and Structured Exports**: `.csv`, `.xlsx`, `.xls`, `.xlsm`, `.xlsb`, `.ods` (extended formats such as `.doc`, `.wps`, `.ppt`, `.xls`, `.odt`, `.rtf`, and `.epub` are parsed when the document parsing service is configured)
 
-Keep individual file sizes under 50 MB for optimal processing. For large scanned files, run local OCR prior to upload to ensure clean text extraction.
+Standard file upload size limits follow the system `uploadFileMaxSize` setting (default 1000 MB; keeping individual files under 50 MB is recommended for parsing speed), while [Template import](/en/guide/dataset/template) enforces a hard limit of 1 file up to 50 MB per upload. For large scanned files, run local OCR prior to upload.
 
 ## Step 1: Upload Local Files
 
@@ -49,7 +49,7 @@ Under **Processing Mode**, select the option that fits your retrieval scenario:
 
 ## Step 3: Preview Data and Verify Chunk Quality
 
-Click "Next" to open the data preview screen. Inspect chunk quality before writing records into the vector database:
+The import wizard consists of four steps: **Select files → Parameter settings → Data preview → Upload data**. Click **Next** on the parameter page to open **Data preview** (which displays up to the first 10 chunks) and inspect sample chunk quality:
 
 1. **Paragraph Coherence**: Click file items on the left and check whether sentences end naturally within chunks on the right.
 2. **Tables and Lists**: Confirm that Markdown tables, numbering sequences, and section headers remain aligned.
@@ -57,7 +57,7 @@ Click "Next" to open the data preview screen. Inspect chunk quality before writi
 
 ## Step 4: Submit Training and Track Progress
 
-1. Once the preview meets your quality standards, click **Start Upload**.
+1. Once the preview meets your quality standards, click **Next** to enter the **Upload data** step, then click **Start Upload**.
 2. The platform queues asynchronous background tasks. Monitor progress in the collection list:
    - Stage badges such as **Queue**, **Parsing**, **Image analysis**, **Index vectorization**, **Q&A extraction**, **Automatic index generation**, or **Image index generation** indicate active processing.
    - Status changing to **Ready** confirms that both vector and full-text indexes are persisted; failures display **Indexing error**.

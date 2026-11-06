@@ -81,31 +81,31 @@ Aside from `/api/v1/chat/completions` and `/api/v2/chat/completions` (which also
 
 | Method | Path | Summary | Key Parameters (Query / Body) |
 | --- | --- | --- | --- |
-| `GET` | `/api/core/chat/init` | Initialize chat session metadata (welcome text, pre-chat variables) | Query: `appId` (required), `chatId` (optional) |
-| `POST` | `/api/core/chat/history/getHistories` | List paginated conversation sessions for an application | Body: `appId` (required), `offset`/`pageNum`, `pageSize`, `source` |
-| `POST` | `/api/core/chat/history/getHistoryStatus` | Batch-poll session generation and read statuses | Body: `appId` (required), `chatIds` (string array); returns `chatGenerateStatus`, `hasBeenRead`, `updateTime` |
-| `POST` | `/api/core/chat/history/markRead` | Mark a conversation session as read | Body: `appId` (required), `chatId` (required) |
-| `PUT` | `/api/core/chat/history/updateHistory` | Rename a session or toggle its pinned status | Body: `appId` (required), `chatId` (required), `title`, `customTitle`, `top` (boolean) |
-| `DELETE` | `/api/core/chat/history/delHistory` | Soft-delete a single conversation session | Query: `appId` (required), `chatId` (required) |
-| `DELETE` | `/api/core/chat/history/clearHistories` | Soft-delete all sessions under an application | Query: `appId` (required) |
-| `POST` | `/api/core/chat/history/batchDelete` | Permanently delete multiple sessions in batch | Body: `appId` (required), `chatIds` (non-empty string array) |
+| `GET` | `/api/core/chat/init` | Initialize chat session metadata (welcome text, pre-chat variables) | Query: `appId` / `skillId` / `outLinkAuthData` (one required), `chatId` (required) |
+| `POST` | `/api/core/chat/history/getHistories` | List paginated conversation sessions for an application | Body: `appId` / `skillId` / `outLinkAuthData` (one required), `offset`/`pageNum`, `pageSize`, `source` |
+| `POST` | `/api/core/chat/history/getHistoryStatus` | Batch-poll session generation and read statuses | Body: `appId` / `skillId` / `outLinkAuthData` (one required), `chatIds` (string array); returns `chatGenerateStatus`, `hasBeenRead`, `updateTime` |
+| `POST` | `/api/core/chat/history/markRead` | Mark a conversation session as read | Body: `appId` / `skillId` / `outLinkAuthData` (one required), `chatId` (required) |
+| `PUT` | `/api/core/chat/history/updateHistory` | Rename a session or toggle its pinned status | Body: `appId` / `skillId` / `outLinkAuthData` (one required), `chatId` (required), `title`, `customTitle`, `top` (boolean) |
+| `DELETE` | `/api/core/chat/history/delHistory` | Soft-delete a single conversation session | Query: `appId` / `skillId` / `outLinkAuthData` (one required), `chatId` (required) |
+| `DELETE` | `/api/core/chat/history/clearHistories` | Soft-delete all sessions under an application | Query: `appId` / `skillId` / `outLinkAuthData` (one required) |
+| `POST` | `/api/core/chat/history/batchDelete` | Permanently delete multiple sessions in batch | Body: `appId` / `skillId` / `outLinkAuthData` (one required), `chatIds` (non-empty string array) |
 
 ### 3. Message Records and Citation Lookup (`chat`)
 
 | Method | Path | Summary | Key Parameters (Query / Body) |
 | --- | --- | --- | --- |
-| `POST` | `/api/core/chat/record/getPaginationRecords` | List paginated message records in a session | Body: `appId` (required), `chatId` (required), `offset`/`pageNum`, `pageSize`, `loadCustomFeedbacks` |
-| `POST` | `/api/core/chat/record/getRecords_v2` | Fetch message records around a cursor anchor | Body: `appId` (required), `chatId` (required), `pageSize`, `initialId`, `prevId`, `nextId` |
+| `POST` | `/api/core/chat/record/getPaginationRecords` | List paginated message records in a session | Body: `appId` / `skillId` / `outLinkAuthData` (one required), `chatId` (required), `offset`/`pageNum`, `pageSize`, `loadCustomFeedbacks` |
+| `POST` | `/api/core/chat/record/getRecords_v2` | Fetch message records around a cursor anchor | Body: `appId` / `skillId` / `outLinkAuthData` (one required), `chatId` (required), `pageSize`, `initialId`, `prevId`, `nextId` |
 | `GET` | `/api/core/chat/record/getResData` | Fetch full node execution details (`responseData`) for a message | Query: `appId` / `skillId` / `outLinkAuthData` (one required), `chatId` (optional), `dataId` (message record ID, required) |
 | `POST` | `/api/core/chat/record/getQuote` | Fetch cited knowledge chunks by chunk ID list | Body: `appId` / `skillId` / `outLinkAuthData` (one required), `chatId` (required), `chatItemDataId` (required), `collectionIdList` (required), `datasetDataIdList` (required) |
-| `POST` | `/api/core/chat/record/getCollectionQuote` | Fetch paginated collection chunks for the full-text citation reader | Body: `appId` (required), `chatId` (required), `chatItemDataId` (required), `collectionId` (required), `pageSize` |
-| `DELETE` | `/api/core/chat/record/delete` | Delete a single message record | Query: `appId` (required), `chatId` (required), `contentId` (required) |
+| `POST` | `/api/core/chat/record/getCollectionQuote` | Fetch paginated collection chunks for the full-text citation reader | Body: `appId` / `skillId` / `outLinkAuthData` (one required), `chatId` (required), `chatItemDataId` (required), `collectionId` (required), `anchor`, `initialId`, `prevId`, `nextId`, `pageSize` (default `20`, range `1–30`) |
+| `DELETE` | `/api/core/chat/record/delete` | Delete one or more message records | Body or Query: `appId` / `skillId` / `outLinkAuthData` (one required), `chatId` (required), `contentId` or `contentIds` (one required) |
 
 ### 4. Message Feedback (`chatFeedback`)
 
 | Method | Path | Summary | Key Request Fields |
 | --- | --- | --- | --- |
-| `POST` | `/api/core/chat/feedback/updateUserFeedback` | Add, update, or clear thumbs-up / thumbs-down feedback on a message | Body: `appId` (required), `chatId` (required), `dataId` (required), `userGoodFeedback`, `userBadFeedback` |
+| `POST` | `/api/core/chat/feedback/updateUserFeedback` | Add, update, or clear thumbs-up / thumbs-down feedback on a message | Body: `appId` / `skillId` / `outLinkAuthData` (one required), `chatId` (required), `dataId` (required), `userGoodFeedback`, `userBadFeedback` |
 
 [Historical conversation parameters](/en/openapi/legacy/chat) preserve earlier handwritten fields and examples.
 
@@ -142,7 +142,7 @@ Aside from `/api/v1/chat/completions` and `/api/v2/chat/completions` (which also
 
 <span id="request-plugin" />
 
-[Request Plugin ](/en/openapi/legacy/chat#request-plugin)
+[Request Workflow Tool (Legacy Plugin)](/en/openapi/legacy/chat#request-workflow-tool-legacy-plugin)
 
 <span id="request-1" />
 

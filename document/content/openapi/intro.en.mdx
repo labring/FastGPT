@@ -20,19 +20,19 @@ description: Configure a service address, member API key, and application ID, th
 
 ## Prerequisites
 
-Prepare a debugged, published application, read permission for it, and model quota. Create a team-level key for the current member under Account → API Keys or Application → Publishing Channels → API. The key can access resources permitted to that member in the current team through operations accepting API keys.
+Prepare a debugged, published application, read permission for it, and model quota. Create a team-level key for the current member under **Account → API Keys** (visible to members granted the **Create API Keys** team permission; if hidden, ask a Team Admin to enable **Create API Keys** under **Account → Team management → Permissions**) or **Studio → Target App → Publish Channels → API Access**. The key can access resources permitted to that member in the current team through operations accepting API keys.
 
-The creating member manages the key. Usage limits and expiration fields depend on commercial capability configuration; check the interface and deployment contract for available controls. Store the key on a trusted server or in a secret manager.
+The creating member manages the key. When the team has an active subscription usage plan, you can configure **Max usage points** and **Expiration time** when creating or editing a key. Store the key on a trusted server or in a secret manager.
 
 ## First request
 
-Set `FASTGPT_ORIGIN` to your FastGPT instance and copy `appId` from the application details URL. This request calls its published version through `/api/v1/chat/completions`:
+Set `FASTGPT_ORIGIN` to your FastGPT instance and copy `appId` from the application details URL. This request calls its published version through `/api/v2/chat/completions` (`v2` is recommended; `/api/v1/chat/completions` is retained for legacy compatibility):
 
 ```bash
 export FASTGPT_ORIGIN='https://cloud.fastgpt.io'
 export FASTGPT_API_KEY='YOUR_API_KEY'
 export FASTGPT_APP_ID='YOUR_APP_ID'
-curl --fail-with-body "$FASTGPT_ORIGIN/api/v1/chat/completions" \
+curl --fail-with-body "$FASTGPT_ORIGIN/api/v2/chat/completions" \
   -H "Authorization: Bearer $FASTGPT_API_KEY" \
   -H 'Content-Type: application/json' \
   --data @- <<EOF
@@ -48,12 +48,12 @@ A successful call returns JSON. Plain-text output is in `choices[0].message.cont
 | --- | --- |
 | Authentication or permission error | Key, team, member status, and resource permissions |
 | Invalid application ID | Complete `appId` and access to the selected resource |
-| 404 | FastGPT instance address and `/api/v1/chat/completions` path |
+| 404 | FastGPT instance address and `/api/v2/chat/completions` path |
 | Model or quota failure | Application model settings, service status, and available quota |
 
 ## Application selection and SDKs
 
-The chat completions endpoint supports OpenAI-compatible requests and ordinary text responses. Detailed events and other endpoints follow FastGPT contracts. When integrating via the official OpenAI SDK, set `baseURL` to your FastGPT instance address plus `/api/v1` and supply `appId`:
+The chat completions endpoint supports OpenAI-compatible requests and ordinary text responses. Detailed events and other endpoints follow FastGPT contracts. When integrating via the official OpenAI SDK, set `baseURL` to your FastGPT instance address plus `/api/v2` and supply `appId`:
 
 <Tabs items={['Python SDK', 'Node.js SDK']}>
   <Tab value="Python SDK">
@@ -63,7 +63,7 @@ from openai import OpenAI
 
 client = OpenAI(
     api_key=os.environ["FASTGPT_API_KEY"],
-    base_url=f"{os.environ['FASTGPT_ORIGIN'].rstrip('/')}/api/v1"
+    base_url=f"{os.environ['FASTGPT_ORIGIN'].rstrip('/')}/api/v2"
 )
 
 response = client.chat.completions.create(
@@ -83,7 +83,7 @@ import OpenAI from 'openai';
 
 const client = new OpenAI({
   apiKey: process.env.FASTGPT_API_KEY!,
-  baseURL: `${process.env.FASTGPT_ORIGIN!.replace(/\/$/, '')}/api/v1`
+  baseURL: `${process.env.FASTGPT_ORIGIN!.replace(/\/$/, '')}/api/v2`
 });
 
 async function main() {

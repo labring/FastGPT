@@ -44,8 +44,8 @@ Think of the Dataset as a "reference room" configured for the AI. The model itse
    Recommended common settings:
    - **File Parsing Settings**: Enable when uploading PDFs; for regular Word, Markdown, TXT files, start with the default configuration.
    - **Processing Method**: For most scenarios, choose chunked storage — it's lower cost and faster for retrieval.
-   - **Chunking Conditions**: Controls how many tokens each chunk contains. Use the default values for quick testing.
-   - **Index Enhancement**: Keep the current interface defaults initially. Adjust available question, summary, or image-index enhancements using retrieval results, checking their model and quota requirements.
+   - **Chunking Parameters**: Controls the splitting mode (default or custom by paragraph, length, or delimiter) and chunk size. Use the default values for quick testing.
+   - **Index Enhancement**: Keep the current interface defaults initially. Enable "Add title to index", "Auto-generate supplementary indexes", or "Auto-index images" as needed based on retrieval results, checking their model and quota requirements.
 
    These parameters directly affect the quality of subsequent Q&A. If chunks are too large, search results may include too much irrelevant content, making answers verbose. If chunks are too small, key context may be split, causing answers to lack supporting evidence. For the quick-start phase, use the default configuration. When officially integrating enterprise policies, contracts, or product manuals, adjust these parameters gradually based on Q&A performance.
 
@@ -66,8 +66,6 @@ Think of the Dataset as a "reference room" configured for the AI. The model itse
    Go to **Studio → Agents**, click the first **New** card in the list (or **Create your first Agent** in the center of the page when the list is empty), select **Chat Agent**, enter `Civil Code Q&A Assistant` in the name box, and click **Create** to the right of the name box. In the **Dataset** section on the left, click **+ Choose** and link the Dataset created in Step 1.
 
    After linking the Dataset, the app's response flow changes from simple chat to "user question → Dataset search → model summarizes answer." This is the key difference between Case 1 and Case 2: Case 1 emphasizes content generation, while Case 2 emphasizes answering based on provided materials.
-
-   ![Configure dataset search mode and reranking parameters](/imgs/optimized/current/dataset-search-mode.png.webp)
 
 8. **Configure the Q&A Prompt**
 
@@ -96,11 +94,11 @@ Think of the Dataset as a "reference room" configured for the AI. The model itse
    - `I received a product I bought online and it was broken, but the seller won't accept a return. What does the law say?`
    - `The upstairs neighbor's leak soaked my ceiling. Can I claim compensation?`
 
-   ![Configure conversation opening text and preset questions](/imgs/optimized/current/welcome-config.png.webp)
+   ![Configure conversation opening text and preset questions (section location example)](/imgs/optimized/current/welcome-config.png.webp)
 
 10. **Verify Q&A Performance**
 
-    Ask a question related to the Civil Code and check whether the answer includes a legal conclusion, article citation, plain-language explanation, and disclaimer.
+    Ask a question related to the Civil Code and check whether the answer includes a concise conclusion, article numbers and key original text, applicable conditions and exceptions, and a reminder to consult a professional lawyer.
 
     When verifying, assess two key indicators: structural completeness of the legal citation, and genuine references to Dataset content. Test with questions covered by the materials, questions outside the materials, and ambiguous questions: covered questions should cite the original text; out-of-scope questions should state that a direct confirmation is not possible; ambiguous questions should ask the user for more facts.
 

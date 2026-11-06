@@ -19,7 +19,7 @@ description: 了解知识库集合、MongoDB 数据块、对象存储文件及�
 | --- | --- | --- | --- |
 | **MongoDB** | `datasets`、`dataset_collections`、`dataset_datas`、`dataset_data_texts`、`dataset_trainings` | 知识库配置、集合树、数据块原文（`q` / `a`）、全文检索分词（`dataset_data_texts`，非 Milvus 向量库使用 MongoDB `$text` 检索；Milvus 的 BM25 由 `modeldata_v2` 承担）与训练队列 | 知识库列表、数据块正文与引用阅读器内容不可见 |
 | **VectorDB（PG / Milvus / OceanBase / SeekDB / OpenGauss）** | `modeldata` / `modeldata_v2` | 高维浮点向量、团队/知识库/集合过滤标量及索引 ID（`dataId`） | 语义检索与混合检索召回为空；需触发索引重建恢复 |
-| **S3 对象存储（MinIO / 云存储）** | 私有桶（Private Bucket）与公开桶（Public Bucket） | 用户上传的原始 PDF/Word/表格文件、文档内提取出的图片资源 | 原文下载失败或回答中的知识库内嵌图片无法加载 |
+| **S3 对象存储（RustFS / MinIO / 云存储）** | 私有桶（Private Bucket）与公开桶（Public Bucket） | 用户上传的原始 PDF/Word/表格文件、文档内提取出的图片资源 | 原文下载失败或回答中的知识库内嵌图片无法加载 |
 | **Redis** | BullMQ 队列与缓存键 | 大集合删除、同步调度与分布式锁状态 | 异步任务停滞，重启并恢复 Redis 连接后可继续消费 |
 
 早期文档中的 PG `file_id`、`manual`、`mark` 特殊值描述旧版结构。排查当前部署时，应按运行版本的集合、数据块和索引标识核对。
@@ -28,8 +28,8 @@ description: 了解知识库集合、MongoDB 数据块、对象存储文件及�
 
 1. 上传文件或连接外部来源，选择处理参数，并预览解析和分段结果。
 2. 创建对应集合，保存来源与处理配置。
-3. 后端按选定模式读取、解析和分段，处理任务记录关联知识库与集合。
-4. 处理任务生成数据块和检索索引；按处理模式可能调用语言模型及向量模型。
+3. 后端按选定模式读取、解析和分段，解析完成后先写入数据块（初始状态为 `parsed` 待索引），并创建关联知识库与集合的训练任务。
+4. 训练任务按处理模式调用语言模型或索引模型生成向量与检索索引（状态经 `indexing` 流转为 `indexed` 已索引），并将索引写回对应数据块。
 5. 在知识库中检查处理状态和失败信息，再用已知答案的问题验证检索及原文访问。
 
 备份或迁移应覆盖 MongoDB、实际使用的向量后端和对象存储，并保持三者的数据一致性。参见 [Docker 数据迁移](/zh-CN/self-host/migration/docker_db)和[对象存储配置](/zh-CN/self-host/config/object-storage)。

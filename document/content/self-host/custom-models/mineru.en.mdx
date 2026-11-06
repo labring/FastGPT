@@ -9,7 +9,7 @@ PDF is a relatively complex file format. FastGPT's built-in PDF parser relies on
 
 There are several PDF parsing solutions available. [MinerU](https://github.com/opendatalab/MinerU) uses YOLO, PaddleOCR, and table recognition models for vision-based parsing, effectively extracting images, tables, formulas, and other complex content.
 
-Community edition users can set the `CUSTOM_PDF_PARSE_URL` and `CUSTOM_PDF_PARSE_KEY` environment variables to use MinerU for PDF parsing (starting with 4.15.0, the open-source edition no longer reads `config.json`). Commercial edition users can configure this directly in the Admin panel via the form -- details are covered in the tutorial below.
+Community edition users can set the `CUSTOM_PDF_PARSE_URL` and `CUSTOM_PDF_PARSE_KEY` environment variables to use MinerU for PDF parsing (starting with 4.15.0, the open-source edition reads these settings from environment variables). Commercial edition users can configure this in **Admin → System Configuration → Basic Configuration → PDF Parsing Configuration** -- details are covered in the tutorial below.
 
 ## Tutorial
 
@@ -19,9 +19,9 @@ Hardware requirements: 16GB+ GPU VRAM, minimum 16GB+ RAM (32GB+ recommended). Se
 
 Quick Docker installation:
 
-Pull the fastgpt-mineru image --> Create and start the parsing service container --> Add the deployed URL to the FastGPT configuration file
+Pull the fastgpt-mineru image --> Create and start the parsing service container --> Set the deployed URL in the `CUSTOM_PDF_PARSE_URL` environment variable of `fastgpt-app`
 
-```dockerfile
+```bash
 docker pull crpi-h3snc261q1dosroc.cn-hangzhou.personal.cr.aliyuncs.com/fastgpt_ck/mineru:v1
 docker run --gpus all -itd -p 7231:8001 --name mode_pdf_minerU crpi-h3snc261q1dosroc.cn-hangzhou.personal.cr.aliyuncs.com/fastgpt_ck/mineru:v1
 ```
@@ -33,7 +33,7 @@ This MinerU integration uses pipeline mode with built-in parallelization inside 
 Add these environment variables to `fastgpt-app`:
 
 ```dotenv
-CUSTOM_PDF_PARSE_URL=http://xxxx.com/v2/parse/file # Custom PDF parsing service URL for MinerU
+CUSTOM_PDF_PARSE_URL=http://<gpu-server-ip>:7231/v2/parse/file # Custom PDF parsing service URL for MinerU
 CUSTOM_PDF_PARSE_KEY= # Custom PDF parsing service key
 DOC2X_KEY= # doc2x service key (optional)
 ```
@@ -42,7 +42,7 @@ See [Environment Variables](/en/self-host/config/env#enhanced-pdf-parsing) for d
 
 For the commercial edition, open **Admin → System Configuration → Basic Configuration → PDF Parsing Configuration**. Enter your deployed MinerU URL, including `/v2/parse/file`, in the custom PDF parsing URL field. Enter the parsing service key if configured, then click **Save**.
 
-![2. Add FastGPT Configuration — interface example](/imgs/optimized/mineru6.png.webp)
+![2. Add FastGPT Configuration — interface example](/imgs/oxr/admin-pdf-config.png)
 
 **Note:** Services added via environment variables require a restart to take effect.
 
@@ -55,8 +55,8 @@ Upload a PDF file through the Dataset and enable the `Enhanced PDF Parsing` opti
 After uploading, you should see the following logs (`LOG_CONSOLE_LEVEL` must be set to info or debug):
 
 ```
-[Info] 2024-12-05 15:04:42 Parsing files from an external service
-[Info] 2024-12-05 15:07:08 Custom file parsing is complete, time: 1316ms
+Start parsing file via external service
+External file parsing completed
 ```
 
 Similarly, in apps you can enable `Enhanced PDF Parsing` in the file upload settings.

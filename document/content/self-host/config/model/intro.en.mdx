@@ -38,8 +38,9 @@ When FastGPT requests a model such as `gpt-5`, AI Proxy finds the channels confi
 
 ### Key Terminology
 
-- Model ID: The value of the `model` field in the API request body. Must be globally unique.
-- Model Name: The display name of the model, which can be customized.
+- Model Identifier (`model`): The value of the `model` field in the API request body, matching the model identifier in the AI Proxy channel.
+- Model Database ID (`modelId`): The unique database ID (MongoDB `_id`) generated for each model configuration entry.
+- Model Name (`name`): The display name of the model, which can be customized.
 - Model Channel: A connection configured for a model provider and API protocol, such as OpenAI, Anthropic, or Google. Most self-hosted channels use the OpenAI protocol. You can configure the same model in multiple channels to enable load balancing.
 - Custom Request URL / Key: Allows you to bypass Model Channels and send requests directly to a custom endpoint. You need to provide the full request URL and token. This is generally unnecessary and harder to manage.
 
@@ -77,7 +78,7 @@ In FastGPT, the model is `gpt-4o-test`, and requests to AI Proxy also use `gpt-4
 5. Proxy URL: Do not enter the full model request URL. Enter the `BaseUrl` instead, and check whether `/v1` needs to be appended.
 6. API Key: The API credentials obtained from the model provider. Some providers require multiple keys — follow the on-screen prompts to enter them.
 
-Click "Add" to save. The new channel will appear under "Model Channels".
+Click "New" to save. The new channel will appear under "Model provider".
 
 ![aiproxy4](/imgs/optimized/aiproxy-4.png.webp)
 
@@ -87,7 +88,7 @@ You can test the channel to verify that the configured models are working proper
 
 ![aiproxy5](/imgs/optimized/aiproxy-5.png.webp)
 
-Click "Model Test" to see the list of configured models, then click "Start Test".
+Click "Model Test" to see the list of configured models, then click "Batch test N models".
 
 ![aiproxy6](/imgs/optimized/aiproxy-6.png.webp)
 
@@ -123,7 +124,7 @@ Click the gear icon next to a model to open its configuration. Different model t
 
 ### Add a Custom Model
 
-If the built-in models don't meet your needs, you can add custom models. If the `Model ID` matches an existing built-in model ID, the system applies it as an update to that model.
+If the built-in models do not meet your needs, you can add custom models. When importing configurations, FastGPT matches existing system models by `modelId` first and then by `model` to update them.
 
 1. **Add via Form**
 
@@ -151,27 +152,27 @@ Only system models use these prices; team models are free. Pricing is stored und
 <Accordion title="Language Model Fields">
 ```json
 {
-  "model": "Model ID",
-  "metadata": {
-    "isCustom": true, // Whether this is a custom model
-    "isActive": true, // Whether the model is enabled
-    "provider": "OpenAI", // Model provider, used for categorization. Built-in providers: https://github.com/labring/FastGPT/blob/main/packages/global/core/ai/model/provider.ts. You can submit a PR for new providers, or use "Other"
-    "model": "gpt-5", // Model ID (corresponds to the model name in the channel)
-    "name": "gpt-5", // Display name
+  "modelId": "6732f10283c7ab1289de4567", // Optional: database ID of an existing model
+  "scope": "system", // Scope: system
+  "type": "llm", // Model type
+  "provider": "OpenAI", // Model provider (built-in provider ID or "Other")
+  "model": "gpt-5", // Model identifier (matches the model name in the AI Proxy channel)
+  "name": "gpt-5", // Display name
+  "isActive": true, // Whether the model is enabled
+  "pricing": { "tiers": [{ "inputPrice": 0, "outputPrice": 0 }] }, // Credits per M Tokens (commercial edition)
+  "config": {
     "maxContext": 125000, // Maximum context length
     "maxResponse": 16000, // Maximum response length
     "quoteMaxToken": 120000, // Maximum citation content tokens
-    "maxTemperature": 1.2, // Maximum temperature
-    "pricing": { "tiers": [{ "inputPrice": 0, "outputPrice": 0 }] }, // Points per M Tokens (commercial edition)
+    "maxTemperature": 1.2, // Maximum temperature (null when unsupported)
     "censor": false, // Enable content moderation (commercial edition)
     "vision": true, // Supports image input
-    "toolChoice": true, // Supports tool selection (used in classification, extraction, and tool calls)
-    "functionCall": false, // Supports function calling (used in classification, extraction, and tool calls). toolChoice takes priority; if false, functionCall is used; if also false, prompt mode is used
-    "customCQPrompt": "", // Custom text classification prompt (for models without tool/function call support)
-    "customExtractPrompt": "", // Custom content extraction prompt
+    "reasoning": false, // Supports reasoning output
+    "toolChoice": true, // Supports tool selection
+    "functionCall": false, // Supports function calling
     "defaultSystemChatPrompt": "", // Default system prompt included in conversations
-    "defaultConfig": {}, // Default config sent with API requests (e.g., GLM4's top_p)
-    "fieldMap": {} // Field mapping (e.g., o1 models need max_tokens mapped to max_completion_tokens)
+    "defaultConfig": {}, // Default parameters sent with API requests
+    "fieldMap": {} // Field mapping
   }
 }
 ```
@@ -181,16 +182,18 @@ Only system models use these prices; team models are free. Pricing is stored und
 
 ```json
 {
-  "model": "Model ID",
-  "metadata": {
-    "isCustom": true, // Whether this is a custom model
-    "isActive": true, // Whether the model is enabled
-    "provider": "OpenAI", // Model provider
-    "model": "text-embedding-3-small", // Model ID
-    "name": "text-embedding-3-small", // Display name
-    "pricing": { "unitPrice": 0 }, // Points per M Tokens
-    "defaultToken": 512, // Default token count for text splitting
-    "maxToken": 3000 // Maximum token count
+  "scope": "system",
+  "type": "embedding",
+  "provider": "OpenAI",
+  "model": "text-embedding-3-small",
+  "name": "text-embedding-3-small",
+  "isActive": true,
+  "pricing": { "unitPrice": 0 }, // Credits per M Tokens
+  "config": {
+    "defaultToken": 512, // Default token count for text chunking
+    "maxToken": 3000, // Maximum token count
+    "weight": 100,
+    "normalization": true
   }
 }
 ```
@@ -201,16 +204,17 @@ Only system models use these prices; team models are free. Pricing is stored und
 
 ```json
 {
-  "model": "Model ID",
-  "metadata": {
-    "isCustom": true, // Whether this is a custom model
-    "isActive": true, // Whether the model is enabled
-    "provider": "BAAI", // Model provider
-    "model": "bge-reranker-v2-m3", // Model ID
-    "name": "ReRanker-Base", // Display name
-    "requestUrl": "", // Custom request URL
-    "requestAuth": "", // Custom request authentication
-    "type": "rerank" // Model type
+  "scope": "system",
+  "type": "rerank",
+  "provider": "BAAI",
+  "model": "bge-reranker-v2-m3",
+  "name": "ReRanker-Base",
+  "isActive": true,
+  "requestUrl": "", // Optional: custom request URL
+  "requestAuth": "", // Optional: custom request authentication
+  "pricing": { "unitPrice": 0 }, // Credits per M Tokens
+  "config": {
+    "maxToken": 8000
   }
 }
 ```
@@ -221,26 +225,24 @@ Only system models use these prices; team models are free. Pricing is stored und
 
 ```json
 {
-  "model": "Model ID",
-  "metadata": {
-    "isActive": true, // Whether the model is enabled
-    "isCustom": true, // Whether this is a custom model
-    "type": "tts", // Model type
-    "provider": "FishAudio", // Model provider
-    "model": "fishaudio/fish-speech-1.5", // Model ID
-    "name": "fish-speech-1.5", // Display name
+  "scope": "system",
+  "type": "tts",
+  "provider": "FishAudio",
+  "model": "fishaudio/fish-speech-1.5",
+  "name": "fish-speech-1.5",
+  "isActive": true,
+  "pricing": { "unitPrice": 0 }, // Credits per 1M characters
+  "config": {
     "voices": [
-      // Available voices
       {
-        "label": "fish-alex", // Voice name
-        "value": "fishaudio/fish-speech-1.5:alex" // Voice ID
+        "label": "fish-alex",
+        "value": "fishaudio/fish-speech-1.5:alex"
       },
       {
-        "label": "fish-anna", // Voice name
-        "value": "fishaudio/fish-speech-1.5:anna" // Voice ID
+        "label": "fish-anna",
+        "value": "fishaudio/fish-speech-1.5:anna"
       }
-    ],
-    "pricing": { "unitPrice": 0 } // Points per 1M characters
+    ]
   }
 }
 ```
@@ -251,16 +253,14 @@ Only system models use these prices; team models are free. Pricing is stored und
 
 ```json
 {
+  "scope": "system",
+  "type": "stt",
+  "provider": "OpenAI",
   "model": "whisper-1",
-  "metadata": {
-    "isActive": true, // Whether the model is enabled
-    "isCustom": true, // Whether this is a custom model
-    "provider": "OpenAI", // Model provider
-    "model": "whisper-1", // Model ID
-    "name": "whisper-1", // Display name
-    "pricing": { "unitPrice": 0 }, // Points per 60 seconds
-    "type": "stt" // Model type
-  }
+  "name": "whisper-1",
+  "isActive": true,
+  "pricing": { "unitPrice": 0 }, // Credits per 60 seconds
+  "config": {}
 }
 ```
 
@@ -399,13 +399,13 @@ Range: 1–100. Higher values are prioritized.
 
 ### Enable / Disable Channels
 
-In the control menu on the right side of each channel, you can enable or disable it. Disabled channels will no longer serve model requests.
+Use the switch in the **Enable** column of the channel list to toggle individual channels, or select multiple channels for batch enable/disable. Disabled channels stop serving model requests.
 
 ![aiproxy10](/imgs/optimized/aiproxy-10.png.webp)
 
 ### Model Call Logs
 
-Model calls made through channels are logged on the `Call Logs` page. Logs include input/output tokens, request time, latency, request URL, and more. Failed requests show detailed parameters and error messages for debugging, but logs are retained for only 1 hour by default (configurable via environment variables).
+Model calls made through channels are logged on the `Call Logs` tab, including input/output tokens, request time, latency, upstream URL, and error details. Logs are retained for 1 hour by default (controlled by the `LOG_DETAIL_STORAGE_HOURS` environment variable on the AI Proxy container).
 
 ![aiproxy11](/imgs/optimized/aiproxy-11.png.webp)
 

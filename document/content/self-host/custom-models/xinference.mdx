@@ -14,7 +14,7 @@ Xinference 支持多种推理引擎作为后端，以满足不同场景下部署
 
 ### 1. 服务器
 
-如果你的目标是在一台 Linux 或者 Window 服务器上部署大模型，可以选择 Transformers 或 vLLM 作为 Xinference 的推理后端：
+如果你的目标是在一台 Linux 或者 Windows 服务器上部署大模型，可以选择 Transformers 或 vLLM 作为 Xinference 的推理后端：
 
 - [Transformers](https://huggingface.co/docs/transformers/index)：通过集成 Huggingface 的 Transformers 库作为后端，Xinference 可以最快地集成当今自然语言处理（NLP）领域的最前沿模型（自然也包括 LLM）。
 - [vLLM](https://vllm.ai/) : vLLM 是由加州大学伯克利分校开发的一个开源库，专为高效服务大型语言模型（LLM）而设计。它引入了 PagedAttention 算法，通过有效管理注意力键和值来改善内存管理，吞吐量能够达到 Transformers 的 24 倍，因此 vLLM 适合在生产环境中使用，应对高并发的用户访问。
@@ -83,7 +83,7 @@ pip install ctransformers
 
 Xinference 启动之后，在浏览器中输入: `http://127.0.0.1:9997`，我们可以访问到本地 Xinference 的 Web UI。
 
-打开“Launch Model”标签，搜索到 qwen-chat，选择模型启动的相关参数，然后点击模型卡片左下方的小火箭🚀按钮，就可以部署该模型到 Xinference 默认 Model UID 是 qwen-chat（后续通过将通过这个 ID 来访问模型）。
+打开“Launch Model”标签，搜索到 qwen-chat，选择模型启动的相关参数，然后点击模型卡片左下方的小火箭🚀按钮，就可以部署该模型到 Xinference，默认 Model UID 是 qwen-chat（后续将通过这个 ID 访问模型）。
 
 ![1. WebUI 方式启动模型：界面示例](/imgs/optimized/xinference-launch-model.png.webp)
 
@@ -91,7 +91,7 @@ Xinference 启动之后，在浏览器中输入: `http://127.0.0.1:9997`，我�
 
 ### 2. 命令行方式启动模型
 
-我们也可以使用 Xinference 的命令行工具来启动模型，默认 Model UID 是 qwen-chat（后续通过将通过这个 ID 来访问模型）。
+我们也可以使用 Xinference 的命令行工具来启动模型，默认 Model UID 是 qwen-chat（后续将通过这个 ID 访问模型）。
 
 ```bash
 xinference launch -n qwen-chat -s 14 -f pytorch
@@ -101,9 +101,9 @@ xinference launch -n qwen-chat -s 14 -f pytorch
 
 ## 将本地模型接入 One API
 
-One API 的部署和接入请参考[这里](/zh-CN/self-host/config/model/intro)。
+历史 One API 方案见下文，当前版本请在[模型配置](/zh-CN/self-host/config/model/intro)中通过 AI Proxy 渠道接入。
 
-为 qwen1.5-chat 添加一个渠道，这里的 Base URL 需要填 Xinference 服务的端点，并且注册 qwen-chat (模型的 UID)。
+为 `qwen-chat` 添加一个渠道，这里的 Base URL 需要填 Xinference 服务的端点，并且注册 `qwen-chat`（模型的 UID）。
 
 ![将本地模型接入 One API：界面示例](/imgs/optimized/one-api-add-xinference-models.jpg.webp)
 
@@ -136,7 +136,7 @@ curl --location --request POST 'https://[oneapi_url]/v1/chat/completions' \
       "maxResponse": 4000, // 最大回复
       "quoteMaxToken": 120000, // 最大引用内容
       "maxTemperature": 1.2, // 最大温度
-      "pricing": { "tiers": [{ "inputPrice": 0, "outputPrice": 0 }] }, // 积分 / M Tokens（商业版）
+      "charsPointsPrice": 0, // 积分 / 1k 字符（商业版历史字段）
       "censor": false, // 是否开启敏感校验（商业版）
       "vision": true, // 是否支持图片输入
       "toolChoice": true, // 是否支持工具选择（分类，内容提取，工具调用会用到。）

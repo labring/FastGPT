@@ -7,7 +7,7 @@ description: Connect Feishu or Lark cloud documents to FastGPT as a synchronized
 | ------------------------------- | ------------------------------- |
 | ![Lark Dataset — interface example](/imgs/optimized/current/lark-dataset-create.png.webp) | ![Lark Dataset — interface example](/imgs/optimized/image-40.png.webp) |
 
-Starting from FastGPT v4.8.16, commercial edition users can import from Lark datasets. Configure a Lark app's appId and appSecret, then select a **top-level folder in a document space** to import. This feature is currently in beta — some interactions may still need refinement.
+Starting from FastGPT v4.8.16, commercial edition users can import from Lark datasets. Configure a Lark app's App ID and App Secret, then provide the **Folder Token of a cloud space folder** to import cloud documents.
 
 Due to Lark API limitations, you cannot directly access all document content. Currently, only files in shared space directories are accessible — personal spaces and wiki content are not supported.
 
@@ -48,12 +48,8 @@ If your directory already has permissions granted to the "All Members" group, yo
 
 ## 5. Get the Folder Token
 
-You can find the Folder Token in the page URL. Make sure not to include the question mark.
-
-
+Open the target folder in Lark Drive in your browser and copy the `Folder Token` from the end of the URL path (for example, `fldcnxxxxxx` in `https://example.feishu.cn/drive/folder/fldcnxxxxxx`), excluding `?` and any query parameters.
 
 ## 6. Create the Dataset
 
-Using the 3 parameters obtained from steps 3 and 5, create a Dataset. Select the **Lark Dataset** type, fill in the parameters, and click Create.
-
-![6. Create the Dataset — interface example](/imgs/optimized/current/lark-dataset-create.png.webp)
+Using the 3 parameters obtained from steps 3 and 5, go to **Knowledge Bases → New → Third-Party Dataset → Lark Dataset**, enter the App ID, App Secret, and Folder Token, and click Create.

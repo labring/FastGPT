@@ -3,7 +3,7 @@ title: SiliconCloud Integration Example
 description: Configure SiliconCloud LLM, embedding, and rerank models in a self-hosted FastGPT deployment.
 ---
 
-[SiliconCloud](https://cloud.siliconflow.cn/i/TR9Ym0c4) is a platform focused on open source model inference, with its own acceleration engine. It helps users test and use open source models quickly at low cost. In our experience, their models offer solid speed and stability, with a wide variety covering language, embedding, reranking, TTS, STT, image generation, and video generation — meeting all model requirements in FastGPT.
+[SiliconCloud](https://cloud.siliconflow.cn/i/TR9Ym0c4) provides open-source model inference APIs covering language, embedding, reranking, text-to-speech (TTS), and speech-to-text (STT) models for FastGPT.
 
 Before reading this guide, make sure you've read the [Model Configuration Guide](/en/self-host/config/model/intro).
 
@@ -16,7 +16,7 @@ Before reading this guide, make sure you've read the [Model Configuration Guide]
 
 The system includes a few SiliconCloud models by default for quick testing. If you need additional models, you can [add them manually](/en/self-host/config/model/intro#add-a-custom-model).
 
-Here we enable `Qwen2.5 72b` for both text and vision; `bge-m3` as the embedding model; `bge-reranker-v2-m3` as the Rerank model; `fish-speech-1.5` as the TTS model; and `SenseVoiceSmall` as the STT model.
+In **Admin → System Resources → System Models**, enable the required language and vision models (such as `Qwen2.5-72B` and `Qwen2-VL-72B`), embedding model (`bge-m3`), rerank model (`bge-reranker-v2-m3`), and speech models.
 
 ![2. Add Models — interface example](/imgs/optimized/image-104.png.webp)
 
@@ -42,8 +42,6 @@ Create a simple app, select the corresponding model, enable image upload, and te
 | ------------------------------------------------- | ------------------------------------------------- |
 | ![Test Chat and Image Recognition — interface example](/imgs/optimized/image-68.png.webp) | ![Test Chat and Image Recognition — interface example](/imgs/optimized/image-70.png.webp) |
 
-The 72B model performs quite fast. Without several 4090 GPUs locally, just the output alone would take around 30 seconds — not to mention the environment setup.
-
 ### Test Dataset Import and Q&A
 
 Create a Dataset (since only one embedding model is configured, the embedding model selector won't appear on the page):
@@ -52,7 +50,7 @@ Create a Dataset (since only one embedding model is configured, the embedding mo
 | ------------------------------------------------- | ------------------------------------------------- |
 | ![Test Dataset Import and Q&A — interface example](/imgs/optimized/image-72.png.webp) | ![Test Dataset Import and Q&A — interface example](/imgs/optimized/image-71.png.webp) |
 
-Import a local file — just select the file and click through the steps. 79 indexes were completed in about 20 seconds. Now let's test Dataset Q&A.
+Import a local file and complete the chunking and indexing steps, then test Dataset Q&A.
 
 Go back to the app we just created, select the Dataset, adjust the parameters, and start a conversation:
 

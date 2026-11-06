@@ -40,15 +40,15 @@ Human confirmation offers Accept rewrite and Cancel. Acceptance returns a confir
 3. Select an available team model in both Content Classification and Rewrite Suggestion. The file includes a model name; verify the model selected by the importer.
 4. Inspect Content Classification: User question references Start → User Question; background instructions contain the rules above; each category connects to its matching branch.
 
-   ![Question Classification node configuring background rules and branch outputs](/imgs/optimized/current/node-question-classify.png.webp)
+   ![Question Classification node structure example (importing the JSON populates review rules and branches)](/imgs/optimized/current/node-question-classify.png.webp)
 
 5. Inspect Rewrite Suggestion: its User question also references the original input. The prompt removes unsupported rankings, percentages, certifications, and performance promises, preserves verifiable facts, and identifies information requiring verification. Leave Hide AI output disabled so the user sees the rewrite.
 
-   ![AI Chat node configuring rewrite instructions and variable citation](/imgs/optimized/current/node-ai-chat.png.webp)
+   ![AI Chat node structure example (importing the JSON populates rewrite instructions and variable bindings)](/imgs/optimized/current/node-ai-chat.png.webp)
 
 6. Inspect Human Confirmation: Accept and Cancel connect to the confirmation and end-of-review nodes. Select Run and start a new conversation for each test.
 
-   ![User Selection node configuring interactive confirmation options](/imgs/optimized/current/node-user-selection.png.webp)
+   ![User Selection node structure example (importing the JSON populates Accept rewrite and Cancel options)](/imgs/optimized/current/node-user-selection.png.webp)
 
 ### Tests and expected results
 

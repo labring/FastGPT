@@ -29,7 +29,7 @@ description: 创建分享链接，在新会话核对发布配置、答案和引�
 
 ### 3. 验证新会话与引用
 
-打开链接并创建新对话，重复调试时使用的已知问题。差旅示例应回答 15 个自然日、发票和已批准差旅申请；住宿补贴问题应说明资料缺失。打开引用片段，核对来源和支持答案的原文。
+打开链接并创建新对话，重复调试时使用的已知问题。差旅示例应回答 15 个自然日（界面示例为 15 个日历日）、发票和已批准差旅申请；询问两份差旅资料均未涵盖的事项（如境外签证办理费用如何报销）时，应说明资料缺失。打开引用片段，核对来源和支持答案的原文。
 
 如果引用入口不可见，检查该链接的引用展示设置以及当前访问权限。根据使用者需要开启允许的查看能力，再从链接新建对话复核。
 
@@ -47,6 +47,7 @@ description: 创建分享链接，在新会话核对发布配置、答案和引�
 - **积分上限**：该链接可消耗的最大 AI 积分额度。
 - **身份验证**：接入第三方业务系统进行身份鉴权与对话回调。
 - **实时运行状态**：控制对话过程中是否实时展示当前运行的节点状态。
+- **查看技能引用**：控制访问者是否可查看技能调用引用详情。
 - **查看引用片段**：控制访问者查看知识库检索引用片段的入口，用于核对答案依据。
 - **查看引用全文**：允许访问者查看引用内容所属的完整文档正文。
 - **下载/打开来源原文**：允许访问者下载知识库原始文件或跳转来源网站；开启前请核对资料的可分享范围。
@@ -198,7 +199,7 @@ curl --location --request POST '{{host}}/shareAuth/start' \
 
 FastGPT 发送的请求 body 为 `{ token, appName, responseData, chatId }`：`responseData` 与 [chat 接口](/zh-CN/openapi/intro#响应) 返回的响应详情格式相同，`appName` 为应用名称，`chatId` 为对话 ID。
 
-重点关注 `responseData` 中的 `totalPoints`（AI 积分）与 `tokens`（模型上下文 token 数）。顶层 `token` 是业务身份凭证，按鉴权约定处理。
+重点关注 `responseData` 中的 `totalPoints`（AI 积分）与 `tokens`（模型上下文 token 数）。顶层 `token` 是业务身份凭证，按鉴权约定处理。以下示例中的模型名称与模块名称仅作字段结构示意：
 
 ```bash
 curl --location --request POST '{{host}}/shareAuth/finish' \
@@ -208,17 +209,17 @@ curl --location --request POST '{{host}}/shareAuth/finish' \
     "appName": "[应用名称]",
     "responseData": [
         {
-            "moduleName": "core.module.template.Dataset search",
+            "moduleName": "知识库搜索",
             "moduleType": "datasetSearchNode",
             "totalPoints": 1.5278,
             "query": "导演是谁\n《铃芽之旅》的导演是谁？\n这部电影的导演是谁？\n谁是《铃芽之旅》的导演？",
-            "model": "Embedding-2(旧版，不推荐使用)",
+            "model": "text-embedding-v4",
             "tokens": 1524,
             "similarity": 0.83,
             "limit": 400,
             "searchMode": "embedding",
             "searchUsingReRank": false,
-            "extensionModel": "FastAI-4k",
+            "extensionModel": "qwen3.8-flash",
             "extensionResult": "《铃芽之旅》的导演是谁？\n这部电影的导演是谁？\n谁是《铃芽之旅》的导演？",
             "runningTime": 2.15
         },
@@ -226,7 +227,7 @@ curl --location --request POST '{{host}}/shareAuth/finish' \
             "moduleName": "AI 对话",
             "moduleType": "chatNode",
             "totalPoints": 0.593,
-            "model": "FastAI-4k",
+            "model": "qwen3.8-flash",
             "tokens": 593,
             "query": "导演是谁",
             "maxToken": 2000,
@@ -395,7 +396,7 @@ export default async function (ctx: FunctionContext) {
 
 #### 2. 配置校验地址
 
-我们随便复制 3 个地址中一个接口: `https://d8dns0.laf.dev/shareAuth/finish` , 去除 `/shareAuth/finish` 后填入 `身份验证` : `https://d8dns0.laf.dev`
+复制任一接口地址（如 `https://d8dns0.laf.dev/shareAuth/finish`），去掉路径部分 `/shareAuth/finish` 后，将根地址 `https://d8dns0.laf.dev` 填入 **身份验证**。
 
 #### 3. 修改分享链接参数
 

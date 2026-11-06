@@ -42,9 +42,9 @@ This manual compiles typical issues encountered during knowledge base ingestion,
   2. Verify network connectivity to upstream AI proxies or model providers.
   3. In self-hosted environments, inspect `fastgpt-app` (and `fastgpt-pro` in commercial deployments) container logs for training consumer health.
 
-### Issue: Training tasks retry repeatedly due to lost lock leases (`TrainingLeaseLostError`)
+### Issue: Training tasks retry repeatedly due to lost lock leases (`RedisLeaseLostError`)
 - **Diagnostic Focus**: Chunk batch sizes are too large or remote embedding endpoints exhibit high latency, causing workers to exceed lease windows before committing.
-- **Actionable Fix**: Inspect application container health, model latency, and lease-renewal logs. When overloaded, lower the `VECTOR_MAX_PROCESS`, `QA_MAX_PROCESS`, or `VLM_MAX_PROCESS` environment variables, then retry failed tasks from the **Error list** modal after recovery.
+- **Actionable Fix**: Inspect application container health, model latency, and lease-renewal logs. In self-hosted deployments, lower `VECTOR_MAX_PROCESS`, `QA_MAX_PROCESS`, or `VLM_MAX_PROCESS` via environment variables or **Admin → System Configuration**, then retry failed tasks from the **Error list** modal after recovery.
 
 ---
 
@@ -67,7 +67,7 @@ This manual compiles typical issues encountered during knowledge base ingestion,
 
 ### Issue: Vector database exhausts connections or times out
 - **Diagnostic Focus**: High-concurrency write batches deplete PGVector or Milvus connection pools.
-- **Actionable Fix**: Increase database connection pool caps and slow query timeout limits in self-hosted settings; consult [Deployment and Operations](/en/self-host).
+- **Actionable Fix**: In self-hosted deployments, adjust database connection pool caps (such as `PG_MAX_CONNECTIONS` or `MONGO_MAX_LINK`) or lower training concurrency; consult [Deployment and Operations](/en/self-host).
 
 ### Issue: Uploaded source files vanish from object storage
 - **Diagnostic Focus**: S3 / MinIO bucket lifecycle policies enforce aggressive expiration, or persistent volume mounts are missing.

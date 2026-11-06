@@ -3,32 +3,38 @@ title: 存储桶问题排查
 description: FastGPT 私有部署存储桶问题排查方式
 ---
 
-## 1. 日志出现 ERR 等级的 “Failed to ensure external public/private bucket exists”，导致无法连接上对象存储
+## 1. 日志出现 ERR 等级的 “Failed to ensure (external) public/private bucket exists”，导致无法连接对象存储
 
-### 1.1 错误栈显示
-- error: Error: getaddrinfo ENOTFOUND
+### 1.1 现象
 
-示例
-- ![1.1 错误栈显示：界面示例](/imgs/optimized/faq4.png.webp)
+启动日志报错 `Failed to ensure public/private bucket exists`（内部端点 `STORAGE_S3_ENDPOINT`）或 `Failed to ensure external public/private bucket exists`（外部端点 `STORAGE_EXTERNAL_ENDPOINT`），常见伴随 `Error: getaddrinfo ENOTFOUND` 或 `Deserialization error`：
 
-### 可能的错误
-- 端点主机名无法解析，或客户端使用了服务端不支持的虚拟主机式桶地址
+![1.1 现象：界面示例](/imgs/optimized/faq4.png.webp)
 
-### 解决
-- 从 FastGPT 容器检查 S3 端点主机名的 DNS 与网络连通性；修正端点或 DNS 配置。
-- 如果端点采用路径式寻址，将 `STORAGE_S3_FORCE_PATH_STYLE` 设为 `true`，避免客户端拼接无法解析的桶子域名。
+### 1.2 原因
+
+- `STORAGE_S3_ENDPOINT` 或 `STORAGE_EXTERNAL_ENDPOINT` 的主机名在容器内无法解析，或客户端默认使用了对象存储未开启的虚拟主机式（Virtual-hosted style）桶域名寻址。
+- 外部端点指向了返回非 S3 XML 响应的网关页面（如 404 HTML），导致 SDK 反序列化失败。
+
+### 1.3 处理
+
+- 从 `fastgpt-app` 容器检查内部端点 `STORAGE_S3_ENDPOINT` 与外部端点 `STORAGE_EXTERNAL_ENDPOINT` 的 DNS 解析和网络连通性。
+- 使用路径式寻址的对象存储（如 RustFS、MinIO 或局域网 IP 访问）时，将 `STORAGE_S3_FORCE_PATH_STYLE` 设为 `true`，避免客户端拼接 `<bucket>.<endpoint>` 子域名。
 
 ---
 
 ## 2. 上传对话文件 / 知识库文件报错
 
-### 2.1 SignatureDoesNotMatch
-- 签名不一致。当前文件上传由 FastGPT 后端代理到对象存储，FastGPT 入口的 Nginx 不参与 S3 签名；需要检查的是 FastGPT 与对象存储之间、位于对象存储前面的反向代理
+### 2.1 现象（SignatureDoesNotMatch）
 
-### 可能的错误
-- 对象存储前置的反向代理（如 Nginx）转发时未透传 `Host` 请求头，导致对象存储收到的 Host 与 FastGPT 签名时使用的 `STORAGE_S3_ENDPOINT` 主机不一致
+文件上传返回 `SignatureDoesNotMatch`（签名不一致）。当前文件上传由 FastGPT 后端代理到对象存储，FastGPT 入口的 Nginx 不参与 S3 签名，排查范围是位于 FastGPT 与对象存储之间的反向代理。
 
-### 解决
-- 在对象存储前置的 Nginx 中配置 `proxy_set_header Host $http_host;`。Nginx 的 `$host` 内置变量会去掉端口，需使用 `$http_host`
+### 2.2 原因
+
+- 对象存储前置的反向代理（如 Nginx）转发时未保留原始 `Host` 请求头（包括端口号），导致对象存储收到的 Host 与 FastGPT 按 `STORAGE_S3_ENDPOINT` 签名时的主机不一致。
+
+### 2.3 处理
+
+- 在对象存储前置的 Nginx 中配置 `proxy_set_header Host $http_host;`。Nginx 的 `$host` 内置变量会去掉端口号，需使用 `$http_host` 保留完整主机与端口。
 
 ---

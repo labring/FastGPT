@@ -86,7 +86,7 @@ In search testing and application configuration, these parameters govern retriev
 | --- | --- | --- |
 | **Search Method** | Semantic search / Full-text search / Hybrid search | Hybrid search is the recommended default, providing semantic generalization and exact term matching. |
 | **Citation cap (`limit`)** | Token budget | Controls retrieved context size; tune with chunk size and the application context window. |
-| **Lowest correlation** | Follow the current UI or contract | Uses rerank scores when reranking succeeds, or embedding scores in pure semantic search mode. Other modes may skip score filtering; inspect `usingReRank` and `usingSimilarityFilter` where exposed. |
+| **Lowest correlation** | `0 ~ 1` | Uses rerank scores when reranking succeeds, or embedding scores in pure semantic search mode. Other modes may skip score filtering; inspect `usingReRank` and `usingSimilarityFilter` where exposed. |
 
 ![Search parameters and score threshold configuration](/imgs/optimized/current/dataset-search-filter.png.webp)
 

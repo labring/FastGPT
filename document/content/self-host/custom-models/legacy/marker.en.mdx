@@ -1,9 +1,10 @@
 ---
 title: Integrating Marker PDF Parsing (Legacy Guide)
+deprecated: true
 description: Use Marker to parse PDF documents with image extraction and layout recognition
 ---
 
-This page archives a historical integration. For current model registration, channels, and permissions, see [Model configuration](/en/self-host/config/model/intro) and verify the file-parsing API with your deployed release.
+This page archives a historical integration. Starting with 4.15.0, the open-source edition configures custom PDF parsing through the `CUSTOM_PDF_PARSE_URL` and `CUSTOM_PDF_PARSE_KEY` environment variables; see [Environment Variables](/en/self-host/config/env#enhanced-pdf-parsing). For model registration and channels, see [Model configuration](/en/self-host/config/model/intro).
 
 ## Background
 
@@ -21,7 +22,7 @@ Refer to the [Marker installation guide](https://github.com/labring/FastGPT/tree
 
 Quick Docker installation:
 
-```dockerfile
+```bash
 docker pull crpi-h3snc261q1dosroc.cn-hangzhou.personal.cr.aliyuncs.com/marker11/marker_images:v0.2
 docker run --gpus all -itd -p 7231:7232 --name model_pdf_v2 -e PROCESSES_PER_GPU="2" crpi-h3snc261q1dosroc.cn-hangzhou.personal.cr.aliyuncs.com/marker11/marker_images:v0.2
 ```
@@ -85,7 +86,7 @@ For FastGPT versions before V4.9.0, you can use the following method for Marker 
 
 Install and run the Marker service:
 
-```dockerfile
+```bash
 docker pull crpi-h3snc261q1dosroc.cn-hangzhou.personal.cr.aliyuncs.com/marker11/marker_images:v0.1
 docker run --gpus all -itd -p 7231:7231 --name model_pdf_v1 -e PROCESSES_PER_GPU="2" crpi-h3snc261q1dosroc.cn-hangzhou.personal.cr.aliyuncs.com/marker11/marker_images:v0.1
 ```

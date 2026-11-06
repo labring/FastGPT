@@ -30,7 +30,7 @@ The Virtual Machine (VM) provides Chat Agent V2 with an isolated code execution 
 
 ## What is a Virtual Machine
 
-When analyzing complex spreadsheets, performing mathematical computations, rendering dynamic charts, or executing Skills, agents require a genuine operational runtime. The virtual machine provides an isolated containerized environment (e.g., Python 3.11, Node.js 20), allowing agents to write and run scripts, handle errors, and generate downloadable file assets.
+When analyzing complex spreadsheets, performing mathematical computations, rendering dynamic charts, or executing Skills, agents require a genuine operational runtime. The virtual machine provides an isolated containerized environment (specific Python, Node.js, and system package versions depend on the configured sandbox image), allowing agents to write and run scripts, handle errors, and generate downloadable file assets.
 
 Virtual machine execution relies on backend sandbox services (such as OpenSandbox or Sealos Devbox). Self-hosted operators must configure sandboxes according to the [Deployment Guide](/en/self-host).
 
@@ -81,7 +81,7 @@ The application "Startup Script" runs after runtime acquisition, the initializat
 - **Preparation Failures**: Runtime acquisition or initialization lock failures return an error for the current preparation. Skill editor debugging uses a separate preparation branch.
 - **Startup Timeout Protection**: Script execution duration is bounded by the `AGENT_SANDBOX_ENTRYPOINT_TIMEOUT_SECONDS` environment variable (defaults to 30 seconds; configurable from 1 to 600 seconds).
 - **Non-blocking Resilience**: Non-zero exit codes or timeouts during script execution log warnings without crashing the conversational flow, allowing builders to inspect missing dependencies in debug panels.
-- **Buffer Output Limits**: Output limits depend on the execution service. Logs may be truncated; write large results to files and inspect the generated artifacts.
+- **Buffer Output Limits**: Script output retains the last 8 KiB and background service logs retain up to 4,000 characters; write large results to files and inspect the generated artifacts.
 
 ---
 

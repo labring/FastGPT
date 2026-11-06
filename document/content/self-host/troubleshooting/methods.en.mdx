@@ -9,8 +9,7 @@ Search the [GitHub issues](https://github.com/labring/FastGPT/issues) for a simi
 
 ### (1) Get Backend Errors
 
-1. Run `docker ps -a` to check the status of every container. For a container that has stopped or failed, run `docker logs container_name` to inspect its logs.
-2. For containers that are running, use the same log command to find errors from the affected service.
+Run `docker compose ps` to check the status of every container, then use `docker logs` to inspect errors from stopped or running services:
 
 ```bash
 # Inspect container statuses and tail recent logs from core services
@@ -32,7 +31,7 @@ If the page crashes and asks you to check the console, open your browser develop
 | Symptom                                                           | Primary Component & Logs to Inspect                                                                                      | Specialist Guide                                                                                                                                 |
 | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------ |
 | **Container fails to start or crash-loops**                       | Inspect `fastgpt-app` startup logs for MongoDB, PG/Milvus, Redis, and S3 connectivity checks                             | [Troubleshooting Notes](/en/self-host/troubleshooting/attention) · [General FAQ](/en/self-host/troubleshooting/faq)                              |
-| **Chat or embedding fails with 401/404/429/500**                  | Run channel connectivity tests under `/admin/resources/model` and verify AIProxy / OneAPI upstream URLs                  | [Model Troubleshooting](/en/self-host/troubleshooting/model-errors)                                                                              |
+| **Chat or embedding fails with 401/404/429/500**                  | Run channel connectivity tests under `/admin/resources/model` and verify `AIPROXY_API_ENDPOINT`, `AIPROXY_API_TOKEN`, and channel upstream URLs | [Model Troubleshooting](/en/self-host/troubleshooting/model-errors)                                                                              |
 | **File upload fails / broken images / 403 SignatureDoesNotMatch** | Verify `STORAGE_EXTERNAL_ENDPOINT`, `STORAGE_S3_ENDPOINT`, `STORAGE_S3_FORCE_PATH_STYLE`, and bucket permissions         | [S3 Storage Issues](/en/self-host/troubleshooting/s3-issues) · [Object Storage Config](/en/self-host/config/object-storage)                      |
 | **System tools missing or failing at runtime**                    | Check the `fastgpt-plugin` container and confirm `PLUGIN_BASE_URL` and `PLUGIN_TOKEN` match                              | [Plugin Runtime Configuration](/en/plugin/runtime)                                                                                               |
 | **Workflow Code Run node unavailable**                            | Check the `fastgpt-code-sandbox` container and confirm `CODE_SANDBOX_URL` and `CODE_SANDBOX_TOKEN` match `SANDBOX_TOKEN` | [Environment Variables](/en/self-host/config/env) · [Code Run Node](/en/guide/build/workflow/nodes/sandbox-v2)                                   |

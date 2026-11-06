@@ -19,11 +19,11 @@ Chat Agents (both standard Chat Agent and Chat Agent V2) support mounting single
 2. In the application configuration panel, locate the **Dataset** section and click **+ Choose**.
 3. Check the target knowledge bases you want to connect. FastGPT supports multi-dataset attachments (for example, simultaneously attaching both a Product Manual and a Service Policy).
 4. Click **Parameters** in the Dataset section to open the **Dataset search settings** modal and configure:
-   - **Search Method**: Select **Hybrid search** to combine semantic generalization and keyword matching.
+   - **Search Method**: Defaults to **Semantic search** (as shown in the screenshots below); switching to **Hybrid search** is recommended to combine semantic generalization and keyword matching.
    - **Citation cap**: Set the retrieved-context token budget according to chunk size and model context capacity.
    - **Lowest correlation**: Calibrate the threshold with labeled questions and verify that score filtering is active.
 
-![Attach knowledge bases in Chat Agent](/imgs/optimized/current/agent-prompt-reference.png.webp)
+![Configure prompts and attach knowledge bases in Chat Agent](/imgs/optimized/current/agent-prompt-reference.png.webp)
 
 ## Scenario 2: Orchestrate Knowledge Retrieval in Workflows
 
@@ -42,14 +42,12 @@ In workflows, knowledge base search operates as a discrete functional node, conn
 
 ![Workflow knowledge base search node configuration](/imgs/optimized/current/node-dataset-search.png.webp)
 
-## Step 3: Author Grounded System Prompt Templates
+## Common Configuration: Author Grounded System Prompt Templates
 
-To maximize the accuracy of knowledge base integration, compose strict grounding instructions in your prompt template:
+To maximize the accuracy of knowledge base integration, compose strict grounding instructions in your system prompt (retrieved chunks are injected automatically via `{{quote}}` in the citation prompt template, so no manual placeholder is needed in the system prompt):
 
 ```text
-You are an enterprise knowledge specialist. Your duty is to answer user inquiries strictly using the reference material below.
-
-Reference Documentation:
+You are an enterprise knowledge specialist. Your duty is to answer user inquiries strictly using the provided reference material.
 
 Operational Principles:
 1. Extract and state facts directly supported by the reference material.
@@ -61,7 +59,7 @@ Bind search results to the AI Chat node's knowledge input. The dedicated knowled
 
 ![Prompt reference template and parameter configuration](/imgs/optimized/current/citation-prompt-settings.png.webp)
 
-## Step 4: End-to-End Testing and Publication
+## Common Verification: End-to-End Testing and Publication
 
 1. In the right-hand testing drawer, submit a representative business query.
 2. Click **Run Details** below the response and review each step:

@@ -31,12 +31,12 @@ With ReAct dynamic planning, built-in system tools, and an isolated virtual mach
 
 ### 3. Workflow
 
-Workflow runs on a deterministic Directed Acyclic Graph (DAG) scheduling engine. Builders configure nodes and directional connections explicitly on the visual canvas:
+Workflow runs on a directed graph scheduling engine (supporting conditional loopbacks). Builders configure nodes and directional connections explicitly on the visual canvas:
 - **Explicit Control Flow**: Edges strictly determine execution sequences and parallel processing paths.
 - **Deterministic Data Flow**: Upstream node outputs map directly to downstream input ports through variable bindings.
 - **Logic Components**: Supports conditional branching (If-Else), loops, question intent classification, interactive form prompts, and parallel node runs.
 
-This design guarantees complete execution determinism and step-by-step auditability, fitting multi-step business approvals, multi-model verification, structured ETL extraction, and standard enterprise system integration.
+In this design, execution paths are determined by canvas connections with step-by-step state traceability, fitting multi-step business approvals, multi-model verification, structured ETL extraction, and standard enterprise system integration.
 
 ---
 
@@ -46,7 +46,7 @@ Compare application types across determinism, construction cost, reasoning depth
 
 | Dimension | Chat Agent | Chat Agent V2 | Workflow |
 | --- | --- | --- | --- |
-| **Execution Determinism** | Moderate (governed by prompt constraints) | Dynamic (governed by autonomous model decisions) | Strict (governed by visual canvas topology) |
+| **Execution Determinism** | Moderate (governed by prompt constraints) | Dynamic (governed by autonomous model decisions) | Path-deterministic (governed by canvas edges and branches) |
 | **Authoring Complexity** | Minimal (form configuration for prompt, Dataset, and Tools) | Moderate (built-in system tools, Skills, and virtual machine sandbox) | Highly flexible (requires edge wiring and variable mapping) |
 | **Tool Extensibility** | Supports external Tools and linked Datasets | Dynamic scheduling across built-in system tools, custom Tools, and Skills | Granular node-level tool invocation |
 | **Multi-Step Reasoning** | Dataset search and tool calling | ReAct dynamic planning and sandbox reasoning loops | Multi-node sequential and conditional flow |
@@ -59,13 +59,13 @@ Compare application types across determinism, construction cost, reasoning depth
 
 In production systems, these application types combine seamlessly:
 
-### Embedding Agent Nodes in Workflows
+### Invoking Agents in Workflows
 
-Add an [Agent Node](/en/guide/build/workflow/nodes/agent) into a workflow. This retains rigid process compliance across the overarching pipeline while delegating specialized exploratory reasoning or open synthesis to an agent.
+In new workflows, open the "Agent" tab in the node panel to add an existing Chat Agent V2 (via the [Run Application](/en/guide/build/workflow/nodes/run_app) node); existing workflows that already contain a standalone [Agent Node](/en/guide/build/workflow/nodes/agent) continue to run as configured. This keeps overall pipeline routing explicit while delegating open-ended synthesis to an agent.
 
 ### Publishing Workflows as Tools
 
-Expose a specialized workflow as a [Workflow Tool](/en/guide/build/tools/overview). The workflow declares explicit input and output schemas and attaches directly to a Chat Agent V2, delivering dependable sub-routines inside an autonomous planning session.
+Create a [Workflow Tool](/en/guide/build/tools/workflow-tools) under "Tools" in Studio. The workflow tool declares explicit input and output schemas and attaches directly to a Chat Agent or Chat Agent V2, delivering dependable sub-routines inside an autonomous planning session.
 
 ---
 

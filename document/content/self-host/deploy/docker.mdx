@@ -18,7 +18,7 @@ import { CurrentOriginCodeBlockUpdater } from '@/components/docs/CurrentOriginCo
 <Alert icon="🤖" context="success">
 
 - MongoDB：保存业务元数据、集合和数据块；原始文件等资源由对象存储保存。
-- PostgreSQL/Milvus/Oceanbase/SeekDB：存储向量数据
+- PostgreSQL/Milvus/OceanBase/SeekDB/OpenGauss：存储向量数据
 - AI Proxy：必需的模型服务，负责模型请求代理和管理员渠道管理。
 
 </Alert>
@@ -83,17 +83,14 @@ FastGPT 的 SeekDB 适配包含以下能力，支持范围以所选数据库版�
 <Tabs items={['Linux','MacOS','Windows']}>
   <Tab value="Linux">
 ```bash
-# 安装 Docker
+# 安装 Docker（包含 Docker Compose V2 插件）
 curl -fsSL https://get.docker.com | bash -s docker --mirror Aliyun
 systemctl enable --now docker
-# 安装 docker-compose
-curl -L https://github.com/docker/compose/releases/download/v2.20.3/docker-compose-`uname -s`-`uname -m` -o /usr/local/bin/docker-compose
-chmod +x /usr/local/bin/docker-compose
 # 验证安装
 docker -v
-docker compose -v
-# 如失效，自行百度~
+docker compose version
 ```
+安装异常时请参考 [Docker 官方安装文档](https://docs.docker.com/engine/install/)。
   </Tab>
   <Tab value="MacOS">
 推荐直接使用 [Orbstack](https://orbstack.dev/)。可直接通过 Homebrew 来安装：
@@ -196,6 +193,9 @@ curl -fsSL https://doc.fastgpt.cn/deploy/docker/main/cn/docker-compose.pg.yml -o
 - **SeekDB**
   - 中国大陆地区镜像源(阿里云)：[docker-compose.seekdb.yml](/deploy/docker/main/cn/docker-compose.seekdb.yml)
   - 全球镜像源(dockerhub, ghcr)：[docker-compose.seekdb.yml](/deploy/docker/main/global/docker-compose.seekdb.yml)
+- **OpenGauss**
+  - 中国大陆地区镜像源(阿里云)：[docker-compose.opengauss.yml](/deploy/docker/main/cn/docker-compose.opengauss.yml)
+  - 全球镜像源(dockerhub, ghcr)：[docker-compose.opengauss.yml](/deploy/docker/main/global/docker-compose.opengauss.yml)
 
 </details>
 
@@ -245,7 +245,7 @@ FASTGPT_LOCAL_COMPOSE_PATH=./docker-compose.yml bash install.sh
 以下服务需要被访问到。直连时开放脚本最终输出的宿主机端口；使用反向代理时，公网端口由代理负责：
 
 1. 默认 `3000` 端口（FastGPT 主服务；可通过 `FASTGPT_PORT` 修改宿主机端口）
-2. 9000 端口（S3 服务）
+2. 9000 端口（S3 对象存储服务；默认 `short-proxy` 模式下私有文件由 FastGPT 代理下载，使用 `short-redirect` 模式或浏览器需直连公开桶加载插件 Logo 时，需在 Compose 中配置 `STORAGE_EXTERNAL_ENDPOINT` 并开放 9000 端口）
 3. 默认 `3006` 端口（FastGPT Agent Sandbox Proxy 服务；可通过 `FASTGPT_SANDBOX_PROXY_PORT` 修改宿主机端口）
 
 ### 4. 启动容器
@@ -263,18 +263,18 @@ docker compose up -d
 ### 5. 访问 FastGPT
 
 可通过第三步开放的端口/域名访问 FastGPT。登录用户名为 `root`：
-- **v4.17.3 及更高版本**：初始密码固定为 `123456`，首次登录后系统会弹出激活窗口强制要求修改密码。忘记密码时可通过内置 CLI 脚本重置，详见[修改与重置 root 密码](../config/root-password.mdx)。
+- **v4.17.3 及更高版本**：初始密码固定为 `123456`，首次登录后系统会弹出激活窗口强制要求修改密码（`v4.17.3+` 部署模板中残留的 `DEFAULT_ROOT_PSW` 环境变量会被忽略）。忘记密码时可通过内置 CLI 脚本重置，详见[修改与重置 root 密码](/zh-CN/self-host/config/root-password)。
 - **旧版本（v4.17.2 及更早）**：密码为 `docker-compose.yml` 环境变量里设置的 `DEFAULT_ROOT_PSW`。如果使用交互式脚本部署，脚本会随机生成并在完成后输出登录密码。每次重启容器都会按该变量自动更新密码。
 
 ### 6. 配置模型
 
-- 首次登录 FastGPT 后，系统会提示未配置 `语言模型` 和 `索引模型`，并自动跳转模型配置页面。系统必须至少有这两类模型才能正常使用。
+- 首次登录 FastGPT 后，若尚未配置模型，系统会提示“未配置相关模型”或“未配置索引模型”，并引导前往模型配置页面。系统必须至少配置语言模型和索引模型才能正常使用。
 - 如果系统未正常跳转，可以在**管理员 → 系统资源 → 系统模型**页面进行模型配置。[点击查看相关教程](/zh-CN/self-host/config/model/intro)
 - 目前已知可能问题：首次进入系统后，整个浏览器 tab 无法响应。此时需要删除该 tab，重新打开一次即可。
 
 ### 7. 按需安装系统插件
 
-从 V4.14.0 版本开始，fastgpt-plugin 镜像仅提供运行环境，不再预装系统插件，所有 FastGPT 系统需手动安装系统插件。
+从 V4.14.0 版本开始，`fastgpt-plugin` 镜像仅提供运行环境，管理员可在**管理员 →（商业版：系统资源 →）系统工具**页面按需安装系统插件：
 
 - 通过插件市场安装，默认会向公开的 FastGPT Marketplace 获取数据进行安装。
 - 如果你的 FastGPT 无法访问插件市场，则可以手动访问 [FastGPT 插件市场](https://marketplace.fastgpt.cn/)，先下载 .pkg 文件，再通过文件导入的方式安装到系统里。
@@ -292,7 +292,7 @@ docker compose up -d
 
 先核对 FastGPT 可访问的对象存储地址。默认 `short-proxy` 模式由 FastGPT 校验短链并代理私有文件下载；使用 `short-redirect` 或插件 Logo 等公开直连资源时，应配置相关客户端与服务可访问的外部地址。遇到 403 时核对签名主机名与代理路径。
 
-详见[对象存储配置](/zh-CN/self-host/config/object-storage)。
+详见[对象存储配置](/zh-CN/self-host/config/object-storage)；从旧版 MinIO 模板升级到当前 RustFS 模板时参见[Docker Compose 从 MinIO 迁移到 RustFS](/zh-CN/self-host/docker_minio_to_rustfs)。
 
 ### 登录系统后，浏览器无法响应
 
@@ -353,8 +353,6 @@ docker-compose 端口定义为：`映射端口:运行端口`。
 
 如果 `容器1` 需要连接 `容器2`，使用 `容器2:运行端口` 来进行连接即可。
 
-（自行补习 docker 基本知识）
-
 ### relation "modeldata" does not exist
 
 PG 数据库没有连接上/初始化失败，可以查看日志。FastGPT 会在每次连接上 PG 时进行表初始化，如果报错会有对应日志。
@@ -386,10 +384,10 @@ PG 数据库没有连接上/初始化失败，可以查看日志。FastGPT 会�
 ### 如何修改密码
 
 - **Web 界面修改**：以 `root` 登录后，进入左侧导航栏「账号 → 个人信息」，在「通用信息」区的「密码」行点击「变更」。
-- **命令行重置（忘记密码）**：在服务器容器内执行 `docker compose exec fastgpt-app node /app/scripts/reset-root-password.cjs '新密码'` 即可直接重置，无需重启容器。
+- **命令行重置（忘记密码）**：在宿主机 `docker-compose.yml` 所在目录执行 `docker compose exec fastgpt-app node /app/scripts/reset-root-password.cjs '新密码'` 即可直接重置，无需重启容器。
 - **旧版本（v4.17.2 及更早）**：修改 `docker-compose.yml` 中的 `DEFAULT_ROOT_PSW` 并重启容器。
 
-详细说明请参考 [修改与重置 root 密码](../config/root-password.mdx)。
+详细说明请参考 [修改与重置 root 密码](/zh-CN/self-host/config/root-password)。
 
 ### 部署 Zilliz 版本，获取账号和密钥
 

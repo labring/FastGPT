@@ -2,6 +2,9 @@
 title: 'V4.17.1'
 description: "FastGPT V4.17.1 release notes covering container image updates, upgrade steps, and feature changes."
 releaseTime: '2026-09-30'
+upgradeTags:
+  - CONFIG
+  - MIGRATION
 ---
 
 ## 📦 Upgrade Guide
@@ -32,10 +35,10 @@ Save the configuration and run `docker compose up -d fastgpt-aiproxy` to recreat
 
 This upgrade includes the following automated scripts:
 
-1. Backfill App resource permission snapshots, clean legacy V1 Apps and version data, and validate published App versions. The migration task does not block startup; its progress and failed records are available in system upgrade tasks.
-2. Enable reasoning mapping for compatible channels: enable `map_reasoning_to_reasoning_content: true` response-field conversion for existing AIProxy OpenAI channels while preserving their other configuration. This resolves reasoning-field differences for reasoning models such as DeepSeek-R1. Channels that already have this setting enabled are not updated again, and the migration task does not block startup.
-3. Upgrade Dataset tag data: migrate legacy Collection tags to typed tags and clean duplicate tag definitions. The migration task does not block startup.
-4. Backfill team member name set flags: backfill the `isSetMemberName` flag for legacy team members; owners are always marked as set, while non-owner names matching the login username are marked as requiring a name. The migration task does not block startup.
+1. **Backfill App resource snapshots** (`20260916_backfill_app_resource_snapshots`): Backfill App resource permission snapshots, clean legacy V1 Apps and version data, and validate published App versions. The migration task does not block startup; its progress and failed records are available under **Admin > System upgrade**.
+2. **Enable reasoning mapping for OpenAI channels** (`20260923_enable_channel_reasoning_mapping`): Enable `map_reasoning_to_reasoning_content: true` response-field conversion for existing AIProxy OpenAI channels while preserving their other configuration. This resolves reasoning-field differences for reasoning models such as DeepSeek-R1. Channels that already have this setting enabled are not updated again, and the migration task does not block startup.
+3. **Upgrade dataset tag data** (`20260907_migrate_dataset_tags_v2`): Migrate legacy Collection tags to typed tags and clean duplicate tag definitions. The migration task does not block startup.
+4. **Backfill team member name set flag** (`20260928_backfill_member_name_set`): Backfill the `isSetMemberName` flag for legacy team members; owners are always marked as set, while non-owner names matching the login username are marked as requiring a name. The migration task does not block startup.
 
 ## Admin entry changes
 

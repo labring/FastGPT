@@ -3,36 +3,41 @@ title: General Troubleshooting
 description: Troubleshoot common self-hosted FastGPT issues including port conflicts, vector database setup, HTTPS uploads, and model timeouts.
 ---
 
+<span id="if-deployed-via-sealos-are-there-no-limitations-of-local-deployment" />
+<span id="database-port-3306-is-occupied-service-startup-failed" />
+<span id="page-crash" />
+<span id="after-enabling-content-completion-the-response-speed-becomes-slow" />
+
 ### Frontend Page Crash
 
 1. Record reproduction steps, FastGPT version, console errors, and failed requests.
 2. Check Admin model configuration, service initialization logs, and network requests.
 3. Reproduce in a current stable browser with translation and relevant extensions disabled. Remove secrets and personal data before filing an issue.
+4. For `URI malformed`, record the affected URL and action, then inspect URL encoding. If configuration fails to load, resolve the related server error before refreshing.
 
 ---
 
-### If deployed via sealos, are there no limitations of local deployment?
+### What limits the maximum chunk size in a Dataset?
 
-![If deployed via sealos, are there no limitations of local deployment? — interface example](/imgs/optimized/faq1.png.webp)
-This is the length limit of the embedding model. It is the same regardless of the deployment method, but the configuration of different embedding models is different, and parameters can be modified in the background.
+![What limits the maximum chunk size in a Dataset? — interface example](/imgs/optimized/faq1.png.webp)
+This limit is determined by the single-chunk token limit of the Dataset's selected Embedding model and applies across all deployment methods. Different Embedding models have different limits; you can edit the model's chunk parameters under **Admin → System Resources → System Models → Model configuration**.
 
 ---
 
 ### How to mount the Mini Program configuration file
 
-Mount the verification file to the specified location: /app/projects/app/public/xxxx.txt
+Mount the verification file to `/app/projects/app/public/xxxx.txt` inside the container and restart the service:
 
-Then restart. For example:
+- **Docker Compose**: Add `- ./xxxx.txt:/app/projects/app/public/xxxx.txt` under `volumes` for the `fastgpt-app` service in `docker-compose.yml`, then run `docker compose up -d`.
+- **Sealos**: Open the app update page in Sealos **App Management**, click **Add Configuration File** under **Configuration Files**, set the file path to `/app/projects/app/public/xxxx.txt`, paste the file content, and apply the changes:
 
 ![How to mount the Mini Program configuration file — interface example](/imgs/optimized/faq2.png.webp)
 
 ---
 
-### Database port 3306 is occupied, service startup failed
+### Host port is occupied, service startup failed
 
-![Database port 3306 is occupied, service startup failed — interface example](/imgs/optimized/faq3.png.webp)
-
-Change the port mapping to 3307 or similar, for example 3307:3306.
+Check the `ports` mapping of the failing service in `docker-compose.yml` and change the host port on the left side of the colon to an available port (for example, change `3000:3000` to `3001:3000`) while keeping the container port on the right unchanged, then run `docker compose up -d`.
 
 ---
 
@@ -48,15 +53,9 @@ Inspect Run Details and the model response. Confirm that the model and channel s
 
 ---
 
-### Page Crash
+### Response slows down after enabling Query Optimization
 
-Follow the Frontend Page Crash steps above. For `URI malformed`, record the affected URL and action, then inspect URL encoding. If configuration fails to load, resolve the related server error before refreshing.
-
----
-
-### After enabling content completion, the response speed becomes slow
-
-Query expansion adds a model call and may produce multiple retrieval queries. Inspect the timing of expansion, recall, and reranking in Run Details, then adjust the expansion model, retrieval settings, and concurrency. Actual query counts depend on configuration and runtime results.
+Enabling **Query Optimization** adds an LLM call and may generate multiple retrieval queries. Inspect the timing of query optimization, recall, and reranking in Run Details, then adjust the optimization model, retrieval settings, and concurrency. Actual query counts depend on configuration and runtime results.
 
 ---
 
@@ -101,7 +100,7 @@ For detailed steps, see [Modify and Reset Root Password](/en/self-host/config/ro
 
 ### Does FastGPT support OpenAI's Responses API (/v1/responses)?
 
-No (up to 4.17.0); requests return 404. Use `POST /api/v1/chat/completions` to call an app instead; it is compatible with the OpenAI Chat Completions format.
+No (up to 4.17.3); requests return 404. Use `POST /api/v1/chat/completions` to call an app instead; it is compatible with the OpenAI Chat Completions format.
 
 ---
 
@@ -127,7 +126,7 @@ Note: running the one-click script again in a directory that is already deployed
 
 ### Parallel Run reports parallel_task_not_reach_end, or runs only one task
 
-Applies to: verified against 4.17.0. Parallel Run starts one task per element of the input array. A whole block of multi-line text (for example, one URL per line) is treated as an array with a single element, so only one task runs. `parallel_task_not_reach_end` means the sub-workflow of a task did not reach the End node; if the sub-workflow has a more specific error, that error is shown instead.
+Applies to: verified against 4.17.3. Parallel Run starts one task per element of the input array. A whole block of multi-line text (for example, one URL per line) is treated as an array with a single element, so only one task runs. `parallel_task_not_reach_end` means the sub-workflow of a task did not reach the End node; if the sub-workflow has a more specific error, that error is shown instead.
 
 What to do: add a Code run node before Parallel Run that splits the text into an array by newline, for example returning `text.split('\n').map(s => s.trim()).filter(Boolean)`, and have the Parallel Run array input reference its result. If it still fails, open the failing task's Run Details and check whether the sub-workflow reached the End node.
 
@@ -135,7 +134,7 @@ What to do: add a Code run node before Parallel Run that splits the text into an
 
 ### Uploading files over HTTPS fails with "s3 upload network error"
 
-Applies to: verified against 4.17.0. The address the browser uploads files to comes from `FILE_DOMAIN`, or from `FE_DOMAIN` if it is not set. If the page uses HTTPS but this address is `http://`, the browser blocks the request as mixed content and it never reaches the server.
+Applies to: verified against 4.17.3. The address the browser uploads files to comes from `FILE_DOMAIN`, or from `FE_DOMAIN` if it is not set. If the page uses HTTPS but this address is `http://`, the browser blocks the request as mixed content and it never reaches the server.
 
 What to do: change the matching setting to a reachable https address (`FILE_DOMAIN` if it is set, otherwise `FE_DOMAIN`) and restart. You can confirm in the browser console whether there is a Mixed Content error.
 

@@ -3,9 +3,9 @@ title: Docker 数据备份与迁移
 description: 盘点持久化数据，完成停机备份、恢复验证与切换。
 ---
 
-目录复制适用于已停止写入、使用本地持久化目录且数据库版本兼容的部署。先在目标环境演练恢复，再安排正式切换；跨数据库大版本按数据库官方备份与恢复流程处理。
+卷归档或目录复制适用于已停止写入且数据库版本兼容的部署。先在目标环境演练恢复，再安排正式切换；跨数据库大版本按数据库官方备份与恢复流程处理。
 
-## 迁移前准备
+## 1. 迁移前准备
 
 记录当前应用与数据库版本、实际 Compose 配置、环境变量和持久化挂载。使用 `docker compose config` 核对配置，输出可能包含凭证，应安全保存。
 
@@ -17,7 +17,7 @@ description: 盘点持久化数据，完成停机备份、恢复验证与切换�
 | 其他依赖 | Redis、AI Proxy 及实际启用服务的持久化数据和恢复要求 |
 | 配置与凭证 | Compose 配置、密钥、模型渠道、对象存储桶和端点设置 |
 
-## 1. 停止服务
+## 2. 停止服务
 
 暂停外部入口与定时任务，等待或妥善处理进行中的写入和文件处理任务。在部署目录停止该 Compose 项目的服务：
 
@@ -27,9 +27,20 @@ docker compose down
 
 命令仅停止当前 Compose 项目。外部数据库、对象存储和其他写入方需要另行协调，确保备份来自一致的停写窗口。保留数据卷，确认数据库已经干净退出。
 
-## 2. Copy文件夹
+## 3. 备份并复制数据
 
-按实际挂载复制全部持久化数据，并保留文件所有者、权限与目录结构。旧 PG Compose 示例中的 `pg/data`、`mongo/data` 只是该示例的两个目录；以当前配置清单核对完整范围。命名卷、托管数据库及外部对象存储分别使用对应的备份与恢复工具。
+当前官方 Docker Compose 模板默认使用命名卷（如 `fastgpt-pg`、`fastgpt-mongo`、`fastgpt-redis`、`fastgpt-rustfs`）。停机后可通过临时容器将各命名卷打包备份并在目标端解压恢复：
+
+```bash
+# 在源端导出命名卷（按实际使用的卷逐个执行）
+docker run --rm -v fastgpt-mongo:/data:ro -v "$PWD":/backup alpine tar czf /backup/fastgpt-mongo.tar.gz -C /data .
+
+# 在目标端恢复到同名命名卷
+docker volume create fastgpt-mongo
+docker run --rm -v fastgpt-mongo:/data -v "$PWD":/backup alpine tar xzf /backup/fastgpt-mongo.tar.gz -C /data
+```
+
+若使用旧版模板或自定义宿主机目录挂载（如 `pg/data`、`mongo/data`），按实际挂载清单复制全部持久化目录，并保留文件所有者、权限与目录结构（`cp -a` 或 `rsync -a`）。托管数据库及外部对象存储分别使用对应的官方备份与恢复工具。
 
 将数据恢复到目标环境后，使用兼容版本和对应配置启动服务：
 
@@ -37,8 +48,8 @@ docker compose down
 docker compose up -d
 ```
 
-## 验证与切换
+## 4. 验证与切换
 
 检查启动日志和服务健康状态，然后验证登录、已有应用、会话、原文件访问、知识库检索及一次新文件导入。确认权限和模型渠道有效，再切换业务流量并恢复定时任务。
 
-保留源环境及备份直到验收完成；恢复期间控制写入入口，确保业务数据进入选定环境。升级流程见[版本与升级](/zh-CN/self-host/upgrading/upgrade-instruction)，对象存储参数见[配置说明](/zh-CN/self-host/config/object-storage)。
+保留源环境及备份直到验收完成；恢复期间控制写入入口，确保业务数据进入选定环境。升级流程见[版本&升级说明](/zh-CN/self-host/upgrading/upgrade-instruction)，对象存储参数见[对象存储配置](/zh-CN/self-host/config/object-storage)。

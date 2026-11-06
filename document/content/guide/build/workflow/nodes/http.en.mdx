@@ -181,11 +181,6 @@ When the HTTP node receives a non-2xx response whose body lacks `message` or `ms
 
 Starting from FastGPT v4.6.8, output formatting was added, primarily converting `JSON` to `string`. If you select `string` as the output type, the HTTP node will convert the corresponding key's value to a JSON string. This lets you pipe HTTP output directly into a `Text Editor` node, append appropriate prompts, and feed the result into `AI Chat`.
 
-<Alert context="warning">
-  The HTTP node is extremely versatile. You can integrate public APIs to extend your workflow
-  capabilities.
-</Alert>
-
 ## HTTP Service Integration Example
 
 Here is a POST request service example:

@@ -15,11 +15,11 @@ import { Alert } from '@/components/docs/Alert';
 
 ## 参数说明
 
-## AI模型
+### AI 模型
 
 自部署可通过[模型配置](/zh-CN/self-host/config/model/intro) 配置可选的对话模型。
 
-点击AI模型后，可以配置模型的相关参数。
+点击 **AI 模型** 后，可以配置模型的相关参数。
 
 ![AI模型：界面示例](/imgs/optimized/current/ai-model-selector.png.webp)
 
@@ -48,8 +48,8 @@ AI 对话节点根据当前问题、提示词与所选上下文调用模型。�
 ## 示例：生成摘要
 
 1. 连接开始节点与 AI 对话节点。选择可用模型，用户问题引用开始节点的用户输入。
-2. 提示词填写 `Summarize the text in one sentence. Preserve the time and location.`。
-3. 调试输入 `The meeting starts at 10:00 in Room 2.`。核对回复保留 `10:00` 和 `Room 2`。
+2. 提示词填写 `用一句话总结输入内容，必须保留时间和地点。`。
+3. 调试输入 `评审会议将于 10:00 在 2 号会议室开始。`。核对回复保留 `10:00` 和 `2 号会议室`。
 4. 查看运行详情中的输入与 AI 回复内容。需要继续加工时，把该输出引用到文本拼接或指定回复节点。
 
 输入为空时检查引用来源；模型失败时检查权限、额度和请求错误；回答缺少事实时检查传入的知识库引用、文件内容和上下文长度。完整创建及发布步骤见[首个工作流](/zh-CN/guide/getting-started/first-workflow)。
