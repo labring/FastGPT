@@ -10,10 +10,12 @@ import type { StandardSubLevelEnum } from '@fastgpt/global/support/wallet/sub/co
 const ShareBrandFeature = ({
   level,
   highlight = false,
+  showTip = highlight,
   canHideShareBrand
 }: {
   level: `${StandardSubLevelEnum}`;
   highlight?: boolean;
+  showTip?: boolean;
   canHideShareBrand?: boolean;
 }) => {
   const { t } = useSafeTranslation();
@@ -33,7 +35,7 @@ const ShareBrandFeature = ({
       >
         {t('common:share_brand_control')}
       </Box>
-      {focused && <QuestionTip ml={1} label={t('common:share_brand_tip')} />}
+      {showTip && <QuestionTip ml={1} label={t('common:share_brand_tip')} />}
     </Flex>
   ) : null;
 };

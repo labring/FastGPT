@@ -137,6 +137,7 @@ const Standard = ({
   standardPlan: myStandardPlan,
   onPaySuccess,
   highlightShareBrand = false,
+  shareBrandHighlightActive = true,
   shareBrandPlacement = 'last',
   selectSubMode: controlledSubMode,
   onSelectSubModeChange,
@@ -149,6 +150,7 @@ const Standard = ({
   standardPlan?: TeamPlanStandardType;
   onPaySuccess?: () => void;
   highlightShareBrand?: boolean;
+  shareBrandHighlightActive?: boolean;
   shareBrandPlacement?: 'first' | 'last';
   selectSubMode?: `${SubModeEnum}`;
   onSelectSubModeChange?: (mode: `${SubModeEnum}`) => void;
@@ -332,6 +334,7 @@ const Standard = ({
   useEffect(() => {
     if (
       !highlightShareBrand ||
+      !shareBrandHighlightActive ||
       !feConfigs.show_outlink_brand ||
       hasScrolledToShareBrandRef.current ||
       (responsiveCardLayout && !isResponsiveLayoutReady)
@@ -349,6 +352,7 @@ const Standard = ({
     feature.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'smooth' });
   }, [
     highlightShareBrand,
+    shareBrandHighlightActive,
     feConfigs.show_outlink_brand,
     standardSubList,
     responsiveCardLayout,
@@ -821,7 +825,11 @@ const Standard = ({
                 {item.level === StandardSubLevelEnum.custom ? (
                   <Grid gap={4} fontSize={'sm'}>
                     {shareBrandPlacement === 'first' && (
-                      <ShareBrandFeature level={item.level} highlight={highlightShareBrand} />
+                      <ShareBrandFeature
+                        level={item.level}
+                        highlight={highlightShareBrand && shareBrandHighlightActive}
+                        showTip={highlightShareBrand}
+                      />
                     )}
                     <Flex alignItems={'center'}>
                       <MyIcon name={'price/right'} w={'16px'} mr={3} color={'primary.600'} />
@@ -840,7 +848,11 @@ const Standard = ({
                       <Box color={'myGray.600'}>{t('price:custom_plan_feature_4')}</Box>
                     </Flex>
                     {shareBrandPlacement === 'last' && (
-                      <ShareBrandFeature level={item.level} highlight={highlightShareBrand} />
+                      <ShareBrandFeature
+                        level={item.level}
+                        highlight={highlightShareBrand && shareBrandHighlightActive}
+                        showTip={highlightShareBrand}
+                      />
                     )}
                   </Grid>
                 ) : (
@@ -848,7 +860,8 @@ const Standard = ({
                     level={item.level}
                     mode={selectSubMode}
                     shareBrandPlacement={shareBrandPlacement}
-                    highlightShareBrand={highlightShareBrand}
+                    highlightShareBrand={highlightShareBrand && shareBrandHighlightActive}
+                    showShareBrandTip={highlightShareBrand}
                   />
                 )}
               </Box>

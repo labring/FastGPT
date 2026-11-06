@@ -154,6 +154,24 @@ describe('Standard purchase plan branding features', () => {
     expect(scrollTargets).toEqual([]);
   });
 
+  it('keeps explanations but clears emphasis and skips pending positioning after interaction', async () => {
+    await act(async () =>
+      root.render(
+        React.createElement(Standard, {
+          highlightShareBrand: true,
+          shareBrandHighlightActive: false
+        })
+      )
+    );
+    const rows = Array.from(container.querySelectorAll('[data-plan-feature="share-brand"]'));
+    expect(rows).toHaveLength(4);
+    for (const row of rows) {
+      expect(row.querySelector('[data-bg="yellow.200"]')).toBeNull();
+      expect(row.querySelector('[data-tip]')).not.toBeNull();
+    }
+    expect(scrollTargets).toEqual([]);
+  });
+
   it('does not scroll when highlighting or the global feature is disabled', async () => {
     await act(async () =>
       root.render(React.createElement(Standard, { highlightShareBrand: false }))

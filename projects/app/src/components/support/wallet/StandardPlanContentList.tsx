@@ -25,13 +25,15 @@ const StandardPlanContentList = ({
   mode,
   standplan,
   shareBrandPlacement = 'last',
-  highlightShareBrand = false
+  highlightShareBrand = false,
+  showShareBrandTip = highlightShareBrand
 }: {
   level: `${StandardSubLevelEnum}`;
   mode: `${SubModeEnum}`;
   standplan?: TeamPlanStandardType;
   shareBrandPlacement?: 'first' | 'last';
   highlightShareBrand?: boolean;
+  showShareBrandTip?: boolean;
 }) => {
   const { t } = useSafeTranslation();
 
@@ -123,6 +125,7 @@ const StandardPlanContentList = ({
         <ShareBrandFeature
           level={level}
           highlight={highlightShareBrand}
+          showTip={showShareBrandTip}
           canHideShareBrand={canHideShareBrand}
         />
       )}
@@ -296,6 +299,7 @@ const StandardPlanContentList = ({
         <ShareBrandFeature
           level={level}
           highlight={highlightShareBrand}
+          showTip={showShareBrandTip}
           canHideShareBrand={canHideShareBrand}
         />
       )}

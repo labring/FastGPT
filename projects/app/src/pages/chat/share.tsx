@@ -383,7 +383,9 @@ const OutLink = (props: Props & BrandingPageProps) => {
                       />
                     ) : (
                       <Flex
-                        h="48px"
+                        as="header"
+                        minH="48px"
+                        py={narrowBrand ? 2 : 0}
                         px={4}
                         bg="white"
                         alignItems="center"
@@ -414,31 +416,40 @@ const OutLink = (props: Props & BrandingPageProps) => {
                           minW={0}
                           flex="1"
                           justifyContent="center"
+                          flexDirection="column"
                           px={3}
-                          gap={2}
                         >
-                          {!!mobileHeaderAppAvatar && (
-                            <Avatar
-                              src={mobileHeaderAppAvatar}
-                              w="24px"
-                              h="24px"
-                              borderRadius="6px"
-                              flexShrink={0}
-                            />
-                          )}
-                          <MyTooltip label={mobileHeaderAppName} showOnlyWhenOverflow>
-                            <Box
-                              minW={0}
-                              fontSize="16px"
-                              fontWeight={500}
-                              color="myGray.900"
-                              overflow="hidden"
-                              whiteSpace="nowrap"
-                              textOverflow="clip"
-                            >
-                              {mobileHeaderAppName}
-                            </Box>
-                          </MyTooltip>
+                          <Flex
+                            alignItems="center"
+                            justifyContent="center"
+                            minW={0}
+                            maxW="100%"
+                            gap={2}
+                          >
+                            {!!mobileHeaderAppAvatar && (
+                              <Avatar
+                                src={mobileHeaderAppAvatar}
+                                w="24px"
+                                h="24px"
+                                borderRadius="6px"
+                                flexShrink={0}
+                              />
+                            )}
+                            <MyTooltip label={mobileHeaderAppName} showOnlyWhenOverflow>
+                              <Box
+                                minW={0}
+                                fontSize="16px"
+                                fontWeight={500}
+                                color="myGray.900"
+                                overflow="hidden"
+                                whiteSpace="nowrap"
+                                textOverflow="clip"
+                              >
+                                {mobileHeaderAppName}
+                              </Box>
+                            </MyTooltip>
+                          </Flex>
+                          {narrowBrand && <ComplianceTip type="chat" pt={0} pb={0} />}
                         </Flex>
 
                         {hideMenu === '1' ? (
@@ -460,17 +471,23 @@ const OutLink = (props: Props & BrandingPageProps) => {
                       {headerBrand}
                     </Flex>
                   )}
-                </Box>
-                {narrowBrand && (
-                  <Box flexShrink={0} bg="white">
-                    {(showHead !== '1' || isPlugin) && (
-                      <Box textAlign="center" pt={3} fontWeight={500}>
+                  {narrowBrand && (showHead !== '1' || isPlugin) && (
+                    <Flex
+                      as="header"
+                      minH="48px"
+                      px={4}
+                      py={2}
+                      direction="column"
+                      alignItems="center"
+                      justifyContent="center"
+                    >
+                      <Box textAlign="center" fontWeight={500}>
                         {mobileHeaderAppName}
                       </Box>
-                    )}
-                    <ComplianceTip type="chat" pt={1} pb={2} />
-                  </Box>
-                )}
+                      <ComplianceTip type="chat" pt={0} pb={0} />
+                    </Flex>
+                  )}
+                </Box>
                 {/* chat box */}
                 <Box flex={1} minH={0} minW={0} overflow={'hidden'} bg={'white'}>
                   {isPlugin ? (

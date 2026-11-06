@@ -13,7 +13,8 @@ const mocks = vi.hoisted(() => ({
   stream: vi.fn(),
   box: vi.fn(),
   isPc: true,
-  query: { shareId: 'share-a' },
+  isPlugin: false,
+  query: { shareId: 'share-a' } as { shareId: string; showHead?: string },
   chat: {
     histories: [],
     forbidLoadChat: { current: false },
@@ -63,7 +64,7 @@ vi.mock('@/web/core/chat/context/chatItemContext', async () => {
           chatBoxData,
           setChatBoxData,
           resetVariables: () => {},
-          isPlugin: false
+          isPlugin: mocks.isPlugin
         }),
         [chatBoxData]
       );
@@ -98,8 +99,8 @@ vi.mock('@/components/common/ComplianceTip', () => ({
   default: () => React.createElement('div', { 'data-compliance-tip': true })
 }));
 vi.mock('@chakra-ui/react', () => {
-  const Container = ({ children }: { children: React.ReactNode }) =>
-    React.createElement('div', {}, children);
+  const Container = ({ children, as }: { children: React.ReactNode; as?: string }) =>
+    React.createElement(as ?? 'div', {}, children);
   return { Box: Container, Flex: Container, IconButton: () => null };
 });
 vi.mock('@/components/PageContainer', () => ({
@@ -156,9 +157,12 @@ describe('share page branding across chat initialization', () => {
   let dom: JSDOM;
   let root: Root;
   let container: HTMLElement;
-  const render = async (overrides: Partial<typeof props> = {}) => {
+  const render = async (
+    overrides: Partial<typeof props> = {},
+    query: { showHead?: string } = {}
+  ) => {
     const pageProps = { ...props, ...overrides };
-    mocks.query = { shareId: pageProps.shareId };
+    mocks.query = { shareId: pageProps.shareId, ...query };
     await act(async () => root.render(React.createElement(SharePage, pageProps)));
   };
   const brand = () => container.querySelector('[data-share-brand]');
@@ -188,6 +192,7 @@ describe('share page branding across chat initialization', () => {
     vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
     vi.clearAllMocks();
     mocks.isPc = true;
+    mocks.isPlugin = false;
     mocks.chat.forbidLoadChat.current = false;
     mocks.box.mockReturnValue(null);
     mocks.init.mockReset().mockResolvedValue(initResult());
@@ -247,6 +252,21 @@ describe('share page branding across chat initialization', () => {
       expect(brand()).toBeNull();
     }
   );
+
+  it.each([
+    { showHead: '1', isPlugin: false },
+    { showHead: '0', isPlugin: false },
+    { showHead: '1', isPlugin: true }
+  ])('keeps the mobile app name and compliance tip in the header: %j', async (scenario) => {
+    mocks.isPc = false;
+    mocks.isPlugin = scenario.isPlugin;
+    await render({}, { showHead: scenario.showHead });
+
+    const header = container.querySelector('header');
+    expect(header?.textContent).toContain('Shared app');
+    expect(header?.querySelectorAll('[data-compliance-tip]')).toHaveLength(1);
+    expect(container.querySelectorAll('[data-compliance-tip]')).toHaveLength(1);
+  });
 
   it('applies a later initialization that disables branding', async () => {
     await render();
