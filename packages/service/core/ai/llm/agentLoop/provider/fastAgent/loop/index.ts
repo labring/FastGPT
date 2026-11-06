@@ -301,7 +301,9 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
       });
     },
     onRunTool: async ({ call, messages }) => {
-      const toolResult = await (async () => {
+      const toolResult = await (async (): Promise<
+        AgentLoopToolExecutionResult<TChildrenResponse | AgentAskInteractive>
+      > => {
         // 先处理会改变 agent-loop 本地状态的内置工具，再落到外部 runtime tool。
         if (call.function.name === askToolName) {
           const parsed = parseAgentAskToolCall(call);

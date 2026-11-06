@@ -24,9 +24,9 @@ import { getChatItems } from '@fastgpt/service/core/chat/controller';
 import { addPreviewUrlToChatItems } from '@fastgpt/service/core/chat/utils';
 import {
   chatItemResponsePreviewProjection,
-  transformPreviewHistories,
-  stripModerationRecordsFromNodeResponses
+  transformPreviewHistories
 } from '@/global/core/chat/utils';
+import { stripModerationRecordsFromNodeResponses } from '@fastgpt/global/core/chat/utils';
 import { delay } from '@fastgpt/global/common/system/utils';
 import { buildChatSourceQuery } from '@fastgpt/service/core/chat/source';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
