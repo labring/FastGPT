@@ -1,7 +1,7 @@
 import { AuditEventEnum, type TeamAuditEvent } from '@fastgpt/global/support/user/audit/constants';
 import { createTeamProcessors } from './teamProcessors';
 import { createAppProcessors } from './appProcessors';
-import { createDatasetAuditProcessors } from '../dataset/audit';
+import { createDatasetAuditProcessors } from './datasetProcessors';
 import { defaultMetadataProcessor, type CommonMetadataFields } from './commonProcessor';
 
 type MetadataProcessor = (
@@ -13,6 +13,12 @@ const specialProcessors: Partial<Record<TeamAuditEvent, MetadataProcessor>> = {
   ...createTeamProcessors,
   ...createAppProcessors,
   ...createDatasetAuditProcessors,
+  [AuditEventEnum.EXPORT_AUDIT_LOGS]: (metadata, t) => ({
+    ...metadata,
+    tmbIds: metadata.tmbIds === 'all' ? t('common:All') : metadata.tmbIds,
+    events: metadata.events === 'all' ? t('common:All') : metadata.events,
+    total: metadata.total === '' ? '-' : metadata.total
+  }),
   // 用户名称保留原值，缺失父级的占位仅用于客户端展示。
   [AuditEventEnum.RESUME_INHERIT_PERMISSION]: (metadata) => ({
     ...metadata,

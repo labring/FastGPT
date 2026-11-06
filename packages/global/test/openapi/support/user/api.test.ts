@@ -52,6 +52,10 @@ const thirdObjectId = '68ad85a7463006c963799a07';
 describe('support user OpenAPI contracts', () => {
   it('registers all requested Pro user routes', () => {
     expect(openAPIDocument.paths?.['/proApi/support/user/team/audit/list']?.post).toBeDefined();
+    expect(
+      openAPIDocument.paths?.['/proApi/support/user/team/audit/export']?.post?.responses?.[200]
+        ?.content?.['text/csv']
+    ).toBeDefined();
     expect(openAPIDocument.paths?.['/proApi/support/user/inform/list']?.post).toBeDefined();
     expect(openAPIDocument.paths?.['/proApi/support/user/inform/countUnread']?.get).toBeDefined();
     expect(openAPIDocument.paths?.['/proApi/support/user/inform/read']?.get).toBeDefined();
@@ -148,7 +152,13 @@ describe('support user OpenAPI contracts', () => {
 
     expect(TeamAuditEventList).toEqual(expect.arrayContaining(datasetEvents));
 
-    expect(AuditListBodySchema.parse({ events: datasetEvents }).events).toEqual(datasetEvents);
+    expect(
+      AuditListBodySchema.parse({
+        dateStart: '2026-01-01T00:00:00.000Z',
+        dateEnd: '2026-01-07T23:59:59.999Z',
+        events: datasetEvents
+      }).events
+    ).toEqual(datasetEvents);
 
     for (const event of datasetEvents) {
       const parsed = AuditListResponseSchema.parse({
@@ -174,6 +184,8 @@ describe('support user OpenAPI contracts', () => {
   it('parses audit filters and responses', () => {
     expect(
       AuditListBodySchema.parse({
+        dateStart: '2026-01-01T00:00:00.000Z',
+        dateEnd: '2026-01-07T23:59:59.999Z',
         pageSize: '20',
         pageNum: '1',
         tmbIds: [objectId],
