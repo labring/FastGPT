@@ -187,6 +187,7 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
           if (streamModerationBuffer.blocked || reasoningModerationBuffer?.blocked) {
             result.answerText = '';
             result.reasoningText = '';
+            result.toolCalls = [];
             result.error = new UserError(blockedReason);
           }
 
@@ -211,6 +212,8 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
             isBlockedByModeration = true;
             const errMessage = outputCheck.blockErrorMessage || MODERATION_BLOCKED_ERROR_MESSAGE;
             completeResult.answerText = '';
+            completeResult.reasoningText = '';
+            completeResult.toolCalls = [];
             completeResult.error = new UserError(errMessage);
           }
         }
@@ -226,6 +229,7 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
             const errMessage = reasoningCheck.blockErrorMessage || MODERATION_BLOCKED_ERROR_MESSAGE;
             completeResult.reasoningText = '';
             completeResult.answerText = '';
+            completeResult.toolCalls = [];
             completeResult.error = new UserError(errMessage);
           }
         }
@@ -244,6 +248,8 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
           isToolBlockedByModeration = true;
           const errMessage = toolCheck.blockErrorMessage || MODERATION_BLOCKED_ERROR_MESSAGE;
           parsedResponse.toolCalls = [];
+          parsedResponse.answerText = '';
+          parsedResponse.reasoningText = '';
           parsedResponse.error = new UserError(errMessage);
         }
       }

@@ -14,14 +14,19 @@ export const getMarketplaceTools = async (body: ToolListBody) => {
 
 export const getMarketplaceToolDetail = async ({
   toolId,
-  version
+  version,
+  type
 }: {
   toolId: string;
   version?: string;
+  type?: 'tool' | 'moderation';
 }) => {
   const params = new URLSearchParams({ toolId });
   if (version) {
     params.set('version', version);
+  }
+  if (type) {
+    params.set('type', type);
   }
 
   const res = await fetch(`api/tool/detail?${params.toString()}`, { method: 'GET' }).then((res) =>
@@ -30,10 +35,16 @@ export const getMarketplaceToolDetail = async ({
   return res.data as ToolDetailResponse;
 };
 
-export const getMarketplaceToolVersions = async (toolId?: string) => {
+export const getMarketplaceToolVersions = async (
+  toolId?: string,
+  type?: 'tool' | 'moderation'
+) => {
   const params = new URLSearchParams();
   if (toolId) {
     params.set('toolId', toolId);
+  }
+  if (type) {
+    params.set('type', type);
   }
   const queryString = params.toString();
   const res = await fetch(`api/tool/versions${queryString ? `?${queryString}` : ''}`, {
@@ -47,10 +58,17 @@ export const getToolTags = async () => {
   return res.data as Array<SystemPluginToolTagType>;
 };
 
-export const getDownloadURL = async (toolId: string, version?: string) => {
+export const getDownloadURL = async (
+  toolId: string,
+  version?: string,
+  type?: 'tool' | 'moderation'
+) => {
   const params = new URLSearchParams({ toolId });
   if (version) {
     params.set('version', version);
+  }
+  if (type) {
+    params.set('type', type);
   }
 
   const res = await fetch(`api/tool/getDownloadUrl?${params.toString()}`, { method: 'GET' }).then(

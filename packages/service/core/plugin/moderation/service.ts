@@ -250,6 +250,15 @@ export const saveModerationConfig = async ({
 
   // 3. 写入。启用时在同一事务内停用其他插件，避免出现两个同时启用的窗口
   const saved = await mongoSessionRun(async (session) => {
+    if (enabled === true) {
+      // 竞争点：所有启用操作均争用同一条 moderationPolicy 权威全局记录，确保并发启用产生排他行锁或写冲突
+      await MongoSystemConfigs.findOneAndUpdate(
+        { type: SystemConfigsTypeEnum.moderationPolicy },
+        { $set: { updateTime: new Date() } },
+        { upsert: true, session }
+      );
+    }
+
     const record = await upsertModerationConfig({
       pluginId,
       source: detail.source,
@@ -447,24 +456,26 @@ export const updateModerationPolicy = async (
     throw new Error('请选择一个审核插件后再保存');
   }
 
-  // 1. 同步插件启用状态
-  if (validated.enabled && validated.activePluginId) {
-    await enableSingleModerationConfig({ pluginId: validated.activePluginId });
-  } else if (!validated.enabled) {
-    await disableAllModerationConfigs();
-  }
+  // 1. 同步插件启用状态并保存全局策略记录（在同一事务内争用权威记录，避免并发双启用）
+  return await mongoSessionRun(async (session) => {
+    await MongoSystemConfigs.findOneAndUpdate(
+      { type: SystemConfigsTypeEnum.moderationPolicy },
+      {
+        $set: {
+          value: validated,
+          createTime: new Date(),
+          updateTime: new Date()
+        }
+      },
+      { upsert: true, new: true, session }
+    );
 
-  // 2. 保存全局策略记录（使用 findOneAndUpdate upsert 保证全局仅保留单条最新有效记录）
-  await MongoSystemConfigs.findOneAndUpdate(
-    { type: SystemConfigsTypeEnum.moderationPolicy },
-    {
-      $set: {
-        value: validated,
-        createTime: new Date()
-      }
-    },
-    { upsert: true, new: true }
-  );
+    if (validated.enabled && validated.activePluginId) {
+      await enableSingleModerationConfig({ pluginId: validated.activePluginId, session });
+    } else if (!validated.enabled) {
+      await disableAllModerationConfigs({ session });
+    }
 
-  return validated;
+    return validated;
+  });
 };

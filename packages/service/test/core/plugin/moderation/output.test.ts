@@ -398,7 +398,11 @@ describe('Output / Stream Guard (Anchor 3)', () => {
           choices: [
             {
               finish_reason: 'stop',
-              message: { role: 'assistant', content: 'toxic answer' }
+              message: {
+                role: 'assistant',
+                content: 'toxic answer',
+                reasoning_content: 'unmoderated thought'
+              }
             }
           ],
           usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 }
@@ -428,6 +432,7 @@ describe('Output / Stream Guard (Anchor 3)', () => {
       expect(onStreaming).not.toHaveBeenCalled();
       expect(onReasoning).not.toHaveBeenCalled();
       expect(result.answerText).toBe('');
+      expect(result.reasoningText).toBe('');
       expect(result.error).toBeInstanceOf(UserError);
       expect(result.usage.inputTokens).toBe(10);
       expect(result.usage.outputTokens).toBe(5);

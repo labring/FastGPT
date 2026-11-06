@@ -1932,4 +1932,41 @@ describe('runPiAgentLoop', () => {
     expect(agentPromptMock).not.toHaveBeenCalled();
     expect(agentContinueMock).not.toHaveBeenCalled();
   });
+
+  it('blocks toxic stream output and suppresses emission in piAgent', async () => {
+    const checkerMod = await import('@fastgpt/service/core/plugin/moderation/checker');
+    const { ModerationActionEnum } =
+      await import('@fastgpt/global/core/plugin/moderation/constants');
+    vi.spyOn(checkerMod, 'isModerationHookEnabled').mockReturnValue(true);
+    vi.spyOn(checkerMod, 'checkContentByPolicy').mockResolvedValue({
+      action: ModerationActionEnum.block,
+      isPass: false,
+      text: 'toxic'
+    });
+
+    const emittedEvents: any[] = [];
+    const result = await runPiAgentLoop({
+      input: {
+        messages: [{ role: 'user', content: 'hello' }]
+      },
+      runtime: {
+        llmParams: {
+          model: 'gpt-5',
+          stream: true
+        },
+        toolCatalog: {
+          runtimeTools: []
+        },
+        executeTool: vi.fn(),
+        checkIsStopping: vi.fn(() => false),
+        teamId: 'test_team',
+        emitEvent: (e) => emittedEvents.push(e)
+      }
+    });
+
+    expect(result.status).toBe('error');
+    expect(emittedEvents.some((e) => e.type === 'answer_delta' && e.text.includes('toxic'))).toBe(
+      false
+    );
+  });
 });

@@ -434,7 +434,11 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
 
         try {
           if (mode === 'team') {
-            const downloadUrl = await getMarketplaceDownloadURL(tool.id, version);
+            const downloadUrl = await getMarketplaceDownloadURL(
+              tool.id,
+              version,
+              (tool as any).type
+            );
             if (!downloadUrl) return;
             await installTeamPluginWithUrl({
               downloadUrls: [downloadUrl],
@@ -452,7 +456,11 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
             try {
               await postAdminRestoreModerationPlugin({ pluginId: tool.id });
             } catch (err) {
-              const downloadUrl = await getMarketplaceDownloadURL(tool.id, version);
+              const downloadUrl = await getMarketplaceDownloadURL(
+                tool.id,
+                version,
+                (tool as any).type || 'moderation'
+              );
               if (!downloadUrl) throw err;
 
               await intallPluginWithUrl({
@@ -462,7 +470,11 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
           } else if (shouldReinstallOfflineTool && offlineTool) {
             await updateSystemToolStatus(offlineTool.systemToolId, PluginStatusEnum.Normal);
           } else {
-            const downloadUrl = await getMarketplaceDownloadURL(tool.id, version);
+            const downloadUrl = await getMarketplaceDownloadURL(
+              tool.id,
+              version,
+              (tool as any).type
+            );
             if (!downloadUrl) return;
 
             await intallPluginWithUrl({
@@ -509,7 +521,7 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
 
         try {
           // Get download URL
-          const downloadUrl = await getMarketplaceDownloadURL(tool.id, version);
+          const downloadUrl = await getMarketplaceDownloadURL(tool.id, version, (tool as any).type);
           if (!downloadUrl) return;
 
           // Call install interface for update
@@ -1271,9 +1283,11 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
           // TODO：这里复用 plugin 的类型，可以去掉 ts-ignore
           //@ts-ignore
           onFetchDetail={async (toolId: string, version?: string) =>
-            await getMarketplaceToolDetail({ toolId, version })
+            await getMarketplaceToolDetail({ toolId, version, type: (selectedTool as any).type })
           }
-          onFetchVersions={getMarketplaceToolVersions}
+          onFetchVersions={(toolId?: string) =>
+            getMarketplaceToolVersions(toolId, (selectedTool as any).type)
+          }
         />
       )}
 

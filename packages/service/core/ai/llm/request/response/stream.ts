@@ -87,7 +87,7 @@ export const createStreamResponse = async ({
 
       await consumeStream(async ({ reasoningContent, responseContent }, part) => {
         if (reasoningContent) {
-          onReasoning?.({ text: reasoningContent });
+          await onReasoning?.({ text: reasoningContent });
         }
         if (responseContent) {
           await onStreaming?.({ text: responseContent });
@@ -184,7 +184,7 @@ export const createStreamResponse = async ({
         answer += content;
 
         if (reasoningContent) {
-          onReasoning?.({ text: reasoningContent });
+          await onReasoning?.({ text: reasoningContent });
         }
 
         if (content) {
@@ -239,7 +239,7 @@ export const createStreamResponse = async ({
   } else {
     await consumeStream(async ({ reasoningContent, responseContent }) => {
       if (reasoningContent) {
-        onReasoning?.({ text: reasoningContent });
+        await onReasoning?.({ text: reasoningContent });
       }
       if (responseContent) {
         await onStreaming?.({ text: responseContent });

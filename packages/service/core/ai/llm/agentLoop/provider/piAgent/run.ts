@@ -7,7 +7,9 @@ import type {
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import type { AgentAskPayload } from '@fastgpt/global/core/ai/agent/type';
-import { getErrText } from '@fastgpt/global/common/error/utils';
+import { getErrText, UserError } from '@fastgpt/global/common/error/utils';
+import { MODERATION_BLOCKED_ERROR_MESSAGE } from '@fastgpt/global/core/plugin/moderation/constants';
+import { createStreamModerationBuffer } from '../../../../../plugin/moderation/output';
 import {
   normalizeToolResponseContent,
   removeDatasetCiteText
@@ -503,9 +505,37 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
       }
     }
   });
+  const streamModerationBuffer = await createStreamModerationBuffer({
+    context: { teamId: runtime.teamId },
+    onApprovedText: (text) => {
+      runtime.emitEvent?.({
+        type: 'answer_delta',
+        text
+      });
+    },
+    onBlocked: () => {
+      agent.abort();
+    }
+  });
+
+  const reasoningModerationBuffer = streamModerationBuffer.enabled
+    ? await createStreamModerationBuffer({
+        context: { teamId: runtime.teamId },
+        onApprovedText: (text) => {
+          runtime.emitEvent?.({
+            type: 'reasoning_delta',
+            text
+          });
+        },
+        onBlocked: () => {
+          agent.abort();
+        }
+      })
+    : undefined;
+
   abortCurrentRunRef.current = () => agent.abort();
 
-  agent.subscribe((event: AgentEvent) => {
+  agent.subscribe(async (event: AgentEvent) => {
     if (event.type === 'tool_execution_start') {
       emitOrdinaryToolExecution({
         id: event.toolCallId,
@@ -524,20 +554,28 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
         const request = pendingRequests[0];
         if (request) request.firstTokenAt ??= Date.now();
         answerText += assistantEvent.delta;
-        runtime.emitEvent?.({
-          type: 'answer_delta',
-          text: assistantEvent.delta
-        });
+        if (streamModerationBuffer.enabled) {
+          await streamModerationBuffer.push(assistantEvent.delta);
+        } else {
+          runtime.emitEvent?.({
+            type: 'answer_delta',
+            text: assistantEvent.delta
+          });
+        }
         return;
       }
       if (assistantEvent.type === 'thinking_delta') {
         const request = pendingRequests[0];
         if (request) request.firstTokenAt ??= Date.now();
         reasoningText += assistantEvent.delta;
-        runtime.emitEvent?.({
-          type: 'reasoning_delta',
-          text: assistantEvent.delta
-        });
+        if (reasoningModerationBuffer?.enabled) {
+          await reasoningModerationBuffer.push(assistantEvent.delta);
+        } else {
+          runtime.emitEvent?.({
+            type: 'reasoning_delta',
+            text: assistantEvent.delta
+          });
+        }
         return;
       }
       if (assistantEvent.type === 'toolcall_start' || assistantEvent.type === 'toolcall_delta') {
@@ -558,11 +596,13 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
           emittedToolCallIds.has(toolCall.id) &&
           !controlToolNames.has(toolCall.name)
         ) {
-          emitOrdinaryToolParams({
-            callId: toolCall.id,
-            toolName: toolCall.name,
-            argsDelta: assistantEvent.delta
-          });
+          if (!streamModerationBuffer.enabled) {
+            emitOrdinaryToolParams({
+              callId: toolCall.id,
+              toolName: toolCall.name,
+              argsDelta: assistantEvent.delta
+            });
+          }
         }
       }
       return;
@@ -727,6 +767,19 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
     latestError = error;
   } finally {
     clearInterval(stopPoller);
+  }
+
+  if (streamModerationBuffer.enabled) {
+    try {
+      await Promise.all([streamModerationBuffer.flush(), reasoningModerationBuffer?.flush()]);
+    } catch (err) {
+      latestError = err;
+    }
+    if (streamModerationBuffer.blocked || reasoningModerationBuffer?.blocked) {
+      answerText = '';
+      reasoningText = '';
+      latestError = new UserError(MODERATION_BLOCKED_ERROR_MESSAGE);
+    }
   }
 
   if (pendingRequests.length > 0) {
