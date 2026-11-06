@@ -263,9 +263,6 @@ export const createModelsFromTemplates = async ({
       })
     ).values()
   );
-  if (context.scope === ModelScopeEnum.team) {
-    await Promise.all(selected.map((template) => assertTeamModelRequestUrlSafe(template)));
-  }
   const existing = await MongoAIModel.find({
     ...filter,
     model: { $in: selected.map(({ model }) => model) }
@@ -274,6 +271,11 @@ export const createModelsFromTemplates = async ({
     .lean();
   const names = new Set(existing.map(({ model }) => model));
   const missing = selected.filter(({ model }) => !names.has(model));
+  // 已安装模型只追加渠道，不写入模板配置，因此仅校验实际待新建的端点。
+  if (context.scope === ModelScopeEnum.team) {
+    await Promise.all(missing.map((template) => assertTeamModelRequestUrlSafe(template)));
+  }
+
   const models =
     missing.length === 0
       ? []

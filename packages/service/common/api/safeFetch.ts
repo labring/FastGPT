@@ -51,16 +51,25 @@ const getTargetDispatcher = (origin: string) => {
 
 class SafeLegacyDispatcher extends Dispatcher {
   dispatch(opts: Dispatcher.DispatchOptions, handler: Dispatcher.DispatchHandler) {
+    const onError = (error: Error) => {
+      if (handler.onResponseError) {
+        // Node 26 使用新回调；预检尚未开始请求，沿用 Undici 早期错误的空 controller 语义。
+        handler.onResponseError(undefined!, error);
+        return;
+      }
+      handler.onError?.(error);
+    };
+
     const origin = String(opts.origin);
     isInternalAddress(`${origin}${opts.path || '/'}`).then(
       (isInternal) => {
         if (isInternal) {
-          handler.onError?.(new Error(PRIVATE_URL_TEXT));
+          onError(new Error(PRIVATE_URL_TEXT));
           return;
         }
         getTargetDispatcher(origin).dispatch(opts, handler);
       },
-      (error) => handler.onError?.(error instanceof Error ? error : new Error(String(error)))
+      (error) => onError(error instanceof Error ? error : new Error(String(error)))
     );
     return true;
   }

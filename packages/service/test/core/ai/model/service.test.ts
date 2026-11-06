@@ -343,6 +343,29 @@ describe('team model writes', () => {
       expect(stored?.requestUrl).toBeUndefined();
       expect(stored?.requestAuth).toBeUndefined();
     });
+    it('only validates missing templates when binding already installed team models', async () => {
+      const installed = await createModel({ ...owner, modelData: draft });
+      const second = { ...draft, model: 'second' };
+      const templateModule = await import('@fastgpt/service/core/ai/model/template');
+      const templateSpy = vi
+        .spyOn(templateModule, 'refreshModelTemplates')
+        .mockResolvedValue([
+          { ...draft, requestUrl: 'http://169.254.169.254/latest/meta-data' },
+          second
+        ]);
+      try {
+        const result = await createModelsFromTemplates({
+          ...owner,
+          templates: [draft, second].map(({ model, type }) => ({ model, type })),
+          channelIds: [1]
+        });
+        expect(result.models.map(({ model }) => model)).toEqual(['second']);
+        expect(proxy.append.mock.calls.map(([arg]) => arg.model)).toEqual(['custom', 'second']);
+        expect((await MongoAIModel.findById(installed.modelId).lean())?.requestUrl).toBeUndefined();
+      } finally {
+        templateSpy.mockRestore();
+      }
+    });
     it('keeps team model order isolated to the owning member', async () => {
       const ownFirst = await createModel({ ...owner, modelData: draft });
       const ownSecond = await createModel({
