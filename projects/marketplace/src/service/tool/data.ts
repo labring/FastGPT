@@ -21,8 +21,10 @@ declare global {
   var expire: Date;
 }
 
-export const getToolVersionList = async (toolId?: string) => {
-  const displayRecords = await pluginRepo.listToolVersionIndexes(toolId);
+export const getToolVersionList = async (toolId?: string, type?: 'tool' | 'moderation') => {
+  const displayRecords = await (type
+    ? pluginRepo.listToolVersionIndexes(toolId, type)
+    : pluginRepo.listToolVersionIndexes(toolId));
 
   return displayRecords
     .sort((a, b) => {
@@ -121,7 +123,7 @@ const getToolListFromRepo = async ({
 };
 
 export const getToolList = async ({
-  type = 'tool',
+  type,
   toolId,
   version
 }: {

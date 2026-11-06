@@ -4,6 +4,7 @@ import { NextAPI } from '@/service/middleware/entry';
 
 export type ToolListQuery = {
   toolId?: string;
+  type?: 'tool' | 'moderation';
 };
 export type ToolListBody = {};
 
@@ -13,9 +14,9 @@ async function handler(
   req: ApiRequestProps<ToolListBody, ToolListQuery>,
   res: ApiResponseType<any>
 ): Promise<ToolListResponse> {
-  const { toolId } = req.query;
+  const { toolId, type } = req.query;
 
-  return getToolVersionList(toolId);
+  return getToolVersionList(toolId, type);
 }
 
 export default NextAPI(handler);
