@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { Box, Button, HStack, Input, Tag, Text, type InputProps } from '@chakra-ui/react';
 import { POST } from '@/web/common/api/request';
@@ -41,6 +41,8 @@ const ConnectivityTestInput = ({
   const resolvedButtonText = buttonText ?? t('admin:probe_button');
   const resolvedPlaceholder = placeholder ?? t('admin:not_configured_service_address');
   const [result, setResult] = useState<ProbeConnectionResponse | null>(null);
+  /** 地址编辑或新探测会递增，旧请求返回时据此丢弃结果。 */
+  const probeRequestIdRef = useRef(0);
 
   /** 使用字面量 i18n key，保证静态扫描能提取探测错误文案。 */
   const getProbeErrorText = (response: ProbeConnectionResponse) => {
@@ -63,8 +65,14 @@ const ConnectivityTestInput = ({
   const effectiveUrl = value !== undefined ? value : url || '';
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // 地址一旦变化，正在等待的旧探测结果就不再对应当前输入，必须丢弃。
+    probeRequestIdRef.current += 1;
     if (result) {
       setResult(null);
+    }
+    // 允许用户立即对新地址发起探测；旧请求的 finally 不会覆盖这里的状态。
+    if (isTesting) {
+      setIsTesting(false);
     }
     onChange?.(e);
   };
@@ -84,6 +92,7 @@ const ConnectivityTestInput = ({
     const targetUrl = resolveTargetUrl();
     if (!targetUrl || isTesting || isDisabled) return;
 
+    const requestId = ++probeRequestIdRef.current;
     setIsTesting(true);
     setResult(null);
 
@@ -92,15 +101,19 @@ const ConnectivityTestInput = ({
         url: targetUrl,
         timeoutMs
       });
+      if (probeRequestIdRef.current !== requestId) return;
       setResult(res);
     } catch (err: any) {
+      if (probeRequestIdRef.current !== requestId) return;
       setResult({
         connected: false,
         responseTimeMs: 0,
         error: typeof err === 'string' ? err : err?.message || t('admin:probe_request_failed')
       });
     } finally {
-      setIsTesting(false);
+      if (probeRequestIdRef.current === requestId) {
+        setIsTesting(false);
+      }
     }
   };
 
