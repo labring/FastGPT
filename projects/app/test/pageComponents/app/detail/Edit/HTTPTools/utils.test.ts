@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { buildWorkflowCustomHeaders } from '@/pageComponents/app/detail/Edit/HTTPTools/utils';
+import { StoreSecretValueTypeSchema } from '@fastgpt/global/common/secret/type';
+import { PublishAppBodySchema } from '@fastgpt/global/openapi/core/app/version/api';
 
 describe('buildWorkflowCustomHeaders', () => {
   it('moves values out of customHeaders and preserves unchanged secrets', () => {
@@ -32,12 +34,38 @@ describe('buildWorkflowCustomHeaders', () => {
       'X-Empty': ''
     });
     expect(result.headerSecret).toEqual({
-      'X-New': { value: 'new-value', secret: '' },
-      'X-Legacy': { value: 'legacy-value', secret: '' },
+      'X-New': { value: 'new-value' },
+      'X-Legacy': { value: 'legacy-value' },
       'X-Cipher': { value: '', secret: 'ciphertext' },
       'X-Renamed': { value: '', secret: 'renamed-ciphertext' },
       'X-Plain': { value: 'pending-plaintext', secret: '' }
     });
+    const newHeaders = buildWorkflowCustomHeaders({
+      headers: [{ key: 'Authorization', value: 'Bearer token' }],
+      storedSecrets: {}
+    });
+    expect(StoreSecretValueTypeSchema.safeParse(newHeaders.headerSecret).success).toBe(true);
+    expect(
+      PublishAppBodySchema.safeParse({
+        nodes: [
+          {
+            nodeId: 'tool-set-1',
+            flowNodeType: 'toolSet',
+            name: 'Tools',
+            inputs: [],
+            outputs: [],
+            toolConfig: {
+              httpToolSet: {
+                apiSchemaUrl: 'https://example.com/openapi.json',
+                customHeaders: newHeaders.customHeaders,
+                headerSecret: newHeaders.headerSecret,
+                toolList: []
+              }
+            }
+          }
+        ]
+      }).success
+    ).toBe(true);
   });
 
   it('returns empty values when no request headers exist', () => {

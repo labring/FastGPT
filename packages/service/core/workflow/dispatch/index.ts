@@ -28,8 +28,7 @@ import {
   filterWorkflowEdges,
   valueTypeFormat,
   appendWorkflowInteractiveValue,
-  getReferenceVariableValue,
-  rewriteLegacyInteractiveToolSetNodeIds
+  getReferenceVariableValue
 } from '@fastgpt/global/core/workflow/runtime/utils';
 import type {
   InteractiveNodeResponseType,
@@ -159,11 +158,6 @@ export async function dispatchWorkFlow({
       new Error('Workflow SSE response must be initialized before dispatchWorkFlow')
     );
   }
-  data.lastInteractive = rewriteLegacyInteractiveToolSetNodeIds({
-    lastInteractive: data.lastInteractive,
-    nodes: data.runtimeNodes
-  });
-  const rewrittenLastInteractive = data.lastInteractive;
   const chatSource = getWorkflowSource(runningAppInfo);
   const clientAbortTracker =
     apiVersion === 'v1' ? createClientAbortTracker({ req: data.req, res }) : undefined;
@@ -220,8 +214,8 @@ export async function dispatchWorkFlow({
               }
             : getUserChatInfo(runningUserInfo.tmbId),
           (() => {
-            if (rewrittenLastInteractive?.usageId) {
-              return rewrittenLastInteractive.usageId;
+            if (data.lastInteractive?.usageId) {
+              return data.lastInteractive.usageId;
             }
             if (usageSource) {
               return createChatUsageRecord({
@@ -1629,16 +1623,14 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
               });
             };
 
-            const rewrittenInteractive = await rewriteRuntimeWorkFlow({
+            await rewriteRuntimeWorkFlow({
               teamId: data.runningAppInfo.teamId,
               tmbId: data.runningUserInfo.tmbId,
               nodes: data.runtimeNodes,
               edges: data.runtimeEdges,
               lang: data.lang,
-              lastInteractive: data.lastInteractive,
               resolveReference: resolveSecretReference
             });
-            if (rewrittenInteractive) data.lastInteractive = rewrittenInteractive;
             // ToolSet 会在运行态展开为临时 Tool 节点；交互暂停保存的 memoryEdges 也会指向这些
             // 临时节点。孤儿边过滤必须等展开完成后执行，否则续跑时会先删除 ToolCall -> Tool 的
             // selectedTools 边，导致 ToolCall 拿不到已挂载的 MCP/HTTP ToolSet 子工具。

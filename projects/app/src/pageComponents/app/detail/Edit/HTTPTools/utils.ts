@@ -24,7 +24,7 @@ export const buildWorkflowCustomHeaders = ({
     customHeaderValues[key] = '';
 
     if (value) {
-      headerSecret[key] = { value, secret: '' };
+      headerSecret[key] = { value };
       return;
     }
     if (!secretKey || edited) return;

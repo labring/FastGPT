@@ -7,7 +7,6 @@ import {
   getWorkflowEntryNodeIds,
   storeEdges2RuntimeEdges,
   rewriteNodeOutputByHistories,
-  rewriteLegacyInteractiveToolSetNodeIds,
   storeNodes2RuntimeNodes
 } from '@fastgpt/global/core/workflow/runtime/utils';
 import { type NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
@@ -58,7 +57,7 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
   } = params;
   const { files } = chatValue2RuntimePrompt(query);
 
-  let childrenInteractive =
+  const childrenInteractive =
     lastInteractive?.type === 'childrenInteractive'
       ? lastInteractive.params.childrenResponse
       : undefined;
@@ -94,11 +93,6 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
     }
 
     const chatHistories = getHistories(history, histories);
-    childrenInteractive = rewriteLegacyInteractiveToolSetNodeIds({
-      lastInteractive: childrenInteractive,
-      nodes
-    });
-
     const runtimeNodes = rewriteNodeOutputByHistories(
       storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes, childrenInteractive)),
       childrenInteractive

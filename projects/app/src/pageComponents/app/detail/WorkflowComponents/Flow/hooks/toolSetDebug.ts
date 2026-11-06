@@ -9,6 +9,9 @@ import { getApiSchemaByUrl } from '@/web/core/app/api/httpTools';
 import { getMCPTools } from '@/web/core/app/api/mcpTools';
 import { str2OpenApiSchema } from '@fastgpt/global/core/app/jsonschema';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
+import { getReferenceVariableValue } from '@fastgpt/global/core/workflow/runtime/utils';
+import { getSecretReferenceValue } from '@fastgpt/global/common/secret/utils';
+import type { StoreSecretValueType } from '@fastgpt/global/common/secret/type';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import {
   HttpToolSetNodeConfigSchema,
@@ -19,9 +22,40 @@ export type ToolSetDebugData =
   | { type: 'mcp'; toolList: McpToolConfigType[] }
   | { type: 'http'; toolList: HttpToolConfigType[]; apiSchemaStr: string; serverPath: string };
 
+/** 仅为读取 MCP 工具列表解析鉴权引用；节点配置仍保留引用供真实运行解析。 */
+export const resolveToolSetHeaderSecret = ({
+  headerSecret,
+  runtimeNodes,
+  variables
+}: {
+  headerSecret: StoreSecretValueType;
+  runtimeNodes: RuntimeNodeItemType[];
+  variables: Record<string, unknown>;
+}): StoreSecretValueType => {
+  const nodesMap = new Map(runtimeNodes.map((node) => [node.nodeId, node]));
+  const resolvedHeaderSecret: StoreSecretValueType = {};
+
+  Object.entries(headerSecret).forEach(([key, value]) => {
+    const reference = getSecretReferenceValue(value);
+    if (!reference) {
+      resolvedHeaderSecret[key] = value;
+      return;
+    }
+
+    const resolvedValue = getReferenceVariableValue({ value: reference, nodesMap, variables });
+    if (typeof resolvedValue !== 'string') {
+      throw new Error(`Secret header ${key || '<empty>'} must resolve to a string`);
+    }
+    resolvedHeaderSecret[key] = { value: resolvedValue };
+  });
+
+  return resolvedHeaderSecret;
+};
+
 /** 调试使用当前远端定义；父节点只保留名称和描述摘要。 */
 export const getToolSetDebugData = async (
-  toolSetNode: RuntimeNodeItemType
+  toolSetNode: RuntimeNodeItemType,
+  debugContext: { runtimeNodes: RuntimeNodeItemType[]; variables: Record<string, unknown> }
 ): Promise<ToolSetDebugData> => {
   const mcpToolSet = McpToolSetNodeConfigSchema.safeParse(toolSetNode.toolConfig?.mcpToolSet).data;
   if (!toolSetNode.pluginId && mcpToolSet) {
@@ -30,7 +64,12 @@ export const getToolSetDebugData = async (
     );
     const toolList = await getMCPTools({
       url: mcpToolSet.url,
-      headerSecret: mcpToolSet.headerSecret ?? undefined
+      headerSecret: mcpToolSet.headerSecret
+        ? resolveToolSetHeaderSecret({
+            headerSecret: mcpToolSet.headerSecret,
+            ...debugContext
+          })
+        : undefined
     });
 
     return {
