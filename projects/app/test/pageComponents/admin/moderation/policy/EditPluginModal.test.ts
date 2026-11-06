@@ -1,7 +1,7 @@
-// @vitest-environment jsdom
+import { JSDOM } from 'jsdom';
 import React, { act } from 'react';
 import { createRoot } from 'react-dom/client';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AdminModerationPluginItemType } from '@fastgpt/global/core/plugin/moderation/type';
 
 const mocks = vi.hoisted(() => ({
@@ -69,9 +69,26 @@ const plugin: AdminModerationPluginItemType = {
 };
 
 describe('moderation numeric configuration', () => {
-  afterEach(() => vi.clearAllMocks());
-  it('shows a safe failure message and keeps the configuration dialog open', async () => {
+  let dom: JSDOM;
+
+  beforeEach(() => {
+    dom = new JSDOM('<!doctype html><html><body></body></html>');
+    vi.stubGlobal('window', dom.window);
+    vi.stubGlobal('document', dom.window.document);
+    vi.stubGlobal('HTMLElement', dom.window.HTMLElement);
+    vi.stubGlobal('HTMLInputElement', dom.window.HTMLInputElement);
+    vi.stubGlobal('Element', dom.window.Element);
+    vi.stubGlobal('React', React);
     vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+    dom?.window.close();
+    vi.unstubAllGlobals();
+  });
+
+  it('shows a safe failure message and keeps the configuration dialog open', async () => {
     mocks.save.mockRejectedValueOnce(
       new Error('ProviderError: private-token runtime stack /app/index.js')
     );
@@ -97,13 +114,12 @@ describe('moderation numeric configuration', () => {
       expect(onSuccess).not.toHaveBeenCalled();
     } finally {
       await act(async () => root.unmount());
-      vi.unstubAllGlobals();
     }
   });
+
   it.each([123123213, 0, undefined, ''])(
     'submits numeric input %s without converting it to text',
     async (value) => {
-      vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
       const host = document.createElement('div');
       const root = createRoot(host);
       try {
@@ -125,7 +141,6 @@ describe('moderation numeric configuration', () => {
         });
       } finally {
         await act(async () => root.unmount());
-        vi.unstubAllGlobals();
       }
     }
   );
