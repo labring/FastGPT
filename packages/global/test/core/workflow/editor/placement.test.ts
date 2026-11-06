@@ -1,3 +1,4 @@
+import { buildNodeTemplateContext } from '@fastgpt/global/common/workflow/editor/utils';
 import { describe, expect, it } from 'vitest';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
@@ -327,5 +328,42 @@ describe('placement rejection reason', () => {
       code: 'invalid_placement',
       message: 'Node placement is not allowed'
     });
+  });
+});
+
+describe('shared placement context builder', () => {
+  it('produces the same tool-chain context from indexed edges and a flat edge array', () => {
+    const edges = [
+      edge('tool', 'middle', NodeOutputKeyEnum.selectedTools),
+      edge('middle', 'source'),
+      edge('unrelated', 'elsewhere')
+    ];
+    const query = {
+      sourceNode: {
+        nodeId: 'source',
+        flowNodeType: FlowNodeTypeEnum.chatNode,
+        parentNodeId: 'loop'
+      },
+      handleId: 'source-source-right',
+      getNodeById: () => ({ flowNodeType: FlowNodeTypeEnum.loopRun }),
+      hasToolNode: true,
+      hasLoopRunNode: false,
+      takenUniqueTypes: [FlowNodeTypeEnum.loopRunStart]
+    };
+    const visited: string[] = [];
+    const indexed = buildNodeTemplateContext({
+      ...query,
+      getIncomingEdges: (nodeId) => {
+        visited.push(nodeId);
+        return edges.filter((item) => item.target === nodeId);
+      }
+    });
+    expect(indexed).toEqual(buildNodeTemplateContext({ ...query, edges }));
+    expect(indexed).toMatchObject({
+      isConnectedTool: true,
+      parentType: FlowNodeTypeEnum.loopRun,
+      takenUniqueTypes: [FlowNodeTypeEnum.loopRunStart]
+    });
+    expect(visited).toEqual(['source', 'middle']);
   });
 });

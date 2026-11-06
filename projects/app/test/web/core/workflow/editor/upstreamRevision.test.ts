@@ -67,8 +67,8 @@ const chainNode = (nodeId: string, name: string) => ({
 const edge = (source: string, target: string) => ({
   source,
   target,
-  sourceHandle: getHandleId(source, 'source', 'answerText'),
-  targetHandle: 'target'
+  sourceHandle: getHandleId(source, 'source', 'right'),
+  targetHandle: getHandleId(target, 'target', 'left')
 });
 
 /** start -> A -> B，外加一个不连线的 C：用来验证「无关节点写入」不带动任何人。 */
@@ -98,8 +98,8 @@ const createStoreWorkflow = () => ({
     {
       source: 'start',
       target: 'A',
-      sourceHandle: getHandleId('start', 'source', NodeOutputKeyEnum.userChatInput),
-      targetHandle: 'target'
+      sourceHandle: getHandleId('start', 'source', 'right'),
+      targetHandle: getHandleId('A', 'target', 'left')
     },
     edge('A', 'B'),
     edge('B', 'answer')
@@ -123,7 +123,7 @@ describe('useNodeWorkflowDocument upstream revision', () => {
 
   const dispatch = async (command: Parameters<WorkflowRuntimePort['dispatch']>[0]) => {
     await act(async () => {
-      void runtime.dispatch(command as never);
+      expect(runtime.dispatch(command).ok).toBe(true);
     });
     await act(async () => undefined);
   };

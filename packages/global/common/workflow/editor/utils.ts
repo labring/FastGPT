@@ -162,19 +162,25 @@ export const isTemplateAddable = (
   return !ctx.takenUniqueTypes.includes(template.flowNodeType);
 };
 
-/** 构建快捷添加、侧边栏或容器落点共用的展示上下文。 */
+type TemplateContextEdge = { source?: string; target: string; targetHandle?: string | null };
+
+/** 共用模板上下文构造；Runtime 提供索引读取和作用域统计，Core 可直接传入边数组。 */
 export const buildNodeTemplateContext = ({
   sourceNode,
-  edges,
+  edges = [],
   handleId,
   getNodeById,
+  getIncomingEdges,
   isSidebar = false,
   hasToolNode = false,
   hasLoopRunNode = false,
-  targetParentType
+  targetParentType,
+  takenUniqueTypes = []
 }: {
   sourceNode: Pick<FlowNodeItemType, 'nodeId' | 'flowNodeType' | 'parentNodeId'> | undefined;
-  edges: { source?: string; target: string; targetHandle?: string | null }[];
+  edges?: readonly TemplateContextEdge[];
+  /** 已有入边索引时直接读取，避免每次构造上下文重建整图邻接表。 */
+  getIncomingEdges?: (nodeId: string) => readonly TemplateContextEdge[];
   handleId?: string | null;
   getNodeById: (
     nodeId: string | undefined | null
@@ -184,21 +190,24 @@ export const buildNodeTemplateContext = ({
   hasLoopRunNode?: boolean;
   /** 目标容器类型；用于侧边栏或画布拖拽落点校验。 */
   targetParentType?: FlowNodeTypeEnum | null;
+  takenUniqueTypes?: FlowNodeTypeEnum[];
 }): NodeTemplateContext | null => {
   if (!sourceNode && !isSidebar) return null;
   const parentNode = sourceNode?.parentNodeId ? getNodeById(sourceNode.parentNodeId) : undefined;
   const isConnectedTool = (() => {
     if (!sourceNode) return false;
 
-    const incomingEdges = new Map<string, typeof edges>();
-    for (const edge of edges) {
-      const targetEdges = incomingEdges.get(edge.target);
-      if (targetEdges) {
-        targetEdges.push(edge);
-      } else {
-        incomingEdges.set(edge.target, [edge]);
-      }
-    }
+    const readIncomingEdges =
+      getIncomingEdges ??
+      (() => {
+        const incomingEdges = new Map<string, TemplateContextEdge[]>();
+        for (const edge of edges) {
+          const targetEdges = incomingEdges.get(edge.target);
+          if (targetEdges) targetEdges.push(edge);
+          else incomingEdges.set(edge.target, [edge]);
+        }
+        return (nodeId: string) => incomingEdges.get(nodeId) ?? [];
+      })();
 
     // 工具子流程可经过多个普通节点，沿入边找到任一 selectedTools 根边即可。
     const pendingNodeIds = [sourceNode.nodeId];
@@ -208,7 +217,7 @@ export const buildNodeTemplateContext = ({
       if (visitedNodeIds.has(nodeId)) continue;
       visitedNodeIds.add(nodeId);
 
-      for (const edge of incomingEdges.get(nodeId) ?? []) {
+      for (const edge of readIncomingEdges(nodeId)) {
         if (edge.targetHandle === NodeOutputKeyEnum.selectedTools) return true;
         if (edge.source) pendingNodeIds.push(edge.source);
       }
@@ -227,8 +236,7 @@ export const buildNodeTemplateContext = ({
       targetParentType === undefined ? (parentNode?.flowNodeType ?? null) : targetParentType,
     hasToolNode,
     hasLoopRunNode,
-    // shortcut: 旧 helper 不计算已占用唯一节点；需校验模板可添加性时改用 Runtime placement context。
-    takenUniqueTypes: []
+    takenUniqueTypes
   };
 };
 

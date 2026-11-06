@@ -148,7 +148,7 @@ export const createWorkflowEditor = (
   const initial = buildDocument(strictCanonicalData);
   initial.document.nodes = applyRuntimeOutputValidity(initial.document.nodes).nodes;
   // 固定依赖顺序：Document -> NodeView -> Reference -> Issue -> History。
-  const document = createDocumentModule(initial);
+  const document = createDocumentModule(initial, options.getConnectionError);
   const nodeView = createNodeViewModule({ document, views: initial.views });
   const reference = createReferenceModule(document);
   const issue = createIssueModule({

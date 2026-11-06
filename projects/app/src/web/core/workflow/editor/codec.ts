@@ -1,3 +1,4 @@
+import { checkExecutionConnection } from '@fastgpt/workflow-core/edge/validation';
 import { compileStoreWorkflow } from '@fastgpt/workflow-core/store/compile';
 import { decompileStoreWorkflow } from '@fastgpt/workflow-core/store/decompile';
 import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
@@ -203,17 +204,36 @@ export const materializeWorkflow = ({
   };
 };
 
-/**
- * 保存、发布、本地草稿、离开确认和调试共用的编辑器入口：物化后创建 Runtime。
- * 一次性场景（简易应用发布检查）可透传 Runtime options，与工作流编辑器共用同一套 Issue 规则。
- */
+/** 让 Runtime 的 staged 连线、画布提交与容器附着复用 Core 判定，不序列化整份文档。 */
+export const getWorkflowConnectionError: NonNullable<
+  WorkflowRuntimeOptions['getConnectionError']
+> = (query) => {
+  const result = checkExecutionConnection({
+    ...query,
+    edges: [...query.edges],
+    // Core 判定只读；此处仅消除 mutable 签名差异，保留 Runtime 的冻结快照和实时输出状态。
+    getNodeById: query.getNodeById as (nodeId: string) => StoreNodeItemType | undefined
+  });
+  return result.allowed
+    ? undefined
+    : {
+        code: 'invalid_edge',
+        message: result.reason.code,
+        diagnostic: result.reason
+      };
+};
+
+/** 物化文档并注入 Core 连线规则，普通入口与 Session 共用同一判定。 */
 export const hydrateRuntime = ({
   input,
   chatConfig,
   t,
   ...options
 }: HydrateWorkflowEditorOptions & WorkflowRuntimeOptions): WorkflowRuntimePort =>
-  hydrateWorkflowEditor(materializeWorkflow({ input, chatConfig, t }), options);
+  hydrateWorkflowEditor(materializeWorkflow({ input, chatConfig, t }), {
+    ...options,
+    getConnectionError: getWorkflowConnectionError
+  });
 
 // endregion
 

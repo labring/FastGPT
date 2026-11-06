@@ -1,7 +1,8 @@
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { Box, type BoxProps } from '@chakra-ui/react';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { checkExecutionConnection } from '@fastgpt/workflow-core/edge/validation';
+import { getWorkflowConnectionError } from '@/web/core/workflow/editor/codec';
+import { useNode } from '@/web/core/workflow/editor/react/useNode';
 import { useTranslation } from 'next-i18next';
 import { type Connection, Handle, Position } from '@xyflow/react';
 import { useCallback, useContext, useMemo } from 'react';
@@ -24,24 +25,26 @@ export const ToolTargetHandle = ({ show, nodeId }: ToolHandleProps) => {
   const runtime = useWorkflowRuntime();
   const connectingEdge = useWorkflowUIValue((ctx) => ctx.connectingEdge);
   const connected = useWorkflow((_structure, graph) => graph.isMountedTool(nodeId));
+  const edges = useWorkflow((structure) => structure.edges);
+  const sourceNode = useNode(connectingEdge?.nodeId ?? nodeId, (node) => node?.data);
+  const targetNode = useNode(nodeId, (node) => node?.data);
 
   const active = useMemo(() => {
     if (!show || !runtime || connectingEdge?.handleId !== handleId || !connectingEdge.nodeId)
       return false;
 
-    const workflow = runtime.getWorkflowData();
-    return checkExecutionConnection({
+    return !getWorkflowConnectionError({
       connection: {
         source: connectingEdge.nodeId,
         sourceHandle: connectingEdge.handleId,
         target: nodeId,
         targetHandle: handleId
       },
-      edges: workflow.edges,
-      getNodeById: (sourceNodeId) =>
-        workflow.nodes.find((node) => node.nodeId === sourceNodeId)
-    }).allowed;
-  }, [connectingEdge, nodeId, runtime, show]);
+      edges,
+      getNodeById: (id) =>
+        id === nodeId ? targetNode : id === connectingEdge.nodeId ? sourceNode : runtime.getNode(id)
+    });
+  }, [connectingEdge, edges, nodeId, runtime, show, sourceNode, targetNode]);
   const showHandle = connectingEdge ? active : connected;
   const size = active ? activeHandleSize : handleSize;
 
@@ -99,7 +102,8 @@ export const ToolSourceHandle = ({ nodeId }: { nodeId: string }) => {
       getEdges()
         .filter(
           (edge) =>
-            edge.target === connection.target && edge.targetHandle !== NodeOutputKeyEnum.selectedTools
+            edge.target === connection.target &&
+            edge.targetHandle !== NodeOutputKeyEnum.selectedTools
         )
         .forEach((edge) =>
           disconnectEdge({

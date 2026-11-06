@@ -203,6 +203,12 @@ export type WorkflowRuntimeOptions = {
    * 实现必须同步且便宜；缺省时本轮跳过所有环境规则。
    */
   getEnvironment?: () => WorkflowEnvironment;
+  /** app 注入 Core 连线规则；读取本笔事务的 working 数据，失败由 Runtime 原子回滚。 */
+  getConnectionError?: (query: {
+    connection: StoreEdgeItemType;
+    edges: readonly StoreEdgeItemType[];
+    getNodeById: (nodeId: string) => DeepReadonly<StoreNodeItemType> | undefined;
+  }) => WorkflowCommandError | undefined;
 };
 
 /** 一次 history entry 的公开状态。 */
@@ -344,6 +350,8 @@ export type WorkflowCommandError = {
    * 唯一性拒绝（根级唯一、每容器一个系统子节点）不带 reason：目录侧已按 takenUniqueTypes 过滤。
    */
   reason?: NodeContainerCheckError;
+  /** 宿主注入的领域诊断；Runtime 原样透传，由宿主解析并展示。 */
+  diagnostic?: unknown;
 };
 
 /**

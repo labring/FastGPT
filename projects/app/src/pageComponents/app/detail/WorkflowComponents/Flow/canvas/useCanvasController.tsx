@@ -36,7 +36,7 @@ import { useWorkflowUIValue } from './canvasState';
 import { useWorkflowModalValue } from '../panels/workflowPanelState';
 import { type HelperLinesController } from '../components/HelperLines';
 import { translateNodeContainerCheckError } from '@fastgpt/global/core/workflow/template/context';
-import { checkExecutionConnection } from '@fastgpt/workflow-core/edge/validation';
+import { WorkflowDiagnosticSchema } from '@fastgpt/workflow-core/domain/diagnostic';
 import { formatWorkflowDiagnostic } from '@/web/core/workflow/check/diagnostic';
 import { areNodeRectsIntersecting, getNodeRect, type DimensionReader } from './nodeDimensions';
 import type { CanvasNode } from '@/web/core/workflow/editor/canvas/canvasTypes';
@@ -962,7 +962,7 @@ export const useCanvasController = ({ helperLinesRef }: UseWorkflowParams) => {
   /* connect */
   const onConnectStart = useCallback(
     (event: MouseEvent | TouchEvent, params: OnConnectStartParams) => {
-      const { nodeId, handleId } = params;
+      const { nodeId } = params;
       if (!nodeId || params.handleType === 'target') return;
 
       // If node is folded, unfold it when connecting
@@ -970,16 +970,10 @@ export const useCanvasController = ({ helperLinesRef }: UseWorkflowParams) => {
       if (runtime?.getNodeView(nodeId)?.isFolded) {
         canvas.commitGeometry([{ nodeId, isFolded: false }]);
       }
-      // 拖拽开始时算一次 placement context 挂到连线状态：目标柄只按 target 应用纯规则，
-      // 不再每个柄各自从画布数组重建 nodes/edges map。
-      setConnectingEdge({
-        ...params,
-        context: runtime?.getPlacementContext({ node: { nodeId, handleId } }) ?? null
-      });
+      setConnectingEdge(params);
     },
     [runtime, setConnectingEdge, canvas]
   );
-
   const onClickConnectStart = useCallback(
     (event: MouseEvent | TouchEvent | undefined, params: OnConnectStartParams) => {
       const { nodeId, handleId } = params;
@@ -1011,7 +1005,7 @@ export const useCanvasController = ({ helperLinesRef }: UseWorkflowParams) => {
   const onConnect = useCallback(
     ({ connect }: { connect: Connection }) => {
       if (!connect.source || !connect.target) return;
-      actions.connectEdge({
+      return actions.connectEdge({
         source: connect.source,
         target: connect.target,
         sourceHandle: connect.sourceHandle || '',
@@ -1022,27 +1016,18 @@ export const useCanvasController = ({ helperLinesRef }: UseWorkflowParams) => {
   );
   const customOnConnect = useCallback(
     (connect: Connection) => {
-      const workflow = runtime?.getWorkflowData();
-      if (!workflow) return;
-      const nodesById = new Map(workflow.nodes.map((node) => [node.nodeId, node]));
-      const result = checkExecutionConnection({
-        connection: connect,
-        edges: workflow.edges,
-        getNodeById: (nodeId) => nodesById.get(nodeId)
-      });
-      if (!result.allowed) {
-        return toast({
-          status: 'warning',
-          title: formatWorkflowDiagnostic({ diagnostic: result.reason, t }).message
-        });
-      }
-
-      // 容器与模板上下文判定归 runtime 的 connectEdge：被拒时静默返回，与既有连线失败行为一致。
-      onConnect({
-        connect
+      // Runtime 在 working transaction 中只校验一次；controller 仅解析拒绝原因并展示。
+      const result = onConnect({ connect });
+      if (!result || result.ok) return;
+      const diagnostic = WorkflowDiagnosticSchema.safeParse(result.error?.diagnostic);
+      toast({
+        status: 'warning',
+        title: diagnostic.success
+          ? formatWorkflowDiagnostic({ diagnostic: diagnostic.data, t }).message
+          : (result.error?.message ?? t('workflow:connection_invalid'))
       });
     },
-    [onConnect, runtime, t, toast]
+    [onConnect, t, toast]
   );
 
   /* edge */

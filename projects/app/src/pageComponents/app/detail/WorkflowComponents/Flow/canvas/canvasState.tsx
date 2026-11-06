@@ -7,20 +7,14 @@ import { AppContext } from '@/pageComponents/app/detail/context';
 import { useWorkflowSnapshot } from '@/web/core/workflow/editor/session/workflowSession';
 import { useWorkflowDemoTrack } from '@/web/common/middle/tracks/workflowDemoTrack';
 import type { OnConnectStartParams } from '@xyflow/react';
-import type { NodeTemplateContext } from '@fastgpt/global/core/workflow/type/node';
 
 // region canvasContext Canvas interaction context contract
 
 type MousePosition = { x: number; y: number };
 export type ContextMenuPosition = { top: number; left: number };
 
-/**
- * 连线拖拽状态：源 handle 参数 + 拖拽开始时由 Runtime 算好的 placement context。
- * context 只算一次，目标柄按 target 应用纯规则；null 表示无法建立上下文，按「允许」处理。
- */
-export type ConnectingEdgeState = OnConnectStartParams & {
-  context: NodeTemplateContext | null;
-};
+/** 连线拖拽只保存来源 handle；上下文由当前文档按需派生。 */
+export type ConnectingEdgeState = OnConnectStartParams;
 
 // 创建 Context
 type WorkflowUIContextValue = {
@@ -36,7 +30,7 @@ type WorkflowUIContextValue = {
   /** 设置悬停的边 ID */
   setHoverEdgeId: (edgeId?: string) => void;
 
-  /** 正在拖拽连线的源 handle 与 placement context；连接柄高亮与可连接判定都读它 */
+  /** 正在拖拽连线的源 handle；连接柄高亮与可连接判定都读它 */
   connectingEdge?: ConnectingEdgeState;
 
   /** 设置正在拖拽连线的源 handle */

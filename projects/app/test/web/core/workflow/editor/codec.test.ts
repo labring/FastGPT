@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import { hydrateWorkflowEditor } from '@fastgpt/global/common/workflow/editor/protocol';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   FlowNodeInputTypeEnum,
@@ -9,11 +10,14 @@ import { ToolCallNode } from '@fastgpt/global/core/workflow/template/system/tool
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   hydrateRuntime,
+  getWorkflowConnectionError,
   materializeWorkflow,
   serializeRuntime
 } from '@/web/core/workflow/editor/codec';
 import { VARIABLE_NODE_ID } from '@fastgpt/global/core/workflow/constants';
 import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
+import { WorkflowDiagnosticCodeEnum } from '@fastgpt/global/core/workflow/diagnostic/constants';
+import { WorkflowDiagnosticSchema } from '@fastgpt/workflow-core/domain/diagnostic';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 
 const t = ((key: string) => key) as never;
@@ -483,5 +487,164 @@ describe('workflow-core reference boundary', () => {
         (input) => input.key === NodeInputKeyEnum.answerText
       )!.value
     ).toEqual(['start', 'stable-output-id']);
+  });
+});
+
+describe('workflow-core connection boundary', () => {
+  const createRuntime = () =>
+    hydrateRuntime({
+      input: {
+        nodes: [
+          {
+            nodeId: 'start',
+            name: 'Start',
+            flowNodeType: FlowNodeTypeEnum.workflowStart,
+            inputs: [],
+            outputs: []
+          },
+          {
+            nodeId: 'a',
+            name: 'A',
+            flowNodeType: FlowNodeTypeEnum.textEditor,
+            inputs: [],
+            outputs: []
+          },
+          {
+            nodeId: 'b',
+            name: 'B',
+            flowNodeType: FlowNodeTypeEnum.textEditor,
+            inputs: [],
+            outputs: []
+          },
+          {
+            nodeId: 'loop',
+            name: 'Loop',
+            flowNodeType: FlowNodeTypeEnum.loopRun,
+            inputs: [],
+            outputs: []
+          }
+        ],
+        edges: [],
+        chatConfig: {}
+      },
+      t
+    });
+  const edge = (source: string, target: string) => ({
+    source,
+    target,
+    sourceHandle: `${source}-source-right`,
+    targetHandle: `${target}-target-left`
+  });
+
+  it('checks nodes added earlier in the same transaction through Core', () => {
+    const runtime = createRuntime();
+    expect(
+      runtime.dispatch([
+        {
+          type: 'addNode',
+          node: {
+            nodeId: 'new',
+            name: 'New',
+            flowNodeType: FlowNodeTypeEnum.textEditor,
+            inputs: [],
+            outputs: []
+          }
+        },
+        { type: 'connectEdge', edge: edge('start', 'new') }
+      ]).ok
+    ).toBe(true);
+    expect(runtime.getWorkflowData().edges).toEqual([edge('start', 'new')]);
+  });
+
+  it('rejects unsupported target handles without publishing or creating history', () => {
+    const runtime = createRuntime();
+    const before = runtime.getWorkflowData();
+    const history = runtime.getHistory();
+    const result = runtime.dispatch({
+      type: 'connectEdge',
+      edge: { ...edge('start', 'a'), targetHandle: 'unsupported' }
+    });
+    expect(result.ok).toBe(false);
+    expect(WorkflowDiagnosticSchema.parse(result.error?.diagnostic).code).toBe(
+      WorkflowDiagnosticCodeEnum.edgeHandleUnsupported
+    );
+    expect(runtime.getWorkflowData()).toEqual(before);
+    expect(runtime.getHistory()).toEqual(history);
+    expect(runtime.getSavepoint().isDirty).toBe(false);
+  });
+
+  it('rejects cycles introduced by earlier commands and rolls back the entire batch', () => {
+    const runtime = createRuntime();
+    const before = runtime.getWorkflowData();
+    expect(
+      runtime.dispatch([
+        { type: 'connectEdge', edge: edge('a', 'b') },
+        { type: 'connectEdge', edge: edge('b', 'a') }
+      ]).ok
+    ).toBe(false);
+    expect(runtime.getWorkflowData()).toEqual(before);
+    expect(runtime.getHistory().undoCount).toBe(0);
+  });
+
+  it('rechecks incident edges after attaching a node using its staged parent', () => {
+    const runtime = createRuntime();
+    expect(runtime.dispatch({ type: 'connectEdge', edge: edge('a', 'b') }).ok).toBe(true);
+    expect(
+      runtime.dispatch({ type: 'attachToContainer', nodeId: 'a', containerId: 'loop' }).ok
+    ).toBe(true);
+    expect(runtime.getNode('a')!.parentNodeId).toBe('loop');
+    expect(runtime.getWorkflowData().edges).toEqual([]);
+    expect(runtime.undo().ok).toBe(true);
+    expect(runtime.getNode('a')!.parentNodeId).toBeUndefined();
+    expect(runtime.getWorkflowData().edges).toEqual([edge('a', 'b')]);
+  });
+  it('checks live output availability without exporting a persisted document', () => {
+    const output = {
+      id: 'live',
+      key: 'live',
+      type: FlowNodeOutputTypeEnum.source,
+      valueType: WorkflowIOValueTypeEnum.string
+    };
+    const runtime = hydrateWorkflowEditor({
+      nodes: [
+        {
+          nodeId: 'start',
+          name: 'Start',
+          flowNodeType: FlowNodeTypeEnum.workflowStart,
+          inputs: [],
+          outputs: [{ ...output, invalid: true }]
+        },
+        {
+          nodeId: 'target',
+          name: 'Target',
+          flowNodeType: FlowNodeTypeEnum.textEditor,
+          inputs: [],
+          outputs: []
+        }
+      ],
+      edges: [],
+      chatConfig: {}
+    });
+    const exportDocument = vi.spyOn(runtime, 'getWorkflowData');
+    const query = {
+      connection: {
+        source: 'start',
+        sourceHandle: 'start-source-live',
+        target: 'target',
+        targetHandle: 'target-target-left'
+      },
+      edges: [],
+      getNodeById: runtime.getNode
+    };
+    expect(getWorkflowConnectionError(query)).toBeDefined();
+    expect(
+      runtime.dispatch({
+        type: 'updateNode',
+        nodeId: 'start',
+        patch: { outputs: [{ ...output, invalid: false }] }
+      }).ok
+    ).toBe(true);
+    expect(getWorkflowConnectionError(query)).toBeUndefined();
+    expect(exportDocument).not.toHaveBeenCalled();
   });
 });

@@ -1,6 +1,50 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
+import React, { act } from 'react';
+import { createRoot, type Root } from 'react-dom/client';
+import { JSDOM } from 'jsdom';
+import type { WorkflowRuntimePort } from '@fastgpt/global/core/workflow/editor/types';
+import { hydrateRuntime } from '@/web/core/workflow/editor/codec';
+import * as coreConnections from '@fastgpt/workflow-core/edge/validation';
 import type { Node, NodePositionChange, XYPosition } from '@xyflow/react';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+
+const controllerState = vi.hoisted(() => ({
+  runtime: undefined as WorkflowRuntimePort | undefined,
+  connectEdge: vi.fn(),
+  toast: vi.fn(),
+  setConnectingEdge: vi.fn()
+}));
+vi.mock('next-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
+vi.mock('@fastgpt/web/hooks/useToast', () => ({
+  useToast: () => ({ toast: controllerState.toast })
+}));
+vi.mock('@xyflow/react', async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  useReactFlow: () => ({}),
+  useStoreApi: () => ({})
+}));
+vi.mock('@/web/core/workflow/editor/session/workflowSession', () => ({
+  useWorkflowRuntime: () => controllerState.runtime,
+  useWorkflowIssueFocusAction: () => () => undefined,
+  useWorkflowIssueFocusRef: () => ({ current: undefined })
+}));
+vi.mock('@/web/core/workflow/editor/react/useWorkflow', () => ({
+  useWorkflowActions: () => ({ connectEdge: controllerState.connectEdge })
+}));
+vi.mock('@/web/core/workflow/editor/react/useWorkflowQueries', () => ({
+  useCanvas: () => ({ commitGeometry: () => undefined })
+}));
+vi.mock('@/pageComponents/app/detail/WorkflowComponents/Flow/canvas/workflowCanvasContext', () => ({
+  useWorkflowCanvasRendererValue: (selector: (value: unknown) => unknown) => selector({}),
+  useWorkflowCanvasValue: (selector: (value: unknown) => unknown) => selector({})
+}));
+vi.mock('@/pageComponents/app/detail/WorkflowComponents/Flow/canvas/canvasState', () => ({
+  useWorkflowUIValue: (selector: (value: unknown) => unknown) =>
+    selector({ setConnectingEdge: controllerState.setConnectingEdge })
+}));
+vi.mock('@/pageComponents/app/detail/WorkflowComponents/Flow/panels/workflowPanelState', () => ({
+  useWorkflowModalValue: (selector: (value: unknown) => unknown) => selector({})
+}));
 
 // Mock Markdown component: its CSS imports (katex) cannot be resolved under vitest.
 // useCanvasController.tsx transitively imports AppContext -> Markdown.
@@ -8,6 +52,7 @@ vi.mock('@/components/Markdown', () => ({ default: () => null }));
 vi.mock('katex/dist/katex.min.css', () => ({}));
 
 import {
+  useCanvasController,
   collectClearSelectionIds,
   collectSelectionConflictIds,
   collectGeometryUpdates,
@@ -487,5 +532,103 @@ describe('collectSelectionConflictIds', () => {
     expect(collectSelectionConflictIds({ nodes: [container, idleChild], node: container })).toEqual(
       []
     );
+  });
+});
+
+describe('canvas connection submission', () => {
+  let root: Root;
+  let controller: ReturnType<typeof useCanvasController>;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    const dom = new JSDOM('<!doctype html><html><body></body></html>');
+    vi.stubGlobal('window', dom.window);
+    vi.stubGlobal('document', dom.window.document);
+    vi.stubGlobal('navigator', dom.window.navigator);
+    globalThis.IS_REACT_ACT_ENVIRONMENT = true;
+    controllerState.runtime = hydrateRuntime({
+      input: {
+        nodes: [
+          {
+            nodeId: 'start',
+            flowNodeType: FlowNodeTypeEnum.workflowStart,
+            name: 'Start',
+            inputs: [],
+            outputs: []
+          },
+          {
+            nodeId: 'target',
+            flowNodeType: FlowNodeTypeEnum.textEditor,
+            name: 'Target',
+            inputs: [],
+            outputs: []
+          }
+        ],
+        edges: [],
+        chatConfig: {}
+      },
+      t: ((key: string) => key) as never
+    });
+    controllerState.connectEdge.mockImplementation((edge) =>
+      controllerState.runtime!.dispatch({ type: 'connectEdge', edge })
+    );
+    const Observer = () => {
+      controller = useCanvasController({ helperLinesRef: { current: null } });
+      return null;
+    };
+    root = createRoot(document.createElement('div'));
+    act(() => root.render(React.createElement(Observer)));
+  });
+
+  afterEach(() => {
+    act(() => root.unmount());
+    controllerState.runtime?.dispose();
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  it('checks a submission once inside runtime without exporting the document', () => {
+    const check = vi.spyOn(coreConnections, 'checkExecutionConnection');
+    const exportDocument = vi.spyOn(controllerState.runtime!, 'getWorkflowData');
+    const placement = vi.spyOn(controllerState.runtime!, 'getPlacementContext');
+    const start = {
+      nodeId: 'start',
+      handleId: 'start-source-right',
+      handleType: 'source' as const
+    };
+    act(() => controller.onConnectStart({} as MouseEvent, start));
+    expect(controllerState.setConnectingEdge).toHaveBeenCalledWith(start);
+    expect(placement).not.toHaveBeenCalled();
+    act(() =>
+      controller.customOnConnect({
+        source: 'start',
+        target: 'target',
+        sourceHandle: 'start-source-right',
+        targetHandle: 'target-target-left'
+      })
+    );
+    expect(check).toHaveBeenCalledTimes(1);
+    expect(exportDocument).not.toHaveBeenCalled();
+    expect(controllerState.runtime!.getWorkflow().edges).toHaveLength(1);
+    expect(controllerState.toast).not.toHaveBeenCalled();
+  });
+
+  it('renders the diagnostic returned by the failed runtime transaction', () => {
+    const check = vi.spyOn(coreConnections, 'checkExecutionConnection');
+    act(() =>
+      controller.customOnConnect({
+        source: 'start',
+        target: 'target',
+        sourceHandle: 'start-source-right',
+        targetHandle: 'unsupported'
+      })
+    );
+    expect(check).toHaveBeenCalledTimes(1);
+    expect(controllerState.runtime!.getWorkflow().edges).toEqual([]);
+    expect(controllerState.runtime!.getHistory().undoCount).toBe(0);
+    expect(controllerState.toast).toHaveBeenCalledWith({
+      status: 'warning',
+      title: 'common:core.workflow.check.edge_handle_unsupported'
+    });
   });
 });

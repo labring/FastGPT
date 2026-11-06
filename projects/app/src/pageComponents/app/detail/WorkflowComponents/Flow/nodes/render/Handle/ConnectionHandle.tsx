@@ -2,7 +2,7 @@ import React, { useContext, useMemo } from 'react';
 import { Position } from '@xyflow/react';
 import { MySourceHandle, MyTargetHandle } from '.';
 import { getHandleId } from '@fastgpt/global/common/workflow/reference';
-import { checkExecutionConnection } from '@fastgpt/workflow-core/edge/validation';
+import { getWorkflowConnectionError } from '@/web/core/workflow/editor/codec';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
 import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { useNode } from '@/web/core/workflow/editor/react/useNode';
@@ -130,19 +130,19 @@ export const ConnectionTargetHandle = React.memo(function ConnectionTargetHandle
   const handleId = getHandleId(nodeId, 'target', Position.Left);
   const allowed = useMemo(() => {
     if (!connectingEdge) return true;
-    if (!runtime) return false;
+    if (!runtime || !connectingEdge.nodeId || !connectingEdge.handleId) return false;
 
-    const nodes = runtime.getWorkflowData().nodes;
-    return checkExecutionConnection({
+    return !getWorkflowConnectionError({
       connection: {
         source: connectingEdge.nodeId,
         sourceHandle: connectingEdge.handleId,
         target: nodeId,
         targetHandle: handleId
       },
-      edges: [...edges],
-      getNodeById: (id) => nodes.find((node) => node.nodeId === id)
-    }).allowed;
+      edges,
+      getNodeById: (id) =>
+        id === nodeId ? targetNode : id === connectingEdge.nodeId ? sourceNode : runtime.getNode(id)
+    });
   }, [connectingEdge, edges, handleId, nodeId, runtime, sourceNode, targetNode]);
   const showTargetHandle = targetNode
     ? moduleTemplatesFlat.find((item) => item.flowNodeType === targetNode.flowNodeType)

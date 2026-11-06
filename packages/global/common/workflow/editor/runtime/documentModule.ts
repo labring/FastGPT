@@ -16,6 +16,7 @@ import {
 import { AppChatConfigTypeSchema } from '../../../../core/app/type';
 import { isToolWorkflowConnectionAllowed } from '../../connection';
 import {
+  buildNodeTemplateContext,
   getWorkflowReferenceItems,
   isConnectionTargetAllowed,
   isWorkflowEdgeSourceHandleValid
@@ -32,7 +33,8 @@ import type {
   WorkflowEdgeEndpoint,
   WorkflowGraphQueries,
   WorkflowHandleConnectionQuery,
-  WorkflowNodeData
+  WorkflowNodeData,
+  WorkflowRuntimeOptions
 } from '../../../../core/workflow/editor/types';
 import {
   addFieldIdentity,
@@ -102,7 +104,10 @@ type StagedIndexes = {
 };
 
 /** Create the Workflow Document module；入参是入站边界已经组装好的初始文档与视图。 */
-export const createDocumentModule = (initial: CanonicalResult) => {
+export const createDocumentModule = (
+  initial: CanonicalResult,
+  getConnectionError?: WorkflowRuntimeOptions['getConnectionError']
+) => {
   // region documentState Document state and graph index maintenance
 
   let document = initial.document;
@@ -436,42 +441,26 @@ export const createDocumentModule = (initial: CanonicalResult) => {
         ? isUniqueRootNodeType(flowNodeType)
         : isNestedChildSystemNodeType(flowNodeType);
 
-    /** 工具子流程可经过多个普通节点，沿 staged/committed 入边上溯找到任一 selectedTools 根边。 */
-    const isConnectedTool = (nodeId: string) => {
-      const pendingNodeIds = [nodeId];
-      const visitedNodeIds = new Set<string>();
-      const getIncomingEdges = (targetNodeId: string) =>
-        meta
-          ? working.edges.filter(({ data }) => data.target === targetNodeId)
-          : (graphIndex.byTarget.get(targetNodeId) ?? []);
-      while (pendingNodeIds.length) {
-        const currentId = pendingNodeIds.pop()!;
-        if (visitedNodeIds.has(currentId)) continue;
-        visitedNodeIds.add(currentId);
-
-        for (const { data } of getIncomingEdges(currentId)) {
-          if (data.targetHandle === NodeOutputKeyEnum.selectedTools) return true;
-          if (data.source) pendingNodeIds.push(data.source);
-        }
-      }
-      return false;
-    };
-
-    return {
+    return buildNodeTemplateContext({
+      sourceNode: source,
+      handleId,
       isSidebar,
-      sourceNodeId: source?.nodeId ?? null,
-      sourceType: source?.flowNodeType ?? null,
-      isConnectedTool: source ? isConnectedTool(source.nodeId) : false,
-      handleId: handleId ?? null,
-      parentType: scopeParentId ? (getNodeData(scopeParentId)?.flowNodeType ?? null) : null,
+      getNodeById: getNodeData,
+      targetParentType: scopeParentId ? (getNodeData(scopeParentId)?.flowNodeType ?? null) : null,
       hasToolNode: scopeNodes.some(
         ({ flowNodeType }) => flowNodeType === FlowNodeTypeEnum.toolCall
       ),
       hasLoopRunNode: scopeNodes.some(
         ({ flowNodeType }) => flowNodeType === FlowNodeTypeEnum.loopRun
       ),
-      takenUniqueTypes: scopeNodes.map(({ flowNodeType }) => flowNodeType).filter(isScopeUniqueType)
-    };
+      takenUniqueTypes: scopeNodes
+        .map(({ flowNodeType }) => flowNodeType)
+        .filter(isScopeUniqueType),
+      getIncomingEdges: (nodeId) =>
+        meta
+          ? working.edges.filter(({ data }) => data.target === nodeId).map(({ data }) => data)
+          : graphQueries.getIncomingEdges(nodeId)
+    });
   };
 
   /** 公开端口：只读已提交 Document。 */
@@ -496,7 +485,7 @@ export const createDocumentModule = (initial: CanonicalResult) => {
       ? derivePlacementContext({ isSidebar: true, parentNodeId: containerId, working, meta })
       : null;
 
-  const isEdgeConnectionAllowed = ({
+  const getEdgeConnectionError = ({
     working,
     edge,
     ignoreEdgeId,
@@ -507,6 +496,16 @@ export const createDocumentModule = (initial: CanonicalResult) => {
     ignoreEdgeId?: RuntimeEdgeId;
     meta?: MutationMeta;
   }) => {
+    if (getConnectionError) {
+      return getConnectionError({
+        connection: edge,
+        edges: working.edges.filter(({ id }) => id !== ignoreEdgeId).map(({ data }) => data),
+        getNodeById: (nodeId) => getWorkingNode(nodeId, meta)?.data
+      });
+    }
+
+    // 独立使用的 global Runtime 保留原兼容规则；app 统一注入 Core，避免反向依赖成环。
+    const reject = () => getError('invalid_edge', 'Edge connection is not allowed');
     const source = getFlowNodeById({ working, nodeId: edge.source, meta });
     const target = getFlowNodeById({ working, nodeId: edge.target, meta });
     if (
@@ -515,7 +514,7 @@ export const createDocumentModule = (initial: CanonicalResult) => {
       edge.source === edge.target ||
       !isWorkflowEdgeSourceHandleValid(source, edge.sourceHandle)
     ) {
-      return false;
+      return reject();
     }
     if (
       working.edges.some(
@@ -525,7 +524,7 @@ export const createDocumentModule = (initial: CanonicalResult) => {
           data.targetHandle === NodeOutputKeyEnum.selectedTools
       )
     ) {
-      return false;
+      return reject();
     }
     if (
       working.edges.some(
@@ -536,7 +535,7 @@ export const createDocumentModule = (initial: CanonicalResult) => {
           data.sourceHandle === edge.sourceHandle
       )
     ) {
-      return false;
+      return reject();
     }
     if (
       !isToolWorkflowConnectionAllowed({
@@ -547,7 +546,7 @@ export const createDocumentModule = (initial: CanonicalResult) => {
         getNodeById: (nodeId) => getFlowNodeById({ working, nodeId, meta })
       })
     ) {
-      return false;
+      return reject();
     }
     return isConnectionTargetAllowed({
       context: derivePlacementContext({
@@ -558,7 +557,9 @@ export const createDocumentModule = (initial: CanonicalResult) => {
       }),
       targetNode: target,
       sourceParentNodeId: source.parentNodeId
-    });
+    })
+      ? undefined
+      : reject();
   };
 
   /** 将一次新增/连线意图产生的流程开始引用补丁并入同一 working transaction。 */
@@ -963,12 +964,8 @@ export const createDocumentModule = (initial: CanonicalResult) => {
         if (!getWorkingNode(edge.source, meta) || !getWorkingNode(edge.target, meta)) {
           throw getError('invalid_edge', 'Cannot connect an edge to a missing node');
         }
-        if (!isEdgeConnectionAllowed({ working, edge, meta })) {
-          throw getError('invalid_edge', 'Edge connection is not allowed');
-        }
-        if (working.edges.some(({ data }) => valuesEqual(data, edge))) {
-          throw getError('invalid_edge', 'Identical edge already exists');
-        }
+        const connectionError = getEdgeConnectionError({ working, edge, meta });
+        if (connectionError) throw connectionError;
         const edgeRecord = { id: allocateEdgeId(), data: cloneValue(edge) };
         working.edges = [...working.edges, edgeRecord];
         recordEdgeChange({ meta, edge: edgeRecord, kind: 'add' });
@@ -1034,7 +1031,7 @@ export const createDocumentModule = (initial: CanonicalResult) => {
             .filter(({ data }) => data.source === command.nodeId || data.target === command.nodeId)
             .map((edge) => [
               edge.id,
-              isEdgeConnectionAllowed({ working, edge: edge.data, ignoreEdgeId: edge.id, meta })
+              !getEdgeConnectionError({ working, edge: edge.data, ignoreEdgeId: edge.id, meta })
             ])
         );
         working.nodes = working.nodes.slice();
@@ -1052,7 +1049,7 @@ export const createDocumentModule = (initial: CanonicalResult) => {
 
         const removedEdges = working.edges.filter(({ id, data }) => {
           if (!previouslyAllowedEdges.get(id)) return false;
-          return !isEdgeConnectionAllowed({ working, edge: data, ignoreEdgeId: id, meta });
+          return !!getEdgeConnectionError({ working, edge: data, ignoreEdgeId: id, meta });
         });
         if (removedEdges.length > 0) {
           removedEdges.forEach((edge) => {

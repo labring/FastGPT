@@ -47,7 +47,7 @@ import {
 } from '@/web/core/workflow/modelData';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useUserStore } from '@/web/support/user/useUserStore';
-import { materializeWorkflow } from '../codec';
+import { getWorkflowConnectionError, materializeWorkflow } from '../codec';
 import type { ViewDataOverlayMap } from '../canvas/projectWorkflowCanvas';
 import type { ViewOverlayPatch } from '../canvas/canvasTypes';
 import { WorkflowEditorProvider } from '../react/workflowEditorProvider';
@@ -621,7 +621,10 @@ export const WorkflowSessionProvider = ({
     // Issue View 由 Runtime 按文档规则与环境事实算出；Workflow 与 Plugin host 共用这一份接线。
     let nextRuntime: WorkflowRuntimePort;
     try {
-      nextRuntime = hydrateWorkflowEditor(content, { getEnvironment });
+      nextRuntime = hydrateWorkflowEditor(content, {
+        getEnvironment,
+        getConnectionError: getWorkflowConnectionError
+      });
     } catch (error) {
       teardownRuntime();
       setRuntime(null);
