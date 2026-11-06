@@ -65,6 +65,7 @@ export const useShareBrandTracking = ({
       if (!session.current.pending) {
         session.current.attempts = (session.current.attempts ?? 0) + 1;
         session.current.pending = postOutLinkBrandTrack({
+          authType: 'outLink',
           event: TrackEnum.shareBrandExposure,
           eventId: session.current.eventId,
           outLinkAuthData
@@ -138,6 +139,7 @@ export const useShareBrandTracking = ({
   return useCallback(() => {
     if (!enabled || !outLinkAuthData?.shareId || !outLinkAuthData.outLinkUid) return;
     void postOutLinkBrandTrack({
+      authType: 'outLink',
       event: TrackEnum.shareBrandClick,
       outLinkAuthData
     }).catch(() => {});

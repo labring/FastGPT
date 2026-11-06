@@ -34,6 +34,20 @@ const formatOptionalNumber = (val: unknown) => {
   return Number.isNaN(num) ? undefined : num;
 };
 
+type OverrideSelection = 'inherit' | 'enabled' | 'disabled';
+type PlanEditForm = Omit<AdminPlanType, 'canHideShareBrandOverride' | 'enableSandbox'> & {
+  canHideShareBrandOverride: OverrideSelection;
+  enableSandbox: OverrideSelection;
+};
+
+/** 表单使用明确的三态字符串，避免 undefined 被 Controller 回退为默认值。 */
+const toOverrideSelection = (value: boolean | null | undefined): OverrideSelection =>
+  value === null || value === undefined ? 'inherit' : value ? 'enabled' : 'disabled';
+
+/** 将表单三态转换为接口约定的覆盖值，未设置表示跟随套餐。 */
+const toOverrideValue = (value: OverrideSelection): boolean | undefined =>
+  value === 'inherit' ? undefined : value === 'enabled';
+
 export default function PlanEditModal(props: {
   data: AdminPlanType;
   getData: any;
@@ -49,7 +63,7 @@ export default function PlanEditModal(props: {
     reset,
     control,
     formState: { errors }
-  } = useForm<AdminPlanType>({
+  } = useForm<PlanEditForm>({
     defaultValues: {
       id: '',
       teamId: '',
@@ -76,12 +90,12 @@ export default function PlanEditModal(props: {
       customDomain: undefined,
       maxUploadFileSize: undefined,
       maxUploadFileCount: undefined,
-      canHideShareBrandOverride: undefined,
-      enableSandbox: undefined
+      canHideShareBrandOverride: 'inherit',
+      enableSandbox: 'inherit'
     }
   });
 
-  const { runAsync: onSubmit, loading } = useRequest(async (formData: AdminPlanType) => {
+  const { runAsync: onSubmit, loading } = useRequest(async (formData: PlanEditForm) => {
     try {
       const startTimeISO = new Date(formData.startTime).toISOString();
       const expiredTimeISO = new Date(formData.expiredTime).toISOString();
@@ -116,8 +130,8 @@ export default function PlanEditModal(props: {
         customDomain: formatOptionalNumber(formData.customDomain),
         maxUploadFileSize: formatOptionalNumber(formData.maxUploadFileSize),
         maxUploadFileCount: formatOptionalNumber(formData.maxUploadFileCount),
-        canHideShareBrandOverride: formData.canHideShareBrandOverride,
-        enableSandbox: formData.enableSandbox
+        canHideShareBrandOverride: toOverrideValue(formData.canHideShareBrandOverride),
+        enableSandbox: toOverrideValue(formData.enableSandbox)
       });
       toast({
         title: '更新成功',
@@ -157,8 +171,8 @@ export default function PlanEditModal(props: {
             customDomain: data.customDomain ?? undefined,
             maxUploadFileSize: data.maxUploadFileSize ?? undefined,
             maxUploadFileCount: data.maxUploadFileCount ?? undefined,
-            canHideShareBrandOverride: data.canHideShareBrandOverride ?? undefined,
-            enableSandbox: data.enableSandbox ?? undefined
+            canHideShareBrandOverride: toOverrideSelection(data.canHideShareBrandOverride),
+            enableSandbox: toOverrideSelection(data.enableSandbox)
           });
         }}
       >
@@ -458,11 +472,8 @@ export default function PlanEditModal(props: {
                 render={({ field: { value, onChange } }) => (
                   <Select
                     id="canHideShareBrandOverride"
-                    value={value === undefined ? 'inherit' : value ? 'enabled' : 'disabled'}
-                    onChange={(e) => {
-                      const selectValue = e.target.value;
-                      onChange(selectValue === 'inherit' ? undefined : selectValue === 'enabled');
-                    }}
+                    value={value}
+                    onChange={(e) => onChange(e.target.value)}
                   >
                     <option value="inherit">跟随套餐</option>
                     <option value="enabled">启用</option>
@@ -480,11 +491,9 @@ export default function PlanEditModal(props: {
                 name="enableSandbox"
                 render={({ field: { value, onChange } }) => (
                   <Select
-                    value={value === undefined ? 'inherit' : value ? 'enabled' : 'disabled'}
-                    onChange={(e) => {
-                      const selectValue = e.target.value;
-                      onChange(selectValue === 'inherit' ? undefined : selectValue === 'enabled');
-                    }}
+                    id="enableSandbox"
+                    value={value}
+                    onChange={(e) => onChange(e.target.value)}
                   >
                     <option value="inherit">跟随套餐</option>
                     <option value="enabled">启用</option>

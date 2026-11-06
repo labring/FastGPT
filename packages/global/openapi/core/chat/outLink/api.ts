@@ -1,14 +1,7 @@
 import z from 'zod';
-import { TrackEnum } from '../../../../common/middle/tracks/constants';
 import { InitChatResponseSchema } from '../controler/api';
-import {
-  OutLinkBrandingSchema,
-  OutLinkBrandTrackEventSchema
-} from '../../../../support/outLink/branding';
-import {
-  OutLinkChatAuthQuerySchema,
-  OutLinkChatAuthSchema
-} from '../../../../support/permission/chat';
+import { OutLinkBrandingSchema } from '../../../../support/outLink/branding';
+import { OutLinkChatAuthQuerySchema } from '../../../../support/permission/chat';
 
 /* ============================================================================
  * API: 初始化外链会话
@@ -29,30 +22,3 @@ export const InitOutLinkChatResponseSchema = InitChatResponseSchema.and(
   })
 );
 export type InitOutLinkChatResponseType = z.infer<typeof InitOutLinkChatResponseSchema>;
-
-/* ============================================================================
- * API: 上报分享链接品牌事件
- * Route: POST /api/core/chat/outLink/track
- * Method: POST
- * Description: 按外链访问资格校验品牌事件，商业版在写入 tracks 后返回空成功响应。
- * Tags: ['Chat']
- * ============================================================================ */
-const TrackOutLinkBrandBaseBodySchema = z.strictObject({
-  outLinkAuthData: OutLinkChatAuthSchema.meta({
-    description: '外链访问身份；受保护链接仍需请求头或 Cookie 中的登录态',
-    example: { shareId: 'share-id', outLinkUid: 'outlink-user-id' }
-  })
-});
-export const TrackOutLinkBrandBodySchema = z.discriminatedUnion('event', [
-  TrackOutLinkBrandBaseBodySchema.extend({
-    event: OutLinkBrandTrackEventSchema.extract([TrackEnum.shareBrandExposure]),
-    eventId: z.string().min(1).max(64).meta({
-      description: '页面生命周期内固定的随机曝光 ID；重试和布局切换时必须复用',
-      example: 'V1StGXR8_Z5jdHi6B-myT7Ab'
-    })
-  }),
-  TrackOutLinkBrandBaseBodySchema.extend({
-    event: OutLinkBrandTrackEventSchema.extract([TrackEnum.shareBrandClick])
-  })
-]);
-export type TrackOutLinkBrandBodyType = z.infer<typeof TrackOutLinkBrandBodySchema>;

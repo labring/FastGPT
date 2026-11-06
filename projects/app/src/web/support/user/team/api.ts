@@ -15,7 +15,10 @@ import type {
   TeamMemberSchema
 } from '@fastgpt/global/support/user/team/type';
 import type { TeamSubSchemaType } from '@fastgpt/global/support/wallet/sub/type';
-import type { GetTeamPlanStatusResponse } from '@fastgpt/global/openapi/support/user/team/api';
+import type {
+  GetTeamPlanStatusResponse,
+  GetTeamPlanEntitlementsResponse
+} from '@fastgpt/global/openapi/support/user/team/api';
 import type { TeamInvoiceHeaderType } from '@fastgpt/global/support/user/team/type';
 import type { PaginationProps, PaginationResponse } from '@fastgpt/global/openapi/api';
 import type {
@@ -116,6 +119,11 @@ export const getTeamPlanStatus = () =>
   // 统一响应会将查询失败时的 undefined 转为 data: null。
   GET<GetTeamPlanStatusResponse | null>(`/support/user/team/plan/getTeamPlanStatus`, {
     maxQuantity: 1
+  });
+/** 只读取当前团队权益，不依赖套餐资源用量统计。 */
+export const getTeamPlanEntitlements = () =>
+  GET<GetTeamPlanEntitlementsResponse | null>('/support/user/team/plan/getTeamPlanStatus', {
+    scope: 'entitlements'
   });
 export const getTeamPlans = () =>
   GET<TeamSubSchemaType[]>(`/proApi/support/user/team/plan/getTeamPlans`);

@@ -72,7 +72,7 @@ afterEach(async () => {
   vi.unstubAllGlobals();
 });
 
-describe('PlanEditModal branding override', () => {
+describe('PlanEditModal boolean overrides', () => {
   it.each([
     [undefined, 'inherit'],
     [true, 'enabled'],
@@ -81,7 +81,7 @@ describe('PlanEditModal branding override', () => {
     await act(async () =>
       root.render(
         React.createElement(PlanEditModal, {
-          data: { ...data, canHideShareBrandOverride: override },
+          data: { ...data, canHideShareBrandOverride: override, enableSandbox: override },
           subType: SubTypeEnum.standard,
           getData: vi.fn()
         })
@@ -91,34 +91,107 @@ describe('PlanEditModal branding override', () => {
     expect((container.querySelector('#canHideShareBrandOverride') as HTMLSelectElement).value).toBe(
       expected
     );
+    expect((container.querySelector('#enableSandbox') as HTMLSelectElement).value).toBe(expected);
   });
 
   it.each([
-    ['enabled', true],
-    ['disabled', false],
-    ['inherit', undefined]
-  ])('submits %s as %s', async (selection, expected) => {
+    [true, 'inherit', undefined],
+    [false, 'inherit', undefined],
+    [undefined, 'enabled', true],
+    [false, 'enabled', true],
+    [undefined, 'disabled', false],
+    [true, 'disabled', false]
+  ])('changes %s to %s and submits %s', async (initial, selection, expected) => {
     await act(async () =>
       root.render(
         React.createElement(PlanEditModal, {
-          data: { ...data, canHideShareBrandOverride: false },
+          data: { ...data, canHideShareBrandOverride: initial, enableSandbox: initial },
           subType: SubTypeEnum.standard,
           getData: vi.fn()
         })
       )
     );
     await act(async () => container.querySelector('button')!.click());
-    const select = container.querySelector('#canHideShareBrandOverride') as HTMLSelectElement;
-    await act(async () => {
-      select.value = selection;
-      select.dispatchEvent(new dom.window.Event('change', { bubbles: true }));
-    });
+    for (const id of ['canHideShareBrandOverride', 'enableSandbox']) {
+      const select = container.querySelector(`#${id}`) as HTMLSelectElement;
+      await act(async () => {
+        select.value = selection;
+        select.dispatchEvent(new dom.window.Event('change', { bubbles: true }));
+      });
+      expect(select.value).toBe(selection);
+    }
     const submit = Array.from(container.querySelectorAll('button')).find(
       (button) => button.textContent === '确定'
     );
     await act(async () => submit!.click());
     expect(mocks.update).toHaveBeenCalledWith(
-      expect.objectContaining({ canHideShareBrandOverride: expected })
+      expect.objectContaining({ canHideShareBrandOverride: expected, enableSandbox: expected })
     );
+  });
+
+  it.each([
+    ['canHideShareBrandOverride', 'enableSandbox'],
+    ['enableSandbox', 'canHideShareBrandOverride']
+  ])('changes %s without changing %s', async (changed, unchanged) => {
+    await act(async () =>
+      root.render(
+        React.createElement(PlanEditModal, {
+          data: { ...data, canHideShareBrandOverride: true, enableSandbox: true },
+          subType: SubTypeEnum.standard,
+          getData: vi.fn()
+        })
+      )
+    );
+    await act(async () => container.querySelector('button')!.click());
+    const select = container.querySelector(`#${changed}`) as HTMLSelectElement;
+    await act(async () => {
+      select.value = 'inherit';
+      select.dispatchEvent(new dom.window.Event('change', { bubbles: true }));
+    });
+    expect(select.value).toBe('inherit');
+    expect((container.querySelector(`#${unchanged}`) as HTMLSelectElement).value).toBe('enabled');
+
+    const submit = Array.from(container.querySelectorAll('button')).find(
+      (button) => button.textContent === '确定'
+    );
+    await act(async () => submit!.click());
+    expect(mocks.update).toHaveBeenCalledWith(
+      expect.objectContaining({ [changed]: undefined, [unchanged]: true })
+    );
+  });
+
+  it('shows the refreshed values when reopened after saving', async () => {
+    const getData = vi.fn();
+    const render = (override: boolean | undefined) =>
+      root.render(
+        React.createElement(PlanEditModal, {
+          data: { ...data, canHideShareBrandOverride: override, enableSandbox: override },
+          subType: SubTypeEnum.standard,
+          getData
+        })
+      );
+    await act(async () => render(false));
+    await act(async () => container.querySelector('button')!.click());
+    for (const id of ['canHideShareBrandOverride', 'enableSandbox']) {
+      const select = container.querySelector(`#${id}`) as HTMLSelectElement;
+      await act(async () => {
+        select.value = 'inherit';
+        select.dispatchEvent(new dom.window.Event('change', { bubbles: true }));
+      });
+    }
+    const submit = Array.from(container.querySelectorAll('button')).find(
+      (button) => button.textContent === '确定'
+    );
+    await act(async () => submit!.click());
+    expect(getData).toHaveBeenCalledWith(1);
+    expect(mocks.update).toHaveBeenCalledWith(
+      expect.objectContaining({ canHideShareBrandOverride: undefined, enableSandbox: undefined })
+    );
+
+    await act(async () => render(undefined));
+    await act(async () => container.querySelector('button')!.click());
+    for (const id of ['canHideShareBrandOverride', 'enableSandbox']) {
+      expect((container.querySelector(`#${id}`) as HTMLSelectElement).value).toBe('inherit');
+    }
   });
 });

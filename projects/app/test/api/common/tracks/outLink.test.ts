@@ -1,5 +1,5 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { handler } from '@/pages/api/core/chat/outLink/track';
+import { handler } from '@/pages/api/common/tracks/push';
 import { TrackEnum } from '@fastgpt/global/common/middle/tracks/constants';
 import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
 import { TrackModel } from '@fastgpt/service/common/middle/tracks/schema';
@@ -7,6 +7,7 @@ import mongoose from '@fastgpt/service/common/mongo';
 import { serviceEnv } from '@fastgpt/service/env';
 import { getRedisRuntime } from '@fastgpt/dal/redis/runtime';
 import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
+import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import {
   assertOutLinkBrandRequestRateLimit,
   assertOutLinkBrandWriteRateLimit
@@ -34,6 +35,7 @@ const request = (body: Record<string, unknown> = {}, ip: string | undefined = '1
     socket: { remoteAddress: ip },
     body: {
       event: TrackEnum.shareBrandExposure,
+      authType: 'outLink',
       ...(body.event === TrackEnum.shareBrandClick ? {} : { eventId: 'page-exposure-id' }),
       outLinkAuthData: { shareId: 'share', outLinkUid: 'anonymous-visitor' },
       ...body
@@ -124,10 +126,14 @@ describe('handler', () => {
       expect(mocks.auth).toHaveBeenCalledWith(
         expect.objectContaining({ shareId: 'share', outLinkUid: 'anonymous-visitor' })
       );
+      expect(authCert).not.toHaveBeenCalled();
     }
   );
   it.each([
     { event: TrackEnum.login },
+    { authType: undefined },
+    { authType: 'session' },
+    { authType: 'other' },
     { event: 'powered_by_exposure' },
     { eventId: undefined },
     { eventId: '' },

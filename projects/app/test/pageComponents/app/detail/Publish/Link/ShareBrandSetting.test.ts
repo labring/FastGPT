@@ -11,7 +11,7 @@ const mocks = vi.hoisted(() => ({
   list: vi.fn(),
   save: vi.fn(),
   init: vi.fn(),
-  getBrand: vi.fn(),
+  getPlan: vi.fn(),
   toast: vi.fn(),
   refresh: vi.fn(),
   team: { teamId: 'team', tmbId: 'member' },
@@ -20,9 +20,9 @@ const mocks = vi.hoisted(() => ({
 }));
 vi.mock('@/web/support/outLink/api', () => ({
   getShareChatList: mocks.list,
-  getOutLinkBrand: mocks.getBrand,
   putShareChat: mocks.save
 }));
+vi.mock('@/web/support/user/team/api', () => ({ getTeamPlanEntitlements: mocks.getPlan }));
 vi.mock('@/web/support/user/useUserStore', () => {
   const state = () => ({ userInfo: { team: mocks.team }, initTeamPlanStatus: mocks.init });
   return {
@@ -77,16 +77,25 @@ let queryClient: QueryClient;
 const settle = async () => {
   await act(async () => new Promise((resolve) => setTimeout(resolve, 0)));
 };
+const SettingWrapper = ({ link }: { link: OutLinkSchemaType }) => {
+  const [current, setCurrent] = React.useState(link);
+  return React.createElement(ShareBrandSetting, {
+    share: current,
+    onBrandSaved: (id: string, isShowBrand: boolean) => {
+      setCurrent((previous) => ({ ...previous, isShowBrand }));
+      return mocks.refresh(id, isShowBrand);
+    }
+  });
+};
 const render = async (link = share) => {
   await act(async () =>
     root.render(
       React.createElement(
         QueryClientProvider,
         { client: queryClient },
-        React.createElement(ShareBrandSetting, {
+        React.createElement(SettingWrapper, {
           key: `${link._id}-${mocks.team.tmbId}`,
-          share: link,
-          onRefresh: () => mocks.refresh()
+          link
         })
       )
     )
@@ -114,10 +123,10 @@ beforeEach(async () => {
   mocks.team = { teamId: 'team', tmbId: 'member' };
   mocks.config = { show_outlink_brand: true, isPlus: true };
   mocks.list.mockResolvedValue([share]);
-  mocks.getBrand.mockReset().mockResolvedValue({ isShowBrand: true, canHideShareBrand: false });
+  mocks.getPlan.mockReset().mockResolvedValue({ scope: 'entitlements', canHideShareBrand: false });
   mocks.save.mockResolvedValue('share');
   mocks.refresh.mockResolvedValue(undefined);
-  mocks.init.mockResolvedValue({ standard: { canHideShareBrand: false } });
+  mocks.init.mockResolvedValue({ scope: 'entitlements', canHideShareBrand: false });
   container = document.createElement('div');
   document.body.appendChild(container);
   root = createRoot(container);
@@ -148,7 +157,8 @@ describe('ShareBrandSetting', () => {
     'shows effective state for saved=$preference and entitled=$entitled without saving',
     async ({ preference, entitled, expected }) => {
       const link = { ...share, _id: 'another-link', isShowBrand: preference };
-      mocks.getBrand.mockResolvedValue({ isShowBrand: preference, canHideShareBrand: entitled });
+      mocks.getPlan.mockResolvedValue({ scope: 'entitlements', canHideShareBrand: entitled });
+      await reset();
       await render(link);
       expect(checked()).toBe(expected);
       expect(mocks.save).not.toHaveBeenCalled();
@@ -157,7 +167,7 @@ describe('ShareBrandSetting', () => {
   );
   it('opens the upgrade flow for a saved hidden link without saving its preference', async () => {
     const link = { ...share, _id: 'hidden-link', isShowBrand: false };
-    mocks.getBrand.mockResolvedValue({ isShowBrand: false, canHideShareBrand: false });
+    mocks.getPlan.mockResolvedValue({ scope: 'entitlements', canHideShareBrand: false });
     await render(link);
     expect(checked()).toBe(true);
 
@@ -171,37 +181,46 @@ describe('ShareBrandSetting', () => {
     expect(container.querySelector('#recharge')).toBeNull();
   });
   it('waits for entitlement loading before enabling the switch', async () => {
-    expect(mocks.getBrand).toHaveBeenCalledWith({ id: 'link' });
+    expect(mocks.getPlan).toHaveBeenCalledWith();
     expect(mocks.list).not.toHaveBeenCalled();
     expect(mocks.init).not.toHaveBeenCalled();
     await reset();
     let finish!: (status: unknown) => void;
-    mocks.getBrand.mockReturnValue(
+    mocks.getPlan.mockReturnValue(
       new Promise((resolve) => {
         finish = resolve;
       })
     );
     await render();
     expect((container.querySelector('input') as HTMLInputElement).disabled).toBe(true);
-    await act(async () => finish({ isShowBrand: true, canHideShareBrand: false }));
+    await act(async () => finish({ scope: 'entitlements', canHideShareBrand: false }));
     await settle();
     expect((container.querySelector('input') as HTMLInputElement).disabled).toBe(false);
   });
   it('keeps the switch disabled when entitlement loading fails', async () => {
     await reset();
-    mocks.getBrand.mockRejectedValue(new Error('failed to load plan'));
+    mocks.getPlan.mockRejectedValue(new Error('failed to load plan'));
     await render();
     expect((container.querySelector('input') as HTMLInputElement).disabled).toBe(true);
     expect(mocks.toast).toHaveBeenCalledWith({ status: 'error', title: '获取套餐内容失败' });
     expect(mocks.save).not.toHaveBeenCalled();
     expect(container.querySelector('button')).toBeNull();
   });
+  it('rejects an incomplete entitlement response rather than suggesting an upgrade', async () => {
+    await reset();
+    mocks.getPlan.mockResolvedValue({});
+    await render();
+    expect((container.querySelector('input') as HTMLInputElement).disabled).toBe(true);
+    expect(container.querySelector('#recharge')).toBeNull();
+    expect(mocks.toast).toHaveBeenCalled();
+    expect(mocks.save).not.toHaveBeenCalled();
+  });
   it.each([null, undefined])(
     'toasts an empty initial plan response (%s) without adding UI controls',
     async (status) => {
       await reset();
       const link = { ...share, isShowBrand: false };
-      mocks.getBrand.mockResolvedValue(status);
+      mocks.getPlan.mockResolvedValue(status);
       await render(link);
       expect((container.querySelector('input') as HTMLInputElement).disabled).toBe(true);
       expect(checked()).toBe(false);
@@ -216,11 +235,11 @@ describe('ShareBrandSetting', () => {
     'preserves the last known state on a failed manual entitlement refresh (%s)',
     async (status) => {
       const link = { ...share, _id: 'hidden-link', isShowBrand: false };
-      mocks.getBrand.mockResolvedValue({ isShowBrand: false, canHideShareBrand: false });
+      mocks.getPlan.mockResolvedValue({ scope: 'entitlements', canHideShareBrand: false });
       await render(link);
       expect(checked()).toBe(true);
-      if (status instanceof Error) mocks.getBrand.mockRejectedValueOnce(status);
-      else mocks.getBrand.mockResolvedValueOnce(status);
+      if (status instanceof Error) mocks.getPlan.mockRejectedValueOnce(status);
+      else mocks.getPlan.mockResolvedValueOnce(status);
 
       await toggle();
       expect(checked()).toBe(true);
@@ -229,14 +248,14 @@ describe('ShareBrandSetting', () => {
       expect(container.querySelector('#recharge')).toBeNull();
       expect(container.querySelector('#pro-upgrade')).toBeNull();
 
-      mocks.getBrand.mockResolvedValue({ isShowBrand: false, canHideShareBrand: true });
+      mocks.getPlan.mockResolvedValue({ scope: 'entitlements', canHideShareBrand: true });
       await toggle();
       expect(mocks.save).toHaveBeenCalledOnce();
       expect(checked()).toBe(false);
     }
   );
   it('waits for a successful save before changing the switch and refreshes the list', async () => {
-    mocks.getBrand.mockResolvedValue({ isShowBrand: true, canHideShareBrand: true });
+    mocks.getPlan.mockResolvedValue({ scope: 'entitlements', canHideShareBrand: true });
     let finish!: () => void;
     mocks.save.mockReturnValue(
       new Promise<void>((resolve) => {
@@ -253,18 +272,18 @@ describe('ShareBrandSetting', () => {
   });
   it('lets a historical link opt in without another entitlement query or a saved name', async () => {
     const link = { ...share, _id: 'historical-link', isShowBrand: undefined };
-    mocks.getBrand.mockResolvedValue({ canHideShareBrand: false });
+    mocks.getPlan.mockResolvedValue({ scope: 'entitlements', canHideShareBrand: false });
     await render(link);
-    const queries = mocks.getBrand.mock.calls.length;
+    const queries = mocks.getPlan.mock.calls.length;
     expect(checked()).toBe(false);
 
     await toggle();
     expect(mocks.save).toHaveBeenCalledWith({ _id: 'historical-link', isShowBrand: true });
-    expect(mocks.getBrand).toHaveBeenCalledTimes(queries);
+    expect(mocks.getPlan).toHaveBeenCalledTimes(queries);
     expect(checked()).toBe(true);
   });
   it('does not update the interface when saving completes after switching members', async () => {
-    mocks.getBrand.mockResolvedValue({ isShowBrand: true, canHideShareBrand: true });
+    mocks.getPlan.mockResolvedValue({ scope: 'entitlements', canHideShareBrand: true });
     let finish!: () => void;
     mocks.save.mockReturnValueOnce(new Promise<void>((resolve) => (finish = resolve)));
     await toggle();
@@ -282,15 +301,15 @@ describe('ShareBrandSetting', () => {
     'requires another manual toggle after purchasing a plan for saved preference %s',
     async (preference) => {
       const link = { ...share, _id: 'upgrade-link', isShowBrand: preference };
-      mocks.getBrand.mockResolvedValue({ isShowBrand: preference, canHideShareBrand: false });
+      mocks.getPlan.mockResolvedValue({ scope: 'entitlements', canHideShareBrand: false });
       await render(link);
       await toggle();
       expect(container.querySelector('#recharge')).toBeTruthy();
-      const initCalls = mocks.getBrand.mock.calls.length;
+      const initCalls = mocks.getPlan.mock.calls.length;
 
-      mocks.getBrand.mockResolvedValue({ isShowBrand: preference, canHideShareBrand: true });
+      mocks.getPlan.mockResolvedValue({ scope: 'entitlements', canHideShareBrand: true });
       await act(async () => mocks.recharge.onPaySuccess());
-      expect(mocks.getBrand).toHaveBeenCalledTimes(initCalls);
+      expect(mocks.getPlan).toHaveBeenCalledTimes(initCalls);
       expect(mocks.save).not.toHaveBeenCalled();
       expect(checked()).toBe(true);
       expect(container.querySelector('#recharge')).toBeNull();
@@ -313,14 +332,14 @@ describe('ShareBrandSetting', () => {
     expect((container.querySelector('input') as HTMLInputElement).disabled).toBe(true);
   });
   it('preserves the displayed state if a manual save fails', async () => {
-    mocks.getBrand.mockResolvedValue({ isShowBrand: true, canHideShareBrand: true });
+    mocks.getPlan.mockResolvedValue({ scope: 'entitlements', canHideShareBrand: true });
     mocks.save.mockRejectedValue(new Error('permission revoked'));
     await toggle();
     expect(checked()).toBe(true);
     expect(mocks.toast).toHaveBeenCalledWith({ status: 'error', title: 'permission revoked' });
   });
   it('does not report a saved preference as failed when refreshing the parent list fails', async () => {
-    mocks.getBrand.mockResolvedValue({ isShowBrand: true, canHideShareBrand: true });
+    mocks.getPlan.mockResolvedValue({ scope: 'entitlements', canHideShareBrand: true });
     mocks.refresh.mockRejectedValueOnce(new Error('list unavailable'));
     await toggle();
     expect(checked()).toBe(false);
@@ -328,11 +347,11 @@ describe('ShareBrandSetting', () => {
   });
   it('ignores an entitlement response that completes after switching members', async () => {
     let finish!: (status: unknown) => void;
-    mocks.getBrand.mockReturnValueOnce(new Promise((resolve) => (finish = resolve)));
+    mocks.getPlan.mockReturnValueOnce(new Promise((resolve) => (finish = resolve)));
     await toggle();
     mocks.team = { teamId: 'another-team', tmbId: 'another-member' };
     await render();
-    await act(async () => finish({ isShowBrand: true, canHideShareBrand: true }));
+    await act(async () => finish({ scope: 'entitlements', canHideShareBrand: true }));
     await settle();
     expect(mocks.save).not.toHaveBeenCalled();
     expect(container.querySelector('#recharge')).toBeNull();

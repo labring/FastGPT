@@ -114,6 +114,7 @@ describe('ShareBrand visible analytics', () => {
     expect(mocks.track).not.toHaveBeenCalled();
     await enter();
     expect(mocks.track).toHaveBeenCalledWith({
+      authType: 'outLink',
       event: TrackEnum.shareBrandExposure,
       eventId: session.current.eventId,
       outLinkAuthData
@@ -161,6 +162,7 @@ describe('ShareBrand visible analytics', () => {
         .dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true, cancelable: true }))
     );
     expect(mocks.track).toHaveBeenCalledWith({
+      authType: 'outLink',
       event: TrackEnum.shareBrandClick,
       outLinkAuthData
     });
@@ -223,6 +225,7 @@ describe('ShareBrand visible analytics', () => {
     expect(mocks.track).toHaveBeenCalledTimes(2);
     for (const [body] of mocks.track.mock.calls) {
       expect(body).toEqual({
+        authType: 'outLink',
         event: TrackEnum.shareBrandExposure,
         eventId: 'page-exposure-id',
         outLinkAuthData
@@ -319,6 +322,7 @@ describe('ShareBrand visible analytics', () => {
         .dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true, cancelable: true }))
     );
     expect(mocks.track).toHaveBeenCalledWith({
+      authType: 'outLink',
       event: TrackEnum.shareBrandClick,
       outLinkAuthData
     });

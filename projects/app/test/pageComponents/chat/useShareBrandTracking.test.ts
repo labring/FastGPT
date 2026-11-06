@@ -145,6 +145,7 @@ describe('useShareBrandTracking scheduling', () => {
     await advance(1000);
     expect(mocks.track).toHaveBeenCalledTimes(2);
     expect(mocks.track).toHaveBeenLastCalledWith({
+      authType: 'outLink',
       event: TrackEnum.shareBrandExposure,
       eventId: 'page-exposure-id',
       outLinkAuthData

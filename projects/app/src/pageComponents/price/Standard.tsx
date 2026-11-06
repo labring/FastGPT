@@ -177,6 +177,8 @@ const Standard = ({
     isWecomTeam ? SubModeEnum.year : SubModeEnum.month
   );
   const planContainerRef = useRef<HTMLDivElement>(null);
+  const hasScrolledToShareBrandRef = useRef(false);
+  const [isResponsiveLayoutReady, setIsResponsiveLayoutReady] = useState(false);
   const [responsivePlanLayout, setResponsivePlanLayout] = useState<ResponsivePlanLayout>({
     columnCount: 4,
     cardWidth: PLAN_CARD_MIN_WIDTH,
@@ -241,6 +243,7 @@ const Standard = ({
           ? previous
           : nextLayout
       );
+      setIsResponsiveLayoutReady(true);
     };
 
     updatePlanLayout();
@@ -327,13 +330,30 @@ const Standard = ({
   ]);
 
   useEffect(() => {
-    if (!highlightShareBrand || !feConfigs.show_outlink_brand) return;
+    if (
+      !highlightShareBrand ||
+      !feConfigs.show_outlink_brand ||
+      hasScrolledToShareBrandRef.current ||
+      (responsiveCardLayout && !isResponsiveLayoutReady)
+    ) {
+      return;
+    }
 
-    // 多个套餐可同时高亮，只定位第一个实际展示的权益，避免滚动互相覆盖。
-    planContainerRef.current
-      ?.querySelector('[data-plan-feature="share-brand"]')
-      ?.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' });
-  }, [highlightShareBrand, feConfigs.show_outlink_brand, standardSubList]);
+    // 等待卡片完成响应式排布，仅在高级版实际展示该权益时定位一次。
+    const feature = planContainerRef.current?.querySelector(
+      `[data-plan-feature="share-brand"][data-plan-level="${StandardSubLevelEnum.advanced}"]`
+    );
+    if (!feature) return;
+
+    hasScrolledToShareBrandRef.current = true;
+    feature.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'smooth' });
+  }, [
+    highlightShareBrand,
+    feConfigs.show_outlink_brand,
+    standardSubList,
+    responsiveCardLayout,
+    isResponsiveLayoutReady
+  ]);
 
   // Pay code
   const [qrPayData, setQRPayData] = useState<QRPayProps>();

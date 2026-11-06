@@ -1,5 +1,5 @@
 import ShareBrandSetting from './ShareBrandSetting';
-import { type OutLinkSchemaType } from '@fastgpt/global/support/outLink/type';
+import type { OutLinkListResponseType } from '@fastgpt/global/openapi/support/outLink/api';
 import React, { useCallback, useState } from 'react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
@@ -23,11 +23,11 @@ enum UsingWayEnum {
 
 const SelectUsingWayModal = ({
   share,
-  onRefresh,
+  onBrandSaved,
   onClose
 }: {
-  share: OutLinkSchemaType;
-  onRefresh: () => Promise<unknown>;
+  share: OutLinkListResponseType[number];
+  onBrandSaved: (id: string, isShowBrand: boolean) => Promise<void>;
   onClose: () => void;
 }) => {
   const { t } = useTranslation();
@@ -173,7 +173,11 @@ const SelectUsingWayModal = ({
           mb={5}
           fontSize={'sm'}
         >
-          <ShareBrandSetting key={`${share._id}-${tmbId}`} share={share} onRefresh={onRefresh} />
+          <ShareBrandSetting
+            key={`${share._id}-${tmbId}`}
+            share={share}
+            onBrandSaved={onBrandSaved}
+          />
           <Flex {...gridItemStyle}>
             <Box flex={1}>{t('common:core.app.outLink.Show History')}</Box>
             <Switch {...register('showHistory')} />

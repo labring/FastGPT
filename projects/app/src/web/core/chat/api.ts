@@ -1,9 +1,9 @@
 import { GET, POST, DELETE, PUT } from '@/web/common/api/request';
 import type {
   InitOutLinkChatQueryType,
-  InitOutLinkChatResponseType,
-  TrackOutLinkBrandBodyType
+  InitOutLinkChatResponseType
 } from '@fastgpt/global/openapi/core/chat/outLink/api';
+import type { PushOutLinkBrandTrackBodyType } from '@fastgpt/global/openapi/common/other/api';
 import type { ChatSettingModelType, ChatSettingType } from '@fastgpt/global/core/chat/setting/type';
 import type {
   GetChatFavouriteListParamsType,
@@ -31,8 +31,8 @@ export const getInitOutLinkChatInfo = (data: InitOutLinkChatQueryType) =>
   GET<InitOutLinkChatResponseType>(`/core/chat/outLink/init`, toChatAuthQueryInput(data));
 
 /** 上报外链品牌事件；成功表示接口已完成处理，不依赖第三方统计脚本。 */
-export const postOutLinkBrandTrack = (data: TrackOutLinkBrandBodyType) =>
-  POST('/core/chat/outLink/track', data, { timeout: 10000 });
+export const postOutLinkBrandTrack = (data: PushOutLinkBrandTrackBodyType) =>
+  POST('/common/tracks/push', data, { timeout: 10000 });
 
 /*---------- chat setting ------------*/
 export const getChatSetting = () => GET<ChatSettingType>('/proApi/core/chat/setting/detail');
