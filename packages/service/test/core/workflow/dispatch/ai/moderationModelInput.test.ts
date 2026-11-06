@@ -24,6 +24,17 @@ vi.mock('@fastgpt/service/core/ai/model', () => ({
   getModelHandle: async () => ({ getLLMModelData: getLLMModelDataMock })
 }));
 
+vi.mock('@fastgpt/service/common/string/tiktoken', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@fastgpt/service/common/string/tiktoken')>();
+  return {
+    ...actual,
+    countGptMessagesTokens: vi.fn(async () => 100),
+    countGptMessagesTokensBatch: vi.fn(async () => [100]),
+    countPromptTokensBatch: vi.fn(async () => [100]),
+    countPromptTokens: vi.fn(() => 100)
+  };
+});
+
 describe('Model Input Guard node integration', () => {
   beforeEach(() => {
     getLLMModelDataMock.mockReturnValue({
@@ -43,20 +54,22 @@ describe('Model Input Guard node integration', () => {
 
   describe('dispatchChatCompletion', () => {
     it('halts and returns node error response when user input is blocked', async () => {
-      vi.spyOn(checkerMod, 'checkContentByPolicy').mockImplementation(async ({ targetField, text }) => {
-        if (targetField === 'userChatInput') {
+      vi.spyOn(checkerMod, 'checkContentByPolicy').mockImplementation(
+        async ({ targetField, text }) => {
+          if (targetField === 'userChatInput') {
+            return {
+              action: ModerationActionEnum.block,
+              isPass: false,
+              text
+            };
+          }
           return {
-            action: ModerationActionEnum.block,
-            isPass: false,
+            action: ModerationActionEnum.pass,
+            isPass: true,
             text
           };
         }
-        return {
-          action: ModerationActionEnum.pass,
-          isPass: true,
-          text
-        };
-      });
+      );
 
       const res = await dispatchChatCompletion({
         res: {} as any,
@@ -95,28 +108,88 @@ describe('Model Input Guard node integration', () => {
         histories: []
       } as any);
 
-      expect(res.error?.[NodeOutputKeyEnum.errorText]).toBe(
-        MODERATION_BLOCKED_ERROR_MESSAGE
+      expect(res.error?.[NodeOutputKeyEnum.errorText]).toBe(MODERATION_BLOCKED_ERROR_MESSAGE);
+    });
+
+    it('halts and returns node error response when citation in user role is blocked', async () => {
+      vi.spyOn(checkerMod, 'checkContentByPolicy').mockImplementation(
+        async ({ targetField, text }) => {
+          if (targetField === 'userChatInput' && text.includes('toxic citation')) {
+            return {
+              action: ModerationActionEnum.block,
+              isPass: false,
+              text
+            };
+          }
+          return {
+            action: ModerationActionEnum.pass,
+            isPass: true,
+            text
+          };
+        }
       );
+
+      const res = await dispatchChatCompletion({
+        res: {} as any,
+        stream: false,
+        detail: false,
+        runningAppInfo: {
+          sourceType: ChatSourceTypeEnum.app,
+          sourceId: 'app_1',
+          name: 'App',
+          teamId: 'team_1',
+          tmbId: 'tmb_1'
+        },
+        runningUserInfo: {
+          teamId: 'team_1',
+          tmbId: 'tmb_1',
+          username: 'user',
+          teamName: 'team',
+          memberName: 'member',
+          contact: ''
+        },
+        chatId: 'chat_1',
+        responseChatItemId: 'resp_1',
+        node: {
+          nodeId: 'node_chat',
+          name: 'AI Chat',
+          avatar: '',
+          flowNodeType: 'chatNode' as any,
+          showStatus: true,
+          inputs: []
+        },
+        params: {
+          modelId: 'gpt-4o',
+          userChatInput: 'clean question',
+          systemPrompt: 'You are helpful assistant',
+          aiChatQuoteRole: 'user',
+          quoteQA: [{ q: 'q1', a: 'toxic citation' }]
+        },
+        histories: []
+      } as any);
+
+      expect(res.error?.[NodeOutputKeyEnum.errorText]).toBe(MODERATION_BLOCKED_ERROR_MESSAGE);
     });
   });
 
   describe('dispatchRunTools', () => {
     it('halts and returns node error response when user input is blocked', async () => {
-      vi.spyOn(checkerMod, 'checkContentByPolicy').mockImplementation(async ({ targetField, text }) => {
-        if (targetField === 'userChatInput') {
+      vi.spyOn(checkerMod, 'checkContentByPolicy').mockImplementation(
+        async ({ targetField, text }) => {
+          if (targetField === 'userChatInput') {
+            return {
+              action: ModerationActionEnum.block,
+              isPass: false,
+              text
+            };
+          }
           return {
-            action: ModerationActionEnum.block,
-            isPass: false,
+            action: ModerationActionEnum.pass,
+            isPass: true,
             text
           };
         }
-        return {
-          action: ModerationActionEnum.pass,
-          isPass: true,
-          text
-        };
-      });
+      );
 
       const res = await dispatchRunTools({
         res: {} as any,
@@ -157,28 +230,28 @@ describe('Model Input Guard node integration', () => {
         histories: []
       } as any);
 
-      expect(res.error?.[NodeOutputKeyEnum.errorText]).toBe(
-        MODERATION_BLOCKED_ERROR_MESSAGE
-      );
+      expect(res.error?.[NodeOutputKeyEnum.errorText]).toBe(MODERATION_BLOCKED_ERROR_MESSAGE);
     });
   });
 
   describe('dispatchRunAgent', () => {
     it('halts and returns node error response when user input is blocked', async () => {
-      vi.spyOn(checkerMod, 'checkContentByPolicy').mockImplementation(async ({ targetField, text }) => {
-        if (targetField === 'userChatInput') {
+      vi.spyOn(checkerMod, 'checkContentByPolicy').mockImplementation(
+        async ({ targetField, text }) => {
+          if (targetField === 'userChatInput') {
+            return {
+              action: ModerationActionEnum.block,
+              isPass: false,
+              text
+            };
+          }
           return {
-            action: ModerationActionEnum.block,
-            isPass: false,
+            action: ModerationActionEnum.pass,
+            isPass: true,
             text
           };
         }
-        return {
-          action: ModerationActionEnum.pass,
-          isPass: true,
-          text
-        };
-      });
+      );
 
       const res = await dispatchRunAgent({
         res: {} as any,
@@ -219,9 +292,7 @@ describe('Model Input Guard node integration', () => {
         histories: []
       } as any);
 
-      expect(res.error?.[NodeOutputKeyEnum.errorText]).toBe(
-        MODERATION_BLOCKED_ERROR_MESSAGE
-      );
+      expect(res.error?.[NodeOutputKeyEnum.errorText]).toBe(MODERATION_BLOCKED_ERROR_MESSAGE);
     });
   });
 

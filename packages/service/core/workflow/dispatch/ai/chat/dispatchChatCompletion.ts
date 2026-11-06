@@ -128,9 +128,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
         fileLinks
       })
     ]);
-    userChatInput = datasetCiteData.userInput;
-
-    // 审查知识库引用切片
+    // 审查知识库引用切片（若引用被拼入 systemPrompt 或拼入 userInput，均需送审）
     if (datasetCiteData.systemPrompt) {
       const citeChecked = await checkModelPromptAndInput({
         datasetCitePrompt: datasetCiteData.systemPrompt,
@@ -138,6 +136,21 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       });
       datasetCiteData.systemPrompt = citeChecked.datasetCitePrompt ?? '';
     }
+
+    if (datasetCiteData.userInput && datasetCiteData.userInput !== userChatInput) {
+      const userCiteChecked = await checkModelPromptAndInput({
+        userChatInput: datasetCiteData.userInput,
+        context: moderationContext
+      });
+      if (userCiteChecked.isUserChatInputBlocked) {
+        return getNodeErrResponse({
+          error: userCiteChecked.blockErrorMessage || MODERATION_BLOCKED_ERROR_MESSAGE
+        });
+      }
+      datasetCiteData.userInput = userCiteChecked.userChatInput ?? '';
+    }
+
+    userChatInput = datasetCiteData.userInput;
 
     if (!userChatInput && userFiles.length === 0) {
       return getNodeErrResponse({ error: i18nT('chat:AI_input_is_empty') });
