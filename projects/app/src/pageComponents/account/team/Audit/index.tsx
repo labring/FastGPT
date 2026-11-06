@@ -1,6 +1,6 @@
 import { getLocalDateRange } from '@fastgpt/global/common/time/dateRange';
 import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
-import { Box, Button, Flex, Table, Tbody, Td, Th, Thead, Tr } from '@chakra-ui/react';
+import { Box, Button, Flex, Link, Table, Tbody, Td, Th, Thead, Tr } from '@chakra-ui/react';
 import { useMemo, useRef, useState } from 'react';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import MyBox from '@fastgpt/web/components/common/MyBox';
@@ -185,16 +185,19 @@ function AuditLog({ Tabs }: { Tabs: React.ReactNode }) {
           <Table w={'100%'} minW={['900px', '100%']} sx={{ tableLayout: 'fixed' }}>
             <Thead>
               <Tr bgColor={'white !important'}>
-                <Th w={'18%'} borderLeftRadius="6px" bgColor="myGray.100">
+                <Th w={'16%'} borderLeftRadius="6px" bgColor="myGray.100">
                   {t('account_team:log_user')}
                 </Th>
-                <Th w={'20%'} bgColor="myGray.100">
+                <Th w={'18%'} bgColor="myGray.100">
+                  {t('account_team:log_resource')}
+                </Th>
+                <Th w={'18%'} bgColor="myGray.100">
                   {t('account_team:log_time')}
                 </Th>
                 <Th w={'18%'} bgColor="myGray.100">
                   {t('account_team:log_type')}
                 </Th>
-                <Th w={'44%'} bgColor="myGray.100">
+                <Th w={'30%'} bgColor="myGray.100">
                   {t('account_team:log_details')}
                 </Th>
               </Tr>
@@ -202,7 +205,7 @@ function AuditLog({ Tabs }: { Tabs: React.ReactNode }) {
             <Tbody>
               {auditLog.length === 0 && !isLoading && (
                 <Tr>
-                  <Td colSpan={4}>
+                  <Td colSpan={5}>
                     <EmptyTip
                       text={
                         <>
@@ -238,6 +241,42 @@ function AuditLog({ Tabs }: { Tabs: React.ReactNode }) {
                         spacing={0.5}
                       />
                     </Td>
+                    <Td whiteSpace="normal" overflowWrap="anywhere">
+                      {log.resources?.map((resource) => {
+                        const target = resource.appId
+                          ? {
+                              id: resource.appId,
+                              path: '/app/detail',
+                              key: 'appId',
+                              label: t('account_team:resource_app')
+                            }
+                          : resource.skillId
+                            ? {
+                                id: resource.skillId,
+                                path: '/skill/detail',
+                                key: 'skillId',
+                                label: t('account_team:resource_skill')
+                              }
+                            : resource.datasetId
+                              ? {
+                                  id: resource.datasetId,
+                                  path: '/dataset/detail',
+                                  key: 'datasetId',
+                                  label: t('account_team:resource_dataset')
+                                }
+                              : undefined;
+                        return target ? (
+                          <Box key={`${target.key}:${target.id}`}>
+                            <Link
+                              color="primary.600"
+                              href={`${target.path}?${target.key}=${encodeURIComponent(target.id)}`}
+                            >
+                              {target.label} · {target.id.slice(-8)}
+                            </Link>
+                          </Box>
+                        ) : null;
+                      })}
+                    </Td>
                     <Td>{formatTime2YMDHMS(log.timestamp)}</Td>
                     <Td>{t(i18nData.typeLabel)}</Td>
                     <Td
@@ -245,7 +284,9 @@ function AuditLog({ Tabs }: { Tabs: React.ReactNode }) {
                       wordBreak={['normal', 'break-word']}
                       overflowWrap={['normal', 'anywhere']}
                     >
-                      {t(i18nData.content, metadata)}
+                      {Object.keys(log.metadata ?? {}).length
+                        ? t(i18nData.content, metadata)
+                        : '-'}
                     </Td>
                   </Tr>
                 ) : null;

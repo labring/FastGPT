@@ -5,6 +5,8 @@ import { AgentSkillSourceEnum, AgentSkillTypeEnum } from '@fastgpt/global/core/a
 import { getRootUser } from '@test/datas/users';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { SKILL_EDIT_SANDBOX_NOT_RUNNING_ERROR } from '@fastgpt/service/core/ai/sandbox/constants';
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 
 const skillExportMocks = vi.hoisted(() => ({
   packageSkillEditWorkspaceMock: vi.fn()
@@ -149,6 +151,13 @@ describe('GET /api/core/ai/skill/export', () => {
     expect(res.setHeader).toHaveBeenCalledWith('Cache-Control', 'no-store');
     expect(res.status).toHaveBeenCalledWith(200);
     expect(Buffer.compare(res.endData, workspaceZip)).toBe(0);
+    expect(addAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: AuditEventEnum.EXPORT_SKILL,
+        resources: [{ skillId }],
+        params: expect.objectContaining({ skillName: 'workspace-skill' })
+      })
+    );
   });
 
   it('sandbox team 不匹配时应返回 404', async () => {

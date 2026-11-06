@@ -4,7 +4,7 @@ import { NextAPI } from '@/service/middleware/entry';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { type ApiRequestProps } from '@fastgpt/next/type';
-import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { AppFolderTypeList, AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { type ClientSession } from 'mongoose';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
@@ -140,6 +140,9 @@ const logAppUpdate = ({
     tmbId,
     teamId,
     event: AuditEventEnum.UPDATE_APP_INFO,
+    ...(!AppFolderTypeList.includes(app.type)
+      ? { resources: [{ appId: String(app._id) }] }
+      : {}),
     params: {
       appName: app.name,
       newItemNames: newItemNames,

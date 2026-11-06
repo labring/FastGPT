@@ -84,6 +84,7 @@ vi.mock('@chakra-ui/react', () => {
     );
   return {
     Box: container('div'),
+    Link: container('a'),
     Flex: container('div'),
     Table: container('table'),
     Tbody: container('tbody'),

@@ -55,5 +55,6 @@ export type TeamAuditListItemType = {
   sourceMember: SourceMemberType;
   event: TeamAuditEvent;
   timestamp: Date;
+  resources?: AuditResourceType[];
   metadata: Record<string, string>;
 };

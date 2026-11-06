@@ -38,6 +38,7 @@ export const deleteSkill = async ({
     tmbId,
     teamId,
     event: AuditEventEnum.DELETE_SKILL,
+    ...(skill.type !== AgentSkillTypeEnum.folder ? { resources: [{ skillId }] } : {}),
     params: { skillName: skill.name, skillType: getI18nSkillType(skill.type) }
   });
   return deletedIds;

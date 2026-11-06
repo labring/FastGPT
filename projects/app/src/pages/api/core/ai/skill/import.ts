@@ -83,6 +83,7 @@ async function handler(
     tmbId,
     teamId,
     event: AuditEventEnum.IMPORT_SKILL,
+    resources: [{ skillId: String(skillId) }],
     params: {
       skillName,
       skillType: getI18nSkillType(AgentSkillTypeEnum.skill)

@@ -169,6 +169,7 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetResponse> {
       tmbId,
       teamId,
       event: AuditEventEnum.CREATE_DATASET,
+      ...(type !== DatasetTypeEnum.folder ? { resources: [{ datasetId: String(datasetId) }] } : {}),
       params: {
         datasetName: name,
         datasetType: getI18nDatasetType(type)

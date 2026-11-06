@@ -99,6 +99,7 @@ export const searchDatasetForApi = ({
               teamId: auth.teamId,
               tmbId: auth.tmbId,
               event: AuditEventEnum.SEARCH_TEST,
+              resources: [{ datasetId: String(dataset._id) }],
               params: { datasetName: dataset.name, datasetType: getI18nDatasetType(dataset.type) }
             });
           }
