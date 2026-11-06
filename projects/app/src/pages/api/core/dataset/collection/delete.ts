@@ -74,6 +74,7 @@ async function handler(req: ApiRequestProps) {
       tmbId,
       teamId,
       event: AuditEventEnum.DELETE_COLLECTION,
+      resources: [{ datasetId: String(collection.datasetId) }],
       params: {
         collectionName: collection.name,
         datasetName: collection.dataset?.name || '',

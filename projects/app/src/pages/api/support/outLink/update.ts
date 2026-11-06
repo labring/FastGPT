@@ -80,6 +80,7 @@ export async function handler(
       tmbId,
       teamId,
       event: AuditEventEnum.UPDATE_APP_PUBLISH_CHANNEL,
+      resources: [{ appId: String(logApp._id) }],
       params: {
         appName: logApp.name,
         channelName: outLink.name,

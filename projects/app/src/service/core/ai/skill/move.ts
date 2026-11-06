@@ -40,6 +40,9 @@ const logSkillMove = ({
     tmbId,
     teamId,
     event: AuditEventEnum.MOVE_SKILL,
+    ...(skill.type !== AgentSkillTypeEnum.folder
+      ? { resources: [{ skillId: String(skill._id) }] }
+      : {}),
     params: {
       skillName: skill.name,
       skillType: getI18nSkillType(skill.type),

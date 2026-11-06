@@ -37,6 +37,7 @@ async function handler(req: ApiRequestProps): Promise<ExportDatasetLimitResponse
       tmbId,
       teamId,
       event: AuditEventEnum.EXPORT_DATASET,
+      resources: [{ datasetId: String(dataset._id) }],
       params: {
         datasetName: dataset.name,
         datasetType: getI18nDatasetType(dataset.type)

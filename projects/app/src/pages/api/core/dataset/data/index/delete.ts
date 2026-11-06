@@ -36,6 +36,7 @@ async function handler(req: ApiRequestProps): Promise<DeleteDatasetDataIndexResp
     tmbId,
     teamId,
     event: AuditEventEnum.UPDATE_DATA,
+    resources: [{ datasetId: String(collection.datasetId) }],
     params: {
       collectionName: collection.name,
       datasetName: collection.dataset?.name || '',

@@ -57,6 +57,7 @@ async function handler(req: ApiRequestProps): Promise<UpdateDatasetDataResponse>
       tmbId,
       teamId,
       event: AuditEventEnum.UPDATE_DATA,
+      resources: [{ datasetId: String(collection.datasetId) }],
       params: {
         collectionName: collection.name,
         datasetName: collection.dataset?.name || '',

@@ -44,6 +44,7 @@ const logAppMove = ({
     tmbId,
     teamId,
     event: AuditEventEnum.MOVE_APP,
+    ...(!AppFolderTypeList.includes(app.type) ? { resources: [{ appId: String(app._id) }] } : {}),
     params: {
       appName: app.name,
       targetFolderName: targetName,

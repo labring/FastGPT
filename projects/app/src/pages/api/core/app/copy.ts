@@ -18,7 +18,7 @@ import {
   type CopyAppBodyType,
   type CopyAppResponseType
 } from '@fastgpt/global/openapi/core/app/common/api';
-import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { AppFolderTypeList, AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import {
   encodeHttpToolSetNodesForStorage,
   encodeMcpToolSetNodesForStorage
@@ -90,6 +90,7 @@ async function handler(req: ApiRequestProps<CopyAppBodyType>): Promise<CopyAppRe
       tmbId,
       teamId,
       event: AuditEventEnum.CREATE_APP_COPY,
+      ...(!AppFolderTypeList.includes(app.type) ? { resources: [{ appId: sourceAppId }] } : {}),
       params: {
         appName: app.name,
         appType: getI18nAppType(app.type)

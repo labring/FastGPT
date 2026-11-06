@@ -85,6 +85,7 @@ async function handler(req: ApiRequestProps): Promise<UpdateTrainingDataResponse
         tmbId,
         teamId: retryTeamId,
         event: DatasetAuditEventEnum.DATASET_COLLECTION_TRAINING_RETRY,
+        resources: [{ datasetId: String(retryMatch.datasetId) }],
         params: {
           datasetName,
           collectionName: collectionName!
@@ -95,6 +96,7 @@ async function handler(req: ApiRequestProps): Promise<UpdateTrainingDataResponse
         tmbId,
         teamId: retryTeamId,
         event: DatasetAuditEventEnum.DATASET_TRAINING_RETRY,
+        resources: [{ datasetId: String(retryMatch.datasetId) }],
         params: {
           datasetName
         }
@@ -190,6 +192,7 @@ async function handler(req: ApiRequestProps): Promise<UpdateTrainingDataResponse
     tmbId,
     teamId: String(collection.teamId),
     event: DatasetAuditEventEnum.DATASET_TRAINING_TASK_RETRY,
+    resources: [{ datasetId: String(collection.datasetId) }],
     params: {
       datasetName: collection.dataset?.name ?? '',
       collectionName: collection.name

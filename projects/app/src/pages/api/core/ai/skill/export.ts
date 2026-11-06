@@ -71,6 +71,7 @@ async function handler(req: ApiRequestProps, res: ApiResponseType<any>) {
       tmbId,
       teamId,
       event: AuditEventEnum.EXPORT_SKILL,
+      resources: [{ skillId }],
       params: {
         skillName: skill.name,
         skillType: getI18nSkillType(skill.type)

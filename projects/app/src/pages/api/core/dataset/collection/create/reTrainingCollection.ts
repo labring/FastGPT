@@ -78,6 +78,7 @@ async function handler(req: ApiRequestProps): Promise<ReTrainingCollectionRespon
         tmbId,
         teamId,
         event: AuditEventEnum.RETRAIN_COLLECTION,
+        resources: [{ datasetId: String(collection.datasetId) }],
         params: {
           collectionName: collection.name,
           datasetName: collection.dataset?.name || '',

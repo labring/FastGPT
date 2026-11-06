@@ -857,6 +857,9 @@ describe('update dataset audit', () => {
 
     const logs = await waitForAuditLogs(owner.teamId, 2);
     expect(logs).toHaveLength(2);
+    expect(logs.map((log) => log.resources?.map((resource) => String(resource.datasetId)))).toEqual(
+      [[String(dataset._id)], [String(dataset._id)]]
+    );
 
     // 每个配置项单独成条，字段名走 i18n key，值保留「旧 → 新」可比对文本
     expect(logs.map((log) => log.metadata?.changeItem)).toEqual([

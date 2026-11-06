@@ -99,6 +99,7 @@ async function handler(req: ApiRequestProps): Promise<InsertDataResponse> {
       tmbId,
       teamId,
       event: AuditEventEnum.CREATE_DATA,
+      resources: [{ datasetId: String(datasetId) }],
       params: {
         collectionName: collection.name,
         datasetName: collection.dataset?.name || '',
