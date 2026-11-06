@@ -1,6 +1,7 @@
 import z from 'zod';
 import { OpenObjectOpenApiMeta } from '../../../common/zod/openapi';
 import { PublishChannelEnum } from '../../../support/outLink/constant';
+import { OutLinkBrandConfigSchema } from '../../../support/outLink/branding';
 import { ObjectIdSchema } from '../../../common/type/mongo';
 
 const OptionalDateSchema = z.preprocess((value) => {
@@ -58,6 +59,7 @@ export const ShareOutLinkEditSchema = OutLinkEditSchema.extend({
 export type ShareOutLinkEditType = z.infer<typeof ShareOutLinkEditSchema>;
 
 export const OutLinkSchema = z.object({
+  ...OutLinkBrandConfigSchema.shape,
   _id: ObjectIdSchema.meta({ description: '发布渠道 ID' }),
   shareId: z.string().meta({ description: '发布渠道访问 ID' }),
   teamId: ObjectIdSchema.meta({ description: '团队 ID' }),
@@ -198,12 +200,17 @@ export type OutLinkCreateResponseType = z.infer<typeof OutLinkCreateResponseSche
  * API: 更新发布渠道
  * Route: PUT /api/support/outLink/update
  * Method: PUT
- * Description: 更新发布渠道配置。
+ * Description: 更新发布渠道配置；省略名称时保留原名称，允许单独更新品牌偏好。
  * Tags: ['发布渠道']
  * ============================================================================ */
 
 export const OutLinkUpdateBodySchema = OutLinkEditSchema.extend({
+  ...OutLinkBrandConfigSchema.shape,
   _id: ObjectIdSchema.meta({ description: '发布渠道 ID' }),
+  name: OutLinkEditSchema.shape.name.optional().meta({
+    description: '发布渠道名称；省略时保留原名称',
+    example: '公开访问链接'
+  }),
   allowAnonymous: z
     .boolean()
     .optional()

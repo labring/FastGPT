@@ -1,3 +1,6 @@
+import ShareBrand from '@/pageComponents/chat/ShareBrand';
+import type { ShareBrandSession } from '@/pageComponents/chat/useShareBrandTracking';
+import ComplianceTip from '@/components/common/ComplianceTip';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/router';
 import { Box, Flex, IconButton } from '@chakra-ui/react';
@@ -52,6 +55,7 @@ import { useAppChatGenerateStatusSync } from '@/pageComponents/chat/ChatWindow/u
 import { postMarkChatRead } from '@/web/core/chat/history/api';
 import { useSandboxEditor, useSandboxStatus } from '@/pageComponents/chat/SandboxEditor/hook';
 import type { GetHistoriesBodyType } from '@fastgpt/global/openapi/core/chat/history/api';
+import type { OutLinkBrandingType } from '@fastgpt/global/support/outLink/branding';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 
 const logger = getLogger(LogCategories.MODULE.CHAT.ITEM);
@@ -73,7 +77,13 @@ type Props = {
   showSkillReferences: boolean;
 };
 
-const OutLink = (props: Props) => {
+type BrandingPageProps = {
+  brandDismissed: boolean;
+  onDismissBrand: () => void;
+  brandSession: React.MutableRefObject<ShareBrandSession>;
+};
+
+const OutLink = (props: Props & BrandingPageProps) => {
   const { t } = useSafeTranslation();
   const router = useRouter();
   const {
@@ -129,6 +139,7 @@ const OutLink = (props: Props) => {
   });
 
   const initSign = useRef(false);
+  const [branding, setBranding] = useState<OutLinkBrandingType>();
   const { data, loading } = useRequest(
     async () => {
       const shareId = outLinkAuthData?.shareId;
@@ -162,11 +173,30 @@ const OutLink = (props: Props) => {
     {
       manual: false,
       refreshDeps: [shareId, outLinkAuthData, chatId],
+      onSuccess(res) {
+        // 补写 chatId 时会跳过初始化；只用有效响应更新品牌，避免 undefined 清空展示状态。
+        if (res) setBranding(res.branding);
+      },
       onFinally() {
         forbidLoadChatRef.current = false;
       }
     }
   );
+  const showChatContainer = !datasetCiteData || isPc;
+  const showBrand = branding?.enabled === true && branding.showBrand && !props.brandDismissed;
+  // 品牌跟随页面的桌面/移动断点，避免侧栏挤压聊天区后混入移动端布局。
+  const narrowBrand = showBrand && !isPc;
+  const wideBrand = showBrand && isPc;
+  const complianceTipPlacement = narrowBrand ? 'external' : 'default';
+  const headerBrand = wideBrand ? (
+    <ShareBrand
+      narrow={false}
+      session={props.brandSession}
+      outLinkAuthData={outLinkAuthData}
+      onDismiss={props.onDismissBrand}
+    />
+  ) : undefined;
+
   const mobileHeaderAppName = props.appName || data?.app?.name || chatBoxData.app.name;
   const mobileHeaderAppAvatar = props.appAvatar || data?.app?.avatar || chatBoxData.app.avatar;
   const isShareAuthReady = !!outLinkAuthData?.shareId && !!outLinkAuthData?.outLinkUid;
@@ -310,7 +340,7 @@ const OutLink = (props: Props) => {
         gap={datasetCiteData ? 0 : 4}
         {...(isEmbed ? { p: '0 !important', borderRadius: '0', boxShadow: 'none' } : { p: [0, 5] })}
       >
-        {(!datasetCiteData || isPc) && (
+        {showChatContainer && (
           <PageContainer
             flex={'1 0 0'}
             w={0}
@@ -330,6 +360,7 @@ const OutLink = (props: Props) => {
 
               {/* chat container */}
               <Flex
+                bg="white"
                 position={'relative'}
                 h={[0, '100%']}
                 minH={0}
@@ -339,92 +370,129 @@ const OutLink = (props: Props) => {
                 flexDirection={'column'}
               >
                 {/* header */}
-                {showHead === '1' &&
-                  !isPlugin &&
-                  (isPc ? (
-                    <ChatWindowHeader
-                      title={chatWindowTitle}
-                      history={chatRecords}
-                      chatType={ChatTypeEnum.share}
-                      rightActions={<SandboxEntryIcon onOpen={onOpenSandboxModal} />}
-                    />
-                  ) : (
-                    <Flex
-                      h="48px"
-                      px={4}
-                      bg="white"
-                      alignItems="center"
-                      justifyContent="space-between"
-                      color="myGray.600"
-                    >
-                      {showHistory === '1' ? (
-                        <IconButton
-                          aria-label="Open history"
-                          icon={
-                            <MyIcon
-                              name="core/chat/sidebar/menu"
-                              w="20px"
-                              h="20px"
-                              color="currentColor"
-                            />
-                          }
-                          variant="unstyled"
-                          {...mobileChatHeaderIconButtonStyle}
-                          onClick={onOpenSlider}
-                        />
-                      ) : (
-                        <Box minW="36px" />
-                      )}
-
+                <Box flexShrink={0}>
+                  {showHead === '1' &&
+                    !isPlugin &&
+                    (isPc ? (
+                      <ChatWindowHeader
+                        title={chatWindowTitle}
+                        history={chatRecords}
+                        chatType={ChatTypeEnum.share}
+                        rightActions={<SandboxEntryIcon onOpen={onOpenSandboxModal} />}
+                        endActions={headerBrand}
+                      />
+                    ) : (
                       <Flex
+                        as="header"
+                        minH="48px"
+                        py={narrowBrand ? 2 : 0}
+                        px={4}
+                        bg="white"
                         alignItems="center"
-                        minW={0}
-                        flex="1"
-                        justifyContent="center"
-                        px={3}
-                        gap={2}
+                        justifyContent="space-between"
+                        color="myGray.600"
                       >
-                        {!!mobileHeaderAppAvatar && (
-                          <Avatar
-                            src={mobileHeaderAppAvatar}
-                            w="24px"
-                            h="24px"
-                            borderRadius="6px"
-                            flexShrink={0}
+                        {showHistory === '1' ? (
+                          <IconButton
+                            aria-label="Open history"
+                            icon={
+                              <MyIcon
+                                name="core/chat/sidebar/menu"
+                                w="20px"
+                                h="20px"
+                                color="currentColor"
+                              />
+                            }
+                            variant="unstyled"
+                            {...mobileChatHeaderIconButtonStyle}
+                            onClick={onOpenSlider}
                           />
+                        ) : (
+                          <Box minW="36px" />
                         )}
-                        <MyTooltip label={mobileHeaderAppName} showOnlyWhenOverflow>
-                          <Box
-                            minW={0}
-                            fontSize="16px"
-                            fontWeight={500}
-                            color="myGray.900"
-                            overflow="hidden"
-                            whiteSpace="nowrap"
-                            textOverflow="clip"
-                          >
-                            {mobileHeaderAppName}
-                          </Box>
-                        </MyTooltip>
-                      </Flex>
 
-                      {hideMenu === '1' ? (
-                        <Box minW="36px" />
-                      ) : (
-                        <Box minW="36px">
-                          <ToolMenu
-                            history={chatRecords}
-                            reserveSpace={showWorkorder !== undefined}
-                            chatType={ChatTypeEnum.share}
-                          />
-                        </Box>
-                      )}
+                        <Flex
+                          alignItems="center"
+                          minW={0}
+                          flex="1"
+                          justifyContent="center"
+                          flexDirection="column"
+                          px={3}
+                        >
+                          <Flex
+                            alignItems="center"
+                            justifyContent="center"
+                            minW={0}
+                            maxW="100%"
+                            gap={2}
+                          >
+                            {!!mobileHeaderAppAvatar && (
+                              <Avatar
+                                src={mobileHeaderAppAvatar}
+                                w="24px"
+                                h="24px"
+                                borderRadius="6px"
+                                flexShrink={0}
+                              />
+                            )}
+                            <MyTooltip label={mobileHeaderAppName} showOnlyWhenOverflow>
+                              <Box
+                                minW={0}
+                                fontSize="16px"
+                                fontWeight={500}
+                                color="myGray.900"
+                                overflow="hidden"
+                                whiteSpace="nowrap"
+                                textOverflow="clip"
+                              >
+                                {mobileHeaderAppName}
+                              </Box>
+                            </MyTooltip>
+                          </Flex>
+                          {narrowBrand && <ComplianceTip type="chat" pt={0} pb={0} />}
+                        </Flex>
+
+                        {hideMenu === '1' ? (
+                          <Box minW="36px" />
+                        ) : (
+                          <Box minW="36px">
+                            <ToolMenu
+                              history={chatRecords}
+                              reserveSpace={showWorkorder !== undefined}
+                              chatType={ChatTypeEnum.share}
+                            />
+                          </Box>
+                        )}
+                      </Flex>
+                    ))}
+                  {/* 无常规页头时仍保留品牌所在的 header 行，避免覆盖聊天内容。 */}
+                  {headerBrand && (isPlugin || showHead !== '1') && (
+                    <Flex as="header" h="56px" px={5} alignItems="center" justifyContent="flex-end">
+                      {headerBrand}
                     </Flex>
-                  ))}
+                  )}
+                  {narrowBrand && (showHead !== '1' || isPlugin) && (
+                    <Flex
+                      as="header"
+                      minH="48px"
+                      px={4}
+                      py={2}
+                      direction="column"
+                      alignItems="center"
+                      justifyContent="center"
+                    >
+                      <Box textAlign="center" fontWeight={500}>
+                        {mobileHeaderAppName}
+                      </Box>
+                      <ComplianceTip type="chat" pt={0} pb={0} />
+                    </Flex>
+                  )}
+                </Box>
                 {/* chat box */}
                 <Box flex={1} minH={0} minW={0} overflow={'hidden'} bg={'white'}>
                   {isPlugin ? (
                     <CustomPluginRunBox
+                      complianceTipPlacement={complianceTipPlacement}
                       appId={appId}
                       chatId={chatId}
                       outLinkAuthData={outLinkAuthData}
@@ -436,6 +504,7 @@ const OutLink = (props: Props) => {
                     />
                   ) : (
                     <ChatBox
+                      complianceTipPlacement={complianceTipPlacement}
                       isReady={!loading}
                       sourceTarget={{ sourceType: ChatSourceTypeEnum.app, sourceId: appId }}
                       chatId={chatId}
@@ -457,6 +526,14 @@ const OutLink = (props: Props) => {
                     />
                   )}
                 </Box>
+                {narrowBrand && (
+                  <ShareBrand
+                    narrow
+                    session={props.brandSession}
+                    outLinkAuthData={outLinkAuthData}
+                    onDismiss={props.onDismissBrand}
+                  />
+                )}
                 <SandboxEditorModal />
               </Flex>
             </Flex>
@@ -489,6 +566,9 @@ const OutLink = (props: Props) => {
 };
 
 const Render = (props: Props) => {
+  // 临时关闭和曝光去重属于页面生命周期，不随 chatId、历史或布局组件重建。
+  const [brandDismissed, setBrandDismissed] = useState(false);
+  const brandSession = useRef<ShareBrandSession>({ exposed: false, eventId: getNanoid(24) });
   const { t } = useSafeTranslation();
   const { toast } = useToast();
   const { shareId, authToken, customUid, appId } = props;
@@ -587,7 +667,14 @@ const Render = (props: Props) => {
         showSkillReferences={props.showSkillReferences}
       >
         <ChatRecordContextProvider params={chatRecordProviderParams}>
-          <OutLink {...props} />
+          {/* 分享身份切换时重建页面状态，避免沿用旧品牌或接收旧身份的初始化结果。 */}
+          <OutLink
+            key={JSON.stringify([shareId, outLinkUid])}
+            {...props}
+            brandDismissed={brandDismissed}
+            onDismissBrand={() => setBrandDismissed(true)}
+            brandSession={brandSession}
+          />
         </ChatRecordContextProvider>
       </ChatItemContextProvider>
     </ChatContextProvider>

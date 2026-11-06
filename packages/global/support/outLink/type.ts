@@ -1,5 +1,6 @@
 import z from 'zod';
 import type { PublishChannelEnum } from './constant';
+import type { OutLinkBrandConfigType } from './branding';
 import { BoolSchema } from '../../common/zod';
 
 export const FeishuAppSchema = z.object({
@@ -107,7 +108,7 @@ export type OutlinkAppType =
   | WechatAppType
   | undefined;
 
-export type OutLinkSchemaType<T extends OutlinkAppType = undefined> = {
+export type OutLinkSchemaType<T extends OutlinkAppType = undefined> = OutLinkBrandConfigType & {
   _id: string;
   shareId: string;
   teamId: string;

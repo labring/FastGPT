@@ -5,7 +5,8 @@ export enum OutLinkErrEnum {
   unExist = 'outlinkUnExist',
   unAuthLink = 'unAuthLink',
   linkUnInvalid = 'linkUnInvalid',
-  unAuthUser = 'unAuthUser'
+  unAuthUser = 'unAuthUser',
+  cannotHideBrand = 'outlinkCannotHideBrand'
 }
 
 const errList = [
@@ -25,6 +26,10 @@ const errList = [
   {
     statusText: OutLinkErrEnum.unAuthUser,
     message: i18nT('common:code_error.outlink_error.un_auth_user')
+  },
+  {
+    statusText: OutLinkErrEnum.cannotHideBrand,
+    message: i18nT('common:share_brand_requires_plan')
   }
 ];
 

@@ -1,6 +1,6 @@
 import z from 'zod';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
-import { NumSchema, optionalEmptyToUndefined } from '../../../../common/zod';
+import { BoolSchema, NumSchema, optionalEmptyToUndefined } from '../../../../common/zod';
 import { PaginationResponseSchema, createPaginationSchema } from '../../../api';
 import { SubTypeEnum, StandardSubLevelEnum } from '../../../../support/wallet/sub/constants';
 
@@ -29,6 +29,10 @@ export const PlanItemSchema = z.object({
   customDomain: z.number().nullish().meta({ description: '自定义域名数' }),
   maxUploadFileSize: z.number().nullish().meta({ description: '最大上传文件大小' }),
   maxUploadFileCount: z.number().nullish().meta({ description: '最大上传文件数' }),
+  canHideShareBrandOverride: z.boolean().optional().meta({
+    description: '品牌标识控制权限覆盖，未设置时跟随套餐',
+    example: true
+  }),
   enableSandbox: z.boolean().optional().meta({ description: '是否启用沙盒' })
 });
 export type PlanItemType = z.infer<typeof PlanItemSchema>;
@@ -111,6 +115,10 @@ export const UpdatePlanBodySchema = z.discriminatedUnion('type', [
       description: '最大上传文件大小'
     }),
     maxUploadFileCount: optionalEmptyToUndefined(NumSchema).meta({ description: '最大上传文件数' }),
+    canHideShareBrandOverride: BoolSchema.optional().meta({
+      description: '品牌标识控制权限覆盖，未设置时跟随套餐',
+      example: true
+    }),
     enableSandbox: z.boolean().optional().meta({ description: '是否启用沙盒' })
   }),
   UpdatePlanBaseSchema.extend({

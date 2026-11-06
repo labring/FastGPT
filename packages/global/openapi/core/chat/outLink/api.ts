@@ -1,5 +1,6 @@
 import z from 'zod';
 import { InitChatResponseSchema } from '../controler/api';
+import { OutLinkBrandingSchema } from '../../../../support/outLink/branding';
 import { OutLinkChatAuthQuerySchema } from '../../../../support/permission/chat';
 
 /* ============================================================================
@@ -15,5 +16,9 @@ export const InitOutLinkChatQuerySchema = z.object({
   })
 });
 export type InitOutLinkChatQueryType = z.infer<typeof InitOutLinkChatQuerySchema>;
-export const InitOutLinkChatResponseSchema = InitChatResponseSchema;
+export const InitOutLinkChatResponseSchema = InitChatResponseSchema.and(
+  z.object({
+    branding: OutLinkBrandingSchema.meta({ description: '服务端计算的品牌有效展示状态' })
+  })
+);
 export type InitOutLinkChatResponseType = z.infer<typeof InitOutLinkChatResponseSchema>;
