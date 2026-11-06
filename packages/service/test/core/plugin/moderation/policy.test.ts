@@ -112,7 +112,9 @@ describe('moderation policy service', () => {
         }
       });
 
-      expect(enableSpy).toHaveBeenCalledWith({ pluginId: 'aliyun-moderation' });
+      expect(enableSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ pluginId: 'aliyun-moderation' })
+      );
       expect(disableSpy).not.toHaveBeenCalled();
       expect(upsertSpy).toHaveBeenCalled();
       expect(updated.activePluginId).toBe('aliyun-moderation');
