@@ -15,7 +15,7 @@ import {
 } from '../../../chat/fileStoreValue';
 import { getWorkflowFileContext, getWorkflowFileRegistrar } from '../../utils/context';
 import { checkOutputTextModeration } from '../../../plugin/moderation/output';
-import { getNodeErrResponse } from '../utils';
+import { getNodeErrResponse, getDispatchModerationContext } from '../utils';
 import { MODERATION_BLOCKED_ERROR_MESSAGE } from '@fastgpt/global/core/plugin/moderation/constants';
 import type { WorkflowFileRegistrar } from '../../utils/fileContext';
 import { getModuleFileAmountLimit } from '@fastgpt/global/core/workflow/fileLimit';
@@ -139,15 +139,7 @@ export const dispatchFormInput = async (props: Props): Promise<FormInputResponse
       });
     }
     // 锚点 3：输出检查 - 动态表单说明与选项/默认值审查
-    const moderationContext = {
-      teamId: props.runningUserInfo?.teamId,
-      tmbId: props.runningUserInfo?.tmbId,
-      appId: props.runningAppInfo?.sourceId,
-      chatId: props.chatId,
-      responseChatItemId: props.responseChatItemId,
-      nodeId: node.nodeId,
-      nodeName: node.name
-    };
+    const moderationContext = getDispatchModerationContext(props);
 
     if (description) {
       const checkDesc = await checkOutputTextModeration({

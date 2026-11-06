@@ -15,9 +15,9 @@ plugin 侧已交付内容审查插件类型（生命周期 + 调用接口）。F
 | 阶段 | 内容 | 本计划是否展开 |
 | --- | --- | --- |
 | P1 | 管理侧接入：安装插件、插件配置、测试调用 | 是（详细任务） |
-| P2 | 调用锚点设计（哪些环节、何时、用哪个插件审查，以及 `suspected` / `error` 的处理策略） | 否，需先出设计 |
-| P3 | 多视角审查结果展示（逐项 `hits`、provider 原文标签、置信度） | 否，依赖 P2 |
-| P4 | Marketplace 改造（支持 `type: moderation` 的市场条目与安装） | 否，独立计划 |
+| P2 | 调用锚点设计（哪些环节、何时、用哪个插件审查，以及 `suspected` / `error` 的处理策略） | 详细方案见 `moderation-runtime-hooks.md` |
+| P3 | 多视角审查结果展示 | 已取消：采用单插件互斥启用，由单插件输出 hits 与关键词 |
+| P4 | Marketplace 改造（支持 `type: moderation` 的市场条目与安装） | 是，已纳入本次 PR 修改范围并落地 |
 
 ## 2. 现状调研结论
 
@@ -34,7 +34,7 @@ plugin 侧已交付内容审查插件类型（生命周期 + 调用接口）。F
 - `packages/global` 依赖 `@fastgpt-plugin/sdk-client` 为 `1.1.0`，全仓库没有任何 moderation 代码。
 - 已有旧审查链路：`global.textCensorHandler` → `postCheckCensor`（pro 的 `/common/censor/check`，内部走百度或自定义 URL）；调用点是 `dispatchChatCompletion` 与 `toolcall`，由模型配置 `config.censor` 控制；`postTextCensor` 只在返回 code 5000 时拒绝，其余错误一律放行（fail-open）。
 - 管理侧已有可复用设施：`authSystemAdmin`、admin 的 `installWithUrl` / `pkg/upload` / `pkg/confirm`、`runtimeConfig` 接口、`AdminContainer` 的「系统资源」菜单、系统工具 secrets 的加密与脱敏（`systemTool/secrets.ts`）、`jsonSchema2SecretInput`。
-- `team_installed_plugins.pluginType` 与 Marketplace schema 的 `type` 目前都是 `z.literal('tool')`（P4 才处理）。
+- `team_installed_plugins.pluginType` 与 Marketplace schema 的 `type` 原先仅支持 `z.literal('tool')`，本次已改造支持 `tool | moderation`，并在市场列表、详情与安装链路按类型隔离。
 - `systemTool.repo` 通过 `pluginClient.listTools` 取工具列表。需要确认 plugin 侧 `listTools` 不会返回 moderation 插件，否则会泄漏到工具模板和工作流节点。
 
 ## 3. 关键决策（需要你确认）

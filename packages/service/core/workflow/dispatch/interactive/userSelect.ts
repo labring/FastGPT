@@ -9,7 +9,7 @@ import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
 import { resolveDynamicOptionStrings } from './dynamicOptions';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { checkOutputTextModeration } from '../../../plugin/moderation/output';
-import { getNodeErrResponse } from '../utils';
+import { getNodeErrResponse, getDispatchModerationContext } from '../utils';
 import { MODERATION_BLOCKED_ERROR_MESSAGE } from '@fastgpt/global/core/plugin/moderation/constants';
 
 type Props = ModuleDispatchProps<{
@@ -62,15 +62,7 @@ export const dispatchUserSelect = async (props: Props): Promise<UserSelectRespon
       };
     }
     // 锚点 3：输出检查 - 用户选择选项与说明文字审查
-    const moderationContext = {
-      teamId: props.runningUserInfo?.teamId,
-      tmbId: props.runningUserInfo?.tmbId,
-      appId: props.runningAppInfo?.sourceId,
-      chatId: props.chatId,
-      responseChatItemId: props.responseChatItemId,
-      nodeId,
-      nodeName: node.name
-    };
+    const moderationContext = getDispatchModerationContext(props);
 
     if (description) {
       const checkDesc = await checkOutputTextModeration({

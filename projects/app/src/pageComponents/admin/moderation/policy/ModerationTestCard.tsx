@@ -8,83 +8,13 @@ import { postAdminCheckModeration } from '@/web/core/plugin/admin/moderation/api
 import type { RawModerationCheckResponseType } from '@fastgpt/global/openapi/core/plugin/admin/moderation/api';
 import type { AdminModerationPluginItemType } from '@fastgpt/global/core/plugin/moderation/type';
 import { formatModerationLabel } from '@fastgpt/global/core/plugin/moderation/constants';
+import {
+  extractContentSnippet,
+  renderHighlightedModerationContent
+} from '@/web/core/plugin/admin/moderation/highlight';
 
 type ModerationTestCardProps = {
   activePlugin?: AdminModerationPluginItemType;
-};
-
-/**
- * 从长文本中截取包含关键词的局部文字片段（前后保留适度上下文并添加省略号）
- */
-const extractContentSnippet = (text: string, keywords: string[], maxLen = 150): string => {
-  if (!text || text.length <= maxLen) return text;
-
-  // 寻找首个关键词在文本中的出现位置
-  let firstIndex = -1;
-  let matchedKeywordLen = 0;
-
-  for (const kw of keywords) {
-    if (!kw) continue;
-    const idx = text.toLowerCase().indexOf(kw.toLowerCase());
-    if (idx !== -1 && (firstIndex === -1 || idx < firstIndex)) {
-      firstIndex = idx;
-      matchedKeywordLen = kw.length;
-    }
-  }
-
-  if (firstIndex === -1) {
-    return `${text.slice(0, maxLen)}...`;
-  }
-
-  const contextBefore = 40;
-  const contextAfter = Math.max(60, maxLen - contextBefore - matchedKeywordLen);
-
-  const start = Math.max(0, firstIndex - contextBefore);
-  const end = Math.min(text.length, firstIndex + matchedKeywordLen + contextAfter);
-
-  const snippet = text.slice(start, end);
-  const prefix = start > 0 ? '...' : '';
-  const suffix = end < text.length ? '...' : '';
-
-  return `${prefix}${snippet}${suffix}`;
-};
-
-/**
- * 内容详情高亮命中敏感词
- */
-const renderHighlightedContent = (text: string, keywords: string[]) => {
-  if (!keywords || keywords.length === 0 || !text) {
-    return text;
-  }
-  const escaped = keywords.filter(Boolean).map((k) => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
-  if (escaped.length === 0) return text;
-
-  const regex = new RegExp(`(${escaped.join('|')})`, 'gi');
-  const parts = text.split(regex);
-
-  return parts.map((part, index) => {
-    const isHit = keywords.some((k) => k.toLowerCase() === part.toLowerCase());
-    if (isHit) {
-      return (
-        <Box
-          key={index}
-          as="span"
-          color="#dc6803"
-          bg="#fffaeb"
-          border={'1px solid'}
-          borderColor={'#fedf89'}
-          px={1}
-          py={'1px'}
-          mx={0.5}
-          borderRadius="4px"
-          fontWeight={500}
-        >
-          {part}
-        </Box>
-      );
-    }
-    return <React.Fragment key={index}>{part}</React.Fragment>;
-  });
 };
 
 const ModerationTestCard: React.FC<ModerationTestCardProps> = ({ activePlugin }) => {
@@ -368,7 +298,7 @@ const ModerationTestCard: React.FC<ModerationTestCardProps> = ({ activePlugin })
                     whiteSpace={'pre-wrap'}
                     wordBreak={'break-word'}
                   >
-                    {renderHighlightedContent(
+                    {renderHighlightedModerationContent(
                       extractContentSnippet(content, flatDetail.allKeywords),
                       flatDetail.allKeywords
                     )}

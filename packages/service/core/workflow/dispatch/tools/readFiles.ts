@@ -5,7 +5,7 @@ import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { DispatchNodeResultType, ModuleDispatchProps } from '../../types/runtime';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { type ChatItemMiniType } from '@fastgpt/global/core/chat/type';
-import { getNodeErrResponse } from '../utils';
+import { getNodeErrResponse, getDispatchModerationContext } from '../utils';
 import { parseFileContentFromUrls } from '../../../chat/fileContext';
 import { sliceStrStartEnd } from '@fastgpt/global/common/string/tools';
 import { getWorkflowFileContext, getWorkflowFileMaxAmount } from '../../utils/context';
@@ -71,15 +71,7 @@ export const dispatchReadFiles = async (props: Props): Promise<Response> => {
           ? await checkFileContentModeration({
               content: item.content,
               fileName: item.name,
-              context: {
-                teamId,
-                tmbId,
-                appId: props.runningAppInfo?.sourceId,
-                chatId: props.chatId,
-                responseChatItemId: props.responseChatItemId,
-                nodeId: props.node?.nodeId,
-                nodeName: props.node?.name
-              }
+              context: getDispatchModerationContext(props)
             })
           : item.content
       }))

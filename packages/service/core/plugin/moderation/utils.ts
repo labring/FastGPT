@@ -21,7 +21,14 @@ export const getModerationSecretKeys = (secretSchema?: unknown): Set<string> => 
   );
 };
 
-/** 字段是否已有配置值。空字符串与 undefined/null 均视为未配置 */
+/**
+ * 校验字段是否已有配置值。
+ *
+ * 供 `mergeModerationSecretsForUpdate`、`maskModerationSecrets` 与 `hasConfiguredModerationSecrets` 跨函数复用：
+ * - 空字符串、`undefined` 或 `null` 均视为未配置
+ * - 对于加密存储结构 `{ secret: '<cipher>' }`，校验内部密文字符串是否非空
+ * - 其余非空值（包含数值、布尔、普通字符串）视为有效配置
+ */
 const hasValue = (value: unknown): boolean => {
   if (value === undefined || value === null || value === '') return false;
 

@@ -179,7 +179,6 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
             const errMessage = outputCheck.blockErrorMessage || MODERATION_BLOCKED_ERROR_MESSAGE;
             completeResult.answerText = '';
             completeResult.error = new UserError(errMessage);
-            throw new UserError(errMessage);
           }
         }
 
@@ -196,7 +195,6 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
           const errMessage = toolCheck.blockErrorMessage || MODERATION_BLOCKED_ERROR_MESSAGE;
           parsedResponse.toolCalls = [];
           parsedResponse.error = new UserError(errMessage);
-          throw new UserError(errMessage);
         }
       }
 

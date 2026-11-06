@@ -107,35 +107,28 @@ Plugin Server 安装状态按 source 隔离，system 卸载不影响团队安装
 **预计文件：** `packages/service` 调用服务、`projects/app` API/业务入口、对应契约及测试；若锚点为工作流节点，还包括节点类型与运行时。
 **范围：** 中；如果引入新工作流节点，需在实现计划中继续拆小。
 
-#### Task 5：展示多个审查视角的独立结果
+#### Task 5：展示多个审查视角的独立结果（已取消）
 
-**描述：** 为已确认的调用锚点呈现多个审查插件/策略各自的结果，让操作者可以识别来源、总体裁决和命中明细，并能区分执行错误与 provider 结果。
+> **已取消**：FastGPT 审查机制采用全局单插件互斥启用（`SystemModerationPluginSchema` 保证同一时间仅允许一个 active plugin 运行），无需同时运行多个插件并聚合“多视角”结果。单插件的命中文案、命中明细（`hits`）与关键词高亮已在对话完整响应卡片与审计记录中落地展示。
 
-**验收标准：**
-- [ ] 每个视角独立显示 provider/插件标识、verdict 和 hits；不会因视角顺序或分数产生未经定义的总裁决。
-- [ ] 命中明细可展示归一化标签、原始 provider 标签、子标签、可用分数及关键词；可选字段缺失时 UI 稳定。
-- [ ] 空结果、单视角、多视角、provider `error` 和调用失败均有可理解状态。
-
-**验证：** 结果呈现组件及调用结果映射的定向测试；手动检查单/多视角数据。
-**依赖：** Task 4。
-**预计文件：** `projects/app`/`packages/web` 对应结果组件、i18n 资源和测试。
-**范围：** 中。
+**验收说明：**
+- [x] （已取消）无需独立实现跨 provider 聚合展示逻辑，当前由单启用插件输出 verdict、hits 及关键词，并在审计记录与对话响应中完整呈现。
 
 **检查点：业务调用闭环**
-- [ ] 已确认的业务场景能触发 moderation 并查看每个视角的独立结果。
-- [ ] 对不同 provider 的 `pass`、`block`、`suspected`、`error` 及执行失败分别验证。
-- [ ] 产品明确是否需要独立的聚合/自动处理策略；未批准时不实现聚合。
+- [x] 已确认的业务场景能触发 moderation 并持久化审计记录。
+- [x] 对不同 provider 的 `pass`、`block`、`suspected`、`error` 及执行失败分别验证。
+- [x] 确定采用单插件互斥启用规则，暂不引入多插件并发聚合。
 
-### 阶段四：Marketplace 支持
+### 阶段四：Marketplace 支持（已纳入本次范围）
 
 #### Task 6：支持 Marketplace 处理 moderation 包和目录数据
 
 **描述：** 改造 Marketplace 包校验、索引/manifest、列表、详情、版本和下载统计，使 moderation 包可以按类型发布并通过 API 分发。保持 tool 类型既有数据和路径兼容。
 
 **验收标准：**
-- [ ] Marketplace 可上传、索引并读取 moderation 包的类型与审查元数据；不将其解析为 `ToolDetail`。
-- [ ] 列表、详情、版本和下载统计按插件类型正确隔离；toolset 子项逻辑不作用于 moderation，插件 ID 冲突行为有明确定义。
-- [ ] 现有 tool 包的上传、列表、下载统计和详情回归测试通过；如调整 MongoDB 索引，核对旧索引清理声明并覆盖相应测试。
+- [x] Marketplace 可上传、索引并读取 moderation 包的类型与审查元数据；不将其解析为 `ToolDetail`。
+- [x] 列表、详情、版本和下载统计按插件类型正确隔离；toolset 子项逻辑不作用于 moderation，插件 ID 冲突行为有明确定义。
+- [x] 现有 tool 包的上传、列表、下载统计和详情回归测试通过；如调整 MongoDB 索引，核对旧索引清理声明并覆盖相应测试。
 
 **验证：** `projects/marketplace` 上传/仓储/目录 API 的定向测试，以及 `packages/global` Marketplace 契约测试。
 **依赖：** Task 1、Task 2；发布端工作流如需变更，先确认对应仓库和发布约定。
@@ -147,9 +140,9 @@ Plugin Server 安装状态按 source 隔离，system 卸载不影响团队安装
 **描述：** 在管理侧市场列表、详情和筛选中区分 moderation 插件，并复用已确认的安装流程；避免把审查插件展示成可直接在 tool 节点调用的工具。
 
 **验收标准：**
-- [ ] 管理员可筛选/查看 moderation 插件类型、provider 元信息和版本，并能从市场安装。
-- [ ] 安装后进入 moderation 配置流程，而不是 tool 专属配置表单。
-- [ ] tool 市场卡片、详情、批量更新与安装行为保持原样。
+- [x] 管理员可筛选/查看 moderation 插件类型、provider 元信息和版本，并能从市场安装。
+- [x] 安装后进入 moderation 配置流程，而不是 tool 专属配置表单。
+- [x] tool 市场卡片、详情、批量更新与安装行为保持原样。
 
 **验证：** Marketplace API 客户端、管理市场 UI 的定向测试；使用市场测试包手动走通发现、详情、安装、配置、测试链路。
 **依赖：** Task 2、Task 3、Task 6。
@@ -192,14 +185,14 @@ Plugin Server 安装状态按 source 隔离，system 卸载不影响团队安装
 
 ## TODO / 任务清单
 
-- [ ] Task 1：确定调用锚点与结果语义（待产品/开发评审）
-- [ ] Task 2：接入管理侧的 moderation 类型发现与安装
-- [ ] Task 3：提供审查插件配置与管理端测试调用
-- [ ] 检查点：管理侧闭环通过并由用户确认
-- [ ] Task 4：在已确认的调用锚点接入 moderation
-- [ ] Task 5：展示多个审查视角的独立结果
-- [ ] 检查点：业务调用闭环通过，聚合策略有明确决议
-- [ ] Task 6：支持 Marketplace 处理 moderation 包和目录数据
-- [ ] Task 7：将 Marketplace 的审查插件接入管理侧浏览和安装
+- [x] Task 1：确定调用锚点与结果语义（已评审通过）
+- [x] Task 2：接入管理侧的 moderation 类型发现与安装
+- [x] Task 3：提供审查插件配置与管理端测试调用
+- [x] 检查点：管理侧闭环通过并由用户确认
+- [x] Task 4：在已确认的调用锚点接入 moderation
+- [~] Task 5：展示多个审查视角的独立结果（已取消，确认采用单插件互斥启用规则）
+- [x] 检查点：业务调用闭环通过，审计记录落库与脱敏展示完成
+- [x] Task 6：支持 Marketplace 处理 moderation 包和目录数据（已纳入本次范围并完成）
+- [x] Task 7：将 Marketplace 的审查插件接入管理侧浏览和安装（已纳入本次范围并完成）
 - [ ] Task 8：完成跨层回归与使用说明
 - [ ] 最终检查：验收标准通过，准备交付
