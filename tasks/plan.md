@@ -35,7 +35,7 @@
 
 ## 任务列表
 
-任务详情记录在 [tasks/todo.md](tasks/todo.md)。
+任务详情记录在 [tasks/todo.md](todo.md)。
 
 ### 阶段一：路径数据
 - 任务 1：纯函数实现祖先路径计算
