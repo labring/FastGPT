@@ -4,7 +4,7 @@ import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { DispatchNodeResultType, ModuleDispatchProps } from '../../types/runtime';
 import { checkOutputTextModeration } from '../../../plugin/moderation/output';
-import { getNodeErrResponse } from '../utils';
+import { getNodeErrResponse, getDispatchModerationContext } from '../utils';
 import { MODERATION_BLOCKED_ERROR_MESSAGE } from '@fastgpt/global/core/plugin/moderation/constants';
 export type AnswerProps = ModuleDispatchProps<{
   text: string;
@@ -13,9 +13,7 @@ export type AnswerResponse = DispatchNodeResultType<{
   [NodeOutputKeyEnum.answerText]: string;
 }>;
 
-export const dispatchAnswer = async (
-  props: Record<string, any>
-): Promise<AnswerResponse> => {
+export const dispatchAnswer = async (props: Record<string, any>): Promise<AnswerResponse> => {
   const {
     workflowStreamResponse,
     runningUserInfo,
@@ -30,20 +28,10 @@ export const dispatchAnswer = async (
   const responseText = `\n${formatText}`;
 
   // 锚点 3：指定回复（answerNode）面向用户输出检查
-  const moderationContext = {
-    teamId: runningUserInfo?.teamId,
-    tmbId: runningUserInfo?.tmbId,
-    appId: runningAppInfo?.sourceId,
-    chatId,
-    responseChatItemId,
-    nodeId: node?.nodeId,
-    nodeName: node?.name
-  };
-
   const check = await checkOutputTextModeration({
     text: formatText,
     targetField: 'answerNode',
-    context: moderationContext
+    context: getDispatchModerationContext(props)
   });
 
   if (!check.isPass) {

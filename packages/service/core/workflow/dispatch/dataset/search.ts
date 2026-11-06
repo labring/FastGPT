@@ -21,7 +21,7 @@ import {
   loadWorkflowDatasetResource,
   loadWorkflowModelResource
 } from '../../resource/service';
-import { getNodeErrResponse } from '../utils';
+import { getNodeErrResponse, getDispatchModerationContext } from '../utils';
 import {
   createImageCaptionChildNodeResponse,
   createQueryExtensionChildNodeResponse
@@ -344,15 +344,7 @@ export const dispatchDatasetSearch = async (
 
     const moderatedSearchRes = await checkDatasetQuotesModeration({
       quotes: searchRes,
-      context: {
-        teamId,
-        tmbId,
-        appId: props.runningAppInfo?.sourceId,
-        chatId: props.chatId,
-        responseChatItemId: props.responseChatItemId,
-        nodeId: node.nodeId,
-        nodeName: node.name
-      }
+      context: getDispatchModerationContext(props)
     });
 
     return {

@@ -1,3 +1,4 @@
+import { getErrText } from '@fastgpt/global/common/error/utils';
 import {
   ModerationActionEnum,
   ModerationExceptionActionEnum,
@@ -86,7 +87,7 @@ export const checkContentByPolicy = async ({
   let runtime: Awaited<ReturnType<typeof getEnabledModerationRuntime>>;
   try {
     runtime = await getEnabledModerationRuntime();
-  } catch (err: any) {
+  } catch (err: unknown) {
     return handleServiceException({
       err,
       policy,
@@ -222,7 +223,7 @@ export const checkContentByPolicy = async ({
     }
 
     return result;
-  } catch (err: any) {
+  } catch (err: unknown) {
     const duration = Date.now() - startTime;
     return handleServiceException({
       err,
@@ -252,7 +253,7 @@ const handleServiceException = ({
   duration,
   pluginId
 }: {
-  err: any;
+  err: unknown;
   policy: SystemModerationPolicyType;
   text: string;
   stage: ModerationStageEnum;
@@ -262,7 +263,7 @@ const handleServiceException = ({
   duration?: number;
   pluginId?: string;
 }): CheckContentByPolicyResult => {
-  const errorMessage = err?.message || String(err);
+  const errorMessage = getErrText(err);
   const action =
     policy.strategy.serviceExceptionAction === ModerationExceptionActionEnum.pass
       ? ModerationActionEnum.pass
