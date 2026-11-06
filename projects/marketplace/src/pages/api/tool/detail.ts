@@ -8,11 +8,14 @@ import { NextAPI } from '@/service/middleware/entry';
 export type ToolDetailQuery = {
   toolId: string;
   version?: string;
+  type?: 'tool' | 'moderation';
 };
 export type ToolDetailBody = {};
 
 export type ToolDetailResponse = {
-  tools: Array<ToolDetailType & { readme: string; readmeUrls?: Partial<Record<localeType, string>>}>;
+  tools: Array<
+    ToolDetailType & { readme: string; readmeUrls?: Partial<Record<localeType, string>> }
+  >;
   downloadCount: number;
   downloadUrl: string;
 };
@@ -21,14 +24,14 @@ async function handler(
   req: ApiRequestProps<ToolDetailBody, ToolDetailQuery>,
   res: ApiResponseType<any>
 ): Promise<ToolDetailResponse> {
-  const { toolId, version } = req.query;
+  const { toolId, version, type } = req.query;
 
   if (!toolId) {
     throw new Error('toolId is required');
   }
 
   const parentToolId = toolId.split('/')[0];
-  const toolList = await getToolList({ toolId: parentToolId, version });
+  const toolList = await getToolList({ type, toolId: parentToolId, version });
   const tools = toolList.filter((item) => {
     const isMatchedTool = item.toolId.startsWith(toolId + '/') || item.toolId === toolId;
     const isMatchedVersion = !version || item.version === version;

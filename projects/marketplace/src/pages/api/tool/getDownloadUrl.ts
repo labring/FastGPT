@@ -7,6 +7,7 @@ import { increaseDownloadCount } from '@/service/downloadCount';
 export type GetDownloadURLQuery = {
   toolId?: string;
   version?: string;
+  type?: 'tool' | 'moderation';
 };
 export type GetDownloadURLBody = {
   toolIds?: string[];
@@ -17,7 +18,7 @@ async function handler(
   req: ApiRequestProps<GetDownloadURLBody, GetDownloadURLQuery>,
   res: ApiResponseType<any>
 ): Promise<GetDownloadURLResponse> {
-  const { toolId, version } = req.query;
+  const { toolId, version, type } = req.query;
   const { toolIds } = req.body;
   if (!toolId && !toolIds) {
     throw new Error('toolId or toolIds is required');
@@ -26,8 +27,8 @@ async function handler(
   const filterTools = toolIds && toolIds.length > 0 ? toolIds : toolId ? [toolId] : [];
   const toolList =
     toolId && version
-      ? await getToolList({ toolId: toolId.split('/')[0], version })
-      : await getToolList();
+      ? await getToolList({ ...(type ? { type } : {}), toolId: toolId.split('/')[0], version })
+      : await (type ? getToolList({ type }) : getToolList());
   const tools = toolList.filter((item) => filterTools.includes(item.toolId));
 
   if (toolId && version && tools.length === 0) {
@@ -35,7 +36,7 @@ async function handler(
   }
 
   for await (const tool of tools) {
-    await increaseDownloadCount(tool.toolId, 'tool');
+    await increaseDownloadCount(tool.toolId, (tool as any).type || type || 'tool');
   }
 
   return toolId
