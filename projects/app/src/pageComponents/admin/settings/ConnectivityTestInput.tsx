@@ -2,10 +2,7 @@ import React, { useState } from 'react';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { Box, Button, HStack, Input, Tag, Text, type InputProps } from '@chakra-ui/react';
 import { POST } from '@/web/common/api/request';
-import type {
-  ProbeConnectionErrorCode,
-  ProbeConnectionResponse
-} from '@fastgpt/global/openapi/admin/system/instanceConfig/probe';
+import type { ProbeConnectionResponse } from '@fastgpt/global/openapi/admin/system/instanceConfig/probe';
 import AdminReadonlyInput from './AdminReadonlyInput';
 
 export type ConnectivityTestInputProps = Omit<InputProps, 'value' | 'onChange'> & {
@@ -26,14 +23,6 @@ export type ConnectivityTestInputProps = Omit<InputProps, 'value' | 'onChange'> 
  * - 支持只读展示或直接编辑输入（通过 isEditable 控制），右侧集成测试按钮；
  * - 接收 url 或 value 参数，点击按钮后由后端服务发起实际 HTTP 探测并展示连通状态与延迟结果。
  */
-const probeErrorKeys: Record<ProbeConnectionErrorCode, string> = {
-  protocol: 'admin:probe_error_protocol',
-  timeout: 'admin:probe_error_timeout',
-  refused: 'admin:probe_error_refused',
-  dns: 'admin:probe_error_dns',
-  unknown: 'admin:probe_error_unknown'
-};
-
 const ConnectivityTestInput = ({
   url,
   value,
@@ -52,6 +41,24 @@ const ConnectivityTestInput = ({
   const resolvedButtonText = buttonText ?? t('admin:probe_button');
   const resolvedPlaceholder = placeholder ?? t('admin:not_configured_service_address');
   const [result, setResult] = useState<ProbeConnectionResponse | null>(null);
+
+  /** 使用字面量 i18n key，保证静态扫描能提取探测错误文案。 */
+  const getProbeErrorText = (response: ProbeConnectionResponse) => {
+    switch (response.errorCode) {
+      case 'protocol':
+        return t('admin:probe_error_protocol');
+      case 'timeout':
+        return t('admin:probe_error_timeout');
+      case 'refused':
+        return t('admin:probe_error_refused');
+      case 'dns':
+        return t('admin:probe_error_dns');
+      case 'unknown':
+        return t('admin:probe_error_unknown');
+      default:
+        return response.error;
+    }
+  };
 
   const effectiveUrl = value !== undefined ? value : url || '';
 
@@ -155,7 +162,7 @@ const ConnectivityTestInput = ({
                 {t('admin:probe_failed')}
               </Tag>
               <Text fontSize={'xs'} color={'red.500'}>
-                {result.errorCode ? t(probeErrorKeys[result.errorCode]) : result.error}
+                {result.errorCode ? getProbeErrorText(result) : result.error}
               </Text>
             </>
           )}
