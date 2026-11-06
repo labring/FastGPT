@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { serviceEnv } = vi.hoisted(() => ({
   serviceEnv: {
+    SHOW_OUTLINK_BRAND: false,
     AGENT_SANDBOX_SHOW_FREE_TIP: false
   }
 }));
@@ -39,6 +40,7 @@ describe('initFastGPTConfig', () => {
     expect(global.feConfigs.sso).toEqual({ enabled: false });
   });
   beforeEach(() => {
+    serviceEnv.SHOW_OUTLINK_BRAND = false;
     serviceEnv.AGENT_SANDBOX_SHOW_FREE_TIP = false;
     global.feConfigs = {} as any;
     global.systemEnv = {} as any;

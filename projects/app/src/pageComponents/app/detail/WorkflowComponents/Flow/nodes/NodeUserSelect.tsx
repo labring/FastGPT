@@ -6,6 +6,10 @@ import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import Container from '../components/Container';
 import RenderInput from './render/RenderInput';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import {
+  MAX_SELECT_OPTION_COUNT,
+  MAX_SELECT_OPTION_LENGTH
+} from '@fastgpt/global/core/workflow/optionLimit';
 import { useTranslation } from 'next-i18next';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
@@ -40,6 +44,8 @@ const NodeUserSelect = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
               onBeforeCapture={onBeforeCapture}
               onDragFinish={onDragEnd}
               zoom={zoom}
+              maxLength={MAX_SELECT_OPTION_LENGTH}
+              maxItems={MAX_SELECT_OPTION_COUNT}
               addText={t('common:core.module.Add_option')}
               onDragEnd={(list) => {
                 onChangeNode({

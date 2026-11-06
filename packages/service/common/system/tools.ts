@@ -51,6 +51,7 @@ export const initFastGPTConfig = (config?: FastGPTConfigFileType) => {
     !!config.systemEnv.customPdfParse?.textinAppId ||
     !!config.systemEnv.customPdfParse?.doc2xKey;
   config.feConfigs.customPdfParsePrice = config.systemEnv.customPdfParse?.price || 0;
+  config.feConfigs.show_outlink_brand = serviceEnv.SHOW_OUTLINK_BRAND;
   // provider 只以实例配置为权威，保证后台配置与前端沙箱入口一致。
   config.feConfigs.show_agent_sandbox = getAgentSandboxProvider() !== 'none';
   // 免费提示只由保留的 ENV 控制，避免旧配置在开关关闭后继续展示。

@@ -195,6 +195,10 @@ export const FastGPTFeConfigsSchema = z.looseObject({
     .boolean()
     .optional()
     .meta({ description: '应用发布渠道中是否展示微信个人号客服' }),
+  show_outlink_brand: BoolSchema.optional().meta({
+    description: '是否展示免登录品牌标识，由服务端环境变量派生',
+    example: false
+  }),
   show_agent_sandbox: z
     .boolean()
     .optional()

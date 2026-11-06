@@ -226,6 +226,10 @@ export const serviceEnv = createEnv({
       description: '配置了 delay 的系统迁移任务延迟执行时间（秒），默认 0 为不延迟'
     }),
 
+    SHOW_OUTLINK_BRAND: BoolSchema.default(false).meta({
+      description:
+        '是否展示免登录品牌标识；开源版始终开启，接入 Pro 服务后默认关闭，可设为 true 开启'
+    }),
     CHAT_LOG_URL: UrlSchema.optional().meta({
       description: '聊天日志推送地址'
     }),

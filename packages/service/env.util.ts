@@ -13,6 +13,7 @@ const TEST_PRO_TOKEN = 'fastgpt_test_pro_token_32_chars_min';
  */
 export const getRuntimeEnv = (): NodeJS.ProcessEnv => ({
   ...process.env,
+  SHOW_OUTLINK_BRAND: process.env.PRO_URL ? process.env.SHOW_OUTLINK_BRAND : 'true',
   INVOKE_TOKEN_SECRET:
     process.env.INVOKE_TOKEN_SECRET ??
     (process.env.VITEST === 'true' || process.env.NODE_ENV === 'test'

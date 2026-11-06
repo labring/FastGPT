@@ -1,5 +1,9 @@
 import { isValidReferenceValueFormat } from '@fastgpt/global/common/workflow/reference';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
+import {
+  MAX_SELECT_OPTION_COUNT,
+  truncateSelectOptionText
+} from '@fastgpt/global/core/workflow/optionLimit';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import {
   getReferenceVariableValue,
@@ -11,6 +15,7 @@ import type { ReferenceValueType } from '@fastgpt/global/core/workflow/type/io';
  * 解析动态选项变量引用列表，按勾选顺序展开并拼接为选项字符串列表（不去重）。
  * - 数组值逐元素展开，非数组值作为单个选项
  * - undefined / null / 空数组 / 空白字符串不产生选项
+ * - 单项超过 100 字符时截断，最多保留前 200 个有效选项
  * - 若输入非引用数组（如单步调试直接传入的字面量值），按相同规则展开
  */
 export const resolveDynamicOptionStrings = ({
@@ -42,6 +47,9 @@ export const resolveDynamicOptionStrings = ({
 
   return rawList
     .filter((item) => item !== undefined && item !== null)
-    .map((item) => String(valueTypeFormat(item, WorkflowIOValueTypeEnum.string)).trim())
-    .filter(Boolean);
+    .map((item) =>
+      truncateSelectOptionText(String(valueTypeFormat(item, WorkflowIOValueTypeEnum.string)).trim())
+    )
+    .filter(Boolean)
+    .slice(0, MAX_SELECT_OPTION_COUNT);
 };
