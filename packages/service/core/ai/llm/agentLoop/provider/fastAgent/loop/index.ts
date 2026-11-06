@@ -19,6 +19,7 @@ import type {
   FastAgentLoopResult
 } from './type';
 import { runSandboxTools } from '../../../../../sandbox/application/toolCall';
+import { checkToolResultModeration } from '../../../../../../plugin/moderation/modelInput';
 
 /**
  * 创建工具执行结果的最小结构。
@@ -300,148 +301,168 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
       });
     },
     onRunTool: async ({ call, messages }) => {
-      // 先处理会改变 agent-loop 本地状态的内置工具，再落到外部 runtime tool。
-      if (call.function.name === askToolName) {
-        const parsed = parseAgentAskToolCall(call);
-        if (!parsed.success) {
-          return createToolResponse(parsed.error, { skipResponseCompress: true });
-        }
+      const toolResult = await (async () => {
+        // 先处理会改变 agent-loop 本地状态的内置工具，再落到外部 runtime tool。
+        if (call.function.name === askToolName) {
+          const parsed = parseAgentAskToolCall(call);
+          if (!parsed.success) {
+            return createToolResponse(parsed.error, { skipResponseCompress: true });
+          }
 
-        const validationError = await runtime.systemTools?.ask?.validate?.(parsed.ask);
-        if (validationError) {
-          return createToolResponse(validationError, { skipResponseCompress: true });
-        }
+          const validationError = await runtime.systemTools?.ask?.validate?.(parsed.ask);
+          if (validationError) {
+            return createToolResponse(validationError, { skipResponseCompress: true });
+          }
 
-        return createToolResponse<AgentAskInteractive>('Waiting for user answer.', {
-          interactive: {
-            type: 'agentAsk',
-            params: { toolCallId: call.id, arguments: call.function.arguments }
-          },
-          skipResponseCompress: true
-        });
-      }
-
-      if (call.function.name === setPlanToolName || call.function.name === updatePlanToolName) {
-        const args = parseJsonArgs(call.function.arguments);
-        const updateResult =
-          call.function.name === setPlanToolName
-            ? applySetPlan({ input: args })
-            : applyPlanUpdate({
-                plan: activePlan,
-                update: args
-              });
-        const operation =
-          call.function.name === setPlanToolName ? 'set_plan' : getPlanOperationFromArgs(args);
-
-        if (updateResult.success) {
-          activePlan = updateResult.plan;
-          emitAgentLoopEvent(runtime, {
-            type: 'plan_operation',
-            operation,
-            success: true,
-            message: updateResult.message,
-            id: call.id,
-            params: call.function.arguments,
-            seconds: 0,
-            plan: updateResult.plan
-          });
-        } else {
-          emitAgentLoopEvent(runtime, {
-            type: 'plan_operation',
-            operation,
-            success: false,
-            message: updateResult.message,
-            id: call.id,
-            params: call.function.arguments,
-            seconds: 0
+          return createToolResponse<AgentAskInteractive>('Waiting for user answer.', {
+            interactive: {
+              type: 'agentAsk',
+              params: { toolCallId: call.id, arguments: call.function.arguments }
+            },
+            skipResponseCompress: true
           });
         }
 
-        return createToolResponse(updateResult.message, { skipResponseCompress: true });
-      }
+        if (call.function.name === setPlanToolName || call.function.name === updatePlanToolName) {
+          const args = parseJsonArgs(call.function.arguments);
+          const updateResult =
+            call.function.name === setPlanToolName
+              ? applySetPlan({ input: args })
+              : applyPlanUpdate({
+                  plan: activePlan,
+                  update: args
+                });
+          const operation =
+            call.function.name === setPlanToolName ? 'set_plan' : getPlanOperationFromArgs(args);
 
-      if (isSandboxSystemTool(call.function.name)) {
-        const sandboxToolName = toSandboxToolName(call.function.name);
+          if (updateResult.success) {
+            activePlan = updateResult.plan;
+            emitAgentLoopEvent(runtime, {
+              type: 'plan_operation',
+              operation,
+              success: true,
+              message: updateResult.message,
+              id: call.id,
+              params: call.function.arguments,
+              seconds: 0,
+              plan: updateResult.plan
+            });
+          } else {
+            emitAgentLoopEvent(runtime, {
+              type: 'plan_operation',
+              operation,
+              success: false,
+              message: updateResult.message,
+              id: call.id,
+              params: call.function.arguments,
+              seconds: 0
+            });
+          }
 
-        if (!runtime.sandboxToolContext) {
-          const response = 'Sandbox client is not available.';
-          return createToolResponse(response, { skipResponseCompress: true });
+          return createToolResponse(updateResult.message, { skipResponseCompress: true });
         }
 
-        const sandboxResult = await runSandboxTools({
-          toolName: sandboxToolName,
-          args: call.function.arguments ?? '',
-          sandboxClient: runtime.sandboxToolContext.client,
-          validate: runtime.sandboxToolContext.validate
-        });
-        return createToolResponse(sandboxResult.response, {
-          skipResponseCompress: true,
-          errorMessage: sandboxResult.success ? undefined : sandboxResult.response
-        });
-      }
+        if (isSandboxSystemTool(call.function.name)) {
+          const sandboxToolName = toSandboxToolName(call.function.name);
 
-      if (call.function.name === readFileToolName) {
-        if (!runtime.executeReadFileTool) {
-          const response = 'Read file executor is not available.';
-          return createToolResponse(response, { skipResponseCompress: true });
+          if (!runtime.sandboxToolContext) {
+            const response = 'Sandbox client is not available.';
+            return createToolResponse(response, { skipResponseCompress: true });
+          }
+
+          const sandboxResult = await runSandboxTools({
+            toolName: sandboxToolName,
+            args: call.function.arguments ?? '',
+            sandboxClient: runtime.sandboxToolContext.client,
+            validate: runtime.sandboxToolContext.validate
+          });
+          return createToolResponse(sandboxResult.response, {
+            skipResponseCompress: true,
+            errorMessage: sandboxResult.success ? undefined : sandboxResult.response
+          });
         }
 
-        const fileResult = await runtime.executeReadFileTool({
+        if (call.function.name === readFileToolName) {
+          if (!runtime.executeReadFileTool) {
+            const response = 'Read file executor is not available.';
+            return createToolResponse(response, { skipResponseCompress: true });
+          }
+
+          const fileResult = await runtime.executeReadFileTool({
+            call,
+            messages
+          });
+
+          return createToolResponse(fileResult.response, {
+            usages: fileResult.usages,
+            skipResponseCompress: true,
+            errorMessage: fileResult.error ? getErrText(fileResult.error) : undefined,
+            metadata: fileResult.metadata
+          });
+        }
+
+        if (call.function.name === datasetSearchToolName) {
+          if (!runtime.executeDatasetSearchTool) {
+            const response = 'Dataset search executor is not available.';
+            return createToolResponse(response, { skipResponseCompress: true });
+          }
+
+          const patchedArgs = patchDatasetSearchParams({
+            args: call.function.arguments ?? '',
+            currentInputFiles: runtime.datasetSearchCurrentInputFiles
+          });
+          const patchedCall = {
+            ...call,
+            function: {
+              ...call.function,
+              arguments: JSON.stringify(patchedArgs)
+            }
+          };
+          const datasetResult = await runtime.executeDatasetSearchTool({
+            call: patchedCall,
+            messages
+          });
+
+          return createToolResponse(datasetResult.response, {
+            usages: datasetResult.usages,
+            skipResponseCompress: true,
+            errorMessage: datasetResult.error ? getErrText(datasetResult.error) : undefined,
+            metadata: datasetResult.metadata
+          });
+        }
+
+        const toolResult = await runtime.executeTool({
           call,
           messages
         });
 
-        return createToolResponse(fileResult.response, {
-          usages: fileResult.usages,
-          skipResponseCompress: true,
-          errorMessage: fileResult.error ? getErrText(fileResult.error) : undefined,
-          metadata: fileResult.metadata
+        return toolResult;
+      })();
+
+      if (toolResult?.response) {
+        toolResult.response = await checkToolResultModeration({
+          response: toolResult.response,
+          context: { teamId: runtime.teamId }
         });
       }
-
-      if (call.function.name === datasetSearchToolName) {
-        if (!runtime.executeDatasetSearchTool) {
-          const response = 'Dataset search executor is not available.';
-          return createToolResponse(response, { skipResponseCompress: true });
-        }
-
-        const patchedArgs = patchDatasetSearchParams({
-          args: call.function.arguments ?? '',
-          currentInputFiles: runtime.datasetSearchCurrentInputFiles
-        });
-        const patchedCall = {
-          ...call,
-          function: {
-            ...call.function,
-            arguments: JSON.stringify(patchedArgs)
-          }
-        };
-        const datasetResult = await runtime.executeDatasetSearchTool({
-          call: patchedCall,
-          messages
-        });
-
-        return createToolResponse(datasetResult.response, {
-          usages: datasetResult.usages,
-          skipResponseCompress: true,
-          errorMessage: datasetResult.error ? getErrText(datasetResult.error) : undefined,
-          metadata: datasetResult.metadata
-        });
-      }
-
-      const toolResult = await runtime.executeTool({
-        call,
-        messages
-      });
 
       return toolResult;
     },
     onRunInteractiveTool: async (params) => {
-      return runtime.executeInteractiveTool
+      const result = runtime.executeInteractiveTool
         ? await runtime.executeInteractiveTool(params)
         : createToolResponse<TChildrenResponse>(
             'Interactive tool is not supported in fastAgent loop yet.'
           );
+
+      if (result?.response) {
+        result.response = await checkToolResultModeration({
+          response: result.response,
+          context: { teamId: runtime.teamId }
+        });
+      }
+
+      return result;
     }
   });
 
