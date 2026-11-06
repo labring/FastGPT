@@ -52,20 +52,30 @@ async function handler(req: ApiRequestProps): Promise<UpdateUserFeedbackResponse
 
   await mongoSessionRun(async (session) => {
     // Update ChatItem feedback
-    await MongoChatItem.updateOne(
-      { ...chatSourceQuery, chatId, dataId, obj: ChatRoleEnum.AI },
-      {
-        $unset: {
-          ...(userBadFeedback === undefined && { userBadFeedback: '' }),
-          ...(userGoodFeedback === undefined && { userGoodFeedback: '' })
-        },
-        $set: {
-          ...(userBadFeedback !== undefined && { userBadFeedback }),
-          ...(userGoodFeedback !== undefined && { userGoodFeedback })
-        }
-      },
-      { session }
-    );
+    const unsetFields: Record<string, ''> = {
+      ...(userBadFeedback === undefined && { userBadFeedback: '' }),
+      ...(userGoodFeedback === undefined && { userGoodFeedback: '' })
+    };
+    const setFields: Record<string, string> = {
+      ...(userBadFeedback !== undefined && { userBadFeedback }),
+      ...(userGoodFeedback !== undefined && { userGoodFeedback })
+    };
+
+    const updateQuery: { $unset?: Record<string, ''>; $set?: Record<string, string> } = {};
+    if (Object.keys(unsetFields).length > 0) {
+      updateQuery.$unset = unsetFields;
+    }
+    if (Object.keys(setFields).length > 0) {
+      updateQuery.$set = setFields;
+    }
+
+    if (Object.keys(updateQuery).length > 0) {
+      await MongoChatItem.updateOne(
+        { ...chatSourceQuery, chatId, dataId, obj: ChatRoleEnum.AI },
+        updateQuery,
+        { session }
+      );
+    }
 
     // Update Chat table feedback statistics (redundant fields for performance)
     await updateChatFeedbackCount({

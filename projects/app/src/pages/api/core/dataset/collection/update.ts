@@ -187,24 +187,28 @@ async function handler(req: ApiRequestProps) {
       });
     }
 
-    await MongoDatasetCollection.updateOne(
-      {
-        _id: id
-      },
-      {
-        $set: {
-          // parentId 在 move 分支由 moveCollectionPermission 更新，避免重复写入
-          ...(!isMove && parentId !== undefined && { parentId: parentId || null }),
-          ...(name && { name, updateTime: getCollectionUpdateTime({ name }) }),
-          ...(collectionTags !== undefined && { tags: collectionTags }),
-          ...(forbid !== undefined && { forbid }),
-          ...(createTime !== undefined && { createTime })
+    const setFields = {
+      // parentId 在 move 分支由 moveCollectionPermission 更新，避免重复写入
+      ...(!isMove && parentId !== undefined && { parentId: parentId || null }),
+      ...(name && { name, updateTime: getCollectionUpdateTime({ name }) }),
+      ...(collectionTags !== undefined && { tags: collectionTags }),
+      ...(forbid !== undefined && { forbid }),
+      ...(createTime !== undefined && { createTime })
+    };
+
+    if (Object.keys(setFields).length > 0) {
+      await MongoDatasetCollection.updateOne(
+        {
+          _id: id
+        },
+        {
+          $set: setFields
+        },
+        {
+          session
         }
-      },
-      {
-        session
-      }
-    );
+      );
+    }
 
     // Folder update forbid
     if (collection.type === DatasetCollectionTypeEnum.folder && forbid !== undefined) {

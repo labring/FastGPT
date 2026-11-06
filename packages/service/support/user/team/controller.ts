@@ -315,19 +315,22 @@ export async function updateTeam({
       return obj;
     })();
 
+    const setFields: Record<string, any> = {
+      ...(name ? { name } : {}),
+      ...(avatar ? { avatar } : {}),
+      ...setObj
+    };
+
+    const updateQuery: Record<string, any> = {
+      ...(Object.keys(setFields).length > 0 ? { $set: setFields } : {}),
+      ...unsetObj
+    };
+
     // This is where we get the old team
-    const team = await MongoTeam.findByIdAndUpdate(
-      teamId,
-      {
-        $set: {
-          ...(name ? { name } : {}),
-          ...(avatar ? { avatar } : {}),
-          ...setObj
-        },
-        ...unsetObj
-      },
-      { session }
-    );
+    const team =
+      Object.keys(updateQuery).length > 0
+        ? await MongoTeam.findByIdAndUpdate(teamId, updateQuery, { session })
+        : await MongoTeam.findById(teamId).session(session);
 
     // Update member group avatar
     if (avatar) {
