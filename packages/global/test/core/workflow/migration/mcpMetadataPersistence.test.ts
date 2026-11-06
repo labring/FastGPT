@@ -23,9 +23,17 @@ const snapshotNode = () => ({
 });
 
 describe('MCP metadata persistence ownership', () => {
-  it('strips metadata from the publish API full workflow snapshot branch', () => {
+  it('normalizes publish metadata according to the authorized application type', () => {
     const body = PublishAppBodySchema.parse({ nodes: [snapshotNode()], isPublish: true });
-    expect(body.nodes?.[0].toolConfig?.mcpToolSet?.toolList?.[0]).not.toHaveProperty('requestMeta');
+    const workflow = migrateWorkflowToCurrent(body, { appType: AppTypeEnum.workflow });
+    expect(workflow.nodes[0].toolConfig?.mcpToolSet?.toolList?.[0]).not.toHaveProperty(
+      'requestMeta'
+    );
+    const toolSet = migrateWorkflowToCurrent(body, { appType: AppTypeEnum.mcpToolSet });
+    expect(toolSet.nodes[0].toolConfig?.mcpToolSet?.toolList?.[0]).toHaveProperty(
+      'requestMeta',
+      requestMeta
+    );
     expect(tool.requestMeta).toEqual(requestMeta);
   });
 
