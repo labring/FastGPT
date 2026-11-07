@@ -171,6 +171,8 @@ describe('system file response content type', () => {
       url: '/api/system/file/upload/token',
       headers: { 'content-length': '5' },
       query: { token: 'token' },
+      once: vi.fn(),
+      off: vi.fn(),
       pipe: vi.fn((target) => {
         Readable.from([Buffer.from('hello')]).pipe(target);
         return target;
