@@ -12,7 +12,7 @@ import { MongoOrgModel } from '@fastgpt/service/support/permission/org/orgSchema
 import { resourcePermissionRepo } from '@fastgpt/service/support/permission/repository/resourcePermissionRepo';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import { MongoUser } from '@fastgpt/service/support/user/schema';
-import { createDefaultTeam } from '@fastgpt/service/support/user/team/controller';
+import { createDefaultTeam, updateTeam } from '@fastgpt/service/support/user/team/controller';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
 import { MongoTeam } from '@fastgpt/service/support/user/team/teamSchema';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -101,5 +101,74 @@ describe('createDefaultTeam', () => {
         MongoOrgModel.findOne({ teamId: { $ne: null } }).lean()
       ])
     ).resolves.toEqual([null, null, null, null, null]);
+  });
+});
+
+describe('updateTeam', () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it('clears the AI account without an empty $set', async () => {
+    const team = await MongoTeam.create({
+      name: 'AI account team',
+      openaiAccount: { key: 'existing-key', baseUrl: 'https://api.openai.com/v1' }
+    });
+    const update = vi.spyOn(MongoTeam, 'findByIdAndUpdate');
+
+    await updateTeam({ teamId: String(team._id), openaiAccount: { key: '', baseUrl: '' } });
+
+    expect(update).toHaveBeenCalledExactlyOnceWith(
+      String(team._id),
+      { $unset: { openaiAccount: 1 } },
+      { session: expect.anything() }
+    );
+    expect((await MongoTeam.findById(team._id).lean())?.openaiAccount).toBeUndefined();
+  });
+
+  it('clears a workflow variable without an empty $set', async () => {
+    const team = await MongoTeam.create({
+      name: 'Workflow variable team',
+      externalWorkflowVariables: { testVar: 'existing-value' }
+    });
+    const update = vi.spyOn(MongoTeam, 'findByIdAndUpdate');
+
+    await updateTeam({
+      teamId: String(team._id),
+      externalWorkflowVariable: { key: 'testVar', value: '' }
+    });
+
+    expect(update).toHaveBeenCalledExactlyOnceWith(
+      String(team._id),
+      { $unset: { 'externalWorkflowVariables.testVar': 1 } },
+      { session: expect.anything() }
+    );
+    expect(
+      (await MongoTeam.findById(team._id).lean())?.externalWorkflowVariables
+    ).not.toHaveProperty('testVar');
+  });
+
+  it('reads the team without issuing an empty update', async () => {
+    const team = await MongoTeam.create({ name: 'Unchanged team' });
+    const update = vi.spyOn(MongoTeam, 'findByIdAndUpdate');
+    const read = vi.spyOn(MongoTeam, 'findById');
+
+    await updateTeam({ teamId: String(team._id) });
+
+    expect(update).not.toHaveBeenCalled();
+    expect(read).toHaveBeenCalledExactlyOnceWith(String(team._id));
+    expect((await MongoTeam.findById(team._id).lean())?.name).toBe('Unchanged team');
+  });
+
+  it('preserves non-empty team updates', async () => {
+    const team = await MongoTeam.create({ name: 'Original team' });
+    const update = vi.spyOn(MongoTeam, 'findByIdAndUpdate');
+
+    await updateTeam({ teamId: String(team._id), name: 'Renamed team' });
+
+    expect(update).toHaveBeenCalledExactlyOnceWith(
+      String(team._id),
+      { $set: { name: 'Renamed team' } },
+      { session: expect.anything() }
+    );
+    expect((await MongoTeam.findById(team._id).lean())?.name).toBe('Renamed team');
   });
 });
