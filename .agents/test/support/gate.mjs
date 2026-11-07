@@ -54,6 +54,7 @@ export async function getGate(context, scenario) {
   }
   const gate = {
     address: server.address(),
+    requestHeaders: { 'x-fastgpt-test-token': token },
     register(runId) {
       assert.ok(runId.startsWith(context.run));
       assert.ok(!held.has(runId));

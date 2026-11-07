@@ -1,3 +1,4 @@
+import { ChatIdSchema } from '../../chat/schema';
 import z from 'zod';
 import { ChatCompletionMessageParamSchema } from '../llm/type';
 import { ChatFileTypeEnum } from '../../chat/constants';
@@ -70,7 +71,7 @@ export type ChatAgentConfigFormDataType = z.infer<typeof ChatAgentConfigFormData
 
 export const ChatAgentHelperCompletionsParamsSchema = z
   .object({
-    chatId: z.string(),
+    chatId: ChatIdSchema,
     responseChatItemId: z.string(),
     appId: ObjectIdSchema,
     messages: z.array(ChatCompletionMessageParamSchema),

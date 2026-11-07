@@ -1,19 +1,6 @@
 import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import React, { useMemo } from 'react';
-import {
-  ModalBody,
-  ModalFooter,
-  Table,
-  Thead,
-  Tbody,
-  Tr,
-  Th,
-  Td,
-  ModalCloseButton,
-  HStack,
-  Box,
-  Flex
-} from '@chakra-ui/react';
+import { ModalBody, Table, Thead, Tbody, Tr, Th, Td, HStack, Box, Flex } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { useLoading } from '@fastgpt/web/hooks/useLoading';
@@ -70,8 +57,8 @@ const StandDetailModal = ({ onClose }: { onClose: () => void }) => {
       iconSrc="modal/teamPlans"
       title={t('account_info:package_details')}
       isCentered
+      onClose={onClose}
     >
-      <ModalCloseButton onClick={onClose} />
       <ModalBody px={[4, 8]} py={[2, 6]}>
         <FixedTableContainer mt={2} position={'relative'} minH={'300px'}>
           <Table>

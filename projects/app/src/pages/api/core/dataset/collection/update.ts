@@ -168,22 +168,27 @@ async function handler(req: ApiRequestProps) {
       });
     }
 
-    await MongoDatasetCollection.updateOne(
-      {
-        _id: id
-      },
-      {
-        $set: {
-          ...(name && { name, updateTime: getCollectionUpdateTime({ name }) }),
-          ...(collectionTags !== undefined && { tags: collectionTags }),
-          ...(forbid !== undefined && { forbid }),
-          ...(createTime !== undefined && { createTime })
+    const setFields = {
+      ...(name && { name, updateTime: getCollectionUpdateTime({ name }) }),
+      ...(collectionTags !== undefined && { tags: collectionTags }),
+      ...(forbid !== undefined && { forbid }),
+      ...(createTime !== undefined && { createTime })
+    };
+
+    // 仅移动集合或没有元数据变更时，避免向 MongoDB 4.x 发送空 $set。
+    if (Object.keys(setFields).length > 0) {
+      await MongoDatasetCollection.updateOne(
+        {
+          _id: id
+        },
+        {
+          $set: setFields
+        },
+        {
+          session
         }
-      },
-      {
-        session
-      }
-    );
+      );
+    }
 
     // Folder update forbid
     if (collection.type === DatasetCollectionTypeEnum.folder && forbid !== undefined) {

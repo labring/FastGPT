@@ -10,9 +10,11 @@ import { buildChatSourceQuery } from '@fastgpt/service/core/chat/source';
 /** 将对话标为已读（例如用户在本页看完流式回复后） */
 export async function handler(req: ApiRequestProps, _res: ApiResponseType): Promise<void> {
   const body = parseApiInput({ req, bodySchema: MarkChatReadBodySchema }).body;
-  const { sourceType, sourceId, chatId, outLinkAuthData } = body;
+  const { customUid, authProxy, sourceType, sourceId, chatId, outLinkAuthData } = body;
 
   const authRes = await authChatTargetCrud({
+    customUid,
+    authProxy,
     req,
     authToken: true,
     authApiKey: true,

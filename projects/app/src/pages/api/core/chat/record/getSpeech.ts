@@ -21,7 +21,16 @@ import { authTargetModelResource } from '@fastgpt/service/core/app/resource/serv
 */
 async function handler(req: ApiRequestProps, res: NextApiResponse) {
   try {
-    const { ttsConfig, input, sourceType, sourceId, outLinkAuthData } = parseApiInput({
+    const {
+      chatId,
+      customUid,
+      authProxy,
+      ttsConfig,
+      input,
+      sourceType,
+      sourceId,
+      outLinkAuthData
+    } = parseApiInput({
       req,
       bodySchema: GetChatSpeechBodySchema
     }).body;
@@ -38,6 +47,9 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
       sourceType: resolvedSourceType,
       sourceId: resolvedSourceId
     } = await authChatTargetCrud({
+      chatId,
+      customUid,
+      authProxy,
       req,
       authToken: true,
       authApiKey: true,

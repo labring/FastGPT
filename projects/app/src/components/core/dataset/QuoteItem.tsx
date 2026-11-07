@@ -98,7 +98,7 @@ const QuoteItem = ({
   canDownloadSource?: boolean;
   canEditData?: boolean;
   canEditDataset?: boolean;
-} & Omit<ReadCollectionSourceBodyType, 'collectionId'>) => {
+} & Omit<ReadCollectionSourceBodyType, 'collectionId' | 'customUid' | 'authProxy'>) => {
   const { t } = useTranslation();
   const [editInputData, setEditInputData] = useState<{ dataId: string; collectionId: string }>();
 

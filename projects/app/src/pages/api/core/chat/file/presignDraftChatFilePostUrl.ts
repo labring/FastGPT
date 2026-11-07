@@ -11,6 +11,8 @@ import { createAuthorizedChatFileUploadUrl } from '@/service/core/chat/file/uplo
 
 async function handler(req: ApiRequestProps): Promise<CreatePostPresignedUrlResponseType> {
   const {
+    customUid,
+    authProxy,
     filename,
     contentType,
     declaredExtension,
@@ -30,6 +32,9 @@ async function handler(req: ApiRequestProps): Promise<CreatePostPresignedUrlResp
   }
 
   const authRes = await authChatTargetCrud({
+    allowMissingChat: true,
+    customUid,
+    authProxy,
     req,
     authToken: true,
     authApiKey: true,

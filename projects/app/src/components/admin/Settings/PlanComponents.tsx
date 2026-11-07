@@ -312,6 +312,15 @@ export const EditPlanModal = ({
               }}
             />
           </Box>
+          {feConfigs.show_outlink_brand && (
+            <Box>
+              <FormLabel mb={2}>{t('common:share_brand_control')}</FormLabel>
+              <Switch
+                isChecked={watch('canHideShareBrand') ?? false}
+                onChange={(e) => setValue('canHideShareBrand', e.target.checked)}
+              />
+            </Box>
+          )}
         </Grid>
       </Flex>
       <Flex mb={6} pb={6} gap={8}>
@@ -370,11 +379,16 @@ export const EditPlanModal = ({
   );
 };
 
-// 共享的获取特性列表函数
-export const getColumnFeatures = (
-  plan: TeamStandardSubPlanItemType | undefined,
-  t: (key: string, options?: any) => string
-): string[] => {
+/** 按套餐自身配置生成后台对照表的权益列表，未开启的可选权益不展示。 */
+export const getColumnFeatures = ({
+  plan,
+  t,
+  showShareBrand = true
+}: {
+  plan: TeamStandardSubPlanItemType | undefined;
+  t: (key: string, options?: any) => string;
+  showShareBrand?: boolean;
+}): string[] => {
   const features: string[] = [
     t('common:n_ai_points', { amount: plan?.totalPoints }),
     t('common:n_team_members', {
@@ -445,6 +459,9 @@ export const getColumnFeatures = (
   }
   if (plan?.enableSandbox) {
     features.push(t('common:enable_sandbox'));
+  }
+  if (showShareBrand && plan?.canHideShareBrand === true) {
+    features.push(t('common:share_brand_control'));
   }
   return features;
 };

@@ -10,6 +10,7 @@ import type {
   StandSubPlanLevelMapType
 } from '@fastgpt/global/support/wallet/sub/type';
 import {
+  getPlansCanHideShareBrand,
   buildStandardPlan,
   getStandardPlansConfig,
   getStandardPlanConfig,
@@ -53,6 +54,97 @@ const baseConstants: TeamStandardSubPlanItemType = {
   maxDatasetSize: 100,
   chatHistoryStoreDuration: 30
 };
+
+describe('getPlansCanHideShareBrand', () => {
+  const now = new Date('2030-01-01').getTime();
+  const activePlan = { ...baseStandard, expiredTime: new Date(now + 1) };
+  const standardPlans = { basic: { ...baseConstants, canHideShareBrand: true } };
+
+  it('uses the supplied time and excludes expired or non-standard plans', () => {
+    expect(getPlansCanHideShareBrand({ plans: [activePlan], standardPlans, now })).toBe(true);
+    expect(
+      getPlansCanHideShareBrand({
+        plans: [
+          { ...activePlan, expiredTime: new Date(now) },
+          { ...activePlan, expiredTime: new Date(now - 1) },
+          { ...activePlan, type: SubTypeEnum.extraPoints }
+        ],
+        standardPlans,
+        now
+      })
+    ).toBe(false);
+  });
+
+  it('requires an explicit entitlement in the selected plan configuration', () => {
+    expect(getPlansCanHideShareBrand({ plans: [], standardPlans, now })).toBe(false);
+    expect(getPlansCanHideShareBrand({ plans: [activePlan], now })).toBe(false);
+    expect(getPlansCanHideShareBrand({ plans: [activePlan], standardPlans: {}, now })).toBe(false);
+    expect(
+      getPlansCanHideShareBrand({
+        plans: [activePlan],
+        standardPlans: { basic: baseConstants },
+        now
+      })
+    ).toBe(false);
+    expect(
+      getPlansCanHideShareBrand({
+        plans: [activePlan],
+        standardPlans: { basic: { ...baseConstants, canHideShareBrand: false } },
+        now
+      })
+    ).toBe(false);
+  });
+
+  it('selects the highest active plan without changing the input order', () => {
+    const plans = [activePlan, { ...activePlan, currentSubLevel: StandardSubLevelEnum.advanced }];
+    expect(
+      getPlansCanHideShareBrand({
+        plans,
+        standardPlans: {
+          ...standardPlans,
+          advanced: { ...baseConstants, canHideShareBrand: false }
+        },
+        now
+      })
+    ).toBe(false);
+    expect(plans.map((plan) => plan.currentSubLevel)).toEqual([
+      StandardSubLevelEnum.basic,
+      StandardSubLevelEnum.advanced
+    ]);
+  });
+
+  it.each([
+    [true, false, true],
+    [false, true, false],
+    [undefined, true, true],
+    [undefined, false, false]
+  ])('applies override %s over configured entitlement %s', (override, configured, expected) => {
+    expect(
+      getPlansCanHideShareBrand({
+        plans: [{ ...activePlan, canHideShareBrandOverride: override }],
+        standardPlans: { basic: { ...baseConstants, canHideShareBrand: configured } },
+        now
+      })
+    ).toBe(expected);
+  });
+
+  it('uses only the selected active subscription override', () => {
+    expect(
+      getPlansCanHideShareBrand({
+        plans: [
+          { ...activePlan, canHideShareBrandOverride: true },
+          {
+            ...activePlan,
+            currentSubLevel: StandardSubLevelEnum.advanced,
+            canHideShareBrandOverride: false
+          }
+        ],
+        standardPlans,
+        now
+      })
+    ).toBe(false);
+  });
+});
 
 describe('getStandardPlansConfig', () => {
   beforeEach(() => {
@@ -244,6 +336,7 @@ describe('getStandardPlanConfig', () => {
     const result = getStandardPlanConfig(StandardSubLevelEnum.custom);
     expect(result).toEqual({
       ...mockAdvancedPlan,
+      canHideShareBrand: false,
       name: mockCustomPlan.name,
       customFormUrl: mockCustomPlan.customFormUrl,
       maxTeamMember: mockCustomPlan.maxTeamMember
@@ -761,6 +854,72 @@ describe('getTeamStandPlan', () => {
     vi.clearAllMocks();
     delete (global as any).subPlans;
   });
+
+  it.each([
+    [true, false, false],
+    [false, true, true],
+    [true, undefined, true],
+    [false, undefined, false]
+  ])(
+    'returns team override %s/%s consistently in both status queries',
+    async (configured, override, expected) => {
+      const plan = {
+        ...baseStandard,
+        expiredTime: new Date('2099-01-01'),
+        canHideShareBrandOverride: override
+      };
+      const find = vi.spyOn(MongoTeamSub, 'find').mockReturnValue({
+        lean: vi.fn().mockResolvedValue([plan])
+      } as any);
+      global.subPlans = {
+        standard: { basic: { ...baseConstants, canHideShareBrand: configured } }
+      };
+      try {
+        const compact = await getTeamStandPlan({ teamId: mockTeamId });
+        const full = await getTeamPlanStatus({ teamId: mockTeamId });
+        expect(compact.standard?.canHideShareBrand).toBe(expected);
+        expect(full.standard?.canHideShareBrand).toBe(expected);
+      } finally {
+        find.mockRestore();
+      }
+    }
+  );
+
+  it.each([
+    { advancedExpired: true, basicEntitled: true, advancedEntitled: false, expected: true },
+    { advancedExpired: true, basicEntitled: false, advancedEntitled: true, expected: false },
+    { advancedExpired: false, basicEntitled: true, advancedEntitled: false, expected: false },
+    { advancedExpired: false, basicEntitled: false, advancedEntitled: true, expected: true }
+  ])(
+    'uses the same branding entitlement as the full status query: %j',
+    async ({ advancedExpired, basicEntitled, advancedEntitled, expected }) => {
+      const plans = [
+        {
+          ...baseStandard,
+          currentSubLevel: StandardSubLevelEnum.advanced,
+          expiredTime: new Date(advancedExpired ? '2000-01-01' : '2099-01-01')
+        },
+        { ...baseStandard, expiredTime: new Date('2099-01-01') }
+      ];
+      const find = vi.spyOn(MongoTeamSub, 'find').mockReturnValue({
+        lean: vi.fn().mockImplementation(async () => [...plans])
+      } as any);
+      global.subPlans = {
+        standard: {
+          basic: { ...baseConstants, canHideShareBrand: basicEntitled },
+          advanced: { ...baseConstants, canHideShareBrand: advancedEntitled }
+        }
+      };
+      try {
+        const compact = await getTeamStandPlan({ teamId: mockTeamId });
+        const full = await getTeamPlanStatus({ teamId: mockTeamId });
+        expect(compact.standard?.canHideShareBrand).toBe(expected);
+        expect(full.standard?.canHideShareBrand).toBe(expected);
+      } finally {
+        find.mockRestore();
+      }
+    }
+  );
 
   it('未开启标准套餐配置且没有套餐记录时返回 undefined', async () => {
     vi.spyOn(MongoTeamSub, 'find').mockReturnValue({

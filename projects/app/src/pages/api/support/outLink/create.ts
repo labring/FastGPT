@@ -1,3 +1,5 @@
+import { serviceEnv } from '@fastgpt/service/env';
+import { getNewOutLinkBrandConfig } from '@fastgpt/service/support/outLink/branding/utils';
 import { MongoOutLink } from '@fastgpt/service/support/outLink/schema';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { ManagePermissionVal } from '@fastgpt/global/support/permission/constant';
@@ -15,7 +17,7 @@ import {
   type OutLinkCreateResponseType
 } from '@fastgpt/global/openapi/support/outLink/api';
 
-async function handler(
+export async function handler(
   req: ApiRequestProps<OutLinkCreateBodyType>
 ): Promise<OutLinkCreateResponseType> {
   const { appId, ...props } = parseApiInput({
@@ -36,7 +38,8 @@ async function handler(
     teamId,
     tmbId,
     appId,
-    ...props
+    ...props,
+    ...getNewOutLinkBrandConfig({ enabled: serviceEnv.SHOW_OUTLINK_BRAND, type: props.type })
   });
 
   (async () => {

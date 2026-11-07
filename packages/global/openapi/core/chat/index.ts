@@ -14,6 +14,10 @@ import { ChatFilePath } from './file';
 import { ChatCompletionPath } from './completion';
 
 export const ChatPath: OpenAPIPath = {
+  // 先固定会话操作的文档顺序；后续展开保留首次插入的位置。
+  '/v2/chat/completions': ChatCompletionPath!['/v2/chat/completions'],
+  '/v2/chat/stop': ChatControllerPath!['/v2/chat/stop'],
+  '/v1/chat/completions': ChatCompletionPath!['/v1/chat/completions'],
   ...ChatFeedbackPath,
   ...ChatFilePath,
   ...ChatSettingPath,
