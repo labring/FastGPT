@@ -14,7 +14,11 @@ import {
 } from '../../agentLoopCore/interface';
 import { runWorkflow } from '../../../index';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import {
+  DispatchNodeResponseKeyEnum,
+  SseResponseEventEnum
+} from '@fastgpt/global/core/workflow/runtime/constants';
+import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
 import { dispatchWorkflowReadFiles } from '../../readFiles';
 import { getWorkflowContext, runWithContext } from '../../../context';
 import type { DispatchFlowResponse } from '../../../type';
@@ -71,11 +75,13 @@ export const createToolCallToolProvider = async ({
   const parentVariableContext = parentContext.variableContext;
 
   /**
-   * 每次工具调用使用独立变量快照；只在正常完成时提交变量增量。
+   * 每次工具调用使用独立变量快照；正常完成或交互暂停时提交已完成节点的变量增量。
+   * 暂停快照不包含变量副本，提交后下一轮才能从父级恢复且无需重跑暂停前节点。
    * 完成后立即提交，不等待更早发起的调用；同名变量按实际写回顺序覆盖。
    */
   const runWorkflowTool: CreateAgentLoopCoreWorkflowToolRunnerParams<WorkflowInteractiveResponseType>['runWorkflowTool'] =
     async ({ runtimeNodes, runtimeEdges, lastInteractive }) => {
+      let hasVariableUpdate = false;
       const stateSnapshot = new WorkflowRunStateSnapshot({
         variableContext: parentVariableContext
       });
@@ -92,6 +98,16 @@ export const createToolCallToolProvider = async ({
       const result = await runWithContext(childContext, () =>
         runWorkflow({
           ...workflowProps,
+          // 副本的全量变量不能直接覆盖客户端；其他流事件仍按原顺序透传。
+          workflowStreamResponse: workflowProps.workflowStreamResponse
+            ? (event) => {
+                if (event.event === SseResponseEventEnum.updateVariables) {
+                  hasVariableUpdate = true;
+                } else {
+                  workflowProps.workflowStreamResponse?.(event);
+                }
+              }
+            : undefined,
           memoryState: memoryState.fork(),
           // 继承父流程的流式能力；是否禁流由子节点的 forbidStream 控制。
           // 简易应用在表单转换时强制禁流，不能在共用 ToolCall 层关闭所有工作流的输出。
@@ -105,13 +121,17 @@ export const createToolCallToolProvider = async ({
       memoryState.merge(result[DispatchNodeResponseKeyEnum.memories]);
       onWorkflowRuntimeSummary?.(result.workflowRuntimeSummary);
 
-      if (
-        !result.workflowRuntimeSummary.errorCount &&
-        !result.workflowInteractiveResponse &&
-        !parentContext.checkIsStopping()
-      ) {
+      if (!result.workflowRuntimeSummary.errorCount && !parentContext.checkIsStopping()) {
         // 在父 Context 中提交变量差量；节点输出仍由 tool runner 独立提交。
-        await runWithContext(parentContext, () => stateSnapshot.commit());
+        await runWithContext(parentContext, async () => {
+          await stateSnapshot.commit();
+          // 每个调用按完成顺序发布合并后的父级记录，包含先完成兄弟已提交的无关变量。
+          if (hasVariableUpdate) {
+            workflowProps.workflowStreamResponse?.(
+              workflowSseEvent.updateVariables(parentVariableContext.toStoreRecord())
+            );
+          }
+        });
       } else {
         stateSnapshot.discard();
       }

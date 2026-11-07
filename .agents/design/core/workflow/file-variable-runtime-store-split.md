@@ -219,7 +219,9 @@ runWithContext({ ...context, variableContext: variableState }, () => runWorkflow
 
 节点 output 可通过可选的 `nodeOutputs: { sourceNodes, targetNodes, childrenNodeIdList }` 一并跟踪；图的克隆、入口注入和交互恢复仍由执行器负责，快照仅同步 output 差量。Loop/Parallel 按各自成功或 checkpoint 规则提交；Workflow Tool runner 只跟踪 output，并保留在 finally 中提交已完成输出的规则。ToolCall provider 只跟踪变量，不再为变量提交传空节点数组。
 
-ToolCall 每次工具子运行使用独立变量副本；正常完成且未暂停、未停止时立即提交相对起点快照的变量差量，不按调用顺序排队等待。同名变量按实际写回顺序覆盖，无关变量不会被旧快照覆盖；异常或提交失败不阻塞其他调用，变量提交不保证多字段原子性。
+ToolCall 每次工具子运行使用独立变量副本；正常完成或交互暂停且未停止时立即提交相对起点快照的变量差量，不按调用顺序排队等待。交互快照不保存变量副本，暂停时必须保留已完成节点的变量更新，下一轮从父级恢复，不能依赖重跑暂停前节点。同名变量按实际写回顺序覆盖，无关变量不会被旧快照覆盖；异常或提交失败不阻塞其他调用，变量提交不保证多字段原子性。
+
+隔离运行期间拦截 `updateVariables` 全量 SSE，其他事件正常透传；成功提交（含正常暂停）后若子运行产生过变量事件，发送合并后的父级 store 记录。失败或停止时不把未提交的副本状态发送到前端，避免并发工具的旧快照覆盖已完成兄弟的变量。
 
 统一派生接口 `getChildContext(overrides)` 可同时覆盖变量、文件、资源和响应等 Context 字段；未覆盖字段共享父级引用，可选字段显式 `undefined` 表示清空。派生只创建新对象，不激活 ALS，不修改父 Context，不自动深拷贝能力实例，也不负责结果回写。多级派生基于当前子 Context，文件准入仍先通过 `fileContext.derive()` 完成，不能用普通 Context 浅拷贝代替鉴权。
 

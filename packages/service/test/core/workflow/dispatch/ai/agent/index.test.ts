@@ -20,13 +20,16 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 let testFileContext: Awaited<ReturnType<typeof createTestWorkflowFileContext>>;
 
 const runWithContext = <T>(
-  value: Omit<Parameters<typeof runWithWorkflowContext>[0], 'fileContext'>,
+  value: Omit<Parameters<typeof runWithWorkflowContext>[0], 'fileContext'> & {
+    fileContext?: Parameters<typeof runWithWorkflowContext>[0]['fileContext'];
+  },
   fn: (ctx: Parameters<typeof runWithWorkflowContext>[0]) => T
 ): T =>
   runWithWorkflowContext(
     {
+      checkIsStopping: () => false,
       ...value,
-      fileContext: testFileContext
+      fileContext: value.fileContext ?? testFileContext
     },
     fn
   );
@@ -1006,7 +1009,7 @@ describe('dispatchRunAgent user context', () => {
     delete props.params.agent_datasetParams;
     props.node.catchError = true;
     props.nodeResponseParentId = 'workflow_agent_resp_id';
-    props.nodeResponseSink = {
+    const nodeResponseSink = {
       publish: vi.fn(async (inputs: Array<{ response: any; parentId?: string }>) => {
         publishedResponses.push(
           ...inputs.map((input) => ({
@@ -1038,7 +1041,7 @@ describe('dispatchRunAgent user context', () => {
     });
 
     let resultPromise: Promise<any>;
-    runWithContext({ mcpClientMemory: {} }, () => {
+    runWithContext({ mcpClientMemory: {}, nodeResponseSink }, () => {
       resultPromise = dispatchRunAgent(props);
     });
     const result = await resultPromise!;
@@ -1887,19 +1890,20 @@ describe('dispatchRunAgent user context', () => {
     const simplePublished: Array<{ response: any; parentId?: string }> = [];
     const simpleProps = createProps();
     simpleProps.nodeResponseParentId = 'simple_agent_resp_id';
-    simpleProps.nodeResponseSink = {
-      publish: vi.fn(async (entries) => {
+    const simpleSink = {
+      publish: vi.fn(async (entries: Array<{ response: any; parentId?: string }>) => {
         simplePublished.push(...entries);
         return entries.map((entry: any) => entry.response);
       })
     };
     runAgentLoopMock.mockImplementationOnce(emitStepAndFinish);
 
-    const simpleResult = await runWithContext({ mcpClientMemory: {} }, () =>
-      dispatchRunAgent(simpleProps)
+    const simpleResult = await runWithContext(
+      { mcpClientMemory: {}, nodeResponseSink: simpleSink },
+      () => dispatchRunAgent(simpleProps)
     );
     expect(simplePublished).toHaveLength(1);
-    expect(simplePublished[0].parentId).toBeUndefined();
+    expect(simplePublished[0].response.parentId).toBeUndefined();
     expect(simpleResult[DispatchNodeResponseKeyEnum.nodeResponse]).toBeUndefined();
 
     // 2. Workflow Mode (no agent_datasetParams, even when agent_datasetSelectList is configured): steps attach to nodeResponseParentId, returns outer nodeResponse
@@ -1917,19 +1921,20 @@ describe('dispatchRunAgent user context', () => {
       }
     ];
     workflowProps.nodeResponseParentId = 'workflow_agent_resp_id';
-    workflowProps.nodeResponseSink = {
-      publish: vi.fn(async (entries) => {
+    const workflowSink = {
+      publish: vi.fn(async (entries: Array<{ response: any; parentId?: string }>) => {
         workflowPublished.push(...entries);
         return entries.map((entry: any) => entry.response);
       })
     };
     runAgentLoopMock.mockImplementationOnce(emitStepAndFinish);
 
-    const workflowResult = await runWithContext({ mcpClientMemory: {} }, () =>
-      dispatchRunAgent(workflowProps)
+    const workflowResult = await runWithContext(
+      { mcpClientMemory: {}, nodeResponseSink: workflowSink },
+      () => dispatchRunAgent(workflowProps)
     );
     expect(workflowPublished).toHaveLength(1);
-    expect(workflowPublished[0].parentId).toBe('workflow_agent_resp_id');
+    expect(workflowPublished[0].response.parentId).toBe('workflow_agent_resp_id');
     expect(workflowResult[DispatchNodeResponseKeyEnum.nodeResponse]).toEqual({
       model: 'gpt-5',
       query: '当前问题',
