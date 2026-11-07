@@ -35,6 +35,7 @@ import {
 type RunAgentCallProps<TChildrenResponse = unknown> = {
   maxRunAgentTimes: number;
   completionPolicy?: AgentLoopCompletionPolicy;
+  getCheckpointContext?: () => Promise<string>;
   batchToolSize?: number;
   fileContext?: FileClassificationContext;
   body: CreateLLMResponseProps['body'] & {
@@ -142,6 +143,7 @@ type RunAgentResponse<TChildrenResponse = unknown> = {
  */
 export const onCompressContext = async ({
   activePlan,
+  getCheckpointContext,
   isAborted,
   messageTokens,
   requestMessages,
@@ -152,6 +154,7 @@ export const onCompressContext = async ({
   teamId
 }: {
   activePlan?: AgentPlanType;
+  getCheckpointContext?: () => Promise<string>;
   isAborted: RunAgentCallProps['isAborted'];
   messageTokens?: number;
   requestMessages: ChatCompletionMessageParam[];
@@ -164,6 +167,7 @@ export const onCompressContext = async ({
   const compressStartTime = Date.now();
   const result = await compressRequestMessages({
     activePlan,
+    getCheckpointContext,
     checkIsStopping: isAborted,
     messageTokens,
     messages: requestMessages,
@@ -205,6 +209,7 @@ export const onCompressContext = async ({
 export const runAgentLoop = async <TChildrenResponse = unknown>({
   maxRunAgentTimes,
   completionPolicy,
+  getCheckpointContext,
   batchToolSize = 1,
   // 同次 Agent 运行的各轮模型请求共享分类缓存，支持上层传入已有上下文（如 WorkflowFileContext）。
   fileContext = createFileClassificationContext(),
@@ -395,6 +400,7 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
     {
       const compressResult = await onCompressContext({
         activePlan: getActivePlan?.(),
+        getCheckpointContext,
         isAborted,
         messageTokens: requestMessagesTokenCount,
         requestMessages,

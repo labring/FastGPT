@@ -303,6 +303,23 @@ describe('runPiAgentLoop', () => {
     compressRequestMessagesMock.mockImplementation(async ({ messages }) => ({ messages }));
   });
 
+  it('passes the business recovery hook through piAgent context transformation', async () => {
+    agentRunTransformContext.value = true;
+    const getCheckpointContext = vi.fn(async () => 'task-memory/index.json');
+    await runPiAgentLoop({
+      input: { messages: [{ role: 'user', content: 'continue' }] },
+      runtime: {
+        llmParams: { model: 'gpt-5' },
+        toolCatalog: { runtimeTools: [] },
+        executeTool: vi.fn(),
+        getCheckpointContext
+      }
+    });
+    expect(compressRequestMessagesMock).toHaveBeenCalledWith(
+      expect.objectContaining({ getCheckpointContext })
+    );
+  });
+
   it('runs pi-agent-core through the provider contract and returns provider state', async () => {
     const events: any[] = [];
     const usagePush = vi.fn();

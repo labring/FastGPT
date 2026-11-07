@@ -55,6 +55,8 @@ export type AgentLoopRuntime<TChildrenResponse = unknown> = {
   systemTools?: AgentLoopSystemTools;
   maxRunAgentTimes?: number;
   completionPolicy?: AgentLoopCompletionPolicy;
+  /** 真正压缩时读取业务恢复入口，结果随 checkpoint 固化。 */
+  getCheckpointContext?: () => Promise<string>;
   checkIsStopping?: () => boolean;
   toolCatalog: AgentLoopToolCatalog;
   executeTool: (
