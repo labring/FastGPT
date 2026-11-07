@@ -1,12 +1,23 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { requestMock, axiosPutMock, getImageBufferMock, mockEnv } = vi.hoisted(() => ({
+/**
+ * performance.parse.fileTimeoutSeconds 的运行时唯一来源是实例配置快照。
+ * 见 .agents/design/common/admin-instance-config-env-boundary.md 13.1：运行期 `?? serviceEnv` 兜底已废除，
+ * PARSE_FILE_TIMEOUT_SECONDS 只在启动迁移时 seed 进库，因此本文件改写快照叶子来驱动 doc2x 的整体 deadline，
+ * 而不是 mock serviceEnv。种子默认值与 performance schema 的 fileTimeoutSeconds 默认值一致（600 秒）。
+ */
+const instanceConfigSeed = { performance: { parse: { fileTimeoutSeconds: 600 } } };
+(global as any).systemInstanceConfig = instanceConfigSeed;
+
+/** getBackendFileOperationTimeoutMs 每次调用都读 global，就地改写叶子即时生效。 */
+const setFileTimeoutSeconds = (value: number) => {
+  instanceConfigSeed.performance.parse.fileTimeoutSeconds = value;
+};
+
+const { requestMock, axiosPutMock, getImageBufferMock } = vi.hoisted(() => ({
   requestMock: vi.fn(),
   axiosPutMock: vi.fn(),
-  getImageBufferMock: vi.fn(),
-  mockEnv: {
-    PARSE_FILE_TIMEOUT_SECONDS: 600
-  }
+  getImageBufferMock: vi.fn()
 }));
 
 vi.mock('@fastgpt/service/common/api/axios', () => ({
@@ -20,10 +31,6 @@ vi.mock('@fastgpt/service/common/api/axios', () => ({
 
 vi.mock('@fastgpt/service/common/file/image/utils', () => ({
   getImageBuffer: getImageBufferMock
-}));
-
-vi.mock('@fastgpt/service/env', () => ({
-  serviceEnv: mockEnv
 }));
 
 const { useDoc2xServer } = await import('@fastgpt/service/thirdProvider/doc2x');
@@ -60,7 +67,7 @@ describe('useDoc2xServer', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     requestMock.mockReset();
-    mockEnv.PARSE_FILE_TIMEOUT_SECONDS = 600;
+    setFileTimeoutSeconds(600);
     vi.useFakeTimers();
     axiosPutMock.mockResolvedValue({
       status: 200,
@@ -260,7 +267,7 @@ describe('useDoc2xServer', () => {
   });
 
   it('轮询总时长跟随后端有效 timeout，不受固定 120 次限制', async () => {
-    mockEnv.PARSE_FILE_TIMEOUT_SECONDS = 1200;
+    setFileTimeoutSeconds(1200);
     requestMock.mockReset();
     let statusCalls = 0;
     requestMock.mockImplementation(({ url }: { url: string }) => {

@@ -1,7 +1,10 @@
+import { getSystemInstanceConfig } from './systemInstanceConfig/runtime';
+import { logInstanceConfigRead } from './migrationCoverageLog';
 import { serviceEnv } from '../../env';
 
 export const FastGPTProUrl = serviceEnv.PRO_URL ? `${serviceEnv.PRO_URL}/api` : '';
-export const FastGPTPluginUrl = serviceEnv.PLUGIN_BASE_URL ?? '';
+/** @deprecated 插件地址已由实例配置 subservice.plugin 管理 */
+export const FastGPTPluginUrl = '';
 // @ts-ignore
 export const isFastGPTProService = () => !!global.systemConfig;
 
@@ -9,8 +12,44 @@ export const isProVersion = () => {
   return !!global.feConfigs?.isPlus;
 };
 
-export const serviceRequestMaxContentLength =
-  serviceEnv.SERVICE_REQUEST_MAX_CONTENT_LENGTH * 1024 * 1024;
+/**
+ * 请求体大小上限（MB → byte）。
+ * 实例配置 resource.serviceRequestMaxContentLength 是唯一运行时来源；ENV 只在启动迁移时 seed。
+ */
+export const getServiceRequestMaxContentLength = () => {
+  const value = getSystemInstanceConfig().resource.serviceRequestMaxContentLength;
+  logInstanceConfigRead({
+    callsite: 'runtime.common.system.constants.getServiceRequestMaxContentLength',
+    fields: [{ path: 'resource.serviceRequestMaxContentLength', value }]
+  });
+  return value * 1024 * 1024;
+};
+
+/**
+ * 媒体是否需要在服务端转 base64（兼容不支持远程 URL 的模型）。
+ * 统一 helper 防止各消费点写法漂移；来源只有实例配置。
+ */
+export const getMultipleDataToBase64 = () => {
+  const value = getSystemInstanceConfig().feature.multipleDataToBase64;
+  logInstanceConfigRead({
+    callsite: 'runtime.common.system.constants.getMultipleDataToBase64',
+    fields: [{ path: 'feature.multipleDataToBase64', value }]
+  });
+  return value;
+};
+
+/**
+ * 密码登录/验证短信的每分钟限流次数。
+ * create/consume 两处限流与改密接口共用本 helper，避免同一配置多处读取漂移。
+ */
+export const getPasswordLoginMinuteLimitCount = () => {
+  const value = getSystemInstanceConfig().security.passwordLoginMinuteLimitCount;
+  logInstanceConfigRead({
+    callsite: 'runtime.common.system.constants.getPasswordLoginMinuteLimitCount',
+    fields: [{ path: 'security.passwordLoginMinuteLimitCount', value }]
+  });
+  return value;
+};
 
 export const InitialErrorEnum = {
   S3_ERROR: 's3_error',

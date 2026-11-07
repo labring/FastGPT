@@ -6,7 +6,7 @@ import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { BatchDownloadDatasetCollectionsQuerySchema } from '@fastgpt/global/openapi/core/dataset/collection/batchDownloadApi';
 import { parseHeaderCert } from '@fastgpt/service/support/permission/auth/common';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
-import { serviceEnv } from '@fastgpt/service/env';
+import { getSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/runtime';
 import {
   streamDatasetArchiveResponse,
   withDatasetArchiveResources
@@ -38,7 +38,7 @@ async function handler(req: ApiRequestProps, res: NextApiResponse): Promise<void
   try {
     await withDatasetArchiveResources({
       tmbId: String(tmbId),
-      concurrency: serviceEnv.DATASET_ARCHIVE_MAX_CONCURRENCY,
+      concurrency: getSystemInstanceConfig().resource.datasetArchive.maxConcurrency,
       waitForSlot: true,
       fn: async ({ signals, assertValid }) => {
         const signal = AbortSignal.any([abortContext.signal, ...signals]);

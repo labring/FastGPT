@@ -17,18 +17,47 @@ describe('validateSystemMigrationRegistry', () => {
     expect(systemMigrations.map(({ id }) => id)).toEqual([
       '20261022_initialize_dataset_vector_indexes',
       '20261104_backfill_chat_publish_source',
-      '20261104_backfill_openapi_key_type'
+      '20261104_backfill_openapi_key_type',
+      '20260928_migrate_instance_configs',
+      '20260929_cleanup_instance_config_deprecated_fields'
     ]);
     expect(
-      systemMigrations.filter(
-        (task: SystemMigration) =>
-          task.blockStartup || task.manual || task.delay || task.dependsOn?.length
-      )
+      systemMigrations.filter((task: SystemMigration) => task.delay).map(({ id }) => id)
     ).toEqual([]);
+    expect(
+      systemMigrations.filter((task: SystemMigration) => task.manual).map(({ id }) => id)
+    ).toEqual([]);
+    // 只有「声明集合可能增长、老库必须能补建新成员」的任务才允许每轮重跑
+    expect(
+      systemMigrations.filter((task: SystemMigration) => task.resumable).map(({ id }) => id)
+    ).toEqual([
+      '20260928_migrate_instance_configs',
+      '20260929_cleanup_instance_config_deprecated_fields'
+    ]);
+    expect(
+      systemMigrations.filter((task: SystemMigration) => task.blockStartup).map(({ id }) => id)
+    ).toEqual([
+      '20260928_migrate_instance_configs',
+      '20260929_cleanup_instance_config_deprecated_fields'
+    ]);
+    expect(systemMigrations.at(-2)).toMatchObject({
+      id: '20260928_migrate_instance_configs',
+      version: '4.18.0',
+      blockStartup: true,
+      resumable: true,
+      progressSteps: [{ key: 'inspect' }, { key: 'migrate' }, { key: 'validate' }]
+    });
+    expect(systemMigrations.at(-1)).toMatchObject({
+      id: '20260929_cleanup_instance_config_deprecated_fields',
+      version: '4.18.0',
+      blockStartup: true,
+      resumable: true,
+      progressSteps: [{ key: 'cleanup' }, { key: 'validation' }]
+    });
     expect(() => validateSystemMigrationRegistry(systemMigrations)).not.toThrow();
   });
 
-  it('appends dataset index initialization as a non-blocking automatic task', () => {
+  it('keeps dataset index initialization as a non-blocking automatic task', () => {
     const task = systemMigrations.find(
       ({ id }) => id === '20261022_initialize_dataset_vector_indexes'
     );
@@ -44,8 +73,22 @@ describe('validateSystemMigrationRegistry', () => {
     expect(task).not.toHaveProperty('onFailure');
   });
 
-  it('在4.18.0末尾登记独立自动 Key 类型回填，保持启动非阻塞且无依赖', () => {
-    const task = systemMigrations.at(-1);
+  it('保留聊天来源回填为无依赖的独立自动任务', () => {
+    const task = systemMigrations.find(({ id }) => id === '20261104_backfill_chat_publish_source');
+    expect(task).toMatchObject({
+      id: '20261104_backfill_chat_publish_source',
+      version: '4.18.0',
+      independent: true,
+      progressSteps: [{ key: 'chats' }, { key: 'chatLogs' }, { key: 'validation' }]
+    });
+    expect(task).not.toHaveProperty('blockStartup', true);
+    expect(task).not.toHaveProperty('dependsOn');
+    expect(task).not.toHaveProperty('manual');
+    expect(task).not.toHaveProperty('delay');
+  });
+
+  it('在4.18.0登记独立自动 Key 类型回填，保持启动非阻塞且无依赖', () => {
+    const task = systemMigrations.find(({ id }) => id === '20261104_backfill_openapi_key_type');
     expect(task).toMatchObject({
       id: '20261104_backfill_openapi_key_type',
       version: '4.18.0',
@@ -72,6 +115,15 @@ describe('validateSystemMigrationRegistry', () => {
         { ...createMigration('20261008_manual'), manual: true, delay: true }
       ])
     ).toThrow('cannot be delayed');
+  });
+
+  it('rejects resumable manual execution', () => {
+    // manual 要求管理员显式入队，resumable 会让它每轮自动重跑，两者语义冲突
+    expect(() =>
+      validateSystemMigrationRegistry([
+        { ...createMigration('20261008_manual_resumable'), manual: true, resumable: true }
+      ])
+    ).toThrow('cannot be resumable');
   });
 
   it.each([{ keys: [''] }, { keys: ['repeated', 'repeated'] }])(

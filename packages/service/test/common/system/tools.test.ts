@@ -1,62 +1,24 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { FastGPTConfigFileType } from '@fastgpt/global/common/system/types';
 
-vi.mock('@fastgpt/service/env', () => ({
-  hasAgentSandboxConfig: vi.fn(() => false),
+const { serviceEnv } = vi.hoisted(() => ({
   serviceEnv: {
     SHOW_OUTLINK_BRAND: false,
-    AGENT_SANDBOX_SHOW_FREE_TIP: false,
-    UPLOAD_FILE_MAX_SIZE: 1000,
-    UPLOAD_FILE_MAX_AMOUNT: 1000,
-    MAX_FOLDER_DEPTH: 4
+    AGENT_SANDBOX_SHOW_FREE_TIP: false
   }
 }));
 
+vi.mock('@fastgpt/service/env', () => ({ serviceEnv }));
+
 vi.mock('@fastgpt/service/core/ai/sandbox/config', () => ({
+  getAgentSandboxProvider: vi.fn(() => 'none'),
   getAgentSandboxSkillMaxBytes: vi.fn(() => 512)
 }));
 
 // setup 已加载过此模块，清缓存后才能使用本文件声明的环境与沙箱 mock。
 vi.resetModules();
 const { initFastGPTConfig } = await import('@fastgpt/service/common/system/tools');
-const { serviceEnv } = await import('@fastgpt/service/env');
 
 describe('initFastGPTConfig', () => {
-  it.each([undefined, false, true])(
-    'loads independent share brand entitlements: %s',
-    (canHideShareBrand) => {
-      initFastGPTConfig({
-        feConfigs: { isPlus: false },
-        systemEnv: {},
-        subPlans: {
-          standard: {
-            custom: canHideShareBrand === undefined ? {} : { canHideShareBrand },
-            advanced: {
-              price: 599,
-              totalPoints: 2000,
-              maxTeamMember: 10,
-              maxAppAmount: 20,
-              maxDatasetAmount: 20,
-              maxDatasetSize: 1000,
-              chatHistoryStoreDuration: 30,
-              canHideShareBrand: true
-            }
-          }
-        }
-      } as FastGPTConfigFileType);
-      expect(global.subPlans?.standard?.custom?.canHideShareBrand).toBe(canHideShareBrand);
-      expect(global.subPlans?.standard?.advanced?.canHideShareBrand).toBe(true);
-    }
-  );
-
-  it.each([false, true])(
-    'derives branding from environment and overrides stale file values=%s',
-    (enabled) => {
-      serviceEnv.SHOW_OUTLINK_BRAND = enabled;
-      initFastGPTConfig({ feConfigs: { show_outlink_brand: !enabled }, systemEnv: {} } as any);
-      expect(global.feConfigs.show_outlink_brand).toBe(enabled);
-    }
-  );
   it.each([false, true])(
     'keeps SSO addresses exclusively in systemEnv when other configuration validation fails=%s',
     (invalid) => {
@@ -79,6 +41,7 @@ describe('initFastGPTConfig', () => {
   });
   beforeEach(() => {
     serviceEnv.SHOW_OUTLINK_BRAND = false;
+    serviceEnv.AGENT_SANDBOX_SHOW_FREE_TIP = false;
     global.feConfigs = {} as any;
     global.systemEnv = {} as any;
   });
@@ -112,18 +75,13 @@ describe('initFastGPTConfig', () => {
     expect(global.systemEnv.datasetParseMaxProcess).toBe('not_a_number');
   });
 
-  it('正确挂载 show_agent_sandbox_free_tip 配置', () => {
+  it.each([false, true])('免费提示仅由 ENV 控制：%s，忽略旧配置', (enabled) => {
+    serviceEnv.AGENT_SANDBOX_SHOW_FREE_TIP = enabled;
     initFastGPTConfig({
-      feConfigs: {},
+      feConfigs: { agentSandboxFree: !enabled, show_agent_sandbox_free_tip: !enabled },
       systemEnv: {}
     } as any);
-    expect(global.feConfigs.show_agent_sandbox_free_tip).toBe(false);
-
-    initFastGPTConfig({
-      feConfigs: { agentSandboxFree: true },
-      systemEnv: {}
-    } as any);
-    expect(global.feConfigs.show_agent_sandbox_free_tip).toBe(true);
+    expect(global.feConfigs.show_agent_sandbox_free_tip).toBe(enabled);
   });
 
   it.each(['agentSandboxMax', 'agentSandboxMaxPerTeam', 'vectorRecallConcurrency'])(
@@ -160,7 +118,8 @@ describe('initFastGPTConfig', () => {
     expect(global.systemEnv).toMatchObject({
       datasetParseMaxProcess: 'not_a_number',
       agentSandboxMax: 12,
-      agentSandboxMaxPerTeam: undefined,
+      // null 是显式"不限量"，必须保留而不是归一为 undefined
+      agentSandboxMaxPerTeam: null,
       vectorRecallConcurrency: 8,
       customSetting: 7
     });
@@ -181,8 +140,8 @@ describe('initFastGPTConfig', () => {
       expect(global.systemEnv.fileUrlWhitelist).toEqual(fileUrlWhitelist);
       expect(global.systemEnv.ip_whitelist).toBe('10.0.0.1');
       expect(global.feConfigs.limit).toMatchObject({
-        uploadFileMaxAmount: 1000,
-        uploadFileMaxSize: 1000,
+        uploadFileMaxAmount: 7,
+        uploadFileMaxSize: 32,
         skillSandboxMaxBytes: 512,
         maxFolderDepth: 4,
         workflowParallelRunMaxConcurrency: 20

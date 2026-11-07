@@ -77,6 +77,7 @@ export const createVectorDBTestSuite = (vectorCtrl: VectorControllerType) => {
         datasetIds: [datasetId],
         vector: QUERY_VECTOR,
         limit: 3,
+        hnswEfSearch: 200,
         forbidCollectionIdList: []
       });
 
@@ -97,6 +98,7 @@ export const createVectorDBTestSuite = (vectorCtrl: VectorControllerType) => {
         datasetIds: [datasetId],
         vector: QUERY_VECTOR,
         limit: 10,
+        hnswEfSearch: 200,
         forbidCollectionIdList: [TEST_COLLECTION_IDS[0]]
       });
 
@@ -115,6 +117,7 @@ export const createVectorDBTestSuite = (vectorCtrl: VectorControllerType) => {
         datasetIds: [datasetId],
         vector: QUERY_VECTOR,
         limit: 10,
+        hnswEfSearch: 200,
         forbidCollectionIdList: [],
         filterCollectionIdList: [TEST_COLLECTION_IDS[1]]
       });

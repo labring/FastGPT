@@ -5,6 +5,7 @@ import { z } from 'zod';
 import type { NodeApiRequest, NodeApiResponse } from '@fastgpt/service/types/http';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { UserConfigError } from '@fastgpt/global/common/error/utils';
+import { ApiHttpError } from '@fastgpt/service/common/http/apiError';
 
 // 必须运行真实入口和 JSON 响应，才能验证 end/finish/close 之间的边界。
 vi.unmock('@fastgpt/service/common/http/entry');
@@ -139,7 +140,8 @@ describe('createApiEntry response lifecycle', () => {
 
   it.each([
     { error: new Error('Handler failed'), status: 500 },
-    { error: new UserConfigError('Invalid API key'), status: 400 }
+    { error: new UserConfigError('Invalid API key'), status: 400 },
+    { error: new ApiHttpError(409, 'Revision conflict'), status: 409 }
   ])('returns the response mapper status before streaming: $status', async ({ error, status }) => {
     const { req, res } = createHttpObjects();
 

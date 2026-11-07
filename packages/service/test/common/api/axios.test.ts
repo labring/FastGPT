@@ -1,10 +1,10 @@
+import { getTestInstanceConfig } from '@test/utils/instanceConfigSnapshot';
 import { afterEach, describe, it, expect, vi, beforeEach } from 'vitest';
 import http from 'http';
 import os from 'os';
 import dns from 'dns/promises';
 import { createProxyAxios, type SafeAxiosRequestConfig } from '../../../common/api/axios';
 import { PRIVATE_URL_TEXT } from '../../../common/system/utils';
-import { serviceEnv } from '../../../env';
 
 type AxiosRequestConfig = {
   timeout?: number;
@@ -16,8 +16,7 @@ type AxiosRequestConfig = {
 };
 
 describe('axios.ts', () => {
-  const mutableServiceEnv = serviceEnv as { CHECK_INTERNAL_IP: boolean };
-  const originalCheckInternalIp = serviceEnv.CHECK_INTERNAL_IP;
+  const originalCheckInternalIp = getTestInstanceConfig().security.checkInternalIp;
   const proxyEnvKeys = [
     'HTTP_PROXY',
     'HTTPS_PROXY',
@@ -41,7 +40,7 @@ describe('axios.ts', () => {
   );
 
   afterEach(() => {
-    mutableServiceEnv.CHECK_INTERNAL_IP = originalCheckInternalIp;
+    getTestInstanceConfig().security.checkInternalIp = originalCheckInternalIp;
     vi.restoreAllMocks();
     for (const key of proxyEnvKeys) {
       const value = originalProxyEnv[key];
@@ -66,7 +65,7 @@ describe('axios.ts', () => {
 
     it('checks the file domain policy before the first request and every redirect', async () => {
       clearProxyEnv();
-      mutableServiceEnv.CHECK_INTERNAL_IP = false;
+      getTestInstanceConfig().security.checkInternalIp = false;
       const adapter = vi.fn(async (config) => ({
         status: 302,
         statusText: 'Found',
@@ -278,7 +277,7 @@ describe('axios.ts', () => {
     };
 
     it('应该逐跳跟随公网重定向', async () => {
-      mutableServiceEnv.CHECK_INTERNAL_IP = false;
+      getTestInstanceConfig().security.checkInternalIp = false;
       const carrierHost = getReachablePrivateHost();
       if (!carrierHost) {
         return;
@@ -313,7 +312,7 @@ describe('axios.ts', () => {
     });
 
     it('应该阻止重定向到 loopback 地址', async () => {
-      mutableServiceEnv.CHECK_INTERNAL_IP = false;
+      getTestInstanceConfig().security.checkInternalIp = false;
       const carrierHost = getReachablePrivateHost();
       if (!carrierHost) {
         return;
@@ -345,7 +344,7 @@ describe('axios.ts', () => {
     });
 
     it('应该限制最大重定向次数', async () => {
-      mutableServiceEnv.CHECK_INTERNAL_IP = false;
+      getTestInstanceConfig().security.checkInternalIp = false;
       const carrierHost = getReachablePrivateHost();
       if (!carrierHost) {
         return;
@@ -407,7 +406,7 @@ describe('axios.ts', () => {
 
     it('应该拒绝直连路径中预检后重绑定到 loopback 的地址', async () => {
       clearProxyEnv();
-      mutableServiceEnv.CHECK_INTERNAL_IP = false;
+      getTestInstanceConfig().security.checkInternalIp = false;
 
       vi.spyOn(dns, 'resolve4').mockResolvedValue(['8.8.8.8']);
       vi.spyOn(dns, 'resolve6').mockRejectedValue(new Error('No AAAA records'));
@@ -432,7 +431,7 @@ describe('axios.ts', () => {
 
     it('应该覆盖直连路径调用方传入的自定义 lookup agent', async () => {
       clearProxyEnv();
-      mutableServiceEnv.CHECK_INTERNAL_IP = false;
+      getTestInstanceConfig().security.checkInternalIp = false;
       const carrierHost = getReachablePrivateHost();
       if (!carrierHost) {
         return;
@@ -477,7 +476,7 @@ describe('axios.ts', () => {
 
     it('应该拒绝重定向下一跳中的 DNS rebinding', async () => {
       clearProxyEnv();
-      mutableServiceEnv.CHECK_INTERNAL_IP = false;
+      getTestInstanceConfig().security.checkInternalIp = false;
       const carrierHost = getReachablePrivateHost();
       if (!carrierHost) {
         return;
@@ -508,7 +507,7 @@ describe('axios.ts', () => {
 
     it('走代理时命中 isInternalAddress 应该直接拒绝', async () => {
       process.env.HTTP_PROXY = 'http://proxy.example:8080';
-      mutableServiceEnv.CHECK_INTERNAL_IP = false;
+      getTestInstanceConfig().security.checkInternalIp = false;
 
       const adapter = vi.fn().mockResolvedValue({
         data: {},
@@ -525,7 +524,7 @@ describe('axios.ts', () => {
 
     it('走代理且 isInternalAddress 返回 false 时应保留代理路径并跳过 pinning lookup', async () => {
       process.env.HTTP_PROXY = 'http://proxy.example:8080';
-      mutableServiceEnv.CHECK_INTERNAL_IP = false;
+      getTestInstanceConfig().security.checkInternalIp = false;
 
       vi.spyOn(dns, 'resolve4').mockRejectedValue(new Error('DNS unavailable'));
       vi.spyOn(dns, 'resolve6').mockRejectedValue(new Error('DNS unavailable'));
@@ -548,7 +547,7 @@ describe('axios.ts', () => {
 
     it('直连路径 DNS lookup 失败时应该失败', async () => {
       clearProxyEnv();
-      mutableServiceEnv.CHECK_INTERNAL_IP = false;
+      getTestInstanceConfig().security.checkInternalIp = false;
 
       vi.spyOn(dns, 'resolve4').mockResolvedValue(['8.8.8.8']);
       vi.spyOn(dns, 'resolve6').mockRejectedValue(new Error('No AAAA records'));

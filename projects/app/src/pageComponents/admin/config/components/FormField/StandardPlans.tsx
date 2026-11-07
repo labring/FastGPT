@@ -7,7 +7,7 @@ import type {
   StandSubPlanLevelMapType,
   TeamStandardSubPlanItemType
 } from '@fastgpt/global/support/wallet/sub/type';
-import { useTranslation } from 'next-i18next';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import React, { useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
@@ -28,7 +28,7 @@ const CustomPlanModal = ({
   onClose: () => void;
   onChange: (e: StandSubPlanLevelMapType) => void;
 }) => {
-  const { t } = useTranslation();
+  const { t } = useSafeTranslation();
   const level = StandardSubLevelEnum.custom;
   const { handleSubmit, watch, setValue } = useForm({
     defaultValues: planMap[level]
@@ -156,7 +156,7 @@ const StandardPlans = ({
   value: StandSubPlanLevelMapType;
   onChange: (value: StandSubPlanLevelMapType) => void;
 }) => {
-  const { t } = useTranslation();
+  const { t } = useSafeTranslation();
   const { feConfigs } = useSystemStore();
   const [editedLevel, setEditedLevel] = useState<StandardSubLevelEnum | 'custom'>();
 

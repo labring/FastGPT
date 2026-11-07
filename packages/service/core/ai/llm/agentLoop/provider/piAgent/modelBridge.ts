@@ -3,8 +3,8 @@ import type { OpenaiAccountType } from '@fastgpt/global/support/user/team/type';
 import type { ThinkingLevel } from '@mariozechner/pi-agent-core';
 import {
   defaultUserOpenAIBaseUrl,
-  openaiBaseUrl,
-  openaiBaseKey,
+  getOpenaiBaseUrl,
+  getOpenaiBaseKey,
   getAiproxyScopeHeaders
 } from '../../../../config';
 import { getLegacyModelEndpoint } from '../../../../legacy/requestUrl';
@@ -50,13 +50,16 @@ export function buildPiModel(
   const hasUserOpenAIKey = !!userKey?.key;
   const legacyEndpoint = !hasUserOpenAIKey ? getLegacyModelEndpoint(modelData) : undefined;
 
-  const baseUrl = hasUserOpenAIKey
-    ? normalizeBaseUrl(userKey?.baseUrl || defaultUserOpenAIBaseUrl) || openaiBaseUrl
-    : legacyEndpoint
-      ? normalizeBaseUrl(legacyEndpoint.baseUrl) || openaiBaseUrl
-      : openaiBaseUrl;
+  const fallbackBaseUrl = getOpenaiBaseUrl();
+  const fallbackBaseKey = getOpenaiBaseKey();
 
-  const apiKey = hasUserOpenAIKey ? userKey.key : legacyEndpoint?.apiKey || openaiBaseKey;
+  const baseUrl = hasUserOpenAIKey
+    ? normalizeBaseUrl(userKey?.baseUrl || defaultUserOpenAIBaseUrl) || fallbackBaseUrl
+    : legacyEndpoint
+      ? normalizeBaseUrl(legacyEndpoint.baseUrl) || fallbackBaseUrl
+      : fallbackBaseUrl;
+
+  const apiKey = hasUserOpenAIKey ? userKey.key : legacyEndpoint?.apiKey || fallbackBaseKey;
 
   const scopeHeaders = getAiproxyScopeHeaders(modelData, baseUrl);
   const headers = {
@@ -100,5 +103,5 @@ export function buildPiModel(
 export function getModelApiKey(modelData: LLMModelDataType, userKey?: OpenaiAccountType): string {
   if (userKey?.key) return userKey.key;
   const legacyEndpoint = getLegacyModelEndpoint(modelData);
-  return legacyEndpoint?.apiKey || openaiBaseKey || '';
+  return legacyEndpoint?.apiKey || getOpenaiBaseKey();
 }

@@ -58,9 +58,9 @@ export type FastGPTTeamModeType = z.infer<typeof FastGPTTeamModeSchema>;
 
 export const FastGPTFeConfigsSchema = z.looseObject({
   /**
-   * 能力投影，不是第二个服务端开关：唯一真相是 `DATASET_SYNONYM_ENABLED`（serviceEnv），
-   * 服务端逻辑直接读取 `serviceEnv.DATASET_SYNONYM_ENABLED`。该字段由宿主初始化时从同一变量
-   * 派生后供前端读取（本仓库在 `initSystemConfig()` 中派生；agent-builder 由 backend 注入），
+   * 能力投影，不是第二个服务端开关：服务端唯一真相是实例配置 `feature.datasetSynonymEnabled`，
+   * `DATASET_SYNONYM_ENABLED` 只在迁移时作为初始值。该字段由宿主初始化时从同一配置派生后供前端读取
+   * （本仓库在 `initSystemConfig()` 中派生；agent-builder 由 backend 注入），
    * 用于决定编辑器是否提供带 `{{synonymMappings}}` 的引用模板。
    * 必须声明：`getInitData` 用 `.strip()` 的客户端 Schema 收口，未声明字段会被丢弃。
    */
@@ -84,6 +84,9 @@ export const FastGPTFeConfigsSchema = z.looseObject({
   register_method: z.array(FastGPTRegisterMethodCompatSchema).optional().meta({
     description: '用户自助注册方式列表（支持邮箱、手机号，兼容历史 sync 配置）'
   }),
+  enableSaasAdminConfig: z.boolean().optional().meta({
+    description: '是否在管理端展示 SaaS 专用配置项，默认为 false（私有化部署隐藏）'
+  }),
   teamMode: FastGPTTeamModeSchema.optional().meta({
     description: '团队模式（单团队/多团队/账号同步）'
   }),
@@ -100,7 +103,7 @@ export const FastGPTFeConfigsSchema = z.looseObject({
     .optional()
     .meta({ description: '绑定通知联系方式列表' }),
   mcpServerProxyEndpoint: z.string().optional().meta({
-    description: 'MCP SSE 代理地址，运行时配置以环境变量 SSE_MCP_SERVER_PROXY_ENDPOINT 为准'
+    description: 'MCP SSE 代理地址，运行时以子服务配置 mcp.sseProxyUrl 为准'
   }),
 
   chineseRedirectUrl: z.string().optional().meta({ description: '中国大陆地区访问重定向跳转地址' }),
@@ -237,6 +240,7 @@ export const FastGPTFeConfigsSchema = z.looseObject({
     .meta({ description: '分享免登对话页面的自定义独立域名' }),
 
   systemTitle: z.string().optional().meta({ description: '系统平台标题名称' }),
+  systemDescription: z.string().optional().meta({ description: '页面 Meta 描述' }),
   scripts: z
     .array(z.record(z.string(), z.string()))
     .optional()
@@ -404,11 +408,16 @@ export const SystemEnvSchema = z.looseObject({
       'Agent 沙箱活跃实例系统总上限，须为正整数（app 会话与技能编辑共用计数池）；未配置时使用环境变量',
     example: 100
   }),
-  agentSandboxMaxPerTeam: optionalNullToUndefined(IntSchema.min(1)).meta({
-    description:
-      '单团队 Agent 沙箱活跃实例配额，须为正整数；未配置时使用环境变量，环境变量未配置时不限制',
-    example: 10
-  }),
+  // null 是显式"不限量"，必须与"未配置"区分：未配置时回落环境变量，
+  // 显式 null 不能再被环境变量重新加回限制。
+  agentSandboxMaxPerTeam: z
+    .union([IntSchema.min(1), z.null()])
+    .optional()
+    .meta({
+      description:
+        '单团队 Agent 沙箱活跃实例配额，须为正整数；null 表示显式不限制，未配置时使用环境变量',
+      example: 10
+    }),
   openapiPrefix: z.string().optional(),
 
   datasetParseMaxProcess: NumSchema.default(10).meta({

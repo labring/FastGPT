@@ -164,12 +164,15 @@ export const claimMigrationLease = async (
     migrationId,
     runId,
     leaseDurationMs,
-    allowFailed = false
+    allowFailed = false,
+    allowSucceeded = false
   }: {
     migrationId: string;
     runId: string;
     leaseDurationMs: number;
     allowFailed?: boolean;
+    /** resumable 任务：succeeded 也视为可领取，用于声明集合增长后补写新成员。 */
+    allowSucceeded?: boolean;
   },
   session?: ClientSession
 ): Promise<SystemMigrationStateSchemaType | null> => {
@@ -186,7 +189,9 @@ export const claimMigrationLease = async (
           $expr: {
             $lte: [{ $ifNull: ['$leaseExpireAt', new Date(0)] }, '$$NOW']
           }
-        }
+        },
+        // 只放行 succeeded 重新执行；running 分支仍要求 lease 过期，避免抢走正在执行者的 runId。
+        ...(allowSucceeded ? [{ status: SystemMigrationStatusEnum.succeeded }] : [])
       ]
     },
     [

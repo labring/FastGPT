@@ -1,3 +1,7 @@
+import {
+  createDefaultInstanceConfig,
+  getTestInstanceConfig
+} from '@test/utils/instanceConfigSnapshot';
 import { runtimePrompt2ChatsValue } from '@fastgpt/global/core/chat/adapt';
 import {
   ChatFileTypeEnum,
@@ -15,6 +19,8 @@ import { createNodeSummary } from '@fastgpt/service/core/workflow/dispatch/utils
 import { runWithContext as runWithWorkflowContext } from '@fastgpt/service/core/workflow/utils/context';
 import { Readable } from 'node:stream';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+(global as any).systemInstanceConfig = createDefaultInstanceConfig();
 
 const runWithContext: typeof runWithWorkflowContext = (value, fn) =>
   runWithWorkflowContext(
@@ -329,6 +335,12 @@ const getSandboxWorkDirectory = () => getSandboxRuntimeProfile().workDirectory;
 
 describe('dispatchRunAgent user context', () => {
   beforeEach(() => {
+    global.systemInstanceConfig = createDefaultInstanceConfig();
+    Object.assign(getTestInstanceConfig().subservice.agentSandbox, { provider: 'opensandbox' });
+    Object.assign(getTestInstanceConfig().subservice.agentSandbox.opensandbox, {
+      runtime: 'docker',
+      image: 'fastgpt-agent-sandbox:latest'
+    });
     vi.clearAllMocks();
     getLLMModelDataMock.mockImplementation(({ modelId, model }) => ({
       modelId: modelId ?? '68ad85a7463006c963799a41',
@@ -346,7 +358,7 @@ describe('dispatchRunAgent user context', () => {
     }));
     checkTeamSandboxPermissionMock.mockResolvedValue(undefined);
     ensureAppSandboxRuntimeReadyMock.mockResolvedValue(false);
-    serviceEnvMock.AGENT_ENGINE = 'fastAgent';
+    getTestInstanceConfig().feature.agentEngine = 'fastAgent';
     (global as any).feConfigs = {
       ...(global as any).feConfigs,
       show_agent_sandbox: true
@@ -1084,7 +1096,7 @@ describe('dispatchRunAgent user context', () => {
 
   it('routes pi engine through the unified runAgentLoop provider entry', async () => {
     const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
-    serviceEnvMock.AGENT_ENGINE = 'piAgent';
+    getTestInstanceConfig().feature.agentEngine = 'piAgent';
     const props = createProps();
     runAgentLoopMock.mockResolvedValueOnce({
       status: 'done',
@@ -1452,7 +1464,7 @@ describe('dispatchRunAgent user context', () => {
 
   it('restores pi providerState from unified memory and resumes ask with user answer', async () => {
     const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
-    serviceEnvMock.AGENT_ENGINE = 'piAgent';
+    getTestInstanceConfig().feature.agentEngine = 'piAgent';
     const props = createProps();
     props.lastInteractive = {
       type: 'agentAsk',
@@ -1631,6 +1643,63 @@ describe('dispatchRunAgent user context', () => {
     expect(result[DispatchNodeResponseKeyEnum.interactive]).toEqual(
       expect.objectContaining({
         params: expect.objectContaining({ toolCallId: 'call_ask_2' })
+      })
+    );
+  });
+
+  it('resumes a nested Pi ask with history=0 using the parent workflow checkpoint', async () => {
+    const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
+    const { WorkflowMemoryState } = await import('@fastgpt/service/core/workflow/memory/state');
+    getTestInstanceConfig().feature.agentEngine = 'piAgent';
+    const props = createProps();
+    props.params.history = 0;
+    props.histories = [];
+    props.lastInteractive = {
+      type: 'agentAsk',
+      entryNodeIds: [],
+      memoryEdges: [],
+      nodeOutputs: [],
+      params: {
+        toolCallId: 'nested_ask',
+        arguments: JSON.stringify({
+          reason: '',
+          blockerType: 'user_choice',
+          questions: [{ question: 'Continue?', options: [] }]
+        })
+      }
+    };
+    const providerState = {
+      pendingMainContext: {
+        askToolCallId: 'nested_ask',
+        messages: [
+          {
+            role: 'assistant',
+            content: null,
+            tool_calls: [
+              {
+                id: 'nested_ask',
+                type: 'function',
+                function: { name: 'ask_user', arguments: '{}' }
+              }
+            ]
+          }
+        ]
+      }
+    };
+    props.memoryState = WorkflowMemoryState.fromRecord(
+      {
+        'node:outer_agent/app:app_1:agent_node': { providerState }
+      },
+      { rootSource: { sourceType: ChatSourceTypeEnum.app, sourceId: 'parent-app' } }
+    )
+      .fork('node:outer_agent')
+      .fork('app:app_1');
+
+    await runWithContext({ mcpClientMemory: {} }, () => dispatchRunAgent(props));
+    expect(runAgentLoopMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        provider: 'piAgent',
+        input: expect.objectContaining({ providerState, userAnswer: '前端原始问题' })
       })
     );
   });

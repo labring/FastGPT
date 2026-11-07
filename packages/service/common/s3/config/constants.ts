@@ -6,6 +6,8 @@ import type {
   IStorageOptions
 } from '@fastgpt-sdk/storage';
 import { serviceEnv } from '../../../env';
+import { getSystemInstanceConfig } from '../../system/systemInstanceConfig/runtime';
+import { logInstanceConfigRead } from '../../system/migrationCoverageLog';
 import { StorageDownloadUrlModeSchema } from '../contracts/type';
 
 export const S3Buckets = {
@@ -15,6 +17,26 @@ export const S3Buckets = {
 
 /** 系统上传大小上限，单位 MB；0 表示未配置，与客户端使用相同的 1000MB 默认值。 */
 export const getSystemMaxFileSize = () => global.feConfigs.limit?.uploadFileMaxSize || 1000;
+
+/** 文件短链有效期只读实例配置；启动加载前由 Schema 提供默认值。 */
+export const getStorageFileUrlExpiredDays = () => {
+  const value = getSystemInstanceConfig().storage.fileUrlExpiredDays;
+  logInstanceConfigRead({
+    callsite: 'runtime.common.s3.constants.getStorageFileUrlExpiredDays',
+    fields: [{ path: 'storage.fileUrlExpiredDays', value }]
+  });
+  return value;
+};
+
+/** short-redirect 302 预签名地址临时有效期（秒）：请求期读快照，Admin 保存即生效。 */
+export const getStorageRedirectTtlSeconds = () => {
+  const value = getSystemInstanceConfig().storage.redirectTtlSeconds;
+  logInstanceConfigRead({
+    callsite: 'runtime.common.s3.constants.getStorageRedirectTtlSeconds',
+    fields: [{ path: 'storage.redirectTtlSeconds', value }]
+  });
+  return value;
+};
 
 export const S3_KEY_PATH_INVALID_CHARS = /[|\\/]/;
 
@@ -38,24 +60,99 @@ type BucketStorageOptions = {
 
 const storageRegion = serviceEnv.STORAGE_REGION;
 const storageVendor = serviceEnv.STORAGE_VENDOR;
-const storageExternalEndpoint = serviceEnv.STORAGE_EXTERNAL_ENDPOINT;
-export const storageS3CdnEndpoint = serviceEnv.STORAGE_S3_CDN_ENDPOINT;
 const storageS3Endpoint = serviceEnv.STORAGE_S3_ENDPOINT;
-export const storageDownloadUrlMode = StorageDownloadUrlModeSchema.parse(
-  serviceEnv.STORAGE_DOWNLOAD_URL_MODE
-);
-export const storageDownloadRedirectTtlSeconds = serviceEnv.STORAGE_DOWNLOAD_REDIRECT_TTL_SECONDS;
-const needExplicitExternalEndpointForRedirect = storageVendor === 'minio';
-export const canUseStorageDownloadRedirect =
-  !needExplicitExternalEndpointForRedirect || Boolean(storageExternalEndpoint);
 const storagePublicAccessExtraSubPath = serviceEnv.STORAGE_PUBLIC_ACCESS_EXTRA_SUB_PATH;
 
-const bucketStorageOptions = {
+/** 由实例配置注入的存储运行策略。 */
+type RuntimeStorageConfig = {
+  downloadMode?: string;
+  externalEndpoint?: string;
+  cdnEndpoint?: string;
+};
+
+let appliedRuntimeStorageKey: string | undefined;
+
+/**
+ * 注入实例配置里的存储运行策略，并返回与上次注入相比是否发生变化。
+ *
+ * 在 initSystemConfig 读取 system_instance_configs 之后调用。下载模式与公开地址以数据库为唯一来源，
+ * 不再回落环境变量；返回值用于决定是否需要重建 S3 bucket。
+ */
+export const applyRuntimeStorageConfig = (config: RuntimeStorageConfig | undefined): boolean => {
+  const nextKey = JSON.stringify({
+    downloadMode: config?.downloadMode,
+    externalEndpoint: config?.externalEndpoint,
+    cdnEndpoint: config?.cdnEndpoint
+  });
+  const changed = appliedRuntimeStorageKey !== undefined && appliedRuntimeStorageKey !== nextKey;
+  // 仅记录用于判断是否变化；运行时读取一律走 global 快照，避免各路由 bundle 各持一份模块状态
+  appliedRuntimeStorageKey = nextKey;
+  logInstanceConfigRead({
+    callsite: 'startup.common.s3.applyRuntimeStorageConfig',
+    source: 'instance-config',
+    fields: [
+      { path: 'storage.downloadMode', value: config?.downloadMode },
+      { path: 'storage.externalEndpoint', value: config?.externalEndpoint },
+      { path: 'storage.cdnEndpoint', value: config?.cdnEndpoint }
+    ]
+  });
+  return changed;
+};
+
+/** 对外暴露的下载模式：仅取实例配置，未初始化时使用 Schema 默认值 short-proxy。 */
+export const getStorageDownloadUrlMode = () => {
+  // 请求期读 global 快照：注入只发生在启动链路的模块实例里，路由 bundle 读不到那份状态
+  const value = StorageDownloadUrlModeSchema.parse(getSystemInstanceConfig().storage.downloadMode);
+  logInstanceConfigRead({
+    callsite: 'runtime.common.s3.constants.getStorageDownloadUrlMode',
+    source: 'instance-config',
+    fields: [{ path: 'storage.downloadMode', value }]
+  });
+  return value;
+};
+
+/** 对外公开的存储地址：仅取实例配置，未配置时返回空字符串（不再回落环境变量）。 */
+export const getStorageExternalEndpoint = () => {
+  const value = getSystemInstanceConfig().storage.externalEndpoint ?? '';
+  logInstanceConfigRead({
+    callsite: 'runtime.common.s3.constants.getStorageExternalEndpoint',
+    source: 'instance-config',
+    fields: [{ path: 'storage.externalEndpoint', value }]
+  });
+  return value;
+};
+
+/** short-redirect 临时地址使用的 CDN 地址：仅取实例配置，未配置时返回空字符串。 */
+export const getStorageS3CdnEndpoint = () => {
+  const value = getSystemInstanceConfig().storage.cdnEndpoint ?? '';
+  logInstanceConfigRead({
+    callsite: 'runtime.common.s3.constants.getStorageS3CdnEndpoint',
+    source: 'instance-config',
+    fields: [{ path: 'storage.cdnEndpoint', value }]
+  });
+  return value;
+};
+
+const needExplicitExternalEndpointForRedirect = storageVendor === 'minio';
+
+/**
+ * 当前是否具备 short-redirect 的直连条件。
+ * MinIO 自建部署必须显式提供客户端可访问的 external endpoint，其它托管厂商自带公网地址。
+ */
+export const canUseStorageDownloadRedirect = () =>
+  !needExplicitExternalEndpointForRedirect || Boolean(getStorageExternalEndpoint());
+
+/**
+ * bucket 级别的存储选项。
+ * externalEndpoint 依赖运行时实例配置，必须在构造 bucket（而非模块加载）时读取，
+ * 因此改由函数返回，避免被模块加载期的常量冻结。
+ */
+const getBucketStorageOptions = (): BucketStorageOptions => ({
   publicBucket: S3Buckets.public,
   privateBucket: S3Buckets.private,
-  externalEndpoint: storageExternalEndpoint,
+  externalEndpoint: getStorageExternalEndpoint(),
   publicEndpoint: serviceEnv.STORAGE_R2_PUBLIC_ENDPOINT
-} satisfies BucketStorageOptions;
+});
 
 const awsCompatibleSharedOptions = {
   forcePathStyle: serviceEnv.STORAGE_S3_FORCE_PATH_STYLE,
@@ -65,6 +162,7 @@ const awsCompatibleSharedOptions = {
 
 export function createDefaultStorageOptions() {
   const vendor = serviceEnv.STORAGE_VENDOR as IStorageOptions['vendor'];
+  const bucketStorageOptions = getBucketStorageOptions();
 
   switch (vendor) {
     case 'minio': {
@@ -151,6 +249,7 @@ export function createDefaultStorageOptions() {
 }
 
 export function replaceS3UrlWithCdnEndpoint(url: string) {
+  const storageS3CdnEndpoint = getStorageS3CdnEndpoint();
   if (!storageS3CdnEndpoint || storageVendor === 'r2') {
     return url;
   }

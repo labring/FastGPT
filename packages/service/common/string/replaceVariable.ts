@@ -1,10 +1,21 @@
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { SYSTEM_MAX_STRING_LENGTH } from '../../env';
+import { getSystemInstanceConfig } from '../system/systemInstanceConfig/runtime';
+import { logInstanceConfigRead } from '../system/migrationCoverageLog';
+import { SYSTEM_STRING_LENGTH_UNIT } from '../../env.const';
 import { getLogger, LogCategories } from '../logger';
 
 const VARIABLE_PLACEHOLDER_PATTERN = /\{\{([^}]+)\}\}/g;
 const MAX_REPLACEMENT_DEPTH = 10;
 const logger = getLogger(LogCategories.SYSTEM);
+
+export const getSystemMaxStringLength = () => {
+  const value = getSystemInstanceConfig().resource.systemMaxStringLengthM;
+  logInstanceConfigRead({
+    callsite: 'runtime.common.replaceVariable.getSystemMaxStringLength',
+    fields: [{ path: 'resource.systemMaxStringLengthM', value }]
+  });
+  return value * SYSTEM_STRING_LENGTH_UNIT;
+};
 
 /**
  * 将变量值按变量替换的历史语义转成字符串。
@@ -38,7 +49,7 @@ export const valToStr = (val: any) => {
   return String(val);
 };
 
-export const checkStrOversize = (str: string) => str.length > SYSTEM_MAX_STRING_LENGTH;
+export const checkStrOversize = (str: string) => str.length > getSystemMaxStringLength();
 
 /**
  * 记录同步字符串处理遇到超长文本的情况。日志只包含长度和上下文，不输出正文，
@@ -57,7 +68,7 @@ export const logOversizeString = ({
     source,
     reason,
     length,
-    maxLength: SYSTEM_MAX_STRING_LENGTH
+    maxLength: getSystemMaxStringLength()
   });
 };
 
@@ -84,7 +95,8 @@ const hasVariableKey = (obj: Record<string, any>, key: string) => {
  * 将文本中的 `{{variable}}` 占位符替换为变量值。
  *
  * 替换时只格式化模板实际引用的变量，避免大变量表在每次工作流节点运行时被整体 stringify。
- * 字符串长度上限统一使用 service env 初始化后得到的系统配置，不由调用方逐层传递。
+ * 字符串长度上限读取实例配置 resource.systemMaxStringLengthM（快照叶子缺省时回落 env），
+ * 不由调用方逐层传递。
  */
 export const replaceVariable = (text: any, obj: Record<string, any>) => {
   if (typeof text !== 'string') return text;

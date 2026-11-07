@@ -13,8 +13,8 @@ import {
 import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { type Method } from 'axios';
 import { createProxyAxios, axiosWithoutSSRF } from '../../../../common/api/axios';
+import { getFeishuBaseUrl } from '../../../../common/feishu/endpoint';
 import { getLogger, LogCategories } from '../../../../common/logger';
-import { serviceEnv } from '../../../../env';
 
 type ResponseDataType = {
   code: number;
@@ -40,7 +40,7 @@ type FeishuFileListResponse = {
 const logger = getLogger(LogCategories.MODULE.DATASET.API_DATASET);
 
 export const useFeishuDatasetRequest = ({ feishuServer }: { feishuServer: FeishuServerType }) => {
-  const feishuBaseUrl = serviceEnv.FEISHU_BASE_URL;
+  const feishuBaseUrl = getFeishuBaseUrl();
   // FEISHU_BASE_URL / 飞书文档接口由部署方配置，可能指向内网代理，不使用 SSRF 拦截器。
   const instance = createProxyAxios(
     {

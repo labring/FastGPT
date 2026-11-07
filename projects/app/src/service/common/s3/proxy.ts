@@ -22,7 +22,7 @@ import {
 import {
   canUseStorageDownloadRedirect,
   replaceS3UrlWithCdnEndpoint,
-  storageDownloadRedirectTtlSeconds
+  getStorageRedirectTtlSeconds
 } from '@fastgpt/service/common/s3/config/constants';
 import {
   getUploadInspectBytes,
@@ -359,7 +359,7 @@ const resolveS3RedirectExpiresSeconds = ({ expiresAt }: { expiresAt: Date }) => 
     throw CommonErrEnum.unAuthFile;
   }
 
-  return Math.min(storageDownloadRedirectTtlSeconds, remainingSeconds);
+  return Math.min(getStorageRedirectTtlSeconds(), remainingSeconds);
 };
 
 /**
@@ -376,7 +376,7 @@ export const handleS3RedirectDownload = async ({
   payload: S3ProxyDownloadPayload;
   expiresAt: Date;
 }) => {
-  if (!canUseStorageDownloadRedirect) {
+  if (!canUseStorageDownloadRedirect()) {
     throw new Error('S3 short redirect requires STORAGE_EXTERNAL_ENDPOINT');
   }
 

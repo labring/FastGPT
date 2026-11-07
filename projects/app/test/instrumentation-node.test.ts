@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   cron: vi.fn(),
   training: vi.fn(),
   tracks: vi.fn(),
+  loadSystemModels: vi.fn(),
   reloadModels: vi.fn()
 }));
 
@@ -41,7 +42,7 @@ vi.mock('@fastgpt/service/common/vectorDB/controller', async (importOriginal) =>
 vi.mock('@fastgpt/service/support/user/systemUser', () => ({ initSystemUser: vi.fn() }));
 vi.mock('@fastgpt/service/core/ai/model/catalog/service', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@fastgpt/service/core/ai/model/catalog/service')>()),
-  loadSystemModels: vi.fn(),
+  loadSystemModels: mocks.loadSystemModels,
   loadInstalledModels: mocks.reloadModels
 }));
 vi.mock('@fastgpt/service/core/ai/model/template', async (importOriginal) => ({
@@ -121,6 +122,14 @@ describe('registerNodeInstrumentation', () => {
       {
         _id: '20261022_initialize_dataset_vector_indexes',
         status: SystemMigrationStatusEnum.succeeded
+      },
+      {
+        _id: '20260928_migrate_instance_configs',
+        status: SystemMigrationStatusEnum.succeeded
+      },
+      {
+        _id: '20260929_cleanup_instance_config_deprecated_fields',
+        status: SystemMigrationStatusEnum.succeeded
       }
     ]);
     const legacyState = await MongoSystemMigrationState.findById(legacyMigrationId).lean();
@@ -146,7 +155,8 @@ describe('registerNodeInstrumentation', () => {
     const registration = registerNodeInstrumentation();
     try {
       await registration;
-      expect(global.systemMigrationRunner!.hasBlockingMigrations).toBe(false);
+      // 当前注册表仍声明实例配置启动迁移；该标记表示注册表存在阻塞任务，不表示迁移尚未完成。
+      expect(global.systemMigrationRunner!.hasBlockingMigrations).toBe(true);
       for (const consumer of [mocks.watch, mocks.workers, mocks.cron, mocks.training, mocks.tracks])
         expect(consumer).toHaveBeenCalledTimes(1);
       await vi.waitFor(() => expect(write).toHaveBeenCalledTimes(1), { timeout: 10000 });

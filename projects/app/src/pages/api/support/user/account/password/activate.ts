@@ -6,7 +6,7 @@ import {
 } from '@fastgpt/global/openapi/support/user/account/password/api';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
-import { serviceEnv } from '@fastgpt/service/env';
+import { getPasswordLoginMinuteLimitCount } from '@fastgpt/service/common/system/constants';
 import { assertPasswordUpdateRateLimit } from '@fastgpt/service/common/rateLimit/interface/accountVerification';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import {
@@ -30,7 +30,8 @@ async function handler(req: ApiRequestProps<ActivateAccountBody>): Promise<void>
 
   await assertPasswordUpdateRateLimit({
     account: userId,
-    limit: serviceEnv.PASSWORD_LOGIN_MINUTE_LIMIT_COUNT
+    // 与验证码 create/consume 限流共用 helper：运行期只读实例配置
+    limit: getPasswordLoginMinuteLimitCount()
   });
 
   await withUserLock(userId, async () => {

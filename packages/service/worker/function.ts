@@ -2,7 +2,6 @@ import type { SplitProps, SplitResponse } from '../common/string/textSplitter';
 import { getWorkerController, WorkerNameEnum } from './utils';
 import type { ReadFileResponse } from './readFile/type';
 import { isTestEnv } from '@fastgpt/global/common/system/constants';
-import { serviceEnv } from '../env';
 import { uploadImage2S3Bucket } from '../common/s3/utils';
 import { createOpaqueS3Filename } from '../common/s3/opaqueKey';
 import { normalizeMimeType, resolveMimeExtension, resolveMimeType } from '../common/s3/utils/mime';
@@ -23,6 +22,7 @@ import {
   resolveFileSourceExtension
 } from '../common/file/read/source';
 import { getLightweightWorkerPoolOptions } from './lightweightResource';
+import { getSystemInstanceConfig } from '../common/system/systemInstanceConfig/runtime';
 
 export const text2Chunks = async (props: SplitProps) => {
   // Test env, not run worker
@@ -52,12 +52,24 @@ type ReadFileWorkerProps = {
   };
 };
 
-const getReadFileWorker = () =>
-  getWorkerController<ReadFileWorkerProps, ReadFileResponse>({
+const getReadFileWorker = () => {
+  const parse = getSystemInstanceConfig().performance.parse;
+  // 单任务超时与 worker 内的 XLSX/HTML 限制都来自实例配置 performance.parse（唯一来源）。
+  const fileTimeoutSeconds = parse.fileTimeoutSeconds ?? 600;
+  const workerEnvVersion = [
+    parse.maxHtmlTransformChars ?? 1000000,
+    parse.xlsxMaxRows ?? 100000,
+    parse.xlsxMaxColumns ?? 1000,
+    parse.xlsxMaxCells ?? 1000000,
+    parse.xlsxMaxMergedCells ?? 1000000
+  ].join(':');
+
+  return getWorkerController<ReadFileWorkerProps, ReadFileResponse>({
     name: WorkerNameEnum.readFile,
     maxReservedThreads: getFileParseMaxWorkers(),
-    // 单任务超时：默认 600s（10min），由 PARSE_FILE_TIMEOUT_SECONDS（秒）配置
-    taskTimeoutMs: serviceEnv.PARSE_FILE_TIMEOUT_SECONDS * 1000,
+    taskTimeoutMs: fileTimeoutSeconds * 1000,
+    // worker 环境只在创建线程时注入，版本变化时回收空闲线程使新配置生效
+    workerEnvVersion,
     // mammoth/xlsx/pdf-parse 历史上有 module 级缓存与潜在内存泄漏，定期回收 worker
     maxTasksPerWorker: 100,
     resourcePolicy: {
@@ -79,6 +91,7 @@ const getReadFileWorker = () =>
     idleWorkerTimeoutMs: fileParseResourceConstants.idleWorkerTimeoutMs,
     minIdleWorkers: fileParseResourceConstants.minIdleWorkers
   });
+};
 
 const createUploadFileHandler = (imageKeyOptions?: ReadFileWorkerProps['imageKeyOptions']) =>
   imageKeyOptions?.prefix

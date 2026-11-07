@@ -3,7 +3,8 @@ import { systemVersionCache } from '@fastgpt/dal/redis/caches';
 import type { SystemCacheKeyEnum } from './type';
 import { initCache } from './init';
 import { isProduction } from '@fastgpt/global/common/system/constants';
-import { serviceEnv } from '../../env';
+import { getSystemInstanceConfig } from '../system/systemInstanceConfig/runtime';
+import { logInstanceConfigRead } from '../system/migrationCoverageLog';
 
 /**
  * 刷新系统缓存版本。id 为 '*' 时只失效该类型下的子版本，不修改 base version。
@@ -23,7 +24,11 @@ export const getCachedData = async <T extends SystemCacheKeyEnum>(key: T, id?: s
   if (!global.systemCache) initCache();
 
   const versionKey = await getVersionKey(key, id);
-  const isDisableCache = serviceEnv.DISABLE_CACHE;
+  const isDisableCache = getSystemInstanceConfig().feature.disableCache;
+  logInstanceConfigRead({
+    callsite: 'runtime.common.cache.getCachedData',
+    fields: [{ path: 'feature.disableCache', value: isDisableCache }]
+  });
 
   const item = global.systemCache[key];
 

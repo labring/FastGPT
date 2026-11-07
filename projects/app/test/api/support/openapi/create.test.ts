@@ -10,6 +10,7 @@ import { Call } from '@test/utils/request';
 import { beforeEach, describe, it, expect, vi } from 'vitest';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
 import { OpenApiErrEnum } from '@fastgpt/global/common/error/code/openapi';
+import { resolveSystemInstanceConfig } from '@fastgpt/global/common/system/config/schema';
 
 const lock = vi.hoisted(() => ({ beforeCreate: undefined as undefined | (() => Promise<void>) }));
 vi.mock('@fastgpt/service/support/user/lock', () => ({
@@ -19,17 +20,9 @@ vi.mock('@fastgpt/service/support/user/lock', () => ({
   })
 }));
 
-const mockAppEnv = vi.hoisted(() => ({
-  OPENAPI_KEY_MAX_COUNT: 100
-}));
-
-vi.mock('@/env', () => ({
-  appEnv: mockAppEnv
-}));
-
 describe('support/openapi/create', () => {
   beforeEach(() => {
-    mockAppEnv.OPENAPI_KEY_MAX_COUNT = 100;
+    global.systemInstanceConfig = resolveSystemInstanceConfig({});
     lock.beforeCreate = undefined;
   });
 
@@ -117,7 +110,7 @@ describe('support/openapi/create', () => {
       appId: appId.toUpperCase(),
       apiKey: 'legacy-uppercase-quota'
     });
-    mockAppEnv.OPENAPI_KEY_MAX_COUNT = 1;
+    global.systemInstanceConfig!.auth.openApiKeyMaxCount = 1;
 
     const personal = await Call(createapi.default, {
       auth: owner,
@@ -259,8 +252,8 @@ describe('support/openapi/create', () => {
     expect(openapi).toBeNull();
   });
 
-  it('uses OPENAPI_KEY_MAX_COUNT from app env as create limit', async () => {
-    mockAppEnv.OPENAPI_KEY_MAX_COUNT = 1;
+  it('uses auth.openApiKeyMaxCount from instance config as create limit', async () => {
+    global.systemInstanceConfig!.auth.openApiKeyMaxCount = 1;
     const users = await getFakeUsers(1);
     await MongoResourcePermission.create({
       resourceType: 'team',

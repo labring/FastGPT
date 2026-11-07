@@ -1,3 +1,5 @@
+import { resolveDomainEffectiveConfig } from '@fastgpt/global/common/system/config/schema';
+import { createDefaultInstanceConfig } from '@test/utils/instanceConfigSnapshot';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 const originalEnv = {
@@ -13,6 +15,8 @@ describe('fileUrlValidator', () => {
 
   beforeEach(() => {
     originalSystemEnv = global.systemEnv;
+    // 存储端点改由 canonical 快照提供；路由 bundle 不执行启动注入
+    global.systemInstanceConfig = createDefaultInstanceConfig();
     vi.resetModules();
     vi.stubEnv('STORAGE_S3_ENDPOINT', undefined);
     vi.stubEnv('STORAGE_EXTERNAL_ENDPOINT', undefined);
@@ -39,30 +43,33 @@ describe('fileUrlValidator', () => {
       expect(validateFileUrlDomain('http://s3.example.com/file.png')).toBe(true);
     });
 
-    it('should extract hostname from STORAGE_EXTERNAL_ENDPOINT', async () => {
-      vi.stubEnv('STORAGE_EXTERNAL_ENDPOINT', 'https://external.example.com/path');
+    it('should extract hostname from the instance storage external endpoint', async () => {
+      global.systemInstanceConfig.storage.externalEndpoint = 'https://external.example.com/path';
       global.systemEnv = { fileUrlWhitelist: ['other.com'] } as any;
       const { validateFileUrlDomain } =
         await import('@fastgpt/service/common/security/fileUrlValidator');
       expect(validateFileUrlDomain('http://external.example.com/file.png')).toBe(true);
     });
 
-    it('should extract hostname from STORAGE_S3_CDN_ENDPOINT', async () => {
-      vi.stubEnv('STORAGE_EXTERNAL_ENDPOINT', 'https://external.example.com');
-      vi.stubEnv('STORAGE_S3_CDN_ENDPOINT', 'https://cdn.example.com/files');
+    it('should extract hostname from the instance storage CDN endpoint', async () => {
+      global.systemInstanceConfig.storage.externalEndpoint = 'https://external.example.com';
+      global.systemInstanceConfig.storage.cdnEndpoint = 'https://cdn.example.com/files';
       global.systemEnv = { fileUrlWhitelist: ['other.com'] } as any;
       const { validateFileUrlDomain } =
         await import('@fastgpt/service/common/security/fileUrlValidator');
       expect(validateFileUrlDomain('http://cdn.example.com/file.png')).toBe(true);
     });
 
-    it('should reject invalid STORAGE_EXTERNAL_ENDPOINT at env validation stage', async () => {
+    it('rejects invalid external endpoints at the config boundary and ignores the retired ENV', async () => {
       vi.stubEnv('STORAGE_EXTERNAL_ENDPOINT', 'not-a-valid-url');
       global.systemEnv = { fileUrlWhitelist: ['other.com'] } as any;
 
-      await expect(import('@fastgpt/service/common/security/fileUrlValidator')).rejects.toThrow(
-        'Invalid environment variables. Please check: STORAGE_EXTERNAL_ENDPOINT'
-      );
+      expect(() =>
+        resolveDomainEffectiveConfig('storage', { externalEndpoint: 'not-a-valid-url' })
+      ).toThrow();
+      await expect(
+        import('@fastgpt/service/common/security/fileUrlValidator')
+      ).resolves.toBeDefined();
     });
 
     it('should extract hostname from FE_DOMAIN', async () => {
@@ -99,12 +106,13 @@ describe('fileUrlValidator', () => {
       );
     });
 
-    it('should combine all env vars into systemWhiteList', async () => {
+    it('should combine env vars and instance storage endpoints into systemWhiteList', async () => {
+      // STORAGE_S3_ENDPOINT 在 serviceEnv 模块加载期解析，必须在首次导入前 stub
       vi.stubEnv('STORAGE_S3_ENDPOINT', 'http://s3.example.com');
-      vi.stubEnv('STORAGE_EXTERNAL_ENDPOINT', 'https://external.example.com');
-      vi.stubEnv('STORAGE_S3_CDN_ENDPOINT', 'https://cdn.example.com');
       vi.stubEnv('FE_DOMAIN', 'https://fe.example.com');
       vi.stubEnv('PRO_URL', 'https://pro.example.com');
+      global.systemInstanceConfig.storage.externalEndpoint = 'https://external.example.com';
+      global.systemInstanceConfig.storage.cdnEndpoint = 'https://cdn.example.com';
       global.systemEnv = { fileUrlWhitelist: ['user.com'] } as any;
       const { validateFileUrlDomain } =
         await import('@fastgpt/service/common/security/fileUrlValidator');

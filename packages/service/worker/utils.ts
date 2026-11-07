@@ -3,7 +3,7 @@ import { Worker } from 'worker_threads';
 import { randomUUID } from 'node:crypto';
 import path from 'path';
 import { getLogger, LogCategories } from '../common/logger';
-import { serviceEnv } from '../env';
+import { getSystemInstanceConfig } from '../common/system/systemInstanceConfig/runtime';
 import { UserError } from '@fastgpt/global/common/error/utils';
 
 type WorkerTaskOutcome =
@@ -26,13 +26,20 @@ export enum WorkerNameEnum {
   workflowBuilderMermaid = 'workflowBuilderMermaid'
 }
 
+/**
+ * 生成 worker 线程的启动环境。
+ * 解析限制以实例配置 performance.parse 为唯一来源；worker 环境只在创建线程时注入，
+ * 配置变化后由 WorkerPool.refreshRuntimeConfig 回收空闲线程，让新线程读取新值。
+ */
 export const getSafeEnv = () => {
+  const parse = getSystemInstanceConfig().performance.parse;
+
   return {
-    MAX_HTML_TRANSFORM_CHARS: String(serviceEnv.MAX_HTML_TRANSFORM_CHARS),
-    XLSX_PARSE_MAX_ROWS: String(serviceEnv.XLSX_PARSE_MAX_ROWS),
-    XLSX_PARSE_MAX_COLUMNS: String(serviceEnv.XLSX_PARSE_MAX_COLUMNS),
-    XLSX_PARSE_MAX_CELLS: String(serviceEnv.XLSX_PARSE_MAX_CELLS),
-    XLSX_PARSE_MAX_MERGED_CELLS: String(serviceEnv.XLSX_PARSE_MAX_MERGED_CELLS),
+    MAX_HTML_TRANSFORM_CHARS: String(parse.maxHtmlTransformChars),
+    XLSX_PARSE_MAX_ROWS: String(parse.xlsxMaxRows),
+    XLSX_PARSE_MAX_COLUMNS: String(parse.xlsxMaxColumns),
+    XLSX_PARSE_MAX_CELLS: String(parse.xlsxMaxCells),
+    XLSX_PARSE_MAX_MERGED_CELLS: String(parse.xlsxMaxMergedCells),
     NODE_ENV: process.env.NODE_ENV,
     HTTP_PROXY: process.env.HTTP_PROXY,
     HTTPS_PROXY: process.env.HTTPS_PROXY,
@@ -120,6 +127,8 @@ type WorkerQueueItem<Props = Record<string, any>> = {
   idleTimeoutId?: NodeJS.Timeout;
   handlers?: WorkerRunHandlers;
   currentTask?: WorkerRunTaskType<Props>;
+  /** 线程创建时的配置版本；版本变化后完成当前任务即回收。 */
+  envVersion?: string;
 };
 type WorkerResponse<T = any> = {
   id: string;
@@ -286,6 +295,7 @@ export class WorkerPool<Props = Record<string, any>, Response = any> {
   queueWarningThreshold: number;
   getTaskType: (data: Props) => string;
   logger: WorkerPoolLogger;
+  workerEnvVersion?: string;
   reservedResourceBytes = 0;
   queuePollTimeoutId?: NodeJS.Timeout;
   workerQueue: WorkerQueueItem<Props>[] = [];
@@ -304,7 +314,8 @@ export class WorkerPool<Props = Record<string, any>, Response = any> {
     minIdleWorkers = 0,
     queueWarningThreshold = Math.max(1, maxReservedThreads),
     getTaskType = () => 'default',
-    logger = getLogger(LogCategories.INFRA.WORKER)
+    logger = getLogger(LogCategories.INFRA.WORKER),
+    workerEnvVersion
   }: {
     name: WorkerNameEnum; // Worker 类型，对应 worker/<name>.js 线程入口
     maxReservedThreads: number; // 池内线程数量上限，达到上限且没有空闲线程时排队
@@ -316,6 +327,7 @@ export class WorkerPool<Props = Record<string, any>, Response = any> {
     queueWarningThreshold?: number; // 排队告警阈值，默认取线程上限且至少为 1，仅告警、不限制排队
     getTaskType?: (data: Props) => string; // 提取日志中的任务类型，默认返回 'default'
     logger?: WorkerPoolLogger; // 日志记录器，默认使用 INFRA.WORKER 分类
+    workerEnvVersion?: string; // worker 启动环境版本；变化时回收空闲线程
   }) {
     this.name = name;
     this.maxReservedThreads = maxReservedThreads;
@@ -327,6 +339,7 @@ export class WorkerPool<Props = Record<string, any>, Response = any> {
     this.queueWarningThreshold = Math.max(1, queueWarningThreshold);
     this.getTaskType = getTaskType;
     this.logger = logger;
+    this.workerEnvVersion = workerEnvVersion;
 
     this.logger.info('Worker pool initialized', {
       eventName: 'worker.pool.initialized',
@@ -339,6 +352,31 @@ export class WorkerPool<Props = Record<string, any>, Response = any> {
       idleWorkerTimeoutMs: this.idleWorkerTimeoutMs,
       minIdleWorkers: this.minIdleWorkers
     });
+  }
+
+  /**
+   * 应用运行时配置变更。
+   *
+   * taskTimeoutMs 对后续任务立即生效；worker 进程的环境变量只在创建线程时注入，
+   * 因此 workerEnvVersion 变化时回收空闲线程，让后续任务使用新配置。
+   * 运行中的线程保持当前任务，但在任务完成后不再接单，避免下一次任务继续使用旧环境。
+   */
+  refreshRuntimeConfig({
+    taskTimeoutMs,
+    workerEnvVersion
+  }: {
+    taskTimeoutMs?: number;
+    workerEnvVersion?: string;
+  } = {}) {
+    if (taskTimeoutMs !== undefined) this.taskTimeoutMs = taskTimeoutMs;
+    if (workerEnvVersion === undefined || workerEnvVersion === this.workerEnvVersion) return;
+
+    this.workerEnvVersion = workerEnvVersion;
+    for (const item of [...this.workerQueue]) {
+      if (item.status === 'idle') {
+        this.deleteWorker(item.id, undefined, 'config_change');
+      }
+    }
   }
 
   /** 返回日志快照；字段名保持稳定，便于 OTel Collector 从 log body 提取并建立告警。 */
@@ -767,7 +805,8 @@ export class WorkerPool<Props = Record<string, any>, Response = any> {
       status: 'idle',
       taskTime: Date.now(),
       tasksCompleted: 0,
-      handlers: undefined
+      handlers: undefined,
+      envVersion: this.workerEnvVersion
     };
     this.workerQueue.push(item);
     logger.debug('Worker thread created', {
@@ -927,6 +966,11 @@ export class WorkerPool<Props = Record<string, any>, Response = any> {
       task.resolve(result.data);
     } else {
       task.reject(result.data);
+    }
+
+    if (item.envVersion !== this.workerEnvVersion) {
+      this.deleteWorker(item.id, undefined, 'config_change');
+      return;
     }
 
     if (item.tasksCompleted >= this.maxTasksPerWorker) {
@@ -1150,7 +1194,12 @@ export class WorkerPool<Props = Record<string, any>, Response = any> {
   private deleteWorker(
     workerId: string,
     error: unknown = new Error('Worker terminated'),
-    reason: WorkerTaskOutcome | 'idle_timeout' | 'max_tasks' | 'terminated' = 'terminated'
+    reason:
+      | WorkerTaskOutcome
+      | 'idle_timeout'
+      | 'max_tasks'
+      | 'config_change'
+      | 'terminated' = 'terminated'
   ) {
     const item = this.workerQueue.find((item) => item.id === workerId);
     this.workerQueue = this.workerQueue.filter((item) => item.id !== workerId);
@@ -1163,7 +1212,10 @@ export class WorkerPool<Props = Record<string, any>, Response = any> {
         item.currentTask = undefined;
         this.reservedResourceBytes = Math.max(0, this.reservedResourceBytes - task.resourceBytes);
         const outcome: WorkerTaskOutcome =
-          reason === 'idle_timeout' || reason === 'max_tasks' || reason === 'terminated'
+          reason === 'idle_timeout' ||
+          reason === 'max_tasks' ||
+          reason === 'config_change' ||
+          reason === 'terminated'
             ? 'worker_error'
             : reason;
         const durationMs = Date.now() - (task.startedAt ?? item.taskTime);
@@ -1203,6 +1255,7 @@ export const getWorkerController = <Props, Response>(props: {
   queueWarningThreshold?: number; // 排队告警阈值，默认取线程上限且至少为 1，仅告警、不限制排队
   getTaskType?: (data: Props) => string; // 提取日志中的任务类型，默认返回 'default'
   logger?: WorkerPoolLogger; // 日志记录器，默认使用 INFRA.WORKER 分类
+  workerEnvVersion?: string; // worker 启动环境版本；变化时回收空闲线程
 }) => {
   if (!global.workerPoll) {
     // @ts-ignore
@@ -1211,7 +1264,15 @@ export const getWorkerController = <Props, Response>(props: {
 
   const name = props.name;
 
-  if (global.workerPoll[name]) return global.workerPoll[name] as WorkerPool<Props, Response>;
+  if (global.workerPoll[name]) {
+    const pool = global.workerPoll[name] as WorkerPool<Props, Response>;
+    // 实例配置可在运行期变化：任务超时直接更新，worker 环境版本变化时回收空闲线程。
+    pool.refreshRuntimeConfig({
+      taskTimeoutMs: props.taskTimeoutMs,
+      workerEnvVersion: props.workerEnvVersion
+    });
+    return pool;
+  }
 
   global.workerPoll[name] = new WorkerPool(props);
 

@@ -1,99 +1,72 @@
+import { getTestInstanceConfig } from '@test/utils/instanceConfigSnapshot';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-
-const originalEnv = {
-  NODE_ENV: process.env.NODE_ENV,
-  VITEST: process.env.VITEST,
-  AIPROXY_API_ENDPOINT: process.env.AIPROXY_API_ENDPOINT,
-  AIPROXY_API_TOKEN: process.env.AIPROXY_API_TOKEN,
-  OPENAI_BASE_URL: process.env.OPENAI_BASE_URL,
-  CHAT_API_KEY: process.env.CHAT_API_KEY
-};
-
-/** 重新加载模块，确保每个场景校验当前环境配置而非模块缓存。 */
+import { resolveSystemInstanceConfig } from '@fastgpt/global/common/system/config/schema';
 const importConfig = async () => {
   vi.resetModules();
   return import('@fastgpt/service/core/ai/config');
 };
-
 beforeEach(() => {
   vi.stubEnv('AIPROXY_API_ENDPOINT', 'http://aiproxy:3000');
   vi.stubEnv('AIPROXY_API_TOKEN', 'aiproxy-token');
-  vi.stubEnv('OPENAI_BASE_URL', 'https://example.com/v1');
-  vi.stubEnv('CHAT_API_KEY', 'sk-chat');
-});
-
-afterEach(() => {
-  vi.stubEnv('NODE_ENV', originalEnv.NODE_ENV);
-  vi.stubEnv('VITEST', originalEnv.VITEST);
-  vi.stubEnv('AIPROXY_API_ENDPOINT', originalEnv.AIPROXY_API_ENDPOINT);
-  vi.stubEnv('AIPROXY_API_TOKEN', originalEnv.AIPROXY_API_TOKEN);
-  vi.stubEnv('OPENAI_BASE_URL', originalEnv.OPENAI_BASE_URL);
-  vi.stubEnv('CHAT_API_KEY', originalEnv.CHAT_API_KEY);
-});
-
-describe('AI config defaults', () => {
-  it('uses the required AI Proxy config instead of the legacy OpenAI environment defaults', async () => {
-    const { openaiBaseUrl, openaiBaseKey } = await importConfig();
-
-    expect(openaiBaseUrl).toBe('http://aiproxy:3000/v1');
-    expect(openaiBaseKey).toBe('aiproxy-token');
+  global.systemInstanceConfig = resolveSystemInstanceConfig({
+    subservice: {
+      aiProxy: { enabled: true }
+    }
   });
-
-  it('ignores invalid legacy environment values when AIProxy is configured', async () => {
-    vi.stubEnv('OPENAI_BASE_URL', 'not-a-url');
-    vi.stubEnv('CHAT_API_KEY', '');
-
-    const { getAIApi, getAxiosConfig } = await importConfig();
-    const { ai, requestMeta } = getAIApi();
-
-    expect(ai.baseURL).toBe('http://aiproxy:3000/v1');
-    expect(ai.apiKey).toBe('aiproxy-token');
-    expect(requestMeta.usedUserOpenAIKey).toBe(false);
+});
+afterEach(() => vi.unstubAllEnvs());
+describe('AI config instance source', () => {
+  it('uses the ENV endpoint and token', async () => {
+    const { getOpenaiBaseUrl, getOpenaiBaseKey, getAxiosConfig } = await importConfig();
+    expect(getOpenaiBaseUrl()).toBe('http://aiproxy:3000/v1');
+    expect(getOpenaiBaseKey()).toBe('aiproxy-token');
     expect(getAxiosConfig()).toEqual({
       baseUrl: 'http://aiproxy:3000/v1',
       authorization: 'Bearer aiproxy-token'
     });
+    vi.stubEnv('AIPROXY_API_ENDPOINT', 'https://new-proxy.example.com');
+    vi.resetModules();
+    const reloaded = await importConfig();
+    expect(reloaded.getOpenaiBaseUrl()).toBe('https://new-proxy.example.com/v1');
+  });
+  it('ignores a configured endpoint while AI Proxy is disabled', async () => {
+    // endpoint 的 Schema 默认值是 compose 便利用的 http://localhost:3000；只看 endpoint 会让
+    // 没装 AI Proxy 的部署把系统模型流量发到本机 3000，且永远拿不到 OpenAI 兜底。
+    global.systemInstanceConfig = resolveSystemInstanceConfig({
+      subservice: {
+        aiProxy: { enabled: false }
+      }
+    });
+    const { getAiProxyBaseUrl, getOpenaiBaseUrl, getOpenaiBaseKey } = await importConfig();
+
+    expect(getAiProxyBaseUrl()).toBeUndefined();
+    expect(getOpenaiBaseUrl()).toBe('https://api.openai.com/v1');
+    // 禁用代理后请求会发往外部服务，不能继续携带私有代理凭据
+    expect(getOpenaiBaseKey()).toBe('');
   });
 
-  it('normalizes trailing slashes from AI Proxy endpoint', async () => {
+  it('does not send a proxy token when AI Proxy is enabled without an endpoint', async () => {
+    vi.stubEnv('AIPROXY_API_ENDPOINT', undefined);
+    vi.stubEnv('AIPROXY_API_TOKEN', 'private-proxy-token');
+    const { getOpenaiBaseUrl, getOpenaiBaseKey, getAxiosConfig } = await importConfig();
+
+    expect(getOpenaiBaseUrl()).toBe('https://api.openai.com/v1');
+    expect(getOpenaiBaseKey()).toBe('');
+    expect(getAxiosConfig().authorization).toBe('Bearer ');
+    expect(getAxiosConfig().authorization).not.toContain('private-proxy-token');
+  });
+
+  it('normalizes ENV proxy addresses before building request URLs', async () => {
     vi.stubEnv('AIPROXY_API_ENDPOINT', 'http://aiproxy:3000///');
-
-    const { openaiBaseUrl, openaiBaseKey } = await importConfig();
-
-    expect(openaiBaseUrl).toBe('http://aiproxy:3000/v1');
-    expect(openaiBaseKey).toBe('aiproxy-token');
+    global.systemInstanceConfig = resolveSystemInstanceConfig({
+      subservice: {
+        aiProxy: { enabled: true }
+      }
+    });
+    const { getOpenaiBaseUrl } = await importConfig();
+    expect(getOpenaiBaseUrl()).toBe('http://aiproxy:3000/v1');
   });
-
-  it('trims the required AI Proxy token', async () => {
-    vi.stubEnv('AIPROXY_API_TOKEN', '  aiproxy-token  ');
-
-    const { openaiBaseKey } = await importConfig();
-    expect(openaiBaseKey).toBe('aiproxy-token');
-  });
-
-  it.each([undefined, '', '   ', 'not-a-url'])(
-    'rejects an invalid AI Proxy endpoint (%s) without falling back to OPENAI_BASE_URL',
-    async (endpoint) => {
-      vi.stubEnv('NODE_ENV', 'production');
-      vi.stubEnv('VITEST', undefined);
-      vi.stubEnv('AIPROXY_API_ENDPOINT', endpoint);
-
-      await expect(importConfig()).rejects.toThrow('AIPROXY_API_ENDPOINT');
-    }
-  );
-
-  it.each([undefined, '', '   '])(
-    'rejects a missing or blank AI Proxy token (%s) without falling back to CHAT_API_KEY',
-    async (token) => {
-      vi.stubEnv('NODE_ENV', 'production');
-      vi.stubEnv('VITEST', undefined);
-      vi.stubEnv('AIPROXY_API_TOKEN', token);
-
-      await expect(importConfig()).rejects.toThrow('AIPROXY_API_TOKEN');
-    }
-  );
 });
-
 describe('AI config user OpenAI account', () => {
   const originalSystemEnv = global.systemEnv;
 

@@ -3,11 +3,14 @@
  *
  * 只负责 Devbox createConfig 映射，不连接远端实例。
  */
-import { serviceEnv } from '../../../../../../env';
 import type { SandboxRuntimeProfile } from './types';
 import { getSandboxSkillsRootPath, mergeStringRecord } from './utils';
 import { parseImageSpec } from '@fastgpt-sdk/sandbox-adapter';
-import { getAgentSandboxDiskBytes } from '../../../config';
+import {
+  getAgentSandboxCommonConfig,
+  getAgentSandboxDiskBytes,
+  getAgentSandboxSealosConfig
+} from '../../../config';
 
 /**
  * 构建 Sealos Devbox 的 FastGPT 运行态 profile。
@@ -15,9 +18,11 @@ import { getAgentSandboxDiskBytes } from '../../../config';
  * Devbox 的工作目录通过 CODEX_GATEWAY_CWD 间接生效，adapter 会把 workingDir 映射过去。
  */
 export function buildSealosRuntimeProfile(): SandboxRuntimeProfile {
-  const workDirectory = serviceEnv.AGENT_SANDBOX_SEALOS_WORK_DIRECTORY || '/home/devbox/workspace';
+  const sealos = getAgentSandboxSealosConfig();
+  const common = getAgentSandboxCommonConfig();
+  const workDirectory = sealos.workDirectory;
 
-  const defaultImage = parseImageSpec(serviceEnv.AGENT_SANDBOX_SEALOS_IMAGE);
+  const defaultImage = parseImageSpec(sealos.image);
 
   return {
     provider: 'sealosdevbox',
@@ -43,17 +48,17 @@ export function buildSealosRuntimeProfile(): SandboxRuntimeProfile {
         if (createConfig.resourceLimits?.storageSize !== undefined) {
           return { storageSize: createConfig.resourceLimits.storageSize };
         }
-        return { storageSize: `${serviceEnv.AGENT_SANDBOX_STORAGE_SIZE_GI}Gi` };
+        return { storageSize: `${common.storageSizeGi}Gi` };
       })();
       const resourceLimits = {
         cpuCount:
           input.resourceLimits?.cpuCount ??
           createConfig.resourceLimits?.cpuCount ??
-          serviceEnv.AGENT_SANDBOX_CPU_COUNT,
+          common.cpuCount,
         memoryMiB:
           input.resourceLimits?.memoryMiB ??
           createConfig.resourceLimits?.memoryMiB ??
-          serviceEnv.AGENT_SANDBOX_MEMORY_MIB,
+          common.memoryMiB,
         ...storageLimit
       };
       // Sealos adapter 会把 workingDir 写入 CODEX_GATEWAY_CWD，让 exec/code-server 落在同一工作区。

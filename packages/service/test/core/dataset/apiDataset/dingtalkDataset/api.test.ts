@@ -2,10 +2,30 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useDingtalkDatasetRequest } from '@fastgpt/service/core/dataset/apiDataset/dingtalkDataset/api';
 import type { DingtalkServerType } from '@fastgpt/global/core/dataset/apiDataset/type';
 
-const mocks = vi.hoisted(() => ({ post: vi.fn(), request: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  post: vi.fn(),
+  request: vi.fn(),
+  // 回放生产注册的请求拦截器，验证 dingtalkBaseUrl 每次从实例配置惰性读取。
+  requestInterceptors: { handlers: [] as ((config: any) => any)[] }
+}));
 vi.mock('@fastgpt/service/common/api/axios', () => ({
   axiosWithoutSSRF: { post: mocks.post },
-  createProxyAxios: () => ({ request: mocks.request })
+  createProxyAxios: () => ({
+    interceptors: {
+      request: {
+        use: (handler: (config: any) => any) => {
+          mocks.requestInterceptors.handlers.push(handler);
+        }
+      }
+    },
+    request: (config: any) => {
+      const applied = mocks.requestInterceptors.handlers.reduce(
+        (acc, handler) => handler(acc),
+        config
+      );
+      return mocks.request(applied);
+    }
+  })
 }));
 
 const server = { appKey: 'ding-app', appSecret: 'ding-secret', userId: 'user' };

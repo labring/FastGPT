@@ -1,5 +1,6 @@
+import { getTestInstanceConfig } from '@test/utils/instanceConfigSnapshot';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
-import { serviceEnv } from '@fastgpt/service/env';
+
 import { getModelTestDefaults, setModelTestSnapshot } from '@test/modelCache';
 import createHandler from '@/pages/api/core/dataset/create';
 import {
@@ -315,7 +316,7 @@ describe('generic dataset creation parent checks', () => {
   it('enforces folder depth at the boundary and permits a dataset in the deepest folder', async () => {
     const { owner } = await getFakeUsers(1);
     const ids: string[] = [];
-    for (let i = 0; i < serviceEnv.MAX_FOLDER_DEPTH - 1; i++) {
+    for (let i = 0; i < getTestInstanceConfig().resource.maxFolderDepth - 1; i++) {
       const folder = await MongoDataset.create({
         name: `level-${i}`,
         type: DatasetTypeEnum.folder,

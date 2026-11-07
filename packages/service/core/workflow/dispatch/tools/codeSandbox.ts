@@ -3,6 +3,7 @@ import type { DispatchNodeResultType, ModuleDispatchProps } from '../../types/ru
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { codeSandbox } from '../../../../thirdProvider/codeSandbox';
+import { getSystemInstanceConfig } from '../../../../common/system/systemInstanceConfig/runtime';
 import { serviceEnv } from '../../../../env';
 import { getNodeErrResponse } from '../utils';
 
@@ -29,14 +30,15 @@ export const dispatchCodeSandbox = async (props: RunCodeType): Promise<RunCodeRe
     params: { codeType, code, [NodeInputKeyEnum.addInputParam]: customVariables }
   } = props;
 
-  if (!serviceEnv.CODE_SANDBOX_URL) {
+  const sandboxConfig = getSystemInstanceConfig().subservice.codeSandbox;
+  if (!sandboxConfig.enabled || !serviceEnv.CODE_SANDBOX_URL) {
     return getNodeErrResponse({
-      error: 'Can not find CODE_SANDBOX_URL in env',
+      error: 'Code sandbox service is not configured or disabled',
       customErr: {
-        error: 'Can not find CODE_SANDBOX_URL in env'
+        error: 'Code sandbox service is not configured or disabled'
       },
       [DispatchNodeResponseKeyEnum.nodeResponse]: {
-        errorText: 'Can not find CODE_SANDBOX_URL in env',
+        errorText: 'Code sandbox service is not configured or disabled',
         customInputs: customVariables
       }
     });

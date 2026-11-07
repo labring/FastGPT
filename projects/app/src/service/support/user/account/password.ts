@@ -1,18 +1,26 @@
-import { appEnv } from '@/env';
+import { getSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/runtime';
+import { logInstanceConfigRead } from '@fastgpt/service/common/system/migrationCoverageLog';
 
 export const checkPswExpired = ({ updateTime }: { updateTime?: Date }) => {
-  const expiredMonth = appEnv.PASSWORD_EXPIRED_MONTH;
+  // ENV 仅在迁移时写入；null 表示永不过期，运行期不再回落到旧 ENV。
+  const configured = getSystemInstanceConfig().auth.passwordExpiredMonth;
+  logInstanceConfigRead({
+    callsite: 'runtime.app.user.account.password.checkPswExpired',
+    fields: [
+      {
+        path: 'auth.passwordExpiredMonth',
+        value: configured
+      }
+    ]
+  });
+  const expiredMonth = configured === 0 ? null : configured;
 
-  if (expiredMonth === undefined) {
+  if (expiredMonth === undefined || expiredMonth === null) {
     return false;
   }
 
   if (!updateTime) {
     return true;
-  }
-
-  if (expiredMonth === 0) {
-    return false;
   }
 
   const time = new Date().getTime() - new Date(updateTime).getTime();

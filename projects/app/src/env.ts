@@ -1,28 +1,13 @@
 import { createEnv } from '@t3-oss/env-core';
-import z from 'zod';
-import { BoolSchema, IntSchema, UrlSchema } from '@fastgpt/global/common/zod';
+import { BoolSchema, UrlSchema } from '@fastgpt/global/common/zod';
 
 export const appEnv = createEnv({
   server: {
-    SSE_MCP_SERVER_PROXY_ENDPOINT: UrlSchema.optional(),
-
-    SYSTEM_NAME: z.string().default('AI'),
-    SYSTEM_DESCRIPTION: z.string().default(''),
-    SYSTEM_FAVICON: z.string().default(''),
     CHINESE_IP_REDIRECT_URL: UrlSchema.default(''),
-    PAY_FORM_URL: UrlSchema.default(''),
 
-    SHOW_COUPON: BoolSchema.default(false),
-    SHOW_DISCOUNT_COUPON: BoolSchema.default(false),
-    HIDE_CHAT_COPYRIGHT_SETTING: BoolSchema.default(false),
-    WECOM_LOGIN_AUTO_REDIRECT: BoolSchema.default(false),
-    AGENT_SANDBOX_FREE_TIP: BoolSchema.default(false),
-    AGENT_SANDBOX_SHOW_FREE_TIP: BoolSchema.default(false),
-    OPENAPI_KEY_MAX_COUNT: IntSchema.min(1).default(100),
+    SHOW_GIT: BoolSchema.default(true),
 
-    MARKETPLACE_URL: UrlSchema.default('https://v3.marketplace.fastgpt.cn'),
-    DISABLE_MARKETPLACE: BoolSchema.default(false),
-    PASSWORD_EXPIRED_MONTH: IntSchema.optional()
+    DISABLE_MARKETPLACE: BoolSchema.default(false)
   },
   emptyStringAsUndefined: true,
   runtimeEnv: process.env,

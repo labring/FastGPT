@@ -140,6 +140,7 @@ describe('VectorDB Controller', () => {
       datasetIds: ['dataset'],
       vector: [0.1],
       limit: 100,
+      hnswEfSearch: 200,
       forbidCollectionIdList: []
     };
 
@@ -248,6 +249,7 @@ describe('VectorDB Controller', () => {
           datasetIds: ['dataset'],
           vector: [0.1],
           limit: 100,
+          hnswEfSearch: 200,
           forbidCollectionIdList: []
         })
       ).rejects.toBe(error);
@@ -263,6 +265,7 @@ describe('VectorDB Controller', () => {
           datasetIds: ['dataset'],
           vector: [0.1],
           limit: 100,
+          hnswEfSearch: 200,
           forbidCollectionIdList: []
         })
       ).resolves.toHaveProperty('results');
@@ -275,6 +278,7 @@ describe('VectorDB Controller', () => {
         datasetIds: ['dataset_1', 'dataset_2'],
         vector: [0.1, 0.2, 0.3],
         limit: 10,
+        hnswEfSearch: 200,
         forbidCollectionIdList: ['col_forbidden']
       };
 
@@ -295,6 +299,7 @@ describe('VectorDB Controller', () => {
         datasetIds: ['dataset_1'],
         vector: [0.1, 0.2],
         limit: 5,
+        hnswEfSearch: 200,
         forbidCollectionIdList: [],
         filterCollectionIdList: ['col_1', 'col_2']
       };

@@ -7,7 +7,7 @@ import type {
   StandSubPlanLevelMapType,
   TeamStandardSubPlanItemType
 } from '@fastgpt/global/support/wallet/sub/type';
-import { useTranslation } from 'next-i18next';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import React, { useMemo, useState } from 'react';
 import {
   FeatureRow,
@@ -23,7 +23,7 @@ const LegacyPlans = ({
   value: StandSubPlanLevelMapType;
   onChange: (value: StandSubPlanLevelMapType) => void;
 }) => {
-  const { t } = useTranslation();
+  const { t } = useSafeTranslation();
   const { feConfigs } = useSystemStore();
   const [editedLevel, setEditedLevel] = useState<StandardSubLevelEnum>();
 
