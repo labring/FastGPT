@@ -40,7 +40,7 @@ export const deleteApp = async ({
     tmbId,
     teamId,
     event: AuditEventEnum.DELETE_APP,
-    ...(!AppFolderTypeList.includes(app.type) ? { resources: [{ appId }] } : {}),
+    ...(!AppFolderTypeList.includes(app.type) ? { resources: [{ appId, appType: app.type }] } : {}),
     params: {
       appName: app.name,
       appType: getI18nAppType(app.type)

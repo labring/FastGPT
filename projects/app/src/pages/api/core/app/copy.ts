@@ -90,7 +90,9 @@ async function handler(req: ApiRequestProps<CopyAppBodyType>): Promise<CopyAppRe
       tmbId,
       teamId,
       event: AuditEventEnum.CREATE_APP_COPY,
-      ...(!AppFolderTypeList.includes(app.type) ? { resources: [{ appId: sourceAppId }] } : {}),
+      ...(!AppFolderTypeList.includes(app.type)
+        ? { resources: [{ appId: sourceAppId, appType: app.type }] }
+        : {}),
       params: {
         appName: app.name,
         appType: getI18nAppType(app.type)

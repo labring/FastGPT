@@ -118,7 +118,7 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>) {
       tmbId,
       teamId,
       event: AuditEventEnum.UPDATE_PUBLISH_APP,
-      resources: [{ appId }],
+      resources: [{ appId, appType: app.type }],
       params: {
         appName: app.name,
         operationName: i18nT('account_team:update'),
@@ -199,7 +199,7 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>) {
       tmbId,
       teamId,
       event: AuditEventEnum.UPDATE_PUBLISH_APP,
-      resources: [{ appId }],
+      resources: [{ appId, appType: app.type }],
       params: {
         appName: app.name,
         operationName: isPublish

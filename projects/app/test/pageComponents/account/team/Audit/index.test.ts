@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import type { TeamAuditListItemType } from '@fastgpt/global/support/user/audit/type';
+import { AppTypeEnum, AppTypeList, ToolTypeList } from '@fastgpt/global/core/app/constants';
 
 const mocks = vi.hoisted(() => ({ logs: [] as TeamAuditListItemType[] }));
 
@@ -43,13 +44,24 @@ describe('AuditLog resource column', () => {
       const { default: AuditLog } = await import('@/pageComponents/account/team/Audit');
 
       const id = '68ad85a7463006c963799a05';
+      const appResources = [
+        undefined,
+        ...AppTypeList,
+        ...ToolTypeList,
+        AppTypeEnum.toolFolder,
+        AppTypeEnum.httpPlugin,
+        AppTypeEnum.tool
+      ].map((appType, index) => ({
+        appId: `${id.slice(0, -2)}${index.toString(16).padStart(2, '0')}`,
+        ...(appType ? { appType } : {})
+      }));
       mocks.logs = [
         {
           _id: 'linked',
           timestamp: new Date(),
           event: AuditEventEnum.CREATE_APP,
           metadata: { appName: 'original', appType: 'Agent' },
-          resources: [{ appId: id }, { skillId: id }, { datasetId: id }, { collectionId: id }]
+          resources: [...appResources, { skillId: id }, { datasetId: id }, { collectionId: id }]
         },
         {
           _id: 'legacy',
@@ -74,10 +86,12 @@ describe('AuditLog resource column', () => {
         html.indexOf('account_team:log_time')
       );
       expect(Array.from(html.matchAll(/href="([^"]+)"/g), ([, href]) => href)).toEqual([
-        `${baseUrl}/app/detail?appId=${id}`,
+        ...appResources.map(({ appId }) => `${baseUrl}/app/detail?appId=${appId}`),
         `${baseUrl}/skill/detail?skillId=${id}`,
         `${baseUrl}/dataset/detail?datasetId=${id}`
       ]);
+      expect(html.match(/account_team:resource_app ·/g)).toHaveLength(AppTypeList.length + 1);
+      expect(html.match(/account_team:resource_tool ·/g)).toHaveLength(ToolTypeList.length + 3);
       expect(html).not.toContain('collectionId=');
       expect(html).toContain('>-</td>');
     }

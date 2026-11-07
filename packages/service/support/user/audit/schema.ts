@@ -5,6 +5,7 @@ import {
   type TeamAuditSchemaType
 } from '@fastgpt/global/support/user/audit/type';
 import type { Types } from 'mongoose';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import {
   AdminAuditEventEnum,
   TeamAuditEventList
@@ -42,12 +43,13 @@ const TeamAuditSchema = new Schema({
     enum: [...TeamAuditEventList, ...Object.values(AdminAuditEventEnum)],
     required: true
   },
-  // 日志库只保存业务资源 ID 快照，不依赖资源继续存在，也不自动 populate 业务库。
+  // 保存资源 ID 和操作时类型快照，删除资源后仍能区分应用与工具，不自动 populate 业务库。
   resources: {
     type: [
       new Schema(
         {
           appId: Schema.Types.ObjectId,
+          appType: { type: String, enum: Object.values(AppTypeEnum) },
           datasetId: Schema.Types.ObjectId,
           skillId: Schema.Types.ObjectId,
           collectionId: Schema.Types.ObjectId

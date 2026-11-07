@@ -22,6 +22,7 @@ import {
 } from '@fastgpt/web/components/common/TagFilter';
 import { processAuditMetadata } from './processors';
 import TeamMemberFilter from '@/components/support/user/TeamMemberFilter';
+import { AppTypeEnum, ToolTypeList } from '@fastgpt/global/core/app/constants';
 
 function AuditLog({ Tabs }: { Tabs: React.ReactNode }) {
   const { t } = useSafeTranslation();
@@ -174,7 +175,17 @@ function AuditLog({ Tabs }: { Tabs: React.ReactNode }) {
                               id: resource.appId,
                               path: '/app/detail',
                               key: 'appId',
-                              label: t('account_team:resource_app')
+                              // 依据类型快照分类，避免使用本地化 metadata 文案判断；旧记录默认应用。
+                              label:
+                                resource.appType &&
+                                [
+                                  ...ToolTypeList,
+                                  AppTypeEnum.toolFolder,
+                                  AppTypeEnum.httpPlugin,
+                                  AppTypeEnum.tool
+                                ].includes(resource.appType)
+                                  ? t('account_team:resource_tool')
+                                  : t('account_team:resource_app')
                             }
                           : resource.skillId
                             ? {

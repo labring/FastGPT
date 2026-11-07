@@ -349,7 +349,7 @@ export const onCreateApp = async ({
         tmbId,
         teamId,
         event: AuditEventEnum.CREATE_APP,
-        ...(!isFolder ? { resources: [{ appId }] } : {}),
+        ...(!isFolder ? { resources: [{ appId, appType: app.type }] } : {}),
         params: {
           appName: name!,
           appType: getI18nAppType(type!)
