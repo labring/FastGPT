@@ -1,6 +1,17 @@
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
-import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import {
+  NodeInputKeyEnum,
+  VARIABLE_NODE_ID,
+  WorkflowIOValueTypeEnum
+} from '@fastgpt/global/core/workflow/constants';
+import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
+import { callbackMap } from '@fastgpt/service/core/workflow/dispatch/constants';
+import {
+  graphNode,
+  graphEdge
+} from '@fastgpt/service/test/core/workflow/dispatch/testUtils/workflowGraph';
 import {
   FlowNodeInputTypeEnum,
   FlowNodeTypeEnum
@@ -9,7 +20,7 @@ import { createToolCallToolProvider } from '@fastgpt/service/core/workflow/dispa
 import { getWorkflowContext } from '@fastgpt/service/core/workflow/dispatch/context';
 import { WorkflowVariableState } from '@fastgpt/service/core/workflow/dispatch/context/variables';
 import { runWithTestWorkflowContext as runWithContext } from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { runWorkflowMock } = vi.hoisted(() => ({
   runWorkflowMock: vi.fn()
@@ -37,7 +48,12 @@ const createToolNode = (overrides: Record<string, any> = {}) =>
   }) as any;
 
 const createProvider = (overrides: Record<string, any> = {}) => {
-  const { variableContext, checkIsStopping = () => false, ...providerOverrides } = overrides;
+  const {
+    variableContext,
+    checkIsStopping = () => false,
+    workflowProps: workflowPropsOverrides,
+    ...providerOverrides
+  } = overrides;
   return runWithContext(
     {
       checkIsStopping,
@@ -60,8 +76,16 @@ const createProvider = (overrides: Record<string, any> = {}) => {
         lang: 'en' as any,
         workflowProps: {
           runningAppInfo: {
-            id: 'app_1'
+            sourceType: ChatSourceTypeEnum.app,
+            sourceId: 'app_1',
+            teamId: 'team_1',
+            tmbId: 'tmb_1',
+            name: 'App'
           },
+          timezone: 'Asia/Shanghai',
+          histories: [],
+          query: [],
+          responseChatItemId: 'response_1',
           uid: 'user_1',
           chatId: 'chat_1',
           runningUserInfo: {
@@ -69,7 +93,8 @@ const createProvider = (overrides: Record<string, any> = {}) => {
             tmbId: 'tmb_1'
           },
           chatConfig: {},
-          usageId: 'usage_1'
+          usageId: 'usage_1',
+          ...workflowPropsOverrides
         } as any,
         runtimeNodes: [
           {
@@ -126,6 +151,7 @@ const createWorkflowResponse = (overrides: Record<string, unknown> = {}) => ({
 });
 
 describe('createToolCallToolProvider', () => {
+  afterEach(() => vi.restoreAllMocks());
   beforeEach(() => {
     vi.clearAllMocks();
     runWorkflowMock.mockReset();
@@ -174,34 +200,35 @@ describe('createToolCallToolProvider', () => {
     }
   );
 
-  it.each(['error', 'throw', 'pause', 'stop'] as const)(
+  it.each(['error', 'throw', 'stop'] as const)(
     'discards variable changes on %s without affecting the next call',
     async (outcome) => {
       const parent = await createVariableContext({ count: 1, nested: { items: [1] } });
       let stopping = false;
-      runWorkflowMock.mockImplementationOnce(async () => {
+      const workflowStreamResponse = vi.fn();
+      runWorkflowMock.mockImplementationOnce(async (props) => {
         const child = getWorkflowContext().variableContext;
         await child.set('count', 2);
         (child.get('nested') as { items: number[] }).items.push(2);
+        props.workflowStreamResponse(workflowSseEvent.updateVariables(child.toStoreRecord()));
         if (outcome === 'throw') throw new Error('tool failed');
         if (outcome === 'stop') stopping = true;
         return createWorkflowResponse({
           ...(outcome === 'error'
             ? { workflowRuntimeSummary: { errorCount: 1, errorText: 'tool failed' } }
-            : {}),
-          ...(outcome === 'pause'
-            ? { workflowInteractiveResponse: { entryNodeIds: ['search'] } }
             : {})
         });
       });
       const provider = await createProvider({
         variableContext: parent,
-        checkIsStopping: () => stopping
+        checkIsStopping: () => stopping,
+        workflowProps: { workflowStreamResponse }
       });
       const first = provider.executeTool({ call: createCall('failed'), messages: [] });
       if (outcome === 'throw') await expect(first).rejects.toThrow('tool failed');
       else await first;
       expect(parent.toStoreRecord()).toEqual({ count: 1, nested: { items: [1] } });
+      expect(workflowStreamResponse).not.toHaveBeenCalled();
 
       stopping = false;
       runWorkflowMock.mockImplementationOnce(async () => {
@@ -212,6 +239,190 @@ describe('createToolCallToolProvider', () => {
       expect(parent.get('count')).toBe(3);
     }
   );
+
+  it.each(['form', 'select'] as const)(
+    'preserves completed variable updates across a real %s pause and resume',
+    async (kind) => {
+      const { runWorkflow } = await vi.importActual<
+        typeof import('@fastgpt/service/core/workflow/dispatch')
+      >('@fastgpt/service/core/workflow/dispatch');
+      runWorkflowMock.mockImplementation(runWorkflow);
+      const parent = await createVariableContext({ counter: 0 });
+      const update = graphNode({
+        id: 'search',
+        type: FlowNodeTypeEnum.variableUpdate,
+        params: {
+          updateList: [
+            {
+              variable: [VARIABLE_NODE_ID, 'counter'],
+              value: ['', 42],
+              valueType: WorkflowIOValueTypeEnum.number,
+              renderType: FlowNodeInputTypeEnum.input
+            }
+          ]
+        }
+      });
+      const pause = graphNode({
+        id: 'pause',
+        type: kind === 'form' ? FlowNodeTypeEnum.formInput : FlowNodeTypeEnum.userSelect,
+        params:
+          kind === 'form'
+            ? {
+                userInputForms: [
+                  {
+                    key: 'value',
+                    label: 'value',
+                    type: 'input',
+                    value: '',
+                    valueType: 'string',
+                    required: true
+                  }
+                ]
+              }
+            : { userSelectOptions: [{ key: 'yes', value: 'YES' }] }
+      });
+      const answer = graphNode({
+        id: 'answer',
+        type: FlowNodeTypeEnum.answerNode,
+        params: { text: '{{counter}}' }
+      });
+      const workflowStreamResponse = vi.fn();
+      const providerOptions = {
+        workflowProps: { workflowStreamResponse },
+        variableContext: parent,
+        toolNodes: [update],
+        runtimeNodes: [update, pause, answer],
+        runtimeEdges: [
+          graphEdge({ source: 'search', target: 'pause' }),
+          graphEdge({
+            source: 'pause',
+            target: 'answer',
+            handle: kind === 'form' ? 'right' : 'yes'
+          })
+        ]
+      };
+      const provider = await createProvider(providerOptions);
+      const updateNode = vi.spyOn(callbackMap, FlowNodeTypeEnum.variableUpdate);
+      const paused = await provider.executeTool({ call: createCall('pause'), messages: [] });
+      expect(paused.interactive).toMatchObject({ type: 'toolChildrenInteractive' });
+      expect(parent.get('counter')).toBe(42);
+      expect(workflowStreamResponse).toHaveBeenCalledWith(
+        workflowSseEvent.updateVariables({ counter: 42 })
+      );
+      const resumedProvider = await createProvider({
+        ...providerOptions,
+        workflowProps: {
+          query: [{ text: { content: kind === 'form' ? '{"value":"resume"}' : 'YES' } }]
+        }
+      });
+      const resumed = await resumedProvider.executeInteractiveTool!({
+        toolCallId: 'pause',
+        childrenResponse: (paused.interactive as any).params.childrenResponse
+      } as any);
+      expect(resumed.interactive).toBeUndefined();
+      expect(resumed.response).toContain('42');
+      expect(parent.get('counter')).toBe(42);
+      expect(updateNode).toHaveBeenCalledOnce();
+    }
+  );
+
+  it('emits committed parent variables rather than concurrent child snapshots while forwarding other SSE events', async () => {
+    const { runWorkflow } = await vi.importActual<
+      typeof import('@fastgpt/service/core/workflow/dispatch')
+    >('@fastgpt/service/core/workflow/dispatch');
+    runWorkflowMock.mockImplementation(runWorkflow);
+    const parent = await createVariableContext({ x: 0, y: 0 });
+    const updates = ['x', 'y'].map((key, index) =>
+      graphNode({
+        id: index === 0 ? 'search' : 'other',
+        type: FlowNodeTypeEnum.variableUpdate,
+        params: {
+          updateList: [
+            {
+              variable: [VARIABLE_NODE_ID, key],
+              value: ['', index + 1],
+              valueType: WorkflowIOValueTypeEnum.number,
+              renderType: FlowNodeInputTypeEnum.input
+            }
+          ]
+        }
+      })
+    );
+    let releaseFirst!: () => void;
+    let notifyStarted!: () => void;
+    const firstGate = new Promise<void>((resolve) => {
+      releaseFirst = resolve;
+    });
+    const firstStarted = new Promise<void>((resolve) => {
+      notifyStarted = resolve;
+    });
+    const dispatchUpdate = callbackMap[FlowNodeTypeEnum.variableUpdate];
+    vi.spyOn(callbackMap, FlowNodeTypeEnum.variableUpdate).mockImplementation(async (props) => {
+      const result = await dispatchUpdate(props);
+      props.workflowStreamResponse?.({
+        event: SseResponseEventEnum.answer,
+        data: { choices: [{ delta: { content: props.node.nodeId } }] }
+      } as any);
+      if (props.node.nodeId === 'search') {
+        notifyStarted();
+        await firstGate;
+      }
+      return result;
+    });
+    const events: any[] = [];
+    const provider = await createProvider({
+      variableContext: parent,
+      toolNodes: updates,
+      runtimeNodes: updates,
+      runtimeEdges: [],
+      workflowProps: {
+        runningAppInfo: {
+          sourceType: ChatSourceTypeEnum.app,
+          sourceId: 'app_1',
+          teamId: 'team_1',
+          tmbId: 'tmb_1',
+          name: 'App'
+        },
+        runningUserInfo: { teamId: 'team_1', tmbId: 'tmb_1' },
+        uid: 'user_1',
+        chatId: 'chat_1',
+        responseChatItemId: 'response_1',
+        timezone: 'Asia/Shanghai',
+        query: [],
+        histories: [],
+        chatConfig: {},
+        stream: true,
+        workflowStreamResponse: (event: any) => events.push(structuredClone(event))
+      }
+    });
+    const variableEvents = () =>
+      events
+        .filter((event) => event.event === SseResponseEventEnum.updateVariables)
+        .map((event) => event.data);
+    const first = provider.executeTool({ call: createCall('first'), messages: [] });
+    try {
+      await firstStarted;
+      expect(variableEvents()).toEqual([]);
+      await provider.executeTool({
+        call: { ...createCall('second'), function: { name: 'other', arguments: '{}' } },
+        messages: []
+      });
+      expect(variableEvents()).toEqual([{ x: 0, y: 2 }]);
+    } finally {
+      releaseFirst();
+      await first;
+    }
+    expect(variableEvents()).toEqual([
+      { x: 0, y: 2 },
+      { x: 1, y: 2 }
+    ]);
+    expect(parent.toStoreRecord()).toEqual({ x: 1, y: 2 });
+    expect(
+      events
+        .filter((event) => event.event === SseResponseEventEnum.answer)
+        .map((event) => event.data.choices[0].delta.content)
+    ).toEqual(['search', 'other']);
+  });
 
   it('commits variable deltas as each concurrent tool completes, without waiting for invocation order', async () => {
     const parent = await createVariableContext({ shared: 0, firstOnly: 0, secondOnly: 0 });
@@ -411,7 +622,7 @@ describe('createToolCallToolProvider', () => {
         expect.objectContaining({
           stream,
           nodeResponseParentId: 'toolcall_response',
-          workflowStreamResponse: stream ? workflowStreamResponse : undefined
+          workflowStreamResponse: stream ? expect.any(Function) : undefined
         })
       );
       expect(workflowStreamResponse).not.toHaveBeenCalled();
@@ -427,7 +638,7 @@ describe('createToolCallToolProvider', () => {
         expect.objectContaining({
           stream,
           nodeResponseParentId: 'toolcall_response',
-          workflowStreamResponse: stream ? workflowStreamResponse : undefined,
+          workflowStreamResponse: stream ? expect.any(Function) : undefined,
           lastInteractive: childrenResponse
         })
       );

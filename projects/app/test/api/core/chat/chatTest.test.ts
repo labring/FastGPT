@@ -22,7 +22,7 @@ vi.mock('@fastgpt/service/core/workflow/dispatch', () => ({
   dispatchWorkFlow: mocks.dispatchWorkFlow
 }));
 
-vi.mock('@fastgpt/service/core/workflow/resource/context', () => ({
+vi.mock('@fastgpt/service/core/workflow/dispatch/context/resource', () => ({
   createWorkflowResourceContext: mocks.createWorkflowResourceContext
 }));
 

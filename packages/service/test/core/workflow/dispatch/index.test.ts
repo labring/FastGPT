@@ -44,7 +44,6 @@ import { UserConfigError } from '@fastgpt/global/common/error/utils';
 import { getNodeErrResponse } from '@fastgpt/service/core/workflow/dispatch/utils';
 import { resolveSystemInstanceConfig } from '@fastgpt/global/common/system/config/schema';
 import { getWorkflowMaxRunTimes } from '@fastgpt/service/core/workflow/constants';
-import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { getUser } from '@test/datas/users';
 import { getRunningUserInfoByTmbId } from '@fastgpt/service/support/user/team/utils';
 import { initWorkflowSseResponse } from '@fastgpt/service/core/workflow/dispatch/context/streamResponse';
@@ -239,19 +238,23 @@ describe('dispatchWorkFlow explicit stop lifecycle', () => {
 
   it('keeps a headless run alive after response close and stops on the shared Redis signal', async () => {
     const res = new EventEmitter();
+    let callbackCompleted = false;
     const start = vi
       .spyOn(callbackMap, FlowNodeTypeEnum.workflowStart)
-      .mockImplementationOnce(async ({ checkIsStopping }) => {
+      .mockImplementationOnce(async () => {
+        const { checkIsStopping } = getWorkflowContext();
         res.emit('close');
         expect(checkIsStopping()).toBe(false);
         await setAgentRuntimeStop(params);
         await vi.waitFor(() => expect(checkIsStopping()).toBe(true));
+        callbackCompleted = true;
         return {};
       });
 
     await dispatchWorkFlow({ ...createParams(), res: res as any });
 
     expect(start).toHaveBeenCalledOnce();
+    expect(callbackCompleted).toBe(true);
     expect(await shouldWorkflowStop(params)).toBe(false);
   });
 
