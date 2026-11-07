@@ -60,6 +60,24 @@ export default defineConfig([
     }
   },
   {
+    name: 'fastgpt/base-path-links',
+    files: ['packages/**/*.{ts,tsx}', 'projects/**/*.{ts,tsx}', 'pro/**/*.{ts,tsx}'],
+    ignores: ['packages/web/components/common/Link/index.tsx'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: ['@chakra-ui/react', '@chakra-ui/layout'].map((name) => ({
+            name,
+            importNames: ['Link'],
+            message:
+              '请使用 @fastgpt/web/components/common/Link，自动保留部署前缀，避免直接使用 Chakra Link。'
+          }))
+        }
+      ]
+    }
+  },
+  {
     name: 'fastgpt/chat-source-semantics',
     files: ['packages/**/*.{ts,tsx}', 'projects/**/*.{ts,tsx}', 'pro/**/*.{ts,tsx}'],
     ignores: [

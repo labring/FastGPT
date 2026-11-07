@@ -1,5 +1,6 @@
 import React, { useRef } from 'react';
-import { Box, Flex, IconButton, Image, Link } from '@chakra-ui/react';
+import { Box, Flex, IconButton, Image } from '@chakra-ui/react';
+import Link from '@fastgpt/web/components/common/Link';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';

@@ -1,6 +1,7 @@
 'use client';
 import { useMemo, useState } from 'react';
-import { Box, Button, Flex, Grid, GridItem, Link, Skeleton } from '@chakra-ui/react';
+import { Box, Button, Flex, Grid, GridItem, Skeleton } from '@chakra-ui/react';
+import Link from '@fastgpt/web/components/common/Link';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import LicenseInput from '@/components/admin/License/Input';

@@ -1,15 +1,7 @@
 'use client';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import {
-  Box,
-  Flex,
-  Button,
-  useDisclosure,
-  useTheme,
-  Link,
-  Grid,
-  type BoxProps
-} from '@chakra-ui/react';
+import { Box, Flex, Button, useDisclosure, useTheme, Grid, type BoxProps } from '@chakra-ui/react';
+import Link from '@fastgpt/web/components/common/Link';
 import { useForm } from 'react-hook-form';
 import { type UserUpdateParams } from '@/types/user';
 import { useToast } from '@fastgpt/web/hooks/useToast';
@@ -32,7 +24,6 @@ import { getExtraPlanCardRoute } from '@/web/support/wallet/sub/constants';
 import StandardPlanContentList from '@/components/support/wallet/StandardPlanContentList';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
-import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 import AccountContainer from '@/pageComponents/account/AccountContainer';
 import { useRouter } from 'next/router';
 import TeamSelector from '@/pageComponents/account/TeamSelector';
@@ -709,7 +700,7 @@ const PlanUsage = () => {
             </Box>
           </Flex>
           <Link
-            href={getWebReqUrl(getExtraPlanCardRoute())}
+            href={getExtraPlanCardRoute()}
             transform={'translateX(15px)'}
             display={'flex'}
             alignItems={'center'}

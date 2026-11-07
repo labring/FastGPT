@@ -1,5 +1,6 @@
 import React from 'react';
-import { Box, Flex, Button, Link, useDisclosure, HStack } from '@chakra-ui/react';
+import { Box, Flex, Button, useDisclosure, HStack } from '@chakra-ui/react';
+import Link from '@fastgpt/web/components/common/Link';
 import { postDatasetCollection, putDatasetCollectionById } from '@/web/core/dataset/api/collection';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';

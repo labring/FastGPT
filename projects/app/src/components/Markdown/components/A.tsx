@@ -1,6 +1,5 @@
 import {
   Button,
-  Link,
   Popover,
   PopoverTrigger,
   PopoverContent,
@@ -10,6 +9,7 @@ import {
   Flex,
   useDisclosure
 } from '@chakra-ui/react';
+import Link from '@fastgpt/web/components/common/Link';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';

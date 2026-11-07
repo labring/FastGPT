@@ -1,5 +1,6 @@
 import React from 'react';
-import { Flex, Box, Button, ModalBody, Input, Link } from '@chakra-ui/react';
+import { Flex, Box, Button, ModalBody, Input } from '@chakra-ui/react';
+import Link from '@fastgpt/web/components/common/Link';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
 import type { FeishuAppType, OutLinkEditType } from '@fastgpt/global/support/outLink/type';

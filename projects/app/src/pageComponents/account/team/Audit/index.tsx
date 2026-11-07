@@ -1,6 +1,7 @@
 import { getLocalDateRange } from '@fastgpt/global/common/time/dateRange';
 import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
-import { Box, Button, Flex, Link, Table, Tbody, Td, Th, Thead, Tr } from '@chakra-ui/react';
+import { Box, Button, Flex, Table, Tbody, Td, Th, Thead, Tr } from '@chakra-ui/react';
+import Link from '@fastgpt/web/components/common/Link';
 import { useMemo, useRef, useState } from 'react';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import MyBox from '@fastgpt/web/components/common/MyBox';
@@ -32,7 +33,6 @@ import { downloadFetch } from '@/web/common/system/utils';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { parseLocale } from '@fastgpt/global/common/i18n/utils';
 import dayjs from 'dayjs';
-import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 
 function AuditLog({ Tabs }: { Tabs: React.ReactNode }) {
   /** 最近七个本地自然日含今天，按日历日期计算并补齐首尾边界。 */
@@ -270,9 +270,7 @@ function AuditLog({ Tabs }: { Tabs: React.ReactNode }) {
                           <Box key={`${target.key}:${target.id}`}>
                             <Link
                               color="primary.600"
-                              href={getWebReqUrl(
-                                `${target.path}?${target.key}=${encodeURIComponent(target.id)}`
-                              )}
+                              href={`${target.path}?${target.key}=${encodeURIComponent(target.id)}`}
                             >
                               {target.label} · {target.id.slice(-8)}
                             </Link>

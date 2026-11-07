@@ -2,7 +2,8 @@ import React, { useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import RemarkGfm from 'remark-gfm';
 import RehypeExternalLinks from 'rehype-external-links';
-import { Box, Code as ChakraCode, Image, Link } from '@chakra-ui/react';
+import { Box, Code as ChakraCode, Image } from '@chakra-ui/react';
+import Link from '../Link';
 import MarkdownTable from './MarkdownTable';
 import { isSafeHref } from '@fastgpt/global/common/string/url';
 

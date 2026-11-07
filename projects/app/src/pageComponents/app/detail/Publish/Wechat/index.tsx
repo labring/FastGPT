@@ -1,18 +1,7 @@
 import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import React, { useState } from 'react';
-import {
-  Box,
-  Button,
-  IconButton,
-  Flex,
-  Link,
-  Table,
-  Tbody,
-  Td,
-  Th,
-  Thead,
-  Tr
-} from '@chakra-ui/react';
+import { Box, Button, IconButton, Flex, Table, Tbody, Td, Th, Thead, Tr } from '@chakra-ui/react';
+import Link from '@fastgpt/web/components/common/Link';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useLoading } from '@fastgpt/web/hooks/useLoading';
 import { getShareChatList, delShareChatById } from '@/web/support/outLink/api';

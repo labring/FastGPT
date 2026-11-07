@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
-import { ModalBody, Box, Button, VStack, HStack, Link } from '@chakra-ui/react';
+import { ModalBody, Box, Button, VStack, HStack } from '@chakra-ui/react';
+import Link from '@fastgpt/web/components/common/Link';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import Icon from '@fastgpt/web/components/common/Icon';

@@ -83,6 +83,7 @@ vi.mock('@chakra-ui/react', () => {
       }
     );
   return {
+    forwardRef: React.forwardRef,
     Box: container('div'),
     Link: container('a'),
     Flex: container('div'),

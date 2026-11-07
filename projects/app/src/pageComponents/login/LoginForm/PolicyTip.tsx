@@ -1,6 +1,7 @@
 import { getDocPath } from '@/web/common/system/doc';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { Box, Link, type BoxProps } from '@chakra-ui/react';
+import { Box, type BoxProps } from '@chakra-ui/react';
+import Link from '@fastgpt/web/components/common/Link';
 import React, { useEffect, useRef, useState } from 'react';
 import { Trans, useTranslation } from 'next-i18next';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
