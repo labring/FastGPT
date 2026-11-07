@@ -51,7 +51,7 @@ export const getTeamModelListService = async ({
 
   return GetTeamModelsResponseSchema.parse({
     models: teamModels.map((item) => ({
-      ...item,
+      ...desensitizeModel(item),
       channels: channelsByModel.get(item.model) ?? []
     })),
     channels: channelItems.map((channel) => channel.summary),

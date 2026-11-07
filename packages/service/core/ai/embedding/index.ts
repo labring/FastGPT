@@ -1,4 +1,5 @@
 import { type EmbeddingModelDataType } from '@fastgpt/global/core/ai/model/schema';
+import { isTeamModel } from '@fastgpt/global/core/ai/model/utils';
 import { getAIApi, getModelOpenAIOptions } from '../config';
 import { normalizeRelayNoChannelError } from '../../../thirdProvider/aiproxy/error';
 import { countPromptTokens, countPromptTokensBatch } from '../../../common/string/tiktoken/index';
@@ -101,7 +102,12 @@ export async function getVectors({
   }
 
   const { ai, requestMeta } = getAIApi(
-    timeoutMs === undefined ? undefined : { timeout: timeoutMs }
+    timeoutMs === undefined && !isTeamModel(model)
+      ? undefined
+      : {
+          ...(timeoutMs === undefined ? {} : { timeout: timeoutMs }),
+          ...(isTeamModel(model) ? { model } : {})
+        }
   );
 
   let chunkSize = Number(model.config.batchSize || 1);
