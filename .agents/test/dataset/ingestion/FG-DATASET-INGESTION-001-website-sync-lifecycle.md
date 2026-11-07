@@ -22,7 +22,7 @@ automation:
   - runner: node
     script: .agents/test/dataset/ingestion/FG-DATASET-INGESTION-001.mjs
     items: [C1, C2, C3, C4, C5, C6, C7]
-baseline: pro/02e72e79484dd4dcf4491f075f1842839b39ab9d
+baseline: pro/aaa0e109faf612d6d5f5f01c8686e82dfec9a80d
 ---
 
 # 网站同步去重、更新与不完整同步的数据保护

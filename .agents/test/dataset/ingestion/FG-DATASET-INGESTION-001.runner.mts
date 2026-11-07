@@ -338,6 +338,7 @@ await writeFile(
   JSON.stringify(
     {
       proCommit: fixture.proCommit,
+      crawlee: proRequire('crawlee/package.json').version,
       source: path.join(fixture.pro, 'admin/src/service/core/dataset/dataset/sync.ts'),
       node: process.version,
       mode: process.env.NODE_ENV,
