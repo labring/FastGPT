@@ -27,7 +27,7 @@ async function handler(req: ApiRequestProps) {
 
   // 删除是 owner 专属操作：仅集合所有者（collection.tmbId）可删，持有 manage/write 的协作者不可删。
   // 与 dataset / app / skill 删除保持一致（不可逆操作由 owner 唯一决策）。
-  const [{ teamId, collection, tmbId }] = await Promise.all(
+  const authorizedCollections = await Promise.all(
     deletedIds.map(async (collectionId) => {
       return await authDatasetCollection({
         req,
@@ -38,6 +38,7 @@ async function handler(req: ApiRequestProps) {
       });
     })
   );
+  const [{ teamId, collection, tmbId }] = authorizedCollections;
 
   // find all delete id
   const collections = await Promise.all(
@@ -69,12 +70,31 @@ async function handler(req: ApiRequestProps) {
     })
   );
 
+  // 仅记录实际删除的显式选中项；隐式删除的后代不展开，避免大型目录生成过大的日志。
+  const deletedCollections = new Map(collections.map((item) => [String(item._id), item]));
+  // 使用鉴权结果中的规范 ID 去重，兼容请求 ObjectId 的大小写写法。
+  const selectedCollectionIds = new Set(
+    authorizedCollections.map(({ collection }) => String(collection._id))
+  );
+  const auditResources = [...selectedCollectionIds].flatMap((id) => {
+    const collection = deletedCollections.get(id);
+    return collection
+      ? [
+          {
+            collectionId: String(collection._id),
+            datasetId: String(collection.datasetId),
+            collectionType: collection.type
+          }
+        ]
+      : [];
+  });
+
   (async () => {
     addAuditLog({
       tmbId,
       teamId,
       event: AuditEventEnum.DELETE_COLLECTION,
-      resources: [{ datasetId: String(collection.datasetId) }],
+      resources: auditResources,
       params: {
         collectionName: collection.name,
         datasetName: collection.dataset?.name || '',

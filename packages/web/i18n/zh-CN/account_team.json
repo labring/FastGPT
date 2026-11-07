@@ -270,6 +270,7 @@
   "resource_app": "应用",
   "resource_tool": "工具",
   "resource_skill": "技能",
+  "resource_collection": "集合",
   "resource_dataset": "知识库",
   "login": "登录",
   "manage_member": "管理成员",

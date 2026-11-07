@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 
 const mocks = vi.hoisted(() => ({
   parseApiInput: vi.fn(),
@@ -87,6 +88,9 @@ describe('POST /api/core/dataset/data/insertData', () => {
       teamId: 'team-id',
       tmbId: 'tmb-id',
       collection: {
+        _id: collectionId,
+        datasetId,
+        type: DatasetCollectionTypeEnum.virtual,
         name: 'Collection',
         dataset: { name: 'Dataset', type: 'dataset' }
       }
@@ -108,6 +112,11 @@ describe('POST /api/core/dataset/data/insertData', () => {
     const result = await handler({} as never);
 
     expect(result).toEqual({ dataIds: [insertId] });
+    expect(mocks.addAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        resources: [{ collectionId, datasetId, collectionType: DatasetCollectionTypeEnum.virtual }]
+      })
+    );
     expect(mocks.mongoSessionRun).toHaveBeenCalledTimes(1);
     expect(mocks.createDatasetData).toHaveBeenCalledWith(
       expect.objectContaining({

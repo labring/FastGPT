@@ -191,6 +191,13 @@ describe('updateTrainingData', () => {
               event: 'dataset.collection.training.retry'
             }).lean();
             expect(logs).toHaveLength(1);
+            expect(logs[0].resources).toEqual([
+              {
+                collectionId: current.collection._id,
+                datasetId: current.dataset._id,
+                collectionType: current.collection.type
+              }
+            ]);
             expect(logs[0].metadata).toEqual(
               expect.objectContaining({
                 datasetName: current.dataset.name,
@@ -220,6 +227,7 @@ describe('updateTrainingData', () => {
               })
             );
             expect(logs[0].metadata).not.toHaveProperty('collectionName');
+            expect(logs[0].resources).toEqual([{ datasetId: current.dataset._id }]);
           },
           { timeout: 5000 }
         );
@@ -297,6 +305,13 @@ describe('updateTrainingData', () => {
           event: 'dataset.training.task.retry'
         }).lean();
         expect(logs).toHaveLength(1);
+        expect(logs[0].resources).toEqual([
+          {
+            collectionId: collection._id,
+            datasetId: dataset._id,
+            collectionType: collection.type
+          }
+        ]);
         expect(logs[0].metadata).toEqual(
           expect.objectContaining({
             datasetName: dataset.name,

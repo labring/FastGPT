@@ -124,7 +124,13 @@ describe('reTrainingCollection', () => {
     );
     expect(mockAddAuditLog).toHaveBeenCalledWith(
       expect.objectContaining({
-        resources: [{ datasetId: sourceDatasetId }],
+        resources: [
+          {
+            collectionId: newCollectionId,
+            datasetId: sourceDatasetId,
+            collectionType: sourceCollection.type
+          }
+        ],
         params: {
           collectionName: 'source collection',
           datasetName: 'source dataset',

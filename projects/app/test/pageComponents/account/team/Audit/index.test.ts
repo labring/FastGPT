@@ -4,6 +4,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import type { TeamAuditListItemType } from '@fastgpt/global/support/user/audit/type';
 import { AppTypeEnum, AppTypeList, ToolTypeList } from '@fastgpt/global/core/app/constants';
+import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 
 const mocks = vi.hoisted(() => ({ logs: [] as TeamAuditListItemType[] }));
 
@@ -44,6 +45,8 @@ describe('AuditLog resource column', () => {
       const { default: AuditLog } = await import('@/pageComponents/account/team/Audit');
 
       const id = '68ad85a7463006c963799a05';
+      const fileId = '68ad85a7463006c963799a20';
+      const folderId = '68ad85a7463006c963799a21';
       const appResources = [
         undefined,
         ...AppTypeList,
@@ -61,7 +64,18 @@ describe('AuditLog resource column', () => {
           timestamp: new Date(),
           event: AuditEventEnum.CREATE_APP,
           metadata: { appName: 'original', appType: 'Agent' },
-          resources: [...appResources, { skillId: id }, { datasetId: id }, { collectionId: id }]
+          resources: [
+            ...appResources,
+            { skillId: id },
+            { datasetId: id },
+            { collectionId: id },
+            { collectionId: fileId, datasetId: id, collectionType: DatasetCollectionTypeEnum.file },
+            {
+              collectionId: folderId,
+              datasetId: id,
+              collectionType: DatasetCollectionTypeEnum.folder
+            }
+          ]
         },
         {
           _id: 'legacy',
@@ -85,14 +99,18 @@ describe('AuditLog resource column', () => {
       expect(html.indexOf('account_team:log_resource')).toBeLessThan(
         html.indexOf('account_team:log_time')
       );
-      expect(Array.from(html.matchAll(/href="([^"]+)"/g), ([, href]) => href)).toEqual([
+      expect(
+        Array.from(html.matchAll(/href="([^"]+)"/g), ([, href]) => href.replaceAll('&amp;', '&'))
+      ).toEqual([
         ...appResources.map(({ appId }) => `${baseUrl}/app/detail?appId=${appId}`),
         `${baseUrl}/skill/detail?skillId=${id}`,
-        `${baseUrl}/dataset/detail?datasetId=${id}`
+        `${baseUrl}/dataset/detail?datasetId=${id}`,
+        `${baseUrl}/dataset/detail?datasetId=${id}&currentTab=dataCard&collectionId=${fileId}`,
+        `${baseUrl}/dataset/detail?datasetId=${id}&currentTab=collectionCard&parentId=${folderId}`
       ]);
       expect(html.match(/account_team:resource_app ·/g)).toHaveLength(AppTypeList.length + 1);
       expect(html.match(/account_team:resource_tool ·/g)).toHaveLength(ToolTypeList.length + 3);
-      expect(html).not.toContain('collectionId=');
+      expect(html.match(/account_team:resource_collection ·/g)).toHaveLength(4);
       expect(html).toContain('>-</td>');
     }
   );

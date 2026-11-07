@@ -270,6 +270,7 @@
   "resource_app": "App",
   "resource_tool": "Tool",
   "resource_skill": "Skill",
+  "resource_collection": "Collection",
   "resource_dataset": "Knowledge base",
   "login": "Log in",
   "manage_member": "Managing members",

@@ -23,6 +23,7 @@ import {
 import { processAuditMetadata } from './processors';
 import TeamMemberFilter from '@/components/support/user/TeamMemberFilter';
 import { AppTypeEnum, ToolTypeList } from '@fastgpt/global/core/app/constants';
+import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 
 function AuditLog({ Tabs }: { Tabs: React.ReactNode }) {
   const { t } = useSafeTranslation();
@@ -170,11 +171,30 @@ function AuditLog({ Tabs }: { Tabs: React.ReactNode }) {
                     </Td>
                     <Td whiteSpace="normal" overflowWrap="anywhere">
                       {log.resources?.map((resource) => {
-                        const target = resource.appId
-                          ? {
+                        const target = (() => {
+                          // 集合带有 datasetId 作为父级上下文，必须优先按集合展示。
+                          if (resource.collectionId) {
+                            const isFolder =
+                              resource.collectionType === DatasetCollectionTypeEnum.folder;
+                            const query = new URLSearchParams({
+                              ...(resource.datasetId ? { datasetId: resource.datasetId } : {}),
+                              currentTab: isFolder ? 'collectionCard' : 'dataCard',
+                              [isFolder ? 'parentId' : 'collectionId']: resource.collectionId
+                            });
+                            return {
+                              id: resource.collectionId,
+                              key: 'collectionId',
+                              label: t('account_team:resource_collection'),
+                              // 老记录只有集合 ID 时保留文本，不构造缺少 datasetId 的无效入口。
+                              href: resource.datasetId ? `/dataset/detail?${query}` : undefined
+                            };
+                          }
+
+                          if (resource.appId) {
+                            return {
                               id: resource.appId,
-                              path: '/app/detail',
                               key: 'appId',
+                              href: `/app/detail?appId=${encodeURIComponent(resource.appId)}`,
                               // 依据类型快照分类，避免使用本地化 metadata 文案判断；旧记录默认应用。
                               label:
                                 resource.appType &&
@@ -186,32 +206,41 @@ function AuditLog({ Tabs }: { Tabs: React.ReactNode }) {
                                 ].includes(resource.appType)
                                   ? t('account_team:resource_tool')
                                   : t('account_team:resource_app')
-                            }
-                          : resource.skillId
-                            ? {
-                                id: resource.skillId,
-                                path: '/skill/detail',
-                                key: 'skillId',
-                                label: t('account_team:resource_skill')
-                              }
-                            : resource.datasetId
-                              ? {
-                                  id: resource.datasetId,
-                                  path: '/dataset/detail',
-                                  key: 'datasetId',
-                                  label: t('account_team:resource_dataset')
-                                }
-                              : undefined;
-                        return target ? (
+                            };
+                          }
+
+                          if (resource.skillId) {
+                            return {
+                              id: resource.skillId,
+                              key: 'skillId',
+                              href: `/skill/detail?skillId=${encodeURIComponent(resource.skillId)}`,
+                              label: t('account_team:resource_skill')
+                            };
+                          }
+
+                          if (resource.datasetId) {
+                            return {
+                              id: resource.datasetId,
+                              key: 'datasetId',
+                              href: `/dataset/detail?datasetId=${encodeURIComponent(resource.datasetId)}`,
+                              label: t('account_team:resource_dataset')
+                            };
+                          }
+                        })();
+                        if (!target) return null;
+                        const label = `${target.label} · ${target.id.slice(-8)}`;
+
+                        return (
                           <Box key={`${target.key}:${target.id}`}>
-                            <Link
-                              color="primary.600"
-                              href={`${target.path}?${target.key}=${encodeURIComponent(target.id)}`}
-                            >
-                              {target.label} · {target.id.slice(-8)}
-                            </Link>
+                            {target.href ? (
+                              <Link color="primary.600" href={target.href}>
+                                {label}
+                              </Link>
+                            ) : (
+                              label
+                            )}
                           </Box>
-                        ) : null;
+                        );
                       })}
                     </Td>
                     <Td>{formatTime2YMDHMS(log.timestamp)}</Td>

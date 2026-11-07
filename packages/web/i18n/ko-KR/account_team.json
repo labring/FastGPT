@@ -262,6 +262,7 @@
   "resource_app": "앱",
   "resource_tool": "도구",
   "resource_skill": "스킬",
+  "resource_collection": "컬렉션",
   "resource_dataset": "지식 베이스",
   "login": "로그인",
   "manage_member": "멤버 관리",

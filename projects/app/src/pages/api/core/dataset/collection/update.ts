@@ -205,7 +205,13 @@ async function handler(req: ApiRequestProps) {
       tmbId,
       teamId,
       event: AuditEventEnum.UPDATE_COLLECTION,
-      resources: [{ datasetId: String(collection.datasetId) }],
+      resources: [
+        {
+          collectionId: String(collection._id),
+          datasetId: String(collection.datasetId),
+          collectionType: collection.type
+        }
+      ],
       params: {
         collectionName: collection.name,
         datasetName: collection.dataset?.name || '',
