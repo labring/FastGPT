@@ -14,9 +14,18 @@ import { ShortUrlSchema } from '../../../../support/marketing/type';
 import { AppPermissionSchema } from '../../../../support/permission/app/controller.schema';
 import { SourceMemberSchema } from '../../../../support/user/type';
 import {
+  HttpToolRuntimeConfigSchema,
+  HttpToolSetRuntimeConfigSchema,
+  McpToolRuntimeConfigSchema,
+  McpToolSetRuntimeConfigSchema,
+  type StoreNodeItemType
+} from '../../../../core/workflow/type/node';
+import { FlowNodeTypeEnum } from '../../../../core/workflow/node/constant';
+import {
   OpenAPIFlowNodeInputItemTypeSchema,
   OpenAPIFlowNodeOutputItemTypeSchema,
-  OpenAPIStoreNodeItemTypeSchema
+  OpenAPIStoreNodeItemTypeSchema,
+  PersistedOpenAPIStoreNodeItemTypeSchema
 } from '../../workflow/node';
 import { StoreEdgeItemTypeSchema } from '../../../../core/workflow/type/edge';
 import { BoolSchema, IntSchema, NumSchema, optionalNullToUndefined } from '../../../../common/zod';
@@ -210,10 +219,56 @@ const migrateCreateAppBodyWorkflow = (value: unknown) => {
   }
 };
 
-const CreateAppNodeSchema = OpenAPIStoreNodeItemTypeSchema.extend({
+const CreateAppPersistedNodeSchema = PersistedOpenAPIStoreNodeItemTypeSchema.safeExtend({
   inputs: z.array(OpenAPIFlowNodeInputItemTypeSchema),
   outputs: z.array(OpenAPIFlowNodeOutputItemTypeSchema)
 });
+
+const CreateAppToolReferenceSchema = z
+  .object({
+    toolId: z.string(),
+    source: z.string().optional()
+  })
+  .strict();
+
+const OpenAPINodeToolConfigSchema = OpenAPIStoreNodeItemTypeSchema.shape.toolConfig.unwrap();
+const CreateAppRuntimeToolConfigSchema = OpenAPINodeToolConfigSchema.safeExtend({
+  mcpTool: z.union([CreateAppToolReferenceSchema, McpToolRuntimeConfigSchema]).optional(),
+  httpTool: z.union([CreateAppToolReferenceSchema, HttpToolRuntimeConfigSchema]).optional(),
+  mcpToolSet: z
+    .union([OpenAPINodeToolConfigSchema.shape.mcpToolSet.unwrap(), McpToolSetRuntimeConfigSchema])
+    .optional(),
+  httpToolSet: z
+    .union([OpenAPINodeToolConfigSchema.shape.httpToolSet.unwrap(), HttpToolSetRuntimeConfigSchema])
+    .optional()
+});
+
+const CreateAppRuntimeNodeSchema = z.preprocess(
+  (node, ctx) => {
+    if (
+      typeof node === 'object' &&
+      node !== null &&
+      !Array.isArray(node) &&
+      'pluginId' in node &&
+      typeof node.pluginId === 'string' &&
+      !PersistedOpenAPIStoreNodeItemTypeSchema.safeParse(node).success
+    ) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['toolConfig'],
+        message: '外部工具节点必须使用引用配置'
+      });
+      return z.NEVER;
+    }
+
+    return node;
+  },
+  OpenAPIStoreNodeItemTypeSchema.safeExtend({
+    toolConfig: CreateAppRuntimeToolConfigSchema.optional()
+  })
+);
+
+const CreateAppNodeSchema = z.union([CreateAppPersistedNodeSchema, CreateAppRuntimeNodeSchema]);
 
 const CreateAppEdgesSchema = z.array(StoreEdgeItemTypeSchema);
 
@@ -241,7 +296,8 @@ export const CreateAppBodySchema = z
     }),
     nodes: z.array(CreateAppNodeSchema).optional().meta({
       example: [],
-      description: '应用节点配置'
+      description:
+        '应用节点配置。普通工作流仅传工具摘要；MCP/HTTP 工具集 App 的首个根节点可按 App 类型传入对应完整配置'
     }),
     // 旧 modules 只能在 preprocess 成功后被删除；残留时必须拒绝，避免静默创建空应用。
     modules: z.never().optional().meta({
@@ -263,6 +319,35 @@ export const CreateAppBodySchema = z
       description: 'UTM 参数'
     })
   })
+  .superRefine(({ type, nodes }, ctx) => {
+    // 只有匹配类型的工具集 App 根节点保留完整 Schema；工作流节点继续使用持久化摘要。
+    nodes?.forEach((node, index) => {
+      if (PersistedOpenAPIStoreNodeItemTypeSchema.safeParse(node).success) return;
+
+      const isMcpToolSetRoot =
+        type === AppTypeEnum.mcpToolSet &&
+        index === 0 &&
+        node.flowNodeType === FlowNodeTypeEnum.toolSet &&
+        !node.pluginId &&
+        node.toolConfig?.httpToolSet === undefined &&
+        McpToolSetRuntimeConfigSchema.safeParse(node.toolConfig?.mcpToolSet).success;
+      const isHttpToolSetRoot =
+        type === AppTypeEnum.httpToolSet &&
+        index === 0 &&
+        node.flowNodeType === FlowNodeTypeEnum.toolSet &&
+        !node.pluginId &&
+        node.toolConfig?.mcpToolSet === undefined &&
+        HttpToolSetRuntimeConfigSchema.safeParse(node.toolConfig?.httpToolSet).success;
+
+      if (!isMcpToolSetRoot && !isHttpToolSetRoot) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['nodes', index],
+          message: '完整工具集配置只允许匹配类型的工具集 App 根节点'
+        });
+      }
+    });
+  })
   .meta({
     example: {
       name: '新应用',
@@ -277,7 +362,9 @@ export const CreateAppRequestBodySchema = z.preprocess(
   migrateCreateAppBodyWorkflow,
   CreateAppBodySchema
 );
-export type CreateAppBodyType = z.infer<typeof CreateAppBodySchema>;
+export type CreateAppBodyType = Omit<z.input<typeof CreateAppBodySchema>, 'nodes'> & {
+  nodes?: StoreNodeItemType[];
+};
 
 export const CreateAppResponseSchema = ObjectIdSchema.meta({
   example: '68ad85a7463006c963799a05',
@@ -508,9 +595,7 @@ export const GetAppDetailResponseSchema = AppSchemaTypeSchema.extend({
     deprecated: true
   }),
   permission: AppPermissionSchema
-}).meta({
-  description: '应用详情'
-}) as z.ZodType<AppDetailType>;
+}).meta({ description: '应用详情' }) as z.ZodType<AppDetailType>;
 export type GetAppDetailResponseType = z.infer<typeof GetAppDetailResponseSchema>;
 
 /* ============================================================================

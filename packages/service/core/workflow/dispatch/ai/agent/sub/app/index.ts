@@ -170,7 +170,8 @@ export const dispatchApp = async (props: Props): Promise<DispatchSubAppResponse>
               }
             ],
         stream: false,
-        workflowStreamResponse: undefined
+        workflowStreamResponse: undefined,
+        lastInteractive: data.lastInteractive
       });
     }
   });
@@ -402,6 +403,7 @@ export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppRespon
         histories: [],
         variableState: childrenVariableState,
         isToolCall: true,
+        lastInteractive: data.lastInteractive,
         query: data.lastInteractive
           ? data.query
           : serverGetWorkflowToolRunUserQuery({

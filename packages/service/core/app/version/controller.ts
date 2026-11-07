@@ -1,8 +1,14 @@
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { type AppResourcesType, type AppSchemaType } from '@fastgpt/global/core/app/type';
 import type { AppVersionSchemaType } from '@fastgpt/global/core/app/version/type';
 import { migrateWorkflowToCurrent } from '@fastgpt/global/core/workflow/migration';
-import { isInteractiveNodeType } from '@fastgpt/global/core/workflow/node/constant';
+import { LegacyMcpToolSetRuntimeConfigSchema } from '@fastgpt/global/core/workflow/migration/legacy/schema';
+import {
+  FlowNodeTypeEnum,
+  isInteractiveNodeType
+} from '@fastgpt/global/core/workflow/node/constant';
+import { HttpToolSetRuntimeConfigSchema } from '@fastgpt/global/core/workflow/type/node';
 import { Types, type ClientSession } from '../../../common/mongo';
 import { MongoTransactionConflictError } from '../../../common/mongo/sessionRun';
 import { decodeToolSetNodesFromStorage } from '../jsonSchemaStorage';
@@ -33,14 +39,101 @@ const getVersionResourceSnapshot = (
     resourceRefs: version.resourceRefs
   });
 
+/** 工具集 App 根节点通过严格迁移时临时压缩为摘要，归一化后恢复完整运行配置。 */
+export const normalizeAppWorkflow = (
+  workflow: { nodes: unknown[]; edges?: unknown; chatConfig?: unknown },
+  appType?: AppTypeEnum
+) => {
+  const nodes = decodeToolSetNodesFromStorage(workflow.nodes);
+  const root = nodes[0];
+  const isRecord = (value: unknown): value is Record<string, unknown> =>
+    typeof value === 'object' && value !== null && !Array.isArray(value);
+  const rootToolSet = (() => {
+    if (
+      !isRecord(root) ||
+      root.flowNodeType !== FlowNodeTypeEnum.toolSet ||
+      root.pluginId ||
+      !isRecord(root.toolConfig)
+    ) {
+      return;
+    }
+
+    if (appType === AppTypeEnum.mcpToolSet) {
+      const parsed = LegacyMcpToolSetRuntimeConfigSchema.safeParse(root.toolConfig.mcpToolSet);
+      if (!parsed.success) return;
+      return {
+        node: root,
+        toolConfig: root.toolConfig,
+        key: 'mcpToolSet' as const,
+        config: parsed.data,
+        summary: {
+          url: parsed.data.url,
+          toolList: parsed.data.toolList.map(({ name, description }) => ({ name, description }))
+        }
+      };
+    }
+
+    if (appType === AppTypeEnum.httpToolSet) {
+      const parsed = HttpToolSetRuntimeConfigSchema.strict().safeParse(root.toolConfig.httpToolSet);
+      if (!parsed.success) return;
+      return {
+        node: root,
+        toolConfig: root.toolConfig,
+        key: 'httpToolSet' as const,
+        config: parsed.data,
+        summary: {
+          toolList: parsed.data.toolList.map(({ name, description }) => ({ name, description }))
+        }
+      };
+    }
+  })();
+
+  const nodesForMigration = rootToolSet
+    ? [
+        {
+          ...rootToolSet.node,
+          toolConfig: {
+            ...rootToolSet.toolConfig,
+            [rootToolSet.key]: rootToolSet.summary
+          }
+        },
+        ...nodes.slice(1)
+      ]
+    : nodes;
+  const normalized = migrateWorkflowToCurrent({ ...workflow, nodes: nodesForMigration });
+  if (!rootToolSet) return normalized;
+
+  return {
+    ...normalized,
+    nodes: normalized.nodes.map((node, index) => {
+      if (index !== 0) return node;
+      if (rootToolSet.key === 'mcpToolSet') {
+        return {
+          ...node,
+          toolConfig: { ...node.toolConfig, mcpToolSet: rootToolSet.config }
+        };
+      }
+      return {
+        ...node,
+        toolConfig: { ...node.toolConfig, httpToolSet: rootToolSet.config }
+      };
+    })
+  };
+};
+
+/** 将持久化 Version 按所属 App 类型送入工作流规范化流程。 */
 const normalizeStoredVersionWorkflow = (
-  version: Pick<AppVersionSchemaType, 'nodes' | 'edges' | 'chatConfig'>
+  version: Pick<AppVersionSchemaType, 'nodes' | 'edges' | 'chatConfig'>,
+  appType?: AppTypeEnum
 ) =>
-  migrateWorkflowToCurrent({
-    nodes: decodeToolSetNodesFromStorage(version.nodes),
-    edges: version.edges,
-    chatConfig: version.chatConfig
-  });
+  normalizeAppWorkflow(
+    {
+      nodes: version.nodes,
+      edges: version.edges,
+      chatConfig: version.chatConfig
+    },
+    appType
+  );
 
 /**
  * 标准化单条 Version 记录的工作流及其资源快照。
@@ -48,10 +141,13 @@ const normalizeStoredVersionWorkflow = (
  * 避免当前配置占位导致该版本中的欢迎语、定时任务等旧值被丢弃。
  * 缺失或非法的 resources 会按该版本内容回退提取，确保快照始终合法。
  */
-export const normalizeAppVersionWorkflow = (version: AppVersionSchemaType): AppVersionWorkflow => {
+export const normalizeAppVersionWorkflow = (
+  version: AppVersionSchemaType,
+  appType?: AppTypeEnum
+): AppVersionWorkflow => {
   // 历史版本只迁移该版本自身的系统配置节点，不继承当前应用 chatConfig，
   // 避免当前配置占位导致该版本中的欢迎语、定时任务等旧值被丢弃。
-  const normalizedWorkflow = normalizeStoredVersionWorkflow(version);
+  const normalizedWorkflow = normalizeStoredVersionWorkflow(version, appType);
   return {
     versionId: String(version._id),
     versionName: version.versionName,
@@ -92,6 +188,10 @@ export type AppVersionLookupApp = AppSchemaType & {
 const loadApp = async (appId: string, app?: AppVersionLookupApp) =>
   app ?? ((await MongoApp.findById(appId).lean()) as AppVersionLookupApp | null | undefined);
 
+/** Version 不保存 App.type；调用方未提供 App 时只查询该字段供根节点归一化。 */
+const loadAppType = async (appId: string, app?: AppVersionLookupApp) =>
+  app?.type ?? (await MongoApp.findById(appId, 'type').lean())?.type;
+
 /**
  * 在非阻塞迁移窗口内读取无正式 Version 应用的旧工作流。
  * 草稿 Version 不能替代旧代码实际运行的 App 图；迁移补出正式 Version 后停止 fallback。
@@ -99,11 +199,14 @@ const loadApp = async (appId: string, app?: AppVersionLookupApp) =>
 const normalizeLegacyAppWorkflow = (app?: AppVersionLookupApp | null): AppVersionWorkflow => {
   if (!app) return emptyVersionWorkflow();
 
-  const normalizedWorkflow = migrateWorkflowToCurrent({
-    nodes: decodeToolSetNodesFromStorage(Array.isArray(app.modules) ? app.modules : []),
-    edges: Array.isArray(app.edges) ? app.edges : [],
-    chatConfig: app.chatConfig
-  });
+  const normalizedWorkflow = normalizeAppWorkflow(
+    {
+      nodes: Array.isArray(app.modules) ? app.modules : [],
+      edges: Array.isArray(app.edges) ? app.edges : [],
+      chatConfig: app.chatConfig
+    },
+    app.type
+  );
   return {
     versionId: undefined,
     versionName: undefined,
@@ -142,7 +245,7 @@ export const getAppLatestVersion = async (appId: string, app?: AppVersionLookupA
       })
       .lean());
 
-  if (version) return normalizeAppVersionWorkflow(version);
+  if (version) return normalizeAppVersionWorkflow(version, migrationApp?.type);
   return normalizeLegacyAppWorkflow(migrationApp);
 };
 
@@ -152,7 +255,7 @@ export const getAppLatestVersion = async (appId: string, app?: AppVersionLookupA
  */
 export const getAppDraftWorkflow = async (appId: string, app?: AppVersionLookupApp) => {
   const draft = await getAppDraftVersion(appId);
-  if (draft) return normalizeAppVersionWorkflow(draft);
+  if (draft) return normalizeAppVersionWorkflow(draft, await loadAppType(appId, app));
   const migrationApp = await loadApp(appId, app);
   return normalizeLegacyAppWorkflow(migrationApp);
 };
@@ -332,7 +435,7 @@ export const getAppPublishedWorkflowMap = async (
         : versionByAppId.get(String(app._id));
       return [
         String(app._id),
-        { nodes: version ? normalizeStoredVersionWorkflow(version).nodes : [] }
+        { nodes: version ? normalizeStoredVersionWorkflow(version, app.type).nodes : [] }
       ];
     })
   );
@@ -385,7 +488,7 @@ export const getAppVersionById = async ({
       appId
     }).lean();
 
-    if (version) return normalizeAppVersionWorkflow(version);
+    if (version) return normalizeAppVersionWorkflow(version, await loadAppType(appId, app));
   }
 
   return getAppLatestVersion(appId, app);

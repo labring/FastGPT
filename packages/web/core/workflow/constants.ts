@@ -15,6 +15,10 @@ export const workflowSystemNodeTemplateList: {
     type: FlowNodeTemplateTypeEnum.ai,
     label: i18nT('common:core.module.template.AI function')
   },
+  {
+    type: FlowNodeTemplateTypeEnum.toolCall,
+    label: i18nT('app:tool_type_tool_call')
+  },
 
   {
     type: FlowNodeTemplateTypeEnum.interactive,

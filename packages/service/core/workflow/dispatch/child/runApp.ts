@@ -93,12 +93,8 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
     }
 
     const chatHistories = getHistories(history, histories);
-
     const runtimeNodes = rewriteNodeOutputByHistories(
-      storeNodes2RuntimeNodes(
-        nodes,
-        getWorkflowEntryNodeIds(nodes, childrenInteractive || undefined)
-      ),
+      storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes, childrenInteractive)),
       childrenInteractive
     );
 
