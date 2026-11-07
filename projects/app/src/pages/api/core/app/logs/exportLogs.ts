@@ -92,7 +92,7 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
       tmbId,
       teamId,
       event: AuditEventEnum.EXPORT_APP_CHAT_LOG,
-      resources: [{ appId: String(app._id) }],
+      resources: [{ appId: String(app._id), appType: app.type }],
       params: {
         appName: app.name,
         appType: getI18nAppType(app.type)

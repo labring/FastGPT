@@ -33,6 +33,7 @@ import { downloadFetch } from '@/web/common/system/utils';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { parseLocale } from '@fastgpt/global/common/i18n/utils';
 import dayjs from 'dayjs';
+import { AppTypeEnum, ToolTypeList } from '@fastgpt/global/core/app/constants';
 
 function AuditLog({ Tabs }: { Tabs: React.ReactNode }) {
   /** 最近七个本地自然日含今天，按日历日期计算并补齐首尾边界。 */
@@ -249,7 +250,17 @@ function AuditLog({ Tabs }: { Tabs: React.ReactNode }) {
                               id: resource.appId,
                               path: '/app/detail',
                               key: 'appId',
-                              label: t('account_team:resource_app')
+                              // 依据类型快照分类，避免使用本地化 metadata 文案判断；旧记录默认应用。
+                              label:
+                                resource.appType &&
+                                [
+                                  ...ToolTypeList,
+                                  AppTypeEnum.toolFolder,
+                                  AppTypeEnum.httpPlugin,
+                                  AppTypeEnum.tool
+                                ].includes(resource.appType)
+                                  ? t('account_team:resource_tool')
+                                  : t('account_team:resource_app')
                             }
                           : resource.skillId
                             ? {

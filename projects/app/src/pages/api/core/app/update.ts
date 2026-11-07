@@ -141,7 +141,7 @@ const logAppUpdate = ({
     teamId,
     event: AuditEventEnum.UPDATE_APP_INFO,
     ...(!AppFolderTypeList.includes(app.type)
-      ? { resources: [{ appId: String(app._id) }] }
+      ? { resources: [{ appId: String(app._id), appType: app.type }] }
       : {}),
     params: {
       appName: app.name,
