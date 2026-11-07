@@ -47,8 +47,11 @@ async function handler(req: ApiRequestProps<ResumeCollectionInheritPermissionBod
     tmbId,
     event: AuditEventEnum.RESUME_INHERIT_PERMISSION,
     resources: [
-      { datasetId: String(collection.datasetId) },
-      { collectionId: String(collection._id) }
+      {
+        collectionId: String(collection._id),
+        datasetId: String(collection.datasetId),
+        collectionType: collection.type
+      }
     ],
     params: {
       targetResource: collection.name,

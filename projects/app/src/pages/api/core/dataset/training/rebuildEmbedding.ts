@@ -147,6 +147,7 @@ async function handler(req: ApiRequestProps): Promise<RebuildEmbeddingResponse> 
       tmbId,
       teamId,
       event: DatasetAuditEventEnum.DATASET_INDEX_REBUILD,
+      resources: [{ datasetId: String(dataset._id) }],
       params: {
         datasetName: dataset.name,
         oldModelName: oldModel.modelName,

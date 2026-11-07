@@ -1,5 +1,6 @@
 import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import { Box, Flex, Table, Tbody, Td, Th, Thead, Tr } from '@chakra-ui/react';
+import Link from '@fastgpt/web/components/common/Link';
 import { useMemo, useRef, useState } from 'react';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import MyBox from '@fastgpt/web/components/common/MyBox';
@@ -21,6 +22,8 @@ import {
 } from '@fastgpt/web/components/common/TagFilter';
 import { processAuditMetadata } from './processors';
 import TeamMemberFilter from '@/components/support/user/TeamMemberFilter';
+import { AppTypeEnum, ToolTypeList } from '@fastgpt/global/core/app/constants';
+import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 
 function AuditLog({ Tabs }: { Tabs: React.ReactNode }) {
   const { t } = useSafeTranslation();
@@ -130,16 +133,19 @@ function AuditLog({ Tabs }: { Tabs: React.ReactNode }) {
           <Table w={'100%'} minW={['900px', '100%']} sx={{ tableLayout: 'fixed' }}>
             <Thead>
               <Tr bgColor={'white !important'}>
-                <Th w={'18%'} borderLeftRadius="6px" bgColor="myGray.100">
+                <Th w={'16%'} borderLeftRadius="6px" bgColor="myGray.100">
                   {t('account_team:log_user')}
                 </Th>
-                <Th w={'20%'} bgColor="myGray.100">
+                <Th w={'18%'} bgColor="myGray.100">
+                  {t('account_team:log_resource')}
+                </Th>
+                <Th w={'18%'} bgColor="myGray.100">
                   {t('account_team:log_time')}
                 </Th>
                 <Th w={'18%'} bgColor="myGray.100">
                   {t('account_team:log_type')}
                 </Th>
-                <Th w={'44%'} bgColor="myGray.100">
+                <Th w={'30%'} bgColor="myGray.100">
                   {t('account_team:log_details')}
                 </Th>
               </Tr>
@@ -163,6 +169,80 @@ function AuditLog({ Tabs }: { Tabs: React.ReactNode }) {
                         spacing={0.5}
                       />
                     </Td>
+                    <Td whiteSpace="normal" overflowWrap="anywhere">
+                      {log.resources?.map((resource) => {
+                        const target = (() => {
+                          // 集合带有 datasetId 作为父级上下文，必须优先按集合展示。
+                          if (resource.collectionId) {
+                            const isFolder =
+                              resource.collectionType === DatasetCollectionTypeEnum.folder;
+                            const query = new URLSearchParams({
+                              ...(resource.datasetId ? { datasetId: resource.datasetId } : {}),
+                              currentTab: isFolder ? 'collectionCard' : 'dataCard',
+                              [isFolder ? 'parentId' : 'collectionId']: resource.collectionId
+                            });
+                            return {
+                              id: resource.collectionId,
+                              key: 'collectionId',
+                              label: t('account_team:resource_collection'),
+                              // 老记录只有集合 ID 时保留文本，不构造缺少 datasetId 的无效入口。
+                              href: resource.datasetId ? `/dataset/detail?${query}` : undefined
+                            };
+                          }
+
+                          if (resource.appId) {
+                            return {
+                              id: resource.appId,
+                              key: 'appId',
+                              href: `/app/detail?appId=${encodeURIComponent(resource.appId)}`,
+                              // 依据类型快照分类，避免使用本地化 metadata 文案判断；旧记录默认应用。
+                              label:
+                                resource.appType &&
+                                [
+                                  ...ToolTypeList,
+                                  AppTypeEnum.toolFolder,
+                                  AppTypeEnum.httpPlugin,
+                                  AppTypeEnum.tool
+                                ].includes(resource.appType)
+                                  ? t('account_team:resource_tool')
+                                  : t('account_team:resource_app')
+                            };
+                          }
+
+                          if (resource.skillId) {
+                            return {
+                              id: resource.skillId,
+                              key: 'skillId',
+                              href: `/skill/detail?skillId=${encodeURIComponent(resource.skillId)}`,
+                              label: t('account_team:resource_skill')
+                            };
+                          }
+
+                          if (resource.datasetId) {
+                            return {
+                              id: resource.datasetId,
+                              key: 'datasetId',
+                              href: `/dataset/detail?datasetId=${encodeURIComponent(resource.datasetId)}`,
+                              label: t('account_team:resource_dataset')
+                            };
+                          }
+                        })();
+                        if (!target) return null;
+                        const label = `${target.label} · ${target.id.slice(-8)}`;
+
+                        return (
+                          <Box key={`${target.key}:${target.id}`}>
+                            {target.href ? (
+                              <Link color="primary.600" href={target.href}>
+                                {label}
+                              </Link>
+                            ) : (
+                              label
+                            )}
+                          </Box>
+                        );
+                      })}
+                    </Td>
                     <Td>{formatTime2YMDHMS(log.timestamp)}</Td>
                     <Td>{t(i18nData.typeLabel)}</Td>
                     <Td
@@ -170,7 +250,9 @@ function AuditLog({ Tabs }: { Tabs: React.ReactNode }) {
                       wordBreak={['normal', 'break-word']}
                       overflowWrap={['normal', 'anywhere']}
                     >
-                      {t(i18nData.content as any, metadata)}
+                      {Object.keys(log.metadata ?? {}).length
+                        ? t(i18nData.content as any, metadata)
+                        : '-'}
                     </Td>
                   </Tr>
                 ) : null;

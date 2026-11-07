@@ -5,7 +5,8 @@ import { updateSkill, updateParentFoldersUpdateTime } from '@fastgpt/service/cor
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import {
   AgentSkillCategoryEnum,
-  AgentSkillCreationStatusEnum
+  AgentSkillCreationStatusEnum,
+  AgentSkillTypeEnum
 } from '@fastgpt/global/core/ai/skill/constants';
 import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
 import {
@@ -103,6 +104,7 @@ async function handler(req: ApiRequestProps<UpdateSkillBody>) {
       tmbId,
       teamId,
       event: AuditEventEnum.UPDATE_SKILL,
+      ...(skill.type !== AgentSkillTypeEnum.folder ? { resources: [{ skillId }] } : {}),
       params: { skillName: skill.name, skillType: getI18nSkillType(skill.type) }
     });
   })();

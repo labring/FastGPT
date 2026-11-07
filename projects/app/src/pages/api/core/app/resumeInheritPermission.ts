@@ -58,7 +58,7 @@ async function handler(
     teamId,
     tmbId,
     event: AuditEventEnum.RESUME_INHERIT_PERMISSION,
-    resources: [{ appId: String(app._id) }],
+    resources: [{ appId: String(app._id), appType: app.type }],
     params: {
       targetResource: app.name,
       ...(parentResourceName !== undefined ? { parentResource: parentResourceName } : {})

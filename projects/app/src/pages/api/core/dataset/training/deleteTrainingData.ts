@@ -100,6 +100,13 @@ async function handler(req: ApiRequestProps): Promise<DeleteTrainingDataResponse
       tmbId,
       teamId: String(teamId),
       event: DatasetAuditEventEnum.DATASET_TRAINING_RECORD_DELETE,
+      resources: [
+        {
+          collectionId: String(collection._id),
+          datasetId: String(collection.datasetId),
+          collectionType: collection.type
+        }
+      ],
       params: {
         datasetName: collection.dataset.name,
         collectionName: collection.name

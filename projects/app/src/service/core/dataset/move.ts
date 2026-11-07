@@ -43,6 +43,9 @@ const logDatasetMove = ({
     tmbId,
     teamId,
     event: AuditEventEnum.MOVE_DATASET,
+    ...(dataset.type !== DatasetTypeEnum.folder
+      ? { resources: [{ datasetId: String(dataset._id) }] }
+      : {}),
     params: {
       datasetName: dataset.name,
       targetFolderName: targetName,

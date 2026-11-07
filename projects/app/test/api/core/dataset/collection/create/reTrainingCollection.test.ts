@@ -122,6 +122,22 @@ describe('reTrainingCollection', () => {
         })
       })
     );
+    expect(mockAddAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        resources: [
+          {
+            collectionId: newCollectionId,
+            datasetId: sourceDatasetId,
+            collectionType: sourceCollection.type
+          }
+        ],
+        params: {
+          collectionName: 'source collection',
+          datasetName: 'source dataset',
+          datasetType: 'dataset'
+        }
+      })
+    );
   });
 
   it('ignores legacy datasetId in the request body', async () => {

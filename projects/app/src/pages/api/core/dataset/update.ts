@@ -254,6 +254,9 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
         tmbId,
         teamId,
         event: DatasetAuditEventEnum.DATASET_CONFIG_UPDATE,
+        ...(dataset.type !== DatasetTypeEnum.folder
+          ? { resources: [{ datasetId: String(dataset._id) }] }
+          : {}),
         params: {
           datasetName: name ?? dataset.name,
           changeItem,

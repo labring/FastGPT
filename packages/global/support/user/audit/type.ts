@@ -2,32 +2,48 @@ import type { SourceMemberType } from '../type';
 import type { TeamAuditEvent } from './constants';
 import z from 'zod';
 import { ObjectIdSchema } from '../../../common/type/mongo';
+import { AppTypeEnum } from '../../../core/app/constants';
+import { DatasetCollectionTypeEnum } from '../../../core/dataset/constants';
 
-// 其他 ID 显式为 never，防止 TypeScript 的普通对象 union 接受同时包含多个分支字段的对象。
-const excludedResourceIds = {
+// 其他资源字段显式为 never，避免跨分支混用 ID 和类型快照。
+const excludedResourceFields = {
   appId: z.never().optional(),
+  appType: z.never().optional(),
   datasetId: z.never().optional(),
   skillId: z.never().optional(),
-  collectionId: z.never().optional()
+  collectionId: z.never().optional(),
+  collectionType: z.never().optional()
 };
 
-/** 每个审计关联项恰好标识一个业务资源；多个资源通过数组分别记录。 */
+/** 每项标识一个业务资源；集合可携带所属知识库作为定位上下文，多个资源分别记录。 */
 export const AuditResourceSchema = z.union([
   z.strictObject({
-    ...excludedResourceIds,
-    appId: ObjectIdSchema.meta({ description: '关联应用 ID' })
+    ...excludedResourceFields,
+    appId: ObjectIdSchema.meta({ description: '关联应用或工具 ID' }),
+    appType: z.enum(AppTypeEnum).optional().meta({
+      description: '操作时的应用类型，用于区分应用与工具；历史日志可省略',
+      example: AppTypeEnum.workflowTool
+    })
   }),
   z.strictObject({
-    ...excludedResourceIds,
+    ...excludedResourceFields,
     datasetId: ObjectIdSchema.meta({ description: '关联知识库 ID' })
   }),
   z.strictObject({
-    ...excludedResourceIds,
+    ...excludedResourceFields,
     skillId: ObjectIdSchema.meta({ description: '关联技能 ID' })
   }),
   z.strictObject({
-    ...excludedResourceIds,
-    collectionId: ObjectIdSchema.meta({ description: '关联集合 ID' })
+    ...excludedResourceFields,
+    collectionId: ObjectIdSchema.meta({ description: '关联集合 ID' }),
+    datasetId: ObjectIdSchema.optional().meta({
+      description: '集合所属知识库 ID，仅作为集合跳转的定位上下文；历史记录可省略',
+      example: '68ad85a7463006c963799a05'
+    }),
+    collectionType: z.enum(DatasetCollectionTypeEnum).optional().meta({
+      description: '操作时的集合类型，用于区分目录和分块列表入口；历史记录可省略',
+      example: DatasetCollectionTypeEnum.file
+    })
   })
 ]);
 export type AuditResourceType = z.infer<typeof AuditResourceSchema>;
@@ -55,5 +71,6 @@ export type TeamAuditListItemType = {
   sourceMember: SourceMemberType;
   event: TeamAuditEvent;
   timestamp: Date;
+  resources?: AuditResourceType[];
   metadata: Record<string, string>;
 };

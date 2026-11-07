@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
-import { Box, type BoxProps, Flex, Link, type LinkProps } from '@chakra-ui/react';
+import { Box, type BoxProps, Flex, type LinkProps } from '@chakra-ui/react';
+import Link from '@fastgpt/web/components/common/Link';
 import { useRouter } from 'next/router';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';

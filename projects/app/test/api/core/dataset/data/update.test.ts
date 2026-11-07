@@ -68,6 +68,7 @@ const buildAuthResult = () => ({
   teamId: 'team-id',
   tmbId: 'tmb-id',
   collection: {
+    _id: '68ad85a7463006c963799a07',
     datasetId: 'dataset-id',
     name: 'Collection',
     indexPrefixTitle: true,
@@ -145,6 +146,17 @@ describe('PUT /api/core/dataset/data/update', () => {
       indexPrefix: '# Collection'
     });
     expect(mockUpdateDatasetDataSystemIndexes).not.toHaveBeenCalled();
+    expect(mockAddAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        resources: [
+          {
+            collectionId: '68ad85a7463006c963799a07',
+            datasetId: 'dataset-id',
+            collectionType: DatasetCollectionTypeEnum.images
+          }
+        ]
+      })
+    );
     expect(mockPushGenerateVectorUsage).toHaveBeenCalledWith({
       teamId: 'team-id',
       tmbId: 'tmb-id',

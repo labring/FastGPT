@@ -77,6 +77,13 @@ describe('delete training data test', () => {
           event: 'dataset.training.record.delete'
         }).lean();
         expect(logs).toHaveLength(1);
+        expect(logs[0].resources).toEqual([
+          {
+            collectionId: collection._id,
+            datasetId: dataset._id,
+            collectionType: collection.type
+          }
+        ]);
         expect(logs[0].metadata).toEqual(
           expect.objectContaining({
             datasetName: dataset.name,

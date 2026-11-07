@@ -60,6 +60,7 @@ async function handler(
       tmbId,
       teamId,
       event: AuditEventEnum.DEPLOY_SKILL,
+      resources: [{ skillId }],
       params: { skillName: skill.name, skillType: getI18nSkillType(skill.type) }
     });
   })();
