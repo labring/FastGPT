@@ -1,8 +1,10 @@
 import type {
   ChatCompletionMessageParam,
   ChatCompletionMessageToolCall,
-  ChatCompletionTool
+  ChatCompletionTool,
+  ChatCompletionToolMessageContentPart
 } from '@fastgpt/global/core/ai/llm/type';
+import { maxToolImagePartAmount } from '@fastgpt/global/common/file/constants';
 import type { SandboxClient } from '../../../sandbox/application/runtime/client';
 import type { SandboxToolCallValidator } from '../../../sandbox/application/toolCall/type';
 import type { AgentLoopDatasetSearchExecutor } from './systemTool/datasetSearch';
@@ -12,6 +14,32 @@ import type { AgentLoopUsage } from './usage';
 export type AgentLoopToolCatalog = {
   runtimeTools: ChatCompletionTool[];
   batchToolSize?: number;
+};
+
+/**
+ * 构造写入 tool message 的 content：
+ * - 无结构化 parts 时直接用文本字符串；
+ * - 有 parts 时把最终要发送的文本作为 text part 拼在图片等 parts 前，
+ *   保证模型实际拿到的文本与展示/计费统计一致（文本已压缩时传压缩后的值）。
+ *
+ * fastAgent 与 piAgent 共用这层组合规则，避免两条 provider 路径对同一个工具结果
+ * 给出不同的内容：业务 response 文本永远保留，图片只作为附加 part。
+ *
+ * 图片数量按 `maxToolImagePartAmount` 截断：一次工具调用列出很多文件时，每轮请求都会重复
+ * 下载并内联这些图片，必须限制单个工具结果的视觉输入量。
+ */
+export const buildToolMessageContent = ({
+  content,
+  text
+}: {
+  content?: ChatCompletionToolMessageContentPart[];
+  text: string;
+}): string | ChatCompletionToolMessageContentPart[] => {
+  if (!content?.length) return text;
+
+  const images = content.filter((part) => part.type !== 'text').slice(0, maxToolImagePartAmount);
+
+  return images.length ? [{ type: 'text', text }, ...images] : text;
 };
 
 /**
@@ -53,6 +81,11 @@ export type AgentLoopToolExecutionResult<TChildrenResponse = unknown> = {
   hideInUI?: boolean;
   /** 由调用方透传并在 agent-loop 外部解释的工具运行元数据。 */
   metadata?: unknown;
+  /**
+   * 写入 LLM tool message 的结构化 content（text / image_url parts）。
+   * 工具取到图片时可返回 image_url part，作为下一轮模型的视觉输入；缺省时按 response 字符串兜底。
+   */
+  content?: ChatCompletionToolMessageContentPart[];
 };
 
 export type AgentLoopReadFileExecutionResult = {

@@ -3,7 +3,10 @@ import z from 'zod';
 import { NodeToolConfigTypeSchema } from '@fastgpt/global/core/workflow/type/node';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
-import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/llm/type';
+import type {
+  ChatCompletionMessageParam,
+  ChatCompletionToolMessageContentPart
+} from '@fastgpt/global/core/ai/llm/type';
 import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import type { NodeSummary } from '../../../types/runtime';
 
@@ -21,6 +24,11 @@ export type DispatchSubAppResponse = {
    * 工具自身的运行详情。显式 totalPoints 表示当前响应自身费用；省略时由外层按 usages 计算。
    */
   nodeResponse?: Omit<ChatHistoryItemResType, 'runningTime' | 'id' | 'nodeId'>;
+  /**
+   * 写入 LLM tool message 的结构化 content（text / image_url parts）。
+   * 仅当工具显式返回合法的 parts 时才透传，缺省时按 response 字符串兜底。
+   */
+  content?: ChatCompletionToolMessageContentPart[];
 };
 
 export const SubAppRuntimeSchema = z.object({
