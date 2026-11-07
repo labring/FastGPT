@@ -38,7 +38,9 @@ async function handler(req: ApiRequestProps): Promise<CreateCollectionResponseTy
       tmbId,
       teamId,
       event: AuditEventEnum.CREATE_COLLECTION,
-      resources: [{ datasetId: String(dataset._id) }],
+      resources: [
+        { collectionId: String(_id), datasetId: String(dataset._id), collectionType: body.type }
+      ],
       params: {
         collectionName: body.name,
         datasetName: dataset.name,

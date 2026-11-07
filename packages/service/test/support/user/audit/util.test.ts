@@ -4,6 +4,7 @@ import { MongoTeamAudit } from '@fastgpt/service/support/user/audit/schema';
 import { addAuditLog, addAuditLogs } from '@fastgpt/service/support/user/audit/util';
 import type { AuditResourceType } from '@fastgpt/global/support/user/audit/type';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 
 vi.unmock('@fastgpt/service/support/user/audit/util');
 
@@ -136,6 +137,11 @@ describe('audit resource associations', () => {
     }>().toExtend<AuditResourceType>();
     expectTypeOf<{ appId: string; skillId: string }>().not.toExtend<AuditResourceType>();
     expectTypeOf<{
+      collectionId: string;
+      datasetId: string;
+      collectionType: DatasetCollectionTypeEnum.file;
+    }>().toExtend<AuditResourceType>();
+    expectTypeOf<{
       datasetId: string;
       appType: AppTypeEnum.workflowTool;
     }>().not.toExtend<AuditResourceType>();
@@ -149,11 +155,17 @@ describe('audit resource associations', () => {
         { appId: objectId, appType: AppTypeEnum.workflowTool },
         { datasetId: objectId },
         { skillId: objectId },
-        { collectionId: objectId }
+        { collectionId: objectId },
+        {
+          collectionId: objectId,
+          datasetId: objectId,
+          collectionType: DatasetCollectionTypeEnum.file
+        }
       ]
     });
     await expect(audit.validate()).resolves.toBeUndefined();
     expect(audit.toObject().resources?.[1].appType).toBe(AppTypeEnum.workflowTool);
+    expect(audit.toObject().resources?.at(-1)?.collectionType).toBe(DatasetCollectionTypeEnum.file);
 
     const legacyAudit = new MongoTeamAudit({
       teamId: objectId,
@@ -170,6 +182,9 @@ describe('audit resource associations', () => {
     { appId: 'invalid-id' },
     { appId: objectId, appType: 'invalid-type' },
     { datasetId: objectId, appType: AppTypeEnum.workflowTool },
+    { datasetId: objectId, collectionType: DatasetCollectionTypeEnum.file },
+    { collectionId: objectId, datasetId: 'invalid-id' },
+    { collectionId: objectId, collectionType: 'invalid-type' },
     { appId: objectId, unknownId: objectId }
   ])('rejects an invalid resource item %j', async (resource) => {
     const audit = new MongoTeamAudit({
