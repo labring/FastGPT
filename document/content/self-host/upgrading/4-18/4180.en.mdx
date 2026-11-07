@@ -99,11 +99,12 @@ Added **Backfill API Key types** (`20261104_backfill_openapi_key_type`), which r
 21. **[Teams and permissions]** Fixed App creation, JSON imports, copies, and conversions to new Workflow copies failing when they include unreadable or missing resources. The initial version snapshots only readable resources; any remaining unusable Node references are marked as errors in the detail view for later correction.
 22. **[Teams and permissions]** Fixed the “Cancel” button in the account deletion confirmation dialog not following the current interface language.
 23. **[Teams and permissions]** Fixed share pages loading public App information through identifiers for other publishing channels. Only share channels are now accepted.
-24. **[System and operations]** Fixed the Commercial edition's admin configuration page showing values that differ from the running configuration when the database has no system configuration or an older record lacks `systemEnv`. Valid `config.json` settings now initialize the running configuration, and the page fills only missing sections while preserving existing site and plan settings, preventing defaults from overwriting them on save.
-25. **[System and operations]** Fixed user, feedback, and session search filters overwriting one another in chat logs; the list and CSV export now apply all selected conditions together.
-26. **[System and operations]** Fixed Langfuse Node attributes leaking into parent traces and missing Agent generation records and usage. Concurrent Nodes now collect usage separately without including other Nodes' data.
-27. **[Tools and channels]** Fixed audio transcription input validation errors being wrapped as generic service errors. Invalid inputs now return the standard HTTP `400` parameter error.
-28. **[Tools and channels]** Fixed blank text in some Tool names, descriptions, and tags when their Traditional Chinese translation is empty. These values fall back to Simplified Chinese, then English if no usable text is available.
+24. **[System and operations]** Fixed MongoDB 4.x failures caused by empty update fields when clearing a team's AI account or external Workflow variables, moving Dataset Collections, and updating or clearing chat feedback in some cases.
+25. **[System and operations]** Fixed the Commercial edition's admin configuration page showing values that differ from the running configuration when the database has no system configuration or an older record lacks `systemEnv`. Valid `config.json` settings now initialize the running configuration, and the page fills only missing sections while preserving existing site and plan settings, preventing defaults from overwriting them on save.
+26. **[System and operations]** Fixed user, feedback, and session search filters overwriting one another in chat logs; the list and CSV export now apply all selected conditions together.
+27. **[System and operations]** Fixed Langfuse Node attributes leaking into parent traces and missing Agent generation records and usage. Concurrent Nodes now collect usage separately without including other Nodes' data.
+28. **[Tools and channels]** Fixed audio transcription input validation errors being wrapped as generic service errors. Invalid inputs now return the standard HTTP `400` parameter error.
+29. **[Tools and channels]** Fixed blank text in some Tool names, descriptions, and tags when their Traditional Chinese translation is empty. These values fall back to Simplified Chinese, then English if no usable text is available.
 
 ## 🛠️ Code improvements
 
