@@ -50,6 +50,7 @@ type AuthChatTargetCrudResult = {
   scope?: ChatAccessScope;
   publishSource?: ChatPublishSourceType;
   isRoot: boolean;
+  canWrite: boolean;
   authType?: `${AuthUserTypeEnum}`;
   apiKeyType?: ApiKeyTypeEnum;
 } & (typeof chatSourceResponseOptions)[ChatSourceTypeEnum];
@@ -115,6 +116,7 @@ export const authChatTargetCrud = async ({
       publishSource,
       chat,
       isRoot: false,
+      canWrite: false,
       authType: AuthUserTypeEnum.outLink,
       showCite: outLinkConfig.showCite ?? false,
       showRunningStatus: outLinkConfig.showRunningStatus ?? true,
@@ -186,6 +188,8 @@ export const authChatTargetCrud = async ({
     app: resource.app,
     skill: resource.skill,
     isRoot: resource.isRoot,
+    // 缺少权限上下文时默认隐藏审核记录，不影响已有会话读取流程。
+    canWrite: resource.permission?.hasWritePer ?? false,
     authType: resource.authType,
     apiKeyType: resource.apiKeyType,
     ...chatSourceResponseOptions[sourceType]

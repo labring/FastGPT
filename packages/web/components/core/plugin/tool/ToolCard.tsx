@@ -30,6 +30,7 @@ export type ToolCardItemType = {
   etag?: string;
   downloadCount?: number;
   associatedPluginId?: string;
+  type?: 'tool' | 'moderation';
   source?: string;
   registrySource?: 'system' | 'team';
   isDebug?: boolean;

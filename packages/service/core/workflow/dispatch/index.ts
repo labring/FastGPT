@@ -91,6 +91,9 @@ import { getWorkflowSource } from './utils/source';
 import { WorkflowMemoryState } from '../memory/state';
 import { prepareWorkflowFileContext } from '../utils/fileContext';
 import { markProfileError, profileStage } from '../../../common/profiling';
+import { checkEntryModeration } from '../../plugin/moderation/entry';
+import { runWithNodeModerationContext } from '../../plugin/moderation/collector';
+import type { NodeModerationRecordType } from '@fastgpt/global/core/plugin/moderation/type';
 
 const logger = getLogger(LogCategories.MODULE.WORKFLOW.DISPATCH);
 
@@ -175,6 +178,73 @@ export async function dispatchWorkFlow({
     clientAbortTracker?.isClientAborted() ?? stopController?.checkIsStopping() ?? false;
 
   try {
+    // 锚点 1：信息接入平台（Entry Guard）- 校验用户输入与全局变量/表单输入，违规直接阻断
+    const entryModerationRecords: NodeModerationRecordType[] = [];
+    const entryNode = data.runtimeNodes?.find((item) => item.isEntry) || data.runtimeNodes?.[0];
+    try {
+      await runWithNodeModerationContext(entryModerationRecords, () =>
+        checkEntryModeration({
+          query,
+          variables: data.variables,
+          context: {
+            teamId: runningUserInfo.teamId,
+            tmbId: runningUserInfo.tmbId,
+            appId: runningAppInfo.sourceId,
+            chatId,
+            responseChatItemId,
+            nodeId: entryNode?.nodeId,
+            nodeName: entryNode?.name,
+            requestId:
+              typeof data.req?.headers?.['x-request-id'] === 'string'
+                ? data.req.headers['x-request-id']
+                : undefined
+          }
+        })
+      );
+    } catch (error) {
+      if (
+        entryNode &&
+        (data.nodeResponseWriteConfig?.persistToDb ||
+          data.nodeResponseWriteConfig?.retainInMemory ||
+          data.workflowStreamResponse)
+      ) {
+        try {
+          const entrySink = await createWorkflowEntryNodeResponseSink({
+            teamId: data.runningAppInfo.teamId,
+            sourceType: data.runningAppInfo.sourceType,
+            sourceId: data.runningAppInfo.sourceId,
+            chatId,
+            chatItemDataId: responseChatItemId,
+            nodeResponseWriteConfig: data.nodeResponseWriteConfig,
+            apiVersion: data.apiVersion,
+            responseAllData: data.responseAllData,
+            responseDetail: data.responseDetail,
+            workflowStreamResponse: data.workflowStreamResponse
+          });
+          await entrySink.publish([
+            {
+              response: {
+                id: getNanoid(),
+                nodeId: entryNode.nodeId,
+                moduleName: entryNode.name,
+                moduleType: entryNode.flowNodeType,
+                moduleLogo: entryNode.avatar,
+                error: getErrText(error),
+                runningTime: 0,
+                ...(entryModerationRecords.length > 0
+                  ? { moderationRecords: entryModerationRecords }
+                  : {})
+              }
+            }
+          ]);
+          await entrySink.close();
+        } catch (sinkErr) {
+          logger.warn('Failed to persist entry moderation node response', { error: sinkErr });
+        }
+      }
+      throw error;
+    }
+
     /* Init function */
     // Check point
     await profileStage({ event: 'wf.points.check' }, () =>
@@ -878,13 +948,17 @@ export class WorkflowQueue {
       };
 
       // run module
+      const collectedModerationRecords: NodeModerationRecordType[] = [];
       const dispatchRes: NodeResponseType = await (async () => {
         if (callbackMap[node.flowNodeType]) {
           const targetEdges = this.edgeIndex.bySource.get(node.nodeId) || [];
           const errorHandleId = getHandleId(node.nodeId, 'source_catch', 'right');
 
           try {
-            const result = (await callbackMap[node.flowNodeType](dispatchData)) as NodeResponseType;
+            const result = await runWithNodeModerationContext(
+              collectedModerationRecords,
+              async () => (await callbackMap[node.flowNodeType](dispatchData)) as NodeResponseType
+            );
             // 原始异常缺少故障详情时补展示文本；错误分支的数据不参与异常判定。
             if (
               Object.hasOwn(result, 'rawError') &&
@@ -966,7 +1040,13 @@ export class WorkflowQueue {
         return {};
       })();
 
-      const nodeResponse = dispatchRes[DispatchNodeResponseKeyEnum.nodeResponse];
+      const rawNodeResponse = dispatchRes[DispatchNodeResponseKeyEnum.nodeResponse];
+      const nodeResponse =
+        !rawNodeResponse && collectedModerationRecords.length > 0 ? {} : rawNodeResponse;
+      const mergedModerationRecords = [
+        ...(nodeResponse?.moderationRecords ?? []),
+        ...collectedModerationRecords
+      ];
       const nodeResponsesForWrite: ChatHistoryItemResType[] = [];
       const currentNodeChildResponseCount = getNodeResponseChildResponseCount(
         nodeResponse?.childrenResponses as ChatHistoryItemResType[] | undefined
@@ -983,6 +1063,9 @@ export class WorkflowQueue {
           ...(node.flowNodeType === FlowNodeTypeEnum.tool ||
           node.flowNodeType === FlowNodeTypeEnum.toolSet
             ? { isToolCall: this.data.isToolCall === true }
+            : {}),
+          ...(mergedModerationRecords.length > 0
+            ? { moderationRecords: mergedModerationRecords }
             : {}),
           ...(nodeResponse?.childResponseCount === undefined &&
           currentNodeChildResponseCount !== undefined

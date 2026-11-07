@@ -14,6 +14,9 @@ import {
   type ChatFileValueInput
 } from '../../../chat/fileStoreValue';
 import { getWorkflowFileContext, getWorkflowFileRegistrar } from '../../utils/context';
+import { checkOutputTextModeration } from '../../../plugin/moderation/output';
+import { getNodeErrResponse, getDispatchModerationContext } from '../utils';
+import { MODERATION_BLOCKED_ERROR_MESSAGE } from '@fastgpt/global/core/plugin/moderation/constants';
 import type { WorkflowFileRegistrar } from '../../utils/fileContext';
 import { getModuleFileAmountLimit } from '@fastgpt/global/core/workflow/fileLimit';
 import { resolveDynamicOptionStrings } from './dynamicOptions';
@@ -134,6 +137,59 @@ export const dispatchFormInput = async (props: Props): Promise<FormInputResponse
         defaultValue: undefined,
         list
       });
+    }
+    // 锚点 3：输出检查 - 动态表单说明与选项/默认值审查
+    const moderationContext = getDispatchModerationContext(props);
+
+    if (description) {
+      const checkDesc = await checkOutputTextModeration({
+        text: description,
+        targetField: 'formInput.description',
+        context: moderationContext
+      });
+      if (!checkDesc.isPass) {
+        return getNodeErrResponse({
+          error: checkDesc.blockErrorMessage || MODERATION_BLOCKED_ERROR_MESSAGE
+        });
+      }
+    }
+
+    if (Array.isArray(resolvedInputForms)) {
+      for (const formItem of resolvedInputForms) {
+        const candidateValues: Array<{ field: string; value: unknown }> = [
+          { field: `formInput.${formItem.key}.label`, value: formItem.label },
+          { field: `formInput.${formItem.key}.description`, value: formItem.description },
+          { field: `formInput.${formItem.key}.value`, value: formItem.value },
+          { field: `formInput.${formItem.key}.defaultValue`, value: formItem.defaultValue }
+        ];
+        if (Array.isArray(formItem.list)) {
+          for (const option of formItem.list) {
+            candidateValues.push({
+              field: `formInput.${formItem.key}.option`,
+              value: option?.label
+            });
+            candidateValues.push({
+              field: `formInput.${formItem.key}.option`,
+              value: option?.value
+            });
+          }
+        }
+
+        for (const candidate of candidateValues) {
+          if (typeof candidate.value === 'string' && candidate.value.trim()) {
+            const checkItem = await checkOutputTextModeration({
+              text: candidate.value,
+              targetField: candidate.field,
+              context: moderationContext
+            });
+            if (!checkItem.isPass) {
+              return getNodeErrResponse({
+                error: checkItem.blockErrorMessage || MODERATION_BLOCKED_ERROR_MESSAGE
+              });
+            }
+          }
+        }
+      }
     }
 
     return {

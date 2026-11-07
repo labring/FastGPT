@@ -50,5 +50,19 @@
   "user_status_active": "活躍",
   "user_status_inactive": "待啟用",
   "user_status_forbidden": "停用",
-  "user_status_cancelled": "註銷"
+  "user_status_cancelled": "註銷",
+  "moderation.label.porn": "色情",
+  "moderation.label.politics": "涉政",
+  "moderation.label.terror": "暴恐",
+  "moderation.label.contraband": "違禁",
+  "moderation.label.abuse": "辱罵",
+  "moderation.label.hate": "仇恨",
+  "moderation.label.ad": "廣告",
+  "moderation.label.advertising_law": "廣告法違規",
+  "moderation.label.privacy": "隱私洩露",
+  "moderation.label.flood": "灌水",
+  "moderation.label.self_harm": "自殘自殺",
+  "moderation.label.violence": "暴力血腥",
+  "moderation.label.sexual_minors": "涉未成年人",
+  "moderation.label.other": "其他"
 }

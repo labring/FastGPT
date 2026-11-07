@@ -751,14 +751,6 @@ const ModelConfigForm = ({
                 register={register}
               />
             )}
-            {feConfigs?.isPlus && (
-              <SwitchField
-                label={t('config_model:model.censor')}
-                tip={t('config_model:model.censor_tip')}
-                field={'config.censor'}
-                register={register}
-              />
-            )}
           </Grid>
         </Section>
       )}

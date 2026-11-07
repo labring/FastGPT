@@ -4,10 +4,13 @@ import type {
   AgentLoopCoreToolRunResult
 } from '../../domain/toolProvider';
 import { normalizeAgentLoopCoreToolRunResult } from '../../domain/toolProvider';
+import { checkToolResultModeration } from '../../../../../../plugin/moderation/modelInput';
+import type { CheckContentByPolicyParams } from '@fastgpt/global/core/plugin/moderation/type';
 
 export type CreateAgentLoopCoreToolRuntimeParams<TChildrenResponse = unknown> = {
   toolProvider: AgentLoopCoreToolProvider<unknown, TChildrenResponse>;
   batchToolSize?: number;
+  context?: CheckContentByPolicyParams['context'];
   onToolResult?: (args: {
     callId: string;
     result: AgentLoopCoreToolRunResult<TChildrenResponse>;
@@ -26,6 +29,7 @@ export type CreateAgentLoopCoreToolRuntimeParams<TChildrenResponse = unknown> = 
 export const createAgentLoopCoreToolRuntime = <TChildrenResponse = unknown>({
   toolProvider,
   batchToolSize,
+  context,
   onToolResult,
   normalizeInteractiveUsages
 }: CreateAgentLoopCoreToolRuntimeParams<TChildrenResponse>): Pick<
@@ -39,6 +43,15 @@ export const createAgentLoopCoreToolRuntime = <TChildrenResponse = unknown>({
     },
     executeTool: async ({ call, messages }) => {
       const result = await toolProvider.executeTool({ call, messages });
+
+      // 锚点 2：Agent Loop 内工具执行响应审查，违规脱敏替换后继续送入模型规划
+      if (result.response) {
+        result.response = await checkToolResultModeration({
+          response: result.response,
+          context
+        });
+      }
+
       onToolResult?.({
         callId: call.id,
         result
@@ -50,6 +63,14 @@ export const createAgentLoopCoreToolRuntime = <TChildrenResponse = unknown>({
       ? {
           executeInteractiveTool: async (params) => {
             const result = await toolProvider.executeInteractiveTool!(params);
+
+            if (result.response) {
+              result.response = await checkToolResultModeration({
+                response: result.response,
+                context
+              });
+            }
+
             onToolResult?.({ callId: params.call.id, result });
 
             return normalizeAgentLoopCoreToolRunResult({

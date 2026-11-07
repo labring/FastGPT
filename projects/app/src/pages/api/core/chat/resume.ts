@@ -26,6 +26,7 @@ import {
   chatItemResponsePreviewProjection,
   transformPreviewHistories
 } from '@/global/core/chat/utils';
+import { stripModerationRecordsFromNodeResponses } from '@fastgpt/global/core/chat/utils';
 import { delay } from '@fastgpt/global/common/system/utils';
 import { buildChatSourceQuery } from '@fastgpt/service/core/chat/source';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
@@ -102,7 +103,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     outLinkAuthData,
     authToken: true
   });
-  const { teamId, showCite = true } = authRes;
+  const { teamId, showCite = true, canWrite = false } = authRes;
+  const canReadModerationRecords = Boolean(canWrite);
   const resolvedSourceId = authRes.sourceId;
 
   const findCurrentChat = async (): Promise<CurrentChatState> => {
@@ -142,10 +144,18 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
     const histories = await addPreviewUrlToChatItems(result.histories, 'chatFlow');
 
-    const list = transformPreviewHistories(histories, showCite).map((item) => ({
-      ...item,
-      id: item.dataId!
-    }));
+    const list = transformPreviewHistories(histories, showCite).map((item) => {
+      const chatItem = {
+        ...item,
+        id: item.dataId!
+      };
+      if (!canReadModerationRecords && (chatItem as any).responseData) {
+        (chatItem as any).responseData = stripModerationRecordsFromNodeResponses(
+          (chatItem as any).responseData
+        );
+      }
+      return chatItem;
+    });
 
     return {
       ...chat,
@@ -246,11 +256,20 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     teamId,
     sourceType,
     sourceId: resolvedSourceId,
-    chatId
+    chatId,
+    canReadModerationRecords
   });
 
   writeResumePhase(res, StreamResumePhaseEnum.live);
-  await _resume({ res, teamId, sourceType, sourceId: resolvedSourceId, chatId, cursor });
+  await _resume({
+    res,
+    teamId,
+    sourceType,
+    sourceId: resolvedSourceId,
+    chatId,
+    cursor,
+    canReadModerationRecords
+  });
 
   // 进程退出不会再写 done 事件；阻塞读取发现 lease 失效后，补齐持久化记录并结束恢复。
   if (!isResponseClosed(res)) {

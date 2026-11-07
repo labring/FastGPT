@@ -16,11 +16,6 @@ export type FastGPTProHealthResponse = {
   data: string;
 };
 
-export type FastGPTProCensorResponse = {
-  code: number;
-  message?: string;
-};
-
 export type FastGPTProOutLinkRequest = {
   token: string;
   method?: string;
@@ -32,9 +27,6 @@ export type FastGPTProOutLinkRequest = {
 export type CreateParagraphTitleRequest = Omit<AdminLlmParagraphBody, 'modelId'> & {
   modelId?: string;
 };
-
-export const postCheckCensor = (data: { text: string }) =>
-  POST<FastGPTProCensorResponse>('/common/censor/check', data);
 
 export const postCreateUsage = (data: CreateUsageProps) =>
   POST<string>('/support/wallet/usage/createUsage', data);

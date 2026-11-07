@@ -22,6 +22,13 @@ import { createCompleteResponse } from './response/complete';
 import { normalizeCompletionFinishReason } from './response/normalize';
 import { createStreamResponse } from './response/stream';
 import type { CreateLLMResponseProps, LLMResponse } from './types';
+import {
+  checkOutputTextModeration,
+  checkToolParamsModeration,
+  createStreamModerationBuffer
+} from '../../../plugin/moderation/output';
+import { UserError } from '@fastgpt/global/common/error/utils';
+import { MODERATION_BLOCKED_ERROR_MESSAGE } from '@fastgpt/global/core/plugin/moderation/constants';
 
 const logger = getLogger(LogCategories.MODULE.AI.LLM);
 
@@ -110,30 +117,168 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
         }
       });
       aiRequestMeta = requestMeta;
-      // 连续输出补偿请求可能多次进入循环，但本次调用对外只认第一次响应形态。
       accumulator.setFirstResponseType(currentIsStreamResponse);
       const parsedResponse = await (async () => {
         if (currentIsStreamResponse) {
-          return createStreamResponse({
+          let blockedReason = MODERATION_BLOCKED_ERROR_MESSAGE;
+
+          const streamModerationBuffer = await createStreamModerationBuffer({
+            context: { teamId, requestId },
+            onApprovedText: (text) => args.onStreaming?.({ text }),
+            onBlocked: (reason) => {
+              blockedReason = reason || MODERATION_BLOCKED_ERROR_MESSAGE;
+              response.controller?.abort();
+            },
+            abortController: response.controller
+          });
+
+          const isOutputModerationEnabled = streamModerationBuffer.enabled;
+
+          const reasoningModerationBuffer =
+            isOutputModerationEnabled && args.onReasoning
+              ? await createStreamModerationBuffer({
+                  context: { teamId, requestId },
+                  onApprovedText: (text) => args.onReasoning?.({ text }),
+                  onBlocked: (reason) => {
+                    blockedReason = reason || MODERATION_BLOCKED_ERROR_MESSAGE;
+                    response.controller?.abort();
+                  },
+                  abortController: response.controller
+                })
+              : undefined;
+
+          const result = await createStreamResponse({
             response,
             requestMeta,
             body,
-            isAborted: args.isAborted,
-            onStreaming: args.onStreaming,
-            onReasoning: args.onReasoning,
-            onToolCall: args.onToolCall,
-            onToolParam: args.onToolParam
+            isAborted: () =>
+              args.isAborted?.() ||
+              streamModerationBuffer.blocked ||
+              Boolean(reasoningModerationBuffer?.blocked),
+            onStreaming: async ({ text }) => {
+              await streamModerationBuffer.push(text);
+            },
+            onReasoning: reasoningModerationBuffer
+              ? async ({ text }) => {
+                  await reasoningModerationBuffer.push(text);
+                }
+              : args.onReasoning,
+            onToolCall: isOutputModerationEnabled ? undefined : args.onToolCall,
+            onToolParam: isOutputModerationEnabled ? undefined : args.onToolParam
           });
+
+          if (
+            !result.error &&
+            !streamModerationBuffer.blocked &&
+            !reasoningModerationBuffer?.blocked
+          ) {
+            try {
+              await Promise.all([
+                streamModerationBuffer.flush(),
+                reasoningModerationBuffer?.flush()
+              ]);
+            } catch (err) {
+              result.answerText = '';
+              result.reasoningText = '';
+              result.error = err;
+            }
+          }
+
+          if (streamModerationBuffer.blocked || reasoningModerationBuffer?.blocked) {
+            result.answerText = '';
+            result.reasoningText = '';
+            result.toolCalls = [];
+            result.error = new UserError(blockedReason);
+          }
+
+          return Object.assign(result, { isOutputModerationEnabled });
         }
 
-        return createCompleteResponse({
+        const completeResult = await createCompleteResponse({
           response,
-          body,
-          onStreaming: args.onStreaming,
-          onReasoning: args.onReasoning,
-          onToolCall: args.onToolCall
+          body
         });
+
+        let isBlockedByModeration = false;
+
+        // 锚点 3：非流式输出检查 - 违规整次拦截并记录错误，但不提前 throw 以便保留已发生的 token 用量
+        if (completeResult.answerText) {
+          const outputCheck = await checkOutputTextModeration({
+            text: completeResult.answerText,
+            targetField: 'answerText',
+            context: { teamId, requestId }
+          });
+          if (!outputCheck.isPass) {
+            isBlockedByModeration = true;
+            const errMessage = outputCheck.blockErrorMessage || MODERATION_BLOCKED_ERROR_MESSAGE;
+            completeResult.answerText = '';
+            completeResult.reasoningText = '';
+            completeResult.toolCalls = [];
+            completeResult.error = new UserError(errMessage);
+          }
+        }
+
+        if (!isBlockedByModeration && completeResult.reasoningText) {
+          const reasoningCheck = await checkOutputTextModeration({
+            text: completeResult.reasoningText,
+            targetField: 'reasoningText',
+            context: { teamId, requestId }
+          });
+          if (!reasoningCheck.isPass) {
+            isBlockedByModeration = true;
+            const errMessage = reasoningCheck.blockErrorMessage || MODERATION_BLOCKED_ERROR_MESSAGE;
+            completeResult.reasoningText = '';
+            completeResult.answerText = '';
+            completeResult.toolCalls = [];
+            completeResult.error = new UserError(errMessage);
+          }
+        }
+
+        return Object.assign(completeResult, { isBlockedByModeration });
       })();
+
+      let isToolBlockedByModeration = false;
+      // 锚点 3：模型生成的工具参数检查 - 违规终止调用并清空参数，但不提前 throw 以便保留已发生的 token 用量
+      if (parsedResponse.toolCalls?.length) {
+        const toolCheck = await checkToolParamsModeration({
+          toolCalls: parsedResponse.toolCalls,
+          context: { teamId, requestId }
+        });
+        if (!toolCheck.isPass) {
+          isToolBlockedByModeration = true;
+          const errMessage = toolCheck.blockErrorMessage || MODERATION_BLOCKED_ERROR_MESSAGE;
+          parsedResponse.toolCalls = [];
+          parsedResponse.answerText = '';
+          parsedResponse.reasoningText = '';
+          parsedResponse.error = new UserError(errMessage);
+        }
+      }
+
+      // 审核全部通过后派发回调（未被审核拦截的内容正常对外派发）
+      const isBlockedByModeration = (parsedResponse as any).isBlockedByModeration;
+      if (!currentIsStreamResponse) {
+        if (!isBlockedByModeration) {
+          if (parsedResponse.reasoningText) {
+            args.onReasoning?.({ text: parsedResponse.reasoningText });
+          }
+          if (parsedResponse.answerText) {
+            args.onStreaming?.({ text: parsedResponse.answerText });
+          }
+        }
+        if (!isToolBlockedByModeration && parsedResponse.toolCalls?.length) {
+          parsedResponse.toolCalls.forEach((call) => {
+            args.onToolCall?.({ call });
+          });
+        }
+      } else if (
+        (parsedResponse as any).isOutputModerationEnabled &&
+        !isToolBlockedByModeration &&
+        parsedResponse.toolCalls?.length
+      ) {
+        parsedResponse.toolCalls.forEach((call) => {
+          args.onToolCall?.({ call });
+        });
+      }
 
       accumulator.appendResponse(parsedResponse);
 

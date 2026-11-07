@@ -1,4 +1,4 @@
-import { type CSSProperties } from 'react';
+import React, { type CSSProperties } from 'react';
 import { Box, Flex, Grid, HStack } from '@chakra-ui/react';
 import dynamic from 'next/dynamic';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
@@ -8,6 +8,17 @@ import styles from '@/components/Markdown/index.module.scss';
 import { formatNumber } from '@fastgpt/global/common/math/tools';
 import { getFileIcon } from '@fastgpt/global/common/file/icon';
 import { completionFinishReasonMap } from '@fastgpt/global/core/ai/constants';
+import {
+  formatModerationLabel,
+  ModerationStageEnum
+} from '@fastgpt/global/core/plugin/moderation/constants';
+import type { NodeModerationRecordType } from '@fastgpt/global/core/plugin/moderation/type';
+import {
+  extractContentSnippet,
+  getModerationStageI18nKey,
+  getModerationVerdictI18nKey,
+  renderHighlightedModerationContent
+} from '@/web/core/plugin/admin/moderation/highlight';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
@@ -17,6 +28,123 @@ import { agentPlanStatusMap } from './constants';
 import { responseRowValueBoxStyles, Row } from './Row';
 
 const ImageQuery = dynamic(() => import('./ImageQuery'));
+
+const ModerationRecordsRow = ({
+  moderationRecords
+}: {
+  moderationRecords?: NodeModerationRecordType[];
+}) => {
+  const { t } = useSafeTranslation();
+
+  if (!moderationRecords || moderationRecords.length === 0) return null;
+
+  return (
+    <Row
+      label={t('chat:response.moderation_records')}
+      rawDom={
+        <Flex direction={'column'} gap={2}>
+          {moderationRecords.map((record, index) => {
+            const isError = record.verdict === 'error';
+            const hitLabels = Array.from(
+              new Set(
+                (record.hits ?? [])
+                  .map((hit) => {
+                    const labelName = formatModerationLabel(
+                      hit.label,
+                      t as (key: string) => string
+                    );
+                    if (hit.score !== undefined && !Number.isNaN(hit.score)) {
+                      return `${labelName}（${Number(hit.score.toFixed(2))}）`;
+                    }
+                    return labelName;
+                  })
+                  .filter(Boolean)
+              )
+            );
+            const allKeywords = Array.from(
+              new Set([
+                ...(record.keywords ?? []),
+                ...(record.hits ?? []).flatMap((h) => h.keywords ?? [])
+              ])
+            ).filter(Boolean);
+
+            return (
+              <Box
+                key={index}
+                {...responseRowValueBoxStyles}
+                borderRadius={'6px'}
+                fontSize={'12px'}
+                lineHeight={'16px'}
+              >
+                <Flex direction={'column'} gap={2}>
+                  <Flex alignItems={'flex-start'} gap={2}>
+                    <Box w={'80px'} flexShrink={0} color={'myGray.500'} fontWeight={500}>
+                      {t('chat:response.moderation_stage')}
+                    </Box>
+                    <Box flex={'1 0 0'} minW={0} color={'myGray.900'} wordBreak={'break-word'}>
+                      {t(getModerationStageI18nKey(record.stage))}
+                    </Box>
+                  </Flex>
+
+                  <Flex alignItems={'flex-start'} gap={2}>
+                    <Box w={'80px'} flexShrink={0} color={'myGray.500'} fontWeight={500}>
+                      {t('chat:response.moderation_result')}
+                    </Box>
+                    <Box flex={'1 0 0'} minW={0} color={'myGray.900'} wordBreak={'break-word'}>
+                      {t(getModerationVerdictI18nKey(record.verdict))}
+                    </Box>
+                  </Flex>
+
+                  {!isError && hitLabels.length > 0 && (
+                    <Flex alignItems={'flex-start'} gap={2}>
+                      <Box w={'80px'} flexShrink={0} color={'myGray.500'} fontWeight={500}>
+                        {t('chat:response.moderation_hit_labels')}
+                      </Box>
+                      <Box flex={'1 0 0'} minW={0} color={'myGray.900'} wordBreak={'break-word'}>
+                        {hitLabels.join('、')}
+                      </Box>
+                    </Flex>
+                  )}
+
+                  {!isError && allKeywords.length > 0 && (
+                    <Flex alignItems={'flex-start'} gap={2}>
+                      <Box w={'80px'} flexShrink={0} color={'myGray.500'} fontWeight={500}>
+                        {t('chat:response.moderation_keywords')}
+                      </Box>
+                      <Box flex={'1 0 0'} minW={0} color={'myGray.900'} wordBreak={'break-word'}>
+                        {allKeywords.join('、')}
+                      </Box>
+                    </Flex>
+                  )}
+
+                  {!isError && record.content && (
+                    <Flex alignItems={'flex-start'} gap={2}>
+                      <Box w={'80px'} flexShrink={0} color={'myGray.500'} fontWeight={500}>
+                        {t('chat:response.moderation_content_detail')}
+                      </Box>
+                      <Box
+                        flex={'1 0 0'}
+                        minW={0}
+                        color={'myGray.900'}
+                        whiteSpace={'pre-wrap'}
+                        wordBreak={'break-word'}
+                      >
+                        {renderHighlightedModerationContent(
+                          extractContentSnippet(record.content, allKeywords),
+                          allKeywords
+                        )}
+                      </Box>
+                    </Flex>
+                  )}
+                </Flex>
+              </Box>
+            );
+          })}
+        </Flex>
+      }
+    />
+  );
+};
 
 export const CommonInfoRows = ({ activeModule }: { activeModule: ChatHistoryItemResType }) => {
   const { t } = useSafeTranslation();
@@ -47,6 +175,7 @@ export const CommonInfoRows = ({ activeModule }: { activeModule: ChatHistoryItem
         <Row label={t('chat:response.child_total_points')} value={formatNumber(childTotalPoints)} />
       )}
       <Row label={t('chat:response.error')} value={activeModule.errorText ?? activeModule.error} />
+      <ModerationRecordsRow moderationRecords={activeModule.moderationRecords} />
       <Row label={t('chat:response.node_inputs')} value={activeModule.nodeInputs} />
     </>
   );
@@ -119,10 +248,11 @@ export const AiChatRows = ({
   onOpenRequestIdDetail?: (requestId: string) => void;
 }) => {
   const { t } = useSafeTranslation();
+  const hasError = Boolean(activeModule.error || activeModule.errorText);
 
   return (
     <>
-      {activeModule.finishReason && (
+      {!hasError && activeModule.finishReason && (
         <Row
           label={t('chat:response.completion_finish_reason')}
           value={t(completionFinishReasonMap[activeModule.finishReason])}

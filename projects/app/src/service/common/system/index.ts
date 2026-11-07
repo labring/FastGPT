@@ -8,7 +8,6 @@ import { defaultTemplateTypes } from '@fastgpt/web/core/workflow/constants';
 import { MongoPluginToolTag } from '@fastgpt/service/core/plugin/tool/tagSchema';
 import { MongoTemplateTypes } from '@fastgpt/service/core/app/templates/templateTypeSchema';
 import {
-  postCheckCensor,
   postConcatUsage,
   postCreateUsage,
   postPushUsageItems
@@ -35,11 +34,6 @@ const defaultOpenSourceLoginGuideDocUrl =
 /* Init global variables */
 export function initGlobalVariables() {
   function initPlusRequest() {
-    global.textCensorHandler = function textCensorHandler({ text }: { text: string }) {
-      if (!isProVersion()) return Promise.resolve({ code: 200 });
-      return postCheckCensor({ text });
-    };
-
     global.createUsageHandler = function createUsageHandler(data: CreateUsageProps) {
       if (!isProVersion()) return;
       return postCreateUsage(data);

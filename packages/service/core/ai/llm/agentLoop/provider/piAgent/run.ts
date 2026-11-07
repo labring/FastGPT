@@ -7,7 +7,12 @@ import type {
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import type { AgentAskPayload } from '@fastgpt/global/core/ai/agent/type';
-import { getErrText } from '@fastgpt/global/common/error/utils';
+import { getErrText, UserError } from '@fastgpt/global/common/error/utils';
+import { MODERATION_BLOCKED_ERROR_MESSAGE } from '@fastgpt/global/core/plugin/moderation/constants';
+import {
+  createStreamModerationBuffer,
+  checkToolParamsModeration
+} from '../../../../../plugin/moderation/output';
 import {
   normalizeToolResponseContent,
   removeDatasetCiteText
@@ -503,9 +508,37 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
       }
     }
   });
+  const streamModerationBuffer = await createStreamModerationBuffer({
+    context: { teamId: runtime.teamId },
+    onApprovedText: (text) => {
+      runtime.emitEvent?.({
+        type: 'answer_delta',
+        text
+      });
+    },
+    onBlocked: () => {
+      agent.abort();
+    }
+  });
+
+  const reasoningModerationBuffer = streamModerationBuffer.enabled
+    ? await createStreamModerationBuffer({
+        context: { teamId: runtime.teamId },
+        onApprovedText: (text) => {
+          runtime.emitEvent?.({
+            type: 'reasoning_delta',
+            text
+          });
+        },
+        onBlocked: () => {
+          agent.abort();
+        }
+      })
+    : undefined;
+
   abortCurrentRunRef.current = () => agent.abort();
 
-  agent.subscribe((event: AgentEvent) => {
+  agent.subscribe(async (event: AgentEvent) => {
     if (event.type === 'tool_execution_start') {
       emitOrdinaryToolExecution({
         id: event.toolCallId,
@@ -524,20 +557,28 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
         const request = pendingRequests[0];
         if (request) request.firstTokenAt ??= Date.now();
         answerText += assistantEvent.delta;
-        runtime.emitEvent?.({
-          type: 'answer_delta',
-          text: assistantEvent.delta
-        });
+        if (streamModerationBuffer.enabled) {
+          await streamModerationBuffer.push(assistantEvent.delta);
+        } else {
+          runtime.emitEvent?.({
+            type: 'answer_delta',
+            text: assistantEvent.delta
+          });
+        }
         return;
       }
       if (assistantEvent.type === 'thinking_delta') {
         const request = pendingRequests[0];
         if (request) request.firstTokenAt ??= Date.now();
         reasoningText += assistantEvent.delta;
-        runtime.emitEvent?.({
-          type: 'reasoning_delta',
-          text: assistantEvent.delta
-        });
+        if (reasoningModerationBuffer?.enabled) {
+          await reasoningModerationBuffer.push(assistantEvent.delta);
+        } else {
+          runtime.emitEvent?.({
+            type: 'reasoning_delta',
+            text: assistantEvent.delta
+          });
+        }
         return;
       }
       if (assistantEvent.type === 'toolcall_start' || assistantEvent.type === 'toolcall_delta') {
@@ -558,11 +599,13 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
           emittedToolCallIds.has(toolCall.id) &&
           !controlToolNames.has(toolCall.name)
         ) {
-          emitOrdinaryToolParams({
-            callId: toolCall.id,
-            toolName: toolCall.name,
-            argsDelta: assistantEvent.delta
-          });
+          if (!streamModerationBuffer.enabled) {
+            emitOrdinaryToolParams({
+              callId: toolCall.id,
+              toolName: toolCall.name,
+              argsDelta: assistantEvent.delta
+            });
+          }
         }
       }
       return;
@@ -578,6 +621,16 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
         requestIds.push(request.requestId);
       }
 
+      if (streamModerationBuffer.enabled) {
+        try {
+          await Promise.all([streamModerationBuffer.flush(), reasoningModerationBuffer?.flush()]);
+        } catch (err) {
+          latestError = err;
+        }
+      }
+
+      const isContentBlocked = streamModerationBuffer.blocked || reasoningModerationBuffer?.blocked;
+
       const [normalizedMessage] = normalizePiAgentMessages({
         messages: [event.message],
         completionTools: normalizationTools
@@ -586,22 +639,53 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
         ? normalizedMessage
         : event.message;
       const messageData = readAssistantMessage(assistantMessage);
-      messageData.toolCalls.forEach(emitOrdinaryToolCall);
-      if (!answerText && messageData.answerText) {
-        answerText = messageData.answerText;
+
+      let isToolCallsBlocked = false;
+      if (messageData.toolCalls.length && streamModerationBuffer.enabled) {
+        const toolCheck = await checkToolParamsModeration({
+          toolCalls: messageData.toolCalls,
+          context: { teamId: runtime.teamId, requestId: request.requestId }
+        });
+        if (!toolCheck.isPass) {
+          isToolCallsBlocked = true;
+          latestError = new UserError(
+            toolCheck.blockErrorMessage || MODERATION_BLOCKED_ERROR_MESSAGE
+          );
+        }
       }
-      if (!reasoningText && messageData.reasoningText) {
-        reasoningText = messageData.reasoningText;
+
+      const isBlocked = isContentBlocked || isToolCallsBlocked;
+      if (isBlocked) {
+        answerText = '';
+        reasoningText = '';
+        messageData.answerText = '';
+        messageData.reasoningText = '';
+        messageData.toolCalls = [];
+        latestError ||= new UserError(MODERATION_BLOCKED_ERROR_MESSAGE);
+        agent.abort();
+      } else {
+        messageData.toolCalls.forEach(emitOrdinaryToolCall);
+        if (!answerText && messageData.answerText) {
+          answerText = messageData.answerText;
+        }
+        if (!reasoningText && messageData.reasoningText) {
+          reasoningText = messageData.reasoningText;
+        }
       }
+
       const standardAssistantMessage: ChatCompletionMessageParam = {
         role: ChatCompletionRequestMessageRoleEnum.Assistant,
-        content: removeDatasetCiteText(messageData.answerText, retainDatasetCite) || null,
-        ...(modelData.config.reasoning || messageData.reasoningText
+        content: isBlocked
+          ? null
+          : removeDatasetCiteText(messageData.answerText, retainDatasetCite) || null,
+        ...(modelData.config.reasoning || (!isBlocked && messageData.reasoningText)
           ? {
-              reasoning_content: removeDatasetCiteText(messageData.reasoningText, retainDatasetCite)
+              reasoning_content: isBlocked
+                ? undefined
+                : removeDatasetCiteText(messageData.reasoningText, retainDatasetCite)
             }
           : {}),
-        ...(messageData.toolCalls.length ? { tool_calls: messageData.toolCalls } : {})
+        ...(!isBlocked && messageData.toolCalls.length ? { tool_calls: messageData.toolCalls } : {})
       };
       const toolCallIds = new Set(messageData.toolCalls.map((call) => call.id));
       const completeToolResponseIndex = completeMessages.findIndex(
@@ -642,23 +726,23 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
       };
       pushAgentLoopUsages(runtime, [usage]);
 
-      finishReason = mapStopReason(event.message.stopReason);
+      finishReason = isBlocked ? 'error' : mapStopReason(event.message.stopReason);
       runtime.emitEvent?.({
         type: 'llm_request_end',
         requestIndex: request.requestIndex,
         modelName: modelData.name,
         requestId: request.requestId,
         finishReason,
-        answerText: messageData.answerText,
-        reasoningText: messageData.reasoningText,
-        toolCalls: messageData.toolCalls,
+        answerText: isBlocked ? '' : messageData.answerText,
+        reasoningText: isBlocked ? '' : messageData.reasoningText,
+        toolCalls: isBlocked ? [] : messageData.toolCalls,
         usages: [usage],
         seconds: +((Date.now() - request.startedAt) / 1000).toFixed(2),
         firstTokenTime:
           request.firstTokenAt === undefined
             ? undefined
             : +((request.firstTokenAt - request.startedAt) / 1000).toFixed(2),
-        error: event.message.errorMessage
+        error: isBlocked ? latestError : event.message.errorMessage
       });
       return;
     }
@@ -727,6 +811,33 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
     latestError = error;
   } finally {
     clearInterval(stopPoller);
+  }
+
+  if (streamModerationBuffer.enabled) {
+    try {
+      await Promise.all([streamModerationBuffer.flush(), reasoningModerationBuffer?.flush()]);
+    } catch (err) {
+      latestError = err;
+    }
+    if (streamModerationBuffer.blocked || reasoningModerationBuffer?.blocked) {
+      answerText = '';
+      reasoningText = '';
+      latestError = new UserError(MODERATION_BLOCKED_ERROR_MESSAGE);
+      completeMessages.forEach((msg) => {
+        if (msg.role === ChatCompletionRequestMessageRoleEnum.Assistant) {
+          msg.content = '';
+          delete msg.reasoning_content;
+          delete msg.tool_calls;
+        }
+      });
+      assistantMessages.forEach((msg) => {
+        if (msg.role === ChatCompletionRequestMessageRoleEnum.Assistant) {
+          msg.content = '';
+          delete msg.reasoning_content;
+          delete msg.tool_calls;
+        }
+      });
+    }
   }
 
   if (pendingRequests.length > 0) {

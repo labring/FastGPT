@@ -12,6 +12,7 @@ import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { ChatRoleEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import {
   filterPublicNodeResponseData,
+  stripModerationRecordsFromNodeResponses,
   removeAIResponseCite
 } from '@fastgpt/global/core/chat/utils';
 import { GetChatTypeEnum } from '@fastgpt/global/core/chat/constants';
@@ -120,6 +121,12 @@ async function handler(req: ApiRequestProps): Promise<GetRecordsV2ResponseType> 
         } else if (authRes.showSkillReferences === false) {
           item.value = item.value.filter((v) => !v.skills);
         }
+      }
+    });
+  } else if (authRes.canWrite === false) {
+    result.histories.forEach((item) => {
+      if (item.obj === ChatRoleEnum.AI && item.responseData) {
+        item.responseData = stripModerationRecordsFromNodeResponses(item.responseData);
       }
     });
   }

@@ -4,6 +4,8 @@ import type {
 } from '../../../../../../ai/llm/agentLoop/domain/tool';
 import type { SandboxClient } from '../../../../../../ai/sandbox/application/runtime/client';
 import type { AgentLoopDatasetSearchExecutor } from '../../../../../../ai/llm/agentLoop/domain/systemTool/datasetSearch';
+import { checkToolResultModeration } from '../../../../../../plugin/moderation/modelInput';
+import type { CheckContentByPolicyParams } from '@fastgpt/global/core/plugin/moderation/type';
 
 export type CreateAgentLoopCoreSystemToolsParams = {
   planEnabled: boolean;
@@ -27,13 +29,16 @@ export type CreateAgentLoopCoreSystemToolsParams = {
  * plan/ask 是控制类 system tool，由节点能力决定是否开启；
  * sandbox 在提供 client 时注入；readFile/datasetSearch 在启用并提供执行器时注入。
  */
-export const createAgentLoopCoreSystemTools = ({
-  planEnabled,
-  askEnabled,
-  sandboxClient,
-  readFile,
-  datasetSearch
-}: CreateAgentLoopCoreSystemToolsParams): AgentLoopSystemTools => ({
+export const createAgentLoopCoreSystemTools = (
+  {
+    planEnabled,
+    askEnabled,
+    sandboxClient,
+    readFile,
+    datasetSearch
+  }: CreateAgentLoopCoreSystemToolsParams,
+  context?: CheckContentByPolicyParams['context']
+): AgentLoopSystemTools => ({
   plan: {
     enabled: planEnabled
   },
@@ -53,7 +58,16 @@ export const createAgentLoopCoreSystemTools = ({
         readFile: {
           enabled: true,
           maxFileAmount: readFile.maxFileAmount,
-          execute: readFile.execute
+          execute: async (params) => {
+            const res = await readFile.execute(params);
+            if (res.response) {
+              res.response = await checkToolResultModeration({
+                response: res.response,
+                context
+              });
+            }
+            return res;
+          }
         }
       }
     : {}),
@@ -61,8 +75,17 @@ export const createAgentLoopCoreSystemTools = ({
     ? {
         datasetSearch: {
           enabled: true,
-          execute: datasetSearch.execute,
-          currentInputFiles: datasetSearch.currentInputFiles
+          currentInputFiles: datasetSearch.currentInputFiles,
+          execute: async (params) => {
+            const res = await datasetSearch.execute(params);
+            if (res.response) {
+              res.response = await checkToolResultModeration({
+                response: res.response,
+                context
+              });
+            }
+            return res;
+          }
         }
       }
     : {})

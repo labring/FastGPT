@@ -207,6 +207,7 @@ export const authChatCompletionHeaderRequest = async ({
       authType === AuthUserTypeEnum.apikey
         ? { type: ChatSourceEnum.api, id: apiKeyId }
         : { type: ChatSourceEnum.online },
+    canReadModerationRecords: permission.hasWritePer,
     responseAllData: true,
     showCite: true,
     showSkillReferences

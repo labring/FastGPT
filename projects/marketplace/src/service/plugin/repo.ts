@@ -25,6 +25,7 @@ import { MarketplaceOfficialSource } from '@fastgpt/global/openapi/core/plugin/m
 const logger = getLogger(LogCategories.MODULE.API);
 
 type ToolIndexFilter = {
+  type?: 'tool' | 'moderation';
   toolId?: string;
   version?: string;
 };
@@ -45,9 +46,7 @@ const getSourceFilter = (source: string) => {
 
 declare global {
   // eslint-disable-next-line no-var
-  var marketplacePluginManifestCache:
-    | Map<string, MarketplaceToolManifestSchemaType>
-    | undefined;
+  var marketplacePluginManifestCache: Map<string, MarketplaceToolManifestSchemaType> | undefined;
 }
 
 const getManifestCache = () => {
@@ -101,7 +100,7 @@ const getLatestToolIndexes = (indexes: MarketplaceToolIndexSchemaType[]) => {
 export class PluginRepo {
   async listToolIndexes(filter: ToolIndexFilter = {}) {
     const indexes = await MongoMarketplaceTool.find({
-      type: 'tool',
+      type: filter.type || 'tool',
       ...(filter.toolId ? { pluginId: filter.toolId } : {}),
       ...(filter.version ? { version: filter.version } : {})
     }).lean();
@@ -109,9 +108,17 @@ export class PluginRepo {
     return indexes.map((index) => MarketplaceToolIndexZodSchema.parse(index));
   }
 
-  async getToolIndex({ pluginId, version }: { pluginId: string; version: string }) {
+  async getToolIndex({
+    pluginId,
+    version,
+    type = 'tool'
+  }: {
+    pluginId: string;
+    version: string;
+    type?: 'tool' | 'moderation';
+  }) {
     const index = await MongoMarketplaceTool.findOne({
-      type: 'tool',
+      type,
       pluginId,
       version
     }).lean();
@@ -122,14 +129,16 @@ export class PluginRepo {
   async deleteToolVersion({
     pluginId,
     version,
-    source = MarketplaceOfficialSource
+    source = MarketplaceOfficialSource,
+    type = 'tool'
   }: {
     pluginId: string;
     version: string;
     source?: string;
+    type?: 'tool' | 'moderation';
   }) {
     const index = await MongoMarketplaceTool.findOne({
-      type: 'tool',
+      type,
       pluginId,
       version,
       ...getSourceFilter(source)
@@ -144,7 +153,7 @@ export class PluginRepo {
     const pkgObjectKey = getPkgObjectKey(parsedIndex);
 
     await MongoMarketplaceTool.deleteOne({
-      type: 'tool',
+      type: parsedIndex.type,
       pluginId,
       version,
       ...getSourceFilter(source)
@@ -193,7 +202,6 @@ export class PluginRepo {
     if (record.source === MarketplaceOfficialSource) return;
 
     const existing = await MongoMarketplaceTool.findOne({
-      type: 'tool',
       pluginId: record.pluginId,
       source: { $ne: record.source }
     }).lean();
@@ -203,13 +211,16 @@ export class PluginRepo {
     }
   }
 
-  async listToolVersionIndexes(toolId?: string) {
-    const indexes = await this.listToolIndexes(toolId ? { toolId } : {});
+  async listToolVersionIndexes(toolId?: string, type?: 'tool' | 'moderation') {
+    const indexes = await this.listToolIndexes(
+      toolId ? { toolId, ...(type ? { type } : {}) } : type ? { type } : {}
+    );
     return toolId ? indexes : getLatestToolIndexes(indexes);
   }
 
   async listToolManifests(params: ToolListParams = {}) {
     const indexes = await this.listToolIndexes({
+      type: params.type,
       toolId: params.toolId,
       version: params.version
     });
@@ -221,8 +232,12 @@ export class PluginRepo {
   async publishToolManifest(record: MarketplaceToolManifestSchemaType) {
     const existing = await this.getToolIndex({
       pluginId: record.pluginId,
-      version: record.version
+      version: record.version,
+      type: record.type
     });
+    if (existing && existing.type !== record.type) {
+      throw new Error(`Marketplace plugin type cannot be changed: ${record.pluginId}`);
+    }
     const recordToPublish = existing ? { ...record, createTime: existing.createTime } : record;
     const manifestObjectKey = getToolManifestObjectKey(record);
 
@@ -348,13 +363,17 @@ export class PluginRepo {
       }
     });
 
-    if (parseError || !parsedPkg || parsedPkg.info.type !== 'tool') {
+    if (
+      parseError ||
+      !parsedPkg ||
+      (parsedPkg.info.type !== 'tool' && parsedPkg.info.type !== 'moderation')
+    ) {
       throw new Error(`Parse marketplace pkg failed: ${index.pluginId}@${index.version}`);
     }
 
     const tool = parsedPkg.info as ToolDetailType;
     return MarketplaceToolManifestZodSchema.parse({
-      type: 'tool',
+      type: parsedPkg.info.type,
       pluginId: index.pluginId,
       version: index.version,
       etag: index.etag,

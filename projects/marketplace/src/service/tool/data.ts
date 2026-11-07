@@ -19,8 +19,10 @@ declare global {
   var expire: Date;
 }
 
-export const getToolVersionList = async (toolId?: string) => {
-  const displayRecords = await pluginRepo.listToolVersionIndexes(toolId);
+export const getToolVersionList = async (toolId?: string, type?: 'tool' | 'moderation') => {
+  const displayRecords = await (type
+    ? pluginRepo.listToolVersionIndexes(toolId, type)
+    : pluginRepo.listToolVersionIndexes(toolId));
 
   return displayRecords
     .sort((a, b) => {
@@ -31,7 +33,8 @@ export const getToolVersionList = async (toolId?: string) => {
     .map((record) => ({
       toolId: record.pluginId,
       version: record.version,
-      etag: record.etag
+      etag: record.etag,
+      type: record.type
     }));
 };
 
@@ -43,6 +46,7 @@ const getMarketplaceToolFromRecord = (
 
   return {
     ...tool,
+    type: record.type,
     pluginId: record.pluginId,
     toolId: record.pluginId,
     id: record.pluginId,
@@ -50,7 +54,7 @@ const getMarketplaceToolFromRecord = (
     etag: record.etag,
     source: record.source,
     isLatestVersion: true,
-    isToolset: Boolean(tool.children?.length),
+    isToolset: record.type === 'tool' ? Boolean(tool.children?.length) : false,
     downloadCount,
     downloadUrl: record.downloadUrl,
     readme: record.readmeUrl,
@@ -59,6 +63,7 @@ const getMarketplaceToolFromRecord = (
 };
 
 const getMarketplaceChildToolsFromRecord = (record: MarketplaceToolManifestSchemaType) => {
+  if (record.type === 'moderation') return [];
   const tool = record.tool as ToolDetailType;
 
   return (tool.children ?? []).map((child) => {
@@ -87,17 +92,20 @@ const getMarketplaceChildToolsFromRecord = (record: MarketplaceToolManifestSchem
 };
 
 const getToolListFromRepo = async ({
+  type,
   toolId,
   version,
   latestOnly = true
 }: {
+  type?: 'tool' | 'moderation';
   toolId?: string;
   version?: string;
   latestOnly?: boolean;
 } = {}) => {
   const parsedRecords = await pluginRepo.listToolManifests({
-    toolId,
-    version,
+    ...(toolId ? { toolId } : {}),
+    ...(version ? { version } : {}),
+    ...(type && type !== 'tool' ? { type } : {}),
     latestOnly
   });
 
@@ -112,19 +120,25 @@ const getToolListFromRepo = async ({
 };
 
 export const getToolList = async ({
+  type,
   toolId,
   version
 }: {
+  type?: 'tool' | 'moderation';
   toolId?: string;
   version?: string;
 } = {}) => {
   if (toolId || version) {
-    return getToolListFromRepo({ toolId, version, latestOnly: false });
+    return getToolListFromRepo({ type, toolId, version, latestOnly: false });
+  }
+
+  if (type === 'moderation') {
+    return getToolListFromRepo({ type: 'moderation', latestOnly: true });
   }
 
   if (!global.toolListData || global.toolListData.length === 0 || global.expire < new Date()) {
     global.expire = new Date(Date.now() + 1000 * 10 * 60); // 10 minutes
-    const tools = await getToolListFromRepo();
+    const tools = await getToolListFromRepo({ type: 'tool' });
     if (tools.length > 0) {
       global.toolListData = tools;
       return global.toolListData;

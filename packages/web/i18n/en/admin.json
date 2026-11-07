@@ -50,5 +50,19 @@
   "user_status_active": "Active",
   "user_status_inactive": "Pending activation",
   "user_status_forbidden": "Disabled",
-  "user_status_cancelled": "Cancelled"
+  "user_status_cancelled": "Cancelled",
+  "moderation.label.porn": "Pornography",
+  "moderation.label.politics": "Politics",
+  "moderation.label.terror": "Terrorism",
+  "moderation.label.contraband": "Contraband",
+  "moderation.label.abuse": "Abuse",
+  "moderation.label.hate": "Hate Speech",
+  "moderation.label.ad": "Advertisement",
+  "moderation.label.advertising_law": "Advertising Law Violation",
+  "moderation.label.privacy": "Privacy Violation",
+  "moderation.label.flood": "Flooding",
+  "moderation.label.self_harm": "Self-Harm",
+  "moderation.label.violence": "Violence",
+  "moderation.label.sexual_minors": "Child Exploitation",
+  "moderation.label.other": "Other"
 }
