@@ -2,6 +2,9 @@ import { getChatGenerationStatuses } from '@fastgpt/service/core/chat/generation
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { ChatGenerateStatusEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
+import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
+import * as chatAuth from '@fastgpt/service/core/chat/auth';
+import { MongoAppRecord } from '@fastgpt/service/core/app/record/schema';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -60,6 +63,24 @@ describe('chat init API', () => {
       userId: 'user-1',
       permission: { hasReadChatLogPer: true }
     });
+  });
+
+  it('does not delete the key creator’s App record when the proxy member lacks App permission', async () => {
+    const auth = vi
+      .spyOn(chatAuth, 'authChatTargetCrud')
+      .mockRejectedValueOnce(AppErrEnum.unAuthApp);
+    const remove = vi.spyOn(MongoAppRecord, 'deleteOne');
+    try {
+      await expect(
+        handler({
+          query: { appId, chatId: 'proxy-chat', authProxy: JSON.stringify({ tmbId: appId }) }
+        } as any)
+      ).rejects.toBe(AppErrEnum.unAuthApp);
+      expect(remove).not.toHaveBeenCalled();
+    } finally {
+      auth.mockRestore();
+      remove.mockRestore();
+    }
   });
 
   it('uses the authenticated app target for every initialization query when appId is omitted', async () => {

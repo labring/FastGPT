@@ -32,6 +32,8 @@ import { getDisplayChatTitle } from '@fastgpt/service/core/chat/title';
 /** 统一初始化已授权来源的会话状态；来源差异仅用于解析配置和展示信息。 */
 async function handler(req: NextApiRequest): Promise<InitChatResponseType> {
   const {
+    customUid,
+    authProxy,
     sourceType,
     sourceId: requestedSourceId,
     chatId
@@ -43,6 +45,9 @@ async function handler(req: NextApiRequest): Promise<InitChatResponseType> {
   try {
     // 资源权限与会话归属只检查一次，复用已加载的 App/Skill。
     const auth = await authChatTargetCrud({
+      allowMissingChat: true,
+      customUid,
+      authProxy,
       req,
       authToken: true,
       authApiKey: true,
@@ -130,6 +135,7 @@ async function handler(req: NextApiRequest): Promise<InitChatResponseType> {
   } catch (error) {
     if (
       sourceType === ChatSourceTypeEnum.app &&
+      authProxy === undefined &&
       requestedSourceId &&
       error === AppErrEnum.unAuthApp
     ) {

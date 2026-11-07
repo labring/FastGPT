@@ -32,6 +32,7 @@ export const updateChatPublishSource = async (
   const current = resolveCurrentChatPublishSource(params);
   const name = current.id ? getChatPublishSourceName({ name: params.sourceName }) : undefined;
   const guarded = current.type === ChatSourceEnum.share || current.type === ChatSourceEnum.mcp;
+  const apiRequest = current.type === ChatSourceEnum.api;
   const sourceQuery = { ...buildChatSourceQuery(params), chatId: params.chatId };
   const now = new Date();
   const $set = {
@@ -58,8 +59,13 @@ export const updateChatPublishSource = async (
     if (chat) {
       if (String(chat.teamId) !== params.teamId) throw ChatErrEnum.unAuthChat;
       assertChatPublishSource({ previous: chat.publishSource, current });
-      // 渠道只按 publishSource 判断；缺字段兼容仍不能绕过外链访客身份。
-      if (current.type === ChatSourceEnum.share && chat.outLinkUid !== params.outLinkUid) {
+      // API 会话使用者首次绑定后不可更换；即使漏传或换入口，也不能清除已有绑定。
+      const userGuarded = apiRequest || chat.publishSource?.type === ChatSourceEnum.api;
+      // 空字符串与缺失都属于旧协议的默认身份，非空使用者始终精确比较。
+      if (
+        (current.type === ChatSourceEnum.share || userGuarded) &&
+        (chat.outLinkUid || undefined) !== (params.outLinkUid || undefined)
+      ) {
         throw ChatErrEnum.unAuthChat;
       }
       const result = await MongoChat.updateOne(
@@ -72,7 +78,9 @@ export const updateChatPublishSource = async (
                 'publishSource.id': chat.publishSource?.id ?? null,
                 outLinkUid: chat.outLinkUid ?? null
               }
-            : {})
+            : userGuarded
+              ? { outLinkUid: chat.outLinkUid ?? null }
+              : {})
         },
         { $set, $unset }
       );

@@ -19,7 +19,7 @@ pnpm dev
 
 ## 书写文档
 
-文档采用`mdx`格式，大体和`md`一致，但是现在文档的元数据只支持`title` `description`和`icon`三个字段，参考以下示例代码：
+文档采用`mdx`格式，大体和`md`一致，元数据支持 `title`、`description`、`icon` 等字段，参考以下示例代码：
 
 ```bash
 ---
@@ -69,6 +69,30 @@ import FastGPTLink from '@/components/docs/linkFastGPT'; #FastGPT跳转链接组
 ## i18n
 
 在`content/docs`下的所有`.mdx`文件为默认语言文件(当前默认语言中文)，`.en.mdx`文件为`i18n`支持的英文文件，例如，你可以将`hello.mdx`文档翻译后，写一个`hello.en.mdx`,同时，在对应目录的`meta.en.json`的`"pages"`字段写下对应的文件名来支持英文文档。
+
+## 未发布文档
+
+在 MDX 的 frontmatter 中添加 `draft: true`，页面会从路由、导航、搜索、sitemap、静态索引和 `llms.txt` 中排除，本地 dev 同样不展示：
+
+```yaml
+---
+title: 尚未发布的功能
+draft: true
+---
+```
+
+需要同时隐藏中英文内容时，在 `.mdx` 和 `.en.mdx` 中都添加标记。发布时移除标记或改为 `draft: false`，并在 `document/` 下运行 `pnpm initDocToc` 更新中英文目录；`meta.json` 的页面顺序可以保留。
+
+各语言独立控制发布状态。缺少翻译文件时仍可展示已发布的默认语言内容；该语言文件明确标记 `draft: true` 时返回 404，不回退到默认语言，也不影响另一语言的已发布页面。
+
+验收草稿前需要启动独立文档服务，并将测试夹具 `docsBaseUrl` 指向该服务；主站未部署文档路由时的 404 不能作为草稿证据。在仓库根目录可执行以下命令，对真实服务检查双语公开页、教程发布状态、导航、搜索、sitemap、静态索引和 `llms.txt`：
+
+```bash
+pnpm --filter @fastgpt/document build
+pnpm --filter @fastgpt/document exec next start --hostname 127.0.0.1 --port 3005
+# 在另一终端执行；也可通过 DOCS_BASE_URL 指定已有 QA 文档站
+node document/script/check-doc-publication.mjs --base-url http://127.0.0.1:3005
+```
 
 ## 特殊配置
 

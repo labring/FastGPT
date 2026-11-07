@@ -130,7 +130,7 @@ export const ChatHistoryPath: OpenAPIPath = {
   '/core/chat/history/batchDelete': {
     post: {
       summary: '批量删除会话',
-      description: '批量删除多个会话（真实删除），需对应会话目标的管理权限。',
+      description: '物理删除选中的会话及其消息、响应和会话文件，需对应资源的日志管理权限。',
       tags: [DevApiTagsMap.chatHistory, SystemOpenApiTagMap.chatHistory],
       requestBody: {
         content: {

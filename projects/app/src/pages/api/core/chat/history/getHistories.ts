@@ -18,6 +18,8 @@ import { buildChatHistoryListMatch } from '@/service/core/chat/history';
 /* get chat histories list */
 export async function handler(req: ApiRequestProps): Promise<GetHistoriesResponseType> {
   const {
+    customUid,
+    authProxy,
     sourceType,
     sourceId,
     outLinkAuthData,
@@ -30,6 +32,8 @@ export async function handler(req: ApiRequestProps): Promise<GetHistoriesRespons
   const { offset, pageSize } = parsePaginationRequest(req);
 
   const match = await buildChatHistoryListMatch({
+    customUid,
+    authProxy,
     req,
     sourceType,
     sourceId,

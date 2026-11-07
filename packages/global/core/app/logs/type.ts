@@ -1,3 +1,4 @@
+import { ChatIdSchema } from '../../chat/schema';
 import { ChatPublishSourceSchema } from '../../chat/publishSource/type';
 import { ObjectIdSchema } from '../../../common/type/mongo';
 import { ChatSourceEnum } from '../../chat/constants';
@@ -28,7 +29,7 @@ export const AppChatLogSchema = z.object({
   _id: ObjectIdSchema,
   appId: ObjectIdSchema,
   teamId: ObjectIdSchema,
-  chatId: z.string(),
+  chatId: ChatIdSchema,
   userId: z.string(),
   publishSource: ChatPublishSourceSchema.optional(),
   source: z.enum(ChatSourceEnum).meta({

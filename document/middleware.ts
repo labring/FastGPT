@@ -189,6 +189,7 @@ export default function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!api|_next/static|_next/image|favicon(?:\\.ico|/)|robots\\.txt|sitemap.*\\.xml|.*\\.svg|.*\\.png|deploy/.*).*)'
+    // 静态索引与 sitemap 同为无语言前缀的公开导出，不能被重定向到 /{lang}/static.json。
+    '/((?!api|_next/static|_next/image|favicon(?:\\.ico|/)|robots\\.txt|static\\.json(?:$|/)|sitemap.*\\.xml|.*\\.svg|.*\\.png|deploy/.*).*)'
   ]
 };

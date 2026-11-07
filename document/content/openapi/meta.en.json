@@ -1,10 +1,5 @@
 {
   "root": true,
   "title": "OpenAPI Documentation",
-  "pages": [
-    "intro",
-    "app",
-    "chat",
-    "dataset"
-  ]
+  "pages": ["intro", "best-practices", "app", "chat", "dataset"]
 }

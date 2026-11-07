@@ -1,3 +1,4 @@
+import { ChatIdSchema } from '../../../../core/chat/schema';
 import { z } from 'zod';
 import { LOGO_ICON } from '../../../../common/system/constants';
 import { TeamMemberStatusEnum } from '../../../../support/user/team/constant';
@@ -396,7 +397,7 @@ export type {
 
 export const SkillDebugChatBodySchema = z.object({
   skillId: IdSchema,
-  chatId: z.string().min(1),
+  chatId: ChatIdSchema.min(1),
   responseChatItemId: z.string().optional(),
   messages: z.array(ChatCompletionMessageParamSchema),
   modelId: z.string().meta({ description: '调试使用的模型 ID' }),

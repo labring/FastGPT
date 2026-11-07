@@ -14,8 +14,8 @@ if (typeof input.transferResources === 'boolean')
 Object.assign(process.env, env);
 const appConfig = fileURLToPath(new URL('../../../projects/app/tsconfig.json', import.meta.url));
 let temporaryConfig;
-if (input.operation === 'lifecycle') {
-  // Pro 子模块的相对 SDK alias 面向其部署布局；本仓库脚本复用 app 的实际 SDK 路径，仅切换 @/ 到 Pro。
+if (['lifecycle', 'cleanup-owned-sandbox-app'].includes(input.operation)) {
+  // 服务子进程复用 app 的实际 SDK 路径；生命周期操作另将 @/ 切换到 Pro。
   const config = JSON.parse(await readFile(appConfig, 'utf8'));
   const paths = Object.fromEntries(
     Object.entries(config.compilerOptions.paths).map(([key, values]) => [
@@ -23,7 +23,8 @@ if (input.operation === 'lifecycle') {
       values.map((value) => path.resolve(path.dirname(appConfig), value))
     ])
   );
-  paths['@/*'] = [fileURLToPath(new URL('../../../pro/admin/src/*', import.meta.url))];
+  if (input.operation === 'lifecycle')
+    paths['@/*'] = [fileURLToPath(new URL('../../../pro/admin/src/*', import.meta.url))];
   paths['@fastgpt-plugin/sdk-client'] = [
     fileURLToPath(
       new URL(
@@ -48,10 +49,9 @@ if (input.operation === 'lifecycle') {
 process.env.TSX_TSCONFIG_PATH = temporaryConfig ?? appConfig;
 const req = createRequire(new URL('../../../projects/app/package.json', import.meta.url));
 // Pro 间接加载的词典使用动态 JSON import；同时启用真实 ESM loader，沿用应用打包时的解析语义。
-const unregisterEsm =
-  input.operation === 'lifecycle'
-    ? req('tsx/esm/api').register({ tsconfig: process.env.TSX_TSCONFIG_PATH })
-    : undefined;
+const unregisterEsm = ['lifecycle', 'cleanup-owned-sandbox-app'].includes(input.operation)
+  ? req('tsx/esm/api').register({ tsconfig: process.env.TSX_TSCONFIG_PATH })
+  : undefined;
 const tsx = req('tsx/cjs/api');
 const load = (file) =>
   tsx.require(
@@ -120,6 +120,33 @@ try {
       await MongoDataset.deleteOne({ _id: dataset._id });
       throw error;
     }
+  } else if (input.operation === 'cleanup-owned-sandbox-app') {
+    // 共享 dev 队列可能被其他分支消费；只对本轮团队的独立应用执行当前代码的正常清理处理器。
+    const { initS3Buckets } = load('packages/service/common/s3/index.ts');
+    initS3Buckets();
+    const { MongoApp } = load('packages/service/core/app/schema.ts');
+    const { deleteAppsImmediate, deleteAppDataProcessor } = load(
+      'packages/service/core/app/controller.ts'
+    );
+    const { mongoSessionRun } = load('packages/service/common/mongo/sessionRun.ts');
+    const app = await MongoApp.findOne({ _id: input.appId, teamId: input.teamId }).lean();
+    if (app) {
+      assert.match(app.name, /^FG-TEST-/);
+      await mongoSessionRun(async (session) => {
+        await MongoApp.updateOne(
+          { _id: app._id, teamId: input.teamId },
+          { $set: { deleteTime: app.deleteTime ?? new Date() } },
+          { session }
+        );
+        await deleteAppsImmediate({ teamId: input.teamId, appIds: [app._id], session });
+      });
+      await deleteAppDataProcessor({ app, teamId: input.teamId });
+    }
+    result = {
+      appId: input.appId,
+      removed: !(await MongoApp.exists({ _id: input.appId, teamId: input.teamId })),
+      executor: 'current-service-processor'
+    };
   } else if (input.operation === 'verify-sandbox-cleanup') {
     // 应用删除已执行正常资源回收；此处只读验证，避免重入已物理删除的 source。
     const { MongoSandboxInstance } = load(

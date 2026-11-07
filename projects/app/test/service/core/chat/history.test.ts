@@ -68,6 +68,23 @@ describe('chat history access', () => {
     expect(apiMatch).not.toHaveProperty('tmbId');
   });
 
+  it('preserves the proxy member when clearing API history with a personal key', async () => {
+    vi.mocked(authChatTargetCrud).mockResolvedValueOnce({
+      ...params,
+      tmbId: 'member-2',
+      authType: AuthUserTypeEnum.apikey,
+      apiKeyType: 'personal',
+      scope: { teamId: 'team-1', tmbId: 'member-2' }
+    } as any);
+    expect(
+      await buildClearChatHistoriesMatch({ ...params, authProxy: { tmbId: 'member-2' } })
+    ).toMatchObject({
+      tmbId: 'member-2',
+      teamId: 'team-1',
+      $and: [buildChatPublishSourceFilter([ChatSourceEnum.api])]
+    });
+  });
+
   it('retains share identity and the existing time window', async () => {
     vi.mocked(authChatTargetCrud).mockResolvedValueOnce({
       ...params,

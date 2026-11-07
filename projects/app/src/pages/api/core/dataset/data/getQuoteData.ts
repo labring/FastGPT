@@ -32,13 +32,20 @@ async function handler(req: ApiRequestProps): Promise<GetQuoteDataResponse> {
   };
   const { id: dataId } = body;
 
+  if (
+    (body.customUid !== undefined || body.authProxy !== undefined) &&
+    (!body.chatId || !body.chatItemDataId)
+  )
+    throw ChatErrEnum.unAuthChat;
   if (body.chatId && !body.sourceType) throw ChatErrEnum.unAuthChat;
 
   // Auth
   const { collection, q, a } = await (async () => {
     if (body.chatId && body.sourceType && body.chatItemDataId) {
-      const { sourceType, sourceId, chatId, outLinkAuthData } = body;
+      const { customUid, authProxy, sourceType, sourceId, chatId, outLinkAuthData } = body;
       const authRes = await authChatTargetCrud({
+        customUid,
+        authProxy,
         req,
         authToken: true,
         sourceType,

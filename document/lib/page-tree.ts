@@ -36,7 +36,10 @@ const groupSeparatorSections = (nodes: PageTree.Node[]): PageTree.Node[] => {
     }
   }
 
-  return grouped;
+  // 目录中的页面全部隐藏后，不保留空目录或空分组；带 index 的目录仍可访问。
+  return grouped.filter(
+    (node) => node.type !== 'folder' || Boolean(node.index) || node.children.length > 0
+  );
 };
 
 export const normalizePageTreeSections = (tree: PageTree.Root): PageTree.Root => ({
