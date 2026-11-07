@@ -37,9 +37,13 @@ type ResolvedSandboxInfo = {
 
 type SandboxInfoReader = () => Promise<SdkSandboxInfo | undefined>;
 
+// `pending`/`allocated` are provider rollout states: create may return before the
+// workload is ready, so they must stay transitional instead of mapping to Error.
 const STATE_MAP: Record<string, SandboxState> = {
   running: 'Running',
   creating: 'Creating',
+  pending: 'Creating',
+  allocated: 'Starting',
   resuming: 'Starting',
   pausing: 'Stopping',
   deleting: 'Deleting',

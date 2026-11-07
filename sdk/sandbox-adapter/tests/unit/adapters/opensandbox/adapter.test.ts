@@ -165,6 +165,63 @@ describe('OpenSandboxAdapter', () => {
     expect(connect).not.toHaveBeenCalled();
   });
 
+  it.each(['Allocated', 'Pending'])(
+    'waits for provider state %s to reach Running instead of failing',
+    async (state) => {
+      vi.useFakeTimers();
+      try {
+        const adapter = new OpenSandboxAdapter(CONNECTION);
+        const bound = createSdkSandbox({
+          info: [sdkInfo(state), sdkInfo(state), sdkInfo('Running')]
+        });
+        bindSandbox(adapter, bound.sandbox);
+
+        const ensureRunning = adapter.ensureRunning();
+        await vi.advanceTimersByTimeAsync(2_000);
+        await ensureRunning;
+
+        expect(adapter.status.state).toBe('Running');
+        expect(bound.getInfo).toHaveBeenCalledTimes(3);
+      } finally {
+        vi.useRealTimers();
+      }
+    }
+  );
+
+  it('waits for an allocated session resource discovered by metadata before connecting', async () => {
+    vi.useFakeTimers();
+    try {
+      const manager = mockManager([sdkInfo('Allocated')]);
+      manager.getSandboxInfo
+        .mockResolvedValueOnce(sdkInfo('Allocated'))
+        .mockResolvedValueOnce(sdkInfo('Running'))
+        .mockResolvedValue(sdkInfo('Running'));
+      const bound = createSdkSandbox();
+      const connect = vi.spyOn(Sandbox, 'connect').mockResolvedValue(bound.sandbox);
+      const adapter = new OpenSandboxAdapter(CONNECTION);
+
+      const ensureRunning = adapter.ensureRunning();
+      await vi.advanceTimersByTimeAsync(1_000);
+      await ensureRunning;
+
+      expect(connect).toHaveBeenCalledWith(expect.objectContaining({ sandboxId: 'sandbox-1' }));
+      expect(adapter.status.state).toBe('Running');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it.each(['Failed', 'Unknown', 'Terminated'])(
+    'keeps terminal provider state %s fatal',
+    async (state) => {
+      const adapter = new OpenSandboxAdapter(CONNECTION);
+      const bound = createSdkSandbox({ info: [sdkInfo(state)] });
+      bindSandbox(adapter, bound.sandbox);
+
+      await expect(adapter.ensureRunning()).rejects.toThrow('Sandbox error');
+    }
+  );
+
   it('resumes the reusable paused resource found by session metadata', async () => {
     mockManager([sdkInfo('Paused')]);
     const resumed = createSdkSandbox();
