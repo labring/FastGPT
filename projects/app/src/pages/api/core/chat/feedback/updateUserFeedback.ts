@@ -60,12 +60,12 @@ async function handler(req: ApiRequestProps): Promise<UpdateUserFeedbackResponse
       ...(userBadFeedback === undefined && { userBadFeedback: '' }),
       ...(userGoodFeedback === undefined && { userGoodFeedback: '' })
     };
-    const setFields: Record<string, string> = {
+    const setFields = {
       ...(userBadFeedback !== undefined && { userBadFeedback }),
       ...(userGoodFeedback !== undefined && { userGoodFeedback })
     };
 
-    const updateQuery: { $unset?: Record<string, ''>; $set?: Record<string, string> } = {};
+    const updateQuery: { $unset?: typeof unsetFields; $set?: typeof setFields } = {};
     if (Object.keys(unsetFields).length > 0) {
       updateQuery.$unset = unsetFields;
     }
