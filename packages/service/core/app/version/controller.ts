@@ -9,6 +9,7 @@ import { decodeToolSetNodesFromStorage } from '../jsonSchemaStorage';
 import { resolveStoredAppResources } from '../resource/utils';
 import { MongoApp } from '../schema';
 import { MongoAppVersion } from './schema';
+import type { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 
 type VersionResourceSource = Pick<AppVersionSchemaType, 'nodes' | 'chatConfig' | 'resources'> & {
   resourceRefs?: unknown;
@@ -34,13 +35,17 @@ const getVersionResourceSnapshot = (
   });
 
 const normalizeStoredVersionWorkflow = (
-  version: Pick<AppVersionSchemaType, 'nodes' | 'edges' | 'chatConfig'>
+  version: Pick<AppVersionSchemaType, 'nodes' | 'edges' | 'chatConfig'>,
+  appType?: AppTypeEnum
 ) =>
-  migrateWorkflowToCurrent({
-    nodes: decodeToolSetNodesFromStorage(version.nodes),
-    edges: version.edges,
-    chatConfig: version.chatConfig
-  });
+  migrateWorkflowToCurrent(
+    {
+      nodes: decodeToolSetNodesFromStorage(version.nodes),
+      edges: version.edges,
+      chatConfig: version.chatConfig
+    },
+    { appType }
+  );
 
 /**
  * 标准化单条 Version 记录的工作流及其资源快照。
@@ -48,10 +53,13 @@ const normalizeStoredVersionWorkflow = (
  * 避免当前配置占位导致该版本中的欢迎语、定时任务等旧值被丢弃。
  * 缺失或非法的 resources 会按该版本内容回退提取，确保快照始终合法。
  */
-export const normalizeAppVersionWorkflow = (version: AppVersionSchemaType): AppVersionWorkflow => {
+export const normalizeAppVersionWorkflow = (
+  version: AppVersionSchemaType,
+  appType?: AppTypeEnum
+): AppVersionWorkflow => {
   // 历史版本只迁移该版本自身的系统配置节点，不继承当前应用 chatConfig，
   // 避免当前配置占位导致该版本中的欢迎语、定时任务等旧值被丢弃。
-  const normalizedWorkflow = normalizeStoredVersionWorkflow(version);
+  const normalizedWorkflow = normalizeStoredVersionWorkflow(version, appType);
   return {
     versionId: String(version._id),
     versionName: version.versionName,
@@ -99,11 +107,14 @@ const loadApp = async (appId: string, app?: AppVersionLookupApp) =>
 const normalizeLegacyAppWorkflow = (app?: AppVersionLookupApp | null): AppVersionWorkflow => {
   if (!app) return emptyVersionWorkflow();
 
-  const normalizedWorkflow = migrateWorkflowToCurrent({
-    nodes: decodeToolSetNodesFromStorage(Array.isArray(app.modules) ? app.modules : []),
-    edges: Array.isArray(app.edges) ? app.edges : [],
-    chatConfig: app.chatConfig
-  });
+  const normalizedWorkflow = migrateWorkflowToCurrent(
+    {
+      nodes: decodeToolSetNodesFromStorage(Array.isArray(app.modules) ? app.modules : []),
+      edges: Array.isArray(app.edges) ? app.edges : [],
+      chatConfig: app.chatConfig
+    },
+    { appType: app.type }
+  );
   return {
     versionId: undefined,
     versionName: undefined,
@@ -142,7 +153,7 @@ export const getAppLatestVersion = async (appId: string, app?: AppVersionLookupA
       })
       .lean());
 
-  if (version) return normalizeAppVersionWorkflow(version);
+  if (version) return normalizeAppVersionWorkflow(version, migrationApp?.type);
   return normalizeLegacyAppWorkflow(migrationApp);
 };
 
@@ -152,8 +163,8 @@ export const getAppLatestVersion = async (appId: string, app?: AppVersionLookupA
  */
 export const getAppDraftWorkflow = async (appId: string, app?: AppVersionLookupApp) => {
   const draft = await getAppDraftVersion(appId);
-  if (draft) return normalizeAppVersionWorkflow(draft);
   const migrationApp = await loadApp(appId, app);
+  if (draft) return normalizeAppVersionWorkflow(draft, migrationApp?.type);
   return normalizeLegacyAppWorkflow(migrationApp);
 };
 
@@ -332,7 +343,7 @@ export const getAppPublishedWorkflowMap = async (
         : versionByAppId.get(String(app._id));
       return [
         String(app._id),
-        { nodes: version ? normalizeStoredVersionWorkflow(version).nodes : [] }
+        { nodes: version ? normalizeStoredVersionWorkflow(version, app.type).nodes : [] }
       ];
     })
   );
@@ -385,7 +396,7 @@ export const getAppVersionById = async ({
       appId
     }).lean();
 
-    if (version) return normalizeAppVersionWorkflow(version);
+    if (version) return normalizeAppVersionWorkflow(version, (await loadApp(appId, app))?.type);
   }
 
   return getAppLatestVersion(appId, app);

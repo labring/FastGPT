@@ -20,6 +20,7 @@ const AppVersionNodesSchema = z.array(OpenAPIStoreNodeItemTypeSchema).meta({
   description: '版本内保存的应用节点配置'
 });
 
+// 通用入口也接受 MCP 工具本体；元数据归属由 handler 按已鉴权的应用类型规范化。
 const PublishAppNodesSchema = z.array(OpenAPIStoreNodeItemTypeSchema).meta({
   description: '本次保存的应用节点配置'
 });

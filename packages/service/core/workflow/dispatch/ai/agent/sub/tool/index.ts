@@ -309,7 +309,8 @@ export const dispatchTool = async ({
 
       const result = await mcpClient.toolCall({
         toolName,
-        params
+        params,
+        ...(mcpTool.requestMeta !== undefined ? { requestMeta: mcpTool.requestMeta } : {})
       });
       const errorMessage = getMCPToolErrorText(result);
       return {

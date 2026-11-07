@@ -2,6 +2,9 @@ import { afterEach, describe, it, expect, vi, beforeEach } from 'vitest';
 import http from 'http';
 import os from 'os';
 import dns from 'dns/promises';
+import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
+import { Server } from '@modelcontextprotocol/sdk/server/index.js';
+import { CallToolRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 import { Agent, fetch as undiciFetch } from 'undici';
 
 // --- Hoisted mocks ---
@@ -32,6 +35,7 @@ import type { AppPublishedWorkflow } from '../../../core/app/version/controller'
 import { PRIVATE_URL_TEXT } from '../../../common/system/utils';
 import { serviceEnv } from '../../../env';
 import { getLogger, LogCategories } from '../../../common/logger';
+import * as requestProfiling from '../../../common/profiling';
 
 // Access private client via prototype for spying
 const getPrivateClient = (mcpClient: MCPClient) =>
@@ -516,6 +520,104 @@ describe('MCPClient', () => {
   });
 
   describe('toolCall', () => {
+    it.each([false, true])(
+      'retains request metadata and profiling when a tool call fails: %s',
+      async (fails) => {
+        const mcpClient = new MCPClient(config);
+        const client = stubConnection(mcpClient);
+        const profileStage = vi.spyOn(requestProfiling, 'profileStage');
+        const close = vi.spyOn(mcpClient, 'closeConnection').mockResolvedValue(undefined);
+        const requestMeta = { 'example/context': { locale: 'zh-CN' } };
+        const params = { _meta: 'business parameter' };
+        const result = { content: [{ type: 'text', text: 'ok' }] };
+        const error = new Error('internal tool failure');
+        client.callTool.mockImplementationOnce(async () => {
+          expect(requestProfiling.isProfiling()).toBe(true);
+          if (fails) throw error;
+          return result;
+        });
+
+        const call = requestProfiling.withRequestProfile({ kind: 'mcp-metadata-test' }, () =>
+          mcpClient.toolCall({ toolName: 'search', params, requestMeta })
+        );
+        if (fails) await expect(call).rejects.toBe(error);
+        else await expect(call).resolves.toEqual(result);
+
+        expect(client.callTool).toHaveBeenCalledExactlyOnceWith(
+          { name: 'search', arguments: params, _meta: requestMeta },
+          undefined,
+          { timeout: 300000 }
+        );
+        expect(close).toHaveBeenCalledOnce();
+        expect(profileStage).toHaveBeenCalledExactlyOnceWith(
+          { event: 'mcpClient.call', params: { toolName: 'search' } },
+          expect.any(Function)
+        );
+        expect(requestProfiling.isProfiling()).toBe(false);
+      }
+    );
+
+    it('delivers request metadata to an MCP server through the real SDK', async () => {
+      const mcpClient = new MCPClient(config);
+      const client = (mcpClient as any).client;
+      const server = new Server(
+        { name: 'metadata-test', version: '1.0.0' },
+        { capabilities: { tools: {} } }
+      );
+      const received: unknown[] = [];
+      server.setRequestHandler(CallToolRequestSchema, async (request) => {
+        received.push(request.params);
+        return { content: [{ type: 'text', text: 'ok' }] };
+      });
+      const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+      await server.connect(serverTransport);
+      await client.connect(clientTransport);
+      vi.spyOn(mcpClient as any, 'getConnection').mockResolvedValue(client);
+
+      try {
+        const requestMeta = { 'example/context': { locale: 'zh-CN', flags: [false, 0, null] } };
+        await mcpClient.toolCall({
+          toolName: 'search',
+          params: { _meta: 'business parameter' },
+          requestMeta,
+          closeConnection: false
+        });
+        await mcpClient.toolCall({ toolName: 'other', params: {}, closeConnection: false });
+        expect(received).toEqual([
+          { name: 'search', arguments: { _meta: 'business parameter' }, _meta: requestMeta },
+          { name: 'other', arguments: {} }
+        ]);
+      } finally {
+        await mcpClient.closeConnection();
+        await server.close();
+      }
+    });
+
+    it('sends request metadata beside arguments and does not retain it on a reused client', async () => {
+      const mcpClient = new MCPClient(config);
+      const client = stubConnection(mcpClient);
+      client.callTool.mockResolvedValue({ content: [] });
+      const requestMeta = { 'example/context': { locale: 'zh-CN', enabled: false } };
+      const params = { query: 'hello', _meta: 'business parameter' };
+
+      await mcpClient.toolCall({ toolName: 'first', params, requestMeta, closeConnection: false });
+      await mcpClient.toolCall({ toolName: 'second', params: {}, closeConnection: false });
+
+      expect(client.callTool).toHaveBeenNthCalledWith(
+        1,
+        { name: 'first', arguments: params, _meta: requestMeta },
+        undefined,
+        { timeout: 300000 }
+      );
+      expect(client.callTool).toHaveBeenNthCalledWith(
+        2,
+        { name: 'second', arguments: {} },
+        undefined,
+        { timeout: 300000 }
+      );
+      expect(params).toEqual({ query: 'hello', _meta: 'business parameter' });
+    });
+
     it('should call tool and return result', async () => {
       const mcpClient = new MCPClient(config);
       const client = stubConnection(mcpClient);

@@ -23,10 +23,12 @@ import { valueTypeFormat } from '@fastgpt/global/core/workflow/runtime/utils';
 const ChatTest = ({
   currentTool,
   url,
+  toolSourceUrl,
   headerSecret
 }: {
   currentTool?: McpToolConfigType;
   url: string;
+  toolSourceUrl: string;
   headerSecret: StoreSecretValueType;
 }) => {
   const { t } = useTranslation();
@@ -43,7 +45,8 @@ const ChatTest = ({
 
   const { runAsync: runTool, loading: isRunning } = useRequest(
     async (data: Record<string, any>) => {
-      if (!currentTool) return;
+      // 保存和调试共用父级来源状态，解析等待或失败期间都不能使用旧来源配置。
+      if (!currentTool || toolSourceUrl !== url) return;
 
       // Format type
       Object.entries(currentTool?.inputSchema?.properties || {}).forEach(
@@ -62,7 +65,8 @@ const ChatTest = ({
         params: data,
         url,
         headerSecret,
-        toolName: currentTool.name
+        toolName: currentTool.name,
+        requestMeta: currentTool.requestMeta
       });
     },
     {
@@ -140,7 +144,12 @@ const ChatTest = ({
             </>
           )}
 
-          <Button mt={3} isLoading={isRunning} onClick={handleSubmit(runTool)}>
+          <Button
+            mt={3}
+            isLoading={isRunning}
+            isDisabled={toolSourceUrl !== url}
+            onClick={handleSubmit(runTool)}
+          >
             {t('common:Run')}
           </Button>
 
@@ -163,10 +172,12 @@ const ChatTest = ({
 const Render = ({
   currentTool,
   url,
+  toolSourceUrl,
   headerSecret
 }: {
   currentTool?: McpToolConfigType;
   url: string;
+  toolSourceUrl: string;
   headerSecret: StoreSecretValueType;
 }) => {
   const { chatId } = useChatStore();
@@ -191,7 +202,12 @@ const Render = ({
       showWholeResponse={true}
     >
       <ChatRecordContextProvider params={chatRecordProviderParams}>
-        <ChatTest currentTool={currentTool} url={url} headerSecret={headerSecret} />
+        <ChatTest
+          currentTool={currentTool}
+          url={url}
+          headerSecret={headerSecret}
+          toolSourceUrl={toolSourceUrl}
+        />
       </ChatRecordContextProvider>
     </ChatItemContextProvider>
   );

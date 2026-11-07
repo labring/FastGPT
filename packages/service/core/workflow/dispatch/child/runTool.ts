@@ -343,7 +343,12 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
       context.mcpClientMemory[cacheKey] = mcpClient;
 
       toolInput = params;
-      const result = await mcpClient.toolCall({ toolName, params, closeConnection: false });
+      const result = await mcpClient.toolCall({
+        toolName,
+        params,
+        ...(mcpTool.requestMeta !== undefined ? { requestMeta: mcpTool.requestMeta } : {}),
+        closeConnection: false
+      });
       return getMcpResponse(result);
     } else if (toolConfig?.httpTool?.toolId) {
       const { parentId, toolName } = parseToolId(toolConfig.httpTool.toolId);
@@ -427,7 +432,11 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
         })
       });
       toolInput = restParams;
-      const result = await mcpClient.toolCall({ toolName, params: restParams });
+      const result = await mcpClient.toolCall({
+        toolName,
+        params: restParams
+      });
+
       return getMcpResponse(result);
     }
   } catch (error) {

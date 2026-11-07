@@ -495,6 +495,7 @@ describe('dispatchRunTool runtime toolset auth', () => {
   });
 
   it.each([false, true])('preserves modern MCP results and detects isError=%s', async (isError) => {
+    const requestMeta = { 'example/context': { locale: 'zh-CN' } };
     authAppByTmbIdMock.mockResolvedValueOnce({
       app: {
         _id: 'victim-toolset',
@@ -524,6 +525,7 @@ describe('dispatchRunTool runtime toolset auth', () => {
       {
         name: 'search',
         description: 'Search',
+        requestMeta,
         inputSchema: {
           type: 'object',
           properties: { query: { type: 'string' } },
@@ -549,6 +551,7 @@ describe('dispatchRunTool runtime toolset auth', () => {
     expect(mcpToolCallMock).toHaveBeenCalledExactlyOnceWith({
       toolName: 'search',
       params: { extra: true },
+      requestMeta,
       closeConnection: false
     });
   });
@@ -639,9 +642,13 @@ describe('dispatchRunTool runtime toolset auth', () => {
     expect(Object.keys(workflowContextMock.mcpClientMemory).join(' ')).not.toContain('token-');
   });
 
-  it.each(['toolData', 'system_toolData'] as const)(
-    'should keep the baseline fallback for legacy single MCP tool params (%s)',
-    async (legacyKey) => {
+  it.each(
+    ['toolData', 'system_toolData'].flatMap((legacyKey) =>
+      [false, true].map((isError) => ({ legacyKey, isError }))
+    )
+  )(
+    'keeps legacy $legacyKey results and handles isError=$isError',
+    async ({ legacyKey, isError }) => {
       const props = createRunToolProps({});
       props.params = {
         query: 'fastgpt',
@@ -656,10 +663,18 @@ describe('dispatchRunTool runtime toolset auth', () => {
           }
         }
       };
-      mcpToolCallMock.mockResolvedValueOnce({ ok: true });
+      const toolResult = { isError, content: [{ type: 'text', text: 'Legacy MCP call failed' }] };
+      mcpToolCallMock.mockResolvedValueOnce(toolResult);
 
       const result = await dispatchRunTool(props);
-      expect(result.error).toBeUndefined();
+      expect(result.error?.[NodeOutputKeyEnum.errorText]).toBe(
+        isError ? 'Legacy MCP call failed' : undefined
+      );
+      expect(result.responseData?.errorText).toBe(isError ? 'Legacy MCP call failed' : undefined);
+      expect(result.rawError).toBeUndefined();
+      expect(result.data?.[NodeOutputKeyEnum.rawResponse]).toEqual(toolResult);
+      expect(result.responseData?.toolRes).toEqual(toolResult);
+      expect(result.toolResponse).toEqual(toolResult);
       expect(MCPClient).toHaveBeenCalledWith({
         url: 'https://mcp.example.com',
         headers: { Authorization: 'legacy-token', 'X-Key': 'api-key' }
