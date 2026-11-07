@@ -1,3 +1,4 @@
+import { ChatIdSchema } from '../../../core/chat/schema';
 import z from 'zod';
 import { ChatCompletionMessageParamSchema } from '../../../core/ai/llm/type';
 import { ObjectIdSchema } from '../../../common/type/mongo';
@@ -84,7 +85,7 @@ export const WorkflowDebugBodySchema = z.object({
     example: 'usage_debug_123',
     description: '连续调试复用的用量记录 ID；不传时自动创建'
   }),
-  chatId: z.string().min(1).optional().meta({
+  chatId: ChatIdSchema.min(1).optional().meta({
     example: 'debug-session-chat-id',
     description: '调试会话内文件上传使用的 chatId；调试运行会沿用该值，保证上传文件归属校验通过'
   })

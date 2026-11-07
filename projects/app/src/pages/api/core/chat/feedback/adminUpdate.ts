@@ -12,13 +12,26 @@ import {
 import { buildChatSourceQuery } from '@fastgpt/service/core/chat/source';
 
 async function handler(req: ApiRequestProps): Promise<AdminUpdateFeedbackResponseType> {
-  const { sourceType, sourceId, chatId, dataId, datasetId, feedbackDataId, q, a, outLinkAuthData } =
-    parseApiInput({
-      req,
-      bodySchema: AdminUpdateFeedbackBodySchema
-    }).body;
+  const {
+    customUid,
+    authProxy,
+    sourceType,
+    sourceId,
+    chatId,
+    dataId,
+    datasetId,
+    feedbackDataId,
+    q,
+    a,
+    outLinkAuthData
+  } = parseApiInput({
+    req,
+    bodySchema: AdminUpdateFeedbackBodySchema
+  }).body;
 
   const authRes = await authChatTargetCrud({
+    customUid,
+    authProxy,
     req,
     authToken: true,
     authApiKey: true,

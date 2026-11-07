@@ -1,3 +1,4 @@
+import { ChatIdSchema } from '../../../../core/chat/schema';
 import z from 'zod';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
 import { OpenObjectOpenApiMeta } from '../../../../common/zod/openapi';
@@ -29,7 +30,7 @@ const GetRecordTypeSchema = z.enum([
  * ============================================================================ */
 
 export const GetResDataQueryRawSchema = createOutLinkChatTargetQuerySchema({
-  chatId: z.string().optional().describe('会话ID'),
+  chatId: ChatIdSchema.optional().describe('会话ID'),
   dataId: z.string().describe('对话数据ID')
 });
 export const GetResDataQuerySchema = GetResDataQueryRawSchema.transform(
@@ -47,7 +48,7 @@ export type GetResDataQueryRuntimeType = z.infer<typeof GetResDataQuerySchema>;
  * ============================================================================ */
 
 export const DeleteChatRecordBodyRawSchema = createOutLinkChatTargetInputSchema({
-  chatId: z.string().meta({ example: 'chat123', description: '会话 ID' }),
+  chatId: ChatIdSchema.meta({ example: 'chat123', description: '会话 ID' }),
   contentId: z.string().optional().meta({
     example: 'content123',
     description: '要删除的消息 ID'
@@ -67,7 +68,7 @@ export type DeleteChatRecordBodyType = z.infer<typeof DeleteChatRecordBodyRawSch
 export type DeleteChatRecordBodyRuntimeType = z.infer<typeof DeleteChatRecordBodySchema>;
 
 const QuoteBodyPropsSchema = {
-  chatId: z.string().min(1).max(256).describe('会话ID'),
+  chatId: ChatIdSchema.min(1).describe('会话ID'),
   chatItemDataId: z.string().min(1).max(256).meta({
     example: 'item_abc123',
     description: '对话消息 dataId'
@@ -101,7 +102,7 @@ export type GetQuoteBodyRuntimeType = z.infer<typeof GetQuoteBodySchema>;
  * ============================================================================ */
 
 const CollectionQuoteBodyPropsSchema = {
-  chatId: z.string().min(1).max(256).describe('会话 ID'),
+  chatId: ChatIdSchema.min(1).describe('会话 ID'),
   chatItemDataId: z.string().min(1).max(256).meta({
     example: 'item_abc123',
     description: '对话消息 dataId'
@@ -153,7 +154,7 @@ export type GetCollectionQuoteResType = z.infer<typeof GetCollectionQuoteResSche
  * ============================================================================ */
 
 const GetRecordPropsSchema = {
-  chatId: z.string().optional().meta({ example: 'chat123', description: '会话 ID' }),
+  chatId: ChatIdSchema.optional().meta({ example: 'chat123', description: '会话 ID' }),
   loadCustomFeedbacks: z.boolean().optional().meta({
     example: false,
     description: '是否加载自定义反馈'
@@ -209,6 +210,7 @@ export type GetRecordsV2ResponseType = z.infer<typeof GetRecordsV2ResponseSchema
  * ============================================================================ */
 
 export const GetChatSpeechBodySchema = createOutLinkChatTargetInputSchema({
+  chatId: ChatIdSchema.min(1).optional().describe('已有会话 ID；传入时同时校验会话归属'),
   ttsConfig: AppTTSConfigInputSchema.meta({ description: 'TTS 配置' }),
   input: z.string().meta({ example: '你好，世界', description: '要转换的文本内容' })
 }).transform(transformChatAuthTargetInput);
@@ -222,7 +224,7 @@ export type GetChatSpeechBodyType = z.infer<typeof GetChatSpeechBodySchema>;
  * ============================================================================ */
 
 const AudioTranscriptionsProps = {
-  chatId: z.string().min(1).max(256).describe('会话 ID'),
+  chatId: ChatIdSchema.min(1).describe('会话 ID'),
   duration: z.coerce.number().optional().describe('录音时长，单位秒')
 };
 export const AudioTranscriptionsDataRawSchema =

@@ -1,6 +1,6 @@
+import { ChatAuthProxySchema } from '../../../../../support/permission/chat';
 import {
   ChatHomeBodySchema,
-  ChatCompletionAuthProxySchema,
   ChatTestPropsSchema,
   CompletionsPropsSchema
 } from '@fastgpt/global/openapi/core/chat/completion/api';
@@ -12,19 +12,19 @@ import { openApiDocumentOptions } from '@fastgpt/global/openapi/generation';
 import { describe, expect, expectTypeOf, it } from 'vitest';
 import { createSchema } from 'zod-openapi';
 
-describe('ChatCompletionAuthProxySchema', () => {
+describe('ChatAuthProxySchema', () => {
   const tmbId = '68ad85a7463006c963799a05';
   const username = 'user@example.com';
 
   it.each([undefined, username, '', null, 123])(
     'keeps only tmbId when it is provided, ignoring username: %j',
     (username) => {
-      expect(ChatCompletionAuthProxySchema.parse({ tmbId, username })).toEqual({ tmbId });
+      expect(ChatAuthProxySchema.parse({ tmbId, username })).toEqual({ tmbId });
     }
   );
 
   it.each([undefined, null])('uses username when tmbId is omitted or null: %j', (tmbId) => {
-    expect(ChatCompletionAuthProxySchema.parse({ username: ` ${username} `, tmbId })).toEqual({
+    expect(ChatAuthProxySchema.parse({ username: ` ${username} `, tmbId })).toEqual({
       username,
       tmbId: undefined
     });
@@ -40,7 +40,7 @@ describe('ChatCompletionAuthProxySchema', () => {
     { username, tmbId: '' },
     { username, tmbId: 'invalid-id' }
   ])('rejects missing identity or invalid selected identity: %j', (value) => {
-    expect(ChatCompletionAuthProxySchema.safeParse(value).success).toBe(false);
+    expect(ChatAuthProxySchema.safeParse(value).success).toBe(false);
   });
 
   it('documents named identity choices with only their supported fields', () => {
@@ -49,9 +49,11 @@ describe('ChatCompletionAuthProxySchema', () => {
       opts: openApiDocumentOptions
     });
     if ('$ref' in schema) throw new Error('Unexpected body schema reference');
-    const authProxy = schema.anyOf![0].properties!.authProxy;
-    if ('$ref' in authProxy) throw new Error('Unexpected authProxy schema reference');
+    const authProxyWrapper = schema.anyOf![0].anyOf![2].properties!.authProxy;
+    if ('$ref' in authProxyWrapper) throw new Error('Unexpected authProxy schema reference');
+    const authProxy = authProxyWrapper.allOf![0];
 
+    expect(authProxy.type).toBe('object');
     expect(authProxy.description).toContain('优先使用 tmbId');
     expect(authProxy.anyOf).toHaveLength(2);
     expect(
@@ -113,14 +115,64 @@ describe('CompletionsPropsSchema identity', () => {
         '外链会话'
       ]);
       const [app, appKey, outLink] = schema.anyOf!;
-      expect(appKey.required ?? []).not.toContain('appId');
+      for (const branch of [app, appKey]) {
+        // 资源说明属于外层；身份分支包含完整字段，动态身份字段排在公共字段前。
+        expect(branch.properties).toBeUndefined();
+        expect(branch.description).toBeTruthy();
+        for (const identity of branch.anyOf!) {
+          expect(identity.description).toBeTruthy();
+          expect(identity.description).not.toBe(branch.description);
+          expect(identity.properties).toHaveProperty('messages');
+          expect(identity.properties).toHaveProperty('chatId');
+          expect(identity.properties).toHaveProperty('stream');
+          expect(identity.properties).not.toHaveProperty('outLinkAuthData');
+          expect(identity.not).toBeUndefined();
+          if (branch === app) {
+            expect(identity.required).toContain('appId');
+          } else {
+            expect(identity.properties).not.toHaveProperty('appId');
+          }
+        }
+        const [defaultIdentity, customIdentity] = branch.anyOf!;
+        expect(defaultIdentity.title).toBe('默认身份');
+        expect(defaultIdentity.description).toContain('不传 customUid 和 authProxy');
+        expect(Object.keys(defaultIdentity.properties!)[0]).toBe(
+          branch === app ? 'appId' : 'chatId'
+        );
+        expect(defaultIdentity).not.toHaveProperty('properties.customUid');
+        expect(defaultIdentity).not.toHaveProperty('properties.authProxy');
+        expect(customIdentity).toMatchObject({
+          title: '自定义使用者',
+          properties: {
+            customUid: {
+              allOf: [{ type: 'string', maxLength: 1024 }],
+              'x-fastgpt-union-parameter': true
+            }
+          }
+        });
+        expect(customIdentity.required).toContain('customUid');
+        expect(customIdentity.description).toContain('不改变鉴权成员');
+        expect(Object.keys(customIdentity.properties!)[0]).toBe('customUid');
+        expect(customIdentity).not.toHaveProperty('properties.authProxy');
+      }
+      expect(app.anyOf?.map((choice) => choice.title)).toEqual([
+        '默认身份',
+        '自定义使用者',
+        '代理团队成员'
+      ]);
+      expect(app.anyOf![2].required).toContain('authProxy');
+      expect(app.anyOf![2].description).toContain('有效 tmbId');
+      expect(Object.keys(app.anyOf![2].properties!)[0]).toBe('authProxy');
+      expect(app.anyOf![2].properties!.authProxy).toHaveProperty('x-fastgpt-union-parameter', true);
+      expect(app.anyOf![2]).not.toHaveProperty('properties.customUid');
+      expect(appKey.anyOf?.map((choice) => choice.title)).toEqual(['默认身份', '自定义使用者']);
       expect(appKey.description).toContain('APP API Key');
-      expect(Object.keys(app.properties!)[0]).toBe('appId');
-      expect(app.required).toContain('appId');
-      expect(app.properties).not.toHaveProperty('outLinkAuthData');
       expect(Object.keys(outLink.properties!)[0]).toBe('outLinkAuthData');
+      expect(outLink.anyOf).toBeUndefined();
       expect(outLink.required).toContain('outLinkAuthData');
       expect(outLink.properties).not.toHaveProperty('appId');
+      expect(outLink.properties).not.toHaveProperty('customUid');
+      expect(outLink.properties).not.toHaveProperty('authProxy');
       expect(outLink.properties!.outLinkAuthData).toMatchObject({
         type: 'object',
         required: ['shareId', 'outLinkUid']
@@ -343,13 +395,6 @@ describe('CompletionsPropsSchema customUid', () => {
       authProxy: { tmbId: appId }
     });
     expect(result.success).toBe(false);
-    if (!result.success)
-      expect(result.error.issues).toContainEqual(
-        expect.objectContaining({
-          path: ['customUid'],
-          message: 'customUid and authProxy are mutually exclusive'
-        })
-      );
   });
   it.each([undefined, null])('allows proxy with omitted UID %j', (customUid) => {
     expect(

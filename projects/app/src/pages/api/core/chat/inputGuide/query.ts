@@ -19,7 +19,7 @@ async function handler(
   req: ApiRequestProps,
   _res: NextApiResponse
 ): Promise<QueryChatInputGuideResponseType> {
-  const { sourceType, sourceId, outLinkAuthData, searchKey } = parseApiInput({
+  const { customUid, authProxy, sourceType, sourceId, outLinkAuthData, searchKey } = parseApiInput({
     req,
     bodySchema: QueryChatInputGuideBodySchema
   }).body;
@@ -29,6 +29,8 @@ async function handler(
   }
 
   const { teamId, sourceId: resolvedSourceId } = await authChatTargetCrud({
+    customUid,
+    authProxy,
     req,
     authToken: true,
     sourceType,

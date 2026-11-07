@@ -29,7 +29,16 @@ async function handler(req: ApiRequestProps): Promise<SandboxGetTicketResponse> 
     throw new Error('AGENT_SANDBOX_PROXY_URL environment variable is missing');
   }
   const wsUrl = new URL(proxyUrl);
-  const { sourceType, sourceId, chatId, channel, permission, outLinkAuthData } = parseApiInput({
+  const {
+    customUid,
+    authProxy,
+    sourceType,
+    sourceId,
+    chatId,
+    channel,
+    permission,
+    outLinkAuthData
+  } = parseApiInput({
     req,
     bodySchema: SandboxGetTicketBodySchema
   }).body;
@@ -46,6 +55,8 @@ async function handler(req: ApiRequestProps): Promise<SandboxGetTicketResponse> 
     sourceType: resolvedSourceType,
     sourceId: resolvedSourceId
   } = await authSandboxRuntimeSession({
+    customUid,
+    authProxy,
     req,
     sourceType,
     sourceId,

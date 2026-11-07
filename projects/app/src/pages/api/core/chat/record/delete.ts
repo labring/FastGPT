@@ -9,11 +9,22 @@ import { WritePermissionVal } from '@fastgpt/global/support/permission/constant'
 
 /** 按 JSON Body 中的会话身份鉴权并软删除消息，外链凭证保持对象形态。 */
 async function handler(req: ApiRequestProps): Promise<void> {
-  const { sourceType, sourceId, chatId, contentId, contentIds, outLinkAuthData } = parseApiInput({
+  const {
+    customUid,
+    authProxy,
+    sourceType,
+    sourceId,
+    chatId,
+    contentId,
+    contentIds,
+    outLinkAuthData
+  } = parseApiInput({
     req,
     bodySchema: DeleteChatRecordBodySchema
   }).body;
   const authRes = await authChatTargetCrud({
+    customUid,
+    authProxy,
     req,
     authToken: true,
     authApiKey: true,

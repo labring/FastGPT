@@ -8,7 +8,7 @@ import type { PermissionValueType } from '@fastgpt/global/support/permission/typ
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { buildChatSourceQuery } from '@fastgpt/service/core/chat/source';
 import { authChatTargetCrud } from '@fastgpt/service/core/chat/auth';
-import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
+import type { ChatAuthProxy, OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import { ApiKeyTypeEnum } from '@fastgpt/global/support/openapi/constants';
 
 type ChatHistoryAuthProps = {
@@ -16,6 +16,8 @@ type ChatHistoryAuthProps = {
   sourceType?: ChatSourceTypeEnum;
   sourceId?: string;
   chatId?: string;
+  customUid?: string;
+  authProxy?: ChatAuthProxy;
   outLinkAuthData?: OutLinkChatAuthProps;
   source?: ChatSourceEnum;
   per?: PermissionValueType;
@@ -36,6 +38,8 @@ async function getChatHistoryContext({
   sourceType,
   sourceId,
   chatId,
+  customUid,
+  authProxy,
   outLinkAuthData,
   source,
   per = ReadPermissionVal
@@ -66,6 +70,8 @@ async function getChatHistoryContext({
     sourceType: authSourceType,
     sourceId,
     chatId,
+    customUid,
+    authProxy,
     outLinkAuthData,
     per
   });
@@ -114,9 +120,18 @@ export async function buildClearChatHistoriesMatch({
   req,
   sourceType,
   sourceId,
+  customUid,
+  authProxy,
   outLinkAuthData
 }: ClearChatHistoriesAuthProps) {
-  const context = await getChatHistoryContext({ req, sourceType, sourceId, outLinkAuthData });
+  const context = await getChatHistoryContext({
+    req,
+    sourceType,
+    sourceId,
+    customUid,
+    authProxy,
+    outLinkAuthData
+  });
   if (!context) return undefined;
   const { match, authType, resolvedSourceType, resolvedSourceId, apiKeyType } = context;
 
@@ -136,7 +151,9 @@ export async function buildClearChatHistoriesMatch({
   if (authType === AuthUserTypeEnum.apikey) {
     // 普通 App 的 API 清空保留原有整应用 api 记录语义。
     return {
-      ...(apiKeyType === ApiKeyTypeEnum.app ? match : {}),
+      ...(apiKeyType === ApiKeyTypeEnum.app || customUid !== undefined || authProxy !== undefined
+        ? match
+        : {}),
       ...buildChatSourceQuery({ sourceType: resolvedSourceType, sourceId: resolvedSourceId }),
       $and: [buildChatPublishSourceFilter([ChatSourceEnum.api])]
     };

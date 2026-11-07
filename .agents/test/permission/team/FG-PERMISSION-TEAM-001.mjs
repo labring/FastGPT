@@ -99,16 +99,70 @@ async function assertHandover(w, before, expected) {
   }
   w.c.record('Key 交接恒等核对', { before, after });
 }
+
+/** 用同一真实数据库变更流核对离职自有应用与 Key 的提交顺序，不以最终归属替代顺序证据。 */
+async function ownerFirst(w, action) {
+  if (!w.V) return action();
+  const app = await w.db.collection('apps').findOne({ _id: w.oid(w.V) });
+  if (String(app?.tmbId) !== w.c.actor('A').tmbId) return action();
+  const stream = w.db.watch(
+    [
+      {
+        $match: {
+          operationType: 'update',
+          $or: [
+            { 'ns.coll': 'apps', 'documentKey._id': w.oid(w.V) },
+            { 'ns.coll': 'openapis', 'documentKey._id': w.oid(w.Kv.id) }
+          ]
+        }
+      }
+    ],
+    { maxAwaitTimeMS: 1000 }
+  );
+  try {
+    await stream.tryNext();
+    const result = await action();
+    const events = [];
+    await poll(async () => {
+      const event = await stream.tryNext();
+      if (event?.updateDescription.updatedFields.tmbId) events.push(event);
+      assert.equal(events.length, 2);
+    }, 20000);
+    assert.deepEqual(
+      events.map((event) => event.ns.coll),
+      ['apps', 'openapis']
+    );
+    for (const event of events)
+      assert.equal(String(event.updateDescription.updatedFields.tmbId), w.c.actor('owner').tmbId);
+    assert.equal(String(events[0].clusterTime), String(events[1].clusterTime));
+    w.c.record(
+      '先转应用再转应用 Key 的真实提交顺序',
+      events.map((event) => ({
+        collection: event.ns.coll,
+        id: String(event.documentKey._id),
+        owner: String(event.updateDescription.updatedFields.tmbId),
+        clusterTime: String(event.clusterTime),
+        transaction: event.txnNumber?.toString()
+      }))
+    );
+    return result;
+  } finally {
+    await stream.close();
+  }
+}
+
 async function remove(w, role = 'A', leave = false) {
   success(
-    await w.c.request({
-      role: leave ? role : 'owner',
-      kind: 'state',
-      method: 'DELETE',
-      route: leave
-        ? '/api/proApi/support/user/team/member/leave'
-        : '/api/proApi/support/user/team/member/delete?tmbId=' + w.c.actor(role).tmbId
-    })
+    await ownerFirst(w, () =>
+      w.c.request({
+        role: leave ? role : 'owner',
+        kind: 'state',
+        method: 'DELETE',
+        route: leave
+          ? '/api/proApi/support/user/team/member/leave'
+          : '/api/proApi/support/user/team/member/delete?tmbId=' + w.c.actor(role).tmbId
+      })
+    )
   );
   const member = await w.db
     .collection('team_members')
@@ -116,11 +170,15 @@ async function remove(w, role = 'A', leave = false) {
   assert.equal(member.status, 'leave');
 }
 async function service(w, action, extra = {}) {
-  return appKeyService(w.scoped, w.c, 'lifecycle', {
-    action,
-    memberId: w.c.actor('A').tmbId,
-    ...extra
-  });
+  const execute = () =>
+    appKeyService(w.scoped, w.c, 'lifecycle', {
+      action,
+      memberId: w.c.actor('A').tmbId,
+      ...extra
+    });
+  return action === 'cancel' || (action === 'sync' && extra.transferResources)
+    ? ownerFirst(w, execute)
+    : execute();
 }
 async function personalDenied(w) {
   const chatId = w.label('personal-refused');
@@ -166,7 +224,7 @@ async function historyFile(w, key, appId, defaultIdentity = false) {
   assert.ok(uploaded.ok);
   const file = { key: post.key, chatId: chat.chatId, bytes, appId, credential: key };
   await readFileByKey(w, file);
-  return { ...chat, file };
+  return { ...chat, file, defaultIdentity };
 }
 async function readFileByKey(w, file) {
   const url = success(
@@ -200,9 +258,15 @@ async function continued(w, key, appId, history) {
   );
   assert.ok(current);
   await readFileByKey(w, history.file);
-  await w.completion(key, appId, { chatId: history.chatId, uid: history.uid, round: 2 });
-  const fresh = await w.completion(key, appId, { uid: w.label('new-user') });
   const storedKey = await w.db.collection('openapis').findOne({ _id: w.oid(key.id) });
+  await w.completion(key, appId, {
+    chatId: history.chatId,
+    uid: history.defaultIdentity ? String(storedKey.tmbId) : history.uid,
+    ...(history.defaultIdentity ? { bucketUserId: history.uid } : {}),
+    ...(history.defaultIdentity ? { body: { customUid: null } } : {}),
+    round: 2
+  });
+  const fresh = await w.completion(key, appId, { uid: w.label('new-user') });
   assert.equal(String(fresh.chats[0].tmbId), String(storedKey.tmbId));
 }
 async function immutableChats(w, histories) {

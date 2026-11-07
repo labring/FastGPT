@@ -1,3 +1,4 @@
+import { ChatIdSchema } from '../../../../core/chat/schema';
 import { z } from 'zod';
 import { WorkflowDocumentSchema } from '../../../../core/workflow/type/document';
 import { ChatCompletionMessageParamSchema } from '../../../../core/ai/llm/type';
@@ -26,7 +27,7 @@ export const WorkflowBuilderChatBodySchema = z.object({
     description: '当前 Workflow 应用 ID',
     example: '67f4c91c79a4d61b1f116b2a'
   }),
-  chatId: z.string().min(1).meta({
+  chatId: ChatIdSchema.min(1).meta({
     description: '工作流辅助生成独立会话 ID',
     example: 'workflow-builder-chat-id'
   }),
@@ -73,7 +74,7 @@ const WorkflowBuilderVersionIdentitySchema = z
       description: 'Workflow 应用 ID',
       example: '67f4c91c79a4d61b1f116b2a'
     }),
-    chatId: z.string().min(1).meta({
+    chatId: ChatIdSchema.min(1).meta({
       description: '工作流辅助生成会话 ID',
       example: 'workflow-builder-chat-id'
     }),

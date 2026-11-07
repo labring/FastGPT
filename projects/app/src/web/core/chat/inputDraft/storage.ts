@@ -1,3 +1,4 @@
+import { ChatIdSchema } from '@fastgpt/global/core/chat/schema';
 import z from 'zod';
 import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
@@ -11,7 +12,7 @@ export const CHAT_INPUT_DRAFT_CLEAR_EVENT = 'fastgpt-chat-input-draft-clear';
 const ChatInputDraftIdentitySchema = z.object({
   tmbId: z.string().min(1),
   appId: z.string().min(1),
-  chatId: z.string().min(1)
+  chatId: ChatIdSchema.min(1)
 });
 export type ChatInputDraftIdentity = z.infer<typeof ChatInputDraftIdentitySchema>;
 

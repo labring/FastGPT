@@ -1,3 +1,4 @@
+import { ChatIdSchema } from '../../../../core/chat/schema';
 import { createAppApiKeyInputSchema } from '../../chat/api';
 import { ChatPublishSourceResponseSchema } from '../../../../core/chat/publishSource/type';
 import z from 'zod';
@@ -72,7 +73,7 @@ export type updateLogKeysResponseType = z.infer<typeof UpdateLogKeysResponseSche
 export const ChatLogItemSchema = z.object({
   publishSource: ChatPublishSourceResponseSchema.optional(),
   _id: z.string().meta({ example: '68ad85a7463006c963799a05', description: '对话日志 ID' }),
-  chatId: z.string().meta({ example: 'chat123', description: '对话 ID' }),
+  chatId: ChatIdSchema.meta({ example: 'chat123', description: '对话 ID' }),
   title: z.string().nullish().meta({ example: '用户对话', description: '对话标题' }),
   customTitle: z.string().nullish().meta({ example: '自定义标题', description: '自定义对话标题' }),
   source: z.enum(ChatSourceEnum).meta({

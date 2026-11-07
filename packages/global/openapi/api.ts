@@ -5,21 +5,31 @@ import z from 'zod';
 
 export const PaginationPageSizeLimit = 500;
 
+const paginationPresentation = {
+  'x-fastgpt-union-group': { id: 'pagination', label: '分页参数' }
+};
+
 /** 通用分页默认每页 20 条，超限自动截断；业务接口可缩小条数上限。 */
 export const PaginationPageSizeSchema = IntSchema.positive()
   .overwrite((value) => Math.min(value, PaginationPageSizeLimit))
   .max(PaginationPageSizeLimit)
   .default(20)
   .meta({
+    ...paginationPresentation,
     example: 20,
     description: `每页条数，默认 20，最大 ${PaginationPageSizeLimit}，超出自动按 ${PaginationPageSizeLimit} 处理`
   });
 
 /** 缺省按第一页查询；保留可选类型，允许客户端省略该字段。 */
-export const PaginationPageNumSchema = IntSchema.positive().default(1).optional().meta({
-  example: 1,
-  description: '页码，从 1 开始；传入 offset 时忽略'
-});
+export const PaginationPageNumSchema = IntSchema.positive()
+  .default(1)
+  .optional()
+  .meta({
+    ...paginationPresentation,
+    'x-fastgpt-union-parameter': true,
+    example: 1,
+    description: '页码，从 1 开始；传入 offset 时忽略'
+  });
 
 /**
  * 将业务筛选字段与互斥分页分支组合。offset 分支优先并移除页码字段；
@@ -40,7 +50,12 @@ export const createPaginationSchema = <
   ) as { [Key in keyof TPageShape]: typeof ignoredPageField };
   const commonSchema = z
     .object({
-      offset: IntSchema.meta({ example: 0, description: '偏移量，从 0 开始' })
+      offset: IntSchema.meta({
+        ...paginationPresentation,
+        'x-fastgpt-union-parameter': true,
+        example: 0,
+        description: '偏移量，从 0 开始'
+      })
     })
     // 分支定位字段先展示，便于在格式选择下直接看到 offset 或页码，再设置每页条数。
     .extend(resolvedPageShape)
@@ -57,11 +72,14 @@ export const createPaginationSchema = <
         Object.keys(resolvedPageShape).forEach((key) => Reflect.deleteProperty(result, key));
         return result;
       })
-      .meta({ title: '按偏移量获取' }),
-    commonSchema
-      .extend(resolvedPageShape)
-      .extend({ offset: z.never().optional() })
-      .meta({ title: '按页码获取' })
+      .meta({
+        title: '按偏移量获取',
+        description: '通过 offset 指定起始位置，从 0 开始；同时传入页码时优先使用 offset。'
+      }),
+    commonSchema.extend(resolvedPageShape).extend({ offset: z.never().optional() }).meta({
+      title: '按页码获取',
+      description: '通过页码获取，默认第 1 页；pageSize 控制每页条数。'
+    })
   ]);
 };
 
