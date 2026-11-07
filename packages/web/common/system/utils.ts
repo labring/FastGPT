@@ -9,11 +9,20 @@ export const getUserFingerprint = async () => {
 
 export const subRoute = webEnv.NEXT_PUBLIC_BASE_URL;
 
+/** 为站内绝对路径补齐部署前缀，按路径边界识别已有前缀，并保留外部 URL。 */
 export const getWebReqUrl = (url: string = '') => {
   if (!url) return '/';
-  if (!subRoute) return url;
+  if (!subRoute || !url.startsWith('/') || url.startsWith('//')) return url;
 
-  if (!url.startsWith('/') || url.startsWith(subRoute)) return url;
+  // 前缀必须是完整路径段，/fastgpt-other 仍属于需要补前缀的站内路径。
+  if (
+    url === subRoute ||
+    url.startsWith(`${subRoute}/`) ||
+    url.startsWith(`${subRoute}?`) ||
+    url.startsWith(`${subRoute}#`)
+  ) {
+    return url;
+  }
   return `${subRoute}${url}`;
 };
 

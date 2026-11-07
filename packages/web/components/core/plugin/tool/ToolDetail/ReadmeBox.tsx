@@ -1,5 +1,6 @@
 import React from 'react';
-import { Box, Flex, Link } from '@chakra-ui/react';
+import { Box, Flex } from '@chakra-ui/react';
+import Link from '../../../../common/Link';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '../../../../common/Icon';
 import Markdown from '../../../../common/Markdown';

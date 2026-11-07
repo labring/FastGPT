@@ -1,5 +1,6 @@
 import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
-import { Box, Flex, Link, Table, Tbody, Td, Th, Thead, Tr } from '@chakra-ui/react';
+import { Box, Flex, Table, Tbody, Td, Th, Thead, Tr } from '@chakra-ui/react';
+import Link from '@fastgpt/web/components/common/Link';
 import { useMemo, useRef, useState } from 'react';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import MyBox from '@fastgpt/web/components/common/MyBox';
@@ -21,7 +22,6 @@ import {
 } from '@fastgpt/web/components/common/TagFilter';
 import { processAuditMetadata } from './processors';
 import TeamMemberFilter from '@/components/support/user/TeamMemberFilter';
-import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 
 function AuditLog({ Tabs }: { Tabs: React.ReactNode }) {
   const { t } = useSafeTranslation();
@@ -195,9 +195,7 @@ function AuditLog({ Tabs }: { Tabs: React.ReactNode }) {
                           <Box key={`${target.key}:${target.id}`}>
                             <Link
                               color="primary.600"
-                              href={getWebReqUrl(
-                                `${target.path}?${target.key}=${encodeURIComponent(target.id)}`
-                              )}
+                              href={`${target.path}?${target.key}=${encodeURIComponent(target.id)}`}
                             >
                               {target.label} · {target.id.slice(-8)}
                             </Link>

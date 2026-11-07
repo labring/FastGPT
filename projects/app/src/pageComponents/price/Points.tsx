@@ -1,5 +1,6 @@
 import React from 'react';
-import { Box, Flex, Grid, Link } from '@chakra-ui/react';
+import { Box, Flex, Grid } from '@chakra-ui/react';
+import Link from '@fastgpt/web/components/common/Link';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import ModelTable from '@/components/core/ai/ModelTable';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
