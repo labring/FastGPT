@@ -9,7 +9,7 @@ import {
 } from '../../../common/file/read/source';
 import { getFileMaxSize } from '../../../common/file/utils';
 import { UserError } from '@fastgpt/global/common/error/utils';
-import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatRoleEnum, type ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import type {
   ChatFileStoreValue,
   ChatItemMiniType,
@@ -18,11 +18,21 @@ import type {
 } from '@fastgpt/global/core/chat/type';
 import type { WorkflowResourceContext } from '@fastgpt/global/core/workflow/runtime/type';
 
+/** 根入口确定的沙盒归属；子流程继承该身份，资源鉴权仍使用自身 runningAppInfo。 */
+export type WorkflowSandboxContext = Readonly<{
+  sourceType: ChatSourceTypeEnum;
+  sourceId: string;
+  teamId: string;
+  userId: string;
+  chatId: string;
+}>;
+
 type ContextType = {
   mcpClientMemory: Record<string, MCPClient>;
   fileContext?: WorkflowFileContext;
   fileRegistrar?: WorkflowFileRegistrar;
   resourceContext?: WorkflowResourceContext;
+  sandboxContext?: WorkflowSandboxContext;
 };
 
 export const WorkflowContext = new AsyncLocalStorage<ContextType>();
@@ -54,6 +64,11 @@ export const getWorkflowFileRegistrar = () => WorkflowContext.getStore()?.fileRe
 
 /** 获取当前 App 运行时的只读资源快照。非 App 来源返回 undefined。 */
 export const getWorkflowResourceContext = () => WorkflowContext.getStore()?.resourceContext;
+
+/** 读取根沙盒身份；独立运行节点时才使用当前应用身份兜底，不依赖工作流记忆。 */
+export const getWorkflowSandboxContext = (
+  fallback: WorkflowSandboxContext
+): WorkflowSandboxContext => WorkflowContext.getStore()?.sandboxContext ?? fallback;
 
 /**
  * 为 Child 运行创建独立的聊天输入引用。
@@ -127,6 +142,7 @@ export const runWithDerivedWorkflowFileContext = async <T>({
 
     return runWithContext(
       {
+        ...parentStore,
         mcpClientMemory: parentStore?.mcpClientMemory ?? {},
         resourceContext
       },

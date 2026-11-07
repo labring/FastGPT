@@ -62,7 +62,8 @@ export const appWorkflow2AgentForm = ({
       defaultAppForm.aiSettings.model = findInputValueByKey(node.inputs, NodeInputKeyEnum.aiModel);
       defaultAppForm.aiSettings.systemPrompt = inputMap.get(NodeInputKeyEnum.aiSystemPrompt);
       defaultAppForm.aiSettings.temperature = inputMap.get(NodeInputKeyEnum.aiChatTemperature);
-      defaultAppForm.aiSettings.maxHistories = inputMap.get(NodeInputKeyEnum.history);
+      defaultAppForm.aiSettings.maxHistories =
+        inputMap.get(NodeInputKeyEnum.history) ?? defaultAppForm.aiSettings.maxHistories;
       defaultAppForm.aiSettings.aiChatReasoning =
         inputMap.get(NodeInputKeyEnum.aiChatReasoning) ?? true;
       defaultAppForm.aiSettings.aiChatReasoningEffort = inputMap.get(
@@ -241,16 +242,6 @@ export function agentForm2AppWorkflow(
               value: data.aiSettings.aiChatReasoningEffort
             },
             {
-              key: NodeInputKeyEnum.history,
-              renderTypeList: [FlowNodeInputTypeEnum.numberInput, FlowNodeInputTypeEnum.reference],
-              valueType: WorkflowIOValueTypeEnum.chatHistory,
-              label: 'core.module.input.label.chat history',
-              required: true,
-              min: 0,
-              max: 30,
-              value: data.aiSettings.maxHistories
-            },
-            {
               key: NodeInputKeyEnum.userChatInput,
               renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.textarea],
               valueType: WorkflowIOValueTypeEnum.string,
@@ -264,12 +255,7 @@ export function agentForm2AppWorkflow(
               renderTypeList: [FlowNodeInputTypeEnum.hidden], // Set in the pop-up window
               label: '',
               valueType: WorkflowIOValueTypeEnum.arrayObject,
-              value: data.selectedTools.map((tool) =>
-                serializeAgentTool({
-                  tool,
-                  maxHistories: data.aiSettings.maxHistories
-                })
-              )
+              value: data.selectedTools.map((tool) => serializeAgentTool({ tool }))
             },
             // Dataset configuration
             {

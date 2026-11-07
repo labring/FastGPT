@@ -64,6 +64,9 @@ export const createNodeSummary = (): NodeSummaryCollector => {
       summary.hasLoopRunBreak ||= !!source.hasLoopRunBreak;
       summary.hasToolStop ||= !!source.hasToolStop;
       summary.hasNestedEnd ||= !!source.hasNestedEnd;
+      if (source.hasAgentSandbox) {
+        summary.hasAgentSandbox = true;
+      }
       if (source.nestedEndOutput !== undefined) {
         summary.nestedEndOutput = source.nestedEndOutput;
       }
@@ -95,6 +98,7 @@ export const getNodeSummaryData = (summary: NodeSummary): NodeSummary => ({
   ...(summary.hasLoopRunBreak ? { hasLoopRunBreak: true } : {}),
   ...(summary.hasToolStop ? { hasToolStop: true } : {}),
   ...(summary.hasNestedEnd ? { hasNestedEnd: true } : {}),
+  ...(summary.hasAgentSandbox ? { hasAgentSandbox: true } : {}),
   ...(summary.nestedEndOutput !== undefined ? { nestedEndOutput: summary.nestedEndOutput } : {}),
   ...(summary.pluginOutput !== undefined ? { pluginOutput: summary.pluginOutput } : {}),
   ...(summary.totalPoints ? { totalPoints: summary.totalPoints } : {}),
@@ -343,6 +347,9 @@ export const mergeWorkflowRuntimeSummary = ({
       merged.hasLoopRunBreak ||= summary.hasLoopRunBreak;
       merged.hasToolStop ||= summary.hasToolStop;
       merged.hasNestedEnd ||= summary.hasNestedEnd;
+      if (summary.hasAgentSandbox) {
+        merged.hasAgentSandbox = true;
+      }
       if (summary.nestedEndOutput !== undefined) {
         merged.nestedEndOutput = summary.nestedEndOutput;
       }
@@ -371,6 +378,9 @@ export const mergeWorkflowRuntimeSummary = ({
     merged.hasLoopRunBreak ||= !!nodeSummary.hasLoopRunBreak;
     merged.hasToolStop ||= !!nodeSummary.hasToolStop;
     merged.hasNestedEnd ||= !!nodeSummary.hasNestedEnd;
+    if (nodeSummary.hasAgentSandbox) {
+      merged.hasAgentSandbox = true;
+    }
     if (nodeSummary.nestedEndOutput !== undefined) {
       merged.nestedEndOutput = nodeSummary.nestedEndOutput;
     }

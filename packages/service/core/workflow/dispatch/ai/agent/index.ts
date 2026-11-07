@@ -22,7 +22,7 @@ import {
   assertSandboxAvailable,
   resolveAppSandboxAvailability
 } from '../../../../ai/sandbox/application/availability';
-import { getWorkflowFileMaxAmount } from '../../../utils/context';
+import { getWorkflowFileMaxAmount, getWorkflowSandboxContext } from '../../../utils/context';
 import { loadWorkflowModelResource } from '../../../resource/service';
 import { runtimeSummaryToNodeSummary, stripNodeSummaryErrorFields } from '../../utils/summary';
 import { getNodeErrResponse, removeUnfinishedInteractiveHistories } from '../../utils';
@@ -172,11 +172,20 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
   const skillIds = editSkillId ? [editSkillId] : selectedSkills.map(({ skillId }) => skillId);
   const hasSandboxRuntimeDependency = !!editSkillId || skillIds.length > 0;
   const sandboxRequested = hasSandboxRuntimeDependency || !!useAgentSandbox;
-  const isAppChat = runningAppInfo.sourceType === ChatSourceTypeEnum.app;
+  const memoryState = WorkflowMemoryState.fromWorkflow(props);
+  const sandboxContext = getWorkflowSandboxContext({
+    sourceType: runningAppInfo.sourceType,
+    sourceId: runningAppInfo.sourceId,
+    teamId: runningAppInfo.teamId,
+    userId: uid,
+    chatId
+  });
+  const { sourceType: sandboxSourceType, sourceId: sandboxSourceId } = sandboxContext;
+  const isAppChat = sandboxSourceType === ChatSourceTypeEnum.app;
   const appSandboxAvailability = isAppChat
     ? await resolveAppSandboxAvailability({
         appEnabled: !!useAgentSandbox,
-        teamId: runningAppInfo.teamId
+        teamId: sandboxContext.teamId
       })
     : undefined;
   const effectiveUseAgentSandbox = isAppChat
@@ -194,7 +203,6 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
   const fileLinks = parseHistoryFiles ? props.params.fileUrlList : undefined;
 
   const provider = getWorkflowAgentLoopProvider();
-  const memoryState = WorkflowMemoryState.fromWorkflow(props);
   const agentMemoryState = memoryState.fork(`node:${nodeId}`);
   // FastAgent 作为子工具或子应用运行时，其输出在父级历史中会被标记为 displayOnly 或跨轮置空。
   // 交互恢复时优先从节点作用域 memoryState 恢复暂停前保存的完整 transcript，缺省再回退到历史。
@@ -261,7 +269,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
   };
   try {
     if (!isAppChat && sandboxRequested) {
-      await assertSandboxAvailable(runningAppInfo.teamId);
+      await assertSandboxAvailable(sandboxContext.teamId);
     }
 
     const userContext = await useUserContext({
@@ -281,14 +289,14 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     // 初始化 sandbox：初始化、注入 skills、files。命中 Version 快照的 Skill 由快照授权，未命中的检查运行人权限。
     const prepareRuntime = () =>
       ensureAgentSandboxRuntime({
-        sourceType: runningAppInfo.sourceType,
-        sourceId: runningAppInfo.sourceId,
-        userId: uid,
-        chatId,
-        teamId: runningAppInfo.teamId,
+        sourceType: sandboxSourceType,
+        sourceId: sandboxSourceId,
+        userId: sandboxContext.userId,
+        chatId: sandboxContext.chatId,
         tmbId: runningUserInfo.tmbId,
         needSandboxRuntime: effectiveUseAgentSandbox,
         sandboxEntrypoint: effectiveSandboxEntrypoint,
+        sandboxEntrypointScope: `${runningAppInfo.sourceType}:${runningAppInfo.sourceId}:node:${nodeId}`,
         skillIds: effectiveSkillIds,
         selectedSkills: effectiveSelectedSkills,
         editSkillId,
@@ -298,13 +306,17 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     const { sandboxClient, currentWorkingDirectory, skillInfos } = effectiveUseAgentSandbox
       ? await ensureWorkflowSandboxReadyForUse({
           workflowStreamResponse,
-          sourceType: runningAppInfo.sourceType,
-          sourceId: runningAppInfo.sourceId,
-          userId: uid,
-          chatId,
+          sourceType: sandboxSourceType,
+          sourceId: sandboxSourceId,
+          userId: sandboxContext.userId,
+          chatId: sandboxContext.chatId,
+          teamId: sandboxContext.teamId,
           prepareRuntime
         })
       : await prepareRuntime();
+    if (effectiveUseAgentSandbox) {
+      props.nodeSummary?.mergeNodeSummary({ hasAgentSandbox: true });
+    }
 
     // 获取请求上下文
     const { queryInput } = userContext;

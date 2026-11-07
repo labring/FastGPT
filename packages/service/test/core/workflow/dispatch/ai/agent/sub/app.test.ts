@@ -805,6 +805,56 @@ describe('agent sub app dispatchApp', () => {
       'internal default'
     );
   });
+
+  it('forwards fileUrlList into child query and propagates sandbox usage', async () => {
+    const fileUrl = 'https://files.example.com/input.pdf';
+    mocks.getAppVersionById.mockResolvedValue({
+      resources: [],
+      nodes: [],
+      edges: [],
+      chatConfig: { fileSelectConfig: { canSelectFile: true }, variables: [] }
+    });
+    mocks.runWorkflow.mockResolvedValue({
+      assistantResponses: [{ text: { content: 'final child agent answer' } }],
+      flowUsages: [],
+      workflowRuntimeSummary: {
+        ...summarizeRuntimeNodeResponses(undefined, []),
+        hasAgentSandbox: true
+      }
+    });
+
+    const result = await dispatchApp({
+      app: { id: 'child-app', name: 'Child ChatAgent' },
+      runningAppInfo: {
+        sourceType: ChatSourceTypeEnum.app,
+        sourceId: 'middle-app',
+        teamId: 'team',
+        tmbId: 'member',
+        name: 'Middle'
+      },
+      runningUserInfo: { teamId: 'team', tmbId: 'member' },
+      customAppVariables: { fileUrlList: [fileUrl] },
+      userChatInput: 'analyze this file',
+      timezone: 'Asia/Shanghai',
+      uid: 'user',
+      chatId: 'chat',
+      responseChatItemId: 'response',
+      variableState: await createVariableState(),
+      checkIsStopping: vi.fn(() => false),
+      maxRunTimes: 20,
+      workflowDispatchDeep: 0
+    } as any);
+
+    const callArgs = mocks.runWorkflow.mock.calls[0][0];
+    expect(callArgs.query).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ file: expect.objectContaining({ url: fileUrl }) }),
+        expect.objectContaining({ text: { content: 'analyze this file' } })
+      ])
+    );
+    expect(result.response).toBe('final child agent answer');
+    expect(result.nodeSummary?.hasAgentSandbox).toBe(true);
+  });
 });
 
 describe('Agent nested workflow memory isolation', () => {

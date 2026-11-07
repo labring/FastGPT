@@ -94,6 +94,10 @@ describe('abandoned dispatchAppRequest', () => {
       resources: []
     });
     runWorkflowMock.mockImplementation(async (args: any) => {
+      expect(args.lastInteractive).toBeUndefined();
+      expect(args.query).toEqual(
+        expect.arrayContaining([expect.objectContaining({ text: { content: 'hello' } })])
+      );
       childInitialValue = args.variableState.get('shared');
       await args.variableState.set('shared', 'child-value');
       return {
@@ -132,7 +136,8 @@ describe('abandoned dispatchAppRequest', () => {
       },
       workflowStreamResponse: vi.fn(),
       histories: [],
-      query: [],
+      query: [{ text: { content: 'parent selection' } }],
+      lastInteractive: { type: 'userInput', entryNodeIds: ['parent-input'] },
       variableState: parentVariableState,
       params: {
         [NodeInputKeyEnum.userChatInput]: 'hello',

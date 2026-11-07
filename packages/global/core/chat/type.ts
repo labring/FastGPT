@@ -101,7 +101,10 @@ export type SkillModuleResponseItemType = z.infer<typeof SkillModuleResponseItem
 export const ChatSummarySchema = z
   .object({
     llmInputTokens: NumSchema.default(0).meta({ description: '会话累计 LLM 输入 token 数' }),
-    llmOutputTokens: NumSchema.default(0).meta({ description: '会话累计 LLM 输出 token 数' })
+    llmOutputTokens: NumSchema.default(0).meta({ description: '会话累计 LLM 输出 token 数' }),
+    hasAgentSandbox: BoolSchema.optional().meta({
+      description: '服务端记录的会话运行期 Agent Sandbox 启用标记'
+    })
   })
   .default({ llmInputTokens: 0, llmOutputTokens: 0 });
 export type ChatSummaryType = z.infer<typeof ChatSummarySchema>;

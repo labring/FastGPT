@@ -4,12 +4,13 @@ import { buildSandboxClientQueryFromChatSource } from '../../../ai/sandbox/inter
 import { ensureAppSandboxRuntimeReady } from '../../../ai/sandbox/application/runtime/upgrade';
 import { getRunningSandboxId } from '../../../ai/sandbox/utils/id';
 import type { WorkflowResponseType } from '@fastgpt/global/core/workflow/runtime/sse';
+import { markChatSandboxEnabled } from '../../../chat/sandbox/service';
 
 /**
  * 编排 Workflow AI 节点的虚拟机准备流程，并推送准备、升级和就绪状态。
  *
  * 进入即报告准备状态，App source 先收敛 provider/image 配置，再由节点准备运行环境。
- * prepareRuntime 必须覆盖节点需要的文件、Skill 和 entrypoint 初始化；成功后才报告就绪，
+ * prepareRuntime 必须覆盖节点需要的文件、Skill 和 entrypoint 初始化；成功后先持久化根会话标记再报告就绪，
  * 任何阶段失败都向上传递错误，不误报就绪。其他 source 的生命周期仍由节点负责。
  */
 export async function ensureWorkflowSandboxReadyForUse<T>({
@@ -18,6 +19,7 @@ export async function ensureWorkflowSandboxReadyForUse<T>({
   sourceId,
   userId,
   chatId,
+  teamId,
   prepareRuntime
 }: {
   workflowStreamResponse?: WorkflowResponseType;
@@ -25,6 +27,7 @@ export async function ensureWorkflowSandboxReadyForUse<T>({
   sourceId: string;
   userId: string;
   chatId: string;
+  teamId: string;
   prepareRuntime: () => Promise<T>;
 }): Promise<T> {
   const sandboxId = getRunningSandboxId({ sourceType, sourceId, userId });
@@ -54,6 +57,10 @@ export async function ensureWorkflowSandboxReadyForUse<T>({
   }
 
   const runtime = await prepareRuntime();
+  // ready 事件会触发独立的文件/ticket 请求，必须先让鉴权读取到根会话的成功标记。
+  if (sourceType === ChatSourceTypeEnum.app) {
+    await markChatSandboxEnabled({ sourceType, sourceId, chatId, teamId });
+  }
   reportSandboxPhase('ready');
   return runtime;
 }
