@@ -194,6 +194,16 @@ describe('extractDeepestInteractive', () => {
 });
 
 describe('getMaxHistoryLimitFromNodes', () => {
+  it('loads the upper bound of an ordinary chat periodic history window', () => {
+    expect(
+      getMaxHistoryLimitFromNodes([
+        {
+          flowNodeType: FlowNodeTypeEnum.chatNode,
+          inputs: [{ key: 'aiChatHistoryWindow', value: { min: 6, max: 40 } }]
+        } as any
+      ])
+    ).toBe(80);
+  });
   it.each([FlowNodeTypeEnum.agent, FlowNodeTypeEnum.toolCall])(
     'uses continuous recovery history for %s',
     (flowNodeType) => {

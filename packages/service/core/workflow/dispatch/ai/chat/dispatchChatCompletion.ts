@@ -11,7 +11,9 @@ import { computedMaxToken } from '../../../../ai/utils';
 import { postTextCensor } from '../../../../chat/postTextCensor';
 import { getWorkflowFileContext, getWorkflowFileMaxAmount } from '../../../utils/context';
 import { loadWorkflowModelResource } from '../../../resource/service';
-import { checkQuoteQAValue, getHistories, getNodeErrResponse } from '../../utils';
+import { checkQuoteQAValue, getNodeErrResponse } from '../../utils';
+import { getWorkflowSourceNodeKey } from '../../utils/source';
+import { selectChatHistories } from './historyWindow';
 import { getChatMessages } from './chatMessages';
 import { getDatasetCiteData } from './datasetCite';
 import { getAIChatFileContextConfig, getInputFiles } from './fileContext';
@@ -28,7 +30,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     retainDatasetCite = true,
     externalProvider,
     histories,
-    node: { name, version, inputs },
+    node: { nodeId, name, version, inputs },
     runningUserInfo,
     runningAppInfo,
     workflowStreamResponse,
@@ -40,6 +42,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       temperature,
       maxToken,
       history = 6,
+      aiChatHistoryWindow,
       userChatInput: rawUserChatInput = '',
       isResponseAnswerText = true,
       systemPrompt = '',
@@ -81,7 +84,14 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     const fileContextConfig = getAIChatFileContextConfig({ inputs, rawFileLinks });
     fileLinks = fileContextConfig.fileLinks;
 
-    const chatHistories = getHistories(history, histories);
+    const historySelection = selectChatHistories({
+      history,
+      histories,
+      window: aiChatHistoryWindow,
+      memoryKey: `${getWorkflowSourceNodeKey({ runningAppInfo, nodeId })}:historyWindow`,
+      responseChatItemId: props.responseChatItemId
+    });
+    const chatHistories = historySelection.histories;
     quoteQA = checkQuoteQAValue(quoteQA);
 
     const [datasetCiteData, userFiles] = await Promise.all([
@@ -239,6 +249,9 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     }
 
     return {
+      ...(historySelection.memories
+        ? { [DispatchNodeResponseKeyEnum.memories]: historySelection.memories }
+        : {}),
       data: {
         answerText: answerText,
         reasoningText,
