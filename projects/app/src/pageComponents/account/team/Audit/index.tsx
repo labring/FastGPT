@@ -32,6 +32,7 @@ import { downloadFetch } from '@/web/common/system/utils';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { parseLocale } from '@fastgpt/global/common/i18n/utils';
 import dayjs from 'dayjs';
+import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 
 function AuditLog({ Tabs }: { Tabs: React.ReactNode }) {
   /** 最近七个本地自然日含今天，按日历日期计算并补齐首尾边界。 */
@@ -269,7 +270,9 @@ function AuditLog({ Tabs }: { Tabs: React.ReactNode }) {
                           <Box key={`${target.key}:${target.id}`}>
                             <Link
                               color="primary.600"
-                              href={`${target.path}?${target.key}=${encodeURIComponent(target.id)}`}
+                              href={getWebReqUrl(
+                                `${target.path}?${target.key}=${encodeURIComponent(target.id)}`
+                              )}
                             >
                               {target.label} · {target.id.slice(-8)}
                             </Link>
