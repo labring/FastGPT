@@ -1,0 +1,40 @@
+{
+  "name": "@fastgpt/cli",
+  "version": "0.1.0",
+  "description": "FastGPT command line client",
+  "type": "module",
+  "license": "Apache-2.0",
+  "bin": {
+    "fastgpt": "./dist/cli.js"
+  },
+  "exports": {
+    "./run": {
+      "types": "./dist/run.d.ts",
+      "import": "./dist/run.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=22.23.2"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --config vitest.config.ts"
+  },
+  "devDependencies": {
+    "@fastgpt-sdk/client": "workspace:*",
+    "ajv": "catalog:",
+    "@types/node": "catalog:",
+    "@vitest/coverage-v8": "catalog:",
+    "tsdown": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

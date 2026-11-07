@@ -13,6 +13,8 @@ describe('resolveTestPlan', () => {
         '--concurrency=1',
         '--filter=@fastgpt/app',
         '--filter=@fastgpt/web',
+        '--filter=@fastgpt-sdk/client',
+        '--filter=@fastgpt/cli',
         '--filter=@fastgpt/workflow-core',
         '--filter=@fastgpt/workflow-cli'
       ])
@@ -21,6 +23,10 @@ describe('resolveTestPlan', () => {
   });
 
   it.each([
+    {
+      scopeValue: 'client,cli',
+      filters: ['--filter=@fastgpt-sdk/client', '--filter=@fastgpt/cli']
+    },
     {
       scopeValue: 'global,service',
       filters: ['--filter=@fastgpt/global', '--filter=@fastgpt/service']
