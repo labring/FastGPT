@@ -18,16 +18,19 @@ import type {
   SandboxState,
   FileWriteEntry,
   FileWriteResult,
-  FileReadResult,
-  ReadFileOptions
+  FileReadResult
 } from '../../types';
 import { BaseSandboxAdapter } from '../base';
 import { DevboxClient, DevboxClientError } from './client';
 import { DevboxPhaseEnum, type DevboxCreateRequest, type DevboxInfoData } from './types';
-import { formatImageSpec, parseImageSpec } from '@/utils/image';
-import { joinUrlPath } from '@/utils/url';
-import { fileDataToUint8Array, isReadableStreamData, posixModeToOctalNumber } from '@/utils/files';
-import { BoundedOutputBuffer } from '@/utils/outputBuffer';
+import { formatImageSpec, parseImageSpec } from '../../utils/image';
+import { joinUrlPath } from '../../utils/url';
+import {
+  fileDataToUint8Array,
+  isReadableStreamData,
+  posixModeToOctalNumber
+} from '../../utils/files';
+import { BoundedOutputBuffer } from '../../utils/outputBuffer';
 
 const GET_INFO_RETRY_TIMEOUT_MS = 30_000;
 const GET_INFO_RETRY_INTERVAL_MS = 1_000;
@@ -364,6 +367,20 @@ export class SealosDevboxAdapter extends BaseSandboxAdapter {
     }
   }
 
+  /** 只验证现有 Running 资源和命令通道，不创建或恢复停止的 Devbox。 */
+  async connectRunning(): Promise<void> {
+    const info = await this.getInfoWithProviderRetry();
+    if (!info) throw new SandboxNotFoundError(`Sandbox ${this._id} does not exist`);
+    if (info.status.state !== 'Running') {
+      throw new SandboxStateError(
+        'Cannot connect to an inactive sandbox',
+        info.status.state,
+        'Running'
+      );
+    }
+    await this.waitUntilCommandReady();
+  }
+
   async ensureRunning(options: SandboxEnsureRunningOptions = {}): Promise<void> {
     try {
       const allowCreate = options.allowCreate ?? true;
@@ -520,19 +537,11 @@ export class SealosDevboxAdapter extends BaseSandboxAdapter {
     return results;
   }
 
-  async readFiles(paths: string[], options?: ReadFileOptions): Promise<FileReadResult[]> {
+  async readFiles(paths: string[]): Promise<FileReadResult[]> {
     const results: FileReadResult[] = [];
     for (const path of paths) {
       const normalizedPath = this.normalizePath(path);
       try {
-        if (options?.offset !== undefined || options?.length !== undefined) {
-          const [fallbackResult] = await super.readFiles([normalizedPath], options);
-          if (fallbackResult) {
-            results.push(fallbackResult);
-            continue;
-          }
-        }
-
         const buffer = await this.api.downloadFile(this._id, { path: normalizedPath });
         results.push({
           path: normalizedPath,

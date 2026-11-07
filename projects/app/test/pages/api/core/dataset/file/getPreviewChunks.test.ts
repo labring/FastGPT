@@ -1,5 +1,5 @@
-import { DatasetSourceReadTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
+import { DatasetSourceReadTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -28,10 +28,18 @@ vi.mock('@fastgpt/service/core/dataset/read', () => ({
   rawText2Chunks: mocks.rawText2Chunks
 }));
 
-vi.mock('@fastgpt/service/core/ai/model', () => ({
-  getModelHandle: async () => ({
-    getEmbeddingModelData: vi.fn(() => ({ modelId: 'embedding-id', config: {} })),
-    getLLMModelData: vi.fn(() => ({ modelId: 'llm-id', config: {} }))
+vi.mock('@fastgpt/service/core/ai/model/catalog/service', () => ({
+  getSystemModelHandle: async () => ({
+    getModelData: vi.fn((_ref: unknown, options?: { type?: string }) => ({
+      modelId: options?.type === 'embedding' ? 'embedding-id' : 'llm-id',
+      config: {}
+    }))
+  }),
+  getTeamModelHandle: async () => ({
+    getModelData: vi.fn((_ref: unknown, options?: { type?: string }) => ({
+      modelId: options?.type === 'embedding' ? 'embedding-id' : 'llm-id',
+      config: {}
+    }))
   })
 }));
 

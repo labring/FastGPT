@@ -321,7 +321,6 @@ describe('filterSensitiveFormData', () => {
       type: 'manual',
       value: {
         apiKey: {
-          secret: '',
           value: 'secret-key'
         }
       }

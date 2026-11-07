@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { PluginStatusEnum } from '@fastgpt/global/core/plugin/type';
 import {
   FlowNodeInputTypeEnum,
   FlowNodeTypeEnum
@@ -23,6 +24,14 @@ vi.mock('@fastgpt/service/core/plugin/teamPluginPolicy', async (importOriginal) 
 }));
 
 import { getClientSystemToolPreviewNode } from '@fastgpt/service/core/app/tool/utils/client';
+import { createWorkflowDocument } from '@fastgpt/workflow-core/src/domain/document';
+import { applyWorkflowCommand } from '@fastgpt/workflow-core/src/command/apply';
+import { createWorkflowTemplateBundleProvider } from '@fastgpt/workflow-core/src/template/provider';
+import { compileStoreWorkflow } from '@fastgpt/workflow-core/src/store/compile';
+import { formatToolInputSecrets } from '@fastgpt/service/core/app/tool/secretConfig';
+import { getSecretValue } from '@fastgpt/service/common/secret/utils';
+import { validateNodeIO } from '@fastgpt/workflow-core/src/validation/io';
+import type { WorkflowDiagnostic } from '@fastgpt/workflow-core/src/domain/diagnostic';
 
 describe('getClientSystemToolPreviewNode', () => {
   beforeEach(() => {
@@ -33,11 +42,11 @@ describe('getClientSystemToolPreviewNode', () => {
     mocks.assertTeamPluginSourceAccess.mockResolvedValue('teamId:team-1');
   });
 
-  it('adds system input config when system tool has secrets', async () => {
+  it('creates, configures, compiles and encrypts system tool authorization for runtime use', async () => {
     mocks.getSystemToolDetail.mockResolvedValueOnce({
       id: 'systemTool-weather',
       version: '1.0.0',
-      status: 1,
+      status: PluginStatusEnum.Normal,
       source: 'system',
       isToolSet: false,
       avatar: 'weather.svg',
@@ -95,6 +104,53 @@ describe('getClientSystemToolPreviewNode', () => {
     expect(result.inputs[1]?.key).toBe('city');
     expect(result.version).toBe('1.0.0');
     expect(result.versionLabel).toBe('1.0.0');
+
+    const template = {
+      kind: 'systemTool' as const,
+      toolId: 'systemTool-weather',
+      source: 'system',
+      versionId: '1.0.0'
+    };
+    const dependencies = {
+      templateProvider: createWorkflowTemplateBundleProvider({
+        schemaVersion: 'fastgpt-workflow-template-bundle/v1',
+        items: [{ ref: template, template: result }]
+      })
+    };
+    const original = createWorkflowDocument();
+    const created = await applyWorkflowCommand({
+      document: original,
+      command: { type: 'node.add', template, nodeId: 'weather' },
+      dependencies
+    });
+    const configured = await applyWorkflowCommand({
+      document: created.document,
+      command: {
+        type: 'input.set',
+        nodeId: 'weather',
+        inputKey: NodeInputKeyEnum.systemInputConfig,
+        value: { type: 'manual', value: { apiKey: { value: 'test-only-api-key' } } }
+      },
+      dependencies
+    });
+    expect(created.document.nodes[0].inputs[0].value).toBeUndefined();
+    const { nodes } = compileStoreWorkflow(configured.document);
+    formatToolInputSecrets({ inputs: nodes[0].inputs, flowNodeType: nodes[0].flowNodeType });
+    const authorization = nodes[0].inputs[0].value;
+    expect(authorization.type).toBe('manual');
+    expect(authorization.value.apiKey.value).toBeUndefined();
+    expect(authorization.value.apiKey.secret).toBeTruthy();
+    expect(JSON.stringify(nodes)).not.toContain('test-only-api-key');
+    expect(getSecretValue({ storeSecret: authorization.value })).toEqual({
+      apiKey: 'test-only-api-key'
+    });
+
+    const encryptedBefore = structuredClone(authorization);
+    formatToolInputSecrets({ inputs: nodes[0].inputs, flowNodeType: nodes[0].flowNodeType });
+    expect(nodes[0].inputs[0].value).toEqual(encryptedBefore);
+    const diagnostics: WorkflowDiagnostic[] = [];
+    validateNodeIO({ document: configured.document, node: nodes[0], diagnostics });
+    expect(diagnostics).toEqual([]);
   });
 
   it('keeps inputs unchanged when system tool has no secrets', async () => {
@@ -133,6 +189,85 @@ describe('getClientSystemToolPreviewNode', () => {
     expect(result.inputs[0]?.key).toBe('city');
     expect(result.version).toBe('');
     expect(result.versionLabel).toBeUndefined();
+  });
+
+  it('selects plugin metadata and x-i18n strings for the preview snapshot', async () => {
+    mocks.getSystemToolDetail.mockResolvedValueOnce({
+      id: 'systemTool-search',
+      version: '1.0.0',
+      status: 1,
+      source: 'system',
+      isToolSet: true,
+      avatar: 'search.svg',
+      name: { en: 'Document search', 'zh-CN': '文档搜索' },
+      intro: { en: 'Search summary', 'zh-CN': '搜索简介' },
+      author: 'FastGPT',
+      tags: [],
+      currentCost: 0,
+      systemKeyCost: 0,
+      hasTokenFee: false,
+      hasSystemSecret: false,
+      readmeUrl: 'https://example.com/legacy.md',
+      readmeUrls: {
+        en: 'https://example.com/en.md',
+        'zh-CN': 'https://example.com/zh.md'
+      },
+      inputSchema: {
+        type: 'object',
+        properties: {
+          query: {
+            type: 'string',
+            'x-i18n': {
+              title: { en: 'Query', 'zh-CN': '查询' },
+              description: { en: 'Search text', 'zh-CN': '检索文本' },
+              placeholder: { en: 'Enter query', 'zh-CN': '输入查询' }
+            }
+          }
+        }
+      },
+      outputSchema: {
+        type: 'object',
+        properties: {
+          result: {
+            type: 'string',
+            'x-i18n': { title: { en: 'Result', 'zh-CN': '结果' } }
+          }
+        }
+      },
+      children: [
+        {
+          id: 'pages',
+          name: { en: 'Search pages', 'zh-CN': '搜索页面' },
+          description: { en: 'Search the page index', 'zh-CN': '搜索页面索引' },
+          inputSchema: { type: 'object', properties: {} },
+          outputSchema: { type: 'object', properties: {} }
+        }
+      ]
+    });
+
+    const result = await getClientSystemToolPreviewNode({
+      pluginId: 'systemTool-search',
+      lang: 'en'
+    });
+
+    expect(result).toMatchObject({
+      name: 'Document search',
+      intro: 'Search summary',
+      metadataLocale: 'en',
+      readmeUrl: 'https://example.com/en.md',
+      toolConfig: {
+        systemToolSet: {
+          toolList: [{ name: 'Search pages', description: 'Search the page index' }]
+        }
+      }
+    });
+    expect(result.inputs[0]).toMatchObject({
+      key: 'query',
+      label: 'Query',
+      description: 'Search text',
+      placeholder: 'Enter query'
+    });
+    expect(result.outputs[0]).toMatchObject({ id: 'result', label: 'Result' });
   });
 
   it('restores workflow tool input metadata before applying its default mode', async () => {

@@ -3,16 +3,16 @@ import { getGridPageSize, getGridRequestPageSize } from '../../hooks/useResponsi
 
 describe('getGridPageSize', () => {
   it('returns a page size that fills complete grid rows', () => {
-    expect(getGridPageSize(1)).toBe(50);
-    expect(getGridPageSize(2)).toBe(50);
-    expect(getGridPageSize(3)).toBe(51);
-    expect(getGridPageSize(4)).toBe(52);
+    expect(getGridPageSize(1)).toBe(20);
+    expect(getGridPageSize(2)).toBe(20);
+    expect(getGridPageSize(3)).toBe(21);
+    expect(getGridPageSize(4)).toBe(20);
   });
 
   it('normalizes invalid column counts', () => {
-    expect(getGridPageSize(0)).toBe(50);
-    expect(getGridPageSize(-2)).toBe(50);
-    expect(getGridPageSize(Number.NaN)).toBe(50);
+    expect(getGridPageSize(0)).toBe(20);
+    expect(getGridPageSize(-2)).toBe(20);
+    expect(getGridPageSize(Number.NaN)).toBe(20);
   });
 
   it('reserves one slot only for the first request', () => {

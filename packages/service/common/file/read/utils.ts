@@ -1,4 +1,5 @@
 import FormData from 'form-data';
+import path from 'node:path';
 import type { ReadFileResponse } from '../../../worker/readFile/type';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
@@ -245,13 +246,24 @@ const readFileContent = async ({
     const token = global.systemEnv.customPdfParse?.key;
     if (!url) return systemParse();
 
-    const { buffer, extension: materializedExtension } = await getMaterializedFile();
+    const { buffer, extension: materializedExtension, metadata } = await getMaterializedFile();
+    // 保留来源文件名主体并清理空白和 multipart 特殊字符；统一使用物化格式的小写后缀，兼容旧解析服务。
+    const filename = (() => {
+      const originalFilename = metadata?.filename?.trim().replace(/[\\/"\r\n]/g, '_');
+      if (!originalFilename) return `file.${materializedExtension}`;
+
+      const filenameExtension = path.extname(originalFilename);
+      const filenameWithoutExtension = filenameExtension
+        ? originalFilename.slice(0, -filenameExtension.length)
+        : originalFilename.replace(/\.$/, '');
+      return `${filenameWithoutExtension}.${materializedExtension}`;
+    })();
     const start = Date.now();
-    logger.info('Start parsing file via external service', { extension });
+    logger.info('Start parsing file via external service', { extension, filename });
 
     const data = new FormData();
     data.append('file', buffer, {
-      filename: `file.${materializedExtension}`
+      filename
     });
     appendIultmzhFileParseFields(data, sangforFileParseConfig);
     const { data: response } = await axios.post<{
@@ -272,6 +284,7 @@ const readFileContent = async ({
 
     logger.info('External file parsing completed', {
       extension,
+      filename,
       durationMs: Date.now() - start
     });
 

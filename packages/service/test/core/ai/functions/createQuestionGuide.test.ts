@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import type { LLMSystemModelDataType } from '@fastgpt/global/core/ai/model/schema';
+import type { LLMModelDataType } from '@fastgpt/global/core/ai/model/schema';
 
 const { createLLMResponseMock } = vi.hoisted(() => ({
   createLLMResponseMock: vi.fn()
@@ -13,7 +13,7 @@ vi.mock('@fastgpt/service/core/ai/llm/request', () => ({
 import { createQuestionGuide } from '@fastgpt/service/core/ai/functions/createQuestionGuide';
 
 describe('createQuestionGuide', () => {
-  const buildModel = (reasoning: boolean): LLMSystemModelDataType => ({
+  const buildModel = (reasoning: boolean): LLMModelDataType => ({
     modelId: '507f1f77bcf86cd799439013',
     provider: 'openai',
     model: reasoning ? 'deepseek-r1' : 'gpt-4o',

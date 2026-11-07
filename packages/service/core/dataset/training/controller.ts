@@ -6,10 +6,10 @@ import type {
 } from '@fastgpt/global/openapi/core/dataset/data/api';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { type ClientSession } from '../../../common/mongo';
-import { isImageEmbeddingModel } from '../../ai/model';
+import { isImageEmbeddingModel } from '@fastgpt/global/core/ai/model/utils';
 import type {
-  EmbeddingSystemModelDataType,
-  LLMSystemModelDataType
+  EmbeddingModelDataType,
+  LLMModelDataType
 } from '@fastgpt/global/core/ai/model/schema';
 import { mongoSessionRun } from '../../../common/mongo/sessionRun';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
@@ -20,8 +20,9 @@ import { checkTimerLock, deleteTimerLock } from '../../../common/system/timerLoc
 import { BLOCKED_LOCK_TIME } from './query';
 import { MongoDatasetData } from '../data/schema';
 import { isS3ObjectKey, removeS3TTL } from '../../../common/s3/utils';
-import { getDatasetSynonymTransformContext, isDatasetSynonymEnabled } from '../synonym/entity';
+import { getDatasetSynonymTransformContext } from '../synonym/entity';
 import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
+import { serviceEnv } from '../../../env';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.TRAINING);
 
@@ -40,9 +41,9 @@ const getTrainingModeLimit = async ({
   vlmModelConfigured
 }: {
   mode: TrainingModeEnum;
-  agentModel?: LLMSystemModelDataType;
-  vectorModel: EmbeddingSystemModelDataType;
-  vlmModel?: LLMSystemModelDataType;
+  agentModel?: LLMModelDataType;
+  vectorModel: EmbeddingModelDataType;
+  vlmModel?: LLMModelDataType;
   vlmModelConfigured: boolean;
 }): Promise<{ maxToken: number; weight: number }> => {
   if (
@@ -239,9 +240,9 @@ export const pushDataListToTrainingQueue = async ({
   data: PushDataChunkWithDataIdType[];
   mode?: TrainingModeEnum;
 
-  agentModel?: LLMSystemModelDataType;
-  vectorModel: EmbeddingSystemModelDataType;
-  vlmModel?: LLMSystemModelDataType;
+  agentModel?: LLMModelDataType;
+  vectorModel: EmbeddingModelDataType;
+  vlmModel?: LLMModelDataType;
   /** 是否配置了 VLM 引用，不代表模型当前可用；未传时沿用模型对象是否存在的判断。 */
   vlmModelConfigured?: boolean;
 
@@ -408,9 +409,9 @@ export const preCreateDatasetDataAndPushToTrainingQueue = async ({
   data: PushDataChunkType[];
   mode?: TrainingModeEnum;
 
-  agentModel?: LLMSystemModelDataType;
-  vectorModel: EmbeddingSystemModelDataType;
-  vlmModel?: LLMSystemModelDataType;
+  agentModel?: LLMModelDataType;
+  vectorModel: EmbeddingModelDataType;
+  vlmModel?: LLMModelDataType;
   vlmModelConfigured?: boolean;
 
   indexSize?: number;
@@ -431,7 +432,7 @@ export const preCreateDatasetDataAndPushToTrainingQueue = async ({
     return { insertLen: 0, dataIds: [] };
   }
 
-  const synonymContext = isDatasetSynonymEnabled()
+  const synonymContext = serviceEnv.DATASET_SYNONYM_ENABLED
     ? await getDatasetSynonymTransformContext({ teamId, datasetId })
     : undefined;
 
@@ -495,32 +496,39 @@ export const preCreateDatasetDataAndPushToTrainingQueue = async ({
   };
 };
 
+/** 批量写入解析任务，支持整批共用账单或逐集合账单；保留单条调用入参兼容。 */
 export const pushDatasetToParseQueue = async ({
   teamId,
   tmbId,
   datasetId,
-  collectionId,
-  billId,
-  session
+  session,
+  ...input
 }: {
   teamId: string;
   tmbId: string;
   datasetId: string;
-  collectionId: string;
-  billId: string;
   session: ClientSession;
-}) => {
-  await MongoDatasetTraining.create(
-    [
-      {
-        teamId,
-        tmbId,
-        datasetId,
-        collectionId,
-        billId,
-        mode: TrainingModeEnum.parse
-      }
-    ],
+} & (
+  | { collectionId: string | string[]; billId: string }
+  | { items: { collectionId: string; billId: string }[] }
+)) => {
+  const items =
+    'items' in input
+      ? input.items
+      : (Array.isArray(input.collectionId) ? input.collectionId : [input.collectionId]).map(
+          (collectionId) => ({ collectionId, billId: input.billId })
+        );
+  if (items.length === 0) return;
+
+  await MongoDatasetTraining.insertMany(
+    items.map(({ collectionId, billId }) => ({
+      teamId,
+      tmbId,
+      datasetId,
+      collectionId,
+      billId,
+      mode: TrainingModeEnum.parse
+    })),
     { session, ordered: true }
   );
 };

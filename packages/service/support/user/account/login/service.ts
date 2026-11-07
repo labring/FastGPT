@@ -88,12 +88,12 @@ export const completePasswordLogin = async ({
     isRoot: username === 'root',
     session,
     createTeamIfUnavailable:
-      username !== 'root' && global.systemConfig?.teamMode === 'multi'
-        ? ({ userId, session: teamSession }) =>
+      username !== 'root' && global.feConfigs?.teamMode === 'multi'
+        ? ({ userId }) =>
             createUserLoginTeam({
               userId,
               username: user.username,
-              session: teamSession as ClientSession
+              session
             })
         : undefined
   });
@@ -150,9 +150,7 @@ export const finishPasswordLogin = async ({
 
   pushTrack.login({
     type: 'password',
-    uid: user._id,
-    teamId: userDetail.team.teamId,
-    tmbId: userDetail.team.tmbId
+    uid: user._id
   });
   void addAuditLog({
     tmbId: userDetail.team.tmbId,

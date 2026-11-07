@@ -11,7 +11,7 @@ import {
   SubModeEnum,
   SubTypeEnum
 } from '../../../../support/wallet/sub/constants';
-import { PaginationResponseSchema, PaginationSchema } from '../../../api';
+import { PaginationResponseSchema, createPaginationSchema } from '../../../api';
 import { CouponTypeEnum } from '../../../../support/wallet/sub/coupon/constants';
 
 /* ============================================================================
@@ -87,7 +87,7 @@ export const BillItemSchema = z
 export type BillItemType = z.infer<typeof BillItemSchema>;
 
 // Bill list
-export const BillListQuerySchema = PaginationSchema.extend({
+export const BillListQuerySchema = createPaginationSchema({
   type: z
     .union([z.enum(BillTypeEnum), z.literal('other')])
     .optional()

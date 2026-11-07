@@ -1,13 +1,21 @@
+import { getFileUploadLimits } from '../../common/file/limit';
+
 const normalizeFileAmount = (amount: number) => Math.max(0, Math.floor(amount));
 
-/** 用户文件数量配额：团队套餐已配置时使用团队值，否则回退到系统值。 */
+/** 用户文件数量配额：团队套餐已配置时使用团队值，0 或缺省值回退到系统值。 */
 export const getUserFileAmountLimit = ({
   teamMaxFileAmount,
   systemMaxFileAmount
 }: {
   teamMaxFileAmount?: number;
   systemMaxFileAmount: number;
-}) => normalizeFileAmount(teamMaxFileAmount ?? systemMaxFileAmount);
+}) =>
+  normalizeFileAmount(
+    getFileUploadLimits({
+      teamPlan: { maxUploadFileCount: teamMaxFileAmount },
+      systemLimit: { uploadFileMaxAmount: systemMaxFileAmount }
+    }).maxUploadFileCount
+  );
 
 /** 模块文件数量上限取模块配额和用户配额的较小值；模块未配置时使用用户配额。 */
 export const getFileAmountLimit = ({
@@ -46,11 +54,20 @@ export const getModuleFileAmountLimit = ({
   return Math.min(userLimit, normalizeFileAmount(configuredModuleLimit));
 };
 
-/** 用户单文件大小配额，输入单位为 MB，输出单位为字节。 */
+/** 用户单文件大小配额，0 或缺省值回退到系统值；输入单位为 MB，输出单位为字节。 */
 export const getFileSizeLimitBytes = ({
   teamMaxFileSize,
   systemMaxFileSize
 }: {
   teamMaxFileSize?: number;
   systemMaxFileSize: number;
-}) => Math.max(0, teamMaxFileSize ?? systemMaxFileSize) * 1024 * 1024;
+}) =>
+  Math.max(
+    0,
+    getFileUploadLimits({
+      teamPlan: { maxUploadFileSize: teamMaxFileSize },
+      systemLimit: { uploadFileMaxSize: systemMaxFileSize }
+    }).maxUploadFileSize
+  ) *
+  1024 *
+  1024;

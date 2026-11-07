@@ -94,7 +94,7 @@ const DataCard = () => {
     refreshList,
     setData: setDatasetDataList
   } = useScrollPagination(loadDataList, {
-    pageSize: 15,
+    pageSize: 20,
     params: scrollParams,
     refreshDeps: [searchText, collectionId],
     EmptyTip: EmptyTipDom
@@ -320,7 +320,7 @@ const DataCard = () => {
           />
         </Flex>
         {/* data */}
-        <ScrollData px={5} pb={5} showLoadingOverlay={false} showPaginationTip={!showSkeleton}>
+        <ScrollData px={5} pb={5} showPaginationTip={!showSkeleton}>
           <Flex flexDir={'column'} gap={2}>
             {showSkeleton &&
               Array.from({ length: 3 }, (_, index) => (

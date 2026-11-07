@@ -1,11 +1,14 @@
+import { checkStoreWorkflowBeforeRunOrPublish } from '@/web/core/workflow/service';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
 import type { TFunction } from 'next-i18next';
 import {
-  checkStoreWorkflowBeforeRunOrPublish,
   getToolErrorMessage,
   getWorkflowCheckIssueMessage
-} from '@/web/core/workflow/workflowCheck';
-import { checkAgentSkillSandboxUnavailable } from '../ChatAgent/utils';
+} from '@/web/core/workflow/check/message';
+import {
+  checkAgentResourceIssues,
+  checkAgentSandboxIssues
+} from '@/web/core/workflow/check/resource';
 import type { Form2WorkflowFnType } from './type';
 
 /**
@@ -22,44 +25,16 @@ export const checkAppFormSandboxIssues = ({
   enableSandbox?: boolean;
   t: TFunction;
 }): string | undefined => {
-  if (
-    checkAgentSkillSandboxUnavailable({
-      appForm,
-      showSandbox,
-      enableSandbox
-    })
-  ) {
-    return t('skill:sandbox_skill_unavailable_toast');
-  }
-
-  if (appForm.aiSettings.useAgentSandbox) {
-    if (!showSandbox) {
-      return t('skill:sandbox_system_not_configured_toast');
-    }
-    if (!enableSandbox) {
-      return t('app:sandbox_free_not_support');
-    }
-  }
-
-  return undefined;
+  const issue = checkAgentSandboxIssues({
+    useAgentSandbox: Boolean(appForm.aiSettings.useAgentSandbox),
+    hasSkills: Boolean(appForm.selectedAgentSkills?.length),
+    showSandbox,
+    enableSandbox
+  })[0];
+  return issue ? getWorkflowCheckIssueMessage({ issueCode: issue.code, t }) : undefined;
 };
 
-/**
- * 校验表单应用（对话 Agent 与对话 Agent V2）在发布前的表单级资源状态。
- *
- * 职责：
- * 1. 在点击「保存并发布」时，主动扫描表单中引用的工具（selectedTools）、技能（selectedAgentSkills）、知识库（dataset.datasets）；
- * 2. 对无权限、已下线、已删除/不存在、配置无效等异常状态进行前端拦截；
- * 3. 返回与界面卡片标签对齐的精准错误文案，防止非法请求穿透至后端 `/api/core/app/version/publish` 抛出全局 `unAuthApp`。
- *
- * 设计原因：
- * - Agent 将工具展开为独立的 Tool Node，能被 `workflowCheck` 扫描；而 AgentV2 将工具收敛在 Agent 节点的输入参数中；
- * - 现阶段工作流校验器未开放 Agent 节点的内部工具校验，为保证两类表单应用在发布拦截体验上的完全一致，在表单层统一执行资源校验。
- *
- * @param appForm 当前编辑表单数据
- * @param t 国际化翻译函数
- * @returns 若存在异常，返回已翻译的具体错误提示文案；全部可用时返回 undefined。
- */
+/** 表单只适配数据与精确文案，工具、技能和知识库的有效性规则统一由工作流资源检查提供。 */
 export const checkAppFormResourceIssues = ({
   appForm,
   t
@@ -67,36 +42,22 @@ export const checkAppFormResourceIssues = ({
   appForm: AppFormEditFormType;
   t: TFunction;
 }): string | undefined => {
-  // 1. 检查选中的工具（Agent & AgentV2 均使用）
-  for (const tool of appForm.selectedTools || []) {
-    const error = getToolErrorMessage({
-      status: tool.status ?? tool.pluginData?.status,
-      error: tool.pluginData?.error,
-      t
-    });
-    if (error) return error;
-
-    if (tool.configStatus === 'invalid') {
-      return t('app:app.error.publish_unExist_app');
-    }
+  const issue = checkAgentResourceIssues({
+    selectedTools: appForm.selectedTools,
+    skills: appForm.selectedAgentSkills,
+    datasets: appForm.dataset.datasets
+  })[0];
+  if (!issue) return;
+  if (issue.tool) {
+    return (
+      getToolErrorMessage({
+        status: issue.tool.status ?? issue.tool.pluginData?.status,
+        error: issue.tool.pluginData?.error,
+        t
+      }) ?? t('app:app.error.publish_unExist_app')
+    );
   }
-
-  // 2. 统一检查技能与知识库资源（结构一致：{ error?: 'resource_no_permission' | 'resource_missing' }）
-  const resourceItems = [
-    ...(appForm.dataset?.datasets || []),
-    ...(appForm.selectedAgentSkills || [])
-  ];
-
-  for (const item of resourceItems) {
-    if (item.error === 'resource_no_permission') {
-      return getWorkflowCheckIssueMessage('resource_no_permission', t);
-    }
-    if (item.error) {
-      return getWorkflowCheckIssueMessage('resource_missing', t);
-    }
-  }
-
-  return undefined;
+  return getWorkflowCheckIssueMessage({ issueCode: issue.code, t });
 };
 
 /**
@@ -110,6 +71,7 @@ export const checkAppFormResourceIssues = ({
  * @returns 若校验失败返回具体的错误文案；全部校验通过返回 undefined。
  */
 export const checkAppFormBeforePublish = async ({
+  appId,
   appForm,
   form2WorkflowFn,
   showSandbox,
@@ -121,6 +83,7 @@ export const checkAppFormBeforePublish = async ({
   showSandbox?: boolean;
   enableSandbox?: boolean;
   t: TFunction;
+  appId?: string;
 }): Promise<string | undefined> => {
   // 1. 沙箱环境检查
   const sandboxError = checkAppFormSandboxIssues({
@@ -138,6 +101,10 @@ export const checkAppFormBeforePublish = async ({
   // 3. 工作流图级校验（模型可用性、节点输入完整性等）
   const workflow = form2WorkflowFn(appForm, t);
   const checkResults = await checkStoreWorkflowBeforeRunOrPublish({
+    appId,
+    // 原始表单已检查资源与沙箱，序列化后的图只补模型、输入和连线检查。
+    checkAgentResources: false,
+    sandbox: { showSandbox, enableSandbox },
     nodes: workflow.nodes,
     edges: workflow.edges,
     chatConfig: appForm.chatConfig,

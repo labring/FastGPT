@@ -21,10 +21,12 @@ vi.mock('@/service/core/sandbox/auth', () => ({
   authSandboxSession: mocks.authSandboxSession
 }));
 
-vi.mock('@fastgpt/service/core/ai/sandbox/interface/runtime', () => ({
+vi.mock('@fastgpt/service/core/ai/sandbox/application/availability', () => ({
   assertSandboxAvailable: mocks.assertSandboxAvailable,
-  createAgentSandboxPermissionDeniedError: mocks.createAgentSandboxPermissionDeniedError,
   resolveAppSandboxAvailability: mocks.resolveAppSandboxAvailability
+}));
+vi.mock('@fastgpt/service/core/ai/sandbox/error', () => ({
+  createAgentSandboxPermissionDeniedError: mocks.createAgentSandboxPermissionDeniedError
 }));
 
 vi.mock('@fastgpt/service/core/app/schema', () => ({

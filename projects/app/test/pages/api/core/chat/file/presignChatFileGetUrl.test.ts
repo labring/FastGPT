@@ -12,7 +12,7 @@ vi.mock('@/service/middleware/entry', () => ({
   NextAPI: (handler: unknown) => handler
 }));
 
-vi.mock('@/service/support/permission/auth/chat', () => ({
+vi.mock('@fastgpt/service/core/chat/auth', () => ({
   authChatTargetCrud: mocks.authChatTargetCrud
 }));
 

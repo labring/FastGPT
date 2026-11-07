@@ -22,6 +22,9 @@ export enum ChatFileTypeEnum {
   image = 'image',
   audio = 'audio',
   video = 'video',
+  document = 'document',
+  unknown = 'unknown',
+  /** @deprecated 只兼容历史数据和旧客户端入参，新文件须推测为 document、unknown 或媒体类型。 */
   file = 'file'
 }
 
@@ -35,20 +38,51 @@ export enum ChatSourceEnum {
   official_account = 'official_account',
   wecom = 'wecom',
   wechat = 'wechat',
-  mcp = 'mcp'
+  mcp = 'mcp',
+  dingtalk = 'dingtalk'
 }
 
 /**
  * 会话所属资源类型。
  *
  * `ChatSourceEnum` 表示对话入口来源，例如 test/api/online。
- * `ChatSourceTypeEnum` 表示会话归属资源类型，用于在同一套 chat 表中隔离 App 和 Skill Edit。
+ * `ChatSourceTypeEnum` 表示会话归属资源类型；辅助生成会话使用独立来源，
+ * 以隔离聊天记录、上传文件和 Sandbox 资源。
  */
 export enum ChatSourceTypeEnum {
   app = 'app',
+  /** Workflow Builder 的独立聊天、上传文件和 Sandbox 来源。 */
+  workflowBuilder = 'workflowBuilder',
   skillEdit = 'skillEdit',
   chatAgentHelper = 'chatAgentHelper'
 }
+
+const defaultChatResponseOptions = {
+  showCite: true,
+  showRunningStatus: true,
+  showSkillReferences: true,
+  showFullText: true,
+  canDownloadSource: true
+};
+
+/** 各来源的默认展示能力；外链发布配置中的访问限制仍须由鉴权单独覆盖。 */
+export const chatSourceResponseOptions = {
+  [ChatSourceTypeEnum.app]: defaultChatResponseOptions,
+  [ChatSourceTypeEnum.skillEdit]: defaultChatResponseOptions,
+  [ChatSourceTypeEnum.chatAgentHelper]: {
+    showCite: false,
+    showRunningStatus: false,
+    showSkillReferences: false,
+    showFullText: false,
+    canDownloadSource: false
+  },
+  [ChatSourceTypeEnum.workflowBuilder]: {
+    ...defaultChatResponseOptions,
+    showCite: false,
+    showFullText: false,
+    canDownloadSource: false
+  }
+};
 
 export const ChatSourceMap = {
   [ChatSourceEnum.test]: {
@@ -87,6 +121,10 @@ export const ChatSourceMap = {
     name: i18nT('common:core.chat.logs.wechat'),
     color: '#07C160'
   },
+  [ChatSourceEnum.dingtalk]: {
+    name: i18nT('chat:source_dingtalk'),
+    color: '#0089FF'
+  },
   [ChatSourceEnum.mcp]: {
     name: i18nT('common:core.chat.logs.mcp'),
     color: '#F97066'
@@ -105,10 +143,12 @@ export enum GetChatTypeEnum {
   home = 'home'
 }
 
+/** 列表和轮询的单次运行状态查询上限。 */
+export const CHAT_GENERATION_STATUS_BATCH_SIZE = 200;
+
 export enum ChatGenerateStatusEnum {
   generating = 0,
-  done = 1,
-  error = 2
+  done = 1
 }
 
 /**

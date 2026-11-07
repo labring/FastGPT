@@ -10,7 +10,7 @@ import type {
   RoleListType,
   RoleValueType
 } from '@fastgpt/global/support/permission/type';
-import { type ReactNode, useCallback, useEffect, useState } from 'react';
+import React, { type ReactNode, useCallback, useEffect, useState } from 'react';
 import { createContext } from 'use-context-selector';
 import dynamic from 'next/dynamic';
 
@@ -40,7 +40,7 @@ export type CollaboratorContextType = MemberManagerInputPropsType & {
   collaboratorList: CollaboratorItemDetailType[];
   parentClbList: CollaboratorItemDetailType[];
   refetchCollaboratorList: () => void;
-  isFetchingCollaborator: boolean;
+  isLoadingCollaborator: boolean;
   getRoleLabelList: (role: RoleValueType) => string[];
   isInheritPermission?: boolean;
 };
@@ -70,7 +70,7 @@ export const CollaboratorContext = createContext<CollaboratorContextType>({
   onGetCollaboratorList: (): Promise<CollaboratorListType> => {
     throw new Error('Function not implemented.');
   },
-  isFetchingCollaborator: false,
+  isLoadingCollaborator: false,
   permission: new Permission(),
   isInheritPermission: false
 });
@@ -96,27 +96,11 @@ const CollaboratorContextProvider = ({
   selectedHint?: string;
 }) => {
   const { t } = useSafeTranslation();
-  const onUpdateCollaboratorsThen = async (props: UpdateClbPermissionProps) => {
-    await onUpdateCollaborators(props);
-    refetchCollaboratorList();
-  };
-  const onDelOneCollaboratorThen = async (
-    props: RequireOnlyOne<{ tmbId: string; groupId: string; orgId: string }>
-  ) => {
-    if (onDelOneCollaborator) {
-      await onDelOneCollaborator(props);
-      refetchCollaboratorList();
-    }
-  };
-
   const { feConfigs } = useSystemStore();
 
   const {
-    data: { clbs: collaboratorList = [], parentClbs: parentClbList = [] } = {
-      clbs: [],
-      parentClbs: []
-    },
-    runAsync: refetchCollaboratorList,
+    data: collaboratorData,
+    run: refetchCollaboratorList,
     loading: isFetchingCollaborator
   } = useRequest(
     async () => {
@@ -143,6 +127,27 @@ const CollaboratorContextProvider = ({
       refreshDeps: refreshDeps
     }
   );
+  const { clbs: collaboratorList = [], parentClbs: parentClbList = [] } = collaboratorData ?? {};
+
+  /** 仅在写入成功后后台同步权限快照；刷新失败由请求层提示，不影响已成功的保存。 */
+  const refreshCollaborators = () => {
+    refetchCollaboratorList();
+    Promise.resolve()
+      .then(() => refetchResource?.())
+      .catch(() => {});
+  };
+  const onUpdateCollaboratorsThen = async (props: UpdateClbPermissionProps) => {
+    await onUpdateCollaborators(props);
+    refreshCollaborators();
+  };
+  const onDelOneCollaboratorThen = async (
+    props: RequireOnlyOne<{ tmbId: string; groupId: string; orgId: string }>
+  ) => {
+    if (onDelOneCollaborator) {
+      await onDelOneCollaborator(props);
+      refreshCollaborators();
+    }
+  };
 
   const getRoleLabelList = useCallback(
     (role: PermissionValueType) => {
@@ -172,7 +177,7 @@ const CollaboratorContextProvider = ({
 
       return labels;
     },
-    [roleList]
+    [roleList, t]
   );
 
   const {
@@ -186,7 +191,8 @@ const CollaboratorContextProvider = ({
     onGetCollaboratorList,
     collaboratorList,
     refetchCollaboratorList,
-    isFetchingCollaborator,
+    // 首次加载才遮挡列表，后台刷新保留已展示的协作者快照。
+    isLoadingCollaborator: isFetchingCollaborator && collaboratorData === undefined,
     roleList,
     onUpdateCollaborators: onUpdateCollaboratorsThen,
     onDelOneCollaborator: onDelOneCollaboratorThen,
@@ -204,10 +210,7 @@ const CollaboratorContextProvider = ({
       })}
       {isOpenManageModal && (
         <MemberModal
-          onClose={() => {
-            onCloseManageModal();
-            refetchResource?.();
-          }}
+          onClose={onCloseManageModal}
           SelectedTip={selectedHint ? <LightTip text={selectedHint} /> : undefined}
         />
       )}

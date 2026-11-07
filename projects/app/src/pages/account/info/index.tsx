@@ -84,9 +84,13 @@ const MemberNameModal = dynamic(() => import('@/pageComponents/account/info/Memb
 
 const Info = () => {
   const { isPc } = useSystem();
-  const { teamPlanStatus } = useUserStore();
+  const { teamPlanStatus, initTeamPlanStatus } = useUserStore();
   const standardPlan = teamPlanStatus?.standard;
   const { isOpen: isOpenContact, onClose: onCloseContact, onOpen: onOpenContact } = useDisclosure();
+
+  useEffect(() => {
+    void initTeamPlanStatus().catch(() => {});
+  }, [initTeamPlanStatus]);
 
   return (
     <AccountContainer>
@@ -143,11 +147,9 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
   const { isPc } = useSystem();
   const { toast } = useToast();
   const canManagePassword = canManagePasswordFromAccountInfo({
-    isPlus: feConfigs?.isPlus,
     username: userInfo?.username,
     passwordAvailable: userInfo?.passwordAvailable
   });
-  const isRoot = userInfo?.username === 'root';
   const [autoOpenEnterpriseAuth, setAutoOpenEnterpriseAuth] = useState(false);
   const showEnterpriseAuth = feConfigs?.show_enterprise_auth;
 
@@ -255,15 +257,8 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
   }, [canManagePassword, onOpenUpdatePsw, passwordChangeSession]);
 
   const handlePasswordAction = useCallback(() => {
-    if (isRoot) {
-      toast({
-        status: 'info',
-        title: t('account_info:root_password_change_tip')
-      });
-      return;
-    }
     onOpenUpdatePsw();
-  }, [isRoot, onOpenUpdatePsw, t, toast]);
+  }, [onOpenUpdatePsw]);
 
   const { Component: AvatarUploader, handleFileSelectorOpen } = useUploadAvatar(
     getUploadAvatarPresignedUrl,
@@ -809,7 +804,7 @@ const PlanUsage = () => {
                 <Box
                   borderRadius={'sm'}
                   transition="width 0.3s"
-                  w={`${item.rate}%`}
+                  w={`${Math.min(item.rate, 100)}%`}
                   bg={`${item.rate < 50 ? 'green' : item.rate < 80 ? 'yellow' : 'red'}.500`}
                 />
               </Flex>

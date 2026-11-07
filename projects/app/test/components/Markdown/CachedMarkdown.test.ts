@@ -8,8 +8,8 @@ import RehypeExternalLinks from 'rehype-external-links';
 import RehypeKatex from 'rehype-katex';
 import { describe, expect, it } from 'vitest';
 
-import { CachedMarkdown } from '@/components/Markdown/CachedMarkdown';
-import { rehypeStreamAnimated } from '@/components/Markdown/rehypeStreamAnimated';
+import { CachedMarkdown } from '@/components/Markdown/stream/CachedMarkdown';
+import { rehypeStreamAnimated } from '@/components/Markdown/stream/rehypeStreamAnimated';
 import { prepareStreamingMarkdown } from '@/components/Markdown/utils';
 
 const remarkPlugins = [RemarkMath, [RemarkGfm, { singleTilde: false }], RemarkBreaks];

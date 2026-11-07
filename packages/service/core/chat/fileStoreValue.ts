@@ -1,7 +1,8 @@
-import { audioFileType, imageFileType, videoFileType } from '@fastgpt/global/common/file/constants';
 import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { normalizeChatFileType } from '@fastgpt/global/core/chat/file/utils';
 import type { ChatFileStoreValue } from '@fastgpt/global/core/chat/type';
 import path from 'path';
+import { getFileNameFromUrl } from './file/utils';
 
 export type RawChatFileValue = {
   key?: string;
@@ -52,10 +53,7 @@ const isChatFileValueInput = (value: unknown): value is ChatFileValueInput =>
   value !== null &&
   (typeof (value as ChatFileValueInput).key === 'string' ||
     typeof (value as ChatFileValueInput).url === 'string' ||
-    (value as ChatFileValueInput).type === ChatFileTypeEnum.image ||
-    (value as ChatFileValueInput).type === ChatFileTypeEnum.audio ||
-    (value as ChatFileValueInput).type === ChatFileTypeEnum.video ||
-    (value as ChatFileValueInput).type === ChatFileTypeEnum.file);
+    Object.values(ChatFileTypeEnum).some((type) => type === (value as ChatFileValueInput).type));
 
 /**
  * 从前端/历史文件对象中只读取文件存储需要的字段。
@@ -64,17 +62,14 @@ const isChatFileValueInput = (value: unknown): value is ChatFileValueInput =>
  * 前端组件状态等临时字段。type 只接受聊天文件枚举，其他值交给后续扩展名推断。
  */
 const parseRawChatFileValue = (file: ChatFileValueInput): RawChatFileValue => {
+  const key = typeof file.key === 'string' ? file.key : undefined;
+  const url = typeof file.url === 'string' ? file.url : undefined;
+  const name = typeof file.name === 'string' ? file.name : undefined;
   return {
-    key: typeof file.key === 'string' ? file.key : undefined,
-    url: typeof file.url === 'string' ? file.url : undefined,
-    name: typeof file.name === 'string' ? file.name : undefined,
-    type:
-      file.type === ChatFileTypeEnum.image ||
-      file.type === ChatFileTypeEnum.audio ||
-      file.type === ChatFileTypeEnum.video ||
-      file.type === ChatFileTypeEnum.file
-        ? file.type
-        : undefined
+    key,
+    url,
+    name,
+    type: normalizeChatFileType({ type: file.type, filename: name || key, url })
   };
 };
 
@@ -111,37 +106,11 @@ export const assertChatFileRuntimeValue = (
 export const normalizeChatFileStoreValue = (
   file: RawChatFileValue
 ): ChatFileStoreValue | undefined => {
-  /** 从文件名推断聊天文件类型，无法识别时统一兜底为普通文件。 */
-  const inferChatFileType = (filename: string): ChatFileTypeEnum => {
-    const extname = path.extname(filename).toLowerCase();
-    if (!extname) return ChatFileTypeEnum.file;
-
-    if (imageFileType.includes(extname)) return ChatFileTypeEnum.image;
-    if (audioFileType.includes(extname)) return ChatFileTypeEnum.audio;
-    if (videoFileType.includes(extname)) return ChatFileTypeEnum.video;
-    return ChatFileTypeEnum.file;
-  };
-
   /**
    * 从 S3 object key 中提取稳定文件名。
    * key 是私有桶里的对象路径，落库时保留 key，展示名只用于 UI 和类型兜底推断。
    */
   const inferChatFileNameFromKey = (key: string) => path.basename(key) || 'file';
-
-  /**
-   * 从外部 URL pathname 中提取文件名，非法 URL 则保留原始字符串。
-   *
-   * 外链 URL 可能是用户/API 直接传入的完整地址；如果不能按标准 URL 解析，仍保留原值，
-   * 避免因为名称推断失败导致整个文件变量被丢弃。
-   */
-  const inferChatFileNameFromUrl = (url: string) => {
-    try {
-      const urlObj = new URL(url);
-      return path.basename(decodeURIComponent(urlObj.pathname)) || url;
-    } catch {
-      return url;
-    }
-  };
 
   const key = file.key || undefined;
   const rawUrl = file.url || undefined;
@@ -159,16 +128,17 @@ export const normalizeChatFileStoreValue = (
       key,
       name,
       // 用户显式传入的 type 优先；缺省时按展示名/对象 key 的扩展名推断。
-      type: rawType || inferChatFileType(name)
+      type: normalizeChatFileType({ type: rawType, filename: name })
     };
   }
 
   const storeUrl = url as string;
-  const name = rawName || inferChatFileNameFromUrl(storeUrl);
+  // 名称提取失败时保留原 URL，避免已有文件变量因展示名推断失败而丢失。
+  const name = rawName || getFileNameFromUrl(storeUrl) || storeUrl;
   return {
     url: storeUrl,
     name,
-    type: rawType || inferChatFileType(name)
+    type: normalizeChatFileType({ type: rawType, filename: name, url: storeUrl })
   };
 };
 

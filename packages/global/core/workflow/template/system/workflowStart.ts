@@ -7,16 +7,6 @@ import {
 } from '../../constants';
 import { Input_Template_UserChatInput } from '../input';
 import { i18nT } from '../../../../common/i18n/utils';
-import { type FlowNodeOutputItemType } from '../../type/io';
-
-export const userFilesInput: FlowNodeOutputItemType = {
-  id: NodeOutputKeyEnum.userFiles,
-  key: NodeOutputKeyEnum.userFiles,
-  label: i18nT('app:workflow.user_file_input'),
-  description: i18nT('app:workflow.user_file_input_desc'),
-  type: FlowNodeOutputTypeEnum.static,
-  valueType: WorkflowIOValueTypeEnum.arrayString
-};
 
 export const WorkflowStart: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.workflowStart,

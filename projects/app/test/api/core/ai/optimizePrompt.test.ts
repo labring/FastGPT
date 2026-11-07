@@ -1,11 +1,12 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { ApiRequestInputParseError } from '@fastgpt/service/common/zod/requestParseError';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.unmock('@fastgpt/service/common/response');
 
 const mocks = vi.hoisted(() => ({
   authCert: vi.fn(),
+  assertAuthModels: vi.fn(),
   getLLMModelData: vi.fn(),
   createLLMResponse: vi.fn(),
   formatModelChars2Points: vi.fn(),
@@ -17,6 +18,10 @@ vi.mock('@/service/middleware/entry', () => ({
   NextAPI: (handler: unknown) => handler
 }));
 
+vi.mock('@fastgpt/service/support/permission/model/auth', () => ({
+  assertAuthModels: mocks.assertAuthModels
+}));
+
 vi.mock('@fastgpt/service/support/permission/auth/common', () => ({
   authCert: mocks.authCert,
   clearCookie: vi.fn()
@@ -26,8 +31,9 @@ vi.mock('@fastgpt/service/core/ai/llm/request', () => ({
   createLLMResponse: mocks.createLLMResponse
 }));
 
-vi.mock('@fastgpt/service/core/ai/model', () => ({
-  getModelHandle: async () => ({ getLLMModelData: mocks.getLLMModelData })
+vi.mock('@fastgpt/service/core/ai/model/catalog/service', () => ({
+  getSystemModelHandle: async () => ({ getModelData: mocks.getLLMModelData }),
+  getTeamModelHandle: async () => ({ getModelData: mocks.getLLMModelData })
 }));
 
 vi.mock('@fastgpt/service/common/logger', () => ({
@@ -55,7 +61,7 @@ import handler from '@/pages/api/core/ai/optimizePrompt';
 describe('optimizePrompt SSE error handling', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.authCert.mockResolvedValue({ teamId: 'team-1', tmbId: 'member-1' });
+    mocks.authCert.mockResolvedValue({ teamId: 'team-1', tmbId: 'member-1', isRoot: false });
     mocks.getLLMModelData.mockReturnValue({
       modelId: '68ad85a7463006c963799a05',
       model: 'gpt-4o'
@@ -64,6 +70,10 @@ describe('optimizePrompt SSE error handling', () => {
       totalPoints: 0,
       modelName: 'gpt-4o',
       modelId: '68ad85a7463006c963799a05'
+    });
+    mocks.assertAuthModels.mockResolvedValue({
+      handle: { getModelData: mocks.getLLMModelData },
+      models: [{ modelId: '68ad85a7463006c963799a05', model: 'gpt-4o' }]
     });
   });
 
@@ -99,8 +109,10 @@ describe('optimizePrompt SSE error handling', () => {
         })
       })
     );
-    expect(mocks.getLLMModelData).toHaveBeenCalledWith({
-      modelId: '68ad85a7463006c963799a05'
+    expect(mocks.assertAuthModels).toHaveBeenCalledWith({
+      actor: { teamId: 'team-1', tmbId: 'member-1', isRoot: false },
+      modelIds: ['68ad85a7463006c963799a05'],
+      type: 'llm'
     });
     expect(res.end).toHaveBeenCalledTimes(1);
   });
@@ -169,5 +181,36 @@ describe('optimizePrompt SSE error handling', () => {
     expect(res.setHeader).not.toHaveBeenCalled();
     expect(res.write).not.toHaveBeenCalled();
     expect(res.end).not.toHaveBeenCalled();
+  });
+
+  it('calls assertAuthModels and handles unauthorized model error gracefully in SSE', async () => {
+    mocks.assertAuthModels.mockRejectedValueOnce(new UserError('unAuthModel'));
+    const chunks: string[] = [];
+    const res = {
+      setHeader: vi.fn(),
+      write: vi.fn((chunk: string) => chunks.push(chunk)),
+      end: vi.fn()
+    };
+
+    await handler(
+      {
+        body: {
+          originalPrompt: 'Original prompt',
+          optimizerInput: 'Improve it',
+          modelId: '68ad85a7463006c963799a05'
+        }
+      } as any,
+      res as any
+    );
+
+    expect(mocks.assertAuthModels).toHaveBeenCalledWith({
+      actor: { teamId: 'team-1', tmbId: 'member-1', isRoot: false },
+      modelIds: ['68ad85a7463006c963799a05'],
+      type: 'llm'
+    });
+    expect(mocks.getLLMModelData).not.toHaveBeenCalled();
+    expect(res.end).toHaveBeenCalled();
+    const output = chunks.join('');
+    expect(output).toContain('event: error');
   });
 });

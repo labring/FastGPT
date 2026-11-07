@@ -1,36 +1,36 @@
 /* v8 ignore file */
 import { ModelScopeEnum, ModelTypeEnum } from '../constants';
+import { ObjectIdSchema } from '../../../common/type/mongo';
 import z from 'zod';
 
-export const ModelPriceTierSchema = z
-  .object({
-    minInputTokens: z.number().min(0).optional().meta({
-      description: '最小输入 tokens 值，单位: k/tokens'
-    }),
-    maxInputTokens: z.number().min(0).nullish().meta({
-      description: '最大输入 tokens 值，单位: k/tokens. 如果未提供，则视为无限大梯度。'
-    }),
-    inputPrice: z.number(),
-    outputPrice: z.number()
-  })
-  .meta({
-    description: '模型价格梯度, 为左开右闭规则。'
-  });
+export const ModelPriceTierSchema = z.object({
+  maxInputTokens: z
+    .number()
+    .min(0)
+    .optional()
+    .meta({ description: '本档输入上限，单位 M Tokens；省略表示无限', example: 1 }),
+  inputPrice: z.number().min(0).meta({ description: '每百万输入 Tokens 的积分单价', example: 2 }),
+  outputPrice: z.number().min(0).meta({ description: '每百万输出 Tokens 的积分单价', example: 4 })
+});
 export type ModelPriceTierType = z.infer<typeof ModelPriceTierSchema>;
 
-export const PriceTypeSchema = z.object({
-  charsPointsPrice: z.number().optional(), // 1k chars=n points; 60s=n points;
-  // 新版的梯度价格计算字段
-  priceTiers: z.array(ModelPriceTierSchema).optional().meta({
-    description:
-      'The price tiers for this model. If not provided, the model will use the default price tiers.'
-  }),
-
-  /** @deprecated */
-  inputPrice: z.number().optional(), // 1k tokens=n points
-  /** @deprecated */
-  outputPrice: z.number().optional() // 1k tokens=n points
+/** 单价只存金额，计价分母由模型类型固定；空对象表示已配置但尚未填写价格。 */
+export const ModelPricingSchema = z.object({
+  tiers: z
+    .array(ModelPriceTierSchema)
+    .max(5)
+    .optional()
+    .meta({ description: 'LLM 阶梯价格，下限从上一档上限推导' }),
+  unitPrice: z
+    .number()
+    .min(0)
+    .optional()
+    .meta({ description: '综合单价；Token/TTS 每百万数量，STT 每 60 秒', example: 2 })
 });
+export type ModelPricingType = z.infer<typeof ModelPricingSchema>;
+export const LLMModelPricingSchema = ModelPricingSchema.omit({ unitPrice: true });
+export const UnitModelPricingSchema = ModelPricingSchema.omit({ tiers: true });
+export const PriceTypeSchema = z.object({ pricing: ModelPricingSchema.optional() });
 export type PriceType = z.infer<typeof PriceTypeSchema>;
 
 /**
@@ -88,77 +88,97 @@ export type TTSModelConfigType = z.infer<typeof TTSModelConfigSchema>;
 export const STTModelConfigSchema = z.object({});
 export type STTModelConfigType = z.infer<typeof STTModelConfigSchema>;
 
-const SystemModelDocumentBaseSchema = PriceTypeSchema.extend({
+const AIModelDocumentBaseSchema = PriceTypeSchema.extend({
   provider: z.string().trim().min(1),
   model: z.string().trim().min(1),
   name: z.string().trim().min(1),
-  scope: z.literal(ModelScopeEnum.system).default(ModelScopeEnum.system),
+  scope: z.nativeEnum(ModelScopeEnum).default(ModelScopeEnum.system),
+  sortOrder: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER).optional().meta({
+    description: '同一作用域内的模型展示 rank，数值越小越靠前'
+  }),
+  tmbId: ObjectIdSchema.nullish(),
+  teamId: ObjectIdSchema.nullish(),
   isActive: z.boolean().optional(),
   requestUrl: z.string().optional(),
   requestAuth: z.string().optional(),
   testMode: z.boolean().optional()
 });
 
-export const LLMSystemModelDocumentSchema = SystemModelDocumentBaseSchema.extend({
+export const LLMModelDocumentSchema = AIModelDocumentBaseSchema.extend({
+  pricing: LLMModelPricingSchema.optional().meta({
+    description: 'LLM 每百万 Tokens 阶梯价格；缺省免费',
+    example: { tiers: [{ inputPrice: 2, outputPrice: 4 }] }
+  }),
   type: z.literal(ModelTypeEnum.llm),
   config: LLMModelConfigSchema
 });
 
-export const EmbeddingSystemModelDocumentSchema = SystemModelDocumentBaseSchema.extend({
+export const EmbeddingModelDocumentSchema = AIModelDocumentBaseSchema.extend({
+  pricing: UnitModelPricingSchema.optional().meta({
+    description: '每固定计价单位的积分单价；缺省免费',
+    example: { unitPrice: 2 }
+  }),
   type: z.literal(ModelTypeEnum.embedding),
   config: EmbeddingModelConfigSchema
 });
 
-export const RerankSystemModelDocumentSchema = SystemModelDocumentBaseSchema.extend({
+export const RerankModelDocumentSchema = AIModelDocumentBaseSchema.extend({
+  pricing: UnitModelPricingSchema.optional().meta({
+    description: '每固定计价单位的积分单价；缺省免费',
+    example: { unitPrice: 2 }
+  }),
   type: z.literal(ModelTypeEnum.rerank),
   config: RerankModelConfigSchema
 });
 
-export const TTSSystemModelDocumentSchema = SystemModelDocumentBaseSchema.extend({
+export const TTSModelDocumentSchema = AIModelDocumentBaseSchema.extend({
+  pricing: UnitModelPricingSchema.optional().meta({
+    description: '每固定计价单位的积分单价；缺省免费',
+    example: { unitPrice: 2 }
+  }),
   type: z.literal(ModelTypeEnum.tts),
   config: TTSModelConfigSchema
 });
 
-export const STTSystemModelDocumentSchema = SystemModelDocumentBaseSchema.extend({
+export const STTModelDocumentSchema = AIModelDocumentBaseSchema.extend({
+  pricing: UnitModelPricingSchema.optional().meta({
+    description: '每固定计价单位的积分单价；缺省免费',
+    example: { unitPrice: 2 }
+  }),
   type: z.literal(ModelTypeEnum.stt),
   config: STTModelConfigSchema
 });
 
 /** ai_models 持久化后的标准形态；modelId 由 MongoDB `_id` 提供，不重复存储。 */
-export const SystemModelDocumentDataSchema = z.discriminatedUnion('type', [
-  LLMSystemModelDocumentSchema,
-  EmbeddingSystemModelDocumentSchema,
-  TTSSystemModelDocumentSchema,
-  STTSystemModelDocumentSchema,
-  RerankSystemModelDocumentSchema
+export const AIModelDocumentDataSchema = z.discriminatedUnion('type', [
+  LLMModelDocumentSchema,
+  EmbeddingModelDocumentSchema,
+  TTSModelDocumentSchema,
+  STTModelDocumentSchema,
+  RerankModelDocumentSchema
 ]);
-export type SystemModelDocumentDataType = z.infer<typeof SystemModelDocumentDataSchema>;
+export type AIModelDocumentDataType = z.infer<typeof AIModelDocumentDataSchema>;
 
 /** 运行时模型数据。modelId 来自 MongoDB `_id`，avatar 由 provider 派生。 */
-const RuntimeSystemModelFields = {
+const RuntimeModelFields = {
   modelId: z.string(),
   avatar: z.string().optional()
 };
 
-export const LLMSystemModelDataSchema =
-  LLMSystemModelDocumentSchema.extend(RuntimeSystemModelFields);
-export const EmbeddingSystemModelDataSchema =
-  EmbeddingSystemModelDocumentSchema.extend(RuntimeSystemModelFields);
-export const TTSSystemModelDataSchema =
-  TTSSystemModelDocumentSchema.extend(RuntimeSystemModelFields);
-export const STTSystemModelDataSchema =
-  STTSystemModelDocumentSchema.extend(RuntimeSystemModelFields);
-export const RerankSystemModelDataSchema =
-  RerankSystemModelDocumentSchema.extend(RuntimeSystemModelFields);
+export const LLMModelDataSchema = LLMModelDocumentSchema.extend(RuntimeModelFields);
+export const EmbeddingModelDataSchema = EmbeddingModelDocumentSchema.extend(RuntimeModelFields);
+export const TTSModelDataSchema = TTSModelDocumentSchema.extend(RuntimeModelFields);
+export const STTModelDataSchema = STTModelDocumentSchema.extend(RuntimeModelFields);
+export const RerankModelDataSchema = RerankModelDocumentSchema.extend(RuntimeModelFields);
 
-export const SystemModelDataSchema = z.discriminatedUnion('type', [
-  LLMSystemModelDataSchema,
-  EmbeddingSystemModelDataSchema,
-  TTSSystemModelDataSchema,
-  STTSystemModelDataSchema,
-  RerankSystemModelDataSchema
+export const AIModelDataSchema = z.discriminatedUnion('type', [
+  LLMModelDataSchema,
+  EmbeddingModelDataSchema,
+  TTSModelDataSchema,
+  STTModelDataSchema,
+  RerankModelDataSchema
 ]);
-export type SystemModelDataType = z.infer<typeof SystemModelDataSchema>;
+export type AIModelDataType = z.infer<typeof AIModelDataSchema>;
 
 /**
  * 模型引用只允许稳定 ID 与废弃的系统 model 标识。非空 modelId 必须优先解析，
@@ -170,14 +190,8 @@ export type ModelReferenceType = {
   model?: string | null;
 };
 
-export type LLMSystemModelDataType = Extract<SystemModelDataType, { type: ModelTypeEnum.llm }>;
-export type EmbeddingSystemModelDataType = Extract<
-  SystemModelDataType,
-  { type: ModelTypeEnum.embedding }
->;
-export type RerankSystemModelDataType = Extract<
-  SystemModelDataType,
-  { type: ModelTypeEnum.rerank }
->;
-export type TTSSystemModelDataType = Extract<SystemModelDataType, { type: ModelTypeEnum.tts }>;
-export type STTSystemModelDataType = Extract<SystemModelDataType, { type: ModelTypeEnum.stt }>;
+export type LLMModelDataType = Extract<AIModelDataType, { type: ModelTypeEnum.llm }>;
+export type EmbeddingModelDataType = Extract<AIModelDataType, { type: ModelTypeEnum.embedding }>;
+export type RerankModelDataType = Extract<AIModelDataType, { type: ModelTypeEnum.rerank }>;
+export type TTSModelDataType = Extract<AIModelDataType, { type: ModelTypeEnum.tts }>;
+export type STTModelDataType = Extract<AIModelDataType, { type: ModelTypeEnum.stt }>;

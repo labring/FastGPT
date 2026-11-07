@@ -1,12 +1,15 @@
 /**
  * 沙盒业务层：使用 ripgrep 的文件枚举能力按 glob 查找路径。
  */
+import {
+  DEFAULT_FIND_LIMIT,
+  SANDBOX_TOOL_MAX_BYTES,
+  SANDBOX_TOOL_MAX_LINES
+} from '../../constants';
 import z from 'zod';
 import { shellQuote } from '@fastgpt/global/common/string/utils';
 import { defineTool } from './type';
-import { SANDBOX_TOOL_MAX_BYTES, SANDBOX_TOOL_MAX_LINES, truncateSandboxToolOutput } from './utils';
-
-const DEFAULT_FIND_LIMIT = 1000;
+import { truncateSandboxToolOutput } from './utils';
 
 export const SandboxFindToolSchema = z.object({
   pattern: z.string(),

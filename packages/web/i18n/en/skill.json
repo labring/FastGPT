@@ -23,6 +23,7 @@
   "export_config": "Export Config",
   "export_failed": "Export failed",
   "export_success": "Exported successfully",
+  "export_sandbox_wait": "Please wait for the sandbox to be ready before exporting the skill.",
   "history_versions": "History Versions",
   "import_existing_skill": "Import existing Skill",
   "import_existing_skill_desc": "Import common Skills from outside directly into the platform. Supports .zip format.",
@@ -51,6 +52,7 @@
   "sandbox_failed": "Sandbox creation failed: {{message}}",
   "sandbox_fetch_skills": "Fetching skill configuration...",
   "sandbox_lazy_init": "Initializing runtime environment...",
+  "sandbox_limit_reached": "The system has reached its sandbox/VM limit. Please try again later.",
   "sandbox_operation_plan_not_supported_content": "Skill operations depend on the virtual machine runtime. The current plan does not support virtual machine features. Upgrade your plan to continue.",
   "sandbox_operation_system_not_configured_content": "Skill operations depend on the virtual machine runtime. The current system has not configured a virtual machine, so related features are temporarily unavailable. Contact an administrator to configure it.",
   "sandbox_operation_system_not_configured_title": "Virtual machine not configured",
@@ -69,6 +71,7 @@
   "sandbox_skill_system_not_configured_toast": "Skills depend on the virtual machine runtime. The current system has not configured a virtual machine, so related features are temporarily unavailable. Contact an administrator to configure it.",
   "sandbox_skill_unavailable_toast": "Skills depend on the virtual machine runtime. This Agent has Skills configured. Remove all Skills before turning off the virtual machine.",
   "sandbox_system_not_configured_toast": "The current system has not configured a virtual machine, so related features are temporarily unavailable. Contact an administrator to configure it.",
+  "sandbox_team_limit_reached": "Your team's sandbox/VM quota is used up. Stop idle sandboxes or contact an administrator.",
   "sandbox_unavailable_tag": "Unavailable",
   "sandbox_upgrade_action": "Upgrade",
   "sandbox_uploading": "Uploading skill package to sandbox...",
@@ -99,5 +102,6 @@
   "delete_folders_confirm_title_one": "Confirm deleting {{count}} folder",
   "delete_folders_confirm_title_other": "Confirm deleting {{count}} folders",
   "delete_following_skills_tip": "Deleting the following skills cannot be undone.",
-  "delete_following_folders_tip": "Once deleted, these folders and all skills inside them will be deleted."
+  "delete_following_folders_tip": "Once deleted, these folders and all skills inside them will be deleted.",
+  "generating": "Generating"
 }

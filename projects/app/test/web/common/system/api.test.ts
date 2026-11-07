@@ -9,7 +9,7 @@ vi.mock('@/web/common/api/request', () => ({
   DELETE: vi.fn()
 }));
 
-import { getUserModelCatalog } from '@/web/common/system/api';
+import { getUserModelCatalog } from '@/web/core/ai/model/catalogApi';
 
 describe('getUserModelCatalog', () => {
   beforeEach(() => {
@@ -31,12 +31,12 @@ describe('getUserModelCatalog', () => {
     );
   });
 
-  it('omits outlink auth for a logged-in member request', () => {
-    getUserModelCatalog({ version: 'version-1' });
+  it('forwards explicit creator expansion for member display requests', () => {
+    getUserModelCatalog({ includeSourceMember: true, orderBy: 'custom' });
 
     expect(requestMocks.GET).toHaveBeenCalledWith(
       '/core/ai/model/catalog',
-      { version: 'version-1', outLinkAuthData: undefined },
+      { includeSourceMember: true, orderBy: 'custom', outLinkAuthData: undefined },
       { deduplicate: true }
     );
   });

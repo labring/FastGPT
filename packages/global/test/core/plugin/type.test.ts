@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { I18nStringSchema } from '@fastgpt/global/core/plugin/type';
+import { I18nStringSchema, PluginTextSchema } from '@fastgpt/global/core/plugin/type';
 
 describe('plugin I18nStringSchema', () => {
   it('requires Simplified Chinese translations', () => {
@@ -16,5 +16,12 @@ describe('plugin I18nStringSchema', () => {
       en: 'English',
       'zh-CN': '简体中文'
     });
+  });
+});
+
+describe('PluginTextSchema', () => {
+  it('accepts legacy strings and partial translation objects', () => {
+    expect(PluginTextSchema.parse('Legacy text')).toBe('Legacy text');
+    expect(PluginTextSchema.parse({ en: 'English' })).toEqual({ en: 'English' });
   });
 });

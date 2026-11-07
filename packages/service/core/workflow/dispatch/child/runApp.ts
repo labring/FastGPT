@@ -9,30 +9,34 @@ import {
   rewriteNodeOutputByHistories,
   storeNodes2RuntimeNodes
 } from '@fastgpt/global/core/workflow/runtime/utils';
-import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { type NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import { getNodeErrResponse, getHistories } from '../utils';
+import { getNodeErrResponse, getHistories, removeUnfinishedInteractiveHistories } from '../utils';
 import { getWorkflowFileVariableInputs, WorkflowVariableState } from '../utils/variables';
 import { chatValue2RuntimePrompt, runtimePrompt2ChatsValue } from '@fastgpt/global/core/chat/adapt';
 import type { DispatchNodeResultType, ModuleDispatchProps } from '../../types/runtime';
-import { parseUrlToFileType, runWithDerivedWorkflowFileContext } from '../../utils/context';
-import { loadChildWorkflowWithResource } from '../../utils/resource';
+import { prepareWorkflowFiles, runWithDerivedWorkflowFileContext } from '../../utils/context';
+import { loadChildWorkflowWithResource } from '../../resource/service';
 import { getUserChatInfo } from '../../../../support/user/team/utils';
 import { getWorkflowRuntimeSummary } from '../utils/summary';
+import { WorkflowMemoryState } from '../../memory/state';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.userChatInput]: string;
   [NodeInputKeyEnum.history]?: ChatItemMiniType[] | number;
   [NodeInputKeyEnum.fileUrlList]?: string[];
   [NodeInputKeyEnum.forbidStream]?: boolean;
-  [NodeInputKeyEnum.fileUrlList]?: string[];
 }>;
 type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.answerText]: string;
   [NodeOutputKeyEnum.history]: ChatItemMiniType[];
 }>;
 
+/**
+ * 执行子应用并保留输出、消耗和交互状态。子流程未捕获错误投影到父节点错误分支；
+ * 原始异常已在子流程记录，这里只传递失败文本，避免逐层重复记录同一异常。
+ */
 export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
   const {
     histories,
@@ -58,11 +62,9 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
       ? lastInteractive.params.childrenResponse
       : undefined;
 
-  const userInputFiles = (() => {
+  const userInputFiles = await (async () => {
     if (fileUrlList) {
-      return fileUrlList
-        .map((url) => parseUrlToFileType(url))
-        .filter((file): file is NonNullable<typeof file> => Boolean(file));
+      return prepareWorkflowFiles({ files: fileUrlList.map((url) => ({ url })) });
     }
     // Adapt version 4.8.13 upgrade
     return files;
@@ -110,8 +112,8 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
     const childRunningAppInfo = {
       sourceType: ChatSourceTypeEnum.app,
       sourceId: String(appData._id),
-      teamId: appData.teamId,
-      tmbId: appData.tmbId,
+      teamId: String(appData.teamId),
+      tmbId: String(appData.tmbId),
       name: appData.name,
       isChildApp: true
     };
@@ -151,8 +153,18 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
           resolveInputFile
         });
 
+        const childrenMemoryState = WorkflowMemoryState.fromWorkflow(props).fork(
+          props.node?.nodeId ? `node:${props.node.nodeId}` : undefined,
+          {
+            history,
+            histories: childHistories,
+            hasInteractiveResume: !!childrenInteractive
+          }
+        );
+
         return runWorkflow({
           ...props,
+          memoryState: childrenMemoryState,
           lastInteractive: childrenInteractive,
           // Rewrite stream mode
           ...(system_forbid_stream
@@ -161,14 +173,7 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
                 workflowStreamResponse: undefined
               }
             : {}),
-          runningAppInfo: {
-            sourceType: ChatSourceTypeEnum.app,
-            sourceId: String(appData._id),
-            name: appData.name,
-            teamId: String(appData.teamId),
-            tmbId: String(appData.tmbId),
-            isChildApp: true
-          },
+          runningAppInfo: childRunningAppInfo,
           runtimeNodes,
           runtimeEdges,
           histories: childHistories,
@@ -206,6 +211,9 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
     const runtimeSummary = getWorkflowRuntimeSummary({
       workflowRuntimeSummary
     });
+    // 详情由子流程独立发布，父流程需要从摘要显式接收未捕获错误，才能触发自己的错误分支。
+    const errorText =
+      runtimeSummary.errorCount > 0 ? runtimeSummary.errorText || 'Run workflow failed' : undefined;
     props.nodeSummary.mergeNodeSummary({
       llmInputTokens: runtimeSummary.llmInputTokens,
       llmOutputTokens: runtimeSummary.llmOutputTokens,
@@ -218,6 +226,9 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
         [NodeOutputKeyEnum.answerText]: text,
         [NodeOutputKeyEnum.history]: completeMessages
       },
+      ...(errorText !== undefined && {
+        error: { [NodeOutputKeyEnum.errorText]: errorText }
+      }),
       [DispatchNodeResponseKeyEnum.answerText]: text,
       system_memories,
       [DispatchNodeResponseKeyEnum.interactive]: workflowInteractiveResponse
@@ -228,15 +239,22 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
             }
           }
         : undefined,
+      ...(!workflowInteractiveResponse && lastInteractive
+        ? {
+            [DispatchNodeResponseKeyEnum.rewriteHistories]:
+              removeUnfinishedInteractiveHistories(histories)
+          }
+        : {}),
       assistantResponses: system_forbid_stream ? [] : assistantResponses,
       [DispatchNodeResponseKeyEnum.runTimes]: runTimes,
       [DispatchNodeResponseKeyEnum.nodeResponse]: {
         moduleLogo: appData.avatar,
         query: userChatInput,
         textOutput: text,
-        childResponseCount
+        childResponseCount,
+        ...(errorText !== undefined && { errorText })
       },
-      [DispatchNodeResponseKeyEnum.toolResponse]: text,
+      [DispatchNodeResponseKeyEnum.toolResponse]: errorText ?? text,
       [DispatchNodeResponseKeyEnum.customFeedbacks]: customFeedbacks
     };
   } catch (error) {

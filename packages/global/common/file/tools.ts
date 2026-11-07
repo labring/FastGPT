@@ -5,7 +5,11 @@ export const formatFileSize = (bytes: number): string => {
 
   const k = 1024;
   const sizes = ['B', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  let i = Math.floor(Math.log(bytes) / Math.log(k));
+  // 1048575 B 是 1023.999 KB，保留两位后变成 1024，要进到下一个单位显示 1 MB
+  if (i < sizes.length - 1 && parseFloat((bytes / Math.pow(k, i)).toFixed(2)) >= k) {
+    i += 1;
+  }
 
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 };

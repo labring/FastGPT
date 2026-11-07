@@ -1,14 +1,9 @@
 import React, { useRef } from 'react';
 import { Box, Button, Flex, Text, Textarea } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
-import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { useTranslation } from 'next-i18next';
-import { updateChatUserFeedback } from '@/web/core/chat/feedback/api';
-import { useContextSelector } from 'use-context-selector';
-import { WorkflowRuntimeContext } from '../../context/workflowRuntimeContext';
 import FeedbackDrawer from './FeedbackDrawer';
-import { useChatAuthApiTarget } from '@/web/core/chat/utils';
 
 type FeedbackContentProps = {
   textareaRef: React.RefObject<HTMLTextAreaElement>;
@@ -84,41 +79,19 @@ const FeedbackContent = ({
 };
 
 const FeedbackModal = ({
-  chatId,
-  dataId,
-  onSuccess,
+  isLoading,
+  onSubmit,
   onClose
 }: {
-  chatId: string;
-  dataId: string;
-  onSuccess: (e: string) => void;
+  isLoading: boolean;
+  onSubmit: (content: string) => Promise<void>;
   onClose: () => void;
 }) => {
   const ref = useRef<HTMLTextAreaElement>(null);
   const { t } = useTranslation();
   const { isPc } = useSystem();
-  const outLinkAuthData = useContextSelector(WorkflowRuntimeContext, (v) => v.outLinkAuthData);
-  const sourceTarget = useContextSelector(WorkflowRuntimeContext, (v) => v.sourceTarget);
-  const chatAuthTarget = useChatAuthApiTarget({ sourceTarget, outLinkAuthData });
-
-  const { runAsync, loading: isLoading } = useRequest(
-    async () => {
-      const val = ref.current?.value || t('common:core.chat.feedback.No Content');
-      return updateChatUserFeedback({
-        ...chatAuthTarget,
-        chatId,
-        dataId,
-        userBadFeedback: val
-      });
-    },
-    {
-      onSuccess() {
-        onSuccess(ref.current?.value || t('common:core.chat.feedback.No Content'));
-      },
-      successToast: t('common:core.chat.Feedback Success'),
-      errorToast: t('common:core.chat.Feedback Failed')
-    }
-  );
+  const submit = () =>
+    void onSubmit(ref.current?.value || t('common:core.chat.feedback.No Content'));
 
   const contentText = {
     title: t('common:core.chat.Feedback Modal'),
@@ -142,7 +115,7 @@ const FeedbackModal = ({
           showCloseButton={false}
           submitFullWidth
           onClose={onClose}
-          onSubmit={runAsync}
+          onSubmit={submit}
         />
       </FeedbackDrawer>
     );
@@ -160,7 +133,7 @@ const FeedbackModal = ({
           gap={'24px'}
           textareaHeight={'110px'}
           onClose={onClose}
-          onSubmit={runAsync}
+          onSubmit={submit}
         />
       </Box>
     </MyModal>

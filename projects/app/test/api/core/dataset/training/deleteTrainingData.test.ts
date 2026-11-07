@@ -12,6 +12,7 @@ import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/sch
 import { MongoDatasetDataText } from '@fastgpt/service/core/dataset/data/dataTextSchema';
 import { mockVectorDelete, resetVectorMocks } from '@test/mocks/common/vector';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
+import { MongoTeamAudit } from '@fastgpt/service/support/user/audit/schema';
 import {
   DatasetDataIndexStatusEnum,
   DatasetDataIndexTypeEnum
@@ -23,6 +24,7 @@ import { Call } from '@test/utils/request';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.unmock(import('@fastgpt/service/common/mongo/sessionRun'));
+vi.unmock('@fastgpt/service/support/user/audit/util');
 
 const originalDatasetSynonymEnabled = serviceEnv.DATASET_SYNONYM_ENABLED;
 
@@ -66,6 +68,24 @@ describe('delete training data test', () => {
 
     expect(res.code).toBe(200);
     expect(deletedTrainingData).toBeNull();
+
+    // 清理训练记录审计详细到集合，便于从日志反查到具体集合。
+    await vi.waitFor(
+      async () => {
+        const logs = await MongoTeamAudit.find({
+          teamId: root.teamId,
+          event: 'dataset.training.record.delete'
+        }).lean();
+        expect(logs).toHaveLength(1);
+        expect(logs[0].metadata).toEqual(
+          expect.objectContaining({
+            datasetName: dataset.name,
+            collectionName: collection.name
+          })
+        );
+      },
+      { timeout: 5000 }
+    );
   });
 
   it('should ignore legacy datasetId and only delete data from the authorized collection', async () => {

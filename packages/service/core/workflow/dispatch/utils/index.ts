@@ -15,7 +15,10 @@ import {
   SseResponseEventEnum
 } from '@fastgpt/global/core/workflow/runtime/constants';
 import { type SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
-import { getMCPToolRuntimeNode } from '@fastgpt/global/core/app/tool/mcpTool/utils';
+import {
+  getMCPToolRuntimeNode,
+  parsetMcpToolConfig
+} from '@fastgpt/global/core/app/tool/mcpTool/utils';
 import {
   getHTTPToolRuntimeSchemas,
   getHTTPToolRuntimeNode,
@@ -30,10 +33,11 @@ import type { McpToolConfigType } from '@fastgpt/global/core/app/tool/mcpTool/ty
 import type { McpToolSetRuntimeConfigType } from '@fastgpt/global/core/workflow/type/node';
 import type { WorkflowResponseType } from '@fastgpt/global/core/workflow/runtime/sse';
 import { getLogger, LogCategories } from '../../../../common/logger';
-import { parsetMcpToolConfig } from '@fastgpt/global/core/app/tool/mcpTool/utils';
+
 import { getHTTPToolList } from '../../../app/http';
 import { getWorkflowResourceContext } from '../../utils/context';
-import { filterWorkflowToolList, loadWorkflowAppResource } from '../../utils/resource';
+import { filterWorkflowToolList } from '../../resource/context';
+import { loadWorkflowAppResource } from '../../resource/service';
 import { getLastInteractiveValue } from '@fastgpt/global/core/workflow/runtime/utils';
 import {
   getSavedToolInputSelectedType,
@@ -252,30 +256,59 @@ export const getHistories = (
   return [...systemHistories, ...filterHistories];
 };
 
+const getInteractiveChainStartIndex = (histories: ChatItemMiniType[] = []) => {
+  const lastAIIndex = histories.findLastIndex((item) => item.obj === ChatRoleEnum.AI);
+  if (lastAIIndex < 0) return -1;
+  if (!getLastInteractiveValue(histories)) return -1;
+
+  let startIndex = lastAIIndex;
+  for (let index = lastAIIndex - 1; index >= 0; index--) {
+    if (histories[index].obj !== ChatRoleEnum.Human) continue;
+    startIndex = index;
+    // 紧邻交互之后的 Human 是该工具的回答，继续回溯到本次任务的原始输入。
+    const previous = histories[index - 1];
+    if (!previous || !getLastInteractiveValue([previous])) break;
+  }
+
+  return startIndex;
+};
+
+/**
+ * 移除 histories 末尾未完成的交互链，返回进入本次交互前的历史记录。
+ *
+ * 交互节点在恢复完成并继续流向下游节点或下一轮循环迭代时，需清理本次运行暂停期间
+ * 写入的临时交互记录，避免下游节点把自身输入误当作上一交互节点的回答。
+ */
+export const removeUnfinishedInteractiveHistories = (
+  histories: ChatItemMiniType[] = []
+): ChatItemMiniType[] => {
+  const startIndex = getInteractiveChainStartIndex(histories);
+  return startIndex >= 0 ? histories.slice(0, startIndex) : histories;
+};
+
 /**
  * Agent loop 的交互恢复上下文不能被 history=0 一并裁掉。
  *
- * 普通请求仍严格遵守 history 配置；仅当零历史窗口的最后一轮确实包含未完成交互时，
- * 临时保留最近一轮，让 provider 能读取 providerState 或恢复原 tool call。
+ * 普通请求遵守 history 配置。未完成交互以原始 Human 为窗口边界，保留当时的历史及
+ * 连续交互链，避免交互回答消耗 recent-N 窗口；已有 checkpoint 时从该压缩点恢复。
  */
 export const getAgentLoopHistories = (
   history?: ChatItemMiniType[] | number,
   histories: ChatItemMiniType[] = []
 ) => {
   const filteredHistories = getHistories(history, histories);
-  if (history !== 0 || filteredHistories.length > 0) return filteredHistories;
+  const startIndex = Array.isArray(history) ? -1 : getInteractiveChainStartIndex(histories);
+  if (startIndex < 0) return filteredHistories;
 
-  const lastAIIndex = histories.findLastIndex((item) => item.obj === ChatRoleEnum.AI);
-  if (lastAIIndex < 0) return filteredHistories;
-
-  const lastAIMessage = histories[lastAIIndex];
-  if (!getLastInteractiveValue([lastAIMessage])) return filteredHistories;
-
-  const lastHumanIndex = histories
-    .slice(0, lastAIIndex)
-    .findLastIndex((item) => item.obj === ChatRoleEnum.Human);
-
-  return lastHumanIndex < 0 ? [lastAIMessage] : [histories[lastHumanIndex], lastAIMessage];
+  const originalHistories = getHistories(history, histories.slice(0, startIndex));
+  const checkpointIndex = histories.findLastIndex(hasContextCheckpoint);
+  if (checkpointIndex >= startIndex) {
+    return [
+      ...originalHistories.filter((item) => item.obj === ChatRoleEnum.System),
+      ...histories.slice(checkpointIndex)
+    ];
+  }
+  return [...originalHistories, ...histories.slice(startIndex)];
 };
 
 /**
@@ -310,22 +343,8 @@ export const filterSystemVariables = (variables: Record<string, any>): SystemVar
   };
 };
 
-/**
- * 将 HTTP 请求异常整理成可序列化、可展示的错误摘要。
- *
- * Axios 等请求库的原始错误通常包含循环引用和大量配置对象，这里只保留排查请求失败所需的
- * method、status、code 和响应数据。
- */
-export const formatHttpError = (error: any) => {
-  return {
-    message: getErrText(error),
-    data: error?.response?.data,
-    name: error?.name,
-    method: error?.config?.method,
-    code: error?.code,
-    status: error?.status
-  };
-};
+/** HTTP 错误摘要已下沉到 common/api/httpError，供 HTTP 节点与工具调用共用。 */
+export { formatHttpError } from '../../../../common/api/httpError';
 
 /**
  * 重写 runtime workflow 中的工具相关节点配置。
@@ -465,8 +484,7 @@ export const rewriteRuntimeWorkFlow = async ({
         if (systemToolId) {
           const children = await getSystemToolRunTimeNodeFromSystemToolset({
             toolSetNode,
-            teamId,
-            lang
+            teamId
           });
           children.forEach((node) => {
             const runtimeNode = initToolSetChildNode(node);
@@ -588,11 +606,8 @@ export const rewriteRuntimeWorkFlow = async ({
     const toolListMap = new Map<string, RuntimeMcpTool[]>();
     await Promise.all(
       toolsets.map(async (toolset) => {
-        const toolList = filterWorkflowToolList({
-          context: getWorkflowResourceContext(),
-          appId: String(toolset._id),
-          tools: (await getMCPChildren(toolset)) as RuntimeMcpTool[]
-        });
+        // 单工具补齐只读取定义，执行入口会按具体 toolName 完成资源鉴权。
+        const toolList = (await getMCPChildren(toolset)) as RuntimeMcpTool[];
         toolListMap.set(String(toolset._id), toolList);
       })
     );
@@ -636,14 +651,7 @@ export const rewriteRuntimeWorkFlow = async ({
     const toolListMap = new Map<string, HttpToolConfigType[]>();
     await Promise.all(
       toolsets.map(async (toolset) => {
-        toolListMap.set(
-          String(toolset._id),
-          filterWorkflowToolList({
-            context: getWorkflowResourceContext(),
-            appId: String(toolset._id),
-            tools: await getHTTPToolList(toolset)
-          })
-        );
+        toolListMap.set(String(toolset._id), await getHTTPToolList(toolset));
       })
     );
     httpToolNodes.forEach((node) => {
@@ -687,27 +695,31 @@ export const rewriteRuntimeWorkFlow = async ({
 /**
  * 生成节点执行失败时的标准返回结构。
  *
- * 同一份错误会被写入节点输出、nodeResponse 和 toolResponse，兼容普通节点执行、
- * 前端节点详情展示以及 tool call 调用方读取错误的不同路径。
+ * error 保留错误分支可引用的输出，rawError 独立保留原始异常供分类和日志判断。
+ * 展示文本可独立覆盖，例如 HTTP 节点会补充响应体摘要；不覆盖原始异常。
+ * nodeResponse/toolResponse 只接收可展示数据，避免异常堆栈和 cause 进入持久化或模型上下文。
  */
 export const getNodeErrResponse = <TError extends Record<string, any> = Record<string, never>>({
   error,
+  errorText: displayErrorText,
   customErr,
   responseData,
   runTimes,
   system_memories
 }: {
-  error: any;
+  error: unknown;
+  errorText?: string;
   customErr?: TError;
   [DispatchNodeResponseKeyEnum.nodeResponse]?: Record<string, any>;
   [DispatchNodeResponseKeyEnum.runTimes]?: number;
   [DispatchNodeResponseKeyEnum.memories]?: Record<string, any>;
 }) => {
-  const errorText = getErrText(error);
+  const errorText = displayErrorText ?? getErrText(error);
 
   return {
     [DispatchNodeResponseKeyEnum.runTimes]: runTimes,
     [DispatchNodeResponseKeyEnum.memories]: system_memories,
+    rawError: error,
     error: {
       [NodeOutputKeyEnum.errorText]: errorText,
       ...(typeof customErr === 'object' ? customErr : {})

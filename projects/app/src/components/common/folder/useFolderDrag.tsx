@@ -2,6 +2,9 @@ import { useState, type DragEvent, useCallback } from 'react';
 import type { BoxProps } from '@chakra-ui/react';
 import { useBoolean } from 'ahooks';
 
+/**
+ * 为可移动资源和文件夹提供拖放移动交互；禁用项不会成为拖动源或放置目标。
+ */
 export const useFolderDrag = ({
   onDrop,
   activeStyles
@@ -14,7 +17,17 @@ export const useFolderDrag = ({
   const [isDropping, { setTrue, setFalse }] = useBoolean();
 
   const getBoxProps = useCallback(
-    ({ dataId, isFolder }: { dataId: string; isFolder: boolean }) => {
+    ({
+      dataId,
+      isFolder,
+      isDisabled = false
+    }: {
+      dataId: string;
+      isFolder: boolean;
+      isDisabled?: boolean;
+    }) => {
+      if (isDisabled) return { draggable: false };
+
       return {
         draggable: true,
         userSelect: 'none' as any,

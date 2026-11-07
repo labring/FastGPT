@@ -8,8 +8,9 @@ import type { AccountCancellationReminder, AccountCancellationSchedule } from '.
 const dayInMilliseconds = 24 * 60 * 60 * 1000;
 const reminderUtcHour = 2;
 const finalizeUtcHour = 16;
-const accountCancellationAnonymizedUsernameReg = /-[a-z][a-zA-Z0-9]{7}-delete$/;
-const legacyAccountCancellationUsernameRegs = [/-deleted$/, /^deleted-[a-f0-9]{32}$/];
+/** 当前与历史注销匿名用户名规则，供展示判断和数据库筛选复用，避免两端口径漂移。 */
+export const accountCancellationAnonymizedUsernameReg =
+  /-[a-z][a-zA-Z0-9]{7}-delete$|-deleted$|^deleted-[a-f0-9]{32}$/;
 
 type UtcDateParts = {
   year: number;
@@ -146,5 +147,4 @@ export const isAccountCancellationMethod = (method: string) =>
  * 判断用户名是否由账号注销流程生成，同时兼容已落库的历史匿名用户名格式。
  */
 export const isAccountCancellationAnonymizedUsername = (username: string) =>
-  accountCancellationAnonymizedUsernameReg.test(username) ||
-  legacyAccountCancellationUsernameRegs.some((reg) => reg.test(username));
+  accountCancellationAnonymizedUsernameReg.test(username);

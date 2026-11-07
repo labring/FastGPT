@@ -1,3 +1,4 @@
+import { createChatTargetQueryParameters } from '../../chat/api';
 import type { OpenAPIPath } from '../../../type';
 import { DevApiTagsMap } from '../../../tag';
 import {
@@ -106,9 +107,7 @@ export const SandboxPath: OpenAPIPath = {
       description:
         '将原始二进制请求流直接写入当前 Chat Session 路径，不在 FastGPT 节点生成临时文件',
       tags: [DevApiTagsMap.sandbox],
-      requestParams: {
-        query: SandboxUploadQueryRawSchema
-      },
+      parameters: createChatTargetQueryParameters(SandboxUploadQueryRawSchema),
       requestBody: {
         content: {
           'application/octet-stream': {
@@ -183,7 +182,7 @@ export const SandboxPath: OpenAPIPath = {
   '/core/ai/sandbox/getTicket': {
     post: {
       summary: '获取沙盒 WebSocket 临时凭证',
-      description: '鉴权并返回用于连接 agent-sandbox-proxy 的短期 ticket 和当前会话目录',
+      description: '鉴权并返回包含短期 ticket 的完整 WebSocket 地址、文件大小限制和当前会话目录',
       tags: [DevApiTagsMap.sandbox],
       requestBody: {
         content: {
@@ -194,7 +193,7 @@ export const SandboxPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '返回沙盒 WebSocket 临时凭证和运行时目录',
+          description: '返回沙盒 WebSocket 连接地址、文件大小限制和运行时目录',
           content: {
             'application/json': {
               schema: SandboxGetTicketResponseSchema

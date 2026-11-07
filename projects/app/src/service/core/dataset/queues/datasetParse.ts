@@ -1,46 +1,46 @@
-import { getModelHandle } from '@fastgpt/service/core/ai/model';
+import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/catalog/service';
 import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
 
 /* Dataset collection source parse, not max size. */
 
-import { ParagraphChunkAIModeEnum } from '@fastgpt/global/core/dataset/constants';
+import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
+import { hashStr } from '@fastgpt/global/common/string/tools';
+import { delay } from '@fastgpt/global/common/system/utils';
+import { getModelReferenceValue, isEmptyModelValue } from '@fastgpt/global/core/ai/model/reference';
 import {
   DatasetCollectionDataProcessModeEnum,
   DatasetCollectionTypeEnum,
   DatasetSourceReadTypeEnum,
+  ParagraphChunkAIModeEnum,
   TrainingModeEnum
 } from '@fastgpt/global/core/dataset/constants';
+import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
+import { getLLMMaxChunkSize } from '@fastgpt/global/core/dataset/training/utils';
 import type {
   DatasetCollectionSchemaType,
   DatasetSchemaType
 } from '@fastgpt/global/core/dataset/type';
-import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
-import { checkTeamAiPointsAndLock } from './utils';
-import { delay } from '@fastgpt/global/common/system/utils';
-import { getDatasetIultmzhFileParseConfig } from '@fastgpt/service/thirdProvider/sangfor/parseConfig';
-import { rawText2Chunks, readDatasetSourceRawText } from '@fastgpt/service/core/dataset/read';
-import { getLLMMaxChunkSize } from '@fastgpt/global/core/dataset/training/utils';
-import { checkDatasetIndexLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { predictDataLimitLength } from '@fastgpt/global/core/dataset/utils';
+import { UsageItemTypeEnum } from '@fastgpt/global/support/wallet/usage/constants';
+import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
+import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { getTrainingModeByCollection } from '@fastgpt/service/core/dataset/collection/utils';
-import { getDatasetImageIndexCapability } from '@fastgpt/service/core/dataset/utils';
+import { rawText2Chunks, readDatasetSourceRawText } from '@fastgpt/service/core/dataset/read';
 import {
   preCreateDatasetDataAndPushToTrainingQueue,
   pushDataListToTrainingQueue
 } from '@fastgpt/service/core/dataset/training/controller';
-import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
-import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
-import { hashStr } from '@fastgpt/global/common/string/tools';
-import { postCreateParagraphTitle } from '@fastgpt/service/thirdProvider/fastgptPro/api';
-import { pushLLMTrainingUsage } from '@fastgpt/service/support/wallet/usage/controller';
-import { UsageItemTypeEnum } from '@fastgpt/global/support/wallet/usage/constants';
-import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
-import { getModelReferenceValue, isEmptyModelValue } from '@fastgpt/global/core/ai/model/reference';
-import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import {
   claimTrainingTask,
   TrainingLeaseLostError
 } from '@fastgpt/service/core/dataset/training/service';
+import { getDatasetImageIndexCapability } from '@fastgpt/service/core/dataset/utils';
+import { checkDatasetIndexLimit } from '@fastgpt/service/support/permission/teamLimit';
+import { pushLLMTrainingUsage } from '@fastgpt/service/support/wallet/usage/controller';
+import { postCreateParagraphTitle } from '@fastgpt/service/thirdProvider/fastgptPro/api';
+import { getDatasetIultmzhFileParseConfig } from '@fastgpt/service/thirdProvider/sangfor/parseConfig';
+import { checkTeamAiPointsAndLock } from './utils';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.FILE_PARSE);
 
@@ -107,6 +107,21 @@ const reduceQueue = () => {
   return global.datasetParseQueueLen === 0;
 };
 
+/**
+ * 识别会让解析任务必须暂停的团队额度错误，返回值供调用方区分日志级别与提示文案。
+ *
+ * 枚举值收敛在函数内部，调用方不需要（也不应该）自己传错误码。
+ * 同时兼容两种抛出形态：`checkDatasetIndexLimit` 直接 `Promise.reject(枚举值)`，
+ * 经上层包装后则可能是 `Error.message`。
+ */
+const getQuotaErrorCode = (err: unknown): TeamErrEnum | undefined => {
+  const code = err instanceof Error ? err.message : err;
+
+  if (code === TeamErrEnum.datasetSizeNotEnough) return TeamErrEnum.datasetSizeNotEnough;
+  if (code === TeamErrEnum.aiPointsNotEnough) return TeamErrEnum.aiPointsNotEnough;
+  return undefined;
+};
+
 /** 读取并分块原文；共用训练租约，解析失败才扣重试次数，容量不足则暂停等待恢复。 */
 export const datasetParseQueue = async (): Promise<any> => {
   const max = global.systemEnv?.datasetParseMaxProcess || 10;
@@ -166,9 +181,10 @@ export const datasetParseQueue = async (): Promise<any> => {
 
         try {
           // 解析阶段只严格校验向量模型；辅助模型仅取分块元数据，不校验启用或可调用状态。
-          const modelHandle = await getModelHandle();
-          const embeddingModelData = modelHandle.getEmbeddingModelData(
-            getDatasetModelReference(dataset, 'embedding')
+          const modelHandle = await getTeamModelHandle({ teamId: String(dataset.teamId) });
+          const embeddingModelData = modelHandle.getModelData(
+            getDatasetModelReference(dataset, 'embedding'),
+            { type: 'embedding' }
           );
           const agentModelData = modelHandle.findModelData(
             getDatasetModelReference(dataset, 'agent'),
@@ -238,10 +254,17 @@ export const datasetParseQueue = async (): Promise<any> => {
             continue;
           }
 
+          // 模板与备份同为 CSV 结构化导入（逐行 q/a/index/metadata），重解析必须走行解析器，
+          // 且必须读取原始 CSV——默认的 formatText 是 Markdown 表格，行解析器识别不出表头。
+          const csvStructured =
+            collection.trainingType === DatasetCollectionDataProcessModeEnum.backup ||
+            collection.trainingType === DatasetCollectionDataProcessModeEnum.template;
+
           const { title, rawText } = await readDatasetSourceRawText({
             teamId: data.teamId,
             tmbId: data.tmbId,
             customPdfParse: collection.customPdfParse,
+            getFormatText: !csvStructured,
             // 解析开关仅对外部解析路径生效;非 customPdfParse 时传 undefined,rawText 缓存沿用旧 key
             sangforFileParseConfig: collection.customPdfParse
               ? getDatasetIultmzhFileParseConfig(dataset)
@@ -287,7 +310,7 @@ export const datasetParseQueue = async (): Promise<any> => {
             customReg: collection.chunkSplitter ? [collection.chunkSplitter] : [],
             chunkSettingMode: collection.chunkSettingMode,
             trainingType: collection.trainingType,
-            backupParse: collection.trainingType === DatasetCollectionDataProcessModeEnum.backup
+            backupParse: csvStructured
           });
 
           // Check dataset limit
@@ -362,7 +385,10 @@ export const datasetParseQueue = async (): Promise<any> => {
           });
         } catch (err) {
           if (err instanceof TrainingLeaseLostError) continue;
-          if (err === TeamErrEnum.datasetSizeNotEnough) {
+
+          const quotaErrorCode = getQuotaErrorCode(err);
+
+          if (quotaErrorCode === TeamErrEnum.datasetSizeNotEnough) {
             logger.info('Parse queue dataset limit exceeded, locking task', {
               trainingId: data._id,
               datasetId: data.datasetId,
@@ -370,6 +396,18 @@ export const datasetParseQueue = async (): Promise<any> => {
             });
             await taskLease.fail(i18nT('common:code_error.team_error.dataset_size_not_enough'), {
               blocked: true
+            });
+
+            continue;
+          }
+
+          if (quotaErrorCode === TeamErrEnum.aiPointsNotEnough) {
+            // 任务开始时已校验过团队余额；这里说明执行期间余额被其它任务消耗。
+            // 不再重复锁定，交由下一轮领取任务时的起始校验统一暂停该团队任务。
+            logger.warn('Parse queue AI points limit exceeded, skipping task', {
+              trainingId: data._id,
+              datasetId: data.datasetId,
+              collectionId: data.collectionId
             });
 
             continue;

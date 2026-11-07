@@ -2,12 +2,14 @@ import type { NodeApiResponse, NodeHttpResponse } from '../../types/http';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { proxyError, ERROR_RESPONSE, ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 import { replaceSensitiveText } from '@fastgpt/global/common/string/tools';
-import { UserError } from '@fastgpt/global/common/error/utils';
+import { getErrorMessage, isUserConfigError, UserError } from '@fastgpt/global/common/error/utils';
 import { clearCookie } from '../../support/permission/auth/common';
 import { ZodError } from 'zod';
 import type Stream from 'node:stream';
 import { getLogger, LogCategories } from '../logger';
 import { ApiRequestInputParseError, getZodError } from '../zod/requestParseError';
+import { markProfileError } from '../profiling';
+import { ChatGeneratingConflictError } from '@fastgpt/global/core/chat/error';
 
 const logger = getLogger(LogCategories.HTTP.ERROR);
 
@@ -38,6 +40,10 @@ function resolveHttpStatusForApiError(
 ): number {
   const { code: propsCode = 200, error } = props;
   const bc = processedError.code;
+
+  if (isUserConfigError(error)) {
+    return 400;
+  }
 
   if (typeof bc === 'number' && bc >= 400 && bc <= 499) {
     return bc;
@@ -100,6 +106,11 @@ export function processError(params: {
       error instanceof UserError && error.displayMessage
         ? replaceSensitiveText(error.displayMessage)
         : ERROR_RESPONSE[errResponseKey].message;
+    // 只允许已知的生成冲突错误携带恢复信息，其他业务错误继续使用固定映射，避免透传任意数据。
+    const data =
+      error instanceof ChatGeneratingConflictError
+        ? error.data
+        : ERROR_RESPONSE[errResponseKey].data;
 
     // 记录业务侧错误日志
     logger.info('API response error', {
@@ -114,26 +125,26 @@ export function processError(params: {
       code: ERROR_RESPONSE[errResponseKey].code || defaultCode,
       statusText: ERROR_RESPONSE[errResponseKey].statusText || 'error',
       message,
-      data: ERROR_RESPONSE[errResponseKey].data,
-      httpStatus: ERROR_RESPONSE[errResponseKey].httpStatus ?? 500,
+      data,
+      httpStatus:
+        error instanceof ChatGeneratingConflictError
+          ? 409
+          : (ERROR_RESPONSE[errResponseKey].httpStatus ?? 500),
       shouldClearCookie
     };
   }
 
   // 2. 提取通用错误消息
-  let msg = error?.response?.statusText || error?.message || '请求错误';
-  if (typeof error === 'string') {
-    msg = error;
-  } else if (proxyError[error?.code]) {
+  // 上游响应体的具体原因优先于 statusText；保留既有网络错误提示和业务码语义。
+  let msg = getErrorMessage(error, '请求错误');
+  if (typeof error !== 'string' && proxyError[error?.code]) {
     msg = '网络连接异常';
-  } else if (error?.response?.data?.error?.message) {
-    msg = error?.response?.data?.error?.message;
-  } else if (error?.error?.message) {
-    msg = error?.error?.message;
   }
 
   // 3. 根据错误类型记录不同级别的日志
-  if (error instanceof UserError) {
+  if (isUserConfigError(error)) {
+    msg = typeof error.displayMessage === 'string' ? error.displayMessage || msg : msg;
+  } else if (error instanceof UserError) {
     msg = error.displayMessage || msg;
     logger.info('Request error', { url, message: msg });
   } else if (error instanceof ZodError || error instanceof ApiRequestInputParseError) {
@@ -148,13 +159,15 @@ export function processError(params: {
     logger.error('System unexpected error', { url, message: msg, error });
   }
 
+  const defaultResolvedCode = isUserConfigError(error) ? 400 : defaultCode;
+
   // 4. 返回处理后的错误信息
   return {
-    code: defaultCode,
+    code: defaultResolvedCode,
     statusText: 'error',
     message: replaceSensitiveText(msg),
     shouldClearCookie: false,
-    httpStatus: defaultCode,
+    httpStatus: defaultResolvedCode,
     zodError
   };
 }
@@ -222,13 +235,22 @@ export const getSseErrorResponse = (
   data: string;
   shouldClearCookie: boolean;
 } => {
+  // SSE 错误按协议以 HTTP 200 正常结束，共享入口只能按状态码/断流判断成败，
+  // 因此在这个唯一的 SSE 错误载荷出口标记采集失败（v1、v2、pro 等入口共享）。
+  // 只影响观测口径，不改变响应内容。
+  markProfileError(error);
+
   const errResponseKey = typeof error === 'string' ? error : error?.message;
   const processedError = processError({ error });
 
   if (ERROR_RESPONSE[errResponseKey]) {
     return {
       event: SseResponseEventEnum.error,
-      data: JSON.stringify({ ...ERROR_RESPONSE[errResponseKey], message: processedError.message }),
+      data: JSON.stringify({
+        ...ERROR_RESPONSE[errResponseKey],
+        message: processedError.message,
+        data: processedError.data
+      }),
       shouldClearCookie: processedError.shouldClearCookie
     };
   }
@@ -271,6 +293,12 @@ export function responseWrite({
   const Write = res?.write;
 
   if (!Write) return;
+
+  // 直接写出 error 事件（如 workflowSseEvent.error）同样意味着请求失败；
+  // 与 getSseErrorResponse 的标记互为兜底，重复调用只保留第一个错误。
+  if (event === SseResponseEventEnum.error) {
+    markProfileError(data);
+  }
 
   if (event) {
     Write(`event: ${event}\n`);

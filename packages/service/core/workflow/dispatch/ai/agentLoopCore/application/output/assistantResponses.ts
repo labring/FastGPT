@@ -9,13 +9,34 @@ export const compactAgentLoopCorePlanSnapshots = (
   assistantResponses: AIChatItemValueItemType[]
 ): AIChatItemValueItemType[] => {
   const lastPlanIndex = assistantResponses.findLastIndex(
-    (value) => Object.prototype.hasOwnProperty.call(value, 'plan') && value.plan !== undefined
+    (value) =>
+      !value.displayOnly &&
+      Object.prototype.hasOwnProperty.call(value, 'plan') &&
+      value.plan !== undefined
   );
   if (lastPlanIndex < 0) return assistantResponses;
 
+  /** 移除已结束的计划卡后，内部工具记录仍需隐藏，避免留下只有元信息的空气泡。 */
+  const hideInternalOnlyValue = (value: AIChatItemValueItemType) => {
+    if (
+      !value.plan &&
+      !value.interactive &&
+      !value.text?.content &&
+      (!value.reasoning?.content || value.hideReason) &&
+      value.tools?.length &&
+      value.tools.every((tool) => tool.hideInUI)
+    )
+      return { ...value, hideInUI: true };
+    return value;
+  };
+
   return assistantResponses.flatMap((value, index) => {
     const currentPlan = value.plan;
-    if (!Object.prototype.hasOwnProperty.call(value, 'plan') || currentPlan === undefined) {
+    if (
+      value.displayOnly ||
+      !Object.prototype.hasOwnProperty.call(value, 'plan') ||
+      currentPlan === undefined
+    ) {
       return [value];
     }
 
@@ -27,13 +48,13 @@ export const compactAgentLoopCorePlanSnapshots = (
     if (index === lastPlanIndex) {
       const plan =
         currentPlan === null || !hasUnfinishedAgentPlan(currentPlan) ? null : currentPlan;
-      return [{ ...valueWithoutPlan, plan }];
+      return [hideInternalOnlyValue({ ...valueWithoutPlan, plan })];
     }
 
     const hasSemanticValue = Object.entries(valueWithoutPlan).some(
       ([key, itemValue]) => key !== 'id' && itemValue !== undefined && itemValue !== null
     );
-    return hasSemanticValue ? [valueWithoutPlan] : [];
+    return hasSemanticValue ? [hideInternalOnlyValue(valueWithoutPlan)] : [];
   });
 };
 
@@ -50,66 +71,64 @@ export const getAgentLoopCorePersistedTextOutput = (
     .join('');
 
 /**
- * 将最终文本追加到 assistantResponses。
- * 若事件流已经持久化相同文本，只追加缺失部分，避免刷新后重复显示。
- */
-export const appendAgentLoopCoreFinalAssistantResponse = ({
-  assistantResponses,
-  finalText,
-  reasoningText,
-  hideReason
-}: {
-  assistantResponses: AIChatItemValueItemType[];
-  finalText?: string;
-  reasoningText?: string;
-  hideReason?: boolean;
-}) => {
-  if (!finalText) return;
-
-  const persistedText = getAgentLoopCorePersistedTextOutput(assistantResponses);
-  if (finalText === persistedText || persistedText.endsWith(finalText)) return;
-
-  assistantResponses.push({
-    ...(reasoningText
-      ? {
-          reasoning: {
-            content: reasoningText
-          },
-          ...(hideReason ? { hideReason: true } : {})
-        }
-      : {}),
-    text: {
-      content: finalText.startsWith(persistedText)
-        ? finalText.slice(persistedText.length)
-        : finalText
-    }
-  });
-};
-
-/**
  * 生成节点结束态需要的 assistantResponses 和纯文本输出。
- * 调用方传入本轮已收集的 assistantResponses，core 负责补齐最终回答缺失片段并返回节点 output 文本。
+ * 调用方传入本轮已收集的 assistantResponses，core 负责补齐缺失片段并返回节点 output 文本。
+ * 交互恢复轮支持传入暂停前已累积的 previousAssistantResponses，使节点最终 answerText 覆盖完整循环输出，
+ * 同时保持本轮落库的 assistantResponses 仅包含当前恢复轮增量。
  */
 export const buildAgentLoopCoreFinalAssistantOutput = ({
   assistantResponses,
+  previousAssistantResponses = [],
   finalText,
   reasoningText,
   hideReason
 }: {
   assistantResponses: AIChatItemValueItemType[];
+  previousAssistantResponses?: AIChatItemValueItemType[];
   finalText?: string;
   reasoningText?: string;
   hideReason?: boolean;
 }) => {
-  appendAgentLoopCoreFinalAssistantResponse({
-    assistantResponses,
-    finalText,
-    reasoningText,
-    hideReason
-  });
+  if (finalText) {
+    const persistedText = getAgentLoopCorePersistedTextOutput(assistantResponses);
+    if (finalText !== persistedText && !persistedText.endsWith(finalText)) {
+      const persistedReasoning = assistantResponses
+        .filter((item) => item.reasoning?.content)
+        .map((item) => item.reasoning!.content)
+        .join('');
+      const missingReasoning =
+        reasoningText &&
+        reasoningText !== persistedReasoning &&
+        !persistedReasoning.endsWith(reasoningText)
+          ? persistedReasoning && reasoningText.startsWith(persistedReasoning)
+            ? reasoningText.slice(persistedReasoning.length)
+            : reasoningText
+          : '';
+      const missingText =
+        persistedText && finalText.startsWith(persistedText)
+          ? finalText.slice(persistedText.length)
+          : finalText;
+      assistantResponses.push({
+        ...(missingReasoning
+          ? {
+              reasoning: {
+                content: missingReasoning
+              },
+              ...(hideReason ? { hideReason: true } : {})
+            }
+          : {}),
+        text: {
+          content: missingText
+        }
+      });
+    }
+  }
 
   return {
     assistantResponses,
-    answerText: getAgentLoopCorePersistedTextOutput(assistantResponses)
+    answerText: getAgentLoopCorePersistedTextOutput([
+      ...previousAssistantResponses,
+      ...assistantResponses
+    ])
   };
 };

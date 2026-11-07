@@ -3,6 +3,10 @@ import z from 'zod';
 import { ObjectIdSchema } from '../../../common/type/mongo';
 import { getErrorResponse } from '../../type';
 import { OpenApiTagSchema, OpenApiTagsInputSchema } from './tag';
+import { BoolSchema, queryArrayParam } from '../../../common/zod';
+import { ApiKeyTypeSchema } from '../../../support/openapi/schema';
+import { ApiKeyTypeEnum } from '../../../support/openapi/constants';
+import { SourceMemberSchema } from '../../../support/user/type';
 
 const OptionalDateSchema = z.preprocess((value) => {
   if (value === undefined || value === null || value === '') return undefined;
@@ -28,6 +32,12 @@ export const OpenApiKeySchema = z.object({
   _id: ObjectIdSchema.meta({ description: 'API Key 记录 ID' }),
   teamId: ObjectIdSchema.meta({ description: '团队 ID' }),
   tmbId: ObjectIdSchema.meta({ description: '团队成员 ID' }),
+  type: ApiKeyTypeSchema,
+  appId: ObjectIdSchema.optional().meta({
+    description: '应用 Key 绑定的应用 ID',
+    example: '68ad85a7463006c963799a05'
+  }),
+  sourceMember: SourceMemberSchema.optional().meta({ description: '密钥当前归属成员' }),
   createTime: z.coerce.date().meta({ description: '创建时间' }),
   lastUsedTime: z.coerce.date().optional().meta({ description: '最后使用时间' }),
   apiKey: z.string().meta({
@@ -37,7 +47,7 @@ export const OpenApiKeySchema = z.object({
     description: '当前用户是否可以复制该 API Key 明文'
   }),
   authProxy: z.boolean().default(false).meta({
-    description: '是否允许 API Key 在 chat/completions 请求中通过 authProxy 代理团队成员身份'
+    description: '是否允许 API Key 在应用对话及对话管理请求中通过 authProxy 代理团队成员身份'
   }),
   appName: z.string().optional().meta({
     example: '客服助手',
@@ -48,10 +58,10 @@ export const OpenApiKeySchema = z.object({
     .default([])
     .meta({
       example: ['68ad85a7463006c963799a05'],
-      description: 'API Key 绑定的标签 ID 列表'
+      description: '个人密钥绑定的标签 ID 列表'
     }),
   tags: z.array(OpenApiTagSchema).default([]).meta({
-    description: 'API Key 绑定的标签列表'
+    description: '个人密钥绑定的标签列表'
   }),
   name: z.string().default('Api Key').meta({ description: 'API Key 名称' }),
   usagePoints: z.number().default(0).meta({ description: '累计使用积分' }),
@@ -65,30 +75,68 @@ export type OpenApiKeySchemaType = z.infer<typeof OpenApiKeySchema>;
  * API: 创建 API Key
  * Route: POST /api/support/openapi/create
  * Method: POST
- * Description: 创建系统 API Key。
+ * Description: 通过登录态创建个人密钥或绑定单一应用的应用 Key。
  * Tags: ['API Key 管理']
  * ============================================================================ */
 
-export const CreateApiKeyBodySchema = z.object({
-  name: z
-    .string()
-    .trim()
-    .min(1)
-    .max(50)
-    .meta({ example: '客户 A Key', description: 'API Key 名称' }),
-  authProxy: z.boolean().optional().meta({
-    example: false,
-    description:
-      '是否允许系统 API Key 在 chat/completions 请求中代理团队成员身份；仅团队 owner 可开启'
-  }),
-  tags: OpenApiTagsInputSchema.optional().meta({
-    example: ['68ad85a7463006c963799a05'],
-    description: '绑定的标签 ID 列表'
-  }),
-  limit: ApiKeyLimitSchema.meta({
-    description: 'API Key 使用限制，未配置时表示不限制过期时间和积分用量'
+export const CreateApiKeyBodySchema = z
+  .object({
+    type: ApiKeyTypeSchema.optional().meta({
+      description: '密钥类型，省略时创建个人密钥',
+      example: ApiKeyTypeEnum.personal
+    }),
+    appId: ObjectIdSchema.optional().meta({
+      description: '应用 Key 必填的绑定应用 ID；个人密钥不传',
+      example: '68ad85a7463006c963799a05'
+    }),
+    name: z
+      .string()
+      .trim()
+      .min(1)
+      .max(50)
+      .meta({ example: '客户 A Key', description: 'API Key 名称' }),
+    authProxy: BoolSchema.optional().meta({
+      example: false,
+      description:
+        '个人密钥是否允许在 chat/completions 请求中代理团队成员身份；仅团队 owner 可开启，应用 Key 不支持'
+    }),
+    tags: OpenApiTagsInputSchema.optional().meta({
+      example: ['68ad85a7463006c963799a05'],
+      description: '绑定的标签 ID 列表'
+    }),
+    limit: ApiKeyLimitSchema.meta({
+      description: 'API Key 使用限制，未配置时表示不限制过期时间和积分用量'
+    })
   })
-});
+  .strict()
+  .superRefine(({ type = ApiKeyTypeEnum.personal, appId, authProxy, tags }, ctx) => {
+    if (type === ApiKeyTypeEnum.app) {
+      if (!appId)
+        ctx.addIssue({
+          code: 'custom',
+          path: ['appId'],
+          message: 'appId is required for app keys'
+        });
+      if (authProxy !== undefined)
+        ctx.addIssue({
+          code: 'custom',
+          path: ['authProxy'],
+          message: 'App keys do not support authProxy'
+        });
+      if (tags !== undefined)
+        ctx.addIssue({
+          code: 'custom',
+          path: ['tags'],
+          message: 'App keys do not support personal tags'
+        });
+    } else if (appId !== undefined) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['appId'],
+        message: 'Personal keys cannot bind an application'
+      });
+    }
+  });
 export type CreateApiKeyBodyType = z.infer<typeof CreateApiKeyBodySchema>;
 
 export const CreateApiKeyResponseSchema = z.string().meta({
@@ -100,38 +148,45 @@ export type CreateApiKeyResponseType = z.infer<typeof CreateApiKeyResponseSchema
  * API: 获取 API Key 列表
  * Route: GET /api/support/openapi/list
  * Method: GET
- * Description: 获取当前登录成员创建的系统 API Key 列表。
+ * Description: 获取本人个人密钥，或有管理权限的指定应用的全部应用 Key。
  * Tags: ['API Key 管理']
  * ============================================================================ */
 
-const ApiKeyListTagsQuerySchema = z.preprocess((value) => {
-  if (value === undefined || value === null || value === '') return undefined;
-  if (Array.isArray(value)) return value;
-  if (typeof value === 'string' && value.includes(',')) {
-    return value.split(',').filter(Boolean);
-  }
-  return [value];
-}, OpenApiTagsInputSchema.optional());
+const ApiKeyListTagsQuerySchema = queryArrayParam(OpenApiTagsInputSchema.optional());
 
-export const GetApiKeyListQuerySchema = z.object({
-  keyword: z.string().trim().max(100).optional().meta({
-    example: 'production',
-    description: '按 API Key 名称或 Key 值片段搜索'
-  }),
-  tags: ApiKeyListTagsQuerySchema.meta({
-    example: ['68ad85a7463006c963799a05'],
-    description: '按标签筛选；多个标签默认要求同时包含'
-  }),
-  appId: ObjectIdSchema.optional().meta({
-    example: '68ad85a7463006c963799a05',
-    description: '应用 ID，仅用于把相同 appId 的历史 Key 排在前面；不影响可见范围'
-  }),
-  sortBy: ApiKeyListSortBySchema.default('createTime').meta({
-    example: 'createTime',
-    description:
-      '排序字段。appId 置顶优先级最高；同一组内 createTime、lastUsedTime 按倒序排序，时间越近越靠前；remainingPoints 表示剩余积分，按升序排序，剩余少的排在前面，不限额 Key 排在最后'
+export const GetApiKeyListQuerySchema = z
+  .object({
+    type: ApiKeyTypeSchema.optional().meta({
+      description: '列表类型，省略时仅返回本人个人密钥',
+      example: ApiKeyTypeEnum.personal
+    }),
+    keyword: z.string().trim().max(100).optional().meta({
+      example: 'production',
+      description: '按 API Key 名称或 Key 值片段搜索'
+    }),
+    tags: ApiKeyListTagsQuerySchema.meta({
+      example: ['68ad85a7463006c963799a05'],
+      description: '按标签筛选；多个标签默认要求同时包含'
+    }),
+    appId: ObjectIdSchema.optional().meta({
+      example: '68ad85a7463006c963799a05',
+      description: '应用 Key 列表必填的应用 ID；个人列表忽略此兼容参数'
+    }),
+    sortBy: ApiKeyListSortBySchema.default('createTime').meta({
+      example: 'createTime',
+      description: 'createTime、lastUsedTime 按倒序；remainingPoints 按升序，不限额 Key 排在最后'
+    })
   })
-});
+  .superRefine(({ type, appId, tags }, ctx) => {
+    if (type === ApiKeyTypeEnum.app && !appId)
+      ctx.addIssue({ code: 'custom', path: ['appId'], message: 'appId is required for app keys' });
+    if (type === ApiKeyTypeEnum.app && tags !== undefined)
+      ctx.addIssue({
+        code: 'custom',
+        path: ['tags'],
+        message: 'App keys do not support personal tags'
+      });
+  });
 export type GetApiKeyListQueryType = z.infer<typeof GetApiKeyListQuerySchema>;
 
 export const GetApiKeyListResponseSchema = z.array(OpenApiKeySchema).meta({
@@ -147,10 +202,27 @@ export type GetApiKeyListResponseType = z.infer<typeof GetApiKeyListResponseSche
  * Tags: ['API Key 管理']
  * ============================================================================ */
 
-export const UpdateApiKeyBodySchema = CreateApiKeyBodySchema.partial()
-  .extend({
-    _id: ObjectIdSchema.meta({ description: 'API Key 记录 ID' })
+export const UpdateApiKeyBodySchema = z
+  .object({
+    _id: ObjectIdSchema.meta({ description: 'API Key 记录 ID' }),
+    name: z
+      .string()
+      .trim()
+      .min(1)
+      .max(50)
+      .optional()
+      .meta({ description: 'API Key 名称', example: '客服后端' }),
+    limit: ApiKeyLimitSchema,
+    authProxy: BoolSchema.optional().meta({
+      description: '仅个人密钥可配置身份代理',
+      example: false
+    }),
+    tags: OpenApiTagsInputSchema.optional().meta({
+      description: '仅个人密钥可配置的标签',
+      example: []
+    })
   })
+  .strict()
   .refine(
     ({ name, limit, authProxy, tags }) =>
       name !== undefined || limit !== undefined || authProxy !== undefined || tags !== undefined,
@@ -216,6 +288,7 @@ export const ApiKeyHealthParamsSchema = z.object({
 export type ApiKeyHealthParamsType = z.infer<typeof ApiKeyHealthParamsSchema>;
 
 export const ApiKeyHealthResponseSchema = z.object({
+  type: ApiKeyTypeSchema,
   valid: z.literal(true).meta({
     description: 'API Key 是否有效'
   }),

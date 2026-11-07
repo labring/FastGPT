@@ -2,7 +2,7 @@ import type { NextApiResponse } from 'next';
 import { MongoChatInputGuide } from '@fastgpt/service/core/chat/inputGuide/schema';
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/next/type';
-import { authChatTargetCrud } from '@/service/support/permission/auth/chat';
+import { authChatTargetCrud } from '@fastgpt/service/core/chat/auth';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
@@ -19,7 +19,7 @@ async function handler(
   req: ApiRequestProps,
   _res: NextApiResponse
 ): Promise<QueryChatInputGuideResponseType> {
-  const { sourceType, sourceId, outLinkAuthData, searchKey } = parseApiInput({
+  const { customUid, authProxy, sourceType, sourceId, outLinkAuthData, searchKey } = parseApiInput({
     req,
     bodySchema: QueryChatInputGuideBodySchema
   }).body;
@@ -29,6 +29,8 @@ async function handler(
   }
 
   const { teamId, sourceId: resolvedSourceId } = await authChatTargetCrud({
+    customUid,
+    authProxy,
     req,
     authToken: true,
     sourceType,

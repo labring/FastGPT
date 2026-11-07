@@ -45,11 +45,16 @@ FastGPT 文档采用双文件 i18n 方案，中文为源语言，英文为目标
 **保持不变的部分**：
 - MDX import 语句（如 `import { Alert } from '@/components/docs/Alert'`）
 - 图片路径（如 `![](/imgs/intro/image1.png)`）
-- 链接 URL（保持原始 URL 不变）
+- 外部链接及共享静态资源 URL（站内文档链接的语言前缀按下方规则处理）
 - HTML/JSX 组件结构和属性（如 `<Alert icon="🤖" context="success">`）
 - 表格的 markdown 结构
 - 代码块内容（除非是中文注释）
 - emoji 符号
+
+**英文站内文档链接**：
+- 指向英文文档的站内绝对路径必须保留或补齐 `/en/` 前缀。例如，中文的 `/guide/build/workflow/assisted-generation` 对应英文的 `/en/guide/build/workflow/assisted-generation`；更新既有英文页时，不要为对齐中文 URL 而移除该前缀。
+- `LocalizedLink` 会在浏览器渲染时补齐语言前缀，但 `document/script/checkEnglishDocs.mjs` 直接按原始 href 查找英文路由，不经过该组件。因此，浏览器跳转正常不能代替英文路由校验。
+- 外链、`/imgs/...` 等共享静态资源及纯锚点保持原始 URL。站内文档链接需核实英文目标页面及其锚点；核对双语链接时允许语言前缀和翻译后锚点的差异，不要求原始 href 逐字相同。
 
 **需要翻译的部分**：
 - frontmatter 的 `title` 和 `description`
@@ -77,6 +82,7 @@ FastGPT 文档采用双文件 i18n 方案，中文为源语言，英文为目标
 
 - 对照中文源文和共享词库复核所有产品术语；发现禁用译法时必须修正
 - 搜索英文文件中的残留汉字，并逐项确认是品牌名、代码示例还是漏译
+- 使用 `document/script/checkEnglishDocs.mjs` 导出的 `checkEnglishDocs(contentDir)` 校验本次修改的英文页面及目标路由；局部变更可构造仅含相关页面和导航的隔离 fixture。`checkDocRefs` 或浏览器跳转通过不能替代此检查。
 - 对词库中的语境词进行人工复核，例如 `训练` 应按功能使用 `Indexing`、`Processing` 或 `Reindex`
 - 如果遇到词库未收录且会影响产品概念一致性的术语，先向用户报告并确认推荐译法，不要自行固化新术语
 - 列出所有已翻译的文件

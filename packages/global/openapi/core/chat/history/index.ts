@@ -1,3 +1,4 @@
+import { createChatTargetQueryParameters } from '../api';
 import type { OpenAPIPath } from '../../../type';
 import { DevApiTagsMap, SystemOpenApiTagMap } from '../../../tag';
 import {
@@ -41,7 +42,7 @@ export const ChatHistoryPath: OpenAPIPath = {
     post: {
       summary: '批量获取会话状态（生成中/已读）',
       description:
-        '按 chatId 列表返回 chatGenerateStatus、hasBeenRead、updateTime，用于侧栏轻量轮询同步',
+        '按 chatId 批量读取 Redis lease 运行状态，并返回 hasBeenRead、updateTime，用于侧栏轻量轮询同步。读取异常时返回错误，调用方保留上次状态并稍后重试。',
       tags: [DevApiTagsMap.chatHistory, SystemOpenApiTagMap.chatHistory],
       requestBody: {
         content: {
@@ -105,9 +106,7 @@ export const ChatHistoryPath: OpenAPIPath = {
       summary: '删除单个会话',
       description: '软删除指定的单个会话，不会物理删除',
       tags: [DevApiTagsMap.chatHistory, SystemOpenApiTagMap.chatHistory],
-      requestParams: {
-        query: DelChatHistoryRawSchema
-      },
+      parameters: createChatTargetQueryParameters(DelChatHistoryRawSchema),
       responses: {
         200: {
           description: '成功删除会话'
@@ -120,9 +119,7 @@ export const ChatHistoryPath: OpenAPIPath = {
       summary: '清空会话',
       description: '清空所有会话（软删除）',
       tags: [DevApiTagsMap.chatHistory, SystemOpenApiTagMap.chatHistory],
-      requestParams: {
-        query: ClearChatHistoriesRawSchema
-      },
+      parameters: createChatTargetQueryParameters(ClearChatHistoriesRawSchema),
       responses: {
         200: {
           description: '成功清空会话'
@@ -133,7 +130,7 @@ export const ChatHistoryPath: OpenAPIPath = {
   '/core/chat/history/batchDelete': {
     post: {
       summary: '批量删除会话',
-      description: '批量删除多个会话（真实删除），需对应会话目标的管理权限。',
+      description: '物理删除选中的会话及其消息、响应和会话文件，需对应资源的日志管理权限。',
       tags: [DevApiTagsMap.chatHistory, SystemOpenApiTagMap.chatHistory],
       requestBody: {
         content: {

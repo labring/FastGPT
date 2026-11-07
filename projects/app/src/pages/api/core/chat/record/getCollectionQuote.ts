@@ -1,6 +1,6 @@
 import { NextAPI } from '@/service/middleware/entry';
 import { authCollectionInChat } from '@/service/support/permission/auth/chat';
-import { authChatTargetCrud } from '@/service/support/permission/auth/chat';
+import { authChatTargetCrud } from '@fastgpt/service/core/chat/auth';
 import { type DatasetDataSchemaType } from '@fastgpt/global/core/dataset/type';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { type ApiRequestProps } from '@fastgpt/next/type';
@@ -22,6 +22,8 @@ type BaseMatchType = FilterQuery<DatasetDataSchemaType>;
 
 async function handler(req: ApiRequestProps): Promise<GetCollectionQuoteResType> {
   const {
+    customUid,
+    authProxy,
     initialId,
     prevId,
     nextId,
@@ -39,6 +41,8 @@ async function handler(req: ApiRequestProps): Promise<GetCollectionQuoteResType>
   const limitedPageSize = pageSize;
 
   const authRes = await authChatTargetCrud({
+    customUid,
+    authProxy,
     req,
     authToken: true,
     authApiKey: true,

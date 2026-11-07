@@ -8,7 +8,7 @@ import {
 } from '@fastgpt/service/core/ai/utils';
 import type { CompletionFinishReason } from '@fastgpt/global/core/ai/llm/type';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import type { LLMSystemModelDataType } from '@fastgpt/global/core/ai/model/schema';
+import type { LLMModelDataType } from '@fastgpt/global/core/ai/model/schema';
 
 const mockModel = (maxResponse: number, maxTemperature?: number) =>
   ({
@@ -25,7 +25,7 @@ const mockModel = (maxResponse: number, maxTemperature?: number) =>
       quoteMaxToken: 4096,
       maxTemperature
     }
-  }) satisfies LLMSystemModelDataType;
+  }) satisfies LLMModelDataType;
 
 describe('computedMaxToken', () => {
   it('should return undefined when maxToken is undefined', () => {

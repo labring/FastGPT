@@ -1,3 +1,4 @@
+import { assertChatPublishSource } from '@fastgpt/service/core/chat/publishSource/utils';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { sseErrRes, jsonRes } from '@fastgpt/service/common/response';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
@@ -17,7 +18,8 @@ import {
   getMaxHistoryLimitFromNodes,
   storeEdges2RuntimeEdges,
   storeNodes2RuntimeNodes,
-  getLastInteractiveValue
+  getLastInteractiveValue,
+  rewriteNodeOutputByHistories
 } from '@fastgpt/global/core/workflow/runtime/utils';
 import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
 import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
@@ -30,7 +32,7 @@ import {
 } from '@fastgpt/service/core/chat/saveChat';
 import { preChatRound, type PreChatRoundResult } from '@fastgpt/service/core/chat/utils/prepare';
 import { createGeneratedChatTitleSender } from '@fastgpt/service/core/chat/title';
-import { authOutLinkChatStart } from '@/service/support/permission/auth/outLink';
+import { authOutLinkChatStart } from '@fastgpt/service/support/permission/publish/authChat';
 import { recordAppUsage } from '@fastgpt/service/core/app/record/utils';
 import { pushResult2Remote, addOutLinkUsage } from '@fastgpt/service/support/outLink/tools';
 import { getUsageSourceByAuthType } from '@fastgpt/global/support/wallet/usage/tools';
@@ -47,15 +49,16 @@ import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 import { type AIChatItemType, type UserChatItemType } from '@fastgpt/global/core/chat/type';
 import { NextAPI } from '@/service/middleware/entry';
+import { markProfileError } from '@fastgpt/service/common/profiling';
 import { getAppLatestVersion } from '@fastgpt/service/core/app/version/controller';
-import { loadWorkflowResourceContext } from '@fastgpt/service/core/workflow/utils/resource';
+import { createWorkflowResourceContext } from '@fastgpt/service/core/workflow/resource/context';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import {
   serverGetWorkflowToolRunUserQuery,
   updateWorkflowToolInputByVariables
 } from '@fastgpt/service/core/app/tool/workflowTool/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { rewriteNodeOutputByHistories } from '@fastgpt/global/core/workflow/runtime/utils';
+
 import { WORKFLOW_MAX_RUN_TIMES } from '@fastgpt/service/core/workflow/constants';
 import { getWorkflowToolInputsFromStoreNodes } from '@fastgpt/global/core/app/tool/workflowTool/utils';
 import { UserError } from '@fastgpt/global/common/error/utils';
@@ -64,10 +67,11 @@ import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
 import { LimitTypeEnum, teamFrequencyLimit } from '@fastgpt/service/common/api/frequencyLimit';
 import { getIpFromRequest } from '@fastgpt/service/common/geo';
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
-import type { AuthResponseType } from '@fastgpt/global/openapi/core/chat/completion/api';
-import { CompletionsPropsSchema } from '@fastgpt/global/openapi/core/chat/completion/api';
-import { updateChatGenerateStatus } from '@fastgpt/service/core/chat/chatGenerateStatus';
-import { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
+import {
+  type AuthResponseType,
+  CompletionsPropsSchema
+} from '@fastgpt/global/openapi/core/chat/completion/api';
+
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   filterWorkflowFinalResponseData,
@@ -139,6 +143,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       showCite,
       authType,
       sourceName,
+      publishSource,
       apikey,
       responseAllData,
       outLinkUserId = customUid,
@@ -170,6 +175,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         req,
         appId,
         chatId,
+        customUid,
         authProxy
       });
     })();
@@ -181,6 +187,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         res
       }))
     ) {
+      markProfileError();
       return;
     }
 
@@ -317,8 +324,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       teamId,
       tmbId: String(tmbId),
       source,
+      publishSource,
       sourceName: sourceName || '',
-      shareId,
       outLinkUid: outLinkUserId,
       userContent: workflowUserQuestion,
       responseChatItemId: roundState.responseChatItemId,
@@ -401,7 +408,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       maxBytesPerFile,
       lastInteractive: interactive,
       chatConfig,
-      resourceContext: await loadWorkflowResourceContext({
+      resourceContext: createWorkflowResourceContext({
         resources,
         teamId
       }),
@@ -436,9 +443,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       nodes,
       appChatConfig: chatConfig,
       variables: newVariables,
-      shareId,
       outLinkUid: outLinkUserId,
       source,
+      publishSource: preparedRound.publishSource,
       sourceName: sourceName || '',
       userContent: workflowUserQuestion,
       aiContent: aiResponse,
@@ -457,14 +464,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       });
     } else if (preparedRound.shouldFinalizePreparedRound) {
       await finalizeChatRound(params);
-    }
-
-    if (!preparedRound.shouldFinalizePreparedRound && preparedRound.shouldPersistChatRound) {
-      await updateChatGenerateStatus({
-        ...chatSource,
-        chatId: saveChatId,
-        status: ChatGenerateStatusEnum.done
-      });
     }
     const isOwnerUse = !shareId;
     if (isOwnerUse && source === ChatSourceEnum.online) {
@@ -501,8 +500,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       streamResponseContext.responseWrite(
         workflowSseEvent.done(detail ? SseResponseEventEnum.answer : undefined)
       );
-
-      await streamResponseContext.flushResume();
     } else {
       const generatedTitle = await titleSender.send();
       const formatResponseContent = removeAIResponseCite(assistantResponses, jsonRetainDatasetCite);
@@ -559,7 +556,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         totalPoints
       });
     }
+
+    if (finalError) markProfileError(finalError);
   } catch (err) {
+    markProfileError(err);
     const { preparedRound } = roundState;
     if (preparedRound?.shouldPersistChatRound && roundState.sourceId && roundState.chatId) {
       if (preparedRound.shouldFinalizePreparedRound) {
@@ -570,13 +570,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           responseChatItemId: roundState.responseChatItemId,
           error: err
         });
-      } else {
-        await updateChatGenerateStatus({
-          sourceType: ChatSourceTypeEnum.app,
-          sourceId: roundState.sourceId,
-          chatId: roundState.chatId,
-          status: ChatGenerateStatusEnum.error
-        });
       }
     }
     if (stream) {
@@ -586,7 +579,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       } else {
         sseErrRes(res, err);
       }
-      await streamResponseContext?.flushResume();
     } else {
       const errKey = typeof err === 'string' ? err : (err as Error)?.message;
       jsonRes(res, {
@@ -595,8 +587,14 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       });
     }
   } finally {
-    if (stream) {
-      res.end();
+    try {
+      if (stream) {
+        // 失败状态写入再次报错时，也必须等待续流缓存收尾后再关闭响应。
+        await streamResponseContext?.flushResume();
+        res.end();
+      }
+    } finally {
+      await roundState.preparedRound?.releaseGenerationLease?.();
     }
   }
 }
@@ -620,6 +618,7 @@ const authShareChat = async ({
     showRunningStatus,
     showSkillReferences,
     uid,
+    publishSource,
     sourceName
   } = await authOutLinkChatStart({ ...data, req });
   const app = await MongoApp.findById(appId).lean();
@@ -633,11 +632,15 @@ const authShareChat = async ({
     ...buildChatSourceQuery({ sourceType: ChatSourceTypeEnum.app, sourceId: String(appId) }),
     chatId
   }).lean();
-  if (chat && (chat.shareId !== data.shareId || chat.outLinkUid !== uid)) {
-    return Promise.reject(ChatErrEnum.unAuthChat);
+  if (chat) {
+    assertChatPublishSource({ previous: chat.publishSource, current: publishSource });
+    if (chat.outLinkUid !== uid) {
+      return Promise.reject(ChatErrEnum.unAuthChat);
+    }
   }
 
   return {
+    publishSource,
     sourceName,
     teamId,
     tmbId,

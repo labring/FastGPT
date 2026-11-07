@@ -10,7 +10,8 @@ import {
   storeEdges2RuntimeEdges,
   storeNodes2RuntimeNodes
 } from '@fastgpt/global/core/workflow/runtime/utils';
-import { NodeInputKeyEnum, type NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import type { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { getHistories, safePoints } from '../utils';
 import { getWorkflowFileVariableInputs, WorkflowVariableState } from '../utils/variables';
@@ -18,10 +19,9 @@ import { chatValue2RuntimePrompt, runtimePrompt2ChatsValue } from '@fastgpt/glob
 import type { DispatchNodeResultType, ModuleDispatchProps } from '../../types/runtime';
 import { getUserChatInfo } from '../../../../support/user/team/utils';
 import { runWithDerivedWorkflowFileContext } from '../../utils/context';
-import { createWorkflowChildResourceContext, loadWorkflowAppResource } from '../../utils/resource';
-import { getAppVersionById } from '../../../app/version/controller';
-import { nodeHasDynamicInput } from '../../../app/resources';
+import { loadChildWorkflowWithResource } from '../../resource/service';
 import { getWorkflowRuntimeSummary } from '../utils/summary';
+import { WorkflowMemoryState } from '../../memory/state';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.userChatInput]: string;
@@ -46,21 +46,11 @@ export const dispatchAppRequest = async (props: Props): Promise<Response> => {
     return Promise.reject('Input is empty');
   }
 
-  const dynamicApp = nodeHasDynamicInput(props.node, [NodeInputKeyEnum.runAppSelectApp]);
-  const appData = await loadWorkflowAppResource({
+  const { appData, childVersion, resourceContext } = await loadChildWorkflowWithResource({
     appId: app.id,
     tmbId: props.runningUserInfo.tmbId,
-    type: 'agent',
-    dynamic: dynamicApp
+    type: 'agent'
   });
-  const childVersion = await getAppVersionById({
-    appId: app.id,
-    app: appData
-  });
-  const resourceContext = await createWorkflowChildResourceContext(
-    childVersion.resources,
-    String(appData.teamId)
-  );
 
   workflowStreamResponse?.(workflowSseEvent.fastAnswerDelta('\n'));
 
@@ -109,8 +99,17 @@ export const dispatchAppRequest = async (props: Props): Promise<Response> => {
           resolveInputFile
         });
 
+        const childMemoryState = WorkflowMemoryState.fromWorkflow(props).fork(
+          props.node?.nodeId ? `node:${props.node.nodeId}` : undefined,
+          {
+            history,
+            histories: filteredHistories
+          }
+        );
+
         return runWorkflow({
           ...props,
+          memoryState: childMemoryState,
           runningAppInfo: childRunningAppInfo,
           runtimeNodes: storeNodes2RuntimeNodes(
             childVersion.nodes,

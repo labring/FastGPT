@@ -1,0 +1,4 @@
+interface:
+  display_name: 'FastGPT 用例执行'
+  short_description: '筛选相关集成用例并逐项执行，以临时 HTML 持续记录结果、说明与证据'
+  default_prompt: '使用 $fastgpt-integration-test-runner 筛选本次变更相关用例，创建临时 HTML 报告，逐个执行并更新结果和证据。'

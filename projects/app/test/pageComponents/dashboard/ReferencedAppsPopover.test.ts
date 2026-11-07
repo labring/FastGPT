@@ -36,7 +36,7 @@ describe('ReferencedAppsPopover', () => {
     vi.stubGlobal('HTMLElement', dom.window.HTMLElement);
     vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
     vi.clearAllMocks();
-    mocks.getReferencedApps.mockResolvedValue({ list: [], hiddenCount: 0 });
+    mocks.getReferencedApps.mockResolvedValue({ list: [], hiddenApps: [], hiddenCount: 0 });
     container = document.createElement('div');
     document.body.appendChild(container);
     root = createRoot(container);

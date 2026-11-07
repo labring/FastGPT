@@ -66,15 +66,29 @@ describe('resolveResponseChatItemId', () => {
         chatId: base.chatId,
         responseChatItemId: 'client-response-id',
         interactive: {
-          type: 'agentPlanAskQuery',
-          askId: 'call_ask',
-          params: {
-            content: 'Need more input',
-            options: ['Use repo', 'Use docs', 'Use defaults']
-          },
+          type: 'agentAsk',
+
           entryNodeIds: [],
           memoryEdges: [],
-          nodeOutputs: []
+          nodeOutputs: [],
+          params: {
+            toolCallId: 'call_ask',
+            arguments: JSON.stringify({
+              reason: '',
+              blockerType: 'user_choice',
+              questions: [
+                {
+                  question: 'Need more input',
+                  options: [
+                    { summary: 'Use repo', value: 'Use repo' },
+                    { summary: 'Use docs', value: 'Use docs' },
+                    { summary: 'Use defaults', value: 'Use defaults' }
+                  ],
+                  answer: ''
+                }
+              ]
+            })
+          }
         },
         userContent: {
           obj: ChatRoleEnum.Human,
@@ -100,15 +114,27 @@ describe('resolveResponseChatItemId', () => {
         interactive: {
           type: 'toolChildrenInteractive',
           params: {
-            toolParams: {
-              toolCallId: 'tool_1'
-            },
+            toolCallId: 'tool_1',
             childrenResponse: {
-              type: 'agentPlanAskQuery',
-              askId: 'call_ask',
+              type: 'agentAsk',
+
               params: {
-                content: 'Need more input',
-                options: ['Use repo', 'Use docs', 'Use defaults']
+                toolCallId: 'call_ask',
+                arguments: JSON.stringify({
+                  reason: '',
+                  blockerType: 'user_choice',
+                  questions: [
+                    {
+                      question: 'Need more input',
+                      options: [
+                        { summary: 'Use repo', value: 'Use repo' },
+                        { summary: 'Use docs', value: 'Use docs' },
+                        { summary: 'Use defaults', value: 'Use defaults' }
+                      ],
+                      answer: ''
+                    }
+                  ]
+                })
               }
             }
           }

@@ -4,9 +4,11 @@ import {
   CheckPswExpiredResponseSchema,
   CreatePasswordVerificationBodySchema,
   CreatePasswordVerificationResponseSchema,
+  ActivateAccountBodySchema,
   PasswordAuthorizationBodySchema,
   PasswordAuthorizationResponseSchema,
   UpdatePasswordBodySchema,
+  UpdateRootPasswordBodySchema,
   UpdatePasswordByCodeBodySchema
 } from './api';
 import { LoginSuccessResponseSchema } from '../login/api';
@@ -51,6 +53,37 @@ export const PasswordPath: OpenAPIPath = {
       tags: [DevApiTagsMap.userLogin],
       requestBody: {
         content: { 'application/json': { schema: UpdatePasswordBodySchema } }
+      },
+      responses: {
+        200: {
+          description: '密码设置成功'
+        }
+      }
+    }
+  },
+  '/support/user/account/password/updateRoot': {
+    post: {
+      summary: '开源版修改 root 密码',
+      description:
+        '仅限开源版已登录的 root 账号修改自身密码；已设置密码时必须提交旧密码（oldPsw），成功后注销其他 Session',
+      tags: [DevApiTagsMap.userLogin],
+      requestBody: {
+        content: { 'application/json': { schema: UpdateRootPasswordBodySchema } }
+      },
+      responses: {
+        200: {
+          description: '密码设置成功'
+        }
+      }
+    }
+  },
+  '/support/user/account/password/activate': {
+    post: {
+      summary: '激活账号',
+      description: '未激活账号首次设置密码的入口；成功后将账号标记为已激活，并注销其他 Session',
+      tags: [DevApiTagsMap.userLogin],
+      requestBody: {
+        content: { 'application/json': { schema: ActivateAccountBodySchema } }
       },
       responses: {
         200: {

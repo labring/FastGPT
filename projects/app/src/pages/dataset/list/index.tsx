@@ -69,8 +69,8 @@ const Dataset = () => {
   const { feConfigs } = useSystemStore();
   const maxFolderDepth = feConfigs?.limit?.maxFolderDepth ?? DEFAULT_MAX_FOLDER_DEPTH;
   const canCreateFolder = canCreateSubFolder(parentId, paths, maxFolderDepth);
-  const hasCreatePer = folderDetail
-    ? folderDetail.permission.hasWritePer
+  const hasCreatePer = parentId
+    ? Boolean(folderDetail?.permission.hasWritePer)
     : !!userInfo?.team?.permission.hasDatasetCreatePer;
 
   const [editFolderData, setEditFolderData] = useState<EditFolderFormType>();

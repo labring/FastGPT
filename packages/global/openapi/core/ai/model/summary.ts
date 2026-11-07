@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { ModelTypeEnum } from '../../../../core/ai/constants';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
 import { OutLinkChatAuthSchema } from '../../../../support/permission/chat';
 
@@ -39,6 +40,10 @@ export const ModelSummarySchema = z.discriminatedUnion('status', [
     status: z.literal('deleted').meta({ description: '模型不存在' })
   }),
   DisplayModelIdentitySchema.extend({
+    type: z.enum(ModelTypeEnum).optional().meta({
+      description: '模型类型，用于应用资源校验；旧版响应可能不包含此字段',
+      example: ModelTypeEnum.llm
+    }),
     name: z.string().meta({ description: '模型展示名称；无权限时也用于提示', example: 'GPT-5' }),
     avatar: z
       .string()

@@ -9,7 +9,6 @@ import {
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import type { DatasetArchiveManifest } from '@fastgpt/service/core/dataset/collection/archive/service';
-import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import {
   buildDatasetArchivePlan,
   prepareDatasetArchiveManifest
@@ -29,7 +28,7 @@ const DATASET_ARCHIVE_LEASE_TTL_MS = 60_000;
 const DATASET_ARCHIVE_LEASE_RENEW_INTERVAL_MS = 10_000;
 const DATASET_ARCHIVE_SLOT_RETRY_COUNT = 10;
 const DATASET_ARCHIVE_SLOT_RETRY_INTERVAL_MS = 200;
-const archiveLeaseCache = new LeaseCache({ logger: getLogger(LogCategories.INFRA.REDIS) });
+const archiveLeaseCache = new LeaseCache();
 
 type LeaseCacheLike = Pick<LeaseCache, 'withLease'>;
 

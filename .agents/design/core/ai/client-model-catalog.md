@@ -13,12 +13,12 @@
 - getModelList/useModelList 用于候选选择等真正需要列表的业务，选择器展开才加载。每次重新启用、切换查询或刷新都建立新的请求代次，旧目录不能被标记为本次加载成功。
 - Agent 知识库参数直接从节点 inputs 派生，按字段存在性恢复，包括当前为空的模型 ID；弹窗内部维护编辑草稿。
 - 输出能力由始终挂载的 NodeCard 调用节点级 hook 计算，RenderOutput 只展示。模型加载或请求失败时保留原状态，回写前检查节点及输入未变化。
-- getModelDefault 异步复用 catalog：业务默认优先，再用 catalog 已计算的有效默认，额外条件不满足时选第一个符合条件的候选；无候选返回空。chatTitleLLM 保持无自动回退。
+- getModelDefault 异步复用 catalog：业务默认（显式 `businessDefaultModelId`）优先，再用 catalog 已计算的有效系统默认，额外条件不满足时选第一个符合条件的系统模型（`isSystemModel`）；无候选返回空。`datasetImageLLM` 与 `chatTitleLLM` 保持无自动回退，且默认模型回退绝不命中团队模型。
 - 数据读取不修改表单；新建或显式开启功能的业务自行获取默认并赋值，返回时检查用户值、功能开关和身份未变化。非空失效引用不得自动替换。
-- 历史名称解析独立于默认赋值；快照恢复、撤销和展示不补默认。
-- detail 不新增服务端接口；现有展示 detail 接口命名收敛为 summary，保留现有鉴权和客户端安全字段白名单。
+- 历史名称解析独立于默认赋值且仅匹配系统模型（`isSystemModel`）；快照恢复、撤销和展示不补默认。
+- detail 不新增服务端接口；展示接口统一为 `/core/ai/model/summary`，支持传入可选 `appId` 感知应用草稿资源基线（基线内已有模型返回 `active`），保留客户端安全字段白名单。
 - catalog 未加载、请求失败、完整目录未命中是不同状态；不得将缓存未命中当作下架，不得用默认模型能力掩盖实际选择。
-- 不改变服务端运行降级、发布模型政策、模型协作者权限边界和迁移任务；管理员、公开价格、团队权限列表保持独立。
+- 服务端模型权限校验与版本资源快照边界见 [模型鉴权收敛设计](./model-permission-auth.md) 与 [应用工作流与资源快照](../app/app-resource-permission.md)。
 
 ### 开发与验证 TODO
 
@@ -68,7 +68,7 @@ modelId 迁移完成后，客户端仍同时存在以下模型数据链路：
 12. 团队模型权限管理是第四种独立视图，不能使用当前成员权限过滤后的模型目录。
 13. 模型目录按需加载：root 登录后单独检查系统是否已配置模型，普通成员只在出现模型消费者时校验目录；同时发生的同身份请求复用一个 in-flight Promise，不做页面级请求拦截。
 14. 工作流外链中的模型选择器使用 `shareId/outLinkUid` 鉴权。服务端从发布链接解析 `{ teamId, tmbId }` 后计算成员权限，客户端不得直接指定成员身份。
-15. **已确认的临时权限边界**：模型协作者权限只过滤客户端 catalog 和选择器候选，不是保存、发布或运行时的服务端授权边界；服务端暂时只校验模型 ID 是否存在、启用且类型匹配。已知 active modelId 即使不在当前成员 catalog 中也不会因模型协作者权限被拒绝，后端权限校验留给后续独立需求，评审本版本时不得把这一已确认决策误判为漏实现。
+15. 服务端模型鉴权与版本快照边界已由 [模型鉴权收敛设计](./model-permission-auth.md) 与 [应用工作流与资源快照](../app/app-resource-permission.md) 统一收口。
 
 ## 3. 目标与非目标
 
@@ -85,8 +85,6 @@ modelId 迁移完成后，客户端仍同时存在以下模型数据链路：
 ### 3.2 非目标
 
 - 不为管理员模型页面和价格页增加持久化缓存。
-- 不把团队权限管理并入系统管理员模型配置。
-- 不在本版本新增保存、发布和运行时的模型协作者权限校验；客户端 catalog 过滤只约束可见和可选范围，不构成服务端授权。
 - 不把服务端完整模型文档或敏感请求配置返回普通客户端。
 - 不保留旧模型接口的兼容转发文件；全部调用迁移后直接删除旧路由。
 
@@ -102,6 +100,8 @@ type ClientModel = {
   model: string;
   name: string;
   provider: string;
+  scope: ModelScopeEnum;
+  tmbId?: string;
   type: ModelTypeEnum;
   testMode?: boolean;
   config: ClientSafeModelConfig;
@@ -112,7 +112,7 @@ type ClientModel = {
 约束：
 
 - `modelId` 是客户端查找、选择和保存的唯一权威标识。
-- `model` 只用于 legacy 数据兼容和 Provider 调用标识，不建立第二套客户端权威索引。
+- `model` 只用于系统模型（`scope=system`）的 legacy 数据兼容和 Provider 调用标识，团队模型（`scope=team`）仅认 `modelId`，不参与旧名称兼容匹配。
 - `config` 只包含客户端实际使用的 maxContext、maxResponse、quoteMaxToken、maxToken、vision、audio、video、reasoning、voices 等字段。
 - 密钥、渠道配置、服务端请求映射、数据库配置、内部默认请求体、内部系统 Prompt 等字段不得返回。
 - Schema 必须显式白名单定义，不能直接对服务端模型对象做不完整的字段删除。
@@ -290,81 +290,51 @@ getInitData 只保留 feConfigs、systemVersion、subPlans、aiproxyChannels 等
 
 ### 7.1 复用现有缓存
 
-继续复用：
+服务端通过 `ModelHandle`（`getSystemModelHandle()` 与 `getTeamModelHandle({ teamId })`）维护进程内模型目录快照与 `handle.version`。
 
-```text
-global.systemModelList
-global.systemActiveModelList
-global.systemModelMap
-global.systemDefaultModel
-```
-
-成员权限继续使用 `TmpDataEnum.MyModels`，数据扩展为：
+成员使用权缓存仅包含 active 模型，使用 `TmpDataEnum.MemberModels`（存储值沿用 `my_models`），由 `getAuthorizedModelIds` 读写，详见 [模型鉴权收敛设计](./model-permission-auth.md)：
 
 ```ts
 {
   teamId: string;
   tmbId: string;
   modelIds: string[];
-  version: string;
+  catalogVersion: string;
+  hasManagePer: boolean;
 }
 ```
 
-不增加一份完整成员模型列表后端缓存。接口只组合成员 modelIds 与进程内 canonical 模型缓存。
+不增加一份完整成员模型列表后端缓存。接口只组合成员 `modelIds` 与进程内 `ModelHandle` 快照。外链身份不读写该缓存。
 
-### 7.2 权限 version
+### 7.2 目录与权限 version
 
 `tmpData._id` 不能作为 version：updateOne 和过期文档原地更新都会保留 `_id`，owner 和开源版路径也可能没有 tmpData。
 
-生成 MyModels 缓存时计算：
+catalog 接口用同一 `ModelHandle` 快照计算可用模型后，结合 `handle.version`（已包含系统模型目录、团队私有模型目录与系统默认模型配置版本）和成员可用 `modelIds` 现场生成 version：
 
 ```ts
-const permissionVersion = hash([...modelIds].sort().join(','));
+const permissionVersion = hashStr([handle.version, ...modelIds.toSorted()].join('\n'));
+const version = [CLIENT_MODEL_CATALOG_SCHEMA_VERSION, permissionVersion].join(':');
 ```
 
-该 version 与 modelIds 同时写入 tmpData。模型权限、组织、用户组、团队成员和角色变更必须继续清理对应团队缓存；active 模型集合变化清理全部成员缓存。
+模型权限、组织、用户组、团队成员和角色变更调用 `clearMemberModelsCache` 清理对应团队缓存；模型目录或默认模型变化通过 `handle.version` 与缓存中的 `catalogVersion` 自动失效。
 
-### 7.3 系统模型目录 version
-
-模型和 Provider 加载成功时计算一次，不在每个目录请求中重新 stringify 完整列表：
-
-```ts
-global.clientModelCatalogVersion = hash(
-  stableStringify({
-    schemaVersion: CLIENT_MODEL_CATALOG_SCHEMA_VERSION,
-    providers,
-    activeClientModels,
-    configuredDefaultModelIds
-  })
-);
-```
-
-最终成员 version：
-
-```ts
-const version = [
-  CLIENT_MODEL_CATALOG_SCHEMA_VERSION,
-  global.clientModelCatalogVersion,
-  permissionVersion
-].join(':');
-```
-
-普通请求只读取已有子版本并比较字符串。version 不同时才组装并返回完整目录。无关模型变化可能使某个成员多下载一次目录，这是为降低失效复杂度而接受的保守失效。
+普通请求先比较 `query.version === version`，相同时直接返回 `{ unchanged: true, version }`；不同时才组装并返回完整目录。
 
 ## 8. 有效默认模型计算
 
-普通成员目录按以下规则生成 effective 默认值：
+普通成员目录按以下规则生成 effective 默认值（`resolveEffectiveDefaultModelIds`）：
 
-1. 管理员配置模型 active 且在成员可用 modelIds 中时使用该 ID。
-2. 普通类型默认模型不可用时，回退成员第一个同类型 active 模型。
-3. datasetTextLLM 不可用时，回退成员第一个 LLM。
-4. datasetImageLLM 不可用时，回退成员第一个支持 vision 的 LLM。
-5. 没有符合条件的候选时返回 `undefined`。
-6. chatTitleLLM 是明确可关闭功能：管理员未配置或配置失效时保持 `undefined`，不自动开启其他模型。
+1. **仅限系统模型（`isSystemModel`）**：默认模型配置与同类型回退候选都严格限定为 `scope = 'system'`（即 `scope !== 'team'`），**绝不会把团队私有模型（`scope = 'team'`）作为系统默认模型或默认回退目标**。
+2. 管理员配置的系统默认模型 active 且在当前成员可用系统模型列表中时，使用该 ID。
+3. 普通类型（`llm`、`embedding`、`rerank`、`tts`、`stt`）默认模型未配置或对当前成员不可用时，回退到成员第一个同类型 active 系统模型。
+4. `datasetTextLLM` 未配置或不可用时，回退到成员第一个 active 系统 LLM。
+5. `datasetImageLLM` 与 `chatTitleLLM` 是明确可空/可关闭的功能槽位：管理员未配置或配置对当前成员不可用时保持 `undefined`，不自动回退其他模型。
+6. 没有符合条件的系统模型候选时返回 `undefined`。
 
-默认模型本质是“用途到 modelId 的映射”，不是模型自身属性。新结构集中保存 ConfiguredDefaultModelIds，不再以分散的 `isDefault`、`isDefaultDatasetTextModel`、`isDefaultDatasetImageModel`、`isDefaultChatTitleModel` 作为权威配置。
+客户端侧 `getModelDefault` 同样遵守该边界：只有调用方显式传入的 `businessDefaultModelId` 允许命中团队模型；从 `catalog.defaultModelIds` 读取或回退首个同类型模型时，均严格过滤 `isSystemModel`。
 
-管理员配置引用失效模型时保留原始 ID，在管理员页面显示失效；普通成员目录仍按上述规则返回可用 fallback，不能偷偷改写管理员配置。
+默认模型本质是“用途到系统模型 `modelId` 的映射”，不是模型自身属性。管理员配置引用失效模型时保留原始 ID，在管理员页面显示失效；普通成员目录仍按上述规则返回可用系统模型 fallback，不能偷偷改写管理员配置。
 
 ## 9. useUserModelStore 与本地缓存
 
@@ -471,10 +441,9 @@ AIModelSelector 通过统一 loader 校验目录并读取 Store；同时挂载�
 ### 10.2 Workflow 与业务表单
 
 - maxToken、quoteMaxToken、能力和名称统一通过 `getModel(modelId)` 获取。
-- Workflow 初始化、快照、复制粘贴和节点校验统一按 modelId。
+- Workflow 初始化、快照、复制粘贴和节点校验统一按 `modelId`；前端对旧 `model` 字段的兼容解析、导出补充 `model` 名称以及空值默认回退，均严格限定为系统模型（`isSystemModel`），不匹配团队私有模型。
 - reference、数组引用和模板表达式不做客户端静态有效性校验。
-- 服务端保存、发布和运行时继续校验模型是否存在、启用且类型匹配，但本版本明确不校验当前成员的模型协作者权限。
-- catalog 的成员权限过滤用于限制客户端可见和可选范围，不是服务端授权依据；补充后端模型权限属于后续独立需求，不能在本次 modelId 迁移中隐式加入。
+- 服务端模型权限与资源声明校验见 [模型鉴权收敛设计](./model-permission-auth.md) 与 [应用资源鉴权设计](../app/app-resource-permission.md)。
 
 ### 10.3 系统模型健康判断
 

@@ -1,13 +1,16 @@
 /**
  * 沙盒业务层：使用 ripgrep 搜索文件内容并输出适合模型阅读的匹配行。
  */
+import {
+  DEFAULT_GREP_LIMIT,
+  MAX_GREP_LINE_CHARS,
+  SANDBOX_TOOL_MAX_BYTES,
+  SANDBOX_TOOL_MAX_LINES
+} from '../../constants';
 import z from 'zod';
 import { shellQuote } from '@fastgpt/global/common/string/utils';
 import { defineTool } from './type';
-import { SANDBOX_TOOL_MAX_BYTES, SANDBOX_TOOL_MAX_LINES, truncateSandboxToolOutput } from './utils';
-
-const DEFAULT_GREP_LIMIT = 100;
-const MAX_GREP_LINE_CHARS = 500;
+import { truncateSandboxToolOutput } from './utils';
 
 export const SandboxGrepToolSchema = z.object({
   pattern: z.string(),

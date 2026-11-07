@@ -1,12 +1,13 @@
+import { filterSelectableWorkflowNodeOutputs } from '@fastgpt/global/common/workflow/reference';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Node } from 'reactflow';
 import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import type { MyLLMModelItemType } from '@fastgpt/global/openapi/core/ai/model/api';
-import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { AiChatModule } from '@fastgpt/global/core/workflow/template/system/aiChat';
 import { useNodeOutputValidity } from '@/pageComponents/app/detail/WorkflowComponents/Flow/hooks/useNodeOutputValidity';
-import { filterSelectableWorkflowNodeOutputs, storeNode2FlowNode } from '@/web/core/workflow/utils';
+import { storeNode2FlowNode } from '@/web/core/workflow/utils';
 import type { TFunction } from 'next-i18next';
 
 const mocks = vi.hoisted(() => ({
@@ -37,9 +38,8 @@ const model: MyLLMModelItemType = {
   name: 'Reasoning',
   provider: 'test',
   type: ModelTypeEnum.llm,
-  scope: 'system',
+  scope: ModelScopeEnum.system,
   isActive: true,
-  isCustom: false,
   config: { maxContext: 4096, maxResponse: 1024, quoteMaxToken: 2000, reasoning: true }
 };
 const selectable = () =>

@@ -11,9 +11,12 @@ import {
   Input_Template_Children_Node_List,
   Input_Template_NESTED_NODE_OFFSET
 } from '@fastgpt/global/core/workflow/template/input';
-import { isValidArrayReferenceValue } from '@fastgpt/global/core/workflow/utils';
-import { type ReferenceArrayValueType } from '@fastgpt/global/core/workflow/type/io';
-import { type FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
+import { isValidArrayReferenceValue } from '@fastgpt/global/common/workflow/reference';
+import type {
+  ReferenceArrayValueType,
+  FlowNodeInputItemType
+} from '@fastgpt/global/core/workflow/type/io';
+
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { WorkflowBufferDataContext, WorkflowInitContext } from '../../context/workflowInitContext';
 import { WorkflowActionsContext } from '../../context/workflowActionsContext';

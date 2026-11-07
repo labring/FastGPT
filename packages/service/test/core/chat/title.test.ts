@@ -1,22 +1,23 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  AUTO_EXECUTE_QUERY_SENTINEL,
+  CHAT_FIXED_TITLE_I18N,
   ChatFileTypeEnum,
   ChatRoleEnum,
   ChatSourceEnum,
   ChatSourceTypeEnum
 } from '@fastgpt/global/core/chat/constants';
+import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
-import {
-  AUTO_EXECUTE_QUERY_SENTINEL,
-  CHAT_FIXED_TITLE_I18N
-} from '@fastgpt/global/core/chat/constants';
+import type { UserChatItemType } from '@fastgpt/global/core/chat/type';
+import { redisCacheAdapter } from '@fastgpt/dal/redis/adapter';
+import { preChatRound } from '@fastgpt/service/core/chat/utils/prepare';
 import {
   CHAT_TITLE_GENERATION_TIMEOUT_MS,
   CHAT_TITLE_SEND_WAIT_TIMEOUT_MS,
   createGeneratedChatTitleSender,
   syncGeneratedChatTitleFromUserContent
 } from '@fastgpt/service/core/chat/title';
-import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const createLLMResponseMock = vi.hoisted(() => vi.fn());
 const getDefaultChatTitleModelDataMock = vi.hoisted(() => vi.fn());
@@ -25,8 +26,14 @@ vi.mock('@fastgpt/service/core/ai/llm/request', () => ({
   createLLMResponse: createLLMResponseMock
 }));
 
-vi.mock('@fastgpt/service/core/ai/model', () => ({
-  getModelHandle: async () => ({
+vi.mock('@fastgpt/service/core/ai/model/catalog/service', () => ({
+  getSystemModelHandle: async () => ({
+    getDefaultModelData: (slot: string) =>
+      (({ chatTitleLLM: getDefaultChatTitleModelDataMock }) as Record<string, () => unknown>)[
+        slot
+      ]?.()
+  }),
+  getTeamModelHandle: async () => ({
     getDefaultModelData: (slot: string) =>
       (({ chatTitleLLM: getDefaultChatTitleModelDataMock }) as Record<string, () => unknown>)[
         slot
@@ -54,7 +61,7 @@ const createChat = (override: Record<string, unknown> = {}) =>
     ...override
   });
 
-const fileOnlyContent = {
+const fileOnlyContent: UserChatItemType = {
   obj: ChatRoleEnum.Human,
   value: [
     {
@@ -66,9 +73,9 @@ const fileOnlyContent = {
       }
     }
   ]
-} as const;
+};
 
-const textContent = (content: string) => ({
+const textContent = (content: string): UserChatItemType => ({
   obj: ChatRoleEnum.Human,
   value: [{ text: { content } }]
 });
@@ -78,8 +85,22 @@ const readStoredTitle = async () => {
   return chat?.title;
 };
 
+/** 挂起模型响应以稳定复现跨轮竞争，Redis lease 使用全局内存 Redis 的真实实现。 */
+const deferTitleResponse = () => {
+  let resolve!: (value: { answerText: string }) => void;
+  let onStarted!: () => void;
+  const response = new Promise<{ answerText: string }>((done) => (resolve = done));
+  const started = new Promise<void>((done) => (onStarted = done));
+  createLLMResponseMock.mockImplementationOnce(() => {
+    onStarted();
+    return response;
+  });
+  return { started, resolve };
+};
+
 afterEach(() => {
   vi.useRealTimers();
+  vi.restoreAllMocks();
 });
 
 describe('syncGeneratedChatTitleFromUserContent', () => {
@@ -135,6 +156,153 @@ describe('syncGeneratedChatTitleFromUserContent', () => {
     expect(systemPrompt).toContain("The output language must follow the user's message");
     expect(systemPrompt).toContain("If the user's message is English, output English only");
     expect(systemPrompt).toContain("Never answer the user's message");
+  });
+
+  it('skips later rounds while a background title still holds the lease', async () => {
+    const pending = deferTitleResponse();
+    const params = { ...base, source: ChatSourceEnum.online, userContent: textContent('First') };
+    const first = await preChatRound({ ...params, responseChatItemId: 'first-round' });
+    try {
+      await pending.started;
+      const sender = createGeneratedChatTitleSender({
+        titleGeneration: first.titleGeneration,
+        stream: true,
+        detail: true
+      });
+      sender.close();
+      await first.releaseGenerationLease?.();
+
+      try {
+        for (const fixedTitle of [undefined, 'Plugin Run']) {
+          const next = await preChatRound({
+            ...params,
+            fixedTitle,
+            responseChatItemId: fixedTitle ?? 'second-round'
+          });
+          try {
+            expect(await next.titleGeneration).toBeUndefined();
+            expect(createLLMResponseMock).toHaveBeenCalledTimes(1);
+            expect(await readStoredTitle()).toBe('');
+          } finally {
+            await next.releaseGenerationLease?.();
+          }
+        }
+      } finally {
+        pending.resolve({ answerText: 'First Title' });
+        expect(await first.titleGeneration).toBe('First Title');
+      }
+
+      // 即使调用方仍传旧的生成资格，lease 内也要重查已落库的有效标题。
+      expect(await syncGeneratedChatTitleFromUserContent(params)).toBeUndefined();
+      expect(createLLMResponseMock).toHaveBeenCalledTimes(1);
+    } finally {
+      await first.releaseGenerationLease?.();
+    }
+  });
+
+  it.each([
+    { sourceId: base.sourceId, chatId: 'another-chat' },
+    { sourceId: '67e0d5535c02d1d5cdede720', chatId: base.chatId }
+  ])('allows an independent lease for $sourceId / $chatId', async (target) => {
+    await createChat();
+    await createChat({ appId: target.sourceId, chatId: target.chatId });
+    const pending = deferTitleResponse();
+    const first = syncGeneratedChatTitleFromUserContent({
+      ...base,
+      userContent: textContent('First')
+    });
+    await pending.started;
+    try {
+      expect(
+        await syncGeneratedChatTitleFromUserContent({
+          ...base,
+          ...target,
+          userContent: textContent('Independent question')
+        })
+      ).toBe('FastGPT Docker Deployment');
+      expect(createLLMResponseMock).toHaveBeenCalledTimes(2);
+    } finally {
+      pending.resolve({ answerText: 'First Title' });
+      await first;
+    }
+  });
+
+  it.each(['model', 'write'])(
+    'releases the lease after a %s failure so later rounds can retry',
+    async (step) => {
+      await createChat();
+      const error = new Error('Temporary failure');
+      if (step === 'model') createLLMResponseMock.mockRejectedValueOnce(error);
+      else vi.spyOn(MongoChat, 'updateOne').mockRejectedValueOnce(error);
+      const params = { ...base, userContent: textContent('Retry question') };
+
+      expect(await syncGeneratedChatTitleFromUserContent(params)).toBeUndefined();
+      expect(await readStoredTitle()).toBe('');
+      expect(await syncGeneratedChatTitleFromUserContent(params)).toBe('FastGPT Docker Deployment');
+    }
+  );
+
+  it('skips title generation when Redis cannot acquire the lease', async () => {
+    await createChat();
+    vi.spyOn(redisCacheAdapter, 'acquireLease').mockRejectedValueOnce(
+      new Error('Redis unavailable')
+    );
+
+    expect(
+      await syncGeneratedChatTitleFromUserContent({ ...base, userContent: textContent('Question') })
+    ).toBeUndefined();
+    expect(createLLMResponseMock).not.toHaveBeenCalled();
+    expect(await readStoredTitle()).toBe('');
+  });
+
+  it('aborts the model and rejects late writes after losing the lease', async () => {
+    await createChat();
+    vi.spyOn(redisCacheAdapter, 'renewLease').mockResolvedValueOnce(false);
+    const pending = deferTitleResponse();
+    const first = syncGeneratedChatTitleFromUserContent({
+      ...base,
+      userContent: textContent('First')
+    });
+    // acquireLease 尚未返回，先启用假时钟，使后续创建的续租定时器可控。
+    vi.useFakeTimers();
+    await pending.started;
+    try {
+      await vi.advanceTimersByTimeAsync(CHAT_TITLE_GENERATION_TIMEOUT_MS / 6);
+      expect(createLLMResponseMock.mock.calls[0][0].signal.aborted).toBe(true);
+    } finally {
+      pending.resolve({ answerText: 'Late Title' });
+      expect(await first).toBeUndefined();
+      vi.useRealTimers();
+    }
+    expect(await readStoredTitle()).toBe('');
+  });
+
+  it('does not generate a title for a deleted chat', async () => {
+    expect(
+      await syncGeneratedChatTitleFromUserContent({ ...base, userContent: textContent('Question') })
+    ).toBeUndefined();
+    expect(createLLMResponseMock).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    { fixedTitle: '"Plugin Run"', expected: 'Plugin Run' },
+    { fixedTitle: '新对话', expected: undefined },
+    { fixedTitle: '   ', expected: undefined }
+  ])('normalizes and validates a fixed title: $fixedTitle', async ({ fixedTitle, expected }) => {
+    await createChat();
+    const prepared = await preChatRound({
+      ...base,
+      source: ChatSourceEnum.online,
+      userContent: textContent('Plugin question'),
+      fixedTitle
+    });
+    try {
+      expect(await prepared.titleGeneration).toBe(expected);
+      expect(await readStoredTitle()).toBe(expected ?? '');
+      expect(createLLMResponseMock).not.toHaveBeenCalled();
+    } finally {
+      await prepared.releaseGenerationLease?.();
+    }
   });
 
   it('does not write or return a title when title generation fails', async () => {
@@ -548,7 +716,7 @@ describe('syncGeneratedChatTitleFromUserContent', () => {
     expect(createLLMResponseMock).not.toHaveBeenCalled();
   });
 
-  it('writes the upload-file title even when a custom title already exists', async () => {
+  it('rechecks custom titles inside the lease even when the caller allows generation', async () => {
     await createChat({ title: 'Manual Title', customTitle: 'Manual Title' });
 
     const result = await syncGeneratedChatTitleFromUserContent({
@@ -557,8 +725,9 @@ describe('syncGeneratedChatTitleFromUserContent', () => {
       locale: 'zh-CN'
     });
 
-    expect(await readStoredTitle()).toBe(CHAT_FIXED_TITLE_I18N.uploadFile['zh-CN']);
-    expect(result).toBe(CHAT_FIXED_TITLE_I18N.uploadFile['zh-CN']);
+    expect(await readStoredTitle()).toBe('Manual Title');
+    expect(result).toBeUndefined();
+    expect(createLLMResponseMock).not.toHaveBeenCalled();
   });
 
   it('generates model titles for non UI sources too', async () => {

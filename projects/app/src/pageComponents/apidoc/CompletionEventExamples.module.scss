@@ -1,0 +1,122 @@
+.host {
+  min-width: 0;
+  margin-top: 16px;
+}
+
+.panel {
+  color: var(--scalar-color-1);
+  font-family: var(--scalar-font);
+  font-size: 13px;
+}
+
+.heading {
+  margin: 0 0 8px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.control {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--scalar-color-2);
+  font-family: var(--scalar-font-code);
+  font-size: 12px;
+
+  select {
+    flex: 1;
+    min-width: 0;
+    height: 36px;
+    padding: 0 10px;
+    border: 1px solid var(--scalar-border-color);
+    border-radius: 6px;
+    background: var(--scalar-background-1);
+    color: var(--scalar-color-1);
+    font: inherit;
+    cursor: pointer;
+
+    &:focus-visible {
+      outline: 2px solid var(--scalar-color-accent);
+      outline-offset: 2px;
+    }
+  }
+}
+
+.description {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 14px 0 12px;
+  color: var(--scalar-color-2);
+  font-size: 13px;
+  line-height: 1.65;
+
+  strong {
+    color: var(--scalar-color-1);
+    font-weight: 500;
+  }
+}
+
+.codeBlock {
+  overflow: hidden;
+  border: 1px solid var(--scalar-border-color);
+  border-radius: 6px;
+  background: var(--scalar-background-2);
+}
+
+.codeHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--scalar-border-color);
+  color: var(--scalar-color-3);
+  font-family: var(--scalar-font-code);
+  font-size: 11px;
+
+  button {
+    padding: 2px 4px;
+    color: var(--scalar-color-2);
+    font-family: var(--scalar-font);
+    cursor: pointer;
+
+    &:hover {
+      color: var(--scalar-color-1);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--scalar-color-accent);
+      outline-offset: 2px;
+    }
+  }
+}
+
+.code {
+  max-height: 400px;
+  margin: 0;
+  overflow: auto;
+  padding: 14px;
+  color: var(--scalar-color-1);
+  font-family: var(--scalar-font-code);
+  font-size: 12px;
+  line-height: 1.75;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  tab-size: 2;
+}
+
+.eventLine {
+  color: var(--scalar-color-green);
+}
+
+.copyStatus {
+  display: block;
+  margin-top: 6px;
+  color: var(--scalar-color-3);
+  font-size: 12px;
+
+  &:empty {
+    display: none;
+  }
+}

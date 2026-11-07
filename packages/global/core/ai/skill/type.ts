@@ -1,5 +1,6 @@
+import { ChatIdSchema } from '../../chat/schema';
 import z from 'zod';
-import { IntSchema } from '../../../common/zod';
+import { BoolSchema, IntSchema } from '../../../common/zod';
 import {
   AgentSkillSourceEnum,
   AgentSkillCategoryEnum,
@@ -71,9 +72,10 @@ export const AgentSkillListItemSchema = z.object({
   createTime: z.coerce.date(),
   updateTime: z.coerce.date(),
   appCount: IntSchema.optional().meta({
-    description: '被正式应用引用的 Skill 数量',
+    description: '被正式应用引用的数量，开启引用统计时仅非文件夹资源的 Owner 返回',
     example: 0
   }),
+  private: BoolSchema.optional().meta({ description: '是否私有' }),
   sourceMember: z
     .object({
       name: z.string(),
@@ -172,7 +174,7 @@ export const SandboxInstanceSchema = z.object({
   sandboxId: z.string(),
   appId: z.string(),
   userId: z.string(),
-  chatId: z.string(),
+  chatId: ChatIdSchema,
   status: SandboxStatusSchema,
   lastActiveAt: z.coerce.date(),
   createdAt: z.coerce.date(),

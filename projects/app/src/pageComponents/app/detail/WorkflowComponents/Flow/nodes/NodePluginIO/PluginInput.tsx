@@ -91,7 +91,7 @@ const NodePluginInput = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const Render = useMemo(() => {
     return (
       <NodeCard
-        minW={'300px'}
+        minW={'350px'}
         selected={selected}
         menuForbid={{
           copy: true,

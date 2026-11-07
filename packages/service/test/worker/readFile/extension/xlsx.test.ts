@@ -115,6 +115,120 @@ describe('readXlsxRawText', () => {
     ]);
   });
 
+  it.each([false, true])('writes default dates as ISO dates (date1904=%s)', async (date1904) => {
+    // Excel shows its default short date (format 14) and date-time (format 22) in the
+    // system's locale, 2026/10/17 in a Chinese Excel. SheetJS writes them as the US
+    // m/d/yy, "10/17/26", which drops the century and leaves day and month ambiguous.
+    const dateSerial = date1904 ? 44850 : 46312;
+    const worksheet = XLSX.utils.aoa_to_sheet([
+      ['短日期', '日期时间', '中文日期', '日/月/年', '时间'],
+      [dateSerial, dateSerial + 0.75, dateSerial, dateSerial, 0.5]
+    ]);
+    worksheet['A2'].z = XLSX.SSF.get_table()[14] as string;
+    worksheet['B2'].z = XLSX.SSF.get_table()[22] as string;
+    // Formats the author chose are kept as they are.
+    worksheet['C2'].z = 'yyyy"年"m"月"d"日"';
+    worksheet['D2'].z = 'dd/mm/yyyy';
+    worksheet['E2'].z = 'h:mm';
+    const workbook = XLSX.utils.book_new();
+    workbook.Workbook = { WBProps: { date1904 } };
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Sheet1');
+    const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+
+    const result = await readXlsxRawText({
+      extension: 'xlsx',
+      buffer,
+      encoding: 'utf-8'
+    });
+
+    expect(Papa.parse(result.rawText).data).toEqual([
+      ['短日期', '日期时间', '中文日期', '日/月/年', '时间'],
+      ['2026-10-17', '2026-10-17 18:00', '2026年10月17日', '17/10/2026', '12:00']
+    ]);
+    expect(result.formatText).toContain(
+      '| 2026-10-17 | 2026-10-17 18:00 | 2026年10月17日 | 17/10/2026 | 12:00 |'
+    );
+  });
+
+  it('keeps early 1900 dates on either side of the Excel leap-day boundary', async () => {
+    const worksheet = XLSX.utils.aoa_to_sheet([
+      ['短日期', '日期时间'],
+      [1, 1],
+      [59, 59.5],
+      [61, 61.75]
+    ]);
+    for (const row of [2, 3, 4]) {
+      worksheet[`A${row}`].z = XLSX.SSF.get_table()[14] as string;
+      worksheet[`B${row}`].z = XLSX.SSF.get_table()[22] as string;
+    }
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Sheet1');
+    const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+
+    const result = await readXlsxRawText({ extension: 'xlsx', buffer, encoding: 'utf-8' });
+
+    expect(Papa.parse(result.rawText).data).toEqual([
+      ['短日期', '日期时间'],
+      ['1900-01-01', '1900-01-01 00:00'],
+      ['1900-02-28', '1900-02-28 12:00'],
+      ['1900-03-01', '1900-03-01 18:00']
+    ]);
+    expect(result.formatText).toContain('| 1900-01-01 | 1900-01-01 00:00 |');
+    expect(result.formatText).toContain('| 1900-02-28 | 1900-02-28 12:00 |');
+    expect(result.formatText).toContain('| 1900-03-01 | 1900-03-01 18:00 |');
+  });
+
+  it('keeps a timezone-free date-time inside a daylight saving gap', async () => {
+    // 2026-03-08 02:30 在 America/Los_Angeles 的本地时区不存在，但 Excel 日期没有时区。
+    // 此用例需在该 TZ 下运行，才能检测经 JavaScript Date 转换时被归一化为 03:30 的回归。
+    const worksheet = XLSX.utils.aoa_to_sheet([
+      ['短日期', '日期时间'],
+      [46089, 46089 + 2.5 / 24]
+    ]);
+    worksheet['A2'].z = XLSX.SSF.get_table()[14] as string;
+    worksheet['B2'].z = XLSX.SSF.get_table()[22] as string;
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Sheet1');
+    const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+
+    const result = await readXlsxRawText({ extension: 'xlsx', buffer, encoding: 'utf-8' });
+
+    expect(Papa.parse(result.rawText).data).toEqual([
+      ['短日期', '日期时间'],
+      ['2026-03-08', '2026-03-08 02:30']
+    ]);
+    expect(result.formatText).toContain('| 2026-03-08 | 2026-03-08 02:30 |');
+  });
+
+  it('normalizes custom formats equivalent to the default date formats', async () => {
+    const worksheet = XLSX.utils.aoa_to_sheet([
+      ['短日期', '日期时间', '文本'],
+      [46312, 46312.75, '03/04/26']
+    ]);
+    worksheet['A2'].z = 'm/d/yy';
+    worksheet['B2'].z = 'm/d/yy h:mm';
+    worksheet['C2'].z = 'm/d/yy';
+    // 用自定义格式 ID 保存同样的格式串，明确归一化依据是格式文本而非 numFmtId。
+    const workbook = {
+      ...XLSX.utils.book_new(),
+      SSF: {
+        ...XLSX.SSF.get_table(),
+        200: 'm/d/yy',
+        201: 'm/d/yy h:mm'
+      }
+    };
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Sheet1');
+    const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+
+    const result = await readXlsxRawText({ extension: 'xlsx', buffer, encoding: 'utf-8' });
+
+    expect(Papa.parse(result.rawText).data).toEqual([
+      ['短日期', '日期时间', '文本'],
+      ['2026-10-17', '2026-10-17 18:00', '03/04/26']
+    ]);
+    expect(result.formatText).toContain('| 2026-10-17 | 2026-10-17 18:00 | 03/04/26 |');
+  });
+
   it('should fill merged cells before formatting xlsx content', async () => {
     const worksheet = XLSX.utils.aoa_to_sheet([
       ['部门', '姓名', '区域', '', ''],

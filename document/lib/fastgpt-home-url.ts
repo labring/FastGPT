@@ -1,3 +1,5 @@
+import { getFastGPTDocsLocaleFromHomeOrigin } from './docs-locale';
+
 const DEFAULT_FASTGPT_HOME_ORIGIN = 'https://fastgpt.io';
 
 export const DOCS_UTM_CAMPAIGNS = {
@@ -28,6 +30,9 @@ export const getFastGPTDocsOrigin = (): string => {
   homeUrl.hostname = `doc.${homeUrl.hostname}`;
   return homeUrl.origin;
 };
+
+export const getFastGPTDocsLocale = (): 'zh-CN' | 'en' =>
+  getFastGPTDocsLocaleFromHomeOrigin(getFastGPTHomeOrigin());
 
 export const buildFastGPTHomeUrl = ({
   campaign,

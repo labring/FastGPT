@@ -1,11 +1,16 @@
 import UseGuideModal from '@/components/common/Modal/UseGuideModal';
-import SecretInputModal from '@/pageComponents/app/tool/SecretInputModal';
+import SecretInputModal, {
+  type SecretReferenceList
+} from '@/pageComponents/app/tool/SecretInputModal';
 import { getAppPermission } from '@/web/core/app/api';
 import { getClientToolPreviewNode } from '@/web/core/app/api/tool';
 import { getAppVersionList } from '@/web/core/app/api/version';
 import { getTeamToolVersions } from '@/web/core/plugin/team/api';
 import { storeNode2FlowNode } from '@/web/core/workflow/utils';
-import { getWorkflowCheckIssueUIStatus } from '@/web/core/workflow/workflowCheck';
+import {
+  getWorkflowCheckIssueUIStatus,
+  getToolErrorMessage
+} from '@/web/core/workflow/check/message';
 import { Box, Button, Flex, type FlexProps } from '@chakra-ui/react';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { LOGO_ICON } from '@fastgpt/global/common/system/constants';
@@ -18,15 +23,18 @@ import {
   mergeToolSetChildDescriptions,
   splitCombineToolId
 } from '@fastgpt/global/core/app/tool/utils';
-import { getToolErrorMessage } from '@/web/core/workflow/workflowCheck';
 import {
   PluginStatusEnum,
   PluginStatusMap,
   type PluginStatusType
 } from '@fastgpt/global/core/plugin/type';
-import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import type { NodeGradients } from '@fastgpt/global/core/workflow/node/constant';
 import {
+  NodeInputKeyEnum,
+  NodeOutputKeyEnum,
+  WorkflowIOValueTypeEnum
+} from '@fastgpt/global/core/workflow/constants';
+import {
+  type NodeGradients,
   AppNodeFlowNodeTypeMap,
   FlowNodeTypeEnum,
   isNestedParentNodeType
@@ -69,7 +77,9 @@ import { useWorkflowUtils } from '../../hooks/useUtils';
 import { ConnectionSourceHandle, ConnectionTargetHandle } from './Handle/ConnectionHandle';
 import { ToolSourceHandle, ToolTargetHandle } from './Handle/ToolHandle';
 import InlineEdit from './InlineEdit';
+import { useNodeHandleLayout } from './Handle/useNodeHandleLayout';
 import NodeDebugResponse from './RenderDebug/NodeDebugResponse';
+import { ReferSelector, useReference } from './RenderInput/templates/Reference';
 
 type Props = FlowNodeItemType & {
   children?: React.ReactNode | React.ReactNode[] | string;
@@ -102,7 +112,8 @@ const getCurrentSystemToolTemplate = async (node?: FlowNodeItemType) => {
     return getClientToolPreviewNode({
       appId: node.pluginId,
       versionId: node.version ?? '',
-      source: node.source
+      source: node.source,
+      lang: node.metadataLocale ?? 'en'
     });
   } catch {
     return;
@@ -110,7 +121,7 @@ const getCurrentSystemToolTemplate = async (node?: FlowNodeItemType) => {
 };
 
 const NodeCard = (props: Props) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const {
     children,
     avatar = LOGO_ICON,
@@ -140,6 +151,12 @@ const NodeCard = (props: Props) => {
   } = props;
 
   useNodeOutputValidity(nodeId);
+  const toolConnected = useContextSelector(WorkflowBufferDataContext, (v) =>
+    v.edges.some(
+      (edge) => edge.target === nodeId && edge.targetHandle === NodeOutputKeyEnum.selectedTools
+    )
+  );
+  useNodeHandleLayout({ node: props, toolConnected, language: i18n.language });
 
   const { hasToolNode, getNodeById, foldedNodesMap } = useContextSelector(
     WorkflowBufferDataContext,
@@ -277,7 +294,10 @@ const NodeCard = (props: Props) => {
             ? {
                 status: currentSystemToolTemplate.status,
                 courseUrl: currentSystemToolTemplate.courseUrl,
-                readmeUrl: currentSystemToolTemplate.readmeUrl,
+                readmeUrl:
+                  node.readmeUrl ??
+                  node.pluginData?.readmeUrl ??
+                  currentSystemToolTemplate.readmeUrl,
                 userGuide: currentSystemToolTemplate.userGuide,
                 diagram: currentSystemToolTemplate.diagram
               }
@@ -323,6 +343,7 @@ const NodeCard = (props: Props) => {
         node?.pluginData?.status,
         node?.pluginId,
         node?.source,
+        node?.metadataLocale,
         node?.version
       ]
     }
@@ -734,7 +755,8 @@ const NodeIntro = React.memo(function NodeIntro({
   );
 
   return (
-    <Box w={'100%'} minW={0} overflow={'hidden'}>
+    // 使用 contain: inline-size 阻止长介绍文案在 shrink-to-fit 节点中参与 max-content 宽度计算，同时保持宽度铺满与高度自适应换行
+    <Box w={'100%'} minW={0} overflow={'hidden'} sx={{ contain: 'inline-size' }}>
       <InlineEdit
         value={intro}
         onSave={handleSave}
@@ -823,7 +845,8 @@ const NodeVersion = React.memo(function NodeVersion({ node }: { node: FlowNodeIt
         const template = await getClientToolPreviewNode({
           appId: node.pluginId,
           versionId,
-          source: node.source
+          source: node.source,
+          lang: node.metadataLocale ?? 'en'
         });
 
         if (!!template) {
@@ -870,11 +893,11 @@ const NodeVersion = React.memo(function NodeVersion({ node }: { node: FlowNodeIt
         value: ''
       },
       ...versionList.map((item) => ({
-        label: item.versionDescription || item.version,
+        label: item.version,
         value: item.version
       }))
     ],
-    [node.isLatestVersion, node.version, t, versionList]
+    [t, versionList]
   );
   const valueLabel = useMemo(() => {
     return (
@@ -957,6 +980,7 @@ const MenuRender = React.memo(function MenuRender({
           pluginId: node.data.pluginId,
           source: node.data.source,
           isFolder: node.data.isFolder,
+          metadataLocale: node.data.metadataLocale,
           pluginData: node.data.pluginData,
 
           toolConfig: node.data.toolConfig,
@@ -986,6 +1010,7 @@ const MenuRender = React.memo(function MenuRender({
               showStatus: template.showStatus,
               pluginId: template.pluginId,
               source: template.source,
+              metadataLocale: node.data.metadataLocale,
               inputs: template.inputs,
               outputs: template.outputs,
               version: template.version,
@@ -1254,6 +1279,10 @@ const NodeSecret = React.memo(function NodeSecret({
 }) {
   const { t } = useTranslation();
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
+  const { referenceList } = useReference({
+    nodeId,
+    valueType: WorkflowIOValueTypeEnum.any
+  });
 
   const [
     isOpenToolParamConfigModal,
@@ -1280,6 +1309,10 @@ const NodeSecret = React.memo(function NodeSecret({
 
       {inputConfig && isOpenToolParamConfigModal && (
         <SecretInputModal
+          referenceList={referenceList as SecretReferenceList}
+          renderReference={({ list, value, onSelect }) => (
+            <ReferSelector list={list} value={value} onSelect={onSelect} />
+          )}
           isFolder={isFolder}
           onClose={onCloseToolParamConfigModal}
           onSubmit={(data) => {

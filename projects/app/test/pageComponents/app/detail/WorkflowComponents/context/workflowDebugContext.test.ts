@@ -44,7 +44,7 @@ describe('getWorkflowDebugRuntimeContext', () => {
     ).toEqual({
       sourceTarget: { sourceType: 'app', sourceId: 'app-id' },
       chatId: 'debug-session-chat-id',
-      outLinkAuthData: {},
+      outLinkAuthData: undefined,
       fileUploadMode: 'draft'
     });
   });

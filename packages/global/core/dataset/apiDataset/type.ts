@@ -1,4 +1,5 @@
 import z from 'zod';
+import { ensureHttpProtocol } from '../../../common/string/url';
 
 export const APIFileItemSchema = z.object({
   id: z.string(),
@@ -13,9 +14,11 @@ export const APIFileItemSchema = z.object({
 export type APIFileItemType = z.infer<typeof APIFileItemSchema>;
 
 // Api dataset config
+// baseUrl 在 schema 内统一归一化：缺失协议时补 https://，避免 axios 抛 ERR_INVALID_URL。
+// 该 schema 同时用于保存入参和详情响应解析，归一化放在这里，历史裸域名记录也能正常读取。
 export const APIFileServerSchema = z
   .object({
-    baseUrl: z.string(),
+    baseUrl: z.string().overwrite(ensureHttpProtocol),
     authorization: z.string().optional(),
     basePath: z.string().optional()
   })
@@ -79,3 +82,24 @@ export type APIFileReadResponseType = z.infer<typeof APIFileReadResponseSchema>;
 export type APIFileReadResponse = APIFileReadResponseType;
 
 export type ApiDatasetDetailResponse = APIFileItemType;
+
+export type ApiDatasetErrorCode =
+  | 'NOT_FOUND'
+  | 'RATE_LIMIT'
+  | 'UNAUTHORIZED'
+  | 'NETWORK_ERROR'
+  | 'SERVER_ERROR'
+  | 'INVALID_PARAMS'
+  | 'UNKNOWN_ERROR';
+
+export type ApiDatasetResult<T> =
+  | {
+      success: true;
+      data: T;
+    }
+  | {
+      success: false;
+      code: ApiDatasetErrorCode;
+      message: string;
+      status?: number;
+    };

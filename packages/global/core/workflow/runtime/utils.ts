@@ -1,7 +1,7 @@
 import json5 from 'json5';
 import { ChatRoleEnum } from '../../../core/chat/constants';
 import type { ChatItemMiniType } from '../../../core/chat/type';
-import type { NodeOutputItemType } from './type';
+import type { NodeOutputItemType, RuntimeNodeItemType } from './type';
 import { createChatCompletionDeltaResponse } from '../../ai/llm/utils';
 import {
   NodeInputKeyEnum,
@@ -10,14 +10,34 @@ import {
   WorkflowIOValueTypeEnum
 } from '../constants';
 import { FlowNodeTypeEnum } from '../node/constant';
-import { type WorkflowInteractiveResponseType } from '../template/system/interactive/type';
+import {
+  InteractiveNodeResponseTypeSchema,
+  type InteractiveNodeResponseType,
+  type WorkflowInteractiveResponseType
+} from '../template/system/interactive/type';
 import type { RuntimeEdgeItemType, StoreEdgeItemType } from '../type/edge';
 import type { FlowNodeOutputItemType, ReferenceValueType } from '../type/io';
 import type { StoreNodeItemType } from '../type/node';
-import { isValidReferenceValueFormat } from '../utils';
-import type { RuntimeNodeItemType } from './type';
-import { isSecretValue } from '../../../common/secret/utils';
+import { isValidReferenceValueFormat } from '../../../common/workflow/reference';
+import { parseSecretValue } from '../../../common/secret/utils';
 import { isChildInteractive } from '../template/system/interactive/constants';
+
+/**
+ * 统一判断 Agent Ask 类型，供运行时交互及结构化用户输入共用，并保留调用方的具体类型。
+ * 只判断当前层标记；嵌套工作流交互需先通过 extractDeepestInteractive 提取。
+ */
+export const isAgentAskInteractive = <T extends { type: string }>(
+  interactive: T | null | undefined
+): interactive is T & { type: 'agentAsk' } => interactive?.type === 'agentAsk';
+
+/**
+ * 识别通过新建 user 消息回答的 Ask 交互，统一 Agent Ask 和工作流方案确认的公共行为。
+ * 只判断当前层类型，不校验载荷；嵌套交互需先通过 extractDeepestInteractive 提取。
+ */
+export const isAskInteractive = <T extends { type: string }>(
+  interactive: T | null | undefined
+): interactive is T & { type: 'agentAsk' | 'workflowBuilderPreview' } =>
+  isAgentAskInteractive(interactive) || interactive?.type === 'workflowBuilderPreview';
 
 export const extractDeepestInteractive = (
   interactive: WorkflowInteractiveResponseType
@@ -26,14 +46,38 @@ export const extractDeepestInteractive = (
   let current = interactive;
   let depth = 0;
 
-  while (depth < MAX_DEPTH && current?.params && 'childrenResponse' in current.params) {
+  while (
+    depth < MAX_DEPTH &&
+    current?.params &&
+    typeof current.params === 'object' &&
+    'childrenResponse' in current.params
+  ) {
     current = current.params.childrenResponse;
     depth++;
   }
 
   return current;
 };
+
+/**
+ * 校验可展示及等待回复的叶子交互，跳过缺字段、旧协议和未完整展开的子交互。
+ * 仅校验节点载荷，不要求历史消息包含调度字段，也不替换原对象，保留恢复执行所需元数据。
+ */
+export const isValidInteractive = (value: unknown): value is InteractiveNodeResponseType => {
+  const result = InteractiveNodeResponseTypeSchema.safeParse(value);
+  return result.success && !isChildInteractive(result.data.type);
+};
+
 export const getMaxHistoryLimitFromNodes = (nodes: StoreNodeItemType[]): number => {
+  // Agent 的恢复来源是完整 ChatItem；Mongo limit=0 表示不裁剪，模型侧仍按最新 checkpoint 压缩。
+  if (
+    nodes.some(
+      (node) =>
+        node.flowNodeType === FlowNodeTypeEnum.agent ||
+        node.flowNodeType === FlowNodeTypeEnum.toolCall
+    )
+  )
+    return 0;
   let limit = 10;
   nodes.forEach((node) => {
     node.inputs.forEach((input) => {
@@ -50,8 +94,12 @@ export const getMaxHistoryLimitFromNodes = (nodes: StoreNodeItemType[]): number 
   return limit * 2;
 };
 
-/* value type format */
-export const valueTypeFormat = (value: any, valueType?: WorkflowIOValueTypeEnum) => {
+/** 按目标 workflow 类型转换运行时值；只有密码输入会保留合法 secret wrapper。 */
+export const valueTypeFormat = (
+  value: any,
+  valueType?: WorkflowIOValueTypeEnum,
+  isSecretInput = false
+) => {
   const isObjectString = (value: any) => {
     if (typeof value === 'string' && value !== 'false' && value !== 'true') {
       const trimmedValue = value.trim();
@@ -67,8 +115,11 @@ export const valueTypeFormat = (value: any, valueType?: WorkflowIOValueTypeEnum)
   if (value === undefined || value === null) return value;
   if (!valueType || valueType === WorkflowIOValueTypeEnum.any) return value;
 
-  // Password check
-  if (valueType === WorkflowIOValueTypeEnum.string && isSecretValue(value)) return value;
+  // `{ value }` 也可能是普通业务对象；仅密码输入按密钥 wrapper 透传。
+  if (isSecretInput && valueType === WorkflowIOValueTypeEnum.string) {
+    const secretValue = parseSecretValue(value);
+    if (secretValue) return secretValue;
+  }
 
   // 2. 如果值已经符合目标类型，直接返回
   if (
@@ -96,9 +147,7 @@ export const valueTypeFormat = (value: any, valueType?: WorkflowIOValueTypeEnum)
     return Number(value);
   }
   if (valueType === WorkflowIOValueTypeEnum.boolean) {
-    if (typeof value === 'string') {
-      return value.toLowerCase() === 'true';
-    }
+    // 统一使用 JS 原生 Boolean 语义（非空字符串为 true），与 formatVariableValByType 保持一致
     return Boolean(value);
   }
 
@@ -165,43 +214,25 @@ export const valueTypeFormat = (value: any, valueType?: WorkflowIOValueTypeEnum)
 export const getLastInteractiveValue = (
   histories: ChatItemMiniType[]
 ): WorkflowInteractiveResponseType | undefined => {
-  const lastAIMessage = [...histories].reverse().find((item) => item.obj === ChatRoleEnum.AI);
+  const lastAIIndex = histories.findLastIndex((item) => item.obj === ChatRoleEnum.AI);
+  const lastAIMessage = histories[lastAIIndex];
 
-  if (lastAIMessage) {
-    const lastValue = lastAIMessage.value[lastAIMessage.value.length - 1];
+  if (lastAIMessage?.obj === ChatRoleEnum.AI) {
+    const lastValue = lastAIMessage.value.findLast(
+      (value) =>
+        !value.displayOnly && !value.workflowBuilderVersion && !value.chatAgentBuilderVersion
+    );
 
     if (!lastValue || !lastValue.interactive) {
       return;
     }
 
-    // Convert legacy ask_user call to the new one.
-    if (lastValue.interactive.type === 'agentPlanAskQuery') {
-      if (lastValue.interactive.params.answer) {
-        return;
-      }
-
-      return {
-        ...lastValue.interactive,
-        type: 'agentAsk',
-        params: {
-          description: lastValue.interactive.params.reason ?? '',
-          questions: [
-            {
-              question: lastValue.interactive.params.content,
-              options: lastValue.interactive.params.options.map((option) => ({
-                summary: option,
-                value: option
-              })),
-              answer: ''
-            }
-          ]
-        }
-      };
-    }
-
     const finalInteractive = extractDeepestInteractive(lastValue.interactive);
-    if (finalInteractive.type === 'agentPlanAskQuery') {
-      return;
+    if (!isValidInteractive(finalInteractive)) return;
+    if (isAskInteractive(finalInteractive)) {
+      return histories[lastAIIndex + 1]?.obj === ChatRoleEnum.Human
+        ? undefined
+        : lastValue.interactive;
     }
 
     if (isChildInteractive(lastValue.interactive.type)) {
@@ -218,10 +249,6 @@ export const getLastInteractiveValue = (
 
     // Check is user input
     if (lastValue.interactive.type === 'userInput' && !lastValue.interactive?.params?.submitted) {
-      return lastValue.interactive;
-    }
-
-    if (lastValue.interactive.type === 'agentAsk' && !lastValue.interactive.params.submitted) {
       return lastValue.interactive;
     }
 
@@ -287,6 +314,7 @@ export const storeNodes2RuntimeNodes = (
         outputs: node.outputs,
         pluginId: node.pluginId,
         version: node.version,
+        ...(node.metadataLocale !== undefined ? { metadataLocale: node.metadataLocale } : {}),
         toolConfig: node.toolConfig,
         catchError: node.catchError
       };
@@ -433,3 +461,35 @@ export function rewriteNodeOutputByHistories(
     };
   });
 }
+
+/** 补齐交互的工作流恢复字段，按调用 ID 更新唯一 value，不回写历史 AI。 */
+export const appendWorkflowInteractiveValue = ({
+  values,
+  interactive
+}: {
+  values: import('../../chat/type').AIChatItemValueItemType[];
+  interactive: WorkflowInteractiveResponseType;
+}) => {
+  const latest = extractDeepestInteractive(interactive);
+  if (isAskInteractive(latest)) {
+    const existingIndex = values.findIndex((value) => {
+      if (value.displayOnly || !value.interactive) return false;
+      const current = extractDeepestInteractive(value.interactive);
+      return isAgentAskInteractive(latest)
+        ? !!latest.params?.toolCallId &&
+            isAgentAskInteractive(current) &&
+            current.params?.toolCallId === latest.params.toolCallId
+        : current?.type === 'workflowBuilderPreview' &&
+            current.params.toolCallId === latest.params.toolCallId;
+    });
+    if (existingIndex !== -1) {
+      // 避免原地修改被子流程 nodeOutputs（如 history 输出）共享引用的 item，防止形成循环引用
+      values[existingIndex] = {
+        ...values[existingIndex],
+        interactive
+      };
+      return;
+    }
+  }
+  values.push({ interactive });
+};

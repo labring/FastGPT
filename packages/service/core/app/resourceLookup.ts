@@ -2,7 +2,7 @@ import type { AppResourceType, AppSchemaType } from '@fastgpt/global/core/app/ty
 import { Types } from '../../common/mongo';
 import { MongoApp } from './schema';
 import { AppVersionCollectionName } from './version/schema';
-import { buildAppResourceMongoQuery } from './resources';
+import { buildAppResourceMongoQuery } from './resource/utils';
 import { AppTypeEnum, AppTypeList, ToolTypeList } from '@fastgpt/global/core/app/constants';
 
 type PublishedAppResource = { type: AppResourceType; id: string };

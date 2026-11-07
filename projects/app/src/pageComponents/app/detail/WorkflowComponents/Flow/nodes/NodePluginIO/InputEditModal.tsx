@@ -19,7 +19,7 @@ import {
   useValidateFieldName,
   useSubmitErrorHandler
 } from '@/components/core/app/utils/formValidation';
-import { getSelectedInputRenderType } from '@fastgpt/global/core/app/formEdit/utils';
+import { getSelectedInputRenderType } from '@fastgpt/global/common/workflow/reference';
 
 export const defaultInput: FlowNodeInputItemType = {
   renderTypeList: [FlowNodeInputTypeEnum.reference], // Can only choose one here
@@ -199,11 +199,13 @@ const FieldEditModal = ({
             inputTypeList={inputTypeList}
             selectedType={inputType}
             onTypeChange={(type) => {
+              if (type === inputType) return;
+
               const targetItem = rawInputTypeList.flat().find((item) => item.value[0] === type);
               if (targetItem) {
                 setValue('renderTypeList', targetItem.value);
                 setValue('selectedType', type as FlowNodeInputTypeEnum);
-                setValue('defaultValue', '');
+                setValue('defaultValue', type === FlowNodeInputTypeEnum.multipleSelect ? [] : '');
                 if (
                   (type === FlowNodeInputTypeEnum.select ||
                     type === FlowNodeInputTypeEnum.multipleSelect) &&

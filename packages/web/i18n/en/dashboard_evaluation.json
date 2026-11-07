@@ -1,5 +1,5 @@
 {
-  "Action": "operate",
+  "Action": "Action",
   "Evaluation_app": "Evaluation app",
   "Evaluation_app_tip": "Supports basic Apps and Workflows without user interaction Nodes. Plugins are not yet supported.",
   "Evaluation_file": "Evaluation documents",

@@ -3,16 +3,21 @@ import type {
   AIChatItemValueItemType,
   ChatHistoryItemResType
 } from '@fastgpt/global/core/chat/type';
-import { extractDeepestInteractive } from '@fastgpt/global/core/workflow/runtime/utils';
+import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import {
+  extractDeepestInteractive,
+  getLastInteractiveValue,
+  isValidInteractive
+} from '@fastgpt/global/core/workflow/runtime/utils';
 import React from 'react';
 import { useContextSelector } from 'use-context-selector';
 import {
   ChatItemContext,
   type OnOpenCiteModalProps
 } from '@/web/core/chat/context/chatItemContext';
-import RenderAgentAskInteractive from './RenderAgentAskInteractive';
 import RenderPaymentPauseInteractive from './RenderPaymentPauseInteractive';
 import RenderPlan from './RenderPlan';
+import RenderChatAgentBuilderVersion from './RenderChatAgentBuilderVersion';
 import RenderPlanStatus from './RenderPlanStatus';
 import RenderProcessingCollapse from './RenderProcessingCollapse';
 import type { ProcessingPreviewTarget } from './RenderProcessingPreview';
@@ -22,8 +27,14 @@ import RenderText from './RenderText';
 import RenderTool from './RenderTool';
 import RenderUserFormInteractive from './RenderUserFormInteractive';
 import RenderUserSelectInteractive from './RenderUserSelectInteractive';
-import { adaptLegacyAgentPlanAskToReadonlyAgentAsk } from './utils';
+import RenderWorkflowBuilderVersion from './WorkflowBuilder/RenderWorkflowBuilderVersion';
+import RenderWorkflowBuilderPreview from './WorkflowBuilder/RenderWorkflowBuilderPreview';
+import { useChatInstanceActions } from '../../ChatContainer/context/chatInstanceActionsContext';
+import { QuickReplyContext } from '../../ChatContainer/context/quickReplyContext';
+import { useMemoizedFn } from 'ahooks';
+import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
 
+/** 在聊天边界绑定所属实例的操作，再以文本回调传入通用 Markdown 渲染器。 */
 const AIResponseBox = ({
   chatItemDataId,
   value,
@@ -39,6 +50,7 @@ const AIResponseBox = ({
   showStandaloneProcessing: showStandaloneProcessingProp = true,
   showAnswer = true,
   showInteractive = true,
+  showWorkflowBuilderVersion = true,
   defaultExpandProcessing = true,
   defaultExpandedProcessingTarget
 }: {
@@ -56,29 +68,53 @@ const AIResponseBox = ({
   showStandaloneProcessing?: boolean;
   showAnswer?: boolean;
   showInteractive?: boolean;
+  showWorkflowBuilderVersion?: boolean;
   defaultExpandProcessing?: boolean;
   defaultExpandedProcessingTarget?: ProcessingPreviewTarget;
 }) => {
   const showRunningStatus = useContextSelector(ChatItemContext, (v) => v.showRunningStatus);
   const showSkillReferences = useContextSelector(ChatItemContext, (v) => v.showSkillReferences);
-  const tools = value.tools || (value.tool ? [value.tool] : undefined);
+  // 展示专用内容可能跟在交互后面，待确认状态应与底部确认区使用同一份会话记录。
+  const pendingPreviewKey = useContextSelector(ChatRecordContext, (v) => {
+    const current = getLastInteractiveValue(v.chatRecords);
+    const interactive = current ? extractDeepestInteractive(current) : undefined;
+    const chatItemId = v.chatRecords.findLast((item) => item.obj === ChatRoleEnum.AI)?.dataId;
+    return interactive?.type === 'workflowBuilderPreview'
+      ? `${chatItemId}:${interactive.params.toolCallId}`
+      : undefined;
+  });
+  const { sendMessage, fillInput } = useChatInstanceActions();
+  const onSendQuestion = useMemoizedFn((text: string) => sendMessage({ text }));
+  const onEditQuestion = useMemoizedFn((text: string) => fillInput({ text }));
+  const enableQuickReplies = useContextSelector(QuickReplyContext, (v) => v.enableQuickReplies);
+  const onQuickReplyClick = useContextSelector(QuickReplyContext, (v) => v.onQuickReplyClick);
+  const markdownActions = {
+    onSendQuestion,
+    onEditQuestion,
+    onQuickReplyClick: enableQuickReplies ? onQuickReplyClick : undefined
+  };
+  const tools = (value.tools || (value.tool ? [value.tool] : undefined))?.filter(
+    (tool) => !tool.hideInUI
+  );
   const disableStreamingInteraction = isChatting && isLastChild;
   const skills = value.skills;
   const reasoningContent = value.reasoning?.content || '';
   const textContent = value.text?.content || '';
 
-  if (value.hideInUI) return null;
+  if (value.hideInUI && !value.interactive) return null;
 
   const responseBlocks: React.ReactNode[] = [];
   const foldableProcessingBlocks: React.ReactNode[] = [];
   const standaloneProcessingBlocks: React.ReactNode[] = [];
 
-  const showFoldableProcessing = showProcessing && showFoldableProcessingProp;
-  const showStandaloneProcessing = showProcessing && showStandaloneProcessingProp;
+  const showFoldableProcessing = !value.hideInUI && showProcessing && showFoldableProcessingProp;
+  const showStandaloneProcessing =
+    !value.hideInUI && showProcessing && showStandaloneProcessingProp;
 
   if (showFoldableProcessing && reasoningContent && !value.hideReason) {
     foldableProcessingBlocks.push(
       <RenderReasoningContent
+        {...markdownActions}
         key="reasoning"
         isChatting={isChatting}
         isLastResponseValue={isLastResponseValue && !textContent && !tools}
@@ -154,9 +190,10 @@ const AIResponseBox = ({
 
   responseBlocks.push(...standaloneProcessingBlocks);
 
-  if (showAnswer && value.text && textContent) {
+  if (!value.hideInUI && showAnswer && value.text && textContent) {
     responseBlocks.push(
       <RenderText
+        {...markdownActions}
         key="text"
         chatItemDataId={chatItemDataId}
         showAnimation={isChatting && isLastResponseValue}
@@ -169,13 +206,14 @@ const AIResponseBox = ({
   }
 
   if (showInteractive && 'interactive' in value && value.interactive) {
-    const interactive = extractDeepestInteractive(value.interactive);
-    if (interactive.type === 'userSelect') {
+    const rawInteractive = extractDeepestInteractive(value.interactive);
+    const interactive = isValidInteractive(rawInteractive) ? rawInteractive : undefined;
+    if (interactive?.type === 'userSelect') {
       responseBlocks.push(
         <RenderUserSelectInteractive key="interactive" interactive={interactive} />
       );
     }
-    if (interactive.type === 'userInput') {
+    if (interactive?.type === 'userInput') {
       responseBlocks.push(
         <RenderUserFormInteractive
           key="interactive"
@@ -185,31 +223,44 @@ const AIResponseBox = ({
         />
       );
     }
-    if (interactive.type === 'agentAsk') {
-      responseBlocks.push(
-        <RenderAgentAskInteractive
-          key="interactive"
-          interactive={interactive}
-          submitted={interactive.params.submitted || !isLastChild}
-        />
-      );
-    }
-    if (interactive.type === 'agentPlanAskQuery') {
-      // 旧 ask_user 仅适配展示，不能恢复为当前轮可提交的交互。
-      responseBlocks.push(
-        <RenderAgentAskInteractive
-          key="interactive"
-          interactive={adaptLegacyAgentPlanAskToReadonlyAgentAsk(interactive)}
-          submitted={true}
-        />
-      );
-    }
-
-    if (interactive.type === 'paymentPause') {
+    if (interactive?.type === 'paymentPause') {
       responseBlocks.push(
         <RenderPaymentPauseInteractive key="interactive" interactive={interactive} />
       );
     }
+    if (interactive?.type === 'workflowBuilderPreview') {
+      responseBlocks.push(
+        <RenderWorkflowBuilderPreview
+          key="interactive"
+          interactive={interactive}
+          isPending={
+            !isChatting &&
+            `${chatItemDataId}:${interactive.params.toolCallId}` === pendingPreviewKey
+          }
+        />
+      );
+    }
+  }
+
+  if (!value.hideInUI && value.chatAgentBuilderVersion) {
+    responseBlocks.push(
+      <RenderChatAgentBuilderVersion
+        key={`chatAgentBuilderVersion-${value.chatAgentBuilderVersion.s3Key}`}
+        version={value.chatAgentBuilderVersion}
+        responseChatItemId={chatItemDataId}
+        isChatting={disableStreamingInteraction}
+      />
+    );
+  }
+
+  if (!value.hideInUI && showWorkflowBuilderVersion && value.workflowBuilderVersion) {
+    responseBlocks.push(
+      <RenderWorkflowBuilderVersion
+        key={`workflowBuilderVersion-${value.workflowBuilderVersion.checksum}-${value.workflowBuilderVersion.s3Key ?? 'ready'}-${value.workflowBuilderVersion.expiresAt ?? ''}`}
+        version={value.workflowBuilderVersion}
+        responseChatItemId={chatItemDataId}
+      />
+    );
   }
 
   if (responseBlocks.length === 1) {

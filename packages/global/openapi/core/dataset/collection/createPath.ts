@@ -4,6 +4,7 @@ import type { OpenAPIPath } from '../../../type';
 import {
   CreateApiCollectionBodySchema,
   CreateApiCollectionV2BodySchema,
+  CreateApiCollectionV2ResponseSchema,
   CreateBackupCollectionMultipartSchema,
   CreateCollectionBodySchema,
   CreateCollectionByFileIdBodySchema,
@@ -177,7 +178,12 @@ export const DatasetCollectionCreatePath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '成功创建集合'
+          description: '成功创建集合',
+          content: {
+            'application/json': {
+              schema: CreateApiCollectionV2ResponseSchema
+            }
+          }
         }
       }
     }
@@ -200,7 +206,12 @@ export const DatasetCollectionCreatePath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '成功批量创建集合'
+          description: '成功批量创建集合，返回新建与失败的节点计数',
+          content: {
+            'application/json': {
+              schema: CreateApiCollectionV2ResponseSchema
+            }
+          }
         }
       }
     }

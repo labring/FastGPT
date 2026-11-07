@@ -1,6 +1,6 @@
 import { NextAPI } from '@/service/middleware/entry';
 import { authSkill } from '@fastgpt/service/support/permission/skill/auth';
-import { saveDeploySkillFromSandbox } from '@fastgpt/service/core/ai/sandbox/interface/skillEdit';
+import { saveDeploySkillFromSandbox } from '@fastgpt/service/core/ai/sandbox/application/skillEdit/deploy';
 import { AgentSkillCreationStatusEnum } from '@fastgpt/global/core/ai/skill/constants';
 import {
   SaveDeploySkillBodySchema,

@@ -1,3 +1,4 @@
+import { serializeAgentTool } from '@fastgpt/global/core/app/formEdit/utils';
 import { getModelTestDefaults } from '@test/modelCache';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MongoAgentSkills } from '@fastgpt/service/core/ai/skill/model/schema';
@@ -63,6 +64,7 @@ describe('rewriteAppWorkflowToDetail - current workflow tool inputs', () => {
             value: [
               {
                 id: 'systemTool-missing',
+                metadataLocale: 'zh-CN',
                 version: 'v1',
                 source: 'debug:tmbId:tmb-1',
                 config: { apiKey: 'saved' },
@@ -85,12 +87,19 @@ describe('rewriteAppWorkflowToDetail - current workflow tool inputs', () => {
 
     expect(tool).toMatchObject({
       pluginId: 'systemTool-missing',
+      metadataLocale: 'zh-CN',
       source: 'debug:tmbId:tmb-1',
       version: 'v1',
       config: { apiKey: 'saved' }
     });
-    expect(tool.inputs).toEqual([{ key: 'query', mode: 'agentGenerated' }]);
+    expect(tool.inputs).toEqual([]);
+    expect(tool.rawInputs).toEqual([{ key: 'query', mode: 'agentGenerated' }]);
     expect(tool.pluginData.error).toContain('Tool deleted');
+    expect(serializeAgentTool({ tool })).toMatchObject({
+      id: 'systemTool-missing',
+      config: { apiKey: 'saved' },
+      inputs: [{ key: 'query', mode: 'agentGenerated' }]
+    });
   });
 
   it('marks tool as resource_no_permission and preserves snapshot name/avatar when unauthorized', async () => {
@@ -610,6 +619,241 @@ describe('rewriteAppWorkflowToDetail - workflow tool inputs', () => {
       key: 'query',
       selectedType: FlowNodeInputTypeEnum.input
     });
+  });
+  it('preserves node and Agent metadata snapshots when reopening in another UI locale', async () => {
+    const queryPreview = {
+      key: 'query',
+      label: 'English query',
+      description: 'English query description',
+      placeholder: 'Enter query',
+      valueType: WorkflowIOValueTypeEnum.string,
+      renderTypeList: [FlowNodeInputTypeEnum.input]
+    };
+    getClientToolPreviewNodeMock.mockResolvedValue({
+      id: 'systemTool-search',
+      pluginId: 'systemTool-search',
+      flowNodeType: FlowNodeTypeEnum.tool,
+      name: 'English definition name',
+      intro: 'English definition intro',
+      metadataLocale: 'en',
+      avatar: 'search.svg',
+      version: '',
+      inputs: [queryPreview],
+      outputs: [
+        {
+          id: 'result',
+          key: 'result',
+          label: 'English result',
+          description: 'English result description',
+          valueType: WorkflowIOValueTypeEnum.string,
+          type: 'static'
+        }
+      ]
+    });
+    const nodes = [
+      {
+        nodeId: 'tool-node',
+        flowNodeType: FlowNodeTypeEnum.tool,
+        pluginId: 'systemTool-search',
+        metadataLocale: 'en',
+        name: 'User node name',
+        intro: 'User node intro',
+        pluginData: { name: 'Saved plugin name', readmeUrl: 'https://example.com/saved.md' },
+        inputs: [
+          {
+            ...queryPreview,
+            label: 'Saved query label',
+            description: '',
+            placeholder: 'Saved query placeholder',
+            value: 'saved query value'
+          }
+        ],
+        outputs: [
+          {
+            id: 'result',
+            key: 'result',
+            label: 'Saved result label',
+            description: 'Saved result description',
+            value: 'saved output value',
+            valueType: WorkflowIOValueTypeEnum.string,
+            type: 'static'
+          }
+        ]
+      },
+      {
+        nodeId: 'agent-node',
+        flowNodeType: FlowNodeTypeEnum.agent,
+        name: 'Agent',
+        inputs: [
+          {
+            key: NodeInputKeyEnum.selectedTools,
+            label: '',
+            renderTypeList: [FlowNodeInputTypeEnum.selectTool],
+            value: [
+              {
+                id: 'systemTool-search',
+                name: 'User Agent tool name',
+                metadataLocale: 'en',
+                config: { query: 'Agent saved value' },
+                inputs: [{ key: 'query', mode: 'agentGenerated' }]
+              }
+            ]
+          }
+        ],
+        outputs: []
+      }
+    ] as StoreNodeItemType[];
+
+    await rewriteAppWorkflowToDetail({
+      nodes,
+      teamId: 'team-1',
+      ownerTmbId: 'tmb-1',
+      isRoot: false
+    });
+
+    expect(getClientToolPreviewNodeMock).toHaveBeenCalledWith(
+      expect.objectContaining({ appId: 'systemTool-search', lang: 'en' })
+    );
+    expect(nodes[0]).toMatchObject({
+      name: 'User node name',
+      intro: 'User node intro',
+      metadataLocale: 'en',
+      pluginData: {
+        name: 'Saved plugin name',
+        readmeUrl: 'https://example.com/saved.md'
+      },
+      inputs: [
+        {
+          label: 'Saved query label',
+          description: '',
+          placeholder: 'Saved query placeholder',
+          value: 'saved query value'
+        }
+      ],
+      outputs: [
+        {
+          label: 'Saved result label',
+          description: 'Saved result description',
+          value: 'saved output value'
+        }
+      ]
+    });
+    expect(nodes[1].inputs[0].value).toEqual([
+      expect.objectContaining({
+        name: 'User Agent tool name',
+        metadataLocale: 'en',
+        inputs: expect.arrayContaining([expect.objectContaining({ key: 'query' })])
+      })
+    ]);
+  });
+
+  it('uses English for legacy metadata rebuilds but preserves existing empty snapshot text', async () => {
+    getClientToolPreviewNodeMock.mockResolvedValue({
+      id: 'systemTool-search',
+      pluginId: 'systemTool-search',
+      flowNodeType: FlowNodeTypeEnum.tool,
+      name: 'English definition',
+      intro: 'English summary',
+      metadataLocale: 'en',
+      avatar: 'search.svg',
+      version: '',
+      inputs: [
+        {
+          key: 'query',
+          label: 'English query',
+          description: 'English description',
+          placeholder: 'Enter query',
+          valueType: WorkflowIOValueTypeEnum.string,
+          renderTypeList: [FlowNodeInputTypeEnum.input]
+        }
+      ],
+      outputs: [
+        {
+          id: 'result',
+          key: 'result',
+          label: 'English result',
+          description: 'English output',
+          valueType: WorkflowIOValueTypeEnum.string,
+          type: 'static'
+        }
+      ]
+    });
+    const nodes = [
+      {
+        nodeId: 'legacy-tool',
+        flowNodeType: FlowNodeTypeEnum.tool,
+        pluginId: 'systemTool-search',
+        name: 'Legacy node name',
+        intro: '',
+        pluginData: { name: '', readmeUrl: '' },
+        inputs: [
+          {
+            key: 'query',
+            label: '',
+            description: '',
+            placeholder: '',
+            value: '',
+            valueType: WorkflowIOValueTypeEnum.string,
+            renderTypeList: [FlowNodeInputTypeEnum.input]
+          }
+        ],
+        outputs: [
+          {
+            id: 'result',
+            key: 'result',
+            label: '',
+            description: '',
+            value: '',
+            valueType: WorkflowIOValueTypeEnum.string,
+            type: 'static'
+          }
+        ]
+      },
+      {
+        nodeId: 'legacy-agent',
+        flowNodeType: FlowNodeTypeEnum.agent,
+        name: 'Agent',
+        inputs: [
+          {
+            key: NodeInputKeyEnum.selectedTools,
+            label: '',
+            renderTypeList: [FlowNodeInputTypeEnum.selectTool],
+            value: [{ id: 'systemTool-search', name: '', config: {} }]
+          }
+        ],
+        outputs: []
+      }
+    ] as StoreNodeItemType[];
+
+    await rewriteAppWorkflowToDetail({
+      nodes,
+      teamId: 'team-1',
+      ownerTmbId: 'tmb-1',
+      isRoot: false
+    });
+
+    expect(getClientToolPreviewNodeMock).toHaveBeenCalledWith(
+      expect.objectContaining({ appId: 'systemTool-search', lang: 'en' })
+    );
+    expect(nodes[0]).toMatchObject({
+      name: 'Legacy node name',
+      intro: '',
+      pluginData: { name: '', readmeUrl: '' }
+    });
+    expect(nodes[0]).not.toHaveProperty('metadataLocale');
+    expect(nodes[0].inputs[0]).toMatchObject({
+      label: '',
+      description: '',
+      placeholder: '',
+      value: ''
+    });
+    expect(nodes[0].outputs[0]).toMatchObject({
+      label: '',
+      description: '',
+      value: ''
+    });
+    expect(nodes[1].inputs[0].value).toEqual([expect.objectContaining({ name: '' })]);
+    expect(nodes[1].inputs[0].value).not.toHaveProperty('0.metadataLocale');
   });
 });
 
@@ -1464,7 +1708,8 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
         pluginData: {
           error: '调试插件元数据不存在: debug:tmbId:tmb-1'
         },
-        configStatus: 'invalid'
+        inputs: [],
+        rawInputs: undefined
       }
     ]);
   });

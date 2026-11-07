@@ -44,6 +44,7 @@ export function buildSandboxAdapter(
           entrypoint: spec.entrypoint,
           timeoutSeconds: spec.timeoutSeconds,
           resourceLimits: spec.resourceLimits,
+          resourceRequests: spec.resourceRequests,
           env: spec.env,
           metadata: spec.metadata,
           volumes: spec.volumes,

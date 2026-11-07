@@ -3,7 +3,7 @@ import { ObjectIdSchema } from '../../../../common/type/mongo';
 import { IntSchema, NumSchema } from '../../../../common/zod';
 import { UsageSourceEnum } from '../../../../support/wallet/usage/constants';
 import { SourceMemberSchema } from '../../../../support/user/type';
-import { PaginationResponseSchema, PaginationSchema } from '../../../api';
+import { PaginationResponseSchema, createPaginationSchema } from '../../../api';
 
 /* ============================================================================
  * API: 钱包使用记录
@@ -82,7 +82,7 @@ export const UsageListItemSchema = z
   .meta({ description: '使用记录' });
 export type UsageListItemResponseType = z.infer<typeof UsageListItemSchema>;
 
-export const GetUsageBodySchema = PaginationSchema.extend(UsageFilterSchema.shape).meta({
+export const GetUsageBodySchema = createPaginationSchema(UsageFilterSchema.shape).meta({
   description: '使用明细筛选和分页参数'
 });
 export type GetUsageBodyType = z.infer<typeof GetUsageBodySchema>;

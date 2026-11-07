@@ -57,6 +57,7 @@ export type GetApiDatasetPathNamesResponse = z.infer<typeof GetApiDatasetPathNam
 /* ============================================================================
  * API: 获取第三方知识库文件列表
  * Route: POST /api/core/dataset/apiDataset/list
+ * Description: 浏览第三方文件；语雀目录和知识库列表使用 3 分钟快照，正式导入与同步不复用浏览缓存。
  * ============================================================================ */
 export const GetApiDatasetFileListBodySchema = z.object({
   datasetId: ObjectIdSchema.meta({

@@ -229,6 +229,9 @@ const SkillPreview = () => {
 };
 
 const Render = () => {
+  const showRunDetail = useSystemStore(
+    (state) => state.feConfigs.showAuxiliaryGenerationRunDetail ?? false
+  );
   const { skillId, chatId } = useContextSelector(SkillDetailContext, (v) => ({
     skillId: v.skillId,
     chatId: v.chatId
@@ -250,7 +253,7 @@ const Render = () => {
       isShowFullText={false}
       showRunningStatus={true}
       showSkillReferences={true}
-      showWholeResponse={false}
+      showWholeResponse={showRunDetail}
       showPoints={true}
       showAvatar={false}
     >

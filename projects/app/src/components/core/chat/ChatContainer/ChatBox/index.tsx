@@ -9,7 +9,6 @@ import React, {
 } from 'react';
 import Script from 'next/script';
 import { Box, type BoxProps } from '@chakra-ui/react';
-import { EventNameEnum, eventBus } from '@/web/common/utils/eventbus';
 import { useTranslation } from 'next-i18next';
 import type { MarkChatReadBodyType } from '@fastgpt/global/openapi/core/chat/history/api';
 import { postStopV2Chat } from '@/web/core/chat/api';
@@ -18,20 +17,23 @@ import type {
   ChatGenerateStatusChangeHandler,
   ChatGeneratingConflictRecovery
 } from './type';
-import type { StartChatFnProps } from '../type';
+import type { generatingMessageProps, StartChatFnProps } from '../type';
 import ChatInput from './Input/ChatInput';
 import AgentAskComposer from './Input/AgentAskComposer';
-import { type OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
-import { ChatStatusEnum } from '@fastgpt/global/core/chat/constants';
+import { parseAgentAskArguments } from '@fastgpt/global/core/ai/agent/utils';
+import { ChatStatusEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { useUserStore } from '@/web/support/user/useUserStore';
 import type { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
-import { getInteractiveByHistories, isPendingAgentAsk } from './utils/interactive';
-import { extractDeepestInteractive } from '@fastgpt/global/core/workflow/runtime/utils';
 import {
-  ChatInputWrapperStyle,
-  ChatTypeEnum,
-  FeedbackTypeEnum,
-  HomeChatContentWrapperStyle
-} from './constants';
+  getInteractiveByHistories,
+  isPendingAgentAsk,
+  isPendingWorkflowBuilderPreview
+} from './utils/interactive';
+import {
+  isAgentAskInteractive,
+  extractDeepestInteractive
+} from '@fastgpt/global/core/workflow/runtime/utils';
+import { ChatInputWrapperStyle, ChatTypeEnum, HomeChatContentWrapperStyle } from './constants';
 import ChatProvider, { ChatBoxContext, type ChatProviderProps } from './Provider';
 import { WorkflowRuntimeContext } from '../context/workflowRuntimeContext';
 import dynamic from 'next/dynamic';
@@ -54,8 +56,8 @@ import { useQuestionGuide } from './hooks/useQuestionGuide';
 import { useChatResume } from './hooks/useChatResume';
 import { useChatGenerate } from './hooks/useChatGenerate';
 import { useChatRecordActions } from './hooks/useChatRecordActions';
-import { useChatFeedbackActions } from './hooks/useChatFeedbackActions';
 import ChatBoxModals from './components/ChatBoxModals';
+import { WorkflowBuilderPreviewComposer } from '../../components/AIResponseBox/WorkflowBuilder/WorkflowBuilderPreviewComposer';
 import type { ChatRecordsListProps } from './components/ChatRecordsList';
 import AppChatMain from './components/AppChatMain';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
@@ -65,23 +67,34 @@ import {
   QuickReplyContextProvider,
   useRegisterQuickReplyClickHandler
 } from '../context/quickReplyContext';
-import type { ChatAuthTargetInput } from '@/web/core/chat/utils';
+import type { ResolvedChatAuthTargetInput } from '@/web/core/chat/type';
 import { useChatAuthApiTarget } from '@/web/core/chat/utils';
 import { requestStopAndAbortClient } from './utils/stop';
 import { getLastAiDataId } from './utils/resume';
 import ComplianceTip from '@/components/common/ComplianceTip/index';
+import { ChatInstanceActionsContext } from '../context/chatInstanceActionsContext';
+import { ChatFeedbackProvider } from '../context/chatFeedbackContext';
+import type { FeedbackTypeEnum } from './constants';
+import {
+  registerChatInstanceActions,
+  retainExternalChatPromptListener,
+  type ChatInstanceActions
+} from '../context/chatInstanceRegistry';
 
 const ChatHomeVariablesForm = dynamic(() => import('./components/home/ChatHomeVariablesForm'));
 const DesktopHomeLayout = dynamic(() => import('./components/home/DesktopHomeLayout'));
 const MobileHomeLayout = dynamic(() => import('./components/home/MobileHomeLayout'));
 const WorkorderEntrance = dynamic(() => import('@/pageComponents/chat/WorkorderEntrance'));
 
-type Props = OutLinkChatAuthProps &
-  ChatProviderProps &
+type Props = ChatProviderProps &
   BoxProps & {
+    /** 分享页品牌位于底部时，合规提示由外层移至顶部。 */
+    complianceTipPlacement?: 'default' | 'external';
     isReady: boolean;
     features?: ChatBoxFeatures;
     active?: boolean; // can use
+    /** 初始化遮罩由聊天布局控制，关闭后允许历史请求期间先展示欢迎内容或变量表单。 */
+    showInitialLoading?: boolean;
     disabledSendTip?: string;
 
     onStartChat?: (e: StartChatFnProps) => Promise<
@@ -89,6 +102,8 @@ type Props = OutLinkChatAuthProps &
         isNewChat?: boolean;
       }
     >;
+    /** 普通生成和刷新续流共用的业务事件回调，在聊天消息合并前调用。 */
+    onGeneratingMessage?: (message: generatingMessageProps) => void;
     onTriggerRefresh?: () => void;
     /** 已读标记由外部页面注入，ChatBox 不直接耦合普通 App history 接口。 */
     onMarkChatRead?: (data: MarkChatReadBodyType) => Promise<unknown>;
@@ -100,8 +115,8 @@ type Props = OutLinkChatAuthProps &
   };
 
 export type ChatBoxFeatures = {
-  feedbackType?: `${FeedbackTypeEnum}`;
-  mark?: boolean;
+  /** 显式开启消息反馈；省略时不展示，版本卡片独立复用 Context 的用户评价方法。 */
+  fbTypes?: `${FeedbackTypeEnum}`[];
   /** 语音识别输入开关。 */
   voice?: boolean;
   /** AI 回复朗读和自动 TTS 开关。 */
@@ -116,15 +131,14 @@ export type ChatBoxFeatures = {
   quickReplies?: boolean;
   disableFooterHoverTranslate?: boolean;
   footerRunDetailPosition?: 'default' | 'afterCopy';
+  /** 工作流 AI 面板使用 Figma 的 132px 渐变描边输入框。 */
+  workflowBuilderInput?: boolean;
+  /** 隐藏 Agent Ask 选项标题后的协议值，仅展示选项摘要。 */
+  hideAgentAskOptionDescription?: boolean;
 };
 
-const resolveChatBoxFeatures = (
-  features?: ChatBoxFeatures
-): Required<Omit<ChatBoxFeatures, 'feedbackType'>> & {
-  feedbackType: `${FeedbackTypeEnum}`;
-} => ({
-  feedbackType: features?.feedbackType ?? FeedbackTypeEnum.hidden,
-  mark: features?.mark ?? false,
+const resolveChatBoxFeatures = (features?: ChatBoxFeatures): Required<ChatBoxFeatures> => ({
+  fbTypes: features?.fbTypes ?? [],
   voice: features?.voice ?? true,
   tts: features?.tts ?? true,
   inputGuide: features?.inputGuide ?? true,
@@ -134,15 +148,20 @@ const resolveChatBoxFeatures = (
   markRead: features?.markRead ?? true,
   quickReplies: features?.quickReplies ?? false,
   disableFooterHoverTranslate: features?.disableFooterHoverTranslate ?? false,
-  footerRunDetailPosition: features?.footerRunDetailPosition ?? 'default'
+  footerRunDetailPosition: features?.footerRunDetailPosition ?? 'default',
+  workflowBuilderInput: features?.workflowBuilderInput ?? false,
+  hideAgentAskOptionDescription: features?.hideAgentAskOptionDescription ?? false
 });
 
 const ChatBox = ({
+  complianceTipPlacement = 'default',
   isReady = true,
   features,
   active = true,
+  showInitialLoading = true,
   disabledSendTip,
   onStartChat,
+  onGeneratingMessage,
   chatType,
   onTriggerRefresh,
   onMarkChatRead,
@@ -177,8 +196,13 @@ const ChatBox = ({
 
   const [questionGuides, setQuestionGuide] = useState<string[]>([]);
   const [expandedDeletedGroups, setExpandedDeletedGroups] = useState<Set<string>>(new Set());
-  const { ScrollContainerRef, scrollToBottom, generatingScroll, isScrollToBottomButtonVisible } =
-    useChatScroll();
+  const {
+    ScrollContainerRef,
+    scrollToBottom,
+    autoScrollToBottom,
+    generatingScroll,
+    isScrollToBottomButtonVisible
+  } = useChatScroll();
 
   const chatBoxData = useContextSelector(ChatItemContext, (v) => v.chatBoxData);
   const setChatBoxData = useContextSelector(ChatItemContext, (v) => v.setChatBoxData);
@@ -186,6 +210,11 @@ const ChatBox = ({
   const setIsVariableVisible = useContextSelector(ChatItemContext, (v) => v.setIsVariableVisible);
 
   const isLoadingRecords = useContextSelector(ChatRecordContext, (v) => v.isLoadingRecords);
+  const isInitialLoadingRecords = useContextSelector(
+    ChatRecordContext,
+    (v) => v.isInitialLoadingRecords
+  );
+  const paginationLoading = useContextSelector(ChatRecordContext, (v) => v.paginationLoading);
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
   const setChatRecords = useContextSelector(ChatRecordContext, (v) => v.setChatRecords);
   const isChatRecordsLoaded = useContextSelector(ChatRecordContext, (v) => v.isChatRecordsLoaded);
@@ -197,6 +226,18 @@ const ChatBox = ({
   const chatId = useContextSelector(WorkflowRuntimeContext, (v) => v.chatId);
   const outLinkAuthData = useContextSelector(WorkflowRuntimeContext, (v) => v.outLinkAuthData);
   const chatAuthTarget = useChatAuthApiTarget({ sourceTarget, outLinkAuthData });
+  const tmbId = useUserStore((state) => state.userInfo?.team?.tmbId);
+  const draftIdentity = useMemo(
+    () =>
+      sourceTarget.sourceType === ChatSourceTypeEnum.app &&
+      sourceTarget.sourceId &&
+      tmbId &&
+      chatId &&
+      chatType !== ChatTypeEnum.log
+        ? { tmbId, appId: sourceTarget.sourceId, chatId }
+        : undefined,
+    [sourceTarget, tmbId, chatId, chatType]
+  );
   const activeSourceKeyRef = useRef<string | undefined>(sourceKey);
   const activeChatIdRef = useRef<string | undefined>(chatId);
   useLayoutEffect(() => {
@@ -263,7 +304,7 @@ const ChatBox = ({
     }: {
       status: ChatGenerateStatusEnum;
       finishedInActiveChat: boolean;
-      targetChatTarget?: ChatAuthTargetInput;
+      targetChatTarget?: ResolvedChatAuthTargetInput;
       targetSourceKey?: string;
       targetChatId?: string;
       shouldUpdateChatBoxData?: (state: typeof chatBoxData) => boolean;
@@ -313,9 +354,21 @@ const ChatBox = ({
     [chatRecords]
   );
 
-  const { chatForm, setValue, chatStarted, chatStartedWatch, resetInputVal } = useChatInputForm({
+  const {
+    chatForm,
+    setValue,
+    chatStarted,
+    chatStartedWatch,
+    textareaRef,
+    resetInputVal,
+    captureSubmittedInput,
+    isSubmittedInputCurrent,
+    clearSubmittedInput,
+    restoreSubmittedInput
+  } = useChatInputForm({
     sourceKey,
     chatId,
+    draftIdentity,
     chatBoxSourceKey: chatBoxData?.sourceKey,
     chatRecordsLength: chatRecords.length,
     chatType,
@@ -336,6 +389,7 @@ const ChatBox = ({
 
   const { abortRequest, flushGeneratingMessages, generatingMessage, sendPrompt } = useChatGenerate({
     onStartChat,
+    onGeneratingMessage,
     isRoundPending,
     chatControllerRef: chatController,
     questionGuideControllerRef: questionGuideController,
@@ -345,10 +399,13 @@ const ChatBox = ({
     activeSourceKeyRef,
     activeChatIdRef,
     TextareaDom,
-    resetInputVal,
+    captureSubmittedInput,
+    isSubmittedInputCurrent,
+    clearSubmittedInput,
+    restoreSubmittedInput,
     setQuestionGuide,
     createQuestionGuide,
-    scrollToBottom,
+    scrollToBottom: autoScrollToBottom,
     generatingScroll,
     notifyChatGenerateStatusChange,
     finishChatGenerateStatus,
@@ -378,26 +435,6 @@ const ChatBox = ({
   const { isRecordActionLoading, retryInput, editInput } = useChatRecordActions({
     sendPrompt
   });
-  const {
-    feedbackId,
-    setFeedbackId,
-    adminMarkData,
-    setAdminMarkData,
-    likeFeedbackEffect,
-    onMark,
-    onAddUserLike,
-    onAddUserDislike,
-    onCloseCustomFeedback,
-    onToggleFeedbackReadStatus,
-    onFeedbackSuccess,
-    onAdminMarkSuccess
-  } = useChatFeedbackActions({
-    feedbackType: resolvedFeatures.feedbackType,
-    enableMark: resolvedFeatures.mark,
-    chatType,
-    onTriggerRefresh
-  });
-
   const statusBoxData = useCreation(() => {
     if (!isChatting) return;
     const chatContent = chatRecords[chatRecords.length - 1];
@@ -405,7 +442,7 @@ const ChatBox = ({
 
     return {
       status: chatContent.status || ChatStatusEnum.loading,
-      name: t(chatContent.moduleName || ('' as any)) || t('common:Loading')
+      name: chatContent.moduleName ? t(chatContent.moduleName) : t('chat:ai_chat_loading')
     };
   }, [chatRecords, isChatting, t]);
 
@@ -436,8 +473,8 @@ const ChatBox = ({
     }
 
     lastRecordsLoadedScrollTargetRef.current = chatScrollTargetKey;
-    scrollToBottom('auto');
-  }, [chatScrollTargetKey, isChatRecordsLoaded, scrollToBottom]);
+    autoScrollToBottom('auto');
+  }, [chatScrollTargetKey, isChatRecordsLoaded, autoScrollToBottom]);
 
   const onChatGeneratingConflictRecovered = useMemoizedFn(() => {
     toast({
@@ -457,7 +494,7 @@ const ChatBox = ({
     resumeControllerRef: resumeController,
     generatingMessage,
     flushGeneratingMessages,
-    scrollToBottom,
+    scrollToBottom: autoScrollToBottom,
     finishChatGenerateStatus,
     onChatGeneratingConflictRecovered
   });
@@ -474,8 +511,13 @@ const ChatBox = ({
     ? extractDeepestInteractive(lastInteractive)
     : undefined;
   const isAgentAskPending = isPendingAgentAsk(lastInteractive);
+  const activeAsk = isAgentAskInteractive(activeInteractive)
+    ? parseAgentAskArguments(activeInteractive.params?.arguments)
+    : undefined;
+  const isWorkflowBuilderPreviewPending = isPendingWorkflowBuilderPreview(lastInteractive);
+  const isBlockingInteractivePending = isAgentAskPending || isWorkflowBuilderPreviewPending;
   const canRenderChatInput =
-    onStartChat && chatStarted && active && (canSendQuery || isAgentAskPending);
+    onStartChat && chatStarted && active && (canSendQuery || isBlockingInteractivePending);
   const canSendPrompt = canRenderChatInput && !isRoundPending;
   // 日志详情是历史回看场景，底部“内容由 AI 生成”合规提示只在真实对话入口展示
   const isLogMode = chatType === ChatTypeEnum.log;
@@ -486,38 +528,50 @@ const ChatBox = ({
       chatType === ChatTypeEnum.share) &&
     isScrollToBottomButtonVisible;
 
-  // Add listener
-  useEffect(() => {
-    const windowMessage = ({ data }: MessageEvent<{ type: 'sendPrompt'; text: string }>) => {
-      if (data?.type === 'sendPrompt' && data?.text) {
-        sendPrompt({
-          text: data.text,
-          interactive: lastInteractive
-        });
-      }
-    };
-    window.addEventListener('message', windowMessage);
-
-    const fn = ({ focus = false, ...e }: ChatBoxInputType & { focus?: boolean }) => {
-      if (canSendPrompt || focus) {
-        sendPrompt({
-          ...e,
-          interactive: lastInteractive
-        });
-      }
-    };
-    eventBus.on(EventNameEnum.sendQuestion, fn);
-    eventBus.on(EventNameEnum.editQuestion, ({ text }: { text: string }) => {
-      if (!text) return;
-      resetInputVal({ text });
+  const sendInstanceMessage = useMemoizedFn((input: ChatBoxInputType) => {
+    if (!canSendPrompt) return;
+    sendPrompt({
+      ...input,
+      interactive: input.interactive ?? lastInteractive
     });
+  });
+  const continueInstanceInteractive = useMemoizedFn((input: ChatBoxInputType) => {
+    // 交互卡出现时普通输入可能被锁定，因此不能复用 canSendPrompt；但必须绑定当前实例的
+    // lastInteractive，避免回答被错误 ChatBox 的运行时上下文消费。
+    sendPrompt({
+      ...input,
+      interactive: input.interactive ?? lastInteractive
+    });
+  });
+  const fillInstanceInput = useMemoizedFn((input: ChatBoxInputType) => {
+    if (!input.text) return;
+    resetInputVal(input);
+  });
+  const instanceActions = useMemo<ChatInstanceActions>(
+    () => ({
+      sendMessage: sendInstanceMessage,
+      continueInteractive: continueInstanceInteractive,
+      fillInput: fillInstanceInput
+    }),
+    [continueInstanceInteractive, fillInstanceInput, sendInstanceMessage]
+  );
+
+  useEffect(() => {
+    /*
+     * 注册表只服务 ChatBox 子树之外的兼容入口和 postMessage。内部组件通过下方 Context
+     * 直接调用 instanceActions，不参与全局监听竞争；cleanup 也只注销当前实例。
+     */
+    const unregisterActions = registerChatInstanceActions({
+      identity: { sourceKey, chatId },
+      actions: instanceActions
+    });
+    const releaseExternalPromptListener = retainExternalChatPromptListener();
 
     return () => {
-      window.removeEventListener('message', windowMessage);
-      eventBus.off(EventNameEnum.sendQuestion);
-      eventBus.off(EventNameEnum.editQuestion);
+      unregisterActions();
+      releaseExternalPromptListener();
     };
-  }, [isReady, resetInputVal, sendPrompt, canSendPrompt, lastInteractive]);
+  }, [chatId, instanceActions, sourceKey]);
 
   /** 快捷回复点击：直接发送选项文本，并保留输入框原有内容。 */
   const handleQuickReplyClick = useMemoizedFn((text: string) => {
@@ -574,6 +628,9 @@ const ChatBox = ({
     },
     scrollToBottom(behavior = 'auto') {
       scrollToBottom(behavior, 500);
+    },
+    focusInput() {
+      TextareaDom.current?.focus();
     }
   }));
 
@@ -613,44 +670,30 @@ const ChatBox = ({
       expandedDeletedGroups,
       itemRefs,
       enableTTS: resolvedFeatures.tts,
-      enableMark: resolvedFeatures.mark,
       enableSandbox: resolvedFeatures.sandbox,
       statusBoxData,
       questionGuides,
       onToggleDeletedGroup: toggleDeletedGroup,
       onRetry: retryInput,
       onEdit: editInput,
-      onMark,
-      onAddUserLike,
-      onAddUserDislike,
-      likeFeedbackEffect,
       disableFooterHoverTranslate: resolvedFeatures.disableFooterHoverTranslate,
       footerRunDetailPosition: resolvedFeatures.footerRunDetailPosition,
-      feedbackUserName,
-      onCloseCustomFeedback,
-      onToggleFeedbackReadStatus
+      workflowBuilderStyle: resolvedFeatures.workflowBuilderInput
     }),
     [
       processedRecords,
       expandedDeletedGroups,
       itemRefs,
       resolvedFeatures.tts,
-      resolvedFeatures.mark,
       resolvedFeatures.sandbox,
       statusBoxData,
       questionGuides,
       toggleDeletedGroup,
       retryInput,
       editInput,
-      onMark,
-      onAddUserLike,
-      onAddUserDislike,
-      likeFeedbackEffect,
       resolvedFeatures.disableFooterHoverTranslate,
       resolvedFeatures.footerRunDetailPosition,
-      feedbackUserName,
-      onCloseCustomFeedback,
-      onToggleFeedbackReadStatus
+      resolvedFeatures.workflowBuilderInput
     ]
   );
   const HomeChatInput = (
@@ -667,6 +710,7 @@ const ChatBox = ({
           enableVoiceInput={resolvedFeatures.voice}
           disableSend={isRoundPending || (!isReady && !disabledSendTip)}
           TextareaDom={TextareaDom}
+          textareaRef={textareaRef}
           resetInputVal={resetInputVal}
           chatForm={chatForm}
         />
@@ -675,112 +719,143 @@ const ChatBox = ({
   );
 
   return (
-    <MyBox
-      isLoading={isRecordActionLoading}
-      display={'flex'}
-      flexDirection={'column'}
-      h={'100%'}
-      position={'relative'}
-      {...props}
+    <ChatFeedbackProvider
+      fbTypes={resolvedFeatures.fbTypes}
+      feedbackUserName={feedbackUserName}
+      active={active}
+      sourceKey={sourceKey}
+      chatId={chatId}
+      chatAuthTarget={chatAuthTarget}
+      setChatRecords={setChatRecords}
+      onTriggerRefresh={onTriggerRefresh}
     >
-      <Script src={getWebReqUrl('/js/html2pdf.bundle.min.js')} strategy="lazyOnload"></Script>
-      {/* chat box container */}
-      {isHomeRender ? (
+      <ChatInstanceActionsContext.Provider value={instanceActions}>
         <MyBox
-          isLoading={isLoadingRecords}
-          display="flex"
-          flexDirection="column"
-          flex={'1 0 0'}
-          h={0}
-          {...HomeChatContentWrapperStyle}
+          isLoading={isRecordActionLoading}
+          display={'flex'}
+          flexDirection={'column'}
+          h={'100%'}
+          position={'relative'}
+          {...props}
         >
-          {isPc ? (
-            <DesktopHomeLayout inputSlot={HomeChatInput} />
+          <Script src={getWebReqUrl('/js/html2pdf.bundle.min.js')} strategy="lazyOnload"></Script>
+          {/* chat box container */}
+          {isHomeRender ? (
+            <MyBox
+              isLoading={showInitialLoading && isInitialLoadingRecords}
+              display="flex"
+              flexDirection="column"
+              flex={'1 0 0'}
+              h={0}
+              {...HomeChatContentWrapperStyle}
+            >
+              {isPc ? (
+                <DesktopHomeLayout inputSlot={HomeChatInput} />
+              ) : (
+                <MobileHomeLayout inputSlot={HomeChatInput} />
+              )}
+              {!isLogMode && complianceTipPlacement !== 'external' && (
+                <ComplianceTip type={'chat'} pt={0} pb={4} />
+              )}
+            </MyBox>
           ) : (
-            <MobileHomeLayout inputSlot={HomeChatInput} />
-          )}
-          {!isLogMode && <ComplianceTip type={'chat'} pt={0} pb={4} />}
-        </MyBox>
-      ) : (
-        <>
-          <AppChatMain
-            ScrollData={ScrollData}
-            ScrollContainerRef={ScrollContainerRef}
-            welcomeText={welcomeText}
-            welcomeQuestions={resolvedFeatures.quickReplies ? welcomeQuestions : []}
-            chatStarted={chatStarted}
-            chatForm={chatForm}
-            chatType={chatType}
-            recordsListProps={recordsListProps}
-            maxW={props.maxW}
-            boxBodyProps={boxBodyProps}
-            EmptyState={
-              chatRecords.length === 0 && isChatRecordsLoaded && !isLoadingRecords
-                ? EmptyState
-                : undefined
-            }
-          />
-          <Box {...ChatInputWrapperStyle} {...inputBodyProps}>
-            {canRenderChatInput && (
-              <>
-                {resolvedFeatures.workorder && <WorkorderEntrance />}
-                <Box position="relative">
-                  <ScrollToBottomButton
-                    isVisible={canRenderScrollToBottomButton}
-                    onClick={() => scrollToBottom('smooth')}
-                  />
-
-                  <Box display={isAgentAskPending ? 'none' : undefined}>
-                    <ChatInput
-                      onSendMessage={sendPromptWithDisabledGuard}
-                      lastInteractive={lastInteractive}
-                      onStopChat={requestStopChat}
-                      enableInputGuide={resolvedFeatures.inputGuide}
-                      enableVoiceInput={resolvedFeatures.voice}
-                      disableSend={isRoundPending}
-                      TextareaDom={TextareaDom}
-                      resetInputVal={resetInputVal}
-                      chatForm={chatForm}
-                    />
-                  </Box>
-                  {isAgentAskPending && activeInteractive?.type === 'agentAsk' && (
-                    <Box
-                      w={'100%'}
-                      maxW={inputBodyProps?.maxW ?? ['100%', '780px']}
-                      mx={inputBodyProps?.mx ?? inputBodyProps?.margin ?? 'auto'}
-                      pb={inputBodyProps?.pb ?? ['calc(16px + env(safe-area-inset-bottom))', 4]}
-                    >
-                      <AgentAskComposer
-                        questions={activeInteractive.params.questions}
-                        onSubmit={(answers) =>
-                          sendPromptWithDisabledGuard({
-                            text: JSON.stringify({ answers }),
-                            interactive: lastInteractive,
-                            hideInUI: true
-                          })
-                        }
+            <>
+              <AppChatMain
+                isLoading={showInitialLoading && isInitialLoadingRecords}
+                paginationLoading={paginationLoading}
+                ScrollData={ScrollData}
+                ScrollContainerRef={ScrollContainerRef}
+                welcomeText={welcomeText}
+                welcomeQuestions={resolvedFeatures.quickReplies ? welcomeQuestions : []}
+                chatStarted={chatStarted}
+                chatForm={chatForm}
+                chatType={chatType}
+                recordsListProps={recordsListProps}
+                maxW={props.maxW}
+                boxBodyProps={boxBodyProps}
+                EmptyState={
+                  chatRecords.length === 0 && isChatRecordsLoaded && !isLoadingRecords
+                    ? EmptyState
+                    : undefined
+                }
+              />
+              <Box {...ChatInputWrapperStyle} {...inputBodyProps}>
+                {canRenderChatInput && (
+                  <>
+                    {resolvedFeatures.workorder && <WorkorderEntrance />}
+                    <Box position="relative">
+                      <ScrollToBottomButton
+                        isVisible={canRenderScrollToBottomButton}
+                        onClick={() => scrollToBottom('smooth')}
                       />
-                    </Box>
-                  )}
-                </Box>
-              </>
-            )}
-            {!isLogMode && <ComplianceTip type={'chat'} pt={0} pb={4} />}
-          </Box>
-        </>
-      )}
 
-      <ChatBoxModals
-        chatId={chatId}
-        feedbackId={feedbackId}
-        adminMarkData={adminMarkData}
-        onCloseFeedback={() => setFeedbackId(undefined)}
-        onFeedbackSuccess={onFeedbackSuccess}
-        onCloseAdminMark={() => setAdminMarkData(undefined)}
-        onAdminMarkChange={setAdminMarkData}
-        onAdminMarkSuccess={onAdminMarkSuccess}
-      />
-    </MyBox>
+                      <Box display={isBlockingInteractivePending ? 'none' : undefined}>
+                        <ChatInput
+                          onSendMessage={sendPromptWithDisabledGuard}
+                          lastInteractive={lastInteractive}
+                          onStopChat={requestStopChat}
+                          enableInputGuide={resolvedFeatures.inputGuide}
+                          enableVoiceInput={resolvedFeatures.voice}
+                          disableSend={isRoundPending}
+                          TextareaDom={TextareaDom}
+                          textareaRef={textareaRef}
+                          resetInputVal={resetInputVal}
+                          chatForm={chatForm}
+                          workflowBuilderStyle={resolvedFeatures.workflowBuilderInput}
+                        />
+                      </Box>
+                      {isAgentAskPending && activeAsk && (
+                        <Box
+                          w={'100%'}
+                          maxW={inputBodyProps?.maxW ?? ['100%', '780px']}
+                          mx={inputBodyProps?.mx ?? inputBodyProps?.margin ?? 'auto'}
+                          pb={inputBodyProps?.pb ?? ['calc(16px + env(safe-area-inset-bottom))', 4]}
+                        >
+                          <AgentAskComposer
+                            questions={activeAsk.questions}
+                            showOptionValue={!resolvedFeatures.hideAgentAskOptionDescription}
+                            onSubmit={(answers) =>
+                              sendPromptWithDisabledGuard({
+                                select: {
+                                  type: 'agentAsk',
+                                  questions: activeAsk.questions.map(({ question }, index) => ({
+                                    question,
+                                    value: answers[index] ?? ''
+                                  }))
+                                },
+                                interactive: lastInteractive
+                              })
+                            }
+                          />
+                        </Box>
+                      )}
+                      {isWorkflowBuilderPreviewPending &&
+                        activeInteractive?.type === 'workflowBuilderPreview' && (
+                          <Box
+                            w={'100%'}
+                            maxW={inputBodyProps?.maxW ?? ['100%', '780px']}
+                            mx={inputBodyProps?.mx ?? inputBodyProps?.margin ?? 'auto'}
+                            pb={
+                              inputBodyProps?.pb ?? ['calc(16px + env(safe-area-inset-bottom))', 4]
+                            }
+                          >
+                            <WorkflowBuilderPreviewComposer interactive={activeInteractive} />
+                          </Box>
+                        )}
+                    </Box>
+                  </>
+                )}
+                {!isLogMode && complianceTipPlacement !== 'external' && (
+                  <ComplianceTip type={'chat'} pt={0} pb={4} />
+                )}
+              </Box>
+            </>
+          )}
+
+          <ChatBoxModals />
+        </MyBox>
+      </ChatInstanceActionsContext.Provider>
+    </ChatFeedbackProvider>
   );
 };
 const ChatBoxContainer = (props: Props) => {

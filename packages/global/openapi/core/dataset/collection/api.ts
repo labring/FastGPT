@@ -1,5 +1,7 @@
+import { ChatIdSchema } from '../../../../core/chat/schema';
 import { requiredAlternatives } from '../../../../common/zod/openapi';
 import {
+  FolderAccessModeSchema,
   GetPathPropsSchema,
   ParentIdSchema,
   ParentTreePathItemSchema
@@ -22,10 +24,12 @@ import {
   CollaboratorListSchema,
   CollaboratorUpdateListSchema
 } from '../../../../support/permission/collaborator.schema';
-import { PaginationResponseSchema, PaginationSchema } from '../../../api';
+import { PaginationResponseSchema, createPaginationSchema } from '../../../api';
 import z from 'zod';
+import type { ZodOpenApiMetadata } from 'zod-openapi';
 import {
   createOptionalOutLinkChatTargetInputSchema,
+  createOutLinkChatTargetInputSchema,
   transformChatAuthTargetInput,
   transformOptionalChatAuthTargetInput
 } from '../../chat/api';
@@ -50,6 +54,17 @@ export type UpdateDatasetCollectionBodyType = z.infer<typeof UpdateDatasetCollec
 
 // ============= Export Collection =============
 // Schema 1: Basic collection export with authentication
+const chatExportKeys = [
+  'customUid',
+  'authProxy',
+  'appId',
+  'skillId',
+  'sourceType',
+  'outLinkAuthData',
+  'chatId',
+  'chatItemDataId',
+  'chatTime'
+] as const;
 const BasicExportSchema = z
   .object({
     collectionId: ObjectIdSchema.describe('集合ID')
@@ -57,15 +72,6 @@ const BasicExportSchema = z
   .passthrough()
   .superRefine((data, ctx) => {
     // 先检查原始键再清洗，避免无效聊天鉴权参数被 union 降级为普通登录态导出。
-    const chatExportKeys = [
-      'appId',
-      'skillId',
-      'sourceType',
-      'outLinkAuthData',
-      'chatId',
-      'chatItemDataId',
-      'chatTime'
-    ] as const;
     const invalidKey = chatExportKeys.find((key) => data[key] !== undefined);
 
     if (invalidKey) {
@@ -78,45 +84,35 @@ const BasicExportSchema = z
   })
   .transform(({ collectionId }) => ({ collectionId }))
   .meta({
-    description: '通过身份鉴权导出集合',
+    description: '通过资源自身权限导出集合，不接受 customUid、authProxy、appId 或会话上下文字段。',
+    override: ({ jsonSchema }) => {
+      // 与运行时拒绝键一致，同时兼容其他无关字段的历史清洗行为。
+      jsonSchema.not = { anyOf: chatExportKeys.map((key) => ({ required: [key] })) };
+    },
     example: {
       collectionId: '68ad85a7463006c963799a05'
     }
-  });
+  } satisfies ZodOpenApiMetadata);
 
 // Schema 2: Export from chat context with app/skill/outLink authentication
-const ChatExportRawSchema = createOptionalOutLinkChatTargetInputSchema({
+const ChatExportRawSchema = createOutLinkChatTargetInputSchema({
   collectionId: ObjectIdSchema.describe('集合ID'),
-  chatId: z.string().min(1).max(256).describe('会话ID'),
+  chatId: ChatIdSchema.min(1).describe('会话ID'),
   chatItemDataId: z.string().min(1).max(256).describe('对话ID'),
   chatTime: z.coerce.date().optional().describe('对话时间')
-})
-  .superRefine((data, ctx) => {
-    const hasAppTarget = !!data.appId;
-    const hasSkillTarget = !!data.skillId;
-    const hasShareAuth = !!(data.outLinkAuthData?.shareId && data.outLinkAuthData?.outLinkUid);
-
-    if (!hasAppTarget && !hasSkillTarget && !hasShareAuth) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: '对话导出必须提供 appId、skillId 或 share auth'
-      });
+}).meta({
+  description: '对话中导出集合，可通过 chatId 等身份信息',
+  example: {
+    collectionId: '68ad85a7463006c963799a05',
+    chatId: '1234567890',
+    chatItemDataId: '1234567890',
+    chatTime: '2025-12-30T00:00:00.000Z',
+    outLinkAuthData: {
+      shareId: '1234567890',
+      outLinkUid: '1234567890'
     }
-  })
-  .meta({
-    ...requiredAlternatives([['appId'], ['skillId'], ['outLinkAuthData']], true),
-    description: '对话中导出集合，可通过 chatId 等身份信息',
-    example: {
-      collectionId: '68ad85a7463006c963799a05',
-      chatId: '1234567890',
-      chatItemDataId: '1234567890',
-      chatTime: '2025-12-30T00:00:00.000Z',
-      outLinkAuthData: {
-        shareId: '1234567890',
-        outLinkUid: '1234567890'
-      }
-    }
-  });
+  }
+});
 
 export const ExportCollectionBodyRawSchema = z.union([ChatExportRawSchema, BasicExportSchema]);
 export const ExportCollectionBodySchema = z.union([
@@ -152,7 +148,7 @@ export const GetCollectionDetailResponseSchema = DatasetCollectionItemSchema.met
 export type GetCollectionDetailResponseType = z.infer<typeof GetCollectionDetailResponseSchema>;
 
 // ============= List Collections V2 =============
-export const ListCollectionV2BodySchema = PaginationSchema.extend({
+export const ListCollectionV2BodySchema = createPaginationSchema({
   datasetId: z.string().meta({ description: '数据集 ID' }),
   parentId: z.string().nullable().optional().default(null).meta({ description: '父级目录 ID' }),
   searchText: z.string().max(100).optional().default('').meta({ description: '搜索文本' }),
@@ -183,7 +179,11 @@ export const DatasetCollectionsListItemSchema = z
     fileId: z.string().optional().meta({ description: '文件 ID' }),
     rawLink: z.string().optional().meta({ description: '原始链接' }),
     permission: PermissionSchema,
-    dataAmount: z.number().meta({ description: '数据数量' })
+    dataAmount: z.number().meta({ description: '数据数量' }),
+    folderAccessMode: FolderAccessModeSchema.optional().meta({
+      example: 'navigate',
+      description: '文件夹访问方式；navigate 仅允许浏览可读后代，不授予真实读取权限'
+    })
   })
   .merge(CollectionTrainingStatusSchema);
 export type DatasetCollectionsListItemType = z.infer<typeof DatasetCollectionsListItemSchema>;
@@ -200,11 +200,14 @@ export const GetCollectionPathsResponseSchema = z.array(ParentTreePathItemSchema
 export type GetCollectionPathsResponseType = z.infer<typeof GetCollectionPathsResponseSchema>;
 
 // ============= Read Collection Source =============
-export const ReadCollectionSourceBodyRawSchema = createOptionalOutLinkChatTargetInputSchema({
-  collectionId: ObjectIdSchema.meta({ description: '集合 ID' }),
-  chatId: z.string().min(1).optional().meta({ description: '对话 ID（对话中使用）' }),
-  chatItemDataId: z.string().min(1).optional().meta({ description: '对话消息 ID（对话中使用）' })
-});
+export const ReadCollectionSourceBodyRawSchema = createOptionalOutLinkChatTargetInputSchema(
+  {
+    collectionId: ObjectIdSchema.meta({ description: '集合 ID' }),
+    chatId: ChatIdSchema.min(1).optional().meta({ description: '对话 ID（对话中使用）' }),
+    chatItemDataId: z.string().min(1).optional().meta({ description: '对话消息 ID（对话中使用）' })
+  },
+  { requiredIdentityFields: ['chatId', 'chatItemDataId'] }
+);
 export const ReadCollectionSourceBodySchema = ReadCollectionSourceBodyRawSchema.transform(
   transformOptionalChatAuthTargetInput
 );

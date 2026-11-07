@@ -1,4 +1,3 @@
-import React from 'react';
 import { Box, Flex } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import MySelect from '@fastgpt/web/components/common/MySelect';
@@ -6,11 +5,11 @@ import InputRender from '@/components/core/app/formRender';
 import { InputTypeEnum } from '@/components/core/app/formRender/constant';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import type { TUpdateListItem } from '@fastgpt/global/core/workflow/template/system/variableUpdate/type';
-import type { ReferenceValueType } from '@fastgpt/global/core/workflow/type/io';
 import type {
-  EditorVariableLabelPickerType,
+  ReferenceValueType,
   EditorVariablePickerType
-} from '@fastgpt/web/components/common/Textarea/PromptEditor/type';
+} from '@fastgpt/global/core/workflow/type/io';
+import type { EditorVariableLabelPickerType } from '@fastgpt/web/components/common/Textarea/PromptEditor/type';
 
 type Mode = NonNullable<TUpdateListItem['arrayMode']>;
 

@@ -4,7 +4,7 @@ import { MongoDataset } from '../../core/dataset/schema';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { SystemErrEnum } from '@fastgpt/global/common/error/code/system';
-import { AppTypeEnum, ToolTypeList, AppFolderTypeList } from '@fastgpt/global/core/app/constants';
+import { AppTypeList, ToolTypeList, AppFolderTypeList } from '@fastgpt/global/core/app/constants';
 import { MongoTeamMember } from '../user/team/teamMemberSchema';
 import { TeamMemberStatusEnum } from '@fastgpt/global/support/user/team/constant';
 import { getVectorCountByTeamId } from '../../common/vectorDB/controller';
@@ -60,6 +60,7 @@ export const checkTeamDatasetFolderLimit = async ({
   }
 };
 
+/** 按 Agent、工具、文件夹分别校验新增数量，Agent 口径与账号资源用量共用 AppTypeList。 */
 export const checkTeamAppTypeLimit = async ({
   teamId,
   appCheckType,
@@ -71,11 +72,11 @@ export const checkTeamAppTypeLimit = async ({
 }) => {
   if (appCheckType === 'app') {
     const [{ standard }, appCount] = await Promise.all([
-      getTeamStandPlan({ teamId }),
+      getTeamStandPlan({ teamId, readPreference: ReadPreference.PRIMARY }),
       MongoApp.countDocuments({
         teamId,
         type: {
-          $in: [AppTypeEnum.chatAgent, AppTypeEnum.simple, AppTypeEnum.workflow]
+          $in: AppTypeList
         }
       })
     ]);
@@ -88,10 +89,10 @@ export const checkTeamAppTypeLimit = async ({
     if (global?.licenseData?.maxApps && typeof global?.licenseData?.maxApps === 'number') {
       const totalApps = await MongoApp.countDocuments({
         type: {
-          $in: [AppTypeEnum.simple, AppTypeEnum.workflow]
+          $in: AppTypeList
         }
       });
-      if (totalApps > global.licenseData.maxApps) {
+      if (totalApps + amount > global.licenseData.maxApps) {
         return Promise.reject(SystemErrEnum.licenseAppAmountLimit);
       }
     }

@@ -31,19 +31,17 @@ import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
 import type {
   GetModelStatusResponse,
   ModelStatusProbeModel,
-  ModelStatusProbeRecord,
   ModelStatusProbeTimelinePoint,
   UpdateModelStatusProbeConfigBody
 } from '@fastgpt/global/openapi/admin/system/model/status';
-import { ModelStatusProbeStatusEnum } from '@fastgpt/global/core/ai/model/status';
 import {
   getModelStatus,
   postModelStatusProbe,
   putModelStatusProbeConfig,
   postTestModelStatusWebhook
-} from '@/web/core/ai/config';
+} from '@/web/core/ai/model/statusApi';
 import { accountContentScrollStyles } from '@/pageComponents/account/styles';
-import ModelTabHeader from '../ModelTabHeader';
+import ModelTabHeader from '@/components/core/ai/ModelTabHeader';
 
 const statusColorMap = {
   green: 'green',
@@ -241,7 +239,7 @@ const ProbeTimeline = ({
         justifyContent={'flex-end'}
         gap={`${TIMELINE_BAR_GAP}px`}
       >
-        {displayPoints.map((point, index) => (
+        {displayPoints.map((point) => (
           <MyTooltip
             key={point.startTime}
             label={renderTooltipContent(point)}

@@ -1,24 +1,21 @@
-import React, { type ReactNode, useCallback, useEffect, useMemo } from 'react';
-// 工作流工具函数层
-import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { getWorkflowModelDetails } from '@/web/core/workflow/modelData';
+import { getWorkflowSandboxCheckData } from '@/web/core/workflow/sandbox';
+import { type ReactNode, useCallback, useEffect, useMemo } from 'react';
+import { getWorkflowModelCheckData } from '@/web/core/workflow/modelData';
 import { storeEdge2RenderEdge, storeNode2FlowNode } from '@/web/core/workflow/utils';
 import { createContext, useContextSelector } from 'use-context-selector';
-import { useReactFlow } from 'reactflow';
-import type { Node, Edge } from 'reactflow';
+import { useReactFlow, type Node, type Edge } from 'reactflow';
 import { useTranslation } from 'next-i18next';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import {
   checkWorkflowBeforeRunOrPublish,
   checkWorkflowNodeIssues
-} from '@/web/core/workflow/workflowCheck';
-import { useUserStore } from '@/web/support/user/useUserStore';
+} from '@/web/core/workflow/check/check';
 import {
   canInputBeAgentGenerated,
   normalizeFlowNodeInputType
 } from '@fastgpt/global/core/app/formEdit/utils';
 import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
-import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
@@ -35,6 +32,8 @@ import { WorkflowActionsContext } from './workflowActionsContext';
 import { WorkflowBufferDataContext } from './workflowInitContext';
 import { WorkflowSnapshotContext } from './workflowSnapshotContext';
 
+// 工作流工具函数层
+
 // 创建 Context
 type WorkflowUtilsContextValue = {
   initData: (
@@ -44,7 +43,7 @@ type WorkflowUtilsContextValue = {
       chatConfig?: AppChatConfigType;
     },
     isInit?: boolean
-  ) => Promise<void>;
+  ) => Promise<number>;
   flowData2StoreData: () =>
     | {
         nodes: StoreNodeItemType[];
@@ -128,13 +127,9 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
   const { t } = useTranslation();
   const { toast } = useToast();
   const { fitView } = useReactFlow();
-  const { feConfigs } = useSystemStore();
-  const { teamPlanStatus } = useUserStore();
-  const showSandbox = feConfigs?.show_agent_sandbox;
-  const enableSandbox = !teamPlanStatus?.standard || !!teamPlanStatus?.standard?.enableSandbox;
 
   const { appDetail, setAppDetail } = useContextSelector(AppContext, (v) => v);
-  const { edges, setEdges, setNodes, getNodes, toolNodesMap } = useContextSelector(
+  const { edges, getNodes, replaceWorkflowData, toolNodesMap } = useContextSelector(
     WorkflowBufferDataContext,
     (v) => v
   );
@@ -196,49 +191,21 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
     async (hideTip = false) => {
       const nodes = getNodes();
 
-      // Sandbox unavailable check
-      const sandboxUnavailableNode = nodes.find((node) => {
-        if (
-          node.data.flowNodeType === FlowNodeTypeEnum.agent ||
-          node.data.flowNodeType === FlowNodeTypeEnum.toolCall
-        ) {
-          const useAgentSandbox = node.data.inputs.find(
-            (input) => input.key === NodeInputKeyEnum.useAgentSandbox
-          )?.value;
-          return !!useAgentSandbox && (!showSandbox || !enableSandbox);
-        }
-        return false;
-      });
-
-      if (sandboxUnavailableNode) {
-        if (!hideTip) {
-          onUpdateNodeError(sandboxUnavailableNode.data.nodeId, true);
-          fitView({
-            nodes: [sandboxUnavailableNode],
-            padding: 0.3
-          });
-          toast({
-            status: 'warning',
-            title: !showSandbox
-              ? t('skill:sandbox_system_not_configured_toast')
-              : t('app:sandbox_free_not_support')
-          });
-        }
-        return;
-      }
-
-      const models = await getWorkflowModelDetails(nodes, appDetail.chatConfig).catch(
-        () => undefined
-      );
-      if (!models) {
+      const modelData = await getWorkflowModelCheckData({
+        nodes,
+        chatConfig: appDetail.chatConfig,
+        appId: appDetail._id
+      }).catch(() => undefined);
+      if (!modelData) {
         if (!hideTip) toast({ status: 'error', title: t('common:model_catalog_load_failed') });
         return;
       }
-      const { issueMap, hasError, firstErrorNodeId, chatConfigIssues } =
+      const { issueMap, hasError, firstErrorNodeId, errorMessages } =
         checkWorkflowBeforeRunOrPublish({
+          sandbox: getWorkflowSandboxCheckData(),
           nodes,
           edges,
-          models,
+          modelData,
           chatConfig: appDetail.chatConfig,
           t
         });
@@ -271,11 +238,7 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
         toast({
           status: 'warning',
           title: t('common:core.workflow.Check Failed'),
-          description: [...Object.values(issueMap).flat(), ...chatConfigIssues]
-            .filter((issue) => issue.level === 'error')
-            .map((issue) => issue.message)
-            .filter(Boolean)
-            .join('\n')
+          description: errorMessages.join('\n')
         });
       }
     },
@@ -287,8 +250,7 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
       fitView,
       t,
       onUpdateNodeError,
-      showSandbox,
-      enableSandbox,
+      appDetail._id,
       appDetail.chatConfig,
       toast
     ]
@@ -301,18 +263,27 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
       const nodes = getNodes();
       if (nodes.length === 0) return;
 
-      const models = await getWorkflowModelDetails(nodes).catch(() => undefined);
+      const modelData = await getWorkflowModelCheckData({ nodes, appId: appDetail._id }).catch(
+        () => undefined
+      );
       // 目录失败保留原校验结果；等待期间用户编辑或离开时不回写旧快照。
       if (
         !active ||
-        !models ||
+        !modelData ||
         nodes.some(
           (node) =>
             getNodes().find((current) => current.id === node.id)?.data.inputs !== node.data.inputs
         )
       )
         return;
-      const issueMap = checkWorkflowNodeIssues({ nodes, edges, models, t });
+      const issueMap = checkWorkflowNodeIssues({
+        sandbox: getWorkflowSandboxCheckData(),
+        nodes,
+        edges,
+        modelData,
+        chatConfig: appDetail.chatConfig,
+        t
+      });
       onSyncWorkflowCheckIssues(issueMap);
     };
 
@@ -323,7 +294,7 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
       active = false;
       window.clearInterval(timer);
     };
-  }, [edges, getNodes, onSyncWorkflowCheckIssues, t]);
+  }, [appDetail._id, appDetail.chatConfig, edges, getNodes, onSyncWorkflowCheckIssues, t]);
 
   // 4. initData - 初始化工作流数据
   const initData = useCallback(
@@ -358,20 +329,35 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
       const edges = workflow.edges.map((item) => storeEdge2RenderEdge({ edge: item }));
 
       // 进入编辑器后延迟校验并定位到第一个错误节点；ReactFlow 渲染后再 fitView 才有效。
-      const scheduleEntryCheck = (checkNodes: Node[], checkEdges: Edge[]) => {
+      const scheduleEntryCheck = (
+        checkNodes: Node[],
+        checkEdges: Edge[],
+        checkChatConfig?: AppChatConfigType
+      ) => {
         if (!isInit) return;
         window.setTimeout(() => {
           const { issueMap, hasError, firstErrorNodeId } = checkWorkflowBeforeRunOrPublish({
+            sandbox: getWorkflowSandboxCheckData(),
             nodes: checkNodes,
             edges: checkEdges,
+            chatConfig: checkChatConfig,
             t
           });
           onSyncWorkflowCheckIssues(issueMap);
-          if (hasError && firstErrorNodeId) {
-            const errorNode = checkNodes.find((node) => node.data.nodeId === firstErrorNodeId);
+          const firstErrorNode = checkNodes.find((node) => node.data.nodeId === firstErrorNodeId);
+          // 新建空白或初始画布时，起始节点尚未连线属于正常搭建前置状态。
+          // 保留节点底部 issue 待完善气泡提示，但跳过外层强报错大红框及自动 fitView 聚焦，避免初次进入产生压迫感。
+          const isStartNodeIsolatedOnly =
+            firstErrorNode &&
+            [FlowNodeTypeEnum.workflowStart, FlowNodeTypeEnum.pluginInput].includes(
+              firstErrorNode.data.flowNodeType
+            ) &&
+            issueMap[firstErrorNodeId]?.every((issue) => issue.code === 'isolated_node');
+
+          if (hasError && firstErrorNodeId && !isStartNodeIsolatedOnly) {
             onUpdateNodeError(firstErrorNodeId, true);
-            if (errorNode) {
-              fitView({ nodes: [errorNode], padding: 0.3 });
+            if (firstErrorNode) {
+              fitView({ nodes: [firstErrorNode], padding: 0.3 });
             }
           }
         }, 300);
@@ -380,11 +366,13 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
       // 有历史记录，直接用历史记录覆盖
       if (isInit && past.length > 0) {
         const firstPast = past[0];
-        setNodes(firstPast.nodes);
-        setEdges(firstPast.edges);
+        const revision = replaceWorkflowData({
+          nodes: firstPast.nodes,
+          edges: firstPast.edges
+        });
         setAppDetail((state) => ({ ...state, chatConfig: firstPast.chatConfig }));
-        scheduleEntryCheck(firstPast.nodes, firstPast.edges);
-        return;
+        scheduleEntryCheck(firstPast.nodes, firstPast.edges, firstPast.chatConfig);
+        return revision;
       }
       // 初始化一个历史记录
       if (isInit && past.length === 0) {
@@ -400,17 +388,16 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
       }
 
       // Init memory data
-      setNodes(nodes);
-      setEdges(edges);
+      const revision = replaceWorkflowData({ nodes, edges });
       setAppDetail((state) => ({ ...state, chatConfig: workflow.chatConfig }));
-      scheduleEntryCheck(nodes, edges);
+      scheduleEntryCheck(nodes, edges, workflow.chatConfig);
+      return revision;
     },
     [
       appDetail.chatConfig,
       past,
+      replaceWorkflowData,
       setAppDetail,
-      setEdges,
-      setNodes,
       setPast,
       t,
       fitView,

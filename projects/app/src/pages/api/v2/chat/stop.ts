@@ -1,7 +1,8 @@
+import { getChatGenerationStatuses } from '@fastgpt/service/core/chat/generationLease';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { NextAPI } from '@/service/middleware/entry';
-import { authChatTargetCrud } from '@/service/support/permission/auth/chat';
-import { setAgentRuntimeStop } from '@fastgpt/service/core/workflow/dispatch/workflowStatus';
+import { authChatTargetCrud } from '@fastgpt/service/core/chat/auth';
+import { setAgentRuntimeStop } from '@fastgpt/service/core/chat/stop';
 import {
   StopV2ChatSchema,
   StopV2ChatResponseSchema,
@@ -12,10 +13,12 @@ import { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
 
 async function handler(req: NextApiRequest, _res: NextApiResponse): Promise<StopV2ChatResponse> {
   const {
-    body: { sourceType, sourceId, chatId, outLinkAuthData }
+    body: { customUid, authProxy, sourceType, sourceId, chatId, outLinkAuthData }
   } = parseApiInput({ req, bodySchema: StopV2ChatSchema });
 
   const authRes = await authChatTargetCrud({
+    customUid,
+    authProxy,
     req,
     authToken: true,
     authApiKey: true,
@@ -33,11 +36,17 @@ async function handler(req: NextApiRequest, _res: NextApiResponse): Promise<Stop
     chatId
   });
 
+  const generationStatuses = await getChatGenerationStatuses({
+    sourceType,
+    sourceId: resolvedSourceId,
+    chatIds: [chatId]
+  });
+
   return StopV2ChatResponseSchema.parse({
     success: true,
     // 兼容旧客户端字段：接口不再等待后台收尾，因此不确认 completed。
     completed: false,
-    chatGenerateStatus: ChatGenerateStatusEnum.generating
+    chatGenerateStatus: generationStatuses.get(chatId) ?? ChatGenerateStatusEnum.done
   });
 }
 

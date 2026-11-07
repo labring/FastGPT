@@ -192,11 +192,12 @@ export function checkValue(
 /* ========== filterCollectionByKeyValueTags ========== */
 
 /**
- * Filter collections by key-value tag conditions.
+ * 按 Key-Value 标签条件筛选集合：AND 条件须全部满足，OR 条件至少满足一项。
  *
- * AND conditions must all be satisfied; OR conditions need at least one match.
- * A condition whose tag does not exist in a dataset fails that condition:
- * AND → no match; OR → that condition does not count as a match.
+ * 知识库未定义标签或集合缺少该标签时，仅否定条件（$ne/$isNot/$notContains/$notIn）
+ * 和 $empty 视为满足；肯定条件不匹配。
+ * 旧版 $fromMigration 的 $empty 条件仍要求集合完全未打任何标签。
+ * 未提供标签条件时返回 undefined；没有匹配集合时返回空数组。
  */
 export async function filterCollectionByKeyValueTags({
   $and,
@@ -274,7 +275,9 @@ export async function filterCollectionByKeyValueTags({
 
     const tagInfo = tagMap.get(tagName);
     if (!tagInfo) {
-      return false;
+      // 标签未在该知识库定义，等同于所有集合都未打该标签：否定/空值型条件应视为满足，
+      // 与集合级「缺少该标签」保持一致，避免多知识库检索时静默丢掉整个知识库。
+      return isAbsentAllowedOp(op);
     }
 
     const entry = tagsArr.find((t) => t.tagId === tagInfo.id);

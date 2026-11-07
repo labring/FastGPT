@@ -3,8 +3,7 @@ import {
   DatasetTagFilterFieldEnum,
   tagFilterOperators,
   createTimeOperators,
-  collectionIdOperators,
-  emptyValueOperators
+  collectionIdOperators
 } from '../../constants';
 import type { DatasetCollectionTagType, DatasetTagType } from '../../type';
 import {
@@ -17,14 +16,9 @@ import {
   isWorkflowTagFilterTagType
 } from './type';
 
-const emptyOps = new Set(emptyValueOperators.map((item) => item.value));
-
 /** 只由外部接口/适配下发的标签类型：不进条件行下拉，界面无入口创建。 */
 export const isInterfaceOnlyTagFilterTagType = (tagType?: DatasetCollectionTagType) =>
   tagType === DatasetCollectionTagTypeEnum.string;
-
-/** 条件不需要右侧值输入（为空 / 不为空）。 */
-export const isTagFilterOpWithoutValue = (op?: string) => !!op && emptyOps.has(op);
 
 export const isTagFilterAttributeField = (field?: DatasetTagFilterField | string) =>
   field === DatasetTagFilterFieldEnum.createTime ||

@@ -1,4 +1,4 @@
-import { authChatTargetCrud } from '@/service/support/permission/auth/chat';
+import { authChatTargetCrud } from '@fastgpt/service/core/chat/auth';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { ApiRequestProps } from '@fastgpt/next/type';
@@ -11,15 +11,18 @@ import { getChatItemResponseData } from '@fastgpt/service/core/chat/nodeResponse
 import { buildChatSourceQuery } from '@fastgpt/service/core/chat/source';
 
 export async function handler(req: ApiRequestProps): Promise<ChatHistoryItemResType[]> {
-  const { sourceType, sourceId, chatId, dataId, outLinkAuthData } = parseApiInput({
-    req,
-    querySchema: GetResDataQuerySchema
-  }).query;
+  const { customUid, authProxy, sourceType, sourceId, chatId, dataId, outLinkAuthData } =
+    parseApiInput({
+      req,
+      querySchema: GetResDataQuerySchema
+    }).query;
   if (!chatId || !dataId) {
     return [];
   }
 
   const authRes = await authChatTargetCrud({
+    customUid,
+    authProxy,
     req,
     authToken: true,
     authApiKey: true,

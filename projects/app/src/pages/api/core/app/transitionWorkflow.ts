@@ -24,12 +24,13 @@ async function handler(
     bodySchema: TransitionWorkflowBodySchema
   }).body;
 
-  const { app, teamId, tmbId } = await authApp({
+  const { app, tmbId, isRoot } = await authApp({
     req,
     appId,
     authToken: true,
     per: OwnerPermissionVal
   });
+  const teamId = String(app.teamId);
   const draftWorkflow = await getAppDraftWorkflow(app._id);
   if (createNew) {
     const { appId } = await mongoSessionRun(async (session) => {
@@ -49,8 +50,9 @@ async function handler(
         nodes: draftWorkflow.nodes,
         edges: draftWorkflow.edges,
         chatConfig: draftWorkflow.chatConfig,
-        teamId: app.teamId,
+        teamId,
         tmbId,
+        isRoot,
         session
       });
       await getS3AvatarSource().refreshAvatar(avatar, undefined, session);
@@ -72,6 +74,7 @@ async function handler(
       resources: draftWorkflow.resources,
       teamId,
       tmbId,
+      isRoot,
       session
     });
   });

@@ -21,6 +21,16 @@ describe('GetPreviewNodeQuerySchema', () => {
     ).toBe(true);
   });
 
+  it('accepts an explicit locale for rebuilding plugin preview snapshots', () => {
+    expect(
+      GetPreviewNodeQuerySchema.safeParse({
+        appId: 'systemTool-search',
+        versionId: '',
+        lang: 'en'
+      }).success
+    ).toBe(true);
+  });
+
   it('accepts getLatestVersion only when versionId is omitted', () => {
     expect(
       GetPreviewNodeQuerySchema.safeParse({

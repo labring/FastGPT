@@ -1,4 +1,4 @@
-import type { ImageSpec } from '@/types';
+import type { ImageSpec } from '../types';
 
 export function formatImageSpec(image: ImageSpec): string {
   const parts: string[] = [image.repository];

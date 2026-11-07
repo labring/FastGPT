@@ -6,6 +6,7 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 
 const AppCard = () => {
   const { t } = useTranslation();
@@ -23,18 +24,23 @@ const AppCard = () => {
             {appDetail.name}
           </Box>
         </Flex>
-        <Box
-          flex={1}
-          mt={3}
-          mb={4}
-          className={'textEllipsis3'}
-          wordBreak={'break-all'}
-          color={'myGray.600'}
-          fontSize={'xs'}
-          minH={'46px'}
+        <MyTooltip
+          label={appDetail.intro || t('common:core.app.tip.Add a intro to app')}
+          showOnlyWhenOverflow
         >
-          {appDetail.intro || t('common:core.app.tip.Add a intro to app')}
-        </Box>
+          <Box
+            flex={1}
+            mt={3}
+            mb={4}
+            className={'textEllipsis3'}
+            wordBreak={'break-all'}
+            color={'myGray.600'}
+            fontSize={'xs'}
+            minH={'46px'}
+          >
+            {appDetail.intro || t('common:core.app.tip.Add a intro to app')}
+          </Box>
+        </MyTooltip>
         <HStack alignItems={'center'}>
           {appDetail.permission.hasManagePer && (
             <Button

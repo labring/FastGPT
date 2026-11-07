@@ -1,5 +1,6 @@
 /** Sandbox source 存活校验，作为 provisioning 与删除之间的持久 fence。 */
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { isAppSandboxSourceType } from '@fastgpt/global/common/chat/source';
 import { MongoApp } from '../../../app/schema';
 import { MongoAgentSkills } from '../../skill/model/schema';
 
@@ -16,19 +17,36 @@ export async function assertSandboxSourceActive(params: {
   sourceType: ChatSourceTypeEnum;
   sourceId: string;
 }) {
-  const active = await (async () => {
-    if (params.sourceType === ChatSourceTypeEnum.app) {
-      return MongoApp.exists({ _id: params.sourceId, deleteTime: null });
+  await resolveSandboxSourceTeamId(params);
+}
+
+/**
+ * 校验 source 存活并解析其团队归属：一次投影查询同时完成持久 fence 与 teamId 解析。
+ *
+ * source 缺失或软删除时抛 SandboxSourceMissingError；source 存在但缺少 teamId 时返回
+ * undefined，仅存活校验允许该结果。运行入口由 ensureSandboxTeamOwnership 拒绝无团队资源。
+ */
+export async function resolveSandboxSourceTeamId(params: {
+  sourceType: ChatSourceTypeEnum;
+  sourceId: string;
+}): Promise<string | undefined> {
+  const doc = await (async () => {
+    if (isAppSandboxSourceType(params.sourceType)) {
+      return MongoApp.findOne({ _id: params.sourceId, deleteTime: null }, { teamId: 1 }).lean();
     }
     if (params.sourceType === ChatSourceTypeEnum.skillEdit) {
-      return MongoAgentSkills.exists({ _id: params.sourceId, deleteTime: null });
+      return MongoAgentSkills.findOne(
+        { _id: params.sourceId, deleteTime: null },
+        { teamId: 1 }
+      ).lean();
     }
     return null;
   })();
 
-  if (!active) {
+  if (!doc) {
     throw new SandboxSourceMissingError(params);
   }
+  return doc.teamId ? String(doc.teamId) : undefined;
 }
 
 /** Source 删除任务只能清理已经由主业务事务标记为删除的资源。 */
@@ -37,7 +55,7 @@ export async function assertSandboxSourceDeleted(params: {
   sourceId: string;
 }) {
   const deleted = await (async () => {
-    if (params.sourceType === ChatSourceTypeEnum.app) {
+    if (isAppSandboxSourceType(params.sourceType)) {
       return MongoApp.exists({ _id: params.sourceId, deleteTime: { $ne: null } });
     }
     if (params.sourceType === ChatSourceTypeEnum.skillEdit) {

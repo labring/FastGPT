@@ -1,6 +1,6 @@
 import { NextAPI } from '@/service/middleware/entry';
 import { authCollectionInChat } from '@/service/support/permission/auth/chat';
-import { authChatTargetCrud } from '@/service/support/permission/auth/chat';
+import { authChatTargetCrud } from '@fastgpt/service/core/chat/auth';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { type ApiRequestProps } from '@fastgpt/next/type';
 import { quoteDataFieldSelector } from '@/service/core/chat/constants';
@@ -18,6 +18,8 @@ import { buildChatSourceQuery } from '@fastgpt/service/core/chat/source';
 
 async function handler(req: ApiRequestProps): Promise<GetQuoteResponseType> {
   const {
+    customUid,
+    authProxy,
     sourceType,
     sourceId,
     chatId,
@@ -28,6 +30,8 @@ async function handler(req: ApiRequestProps): Promise<GetQuoteResponseType> {
   } = parseApiInput({ req, bodySchema: GetQuoteBodySchema }).body;
 
   const authRes = await authChatTargetCrud({
+    customUid,
+    authProxy,
     req,
     authToken: true,
     authApiKey: true,

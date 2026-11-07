@@ -8,11 +8,13 @@ import {
   mergeResumeCompletedChatRecords,
   shouldCheckChatResumeStatus,
   shouldCreateResumeAiPlaceholder,
+  shouldAppendResumeInteractive,
   waitForConflictRecoveryRecords
 } from '@/components/core/chat/ChatContainer/ChatBox/utils/resume';
 import type { ChatSiteItemType } from '@/components/core/chat/ChatContainer/ChatBox/type';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
+import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 
 const createAiRecord = (override: Partial<ChatSiteItemType>): ChatSiteItemType =>
   ({
@@ -54,6 +56,7 @@ describe('shouldCreateResumeAiPlaceholder', () => {
     expect(shouldCreateResumeAiPlaceholder(SseResponseEventEnum.interactive)).toBe(true);
     expect(shouldCreateResumeAiPlaceholder(SseResponseEventEnum.plan)).toBe(true);
     expect(shouldCreateResumeAiPlaceholder(SseResponseEventEnum.planStatus)).toBe(true);
+    expect(shouldCreateResumeAiPlaceholder(SseResponseEventEnum.workflowBuilderVersion)).toBe(true);
     expect(shouldCreateResumeAiPlaceholder(SseResponseEventEnum.workflowDuration)).toBe(true);
     expect(shouldCreateResumeAiPlaceholder(AuxiliaryGenerationEventEnum.status)).toBe(true);
   });
@@ -102,6 +105,40 @@ describe('shouldCheckChatResumeStatus', () => {
 });
 
 describe('chat generating conflict recovery', () => {
+  it('recovers an already loaded server round even when the rejected send allocated a new ID', async () => {
+    const records = [createAiRecord({ dataId: 'active-A', status: ChatStatusEnum.finish })];
+    const loadRecords = vi.fn(async () => records);
+    await expect(
+      waitForConflictRecoveryRecords({
+        loadRecords,
+        responseChatItemId: 'active-A',
+        previousAiDataId: 'active-A',
+        canReusePreviousAi: false,
+        retryIntervalMs: 0
+      })
+    ).resolves.toBe(records);
+    expect(loadRecords).toHaveBeenCalledOnce();
+  });
+
+  it('waits for the exact occupied round instead of accepting a different stale record', async () => {
+    const oldRecords = [createAiRecord({ dataId: 'stale-C' })];
+    const activeRecords = [createAiRecord({ dataId: 'active-A' })];
+    const loadRecords = vi
+      .fn()
+      .mockResolvedValueOnce(oldRecords)
+      .mockResolvedValueOnce(activeRecords);
+    await expect(
+      waitForConflictRecoveryRecords({
+        loadRecords,
+        responseChatItemId: 'active-A',
+        previousAiDataId: 'another-old-id',
+        canReusePreviousAi: true,
+        retryIntervalMs: 0
+      })
+    ).resolves.toBe(activeRecords);
+    expect(loadRecords).toHaveBeenCalledTimes(2);
+  });
+
   it('uses the server round id after refreshing records', () => {
     const recoveredRecords = [
       createHumanRecord({ id: 'old-human', dataId: 'old-round' }),
@@ -325,6 +362,106 @@ describe('hasMeaningfulAiOutput', () => {
 });
 
 describe('mergeResumeCompletedChatRecords', () => {
+  it.each(['agentAsk', 'workflowBuilderPreview'] as const)(
+    'matches %s by interaction ID so pagination cannot copy an earlier answer into the next question',
+    (type) => {
+      const createInteractive = (id: string): WorkflowInteractiveResponseType => {
+        if (type === 'agentAsk') {
+          return {
+            type,
+            memoryEdges: [],
+            nodeOutputs: [],
+            entryNodeIds: ['same-node'],
+            usageId: 'same-usage',
+            params: {
+              toolCallId: id,
+              arguments: JSON.stringify({
+                reason: '',
+                blockerType: 'user_choice',
+                questions: [
+                  {
+                    question: 'Question',
+                    options: [
+                      { summary: 'A', value: 'A' },
+                      { summary: 'B', value: 'B' }
+                    ]
+                  }
+                ]
+              })
+            }
+          };
+        }
+        return {
+          type,
+          memoryEdges: [],
+          nodeOutputs: [],
+          entryNodeIds: ['same-node'],
+          usageId: 'same-usage',
+          params: {
+            toolCallId: id,
+            arguments: JSON.stringify({
+              title: 'Confirm?',
+              mermaid: 'flowchart TD; A-->B',
+              sections: [{ title: 'Goal', content: 'Build' }]
+            })
+          }
+        };
+      };
+      const submitted = createInteractive('old-interaction');
+      const pending = createInteractive('next-interaction');
+      const pendingSame = createInteractive('old-interaction');
+      const existingValues = [{ interactive: submitted }];
+      expect(shouldAppendResumeInteractive({ existingValues, incomingInteractive: pending })).toBe(
+        true
+      );
+      expect(
+        shouldAppendResumeInteractive({ existingValues, incomingInteractive: pendingSame })
+      ).toBe(false);
+
+      const current = createAiRecord({ dataId: 'old-ai', value: existingValues });
+      const user = createHumanRecord({
+        value: [
+          {
+            text: { content: 'Answer' },
+            select: {
+              type,
+              questions: [{ question: 'Question', value: 'Answer' }]
+            }
+          }
+        ]
+      });
+      const completed = createAiRecord({
+        dataId: 'next-ai',
+        value: [
+          {
+            interactive: {
+              type: 'childrenInteractive',
+              entryNodeIds: [],
+              memoryEdges: [],
+              nodeOutputs: [],
+              params: { childrenResponse: pending }
+            }
+          }
+        ]
+      });
+      const result = mergeResumeCompletedChatRecords({
+        currentRecords: [current, user],
+        completedRecords: [user, completed],
+        responseChatId: 'next-ai'
+      });
+      expect(result[0]).toBe(user);
+      expect(result[1].value).toEqual(completed.value);
+
+      const sameRound = createAiRecord({ dataId: 'old-ai', value: [{ interactive: pendingSame }] });
+      const restored = mergeResumeCompletedChatRecords({
+        currentRecords: [current],
+        completedRecords: [sameRound],
+        responseChatId: 'old-ai'
+      });
+      expect(restored[0].value).toEqual(existingValues);
+    }
+  );
+
   it('merges replayed children into matching completed responseData nodes', () => {
     const completed = createAiRecord({
       dataId: 'response-ai',
@@ -360,4 +497,23 @@ describe('mergeResumeCompletedChatRecords', () => {
       'child-response'
     ]);
   });
+});
+
+describe('resume interactive compatibility', () => {
+  it.each(['userInput', 'workflowBuilderPreview'])(
+    'skips invalid replayed %s interactions and accepts a valid replacement',
+    (type) => {
+      const invalid = { type, params: null } as unknown as WorkflowInteractiveResponseType;
+      const valid = { type: 'paymentPause', params: {} } as WorkflowInteractiveResponseType;
+      expect(
+        shouldAppendResumeInteractive({ existingValues: [], incomingInteractive: invalid })
+      ).toBe(false);
+      expect(
+        shouldAppendResumeInteractive({
+          existingValues: [{ interactive: invalid }],
+          incomingInteractive: valid
+        })
+      ).toBe(true);
+    }
+  );
 });

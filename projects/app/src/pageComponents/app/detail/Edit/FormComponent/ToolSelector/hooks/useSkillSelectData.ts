@@ -28,11 +28,11 @@ export const useSkillSelectData = () => {
   } = useScrollPagination(getSkillListV2, {
     params: {
       source: 'mine',
+      withAppCount: false,
       parentId,
-      searchKey: searchKey || undefined,
-      withAppCount: false
+      searchKey: searchKey || undefined
     },
-    pageSize: 50,
+    pageSize: 20,
     refreshDeps: [parentId, searchKey],
     throttleWait: 300
   });

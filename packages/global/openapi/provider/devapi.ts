@@ -1,4 +1,5 @@
 import { createDocument } from 'zod-openapi';
+import { openApiDocumentOptions } from '../generation';
 import { setRequiredRequestExamples } from '../requiredExamples';
 import { openAPIPaths, openAPITagGroups } from '../path';
 import { SystemOpenApiTagMap } from '../tag';
@@ -37,16 +38,19 @@ const omitSystemOpenApiTags = (paths: DefinedOpenAPIPath) => {
 };
 
 export const openAPIDocument = setRequiredRequestExamples(
-  createDocument({
-    openapi: '3.1.0',
-    info: {
-      title: 'FastGPT Dev API',
-      version: '0.1.0',
-      description: 'FastGPT 所有 API 的文档'
+  createDocument(
+    {
+      openapi: '3.1.0',
+      info: {
+        title: 'FastGPT Dev API',
+        version: '0.1.0',
+        description: 'FastGPT 所有 API 的文档'
+      },
+      paths: omitSystemOpenApiTags(openAPIPaths),
+      servers: [{ url: '/api' }],
+      'x-tagGroups': openAPITagGroups
     },
-    paths: omitSystemOpenApiTags(openAPIPaths),
-    servers: [{ url: '/api' }],
-    'x-tagGroups': openAPITagGroups
-  }),
+    openApiDocumentOptions
+  ),
   openAPIPaths
 );

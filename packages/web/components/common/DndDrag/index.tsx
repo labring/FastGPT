@@ -51,14 +51,22 @@ export const getDraggableItemProps = (
 
 type Props<T = any> = {
   onDragEndCb: (result: T[]) => void;
+  /** 克隆替换原始拖拽项之前，保存依赖原始 DOM 的布局信息。 */
+  onBeforeCapture?: (capture: { draggableId: string }) => void;
+  /** 成功、取消或移出列表时均调用，供调用方释放拖拽状态。 */
+  onDragEnd?: () => void;
   renderClone?: DraggableChildrenFn;
+  /** 使用虚拟窗口时由调用方控制占位内容，并通过 renderClone 保留拖拽项。 */
+  mode?: 'standard' | 'virtual';
+  /** 将拖拽克隆挂载到指定容器，例如表格的 tbody。 */
+  getContainerForClone?: () => HTMLElement;
   children: ({
     provided,
     snapshot
   }: {
     provided: DroppableProvided;
     snapshot: DroppableStateSnapshot;
-  }) => ReactElement<HTMLElement, string>;
+  }) => ReactElement;
   dataList: T[];
   zoom?: number;
   renderInnerPlaceholder?: boolean;
@@ -67,23 +75,34 @@ type Props<T = any> = {
 function DndDrag<T>({
   children,
   renderClone,
+  mode = 'standard',
+  getContainerForClone,
   onDragEndCb,
+  onBeforeCapture,
+  onDragEnd,
   dataList,
   zoom = 1,
   renderInnerPlaceholder = true
 }: Props<T>) {
   const [draggingItemHeight, setDraggingItemHeight] = useState(0);
 
+  if (mode === 'virtual' && !renderClone) {
+    throw new Error('DndDrag virtual mode requires a renderClone callback');
+  }
+
   const onDragStart = (start: DragStart) => {
+    if (mode === 'virtual') return;
+
     const draggingNode = document.querySelector(`[data-rbd-draggable-id="${start.draggableId}"]`);
     setDraggingItemHeight(draggingNode?.getBoundingClientRect().height || 0);
   };
 
-  const onDragEnd = (result: DropResult) => {
+  const handleDragEnd = (result: DropResult) => {
+    if (mode === 'standard') setDraggingItemHeight(0);
+    onDragEnd?.();
     if (!result.destination) {
       return;
     }
-    setDraggingItemHeight(0);
 
     const startIndex = result.source.index;
     const endIndex = result.destination.index;
@@ -96,12 +115,21 @@ function DndDrag<T>({
   };
 
   return (
-    <DragDropContext onDragStart={onDragStart} onDragEnd={onDragEnd}>
-      <Droppable droppableId="droppable" renderClone={renderClone}>
+    <DragDropContext
+      onBeforeCapture={onBeforeCapture}
+      onDragStart={onDragStart}
+      onDragEnd={handleDragEnd}
+    >
+      <Droppable
+        droppableId="droppable"
+        mode={mode}
+        renderClone={renderClone}
+        getContainerForClone={getContainerForClone}
+      >
         {(provided, snapshot) => (
           <>
             {children({ provided, snapshot })}
-            {snapshot.isDraggingOver && renderInnerPlaceholder && (
+            {snapshot.isDraggingOver && renderInnerPlaceholder && mode === 'standard' && (
               <Box height={`${draggingItemHeight / zoom}px`} />
             )}
           </>

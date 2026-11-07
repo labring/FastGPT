@@ -10,7 +10,7 @@ import {
   FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
-import { getHandleId } from '@fastgpt/global/core/workflow/utils';
+import { getHandleId } from '@fastgpt/global/common/workflow/reference';
 
 const START_NODE_ID = 'skill-debug-start';
 const AGENT_NODE_ID = 'skill-debug-agent';
@@ -75,16 +75,6 @@ export function buildDebugRuntimeNodes(
           label: 'User Question',
           required: true,
           value: [START_NODE_ID, NodeOutputKeyEnum.userChatInput]
-        },
-        {
-          key: NodeInputKeyEnum.history,
-          renderTypeList: [FlowNodeInputTypeEnum.numberInput],
-          valueType: WorkflowIOValueTypeEnum.chatHistory,
-          label: 'Chat History',
-          required: true,
-          min: 0,
-          max: 50,
-          value: 20
         },
         {
           key: NodeInputKeyEnum.aiModelId,

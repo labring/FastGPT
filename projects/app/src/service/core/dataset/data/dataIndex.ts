@@ -8,12 +8,12 @@ import type {
   DatasetDataIndexItemType,
   DatasetDataItemType
 } from '@fastgpt/global/core/dataset/type';
-import { isImageEmbeddingModel } from '@fastgpt/service/core/ai/model';
+import { isImageEmbeddingModel } from '@fastgpt/global/core/ai/model/utils';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { countPromptTokens } from '@fastgpt/service/common/string/tiktoken';
 import { text2Chunks } from '@fastgpt/service/worker/function';
-import type { EmbeddingSystemModelDataType } from '@fastgpt/global/core/ai/model/schema';
+import type { EmbeddingModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import {
   isImageEmbeddingIndex,
   isValidImageEmbeddingSource,
@@ -22,10 +22,8 @@ import {
 import { uniqueDatasetDataMarkdownImageUrls } from '@fastgpt/service/core/dataset/data/utils';
 import { isDatasetDataSystemIndexType } from '@fastgpt/global/core/dataset/data/utils';
 import { minChunkSize } from '@fastgpt/global/core/dataset/training/utils';
-import {
-  getDatasetSynonymTransformContext,
-  isDatasetSynonymEnabled
-} from '@fastgpt/service/core/dataset/synonym/entity';
+import { getDatasetSynonymTransformContext } from '@fastgpt/service/core/dataset/synonym/entity';
+import { serviceEnv } from '@fastgpt/service/env';
 
 export type DatasetDataIndexDraft = Omit<DatasetDataIndexItemType, 'dataId'> & {
   dataId?: string;
@@ -163,9 +161,9 @@ const buildEmbeddingSafeIndexTexts = async ({
  * 这些步骤需要放在一起维护，因为 Mongo 索引里的 `dataId` 必须和向量库 id 保持一致。
  */
 export class DatasetDataIndexOperation {
-  private readonly model?: EmbeddingSystemModelDataType;
+  private readonly model?: EmbeddingModelDataType;
 
-  constructor(model?: EmbeddingSystemModelDataType) {
+  constructor(model?: EmbeddingModelDataType) {
     this.model = model;
   }
 
@@ -173,7 +171,7 @@ export class DatasetDataIndexOperation {
     return this.getEmbeddingModel().config.maxToken;
   }
 
-  private getEmbeddingModel(): EmbeddingSystemModelDataType {
+  private getEmbeddingModel(): EmbeddingModelDataType {
     return this.model!;
   }
 
@@ -666,10 +664,19 @@ export class DatasetDataIndexOperation {
    * 按 id 删除向量。
    * 调用方需要负责同步删除或替换 Mongo 中的索引项。
    */
-  async deleteVectors({ teamId, idList }: { teamId: string; idList: string[] }) {
+  async deleteVectors({
+    teamId,
+    datasetId,
+    idList
+  }: {
+    teamId: string;
+    datasetId: string;
+    idList: string[];
+  }) {
     if (idList.length === 0) return;
     await deleteDatasetDataVector({
       teamId,
+      datasetId,
       idList
     });
   }
@@ -705,7 +712,7 @@ export class DatasetDataIndexOperation {
       return Promise.reject('Dataset data index text is too long');
     }
 
-    const synonymEnabled = isDatasetSynonymEnabled();
+    const synonymEnabled = serviceEnv.DATASET_SYNONYM_ENABLED;
     const currentData = synonymEnabled ? await MongoDatasetData.findById(data.id) : undefined;
     if (synonymEnabled && !currentData) {
       return Promise.reject('Dataset data not found');
@@ -815,6 +822,7 @@ export class DatasetDataIndexOperation {
           // 先把 Mongo 索引替换成新的向量 id，再删除旧向量，避免检索指向不存在的向量记录。
           await this.deleteVectors({
             teamId: sourceData.teamId,
+            datasetId: sourceData.datasetId,
             idList: [targetIndex.dataId]
           });
         }
@@ -823,6 +831,7 @@ export class DatasetDataIndexOperation {
       if (synonymContext && newIndex) {
         await this.deleteVectors({
           teamId: sourceData.teamId,
+          datasetId: sourceData.datasetId,
           idList: [newIndex.dataId]
         }).catch(() => {});
       }
@@ -875,6 +884,7 @@ export class DatasetDataIndexOperation {
 
       await this.deleteVectors({
         teamId: data.teamId,
+        datasetId: data.datasetId,
         idList: [indexDataId]
       });
     });
@@ -902,7 +912,7 @@ export const createDatasetDataIndex = async ({
   data: DatasetDataItemType;
   type: DatasetDataIndexTypeEnum;
   text: string;
-  model: EmbeddingSystemModelDataType;
+  model: EmbeddingModelDataType;
 }) => {
   return new DatasetDataIndexOperation(model).writeDatasetDataIndex({
     data,
@@ -928,7 +938,7 @@ export const updateDatasetDataIndex = async ({
   indexDataId: string;
   type: DatasetDataIndexTypeEnum;
   text: string;
-  model: EmbeddingSystemModelDataType;
+  model: EmbeddingModelDataType;
 }) => {
   return new DatasetDataIndexOperation(model).writeDatasetDataIndex({
     data,

@@ -1,47 +1,62 @@
-import { createNodeSummary } from '@fastgpt/service/core/workflow/dispatch/utils/summary';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { UserError } from '@fastgpt/global/common/error/utils';
+import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
-import * as modelGetters from '../../../../../core/ai/model';
+import { UserError } from '@fastgpt/global/common/error/utils';
+import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
+import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import { createNodeSummary } from '@fastgpt/service/core/workflow/dispatch/utils/summary';
+import { createWorkflowResourceContext } from '@fastgpt/service/core/workflow/resource/context';
+import { WorkflowResourceError } from '@fastgpt/service/core/workflow/resource/service';
+import { runWithContext } from '@fastgpt/service/core/workflow/utils/context';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import * as modelGetters from '../../../../../core/ai/model/catalog/service';
 
 const {
   defaultSearchDatasetDataMock,
-  deepRagSearchMock,
   loadWorkflowDatasetResourceMock,
-  findDatasetByIdMock,
+  findDatasetMock,
   getDatasetSearchVlmModelMock,
   formatModelChars2PointsMock,
-  usagePushMock
+  usagePushMock,
+  mockLogger
 } = vi.hoisted(() => ({
   defaultSearchDatasetDataMock: vi.fn(),
-  deepRagSearchMock: vi.fn(),
   loadWorkflowDatasetResourceMock: vi.fn(),
-  findDatasetByIdMock: vi.fn(),
+  findDatasetMock: vi.fn(),
   getDatasetSearchVlmModelMock: vi.fn(),
   formatModelChars2PointsMock: vi.fn(),
-  usagePushMock: vi.fn()
+  usagePushMock: vi.fn(),
+  mockLogger: {
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn()
+  }
+}));
+
+vi.mock('@fastgpt/service/common/logger', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@fastgpt/service/common/logger')>()),
+  getLogger: () => mockLogger
 }));
 
 vi.mock('@fastgpt/service/core/dataset/search', () => ({
-  defaultSearchDatasetData: defaultSearchDatasetDataMock,
-  deepRagSearch: deepRagSearchMock
+  defaultSearchDatasetData: defaultSearchDatasetDataMock
 }));
 
 vi.mock('@fastgpt/service/core/dataset/search/vlm', () => ({
   getDatasetSearchVlmModel: getDatasetSearchVlmModelMock
 }));
 
-vi.mock('@fastgpt/service/core/workflow/utils/resource', () => ({
+vi.mock('@fastgpt/service/core/workflow/resource/service', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@fastgpt/service/core/workflow/resource/service')>()),
   loadWorkflowDatasetResource: loadWorkflowDatasetResourceMock
 }));
 
 vi.mock('@fastgpt/service/core/dataset/schema', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@fastgpt/service/core/dataset/schema')>()),
   MongoDataset: {
-    findById: findDatasetByIdMock
+    find: findDatasetMock
   }
 }));
 
@@ -49,7 +64,7 @@ vi.mock('@fastgpt/service/core/dataset/utils', () => ({
   filterDatasetsByTmbId: vi.fn()
 }));
 
-vi.mock('@fastgpt/service/core/ai/model', () => {
+vi.mock('@fastgpt/service/core/ai/model/catalog/service', () => {
   const handle = {
     getDefaultModelData: vi.fn(),
     getEmbeddingModelData: vi.fn(() => ({
@@ -67,6 +82,17 @@ vi.mock('@fastgpt/service/core/ai/model', () => {
       config: {}
     })),
     getRerankModelData: vi.fn(() => undefined),
+    getModelData: vi.fn(
+      (
+        reference: { modelId?: string; model?: string },
+        options?: { type?: string; vision?: boolean }
+      ) => {
+        if (options?.vision) return (handle.getVlmModelData as any)(reference);
+        if (options?.type === 'rerank') return (handle.getRerankModelData as any)(reference);
+        if (options?.type === 'embedding') return (handle.getEmbeddingModelData as any)(reference);
+        return (handle.getLLMModelData as any)(reference);
+      }
+    ),
     getVlmModelData: vi.fn(() => ({
       modelId: '68ad85a7463006c963799a03',
       model: 'vision-model',
@@ -86,14 +112,22 @@ vi.mock('@fastgpt/service/core/ai/model', () => {
         : undefined
     )
   };
-  return { getModelHandle: async () => handle };
+  return { getSystemModelHandle: async () => handle, getTeamModelHandle: async () => handle };
 });
 
 vi.mock('@fastgpt/service/support/wallet/usage/utils', () => ({
   formatModelChars2Points: formatModelChars2PointsMock
 }));
+vi.mock('@fastgpt/service/support/permission/model/auth', () => ({
+  assertAuthModels: vi.fn(async () => ({ handle: {}, models: [] })),
+  getAuthorizedModelIds: vi.fn(async () => new Set())
+}));
 
-import { dispatchDatasetSearch } from '../../../../../core/workflow/dispatch/dataset/search';
+import {
+  dispatchDatasetSearch,
+  isDatasetResourceMissingError
+} from '../../../../../core/workflow/dispatch/dataset/search';
+import { serviceEnv } from '../../../../../env';
 
 describe('dispatchDatasetSearch', () => {
   const runSearch = (params: Record<string, unknown> = {}, nodeSummary = createNodeSummary()) =>
@@ -108,16 +142,73 @@ describe('dispatchDatasetSearch', () => {
       usagePush: usagePushMock
     } as any);
 
-  it('executes and bills the fallback auxiliary models when configured models are unavailable', async () => {
-    vi.mocked((await modelGetters.getModelHandle()).getLLMModelData).mockImplementationOnce(() => {
-      throw new UserError(ModelErrEnum.unExist);
+  /** 保留真实资源加载和快照判断，仅替换数据库查询，验证错误分类的完整路径。 */
+  const runSnapshotSearch = async () => {
+    const { loadWorkflowDatasetResource } = await vi.importActual<
+      typeof import('@fastgpt/service/core/workflow/resource/service')
+    >('@fastgpt/service/core/workflow/resource/service');
+    loadWorkflowDatasetResourceMock.mockImplementationOnce(loadWorkflowDatasetResource);
+
+    return runWithContext(
+      {
+        mcpClientMemory: {},
+        resourceContext: createWorkflowResourceContext({
+          resources: [{ type: 'dataset', id: 'dataset_1' }],
+          teamId: 'team_1'
+        })
+      },
+      () => runSearch()
+    );
+  };
+
+  it('preserves mappings across quoteQA, node response and tool cites', async () => {
+    const rawRecall = {
+      id: 'chunk',
+      q: 'alias',
+      a: '',
+      sourceName: 'source'
+    };
+    const quote = {
+      ...rawRecall,
+      synonymMappings: { alias: 'standard' }
+    };
+    defaultSearchDatasetDataMock.mockResolvedValue({
+      searchRes: [quote],
+      retrievalResults: [rawRecall],
+      embeddingTokens: 0,
+      reRankInputTokens: 0,
+      usingReRank: false
     });
-    vi.mocked((await modelGetters.getModelHandle()).getRerankModelData).mockImplementationOnce(
+    const previous = serviceEnv.DATASET_SYNONYM_ENABLED;
+    serviceEnv.DATASET_SYNONYM_ENABLED = true;
+    let result;
+    try {
+      result = await runSearch();
+    } finally {
+      serviceEnv.DATASET_SYNONYM_ENABLED = previous;
+    }
+    expect(result.data?.quoteQA[0]).toMatchObject(quote);
+    expect(result[DispatchNodeResponseKeyEnum.nodeResponse]?.quoteList?.[0]).toMatchObject(quote);
+    expect(
+      result[DispatchNodeResponseKeyEnum.nodeResponse]?.retrievalResults?.[0]
+    ).not.toHaveProperty('synonymMappings');
+    expect(result[DispatchNodeResponseKeyEnum.toolResponse]).toMatchObject({
+      cites: [{ synonymMappings: { alias: 'standard' } }]
+    });
+  });
+
+  it('executes and bills the fallback auxiliary models when configured models are unavailable', async () => {
+    vi.mocked((await modelGetters.getSystemModelHandle()).getLLMModelData).mockImplementationOnce(
       () => {
-        throw new UserError(ModelErrEnum.unConfigured);
+        throw new UserError(ModelErrEnum.unExist);
       }
     );
-    vi.mocked((await modelGetters.getModelHandle()).getDefaultModelData).mockImplementation(
+    vi.mocked(
+      (await modelGetters.getSystemModelHandle()).getRerankModelData
+    ).mockImplementationOnce(() => {
+      throw new UserError(ModelErrEnum.unConfigured);
+    });
+    vi.mocked((await modelGetters.getSystemModelHandle()).getDefaultModelData).mockImplementation(
       (slot) =>
         ({
           modelId: `fallback-${slot}`,
@@ -150,6 +241,7 @@ describe('dispatchDatasetSearch', () => {
       },
       nodeSummary
     );
+
     expect(nodeSummary).toMatchObject({ llmInputTokens: 0, llmOutputTokens: 0 });
     expect(result.error).toBeUndefined();
     expect(defaultSearchDatasetDataMock).toHaveBeenCalledWith(
@@ -167,15 +259,15 @@ describe('dispatchDatasetSearch', () => {
   });
 
   it('still fails immediately when the embedding model is unavailable', async () => {
-    vi.mocked((await modelGetters.getModelHandle()).getEmbeddingModelData).mockImplementationOnce(
-      () => {
-        throw new UserError(ModelErrEnum.unExist);
-      }
-    );
+    vi.mocked(
+      (await modelGetters.getSystemModelHandle()).getEmbeddingModelData
+    ).mockImplementationOnce(() => {
+      throw new UserError(ModelErrEnum.unExist);
+    });
     const result = await runSearch({ usingReRank: true, datasetSearchUsingExtensionQuery: true });
-    expect(result.error).toBeDefined();
+    expect(result.rawError).toBeDefined();
     expect(defaultSearchDatasetDataMock).not.toHaveBeenCalled();
-    expect((await modelGetters.getModelHandle()).getDefaultModelData).not.toHaveBeenCalled();
+    expect((await modelGetters.getSystemModelHandle()).getDefaultModelData).not.toHaveBeenCalled();
   });
   beforeEach(() => {
     vi.clearAllMocks();
@@ -230,7 +322,7 @@ describe('dispatchDatasetSearch', () => {
     expect(getDatasetSearchVlmModelMock).toHaveBeenCalledWith({
       teamId: 'team_1',
       datasetIds: ['first', 'second'],
-      modelHandle: await modelGetters.getModelHandle()
+      modelHandle: await modelGetters.getSystemModelHandle()
     });
     expect(defaultSearchDatasetDataMock).toHaveBeenCalledWith(
       expect.objectContaining({ vlmModel: undefined })
@@ -494,7 +586,7 @@ describe('dispatchDatasetSearch', () => {
     );
   });
 
-  it('uses default recall for image-only input even when deep search is enabled', async () => {
+  it('uses default recall for image-only input', async () => {
     defaultSearchDatasetDataMock.mockResolvedValue({
       searchRes: [],
       embeddingTokens: 4,
@@ -520,14 +612,12 @@ describe('dispatchDatasetSearch', () => {
         embeddingWeight: 0.5,
         usingReRank: false,
         rerankWeight: 0.5,
-        datasetSearchUsingExtensionQuery: false,
-        datasetDeepSearch: true
+        datasetSearchUsingExtensionQuery: false
       },
       nodeSummary: createNodeSummary(),
       usagePush: usagePushMock
     } as any);
 
-    expect(deepRagSearchMock).not.toHaveBeenCalled();
     expect(defaultSearchDatasetDataMock).toHaveBeenCalledWith(
       expect.objectContaining({
         textQueries: [],
@@ -536,6 +626,38 @@ describe('dispatchDatasetSearch', () => {
     );
     expect(result[DispatchNodeResponseKeyEnum.nodeResponse]?.datasetQueries).toEqual([
       'https://files.example.com/query.png'
+    ]);
+  });
+
+  it('ignores retired search options and bills ordinary recall', async () => {
+    const quotes = [{ id: 'ordinary', q: 'question', a: 'answer', sourceName: 'doc.md' }];
+    defaultSearchDatasetDataMock.mockResolvedValue({
+      searchRes: quotes,
+      embeddingTokens: 10,
+      reRankInputTokens: 0,
+      usingSimilarityFilter: false,
+      usingReRank: false
+    });
+
+    const result = await runSearch({
+      datasetDeepSearch: true,
+      datasetDeepSearchModelId: 'deleted-model',
+      datasetDeepSearchModel: 'deleted-model',
+      datasetDeepSearchMaxTimes: 3,
+      datasetDeepSearchBg: 'old settings'
+    });
+
+    expect(result.error).toBeUndefined();
+    expect(result.data?.quoteQA).toEqual(quotes);
+    expect(defaultSearchDatasetDataMock).toHaveBeenCalledWith(
+      expect.objectContaining({ textQueries: ['question'] })
+    );
+    expect((await modelGetters.getSystemModelHandle()).getModelData).not.toHaveBeenCalledWith(
+      expect.objectContaining({ modelId: 'deleted-model' }),
+      expect.anything()
+    );
+    expect(usagePushMock).toHaveBeenCalledWith([
+      expect.objectContaining({ inputTokens: 10, totalPoints: 0.1 })
     ]);
   });
 
@@ -548,7 +670,7 @@ describe('dispatchDatasetSearch', () => {
 
     // searchUsingReRank 为 true 时计费分支会读取 rerankModelData，必须配置。
     const useRerankModel = async () => {
-      vi.mocked((await modelGetters.getModelHandle()).getRerankModelData).mockReturnValue({
+      vi.mocked((await modelGetters.getSystemModelHandle()).getRerankModelData).mockReturnValue({
         modelId: 'rerank-model',
         model: 'rerank-model',
         name: 'Rerank Model',
@@ -614,23 +736,72 @@ describe('dispatchDatasetSearch', () => {
         'retrievalResults'
       );
     });
+  });
 
-    it('omits the field on the deep search path, which does not produce it', async () => {
-      await useRerankModel();
-      deepRagSearchMock.mockResolvedValue({
-        searchRes: reranked,
-        embeddingTokens: 10,
-        reRankInputTokens: 5,
-        usingSimilarityFilter: false,
-        usingReRank: true
-      });
+  it('downgrades workflow resource errors without changing the node response', async () => {
+    const error = new WorkflowResourceError('App resource is unavailable: dataset:deleted_id');
+    loadWorkflowDatasetResourceMock.mockRejectedValueOnce(error);
+    const result = await runSearch();
 
-      const result = await runSearch({ usingReRank: true, datasetDeepSearch: true });
-      expect(deepRagSearchMock).toHaveBeenCalled();
-
-      expect(result[DispatchNodeResponseKeyEnum.nodeResponse]).not.toHaveProperty(
-        'retrievalResults'
-      );
+    expect(result.rawError).toBe(error);
+    expect(result).toMatchObject({
+      error: { [NodeOutputKeyEnum.errorText]: error.message },
+      [DispatchNodeResponseKeyEnum.nodeResponse]: { errorText: error.message },
+      [DispatchNodeResponseKeyEnum.toolResponse]: { error: error.message }
     });
+    expect(mockLogger.warn).toHaveBeenCalledWith('Dataset search dispatch failed', { error });
+    expect(mockLogger.error).not.toHaveBeenCalled();
+  });
+
+  it('downgrades log to warn when dataset is missing (unExistDataset)', async () => {
+    findDatasetMock.mockReturnValueOnce({ lean: vi.fn().mockResolvedValue([]) });
+    const result = await runSnapshotSearch();
+    expect(result.rawError).toBeDefined();
+    expect(mockLogger.warn).toHaveBeenCalledWith('Dataset search dispatch failed', {
+      error: DatasetErrEnum.unExist
+    });
+    expect(mockLogger.error).not.toHaveBeenCalled();
+  });
+
+  it('retains logger.error when the dataset database query fails', async () => {
+    const error = new Error('Mongo connection timed out');
+    findDatasetMock.mockReturnValueOnce({ lean: vi.fn().mockRejectedValue(error) });
+    const result = await runSnapshotSearch();
+    expect(result.rawError).toBe(error);
+    expect(result.error).toEqual({ [NodeOutputKeyEnum.errorText]: error.message });
+    expect(mockLogger.error).toHaveBeenCalledWith('Dataset search dispatch failed', { error });
+    expect(mockLogger.warn).not.toHaveBeenCalled();
+  });
+});
+
+describe('isDatasetResourceMissingError', () => {
+  it('identifies WorkflowResourceError as missing resource error', () => {
+    expect(
+      isDatasetResourceMissingError(
+        new WorkflowResourceError('App resource is not declared: dataset:123')
+      )
+    ).toBe(true);
+    expect(
+      isDatasetResourceMissingError(
+        new WorkflowResourceError('App resource is unavailable: dataset:123')
+      )
+    ).toBe(true);
+  });
+
+  it('identifies unExistDataset as missing resource error', () => {
+    expect(isDatasetResourceMissingError(DatasetErrEnum.unExist)).toBe(true);
+    expect(isDatasetResourceMissingError(new UserError(DatasetErrEnum.unExist))).toBe(true);
+    expect(isDatasetResourceMissingError({ message: DatasetErrEnum.unExist })).toBe(true);
+    expect(isDatasetResourceMissingError({ statusText: DatasetErrEnum.unExist })).toBe(true);
+  });
+
+  it('does not match unexpected system errors', () => {
+    expect(isDatasetResourceMissingError(new Error('Database timeout'))).toBe(false);
+    expect(isDatasetResourceMissingError(new Error('Cannot read properties of undefined'))).toBe(
+      false
+    );
+    expect(isDatasetResourceMissingError(null)).toBe(false);
+    expect(isDatasetResourceMissingError(undefined)).toBe(false);
+    expect(isDatasetResourceMissingError({})).toBe(false);
   });
 });

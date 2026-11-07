@@ -10,7 +10,7 @@ import type { VariableItemType } from '@fastgpt/global/core/app/variable/type';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
-import { formatEditorVariablePickerIcon } from '@fastgpt/global/core/workflow/utils';
+import { formatEditorVariablePickerIcon } from '@fastgpt/web/core/workflow/utils';
 import ChatFunctionTip from './Tip';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import DndDrag, {

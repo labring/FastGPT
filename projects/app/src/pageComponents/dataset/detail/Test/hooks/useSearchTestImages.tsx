@@ -3,6 +3,9 @@ import { useTranslation } from 'next-i18next';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { getUploadSearchTestImagePresignedUrl } from '@/web/core/dataset/api/file';
 import { useUserStore } from '@/web/support/user/useUserStore';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { getFileUploadLimits } from '@fastgpt/global/common/file/limit';
+import { getRuntimeStandardPlanConfig } from '@fastgpt/global/support/wallet/sub/utils';
 import { imageFileType } from '@fastgpt/global/common/file/constants';
 import { formatFileSize } from '@fastgpt/global/common/file/tools';
 import { S3FileUploader } from '@fastgpt/web/common/file/uploader';
@@ -55,8 +58,24 @@ export const useSearchTestImages = ({
       (await initTeamPlanStatus()
         .then(() => useUserStore.getState().teamPlanStatus)
         .catch(() => undefined));
+    const { feConfigs, subPlans } = useSystemStore.getState();
+    const teamPlan = planStatus?.standard;
     const maxImageSize =
-      (planStatus?.standard?.maxUploadFileSize ?? uploadFileMaxSize ?? 500) * 1024 * 1024;
+      getFileUploadLimits({
+        teamPlan,
+        plan: teamPlan?.currentSubLevel
+          ? getRuntimeStandardPlanConfig({
+              plans: subPlans?.standard,
+              level: teamPlan.currentSubLevel
+            })
+          : undefined,
+        systemLimit: {
+          ...feConfigs.limit,
+          uploadFileMaxSize: uploadFileMaxSize || feConfigs.limit.uploadFileMaxSize
+        }
+      }).maxUploadFileSize *
+      1024 *
+      1024;
     const nonEmptyImageFiles = imageFiles.filter((file) => file.size > 0);
     if (nonEmptyImageFiles.length < imageFiles.length) {
       toast({

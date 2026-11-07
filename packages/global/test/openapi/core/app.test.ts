@@ -1,4 +1,8 @@
-import { GetReferencedAppsQuerySchema } from '../../../openapi/core/app/common/api';
+import {
+  AppListItemSchema,
+  GetReferencedAppsQuerySchema
+} from '../../../openapi/core/app/common/api';
+import { AppSchemaTypeSchema } from '../../../core/app/type';
 import { describe, expect, it } from 'vitest';
 import { openAPIDocument } from '../../../openapi/provider/devapi';
 import { openAPITagGroups } from '../../../openapi/path';
@@ -7,6 +11,8 @@ import {
   ChangeAppOwnerBodySchema,
   ChangeAppOwnerResponseSchema
 } from '../../../openapi/core/app/permission/api';
+import { UpdateHttpToolsBodySchema } from '../../../openapi/core/app/httpTools/api';
+import { GetMcpToolsBodySchema } from '../../../openapi/core/app/mcpTools/api';
 import { UpdateAppCollaboratorBodySchema } from '../../../openapi/support/permission/api';
 import {
   GetTemplateTypesQuerySchema,
@@ -29,9 +35,22 @@ import { EvaluationStatusEnum } from '../../../core/app/evaluation/constants';
 const objectId = '68ad85a7463006c963799a05';
 
 describe('App OpenAPI contracts', () => {
+  it('keeps ancestor paths in storage types only and documents folder access modes', () => {
+    expect(AppSchemaTypeSchema.shape).not.toHaveProperty('ancestorIds');
+    expect(AppListItemSchema.shape).not.toHaveProperty('ancestorIds');
+    expect(AppListItemSchema.shape.folderAccessMode).toBeDefined();
+    expect(
+      openAPIDocument.paths?.['/core/app/folder/create']?.post?.responses?.[200]?.content
+    ).toBeUndefined();
+  });
+
   it('registers app ownership transfer and template type APIs', () => {
-    expect(openAPIDocument.paths?.['/core/app/list']?.post).toBeDefined();
+    expect(openAPIDocument.paths?.['/core/app/list']?.post).toMatchObject({
+      deprecated: true,
+      description: expect.stringContaining('/core/app/listV2')
+    });
     expect(openAPIDocument.paths?.['/core/app/listV2']?.post).toBeDefined();
+    expect(openAPIDocument.paths?.['/core/app/listV2']?.post?.deprecated).not.toBe(true);
     expect(openAPIDocument.paths?.['/core/app/referencedApps']?.get).toBeDefined();
     expect(openAPIDocument.paths?.['/core/app/appsByAppId']).toBeUndefined();
     expect(openAPIDocument.paths?.['/core/app/referencedAppsByAppId']).toBeUndefined();
@@ -176,7 +195,9 @@ describe('App OpenAPI contracts', () => {
       pageNum: 2
     });
     expect(ListEvaluationItemsBodySchema.parse({ evalId: objectId })).toEqual({
-      evalId: objectId
+      evalId: objectId,
+      pageSize: 20,
+      pageNum: 1
     });
     expect(
       ExportEvaluationItemsBodySchema.parse({
@@ -234,5 +255,45 @@ describe('App OpenAPI contracts', () => {
         ]
       }).list
     ).toHaveLength(1);
+  });
+
+  it('normalizes legacy dual-field secrets at HTTP and MCP API boundaries', () => {
+    const legacyHeaderSecret = {
+      Authorization: { value: 'plain-token', secret: 'encrypted-token' },
+      'X-Empty': { value: '', secret: 'fallback-token' },
+      'X-Unconfigured': {}
+    };
+    const httpBody = UpdateHttpToolsBodySchema.parse({
+      appId: objectId,
+      headerSecret: legacyHeaderSecret,
+      toolList: [
+        {
+          name: 'search',
+          description: 'Search',
+          path: '/search',
+          method: 'GET',
+          headerSecret: {
+            'X-Nested': { value: 'nested-token', secret: 'nested-cipher' },
+            'X-Unconfigured': {}
+          }
+        }
+      ]
+    });
+
+    expect(httpBody.headerSecret).toEqual({
+      Authorization: { value: 'plain-token' },
+      'X-Empty': { secret: 'fallback-token' },
+      'X-Unconfigured': { value: '' }
+    });
+    expect(httpBody.toolList[0].headerSecret).toEqual({
+      'X-Nested': { value: 'nested-token' },
+      'X-Unconfigured': { value: '' }
+    });
+
+    const mcpBody = GetMcpToolsBodySchema.parse({
+      url: 'https://example.com/mcp',
+      headerSecret: legacyHeaderSecret
+    });
+    expect(mcpBody.headerSecret).toEqual(httpBody.headerSecret);
   });
 });

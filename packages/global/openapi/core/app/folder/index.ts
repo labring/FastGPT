@@ -2,7 +2,6 @@ import type { OpenAPIPath } from '../../../type';
 import { DevApiTagsMap } from '../../../tag';
 import {
   CreateAppFolderBodySchema,
-  CreateAppFolderResponseSchema,
   GetAppFolderPathQuerySchema,
   GetAppFolderPathResponseSchema
 } from './api';
@@ -11,7 +10,8 @@ export const AppFolderPath: OpenAPIPath = {
   '/core/app/folder/create': {
     post: {
       summary: '创建应用文件夹',
-      description: '在根目录或指定父级文件夹下创建应用文件夹或工具文件夹',
+      description:
+        '在根目录或指定父级文件夹下创建应用文件夹或工具文件夹，可选择是否继承父级文件夹权限',
       tags: [DevApiTagsMap.appFolder],
       requestBody: {
         content: {
@@ -22,12 +22,7 @@ export const AppFolderPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '成功创建应用文件夹',
-          content: {
-            'application/json': {
-              schema: CreateAppFolderResponseSchema
-            }
-          }
+          description: '成功创建应用文件夹'
         }
       }
     }

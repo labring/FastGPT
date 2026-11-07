@@ -23,7 +23,7 @@ const NodeTool = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   );
 
   return (
-    <NodeCard minW={'350px'} selected={selected} {...data}>
+    <NodeCard minW={'524px'} selected={selected} {...data}>
       {isTool && hasDynamicToolInput(data) && (
         <>
           <Container>

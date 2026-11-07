@@ -12,9 +12,65 @@ import {
 import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import type { AppDetailType } from '@fastgpt/global/core/app/type';
+import { migrateWorkflowToCurrent } from '@fastgpt/global/core/workflow/migration/migrate';
+import { filterSensitiveNodesData, storeNode2FlowNode } from '@/web/core/workflow/utils';
 
 describe('WorkflowComponents utils', () => {
   describe('uiWorkflow2StoreWorkflow', () => {
+    it.each([
+      {
+        flowNodeType: FlowNodeTypeEnum.tool,
+        version: '1.2.3',
+        versionLabel: '1.2.3',
+        isLatestVersion: true
+      },
+      {
+        flowNodeType: FlowNodeTypeEnum.pluginModule,
+        version: 'published-version-id',
+        versionLabel: 'Initial release',
+        isLatestVersion: false
+      },
+      {
+        flowNodeType: FlowNodeTypeEnum.toolSet,
+        version: '',
+        versionLabel: undefined,
+        isLatestVersion: true
+      }
+    ])(
+      'preserves $flowNodeType version metadata through sanitized JSON export and import',
+      ({ flowNodeType, ...versionMetadata }) => {
+        const t = ((key: string) => key) as any;
+        const node = storeNode2FlowNode({
+          item: {
+            nodeId: 'tool-node',
+            name: 'Tool',
+            flowNodeType,
+            pluginId: 'systemTool-search',
+            ...versionMetadata,
+            inputs: [],
+            outputs: []
+          },
+          t
+        });
+        const workflow = uiWorkflow2StoreWorkflow({ nodes: [node], edges: [] });
+        const exportedConfig = JSON.parse(
+          JSON.stringify({
+            ...workflow,
+            nodes: filterSensitiveNodesData(workflow.nodes),
+            chatConfig: {}
+          })
+        );
+        const importedWorkflow = migrateWorkflowToCurrent(exportedConfig);
+        const restoredNode = storeNode2FlowNode({ item: importedWorkflow.nodes[0], t });
+
+        expect({
+          version: restoredNode.data.version,
+          versionLabel: restoredNode.data.versionLabel,
+          isLatestVersion: restoredNode.data.isLatestVersion
+        }).toEqual(versionMetadata);
+      }
+    );
+
     it('should convert UI workflow to store workflow', () => {
       const mockHandleList = [{ getAttribute: () => 'source1' }, { getAttribute: () => 'target1' }];
 
@@ -35,6 +91,7 @@ describe('WorkflowComponents utils', () => {
             intro: 'Intro 1',
             avatar: 'avatar1',
             flowNodeType: FlowNodeTypeEnum.userInput,
+            metadataLocale: 'zh-CN',
             showStatus: true,
             version: 1,
             inputs: [],
@@ -79,6 +136,7 @@ describe('WorkflowComponents utils', () => {
         intro: 'Intro 1',
         avatar: 'avatar1',
         flowNodeType: FlowNodeTypeEnum.userInput,
+        metadataLocale: 'zh-CN',
         position: { x: 100, y: 100 }
       });
 
@@ -89,6 +147,89 @@ describe('WorkflowComponents utils', () => {
         sourceHandle: 'source1',
         targetHandle: 'target1'
       });
+    });
+
+    it('preserves expanded and stored Agent tools without requiring display-only metadata', () => {
+      const nodes = [
+        {
+          data: {
+            nodeId: 'agent',
+            name: 'Agent',
+            flowNodeType: FlowNodeTypeEnum.agent,
+            inputs: [
+              {
+                key: NodeInputKeyEnum.selectedTools,
+                label: '',
+                renderTypeList: [],
+                value: [
+                  {
+                    id: 'search',
+                    pluginId: 'search',
+                    name: 'Search',
+                    avatar: 'icon/search',
+                    flowNodeType: FlowNodeTypeEnum.tool,
+                    intro: '',
+                    templateType: 'personalTool',
+                    version: '1.0.0',
+                    metadataLocale: 'zh-CN',
+                    inputs: []
+                  },
+                  {
+                    id: 'deleted-tool',
+                    pluginId: 'deleted-tool',
+                    name: 'Deleted Tool',
+                    avatar: 'icon/deleted',
+                    flowNodeType: FlowNodeTypeEnum.tool,
+                    intro: '',
+                    templateType: 'personalTool',
+                    version: '1.0.0',
+                    inputs: [],
+                    rawInputs: [{ key: 'query', mode: 'agentGenerated' }],
+                    config: { apiKey: 'secret-val' },
+                    outputs: [],
+                    pluginData: { error: 'tool_missing' }
+                  },
+                  {
+                    id: 'imported-sparse-tool',
+                    name: 'Imported Sparse Tool',
+                    avatar: 'icon/sparse',
+                    version: '1.0.0',
+                    inputs: [{ key: 'topic', mode: 'manual' }],
+                    config: { topic: 'ai' }
+                  }
+                ]
+              }
+            ],
+            outputs: []
+          },
+          position: { x: 0, y: 0 }
+        }
+      ];
+
+      const result = uiWorkflow2StoreWorkflow({ nodes, edges: [] });
+
+      expect(result.nodes[0].inputs[0].value).toEqual([
+        expect.objectContaining({
+          id: 'search',
+          name: 'Search',
+          avatar: 'icon/search',
+          metadataLocale: 'zh-CN'
+        }),
+        expect.objectContaining({
+          id: 'deleted-tool',
+          name: 'Deleted Tool',
+          avatar: 'icon/deleted',
+          inputs: [{ key: 'query', mode: 'agentGenerated' }],
+          config: { apiKey: 'secret-val' }
+        }),
+        expect.objectContaining({
+          id: 'imported-sparse-tool',
+          name: 'Imported Sparse Tool',
+          avatar: 'icon/sparse',
+          inputs: [{ key: 'topic', mode: 'manual' }],
+          config: { topic: 'ai' }
+        })
+      ]);
     });
 
     it('should keep valid edges when ReactFlow handles have not mounted yet', () => {
@@ -563,34 +704,6 @@ describe('WorkflowComponents utils', () => {
       expect(result.nodes[0].inputs[0].selectedType).toBe(FlowNodeInputTypeEnum.input);
     });
 
-    it('should preserve the canonical selectedType when saving workflow', () => {
-      const nodes = [
-        {
-          data: {
-            nodeId: 'chatNode',
-            name: 'Chat node',
-            intro: '',
-            avatar: '',
-            flowNodeType: FlowNodeTypeEnum.chatNode,
-            showStatus: true,
-            inputs: [
-              {
-                key: NodeInputKeyEnum.userChatInput,
-                renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.textarea],
-                selectedType: FlowNodeInputTypeEnum.reference
-              }
-            ],
-            outputs: []
-          },
-          position: { x: 0, y: 0 }
-        }
-      ];
-
-      const result = uiWorkflow2StoreWorkflow({ nodes, edges: [] });
-
-      expect(result.nodes[0].inputs[0].selectedType).toBe(FlowNodeInputTypeEnum.reference);
-    });
-
     it('should keep selected dataset snapshot for later server-side save formatting', () => {
       const nodes = [
         {
@@ -681,6 +794,89 @@ describe('WorkflowComponents utils', () => {
       const parsed = JSON.parse(result);
 
       expect(parsed[0].inputs[0].value).toEqual(['value1']);
+    });
+
+    it('should filter skills, tools, datasets and prompt mentions for Agent nodes', () => {
+      const nodes = [
+        {
+          nodeId: 'agent',
+          name: 'Agent',
+          flowNodeType: FlowNodeTypeEnum.agent,
+          position: { x: 0, y: 0 },
+          inputs: [
+            {
+              key: NodeInputKeyEnum.skills,
+              label: '',
+              renderTypeList: [],
+              value: [{ skillId: 'skill-1', name: 'Skill 1' }]
+            },
+            {
+              key: NodeInputKeyEnum.selectedTools,
+              label: '',
+              renderTypeList: [],
+              value: [{ id: 'tool-1', name: 'Tool 1' }]
+            },
+            {
+              key: NodeInputKeyEnum.datasetSelectList,
+              label: '',
+              renderTypeList: [],
+              value: [{ datasetId: 'dataset-1' }]
+            },
+            {
+              key: NodeInputKeyEnum.datasetParams,
+              label: '',
+              renderTypeList: [],
+              value: {
+                datasets: [{ datasetId: 'dataset-1' }],
+                similarity: 0.4
+              }
+            },
+            {
+              key: NodeInputKeyEnum.aiSystemPrompt,
+              label: '',
+              renderTypeList: [],
+              value: '请结合 {{@dataset-1@}} 和 {{@skill-1@}} 回答 {{$start.userChatInput$}}'
+            }
+          ],
+          outputs: []
+        }
+      ] as any;
+
+      const filtered = filterSensitiveNodesData(nodes);
+      const inputMap = new Map(filtered[0].inputs.map((item: any) => [item.key, item.value]));
+
+      expect(inputMap.get(NodeInputKeyEnum.skills)).toEqual([]);
+      expect(inputMap.get(NodeInputKeyEnum.selectedTools)).toEqual([]);
+      expect(inputMap.get(NodeInputKeyEnum.datasetSelectList)).toEqual([]);
+      expect(inputMap.get(NodeInputKeyEnum.datasetParams)).toEqual({
+        datasets: [],
+        similarity: 0.4
+      });
+      expect(inputMap.get(NodeInputKeyEnum.aiSystemPrompt)).toBe(
+        '请结合  和  回答 {{$start.userChatInput$}}'
+      );
+
+      const referenceNodes = [
+        {
+          nodeId: 'agent-ref',
+          flowNodeType: FlowNodeTypeEnum.agent,
+          inputs: [
+            {
+              key: NodeInputKeyEnum.datasetSelectList,
+              label: '',
+              renderTypeList: [
+                FlowNodeInputTypeEnum.selectDataset,
+                FlowNodeInputTypeEnum.reference
+              ],
+              selectedType: FlowNodeInputTypeEnum.reference,
+              value: ['upstream_node', 'datasets_out']
+            }
+          ],
+          outputs: []
+        }
+      ] as any;
+      const filteredRef = filterSensitiveNodesData(referenceNodes);
+      expect(filteredRef[0].inputs[0].value).toEqual(['upstream_node', 'datasets_out']);
     });
   });
 

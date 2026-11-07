@@ -1,14 +1,11 @@
 import { getDatasetModelReference } from '../dataset/model';
 import { MongoDataset } from '../dataset/schema';
-
 import { DatasetTypeEnum, DatasetTypeMap } from '@fastgpt/global/core/dataset/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import {
-  nodeInputIsReference,
-  projectExternalVariableInput
-} from '@fastgpt/global/core/workflow/utils';
+import { nodeInputIsReference } from '@fastgpt/global/common/workflow/reference';
+import { projectExternalVariableInput } from '@fastgpt/global/common/workflow/input';
 import {
   initAgentToolInputType,
   normalizeFlowNodeInputType
@@ -40,7 +37,7 @@ import { MongoAgentSkills } from '../ai/skill/model/schema';
 import { AgentSkillSourceEnum } from '@fastgpt/global/core/ai/skill/constants';
 import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
-import { getAppResourceKey, normalizeAppToolResource } from './resources';
+import { getAppResourceKey, normalizeAppToolResource } from './resource/utils';
 import type {
   FlowNodeInputItemType,
   SelectedDatasetType
@@ -139,12 +136,14 @@ export async function rewriteAppWorkflowToDetail({
     id,
     versionId,
     source,
-    resourceType = 'tool'
+    resourceType = 'tool',
+    metadataLocale
   }: {
     id: string;
     versionId?: string;
     source?: string;
     resourceType?: 'agent' | 'tool';
+    metadataLocale?: localeType;
   }) => {
     const authError = await authSnapshotExternalTool({ id, resourceType });
     if (authError) {
@@ -158,7 +157,7 @@ export async function rewriteAppWorkflowToDetail({
       const preview = await getClientToolPreviewNode({
         appId: id,
         versionId,
-        lang,
+        lang: metadataLocale ?? 'en',
         source,
         teamId
       });
@@ -286,6 +285,9 @@ export async function rewriteAppWorkflowToDetail({
     const normalizedInput = normalizeFlowNodeInputType(
       {
         ...previewInput,
+        label: savedInput?.label ?? previewInput.label,
+        description: savedInput?.description ?? previewInput.description,
+        placeholder: savedInput?.placeholder ?? previewInput.placeholder,
         renderTypeList,
         selectedType: savedInput?.selectedType,
         defaultToAgentGenerated:
@@ -300,14 +302,9 @@ export async function rewriteAppWorkflowToDetail({
       value: hasSavedValue ? savedInput.value : normalizedInput.value
     });
   };
-  type DatasetLoadResult = {
-    datasets: SelectedDatasetType[];
-    errors: string[];
-  };
-
   const formatSelectedDatasetValue = async (
     value?: SelectedDatasetSnapshot[] | SelectedDatasetSnapshot
-  ): Promise<DatasetLoadResult | undefined> => {
+  ): Promise<SelectedDatasetType[] | undefined> => {
     const loadDatasetInfo = async (
       snapshot: SelectedDatasetSnapshot
     ): Promise<SelectedDatasetType> => {
@@ -361,13 +358,7 @@ export async function rewriteAppWorkflowToDetail({
 
     if (!value) return;
     const datasets = Array.isArray(value) ? value : [value];
-    const results = await Promise.allSettled(datasets.map(loadDatasetInfo));
-    return {
-      datasets: results.flatMap((result) => (result.status === 'fulfilled' ? [result.value] : [])),
-      errors: results.flatMap((result) =>
-        result.status === 'rejected' ? [getErrText(result.reason, '', lang)] : []
-      )
-    };
+    return Promise.all(datasets.map(loadDatasetInfo));
   };
 
   await Promise.all(
@@ -394,6 +385,7 @@ export async function rewriteAppWorkflowToDetail({
           id: toolId,
           versionId: node.version ?? '',
           resourceType: node.flowNodeType === FlowNodeTypeEnum.appModule ? 'agent' : 'tool',
+          metadataLocale: node.metadataLocale,
           source:
             node.source ??
             node.toolConfig?.systemTool?.source ??
@@ -405,13 +397,13 @@ export async function rewriteAppWorkflowToDetail({
           node.avatar = preview.avatar ?? node.avatar;
           node.isFolder = preview.isFolder;
           node.pluginData = {
-            name: preview.name,
+            name: node.pluginData?.name ?? preview.name,
             avatar: preview.avatar,
             status: preview.status,
             diagram: preview.diagram,
             userGuide: preview.userGuide,
             courseUrl: preview.courseUrl,
-            readmeUrl: preview.readmeUrl
+            readmeUrl: node.pluginData?.readmeUrl ?? preview.readmeUrl
           };
           node.versionLabel = preview.versionLabel;
           node.isLatestVersion = preview.isLatestVersion;
@@ -451,6 +443,8 @@ export async function rewriteAppWorkflowToDetail({
               const output = outputsMap.get(item.key);
               return {
                 ...item,
+                label: output?.label ?? item.label,
+                description: output?.description ?? item.description,
                 value: output?.value
               };
             });
@@ -486,7 +480,8 @@ export async function rewriteAppWorkflowToDetail({
                 id: tool.id,
                 versionId: tool.version,
                 source: tool.source,
-                resourceType: 'tool'
+                resourceType: 'tool',
+                metadataLocale: tool.metadataLocale
               });
               if (result.success) {
                 const data = result.data!;
@@ -524,10 +519,19 @@ export async function rewriteAppWorkflowToDetail({
                   };
                 });
 
-                formatToolInputSecrets({ inputs: mergedInputs });
+                formatToolInputSecrets({ inputs: mergedInputs, flowNodeType: data.flowNodeType });
+                // 旧工具用英文重建缺失文案，但不把回退语言写成历史 metadataLocale。
+                const { metadataLocale: previewLocale, ...toolData } = data;
+                void previewLocale;
 
                 return {
-                  ...data,
+                  ...toolData,
+                  id: toolData.pluginId ?? toolData.id,
+                  ...(tool.metadataLocale !== undefined
+                    ? { metadataLocale: tool.metadataLocale }
+                    : {}),
+                  name: tool.name ?? data.name,
+                  avatar: tool.avatar ?? data.avatar,
                   source: tool.source ?? data.source,
                   toolConfig:
                     (tool.toolConfig?.mcpToolSet && 'toolId' in tool.toolConfig.mcpToolSet) ||
@@ -542,9 +546,11 @@ export async function rewriteAppWorkflowToDetail({
                   pluginId: tool.id,
                   source: tool.source,
                   version: tool.version ?? '',
+                  metadataLocale: tool.metadataLocale,
                   toolConfig: tool.toolConfig,
                   config: tool.config ?? {},
-                  inputs: tool.inputs ?? [],
+                  inputs: [],
+                  rawInputs: tool.inputs,
                   templateType: 'personalTool' as const,
                   flowNodeType: FlowNodeTypeEnum.tool,
                   name: tool.name ?? 'Invalid',
@@ -554,7 +560,6 @@ export async function rewriteAppWorkflowToDetail({
                   weight: 0,
                   isTool: true,
                   outputs: [],
-                  configStatus: 'invalid' as const,
                   pluginData: {
                     error: result.error
                   }
@@ -580,44 +585,31 @@ export async function rewriteAppWorkflowToDetail({
         node.flowNodeType === FlowNodeTypeEnum.datasetSearchNode ||
         node.flowNodeType === FlowNodeTypeEnum.agent
       ) {
-        const datasetErrors: string[] = [];
         await Promise.all(
           node.inputs.map(async (input) => {
             if (nodeInputIsReference(input)) return;
-            try {
-              // Agent
-              if (input.key === NodeInputKeyEnum.datasetSelectList) {
-                const result = await formatSelectedDatasetValue(input.value);
-                if (result) {
-                  input.value = result.datasets;
-                  datasetErrors.push(...result.errors);
-                }
+            // Agent / DatasetSearch
+            if (input.key === NodeInputKeyEnum.datasetSelectList) {
+              const datasets = await formatSelectedDatasetValue(input.value);
+              if (datasets) {
+                input.value = datasets;
               }
-              // workflow
-              if (input.key === NodeInputKeyEnum.datasetParams) {
-                const datasetParams = input.value as AppFormEditFormType['dataset'] | undefined;
-                if (datasetParams?.datasets) {
-                  const result = await formatSelectedDatasetValue(datasetParams.datasets);
-                  if (!result) return;
+            }
+            // Legacy Agent datasetParams
+            if (input.key === NodeInputKeyEnum.datasetParams) {
+              const datasetParams = input.value as AppFormEditFormType['dataset'] | undefined;
+              if (datasetParams?.datasets) {
+                const datasets = await formatSelectedDatasetValue(datasetParams.datasets);
+                if (!datasets) return;
 
-                  input.value = {
-                    ...datasetParams,
-                    datasets: result.datasets
-                  };
-                  datasetErrors.push(...result.errors);
-                }
+                input.value = {
+                  ...datasetParams,
+                  datasets
+                };
               }
-            } catch (error) {
-              datasetErrors.push(getErrText(error, '', lang));
             }
           })
         );
-        if (datasetErrors.length > 0) {
-          node.pluginData = {
-            ...node.pluginData,
-            error: [node.pluginData?.error, ...datasetErrors].filter(Boolean).join('\n')
-          };
-        }
       }
     })
   );

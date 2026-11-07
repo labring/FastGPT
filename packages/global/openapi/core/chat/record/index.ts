@@ -1,9 +1,9 @@
+import { createChatTargetQueryParameters } from '../api';
 import type { OpenAPIPath } from '../../../type';
 import { DevApiTagsMap, SystemOpenApiTagMap } from '../../../tag';
 import {
   GetResDataQueryRawSchema,
   DeleteChatRecordBodyRawSchema,
-  DeleteChatRecordResponseSchema,
   GetQuoteBodyRawSchema,
   GetQuoteResponseSchema,
   GetCollectionQuoteBodyRawSchema,
@@ -71,9 +71,7 @@ export const ChatRecordPath: OpenAPIPath = {
       summary: '获取对话响应详细数据',
       description: '根据 dataId 获取对话中某条 AI 回复的详细响应数据',
       tags: [DevApiTagsMap.chatRecord, SystemOpenApiTagMap.chat],
-      requestParams: {
-        query: GetResDataQueryRawSchema
-      },
+      parameters: createChatTargetQueryParameters(GetResDataQueryRawSchema),
       responses: {
         200: {
           description: '成功返回响应数据'
@@ -134,9 +132,11 @@ export const ChatRecordPath: OpenAPIPath = {
   '/core/chat/record/delete': {
     delete: {
       summary: '删除对话',
-      description: '软删除指定的对话消息记录（设置 deleteTime）',
+      description:
+        '通过 JSON Body 软删除指定消息，outLinkAuthData 传对象，contentIds 传数组。Ask/Preview 的待回答状态由剩余消息推导；删除末轮回答及后续 AI 后可重新回答。',
       tags: [DevApiTagsMap.chatRecord, SystemOpenApiTagMap.chat],
       requestBody: {
+        required: true,
         content: {
           'application/json': {
             schema: DeleteChatRecordBodyRawSchema
@@ -145,12 +145,7 @@ export const ChatRecordPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '删除成功',
-          content: {
-            'application/json': {
-              schema: DeleteChatRecordResponseSchema
-            }
-          }
+          description: '删除成功'
         }
       }
     }

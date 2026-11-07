@@ -95,14 +95,14 @@ This example demonstrates how to use the **Conditional Loop** mode to allow the 
    - Loop Type: `Conditional Loop`.
 
 2. **Configure Sub-Workflow inside the Loop Body**
-   - **【AI Chat】(Copy Refinement)**: Receives the draft inputs.
-   - **【AI Chat#2】(Evaluation)**: Grades the refined draft, outputting a numeric score.
-   - **【Condition】**:
-     - If the score meets the requirements: Route to the **【Assigned Reply】** node (to output the final copy to the user), then connect it to the **【Loop Break】** node to exit the loop.
-     - If the score does not meet the requirements: Do not trigger any subsequent connections. The loop will automatically start the next iteration using the draft polished in this round.
+   - **AI Chat (Copy Refinement)**: Receives and refines the input draft.
+   - **AI Chat#2 (Evaluation)**: Grades the refined draft, outputting a numeric score.
+   - **Condition**:
+     - If the score meets the requirements: Route to the **Specified Reply** node (to output the final copy to the user), then connect it to the **Loop Break** node to exit the loop.
+     - If the score does not meet the requirements: Do not trigger any subsequent connections. The loop will automatically start the next refinement iteration.
 
 3. **Configure Outputs**
-   - Add a custom output `final_text` in the **Outputs** panel of the Loop Node, referencing the reply of the 【AI Chat (Copy Refinement)】 node inside.
+   - Add a custom output `final_text` in the **Outputs** panel of the Loop Node, referencing the reply of the **AI Chat (Copy Refinement)** node inside.
    - Once the loop exits, downstream nodes can reference this `final_text` variable to receive the final polished copy.
 
 #### Execution Flow & Details
@@ -112,4 +112,4 @@ After the execution completes, you can expand and inspect the detailed execution
 ![Execution Flow Details](/imgs/fastgpt-loop-run-detail.png)
 
 1. **First Optimization Round**: Runs `Loop Start` ➡️ `AI Chat` ➡️ `AI Chat#2` ➡️ `Condition`. Since the score did not meet the requirements, the break node was not triggered, and the system automatically proceeded to the next iteration.
-2. **Second Optimization Round**: Continues running `AI Chat` ➡️ `AI Chat#2` ➡️ `Condition`. This time the score meets the requirements, routing to the `Assigned Reply` and triggering the `Loop Break` node. The entire loop exits safely.
+2. **Second Optimization Round**: Continues running `AI Chat` ➡️ `AI Chat#2` ➡️ `Condition`. This time the score meets the requirements, routing to the `Specified Reply` and triggering the `Loop Break` node. The entire loop exits safely.

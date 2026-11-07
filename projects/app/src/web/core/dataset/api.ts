@@ -31,6 +31,7 @@ import type {
 } from '@fastgpt/global/openapi/core/dataset/api';
 
 /* ======================== dataset ======================= */
+/** @deprecated 使用 getDatasetsV2，并按分页协议获取列表。 */
 export const getDatasets = (data: GetDatasetListBody) =>
   POST<GetDatasetListResponse>(`/core/dataset/list`, data, { maxQuantity: 1 });
 
@@ -40,7 +41,10 @@ export const getDatasetsV2 = (data: GetDatasetListV2Body, cancelToken?: AbortCon
     cancelToken
   });
 
-/** 获取当前筛选条件下的全部知识库，供需要跨页遍历资源的选择器使用。 */
+/**
+ * 获取当前筛选条件下的全部知识库，供需要跨页遍历资源的选择器使用。
+ * @deprecated 使用 getDatasetsV2，并按需加载后续页。
+ */
 export const getAllDatasets = (data: GetDatasetListBody = {}) => getDatasets(data);
 
 export const getDatasetsByAppIdAndDatasetIds = (data: { appId: string; datasetIdList: string[] }) =>
@@ -75,7 +79,7 @@ export const postDatasetSync = (data: PostDatasetSyncParams) =>
   });
 
 export const postCreateDatasetFolder = (data: CreateDatasetFolderBody) =>
-  POST(`/core/dataset/folder/create`, data);
+  POST<void>(`/core/dataset/folder/create`, data);
 
 export const getDatasetPermission = (id?: string) =>
   GET<GetDatasetPermissionResponse>(`/core/dataset/getPermission`, { id });

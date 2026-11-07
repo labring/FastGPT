@@ -120,6 +120,145 @@ describe('validateUploadFile', () => {
     });
   });
 
+  it('accepts an svg with an xml prolog when the extension is a text rule', async () => {
+    // file-type 把以 `<?xml` 开头的文本判为 application/xml；这是前缀启发式而非 magic
+    // bytes，不能据此否决显式声明为 text 的 .svg（系统配置的品牌 logo 上传即此场景）。
+    await expect(
+      validateUploadFile({
+        buffer: Buffer.from(
+          '<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M0 0h24v24H0z"/></svg>',
+          'utf8'
+        ),
+        filename: 'logo.svg',
+        uploadConstraints: {
+          allowedExtensions: ['.png', '.svg'],
+          extensionRules: [{ extension: '.svg', source: 'builtin', verification: 'text' }]
+        }
+      })
+    ).resolves.toMatchObject({
+      filename: 'logo.svg',
+      contentType: 'image/svg+xml',
+      extension: '.svg',
+      detectionSource: 'text'
+    });
+  });
+
+  it('still rejects binary content renamed as a text-rule svg', async () => {
+    await expect(
+      validateUploadFile({
+        buffer: pngBuffer,
+        filename: 'logo.svg',
+        uploadConstraints: {
+          allowedExtensions: ['.png', '.svg'],
+          extensionRules: [{ extension: '.svg', source: 'builtin', verification: 'text' }]
+        }
+      })
+    ).rejects.toThrow('UploadFileTypeMismatch');
+  });
+
+  it('keeps the detected type hint for an extensionless xml file', async () => {
+    // 无后缀、无 MIME hint、无扩展名白名单时，仍需用检测结果推断出 .xml / application/xml。
+    await expect(
+      validateUploadFile({
+        buffer: Buffer.from('<?xml version="1.0"?>\n<root/>', 'utf8'),
+        filename: 'file',
+        uploadConstraints: { defaultContentType: 'application/octet-stream' }
+      })
+    ).resolves.toMatchObject({
+      filename: 'file.xml',
+      contentType: 'application/xml',
+      extension: '.xml'
+    });
+  });
+
+  it('rejects binary content that only starts with an xml prefix', async () => {
+    // file-type 仅凭 `<?xml ` 前缀就返回 application/xml；后续字节是否二进制必须由内容
+    // 本身判定，否则 `<?xml` 开头的任意二进制都能冒充 text 规则的后缀。
+    const crafted = Buffer.concat([
+      Buffer.from('<?xml version="1.0"?>'),
+      Buffer.alloc(64),
+      Buffer.from([0xff, 0xd8, 0xff, 0xe0])
+    ]);
+    await expect(
+      validateUploadFile({
+        buffer: crafted,
+        filename: 'logo.svg',
+        uploadConstraints: {
+          allowedExtensions: ['.png', '.svg'],
+          extensionRules: [{ extension: '.svg', source: 'builtin', verification: 'text' }]
+        }
+      })
+    ).rejects.toThrow('UploadFileTypeMismatch');
+  });
+
+  it('accepts a bom-prefixed utf-16 text file under a text rule', async () => {
+    // FF FE 同时是 MPEG 帧同步字，file-type 会把 UTF-16 文本判成 audio/mpeg；
+    // 内容确实是文本时，显式声明的 text 规则后缀应当胜出。
+    const utf16 = Buffer.concat([Buffer.from([0xff, 0xfe]), Buffer.from('hello world', 'utf16le')]);
+    await expect(
+      validateUploadFile({
+        buffer: utf16,
+        filename: 'notes.txt',
+        uploadConstraints: {
+          allowedExtensions: ['.txt'],
+          extensionRules: [{ extension: '.txt', source: 'builtin', verification: 'text' }]
+        }
+      })
+    ).resolves.toMatchObject({
+      filename: 'notes.txt',
+      contentType: 'text/plain',
+      extension: '.txt',
+      detectionSource: 'text'
+    });
+  });
+
+  it('accepts extensionless bom-prefixed utf-16 text when text fallback is allowed', async () => {
+    const utf16 = Buffer.concat([Buffer.from([0xff, 0xfe]), Buffer.from('hello world', 'utf16le')]);
+    await expect(
+      validateUploadFile({
+        buffer: utf16,
+        filename: 'notes',
+        uploadConstraints: {
+          allowedExtensions: ['.txt']
+        }
+      })
+    ).resolves.toMatchObject({
+      filename: 'notes.txt',
+      contentType: 'text/plain',
+      extension: '.txt',
+      detectionSource: 'text',
+      correctedFilename: true
+    });
+  });
+
+  it('keeps the detected type hint for an extensionless vcard file', async () => {
+    await expect(
+      validateUploadFile({
+        buffer: Buffer.from('BEGIN:VCARD\nVERSION:3.0\nFN:A\nEND:VCARD\n', 'utf8'),
+        filename: 'file',
+        uploadConstraints: { defaultContentType: 'application/octet-stream' }
+      })
+    ).resolves.toMatchObject({
+      filename: 'file.vcf',
+      contentType: 'text/vcard',
+      extension: '.vcf'
+    });
+  });
+
+  it('keeps the detected type hint for an extensionless vtt file', async () => {
+    await expect(
+      validateUploadFile({
+        buffer: Buffer.from('WEBVTT\n\n00:00.000 --> 00:01.000\nhi\n', 'utf8'),
+        filename: 'file',
+        uploadConstraints: { defaultContentType: 'application/octet-stream' }
+      })
+    ).resolves.toMatchObject({
+      filename: 'file.vtt',
+      contentType: 'text/vtt',
+      extension: '.vtt'
+    });
+  });
+
   it('decodes encoded filenames before MIME resolution', async () => {
     await expect(
       validateUploadFile({

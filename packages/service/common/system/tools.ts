@@ -1,15 +1,13 @@
 import {
   FastGPTConfigFileSchema,
+  SystemEnvSchema,
   type FastGPTConfigFileType
 } from '@fastgpt/global/common/system/types';
 import { isIPv6 } from 'net';
 import { getLogger, LogCategories } from '../logger';
-import {
-  getAgentSandboxArchiveMaxBytes,
-  getAgentSandboxMaxFileBytes,
-  getAgentSandboxSkillMaxBytes
-} from '../../core/ai/sandbox/interface/config';
+import { getAgentSandboxSkillMaxBytes } from '../../core/ai/sandbox/config';
 import { hasAgentSandboxConfig, serviceEnv } from '../../env';
+import { normalizeSsoConfig } from '@fastgpt/global/common/system/config/sso';
 
 const logger = getLogger(LogCategories.ERROR);
 
@@ -19,8 +17,29 @@ export const SERVICE_LOCAL_HOST =
     ? `[${process.env.HOSTNAME}]:${SERVICE_LOCAL_PORT}`
     : `${process.env.HOSTNAME || 'localhost'}:${SERVICE_LOCAL_PORT}`;
 
+/**
+ * 校验并加载文件、数据库或热更新配置到全局状态。
+ * 配额和向量检索并发必须在加载时校验；其他历史配置保留校验失败时的兼容行为。
+ */
 export const initFastGPTConfig = (config?: FastGPTConfigFileType) => {
   if (!config?.feConfigs || !config?.systemEnv) return;
+
+  // 配额校验先于任何状态修改，避免整体配置降级时把非法配额带入运行时。
+  const runtimeLimits = SystemEnvSchema.pick({
+    agentSandboxMax: true,
+    agentSandboxMaxPerTeam: true,
+    vectorRecallConcurrency: true
+  })
+    .strip()
+    .parse(config.systemEnv);
+
+  // 旧地址只在加载边界迁入服务端配置；校验降级时也不能重新挂回 feConfigs。
+  const sso = normalizeSsoConfig({
+    publicConfig: config.feConfigs.sso,
+    serverConfig: config.systemEnv.sso
+  });
+  config.feConfigs.sso = sso.publicConfig;
+  config.systemEnv.sso = sso.serverConfig;
 
   // Special config computed
   config.feConfigs.showCustomPdfParse =
@@ -29,17 +48,15 @@ export const initFastGPTConfig = (config?: FastGPTConfigFileType) => {
     !!config.systemEnv.customPdfParse?.textinAppId ||
     !!config.systemEnv.customPdfParse?.doc2xKey;
   config.feConfigs.customPdfParsePrice = config.systemEnv.customPdfParse?.price || 0;
+  config.feConfigs.show_outlink_brand = serviceEnv.SHOW_OUTLINK_BRAND;
   config.feConfigs.show_agent_sandbox = hasAgentSandboxConfig();
   config.feConfigs.show_agent_sandbox_free_tip =
     serviceEnv.AGENT_SANDBOX_SHOW_FREE_TIP || !!config.feConfigs.agentSandboxFree;
-  config.feConfigs.uploadFileMaxSize = serviceEnv.UPLOAD_FILE_MAX_SIZE;
-  config.feConfigs.uploadFileMaxAmount = serviceEnv.UPLOAD_FILE_MAX_AMOUNT;
   config.feConfigs.limit = {
     ...config.feConfigs.limit,
-    agentSandboxMaxEditDebug: serviceEnv.AGENT_SANDBOX_MAX_EDIT_DEBUG,
-    agentSandboxArchiveMaxBytes: getAgentSandboxArchiveMaxBytes(),
+    uploadFileMaxSize: serviceEnv.UPLOAD_FILE_MAX_SIZE,
+    uploadFileMaxAmount: serviceEnv.UPLOAD_FILE_MAX_AMOUNT,
     skillSandboxMaxBytes: getAgentSandboxSkillMaxBytes(),
-    agentSandboxMaxFileBytes: getAgentSandboxMaxFileBytes(),
     maxFolderDepth: serviceEnv.MAX_FOLDER_DEPTH
   };
 
@@ -53,7 +70,7 @@ export const initFastGPTConfig = (config?: FastGPTConfigFileType) => {
   const safeConfig = parseResult.success ? parseResult.data : config;
 
   global.feConfigs = safeConfig.feConfigs || config.feConfigs;
-  global.systemEnv = safeConfig.systemEnv || config.systemEnv;
+  global.systemEnv = { ...(safeConfig.systemEnv ?? config.systemEnv), ...runtimeLimits };
   global.subPlans = safeConfig.subPlans ?? config.subPlans;
 };
 

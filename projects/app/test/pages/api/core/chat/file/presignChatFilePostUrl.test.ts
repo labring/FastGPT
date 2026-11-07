@@ -23,7 +23,7 @@ vi.mock('@/service/middleware/entry', () => ({
   NextAPI: (handler: unknown) => handler
 }));
 
-vi.mock('@/service/support/permission/auth/chat', () => ({
+vi.mock('@fastgpt/service/core/chat/auth', () => ({
   authChatTargetCrud: mocks.authChatTargetCrud
 }));
 
@@ -320,6 +320,43 @@ describe('presignChatFilePostUrl', () => {
         sourceType: ChatSourceTypeEnum.chatAgentHelper,
         sourceId: appId,
         uId: 'helper-user-id',
+        allowedExtensions: expect.arrayContaining(['.txt', '.png', '.mp4', '.mp3'])
+      })
+    );
+  });
+
+  it('uses the server-owned Workflow Builder upload config', async () => {
+    mocks.authChatTargetCrud.mockResolvedValueOnce({
+      sourceType: ChatSourceTypeEnum.workflowBuilder,
+      sourceId: appId,
+      teamId: 'team-id',
+      uid: 'builder-user-id'
+    });
+
+    await expect(
+      callHandler({
+        filename,
+        appId,
+        sourceType: ChatSourceTypeEnum.workflowBuilder,
+        chatId
+      })
+    ).resolves.toMatchObject({
+      url: 'https://example.com/upload-token'
+    });
+
+    expect(mocks.authChatTargetCrud).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sourceType: ChatSourceTypeEnum.workflowBuilder,
+        sourceId: appId,
+        chatId
+      })
+    );
+    expect(mocks.findAppById).not.toHaveBeenCalled();
+    expect(mocks.createUploadChatFileURL).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sourceType: ChatSourceTypeEnum.workflowBuilder,
+        sourceId: appId,
+        uId: 'builder-user-id',
         allowedExtensions: expect.arrayContaining(['.txt', '.png', '.mp4', '.mp3'])
       })
     );

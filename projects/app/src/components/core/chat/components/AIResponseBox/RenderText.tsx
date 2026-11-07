@@ -1,4 +1,5 @@
 import Markdown from '@/components/Markdown';
+import type { MarkdownActionProps } from '@/components/Markdown/type';
 import {
   ChatItemContext,
   type OnOpenCiteModalProps
@@ -17,7 +18,10 @@ const RenderText = React.memo(function RenderText({
   chatItemDataId,
   onOpenCiteModal,
   allowedCitationIds,
-  isDisabled
+  isDisabled,
+  onSendQuestion,
+  onEditQuestion,
+  onQuickReplyClick
 }: {
   showAnimation: boolean;
   text: string;
@@ -25,7 +29,7 @@ const RenderText = React.memo(function RenderText({
   onOpenCiteModal?: (e?: OnOpenCiteModalProps) => void;
   allowedCitationIds?: Set<string>;
   isDisabled?: boolean;
-}) {
+} & MarkdownActionProps) {
   const sourceTarget = useContextSelector(WorkflowRuntimeContext, (v) => v.sourceTarget);
   const chatId = useContextSelector(WorkflowRuntimeContext, (v) => v.chatId);
   const outLinkAuthData = useContextSelector(WorkflowRuntimeContext, (v) => v.outLinkAuthData);
@@ -59,6 +63,9 @@ const RenderText = React.memo(function RenderText({
       onOpenCiteModal={onOpenCiteModal}
       isDisabled={isDisabled}
       autoPreviewHtmlCodeBlock
+      onSendQuestion={onSendQuestion}
+      onEditQuestion={onEditQuestion}
+      onQuickReplyClick={onQuickReplyClick}
     />
   );
 });

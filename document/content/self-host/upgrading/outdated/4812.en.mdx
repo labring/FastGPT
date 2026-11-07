@@ -44,7 +44,7 @@ curl --location --request POST 'https://{{host}}/api/admin/resetMilvus' \
 
 1. New - Global variables support number type, with configurable default values and input field parameters.
 2. New - Plugin custom inputs (text fields, number fields, select boxes, toggles) all support being referenced as variables by default.
-3. New - `FE_DOMAIN` environment variable. When configured, uploaded files/images get a complete URL with the domain suffix (resolves the issue where models sometimes fabricate image domains for docx file image links).
+3. New - `FE_DOMAIN` environment variable. When configured, FastGPT uses it to build complete URLs for uploaded files and images. This addresses fabricated domains in model responses that include image links from DOCX files.
 4. New - Tool calls support using the interaction node.
 5. New - Debug mode supports inputting global variables.
 6. New - Chat OpenAPI documentation.

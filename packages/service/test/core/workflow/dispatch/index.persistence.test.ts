@@ -11,8 +11,11 @@ import {
   NodeOutputKeyEnum,
   WorkflowIOValueTypeEnum
 } from '@fastgpt/global/core/workflow/constants';
-import { LoopRunModeEnum } from '@fastgpt/global/core/workflow/template/system/loopRun/loopRun';
-import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import { LoopRunModeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import {
+  DispatchNodeResponseKeyEnum,
+  SseResponseEventEnum
+} from '@fastgpt/global/core/workflow/runtime/constants';
 import { runWorkflow } from '@fastgpt/service/core/workflow/dispatch';
 import { callbackMap } from '@fastgpt/service/core/workflow/dispatch/constants';
 import { WorkflowVariableState } from '@fastgpt/service/core/workflow/dispatch/utils/variables';
@@ -22,11 +25,10 @@ import {
   getChatItemResponseData
 } from '@fastgpt/service/core/chat/nodeResponseStorage';
 import { MongoChatItemResponse } from '@fastgpt/service/core/chat/chatItemResponseSchema';
-import { getHandleId } from '@fastgpt/global/core/workflow/utils';
+import { getHandleId } from '@fastgpt/global/common/workflow/reference';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import type { WorkflowResponseType } from '@fastgpt/global/core/workflow/runtime/sse';
-import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { WorkflowNodeResponseSink } from '@fastgpt/service/core/workflow/dispatch/nodeResponseSink';
 
 const createTestNodeResponseSink = ({
@@ -754,9 +756,8 @@ describe('runWorkflow node response persistence', () => {
     callbackMap[FlowNodeTypeEnum.textEditor] = vi
       .fn()
       .mockResolvedValueOnce({
-        error: {
-          [NodeOutputKeyEnum.errorText]: 'upstream timeout'
-        },
+        rawError: new Error('upstream timeout'),
+        error: { [NodeOutputKeyEnum.errorText]: 'upstream timeout' },
         [DispatchNodeResponseKeyEnum.nodeResponse]: {
           errorText: 'upstream timeout'
         }
@@ -857,7 +858,6 @@ describe('runWorkflow node response persistence', () => {
       });
 
       expect(result.workflowRuntimeSummary).toMatchObject({
-        hasError: false,
         errorCount: 0
       });
       expect(result.workflowRuntimeSummary.errorText).toBeUndefined();
@@ -997,10 +997,7 @@ describe('runWorkflow node response persistence', () => {
               userSelectOptions: []
             }
           },
-          toolParams: {
-            memoryRequestMessages: [],
-            toolCallId: 'call_search'
-          }
+          toolCallId: 'call_search'
         }
       },
       [DispatchNodeResponseKeyEnum.nodeResponse]: {

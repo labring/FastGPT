@@ -1,7 +1,6 @@
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import { LexicalTypeaheadMenuPlugin } from '@lexical/react/LexicalTypeaheadMenuPlugin';
-import type { TextNode } from 'lexical';
-import { $createTextNode, $getSelection, $isRangeSelection } from 'lexical';
+import { type TextNode, $createTextNode, $getSelection, $isRangeSelection } from 'lexical';
 import * as React from 'react';
 import { useCallback, useState } from 'react';
 import * as ReactDOM from 'react-dom';
@@ -9,7 +8,7 @@ import { useSafeTranslation } from '../../../../../../hooks/useSafeTranslation';
 import MyIcon from '../../../../Icon';
 import { Box, Flex } from '@chakra-ui/react';
 import { useBasicTypeaheadTriggerMatch } from '../../utils';
-import { type EditorVariablePickerType } from '../../type';
+import type { EditorVariablePickerType } from '@fastgpt/global/core/workflow/type/io';
 
 export default function VariablePickerPlugin({
   variables
@@ -17,7 +16,7 @@ export default function VariablePickerPlugin({
   variables: EditorVariablePickerType[];
 }) {
   const [editor] = useLexicalComposerContext();
-  const [queryString, setQueryString] = useState<string | null>(null);
+  const [, setQueryString] = useState<string | null>(null);
   const { t } = useSafeTranslation();
 
   const checkForTriggerMatch = useBasicTypeaheadTriggerMatch('{', {

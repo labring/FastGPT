@@ -2,7 +2,7 @@ import { StandardSubLevelEnum } from './constants';
 import type { StandSubPlanLevelMapType, SubPlanType, TeamStandardSubPlanItemType } from './type';
 
 /**
- * 获取套餐运行时生效配置。定制套餐只存覆盖项，缺失权益统一继承高级版。
+ * 获取套餐运行时生效配置。定制套餐缺失权益继承高级版，水印控制权益始终独立。
  * 该函数仅合并内存数据，不承担配置清洗或持久化转换。
  */
 export const getRuntimeStandardPlanConfig = ({
@@ -20,11 +20,18 @@ export const getRuntimeStandardPlanConfig = ({
 
   // 兼容旧版 Pro 配置中由表单空值写入的 null/空字符串，避免覆盖高级版的有效默认值。
   const configuredOverrides = Object.fromEntries(
-    Object.entries(plan).filter(
-      ([, value]) => value !== undefined && value !== null && value !== ''
-    )
+    Object.entries(plan).filter(([key, value]) => {
+      // 上传额度的 0 表示未配置，应继续继承高级版；其他权益保留原有零值语义。
+      if ((key === 'maxUploadFileSize' || key === 'maxUploadFileCount') && value === 0)
+        return false;
+      return value !== undefined && value !== null && value !== '';
+    })
   );
-  return { ...advancedPlan, ...configuredOverrides };
+  return {
+    ...advancedPlan,
+    ...configuredOverrides,
+    canHideShareBrand: plan.canHideShareBrand === true
+  };
 };
 
 /** 返回可直接用于运行时和客户端展示的套餐配置，不修改原始系统配置。 */

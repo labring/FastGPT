@@ -1,10 +1,6 @@
 import { i18nT } from '../../common/i18n/utils';
 import type { CompletionUsage, ReasoningEffort } from './llm/type';
-import type {
-  EmbeddingSystemModelDataType,
-  LLMSystemModelDataType,
-  STTSystemModelDataType
-} from './model/schema';
+import type { EmbeddingModelDataType, LLMModelDataType, STTModelDataType } from './model/schema';
 
 export const getLLMDefaultUsage = (): CompletionUsage => {
   return {
@@ -28,7 +24,7 @@ export enum ModelScopeEnum {
   team = 'team'
 }
 
-export const defaultQAModels: LLMSystemModelDataType[] = [
+export const defaultQAModels: LLMModelDataType[] = [
   {
     type: ModelTypeEnum.llm,
     provider: 'OpenAI',
@@ -36,7 +32,7 @@ export const defaultQAModels: LLMSystemModelDataType[] = [
     name: 'gpt-5',
     modelId: '',
     scope: ModelScopeEnum.system,
-    charsPointsPrice: 0,
+    pricing: { tiers: [] },
     config: {
       maxContext: 16000,
       maxResponse: 16000,
@@ -52,7 +48,7 @@ export const defaultQAModels: LLMSystemModelDataType[] = [
   }
 ];
 
-export const defaultVectorModels: EmbeddingSystemModelDataType[] = [
+export const defaultVectorModels: EmbeddingModelDataType[] = [
   {
     type: ModelTypeEnum.embedding,
     provider: 'OpenAI',
@@ -60,7 +56,7 @@ export const defaultVectorModels: EmbeddingSystemModelDataType[] = [
     name: 'Embedding-2',
     modelId: '',
     scope: ModelScopeEnum.system,
-    charsPointsPrice: 0,
+    pricing: { unitPrice: 0 },
     config: {
       defaultToken: 500,
       maxToken: 3000,
@@ -69,7 +65,7 @@ export const defaultVectorModels: EmbeddingSystemModelDataType[] = [
   }
 ];
 
-export const defaultSTTModels: STTSystemModelDataType[] = [
+export const defaultSTTModels: STTModelDataType[] = [
   {
     type: ModelTypeEnum.stt,
     provider: 'OpenAI',
@@ -77,7 +73,7 @@ export const defaultSTTModels: STTSystemModelDataType[] = [
     name: 'gpt-transcribe',
     modelId: '',
     scope: ModelScopeEnum.system,
-    charsPointsPrice: 0,
+    pricing: { unitPrice: 0 },
     config: {}
   }
 ];

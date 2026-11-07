@@ -35,16 +35,16 @@ The script automatically loads models from the old configuration file into the n
 
 ## Full Release Notes
 
-1. New - Visual model parameter configuration, replacing the old config file approach. Over 100 model presets included, with one-click testing for all model types. (Full in-page channel configuration is planned for the next version.) [View model configuration guide](../../config/model/intro.en.mdx)
+1. New - Visual model parameter configuration, replacing the old config file approach. Over 100 model presets included, with one-click testing for all model types. (Full in-page channel configuration is planned for the next version.) [View model configuration guide](/en/self-host/config/model/intro)
 2. New - DeepSeek Reasoner model supports outputting the thinking process.
 3. New - Usage record export and dashboard.
 4. New - Markdown syntax extension supporting audio and video (via `audio` and `video` code blocks).
-5. New - Adjusted `max_tokens` calculation logic. `max_tokens` is now prioritized at the configured value; if it exceeds the maximum context, history is reduced instead. For example, requesting 8000 `max_tokens` reduces the context length by 8000.
+5. New - Adjusted `max_tokens` calculation logic. FastGPT reserves the configured `max_tokens` value for the response and trims conversation history when the request would exceed the context window. For example, setting `max_tokens` to 8000 leaves 8000 fewer tokens available for input context.
 6. Improved - Query rewriting now includes context filtering to prevent exceeding context limits.
 7. Improved - Page component extraction to reduce page component routing.
 8. Improved - Full-text search is now case-insensitive.
 9. Improved - QA generation and enhanced indexing switched to streaming output to prevent timeouts with some models.
 10. Improved - Automatically adds `null` to empty assistant `content`, and merges consecutive text assistant messages to prevent errors from some models.
-11. Improved - Adjusted image host: domain is no longer appended during upload but before sending a conversation, preventing broken images after domain changes.
+11. Improved - Image URLs are completed with `FE_DOMAIN` immediately before a chat request is sent. This keeps previously uploaded images usable after a domain change.
 12. Fixed - Member list not triggering bottom-loading in some scenarios.
 13. Fixed - Workflow recursive execution failing under certain conditions.

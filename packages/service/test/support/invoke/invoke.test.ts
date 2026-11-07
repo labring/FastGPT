@@ -98,4 +98,45 @@ describe('InvokeProcessor.handleFileUpload', () => {
     expect(mockCreateUploadChatFileURL).not.toHaveBeenCalled();
     expect(mockRemoveS3TTL).not.toHaveBeenCalled();
   });
+
+  it.each([
+    ['report.pdf', ChatFileTypeEnum.document],
+    ['archive.zip', ChatFileTypeEnum.unknown]
+  ])('普通上传文件 %s 返回具体分类，访问字段保持不变', async (filename, type) => {
+    const result = await createProcessor().handleFileUpload({
+      filename,
+      body: Buffer.from('attachment'),
+      contentType: 'application/octet-stream'
+    });
+    expect(result).toMatchObject({
+      type,
+      filename,
+      key: 'chat/app-1/user-1/chat-1/image.png',
+      url: 'https://example.com/api/system/file/download/token?filename=image.png'
+    });
+  });
+});
+
+describe('InvokeProcessor.session', () => {
+  it('返回构造时传入的 session，而不是 getter 自递归', () => {
+    const processor = createProcessor();
+
+    expect(() => processor.session).not.toThrow();
+    expect(processor.session).toEqual({
+      appId: 'app-1',
+      chatId: 'chat-1',
+      uId: 'user-1',
+      teamId: 'team-1',
+      tmbId: 'member-1',
+      permissions: [PluginPermissionEnum['file-upload:allow']]
+    });
+  });
+
+  it('权限不足时 getSessionWithPermission 抛未授权', () => {
+    const processor = createProcessor();
+
+    expect(() =>
+      processor.getSessionWithPermission(PluginPermissionEnum['userInfo:read'])
+    ).toThrow();
+  });
 });

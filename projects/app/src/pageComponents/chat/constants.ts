@@ -21,5 +21,16 @@ export enum ChatSettingTabOptionEnum {
   FAVOURITE_APPS = 'f'
 }
 
+/**
+ * 全部应用页（pane=aa）的子页签，通过 URL 的 tab 参数直达。
+ *
+ * 注意：tab 参数按 pane 复用，这里的取值不能与 ChatSettingTabOptionEnum 冲突；
+ * 取值本身是外部链接契约，调整时需要兼容历史链接。
+ */
+export enum ChatAllAppTabEnum {
+  FAVOURITE_APPS = 'fa',
+  TEAM_APPS = 'ta'
+}
+
 export const DEFAULT_LOGO_BANNER_URL = '/imgs/chat/fastgpt_banner.svg';
 export const DEFAULT_LOGO_BANNER_COLLAPSED_URL = '/imgs/chat/fastgpt_banner_fold.svg';

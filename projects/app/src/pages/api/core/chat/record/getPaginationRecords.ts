@@ -6,7 +6,7 @@ import {
 } from '@/global/core/chat/utils';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { getChatItems } from '@fastgpt/service/core/chat/controller';
-import { authChatTargetCrud } from '@/service/support/permission/auth/chat';
+import { authChatTargetCrud } from '@fastgpt/service/core/chat/auth';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { ChatRoleEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
@@ -27,6 +27,8 @@ import { getChatItemValueType } from '@/service/core/chat/utils';
 
 export async function handler(req: ApiRequestProps): Promise<GetPaginationRecordsResponseType> {
   const {
+    customUid,
+    authProxy,
     sourceType,
     sourceId,
     chatId,
@@ -45,6 +47,8 @@ export async function handler(req: ApiRequestProps): Promise<GetPaginationRecord
   }
 
   const authRes = await authChatTargetCrud({
+    customUid,
+    authProxy,
     req,
     authToken: true,
     authApiKey: true,

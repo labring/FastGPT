@@ -3,7 +3,7 @@ import { countPromptTokensBatch } from '../../../common/string/tiktoken/index';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import type { localeType } from '@fastgpt/global/common/i18n/type';
+import { selectPluginText } from '@fastgpt/global/common/i18n/utils';
 import { SystemToolRepo } from '../../app/tool/systemTool/systemTool.repo';
 import { jsonSchema2NodeInput, jsonSchema2NodeOutput } from '@fastgpt/global/core/app/jsonschema';
 import {
@@ -45,13 +45,15 @@ export const filterSearchResultsByMaxChars = async (
  */
 export async function getSystemToolRunTimeNodeFromSystemToolset({
   toolSetNode,
-  teamId,
-  lang = 'en'
+  teamId
 }: {
-  toolSetNode: Pick<RuntimeNodeItemType, 'toolConfig' | 'inputs' | 'nodeId' | 'version'>;
+  toolSetNode: Pick<
+    RuntimeNodeItemType,
+    'toolConfig' | 'inputs' | 'nodeId' | 'version' | 'metadataLocale'
+  >;
   teamId?: string;
-  lang?: localeType;
 }): Promise<RuntimeNodeItemType[]> {
+  const metadataLocale = toolSetNode.metadataLocale ?? 'en';
   const systemToolId = toolSetNode.toolConfig?.systemToolSet?.toolId!;
   const toolConfigSource = (() => {
     const toolConfigSource = toolSetNode.toolConfig?.systemToolSet?.source;
@@ -81,7 +83,7 @@ export async function getSystemToolRunTimeNodeFromSystemToolset({
   const systemToolRepo = SystemToolRepo.getInstance();
   const tool = await systemToolRepo.getSystemToolDetail({
     pluginId: systemToolId,
-    lang,
+    lang: metadataLocale,
     source: systemToolSource,
     version: toolSetNode.version,
     fallbackLatestVersion: true
@@ -102,20 +104,26 @@ export async function getSystemToolRunTimeNodeFromSystemToolset({
     if (!child) return [];
 
     const pluginId = `${systemToolId}/${child.id}`;
-    const intro = getToolSetChildDescription(selectedTool.description, child.description);
+    const childDescription = selectPluginText(child.description, metadataLocale);
+    const intro = getToolSetChildDescription(selectedTool.description, childDescription);
     const childInputs = jsonSchema2NodeInput({
       jsonSchema: child.inputSchema,
-      schemaType: 'systemTool'
+      schemaType: 'systemTool',
+      lang: metadataLocale
     });
-    const childOutputs = jsonSchema2NodeOutput({ jsonSchema: child.outputSchema });
+    const childOutputs = jsonSchema2NodeOutput({
+      jsonSchema: child.outputSchema,
+      lang: metadataLocale
+    });
 
     return {
       flowNodeType: FlowNodeTypeEnum.tool,
       avatar: tool.avatar,
       inputs: toolsetInputConfig ? [toolsetInputConfig, ...childInputs] : childInputs,
       outputs: childOutputs,
-      name: selectedTool.name || child.name,
+      name: selectedTool.name || selectPluginText(child.name, metadataLocale),
       intro,
+      metadataLocale,
       nodeId: `${toolSetNode.nodeId}${child.id}`,
       version: runtimeVersion,
       jsonSchema: child.inputSchema,

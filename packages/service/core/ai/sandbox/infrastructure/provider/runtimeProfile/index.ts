@@ -9,13 +9,6 @@ import { buildOpenSandboxRuntimeProfile } from './opensandbox';
 import { buildSealosRuntimeProfile } from './sealosdevbox';
 import type { SandboxRuntimeProfile } from './types';
 
-export type {
-  SandboxRuntimeCreateConfigInput,
-  SandboxRuntimeProfile,
-  SandboxRuntimeScenario
-} from './types';
-export { buildBaseSandboxRuntimeEnv } from './utils';
-
 function assertNever(value: never): never {
   throw new Error(`Unsupported sandbox provider: ${String(value)}`);
 }

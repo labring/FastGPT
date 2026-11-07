@@ -2,7 +2,7 @@ import z from 'zod';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
 import { IntSchema, NumSchema } from '../../../../common/zod';
 import { EvaluationStatusEnum } from '../../../../core/app/evaluation/constants';
-import { PaginationResponseSchema, PaginationSchema } from '../../../api';
+import { PaginationResponseSchema, createPaginationSchema } from '../../../api';
 
 const EvaluationIdSchema = ObjectIdSchema.meta({
   example: '68ad85a7463006c963799a05',
@@ -131,7 +131,7 @@ export type ExportEvaluationItemsResponseType = z.infer<typeof ExportEvaluationI
  * Tags: ['应用评测']
  * ========================================================================== */
 
-export const ListEvaluationsBodySchema = PaginationSchema.extend({
+export const ListEvaluationsBodySchema = createPaginationSchema({
   searchKey: z.string().optional().meta({
     example: '客服',
     description: '评测任务名称搜索关键词'
@@ -176,7 +176,7 @@ export type ListEvaluationsResponseType = z.infer<typeof ListEvaluationsResponse
  * Tags: ['应用评测']
  * ========================================================================== */
 
-export const ListEvaluationItemsBodySchema = PaginationSchema.extend({
+export const ListEvaluationItemsBodySchema = createPaginationSchema({
   evalId: EvaluationIdSchema
 });
 export type ListEvaluationItemsBodyType = z.infer<typeof ListEvaluationItemsBodySchema>;

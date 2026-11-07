@@ -1,39 +1,47 @@
-import { getModelHandle } from '../../../../ai/model';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type { DispatchNodeResultType } from '../../../types/runtime';
 
-import { getAgentLoopHistories, getNodeErrResponse } from '../../utils';
-import { runToolCall } from './toolCall';
-import { type DispatchToolModuleProps } from './type';
-import { postTextCensor } from '../../../../chat/postTextCensor';
-import { useToolNodeList } from './hooks/useToolNodeList';
-import { useToolMessages } from './hooks/useToolMessages';
-import { prepareSandboxToolRuntime } from '../../../../ai/sandbox/interface/toolCall';
-import { readWorkflowFileBuffer } from '../../../utils/context';
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import {
   assertSandboxAvailable,
-  getRunningSandboxId,
-  getSandboxRuntimeProfile,
-  resolveAppSandboxAvailability,
+  resolveAppSandboxAvailability
+} from '../../../../ai/sandbox/application/availability';
+import { getRunningSandboxId } from '../../../../ai/sandbox/utils/id';
+import { getSandboxRuntimeProfile } from '../../../../ai/sandbox/application/runtime';
+import {
   runAgentSandboxEntrypoint,
   withAgentSandboxInitLease
-} from '../../../../ai/sandbox/interface/runtime';
-import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
-import { ensureWorkflowSandboxReadyForUse } from '../sandbox';
+} from '../../../../ai/sandbox/application/runtime/entrypoint';
+import { prepareSandboxToolRuntime } from '../../../../ai/sandbox/application/toolCall';
+import { postTextCensor } from '../../../../chat/postTextCensor';
+import { readWorkflowFileBuffer } from '../../../utils/context';
+import { loadWorkflowModelResource } from '../../../resource/service';
 import {
-  buildAgentLoopCoreRequestMessages,
-  createAgentLoopCoreToolCallNodeResponse,
-  createAgentLoopCoreChildInteractiveParams,
-  filterAgentLoopCoreToolResponseToPreview,
-  getAgentLoopCorePersistedTextOutput,
-  summarizeAgentLoopCoreToolRunFlowResponses
-} from '../agentLoopCore/interface';
+  getAgentLoopHistories,
+  getNodeErrResponse,
+  removeUnfinishedInteractiveHistories
+} from '../../utils';
+import { WorkflowMemoryState } from '../../../memory/state';
+import { buildAgentLoopCoreRequestMessages } from '../agentLoopCore/application/context/messages';
+import { createAgentLoopCoreChildInteractiveParams } from '../agentLoopCore/adapter/interactive/child';
+import { createAgentLoopCoreToolCallNodeResponse } from '../agentLoopCore/adapter/nodeResponse/toolCallNodeResponse';
+import { getAgentLoopCorePersistedTextOutput } from '../agentLoopCore/application/output/assistantResponses';
+import { summarizeAgentLoopCoreToolRunFlowResponses } from '../agentLoopCore/adapter/nodeResponse/toolRunCollector';
+import { ensureWorkflowSandboxReadyForUse } from '../sandbox';
+import { useToolMessages } from './hooks/useToolMessages';
+import { useToolNodeList } from './hooks/useToolNodeList';
+import { runToolCall } from './toolCall';
+import { type DispatchToolModuleProps } from './type';
 
 type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.answerText]: string;
 }>;
 
+/**
+ * 执行 ToolCall 节点，并返回可供后续模型恢复的完整聊天记录。
+ * assistantResponses 会直接落库，必须保留本轮模型使用的工具结果，不做额外的展示裁剪。
+ */
 export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<Response> => {
   const {
     node: { nodeId, isEntry, inputs },
@@ -43,6 +51,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
     chatConfig,
     lastInteractive,
     runningAppInfo,
+    runningUserInfo,
     externalProvider,
     responseChatItemId,
     params: {
@@ -76,8 +85,12 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
   const useSandbox = isAppChat ? appSandboxAvailability?.available === true : !!useAgentSandbox;
 
   try {
-    const modelHandle = await getModelHandle();
-    const toolModel = modelHandle.getLLMModelData({ modelId, model });
+    const toolModel = await loadWorkflowModelResource({
+      appTeamId: runningAppInfo.teamId,
+      userInfo: runningUserInfo,
+      modelId,
+      model
+    });
     const useVision = aiChatVision && toolModel.config.vision;
     const useAudio = aiChatAudio && toolModel.config.audio;
     const useVideo = aiChatVideo && toolModel.config.video;
@@ -117,46 +130,44 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
       useSandbox
     });
 
-    if (useSandbox) {
-      await ensureWorkflowSandboxReadyForUse({
-        workflowStreamResponse: props.workflowStreamResponse,
-        sourceType: runningAppInfo.sourceType,
-        sourceId: runningAppInfo.sourceId,
-        userId: props.uid,
-        chatId: props.chatId
-      });
-    }
-
     // 初始化沙盒
     const sandboxClient = useSandbox
-      ? await withAgentSandboxInitLease({
-          sandboxId: getRunningSandboxId({
-            sourceType: props.runningAppInfo.sourceType,
-            sourceId: props.runningAppInfo.sourceId,
-            userId: props.uid
-          }),
-          fn: async () => {
-            const runtime = await prepareSandboxToolRuntime({
-              sourceType: props.runningAppInfo.sourceType,
-              sourceId: props.runningAppInfo.sourceId,
-              userId: props.uid,
-              chatId: props.chatId,
-              readInputFile: (url) => readWorkflowFileBuffer({ url }),
-              files: currentInputFiles.map((file) => ({
-                path: file.sandboxPath!,
-                url: file.url
-              }))
-            });
-            const effectiveEntrypoint = sandboxEntrypoint?.trim();
-            if (effectiveEntrypoint) {
-              await runAgentSandboxEntrypoint({
-                sandbox: runtime.provider,
-                sandboxEntrypoint: effectiveEntrypoint,
-                workDirectory: getSandboxRuntimeProfile().workDirectory
-              });
-            }
-            return runtime;
-          }
+      ? await ensureWorkflowSandboxReadyForUse({
+          workflowStreamResponse: props.workflowStreamResponse,
+          sourceType: runningAppInfo.sourceType,
+          sourceId: runningAppInfo.sourceId,
+          userId: props.uid,
+          chatId: props.chatId,
+          prepareRuntime: () =>
+            withAgentSandboxInitLease({
+              sandboxId: getRunningSandboxId({
+                sourceType: props.runningAppInfo.sourceType,
+                sourceId: props.runningAppInfo.sourceId,
+                userId: props.uid
+              }),
+              fn: async () => {
+                const runtime = await prepareSandboxToolRuntime({
+                  sourceType: props.runningAppInfo.sourceType,
+                  sourceId: props.runningAppInfo.sourceId,
+                  userId: props.uid,
+                  chatId: props.chatId,
+                  readInputFile: (url) => readWorkflowFileBuffer({ url }),
+                  files: currentInputFiles.map((file) => ({
+                    path: file.sandboxPath!,
+                    url: file.url
+                  }))
+                });
+                const effectiveEntrypoint = sandboxEntrypoint?.trim();
+                if (effectiveEntrypoint) {
+                  await runAgentSandboxEntrypoint({
+                    sandbox: runtime.provider,
+                    sandboxEntrypoint: effectiveEntrypoint,
+                    workDirectory: getSandboxRuntimeProfile().workDirectory
+                  });
+                }
+                return runtime;
+              }
+            })
         })
       : undefined;
 
@@ -168,6 +179,12 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
         `
       });
     }
+
+    const toolCallMemoryState = WorkflowMemoryState.fromWorkflow(props).fork(`node:${nodeId}`, {
+      history,
+      histories: chatHistories,
+      hasInteractiveResume: !!lastInteractive
+    });
 
     const {
       toolWorkflowInteractiveResponse,
@@ -189,6 +206,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
 
       return runToolCall({
         ...props,
+        memoryState: toolCallMemoryState,
         currentInputFiles,
         sandboxClient,
         runtimeNodes,
@@ -201,6 +219,8 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
         })
       });
     })();
+    const toolMemories = toolCallMemoryState.getDelta();
+    const systemMemories = Object.keys(toolMemories).length > 0 ? toolMemories : undefined;
     const { runTimes, toolDetail } =
       summarizeAgentLoopCoreToolRunFlowResponses(toolDispatchFlowResponses);
     // 有 sink 时 child workflow 和当前 ToolCall 的内部 response 已经独立发布；
@@ -208,7 +228,6 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
     const toolDetailForResponse = props.nodeResponseSink ? undefined : toolDetail;
     const modelName = toolModel.name;
     const modelTotalPoints = toolCallTotalPoints;
-    const previewAssistantResponses = filterAgentLoopCoreToolResponseToPreview(assistantResponses);
     const nodeResponse = createAgentLoopCoreToolCallNodeResponse({
       totalPoints: modelTotalPoints,
       toolCallInputTokens,
@@ -223,26 +242,40 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
       firstTokenTime
     });
 
+    const rewrittenHistories = lastInteractive
+      ? removeUnfinishedInteractiveHistories(histories)
+      : undefined;
+
     if (error) {
-      return getNodeErrResponse({
-        error,
-        [DispatchNodeResponseKeyEnum.nodeResponse]: nodeResponse,
-        [DispatchNodeResponseKeyEnum.runTimes]: runTimes
-      });
+      return {
+        ...getNodeErrResponse({
+          error,
+          [DispatchNodeResponseKeyEnum.nodeResponse]: nodeResponse,
+          [DispatchNodeResponseKeyEnum.runTimes]: runTimes,
+          [DispatchNodeResponseKeyEnum.memories]: systemMemories
+        }),
+        ...(rewrittenHistories
+          ? { [DispatchNodeResponseKeyEnum.rewriteHistories]: rewrittenHistories }
+          : {}),
+        [DispatchNodeResponseKeyEnum.assistantResponses]: isResponseAnswerText
+          ? assistantResponses
+          : undefined
+      };
     }
 
     if (toolWorkflowInteractiveResponse) {
       return {
         [DispatchNodeResponseKeyEnum.runTimes]: runTimes,
         [DispatchNodeResponseKeyEnum.assistantResponses]: isResponseAnswerText
-          ? previewAssistantResponses
+          ? assistantResponses
           : undefined,
+        [DispatchNodeResponseKeyEnum.memories]: systemMemories,
         [DispatchNodeResponseKeyEnum.nodeResponse]: nodeResponse,
         [DispatchNodeResponseKeyEnum.interactive]: toolWorkflowInteractiveResponse
       };
     }
 
-    const answerText = getAgentLoopCorePersistedTextOutput(previewAssistantResponses);
+    const answerText = getAgentLoopCorePersistedTextOutput(assistantResponses);
 
     return {
       data: {
@@ -251,8 +284,12 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
       [DispatchNodeResponseKeyEnum.toolResponse]: answerText,
       [DispatchNodeResponseKeyEnum.runTimes]: runTimes,
       [DispatchNodeResponseKeyEnum.assistantResponses]: isResponseAnswerText
-        ? previewAssistantResponses
+        ? assistantResponses
         : undefined,
+      [DispatchNodeResponseKeyEnum.memories]: systemMemories,
+      ...(rewrittenHistories
+        ? { [DispatchNodeResponseKeyEnum.rewriteHistories]: rewrittenHistories }
+        : {}),
       [DispatchNodeResponseKeyEnum.nodeResponse]: nodeResponse,
       [DispatchNodeResponseKeyEnum.interactive]: toolWorkflowInteractiveResponse
     };

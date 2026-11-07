@@ -9,6 +9,11 @@ import InputRender from '.';
 import type { SpecificProps } from './type';
 import { InputTypeEnum } from './constant';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
+import {
+  getSecretPlainValue,
+  getSecretReferenceValue,
+  isSecretValueConfigured
+} from '@fastgpt/global/common/secret/utils';
 
 // Helper function to flatten error object keys
 const getFlattenedErrorKeys = (errors: any, prefix = ''): string[] => {
@@ -67,19 +72,23 @@ const LabelAndFormRender = ({
         name={props.fieldName}
         rules={{
           validate: (value) => {
-            if (typeof value === 'number' || typeof value === 'boolean') return true;
             if (!required) return true;
-            // 密码类型特殊处理：已加密的密码格式为 { value: '', secret: 'xxx' }
+            // 密码值只允许明文 { value } 或密文 { secret }。
             if (inputType === InputTypeEnum.password) {
-              const hasValue = value && typeof value === 'object' && (value.value || value.secret);
-              if (!hasValue) return false;
+              if (!isSecretValueConfigured(value) || getSecretReferenceValue(value)) return false;
               // 有 minLength 要求且正在输入新值时，检查长度
-              if (props.minLength && value.value && value.value.length < props.minLength) {
+              const plainValue = getSecretPlainValue(value);
+              if (
+                props.minLength &&
+                plainValue !== undefined &&
+                plainValue.length < props.minLength
+              ) {
                 return t('common:min_length', { minLenth: props.minLength });
               }
               return true;
             }
 
+            if (typeof value === 'number' || typeof value === 'boolean') return true;
             if (inputType === InputTypeEnum.fileSelect) {
               if (!value || !Array.isArray(value) || value.length === 0) {
                 return t('common:required');

@@ -8,6 +8,7 @@ import { getDraggableItemProps } from '@fastgpt/web/components/common/DndDrag';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
+import { selectPluginText } from '@fastgpt/global/common/i18n/utils';
 import React from 'react';
 import { PluginStatusEnum } from '@fastgpt/global/core/plugin/type';
 import type { AdminSystemToolListItemType } from '@fastgpt/global/core/app/tool/systemTool/type';
@@ -24,7 +25,7 @@ const ToolRow = ({
   provided: DraggableProvided;
   snapshot: DraggableStateSnapshot;
 }) => {
-  const { t } = useSafeTranslation();
+  const { t, i18n } = useSafeTranslation();
   const { draggableItemProps, dragHandleProps } = getDraggableItemProps(provided, snapshot);
 
   return (
@@ -58,9 +59,13 @@ const ToolRow = ({
             <MyIcon name="drag" w={'14px'} color={'myGray.500'} cursor={'grab'} />
           </Flex>
           <Avatar src={tool?.avatar} borderRadius={'xs'} w={'20px'} flexShrink={0} />
-          <MyTooltip label={tool?.name} showOnlyWhenOverflow shouldWrapChildren={false}>
+          <MyTooltip
+            label={selectPluginText(tool?.name, i18n.language)}
+            showOnlyWhenOverflow
+            shouldWrapChildren={false}
+          >
             <Box pl={1.5} flex={1} minW={0} fontWeight={'medium'} isTruncated>
-              {tool?.name}
+              {selectPluginText(tool?.name, i18n.language)}
             </Box>
           </MyTooltip>
         </Flex>
@@ -92,9 +97,13 @@ const ToolRow = ({
         )}
       </Td>
       <Td px={0}>
-        <MyTooltip label={tool?.intro || '-'} showOnlyWhenOverflow shouldWrapChildren={false}>
+        <MyTooltip
+          label={selectPluginText(tool?.intro, i18n.language) || '-'}
+          showOnlyWhenOverflow
+          shouldWrapChildren={false}
+        >
           <Box minW={0} isTruncated>
-            {tool?.intro || '-'}
+            {selectPluginText(tool?.intro, i18n.language) || '-'}
           </Box>
         </MyTooltip>
       </Td>

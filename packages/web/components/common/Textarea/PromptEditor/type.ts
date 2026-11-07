@@ -2,15 +2,6 @@ import type { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/cons
 import type { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { BoxProps } from '@chakra-ui/react';
 
-export type EditorVariablePickerType = {
-  key: string;
-  label: string;
-  required?: boolean;
-  icon?: string;
-  valueType?: WorkflowIOValueTypeEnum;
-  valueDesc?: string;
-};
-
 export type EditorVariableLabelPickerType = {
   key: string;
   label: string;

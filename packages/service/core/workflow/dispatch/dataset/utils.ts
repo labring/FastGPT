@@ -1,6 +1,6 @@
 import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { isHttpUrl } from '@fastgpt/global/common/string/url';
-import { parseUrlToFileType } from '../../utils/context';
+import { prepareWorkflowFiles } from '../../utils/context';
 
 export type NormalizeDatasetSearchInputResult = {
   textQueries: string[];
@@ -23,13 +23,13 @@ const isDataUrl = (input: string) => dataUrlReg.test(input);
  * datasetSearchInput 会同时接收用户问题和 userFiles；http(s) URL 和 Data URL
  * 作为文件候选继续判断，其他输入保留为文本检索 query。
  */
-export const normalizeDatasetSearchInput = (
+export const normalizeDatasetSearchInput = async (
   inputList: string[]
-): NormalizeDatasetSearchInputResult => {
+): Promise<NormalizeDatasetSearchInputResult> => {
   const textQueries: string[] = [];
   const imageQueries: string[] = [];
   const seenTextQueries = new Set<string>();
-  const seenQueryImageUrls = new Set<string>();
+  const fileCandidates: string[] = [];
 
   for (const rawInput of inputList) {
     const input = rawInput.trim();
@@ -40,14 +40,13 @@ export const normalizeDatasetSearchInput = (
       continue;
     }
 
-    const fileInfo = parseUrlToFileType(input);
-    if (fileInfo?.type !== ChatFileTypeEnum.image || seenQueryImageUrls.has(input)) {
-      continue;
-    }
-
-    seenQueryImageUrls.add(input);
-    imageQueries.push(input);
+    fileCandidates.push(input);
   }
+
+  const files = await prepareWorkflowFiles({ files: fileCandidates.map((url) => ({ url })) });
+  files.forEach((file) => {
+    if (file.type === ChatFileTypeEnum.image) imageQueries.push(file.url);
+  });
 
   return {
     textQueries,

@@ -5,16 +5,11 @@
  */
 import { getSandboxClient, type SandboxClient } from './client';
 import { getSandboxRuntimeProfile as resolveSandboxRuntimeProfile } from '../../infrastructure/provider/runtimeProfile';
-import type {
-  SandboxRuntimeProfile,
-  SandboxRuntimeScenario
-} from '../../infrastructure/provider/runtimeProfile';
+import type { SandboxRuntimeProfile } from '../../infrastructure/provider/runtimeProfile/types';
 import type { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { getRunningSandboxId, getSandboxUserId } from '../../utils/id';
 import type { SandboxProviderType } from '../../type';
 import { getSandboxRuntimePaths } from '../../utils';
-
-export type { SandboxRuntimeProfile, SandboxRuntimeScenario };
 
 export type AgentSandboxRuntimeContext = {
   sandboxClient: SandboxClient;

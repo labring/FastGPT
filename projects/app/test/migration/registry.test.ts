@@ -1,118 +1,91 @@
 import { describe, expect, it } from 'vitest';
-import { SystemMigrationFailurePolicyEnum } from '@fastgpt/global/migration/constants';
 import type { SystemMigration } from '@/migration/registry';
 import { systemMigrations, validateSystemMigrationRegistry } from '@/migration/registry';
 
 const createMigration = (id: string): SystemMigration => ({
   id,
-  version: '4.17.0',
+  version: '4.18.0',
   nameKey: `system_migration:migrations.${id}.name`,
   descriptionKey: `system_migration:migrations.${id}.description`,
   resultKey: `system_migration:migrations.${id}.result`,
   progressSteps: [],
-  blockStartup: false,
-  onFailure: SystemMigrationFailurePolicyEnum.stop,
   run: async () => undefined
 });
 
 describe('validateSystemMigrationRegistry', () => {
-  it('registers team member role cleanup as the first blocking production task', () => {
-    expect(systemMigrations[0]).toMatchObject({
-      id: '20260907_cleanup_team_member_roles',
-      version: '4.17.0',
-      blockStartup: true,
-      onFailure: SystemMigrationFailurePolicyEnum.stop,
-      progressSteps: [{ key: 'members' }, { key: 'validation' }]
-    });
-    expect(systemMigrations.slice(2, -6).map((migration) => migration.id)).toEqual([
-      '20260903_backfill_model_permissions',
-      '20260903_backfill_dataset_model_references',
-      '20260903_backfill_evaluation_model_references',
-      '20260903_backfill_app_model_references',
-      '20260903_backfill_resource_create_time',
-      '20260905_backfill_bill_metadata',
-      '20260905_backfill_resource_owner_acl',
-      '20260908_cleanup_legacy_invited_members'
+  it('keeps only the current release tasks without legacy startup dependencies', () => {
+    expect(systemMigrations.map(({ id }) => id)).toEqual([
+      '20261022_initialize_dataset_vector_indexes',
+      '20261104_backfill_chat_publish_source',
+      '20261104_backfill_openapi_key_type'
     ]);
-    expect(systemMigrations.slice(2, -6).every((migration) => !migration.blockStartup)).toBe(true);
     expect(
-      systemMigrations
-        .slice(2, -6)
-        .every((migration) => migration.onFailure === SystemMigrationFailurePolicyEnum.continue)
-    ).toBe(true);
-    expect(systemMigrations[1]).toMatchObject({
-      id: '20260903_migrate_legacy_system_models',
-      version: '4.17.0',
-      blockStartup: true,
-      onFailure: SystemMigrationFailurePolicyEnum.stop
-    });
-    expect(systemMigrations.at(-6)).toMatchObject({
-      id: '20260907_migrate_dataset_tags_v2',
-      version: '4.17.1',
-      blockStartup: false,
-      onFailure: SystemMigrationFailurePolicyEnum.continue,
-      progressSteps: [{ key: 'datasets' }, { key: 'collections' }, { key: 'validation' }]
-    });
-    expect(systemMigrations.at(-5)).toMatchObject({
-      id: '20260916_backfill_app_resource_snapshots',
-      version: '4.17.1',
-      blockStartup: false,
-      onFailure: SystemMigrationFailurePolicyEnum.continue,
-      delay: true,
-      progressSteps: [
-        { key: 'clean_v1_apps' },
-        { key: 'versions' },
-        { key: 'apps' },
-        { key: 'validation' }
-      ]
-    });
-    expect(systemMigrations.at(-4)).toMatchObject({
-      id: '20260923_enable_channel_reasoning_mapping',
-      version: '4.17.1',
-      blockStartup: false,
-      onFailure: SystemMigrationFailurePolicyEnum.continue,
-      delay: true,
-      progressSteps: [{ key: 'channels' }]
-    });
-    expect(systemMigrations.at(-3)).toMatchObject({
-      id: '20260928_backfill_member_name_set',
-      version: '4.17.1',
-      blockStartup: false,
-      onFailure: SystemMigrationFailurePolicyEnum.continue,
-      progressSteps: [{ key: 'members' }, { key: 'validation' }]
-    });
-  });
-
-  it('appends the independent manual chunk migration', () => {
-    expect(systemMigrations.at(-2)).toMatchObject({
-      id: '20261008_migrate_chunk_training',
-      manual: true,
-      blockStartup: false,
-      onFailure: SystemMigrationFailurePolicyEnum.continue,
-      progressSteps: [{ key: 'trainings' }, { key: 'validation' }]
-    });
+      systemMigrations.filter(
+        (task: SystemMigration) =>
+          task.blockStartup || task.manual || task.delay || task.dependsOn?.length
+      )
+    ).toEqual([]);
     expect(() => validateSystemMigrationRegistry(systemMigrations)).not.toThrow();
   });
 
-  it('appends the rebuild field migration without changing prior registration order', () => {
-    expect(systemMigrations.at(-1)).toMatchObject({
-      id: '20261009_migrate_dataset_rebuild_status',
-      dependsOn: ['20261008_migrate_chunk_training'],
-      version: '4.17.1',
-      manual: true,
+  it('appends dataset index initialization as a non-blocking automatic task', () => {
+    const task = systemMigrations.find(
+      ({ id }) => id === '20261022_initialize_dataset_vector_indexes'
+    );
+    expect(task).toMatchObject({
+      id: '20261022_initialize_dataset_vector_indexes',
+      version: '4.18.0',
       blockStartup: false,
-      onFailure: SystemMigrationFailurePolicyEnum.continue,
-      progressSteps: [{ key: 'datas' }, { key: 'trainings' }, { key: 'validation' }]
+      progressSteps: [{ key: 'legacyIndex' }, { key: 'datasets' }]
     });
+    expect(task).not.toHaveProperty('manual');
+    expect(task).not.toHaveProperty('independent');
+    expect(task).not.toHaveProperty('dependsOn');
+    expect(task).not.toHaveProperty('onFailure');
   });
 
-  it.each([{ blockStartup: true }, { delay: true }])('rejects manual mode with %o', (options) => {
+  it('在4.18.0末尾登记独立自动 Key 类型回填，保持启动非阻塞且无依赖', () => {
+    const task = systemMigrations.at(-1);
+    expect(task).toMatchObject({
+      id: '20261104_backfill_openapi_key_type',
+      version: '4.18.0',
+      independent: true,
+      progressSteps: [{ key: 'keys' }, { key: 'validation' }]
+    });
+    expect(task).not.toHaveProperty('blockStartup', true);
+    expect(task).not.toHaveProperty('dependsOn');
+    expect(task).not.toHaveProperty('manual');
+    expect(task).not.toHaveProperty('delay');
+  });
+
+  it('runs only the selected production tasks independently', () => {
+    const independentTasks = systemMigrations.filter((task: SystemMigration) => task.independent);
+    expect(independentTasks.map((task) => task.id)).toEqual([
+      '20261104_backfill_chat_publish_source',
+      '20261104_backfill_openapi_key_type'
+    ]);
+  });
+
+  it('rejects delayed manual execution', () => {
     expect(() =>
       validateSystemMigrationRegistry([
-        { ...createMigration('20261008_manual'), manual: true, ...options }
+        { ...createMigration('20261008_manual'), manual: true, delay: true }
       ])
-    ).toThrow('cannot block startup or be delayed');
+    ).toThrow('cannot be delayed');
   });
+
+  it.each([{ keys: [''] }, { keys: ['repeated', 'repeated'] }])(
+    'rejects invalid progress step keys: $keys',
+    ({ keys }) => {
+      const migration = {
+        ...createMigration('20261008_invalid_progress'),
+        progressSteps: keys.map((key) => ({ key, labelKey: 'system_migration:stage' }))
+      };
+      expect(() => validateSystemMigrationRegistry([migration])).toThrow(
+        'Invalid or duplicate progress step key'
+      );
+    }
+  );
 
   it('accepts an ordered registry with stable IDs', () => {
     expect(() =>
@@ -147,29 +120,27 @@ describe('validateSystemMigrationRegistry', () => {
     }
   );
 
-  it('rejects a blocking migration that continues after failure', () => {
+  it('accepts independent tasks at any registry position', () => {
     expect(() =>
       validateSystemMigrationRegistry([
-        {
-          ...createMigration('20260903_invalid_failure_policy'),
-          blockStartup: true,
-          onFailure: SystemMigrationFailurePolicyEnum.continue
-        }
+        createMigration('20260903_first'),
+        { ...createMigration('20260903_independent'), independent: true },
+        createMigration('20260903_last')
       ])
-    ).toThrow('must stop following migrations');
+    ).not.toThrow();
   });
 
-  it('rejects a blocking migration that configures delay', () => {
-    expect(() =>
-      validateSystemMigrationRegistry([
-        {
-          ...createMigration('20260903_invalid_delay_policy'),
-          blockStartup: true,
-          delay: true
-        }
-      ])
-    ).toThrow('cannot be delayed');
-  });
+  it.each([{ manual: true }, { delay: true }, { dependsOn: ['20260903_first'] }])(
+    'rejects independent mode with %o',
+    (options) => {
+      expect(() =>
+        validateSystemMigrationRegistry([
+          createMigration('20260903_first'),
+          { ...createMigration('20260903_independent'), independent: true, ...options }
+        ])
+      ).toThrow('cannot be manual, delayed or have dependencies');
+    }
+  );
 
   it.each(['migration_1', '2026-09-03_bad', '20260903_Uppercase'])(
     'rejects unstable migration ID %s',

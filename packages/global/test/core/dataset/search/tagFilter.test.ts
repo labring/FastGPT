@@ -9,8 +9,10 @@ import {
 import {
   createEmptyTagFilterValue,
   formatCollectionFilterMatchParam,
+  getNextDatasetTagFilterValue,
   getTagFilterOpsByCondition,
   intersectWorkflowTagOptions,
+  isDatasetTagFilterOpen,
   isDatasetTagFilterValue,
   normalizeLegacyDatasetTagFilterValue,
   pruneTagFilterConditions,
@@ -156,6 +158,19 @@ describe('serializeDatasetTagFilterValue', () => {
 });
 
 describe('formatCollectionFilterMatchParam', () => {
+  it.each([
+    { tags: { $and: [{ department: { $in: ['finance'] } }] } },
+    '{"tags":{"$and":[{"department":{"$in":["finance"]}}]}}',
+    undefined
+  ])('resolves the whole filter before normalizing JSON or object payloads: %j', (payload) => {
+    expect(
+      formatCollectionFilterMatchParam({
+        value: ['upstream', 'filterJson'],
+        resolveReference: () => payload
+      })
+    ).toBe(payload ? '{"tags":{"$and":[{"department":{"$in":["finance"]}}]}}' : undefined);
+  });
+
   it('resolves structured row references and normalizes legacy strings to $fromMigration conditions', () => {
     expect(
       formatCollectionFilterMatchParam({
@@ -280,5 +295,70 @@ describe('pruneTagFilterConditions', () => {
     );
 
     expect(result.conditions).toEqual([stringCondition]);
+  });
+});
+
+describe('isDatasetTagFilterOpen & getNextDatasetTagFilterValue', () => {
+  it('handles open state correctly in serialization and helpers', () => {
+    const activeFilter = {
+      logic: DatasetTagFilterLogicEnum.AND,
+      conditions: [{ tag: 'status', op: '$empty' }]
+    };
+    expect(serializeDatasetTagFilterValue(activeFilter)).toBeDefined();
+    expect(isDatasetTagFilterOpen(activeFilter)).toBe(true);
+
+    const closedFilter = {
+      ...activeFilter,
+      open: false
+    };
+    expect(serializeDatasetTagFilterValue(closedFilter)).toBeUndefined();
+    expect(formatCollectionFilterMatchParam({ value: closedFilter })).toBeUndefined();
+    expect(isDatasetTagFilterOpen(closedFilter)).toBe(false);
+
+    const explicitOpenFilter = {
+      ...activeFilter,
+      open: true
+    };
+    expect(isDatasetTagFilterOpen(explicitOpenFilter)).toBe(true);
+
+    // Empty filter with open: true is open in UI
+    const emptyOpenFilter = {
+      ...createEmptyTagFilterValue(),
+      open: true
+    };
+    expect(isDatasetTagFilterOpen(emptyOpenFilter)).toBe(true);
+
+    // Variable reference mode array values (empty or selected tuple) are open in UI
+    expect(isDatasetTagFilterOpen([])).toBe(true);
+    expect(isDatasetTagFilterOpen(['node-1', 'output'])).toBe(true);
+
+    // Empty filter without open is closed by default
+    expect(isDatasetTagFilterOpen(createEmptyTagFilterValue())).toBe(false);
+    expect(isDatasetTagFilterOpen(undefined)).toBe(false);
+
+    expect(
+      getNextDatasetTagFilterValue({
+        value: activeFilter,
+        isReference: false,
+        open: true
+      })
+    ).toEqual({
+      ...activeFilter,
+      open: true
+    });
+    expect(
+      getNextDatasetTagFilterValue({
+        value: activeFilter,
+        isReference: true,
+        open: true
+      })
+    ).toEqual([]);
+    expect(
+      getNextDatasetTagFilterValue({
+        value: ['node-1', 'output'],
+        isReference: true,
+        open: false
+      })
+    ).toBeUndefined();
   });
 });

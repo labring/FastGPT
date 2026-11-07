@@ -1,6 +1,6 @@
 import React from 'react';
 import { Box, Flex, IconButton, Input, Switch } from '@chakra-ui/react';
-import { isSecretValue } from '@fastgpt/global/common/secret/utils';
+import { getSecretPlainValue, isSecretValueConfigured } from '@fastgpt/global/common/secret/utils';
 import { formatTime2YMDHMS, formatToISOWithTimezone } from '@fastgpt/global/common/string/time';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type { SelectedDatasetType } from '@fastgpt/global/core/workflow/type/io';
@@ -42,13 +42,6 @@ const InputRender = (props: InputRenderProps) => {
       props.list ?? props.enums?.map((item) => ({ label: item.value, value: item.value })) ?? []
     );
   }, [inputType, props.list, props.enums]);
-
-  const isSelectAll = useMemo(() => {
-    if (inputType !== InputTypeEnum.multipleSelect) return false;
-    if (!Array.isArray(value) || multipleSelectList.length === 0) return false;
-    const valueSet = new Set(value);
-    return multipleSelectList.every((item) => valueSet.has(item.value));
-  }, [inputType, value, multipleSelectList]);
 
   const commonProps = useMemoEnhance(
     () => ({
@@ -98,22 +91,20 @@ const InputRender = (props: InputRenderProps) => {
   }
 
   if (inputType === InputTypeEnum.password) {
-    const isPasswordConfigured = isSecretValue(value);
-    const val = typeof value === 'object' && value !== null ? value.value : '';
+    const isPasswordConfigured = isSecretValueConfigured(value);
+    const val = getSecretPlainValue(value) ?? '';
 
     return !isPasswordConfigured || isPasswordEditing ? (
       <Input
         {...commonProps}
         onChange={(e) => {
           const val = e.target.value;
-          onChange?.({
-            value: val,
-            secret: ''
-          });
+          onChange?.({ value: val });
         }}
         value={val}
         type="password"
         autoFocus={isPasswordEditing}
+        onFocus={() => setIsPasswordEditing(true)}
         onBlur={() => setIsPasswordEditing(false)}
         autoComplete="new-password"
         data-form-type="other"
@@ -185,7 +176,15 @@ const InputRender = (props: InputRenderProps) => {
       description:
         typeof item.description === 'string' ? t(item.description as any) : item.description
     }));
-    return <MySelect {...commonProps} list={list} h={10} menuPlacement={props.menuPlacement} />;
+    return (
+      <MySelect
+        {...commonProps}
+        list={list}
+        h={10}
+        isSearch={list.length > 10}
+        menuPlacement={props.menuPlacement}
+      />
+    );
   }
 
   if (inputType === InputTypeEnum.multipleSelect) {
@@ -196,7 +195,8 @@ const InputRender = (props: InputRenderProps) => {
         list={multipleSelectList}
         value={value}
         onSelect={(e) => onChange?.(e)}
-        isSelectAll={isSelectAll}
+        isSearch={multipleSelectList.length > 10}
+        showSelectAll={multipleSelectList.length >= 5}
         itemWrap
       />
     );
@@ -211,6 +211,7 @@ const InputRender = (props: InputRenderProps) => {
       <AIModelSelector
         {...commonProps}
         modelType={ModelTypeEnum.llm}
+        appId={props.appId}
         outLinkAuthData={props.outLinkAuthData}
       />
     );

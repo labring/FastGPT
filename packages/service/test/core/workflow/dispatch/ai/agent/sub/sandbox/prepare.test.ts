@@ -9,6 +9,7 @@ const {
   runAgentSandboxEntrypointMock,
   resolveSandboxHomeMock,
   injectAgentSkillFilesToSandboxMock,
+  loadWorkflowSkillResourcesMock,
   syncBuiltinSkillsToSandboxMock,
   runAgentSkillVersionEntrypointsMock,
   getAgentSkillInfosMock,
@@ -22,6 +23,7 @@ const {
   runAgentSandboxEntrypointMock: vi.fn(),
   resolveSandboxHomeMock: vi.fn(),
   injectAgentSkillFilesToSandboxMock: vi.fn(),
+  loadWorkflowSkillResourcesMock: vi.fn(),
   syncBuiltinSkillsToSandboxMock: vi.fn(),
   runAgentSkillVersionEntrypointsMock: vi.fn(),
   getAgentSkillInfosMock: vi.fn(),
@@ -33,10 +35,20 @@ const {
 }));
 
 sandboxClientMock.provider = sandboxProviderMock;
+vi.mock('@fastgpt/service/core/workflow/resource/service', () => ({
+  loadWorkflowSkillResources: loadWorkflowSkillResourcesMock
+}));
 
-vi.mock('@fastgpt/service/core/ai/sandbox/interface/runtime', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@fastgpt/service/core/ai/sandbox/interface/runtime')>()),
-  prepareAgentSandboxRuntime: prepareAgentSandboxRuntimeMock,
+vi.mock('@fastgpt/service/core/ai/sandbox/application/runtime', async (importOriginal) => ({
+  ...(await importOriginal<
+    typeof import('@fastgpt/service/core/ai/sandbox/application/runtime')
+  >()),
+  prepareAgentSandboxRuntime: prepareAgentSandboxRuntimeMock
+}));
+vi.mock('@fastgpt/service/core/ai/sandbox/application/runtime/prepare', async (importOriginal) => ({
+  ...(await importOriginal<
+    typeof import('@fastgpt/service/core/ai/sandbox/application/runtime/prepare')
+  >()),
   injectCurrentInputFiles:
     (currentFiles: unknown[], readInputFile: unknown) => async (context: { sandbox: unknown }) => {
       await injectInputFilesToSandboxMock(context.sandbox, currentFiles, readInputFile);
@@ -47,25 +59,62 @@ vi.mock('@fastgpt/service/core/ai/sandbox/interface/runtime', async (importOrigi
       sandbox: context.sandbox
     });
     return context;
-  },
-  runSandboxEntrypoint:
-    ({ sandboxEntrypoint }: { sandboxEntrypoint?: string }) =>
-    async (context: { sandbox: unknown; workDirectory: string }) => {
-      await runAgentSandboxEntrypointMock({
-        sandbox: context.sandbox,
-        sandboxEntrypoint,
-        workDirectory: context.workDirectory
-      });
-      return context;
-    },
-  withAgentSandboxInitLease: withAgentSandboxInitLeaseMock,
-  resolveSandboxHome: resolveSandboxHomeMock,
-  getAgentSkillInfos: getAgentSkillInfosMock,
-  getBuiltinSkillsRootPath: (homeDirectory: string) => `${homeDirectory}/.fastgpt/skills`,
-  injectAgentSkillFilesToSandbox: injectAgentSkillFilesToSandboxMock,
-  syncBuiltinSkillsToSandbox: syncBuiltinSkillsToSandboxMock,
-  runAgentSkillVersionEntrypoints: runAgentSkillVersionEntrypointsMock
+  }
 }));
+vi.mock(
+  '@fastgpt/service/core/ai/sandbox/application/runtime/entrypoint',
+  async (importOriginal) => ({
+    ...(await importOriginal<
+      typeof import('@fastgpt/service/core/ai/sandbox/application/runtime/entrypoint')
+    >()),
+    runSandboxEntrypoint:
+      ({ sandboxEntrypoint }: { sandboxEntrypoint?: string }) =>
+      async (context: { sandbox: unknown; workDirectory: string }) => {
+        await runAgentSandboxEntrypointMock({
+          sandbox: context.sandbox,
+          sandboxEntrypoint,
+          workDirectory: context.workDirectory
+        });
+        return context;
+      },
+    withAgentSandboxInitLease: withAgentSandboxInitLeaseMock
+  })
+);
+vi.mock('@fastgpt/service/core/ai/sandbox/application/runtime/home', async (importOriginal) => ({
+  ...(await importOriginal<
+    typeof import('@fastgpt/service/core/ai/sandbox/application/runtime/home')
+  >()),
+  resolveSandboxHome: resolveSandboxHomeMock
+}));
+vi.mock(
+  '@fastgpt/service/core/ai/sandbox/application/runtime/skill/core',
+  async (importOriginal) => ({
+    ...(await importOriginal<
+      typeof import('@fastgpt/service/core/ai/sandbox/application/runtime/skill/core')
+    >()),
+    getAgentSkillInfos: getAgentSkillInfosMock,
+    injectAgentSkillFilesToSandbox: injectAgentSkillFilesToSandboxMock
+  })
+);
+vi.mock(
+  '@fastgpt/service/core/ai/sandbox/application/runtime/skill/builtin',
+  async (importOriginal) => ({
+    ...(await importOriginal<
+      typeof import('@fastgpt/service/core/ai/sandbox/application/runtime/skill/builtin')
+    >()),
+    getBuiltinSkillsRootPath: (homeDirectory: string) => `${homeDirectory}/.fastgpt/skills`,
+    syncBuiltinSkillsToSandbox: syncBuiltinSkillsToSandboxMock
+  })
+);
+vi.mock(
+  '@fastgpt/service/core/ai/sandbox/application/runtime/skill/entrypoint',
+  async (importOriginal) => ({
+    ...(await importOriginal<
+      typeof import('@fastgpt/service/core/ai/sandbox/application/runtime/skill/entrypoint')
+    >()),
+    runAgentSkillVersionEntrypoints: runAgentSkillVersionEntrypointsMock
+  })
+);
 
 const currentFiles = [
   {
@@ -83,6 +132,7 @@ describe('ensureAgentSandboxRuntime', () => {
       sandboxClient: sandboxClientMock,
       workDirectory: '/workspace'
     });
+    loadWorkflowSkillResourcesMock.mockResolvedValue([{ _id: 'skill_1' }]);
     resolveSandboxHomeMock.mockResolvedValue('/home/sandbox');
     injectAgentSkillFilesToSandboxMock.mockResolvedValue([
       {
@@ -127,12 +177,16 @@ describe('ensureAgentSandboxRuntime', () => {
       sandboxId: 'sandbox_1',
       fn: expect.any(Function)
     });
+    expect(loadWorkflowSkillResourcesMock).toHaveBeenCalledWith({
+      skillIds: ['skill_1'],
+      tmbId: 'tmb_1'
+    });
+    expect(loadWorkflowSkillResourcesMock.mock.invocationCallOrder[0]).toBeLessThan(
+      injectAgentSkillFilesToSandboxMock.mock.invocationCallOrder[0]
+    );
     expect(injectAgentSkillFilesToSandboxMock).toHaveBeenCalledWith({
       sandbox: sandboxProviderMock,
-      teamId: 'team_1',
-      tmbId: 'tmb_1',
-      skillIds: ['skill_1'],
-      dynamic: false,
+      skills: [{ _id: 'skill_1' }],
       workDirectory: '/workspace'
     });
     expect(prepareSandboxRuntimeMirrorsMock).toHaveBeenCalledWith({

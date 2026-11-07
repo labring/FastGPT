@@ -11,7 +11,7 @@ const mocks = vi.hoisted(() => ({
   router: { isReady: false, query: {} as Record<string, string> },
   system: {
     initd: true,
-    feConfigs: { sso: { url: 'https://sso.example.com', autoLogin: true } }
+    feConfigs: { sso: { enabled: true, autoLogin: true } }
   },
   startLogin: vi.fn().mockResolvedValue(undefined),
   resetChatCache: vi.fn()

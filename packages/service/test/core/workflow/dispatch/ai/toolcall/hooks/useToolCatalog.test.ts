@@ -19,14 +19,11 @@ const { getSandboxToolInfoMock } = vi.hoisted(() => ({
   getSandboxToolInfoMock: vi.fn()
 }));
 
-vi.mock('@fastgpt/service/core/ai/sandbox/interface/toolCall', async (importOriginal) => {
+vi.mock('@fastgpt/service/core/ai/sandbox/application/toolCall', async (importOriginal) => {
   const original =
-    await importOriginal<typeof import('@fastgpt/service/core/ai/sandbox/interface/toolCall')>();
+    await importOriginal<typeof import('@fastgpt/service/core/ai/sandbox/application/toolCall')>();
 
-  return {
-    ...original,
-    getSandboxToolInfo: getSandboxToolInfoMock
-  };
+  return { ...original, getSandboxToolInfo: getSandboxToolInfoMock };
 });
 
 const createToolNode = (overrides: Record<string, any> = {}) =>
@@ -162,6 +159,16 @@ describe('useToolCatalog', () => {
       })
     );
     expect(result.getToolInfo('missing')).toBeUndefined();
+  });
+
+  it('uses the node intro regardless of dispatch language', async () => {
+    const { tools } = await useToolCatalog({
+      messages: [],
+      toolNodes: [createToolNode({ intro: 'Search summary' })],
+      lang: 'zh-CN'
+    });
+
+    expect(tools[0].function.description).toBe('Search: Search summary');
   });
 
   it('exposes only agent-generated params to model schema', () => {

@@ -2,6 +2,7 @@ import { useUserStore } from '@/web/support/user/useUserStore';
 import type { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type { ModelDefaultIds } from '@fastgpt/global/core/ai/model/default';
 import { isEmptyModelValue } from '@fastgpt/global/core/ai/model/reference';
+import { isSystemModel } from '@fastgpt/global/core/ai/model/utils';
 import type { MyModelItemType } from '@fastgpt/global/openapi/core/ai/model/api';
 import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import { useUserModelStore } from './useUserModelStore';
@@ -106,11 +107,11 @@ export const getModelDetail = async <T extends ModelTypeEnum = ModelTypeEnum>(
   const catalog = await ensureModelCatalog(options);
   const model = !isEmptyModelValue(options.modelId)
     ? catalog.modelMap[options.modelId!]
-    : catalog.modelList.find((item) => item.model === options.model);
+    : catalog.modelList.find((item) => isSystemModel(item) && item.model === options.model);
   return model && matchesModelFilter(model, options) ? model : undefined;
 };
 
-/** 业务默认优先，再使用 catalog 有效默认，最后补能力过滤后的首项；不负责写入任何业务状态。 */
+/** 业务默认优先，再使用 catalog 有效系统默认，最后补能力过滤后的首个系统模型；不负责写入任何业务状态。 */
 export const getModelDefault = async <T extends ModelTypeEnum>(
   options: ModelFilter<T> & {
     modelType: T;
@@ -120,13 +121,22 @@ export const getModelDefault = async <T extends ModelTypeEnum>(
 ) => {
   const catalog = await ensureModelCatalog(options);
   const defaultKey = options.defaultKey ?? options.modelType;
-  const candidates = [options.businessDefaultModelId, catalog.defaultModelIds[defaultKey]];
-  for (const id of candidates) {
-    const model = id ? catalog.modelMap[id] : undefined;
-    if (model && matchesModelFilter(model, options)) return model;
+  const businessModel = options.businessDefaultModelId
+    ? catalog.modelMap[options.businessDefaultModelId]
+    : undefined;
+  if (businessModel && matchesModelFilter(businessModel, options)) return businessModel;
+
+  const systemDefaultId = catalog.defaultModelIds[defaultKey];
+  const systemDefaultModel = systemDefaultId ? catalog.modelMap[systemDefaultId] : undefined;
+  if (
+    systemDefaultModel &&
+    isSystemModel(systemDefaultModel) &&
+    matchesModelFilter(systemDefaultModel, options)
+  ) {
+    return systemDefaultModel;
   }
   if (defaultKey === 'datasetImageLLM' || defaultKey === 'chatTitleLLM') return;
-  return catalog.modelList.find((model): model is ModelOfType<T> =>
-    matchesModelFilter(model, options)
+  return catalog.modelList.find(
+    (model): model is ModelOfType<T> => isSystemModel(model) && matchesModelFilter(model, options)
   );
 };

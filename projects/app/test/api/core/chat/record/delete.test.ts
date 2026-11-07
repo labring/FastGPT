@@ -20,6 +20,9 @@ import {
   PerResourceTypeEnum,
   ReadPermissionVal
 } from '@fastgpt/global/support/permission/constant';
+import { MongoOutLink } from '@fastgpt/service/support/outLink/schema';
+import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
+import { ApiRequestInputParseError } from '@fastgpt/service/common/zod/requestParseError';
 
 describe('delete chat record api', () => {
   let testUser: Awaited<ReturnType<typeof getUser>>;
@@ -68,6 +71,67 @@ describe('delete chat record api', () => {
     });
   });
 
+  it('deletes anonymous outlink messages through Body while rejecting another visitor', async () => {
+    const shareId = getNanoid();
+    const outLinkUid = 'current-visitor';
+    const link = await MongoOutLink.create({
+      shareId,
+      appId,
+      teamId: testUser.teamId,
+      tmbId: testUser.tmbId,
+      type: PublishChannelEnum.share,
+      name: 'Anonymous chat',
+      allowAnonymous: true
+    });
+    await MongoChat.updateOne(
+      { appId, chatId },
+      { $set: { publishSource: { type: 'share', id: link._id }, outLinkUid } }
+    );
+    await Promise.all([createChatItem('delete-1'), createChatItem('keep-1')]);
+
+    const request = (visitor: string) => ({
+      body: { chatId, contentIds: ['delete-1'], outLinkAuthData: { shareId, outLinkUid: visitor } }
+    });
+
+    const denied = await Call(handler, request('another-visitor'));
+    expect(denied.code).not.toBe(200);
+    expect(await MongoChatItem.countDocuments({ appId, chatId, deleteTime: null })).toBe(2);
+
+    const res = await Call(handler, request(outLinkUid));
+    expect(res.code).toBe(200);
+    expect(res.error).toBeUndefined();
+    expect(
+      (await MongoChatItem.findOne({ appId, chatId, dataId: 'delete-1' }).lean())?.deleteTime
+    ).toBeInstanceOf(Date);
+    expect(
+      (await MongoChatItem.findOne({ appId, chatId, dataId: 'keep-1' }).lean())?.deleteTime
+    ).toBeNull();
+  });
+
+  it.each([
+    {
+      name: 'serialized outlink auth',
+      input: { outLinkAuthData: JSON.stringify({ shareId: 'share', outLinkUid: 'uid' }) }
+    },
+    { name: 'comma-separated message IDs', input: { contentIds: 'keep-invalid-input,other' } }
+  ] as const)('rejects $name in Body without falling back to Query', async ({ input }) => {
+    await createChatItem('keep-invalid-input');
+    const params = { appId, chatId, contentId: 'keep-invalid-input' };
+    const res = await Call(handler, {
+      auth: testUser,
+      query: params,
+      body: { ...params, ...input }
+    });
+
+    expect(res.code).not.toBe(200);
+    expect(res.error).toBeInstanceOf(ApiRequestInputParseError);
+    expect(res.error.context.inputSource).toBe('body');
+    expect(
+      (await MongoChatItem.findOne({ appId, chatId, dataId: 'keep-invalid-input' }).lean())
+        ?.deleteTime
+    ).toBeNull();
+  });
+
   it('should soft delete body contentIds and de-duplicate repeated ids', async () => {
     await Promise.all([
       createChatItem('delete-1'),
@@ -101,7 +165,7 @@ describe('delete chat record api', () => {
     expect(keptItem?.deleteTime).toBeNull();
   });
 
-  it('should prefer body payload over query payload', async () => {
+  it('uses only Body when Query contains different message IDs', async () => {
     await Promise.all([createChatItem('body-id'), createChatItem('query-id')]);
 
     const res = await Call<DeleteChatRecordBodyType, DeleteChatRecordBodyType>(handler, {
@@ -126,32 +190,85 @@ describe('delete chat record api', () => {
     expect(queryItem?.deleteTime).toBeNull();
   });
 
-  it('should keep compatibility with query contentId and comma separated contentIds', async () => {
-    await Promise.all([
-      createChatItem('legacy-single'),
-      createChatItem('legacy-list-1'),
-      createChatItem('legacy-list-2')
-    ]);
+  it('soft deletes an Ask reply without rewriting the original AI', async () => {
+    const source = {
+      teamId: testUser.teamId,
+      tmbId: testUser.tmbId,
+      sourceType: ChatSourceTypeEnum.app,
+      appId,
+      chatId
+    };
+    const interactive = {
+      type: 'agentAsk',
+
+      entryNodeIds: [],
+      memoryEdges: [],
+      nodeOutputs: [],
+      params: {
+        toolCallId: 'ask-1',
+        arguments: JSON.stringify({
+          reason: '',
+          blockerType: 'user_choice',
+          questions: [
+            {
+              question: 'Choose?',
+              options: [
+                { summary: 'A', value: 'A' },
+                { summary: 'B', value: 'B' }
+              ]
+            }
+          ]
+        })
+      }
+    };
+    const previousAi = await MongoChatItem.create({
+      ...source,
+      obj: ChatRoleEnum.AI,
+      dataId: 'question-round',
+      value: [{ interactive }]
+    });
+    await MongoChatItem.create({
+      ...source,
+      obj: ChatRoleEnum.Human,
+      dataId: 'answer-round',
+      value: [
+        {
+          select: {
+            type: 'agentAsk',
+            questions: [{ question: 'Choose?', value: 'A' }]
+          }
+        }
+      ]
+    });
+    await createChatItem('answer-round');
+    const res = await Call<DeleteChatRecordBodyType, Record<string, never>>(handler, {
+      auth: testUser,
+      body: { appId, chatId, contentIds: ['answer-round'] }
+    });
+    expect(res.code).toBe(200);
+    const remaining = await MongoChatItem.findById(previousAi._id).lean();
+    expect(remaining?.value).toEqual([{ interactive }]);
+    expect(await MongoChatItem.countDocuments({ appId, chatId, deleteTime: null })).toBe(1);
+  });
+
+  it('rejects Query-only deletion without changing messages', async () => {
+    await createChatItem('keep-query-only');
 
     const res = await Call<Record<string, never>, DeleteChatRecordBodyType>(handler, {
       auth: testUser,
       query: {
         appId,
         chatId,
-        contentId: 'legacy-single',
-        contentIds: 'legacy-list-1, legacy-list-2'
-      } as any
+        contentId: 'keep-query-only'
+      }
     });
 
-    expect(res.code).toBe(200);
-
-    const deletedCount = await MongoChatItem.countDocuments({
-      appId,
-      chatId,
-      dataId: { $in: ['legacy-single', 'legacy-list-1', 'legacy-list-2'] },
-      deleteTime: { $ne: null }
-    });
-    expect(deletedCount).toBe(3);
+    expect(res.code).not.toBe(200);
+    expect(res.error).toBeInstanceOf(ApiRequestInputParseError);
+    expect(res.error.context.inputSource).toBe('body');
+    expect(
+      (await MongoChatItem.findOne({ appId, chatId, dataId: 'keep-query-only' }).lean())?.deleteTime
+    ).toBeNull();
   });
 
   it('should authorize but skip update when no content id is provided', async () => {

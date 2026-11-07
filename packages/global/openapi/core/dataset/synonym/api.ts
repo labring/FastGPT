@@ -7,7 +7,7 @@ import {
   DatasetSynonymMappingSchema
 } from '../../../../core/dataset/synonym';
 import { IntSchema } from '../../../../common/zod';
-import { PaginationResponseSchema, PaginationSchema } from '../../../api';
+import { PaginationResponseSchema, createPaginationSchema } from '../../../api';
 
 export const UploadDatasetSynonymBodySchema = z.object({
   datasetId: ObjectIdSchema.meta({ description: '目标知识库 ID' }),
@@ -96,10 +96,9 @@ export const DeleteDatasetSynonymResponseSchema = DatasetSynonymMutationResponse
 });
 export type DeleteDatasetSynonymResponse = z.infer<typeof DeleteDatasetSynonymResponseSchema>;
 
-export const SearchDatasetSynonymMappingsBodySchema = PaginationSchema.extend({
+export const SearchDatasetSynonymMappingsBodySchema = createPaginationSchema({
   datasetId: ObjectIdSchema.meta({ description: '知识库 ID' }),
   search: z.string().trim().max(128).optional().meta({ description: '标准词或同义词关键词' }),
-  pageNum: IntSchema.positive().default(1).meta({ description: '页码，从 1 开始' }),
   pageSize: IntSchema.min(1).max(100).default(20).meta({ description: '每页数量' })
 });
 export const SearchDatasetSynonymMappingsResponseSchema = PaginationResponseSchema(

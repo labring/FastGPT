@@ -151,6 +151,8 @@ export const UpdateWorkflowToolBodySchema = AdminSystemToolDetailSchema.pick({
   .partial()
   .extend({
     id: z.string(),
+    name: z.string().optional(),
+    intro: z.string().optional(),
     secretsVal: UpdateToolSecretsValSchema,
     associatedPluginId: z.string().optional()
   });
@@ -167,12 +169,6 @@ export const CreateAppToolBodySchema = UpdateWorkflowToolBodySchema.omit({
   originCost: z.number().optional()
 });
 export type CreateAppToolBodyType = z.infer<typeof CreateAppToolBodySchema>;
-
-// Delete system Tool
-export const DeleteSystemToolQuerySchema = z.object({
-  toolId: z.string()
-});
-export type DeleteSystemToolQueryType = z.infer<typeof DeleteSystemToolQuerySchema>;
 
 /* ======= App type tool ====== */
 // Get all system plugin apps

@@ -1,5 +1,5 @@
 import z from 'zod';
-import { PaginationResponseSchema, PaginationSchema } from '../../api';
+import { PaginationResponseSchema, createPaginationSchema } from '../../api';
 
 // App type schema
 export const AppItemSchema = z.object({
@@ -13,7 +13,7 @@ export const AppItemSchema = z.object({
 export type AppItemType = z.infer<typeof AppItemSchema>;
 
 // Get apps request body schema
-export const GetAppsBodySchema = PaginationSchema.extend({
+export const GetAppsBodySchema = createPaginationSchema({
   searchKey: z.string().nullish().meta({ description: '搜索关键词（支持应用名称和应用ID）' })
 });
 export type GetAppsBodyType = z.infer<typeof GetAppsBodySchema>;

@@ -24,7 +24,7 @@ export class OpenGaussVectorCtrl implements VectorControllerType {
       `);
 
       await OgClient.query(
-        `CREATE INDEX CONCURRENTLY IF NOT EXISTS vector_index ON ${DatasetVectorTableName} USING hnsw (vector vector_ip_ops) WITH (m = 32, ef_construction = 128);`
+        `CREATE INDEX CONCURRENTLY IF NOT EXISTS vector_index ON ${DatasetVectorTableName} USING hnsw (vector vector_ip_ops) WITH (m = 32, ef_construction = 256);`
       );
       await OgClient.query(
         `CREATE INDEX CONCURRENTLY IF NOT EXISTS team_dataset_collection_index ON ${DatasetVectorTableName} USING btree(team_id, dataset_id, collection_id);`
@@ -136,17 +136,20 @@ export class OpenGaussVectorCtrl implements VectorControllerType {
       return { results: [] };
     }
 
-    const results: any = await OgClient.query(
-      `BEGIN;
-          SET LOCAL hnsw.ef_search = ${global.systemEnv?.hnswEfSearch || 100};
+    const results: any = await OgClient.query({
+      // 客户端等待长于服务端的 90 秒超时，避免顶层提前释放并发额度。
+      query_timeout: 120_000,
+      text: `BEGIN;
+          SET LOCAL hnsw.ef_search = ${global.systemEnv?.hnswEfSearch || 200};
           SELECT id, collection_id, vector <#> '[${vector}]' AS score
             FROM ${DatasetVectorTableName}
-            WHERE dataset_id IN (${datasetIds.map((id) => `'${String(id)}'`).join(',')})
+            WHERE team_id = '${String(teamId)}'
+              AND dataset_id IN (${datasetIds.map((id) => `'${String(id)}'`).join(',')})
               ${filterCollectionIdSql}
               ${forbidCollectionSql}
             ORDER BY score LIMIT ${limit};
         COMMIT;`
-    );
+    });
     const rows = results?.[results.length - 2]?.rows as {
       id: string;
       collection_id: string;

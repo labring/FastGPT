@@ -36,6 +36,7 @@ import {
 } from '@fastgpt/service/common/s3/filename';
 
 const logger = getLogger(LogCategories.INFRA.FILE);
+const MULTIPART_UPLOAD_REQUEST_ABORTED = 'Multipart upload request aborted';
 
 type GuardStreamOptions = {
   maxSize: number;
@@ -550,18 +551,23 @@ export const handleS3ProxyUploadPart = async ({
   const validatedUpload = contentGuard?.validatedUpload;
 
   const abortContext = createS3ProxyAbortContext({ req, res });
-  const destroyUploadStreams = (error: Error) => {
-    if (!lengthGuard.destroyed) lengthGuard.destroy(error);
-    if (!uploadStream.destroyed) uploadStream.destroy(error);
+  /**
+   * 上游 SDK 已经通过 abortSignal 收到取消原因，这里只负责关闭中间流水线。
+   * 如果再把 Error 注入正在被 provider 消费的 body，会让 SDK 额外产生一个无人处理的
+   * rejected Promise，最终被全局 unhandledRejection 误记为服务端错误。
+   */
+  const destroyUploadStreams = () => {
+    if (!lengthGuard.destroyed) lengthGuard.destroy();
+    if (!uploadStream.destroyed) uploadStream.destroy();
   };
 
   const abortUpload = () => {
     // 正常请求结束也可能触发 close；只有未完整读取的请求需要销毁上传流。
     if (req.complete || req.readableEnded) return;
 
-    const error = new Error('Multipart upload request aborted');
+    const error = new Error(MULTIPART_UPLOAD_REQUEST_ABORTED);
     abortContext.abort(error);
-    destroyUploadStreams(error);
+    destroyUploadStreams();
   };
 
   abortContext.signal.addEventListener('abort', abortUpload, { once: true });
@@ -570,7 +576,7 @@ export const handleS3ProxyUploadPart = async ({
     abortUpload();
     abortContext.signal.removeEventListener('abort', abortUpload);
     abortContext.cleanup();
-    throw new Error('Multipart upload request aborted');
+    throw new Error(MULTIPART_UPLOAD_REQUEST_ABORTED);
   }
 
   req.once('aborted', abortUpload);
@@ -598,7 +604,7 @@ export const handleS3ProxyUploadPart = async ({
 
     return { etag: result.etag };
   } catch (error) {
-    destroyUploadStreams(error instanceof Error ? error : new Error(String(error)));
+    destroyUploadStreams();
     throw error;
   } finally {
     req.off('aborted', abortUpload);
@@ -704,7 +710,7 @@ export function resolveS3ProxyErrorResponse(error: unknown): {
     errorKey === 'Multipart part content-length is required' ||
     errorKey === 'Multipart part length does not match session' ||
     errorKey === 'Multipart part number is out of range' ||
-    errorKey === 'Multipart upload request aborted' ||
+    errorKey === MULTIPART_UPLOAD_REQUEST_ABORTED ||
     errorKey === 'Multipart upload requires partNumber' ||
     errorKey === 'Multipart parts count does not match total size' ||
     errorKey?.startsWith('Multipart parts must be') ||
@@ -740,6 +746,15 @@ export function resolveS3ProxyErrorResponse(error: unknown): {
  * 对已经开始流式输出的响应，只结束连接；否则交给 `jsonRes` 保持统一响应结构。
  */
 export function handleS3ProxyRouteError({ res, error }: { res: NextApiResponse; error: unknown }) {
+  // 客户端主动取消后连接已经断开，不应再写响应，更不能把预期取消记成服务端异常。
+  if (getProxyErrorKey(error) === MULTIPART_UPLOAD_REQUEST_ABORTED) {
+    return;
+  }
+
+  if (res.destroyed || res.closed) {
+    return;
+  }
+
   if (res.headersSent) {
     res.end();
     return;

@@ -30,17 +30,27 @@ export class CommandFilesystemPolyfill {
    * size, then issues range reads so that no single command's stdout exceeds
    * the executor's bounded output limit.
    *
-   * Falls back to a single `cat | base64` read when `stat` fails (e.g. when
-   * the sandbox lacks GNU stat). That fallback is bounded by the caller's
-   * `maxOutputBytes`, so very large files require stat-based chunking.
+   * Falls back to a single `base64 < file` read when `stat` fails (e.g. when
+   * the sandbox lacks GNU stat or the file is missing). The redirect makes a
+   * missing or unreadable file fail the command; with `cat | base64` the
+   * pipeline exits with base64's status and the file reads as empty. That
+   * fallback is bounded by the executor's output cap, so a file too large for
+   * it fails instead of returning partial content.
    */
   async readFile(path: string): Promise<Uint8Array> {
     try {
       const size = await this.statSize(path);
       if (size === undefined) {
-        const result = await this.executor.execute(`cat ${this.shellQuote(path)} | base64 -w 0`);
+        const result = await this.executor.execute(`base64 -w 0 < ${this.shellQuote(path)}`);
         if (result.exitCode !== 0) {
           throw this.createFileError(path, result.stderr);
+        }
+        if (result.truncated) {
+          throw new FileOperationError(
+            'File is too large to read without stat',
+            path,
+            'TRANSFER_ERROR'
+          );
         }
         return base64ToBytes(result.stdout);
       }
@@ -54,6 +64,14 @@ export class CommandFilesystemPolyfill {
         const chunk = await this.readFileRange({ path, start: offset, end });
         chunks.push(chunk);
         totalLength += chunk.length;
+      }
+
+      if (totalLength !== size) {
+        throw new FileOperationError(
+          `Read ${totalLength} of ${size} bytes`,
+          path,
+          'TRANSFER_ERROR'
+        );
       }
 
       const combined = new Uint8Array(totalLength);
@@ -79,10 +97,11 @@ export class CommandFilesystemPolyfill {
    * does not exist or stat is unavailable).
    */
   private async statSize(path: string): Promise<number | undefined> {
-    // GNU stat uses -c '%s', BSD/macOS stat uses -f '%z'.
+    // GNU stat uses -c '%s', BSD/macOS stat uses -f '%z'. -L sizes the file a
+    // symlink points to, which is what `tail` reads.
     const quotedPath = this.shellQuote(path);
     const result = await this.executor.execute(
-      `stat -c '%s' ${quotedPath} 2>/dev/null || stat -f '%z' ${quotedPath} 2>/dev/null || echo STAT_FAILED`
+      `stat -L -c '%s' ${quotedPath} 2>/dev/null || stat -L -f '%z' ${quotedPath} 2>/dev/null || echo STAT_FAILED`
     );
     const stdout = result.stdout.trim();
     if (!stdout || stdout.includes('STAT_FAILED')) return undefined;
@@ -107,7 +126,10 @@ export class CommandFilesystemPolyfill {
         : `tail -c +${tailPos} ${quotedPath} | base64 -w 0`;
 
     const result = await this.executor.execute(cmd);
-    if (result.exitCode !== 0) {
+    // The pipeline exits with base64's status, so a `tail` that can't read the
+    // file (e.g. permission denied) only shows up on stderr. Some base64
+    // builds print a bare newline for empty input.
+    if (result.exitCode !== 0 || (!result.stdout.trim() && result.stderr.trim())) {
       throw this.createFileError(path, result.stderr);
     }
     return base64ToBytes(result.stdout);
@@ -150,7 +172,7 @@ export class CommandFilesystemPolyfill {
     }
 
     const base64 = bytesToBase64(data);
-    const chunkSize = 1024; // Avoid command line length limits
+    const chunkSize = 64 * 1024; // Avoid command line length limits
     let first = truncate;
 
     for (let i = 0; i < base64.length; i += chunkSize) {
@@ -402,34 +424,99 @@ export class CommandFilesystemPolyfill {
   }
 
   /**
-   * Replace content in files via sed.
+   * Replace every literal occurrence of `oldContent` with `newContent`.
+   *
+   * The text is matched as a plain string, not as a sed regex: content from
+   * an edit usually holds `.`, `*`, `[`, `$`, backslashes and newlines, which
+   * sed would treat as pattern syntax or reject. The file is read, replaced
+   * in memory and written back with `replaceFileContents`. A file without a
+   * match is left untouched.
    */
   async replaceContent(
     entries: { path: string; oldContent: string; newContent: string }[]
   ): Promise<void> {
     for (const { path, oldContent, newContent } of entries) {
-      // Escape sed special characters
-      const escapedOld = oldContent
-        .replace(/\\/g, '\\\\\\\\')
-        .replace(/\//g, '\\/')
-        .replace(/&/g, '\\&');
-      const escapedNew = newContent
-        .replace(/\\/g, '\\\\\\\\')
-        .replace(/\//g, '\\/')
-        .replace(/&/g, '\\&');
+      if (!oldContent) {
+        throw new FileOperationError('Content to replace must not be empty', path, 'INVALID_PATH');
+      }
 
-      const result = await this.executor.execute(
-        `sed -i ${this.shellQuote(`s/${escapedOld}/${escapedNew}/g`)} ${this.shellQuote(path)}`
+      const bytes = await this.readFile(path);
+      let content: string;
+      try {
+        // Keep a leading BOM, and refuse bytes that aren't UTF-8 instead of
+        // writing them back as U+FFFD.
+        content = new TextDecoder('utf-8', { ignoreBOM: true, fatal: true }).decode(bytes);
+      } catch {
+        throw new FileOperationError('File is not valid UTF-8 text', path, 'TRANSFER_ERROR');
+      }
+      if (!content.includes(oldContent)) continue;
+
+      await this.replaceFileContents(
+        path,
+        new TextEncoder().encode(content.split(oldContent).join(newContent))
       );
+    }
+  }
 
-      if (result.exitCode !== 0) {
+  /**
+   * Overwrite an existing file with `data` without leaving it partly written.
+   *
+   * A symlink is followed and the file it points to is replaced, so the link
+   * stays a link. That file is copied with `cp -p` to a temporary file in the
+   * same directory, which keeps its mode and timestamps. Its name is short
+   * and fixed-length, so it fits even when the target's name is near the
+   * filename length limit. The copy is rewritten with `data` over as many
+   * commands as it needs. Once its size is checked, `mv` renames it over the
+   * file in one step. If any step fails, the original file is untouched.
+   * Other hard links to the file keep the old content, as with `sed -i`.
+   */
+  private async replaceFileContents(path: string, data: Uint8Array): Promise<void> {
+    const target = await this.resolveSymlinks(path);
+    const quotedTarget = this.shellQuote(target);
+    const tempPath = `${target.slice(0, target.lastIndexOf('/') + 1)}.edit-${Math.random().toString(36).slice(2, 10).padEnd(8, '0')}.tmp`;
+    const quotedTemp = this.shellQuote(tempPath);
+    try {
+      const copy = await this.executor.execute(`cp -p ${quotedTarget} ${quotedTemp}`);
+      if (copy.exitCode !== 0) {
+        throw this.createFileError(path, copy.stderr);
+      }
+
+      await this.appendBytes({ path: tempPath, data, truncate: true });
+
+      const size = await this.executor.execute(`wc -c < ${quotedTemp}`);
+      const written = Number.parseInt(size.stdout.trim(), 10);
+      if (size.exitCode !== 0 || written !== data.length) {
         throw new FileOperationError(
-          `Failed to replace content: ${result.stderr}`,
+          `Wrote ${Number.isNaN(written) ? 0 : written} of ${data.length} bytes`,
           path,
-          'INVALID_PATH'
+          'TRANSFER_ERROR'
         );
       }
+
+      const result = await this.executor.execute(`mv -f ${quotedTemp} ${quotedTarget}`);
+      if (result.exitCode !== 0) {
+        throw this.createFileError(path, result.stderr);
+      }
+    } finally {
+      await this.executor.execute(`rm -f ${quotedTemp}`).catch(() => undefined);
     }
+  }
+
+  /**
+   * Return the file `path` finally points to, or `path` itself if it is not a
+   * symlink. Fails if `path` is a symlink that `readlink -f` can't resolve,
+   * rather than replacing the link with a regular file.
+   */
+  private async resolveSymlinks(path: string): Promise<string> {
+    const quotedPath = this.shellQuote(path);
+    const result = await this.executor.execute(
+      `if [ -L ${quotedPath} ]; then readlink -f ${quotedPath}; fi`
+    );
+    const resolved = result.stdout.replace(/\n$/, '');
+    if (result.exitCode !== 0) {
+      throw this.createFileError(path, result.stderr || 'Cannot resolve symlink');
+    }
+    return resolved || path;
   }
 
   // ==================== Health Check Polyfill ====================

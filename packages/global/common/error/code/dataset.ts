@@ -38,7 +38,8 @@ export enum DatasetErrEnum {
   archiveUnavailable = 'archiveUnavailable',
   archiveInvalidFile = 'archiveInvalidFile',
   archiveUnsupportedDataset = 'archiveUnsupportedDataset',
-  archiveInvalidTicket = 'archiveInvalidTicket'
+  archiveInvalidTicket = 'archiveInvalidTicket',
+  exportFolderNotSupported = 'exportFolderNotSupported'
 }
 const datasetErr = [
   {
@@ -172,6 +173,11 @@ const datasetErr = [
     statusText: DatasetErrEnum.archiveInvalidTicket,
     message: i18nT('dataset:archive.invalid_ticket'),
     httpStatus: 410
+  },
+  {
+    statusText: DatasetErrEnum.exportFolderNotSupported,
+    message: i18nT('common:core.dataset.error.exportFolderNotSupported'),
+    httpStatus: 400
   }
 ];
 export default datasetErr.reduce((acc, cur, index) => {

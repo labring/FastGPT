@@ -1,3 +1,4 @@
+import { checkCreateResourceParent } from '../../../../common/parentFolder/depth';
 import {
   AgentSkillCreationStatusEnum,
   AgentSkillSourceEnum,
@@ -8,13 +9,23 @@ import { MongoAgentSkills } from '../model/schema';
 import type { CreateSkillData } from './types';
 
 /**
- * Create a new personal skill record.
+ * 创建个人 Skill 元数据，写入前校验父级文件夹链，防止复制等入口绕过目录类型约束。
  *
  * This only creates metadata. Initial SKILL.md/package/version setup is owned by
  * import/copy/async creation flows so package storage stays consistent.
  */
 export async function createSkill(data: CreateSkillData, session?: ClientSession): Promise<string> {
   const { skillId, ...createData } = data;
+  await checkCreateResourceParent({
+    parentId: createData.parentId,
+    findResource: (id) =>
+      MongoAgentSkills.findOne({ _id: id, teamId: createData.teamId }, '_id parentId type')
+        .session(session ?? null)
+        .lean(),
+    isFolder: false,
+    isFolderType: (type) => type === AgentSkillTypeEnum.folder
+  });
+
   const skill = new MongoAgentSkills({
     ...(skillId && { _id: skillId }),
     ...createData,

@@ -38,7 +38,7 @@ export const parseUserKey = (key: string): SelectedUserType => {
   return { outLinkUid: null, tmbId: null };
 };
 
-const USER_PAGE_SIZE = 50;
+const USER_PAGE_SIZE = 20;
 
 const UserFilter = ({
   appId,
@@ -70,10 +70,11 @@ const UserFilter = ({
     [appId, dateRange.from, dateRange.to, searchKey, sources]
   );
 
-  const { data: users = [], ScrollData } = useScrollPagination<
-    GetLogUsersBody,
-    GetLogUsersResponse
-  >(getLogUsers, {
+  const {
+    data: users = [],
+    ScrollData,
+    isInitialLoading
+  } = useScrollPagination<GetLogUsersBody, GetLogUsersResponse>(getLogUsers, {
     pageSize: USER_PAGE_SIZE,
     params: requestParams,
     disabled: !menuOpened,
@@ -138,6 +139,7 @@ const UserFilter = ({
       filterLocal={false}
       onOpen={() => setMenuOpened(true)}
       ListContainer={ScrollData}
+      isLoading={isInitialLoading}
     />
   );
 };

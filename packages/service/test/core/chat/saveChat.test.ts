@@ -7,6 +7,9 @@ import {
   updateInteractiveChat
 } from '@fastgpt/service/core/chat/saveChat';
 import { getChatItems } from '@fastgpt/service/core/chat/controller';
+import { buildAgentLoopCoreRequestMessages } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/application/context/messages';
+import { preChatRound } from '@fastgpt/service/core/chat/utils/prepare';
+import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { serviceEnv } from '@fastgpt/service/env';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
@@ -16,8 +19,8 @@ import { MongoChatItemResponse } from '@fastgpt/service/core/chat/chatItemRespon
 import { MongoS3TTL } from '@fastgpt/service/common/s3/models/ttl';
 import { S3Buckets } from '@fastgpt/service/common/s3/config/constants';
 import {
+  ChatSourceEnum,
   ChatFileTypeEnum,
-  ChatGenerateStatusEnum,
   ChatRoleEnum,
   ChatSourceTypeEnum
 } from '@fastgpt/global/core/chat/constants';
@@ -148,6 +151,97 @@ describe('pushChatRecords', () => {
     serviceEnv.CHAT_LOG_SOURCE_ID_PREFIX = originalChatLogSourceIdPrefix;
   });
 
+  describe('publishSource 保存边界', () => {
+    it.each(['finalize', 'fail', 'legacy'] as const)(
+      '%s 尾部保存不回写旧来源和兼容字段',
+      async (kind) => {
+        const dataId = 'source-tail-round';
+        const props = createMockProps(
+          {
+            source: 'api',
+            publishSource: { type: ChatSourceEnum.api, id: testTmbId },
+            sourceName: '旧渠道',
+            userContent: { dataId, obj: ChatRoleEnum.Human, value: [] },
+            aiContent: { dataId, obj: ChatRoleEnum.AI, value: [] }
+          },
+          { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
+        );
+        const latest = {
+          publishSource: { type: ChatSourceEnum.share, id: testAppId },
+          source: 'share',
+          sourceName: '新渠道'
+        };
+        await MongoChat.create({
+          appId: testAppId,
+          sourceType: ChatSourceTypeEnum.app,
+          teamId: testTeamId,
+          tmbId: testTmbId,
+          chatId: props.chatId,
+          ...latest
+        });
+        await MongoChatItem.create(
+          [ChatRoleEnum.Human, ChatRoleEnum.AI].map((obj) => ({
+            appId: testAppId,
+            sourceType: ChatSourceTypeEnum.app,
+            teamId: testTeamId,
+            tmbId: testTmbId,
+            chatId: props.chatId,
+            dataId,
+            obj,
+            value: []
+          }))
+        );
+        if (kind === 'finalize') await finalizeChatRound(props);
+        if (kind === 'fail')
+          await failChatRound({ ...props, responseChatItemId: dataId, error: new Error('failed') });
+        if (kind === 'legacy') await pushChatRecords(props);
+        const saved = await MongoChat.findOne({ appId: testAppId, chatId: props.chatId }).lean();
+        expect(saved?.source).toBe(latest.source);
+        expect(saved?.sourceName).toBe(latest.sourceName);
+        expect(saved).not.toHaveProperty('shareId');
+        expect(saved?.publishSource?.type).toBe(latest.publishSource.type);
+        expect(String(saved?.publishSource?.id)).toBe(testAppId);
+      }
+    );
+
+    it('同一统计桶保留首条来源，新桶记录本次来源', async () => {
+      const props = createMockProps(
+        {
+          source: 'api',
+          publishSource: { type: ChatSourceEnum.api, id: testTmbId },
+          sourceName: '首条渠道'
+        },
+        { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
+      );
+      await pushChatRecords(props);
+      await pushChatRecords({
+        ...props,
+        publishSource: { type: ChatSourceEnum.api, id: testAppId },
+        sourceName: '第二渠道'
+      });
+      let buckets = await MongoAppChatLog.find({ appId: testAppId, chatId: props.chatId }).lean();
+      expect(buckets).toHaveLength(1);
+      expect(String(buckets[0].publishSource?.id)).toBe(testTmbId);
+      expect(buckets[0].sourceName).toBe('首条渠道');
+      expect(buckets[0].chatItemCount).toBe(2);
+      await MongoAppChatLog.updateOne(
+        { _id: buckets[0]._id },
+        { $set: { updateTime: new Date(Date.now() - 16 * 60 * 1000) } }
+      );
+      await pushChatRecords({
+        ...props,
+        publishSource: { type: ChatSourceEnum.api, id: testAppId },
+        sourceName: '新桶渠道'
+      });
+      buckets = await MongoAppChatLog.find({ appId: testAppId, chatId: props.chatId })
+        .sort({ _id: 1 })
+        .lean();
+      expect(buckets).toHaveLength(2);
+      expect(String(buckets[1].publishSource?.id)).toBe(testAppId);
+      expect(buckets[1].sourceName).toBe('新桶渠道');
+      expect(buckets[1].chatItemCount).toBe(1);
+    });
+  });
   describe('pushChatRecords function', () => {
     it('should skip saving if chatId is empty', async () => {
       const props = createMockProps(
@@ -320,6 +414,50 @@ describe('pushChatRecords', () => {
       expect(aiItem?.value).toEqual(
         expect.arrayContaining([{ plan }, { agentPlanUpdate }, { agentAsk }])
       );
+    });
+
+    it('persists and reloads the complete model-visible tool response', async () => {
+      const response = `${'a'.repeat(6000)}important middle content${'z'.repeat(6000)}`;
+      const props = createMockProps(
+        {
+          aiContent: {
+            obj: ChatRoleEnum.AI,
+            value: [
+              {
+                tools: [
+                  {
+                    id: 'call_search',
+                    toolName: 'Search',
+                    toolAvatar: '',
+                    functionName: 'search',
+                    params: '{}',
+                    response
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
+      );
+
+      await pushChatRecords(props);
+      const { histories } = await getChatItems({
+        sourceType: props.sourceType,
+        sourceId: props.sourceId,
+        chatId: props.chatId,
+        field: 'obj value',
+        limit: 2,
+        offset: 0
+      });
+
+      const aiItem = histories.find((item) => item.obj === ChatRoleEnum.AI);
+      expect(aiItem?.value[0].tools?.[0].response).toBe(response);
+      const messages = buildAgentLoopCoreRequestMessages({ messages: histories });
+      expect(messages.find((message) => message.role === 'tool')).toMatchObject({
+        tool_call_id: 'call_search',
+        content: response
+      });
     });
 
     it('should drop inline responseData from aiContent and not persist response rows', async () => {
@@ -634,7 +772,6 @@ describe('pushChatRecords', () => {
         tmbId: testTmbId,
         sourceType: ChatSourceTypeEnum.app,
         source: props.source,
-        chatGenerateStatus: ChatGenerateStatusEnum.generating,
         hasBeenRead: false
       });
       await MongoChatItem.create([
@@ -663,7 +800,7 @@ describe('pushChatRecords', () => {
       await finalizeChatRound(props);
 
       const chat = await MongoChat.findOne({ appId: testAppId, chatId: props.chatId }).lean();
-      expect(chat?.chatGenerateStatus).toBe(ChatGenerateStatusEnum.done);
+      expect(chat).not.toHaveProperty('chatGenerateStatus');
       expect(chat?.hasBeenRead).toBe(false);
       expect(chat?.summary).toEqual({
         llmInputTokens: 13,
@@ -735,7 +872,6 @@ describe('pushChatRecords', () => {
         tmbId: testTmbId,
         sourceType: ChatSourceTypeEnum.skillEdit,
         source: props.source,
-        chatGenerateStatus: ChatGenerateStatusEnum.generating,
         hasBeenRead: false
       });
       await MongoChatItem.create([
@@ -794,7 +930,6 @@ describe('pushChatRecords', () => {
         tmbId: testTmbId,
         sourceType: ChatSourceTypeEnum.app,
         source: props.source,
-        chatGenerateStatus: ChatGenerateStatusEnum.generating,
         hasBeenRead: false
       });
       await MongoChatItem.create({
@@ -817,7 +952,7 @@ describe('pushChatRecords', () => {
       });
 
       const chat = await MongoChat.findOne({ appId: testAppId, chatId: props.chatId });
-      expect(chat?.chatGenerateStatus).toBe(ChatGenerateStatusEnum.error);
+      expect(chat).not.toHaveProperty('chatGenerateStatus');
       expect(chat?.hasBeenRead).toBe(false);
 
       const aiItem = await MongoChatItem.findOne({
@@ -832,6 +967,117 @@ describe('pushChatRecords', () => {
   });
 
   describe('updateInteractiveChat function', () => {
+    it('preserves root canonical memories while cleaning legacy child memories on submit', async () => {
+      const rootKey = `app:${testAppId}:extract_1`;
+      const recursiveKey = `node:reenter/app:${testAppId}:extract_1`;
+      const legacyChildKey = 'app:child-app:extract_1';
+      const scopedChildKey = 'node:child/app:child-app:extract_1';
+      const rootMemory = { city: 'root-city' };
+      await MongoChatItem.create({
+        chatId: 'test-chat-id',
+        teamId: testTeamId,
+        tmbId: testTmbId,
+        sourceType: ChatSourceTypeEnum.app,
+        appId: testAppId,
+        obj: ChatRoleEnum.AI,
+        dataId: 'memory-submit',
+        memories: {
+          [rootKey]: rootMemory,
+          [legacyChildKey]: { stale: true },
+          'agentLoopMemory-child_agent': { providerState: { old: true } }
+        },
+        value: [
+          {
+            interactive: {
+              type: 'userSelect',
+              params: { userSelectedVal: undefined, options: ['Continue'] }
+            }
+          }
+        ]
+      });
+      const props = createMockProps(
+        {
+          userContent: { obj: ChatRoleEnum.Human, value: [{ text: { content: 'Continue' } }] },
+          aiContent: {
+            obj: ChatRoleEnum.AI,
+            value: [],
+            memories: {
+              [recursiveKey]: { city: 'recursive-city' },
+              [scopedChildKey]: { updated: true },
+              'node:child/app:child-app:child_agent': undefined
+            }
+          }
+        },
+        { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
+      );
+      await updateInteractiveChat({
+        ...props,
+        interactive: {
+          type: 'userSelect',
+          entryNodeIds: [],
+          memoryEdges: [],
+          nodeOutputs: [],
+          params: { description: '', userSelectOptions: [{ key: 'continue', value: 'Continue' }] }
+        }
+      });
+
+      const saved = await MongoChatItem.findOne({
+        appId: testAppId,
+        chatId: props.chatId,
+        obj: ChatRoleEnum.AI
+      }).lean();
+      if (!saved || saved.obj !== ChatRoleEnum.AI) throw new Error('AI chat item was not saved');
+      expect(saved.memories).toEqual({
+        [rootKey]: rootMemory,
+        [recursiveKey]: { city: 'recursive-city' },
+        [scopedChildKey]: { updated: true }
+      });
+    });
+
+    it.each(['agentAsk', 'workflowBuilderPreview'] as const)(
+      'does not persist or reject an ephemeral %s reply',
+      async (type) => {
+        const interactive: WorkflowInteractiveResponseType = {
+          type,
+          entryNodeIds: [],
+          memoryEdges: [],
+          nodeOutputs: [],
+          params: {
+            toolCallId: 'interactive-call',
+            arguments: JSON.stringify(
+              type === 'agentAsk'
+                ? {
+                    reason: '',
+                    blockerType: 'user_choice',
+                    questions: [
+                      {
+                        question: 'Question',
+                        options: [
+                          { summary: 'A', value: 'A' },
+                          { summary: 'B', value: 'B' }
+                        ]
+                      }
+                    ]
+                  }
+                : {
+                    title: 'Confirm?',
+                    mermaid: 'flowchart LR; A --> B',
+                    sections: [{ title: 'Goal', content: 'Build' }]
+                  }
+            )
+          }
+        };
+        const props = createMockProps(
+          { chatId: 'NO_RECORD_HISTORIES' },
+          { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
+        );
+        await expect(
+          updateInteractiveChat({ ...props, interactive, shouldFinalizePreparedRound: false })
+        ).resolves.toBeUndefined();
+        expect(await MongoChatItem.countDocuments({ appId: testAppId })).toBe(0);
+      }
+    );
+
     it('should skip update if chatId is empty', async () => {
       const props = createMockProps(
         { chatId: '' },
@@ -1246,12 +1492,12 @@ describe('pushChatRecords', () => {
         {
           url: 'https://external.example.com/report.pdf',
           name: 'report.pdf',
-          type: ChatFileTypeEnum.file
+          type: ChatFileTypeEnum.document
         }
       ]);
     });
 
-    it('should require a prepared round for agentPlanAskQuery new records', async () => {
+    it('should require a prepared round for agentAsk new records', async () => {
       await MongoChatItem.create({
         chatId: 'test-chat-id',
         teamId: testTeamId,
@@ -1263,13 +1509,24 @@ describe('pushChatRecords', () => {
         value: [
           {
             interactive: {
-              type: 'agentPlanAskQuery',
-              askId: 'call_ask_agent',
+              type: 'agentAsk' as const,
+
               params: {
-                content: '请补充目标',
-                reason: '需要用户明确任务目标',
-                blockerType: 'missing_required_input',
-                options: ['继续研究 Rust', '改为研究 Go', '先给出学习路线']
+                toolCallId: 'call_ask_agent',
+                arguments: JSON.stringify({
+                  reason: '需要用户明确任务目标',
+                  blockerType: 'user_choice',
+                  questions: [
+                    {
+                      question: '请补充目标',
+                      options: [
+                        { summary: '继续研究 Rust', value: '继续研究 Rust' },
+                        { summary: '改为研究 Go', value: '改为研究 Go' },
+                        { summary: '先给出学习路线', value: '先给出学习路线' }
+                      ]
+                    }
+                  ]
+                })
               }
             }
           }
@@ -1290,18 +1547,29 @@ describe('pushChatRecords', () => {
         { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
       );
 
-      const interactive = {
-        type: 'agentPlanAskQuery' as const,
-        askId: 'call_ask_agent',
-        params: {
-          content: '请补充目标',
-          reason: '需要用户明确任务目标',
-          blockerType: 'missing_required_input',
-          options: ['继续研究 Rust', '改为研究 Go', '先给出学习路线']
-        },
+      const interactive: WorkflowInteractiveResponseType = {
+        type: 'agentAsk',
+
         entryNodeIds: [],
         memoryEdges: [],
-        nodeOutputs: []
+        nodeOutputs: [],
+        params: {
+          toolCallId: 'call_ask_agent',
+          arguments: JSON.stringify({
+            reason: '需要用户明确任务目标',
+            blockerType: 'user_choice',
+            questions: [
+              {
+                question: '请补充目标',
+                options: [
+                  { summary: '继续研究 Rust', value: '继续研究 Rust' },
+                  { summary: '改为研究 Go', value: '改为研究 Go' },
+                  { summary: '先给出学习路线', value: '先给出学习路线' }
+                ]
+              }
+            ]
+          })
+        }
       };
 
       await expect(updateInteractiveChat({ interactive, ...props })).rejects.toThrow(
@@ -1309,178 +1577,117 @@ describe('pushChatRecords', () => {
       );
     });
 
-    it('should persist multi-question agentAsk form values and finalize prepared records', async () => {
-      await MongoChatItem.create({
-        chatId: 'test-chat-id',
-        teamId: testTeamId,
-        tmbId: testTmbId,
-        sourceType: ChatSourceTypeEnum.app,
-        appId: testAppId,
-        obj: ChatRoleEnum.AI,
-        dataId: 'plan-ask-data-id',
-        value: [
-          {
-            interactive: {
-              type: 'agentAsk',
-              askId: 'call_ask_agent',
-              params: {
-                description: '需要用户明确任务目标',
-                questions: [
-                  {
-                    question: '请选择方向',
-                    options: [
-                      { summary: 'Rust', value: 'Rust' },
-                      { summary: 'Go', value: 'Go' }
-                    ],
-                    answer: ''
-                  },
-                  {
-                    question: '需要示例吗',
-                    options: [
-                      { summary: '需要', value: '需要' },
-                      { summary: '不需要', value: '不需要' }
-                    ],
-                    answer: ''
-                  }
-                ]
-              }
-            }
-          }
-        ]
-      });
+    it.each(['agentAsk', 'confirm', 'revise', 'cancel'] as const)(
+      'saves %s as a normal structured user round without rewriting the original AI',
+      async (action) => {
+        const runtime = { entryNodeIds: [], memoryEdges: [], nodeOutputs: [] };
+        const interactive: WorkflowInteractiveResponseType =
+          action === 'agentAsk'
+            ? {
+                ...runtime,
+                type: 'agentAsk',
 
-      const props = createMockProps(
-        {
-          userContent: {
-            obj: ChatRoleEnum.Human,
-            dataId: 'prepared-round-data-id',
-            value: [
-              {
-                text: { content: JSON.stringify({ answers: ['Rust', ''] }) }
+                params: {
+                  toolCallId: 'ask-1',
+                  arguments: JSON.stringify({
+                    reason: '',
+                    blockerType: 'user_choice',
+                    questions: [
+                      {
+                        question: '方向？',
+                        options: [
+                          { summary: 'Rust', value: 'rust' },
+                          { summary: 'Go', value: 'go' }
+                        ]
+                      }
+                    ]
+                  })
+                }
               }
-            ]
-          },
-          aiContent: {
-            obj: ChatRoleEnum.AI,
-            dataId: 'prepared-round-data-id',
-            value: [
-              {
-                text: { content: 'Rust 系统编程方向包括所有权、并发和 unsafe 边界。' }
-              }
-            ]
-          }
-        },
-        { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
-      );
-      await MongoChat.create({
-        chatId: props.chatId,
-        teamId: testTeamId,
-        tmbId: testTmbId,
-        sourceType: ChatSourceTypeEnum.app,
-        appId: testAppId,
-        source: props.source,
-        title: 'Test Chat'
-      });
-      await MongoChatItem.create([
-        {
-          chatId: props.chatId,
-          teamId: testTeamId,
-          tmbId: testTmbId,
-          sourceType: ChatSourceTypeEnum.app,
-          appId: testAppId,
-          obj: ChatRoleEnum.Human,
-          dataId: 'prepared-round-data-id',
-          value: [
-            {
-              text: { content: JSON.stringify({ answers: ['Rust', ''] }) }
-            }
-          ]
-        },
-        {
-          chatId: props.chatId,
-          teamId: testTeamId,
-          tmbId: testTmbId,
-          sourceType: ChatSourceTypeEnum.app,
-          appId: testAppId,
-          obj: ChatRoleEnum.AI,
-          dataId: 'prepared-round-data-id',
-          value: []
-        }
-      ]);
+            : {
+                ...runtime,
+                type: 'workflowBuilderPreview',
 
-      const interactive = {
-        type: 'agentAsk' as const,
-        askId: 'call_ask_agent',
-        params: {
-          description: '需要用户明确任务目标',
+                params: {
+                  toolCallId: 'preview-1',
+                  arguments: JSON.stringify({
+                    title: '确认方案？',
+                    mermaid: 'flowchart LR; A --> B',
+                    sections: [{ title: 'Goal', content: 'Build the workflow' }],
+                    actions: [
+                      { value: 'confirm', label: 'Confirm', inputMode: 'none' },
+                      { value: 'revise', label: 'Revise', inputMode: 'text' },
+                      { value: 'cancel', label: 'Cancel', inputMode: 'none' }
+                    ]
+                  })
+                }
+              };
+        const select = {
+          type: interactive.type,
           questions: [
             {
-              question: '请选择方向',
-              options: [
-                { summary: 'Rust', value: 'Rust' },
-                { summary: 'Go', value: 'Go' }
-              ],
-              answer: ''
-            },
-            {
-              question: '需要示例吗',
-              options: [
-                { summary: '需要', value: '需要' },
-                { summary: '不需要', value: '不需要' }
-              ],
-              answer: ''
+              question: action === 'agentAsk' ? '方向？' : '确认方案？',
+              value: {
+                agentAsk: 'rust',
+                confirm: 'Confirm',
+                revise: '增加审核分支',
+                cancel: 'Cancel'
+              }[action]
             }
           ]
-        },
-        entryNodeIds: [],
-        memoryEdges: [],
-        nodeOutputs: []
-      };
-
-      await updateInteractiveChat({
-        interactive,
-        shouldFinalizePreparedRound: true,
-        ...props
-      });
-
-      const previousChatItem = await MongoChatItem.findOne({
-        appId: testAppId,
-        chatId: props.chatId,
-        obj: ChatRoleEnum.AI,
-        dataId: 'plan-ask-data-id'
-      });
-
-      if (previousChatItem?.obj !== ChatRoleEnum.AI) {
-        throw new Error('previousChatItem does not have AI interactive value');
+        };
+        const props = createMockProps(
+          {
+            userContent: { obj: ChatRoleEnum.Human, value: [{ select }] },
+            aiContent: {
+              obj: ChatRoleEnum.AI,
+              dataId: 'new-round',
+              value: [{ text: { content: 'Continued' } }]
+            }
+          },
+          { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
+        );
+        const source = {
+          appId: testAppId,
+          sourceType: props.sourceType,
+          chatId: props.chatId,
+          teamId: testTeamId,
+          tmbId: testTmbId
+        };
+        await MongoChat.create({ ...source, source: props.source, title: 'Test' });
+        const previous = await MongoChatItem.create({
+          ...source,
+          obj: ChatRoleEnum.AI,
+          dataId: 'previous-ai',
+          value: [{ interactive }]
+        });
+        const original = structuredClone(previous.toObject().value);
+        const prepared = await preChatRound({
+          ...props,
+          userContent: props.userContent,
+          responseChatItemId: 'new-round',
+          interactive
+        });
+        try {
+          expect(prepared.shouldFinalizePreparedRound).toBe(true);
+          await updateInteractiveChat({ ...props, interactive, shouldFinalizePreparedRound: true });
+          const records = await MongoChatItem.find({ ...source, deleteTime: null })
+            .sort({ _id: 1 })
+            .lean();
+          expect(records.map((item) => item.obj)).toEqual([
+            ChatRoleEnum.AI,
+            ChatRoleEnum.Human,
+            ChatRoleEnum.AI
+          ]);
+          expect(records[0].value).toEqual(original);
+          expect(records[1].value).toEqual([{ select }]);
+          expect(records[1].dataId).toBe('new-round');
+          expect(records[2].value[0].text?.content).toBe('Continued');
+        } finally {
+          await prepared.releaseGenerationLease?.();
+        }
       }
-      const lastValue = previousChatItem.value[previousChatItem.value.length - 1];
-      if (lastValue.interactive?.type !== 'agentAsk') {
-        throw new Error('previousChatItem does not have agentAsk interactive');
-      }
-
-      expect(lastValue.interactive.params.submitted).toBe(true);
-      expect(lastValue.interactive.params.questions.map((question) => question.answer)).toEqual([
-        'Rust',
-        ''
-      ]);
-
-      const finalizedAiItem = await MongoChatItem.findOne({
-        appId: testAppId,
-        chatId: props.chatId,
-        obj: ChatRoleEnum.AI,
-        dataId: 'prepared-round-data-id'
-      });
-      const finalizedHumanItem = await MongoChatItem.findOne({
-        appId: testAppId,
-        chatId: props.chatId,
-        obj: ChatRoleEnum.Human,
-        dataId: 'prepared-round-data-id'
-      });
-      expect(finalizedHumanItem?.value[0].askId).toBe('call_ask_agent');
-      expect(finalizedAiItem?.value[0].text?.content).toBe(
-        'Rust 系统编程方向包括所有权、并发和 unsafe 边界。'
-      );
-    });
+    );
 
     it('should merge child interactive tool response and plan snapshot into existing values', async () => {
       await MongoChatItem.create({
@@ -1536,9 +1743,7 @@ describe('pushChatRecords', () => {
                   memoryEdges: [],
                   nodeOutputs: []
                 },
-                toolParams: {
-                  toolCallId: 'call_select_1'
-                }
+                toolCallId: 'call_select_1'
               }
             }
           }
@@ -1611,9 +1816,7 @@ describe('pushChatRecords', () => {
             memoryEdges: [],
             nodeOutputs: []
           },
-          toolParams: {
-            toolCallId: 'call_select_1'
-          }
+          toolCallId: 'call_select_1'
         },
         entryNodeIds: [],
         memoryEdges: [],

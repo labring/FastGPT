@@ -2,8 +2,8 @@ import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 
-import A from '@/components/Markdown/A';
-import { CachedMarkdown } from '@/components/Markdown/CachedMarkdown';
+import A from '@/components/Markdown/components/A';
+import { CachedMarkdown } from '@/components/Markdown/stream/CachedMarkdown';
 
 vi.mock('next-i18next', () => ({
   useTranslation: () => ({

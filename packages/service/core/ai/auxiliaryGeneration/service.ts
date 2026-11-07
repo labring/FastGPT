@@ -1,6 +1,6 @@
 import { createAuxiliaryGenerationStream } from './stream';
 import { createAuxiliaryGenerationUsage } from './usage';
-import { clearAuxiliaryGenerationStop, shouldAuxiliaryGenerationStop } from './stop';
+import { createChatStopController } from '../../chat/stop';
 import type { AuxiliaryGenerationRunParams, AuxiliaryGenerationRunResult } from './type';
 
 /**
@@ -36,38 +36,32 @@ export const runAuxiliaryGeneration = async <T>({
     streamContext: Awaited<ReturnType<typeof createAuxiliaryGenerationStream>>;
   }
 > => {
-  let stopping = false;
   const startedAt = Date.now();
-  const streamContext = await createAuxiliaryGenerationStream({
-    req,
-    res,
-    teamId,
+  const stopController = await createChatStopController({
     sourceType,
     sourceId,
     chatId
   });
-  onStreamContextReady?.(streamContext);
-
-  const usageContext = await createAuxiliaryGenerationUsage({
-    teamId,
-    tmbId,
-    appName,
-    sourceType,
-    sourceId,
-    usageSource
-  });
-  await clearAuxiliaryGenerationStop({ sourceType, sourceId, chatId });
-
-  res.once('close', () => {
-    stopping = true;
-  });
-
-  const stopCheckTimer = setInterval(async () => {
-    if (stopping) return;
-    stopping = await shouldAuxiliaryGenerationStop({ sourceType, sourceId, chatId });
-  }, 100);
+  let streamContext: Awaited<ReturnType<typeof createAuxiliaryGenerationStream>> | undefined;
 
   try {
+    streamContext = await createAuxiliaryGenerationStream({
+      req,
+      res,
+      teamId,
+      sourceType,
+      sourceId,
+      chatId
+    });
+    onStreamContextReady?.(streamContext);
+    const usageContext = await createAuxiliaryGenerationUsage({
+      teamId,
+      tmbId,
+      appName,
+      sourceType,
+      sourceId,
+      usageSource
+    });
     const result = await processor({
       query,
       userAnswer,
@@ -76,7 +70,7 @@ export const runAuxiliaryGeneration = async <T>({
       histories,
       requestOrigin: req.headers.origin,
       streamWriter: streamContext.write,
-      checkIsStopping: () => stopping,
+      checkIsStopping: stopController.checkIsStopping,
       usageSink: usageContext.pushUsage,
       maxFiles,
       customPdfParse,
@@ -96,8 +90,11 @@ export const runAuxiliaryGeneration = async <T>({
       durationSeconds: +((Date.now() - startedAt) / 1000).toFixed(2),
       streamContext
     };
+  } catch (error) {
+    await streamContext?.flushResume().catch(() => undefined);
+    streamContext?.cleanup();
+    throw error;
   } finally {
-    clearInterval(stopCheckTimer);
-    await clearAuxiliaryGenerationStop({ sourceType, sourceId, chatId });
+    await stopController.cleanup();
   }
 };

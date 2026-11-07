@@ -1,5 +1,8 @@
 import type { NodeHttpResponse } from '../../types/http';
 import { responseWrite } from './index';
+import { getLogger, LogCategories } from '../logger';
+
+const logger = getLogger(LogCategories.HTTP.RESPONSE);
 
 export type SseStreamWriter = (params: { event?: string; data: string }) => void;
 
@@ -48,14 +51,21 @@ export const createSseStreamContext = ({
     responseWrite({ res, event, data });
   };
 
+  /** 等待镜像写入再缩短 TTL；两步分别记录错误，避免收尾异常覆盖业务结果。 */
+  const flushResume = async () => {
+    await streamResumeMirror?.flush?.().catch((error) => {
+      logger.error('Failed to flush SSE stream resume cache', { error });
+    });
+    await streamResumeMirror?.shrinkTTLAfterComplete?.().catch((error) => {
+      logger.error('Failed to shrink SSE stream resume cache TTL', { error });
+    });
+  };
+
   if (!stream || !res) {
     return {
       write,
       cleanup: () => undefined,
-      async flushResume() {
-        await streamResumeMirror?.flush?.();
-        await streamResumeMirror?.shrinkTTLAfterComplete?.();
-      }
+      flushResume
     };
   }
 
@@ -94,9 +104,6 @@ export const createSseStreamContext = ({
   return {
     write,
     cleanup,
-    async flushResume() {
-      await streamResumeMirror?.flush?.();
-      await streamResumeMirror?.shrinkTTLAfterComplete?.();
-    }
+    flushResume
   };
 };

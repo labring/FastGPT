@@ -4,6 +4,7 @@ import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
 import {
   ManagePermissionVal,
   OwnerPermissionVal,
+  OwnerRoleVal,
   ReadPermissionVal,
   WritePermissionVal
 } from '@fastgpt/global/support/permission/constant';
@@ -91,6 +92,27 @@ describe('authSkillByTmbId', () => {
     ).resolves.toMatchObject({ skill: { permission: { hasReadPer: true } } });
   });
 
+  it('does not inherit owner from the parent folder ACL', async () => {
+    mockSkillQuery({
+      _id: skillId,
+      teamId: 'team-a',
+      tmbId: 'skill-owner',
+      source: AgentSkillSourceEnum.personal,
+      parentId: 'parent-id',
+      inheritPermission: true,
+      deleteTime: null
+    });
+    mockGetTmbPermission.mockResolvedValueOnce(OwnerRoleVal).mockResolvedValueOnce(0);
+
+    await expect(
+      authSkillByTmbId({ tmbId: 'folder-owner', skillId, per: OwnerPermissionVal })
+    ).rejects.toBe(SkillErrEnum.unAuthSkill);
+    mockGetTmbPermission.mockResolvedValueOnce(OwnerRoleVal).mockResolvedValueOnce(0);
+    await expect(
+      authSkillByTmbId({ tmbId: 'folder-owner', skillId, per: ManagePermissionVal })
+    ).resolves.toMatchObject({ skill: { permission: { isOwner: false } } });
+  });
+
   it('allows team members to read global system skills but rejects writes', async () => {
     mockSkillQuery(systemSkill);
 
@@ -138,5 +160,20 @@ describe('authSkillByTmbId', () => {
       authSkillByTmbId({ tmbId: 'member-tmb', skillId, per: ReadPermissionVal })
     ).rejects.toBe(SkillErrEnum.unExist);
     expect(mockFindOne).toHaveBeenCalledWith({ _id: skillId, deleteTime: null });
+  });
+
+  it('reuses provided tmbInfo without querying getTmbInfoByTmbId', async () => {
+    await expect(
+      authSkillByTmbId({
+        tmbId: 'member-tmb',
+        skillId,
+        per: ReadPermissionVal,
+        tmbInfo: {
+          teamId: 'team-a',
+          permission: { isOwner: false } as any
+        }
+      })
+    ).resolves.toMatchObject({ skill: { permission: { hasReadPer: true } } });
+    expect(mockGetTmbInfoByTmbId).not.toHaveBeenCalled();
   });
 });

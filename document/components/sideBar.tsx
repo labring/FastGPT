@@ -16,6 +16,7 @@ import {
 } from 'fumadocs-ui/components/layout/sidebar';
 import { type SidebarComponents } from 'fumadocs-ui/components/layout/sidebar';
 import { type PageTree } from 'fumadocs-core/server';
+import { useI18n } from 'fumadocs-ui/contexts/i18n';
 import { ExternalLink } from 'lucide-react';
 import { cn } from '@/lib/cn';
 
@@ -24,13 +25,15 @@ const VIRTUAL_SECTION_ID_SUFFIX = '#virtual-section';
 const NestingLevelContext = createContext(0);
 
 type TaggedPageTreeItem = PageTree.Item & {
+  deprecated?: boolean;
   sidebarTag?: string;
   upgradeTags?: string[];
 };
 
 const getSidebarItemTags = (item: PageTree.Item) => {
-  const { sidebarTag, upgradeTags } = item as TaggedPageTreeItem;
+  const { deprecated, sidebarTag, upgradeTags } = item as TaggedPageTreeItem;
   return {
+    deprecated: Boolean(deprecated),
     tags: upgradeTags ?? (sidebarTag ? [sidebarTag] : []),
     isUpgradeTag: upgradeTags !== undefined
   };
@@ -52,9 +55,10 @@ const isInFolder = (folder: PageTree.Folder, pathname: string): boolean => {
 
 const CustomItem: FC<{ item: PageTree.Item }> = ({ item }) => {
   const pathname = usePathname();
+  const { locale } = useI18n();
   const level = useContext(NestingLevelContext);
   const isActive = pathname === item.url;
-  const { tags, isUpgradeTag } = getSidebarItemTags(item);
+  const { deprecated, tags, isUpgradeTag } = getSidebarItemTags(item);
 
   useEffect(() => {
     if (isActive) {
@@ -80,7 +84,9 @@ const CustomItem: FC<{ item: PageTree.Item }> = ({ item }) => {
     >
       {item.icon}
       <span className="inline-flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
-        <span className="min-w-0 break-words leading-5">{item.name}</span>
+        <span className={cn('min-w-0 break-words leading-5', deprecated && 'line-through')}>
+          {item.name}
+        </span>
         {tags.length > 0 && (
           <span className="inline-flex shrink-0 items-center gap-1">
             {tags.map((tag) => (
@@ -107,7 +113,7 @@ const CustomItem: FC<{ item: PageTree.Item }> = ({ item }) => {
         )}
         {item.external && (
           <ExternalLink
-            aria-label="外部链接"
+            aria-label={locale === 'en' ? 'External link' : '外部链接'}
             className="!size-2.5 shrink-0 text-fd-muted-foreground/60 opacity-0 transition-opacity group-hover/sidebar-item:opacity-100 group-focus-visible/sidebar-item:opacity-100"
           />
         )}

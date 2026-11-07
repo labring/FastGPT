@@ -1,17 +1,14 @@
 import type { AgentTool } from '@mariozechner/pi-agent-core';
 import { Type } from '@mariozechner/pi-ai';
 import type { AgentPlanType } from '@fastgpt/global/core/ai/agent/type';
+import { AgentAskPayloadSchema, type AgentAskPayload } from '@fastgpt/global/core/ai/agent/type';
 import { normalizeToolResponseContent } from '@fastgpt/global/core/ai/llm/utils';
 import type {
   ChatCompletionMessageParam,
   ChatCompletionMessageToolCall
 } from '@fastgpt/global/core/ai/llm/type';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import {
-  AgentAskPayloadSchema,
-  createAskUserAgentTool,
-  type AgentAskPayload
-} from '../../../domain/systemTool/ask';
+import { createAskUserAgentTool } from '../../../domain/systemTool/ask';
 import {
   applyPlanUpdate,
   applySetPlan,
@@ -31,9 +28,10 @@ import {
   type AgentLoopRuntime,
   type AgentLoopUsage
 } from '../../../domain';
-import { runSandboxTools } from '../../../../../sandbox/interface/toolCall';
+import { runSandboxTools } from '../../../../../sandbox/application/toolCall';
 import { createToolCall, normalizeToolArgs, stringifyJson } from '../message';
 import { getPiAgentRuntimeTools } from './catalog';
+import { sanitizeToolParametersForModel } from '@fastgpt/global/common/jsonSchema/utils';
 
 type PlanOperationEvent = Extract<AgentLoopEvent, { type: 'plan_operation' }>;
 
@@ -58,6 +56,10 @@ const pushAgentLoopUsages = <TChildrenResponse = unknown>(
   const normalizedUsages = normalizeAgentLoopUsages(usages);
   if (normalizedUsages.length > 0) runtime.usagePush?.(normalizedUsages);
 };
+
+/** pi-ai 会把工具参数原样交给模型供应商，需在进入 agent loop 前统一清理内部字段。 */
+const toPiToolParameters = (parameters: unknown) =>
+  Type.Unsafe<any>((sanitizeToolParametersForModel(parameters) as Record<string, unknown>) ?? {});
 
 /**
  * 将统一 runtime tools 和 piAgent 支持的系统工具转换为 pi-agent-core AgentTool。
@@ -125,10 +127,11 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
     const assistantMessages = result.assistantMessages ?? [];
     const usages = normalizeAgentLoopUsages(result.usages);
     pushAgentLoopUsages(runtime, usages);
+    if (result.interactive)
+      runtime.emitEvent?.({ type: 'tool_interactive', call, interactive: result.interactive });
     runtime.emitEvent?.({
       type: 'tool_run_end',
       call,
-      rawResponse: result.response,
       response: normalizedResponse,
       assistantMessages,
       assistantResponses: result.assistantResponses,
@@ -148,7 +151,7 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
       label: toolName,
       description: tool.function.description || '',
       parameters: tool.function.parameters
-        ? Type.Unsafe<any>(tool.function.parameters as Record<string, unknown>)
+        ? toPiToolParameters(tool.function.parameters)
         : Type.Object({}, { additionalProperties: false }),
       execute: async (callId: string, args: unknown) => {
         const call = createToolCall({ id: callId, name: toolName, args: normalizeToolArgs(args) });
@@ -172,9 +175,7 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
         name: planTool.function.name,
         label: planTool.function.name,
         description: planTool.function.description || '',
-        parameters: Type.Unsafe<any>(
-          (planTool.function.parameters as Record<string, unknown>) ?? {}
-        ),
+        parameters: toPiToolParameters(planTool.function.parameters),
         execute: async (callId: string, args: unknown) => {
           const toolArgs = normalizeToolArgs(args);
           const params = stringifyJson(toolArgs);
@@ -223,13 +224,14 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
     }
   }
 
-  if (runtime.systemTools?.ask?.enabled) {
+  const askSystemTool = runtime.systemTools?.ask;
+  if (askSystemTool?.enabled) {
     const askTool = createAskUserAgentTool();
     tools.push({
       name: askTool.function.name,
       label: askTool.function.name,
       description: askTool.function.description || '',
-      parameters: Type.Unsafe<any>((askTool.function.parameters as Record<string, unknown>) ?? {}),
+      parameters: toPiToolParameters(askTool.function.parameters),
       execute: async (callId: string, args: unknown) => {
         const toolArgs = normalizeToolArgs(args);
         const params = stringifyJson(toolArgs);
@@ -243,13 +245,20 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
           return { content: [{ type: 'text' as const, text: response }], details: {} };
         }
 
+        const validationError = await askSystemTool.validate?.(parsed.data);
+        if (validationError) {
+          onToolResult({
+            call: createToolCall({ id: callId, name: askTool.function.name, args: toolArgs }),
+            response: validationError
+          });
+          return { content: [{ type: 'text' as const, text: validationError }], details: {} };
+        }
+
         setPendingAsk(parsed.data, callId);
         runtime.emitEvent?.({
-          type: 'ask_start',
-          ask: parsed.data,
-          id: callId,
-          params,
-          seconds: 0
+          type: 'tool_interactive',
+          call: createToolCall({ id: callId, name: askTool.function.name, args: toolArgs }),
+          interactive: { type: 'agentAsk', params: { toolCallId: callId, arguments: params } }
         });
         onToolResult({
           call: createToolCall({ id: callId, name: askTool.function.name, args: toolArgs }),
@@ -264,7 +273,8 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
     });
   }
 
-  if (runtime.systemTools?.sandbox?.enabled && runtime.systemTools.sandbox.client) {
+  const sandbox = runtime.systemTools?.sandbox;
+  if (sandbox?.enabled) {
     for (const sandboxTool of createAgentLoopSandboxTools()) {
       const agentLoopToolName = sandboxTool.function.name;
       const sandboxToolName = toSandboxToolName(agentLoopToolName);
@@ -272,9 +282,7 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
         name: agentLoopToolName,
         label: agentLoopToolName,
         description: sandboxTool.function.description || '',
-        parameters: Type.Unsafe<any>(
-          (sandboxTool.function.parameters as Record<string, unknown>) ?? {}
-        ),
+        parameters: toPiToolParameters(sandboxTool.function.parameters),
         execute: async (callId: string, args: unknown) => {
           const call = createToolCall({
             id: callId,
@@ -284,15 +292,11 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
           const result = await executeOrdinaryTool({
             call,
             execute: async () => {
-              const sandboxClient = runtime.systemTools?.sandbox?.client;
-              if (!sandboxClient) {
-                const response = 'Sandbox executor is not available.';
-                return { response, assistantMessages: [], usages: [], errorMessage: response };
-              }
               const sandboxResult = await runSandboxTools({
                 toolName: sandboxToolName,
                 args: call.function.arguments ?? '',
-                sandboxClient
+                sandboxClient: sandbox.client,
+                validate: sandbox.validate
               });
               return {
                 response: sandboxResult.response,
@@ -316,9 +320,7 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
       name: readFileTool.function.name,
       label: readFileTool.function.name,
       description: readFileTool.function.description || '',
-      parameters: Type.Unsafe<any>(
-        (readFileTool.function.parameters as Record<string, unknown>) ?? {}
-      ),
+      parameters: toPiToolParameters(readFileTool.function.parameters),
       execute: async (callId: string, args: unknown) => {
         const call = createToolCall({
           id: callId,
@@ -352,9 +354,7 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
       name: datasetSearchTool.function.name,
       label: datasetSearchTool.function.name,
       description: datasetSearchTool.function.description || '',
-      parameters: Type.Unsafe<any>(
-        (datasetSearchTool.function.parameters as Record<string, unknown>) ?? {}
-      ),
+      parameters: toPiToolParameters(datasetSearchTool.function.parameters),
       execute: async (callId: string, args: unknown) => {
         const patchedArgs = patchDatasetSearchParams({
           args: stringifyJson(normalizeToolArgs(args)),

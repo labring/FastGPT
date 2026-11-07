@@ -15,6 +15,7 @@ import {
 } from './result';
 import { countRecallLimit, filterDatasetDataByMaxTokens } from './utils';
 import { serviceEnv } from '../../../../env';
+import { attachSynonymMappingsToSearchResults } from '../../synonym/searchResult';
 
 /**
  * 执行默认知识库召回主流程。
@@ -113,7 +114,12 @@ export async function searchDatasetData(
   const textRecallResults = concatWeightedRecallLists([
     { weight: embeddingWeight, list: textEmbeddingRecallResults },
     { weight: 1 - embeddingWeight, list: textFullTextRecallResults }
-  ]);
+  ]).map((item, index) => ({
+    ...item,
+    // 记录候选在“重排前文本召回序列”中的位置（0 起步）。重排会改变顺序，调用方需要
+    // 该字段对比召回与重排；retrievalResults 快照与最终 quoteList 都复用这里的对象。
+    retrievalRank: index
+  }));
   const imageCaptionRecallResults = concatWeightedRecallLists([
     { weight: embeddingWeight, list: imageCaptionEmbeddingRecallResults },
     { weight: 1 - embeddingWeight, list: imageCaptionFullTextRecallResults }
@@ -134,6 +140,7 @@ export async function searchDatasetData(
     inputTokens: reRankInputTokens,
     usingReRank: finalUsingReRank
   } = await reRankSearchResults({
+    teamId,
     usingReRank,
     textRecallResults,
     rerankModel,
@@ -178,15 +185,21 @@ export async function searchDatasetData(
   });
 
   const filterMaxTokensResult = await filterDatasetDataByMaxTokens(scoreFilter, maxTokens);
+  // 同义词只装饰最终入选结果：被前面过滤掉的候选不会产生 alias 查询。
+  const decoratedFinal = await attachSynonymMappingsToSearchResults({
+    teamId,
+    datasetIds,
+    results: filterMaxTokensResult
+  });
   // Step 8: 返回前一次收集最终结果中的 q、a、imageId，并批量签发唯一 dataset 对象 key。
-  // 被前面过滤掉的候选不会产生 alias 查询；最终输出也不暴露仅供格式化使用的 imageId。
+  // 最终输出不暴露仅供格式化使用的 imageId。
   // 白名单绑定本次召回授权的 datasetIds：结果里内嵌的外库图片 key 不签发短链，
   // 避免检索输出成为跨库预览签名的旁路。
   const formattedValues = await formatDatasetDataValues(
-    filterMaxTokensResult.map(({ q, a, imageId }) => ({ q, a, imageId })),
+    decoratedFinal.map(({ q, a, imageId }) => ({ q, a, imageId })),
     { datasetIds }
   );
-  const finalResult = filterMaxTokensResult.map((item, index) => {
+  const finalResult = decoratedFinal.map((item, index) => {
     const result = { ...item };
     delete result.imageId;
     return {

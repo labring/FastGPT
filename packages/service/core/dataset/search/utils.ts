@@ -14,10 +14,10 @@ import { isAuthorizedDatasetFileS3Key } from '../../../common/s3/sources/dataset
 import { getS3DatasetSource } from '../../../common/s3/sources/dataset';
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
 import type {
-  EmbeddingSystemModelDataType,
-  LLMSystemModelDataType
+  EmbeddingModelDataType,
+  LLMModelDataType
 } from '@fastgpt/global/core/ai/model/schema';
-import { getDatasetSynonymRuntimeConfig, isDatasetSynonymEnabled } from '../synonym/entity';
+import { getDatasetSynonymRuntimeConfig } from '../synonym/entity';
 import {
   buildSynonymMatcher,
   normalizeSynonymTerm,
@@ -112,7 +112,7 @@ export const standardizeDatasetSearchQueries = async ({
   datasetIds: string[];
   queries: string[];
 }) => {
-  if (!isDatasetSynonymEnabled()) return queries;
+  if (!serviceEnv.DATASET_SYNONYM_ENABLED) return queries;
 
   const runtimeConfigs = await Promise.all(
     datasetIds.map((datasetId) => getDatasetSynonymRuntimeConfig({ teamId, datasetId }))
@@ -240,8 +240,8 @@ export const datasetSearchQueryExtension = async ({
   datasetIds = []
 }: {
   query: string;
-  llmModel?: LLMSystemModelDataType;
-  embeddingModel?: EmbeddingSystemModelDataType;
+  llmModel?: LLMModelDataType;
+  embeddingModel?: EmbeddingModelDataType;
   userKey?: OpenaiAccountType;
   teamId: string;
   extensionBg?: string;

@@ -22,9 +22,7 @@ import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { PluginStatusEnum, type PluginStatusType } from '@fastgpt/global/core/plugin/type';
 import MySelect from '@fastgpt/web/components/common/MySelect';
-import MultipleSelect, {
-  useMultipleSelect
-} from '@fastgpt/web/components/common/MySelect/MultipleSelect';
+import MultipleSelect from '@fastgpt/web/components/common/MySelect/MultipleSelect';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import type {
   CreateAppToolBodyType,
@@ -36,7 +34,7 @@ import {
   postAdminCreateAppTypeTool,
   putAdminUpdateWorkflowTool
 } from '@/web/core/plugin/admin/tool/api';
-import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
+import { parseI18nString, selectPluginText } from '@fastgpt/global/common/i18n/utils';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import CopyBox from '@fastgpt/web/components/common/String/CopyBox';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -67,7 +65,7 @@ const WorkflowToolConfigModal = ({
   const { t, i18n } = useSafeTranslation();
   const { toast } = useToast();
 
-  const { value: selectedTags, setValue: setSelectedTags } = useMultipleSelect<string>([], false);
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
   const { register, reset, setValue, watch, handleSubmit } = useForm<UpdateWorkflowToolBodyType>({
     defaultValues: defaultForm as DefaultValues<UpdateWorkflowToolBodyType>
@@ -105,9 +103,9 @@ const WorkflowToolConfigModal = ({
           currentCost: res.currentCost,
           systemKeyCost: res.systemKeyCost,
           hasTokenFee: res.hasTokenFee,
-          name: res.name,
+          name: selectPluginText(res.name, i18n.language),
           avatar: res.avatar,
-          intro: res.intro,
+          intro: selectPluginText(res.intro, i18n.language),
           tags: res.tags || [],
           userGuide: res.userGuide || '',
           author: res.author,

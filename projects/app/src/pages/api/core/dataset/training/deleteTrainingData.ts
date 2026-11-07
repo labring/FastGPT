@@ -13,7 +13,9 @@ import {
   type DeleteTrainingDataResponse
 } from '@fastgpt/global/openapi/core/dataset/training/api';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
+import { DatasetAuditEventEnum } from '@fastgpt/global/core/dataset/audit/constants/event';
 import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 
 /** 删除训练任务；重建任务同时删除原始数据及其索引，首次训练维持原有取消行为。 */
 async function handler(req: ApiRequestProps): Promise<DeleteTrainingDataResponse> {
@@ -22,7 +24,7 @@ async function handler(req: ApiRequestProps): Promise<DeleteTrainingDataResponse
     bodySchema: DeleteTrainingDataBodySchema
   }).body;
 
-  const { collection } = await authDatasetCollection({
+  const { collection, teamId, tmbId } = await authDatasetCollection({
     req,
     authToken: true,
     authApiKey: true,
@@ -36,9 +38,9 @@ async function handler(req: ApiRequestProps): Promise<DeleteTrainingDataResponse
     collectionId: collection._id,
     _id: dataId
   };
-  await mongoSessionRun(async (session) => {
+  const deleted = await mongoSessionRun(async (session) => {
     const training = await MongoDatasetTraining.findOne(trainingMatch).session(session);
-    if (!training) return;
+    if (!training) return false;
 
     // 索引重建
     // 同义词重建
@@ -65,7 +67,7 @@ async function handler(req: ApiRequestProps): Promise<DeleteTrainingDataResponse
         );
       }
       await MongoDatasetTraining.deleteOne(trainingMatch, { session });
-      return;
+      return true;
     }
 
     // 新建的
@@ -89,7 +91,21 @@ async function handler(req: ApiRequestProps): Promise<DeleteTrainingDataResponse
     }
 
     await MongoDatasetTraining.deleteOne(trainingMatch, { session });
+    return true;
   });
+
+  // 没有实际删除记录时不写审计，避免重复点击产生空日志。
+  if (deleted) {
+    addAuditLog({
+      tmbId,
+      teamId: String(teamId),
+      event: DatasetAuditEventEnum.DATASET_TRAINING_RECORD_DELETE,
+      params: {
+        datasetName: collection.dataset.name,
+        collectionName: collection.name
+      }
+    });
+  }
 
   return DeleteTrainingDataResponseSchema.parse(undefined);
 }

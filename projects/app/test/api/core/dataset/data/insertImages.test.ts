@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const {
   mockResolveMultipleFormData,
@@ -88,13 +88,20 @@ vi.mock('@fastgpt/service/core/dataset/training/controller', () => ({
   preCreateDatasetDataAndPushToTrainingQueue: mockPreCreateDatasetDataAndPushToTrainingQueue
 }));
 
-vi.mock('@fastgpt/service/core/ai/model', () => {
+vi.mock('@fastgpt/service/core/ai/model/catalog/service', () => {
+  const handle = {
+    getModelData: (
+      reference: unknown,
+      options?: { type?: string; vision?: boolean; optional?: boolean }
+    ) => {
+      if (options?.vision) return mockGetDatasetVlmModel(reference, options);
+      if (options?.type === 'embedding') return mockGetDatasetEmbeddingModel(reference, options);
+      return mockGetDatasetAgentModel(reference, options);
+    }
+  };
   return {
-    getModelHandle: async () => ({
-      getEmbeddingModelData: mockGetDatasetEmbeddingModel,
-      getLLMModelData: mockGetDatasetAgentModel,
-      getVlmModelData: mockGetDatasetVlmModel
-    })
+    getSystemModelHandle: async () => handle,
+    getTeamModelHandle: async () => handle
   };
 });
 

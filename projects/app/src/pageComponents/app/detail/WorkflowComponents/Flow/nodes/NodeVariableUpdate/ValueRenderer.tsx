@@ -4,11 +4,11 @@ import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/consta
 import InputRender from '@/components/core/app/formRender';
 import { InputTypeEnum } from '@/components/core/app/formRender/constant';
 import type { TUpdateListItem } from '@fastgpt/global/core/workflow/template/system/variableUpdate/type';
-import type { ReferenceValueType } from '@fastgpt/global/core/workflow/type/io';
 import type {
-  EditorVariableLabelPickerType,
+  ReferenceValueType,
   EditorVariablePickerType
-} from '@fastgpt/web/components/common/Textarea/PromptEditor/type';
+} from '@fastgpt/global/core/workflow/type/io';
+import type { EditorVariableLabelPickerType } from '@fastgpt/web/components/common/Textarea/PromptEditor/type';
 import VariableSelector from './VariableSelector';
 import NumberFormula from './renderers/NumberFormula';
 import BooleanSelect from './renderers/BooleanSelect';

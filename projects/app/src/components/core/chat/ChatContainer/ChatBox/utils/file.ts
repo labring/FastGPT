@@ -1,11 +1,13 @@
-import { ChatFileTypeEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatFileTypeEnum, type ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { isAuxiliaryGenerationSourceType } from '@fastgpt/global/common/chat/source';
 import { isChatFileAllowedBySelectConfig as isGlobalChatFileAllowedBySelectConfig } from '@fastgpt/global/core/app/constants';
 import type { AppFileSelectConfigType } from '@fastgpt/global/core/app/type/config.schema';
 import { ChatTypeEnum } from '../constants';
+import { getChatFileTypeByFilename } from '@fastgpt/global/core/chat/file/utils';
 
 /**
  * 决定 Chat 文件上传使用正式策略还是客户端草稿策略。
- * 只有编辑态测试使用临时配置；Home Chat 和 Helper 都是服务端授权的正式运行态。
+ * 只有编辑态测试使用临时配置；Home Chat 和辅助生成会话都使用服务端授权的正式配置。
  */
 export const resolveChatFileUploadMode = ({
   chatType,
@@ -14,7 +16,9 @@ export const resolveChatFileUploadMode = ({
   chatType: ChatTypeEnum;
   sourceType: ChatSourceTypeEnum;
 }): 'runtime' | 'draft' => {
-  if (sourceType === ChatSourceTypeEnum.chatAgentHelper) return 'runtime';
+  if (isAuxiliaryGenerationSourceType(sourceType)) {
+    return 'runtime';
+  }
   if (chatType === ChatTypeEnum.test) return 'draft';
   return 'runtime';
 };
@@ -23,7 +27,7 @@ export const getUploadChatFileType = (file: File) => {
   if (file.type.includes('image')) return ChatFileTypeEnum.image;
   if (file.type.includes('audio')) return ChatFileTypeEnum.audio;
   if (file.type.includes('video')) return ChatFileTypeEnum.video;
-  return ChatFileTypeEnum.file;
+  return getChatFileTypeByFilename(file.name);
 };
 
 /**

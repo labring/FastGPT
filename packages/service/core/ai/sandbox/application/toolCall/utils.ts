@@ -1,5 +1,4 @@
-export const SANDBOX_TOOL_MAX_LINES = 2000;
-export const SANDBOX_TOOL_MAX_BYTES = 50 * 1024;
+import { SANDBOX_TOOL_MAX_LINES, SANDBOX_TOOL_MAX_BYTES } from '../../constants';
 
 export type SandboxToolOutputTruncation = {
   content: string;

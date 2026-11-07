@@ -71,6 +71,85 @@ describe('getChatItems', () => {
     return items;
   };
 
+  it('restores the continuous checkpoint tail and a preceding null plan marker', async () => {
+    const items = await createChatItems(26);
+    await MongoChatItem.updateOne(
+      { dataId: items[1].dataId },
+      { $set: { value: [{ plan: null }] } }
+    );
+    await MongoChatItem.updateOne(
+      { dataId: items[21].dataId },
+      { $set: { value: [{ contextCheckpoint: 'Summary', hideInUI: true }] } }
+    );
+    await MongoChatItem.updateOne(
+      { dataId: items[25].dataId },
+      { $set: { value: [{ displayOnly: true, contextCheckpoint: 'Child summary', plan: null }] } }
+    );
+    const result = await getChatItems({
+      ...chatSource(),
+      chatId,
+      offset: 0,
+      limit: 0,
+      field: 'obj value'
+    });
+    expect(result.histories.map((item) => item.dataId)).toEqual([
+      items[1].dataId,
+      ...items.slice(21).map((item) => item.dataId)
+    ]);
+    expect(result.histories[0].value[0]).toHaveProperty('plan', null);
+    expect(result.total).toBe(26);
+  });
+
+  it('keeps internal tool context for recovery and redacts it from ordinary history reads', async () => {
+    const items = await createChatItems(2);
+    const tool = {
+      id: 'private',
+      functionName: 'sandbox_read_file',
+      params: '{"path":"/private/state"}',
+      response: 'private fact',
+      internalOnly: true,
+      hideInUI: true,
+      toolName: 'Read',
+      toolAvatar: ''
+    };
+    await MongoChatItem.updateOne(
+      { dataId: items[1].dataId },
+      {
+        $set: {
+          value: [
+            {
+              modelResponseId: 'response',
+              tools: [tool],
+              inputContext: { content: 'Private prepared input' }
+            }
+          ]
+        }
+      }
+    );
+    const restored = await getChatItems({
+      ...chatSource(),
+      chatId,
+      offset: 0,
+      limit: 0,
+      field: 'obj value'
+    });
+    expect(restored.histories[1].value[0]).toMatchObject({
+      tools: [tool],
+      inputContext: { content: 'Private prepared input' }
+    });
+    const displayed = await getChatItems({
+      ...chatSource(),
+      chatId,
+      offset: 0,
+      limit: 20,
+      field: 'obj value'
+    });
+    expect(displayed.histories[1].value[0]).toMatchObject({
+      tools: [{ params: '', response: '', hideDetails: true }]
+    });
+    expect(displayed.histories[1].value[0]).not.toHaveProperty('inputContext');
+  });
+
   describe('Normal Pagination Mode', () => {
     it('should return empty array when chatId is not provided', async () => {
       const result = await getChatItems({
@@ -205,7 +284,7 @@ describe('getChatItems', () => {
       expect(result.histories[0].value[0].text?.content).toBe('Visible answer');
     });
 
-    it('should migrate legacy planId ask records and answers to askId', async () => {
+    it('ignores malformed legacy Ask metadata and keeps readable text without converting ids', async () => {
       await MongoChatItem.create([
         {
           teamId: testUser.teamId,
@@ -222,19 +301,6 @@ describe('getChatItems', () => {
                 functionName: 'ask_agent',
                 params: '{}',
                 planId: 'legacy-plan'
-              }
-            },
-            {
-              interactive: {
-                type: 'agentPlanAskQuery',
-                planId: 'legacy-plan',
-                entryNodeIds: ['agent_node'],
-                memoryEdges: [],
-                nodeOutputs: [],
-                params: {
-                  content: 'Which option?',
-                  options: ['A', 'B', 'C']
-                }
               }
             }
           ]
@@ -263,15 +329,13 @@ describe('getChatItems', () => {
         limit: 10,
         field: 'obj value'
       });
+      if (result.histories[0].obj !== ChatRoleEnum.AI) throw new Error('Expected AI history');
       const aiValue = result.histories[0].value;
       const humanValue = result.histories[1].value[0];
 
-      expect(aiValue[0].agentAsk).toMatchObject({ askId: 'legacy-plan' });
-      expect(aiValue[0].agentAsk).not.toHaveProperty('planId');
-      expect(aiValue[1].interactive).toMatchObject({ askId: 'legacy-plan' });
-      expect(aiValue[1].interactive).not.toHaveProperty('planId');
-      expect(humanValue).toMatchObject({ askId: 'legacy-plan' });
-      expect(humanValue).not.toHaveProperty('planId');
+      expect(aiValue[0].agentAsk).toBeUndefined();
+      expect(humanValue.text?.content).toBe('A');
+      expect(humanValue).not.toHaveProperty('askId');
       expect(() => AIChatItemSchema.parse(result.histories[0])).not.toThrow();
       expect(() => UserChatItemSchema.parse(result.histories[1])).not.toThrow();
     });
@@ -1127,6 +1191,7 @@ describe('getChatItems', () => {
             id: 'tool-response',
             moduleName: 'Tool',
             moduleType: FlowNodeTypeEnum.tool,
+            isToolCall: false,
             toolRes: {
               citeLinks: [
                 {
@@ -1170,6 +1235,7 @@ describe('getChatItems', () => {
       });
 
       const item = result.histories[0];
+      if (item.obj !== ChatRoleEnum.AI) throw new Error('Expected an AI chat item');
       expect(item.responseData?.map((response) => response.id)).toEqual([
         'dataset-response',
         'tool-response',
@@ -1192,6 +1258,7 @@ describe('getChatItems', () => {
         ]
       });
       expect(item.responseData?.[1].errorText).toBe('tool failed');
+      expect(item.responseData?.[1].isToolCall).toBe(false);
       expect(item.responseData?.[2].historyPreview).toBeUndefined();
       expect(item.responseData?.[2].toolRes?.result).toBeUndefined();
     });

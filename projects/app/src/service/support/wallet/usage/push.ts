@@ -3,8 +3,8 @@ import { createUsage, concatUsage } from '@fastgpt/service/support/wallet/usage/
 import { formatModelChars2Points } from '@fastgpt/service/support/wallet/usage/utils';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import type { UsageItemType } from '@fastgpt/global/support/wallet/usage/type';
-import type { TTSSystemModelDataType } from '@fastgpt/global/core/ai/model/schema';
-import type { SystemModelDataType } from '@fastgpt/global/core/ai/model/schema';
+import type { TTSModelDataType } from '@fastgpt/global/core/ai/model/schema';
+import type { AIModelDataType } from '@fastgpt/global/core/ai/model/schema';
 
 export const pushGenerateVectorUsage = ({
   usageId,
@@ -15,25 +15,18 @@ export const pushGenerateVectorUsage = ({
   source = UsageSourceEnum.fastgpt,
   extensionModel,
   extensionInputTokens,
-  extensionOutputTokens,
-  deepSearchModel,
-  deepSearchInputTokens,
-  deepSearchOutputTokens
+  extensionOutputTokens
 }: {
   usageId?: string;
   teamId: string;
   tmbId: string;
   inputTokens: number;
-  model: SystemModelDataType;
+  model: AIModelDataType;
   source?: UsageSourceEnum;
 
-  extensionModel?: SystemModelDataType;
+  extensionModel?: AIModelDataType;
   extensionInputTokens?: number;
   extensionOutputTokens?: number;
-
-  deepSearchModel?: SystemModelDataType;
-  deepSearchInputTokens?: number;
-  deepSearchOutputTokens?: number;
 }) => {
   const { totalPoints: totalVector, modelId: vectorModelId } = formatModelChars2Points({
     model,
@@ -56,24 +49,7 @@ export const pushGenerateVectorUsage = ({
       extensionModelId: modelId
     };
   })();
-  const { deepSearchTotalPoints, deepSearchModelId } = (() => {
-    if (!deepSearchModel || !deepSearchInputTokens)
-      return {
-        deepSearchTotalPoints: 0,
-        deepSearchModelId: undefined
-      };
-    const { totalPoints, modelId } = formatModelChars2Points({
-      model: deepSearchModel,
-      inputTokens: deepSearchInputTokens,
-      outputTokens: deepSearchOutputTokens
-    });
-    return {
-      deepSearchTotalPoints: totalPoints,
-      deepSearchModelId: modelId
-    };
-  })();
-
-  const totalPoints = totalVector + extensionTotalPoints + deepSearchTotalPoints;
+  const totalPoints = totalVector + extensionTotalPoints;
 
   // 插入 Bill 记录
   if (usageId) {
@@ -108,17 +84,6 @@ export const pushGenerateVectorUsage = ({
                 outputTokens: extensionOutputTokens
               }
             ]
-          : []),
-        ...(deepSearchModel !== undefined
-          ? [
-              {
-                moduleName: i18nT('common:deep_rag_search'),
-                amount: deepSearchTotalPoints,
-                modelId: deepSearchModelId,
-                inputTokens: deepSearchInputTokens,
-                outputTokens: deepSearchOutputTokens
-              }
-            ]
           : [])
       ]
     });
@@ -133,7 +98,7 @@ export const pushQuestionGuideUsage = ({
   teamId,
   tmbId
 }: {
-  model: SystemModelDataType;
+  model: AIModelDataType;
   inputTokens: number;
   outputTokens: number;
   teamId: string;
@@ -172,7 +137,7 @@ export const pushAudioSpeechUsage = ({
   source = UsageSourceEnum.fastgpt
 }: {
   appName?: string;
-  model: TTSSystemModelDataType;
+  model: TTSModelDataType;
   charsLength: number;
   teamId: string;
   tmbId: string;
@@ -213,22 +178,22 @@ export const pushDatasetTestUsage = ({
   tmbId: string;
   source?: UsageSourceEnum;
   embUsage?: {
-    model: SystemModelDataType;
+    model: AIModelDataType;
     inputTokens: number;
   };
   rerankUsage?: {
-    model: SystemModelDataType;
+    model: AIModelDataType;
     inputTokens: number;
   };
   extensionUsage?: {
-    model: SystemModelDataType;
+    model: AIModelDataType;
     inputTokens: number;
     outputTokens: number;
     embeddingTokens: number;
-    embeddingModel: SystemModelDataType;
+    embeddingModel: AIModelDataType;
   };
   imageCaptionUsage?: {
-    model: SystemModelDataType;
+    model: AIModelDataType;
     inputTokens: number;
     outputTokens: number;
   };

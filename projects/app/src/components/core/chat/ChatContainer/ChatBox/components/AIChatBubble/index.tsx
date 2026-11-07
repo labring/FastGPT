@@ -19,8 +19,6 @@ import { ChatBoxContentMaxWidth } from '../../constants';
 const ResponseTags = dynamic(() => import('../ResponseTags'));
 const WholeResponseModal = dynamic(() => import('../../../../components/WholeResponseModal'));
 
-export { shouldFilterAiValue } from './utils';
-
 type AIChatBubbleProps = {
   chat: ChatSiteItemType;
   chatValue: AIChatItemValueItemType[];
@@ -56,6 +54,7 @@ const AIChatBubble = ({
 }: AIChatBubbleProps) => {
   const { t } = useTranslation();
   const chatType = useContextSelector(ChatBoxContext, (v) => v.chatType);
+  const boxBodyProps = useContextSelector(ChatBoxContext, (v) => v.boxBodyProps);
   const showWholeResponse = useContextSelector(ChatItemContext, (v) => v.showWholeResponse ?? true);
   const chatGenerateStatus = useContextSelector(
     ChatItemContext,
@@ -102,7 +101,7 @@ const AIChatBubble = ({
     <Box position={'relative'} w={'100%'} maxW={'100%'}>
       <Box
         w={'100%'}
-        maxW={ChatBoxContentMaxWidth}
+        maxW={boxBodyProps?.maxW ?? ChatBoxContentMaxWidth}
         color={'myGray.900'}
         textAlign={'left'}
         minW={isPlanCard ? ['100%', '50%'] : undefined}
@@ -137,7 +136,7 @@ const AIChatBubble = ({
         {children}
         {showLoading && (
           <Box mt={3}>
-            <AIChatLoading text={loadingText} size={'md'} />
+            <AIChatLoading text={loadingText} />
           </Box>
         )}
       </Box>

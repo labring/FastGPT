@@ -1,4 +1,5 @@
 import type {
+  ChatCompletionAssistantMessageParam,
   ChatCompletionMessageParam,
   ChatCompletionMessageToolCall,
   CompletionFinishReason
@@ -24,7 +25,9 @@ const createEmptyUsage = (): LLMAccumulatedUsage => ({
  * - 累加多轮 usage。
  * - 为下一轮补偿请求构造“继续输出”的上下文。
  */
-export const useLLMResponseAccumulator = () => {
+export const useLLMResponseAccumulator = ({
+  supportReason = false
+}: { supportReason?: boolean } = {}) => {
   let answerText = '';
   let reasoningText = '';
   let toolCalls: ChatCompletionMessageToolCall[] | undefined;
@@ -33,6 +36,17 @@ export const useLLMResponseAccumulator = () => {
   let isStreamResponse = false;
   let hasResponseType = false;
   const usage = createEmptyUsage();
+
+  /**
+   * 工具续轮和长度续写共用协议消息；思考模型即使没有思考文本，也必须保留空字段。
+   * 非空思考沿用原始内容，非思考模型不额外生成空字段。
+   */
+  const getAssistantMessage = (): ChatCompletionAssistantMessageParam => ({
+    role: ChatCompletionRequestMessageRoleEnum.Assistant,
+    ...(answerText && { content: answerText }),
+    ...((supportReason || reasoningText) && { reasoning_content: reasoningText }),
+    ...(toolCalls?.length && { tool_calls: toolCalls })
+  });
 
   return {
     /**
@@ -95,12 +109,7 @@ export const useLLMResponseAccumulator = () => {
     }): ChatCompletionMessageParam[] {
       return [
         ...baseMessages,
-        {
-          role: ChatCompletionRequestMessageRoleEnum.Assistant as 'assistant',
-          ...(answerText && { content: answerText }),
-          ...(reasoningText && { reasoning_content: reasoningText }),
-          ...(toolCalls?.length && { tool_calls: toolCalls })
-        },
+        getAssistantMessage(),
         {
           role: ChatCompletionRequestMessageRoleEnum.User as 'user',
           content: '[继续输出]'
@@ -109,10 +118,11 @@ export const useLLMResponseAccumulator = () => {
     },
 
     /**
-     * 返回归一后的聚合结果，由 createLLMResponse 继续补 finish reason、token 和保存详情。
+     * 返回聚合结果，由入口判断异常结束、补 token 并保存详情。
      */
     getResponse() {
       return {
+        assistantMessage: getAssistantMessage(),
         answerText,
         reasoningText,
         toolCalls,

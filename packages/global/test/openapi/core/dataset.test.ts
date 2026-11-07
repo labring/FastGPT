@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { openAPIDocument } from '../../../openapi/provider/devapi';
+import { apiDocOpenAPIDocument } from '../../../openapi/provider/systemopenapi';
 import { openAPITagGroups } from '../../../openapi/path';
 import { DevApiTagsMap } from '../../../openapi/tag';
 import {
@@ -9,7 +10,8 @@ import {
   GetDatasetCollaboratorListResponseSchema,
   UpdateDatasetCollaboratorBodySchema,
   UpdateDatasetCollaboratorResponseSchema,
-  PostDatasetSyncBodySchema
+  PostDatasetSyncBodySchema,
+  SearchDatasetTestBodySchema
 } from '../../../openapi/core/dataset/api';
 import { CreateCollectionByFileIdBodySchema } from '../../../openapi/core/dataset/collection/createApi';
 import {
@@ -21,7 +23,11 @@ import {
   UpdateCollectionCollaboratorBodySchema,
   UpdateCollectionCollaboratorResponseSchema
 } from '../../../openapi/core/dataset/collection/api';
-import { DatasetItemSchema, DatasetListItemSchema } from '../../../core/dataset/type';
+import {
+  DatasetItemSchema,
+  DatasetListItemSchema,
+  DatasetSchema
+} from '../../../core/dataset/type';
 
 const objectId = '68ad85a7463006c963799a05';
 
@@ -36,7 +42,96 @@ const expectedPaths = {
   '/core/dataset/collection/resumeInheritPermission': 'put'
 } as const;
 
+describe('SearchDatasetTestBodySchema', () => {
+  const imageKeys = ['temp/teamId/search-image.png'];
+
+  it.each([
+    [{ text: ' question ' }, { text: ' question ', queryImageUrls: [] }],
+    [{ queryImageUrls: imageKeys }, { text: '', queryImageUrls: imageKeys }],
+    [
+      { text: 'question', queryImageUrls: imageKeys },
+      { text: 'question', queryImageUrls: imageKeys }
+    ],
+    [
+      { text: '  ', queryImageUrls: imageKeys },
+      { text: '  ', queryImageUrls: imageKeys }
+    ],
+    [
+      { queryImageUrls: Array(10).fill(imageKeys[0]) },
+      { text: '', queryImageUrls: Array(10).fill(imageKeys[0]) }
+    ]
+  ])('accepts text, images or both without dropping either input: %j', (input, expected) => {
+    expect(SearchDatasetTestBodySchema.parse({ datasetId: objectId, ...input })).toEqual({
+      datasetId: objectId,
+      ...expected
+    });
+  });
+
+  it.each([
+    {},
+    { text: ' \n ', queryImageUrls: [] },
+    { queryImageUrls: [] },
+    { text: 'question', queryImageUrls: [''] },
+    { text: 'question', queryImageUrls: Array(11).fill(imageKeys[0]) },
+    { text: null, queryImageUrls: imageKeys },
+    { queryImageUrls: imageKeys[0] }
+  ])('rejects empty input or malformed image lists: %j', (input) => {
+    expect(SearchDatasetTestBodySchema.safeParse({ datasetId: objectId, ...input }).success).toBe(
+      false
+    );
+  });
+
+  it.each([
+    ['DevAPI', openAPIDocument],
+    ['System OpenAPI', apiDocOpenAPIDocument]
+  ] as const)('documents named search input choices and response fields in %s', (_, document) => {
+    const operation = document.paths!['/core/dataset/searchTest']!.post!;
+    const body = operation.requestBody!;
+    if ('$ref' in body) throw new Error('Unexpected body reference');
+    const media = body.content['application/json'];
+    const schema = media.schema!;
+    if ('$ref' in schema) throw new Error('Unexpected body schema reference');
+    expect(schema.anyOf?.map((branch) => branch.title)).toEqual(['文本检索', '图片检索']);
+    const [text, images] = schema.anyOf!;
+    expect(Object.keys(text.properties!)[0]).toBe('text');
+    expect(text.required).toEqual(expect.arrayContaining(['text', 'datasetId']));
+    expect(text.required).not.toContain('queryImageUrls');
+    expect(text.properties!.queryImageUrls).toMatchObject({ default: [], maxItems: 10 });
+    expect(Object.keys(images.properties!)[0]).toBe('queryImageUrls');
+    expect(images.required).toEqual(expect.arrayContaining(['queryImageUrls', 'datasetId']));
+    expect(images.required).not.toContain('text');
+    expect(images.properties!.queryImageUrls).toMatchObject({ minItems: 1, maxItems: 10 });
+    expect(images.properties!.text).toMatchObject({ default: '' });
+    expect(media.example).toEqual({ text: 'FastGPT 是什么', datasetId: objectId });
+    expect(media.examples).toBeUndefined();
+    expect(SearchDatasetTestBodySchema.safeParse(media.example).success).toBe(true);
+    expect(operation.responses![200]).toMatchObject({
+      content: {
+        'application/json': {
+          schema: {
+            properties: {
+              list: { type: 'array' },
+              duration: { type: 'string' },
+              limit: { type: 'number' }
+            }
+          }
+        }
+      }
+    });
+  });
+});
+
 describe('Dataset OpenAPI contracts', () => {
+  it('keeps ancestor paths in storage types only and documents folder access modes', () => {
+    expect(DatasetSchema.shape.ancestorIds).toBeDefined();
+    expect(DatasetItemSchema.shape).not.toHaveProperty('ancestorIds');
+    expect(DatasetListItemSchema.shape).not.toHaveProperty('ancestorIds');
+    expect(DatasetListItemSchema.shape.folderAccessMode).toBeDefined();
+    expect(
+      openAPIDocument.paths?.['/core/dataset/folder/create']?.post?.responses?.[200]?.content
+    ).toBeUndefined();
+  });
+
   it.each([undefined, null])('defaults a missing or null dataset avatar (%s)', (avatar) => {
     expect(DatasetItemSchema.shape.avatar.parse(avatar)).toBe('/icon/logo.svg');
     expect(DatasetListItemSchema.shape.avatar.parse(avatar)).toBe('/icon/logo.svg');
@@ -65,9 +160,13 @@ describe('Dataset OpenAPI contracts', () => {
     expect(openAPIDocument.paths?.[path]?.[method]).toBeDefined();
   });
 
-  it('registers both legacy and paginated dataset list APIs', () => {
-    expect(openAPIDocument.paths?.['/core/dataset/list']?.post).toBeDefined();
+  it('deprecates the legacy dataset list API and keeps V2 available', () => {
+    expect(openAPIDocument.paths?.['/core/dataset/list']?.post).toMatchObject({
+      deprecated: true,
+      description: expect.stringContaining('/core/dataset/listV2')
+    });
     expect(openAPIDocument.paths?.['/core/dataset/listV2']?.post).toBeDefined();
+    expect(openAPIDocument.paths?.['/core/dataset/listV2']?.post?.deprecated).not.toBe(true);
   });
 
   it('groups Dataset permission APIs with dataset permission and shared permission tags', () => {

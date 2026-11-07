@@ -1,4 +1,5 @@
 import { createDocument } from 'zod-openapi';
+import { openApiDocumentOptions } from '../generation';
 import { setRequiredRequestExamples } from '../requiredExamples';
 import { SystemOpenApiTagMap } from '../tag';
 import { openAPIPaths } from '../path';
@@ -91,28 +92,31 @@ const pickApiKeyPathsByTags = (paths: DefinedOpenAPIPath) => {
 const apiKeyOpenAPIPaths = pickApiKeyPathsByTags(openAPIPaths);
 
 export const apiDocOpenAPIDocument = setRequiredRequestExamples(
-  createDocument({
-    openapi: '3.1.0',
-    info: {
-      title: 'FastGPT System OpenAPI',
-      version: '0.1.0',
-      description: 'FastGPT 开放 API 文档，仅包含支持 API key 鉴权的接口。'
-    },
-    paths: apiKeyOpenAPIPaths,
-    servers: [{ url: '/api' }],
-    components: {
-      securitySchemes: {
-        ApiKeyAuth: {
-          type: 'http',
-          scheme: 'bearer',
-          bearerFormat: 'API Key',
-          description:
-            '在 Authorization 请求头中传入 Bearer <apiKey>。除 chat/completions 外，对话相关接口必须在 body/query 中显式传入 appId。chat/completions 推荐传 body.appId；为兼容 OpenAI SDK，也允许 Bearer <apiKey>-<appId>，该后缀仅作为传输兼容，不会写入数据库。'
+  createDocument(
+    {
+      openapi: '3.1.0',
+      info: {
+        title: 'FastGPT System OpenAPI',
+        version: '0.1.0',
+        description: 'FastGPT 开放 API 文档，仅包含支持 API key 鉴权的接口。'
+      },
+      paths: apiKeyOpenAPIPaths,
+      servers: [{ url: '/api' }],
+      components: {
+        securitySchemes: {
+          ApiKeyAuth: {
+            type: 'http',
+            scheme: 'bearer',
+            bearerFormat: 'API Key',
+            description:
+              '在 Authorization 请求头中传入 Bearer <apiKey>。应用 API Key 自动使用绑定的应用，对话及配套管理接口无需传 appId；显式 appId 或 SDK 后缀不能覆盖 Key 绑定。个人密钥调用应用会话接口需提供 appId；chat/completions 推荐传 body.appId，为兼容 OpenAI SDK 也支持 Bearer <apiKey>-<appId>。SDK 后缀仅作为传输兼容，不会写入数据库。'
+          }
         }
-      }
+      },
+      security: [{ ApiKeyAuth: [] }],
+      'x-tagGroups': tagGroups
     },
-    security: [{ ApiKeyAuth: [] }],
-    'x-tagGroups': tagGroups
-  }),
+    openApiDocumentOptions
+  ),
   apiKeyOpenAPIPaths
 );

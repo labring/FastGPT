@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeAll, beforeEach, afterEach, vi } from 'vitest';
 import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import { ChatSidebarPaneEnum } from '@/pageComponents/chat/constants';
 
@@ -40,9 +40,9 @@ describe('useChatStore', () => {
       lastChatId: '',
       chatId: '',
       appChatIdMap: {},
-      sourceChatIdMap: {},
+      appBuilderChatIdMap: {},
       lastPane: undefined,
-      outLinkAuthData: {}
+      outLinkAuthData: undefined
     });
   });
 
@@ -115,25 +115,47 @@ describe('useChatStore', () => {
     expect(useChatStore.getState().chatId).toBe('chat-b');
   });
 
-  it('should manage sourceKey chatId independently from the main chatId', () => {
+  it('should manage builder chatId per app independently from the main chatId', () => {
     const store = useChatStore.getState();
 
     store.setSource(ChatSourceEnum.online);
     store.setAppId('app-a');
     store.setChatId('debug-chat-id');
 
-    store.setSourceChatId('chatAgentHelper:app-a', 'helper-chat-id');
+    store.setAppBuilderChatId('app-a', 'helper-chat-id');
 
     const newState = useChatStore.getState();
     expect(newState.chatId).toBe('debug-chat-id');
-    expect(newState.sourceChatIdMap['chatAgentHelper:app-a']).toBe('helper-chat-id');
-    expect(useChatStore.getState().ensureSourceChatId('chatAgentHelper:app-a')).toBe(
-      'helper-chat-id'
+    expect(newState.appBuilderChatIdMap['app-a']).toBe('helper-chat-id');
+    expect(store.setAppBuilderChatId('app-b')).toBe('test-generated-id');
+    expect(useChatStore.getState().appBuilderChatIdMap).toEqual({
+      'app-a': 'helper-chat-id',
+      'app-b': 'test-generated-id'
+    });
+  });
+
+  it('does not create a builder chat without an appId', () => {
+    expect(useChatStore.getState().setAppBuilderChatId('')).toBe('');
+    expect(useChatStore.getState().appBuilderChatIdMap).toEqual({});
+  });
+
+  it('starts with an empty builder cache when storage only contains the old source index', async () => {
+    mockStorage.getItem.mockReturnValueOnce('{}').mockReturnValueOnce(
+      JSON.stringify({
+        state: {
+          sourceChatIdMap: { 'workflow-builder:workflowBuilder:app-a:member-1': 'old-chat' }
+        },
+        version: 0
+      })
     );
-    expect(store.ensureSourceChatId('chatAgentHelper:app-b')).toBe('test-generated-id');
-    expect(useChatStore.getState().ensureSourceChatId('chatAgentHelper:app-b')).toBe(
-      'test-generated-id'
-    );
+
+    await useChatStore.persist.rehydrate();
+    expect(useChatStore.getState().appBuilderChatIdMap).toEqual({});
+
+    useChatStore.getState().setAppBuilderChatId('app-a', 'restored-chat');
+    const persisted = JSON.parse(mockStorage.setItem.mock.calls.at(-1)![1]);
+    expect(persisted.state.appBuilderChatIdMap).toEqual({ 'app-a': 'restored-chat' });
+    expect(persisted.state).not.toHaveProperty('sourceChatIdMap');
   });
 
   it('should namespace app chat cache by source', () => {
@@ -344,7 +366,7 @@ describe('useChatStore', () => {
       chatId: '',
       lastChatId: '',
       lastPane: undefined,
-      outLinkAuthData: {}
+      outLinkAuthData: undefined
     });
     const store = useChatStore.getState();
     store.setSource(ChatSourceEnum.api);
@@ -360,8 +382,8 @@ describe('useChatStore', () => {
       lastChatAppId: 'last-app-id',
       chatId: 'chat-id',
       lastChatId: `${ChatSourceEnum.share}-chat-id`,
-      sourceChatIdMap: {
-        'chatAgentHelper:app-a': 'helper-chat-id'
+      appBuilderChatIdMap: {
+        'app-a': 'helper-chat-id'
       },
       lastPane: ChatSidebarPaneEnum.RECENTLY_USED_APPS,
       outLinkAuthData: {
@@ -379,9 +401,9 @@ describe('useChatStore', () => {
       chatId: '',
       lastChatId: '',
       appChatIdMap: {},
-      sourceChatIdMap: {},
+      appBuilderChatIdMap: {},
       lastPane: ChatSidebarPaneEnum.HOME,
-      outLinkAuthData: {}
+      outLinkAuthData: undefined
     });
   });
 
@@ -447,5 +469,90 @@ describe('createCustomStorage', () => {
     storage.removeItem('test');
     expect(mockStorage.removeItem).toHaveBeenCalledTimes(2);
     expect(mockStorage.removeItem).toHaveBeenCalledWith('test');
+  });
+});
+
+describe('chat store cross-tab synchronization', () => {
+  const previousWindow = globalThis.window;
+  const localStorageMock = { getItem: vi.fn(), setItem: vi.fn() };
+  const sessionStorageMock = { getItem: vi.fn(), setItem: vi.fn() };
+  const windowMock = { addEventListener: vi.fn(), removeEventListener: vi.fn() };
+  let store: typeof useChatStore;
+  let storageListener: (event: StorageEvent) => void;
+  const sessionState = {
+    source: ChatSourceEnum.online,
+    appId: 'current-tab-app',
+    chatId: 'current-tab-chat',
+    agentChatTestTab: 'chat_debug'
+  };
+  const sharedState = {
+    lastChatId: 'online-external-chat',
+    appChatIdMap: { 'online:external-app': 'external-chat' },
+    appBuilderChatIdMap: { 'builder-app': 'external-builder-chat' }
+  };
+  const externalValue = JSON.stringify({ state: sharedState, version: 0 });
+
+  beforeEach(async () => {
+    vi.resetModules();
+    localStorageMock.getItem.mockReturnValue(null);
+    sessionStorageMock.getItem.mockReturnValue(JSON.stringify({ state: sessionState, version: 0 }));
+    windowMock.addEventListener.mockClear();
+    vi.stubGlobal('localStorage', localStorageMock);
+    vi.stubGlobal('sessionStorage', sessionStorageMock);
+    vi.stubGlobal('window', windowMock);
+
+    ({ useChatStore: store } = await import('@/web/core/chat/context/useChatStore'));
+    storageListener = windowMock.addEventListener.mock.calls.find(
+      ([event]) => event === 'storage'
+    )?.[1];
+    expect(storageListener).toBeTypeOf('function');
+    localStorageMock.getItem.mockClear();
+    sessionStorageMock.getItem.mockClear();
+    localStorageMock.setItem.mockClear();
+    sessionStorageMock.setItem.mockClear();
+  });
+
+  afterEach(() => {
+    vi.stubGlobal('window', previousWindow);
+    vi.stubGlobal('localStorage', mockStorage);
+    vi.stubGlobal('sessionStorage', mockStorage);
+    vi.resetModules();
+  });
+
+  it('updates shared fields without writing back or replacing the current tab session', () => {
+    localStorageMock.getItem.mockReturnValue(externalValue);
+
+    // 相同对象内容反复到达也不能重新持久化，否则多个标签页会继续互相触发 storage 事件。
+    for (let index = 0; index < 2; index++) {
+      storageListener({
+        key: 'chatStore',
+        newValue: externalValue,
+        storageArea: localStorage
+      } as StorageEvent);
+    }
+
+    expect(store.getState()).toMatchObject({ ...sharedState, ...sessionState });
+    expect(localStorageMock.setItem).not.toHaveBeenCalled();
+    expect(sessionStorageMock.setItem).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    { name: 'another storage key', key: 'anotherStore', newValue: '{}', area: 'local' },
+    { name: 'a deleted value', key: 'chatStore', newValue: null, area: 'local' },
+    { name: 'sessionStorage updates', key: 'chatStore', newValue: '{}', area: 'session' }
+  ])('ignores $name', ({ key, newValue, area }) => {
+    const previousState = store.getState();
+
+    storageListener({
+      key,
+      newValue,
+      storageArea: area === 'local' ? localStorage : sessionStorage
+    } as StorageEvent);
+
+    expect(store.getState()).toBe(previousState);
+    expect(localStorageMock.getItem).not.toHaveBeenCalled();
+    expect(sessionStorageMock.getItem).not.toHaveBeenCalled();
+    expect(localStorageMock.setItem).not.toHaveBeenCalled();
+    expect(sessionStorageMock.setItem).not.toHaveBeenCalled();
   });
 });

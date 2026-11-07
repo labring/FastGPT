@@ -79,7 +79,7 @@ The configuration is cached by content hash in the sandbox runtime state, so the
 If Agent Sandbox is enabled, also update the following images:
 
 - Update the fastgpt-agent-sandbox-proxy image tag to v0.2.0-beta3.
-- Update the fastgpt-agent-sandbox image tag to v0.2.0.-beta3.
+- Update the fastgpt-agent-sandbox image tag to v0.2.0-beta3.
 
 ## Risks
 
@@ -94,6 +94,7 @@ Risk: trace records written before this upgrade do not have `teamId`, so they ca
 ## 🚀 New Features
 
 1. The commercial edition now supports local direct-connect debugging for FastGPT plugins.
+2. Sandboxes now support custom npm and pip registries.
 
 ## ⚙️ Improvements
 
@@ -101,6 +102,12 @@ Risk: trace records written before this upgrade do not have `teamId`, so they ca
 2. LLM request traces are now queried with team isolation, and the unique index is now `{ teamId, requestId }` to prevent request IDs from exposing sensitive traces across teams.
 3. Skill Edit chats now use the standard Chat storage and cleanup flow, and legacy Skill Debug chats can be cleaned through the initialization API.
 4. Agent Sandbox now supports npm and PyPI mirror configuration. During initialization, it writes common package manager configuration files to reduce dependency installation failures inside the sandbox.
+
+5. PDF parsing now falls back to `pdfjs` for `linux/arm64` environments using Alpine/musl.
+
+## 🐛 Bug Fixes
+
+1. The `chat/completions` API now returns the `q`/`a`/`index` fields in `nodeResponse`, restoring fields that were previously filtered out.
 
 ## Code Improvements
 

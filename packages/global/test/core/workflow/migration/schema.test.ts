@@ -48,6 +48,156 @@ describe('workflow input schema boundaries', () => {
 });
 
 describe('workflow migration boundary', () => {
+  it('preserves typed system tool values through canonical migration', () => {
+    const result = migrateWorkflowToCurrent({
+      nodes: [
+        {
+          nodeId: 'tool',
+          name: 'Tool',
+          flowNodeType: 'tool',
+          outputs: [],
+          inputs: [
+            {
+              key: NodeInputKeyEnum.systemInputConfig,
+              label: 'Config',
+              renderTypeList: [],
+              inputList: [
+                { key: 'count', label: 'Count', inputType: 'numberInput', value: { value: 0 } },
+                { key: 'enabled', label: 'Enabled', inputType: 'switch', value: { value: false } },
+                { key: 'optional', label: 'Optional', inputType: 'numberInput' }
+              ],
+              value: {
+                type: 'manual',
+                value: {
+                  count: { value: '12' },
+                  enabled: { value: 'false' },
+                  optional: { value: '' }
+                }
+              }
+            }
+          ]
+        }
+      ]
+    });
+    expect(result.nodes[0].inputs[0]).toMatchObject({
+      inputList: [{ value: { value: 0 } }, { value: { value: false } }, { key: 'optional' }],
+      value: { value: { count: { value: 12 }, enabled: { value: false } } }
+    });
+    expect(result.nodes[0].inputs[0].value.value).not.toHaveProperty('optional');
+    expect(migrateWorkflowToCurrent(result)).toEqual(result);
+  });
+
+  it('preserves ordinary business JSON containing credential-shaped fields', () => {
+    const value = {
+      headerSecret: { Authorization: { value: 'business-value', secret: 'business-secret' } },
+      payload: { value: 'also-business', secret: 'keep' },
+      empty: {},
+      omitted: { value: undefined, secret: undefined }
+    };
+    const result = migrateWorkflowToCurrent({
+      nodes: [
+        {
+          nodeId: 'code',
+          flowNodeType: 'code',
+          name: 'Code',
+          inputs: [
+            {
+              key: 'payload',
+              label: 'Payload',
+              renderTypeList: [FlowNodeInputTypeEnum.JSONEditor],
+              selectedType: FlowNodeInputTypeEnum.JSONEditor,
+              valueType: WorkflowIOValueTypeEnum.object,
+              value
+            }
+          ],
+          outputs: []
+        }
+      ]
+    });
+    expect(result.nodes[0].inputs[0].value).toEqual(value);
+    expect(migrateWorkflowToCurrent(result)).toEqual(result);
+  });
+
+  it.each(['mcpToolSet', 'httpToolSet'] as const)(
+    'normalizes historical empty %s credentials before canonical validation',
+    (toolSetKey) => {
+      const result = migrateWorkflowToCurrent({
+        nodes: [
+          {
+            nodeId: 'tool-set',
+            name: 'Tool set',
+            flowNodeType: 'toolSet',
+            inputs: [],
+            outputs: [],
+            toolConfig: {
+              [toolSetKey]: {
+                url: 'https://example.com/mcp',
+                baseUrl: 'https://example.com',
+                toolList: [],
+                headerSecret: {
+                  Authorization: {},
+                  'X-Omitted': { value: undefined, secret: undefined }
+                }
+              }
+            }
+          }
+        ],
+        edges: [],
+        chatConfig: {}
+      });
+      expect(result.nodes[0].toolConfig).toMatchObject({
+        [toolSetKey]: {
+          headerSecret: {
+            Authorization: { value: '' },
+            'X-Omitted': { value: '' }
+          }
+        }
+      });
+      expect(migrateWorkflowToCurrent(result)).toEqual(result);
+    }
+  );
+
+  it('migrates secrets in legacy MCP tool-set values after structure conversion', () => {
+    const result = migrateWorkflowToCurrent({
+      nodes: [
+        {
+          nodeId: 'mcp-tool-set',
+          flowNodeType: 'toolSet',
+          pluginId: 'mcp-tool-set',
+          name: 'MCP tool set',
+          inputs: [
+            {
+              key: 'legacy-tool-set',
+              label: 'Legacy tool set',
+              renderTypeList: [FlowNodeInputTypeEnum.input],
+              value: {
+                url: 'https://example.com/mcp',
+                headerSecret: {
+                  Authorization: { value: '', secret: 'parent-cipher' }
+                },
+                toolList: [
+                  {
+                    name: 'search',
+                    description: 'Search',
+                    inputSchema: { type: 'object', properties: {} }
+                  }
+                ]
+              }
+            }
+          ],
+          outputs: []
+        }
+      ]
+    });
+
+    expect(result.nodes[0].toolConfig).toMatchObject({
+      mcpToolSet: {
+        headerSecret: { Authorization: { secret: 'parent-cipher' } },
+        toolList: [{ name: 'search' }]
+      }
+    });
+  });
+
   it.each(['legacyDatasetTagFilter', 'unknownInputType', 123, null])(
     'cleans invalid selected types before schema validation: %j',
     (selectedType) => {
@@ -118,6 +268,35 @@ describe('workflow migration boundary', () => {
     expect(result.nodes[0].inputs[1]).not.toHaveProperty('isToolParam');
   });
 
+  it('adds reference support to existing password inputs without changing their mode or value', () => {
+    const result = migrateWorkflowToCurrent({
+      nodes: [
+        {
+          nodeId: 'plugin-input',
+          flowNodeType: 'pluginInput',
+          name: 'Plugin input',
+          inputs: [
+            {
+              key: 'apiKey',
+              label: 'API key',
+              renderTypeList: [FlowNodeInputTypeEnum.password],
+              selectedType: FlowNodeInputTypeEnum.password,
+              value: { secret: 'ciphertext' }
+            }
+          ],
+          outputs: []
+        }
+      ]
+    });
+
+    expect(result.nodes[0].inputs[0]).toMatchObject({
+      renderTypeList: [FlowNodeInputTypeEnum.password, FlowNodeInputTypeEnum.reference],
+      selectedType: FlowNodeInputTypeEnum.password,
+      value: { secret: 'ciphertext' }
+    });
+    expect(migrateWorkflowToCurrent(result)).toEqual(result);
+  });
+
   it('keeps node and input descriptions', async () => {
     const result = await migrateWorkflowToCurrent({
       nodes: [
@@ -141,23 +320,6 @@ describe('workflow migration boundary', () => {
 
     expect(result.nodes[0]).toMatchObject({ intro: 'Node intro' });
     expect(result.nodes[0].inputs[0].toolDescription).toBe('Input description');
-  });
-
-  it('cleans null legacy node tool descriptions', async () => {
-    const result = await migrateWorkflowToCurrent({
-      nodes: [
-        {
-          nodeId: 'chat-1',
-          flowNodeType: 'chatNode',
-          name: 'Chat',
-          toolDescription: null,
-          inputs: [],
-          outputs: []
-        }
-      ]
-    });
-
-    expect(result.nodes[0]).not.toHaveProperty('toolDescription');
   });
 
   it('keeps legacy file inputs manual', async () => {
@@ -1295,6 +1457,53 @@ describe('workflow migration boundary', () => {
     const selectedToolsValue = (result.nodes[0].inputs[0] as any).value;
     expect(selectedToolsValue[0].name).toBe('My Tool Name');
     expect(selectedToolsValue[0].avatar).toBe('core/workflow/template/tool');
+  });
+
+  it('migrates legacy secret pairs before canonical workflow validation', () => {
+    const result = migrateWorkflowToCurrent({
+      nodes: [
+        {
+          nodeId: 'start',
+          flowNodeType: 'workflowStart',
+          name: 'Start',
+          inputs: [
+            {
+              key: NodeInputKeyEnum.systemInputConfig,
+              label: 'Config',
+              renderTypeList: [FlowNodeInputTypeEnum.input],
+              inputList: [
+                {
+                  key: 'plain',
+                  label: 'Plain',
+                  inputType: 'secret',
+                  value: { value: 'plain', secret: 'legacy-cipher' }
+                },
+                {
+                  key: 'cipher',
+                  label: 'Cipher',
+                  inputType: 'secret',
+                  value: { value: '', secret: 'cipher' }
+                },
+                {
+                  key: 'ref',
+                  label: 'Reference',
+                  inputType: 'secret',
+                  value: { ref: ['node-1', 'token'] }
+                }
+              ]
+            }
+          ],
+          outputs: []
+        }
+      ]
+    } as any);
+
+    expect(result.nodes[0].inputs[0].inputList).toEqual([
+      expect.objectContaining({ value: { value: 'plain' } }),
+      expect.objectContaining({ value: { secret: 'cipher' } }),
+      expect.objectContaining({ value: { ref: ['node-1', 'token'] } })
+    ]);
+    expect(migrateWorkflowToCurrent(result as any)).toEqual(result);
   });
 
   describe('isLegacyV1Workflow', () => {

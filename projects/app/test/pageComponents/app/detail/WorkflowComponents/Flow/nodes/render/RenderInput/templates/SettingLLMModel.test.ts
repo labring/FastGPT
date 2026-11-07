@@ -24,6 +24,7 @@ vi.mock('use-context-selector', () => ({
   useContextSelector: (_: unknown, select: (value: unknown) => unknown) =>
     select({ onChangeNode: mocks.change })
 }));
+vi.mock('@/pageComponents/app/detail/context', () => ({ AppContext: {} }));
 vi.mock('@/pageComponents/app/detail/WorkflowComponents/context/workflowActionsContext', () => ({
   WorkflowActionsContext: {}
 }));

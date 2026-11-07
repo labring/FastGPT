@@ -1123,21 +1123,59 @@ it(`Test splitText2Chunks 16 - token mode table chunks should include header wit
   expect(chunks.every((chunk) => countPromptTokensInWorker(chunk) <= chunkSize)).toBe(true);
 });
 
-it(`Test splitText2Chunks 17 - token mode table should fail when header has no content budget`, () => {
+it(`Test splitText2Chunks 17 - token mode table degrades when header has no content budget`, () => {
   const text = `| id | payload |
 | --- | --- |
 | 1 | a |
 `;
 
-  expect(() =>
-    splitText2Chunks({
-      text,
-      chunkSize: 5,
-      maxSize: 5,
-      overlapRatio: 0,
-      lengthUnit: 'token'
-    })
-  ).toThrow('Markdown table header exceeds token chunk size');
+  const { chunks } = splitText2Chunks({
+    text,
+    chunkSize: 5,
+    maxSize: 5,
+    overlapRatio: 0,
+    lengthUnit: 'token'
+  });
+
+  // 表头（含分隔行）本身已超出 chunk 预算：不再抛错，退化为不带表头的按长度切分。
+  // 正文必须完整保留（拼接后不含表头，但包含全部数据行内容）。
+  expect(chunks.length).toBeGreaterThan(0);
+  expect(chunks.every((chunk) => countPromptTokensInWorker(chunk) <= 5)).toBe(true);
+  expect(chunks.map((chunk) => chunk.replace(/\s/g, '')).join('')).toContain('|1|a|');
+  // 表头仅作为“无法拼回”的上下文，不再产出只有表头的空语义分块
+  expect(chunks.some((chunk) => chunk.includes('payload'))).toBe(false);
+});
+
+it(`Test splitText2Chunks 18 - wide table header exceeding chunk size keeps all rows`, () => {
+  // 贴近线上场景：宽表（20 列）表头本身就超出 chunk 预算，此前会直接抛错导致整个文件解析失败
+  const columnCount = 20;
+  const header = `| ${Array.from({ length: columnCount }, (_, i) => `column_${i}`).join(' | ')} |`;
+  const separator = `| ${Array.from({ length: columnCount }, () => '---').join(' | ')} |`;
+  const rows = Array.from(
+    { length: 8 },
+    (_, r) => `| ${Array.from({ length: columnCount }, (_, c) => `r${r}c${c}`).join(' | ')} |`
+  );
+  const text = [header, separator, ...rows].join('\n');
+
+  const chunkSize = 64;
+  // 前提：表头确实超出预算（否则本用例覆盖不到降级分支）
+  expect(countPromptTokensInWorker(`${header}\n${separator}\n`)).toBeGreaterThan(chunkSize);
+
+  const { chunks } = splitText2Chunks({
+    text,
+    chunkSize,
+    maxSize: chunkSize,
+    overlapRatio: 0,
+    lengthUnit: 'token'
+  });
+
+  expect(chunks.length).toBeGreaterThan(0);
+  expect(chunks.every((chunk) => countPromptTokensInWorker(chunk) <= chunkSize)).toBe(true);
+  // 所有数据行内容完整保留，不因表头超限而丢数据
+  const joined = chunks.map((chunk) => chunk.replace(/\s/g, '')).join('');
+  for (const row of rows) {
+    expect(joined).toContain(row.replace(/\s/g, ''));
+  }
 });
 
 it(`Test getMaxPrefixByLength - returns the longest prefix within custom length limit`, () => {

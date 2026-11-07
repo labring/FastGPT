@@ -3,43 +3,23 @@ import type {
   ChatCompletionTool
 } from '@fastgpt/global/core/ai/llm/type';
 import { getLLMSupportParams } from '@fastgpt/global/core/ai/llm/utils';
+import { sanitizeToolParametersForModel } from '@fastgpt/global/common/jsonSchema/utils';
 import json5 from 'json5';
 import { computedMaxToken, computedTemperature } from '../../utils';
 import type { InferCompletionsBody, LLMRequestBodyType } from './types';
-import type { LLMSystemModelDataType } from '@fastgpt/global/core/ai/model/schema';
-
-const privateToolSchemaKeys = new Set([
-  'toolDescription',
-  'x-tool-description',
-  'isToolParam',
-  'isSecret'
-]);
+import type { LLMModelDataType } from '@fastgpt/global/core/ai/model/schema';
 
 /**
- * 清理 FastGPT 内部工具参数扩展字段，避免 OpenAI-compatible SDK 转成 Gemini 等原生
- * function declaration 时，把 toolDescription 这类非供应商 schema 字段透传出去。
+ * 在模型请求出口统一转换旧版 required 标记并清理内部元数据。
+ * 只处理 Schema 位置，保留同名业务属性和字面量数据；不修改工具原始定义。
+ * 避免 OpenAI-compatible SDK 转成 Gemini 原生 function declaration 时透传不支持的字段。
  */
-const sanitizeToolParametersSchema = (schema: unknown): unknown => {
-  if (Array.isArray(schema)) {
-    return schema.map(sanitizeToolParametersSchema);
-  }
-  if (!schema || typeof schema !== 'object') {
-    return schema;
-  }
-
-  return Object.fromEntries(
-    Object.entries(schema as Record<string, unknown>)
-      .filter(([key]) => !privateToolSchemaKeys.has(key))
-      .map(([key, value]) => [key, sanitizeToolParametersSchema(value)])
-  );
-};
-
 const sanitizeCompletionTools = (tools?: ChatCompletionTool[]): ChatCompletionTool[] | undefined =>
   tools?.map((tool) => ({
     ...tool,
     function: {
       ...tool.function,
-      parameters: sanitizeToolParametersSchema(
+      parameters: sanitizeToolParametersForModel(
         tool.function.parameters
       ) as ChatCompletionTool['function']['parameters']
     }
@@ -58,7 +38,7 @@ export const llmCompletionsBodyFormat = async <T extends ChatCompletionCreatePar
   input: LLMRequestBodyType<T>
 ): Promise<{
   requestBody: InferCompletionsBody<T>;
-  modelData: LLMSystemModelDataType;
+  modelData: LLMModelDataType;
 }> => {
   // 内部模型对象只参与配置计算，不能进入后续请求字段映射的数据源。
   const {

@@ -6,7 +6,7 @@ import type {
   ChatCompletionMessageParam,
   ChatCompletionTool
 } from '@fastgpt/global/core/ai/llm/type';
-import type { LLMSystemModelDataType } from '@fastgpt/global/core/ai/model/schema';
+import type { LLMModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import type { AgentPlanType } from '@fastgpt/global/core/ai/agent/type';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -64,6 +64,7 @@ import {
   compressToolResponse as rawCompressToolResponse
 } from '@fastgpt/service/core/ai/llm/compress';
 import { extractExactAnchors } from '@fastgpt/service/core/ai/llm/compress/prompt';
+import { countGptMessagesTokensInWorker } from '@fastgpt/service/worker/countGptMessagesTokens/count';
 
 const testTeamId = 'team_1';
 const compressLargeContent: typeof rawCompressLargeContent = ((args: any) =>
@@ -82,7 +83,7 @@ const compressToolResponse: typeof rawCompressToolResponse = ((args: any) =>
     ...args
   })) as typeof rawCompressToolResponse;
 
-const model: LLMSystemModelDataType = {
+const model: LLMModelDataType = {
   modelId: '507f1f77bcf86cd799439016',
   type: ModelTypeEnum.llm,
   provider: 'openai',
@@ -100,12 +101,12 @@ const model: LLMSystemModelDataType = {
   }
 };
 
-const largeContextModel: LLMSystemModelDataType = {
+const largeContextModel: LLMModelDataType = {
   ...model,
   config: { ...model.config, maxContext: 32000 }
 };
 
-const toolCompressionModel: LLMSystemModelDataType = {
+const toolCompressionModel: LLMModelDataType = {
   ...model,
   config: { ...model.config, maxContext: 12000 }
 };
@@ -190,6 +191,60 @@ describe('compressRequestMessages', () => {
     countGptMessagesTokensMock.mockImplementation(
       async ({ messages }: { messages: ChatCompletionMessageParam[] }) => messages.length * 1000
     );
+  });
+
+  it('should trigger checkpoint compression for restored history containing long reasoning', async () => {
+    countGptMessagesTokensMock.mockImplementation(async (params) =>
+      countGptMessagesTokensInWorker(params)
+    );
+    const reasoningModel: LLMModelDataType = {
+      ...model,
+      config: { ...model.config, maxContext: 8000, reasoning: true }
+    };
+    const messages: ChatCompletionMessageParam[] = [
+      { role: 'user', content: 'Inspect the documentation.' },
+      {
+        role: 'assistant',
+        content: '',
+        reasoning_content: 'Need to preserve tool reasoning. '.repeat(1200),
+        tool_calls: [
+          {
+            id: 'call_search',
+            type: 'function',
+            function: { name: 'search', arguments: '{"q":"FastGPT"}' }
+          }
+        ]
+      },
+      { role: 'tool', tool_call_id: 'call_search', content: 'Documentation found.' },
+      { role: 'user', content: 'Continue.' }
+    ];
+    const originalMessages = structuredClone(messages);
+    const withoutReasoning = messages.map(({ reasoning_content, ...message }) => message);
+    expect(
+      countGptMessagesTokensInWorker({ messages: withoutReasoning, tools: [searchTool] })
+    ).toBeLessThan(reasoningModel.config.maxContext * 0.8);
+    createLLMResponseMock.mockResolvedValue({
+      answerText:
+        '<context_checkpoint>Documentation found; continue the task.</context_checkpoint>',
+      usage: { inputTokens: 100, outputTokens: 20 },
+      requestId: 'req_restored_reasoning',
+      finish_reason: 'stop'
+    });
+
+    const result = await compressRequestMessages({
+      teamId: testTeamId,
+      messages,
+      model: reasoningModel,
+      tools: [searchTool]
+    });
+
+    expect(createLLMResponseMock).toHaveBeenCalledTimes(1);
+    expect(result.contextCheckpoint).toContain('Documentation found; continue the task.');
+    expect(result.messageTokens).toBe(
+      countGptMessagesTokensInWorker({ messages: result.messages, tools: [searchTool] })
+    );
+    expect(result.messageTokens).toBeLessThan(reasoningModel.config.maxContext * 0.8);
+    expect(messages).toEqual(originalMessages);
   });
 
   it('should compress all non-system messages into one hidden context checkpoint', async () => {

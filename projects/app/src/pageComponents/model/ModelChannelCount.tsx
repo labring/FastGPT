@@ -1,11 +1,10 @@
-import { ChannelStautsMap } from '@/global/aiproxy/constants';
+import ChannelStatusTag from './ChannelStatusTag';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
-import type { AdminModelChannel } from '@fastgpt/global/openapi/admin/system/model/api';
+import type { ModelChannelSummary } from '@fastgpt/global/openapi/core/ai/model/api';
 import { Box, HStack, VStack } from '@chakra-ui/react';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyPopover from '@fastgpt/web/components/common/MyPopover';
-import MyTag from '@fastgpt/web/components/common/Tag';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 
 /** 展示模型关联的渠道数量，并在悬浮时列出具体渠道。 */
@@ -13,7 +12,7 @@ const ModelChannelCount = ({
   channels,
   onClick
 }: {
-  channels: AdminModelChannel[];
+  channels: ModelChannelSummary[];
   onClick?: () => void;
 }) => {
   const { t, i18n } = useSafeTranslation();
@@ -63,23 +62,18 @@ const ModelChannelCount = ({
     >
       {() => (
         <VStack alignItems="stretch" spacing={3} maxH="280px" overflowY="auto">
-          {channels.map((channel) => {
-            const status = ChannelStautsMap[channel.status as keyof typeof ChannelStautsMap];
-            return (
-              <HStack key={channel.id} spacing={3}>
-                <Box w="110px" flexShrink={0} noOfLines={1}>
-                  {channel.name}
-                </Box>
-                <HStack flex={1} minW={0}>
-                  <Avatar src={channel.protocol.avatar} w="18px" />
-                  <Box noOfLines={1}>{parseI18nString(channel.protocol.name, i18n.language)}</Box>
-                </HStack>
-                <MyTag type="borderFill" flexShrink={0} colorSchema={status?.colorSchema as any}>
-                  {status ? t(status.label) : t('config_model:channel_status_unknown')}
-                </MyTag>
+          {channels.map((channel) => (
+            <HStack key={channel.id} spacing={3}>
+              <Box w="110px" flexShrink={0} noOfLines={1}>
+                {channel.name}
+              </Box>
+              <HStack flex={1} minW={0}>
+                <Avatar src={channel.protocol.avatar} w="18px" />
+                <Box noOfLines={1}>{parseI18nString(channel.protocol.name, i18n.language)}</Box>
               </HStack>
-            );
-          })}
+              <ChannelStatusTag status={channel.status} flexShrink={0} />
+            </HStack>
+          ))}
         </VStack>
       )}
     </MyPopover>

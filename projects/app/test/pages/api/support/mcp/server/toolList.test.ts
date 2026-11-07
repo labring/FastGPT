@@ -23,6 +23,13 @@ import {
 } from '@fastgpt/service/support/user/team/utils';
 import { assertCancellation } from '@fastgpt/service/support/user/account/cancellation/guard';
 import { AccountCancellationStatus } from '@fastgpt/global/support/user/account/cancellation/constants';
+import { assertTeamFrequencyLimit } from '@fastgpt/service/common/api/frequencyLimit';
+import { markProfileError } from '@fastgpt/service/common/profiling';
+
+vi.mock('@fastgpt/service/common/profiling', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@fastgpt/service/common/profiling')>()),
+  markProfileError: vi.fn()
+}));
 
 vi.mock('@fastgpt/service/support/mcp/schema', () => ({
   MongoMcpKey: {
@@ -78,6 +85,11 @@ vi.mock('@fastgpt/service/support/wallet/sub/utils', () => ({
   getTeamPlanStatus: vi.fn(async () => ({ standard: { maxUploadFileCount: 20 } }))
 }));
 
+vi.mock('@fastgpt/service/common/api/frequencyLimit', () => ({
+  LimitTypeEnum: { chat: 'chat' },
+  assertTeamFrequencyLimit: vi.fn(async () => ({}))
+}));
+
 vi.mock('@fastgpt/service/core/chat/saveChat', () => ({
   finalizeChatRound: vi.fn(),
   failChatRound: vi.fn()
@@ -91,6 +103,8 @@ beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(assertCancellation).mockResolvedValue(undefined);
   vi.mocked(getUserIdByTmbId).mockResolvedValue('user-id');
+  vi.mocked(authAppByTmbId).mockResolvedValue({} as any);
+  vi.mocked(assertTeamFrequencyLimit).mockResolvedValue({} as any);
 });
 
 describe('toolList', () => {
@@ -276,7 +290,7 @@ describe('callMcpServerTool', () => {
     ).rejects.toBe(error);
   });
 
-  it('returns workflowTool pluginOutput using the same value source as main', async () => {
+  it.each([0, 1])('returns pluginOutput with errorCount=%s', async (errorCount) => {
     vi.mocked(MongoMcpKey.findOne).mockReturnValue({
       lean: () => ({
         teamId: 'team-id',
@@ -321,7 +335,9 @@ describe('callMcpServerTool', () => {
       memberName: 'member',
       contact: '',
       teamId: 'team-id',
-      tmbId: 'tmb-id'
+      tmbId: 'tmb-id',
+      timezone: 'Asia/Shanghai',
+      externalProvider: { openaiAccount: undefined, externalWorkflowVariables: undefined }
     });
     vi.mocked(dispatchWorkFlow).mockResolvedValue({
       assistantResponses: [],
@@ -329,9 +345,9 @@ describe('callMcpServerTool', () => {
       toolResponse: { result: 'tool response should not be the plugin source' },
       durationSeconds: 1,
       workflowRuntimeSummary: {
+        errorCount,
         responseIds: ['plugin-output-response-id'],
         finishedNodeIds: [],
-        hasError: false,
         hasLoopRunBreak: false,
         hasToolStop: false,
         hasNestedEnd: false,
@@ -357,12 +373,19 @@ describe('callMcpServerTool', () => {
       })
     ).resolves.toBe(JSON.stringify({ result: 'plugin output value' }));
 
+    if (errorCount) expect(markProfileError).toHaveBeenCalledWith('Workflow run failed');
+    else expect(markProfileError).not.toHaveBeenCalled();
+
     expect(authAppByTmbId).toHaveBeenCalledWith({
       tmbId: 'publisher-tmb-id',
       appId: 'app-id',
       per: expect.any(Number)
     });
     expect(getRunningUserInfoByTmbId).toHaveBeenCalledWith('publisher-tmb-id');
+    expect(assertTeamFrequencyLimit).toHaveBeenCalledWith({
+      teamId: 'team-id',
+      type: 'chat'
+    });
 
     expect(dispatchWorkFlow).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -422,6 +445,50 @@ describe('callMcpServerTool', () => {
       tmbId: 'publisher-tmb-id',
       appId: 'app-id',
       per: expect.any(Number)
+    });
+    expect(assertTeamFrequencyLimit).not.toHaveBeenCalled();
+    expect(dispatchWorkFlow).not.toHaveBeenCalled();
+  });
+
+  it('rejects and does not dispatch when team chat QPM rate limit is exceeded', async () => {
+    vi.mocked(MongoMcpKey.findOne).mockReturnValue({
+      lean: () => ({
+        teamId: 'team-id',
+        tmbId: 'publisher-tmb-id',
+        authProxy: false,
+        apps: [
+          {
+            appId: 'app-id',
+            toolName: 'plugin_tool',
+            description: 'plugin tool'
+          }
+        ]
+      })
+    } as any);
+    vi.mocked(MongoApp.find).mockReturnValue({
+      lean: () => [
+        {
+          _id: 'app-id',
+          name: 'Plugin App',
+          type: AppTypeEnum.workflowTool,
+          teamId: 'team-id',
+          tmbId: 'tmb-id'
+        }
+      ]
+    } as any);
+    vi.mocked(assertTeamFrequencyLimit).mockRejectedValueOnce(new Error('Rate limit exceeded'));
+
+    await expect(
+      callMcpServerTool({
+        key: 'mcp-key',
+        toolName: 'plugin_tool',
+        inputs: {}
+      })
+    ).rejects.toThrow('Rate limit exceeded');
+
+    expect(assertTeamFrequencyLimit).toHaveBeenCalledWith({
+      teamId: 'team-id',
+      type: 'chat'
     });
     expect(dispatchWorkFlow).not.toHaveBeenCalled();
   });

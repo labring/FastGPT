@@ -1,5 +1,12 @@
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 import { getErrResponse } from '@fastgpt/global/common/error/utils';
+import { ChatGeneratingConflictDataSchema } from '@fastgpt/global/core/chat/error';
+
+/** 读取服务端生成冲突的恢复目标；旧版本或格式错误的响应不提供目标。 */
+export const getChatGeneratingConflictData = (error: unknown) => {
+  const parsed = ChatGeneratingConflictDataSchema.safeParse(getErrResponse(error)?.data);
+  return parsed.success ? parsed.data : undefined;
+};
 
 /** 判断发送失败是否因为同一个会话已有服务端生成任务。 */
 export const isChatGeneratingError = (error: unknown) => {

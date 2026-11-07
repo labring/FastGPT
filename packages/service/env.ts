@@ -11,7 +11,8 @@ import {
   getAgentSandboxMissingRequiredEnvKeys,
   getRuntimeEnv,
   isAgentSandboxProvider,
-  validateS3Env
+  validateS3Env,
+  validateAgentUsersEnv
 } from './env.util';
 import {
   LogLevelSchema,
@@ -30,6 +31,9 @@ export const serviceEnv = createEnv({
   skipValidation: isPhaseProductionBuild,
   server: {
     // ==================== 基础配置 ====================
+    AUXILIARY_GENERATION_SHOW_RUN_DETAIL: BoolSchema.default(false).meta({
+      description: '是否展示 Skill、Agent 和工作流辅助生成的运行详情入口，默认不展示'
+    }),
     DB_MAX_LINK: NumSchema.int()
       .default(10)
       .transform((value) => Math.min(1000, Math.max(10, value))),
@@ -60,6 +64,8 @@ export const serviceEnv = createEnv({
 
     PRO_URL: UrlSchema.optional(),
     PRO_TOKEN: z.string().min(32, 'PRO_TOKEN must be at least 32 characters').optional(),
+    AGENT_USERS: z.string().optional(),
+    DEFAULT_AGENT_PSW: z.string().optional(),
 
     // 官网访客归因 CRM；未配置地址时不进行身份上报
     CRM_API_URL: UrlSchema.optional(),
@@ -110,6 +116,14 @@ export const serviceEnv = createEnv({
     AGENT_SANDBOX_STORAGE_SIZE_GI: NumSchema.min(1).default(1).meta({
       description: 'Agent Sandbox 存储容量，单位 Gi'
     }),
+    AGENT_SANDBOX_CPU_OVERCOMMIT_FACTOR: NumSchema.min(1).default(1).meta({
+      description:
+        'Agent Sandbox CPU 超卖倍数（仅 opensandbox + kubernetes 运行态生效）：CPU requests = limits / 该值；1 = 该维度不超卖（requests 镜像 limits）'
+    }),
+    AGENT_SANDBOX_MEMORY_OVERCOMMIT_FACTOR: NumSchema.min(1).default(1).meta({
+      description:
+        'Agent Sandbox 内存超卖倍数（仅 opensandbox + kubernetes 运行态生效）：内存 requests = limits / 该值；1 = 该维度不超卖（requests 镜像 limits）'
+    }),
     // OpenSandbox配置
     AGENT_SANDBOX_OPENSANDBOX_BASEURL: UrlSchema.optional(),
     AGENT_SANDBOX_OPENSANDBOX_API_KEY: z.string().optional(),
@@ -129,7 +143,13 @@ export const serviceEnv = createEnv({
     AGENT_SANDBOX_ARCHIVE_INACTIVE_DAYS: IntSchema.min(1).default(7).meta({
       description: '已暂停的 Agent sandbox 持续未活跃多少天后自动归档'
     }),
-    AGENT_SANDBOX_MAX_EDIT_DEBUG: NumSchema.default(100),
+    AGENT_SANDBOX_MAX: IntSchema.min(1).default(100).meta({
+      description:
+        'Agent sandbox 活跃实例系统总上限（app 会话与技能编辑共用同一计数池，超出即拒绝）'
+    }),
+    AGENT_SANDBOX_MAX_PER_TEAM: IntSchema.min(1).optional().meta({
+      description: '单团队 Agent sandbox 活跃实例配额；不配置表示不限制'
+    }),
     AGENT_SANDBOX_ENTRYPOINT_TIMEOUT_SECONDS: IntSchema.min(1).max(600).default(30).meta({
       description: 'Agent sandbox entrypoint 执行超时时间（秒）'
     }),
@@ -235,11 +255,8 @@ export const serviceEnv = createEnv({
       description: 'Milvus 语言识别引擎(BM25 analyzer): lingua(默认) | whatlang'
     }),
     OPENGAUSS_URL: z.string().optional().meta({ description: 'openGauss 向量库连接参数' }),
-    HNSW_EF_SEARCH: IntSchema.min(1).default(100).meta({
-      description: '向量检索 hnsw ef_search 参数，仅对 PG / OB / OpenGauss 生效'
-    }),
-    HNSW_MAX_SCAN_TUPLES: IntSchema.min(1).default(100000).meta({
-      description: '向量检索最大扫描数据量，仅对 PG 生效'
+    HNSW_EF_SEARCH: IntSchema.min(1).default(200).meta({
+      description: 'HNSW 向量检索搜索宽度，对 PG / Milvus / OceanBase / SeekDB / OpenGauss 生效'
     }),
 
     // 对象存储
@@ -372,7 +389,7 @@ export const serviceEnv = createEnv({
       description: '是否禁用系统内存缓存'
     }),
     DEFAULT_TEAM_BASIC_PERMISSIONS_ENABLED: BoolSchema.default(false).meta({
-      description: '新建团队时是否为默认全员组授予应用、Skill 和知识库创建权限'
+      description: '新建团队时是否为默认全员组授予应用、Skill、知识库和 API Key 创建权限'
     }),
 
     // ==================== 并发控制与限制 ====================
@@ -418,6 +435,10 @@ export const serviceEnv = createEnv({
     SYSTEM_MAX_STRING_LENGTH_M: IntSchema.min(1).max(100).default(100).meta({
       description:
         '系统同步字符串处理最大字符数（M，1M=1,000,000 字符），用于变量替换等 CPU 密集文本操作'
+    }),
+    SHOW_OUTLINK_BRAND: BoolSchema.default(false).meta({
+      description:
+        '是否展示免登录品牌标识；开源版始终开启，接入 Pro 服务后默认关闭，可设为 true 开启'
     }),
     CHAT_MAX_QPM: IntSchema.default(5000).meta({
       description: '聊天 QPM（若用户套餐有限制，这里不生效）'
@@ -495,6 +516,8 @@ if (serviceEnv.WORKFLOW_PARALLEL_MAX_CONCURRENCY > serviceEnv.WORKFLOW_MAX_LOOP_
 }
 
 if (!isPhaseProductionBuild) {
+  validateAgentUsersEnv(serviceEnv);
+
   validateS3Env(serviceEnv);
 
   if (serviceEnv.PRO_URL && !serviceEnv.PRO_TOKEN) {

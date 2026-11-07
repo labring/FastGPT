@@ -1,163 +1,43 @@
 import {
   CreateApiCollectionV2BodySchema,
-  type CreateApiCollectionV2BodyType
+  CreateApiCollectionV2ResponseSchema,
+  type CreateApiCollectionV2ResponseType
 } from '@fastgpt/global/openapi/core/dataset/collection/createApi';
 import { authDatasetCollectionCreate } from '@fastgpt/service/support/permission/dataset/auth';
-import {
-  createCollectionAndInsertData,
-  createOneCollection
-} from '@fastgpt/service/core/dataset/collection/controller';
-import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
-
-import { NextAPI } from '@/service/middleware/entry';
-import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
-import type { ApiRequestProps } from '@fastgpt/next/type';
-import { getApiDatasetRequest } from '@fastgpt/service/core/dataset/apiDataset';
-import type { APIFileItemType } from '@fastgpt/global/core/dataset/apiDataset/type';
-import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
-import { type DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
-import { RootCollectionId } from '@fastgpt/global/core/dataset/collection/constants';
-import type { DatasetPermission } from '@fastgpt/global/support/permission/dataset/controller';
+import { createApiDatasetCollection } from '@fastgpt/service/core/dataset/apiDataset/service';
+import { authApiFileImportChanges } from '@fastgpt/service/core/dataset/apiDataset/auth';
 import { checkDatasetIndexLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { NextAPI } from '@/service/middleware/entry';
+import type { ApiRequestProps } from '@fastgpt/next/type';
 
-async function handler(req: ApiRequestProps<CreateApiCollectionV2BodyType>) {
+/** V2 入口先校验知识库，再由远端树生成实际创建/移动计划逐项鉴权。 */
+async function handler(req: ApiRequestProps): Promise<CreateApiCollectionV2ResponseType> {
   const body = parseApiInput({ req, bodySchema: CreateApiCollectionV2BodySchema }).body;
-
   const { teamId, tmbId, dataset } = await authDatasetCollectionCreate({
     req,
     authToken: true,
     authApiKey: true,
-    datasetId: body.datasetId,
-    parentId: body.parentId
+    datasetId: body.datasetId
   });
-
-  // Check dataset limit
-  await checkDatasetIndexLimit({
-    teamId,
-    insertLen: 1
-  });
-
-  return createApiDatasetCollection({
-    ...body,
-    teamId,
-    tmbId,
-    dataset
-  });
+  await checkDatasetIndexLimit({ teamId, insertLen: 1 });
+  return CreateApiCollectionV2ResponseSchema.parse(
+    await createApiDatasetCollection({
+      ...body,
+      parentId: undefined,
+      teamId,
+      tmbId,
+      dataset,
+      authorizeChanges: (changes) =>
+        authApiFileImportChanges({
+          req,
+          authToken: true,
+          authApiKey: true,
+          datasetId: body.datasetId,
+          ...changes
+        })
+    })
+  );
 }
 
 export default NextAPI(handler);
-
-export const createApiDatasetCollection = async ({
-  apiFiles,
-  customPdfParse,
-  teamId,
-  tmbId,
-  dataset,
-  ...body
-}: CreateApiCollectionV2BodyType & {
-  teamId: string;
-  tmbId: string;
-  dataset: DatasetSchemaType & {
-    permission: DatasetPermission;
-  };
-}) => {
-  // FileId deduplication
-  const existCollections = await MongoDatasetCollection.find(
-    {
-      teamId: dataset.teamId,
-      datasetId: dataset._id
-    },
-    'apiFileId'
-  ).lean();
-  const existApiFileIdSet = new Set(existCollections.map((item) => item.apiFileId).filter(Boolean));
-
-  const startId =
-    dataset.apiDatasetServer?.apiServer?.basePath ||
-    dataset.apiDatasetServer?.yuqueServer?.basePath ||
-    dataset.apiDatasetServer?.feishuServer?.folderToken ||
-    dataset.apiDatasetServer?.dingtalkServer?.rootNodeId;
-
-  // check if the directory is selected
-  const isDirectorySelected = apiFiles.length === 1 && apiFiles[0].id === RootCollectionId;
-  const rootDirectoryId = isDirectorySelected ? RootCollectionId : undefined;
-
-  // Get all apiFileId with top level parent ID
-  const getFilesRecursively = async (
-    files: APIFileItemType[],
-    topLevelParentId?: string
-  ): Promise<(APIFileItemType & { apiFileParentId?: string })[]> => {
-    const allFiles: (APIFileItemType & { apiFileParentId?: string })[] = [];
-
-    for (const file of files) {
-      // if the directory is selected, then the top level parent id of all files is the directory id
-      // otherwise, determine the top level parent id according to the original logic
-      const currentTopLevelParentId = (() => {
-        if (topLevelParentId) return topLevelParentId;
-        if (isDirectorySelected) return rootDirectoryId;
-        if (file.hasChild) return file.id;
-        return undefined;
-      })();
-
-      // Add parentId to file
-      const fileWithParentId = {
-        ...file,
-        apiFileParentId: topLevelParentId
-      };
-
-      allFiles.push(fileWithParentId);
-
-      if (file.hasChild) {
-        const folderFiles = await (
-          await getApiDatasetRequest(dataset.apiDatasetServer)
-        ).listFiles({ parentId: file.id === RootCollectionId ? startId : file.id });
-        const subFiles = await getFilesRecursively(folderFiles, currentTopLevelParentId);
-        allFiles.push(...subFiles.filter((f) => f.type === 'file'));
-      }
-    }
-    return allFiles;
-  };
-  const allFiles = await getFilesRecursively(apiFiles);
-
-  const createFiles = allFiles.filter(
-    (item, index, array) =>
-      !existApiFileIdSet.has(item.id) && array.findIndex((file) => file.id === item.id) === index
-  );
-
-  return mongoSessionRun(async (session) => {
-    for await (const file of createFiles) {
-      // Create folder
-      if (file.hasChild && file.type === 'folder') {
-        await createOneCollection({
-          teamId,
-          tmbId,
-          session,
-          name: file.name,
-          type: DatasetCollectionTypeEnum.folder,
-          datasetId: dataset._id,
-          apiFileId: file.id
-        });
-      }
-
-      if (file.type === 'file') {
-        await createCollectionAndInsertData({
-          dataset,
-          createCollectionParams: {
-            ...body,
-            teamId,
-            tmbId,
-            type: DatasetCollectionTypeEnum.apiFile,
-            name: file.name,
-            apiFileId: file.id,
-            apiFileParentId: file.apiFileParentId,
-            metadata: {
-              relatedImgId: file.id
-            },
-            customPdfParse
-          },
-          session
-        });
-      }
-    }
-  });
-};

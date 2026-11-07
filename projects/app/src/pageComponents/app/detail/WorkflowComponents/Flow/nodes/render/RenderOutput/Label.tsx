@@ -1,10 +1,10 @@
-import { type FlowNodeOutputItemType } from '@fastgpt/global/core/workflow/type/io';
+import type { FlowNodeOutputItemType } from '@fastgpt/global/core/workflow/type/io';
 import React from 'react';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { Box, Flex } from '@chakra-ui/react';
 import { FlowNodeOutputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { MySourceHandle } from '../Handle';
-import { getHandleId } from '@fastgpt/global/core/workflow/utils';
+import { getHandleId } from '@fastgpt/global/common/workflow/reference';
 import { Position } from 'reactflow';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import ValueTypeLabel from '../ValueTypeLabel';

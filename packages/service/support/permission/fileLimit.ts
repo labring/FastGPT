@@ -7,6 +7,6 @@ export const getTeamFileSizeLimitBytes = async ({ teamId }: { teamId: string }) 
 
   return getFileSizeLimitBytes({
     teamMaxFileSize: planStatus.standard?.maxUploadFileSize,
-    systemMaxFileSize: global.feConfigs.uploadFileMaxSize
+    systemMaxFileSize: global.feConfigs.limit.uploadFileMaxSize
   });
 };

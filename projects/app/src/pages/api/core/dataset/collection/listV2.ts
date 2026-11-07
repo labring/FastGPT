@@ -6,6 +6,7 @@ import {
   authDatasetCollection
 } from '@fastgpt/service/support/permission/dataset/auth';
 import { NextAPI } from '@/service/middleware/entry';
+import { normalizePagination } from '@fastgpt/service/common/api/pagination';
 import {
   ManageRoleVal,
   NullRoleVal,
@@ -50,6 +51,12 @@ import { getTmbInfoByTmbId } from '@fastgpt/service/support/user/team/controller
 import { getOrgIdSetWithParentByTmbId } from '@fastgpt/service/support/permission/org/controllers';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { CollectionPermission } from '@fastgpt/global/support/permission/collection/controller';
+import type { FolderAccessMode } from '@fastgpt/global/common/parentFolder/type';
+import {
+  findDatasetCollectionsForVisibility,
+  getCollectionVisibleChildren,
+  isCollectionFolderNavigable
+} from '@/service/core/dataset/collectionVisibleList';
 
 const defaultCollectionTrainingStatus = getCollectionTrainingStatusFromCounts({});
 
@@ -153,20 +160,12 @@ const findSubtreeFolderIds = async ({
 };
 
 async function handler(req: ApiRequestProps): Promise<ListCollectionV2ResponseType> {
-  const {
-    datasetId,
-    parentId,
-    searchText: rawSearchText,
-    selectFolder,
-    tagFilters,
-    simple,
-    pageSize: rawPageSize,
-    offset: rawOffset,
-    pageNum: rawPageNum
-  } = parseApiInput({ req, bodySchema: ListCollectionV2BodySchema }).body;
-  const pageSize = Math.min(Number(rawPageSize ?? 10), 100);
-  const offset =
-    rawOffset !== undefined ? Number(rawOffset) : (Number(rawPageNum ?? 1) - 1) * pageSize;
+  const body = parseApiInput({ req, bodySchema: ListCollectionV2BodySchema }).body;
+  const { datasetId, parentId, searchText: rawSearchText, selectFolder, tagFilters, simple } = body;
+  const { pageSize, offset } = normalizePagination({
+    ...body,
+    pageSize: Math.min(body.pageSize ?? 20, 100)
+  });
   const searchText = rawSearchText?.replace(/'/g, '');
 
   // auth dataset and get my role
@@ -187,16 +186,23 @@ async function handler(req: ApiRequestProps): Promise<ListCollectionV2ResponseTy
 
   // 浏览具体目录前先校验目录本身可读；搜索模式不校验 —— 范围由 parentId 子树决定，
   // 命中项各自还要过权限过滤，父目录本身是否可读不影响结果正确性。
+  // 父目录自身不可读时，仍允许浏览「通往可读后代」的导航目录，是否导航目录在拿到可读 ID 后判定。
+  let parentRequiresNavigation = false;
   if (parentId && !searchText) {
-    const { collection: parentCollection } = await authDatasetCollection({
-      req,
-      authToken: true,
-      authApiKey: true,
-      collectionId: parentId,
-      per: ReadPermissionVal
-    });
-    if (String(parentCollection.datasetId) !== String(datasetId)) {
-      return Promise.reject(DatasetErrEnum.unAuthDatasetCollection);
+    try {
+      const { collection: parentCollection } = await authDatasetCollection({
+        req,
+        authToken: true,
+        authApiKey: true,
+        collectionId: parentId,
+        per: ReadPermissionVal
+      });
+      if (String(parentCollection.datasetId) !== String(datasetId)) {
+        return Promise.reject(DatasetErrEnum.unAuthDatasetCollection);
+      }
+    } catch (error) {
+      if (error !== DatasetErrEnum.unAuthDatasetCollection) return Promise.reject(error);
+      parentRequiresNavigation = true;
     }
   }
 
@@ -214,36 +220,81 @@ async function handler(req: ApiRequestProps): Promise<ListCollectionV2ResponseTy
     tmbId,
     tmbInfo
   });
+  // 短路时所有 Collection 都可读，不存在导航目录；此时父目录鉴权失败只可能是跨知识库访问。
+  if (parentRequiresNavigation && shortCircuitCollectionPermission) {
+    return Promise.reject(DatasetErrEnum.unAuthDatasetCollection);
+  }
+  // 导航目录：自身不可读、但子树内存在可读 Collection，仅用于逐层浏览。
+  const folderAccessModeMap = new Map<string, FolderAccessMode>();
   if (!shortCircuitCollectionPermission) {
-    const candidates = await MongoDatasetCollection.find(
-      {
-        teamId: new Types.ObjectId(teamId),
-        datasetId: new Types.ObjectId(datasetId),
-        ...(selectFolder ? { type: DatasetCollectionTypeEnum.folder } : {}),
-        ...scopeMatch,
-        ...buildCollectionListTagMatch(tagFilters)
-      },
-      '_id type parentId tmbId inheritPermission datasetId',
-      { ...readFromSecondary }
-    ).lean();
-
     [groupIds, orgIds] = await Promise.all([
       getGroupsByTmbId({ tmbId, teamId }).then((list) => list.map((item) => String(item._id))),
       getOrgIdSetWithParentByTmbId({ tmbId, teamId }).then((set) => Array.from(set))
     ]);
-    const readableIds = await getReadableCollectionIds({
-      collections: candidates,
-      tmbId,
-      teamId,
-      groupIds,
-      orgIds,
-      datasetPermission: permission.role,
-      collectionPermissionEnabled: dataset.collectionPermissionEnabled
-    });
-    collectionIdFilter =
-      readableIds.length > 0
-        ? { _id: { $in: readableIds.map((id) => new Types.ObjectId(id)) } }
-        : { _id: { $in: [] } };
+
+    if (!searchText) {
+      // 浏览模式：Collection 没有持久化祖先路径，需要整棵目录树才能判断哪些不可读目录通往可读后代。
+      const allCollections = await findDatasetCollectionsForVisibility({ teamId, datasetId });
+      const readableIds = await getReadableCollectionIds({
+        collections: allCollections,
+        tmbId,
+        teamId,
+        groupIds,
+        orgIds,
+        datasetPermission: permission.role,
+        collectionPermissionEnabled: dataset.collectionPermissionEnabled
+      });
+      if (
+        parentRequiresNavigation &&
+        !isCollectionFolderNavigable({
+          folderId: String(parentId),
+          collections: allCollections,
+          readableIds
+        })
+      ) {
+        return Promise.reject(DatasetErrEnum.unAuthDatasetCollection);
+      }
+
+      const visibleChildren = getCollectionVisibleChildren({
+        currentFolderId: parentId || null,
+        collections: allCollections,
+        readableIds
+      });
+      // 选择目录（如移动目标）只接受真实可读的目录，导航目录不能作为目标。
+      const listedChildren = selectFolder
+        ? visibleChildren.filter(({ folderAccessMode }) => folderAccessMode !== 'navigate')
+        : visibleChildren;
+      listedChildren.forEach(({ id, folderAccessMode }) => {
+        if (folderAccessMode) folderAccessModeMap.set(id, folderAccessMode);
+      });
+      collectionIdFilter = { _id: { $in: listedChildren.map(({ id }) => new Types.ObjectId(id)) } };
+    } else {
+      const candidates = await MongoDatasetCollection.find(
+        {
+          teamId: new Types.ObjectId(teamId),
+          datasetId: new Types.ObjectId(datasetId),
+          ...(selectFolder ? { type: DatasetCollectionTypeEnum.folder } : {}),
+          ...scopeMatch,
+          ...buildCollectionListTagMatch(tagFilters)
+        },
+        '_id type parentId tmbId inheritPermission datasetId',
+        { ...readFromSecondary }
+      ).lean();
+
+      const readableIds = await getReadableCollectionIds({
+        collections: candidates,
+        tmbId,
+        teamId,
+        groupIds,
+        orgIds,
+        datasetPermission: permission.role,
+        collectionPermissionEnabled: dataset.collectionPermissionEnabled
+      });
+      collectionIdFilter =
+        readableIds.length > 0
+          ? { _id: { $in: readableIds.map((id) => new Types.ObjectId(id)) } }
+          : { _id: { $in: [] } };
+    }
   }
 
   const match = {
@@ -293,11 +344,14 @@ async function handler(req: ApiRequestProps): Promise<ListCollectionV2ResponseTy
     );
   };
 
-  /** 返回与详情鉴权一致的逐 Collection 权限；短路分支无需读取 ACL。 */
+  /** 返回与详情鉴权一致的逐 Collection 权限；短路分支无需读取 ACL。导航目录不授予任何权限。 */
   const getCollectionPermission = (
     item: Pick<DatasetCollectionSchemaType, '_id' | 'tmbId'>,
     collectionPermissionMap?: Map<string, CollectionPermission>
   ) => {
+    if (folderAccessModeMap.get(String(item._id)) === 'navigate') {
+      return new CollectionPermission({ role: NullRoleVal, isOwner: false });
+    }
     if (isRoot) return new CollectionPermission({ isOwner: true });
 
     const resolvedPermission = collectionPermissionMap?.get(String(item._id));
@@ -331,10 +385,13 @@ async function handler(req: ApiRequestProps): Promise<ListCollectionV2ResponseTy
     return ListCollectionV2ResponseSchema.parse({
       list: collections.map((item, index) => ({
         ...item,
-        tags: tags[index],
+        tags: folderAccessModeMap.get(String(item._id)) === 'navigate' ? [] : tags[index],
         dataAmount: 0,
         ...defaultCollectionTrainingStatus,
-        permission: getCollectionPermission(item, collectionPermissionMap)
+        permission: getCollectionPermission(item, collectionPermissionMap),
+        ...(folderAccessModeMap.has(String(item._id))
+          ? { folderAccessMode: folderAccessModeMap.get(String(item._id)) }
+          : {})
       })),
       total
     });
@@ -398,13 +455,16 @@ async function handler(req: ApiRequestProps): Promise<ListCollectionV2ResponseTy
     const dataCounts = dataAmountMap.get(collectionId);
     return {
       ...item,
-      tags: tags[index],
+      tags: folderAccessModeMap.get(collectionId) === 'navigate' ? [] : tags[index],
       dataAmount: dataCounts?.count ?? 0,
       ...getCollectionTrainingStatusFromCounts({
         modeCounts: trainingAmountMap.get(collectionId)?.modeCounts,
         rebuildCounts: dataCounts
       }),
-      permission: getCollectionPermission(item, collectionPermissionMap)
+      permission: getCollectionPermission(item, collectionPermissionMap),
+      ...(folderAccessModeMap.has(collectionId)
+        ? { folderAccessMode: folderAccessModeMap.get(collectionId) }
+        : {})
     };
   });
 

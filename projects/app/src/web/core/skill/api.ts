@@ -8,8 +8,10 @@ import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type { SandboxStatusItemType } from '@fastgpt/global/core/chat/type';
 import type {
-  ListSkillsQuery,
   ListSkillsResponse,
+  ListSkillsV2Query,
+  ChangeSkillOwnerBody,
+  ChangeSkillOwnerResponse,
   CreateSkillBody,
   GetSkillDetailQuery,
   GetSkillDetailResponse,
@@ -28,44 +30,18 @@ import type {
   SwitchSkillVersionBody,
   UpdateSkillVersionBody,
   ImportSkillQuery
-} from '@fastgpt/global/core/ai/skill/api';
-import type { SandboxRuntimeStatusResponse } from '@fastgpt/global/core/ai/sandbox/type';
-import type { GetResourceFolderListProps } from '@fastgpt/global/common/parentFolder/type';
-import { AgentSkillTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
-import type { StartChatFnProps } from '@/components/core/chat/ChatContainer/type';
-import type {
-  ChangeSkillOwnerBody,
-  ChangeSkillOwnerResponse,
-  ListSkillsV2Query
 } from '@fastgpt/global/openapi/core/ai/skill/api';
+import type { SandboxRuntimeStatusResponse } from '@fastgpt/global/core/ai/sandbox/type';
+import type { StartChatFnProps } from '@/components/core/chat/ChatContainer/type';
 import type {
   BatchResourceActionResponse,
   BatchResourceDeleteBody,
   BatchResourceMoveBody
 } from '@fastgpt/global/openapi/common/batch/api';
 
-/** 获取 Skill 列表（支持分页、搜索、分类、文件夹过滤） */
-export const getSkillList = (data: ListSkillsQuery) =>
-  POST<ListSkillsResponse>('/core/ai/skill/list', data);
-
+/** 分页或按 ID 获取 Skill 列表；提供 ID 时优先按 ID 查询。 */
 export const getSkillListV2 = (data: ListSkillsV2Query, cancelToken?: AbortController) =>
   POST<ListSkillsResponse>('/core/ai/skill/listV2', data, { cancelToken });
-
-/** 获取当前筛选条件下的全部 Skill，供需要跨页遍历资源的选择器使用。 */
-export const getAllSkillList = (data: Omit<ListSkillsQuery, 'page' | 'pageSize'>) =>
-  getSkillList(data).then((res) => res.list);
-
-/** 获取 Skill 文件夹列表（用于移动弹窗） */
-export const getSkillFolderList = ({ parentId }: GetResourceFolderListProps) =>
-  getAllSkillList({
-    source: 'mine',
-    type: AgentSkillTypeEnum.folder,
-    parentId: parentId ?? null
-  }).then((res) =>
-    res
-      .filter((item) => item.permission.hasWritePer)
-      .map((item) => ({ id: item._id, name: item.name }))
-  );
 
 /** 获取 Skill 详情 */
 export const getSkillDetail = (data: GetSkillDetailQuery) =>

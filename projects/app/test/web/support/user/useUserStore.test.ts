@@ -7,6 +7,10 @@ const i18nMocks = vi.hoisted(() => ({
   setLangToStorage: vi.fn(),
   getLangMapping: vi.fn((lang: string) => lang)
 }));
+const planMocks = vi.hoisted(() => ({ getTeamPlanStatus: vi.fn() }));
+vi.mock('@/web/support/user/team/api', () => ({
+  getTeamPlanStatus: planMocks.getTeamPlanStatus
+}));
 
 const localStorageMock = vi.hoisted(() => {
   let store: Record<string, string> = {};
@@ -40,6 +44,7 @@ const buildUser = (language: UserType['language']): UserType =>
   ({
     _id: 'user-id',
     username: 'user@example.com',
+    status: 'active',
     avatar: '',
     timezone: 'Asia/Shanghai',
     language,
@@ -78,5 +83,21 @@ describe('useUserStore', () => {
     expect(useUserStore.getState().userInfo?.language).toBe('en');
     expect(i18nMocks.getLangMapping).not.toHaveBeenCalled();
     expect(i18nMocks.setLangToStorage).not.toHaveBeenCalled();
+  });
+
+  it.each([null, undefined])(
+    'normalizes an empty plan response (%s) to an unknown state',
+    async (status) => {
+      planMocks.getTeamPlanStatus.mockResolvedValueOnce(status);
+      await expect(useUserStore.getState().initTeamPlanStatus()).resolves.toBe(status);
+      expect(useUserStore.getState().teamPlanStatus).toBeNull();
+    }
+  );
+
+  it('retains the returned entitlement data when the plan query succeeds', async () => {
+    const status = { standard: { canHideShareBrand: true } };
+    planMocks.getTeamPlanStatus.mockResolvedValueOnce(status);
+    await expect(useUserStore.getState().initTeamPlanStatus()).resolves.toEqual(status);
+    expect(useUserStore.getState().teamPlanStatus).toEqual(status);
   });
 });

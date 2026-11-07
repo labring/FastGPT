@@ -1,7 +1,7 @@
 import z from 'zod';
 import { StandardSubLevelEnum, SubModeEnum, SubTypeEnum } from './constants';
 import { ObjectIdSchema } from '../../../common/type/mongo';
-import { IntSchema, NumSchema } from '../../../common/zod';
+import { BoolSchema, IntSchema, NumSchema } from '../../../common/zod';
 
 /**
  * Static plan config, stored in global.subPlans
@@ -28,6 +28,10 @@ export const TeamStandardSubPlanItemSchema = z.object({
   maxUploadFileSize: z.int().optional(), // 最大上传文件大小（MB）
   maxUploadFileCount: z.int().optional(), // 最大上传文件数量
 
+  canHideShareBrand: BoolSchema.optional().meta({
+    description: '是否允许持久关闭免登录链接 FastGPT 水印',
+    example: false
+  }),
   enableSandbox: z.boolean().optional(), // 虚拟机
 
   // 定制套餐
@@ -202,6 +206,7 @@ export const TeamSubSchema = z.object({
   customDomain: z.int().nullish(),
   maxUploadFileSize: z.int().nullish(),
   maxUploadFileCount: z.int().nullish(),
+  canHideShareBrandOverride: z.boolean().optional(),
   enableSandbox: z.boolean().optional() // 虚拟机
 });
 export type TeamSubSchemaType = z.infer<typeof TeamSubSchema>;

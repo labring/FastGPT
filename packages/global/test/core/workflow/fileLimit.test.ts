@@ -10,7 +10,7 @@ describe('workflow file limits', () => {
   it('uses the team amount when configured and otherwise falls back to the system amount', () => {
     expect(getUserFileAmountLimit({ teamMaxFileAmount: 8, systemMaxFileAmount: 10 })).toBe(8);
     expect(getUserFileAmountLimit({ systemMaxFileAmount: 10 })).toBe(10);
-    expect(getUserFileAmountLimit({ teamMaxFileAmount: 0, systemMaxFileAmount: 10 })).toBe(0);
+    expect(getUserFileAmountLimit({ teamMaxFileAmount: 0, systemMaxFileAmount: 10 })).toBe(10);
   });
 
   it('caps an explicit module amount by the user amount', () => {
@@ -54,6 +54,8 @@ describe('workflow file limits', () => {
       2 * 1024 * 1024
     );
     expect(getFileSizeLimitBytes({ systemMaxFileSize: 10 })).toBe(10 * 1024 * 1024);
-    expect(getFileSizeLimitBytes({ teamMaxFileSize: 0, systemMaxFileSize: 10 })).toBe(0);
+    expect(getFileSizeLimitBytes({ teamMaxFileSize: 0, systemMaxFileSize: 10 })).toBe(
+      10 * 1024 * 1024
+    );
   });
 });

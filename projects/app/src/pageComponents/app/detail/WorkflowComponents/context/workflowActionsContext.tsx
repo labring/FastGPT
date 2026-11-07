@@ -1,6 +1,6 @@
-// 工作流 Node/Edge 操作层
-import { getWorkflowModelDetails } from '@/web/core/workflow/modelData';
-import { checkWorkflowNodeIssues } from '@/web/core/workflow/workflowCheck';
+import { getWorkflowSandboxCheckData } from '@/web/core/workflow/sandbox';
+import { getWorkflowModelCheckData } from '@/web/core/workflow/modelData';
+import { checkWorkflowNodeIssues } from '@/web/core/workflow/check/check';
 import { collectWorkflowStartAutoFillRevertPatches } from '@/web/core/workflow/workflowStartAutoFill';
 import { migrateToolInputConfig } from '@fastgpt/global/core/app/formEdit/utils';
 import type {
@@ -11,13 +11,16 @@ import type {
   FlowNodeTemplateType,
   WorkflowCheckNodeIssueMap
 } from '@fastgpt/global/core/workflow/type/node';
-import { getHandleId } from '@fastgpt/global/core/workflow/utils';
+import { getHandleId } from '@fastgpt/global/common/workflow/reference';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useTranslation } from 'next-i18next';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { OnConnectStartParams } from 'reactflow';
 import { createContext, useContextSelector } from 'use-context-selector';
 import { WorkflowBufferDataContext } from './workflowInitContext';
+import { AppContext } from '../../context';
+
+// 工作流 Node/Edge 操作层
 
 type FlowNodeChangeProps = { nodeId: string } & (
   | {
@@ -36,7 +39,7 @@ type FlowNodeChangeProps = { nodeId: string } & (
       value: FlowNodeInputItemType;
     }
   | {
-      type: 'addInput'; // key: null, value: new input value
+      type: 'addInput' | 'ensureInput'; // ensureInput 仅在字段缺失时补齐，供自动初始化重复调用。
       value: FlowNodeInputItemType;
       index?: number;
     }
@@ -55,7 +58,7 @@ type FlowNodeChangeProps = { nodeId: string } & (
       value: FlowNodeOutputItemType;
     }
   | {
-      type: 'addOutput'; // key: null, value: new output value
+      type: 'addOutput' | 'ensureOutput'; // ensureOutput 保留已存在的输出，不覆盖配置或提示重复。
       value: FlowNodeOutputItemType;
       index?: number;
     }
@@ -145,6 +148,9 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
     edges,
     getNodes
   } = useContextSelector(WorkflowBufferDataContext, (v) => v);
+
+  const appId = useContextSelector(AppContext, (v) => v.appId);
+  const chatConfig = useContextSelector(AppContext, (v) => v.appDetail.chatConfig);
 
   const singleNodeCheckTimerRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
   const edgeCheckTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -238,19 +244,22 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
   const onRefreshSingleNodeWorkflowCheckIssues = useCallback(
     async (nodeId: string) => {
       const nodes = getNodes();
-      const models = await getWorkflowModelDetails(
-        nodes.filter((node) => node.id === nodeId)
-      ).catch(() => undefined);
+      const modelData = await getWorkflowModelCheckData({
+        nodes: nodes.filter((node) => node.id === nodeId),
+        appId
+      }).catch(() => undefined);
       if (
-        !models ||
+        !modelData ||
         getNodes().find((node) => node.id === nodeId)?.data.inputs !==
           nodes.find((node) => node.id === nodeId)?.data.inputs
       )
         return;
       const issueMap = checkWorkflowNodeIssues({
+        sandbox: getWorkflowSandboxCheckData(),
         nodes,
         edges,
-        models,
+        modelData,
+        chatConfig,
         nodeId,
         t
       });
@@ -276,7 +285,7 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
         })
       );
     },
-    [edges, getNodes, setNodes, t]
+    [appId, chatConfig, edges, getNodes, setNodes, t]
   );
 
   /** 节点配置变更后防抖触发单节点重新校验，避免每次输入都同步扫描。 */
@@ -309,19 +318,26 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
       const nodes = getNodes();
       if (nodes.length === 0) return;
 
-      const models = await getWorkflowModelDetails(nodes).catch(() => undefined);
+      const modelData = await getWorkflowModelCheckData({ nodes, appId }).catch(() => undefined);
       if (
-        !models ||
+        !modelData ||
         nodes.some(
           (node) =>
             getNodes().find((current) => current.id === node.id)?.data.inputs !== node.data.inputs
         )
       )
         return;
-      const issueMap = checkWorkflowNodeIssues({ nodes, edges, models, t });
+      const issueMap = checkWorkflowNodeIssues({
+        sandbox: getWorkflowSandboxCheckData(),
+        nodes,
+        edges,
+        modelData,
+        chatConfig,
+        t
+      });
       onSyncWorkflowCheckIssues(issueMap);
     }, 400);
-  }, [edges, getNodes, onSyncWorkflowCheckIssues, t]);
+  }, [appId, chatConfig, edges, getNodes, onSyncWorkflowCheckIssues, t]);
 
   useEffect(() => {
     if (isFirstEdgesEffectRef.current) {
@@ -432,7 +448,7 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
     [forbiddenSaveSnapshotRef, setNodes]
   );
 
-  // 使用结构共享优化的节点更改
+  /** 基于最新节点状态应用变更；自动补字段允许重复执行，手动新增仍校验 key 冲突。 */
   const onChangeNode = useCallback(
     (props: FlowNodeChangeProps | FlowNodeChangeProps[]) => {
       const updateData = Array.isArray(props) ? props : [props];
@@ -492,13 +508,16 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
                         item.key === updateItem.key ? updateItem.value : item
                       )
               };
-            } else if (type === 'addInput') {
+            } else if (type === 'addInput' || type === 'ensureInput') {
               const hasInput = updateObj.inputs.some((input) => input.key === updateItem.value.key);
               if (hasInput) {
-                toast({
-                  status: 'warning',
-                  title: t('common:key_repetition')
-                });
+                // ReactFlow 的节点属性可能晚于画布状态同步，自动初始化须在写入时去重。
+                if (type === 'addInput') {
+                  toast({
+                    status: 'warning',
+                    title: t('common:key_repetition')
+                  });
+                }
               } else {
                 updateObj = {
                   ...updateObj,
@@ -525,15 +544,17 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
                   item.key === updateItem.key ? updateItem.value : item
                 )
               };
-            } else if (type === 'addOutput') {
+            } else if (type === 'addOutput' || type === 'ensureOutput') {
               const hasOutput = updateObj.outputs.some(
                 (output) => output.key === updateItem.value.key
               );
               if (hasOutput) {
-                toast({
-                  status: 'warning',
-                  title: t('common:key_repetition')
-                });
+                if (type === 'addOutput') {
+                  toast({
+                    status: 'warning',
+                    title: t('common:key_repetition')
+                  });
+                }
               } else {
                 if (updateItem.index !== undefined) {
                   const outputs = [...updateObj.outputs];

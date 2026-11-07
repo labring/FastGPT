@@ -28,7 +28,7 @@ async function handler(req: NextApiRequest): Promise<InvokeFileUploadResponseTyp
   try {
     const result = await multer.resolveFormData<InvokeFileUploadBodyType>({
       request: req,
-      maxFileSize: global.feConfigs?.uploadFileMaxSize
+      maxFileSize: global.feConfigs?.limit?.uploadFileMaxSize
     });
     filepaths.push(result.fileMetadata.path);
 

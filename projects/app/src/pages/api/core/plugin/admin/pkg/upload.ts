@@ -51,7 +51,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
     const result = await multer.resolveMultipleFormData<Record<string, never>>({
       request: req,
-      maxFileSize: global.feConfigs.uploadFileMaxSize,
+      maxFileSize: global.feConfigs.limit.uploadFileMaxSize,
       allowedExtensions: ['.pkg', '.zip']
     });
 

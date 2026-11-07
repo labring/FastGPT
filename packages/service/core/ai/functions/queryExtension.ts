@@ -7,8 +7,8 @@ import { useTextCosine } from '../hooks/useTextCosine';
 import { getLogger, LogCategories } from '../../../common/logger';
 import type { OpenaiAccountType } from '@fastgpt/global/support/user/team/type';
 import type {
-  EmbeddingSystemModelDataType,
-  LLMSystemModelDataType
+  EmbeddingModelDataType,
+  LLMModelDataType
 } from '@fastgpt/global/core/ai/model/schema';
 
 const logger = getLogger(LogCategories.MODULE.AI.FUNCTIONS);
@@ -121,8 +121,8 @@ export const queryExtension = async ({
   chatBg?: string;
   query: string;
   histories: ChatItemMiniType[];
-  llmModel: LLMSystemModelDataType;
-  embeddingModel: EmbeddingSystemModelDataType;
+  llmModel: LLMModelDataType;
+  embeddingModel: EmbeddingModelDataType;
   userKey?: OpenaiAccountType;
   teamId: string;
   generateCount?: number;

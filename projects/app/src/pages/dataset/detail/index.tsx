@@ -55,6 +55,10 @@ const Detail = ({ datasetId, currentTab }: Props) => {
   const { isPc } = useSystem();
   const datasetDetail = useContextSelector(DatasetPageContext, (v) => v.datasetDetail);
   const loadDatasetDetail = useContextSelector(DatasetPageContext, (v) => v.loadDatasetDetail);
+  const collectionFolderAccessMode = useContextSelector(
+    DatasetPageContext,
+    (v) => v.collectionFolderAccessMode
+  );
 
   const queryParentId = router.query.parentId;
   const parentId = typeof queryParentId === 'string' ? queryParentId : '';
@@ -104,16 +108,22 @@ const Detail = ({ datasetId, currentTab }: Props) => {
                 <MetaDataCard datasetId={datasetId} />
               </Flex>
             )}
-            {[TabEnum.collectionCard, TabEnum.test].includes(currentTab) && (
-              <Flex {...sliderStyles} flex={'0 0 17rem'}>
-                {/* 子目录浏览态右栏=该目录自身；知识库根目录右栏=知识库 Info（不变） */}
-                {currentTab === TabEnum.collectionCard && parentId ? (
-                  <CollectionFolderCard datasetId={datasetId} collectionId={parentId} />
-                ) : (
-                  <Info datasetId={datasetId} />
-                )}
-              </Flex>
-            )}
+            {/* 仅导航目录（无真实权限）和路径未加载时不展示右栏，避免请求目录详情被拒绝后跳回根目录 */}
+            {[TabEnum.collectionCard, TabEnum.test].includes(currentTab) &&
+              !(
+                currentTab === TabEnum.collectionCard &&
+                parentId &&
+                collectionFolderAccessMode !== 'read'
+              ) && (
+                <Flex {...sliderStyles} flex={'0 0 17rem'}>
+                  {/* 子目录浏览态右栏=该目录自身；知识库根目录右栏=知识库 Info（不变） */}
+                  {currentTab === TabEnum.collectionCard && parentId ? (
+                    <CollectionFolderCard datasetId={datasetId} collectionId={parentId} />
+                  ) : (
+                    <Info datasetId={datasetId} />
+                  )}
+                </Flex>
+              )}
           </>
         </Flex>
       ) : (

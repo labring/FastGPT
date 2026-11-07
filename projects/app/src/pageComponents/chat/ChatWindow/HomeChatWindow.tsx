@@ -105,7 +105,6 @@ const HomeChatWindow = () => {
   const chatSettings = useContextSelector(ChatPageContext, (v) => v.chatSettings);
   const handlePaneChange = useContextSelector(ChatPageContext, (v) => v.handlePaneChange);
   const homeAppId = useContextSelector(ChatPageContext, (v) => v.chatSettings?.appId || '');
-  const refreshRecentlyUsed = useContextSelector(ChatPageContext, (v) => v.refreshRecentlyUsed);
 
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
   const onChatGenerateStatusChange = useAppChatGenerateStatusSync();
@@ -326,8 +325,6 @@ const HomeChatWindow = () => {
         abortCtrl: controller
       });
 
-      refreshRecentlyUsed();
-
       return { responseText, isNewChat: forbidLoadChatRef.current };
     }
   );
@@ -523,7 +520,7 @@ const HomeChatWindow = () => {
             isReady={!loading && !!appId && isCurrentChatReady}
             features={{
               autoResume: true,
-              feedbackType: 'user',
+              fbTypes: ['user'],
               quickReplies: true,
               inputGuide: true,
               voice: true,

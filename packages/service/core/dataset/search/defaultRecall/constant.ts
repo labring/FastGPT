@@ -8,6 +8,8 @@ export const datasetDataSelectField = {
   collectionId: 1,
   updateTime: 1,
   q: 1,
+  synonymVersion: 1,
+  teamId: 1,
   a: 1,
   imageId: 1,
   imageDescMap: 1,

@@ -5,7 +5,11 @@ import type {
   ChatHistoryItemResType,
   ToolRunResponseItemType
 } from '@fastgpt/global/core/chat/type';
-import type { NodeOutputItemType } from '@fastgpt/global/core/workflow/runtime/type';
+import type {
+  NodeOutputItemType,
+  RuntimeNodeItemType,
+  WorkflowResourceContext
+} from '@fastgpt/global/core/workflow/runtime/type';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
@@ -18,9 +22,12 @@ import type {
   NodeEdgeGroups,
   NodeEdgeGroupsMap
 } from '../types/runtime';
-import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
-import { getErrText, UserError } from '@fastgpt/global/common/error/utils';
-import { filterWorkflowEdges, valueTypeFormat } from '@fastgpt/global/core/workflow/runtime/utils';
+import { getErrText, isUserConfigError, UserError } from '@fastgpt/global/common/error/utils';
+import {
+  filterWorkflowEdges,
+  valueTypeFormat,
+  appendWorkflowInteractiveValue
+} from '@fastgpt/global/core/workflow/runtime/utils';
 import type {
   InteractiveNodeResponseType,
   WorkflowInteractiveResponseType
@@ -41,7 +48,7 @@ import {
   mergeWorkflowRuntimeSummary
 } from './utils/summary';
 import { getEntryPointRuntimeVariables, WorkflowVariableState } from './utils/variables';
-import { getHandleId } from '@fastgpt/global/core/workflow/utils';
+import { getHandleId } from '@fastgpt/global/common/workflow/reference';
 import { callbackMap } from './constants';
 import { getUserChatInfo } from '../../../support/user/team/utils';
 import { checkTeamAIPoints } from '../../../support/permission/teamLimit';
@@ -60,7 +67,7 @@ import {
   onWorkflowNodeStart,
   onWorkflowStart
 } from '../../../common/langfuse/workflow';
-import { delAgentRuntimeStopSign, shouldWorkflowStop } from './workflowStatus';
+import { createChatStopController } from '../../chat/stop';
 import { runWithContext } from '../utils/context';
 import { createClientAbortTracker } from './utils/clientAbort';
 import type { IncomingMessage } from 'node:http';
@@ -72,7 +79,6 @@ import {
 import { createWorkflowNodeResponseScope } from './nodeResponseSink';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { isWorkflowSseResponseInitialized } from '../utils/streamResponseContext';
-import { assertWorkflowNodeModelResources } from '../utils/resource';
 import {
   addWorkflowStepEvent,
   getWorkflowStepStatus,
@@ -82,8 +88,9 @@ import {
 import { getWorkflowNodeRunParams } from './utils/runtime';
 import type { AgentSandboxPrepareAction } from './ai/agent/sub/sandbox';
 import { getWorkflowSource } from './utils/source';
+import { WorkflowMemoryState } from '../memory/state';
 import { prepareWorkflowFileContext } from '../utils/fileContext';
-import type { WorkflowResourceContext } from '../utils/resource';
+import { markProfileError, profileStage } from '../../../common/profiling';
 
 const logger = getLogger(LogCategories.MODULE.WORKFLOW.DISPATCH);
 
@@ -108,8 +115,11 @@ type Props = Omit<
   maxFileAmount: number;
   /** 已按团队配置优先、系统配置兜底计算完成的单文件读取上限。 */
   maxBytesPerFile: number;
-  /** App 入口选中 Version 的资源快照；Test/Debug 传入当前请求临时快照。Skill 调试和商业工具可以不传。 */
-  resourceContext?: WorkflowResourceContext;
+  /**
+   * 本次运行的资源快照，必填：App 入口传选中 Version 的快照；Test/Debug 传当前请求临时快照；
+   * Skill 调试传入口已鉴权的资源。静态资源只核对快照，动态引用按运行人鉴权。
+   */
+  resourceContext: WorkflowResourceContext;
 };
 type NodeResponseType = DispatchNodeResultType<{
   [key: string]: any;
@@ -127,6 +137,10 @@ type WorkflowUsageProps = RequireOnlyOne<{
   usageId: string;
 }>;
 
+/**
+ * 执行入口级工作流并返回根运行摘要。根错误统一标记请求采集失败，不依赖调用方是否落库；
+ * 子工作流通过 runWorkflow 执行，已捕获错误和工具内部错误沿用根 summary 的排除语义。
+ */
 export async function dispatchWorkFlow({
   usageSource,
   usageId,
@@ -152,199 +166,179 @@ export async function dispatchWorkFlow({
     );
   }
   const chatSource = getWorkflowSource(runningAppInfo);
-
-  /* Init function */
-  // Check point
-  await checkTeamAIPoints(runningUserInfo.teamId);
-
-  const {
-    fileContext,
-    fileRegistrar,
-    getPreviewUrl,
-    query: runtimeQuery,
-    histories: preparedHistories
-  } = await prepareWorkflowFileContext({
-    query,
-    histories,
-    scope: {
-      sourceType: runningAppInfo.sourceType,
-      sourceId: runningAppInfo.sourceId,
-      uid: data.uid,
-      chatId
-    },
-    maxFileAmount: data.maxFileAmount,
-    maxBytesPerFile: data.maxBytesPerFile
-  });
-  const getHistoryPreviewUrl = async (key: string) => {
-    try {
-      return await getPreviewUrl(key);
-    } catch (error) {
-      if (!(error instanceof UserError)) throw error;
-      logger.warn('Skip unavailable workflow history file', { key, message: error.message });
-    }
-  };
-
-  const [{ timezone, externalProvider }, newUsageId, runtimeHistories] = await Promise.all([
-    getUserChatInfo(runningUserInfo.tmbId),
-    (() => {
-      if (lastInteractive?.usageId) {
-        return lastInteractive.usageId;
-      }
-      if (usageSource) {
-        return createChatUsageRecord({
-          appName: runningAppInfo.name,
-          appId:
-            runningAppInfo.sourceType === ChatSourceTypeEnum.app
-              ? runningAppInfo.sourceId
-              : undefined,
-          skillId:
-            runningAppInfo.sourceType === ChatSourceTypeEnum.skillEdit
-              ? runningAppInfo.sourceId
-              : undefined,
-          teamId: runningUserInfo.teamId,
-          tmbId: runningUserInfo.tmbId,
-          source: usageSource
-        });
-      }
-      return usageId;
-    })(),
-    // 复用 Context 的鉴权和请求级签名缓存，刷新 history 里其它服务端文件引用。
-    addPreviewUrlToChatItems(preparedHistories, 'chatFlow', getHistoryPreviewUrl),
-    // Remove stopping sign
-    delAgentRuntimeStopSign({
-      ...chatSource,
-      chatId
-    })
-  ]);
-
   const clientAbortTracker =
     apiVersion === 'v1' ? createClientAbortTracker({ req: data.req, res }) : undefined;
+  // 主动停止与 HTTP 协议版本解耦：MCP、定时触发等无 SSE 入口也监听同一信号。
+  const stopController =
+    apiVersion === 'v1' ? undefined : await createChatStopController({ ...chatSource, chatId });
+  const checkIsStopping = () =>
+    clientAbortTracker?.isClientAborted() ?? stopController?.checkIsStopping() ?? false;
 
-  const variableState = await WorkflowVariableState.create({
-    timezone,
-    runningAppInfo,
-    uid: data.uid,
-    chatId,
-    responseChatItemId,
-    histories: runtimeHistories,
-    variablesConfig: data.chatConfig?.variables,
-    inputVariables: data.variables,
-    externalVariables: externalProvider.externalWorkflowVariables,
-    runtimeOnlyVariables: getEntryPointRuntimeVariables({
-      entryPoints: data.chatConfig?.entryPoints,
-      inputVariables: data.variables
-    }),
-    maxFileAmount: data.maxFileAmount,
-    resolveInputFile: async (file) => {
-      const ref = await fileRegistrar.registerInputFile({
-        file,
-        source: 'variable'
-      });
-      if (!ref) throw new UserError('Invalid workflow variable file');
-      return ref.modelUrl;
-    }
-  });
+  try {
+    /* Init function */
+    // Check point
+    await profileStage({ event: 'wf.points.check' }, () =>
+      checkTeamAIPoints(runningUserInfo.teamId)
+    );
 
-  // Stop sign(没有 apiVersion，说明不会有暂停)
-  let stopping = false;
-  const checkIsStopping = (): boolean => {
-    if (apiVersion === 'v2') {
-      return stopping;
-    }
-    if (apiVersion === 'v1') {
-      return clientAbortTracker?.isClientAborted() ?? false;
-    }
-    return false;
-  };
-  const checkStoppingTimer =
-    apiVersion === 'v2'
-      ? setInterval(async () => {
-          if (stopping) return;
+    const {
+      fileContext,
+      fileRegistrar,
+      getPreviewUrl,
+      query: runtimeQuery,
+      histories: preparedHistories
+    } = await profileStage({ event: 'wf.file.context' }, () =>
+      prepareWorkflowFileContext({
+        query,
+        histories,
+        scope: {
+          sourceType: runningAppInfo.sourceType,
+          sourceId: runningAppInfo.sourceId,
+          uid: data.uid,
+          chatId
+        },
+        maxFileAmount: data.maxFileAmount,
+        maxBytesPerFile: data.maxBytesPerFile
+      })
+    );
+    const getHistoryPreviewUrl = async (key: string) => {
+      try {
+        return await getPreviewUrl(key);
+      } catch (error) {
+        if (!(error instanceof UserError)) throw error;
+        logger.warn('Skip unavailable workflow history file', { key, message: error.message });
+      }
+    };
 
-          const shouldStop = await shouldWorkflowStop({
-            ...chatSource,
-            chatId
+    const [{ timezone, externalProvider }, newUsageId, runtimeHistories] = await profileStage(
+      { event: 'wf.init' },
+      () =>
+        Promise.all([
+          runningUserInfo.externalProvider
+            ? {
+                timezone: runningUserInfo.timezone ?? 'Asia/Shanghai',
+                externalProvider: runningUserInfo.externalProvider
+              }
+            : getUserChatInfo(runningUserInfo.tmbId),
+          (() => {
+            if (lastInteractive?.usageId) {
+              return lastInteractive.usageId;
+            }
+            if (usageSource) {
+              return createChatUsageRecord({
+                appName: runningAppInfo.name,
+                appId:
+                  runningAppInfo.sourceType === ChatSourceTypeEnum.app
+                    ? runningAppInfo.sourceId
+                    : undefined,
+                skillId:
+                  runningAppInfo.sourceType === ChatSourceTypeEnum.skillEdit
+                    ? runningAppInfo.sourceId
+                    : undefined,
+                teamId: runningUserInfo.teamId,
+                tmbId: runningUserInfo.tmbId,
+                source: usageSource
+              });
+            }
+            return usageId;
+          })(),
+          // 复用 Context 的鉴权和请求级签名缓存，刷新 history 里其它服务端文件引用。
+          addPreviewUrlToChatItems(preparedHistories, 'chatFlow', getHistoryPreviewUrl)
+        ])
+    );
+
+    const variableState = await profileStage({ event: 'wf.variable.state' }, () =>
+      WorkflowVariableState.create({
+        timezone,
+        runningAppInfo,
+        uid: data.uid,
+        chatId,
+        responseChatItemId,
+        histories: runtimeHistories,
+        variablesConfig: data.chatConfig?.variables,
+        inputVariables: data.variables,
+        externalVariables: externalProvider.externalWorkflowVariables,
+        runtimeOnlyVariables: getEntryPointRuntimeVariables({
+          entryPoints: data.chatConfig?.entryPoints,
+          inputVariables: data.variables
+        }),
+        maxFileAmount: data.maxFileAmount,
+        resolveInputFile: async (file) => {
+          const ref = await fileRegistrar.registerInputFile({
+            file,
+            source: 'variable'
           });
-          if (shouldStop) {
-            stopping = true;
-          }
-        }, 100)
-      : undefined;
+          if (!ref) throw new UserError('Invalid workflow variable file');
+          return ref.modelUrl;
+        }
+      })
+    );
 
-  const nodeResponseSink = await createWorkflowEntryNodeResponseSink({
-    teamId: data.runningAppInfo.teamId,
-    sourceType: data.runningAppInfo.sourceType,
-    sourceId: data.runningAppInfo.sourceId,
-    chatId,
-    chatItemDataId: responseChatItemId,
-    nodeResponseWriteConfig: data.nodeResponseWriteConfig,
-    apiVersion: data.apiVersion,
-    responseAllData: data.responseAllData,
-    responseDetail: data.responseDetail,
-    workflowStreamResponse: data.workflowStreamResponse
-  });
+    const nodeResponseSink = await profileStage({ event: 'wf.sink.create' }, () =>
+      createWorkflowEntryNodeResponseSink({
+        teamId: data.runningAppInfo.teamId,
+        sourceType: data.runningAppInfo.sourceType,
+        sourceId: data.runningAppInfo.sourceId,
+        chatId,
+        chatItemDataId: responseChatItemId,
+        nodeResponseWriteConfig: data.nodeResponseWriteConfig,
+        apiVersion: data.apiVersion,
+        responseAllData: data.responseAllData,
+        responseDetail: data.responseDetail,
+        workflowStreamResponse: data.workflowStreamResponse
+      })
+    );
 
-  // Init some props
-  return new Promise((resolve, reject) => {
-    runWithContext(
+    return await runWithContext(
       {
         mcpClientMemory: {},
         fileContext,
         fileRegistrar,
         resourceContext: data.resourceContext
       },
-      (ctx) => {
-        runWorkflow({
-          ...data,
-          responseChatItemId,
-          nodeResponseSink,
-          checkIsStopping,
-          query: runtimeQuery,
-          histories: runtimeHistories,
-          timezone,
-          externalProvider,
-          variableState,
-          workflowDispatchDeep: 0,
-          usageId: newUsageId,
-          concatUsage
-        })
-          .then(async (result) => {
-            await nodeResponseSink.close();
-            resolve({
-              ...result,
-              // 对外只返回当前 workflow 层的统一 summary；详情 rows 仍由共享 writer 持久化，
-              // child wrapper 只消费 result.workflowRuntimeSummary。
-              ...(data.nodeResponseWriteConfig.retainInMemory
-                ? {
-                    flatNodeResponses: nodeResponseSink.getFlatNodeResponses()
-                  }
-                : {})
-            });
-          })
-          .catch(async (error) => {
-            await nodeResponseSink.close();
-            reject(error);
-          })
-          .finally(async () => {
-            if (checkStoppingTimer) {
-              clearInterval(checkStoppingTimer);
-            }
-            clientAbortTracker?.cleanup();
-
-            // Close mcpClient connections
-            Object.values(ctx.mcpClientMemory).forEach((client) => {
-              client.closeConnection();
-            });
-
-            // 工作流完成后删除 Redis 记录
-            await delAgentRuntimeStopSign({
-              ...chatSource,
-              chatId
-            });
+      async (ctx) => {
+        try {
+          const result = await runWorkflow({
+            ...data,
+            responseChatItemId,
+            nodeResponseSink,
+            checkIsStopping,
+            query: runtimeQuery,
+            histories: runtimeHistories,
+            timezone,
+            externalProvider,
+            variableState,
+            workflowDispatchDeep: 0,
+            usageId: newUsageId,
+            concatUsage
           });
+          await nodeResponseSink.close();
+          // HTTP 200/SSE 正常收尾也可能包含根运行错误；只按最终摘要判断，避免子层错误误报。
+          const { errorText, errorCount } = result.workflowRuntimeSummary;
+          if (errorText || errorCount) markProfileError(errorText || 'Workflow run failed');
+
+          return {
+            ...result,
+            // 子工作流只消费 summary；完整详情由共享 writer 持久化。
+            ...(data.nodeResponseWriteConfig.retainInMemory
+              ? { flatNodeResponses: nodeResponseSink.getFlatNodeResponses() }
+              : {})
+          };
+        } catch (error) {
+          await nodeResponseSink.close();
+          throw error;
+        } finally {
+          Object.values(ctx.mcpClientMemory).forEach((client) => {
+            client.closeConnection();
+          });
+        }
       }
     );
-  });
+  } finally {
+    // 初始化失败同样停止监听；先完成清理再返回，避免下一轮启动后被旧执行清掉信号。
+    clientAbortTracker?.cleanup();
+    await stopController?.cleanup();
+  }
 }
 
 export type RunWorkflowProps = ChatDispatchProps & {
@@ -388,7 +382,7 @@ export class WorkflowQueue {
         nodeResponseId?: string;
       }
     | undefined;
-  system_memories: Record<string, any> = {}; // Workflow node memories
+  memoryState: WorkflowMemoryState;
   customFeedbackList: string[] = []; // Custom feedbacks collected from nodes
 
   // Debug
@@ -433,6 +427,7 @@ export class WorkflowQueue {
     this.maxConcurrency = maxConcurrency;
     this.resolve = resolve;
     this.workflowRuntimeSummary = workflowRuntimeSummary;
+    this.memoryState = WorkflowMemoryState.fromWorkflow(data);
     this.runtimeNodesMap = new Map(data.runtimeNodes.map((item) => [item.nodeId, item]));
     this.isDebugMode = data.mode === 'debug';
 
@@ -763,7 +758,9 @@ export class WorkflowQueue {
           if (runningNodePromises.size > 0) {
             // 当上一个节点运行结束时，立即运行下一轮
             await Promise.race(runningNodePromises).catch((error) => {
-              logger.error('Workflow race error', { chatId: this.data.chatId, error });
+              if (error instanceof Error) {
+                logger.error('Workflow race error', { chatId: this.data.chatId, error });
+              }
             });
           } else {
             // 理论上不应出现此情况，防御性退回到让出进程
@@ -811,7 +808,9 @@ export class WorkflowQueue {
     if (skipItem) {
       this.skipNodeQueue.delete(skipItem.node.nodeId);
       await this.checkNodeCanRun(skipItem.node, skipItem.skippedNodeIdList).catch((error) => {
-        logger.error('Workflow skip node run error', { error, nodeName: skipItem.node.name });
+        if (error instanceof Error) {
+          logger.error('Workflow skip node run error', { error, nodeName: skipItem.node.name });
+        }
       });
     }
   }
@@ -828,6 +827,8 @@ export class WorkflowQueue {
       nodeType: node.flowNodeType,
       mode
     };
+    // 每次节点执行独立保存观测状态，避免持久化后移除 responseData 导致业务失败被记为成功。
+    let stepStatus: ReturnType<typeof getWorkflowStepStatus> = 'ok';
 
     const executeNode = async (stepSpan?: Span): Promise<WorkflowObservedStepResult> => {
       const nodeResponseId =
@@ -846,15 +847,20 @@ export class WorkflowQueue {
         runtimeNodesMap: this.runtimeNodesMap,
         variableState: this.data.variableState
       });
-      // await assertWorkflowNodeModelResources({
-      //   node,
-      //   params,
-      //   tmbId: this.data.runningUserInfo.tmbId
-      // });
       const nodeSummary = createNodeSummary();
+      // Langfuse 兜底用量必须归属到“本次节点执行”：队列默认允许 10 个节点并发，
+      // 共享的 chatNodeUsages 会混入并发节点的 usage，不能按共享列表做切片。
+      const nodeUsage = { inputTokens: 0, outputTokens: 0 };
       const dispatchData: ModuleDispatchProps<Record<string, any>> = {
         ...this.data,
-        usagePush: this.usagePush.bind(this),
+        memoryState: this.memoryState,
+        usagePush: (usages) => {
+          usages.forEach((item) => {
+            nodeUsage.inputTokens += item.inputTokens ?? 0;
+            nodeUsage.outputTokens += item.outputTokens ?? 0;
+          });
+          this.usagePush(usages);
+        },
         nodeSummary,
         lastInteractive: this.data.lastInteractive?.entryNodeIds?.includes(node.nodeId)
           ? this.data.lastInteractive
@@ -879,23 +885,21 @@ export class WorkflowQueue {
 
           try {
             const result = (await callbackMap[node.flowNodeType](dispatchData)) as NodeResponseType;
+            // 原始异常缺少故障详情时补展示文本；错误分支的数据不参与异常判定。
+            if (
+              Object.hasOwn(result, 'rawError') &&
+              result.responseData?.error === undefined &&
+              result.responseData?.errorText === undefined
+            ) {
+              result.responseData = { ...result.responseData, error: getErrText(result.rawError) };
+            }
 
+            // error 是错误分支的数据记录；主动选该分支不代表出现了系统异常。
             if (result.error) {
               // Run error and not catch error, skip all edges
               if (!node.catchError) {
-                // Callback returned with `result.error` set instead of throwing;
-                // mirror the catch-branch convention and copy it onto nodeResponse
-                // so runLoopRun / parallelRun failure detection and OTel span
-                // status see `.error` uniformly across both failure paths.
-                const nodeResponseBase = result[DispatchNodeResponseKeyEnum.nodeResponse];
-                const errText = nodeResponseBase?.errorText ?? getErrText(result.error);
-
                 return {
                   ...result,
-                  [DispatchNodeResponseKeyEnum.nodeResponse]: {
-                    ...nodeResponseBase,
-                    error: errText
-                  },
                   [DispatchNodeResponseKeyEnum.skipHandleId]: targetEdges.map(
                     (item) => item.sourceHandle
                   )
@@ -949,13 +953,8 @@ export class WorkflowQueue {
             }
 
             return {
-              ...(node.catchError
-                ? {
-                    error: {
-                      [NodeOutputKeyEnum.errorText]: errorText
-                    }
-                  }
-                : {}),
+              rawError: error,
+              error: { [NodeOutputKeyEnum.errorText]: errorText },
               [DispatchNodeResponseKeyEnum.nodeResponse]: {
                 error: errorText,
                 ...(node.catchError ? { errorCaptured: true } : {})
@@ -980,6 +979,11 @@ export class WorkflowQueue {
           moduleType: node.flowNodeType,
           moduleLogo: node.avatar,
           ...nodeResponse,
+          // 工具类型也能作为画布普通节点执行，不能仅凭类型把错误当成模型可恢复的工具结果。
+          ...(node.flowNodeType === FlowNodeTypeEnum.tool ||
+          node.flowNodeType === FlowNodeTypeEnum.toolSet
+            ? { isToolCall: this.data.isToolCall === true }
+            : {}),
           ...(nodeResponse?.childResponseCount === undefined &&
           currentNodeChildResponseCount !== undefined
             ? { childResponseCount: currentNodeChildResponseCount }
@@ -992,8 +996,19 @@ export class WorkflowQueue {
         nodeResponsesForWrite.push(val);
         return val;
       })();
+      stepStatus = getWorkflowStepStatus({
+        node,
+        runStatus: 'run',
+        nodeResponseId,
+        result: {
+          ...dispatchRes,
+          [DispatchNodeResponseKeyEnum.nodeResponse]: formatCurrentNodeResponse
+        }
+      });
       const currentNodeError =
         formatCurrentNodeResponse?.errorText ?? formatCurrentNodeResponse?.error;
+      // 仅本轮原始异常参与分类；展示文本不用于重建用户错误身份。
+      const isUserConfigFailure = isUserConfigError(dispatchRes.rawError);
 
       // Queue 只合并 callback 主动贡献的增量；所有 nodeResponse
       // 均交给当前 workflow 的 sink scope 统一提取 summary。
@@ -1021,8 +1036,8 @@ export class WorkflowQueue {
       // writer/output 已接管响应时，才从 queue 返回值中移除当前响应。
       const shouldDropPersistedNodeResponses = this.data.nodeResponseSink?.hasOutput ?? false;
 
-      // Add output default value
-      if (dispatchRes.data) {
+      // 仅成功节点补齐默认值；商业插件等业务失败可能只有错误详情，没有原始异常。
+      if (dispatchRes.data && !dispatchRes.error && currentNodeError === undefined) {
         node.outputs.forEach((item) => {
           if (!item.required) return;
           if (dispatchRes.data?.[item.key] !== undefined) return;
@@ -1036,21 +1051,27 @@ export class WorkflowQueue {
         nodeType: node.flowNodeType,
         input: params,
         output: dispatchRes.data,
-        response: formatCurrentNodeResponse
+        response: formatCurrentNodeResponse,
+        // agent 等节点的自身响应不带 token，用本次节点执行期间收到的 usage 兜底。
+        usage: nodeUsage
       });
 
       // Error
       if (currentNodeError !== undefined) {
-        if (stepSpan) {
+        if (stepSpan && !isUserConfigFailure) {
           stepSpan.setAttribute('fastgpt.workflow.step.error', true);
           stepSpan.setStatus({
             code: SpanStatusCode.ERROR,
             message: String(currentNodeError)
           });
         }
-        logger.warn('Workflow node returned error', { error: currentNodeError });
       } else if (stepSpan) {
         stepSpan.setStatus({ code: SpanStatusCode.OK });
+      }
+
+      // 统一日志只读取节点返回的原始 Error；responseData 的文本仅用于展示和流程控制。
+      if (dispatchRes.rawError instanceof Error) {
+        logger.warn('Workflow node returned error', { error: dispatchRes.rawError });
       }
 
       if (stepSpan && formatCurrentNodeResponse?.runningTime !== undefined) {
@@ -1107,7 +1128,7 @@ export class WorkflowQueue {
           );
         },
         {
-          getStatus: getWorkflowStepStatus
+          getStatus: () => stepStatus
         }
       );
     }
@@ -1129,7 +1150,7 @@ export class WorkflowQueue {
             eventName: 'workflow.step.end',
             nodeType: node.flowNodeType,
             mode,
-            status: getWorkflowStepStatus(result),
+            status: stepStatus,
             durationMs: Date.now() - stepStartedAt
           });
 
@@ -1146,7 +1167,7 @@ export class WorkflowQueue {
         }
       },
       {
-        getStatus: getWorkflowStepStatus
+        getStatus: () => stepStatus
       }
     );
   }
@@ -1202,10 +1223,7 @@ export class WorkflowQueue {
       this.data.maxRunTimes -= runTimes;
 
       if (newMemories) {
-        this.system_memories = {
-          ...this.system_memories,
-          ...newMemories
-        };
+        this.memoryState.merge(newMemories);
       }
 
       if (workflowRuntimeSummary) {
@@ -1280,8 +1298,7 @@ export class WorkflowQueue {
 
       // Assign the output value to the next node
       node.outputs.forEach((outputItem) => {
-        if (concatData[outputItem.key] === undefined) return;
-        /* update output value */
+        // 每次完成执行都以本次 data/error 为准；缺失输出清为 undefined，避免循环/恢复读取旧值。
         outputItem.value = concatData[outputItem.key];
       });
 
@@ -1515,7 +1532,6 @@ export class WorkflowQueue {
     }
 
     return {
-      askId: interactiveResult.askId,
       interactive: interactiveResult
     };
   }
@@ -1537,6 +1553,8 @@ export class WorkflowQueue {
     };
   }
 }
+
+/** 执行当前层工作流，维护独立摘要，并在返回或抛出前完成本层错误上报。 */
 export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowResponse> => {
   // 每个 workflow 层拥有独立 summary；底层 sink/writer 可以由 parent/child 共享。
   const workflowRuntimeSummary = createWorkflowRuntimeSummary();
@@ -1663,7 +1681,10 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
                   nodeResponseId: workflowQueue.nodeInteractiveResponse.nodeResponseId
                 });
                 if (workflowQueue.isRootRuntime) {
-                  workflowQueue.chatAssistantResponse.push(interactiveAssistant);
+                  appendWorkflowInteractiveValue({
+                    values: workflowQueue.chatAssistantResponse,
+                    interactive: interactiveAssistant.interactive!
+                  });
                 }
                 return interactiveAssistant.interactive;
               }
@@ -1689,6 +1710,10 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
               data.workflowStreamResponse?.(workflowSseEvent.workflowDuration(durationSeconds));
             }
 
+            const outputMemories = workflowQueue.memoryState.isForked
+              ? workflowQueue.memoryState.getDelta()
+              : workflowQueue.memoryState.toRecord();
+
             return {
               flowUsages: workflowQueue.chatNodeUsages,
               debugResponse: workflowQueue.getDebugResponse(),
@@ -1700,9 +1725,7 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
               [DispatchNodeResponseKeyEnum.toolResponse]: workflowQueue.toolRunResponse,
               [DispatchNodeResponseKeyEnum.newVariables]: data.variableState.toStoreRecord(),
               [DispatchNodeResponseKeyEnum.memories]:
-                Object.keys(workflowQueue.system_memories).length > 0
-                  ? workflowQueue.system_memories
-                  : undefined,
+                Object.keys(outputMemories).length > 0 ? outputMemories : undefined,
               [DispatchNodeResponseKeyEnum.customFeedbacks]:
                 workflowQueue.customFeedbackList.length > 0
                   ? workflowQueue.customFeedbackList
@@ -1719,9 +1742,16 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
     {
       getRunTimes: (result) => result[DispatchNodeResponseKeyEnum.runTimes]
     }
-  ).finally(() => {
-    if (data.workflowDispatchDeep === currentWorkflowDispatchDeep) {
-      data.workflowDispatchDeep = previousWorkflowDispatchDeep;
-    }
-  });
+  )
+    .catch((error) => {
+      if (error instanceof Error) {
+        logger.error('Workflow run failed', { error });
+      }
+      throw error;
+    })
+    .finally(() => {
+      if (data.workflowDispatchDeep === currentWorkflowDispatchDeep) {
+        data.workflowDispatchDeep = previousWorkflowDispatchDeep;
+      }
+    });
 };

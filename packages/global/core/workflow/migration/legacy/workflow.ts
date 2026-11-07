@@ -1,7 +1,5 @@
-import type { CanonicalWorkflowData } from '../schema';
-import { CanonicalWorkflowDataSchema } from '../schema';
-import type { LegacyWorkflowDataInput } from './schema';
-import { LegacyWorkflowDataSchema } from './schema';
+import { type CanonicalWorkflowData, CanonicalWorkflowDataSchema } from '../schema';
+import { type LegacyWorkflowDataInput, LegacyWorkflowDataSchema } from './schema';
 import {
   migrateLegacyFlowNodeInputToCurrent,
   migrateLegacyHttpToolInputDefaultMode,
@@ -11,12 +9,13 @@ import { migrateSystemConfigToChatConfig } from './systemConfig';
 import { FlowNodeInputTypeEnum, FlowNodeTypeEnum } from '../../node/constant';
 import { NodeInputKeyEnum, NodeOutputKeyEnum, WorkflowIOValueTypeEnum } from '../../constants';
 import { StoreSecretValueTypeSchema } from '../../../../common/secret/type';
+import { migrateSecretStoreToCurrent } from '../secret';
+import { getElseIFLabel } from '../../../../common/workflow/condition';
 import {
-  getElseIFLabel,
   getHandleId,
   isValidReferenceValueFormat,
   nodeInputIsReference
-} from '../../utils';
+} from '../../../../common/workflow/reference';
 
 // 这些旧插件没有持久化 catchError，但当前运行时需要显式开启错误分支。
 const legacyCatchErrorPluginIds = new Set([
@@ -48,7 +47,10 @@ const migrateLegacyCanvasStructure = (workflow: CanonicalWorkflowData): Canonica
     const legacyMcpToolSet = shouldMigrateLegacyMcpToolSet
       ? (legacyToolSetValue as Record<string, unknown>)
       : undefined;
-    const legacyHeaderSecret = StoreSecretValueTypeSchema.safeParse(legacyMcpToolSet?.headerSecret);
+    // 只有已确认的旧 MCP 配置才迁移 headerSecret，避免扫描普通输入中的同名业务字段。
+    const legacyHeaderSecret = StoreSecretValueTypeSchema.safeParse(
+      migrateSecretStoreToCurrent(legacyMcpToolSet?.headerSecret)
+    );
     const inputs = node.inputs.map((input) => {
       // 文件列表实际是 JSON 数组；旧的单行 input 控件会导致编辑和解析类型不匹配。
       if (

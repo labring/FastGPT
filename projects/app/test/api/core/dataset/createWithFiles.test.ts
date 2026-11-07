@@ -1,6 +1,7 @@
 import { getModelTestDefaults, setModelTestSnapshot } from '@test/modelCache';
 import { describe, expect, it } from 'vitest';
 import handler from '@/pages/api/core/dataset/createWithFiles';
+import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import { TeamDatasetCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
@@ -122,4 +123,23 @@ describe('create dataset with files temp key ownership', () => {
     const dataset = await MongoDataset.findById(result.data.datasetId).lean();
     expect(dataset).toBeTruthy();
   });
+});
+
+it('rejects a non-folder parent before creating a dataset with files', async () => {
+  const { owner } = await getFakeUsers(1);
+  const parent = await MongoDataset.create({
+    name: 'leaf-parent',
+    type: DatasetTypeEnum.dataset,
+    teamId: owner.teamId,
+    tmbId: owner.tmbId
+  });
+  const res = await Call(handler, {
+    auth: owner,
+    body: {
+      datasetParams: { name: 'invalid', avatar: '', parentId: String(parent._id) },
+      files: []
+    }
+  });
+  expect(res.error).toBe(CommonErrEnum.invalidParams);
+  expect(await MongoDataset.countDocuments({ parentId: parent._id })).toBe(0);
 });

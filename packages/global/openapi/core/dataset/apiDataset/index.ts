@@ -50,7 +50,8 @@ export const ApiDatasetPath: OpenAPIPath = {
   '/core/dataset/apiDataset/list': {
     post: {
       summary: '获取第三方知识库文件列表',
-      description: '列出指定知识库下的第三方文件/文件夹，支持关键词与父级筛选',
+      description:
+        '列出指定知识库下的第三方文件/文件夹，支持关键词与父级筛选。语雀列表使用 3 分钟浏览快照，正式导入与同步不复用浏览缓存',
       tags: [DevApiTagsMap.datasetApiDataset],
       requestBody: {
         content: {

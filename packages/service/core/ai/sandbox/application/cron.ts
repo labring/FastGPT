@@ -12,6 +12,7 @@ import { checkTimerLock } from '../../../../common/system/timerLock/utils';
 import { TimerIdEnum } from '../../../../common/system/timerLock/constants';
 import { archiveInactiveSandboxes, retryStaleArchivingSandboxes } from './archive';
 import { getAgentSandboxSuspendMinutes } from '../config';
+import { retryStaleSandboxActivations } from './lifecycle/service';
 
 const logger = getLogger(LogCategories.MODULE.AI.SANDBOX);
 
@@ -60,10 +61,12 @@ export const cronJob = async () => {
     });
     if (!locked) return;
 
-    await Promise.all([retryStaleArchivingSandboxes(), retryStaleStoppingSandboxes()]).catch(
-      (error) => {
-        logger.error('Sandbox stale lifecycle recovery cron failed', { error });
-      }
-    );
+    await Promise.all([
+      retryStaleArchivingSandboxes(),
+      retryStaleStoppingSandboxes(),
+      retryStaleSandboxActivations()
+    ]).catch((error) => {
+      logger.error('Sandbox stale lifecycle recovery cron failed', { error });
+    });
   });
 };

@@ -62,7 +62,7 @@ const NodeLoopStart = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     if (loopItemInputType && !loopArrayOutput) {
       onChangeNode({
         nodeId,
-        type: 'addOutput',
+        type: 'ensureOutput',
         value: {
           id: NodeOutputKeyEnum.nestedStartInput,
           key: NodeOutputKeyEnum.nestedStartInput,

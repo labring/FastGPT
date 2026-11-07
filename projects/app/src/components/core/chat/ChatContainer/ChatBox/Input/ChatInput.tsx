@@ -6,7 +6,13 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { type ChatBoxInputFormType, type ChatBoxInputType, type SendPromptFnType } from '../type';
-import { ChatInputDefaultHeight, ChatTypeEnum, textareaMinH } from '../constants';
+import {
+  ChatInputDefaultHeight,
+  ChatTypeEnum,
+  getChatInputContainerHeight,
+  textareaMinH,
+  WorkflowBuilderChatInputDefaultHeight
+} from '../constants';
 import { useFieldArray, useWatch, type UseFormReturn } from 'react-hook-form';
 import { ChatBoxContext } from '../Provider';
 import dynamic from 'next/dynamic';
@@ -35,8 +41,10 @@ type ChatInputProps = BoxProps & {
   enableVoiceInput: boolean;
   disableSend?: boolean;
   TextareaDom: React.MutableRefObject<HTMLTextAreaElement | null>;
+  textareaRef: React.RefCallback<HTMLTextAreaElement>;
   resetInputVal: (val: ChatBoxInputType) => void;
   chatForm: UseFormReturn<ChatBoxInputFormType>;
+  workflowBuilderStyle?: boolean;
 };
 
 const ChatInput = ({
@@ -47,8 +55,10 @@ const ChatInput = ({
   enableVoiceInput,
   disableSend,
   TextareaDom,
+  textareaRef,
   resetInputVal,
   chatForm,
+  workflowBuilderStyle = false,
   ...props
 }: ChatInputProps) => {
   const { t } = useTranslation();
@@ -122,11 +132,11 @@ const ChatInput = ({
     showSelectAudio,
     showSelectCustomFileExtension,
     cancelUploadFile,
-    clearFiles,
     hasFileUploading
   } = useFileUpload({
     fileSelectConfig,
     fileCtrl,
+    getValues: chatForm.getValues,
     outLinkAuthData,
     sourceTarget,
     chatId
@@ -171,9 +181,8 @@ const ChatInput = ({
         interactive: lastInteractive,
         clearInput: true
       });
-      clearFiles();
     },
-    [inputValue, lastInteractive, canSendMessage, fileList, onSendMessage, clearFiles]
+    [inputValue, lastInteractive, canSendMessage, fileList, onSendMessage]
   );
   const { runAsync: handleStop, loading: isStopping } = useRequest(async () => {
     try {
@@ -192,7 +201,7 @@ const ChatInput = ({
         <Flex w={'100%'} position={'relative'}>
           {/* Prompt Container */}
           <Textarea
-            ref={TextareaDom}
+            ref={textareaRef}
             py={0}
             mx={0}
             px={0}
@@ -332,7 +341,7 @@ const ChatInput = ({
     ),
     [
       fileList.length,
-      TextareaDom,
+      textareaRef,
       dialogTips,
       appNamePlaceholderParts.prefix,
       appNamePlaceholderParts.suffix,
@@ -480,11 +489,24 @@ const ChatInput = ({
     handleStop
   ]);
 
-  const activeStyles: FlexProps = {
-    boxShadow: '0px 5px 20px -4px rgba(19, 51, 107, 0.13)',
-    border: '1px solid',
-    borderColor: 'myGray.250'
-  };
+  const activeStyles: FlexProps = workflowBuilderStyle
+    ? {
+        boxShadow: '0px 5px 20px -4px rgba(19, 51, 107, 0.13)',
+        border: '1px solid transparent',
+        borderRadius: '16px',
+        background:
+          'linear-gradient(#FFFFFF, #FFFFFF) padding-box, linear-gradient(112deg, #FF4BCB 0%, #FF9F43 27%, #E8EBF0 52%, #3370FF 78%, #42D7FF 100%) border-box'
+      }
+    : {
+        boxShadow: '0px 5px 20px -4px rgba(19, 51, 107, 0.13)',
+        border: '1px solid',
+        borderColor: 'myGray.250'
+      };
+  const chatInputMinHeight = (() => {
+    if (mobilePreSpeak) return '48px';
+    if (workflowBuilderStyle) return WorkflowBuilderChatInputDefaultHeight;
+    return ChatInputDefaultHeight;
+  })();
 
   return (
     <Box
@@ -526,20 +548,20 @@ const ChatInput = ({
       {/* Real Chat Input */}
       <Flex
         direction={'column'}
-        h={isDefaultInputHeight ? ChatInputDefaultHeight : undefined}
-        minH={mobilePreSpeak ? '48px' : ChatInputDefaultHeight}
+        h={getChatInputContainerHeight({ isDefaultInputHeight, workflowBuilderStyle })}
+        minH={chatInputMinHeight}
         p={mobilePreSpeak ? [0, 4] : 4}
         mb={0}
         position={'relative'}
-        borderRadius={['xl', 'xxl']}
+        borderRadius={workflowBuilderStyle ? '16px' : ['xl', 'xxl']}
         bg={'white'}
-        overflow={mobilePreSpeak ? 'hidden' : 'display'}
+        overflow={mobilePreSpeak ? 'hidden' : 'visible'}
         {...(focusing
           ? activeStyles
           : {
-              _hover: activeStyles,
+              _hover: workflowBuilderStyle ? undefined : activeStyles,
               border: '1px solid',
-              borderColor: 'myGray.200',
+              borderColor: workflowBuilderStyle ? '#E8EBF0' : 'myGray.200',
               boxShadow: `0px 5px 16px -4px rgba(19, 51, 107, 0.08)`
             })}
         onClick={() => TextareaDom?.current?.focus()}
@@ -583,7 +605,6 @@ const ChatInput = ({
                   autoTTSResponse,
                   clearInput: true
                 });
-                clearFiles();
               }}
               resetInputVal={(val) => {
                 setMobilePreSpeak(false);

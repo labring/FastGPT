@@ -47,12 +47,12 @@ export const LoginContainer = ({
   const isWecomTerminal = typeof navigator === 'undefined' ? false : checkIsWecomTerminal();
   const initialPageType = resolveInitialLoginPageType({
     rootLogin,
-    // 直接把 feConfigs.sso 交给共享策略函数，避免在调用点再手写 url + 开关的组合口径
+    // 共享策略消费服务端派生的 SSO 能力，不需要下发 SSO 根地址。
     sso: feConfigs?.sso
   });
   const autoLoginProvider = resolveAutoLoginProvider({
     rootLogin,
-    ssoAvailable: Boolean(feConfigs?.sso?.url),
+    ssoAvailable: feConfigs?.sso?.enabled === true,
     ssoAutoLogin: feConfigs?.sso?.autoLogin === true,
     wecomAvailable: Boolean(feConfigs?.oauth?.wecom),
     isWecomTerminal,

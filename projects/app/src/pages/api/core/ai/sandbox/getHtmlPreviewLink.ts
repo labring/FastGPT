@@ -7,24 +7,23 @@ import {
   SandboxGetHtmlPreviewLinkBodySchema,
   SandboxGetHtmlPreviewLinkResponseSchema
 } from '@fastgpt/global/openapi/core/ai/sandbox/api';
-import {
-  buildSandboxClientQueryFromChatSource,
-  getSandboxClient
-} from '@fastgpt/service/core/ai/sandbox/interface/runtime';
+import { buildSandboxClientQueryFromChatSource } from '@fastgpt/service/core/ai/sandbox/interface/runtime';
+import { getSandboxClient } from '@fastgpt/service/core/ai/sandbox/application/runtime/client';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   createSandboxPreviewFileUrl,
   resolveSandboxPreviewPath,
   SandboxPreviewSessionLimitError
-} from '@fastgpt/service/core/ai/sandbox/interface/preview';
+} from '@fastgpt/service/core/ai/sandbox/application/preview';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import mime from 'mime';
 
 async function handler(req: ApiRequestProps, res: NextApiResponse): Promise<void> {
-  const { sourceType, sourceId, chatId, filePath, outLinkAuthData } = parseApiInput({
-    req,
-    bodySchema: SandboxGetHtmlPreviewLinkBodySchema
-  }).body;
+  const { customUid, authProxy, sourceType, sourceId, chatId, filePath, outLinkAuthData } =
+    parseApiInput({
+      req,
+      bodySchema: SandboxGetHtmlPreviewLinkBodySchema
+    }).body;
 
   // 1. 鉴权
   const {
@@ -32,6 +31,8 @@ async function handler(req: ApiRequestProps, res: NextApiResponse): Promise<void
     sourceType: resolvedSourceType,
     sourceId: resolvedSourceId
   } = await authSandboxRuntimeSession({
+    customUid,
+    authProxy,
     req,
     sourceType,
     sourceId,
@@ -60,19 +61,13 @@ async function handler(req: ApiRequestProps, res: NextApiResponse): Promise<void
   }
 
   // 3. session 仅保存 sandbox 查询参数，provider endpoint 和内部口令由 proxy 按请求解析。
-  const url = await (async () => {
-    try {
-      return SandboxGetHtmlPreviewLinkResponseSchema.parse(
-        await createSandboxPreviewFileUrl({
-          context: sandboxQuery,
-          filePath: providerPath
-        })
-      );
-    } catch (error) {
-      if (error instanceof SandboxPreviewSessionLimitError) return null;
-      throw error;
-    }
-  })();
+  const url = await createSandboxPreviewFileUrl({
+    context: sandboxQuery,
+    filePath: providerPath
+  }).catch((error) => {
+    if (error instanceof SandboxPreviewSessionLimitError) return null;
+    throw error;
+  });
 
   if (url === null) {
     return jsonRes(res, {
@@ -82,7 +77,7 @@ async function handler(req: ApiRequestProps, res: NextApiResponse): Promise<void
   }
 
   return jsonRes(res, {
-    data: url
+    data: SandboxGetHtmlPreviewLinkResponseSchema.parse(url)
   });
 }
 

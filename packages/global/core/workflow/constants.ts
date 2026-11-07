@@ -206,12 +206,6 @@ export enum NodeInputKeyEnum {
   collectionFilterVersion = 'collectionFilterVersion',
   collectionFilterMatch = 'collectionFilterMatch',
   authTmbId = 'authTmbId',
-  datasetDeepSearch = 'datasetDeepSearch',
-  datasetDeepSearchModelId = 'datasetDeepSearchModelId',
-  /** @deprecated */
-  datasetDeepSearchModel = 'datasetDeepSearchModel',
-  datasetDeepSearchMaxTimes = 'datasetDeepSearchMaxTimes',
-  datasetDeepSearchBg = 'datasetDeepSearchBg',
 
   // concat dataset
   datasetQuoteList = 'system_datasetQuoteList',
@@ -382,7 +376,7 @@ export enum VariableInputEnum {
   internal = 'internal'
 }
 
-type VariableConfigType = {
+export type VariableConfigType = {
   icon: string;
   label: string;
   value: VariableInputEnum;

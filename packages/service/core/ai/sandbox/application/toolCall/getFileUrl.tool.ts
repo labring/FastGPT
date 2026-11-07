@@ -60,7 +60,6 @@ export const sandboxGetFileUrlTool = defineTool({
     });
     const result = files.map(({ filePath, relativePath }) => ({
       fileUrl: buildSandboxPreviewFileUrl({
-        sandboxId,
         sessionId,
         filePath
       }),

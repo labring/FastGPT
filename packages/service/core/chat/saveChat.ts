@@ -1,3 +1,4 @@
+import type { ChatPublishSourceType } from '@fastgpt/global/core/chat/publishSource/type';
 import type {
   AIChatItemType,
   AIChatItemValueItemType,
@@ -5,17 +6,16 @@ import type {
   ToolModuleResponseItemType,
   UserChatItemType
 } from '@fastgpt/global/core/chat/type';
-import type { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import {
-  ChatGenerateStatusEnum,
+  type ChatSourceEnum,
   ChatRoleEnum,
   ChatSourceTypeEnum
 } from '@fastgpt/global/core/chat/constants';
 import { MongoChatItem } from './chatItemSchema';
 import { MongoChat } from './chatSchema';
 import { mongoSessionRun } from '../../common/mongo/sessionRun';
-import { type StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import { getAppChatConfig } from '@fastgpt/global/core/workflow/utils';
+import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import { getAppChatConfig } from '@fastgpt/global/common/app/chat';
 import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import type { VariableItemType } from '@fastgpt/global/core/app/variable/type';
 import { checkInteractiveResponseStatus } from '@fastgpt/global/core/chat/utils';
@@ -33,9 +33,7 @@ import type { ClientSession } from '../../common/mongo';
 import { removeS3TTL } from '../../common/s3/utils';
 import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import { encryptSecretValue, anyValueDecrypt } from '../../common/secret/utils';
-import type { SecretValueType } from '@fastgpt/global/common/secret/type';
 import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
-import { parseAgentAskAnswers } from '@fastgpt/global/core/ai/agent/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { normalizeChatFileStoreValues } from './fileStoreValue';
 import type { WorkflowRuntimeSummaryType } from '../workflow/dispatch/type';
@@ -45,6 +43,7 @@ import {
   stripUserContentFileUrls
 } from './utils/prepare';
 import { buildChatSourceQuery, buildChatSourceWriteFields, type ChatSourceParams } from './source';
+import { mergeWorkflowMemories } from '../workflow/memory/utils';
 
 const logger = getLogger(LogCategories.MODULE.CHAT);
 
@@ -57,8 +56,8 @@ export type Props = ChatSourceParams & {
   appChatConfig?: AppChatConfigType;
   variables?: Record<string, any>;
   source: `${ChatSourceEnum}`;
+  publishSource?: ChatPublishSourceType;
   sourceName?: string;
-  shareId?: string;
   outLinkUid?: string;
   userContent: UserChatItemType & { dataId?: string };
   aiContent: AIChatItemType & { dataId?: string };
@@ -241,9 +240,9 @@ type FailChatRoundParams = ChatSourceParams & {
 /**
  * 完成一轮已经 prepare 的对话保存。
  *
- * preChatRound 会先创建 chat 记录和本轮 Human/AI 两条占位 chat items，并把会话标记为
- * generating。workflow 真正运行结束后，这里负责把占位 item 更新为最终消息内容、补齐
- * chat 的标题/变量/插件输入/统计信息，并把 chatGenerateStatus 改成 done。
+ * preChatRound 会先创建 chat 记录和本轮 Human/AI 两条占位 chat items。workflow 真正
+ * 运行结束后，这里负责把占位 item 更新为最终消息内容、补齐 chat 的标题/变量/插件输入/统计信息。
+ * 运行状态由请求持有的 Redis lease 提供，保存完成后仍由请求 finally 释放。
  *
  * 这个方法只处理“已经预创建”的新运行轮次；未接入 prepare 的旧兼容路径仍由
  * pushChatRecords 单独处理。
@@ -261,7 +260,6 @@ export const finalizeChatRound = async (props: Props) => {
     variables,
     source,
     sourceName,
-    shareId,
     outLinkUid,
     userContent,
     aiContent,
@@ -377,14 +375,10 @@ export const finalizeChatRound = async (props: Props) => {
           welcomeText,
           variables: variables || {},
           pluginInputs,
-          source,
-          sourceName,
-          shareId,
           outLinkUid,
           metadata: metadataUpdate,
           updateTime: now,
-          hasBeenRead: false,
-          chatGenerateStatus: ChatGenerateStatusEnum.done
+          hasBeenRead: false
         },
         $inc: {
           'summary.llmInputTokens': runtimeChatSummary.llmInputTokens,
@@ -453,8 +447,7 @@ export const finalizeChatRound = async (props: Props) => {
             totalResponseTime: durationSeconds
           },
           $set: {
-            updateTime: now,
-            sourceName
+            updateTime: now
           },
           $setOnInsert: {
             appId: appSourceId,
@@ -462,6 +455,8 @@ export const finalizeChatRound = async (props: Props) => {
             chatId,
             userId,
             source,
+            publishSource: props.publishSource ?? { type: source },
+            ...(props.publishSource?.id && sourceName ? { sourceName } : {}),
             createTime: now,
             goodFeedbackCount: 0,
             badFeedbackCount: 0,
@@ -497,7 +492,6 @@ export const failChatRound = async (params: FailChatRoundParams) => {
         { ...buildChatSourceQuery(chatSource), chatId },
         {
           $set: {
-            chatGenerateStatus: ChatGenerateStatusEnum.error,
             updateTime: now,
             hasBeenRead: false
           }
@@ -544,7 +538,6 @@ export const pushChatRecords = async (props: Props) => {
     variables,
     source,
     sourceName,
-    shareId,
     outLinkUid,
     userContent,
     aiContent,
@@ -622,13 +615,9 @@ export const pushChatRecords = async (props: Props) => {
             welcomeText,
             variables: variables || {},
             pluginInputs,
-            source,
-            sourceName,
-            shareId,
             outLinkUid,
             metadata: metadataUpdate,
-            updateTime: new Date(),
-            chatGenerateStatus: ChatGenerateStatusEnum.done
+            updateTime: new Date()
           },
           $setOnInsert: {
             createTime: new Date()
@@ -702,8 +691,7 @@ export const pushChatRecords = async (props: Props) => {
               totalResponseTime: durationSeconds
             },
             $set: {
-              updateTime: now,
-              sourceName
+              updateTime: now
             },
             $setOnInsert: {
               appId: appSourceId,
@@ -711,6 +699,8 @@ export const pushChatRecords = async (props: Props) => {
               chatId,
               userId,
               source,
+              publishSource: props.publishSource ?? { type: source },
+              ...(props.publishSource?.id && sourceName ? { sourceName } : {}),
               createTime: now,
               goodFeedbackCount: 0,
               badFeedbackCount: 0,
@@ -731,11 +721,10 @@ export const pushChatRecords = async (props: Props) => {
   }
 };
 
-/*
-  更新交互节点，包含两种情况：
-  1. 更新当前的 items，并把 value 追加到当前 items
-  2. 新增 items, 次数只需要改当前的 items 里的交互节点值即可，其他属性追加在新增的 items 里
-*/
+/**
+ * 保存交互回复：Ask/Preview 的 query 直接完成新的 Human/AI 轮次，不回写原问题；
+ * submit 将交互状态和续跑结果合并到当前 AI 消息。
+ */
 export const updateInteractiveChat = async ({
   interactive,
   shouldFinalizePreparedRound = false,
@@ -762,22 +751,12 @@ export const updateInteractiveChat = async ({
     sourceId: props.sourceId
   };
   const appSourceId = chatSource.sourceId;
-  if (!chatId) return;
+  if (!chatId || isSkipSaveChatId(chatId)) return;
 
   const { variables: variableList } = getAppChatConfig({
     chatConfig: appChatConfig,
     isPublicFetch: false
   });
-
-  const chatItem = await MongoChatItem.findOne({
-    ...buildChatSourceQuery(chatSource),
-    chatId,
-    obj: ChatRoleEnum.AI
-  }).sort({
-    _id: -1
-  });
-
-  if (!chatItem || chatItem.obj !== ChatRoleEnum.AI) return;
 
   // Get interactive value
   interactive.params = interactive.params || {};
@@ -797,51 +776,15 @@ export const updateInteractiveChat = async ({
       throw new Error('Prepared chat round is required for interactive query');
     }
 
-    if (finalInteractive.type === 'agentPlanAskQuery' || finalInteractive.type === 'agentAsk') {
-      if (!finalInteractive.askId) {
-        throw new Error(`Agent ask interactive askId is required: ${chatId}`);
-      }
-      if (finalInteractive.type === 'agentPlanAskQuery') {
-        // Legacy ask_user
-        finalInteractive.params.answer = userInteractiveVal;
-      } else {
-        // New (multiple questions)
-        const answers = parseAgentAskAnswers(userInteractiveVal);
-        finalInteractive.params.questions = finalInteractive.params.questions.map(
-          (question, index) => ({
-            ...question,
-            answer: answers[index] ?? question.answer
-          })
-        );
-        finalInteractive.params.submitted = true;
-      }
-
-      const interactiveChatItem = await MongoChatItem.findOne({
-        ...buildChatSourceQuery(chatSource),
-        chatId,
-        obj: ChatRoleEnum.AI,
-        'value.interactive': { $exists: true }
-      }).sort({ _id: -1 });
-      if (!interactiveChatItem || interactiveChatItem.obj !== ChatRoleEnum.AI) {
-        throw new Error(`Interactive query chat item not found: ${chatId}`);
-      }
-      const previousInteractiveIndex = interactiveChatItem.value.findLastIndex(
-        (item) => !!item.interactive
-      );
-      if (previousInteractiveIndex === -1) {
-        throw new Error(`Interactive query value not found: ${chatId}`);
-      }
-      interactiveChatItem.value[previousInteractiveIndex].interactive = interactive;
-      interactiveChatItem.markModified('value');
-      await interactiveChatItem.save();
-
-      props.userContent.value.forEach((item) => {
-        item.askId = finalInteractive.askId;
-      });
-    }
-
     return finalizeChatRound(props);
   }
+
+  const chatItem = await MongoChatItem.findOne({
+    ...buildChatSourceQuery(chatSource),
+    chatId,
+    obj: ChatRoleEnum.AI
+  }).sort({ _id: -1 });
+  if (!chatItem || chatItem.obj !== ChatRoleEnum.AI) return;
 
   const parsedUserInteractiveVal = (() => {
     try {
@@ -923,7 +866,18 @@ export const updateInteractiveChat = async ({
     const hasRemainingSemanticValue = (item: AIChatItemValueItemType) =>
       Object.entries(item).some(([key, itemValue]) => {
         // id 只是工具容器的关联键，不能单独构成一条可持久化的 assistant value。
-        if (key === 'id' || key === 'tools') return false;
+        if (
+          [
+            'id',
+            'tools',
+            'modelResponseId',
+            'toolCallIds',
+            'hideInUI',
+            'hideReason',
+            'displayOnly'
+          ].includes(key)
+        )
+          return false;
         return itemValue !== undefined && itemValue !== null;
       });
 
@@ -980,10 +934,7 @@ export const updateInteractiveChat = async ({
           if (typeof decryptedVal === 'string') {
             return {
               ...item,
-              value: encryptSecretValue({
-                value: decryptedVal,
-                secret: ''
-              } as SecretValueType)
+              value: encryptSecretValue({ value: decryptedVal })
             };
           }
           return {
@@ -1033,10 +984,11 @@ export const updateInteractiveChat = async ({
     }
 
     if (aiContent.memories) {
-      chatItem.memories = {
-        ...chatItem.memories,
-        ...aiContent.memories
-      };
+      chatItem.memories = mergeWorkflowMemories({
+        baseline: chatItem.memories,
+        entries: aiContent.memories,
+        rootSource: chatSource
+      });
     }
 
     chatItem.durationSeconds = chatItem.durationSeconds

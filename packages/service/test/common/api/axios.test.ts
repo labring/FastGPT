@@ -2,7 +2,7 @@ import { afterEach, describe, it, expect, vi, beforeEach } from 'vitest';
 import http from 'http';
 import os from 'os';
 import dns from 'dns/promises';
-import { createProxyAxios } from '../../../common/api/axios';
+import { createProxyAxios, type SafeAxiosRequestConfig } from '../../../common/api/axios';
 import { PRIVATE_URL_TEXT } from '../../../common/system/utils';
 import { serviceEnv } from '../../../env';
 
@@ -62,6 +62,31 @@ describe('axios.ts', () => {
   describe('createProxyAxios', () => {
     beforeEach(() => {
       vi.clearAllMocks();
+    });
+
+    it('checks the file domain policy before the first request and every redirect', async () => {
+      clearProxyEnv();
+      mutableServiceEnv.CHECK_INTERNAL_IP = false;
+      const adapter = vi.fn(async (config) => ({
+        status: 302,
+        statusText: 'Found',
+        data: '',
+        headers: { location: 'https://blocked.example.com/opaque' },
+        config
+      }));
+      const instance = createProxyAxios({ adapter });
+      const requestConfig: SafeAxiosRequestConfig = {
+        __safeAxios: { validateUrl: (url) => new URL(url).hostname === 'allowed.example.com' }
+      };
+      await expect(
+        instance.head('https://blocked.example.com/opaque', requestConfig)
+      ).rejects.toThrow('Invalid file URL domain');
+      expect(adapter).not.toHaveBeenCalled();
+      vi.spyOn(dns, 'lookup').mockResolvedValue([{ address: '93.184.216.34', family: 4 }] as any);
+      await expect(
+        instance.head('https://allowed.example.com/opaque', requestConfig)
+      ).rejects.toThrow('Invalid file URL domain');
+      expect(adapter).toHaveBeenCalledTimes(1);
     });
 
     it('应该创建一个带有 ProxyAgent 的 axios 实例', () => {

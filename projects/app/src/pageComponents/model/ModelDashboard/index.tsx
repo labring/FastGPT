@@ -1,3 +1,4 @@
+import { sortModelSelectorModels } from '@/components/Select/AIModelSelector.utils';
 import React, { useCallback, useMemo, useState } from 'react';
 import type { BoxProps } from '@chakra-ui/react';
 import { Box, Flex, Grid, useTheme } from '@chakra-ui/react';
@@ -10,19 +11,21 @@ import DateRangePicker, {
   type DateRangeType
 } from '@fastgpt/web/components/common/DateRangePicker';
 import { SingleSelectFilter } from '@fastgpt/web/components/common/TagFilter';
-import { getChannelList, getDashboardV2 } from '@/web/core/ai/channel';
+import { getChannelList, getDashboardV2 } from '@/web/core/ai/model/channel';
 import AreaChartComponent from '@fastgpt/web/components/common/charts/AreaChartComponent';
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { useAdminModelConfig } from '@/web/core/ai/model/useAdminModelConfig';
+import { useModelConfig } from '@/web/core/ai/model/useModelConfig';
 import { calculateModelPrice } from '@fastgpt/global/core/ai/model/pricing';
 import DataTableComponent from './DataTableComponent';
-import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import type { ModelPriceTierType } from '@fastgpt/global/core/ai/model/schema';
+import { type ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import type { ModelPricingType } from '@fastgpt/global/core/ai/model/schema';
 import { accountContentScrollStyles } from '@/pageComponents/account/styles';
-import ModelTabHeader from '../ModelTabHeader';
+import ModelTabHeader from '@/components/core/ai/ModelTabHeader';
+import type { ChannelType } from '@fastgpt/global/core/ai/model/scope';
+import { formatNumber } from '@fastgpt/global/common/math/tools';
 
-export type ModelDashboardData = {
+type ModelDashboardData = {
   x: string;
   xLabel?: string;
   totalCalls: number;
@@ -59,11 +62,20 @@ const getDefaultDateRange = (): DateRangeType => {
   return { from, to };
 };
 
-const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
+const ModelDashboard = ({
+  Tab,
+  channelType
+}: {
+  Tab: React.ReactNode;
+  channelType: ChannelType;
+}) => {
   const { t, i18n } = useSafeTranslation();
   const theme = useTheme();
   const { feConfigs } = useSystemStore();
-  const { getModelProvider, systemModelList } = useAdminModelConfig();
+  const { models: availableModels, getModelProvider } = useModelConfig({
+    channelType,
+    language: i18n.language
+  });
 
   const [viewMode, setViewMode] = useState<'chart' | 'table'>('chart');
 
@@ -91,14 +103,15 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
   // Fetch channel list with "All" option
   const { data: channelList = [] } = useRequest(
     async () => {
-      const res = (await getChannelList()).map((item) => ({
+      const res = (await getChannelList({ channelType })).map((item) => ({
         label: item.name,
         value: `${item.id}`
       }));
       return [{ label: t('common:All'), value: '' }, ...res];
     },
     {
-      manual: false
+      manual: false,
+      refreshDeps: [channelType]
     }
   );
 
@@ -106,9 +119,9 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
   const llmModelSet = useMemo(
     () =>
       new Set(
-        systemModelList.filter((item) => item.type === ModelTypeEnum.llm).map((item) => item.model)
+        availableModels.filter((item) => item.type === ModelTypeEnum.llm).map((item) => item.model)
       ),
-    [systemModelList]
+    [availableModels]
   );
   const isLLMModel = useCallback(
     (model: string) => {
@@ -118,40 +131,35 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
   );
 
   const modelList = useMemo(() => {
-    const res = systemModelList
-      .map((item) => {
-        const provider = getModelProvider(item.provider, i18n.language);
-        return {
-          order: provider.order,
-          avatar: provider.avatar,
-          label: item.model,
-          value: item.model
-        };
-      })
-      .sort((a, b) => a.order - b.order);
+    const res = sortModelSelectorModels(availableModels).map((item) => {
+      const provider = getModelProvider(item.provider, i18n.language);
+      return {
+        avatar: provider.avatar,
+        label: item.model,
+        value: item.model
+      };
+    });
     return [{ label: t('common:All'), value: '' }, ...res];
-  }, [getModelProvider, i18n.language, systemModelList, t]);
+  }, [availableModels, getModelProvider, i18n.language, t]);
   // Model price map
   const modelPriceMap = useMemo(() => {
     const map = new Map<
       string,
       {
-        inputPrice?: number;
-        outputPrice?: number;
-        charsPointsPrice?: number;
-        priceTiers?: ModelPriceTierType[];
+        pricing?: ModelPricingType;
+        scope?: ModelScopeEnum;
+        type?: ModelTypeEnum;
       }
     >();
-    systemModelList.forEach((model) => {
+    availableModels.forEach((model) => {
       map.set(model.model, {
-        inputPrice: model.inputPrice,
-        outputPrice: model.outputPrice,
-        charsPointsPrice: model.charsPointsPrice,
-        priceTiers: model.priceTiers
+        pricing: model.pricing,
+        scope: model.scope,
+        type: model.type
       });
     });
     return map;
-  }, [systemModelList]);
+  }, [availableModels]);
 
   const computeTimespan = (hoursDiff: number) => {
     const options: { label: string; value: 'minute' | 'hour' | 'day' }[] = [];
@@ -200,12 +208,13 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
   const { data: dashboardData = [], loading: isLoading } = useRequest(
     async () => {
       const params = {
-        channel: filterProps.channelId ? parseInt(filterProps.channelId) : undefined,
+        channelType,
+        channelId: filterProps.channelId ? parseInt(filterProps.channelId) : undefined,
         model: filterProps.model,
-        start_timestamp: filterProps.dateRange.from
+        startTimestamp: filterProps.dateRange.from
           ? Math.floor(filterProps.dateRange.from.getTime())
           : undefined,
-        end_timestamp: filterProps.dateRange.to
+        endTimestamp: filterProps.dateRange.to
           ? Math.floor(filterProps.dateRange.to.getTime())
           : undefined,
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
@@ -270,7 +279,8 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
         filterProps.channelId,
         filterProps.dateRange,
         filterProps.model,
-        filterProps.timespan
+        filterProps.timespan,
+        channelType
       ]
     }
   );
@@ -361,7 +371,8 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
         inputTokens,
         outputTokens,
         totalTokens,
-        totalCost: Math.floor(totalCost),
+        // 保留费用精度供累计图使用，只在显示时舍入。
+        totalCost,
         avgResponseTime: Math.round(avgResponseTime * 100) / 100,
         avgTtfb: Math.round(avgTtfb * 100) / 100,
         maxRpm,
@@ -579,7 +590,8 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
                       {
                         label: t('config_model:aipoint_usage'),
                         dataKey: 'totalCost',
-                        color: '#8774EE'
+                        color: '#8774EE',
+                        formatter: (value: number) => formatNumber(value, 100).toLocaleString()
                       }
                     ]}
                   />

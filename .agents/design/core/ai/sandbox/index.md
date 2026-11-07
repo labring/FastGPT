@@ -2,7 +2,7 @@
 
 状态：当前实现
 
-最后核对：2026-08-12
+最后核对：2026-10-09
 
 用户级实例、生命周期、Legacy 迁移以及本分支后续变更的最终契约统一见
 [用户级 Sandbox 最终方案](./user-level-sandbox.md)。本文只维护当前代码入口和运行行为索引。
@@ -35,7 +35,8 @@ provider: opensandbox | sealosdevbox
 
 约束：
 
-- 外部业务从 `interface/*` 引用，不直接依赖 infrastructure。
+- 外部运行期业务从 `interface/*` 引用，不直接依赖 infrastructure。
+- 系统迁移专属数据访问放在对应迁移任务目录，可直接使用目标 Mongo Schema，不向运行期新增迁移接口或转导层。
 - `SandboxClient` 只用于运行态，可能创建或恢复实例。
 - 历史资源 stop/delete 使用 resource service，不能通过运行态 client 触发隐式恢复。
 - Mongo 读写集中在 instance repository。
@@ -85,10 +86,12 @@ volume、Mongo 记录和 S3 归档，Sealos Devbox 则暂停远端实例。业�
 `getSandboxClient` 的流程是：
 
 1. 校验 sandboxId、sourceType 和 sourceId。
-2. 读取当前 Provider 和可选 volume 配置。
-3. 如果实例已归档，按策略恢复；保活接口可以显式禁止恢复。
-4. 构造 `SandboxClient`，写入或刷新 running 实例记录。
-5. 确保远端 Provider 实例可用。
+2. Quota 检查：解析 source 团队归属并统计 Mongo 活跃实例，超限返回 409；
+   保活等显式禁止恢复的路径跳过守卫。
+3. 读取当前 Provider 和可选 volume 配置。
+4. 如果实例已归档，按策略恢复；保活接口可以显式禁止恢复。
+5. 构造 `SandboxClient`，写入或刷新 running 实例记录。
+6. 确保远端 Provider 实例可用。
 
 上层在调用 `prepareAgentSandboxRuntime` 前完成普通 App 可用性判断或 Skill Edit 强可用性断言；
 runtime preparation 不再接受绕过权限检查的布尔参数。随后根据标准 chat source 计算 sandboxId。
@@ -205,6 +208,27 @@ Sandbox 的 Skill，也不准备 runtime；其他对话能力继续运行。关�
 Skill Edit 和 Skill 调试保持强依赖。文件 API 在服务端重新校验可用性，`checkExist` 只查询本地
 记录并返回可选关闭原因，不创建或恢复实例。
 
+## Quota
+
+- 两级配额：系统总上限（env `AGENT_SANDBOX_MAX`，默认 100）与团队配额（env `AGENT_SANDBOX_MAX_PER_TEAM`，
+  默认不限）；均以服务端系统配置 `systemEnv.agentSandboxMax / agentSandboxMaxPerTeam` 优先、env 兜底。
+  未配置 `AGENT_SANDBOX_MAX` 时使用默认值。
+- app 会话与技能编辑**共用同一个计数池**（忽略 provider 与 sourceType）：用量为 Mongo 活跃实例数，
+  任一超限直接返回 409（`agentSandboxLimitReached` / `agentSandboxTeamLimitReached`），不排队。
+- 计入 Quota 的状态：`provisioning / legacyMigrating / running / stopping / archiving / restoring`；
+  `stopped / archived / deleting` 不计入。`stopping/archiving` 计入意味着 Quota 吃紧时释放窗口可能短暂被拒；
+  释放路径（stop/archive/delete/keepalive/存在性检查）不经过检查，不会被 Quota 阻塞。
+- 准入点为 `getSandboxClient` 与 `SandboxClient.ensureAvailable`，覆盖新建 / 停止后重启 / 归档恢复；
+  记录已处于活跃态时跳过（运行态快路径与过渡态接管不重复占额）。
+- 检查与记录写入之间存在并发窗口，高并发下允许短暂超过限制；不引入排队、重试或分布式锁。
+- `teamId` 由 sandbox 域内从 source（App / Skill）解析并写入记录；历史缺失记录由 4.17.3 迁移
+  `20261009_backfill_agent_sandbox_team_id` 自动回填，运行期由 `getSandboxClient` 在 Quota、Provider 迁移及恢复之前统一解析 source 团队并补齐历史归属；构造 client 时必传 `teamId`，后续 `ensureAvailable` 复用该归属，并重新校验 source 存活及生命周期状态。
+  source 无团队、归属冲突或回填失败时拒绝运行，不再降级为仅检查系统配额；已有归属不覆写，并发回填未命中时重新确认持久化结果。
+  Quota 只接收必填 `teamId` 并执行计数，新建记录同样要求团队归属；归档恢复不再接收 `teamId`，也不重复校验或补齐归属。
+  自动迁移使用固定范围扫描、一次从头补扫和只读完成校验；校验快照内仍可回填或来源异常的记录会使任务失败，重试从头扫描。来源已删除的孤儿只统计并跳过；校验之后旧节点的新写入仍由后续访问补齐，因此团队用量允许暂时低估。
+  缺失 `teamId` 的记录只计入系统总量、不计入任何团队。已知偏差：Sealos Devbox `stopped` 为 pause、
+  远端实例仍存在，但不计入 Quota；app 会话超限按硬拒绝处理，「静默降级为无沙箱对话」为后续备选。
+
 ## Workspace 预览
 
 HTML 预览和 `sandbox_get_file_url` 使用 Redis preview session 签发短期只读 URL。公开请求经
@@ -231,11 +255,12 @@ Sandbox 文件、ticket、preview、keepalive 等 API 位于 `projects/app/src/p
 | Tool 接口 | `packages/service/core/ai/sandbox/interface/toolCall` |
 | Resource 接口 | `packages/service/core/ai/sandbox/interface/resource` |
 | Preview 接口 | `packages/service/core/ai/sandbox/interface/preview` |
-| Migration 接口 | `packages/service/core/ai/sandbox/interface/migration` |
+| 团队归属回填迁移 | `projects/app/src/migration/tasks/4173/20261009_backfill_agent_sandbox_team_id` |
 | Runtime client | `packages/service/core/ai/sandbox/application/runtime/client.ts` |
 | 初始化 pipeline | `packages/service/core/ai/sandbox/application/runtime/prepare.ts` |
 | Skill runtime | `packages/service/core/ai/sandbox/application/runtime/skill` |
 | 资源服务 | `packages/service/core/ai/sandbox/application/resource.ts` |
+| Quota 检查 | `packages/service/core/ai/sandbox/application/quota.ts` |
 | 归档服务 | `packages/service/core/ai/sandbox/application/archive.ts` |
 | Legacy migration | `packages/service/core/ai/sandbox/application/legacyMigration` |
 | 实例仓储 | `packages/service/core/ai/sandbox/infrastructure/instance` |
@@ -246,6 +271,7 @@ Sandbox 文件、ticket、preview、keepalive 等 API 位于 `projects/app/src/p
 Sandbox 改动应按影响范围覆盖：
 
 - source/sandboxId 寻址和 schema 索引。
+- Quota 检查与计数口径（系统/团队配额、活跃状态清单、并发窗口与释放路径豁免）。
 - Provider runtime profile。
 - client 创建、恢复、停止、删除和归档状态。
 - 初始化 lease、prepare 顺序和 entrypoint 幂等性。

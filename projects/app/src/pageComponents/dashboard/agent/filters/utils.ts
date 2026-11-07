@@ -1,4 +1,8 @@
-import { AppListSortEnum, AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import {
+  AppListSortEnum,
+  AppListSortSchema,
+  AppTypeEnum
+} from '@fastgpt/global/core/app/constants';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import type { ListAppV2BodyType } from '@fastgpt/global/openapi/core/app/common/api';
 import { toMultiSelectFilterQuery } from '@fastgpt/web/components/common/TagFilter';
@@ -22,7 +26,7 @@ const CreatorFilterSchema = z
  */
 export const AppListFilterSchema = z.object({
   type: z.union([z.literal('all'), z.enum(AppTypeEnum)]).default('all'),
-  sort: z.enum(AppListSortEnum).default(AppListSortEnum.updateTimeDesc),
+  sort: AppListSortSchema.default(AppListSortEnum.updateTimeDesc),
   creator: CreatorFilterSchema
 });
 
@@ -30,7 +34,7 @@ export type AppListFilterType = z.infer<typeof AppListFilterSchema>;
 export type AppListFilterScene = 'agent' | 'tool';
 
 export const ResourceListFilterSchema = z.object({
-  sort: z.enum(AppListSortEnum).default(AppListSortEnum.updateTimeDesc),
+  sort: AppListSortSchema.default(AppListSortEnum.updateTimeDesc),
   creator: CreatorFilterSchema
 });
 export type ResourceListFilterType = z.infer<typeof ResourceListFilterSchema>;
@@ -125,7 +129,7 @@ export const buildAppListRequest = ({
   tmbIds,
   withRelatedAppCount
 }: Pick<
-  ListAppV2BodyType,
+  Extract<ListAppV2BodyType, { appIds?: never }>,
   | 'parentId'
   | 'type'
   | 'searchKey'

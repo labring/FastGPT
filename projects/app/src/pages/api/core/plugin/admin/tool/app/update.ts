@@ -70,7 +70,6 @@ export async function handler(
       secretsVal: updateFields.secretsVal ?? null
     });
   }
-
   await MongoSystemTool.findOneAndUpdate(
     { pluginId },
     {

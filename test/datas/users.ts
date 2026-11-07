@@ -59,14 +59,14 @@ export async function getRootUser(): Promise<parseHeaderCertRet> {
   });
 
   return {
-    userId: rootUser._id,
+    userId: String(rootUser._id),
     apikey: '',
     appId: '',
     authType: AuthUserTypeEnum.token,
     isRoot: true,
     sourceName: undefined,
-    teamId: tmb?.teamId,
-    tmbId: tmb?._id,
+    teamId: String(tmb.teamId),
+    tmbId: String(tmb._id),
     sessionId: ''
   };
 }

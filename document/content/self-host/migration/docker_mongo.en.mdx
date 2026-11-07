@@ -19,6 +19,8 @@ Prerequisites:
 - Environment B: The new FastGPT deployment (e.g., on Tencent Cloud, or a NAS like Synology/QNAP). Note: NAS deployments may require MongoDB 4.2 or 4.4, while cloud deployments support the default FastGPT MongoDB version.
 - Environment C: Your local machine, used as a staging area to hold files and coordinate the transfer.
 
+Run restore operations on the destination deployment, Environment B. Environment C holds a copy of the backup for transfer and verification. Some historical headings below refer to C during restoration; the destination remains B.
+
 ## 1. Prepare: Access Docker MongoDB [Environment A]
 ```
 docker exec -it mongo sh
@@ -45,7 +47,7 @@ Navigate to the FastGPT directory, go into the mongo folder, and create a backup
 ```
 mkdir -p /fastgpt/data/backup
 ```
-Also create a directory in the new [Environment B]:
+Also create a backup directory in the new [Environment B], outside `/fastgpt/data`, so it remains separate from the database directory cleared during restoration:
 ```
 mkdir -p /fastgpt/mongobackup
 ```
@@ -135,12 +137,16 @@ Experienced users can use tar to verify archive integrity. The above steps are f
 ### 3.2 Manually copy files into the new FastGPT Docker container [Environment C]
 Since the files aren't in the data/ directory, they won't auto-sync into the container. Also ensure the container's data directory is clean, or the import will fail.
 
+Run the following copy command on Environment B, where the destination MongoDB container runs.
+
 ```
 docker cp user/fastgpt/mongobackup/data mongo:/tmp/backup
 ```
 
 ### 3.3 Initialize docker compose -- run it once to create the new mongo/data persistence directory
 If the mongo/db directory isn't freshly initialized, mongorestore may fail. If you encounter errors, try initializing mongo.
+
+Before running the following deletion command on Environment B, stop the destination MongoDB service, verify the current directory, and keep a verified backup outside that directory. The command permanently deletes every matching file in the current directory. Restart MongoDB after its data directory has been initialized, then proceed with restoration.
 
 Commands:
 ```
@@ -149,7 +155,7 @@ rm -rf *
 ```
 
 
-4. Restore with mongorestore [Environment C]
+4. Restore with mongorestore [Environment B]
 Run this from the host to import in one command (you can also run it inside the container):
 
 ```
@@ -159,7 +165,7 @@ docker exec -it mongo mongorestore -u "username" -p "password" --authenticationD
 Note: if the imported file count seems too low, the import likely failed. A failed import means you can log in to FastGPT but see no data.
 
 
-5. Restart containers [Environment C]
+5. Restart containers [Environment B]
 ```
 docker compose restart
 docker logs -f mongo  # Strongly recommended: check mongo logs before logging in. If mongo has errors, the web UI will also show errors.

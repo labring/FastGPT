@@ -1,11 +1,16 @@
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
+import {
+  DatasetSearchModeEnum,
+  DatasetTagFilterLogicEnum
+} from '@fastgpt/global/core/dataset/constants';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 
 const mocks = vi.hoisted(() => ({
   selectAiModel: vi.fn(),
+  modalProps: undefined as Record<string, unknown> | undefined,
+  tagFilterRowsProps: undefined as Record<string, unknown> | undefined,
   llmModels: [] as { modelId: string; model: string; name: string }[],
   defaultModelId: undefined as string | undefined,
   defaultRerankId: undefined as string | undefined,
@@ -58,8 +63,29 @@ vi.mock('@/components/Select/AIModelSelector', () => ({
   }
 }));
 vi.mock('@/components/common/Textarea/MyTextarea', () => ({ default: () => null }));
-vi.mock('@fastgpt/web/components/common/MyModal', () => ({
-  default: ({ children }: { children: React.ReactNode }) => children
+vi.mock('@/components/core/dataset/DatasetTagFilterRows', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('@/components/core/dataset/DatasetTagFilterRows')>();
+  return {
+    ...actual,
+    default: (props: Record<string, unknown>) => {
+      mocks.tagFilterRowsProps = props;
+      return null;
+    }
+  };
+});
+vi.mock('@fastgpt/web/components/v2/common/MyModal', () => ({
+  default: ({
+    children,
+    footer,
+    ...rest
+  }: {
+    children: React.ReactNode;
+    footer?: React.ReactNode;
+  }) => {
+    mocks.modalProps = rest;
+    return React.createElement(React.Fragment, null, children, footer);
+  }
 }));
 vi.mock('@chakra-ui/react', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@chakra-ui/react')>();
@@ -95,6 +121,8 @@ import DatasetParamsModal from '@/components/core/app/DatasetParamsModal';
 describe('DatasetParamsModal', () => {
   beforeEach(() => {
     mocks.selectAiModel.mockClear();
+    mocks.modalProps = undefined;
+    mocks.tagFilterRowsProps = undefined;
     mocks.llmModels = [];
     mocks.defaultModelId = undefined;
     mocks.defaultRerankId = undefined;
@@ -387,6 +415,39 @@ describe('DatasetParamsModal', () => {
       expect(onSuccess).toHaveBeenCalledWith(
         expect.objectContaining({ usingReRank: true, rerankModelId: 'saved-id' })
       )
+    );
+  });
+
+  it('delegates scrolling to the tab content container and enables portal popovers in limit tab tag filter', () => {
+    mocks.tab = 'limit';
+    renderToStaticMarkup(
+      React.createElement(DatasetParamsModal, {
+        searchMode: DatasetSearchModeEnum.embedding,
+        showTagFilter: true,
+        datasetIds: ['ds-1'],
+        collectionFilterMatch: {
+          logic: DatasetTagFilterLogicEnum.AND,
+          conditions: [],
+          open: true
+        },
+        onClose: vi.fn(),
+        onSuccess: vi.fn()
+      })
+    );
+
+    expect(mocks.modalProps).toEqual(
+      expect.objectContaining({
+        bodyStyles: {
+          overflow: 'hidden',
+          px: 0
+        }
+      })
+    );
+    expect(mocks.tagFilterRowsProps).toEqual(
+      expect.objectContaining({
+        usePortal: true,
+        datasetIds: ['ds-1']
+      })
     );
   });
 });

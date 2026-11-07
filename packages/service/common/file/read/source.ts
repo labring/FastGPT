@@ -1,14 +1,15 @@
 import { documentFileExtensions } from '@fastgpt/global/common/file/constants';
+import { normalizeDocumentFileExtension } from '@fastgpt/global/common/file/utils';
+import { parseFilenameExtension } from '@fastgpt/global/common/string/tools';
 import {
   detectFileEncoding,
   parseContentDispositionFilename
 } from '@fastgpt/global/common/file/tools';
 import type { Readable } from 'node:stream';
-import path from 'node:path';
 import { readStreamToBuffer } from '../../s3/utils';
 import { DEFAULT_CONTENT_TYPE, normalizeMimeType, resolveMimeExtension } from '../../s3/utils/mime';
 import { readExternalFileBuffer } from './external';
-import { isLikelyTextBuffer } from './text';
+import { isLikelyTextBuffer, detectUtf16Text } from './text';
 
 const documentExtensionSet = new Set(
   documentFileExtensions.map((extension) => extension.replace(/^\./, '').toLowerCase())
@@ -52,26 +53,16 @@ export type ExternalHttpFileSource = FileSourceBase & {
 
 export type FileSource = S3FileSource | ExternalHttpFileSource;
 
-const normalizeExtension = (extension?: string) => {
-  const normalized = extension?.trim().toLowerCase().replace(/^\./, '') ?? '';
-  if (normalized === 'markdown') return 'md';
-  if (normalized === 'htm') return 'html';
-  return normalized;
-};
-
-const getFilenameExtension = (filename?: string) =>
-  normalizeExtension(path.extname(filename ?? ''));
-
 /** 不读取文件内容，仅从来源声明元数据得到初始调度扩展名。 */
 export const resolveFileSourceDeclaredExtension = (metadata: FileSourceMetadata) => {
-  const explicitExtension = normalizeExtension(metadata.extension);
+  const explicitExtension = normalizeDocumentFileExtension(metadata.extension);
   if (explicitExtension) return explicitExtension;
 
-  const filenameExtension = getFilenameExtension(metadata.filename);
+  const filenameExtension = parseFilenameExtension(metadata.filename);
   if (filenameExtension) return filenameExtension;
 
   const normalizedContentType = normalizeMimeType(metadata.contentType, '');
-  const mimeExtension = normalizeExtension(resolveMimeExtension(normalizedContentType));
+  const mimeExtension = resolveMimeExtension(normalizedContentType).replace(/^\./, '');
   if (documentExtensionSet.has(mimeExtension)) return mimeExtension;
   if (normalizedContentType.startsWith('text/')) return 'txt';
   return '';
@@ -94,7 +85,7 @@ export const resolveFileSourceExtension = ({
   if (declaredExtension) return declaredExtension;
 
   const normalizedContentType = normalizeMimeType(metadata.contentType, '');
-  const mimeExtension = normalizeExtension(resolveMimeExtension(normalizedContentType));
+  const mimeExtension = resolveMimeExtension(normalizedContentType).replace(/^\./, '');
   if (documentExtensionSet.has(mimeExtension)) return mimeExtension;
   if (normalizedContentType.startsWith('text/')) return 'txt';
 
@@ -119,7 +110,11 @@ export const resolveFileSourceEncoding = ({
   if (metadata.encoding) return metadata.encoding;
 
   const charset = /charset=([^;]+)/i.exec(metadata.contentType ?? '')?.[1]?.trim();
-  return charset || detectFileEncoding(buffer);
+  if (charset) return charset;
+
+  // 文本判定已经按 UTF-16 识别时，编码探测必须复用同一结论：无 BOM 的 UTF-16
+  // 会被通用探测判成 utf-8，文件被按 txt 收下后解析出乱码。
+  return detectUtf16Text(buffer)?.encoding || detectFileEncoding(buffer);
 };
 
 /** 创建已鉴权、已知可信大小的 S3 文件来源。 */

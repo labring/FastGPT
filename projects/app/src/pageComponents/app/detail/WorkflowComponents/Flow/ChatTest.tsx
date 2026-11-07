@@ -1,9 +1,9 @@
+import { WorkflowBufferDataContext } from '../context/workflowInitContext';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import React, { useCallback, useMemo } from 'react';
 import { Box, CloseButton, Flex } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
-import { type StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
-
+import type { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '@/pageComponents/app/detail/context';
 import { useChatTest } from '../../useChatTest';
@@ -18,7 +18,7 @@ import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import ChatQuoteList from '@/pageComponents/chat/ChatQuoteList';
 import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
 import { useSandboxEditor, useSandboxStatus } from '@/pageComponents/chat/SandboxEditor/hook';
-import { getAppChatConfig } from '@fastgpt/global/core/workflow/utils';
+import { getAppChatConfig } from '@fastgpt/global/common/app/chat';
 import RunPreviewHeader from './RunPreviewHeader';
 import AppDetailPanelModal from '../../components/AppDetailPanelModal';
 
@@ -45,7 +45,16 @@ const ChatTest = ({ isOpen, nodes = [], edges = [], onClose, chatId }: Props) =>
     [appDetail.chatConfig]
   );
 
+  const getNodes = useContextSelector(WorkflowBufferDataContext, (v) => v.getNodes);
+  // 详情与运行请求使用同一次打开预览的快照，后台编辑不替换本次请求的资源诊断。
+  const resourceNodes = useMemo(() => {
+    const nodeIds = new Set(nodes.map((node) => node.nodeId));
+    return getNodes()
+      .filter(({ data }) => nodeIds.has(data.nodeId))
+      .map(({ data }) => data);
+  }, [getNodes, nodes]);
   const { restartChat, ChatContainer } = useChatTest({
+    getResourceNodes: () => resourceNodes,
     nodes,
     edges,
     chatConfig: chatConfigForDebug,
@@ -108,7 +117,7 @@ const ChatTest = ({ isOpen, nodes = [], edges = [], onClose, chatId }: Props) =>
               title={t('common:core.chat.Run test')}
               chatId={chatId}
               chatIdLabel={chatId ? t('common:chat_chatId', { chatId }) : ''}
-              restartLabel={t('common:core.chat.Restart')}
+              restartLabel={t('common:core.chat.New Chat')}
               closeLabel={t('common:Close')}
               SandboxEntryIcon={SandboxEntryIcon}
               onCopyChatId={() => copyData(chatId)}

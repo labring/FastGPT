@@ -1,4 +1,4 @@
-import { GET, POST, PUT, DELETE } from '@/web/common/api/request';
+import { GET, POST } from '@/web/common/api/request';
 import type { CreateQuestionGuideV2BodyType } from '@fastgpt/global/openapi/core/ai/agent/api';
 import type { LLMRequestRecordSchemaType } from '@fastgpt/global/openapi/core/ai/api';
 

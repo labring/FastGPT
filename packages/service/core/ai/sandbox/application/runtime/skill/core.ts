@@ -5,7 +5,6 @@
  */
 import type { ISandbox } from '@fastgpt-sdk/sandbox-adapter';
 import { shellQuote } from '@fastgpt/global/common/string/utils';
-import { MongoAgentSkills } from '../../../../skill/model/schema';
 import { MongoAgentSkillsVersion } from '../../../../skill/version/schema';
 import { downloadSkillPackageStream } from '../../../../skill/package';
 import { parseSkillMarkdown } from '../../../../skill/utils';
@@ -13,16 +12,8 @@ import { getLogger, LogCategories } from '../../../../../../common/logger';
 import type { DeployedSkillInfo, DeployedSkillVersion } from './types';
 import { getAgentSandboxSkillMaxBytes } from '../../../config';
 import { joinSandboxPath } from '../../../utils';
-import { authSkillByTmbId } from '../../../../../../support/permission/skill/auth';
-import { AgentSkillSourceEnum } from '@fastgpt/global/core/ai/skill/constants';
-import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
-import { getWorkflowResourceContext } from '../../../../../workflow/utils/context';
-import { assertWorkflowResource } from '../../../../../workflow/utils/resource';
-import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
-import { Types } from '../../../../../../common/mongo';
+import type { AgentSkillSchemaType } from '@fastgpt/global/core/ai/skill/type';
 import { Readable } from 'node:stream';
-
-export type { DeployedSkillInfo, DeployedSkillVersion } from './types';
 
 const logger = getLogger(LogCategories.MODULE.AI.AGENT);
 const parseCommandOutputNulls = (stdout: string) => stdout.split('\0').filter(Boolean);
@@ -132,24 +123,19 @@ export const getAgentSkillInfos = async ({
 /**
  * 将已发布的 skill 包注入到调用方传入的 sandbox 实例。
  *
- * 该函数不创建、不复用、不释放 sandbox，只负责把 skill 文件写入已有实例。
+ * skills 必须由调用方完成授权；这里不读取工作流上下文，也不执行成员权限判断。
+ * 该函数只负责把 skill 文件写入已有实例。
  * 这样 skill 模块与 sandbox 生命周期保持平级：sandbox 决定何时存在，
  * skill 只在拿到实例后完成文件注入。
  */
 export const injectAgentSkillFilesToSandbox = async ({
   sandbox,
-  skillIds,
-  teamId,
-  tmbId,
-  workDirectory,
-  dynamic = false
+  skills,
+  workDirectory
 }: {
   sandbox: ISandbox;
-  skillIds: string[];
-  teamId: string;
-  tmbId: string;
+  skills: AgentSkillSchemaType[];
   workDirectory: string;
-  dynamic?: boolean;
 }): Promise<DeployedSkillVersion[]> => {
   const skillsRootPath = getRuntimeSkillsRootPath(workDirectory);
   await sandbox.createDirectories([skillsRootPath]);
@@ -178,72 +164,6 @@ export const injectAgentSkillFilesToSandbox = async ({
       });
     });
   };
-
-  if (skillIds.length === 0) {
-    await cleanupStaleDirs(new Set());
-    return [];
-  }
-
-  const resourceContext = getWorkflowResourceContext();
-  if (resourceContext && !dynamic) {
-    skillIds.forEach((skillId) =>
-      assertWorkflowResource({
-        context: resourceContext,
-        type: 'skill',
-        id: skillId
-      })
-    );
-  }
-  const hasInvalidId = skillIds.some((id) => !Types.ObjectId.isValid(id));
-  if (resourceContext && !dynamic && hasInvalidId) {
-    throw SkillErrEnum.unExist;
-  }
-  const validSkillIds = skillIds.filter((id) => Types.ObjectId.isValid(id));
-  const teamSkills =
-    validSkillIds.length > 0
-      ? await MongoAgentSkills.find({
-          _id: { $in: validSkillIds },
-          deleteTime: null,
-          ...(resourceContext?.teamId && !resourceContext?.isRoot
-            ? { $or: [{ teamId: resourceContext.teamId }, { source: AgentSkillSourceEnum.system }] }
-            : { $or: [{ teamId }, { source: AgentSkillSourceEnum.system }] })
-        })
-      : [];
-  if (resourceContext && !dynamic && teamSkills.length !== skillIds.length) {
-    throw SkillErrEnum.unExist;
-  }
-  if (teamSkills.length === 0) {
-    logger.warn('[Agent Skills] No valid skills found from input skillIds', { skillIds });
-    await cleanupStaleDirs(new Set());
-    return [];
-  }
-
-  const skills = (
-    await Promise.all(
-      teamSkills.map(async (skill) => {
-        try {
-          if (!resourceContext || dynamic) {
-            await authSkillByTmbId({
-              tmbId,
-              skillId: String(skill._id),
-              per: ReadPermissionVal
-            });
-          }
-          return skill;
-        } catch (error) {
-          if (error !== SkillErrEnum.unAuthSkill && error !== SkillErrEnum.unExist) {
-            throw error;
-          }
-
-          logger.warn('[Agent Skills] Skip unauthorized skill during runtime injection', {
-            skillId: String(skill._id),
-            tmbId
-          });
-          return null;
-        }
-      })
-    )
-  ).filter((skill): skill is (typeof teamSkills)[number] => !!skill);
 
   if (skills.length === 0) {
     await cleanupStaleDirs(new Set());
@@ -283,7 +203,7 @@ export const injectAgentSkillFilesToSandbox = async ({
   if (deployableSkills.length === 0) {
     logger.warn(
       '[Agent Skills] No deployable skills found (missing current versions) from input skillIds',
-      { skillIds }
+      { skillIds: skills.map((skill) => String(skill._id)) }
     );
     await cleanupStaleDirs(new Set());
     return [];

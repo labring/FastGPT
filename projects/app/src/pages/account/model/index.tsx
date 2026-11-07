@@ -1,16 +1,59 @@
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Box, Flex } from '@chakra-ui/react';
+import { useRouter } from 'next/router';
 import AccountContainer from '@/pageComponents/account/AccountContainer';
-import ModelTable from '@/components/core/ai/ModelTable';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { accountPageRootStyles, accountTitleTextStyles } from '@/pageComponents/account/styles';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { useRouter } from 'next/router';
-import { useEffect } from 'react';
+import { useUserStore } from '@/web/support/user/useUserStore';
+import { useToast } from '@fastgpt/web/hooks/useToast';
+import ModelTable from '@/components/core/ai/ModelTable';
+import ModelManagementContainer, {
+  type ModelTabType
+} from '@/pageComponents/model/ModelManagementContainer';
+import ReplaceInvalidModelsModal from '@/pageComponents/model/ReplaceInvalidModelsModal';
+import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
 
 const ModelProvider = () => {
   const { t } = useSafeTranslation();
   const { feConfigs, initd } = useSystemStore();
+  const { userInfo } = useUserStore();
+  const { toast } = useToast();
   const router = useRouter();
+
+  const isRoot = userInfo?.username === 'root';
+  const canManageModel = Boolean(isRoot || userInfo?.team?.permission?.hasModelCreatePer);
+  const isTeamOwner = userInfo?.team?.role === TeamMemberRoleEnum.owner;
+  const [replaceModalOpen, setReplaceModalOpen] = useState(false);
+
+  const modelTabList = useMemo<{ label: string; value: ModelTabType }[]>(
+    () => [
+      { label: t('config_model:active_model'), value: 'active_model' },
+      { label: t('config_model:config_model'), value: 'config' },
+      { label: t('config_model:channel'), value: 'channel' },
+      { label: t('config_model:log'), value: 'channel_log' },
+      { label: t('config_model:monitoring'), value: 'account_model' }
+    ],
+    [t]
+  );
+
+  const handleBeforeTabChange = useCallback(
+    (targetTab: ModelTabType, options?: { silent?: boolean }) => {
+      if (targetTab === 'active_model') return true;
+
+      if (!canManageModel) {
+        if (!options?.silent) {
+          toast({
+            status: 'warning',
+            title: t('common:error_un_permission')
+          });
+        }
+        return false;
+      }
+      return true;
+    },
+    [canManageModel, t, toast]
+  );
 
   useEffect(() => {
     if (!initd || feConfigs.isPlus) return;
@@ -37,10 +80,46 @@ const ModelProvider = () => {
             {t('common:model.provider_title')}
           </Box>
         </Flex>
-        <Box flex={['0 0 auto', '1 0 0']} minH={0} py={6} pt={[4, 6]}>
-          <ModelTable permissionConfig contentPx={4} />
-        </Box>
+        <Flex
+          flex={'1 0 0'}
+          minH={['calc(100dvh - 78px)', 0]}
+          flexDirection={'column'}
+          gap={4}
+          py={6}
+          pt={[4, 6]}
+        >
+          {feConfigs.enable_team_model ? (
+            <ModelManagementContainer
+              channelType="team"
+              scrollPositionKey="account-model-tabs"
+              defaultTab="active_model"
+              customTabs={modelTabList}
+              onBeforeTabChange={handleBeforeTabChange}
+              renderCustomTab={(tab, TabNode) =>
+                tab === 'active_model' ? (
+                  <ModelTable
+                    permissionConfig
+                    contentPx={6}
+                    Tab={TabNode}
+                    onReplaceInvalidModels={
+                      isTeamOwner ? () => setReplaceModalOpen(true) : undefined
+                    }
+                  />
+                ) : null
+              }
+            />
+          ) : (
+            <ModelTable
+              permissionConfig
+              contentPx={6}
+              onReplaceInvalidModels={isTeamOwner ? () => setReplaceModalOpen(true) : undefined}
+            />
+          )}
+        </Flex>
       </Flex>
+      {isTeamOwner && replaceModalOpen && (
+        <ReplaceInvalidModelsModal onClose={() => setReplaceModalOpen(false)} />
+      )}
     </AccountContainer>
   );
 };

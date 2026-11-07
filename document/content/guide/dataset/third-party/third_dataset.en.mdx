@@ -10,7 +10,7 @@ There are many document libraries available online, such as Lark, Yuque, and oth
 
 ## Unified API Specification
 
-To provide a unified interface for different document libraries, FastGPT defines a standard API specification with 4 endpoints. See the [API File Library endpoints](./api_dataset.en.mdx).
+To provide a unified interface for different document libraries, FastGPT defines a standard API specification with 4 endpoints. See the [API File Library endpoints](/en/guide/dataset/third-party/api_dataset).
 
 All built-in document libraries are extensions of the standard API File Library. Refer to the code in `FastGPT/packages/service/core/dataset/apiDataset/yuqueDataset/api.ts` to build extensions for other document libraries. You need to implement 4 endpoints:
 
@@ -21,11 +21,11 @@ All built-in document libraries are extensions of the standard API File Library.
 
 ## Building a Third-Party File Library
 
-For this walkthrough, we'll use adding a Lark Knowledge Dataset (FeishuKnowledgeDataset) as an example.
+This walkthrough uses a Lark Knowledge Dataset (`FeishuKnowledgeDataset`) as the example integration. The screenshots show earlier source layouts and authentication variants. Match the server type, form fields, and request adapter to the version you are extending; the steps below identify the code responsibilities to update.
 
 ### 1. Add Third-Party Document Library Parameters
 
-First, go to `FastGPT\packages\global\core\dataset\apiDataset.d.ts` in the FastGPT project and add the third-party document library server type. Design the fields based on your needs. For example, the Yuque Dataset requires `userId` and `token` for authentication.
+First, go to `FastGPT/packages/global/core/dataset/apiDataset/type.ts` in the FastGPT project and add the third-party document library server type. Design the fields based on your needs. For example, the Yuque Dataset requires `userId` and `token` for authentication.
 
 ```ts
 export type YuqueServer = {
@@ -37,11 +37,13 @@ export type YuqueServer = {
 
 <Alert icon="🤖" context="success">
 
-If the document library supports a `root directory` selection feature, add a `basePath` field. [See the root directory feature](./third_dataset.en.mdx#adding-the-configuration-form)
+If the document library supports a `root directory` selection feature, add a `basePath` field. [See the root directory feature](/en/guide/dataset/third-party/third_dataset#adding-the-configuration-form)
 
 </Alert>
 
-![](/imgs/thirddataset-1.png)
+Add the new server configuration as an optional property on `ApiDatasetServerType`, alongside entries such as `yuqueServer?: YuqueServer`. The Lark example uses `feishuKnowledgeServer?: FeishuKnowledgeServer`.
+
+![Define the server type and add it to ApiDatasetServerType](/imgs/thirddataset-1.png)
 
 ### 2. Create the Hook File
 
@@ -57,31 +59,31 @@ Each third-party document library uses a Hook pattern to maintain a set of API e
 
 ### 3. Add the Dataset Type
 
-In `FastGPT\packages\global\core\dataset\type.d.ts`, import your new Dataset type.
+In `FastGPT/packages/global/core/dataset/type.ts`, import your new Dataset type.
 
-![](/imgs/thirddataset-2.png)
+![Import the new Dataset server type](/imgs/thirddataset-2.png)
 
 ### 4. Add Dataset Data Retrieval
 
-In `FastGPT\packages\global\core\dataset\apiDataset\utils.ts`, add the following content.
+In `FastGPT\packages\global\core\dataset\apiDataset\utils.ts`, extend `filterApiDatasetServerPublicData`: read your new server property from `apiDatasetServer` and add its public representation to the returned object. Follow the existing handling of credentials when preparing data for the client.
 
-![](/imgs/thirddataset-3.png)
+![Add public configuration filtering](/imgs/thirddataset-3.png)
 
 ### 5. Add Dataset Invocation Method
 
-In `FastGPT\packages\service\core\dataset\apiDataset\index.ts`, add the following content.
+In `FastGPT\packages\service\core\dataset\apiDataset\index.ts`, import the new request adapter and select it inside `getApiDatasetRequest` when the corresponding server configuration is present. In this example, the `feishuKnowledgeServer` branch returns `useFeishuKnowledgeDatasetRequest({ feishuKnowledgeServer })`.
 
-![](/imgs/thirddataset-4.png)
+![Select the new request adapter](/imgs/thirddataset-4.png)
 
 ## Adding the Frontend
 
-Add your i18n translations in `FastGPT\packages\web\i18n\zh-CN\dataset.json`, `FastGPT\packages\web\i18n\en\dataset.json`, and `FastGPT\packages\web\i18n\zh-Hant\dataset.json`. Using Chinese translations as an example, you'll generally need the following:
+Add your i18n translations in `FastGPT\packages\web\i18n\zh-CN\dataset.json`, `FastGPT\packages\web\i18n\en\dataset.json`, and `FastGPT\packages\web\i18n\zh-Hant\dataset.json`. Add a Dataset name, a configuration-form title, and a description. The example keys are `feishu_knowledge_dataset`, `feishu_knowledge_dataset_config`, and `feishu_knowledge_dataset_desc`; provide values for each locale.
 
-![](/imgs/thirddataset-5.png)
+![Add Dataset name, configuration title, and description translations](/imgs/thirddataset-5.png)
 
-In `FastGPT\packages\service\support\user/audit\util.ts`, add the following to support i18n translation retrieval.
+In `FastGPT\packages\service\support\user/audit\util.ts`, add a branch to `getI18nDatasetType` for the new `DatasetTypeEnum` value. Return its translated Dataset name so audit records display the correct label.
 
-![](/imgs/thirddataset-6.png)
+![Map Dataset types to translated audit labels](/imgs/thirddataset-6.png)
 
 <Alert icon="🤖" context="success">
 
@@ -91,46 +93,46 @@ The i18n translation content is stored in `FastGPT\packages\web\i18n\zh-Hant\acc
 
 Add your Dataset icons under `FastGPT\packages\web\components\common\Icon\icons\core\dataset\`. You need two icons: `Outline` (monochrome) and `Color` (colored), as shown below.
 
-![](/imgs/thirddataset-7.png)
+![Colored avatar and outline Dataset type icon](/imgs/thirddataset-7.png)
 
 In `FastGPT\packages\web\components\common\Icon\constants.ts`, register your icons. The `import` path points to where the icons are stored.
 
-![](/imgs/thirddataset-8.png)
+![Register the two Dataset icons](/imgs/thirddataset-8.png)
 
 In `FastGPT\packages\global\core\dataset\constants.ts`, add your Dataset type to both `DatasetTypeEnum` and `ApiDatasetTypeMap`.
 
 |                               |                                |
 | ----------------------------- | ------------------------------ |
-| ![](/imgs/thirddataset-9.png) | ![](/imgs/thirddataset-10.png) |
+| ![Extend DatasetTypeEnum](/imgs/thirddataset-9.png) | ![Configure the Dataset type display mapping](/imgs/thirddataset-10.png) |
 
 <Alert icon="🤖" context="success">
 
 The `courseUrl` field links to the relevant documentation — add it if available.
-Documentation goes in `FastGPT/document/content/guide/build/workflow/nodes/knowledge_base_search_merge.mdx`.
+Place your integration guide under `FastGPT/document/content/guide/dataset/third-party/` and use its public documentation route for `courseUrl`.
 The `label` value is the Dataset name you added via i18n translations.
 `icon` and `avatar` are the two icons you added earlier.
 
 </Alert>
 
-In `FastGPT\projects\app\src\pages\dataset\list\index.tsx`, add the following. This file handles the menu that appears when clicking the "New" button on the Dataset list page. Your Dataset must be added here to be creatable.
+In `FastGPT\projects\app\src\pages\dataset\list\index.tsx`, add the following. This file handles the menu that appears when clicking the "New" button on the Dataset list page. Add a menu item with its icon, translated label and description, and an `onClick` handler that calls `onSelectDatasetType` with the new `DatasetTypeEnum` value.
 
-![](/imgs/thirddataset-11.png)
+![Add the Dataset creation menu item](/imgs/thirddataset-11.png)
 
-In `FastGPT\projects\app\src\pageComponents\dataset\detail\Info\index.tsx`, add the following. This configuration corresponds to the UI shown below.
+In `FastGPT\projects\app\src\pageComponents\dataset\detail\Info\index.tsx`, render a configuration section for the new Dataset type. Show its translated configuration title and account or app identifier. Wire the edit icon to `setEditedAPIDataset`, passing the Dataset ID and its server configuration.
 
 |                                |                                |
 | ------------------------------ | ------------------------------ |
-| ![](/imgs/thirddataset-12.png) | ![](/imgs/thirddataset-13.png) |
+| ![Render the Dataset configuration and edit action](/imgs/thirddataset-12.png) | ![Configuration section on the Dataset detail page](/imgs/thirddataset-13.png) |
 
 ## Adding the Configuration Form
 
-In `FastGPT\projects\app\src\pageComponents\dataset\ApiDatasetForm.tsx`, add the following. This file handles the field input form when creating a Dataset.
+In `FastGPT\projects\app\src\pageComponents\dataset\ApiDatasetForm.tsx`, add the following. This file handles the field input form when creating a Dataset. Import the new server type, add it to the form data type, and render its credential fields when the corresponding Dataset type is selected. Register each required field with validation. The pictured form uses App ID and App Secret; token-based adapters should expose the token fields defined by their server type.
 
 |                                |                                |                                |
 | ------------------------------ | ------------------------------ | ------------------------------ |
-| ![](/imgs/thirddataset-14.png) | ![](/imgs/thirddataset-15.png) | ![](/imgs/thirddataset-16.png) |
+| ![Import the server type into the configuration form](/imgs/thirddataset-14.png) | ![Register required credential inputs](/imgs/thirddataset-15.png) | ![Dataset creation form with credentials and root directory selection](/imgs/thirddataset-16.png) |
 
-The two components added in the code render the root directory selector, corresponding to the `getFileDetail` API method. If your Dataset doesn't support this, you can omit them.
+For adapters with root directory support, include `renderBaseUrlSelector()` and `renderDirectoryModal()` to display the current path and folder picker. Directory details come from the adapter's `getFileDetail` implementation. The user clicks **Select**, chooses a folder, and clicks **Confirm**; the selected path then appears in the form.
 
 ```
 {renderBaseUrlSelector()} // Renders the `Base URL` field
@@ -139,27 +141,27 @@ The two components added in the code render the root directory selector, corresp
 
 |                                |                                |
 | ------------------------------ | ------------------------------ |
-| ![](/imgs/thirddataset-17.png) | ![](/imgs/thirddataset-18.png) |
+| ![Select and confirm a root directory](/imgs/thirddataset-17.png) | ![Selected root path displayed in the creation form](/imgs/thirddataset-18.png) |
 
 If the Dataset needs root directory support, also add the following in the `ApiDatasetForm` file.
 
 ### 1. Parse the Dataset Type
 
-Parse your Dataset type from `apiDatasetServer`, as shown:
+Watch the form's `apiDatasetServer` value, then read your adapter configuration from it. For this example, use `apiDatasetServer?.feishuKnowledgeServer`.
 
-![](/imgs/thirddataset-19.png)
+![Read adapter configuration from form state](/imgs/thirddataset-19.png)
 
 ### 2. Add Root Directory Selection Logic and `parentId` Assignment
 
-Add root directory selection logic to ensure the user has filled in all required fields for the API methods, such as the Token.
+Include your adapter's `basePath` in the `parentId` calculation. Add a case to `canSelectBaseUrl` that enables folder selection once the required credentials are present, and include those fields in the memoization dependencies. The token-based Lark example checks `feishuKnowledgeServer?.user_access_token`.
 
-![](/imgs/thirddataset-20.png)
+![Enable root selection after credential validation](/imgs/thirddataset-20.png)
 
 ### 3. Add Field Validation and Assignment Logic
 
-Verify that all required fields are present before calling the API, and assign the root directory value to the corresponding field after selection.
+Before loading a path for a new Dataset, validate the required credentials again. Pass `datasetId`, `parentId`, and `apiDatasetServer` to `getApiDatasetPaths`. In `onSelectBaseUrl`, normalize the root selection to an empty string and save the selected value to the adapter's `basePath` field. The example uses `setValue('apiDatasetServer.feishuKnowledgeServer.basePath', value)`.
 
-![](/imgs/thirddataset-21.png)
+![Validate path requests and save the selected basePath](/imgs/thirddataset-21.png)
 
 ## Tips
 

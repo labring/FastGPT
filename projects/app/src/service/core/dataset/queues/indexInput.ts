@@ -1,13 +1,13 @@
-import { getModelHandle } from '@fastgpt/service/core/ai/model';
-import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
+import { isModelConfigError } from '@fastgpt/global/common/error/model';
+import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
+import { isDatasetDataSystemIndexType } from '@fastgpt/global/core/dataset/data/utils';
 import type {
   DatasetDataSchemaType,
   DatasetSchemaType,
   DatasetTrainingSchemaType
 } from '@fastgpt/global/core/dataset/type';
-import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
-import { isDatasetDataSystemIndexType } from '@fastgpt/global/core/dataset/data/utils';
-import { isModelConfigError } from '@fastgpt/global/common/error/model';
+import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/catalog/service';
+import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
 
 type PopulateType = {
   dataset: Pick<DatasetSchemaType, 'vectorModelId' | 'vectorModel' | 'vlmModelId' | 'vlmModel'>;
@@ -43,11 +43,11 @@ export const getIndexTrainingBaseIndexes = async (trainingData: TrainingDataType
 
   let supportVlm = false;
   if (trainingData.collection.imageIndex) {
-    const modelHandle = await getModelHandle();
+    const modelHandle = await getTeamModelHandle({ teamId: String(trainingData.teamId) });
     try {
-      supportVlm = !!modelHandle.getVlmModelData(
+      supportVlm = !!modelHandle.getModelData(
         getDatasetModelReference(trainingData.dataset, 'vlm'),
-        { optional: true }
+        { type: 'llm', vision: true, optional: true }
       );
     } catch (error) {
       // 视觉增强可以被跳过；配置失效时移除其旧描述索引，不能阻塞普通文本向量化。

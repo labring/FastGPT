@@ -8,7 +8,7 @@ import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { MongoDatasetSynonym } from '@fastgpt/service/core/dataset/synonym/schema';
-import { isDatasetSynonymEnabled } from '@fastgpt/service/core/dataset/synonym/entity';
+import { serviceEnv } from '@fastgpt/service/env';
 
 type SynonymRebuildContext = Pick<
   DatasetTrainingSchemaType,
@@ -24,7 +24,7 @@ export const enqueueNextDatasetSynonymRebuildTask = async (
   context: SynonymRebuildContext,
   session?: ClientSession
 ) => {
-  if (!isDatasetSynonymEnabled()) return false;
+  if (!serviceEnv.DATASET_SYNONYM_ENABLED) return false;
   const enqueue = async (session: ClientSession) => {
     const config = await MongoDatasetSynonym.findOne({
       teamId: context.teamId,

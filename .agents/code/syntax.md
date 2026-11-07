@@ -90,6 +90,31 @@ const service2 = (props: {id:string; service1: typeof service1 }) => {
 
 ## 代码风格
 
+### 使用严格相等比较
+
+所有相等和不等比较必须使用 `===` 和 `!==`，禁止使用 `==` 或 `!=`，空值判断也不例外，避免依赖隐式类型转换。
+
+- 同时判断 `null` 和 `undefined` 时，显式写成 `value === null || value === undefined`。
+- 同时排除 `null` 和 `undefined` 时，显式写成 `value !== null && value !== undefined`。
+- `0`、`false` 和 `''` 是有效业务值时，不要用 `!value` 代替空值判断；取默认值时使用 `??`。
+
+```typescript
+// ❌ 不好的实践：宽松比较隐式同时匹配 null 和 undefined
+if (maxInputTokens == null) {
+  return tier;
+}
+
+// ✅ 好的实践：显式覆盖两种空值，并保留 0 上限的语义
+if (maxInputTokens === null || maxInputTokens === undefined) {
+  return tier;
+}
+
+// ✅ 好的实践：严格排除两种空值
+if (maxInputTokens !== null && maxInputTokens !== undefined) {
+  return currentInputTokens <= maxInputTokens;
+}
+```
+
 ### 按处理步骤分段，使用空行和注释说明流程
 
 函数包含多个处理步骤时，按业务职责组织代码，避免把读取、转换、差量计算、写入和清理等操作连续堆在一起。

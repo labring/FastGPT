@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { Schema } from '@fastgpt/service/common/mongo';
 import { defineIndex, getDeprecatedIndexes } from '@fastgpt/service/common/mongo/schemaIndexes';
+import { MongoApp } from '@fastgpt/service/core/app/schema';
+import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 
 describe('defineIndex', () => {
   it('returns an empty list for a Schema without declarations', () => {
@@ -61,6 +63,16 @@ describe('defineIndex', () => {
         }
       }
     ]);
+  });
+
+  it('declares partial folder ancestor indexes without implicit array defaults', () => {
+    for (const schema of [MongoApp.schema, MongoDataset.schema]) {
+      expect(schema.indexes()).toContainEqual([
+        { teamId: 1, ancestorIds: 1 },
+        { partialFilterExpression: { ancestorIds: { $exists: true } }, background: true }
+      ]);
+      expect(schema.path('ancestorIds')?.options.default).toBeUndefined();
+    }
   });
 
   it('rejects duplicate index names within one Schema', () => {

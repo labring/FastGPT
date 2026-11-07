@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import { customAlphabet } from 'nanoid';
 import path from 'path';
+import { normalizeDocumentFileExtension } from '../file/utils';
 
 /* check string is a web link */
 export function strIsLink(str?: string) {
@@ -32,12 +33,13 @@ export const simpleText = (text = '') => {
   return text;
 };
 
-/* replace sensitive text */
+/** 隐藏错误文本中的 URL 地址和 ns- 标识，保留 JSON 字段及转义边界。 */
 export const replaceSensitiveText = (text: string) => {
-  // 1. http link
-  text = text.replace(/(?<=https?:\/\/)[^\s]+/g, 'xxx');
-  // 2. nx-xxx 全部替换成xxx
-  text = text.replace(/ns-[\w-]+/g, 'xxx');
+  // 1. URL 脱敏保留 JSON 的引号和转义边界，避免吞掉同一行后续的错误字段。
+  text = text.replace(/(?<=https?:\/\/)[^\s"\\]+/g, 'xxx');
+  // 2. nx-xxx 全部替换成xxx。只替换以 ns- 开头的完整片段，
+  // 不能把 tokens-per-minute、dns-server 这类普通单词里的 ns- 也换掉。
+  text = text.replace(/(?<![\w-])ns-[\w-]+/g, 'xxx');
 
   return text;
 };
@@ -141,6 +143,13 @@ export const sliceJsonStr = (str: string) => {
   return str;
 };
 
+/**
+ * 保留字符串开头 start 个和结尾 end 个 UTF-16 code unit，中间替换成省略提示。
+ *
+ * 截断点必须落在码点边界上：`😀` 这类非 BMP 字符由代理对组成，用 `str.slice`
+ * 直接按 code unit 切会留下半个字符（孤立代理项），渲染和送模型时都会变成
+ * U+FFFD 乱码。切到代理对中间时放弃那半个字符，宁可少留一个也不会产出坏字符。
+ */
 export const sliceStrStartEnd = (str: string | null = '', start: number, end: number) => {
   if (!str) return '';
 
@@ -148,21 +157,43 @@ export const sliceStrStartEnd = (str: string | null = '', start: number, end: nu
 
   if (!overSize) return str;
 
-  const startContent = str.slice(0, start);
-  const endContent = overSize ? str.slice(-end) : '';
+  const isHighSurrogate = (code: number) => code >= 0xd800 && code <= 0xdbff;
+  const isLowSurrogate = (code: number) => code >= 0xdc00 && code <= 0xdfff;
 
-  return `${startContent}${overSize ? `\n\n...[hide ${str.length - start - end} chars]...\n\n` : ''}${endContent}`;
+  // 头部结尾若是代理对的前半部分，说明它和后半部分被切开了，一起丢掉
+  const headEnd =
+    start > 0 && start < str.length && isHighSurrogate(str.charCodeAt(start - 1))
+      ? start - 1
+      : start;
+
+  // 尾部开头若是代理对的后半部分，前半部分已被切掉，这个残尾也要丢掉。
+  // 用正的起始下标切片，end 为 0 时不会退化成 slice(-0) 把整串拼回来。
+  const tailStart = str.length - end;
+  const safeTailStart =
+    tailStart > 0 && tailStart < str.length && isLowSurrogate(str.charCodeAt(tailStart))
+      ? tailStart + 1
+      : tailStart;
+  const endContent = safeTailStart >= str.length ? '' : str.slice(safeTailStart);
+
+  return `${str.slice(0, headEnd)}\n\n...[hide ${str.length - start - end} chars]...\n\n${endContent}`;
 };
 
-/*
-  Parse file extension from url
-  Test：
-  1. https://xxx.com/file.pdf?token=123
-    => pdf
-  2. https://xxx.com/file.pdf
-    => pdf
-*/
+/**
+ * 从已解码的文件名或本地路径中提取规范化的小写扩展名（不含点号），htm/markdown 统一为 html/md。
+ * 适用于纯文件名（如 originFilename、Content-Disposition filename），不剥离 ? 和 #。
+ */
+export const parseFilenameExtension = (filename = '') => {
+  if (!filename) return '';
+  const ext = path.extname(filename);
+  return ext.startsWith('.') ? normalizeDocumentFileExtension(ext) : '';
+};
+
+/**
+ * 优先从查询参数中的文件名提取规范化的小写扩展名，无后缀或 URL 解析失败时回退到原始链接路径。
+ */
 export const parseFileExtensionFromUrl = (url = '') => {
+  if (!url) return '';
+
   // Prefer explicit filename in query params for proxy links:
   // e.g. /api/system/file/d/<alias>, or a legacy proxy URL carrying filename in query.
   try {
@@ -170,9 +201,10 @@ export const parseFileExtensionFromUrl = (url = '') => {
     const queryFilename =
       parsedUrl.searchParams.get('filename') || parsedUrl.searchParams.get('name');
     if (queryFilename) {
-      const extFromQuery = path.extname(decodeURIComponent(queryFilename));
-      if (extFromQuery.startsWith('.')) {
-        return extFromQuery.slice(1).toLowerCase();
+      // URLSearchParams 已完成解码，保留文件名中的字面量 %xx。
+      const extFromQuery = parseFilenameExtension(queryFilename);
+      if (extFromQuery) {
+        return extFromQuery;
       }
     }
   } catch {
@@ -182,12 +214,11 @@ export const parseFileExtensionFromUrl = (url = '') => {
 
   // Remove query params and hash first
   const urlWithoutQuery = url.split('?')[0].split('#')[0];
-  const extension = path.extname(urlWithoutQuery);
-  // path.extname returns '.ext' or ''
-  if (extension.startsWith('.')) {
-    return extension.slice(1).toLowerCase();
+  try {
+    return parseFilenameExtension(decodeURIComponent(urlWithoutQuery));
+  } catch {
+    return parseFilenameExtension(urlWithoutQuery);
   }
-  return '';
 };
 
 /**

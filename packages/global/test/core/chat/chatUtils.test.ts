@@ -492,6 +492,12 @@ describe('getChatSourceByPublishChannel', () => {
     expect(getChatSourceByPublishChannel(PublishChannelEnum.wecom)).toBe(ChatSourceEnum.wecom);
   });
 
+  it('should map wecom websocket channel to the existing wecom source', () => {
+    expect(getChatSourceByPublishChannel(PublishChannelEnum.wecomWebsocket)).toBe(
+      ChatSourceEnum.wecom
+    );
+  });
+
   it('should map officialAccount channel to official_account source', () => {
     expect(getChatSourceByPublishChannel(PublishChannelEnum.officialAccount)).toBe(
       ChatSourceEnum.official_account
@@ -634,56 +640,68 @@ describe('getFlatAppResponses', () => {
 });
 
 describe('checkInteractiveResponseStatus', () => {
-  it('should keep legacy agentPlanAskQuery as a query', () => {
-    const result = checkInteractiveResponseStatus({
-      interactive: {
-        type: 'agentPlanAskQuery',
-        askId: 'call_ask',
-        params: {
-          content: 'What do you want?',
-          options: ['Use repo', 'Use docs', 'Use defaults']
-        }
-      },
-      input: 'any input'
-    });
+  it('creates a new message round for workflow preview decisions, including nested previews', () => {
+    const preview = {
+      type: 'workflowBuilderPreview' as const,
 
-    expect(result).toBe('query');
-  });
-
-  it('should return query for agentAsk by default and submit when configured', () => {
-    const interactive = {
-      type: 'agentAsk' as const,
-      askId: 'call_ask',
+      entryNodeIds: [],
+      memoryEdges: [],
+      nodeOutputs: [],
       params: {
-        description: 'Need input',
-        questions: [
-          {
-            question: 'Need input?',
-            options: [
-              { summary: 'A', value: 'A' },
-              { summary: 'B', value: 'B' }
-            ],
-            answer: ''
-          }
-        ]
+        toolCallId: 'preview-1',
+        arguments: JSON.stringify({
+          title: 'Confirm workflow?',
+          mermaid: 'flowchart LR\n A --> B',
+          sections: [{ title: 'Goal', content: 'Build the workflow' }]
+        })
       }
     };
-    expect(
-      checkInteractiveResponseStatus({
-        interactive,
-        input: '{"answers":["A"]}'
-      })
-    ).toBe('query');
+    for (const interactive of [
+      preview,
+      {
+        type: 'childrenInteractive' as const,
+        entryNodeIds: [],
+        memoryEdges: [],
+        nodeOutputs: [],
+        params: { childrenResponse: preview }
+      }
+    ]) {
+      expect(checkInteractiveResponseStatus({ interactive, input: 'Confirm' })).toBe('query');
+    }
+  });
 
-    expect(
-      checkInteractiveResponseStatus({
-        interactive: {
-          ...interactive,
-          responseMode: 'submit'
-        },
-        input: '{"answers":["A"]}'
-      })
-    ).toBe('submit');
+  it('should always create a query round for agentAsk answers', () => {
+    const interactive = {
+      type: 'agentAsk' as const,
+
+      entryNodeIds: [],
+      memoryEdges: [],
+      nodeOutputs: [],
+      params: {
+        toolCallId: 'call_ask',
+        arguments: JSON.stringify({
+          reason: 'Need input',
+          blockerType: 'user_choice',
+          questions: [
+            {
+              question: 'Need input?',
+              options: [
+                { summary: 'A', value: 'A' },
+                { summary: 'B', value: 'B' }
+              ]
+            }
+          ]
+        })
+      }
+    };
+    for (const answer of ['A', 'custom answer', '']) {
+      expect(
+        checkInteractiveResponseStatus({
+          interactive,
+          input: JSON.stringify({ answers: [answer] })
+        })
+      ).toBe('query');
+    }
   });
 
   it('should keep a nested legacy agent ask as a query', () => {
@@ -691,19 +709,30 @@ describe('checkInteractiveResponseStatus', () => {
       interactive: {
         type: 'toolChildrenInteractive',
         params: {
-          toolParams: {
-            toolCallId: 'tool_1'
-          },
+          toolCallId: 'tool_1',
           childrenResponse: {
             type: 'childrenInteractive',
             params: {
               childrenId: 'child_1',
               childrenResponse: {
-                type: 'agentPlanAskQuery',
-                askId: 'ask_1',
+                type: 'agentAsk',
+
                 params: {
-                  content: 'Choose one',
-                  options: ['A', 'B', 'C']
+                  toolCallId: 'ask_1',
+                  arguments: JSON.stringify({
+                    reason: '',
+                    blockerType: 'user_choice',
+                    questions: [
+                      {
+                        question: 'Choose one',
+                        options: [
+                          { summary: 'A', value: 'A' },
+                          { summary: 'B', value: 'B' },
+                          { summary: 'C', value: 'C' }
+                        ]
+                      }
+                    ]
+                  })
                 }
               }
             }
@@ -721,9 +750,7 @@ describe('checkInteractiveResponseStatus', () => {
       interactive: {
         type: 'toolChildrenInteractive',
         params: {
-          toolParams: {
-            toolCallId: 'tool_1'
-          },
+          toolCallId: 'tool_1',
           childrenResponse: {
             type: 'userSelect',
             params: {
@@ -837,6 +864,19 @@ describe('removeAIResponseCite', () => {
 });
 
 describe('isToolExecutionResponse', () => {
+  it.each([false, true])('prefers the recorded execution context isToolCall=%s', (isToolCall) => {
+    expect(
+      isToolExecutionResponse({
+        id: 'mcp-response',
+        nodeId: 'mcp-node',
+        moduleName: 'MCP',
+        moduleType: FlowNodeTypeEnum.tool,
+        toolRes: { error: 'failed' },
+        isToolCall
+      })
+    ).toBe(isToolCall);
+  });
+
   it('does not treat child workflow nodes as tools solely based on parentId', () => {
     expect(
       isToolExecutionResponse({
@@ -849,7 +889,7 @@ describe('isToolExecutionResponse', () => {
     ).toBe(false);
   });
 
-  it('returns true when moduleType is tool, toolSet or toolCall', () => {
+  it('returns true when moduleType is tool or toolSet', () => {
     expect(
       isToolExecutionResponse({
         id: 'tool-1',
@@ -865,15 +905,6 @@ describe('isToolExecutionResponse', () => {
         nodeId: 'tool-set-node',
         moduleName: 'Tool Set',
         moduleType: FlowNodeTypeEnum.toolSet
-      })
-    ).toBe(true);
-
-    expect(
-      isToolExecutionResponse({
-        id: 'tool-call-1',
-        nodeId: 'tool-call-node',
-        moduleName: 'Tool Call',
-        moduleType: FlowNodeTypeEnum.toolCall
       })
     ).toBe(true);
   });
@@ -929,6 +960,15 @@ describe('isToolExecutionResponse', () => {
         nodeId: 'agent-node',
         moduleName: '主模型',
         moduleType: FlowNodeTypeEnum.agent
+      })
+    ).toBe(false);
+
+    expect(
+      isToolExecutionResponse({
+        id: 'tool-call-1',
+        nodeId: 'tool-call-node',
+        moduleName: 'Tool Call',
+        moduleType: FlowNodeTypeEnum.toolCall
       })
     ).toBe(false);
 
@@ -993,6 +1033,17 @@ describe('findFailedResponseNode', () => {
     };
 
     expect(findFailedResponseNode([rootNode])).toEqual(rootNode);
+  });
+
+  it('returns root toolCall node error when toolCall failed', () => {
+    const toolCallNode: ChatHistoryItemResType = {
+      id: 'root-tool-call',
+      moduleName: '工具调用',
+      moduleType: FlowNodeTypeEnum.toolCall,
+      errorText: 'Sandbox capacity exceeded'
+    };
+
+    expect(findFailedResponseNode([toolCallNode])).toEqual(toolCallNode);
   });
 
   it('prefers root node error over child node error', () => {

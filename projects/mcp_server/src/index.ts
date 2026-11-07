@@ -79,8 +79,13 @@ app.get('/:key/sse', async (req, res) => {
       };
     } catch (error) {
       return {
+        content: [
+          {
+            type: 'text',
+            text: getErrText(error)
+          }
+        ],
         message: getErrText(error),
-        content: [],
         isError: true
       };
     }
@@ -94,12 +99,32 @@ app.get('/:key/sse', async (req, res) => {
 });
 
 app.post('/:key/messages', (req, res) => {
-  const { sessionId } = req.query as { sessionId: string };
+  const { sessionId } = req.query as { sessionId?: string };
 
-  const transport = transportMap[sessionId];
-  if (transport) {
-    transport.handlePostMessage(req, res);
+  const transport = sessionId ? transportMap[sessionId] : undefined;
+  if (!transport) {
+    // 进程重启、SSE 断开或会话过期后，内存中的 transport 可能已不存在。
+    // 按 MCP 传输层语义明确返回 404，避免客户端请求悬挂到自身超时。
+    res.status(404).json({
+      jsonrpc: '2.0',
+      error: { code: -32001, message: 'Session not found' },
+      id: null
+    });
+    return;
   }
+
+  // SDK 在 SSE 响应已关闭时会先写 500 再抛错；必须接住 rejection，
+  // 否则未处理的 Promise rejection 可能终止进程并影响其它会话。
+  void transport.handlePostMessage(req, res).catch((error) => {
+    logger.error(`Failed to handle MCP message for session ${sessionId}`, { error });
+    if (!res.headersSent) {
+      res.status(500).json({
+        jsonrpc: '2.0',
+        error: { code: -32603, message: 'Internal error' },
+        id: null
+      });
+    }
+  });
 });
 
 async function bootstrap() {

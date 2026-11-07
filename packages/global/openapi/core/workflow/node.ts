@@ -58,12 +58,7 @@ export const OpenAPIFlowNodeInputItemTypeSchema = FlowNodeInputItemTypeSchema.om
     description: '工作流节点输入配置'
   });
 
-// `invalidCondition` in FlowNodeOutputItemTypeSchema is a Zod function schema used only
-// by the editor to validate outputs; function schemas cannot be represented in JSON
-// Schema, so we strip it before exposing via OpenAPI.
-export const OpenAPIFlowNodeOutputItemTypeSchema = FlowNodeOutputItemTypeSchema.omit({
-  invalidCondition: true
-}).meta({
+export const OpenAPIFlowNodeOutputItemTypeSchema = FlowNodeOutputItemTypeSchema.meta({
   description: '工作流节点输出配置'
 });
 
@@ -129,10 +124,6 @@ export const OpenAPIStoreNodeItemTypeSchema = StoreNodeItemTypeSchema.omit({
     }),
     intro: z.string().optional().meta({
       description: '节点简介'
-    }),
-    toolDescription: StoreNodeItemTypeSchema.shape.toolDescription.meta({
-      description: '已废弃：节点作为工具被调用时的能力说明',
-      deprecated: true
     }),
     showStatus: BoolSchema.optional().meta({
       description: '对话运行时是否展示该节点执行状态'

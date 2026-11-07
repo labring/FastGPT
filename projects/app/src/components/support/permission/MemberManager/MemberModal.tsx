@@ -57,6 +57,7 @@ function MemberModal({
     paths,
     onClickOrg,
     members: orgMembers,
+    isLoading: isLoadingOrgMembers,
     MemberScrollData: OrgMemberScrollData,
     onPathClick,
     orgs,
@@ -65,8 +66,12 @@ function MemberModal({
     debouncedSearchKey
   } = useOrg({ withPermission: false });
 
-  const { data: members, ScrollData: TeamMemberScrollData } = useScrollPagination(getTeamMembers, {
-    pageSize: 15,
+  const {
+    data: members,
+    ScrollData: TeamMemberScrollData,
+    isInitialLoading: isLoadingTeamMembers
+  } = useScrollPagination(getTeamMembers, {
+    pageSize: 20,
     params: {
       withPermission: true,
       withOrgs: true,
@@ -202,7 +207,11 @@ function MemberModal({
         title={t('user:team.manage_collaborators')}
         size={'lg'}
         isCentered
-        isLoading={loadingGroupsAndOrgs}
+        isLoading={
+          loadingGroupsAndOrgs ||
+          (!searchKey && filterClass === 'member' && isLoadingTeamMembers) ||
+          (!searchKey && filterClass === 'org' && isLoadingOrgMembers)
+        }
         footer={
           <>
             <Button variant={'whiteBase'} onClick={onClose}>

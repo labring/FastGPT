@@ -78,6 +78,17 @@ describe('getFileIcon', () => {
     expect(getFileIcon('REPORT.PDF')).toBe('file/fill/pdf');
   });
 
+  it.each([
+    ['file.oga', 'file/fill/audio'],
+    ['file.adts', 'file/fill/audio'],
+    ['file.qt', 'file/fill/video'],
+    ['file.avif', 'image'],
+    ['file.heic', 'image'],
+    ['file.heif', 'image']
+  ])('识别 MIME 库返回的媒体后缀：%s', (filename, icon) => {
+    expect(getFileIcon(filename)).toBe(icon);
+  });
+
   it('should return default icon when no match', () => {
     expect(getFileIcon('archive.zip')).toBe('file/fill/file');
   });

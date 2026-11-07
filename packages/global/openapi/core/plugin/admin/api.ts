@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { I18nStringSchema } from '../../../../common/i18n/type';
+import { PluginTextSchema } from '../../../../core/plugin/type';
 
 /* ============================================================================
  * API: 上传系统插件包
@@ -23,15 +24,15 @@ export const UploadPkgPluginResponseItemSchema = z.object({
   etag: z.string(),
   type: z.string(),
   author: z.string().optional(),
-  name: I18nStringSchema,
+  name: PluginTextSchema,
   icon: z.string(),
   tutorialUrl: z.string().url().optional(),
   readmeUrl: z.string().url().optional(),
   repoUrl: z.string().url().optional(),
   permission: z.array(z.string()).optional(),
-  description: I18nStringSchema.optional(),
+  description: PluginTextSchema.optional(),
   tags: z.array(z.string()).optional(),
-  versionDescription: I18nStringSchema.optional()
+  versionDescription: PluginTextSchema.optional()
 });
 
 export const UploadPkgPluginFailureSchema = z.object({

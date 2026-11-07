@@ -1,4 +1,4 @@
-import AWS from '@aws-sdk/client-s3';
+import * as AWS from '@aws-sdk/client-s3';
 import type { IAwsS3CompatibleStorageOptions, IStorage } from '../interface';
 import type * as Storage from '../types';
 import { Upload } from '@aws-sdk/lib-storage';

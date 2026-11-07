@@ -16,7 +16,6 @@ import {
   ImportSkillResponseSchema,
   ListSkillVersionsBodySchema,
   ListSkillVersionsResponseSchema,
-  ListSkillsQuerySchema,
   ListSkillsV2QuerySchema,
   ListSkillsResponseSchema,
   SaveDeploySkillBodySchema,
@@ -43,34 +42,11 @@ import { SkillBatchPath } from './batch';
 
 export const SkillPath: OpenAPIPath = {
   ...SkillBatchPath,
-  '/core/ai/skill/list': {
-    post: {
-      summary: '获取技能列表',
-      description: '获取当前团队可见的系统技能或个人技能',
-      tags: [DevApiTagsMap.skillBasic],
-      requestBody: {
-        content: {
-          'application/json': {
-            schema: ListSkillsQuerySchema
-          }
-        }
-      },
-      responses: {
-        200: {
-          description: '成功返回技能列表',
-          content: {
-            'application/json': {
-              schema: ListSkillsResponseSchema
-            }
-          }
-        }
-      }
-    }
-  },
   '/core/ai/skill/listV2': {
     post: {
-      summary: '分页获取技能列表',
-      description: '分页获取当前团队可见的系统技能或个人技能',
+      summary: '获取技能列表 V2',
+      description:
+        '分页获取或按 skillIds 精确查询当前团队可见的系统技能或个人技能；提供 skillIds 时优先按 ID 查询，解析时过滤 parentId 和分页参数，保留公共筛选字段',
       tags: [DevApiTagsMap.skillBasic],
       requestBody: {
         content: {
@@ -81,7 +57,7 @@ export const SkillPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '成功返回分页技能列表',
+          description: '成功返回技能列表',
           content: {
             'application/json': {
               schema: ListSkillsResponseSchema

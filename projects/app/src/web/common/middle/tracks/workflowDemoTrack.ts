@@ -1,16 +1,10 @@
 import { nanoid } from 'nanoid';
 import { useEffect, useRef } from 'react';
 import { webPushTrack } from './utils';
+import type { ClientTrackEnum } from '@fastgpt/global/common/middle/tracks/constants';
+import type { PushTrackDataType } from '@fastgpt/global/openapi/common/other/api';
 
-export type WorkflowDemoTrackData = {
-  appId: string;
-  sessionId: string;
-  initNodeCount: number;
-  demoSessions: {
-    nodeCount: number;
-    duration: number;
-  }[];
-};
+type WorkflowDemoTrackData = PushTrackDataType<typeof ClientTrackEnum.workflowDemoMode>;
 
 const STORAGE_KEY = 'workflowDemoTrack';
 
@@ -86,7 +80,9 @@ export const workflowDemoTrack = { init, onDemoChange, report };
 
 export function useWorkflowDemoTrack(appId: string, nodeAmount: number, presentationMode: boolean) {
   const nodeAmountRef = useRef(nodeAmount);
-  nodeAmountRef.current = nodeAmount;
+  useEffect(() => {
+    nodeAmountRef.current = nodeAmount;
+  }, [nodeAmount]);
 
   // 埋点初始化：等 appId 和节点数据都就绪后，初始化一次埋点会话
   // appId 变化时先上报旧数据再重新初始化

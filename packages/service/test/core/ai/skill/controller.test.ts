@@ -1,3 +1,4 @@
+import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { describe, expect, it, beforeAll, afterAll, beforeEach } from 'vitest';
 import { Types } from '@fastgpt/service/common/mongo';
 import { MongoAgentSkills } from '@fastgpt/service/core/ai/skill/model/schema';
@@ -97,6 +98,34 @@ describe('AgentSkill Controller', () => {
       expect(skill).toBeDefined();
       expect(skill?.category).toEqual([]);
     });
+  });
+
+  it('rejects a leaf parent for both direct skill creation and package import', async () => {
+    const parentId = await createSkill({
+      name: 'leaf-parent',
+      category: [],
+      teamId: testTeamId,
+      tmbId: testTmbId
+    });
+    await expect(
+      createSkill({
+        name: 'invalid-child',
+        category: [],
+        parentId,
+        teamId: testTeamId,
+        tmbId: testTmbId
+      })
+    ).rejects.toBe(CommonErrEnum.invalidParams);
+    await expect(
+      importSkill({
+        skill: { name: 'invalid-import', description: '', category: [] },
+        parentId,
+        teamId: testTeamId,
+        tmbId: testTmbId,
+        packageStream: Readable.from('opaque')
+      })
+    ).rejects.toBe(CommonErrEnum.invalidParams);
+    expect(await MongoAgentSkills.countDocuments({ parentId })).toBe(0);
   });
 
   // ==================== Get Skill ====================

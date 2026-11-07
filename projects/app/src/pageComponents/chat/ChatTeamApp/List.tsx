@@ -34,10 +34,6 @@ const List = ({ appType }: { appType: AppTypeEnum | 'all' }) => {
     )
   );
   const handlePaneChange = useContextSelector(ChatPageContext, (v) => v.handlePaneChange);
-  const upsertRecentlyUsedAppPlaceholder = useContextSelector(
-    ChatPageContext,
-    (v) => v.upsertRecentlyUsedAppPlaceholder
-  );
 
   return (
     <>
@@ -93,11 +89,6 @@ const List = ({ appType }: { appType: AppTypeEnum | 'all' }) => {
                       }
                     });
                   } else {
-                    upsertRecentlyUsedAppPlaceholder({
-                      appId: app._id,
-                      name: app.name,
-                      avatar: app.avatar
-                    });
                     handlePaneChange(ChatSidebarPaneEnum.RECENTLY_USED_APPS, app._id);
                   }
                 }}

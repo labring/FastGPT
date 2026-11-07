@@ -96,7 +96,7 @@ function buildChatSourceQuery({ sourceType, sourceId }) {
 
 规则：
 
-- `appId` 和 `skillId` 必须且只能传一个。
+- 类型和 OpenAPI 提示 `appId`、`skillId` 二选一；运行时同时传入时优先使用 `skillId`，忽略 `appId` 及其 `sourceType`。
 - 只传 `appId`：转换为 `sourceType=app`、`sourceId=appId`。
 - 只传 `skillId`：转换为 `sourceType=skillEdit`、`sourceId=skillId`。
 - Zod transform 后的业务层不再保留顶层 `appId/skillId`。
@@ -111,7 +111,7 @@ function buildChatSourceQuery({ sourceType, sourceId }) {
 - Raw schema：不带 transform，对外描述 `appId/skillId`，用于 OpenAPI path 和前端请求类型。
 - Runtime schema：基于 raw schema transform，API route 的 `parseApiInput` 使用，输出 `sourceType/sourceId`。
 
-OpenAPI 只注册 raw schema。互斥约束由 raw schema 的 `superRefine` 和 API route 的 `parseApiInput` 在运行时保证。
+OpenAPI 只注册 raw schema，使用具名 union 保持类型和文档的三选一提示。支持外链的接口在运行时按 `outLinkAuthData > skillId > appId` 选择上下文，低优先级字段通过 `never().optional().catch(undefined)` 忽略，再由 runtime transform 去除。高优先级字段显式存在但格式错误或鉴权失败时仍报错，不回退到低优先级身份；允许不传上下文的接口也不能将这类错误降级为直接访问资源。API route 统一通过 `parseApiInput` 校验。
 
 ### 标准接口覆盖范围
 

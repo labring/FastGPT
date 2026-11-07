@@ -94,15 +94,19 @@ description: FastGPT 私有部署常见问题排查方式
 
 ### 修改了 vectorModels 但是没有生效
 
-1. 重启容器，确保模型配置已经加载（可以在日志或者新建知识库时候看到新模型）
-2. 记得刷新一次浏览器。
-3. 如果是已经创建的知识库，需要删除重建。向量模型是创建时候绑定的，不会动态更新。
+1. 在管理员的模型配置中启用新的向量模型，然后刷新页面。旧版本通过 `config.json` 的 `vectorModels` 配置模型时，修改文件后还需重启服务。
+2. 已有知识库不会自动切换模型。由知识库所有者进入该知识库的「配置」页，选择新的索引模型并确认重建索引，无需删除知识库。
+3. 如果知识库正在处理数据或重建索引，请等待任务结束后再切换。重建索引会调用所选模型，并按模型价格计费。
 
 ---
 
 ### 如何修改 root 密码
 
-修改环境变量中的 `DEFAULT_ROOT_PSW`，然后重启 FastGPT。
+- **Web 界面修改**：登录 `root` 后在右上角「个人信息」页面中的安全设置中修改。
+- **命令行快速重置（忘记密码）**：在服务器上执行 `docker compose exec fastgpt-app node /app/scripts/reset-root-password.cjs '新密码'`，无需重启即可重置生效。
+- **历史版本（v4.17.2 及更早）**：修改环境变量中的 `DEFAULT_ROOT_PSW`，然后重启 FastGPT。
+
+更多场景与详细说明请参考 [修改与重置 root 密码](/self-host/config/root-password)。
 
 ---
 
@@ -126,7 +130,7 @@ description: FastGPT 私有部署常见问题排查方式
 
 适用版本：4.16.0 及以后。从 4.16.0 起，沙箱镜像只用 `AGENT_SANDBOX_OPENSANDBOX_IMAGE` 这一个变量，并且必须配置 `AGENT_SANDBOX_PREVIEW_PROXY_URL`。用 4.15 或更早的 compose 模板搭配新版镜像，就会报这两个错。
 
-怎么做：按 [Docker Compose 部署](/self-host/deploy/docker) 使用一键脚本，或手动下载和镜像同一版本的模板（当前版本用 `main` 目录，没有 v4.16、v4.17 目录）。
+怎么做：按 [Docker Compose 部署](/self-host/deploy/docker) 使用一键脚本，或手动下载和镜像同一版本的模板（4.17.x 使用 `main` 目录，4.16.x 使用 `v4.16` 目录）。
 
 注意：在已经部署过的目录里重新运行一键脚本，会重新生成数据库密码和 `AES256_SECRET_KEY`，并覆盖 `docker-compose.yml`。请先备份原文件；要保留数据，就选择不自动生成密码（或设置 `FASTGPT_AUTO_GENERATE_CREDENTIALS=false`），并把原来的密码和密钥拷过去。
 
@@ -144,7 +148,7 @@ description: FastGPT 私有部署常见问题排查方式
 
 适用版本：已按 4.17.0 核实。浏览器上传文件用的地址取自 `FILE_DOMAIN`，没设置时取自 `FE_DOMAIN`。页面是 HTTPS、而这个地址是 `http://` 时，浏览器会把请求当作混合内容拦截，请求到不了服务端。
 
-怎么做：把对应配置改成可以访问的 https 地址（设置了 `FILE_DOMAIN` 就改它，否则改 `FE_DOMAIN`），然后重启。可以在浏览器控制台确认是否有 Mixed Content 报错。
+怎么做：把对应配置改成可以访问的 HTTPS 地址（设置了 `FILE_DOMAIN` 就改它，否则改 `FE_DOMAIN`），然后重启。可以在浏览器控制台确认是否有 Mixed Content 报错。
 
 ---
 
@@ -177,5 +181,38 @@ description: FastGPT 私有部署常见问题排查方式
 ### 调用对话接口时，怎么拿到模型的思考内容？
 
 适用版本：4.15.2 及以后。思考内容放在单独的 `reasoning_content` 字段里，和正文 `content` 分开：流式返回时，有思考增量的数据块，其 `choices[0].delta` 里带 `reasoning_content`；非流式返回时，普通文本回答的 `choices[0].message` 里带 `reasoning_content`。只有模型实际输出了思考内容、并且 FastGPT 能识别时才有这个字段：上游返回 `reasoning_content` 字段，或者在模型配置里打开思考支持后，正文里用 `<think></think>` 包起来。4.17.1 起，AI Proxy 的 OpenAI 类型渠道还可以把上游的 `reasoning` 字段映射成 `reasoning_content`。
+
+---
+
+### 如何把向量库从 Milvus 切换为 pgvector？
+
+从 Milvus 切换到 pgvector 后，原来存在 Milvus 里的向量不会自动迁移，需要重新生成；知识库、文件和文本分块不受影响。以下步骤适用于 4.16.2 及以后的版本。
+
+1. 参照官方模板，在 docker-compose 里增加 pgvector 服务，给 `fastgpt-app` 配置 `PG_URL`，去掉 `MILVUS_ADDRESS`，然后重启。表和索引会自动创建。如果还配置了 SeekDB 或 OceanBase，它们的优先级高于 pgvector，需要一并去掉。
+2. 进入每个知识库的「配置」页，把索引模型切换为另一个模型（不能选当前正在使用的），并确认重建索引。重建完成之前，检索只能找到已经重新生成向量的数据。如果新模型不支持图片，且知识库没有配置图片理解模型，该知识库的图片索引会被关闭。
+3. 所有知识库重建完成、搜索测试正常后，再停用旧的 Milvus。停用前先备份数据。
+
+---
+
+### 循环节点怎么把每一轮的结果汇总成数组？
+
+4.15.0 及以上版本新增的循环节点，自定义输出只保留最后一轮的值（旧的循环节点会自动汇总各轮结果）。要汇总每一轮的结果，可以在循环外声明一个数组类型的全局变量，在循环体里用「变量更新」节点往里追加。
+
+1. 在「变量更新」节点里选中这个数组变量，把赋值方式切换为「手动输入」，再选择「追加」。字符串数组的输入框里，用 `/` 可以插入本轮的结果。「变量引用」会用被引用的数组整体替换原值，没有追加选项。
+2. 对象数组的追加框是 JSON 输入框。要追加上游节点输出的对象，可以在循环体里加一个「代码运行」节点，把原数组和本轮的对象拼成新数组，再用「变量引用」更新这个变量。
+
+---
+
+### 沙箱启动报 Sandbox work directory is not writable: /workspace，但卷的权限是正确的怎么办？
+
+4.15.2 及以上版本使用 OpenSandbox 时，沙箱启动后会检查 `/workspace` 是否可写，不可写就报这个错并退出。卷里 `/workspace` 的属主和权限已经正确仍然报错时，可能是宿主机 Docker 默认的 seccomp 配置拦截了沙箱容器。
+
+用沙箱镜像执行下面的命令（`<卷名>` 是沙箱容器挂载到 `/workspace` 的卷，用 `docker inspect <沙箱容器名>` 查看）。先后输出 fail、ok，就是 seccomp 的原因：
+
+```bash
+for o in "" "--security-opt seccomp=unconfined"; do docker run --rm $o -v <卷名>:/workspace --entrypoint bash <沙箱镜像> -c '[ -w /workspace ] && echo ok || echo fail'; done
+```
+
+解决方法：在 compose 里 `opensandbox-config` 的 `[docker]` 下增加 `seccomp_profile = "unconfined"`，执行 `docker compose up -d --force-recreate fastgpt-opensandbox-server`，再到页面点「重试」。这会放宽沙箱容器的系统调用限制，确认是 seccomp 引起后再使用。
 
 ---

@@ -15,7 +15,7 @@ export type DispatchSubAppResponse = {
   assistantMessages?: ChatCompletionMessageParam[];
   usages?: ChatNodeUsageType[];
   nodeSummary?: NodeSummary;
-  /** 子工作流暂停时的交互快照，交回 agent-loop 形成 tool_child pause。 */
+  /** 子工作流暂停时的交互快照，由工作流工具适配层包装后交回 Loop 透传暂停。 */
   interactive?: WorkflowInteractiveResponseType;
   /**
    * 工具自身的运行详情。显式 totalPoints 表示当前响应自身费用；省略时由外层按 usages 计算。
@@ -28,12 +28,7 @@ export const SubAppRuntimeSchema = z.object({
   id: z.string(),
   name: z.string(),
   avatar: z.string().optional(),
-  toolDescription: z.string().optional().meta({
-    description: '已废弃：节点作为工具被调用时的能力说明',
-    deprecated: true
-  }),
   version: z.string().optional(),
-  dynamic: z.boolean().optional(),
   toolConfig: NodeToolConfigTypeSchema.optional(),
   inputs: z.custom<RuntimeNodeItemType['inputs']>().optional(),
   agentGeneratedInputKeys: z.array(z.string()).optional(),
@@ -44,6 +39,4 @@ export type SubAppRuntimeType = z.infer<typeof SubAppRuntimeSchema>;
 export type GetSubAppInfoFnType = (id: string) => {
   name: string;
   avatar: string;
-  /** @deprecated Unused now in favor of `intro` in node data. */
-  toolDescription: string;
 };

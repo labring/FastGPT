@@ -1,11 +1,10 @@
+import { ChatIdSchema } from '../../chat/schema';
 import z from 'zod';
 import { ChatCompletionMessageParamSchema } from '../llm/type';
 import { ChatFileTypeEnum } from '../../chat/constants';
 import { SelectedAgentSkillItemTypeSchema } from '../../app/formEdit/type';
 import { ObjectIdSchema } from '../../../common/type/mongo';
 import { ChatAgentHelperTypeEnum } from './constants';
-import { BoolSchema } from '../../../common/zod';
-import { OpenObjectOpenApiMeta } from '../../../common/zod/openapi';
 
 export const AuxiliaryGenerationChatFileSchema = z.object({
   type: z.enum(ChatFileTypeEnum),
@@ -57,7 +56,11 @@ export type AuxiliaryGenerationSelectedDatasetType = z.infer<
 
 export const ChatAgentConfigFormDataSchema = z.object({
   systemPrompt: z.string().optional(),
-  tools: z.array(z.string()).optional().default([]),
+  // 兼容旧字符串引用；系统与团队安装的工具需要同时传递 id 和 source。
+  tools: z
+    .array(z.union([z.string(), z.object({ id: z.string(), source: z.string() })]))
+    .optional()
+    .default([]),
   datasets: z.array(AuxiliaryGenerationSelectedDatasetSchema).optional().default([]),
   selectedAgentSkills: z.array(SelectedAgentSkillItemTypeSchema).optional().default([]),
   fileUploadEnabled: z.boolean().optional().default(false),
@@ -68,18 +71,10 @@ export type ChatAgentConfigFormDataType = z.infer<typeof ChatAgentConfigFormData
 
 export const ChatAgentHelperCompletionsParamsSchema = z
   .object({
-    chatId: z.string(),
+    chatId: ChatIdSchema,
     responseChatItemId: z.string(),
     appId: ObjectIdSchema,
     messages: z.array(ChatCompletionMessageParamSchema),
-    // ChatBox 当前仍复用 workflow interactive 数据结构；辅助生成 API 只透传给 chat round 准备逻辑。
-    interactive: z
-      .any()
-      .optional()
-      .meta({
-        ...OpenObjectOpenApiMeta,
-        description: '交互式响应，直接透传给 chat round 准备逻辑'
-      }),
     metadata: z.object({
       type: z.literal(ChatAgentHelperTypeEnum.chatAgent),
       data: ChatAgentHelperMetadataSchema

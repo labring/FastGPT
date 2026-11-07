@@ -9,62 +9,32 @@ import {
   SandboxStatusEnum
 } from '@fastgpt/global/core/ai/sandbox/constants';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import {
+  sandboxInstanceStatusList,
+  sandboxStableStatusList,
+  sandboxActiveStatusList,
+  sandboxOperationTypeList,
+  expectedOperationByStatus
+} from './constants';
 
 // ---- 沙盒实例 DB 类型 ----
 export const SandboxProviderSchema = z.enum(agentSandboxProviderList);
 export type SandboxProviderType = z.infer<typeof SandboxProviderSchema>;
 export const SharedSandboxStatusSchema = z.enum(SandboxStatusEnum);
 export type SharedSandboxStatusType = z.infer<typeof SharedSandboxStatusSchema>;
-
-export const sandboxInstanceStatusList = [
-  'provisioning',
-  'legacyMigrating',
-  'running',
-  'stopping',
-  'stopped',
-  'archiving',
-  'archived',
-  'restoring',
-  'deleting'
-] as const;
-export const SandboxInstanceStatusEnum = {
-  provisioning: 'provisioning',
-  legacyMigrating: 'legacyMigrating',
-  running: 'running',
-  stopping: 'stopping',
-  stopped: 'stopped',
-  archiving: 'archiving',
-  archived: 'archived',
-  restoring: 'restoring',
-  deleting: 'deleting'
-} as const satisfies Record<(typeof sandboxInstanceStatusList)[number], string>;
 export const SandboxInstanceStatusSchema = z.enum(sandboxInstanceStatusList);
 export type SandboxInstanceStatusType = z.infer<typeof SandboxInstanceStatusSchema>;
-
-export const sandboxStableStatusList = ['running', 'stopped', 'archived'] as const;
 export const SandboxStableStatusSchema = z.enum(sandboxStableStatusList);
 export type SandboxStableStatusType = z.infer<typeof SandboxStableStatusSchema>;
 
-export const sandboxOperationTypeList = [
-  'provision',
-  'legacyMigration',
-  'stop',
-  'archive',
-  'restore',
-  'delete'
-] as const;
-export const SandboxOperationTypeEnum = {
-  provision: 'provision',
-  legacyMigration: 'legacyMigration',
-  stop: 'stop',
-  archive: 'archive',
-  restore: 'restore',
-  delete: 'delete'
-} as const satisfies Record<(typeof sandboxOperationTypeList)[number], string>;
+/** 判断实例是否处于计入 Quota 的活跃状态。 */
+export const isSandboxActiveStatus = (status: SandboxInstanceStatusType) =>
+  sandboxActiveStatusList.some((activeStatus) => activeStatus === status);
 export const SandboxOperationTypeSchema = z.enum(sandboxOperationTypeList);
 export type SandboxOperationType = z.infer<typeof SandboxOperationTypeSchema>;
 export const SandboxSourceTypeSchema = z.enum([
   ChatSourceTypeEnum.app,
+  ChatSourceTypeEnum.workflowBuilder,
   ChatSourceTypeEnum.skillEdit
 ]);
 export type SandboxSourceType = z.infer<typeof SandboxSourceTypeSchema>;
@@ -101,19 +71,10 @@ export const SandboxOperationSchema = z.object({
   startedAt: z.coerce.date(),
   heartbeatAt: z.coerce.date(),
   failedAt: z.coerce.date().optional(),
+  retryAfter: z.coerce.date().optional(),
   error: z.string().optional()
 });
 export type SandboxOperationTypeSchemaType = z.infer<typeof SandboxOperationSchema>;
-
-const expectedOperationByStatus: Partial<Record<SandboxInstanceStatusType, SandboxOperationType>> =
-  {
-    provisioning: 'provision',
-    legacyMigrating: 'legacyMigration',
-    stopping: 'stop',
-    archiving: 'archive',
-    restoring: 'restore',
-    deleting: 'delete'
-  };
 
 export const SandboxInstanceZodSchema = z
   .object({

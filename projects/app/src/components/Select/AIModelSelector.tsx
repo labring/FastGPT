@@ -4,14 +4,16 @@ import TestModeBetaTag from '@/components/core/ai/TestModeBetaTag';
 import { useModelList } from '@/web/core/ai/model/useModelList';
 import { useModelSummary } from '@/web/core/ai/model/useModelSummary';
 import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { Box, Flex } from '@chakra-ui/react';
 import type { ResponsiveValue } from '@chakra-ui/system';
 import { HUGGING_FACE_ICON } from '@fastgpt/global/common/system/constants';
-import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { isEmptyModelValue } from '@fastgpt/global/core/ai/model/reference';
 import type { MyModelItemType } from '@fastgpt/global/openapi/core/ai/model/api';
 import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import Avatar from '@fastgpt/web/components/common/Avatar';
+import MyTag from '@fastgpt/web/components/common/Tag';
 import type { SelectProps } from '@fastgpt/web/components/common/MySelect';
 import MultipleRowSelect from '@fastgpt/web/components/common/MySelect/MultipleRowSelect';
 import type { ListItemType } from '@fastgpt/web/components/common/MySelect/type';
@@ -25,8 +27,6 @@ import {
   resolveModelSelectorSelection,
   sortModelSelectorModels
 } from './AIModelSelector.utils';
-import { useContextSelector } from 'use-context-selector';
-import { AppContext } from '@/pageComponents/app/detail/context';
 import { ModelStatusLabel } from './ModelStatusLabel';
 
 type Props = Omit<SelectProps, 'list'> & {
@@ -42,6 +42,7 @@ type Props = Omit<SelectProps, 'list'> & {
   vision?: boolean;
   excludeHidden?: boolean;
   appId?: string;
+  requireTtsVoice?: boolean;
 };
 
 const UNSET_MODEL_VALUE = '';
@@ -62,7 +63,10 @@ const ModelLabel = ({
   noOfLines?: ResponsiveValue<number>;
   showTags?: boolean;
 }) => {
+  const { t } = useTranslation();
+  const enableTeamModel = useSystemStore((state) => state.feConfigs.enable_team_model);
   const multimodalEmbedding = model.type === ModelTypeEnum.embedding && !!model.config.vision;
+  const isSystem = model.scope === ModelScopeEnum.system;
   return (
     <Flex
       data-preserve-width
@@ -92,8 +96,13 @@ const ModelLabel = ({
           </Box>
         </MyTooltip>
       </Flex>
-      {showTags && (model.testMode || multimodalEmbedding) && (
+      {showTags && (
         <Flex alignItems={'center'} gap={1} ml={2} flexShrink={0}>
+          {isSystem && enableTeamModel && (
+            <MyTag type={'borderFill'} colorSchema={'gray'} fontSize={'xs'} px={1.5} py={0.5}>
+              {t('common:model.system_model_tag')}
+            </MyTag>
+          )}
           {model.testMode && <TestModeBetaTag />}
           {multimodalEmbedding && <MultimodalTag />}
         </Flex>
@@ -116,12 +125,11 @@ const AIModelSelector = ({
   vision,
   excludeHidden,
   appId,
+  requireTtsVoice,
   ...props
 }: Props) => {
   const { t, i18n } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
-  const contextAppId = useContextSelector(AppContext, (e) => e?.appId);
-  const effectiveAppId = appId ?? (contextAppId || undefined);
 
   const {
     modelList,
@@ -148,7 +156,7 @@ const AIModelSelector = ({
   const currentValue = isEmptyModelValue(props.value) ? '' : String(props.value);
   const detailState = useModelSummary({
     modelId: currentValue,
-    appId: effectiveAppId,
+    appId,
     outLinkAuthData
   });
 
@@ -158,10 +166,13 @@ const AIModelSelector = ({
         modelList.filter(
           (model) =>
             model.type === modelType &&
+            (!requireTtsVoice ||
+              (model.type === ModelTypeEnum.tts &&
+                model.config.voices.some(({ value }) => value.trim().length > 0))) &&
             (allowedValues === undefined || isModelAllowedByValues(model, allowedValues))
         )
       ),
-    [allowedValues, modelList, modelType]
+    [allowedValues, modelList, modelType, requireTtsVoice]
   );
   const selection = useMemo(
     () =>
@@ -183,16 +194,16 @@ const AIModelSelector = ({
       return;
     }
     if (!currentValue) return;
-    const key = JSON.stringify([catalogVersion, currentValue, effectiveAppId]);
+    const key = JSON.stringify([catalogVersion, currentValue, appId]);
     if (checkedCatalogRef.current === key) return;
     checkedCatalogRef.current = key;
     const currentModel = modelList.find((model) => model.modelId === currentValue);
     if (currentModel) setFromCatalog(currentModel);
   }, [
+    appId,
     catalogError,
     catalogVersion,
     currentValue,
-    effectiveAppId,
     setFromCatalog,
     isOpen,
     loading,
@@ -283,15 +294,21 @@ const AIModelSelector = ({
             : []
       }
       placeholder={placeholder ?? t('common:not_model_config')}
-      changeOnEverySelect
       rowMinWidth="160px"
       onSelect={(values) => {
         if (canBeUnset && values[0] === UNSET_MODEL_VALUE) {
           onChange?.(UNSET_MODEL_VALUE);
           return;
         }
+
+        // 分组模式下点击左侧列只是切换提供商，第二列仍是上一次的模型：
+        // 此时回调会把「没变的模型」当成新选择，进而触发一次无意义的保存。
+        // 只有真正选中具体模型（叶子节点）才算变更。
         const value = grouped ? values[1] : values[0];
         if (value === undefined) return;
+        // 选择器默认会展开已选模型所在的提供商，重选同一个模型不应产生 update 请求
+        if (value === currentValue) return;
+
         const model = models.find((item) => item.modelId === value);
         if (model) setFromCatalog(model);
         onChange?.(value);

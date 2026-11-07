@@ -8,17 +8,20 @@ import { getOrgChildrenPath } from '@fastgpt/global/support/user/team/org/consta
 export const getOrgsByTmbId = async ({ teamId, tmbId }: { teamId: string; tmbId: string }) =>
   MongoOrgMemberModel.find({ teamId, tmbId }, 'orgId').lean();
 
+/** 读取成员所属组织及其父组织；传入 session 时保持与调用方相同的事务视图。 */
 export const getOrgIdSetWithParentByTmbId = async ({
   teamId,
-  tmbId
+  tmbId,
+  session
 }: {
   teamId: string;
   tmbId: string;
+  session?: ClientSession;
 }) => {
-  const orgMembers = await MongoOrgMemberModel.find({ teamId, tmbId }, 'orgId').lean();
+  const orgMembers = await MongoOrgMemberModel.find({ teamId, tmbId }, 'orgId', { session }).lean();
 
   const orgIds = Array.from(new Set(orgMembers.map((item) => String(item.orgId))));
-  const orgs = await MongoOrgModel.find({ _id: { $in: orgIds } }, 'path').lean();
+  const orgs = await MongoOrgModel.find({ _id: { $in: orgIds } }, 'path', { session }).lean();
 
   const pathIdList = new Set<string>(
     orgs
@@ -33,7 +36,8 @@ export const getOrgIdSetWithParentByTmbId = async ({
       teamId,
       pathId: { $in: Array.from(pathIdList) }
     },
-    '_id'
+    '_id',
+    { session }
   ).lean();
   const parentOrgIds = parentOrgs.map((item) => String(item._id));
 

@@ -11,10 +11,7 @@ import {
   Spinner
 } from '@chakra-ui/react';
 import { useQuery } from '@tanstack/react-query';
-import {
-  SystemMigrationFailurePolicyEnum,
-  SystemMigrationStatusEnum
-} from '@fastgpt/global/migration/constants';
+import { SystemMigrationStatusEnum } from '@fastgpt/global/migration/constants';
 import type {
   SystemMigrationListItem,
   SystemMigrationProgressListItem
@@ -25,6 +22,8 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyModalV2 from '@fastgpt/web/components/v2/common/MyModal';
 import JsonEditor from '@fastgpt/web/components/common/Textarea/JsonEditor';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
+import { useToast } from '@fastgpt/web/hooks/useToast';
+import { ToastHandledError } from '@fastgpt/global/common/error/utils';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import {
   getSystemMigrationFailedRecords,
@@ -33,6 +32,7 @@ import {
   startSystemMigration
 } from '@/web/common/system/migrations/api';
 import {
+  getSystemMigrationErrorText,
   getSystemMigrationDisplayStatus,
   getSystemMigrationProgressPercent,
   type SystemMigrationDisplayStatus
@@ -111,12 +111,14 @@ const MigrationProgressStage = ({
           {t(progress.labelKey as any, progress.params as any)}
         </Box>
         <Flex flexShrink={0} alignItems={'center'} gap={2}>
-          {progress.current !== undefined && progress.total !== undefined && (
+          {progress.current !== undefined && (
             <Box fontSize={'xs'} color={'myGray.500'}>
-              {t('system_migration:progress_count', {
-                current: progress.current,
-                total: progress.total
-              })}
+              {progress.total === undefined
+                ? t('system_migration:progress_processed', { current: progress.current })
+                : t('system_migration:progress_count', {
+                    current: progress.current,
+                    total: progress.total
+                  })}
             </Box>
           )}
           <Badge
@@ -225,6 +227,23 @@ const MigrationCard = ({
             >
               {t(visual.labelKey as any)}
             </Badge>
+            {migration.independent && (
+              <Badge
+                px={2}
+                py={0.5}
+                borderRadius={'md'}
+                color={'purple.700'}
+                bg={'purple.50'}
+                border={'1px solid'}
+                borderColor={'purple.200'}
+                textTransform={'none'}
+              >
+                {t('system_migration:mode_independent')}
+              </Badge>
+            )}
+            {migration.blockStartup && (
+              <Badge colorScheme={'orange'}>{t('system_migration:mode_startup')}</Badge>
+            )}
           </Flex>
           <Box mt={2} fontSize={'sm'} color={'myGray.500'} lineHeight={1.7}>
             {t(migration.descriptionKey as any)}
@@ -259,24 +278,14 @@ const MigrationCard = ({
           mx={[4, 5]}
           mb={4}
           p={3}
-          bg={
-            migration.onFailure === SystemMigrationFailurePolicyEnum.continue
-              ? 'yellow.50'
-              : 'red.50'
-          }
+          bg={'yellow.50'}
           borderRadius={'lg'}
           fontSize={'sm'}
-          color={
-            migration.onFailure === SystemMigrationFailurePolicyEnum.continue
-              ? 'yellow.700'
-              : 'red.700'
-          }
+          color={'yellow.700'}
         >
-          {t(
-            migration.onFailure === SystemMigrationFailurePolicyEnum.continue
-              ? i18nT('system_migration:failure_allows_following')
-              : i18nT('system_migration:failure_blocks_following')
-          )}
+          {migration.blockStartup
+            ? t('system_migration:failure_blocks_startup')
+            : t('system_migration:failure_allows_following')}
         </Box>
       )}
 
@@ -437,6 +446,13 @@ const FailedRecordsModal = ({
 /** Root 管理员的升级状态页：轮询轻量摘要，所有执行动作仍通过服务端 lease runner 完成。 */
 const SystemMigrationsPage = () => {
   const { t } = useSafeTranslation();
+  const { toast } = useToast();
+
+  /** 依赖错误按当前语言翻译名称和正文，其他错误沿用通用提示。 */
+  const showMigrationError = (error: unknown) => {
+    if (error instanceof ToastHandledError) return;
+    toast({ title: getSystemMigrationErrorText(error, t), status: 'error' });
+  };
   const { data, isFetching, isError, refetch } = useQuery(
     ['systemMigrationList'],
     getSystemMigrationList,
@@ -453,6 +469,8 @@ const SystemMigrationsPage = () => {
     (migrationId: string) => retrySystemMigration({ migrationId }),
     {
       successToast: t('system_migration:migration_retry_requested'),
+      errorToast: '',
+      onError: showMigrationError,
       // 重置成功后立即刷新，否则需要等待下一次定时轮询才能看到 pending/running。
       onSuccess: () => void refetch()
     }
@@ -461,6 +479,8 @@ const SystemMigrationsPage = () => {
     (migrationId: string) => startSystemMigration({ migrationId }),
     {
       successToast: t('system_migration:migration_start_requested'),
+      errorToast: '',
+      onError: showMigrationError,
       onSuccess: () => void refetch()
     }
   );
@@ -480,7 +500,7 @@ const SystemMigrationsPage = () => {
       migrations.filter((item) => item.status === SystemMigrationStatusEnum.failed).length
     ];
   }, [data?.migrations]);
-  // 仅倒序展示副本；注册表顺序和 Runner 的串行执行顺序仍保持不变。
+  // 仅倒序展示副本；普通队列按注册表顺序执行，独立任务不受展示顺序影响。
   const displayMigrations = useMemo(
     () => [...(data?.migrations ?? [])].reverse(),
     [data?.migrations]

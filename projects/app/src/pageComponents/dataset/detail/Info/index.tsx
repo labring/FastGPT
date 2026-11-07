@@ -21,6 +21,7 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MyDivider from '@fastgpt/web/components/common/MyDivider/index';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
@@ -181,16 +182,21 @@ const Info = ({ datasetId }: { datasetId: string }) => {
             <DatasetTypeTag type={datasetDetail.type} />
           </Flex>
         )}
-        <Box
-          flex={1}
-          className={'textEllipsis3'}
-          pt={3}
-          wordBreak={'break-all'}
-          fontSize={'xs'}
-          color={'myGray.500'}
+        <MyTooltip
+          label={datasetDetail.intro || t('common:core.dataset.Intro Placeholder')}
+          showOnlyWhenOverflow
         >
-          {datasetDetail.intro || t('common:core.dataset.Intro Placeholder')}
-        </Box>
+          <Box
+            flex={1}
+            className={'textEllipsis3'}
+            pt={3}
+            wordBreak={'break-all'}
+            fontSize={'xs'}
+            color={'myGray.500'}
+          >
+            {datasetDetail.intro || t('common:core.dataset.Intro Placeholder')}
+          </Box>
+        </MyTooltip>
       </Box>
 
       <MyDivider my={4} h={'2px'} maxW={'500px'} />

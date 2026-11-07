@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { parseFileExtensionFromUrl } from '@fastgpt/global/common/string/tools';
+import {
+  parseFileExtensionFromUrl,
+  parseFilenameExtension
+} from '@fastgpt/global/common/string/tools';
 
 describe('parseFileExtensionFromUrl', () => {
   it('should parse extension from simple URL', () => {
@@ -25,6 +28,18 @@ describe('parseFileExtensionFromUrl', () => {
     expect(parseFileExtensionFromUrl('/api/system/file/download/token123?name=document.pdf')).toBe(
       'pdf'
     );
+  });
+
+  it('should parse extension from filename query param containing a percent sign', () => {
+    expect(
+      parseFileExtensionFromUrl('/api/system/file/download/token123?filename=100%25%20done.pdf')
+    ).toBe('pdf');
+    expect(parseFileExtensionFromUrl('/api/system/file/d/abc?name=50%25off.xlsx')).toBe('xlsx');
+  });
+
+  it('should preserve literal percent escapes in query filenames', () => {
+    expect(parseFileExtensionFromUrl('/api/system/file/d/abc?filename=report%252Epdf')).toBe('');
+    expect(parseFileExtensionFromUrl('/api/system/file/d/abc?name=report.%2570df')).toBe('%70df');
   });
 
   it('should not handle hash in URL (returns extension with hash)', () => {
@@ -196,5 +211,27 @@ describe('parseFileExtensionFromUrl', () => {
     expect(parseFileExtensionFromUrl('my_file.txt')).toBe('txt');
     expect(parseFileExtensionFromUrl('file name.txt')).toBe('txt');
     expect(parseFileExtensionFromUrl('文件.pdf')).toBe('pdf');
+    expect(parseFileExtensionFromUrl('https://example.com/photo%231.png')).toBe('png');
+    expect(parseFileExtensionFromUrl('https://example.com/photo%3F1.png')).toBe('png');
+    expect(parseFileExtensionFromUrl('https://example.com/record%2Emp3?token=1')).toBe('mp3');
+  });
+
+  it('should parse extension from decoded filename without stripping # or ?', () => {
+    expect(parseFilenameExtension('photo#1.png')).toBe('png');
+    expect(parseFilenameExtension('photo?1.png')).toBe('png');
+    expect(parseFilenameExtension('100% done.PDF')).toBe('pdf');
+    expect(parseFilenameExtension('.gitignore')).toBe('');
+    expect(parseFilenameExtension('')).toBe('');
+  });
+
+  it.each([
+    ['page.HtM', 'html'],
+    ['README.MARKDOWN', 'md']
+  ])('normalizes parser-supported aliases from filenames and URLs: %s', (filename, extension) => {
+    expect(parseFilenameExtension(filename)).toBe(extension);
+    expect(parseFileExtensionFromUrl(`https://example.com/${filename}`)).toBe(extension);
+    expect(parseFileExtensionFromUrl(`https://example.com/download?filename=${filename}`)).toBe(
+      extension
+    );
   });
 });

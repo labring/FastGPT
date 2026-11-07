@@ -32,9 +32,11 @@ beforeAll(async () => {
   await connectMongo({ db: connectionLogMongo, url: inject('MONGODB_URI') });
 
   initGlobalVariables();
+  global.agentUserTmbIds = new Set();
   global.systemEnv = {} as any;
 
   global.feConfigs = {
+    limit: { uploadFileMaxAmount: 1000, uploadFileMaxSize: 1000 },
     isPlus: false
   } as any;
   await setupModels();
@@ -48,6 +50,7 @@ afterAll(async () => {
 });
 
 beforeEach(async () => {
+  global.agentUserTmbIds = global.agentUserTmbIds ?? new Set();
   // await connectMongo({ db: connectionMongo, url: inject('MONGODB_URI') });
   // await connectMongo({ db: connectionLogMongo, url: inject('MONGODB_URI') });
 

@@ -7,7 +7,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   authChatTargetCrud: vi.fn(),
-  authApp: vi.fn(),
   getTeamPlanStatus: vi.fn(),
   assertUploadRateLimit: vi.fn(),
   createUploadChatFileURL: vi.fn()
@@ -17,12 +16,8 @@ vi.mock('@/service/middleware/entry', () => ({
   NextAPI: (handler: unknown) => handler
 }));
 
-vi.mock('@/service/support/permission/auth/chat', () => ({
+vi.mock('@fastgpt/service/core/chat/auth', () => ({
   authChatTargetCrud: mocks.authChatTargetCrud
-}));
-
-vi.mock('@fastgpt/service/support/permission/app/auth', () => ({
-  authApp: mocks.authApp
 }));
 
 vi.mock('@fastgpt/service/support/wallet/sub/utils', () => ({
@@ -60,10 +55,6 @@ describe('presignDraftChatFilePostUrl', () => {
       teamId: 'team-id',
       uid: 'user-id'
     });
-    mocks.authApp.mockResolvedValue({
-      teamId: 'team-id',
-      tmbId: 'user-id'
-    });
     mocks.getTeamPlanStatus.mockResolvedValue({
       standard: {
         maxUploadFileCount: 20,
@@ -95,9 +86,10 @@ describe('presignDraftChatFilePostUrl', () => {
       url: 'https://example.com/upload-token'
     });
 
-    expect(mocks.authApp).toHaveBeenCalledWith(
+    expect(mocks.authChatTargetCrud).toHaveBeenCalledExactlyOnceWith(
       expect.objectContaining({
-        appId,
+        sourceType: ChatSourceTypeEnum.app,
+        sourceId: appId,
         authToken: true,
         authApiKey: true,
         per: WritePermissionVal
@@ -120,7 +112,7 @@ describe('presignDraftChatFilePostUrl', () => {
   });
 
   it('rejects a read-only App caller before signing the upload URL', async () => {
-    mocks.authApp.mockRejectedValueOnce(new Error('forbidden'));
+    mocks.authChatTargetCrud.mockRejectedValueOnce(new Error('forbidden'));
 
     await expect(
       callHandler({
@@ -166,7 +158,7 @@ describe('presignDraftChatFilePostUrl', () => {
         per: WritePermissionVal
       })
     );
-    expect(mocks.authApp).not.toHaveBeenCalled();
+    expect(mocks.authChatTargetCrud).toHaveBeenCalledOnce();
   });
 
   it('rejects ChatAgentHelper targets from the draft endpoint', async () => {

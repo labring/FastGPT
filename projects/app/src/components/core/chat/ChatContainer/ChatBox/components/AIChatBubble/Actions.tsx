@@ -3,11 +3,10 @@ import { useTranslation } from 'next-i18next';
 import React, { useMemo } from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import { EventNameEnum, eventBus } from '@/web/common/utils/eventbus';
 import ChatController, { type ChatControllerProps } from '../ChatController';
 import { ChatBoxContext } from '../../Provider';
 import { useContextSelector } from 'use-context-selector';
-import { ChatTypeEnum } from '../../constants';
+import { ChatTypeEnum, FeedbackTypeEnum } from '../../constants';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { ChatSiteItemType } from '../../type';
 import { addStatisticalDataToHistoryItem } from '@/global/core/chat/utils';
@@ -18,6 +17,8 @@ import { getFlatAppResponses } from '@fastgpt/global/core/chat/utils';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import { toChatApiTarget } from '@/web/core/chat/utils';
+import { useChatInstanceActions } from '../../../context/chatInstanceActionsContext';
+import { ChatFeedbackContext } from '../../../context/chatFeedbackContext';
 
 type AIChatBubbleActionsProps = {
   chatControllerProps: ChatControllerProps;
@@ -43,7 +44,15 @@ const AIChatBubbleActions = ({
   responseData
 }: AIChatBubbleActionsProps) => {
   const { t } = useTranslation();
-  const { onRetry, feedbackUserName, disableFooterHoverTranslate } = chatControllerProps;
+  const { sendMessage } = useChatInstanceActions();
+  const { onRetry, disableFooterHoverTranslate } = chatControllerProps;
+  const feedbackUserName = useContextSelector(
+    ChatFeedbackContext,
+    (value) => value?.feedbackUserName
+  );
+  const showLogFeedback = useContextSelector(ChatFeedbackContext, (value) =>
+    value?.fbTypes.includes(FeedbackTypeEnum.log)
+  );
   const footerActionHoverStyle = {
     color: 'primary.600',
     ...(!disableFooterHoverTranslate ? { transform: 'translateY(-1px)' } : {})
@@ -86,8 +95,7 @@ const AIChatBubbleActions = ({
   const badFeedback = historyItem.obj === ChatRoleEnum.AI ? historyItem.userBadFeedback : undefined;
   const isFeedbackRead =
     historyItem.obj === ChatRoleEnum.AI ? historyItem.isFeedbackRead : undefined;
-  const showUnreadBadFeedback =
-    chatType === ChatTypeEnum.log && !!badFeedback && isFeedbackRead !== true;
+  const showUnreadBadFeedback = showLogFeedback && !!badFeedback && isFeedbackRead !== true;
 
   const formattedPoints = useMemo(() => {
     const formatted = new Intl.NumberFormat(undefined, {
@@ -233,7 +241,7 @@ const AIChatBubbleActions = ({
               fontWeight={500}
               cursor={'pointer'}
               _hover={{ bg: 'rgba(17, 24, 36, 0.05)' }}
-              onClick={() => eventBus.emit(EventNameEnum.sendQuestion, { text })}
+              onClick={() => sendMessage({ text })}
             >
               <MyIcon name={'common/arrowRight'} w={'14px'} transform={'rotate(-45deg)'} />
               <Box className="textEllipsis">{text}</Box>

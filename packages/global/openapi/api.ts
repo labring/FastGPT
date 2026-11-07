@@ -3,12 +3,88 @@ import { IntSchema } from '../common/zod';
 import { JsonValueOpenApiMeta } from '../common/zod/openapi';
 import z from 'zod';
 
-/* 按 offset 分页 */
-export const PaginationSchema = z.object({
-  pageSize: IntSchema.positive().optional().describe('每页条数'),
-  offset: IntSchema.optional().describe('偏移量(与页码二选一)'),
-  pageNum: IntSchema.positive().optional().describe('页码(与偏移量二选一)')
-});
+export const PaginationPageSizeLimit = 500;
+
+const paginationPresentation = {
+  'x-fastgpt-union-group': { id: 'pagination', label: '分页参数' }
+};
+
+/** 通用分页默认每页 20 条，超限自动截断；业务接口可缩小条数上限。 */
+export const PaginationPageSizeSchema = IntSchema.positive()
+  .overwrite((value) => Math.min(value, PaginationPageSizeLimit))
+  .max(PaginationPageSizeLimit)
+  .default(20)
+  .meta({
+    ...paginationPresentation,
+    example: 20,
+    description: `每页条数，默认 20，最大 ${PaginationPageSizeLimit}，超出自动按 ${PaginationPageSizeLimit} 处理`
+  });
+
+/** 缺省按第一页查询；保留可选类型，允许客户端省略该字段。 */
+export const PaginationPageNumSchema = IntSchema.positive()
+  .default(1)
+  .optional()
+  .meta({
+    ...paginationPresentation,
+    'x-fastgpt-union-parameter': true,
+    example: 1,
+    description: '页码，从 1 开始；传入 offset 时忽略'
+  });
+
+/**
+ * 将业务筛选字段与互斥分页分支组合。offset 分支优先并移除页码字段；
+ * 无 offset 时按页码查询，默认第一页。pageShape 用于兼容 Skill 的 page 字段。
+ * 无效 offset 不得回退为页码查询；两种模式都保留业务字段及各自的默认值。
+ */
+export const createPaginationSchema = <
+  TShape extends z.ZodRawShape = Record<never, never>,
+  TPageShape extends z.ZodRawShape = { pageNum: typeof PaginationPageNumSchema }
+>(
+  extraShape?: TShape,
+  pageShape?: TPageShape
+) => {
+  const resolvedPageShape = (pageShape ?? { pageNum: PaginationPageNumSchema }) as TPageShape;
+  const ignoredPageField = z.never().optional().catch(undefined);
+  const ignoredPageShape = Object.fromEntries(
+    Object.keys(resolvedPageShape).map((key) => [key, ignoredPageField])
+  ) as { [Key in keyof TPageShape]: typeof ignoredPageField };
+  const commonSchema = z
+    .object({
+      offset: IntSchema.meta({
+        ...paginationPresentation,
+        'x-fastgpt-union-parameter': true,
+        example: 0,
+        description: '偏移量，从 0 开始'
+      })
+    })
+    // 分支定位字段先展示，便于在格式选择下直接看到 offset 或页码，再设置每页条数。
+    .extend(resolvedPageShape)
+    .extend({ pageSize: PaginationPageSizeSchema.optional() })
+    .extend(extraShape ?? ({} as TShape));
+
+  return z.union([
+    commonSchema
+      .extend(ignoredPageShape)
+      .extend({ offset: commonSchema.shape.offset.nonoptional() })
+      .overwrite((value) => {
+        const result = { ...value };
+        // catch 只负责忽略页码校验，仍需删除属性，保证解析结果中只有一种定位字段。
+        Object.keys(resolvedPageShape).forEach((key) => Reflect.deleteProperty(result, key));
+        return result;
+      })
+      .meta({
+        title: '按偏移量获取',
+        description: '通过 offset 指定起始位置，从 0 开始；同时传入页码时优先使用 offset。'
+      }),
+    commonSchema.extend(resolvedPageShape).extend({ offset: z.never().optional() }).meta({
+      title: '按页码获取',
+      description: '通过页码获取，默认第 1 页；pageSize 控制每页条数。'
+    })
+  ]);
+};
+
+/** 通用分页二选一；各业务接口通过 createPaginationSchema 组合字段及每页条数的默认值。 */
+export const PaginationSchema = createPaginationSchema();
 export type PaginationType = z.infer<typeof PaginationSchema>;
 
 export type PaginationProps<T = unknown> = T &
@@ -34,12 +110,7 @@ export type PaginationResponseType<T = any> = {
 
 export const LinkedPaginationSchema = <TShape extends z.ZodRawShape>(extraShape?: TShape) =>
   z.object({
-    pageSize: z
-      .int()
-      .positive()
-      .optional()
-      .default(10)
-      .meta({ example: 15, description: '每页条数' }),
+    pageSize: PaginationPageSizeSchema,
     anchor: z
       .any()
       .optional()

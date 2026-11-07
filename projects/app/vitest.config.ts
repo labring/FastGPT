@@ -23,6 +23,9 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': resolve('src'),
+      '@fastgpt/workflow-core/test': resolve('../../packages/workflow-core/test'),
+      '@fastgpt/workflow-core': resolve('../../packages/workflow-core/src'),
+      '@fastgpt/workflow-cli': resolve('../../packages/workflow-cli/src'),
       '@fastgpt-sdk/storage/access-link': resolve('../../sdk/storage/src/access-link/index.ts'),
       '@fastgpt-sdk/storage': resolve('../../sdk/storage/src/index.ts'),
       '@fastgpt-sdk/otel/logger': resolve('../../sdk/otel/src/logger-entry.ts'),

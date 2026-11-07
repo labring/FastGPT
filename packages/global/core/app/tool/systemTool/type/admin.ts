@@ -2,7 +2,7 @@
 
 import z from 'zod';
 import { SystemToolBaseSchema, SystemToolDetailSchema } from './base';
-import { PluginStatusSchema } from '../../../../plugin/type';
+import { PluginStatusSchema, PluginTextSchema } from '../../../../plugin/type';
 import { SystemToolSystemSecretStatusEnum } from '../constants';
 
 export const AdminSystemToolListItemSchema = z.object({
@@ -12,8 +12,8 @@ export const AdminSystemToolListItemSchema = z.object({
   // source: z.string().meta({ description: '工具的来源, system 或 teamId' }),
   isToolSet: z.boolean().meta({ description: '是否为工具集' }),
   avatar: z.string().meta({ description: '工具的图标' }),
-  name: z.string().meta({ description: '工具的名称' }),
-  intro: z.string().meta({ description: '工具的简介' }),
+  name: PluginTextSchema.meta({ description: '工具的名称' }),
+  intro: PluginTextSchema.meta({ description: '工具的简介' }),
   author: z.string().meta({ description: '工具的作者' }),
   tags: z.array(z.string()).meta({ description: '工具的标签' }),
   pluginOrder: z.number().optional().meta({ description: '工具的排序字段' }),
@@ -30,8 +30,8 @@ export type AdminSystemToolListItemType = z.infer<typeof AdminSystemToolListItem
 
 export const AdminSystemToolChildDetailSchema = z.object({
   id: z.string(),
-  name: z.string(),
-  description: z.string().optional(),
+  name: PluginTextSchema,
+  description: PluginTextSchema.optional(),
   icon: z.string().optional(),
   currentCost: z.number().meta({ description: '当前使用的费用' }),
   systemKeyCost: z.number().meta({ description: '系统密钥的费用' })

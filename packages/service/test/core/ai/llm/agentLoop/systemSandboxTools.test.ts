@@ -28,10 +28,10 @@ describe('agent loop system sandbox tools', () => {
       properties: {
         command: { type: 'string', description: '要执行的 shell 命令' },
         timeout: {
-          type: 'number',
+          type: 'integer',
           description: '超时秒数',
-          max: 600,
-          min: 1
+          maximum: 600,
+          minimum: 1
         }
       },
       required: ['command']

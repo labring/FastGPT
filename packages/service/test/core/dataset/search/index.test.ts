@@ -2,7 +2,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mockSearchDatasetData = vi.hoisted(() => vi.fn());
 const mockDatasetSearchQueryExtension = vi.hoisted(() => vi.fn());
-
 vi.mock('@fastgpt/service/core/dataset/search/defaultRecall', () => ({
   searchDatasetData: mockSearchDatasetData
 }));
@@ -14,11 +13,11 @@ vi.mock('@fastgpt/service/core/dataset/search/utils', () => ({
 import { defaultSearchDatasetData } from '../../../../core/dataset/search';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type {
-  EmbeddingSystemModelDataType,
-  LLMSystemModelDataType
+  EmbeddingModelDataType,
+  LLMModelDataType
 } from '@fastgpt/global/core/ai/model/schema';
 
-const embeddingModel: EmbeddingSystemModelDataType = {
+const embeddingModel: EmbeddingModelDataType = {
   provider: 'test',
   model: 'embedding-model',
   name: 'Embedding model',
@@ -31,7 +30,7 @@ const embeddingModel: EmbeddingSystemModelDataType = {
     weight: 0
   }
 };
-const extensionModel: LLMSystemModelDataType = {
+const extensionModel: LLMModelDataType = {
   provider: 'test',
   model: 'query-extension-model',
   name: 'Query extension model',
@@ -112,5 +111,42 @@ describe('defaultSearchDatasetData', () => {
         textQueries: ['first', 'second', 'expanded']
       })
     );
+  });
+
+  it('preserves ordinary query-extension billing metadata and the external account', async () => {
+    const usage = {
+      llmModel: extensionModel.model,
+      embeddingModel: embeddingModel.model,
+      requestId: 'query-extension-request',
+      seconds: 1.5,
+      inputTokens: 12,
+      outputTokens: 4,
+      usedUserOpenAIKey: true,
+      embeddingTokens: 8
+    };
+    mockDatasetSearchQueryExtension.mockResolvedValue({
+      searchQueries: ['question', 'expanded'],
+      reRankQuery: 'question\nexpanded',
+      aiExtensionResult: usage
+    });
+    const userKey = { key: 'test-external-account', baseUrl: 'https://api.example.com/v1' };
+
+    const result = await defaultSearchDatasetData({
+      histories: [],
+      teamId: 'team-1',
+      datasetIds: ['dataset-1'],
+      model: embeddingModel,
+      textQueries: ['question'],
+      limit: 5000,
+      datasetSearchUsingExtensionQuery: true,
+      datasetSearchExtensionModel: extensionModel,
+      userKey
+    });
+
+    expect(result.queryExtensionResult).toEqual({ ...usage, query: 'question\nexpanded' });
+    expect(mockDatasetSearchQueryExtension).toHaveBeenCalledWith(
+      expect.objectContaining({ userKey })
+    );
+    expect(mockSearchDatasetData).toHaveBeenCalledWith(expect.objectContaining({ userKey }));
   });
 });

@@ -1,3 +1,4 @@
+import { createWorkflowResourceContext } from '@fastgpt/service/core/workflow/resource/context';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { sseErrRes } from '@fastgpt/service/common/response';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
@@ -8,7 +9,7 @@ import { dispatchWorkFlow } from '@fastgpt/service/core/workflow/dispatch';
 import { prepareWorkflowFileQuery } from '@fastgpt/service/core/workflow/utils/fileLimits';
 import { getRunningUserInfoByTmbId } from '@fastgpt/service/support/user/team/utils';
 import { concatHistories, removeEmptyUserInput } from '@fastgpt/global/core/chat/utils';
-import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
+import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import {
   serverGetWorkflowToolRunUserQuery,
@@ -29,7 +30,6 @@ import { WORKFLOW_MAX_RUN_TIMES } from '@fastgpt/service/core/workflow/constants
 import { getWorkflowToolInputsFromStoreNodes } from '@fastgpt/global/core/app/tool/workflowTool/utils';
 import { getChatItems } from '@fastgpt/service/core/chat/controller';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
-
 import {
   ChatRoleEnum,
   ChatSourceEnum,
@@ -49,8 +49,6 @@ import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { ChatTestPropsSchema } from '@fastgpt/global/openapi/core/chat/completion/api';
-import { updateChatGenerateStatus } from '@fastgpt/service/core/chat/chatGenerateStatus';
-import { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   createWorkflowStreamResponseContext,
@@ -58,8 +56,8 @@ import {
 } from '@fastgpt/service/core/workflow/utils/streamResponseContext';
 import { buildChatSourceQuery } from '@fastgpt/service/core/chat/source';
 import { APP_SANDBOX_ENABLED_CHAT_METADATA_KEY } from '@fastgpt/global/core/ai/sandbox/constants';
-import { isAppSandboxEnabledInNodes } from '@fastgpt/global/core/workflow/utils';
-import { prepareWorkflowDebugResourceContext } from '@fastgpt/service/core/workflow/utils/resource';
+import { isAppSandboxEnabledInNodes } from '@fastgpt/global/common/app/workflow';
+import { prepareAppWorkflowResources } from '@fastgpt/service/core/app/resource/service';
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   let streamResponseContext: WorkflowStreamResponseContext | undefined;
@@ -89,13 +87,14 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
   try {
     /* user auth */
+    // 测试对话会执行请求体传入的节点定义（包括代码节点），需要写入权限
     const { app, teamId, tmbId, isRoot } = await authApp({
       req,
       authToken: true,
       appId,
-      per: ReadPermissionVal
+      per: WritePermissionVal
     });
-    const resourceContext = await prepareWorkflowDebugResourceContext({
+    const resources = await prepareAppWorkflowResources({
       appId,
       nodes,
       chatConfig,
@@ -103,6 +102,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       tmbId,
       isRoot
     });
+    const resourceContext = createWorkflowResourceContext({ resources, teamId, isRoot });
 
     // 类型获取
     const isPlugin = app.type === AppTypeEnum.workflowTool;
@@ -331,17 +331,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     } else if (preparedRound.shouldFinalizePreparedRound) {
       await finalizeChatRound(params);
     }
-
-    if (!preparedRound.shouldFinalizePreparedRound && preparedRound.shouldPersistChatRound) {
-      // 与线上流式一致：会话结束后必须落 done，否则前端会认为仍在 generating 并不断请求 /api/core/chat/resume
-      await updateChatGenerateStatus({
-        ...chatSource,
-        chatId: runningChatId,
-        status: ChatGenerateStatusEnum.done
-      });
-    }
-
-    await streamResponseContext.flushResume();
   } catch (err: any) {
     const { preparedRound } = roundState;
     if (preparedRound?.shouldPersistChatRound && roundState.sourceId && roundState.chatId) {
@@ -353,13 +342,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           responseChatItemId: roundState.responseChatItemId,
           error: err
         });
-      } else {
-        await updateChatGenerateStatus({
-          sourceType: ChatSourceTypeEnum.app,
-          sourceId: roundState.sourceId,
-          chatId: roundState.chatId,
-          status: ChatGenerateStatusEnum.error
-        });
       }
     }
     res.status(500);
@@ -368,9 +350,14 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     } else {
       sseErrRes(res, err);
     }
-    await streamResponseContext?.flushResume();
   } finally {
-    res.end();
+    try {
+      // 错误状态写入再次失败时，也要等待续流缓存收尾后再关闭响应。
+      await streamResponseContext?.flushResume();
+      res.end();
+    } finally {
+      await roundState.preparedRound?.releaseGenerationLease?.();
+    }
   }
 }
 

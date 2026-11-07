@@ -33,8 +33,7 @@ async function handler(req: ApiRequestProps): Promise<GetDatasetTrainingErrorRes
     req,
     bodySchema: GetDatasetTrainingErrorBodySchema
   }).body;
-  const { offset, pageSize: rawPageSize } = parsePaginationRequest(req);
-  const pageSize = Math.min(rawPageSize, DatasetTrainingErrorPaginationLimits.maxPageSize);
+  const { offset, pageSize } = parsePaginationRequest(req);
   const itemLimit = Math.min(itemPageSize, DatasetTrainingErrorPaginationLimits.maxItemPageSize);
   const itemSkip = Math.min(itemOffset, DatasetTrainingErrorPaginationLimits.maxItemOffset);
 

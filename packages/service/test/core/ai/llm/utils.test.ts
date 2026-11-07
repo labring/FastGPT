@@ -2,8 +2,12 @@ import {
   loadRequestMessages,
   filterGPTMessageByMaxContext
 } from '@fastgpt/service/core/ai/llm/utils';
-import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/llm/type';
+import {
+  ChatCompletionContentPartInputAudioSchema,
+  type ChatCompletionMessageParam
+} from '@fastgpt/global/core/ai/llm/type';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
+import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 
 // Mock external dependencies
@@ -39,17 +43,19 @@ import { countGptMessagesTokens } from '@fastgpt/service/common/string/tiktoken/
 import { getImageBase64 } from '@fastgpt/service/common/file/image/utils';
 import { serviceEnv } from '@fastgpt/service/env';
 import { axios } from '@fastgpt/service/common/api/axios';
+import { createFileClassificationContext } from '@fastgpt/service/common/file/classification';
 
 const mockCountGptMessagesTokens = vi.mocked(countGptMessagesTokens);
 const mockGetImageBase64 = vi.mocked(getImageBase64);
 const mockAxiosHead = vi.mocked(axios.head);
 const mockAxiosGet = vi.mocked(axios.get);
 const originalMultipleDataToBase64 = serviceEnv.MULTIPLE_DATA_TO_BASE64;
+const multimediaEnv: { MULTIPLE_DATA_TO_BASE64: boolean } = serviceEnv;
 
 describe('filterGPTMessageByMaxContext function tests', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    serviceEnv.MULTIPLE_DATA_TO_BASE64 = originalMultipleDataToBase64;
+    multimediaEnv.MULTIPLE_DATA_TO_BASE64 = originalMultipleDataToBase64;
     mockCountGptMessagesTokens.mockResolvedValue(10);
   });
 
@@ -429,7 +435,7 @@ describe('filterGPTMessageByMaxContext function tests', () => {
 describe('loadRequestMessages function tests', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    serviceEnv.MULTIPLE_DATA_TO_BASE64 = originalMultipleDataToBase64;
+    multimediaEnv.MULTIPLE_DATA_TO_BASE64 = originalMultipleDataToBase64;
     mockGetImageBase64.mockResolvedValue({
       completeBase64: 'data:image/png;base64,test',
       base64: 'test',
@@ -439,6 +445,47 @@ describe('loadRequestMessages function tests', () => {
   });
 
   describe('Basic message processing', () => {
+    it.each([undefined, '', 'Original reasoning.'])(
+      'preserves existing reasoning without changing tool relationships or input: %s',
+      async (reasoning) => {
+        const messages: ChatCompletionMessageParam[] = [
+          { role: 'user', content: 'Continue the task.' },
+          {
+            role: 'assistant',
+            ...(reasoning !== undefined ? { reasoning_content: reasoning } : {}),
+            tool_calls: [
+              {
+                id: 'call_history',
+                type: 'function',
+                function: { name: 'search', arguments: '{}' }
+              }
+            ]
+          },
+          { role: 'tool', tool_call_id: 'call_history', content: 'Tool completed.' },
+          {
+            role: 'assistant',
+            content: 'Task complete.',
+            ...(reasoning !== undefined ? { reasoning_content: reasoning } : {})
+          }
+        ];
+        const original = structuredClone(messages);
+        const result = await loadRequestMessages({ messages, supportReason: true });
+        const serializedResult = JSON.parse(JSON.stringify(result));
+
+        expect(result).toHaveLength(messages.length);
+        expect(serializedResult[1]).toEqual(messages[1]);
+        expect(result[2]).toMatchObject(messages[2]);
+        expect(serializedResult[3]).toEqual(messages[3]);
+        expect(result[0]).not.toHaveProperty('reasoning_content');
+        expect(result[2]).not.toHaveProperty('reasoning_content');
+        expect(messages).toEqual(original);
+
+        const plainResult = await loadRequestMessages({ messages, supportReason: false });
+        expect(JSON.parse(JSON.stringify(plainResult[1]))).not.toHaveProperty('reasoning_content');
+        expect(JSON.parse(JSON.stringify(plainResult[3]))).not.toHaveProperty('reasoning_content');
+      }
+    );
+
     it('should reject empty messages array', async () => {
       await expect(
         loadRequestMessages({
@@ -571,7 +618,7 @@ describe('loadRequestMessages function tests', () => {
     });
 
     it('should extract audio and video links when enabled', async () => {
-      serviceEnv.MULTIPLE_DATA_TO_BASE64 = false;
+      multimediaEnv.MULTIPLE_DATA_TO_BASE64 = false;
 
       const messages: ChatCompletionMessageParam[] = [
         {
@@ -622,7 +669,7 @@ describe('loadRequestMessages function tests', () => {
     });
 
     it('should convert extracted audio and video links when MULTIPLE_DATA_TO_BASE64 is enabled', async () => {
-      serviceEnv.MULTIPLE_DATA_TO_BASE64 = true;
+      multimediaEnv.MULTIPLE_DATA_TO_BASE64 = true;
       mockAxiosGet.mockResolvedValue({
         data: Buffer.from('media bytes')
       });
@@ -672,8 +719,127 @@ describe('loadRequestMessages function tests', () => {
       });
     });
 
+    it.each([
+      ['https://files.example.com/opaque', '会议录音', undefined],
+      ['https://files.example.com/opaque', 'explicit.mp3', 'mp3'],
+      ['https://files.example.com/audio.ogg', 'incorrect.wav', 'wav'],
+      ['https://files.example.com/audio.mp3', undefined, 'mp3'],
+      ['https://files.example.com/audio.bin', '会议录音', undefined]
+    ] as const)(
+      '显式 audio 类型保持不变，格式优先按名称、再按 URL：%s / %s',
+      async (url, name, format) => {
+        multimediaEnv.MULTIPLE_DATA_TO_BASE64 = false;
+        const result = await loadRequestMessages({
+          messages: [
+            {
+              role: ChatCompletionRequestMessageRoleEnum.User,
+              content: [
+                { type: 'file_url', fileType: ChatFileTypeEnum.audio, url, name },
+                { type: 'text', text: '识别录音' }
+              ]
+            }
+          ],
+          useAudio: true
+        });
+        expect(result[0].content).toEqual([
+          { type: 'input_audio', input_audio: { data: url, ...(format ? { format } : {}) } },
+          { type: 'text', text: '识别录音' }
+        ]);
+        const content = result[0].content;
+        if (Array.isArray(content)) {
+          expect(() => ChatCompletionContentPartInputAudioSchema.parse(content[0])).not.toThrow();
+        }
+        expect(mockAxiosGet).not.toHaveBeenCalled();
+      }
+    );
+
+    it('无文件名音频转 base64 时仍保留附件，不猜测 format', async () => {
+      multimediaEnv.MULTIPLE_DATA_TO_BASE64 = true;
+      const url = 'https://files.example.com/opaque';
+      const buffer = Buffer.from('audio bytes');
+      mockAxiosGet.mockResolvedValue({ data: buffer });
+
+      const result = await loadRequestMessages({
+        messages: [
+          {
+            role: ChatCompletionRequestMessageRoleEnum.User,
+            content: [{ type: 'file_url', fileType: ChatFileTypeEnum.audio, url }]
+          }
+        ],
+        useAudio: true
+      });
+
+      expect(result[0].content).toEqual([
+        { type: 'input_audio', input_audio: { data: `data:;base64,${buffer.toString('base64')}` } }
+      ]);
+      expect(mockAxiosGet).toHaveBeenCalledTimes(1);
+    });
+
+    it.each(
+      ([ChatFileTypeEnum.audio, ChatFileTypeEnum.video] as const).flatMap((fileType) =>
+        [false, true].map((base64) => ({ fileType, base64 }))
+      )
+    )(
+      '保留显式 $fileType data URL，强制 base64=$base64 时也不重复下载',
+      async ({ fileType, base64 }) => {
+        multimediaEnv.MULTIPLE_DATA_TO_BASE64 = base64;
+        const url = `data:${fileType}/${fileType === 'audio' ? 'wav' : 'mp4'};base64,YWJj`;
+        const result = await loadRequestMessages({
+          messages: [
+            {
+              role: ChatCompletionRequestMessageRoleEnum.User,
+              content: [{ type: 'file_url', fileType, url }]
+            }
+          ],
+          useAudio: true,
+          useVideo: true
+        });
+
+        expect(result[0].content).toEqual([
+          fileType === 'audio'
+            ? { type: 'input_audio', input_audio: { data: url } }
+            : { type: 'video_url', video_url: { url } }
+        ]);
+        expect(mockAxiosHead).not.toHaveBeenCalled();
+        expect(mockAxiosGet).not.toHaveBeenCalled();
+      }
+    );
+
+    it.each(
+      (['file_url', 'video_url'] as const).flatMap((type) =>
+        [false, true].map((base64) => [type, base64] as const)
+      )
+    )('无后缀视频按协议转换，类型=%s、转 base64=%s', async (type, base64) => {
+      multimediaEnv.MULTIPLE_DATA_TO_BASE64 = base64;
+      const url = 'https://files.example.com/opaque?token=video';
+      const buffer = Buffer.from('video bytes');
+      mockAxiosGet.mockResolvedValue({ data: buffer });
+
+      const result = await loadRequestMessages({
+        messages: [
+          {
+            role: ChatCompletionRequestMessageRoleEnum.User,
+            content: [
+              type === 'file_url'
+                ? { type, fileType: ChatFileTypeEnum.video, url, name: 'misleading.wav' }
+                : { type, video_url: { url } }
+            ]
+          }
+        ],
+        useVideo: true
+      });
+
+      expect(result[0].content).toEqual([
+        {
+          type: 'video_url',
+          video_url: { url: base64 ? `data:;base64,${buffer.toString('base64')}` : url }
+        }
+      ]);
+      expect(mockAxiosGet).toHaveBeenCalledTimes(base64 ? 1 : 0);
+    });
+
     it('should ignore file keys and normalize audio and video file_url from existing urls', async () => {
-      serviceEnv.MULTIPLE_DATA_TO_BASE64 = false;
+      multimediaEnv.MULTIPLE_DATA_TO_BASE64 = false;
       const audioUrl = 'https://cdn.example.com/preview/audio.mp3';
       const videoUrl = 'https://cdn.example.com/preview/video.mp4';
       const messages: ChatCompletionMessageParam[] = [
@@ -684,14 +850,14 @@ describe('loadRequestMessages function tests', () => {
               type: 'file_url',
               name: 'audio.mp3',
               url: audioUrl,
-              fileType: 'audio',
+              fileType: ChatFileTypeEnum.audio,
               key: 'chat/audio.mp3'
             },
             {
               type: 'file_url',
               name: 'video.mp4',
               url: videoUrl,
-              fileType: 'video',
+              fileType: ChatFileTypeEnum.video,
               key: 'chat/video.mp4'
             },
             {
@@ -733,6 +899,81 @@ describe('loadRequestMessages function tests', () => {
       expect(mockAxiosGet).not.toHaveBeenCalled();
     });
 
+    it.each([ChatFileTypeEnum.unknown, ChatFileTypeEnum.file])(
+      '待分类类型 %s 按传入名称识别媒体，不被下载接口后缀覆盖',
+      async (fileType) => {
+        multimediaEnv.MULTIPLE_DATA_TO_BASE64 = false;
+        const result = await loadRequestMessages({
+          messages: [
+            {
+              role: ChatCompletionRequestMessageRoleEnum.User,
+              content: [
+                {
+                  type: 'file_url',
+                  fileType,
+                  name: 'photo.png',
+                  url: 'https://example.com/image.php'
+                },
+                {
+                  type: 'file_url',
+                  fileType,
+                  name: 'voice.mp3',
+                  url: 'https://example.com/audio.php'
+                },
+                {
+                  type: 'file_url',
+                  fileType,
+                  name: 'movie.mp4',
+                  url: 'https://example.com/video.php'
+                },
+                {
+                  type: 'file_url',
+                  fileType,
+                  name: 'archive.zip',
+                  url: 'https://example.com/voice.mp3'
+                }
+              ]
+            }
+          ],
+          useVision: true,
+          useAudio: true,
+          useVideo: true
+        });
+        expect(result[0].content).toEqual([
+          { type: 'image_url', image_url: { url: 'https://example.com/image.php' } },
+          {
+            type: 'input_audio',
+            input_audio: { data: 'https://example.com/audio.php', format: 'mp3' }
+          },
+          { type: 'video_url', video_url: { url: 'https://example.com/video.php' } }
+        ]);
+        expect(mockAxiosHead).not.toHaveBeenCalled();
+      }
+    );
+
+    it('显式文档不会因名称或链接的媒体后缀进入多模态通道', async () => {
+      const result = await loadRequestMessages({
+        messages: [
+          {
+            role: ChatCompletionRequestMessageRoleEnum.User,
+            content: [
+              { type: 'text', text: 'read document' },
+              {
+                type: 'file_url',
+                fileType: ChatFileTypeEnum.document,
+                name: 'voice.mp3',
+                url: 'https://example.com/voice.mp3'
+              }
+            ]
+          }
+        ],
+        useVision: true,
+        useAudio: true,
+        useVideo: true
+      });
+      expect(result[0].content).toBe('read document');
+    });
+
     it('should preserve legacy vision extraction when extractFiles is omitted', async () => {
       const messages: ChatCompletionMessageParam[] = [
         {
@@ -749,7 +990,7 @@ describe('loadRequestMessages function tests', () => {
     });
 
     it('should extract clean image url from markdown link in json-like text', async () => {
-      serviceEnv.MULTIPLE_DATA_TO_BASE64 = false;
+      multimediaEnv.MULTIPLE_DATA_TO_BASE64 = false;
       const imageUrl =
         'https://proxy.file.fastgpt.io/chat/image.png?X-Amz-Signature=test&x-id=GetObject';
       const messages: ChatCompletionMessageParam[] = [
@@ -770,7 +1011,7 @@ describe('loadRequestMessages function tests', () => {
     });
 
     it('should extract image url before newline terminators', async () => {
-      serviceEnv.MULTIPLE_DATA_TO_BASE64 = false;
+      multimediaEnv.MULTIPLE_DATA_TO_BASE64 = false;
       const imageUrl =
         'https://proxy.file.fastgpt.io/chat/%E7%AE%80%E5%8E%86.png?X-Amz-Signature=test&x-id=GetObject';
       const messages: ChatCompletionMessageParam[] = [
@@ -801,6 +1042,90 @@ describe('loadRequestMessages function tests', () => {
       expect(result[0].content).toBe(longText);
     });
 
+    it('should ignore <system-reminder> length and internal URLs when extracting user media links', async () => {
+      multimediaEnv.MULTIPLE_DATA_TO_BASE64 = false;
+      const reminder = `<system-reminder>\n${'Skill description '.repeat(40)}\n<url>https://example.com/already-uploaded.png</url>\n</system-reminder>\n`;
+      const userQuestion = '请看这张图 https://example.com/user-question.png';
+      const fullContent = `${reminder}${userQuestion}`;
+
+      const result = await loadRequestMessages({
+        messages: [{ role: ChatCompletionRequestMessageRoleEnum.User, content: fullContent }],
+        useVision: true,
+        extractFiles: true
+      });
+
+      expect(result).toHaveLength(1);
+      expect(result[0].content).toEqual([
+        {
+          type: 'image_url',
+          image_url: { url: 'https://example.com/user-question.png' }
+        },
+        {
+          type: 'text',
+          text: fullContent
+        }
+      ]);
+    });
+
+    it('should classify extensionless short links via parseUrlToChatFileType when extracting files', async () => {
+      multimediaEnv.MULTIPLE_DATA_TO_BASE64 = false;
+      const imageShortUrl =
+        'https://testdev.fastgpt.cn/api/system/file/d/q7aJkh7F0FB2FI3C.hskff.6JjpblHZ0hOyMbEq4frV0A';
+      const audioShortUrl =
+        'https://testdev.fastgpt.cn/api/system/file/d/a8bKli8G1GC3GJ4D.hskff.7KkqcmI01iPzNcFr5gsW1B';
+      const docShortUrl =
+        'https://testdev.fastgpt.cn/api/system/file/d/d9cLmJ9H2HD4HK5E.hskff.8LlrdnJ12jQaOdGs6htX2C';
+
+      mockAxiosHead.mockImplementation(async (targetUrl: string) => {
+        if (targetUrl === imageShortUrl) {
+          return {
+            headers: {
+              'content-type': 'image/png',
+              'content-disposition': 'inline; filename="chart.png"'
+            }
+          } as any;
+        }
+        if (targetUrl === audioShortUrl) {
+          return {
+            headers: {
+              'content-type': 'audio/wav',
+              'content-disposition': 'inline; filename="Clip.wav"'
+            }
+          } as any;
+        }
+        return {
+          headers: {
+            'content-type': 'application/pdf',
+            'content-disposition': 'inline; filename="report.pdf"'
+          }
+        } as any;
+      });
+
+      const userContent = `分析 ${imageShortUrl} 和 ${audioShortUrl} 以及文档 ${docShortUrl}`;
+      const result = await loadRequestMessages({
+        messages: [{ role: ChatCompletionRequestMessageRoleEnum.User, content: userContent }],
+        useVision: true,
+        useAudio: true,
+        extractFiles: true
+      });
+
+      expect(result).toHaveLength(1);
+      expect(result[0].content).toEqual([
+        {
+          type: 'image_url',
+          image_url: { url: imageShortUrl }
+        },
+        {
+          type: 'input_audio',
+          input_audio: { data: audioShortUrl, format: 'wav' }
+        },
+        {
+          type: 'text',
+          text: userContent
+        }
+      ]);
+    });
+
     it('should limit to 4 images and return text if more found', async () => {
       const textWithManyImages =
         'Images: ' +
@@ -818,6 +1143,45 @@ describe('loadRequestMessages function tests', () => {
 
       expect(result).toHaveLength(1);
       expect(result[0].content).toBe(textWithManyImages);
+    });
+
+    it('复用同一 fileContext 的探测结果，独立请求重新探测', async () => {
+      mockAxiosHead.mockResolvedValue({ headers: { 'content-type': 'text/html' } });
+      const url = 'https://example.com/article';
+      const messages: ChatCompletionMessageParam[] = [
+        { role: ChatCompletionRequestMessageRoleEnum.User, content: `总结 ${url}` },
+        { role: ChatCompletionRequestMessageRoleEnum.Assistant, content: '回答' },
+        { role: ChatCompletionRequestMessageRoleEnum.User, content: `对比 ${url}#section` }
+      ];
+      const fileContext = createFileClassificationContext();
+
+      expect(await loadRequestMessages({ messages, useVision: true, fileContext })).toEqual(
+        messages
+      );
+      await loadRequestMessages({ messages, useVision: true, fileContext });
+      expect(mockAxiosHead).toHaveBeenCalledTimes(1);
+
+      await loadRequestMessages({ messages, useVision: true });
+      expect(mockAxiosHead).toHaveBeenCalledTimes(2);
+    });
+
+    it.each([
+      'https://example.com/photo%231.png',
+      'https://example.com/photo%3F1.png',
+      'https://example.com/download?filename=photo%231.png',
+      'https://example.com/download?filename=photo%3F1.png'
+    ])('保留编码了 # 或 ? 的图片文件名后缀：%s', async (imageUrl) => {
+      multimediaEnv.MULTIPLE_DATA_TO_BASE64 = false;
+      const result = await loadRequestMessages({
+        messages: [{ role: ChatCompletionRequestMessageRoleEnum.User, content: imageUrl }],
+        useVision: true
+      });
+
+      expect(result[0].content).toEqual([
+        { type: 'image_url', image_url: { url: imageUrl } },
+        { type: 'text', text: imageUrl }
+      ]);
+      expect(mockAxiosHead).not.toHaveBeenCalled();
     });
 
     it('should handle array content with mixed types', async () => {
@@ -924,7 +1288,7 @@ describe('loadRequestMessages function tests', () => {
     });
 
     it('should pass through remote image URLs in array content without axios.head validation', async () => {
-      serviceEnv.MULTIPLE_DATA_TO_BASE64 = false;
+      multimediaEnv.MULTIPLE_DATA_TO_BASE64 = false;
       const messages: ChatCompletionMessageParam[] = [
         {
           role: ChatCompletionRequestMessageRoleEnum.User,
@@ -945,7 +1309,8 @@ describe('loadRequestMessages function tests', () => {
       expect(content.some((item: any) => item.type === 'image_url')).toBe(true);
     });
 
-    it('should remove origin from image URLs when provided', async () => {
+    it('should preserve absolute image URLs', async () => {
+      multimediaEnv.MULTIPLE_DATA_TO_BASE64 = false;
       const messages: ChatCompletionMessageParam[] = [
         {
           role: ChatCompletionRequestMessageRoleEnum.User,
@@ -955,12 +1320,13 @@ describe('loadRequestMessages function tests', () => {
 
       const result = await loadRequestMessages({
         messages,
-        useVision: true,
-        origin: 'https://mysite.com'
+        useVision: true
       });
 
-      // Just verify the function processes without error - axios call verification is complex
       expect(result).toHaveLength(1);
+      expect(result[0].content).toEqual([
+        { type: 'image_url', image_url: { url: 'https://mysite.com/images/test.png' } }
+      ]);
     });
   });
 
@@ -1191,7 +1557,7 @@ describe('loadRequestMessages function tests', () => {
     });
 
     it('should handle environment variable MULTIPLE_DATA_TO_BASE64', async () => {
-      serviceEnv.MULTIPLE_DATA_TO_BASE64 = true;
+      multimediaEnv.MULTIPLE_DATA_TO_BASE64 = true;
 
       const messages: ChatCompletionMessageParam[] = [
         {
@@ -1212,6 +1578,30 @@ describe('loadRequestMessages function tests', () => {
       expect(result).toHaveLength(1);
       const content = result[0].content as any[];
       expect(content[0].image_url.url).toBe('data:image/png;base64,converted');
+    });
+
+    it('should preserve private upload URLs when MULTIPLE_DATA_TO_BASE64 is disabled', async () => {
+      multimediaEnv.MULTIPLE_DATA_TO_BASE64 = false;
+      const imageUrl = 'http://localhost:9000/fastgpt-private/chat/image.png?X-Amz-Signature=test';
+      const messages: ChatCompletionMessageParam[] = [
+        {
+          role: ChatCompletionRequestMessageRoleEnum.User,
+          content: [{ type: 'image_url', image_url: { url: imageUrl } }]
+        }
+      ];
+      const result = await loadRequestMessages({
+        messages,
+        useVision: true
+      });
+
+      expect(mockGetImageBase64).not.toHaveBeenCalled();
+      expect(mockAxiosHead).not.toHaveBeenCalled();
+      expect(result[0].content).toEqual([
+        {
+          type: 'image_url',
+          image_url: { url: imageUrl }
+        }
+      ]);
     });
   });
 });

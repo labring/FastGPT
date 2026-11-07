@@ -1,5 +1,5 @@
 import { getSystemToolInfo } from '@fastgpt/global/core/workflow/node/agent/constants';
-import { getSandboxToolInfo } from '../../../../../../ai/sandbox/interface/toolCall';
+import { getSandboxToolInfo } from '../../../../../../ai/sandbox/application/toolCall';
 import { READ_FILES_TOOL_NAME } from '../../../../../../ai/llm/agentLoop/interface';
 import { DATASET_SEARCH_TOOL_NAME } from '../../../../../../ai/llm/agentLoop/interface';
 import type {

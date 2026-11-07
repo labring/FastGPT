@@ -13,6 +13,8 @@ releaseTime: '2026-07-01'
 
 ## Changes
 
+This release repairs older upgrade scripts affected by recent changes.
+
 1. Fixed an issue where the V4.13.2 upgrade script could skip S3 lifecycle cleanup. The script no longer depends on `instanceof MinioStorageAdapter` to detect MinIO clients, avoiding false negatives when workspace packages are loaded as separate module instances in Next.js dev or bundled runtimes.
 2. Fixed the image migration log resource type in the V4.14.3 upgrade script by changing `data_image` to `dataset_image`, so completed image migrations can be recognized correctly.
 3. Fixed the completed-image migration filter in the V4.14.4 upgrade script to also use `dataset_image`, preventing already migrated images from being migrated again when the script is rerun.

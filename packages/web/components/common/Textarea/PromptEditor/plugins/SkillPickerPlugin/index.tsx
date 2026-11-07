@@ -31,7 +31,7 @@ const MENU_WIDTH = 'min(954px, calc(100vw - 16px))';
 const MENU_HEIGHT = '337px';
 const FIRST_COLUMN_WIDTH = '200px';
 const CHILD_COLUMN_WIDTH = '280px';
-const PAGE_SIZE = 50;
+const PAGE_SIZE = 20;
 const PAGE_LOAD_THRESHOLD = 80;
 
 export type SkillOptionPageType = {
@@ -178,6 +178,7 @@ export default function SkillPickerPlugin({
   const itemRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const menuAnchorRef = useRef<HTMLElement | null>(null);
   const menuElementRef = useRef<HTMLDivElement | null>(null);
+  const [menuElement, setMenuElementState] = useState<HTMLDivElement | null>(null);
   const menuPositionFrameRef = useRef<number | null>(null);
   const matchingStringRef = useRef<string | null>(null);
 
@@ -258,6 +259,7 @@ export default function SkillPickerPlugin({
         menuElementRef.current?.style.removeProperty('transform');
       }
       menuElementRef.current = element;
+      setMenuElementState(element);
       if (element && isMenuOpenRef.current) {
         setIsMenuPositioned(false);
         scheduleMenuPosition();
@@ -270,7 +272,6 @@ export default function SkillPickerPlugin({
     if (!isFocus || !isMenuOpen) return;
 
     const anchorElement = menuAnchorRef.current;
-    const menuElement = menuElementRef.current;
     if (!anchorElement || !menuElement) return;
 
     scheduleMenuPosition();
@@ -303,6 +304,7 @@ export default function SkillPickerPlugin({
   }, [
     isFocus,
     isMenuOpen,
+    menuElement,
     menuQueryVersion,
     scheduleMenuPosition,
     skillOptions.length,
@@ -1414,8 +1416,15 @@ export default function SkillPickerPlugin({
             </Box>
           )}
           {canLoadMore && pageState?.loading && columnData.list.length > 0 && (
-            <Box h={6} display={'flex'} alignItems={'center'} justifyContent={'center'}>
-              <MyIcon name={'common/loading'} w={4} color={'myGray.400'} />
+            <Box
+              h={6}
+              display={'flex'}
+              alignItems={'center'}
+              justifyContent={'center'}
+              fontSize={'xs'}
+              color={'myGray.400'}
+            >
+              {t('common:is_requesting')}
             </Box>
           )}
           {canLoadMore && pageState?.error && (
@@ -1514,6 +1523,7 @@ export default function SkillPickerPlugin({
         return ReactDOM.createPortal(
           <Box
             ref={setMenuElement}
+            position={'relative'}
             visibility={shouldShow && isMenuPositioned ? 'visible' : 'hidden'}
             zIndex={99999}
             w={'max-content'}

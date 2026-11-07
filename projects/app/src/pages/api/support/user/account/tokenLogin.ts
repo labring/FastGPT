@@ -9,7 +9,7 @@ import {
 } from '@fastgpt/global/openapi/support/user/account/login/api';
 
 async function handler(req: ApiRequestProps): Promise<OpenAPIUserType> {
-  const { tmbId, userId, teamId, isRoot } = await authCert({
+  const { tmbId, userId, isRoot } = await authCert({
     req,
     authToken: true,
     allowAccountCancellation: true
@@ -17,9 +17,7 @@ async function handler(req: ApiRequestProps): Promise<OpenAPIUserType> {
   const user = await getUserDetail({ tmbId, isRoot });
 
   pushTrack.dailyUserActive({
-    uid: userId,
-    teamId: teamId,
-    tmbId: tmbId
+    uid: userId
   });
 
   // Remove sensitive information

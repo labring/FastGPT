@@ -8,7 +8,7 @@ import {
   type OpenSandboxConfigType,
   type OpenSandboxConnectionConfig
 } from './opensandbox';
-import type { ISandbox } from '@/contracts';
+import type { ISandbox } from '../contracts';
 
 export { SealosDevboxAdapter } from './sealos-devbox';
 export type { SealosDevboxConfig, SealosDevboxCreateConfig } from './sealos-devbox';

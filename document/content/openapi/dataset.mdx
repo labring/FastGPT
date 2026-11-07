@@ -101,7 +101,7 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/list?pare
       "vectorModel": {
         "model": "text-embedding-ada-002",
         "name": "Embedding-2",
-        "charsPointsPrice": 0,
+        "pricing": { "unitPrice": 0 },
         "defaultToken": 512,
         "maxToken": 8000,
         "weight": 100
@@ -150,7 +150,7 @@ curl --location --request GET 'http://localhost:3000/api/core/dataset/detail?id=
     "vectorModel": {
       "model": "text-embedding-ada-002",
       "name": "Embedding-2",
-      "charsPointsPrice": 0,
+      "pricing": { "unitPrice": 0 },
       "defaultToken": 512,
       "maxToken": 8000,
       "weight": 100
@@ -160,7 +160,7 @@ curl --location --request GET 'http://localhost:3000/api/core/dataset/detail?id=
       "name": "FastAI-16k",
       "maxContext": 16000,
       "maxResponse": 16000,
-      "charsPointsPrice": 0
+      "pricing": { "tiers": [{ "inputPrice": 0, "outputPrice": 0 }] }
     },
     "intro": "",
     "permission": "private",
@@ -211,23 +211,23 @@ curl --location --request DELETE 'http://localhost:3000/api/core/dataset/delete?
 
 **入参**
 
-| 参数             | 说明                                                                                                         | 必填 |
-| ---------------- | ------------------------------------------------------------------------------------------------------------ | ---- |
-| datasetId        | 知识库 ID                                                                                                    | ✅   |
-| parentId         | 父级 ID，不填则默认为根目录                                                                                  |      |
-| trainingType     | 数据处理方式。chunk: 按文本长度进行分割;qa: 问答对提取                                                       | ✅   |
-| indexPrefixTitle | 是否自动生成标题索引                                                                                         |      |
-| customPdfParse   | 是否开启 PDF 增强解析, 默认 false: 关闭;true: 开启;                                                          |      |
-| autoIndexes      | 是否自动生成索引(仅商业版支持)                                                                               |      |
-| imageIndex       | 是否自动生成图片索引(仅商业版支持)                                                                           |      |
-| chunkSettingMode | 分块参数模式。auto: 系统默认参数; custom: 手动指定参数                                                       |      |
-| chunkSplitMode   | 分块拆分模式。size: 按长度拆分; char: 按字符拆分。chunkSettingMode=auto 时不生效。                           |      |
-| chunkSize        | 分块大小，默认 1500。chunkSettingMode=auto 时不生效。                                                        |      |
-| indexSize        | 索引大小，默认 512，必须小于索引模型最大 token。chunkSettingMode=auto 时不生效。                             |      |
-| chunkSplitter    | 自定义最高优先分割符号，除非超出文件处理最大上下文，否则不会进行进一步拆分。chunkSettingMode=auto 时不生效。 |      |
-| qaPrompt         | qa 拆分提示词                                                                                                |      |
-| tags             | 集合标签（字符串数组）                                                                                       |      |
-| createTime       | 文件创建时间（Date / String）                                                                                |      |
+| 参数             | 说明                                                                                                                                                         | 必填 |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---- |
+| datasetId        | 知识库 ID                                                                                                                                                    | ✅   |
+| parentId         | 父级 ID，不填则默认为根目录                                                                                                                                  |      |
+| trainingType     | 数据处理方式。chunk: 按文本长度进行分割;qa: 问答对提取                                                                                                       | ✅   |
+| indexPrefixTitle | 是否自动生成标题索引                                                                                                                                         |      |
+| customPdfParse   | 是否开启 PDF 增强解析, 默认 false: 关闭;true: 开启;                                                                                                          |      |
+| autoIndexes      | 是否自动生成索引(仅商业版支持)                                                                                                                               |      |
+| imageIndex       | 是否自动生成图片索引(仅商业版支持)                                                                                                                           |      |
+| chunkSettingMode | 分块参数模式。auto: 系统默认参数; custom: 手动指定参数                                                                                                       |      |
+| chunkSplitMode   | 分块拆分模式。size: 按长度拆分; char: 按字符拆分。chunkSettingMode=auto 时不生效。                                                                           |      |
+| chunkSize        | 分块大小，默认 1500。chunkSettingMode=auto 时不生效。                                                                                                        |      |
+| indexSize        | 索引大小，默认 512，必须小于索引模型最大 token。chunkSettingMode=auto 时不生效。                                                                             |      |
+| chunkSplitter    | 自定义最高优先分割符号，除非超出文件处理最大上下文，否则不会进行进一步拆分。chunkSettingMode=auto 时不生效。                                                 |      |
+| qaPrompt         | qa 拆分提示词                                                                                                                                                |      |
+| tags             | 集合标签（商业版）。支持传入结构化标签数组（如 `[{"tag": "适用部门", "value": ["全员", "研发部"]}, {"tag": "保密等级", "value": 1}]`），也兼容旧版字符串数组 |      |
+| createTime       | 文件创建时间（Date / String）                                                                                                                                |      |
 
 **出参**
 
@@ -591,10 +591,11 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/collectio
 <Tab value="参数说明" >
 
 - offset: 偏移量
-- pageSize: 每页数量，最大 30（选填）
+- pageSize: 每页数量，最大 100（选填）
 - datasetId: 知识库的 ID（必填）
 - parentId: 父级 ID（选填）
 - searchText: 模糊搜索文本（选填）
+- tagFilters: 按集合标签筛选列表（选填，商业版），格式为 `[{"tagId": "标签ID", "values": ["选项值或数值"]}]`
 
 </Tab>
 
@@ -768,7 +769,7 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/collectio
 - id: 集合的 ID
 - parentId: 修改父级 ID（可选）
 - name: 修改集合名称（可选）
-- tags: 修改集合标签（可选）
+- tags: 修改集合标签（可选，商业版）。支持结构化标签数组 `[{"tag": "适用部门", "value": ["全员", "研发部"]}, {"tag": "保密等级", "value": 2}]`，也兼容旧版字符串数组
 - forbid: 修改集合禁用状态（可选）
 - createTime: 修改集合创建时间（可选）
 

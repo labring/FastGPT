@@ -1,7 +1,8 @@
 import { NextAPI } from '@/service/middleware/entry';
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/type';
 import { getLocale } from '@fastgpt/service/common/middle/i18n';
-import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
+import { parseI18nString, selectPluginText } from '@fastgpt/global/common/i18n/utils';
+import type { PluginTextType } from '@fastgpt/global/core/plugin/type';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
 import type {
@@ -45,7 +46,9 @@ export async function handler(
     MongoPluginToolTag.find({}).lean()
   ]);
 
-  const filteredTools = systemTools.filter((item) => filterToolByName(item.name, searchRegex));
+  const filteredTools = systemTools.filter((item) =>
+    filterToolByName(item.name, searchRegex, lang)
+  );
 
   return GetAdminSystemToolsResponseSchema.parse(
     filteredTools.map((item) => {
@@ -70,7 +73,7 @@ function getSearchRegex(searchKey?: string) {
   return new RegExp(replaceRegChars(trimmedSearchKey), 'i');
 }
 
-function filterToolByName(name: string, searchRegex?: RegExp) {
+function filterToolByName(name: PluginTextType, searchRegex?: RegExp, lang?: string) {
   if (!searchRegex) return true;
-  return searchRegex.test(name);
+  return searchRegex.test(selectPluginText(name, lang));
 }

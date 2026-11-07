@@ -10,7 +10,7 @@ FastGPT uses an embedding-based RAG approach to build Datasets. To use FastGPT e
 
 Human text, images, and other media cannot be directly understood by computers. To determine whether two pieces of text are similar or related, they typically need to be converted into a computer-readable format — vectors are one such method.
 
-A vector is essentially an array of numbers. The "distance" between two vectors can be calculated using mathematical formulas — the smaller the distance, the more similar the vectors. This maps back to text, images, and other media to measure similarity between them. Vector search leverages this principle.
+A vector is essentially an array of numbers. The "distance" between two vectors can be calculated using mathematical formulas — the smaller the distance, the more similar the vectors. This maps back to text, images, and other media to measure similarity between them. Vector search uses this principle.
 
 Since text comes in many types with countless combinations, exact matching is hard to guarantee when converting it to vectors for similarity comparison. Vector-based Datasets typically use a `top-k` recall approach: find the top `k` most similar results, then pass them to an LLM for semantic evaluation, logical reasoning, and summarization. This makes vector search one of the most critical steps in Dataset Q&A.
 
@@ -30,9 +30,9 @@ Retriever precision is relatively straightforward to address, and training vecto
 
 ### Data Storage Structure
 
-In FastGPT, a Dataset contains Collections, and each Collection contains data entries. A Collection can be thought of as a file. Dataset search runs across the entire Dataset; Collections organize and manage data but do not currently limit the search scope.
+In FastGPT, a Dataset contains Collections, and each Collection contains data entries. A Collection can be thought of as a file. By default, Dataset search covers the selected Dataset, while Collections organize entries for management.
 
-![](/imgs/dataset_tree.png)
+![Dataset, Collection, and data entry hierarchy](/imgs/dataset_tree.png)
 
 ### Vector Storage Structure
 
@@ -42,7 +42,7 @@ In `MongoDB`'s `dataset.datas` collection, vector source data is stored along wi
 
 In `PostgreSQL`, a `vector` field stores the vectors. During search, vectors are recalled first, then their IDs are used to look up the original data in `MongoDB`. If multiple vectors map to the same source data, they are merged and the highest vector score is used.
 
-![](/imgs/datasetSetting1.png)
+![Multiple vector indexes mapped to one source entry](/imgs/datasetSetting1.png)
 
 ### Purpose and Usage of Multi-Vector Mapping
 
@@ -54,7 +54,7 @@ This means you can continuously improve data chunk accuracy through annotation.
 
 ### Overall Search Strategy
 
-A Dataset search is not simply "user question -> vector database -> result." Depending on the input and search parameters, FastGPT combines text, images, semantic recall, full-text recall, query rewriting, and reranking, then fuses multiple result paths into the final cited content.
+Depending on the input and search parameters, FastGPT combines text, images, semantic recall, full-text recall, query rewriting, and reranking, then fuses multiple result paths into the final cited content.
 
 1. Use `Query rewriting` for coreference resolution and query expansion, improving multi-turn conversation search capability and semantic richness.
 2. Use `Semantic Search`, `Full-Text Search`, or `Hybrid Search` to recall candidate content.
@@ -63,7 +63,7 @@ A Dataset search is not simply "user question -> vector database -> result." Dep
 5. Use `Rerank` for secondary sorting to improve text result relevance.
 6. Apply similarity filtering and the citation limit to produce the final cited content sent to the model.
 
-![](/imgs/dataset_search_process.png)
+![Dataset retrieval and result fusion pipeline](/imgs/dataset_search_process.png)
 
 ### Image Search Method
 
@@ -74,7 +74,7 @@ Image search mainly works in two ways:
 1. Image description search: If an available vision model is configured, the system can understand the image first, generate a text description, and use that description in regular text retrieval.
 2. Image vector search: If the selected embedding model supports image input, the system can generate vectors for images directly and match them against image vectors in the Dataset.
 
-Image search is not a separate system outside the Dataset. It adds an image-input path to the existing Dataset search pipeline.
+Image search adds an image-input path to the existing Dataset search pipeline.
 
 Common usage patterns include:
 
@@ -84,7 +84,7 @@ Common usage patterns include:
 
 Image search quality usually depends on image clarity, whether the image content is easy for the model to understand, whether a vision model is configured, and whether the embedding model supports image vectors.
 
-Whether an image can be retrieved does not only depend on uploading an image at search time. It also depends on which indexes were created during ingestion:
+Image retrieval depends on the query input and the indexes created during ingestion:
 
 | Dataset capability                                | Text-only query                              | Image-only query                                                | Text + image query                                |
 | ------------------------------------------------- | -------------------------------------------- | --------------------------------------------------------------- | ------------------------------------------------- |
@@ -93,11 +93,11 @@ Whether an image can be retrieved does not only depend on uploading an image at 
 | Image-capable embedding model, no vision model    | Normal text retrieval                        | Image vector retrieval                                          | Text retrieval + image vector retrieval           |
 | Image-capable embedding model with a vision model | Text retrieval, including image descriptions | Image description + image vector retrieval                      | Text + image description + image vector retrieval |
 
-So when image-to-image search performs poorly, do not only adjust search parameters. Also check whether the Dataset is configured with a vision model or an image-capable embedding model, and whether valid image indexes were generated during ingestion.
+When image-to-image search performs poorly, review the search parameters and check whether the Dataset is configured with a vision model or an image-capable embedding model, and whether valid image indexes were generated during ingestion.
 
 ### Result Ranking and Fusion
 
-FastGPT fuses results from different recall paths instead of using only one path. Common paths include text vector recall, full-text recall, image description recall, image vector recall, and reranked results.
+FastGPT fuses results from multiple recall paths. Common paths include text vector recall, full-text recall, image description recall, image vector recall, and reranked results.
 
 Keep these points in mind:
 
@@ -113,13 +113,13 @@ This means the final cited content may not be strictly sorted by a single vector
 
 |                                       |                                       |                                       |
 | ------------------------------------- | ------------------------------------- | ------------------------------------- |
-| ![](/imgs/dataset_search_params1.png) | ![](/imgs/dataset_search_params2.png) | ![](/imgs/dataset_search_params3.png) |
+| ![Configure Dataset search parameters](/imgs/dataset_search_params1.png) | ![Select the search mode and filtering options](/imgs/dataset_search_params2.png) | ![Configure query rewriting](/imgs/dataset_search_params3.png) |
 
 ### Search Modes
 
 #### Semantic Search
 
-Semantic search calculates the vector distance between the user's query and Dataset content to determine "similarity" — mathematical similarity, not linguistic.
+Semantic search calculates the vector distance between the user's query and Dataset content to measure mathematical similarity.
 
 Pros:
 
@@ -158,7 +158,7 @@ FastGPT uses `RRF` to merge rerank results, vector search results, and full-text
 
 The maximum number of `tokens` that citations can contain per search.
 
-Instead of using `top k`, we found that in mixed datasets (Q&A + document), different `chunk` lengths vary significantly, making `top k` results unstable. Using a `token` limit provides more consistent control.
+In mixed Datasets containing Q&A entries and documents, `chunk` lengths can vary significantly. A fixed `top k` can therefore return inconsistent amounts of content. A `token` limit controls the total citation size more consistently.
 
 #### Minimum Relevance
 
@@ -166,7 +166,7 @@ A value between `0-1` that filters out low-relevance search results.
 
 This only takes effect when using `Semantic Search` or `Result Reranking`.
 
-Note that minimum relevance is a filtering threshold, not the final sorting rule. After query rewriting, hybrid search, image search, or result reranking is enabled, final results may be fused from multiple recall paths and may not be strictly sorted by a single vector similarity score.
+Minimum relevance controls which results pass the filter. Ranking is determined by the retrieval and fusion steps. After query rewriting, hybrid search, image search, or result reranking is enabled, final results may be fused from multiple recall paths and may not be strictly sorted by a single vector similarity score.
 
 ### Query Rewriting
 
@@ -176,11 +176,11 @@ In RAG, we need to perform embedding searches against the database based on the 
 
 During search — especially in multi-turn conversations — follow-up questions often fail to find relevant content because Dataset search only uses the "current" question. Consider this example:
 
-![](/imgs/coreferenceResolution2.webp)
+![A follow-up question with an unresolved reference](/imgs/coreferenceResolution2.webp)
 
 When the user asks "What's the second point?", the system searches for "What's the second point?" in the Dataset, which returns nothing useful. The actual query should be "What is the QA structure?" This is why the Query Rewriting node expands the user's current question so Dataset search can find relevant content. Here's the result after rewriting:
 
-![](/imgs/coreferenceResolution3.webp)
+![Query rewriting adds the missing subject](/imgs/coreferenceResolution3.webp)
 
 #### How It Works
 

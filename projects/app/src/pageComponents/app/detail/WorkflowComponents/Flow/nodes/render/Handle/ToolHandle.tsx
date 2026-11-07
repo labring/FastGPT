@@ -2,14 +2,13 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { Box, type BoxProps } from '@chakra-ui/react';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { useTranslation } from 'next-i18next';
-import { type Connection, Handle, Position } from 'reactflow';
-import { useCallback, useMemo } from 'react';
+import { Handle, Position } from 'reactflow';
+import React, { useMemo } from 'react';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowBufferDataContext } from '../../../../context/workflowInitContext';
 import { WorkflowActionsContext } from '../../../../context/workflowActionsContext';
 import { WorkflowUIContext } from '../../../../context/workflowUIContext';
-import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
-import { isNodeConnectionAllowed } from '@fastgpt/global/core/workflow/template/context';
+import { checkExecutionConnection } from '@fastgpt/workflow-core/edge/validation';
 
 const handleSize = '20px';
 const activeHandleSize = '24px';
@@ -29,28 +28,19 @@ export const ToolTargetHandle = ({ show, nodeId }: ToolHandleProps) => {
 
   const active = useMemo(() => {
     if (!show || connectingEdge?.handleId !== handleId) return false;
-
-    const sourceNode = getNodeById(connectingEdge.nodeId);
-    const targetNode = getNodeById(nodeId);
-    const targetTemplate = targetNode
-      ? moduleTemplatesFlat.find((item) => item.id === targetNode.flowNodeType)
-      : undefined;
-
-    return (
-      !!sourceNode &&
-      !!targetNode &&
-      isNodeConnectionAllowed({
-        targetTemplate,
-        targetNode,
-        sourceNode,
-        edges,
-        handleId: connectingEdge.handleId,
-        getNodeById
-      })
-    );
+    return checkExecutionConnection({
+      connection: {
+        source: connectingEdge.nodeId,
+        sourceHandle: connectingEdge.handleId,
+        target: nodeId,
+        targetHandle: handleId
+      },
+      edges,
+      getNodeById
+    }).allowed;
   }, [connectingEdge, edges, getNodeById, nodeId, show]);
-  // if top handle is connected, return null
-  const showHandle = active || connected;
+  // 拖线时只显示可连接入口；空闲时显示已有端点。隐藏均保留真实端口和已有边。
+  const showHandle = connectingEdge ? active : connected;
 
   const size = active ? activeHandleSize : handleSize;
 
@@ -61,12 +51,12 @@ export const ToolTargetHandle = ({ show, nodeId }: ToolHandleProps) => {
           borderRadius: '0',
           backgroundColor: 'transparent',
           border: 'none',
-          width: size,
-          height: size,
+          width: handleSize,
+          height: handleSize,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          top: active ? '-14px' : '-10px',
+          top: '-10px',
           zIndex: 30,
           ...(showHandle ? {} : { visibility: 'hidden' })
         }}
@@ -85,6 +75,7 @@ export const ToolTargetHandle = ({ show, nodeId }: ToolHandleProps) => {
           bg={'white'}
           transform={'translate(0,0) rotate(45deg)'}
           pointerEvents={'none'}
+          flexShrink={0}
         />
       </Handle>
     );
@@ -95,27 +86,12 @@ export const ToolTargetHandle = ({ show, nodeId }: ToolHandleProps) => {
 
 export const ToolSourceHandle = ({ nodeId }: { nodeId: string }) => {
   const { t } = useTranslation();
-  const setEdges = useContextSelector(WorkflowBufferDataContext, (v) => v.setEdges);
-  const connectingEdge = useContextSelector(
-    WorkflowActionsContext,
-    (ctx) => ctx.connectingEdge?.nodeId === nodeId
-  );
+  const connectingEdge = useContextSelector(WorkflowActionsContext, (ctx) => ctx.connectingEdge);
   const nodeIsHover = useContextSelector(WorkflowUIContext, (v) => v.hoverNodeId === nodeId);
 
-  const active = useMemo(() => nodeIsHover || connectingEdge, [nodeIsHover, connectingEdge]);
-
-  /* onConnect edge, delete tool input and switch */
-  const onConnect = useCallback(
-    (e: Connection) => {
-      setEdges((edges) =>
-        edges.filter((edge) => {
-          if (edge.target !== e.target) return true;
-          if (edge.targetHandle === NodeOutputKeyEnum.selectedTools) return true;
-          return false;
-        })
-      );
-    },
-    [setEdges]
+  const active = useMemo(
+    () => nodeIsHover || connectingEdge?.nodeId === nodeId,
+    [connectingEdge, nodeId, nodeIsHover]
   );
 
   const size = active ? activeHandleSize : handleSize;
@@ -128,18 +104,18 @@ export const ToolSourceHandle = ({ nodeId }: { nodeId: string }) => {
             borderRadius: '0',
             backgroundColor: 'transparent',
             border: 'none',
-            width: size,
-            height: size,
+            width: handleSize,
+            height: handleSize,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            bottom: active ? '-14px' : '-10px',
+            bottom: '-10px',
             zIndex: 30
           }}
           type="source"
           id={NodeOutputKeyEnum.selectedTools}
           position={Position.Bottom}
-          onConnect={onConnect}
+          isConnectableEnd={false}
         >
           <Box
             w={size}
@@ -149,11 +125,12 @@ export const ToolSourceHandle = ({ nodeId }: { nodeId: string }) => {
             bg={'white'}
             transform={'translate(0,0) rotate(45deg)'}
             pointerEvents={'none'}
+            flexShrink={0}
           />
         </Handle>
       </MyTooltip>
     );
-  }, [active, onConnect, size, t]);
+  }, [size, t]);
 
   return Render;
 };

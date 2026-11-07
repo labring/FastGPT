@@ -172,7 +172,12 @@ describe('llmCompletionsBodyFormat', () => {
                   toolDescription: 'Query for model',
                   'x-tool-description': 'HTTP query',
                   isToolParam: true,
-                  isSecret: true
+                  isSecret: true,
+                  'x-fastgpt-node-input': { renderTypeList: ['input'] },
+                  'x-i18n': {
+                    title: { en: 'Query', 'zh-CN': '查询' },
+                    description: { en: 'Search text', 'zh-CN': '检索文本' }
+                  }
                 },
                 filters: {
                   type: 'array',
@@ -184,9 +189,13 @@ describe('llmCompletionsBodyFormat', () => {
                         toolDescription: 'Filter key'
                       }
                     },
-                    toolDescription: 'Filter object'
+                    toolDescription: 'Filter object',
+                    'x-fastgpt-node-output': { valueType: 'object' }
                   }
-                }
+                },
+                constructor: { type: 'string' },
+                toString: { type: 'string' },
+                hasOwnProperty: { type: 'string' }
               }
             }
           }
@@ -218,12 +227,98 @@ describe('llmCompletionsBodyFormat', () => {
                     }
                   }
                 }
-              }
+              },
+              constructor: { type: 'string' },
+              toString: { type: 'string' },
+              hasOwnProperty: { type: 'string' }
             }
           }
         }
       }
     ]);
+  });
+
+  it('normalizes nested legacy required flags before sending tools to the model', async () => {
+    const parameters = {
+      type: 'object',
+      required: ['query', 'query'],
+      properties: {
+        query: { type: 'string', required: true },
+        optional: { type: 'string', required: false },
+        entries: {
+          type: 'array',
+          required: true,
+          items: {
+            type: 'object',
+            properties: { name: { type: 'string', required: true } }
+          }
+        }
+      }
+    };
+    const before = structuredClone(parameters);
+    const { requestBody } = await llmCompletionsBodyFormat({
+      model: createModel(),
+      messages,
+      tools: [{ type: 'function', function: { name: 'search', parameters } }],
+      toolCallMode: 'toolChoice'
+    });
+
+    const tool = requestBody.tools?.find((tool) => tool.type === 'function');
+    expect(tool?.function.parameters).toEqual({
+      type: 'object',
+      required: ['query', 'entries'],
+      properties: {
+        query: { type: 'string' },
+        optional: { type: 'string' },
+        entries: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: { name: { type: 'string' } },
+            required: ['name']
+          }
+        }
+      }
+    });
+    expect(parameters).toEqual(before);
+  });
+
+  it('preserves private-looking property names and literal data in the outgoing schema', async () => {
+    const data = {
+      required: true,
+      isSecret: true,
+      'x-fastgpt-node-input': { valueType: 'string' },
+      properties: { name: { required: false } }
+    };
+    const parameters = {
+      type: 'object',
+      properties: {
+        isSecret: { type: 'boolean', required: true, isSecret: true },
+        'x-fastgpt-node-input': { type: 'string' },
+        required: { type: 'string' },
+        literal: { const: data, enum: [data], default: data, examples: [data] }
+      }
+    };
+    const before = structuredClone(parameters);
+    const { requestBody } = await llmCompletionsBodyFormat({
+      model: createModel(),
+      messages,
+      tools: [{ type: 'function', function: { name: 'search', parameters } }],
+      toolCallMode: 'toolChoice'
+    });
+
+    const tool = requestBody.tools?.find((tool) => tool.type === 'function');
+    expect(tool?.function.parameters).toEqual({
+      type: 'object',
+      required: ['isSecret'],
+      properties: {
+        isSecret: { type: 'boolean' },
+        'x-fastgpt-node-input': { type: 'string' },
+        required: { type: 'string' },
+        literal: { const: data, enum: [data], default: data, examples: [data] }
+      }
+    });
+    expect(parameters).toEqual(before);
   });
 
   it('should apply field map after base formatting', async () => {

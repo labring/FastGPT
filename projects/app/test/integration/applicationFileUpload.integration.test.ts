@@ -157,7 +157,7 @@ describe('application file upload integration', () => {
     expect(getWorkflowDebugRuntimeContext({ appId, chatId })).toEqual({
       sourceTarget: { sourceType: ChatSourceTypeEnum.app, sourceId: appId },
       chatId,
-      outLinkAuthData: {},
+      outLinkAuthData: undefined,
       fileUploadMode: 'draft'
     });
 
@@ -284,12 +284,12 @@ describe('application file upload integration', () => {
       {
         key: 'chat/app/team/user/chat-id/local.pdf',
         name: 'local.pdf',
-        type: ChatFileTypeEnum.file
+        type: ChatFileTypeEnum.document
       },
       {
         url: 'https://example.com/remote.pdf',
         name: 'remote.pdf',
-        type: ChatFileTypeEnum.file
+        type: ChatFileTypeEnum.document
       }
     ]);
   });

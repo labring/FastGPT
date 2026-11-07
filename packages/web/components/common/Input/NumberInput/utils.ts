@@ -3,7 +3,10 @@ export const shouldKeepEditingStringValue = (value: string) =>
 
 export function getNumberInputValue(value: string, keepEditingStringValue: false): number | '';
 export function getNumberInputValue(value: string, keepEditingStringValue?: true): number | string;
-export function getNumberInputValue(value: string, keepEditingStringValue: boolean): number | string;
+export function getNumberInputValue(
+  value: string,
+  keepEditingStringValue: boolean
+): number | string;
 export function getNumberInputValue(value: string, keepEditingStringValue = true) {
   if (value === '') return '';
 

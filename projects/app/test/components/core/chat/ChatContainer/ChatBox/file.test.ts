@@ -23,7 +23,7 @@ describe('resolveChatFileUploadMode', () => {
     ).toBe('draft');
   });
 
-  it('keeps runtime mode for regular chats, Home Chat, shares and ChatAgentHelper', () => {
+  it('keeps runtime mode for regular chats, Home Chat, shares and auxiliary generators', () => {
     expect(
       resolveChatFileUploadMode({
         chatType: ChatTypeEnum.chat,
@@ -48,6 +48,12 @@ describe('resolveChatFileUploadMode', () => {
         sourceType: ChatSourceTypeEnum.chatAgentHelper
       })
     ).toBe('runtime');
+    expect(
+      resolveChatFileUploadMode({
+        chatType: ChatTypeEnum.test,
+        sourceType: ChatSourceTypeEnum.workflowBuilder
+      })
+    ).toBe('runtime');
   });
 });
 
@@ -58,9 +64,13 @@ describe('getUploadChatFileType', () => {
     expect(getUploadChatFileType({ type: 'video/mp4' } as File)).toBe(ChatFileTypeEnum.video);
   });
 
-  it('falls back to common file type for unknown or empty mime types', () => {
-    expect(getUploadChatFileType({ type: 'application/pdf' } as File)).toBe(ChatFileTypeEnum.file);
-    expect(getUploadChatFileType({ type: '' } as File)).toBe(ChatFileTypeEnum.file);
+  it('distinguishes supported documents from unknown formats', () => {
+    expect(getUploadChatFileType({ name: 'report.pdf', type: 'application/pdf' } as File)).toBe(
+      ChatFileTypeEnum.document
+    );
+    expect(getUploadChatFileType({ name: 'archive.zip', type: '' } as File)).toBe(
+      ChatFileTypeEnum.unknown
+    );
   });
 });
 

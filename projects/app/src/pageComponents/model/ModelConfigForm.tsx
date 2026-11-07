@@ -1,12 +1,17 @@
 import MyTextarea from '@/components/common/Textarea/MyTextarea';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { Box, Flex, Grid, GridItem, HStack, Input, Switch } from '@chakra-ui/react';
-import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import type { SystemModelDocumentDataType } from '@fastgpt/global/core/ai/model/schema';
+import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import type {
+  AIModelDocumentDataType,
+  ModelPriceTierType
+} from '@fastgpt/global/core/ai/model/schema';
+import type { ChannelType } from '@fastgpt/global/core/ai/model/scope';
 import { MAX_MODEL_PRICE_TIERS } from '@fastgpt/global/core/ai/model/pricing';
 import type { ModelProviderItemType } from '@fastgpt/global/core/ai/model/provider';
 import {
   getRuntimeResolvedPriceTiers,
+  roundModelPrice,
   normalizeModelPricingForRead,
   normalizeModelPricingForSave
 } from '@fastgpt/global/core/ai/model/pricing';
@@ -146,8 +151,8 @@ const SwitchField = ({
 }: {
   label: string;
   tip?: string;
-  field: FieldPath<SystemModelDocumentDataType>;
-  register: UseFormRegister<SystemModelDocumentDataType>;
+  field: FieldPath<AIModelDocumentDataType>;
+  register: UseFormRegister<AIModelDocumentDataType>;
 }) => (
   <GridItem>
     <Flex alignItems={'center'} gap={1} mb={3}>
@@ -165,7 +170,7 @@ const ProviderField = React.memo(function ProviderField({
   providerList,
   t
 }: {
-  control: Control<SystemModelDocumentDataType>;
+  control: Control<AIModelDocumentDataType>;
   providerList: { label: React.ReactNode; value: string }[];
   t: ReturnType<typeof useSafeTranslation>['t'];
 }) {
@@ -201,8 +206,8 @@ const ResponseFormatField = React.memo(function ResponseFormatField({
   setValue,
   t
 }: {
-  control: Control<SystemModelDocumentDataType>;
-  setValue: UseFormSetValue<SystemModelDocumentDataType>;
+  control: Control<AIModelDocumentDataType>;
+  setValue: UseFormSetValue<AIModelDocumentDataType>;
   t: ReturnType<typeof useSafeTranslation>['t'];
 }) {
   const responseFormatList = useWatch({
@@ -252,8 +257,8 @@ const DefaultConfigField = React.memo(function DefaultConfigField({
   tip,
   onDraftChange
 }: {
-  control: Control<SystemModelDocumentDataType>;
-  setValue: UseFormSetValue<SystemModelDocumentDataType>;
+  control: Control<AIModelDocumentDataType>;
+  setValue: UseFormSetValue<AIModelDocumentDataType>;
   label: string;
   tip: string;
   onDraftChange?: () => void;
@@ -292,7 +297,7 @@ const VoicesField = React.memo(function VoicesField({
   t,
   onDraftChange
 }: {
-  control: Control<SystemModelDocumentDataType>;
+  control: Control<AIModelDocumentDataType>;
   t: ReturnType<typeof useSafeTranslation>['t'];
   onDraftChange?: () => void;
 }) {
@@ -342,13 +347,14 @@ const VoicesField = React.memo(function VoicesField({
   );
 });
 
-export type ModelConfigFormGetValues = () => SystemModelDocumentDataType;
+export type ModelConfigFormGetValues = () => AIModelDocumentDataType;
 
 type ModelConfigFormProps = {
-  modelData: SystemModelDocumentDataType;
+  modelData: AIModelDocumentDataType;
   providers: ModelProviderItemType[];
   formId: string;
-  onSubmit: (modelData: SystemModelDocumentDataType) => Promise<unknown>;
+  onSubmit: (modelData: AIModelDocumentDataType) => Promise<unknown>;
+  channelType?: ChannelType;
   isModelIdReadOnly?: boolean;
   channelSection?: {
     title: string;
@@ -368,6 +374,7 @@ const ModelConfigForm = ({
   formId,
   onSubmit,
   channelSection,
+  channelType,
   isModelIdReadOnly = false,
   onModelChange,
   onSuccess,
@@ -377,6 +384,7 @@ const ModelConfigForm = ({
 }: ModelConfigFormProps) => {
   const { t } = useSafeTranslation();
   const { feConfigs } = useSystemStore();
+  const isTeamModel = channelType === 'team' || modelData.scope === ModelScopeEnum.team;
   const initialModelData = normalizeModelPricingForRead(modelData);
   const [hasJsonDraftChanges, setHasJsonDraftChanges] = useState(false);
 
@@ -387,33 +395,30 @@ const ModelConfigForm = ({
     setValue,
     handleSubmit,
     formState: { isDirty }
-  } = useForm<SystemModelDocumentDataType>({
-    defaultValues: {
-      // 空白草稿的引用上限不向输入框写入 NaN，保持视觉上未填写。
-      ...(initialModelData.type === ModelTypeEnum.llm &&
-      Number.isNaN(initialModelData.config.quoteMaxToken)
-        ? {
-            ...initialModelData,
-            config: { ...initialModelData.config, quoteMaxToken: undefined }
-          }
-        : initialModelData),
-      priceTiers: (() => {
-        if (modelData.type !== ModelTypeEnum.llm) return undefined;
-        const tiers = (initialModelData.priceTiers ?? []).slice(0, MAX_MODEL_PRICE_TIERS);
-        if (tiers.length === 0) return [emptyPriceTier];
-
-        const last = tiers[tiers.length - 1];
-        if (tiers.length >= MAX_MODEL_PRICE_TIERS || !last.maxInputTokens) return tiers;
-
-        return [
-          ...tiers,
-          {
-            ...emptyPriceTier,
-            minInputTokens: last.maxInputTokens
-          }
-        ];
-      })()
-    }
+  } = useForm<AIModelDocumentDataType>({
+    defaultValues: (() => {
+      if (initialModelData.type !== ModelTypeEnum.llm) return initialModelData;
+      const tiers: Partial<ModelPriceTierType>[] = (initialModelData.pricing?.tiers ?? []).slice(
+        0,
+        MAX_MODEL_PRICE_TIERS
+      );
+      const last = tiers.at(-1);
+      if (
+        tiers.length === 0 ||
+        (tiers.length < MAX_MODEL_PRICE_TIERS && last?.maxInputTokens !== undefined)
+      )
+        tiers.push(emptyPriceTier);
+      return {
+        ...initialModelData,
+        config: {
+          ...initialModelData.config,
+          quoteMaxToken: Number.isNaN(initialModelData.config.quoteMaxToken)
+            ? undefined
+            : initialModelData.config.quoteMaxToken
+        },
+        pricing: { tiers }
+      };
+    })()
   });
 
   useEffect(() => {
@@ -458,14 +463,14 @@ const ModelConfigForm = ({
   );
 
   const priceUnit = useMemo(() => {
-    if (isLLMModel || isEmbeddingModel || isRerankModel) return '/ 1k Tokens';
-    if (isTTSModel) return `/ 1k ${t('common:unit.character')}`;
+    if (isLLMModel || isEmbeddingModel || isRerankModel) return '/ M Tokens';
+    if (isTTSModel) return `/ 1M ${t('common:unit.character')}`;
     if (isSTTModel) return `/ 60 ${t('common:unit.seconds')}`;
     return '';
   }, [isLLMModel, isEmbeddingModel, isTTSModel, t, isSTTModel, isRerankModel]);
 
   const { runAsync: submitModelRequest, loading: submittingModel } = useRequest(
-    async (data: SystemModelDocumentDataType) => {
+    async (data: AIModelDocumentDataType) => {
       data.name = data.name?.trim() || data.model;
       if (data.type === ModelTypeEnum.llm) {
         // 数字输入留空会产生 NaN；仅未填写时按上下文计算，保留显式填写的 0。
@@ -479,36 +484,13 @@ const ModelConfigForm = ({
           data.config.maxTemperature = null;
         }
 
-        const priceTiers = getRuntimeResolvedPriceTiers({ priceTiers: data.priceTiers });
-
-        let currentLowerExclusiveBound = 0;
-
-        for (let index = 0; index < priceTiers.length; index++) {
-          const tier = priceTiers[index];
-          const hasPrice =
-            typeof tier.inputPrice === 'number' || typeof tier.outputPrice === 'number';
-
-          if (!hasPrice) {
-            return Promise.reject(t('config_model:model.price_tier_price_required'));
-          }
-
-          if (index < priceTiers.length - 1 && typeof tier.maxInputTokens !== 'number') {
-            return Promise.reject(t('config_model:model.price_tier_max_required'));
-          }
-
-          if (
-            typeof tier.maxInputTokens === 'number' &&
-            tier.maxInputTokens <= currentLowerExclusiveBound
-          ) {
-            return Promise.reject(t('config_model:model.price_tier_range_invalid'));
-          }
-
-          if (typeof tier.maxInputTokens === 'number') {
-            currentLowerExclusiveBound = tier.maxInputTokens;
-          }
+        const tiers = getRuntimeResolvedPriceTiers(data);
+        // 清洗已保证单价完整、上限递增且无限档位于末尾；表单另要求首档上限大于零。
+        if (tiers[0]?.maxInputTokens === 0) {
+          return Promise.reject(t('config_model:model.price_tier_range_invalid'));
         }
 
-        data.priceTiers = priceTiers;
+        data.pricing = { tiers };
       }
 
       const modelData = data as Record<string, unknown>;
@@ -516,6 +498,11 @@ const ModelConfigForm = ({
       for (const key of Object.keys(modelData)) {
         const val = modelData[key];
         if (val === null || val === undefined) delete modelData[key];
+      }
+      if (isTeamModel) {
+        delete modelData.requestUrl;
+        delete modelData.requestAuth;
+        delete modelData.testMode;
       }
 
       return onSubmit(normalizeModelPricingForSave(data));
@@ -789,7 +776,7 @@ const ModelConfigForm = ({
         </Section>
       )}
 
-      {priceUnit && feConfigs?.isPlus && (
+      {priceUnit && feConfigs?.isPlus && !isTeamModel && (
         <Section title={t('config_model:model.price_config_section')}>
           {isLLMModel ? (
             <ModelPriceTiersTable
@@ -801,15 +788,31 @@ const ModelConfigForm = ({
           ) : (
             <Grid templateColumns={['1fr', 'repeat(2, minmax(0, 1fr))']} gap={4}>
               <Field
-                label={`${t('config_model:model.charsPointsPrice')}`}
-                tip={t('config_model:model.charsPointsPrice_tip')}
+                label={`${t('config_model:model.unitPrice')}`}
+                tip={t('config_model:model.unitPrice_tip')}
               >
                 <Flex alignItems={'center'} gap={2}>
-                  <MyNumberInput
-                    register={register}
-                    name="charsPointsPrice"
+                  <Input
+                    type="number"
                     step={0.01}
-                    {...NumberInputStyles}
+                    {...register('pricing.unitPrice', {
+                      setValueAs: (value) =>
+                        value === '' ? undefined : roundModelPrice(Number(value)),
+                      onBlur: (event) => {
+                        const price =
+                          event.target.value === '' ? undefined : Number(event.target.value);
+                        if (price !== undefined && !Number.isFinite(price)) return;
+                        // 与阶梯单价共用十进制舍入，避免 Chakra precision 提前压低中点。
+                        setValue(
+                          'pricing.unitPrice',
+                          price === undefined ? undefined : roundModelPrice(price),
+                          {
+                            shouldDirty: true
+                          }
+                        );
+                      }
+                    })}
+                    {...InputStyles}
                   />
                   <Box flexShrink={0} fontSize={'12px'} color={'myGray.900'}>
                     {priceUnit}
@@ -821,56 +824,62 @@ const ModelConfigForm = ({
         </Section>
       )}
 
-      <Section title={t('common:Other')} showBorder={false}>
-        <Grid templateColumns={['1fr', 'repeat(2, minmax(0, 1fr))']} gap={4}>
-          {isLLMModel && (
-            <Field
-              label={t('config_model:model.default_system_chat_prompt')}
-              tip={t('config_model:model.default_system_chat_prompt_tip')}
-              colSpan={[1, 2]}
-            >
-              <MyTextarea
-                {...register('config.defaultSystemChatPrompt')}
-                {...MultilineInputStyles}
-                minH={'110px'}
+      {(isLLMModel || isEmbeddingModel || isRerankModel || isTTSModel || !isTeamModel) && (
+        <Section title={t('common:Other')} showBorder={false}>
+          <Grid templateColumns={['1fr', 'repeat(2, minmax(0, 1fr))']} gap={4}>
+            {isLLMModel && (
+              <Field
+                label={t('config_model:model.default_system_chat_prompt')}
+                tip={t('config_model:model.default_system_chat_prompt_tip')}
+                colSpan={[1, 2]}
+              >
+                <MyTextarea
+                  {...register('config.defaultSystemChatPrompt')}
+                  {...MultilineInputStyles}
+                  minH={'110px'}
+                />
+              </Field>
+            )}
+            {(isLLMModel || isEmbeddingModel || isRerankModel) && (
+              <DefaultConfigField
+                control={control}
+                setValue={setValue}
+                label={
+                  isEmbeddingModel
+                    ? t('config_model:model.defaultConfig')
+                    : t('config_model:model.default_config')
+                }
+                tip={
+                  isEmbeddingModel
+                    ? t('config_model:model.defaultConfig_tip')
+                    : isRerankModel
+                      ? t('config_model:model.rerank_default_config_tip')
+                      : t('config_model:model.default_config_tip')
+                }
+                onDraftChange={() => setHasJsonDraftChanges(true)}
               />
-            </Field>
-          )}
-          {(isLLMModel || isEmbeddingModel || isRerankModel) && (
-            <DefaultConfigField
-              control={control}
-              setValue={setValue}
-              label={
-                isEmbeddingModel
-                  ? t('config_model:model.defaultConfig')
-                  : t('config_model:model.default_config')
-              }
-              tip={
-                isEmbeddingModel
-                  ? t('config_model:model.defaultConfig_tip')
-                  : isRerankModel
-                    ? t('config_model:model.rerank_default_config_tip')
-                    : t('config_model:model.default_config_tip')
-              }
-              onDraftChange={() => setHasJsonDraftChanges(true)}
-            />
-          )}
-          {isTTSModel && (
-            <VoicesField
-              control={control}
-              t={t}
-              onDraftChange={() => setHasJsonDraftChanges(true)}
-            />
-          )}
-          {CustomApi}
-          <SwitchField
-            label={t('config_model:model.test_mode')}
-            tip={t('config_model:model.test_mode_tip')}
-            field={'testMode'}
-            register={register}
-          />
-        </Grid>
-      </Section>
+            )}
+            {isTTSModel && (
+              <VoicesField
+                control={control}
+                t={t}
+                onDraftChange={() => setHasJsonDraftChanges(true)}
+              />
+            )}
+            {!isTeamModel && (
+              <>
+                {CustomApi}
+                <SwitchField
+                  label={t('config_model:model.test_mode')}
+                  tip={t('config_model:model.test_mode_tip')}
+                  field={'testMode'}
+                  register={register}
+                />
+              </>
+            )}
+          </Grid>
+        </Section>
+      )}
     </Box>
   );
 };

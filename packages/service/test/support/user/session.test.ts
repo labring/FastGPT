@@ -75,6 +75,7 @@ describe('user session service', () => {
       userId: 'user-1',
       teamId: 'team-1',
       tmbId: 'tmb-1',
+      isRoot: false,
       ip: null
     });
 
@@ -91,6 +92,15 @@ describe('user session service', () => {
       }
     });
     await vi.waitFor(() => expect(mocks.cache.listByUser).toHaveBeenCalledWith('user-1'));
+  });
+
+  it('preserves an explicit root identity when creating a session for another team', async () => {
+    await createUserSession({ userId: 'user-1', teamId: 'team-2', tmbId: 'tmb-2', isRoot: true });
+
+    expect(mocks.cache.set).toHaveBeenCalledWith({
+      sessionId: expect.any(String),
+      data: expect.objectContaining({ teamId: 'team-2', tmbId: 'tmb-2', isRoot: true })
+    });
   });
 
   it('deletes all sessions except explicitly whitelisted session IDs', async () => {
@@ -112,7 +122,7 @@ describe('user session service', () => {
       { sessionId: 'user-1:middle', data: { createdAt: 2000 } }
     ]);
 
-    await createUserSession({ userId: 'user-1', teamId: 'team-1', tmbId: 'tmb-1' });
+    await createUserSession({ userId: 'user-1', teamId: 'team-1', tmbId: 'tmb-1', isRoot: false });
 
     await vi.waitFor(() => expect(mocks.cache.deleteMany).toHaveBeenCalledWith(['user-1:old']));
   });
@@ -122,7 +132,7 @@ describe('user session service', () => {
     mocks.cache.set.mockRejectedValue(error);
 
     await expect(
-      createUserSession({ userId: 'user-1', teamId: 'team-1', tmbId: 'tmb-1' })
+      createUserSession({ userId: 'user-1', teamId: 'team-1', tmbId: 'tmb-1', isRoot: false })
     ).rejects.toBe(error);
   });
 });

@@ -1,20 +1,20 @@
-import { createNodeSummary } from '@fastgpt/service/core/workflow/dispatch/utils/summary';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { runtimePrompt2ChatsValue } from '@fastgpt/global/core/chat/adapt';
 import {
   ChatFileTypeEnum,
   ChatRoleEnum,
   ChatSourceTypeEnum
 } from '@fastgpt/global/core/chat/constants';
-import { runtimePrompt2ChatsValue } from '@fastgpt/global/core/chat/adapt';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
+import { UserConfigError } from '@fastgpt/global/common/error/utils';
+import { getRunningSandboxId } from '@fastgpt/service/core/ai/sandbox/utils/id';
+import { getSandboxRuntimeProfile } from '@fastgpt/service/core/ai/sandbox/application/runtime';
+import { createNodeSummary } from '@fastgpt/service/core/workflow/dispatch/utils/summary';
 import { runWithContext as runWithWorkflowContext } from '@fastgpt/service/core/workflow/utils/context';
-import {
-  getRunningSandboxId,
-  getSandboxRuntimeProfile
-} from '@fastgpt/service/core/ai/sandbox/interface/runtime';
 import { Readable } from 'node:stream';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const runWithContext: typeof runWithWorkflowContext = (value, fn) =>
   runWithWorkflowContext(
@@ -44,6 +44,7 @@ const {
   injectAgentSkillFilesToSandboxMock,
   checkTeamSandboxPermissionMock,
   ensureAppSandboxRuntimeReadyMock,
+  authSkillByTmbIdMock,
   getLLMModelDataMock
 } = vi.hoisted(() => ({
   runAgentLoopMock: vi.fn(),
@@ -52,7 +53,6 @@ const {
     AGENT_SANDBOX_PROVIDER: 'opensandbox',
     AGENT_SANDBOX_OPENSANDBOX_RUNTIME: 'docker',
     AGENT_SANDBOX_OPENSANDBOX_IMAGE: 'fastgpt-agent-sandbox:latest',
-    AGENT_SANDBOX_MAX_EDIT_DEBUG: 100,
     AGENT_SANDBOX_MAX_SESSION_RUNTIME: 300,
     AGENT_SANDBOX_SEALOS_WORK_DIRECTORY: '/home/devbox/workspace',
     STREAM_RESUME_TTL_SECONDS: 300,
@@ -71,15 +71,33 @@ const {
   injectAgentSkillFilesToSandboxMock: vi.fn(),
   checkTeamSandboxPermissionMock: vi.fn(),
   ensureAppSandboxRuntimeReadyMock: vi.fn(),
+  authSkillByTmbIdMock: vi.fn(),
   getLLMModelDataMock: vi.fn()
 }));
 
-vi.mock('@fastgpt/service/core/ai/model', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@fastgpt/service/core/ai/model')>()),
-  getModelHandle: async () => ({
+vi.mock('@fastgpt/service/support/permission/skill/auth', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@fastgpt/service/support/permission/skill/auth')>()),
+  authSkillByTmbId: authSkillByTmbIdMock
+}));
+vi.mock('@fastgpt/service/support/permission/model/auth', () => ({
+  assertAuthModels: vi.fn(async () => ({ handle: {}, models: [] })),
+  getAuthorizedModelIds: vi.fn(async () => new Set())
+}));
+
+vi.mock('@fastgpt/service/core/ai/model/catalog/service', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@fastgpt/service/core/ai/model/catalog/service')>()),
+  getSystemModelHandle: async () => ({
     ...(await (
-      await importOriginal<typeof import('@fastgpt/service/core/ai/model')>()
-    ).getModelHandle()),
+      await importOriginal<typeof import('@fastgpt/service/core/ai/model/catalog/service')>()
+    ).getSystemModelHandle()),
+    getModelData: getLLMModelDataMock,
+    getLLMModelData: getLLMModelDataMock
+  }),
+  getTeamModelHandle: async () => ({
+    ...(await (
+      await importOriginal<typeof import('@fastgpt/service/core/ai/model/catalog/service')>()
+    ).getSystemModelHandle()),
+    getModelData: getLLMModelDataMock,
     getLLMModelData: getLLMModelDataMock
   })
 }));
@@ -110,9 +128,9 @@ vi.mock('@fastgpt/service/core/ai/skill/runtime', async (importOriginal) => {
   };
 });
 
-vi.mock('@fastgpt/service/core/ai/sandbox/interface/runtime', async (importOriginal) => {
+vi.mock('@fastgpt/service/core/ai/sandbox/application/runtime', async (importOriginal) => {
   const original =
-    await importOriginal<typeof import('@fastgpt/service/core/ai/sandbox/interface/runtime')>();
+    await importOriginal<typeof import('@fastgpt/service/core/ai/sandbox/application/runtime')>();
 
   return {
     ...original,
@@ -120,12 +138,32 @@ vi.mock('@fastgpt/service/core/ai/sandbox/interface/runtime', async (importOrigi
       sandboxClient: await getSandboxClientMock(params),
       workspaceRoot: original.getSandboxRuntimeProfile().workDirectory,
       workDirectory: original.getSandboxRuntimeProfile().workDirectory
-    })),
-    ensureAppSandboxRuntimeReady: ensureAppSandboxRuntimeReadyMock,
-    getAgentSkillInfos: getAgentSkillInfosMock,
-    injectAgentSkillFilesToSandbox: injectAgentSkillFilesToSandboxMock
+    }))
   };
 });
+vi.mock('@fastgpt/service/core/ai/sandbox/application/runtime/upgrade', async (importOriginal) => {
+  const original =
+    await importOriginal<
+      typeof import('@fastgpt/service/core/ai/sandbox/application/runtime/upgrade')
+    >();
+
+  return { ...original, ensureAppSandboxRuntimeReady: ensureAppSandboxRuntimeReadyMock };
+});
+vi.mock(
+  '@fastgpt/service/core/ai/sandbox/application/runtime/skill/core',
+  async (importOriginal) => {
+    const original =
+      await importOriginal<
+        typeof import('@fastgpt/service/core/ai/sandbox/application/runtime/skill/core')
+      >();
+
+    return {
+      ...original,
+      getAgentSkillInfos: getAgentSkillInfosMock,
+      injectAgentSkillFilesToSandbox: injectAgentSkillFilesToSandboxMock
+    };
+  }
+);
 
 vi.mock('@fastgpt/service/support/permission/teamLimit', () => ({
   checkTeamSandboxPermission: checkTeamSandboxPermissionMock
@@ -268,7 +306,6 @@ const createProps = () =>
       model: 'gpt-5',
       systemPrompt: 'system prompt',
       userChatInput: '当前问题',
-      history: 6,
       fileUrlList: ['https://files.example.com/current.pdf'],
       agent_selectedTools: [],
       skills: [],
@@ -381,7 +418,7 @@ describe('dispatchRunAgent user context', () => {
         result = dispatchRunAgent(createProps());
       }
     );
-    await result;
+    const output = await result;
 
     const loopInput = runAgentLoopMock.mock.calls[0][0].input;
     const historyText = getMessageTextForTest(loopInput.messages[0].content);
@@ -396,12 +433,22 @@ describe('dispatchRunAgent user context', () => {
     expect(currentText).toContain('## 知识库');
     expect(currentText).toContain('## 背景信息');
     expect(currentText).toContain('当前问题');
+    expect(
+      output[DispatchNodeResponseKeyEnum.assistantResponses].find(
+        (value: any) => value.inputContext
+      )?.inputContext.content
+    ).toBe(loopInput.messages[1].content);
   });
 
   it('removes history files when the node file input is not bound', async () => {
     const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
     const props = createProps();
-    props.node.inputs = [];
+    props.node.inputs = [
+      {
+        key: NodeInputKeyEnum.fileUrlList,
+        value: []
+      }
+    ];
 
     let result: any;
     runWithContext(
@@ -497,6 +544,12 @@ describe('dispatchRunAgent user context', () => {
     let sandboxReadyBeforeLoop = false;
     runAgentLoopMock.mockImplementationOnce(async () => {
       sandboxReadyBeforeLoop = sandboxWriteFilesMock.mock.calls.length > 0;
+      expect(
+        props.workflowStreamResponse.mock.calls
+          .map(([event]: [{ event: string; data: { phase?: string } }]) => event)
+          .filter((event: { event: string }) => event.event === 'sandboxStatus')
+          .map((event: { data: { phase: string } }) => event.data.phase)
+      ).toEqual(['lazyInit', 'ready']);
       return {
         status: 'done',
         completeMessages: [],
@@ -567,31 +620,34 @@ describe('dispatchRunAgent user context', () => {
     expect(getSandboxClientMock).toHaveBeenCalledTimes(1);
   });
 
-  it('uses the runtime member for skill injection without an App resource context', async () => {
+  it('authorizes skills as the runtime member before sandbox injection without an App resource context', async () => {
     const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
+    const skillId = '507f1f77bcf86cd799439011';
+    const skill = { _id: skillId, name: 'Report' };
+    authSkillByTmbIdMock.mockResolvedValueOnce({ skill });
     const props = createProps();
     props.params.useAgentSandbox = true;
-    props.params.skills = [{ skillId: 'skill_1', name: 'Report' }];
+    props.params.skills = [{ skillId, name: 'Report' }];
     props.runningAppInfo.tmbId = 'app_owner_tmb';
     props.runningUserInfo.tmbId = 'external_user_tmb';
 
-    let result: any;
-    runWithContext(
+    const result = await runWithContext(
       {
         mcpClientMemory: {}
       },
-      () => {
-        result = dispatchRunAgent(props);
-      }
+      () => dispatchRunAgent(props)
     );
-    await result;
 
     expect(result.error).toBeUndefined();
+    expect(authSkillByTmbIdMock).toHaveBeenCalledWith({
+      tmbId: 'external_user_tmb',
+      skillId,
+      per: ReadPermissionVal,
+      isRoot: false
+    });
     expect(injectAgentSkillFilesToSandboxMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        teamId: 'team_1',
-        tmbId: 'external_user_tmb',
-        skillIds: ['skill_1']
+        skills: [skill]
       })
     );
   });
@@ -624,8 +680,8 @@ describe('dispatchRunAgent user context', () => {
     const sandboxStatusEvents = props.workflowStreamResponse.mock.calls
       .map(([event]: [{ event: string; data: unknown }]) => event)
       .filter((event: { event: string }) => event.event === 'sandboxStatus');
-    expect(sandboxStatusEvents).toEqual([
-      {
+    expect(sandboxStatusEvents).toEqual(
+      ['lazyInit', 'upgrading', 'lazyInit', 'ready'].map((phase) => ({
         event: 'sandboxStatus',
         data: {
           sandboxId: getRunningSandboxId({
@@ -633,21 +689,10 @@ describe('dispatchRunAgent user context', () => {
             sourceId: 'app_1',
             userId: 'user_1'
           }),
-          phase: 'upgrading'
+          phase
         }
-      },
-      {
-        event: 'sandboxStatus',
-        data: {
-          sandboxId: getRunningSandboxId({
-            sourceType: ChatSourceTypeEnum.app,
-            sourceId: 'app_1',
-            userId: 'user_1'
-          }),
-          phase: 'lazyInit'
-        }
-      }
-    ]);
+      }))
+    );
     expect(getSandboxClientMock).toHaveBeenCalledOnce();
     expect(runAgentLoopMock).toHaveBeenCalledOnce();
     expect(result.error).toBeUndefined();
@@ -673,6 +718,12 @@ describe('dispatchRunAgent user context', () => {
 
     expect(getSandboxClientMock).not.toHaveBeenCalled();
     expect(runAgentLoopMock).not.toHaveBeenCalled();
+    expect(
+      props.workflowStreamResponse.mock.calls
+        .map(([event]: [{ event: string; data: { phase?: string } }]) => event)
+        .filter((event: { event: string }) => event.event === 'sandboxStatus')
+        .map((event: { data: { phase: string } }) => event.data.phase)
+    ).toEqual(['lazyInit']);
     expect(result.error?.system_error_text).toContain('archive upload failed');
   });
 
@@ -715,41 +766,33 @@ describe('dispatchRunAgent user context', () => {
     expect(currentText).toContain('<location>./SKILL.md</location>');
   });
 
-  it('returns the final answer as assistant response', async () => {
-    const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
-
-    let resultPromise: Promise<any>;
-    runWithContext(
-      {
-        mcpClientMemory: {}
-      },
-      () => {
-        resultPromise = dispatchRunAgent(createProps());
-      }
-    );
-    const result = await resultPromise!;
-
-    expect(result.data.answerText).toBe('ok');
-    expect(result[DispatchNodeResponseKeyEnum.assistantResponses]).toEqual([
-      {
-        text: {
-          content: 'ok'
-        }
-      }
-    ]);
-  });
-
-  it('does not duplicate final answer already persisted from answer_delta', async () => {
+  it('returns the full process text across tool-calling turns without duplicating answer_delta', async () => {
     const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
     runAgentLoopMock.mockImplementationOnce(async ({ runtime }) => {
       runtime.emitEvent({
         type: 'answer_delta',
-        text: 'ok'
+        text: '我先查询工具。'
       });
       return {
         status: 'done',
         completeMessages: [],
         assistantMessages: [
+          {
+            role: 'assistant',
+            content: '我先查询工具。',
+            tool_calls: [
+              {
+                id: 'call_1',
+                type: 'function',
+                function: { name: 'search', arguments: '{}' }
+              }
+            ]
+          },
+          {
+            role: 'tool',
+            tool_call_id: 'call_1',
+            content: 'result'
+          },
           {
             role: 'assistant',
             content: 'ok'
@@ -770,14 +813,229 @@ describe('dispatchRunAgent user context', () => {
     );
     const result = await resultPromise!;
 
-    expect(result.data.answerText).toBe('ok');
-    expect(result[DispatchNodeResponseKeyEnum.assistantResponses]).toEqual([
+    expect(result.data.answerText).toBe('我先查询工具。ok');
+    expect(result[DispatchNodeResponseKeyEnum.toolResponse]).toBe('我先查询工具。ok');
+    expect(
+      result[DispatchNodeResponseKeyEnum.assistantResponses].filter(
+        (value: any) => value.text || value.reasoning
+      )
+    ).toMatchObject([
+      {
+        text: {
+          content: '我先查询工具。'
+        }
+      },
       {
         text: {
           content: 'ok'
         }
       }
     ]);
+  });
+
+  it.each([new UserConfigError('Invalid API key'), new Error(''), undefined])(
+    'returns error output together with the original core exception: %j',
+    async (error) => {
+      const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
+      runAgentLoopMock.mockResolvedValueOnce({
+        status: 'error',
+        error,
+        completeMessages: [],
+        assistantMessages: [],
+        requestIds: [],
+        finishReason: 'error',
+        usages: []
+      });
+
+      let resultPromise: Promise<any>;
+      runWithContext(
+        {
+          mcpClientMemory: {}
+        },
+        () => {
+          resultPromise = dispatchRunAgent(createProps());
+        }
+      );
+      const result = await resultPromise!;
+
+      expect(Object.hasOwn(result, 'rawError')).toBe(true);
+      expect(result.rawError).toBe(error);
+      expect(result.error).toEqual({ system_error_text: error?.message ?? '' });
+    }
+  );
+
+  it('suppresses stream output and visible assistantResponses when isResponseAnswerText is false while preserving ask and answerText', async () => {
+    const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
+    const props = createProps();
+    props.params.isResponseAnswerText = false;
+    const runAgent = async () => {
+      let promise: Promise<any>;
+      runWithContext({ mcpClientMemory: {} }, () => {
+        promise = dispatchRunAgent(props);
+      });
+      return promise!;
+    };
+
+    runAgentLoopMock.mockImplementationOnce(async ({ runtime }) => {
+      runtime.emitEvent({ type: 'reasoning_delta', text: 'hidden reasoning' });
+      runtime.emitEvent({ type: 'answer_delta', text: 'hidden answer' });
+      runtime.emitEvent({ type: 'plan_status', status: 'generating' });
+      runtime.emitEvent({
+        type: 'plan_operation',
+        operation: 'set_plan',
+        id: 'hidden-plan-call',
+        params: '{}',
+        success: true,
+        message: 'Plan saved',
+        plan: {
+          planId: 'plan_hidden',
+          name: 'Hidden Plan',
+          steps: [{ id: 'step-1', name: 'Work', status: 'in_progress' }]
+        }
+      });
+      return {
+        status: 'paused',
+        pause: {
+          toolCallId: 'call_ask_hidden',
+          interactive: {
+            type: 'agentAsk',
+            params: {
+              toolCallId: 'call_ask_hidden',
+              arguments: JSON.stringify({
+                reason: 'Need user confirmation',
+                blockerType: 'missing_required_input',
+                questions: [
+                  {
+                    question: 'Continue?',
+                    options: [
+                      { summary: 'Yes', value: 'Yes' },
+                      { summary: 'No', value: 'No' }
+                    ]
+                  }
+                ]
+              })
+            }
+          }
+        },
+        completeMessages: [],
+        assistantMessages: [{ role: 'assistant', content: 'hidden answer' }],
+        requestIds: []
+      };
+    });
+
+    const result = await runAgent();
+
+    expect(result[DispatchNodeResponseKeyEnum.interactive]).toEqual(
+      expect.objectContaining({
+        type: 'agentAsk',
+        params: expect.objectContaining({ toolCallId: 'call_ask_hidden' })
+      })
+    );
+    expect(result[DispatchNodeResponseKeyEnum.assistantResponses]).toBeUndefined();
+    expect(result[DispatchNodeResponseKeyEnum.memories]?.['app:app_1:agent_node']).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          obj: ChatRoleEnum.AI,
+          value: expect.arrayContaining([
+            expect.objectContaining({
+              inputContext: expect.any(Object),
+              plan: expect.objectContaining({ planId: 'plan_hidden' }),
+              tools: expect.arrayContaining([
+                expect.objectContaining({ id: 'hidden-plan-call', response: 'Plan saved' })
+              ])
+            })
+          ])
+        })
+      ])
+    );
+    expect(
+      props.workflowStreamResponse.mock.calls.some(([event]: [{ event: string }]) =>
+        ['answer', 'toolCall', 'toolParams', 'toolResponse', 'planStatus', 'plan'].includes(
+          event.event
+        )
+      )
+    ).toBe(false);
+
+    runAgentLoopMock.mockImplementationOnce(async ({ runtime }) => {
+      runtime.emitEvent({ type: 'answer_delta', text: 'hidden answer' });
+      return {
+        status: 'done',
+        completeMessages: [],
+        assistantMessages: [{ role: 'assistant', content: 'hidden answer' }],
+        requestIds: []
+      };
+    });
+    const doneResult = await runAgent();
+    expect(doneResult.data.answerText).toBe('hidden answer');
+    expect(doneResult[DispatchNodeResponseKeyEnum.toolResponse]).toBe('hidden answer');
+    expect(doneResult[DispatchNodeResponseKeyEnum.assistantResponses]).toBeUndefined();
+  });
+
+  it('does not append errorText to assistantResponses and marks master_agent_call errorCaptured when catchError is enabled on the node', async () => {
+    const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
+    const publishedResponses: any[] = [];
+    const props = createProps();
+    delete props.params.agent_datasetParams;
+    props.node.catchError = true;
+    props.nodeResponseParentId = 'workflow_agent_resp_id';
+    props.nodeResponseSink = {
+      publish: vi.fn(async (inputs: Array<{ response: any; parentId?: string }>) => {
+        publishedResponses.push(
+          ...inputs.map((input) => ({
+            ...input.response,
+            ...(input.parentId ? { parentId: input.parentId } : {})
+          }))
+        );
+        return inputs.map((input) => input.response);
+      })
+    };
+    runAgentLoopMock.mockImplementationOnce(async ({ runtime }) => {
+      runtime.emitEvent({
+        type: 'llm_request_end',
+        requestIndex: 1,
+        modelName: 'gpt-5',
+        requestId: 'req_failed',
+        finishReason: 'error',
+        error: new Error('LLM request failed'),
+        usages: [],
+        seconds: 0.2
+      });
+      return {
+        status: 'error',
+        error: { message: 'LLM request failed' },
+        completeMessages: [],
+        assistantMessages: [],
+        requestIds: ['req_failed']
+      };
+    });
+
+    let resultPromise: Promise<any>;
+    runWithContext({ mcpClientMemory: {} }, () => {
+      resultPromise = dispatchRunAgent(props);
+    });
+    const result = await resultPromise!;
+
+    expect(result.error?.system_error_text).toBe('LLM request failed');
+    expect(result[DispatchNodeResponseKeyEnum.toolResponse]).toEqual({
+      error: 'LLM request failed'
+    });
+    expect(
+      result[DispatchNodeResponseKeyEnum.assistantResponses].filter(
+        (item: any) => !item.inputContext
+      )
+    ).toEqual([]);
+    expect(publishedResponses).toEqual([
+      expect.objectContaining({
+        moduleName: 'chat:master_agent_call',
+        errorText: 'LLM request failed',
+        errorCaptured: true,
+        parentId: 'workflow_agent_resp_id'
+      })
+    ]);
+    expect(props.nodeSummary).toMatchObject({
+      errorCount: 0
+    });
+    expect(props.nodeSummary.errorText).toBeUndefined();
   });
 
   it('publishes Agent internal responses as current-layer top-level rows', async () => {
@@ -867,7 +1125,7 @@ describe('dispatchRunAgent user context', () => {
     expect(runAgentLoopMock.mock.calls[0][0].input).not.toHaveProperty('providerState');
     expect(result.data.answerText).toBe('pi answer');
     expect(result[DispatchNodeResponseKeyEnum.memories]).toEqual({
-      'agentLoopMemory-agent_node': undefined
+      'app:app_1:agent_node': undefined
     });
   });
 
@@ -903,8 +1161,9 @@ describe('dispatchRunAgent user context', () => {
         resultPromise = dispatchRunAgent(props);
       }
     );
-    await resultPromise!;
+    const result = await resultPromise!;
 
+    expect(result[DispatchNodeResponseKeyEnum.rewriteHistories]).toBeUndefined();
     expect(runAgentLoopMock).toHaveBeenCalledWith(
       expect.objectContaining({
         input: expect.objectContaining({
@@ -924,112 +1183,46 @@ describe('dispatchRunAgent user context', () => {
     );
   });
 
-  it('restores legacy fastAgent ask memory and resumes with the user answer', async () => {
-    const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
-    const props = createProps();
-    props.lastInteractive = {
-      type: 'agentPlanAskQuery',
-      askId: 'legacy-plan',
-      params: {
-        content: 'Need confirmation'
-      }
-    };
-    props.histories[props.histories.length - 1].memories = {
-      'agentLoopMemory-agent_node': {
-        pendingMainContext: {
-          askToolCallId: 'call_ask',
-          messages: [
-            {
-              role: 'assistant',
-              tool_calls: [
-                {
-                  id: 'call_ask',
-                  type: 'function',
-                  function: {
-                    name: 'ask_agent',
-                    arguments: '{}'
-                  }
-                }
-              ]
-            }
-          ],
-          activePlan: {
-            planId: 'legacy-plan',
-            task: 'Legacy plan',
-            description: 'Legacy description',
-            steps: [{ id: 'step_1', title: 'Legacy step', status: 'in_progress' }]
-          }
-        }
-      }
-    };
-    runAgentLoopMock.mockResolvedValueOnce({
-      status: 'done',
-      completeMessages: [],
-      assistantMessages: [{ role: 'assistant', content: 'continued answer' }],
-      requestIds: []
-    });
-
-    let resultPromise: Promise<any>;
-    runWithContext(
-      {
-        mcpClientMemory: {}
-      },
-      () => {
-        resultPromise = dispatchRunAgent(props);
-      }
-    );
-    const result = await resultPromise!;
-
-    expect(runAgentLoopMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        provider: 'fastAgent',
-        input: expect.objectContaining({
-          userAnswer: '前端原始问题',
-          providerState: {
-            pendingMainContext: expect.objectContaining({
-              askToolCallId: 'call_ask',
-              activePlan: {
-                planId: 'legacy-plan',
-                name: 'Legacy plan',
-                description: 'Legacy description',
-                steps: [{ id: 'step_1', name: 'Legacy step', status: 'in_progress' }]
-              }
-            })
-          }
-        })
-      })
-    );
-    expect(result.data.answerText).toBe('continued answer');
-  });
-
   it('resumes a multi-question agentAsk with answers in form order', async () => {
     const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
     const props = createProps();
     props.lastInteractive = {
       type: 'agentAsk',
-      askId: 'call_ask',
+
       params: {
-        description: 'Need confirmation',
-        questions: [
-          {
-            question: 'First?',
-            options: [
-              { summary: 'A', value: 'A' },
-              { summary: 'B', value: 'B' }
-            ],
-            answer: ''
-          },
-          {
-            question: 'Second?',
-            options: [
-              { summary: 'C', value: 'C' },
-              { summary: 'D', value: 'D' }
-            ],
-            answer: ''
-          }
-        ]
+        toolCallId: 'call_ask',
+        arguments: JSON.stringify({
+          reason: 'Need confirmation',
+          blockerType: 'user_choice',
+          questions: [
+            {
+              question: 'First?',
+              options: [
+                { summary: 'A', value: 'A' },
+                { summary: 'B', value: 'B' }
+              ]
+            },
+            {
+              question: 'Second?',
+              options: [
+                { summary: 'C', value: 'C' },
+                { summary: 'D', value: 'D' }
+              ]
+            }
+          ]
+        })
       }
     };
+    props.histories.at(-1).value.push({
+      modelResponseId: 'ask-response',
+      toolCallIds: ['call_ask'],
+      interactive: {
+        ...props.lastInteractive,
+        entryNodeIds: [],
+        memoryEdges: [],
+        nodeOutputs: []
+      }
+    });
     props.query = runtimePrompt2ChatsValue({
       text: JSON.stringify({ answers: ['A', ''] })
     });
@@ -1059,15 +1252,202 @@ describe('dispatchRunAgent user context', () => {
         resultPromise = dispatchRunAgent(props);
       }
     );
-    await resultPromise!;
+    const result = await resultPromise!;
 
+    expect(result[DispatchNodeResponseKeyEnum.rewriteHistories]).toEqual([]);
     expect(runAgentLoopMock).toHaveBeenCalledWith(
       expect.objectContaining({
         input: expect.objectContaining({
-          userAnswer: '{"answers":["A",""]}'
+          messages: expect.arrayContaining([
+            expect.objectContaining({
+              role: 'tool',
+              tool_call_id: 'call_ask',
+              content: '## First?\n\n回答：A\n\n## Second?\n\n回答：未回答'
+            })
+          ])
         })
       })
     );
+  });
+
+  it('saves and restores child fastAgent transcript via scoped memoryState across ask_user pause and resume', async () => {
+    const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
+    const { WorkflowMemoryState } = await import('@fastgpt/service/core/workflow/memory/state');
+
+    const askArguments = JSON.stringify({
+      reason: '需要确认侧重点',
+      blockerType: 'user_choice',
+      questions: [
+        {
+          question: '请问侧重哪个方向？',
+          options: [
+            { summary: '功能定位', value: '功能定位' },
+            { summary: '技术架构', value: '技术架构' }
+          ]
+        }
+      ]
+    });
+    const askInteractive = {
+      type: 'agentAsk' as const,
+      params: {
+        toolCallId: 'call_child_ask',
+        arguments: askArguments
+      }
+    };
+    const childPlan = {
+      planId: 'plan_child_1',
+      name: 'Child Subtask Plan',
+      steps: [{ id: 'step_1', name: 'Analyze architecture', status: 'in_progress' as const }]
+    };
+
+    // Turn 1: 父 ToolCall 调用子 Agent，子 Agent 触发 ask_user 暂停
+    const turn1Props = createProps();
+    turn1Props.histories = [];
+    turn1Props.params.userChatInput = '[SUBTASK_PAYLOAD_9527] 请处理子任务：介绍 FastGPT';
+    turn1Props.memoryState =
+      WorkflowMemoryState.fromWorkflow(turn1Props).fork('node:parent_toolcall');
+
+    runAgentLoopMock.mockImplementationOnce(async ({ runtime }) => {
+      runtime.emitEvent({
+        type: 'answer_delta',
+        text: '先确认一下方向。'
+      });
+      runtime.emitEvent({
+        type: 'plan_operation',
+        operation: 'set_plan',
+        id: 'call_child_plan',
+        params: '{"name":"Child Subtask Plan"}',
+        success: true,
+        message: 'Plan saved',
+        plan: childPlan
+      });
+      runtime.emitEvent({
+        type: 'tool_interactive',
+        call: {
+          id: 'call_child_ask',
+          type: 'function',
+          function: { name: 'ask_user', arguments: askArguments }
+        },
+        interactive: askInteractive
+      });
+      return {
+        status: 'paused',
+        pause: {
+          toolCallId: 'call_child_ask',
+          interactive: askInteractive
+        },
+        completeMessages: [],
+        assistantMessages: [{ role: 'assistant', content: '先确认一下方向。' }],
+        requestIds: ['req_child_1']
+      };
+    });
+
+    const turn1Result = await runWithContext({ mcpClientMemory: {} }, () =>
+      dispatchRunAgent(turn1Props)
+    );
+    const scopedMemoryKey = 'node:parent_toolcall/app:app_1:agent_node';
+    expect(turn1Result[DispatchNodeResponseKeyEnum.interactive]).toEqual(askInteractive);
+    expect(turn1Result[DispatchNodeResponseKeyEnum.memories]).toHaveProperty(scopedMemoryKey);
+
+    // Turn 2: 父流程落库后将子 Agent 输出标为 displayOnly，通过 memoryState 恢复子 Agent 自身 transcript
+    const turn2Props = createProps();
+    turn2Props.params.userChatInput = '[SUBTASK_PAYLOAD_9527] 请处理子任务：介绍 FastGPT';
+    turn2Props.lastInteractive = askInteractive;
+    turn2Props.query = runtimePrompt2ChatsValue({
+      text: JSON.stringify({ answers: ['技术架构'] })
+    });
+    turn2Props.histories = [
+      {
+        dataId: 'parent_human_1',
+        obj: ChatRoleEnum.Human,
+        value: runtimePrompt2ChatsValue({ text: '父流程原始问题' })
+      },
+      {
+        dataId: 'parent_ai_1',
+        obj: ChatRoleEnum.AI,
+        value: [
+          {
+            modelResponseId: 'parent_resp_1',
+            toolCallIds: ['call_parent_tool'],
+            tools: [
+              {
+                id: 'call_parent_tool',
+                functionName: 'agent_node',
+                toolName: 'Child Agent',
+                toolAvatar: '',
+                params: '{"system_userChatInput":"[SUBTASK_PAYLOAD_9527]"}',
+                response: 'none'
+              }
+            ]
+          },
+          ...turn1Result[DispatchNodeResponseKeyEnum.assistantResponses].map((item: any) => ({
+            ...item,
+            displayOnly: true
+          }))
+        ],
+        memories: turn1Result[DispatchNodeResponseKeyEnum.memories]
+      }
+    ];
+    turn2Props.memoryState = WorkflowMemoryState.fromWorkflow(turn2Props).fork(
+      'node:parent_toolcall',
+      {
+        history: 0,
+        histories: turn2Props.histories,
+        hasInteractiveResume: true
+      }
+    );
+
+    runAgentLoopMock.mockResolvedValueOnce({
+      status: 'done',
+      completeMessages: [],
+      assistantMessages: [{ role: 'assistant', content: '子任务完成：技术架构介绍' }],
+      requestIds: ['req_child_2']
+    });
+
+    const turn2Result = await runWithContext({ mcpClientMemory: {} }, () =>
+      dispatchRunAgent(turn2Props)
+    );
+
+    const turn2Input = runAgentLoopMock.mock.calls[1][0].input;
+    expect(turn2Input.activePlan).toEqual(childPlan);
+    expect(getMessageTextForTest(turn2Input.messages[0].content)).toContain(
+      '[SUBTASK_PAYLOAD_9527] 请处理子任务：介绍 FastGPT'
+    );
+    expect(getMessageTextForTest(turn2Input.messages[0].content)).not.toContain('父流程原始问题');
+    expect(turn2Input.messages).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          role: 'assistant',
+          tool_calls: expect.arrayContaining([
+            expect.objectContaining({
+              id: 'call_child_ask',
+              function: expect.objectContaining({ name: 'ask_user' })
+            })
+          ])
+        }),
+        expect.objectContaining({
+          role: 'tool',
+          tool_call_id: 'call_child_ask',
+          content: '## 请问侧重哪个方向？\n\n回答：技术架构'
+        })
+      ])
+    );
+    expect(turn2Result.data.answerText).toBe('先确认一下方向。子任务完成：技术架构介绍');
+    expect(turn2Result[DispatchNodeResponseKeyEnum.toolResponse]).toBe(
+      '先确认一下方向。子任务完成：技术架构介绍'
+    );
+    expect(
+      turn2Result[DispatchNodeResponseKeyEnum.assistantResponses].filter((item: any) => item.text)
+    ).toEqual([
+      {
+        text: {
+          content: '子任务完成：技术架构介绍'
+        }
+      }
+    ]);
+    expect(turn2Result[DispatchNodeResponseKeyEnum.memories]).toEqual({
+      [scopedMemoryKey]: undefined
+    });
   });
 
   it('restores pi providerState from unified memory and resumes ask with user answer', async () => {
@@ -1075,10 +1455,15 @@ describe('dispatchRunAgent user context', () => {
     serviceEnvMock.AGENT_ENGINE = 'piAgent';
     const props = createProps();
     props.lastInteractive = {
-      type: 'agentPlanAskQuery',
-      askId: 'call_ask_1',
+      type: 'agentAsk',
+
       params: {
-        content: 'Need confirmation'
+        toolCallId: 'call_ask_1',
+        arguments: JSON.stringify({
+          reason: '',
+          blockerType: 'user_choice',
+          questions: [{ question: 'Need confirmation', options: [] }]
+        })
       }
     };
     props.histories[props.histories.length - 1].memories = {
@@ -1112,20 +1497,25 @@ describe('dispatchRunAgent user context', () => {
     runAgentLoopMock.mockResolvedValueOnce({
       status: 'paused',
       pause: {
-        type: 'ask',
-        askId: 'call_ask_2',
-        ask: {
-          reason: 'Need another confirmation',
-          blockerType: 'missing_required_input',
-          questions: [
-            {
-              question: 'Confirm again?',
-              options: [
-                { summary: 'Yes', value: 'Yes' },
-                { summary: 'No', value: 'No' }
+        toolCallId: 'call_ask_2',
+        interactive: {
+          type: 'agentAsk',
+          params: {
+            toolCallId: 'call_ask_2',
+            arguments: JSON.stringify({
+              reason: 'Need another confirmation',
+              blockerType: 'missing_required_input',
+              questions: [
+                {
+                  question: 'Confirm again?',
+                  options: [
+                    { summary: 'Yes', value: 'Yes' },
+                    { summary: 'No', value: 'No' }
+                  ]
+                }
               ]
-            }
-          ]
+            })
+          }
         }
       },
       providerState: {
@@ -1152,7 +1542,33 @@ describe('dispatchRunAgent user context', () => {
           ]
         }
       },
-      completeMessages: [],
+      completeMessages: [
+        {
+          role: 'assistant',
+          tool_calls: [
+            {
+              id: 'call_ask_2',
+              type: 'function',
+              function: {
+                name: 'ask_user',
+                arguments: JSON.stringify({
+                  reason: 'Need another confirmation',
+                  blockerType: 'missing_required_input',
+                  questions: [
+                    {
+                      question: 'Confirm again?',
+                      options: [
+                        { summary: 'Yes', value: 'Yes' },
+                        { summary: 'No', value: 'No' }
+                      ]
+                    }
+                  ]
+                })
+              }
+            }
+          ]
+        }
+      ],
       assistantMessages: [],
       requestIds: []
     });
@@ -1185,7 +1601,7 @@ describe('dispatchRunAgent user context', () => {
       })
     );
     expect(result[DispatchNodeResponseKeyEnum.memories]).toEqual({
-      'agentLoopMemory-agent_node': {
+      'app:app_1:agent_node': {
         providerState: {
           pendingMainContext: {
             activePlan: {
@@ -1214,7 +1630,7 @@ describe('dispatchRunAgent user context', () => {
     });
     expect(result[DispatchNodeResponseKeyEnum.interactive]).toEqual(
       expect.objectContaining({
-        askId: 'call_ask_2'
+        params: expect.objectContaining({ toolCallId: 'call_ask_2' })
       })
     );
   });
@@ -1247,7 +1663,11 @@ describe('dispatchRunAgent user context', () => {
     );
     const result = await resultPromise!;
 
-    expect(result[DispatchNodeResponseKeyEnum.assistantResponses]).toEqual([
+    expect(
+      result[DispatchNodeResponseKeyEnum.assistantResponses].filter(
+        (value: any) => value.text || value.reasoning
+      )
+    ).toEqual([
       {
         reasoning: {
           content: 'hidden thinking'
@@ -1331,5 +1751,82 @@ describe('dispatchRunAgent user context', () => {
     );
     expect(getSandboxClientMock).not.toHaveBeenCalled();
     expect(runAgentLoopMock).not.toHaveBeenCalled();
+  });
+
+  it('keeps internal steps flattened in Simple Mode (ChatAgent) while wrapping them under the Agent node in Workflow Mode', async () => {
+    const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
+
+    const emitStepAndFinish = async ({ runtime }: any) => {
+      runtime.emitEvent({
+        type: 'llm_request_end',
+        requestIndex: 1,
+        modelName: 'gpt-5',
+        requestId: 'req_1',
+        finishReason: 'stop',
+        answerText: 'done answer',
+        usages: [],
+        seconds: 0.5
+      });
+      return {
+        status: 'done',
+        completeMessages: [],
+        assistantMessages: [{ role: 'assistant', content: 'done answer' }],
+        requestIds: ['req_1']
+      };
+    };
+
+    // 1. Simple Mode (has agent_datasetParams): no parentId, no outer nodeResponse
+    const simplePublished: Array<{ response: any; parentId?: string }> = [];
+    const simpleProps = createProps();
+    simpleProps.nodeResponseParentId = 'simple_agent_resp_id';
+    simpleProps.nodeResponseSink = {
+      publish: vi.fn(async (entries) => {
+        simplePublished.push(...entries);
+        return entries.map((entry: any) => entry.response);
+      })
+    };
+    runAgentLoopMock.mockImplementationOnce(emitStepAndFinish);
+
+    const simpleResult = await runWithContext({ mcpClientMemory: {} }, () =>
+      dispatchRunAgent(simpleProps)
+    );
+    expect(simplePublished).toHaveLength(1);
+    expect(simplePublished[0].parentId).toBeUndefined();
+    expect(simpleResult[DispatchNodeResponseKeyEnum.nodeResponse]).toBeUndefined();
+
+    // 2. Workflow Mode (no agent_datasetParams, even when agent_datasetSelectList is configured): steps attach to nodeResponseParentId, returns outer nodeResponse
+    const workflowPublished: Array<{ response: any; parentId?: string }> = [];
+    const workflowProps = createProps();
+    delete workflowProps.params.agent_datasetParams;
+    workflowProps.params.agent_datasetSelectList = [
+      {
+        datasetId: 'dataset_1',
+        avatar: 'avatar',
+        name: '产品知识库',
+        vectorModel: {
+          model: 'text-embedding-3-small'
+        }
+      }
+    ];
+    workflowProps.nodeResponseParentId = 'workflow_agent_resp_id';
+    workflowProps.nodeResponseSink = {
+      publish: vi.fn(async (entries) => {
+        workflowPublished.push(...entries);
+        return entries.map((entry: any) => entry.response);
+      })
+    };
+    runAgentLoopMock.mockImplementationOnce(emitStepAndFinish);
+
+    const workflowResult = await runWithContext({ mcpClientMemory: {} }, () =>
+      dispatchRunAgent(workflowProps)
+    );
+    expect(workflowPublished).toHaveLength(1);
+    expect(workflowPublished[0].parentId).toBe('workflow_agent_resp_id');
+    expect(workflowResult[DispatchNodeResponseKeyEnum.nodeResponse]).toEqual({
+      model: 'gpt-5',
+      query: '当前问题',
+      textOutput: 'done answer',
+      childResponseCount: 1
+    });
   });
 });

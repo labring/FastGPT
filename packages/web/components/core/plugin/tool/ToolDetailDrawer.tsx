@@ -14,7 +14,7 @@ import {
 } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import Avatar from '../../../common/Avatar';
-import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
+import { selectPluginText } from '@fastgpt/global/common/i18n/utils';
 import MyIconButton from '../../../common/Icon/button';
 import MyIcon from '../../../common/Icon';
 import MyMenu from '../../../common/MyMenu';
@@ -174,9 +174,6 @@ const ToolDetailDrawer = ({
 
   const currentVersion =
     parentTool?.version || activeVersion || toolVersions[0]?.version || selectedTool.version;
-  const currentVersionLabel =
-    toolVersions.find((item) => item.version === currentVersion)?.versionDescription ??
-    currentVersion;
   const contentReady = detailReady && !loadingVersions;
   const isCurrentVersionInstalled = isToolVersionInstalled({
     isInstalled: !!isInstalled,
@@ -208,7 +205,7 @@ const ToolDetailDrawer = ({
               <>
                 <Avatar src={parentTool?.icon || ''} borderRadius={'md'} w={6} />
                 <Box fontSize={'16px'} fontWeight={500} color={'myGray.900'}>
-                  {parseI18nString(parentTool?.name || '', i18n.language)}
+                  {selectPluginText(parentTool?.name, i18n.language)}
                 </Box>
                 <Box flex={1} />
                 {toolVersions.length > 0 && (
@@ -228,14 +225,14 @@ const ToolDetailDrawer = ({
                         cursor={'pointer'}
                         color={'myGray.700'}
                       >
-                        <Box fontSize={'12px'}>{currentVersionLabel || t('common:Version')}</Box>
+                        <Box fontSize={'12px'}>{currentVersion || t('common:Version')}</Box>
                         <MyIcon name="core/chat/chevronDown" w={4} />
                       </Flex>
                     }
                     menuList={[
                       {
                         children: toolVersions.map((item) => ({
-                          label: item.versionDescription ?? item.version,
+                          label: item.version,
                           isActive: item.version === currentVersion,
                           onClick: () => {
                             setVersionSelection({

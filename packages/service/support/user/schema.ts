@@ -73,6 +73,8 @@ defineIndex(UserSchema, {
   key: { username: 1 },
   options: { unique: true }
 });
+// 管理端用户列表按状态过滤并按 _id 倒序分页，复合索引可同时满足过滤和排序。
+defineIndex(UserSchema, { key: { status: 1, _id: -1 } });
 // Admin charts
 defineIndex(UserSchema, { key: { createTime: -1 } });
 

@@ -30,7 +30,7 @@ const Test = ({ datasetId }: { datasetId: string }) => {
   } = useSearchTestImages({
     datasetId,
     canUseImageSearch,
-    uploadFileMaxSize: feConfigs?.uploadFileMaxSize
+    uploadFileMaxSize: feConfigs?.limit?.uploadFileMaxSize
   });
 
   const {

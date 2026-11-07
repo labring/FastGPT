@@ -76,6 +76,7 @@ const HumanChatBubbleEditForm = ({
   } = useFileUpload({
     fileSelectConfig,
     fileCtrl,
+    getValues: editForm.getValues,
     outLinkAuthData,
     sourceTarget,
     chatId

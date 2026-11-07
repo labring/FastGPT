@@ -3,6 +3,7 @@ import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { type OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import { ChatSidebarPaneEnum } from '@/pageComponents/chat/constants';
+import { clearChatInputDrafts } from '../inputDraft/storage';
 
 export enum AgentChatTestTabEnum {
   helper = 'helper',
@@ -24,10 +25,9 @@ type State = {
   setChatId: (e?: string) => any;
   /** 每个应用最近一次打开的 chatId，用于切换应用时恢复会话 */
   appChatIdMap: Record<string, string>;
-  /** 非主会话按标准 sourceKey 隔离的 chatId，用于同一页面承载多个 ChatBox。 */
-  sourceChatIdMap: Record<string, string>;
-  ensureSourceChatId: (sourceKey: string) => string;
-  setSourceChatId: (sourceKey: string, chatId?: string) => string;
+  /** 每个应用当前使用的辅助生成会话，登录或切换团队时清空。 */
+  appBuilderChatIdMap: Record<string, string>;
+  setAppBuilderChatId: (appId: string, chatId?: string) => string;
 
   lastPane: ChatSidebarPaneEnum;
   setLastPane: (e: ChatSidebarPaneEnum) => any;
@@ -36,8 +36,9 @@ type State = {
   agentChatTestTab: AgentChatTestTabEnum;
   setAgentChatTestTab: (e: AgentChatTestTabEnum) => any;
 
-  outLinkAuthData: OutLinkChatAuthProps;
-  setOutLinkAuthData: (e: OutLinkChatAuthProps) => any;
+  /** 非外链场景不保存鉴权数据；存在时必须包含完整的外链身份。 */
+  outLinkAuthData?: OutLinkChatAuthProps;
+  setOutLinkAuthData: (e?: OutLinkChatAuthProps) => any;
 
   resetChatCache: () => any;
 };
@@ -202,23 +203,13 @@ export const useChatStore = create<State>()(
         lastChatId: '',
         chatId: '',
         appChatIdMap: {},
-        sourceChatIdMap: {},
-        ensureSourceChatId(sourceKey) {
-          let resolvedChatId = '';
-          set((state) => {
-            if (!sourceKey) return;
+        appBuilderChatIdMap: {},
+        setAppBuilderChatId(appId, chatId) {
+          if (!appId) return '';
 
-            resolvedChatId = state.sourceChatIdMap[sourceKey] || getNanoid(24);
-            state.sourceChatIdMap[sourceKey] = resolvedChatId;
-          });
-          return resolvedChatId;
-        },
-        setSourceChatId(sourceKey, chatId) {
           const resolvedChatId = chatId || getNanoid(24);
           set((state) => {
-            if (!sourceKey) return;
-
-            state.sourceChatIdMap[sourceKey] = resolvedChatId;
+            state.appBuilderChatIdMap[appId] = resolvedChatId;
           });
           return resolvedChatId;
         },
@@ -255,7 +246,7 @@ export const useChatStore = create<State>()(
             state.agentChatTestTab = e;
           });
         },
-        outLinkAuthData: {},
+        outLinkAuthData: undefined,
         setOutLinkAuthData(e) {
           set((state) => {
             const currentCacheKey = getAppChatIdCacheKey({
@@ -283,6 +274,7 @@ export const useChatStore = create<State>()(
           });
         },
         resetChatCache() {
+          clearChatInputDrafts();
           set((state) => {
             state.source = undefined;
             state.appId = '';
@@ -290,10 +282,10 @@ export const useChatStore = create<State>()(
             state.chatId = '';
             state.lastChatId = '';
             state.appChatIdMap = {};
-            state.sourceChatIdMap = {};
+            state.appBuilderChatIdMap = {};
             state.lastPane = ChatSidebarPaneEnum.HOME;
             state.agentChatTestTab = AgentChatTestTabEnum.chatDebug;
-            state.outLinkAuthData = {};
+            state.outLinkAuthData = undefined;
           });
         }
       })),
@@ -319,7 +311,7 @@ export const useChatStore = create<State>()(
           lastPane: state.lastPane,
           agentChatTestTab: state.agentChatTestTab,
           appChatIdMap: state.appChatIdMap,
-          sourceChatIdMap: state.sourceChatIdMap
+          appBuilderChatIdMap: state.appBuilderChatIdMap
         })
       }
     )
@@ -328,33 +320,13 @@ export const useChatStore = create<State>()(
 
 /**
  * 跨 tab 同步 localStorage 中的持久字段（lastChatId、appChatIdMap 等）。
- * sessionStorage 字段（source/chatId/appId）各 tab 独立，不参与 storage 事件合并。
+ * 自定义 storage 会保留当前 tab 的 sessionStorage 字段，重新加载时不回写共享数据。
  */
-const createStorageListener = (store: any) => {
+const createStorageListener = (store: typeof useChatStore) => {
   const handleStorageChange = (e: StorageEvent) => {
     if (e.key === 'chatStore' && e.newValue && e.storageArea === localStorage) {
-      try {
-        const newData = JSON.parse(e.newValue);
-        const currentState = store.getState();
-
-        // 只同步 localStorage 中的数据（非 session 数据）
-        const sessionKeys = ['source', 'chatId', 'appId', 'agentChatTestTab'];
-        const updatedState: Partial<State> = {};
-        let hasChanges = false;
-
-        Object.entries(newData.state || {}).forEach(([key, value]) => {
-          if (!sessionKeys.includes(key) && currentState[key] !== value) {
-            (updatedState as any)[key] = value;
-            hasChanges = true;
-          }
-        });
-
-        if (hasChanges) {
-          store.setState(updatedState);
-        }
-      } catch (error) {
-        console.warn('Failed to parse storage event data:', error);
-      }
+      // persist 的重新加载使用原始 setter；store.setState 会再次持久化并触发其他 tab。
+      void store.persist.rehydrate();
     }
   };
 

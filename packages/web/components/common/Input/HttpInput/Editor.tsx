@@ -1,11 +1,3 @@
-/**
- * Copyright (c) Meta Platforms, Inc. and affiliates.
- *
- * This source code is licensed under the MIT license found in the
- * LICENSE file in the root directory of this source tree.
- *
- */
-
 import { useRef, useState, useTransition } from 'react';
 import { LexicalComposer } from '@lexical/react/LexicalComposer';
 import { PlainTextPlugin } from '@lexical/react/LexicalPlainTextPlugin';
@@ -17,10 +9,8 @@ import { Box, Flex } from '@chakra-ui/react';
 import styles from './index.module.scss';
 import type { EditorState, LexicalEditor } from 'lexical';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-import {
-  type EditorVariableLabelPickerType,
-  type EditorVariablePickerType
-} from '../../Textarea/PromptEditor/type';
+import type { EditorVariableLabelPickerType } from '../../Textarea/PromptEditor/type';
+import type { EditorVariablePickerType } from '@fastgpt/global/core/workflow/type/io';
 import { VariableNode } from '../../Textarea/PromptEditor/plugins/VariablePlugin/node';
 import { editorStateToText, textToEditorState } from '../../Textarea/PromptEditor/utils';
 import { SingleLinePlugin } from '../../Textarea/PromptEditor/plugins/SingleLinePlugin';
@@ -30,6 +20,14 @@ import FocusPlugin from '../../Textarea/PromptEditor/plugins/FocusPlugin';
 import VariableLabelPlugin from '../../Textarea/PromptEditor/plugins/VariableLabelPlugin';
 import { VariableLabelNode } from '../../Textarea/PromptEditor/plugins/VariableLabelPlugin/node';
 import VariableLabelPickerPlugin from '../../Textarea/PromptEditor/plugins/VariableLabelPickerPlugin';
+
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ *
+ */
 
 export default function Editor({
   h = 40,

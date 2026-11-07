@@ -8,7 +8,6 @@ export type ToolCallEventType = {
   onToolRunStart?: (e: { call: ChatCompletionMessageToolCall }) => void;
   onToolRunEnd?: (e: {
     call: ChatCompletionMessageToolCall;
-    rawResponse: string;
     response: string;
     errorMessage?: string;
     seconds: number;

@@ -26,7 +26,7 @@ vi.mock('react', async (importOriginal) => ({
     mocks.effect = fn;
   }
 }));
-vi.mock('@/web/common/system/api', () => ({ getUserModelSummaries: mocks.request }));
+vi.mock('@/web/core/ai/model/catalogApi', () => ({ getUserModelSummaries: mocks.request }));
 vi.mock('@/web/support/user/useUserStore', () => {
   const getState = () => ({ userInfo: { team: { teamId: 'team', tmbId: mocks.member } } });
   return {

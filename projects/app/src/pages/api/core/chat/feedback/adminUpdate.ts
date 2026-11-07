@@ -1,7 +1,8 @@
+import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
-import { authChatTargetCrud } from '@/service/support/permission/auth/chat';
+import { authChatTargetCrud } from '@fastgpt/service/core/chat/auth';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   AdminUpdateFeedbackBodySchema,
@@ -11,13 +12,26 @@ import {
 import { buildChatSourceQuery } from '@fastgpt/service/core/chat/source';
 
 async function handler(req: ApiRequestProps): Promise<AdminUpdateFeedbackResponseType> {
-  const { sourceType, sourceId, chatId, dataId, datasetId, feedbackDataId, q, a, outLinkAuthData } =
-    parseApiInput({
-      req,
-      bodySchema: AdminUpdateFeedbackBodySchema
-    }).body;
+  const {
+    customUid,
+    authProxy,
+    sourceType,
+    sourceId,
+    chatId,
+    dataId,
+    datasetId,
+    feedbackDataId,
+    q,
+    a,
+    outLinkAuthData
+  } = parseApiInput({
+    req,
+    bodySchema: AdminUpdateFeedbackBodySchema
+  }).body;
 
   const authRes = await authChatTargetCrud({
+    customUid,
+    authProxy,
     req,
     authToken: true,
     authApiKey: true,
@@ -32,7 +46,9 @@ async function handler(req: ApiRequestProps): Promise<AdminUpdateFeedbackRespons
     {
       ...buildChatSourceQuery({ sourceType, sourceId: resolvedSourceId }),
       chatId,
-      dataId
+      dataId,
+      // 同一轮 Human/AI 共用 dataId，管理反馈只属于 AI 消息。
+      obj: ChatRoleEnum.AI
     },
     {
       adminFeedback: {

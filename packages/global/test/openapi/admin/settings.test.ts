@@ -68,17 +68,83 @@ describe('UpdateConfigBodySchema', () => {
     ).toThrow();
   });
 
+  it('normalizes quota overrides and preserves unrelated dynamic settings', () => {
+    const result = UpdateConfigBodySchema.parse({
+      fastgpt: {
+        feConfigs: {
+          customFeature: { enabled: true },
+          limit: { customLimit: 7 }
+        },
+        systemEnv: { agentSandboxMax: '12', agentSandboxMaxPerTeam: null, customSetting: 7 }
+      },
+      fastgptPro: {}
+    });
+
+    expect(result.fastgpt.feConfigs).toEqual({
+      customFeature: { enabled: true },
+      limit: { customLimit: 7 }
+    });
+    expect(result.fastgpt.systemEnv).toEqual({
+      agentSandboxMax: 12,
+      agentSandboxMaxPerTeam: undefined,
+      vectorRecallConcurrency: 0,
+      customSetting: 7
+    });
+    // 保存归一化后的配置必须能通过读取接口校验，避免保存成功后配置页打不开。
+    expect(GetConfigResponseSchema.parse(result)).toMatchObject(result);
+  });
+
   it('uses an empty success response contract', () => {
     expect(UpdateConfigResponseSchema.parse(undefined)).toBeUndefined();
   });
+
+  it.each([
+    { input: undefined, expected: 0 },
+    { input: 0, expected: 0 },
+    { input: '8', expected: 8 },
+    { input: 1000, expected: 1000 }
+  ])('normalizes vector recall concurrency from Admin configuration %j', ({ input, expected }) => {
+    const body = {
+      fastgpt: { feConfigs: {}, systemEnv: { vectorRecallConcurrency: input } },
+      fastgptPro: {}
+    };
+    const result = UpdateConfigBodySchema.parse(body);
+
+    expect(result.fastgpt.systemEnv.vectorRecallConcurrency).toBe(expected);
+    expect(GetConfigResponseSchema.parse(result)).toMatchObject(result);
+  });
+
+  it.each([-1, 1.5, 1001, 'invalid'])(
+    'rejects invalid vector recall concurrency %j before saving Admin configuration',
+    (value) => {
+      expect(
+        UpdateConfigBodySchema.safeParse({
+          fastgpt: { feConfigs: {}, systemEnv: { vectorRecallConcurrency: value } },
+          fastgptPro: {}
+        }).success
+      ).toBe(false);
+    }
+  );
+
+  it.each(['agentSandboxMax', 'agentSandboxMaxPerTeam'])(
+    'rejects invalid quota values for %s at the update boundary',
+    (field) => {
+      for (const value of [0, -1, 1.5, '1.5', '', 'invalid']) {
+        const body = {
+          fastgpt: { feConfigs: {}, systemEnv: { [field]: value } },
+          fastgptPro: {}
+        };
+        expect(UpdateConfigBodySchema.safeParse(body).success).toBe(false);
+      }
+    }
+  );
 
   it('declares open object schemas for dynamic system configurations', () => {
     const parsed = GetConfigResponseSchema.parse({
       fastgpt: {
         feConfigs: {
           isPlus: true,
-          uploadFileMaxSize: '500',
-          uploadFileMaxAmount: '15'
+          limit: { uploadFileMaxSize: '500', uploadFileMaxAmount: '15' }
         }
       },
       fastgptPro: { someProKey: 'val' }
@@ -86,8 +152,7 @@ describe('UpdateConfigBodySchema', () => {
     expect(parsed.fastgpt).toEqual({
       feConfigs: {
         isPlus: true,
-        uploadFileMaxSize: 500,
-        uploadFileMaxAmount: 15
+        limit: { uploadFileMaxSize: 500, uploadFileMaxAmount: 15 }
       }
     });
     expect(parsed.fastgptPro).toEqual({ someProKey: 'val' });

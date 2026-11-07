@@ -4,7 +4,9 @@ import {
   getAgentSandboxArchiveInactiveDays,
   getAgentSandboxArchiveMaxBytes,
   getAgentSandboxDiskBytes,
+  getAgentSandboxMax,
   getAgentSandboxMaxFileBytes,
+  getAgentSandboxMaxPerTeam,
   getAgentSandboxSkillMaxBytes,
   getAgentSandboxSuspendMinutes
 } from '@fastgpt/service/core/ai/sandbox/config';
@@ -13,11 +15,17 @@ describe('agent sandbox config', () => {
   const originalAgentSandboxStorageSize = serviceEnv.AGENT_SANDBOX_STORAGE_SIZE_GI;
   const originalAgentSandboxSuspendMinutes = serviceEnv.AGENT_SANDBOX_SUSPEND_MINUTES;
   const originalAgentSandboxArchiveInactiveDays = serviceEnv.AGENT_SANDBOX_ARCHIVE_INACTIVE_DAYS;
+  const originalAgentSandboxMax = serviceEnv.AGENT_SANDBOX_MAX;
+  const originalAgentSandboxMaxPerTeam = serviceEnv.AGENT_SANDBOX_MAX_PER_TEAM;
+  const originalSystemEnv = global.systemEnv;
 
   afterEach(() => {
     serviceEnv.AGENT_SANDBOX_STORAGE_SIZE_GI = originalAgentSandboxStorageSize;
     serviceEnv.AGENT_SANDBOX_SUSPEND_MINUTES = originalAgentSandboxSuspendMinutes;
     serviceEnv.AGENT_SANDBOX_ARCHIVE_INACTIVE_DAYS = originalAgentSandboxArchiveInactiveDays;
+    serviceEnv.AGENT_SANDBOX_MAX = originalAgentSandboxMax;
+    serviceEnv.AGENT_SANDBOX_MAX_PER_TEAM = originalAgentSandboxMaxPerTeam;
+    global.systemEnv = originalSystemEnv;
   });
 
   it('derives all size limits from AGENT_SANDBOX_STORAGE_SIZE_GI', () => {
@@ -42,5 +50,30 @@ describe('agent sandbox config', () => {
 
     expect(getAgentSandboxSuspendMinutes()).toBe(90);
     expect(getAgentSandboxArchiveInactiveDays()).toBe(14);
+  });
+
+  it('resolves system and per-team quotas with systemEnv priority and independent env fallback', () => {
+    // 1. 默认 env 兜底
+    serviceEnv.AGENT_SANDBOX_MAX = 42;
+    serviceEnv.AGENT_SANDBOX_MAX_PER_TEAM = 5;
+    global.systemEnv = {};
+    expect(getAgentSandboxMax()).toBe(42);
+    expect(getAgentSandboxMaxPerTeam()).toBe(5);
+
+    // 2. systemEnv 配置优先
+    global.systemEnv = { agentSandboxMax: 7, agentSandboxMaxPerTeam: 3 };
+    expect(getAgentSandboxMax()).toBe(7);
+    expect(getAgentSandboxMaxPerTeam()).toBe(3);
+
+    // 3. 两字段独立回退与清空
+    global.systemEnv = { agentSandboxMaxPerTeam: 3 };
+    expect(getAgentSandboxMax()).toBe(42);
+    expect(getAgentSandboxMaxPerTeam()).toBe(3);
+
+    global.systemEnv = {};
+    serviceEnv.AGENT_SANDBOX_MAX = undefined;
+    serviceEnv.AGENT_SANDBOX_MAX_PER_TEAM = undefined;
+    expect(getAgentSandboxMax()).toBeUndefined();
+    expect(getAgentSandboxMaxPerTeam()).toBeUndefined();
   });
 });

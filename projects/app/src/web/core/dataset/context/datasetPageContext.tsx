@@ -1,13 +1,17 @@
 import { type ReactNode, useCallback, useRef, useState } from 'react';
 import { createContext } from 'use-context-selector';
+import { useRouter } from 'next/router';
 import { getDatasetById, getDatasetPaths, putDatasetById } from '../api';
-import { getAllTags } from '../api/collection';
+import { getAllTags, getDatasetCollectionPathById } from '../api/collection';
 import { getDatasetTrainingQueue } from '../api/training';
 import { defaultDatasetDetail } from '../constants';
 import { type UpdateDatasetBody } from '@fastgpt/global/openapi/core/dataset/api';
 import { type DatasetItemType, type DatasetTagType } from '@fastgpt/global/core/dataset/type';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { type ParentTreePathItemType } from '@fastgpt/global/common/parentFolder/type';
+import {
+  type FolderAccessMode,
+  type ParentTreePathItemType
+} from '@fastgpt/global/common/parentFolder/type';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useDatasetStatusPolling } from '../hooks/useDatasetStatusPolling';
 import { filterApiDatasetServerPublicData } from '@fastgpt/global/core/dataset/apiDataset/utils';
@@ -25,6 +29,13 @@ type DatasetPageContextType = {
   loadAllDatasetTags: () => Promise<DatasetTagType[]>;
   paths: ParentTreePathItemType[];
   refetchPaths: () => void;
+  /** 当前所在子目录（URL parentId）的面包屑路径；根目录为空数组。 */
+  collectionPaths: ParentTreePathItemType[];
+  /**
+   * 当前子目录的访问方式。根目录恒为 read；navigate 表示仅能浏览可读后代；
+   * undefined 表示路径尚未加载完成，调用方不应在此时请求目录详情。
+   */
+  collectionFolderAccessMode?: FolderAccessMode;
 
   hasTrainingTask: boolean;
   refetchDatasetTraining: () => void;
@@ -51,7 +62,9 @@ export const DatasetPageContext = createContext<DatasetPageContextType>({
     throw new Error('Function not implemented.');
   },
   paths: [],
-  refetchPaths: () => {}
+  refetchPaths: () => {},
+  collectionPaths: [],
+  collectionFolderAccessMode: 'read'
 });
 
 export const DatasetPageContextProvider = ({
@@ -62,6 +75,9 @@ export const DatasetPageContextProvider = ({
   datasetId: string;
 }) => {
   const { feConfigs } = useSystemStore();
+  const router = useRouter();
+  const queryParentId = router.query.parentId;
+  const collectionParentId = typeof queryParentId === 'string' ? queryParentId : '';
 
   const collectionListRefreshRef = useRef<() => void>();
   // 侧栏与集合列表属于不同子树，通过注册回调仅刷新当前挂载列表，不触发初始化请求。
@@ -140,6 +156,24 @@ export const DatasetPageContextProvider = ({
     }
   );
 
+  // 子目录路径与访问方式由同一次请求提供，供面包屑和右侧栏共用。
+  const { data: collectionPaths = [] } = useRequest(
+    () =>
+      collectionParentId
+        ? getDatasetCollectionPathById(collectionParentId)
+        : Promise.resolve([] as ParentTreePathItemType[]),
+    {
+      manual: false,
+      refreshDeps: [collectionParentId]
+    }
+  );
+  const collectionFolderAccessMode: FolderAccessMode | undefined = (() => {
+    if (!collectionParentId) return 'read';
+    // 切换目录时 data 会保留上一次结果，只采用末级为当前 parentId 的路径。
+    const current = collectionPaths.find((path) => path.parentId === collectionParentId);
+    return current ? (current.folderAccessMode ?? 'read') : undefined;
+  })();
+
   const contextValue: DatasetPageContextType = {
     datasetId,
     datasetDetail,
@@ -149,6 +183,8 @@ export const DatasetPageContextProvider = ({
     registerCollectionListRefresh,
     paths,
     refetchPaths,
+    collectionPaths,
+    collectionFolderAccessMode,
 
     hasTrainingTask,
     refetchDatasetTraining,

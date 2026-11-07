@@ -99,13 +99,16 @@ describe('reTrainingCollection', () => {
   });
 
   it('uses server-owned collection ownership fields when recreating a collection', async () => {
-    await handler({
-      body: {
-        collectionId: sourceCollectionId,
-        datasetId: foreignDatasetId,
-        chunkSize: 800
-      }
-    } as any);
+    await handler(
+      {
+        body: {
+          collectionId: sourceCollectionId,
+          datasetId: foreignDatasetId,
+          chunkSize: 800
+        }
+      } as any,
+      {} as Parameters<typeof handler>[1]
+    );
 
     expect(mockCreateCollectionAndInsertData).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -122,12 +125,15 @@ describe('reTrainingCollection', () => {
   });
 
   it('ignores legacy datasetId in the request body', async () => {
-    await handler({
-      body: {
-        collectionId: sourceCollectionId,
-        datasetId: foreignDatasetId
-      }
-    } as any);
+    await handler(
+      {
+        body: {
+          collectionId: sourceCollectionId,
+          datasetId: foreignDatasetId
+        }
+      } as any,
+      {} as Parameters<typeof handler>[1]
+    );
 
     expect(mockCreateCollectionAndInsertData).toHaveBeenCalledWith(
       expect.objectContaining({

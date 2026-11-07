@@ -8,7 +8,7 @@
 import { getS3SkillSource } from '../../../../common/s3/sources/skill';
 import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
 import type { ClientSession } from '../../../../common/mongo';
-import { getAgentSandboxSkillMaxBytes } from '../../sandbox/interface/config';
+import { getAgentSandboxSkillMaxBytes } from '../../sandbox/config';
 import { readStreamToBuffer } from '../../../../common/s3/utils';
 import type { Readable } from 'node:stream';
 import { createSizeLimitedStream } from '../../../../common/file/stream';

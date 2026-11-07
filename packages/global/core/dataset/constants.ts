@@ -228,8 +228,8 @@ export const emptyValueOperators: TagFilterOperator[] = [
 
 export const tagFilterOperators: Record<`${DatasetCollectionTagTypeEnum}`, TagFilterOperator[]> = {
   [DatasetCollectionTagTypeEnum.string]: [
-    { label: i18nT('workflow:tag_filter_op_is'), value: '$eq' },
-    { label: i18nT('workflow:tag_filter_op_is_not'), value: '$ne' },
+    { label: i18nT('workflow:tag_filter_op_eq'), value: '$eq', icon: 'math/equal' },
+    { label: i18nT('workflow:tag_filter_op_ne'), value: '$ne', icon: 'math/notEqual' },
     { label: i18nT('workflow:tag_filter_op_contains'), value: '$contains' },
     { label: i18nT('workflow:tag_filter_op_not_contains'), value: '$notContains' },
     { label: i18nT('workflow:tag_filter_op_starts_with'), value: '$startsWith' },
@@ -257,15 +257,15 @@ export const tagFilterOperators: Record<`${DatasetCollectionTagTypeEnum}`, TagFi
     ...emptyValueOperators
   ],
   [DatasetCollectionTagTypeEnum.datetime]: [
-    { label: i18nT('workflow:tag_filter_op_is'), value: '$eq' },
-    { label: i18nT('workflow:tag_filter_op_is_not'), value: '$ne' },
+    { label: i18nT('workflow:tag_filter_op_eq'), value: '$eq', icon: 'math/equal' },
+    { label: i18nT('workflow:tag_filter_op_ne'), value: '$ne', icon: 'math/notEqual' },
     { label: i18nT('workflow:tag_filter_op_after'), value: '$gt' },
     { label: i18nT('workflow:tag_filter_op_before'), value: '$lt' },
     ...emptyValueOperators
   ],
   [DatasetCollectionTagTypeEnum.array]: [
-    { label: i18nT('workflow:tag_filter_op_is'), value: '$is' },
-    { label: i18nT('workflow:tag_filter_op_is_not'), value: '$isNot' },
+    { label: i18nT('workflow:tag_filter_op_eq'), value: '$is', icon: 'math/equal' },
+    { label: i18nT('workflow:tag_filter_op_ne'), value: '$isNot', icon: 'math/notEqual' },
     { label: i18nT('workflow:tag_filter_op_contains'), value: '$contains' },
     { label: i18nT('workflow:tag_filter_op_not_contains'), value: '$notContains' },
     { label: i18nT('workflow:tag_filter_op_in'), value: '$in' },

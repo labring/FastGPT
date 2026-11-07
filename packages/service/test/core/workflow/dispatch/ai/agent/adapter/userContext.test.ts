@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ChatFileTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import { chatValue2RuntimePrompt, runtimePrompt2ChatsValue } from '@fastgpt/global/core/chat/adapt';
@@ -13,7 +13,7 @@ import {
   buildAgentLoopCoreSkillsPrompt,
   buildAgentLoopCoreUserReminderInput
 } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/application/context/reminder';
-import type { DeployedSkillInfo } from '@fastgpt/service/core/ai/skill/runtime/types';
+import type { DeployedSkillInfo } from '@fastgpt/service/core/ai/sandbox/application/runtime/skill/types';
 
 vi.mock('@fastgpt/global/common/time/timezone', () => ({
   getSystemTime: vi.fn(() => '2026-05-14 10:00:00 Thursday')
@@ -98,24 +98,24 @@ const getUserContextMessagesForTest = async ({
   currentWorkingDirectory?: string;
 }) => {
   const context = await useUserContext(params);
+  const messages = await context.getCurrentMessages({
+    skillInfos,
+    currentWorkingDirectory
+  });
 
   return {
-    chatHistories: context.chatHistories,
     queryInput: context.queryInput,
-    ...context.getCurrentMessages({
-      skillInfos,
-      currentWorkingDirectory
-    }),
+    ...messages,
     currentFiles: context.currentFiles
   };
 };
 
 describe('buildAgentLoopCoreInputFilesPrompt', () => {
-  it('generates file XML block for document files only', () => {
+  it('serializes document, media and unknown files with their usage guidance', () => {
     const result = buildAgentLoopCoreInputFilesPrompt([
       {
         name: 'guide.pdf',
-        type: ChatFileTypeEnum.file,
+        type: ChatFileTypeEnum.document,
         url: '/guide.pdf'
       },
       {
@@ -132,6 +132,11 @@ describe('buildAgentLoopCoreInputFilesPrompt', () => {
         name: 'demo.mp4',
         type: ChatFileTypeEnum.video,
         url: 'https://files.example.com/demo.mp4'
+      },
+      {
+        name: 'archive.zip',
+        type: ChatFileTypeEnum.unknown,
+        url: '/files/archive.zip'
       }
     ]);
 
@@ -145,13 +150,29 @@ describe('buildAgentLoopCoreInputFilesPrompt', () => {
     expect(result).toContain('<type>image</type>');
     expect(result).toContain('<type>audio</type>');
     expect(result).toContain('<type>video</type>');
+    expect(result).toContain('<type>document</type>');
+    expect(result).toContain('<type>unknown</type>');
+    expect(result).toContain('<url>/files/archive.zip</url>');
+    expect(result).toContain('不要使用 read_files 读取');
+    expect(result).not.toContain('<type>file</type>');
+  });
+
+  it('serializes the classified type without inferring it again from display names', () => {
+    const prompt = buildAgentLoopCoreInputFilesPrompt([
+      { name: 'report.pdf', type: ChatFileTypeEnum.unknown, url: '/report.pdf' },
+      { name: '下载', type: ChatFileTypeEnum.document, url: '/opaque.signature' }
+    ]);
+    expect(prompt.match(/<type>(.*?)<\/type>/g)).toEqual([
+      '<type>unknown</type>',
+      '<type>document</type>'
+    ]);
   });
 
   it('escapes XML fields in file metadata', () => {
     const result = buildAgentLoopCoreInputFilesPrompt([
       {
         name: `a<b>&"c"'d.pdf`,
-        type: ChatFileTypeEnum.file,
+        type: ChatFileTypeEnum.document,
         url: '/guide.pdf'
       }
     ]);
@@ -181,7 +202,7 @@ describe('buildAgentLoopCoreUserReminderInput', () => {
       filesInfo: [
         {
           name: 'guide.pdf',
-          type: ChatFileTypeEnum.file,
+          type: ChatFileTypeEnum.document,
           url: '/guide.pdf'
         }
       ],
@@ -342,7 +363,6 @@ describe('useUserContext', () => {
           files: [{ name: 'old.pdf', url: 'https://files.example.com/old.pdf' }]
         });
         const result = await getUserContextMessagesForTest({
-          history: 6,
           parseHistoryFiles: true,
           histories: [history, createSystemMessage(), createAiMessage('history_ai_1')],
           currentFiles: [
@@ -395,7 +415,7 @@ describe('useUserContext', () => {
         expect(result.currentFiles).toEqual([
           {
             name: 'current.pdf',
-            type: ChatFileTypeEnum.file,
+            type: ChatFileTypeEnum.document,
             url: 'https://files.example.com/current.pdf'
           },
           {
@@ -415,7 +435,6 @@ describe('useUserContext', () => {
       },
       async () => {
         const result = await getUserContextMessagesForTest({
-          history: 6,
           parseHistoryFiles: true,
           histories: [
             createHumanMessage({
@@ -470,7 +489,6 @@ describe('useUserContext', () => {
       },
       async () => {
         const result = await getUserContextMessagesForTest({
-          history: 0,
           histories: [],
           currentUserInput: '当前问题',
           currentDataId: 'current_chat_item',
@@ -523,7 +541,6 @@ describe('useUserContext', () => {
       },
       async () => {
         const result = await getUserContextMessagesForTest({
-          history: 0,
           histories: [],
           currentUserInput: '当前问题',
           currentDataId: 'current_chat_item',
@@ -565,7 +582,6 @@ describe('useUserContext', () => {
       },
       async () => {
         const result = await getUserContextMessagesForTest({
-          history: 6,
           parseHistoryFiles: true,
           histories: [
             createHumanMessage({
@@ -595,7 +611,6 @@ describe('useUserContext', () => {
       },
       async () => {
         const result = await getUserContextMessagesForTest({
-          history: 6,
           histories: [],
           currentFiles: ['https://files.example.com/current.pdf'],
           currentUserInput: '当前问题',
@@ -618,7 +633,7 @@ describe('useUserContext', () => {
         expect(result.currentFiles).toEqual([
           {
             name: 'current.pdf',
-            type: ChatFileTypeEnum.file,
+            type: ChatFileTypeEnum.document,
             url: 'https://files.example.com/current.pdf'
           }
         ]);
@@ -637,7 +652,6 @@ describe('useUserContext', () => {
       },
       async () => {
         const result = await getUserContextMessagesForTest({
-          history: 6,
           parseHistoryFiles: true,
           histories: [
             createSystemMessage(),
@@ -663,13 +677,13 @@ describe('useUserContext', () => {
     );
   });
 
-  it('accepts explicit history arrays and respects maxFileAmount per message', async () => {
+  it('respects maxFileAmount per message across history and current input', async () => {
     await runWithContextAsync(
       {
         mcpClientMemory: {}
       },
       async () => {
-        const explicitHistory = [
+        const histories = [
           createHumanMessage({
             dataId: 'history_human',
             text: '历史问题',
@@ -682,9 +696,8 @@ describe('useUserContext', () => {
         ];
 
         const result = await getUserContextMessagesForTest({
-          history: explicitHistory,
           parseHistoryFiles: true,
-          histories: [],
+          histories,
           currentFiles: ['https://files.example.com/c.pdf', 'https://files.example.com/a.pdf'],
           currentUserInput: '当前问题',
           currentDataId: 'current_ai',
@@ -693,7 +706,6 @@ describe('useUserContext', () => {
           maxFileAmount: 1
         });
 
-        expect(result.chatHistories).toBe(explicitHistory);
         const { text: historyText } = chatValue2RuntimePrompt(result.rewrittenHistories[0].value);
         const { text: currentText } = chatValue2RuntimePrompt(result.currentUserMessage.value);
         expect(historyText).toContain('<url>https://files.example.com/a.pdf</url>');
@@ -711,7 +723,6 @@ describe('useUserContext', () => {
       },
       async () => {
         const result = await getUserContextMessagesForTest({
-          history: 6,
           parseHistoryFiles: false,
           histories: [
             createHumanMessage({
@@ -752,7 +763,6 @@ describe('useUserContext', () => {
       },
       async () => {
         const result = await getUserContextMessagesForTest({
-          history: 6,
           histories: [],
           currentFiles: [
             'not-a-url',
@@ -772,7 +782,7 @@ describe('useUserContext', () => {
         expect(result.currentFiles).toEqual([
           {
             name: 'doc.pdf',
-            type: ChatFileTypeEnum.file,
+            type: ChatFileTypeEnum.document,
             url: 'https://files.example.com/doc.pdf'
           },
           {
@@ -820,7 +830,6 @@ describe('useUserContext', () => {
       },
       async () => {
         const result = await getUserContextMessagesForTest({
-          history: 6,
           histories: [],
           currentFiles: ['https://files.example.com/doc.pdf'],
           currentUserInput: '分析文件',
@@ -845,7 +854,6 @@ describe('useUserContext', () => {
       },
       async () => {
         const result = await getUserContextMessagesForTest({
-          history: 6,
           histories: [],
           currentUserInput: '总结报告',
           currentDataId: 'current_ai',
@@ -868,7 +876,7 @@ describe('useUserContext', () => {
         expect(result.currentFiles).toEqual([
           {
             name: 'report v1.pdf',
-            type: ChatFileTypeEnum.file,
+            type: ChatFileTypeEnum.document,
             url: 'https://files.example.com/uploads/report%20v1.pdf'
           }
         ]);
@@ -885,7 +893,6 @@ describe('useUserContext', () => {
       },
       async () => {
         const result = await getUserContextMessagesForTest({
-          history: 6,
           histories: [],
           currentUserInput: '读取无扩展名文件',
           currentDataId: 'current_ai',
@@ -911,13 +918,15 @@ describe('useUserContext', () => {
   });
 
   it('uses url as the final defensive file name fallback when parser returns an empty name', async () => {
-    const parseUrlToFileTypeSpy = vi
-      .spyOn(workflowContext, 'parseUrlToFileType')
-      .mockReturnValueOnce({
-        name: '',
-        type: ChatFileTypeEnum.file,
-        url: 'https://files.example.com/nameless'
-      });
+    const prepareFilesSpy = vi
+      .spyOn(workflowContext, 'prepareWorkflowFiles')
+      .mockResolvedValueOnce([
+        {
+          name: '',
+          type: ChatFileTypeEnum.file,
+          url: 'https://files.example.com/nameless'
+        }
+      ]);
 
     await runWithContextAsync(
       {
@@ -925,7 +934,6 @@ describe('useUserContext', () => {
       },
       async () => {
         const result = await getUserContextMessagesForTest({
-          history: 6,
           histories: [],
           currentFiles: ['https://files.example.com/nameless'],
           currentUserInput: '读取文件',
@@ -940,7 +948,7 @@ describe('useUserContext', () => {
       }
     );
 
-    parseUrlToFileTypeSpy.mockRestore();
+    prepareFilesSpy.mockRestore();
   });
 
   it('ignores non-string file urls defensively', async () => {
@@ -949,16 +957,16 @@ describe('useUserContext', () => {
         mcpClientMemory: {}
       },
       async () => {
+        const histories = [
+          createHumanMessage({
+            dataId: 'history_human',
+            text: '历史问题',
+            files: [{ name: 'broken.pdf', url: 123 as any }]
+          })
+        ];
         const result = await getUserContextMessagesForTest({
-          history: 6,
           parseHistoryFiles: true,
-          histories: [
-            createHumanMessage({
-              dataId: 'history_human',
-              text: '历史问题',
-              files: [{ name: 'broken.pdf', url: 123 as any }]
-            })
-          ],
+          histories,
           currentUserInput: '当前问题',
           currentDataId: 'current_ai',
           currentQuery: runtimePrompt2ChatsValue({
@@ -977,7 +985,7 @@ describe('useUserContext', () => {
         });
 
         expect(result.currentFiles).toEqual([]);
-        expect(result.rewrittenHistories[0]).toBe(result.chatHistories[0]);
+        expect(result.rewrittenHistories[0]).toBe(histories[0]);
 
         const { text } = chatValue2RuntimePrompt(result.currentUserMessage.value);
         expect(text).not.toContain('## 对话文件');
@@ -993,21 +1001,13 @@ describe('useUserContext', () => {
       },
       async () => {
         const result = await getUserContextMessagesForTest({
-          history: 0,
-          histories: [
-            createHumanMessage({
-              dataId: 'ignored_history',
-              text: '不会进入历史',
-              files: [{ name: 'ignored.pdf', url: '/ignored.pdf' }]
-            })
-          ],
+          histories: [],
           currentUserInput: '只问一个问题',
           tmbId: 'tmb_1',
           timezone: 'Asia/Shanghai',
           maxFileAmount: 20
         });
 
-        expect(result.chatHistories).toEqual([]);
         expect(result.rewrittenHistories).toEqual([]);
         expect(result.queryInput).toBe('');
         expect(result.currentFiles).toEqual([]);
@@ -1020,64 +1020,13 @@ describe('useUserContext', () => {
       }
     );
   });
-
-  it('keeps the last pending interactive round when history is 0', async () => {
-    await runWithContextAsync(
-      {
-        mcpClientMemory: {}
-      },
-      async () => {
-        const histories: ChatItemMiniType[] = [
-          createHumanMessage({
-            dataId: 'question_1',
-            text: 'Need a choice'
-          }),
-          {
-            obj: ChatRoleEnum.AI,
-            memories: {
-              'agentLoopMemory-agent_1': {
-                providerState: {
-                  pendingMainContext: {
-                    messages: []
-                  }
-                }
-              }
-            },
-            value: [
-              {
-                interactive: {
-                  type: 'agentAsk',
-                  askId: 'ask_1',
-                  params: {
-                    description: 'Choose one',
-                    questions: [
-                      {
-                        question: 'Choose one?',
-                        options: [
-                          { summary: 'A', value: 'A' },
-                          { summary: 'B', value: 'B' }
-                        ]
-                      }
-                    ]
-                  }
-                } as any
-              }
-            ]
-          }
-        ];
-
-        const result = await getUserContextMessagesForTest({
-          history: 0,
-          histories,
-          currentUserInput: 'A',
-          tmbId: 'tmb_1',
-          timezone: 'Asia/Shanghai',
-          maxFileAmount: 20
-        });
-
-        expect(result.chatHistories).toEqual(histories);
-        expect(result.rewrittenHistories).toEqual(histories);
-      }
-    );
-  });
 });
+
+// 分类测试隔离外部服务，避免无后缀样例发出真实网络请求。
+beforeEach(async () => {
+  const { axios } = await import('@fastgpt/service/common/api/axios');
+  vi.spyOn(axios, 'head').mockResolvedValue({
+    headers: { 'content-type': 'application/octet-stream' }
+  } as any);
+});
+afterEach(() => vi.restoreAllMocks());

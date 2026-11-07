@@ -1,4 +1,5 @@
 import { documentFileExtensions } from '@fastgpt/global/common/file/constants';
+import { readFileRawText } from '@fastgpt/service/worker/readFile/extension/rawText';
 import { Readable } from 'node:stream';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -134,6 +135,31 @@ describe('common/file/read/source', () => {
       })
     ).toBe('iso-8859-1');
     expect(resolveFileSourceEncoding({ metadata: {}, buffer: Buffer.from('hello') })).toBeTruthy();
+  });
+
+  it('无 BOM 的 UTF-16 文本在类型判定、编码探测和最终解析上保持一致', async () => {
+    const text = 'hello world';
+    const utf16be = (() => {
+      const buffer = Buffer.from(text, 'utf16le');
+      buffer.swap16();
+      return buffer;
+    })();
+    const metadata = { contentType: 'application/octet-stream' };
+
+    for (const [encoding, buffer] of [
+      ['utf-16le', Buffer.from(text, 'utf16le')],
+      ['utf-16be', utf16be]
+    ] as const) {
+      // 文本判定按 txt 收下，编码探测必须得到同一个结论，否则解析出来是乱码。
+      expect(resolveFileSourceExtension({ metadata, buffer })).toBe('txt');
+      expect(resolveFileSourceEncoding({ metadata, buffer })).toBe(encoding);
+
+      const { rawText } = await readFileRawText({
+        buffer,
+        encoding: resolveFileSourceEncoding({ metadata, buffer })
+      });
+      expect(rawText).toBe(text);
+    }
   });
 
   it('AbortSignal 会终止 S3 流物化', async () => {

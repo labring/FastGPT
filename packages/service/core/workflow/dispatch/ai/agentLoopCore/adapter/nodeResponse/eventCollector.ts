@@ -1,3 +1,5 @@
+import { AgentAskInteractiveSchema } from '@fastgpt/global/core/ai/agent/type';
+import { parseAgentAskArguments } from '@fastgpt/global/core/ai/agent/utils';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
@@ -11,7 +13,7 @@ import type { AgentLoopCoreToolDisplayInfo } from '../../domain/toolInfo';
 
 type ToolRunEndEvent = Extract<AgentLoopEvent, { type: 'tool_run_end' }>;
 type PlanOperationEvent = Extract<AgentLoopEvent, { type: 'plan_operation' }>;
-type AskStartEvent = Extract<AgentLoopEvent, { type: 'ask_start' }>;
+type ToolInteractiveEvent = Extract<AgentLoopEvent, { type: 'tool_interactive' }>;
 type ToolResponseCompressEvent = NonNullable<ToolRunEndEvent['toolResponseCompress']>;
 type AgentPlanStatus = NonNullable<ChatHistoryItemResType['agentPlanStatus']>;
 
@@ -24,6 +26,7 @@ export type CreateAgentLoopCoreNodeResponseEventCollectorParams = {
   node: {
     nodeId: string;
     flowNodeType: FlowNodeTypeEnum;
+    catchError?: boolean;
   };
   nodeResponses?: ChatHistoryItemResType[];
   appendNodeResponse?: (nodeResponse: ChatHistoryItemResType) => void;
@@ -145,20 +148,22 @@ export const createAgentLoopCoreNodeResponseEventCollector = ({
     );
   };
 
-  const appendAskNodeResponse = (event: AskStartEvent) => {
-    if (!event.id) return;
-    if (appendedCallIds.has(event.id)) return;
-    appendedCallIds.add(event.id);
+  const appendAskNodeResponse = (event: ToolInteractiveEvent) => {
+    const parsed = AgentAskInteractiveSchema.safeParse(event.interactive);
+    if (!parsed.success || parsed.data.params.toolCallId !== event.call.id) return;
+    const ask = parseAgentAskArguments(parsed.data.params.arguments);
+    if (!ask || appendedCallIds.has(event.call.id)) return;
+    appendedCallIds.add(event.call.id);
 
     append(
       stripAgentLoopCoreChildTotalPoints({
-        id: `${node.nodeId}-ask-${event.id}`,
-        nodeId: `${node.nodeId}-ask-${event.id}`,
+        id: `${node.nodeId}-ask-${event.call.id}`,
+        nodeId: `${node.nodeId}-ask-${event.call.id}`,
         moduleName: AgentNodeResponseDisplay.ask.moduleName,
         moduleType: node.flowNodeType,
         moduleLogo: AgentNodeResponseDisplay.ask.moduleLogo,
-        runningTime: event.seconds,
-        textOutput: event.ask.questions.map((question) => question.question).join('\n')
+        runningTime: 0,
+        textOutput: ask.questions.map((question) => question.question).join('\n')
       })
     );
   };
@@ -188,7 +193,12 @@ export const createAgentLoopCoreNodeResponseEventCollector = ({
       textOutput: event.answerText,
       reasoningText: event.reasoningText,
       firstTokenTime: event.firstTokenTime,
-      ...(event.error ? { errorText: getErrText(event.error) } : {})
+      ...(event.error
+        ? {
+            errorText: getErrText(event.error),
+            ...(node.catchError ? { errorCaptured: true } : {})
+          }
+        : {})
     });
   };
 
@@ -263,7 +273,7 @@ export const createAgentLoopCoreNodeResponseEventCollector = ({
       case 'plan_operation':
         appendPlanOperationNodeResponse(event);
         return;
-      case 'ask_start':
+      case 'tool_interactive':
         appendAskNodeResponse(event);
         return;
       default:

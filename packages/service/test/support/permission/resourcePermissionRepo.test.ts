@@ -12,7 +12,7 @@ import {
 import { Types } from '@fastgpt/service/common/mongo';
 import { resourcePermissionRepo } from '@fastgpt/service/support/permission/repository/resourcePermissionRepo';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const objectId = () => new Types.ObjectId();
 
@@ -306,7 +306,7 @@ describe('resourcePermissionRepo.findResourceKeysByCollaboratorsPermission', () 
       groupIds: [String(groupId)],
       orgIds: [String(orgId)],
       personalPermissionPriority: false
-    } as const;
+    };
 
     await expect(
       resourcePermissionRepo.findResourceKeysByCollaboratorsPermission({
@@ -718,5 +718,77 @@ describe('resourcePermissionRepo mutation helpers', () => {
         rolePerMap: AppRolePerMap
       })
     ).resolves.toEqual([String(resourceId)]);
+  });
+});
+
+describe('resourcePermissionRepo.insertResources', () => {
+  it('空列表或空协作者快照不发起删除、插入', async () => {
+    const inserts = vi.spyOn(MongoResourcePermission, 'insertMany');
+    const deletes = vi.spyOn(MongoResourcePermission, 'deleteMany');
+    try {
+      const props = { teamId: String(objectId()), resourceType: PerResourceTypeEnum.collection };
+      await resourcePermissionRepo.insertResources({ ...props, resources: [] });
+      await resourcePermissionRepo.insertResources({
+        ...props,
+        resources: [{ resourceId: String(objectId()), collaborators: [] }]
+      });
+      expect(inserts).not.toHaveBeenCalled();
+      expect(deletes).not.toHaveBeenCalled();
+    } finally {
+      inserts.mockRestore();
+      deletes.mockRestore();
+    }
+  });
+
+  it('新快照直接批量插入，保留其他资源 ACL，重复输入按最后一份快照归一', async () => {
+    const teamId = String(objectId());
+    const existingId = String(objectId());
+    const newId = String(objectId());
+    const oldOwner = String(objectId());
+    const newOwner = String(objectId());
+    await MongoResourcePermission.create({
+      teamId,
+      resourceType: PerResourceTypeEnum.collection,
+      resourceId: existingId,
+      tmbId: oldOwner,
+      permission: OwnerPermissionVal
+    });
+    const inserts = vi.spyOn(MongoResourcePermission, 'insertMany');
+    const deletes = vi.spyOn(MongoResourcePermission, 'deleteMany');
+    try {
+      await resourcePermissionRepo.insertResources({
+        teamId,
+        resourceType: PerResourceTypeEnum.collection,
+        resources: [
+          {
+            resourceId: newId,
+            collaborators: [{ tmbId: oldOwner, permission: ReadPermissionVal }]
+          },
+          {
+            resourceId: newId,
+            collaborators: [{ tmbId: newOwner, permission: OwnerPermissionVal }]
+          }
+        ]
+      });
+      expect(inserts).toHaveBeenCalledTimes(1);
+      expect(deletes).not.toHaveBeenCalled();
+      expect(
+        await resourcePermissionRepo.findByResource({
+          teamId,
+          resourceType: PerResourceTypeEnum.collection,
+          resourceId: existingId
+        })
+      ).toEqual([expect.objectContaining({ tmbId: oldOwner, permission: OwnerPermissionVal })]);
+      expect(
+        await resourcePermissionRepo.findByResource({
+          teamId,
+          resourceType: PerResourceTypeEnum.collection,
+          resourceId: newId
+        })
+      ).toEqual([expect.objectContaining({ tmbId: newOwner, permission: OwnerPermissionVal })]);
+    } finally {
+      inserts.mockRestore();
+      deletes.mockRestore();
+    }
   });
 });

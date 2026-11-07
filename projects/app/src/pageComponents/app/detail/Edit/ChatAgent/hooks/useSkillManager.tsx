@@ -9,7 +9,7 @@ import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import {
-  getToolConfigStatus,
+  getAgentToolRuntimeStatus,
   validateToolConfiguration
 } from '@fastgpt/global/core/app/formEdit/utils';
 import { useToast } from '@fastgpt/web/hooks/useToast';
@@ -30,7 +30,7 @@ import {
 import { AppTypeEnum, AppTypeList, ToolTypeList } from '@fastgpt/global/core/app/constants';
 import { useLatest } from 'ahooks';
 import { SubAppIds, systemSubInfo } from '@fastgpt/global/core/workflow/node/agent/constants';
-import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
+import { parseI18nString, selectPluginText } from '@fastgpt/global/common/i18n/utils';
 import { AGENT_SANDBOX_TOOLSET_ID } from '@fastgpt/global/core/ai/sandbox/tools';
 import type { SkillClickResult } from '@fastgpt/web/components/common/Textarea/PromptEditor/plugins/SkillPickerPlugin';
 import { getSkillListV2 } from '@/web/core/skill/api';
@@ -42,7 +42,7 @@ import { getToolIdentityKey } from '@fastgpt/global/core/app/tool/utils';
 const ConfigToolModal = dynamic(() => import('../../component/ConfigToolModal'));
 type AgentSkillListItemType = ListSkillsResponse['list'][number];
 type SkillPickerPageParams = Parameters<SkillOptionPageLoader>[0];
-const SKILL_PICKER_PAGE_SIZE = 50;
+const SKILL_PICKER_PAGE_SIZE = 20;
 
 const getSkillId = (id?: string, source?: string) =>
   source ? getToolIdentityKey(id, source) : id || '';
@@ -57,41 +57,36 @@ const isSubApp = (flowNodeType: FlowNodeTypeEnum) => {
   return subAppTypeMap[flowNodeType];
 };
 
-const toSkillLabelItem = (
-  tool: SelectedToolItemType,
-  configStatus: SkillLabelItemType['configStatus']
-): SkillLabelItemType => ({
-  ...tool,
-  id: getSkillId(tool.pluginId, tool.source),
-  name: tool.name,
-  configStatus: tool.pluginData?.error ? 'invalid' : configStatus
-});
-
-const toSystemToolItem = (item: NodeTemplateListItemType, parentId?: string): SkillItemType => {
-  const isFolder = item.isFolder ?? false;
-
+/** 将当前工具状态投影为提示词标签；下线资源在编辑器中按不可用展示。 */
+const toSkillLabelItem = (tool: SelectedToolItemType): SkillLabelItemType => {
+  const status = getAgentToolRuntimeStatus(tool);
   return {
-    parentId: item.parentId ?? parentId,
-    id: item.id,
-    source: item.source,
-    label: item.name,
-    icon: item.avatar,
-    description: item.intro,
-    isFolder,
-    canClick: !isFolder
+    ...tool,
+    id: getSkillId(tool.pluginId ?? tool.id, tool.source),
+    name: tool.name,
+    configStatus: status === 'offline' ? 'invalid' : status
   };
 };
 
-const toTeamAppItem = (item: NodeTemplateListItemType, parentId?: string): SkillItemType => {
+/** 系统工具与团队应用共用目录项转换，保留来源与文件夹的点击约定。 */
+const toToolItem = ({
+  item,
+  parentId,
+  lang
+}: {
+  item: NodeTemplateListItemType;
+  parentId?: string;
+  lang: string;
+}): SkillItemType => {
   const isFolder = item.isFolder ?? false;
 
   return {
     parentId: item.parentId ?? parentId,
     id: item.id,
     source: item.source,
-    label: item.name,
+    label: selectPluginText(item.name, lang),
     icon: item.avatar,
-    description: item.intro,
+    description: selectPluginText(item.intro, lang),
     isFolder,
     canClick: !isFolder
   };
@@ -119,24 +114,28 @@ const toAgentSkillLabelItem = (skill: SelectedAgentSkillItemType): SkillLabelIte
   configStatus: skill.error ? 'invalid' : 'noConfig'
 });
 
+/** 表单与工作流共用提示词资源目录、即时状态和工具配置；通过回调更新各自的编辑数据。 */
 export const useSkillManager = ({
   selectedTools,
   selectedAgentSkills = [],
   onUpdateOrAddTool,
   onAddAgentSkill,
+  onEnableSandbox,
   canUploadFile,
   hasSelectedDataset,
   useAgentSandbox,
+  currentAppId,
   onClickDatasetSearch
 }: {
   selectedTools: SelectedToolItemType[];
   selectedAgentSkills?: SelectedAgentSkillItemType[];
-  onDeleteTool: (id: string, source?: string) => void;
   onUpdateOrAddTool: (tool: SelectedToolItemType) => void;
   onAddAgentSkill?: (skill: SelectedAgentSkillItemType) => boolean;
+  onEnableSandbox?: () => void;
   canUploadFile: boolean;
   hasSelectedDataset: boolean;
   useAgentSandbox: boolean;
+  currentAppId?: string;
   onClickDatasetSearch?: () => void;
 }) => {
   const { t, i18n } = useTranslation();
@@ -151,11 +150,13 @@ export const useSkillManager = ({
     ): Promise<SkillOptionPageType> => {
       const data = await getAppToolTemplates({ parentId: folderId, source });
       return {
-        list: data.slice(offset, offset + pageSize).map((item) => toSystemToolItem(item, folderId)),
+        list: data
+          .slice(offset, offset + pageSize)
+          .map((item) => toToolItem({ item, parentId: folderId, lang: i18n.language })),
         total: data.length
       };
     },
-    []
+    [i18n.language]
   );
 
   const { data: systemTools = [] } = useRequest(
@@ -163,7 +164,7 @@ export const useSkillManager = ({
       const data = await getAppToolTemplates({ getAll: true }).catch(() => {
         return [];
       });
-      const apiTools = data.map((item) => toSystemToolItem(item));
+      const apiTools = data.map((item) => toToolItem({ item, lang: i18n.language }));
 
       const datasetSearchInfo = systemSubInfo[SubAppIds.datasetSearch];
       if (datasetSearchInfo) {
@@ -201,7 +202,8 @@ export const useSkillManager = ({
       return apiTools;
     },
     {
-      manual: false
+      manual: false,
+      refreshDeps: [i18n.language]
     }
   );
   const onLoadSystemTool = useCallback(
@@ -225,6 +227,7 @@ export const useSkillManager = ({
           parentId,
           parentType: parentId ? parentTypes.current.get(parentId) : undefined,
           type: types,
+          excludeAppId: currentAppId,
           ...params
         },
         cancelToken
@@ -235,11 +238,13 @@ export const useSkillManager = ({
         }
       );
       return {
-        list: response.list.map((item) => toTeamAppItem(item, parentId ?? undefined)),
+        list: response.list.map((item) =>
+          toToolItem({ item, parentId: parentId ?? undefined, lang: i18n.language })
+        ),
         total: response.total
       };
     },
-    []
+    [currentAppId, i18n.language]
   );
 
   const rootListCacheRef = useRef<Map<string, SkillOptionPageType>>(new Map());
@@ -289,9 +294,9 @@ export const useSkillManager = ({
         {
           source: 'mine',
           parentId: folderId,
+          withAppCount: false,
           offset,
-          pageSize,
-          withAppCount: false
+          pageSize
         },
         cancelToken
       );
@@ -305,6 +310,10 @@ export const useSkillManager = ({
 
   const lastSelectedTools = useLatest(selectedTools);
   const lastSelectedAgentSkills = useLatest(selectedAgentSkills);
+  const lastOnAddAgentSkill = useLatest(onAddAgentSkill);
+  const lastOnUpdateOrAddTool = useLatest(onUpdateOrAddTool);
+  const lastOnEnableSandbox = useLatest(onEnableSandbox);
+  const hasAgentSkillSupport = Boolean(onAddAgentSkill);
   const onAddSkill = useCallback(
     async (skillId: string): Promise<SkillClickResult | undefined> => {
       const existsSkill = lastSelectedAgentSkills.current?.find((item) => item.skillId === skillId);
@@ -327,7 +336,7 @@ export const useSkillManager = ({
         description: targetSkill.description,
         avatar: targetSkill.avatar
       };
-      if (!onAddAgentSkill?.(selectedSkill)) return;
+      if (!lastOnAddAgentSkill.current?.(selectedSkill)) return;
       const skill = toAgentSkillLabelItem(selectedSkill);
 
       return {
@@ -335,7 +344,7 @@ export const useSkillManager = ({
         skill
       };
     },
-    [lastSelectedAgentSkills, onAddAgentSkill]
+    [lastOnAddAgentSkill, lastSelectedAgentSkills]
   );
 
   const onAddAppOrTool = useCallback(
@@ -346,10 +355,7 @@ export const useSkillManager = ({
         (tool) => getToolIdentityKey(tool.pluginId, tool.source) === toolIdentityKey
       );
       if (existsTool) {
-        const skill = toSkillLabelItem(
-          existsTool,
-          getToolConfigStatus({ tool: existsTool }).status
-        );
+        const skill = toSkillLabelItem(existsTool);
 
         return {
           id: skill.id,
@@ -362,6 +368,11 @@ export const useSkillManager = ({
         const subToolInfo = systemSubInfo[toolId as keyof typeof systemSubInfo];
 
         if (!subToolInfo) return;
+
+        // 提示词 @虚拟机 时，同步尝试打开虚拟机开关。
+        if (toolId === AGENT_SANDBOX_TOOLSET_ID && !useAgentSandbox) {
+          lastOnEnableSandbox.current?.();
+        }
 
         const configStatus: SkillLabelItemType['configStatus'] = (() => {
           if (toolId === SubAppIds.datasetSearch) {
@@ -422,13 +433,9 @@ export const useSkillManager = ({
           id: toolTemplate.pluginId!
         }
       });
-      const configStatus = getToolConfigStatus({ tool }).status;
-      const skill = toSkillLabelItem(tool, configStatus);
+      const skill = toSkillLabelItem(tool);
 
-      onUpdateOrAddTool({
-        ...tool,
-        configStatus
-      });
+      lastOnUpdateOrAddTool.current?.(tool);
 
       return {
         id: skill.id,
@@ -439,8 +446,9 @@ export const useSkillManager = ({
       canUploadFile,
       hasSelectedDataset,
       i18n.language,
+      lastOnEnableSandbox,
+      lastOnUpdateOrAddTool,
       lastSelectedTools,
-      onUpdateOrAddTool,
       t,
       toast,
       useAgentSandbox
@@ -450,7 +458,7 @@ export const useSkillManager = ({
   /** Lazily load the first page of tools and keep later pages on the same loader. */
   const loadMyTools = useCallback(async () => {
     const types = [AppTypeEnum.toolFolder, ...ToolTypeList];
-    const firstPage = await loadRootPage('myTools', () =>
+    const firstPage = await loadRootPage(`myTools:${i18n.language}`, () =>
       loadTeamAppPage(null, types, { offset: 0, pageSize: SKILL_PICKER_PAGE_SIZE })
     );
 
@@ -469,12 +477,12 @@ export const useSkillManager = ({
       ) => loadTeamAppPage(folderId, types, params, cancelToken),
       onClick: onAddAppOrTool
     };
-  }, [loadRootPage, loadTeamAppPage, onAddAppOrTool, t]);
+  }, [i18n.language, loadRootPage, loadTeamAppPage, onAddAppOrTool, t]);
 
   /** Lazily load the first page of agents and keep later pages on the same loader. */
   const loadMyAgents = useCallback(async () => {
     const types = [AppTypeEnum.folder, ...AppTypeList];
-    const firstPage = await loadRootPage('agent', () =>
+    const firstPage = await loadRootPage(`agent:${i18n.language}`, () =>
       loadTeamAppPage(null, types, { offset: 0, pageSize: SKILL_PICKER_PAGE_SIZE })
     );
 
@@ -493,7 +501,7 @@ export const useSkillManager = ({
       ) => loadTeamAppPage(folderId, types, params, cancelToken),
       onClick: onAddAppOrTool
     };
-  }, [loadRootPage, loadTeamAppPage, onAddAppOrTool, t]);
+  }, [i18n.language, loadRootPage, loadTeamAppPage, onAddAppOrTool, t]);
 
   /** Lazily load the first page of associated skills and update the lookup map. */
   const loadAgentSkills = useCallback(async () => {
@@ -569,7 +577,7 @@ export const useSkillManager = ({
           canClick: false
         }
       ].concat(
-        onAddAgentSkill
+        hasAgentSkillSupport
           ? [
               {
                 id: 'agentSkill',
@@ -582,8 +590,8 @@ export const useSkillManager = ({
       )
     };
   }, [
+    hasAgentSkillSupport,
     onAddAppOrTool,
-    onAddAgentSkill,
     onLoadSystemTool,
     onFolderLoadSystemTools,
     loadMyTools,
@@ -594,24 +602,7 @@ export const useSkillManager = ({
 
   /* ===== Selected skills ===== */
   const selectedSkills = useMemoEnhance<SkillLabelItemType[]>(() => {
-    const tools = selectedTools.map((tool) => {
-      const configStatus: SkillLabelItemType['configStatus'] = (() => {
-        if (tool.pluginData?.error) {
-          return 'invalid';
-        }
-        if (tool.pluginId === SubAppIds.datasetSearch) {
-          return hasSelectedDataset ? 'configured' : 'waitingForConfig';
-        }
-        return getToolConfigStatus({ tool }).status;
-      })();
-
-      return {
-        ...tool,
-        id: getSkillId(tool.pluginId, tool.source),
-        name: tool.name,
-        configStatus
-      };
-    });
+    const tools = selectedTools.map(toSkillLabelItem);
 
     const datasetSearchInfo = systemSubInfo[SubAppIds.datasetSearch];
     if (datasetSearchInfo) {
@@ -693,32 +684,17 @@ export const useSkillManager = ({
     },
     [onClickDatasetSearch, selectedAgentSkills, selectedTools]
   );
-  const onRemoveSkill = useCallback(() => {}, []);
-
-  const SkillModal = useCallback(() => {
-    return (
-      <>
-        {!!configTool && (
-          <ConfigToolModal
-            configTool={configTool}
-            onCloseConfigTool={() => setConfigTool(undefined)}
-            onAddTool={(tool) =>
-              onUpdateOrAddTool({
-                ...tool,
-                configStatus: 'configured'
-              })
-            }
-          />
-        )}
-      </>
-    );
-  }, [configTool, onUpdateOrAddTool]);
-
   return {
     skillOption,
     selectedSkills,
     onClickSkill,
-    onRemoveSkill,
-    SkillModal
+    onOpenConfigTool: setConfigTool,
+    toolConfigModal: configTool ? (
+      <ConfigToolModal
+        configTool={configTool}
+        onCloseConfigTool={() => setConfigTool(undefined)}
+        onAddTool={onUpdateOrAddTool}
+      />
+    ) : null
   };
 };

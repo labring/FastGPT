@@ -1,37 +1,35 @@
-import { describe, expect, it, vi } from 'vitest';
-import { beforeUpdateAppFormat } from '@fastgpt/service/core/app/controller';
-import { extractAppResources } from '@fastgpt/service/core/app/resources';
-import {
-  checkAppResourceReadPermissions,
-  resolveAppResourcesByPermission
-} from '@fastgpt/service/support/permission/app/resource';
+import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
+import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
+import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
+import { getNanoid } from '@fastgpt/global/common/string/tools';
+import { AgentSkillSourceEnum } from '@fastgpt/global/core/ai/skill/constants';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { SystemToolSecretInputTypeEnum } from '@fastgpt/global/core/app/tool/systemTool/constants';
+import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   FlowNodeInputTypeEnum,
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
-import { SystemToolSecretInputTypeEnum } from '@fastgpt/global/core/app/tool/systemTool/constants';
-import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import { MongoAgentSkills } from '@fastgpt/service/core/ai/skill/model/schema';
-import { MongoApp } from '@fastgpt/service/core/app/schema';
-import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
-import { AgentSkillSourceEnum } from '@fastgpt/global/core/ai/skill/constants';
-import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { getUser } from '@test/datas/users';
-import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
-import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
-import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
-import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
-import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import {
   PerResourceTypeEnum,
   ReadPermissionVal
 } from '@fastgpt/global/support/permission/constant';
 import { Types } from '@fastgpt/service/common/mongo';
-import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
-import { getCachedModelHandle } from '@fastgpt/service/core/ai/config/handle';
+import { getCachedSystemModelHandle } from '@fastgpt/service/core/ai/model/catalog/cache';
+import { MongoAgentSkills } from '@fastgpt/service/core/ai/skill/model/schema';
+import { beforeUpdateAppFormat } from '@fastgpt/service/core/app/controller';
+import { extractAppResources } from '@fastgpt/service/core/app/resource/utils';
+import { MongoApp } from '@fastgpt/service/core/app/schema';
+import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
+import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
+import { checkAppResourceReadPermissions } from '@fastgpt/service/support/permission/app/resource';
+import { resolveAppResourcesByPermission } from '@fastgpt/service/core/app/resource/service';
+import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
+import { getUser } from '@test/datas/users';
 import { getModelTestDefaults, setModelTestSnapshot } from '@test/modelCache';
+import { describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   getClientToolPreviewNode: vi.fn()
@@ -40,11 +38,37 @@ const mocks = vi.hoisted(() => ({
 vi.mock('@fastgpt/service/core/app/tool/utils/client', () => mocks);
 
 describe('beforeUpdateAppFormat', () => {
+  it.each([
+    ['systemTool-weather', true],
+    ['business-app-id', false]
+  ])('预览不可用时仅清理已确认身份的系统工具：%s', async (id, shouldClear) => {
+    mocks.getClientToolPreviewNode.mockRejectedValueOnce(new Error('Tool unavailable'));
+    const systemInput = {
+      type: SystemToolSecretInputTypeEnum.system,
+      value: { apiKey: { value: 'temporary-or-business-value' } }
+    };
+    const nodes = [
+      {
+        flowNodeType: FlowNodeTypeEnum.agent,
+        inputs: [
+          {
+            key: NodeInputKeyEnum.selectedTools,
+            value: [{ id, config: { [NodeInputKeyEnum.systemInputConfig]: systemInput } }]
+          }
+        ]
+      }
+    ] as StoreNodeItemType[];
+
+    await beforeUpdateAppFormat({ nodes });
+    expect('value' in systemInput).toBe(!shouldClear);
+  });
+
   it.each([SystemToolSecretInputTypeEnum.system, SystemToolSecretInputTypeEnum.team])(
     '保存前清理 %s 类型中的临时密钥值',
     async (type) => {
       const nodes = [
         {
+          flowNodeType: FlowNodeTypeEnum.tool,
           inputs: [
             {
               key: NodeInputKeyEnum.systemInputConfig,
@@ -72,6 +96,7 @@ describe('beforeUpdateAppFormat', () => {
   it('即使系统输入被标记为引用，也不能保留临时密钥值', async () => {
     const nodes = [
       {
+        flowNodeType: FlowNodeTypeEnum.tool,
         inputs: [
           {
             key: NodeInputKeyEnum.systemInputConfig,
@@ -102,6 +127,7 @@ describe('beforeUpdateAppFormat', () => {
   it('保存前仅加密 manual 类型的临时密钥值', async () => {
     const nodes = [
       {
+        flowNodeType: FlowNodeTypeEnum.tool,
         inputs: [
           {
             key: NodeInputKeyEnum.systemInputConfig,
@@ -128,13 +154,13 @@ describe('beforeUpdateAppFormat', () => {
 
     const value = nodes[0].inputs[0].value as any;
     expect(value.type).toBe(SystemToolSecretInputTypeEnum.manual);
-    expect(value.value.apiKey.value).toBe('');
-    expect(value.value.apiKey.secret).toEqual(expect.any(String));
+    expect(value.value.apiKey).toEqual({ secret: expect.any(String) });
     expect(value.value.region).toBe('cn');
   });
 
   it('保存 Agent 嵌套工具配置前加密手动密钥', async () => {
     mocks.getClientToolPreviewNode.mockResolvedValueOnce({
+      flowNodeType: FlowNodeTypeEnum.tool,
       inputs: [
         {
           key: NodeInputKeyEnum.systemInputConfig,
@@ -169,8 +195,7 @@ describe('beforeUpdateAppFormat', () => {
     await beforeUpdateAppFormat({ nodes, teamId: 'team-1' });
 
     const config = (nodes[0].inputs[0].value as any)[0].config;
-    expect(config.system_input_config.value.apiKey.value).toBe('');
-    expect(config.system_input_config.value.apiKey.secret).toEqual(expect.any(String));
+    expect(config.system_input_config.value.apiKey).toEqual({ secret: expect.any(String) });
   });
 
   it('保存 Agent 嵌套团队工具配置时把 teamId 传给预览接口', async () => {
@@ -199,54 +224,58 @@ describe('beforeUpdateAppFormat', () => {
       appId: 'systemTool-weather',
       versionId: undefined,
       source: 'teamId:team-1',
+      lang: 'en',
       teamId: 'team-1'
     });
   });
 
-  it('保存前移除知识库选择项的编辑态标记并保留展示快照字段', async () => {
-    const nodes = [
-      {
-        nodeId: 'dataset-node',
-        flowNodeType: FlowNodeTypeEnum.datasetSearchNode,
-        name: 'Dataset',
-        inputs: [
-          {
-            key: NodeInputKeyEnum.datasetSelectList,
-            label: 'Datasets',
-            renderTypeList: [FlowNodeInputTypeEnum.selectDataset, FlowNodeInputTypeEnum.reference],
-            selectedType: FlowNodeInputTypeEnum.selectDataset,
-            value: [
-              {
-                datasetId: 'dataset-1',
-                avatar: 'avatar.png',
-                name: 'Deleted Dataset',
-                vectorModel: {
-                  model: 'text-embedding'
-                },
-                isDeleted: true
-              }
-            ]
-          }
-        ],
-        outputs: []
-      } as StoreNodeItemType
-    ];
+  it.each([FlowNodeTypeEnum.datasetSearchNode, FlowNodeTypeEnum.agent])(
+    '保存 %s 知识库选择项时仅保留 datasetId',
+    async (flowNodeType) => {
+      const nodes = [
+        {
+          nodeId: 'dataset-node',
+          flowNodeType,
+          name: 'Dataset',
+          inputs: [
+            {
+              key: NodeInputKeyEnum.datasetSelectList,
+              label: 'Datasets',
+              renderTypeList: [
+                FlowNodeInputTypeEnum.selectDataset,
+                FlowNodeInputTypeEnum.reference
+              ],
+              selectedType: FlowNodeInputTypeEnum.selectDataset,
+              value: [
+                {
+                  datasetId: 'dataset-1',
+                  avatar: 'avatar.png',
+                  name: 'Deleted Dataset',
+                  vectorModel: {
+                    modelId: 'embedding-model-id',
+                    model: 'text-embedding'
+                  },
+                  error: 'resource_missing',
+                  isDeleted: true
+                }
+              ]
+            }
+          ],
+          outputs: []
+        } as StoreNodeItemType
+      ];
 
-    await beforeUpdateAppFormat({ nodes });
+      await beforeUpdateAppFormat({ nodes });
 
-    expect(nodes[0].inputs[0].value).toEqual([
-      {
-        datasetId: 'dataset-1',
-        avatar: 'avatar.png',
-        name: 'Deleted Dataset',
-        vectorModel: {
-          model: 'text-embedding'
+      expect(nodes[0].inputs[0].value).toEqual([
+        {
+          datasetId: 'dataset-1'
         }
-      }
-    ]);
-  });
+      ]);
+    }
+  );
 
-  it('保存前兼容旧版单对象知识库选择项并保留展示快照字段', async () => {
+  it('保存前兼容旧版单对象知识库选择项并过滤展示字段', async () => {
     const nodes = [
       {
         flowNodeType: FlowNodeTypeEnum.datasetSearchNode,
@@ -272,12 +301,7 @@ describe('beforeUpdateAppFormat', () => {
 
     expect(nodes[0].inputs[0].value).toEqual([
       {
-        datasetId: 'dataset-legacy',
-        avatar: 'avatar.png',
-        name: 'Legacy Dataset',
-        vectorModel: {
-          model: 'text-embedding'
-        }
+        datasetId: 'dataset-legacy'
       }
     ]);
   });
@@ -316,7 +340,7 @@ describe('beforeUpdateAppFormat', () => {
     ]);
   });
 
-  it('保存前移除 Agent datasetParams 中的编辑态标记并保留展示快照字段', async () => {
+  it('保存前过滤 Agent datasetParams 中的知识库展示字段并保留检索参数', async () => {
     const nodes = [
       {
         flowNodeType: FlowNodeTypeEnum.agent,
@@ -325,6 +349,7 @@ describe('beforeUpdateAppFormat', () => {
             key: NodeInputKeyEnum.datasetParams,
             value: {
               datasets: [
+                ['source-node', 'datasets'],
                 {
                   datasetId: 'dataset-1',
                   avatar: 'avatar.png',
@@ -345,15 +370,10 @@ describe('beforeUpdateAppFormat', () => {
 
     await beforeUpdateAppFormat({ nodes });
 
-    expect(nodes[0].inputs[0].value).toMatchObject({
+    expect(nodes[0].inputs[0].value).toEqual({
       datasets: [
         {
-          datasetId: 'dataset-1',
-          avatar: 'avatar.png',
-          name: 'Deleted Dataset',
-          vectorModel: {
-            model: 'text-embedding'
-          }
+          datasetId: 'dataset-1'
         }
       ],
       similarity: 0.5,
@@ -361,8 +381,15 @@ describe('beforeUpdateAppFormat', () => {
     });
   });
 
-  it('保存前保留知识库选择输入的引用模式值', async () => {
-    const referenceValue = ['sourceNode', 'datasets'];
+  it.each([
+    { referenceValue: ['sourceNode', 'datasets'] },
+    {
+      referenceValue: [
+        ['source-a', 'datasets'],
+        ['source-b', 'datasets']
+      ]
+    }
+  ])('保存前保留知识库选择输入的引用模式值 %#', async ({ referenceValue }) => {
     const nodes = [
       {
         nodeId: 'dataset-node',
@@ -406,27 +433,41 @@ describe('beforeUpdateAppFormat', () => {
     expect(nodes[0].inputs[0].value).toEqual([]);
   });
 
-  it('保存前遇到非法知识库选择项时抛错，避免清空后继续保存', async () => {
-    const nodes = [
-      {
-        flowNodeType: FlowNodeTypeEnum.datasetSearchNode,
-        inputs: [
-          {
-            key: NodeInputKeyEnum.datasetSelectList,
-            renderTypeList: [FlowNodeInputTypeEnum.selectDataset, FlowNodeInputTypeEnum.reference],
-            selectedType: FlowNodeInputTypeEnum.selectDataset,
-            value: [
-              {
-                name: 'Invalid Dataset'
-              }
-            ]
-          }
-        ]
-      } as StoreNodeItemType
-    ];
+  it.each([FlowNodeTypeEnum.datasetSearchNode, FlowNodeTypeEnum.agent])(
+    '保存 %s 时过滤非法知识库选择项并保留有效项',
+    async (flowNodeType) => {
+      const nodes = [
+        {
+          flowNodeType,
+          inputs: [
+            {
+              key: NodeInputKeyEnum.datasetSelectList,
+              renderTypeList: [
+                FlowNodeInputTypeEnum.selectDataset,
+                FlowNodeInputTypeEnum.reference
+              ],
+              selectedType: FlowNodeInputTypeEnum.selectDataset,
+              value: [
+                ['source-a', 'datasets'],
+                ['source-b', 'datasets'],
+                {
+                  name: 'Invalid Dataset'
+                },
+                {
+                  datasetId: 'dataset-1',
+                  name: 'Dataset'
+                }
+              ]
+            }
+          ]
+        } as StoreNodeItemType
+      ];
 
-    await expect(beforeUpdateAppFormat({ nodes, teamId: 'team-1' })).rejects.toThrow();
-  });
+      await beforeUpdateAppFormat({ nodes, teamId: 'team-1' });
+
+      expect(nodes[0].inputs[0].value).toEqual([{ datasetId: 'dataset-1' }]);
+    }
+  );
 
   it('保存前移除 Agent Skill 的编辑态删除标记并保留展示快照字段', async () => {
     const nodes = [
@@ -587,7 +628,7 @@ describe('checkAppResourceReadPermissions', () => {
     const owner = await getUser(`model-resource-owner-${getNanoid(6)}`);
     const member = await getUser(`model-resource-member-${getNanoid(6)}`, owner.teamId);
     const modelId = String(new Types.ObjectId());
-    const previousHandle = getCachedModelHandle()!;
+    const previousHandle = getCachedSystemModelHandle()!;
     const previousModels = previousHandle.getAllModels();
     const previousDefaults = getModelTestDefaults();
     const model = {

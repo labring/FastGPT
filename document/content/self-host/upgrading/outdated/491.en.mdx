@@ -29,7 +29,7 @@ curl --location --request POST 'https://{{host}}/api/admin/initv491' \
 
 **Script Functions**
 
-Re-processes tokenization using the latest jieba dictionary. This takes a while — you can monitor progress in the logs.
+Re-processes tokenization using the latest jieba tokenization library. This takes a while — you can monitor progress in the logs.
 
 ## New Features
 
@@ -47,7 +47,7 @@ Re-processes tokenization using the latest jieba dictionary. This takes a while 
 3. Added dependency package security version checks and upgraded some dependencies.
 4. Model testing code improvements.
 5. Optimized reasoning output parsing: as long as a model is configured to support reasoning, `<think>` tags will always be parsed, even when reasoning is disabled during a conversation.
-6. Loaded the latest jieba dictionary for improved full-text search tokenization.
+6. Loaded the latest jieba tokenization library for improved full-text search tokenization.
 
 ## Bug Fixes
 
@@ -56,9 +56,9 @@ Re-processes tokenization using the latest jieba dictionary. This takes a while 
 3. Dataset query rewriting not passing conversation history.
 4. Missing error message translations.
 5. Content extraction node: incorrect schema for array types.
-6. Model provider testing not actually targeting the specified channel.
+6. Model channel tests were failing to target the selected channel.
 7. Adding a custom model would also save default model fields, causing incorrect default model detection.
 8. Prompt-mode tool calls not null-checking the reasoning chain, causing UI rendering errors.
 9. Editing app info causing avatar loss.
 10. Share link titles being reset on refresh.
-11. Authentication failure when calculating parentPath, causing it to be cleared.
+11. Authentication failures when calculating `parentPath`.

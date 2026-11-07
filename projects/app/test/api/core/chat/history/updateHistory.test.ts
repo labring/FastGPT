@@ -260,7 +260,7 @@ describe('updateHistory api test', () => {
     const shareId = `share-update-history-${getNanoid()}`;
     const outLinkUid = `share-user-${getNanoid()}`;
 
-    await MongoOutLink.create({
+    const link = await MongoOutLink.create({
       shareId,
       teamId: testUser.teamId,
       tmbId: testUser.tmbId,
@@ -273,7 +273,7 @@ describe('updateHistory api test', () => {
       { appId, chatId },
       {
         $set: {
-          shareId,
+          publishSource: { type: ChatSourceEnum.share, id: link._id },
           outLinkUid,
           source: ChatSourceEnum.share
         }
@@ -297,7 +297,7 @@ describe('updateHistory api test', () => {
     const updatedChat = await MongoChat.findOne({
       appId,
       chatId,
-      shareId,
+      'publishSource.id': link._id,
       outLinkUid
     });
 

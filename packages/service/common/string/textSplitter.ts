@@ -317,6 +317,7 @@ const strIsMdTable = (str: string) => {
 const markdownTableSplit = (props: SplitProps): SplitResponse => {
   const { text = '', chunkSize, maxSize = defaultMaxChunkSize, maxChunks } = props;
   const countLength = getTextLengthCounter(props);
+  const splitTextByLengthLimit = getSplitTextByLengthLimit(props);
 
   // split by rows
   const splitText2Lines = text.split('\n').filter((line) => line.trim());
@@ -340,6 +341,19 @@ ${mdSplitString}
   if (splitText2Lines.length === 2) {
     return { chunks: [], chars: 0 };
   }
+
+  /**
+   * 表头预算不足时的降级：不再拼回表头，直接按长度安全切分，保证内容不丢且每块不超过上限。
+   * 仅含表头的分块没有可检索内容，因此不产出（与上面“只有表头无数据行”返回空分块的处理一致）。
+   */
+  const splitWithoutHeader = (text: string) =>
+    splitTextByLengthLimit({
+      text,
+      maxLength: chunkSize,
+      stepLength: chunkSize,
+      countLength,
+      maxChunks
+    });
 
   /**
    * token 模式下表格行拆分后还要补回表头；这里按“表头 + 内容”的最终文本
@@ -367,8 +381,12 @@ ${mdSplitString}
         }
       }
 
+      // 防御性分支：当前唯一调用方是 splitTableLineWithHeader，它已保证 contentChunkSize >= 1，
+      // 且传入文本来自受该预算约束的 commonSplit，故二分必有解（bestEnd >= 1）而不会走到这里。
+      // 保留是为了循环收敛：若 bestEnd 为 0 又直接切片，restText 不会推进会死循环。
       if (bestEnd === 0) {
-        throw new Error('Markdown table header leaves no token budget for row content');
+        pushChunks(result, splitWithoutHeader(restText), maxChunks);
+        break;
       }
 
       const safeText = restChars.slice(0, bestEnd).join('');
@@ -381,8 +399,9 @@ ${mdSplitString}
 
   const splitTableLineWithHeader = (line: string) => {
     const contentChunkSize = chunkSize - countLength(defaultChunk);
+    // 表头（含分隔行）本身就超出 chunk 预算：无法再拼回表头，退化为按长度安全切分该行内容。
     if (contentChunkSize <= 0) {
-      throw new Error('Markdown table header exceeds token chunk size');
+      return splitWithoutHeader(line);
     }
 
     return commonSplit({

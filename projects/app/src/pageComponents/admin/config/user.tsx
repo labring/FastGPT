@@ -15,10 +15,10 @@ import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 
-interface titleType {
+type titleType = {
   mainTitle: string;
   subTitles: string[];
-}
+};
 
 const UserSetting = () => {
   const [rawData, setRawData] = useState<ConfigFormType>();
@@ -57,7 +57,8 @@ const UserSetting = () => {
   });
 
   const isLoading = loadingConfig || loadingSave;
-  const hasSSOURL = !!watch('sso.url') && licenseSsoEnabled;
+  const ssoUrl = rawData?.siteSettings.systemEnv.sso?.url;
+  const hasSSOURL = !!ssoUrl && licenseSsoEnabled;
   const teamMode = watch('teamMode');
   const teamModeOptions = useMemo(
     () => [
@@ -110,14 +111,14 @@ const UserSetting = () => {
         </FormItem>
       )}
 
-      {!!watch('sso.url') && (
+      {!!ssoUrl && (
         <>
           <FirstTitle title="自定义用户系统配置" />
           <FormItem
             title="用户服务根地址(末尾不加/)"
             description="具体用法请看： [SSO & 外部成员同步](https://doc.fastgpt.io/guide/admin/sso)"
           >
-            <Box>{watch('sso.url')}</Box>
+            <Box>{ssoUrl}</Box>
           </FormItem>
           <FormItem title="SSO 登录按钮标题" description="配置 SSO 登录按钮的标题">
             <Input {...register('sso.title')} placeholder="SSO 登录按钮标题" />

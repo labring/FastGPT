@@ -9,22 +9,21 @@ import {
   type SandboxUploadQuery,
   type SandboxUploadResponse
 } from '@fastgpt/global/openapi/core/ai/sandbox/api';
-import { getAgentSandboxMaxFileBytes } from '@fastgpt/service/core/ai/sandbox/interface/config';
-import {
-  buildSandboxClientQueryFromChatSource,
-  getSandboxClient
-} from '@fastgpt/service/core/ai/sandbox/interface/runtime';
-import { prepareSandboxFileParentDirectories } from '@fastgpt/service/core/ai/sandbox/interface/file';
+import { getAgentSandboxMaxFileBytes } from '@fastgpt/service/core/ai/sandbox/config';
+import { buildSandboxClientQueryFromChatSource } from '@fastgpt/service/core/ai/sandbox/interface/runtime';
+import { getSandboxClient } from '@fastgpt/service/core/ai/sandbox/application/runtime/client';
+import { prepareSandboxFileParentDirectories } from '@fastgpt/service/core/ai/sandbox/application/file';
 import { Readable } from 'node:stream';
 import { createSizeLimitedStream } from '@fastgpt/service/common/file/stream';
 
 async function handler(
   req: ApiRequestProps<unknown, SandboxUploadQuery>
 ): Promise<SandboxUploadResponse> {
-  const { sourceType, sourceId, chatId, path, outLinkAuthData } = parseApiInput({
-    req,
-    querySchema: SandboxUploadQuerySchema
-  }).query;
+  const { customUid, authProxy, sourceType, sourceId, chatId, path, outLinkAuthData } =
+    parseApiInput({
+      req,
+      querySchema: SandboxUploadQuerySchema
+    }).query;
 
   const maxFileBytes = getAgentSandboxMaxFileBytes();
   const contentLengthHeader = req.headers['content-length'];
@@ -41,6 +40,8 @@ async function handler(
     sourceType: resolvedSourceType,
     sourceId: resolvedSourceId
   } = await authSandboxRuntimeSession({
+    customUid,
+    authProxy,
     req,
     sourceType,
     sourceId,

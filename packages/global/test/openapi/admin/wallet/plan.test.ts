@@ -93,6 +93,28 @@ describe('Admin plan schemas', () => {
       expect(invalid.success).toBe(false);
     });
 
+    it('normalizes empty string and null override limits to undefined without turning them into 0', () => {
+      const valid = UpdatePlanBodySchema.parse({
+        ...basePlan,
+        id: '68ad85a7463006c963799a05',
+        type: SubTypeEnum.standard,
+        level: StandardSubLevelEnum.advanced,
+        maxDatasetSize: '',
+        maxApp: null,
+        maxDataset: undefined,
+        maxTeamMember: '50',
+        requestsPerMinute: 0
+      });
+      expect(valid.type).toBe(SubTypeEnum.standard);
+      if (valid.type === SubTypeEnum.standard) {
+        expect(valid.maxDatasetSize).toBeUndefined();
+        expect(valid.maxApp).toBeUndefined();
+        expect(valid.maxDataset).toBeUndefined();
+        expect(valid.maxTeamMember).toBe(50);
+        expect(valid.requestsPerMinute).toBe(0);
+      }
+    });
+
     it('validates extra capacity and point updates', () => {
       const validDataset = UpdatePlanBodySchema.safeParse({
         ...basePlan,

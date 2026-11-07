@@ -1,21 +1,25 @@
-import { getModelHandle } from '@fastgpt/service/core/ai/model';
-import type { NextApiRequest, NextApiResponse } from 'next';
-import { jsonRes } from '@fastgpt/service/common/response';
-import { pushWhisperUsage } from '@fastgpt/service/support/wallet/usage/controller';
-import { authChatTargetCrud } from '@/service/support/permission/auth/chat';
 import { NextAPI } from '@/service/middleware/entry';
-import { aiTranscriptions } from '@fastgpt/service/core/ai/audio/transcriptions';
+import { authChatTargetCrud } from '@fastgpt/service/core/chat/auth';
 import {
   assertMemberRateLimit,
   MemberRateLimitPolicy
 } from '@fastgpt/service/common/rateLimit/interface/member';
+import { jsonRes } from '@fastgpt/service/common/response';
+import { aiTranscriptions } from '@fastgpt/service/core/ai/audio/transcriptions';
+import { getSystemModelHandle } from '@fastgpt/service/core/ai/model/catalog/service';
+import { pushWhisperUsage } from '@fastgpt/service/support/wallet/usage/controller';
+import type { NextApiRequest, NextApiResponse } from 'next';
 
-import { multer } from '@fastgpt/service/common/file/multer';
-import { AudioTranscriptionsDataSchema } from '@fastgpt/global/openapi/core/chat/record/api';
-import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
+import { AudioTranscriptionsDataSchema } from '@fastgpt/global/openapi/core/chat/record/api';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
+import { multer } from '@fastgpt/service/common/file/multer';
+import {
+  ApiRequestInputParseError,
+  parseApiInput
+} from '@fastgpt/service/common/zod/requestParseError';
 
+/** 解析音频表单并记录有效成员用量；入参错误交由统一入口返回 400，临时文件始终清理。 */
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   const filepaths: string[] = [];
 
@@ -23,6 +27,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     const result = await multer.resolveFormData({ request: req });
     filepaths.push(result.fileMetadata.path);
     const {
+      customUid,
+      authProxy,
       sourceType,
       sourceId,
       chatId,
@@ -42,6 +48,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     const duration = rawDuration < 1 ? 1 : rawDuration;
 
     const { teamId, tmbId } = await authChatTargetCrud({
+      allowMissingChat: true,
+      customUid,
+      authProxy,
       req,
       authToken: true,
       sourceType,
@@ -53,7 +62,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       policy: MemberRateLimitPolicy.Transcriptions,
       memberId: String(tmbId)
     });
-    const modelHandle = await getModelHandle();
+    const modelHandle = await getSystemModelHandle();
     const transcriptionsResult = await aiTranscriptions({
       model: modelHandle.getDefaultModelData('stt'),
       fileStream: result.getReadStream(),
@@ -71,7 +80,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       data: transcriptionsResult.text
     });
   } catch (err) {
-    if (err === ERROR_ENUM.tooManyRequest) {
+    if (err instanceof ApiRequestInputParseError || err === ERROR_ENUM.tooManyRequest) {
       throw err;
     }
     jsonRes(res, {

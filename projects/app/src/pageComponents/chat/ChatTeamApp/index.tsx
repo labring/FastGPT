@@ -194,7 +194,7 @@ const MyApps = ({ hideMobileHeader = false, mobileSearchKey }: MyAppsProps) => {
           </Flex>
 
           <MyBox flex={'1 0 0'} minH={0} isLoading={myApps.length === 0 && isFetchingApps}>
-            <ScrollData h={'full'} minH={0} showLoadingOverlay={false}>
+            <ScrollData h={'full'} minH={0}>
               <List appType={appType} />
             </ScrollData>
           </MyBox>

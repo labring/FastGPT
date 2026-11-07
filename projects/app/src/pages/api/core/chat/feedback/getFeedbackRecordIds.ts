@@ -1,6 +1,6 @@
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
-import { authChatTargetCrud } from '@/service/support/permission/auth/chat';
+import { authChatTargetCrud } from '@fastgpt/service/core/chat/auth';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import {
@@ -12,12 +12,19 @@ import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { buildChatSourceQuery } from '@fastgpt/service/core/chat/source';
 
 async function handler(req: ApiRequestProps): Promise<GetFeedbackRecordIdsResponseType> {
-  const { sourceType, sourceId, chatId, feedbackType, unreadOnly, outLinkAuthData } = parseApiInput(
-    {
-      req,
-      bodySchema: GetFeedbackRecordIdsBodySchema
-    }
-  ).body;
+  const {
+    customUid,
+    authProxy,
+    sourceType,
+    sourceId,
+    chatId,
+    feedbackType,
+    unreadOnly,
+    outLinkAuthData
+  } = parseApiInput({
+    req,
+    bodySchema: GetFeedbackRecordIdsBodySchema
+  }).body;
 
   if (!chatId) {
     return {
@@ -28,6 +35,8 @@ async function handler(req: ApiRequestProps): Promise<GetFeedbackRecordIdsRespon
 
   // Auth check
   const authRes = await authChatTargetCrud({
+    customUid,
+    authProxy,
     req,
     authToken: true,
     authApiKey: true,

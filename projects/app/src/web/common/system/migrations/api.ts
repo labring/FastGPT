@@ -13,7 +13,7 @@ const systemMigrationPath = '/admin/migrations';
 export const getSystemMigrationList = () =>
   GET<SystemMigrationListResponse>(`${systemMigrationPath}/list`);
 
-/** 仅请求把非阻塞 failed 重置为 pending，任务仍由 runner 获取 lease 后执行。 */
+/** 仅请求把failed 重置为 pending，任务仍由 runner 获取 lease 后执行。 */
 export const retrySystemMigration = (body: RetrySystemMigrationBody) =>
   POST(`${systemMigrationPath}/retry`, body);
 

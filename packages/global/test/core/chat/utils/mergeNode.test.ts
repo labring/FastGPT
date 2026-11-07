@@ -510,11 +510,6 @@ describe('mergeNodeResponseDataByIdAndParent', () => {
           inputTokens: 4,
           outputTokens: 2,
           totalPoints: 0.1
-        },
-        deepSearchResult: {
-          model: 'Qwen-plus',
-          inputTokens: 11,
-          outputTokens: 5
         }
       },
       {
@@ -552,11 +547,6 @@ describe('mergeNodeResponseDataByIdAndParent', () => {
           inputTokens: 8,
           outputTokens: 3,
           totalPoints: 0.2
-        },
-        deepSearchResult: {
-          model: 'Qwen-plus',
-          inputTokens: 13,
-          outputTokens: 7
         }
       }
     ];
@@ -596,11 +586,6 @@ describe('mergeNodeResponseDataByIdAndParent', () => {
           inputTokens: 12,
           outputTokens: 5,
           totalPoints: expect.closeTo(0.3)
-        },
-        deepSearchResult: {
-          model: 'Qwen-plus',
-          inputTokens: 24,
-          outputTokens: 12
         }
       })
     );

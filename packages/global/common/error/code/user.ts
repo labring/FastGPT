@@ -15,6 +15,7 @@ export enum UserErrEnum {
   registrationMethodNotSupported = 'registrationMethodNotSupported',
   passwordChangeAuthorizationInvalid = 'passwordChangeAuthorizationInvalid',
   newPasswordSameAsOld = 'newPasswordSameAsOld',
+  oldPasswordError = 'oldPasswordError',
   ssoPasswordUnavailable = 'ssoPasswordUnavailable',
   verificationChannelUnavailable = 'verificationChannelUnavailable'
 }
@@ -83,6 +84,11 @@ const errList = [
     statusText: UserErrEnum.verificationChannelUnavailable,
     message: i18nT('common:error.verification_channel_unavailable'),
     httpStatus: 403
+  },
+  {
+    statusText: UserErrEnum.oldPasswordError,
+    message: i18nT('common:user.Old password is error'),
+    httpStatus: 400
   }
 ];
 export default errList.reduce((acc, cur, index) => {

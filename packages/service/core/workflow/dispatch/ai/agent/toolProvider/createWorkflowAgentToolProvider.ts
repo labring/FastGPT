@@ -1,3 +1,4 @@
+import { createWorkflowToolInteractive } from '../../agentLoopCore/adapter/interactive/child';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { SubAppIds } from '@fastgpt/global/core/workflow/node/agent/constants';
 import type { AgentLoopDatasetSearchExecutor } from '../../../../../ai/llm/agentLoop/interface';
@@ -38,11 +39,11 @@ export const createWorkflowAgentToolProvider = ({
         const result = await dispatchAgentDatasetSearch({
           args: call.function.arguments,
           datasetParams,
+          appTeamId: context.runningAppInfo?.teamId,
           teamId: context.runningUserInfo.teamId,
           tmbId: context.runningUserInfo.tmbId,
           llmModel: context.modelData,
-          userKey: context.externalProvider.openaiAccount,
-          dynamicDataset: context.dynamicDataset
+          userKey: context.externalProvider.openaiAccount
         });
         onToolResult?.({ response: result.response, nodeSummary: result.nodeSummary });
         const usages = result.usages ?? [];
@@ -92,22 +93,36 @@ export const createWorkflowAgentToolProvider = ({
     executeTool: async ({
       call
     }): Promise<AgentLoopCoreToolRunResult<WorkflowInteractiveResponseType>> => {
-      return executeTool({
+      const result = await executeTool({
         callId: call.id,
         toolId: call.function.name,
         args: call.function.arguments ?? ''
       });
+      return {
+        ...result,
+        interactive: createWorkflowToolInteractive({
+          interactive: result.interactive,
+          toolCallId: call.id
+        })
+      };
     },
     executeInteractiveTool: async ({
       call,
       childrenResponse
     }): Promise<AgentLoopCoreToolRunResult<WorkflowInteractiveResponseType>> => {
-      return executeTool({
+      const result = await executeTool({
         callId: call.id,
         toolId: call.function.name,
         args: call.function.arguments ?? '',
         lastInteractive: childrenResponse
       });
+      return {
+        ...result,
+        interactive: createWorkflowToolInteractive({
+          interactive: result.interactive,
+          toolCallId: call.id
+        })
+      };
     },
     readFileExecutor,
     readFileMaxFileAmount,

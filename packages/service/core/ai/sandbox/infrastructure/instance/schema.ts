@@ -14,6 +14,7 @@ import {
   SandboxProviderSchema,
   SandboxSourceTypeSchema
 } from '../../type';
+import { expectedOperationByStatus } from '../../constants';
 
 /**
  * sandbox 实例记录集合。
@@ -31,6 +32,7 @@ const SandboxOperationMongoSchema = new Schema(
     startedAt: { type: Date, required: true },
     heartbeatAt: { type: Date, required: true },
     failedAt: Date,
+    retryAfter: Date,
     error: String
   },
   { _id: false, strict: 'throw' }
@@ -104,20 +106,8 @@ const SandboxInstanceSchema = new Schema(
   }
 );
 
-const expectedOperationByStatus: Record<string, string | undefined> = {
-  provisioning: 'provision',
-  legacyMigrating: 'legacyMigration',
-  running: undefined,
-  stopping: 'stop',
-  stopped: undefined,
-  archiving: 'archive',
-  archived: undefined,
-  restoring: 'restore',
-  deleting: 'delete'
-};
-
 SandboxInstanceSchema.pre('validate', function validateLifecycleState() {
-  const status = this.get('status') as string;
+  const status = this.get('status');
   const operationType = this.get('operation.type') as string | undefined;
   const expectedOperation = expectedOperationByStatus[status];
 
@@ -138,7 +128,11 @@ defineIndex(SandboxInstanceSchema, {
   options: { unique: true }
 });
 defineIndex(SandboxInstanceSchema, {
-  key: { sourceType: 1, status: 1, provider: 1 }
+  key: { sourceType: 1, status: 1, provider: 1 },
+  deprecated: true
+});
+defineIndex(SandboxInstanceSchema, {
+  key: { teamId: 1, status: 1 }
 });
 defineIndex(SandboxInstanceSchema, {
   key: { status: 1, lastActiveAt: 1 }

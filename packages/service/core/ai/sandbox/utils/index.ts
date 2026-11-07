@@ -4,7 +4,8 @@
  * 只放路径、hash、文件名清洗等无副作用工具，不访问数据库、provider 或业务状态。
  */
 import { createHash } from 'crypto';
-import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import type { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { isAppSandboxSourceType } from '@fastgpt/global/common/chat/source';
 
 type HashContent = string | Buffer | Uint8Array;
 
@@ -57,7 +58,7 @@ export const getSandboxRuntimePaths = ({
   const workspaceRoot = trimSandboxPathRight(workDirectory);
   const runtimeSkillsRoot = joinSandboxPath(workspaceRoot, 'projects');
 
-  if (sourceType === ChatSourceTypeEnum.app) {
+  if (isAppSandboxSourceType(sourceType)) {
     return {
       workspaceRoot,
       runtimeSkillsRoot,

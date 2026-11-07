@@ -256,8 +256,11 @@
   "logs_keys_region": "IP及屬地",
   "logs_keys_responseTime": "平均回應時長",
   "logs_keys_sessionId": "會話 ID",
-  "logs_keys_source": "來源",
+  "logs_keys_source": "渠道名稱",
+  "logs_keys_publish_source_type": "呼叫渠道",
+  "logs_publish_source_id": "渠道 ID：{{id}}",
   "logs_keys_title": "標題",
+  "logs_keys_auth_user": "鑑權者",
   "logs_keys_user": "使用者",
   "logs_keys_versionName": "版本名稱",
   "logs_message_total": "訊息總數",
@@ -612,6 +615,9 @@
   "delete_apps_confirm_title": "確認刪除 {{count}} 個應用",
   "delete_folders_confirm_title": "確認刪除 {{count}} 個文件夾",
   "delete_following_apps_tip": "刪除以下應用會將其關聯的對話記錄一併刪除。",
-  "delete_following_folders_tip": "刪除後，這些文件夾及其包含的全部應用、關聯對話記錄將被一併刪除。"
+  "delete_following_folders_tip": "刪除後，這些文件夾及其包含的全部應用、關聯對話記錄將被一併刪除。",
+  "chat_agent_config_ready": "配置已生成",
+  "chat_agent_config_apply": "套用配置",
+  "chat_agent_config_applied": "配置套用成功",
+  "chat_agent_config_expired": "配置已過期"
 }
-

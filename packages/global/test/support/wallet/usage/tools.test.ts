@@ -122,6 +122,12 @@ describe('wallet/usage/tools', () => {
       expect(result).toBe(UsageSourceEnum.wecom);
     });
 
+    it('should bill wecom websocket usage under the existing wecom source', () => {
+      expect(getUsageSourceByPublishChannel(PublishChannelEnum.wecomWebsocket)).toBe(
+        UsageSourceEnum.wecom
+      );
+    });
+
     it('should return official_account for officialAccount channel', () => {
       const result = getUsageSourceByPublishChannel(PublishChannelEnum.officialAccount);
       expect(result).toBe(UsageSourceEnum.official_account);

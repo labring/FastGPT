@@ -13,11 +13,12 @@ import {
 import SwaggerParser from '@apidevtools/swagger-parser';
 import type { OpenAPIV3 } from 'openapi-types';
 import type { OpenApiJsonSchema } from './tool/httpTool/type';
-import { i18nT } from '../../common/i18n/utils';
+import { i18nT, selectPluginText } from '../../common/i18n/utils';
 import z from 'zod';
 import { parseOpenAPISchemaString } from '../../common/string/swagger';
 import { cloneDeep, isEqual } from 'lodash-es';
 import { getToolInputManualRenderType } from './formEdit/utils';
+import { PluginTextSchema } from '../plugin/type';
 
 const JsonSchemaNodeInputMetadataKey = 'x-fastgpt-node-input' as const;
 const JsonSchemaNodeOutputMetadataKey = 'x-fastgpt-node-output' as const;
@@ -62,6 +63,7 @@ const nodeInputJsonSchemaMetadataKeys = [
   'valueDesc',
   'debugLabel',
   'description',
+  'toolDescription',
   'enum',
   'canEdit',
   'isPro',
@@ -159,9 +161,16 @@ export const JsonSchemaPropertiesItemSchema = z
 
     // 自定义扩展（FastGPT 专用）
     'x-tool-description': z.string().optional(), // 工具描述
-    toolDescription: z.string().optional(), // 工具描述 for System Tool
+    toolDescription: z.string().optional(), // 历史参数说明扩展；读取时优先使用 schema description 或 x-i18n
     isToolParam: z.boolean().optional(), // 工具输入默认是否由 Agent 生成
     isSecret: z.boolean().optional(), // System Tool
+    'x-i18n': z
+      .object({
+        title: PluginTextSchema.optional(),
+        description: PluginTextSchema.optional(),
+        placeholder: PluginTextSchema.optional()
+      })
+      .optional(),
     [JsonSchemaNodeInputMetadataKey]: z.any().optional(),
     [JsonSchemaNodeOutputMetadataKey]: z.any().optional()
   })
@@ -528,10 +537,12 @@ const formatJsonSchemaEnumOption = (item: any) => {
 
 export const jsonSchema2NodeInput = ({
   jsonSchema = { type: 'Object' },
-  schemaType
+  schemaType,
+  lang
 }: {
   jsonSchema?: JSONSchemaInputType;
   schemaType: 'mcp' | 'http' | 'systemTool';
+  lang?: string;
 }): FlowNodeInputItemType[] => {
   if (!jsonSchema) return [];
   return Object.entries(jsonSchema?.properties || {}).map(([key, value]) => {
@@ -544,6 +555,15 @@ export const jsonSchema2NodeInput = ({
     const rawNodeMetadata =
       schemaType === 'systemTool' ? value[JsonSchemaNodeInputMetadataKey] : undefined;
     const { isToolParam: _legacyIsToolParam, ...nodeMetadata } = rawNodeMetadata ?? {};
+    const localizedTitle = selectPluginText(value['x-i18n']?.title, lang);
+    const localizedDescription =
+      value['x-i18n']?.description !== undefined
+        ? selectPluginText(value['x-i18n']?.description, lang)
+        : (nodeMetadata?.description ?? value.description);
+    const localizedPlaceholder =
+      value['x-i18n']?.placeholder !== undefined
+        ? selectPluginText(value['x-i18n']?.placeholder, lang)
+        : (nodeMetadata?.placeholder ?? value.placeholder);
 
     return {
       ...(canProjectToNodeInput
@@ -555,16 +575,17 @@ export const jsonSchema2NodeInput = ({
       ...(value.default !== undefined ? { defaultValue: value.default } : {}),
       ...(nodeMetadata ?? {}),
       key,
-      label: value.title || key,
+      label: localizedTitle || value.title || key,
       valueType: nodeMetadata?.valueType ?? valueType,
-      description: nodeMetadata?.description ?? value.description,
+      description: localizedDescription,
+      ...(localizedPlaceholder !== undefined ? { placeholder: localizedPlaceholder } : {}),
       defaultToAgentGenerated: canProjectToNodeInput ? value.isToolParam : true,
       customJsonSchema: cloneJsonSchemaProperty(value),
       toolDescription:
         schemaType === 'http'
           ? value['x-tool-description']
           : schemaType === 'systemTool'
-            ? value['toolDescription'] || value.description
+            ? (nodeMetadata?.toolDescription ?? localizedDescription)
             : value.description || key,
       required:
         (Array.isArray(jsonSchema?.required) && jsonSchema.required.includes(key)) ||
@@ -575,8 +596,9 @@ export const jsonSchema2NodeInput = ({
 };
 
 export const jsonSchema2NodeOutput = ({
-  jsonSchema
-}: { jsonSchema?: JSONSchemaOutputType } = {}): FlowNodeOutputItemType[] => {
+  jsonSchema,
+  lang
+}: { jsonSchema?: JSONSchemaOutputType; lang?: string } = {}): FlowNodeOutputItemType[] => {
   if (!jsonSchema) return [];
   return Object.entries(jsonSchema?.properties || {}).map(([key, value]) => {
     const valueType = getNodeInputTypeFromSchemaInputType({
@@ -585,20 +607,25 @@ export const jsonSchema2NodeOutput = ({
       schema: value
     });
     const nodeMetadata = value[JsonSchemaNodeOutputMetadataKey];
+    const localizedTitle = selectPluginText(value['x-i18n']?.title, lang);
+    const localizedDescription =
+      value['x-i18n']?.description !== undefined
+        ? selectPluginText(value['x-i18n']?.description, lang)
+        : value.description;
 
     return {
       ...(value.default !== undefined ? { defaultValue: value.default } : {}),
       ...(nodeMetadata ?? {}),
       id: key,
       key,
-      label: value.title || key,
+      label: localizedTitle || value.title || key,
       required:
         (Array.isArray(jsonSchema?.required) && jsonSchema.required.includes(key)) ||
         value?.required === true ||
         jsonSchema?.required?.includes(key),
       type: nodeMetadata?.type ?? FlowNodeOutputTypeEnum.static,
       valueType: nodeMetadata?.valueType ?? valueType,
-      description: value.description
+      description: localizedDescription
     };
   });
 };
@@ -709,9 +736,11 @@ export const getSchemaValueType = (schema: { type: string; items?: { type: strin
 };
 
 export const jsonSchema2SecretInput = ({
-  jsonSchema = { type: 'Object' }
+  jsonSchema = { type: 'Object' },
+  lang
 }: {
   jsonSchema?: JSONSchemaInputType;
+  lang?: string;
 }): InputConfigType[] | undefined => {
   if (!jsonSchema) return undefined;
   return Object.entries(jsonSchema?.properties || {}).map(([key, value]) => {
@@ -746,11 +775,23 @@ export const jsonSchema2SecretInput = ({
           return InputConfigInputTypeEnum.input;
       }
     })();
+    const localizedTitle = selectPluginText(value['x-i18n']?.title, lang);
+    const localizedDescription =
+      value['x-i18n']?.description !== undefined
+        ? selectPluginText(value['x-i18n']?.description, lang)
+        : value.description;
+    const localizedPlaceholder =
+      value['x-i18n']?.placeholder !== undefined
+        ? selectPluginText(value['x-i18n']?.placeholder, lang)
+        : typeof value.placeholder === 'string'
+          ? value.placeholder
+          : undefined;
     return {
       inputType,
       key,
-      label: value.title ?? key,
-      description: value.description,
+      label: localizedTitle || value.title || key,
+      description: localizedDescription,
+      ...(localizedPlaceholder !== undefined ? { placeholder: localizedPlaceholder } : {}),
       required:
         (Array.isArray(jsonSchema?.required) && jsonSchema.required.includes(key)) ||
         value?.required === true ||
@@ -912,7 +953,7 @@ export const nodeInputs2JsonSchema = ({
   };
 };
 
-const modelSchemaIgnoredKeys = new Set(['title', 'default', 'isToolParam']);
+const modelSchemaIgnoredKeys = new Set(['title', 'default', 'isToolParam', 'x-i18n']);
 const schemaDataKeywords = new Set(['const', 'enum', 'examples']);
 
 /** 生成模型 schema 副本时移除不会参与工具调用协议的展示与默认值 annotation。 */

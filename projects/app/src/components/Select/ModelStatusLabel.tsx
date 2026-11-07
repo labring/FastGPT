@@ -4,6 +4,7 @@ import { HUGGING_FACE_ICON } from '@fastgpt/global/common/system/constants';
 import { isEmptyModelValue } from '@fastgpt/global/core/ai/model/reference';
 import type { ModelSummary } from '@fastgpt/global/openapi/core/ai/model/summary';
 import Avatar from '@fastgpt/web/components/common/Avatar';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
 
 /** 选择器与摘要共用状态展示；只消费详情，不推断默认模型或把网络错误当作下架。 */
@@ -43,16 +44,17 @@ export const ModelStatusLabel = ({
       color={detail.status === 'active' ? undefined : 'red.500'}
     >
       <Avatar src={detail.avatar ?? HUGGING_FACE_ICON} w={avatarSize} borderRadius={0} />
-      <Box
-        data-preserve-width
-        minW={noTruncate ? 'max-content' : 0}
-        flexShrink={noTruncate ? 0 : undefined}
-        noOfLines={noTruncate ? undefined : 1}
-        whiteSpace={noTruncate ? 'nowrap' : undefined}
-        title={text}
-      >
-        {text}
-      </Box>
+      <MyTooltip label={text} showOnlyWhenOverflow shouldWrapChildren={false}>
+        <Box
+          data-preserve-width
+          minW={noTruncate ? 'max-content' : 0}
+          flexShrink={noTruncate ? 0 : undefined}
+          noOfLines={noTruncate ? undefined : 1}
+          whiteSpace={noTruncate ? 'nowrap' : undefined}
+        >
+          {text}
+        </Box>
+      </MyTooltip>
     </Flex>
   );
 };

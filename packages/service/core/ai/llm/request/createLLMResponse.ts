@@ -3,14 +3,13 @@ import type {
   ChatCompletionMessageParam,
   ChatCompletionTool
 } from '@fastgpt/global/core/ai/llm/type';
-import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import { getLogger, LogCategories } from '../../../../common/logger';
 import { countGptMessagesTokens } from '../../../../common/string/tiktoken/index';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { mergeAssistantFieldMessages } from '@fastgpt/global/core/chat/adapt';
 import { promptToolCallMessageRewrite } from '../promptCall';
 import { loadRequestMessages } from '../utils';
-import { createLLMRequestId } from '../../record/controller';
+import { createLLMRequestId, sanitizeLLMRequestRecordPayload } from '../../record/controller';
 import type { AIApiRequestMeta } from '../../config';
 import { createChatCompletion } from './createChatCompletion';
 import { useLLMResponseAccumulator } from './hooks/useLLMResponseAccumulator';
@@ -59,6 +58,7 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
     useAudio: useAudio && model.config.audio,
     useVideo: useVideo && model.config.video,
     extractFiles,
+    fileContext: args.fileContext,
     supportReason: model.config.reasoning
   });
   const rewriteMessages = (() => {
@@ -73,7 +73,7 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
     ...body,
     messages: rewriteMessages
   });
-  const accumulator = useLLMResponseAccumulator();
+  const accumulator = useLLMResponseAccumulator({ supportReason: model.config.reasoning });
   const initialRequestMessages = mergeAssistantFieldMessages(
     requestBody.messages as ChatCompletionMessageParam[]
   ) as ChatCompletionMessageParam[];
@@ -116,6 +116,7 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
         if (currentIsStreamResponse) {
           return createStreamResponse({
             response,
+            requestMeta,
             body,
             isAborted: args.isAborted,
             onStreaming: args.onStreaming,
@@ -155,14 +156,16 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
     }
 
     const {
+      assistantMessage,
       answerText,
       reasoningText,
       toolCalls,
       finish_reason: rawFinishReason,
       usage,
-      error,
+      error: responseError,
       isStreamResponse
     } = accumulator.getResponse();
+    let error = responseError;
     // 底层供应商有时会漏 finish_reason。stream 有内容但没结束标记时记录 abnormal_close，非 stream 补 stop。
     const finish_reason = normalizeCompletionFinishReason({
       rawFinishReason,
@@ -170,13 +173,6 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
       hasResponse: !!answerText || !!reasoningText || !!toolCalls?.length,
       error
     });
-
-    const assistantMessage: ChatCompletionMessageParam = {
-      role: ChatCompletionRequestMessageRoleEnum.Assistant as 'assistant',
-      ...(answerText && { content: answerText }),
-      ...(reasoningText && { reasoning_content: reasoningText }),
-      ...(toolCalls?.length && { tool_calls: toolCalls })
-    };
 
     // requestBody 运行时是经 LLMRequestBodyType narrow 进来的 FastGPT 数据，
     // 但类型层 InferCompletionsBody 落到了 SDK 形态（messages/tools 是 v6 后的 union）
@@ -197,33 +193,36 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
      * 用户自定义 key 场景需要给出更明确的排查信息，系统 key 场景保持 i18n 文案。
      */
     const getEmptyResponseTip = () => {
+      const requestSnapshot = sanitizeLLMRequestRecordPayload(requestBody);
       if (aiRequestMeta.usedUserOpenAIKey) {
         logger.warn(`User LLM response empty`, {
           baseUrl: aiRequestMeta.baseUrl,
-          requestBody,
+          requestBody: requestSnapshot,
           finish_reason
         });
-        return `您的 OpenAI key 没有响应: ${JSON.stringify(body)}`;
+        // 详细请求写入清洗后的日志，用户提示保持固定文案。
+        return `您的 OpenAI key 没有响应`;
+      } else {
+        logger.error(`LLM response empty`, {
+          data: requestSnapshot,
+          finish_reason
+        });
       }
 
-      logger.error(`LLM response empty`, {
-        message: '',
-        data: requestBody,
-        finish_reason
-      });
       return i18nT('chat:LLM_model_response_empty');
     };
-    const isEmptyToolCallsFinish = finish_reason === 'tool_calls' && !toolCalls?.length;
+    // 空工具和空响应均依据多轮累计结果，避免忽略此前已生成的内容。
+    const isEmptyToolCallsFinish = !error && rawFinishReason === 'tool_calls' && !toolCalls?.length;
     const isNotResponse =
       !answerText &&
       !reasoningText &&
       !toolCalls?.length &&
       !error &&
-      (finish_reason === 'stop' || !finish_reason || isEmptyToolCallsFinish);
+      (finish_reason === 'stop' || !finish_reason);
     const responseEmptyTip = isNotResponse ? getEmptyResponseTip() : undefined;
 
     if (saveLLMResponseRecord && teamId) {
-      // 保存详情只记录实际请求与模型响应，不把用于计费分支的 usedUserOpenAIKey 写入详情。
+      // 先保存模型结果，再生成系统兜底错误，避免覆盖 Mongo 原始输出与结束原因。
       persistLLMResponseRecord({
         teamId,
         requestId,
@@ -238,6 +237,15 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
         error: error ?? responseEmptyTip
       });
       hasSavedLLMRequestRecord = true;
+    }
+
+    if (isEmptyToolCallsFinish) {
+      // 接口错误优先；累计没有有效工具时补充错误，保留模型结束原因。
+      error = new Error('LLM tool call error: no valid tool calls matched the requested tools.');
+      logger.error('LLM tool calls missing', {
+        requestBody: sanitizeLLMRequestRecordPayload(requestBody),
+        message: error.message
+      });
     }
 
     if (error && throwError) {

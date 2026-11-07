@@ -5,7 +5,7 @@
 export const filterEmptyTableData = (data: unknown[][]) => {
   const filteredRows = data.filter((row) => row.some((cell) => String(cell ?? '').trim() !== ''));
 
-  const maxColumnLength = Math.max(0, ...filteredRows.map((row) => row.length));
+  const maxColumnLength = filteredRows.reduce((max, row) => Math.max(max, row.length), 0);
   const columnIndexes = Array.from({ length: maxColumnLength }, (_, index) => index).filter(
     (index) => filteredRows.some((row) => String(row[index] ?? '').trim() !== '')
   );

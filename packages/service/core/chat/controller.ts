@@ -1,5 +1,10 @@
+import { AgentAskInteractiveSchema } from '@fastgpt/global/core/ai/agent/type';
+import {
+  extractDeepestInteractive,
+  isAgentAskInteractive
+} from '@fastgpt/global/core/workflow/runtime/utils';
 import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
-import { AgentPlanReadSchema } from '@fastgpt/global/core/ai/agent/type';
+import { AgentLoopAskSchema, AgentPlanReadSchema } from '@fastgpt/global/core/ai/agent/type';
 import { MongoChatItem } from './chatItemSchema';
 import { MongoChat } from './chatSchema';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
@@ -9,11 +14,7 @@ import { UserError } from '@fastgpt/global/common/error/utils';
 import { getLogger, LogCategories } from '../../common/logger';
 import { composeChatItemResponseData } from './nodeResponseStorage';
 import type { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
-import {
-  buildChatSourceAggregateMatch,
-  buildChatSourceQuery,
-  type ChatSourceParams
-} from './source';
+import { buildChatSourceAggregateMatch, buildChatSourceQuery } from './source';
 
 const logger = getLogger(LogCategories.MODULE.CHAT.HISTORY);
 
@@ -36,7 +37,8 @@ const defaultNodeResponsePreviewProjection = {
   'data.toolId': 1,
   'data.toolRes.citeLinks': 1,
   'data.errorText': 1,
-  'data.errorCaptured': 1
+  'data.errorCaptured': 1,
+  'data.isToolCall': 1
 } as const;
 
 export async function getChatItems({
@@ -52,7 +54,8 @@ export async function getChatItems({
   offset,
   initialId,
   prevId,
-  nextId
+  nextId,
+  includeInternalContext = offset === 0 && limit === 0
 }: {
   includeDeleted?: boolean;
   sourceType: ChatSourceTypeEnum;
@@ -67,6 +70,7 @@ export async function getChatItems({
   initialId?: string;
   prevId?: string;
   nextId?: string;
+  includeInternalContext?: boolean;
 }): Promise<{
   histories: ChatItemMiniType[];
   total: number;
@@ -74,62 +78,31 @@ export async function getChatItems({
   hasMoreNext: boolean;
 }> {
   /**
-   * 只在读取边界迁移历史 Agent 数据，避免回写数据库或让旧字段扩散到客户端。
-   * 旧 ask 使用 planId 关联卡片、调用和回答；兼容读取后统一输出 askId。
+   * 读取时校验计划展示数据；旧 Ask 不做字段迁移或答案恢复。
    */
   const normalizePersistedAgentData = (histories: ChatItemMiniType[]) => {
-    const isObjectRecord = (value: unknown): value is Record<string, unknown> =>
-      !!value && typeof value === 'object' && !Array.isArray(value);
-
-    const normalizeLegacyAskId = (value: unknown) => {
-      if (!isObjectRecord(value)) return;
-
-      const askId =
-        typeof value.askId === 'string' && value.askId
-          ? value.askId
-          : typeof value.planId === 'string' && value.planId
-            ? value.planId
-            : undefined;
-      if (askId) {
-        value.askId = askId;
-      }
-      delete value.planId;
-    };
-
-    const normalizeInteractiveAsk = (interactive: unknown) => {
-      let current = isObjectRecord(interactive) ? interactive : undefined;
-      let depth = 0;
-
-      while (current && depth < 100) {
-        const params = isObjectRecord(current.params) ? current.params : undefined;
-        const childrenResponse = isObjectRecord(params?.childrenResponse)
-          ? params.childrenResponse
-          : undefined;
-        if (!childrenResponse) break;
-
-        current = childrenResponse;
-        depth++;
-      }
-
-      if (current?.type === 'agentPlanAskQuery') {
-        normalizeLegacyAskId(current);
-      }
-    };
-
     histories.forEach((item) => {
       if (!item.value) return;
-
-      if (item.obj === ChatRoleEnum.Human) {
-        item.value.forEach(normalizeLegacyAskId);
-        return;
-      }
 
       if (item.obj !== ChatRoleEnum.AI) return;
 
       item.value.forEach((value) => {
-        normalizeLegacyAskId(value.agentAsk);
-        normalizeInteractiveAsk(value.interactive);
-
+        if (!includeInternalContext) delete value.inputContext;
+        if (!includeInternalContext && value.tools) {
+          value.tools = value.tools.map((tool) =>
+            tool.internalOnly ? { ...tool, params: '', response: '', hideDetails: true } : tool
+          );
+        }
+        if (value.agentAsk && !AgentLoopAskSchema.safeParse(value.agentAsk).success)
+          value.agentAsk = undefined;
+        if (value.interactive) {
+          const interactive = extractDeepestInteractive(value.interactive);
+          if (
+            isAgentAskInteractive(interactive) &&
+            !AgentAskInteractiveSchema.safeParse(interactive).success
+          )
+            value.interactive = undefined;
+        }
         if (!value.plan) return;
 
         const parsedPlan = AgentPlanReadSchema.safeParse(value.plan);
@@ -160,6 +133,43 @@ export async function getChatItems({
     : { ...buildChatSourceQuery(chatSource), chatId, deleteTime: null };
 
   const { histories, total, hasMorePrev, hasMoreNext } = await (async () => {
+    // Agent 的 limit=0 是恢复模式：读取最新压缩点后的连续历史，并保留最新计划（含 null）。
+    // 没有压缩点时必须读取完整会话，不能用分页窗口替代已移除的 Ask 消息快照。
+    if (offset === 0 && limit === 0) {
+      const [checkpoint, plan, count] = await Promise.all([
+        MongoChatItem.findOne(
+          {
+            ...baseCondition,
+            obj: ChatRoleEnum.AI,
+            value: {
+              $elemMatch: { contextCheckpoint: { $type: 'string' }, displayOnly: { $ne: true } }
+            }
+          },
+          { _id: 1 }
+        )
+          .sort({ _id: -1 })
+          .lean(),
+        MongoChatItem.findOne(
+          {
+            ...baseCondition,
+            obj: ChatRoleEnum.AI,
+            value: { $elemMatch: { plan: { $exists: true }, displayOnly: { $ne: true } } }
+          },
+          field
+        )
+          .sort({ _id: -1 })
+          .lean(),
+        MongoChatItem.countDocuments(baseCondition)
+      ]);
+      const tail = await MongoChatItem.find(
+        { ...baseCondition, ...(checkpoint ? { _id: { $gte: checkpoint._id } } : {}) },
+        field
+      )
+        .sort({ _id: 1 })
+        .lean();
+      if (checkpoint && plan && String(plan._id) < String(checkpoint._id)) tail.unshift(plan);
+      return { histories: tail, total: count, hasMorePrev: false, hasMoreNext: false };
+    }
     // Mode 1: offset pagination (original logic)
     if (offset !== undefined) {
       const [foundHistories, count] = await Promise.all([

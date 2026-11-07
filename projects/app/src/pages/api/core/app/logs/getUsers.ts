@@ -1,3 +1,4 @@
+import { buildChatPublishSourceFilter } from '@fastgpt/service/core/chat/publishSource/utils';
 import { MongoAppChatLog } from '@fastgpt/service/core/app/logs/chatLogsSchema';
 import { Types } from '@fastgpt/service/common/mongo';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
@@ -7,7 +8,6 @@ import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSc
 import { getTeamMemberMap } from '@fastgpt/service/support/user/team/utils';
 import { MongoUser } from '@fastgpt/service/support/user/schema';
 import { AppReadChatLogPerVal } from '@fastgpt/global/support/permission/app/constant';
-import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
 import {
@@ -18,6 +18,7 @@ import {
 } from '@fastgpt/global/openapi/core/app/log/api';
 import { DEFAULT_USER_AVATAR } from '@fastgpt/global/common/system/constants';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { normalizePagination } from '@fastgpt/service/common/api/pagination';
 import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 
 type LogUserGroup = {
@@ -37,27 +38,22 @@ type LogUserAggregationResult = {
  * 从应用聚合日志中按用户统计会话数；用户名搜索先转换为团队成员 ID，再执行聚合和分页。
  */
 async function handler(req: ApiRequestProps): Promise<GetLogUsersResponse> {
-  const {
-    body: { appId, dateStart, dateEnd, searchKey, sources, pageSize, pageNum, offset }
-  } = parseApiInput({
+  const { body } = parseApiInput({
     req,
     bodySchema: GetLogUsersBodySchema
   });
+  const { appId: requestedAppId, dateStart, dateEnd, searchKey, sources } = body;
+  const { pageSize: resolvedPageSize, offset: resolvedOffset } = normalizePagination(body);
 
-  if (!appId) {
-    return Promise.reject(CommonErrEnum.missingParams);
-  }
-
-  const { teamId } = await authApp({
+  const { teamId, appId } = await authApp({
     req,
     authToken: true,
     authApiKey: true,
-    appId,
+    authAppApiKey: true,
+    appId: requestedAppId,
     per: AppReadChatLogPerVal
   });
 
-  const resolvedPageSize = Math.max(1, pageSize ?? 50);
-  const resolvedOffset = Math.max(0, offset ?? ((pageNum ?? 1) - 1) * resolvedPageSize);
   const teamObjectId = new Types.ObjectId(teamId);
   const searchPattern = searchKey?.trim()
     ? new RegExp(replaceRegChars(searchKey.trim()), 'i')
@@ -116,7 +112,7 @@ async function handler(req: ApiRequestProps): Promise<GetLogUsersResponse> {
             $lte: new Date(dateEnd)
           },
           userId: { $exists: true, $nin: [null, ''] },
-          ...(sources?.length && { source: { $in: sources } }),
+          $and: [buildChatPublishSourceFilter(sources)],
           ...userMatch
         }
       },
@@ -124,7 +120,7 @@ async function handler(req: ApiRequestProps): Promise<GetLogUsersResponse> {
         $group: {
           _id: {
             userId: '$userId',
-            source: '$source'
+            source: { $ifNull: ['$publishSource.type', '$source'] }
           },
           count: { $sum: 1 }
         }

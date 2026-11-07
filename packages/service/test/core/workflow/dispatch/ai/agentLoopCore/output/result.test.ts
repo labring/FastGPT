@@ -11,11 +11,23 @@ describe('summarizeAgentLoopCoreResult', () => {
         assistantMessages: [
           {
             role: 'assistant',
+            content: 'step 1 ',
+            reasoning_content: 'think 1 ',
+            tool_calls: [
+              {
+                id: 'call_1',
+                type: 'function',
+                function: { name: 'search', arguments: '{}' }
+              }
+            ]
+          },
+          {
+            role: 'assistant',
             content: 'answer',
             reasoning_content: 'reason'
           }
         ],
-        assistantResponses: [{ text: { content: 'answer' } }],
+        assistantResponses: [{ text: { content: 'step 1 ' } }, { text: { content: 'answer' } }],
         finishReason: 'stop',
         usages: [
           {
@@ -36,7 +48,7 @@ describe('summarizeAgentLoopCoreResult', () => {
       expect.objectContaining({
         status: 'done',
         requestIds: ['req_1'],
-        assistantResponses: [{ text: { content: 'answer' } }],
+        assistantResponses: [{ text: { content: 'step 1 ' } }, { text: { content: 'answer' } }],
         finishReason: 'stop',
         usages: expect.arrayContaining([
           expect.objectContaining({ moduleName: 'account_usage:agent_call' }),
@@ -45,8 +57,8 @@ describe('summarizeAgentLoopCoreResult', () => {
         inputTokens: 10,
         outputTokens: 5,
         llmTotalPoints: 1,
-        finalText: 'answer',
-        reasoningText: 'reason'
+        finalText: 'step 1 answer',
+        reasoningText: 'think 1 reason'
       })
     );
   });
@@ -57,7 +69,19 @@ describe('summarizeAgentLoopCoreResult', () => {
         status: 'error',
         requestIds: [],
         completeMessages: [],
-        assistantMessages: [],
+        assistantMessages: [
+          {
+            role: 'assistant',
+            content: 'step 1 ',
+            tool_calls: [
+              {
+                id: 'call_1',
+                type: 'function',
+                function: { name: 'search', arguments: '{}' }
+              }
+            ]
+          }
+        ],
         assistantResponses: [],
         error: new Error('failed'),
         finishReason: 'stop',
@@ -67,7 +91,7 @@ describe('summarizeAgentLoopCoreResult', () => {
       expect.objectContaining({
         status: 'error',
         errorText: 'failed',
-        finalText: 'failed',
+        finalText: 'step 1 failed',
         finishReason: 'stop',
         inputTokens: 0,
         outputTokens: 0,
@@ -116,6 +140,65 @@ describe('summarizeAgentLoopCoreResult', () => {
       ]
     };
 
+    const argumentsText = JSON.stringify(ask, null, 2);
+
+    expect(
+      summarizeAgentLoopCoreResult({
+        status: 'interactive',
+        requestIds: [],
+        completeMessages: [
+          {
+            role: 'assistant',
+            tool_calls: [
+              {
+                id: 'call_ask',
+                type: 'function',
+                function: { name: 'ask_user', arguments: argumentsText }
+              }
+            ]
+          }
+        ],
+        assistantMessages: [],
+        assistantResponses: [],
+        finishReason: 'stop',
+        usages: [],
+        pause: {
+          toolCallId: 'call_ask',
+          interactive: {
+            type: 'agentAsk',
+            params: { toolCallId: 'call_ask', arguments: argumentsText }
+          }
+        },
+        providerState
+      })
+    ).toEqual(
+      expect.objectContaining({
+        status: 'interactive',
+        providerState,
+        interactive: {
+          type: 'agentAsk',
+
+          params: { toolCallId: 'call_ask', arguments: argumentsText }
+        }
+      })
+    );
+  });
+
+  it('keeps time granularity config on userInput form fields', () => {
+    const inputForm = [
+      {
+        type: 'timePointSelect',
+        key: 'startAt',
+        label: '开始时间',
+        value: '',
+        valueType: 'string',
+        required: true,
+        timeGranularity: 'day',
+        timeRangeStart: '2026-01-01 00:00:00',
+        timeRangeEnd: '2026-12-31 23:59:59'
+      }
+    ];
+
     expect(
       summarizeAgentLoopCoreResult({
         status: 'interactive',
@@ -126,39 +209,27 @@ describe('summarizeAgentLoopCoreResult', () => {
         finishReason: 'stop',
         usages: [],
         pause: {
-          type: 'ask',
-          ask,
-          askId: 'call_ask'
-        },
-        providerState
-      })
-    ).toEqual(
-      expect.objectContaining({
-        status: 'interactive',
-        providerState,
-        interactive: {
-          type: 'agentAsk',
-          askId: 'call_ask',
-          params: {
-            description: 'Need input',
-            questions: [
-              {
-                question: 'Confirm?',
-                options: [
-                  { summary: 'Yes', value: 'Yes' },
-                  { summary: 'No', value: 'No' },
-                  { summary: 'Not sure', value: 'Not sure' }
-                ],
-                answer: ''
-              }
-            ]
+          toolCallId: 'call_form',
+          interactive: {
+            type: 'userInput',
+            params: {
+              description: '',
+              inputForm
+            }
           }
         }
+      }).interactive
+    ).toEqual(
+      expect.objectContaining({
+        type: 'userInput',
+        params: expect.objectContaining({
+          inputForm: [expect.objectContaining(inputForm[0])]
+        })
       })
     );
   });
 
-  it('normalizes tool child pause to unified interactive', () => {
+  it('passes explicitly wrapped workflow state through without adding a wrapper', () => {
     const childrenResponse = {
       type: 'userSelect'
     };
@@ -173,9 +244,11 @@ describe('summarizeAgentLoopCoreResult', () => {
         finishReason: 'stop',
         usages: [],
         pause: {
-          type: 'tool_child',
-          childrenResponse,
-          toolCallId: 'call_tool'
+          toolCallId: 'call_tool',
+          interactive: {
+            type: 'toolChildrenInteractive',
+            params: { childrenResponse, toolCallId: 'call_tool' }
+          }
         }
       })
     ).toEqual(
@@ -184,9 +257,7 @@ describe('summarizeAgentLoopCoreResult', () => {
           type: 'toolChildrenInteractive',
           params: {
             childrenResponse,
-            toolParams: {
-              toolCallId: 'call_tool'
-            }
+            toolCallId: 'call_tool'
           }
         }
       })

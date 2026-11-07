@@ -10,14 +10,14 @@ import { deleteSkillPackage } from '@fastgpt/service/core/ai/skill/package';
 import {
   getSkillEditRuntimeContext,
   getSkillEditRuntimeStatus,
-  initSkillEditRuntimeSandbox,
+  initSkillEditRuntimeSandbox
+} from '@fastgpt/service/core/ai/sandbox/application/skillEdit/runtime';
+import {
   EDIT_DEBUG_SANDBOX_CHAT_ID,
   getEditDebugSandboxId
-} from '@fastgpt/service/core/ai/sandbox/interface/skillEdit';
-import {
-  getSandboxClient,
-  joinSandboxPath
-} from '@fastgpt/service/core/ai/sandbox/interface/runtime';
+} from '@fastgpt/service/core/ai/skill/edit/config';
+import { getRunningSandboxClient } from '@fastgpt/service/core/ai/sandbox/application/runtime/client';
+import { joinSandboxPath } from '@fastgpt/service/core/ai/sandbox/utils';
 import { deleteSandboxResource } from '@fastgpt/service/core/ai/sandbox/application/resource';
 import { MongoSandboxInstance } from '@fastgpt/service/core/ai/sandbox/infrastructure/instance/schema';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
@@ -107,7 +107,7 @@ describe.skipIf(!integrationProvider).sequential('Skill import Sandbox Integrati
     if (!skillVersion) throw new Error(`Imported skill version not found: ${skillId}`);
 
     const sandboxId = getEditDebugSandboxId(skillId);
-    let sandboxClient: Awaited<ReturnType<typeof getSandboxClient>> | undefined;
+    let sandboxClient: Awaited<ReturnType<typeof getRunningSandboxClient>> | undefined;
 
     try {
       const context = await getSkillEditRuntimeContext({ skillId, teamId });
@@ -117,16 +117,13 @@ describe.skipIf(!integrationProvider).sequential('Skill import Sandbox Integrati
 
       await initSkillEditRuntimeSandbox({ context });
 
-      sandboxClient = await getSandboxClient(
-        {
-          sandboxId,
-          sourceType: ChatSourceTypeEnum.skillEdit,
-          sourceId: skillId,
-          userId: ChatSourceTypeEnum.skillEdit,
-          chatId: EDIT_DEBUG_SANDBOX_CHAT_ID
-        },
-        { allowCreate: false, restoreArchived: false }
-      );
+      sandboxClient = await getRunningSandboxClient({
+        sandboxId,
+        sourceType: ChatSourceTypeEnum.skillEdit,
+        sourceId: skillId,
+        userId: ChatSourceTypeEnum.skillEdit,
+        chatId: EDIT_DEBUG_SANDBOX_CHAT_ID
+      });
 
       const workDirectory = context.runtimeProfile.workDirectory;
       const [gitignore, skillMd] = await sandboxClient.provider.readFiles([

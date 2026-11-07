@@ -1,25 +1,27 @@
-import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { type NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import {
   IfElseResultEnum,
   VariableConditionEnum
 } from '@fastgpt/global/core/workflow/template/system/ifElse/constant';
-import {
-  type ConditionListItemType,
-  type IfElseConditionType,
-  type IfElseListItemType
+import type {
+  ConditionListItemType,
+  IfElseConditionType,
+  IfElseListItemType
 } from '@fastgpt/global/core/workflow/template/system/ifElse/type';
-import { getIfElseBranchHandleKey } from '@fastgpt/global/core/workflow/template/system/ifElse/utils';
+import {
+  getIfElseBranchHandleKey,
+  getElseIFLabel
+} from '@fastgpt/global/common/workflow/condition';
 import type {
   DispatchNodeResultType,
   ModuleDispatchProps,
   WorkflowVariableStateLike
 } from '../../types/runtime';
-import { getElseIFLabel, getHandleId } from '@fastgpt/global/core/workflow/utils';
+import { getHandleId } from '@fastgpt/global/common/workflow/reference';
 import { getReferenceVariableValue } from '@fastgpt/global/core/workflow/runtime/utils';
-import { type ReferenceItemValueType } from '@fastgpt/global/core/workflow/type/io';
+import type { ReferenceItemValueType } from '@fastgpt/global/core/workflow/type/io';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.condition]: IfElseConditionType;
@@ -47,7 +49,12 @@ function isEmpty(value: any) {
 
 function isInclude(value: any, target: any) {
   if (Array.isArray(value)) {
-    return value.map((item: any) => String(item)).includes(target);
+    // 数组元素已转成字符串，而右侧引用变量运行时可能是数字、布尔等非字符串值（与下方非数组分支同类）；
+    // 右侧值与元素统一按文本比较，否则「包含」会静默返回 false、「不包含」恒为 true。
+    // 对象按引用比较，null/undefined 仍视为不匹配。
+    if (target === undefined || target === null) return false;
+    if (typeof target === 'object') return value.includes(target);
+    return value.map((item: any) => String(item)).includes(String(target));
   } else if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
     // any 类型的变量也提供「包含/不包含」，运行时可能拿到数字、布尔等非字符串值；
     // 与 startWith/endWith 一样先转成字符串再匹配，直接返回 false 会让「不包含」恒真。
@@ -57,6 +64,10 @@ function isInclude(value: any, target: any) {
   }
 }
 
+/**
+ * 比较已解析的条件值。正则条件不区分手输或引用来源，均保留表达式语义；
+ * 仅移除成对的 /.../ 包装，非法模式交给节点调度器处理，普通文本匹配使用包含条件。
+ */
 function checkCondition(condition: VariableConditionEnum, inputValue: any, value: any) {
   // any 类型的变量也提供「开始为/结束为」，运行时可能拿到数字、布尔等非字符串值；
   // 与 equalTo 一样先转成字符串，直接调用 trim 会抛 TypeError 导致整个判断器报错。
@@ -91,19 +102,26 @@ function checkCondition(condition: VariableConditionEnum, inputValue: any, value
       if (inputText === undefined || value === undefined || value === null || value === '') {
         return false;
       }
-      let pattern = String(value);
-      if (pattern.startsWith('/')) {
-        pattern = pattern.slice(1);
-      }
-      if (pattern.endsWith('/')) {
-        pattern = pattern.slice(0, -1);
-      }
+      const rawPattern = String(value);
+      const pattern = (() => {
+        if (rawPattern.length < 2 || !rawPattern.startsWith('/') || !rawPattern.endsWith('/')) {
+          return rawPattern;
+        }
+
+        // 结尾 / 前有奇数个反斜杠时属于正则内容；偶数个反斜杠彼此转义，/ 才是包装符。
+        let trailingBackslashes = 0;
+        for (let i = rawPattern.length - 2; rawPattern[i] === '\\'; i--) {
+          trailingBackslashes++;
+        }
+        return trailingBackslashes % 2 === 0 ? rawPattern.slice(1, -1) : rawPattern;
+      })();
       // 空数组等引用值字符串化后为空模式；空模式会匹配任意输入，
       // 不能把缺失模式当成成功条件。
       if (pattern === '') {
         return false;
       }
 
+      // 手输和引用的正则配置遵循相同约定，不能静默转义或吞掉语法错误。
       const reg = new RegExp(pattern, 'g');
       return reg.test(inputText);
     },

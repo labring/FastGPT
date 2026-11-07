@@ -5,6 +5,9 @@ export type ISandboxLifecycle = {
   readonly id?: SandboxId;
   readonly status: SandboxStatus;
 
+  /** Connect only to an existing Running resource; never create, start or resume. */
+  connectRunning(): Promise<void>;
+
   ensureRunning(options?: SandboxEnsureRunningOptions): Promise<void>;
   create(): Promise<void>;
   start(): Promise<void>;

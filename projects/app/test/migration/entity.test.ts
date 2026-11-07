@@ -15,24 +15,13 @@ import {
   saveMigrationFailedRecords,
   saveMigrationProgress
 } from '@/migration/entity';
-import {
-  MongoSystemMigrationFailedRecord,
-  MongoSystemMigrationState
-} from '@/migration/mongoSchema';
+import { MongoSystemMigrationState } from '@/migration/mongoSchema';
 
 const delay = (milliseconds: number) =>
   new Promise<void>((resolve) => setTimeout(resolve, milliseconds));
 
 describe('system migration entity lease', () => {
-  const migrationIdPattern = /^20260903_entity_/;
-
-  beforeEach(async () => {
-    vi.restoreAllMocks();
-    await Promise.all([
-      MongoSystemMigrationState.deleteMany({ _id: migrationIdPattern }),
-      MongoSystemMigrationFailedRecord.deleteMany({ migrationId: migrationIdPattern })
-    ]);
-  });
+  beforeEach(() => vi.restoreAllMocks());
 
   it('creates missing states without overwriting existing status', async () => {
     const migrationId = '20260903_entity_state';
@@ -68,6 +57,52 @@ describe('system migration entity lease', () => {
     expect(claims.filter(Boolean)).toHaveLength(1);
   });
 
+  it('renews and reclaims failed startup work only with explicit opt-in and an expired owner lease', async () => {
+    const migrationId = '20261026_entity_startup';
+    const runId = randomUUID();
+    await ensureMigrationStates([{ id: migrationId }]);
+    await claimMigrationLease({ migrationId, runId, leaseDurationMs: 90_000 });
+    await saveMigrationCheckpoint({ migrationId, runId, checkpoint: { cursor: 1 } });
+    await failMigration({ migrationId, runId, error: { message: 'startup failed' } });
+    expect(
+      await renewMigrationLease({ migrationId, runId, leaseDurationMs: 90_000, allowFailed: true })
+    ).toBe(true);
+    expect(
+      await claimMigrationLease({
+        migrationId,
+        runId: 'too-early',
+        leaseDurationMs: 90_000,
+        allowFailed: true
+      })
+    ).toBeNull();
+    await MongoSystemMigrationState.updateOne(
+      { _id: migrationId },
+      { $set: { leaseExpireAt: new Date(0) } }
+    );
+    expect(
+      await renewMigrationLease({ migrationId, runId, leaseDurationMs: 90_000, allowFailed: true })
+    ).toBe(false);
+    expect(
+      await claimMigrationLease({ migrationId, runId: 'not-opted-in', leaseDurationMs: 90_000 })
+    ).toBeNull();
+    const claims = await Promise.all(
+      Array.from({ length: 8 }, () =>
+        claimMigrationLease({
+          migrationId,
+          runId: randomUUID(),
+          leaseDurationMs: 90_000,
+          allowFailed: true
+        })
+      )
+    );
+    expect(claims.filter(Boolean)).toHaveLength(1);
+    expect(claims.find(Boolean)).toMatchObject({
+      status: SystemMigrationStatusEnum.running,
+      checkpoint: { cursor: 1 },
+      lastError: { message: 'startup failed' }
+    });
+  });
+
   describe('claimMigrationLease', () => {
     it.each([1, 90_123])('adds %i milliseconds to Mongo server time', async (leaseDurationMs) => {
       const migrationId = '20260903_entity_claim_server_time';
@@ -100,41 +135,39 @@ describe('system migration entity lease', () => {
   });
 
   describe('renewMigrationLease', () => {
-    it.each([SystemMigrationStatusEnum.running, SystemMigrationStatusEnum.failed])(
-      'renews a %s lease from Mongo server time without changing ownership',
-      async (status) => {
-        const migrationId = '20260903_entity_renew_server_time';
-        const runId = randomUUID();
-        const leaseDurationMs = 90_123;
-        await ensureMigrationStates([{ id: migrationId }]);
-        const claimed = await claimMigrationLease({ migrationId, runId, leaseDurationMs: 60_000 });
-        await MongoSystemMigrationState.updateOne({ _id: migrationId }, { $set: { status } });
-        const renew = vi.spyOn(MongoSystemMigrationState, 'updateOne');
+    it('renews a running lease from Mongo server time without changing ownership', async () => {
+      const migrationId = '20260903_entity_renew_server_time';
+      const runId = randomUUID();
+      const leaseDurationMs = 90_123;
+      await ensureMigrationStates([{ id: migrationId }]);
+      const claimed = await claimMigrationLease({ migrationId, runId, leaseDurationMs: 60_000 });
+      const renew = vi.spyOn(MongoSystemMigrationState, 'updateOne');
 
-        await expect(renewMigrationLease({ migrationId, runId, leaseDurationMs })).resolves.toBe(
-          true
-        );
+      await expect(renewMigrationLease({ migrationId, runId, leaseDurationMs })).resolves.toBe(
+        true
+      );
 
-        expect(renew).toHaveBeenCalledWith(
-          expect.any(Object),
-          [
-            {
-              $set: expect.objectContaining({
-                heartbeatAt: '$$NOW',
-                leaseExpireAt: { $add: ['$$NOW', leaseDurationMs] }
-              })
-            }
-          ],
-          expect.any(Object)
-        );
-        const state = await MongoSystemMigrationState.findById(migrationId).lean();
-        expect(state).toMatchObject({ status, runId, lastStartedAt: claimed!.lastStartedAt });
-        expect(state!.leaseExpireAt!.getTime() - state!.heartbeatAt!.getTime()).toBe(
-          leaseDurationMs
-        );
-        expect(state!.leaseExpireAt!.getTime()).toBeGreaterThan(claimed!.leaseExpireAt!.getTime());
-      }
-    );
+      expect(renew).toHaveBeenCalledWith(
+        expect.any(Object),
+        [
+          {
+            $set: expect.objectContaining({
+              heartbeatAt: '$$NOW',
+              leaseExpireAt: { $add: ['$$NOW', leaseDurationMs] }
+            })
+          }
+        ],
+        expect.any(Object)
+      );
+      const state = await MongoSystemMigrationState.findById(migrationId).lean();
+      expect(state).toMatchObject({
+        status: SystemMigrationStatusEnum.running,
+        runId,
+        lastStartedAt: claimed!.lastStartedAt
+      });
+      expect(state!.leaseExpireAt!.getTime() - state!.heartbeatAt!.getTime()).toBe(leaseDurationMs);
+      expect(state!.leaseExpireAt!.getTime()).toBeGreaterThan(claimed!.leaseExpireAt!.getTime());
+    });
 
     it('does not revive an expired lease', async () => {
       const migrationId = '20260903_entity_expired_renew';
@@ -156,56 +189,33 @@ describe('system migration entity lease', () => {
     });
   });
 
-  it('claims a failed task only after its holding lease expires', async () => {
-    const migrationId = '20260903_entity_failed_lease_claim';
-    await MongoSystemMigrationState.create({
-      _id: migrationId,
-      status: SystemMigrationStatusEnum.failed,
-      runId: 'failed-run',
-      heartbeatAt: new Date(),
-      leaseExpireAt: new Date(Date.now() + 1_000),
-      lastError: {
-        message: 'migration failed',
+  it.each([new Date(0), new Date(Date.now() + 60_000)])(
+    'never renews or claims a failed task before admin reset (lease %s)',
+    async (leaseExpireAt) => {
+      const migrationId = '20260903_entity_failed_lease_claim';
+      await MongoSystemMigrationState.create({
+        _id: migrationId,
+        status: SystemMigrationStatusEnum.failed,
         runId: 'failed-run',
-        createdAt: new Date()
-      }
-    });
+        leaseExpireAt,
+        checkpoint: { cursor: 12 }
+      });
+      await expect(
+        renewMigrationLease({ migrationId, runId: 'failed-run', leaseDurationMs: 1_000 })
+      ).resolves.toBe(false);
+      await expect(
+        claimMigrationLease({ migrationId, runId: randomUUID(), leaseDurationMs: 1_000 })
+      ).resolves.toBeNull();
 
-    await expect(
-      claimMigrationLease({
-        migrationId,
-        runId: randomUUID(),
-        leaseDurationMs: 1_000
-      })
-    ).resolves.toBeNull();
-
-    await expect(
-      renewMigrationLease({
-        migrationId,
-        runId: 'failed-run',
-        leaseDurationMs: 500
-      })
-    ).resolves.toBe(true);
-    await delay(100);
-    await expect(
-      claimMigrationLease({
-        migrationId,
-        runId: randomUUID(),
-        leaseDurationMs: 1_000
-      })
-    ).resolves.toBeNull();
-
-    await delay(450);
-    await expect(
-      claimMigrationLease({
-        migrationId,
-        runId: randomUUID(),
-        leaseDurationMs: 1_000
-      })
-    ).resolves.toMatchObject({
-      status: SystemMigrationStatusEnum.running
-    });
-  });
+      expect(await resetFailedMigration(migrationId)).toBe(true);
+      await expect(
+        claimMigrationLease({ migrationId, runId: randomUUID(), leaseDurationMs: 1_000 })
+      ).resolves.toMatchObject({
+        status: SystemMigrationStatusEnum.running,
+        checkpoint: { cursor: 12 }
+      });
+    }
+  );
 
   it('takes over an expired lease and fences every write from the old run', async () => {
     const migrationId = '20260903_entity_expired_takeover';

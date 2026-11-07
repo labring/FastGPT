@@ -59,7 +59,7 @@ export const isChildInteractive = (type) => {
 };
 ```
 
-`getLastInteractiveValue`（`runtime/utils.ts:163`）读取最后一条 AI 消息的 `interactive`，先判断 `isChildInteractive(type)` 做"直接返回"，否则挨个匹配 `userSelect / userInput / paymentPause / agentPlanCheck / agentPlanAskQuery`。`loopRunInteractive` 既不在白名单，也不匹配任何具体 type，**结果返回 `undefined`**。
+`getLastInteractiveValue` 读取最后一条 AI 消息的 `interactive`，先判断 `isChildInteractive(type)` 做"直接返回"，否则匹配普通交互类型。此问题发生时，`loopRunInteractive` 既不在白名单，也不匹配任何具体 type，**结果返回 `undefined`**。当前问答协议已统一为 `agentAsk`，旧单题兼容分支已移除。
 
 连锁反应：
 

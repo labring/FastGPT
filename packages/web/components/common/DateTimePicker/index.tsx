@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useCallback, useState, useMemo, useRef, useEffect } from 'react';
 import type { BoxProps } from '@chakra-ui/react';
 import { Box, Card, Flex, Portal } from '@chakra-ui/react';
 import { format } from 'date-fns';
@@ -6,6 +6,7 @@ import { DayPicker, type Matcher } from 'react-day-picker';
 import 'react-day-picker/dist/style.css';
 import { zhCN } from 'date-fns/locale/zh-CN';
 import MyIcon from '../Icon';
+import { useCloseOnFlowNodeDragAreaPointerDown } from '../../../hooks/useCloseOnFlowNodeDragAreaPointerDown';
 
 export * from './SingleDateTimePicker';
 
@@ -92,21 +93,23 @@ const DateTimePicker = (rawProps: DateTimePickerProps) => {
     };
   }, [showSelected, popPosition]);
 
-  // 点击外部关闭
+  const handleClick = useCallback((e: Event) => {
+    if (
+      containerRef.current?.contains(e.target as Node) ||
+      popoverRef.current?.contains(e.target as Node)
+    ) {
+      return;
+    }
+    setShowSelected(false);
+  }, []);
+
+  useCloseOnFlowNodeDragAreaPointerDown(containerRef, handleClick, showSelected);
+
   useEffect(() => {
     if (!showSelected) return;
-    const handleClick = (e: MouseEvent) => {
-      if (
-        containerRef.current?.contains(e.target as Node) ||
-        popoverRef.current?.contains(e.target as Node)
-      ) {
-        return;
-      }
-      setShowSelected(false);
-    };
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
-  }, [showSelected]);
+  }, [showSelected, handleClick]);
 
   const formatSelected = useMemo(() => {
     if (selectedDate) {

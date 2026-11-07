@@ -3,25 +3,15 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   checkSandboxRuntimeInstanceExists: vi.fn(),
-  getSandboxClient: vi.fn()
+  getRunningSandboxClient: vi.fn()
 }));
 
-vi.mock('@fastgpt/service/core/ai/sandbox/interface/runtime', () => ({
+vi.mock('@fastgpt/service/core/ai/sandbox/application/runtime/client', () => ({
   checkSandboxRuntimeInstanceExists: mocks.checkSandboxRuntimeInstanceExists,
-  getSandboxClient: mocks.getSandboxClient
+  getRunningSandboxClient: mocks.getRunningSandboxClient
 }));
 
-vi.mock('@fastgpt/service/core/ai/sandbox/application/archive', () => {
-  class SandboxLifecycleStateError extends Error {
-    constructor(readonly state: string) {
-      super(`Sandbox is ${state}`);
-      this.name = 'SandboxLifecycleStateError';
-    }
-  }
-  return { SandboxLifecycleStateError };
-});
-
-import { SandboxLifecycleStateError } from '@fastgpt/service/core/ai/sandbox/application/archive';
+import { SandboxLifecycleStateError } from '@fastgpt/service/core/ai/sandbox/application/lifecycle/error';
 import { SandboxRuntimeNotRunningError } from '@fastgpt/service/core/ai/sandbox/error';
 import {
   checkSandboxSessionExist,
@@ -40,20 +30,22 @@ describe('sandbox session interface', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.checkSandboxRuntimeInstanceExists.mockResolvedValue(true);
-    mocks.getSandboxClient.mockResolvedValue(undefined);
+    mocks.getRunningSandboxClient.mockResolvedValue({
+      provider: { close: vi.fn(async () => undefined) }
+    });
   });
 
   it('checks local session existence without constructing a runtime client', async () => {
     await expect(checkSandboxSessionExist(query)).resolves.toBe(true);
 
     expect(mocks.checkSandboxRuntimeInstanceExists).toHaveBeenCalledWith(query);
-    expect(mocks.getSandboxClient).not.toHaveBeenCalled();
+    expect(mocks.getRunningSandboxClient).not.toHaveBeenCalled();
   });
 
   it('keeps a running sandbox alive without allowing archived restore', async () => {
     await expect(keepaliveSandboxSession(query)).resolves.toBeUndefined();
 
-    expect(mocks.getSandboxClient).toHaveBeenCalledWith(query, { restoreArchived: false });
+    expect(mocks.getRunningSandboxClient).toHaveBeenCalledWith(query);
   });
 
   it.each([
@@ -61,13 +53,13 @@ describe('sandbox session interface', () => {
     new SandboxLifecycleStateError('stopping'),
     new SandboxLifecycleStateError('stopped')
   ])('treats a non-running lifecycle state as an idempotent keepalive no-op', async (error) => {
-    mocks.getSandboxClient.mockRejectedValueOnce(error);
+    mocks.getRunningSandboxClient.mockRejectedValueOnce(error);
 
     await expect(keepaliveSandboxSession(query)).resolves.toBeUndefined();
   });
 
   it('propagates unexpected provider failures', async () => {
-    mocks.getSandboxClient.mockRejectedValueOnce(new Error('provider unavailable'));
+    mocks.getRunningSandboxClient.mockRejectedValueOnce(new Error('provider unavailable'));
 
     await expect(keepaliveSandboxSession(query)).rejects.toThrow('provider unavailable');
   });

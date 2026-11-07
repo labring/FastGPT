@@ -1,9 +1,6 @@
 import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
-import type {
-  FlowNodeTemplateType,
-  StoreNodeItemType
-} from '@fastgpt/global/core/workflow/type/node';
+import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import {
   FlowNodeInputTypeEnum,
   FlowNodeTypeEnum
@@ -14,14 +11,11 @@ import {
   NodeOutputKeyEnum,
   WorkflowIOValueTypeEnum
 } from '@fastgpt/global/core/workflow/constants';
-
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { type StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
+import type { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import { ToolCallNode } from '@fastgpt/global/core/workflow/template/system/toolCall';
-import {
-  WorkflowStart,
-  userFilesInput
-} from '@fastgpt/global/core/workflow/template/system/workflowStart';
+import { WorkflowStart } from '@fastgpt/global/core/workflow/template/system/workflowStart';
+import { userFilesInput } from '@fastgpt/global/core/workflow/template/output';
 import {
   AiChatModule,
   AiChatQuotePrompt,
@@ -29,7 +23,6 @@ import {
   AiChatQuoteTemplate
 } from '@fastgpt/global/core/workflow/template/system/aiChat/index';
 import { DatasetSearchModule } from '@fastgpt/global/core/workflow/template/system/datasetSearch';
-import { resolveDatasetTagFilterVersion } from '@fastgpt/global/core/dataset/search/tagFilter';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import {
   Input_Template_File_Link,
@@ -37,16 +30,16 @@ import {
   Input_Template_UserChatInput
 } from '@fastgpt/global/core/workflow/template/input';
 import { workflowStartNodeId } from '@/web/core/app/constants';
-import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
-import { getAppChatConfig } from '@fastgpt/global/core/workflow/utils';
+import {
+  DatasetSearchModeEnum,
+  DatasetTagFilterVersionEnum
+} from '@fastgpt/global/core/dataset/constants';
+import { getAppChatConfig } from '@fastgpt/global/common/app/chat';
 import { getDefaultAppForm } from '@fastgpt/global/core/app/utils';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
-import {
-  getToolConfigStatus,
-  stripToolInputDefaultMode
-} from '@fastgpt/global/core/app/formEdit/utils';
+import { stripToolInputDefaultMode } from '@fastgpt/global/core/app/formEdit/utils';
 
-/* format app nodes to edit form */
+/** 将简易应用的已存工作流还原为表单；标签过滤版本沿用默认的 structured。 */
 export const appWorkflow2Form = ({
   nodes,
   chatConfig
@@ -122,11 +115,6 @@ export const appWorkflow2Form = ({
         NodeInputKeyEnum.sandboxEntrypoint
       );
     } else if (node.flowNodeType === FlowNodeTypeEnum.datasetSearchNode) {
-      defaultAppForm.dataset[NodeInputKeyEnum.collectionFilterVersion] =
-        resolveDatasetTagFilterVersion({
-          version: findInputValueByKey(node.inputs, NodeInputKeyEnum.collectionFilterVersion),
-          filterValue: findInputValueByKey(node.inputs, NodeInputKeyEnum.collectionFilterMatch)
-        });
       defaultAppForm.dataset.datasets = findInputValueByKey(
         node.inputs,
         NodeInputKeyEnum.datasetSelectList
@@ -200,6 +188,7 @@ export const appWorkflow2Form = ({
         id: node.nodeId,
         pluginId: node.pluginId,
         source: node.source,
+        metadataLocale: node.metadataLocale,
         isFolder: node.isFolder,
         name: node.pluginData?.name ?? node.name,
         avatar: node.pluginData?.avatar ?? node.avatar,
@@ -216,8 +205,7 @@ export const appWorkflow2Form = ({
         userGuide: node.pluginData?.userGuide,
         toolConfig: node.toolConfig,
         hasSystemSecret: node.hasSystemSecret,
-        systemKeyCost: node.systemKeyCost,
-        configStatus: getToolConfigStatus({ tool: node as unknown as FlowNodeTemplateType }).status
+        systemKeyCost: node.systemKeyCost
       });
     }
   });
@@ -229,6 +217,8 @@ export type WorkflowType = {
   nodes: StoreNodeItemType[];
   edges: StoreEdgeItemType[];
 };
+
+/** 简易应用保存为工作流时固定写入 structured 标记，供工作流画布选择新版过滤编辑器。 */
 export function form2AppWorkflow(
   data: AppFormEditFormType,
   t: any // i18nT
@@ -594,10 +584,7 @@ export function form2AppWorkflow(
           renderTypeList: [FlowNodeInputTypeEnum.hidden],
           label: '',
           valueType: WorkflowIOValueTypeEnum.string,
-          value: resolveDatasetTagFilterVersion({
-            version: formData.dataset[NodeInputKeyEnum.collectionFilterVersion],
-            filterValue: formData.dataset.collectionFilterMatch
-          })
+          value: DatasetTagFilterVersionEnum.structured
         },
         {
           key: NodeInputKeyEnum.collectionFilterMatch,
@@ -691,6 +678,7 @@ export function form2AppWorkflow(
             nodeId,
             pluginId: tool.pluginId,
             source: tool.source,
+            metadataLocale: tool.metadataLocale,
             name: tool.name,
             intro: tool.intro,
             avatar: tool.avatar,

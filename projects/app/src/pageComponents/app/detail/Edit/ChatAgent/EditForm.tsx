@@ -13,10 +13,9 @@ import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
 import { useTranslation } from 'next-i18next';
 import React, { useCallback, useMemo } from 'react';
-
 import SettingLLMModel from '@/components/core/ai/SettingLLMModel';
 import DatasetCard from '@/components/core/app/DatasetCard';
-import SkillCard from '@/components/core/app/SkillCard';
+import { AgentSkillCardList } from '@/components/core/app/SkillCard';
 import { useWelcomeTextFoldState } from '@/components/core/app/useAppEditorUIState';
 import SearchParamsTip from '@/components/core/dataset/SearchParamsTip';
 import { RechargeModal } from '@/components/support/wallet/NotSufficientModal';
@@ -26,13 +25,10 @@ import { useModelDetail } from '@/web/core/ai/model/useModelDetail';
 import { TTSTypeEnum } from '@/web/core/app/constants';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { SmallAddIcon } from '@chakra-ui/icons';
-import { AGENT_SANDBOX_TOOLSET_ID, SANDBOX_ICON } from '@fastgpt/global/core/ai/sandbox/tools';
+import { SANDBOX_ICON } from '@fastgpt/global/core/ai/sandbox/tools';
 import { getToolIdentityKey } from '@fastgpt/global/core/app/tool/utils';
-import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
-import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
@@ -41,19 +37,10 @@ import { useContextSelector } from 'use-context-selector';
 import SandboxConfigButton from '../../components/SandboxConfigButton';
 import { cardStyles } from '../../constants';
 import ToolSelect from '../FormComponent/ToolSelector/ToolSelect';
+import { useAppDatasetTagFilter } from '../FormComponent/useAppDatasetTagFilter';
 import { useInitializeQueryExtensionModel } from '../FormComponent/useInitializeQueryExtensionModel';
 import { useAgentSkillSelect } from './hooks/useAgentSkillSelect';
 import { useSkillManager } from './hooks/useSkillManager';
-import DatasetTagFilterRows, {
-  TagFilterLogicToggle
-} from '@/components/core/dataset/DatasetTagFilterRows';
-import { formatEditorVariablePickerIcon } from '@fastgpt/global/core/workflow/utils';
-import { workflowSystemVariables } from '@/web/core/app/utils';
-import { VARIABLE_NODE_ID } from '@fastgpt/global/core/workflow/constants';
-import {
-  isDatasetTagFilterValue,
-  type DatasetTagFilterValue
-} from '@fastgpt/global/core/dataset/search/tagFilter';
 
 const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSelectModal'));
 const DatasetParamsModal = dynamic(() => import('@/components/core/app/DatasetParamsModal'));
@@ -89,40 +76,10 @@ const EditForm = ({
   const appId = useContextSelector(AppContext, (v) => v.appId);
 
   const selectDatasets = useMemo(() => appForm?.dataset?.datasets, [appForm]);
-  const formatVariables = useMemo(
-    () =>
-      formatEditorVariablePickerIcon([
-        ...workflowSystemVariables.filter(
-          (variable) =>
-            !['appId', 'chatId', 'responseChatItemId', 'histories'].includes(variable.key)
-        ),
-        ...(appForm.chatConfig.variables ?? [])
-      ]).map((item) => ({ ...item, label: t(item.label as any) })),
-    [appForm.chatConfig.variables, t]
-  );
-  const tagFilterReferenceList = useMemo(
-    () => [
-      {
-        label: t('common:core.module.Variable'),
-        value: VARIABLE_NODE_ID,
-        children: formatVariables.map((item) => ({
-          label: item.label,
-          value: item.key,
-          valueType: item.valueType
-        }))
-      }
-    ],
-    [formatVariables, t]
-  );
-  const onCollectionFilterMatchChange = useCallback(
-    (value: DatasetTagFilterValue) => {
-      setAppForm((state) => ({
-        ...state,
-        dataset: { ...state.dataset, collectionFilterMatch: value }
-      }));
-    },
-    [setAppForm]
-  );
+  const { datasetIds, formatVariables, tagFilterReferenceList } = useAppDatasetTagFilter({
+    appForm,
+    setAppForm
+  });
   const { isWelcomeTextFolded, toggleWelcomeTextFold } = useWelcomeTextFoldState(appId);
 
   const {
@@ -138,25 +95,26 @@ const EditForm = ({
     isOpenRecharge,
     onCloseRecharge
   } = useAgentSkillSelect({
-    appForm,
+    selectedAgentSkills: appForm.selectedAgentSkills ?? [],
+    useAgentSandbox: Boolean(appForm.aiSettings.useAgentSandbox),
     showSandbox,
     enableSandbox,
-    setAppForm
-  });
-
-  const { skillOption, selectedSkills, onClickSkill, onRemoveSkill, SkillModal } = useSkillManager({
-    selectedTools: appForm.selectedTools,
-    selectedAgentSkills,
-    onDeleteTool: (id, source) => {
+    onUpdateSkills: (update, enableSandbox) =>
       setAppForm((state) => ({
         ...state,
-        selectedTools:
-          state.selectedTools?.filter(
-            (item) =>
-              getToolIdentityKey(item.pluginId, item.source) !== getToolIdentityKey(id, source)
-          ) || []
-      }));
-    },
+        selectedAgentSkills: update(state.selectedAgentSkills ?? []),
+        aiSettings: { ...state.aiSettings, ...(enableSandbox ? { useAgentSandbox: true } : {}) }
+      })),
+    onUpdateSandbox: (checked) =>
+      setAppForm((state) => ({
+        ...state,
+        aiSettings: { ...state.aiSettings, useAgentSandbox: checked }
+      }))
+  });
+
+  const skillManager = useSkillManager({
+    selectedTools: appForm.selectedTools,
+    selectedAgentSkills,
     onUpdateOrAddTool: (tool) => {
       setAppForm((state) => {
         const toolKey = getToolIdentityKey(tool.pluginId, tool.source);
@@ -181,6 +139,8 @@ const EditForm = ({
       });
     },
     onAddAgentSkill,
+    onEnableSandbox: () => onChangeAgentSandbox(true),
+    currentAppId: appId,
     canUploadFile: !!(
       appForm.chatConfig.fileSelectConfig?.canSelectFile ||
       appForm.chatConfig.fileSelectConfig?.canSelectImg ||
@@ -199,6 +159,7 @@ const EditForm = ({
       onOpenKbSelect();
     }
   });
+  const { skillOption, selectedSkills, onClickSkill } = skillManager;
 
   const {
     isOpen: isOpenDatasetSelect,
@@ -217,30 +178,6 @@ const EditForm = ({
     modelType: ModelTypeEnum.llm
   });
   const selectedModel = configuredModel;
-  const promptSkillOption = useMemo(
-    () => ({
-      ...skillOption,
-      onSelect: async (id: string) => {
-        const option = await skillOption.onSelect?.(id);
-        if (!option?.onClick) return option;
-
-        return {
-          ...option,
-          onClick: async (toolId: string) => {
-            const result = await option.onClick?.(toolId);
-
-            // AgentV2 提示词 @虚拟机 时，同步打开下方虚拟机开关。
-            if (result?.id === AGENT_SANDBOX_TOOLSET_ID && !appForm.aiSettings.useAgentSandbox) {
-              onChangeAgentSandbox(true);
-            }
-
-            return result;
-          }
-        };
-      }
-    }),
-    [appForm.aiSettings.useAgentSandbox, onChangeAgentSandbox, skillOption]
-  );
   const tokenLimit = useMemo(() => {
     return getModelQuoteTokenLimit(configuredModel);
   }, [configuredModel]);
@@ -293,6 +230,7 @@ const EditForm = ({
             <FormLabel w={['60px', '100px']}>{t('common:core.ai.Model')}</FormLabel>
             <Box flex={'1 0 0'}>
               <SettingLLMModel
+                appId={appId || undefined}
                 bg="myGray.50"
                 defaultData={{
                   modelId:
@@ -342,10 +280,11 @@ const EditForm = ({
                 bg={'myGray.50'}
                 title={t('common:core.ai.Prompt')}
                 isRichText={true}
-                skillOption={promptSkillOption}
+                placeholder={t('workflow:agent.prompt_placeholder')}
+                variableLabels={formatVariables}
+                skillOption={skillOption}
                 selectedSkills={selectedSkills}
                 onClickSkill={onClickSkill}
-                onRemoveSkill={onRemoveSkill}
                 value={appForm.aiSettings.systemPrompt}
                 onChange={(e) => {
                   setAppForm((state) => ({
@@ -424,9 +363,7 @@ const EditForm = ({
             gridTemplateColumns={'repeat(2, minmax(0, 1fr))'}
             gridGap={[2, 4]}
           >
-            {selectedAgentSkills.map((item) => (
-              <SkillCard key={item.skillId} skill={item} onDelete={onRemoveAgentSkill} />
-            ))}
+            <AgentSkillCardList skills={selectedAgentSkills} onDelete={onRemoveAgentSkill} />
           </Grid>
 
           {isOpenSkillSelect && (
@@ -451,16 +388,7 @@ const EditForm = ({
                 selectedTools: [e, ...(state.selectedTools || [])]
               }));
             }}
-            onUpdateTool={(e) => {
-              const toolKey = getToolIdentityKey(e.pluginId, e.source);
-              setAppForm((state) => ({
-                ...state,
-                selectedTools:
-                  state.selectedTools?.map((item) =>
-                    getToolIdentityKey(item.pluginId, item.source) === toolKey ? e : item
-                  ) || []
-              }));
-            }}
+            onConfigTool={skillManager.onOpenConfigTool}
             onRemoveTool={(id, source) => {
               setAppForm((state) => ({
                 ...state,
@@ -538,6 +466,8 @@ const EditForm = ({
                   appForm.dataset.datasetSearchExtensionModelId ||
                   appForm.dataset.datasetSearchExtensionModel
                 }
+                showTagFilter={!!feConfigs?.isPlus}
+                collectionFilterMatch={appForm.dataset.collectionFilterMatch}
               />
             </Box>
           )}
@@ -559,30 +489,6 @@ const EditForm = ({
               />
             ))}
           </Grid>
-          {appForm.dataset.datasets.length > 0 && feConfigs?.isPlus && (
-            <Box mt={4}>
-              <Flex alignItems={'center'} mb={2}>
-                <FormLabel color={'myGray.600'}>{t('workflow:tag_filter')}</FormLabel>
-                <QuestionTip ml={1} label={t('workflow:tag_filter_description')} />
-                <Box ml={2}>
-                  <TagFilterLogicToggle
-                    value={
-                      isDatasetTagFilterValue(appForm.dataset.collectionFilterMatch)
-                        ? appForm.dataset.collectionFilterMatch
-                        : undefined
-                    }
-                    onChange={onCollectionFilterMatchChange}
-                  />
-                </Box>
-              </Flex>
-              <DatasetTagFilterRows
-                value={appForm.dataset.collectionFilterMatch}
-                onChange={onCollectionFilterMatchChange}
-                datasetIds={appForm.dataset.datasets.map((item) => item.datasetId)}
-                referenceList={tagFilterReferenceList}
-              />
-            </Box>
-          )}
         </Box>
 
         {/* File select */}
@@ -674,6 +580,7 @@ const EditForm = ({
         {/* question guide */}
         <Box {...BoxStyles}>
           <QGConfig
+            appId={appId || undefined}
             value={appForm.chatConfig.questionGuide}
             onChange={(e) => {
               setAppForm((state) => ({
@@ -729,7 +636,11 @@ const EditForm = ({
       {isOpenDatasetParams && (
         <DatasetParamsModal
           {...appForm.dataset}
+          appId={appId || undefined}
           maxTokens={tokenLimit}
+          showTagFilter={!!feConfigs?.isPlus}
+          datasetIds={datasetIds}
+          tagFilterReferenceList={tagFilterReferenceList}
           onClose={onCloseDatasetParams}
           onSuccess={(e) => {
             setAppForm((state) => ({
@@ -744,7 +655,7 @@ const EditForm = ({
       )}
       <ConfirmModal />
       {isOpenRecharge && <RechargeModal onClose={onCloseRecharge} onPaySuccess={onCloseRecharge} />}
-      <SkillModal />
+      {skillManager.toolConfigModal}
     </>
   );
 };

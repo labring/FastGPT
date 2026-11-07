@@ -12,13 +12,16 @@ import FormItem from '@/pageComponents/admin/settings/FormItem';
 import JsonEditor from '@fastgpt/web/components/common/Textarea/JsonEditor';
 import NavbarItems from './components/FormField/NavbarItems';
 import ImageInput from '@/pageComponents/admin/settings/ImageInput';
+import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 
-interface titleType {
+type titleType = {
   mainTitle: string;
   subTitles: string[];
-}
+};
 
 export const Settings = () => {
+  const isPlus = useSystemStore((state) => state.feConfigs.isPlus);
   const [rawData, setRawData] = useState<ConfigFormType>();
   const { setValue, reset, watch, register, handleSubmit, control } =
     useForm<ConfigFormType['siteSettings']>();
@@ -184,18 +187,25 @@ export const Settings = () => {
           placeholder=""
         />
       </FormItem>
-      <FormItem
-        title="HNSW max_scan_tuples"
-        description="迭代搜索最大数量，越大召回率越高，性能越差，默认为 100000，具体可见：https://github.com/pgvector/pgvector"
-      >
-        <Input
-          type="number"
-          {...register('systemEnv.hnswMaxScanTuples', {
-            valueAsNumber: true
-          })}
-          placeholder=""
-        />
-      </FormItem>
+      {isPlus && (
+        <FormItem
+          title="向量检索最大并发数"
+          description="默认 0 表示不限制；大于 0 时所有服务实例共享该并发上限。对所有向量库的召回生效。"
+        >
+          <MyNumberInput
+            min={0}
+            max={1000}
+            step={1}
+            precision={0}
+            bg="white"
+            inputFieldProps={{ bg: 'white' }}
+            value={watch('systemEnv.vectorRecallConcurrency') ?? 0}
+            onChange={(value) =>
+              setValue('systemEnv.vectorRecallConcurrency', typeof value === 'number' ? value : 0)
+            }
+          />
+        </FormItem>
+      )}
       <FirstTitle title="PDF 解析配置" />
       <FormItem title="自定义 PDF 解析地址 (第一优先级)" description="">
         <Input {...register('systemEnv.customPdfParse.url')} placeholder="" />
@@ -244,6 +254,40 @@ export const Settings = () => {
           {...register('limit.websiteSyncLimitMinuted', {
             valueAsNumber: true
           })}
+          placeholder=""
+        />
+      </FormItem>
+      <FormItem
+        title="沙箱实例系统总上限"
+        description="所有团队 Agent 沙箱活跃实例合计上限，留空表示使用环境变量配置；建议不低于单团队配额。"
+      >
+        <MyNumberInput
+          min={1}
+          step={1}
+          precision={0}
+          bg={'white'}
+          inputFieldProps={{ bg: 'white' }}
+          value={watch('systemEnv.agentSandboxMax') ?? ''}
+          onChange={(val) =>
+            setValue('systemEnv.agentSandboxMax', typeof val === 'number' ? val : undefined)
+          }
+          placeholder=""
+        />
+      </FormItem>
+      <FormItem
+        title="单团队沙箱实例配额"
+        description="单团队 Agent 沙箱活跃实例上限，留空表示使用环境变量配置，环境变量未配置时不限制；建议不超过系统总上限，超过时超出部分不会生效。"
+      >
+        <MyNumberInput
+          min={1}
+          step={1}
+          precision={0}
+          bg={'white'}
+          inputFieldProps={{ bg: 'white' }}
+          value={watch('systemEnv.agentSandboxMaxPerTeam') ?? ''}
+          onChange={(val) =>
+            setValue('systemEnv.agentSandboxMaxPerTeam', typeof val === 'number' ? val : undefined)
+          }
           placeholder=""
         />
       </FormItem>

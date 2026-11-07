@@ -4,7 +4,7 @@ import * as https from 'node:https';
 import type { IMinioStorageOptions, IStorage } from '../interface';
 import type * as Storage from '../types';
 import { AwsS3StorageAdapter } from './aws-s3.adapter';
-import AWS from '@aws-sdk/client-s3';
+import * as AWS from '@aws-sdk/client-s3';
 import { chunk } from 'es-toolkit';
 import {
   assertStorageObjectKey,

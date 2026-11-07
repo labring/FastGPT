@@ -3,13 +3,13 @@ title: Tool Calling & Termination
 description: FastGPT Tool Calling node overview
 ---
 
-![](/imgs/flow-tool1.png)
+![Tool Calling node overview](/imgs/flow-tool1.png)
 
 ### What is a Tool
 
 A tool can be a built-in node (e.g., AI Chat, Dataset search, HTTP) or a plugin.
 
-Tool calling lets the LLM dynamically decide the workflow path instead of following a fixed sequence. (The trade-off is higher token consumption.)
+Tool calling lets the LLM dynamically choose the workflow path. This flexibility increases token consumption.
 
 ### Tool Components
 
@@ -34,13 +34,18 @@ Based on the tool description, parameter descriptions, and whether parameters ar
 
 Models that support `function calling` can invoke multiple tools in a single turn. The calling logic:
 
-![](/imgs/flow-tool2.png)
+1. The node builds the conversation messages and calls the AI model.
+2. If the model requests tools, FastGPT displays their status, runs them, and adds their results to the messages for the next call.
+3. A termination marker ends the call cycle. Otherwise, the updated messages are sent to the model for another round.
+4. When the model returns content, FastGPT outputs it and ends the call.
+
+![Tool calling loop and termination conditions](/imgs/flow-tool2.png)
 
 ### How to Use
 
 |                           |                           |
 | ------------------------- | ------------------------- |
-| ![](/imgs/flow-tool3.png) | ![](/imgs/flow-tool4.png) |
+| ![Connect the Tool Calling node to a tool](/imgs/flow-tool3.png) | ![Edit the connected tool description and inputs](/imgs/flow-tool4.png) |
 
 In the advanced workflow editor, drag from the tool calling connection point. Eligible tools display a diamond icon at the top, which you can connect to the diamond at the bottom of the tool calling node.
 
@@ -50,11 +55,11 @@ Debugging tool calling is still more art than science, so start with a small num
 
 #### Use Cases
 
-By default, after the tool calling node invokes a tool, it returns the tool's output to the AI for summarization. If you don't need the AI to summarize, place this node at the end of the tool's workflow branch.
+By default, after the tool calling node invokes a tool, it returns the tool's output to the AI for summarization. To finish immediately after the tool branch, place a **Tool Calling Termination** node at its end.
 
 In the example below, after the Dataset search runs, results are sent to an HTTP request. The search results are not returned to the tool calling node for AI summarization.
 
-![](/imgs/flow-tool5.png)
+![Send Dataset Search results to an HTTP node and end the call](/imgs/flow-tool5.png)
 
 ### Additional Nodes
 
@@ -64,10 +69,10 @@ When you use the tool calling node, a Tool Calling Termination node and a Custom
 
 Tool Calling Termination ends the current call cycle. Place it after a tool node. When the workflow reaches this node, it forcibly ends the current tool call -- no further tools are invoked, and the AI won't generate a summary based on tool results.
 
-![](/imgs/flow-tool6.png)
+![Tool Calling Termination node](/imgs/flow-tool6.png)
 
 ### Custom Tool Variables
 
 Custom variables extend tool input capabilities. For nodes that aren't recognized as tool parameters or can't be directly tool-called, you can define custom tool variables with appropriate parameter descriptions. The tool calling node will then invoke this node and its downstream workflow accordingly.
 
-![](/imgs/flow-tool7.png)
+![Configure custom tool input variables](/imgs/flow-tool7.png)

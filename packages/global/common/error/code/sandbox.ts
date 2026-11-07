@@ -8,7 +8,9 @@ export enum SandboxErrEnum {
   agentSandboxPermissionDenied = 'agentSandboxPermissionDenied',
   agentSandboxInitializing = 'agentSandboxInitializing',
   runtimeUpgradeFailed = 'runtimeUpgradeFailed',
-  runtimeUpgradeInProgress = 'runtimeUpgradeInProgress'
+  runtimeUpgradeInProgress = 'runtimeUpgradeInProgress',
+  agentSandboxLimitReached = 'agentSandboxLimitReached',
+  agentSandboxTeamLimitReached = 'agentSandboxTeamLimitReached'
 }
 
 const sandboxErr = [
@@ -28,6 +30,16 @@ const sandboxErr = [
   {
     statusText: SandboxErrEnum.runtimeUpgradeInProgress,
     message: i18nT('skill:sandbox_runtime_upgrade_in_progress'),
+    httpStatus: 409
+  },
+  {
+    statusText: SandboxErrEnum.agentSandboxLimitReached,
+    message: i18nT('common:code_error.sandbox_error.agent_sandbox_limit_reached'),
+    httpStatus: 409
+  },
+  {
+    statusText: SandboxErrEnum.agentSandboxTeamLimitReached,
+    message: i18nT('common:code_error.sandbox_error.agent_sandbox_team_limit_reached'),
     httpStatus: 409
   }
 ];

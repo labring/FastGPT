@@ -1,3 +1,4 @@
+import ShareBrandFeature from './ShareBrandFeature';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import type { StandardSubLevelEnum } from '@fastgpt/global/support/wallet/sub/constants';
 import { SubModeEnum } from '@fastgpt/global/support/wallet/sub/constants';
@@ -13,6 +14,7 @@ import MyPopover from '@fastgpt/web/components/common/MyPopover';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { formatFileSize } from '@fastgpt/global/common/file/tools';
 import type { TeamPlanStandardType } from '@fastgpt/global/support/wallet/sub/type';
+import { getFileUploadLimits } from '@fastgpt/global/common/file/limit';
 
 const ModelPriceModal = dynamic(() =>
   import('@/components/core/ai/ModelTable').then((mod) => mod.ModelPriceModal)
@@ -21,11 +23,17 @@ const ModelPriceModal = dynamic(() =>
 const StandardPlanContentList = ({
   level,
   mode,
-  standplan
+  standplan,
+  shareBrandPlacement = 'last',
+  highlightShareBrand = false,
+  showShareBrandTip = highlightShareBrand
 }: {
   level: `${StandardSubLevelEnum}`;
   mode: `${SubModeEnum}`;
   standplan?: TeamPlanStandardType;
+  shareBrandPlacement?: 'first' | 'last';
+  highlightShareBrand?: boolean;
+  showShareBrandTip?: boolean;
 }) => {
   const { t } = useSafeTranslation();
 
@@ -41,6 +49,17 @@ const StandardPlanContentList = ({
     const plan = subPlans?.standard?.[effectiveLevel];
 
     if (!plan) return;
+    const uploadLimits = getFileUploadLimits({
+      teamPlan: {
+        maxUploadFileSize: standplan?.maxUploadFileSize,
+        maxUploadFileCount: standplan?.maxUploadFileCount
+      },
+      plan,
+      systemLimit: {
+        uploadFileMaxSize: feConfigs.limit.uploadFileMaxSize,
+        uploadFileMaxAmount: feConfigs.limit.uploadFileMaxAmount
+      }
+    });
     // For wecom free plan (trial), use WecomFreePlan constants
 
     return {
@@ -68,12 +87,8 @@ const StandardPlanContentList = ({
       appRegistrationCount: standplan?.appRegistrationCount ?? plan.appRegistrationCount,
       ticketResponseTime: standplan?.ticketResponseTime ?? plan.ticketResponseTime,
       customDomain: standplan?.customDomain ?? plan.customDomain,
-      maxUploadFileSize: formatFileSize(
-        (standplan?.maxUploadFileSize || plan.maxUploadFileSize || feConfigs.uploadFileMaxSize) *
-          1024 ** 2
-      ),
-      maxUploadFileCount:
-        standplan?.maxUploadFileCount || plan.maxUploadFileCount || feConfigs.uploadFileMaxAmount,
+      maxUploadFileSize: formatFileSize(uploadLimits.maxUploadFileSize * 1024 ** 2),
+      maxUploadFileCount: uploadLimits.maxUploadFileCount,
       enableSandbox: standplan?.enableSandbox ?? plan.enableSandbox
     };
   }, [
@@ -97,12 +112,23 @@ const StandardPlanContentList = ({
     standplan?.maxUploadFileSize,
     standplan?.maxUploadFileCount,
     standplan?.enableSandbox,
-    feConfigs?.uploadFileMaxSize,
-    feConfigs?.uploadFileMaxAmount
+    feConfigs.limit.uploadFileMaxSize,
+    feConfigs.limit.uploadFileMaxAmount
   ]);
+
+  // 个人套餐使用团队实际权益；购买页没有订阅快照，继续展示套餐模板配置。
+  const canHideShareBrand = standplan ? standplan.canHideShareBrand === true : undefined;
 
   return planContent ? (
     <Grid gap={4} fontSize={'sm'} fontWeight={500}>
+      {shareBrandPlacement === 'first' && (
+        <ShareBrandFeature
+          level={level}
+          highlight={highlightShareBrand}
+          showTip={showShareBrandTip}
+          canHideShareBrand={canHideShareBrand}
+        />
+      )}
       <Flex alignItems={'center'}>
         <MyIcon
           name={'price/right'}
@@ -268,6 +294,14 @@ const StandardPlanContentList = ({
           <MyIcon name={'price/right'} w={'16px'} mr={3} color={'primary.600'} />
           <Box color={'myGray.600'}>{t('common:enable_sandbox')}</Box>
         </Flex>
+      )}
+      {shareBrandPlacement === 'last' && (
+        <ShareBrandFeature
+          level={level}
+          highlight={highlightShareBrand}
+          showTip={showShareBrandTip}
+          canHideShareBrand={canHideShareBrand}
+        />
       )}
     </Grid>
   ) : null;

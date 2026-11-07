@@ -1,6 +1,7 @@
 import { createSchema, type oas31 } from 'zod-openapi';
 import type { OpenAPIPath } from './type';
 import type { z } from 'zod';
+import { openApiDocumentOptions } from './generation';
 
 /** 生成最小请求体与参数示例；从原始参数 Schema 保留组合选择，完整约束和响应示例不变。 */
 export const setRequiredRequestExamples = (
@@ -53,8 +54,8 @@ export const setRequiredRequestExamples = (
           const property = schema.properties?.[key];
           if (!property) return [];
           const resolvedProperty = resolve<oas31.SchemaObject>(property);
-          // Zod preprocess 包装的默认值可能仍被导出为 required，调用时可省略这些字段。
-          if (resolvedProperty?.readOnly || resolvedProperty?.default !== undefined) return [];
+          // 必填性已经按运行时省略语义修正；仅文档 default 不代表请求可省略。
+          if (resolvedProperty?.readOnly) return [];
           const child = sample(
             property,
             value && typeof value === 'object' ? Reflect.get(value, key) : undefined,
@@ -99,25 +100,41 @@ export const setRequiredRequestExamples = (
       // OpenAPI parameters 是平铺字段，跨字段约束需从原始 Query/Header 对象保留。
       const source = sourcePaths?.[url]?.[method];
       const selected = new Set<string>();
+      const requiredParameters = new Set<string>();
+      const declaredParameters = new Set<string>();
       for (const location of ['query', 'header', 'path', 'cookie'] as const) {
         const input = source?.requestParams?.[location];
         if (!input || !('_zod' in input)) continue;
-        const generated = createSchema(input as z.ZodType, { io: 'input' });
+        const generated = createSchema(input as z.ZodType, {
+          io: 'input',
+          opts: openApiDocumentOptions
+        });
         // 只取组合分支选中的字段；普通必填字段仍由 parameter.required 控制。
         const seen = new Set<object>();
-        const collect = (input?: oas31.SchemaObject | oas31.ReferenceObject) => {
+        const collect = (
+          input?: oas31.SchemaObject | oas31.ReferenceObject,
+          unconditional = true
+        ) => {
           if (!input || seen.has(input)) return;
           seen.add(input);
           if (typeof input.$ref === 'string') {
             const key = input.$ref.split('/').at(-1)!.replace(/~1/g, '/').replace(/~0/g, '~');
-            collect(generated.components[key]);
+            collect(generated.components[key], unconditional);
             return;
           }
           const schema = input as oas31.SchemaObject;
-          for (const key of schema.required ?? []) selected.add(`${location}:${key}`);
-          for (const child of schema.allOf ?? []) collect(child);
-          collect(schema.oneOf?.[0]);
-          collect(schema.anyOf?.[0]);
+          if (unconditional) {
+            for (const key of Object.keys(schema.properties ?? {})) {
+              declaredParameters.add(`${location}:${key}`);
+            }
+          }
+          for (const key of schema.required ?? []) {
+            selected.add(`${location}:${key}`);
+            if (unconditional) requiredParameters.add(`${location}:${key}`);
+          }
+          for (const child of schema.allOf ?? []) collect(child, unconditional);
+          collect(schema.oneOf?.[0], false);
+          collect(schema.anyOf?.[0], false);
         };
         collect(generated.schema);
       }
@@ -129,6 +146,14 @@ export const setRequiredRequestExamples = (
       for (const input of [...(path.parameters ?? []), ...(operation.parameters ?? [])]) {
         const parameter = resolve<oas31.ParameterObject>(input);
         if (!parameter) continue;
+        // zod-openapi 在 Schema override 前生成 parameters，需同步其必填信息。
+        const field = `${parameter.in}:${parameter.name}`;
+        if (declaredParameters.has(field)) {
+          // 同步可选和必填两种结果；路径参数按 OpenAPI 规范始终必填，组合参数保留原约束。
+          parameter.required = parameter.in === 'path' || requiredParameters.has(field);
+        } else if (requiredParameters.has(field)) {
+          parameter.required = true;
+        }
         const enabled =
           parameter.required === true || selected.has(`${parameter.in}:${parameter.name}`);
         const first = Object.values(parameter.examples ?? {})[0];

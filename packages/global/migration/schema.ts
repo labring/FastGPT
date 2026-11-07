@@ -1,9 +1,15 @@
 import { z } from 'zod';
-import {
-  systemMigrationLimits,
-  SystemMigrationFailurePolicyEnum,
-  SystemMigrationStatusEnum
-} from './constants';
+import { i18nT } from '../common/i18n/utils';
+import { systemMigrationLimits, SystemMigrationStatusEnum } from './constants';
+
+/** 依赖未完成时的 API 错误；名称来自静态注册表，由客户端按当前语言翻译。 */
+export const SystemMigrationDependencyErrorResponseSchema = z.object({
+  code: z.literal(409),
+  message: z.literal(i18nT('system_migration:prerequisite_not_succeeded')),
+  data: z.object({
+    prerequisiteNameKey: z.string().min(1).meta({ description: '未成功的前置任务名称 i18n key' })
+  })
+});
 
 /** 迁移状态中的业务数据只允许标量，确保可稳定写入 Mongo、日志和 API JSON。 */
 export const SystemMigrationDataValueSchema = z.union([
@@ -26,7 +32,6 @@ export const SystemMigrationDataSchema = z
 export const SystemMigrationStageKeySchema = z.string().min(1);
 
 export const SystemMigrationStatusSchema = z.nativeEnum(SystemMigrationStatusEnum);
-export const SystemMigrationFailurePolicySchema = z.nativeEnum(SystemMigrationFailurePolicyEnum);
 
 export const SystemMigrationFailureDetailSchema = z.object({
   message: z.string().min(1).max(systemMigrationLimits.maxErrorMessageLength)
@@ -129,13 +134,15 @@ export type SystemMigrationFailureInput = z.infer<typeof SystemMigrationFailureI
 export const SystemMigrationListItemSchema = z.object({
   id: z.string().meta({ description: '永久稳定的升级脚本 ID' }),
   version: z.string().meta({ description: '首次引入版本' }),
-  order: z.number().int().positive().meta({ description: '注册表执行顺序' }),
+  order: z.number().int().positive().meta({ description: '注册表顺序；独立任务不受此顺序约束' }),
   nameKey: z.string().meta({ description: '脚本名称的 i18n key' }),
   descriptionKey: z.string().meta({ description: '脚本描述的 i18n key' }),
-  blockStartup: z.boolean().meta({ description: '是否阻塞节点 ready' }),
-  onFailure: SystemMigrationFailurePolicySchema.meta({
-    description: '任务失败后停止还是继续执行后续升级任务'
-  }),
+  blockStartup: z
+    .boolean()
+    .meta({ description: '是否属于启动阻塞任务或其前置依赖', example: false }),
+  independent: z
+    .boolean()
+    .meta({ description: '是否独立调度，不受普通队列顺序约束', example: false }),
   status: SystemMigrationStatusSchema.meta({ description: '当前运行状态' }),
   heartbeatAt: z.date().optional().meta({ description: '最近一次 lease 心跳时间' }),
   leaseExpireAt: z.date().optional().meta({ description: '当前 lease 到期时间' }),
@@ -157,7 +164,6 @@ export type SystemMigrationListItem = z.infer<typeof SystemMigrationListItemSche
 
 export const SystemMigrationListResponseSchema = z.object({
   serverTime: z.date().meta({ description: 'MongoDB 主节点时间，用于判断 lease 是否过期' }),
-  businessReady: z.boolean().meta({ description: '是否所有阻塞脚本均已成功' }),
   migrations: z.array(SystemMigrationListItemSchema).meta({ description: '有序升级脚本列表' })
 });
 
@@ -185,7 +191,7 @@ export type SystemMigrationFailedRecordsResponse = z.infer<
   typeof SystemMigrationFailedRecordsResponseSchema
 >;
 
-/** 重试只提交任务 ID；服务端再次校验任务必须为非阻塞 failed。 */
+/** 重试只提交任务 ID；服务端再次校验任务必须为 failed。 */
 export const RetrySystemMigrationBodySchema = z.object({
   migrationId: SystemMigrationIdSchema
 });

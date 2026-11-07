@@ -8,6 +8,7 @@ import React from 'react';
  * 提供全局统一的 Toast 默认行为；调用处显式传入的 duration 优先级最高。
  * 成功提示默认展示 3 秒，错误提示默认展示 5 秒，其他状态保持 2 秒。
  * 返回的 toast 引用保持稳定，调用时读取最新翻译和配置，避免触发调用方 effect 重跑。
+ * 字符串标题和描述自动翻译，React 节点保留原样，以支持版本名等局部强调。
  */
 export const useToast = (props?: UseToastOptions & { containerStyle?: CSSProperties }) => {
   const { containerStyle, ...toastProps } = props || {};
@@ -33,7 +34,9 @@ export const useToast = (props?: UseToastOptions & { containerStyle?: CSSPropert
 
       toast({
         ...options,
-        ...(options.title && { title: t(options.title as any) }),
+        ...(options.title && {
+          title: typeof options.title === 'string' ? t(options.title as any) : options.title
+        }),
         ...(options.description && {
           description:
             typeof options.description === 'string'

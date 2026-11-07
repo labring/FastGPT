@@ -1,6 +1,6 @@
 import { delay } from '@fastgpt/global/common/system/utils';
 import { getLogger, LogCategories } from '../../logger';
-import * as pg from 'pg';
+import pg from 'pg';
 import type { Pool, QueryResultRow } from 'pg';
 import { PG_ADDRESS } from '../constants';
 import { serviceEnv } from '../../../env';
@@ -38,12 +38,13 @@ export const connectPg = async (): Promise<Pool> => {
   global.pgClient.on('connect', async () => {
     logger.info('Postgres pool connected');
   });
-  global.pgClient.on('remove', async (client) => {
+  global.pgClient.on('remove', async () => {
     logger.warn('Postgres connection removed from pool');
   });
 
   try {
-    await global.pgClient.connect();
+    const client = await global.pgClient.connect();
+    client.release();
     return global.pgClient;
   } catch (error) {
     logger.error('Postgres connection failed', { error });
@@ -121,21 +122,26 @@ class PgClass {
       .join(',');
   }
 
-  async query<T extends QueryResultRow = any>(sql: string, values?: unknown[]) {
+  /** 保留默认查询超时；限流召回可单独延长客户端等待，先接收服务端的超时结果。 */
+  async query<T extends QueryResultRow = any>(
+    sql: string | { text: string; query_timeout: number },
+    values?: unknown[]
+  ) {
     const pg = await connectPg();
     const start = Date.now();
+    const sqlText = typeof sql === 'string' ? sql : sql.text;
     return pg.query<T>(sql, values).then((res) => {
       const time = Date.now() - start;
 
       if (time > 1000) {
-        const safeSql = sql.replace(/'\[[^\]]*?\]'/g, "'[x]'");
+        const safeSql = sqlText.replace(/'\[[^\]]*?\]'/g, "'[x]'");
         logger.warn('Postgres slow query detected', {
           level: 'slow-2',
           durationMs: time,
           sql: safeSql
         });
       } else if (time > 300) {
-        const safeSql = sql.replace(/'\[[^\]]*?\]'/g, "'[x]'");
+        const safeSql = sqlText.replace(/'\[[^\]]*?\]'/g, "'[x]'");
         logger.warn('Postgres slow query detected', {
           level: 'slow-1',
           durationMs: time,

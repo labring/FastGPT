@@ -2,10 +2,9 @@ import React from 'react';
 import { Box, Flex, Table, Tbody, Td, Th, Thead, Tr } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import type { ModelPriceTierType, PriceType } from '@fastgpt/global/core/ai/model/schema';
+import { roundModelPrice } from '@fastgpt/global/core/ai/model/pricing';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { FixedTableLayout } from '@fastgpt/web/components/common/FixedTable';
-
-const getTierLowerBoundLabel = (tier: ModelPriceTierType) => String(tier.minInputTokens ?? 0);
 
 const formatPriceSummary = ({
   tiers,
@@ -16,7 +15,7 @@ const formatPriceSummary = ({
   priceKey: 'inputPrice' | 'outputPrice';
   unitLabel: string;
 }) => {
-  const prices = tiers.map((tier) => tier[priceKey] ?? 0);
+  const prices = tiers.map((tier) => roundModelPrice(tier[priceKey]));
   const minPrice = Math.min(...prices);
   const maxPrice = Math.max(...prices);
   const compactUnitLabel = unitLabel.replace(/\s*\/\s*/g, '/').trim();
@@ -167,7 +166,7 @@ const TierBreakdownTable = ({ tiers }: { tiers: ModelPriceTierType[] }) => {
               </colgroup>
               <Tbody>
                 {tiers.map((tier, index) => (
-                  <Tr key={`${tier.minInputTokens ?? 1}-${tier.maxInputTokens ?? 'open'}-${index}`}>
+                  <Tr key={`${tier.maxInputTokens ?? 'open'}-${index}`}>
                     <Td
                       px={3}
                       py={2}
@@ -184,7 +183,7 @@ const TierBreakdownTable = ({ tiers }: { tiers: ModelPriceTierType[] }) => {
                         color={'myGray.700'}
                         whiteSpace={'nowrap'}
                       >
-                        <Box>{`${getTierLowerBoundLabel(tier)} < `}</Box>
+                        <Box>{`${tiers[index - 1]?.maxInputTokens ?? 0} < `}</Box>
                         <Box>{t('common:Input')}</Box>
                         {typeof tier.maxInputTokens === 'number' ? (
                           <Box>{` <= ${tier.maxInputTokens}`}</Box>
@@ -200,7 +199,7 @@ const TierBreakdownTable = ({ tiers }: { tiers: ModelPriceTierType[] }) => {
                       borderColor={'myGray.200'}
                       whiteSpace={'nowrap'}
                     >
-                      {`${tier.inputPrice} ${t('common:support.wallet.subscription.point')}`}
+                      {`${roundModelPrice(tier.inputPrice)} ${t('common:support.wallet.subscription.point')}`}
                     </Td>
                     <Td
                       px={3}
@@ -210,7 +209,7 @@ const TierBreakdownTable = ({ tiers }: { tiers: ModelPriceTierType[] }) => {
                       borderColor={'myGray.200'}
                       whiteSpace={'nowrap'}
                     >
-                      {`${tier.outputPrice} ${t('common:support.wallet.subscription.point')}`}
+                      {`${roundModelPrice(tier.outputPrice)} ${t('common:support.wallet.subscription.point')}`}
                     </Td>
                   </Tr>
                 ))}
@@ -258,7 +257,7 @@ export const PriceLine = React.memo(
     fontSize?: string;
     color?: string;
   }) => {
-    const tiers = config.priceTiers || [];
+    const tiers = config.pricing?.tiers ?? [];
     if (tiers.length === 0) return <Box>-</Box>;
     return (
       <TierTooltip tiers={tiers} color={color}>
@@ -269,7 +268,7 @@ export const PriceLine = React.memo(
 );
 
 const PriceTiersLabel = ({ config, unitLabel }: { config: PriceType; unitLabel: string }) => {
-  const tiers = config.priceTiers || [];
+  const tiers = config.pricing?.tiers ?? [];
   if (tiers.length === 0) return <Box>-</Box>;
   return (
     <TierTooltip tiers={tiers} color={'myGray.700'}>

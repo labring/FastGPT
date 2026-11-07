@@ -1,5 +1,5 @@
 # --------- install dependence -----------
-FROM node:24-bookworm-slim AS maindeps
+FROM node:24.22.1-bookworm-slim AS maindeps
 WORKDIR /app
 
 ARG proxy
@@ -23,7 +23,7 @@ RUN if [ -z "$proxy" ]; then \
     fi
 
 # --------- builder -----------
-FROM node:24-bookworm-slim AS builder
+FROM node:24.22.1-bookworm-slim AS builder
 WORKDIR /app
 
 ARG proxy
@@ -46,6 +46,7 @@ ENV NEXT_PUBLIC_BASE_URL=$base_url
 # Build SDK workspace packages first so subpath exports like
 # @fastgpt-sdk/otel/logger have generated dist type files.
 RUN pnpm build:sdks
+RUN pnpm --filter @fastgpt/workflow-core build
 RUN pnpm --filter=app build
 
 # Remove build-time-only packages from standalone output before copying to runner.
@@ -53,7 +54,7 @@ RUN rm -rf projects/app/.next/standalone/node_modules/.pnpm/typescript@*/ \
     projects/app/.next/standalone/node_modules/.pnpm/*-linux-x64-musl@*/
 
 # --------- runner -----------
-FROM node:24-bookworm-slim AS runner
+FROM node:24.22.1-bookworm-slim AS runner
 WORKDIR /app
 
 ARG proxy
@@ -82,6 +83,7 @@ COPY --from=builder --chown=nextjs:nodejs /app/projects/app/worker /app/projects
 COPY --from=builder --chown=nextjs:nodejs /app/projects/app/worker /app/worker
 # LiteParse is externalized from the worker bundle and loads this file at runtime.
 RUN test -f /app/worker/node_modules/@llamaindex/liteparse-wasm/pkg/liteparse_wasm_bg.wasm
+
 # anydoc is a N-API package; loading it here verifies that the matching gnu binary was packaged.
 RUN node -e "require('/app/worker/node_modules/@fastgpt-sdk/anydoc')"
 
@@ -89,9 +91,15 @@ COPY --from=maindeps /app/node_modules/@zilliz/milvus2-sdk-node ./node_modules/@
 
 # copy package.json to version file
 COPY --from=builder /app/projects/app/package.json ./package.json
-# copy config and data files (use --chown to avoid extra layer from chown)
+# 用于 STT 测试
 COPY --chown=nextjs:nodejs ./projects/app/data/test.mp3 /app/data/test.mp3
+# 用于 IP 推测
 COPY --chown=nextjs:nodejs ./projects/app/data/GeoLite2-City.mmdb /app/data/GeoLite2-City.mmdb
+
+# 辅助脚本用于重置 root 密码
+COPY --from=builder --chown=nextjs:nodejs /app/projects/app/scripts/dist/reset-root-password.cjs /app/scripts/reset-root-password.cjs
+RUN RESET_ROOT_PASSWORD_SELFTEST=1 node /app/scripts/reset-root-password.cjs
+
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1

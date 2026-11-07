@@ -5,7 +5,7 @@ import { createContext } from 'use-context-selector';
 import { getChatSourceKey, type ChatSourceTarget } from '@/web/core/chat/utils';
 
 type WorkflowRuntimeContextType = {
-  outLinkAuthData: OutLinkChatAuthProps;
+  outLinkAuthData?: OutLinkChatAuthProps;
   /** 标准内部 chat target。ChatBox 终态应优先消费它。 */
   sourceTarget: ChatSourceTarget;
   /** 前端运行时状态隔离 key：`${sourceType}:${sourceId}`。 */
@@ -18,7 +18,7 @@ type WorkflowRuntimeContextType = {
 };
 
 export const WorkflowRuntimeContext = createContext<WorkflowRuntimeContextType>({
-  outLinkAuthData: {},
+  outLinkAuthData: undefined,
   sourceTarget: {
     sourceType: 'app' as ChatSourceTarget['sourceType'],
     sourceId: ''
@@ -39,7 +39,7 @@ export const WorkflowRuntimeContextProvider = ({
 }: {
   sourceTarget: ChatSourceTarget;
   chatId: string;
-  outLinkAuthData: OutLinkChatAuthProps;
+  outLinkAuthData?: OutLinkChatAuthProps;
   fileUploadMode: WorkflowRuntimeContextType['fileUploadMode'];
   children: React.ReactNode;
 }) => {

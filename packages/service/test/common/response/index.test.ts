@@ -1,19 +1,25 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 import { ApiRequestInputParseError } from '../../../common/zod/requestParseError';
-import { UserError } from '@fastgpt/global/common/error/utils';
+import { UserError, UserConfigError } from '@fastgpt/global/common/error/utils';
 import { ERROR_ENUM, ERROR_RESPONSE } from '@fastgpt/global/common/error/errorCode';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
 import { SandboxErrEnum } from '@fastgpt/global/common/error/code/sandbox';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
+import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
+import { EventEmitter } from 'node:events';
+import { ChatGeneratingConflictError } from '@fastgpt/global/core/chat/error';
+import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 
 vi.unmock('@fastgpt/service/common/response');
 
-const logger = {
-  info: vi.fn(),
-  error: vi.fn()
-};
+const { logger } = vi.hoisted(() => ({
+  logger: {
+    info: vi.fn(),
+    error: vi.fn()
+  }
+}));
 
 vi.mock('@fastgpt/service/common/logger', () => ({
   getLogger: () => logger,
@@ -24,7 +30,45 @@ vi.mock('@fastgpt/service/common/logger', () => ({
   }
 }));
 
-const { getSseErrorResponse, jsonRes, processError } = await import('../../../common/response');
+const profilingMocks = vi.hoisted(() => ({ markProfileError: vi.fn() }));
+
+vi.mock('@fastgpt/service/common/profiling', () => profilingMocks);
+
+const { getSseErrorResponse, jsonRes, processError, responseWrite, sseErrRes } =
+  await import('../../../common/response');
+
+describe('chat generating conflict recovery target', () => {
+  it.each([{ responseChatItemId: 'active-A' }, { reusePreviousAi: true as const }])(
+    'preserves the recovery target in both JSON and SSE errors: %o',
+    (data) => {
+      const error = new ChatGeneratingConflictError(data);
+      const res = { status: vi.fn().mockReturnThis(), json: vi.fn() };
+      jsonRes(res as unknown as Parameters<typeof jsonRes>[0], { code: 409, error });
+      expect(res.status).toHaveBeenCalledWith(409);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          statusText: ChatErrEnum.chatIsGenerating,
+          data
+        })
+      );
+      expect(JSON.parse(getSseErrorResponse(error).data)).toMatchObject({
+        statusText: ChatErrEnum.chatIsGenerating,
+        data
+      });
+    }
+  );
+
+  it('does not expose arbitrary data attached to ordinary business errors', () => {
+    expect(
+      processError({
+        error: {
+          message: ChatErrEnum.chatIsGenerating,
+          data: { responseChatItemId: 'untrusted' }
+        }
+      }).data
+    ).toBeNull();
+  });
+});
 
 function buildZodError() {
   try {
@@ -87,6 +131,35 @@ describe('processError zod logging', () => {
     );
     expect(logger.info).not.toHaveBeenCalled();
   });
+
+  it('does not log expected user config errors', () => {
+    const processed = processError({
+      error: new UserConfigError('Invalid MCP URL'),
+      url: '/api/test',
+      defaultCode: 400
+    });
+
+    expect(processed).toMatchObject({
+      message: 'Invalid MCP URL',
+      httpStatus: 400
+    });
+    expect(logger.info).not.toHaveBeenCalled();
+    expect(logger.error).not.toHaveBeenCalled();
+  });
+
+  it('falls back safely when a serialized user config error has a non-string display message', () => {
+    const processed = processError({
+      error: {
+        name: 'UserConfigError',
+        message: 'Invalid API key',
+        displayMessage: { text: 'unexpected object' }
+      } as any,
+      url: '/api/test',
+      defaultCode: 400
+    });
+
+    expect(processed.message).toBe('Invalid API key');
+  });
 });
 
 describe('processError HTTP status mapping', () => {
@@ -131,6 +204,25 @@ describe('processError HTTP status mapping', () => {
     ).toBe('Model type mismatch: https://xxx');
     expect(processError({ error: new UserError('custom', '具体提示') }).message).toBe('具体提示');
   });
+  it('maps a config UserError to HTTP 400 even when defaultCode is 500', () => {
+    const error = new UserConfigError('MCP protocol mismatch');
+    const processed = processError({ error, defaultCode: 500 });
+    expect(processed.httpStatus).toBe(400);
+    expect(processed.code).toBe(400);
+
+    const res = { status: vi.fn().mockReturnThis(), json: vi.fn() } as unknown as Parameters<
+      typeof jsonRes
+    >[0];
+    jsonRes(res, { error, code: 500 });
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        code: 400,
+        message: 'MCP protocol mismatch'
+      })
+    );
+  });
+
   it('maps a missing file to HTTP 404', () => {
     const processed = processError({
       error: CommonErrEnum.fileNotFound
@@ -152,7 +244,11 @@ describe('jsonRes HTTP status mapping', () => {
     [UserErrEnum.invalidVerificationCode, 400],
     [UserErrEnum.sendVerificationCodeTooFrequently, 429],
     [UserErrEnum.verifyCodeTooFrequently, 429],
-    [SandboxErrEnum.agentSandboxInitializing, 409]
+    [SandboxErrEnum.agentSandboxInitializing, 409],
+    [SandboxErrEnum.agentSandboxLimitReached, 409],
+    [SandboxErrEnum.agentSandboxTeamLimitReached, 409],
+    [AppErrEnum.workflowBuilderVersionExpired, 410],
+    [AppErrEnum.workflowBuilderVersionNotFound, 404]
   ] as const)('uses the configured HTTP status for %s', (errorKey, httpStatus) => {
     const res = createResponse();
 
@@ -224,5 +320,124 @@ describe('getSseErrorResponse logging', () => {
     expect(JSON.parse(response.data)).toEqual(ERROR_RESPONSE[ERROR_ENUM.unAuthorization]);
     expect(response.shouldClearCookie).toBe(true);
     expect(logger.error).not.toHaveBeenCalled();
+  });
+});
+
+describe('Provider error response messages', () => {
+  it.each([
+    { data: { message: 'hourly quota exhausted' }, expected: 'hourly quota exhausted' },
+    { data: { msg: '飞书 Token 已过期' }, expected: '飞书 Token 已过期' },
+    { data: { errmsg: 'access denied' }, expected: 'access denied' },
+    { data: { error: { message: '具体权限缺失' } }, expected: '具体权限缺失' },
+    { data: 'upstream text error', expected: 'upstream text error' },
+    { data: { message: ' ' }, expected: 'Request failed with status code 429' },
+    { data: { message: { unexpected: 'object' } }, expected: 'Request failed with status code 429' }
+  ])('JSON 和 SSE 保留响应体原因：$expected', ({ data, expected }) => {
+    const error = {
+      message: 'Request failed with status code 429',
+      response: { status: 429, statusText: 'Too Many Requests', data }
+    };
+    const res = { status: vi.fn().mockReturnThis(), json: vi.fn() } as unknown as Parameters<
+      typeof jsonRes
+    >[0];
+    jsonRes(res, { code: 500, error });
+    expect(res.status).toHaveBeenCalledWith(500);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({ code: 500, message: expected, data: null })
+    );
+    expect(processError({ error }).shouldClearCookie).toBe(false);
+    expect(JSON.parse(getSseErrorResponse(error).data).message).toBe(expected);
+  });
+
+  it('上游原因仍经过统一脱敏，不返回请求配置', () => {
+    const res = { status: vi.fn().mockReturnThis(), json: vi.fn() } as unknown as Parameters<
+      typeof jsonRes
+    >[0];
+    jsonRes(res, {
+      code: 500,
+      error: {
+        response: { data: { msg: 'request https://private.example/path failed' } },
+        config: { headers: { Authorization: 'secret' } }
+      }
+    });
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({ message: 'request https://xxx failed' })
+    );
+    expect(JSON.stringify(vi.mocked(res.json).mock.calls)).not.toContain('secret');
+  });
+});
+
+describe('SSE stream resume mirror', () => {
+  it('keeps mirroring events after the original HTTP response is closed', async () => {
+    const { createSseStreamContext } = await import('../../../common/response/sse');
+    const response = Object.assign(new EventEmitter(), {
+      closed: true,
+      destroyed: true,
+      writableEnded: false,
+      headersSent: true,
+      setHeader: vi.fn(),
+      write: vi.fn(),
+      end: vi.fn()
+    });
+    const mirroredEvents: string[] = [];
+    const flushMirror = vi.fn(async () => undefined);
+    const context = createSseStreamContext({
+      res: response as any,
+      streamResumeMirror: {
+        enqueueRaw: (event) => {
+          mirroredEvents.push(event);
+        },
+        flush: flushMirror,
+        shrinkTTLAfterComplete: vi.fn(async () => undefined)
+      }
+    });
+
+    context.write({ event: 'answer', data: 'continued output' });
+    context.write({ event: 'done', data: '[DONE]' });
+    await context.flushResume();
+
+    expect(mirroredEvents).toEqual([
+      'event: answer\ndata: continued output\n\n',
+      'event: done\ndata: [DONE]\n\n'
+    ]);
+    expect(flushMirror).toHaveBeenCalledTimes(1);
+    expect(response.write).not.toHaveBeenCalled();
+  });
+});
+
+describe('SSE error response profiling', () => {
+  beforeEach(() => {
+    profilingMocks.markProfileError.mockClear();
+  });
+
+  it('marks the request profile as failed when building an SSE error payload', () => {
+    const error = new Error('auth failed');
+
+    const response = getSseErrorResponse(error);
+
+    // 响应载荷保持原样，只是同时把请求标记为失败
+    expect(response.event).toBe('error');
+    expect(profilingMocks.markProfileError).toHaveBeenCalledWith(error);
+  });
+
+  it('marks the request profile as failed when a direct error event is written', () => {
+    const res = { write: vi.fn(() => true) };
+
+    responseWrite({ res: res as any, event: 'error', data: '{"message":"node failed"}' });
+    expect(profilingMocks.markProfileError).toHaveBeenCalledWith('{"message":"node failed"}');
+
+    profilingMocks.markProfileError.mockClear();
+    responseWrite({ res: res as any, event: 'answer', data: 'content' });
+    expect(profilingMocks.markProfileError).not.toHaveBeenCalled();
+  });
+
+  it('marks the request profile as failed when sseErrRes writes an SSE error', () => {
+    const error = new Error('auth failed');
+    const res = { write: vi.fn(() => true) };
+
+    sseErrRes(res as any, error);
+
+    expect(res.write).toHaveBeenCalled();
+    expect(profilingMocks.markProfileError).toHaveBeenCalledWith(error);
   });
 });

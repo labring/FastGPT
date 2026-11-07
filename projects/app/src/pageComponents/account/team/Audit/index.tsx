@@ -1,12 +1,15 @@
 import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import { Box, Flex, Table, Tbody, Td, Th, Thead, Tr } from '@chakra-ui/react';
-import { useMemo, useCallback, useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import { getOperationLogs } from '@/web/support/user/team/operantionLog/api';
 import { auditLogMap } from '@fastgpt/web/support/user/audit/constants';
-import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
+import {
+  TeamAuditEventList,
+  type TeamAuditEvent
+} from '@fastgpt/global/support/user/audit/constants';
 import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 import UserBox from '@fastgpt/web/components/common/UserBox';
 import {
@@ -16,32 +19,24 @@ import {
   type MultiSelectFilterValue,
   useCommonFilterLabels
 } from '@fastgpt/web/components/common/TagFilter';
-import { specialProcessors } from './processors';
-import { defaultMetadataProcessor } from './processors/commonProcessor';
+import { processAuditMetadata } from './processors';
 import TeamMemberFilter from '@/components/support/user/TeamMemberFilter';
+
 function AuditLog({ Tabs }: { Tabs: React.ReactNode }) {
   const { t } = useSafeTranslation();
   const labels = useCommonFilterLabels();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [memberFilter, setMemberFilter] = useState(createMultiSelectFilter());
   const [eventFilter, setEventFilter] =
-    useState<MultiSelectFilterValue<AuditEventEnum>>(createMultiSelectFilter());
+    useState<MultiSelectFilterValue<TeamAuditEvent>>(createMultiSelectFilter());
 
+  // 筛选项包含成员事件与知识库事件；只列出 auditLogMap 中存在文案的事件，避免历史枚举缺文案时报错
   const eventOptions = useMemo(
     () =>
-      Object.values(AuditEventEnum).map((event) => ({
+      TeamAuditEventList.filter((event) => auditLogMap[event]).map((event) => ({
         label: t(auditLogMap[event].typeLabel),
         value: event
       })),
-    [t]
-  );
-
-  const processMetadataByEvent = useCallback(
-    (event: string, metadata: any) => {
-      const defaultFormat = defaultMetadataProcessor(metadata, t);
-      const specialFormat = specialProcessors[event as AuditEventEnum]?.(defaultFormat, t);
-      return specialFormat || defaultFormat;
-    },
     [t]
   );
 
@@ -60,8 +55,8 @@ function AuditLog({ Tabs }: { Tabs: React.ReactNode }) {
     pageSize,
     Pagination
   } = usePagination(getOperationLogs, {
-    defaultPageSize: 100,
-    pageSizeOptions: [50, 100, 200],
+    defaultPageSize: 20,
+    pageSizeOptions: [20, 50, 100, 200],
     pageSizeCacheKey: 'account-team-audit',
     refreshDeps: [searchParams],
     params: searchParams,
@@ -152,7 +147,11 @@ function AuditLog({ Tabs }: { Tabs: React.ReactNode }) {
             <Tbody>
               {auditLog.map((log) => {
                 const i18nData = auditLogMap[log.event];
-                const metadata = processMetadataByEvent(log.event, { ...log.metadata });
+                const metadata = processAuditMetadata({
+                  event: log.event,
+                  metadata: log.metadata,
+                  t
+                });
 
                 return i18nData ? (
                   <Tr key={log._id} overflow={'unset'}>

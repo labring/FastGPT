@@ -4,6 +4,7 @@ import type {
 } from '@fastgpt/global/core/chat/type';
 import { type ChatBoxInputType, type UserInputFileItemType } from '../type';
 import { getFileIcon } from '@fastgpt/global/common/file/icon';
+import { getUserChatSelect } from '@fastgpt/global/core/chat/input/utils';
 import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
 
 export const formatChatValue2InputType = (value?: ChatItemValueItemType[]): ChatBoxInputType => {
@@ -39,10 +40,8 @@ export const formatChatValue2InputType = (value?: ChatItemValueItemType[]): Chat
       )
       .filter(Boolean) as UserInputFileItemType[]) || [];
 
-  return {
-    text,
-    files
-  };
+  const select = getUserChatSelect(value);
+  return { text, files, ...(select ? { select } : {}) };
 };
 
 export const stripChatValueFileUrls = (value: UserChatItemValueItemType[] = []) =>

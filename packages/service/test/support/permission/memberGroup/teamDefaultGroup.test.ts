@@ -1,5 +1,6 @@
 import { TeamPermission } from '@fastgpt/global/support/permission/user/controller';
 import {
+  TeamApikeyCreateRoleVal,
   TeamAppCreateRoleVal,
   TeamDatasetCreateRoleVal,
   TeamSkillCreateRoleVal
@@ -20,7 +21,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 vi.unmock(import('@fastgpt/service/common/mongo/sessionRun'));
 
 const originalDefaultPermissionsEnabled = serviceEnv.DEFAULT_TEAM_BASIC_PERMISSIONS_ENABLED;
-const defaultBasicRole = TeamAppCreateRoleVal | TeamSkillCreateRoleVal | TeamDatasetCreateRoleVal;
+const defaultBasicRole =
+  TeamAppCreateRoleVal |
+  TeamSkillCreateRoleVal |
+  TeamDatasetCreateRoleVal |
+  TeamApikeyCreateRoleVal;
 const setDefaultPermissionsEnabled = (enabled: boolean) =>
   Reflect.set(serviceEnv, 'DEFAULT_TEAM_BASIC_PERMISSIONS_ENABLED', enabled);
 
@@ -53,7 +58,19 @@ describe('createTeamDefaultGroup', () => {
     setDefaultPermissionsEnabled(true);
     const teamId = String(new Types.ObjectId());
 
-    const group = await mongoSessionRun((session) => createTeamDefaultGroup({ teamId, session }));
+    const group = await mongoSessionRun(async (session) => {
+      const group = await createTeamDefaultGroup({ teamId, session });
+      const role = await getTmbPermission({
+        resourceType: PerResourceTypeEnum.team,
+        teamId,
+        tmbId: String(new Types.ObjectId()),
+        session
+      });
+
+      // 权限读取必须能看到事务内新建的默认组和 ACL，且不会在事务外补建默认组。
+      expect(role).toBe(defaultBasicRole);
+      return group;
+    });
     const permissionRow = await MongoResourcePermission.findOne({
       teamId,
       groupId: group._id,
@@ -67,7 +84,7 @@ describe('createTeamDefaultGroup', () => {
     expect(permission.hasAppCreatePer).toBe(true);
     expect(permission.hasSkillCreatePer).toBe(true);
     expect(permission.hasDatasetCreatePer).toBe(true);
-    expect(permission.hasApikeyCreatePer).toBe(false);
+    expect(permission.hasApikeyCreatePer).toBe(true);
     expect(permission.hasManagePer).toBe(false);
   });
 
@@ -93,7 +110,7 @@ describe('createTeamDefaultGroup', () => {
     expect(permission.hasAppCreatePer).toBe(true);
     expect(permission.hasSkillCreatePer).toBe(true);
     expect(permission.hasDatasetCreatePer).toBe(true);
-    expect(permission.hasApikeyCreatePer).toBe(false);
+    expect(permission.hasApikeyCreatePer).toBe(true);
     expect(permission.hasManagePer).toBe(false);
   });
 

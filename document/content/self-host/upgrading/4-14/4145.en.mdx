@@ -11,7 +11,7 @@ upgradeTags:
 
 ### 1. Update Storage Bucket Environment Variables
 
-This version adds native support for OSS and COS in addition to MinIO, so the related environment variables need to be renamed. Below is the configuration for MinIO. For other providers, refer to [Object Storage Configuration](../../config/object-storage.en.mdx).
+This version adds native support for OSS and COS in addition to MinIO, so the related environment variables need to be renamed. Below is the configuration for MinIO. For other providers, refer to [Object Storage Configuration](/en/self-host/config/object-storage).
 
 **New Variables**
 
@@ -22,7 +22,7 @@ STORAGE_ACCESS_KEY_ID=minioadmin
 STORAGE_SECRET_ACCESS_KEY=minioadmin
 STORAGE_PUBLIC_BUCKET=fastgpt-public
 STORAGE_PRIVATE_BUCKET=fastgpt-private
-STORAGE_EXTERNAL_ENDPOINT=http://192.168.0.2:9000 # An address accessible by both the server and client. Can be a static host IP or domain name. Do not use 127.0.0.1 or localhost (containers cannot access loopback addresses).
+STORAGE_EXTERNAL_ENDPOINT=http://192.168.0.2:9000 # An address accessible by both the server and client. Can be a static host IP or domain name. Use a reachable host address; 127.0.0.1 and localhost point to the container itself.
 STORAGE_S3_ENDPOINT=http://fastgpt-minio:9000 # protocol://domain(IP):port
 ```
 

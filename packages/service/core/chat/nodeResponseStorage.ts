@@ -69,7 +69,9 @@ const slimQuoteItem = (quote: SearchDataResponseQuoteListItemType) => ({
   collectionId: quote.collectionId,
   sourceId: quote.sourceId,
   sourceName: quote.sourceName,
-  score: quote.score
+  score: quote.score,
+  // 召回排名是调用方对比召回/重排的必备字段，必须随快照一起落库。
+  ...(quote.retrievalRank !== undefined ? { retrievalRank: quote.retrievalRank } : {})
 });
 
 /**
@@ -148,16 +150,6 @@ const slimNodeResponseData = (response: ChatHistoryItemResType): ChatHistoryItem
     'toolCallOutputTokens'
   ];
   numberKeys.forEach((key) => keepNumber(data, source, key));
-
-  // deepSearchResult 没有独立 child row；fallback row 丢弃嵌套结构时，把它折算进顶层
-  // token 字段，保留详情行中的 LLM 消耗信息。
-  const deepSearchResult = (source.deepSearchResult || {}) as Record<string, unknown>;
-  (['inputTokens', 'outputTokens'] as const).forEach((key) => {
-    const value = deepSearchResult[key];
-    if (typeof value === 'number' && Number.isFinite(value)) {
-      data[key] = ((data[key] as number) || 0) + value;
-    }
-  });
 
   return data as ChatHistoryItemResType;
 };

@@ -1,11 +1,12 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   parseApiInput: vi.fn(),
   authDatasetCollection: vi.fn(),
   checkDatasetIndexLimit: vi.fn(),
-  getModelHandle: vi.fn(),
+  getSystemModelHandle: vi.fn(),
+  getTeamModelHandle: vi.fn(),
   getTrainingModeByCollection: vi.fn(),
   getDatasetImageIndexCapability: vi.fn(),
   pushDataListToTrainingQueue: vi.fn(),
@@ -30,8 +31,9 @@ vi.mock('@fastgpt/service/support/permission/teamLimit', () => ({
   checkDatasetIndexLimit: mocks.checkDatasetIndexLimit
 }));
 
-vi.mock('@fastgpt/service/core/ai/model', () => ({
-  getModelHandle: mocks.getModelHandle
+vi.mock('@fastgpt/service/core/ai/model/catalog/service', () => ({
+  getSystemModelHandle: mocks.getSystemModelHandle,
+  getTeamModelHandle: mocks.getSystemModelHandle
 }));
 
 vi.mock('@fastgpt/service/core/dataset/collection/utils', () => ({
@@ -74,10 +76,14 @@ describe('pushData imageId authorization', () => {
         dataset: { _id: datasetId }
       }
     });
-    mocks.getModelHandle.mockResolvedValue({
-      getEmbeddingModelData: vi.fn(() => ({ modelId: 'vec-model' })),
-      getLLMModelData: vi.fn(() => ({ modelId: 'agent-model' })),
-      getVlmModelData: vi.fn()
+    mocks.getSystemModelHandle.mockResolvedValue({
+      getModelData: vi.fn(
+        (_ref: unknown, options?: { type?: string; vision?: boolean; optional?: boolean }) => {
+          if (options?.vision) return undefined;
+          if (options?.type === 'embedding') return { modelId: 'vec-model' };
+          return { modelId: 'agent-model' };
+        }
+      )
     });
     mocks.getDatasetImageIndexCapability.mockReturnValue({
       supportImageIndex: false

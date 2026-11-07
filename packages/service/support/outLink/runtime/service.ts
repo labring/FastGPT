@@ -1,9 +1,5 @@
 import { Readable } from 'node:stream';
-import {
-  ChatGenerateStatusEnum,
-  ChatRoleEnum,
-  ChatSourceTypeEnum
-} from '@fastgpt/global/core/chat/constants';
+import { ChatRoleEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import type { UserChatItemType } from '@fastgpt/global/core/chat/type';
 import {
   getWorkflowEntryNodeIds,
@@ -25,7 +21,7 @@ import {
 } from '@fastgpt/global/core/chat/utils';
 import type { OutlinkAppType, OutLinkSchemaType } from '@fastgpt/global/support/outLink/type';
 import { getAppLatestVersion } from '../../../core/app/version/controller';
-import { loadWorkflowResourceContext } from '../../../core/workflow/utils/resource';
+import { createWorkflowResourceContext } from '../../../core/workflow/resource/context';
 import { MongoApp } from '../../../core/app/schema';
 import { getChatItems } from '../../../core/chat/controller';
 import {
@@ -34,7 +30,6 @@ import {
   type Props as SaveChatProps
 } from '../../../core/chat/saveChat';
 import { preChatRound, type PreChatRoundResult } from '../../../core/chat/utils/prepare';
-import { updateChatGenerateStatus } from '../../../core/chat/chatGenerateStatus';
 import { dispatchWorkFlow } from '../../../core/workflow/dispatch';
 import { WORKFLOW_MAX_RUN_TIMES } from '../../../core/workflow/constants';
 import {
@@ -50,6 +45,7 @@ import { getLogger, LogCategories } from '../../../common/logger';
 import { mongoSessionRun } from '../../../common/mongo/sessionRun';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { authOutLinkLimit } from './auth';
+import { assertTeamFrequencyLimit, LimitTypeEnum } from '../../../common/api/frequencyLimit';
 import { assertCancellation } from '../../user/account/cancellation/guard';
 import type {
   OutlinkMessageHandleResult,
@@ -333,6 +329,11 @@ export async function runOutlinkRuntime<T extends OutlinkAppType>({
       outLink: outLinkConfig as OutLinkSchemaType,
       question: userQuestion
     });
+    // 外部渠道消息同样消费团队对话 QPM，避免绕过租户配额；放在去重之后，平台重试不重复计数
+    await assertTeamFrequencyLimit({
+      teamId: String(outLinkConfig.teamId),
+      type: LimitTypeEnum.chat
+    });
 
     const workflowFileLimits = await getWorkflowFileLimits({
       teamId: String(outLinkConfig.teamId)
@@ -378,8 +379,11 @@ export async function runOutlinkRuntime<T extends OutlinkAppType>({
       teamId: String(outLinkConfig.teamId),
       tmbId: String(outLinkConfig.tmbId),
       source: getChatSourceByPublishChannel(outLinkConfig.type),
+      publishSource: {
+        type: getChatSourceByPublishChannel(outLinkConfig.type),
+        id: String(outLinkConfig._id)
+      },
       sourceName: outLinkConfig.name,
-      shareId: outLinkConfig.shareId,
       outLinkUid: chatUserId,
       userContent,
       responseChatItemId: messageId
@@ -409,7 +413,7 @@ export async function runOutlinkRuntime<T extends OutlinkAppType>({
       uid: chatUserId || outLinkConfig.tmbId,
       chatId: preparedRound.chatId,
       responseChatItemId: preparedRound.responseChatItemId,
-      resourceContext: await loadWorkflowResourceContext({
+      resourceContext: createWorkflowResourceContext({
         resources,
         teamId: app.teamId
       }),
@@ -461,8 +465,8 @@ export async function runOutlinkRuntime<T extends OutlinkAppType>({
       nodes,
       appChatConfig: chatConfig,
       variables: newVariables,
-      shareId: outLinkConfig.shareId,
       source: getChatSourceByPublishChannel(outLinkConfig.type),
+      publishSource: preparedRound.publishSource,
       sourceName: outLinkConfig.name,
       userContent,
       aiContent: {
@@ -500,20 +504,6 @@ export async function runOutlinkRuntime<T extends OutlinkAppType>({
             error: saveError
           });
         });
-      } else {
-        await updateChatGenerateStatus({
-          sourceType: ChatSourceTypeEnum.app,
-          sourceId: roundState.sourceId,
-          chatId: preparedRound.chatId,
-          status: ChatGenerateStatusEnum.error
-        }).catch((saveError) => {
-          logger.error('Outlink runtime unlock failed', {
-            shareId: outLinkConfig.shareId,
-            chatId,
-            messageId,
-            error: saveError
-          });
-        });
       }
     }
 
@@ -538,5 +528,7 @@ export async function runOutlinkRuntime<T extends OutlinkAppType>({
       });
     }
     return { status: 'handled' };
+  } finally {
+    await roundState.preparedRound?.releaseGenerationLease?.();
   }
 }

@@ -1,5 +1,4 @@
 import { LeaseCache } from '../caches';
-import { bullMQ } from './binding';
 import type { Queue } from './types';
 
 const FAILED_JOB_RECOVERY_LEASE_TTL_MS = 30 * 1000;
@@ -41,7 +40,7 @@ export async function addOrRequeueFailedJob<DataType, ReturnType = void>({
   if (existing) {
     if (existing.state !== 'failed') return existing.job;
 
-    const leaseCache = new LeaseCache({ logger: bullMQ.getLogger() });
+    const leaseCache = new LeaseCache();
     return leaseCache.withLease({
       key: `bullmq:failed-job-recovery:${queue.name}:${opts.jobId}`,
       label: 'bullmq-failed-job-recovery',

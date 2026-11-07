@@ -25,8 +25,8 @@ CODE_SANDBOX_TOKEN=<code sandbox credential>
 
 ### 2. Update Images
 
-- FastGPT image tag: v4.14.9.1
-- FastGPT Commercial Edition image tag: v4.14.9.1
+- FastGPT image tag: v4.14.9.5
+- FastGPT Commercial Edition image tag: v4.14.9.5
 - fastgpt-plugin image tag: v0.5.5
 - mcp_server — no update required
 - sandbox image tag: v4.14.9.1
@@ -62,7 +62,7 @@ The `/api/core/chat/getPaginationRecords` endpoint now returns a `useAgentSandbo
 4. Workflow variable values containing special characters (`$.`) caused incorrect value substitution.
 5. Referencing an agent tool in a workflow caused a version retrieval error.
 6. When switching from a model that supports certain parameters to one that does not, the unsupported parameters were not removed, causing model invocation failures.
-7. Closing a shared link's display status caused AI responses in the chat history to render incorrectly.
+7. Disabling run-status display in a share link caused AI responses in chat history to render incorrectly.
 8. Re-opening the preview dialog in workflow preview mode lost form input content.
 9. Custom fields in subscription plans were not applied.
 10. The login endpoint had an async session issue that produced error logs.
@@ -70,6 +70,8 @@ The `/api/core/chat/getPaginationRecords` endpoint now returns a `useAgentSandbo
 12. Video/audio custom file type workflows were missing file link variables at the start node.
 13. User input messages were not escaped to Markdown format.
 14. Fixed partial context concatenation errors in AgentV2.
+15. Fixed a security vulnerability in the login API.
+16. Fixed nested workflow tools preventing the parent workflow from stopping when the tool was not connected to an end node as expected.
 
 ## Code Improvements
 

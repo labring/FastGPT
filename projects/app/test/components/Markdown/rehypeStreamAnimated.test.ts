@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest';
 import {
   rehypeStreamAnimated,
   type StreamAnimatedRuntime
-} from '@/components/Markdown/rehypeStreamAnimated';
+} from '@/components/Markdown/stream/rehypeStreamAnimated';
 import { prepareStreamingMarkdown } from '@/components/Markdown/utils';
 
 type TestNode =

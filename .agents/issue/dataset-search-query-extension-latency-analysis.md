@@ -4,7 +4,7 @@
 
 用户反馈：普通知识库搜索流程中，开启“问题优化”后搜索耗时明显变长，需要分析原因。
 
-这里的“问题优化”对应当前代码里的 `datasetSearchUsingExtensionQuery` / `query extension`，不是 Deep RAG。普通搜索入口包括：
+这里的“问题优化”对应当前代码里的 `datasetSearchUsingExtensionQuery` / `query extension`。普通搜索入口包括：
 
 - 搜索测试 API：`projects/app/src/pages/api/core/dataset/searchTest.ts`
 - 工作流知识库搜索节点：`packages/service/core/workflow/dispatch/dataset/search.ts`
@@ -25,8 +25,6 @@ await defaultSearchDatasetData({
   datasetSearchExtensionBg
 });
 ```
-
-如果启用 Deep RAG，则走 `deepRagSearch`，不在本文“普通搜索”范围内。
 
 ### 工作流知识库搜索入口
 

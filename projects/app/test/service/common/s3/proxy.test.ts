@@ -5,6 +5,7 @@ import {
   handleS3ProxyDownload,
   handleS3ProxyUpload,
   handleS3ProxyUploadPart,
+  handleS3ProxyRouteError,
   resolveS3ProxyErrorResponse
 } from '@/service/common/s3/proxy';
 
@@ -209,7 +210,7 @@ describe('handleS3ProxyDownload', () => {
 });
 
 describe('handleS3ProxyUploadPart', () => {
-  it('destroys the storage stream when an incomplete request closes', async () => {
+  it('closes the storage stream without injecting an error when the client aborts', async () => {
     const req = new PassThrough() as any;
     const res = createResponse();
     Object.assign(req, {
@@ -223,6 +224,7 @@ describe('handleS3ProxyUploadPart', () => {
       uploadStream = body;
       return { etag: 'etag-2' };
     });
+    const uploadStreamError = vi.fn();
     global.s3BucketMap = {
       'fastgpt-private': {
         uploadMultipartPart
@@ -251,11 +253,13 @@ describe('handleS3ProxyUploadPart', () => {
     });
 
     await vi.waitFor(() => expect(uploadMultipartPart).toHaveBeenCalled());
+    uploadStream?.once('error', uploadStreamError);
     req.emit('close');
     req.destroy();
 
     await expect(uploadPromise).rejects.toBeTruthy();
     expect(uploadStream?.destroyed).toBe(true);
+    expect(uploadStreamError).not.toHaveBeenCalled();
   });
   it('aborts the provider upload when the response closes after the body is complete', async () => {
     const req = new PassThrough() as any;
@@ -318,6 +322,48 @@ describe('handleS3ProxyUploadPart', () => {
       httpStatus: 409,
       publicError: error
     });
+  });
+
+  it('does not write a response when the client aborts the upload', () => {
+    const res = {
+      destroyed: false,
+      closed: false,
+      headersSent: false,
+      status: vi.fn(),
+      json: vi.fn(),
+      end: vi.fn()
+    };
+
+    expect(
+      handleS3ProxyRouteError({
+        res: res as any,
+        error: new Error('Multipart upload request aborted')
+      })
+    ).toBeUndefined();
+    expect(res.status).not.toHaveBeenCalled();
+    expect(res.json).not.toHaveBeenCalled();
+    expect(res.end).not.toHaveBeenCalled();
+  });
+
+  it('does not write errors after the response has closed', () => {
+    const res = {
+      destroyed: true,
+      closed: true,
+      headersSent: false,
+      status: vi.fn(),
+      json: vi.fn(),
+      end: vi.fn()
+    };
+
+    expect(
+      handleS3ProxyRouteError({
+        res: res as any,
+        error: new Error('provider request failed')
+      })
+    ).toBeUndefined();
+    expect(res.status).not.toHaveBeenCalled();
+    expect(res.json).not.toHaveBeenCalled();
+    expect(res.end).not.toHaveBeenCalled();
   });
 });
 

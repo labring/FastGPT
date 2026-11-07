@@ -32,6 +32,44 @@ describe('createAgentNodeResponseCollector', () => {
     expect(collector.getWorkflowRuntimeSummary()?.responseIds).toEqual(['first', 'second']);
   });
 
+  it('存在 nodeResponseParentId 时为未携带 parentId 的步骤补齐父节点，并保留已有深层 parentId', async () => {
+    const publishedEntries: Array<{ response: ChatHistoryItemResType; parentId?: string }> = [];
+    const nodeResponseSink = {
+      publish: vi.fn(
+        async (entries: Array<{ response: ChatHistoryItemResType; parentId?: string }>) => {
+          publishedEntries.push(...entries);
+          return entries.map((entry) => entry.response);
+        }
+      )
+    };
+    const collector = createAgentNodeResponseCollector({
+      nodeResponseSink,
+      nodeResponses: [],
+      nodeResponseParentId: 'agent_root_id'
+    });
+
+    collector.appendNodeResponse(makeResponse('step_1'));
+    collector.appendNodeResponse({
+      ...makeResponse('tool_compress_1'),
+      parentId: 'tool_call_1'
+    });
+    await collector.flush();
+
+    expect(publishedEntries).toEqual([
+      {
+        response: makeResponse('step_1'),
+        parentId: 'agent_root_id'
+      },
+      {
+        response: {
+          ...makeResponse('tool_compress_1'),
+          parentId: 'tool_call_1'
+        },
+        parentId: 'tool_call_1'
+      }
+    ]);
+  });
+
   it('没有 sink 时兼容调试路径，返回本地数组', () => {
     const nodeResponses: ChatHistoryItemResType[] = [];
     const collector = createAgentNodeResponseCollector({ nodeResponses });

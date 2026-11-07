@@ -1,0 +1,11 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "moduleResolution": "bundler",
+    "paths": {
+      "@fastgpt/workflow-core/test/*": ["../workflow-core/test/*"],
+      "@fastgpt/workflow-core/*": ["../workflow-core/src/*"]
+    }
+  },
+  "include": ["src/**/*.ts", "test/**/*.ts", "vitest.config.ts", "tsdown.config.ts"]
+}

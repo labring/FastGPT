@@ -1,6 +1,9 @@
 import { NextAPI } from '@/service/middleware/entry';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
-import type { ApiDatasetDetailResponse } from '@fastgpt/global/core/dataset/apiDataset/type';
+import type {
+  ApiDatasetDetailResponse,
+  ApiDatasetResult
+} from '@fastgpt/global/core/dataset/apiDataset/type';
 import { getApiDatasetRequest } from '@fastgpt/service/core/dataset/apiDataset';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
@@ -16,13 +19,18 @@ import {
 
 const getFullPath = async (
   currentId: string,
-  getFileDetail: ({ apiFileId }: { apiFileId: string }) => Promise<ApiDatasetDetailResponse>
+  getFileDetail: ({
+    apiFileId
+  }: {
+    apiFileId: string;
+  }) => Promise<ApiDatasetResult<ApiDatasetDetailResponse>>
 ): Promise<string> => {
-  const response = await getFileDetail({ apiFileId: currentId });
+  const result = await getFileDetail({ apiFileId: currentId });
 
-  if (!response) {
+  if (!result.success || !result.data) {
     return '';
   }
+  const response = result.data;
 
   if (response.parentId && response.parentId !== null) {
     const parentPath = await getFullPath(response.parentId, getFileDetail);

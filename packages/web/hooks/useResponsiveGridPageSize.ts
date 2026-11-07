@@ -12,7 +12,7 @@ export type ResponsiveGridColumns = {
 /**
  * 根据网格列数计算基础分页数量，保证数据完整占据网格行。
  */
-export const getGridPageSize = (columnCount: number, basePageSize = 50) => {
+export const getGridPageSize = (columnCount: number, basePageSize = 20) => {
   const safeColumnCount = Number.isFinite(columnCount) ? Math.max(Math.floor(columnCount), 1) : 1;
   const totalPageSize = Math.ceil(basePageSize / safeColumnCount);
 

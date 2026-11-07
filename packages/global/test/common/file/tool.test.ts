@@ -50,6 +50,15 @@ describe('文件工具函数测试', () => {
       expect(formatFileSize(1024 * 1024 * 1024 * 1024 * 1024)).toBe('1 PB');
     });
 
+    it('should carry to the next unit when rounding reaches 1024', () => {
+      expect(formatFileSize(1024 * 1024 - 1)).toBe('1 MB');
+      expect(formatFileSize(1024 * 1024 * 1024 - 1)).toBe('1 GB');
+      expect(formatFileSize(1023.999 * 1024)).toBe('1 MB');
+      // Values that still round below 1024 keep their unit
+      expect(formatFileSize(1023.99 * 1024)).toBe('1023.99 KB');
+      expect(formatFileSize(1023)).toBe('1023 B');
+    });
+
     it('should round to 2 decimal places', () => {
       expect(formatFileSize(1536)).toBe('1.5 KB');
       expect(formatFileSize(1234567)).toBe('1.18 MB');

@@ -1,4 +1,5 @@
 import { ManageRoleVal, OwnerRoleVal } from '@fastgpt/global/support/permission/constant';
+import type { PermissionValueType } from '@fastgpt/global/support/permission/type';
 import type { CollaboratorItemType } from '@fastgpt/global/support/permission/collaborator';
 import { getCollaboratorId, sumPer } from '@fastgpt/global/support/permission/utils';
 
@@ -27,11 +28,18 @@ const toMap = (collaborators: CollaboratorItemType[]) =>
 export const shouldInheritResourcePermission = (inheritPermission?: boolean) =>
   inheritPermission !== false;
 
+/**
+ * 父级 role 进入子级时 owner 只能继承 manage。
+ * 父级 owner 不是子资源 owner，任何「父级 role + 子级 role」求和都必须先过这一层降级。
+ */
+export const toInheritedPermissionValue = (permission: PermissionValueType): PermissionValueType =>
+  permission === OwnerRoleVal ? ManageRoleVal : permission;
+
 /** 将资源 owner 转成从父级继承到子级时使用的 manage。 */
 export const toInheritedCollaborators = (collaborators: CollaboratorItemType[]) =>
   collaborators.map((collaborator) => ({
     ...toPermissionCollaborator(collaborator),
-    permission: collaborator.permission === OwnerRoleVal ? ManageRoleVal : collaborator.permission
+    permission: toInheritedPermissionValue(collaborator.permission)
   }));
 
 /**

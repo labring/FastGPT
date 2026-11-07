@@ -1,5 +1,6 @@
 import { DatasetCollectionTypeEnum, DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import {
+  ManageRoleVal,
   OwnerRoleVal,
   PerResourceTypeEnum,
   ReadRoleVal
@@ -267,6 +268,79 @@ describe.sequential('enableDatasetCollectionPermissions', () => {
     }
     expect(await countCollectionAclRows(String(users.owner.teamId), collectionIds)).toBe(6);
     expect(await datasetSwitchState(String(dataset._id))).toBe(true);
+  });
+
+  it('keeps ACLs of inheriting descendants under an independent folder when re-enabled', async () => {
+    const users = await getFakeUsers(2);
+    const dataset = await createDataset({ user: users.owner });
+    const teamId = String(users.owner.teamId);
+    const datasetId = String(dataset._id);
+    const ownerTmbId = String(users.owner.tmbId);
+    const memberTmbId = String(users.members[0].tmbId);
+
+    await enableDatasetCollectionPermissions({ teamId, datasetId });
+
+    // 启用态下的正常操作：根目录文件夹改为独立权限并授权
+    const independentFolder = await createCollection({
+      user: users.owner,
+      datasetId,
+      name: 'independent-folder',
+      type: DatasetCollectionTypeEnum.folder,
+      inheritPermission: false
+    });
+    const independentFolderId = String(independentFolder._id);
+    await mongoSessionRun(async (session) => {
+      await updateResourceCollaborators({
+        resource: {
+          _id: independentFolderId,
+          type: independentFolder.type,
+          teamId,
+          parentId: null,
+          inheritPermission: false
+        },
+        resourceModel: MongoDatasetCollection,
+        resourceType: PerResourceTypeEnum.collection,
+        oldCollaborators: await collectionClbs(teamId, independentFolderId),
+        newCollaborators: [
+          { tmbId: ownerTmbId, permission: OwnerRoleVal },
+          { tmbId: memberTmbId, permission: ManageRoleVal }
+        ],
+        session
+      });
+    });
+
+    const childFolder = await createCollection({
+      user: users.owner,
+      datasetId,
+      name: 'child-folder',
+      type: DatasetCollectionTypeEnum.folder,
+      parentId: independentFolderId
+    });
+    const childFile = await createCollection({
+      user: users.owner,
+      datasetId,
+      name: 'child-file',
+      parentId: String(childFolder._id)
+    });
+    const descendantIds = [String(childFolder._id), String(childFile._id)];
+    const expectedMap = new Map([
+      [ownerTmbId, OwnerRoleVal],
+      [memberTmbId, ManageRoleVal]
+    ]);
+    for (const collectionId of descendantIds) {
+      await expect(collectionClbs(teamId, collectionId).then(toPermissionMap)).resolves.toEqual(
+        expectedMap
+      );
+    }
+
+    // 二次启用是 no-op：不能删掉独立节点子树已物化的继承快照
+    const rerun = await enableDatasetCollectionPermissions({ teamId, datasetId });
+    expect(rerun).toEqual({ collectionCount: 3 });
+    for (const collectionId of descendantIds) {
+      await expect(collectionClbs(teamId, collectionId).then(toPermissionMap)).resolves.toEqual(
+        expectedMap
+      );
+    }
   });
 
   it('removes stale ACL records before rebuilding an inheriting collection', async () => {

@@ -11,7 +11,8 @@ const mocks = vi.hoisted(() => ({
   lists: vi.fn(),
   detail: vi.fn(),
   refresh: vi.fn(),
-  setFromCatalog: vi.fn()
+  setFromCatalog: vi.fn(),
+  providers: [] as { id: string }[]
 }));
 vi.mock('react', async (importOriginal) => ({
   ...(await importOriginal<typeof import('react')>()),
@@ -40,13 +41,9 @@ vi.mock('@/web/core/ai/model/useUserModelStore', () => ({
     selector({
       defaultModelIds: { llm: 'chosen' },
       getModelProvider: () => ({ name: 'Provider' }),
-      getModelProviders: () => []
+      getModelProviders: () => mocks.providers
     })
 }));
-vi.mock('use-context-selector', () => ({
-  useContextSelector: (_: unknown, select: (value: { appId?: string }) => unknown) => select({})
-}));
-vi.mock('@/pageComponents/app/detail/context', () => ({ AppContext: {} }));
 
 describe('AIModelSelector lazy directory', () => {
   beforeEach(() => {
@@ -57,6 +54,7 @@ describe('AIModelSelector lazy directory', () => {
     mocks.effects = [];
     mocks.refs = [];
     mocks.refIndex = 0;
+    mocks.providers = [];
     mocks.lists.mockImplementation(() => ({
       modelList: [
         {
@@ -174,20 +172,129 @@ describe('AIModelSelector lazy directory', () => {
   it('reuses the loaded catalog for the current model and primes it before selection', () => {
     mocks.open = true;
     const onChange = vi.fn();
-    const selector = AIModelSelector({ modelType: ModelTypeEnum.llm, value: 'chosen', onChange });
+    AIModelSelector({ modelType: ModelTypeEnum.llm, value: 'chosen', onChange });
     mocks.effects.forEach((fn) => fn());
     expect(mocks.refresh).not.toHaveBeenCalled();
     expect(mocks.setFromCatalog).toHaveBeenCalledWith(
       expect.objectContaining({ modelId: 'chosen', name: 'Chosen' })
     );
-    mocks.setFromCatalog.mockClear();
+  });
+
+  it('emits only when a real model changes, never on provider navigation', () => {
+    mocks.open = true;
+    // 11 个模型以上走分组：左列是提供商，右列才是模型
+    mocks.lists.mockImplementation(() => ({
+      modelList: Array.from({ length: 11 }, (_, index) => ({
+        modelId: `model-${index}`,
+        model: `m-${index}`,
+        name: `Model ${index}`,
+        type: 'llm',
+        provider: index % 2 === 0 ? 'p-a' : 'p-b',
+        config: {}
+      })),
+      loading: false,
+      error: false
+    }));
+    const onChange = vi.fn();
+    const selector = AIModelSelector({
+      modelType: ModelTypeEnum.llm,
+      value: 'model-0',
+      onChange
+    });
+
+    // 点击另一个提供商：只是导航，右列仍是上一次的模型，不能回调
+    selector.props.onSelect(['p-b', 'model-0']);
+    expect(onChange).not.toHaveBeenCalled();
+
+    // 右列还没选中任何模型
+    selector.props.onSelect(['p-b', undefined]);
+    expect(onChange).not.toHaveBeenCalled();
+
+    // 重选当前模型同样不应产生 update 请求（例如点了同一个已被高亮的项）
+    selector.props.onSelect(['p-a', 'model-0']);
+    expect(onChange).not.toHaveBeenCalled();
+
+    // 真正切到另一个模型才回调
+    selector.props.onSelect(['p-b', 'model-1']);
+    expect(onChange).toHaveBeenCalledWith('model-1');
+  });
+
+  it('preserves custom ownership order and puts beta models last in grouped lists', () => {
+    mocks.open = true;
+    mocks.providers = [{ id: 'p-b' }, { id: 'p-a' }];
+    const kinds = ['owned-1', 'owned-2', 'shared-1', 'shared-2', 'beta', 'system'];
+    const models = kinds.flatMap((kind) =>
+      ['p-a', 'p-b'].map((provider) => ({
+        modelId: `${provider}-${kind}`,
+        model: `${provider}-${kind}`,
+        name: `${provider}-${kind}`,
+        provider,
+        type: ModelTypeEnum.llm,
+        scope: kind.startsWith('owned') || kind.startsWith('shared') ? 'team' : 'system',
+        tmbId: kind.startsWith('owned') ? 'member' : 'other-member',
+        testMode: kind === 'beta',
+        config: {}
+      }))
+    );
+    const originalIds = models.map(({ modelId }) => modelId);
+    mocks.lists.mockReturnValue({ modelList: models, loading: false, error: false });
+
+    const selector = AIModelSelector({ modelType: ModelTypeEnum.llm, value: '' });
+    const orderedKinds = [...kinds.filter((kind) => kind !== 'beta'), 'beta'];
+    expect(selector.props.list.map((item: { value: string }) => item.value)).toEqual([
+      'p-b',
+      'p-a'
+    ]);
+    for (const group of selector.props.list) {
+      expect(group.children.map((item: { value: string }) => item.value)).toEqual(
+        orderedKinds.map((kind) => `${group.value}-${kind}`)
+      );
+    }
+    expect(models.map(({ modelId }) => modelId)).toEqual(originalIds);
+  });
+
+  it('does not emit when the same model is reselected in a flat list', () => {
+    mocks.open = true;
+    const onChange = vi.fn();
+    const selector = AIModelSelector({
+      modelType: ModelTypeEnum.llm,
+      value: 'chosen',
+      onChange
+    });
+
     selector.props.onSelect(['chosen']);
-    expect(mocks.setFromCatalog).toHaveBeenCalledWith(
-      expect.objectContaining({ modelId: 'chosen' })
-    );
-    expect(mocks.setFromCatalog.mock.invocationCallOrder[0]).toBeLessThan(
-      onChange.mock.invocationCallOrder[0]
-    );
+    expect(onChange).not.toHaveBeenCalled();
+    expect(mocks.setFromCatalog).not.toHaveBeenCalled();
+  });
+
+  it('hides TTS models without an available voice when requested', () => {
+    mocks.open = true;
+    mocks.lists.mockImplementation(() => ({
+      modelList: [
+        { modelId: 'empty', type: 'tts', provider: 'p', config: { voices: [] } },
+        {
+          modelId: 'blank',
+          type: 'tts',
+          provider: 'p',
+          config: { voices: [{ label: 'Blank', value: '  ' }] }
+        },
+        {
+          modelId: 'ready',
+          type: 'tts',
+          provider: 'p',
+          config: { voices: [{ label: 'Voice', value: 'voice' }] }
+        }
+      ],
+      loading: false,
+      error: false
+    }));
+
+    const selector = AIModelSelector({
+      modelType: ModelTypeEnum.tts,
+      value: '',
+      requireTtsVoice: true
+    });
+    expect(selector.props.list.map((item: { value: string }) => item.value)).toEqual(['ready']);
   });
 
   it('keeps the existing detail when a successfully loaded catalog is missing the current model', () => {
@@ -196,5 +303,19 @@ describe('AIModelSelector lazy directory', () => {
     mocks.effects.forEach((fn) => fn());
     expect(mocks.refresh).not.toHaveBeenCalled();
     expect(mocks.setFromCatalog).not.toHaveBeenCalled();
+  });
+
+  it('forwards appId and outLinkAuthData props to model list and summary hooks', () => {
+    const outLinkAuthData = { shareId: 'share-1', outLinkUid: 'uid-1' };
+    AIModelSelector({
+      modelType: ModelTypeEnum.llm,
+      value: 'chosen',
+      appId: 'app-1',
+      outLinkAuthData
+    });
+    expect(mocks.lists).toHaveBeenLastCalledWith(expect.objectContaining({ outLinkAuthData }));
+    expect(mocks.detail).toHaveBeenLastCalledWith(
+      expect.objectContaining({ appId: 'app-1', outLinkAuthData })
+    );
   });
 });

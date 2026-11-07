@@ -11,9 +11,11 @@ const TEST_PRO_TOKEN = 'fastgpt_test_pro_token_32_chars_min';
  * 测试套件会在多个 workspace（包含 pro/admin 子模块）里直接导入 serviceEnv。
  * AI Proxy 和 INVOKE_TOKEN_SECRET 生产启动仍要求显式配置；PRO_TOKEN 仅在启用 Pro 内部调用时配置。
  * 仅 Vitest/测试环境允许注入稳定测试密钥，避免每个测试项目都重复维护同一组运行时密钥。
+ * 品牌标识在开源版始终开启；接入 Pro 服务后由 SHOW_OUTLINK_BRAND 显式启用。
  */
 export const getRuntimeEnv = (): NodeJS.ProcessEnv => ({
   ...process.env,
+  SHOW_OUTLINK_BRAND: process.env.PRO_URL ? process.env.SHOW_OUTLINK_BRAND : 'true',
   AIPROXY_API_ENDPOINT:
     process.env.AIPROXY_API_ENDPOINT ??
     (process.env.VITEST === 'true' || process.env.NODE_ENV === 'test'
@@ -170,4 +172,23 @@ export const validateAgentSandboxPreviewProxyEnv = (): void => {
   throw new Error(
     `Invalid Agent Sandbox preview proxy environment variable: AGENT_SANDBOX_PREVIEW_PROXY_URL is required when AGENT_SANDBOX_PROVIDER is ${provider}.`
   );
+};
+
+/**
+ * 校验 Agent 用户初始化环境变量。
+ * 当配置了 AGENT_USERS 时，必须提供初始密码 DEFAULT_AGENT_PSW。
+ */
+export const validateAgentUsersEnv = (env: {
+  AGENT_USERS?: string;
+  DEFAULT_AGENT_PSW?: string;
+}): void => {
+  const agentUsernames = env.AGENT_USERS?.split(',')
+    .map((username) => username.trim())
+    .filter(Boolean);
+
+  if (agentUsernames?.length && !env.DEFAULT_AGENT_PSW) {
+    throw new Error(
+      'Invalid environment configuration: DEFAULT_AGENT_PSW is required when AGENT_USERS is configured.'
+    );
+  }
 };

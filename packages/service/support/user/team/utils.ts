@@ -41,18 +41,22 @@ export async function getUserIdByTmbId(tmbId: string) {
   return String(tmb.userId);
 }
 
-// TODO: 数据库优化
+/**
+ * 根据成员 ID 查询工作流运行人信息及团队外部账号/全局变量配置。
+ * 一次性连表读取 user（username/contact/timezone）与 team（name/openaiAccount/externalWorkflowVariables），
+ * 避免工作流启动阶段重复查询同一成员的团队与用户信息。
+ */
 export async function getRunningUserInfoByTmbId(tmbId: string) {
   if (tmbId) {
     const tmb = await MongoTeamMember.findById(tmbId, 'teamId name userId') // team_members name is the user's name
       .populate<{ team: TeamSchema; user: UserModelSchema }>([
         {
           path: 'team',
-          select: 'name'
+          select: 'name openaiAccount externalWorkflowVariables'
         },
         {
           path: 'user',
-          select: 'username contact'
+          select: 'username contact timezone'
         }
       ])
       .lean();
@@ -65,7 +69,12 @@ export async function getRunningUserInfoByTmbId(tmbId: string) {
       memberName: tmb.name,
       contact: tmb.user.contact || '',
       teamId: tmb.teamId,
-      tmbId: tmb._id
+      tmbId: tmb._id,
+      timezone: tmb.user.timezone,
+      externalProvider: {
+        openaiAccount: tmb.team.openaiAccount,
+        externalWorkflowVariables: tmb.team.externalWorkflowVariables
+      }
     };
   }
 

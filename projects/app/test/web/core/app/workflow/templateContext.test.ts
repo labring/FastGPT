@@ -6,7 +6,6 @@ import {
   createHideInContext,
   createShowInContext,
   getNodeContainerCheckError,
-  isNodeConnectionAllowed,
   isTemplateVisible
 } from '@fastgpt/global/core/workflow/template/context';
 import { AiChatModule } from '@fastgpt/global/core/workflow/template/system/aiChat';
@@ -18,6 +17,7 @@ import { StopToolNode } from '@fastgpt/global/core/workflow/template/system/stop
 import { ToolParamsNode } from '@fastgpt/global/core/workflow/template/system/toolParams';
 import { RunToolSetNode } from '@fastgpt/global/core/workflow/template/system/runToolSet';
 import { UserSelectNode } from '@fastgpt/global/core/workflow/template/system/interactive/userSelect';
+import { AgentNode } from '@fastgpt/global/core/workflow/template/system/agent';
 import type { NodeTemplateContext } from '@fastgpt/global/core/workflow/type/node';
 
 const ctx = (patch: Partial<NodeTemplateContext>): NodeTemplateContext => ({
@@ -79,7 +79,7 @@ describe('template context', () => {
     const result = buildNodeTemplateContext({
       sourceNode: {
         nodeId: 'n1',
-        flowNodeType: FlowNodeTypeEnum.aiChat,
+        flowNodeType: FlowNodeTypeEnum.chatNode,
         isTool: false,
         parentNodeId: undefined
       },
@@ -95,7 +95,7 @@ describe('template context', () => {
     const result = buildNodeTemplateContext({
       sourceNode: {
         nodeId: 'n3',
-        flowNodeType: FlowNodeTypeEnum.aiChat,
+        flowNodeType: FlowNodeTypeEnum.chatNode,
         isTool: false,
         parentNodeId: undefined
       },
@@ -159,86 +159,6 @@ describe('template context', () => {
     expect(isTemplateVisible(ToolParamsNode, ctx({ sourceType: FlowNodeTypeEnum.toolCall }))).toBe(
       false
     );
-  });
-
-  it('连接 ToolParams 时复用模板上下文白名单', () => {
-    const sourceNode = {
-      nodeId: 'source',
-      flowNodeType: FlowNodeTypeEnum.toolCall,
-      isTool: true,
-      parentNodeId: undefined
-    };
-    const getNodeById = (nodeId: string | undefined | null) =>
-      nodeId === sourceNode.nodeId ? sourceNode : undefined;
-
-    expect(
-      isNodeConnectionAllowed({
-        targetTemplate: ToolParamsNode,
-        targetNode: { parentNodeId: undefined },
-        sourceNode,
-        edges: [],
-        handleId: NodeOutputKeyEnum.selectedTools,
-        getNodeById
-      })
-    ).toBe(true);
-    expect(
-      isNodeConnectionAllowed({
-        targetTemplate: ToolParamsNode,
-        targetNode: { parentNodeId: undefined },
-        sourceNode,
-        edges: [],
-        handleId: '普通输出',
-        getNodeById
-      })
-    ).toBe(false);
-    expect(
-      isNodeConnectionAllowed({
-        targetTemplate: ToolParamsNode,
-        targetNode: { parentNodeId: undefined },
-        sourceNode: { ...sourceNode, flowNodeType: FlowNodeTypeEnum.aiChat },
-        edges: [],
-        handleId: NodeOutputKeyEnum.selectedTools,
-        getNodeById
-      })
-    ).toBe(false);
-  });
-
-  it('连接节点必须属于同一容器并满足容器规则', () => {
-    const sourceNode = {
-      nodeId: 'source',
-      flowNodeType: FlowNodeTypeEnum.aiChat,
-      isTool: false,
-      parentNodeId: 'parallel'
-    };
-    const targetNode = { parentNodeId: 'parallel' };
-    const getNodeById = (nodeId: string | undefined | null) =>
-      nodeId === 'parallel'
-        ? ({
-            nodeId: 'parallel',
-            flowNodeType: FlowNodeTypeEnum.parallelRun
-          } as any)
-        : undefined;
-
-    expect(
-      isNodeConnectionAllowed({
-        targetTemplate: UserSelectNode,
-        targetNode,
-        sourceNode,
-        edges: [],
-        handleId: 'source',
-        getNodeById
-      })
-    ).toBe(false);
-    expect(
-      isNodeConnectionAllowed({
-        targetTemplate: UserSelectNode,
-        targetNode: { parentNodeId: 'other' },
-        sourceNode,
-        edges: [],
-        handleId: 'source',
-        getNodeById
-      })
-    ).toBe(false);
   });
 
   it('侧边栏按画布状态显示工具参数、工具终止和循环终止', () => {
@@ -325,6 +245,12 @@ describe('template context', () => {
     ).toBe('can_not_parallel');
     expect(
       getNodeContainerCheckError({
+        node: { flowNodeType: FlowNodeTypeEnum.agent },
+        context
+      })
+    ).toBe('can_not_parallel');
+    expect(
+      getNodeContainerCheckError({
         node: LoopRunBreakNode,
         context
       })
@@ -365,7 +291,7 @@ describe('template context', () => {
     const result = buildNodeTemplateContext({
       sourceNode: {
         nodeId: 'n1',
-        flowNodeType: FlowNodeTypeEnum.aiChat,
+        flowNodeType: FlowNodeTypeEnum.chatNode,
         isTool: false,
         parentNodeId: 'loop1'
       },
@@ -410,7 +336,7 @@ describe('template context', () => {
     ).toBe(false);
   });
 
-  it('userSelect 不在批量执行内部可见', () => {
+  it('userSelect/agent 不在批量执行内部可见', () => {
     expect(isTemplateVisible(UserSelectNode, null)).toBe(true);
     expect(
       isTemplateVisible(UserSelectNode, ctx({ parentType: FlowNodeTypeEnum.parallelRun }))
@@ -418,6 +344,11 @@ describe('template context', () => {
     expect(isTemplateVisible(UserSelectNode, ctx({ parentType: FlowNodeTypeEnum.loopRun }))).toBe(
       true
     );
+    expect(isTemplateVisible(AgentNode, null)).toBe(true);
+    expect(isTemplateVisible(AgentNode, ctx({ parentType: FlowNodeTypeEnum.parallelRun }))).toBe(
+      false
+    );
+    expect(isTemplateVisible(AgentNode, ctx({ parentType: FlowNodeTypeEnum.loopRun }))).toBe(true);
   });
 
   it('loopRun/parallelRun 不在嵌套容器内部可见', () => {

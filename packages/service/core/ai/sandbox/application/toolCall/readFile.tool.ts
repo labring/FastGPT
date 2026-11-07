@@ -5,7 +5,8 @@
  */
 import z from 'zod';
 import { defineTool } from './type';
-import { SANDBOX_TOOL_MAX_BYTES, truncateSandboxToolOutput } from './utils';
+import { truncateSandboxToolOutput } from './utils';
+import { SANDBOX_TOOL_MAX_BYTES } from '../../constants';
 
 export const SandboxReadFileToolSchema = z.object({
   path: z.string(),

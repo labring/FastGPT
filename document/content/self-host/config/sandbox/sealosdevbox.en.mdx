@@ -14,11 +14,11 @@ import { Alert } from '@/components/docs/Alert';
 
 1. FastGPT commercial edition is deployed, and the team has Agent Sandbox access.
 2. Request Sealos Devbox connection details from support: Devbox service URL, access token, and runtime image.
-3. Follow [OpenSandbox Configuration](./opensandbox) to deploy `fastgpt-agent-sandbox-proxy`.
+3. Follow [OpenSandbox Configuration](/en/self-host/config/sandbox/opensandbox) to deploy `fastgpt-agent-sandbox-proxy`.
 
 ## Configure FastGPT Environment Variables
 
-Add the following environment variables to `fastgpt-app` and `fastgpt-pro` .
+Add the following environment variables to `fastgpt-app` and `fastgpt-pro`.
 
 ```dotenv
 # Use Sealos Devbox as the Agent Sandbox provider
@@ -59,7 +59,7 @@ After `AGENT_SANDBOX_PROVIDER=sealosdevbox` is enabled, `fastgpt-app` requires `
 
 ### AGENT_SANDBOX_SEALOS_IMAGE is required
 
-The `sealosdevbox` provider requires `AGENT_SANDBOX_SEALOS_IMAGE` . Use the Agent Sandbox runtime image provided by support or the image that matches your current FastGPT version.
+The `sealosdevbox` provider requires `AGENT_SANDBOX_SEALOS_IMAGE`. Use the Agent Sandbox runtime image provided by support or the image that matches your current FastGPT version.
 
 ### Browser WebSocket connection fails
 
@@ -67,4 +67,4 @@ Check that the proxy service is reachable from the browser and that your reverse
 
 ### proxy validation fails or returns 401
 
-Make sure `AGENT_SANDBOX_PROXY_SECRET` is exactly the same in the FastGPT main service and `fastgpt-agent-sandbox-proxy` , and that it is at least 32 characters long.
+Make sure `AGENT_SANDBOX_PROXY_SECRET` is exactly the same in the FastGPT main service and `fastgpt-agent-sandbox-proxy`, and that it is at least 32 characters long.

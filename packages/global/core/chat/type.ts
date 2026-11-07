@@ -1,3 +1,5 @@
+import { ChatIdSchema } from './schema';
+import { ChatPublishSourceSchema } from './publishSource/type';
 import { SearchDataResponseQuoteListItemSchema } from '../dataset/type';
 import {
   ChatFileTypeEnum,
@@ -21,7 +23,11 @@ import {
   AgentPlanStatusSchema
 } from '../ai/agent/type';
 import { ObjectIdSchema } from '../../common/type/mongo';
-import { NumSchema } from '../../common/zod';
+import { BoolSchema, NumSchema } from '../../common/zod';
+import { WorkflowBuilderVersionSchema } from '../workflow/builder/type';
+import { ChatAgentBuilderVersionSchema } from '../ai/auxiliaryGeneration/chatAgentBuilderVersion';
+import { UserChatSelectSchema } from './input/type';
+import { ChatCompletionUserMessageParamSchema } from '../ai/llm/type';
 
 export const ChatHistoryItemResSchema = DispatchNodeResponseSchema.extend({
   nodeId: z.string(),
@@ -42,6 +48,12 @@ export const ToolModuleResponseItemSchema = z.object({
   toolAvatar: z.string(),
   params: z.string(),
   response: z.string().nullish(),
+  hideDetails: BoolSchema.optional().meta({ description: '仅展示工具信息，不提供参数或响应详情' }),
+  hideInUI: z.boolean().optional().meta({ description: '隐藏内部工具展示，仍保留模型上下文' }),
+  internalOnly: z
+    .boolean()
+    .optional()
+    .meta({ description: '内部目录工具上下文，仅供服务端恢复，对外移除详情' }),
   functionName: z.string()
 });
 export type ToolModuleResponseItemType = z.infer<typeof ToolModuleResponseItemSchema>;
@@ -97,7 +109,7 @@ export type ChatSummaryType = z.infer<typeof ChatSummarySchema>;
 
 export const ChatSchema = z.object({
   _id: ObjectIdSchema,
-  chatId: z.string(),
+  chatId: ChatIdSchema,
   userId: ObjectIdSchema,
   teamId: ObjectIdSchema,
   tmbId: ObjectIdSchema,
@@ -113,10 +125,19 @@ export const ChatSchema = z.object({
   title: z.string(),
   customTitle: z.string().optional(),
   top: z.boolean().default(false),
-  source: z.enum(ChatSourceEnum),
-  sourceName: z.string().optional(),
-
-  shareId: z.string().optional(),
+  publishSource: ChatPublishSourceSchema.optional(),
+  source: z.enum(ChatSourceEnum).meta({
+    deprecated: true,
+    description: '旧调用渠道类型，仅作兼容；使用 publishSource.type'
+  }),
+  sourceName: z.string().optional().meta({
+    deprecated: true,
+    description: '旧渠道名称，仅用于兼容及历史名称回退；日志展示使用扩展的 publishSource.name'
+  }),
+  shareId: z.string().optional().meta({
+    deprecated: true,
+    description: '旧分享渠道标识，仅保留历史数据及迁移读取；当前渠道关联使用 publishSource.id'
+  }),
   outLinkUid: z.string().optional(),
 
   variableList: z.array(VariableItemTypeSchema).optional(),
@@ -135,11 +156,6 @@ export const ChatSchema = z.object({
   /** 会话累计的 LLM token 摘要，不包含 embedding/rerank 等非 LLM token。 */
   summary: ChatSummarySchema,
 
-  /** 旧数据可能无此字段；业务上按 done 处理 */
-  chatGenerateStatus: z
-    .enum(ChatGenerateStatusEnum)
-    .default(ChatGenerateStatusEnum.done)
-    .meta({ description: '生成状态' }),
   hasBeenRead: z.boolean().default(true),
 
   deleteTime: z.coerce.date().nullish()
@@ -174,7 +190,11 @@ export type ChatFileStoreValue =
     };
 
 export const UserChatItemValueItemSchema = z.object({
-  askId: z.string().nullish(),
+  askId: z.string().nullish().meta({
+    deprecated: true,
+    description: '旧版用户回复的交互关联 ID，保留兼容，新消息不再写入'
+  }),
+  select: UserChatSelectSchema.optional(),
   text: z
     .object({
       content: z.string()
@@ -222,8 +242,28 @@ export const ContextCheckpointValueSchema = z.string();
 export type ContextCheckpointValueType = z.infer<typeof ContextCheckpointValueSchema>;
 
 export const AIChatItemValueSchema = z.object({
+  userMessage: z
+    .object({ content: z.string(), source: z.literal('server') })
+    .optional()
+    .meta({ description: '服务端追加的隐藏 User 指令，按原顺序恢复，不重置历史' }),
+  inputContext: ChatCompletionUserMessageParamSchema.omit({ role: true }).optional().meta({
+    description: '本轮实际消费的 Human 改写输入，保留技能、时间、文件等上下文，不保存历史快照'
+  }),
   id: z.string().nullish(),
-  askId: z.string().nullish(),
+  modelResponseId: z.string().optional().meta({ description: '本次模型响应的稳定关联 ID' }),
+  toolCallIds: z
+    .array(z.string())
+    .optional()
+    .meta({ description: '本次响应的工具调用原始顺序，含交互工具' }),
+  displayOnly: z.boolean().optional().meta({ description: '子工具展示输出，不进入父模型上下文' }),
+  toolResponses: z
+    .array(z.object({ id: z.string().min(1), response: z.string() }))
+    .optional()
+    .meta({ description: '子工具续跑产生的实际结果，补齐原调用，不创建新调用' }),
+  askId: z
+    .string()
+    .nullish()
+    .meta({ deprecated: true, description: '旧版 Ask 关联字段，新消息停止写入' }),
   text: z
     .object({
       content: z.string()
@@ -240,8 +280,13 @@ export const AIChatItemValueSchema = z.object({
   plan: AgentPlanReadSchema.nullish(),
   planStatus: AgentPlanStatusSchema.nullish(),
   agentPlanUpdate: AgentLoopPlanUpdateSchema.nullish(),
-  agentAsk: AgentLoopAskSchema.nullish(),
+  agentAsk: AgentLoopAskSchema.nullish().meta({
+    deprecated: true,
+    description: '旧版 Ask 副本，新消息仅保存 interactive'
+  }),
   contextCheckpoint: ContextCheckpointValueSchema.nullish(),
+  workflowBuilderVersion: WorkflowBuilderVersionSchema.optional(),
+  chatAgentBuilderVersion: ChatAgentBuilderVersionSchema.optional(),
   tool: ToolModuleResponseItemSchema.nullish().meta({ deprecated: true }),
   hideReason: z.boolean().optional(),
   hideInUI: z.boolean().optional()
@@ -284,7 +329,7 @@ export type ChatItemObjItemType = z.infer<typeof ChatItemObjItemSchema>;
 export const ChatItemDBSchema = ChatItemObjItemSchema.and(
   z.object({
     dataId: z.string(),
-    chatId: z.string(),
+    chatId: ChatIdSchema,
     userId: z.string(),
     teamId: z.string(),
     tmbId: z.string(),
@@ -308,7 +353,7 @@ export const ChatItemResponseSchema = z.object({
   teamId: z.string(),
   sourceType: z.enum(ChatSourceTypeEnum).default(ChatSourceTypeEnum.app),
   appId: z.string(),
-  chatId: z.string(),
+  chatId: ChatIdSchema,
   chatItemDataId: z.string(),
   time: z.coerce.date().optional(),
   data: ChatHistoryItemResSchema
@@ -325,7 +370,7 @@ export type ChatAppListSchemaType = z.infer<typeof ChatAppListSchema>;
 
 /* ---------- history ------------- */
 export const HistoryItemSchema = z.object({
-  chatId: z.string(),
+  chatId: ChatIdSchema,
   updateTime: z.coerce.date(),
   customTitle: z.string().optional(),
   title: z.string()

@@ -175,6 +175,18 @@ const SkillDetailContextProviderInner = ({
       ) {
         return t('skill:sandbox_runtime_upgrade_failed');
       }
+      if (
+        message.includes(SandboxErrEnum.agentSandboxLimitReached) ||
+        message.includes('agent_sandbox_limit_reached')
+      ) {
+        return t('skill:sandbox_limit_reached');
+      }
+      if (
+        message.includes(SandboxErrEnum.agentSandboxTeamLimitReached) ||
+        message.includes('agent_sandbox_team_limit_reached')
+      ) {
+        return t('skill:sandbox_team_limit_reached');
+      }
       return message;
     },
     [t]

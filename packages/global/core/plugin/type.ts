@@ -1,6 +1,9 @@
 import z from 'zod';
 import { i18nT } from '../../common/i18n/utils';
-import { I18nUnionStringSchema } from '../../common/i18n/type';
+import {
+  I18nStringSchema as CommonI18nStringSchema,
+  I18nUnionStringSchema
+} from '../../common/i18n/type';
 
 export const I18nStringSchema = z.object({
   en: z.string(),
@@ -9,6 +12,9 @@ export const I18nStringSchema = z.object({
 });
 // I18nStringType can be either an object with language keys or a plain string
 export const I18nUnioStringSchema = z.union([I18nStringSchema, z.string()]);
+
+export const PluginTextSchema = z.union([z.string(), CommonI18nStringSchema.partial()]);
+export type PluginTextType = z.infer<typeof PluginTextSchema>;
 
 export const PluginToolTagSchema = z.object({
   tagId: z.string(),

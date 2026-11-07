@@ -6,8 +6,8 @@ import type {
 } from '@fastgpt/global/core/dataset/type';
 import { recallFromVectorStore } from '../../../../common/vectorDB/controller';
 import { getVectors } from '../../../ai/embedding';
-import { isImageEmbeddingModel } from '../../../ai/model';
-import type { EmbeddingSystemModelDataType } from '@fastgpt/global/core/ai/model/schema';
+import { isImageEmbeddingModel } from '@fastgpt/global/core/ai/model/utils';
+import type { EmbeddingModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import { MongoDatasetCollection } from '../../collection/schema';
 import { MongoDatasetData } from '../../data/schema';
 import { getLogger, LogCategories } from '../../../../common/logger';
@@ -15,6 +15,7 @@ import { readFromSecondary } from '../../../../common/mongo/utils';
 import { normalizeImageToBase64 } from '../utils';
 import { datasetCollectionSelectField, datasetDataSelectField } from './constant';
 import { buildSearchResultItem, concatRecallLists } from './result';
+import { getDatasetVectorSearchData } from '../../vectorData/service';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.DATA);
 
@@ -43,7 +44,7 @@ const buildVectorRecallTasks = async ({
   imageCaptionQueries,
   imageQueries
 }: {
-  model: EmbeddingSystemModelDataType;
+  model: EmbeddingModelDataType;
   textQueries: string[];
   imageCaptionQueries: string[];
   imageQueries: string[];
@@ -145,7 +146,7 @@ export const embeddingRecall = async ({
 }: {
   teamId: string;
   datasetIds: string[];
-  model: EmbeddingSystemModelDataType;
+  model: EmbeddingModelDataType;
   imageQueries: string[];
   textQueries: string[];
   imageCaptionQueries: string[];
@@ -178,11 +179,14 @@ export const embeddingRecall = async ({
     };
   }
 
+  // 多个文本/图片 query 共用路由快照，避免每个向量都重复查询计数及索引状态。
+  const datasetVectorData = await getDatasetVectorSearchData({ teamId, datasetIds });
   const recallResults = await Promise.all(
     tasks.map(async ({ vector }) => {
       return await recallFromVectorStore({
         teamId,
         datasetIds,
+        datasetVectorData,
         vector,
         limit,
         forbidCollectionIdList,

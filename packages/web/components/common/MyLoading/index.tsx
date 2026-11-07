@@ -1,9 +1,10 @@
 import React from 'react';
 import { Spinner, Flex, Box, type SpinnerProps } from '@chakra-ui/react';
-import ParticleLoading from './ParticleLoading';
+import DotLoading from './DotLoading';
 
-export type LoadingVariant = 'spinner' | 'particle';
+export type LoadingVariant = 'spinner' | 'dots';
 
+/** 在遮罩中展示圆环或三点加载动画，可选显示提示文字。 */
 const Loading = ({
   fixed = true,
   text = '',
@@ -33,8 +34,8 @@ const Loading = ({
       justifyContent={'center'}
       flexDirection={'column'}
     >
-      {variant === 'particle' ? (
-        <ParticleLoading size={size} />
+      {variant === 'dots' ? (
+        <DotLoading />
       ) : (
         <Spinner
           data-preserve-width
@@ -48,10 +49,10 @@ const Loading = ({
       )}
       {text && (
         <Box
-          mt={variant === 'particle' ? '20px' : 2}
-          color={variant === 'particle' ? 'myGray.500' : 'primary.600'}
-          fontSize={variant === 'particle' ? 'sm' : undefined}
-          fontWeight={variant === 'particle' ? 'normal' : 'bold'}
+          mt={variant === 'dots' ? '20px' : 2}
+          color={variant === 'dots' ? 'myGray.500' : 'primary.600'}
+          fontSize={variant === 'dots' ? 'sm' : undefined}
+          fontWeight={variant === 'dots' ? 'normal' : 'bold'}
         >
           {text}
         </Box>

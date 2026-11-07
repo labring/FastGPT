@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ChatFileTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { chatValue2RuntimePrompt, runtimePrompt2ChatsValue } from '@fastgpt/global/core/chat/adapt';
 import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
@@ -10,9 +10,9 @@ import { runWithContext } from '@fastgpt/service/core/workflow/utils/context';
 import type { WorkflowFileContext } from '@fastgpt/service/core/workflow/utils/fileContext';
 
 describe('parseWorkflowAIInputFiles', () => {
-  it('returns no files when maxFileAmount is zero', () => {
+  it('returns no files when maxFileAmount is zero', async () => {
     expect(
-      parseWorkflowAIInputFiles({
+      await parseWorkflowAIInputFiles({
         files: [
           {
             type: ChatFileTypeEnum.file,
@@ -25,8 +25,8 @@ describe('parseWorkflowAIInputFiles', () => {
     ).toEqual([]);
   });
 
-  it('accepts absolute URLs, deduplicates them and preserves multimodal types', () => {
-    const result = parseWorkflowAIInputFiles({
+  it('accepts absolute URLs, deduplicates them and preserves multimodal types', async () => {
+    const result = await parseWorkflowAIInputFiles({
       files: [
         {
           type: ChatFileTypeEnum.file,
@@ -60,7 +60,7 @@ describe('parseWorkflowAIInputFiles', () => {
     expect(result).toEqual([
       {
         name: 'report.pdf',
-        type: ChatFileTypeEnum.file,
+        type: ChatFileTypeEnum.document,
         url: 'https://files.example.com/report.pdf'
       },
       {
@@ -71,7 +71,7 @@ describe('parseWorkflowAIInputFiles', () => {
     ]);
   });
 
-  it('uses Workflow Context identity and modelUrl for registered files', () => {
+  it('uses Workflow Context identity and modelUrl for registered files', async () => {
     const inputUrl = 'https://app.example.com/api/system/file/d/signed';
     const modelUrl = 'https://model-files.example.com/report.pdf?signature=1';
     const fileContext = {
@@ -88,7 +88,7 @@ describe('parseWorkflowAIInputFiles', () => {
           : undefined
       ),
       resolveChatFile: vi.fn((url: string) =>
-        url === modelUrl
+        url === inputUrl || url === modelUrl
           ? {
               name: 'report.pdf',
               type: ChatFileTypeEnum.file,
@@ -102,9 +102,9 @@ describe('parseWorkflowAIInputFiles', () => {
       derive: vi.fn()
     } as unknown as WorkflowFileContext;
 
-    runWithContext({ mcpClientMemory: {}, fileContext }, () => {
+    await runWithContext({ mcpClientMemory: {}, fileContext }, async () => {
       expect(
-        parseWorkflowAIInputFiles({
+        await parseWorkflowAIInputFiles({
           files: [
             {
               type: ChatFileTypeEnum.file,
@@ -117,7 +117,7 @@ describe('parseWorkflowAIInputFiles', () => {
       ).toEqual([
         {
           name: 'report.pdf',
-          type: ChatFileTypeEnum.file,
+          type: ChatFileTypeEnum.document,
           url: modelUrl
         }
       ]);
@@ -126,7 +126,42 @@ describe('parseWorkflowAIInputFiles', () => {
 });
 
 describe('rewriteWorkflowAIUserMessageWithFiles', () => {
-  it('moves documents into the reminder and keeps multimodal URLs as message files', () => {
+  it.each([
+    ['application/pdf', 'report.pdf', 'document'],
+    ['application/zip', 'archive.zip', 'unknown']
+  ])(
+    'classifies opaque download URLs using the probed filename: %s',
+    async (mime, filename, type) => {
+      const { axios } = await import('@fastgpt/service/common/api/axios');
+      vi.mocked(axios.head).mockResolvedValueOnce({
+        headers: {
+          'content-type': mime,
+          'content-disposition': `attachment; filename="${filename}"`
+        }
+      } as any);
+      const { message, files } = await rewriteWorkflowAIUserMessageWithFiles({
+        message: {
+          obj: ChatRoleEnum.Human,
+          value: runtimePrompt2ChatsValue({
+            files: [
+              {
+                name: 'display',
+                type: ChatFileTypeEnum.file,
+                url: 'https://files.example.com/download'
+              }
+            ]
+          })
+        },
+        maxFileAmount: 1
+      });
+      expect(files[0].filename).toBe(filename);
+      expect(chatValue2RuntimePrompt(message.value).text).toContain(`<type>${type}</type>`);
+      expect(chatValue2RuntimePrompt(message.value).files).toEqual([]);
+      expect(axios.head).toHaveBeenCalledTimes(1);
+    }
+  );
+
+  it('moves documents into the reminder and keeps multimodal URLs as message files', async () => {
     const message: ChatItemMiniType = {
       obj: ChatRoleEnum.Human,
       value: runtimePrompt2ChatsValue({
@@ -156,7 +191,7 @@ describe('rewriteWorkflowAIUserMessageWithFiles', () => {
       })
     };
 
-    const { message: result, files: inputFiles } = rewriteWorkflowAIUserMessageWithFiles({
+    const { message: result, files: inputFiles } = await rewriteWorkflowAIUserMessageWithFiles({
       message,
       maxFileAmount: 20
     });
@@ -174,3 +209,51 @@ describe('rewriteWorkflowAIUserMessageWithFiles', () => {
     expect(text).not.toContain('<id>');
   });
 });
+
+describe('asynchronous classification ordering', () => {
+  it('assigns duplicate filenames in input order even when the second probe finishes first', async () => {
+    const { axios } = await import('@fastgpt/service/common/api/axios');
+    let releaseFirst!: () => void;
+    const first = new Promise<void>((resolve) => {
+      releaseFirst = resolve;
+    });
+    const urls = ['https://files.example.com/first', 'https://files.example.com/second'];
+    const spy = vi.spyOn(axios, 'head').mockImplementation(async (url) => {
+      if (url === urls[0]) await first;
+      return { headers: { 'content-type': 'application/pdf' } };
+    });
+    try {
+      const result = parseWorkflowAIInputFiles({
+        files: urls.map((url) => ({ name: 'report', type: ChatFileTypeEnum.file, url })),
+        maxFileAmount: 2
+      });
+      await Promise.resolve();
+      releaseFirst();
+      expect(await result).toEqual([
+        {
+          name: 'report',
+          filename: 'first.pdf',
+          type: ChatFileTypeEnum.document,
+          url: urls[0]
+        },
+        {
+          name: 'report-1',
+          filename: 'second.pdf',
+          type: ChatFileTypeEnum.document,
+          url: urls[1]
+        }
+      ]);
+    } finally {
+      spy.mockRestore();
+    }
+  });
+});
+
+// 分类测试隔离外部服务，避免无后缀样例发出真实网络请求。
+beforeEach(async () => {
+  const { axios } = await import('@fastgpt/service/common/api/axios');
+  vi.spyOn(axios, 'head').mockResolvedValue({
+    headers: { 'content-type': 'application/octet-stream' }
+  } as any);
+});
+afterEach(() => vi.restoreAllMocks());

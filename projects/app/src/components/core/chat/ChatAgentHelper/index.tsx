@@ -1,4 +1,7 @@
-import React, { type ReactNode, useEffect, useImperativeHandle, useMemo } from 'react';
+import React, { type ReactNode, useEffect, useImperativeHandle, useMemo, useRef } from 'react';
+import { Button, Flex, Spinner, Text } from '@chakra-ui/react';
+import { useTranslation } from 'next-i18next';
+import { useMemoizedFn } from 'ahooks';
 import { useContextSelector } from 'use-context-selector';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { createChatAgentHelperAppConfig } from '@fastgpt/global/core/ai/auxiliaryGeneration/chatAgentHelper';
@@ -8,21 +11,22 @@ import ChatBox from '../ChatContainer/ChatBox';
 import ChatItemContextProvider, { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import ChatRecordContextProvider from '@/web/core/chat/context/chatRecordContext';
 import { streamFetch } from '@/web/common/api/fetch';
-import type { StartChatFnProps } from '../ChatContainer/type';
+import type { generatingMessageProps, StartChatFnProps } from '../ChatContainer/type';
 import { AuxiliaryGenerationEventEnum } from '@fastgpt/global/core/ai/auxiliaryGeneration/constants';
 import { getChatSourceKey, type ChatSourceTarget } from '@/web/core/chat/utils';
-import { useChatStore } from '@/web/core/chat/context/useChatStore';
+import { useAppBuilderChat } from '@/web/core/chat/useAppBuilderChat';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { useToast } from '@fastgpt/web/hooks/useToast';
+import { loadChatAgentConfig } from './api';
 import { getInitChatInfo } from '@/web/core/chat/api';
-import { useUserStore } from '@/web/support/user/useUserStore';
-import { batchDeleteChatHistories } from '@/web/core/chat/history/api';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 import type {
   ChatAgentConfigFormDataType,
   ChatAgentHelperMetadataType
 } from '@fastgpt/global/core/ai/auxiliaryGeneration/type';
 
 export type ChatAgentHelperRefType = {
-  restartChat: () => Promise<void>;
+  restartChat: () => void;
 };
 
 export type ChatAgentHelperProps = {
@@ -32,7 +36,7 @@ export type ChatAgentHelperProps = {
 } & {
   type: typeof ChatAgentHelperTypeEnum.chatAgent;
   metadata: ChatAgentHelperMetadataType;
-  onApply: (e: ChatAgentConfigFormDataType) => void;
+  onApply: (e: ChatAgentConfigFormDataType) => void | Promise<void>;
 };
 
 const ChatAgentHelperChatBox = ({
@@ -63,6 +67,7 @@ const ChatAgentHelperChatBox = ({
         sourceKey,
         appId,
         chatId,
+        title: isSameChat ? prev.title : undefined,
         chatGenerateStatus: isSameChat ? prev.chatGenerateStatus : undefined,
         hasBeenRead: isSameChat ? prev.hasBeenRead : undefined,
         app: createChatAgentHelperAppConfig()
@@ -74,32 +79,45 @@ const ChatAgentHelperChatBox = ({
     async () => {
       if (!appId || !chatId) return;
 
-      const res = await getInitChatInfo({
+      return getInitChatInfo({
         appId,
         chatId,
         sourceType: ChatSourceTypeEnum.chatAgentHelper
       });
-
-      setChatBoxData((prev) => ({
-        ...prev,
-        sourceKey,
-        appId,
-        chatId: res.chatId || chatId,
-        title: res.title,
-        chatGenerateStatus: res.chatGenerateStatus,
-        hasBeenRead: res.hasBeenRead
-      }));
     },
     {
       manual: false,
-      refreshDeps: [appId, chatId, sourceKey]
+      refreshDeps: [appId, chatId, sourceKey],
+      // 回写放在 onSuccess，让请求取消和卸载保护拦截旧会话的迟到响应。
+      onSuccess: (res) => {
+        if (!res) return;
+        setChatBoxData((prev) => ({
+          ...prev,
+          sourceKey,
+          appId,
+          chatId: res.chatId || chatId,
+          title: res.title,
+          chatGenerateStatus: res.chatGenerateStatus,
+          hasBeenRead: res.hasBeenRead
+        }));
+      }
     }
   );
+
+  // 由 ChatBox 的统一事件入口调用，让首次生成和刷新恢复都能应用生成配置。
+  const onGeneratingMessage = useMemoizedFn((event: generatingMessageProps) => {
+    if (
+      event.event === AuxiliaryGenerationEventEnum.chatAgentConfig &&
+      event.formData &&
+      type === ChatAgentHelperTypeEnum.chatAgent
+    ) {
+      onApply(event.formData);
+    }
+  });
 
   const onStartChat = async ({
     messages,
     responseChatItemId,
-    interactive,
     controller,
     generatingMessage
   }: StartChatFnProps) => {
@@ -114,22 +132,12 @@ const ChatAgentHelperChatBox = ({
         responseChatItemId,
         appId,
         messages,
-        interactive,
         metadata: {
           type,
           data: metadata
         }
       },
-      onMessage: (event) => {
-        if (
-          event.event === AuxiliaryGenerationEventEnum.chatAgentConfig &&
-          event.formData &&
-          type === ChatAgentHelperTypeEnum.chatAgent
-        ) {
-          onApply(event.formData);
-        }
-        generatingMessage(event);
-      },
+      onMessage: generatingMessage,
       abortCtrl: controller
     });
 
@@ -137,12 +145,8 @@ const ChatAgentHelperChatBox = ({
   };
 
   useImperativeHandle(ChatBoxRef, () => ({
-    async restartChat() {
-      await batchDeleteChatHistories({
-        appId,
-        sourceType: ChatSourceTypeEnum.chatAgentHelper,
-        chatIds: [chatId]
-      });
+    restartChat() {
+      // 保留旧会话，切换到独立的新 chatId 后再开始辅助生成。
       clearChatRecords();
       onRestart();
     }
@@ -156,7 +160,6 @@ const ChatAgentHelperChatBox = ({
       chatType={ChatTypeEnum.test}
       features={{
         markRead: false,
-        mark: false,
         voice: false,
         tts: false,
         inputGuide: false,
@@ -167,12 +170,17 @@ const ChatAgentHelperChatBox = ({
       }}
       InputLeftComponent={InputLeftComponent}
       onStartChat={onStartChat}
+      onGeneratingMessage={onGeneratingMessage}
     />
   );
 };
 
 const ChatAgentHelper = (props: ChatAgentHelperProps) => {
-  const tmbId = useUserStore((state) => state.userInfo?.team?.tmbId ?? '');
+  const { t } = useTranslation(['common', 'app']);
+  const { toast } = useToast();
+  const showRunDetail = useSystemStore(
+    (state) => state.feConfigs.showAuxiliaryGenerationRunDetail ?? false
+  );
   const sourceTarget = useMemo<ChatSourceTarget>(
     () => ({
       sourceType: ChatSourceTypeEnum.chatAgentHelper,
@@ -180,14 +188,12 @@ const ChatAgentHelper = (props: ChatAgentHelperProps) => {
     }),
     [props.appId]
   );
-  const chatIdCacheKey = useMemo(() => {
-    if (!tmbId) return '';
-
-    return `${getChatSourceKey(sourceTarget)}:${tmbId}`;
-  }, [sourceTarget, tmbId]);
-  const chatId = useChatStore((state) => state.sourceChatIdMap[chatIdCacheKey] || '');
-  const ensureSourceChatId = useChatStore((state) => state.ensureSourceChatId);
-  const setSourceChatId = useChatStore((state) => state.setSourceChatId);
+  const { chatId, restartChat, restoreChat, isRestoringChat, restoreChatError } = useAppBuilderChat(
+    {
+      appId: props.appId,
+      sourceType: ChatSourceTypeEnum.chatAgentHelper
+    }
+  );
   const chatRecordProviderParams = useMemo(
     () => ({
       chatId,
@@ -197,35 +203,63 @@ const ChatAgentHelper = (props: ChatAgentHelperProps) => {
     [chatId, props.appId]
   );
 
-  useEffect(() => {
-    if (chatIdCacheKey && !chatId) {
-      ensureSourceChatId(chatIdCacheKey);
+  const applyingConfigRef = useRef(false);
+  const { run: applyConfig, loading: isApplyingConfig } = useRequest(
+    async (responseChatItemId: string) => {
+      if (applyingConfigRef.current) return;
+      applyingConfigRef.current = true;
+      try {
+        const { formData } = await loadChatAgentConfig({
+          appId: props.appId,
+          chatId,
+          responseChatItemId
+        });
+        await props.onApply(formData);
+        toast({ status: 'success', title: t('app:chat_agent_config_applied') });
+      } finally {
+        applyingConfigRef.current = false;
+      }
     }
-  }, [chatId, chatIdCacheKey, ensureSourceChatId]);
-
-  const onRestart = () => {
-    setSourceChatId(chatIdCacheKey);
-  };
+  );
+  const chatAgentBuilderVersionActions = useMemo(
+    () => ({ isApplying: isApplyingConfig, applyConfig }),
+    [isApplyingConfig, applyConfig]
+  );
 
   return (
     <ChatItemContextProvider
+      chatAgentBuilderVersionActions={chatAgentBuilderVersionActions}
       showRouteToDatasetDetail={false}
       canDownloadSource={false}
       isShowCite={false}
       isShowFullText={false}
       showRunningStatus={true}
       showSkillReferences={false}
-      showWholeResponse={false}
+      showWholeResponse={showRunDetail}
       showPoints={false}
       showAvatar={true}
       showSandboxAction={false}
     >
+      {!chatId && (
+        <Flex flex={1} alignItems="center" justifyContent="center" flexDirection="column" gap={3}>
+          {restoreChatError && !isRestoringChat ? (
+            <>
+              <Text color="myGray.500">{t('load_failed')}</Text>
+              <Button variant="whiteBase" onClick={restoreChat}>
+                {t('refresh')}
+              </Button>
+            </>
+          ) : (
+            <Spinner size="sm" />
+          )}
+        </Flex>
+      )}
       {chatId && (
         <ChatRecordContextProvider params={chatRecordProviderParams}>
           <ChatAgentHelperChatBox
             {...props}
             chatId={chatId}
-            onRestart={onRestart}
+            onRestart={restartChat}
             sourceTarget={sourceTarget}
           />
         </ChatRecordContextProvider>

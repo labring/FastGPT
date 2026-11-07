@@ -4,6 +4,7 @@ import type { StoreNodeItemType } from '../../workflow/type/node';
 import { NodeToolConfigTypeSchema } from '../../workflow/type/node';
 import type { AppChatConfigType } from '../type';
 import { CanonicalAgentToolInputConfigSchema } from '../../workflow/migration';
+import { LanguageSchema } from '../../../common/i18n/type';
 
 export type AppToolRuntimeType = {
   id: string;
@@ -34,28 +35,16 @@ export type AppToolRuntimeType = {
 export const AgentToolInputConfigSchema = CanonicalAgentToolInputConfigSchema;
 export type AgentToolInputConfigType = z.infer<typeof AgentToolInputConfigSchema>;
 
-const AgentToolBaseSchema = z.object({
+export const AgentToolSchema = z.object({
   id: z.string(),
   name: z.string().optional(),
   avatar: z.string().optional(),
   // 空字符串表示保持最新版本，不能在序列化时被 truthy 判断过滤。
   version: z.string().optional(),
   source: z.string().optional(),
+  metadataLocale: LanguageSchema.optional(),
   toolConfig: NodeToolConfigTypeSchema.optional(),
   inputs: z.array(AgentToolInputConfigSchema).optional(),
   config: z.record(z.string(), z.any())
 });
-
-export const AgentToolSchema = AgentToolBaseSchema;
 export type AgentToolType = z.infer<typeof AgentToolSchema>;
-
-// // System tool
-
-// export type AppToolTemplateListItemType = Omit<
-//   AppToolTemplateItemType,
-//   'name' | 'intro' | 'workflow'
-// > & {
-//   name: string;
-//   intro: string;
-//   tags?: SystemPluginToolTagType[];
-// };

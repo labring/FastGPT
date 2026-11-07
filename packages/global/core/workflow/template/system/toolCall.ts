@@ -126,6 +126,7 @@ export const ToolCallNode: FlowNodeTemplateType = {
 
     {
       key: NodeInputKeyEnum.useAgentSandbox,
+      canAgentGenerated: false,
       renderTypeList: [FlowNodeInputTypeEnum.switch],
       label: i18nT('app:use_agent_sandbox'),
       description: i18nT('app:use_computer_desc'),
@@ -134,7 +135,7 @@ export const ToolCallNode: FlowNodeTemplateType = {
     },
     {
       key: NodeInputKeyEnum.sandboxEntrypoint,
-      renderTypeList: [FlowNodeInputTypeEnum.custom],
+      renderTypeList: [FlowNodeInputTypeEnum.hidden],
       label: '',
       valueType: WorkflowIOValueTypeEnum.string
     },

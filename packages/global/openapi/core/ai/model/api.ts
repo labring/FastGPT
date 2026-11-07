@@ -1,36 +1,59 @@
 import { ModelScopeEnum, ModelTypeEnum } from '../../../../core/ai/constants';
 import {
   EmbeddingModelConfigSchema,
+  EmbeddingModelDocumentSchema,
   LLMModelConfigSchema,
-  ModelPriceTierSchema,
+  LLMModelDocumentSchema,
+  ModelPricingSchema,
   RerankModelConfigSchema,
+  RerankModelDocumentSchema,
   STTModelConfigSchema,
-  TTSModelConfigSchema
+  STTModelDocumentSchema,
+  AIModelDataSchema,
+  AIModelDocumentDataSchema,
+  TTSModelConfigSchema,
+  TTSModelDocumentSchema
 } from '../../../../core/ai/model/schema';
 import z from 'zod';
-import {
-  CollaboratorItemSchema,
-  CollaboratorListSchema
-} from '../../../../support/permission/collaborator.schema';
+import { BoolSchema, IntSchema } from '../../../../common/zod';
+import { ObjectIdSchema } from '../../../../common/type/mongo';
+import { I18nStringSchema } from '../../../../common/i18n/type';
 import { ModelDefaultIdsSchema } from '../../../../core/ai/model/default';
-import { OutLinkChatAuthSchema } from '../../../../support/permission/chat';
+import { OutLinkChatAuthQuerySchema } from '../../../../support/permission/chat';
+import { ChannelTypeSchema } from '../../../../core/ai/model/scope';
+import { ModelOrderIdsSchema } from '../../../../core/ai/model/order';
+import { SourceMemberSchema } from '../../../../support/user/type';
+
+export const ModelChannelSummarySchema = z.object({
+  id: IntSchema.positive().meta({ example: 1, description: 'AI Proxy 渠道 ID' }),
+  name: z.string().meta({ example: 'OpenAI 主渠道', description: '渠道名称' }),
+  protocol: z.object({
+    name: I18nStringSchema.meta({ description: '渠道协议名称' }),
+    avatar: z.string().meta({ example: 'model/openai', description: '渠道协议图标' })
+  }),
+  status: IntSchema.meta({ example: 1, description: 'AI Proxy 渠道状态' })
+});
+export type ModelChannelSummary = z.infer<typeof ModelChannelSummarySchema>;
 
 const MyModelBaseSchema = z.object({
   modelId: z.string().meta({ description: '模型稳定 ID' }),
   model: z.string().meta({ description: 'Provider 请求使用的模型标识' }),
   name: z.string().meta({ description: '模型展示名称' }),
   provider: z.string().meta({ description: '模型提供商标识' }),
-  scope: z.literal(ModelScopeEnum.system).meta({ description: '模型实例作用域' }),
+  scope: z.nativeEnum(ModelScopeEnum).meta({ description: '模型实例作用域' }),
+  sortOrder: LLMModelDocumentSchema.shape.sortOrder,
+  tmbId: z.string().optional().meta({ description: '模型归属成员 ID' }),
+  sourceMember: SourceMemberSchema.optional().meta({
+    description: '创建人资料，仅成员展示请求返回'
+  }),
   avatar: z.string().optional().meta({ description: '模型图标' }),
   isActive: z.boolean().optional().meta({ description: '模型是否启用' }),
   testMode: z.boolean().optional().meta({ description: '是否为测试模式' }),
-  charsPointsPrice: z.number().optional().meta({ description: '按字符计费的积分单价' }),
-  priceTiers: z.array(ModelPriceTierSchema).optional().meta({ description: '分段价格配置' }),
-  inputPrice: z.number().optional().meta({ description: '旧版输入价格展示字段' }),
-  outputPrice: z.number().optional().meta({ description: '旧版输出价格展示字段' })
+  pricing: ModelPricingSchema.optional().meta({ description: '模型计价配置；缺失时免费' })
 });
 
 export const MyLLMModelItemSchema = MyModelBaseSchema.extend({
+  pricing: LLMModelDocumentSchema.shape.pricing,
   type: z.literal(ModelTypeEnum.llm),
   config: LLMModelConfigSchema.omit({
     defaultSystemChatPrompt: true,
@@ -39,6 +62,7 @@ export const MyLLMModelItemSchema = MyModelBaseSchema.extend({
   })
 });
 export const MyEmbeddingModelItemSchema = MyModelBaseSchema.extend({
+  pricing: EmbeddingModelDocumentSchema.shape.pricing,
   type: z.literal(ModelTypeEnum.embedding),
   config: EmbeddingModelConfigSchema.omit({
     defaultConfig: true,
@@ -47,14 +71,17 @@ export const MyEmbeddingModelItemSchema = MyModelBaseSchema.extend({
   })
 });
 export const MyRerankModelItemSchema = MyModelBaseSchema.extend({
+  pricing: RerankModelDocumentSchema.shape.pricing,
   type: z.literal(ModelTypeEnum.rerank),
   config: RerankModelConfigSchema.omit({ defaultConfig: true })
 });
 export const MyTTSModelItemSchema = MyModelBaseSchema.extend({
+  pricing: TTSModelDocumentSchema.shape.pricing,
   type: z.literal(ModelTypeEnum.tts),
   config: TTSModelConfigSchema
 });
 export const MySTTModelItemSchema = MyModelBaseSchema.extend({
+  pricing: STTModelDocumentSchema.shape.pricing,
   type: z.literal(ModelTypeEnum.stt),
   config: STTModelConfigSchema
 });
@@ -93,7 +120,16 @@ export const ModelProviderSchema = z.object({
 
 export const GetModelCatalogQuerySchema = z.object({
   version: z.string().trim().min(1).optional().meta({ description: '客户端已有目录版本' }),
-  outLinkAuthData: OutLinkChatAuthSchema.optional().meta({
+  includeSourceMember: BoolSchema.optional().meta({
+    example: true,
+    description: '补充创建人资料；仅成员生效，开启后始终返回完整目录，不使用版本缓存'
+  }),
+  orderBy: z.literal('custom').optional().meta({
+    example: 'custom',
+    description:
+      '可用模型页展示排序：自己的团队模型、共享给我的团队模型、系统模型依次展示，各组按自定义 rank 排列；省略时保留运行时顺序'
+  }),
+  outLinkAuthData: OutLinkChatAuthQuerySchema.optional().meta({
     example: JSON.stringify({ shareId: 'share-id', outLinkUid: 'out-link-user-id' }),
     description: '分享链接鉴权数据；存在时使用发布链接绑定的成员身份计算模型权限'
   })
@@ -109,7 +145,7 @@ export const GetModelCatalogResponseSchema = z.object({
       defaultModelIds: ModelDefaultIdsSchema
     })
     .optional()
-    .meta({ description: '版本变化时返回的完整目录；版本一致时省略' })
+    .meta({ description: '版本变化或成员显式请求创建人资料时返回完整目录；否则版本一致时省略' })
 });
 export type GetModelCatalogResponse = z.infer<typeof GetModelCatalogResponseSchema>;
 
@@ -127,20 +163,12 @@ const PublicPriceModelBaseSchema = z.object({
   testMode: z.boolean().optional().meta({ example: false, description: '是否为测试模式' })
 });
 
-const PublicCharsPriceSchema = z.number().optional().meta({
-  example: 1,
-  description: '对应模型计费单位的积分单价'
-});
-
 export const PublicPriceSystemModelSchema = z.discriminatedUnion('type', [
   PublicPriceModelBaseSchema.extend({
     type: z
       .literal(ModelTypeEnum.llm)
       .meta({ example: ModelTypeEnum.llm, description: '模型类型' }),
-    priceTiers: z.array(ModelPriceTierSchema).meta({
-      example: [{ minInputTokens: 0, inputPrice: 1, outputPrice: 2 }],
-      description: '分段输入输出价格配置'
-    }),
+    pricing: LLMModelDocumentSchema.shape.pricing,
     config: LLMModelConfigSchema.pick({
       maxContext: true,
       vision: true,
@@ -153,27 +181,27 @@ export const PublicPriceSystemModelSchema = z.discriminatedUnion('type', [
     type: z
       .literal(ModelTypeEnum.embedding)
       .meta({ example: ModelTypeEnum.embedding, description: '模型类型' }),
-    charsPointsPrice: PublicCharsPriceSchema,
+    pricing: EmbeddingModelDocumentSchema.shape.pricing,
     config: EmbeddingModelConfigSchema.pick({ maxToken: true })
   }),
   PublicPriceModelBaseSchema.extend({
     type: z
       .literal(ModelTypeEnum.rerank)
       .meta({ example: ModelTypeEnum.rerank, description: '模型类型' }),
-    charsPointsPrice: PublicCharsPriceSchema,
+    pricing: RerankModelDocumentSchema.shape.pricing,
     config: RerankModelConfigSchema.pick({ maxToken: true })
   }),
   PublicPriceModelBaseSchema.extend({
     type: z
       .literal(ModelTypeEnum.tts)
       .meta({ example: ModelTypeEnum.tts, description: '模型类型' }),
-    charsPointsPrice: PublicCharsPriceSchema
+    pricing: TTSModelDocumentSchema.shape.pricing
   }),
   PublicPriceModelBaseSchema.extend({
     type: z
       .literal(ModelTypeEnum.stt)
       .meta({ example: ModelTypeEnum.stt, description: '模型类型' }),
-    charsPointsPrice: PublicCharsPriceSchema
+    pricing: STTModelDocumentSchema.shape.pricing
   })
 ]);
 export type PublicPriceSystemModel = z.infer<typeof PublicPriceSystemModelSchema>;
@@ -184,30 +212,395 @@ export const GetSystemModelsResponseSchema = z.object({
 });
 export type GetSystemModelsResponse = z.infer<typeof GetSystemModelsResponseSchema>;
 
+/* GET /api/core/ai/model/config?channelType=team */
+export const ModelConfigListItemSchema = AIModelDataSchema.and(
+  z.object({
+    channels: z.array(ModelChannelSummarySchema).meta({ description: '当前模型关联的渠道摘要' })
+  })
+);
+export type ModelConfigListItem = z.infer<typeof ModelConfigListItemSchema>;
+
+export const GetTeamModelsResponseSchema = z.object({
+  models: z.array(ModelConfigListItemSchema),
+  channels: z.array(ModelChannelSummarySchema),
+  providers: z.array(ModelProviderSchema)
+});
+export type GetTeamModelsResponse = z.infer<typeof GetTeamModelsResponseSchema>;
+
 /* ============================================================================
- * API: 获取模型协作者
- * Route: GET /proApi/system/model/collaborator/list
+ * 通用模型管理契约 (Core AI Model Management)
+ * ============================================================================ */
+
+export const ModelIdSchema = ObjectIdSchema.meta({
+  example: '68ad85a7463006c963799a05',
+  description: '模型稳定 ObjectId'
+});
+
+const ModelChannelTypeSchema = ChannelTypeSchema.meta({
+  description: '模型作用域类型'
+});
+
+export const ModelReferenceSchema = z.object({
+  modelId: ModelIdSchema,
+  channelType: ModelChannelTypeSchema
+});
+export type ModelReference = z.infer<typeof ModelReferenceSchema>;
+
+export const ModelIdsSchema = z
+  .array(ModelIdSchema)
+  .min(1)
+  .max(500)
+  .superRefine((modelIds, ctx) => {
+    if (new Set(modelIds).size !== modelIds.length) {
+      ctx.addIssue({ code: 'custom', message: 'modelIds must be unique' });
+    }
+  })
+  .meta({
+    example: ['68ad85a7463006c963799a05', '68ad85a7463006c963799a06'],
+    description: '待批量操作的模型 ID 列表，最多 500 个且不可重复'
+  });
+
+/* DELETE /api/core/ai/model/delete */
+export const DeleteModelsBodySchema = z.object({
+  modelIds: ModelIdsSchema,
+  channelType: ModelChannelTypeSchema
+});
+export type DeleteModelsBody = z.infer<typeof DeleteModelsBodySchema>;
+
+/* GET /api/core/ai/model/detail */
+export const ModelDetailChannelSchema = ModelChannelSummarySchema.extend({
+  isAssociated: z.boolean().meta({
+    example: true,
+    description: '当前渠道是否已关联该模型'
+  })
+});
+export type ModelDetailChannel = z.infer<typeof ModelDetailChannelSchema>;
+
+export const GetModelDetailResponseSchema = z.object({
+  model: AIModelDataSchema.meta({ description: '完整模型参数' }),
+  channels: z.array(ModelDetailChannelSchema).meta({
+    description: '全部渠道展示信息及其与当前模型的关联状态'
+  })
+});
+export type GetModelDetailResponse = z.infer<typeof GetModelDetailResponseSchema>;
+
+/* GET & POST /api/core/ai/model/test */
+export const TestModelQuerySchema = ModelReferenceSchema.extend({
+  channelId: IntSchema.positive().optional().meta({
+    example: 1,
+    description: '可选的 AI Proxy 渠道 ID'
+  })
+});
+export type TestModelQuery = z.infer<typeof TestModelQuerySchema>;
+
+const TestModelPriceFields = { pricing: true } as const;
+
+export const TestDraftModelDataSchema = z
+  .discriminatedUnion('type', [
+    LLMModelDocumentSchema.omit(TestModelPriceFields),
+    EmbeddingModelDocumentSchema.omit(TestModelPriceFields),
+    TTSModelDocumentSchema.omit(TestModelPriceFields),
+    STTModelDocumentSchema.omit(TestModelPriceFields),
+    RerankModelDocumentSchema.omit(TestModelPriceFields)
+  ])
+  .meta({ description: '仅包含实际模型调用所需字段的表单草稿；计费字段会被忽略' });
+
+export const TestDraftModelBodySchema = z
+  .object({
+    modelData: TestDraftModelDataSchema.meta({
+      description: '新增或编辑中的当前模型运行参数；计费字段不参与测试'
+    }),
+    channelId: IntSchema.positive().meta({
+      example: 1,
+      description: '本次测试指定的 AI Proxy 渠道 ID'
+    }),
+    channelType: ModelChannelTypeSchema
+  })
+  .superRefine(({ modelData }, ctx) => {
+    if (modelData.type === ModelTypeEnum.tts && modelData.config.voices.length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.too_small,
+        minimum: 1,
+        origin: 'array',
+        inclusive: true,
+        path: ['modelData', 'config', 'voices'],
+        message: 'TTS model test requires at least one voice'
+      });
+    }
+  });
+export type TestDraftModelBody = z.infer<typeof TestDraftModelBodySchema>;
+
+/* GET /api/core/ai/model/templates */
+export const ModelTemplateReferenceSchema = z.object({
+  type: z.nativeEnum(ModelTypeEnum).meta({
+    example: ModelTypeEnum.llm,
+    description: '模板模型类型'
+  }),
+  model: z.string().trim().min(1).meta({
+    example: 'gpt-5.4',
+    description: '模板模型标识'
+  })
+});
+export type ModelTemplateReference = z.infer<typeof ModelTemplateReferenceSchema>;
+
+export const GetModelTemplatesQuerySchema = z.object({
+  channelType: ModelChannelTypeSchema
+});
+export type GetModelTemplatesQuery = z.infer<typeof GetModelTemplatesQuerySchema>;
+
+export const GetModelTemplatesResponseSchema = z.object({
+  models: z.array(AIModelDocumentDataSchema).meta({ description: '当前 Plugin 模型模板' }),
+  providers: z.array(ModelProviderSchema).meta({ description: '模型提供商元数据' })
+});
+export type GetModelTemplatesResponse = z.infer<typeof GetModelTemplatesResponseSchema>;
+
+/* POST /api/core/ai/model/updateChannels */
+export const UpdateModelChannelsBodySchema = z.object({
+  modelId: ModelIdSchema,
+  channelType: ChannelTypeSchema.meta({
+    description: '模型作用域；必填，服务端据此先鉴权再查询模型，避免无权限成员探测模型是否存在'
+  }),
+  addChannelIds: z.array(IntSchema.positive()).max(500).optional().meta({
+    description: '需要关联到该模型的渠道 ID，已关联的渠道会被忽略'
+  }),
+  removeChannelIds: z.array(IntSchema.positive()).max(500).optional().meta({
+    description: '需要解除与该模型关联的渠道 ID，同时清理渠道内该模型的映射；渠道本身不删除'
+  })
+});
+export type UpdateModelChannelsBody = z.infer<typeof UpdateModelChannelsBodySchema>;
+
+/* POST /api/core/ai/model/create */
+// 展示 rank 由排序接口维护，创建配置不接受客户端指定顺序。
+export const CreateModelDataSchema = z.discriminatedUnion('type', [
+  LLMModelDocumentSchema.omit({ sortOrder: true }),
+  EmbeddingModelDocumentSchema.omit({ sortOrder: true }),
+  TTSModelDocumentSchema.omit({ sortOrder: true }),
+  STTModelDocumentSchema.omit({ sortOrder: true }),
+  RerankModelDocumentSchema.omit({ sortOrder: true })
+]);
+export type CreateModelData = z.infer<typeof CreateModelDataSchema>;
+
+export const CreateModelBodySchema = z.object({
+  modelData: CreateModelDataSchema.meta({
+    description: '模型配置；未声明字段及 sortOrder 会被忽略，modelId 始终由服务端生成'
+  }),
+  channelType: ModelChannelTypeSchema,
+  channelIds: z.array(IntSchema.positive()).optional().meta({
+    description: '可选：创建模型后同时关联追加的已有渠道 ID 列表'
+  })
+});
+export type CreateModelBody = z.infer<typeof CreateModelBodySchema>;
+
+export const CreateModelResponseSchema = z.object({
+  modelId: ModelIdSchema
+});
+export type CreateModelResponse = z.infer<typeof CreateModelResponseSchema>;
+
+/* POST /api/core/ai/model/createFromTemplates */
+export const CreateModelsFromTemplatesBodySchema = z.object({
+  templates: z
+    .array(ModelTemplateReferenceSchema)
+    .min(1)
+    .max(500)
+    .superRefine((templates, ctx) => {
+      const keys = new Set<string>();
+      templates.forEach((template, index) => {
+        const key = template.model;
+        if (keys.has(key)) {
+          ctx.addIssue({
+            code: 'custom',
+            path: [index],
+            message: `Duplicate model template: ${template.model}`
+          });
+        }
+        keys.add(key);
+      });
+    })
+    .meta({ description: '本次选择的模板临时键' }),
+  channelType: ModelChannelTypeSchema,
+  channelIds: z.array(IntSchema.positive()).optional().meta({
+    description: '可选：批量创建模型后同时关联追加的已有渠道 ID 列表'
+  })
+});
+export type CreateModelsFromTemplatesBody = z.infer<typeof CreateModelsFromTemplatesBodySchema>;
+
+export const CreatedModelSchema = ModelTemplateReferenceSchema.extend({
+  modelId: ModelIdSchema
+});
+export type CreatedModel = z.infer<typeof CreatedModelSchema>;
+
+export const CreateModelsFromTemplatesResponseSchema = z.object({
+  models: z.array(CreatedModelSchema).meta({
+    description: '本次实际新建的模型；已安装的重复项不会再次创建'
+  })
+});
+export type CreateModelsFromTemplatesResponse = z.infer<
+  typeof CreateModelsFromTemplatesResponseSchema
+>;
+
+/* PUT /api/core/ai/model/update */
+const UpdateModelField = {
+  model: z.string().trim().min(1).optional().meta({
+    description: '模型标识；若未提供则保持当前模型标识不变'
+  })
+};
+
+export const UpdateModelDataSchema = z
+  .discriminatedUnion('type', [
+    LLMModelDocumentSchema.omit({ tmbId: true, teamId: true, sortOrder: true }).extend(
+      UpdateModelField
+    ),
+    EmbeddingModelDocumentSchema.omit({ tmbId: true, teamId: true, sortOrder: true }).extend(
+      UpdateModelField
+    ),
+    TTSModelDocumentSchema.omit({ tmbId: true, teamId: true, sortOrder: true }).extend(
+      UpdateModelField
+    ),
+    STTModelDocumentSchema.omit({ tmbId: true, teamId: true, sortOrder: true }).extend(
+      UpdateModelField
+    ),
+    RerankModelDocumentSchema.omit({ tmbId: true, teamId: true, sortOrder: true }).extend(
+      UpdateModelField
+    )
+  ])
+  .meta({
+    description: '模型可编辑参数；model 为可选更新，type 仅用于分支校验不参与类型变更'
+  });
+export type UpdateModelData = z.infer<typeof UpdateModelDataSchema>;
+
+export const UpdateModelBodySchema = z.object({
+  modelId: ModelIdSchema,
+  modelData: UpdateModelDataSchema,
+  channelType: ModelChannelTypeSchema
+});
+export type UpdateModelBody = z.infer<typeof UpdateModelBodySchema>;
+
+/* PUT /api/core/ai/model/updateStatus */
+export const UpdateModelStatusBodySchema = z.object({
+  modelIds: ModelIdsSchema,
+  isActive: z.boolean().meta({ example: true, description: '目标启用状态' }),
+  channelType: ModelChannelTypeSchema
+});
+export type UpdateModelStatusBody = z.infer<typeof UpdateModelStatusBodySchema>;
+
+/* ============================================================================
+ * API: 更新模型展示顺序
+ * Route: PUT /api/core/ai/model/updateOrder
+ * Method: PUT
+ * Description: 按完整模型 ID 列表更新模型展示顺序，服务端写入连续 rank
+ * Tags: ['Model', 'Admin', 'Write']
+ * ============================================================================ */
+export const UpdateModelOrderBodySchema = z.object({
+  modelIds: ModelOrderIdsSchema,
+  channelType: ModelChannelTypeSchema
+});
+export type UpdateModelOrderBody = z.infer<typeof UpdateModelOrderBodySchema>;
+
+/* ============================================================================
+ * API: 获取系统模型管理配置
+ * Route: GET /api/core/ai/model/config?channelType=system
  * Method: GET
- * Description: 获取指定模型的协作者权限配置
- * Tags: ['模型管理', 'Read']
+ * Description: 获取系统模型、渠道、Provider 与默认模型配置
+ * Tags: ['Model', 'Admin', 'Read']
  * ============================================================================ */
 
-export const ModelCollaboratorListQuerySchema = z.object({
-  modelId: z.string().meta({ description: '模型稳定 ID' })
+export const GetSystemModelConfigResponseSchema = z.object({
+  models: z.array(ModelConfigListItemSchema),
+  channels: z.array(ModelChannelSummarySchema).meta({
+    description: '全部渠道摘要，供新增、编辑和关联渠道交互复用'
+  }),
+  providers: z.array(ModelProviderSchema),
+  defaultModelIds: ModelDefaultIdsSchema
 });
-export type ModelCollaboratorListQuery = z.infer<typeof ModelCollaboratorListQuerySchema>;
-export const ModelCollaboratorListResponseSchema = CollaboratorListSchema;
+export type GetSystemModelConfigResponse = z.infer<typeof GetSystemModelConfigResponseSchema>;
 
-/* ============================================================================
- * API: 更新模型协作者
- * Route: POST /proApi/system/model/collaborator/update
- * Method: POST
- * Description: 批量更新指定模型的协作者权限配置
- * Tags: ['模型管理', 'Write']
- * ============================================================================ */
-
-export const ModelCollaboratorUpdateBodySchema = z.object({
-  collaborators: z.array(CollaboratorItemSchema).meta({ description: '协作者权限列表' }),
-  modelIds: z.array(z.string()).min(1).meta({ description: '模型稳定 ID 列表' })
+/* GET /api/core/ai/model/config */
+export const GetModelConfigQuerySchema = z.object({
+  channelType: ChannelTypeSchema.meta({
+    example: 'system',
+    description: 'system=系统模型管理配置；team=当前成员私有模型配置'
+  })
 });
-export type ModelCollaboratorUpdateBody = z.infer<typeof ModelCollaboratorUpdateBodySchema>;
+export type GetModelConfigQuery = z.infer<typeof GetModelConfigQuerySchema>;
+
+export const GetModelConfigResponseSchema = z.union([
+  GetSystemModelConfigResponseSchema,
+  GetTeamModelsResponseSchema
+]);
+export type GetModelConfigResponse = z.infer<typeof GetModelConfigResponseSchema>;
+
+// 配置 JSON 允许来自其他实例的 ID；导入逻辑只把本实例真实 ObjectId 用作 `_id`，其余按 model 对齐。
+const ImportedModelIdField = {
+  modelId: z.string().trim().min(1).meta({
+    example: 'source-instance-model-id',
+    description: '源实例模型 ID，仅用于导入时识别记录'
+  }),
+  scope: z.literal(ModelScopeEnum.system).meta({ description: '系统模型作用域' })
+};
+
+// JSON 仅替换模型配置；旧文件中的 rank 作为未知字段忽略，不覆盖本实例的展示顺序。
+export const ImportedSystemModelSchema = z.discriminatedUnion('type', [
+  LLMModelDocumentSchema.omit({ sortOrder: true }).extend({
+    ...ImportedModelIdField,
+    config: LLMModelConfigSchema
+  }),
+  EmbeddingModelDocumentSchema.omit({ sortOrder: true }).extend({
+    ...ImportedModelIdField,
+    config: EmbeddingModelConfigSchema
+  }),
+  TTSModelDocumentSchema.omit({ sortOrder: true }).extend({
+    ...ImportedModelIdField,
+    config: TTSModelConfigSchema
+  }),
+  STTModelDocumentSchema.omit({ sortOrder: true }).extend({
+    ...ImportedModelIdField,
+    config: STTModelConfigSchema
+  }),
+  RerankModelDocumentSchema.omit({ sortOrder: true }).extend({
+    ...ImportedModelIdField,
+    config: RerankModelConfigSchema
+  })
+]);
+export type ImportedSystemModel = z.infer<typeof ImportedSystemModelSchema>;
+
+const JsonSystemModelListSchema = z.string().transform((value, ctx) => {
+  try {
+    return JSON.parse(value) as unknown;
+  } catch {
+    ctx.addIssue({ code: 'custom', message: 'config must be valid JSON' });
+    return z.NEVER;
+  }
+});
+
+/* PUT /api/core/ai/model/updateWithJson */
+export const UpdateSystemModelsWithJsonBodySchema = z.object({
+  config: JsonSystemModelListSchema.pipe(z.array(ImportedSystemModelSchema)).meta({
+    example:
+      '[{"modelId":"68ad85a7463006c963799a05","scope":"system","type":"llm","provider":"OpenAI","model":"gpt-5","name":"GPT-5","isActive":true,"config":{"maxContext":400000,"maxResponse":128000,"quoteMaxToken":300000,"toolChoice":true}}]',
+    description:
+      '完整系统模型配置 JSON，每条记录必须包含源实例模型 ID；sortOrder 会被忽略，已有展示顺序保持不变'
+  })
+});
+export type UpdateSystemModelsWithJsonBody = z.input<typeof UpdateSystemModelsWithJsonBodySchema>;
+export type ParsedSystemModelsWithJsonBody = z.output<typeof UpdateSystemModelsWithJsonBodySchema>;
+
+/* GET /api/core/ai/model/getConfigJson */
+export const GetSystemModelConfigJsonResponseSchema = z.string().meta({
+  description: '最新系统模型配置 JSON 字符串'
+});
+export type GetSystemModelConfigJsonResponse = z.infer<
+  typeof GetSystemModelConfigJsonResponseSchema
+>;
+
+/* PUT /api/core/ai/model/updateDefault */
+export const UpdateDefaultModelsBodySchema = z.object({
+  [ModelTypeEnum.llm]: ModelIdSchema.optional(),
+  [ModelTypeEnum.embedding]: ModelIdSchema.optional(),
+  [ModelTypeEnum.tts]: ModelIdSchema.optional(),
+  [ModelTypeEnum.stt]: ModelIdSchema.optional(),
+  [ModelTypeEnum.rerank]: ModelIdSchema.optional(),
+  datasetTextLLMModelId: ModelIdSchema.optional(),
+  datasetImageLLMModelId: ModelIdSchema.optional(),
+  chatTitleLLMModelId: ModelIdSchema.optional()
+});
+export type UpdateDefaultModelsBody = z.infer<typeof UpdateDefaultModelsBodySchema>;

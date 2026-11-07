@@ -1,7 +1,7 @@
 import { decodeEmbedding, formatVectors } from '@fastgpt/service/core/ai/embedding/index';
 import type {
   EmbeddingModelConfigType,
-  EmbeddingSystemModelDataType
+  EmbeddingModelDataType
 } from '@fastgpt/global/core/ai/model/schema';
 import { EmbeddingTypeEnm, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -21,18 +21,23 @@ vi.mock('@fastgpt/service/common/string/tiktoken/index', () => ({
   countPromptTokensBatch: mockCountPromptTokensBatch
 }));
 
-vi.mock('@fastgpt/service/core/ai/config', () => ({
-  getAIApi: () => ({
-    ai: {
-      embeddings: {
-        create: mockCreate
+vi.mock('@fastgpt/service/core/ai/config', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@fastgpt/service/core/ai/config')>();
+  return {
+    ...actual,
+    getAiproxyScopeHeaders: () => ({}),
+    getAIApi: () => ({
+      ai: {
+        embeddings: {
+          create: mockCreate
+        }
+      },
+      requestMeta: {
+        usedUserOpenAIKey: false
       }
-    },
-    requestMeta: {
-      usedUserOpenAIKey: false
-    }
-  })
-}));
+    })
+  };
+});
 
 // Skip retryFn backoff so failure-path tests don't wait 3×500ms each.
 // The real retryFn retries 3 times with 500ms gaps; for tests we only need to
@@ -395,8 +400,8 @@ describe('getVectors function test', () => {
 
   const buildModel = (
     overrides: Partial<EmbeddingModelConfigType> &
-      Partial<Omit<EmbeddingSystemModelDataType, 'config'>> = {}
-  ): EmbeddingSystemModelDataType => {
+      Partial<Omit<EmbeddingModelDataType, 'config'>> = {}
+  ): EmbeddingModelDataType => {
     const {
       defaultToken = 512,
       maxToken = 8192,

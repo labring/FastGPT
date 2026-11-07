@@ -37,7 +37,7 @@ import {
 import type { PluginInstallFailureType } from '@fastgpt/global/sdk/fastgpt-plugin';
 import { getAdminSystemTools, putAdminUpdateSystemTool } from '@/web/core/plugin/admin/tool/api';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
-import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
+import { parseI18nString, selectPluginText } from '@fastgpt/global/common/i18n/utils';
 import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { getDocPath } from '@/web/common/system/doc';
@@ -520,7 +520,7 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
 
   const openMarketplaceUninstallConfirm = useCallback(
     (tool: ToolCardItemType) => {
-      const toolName = parseI18nString(tool.name, i18n.language) || tool.name;
+      const toolName = selectPluginText(tool.name, i18n.language) || tool.id;
 
       openUninstallConfirm({
         title: t('app:toolkit_uninstall'),
@@ -575,8 +575,8 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
 
           return {
             id: toolId,
-            name: parseI18nString(tool.name, i18n.language) || '',
-            description: parseI18nString(tool.description || '', i18n.language) || '',
+            name: selectPluginText(tool.name, i18n.language),
+            description: selectPluginText(tool.description, i18n.language),
             icon: tool.icon,
             author: tool.author || '',
             tags: tool.tags?.map((tag: string) => {
@@ -623,8 +623,8 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
         // Use system installed plugin info directly
         return {
           id: installedPlugin.id,
-          name: parseI18nString(installedPlugin.name || installedPlugin.id, i18n.language),
-          description: parseI18nString(installedPlugin.description || '', i18n.language),
+          name: selectPluginText(installedPlugin.name || installedPlugin.id, i18n.language),
+          description: selectPluginText(installedPlugin.description, i18n.language),
           icon: installedPlugin.icon || '',
           author: installedPlugin.author || '',
           tags: installedPlugin.tags || [],

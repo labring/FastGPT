@@ -18,13 +18,14 @@ import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { checkCreateFolderDepth } from '@fastgpt/service/common/parentFolder/depth';
+import { getFolderAncestorIdsFromParentId } from '@fastgpt/service/common/parentFolder/ancestorIds';
 import {
   CreateDatasetFolderBodySchema,
   type CreateDatasetFolderBody
 } from '@fastgpt/global/openapi/core/dataset/api';
 
-async function handler(req: ApiRequestProps<CreateDatasetFolderBody>) {
-  const { parentId, name, intro } = parseApiInput({
+async function handler(req: ApiRequestProps<CreateDatasetFolderBody>): Promise<void> {
+  const { parentId, name, intro, inheritPermission } = parseApiInput({
     req,
     bodySchema: CreateDatasetFolderBodySchema
   }).body;
@@ -46,19 +47,36 @@ async function handler(req: ApiRequestProps<CreateDatasetFolderBody>) {
 
   await checkTeamDatasetFolderLimit({ teamId });
 
-  await checkCreateFolderDepth({ parentId, teamId, model: MongoDataset });
+  await checkCreateFolderDepth({
+    parentId,
+    findResource: (id) => MongoDataset.findOne({ _id: id, teamId }, '_id parentId type').lean(),
+    isFolderType: (parentType) => parentType === DatasetTypeEnum.folder
+  });
 
   await mongoSessionRun(async (session) => {
+    // parentId 是权威来源，兼容尚未完成回填的历史目录。
+    const ancestorIds = await getFolderAncestorIdsFromParentId({
+      parentId: parentId ? String(parentId) : null,
+      findFolder: (id) =>
+        MongoDataset.findOne({ _id: id, teamId, type: DatasetTypeEnum.folder })
+          .select('_id parentId')
+          .session(session)
+          .lean()
+    });
+
     const [dataset] = await MongoDataset.create(
       [
         {
           ...parseParentIdInMongo(parentId),
+          ancestorIds,
           avatar: FolderImgUrl,
           name,
           intro,
           teamId,
           tmbId,
-          type: DatasetTypeEnum.folder
+          type: DatasetTypeEnum.folder,
+          // 独立态创建（sangfor 专用）：下级建权不合并父级快照，只写 owner
+          inheritPermission
         }
       ],
       { session }
@@ -81,7 +99,5 @@ async function handler(req: ApiRequestProps<CreateDatasetFolderBody>) {
       }
     });
   })();
-
-  return {};
 }
 export default NextAPI(handler);

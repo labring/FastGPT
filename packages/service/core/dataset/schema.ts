@@ -14,6 +14,10 @@ import {
 } from '@fastgpt/global/support/user/team/constant';
 import { userCollectionName } from '../../support/user/schema';
 import type { DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
+import {
+  DatasetVectorDataSchema,
+  type DatasetVectorData
+} from '@fastgpt/global/core/dataset/vectorData/type';
 
 export const DatasetCollectionName = 'datasets';
 
@@ -61,6 +65,10 @@ const DatasetSchema = new Schema({
     type: Schema.Types.ObjectId,
     ref: DatasetCollectionName,
     default: null
+  },
+  ancestorIds: {
+    type: [{ type: Schema.Types.ObjectId, ref: DatasetCollectionName }],
+    default: undefined
   },
   userId: {
     //abandon
@@ -150,6 +158,27 @@ const DatasetSchema = new Schema({
     type: Boolean,
     default: false
   },
+  // 内部事务版本：创建 ACL 与权限启停写同一 dataset，避免关闭态新集合漏入启用快照。
+  // 不参与接口合约或索引；旧记录由首次 $inc 自动初始化，无需全量迁移。
+  collectionPermissionVersion: {
+    type: Number,
+    default: 0
+  },
+  // 整体可选；计数不持久化。索引建成并通过 PG 目录核验后才能置为 ready。
+  vectorData: {
+    type: new Schema(
+      {
+        pgIndex: {
+          type: String,
+          enum: DatasetVectorDataSchema.shape.pgIndex.options,
+          required: true
+        },
+        pgIndexCheckedAt: { type: Date, required: true }
+      },
+      { _id: false }
+    ),
+    required: false
+  },
 
   apiDatasetServer: Object,
 
@@ -175,9 +204,16 @@ const DatasetSchema = new Schema({
 defineIndex(DatasetSchema, { key: { teamId: 1, createTime: 1 } });
 defineIndex(DatasetSchema, { key: { teamId: 1, updateTime: -1 } });
 defineIndex(DatasetSchema, { key: { teamId: 1, parentId: 1 } });
+defineIndex(DatasetSchema, {
+  key: { teamId: 1, ancestorIds: 1 },
+  options: { partialFilterExpression: { ancestorIds: { $exists: true } } }
+});
 defineIndex(DatasetSchema, { key: { type: 1 } }); // Admin count
 defineIndex(DatasetSchema, { key: { deleteTime: 1 } }); // 添加软删除字段索引
 
 defineIndex(DatasetSchema, { key: { teamId: 1 }, deprecated: true });
 
-export const MongoDataset = getMongoModel<DatasetSchemaType>(DatasetCollectionName, DatasetSchema);
+export const MongoDataset = getMongoModel<DatasetSchemaType & { vectorData?: DatasetVectorData }>(
+  DatasetCollectionName,
+  DatasetSchema
+);

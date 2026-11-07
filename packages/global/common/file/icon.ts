@@ -42,16 +42,22 @@ const fileIconByExtension = {
   ico: 'image',
   tiff: 'image',
   tif: 'image',
+  avif: 'image',
+  heic: 'image',
+  heif: 'image',
 
   mp3: 'file/fill/audio',
   wav: 'file/fill/audio',
   ogg: 'file/fill/audio',
+  oga: 'file/fill/audio',
+  adts: 'file/fill/audio',
   m4a: 'file/fill/audio',
   amr: 'file/fill/audio',
   mpga: 'file/fill/audio',
 
   mp4: 'file/fill/video',
   mov: 'file/fill/video',
+  qt: 'file/fill/video',
   avi: 'file/fill/video',
   mpeg: 'file/fill/video',
   webm: 'file/fill/video'

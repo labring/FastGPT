@@ -19,7 +19,10 @@ const normalizeSandboxChatTarget = (chatTarget?: ChatTargetInputType) => {
   }
 
   if ('appId' in chatTarget && chatTarget.appId) {
-    return { appId: chatTarget.appId };
+    return {
+      appId: chatTarget.appId,
+      ...(chatTarget.sourceType ? { sourceType: chatTarget.sourceType } : {})
+    };
   }
 };
 

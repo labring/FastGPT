@@ -21,7 +21,7 @@ import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/const
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { getAppChatSourceKey } from '@/web/core/chat/utils';
 import { Box, type BoxProps } from '@chakra-ui/react';
-import { checkStoreWorkflowBeforeRunOrPublish } from '@/web/core/workflow/workflowCheck';
+import { checkStoreWorkflowBeforeRunOrPublish } from '@/web/core/workflow/service';
 
 const PluginRunBox = dynamic(() => import('@/components/core/chat/ChatContainer/PluginRunBox'));
 
@@ -30,13 +30,18 @@ export const useChatTest = ({
   edges,
   chatConfig = {},
   isReady,
-  boxBodyProps
+  boxBodyProps,
+  getResourceNodes
 }: {
   nodes: StoreNodeItemType[];
   edges: StoreEdgeItemType[];
   chatConfig: AppChatConfigType;
   isReady: boolean;
   boxBodyProps?: BoxProps;
+  /** 仅供本地检查的资源详情，避免序列化工具后丢失失效标记和必填输入定义。 */
+  getResourceNodes?: () => Parameters<
+    typeof checkStoreWorkflowBeforeRunOrPublish
+  >[0]['resourceNodes'];
 }) => {
   const { t } = useTranslation();
   const { userInfo } = useUserStore();
@@ -54,6 +59,8 @@ export const useChatTest = ({
       const histories = messages.slice(-1);
 
       const checkResult = await checkStoreWorkflowBeforeRunOrPublish({
+        appId,
+        resourceNodes: getResourceNodes?.(),
         nodes,
         edges,
         chatConfig,
@@ -211,7 +218,7 @@ export const useChatTest = ({
         chatId={chatId}
         boxBodyProps={boxBodyProps}
         features={{
-          mark: true,
+          fbTypes: ['mark'],
           autoResume: true,
           quickReplies: true,
           inputGuide: true,

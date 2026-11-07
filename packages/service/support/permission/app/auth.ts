@@ -20,7 +20,14 @@ import {
 } from '@fastgpt/global/support/permission/app/constant';
 import { parseHeaderCert } from '../auth/common';
 import { sumPer } from '@fastgpt/global/support/permission/utils';
-import { shouldInheritResourcePermission } from '../resourcePermissionPolicy';
+import {
+  shouldInheritResourcePermission,
+  toInheritedPermissionValue
+} from '../resourcePermissionPolicy';
+import { checkIsAgentUser } from '../../user/systemUser';
+import type { TeamTmbItemType } from '@fastgpt/global/support/user/team/type';
+import { ApiKeyTypeEnum } from '@fastgpt/global/support/openapi/constants';
+import { getAppByApiKey } from '../../openapi/auth';
 
 export const authWorkflowToolByTmbId = async ({
   tmbId,
@@ -47,16 +54,18 @@ export const authAppByTmbId = async ({
   tmbId,
   appId,
   per,
-  isRoot
+  isRoot,
+  tmbInfo
 }: {
   tmbId: string;
   appId: string;
   per: PermissionValueType;
   isRoot?: boolean;
+  tmbInfo?: Pick<TeamTmbItemType, 'teamId' | 'permission'>;
 }): Promise<{
   app: AppWithPermissionType;
 }> => {
-  const { teamId, permission: tmbPer } = await getTmbInfoByTmbId({ tmbId });
+  const { teamId, permission: tmbPer } = tmbInfo ?? (await getTmbInfoByTmbId({ tmbId }));
 
   const app = await (async () => {
     const app = await MongoApp.findOne({ _id: appId, deleteTime: null }).lean();
@@ -65,7 +74,10 @@ export const authAppByTmbId = async ({
       return Promise.reject(AppErrEnum.unExist);
     }
 
-    if (isRoot) {
+    const isAgentApp = checkIsAgentUser(app.tmbId);
+
+    // 页面 root 访问 Agent 用户创建的应用时继续走 ACL，避免 root 绕过应用级授权。
+    if (isRoot && !isAgentApp) {
       return {
         ...app,
         permission: new AppPermission({ isOwner: true })
@@ -95,7 +107,8 @@ export const authAppByTmbId = async ({
       };
     }
 
-    const isOwner = tmbPer.isOwner || String(app.tmbId) === String(tmbId);
+    // 防止团队 owner 访问（app owner 肯定是 agentUser 的）
+    const isOwner = String(app.tmbId) === String(tmbId) || (tmbPer.isOwner && !isAgentApp);
 
     const isGetParentClb =
       shouldInheritResourcePermission(app.inheritPermission) &&
@@ -118,7 +131,11 @@ export const authAppByTmbId = async ({
       })
     ]);
 
-    const Per = new AppPermission({ role: sumPer(folderPer, myPer), isOwner });
+    // 父级 owner 在子级只能是 manage；物化快照已含父级贡献，这里只兜底历史缺失快照。
+    const Per = new AppPermission({
+      role: sumPer(toInheritedPermissionValue(folderPer), myPer),
+      isOwner
+    });
 
     if (app.favourite || app.quick) {
       Per.addRole(ReadRoleVal);
@@ -137,35 +154,40 @@ export const authAppByTmbId = async ({
   return { app };
 };
 
+/**
+ * 校验凭证及应用访问权限，返回应用详情和规范化的字符串 appId。
+ * appId 始终取已鉴权应用的实际 ID；应用 Key 使用绑定应用，不回传请求中的目标或凭证解析值。
+ */
 export const authApp = async ({
   appId,
   per,
   ...props
 }: AuthModeType & {
-  appId: ParentIdType;
+  appId?: ParentIdType;
   per: PermissionValueType;
 }): Promise<
   AuthResponseType<AppPermission> & {
     app: AppWithPermissionType;
+    appId: string;
   }
 > => {
   const result = await parseHeaderCert(props);
   const { tmbId } = result;
 
-  if (!appId) {
-    return Promise.reject(AppErrEnum.unExist);
-  }
-
-  const { app } = await authAppByTmbId({
-    tmbId,
-    appId,
-    per,
-    isRoot: result.isRoot
-  });
+  const app = await (async () => {
+    if (result.apiKeyType === ApiKeyTypeEnum.app) {
+      const app = await getAppByApiKey(result);
+      // 这表示凭证可读应用基础信息，不把归属成员伪装成 owner；对话管理范围由可信 Key 类型表达。
+      return { ...app, permission: new AppPermission({ role: ReadRoleVal }) };
+    }
+    if (!appId) throw AppErrEnum.unExist;
+    return (await authAppByTmbId({ tmbId, appId, per, isRoot: result.isRoot })).app;
+  })();
 
   return {
     ...result,
     permission: app.permission,
-    app
+    app,
+    appId: String(app._id)
   };
 };

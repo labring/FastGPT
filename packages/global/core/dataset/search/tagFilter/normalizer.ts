@@ -5,7 +5,8 @@ import {
   DatasetTagFilterFieldEnum,
   DatasetTagFilterLogicEnum,
   DatasetTagFilterValueModeEnum,
-  DatasetTagFilterVersionEnum
+  DatasetTagFilterVersionEnum,
+  emptyValueOperators
 } from '../../constants';
 import {
   type DatasetSearchValue,
@@ -13,9 +14,14 @@ import {
   type DatasetTagFilterValue,
   type DatasetTagFilterVersion,
   type TagConditionObject,
+  createEmptyTagFilterValue,
   isDatasetTagFilterValue
 } from './type';
-import { isTagFilterOpWithoutValue } from './uiUtils';
+
+const emptyOps = new Set(emptyValueOperators.map((item) => item.value));
+
+/** 判断条件是否无需输入值，供配置展示与检索载荷归一化共用。 */
+export const isTagFilterOpWithoutValue = (op?: string) => !!op && emptyOps.has(op);
 
 const hasDatasetTagFilterConfiguration = (value: unknown) => {
   if (typeof value === 'string') return value.trim().length > 0;
@@ -241,6 +247,8 @@ const mergeCollectionIds = (conditions: DatasetTagFilterCondition[]) => {
 export const serializeDatasetTagFilterValue = (
   value: DatasetTagFilterValue
 ): string | undefined => {
+  if (value.open === false) return undefined;
+
   const tagConditions = value.conditions
     .map(buildTagConditionObject)
     .filter((item): item is TagConditionObject => Boolean(item));
@@ -281,7 +289,7 @@ const resolveConditionValue = (
 
 /**
  * 搜索入口归一化构造器：
- * 将客户端多样化配置（老版 string 数组、深信服/外部带 $ref 的 string/对象、表单 AST 结构化数组）
+ * 将客户端多样化配置（整项变量引用、老版 string 数组、外部带 $ref 的 string/对象、表单 AST）
  * 统一归一化为标准的底层检索 JSON 字符串（只包含结构化 TagCondition 数组）。
  */
 export const formatCollectionFilterMatchParam = ({
@@ -291,11 +299,13 @@ export const formatCollectionFilterMatchParam = ({
   value: unknown;
   resolveReference?: (value: unknown) => unknown;
 }): string | undefined => {
-  if (value === undefined || value === null || value === '') return undefined;
+  // 隐藏的嵌套 datasetParams 不经过通用输入引用解析，需在这里使用同一解析器解出整项 JSON。
+  const sourceValue = isReferenceTuple(value) ? resolveReference(value) : value;
+  if (sourceValue === undefined || sourceValue === null || sourceValue === '') return undefined;
 
-  let parsed: unknown = value;
-  if (typeof value === 'string') {
-    const trimmed = value.trim();
+  let parsed: unknown = sourceValue;
+  if (typeof sourceValue === 'string') {
+    const trimmed = sourceValue.trim();
     if (!trimmed) return undefined;
     try {
       parsed = json5.parse(trimmed);
@@ -311,8 +321,9 @@ export const formatCollectionFilterMatchParam = ({
 
   // 1. 表单 AST 结构：解析 reference 模式下的引用变量并序列化为检索 JSON
   if (structured) {
+    if (structured.open === false) return undefined;
     const resolved: DatasetTagFilterValue = {
-      logic: structured.logic,
+      ...structured,
       conditions: structured.conditions.map((condition) =>
         resolveConditionValue(condition, resolveReference)
       )
@@ -396,13 +407,47 @@ export const formatCollectionFilterMatchParam = ({
   }
 
   // 3. 纯单字符串老标签输入（如 "产品文档"）
-  if (typeof value === 'string' && value.trim()) {
+  if (typeof sourceValue === 'string' && sourceValue.trim()) {
     return JSON.stringify({
       tags: {
-        $and: [{ [FROM_MIGRATION_CARRIER]: { $contains: value.trim() } }]
+        $and: [{ [FROM_MIGRATION_CARRIER]: { $contains: sourceValue.trim() } }]
       }
     });
   }
 
   return undefined;
+};
+
+/**
+ * 判断标签过滤是否处于开启状态。
+ * - 变量引用模式下，数组形式（含已开启待选的空数组）视为开启；
+ * - 手动输入模式下，以开关状态 open 为准；缺省 open 的历史数据复用序列化结果判定。
+ */
+export const isDatasetTagFilterOpen = (value: unknown): boolean => {
+  if (Array.isArray(value)) return true;
+  if (!isDatasetTagFilterValue(value)) return false;
+  return value.open ?? Boolean(serializeDatasetTagFilterValue(value));
+};
+
+/**
+ * 计算标签过滤在切换开关或切换输入方式（手动输入 / 变量引用）后的下一个值。
+ * - 变量引用模式：开启时初始化为空数组，关闭时置为 undefined；
+ * - 手动输入模式：保留已有过滤条件（无则创建默认空条件），仅更新 open 状态。
+ */
+export const getNextDatasetTagFilterValue = ({
+  value,
+  isReference,
+  open
+}: {
+  value: unknown;
+  isReference: boolean;
+  open: boolean;
+}): DatasetTagFilterValue | [string, string?] | [] | undefined => {
+  if (isReference) {
+    return open ? [] : undefined;
+  }
+  return {
+    ...(isDatasetTagFilterValue(value) ? value : createEmptyTagFilterValue()),
+    open
+  };
 };

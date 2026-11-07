@@ -4,12 +4,13 @@
  * 本文件收口 chat source 到 sandbox runtime 的寻址转换；ticket 签发和 API 鉴权仍
  * 保留在 App API 边界，后续再逐步迁移。
  */
-import { checkSandboxRuntimeInstanceExists, getSandboxClient } from './runtime';
-import type { SandboxClientQuery } from './runtime';
-import { SandboxLifecycleStateError } from '../application/archive';
+import {
+  checkSandboxRuntimeInstanceExists,
+  getRunningSandboxClient
+} from '../application/runtime/client';
+import type { SandboxClientQuery } from '../application/runtime/type';
+import { SandboxLifecycleStateError } from '../application/lifecycle/error';
 import { SandboxRuntimeNotRunningError } from '../error';
-
-export type { SandboxClientQuery } from './runtime';
 
 /**
  * 检查指定 runtime sandbox 记录是否存在。
@@ -26,14 +27,16 @@ export async function checkSandboxSessionExist(query: SandboxClientQuery): Promi
  * Proxy 保活场景不恢复 archived sandbox，避免内部保活把冷归档资源重新拉起。
  */
 export async function keepaliveSandboxSession(query: SandboxClientQuery): Promise<void> {
-  await getSandboxClient(query, { restoreArchived: false }).catch((error) => {
-    // stop cron 与 keepalive 可以同时命中；保活不能反向恢复资源，也不应把竞态记录成系统 500。
-    if (
-      error instanceof SandboxRuntimeNotRunningError ||
-      error instanceof SandboxLifecycleStateError
-    ) {
-      return;
-    }
-    throw error;
-  });
+  await getRunningSandboxClient(query)
+    .then((client) => client.provider.close())
+    .catch((error) => {
+      // stop cron 与 keepalive 可以同时命中；保活不能反向恢复资源，也不应把竞态记录成系统 500。
+      if (
+        error instanceof SandboxRuntimeNotRunningError ||
+        error instanceof SandboxLifecycleStateError
+      ) {
+        return;
+      }
+      throw error;
+    });
 }

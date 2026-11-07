@@ -26,6 +26,7 @@ beforeAll(async () => {
   await connectMongo({ db: connectionLogMongo, url: inject('MONGODB_URI') });
 
   initGlobalVariables();
+  global.agentUserTmbIds = new Set();
   global.systemEnv = {} as typeof global.systemEnv;
   global.feConfigs = { isPlus: false } as typeof global.feConfigs;
   await setupModels();

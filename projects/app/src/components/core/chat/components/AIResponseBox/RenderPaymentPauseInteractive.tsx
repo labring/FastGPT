@@ -5,7 +5,7 @@ import type {
 } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { useTranslation } from 'next-i18next';
 import React from 'react';
-import { onSendPrompt } from './utils';
+import { useChatInstanceActions } from '../../ChatContainer/context/chatInstanceActionsContext';
 
 const RenderPaymentPauseInteractive = React.memo(function RenderPaymentPauseInteractive({
   interactive
@@ -13,6 +13,7 @@ const RenderPaymentPauseInteractive = React.memo(function RenderPaymentPauseInte
   interactive: InteractiveBasicType & PaymentPauseInteractive;
 }) {
   const { t } = useTranslation();
+  const { continueInteractive } = useChatInstanceActions();
 
   return interactive.params.continue ? (
     <Box>{t('chat:task_has_continued')}</Box>
@@ -22,7 +23,7 @@ const RenderPaymentPauseInteractive = React.memo(function RenderPaymentPauseInte
       <Button
         maxW={'250px'}
         onClick={() => {
-          onSendPrompt('Continue');
+          continueInteractive({ text: 'Continue' });
         }}
       >
         {t('chat:continue_run')}

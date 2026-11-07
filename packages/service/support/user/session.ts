@@ -47,6 +47,7 @@ const delRedundantSession = async (userId: string) => {
   }
 };
 
+/** 创建会话；调用方必须显式传入账号的 root 身份，避免重签会话时静默丢失管理员权限。 */
 export const createUserSession = async ({
   userId,
   teamId,
@@ -57,7 +58,7 @@ export const createUserSession = async ({
   userId: string;
   teamId: string;
   tmbId: string;
-  isRoot?: boolean;
+  isRoot: boolean;
   ip?: string | null;
 }) => {
   const key = `${String(userId)}:${getNanoid(32)}`;
@@ -68,7 +69,7 @@ export const createUserSession = async ({
       userId: String(userId),
       teamId: String(teamId),
       tmbId: String(tmbId),
-      isRoot: isRoot ?? false,
+      isRoot,
       createdAt: new Date().getTime(),
       ip
     }

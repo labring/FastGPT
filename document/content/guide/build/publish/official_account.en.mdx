@@ -11,7 +11,7 @@ Starting from version 4.8.10, FastGPT commercial edition supports direct WeChat 
 
 In FastGPT, select the app you want to integrate. On the _Publishing Channels_ page, create a new WeChat Official Account publishing channel and fill in the basic information.
 
-![Image](/imgs/offiaccount-1.png)
+![Create a WeChat Official Account publishing channel](/imgs/offiaccount-1.png)
 
 ## 2. Get AppID, Secret, and Token
 
@@ -21,17 +21,19 @@ Open the WeChat Official Account website: https://mp.weixin.qq.com
 
 **Only verified official accounts are supported. Unverified accounts are not currently supported.**
 
-Developers can apply for a WeChat Official Account test account from this link for testing. Test accounts work normally but cannot configure AES Key.
+Developers can also use a WeChat Official Account test account. Test accounts support this integration with AES Key configuration unavailable.
 
-![Image](/imgs/offiaccount-2.png)
+Open **Settings and Development → Basic Configuration**. Copy **AppID** and **AppSecret** from the developer information section, and **Token** from the server configuration section.
+
+![Find AppID, AppSecret, and Token in Basic Configuration](/imgs/offiaccount-2.png)
 
 ### 2. Enter the 3 parameters into the FastGPT configuration dialog.
 
-![Image](/imgs/offiaccount-3.png)
+![Enter WeChat credentials in FastGPT](/imgs/offiaccount-3.png)
 
 ## 3. Add FastGPT IP to IP Whitelist
 
-![Image](/imgs/offiaccount-4.png)
+![Configure the WeChat IP whitelist](/imgs/offiaccount-4.png)
 
 Self-hosted users can check their own IP address.
 
@@ -95,9 +97,9 @@ China Mainland users (fastgpt.cn) can add the following IP whitelist:
 
 ## 4. Get AES Key and Select Encryption Mode
 
-![Image](/imgs/offiaccount-5.png)
+![Generate the message encryption key](/imgs/offiaccount-5.png)
 
-![Image](/imgs/offiaccount-6.png)
+![Select Secure Mode](/imgs/offiaccount-6.png)
 
 1. Randomly generate an AES Key and enter it into the FastGPT configuration dialog.
 
@@ -107,15 +109,17 @@ China Mainland users (fastgpt.cn) can add the following IP whitelist:
 
 1. Confirm creation in FastGPT and get the URL.
 
-![Image](/imgs/offiaccount-7.png)
+![Copy the FastGPT callback URL](/imgs/offiaccount-7.png)
 
 2. Enter it in the URL field on the WeChat Official Account Platform, then submit and save.
 
-![Image](/imgs/offiaccount-8.png)
+![Save the callback URL in WeChat](/imgs/offiaccount-8.png)
 
 ## 6. Enable Server Configuration (Skip if already auto-enabled)
 
-![Image](/imgs/offiaccount-9.png)
+In the WeChat platform's **Basic Configuration** page, enable **Server Configuration** after saving the callback URL, Token, and encryption settings. An already enabled configuration is ready to use.
+
+![Enable WeChat server configuration](/imgs/offiaccount-9.png)
 
 ## 7. Start Using
 
