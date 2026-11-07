@@ -7,8 +7,10 @@ import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
 import {
   lockTrainingDataByTeamId,
+  preCreateDatasetDataAndPushToTrainingQueue,
   pushDataListToTrainingQueue
 } from '@fastgpt/service/core/dataset/training/controller';
+import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import {
   BLOCKED_LOCK_TIME,
   finalErrorTrainingMatch,
@@ -41,6 +43,42 @@ describe('dataset training controller', () => {
       expect(await MongoDatasetTraining.findOne({ mode }).lean()).toMatchObject({ q });
     }
   );
+  it('falls back oversized auto data to index instead of dropping it', async () => {
+    const root = await getRootUser();
+    const { llm, embedding } = getModelTestDefaults();
+    if (!llm || !embedding) throw new Error('Default test models are not initialized');
+
+    const datasetId = '507f1f77bcf86cd799439021';
+    const collectionId = '507f1f77bcf86cd799439022';
+    const shortQ = 'short question';
+    const longQ = 'x'.repeat((llm.config.maxContext ?? 4000) + 1);
+
+    const result = await mongoSessionRun((session) =>
+      preCreateDatasetDataAndPushToTrainingQueue({
+        teamId: root.teamId,
+        tmbId: root.tmbId,
+        datasetId,
+        collectionId,
+        agentModel: llm,
+        vectorModel: embedding,
+        billId: 'test',
+        mode: TrainingModeEnum.auto,
+        data: [{ q: shortQ }, { q: longQ }],
+        session
+      })
+    );
+
+    expect(result.insertLen).toBe(2);
+    await expect(MongoDatasetData.countDocuments({ datasetId, collectionId })).resolves.toBe(2);
+    const tasks = await MongoDatasetTraining.find({ datasetId, collectionId }).lean();
+    expect(tasks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ mode: TrainingModeEnum.auto, q: shortQ }),
+        expect.objectContaining({ mode: TrainingModeEnum.index, q: longQ })
+      ])
+    );
+  });
+
   it('keeps missing VLM checks for callers that do not defer validation', async () => {
     const root = await getRootUser();
     await expect(
