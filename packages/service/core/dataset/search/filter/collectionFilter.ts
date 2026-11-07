@@ -9,7 +9,6 @@ import { MongoDatasetCollection } from '../../collection/schema';
 import { MongoDatasetCollectionTagsV2 } from '../../tag/schemaV2';
 import { isCollectionTagValue } from '@fastgpt/global/core/dataset/tagUtils';
 import { readFromSecondary } from '../../../../common/mongo/utils';
-import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { applySharedCollectionMetadataFilters } from './shared';
 
 /* ========== Key-Value 标签过滤类型 ========== */
@@ -407,13 +406,15 @@ export const getForbidCollectionIdList = async ({
 export const filterCollectionByMetadata = async ({
   teamId,
   datasetIds,
-  collectionFilterMatch
+  collectionFilterMatch,
+  metadataFilterEnabled
 }: {
   teamId: string;
   datasetIds: string[];
   collectionFilterMatch?: string;
+  metadataFilterEnabled: boolean;
 }): Promise<string[] | undefined> => {
-  if (!collectionFilterMatch || !global.feConfigs.isPlus) return;
+  if (!collectionFilterMatch || !metadataFilterEnabled) return;
 
   const normalizedMatchParam = formatCollectionFilterMatchParam({
     value: collectionFilterMatch
