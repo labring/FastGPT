@@ -447,7 +447,7 @@ describe('runToolCall compression node responses', () => {
     expect(runWorkflowMock).toHaveBeenCalledWith(
       expect.objectContaining({
         stream: true,
-        workflowStreamResponse
+        workflowStreamResponse: expect.any(Function)
       })
     );
     expect(
