@@ -13,7 +13,11 @@ import {
 } from '@fastgpt/service/core/workflow/dispatch/utils/summary';
 import { checkTeamSandboxPermission } from '@fastgpt/service/support/permission/teamLimit';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { createTestWorkflowDispatch, runWithTestWorkflowContext as runWithContext, createTestWorkflowFileContext } from '../../context/fixtures';
+import {
+  createTestWorkflowDispatch,
+  runWithTestWorkflowContext as runWithContext,
+  createTestWorkflowFileContext
+} from '../../context/fixtures';
 
 const dispatchRunTools = createTestWorkflowDispatch(dispatchRunToolsWithoutContext);
 

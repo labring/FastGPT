@@ -17,10 +17,7 @@ import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { SystemToolRepo } from '@fastgpt/service/core/app/tool/systemTool/systemTool.repo';
 import * as workflowMetrics from '@fastgpt/service/core/workflow/metrics';
 import * as mcp from '@fastgpt/service/core/app/mcp';
-import {
-  internalRuntimeNodeRunnerKey,
-  internalRuntimeNodeType
-} from '@fastgpt/service/core/workflow/dispatch/internal/runtimeNode';
+import { callbackMap } from '@fastgpt/service/core/workflow/dispatch/constants';
 import { findFailedResponseNode } from '@fastgpt/global/core/chat/utils';
 import {
   graphNode,
@@ -680,19 +677,18 @@ describe('child workflow data transfer without mocking runWorkflow', () => {
   it.each(['loopRun', 'parallelRun', 'loop'] as const)(
     'propagates hasAgentSandbox from a nested child app through %s container',
     async (containerKind) => {
+      // 只控制沙箱节点返回的摘要；子应用、容器和 Queue 仍执行真实逻辑。
+      vi.spyOn(callbackMap, FlowNodeTypeEnum.code).mockImplementation(async (props) => {
+        props.nodeSummary.mergeNodeSummary({ hasAgentSandbox: true });
+        return { data: { [NodeOutputKeyEnum.answerText]: 'sandbox-ok' } };
+      });
       loadChild.mockResolvedValue(
         childResource({
           nodes: [
             graphNode({ id: 'childstart', type: FlowNodeTypeEnum.workflowStart }),
             graphNode({
               id: 'childagent',
-              type: internalRuntimeNodeType as FlowNodeTypeEnum,
-              params: {
-                [internalRuntimeNodeRunnerKey]: (props: any) => {
-                  props.nodeSummary.mergeNodeSummary({ hasAgentSandbox: true });
-                  return { data: { [NodeOutputKeyEnum.answerText]: 'sandbox-ok' } };
-                }
-              },
+              type: FlowNodeTypeEnum.code,
               outputs: [NodeOutputKeyEnum.answerText]
             })
           ],

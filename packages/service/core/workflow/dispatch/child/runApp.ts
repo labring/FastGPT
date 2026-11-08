@@ -91,7 +91,9 @@ export const runChildAppWorkflow = async ({
   const { fileUrlList, ...childrenAppVariables } = resolvedVariables;
   const resolvedInputFiles =
     isTool && Array.isArray(fileUrlList)
-      ? await getWorkflowContext().fileContext.prepareFiles({ files: fileUrlList.map((url: string) => ({ url })) })
+      ? await getWorkflowContext().fileContext.prepareFiles({
+          files: fileUrlList.map((url: string) => ({ url }))
+        })
       : userInputFiles;
 
   const interactive = workflowProps.lastInteractive;
@@ -170,18 +172,20 @@ export const runChildAppWorkflow = async ({
             : {})
         })
       });
-      const result = await runWithContext(childContext, () => runWorkflow({
-        ...workflowProps,
-        memoryState: childMemoryState,
-        stream: forbidStream ? false : Boolean(workflowProps.stream),
-        ...(forbidStream ? { workflowStreamResponse: undefined } : {}),
-        runningAppInfo: childRunningAppInfo,
-        runtimeNodes,
-        runtimeEdges,
-        histories: childHistories,
-        query: childQuery,
-        chatConfig
-      }));
+      const result = await runWithContext(childContext, () =>
+        runWorkflow({
+          ...workflowProps,
+          memoryState: childMemoryState,
+          stream: forbidStream ? false : Boolean(workflowProps.stream),
+          ...(forbidStream ? { workflowStreamResponse: undefined } : {}),
+          runningAppInfo: childRunningAppInfo,
+          runtimeNodes,
+          runtimeEdges,
+          histories: childHistories,
+          query: childQuery,
+          chatConfig
+        })
+      );
       return {
         ...result,
         completeMessages: childHistories.concat(
@@ -263,7 +267,9 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
       ? lastInteractive.params.childrenResponse
       : undefined;
   const userInputFiles = fileUrlList
-    ? await getWorkflowContext().fileContext.prepareFiles({ files: fileUrlList.map((url) => ({ url })) })
+    ? await getWorkflowContext().fileContext.prepareFiles({
+        files: fileUrlList.map((url) => ({ url }))
+      })
     : files;
 
   if (!childrenInteractive && !userChatInput && userInputFiles.length === 0) {
