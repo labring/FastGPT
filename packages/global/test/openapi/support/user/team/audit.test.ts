@@ -40,13 +40,26 @@ describe('team audit date contracts', () => {
     { dateStart: '' },
     { dateStart: 'invalid' },
     { dateStart: '2026-02-30T00:00:00.000Z' },
-    { dateStart: '2026-03-10T00:00:00.000+08:00' },
-    { dateStart: '2026-03-07T00:00:00.000' }
+    { dateStart: '2026-03-10T00:00:00.000+08:00' }
   ])('rejects incomplete or invalid range %j', (changes) => {
     const input = { ...filters, ...changes };
     expect(AuditListBodySchema.safeParse(input).success).toBe(false);
     expect(AuditExportBodySchema.safeParse({ ...input, locale: 'en' }).success).toBe(false);
   });
+
+  it.each(['UTC', 'Asia/Shanghai', 'America/New_York'])(
+    'accepts offsetless endpoints as server-local time: %s',
+    (server) => {
+      vi.stubEnv('TZ', server);
+      const input = { dateStart: '2026-11-02T00:00:00.000', dateEnd: '2026-11-02T23:59:59.999' };
+      for (const schema of [AuditListBodySchema, AuditExportBodySchema]) {
+        const parsed = schema.parse({ ...input, locale: 'en' });
+        expect(parsed).toMatchObject(input);
+        expect(new Date(parsed.dateStart)).toEqual(new Date(2026, 10, 2));
+        expect(new Date(parsed.dateEnd)).toEqual(new Date(2026, 10, 2, 23, 59, 59, 999));
+      }
+    }
+  );
 
   it.each([
     {

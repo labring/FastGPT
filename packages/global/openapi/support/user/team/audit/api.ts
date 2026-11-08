@@ -4,6 +4,7 @@ import { SourceMemberSchema } from '../../../../../support/user/type';
 import { AuditEventEnum, TeamAuditEventList } from '../../../../../support/user/audit/constants';
 import { createPaginationSchema } from '../../../../api';
 import { LanguageSchema } from '../../../../../common/i18n/type';
+import { DateSchema } from '../../../../../common/zod';
 
 /* ============================================================================
  * API: 获取团队操作日志
@@ -15,13 +16,13 @@ import { LanguageSchema } from '../../../../../common/i18n/type';
 
 export const AuditFilterSchema = z
   .object({
-    dateStart: z.string().datetime({ offset: true }).meta({
+    dateStart: DateSchema.meta({
       example: '2026-01-01T00:00:00.000+08:00',
-      description: '操作时间起点（包含），带时区偏移和毫秒，使用浏览器本地日的零点'
+      description: '操作时间起点（包含），客户端保留偏移和毫秒；未带偏移时按服务器时区解释'
     }),
-    dateEnd: z.string().datetime({ offset: true }).meta({
+    dateEnd: DateSchema.meta({
       example: '2026-01-07T23:59:59.999+08:00',
-      description: '操作时间终点（包含），带时区偏移和毫秒，使用浏览器本地日的最后一毫秒'
+      description: '操作时间终点（包含），客户端保留偏移和毫秒；未带偏移时按服务器时区解释'
     }),
     tmbIds: z
       .array(ObjectIdSchema)
