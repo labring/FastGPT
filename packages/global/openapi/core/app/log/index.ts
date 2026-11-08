@@ -133,7 +133,7 @@ export const AppLogPath: OpenAPIPath = {
     post: {
       summary: '获取应用图表数据',
       description:
-        '严格按起止绝对时间查询，按 timezone 对用户、对话及应用数据分组；浏览器传 IANA 时区以保持跨夏令时的自然日边界，旧调用省略时使用起点固定偏移。',
+        '严格按起止绝对时间查询，不扩展查询窗口；用户、对话及应用数据统一按开始时间自带的固定偏移分组，无偏移时使用服务器时区，不接收独立时区参数。',
       tags: [DevApiTagsMap.appLog, SystemOpenApiTagMap.appLog],
       requestBody: {
         content: {

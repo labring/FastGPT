@@ -7,7 +7,7 @@ import { AppLogKeysEnum, AppLogTimespanEnum } from '../../../../core/app/logs/co
 import { ChatSourceEnum } from '../../../../core/chat/constants';
 import { AppLogKeysSchema } from '../../../../core/app/logs/type';
 import { SourceMemberSchema } from '../../../../support/user/type';
-import { BoolSchema, IntSchema, NumSchema } from '../../../../common/zod';
+import { BoolSchema, DateSchema, IntSchema, NumSchema } from '../../../../common/zod';
 
 /** 保留 offset/page 两种分页方式，并为每种方式提供应用 Key 免 appId 分支。 */
 const createPaginatedAppLogInputSchema = <T extends z.ZodRawShape & { appId: z.ZodString }>(
@@ -145,11 +145,11 @@ const AppChatLogsFilterSchema = FeedbackLogParamSchema.extend({
     example: '68ad85a7463006c963799a05',
     description: '应用 ID'
   }),
-  dateStart: z.union([z.string(), z.date()]).meta({
+  dateStart: DateSchema.meta({
     example: '2024-01-01T00:00:00.000Z',
     description: '开始时间'
   }),
-  dateEnd: z.union([z.string(), z.date()]).meta({
+  dateEnd: DateSchema.meta({
     example: '2024-12-31T23:59:59.999Z',
     description: '结束时间'
   }),
@@ -236,34 +236,15 @@ export const GetChartDataBodySchema = createAppApiKeyInputSchema(
       example: '68ad85a7463006c963799a05',
       description: '应用 ID'
     }),
-    dateStart: z.union([z.string().datetime({ offset: true }), z.date()]).meta({
+    dateStart: DateSchema.meta({
       example: '2024-01-01T00:00:00.000Z',
       description:
-        '开始时间（包含），ISO 字符串需包含时区偏移及毫秒；未传 timezone 时使用该固定偏移分组'
+        '开始时间（包含），ISO 字符串保留时区偏移及毫秒；统计使用该固定偏移，未带偏移时按服务器时区，Z 为 UTC'
     }),
-    dateEnd: z.union([z.string().datetime({ offset: true }), z.date()]).meta({
+    dateEnd: DateSchema.meta({
       example: '2024-12-31T23:59:59.999Z',
-      description: '结束时间（包含），保持客户端选择的边界，不额外扩展日期'
+      description: '结束时间（包含），未带偏移时按服务器时区；保持客户端选择的边界，不额外扩展日期'
     }),
-    timezone: z
-      .string()
-      .refine(
-        (value) => {
-          try {
-            new Intl.DateTimeFormat('en', { timeZone: value }).format();
-            return true;
-          } catch {
-            return false;
-          }
-        },
-        { message: 'Invalid timezone' }
-      )
-      .optional()
-      .meta({
-        example: 'America/New_York',
-        description:
-          '浏览器 IANA 时区，用于自然日分组和留存计算，不改变查询起止时间；省略时按起点固定偏移兼容旧调用'
-      }),
     source: z
       .array(z.nativeEnum(ChatSourceEnum))
       .optional()
@@ -398,11 +379,11 @@ export const GetLogUsersBodySchema = createPaginatedAppLogInputSchema({
     example: '68ad85a7463006c963799a05',
     description: '应用 ID'
   }),
-  dateStart: z.string().meta({
+  dateStart: DateSchema.meta({
     example: '2024-01-01T00:00:00.000Z',
     description: '开始时间'
   }),
-  dateEnd: z.string().meta({
+  dateEnd: DateSchema.meta({
     example: '2024-12-31T23:59:59.999Z',
     description: '结束时间'
   }),

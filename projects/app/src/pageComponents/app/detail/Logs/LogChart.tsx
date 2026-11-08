@@ -160,7 +160,6 @@ const LogChart = ({
         appId,
         dateStart: formatToISOWithTimezone(dateRange.from),
         dateEnd: formatToISOWithTimezone(dateRange.to),
-        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
         offset: parseInt(offset),
         source: chartSources,
         userTimespan,
@@ -187,9 +186,12 @@ const LogChart = ({
     if (!feConfigs?.isPlus) return fakeChartData;
 
     const formatTimestamp = (timestamp: number, timespan: AppLogTimespanEnum) => {
+      // 返回的桶按请求起点固定偏移分组；只取其日历日期，避免浏览器 DST 改变标签或覆盖相邻桶。
+      const bucketDate = dayjs(timestamp).utcOffset(dayjs(dateRange.from).utcOffset());
+      const labelDate = new Date(bucketDate.year(), bucketDate.month(), bucketDate.date());
       return timespan === AppLogTimespanEnum.week
-        ? formatWeekDate(new Date(timestamp))
-        : formatDateByTimespan(timestamp, timespan);
+        ? formatWeekDate(labelDate)
+        : formatDateByTimespan(labelDate.getTime(), timespan);
     };
 
     const processChartData = <T extends Record<string, any>>(
