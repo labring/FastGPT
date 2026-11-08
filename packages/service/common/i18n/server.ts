@@ -38,6 +38,8 @@ export const createServerTranslator = async <Namespace extends string>({
         defaultNS: 'common',
         resources: {},
         keySeparator: false,
+        // 显式声明命名空间分隔符，避免带空格的 key 被识别为自然语言而跳过命名空间解析。
+        nsSeparator: ':',
         interpolation: { escapeValue: false }
       });
       return { instance, resourceLoads: new Map() };

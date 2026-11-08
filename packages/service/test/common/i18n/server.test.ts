@@ -29,6 +29,7 @@ describe('createServerTranslator', () => {
     });
     expect(t('account_team:log_time')).not.toContain('account_team:');
     expect(t('account_team:log_type')).not.toContain('account_team:');
+    expect(t('account_team:type.Workflow bot')).not.toContain('account_team:');
   });
 
   it('includes common by default and supports flat keys containing dots', async () => {
