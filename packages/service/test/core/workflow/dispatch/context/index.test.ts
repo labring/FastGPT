@@ -102,20 +102,19 @@ describe('runWithContext / getWorkflowContext', () => {
     );
     expect(getWorkflowSandboxContext(fallback)).toBe(fallback);
   });
-  it.each(requiredCapabilities)(
-    '缺少 %s 时不启动回调，运行中丢失该能力时拒绝读取',
-    async (key, message) => {
-      const context = await createWorkflowContext();
-      const fn = vi.fn();
-      expect(() => runWithRequiredContext({ ...context, [key]: undefined }, fn)).toThrow(message);
-      expect(fn).not.toHaveBeenCalled();
+  it.each(requiredCapabilities)('缺少 %s 时拒绝启动、派生和运行中读取', async (key, message) => {
+    const context = await createWorkflowContext();
+    const fn = vi.fn();
+    expect(() => runWithRequiredContext({ ...context, [key]: undefined }, fn)).toThrow(message);
+    expect(fn).not.toHaveBeenCalled();
 
-      runWithRequiredContext(context, () => {
-        Reflect.set(context, key, undefined);
-        expect(() => getWorkflowContext()).toThrow(message);
-      });
-    }
-  );
+    runWithRequiredContext(context, (parent) => {
+      expect(() => parent.getChildContext({ [key]: undefined })).toThrow(message);
+      expect(getWorkflowContext()).toBe(parent);
+      Reflect.set(context, key, undefined);
+      expect(() => getWorkflowContext()).toThrow(message);
+    });
+  });
 
   it('拒绝 publish-only 响应 Adapter 作为完整 Scope 注入', async () => {
     const context = await createWorkflowContext();
@@ -239,14 +238,17 @@ describe('WorkflowContext.getChildContext', () => {
     );
   });
 
-  it('多级派生继承当前子 Context，不回退到最初的父 Context', async () => {
+  it('多级派生继承当前子能力，控制状态独立复制且保留零预算', async () => {
     const context = await createWorkflowContext();
     await runWithContext(context, async (parent) => {
       const variables = createTestVariableContext({ value: 'child' });
       const childFileContext = await parent.fileContext.derive([]);
+      parent.runtimeControl.maxRunTimes = 0;
+      parent.runtimeControl.workflowDispatchDeep = 4;
       const child = parent.getChildContext({
         variableContext: variables,
-        fileContext: childFileContext
+        fileContext: childFileContext,
+        runtimeControl: { isToolCall: true }
       });
       const sink = createTestNodeResponseContext({ publish: vi.fn(async () => []) });
       const grandchild = child.getChildContext({ nodeResponseSink: sink });
@@ -260,16 +262,6 @@ describe('WorkflowContext.getChildContext', () => {
       expect(sibling.nodeResponseSink.hasOutput).toBe(false);
       expect(child.nodeResponseSink).toBe(parent.nodeResponseSink);
       expect(getWorkflowContext()).toBe(parent);
-    });
-  });
-
-  it('按当前父级派生并局部覆盖，保留零预算且不共享深度或工具标记', async () => {
-    const context = await createWorkflowContext();
-    await runWithContext(context, (parent) => {
-      parent.runtimeControl.maxRunTimes = 0;
-      parent.runtimeControl.workflowDispatchDeep = 4;
-      const child = parent.getChildContext({ runtimeControl: { isToolCall: true } });
-      const grandchild = child.getChildContext();
       expect(child.runtimeControl).toEqual({
         mode: 'test',
         maxRunTimes: 0,
@@ -286,16 +278,6 @@ describe('WorkflowContext.getChildContext', () => {
       });
       expect(child.runtimeControl.workflowDispatchDeep).toBe(4);
       expect(grandchild.runtimeControl.maxRunTimes).toBe(0);
-    });
-  });
-
-  it('必填能力不能通过 undefined 覆盖清空', async () => {
-    const context = await createWorkflowContext();
-    runWithRequiredContext(context, (parent) => {
-      for (const [key, message] of requiredCapabilities) {
-        expect(() => parent.getChildContext({ [key]: undefined })).toThrow(message);
-      }
-      expect(getWorkflowContext()).toBe(parent);
     });
   });
 

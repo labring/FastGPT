@@ -79,9 +79,14 @@ describe('initWorkflowSseResponse', () => {
     vi.useRealTimers();
   });
 
-  it.each(['finish', 'close', 'error'] as const)(
-    'cleans up the heartbeat and initialization marker on %s after idempotent initialization',
-    async (event) => {
+  it.each([
+    { event: 'finish', hasWriter: true },
+    { event: 'close', hasWriter: true },
+    { event: 'error', hasWriter: true },
+    { event: 'close', hasWriter: false }
+  ])(
+    'cleans up heartbeat and marker on $event after idempotent initialization (writer=$hasWriter)',
+    async ({ event, hasWriter }) => {
       vi.useFakeTimers();
       const res = createRes();
       const responseWrite = vi.fn();
@@ -91,9 +96,15 @@ describe('initWorkflowSseResponse', () => {
       });
 
       expect(isWorkflowSseResponseInitialized(res)).toBe(false);
-      initWorkflowSseResponse({ res, stream: true, responseWrite, onError });
+      const options = {
+        res,
+        stream: true,
+        responseWrite: hasWriter ? responseWrite : undefined,
+        onError
+      };
+      initWorkflowSseResponse(options);
       expect(isWorkflowSseResponseInitialized(res)).toBe(true);
-      initWorkflowSseResponse({ res, stream: true, responseWrite, onError });
+      initWorkflowSseResponse(options);
 
       expect(res.setHeader).toHaveBeenCalledTimes(5);
       expect(res.listenerCount('finish')).toBe(1);
@@ -101,7 +112,9 @@ describe('initWorkflowSseResponse', () => {
       expect(res.listenerCount('error')).toBe(1);
       expect(vi.getTimerCount()).toBe(1);
       await vi.advanceTimersByTimeAsync(10000);
-      expect(responseWrite).toHaveBeenCalledExactlyOnceWith(workflowSseEvent.answerDelta(''));
+      expect(responseWrite.mock.calls).toEqual(
+        hasWriter ? [[workflowSseEvent.answerDelta('')]] : []
+      );
 
       res.emit(event, event === 'error' ? new Error('connection failed') : undefined);
       expect(isWorkflowSseResponseInitialized(res)).toBe(false);
@@ -113,7 +126,7 @@ describe('initWorkflowSseResponse', () => {
       await vi.advanceTimersByTimeAsync(20000);
 
       expect(isWorkflowSseResponseInitialized(res)).toBe(false);
-      expect(responseWrite).toHaveBeenCalledTimes(1);
+      expect(responseWrite).toHaveBeenCalledTimes(hasWriter ? 1 : 0);
       expect(onError).toHaveBeenCalledTimes(event === 'error' ? 1 : 0);
       expect(res.end).toHaveBeenCalledTimes(event === 'error' ? 1 : 0);
     }
@@ -137,24 +150,27 @@ describe('initWorkflowSseResponse', () => {
     expect(vi.getTimerCount()).toBe(0);
     expect(responseWrite).not.toHaveBeenCalled();
   });
-
-  it('supports heartbeat cleanup when no writer is provided', async () => {
-    vi.useFakeTimers();
-    const res = createRes();
-
-    initWorkflowSseResponse({ res, stream: true });
-    await vi.advanceTimersByTimeAsync(10000);
-    expect(isWorkflowSseResponseInitialized(res)).toBe(true);
-    expect(vi.getTimerCount()).toBe(1);
-
-    res.emit('close');
-
-    expect(isWorkflowSseResponseInitialized(res)).toBe(false);
-    expect(vi.getTimerCount()).toBe(0);
-  });
 });
 
 describe('createWorkflowStreamResponseContext', () => {
+  /** 共用 HTTP/身份夹具；每个场景只声明会改变流行为的输入。 */
+  const createContext = ({
+    req = createReq(),
+    res = createRes(),
+    ...overrides
+  }: Partial<Parameters<typeof createWorkflowStreamResponseContext>[0]> = {}) =>
+    createWorkflowStreamResponseContext({
+      teamId,
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId,
+      chatId,
+      req,
+      res,
+      stream: true,
+      detail: true,
+      ...overrides
+    });
+
   beforeEach(async () => {
     vi.clearAllMocks();
     streamResume.resetStreamResumeMirrorGuardForTest();
@@ -176,12 +192,10 @@ describe('createWorkflowStreamResponseContext', () => {
     const params = { teamId, sourceType: ChatSourceTypeEnum.app, sourceId, chatId };
     const redis = getRedisRuntime().getCommandConnection() as any;
     const keys = getStreamResumeRedisKeys(params);
-    const context = await createWorkflowStreamResponseContext({
+    const context = await createContext({
       ...params,
       req: createReq({ [STREAM_RESUME_REQUEST_HEADER]: 'true' }),
-      res,
-      stream: true,
-      detail: true
+      res
     });
 
     context.responseWrite(workflowSseEvent.answerDelta('hello'));
@@ -233,17 +247,7 @@ describe('createWorkflowStreamResponseContext', () => {
       const keys = getStreamResumeRedisKeys({ teamId, sourceType, sourceId, chatId });
       const rawStreamKey = `${FASTGPT_REDIS_PREFIX}${keys.keyOfStream}`;
 
-      const noMirrorContext = await createWorkflowStreamResponseContext({
-        req: createReq(),
-        res: createRes(),
-        stream: true,
-        detail: true,
-        teamId,
-        sourceType,
-        sourceId,
-        chatId,
-        responseId: chatId
-      });
+      const noMirrorContext = await createContext({ sourceType, responseId: chatId });
 
       noMirrorContext.responseWrite(workflowSseEvent.done(SseResponseEventEnum.answer));
       await noMirrorContext.flushResume();
@@ -251,15 +255,9 @@ describe('createWorkflowStreamResponseContext', () => {
       expect(redis.info).not.toHaveBeenCalled();
       expect(redis.call).not.toHaveBeenCalled();
 
-      const mirrorContext = await createWorkflowStreamResponseContext({
+      const mirrorContext = await createContext({
         req: createReq({ [STREAM_RESUME_REQUEST_HEADER]: 'true' }),
-        res: createRes(),
-        stream: true,
-        detail: true,
-        teamId,
         sourceType,
-        sourceId,
-        chatId,
         responseId: chatId
       });
 
@@ -299,15 +297,10 @@ describe('createWorkflowStreamResponseContext', () => {
         .spyOn(getLogger(LogCategories.MODULE.CHAT.RESUME), 'error')
         .mockImplementation(() => undefined);
       const res = createRes();
-      const context = await createWorkflowStreamResponseContext({
+      const context = await createContext({
         req: createReq({ [STREAM_RESUME_REQUEST_HEADER]: 'true' }),
         res,
-        stream: true,
-        detail: true,
-        teamId,
-        sourceType,
-        sourceId,
-        chatId
+        sourceType
       });
 
       await expect(context.flushResume()).resolves.toBeUndefined();
@@ -327,15 +320,9 @@ describe('createWorkflowStreamResponseContext', () => {
     vi.useFakeTimers();
     const redis = getRedisRuntime().getCommandConnection() as any;
     const res = createRes();
-    const context = await createWorkflowStreamResponseContext({
+    const context = await createContext({
       req: createReq({ [STREAM_RESUME_REQUEST_HEADER]: 'true' }),
       res,
-      stream: true,
-      detail: true,
-      teamId,
-      sourceType: ChatSourceTypeEnum.app,
-      sourceId,
-      chatId,
       responseId: chatId
     });
 
@@ -351,15 +338,8 @@ describe('createWorkflowStreamResponseContext', () => {
   it('should not create resume mirror when resume is disabled even if request opts in', async () => {
     const redis = getRedisRuntime().getCommandConnection() as any;
 
-    const context = await createWorkflowStreamResponseContext({
+    const context = await createContext({
       req: createReq({ [STREAM_RESUME_REQUEST_HEADER]: 'true' }),
-      res: createRes(),
-      stream: true,
-      detail: true,
-      teamId,
-      sourceType: ChatSourceTypeEnum.app,
-      sourceId,
-      chatId,
       responseId: chatId,
       enableStreamResume: false
     });
@@ -375,44 +355,45 @@ describe('createWorkflowStreamResponseContext', () => {
     expect(redis.call).not.toHaveBeenCalled();
   });
 
-  it('should write stream errors and clear expired auth cookies', async () => {
-    const context = await createWorkflowStreamResponseContext({
-      req: createReq(),
-      res: createRes(),
+  it.each([
+    {
+      name: 'expired authentication',
       stream: true,
-      detail: true,
-      teamId,
-      sourceType: ChatSourceTypeEnum.app,
-      sourceId,
-      chatId
-    });
-
-    context.writeStreamError(ERROR_ENUM.unAuthorization);
-
-    expect(clearCookieMock).toHaveBeenCalledTimes(1);
-    expect(responseWrite).toHaveBeenCalledWith(
-      expect.objectContaining({
-        event: SseResponseEventEnum.error,
-        data: expect.stringContaining(ERROR_ENUM.unAuthorization)
-      })
-    );
-  });
-
-  it('should skip writing stream errors for non-stream requests', async () => {
-    const context = await createWorkflowStreamResponseContext({
-      req: createReq({ [STREAM_RESUME_REQUEST_HEADER]: 'true' }),
-      res: createRes(),
+      error: ERROR_ENUM.unAuthorization,
+      clearsCookie: true
+    },
+    {
+      name: 'ordinary stream error',
+      stream: true,
+      error: new Error('stream failed'),
+      clearsCookie: false
+    },
+    {
+      name: 'non-stream error',
       stream: false,
-      detail: true,
-      teamId,
-      sourceType: ChatSourceTypeEnum.app,
-      sourceId,
-      chatId
+      error: new Error('json response path'),
+      clearsCookie: false
+    }
+  ])('routes $name without clearing unrelated cookies', async ({ stream, error, clearsCookie }) => {
+    const context = await createContext({
+      req: createReq(stream ? {} : { [STREAM_RESUME_REQUEST_HEADER]: 'true' }),
+      stream
     });
 
-    context.writeStreamError(new Error('json response path'));
+    context.writeStreamError(error);
 
-    expect(responseWrite).not.toHaveBeenCalled();
-    expect(clearCookieMock).not.toHaveBeenCalled();
+    expect(clearCookieMock).toHaveBeenCalledTimes(clearsCookie ? 1 : 0);
+    expect(vi.mocked(responseWrite).mock.calls).toEqual(
+      stream
+        ? [
+            [
+              expect.objectContaining({
+                event: SseResponseEventEnum.error,
+                data: expect.stringContaining(typeof error === 'string' ? error : error.message)
+              })
+            ]
+          ]
+        : []
+    );
   });
 });

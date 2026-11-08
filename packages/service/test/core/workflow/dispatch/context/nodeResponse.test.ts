@@ -28,15 +28,23 @@ describe('createWorkflowEntryNodeResponseSink', () => {
     { scopeEmit: false, itemEmit: true, channel: true, record: true, sends: 0 },
     { scopeEmit: true, itemEmit: false, channel: true, record: true, sends: 0 },
     { scopeEmit: true, itemEmit: true, channel: false, record: true, sends: 0 },
-    { scopeEmit: true, itemEmit: true, channel: true, record: false, sends: 1 }
+    { scopeEmit: true, itemEmit: true, channel: true, record: false, sends: 1 },
+    {
+      apiVersion: 'v1' as const,
+      scopeEmit: true,
+      itemEmit: true,
+      channel: true,
+      record: true,
+      sends: 0
+    }
   ])(
-    'emit 和当前 writer 联合控制 SSE，record 独立控制保存：%j',
-    async ({ scopeEmit, itemEmit, channel, record, sends }) => {
+    '协议版本、emit 和当前 writer 联合控制 SSE，record 独立控制保存：%j',
+    async ({ apiVersion = 'v2' as const, scopeEmit, itemEmit, channel, record, sends }) => {
       const writer = createWriter();
       const send = vi.fn();
       const sink = createWorkflowEntryNodeResponseSink({
         writer: writer as any,
-        apiVersion: 'v2'
+        apiVersion
       }).getChildContext({ emit: scopeEmit });
       await runWithTestWorkflowContext(
         {
@@ -67,7 +75,7 @@ describe('createWorkflowEntryNodeResponseSink', () => {
     }
   );
 
-  it('共享 output 从当前子作用域取通道，异步并行不串流且显式禁流不回退父级', async () => {
+  it('并发子作用域独立统计和选择通道，显式禁流不回退父级', async () => {
     const writer = createWriter();
     const releases = new Map<string, () => void>();
     writer.record.mockImplementation(
@@ -91,11 +99,16 @@ describe('createWorkflowEntryNodeResponseSink', () => {
         nodeResponseSink: rootSink
       },
       async (parent) => {
-        const children = [undefined, siblingWriter].map((workflowStreamResponse) =>
+        const activities = [
+          createWorkflowNodeResponseActivity(),
+          createWorkflowNodeResponseActivity()
+        ];
+        const children = [undefined, siblingWriter].map((workflowStreamResponse, index) =>
           parent.getChildContext({
             workflowStreamResponse,
             nodeResponseSink: rootSink.getChildContext({
-              workflowRuntimeSummary: createWorkflowRuntimeSummary()
+              workflowRuntimeSummary: createWorkflowRuntimeSummary(),
+              activity: activities[index]
             })
           })
         );
@@ -116,8 +129,10 @@ describe('createWorkflowEntryNodeResponseSink', () => {
         );
         releases.get('1')!();
         await tasks[1];
+        expect(activities.map((activity) => activity.publishedResponseCount)).toEqual([0, 1]);
         releases.get('0')!();
         await tasks[0];
+        expect(activities.map((activity) => activity.publishedResponseCount)).toEqual([1, 1]);
         expect(getWorkflowContext()).toBe(parent);
         expect(rootWriter).not.toHaveBeenCalled();
         expect(siblingWriter).toHaveBeenCalledOnce();
@@ -312,45 +327,6 @@ describe('createWorkflowEntryNodeResponseSink', () => {
     ]);
   });
 
-  it('并行节点使用独立 activity，其他节点发布不会改变当前节点归属', async () => {
-    const writer = createWriter();
-    const workflowSink = createWorkflowEntryNodeResponseSink({
-      writer: writer as any
-    }).getChildContext({ workflowRuntimeSummary: createWorkflowRuntimeSummary() });
-    const firstActivity = createWorkflowNodeResponseActivity();
-    const secondActivity = createWorkflowNodeResponseActivity();
-    const firstNodeSink = workflowSink.getChildContext({
-      activity: firstActivity
-    });
-    const secondNodeSink = workflowSink.getChildContext({
-      activity: secondActivity
-    });
-
-    await Promise.all([
-      firstNodeSink.publish([
-        {
-          response: {
-            id: 'first-node-response',
-            nodeId: 'first-node',
-            moduleType: FlowNodeTypeEnum.textEditor
-          } as ChatHistoryItemResType
-        }
-      ]),
-      secondNodeSink.publish([
-        {
-          response: {
-            id: 'second-node-response',
-            nodeId: 'second-node',
-            moduleType: FlowNodeTypeEnum.textEditor
-          } as ChatHistoryItemResType
-        }
-      ])
-    ]);
-
-    expect(firstActivity.publishedResponseCount).toBe(1);
-    expect(secondActivity.publishedResponseCount).toBe(1);
-  });
-
   it('V2 按输入顺序逐条发布，并允许父响应只入库不发布', async () => {
     const writer = createWriter();
     const workflowStreamResponse = vi.fn();
@@ -491,39 +467,6 @@ describe('createWorkflowEntryNodeResponseSink', () => {
           event: SseResponseEventEnum.flowNodeResponse,
           data: response
         });
-      }
-    );
-  });
-
-  it('V1 只写入，不发布逐条 flowNodeResponse', async () => {
-    const writer = createWriter();
-    const workflowStreamResponse = vi.fn();
-    return runWithTestWorkflowContext(
-      {
-        checkIsStopping: () => false,
-        mcpClientMemory: {},
-        fileContext: await createTestWorkflowFileContext(),
-        workflowStreamResponse
-      },
-      async () => {
-        const sink = createWorkflowEntryNodeResponseSink({
-          writer: writer as any,
-          apiVersion: 'v1'
-        });
-
-        await sink.publish([
-          {
-            response: {
-              id: 'node',
-              nodeId: 'node',
-              moduleName: 'Node',
-              moduleType: FlowNodeTypeEnum.agent
-            }
-          }
-        ]);
-
-        expect(writer.record).toHaveBeenCalledTimes(1);
-        expect(workflowStreamResponse).not.toHaveBeenCalled();
       }
     );
   });
