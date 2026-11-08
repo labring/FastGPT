@@ -38,7 +38,7 @@ routes:
   - GET /api/core/ai/model/channel/logs
 related: []
 automation: []
-baseline: "main=f90561878b76156969fc114c9725e2f36bb11a32; pro=a92f11e983919690691f048e69048ef7fef923c2"
+baseline: "main=2cb04294b12758974259dd01c9a907faf92a8382; pro=a92f11e983919690691f048e69048ef7fef923c2"
 ---
 
 # 日期筛选与列表、导出和图表的实际查询范围一致
