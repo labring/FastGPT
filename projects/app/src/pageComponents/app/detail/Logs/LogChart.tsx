@@ -160,6 +160,7 @@ const LogChart = ({
         appId,
         dateStart: formatToISOWithTimezone(dateRange.from),
         dateEnd: formatToISOWithTimezone(dateRange.to),
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
         offset: parseInt(offset),
         source: chartSources,
         userTimespan,

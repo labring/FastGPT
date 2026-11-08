@@ -238,12 +238,32 @@ export const GetChartDataBodySchema = createAppApiKeyInputSchema(
     }),
     dateStart: z.union([z.string().datetime({ offset: true }), z.date()]).meta({
       example: '2024-01-01T00:00:00.000Z',
-      description: '开始时间（包含），ISO 字符串需包含时区偏移及毫秒；该偏移用于统计分组'
+      description:
+        '开始时间（包含），ISO 字符串需包含时区偏移及毫秒；未传 timezone 时使用该固定偏移分组'
     }),
     dateEnd: z.union([z.string().datetime({ offset: true }), z.date()]).meta({
       example: '2024-12-31T23:59:59.999Z',
       description: '结束时间（包含），保持客户端选择的边界，不额外扩展日期'
     }),
+    timezone: z
+      .string()
+      .refine(
+        (value) => {
+          try {
+            new Intl.DateTimeFormat('en', { timeZone: value }).format();
+            return true;
+          } catch {
+            return false;
+          }
+        },
+        { message: 'Invalid timezone' }
+      )
+      .optional()
+      .meta({
+        example: 'America/New_York',
+        description:
+          '浏览器 IANA 时区，用于自然日分组和留存计算，不改变查询起止时间；省略时按起点固定偏移兼容旧调用'
+      }),
     source: z
       .array(z.nativeEnum(ChatSourceEnum))
       .optional()

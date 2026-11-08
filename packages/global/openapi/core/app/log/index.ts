@@ -132,7 +132,8 @@ export const AppLogPath: OpenAPIPath = {
   '/proApi/core/app/logs/getChartData': {
     post: {
       summary: '获取应用图表数据',
-      description: '获取应用的图表统计数据，包括用户数据、对话数据、应用数据的时序统计',
+      description:
+        '严格按起止绝对时间查询，按 timezone 对用户、对话及应用数据分组；浏览器传 IANA 时区以保持跨夏令时的自然日边界，旧调用省略时使用起点固定偏移。',
       tags: [DevApiTagsMap.appLog, SystemOpenApiTagMap.appLog],
       requestBody: {
         content: {

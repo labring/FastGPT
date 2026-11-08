@@ -72,5 +72,6 @@ describe('LogChart selected date range', () => {
     expect(params.dateEnd).toMatch(/^2026-11-09T23:59:59\.999[+-]\d{2}:\d{2}$/);
     expect(new Date(params.dateStart)).toEqual(range.from);
     expect(new Date(params.dateEnd)).toEqual(range.to);
+    expect(params.timezone).toBe(Intl.DateTimeFormat().resolvedOptions().timeZone);
   });
 });
