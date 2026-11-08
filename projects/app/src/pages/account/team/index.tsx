@@ -4,7 +4,7 @@ import { Box, Flex } from '@chakra-ui/react';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import TeamSelector from '@/pageComponents/account/TeamSelector';
 import { useUserStore } from '@/web/support/user/useUserStore';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useContextSelector } from 'use-context-selector';
 import { useRouter } from 'next/router';
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
@@ -41,22 +41,8 @@ const Team = () => {
   const { userInfo, teamPlanStatus } = useUserStore();
   const subscriptionEnabled = useSystemStore((state) => !!state.subPlans?.standard);
   const standardPlan = teamPlanStatus?.standard;
-  const [planCheckedAt, setPlanCheckedAt] = useState(Date.now);
-  // 在套餐开始或到期时更新入口状态，长时间停留页面也不继续展示已到期能力。
-  useEffect(() => {
-    const nextBoundary = Math.min(
-      ...[standardPlan?.startTime, standardPlan?.expiredTime]
-        .filter((value) => value !== undefined && value !== null)
-        .map((value) => new Date(value!).getTime())
-        .filter((value) => Number.isFinite(value) && value > planCheckedAt)
-    );
-    if (!Number.isFinite(nextBoundary)) return;
-    const timer = setTimeout(
-      () => setPlanCheckedAt(Date.now()),
-      Math.min(Math.max(0, nextBoundary - Date.now()), 2_147_483_647)
-    );
-    return () => clearTimeout(timer);
-  }, [planCheckedAt, standardPlan?.startTime, standardPlan?.expiredTime]);
+  // 仅在页面加载时取套餐判断时间，不在生效或过期边界主动刷新入口。
+  const [planCheckedAt] = useState(Date.now);
   // 与后端一致：未启用订阅体系时只要求团队管理权限。
   const canReadAudit = !!(
     userInfo?.team.permission.hasManagePer &&
