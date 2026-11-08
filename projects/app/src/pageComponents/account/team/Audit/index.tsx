@@ -1,3 +1,4 @@
+import { getLocalDateRange } from '@fastgpt/global/common/time/dateRange';
 import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import { Box, Button, Flex, Table, Tbody, Td, Th, Thead, Tr } from '@chakra-ui/react';
 import { useMemo, useRef, useState } from 'react';
@@ -21,10 +22,11 @@ import {
 } from '@fastgpt/web/components/common/TagFilter';
 import { processAuditMetadata } from '@fastgpt/web/support/user/audit/processors';
 import TeamMemberFilter from '@/components/support/user/TeamMemberFilter';
-import DateRangePicker from '@fastgpt/web/components/common/DateRangePicker';
+import DateRangePicker, {
+  type DateRangeType
+} from '@fastgpt/web/components/common/DateRangePicker';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import { getDefaultAuditDateRange } from './utils';
 import { formatToISOWithTimezone } from '@fastgpt/global/common/string/time';
 import { downloadFetch } from '@/web/common/system/utils';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
@@ -32,11 +34,17 @@ import { parseLocale } from '@fastgpt/global/common/i18n/utils';
 import dayjs from 'dayjs';
 
 function AuditLog({ Tabs }: { Tabs: React.ReactNode }) {
+  /** 最近七个本地自然日含今天，按日历日期计算并补齐首尾边界。 */
+  const getDefaultAuditDateRange = (now = new Date()): DateRangeType => {
+    const from = new Date(now);
+    from.setDate(from.getDate() - 6);
+    return getLocalDateRange(from, now);
+  };
+
   const { t, i18n } = useSafeTranslation();
   const labels = useCommonFilterLabels();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [dateRange, setDateRange] = useState(getDefaultAuditDateRange);
-  const browserTimezone = useMemo(() => Intl.DateTimeFormat().resolvedOptions().timeZone, []);
   const exportInProgress = useRef(false);
   const [memberFilter, setMemberFilter] = useState(createMultiSelectFilter());
   const [eventFilter, setEventFilter] =
@@ -56,11 +64,10 @@ function AuditLog({ Tabs }: { Tabs: React.ReactNode }) {
     () => ({
       dateStart: formatToISOWithTimezone(dateRange.from),
       dateEnd: formatToISOWithTimezone(dateRange.to),
-      timezone: browserTimezone,
       tmbIds: toMultiSelectFilterQuery(memberFilter),
       events: toMultiSelectFilterQuery(eventFilter)
     }),
-    [browserTimezone, dateRange, eventFilter, memberFilter]
+    [dateRange, eventFilter, memberFilter]
   );
 
   const {

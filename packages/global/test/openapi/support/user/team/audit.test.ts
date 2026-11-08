@@ -12,7 +12,7 @@ const filters = {
 describe('team audit date contracts', () => {
   afterEach(() => vi.useRealTimers());
 
-  it('keeps milliseconds, embedded offsets and the browser timezone', () => {
+  it('keeps milliseconds and embedded offsets without a separate timezone', () => {
     expect(AuditListBodySchema.parse({ ...filters, pageNum: 3, pageSize: 20 })).toMatchObject(
       filters
     );
@@ -24,7 +24,7 @@ describe('team audit date contracts', () => {
         pageNum: 3,
         pageSize: 20
       })
-    ).toEqual({ ...filters, locale: 'zh-CN', timezone: 'Asia/Shanghai' });
+    ).toEqual({ ...filters, locale: 'zh-CN' });
   });
 
   it.each([
@@ -75,7 +75,6 @@ describe('team audit date contracts', () => {
       const input = {
         dateStart,
         dateEnd,
-        timezone: 'America/New_York',
         locale: 'en'
       };
 
@@ -96,17 +95,6 @@ describe('team audit date contracts', () => {
       }
     }
   );
-
-  it('rejects an invalid IANA timezone', () => {
-    const result = AuditListBodySchema.safeParse({
-      ...filters,
-      timezone: 'Not/A_Timezone'
-    });
-    expect(result.success).toBe(false);
-    expect(result.error?.issues).toEqual([
-      expect.objectContaining({ path: ['timezone'], message: 'Invalid timezone' })
-    ]);
-  });
 
   it('uses UTC when the ISO timestamps end in Z', () => {
     vi.useFakeTimers().setSystemTime(new Date('2026-03-09T23:00:00Z'));

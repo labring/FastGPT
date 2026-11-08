@@ -100,8 +100,8 @@ import Audit from '@/pageComponents/account/team/Audit';
 
 let host: HTMLDivElement;
 let root: Root;
-const render = async (key = 'team-a') => {
-  await act(async () => root.render(React.createElement(Audit, { Tabs: null, key })));
+const render = async () => {
+  await act(async () => root.render(React.createElement(Audit, { Tabs: null })));
 };
 const exportButton = () =>
   Array.from(host.querySelectorAll('button')).find(
@@ -132,6 +132,7 @@ describe('audit filters and export interactions', () => {
     window.localStorage.clear();
     window.close();
     vi.unstubAllGlobals();
+    vi.useRealTimers();
   });
 
   it('resets to page one on confirmed filters, retains page size and exports every match without pagination', async () => {
@@ -159,15 +160,17 @@ describe('audit filters and export interactions', () => {
       dateEnd: expect.stringContaining('2020-01-02'),
       tmbIds: ['member-a'],
       events: ['LOGIN'],
-      timezone: expect.any(String),
       locale: 'en'
     });
     expect(downloadBody).not.toHaveProperty('pageNum');
     expect(downloadBody).not.toHaveProperty('pageSize');
-    expect(mocks.getLogs.mock.lastCall![0]).toHaveProperty('timezone');
+    expect(mocks.getLogs.mock.lastCall![0]).not.toHaveProperty('timezone');
+    expect(downloadBody).not.toHaveProperty('timezone');
   });
 
-  it('resets only the time range and clears old selections when switching teams', async () => {
+  it('resets to seven calendar days across year boundaries while retaining member and event filters', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(2026, 0, 3, 12, 30));
     mocks.total = 0;
     await render();
     await act(async () => mocks.member.onChange({ mode: 'selected', values: ['old-member'] }));
@@ -183,11 +186,10 @@ describe('audit filters and export interactions', () => {
     expect(mocks.getLogs).toHaveBeenLastCalledWith(
       expect.objectContaining({ tmbIds: ['old-member'], events: ['LOGIN'] })
     );
-    expect(new Date(mocks.getLogs.mock.lastCall![0].dateStart).getFullYear()).toBe(
-      new Date().getFullYear()
-    );
-    await render('team-b');
-    expect(mocks.getLogs.mock.lastCall![0].tmbIds).toBeUndefined();
+    expect(mocks.date.dateRange).toEqual({
+      from: new Date(2025, 11, 28, 0, 0, 0, 0),
+      to: new Date(2026, 0, 3, 23, 59, 59, 999)
+    });
   });
 
   it('blocks duplicate exports while a download is pending', async () => {

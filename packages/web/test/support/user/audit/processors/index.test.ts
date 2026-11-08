@@ -42,6 +42,42 @@ describe('processAuditMetadata', () => {
     }
   );
 
+  it('formats export ranges as local date times without changing stored metadata', () => {
+    const metadata = Object.freeze({
+      dateStart: new Date(2026, 10, 2).toISOString(),
+      dateEnd: new Date(2026, 10, 8, 23, 59, 59, 999).toISOString(),
+      tmbIds: 'all',
+      events: 'all',
+      total: '280'
+    });
+    expect(
+      processAuditMetadata({
+        event: AuditEventEnum.EXPORT_AUDIT_LOGS,
+        metadata,
+        t: () => '全部'
+      })
+    ).toEqual({
+      dateStart: '2026-11-02 00:00:00',
+      dateEnd: '2026-11-08 23:59:59',
+      tmbIds: '全部',
+      events: '全部',
+      total: '280'
+    });
+  });
+
+  it.each([undefined, '', 'invalid-date'])(
+    'preserves unavailable historical export dates: %s',
+    (value) => {
+      expect(
+        processAuditMetadata({
+          event: AuditEventEnum.EXPORT_AUDIT_LOGS,
+          metadata: { dateStart: value, dateEnd: value },
+          t: (key) => key
+        })
+      ).toMatchObject({ dateStart: value, dateEnd: value });
+    }
+  );
+
   it('uses the default translations for events without a custom processor', () => {
     const t = (key: string) => translations[key] ?? key;
 
