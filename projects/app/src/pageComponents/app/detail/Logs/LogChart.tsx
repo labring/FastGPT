@@ -216,7 +216,9 @@ const LogChart = ({
         dataMap.set(dateInfo.date, mappedItem);
       });
 
-      return completeDates.map(
+      // 首尾偏移不同时，范围内的末尾记录可能落入相邻的固定偏移桶；保留响应桶，不能只按浏览器日期轴丢弃。
+      const dates = [...new Set([...completeDates, ...dataMap.keys()])];
+      return dates.map(
         (date) => dataMap.get(date) || ({ x: date, xLabel: date, ...defaultValues } as unknown as T)
       );
     };

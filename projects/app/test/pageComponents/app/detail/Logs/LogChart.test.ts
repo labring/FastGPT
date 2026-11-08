@@ -92,9 +92,14 @@ describe('LogChart selected date range', () => {
     {
       from: '2026-10-28T00:00:00-04:00',
       to: '2026-11-03T23:59:59.999-05:00',
-      buckets: ['2026-11-01T00:00:00-04:00', '2026-11-02T00:00:00-04:00'],
-      counts: [1, 1],
-      labels: ['11-01', '11-02']
+      // 最后一个桶包括所选止日 23:00 至 23:59:59.999（-05:00）的合法记录。
+      buckets: [
+        '2026-11-01T00:00:00-04:00',
+        '2026-11-02T00:00:00-04:00',
+        '2026-11-04T00:00:00-04:00'
+      ],
+      counts: [1, 1, 1],
+      labels: ['11-01', '11-02', '11-04']
     },
     {
       from: '2026-03-04T00:00:00-05:00',
@@ -136,7 +141,9 @@ describe('LogChart selected date range', () => {
           .filter(({ chatCount }) => chatCount > 0)
           .map(({ x, chatCount }) => ({ x, chatCount }))
       ).toEqual(labels.map((x, index) => ({ x, chatCount: counts[index] })));
-      expect(chart.data.reduce((sum, item) => sum + item.chatCount, 0)).toBe(2);
+      expect(chart.data.reduce((sum, item) => sum + item.chatCount, 0)).toBe(
+        counts.reduce((sum, count) => sum + count, 0)
+      );
     }
   );
 });
