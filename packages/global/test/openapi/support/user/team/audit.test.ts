@@ -10,8 +10,14 @@ const filters = {
 };
 
 describe('team audit date contracts', () => {
-  beforeEach(() => vi.useFakeTimers().setSystemTime(new Date('2026-11-08T12:00:00Z')));
-  afterEach(() => vi.useRealTimers());
+  beforeEach(() => {
+    vi.stubEnv('TZ', 'UTC');
+    vi.useFakeTimers().setSystemTime(new Date('2026-11-08T12:00:00Z'));
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllEnvs();
+  });
 
   it('keeps milliseconds and embedded offsets without a separate timezone', () => {
     expect(AuditListBodySchema.parse({ ...filters, pageNum: 3, pageSize: 20 })).toMatchObject(
@@ -45,58 +51,55 @@ describe('team audit date contracts', () => {
   it.each([
     {
       transition: 'fixed +08:00',
-      now: '2026-03-08T18:00:00Z',
-      ...filters,
-      nextDay: '2026-03-10T00:00:00.000+08:00'
+      clocks: ['2026-03-08T18:00:00Z'],
+      ...filters
     },
     {
       transition: 'UTC',
-      now: '2026-03-09T23:00:00Z',
+      clocks: ['2026-03-09T23:00:00Z'],
       dateStart: '2026-03-09T00:00:00.000Z',
-      dateEnd: '2026-03-09T23:59:59.999Z',
-      nextDay: '2026-03-10T00:00:00.000Z'
+      dateEnd: '2026-03-09T23:59:59.999Z'
     },
     {
       transition: 'fall back',
-      now: '2026-11-01T17:00:00Z',
+      clocks: ['2026-11-01T04:30:00Z', '2026-11-01T06:30:00Z', '2026-11-01T17:00:00Z'],
       dateStart: '2026-10-26T00:00:00.000-04:00',
-      dateEnd: '2026-11-01T23:59:59.999-05:00',
-      nextDay: '2026-11-02T00:00:00.000-05:00'
+      dateEnd: '2026-11-01T23:59:59.999-05:00'
     },
     {
       transition: 'spring forward',
-      now: '2026-03-08T16:00:00Z',
+      clocks: ['2026-03-08T05:30:00Z', '2026-03-08T07:30:00Z', '2026-03-08T16:00:00Z'],
       dateStart: '2026-03-02T00:00:00.000-05:00',
-      dateEnd: '2026-03-08T23:59:59.999-04:00',
-      nextDay: '2026-03-09T00:00:00.000-04:00'
+      dateEnd: '2026-03-08T23:59:59.999-04:00'
     }
   ])(
-    'validates the last millisecond of today and rejects tomorrow: $transition',
-    ({ now, dateStart, dateEnd, nextDay }) => {
-      vi.useFakeTimers().setSystemTime(new Date(now));
-      const input = {
-        dateStart,
-        dateEnd,
-        locale: 'en'
-      };
-
-      // 跨夏令时的七天范围首尾 offset 不同，按结束日判断，避免误拒今天或放行明天。
-      for (const schema of [AuditListBodySchema, AuditExportBodySchema]) {
-        expect(schema.safeParse(input).success).toBe(true);
-        expect(schema.safeParse({ ...input, dateEnd: nextDay })).toMatchObject({
-          success: false,
-          error: {
-            issues: [
-              expect.objectContaining({
-                path: ['dateEnd'],
-                message: 'Future dates are not allowed'
-              })
-            ]
-          }
-        });
+    'preserves the browser range before and after a clock transition: $transition',
+    ({ clocks, dateStart, dateEnd }) => {
+      for (const clock of clocks) {
+        vi.setSystemTime(new Date(clock));
+        for (const schema of [AuditListBodySchema, AuditExportBodySchema]) {
+          expect(schema.parse({ dateStart, dateEnd, locale: 'en' })).toMatchObject({
+            dateStart,
+            dateEnd
+          });
+        }
       }
     }
   );
+
+  it('leaves future calendar selection to the UI without changing absolute API boundaries', () => {
+    const input = {
+      dateStart: '2099-11-01T00:00:00.000-04:00',
+      dateEnd: '2099-11-02T23:59:59.999-05:00',
+      locale: 'en'
+    };
+    for (const schema of [AuditListBodySchema, AuditExportBodySchema]) {
+      expect(schema.parse(input)).toMatchObject({
+        dateStart: input.dateStart,
+        dateEnd: input.dateEnd
+      });
+    }
+  });
 
   it('allows online logs older than 180 days and single days', () => {
     expect(

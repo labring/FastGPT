@@ -4,8 +4,6 @@ import { SourceMemberSchema } from '../../../../../support/user/type';
 import { AuditEventEnum, TeamAuditEventList } from '../../../../../support/user/audit/constants';
 import { createPaginationSchema } from '../../../../api';
 import { LanguageSchema } from '../../../../../common/i18n/type';
-import { getTimezoneCodeFromStr } from '../../../../../common/time/timezone';
-import dayjs from 'dayjs';
 
 /* ============================================================================
  * API: 获取团队操作日志
@@ -45,19 +43,15 @@ export const AuditFilterSchema = z
   });
 export type AuditFilterType = z.infer<typeof AuditFilterSchema>;
 
-/** 统一校验时间顺序，并按客户端时区允许查询到今天结束。 */
+/**
+ * 仅按绝对时间校验先后顺序，不推断客户端的「今天」。
+ * 两端 offset 不能表示当前的日历时区，跨 DST 时重新计算日终点会误拒合法范围；未来日期由页面禁用。
+ */
 const validateAuditRange = (data: AuditFilterType, ctx: z.RefinementCtx) => {
   const start = new Date(data.dateStart);
   const end = new Date(data.dateEnd);
   if (start > end) {
     ctx.addIssue({ code: 'custom', path: ['dateEnd'], message: 'Start must not be after end' });
-  }
-  if (!Number.isFinite(start.getTime()) || !Number.isFinite(end.getTime())) return;
-
-  // 结束时间的偏移用于确定所选结束日对应的今天边界，不依赖服务端时区。
-  const todayEnd = dayjs().utcOffset(getTimezoneCodeFromStr(data.dateEnd)).endOf('day');
-  if (end.getTime() > todayEnd.valueOf()) {
-    ctx.addIssue({ code: 'custom', path: ['dateEnd'], message: 'Future dates are not allowed' });
   }
 };
 
