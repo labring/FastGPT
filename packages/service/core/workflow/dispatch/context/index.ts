@@ -1,19 +1,26 @@
 import { AsyncLocalStorage } from 'async_hooks';
 import type { MCPClient } from '../../../app/mcp';
-import { getFileUrlIdentity } from '../../../chat/file/utils';
 import type { WorkflowFileContext, WorkflowFileInput } from './file';
-import { UserError } from '@fastgpt/global/common/error/utils';
-import { ChatRoleEnum, type ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
-import type {
-  ChatFileStoreValue,
-  ChatItemMiniType,
-  UserChatItemValueItemType,
-  UserChatItemFileItemType
-} from '@fastgpt/global/core/chat/type';
+import type { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import type { ChatItemMiniType, UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import type { WorkflowResourceContext } from '@fastgpt/global/core/workflow/runtime/type';
 import type { WorkflowVariableStateLike } from './variables';
 import type { WorkflowNodeResponseContext } from './nodeResponse';
-import type { WorkflowRuntimeControl } from './runtimeControl';
+import type { WorkflowMemoryContext } from './memory';
+import type { WorkflowResponseType } from '@fastgpt/global/core/workflow/runtime/sse';
+import { prepareDerivedWorkflowFileContext } from './file';
+
+/**
+ * 当前 workflow 层的运行控制状态，不属于节点业务入参。
+ * 队列统一扣减本层预算；节点执行时捕获快照，子流程从该快照派生，避免并发串状态。
+ */
+export type WorkflowRuntimeControl = {
+  mode: 'test' | 'chat' | 'debug';
+  maxRunTimes: number;
+  /** runWorkflow 进入时递增，完成、失败或深度拒绝后恢复。 */
+  workflowDispatchDeep: number;
+  isToolCall: boolean;
+};
 
 /** 根入口确定的沙盒归属；子流程继承该身份，资源鉴权仍使用自身 runningAppInfo。 */
 export type WorkflowSandboxContext = Readonly<{
@@ -30,9 +37,13 @@ type WorkflowContextData = {
   /** 本次运行的停止检查；子工作流继承同一个请求级控制能力。 */
   checkIsStopping: () => boolean;
   mcpClientMemory: Record<string, MCPClient>;
+  /** 当前运行的事件输出；子流程可继承、过滤或显式禁用，不能回退到根 writer。 */
+  workflowStreamResponse?: WorkflowResponseType;
   fileContext: WorkflowFileContext;
   /** 当前流程的变量能力；子 App 独立构建，容器分支克隆后按原有规则回写。 */
   variableContext: WorkflowVariableStateLike;
+  /** 本层记忆；普通节点共享，子运行显式 fork 后注入，按原有规则归集增量。 */
+  memoryContext: WorkflowMemoryContext;
   /** 本次流程已初始化的响应 Scope；无输出时也必须提供 summary-only Context。 */
   nodeResponseSink: WorkflowNodeResponseContext;
   resourceContext?: WorkflowResourceContext;
@@ -54,6 +65,7 @@ export const WorkflowContext = new AsyncLocalStorage<ContextType>();
 const createWorkflowContext = (value: WorkflowContextData): ContextType => {
   if (!value.fileContext) throw new Error('Workflow file context is unavailable');
   if (!value.variableContext) throw new Error('Workflow variable context is unavailable');
+  if (!value.memoryContext) throw new Error('Workflow memory context is unavailable');
   if (typeof value.checkIsStopping !== 'function') {
     throw new Error('Workflow stop checker is unavailable');
   }
@@ -96,6 +108,7 @@ export const getWorkflowContext = (): ContextType => {
     throw new Error('Workflow stop checker is unavailable');
   }
   if (!context.variableContext) throw new Error('Workflow variable context is unavailable');
+  if (!context.memoryContext) throw new Error('Workflow memory context is unavailable');
   if (
     !context.nodeResponseSink?.workflowRuntimeSummary ||
     typeof context.nodeResponseSink.getChildContext !== 'function'
@@ -106,16 +119,6 @@ export const getWorkflowContext = (): ContextType => {
   return context;
 };
 
-export const updateWorkflowContextVal = (val: Partial<WorkflowContextData>) => {
-  // 保留初始化阶段尚无运行作用域时不做更新的语义，不调用节点必需的 getter。
-  const context = WorkflowContext.getStore();
-  if (context) {
-    for (const key in val) {
-      // @ts-ignore
-      context[key] = val[key];
-    }
-  }
-};
 // 简化 context 导出
 export const getWorkflowFileContext = () => WorkflowContext.getStore()?.fileContext;
 export const getWorkflowResourceContext = () => WorkflowContext.getStore()?.resourceContext;
@@ -125,46 +128,10 @@ export const getWorkflowSandboxContext = (
   fallback: WorkflowSandboxContext
 ): WorkflowSandboxContext => WorkflowContext.getStore()?.sandboxContext ?? fallback;
 
-/**
- * 为 Child 运行创建独立的聊天输入引用。
- *
- * Child 不会修改这些输入，但在父子运行边界复制消息、value 及其常用嵌套字段，可以避免
- * 后续节点实现意外原地写入时污染 Parent 的 query/history。
- */
-const cloneChildChatInputs = ({
-  query,
-  histories
-}: {
-  query: UserChatItemValueItemType[];
-  histories: ChatItemMiniType[];
-}) => {
-  const cloneValue = <Value extends ChatItemMiniType['value'][number]>(value: Value): Value =>
-    ({
-      ...value,
-      ...('text' in value && value.text ? { text: { ...value.text } } : {}),
-      ...('file' in value && value.file ? { file: { ...value.file } } : {})
-    }) as Value;
-
-  return {
-    query: query.map((item) => cloneValue(item)),
-    histories: histories.map((history) => ({
-      ...history,
-      value: history.value.map((value) => cloneValue(value))
-    })) as ChatItemMiniType[]
-  };
-};
-/** 为 Child 返回独立的文件对象引用，字符串 URL 作为不可变值直接复用。 */
-const cloneChildFile = (file: WorkflowFileInput): WorkflowFileInput =>
-  typeof file === 'string' ? file : { ...file };
-const cloneChildFiles = <File extends WorkflowFileInput>(files: File[]): File[] =>
-  files.map((file) => cloneChildFile(file) as File);
-/**
- * 先按父 Context 额度过滤 Child 的实际 query/history/其它文件输入，再派生隔离 Context。
- * Child 交互新增文件通过父 Context.register 鉴权，再同步加入当前派生 Context。
- */
+/** 准备 Child 文件输入后仅编排引用覆盖与作用域激活；文件准入策略集中在 file.ts。 */
 export const runWithDerivedWorkflowFileContext = async <T>({
-  query = [],
-  histories = [],
+  query,
+  histories,
   files,
   resourceContext,
   fn
@@ -172,133 +139,21 @@ export const runWithDerivedWorkflowFileContext = async <T>({
   query?: UserChatItemValueItemType[];
   histories?: ChatItemMiniType[];
   files: WorkflowFileInput[];
-  /** 传入时子工作流切换到该资源上下文；省略时继承父级。 */
   resourceContext?: WorkflowResourceContext;
-  fn: (scope: {
-    resolveInputFile: (file: ChatFileStoreValue) => Promise<string | undefined>;
-    query: UserChatItemValueItemType[];
-    histories: ChatItemMiniType[];
-    filterFiles: <File extends WorkflowFileInput>(files: File[]) => File[];
-  }) => Promise<T>;
+  fn: (
+    scope: Omit<Awaited<ReturnType<typeof prepareDerivedWorkflowFileContext>>, 'fileContext'>
+  ) => Promise<T>;
 }): Promise<T> => {
-  // Child 必须继承已初始化的父文件 Context，不能在缺失时绕过文件筛选和额度规则。
-  const parentStore = getWorkflowContext();
-  const { fileContext: parentFileContext } = parentStore;
-
-  const maxFileAmount = Math.max(parentFileContext.limits.maxFileAmount, 0);
-  const seenFileIdentities = new Set<string>();
-  const acceptedFileIdentities = new Set<string>();
-  const rejectedFileIdentities = new Set<string>();
-  const selectedFiles: WorkflowFileInput[] = [];
-
-  const getFileIdentity = (file: WorkflowFileInput) => {
-    const parentRef =
-      typeof file === 'string'
-        ? parentFileContext.resolve(file)
-        : parentFileContext.resolveInputFile(file);
-
-    if (parentRef) return parentFileContext.getIdentity(parentRef.modelUrl);
-    if (typeof file === 'string') return getFileUrlIdentity(file.trim());
-    if ('key' in file && typeof file.key === 'string') return `key:${file.key}`;
-    if (typeof file.url === 'string') return getFileUrlIdentity(file.url.trim());
-  };
-
-  const selectFile = (file: WorkflowFileInput) => {
-    const identity = getFileIdentity(file);
-    if (identity && seenFileIdentities.has(identity)) {
-      return acceptedFileIdentities.has(identity);
-    }
-    if (identity) seenFileIdentities.add(identity);
-
-    if (selectedFiles.length >= maxFileAmount) {
-      if (identity) rejectedFileIdentities.add(identity);
-      return false;
-    }
-
-    selectedFiles.push(file);
-    if (identity) acceptedFileIdentities.add(identity);
-    return true;
-  };
-
-  const selectedQuery = query.filter((item) => !item.file || selectFile(item.file));
-
-  // 显式变量和节点输入优先于历史文件，避免旧历史占满 Child 的当前输入额度。
-  files.forEach(selectFile);
-
-  // 选择阶段从新到旧扫描历史；输出仍保持原有消息和值顺序。
-  for (let historyIndex = histories.length - 1; historyIndex >= 0; historyIndex -= 1) {
-    const history = histories[historyIndex];
-    if (history.obj !== ChatRoleEnum.Human) continue;
-    for (let valueIndex = history.value.length - 1; valueIndex >= 0; valueIndex -= 1) {
-      const value = history.value[valueIndex];
-      if ('file' in value && value.file) selectFile(value.file);
-    }
-  }
-
-  const isSelectedFile = (file: WorkflowFileInput) => {
-    const identity = getFileIdentity(file);
-    return identity ? acceptedFileIdentities.has(identity) : false;
-  };
-  const selectedHistories = histories.map((history) =>
-    history.obj === ChatRoleEnum.Human
-      ? {
-          ...history,
-          value: history.value.filter(
-            (value) => !('file' in value) || !value.file || isSelectedFile(value.file)
-          )
-        }
-      : history
-  );
-  const { query: filteredQuery, histories: filteredHistories } = cloneChildChatInputs({
-    query: selectedQuery,
-    histories: selectedHistories
+  const parent = getWorkflowContext();
+  const { fileContext, ...inputs } = await prepareDerivedWorkflowFileContext({
+    parent: parent.fileContext,
+    query,
+    histories,
+    files
   });
-  const childFileContext = await parentFileContext.derive(selectedFiles);
-  // 直接查询 Child 登记表，后续新增输入也能参与筛选；不维护另一份易失步的可见文件列表。
-  const filterFiles = <File extends WorkflowFileInput>(inputFiles: File[]) =>
-    cloneChildFiles(
-      inputFiles.filter((file) =>
-        typeof file === 'string'
-          ? Boolean(childFileContext.resolve(file))
-          : Boolean(childFileContext.resolveInputFile(file))
-      )
-    );
-  const childStore = parentStore.getChildContext({
-    fileContext: childFileContext,
-    resourceContext: resourceContext ?? parentStore.resourceContext
+  const child = parent.getChildContext({
+    fileContext,
+    resourceContext: resourceContext ?? parent.resourceContext
   });
-
-  const resolveInputFile = async (file: ChatFileStoreValue) => {
-    const ref = childFileContext.resolveInputFile(file);
-    if (ref) return ref.modelUrl;
-    if (rejectedFileIdentities.has(getFileIdentity(file) ?? '')) return;
-    throw new UserError('Child workflow file is not selected in its file context');
-  };
-
-  /** 子流程消息同步使用登记后的类型，避免历史消息仍携带兜底 file。 */
-  const resolveMessageFile = (file: UserChatItemFileItemType) => {
-    const ref = childFileContext.resolveInputFile(file);
-    return ref ? { ...file, name: ref.name, type: ref.type, url: ref.modelUrl } : file;
-  };
-  const preparedQuery = filteredQuery.map((item) =>
-    item.file ? { ...item, file: resolveMessageFile(item.file) } : item
-  );
-  const preparedHistories = filteredHistories.map((message): ChatItemMiniType => {
-    if (message.obj !== ChatRoleEnum.Human) return message;
-    return {
-      ...message,
-      value: message.value.map((item) =>
-        item.file ? { ...item, file: resolveMessageFile(item.file) } : item
-      )
-    };
-  });
-
-  return runWithContext(childStore, () =>
-    fn({
-      resolveInputFile,
-      query: preparedQuery,
-      histories: preparedHistories,
-      filterFiles
-    })
-  );
+  return runWithContext(child, () => fn(inputs));
 };

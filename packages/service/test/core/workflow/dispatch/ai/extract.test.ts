@@ -46,7 +46,9 @@ vi.mock('@fastgpt/service/support/permission/model/auth', () => ({
   getAuthorizedModelIds: vi.fn(async () => new Set())
 }));
 
-import { dispatchContentExtract } from '@fastgpt/service/core/workflow/dispatch/ai/extract';
+import { dispatchContentExtract as dispatchContentExtractWithoutContext } from '@fastgpt/service/core/workflow/dispatch/ai/extract';
+import { createTestWorkflowDispatch } from '../context/fixtures';
+const dispatchContentExtract = createTestWorkflowDispatch(dispatchContentExtractWithoutContext);
 
 const createProps = () =>
   ({

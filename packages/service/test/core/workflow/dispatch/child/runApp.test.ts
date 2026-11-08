@@ -1,11 +1,15 @@
 import {
   createTestWorkflowDispatch,
-  captureTestWorkflowContext
+  captureTestWorkflowContext,
+  getCapturedTestWorkflowContext
 } from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import {
+  DispatchNodeResponseKeyEnum,
+  SseResponseEventEnum
+} from '@fastgpt/global/core/workflow/runtime/constants';
 import { ChatRoleEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { WorkflowVariableState } from '../../../../../core/workflow/dispatch/context/variables';
 import { createNodeSummary } from '../../../../../core/workflow/dispatch/utils/summary';
@@ -172,8 +176,14 @@ describe('dispatchRunAppNode', () => {
     ];
     mocks.runWorkflow.mockImplementationOnce(async (args: any) => {
       expect(args.stream).toBe(true);
-      expect(args.workflowStreamResponse).toBe(workflowStreamResponse);
-      args.workflowStreamResponse?.({ event: 'toolResponse', data: 'nested tool delta' });
+      expect(args).not.toHaveProperty('workflowStreamResponse');
+      expect(getCapturedTestWorkflowContext(args).workflowStreamResponse).toBe(
+        workflowStreamResponse
+      );
+      getCapturedTestWorkflowContext(args).workflowStreamResponse?.({
+        event: SseResponseEventEnum.toolResponse,
+        data: 'nested tool delta'
+      });
       return {
         flowUsages: [{ moduleName: 'Child App', totalPoints: 10 }],
         assistantResponses: childAssistantResponses,
@@ -228,7 +238,6 @@ describe('dispatchRunAppNode', () => {
     expect(mocks.runWorkflow).toHaveBeenCalledWith(
       expect.objectContaining({
         stream: true,
-        workflowStreamResponse,
         runningAppInfo: expect.objectContaining({ isChildApp: true })
       })
     );
@@ -263,11 +272,13 @@ describe('dispatchRunAppNode', () => {
 
     expect(mocks.runWorkflow).toHaveBeenCalledWith(
       expect.objectContaining({
-        stream: false,
-        workflowStreamResponse: undefined
+        stream: false
       })
     );
     expect(workflowStreamResponse).not.toHaveBeenCalled();
+    expect(
+      getCapturedTestWorkflowContext(mocks.runWorkflow.mock.calls[0][0]).workflowStreamResponse
+    ).toBeUndefined();
   });
 
   it('should return error when input is empty', async () => {

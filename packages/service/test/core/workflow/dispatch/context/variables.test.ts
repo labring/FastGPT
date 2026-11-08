@@ -270,40 +270,33 @@ describe('WorkflowVariableState', () => {
     expect(state.toStoreRecord()).toEqual({ internalToken: 'parent-value' });
   });
 
-  it('should initialize an external dynamic variable from input variables', async () => {
-    const state = await createState({
-      variablesConfig: [
-        {
-          key: 'externalToken',
-          type: VariableInputEnum.custom,
-          valueType: WorkflowIOValueTypeEnum.string,
-          defaultValue: 'external-default'
-        } as any
-      ],
-      inputVariables: { externalToken: 'input-value' }
-    });
+  it.each([
+    { externalVariables: {}, expected: 'input-value', stored: { externalToken: 'input-value' } },
+    {
+      externalVariables: { externalToken: 'provider-value' },
+      expected: 'provider-value',
+      stored: {}
+    }
+  ])(
+    '外部动态变量按 provider 优先级取值并决定是否持久化：$expected',
+    async ({ externalVariables, expected, stored }) => {
+      const state = await createState({
+        variablesConfig: [
+          {
+            key: 'externalToken',
+            type: VariableInputEnum.custom,
+            valueType: WorkflowIOValueTypeEnum.string,
+            defaultValue: 'external-default'
+          } as any
+        ],
+        inputVariables: { externalToken: 'input-value' },
+        externalVariables
+      });
 
-    expect(state.get('externalToken')).toBe('input-value');
-    expect(state.toStoreRecord()).toEqual({ externalToken: 'input-value' });
-  });
-
-  it('should let the external provider override an input external dynamic variable', async () => {
-    const state = await createState({
-      variablesConfig: [
-        {
-          key: 'externalToken',
-          type: VariableInputEnum.custom,
-          valueType: WorkflowIOValueTypeEnum.string,
-          defaultValue: 'external-default'
-        } as any
-      ],
-      inputVariables: { externalToken: 'parent-value' },
-      externalVariables: { externalToken: 'provider-value' }
-    });
-
-    expect(state.get('externalToken')).toBe('provider-value');
-    expect(state.toStoreRecord()).toEqual({});
-  });
+      expect(state.get('externalToken')).toBe(expected);
+      expect(state.toStoreRecord()).toEqual(stored);
+    }
+  );
 
   it('should encrypt password store value while keeping runtime plain text', async () => {
     const state = await createState({
@@ -320,11 +313,11 @@ describe('WorkflowVariableState', () => {
 
     expect(state.get('pwd')).toBe('new-secret');
     expect(state.toStoreRecord().pwd).toMatchObject({ secret: expect.any(String) });
-    expect((state.toStoreRecord().pwd as any).secret).toEqual(expect.any(String));
     expect((state.toStoreRecord().pwd as any).secret).not.toBe('new-secret');
   });
 
-  it('should keep encrypted password object readable and storable after initialization', async () => {
+  it.each(['object', 'json'] as const)('密码以 %s 存储值初始化时不重复加密', async (format) => {
+    const encrypted = { secret: encryptSecret('old-secret') };
     const state = await createState({
       variablesConfig: [
         {
@@ -334,27 +327,7 @@ describe('WorkflowVariableState', () => {
         } as any
       ],
       inputVariables: {
-        pwd: {
-          secret: encryptSecret('old-secret')
-        }
-      }
-    });
-
-    expect(state.get('pwd')).toBe('old-secret');
-    expect(anyValueDecrypt(state.toStoreRecord().pwd)).toBe('old-secret');
-  });
-
-  it('should not double encrypt password when initialized from stored JSON string', async () => {
-    const state = await createState({
-      variablesConfig: [
-        {
-          key: 'pwd',
-          type: VariableInputEnum.password,
-          valueType: WorkflowIOValueTypeEnum.string
-        } as any
-      ],
-      inputVariables: {
-        pwd: JSON.stringify({ secret: encryptSecret('old-secret') })
+        pwd: format === 'object' ? encrypted : JSON.stringify(encrypted)
       }
     });
 
@@ -438,115 +411,48 @@ describe('WorkflowVariableState', () => {
     expect(state.get('files')).toEqual(['https://node.example.com/generated.pdf']);
   });
 
-  it('should silently slice configured file inputs by maxFiles', async () => {
-    const resolveInputFile = vi.fn(async (file) =>
-      'url' in file ? file.url : `https://workflow.example.com/${file.key}`
-    );
-    const variablesConfig = [
-      {
-        key: 'files',
-        type: VariableInputEnum.file,
-        maxFiles: 2
-      } as any
-    ];
-    const inputVariables = {
-      files: [
-        'https://external.example.com/1.pdf',
-        'https://external.example.com/2.pdf',
-        'https://external.example.com/3.pdf'
-      ]
-    };
-
-    const state = await createState({
-      variablesConfig,
-      inputVariables,
-      resolveInputFile
-    });
-
-    expect(state.get('files')).toEqual(inputVariables.files.slice(0, 2));
-    expect(
-      getWorkflowFileVariableInputs({ variablesConfig, inputVariables, maxFileAmount: 1 })
-    ).toEqual(inputVariables.files.slice(0, 1));
-    expect(resolveInputFile).toHaveBeenCalledTimes(2);
-  });
-
-  it('should cap the variable file limit by the workflow user quota', async () => {
-    const state = await createState({
-      maxFileAmount: 1,
-      variablesConfig: [
+  it.each([
+    { name: '节点配置限额', maxFiles: 2, maxFileAmount: undefined, expected: 2 },
+    { name: '用户额度收紧节点限额', maxFiles: 2, maxFileAmount: 1, expected: 1 },
+    { name: '未配置节点限额时使用用户额度', maxFiles: undefined, maxFileAmount: 2, expected: 2 },
+    { name: '未配置任何限额时默认五个', maxFiles: undefined, maxFileAmount: undefined, expected: 5 }
+  ])(
+    '文件变量初始化、更新和 Child 输入收集统一遵循$name',
+    async ({ maxFiles, maxFileAmount, expected }) => {
+      const resolveInputFile = vi.fn(async (file) =>
+        'url' in file ? file.url : `https://workflow.example.com/${file.key}`
+      );
+      const variablesConfig = [
         {
           key: 'files',
           type: VariableInputEnum.file,
-          maxFiles: 2
+          maxFiles
         } as any
-      ]
-    });
-    const files = [
-      'https://external.example.com/1.pdf',
-      'https://external.example.com/2.pdf',
-      'https://external.example.com/3.pdf'
-    ];
+      ];
+      const inputVariables = {
+        files: Array.from(
+          { length: 6 },
+          (_, index) => `https://external.example.com/${index + 1}.pdf`
+        )
+      };
 
-    const result = await state.set('files', files);
+      const state = await createState({
+        variablesConfig,
+        inputVariables,
+        maxFileAmount,
+        resolveInputFile
+      });
 
-    expect(result).toEqual(files.slice(0, 1));
-    expect(state.get('files')).toEqual(files.slice(0, 1));
-  });
-
-  it('should fall back to the workflow file limit for runtime file updates', async () => {
-    const state = await createState({
-      maxFileAmount: 2,
-      variablesConfig: [
-        {
-          key: 'files',
-          type: VariableInputEnum.file
-        } as any
-      ]
-    });
-    const files = [
-      'https://external.example.com/1.pdf',
-      'https://external.example.com/2.pdf',
-      'https://external.example.com/3.pdf'
-    ];
-
-    const result = await state.set('files', files);
-
-    expect(result).toEqual(files.slice(0, 2));
-    expect(state.get('files')).toEqual(files.slice(0, 2));
-    expect(
-      getWorkflowFileVariableInputs({
-        variablesConfig: [{ key: 'files', type: VariableInputEnum.file } as any],
-        inputVariables: { files },
-        maxFileAmount: 2
-      })
-    ).toEqual(files.slice(0, 2));
-  });
-
-  it('should default runtime file updates to five files', async () => {
-    const state = await createState({
-      variablesConfig: [
-        {
-          key: 'files',
-          type: VariableInputEnum.file
-        } as any
-      ]
-    });
-    const files = Array.from(
-      { length: 6 },
-      (_, index) => `https://external.example.com/${index + 1}.pdf`
-    );
-
-    const result = await state.set('files', files);
-
-    expect(result).toEqual(files.slice(0, 5));
-    expect(state.get('files')).toEqual(files.slice(0, 5));
-    expect(
-      getWorkflowFileVariableInputs({
-        variablesConfig: [{ key: 'files', type: VariableInputEnum.file } as any],
-        inputVariables: { files }
-      })
-    ).toEqual(files.slice(0, 5));
-  });
+      const selectedFiles = inputVariables.files.slice(0, expected);
+      expect(state.get('files')).toEqual(selectedFiles);
+      expect(resolveInputFile).toHaveBeenCalledTimes(expected);
+      await expect(state.set('files', inputVariables.files)).resolves.toEqual(selectedFiles);
+      expect(state.get('files')).toEqual(selectedFiles);
+      expect(
+        getWorkflowFileVariableInputs({ variablesConfig, inputVariables, maxFileAmount })
+      ).toEqual(selectedFiles);
+    }
+  );
 
   it('should keep external url files clean and infer string urls on initialization', async () => {
     const state = await createState({
@@ -628,116 +534,41 @@ describe('WorkflowVariableState', () => {
     ]);
   });
 
-  it('should preserve parent file metadata when updating child state with its runtime url', async () => {
-    const parent = await createState({
-      variablesConfig: [
-        {
-          key: 'files',
-          type: VariableInputEnum.file
-        } as any
-      ],
-      inputVariables: {
-        files: [
-          {
-            key: 'chat/app/parent.pdf',
-            name: 'parent.pdf',
-            type: ChatFileTypeEnum.file
-          }
-        ]
-      }
-    });
-    const [runtimeUrl] = parent.get('files') as string[];
-    const child = await createState({
-      variablesConfig: [
-        {
-          key: 'childFiles',
-          type: VariableInputEnum.file
-        } as any
-      ],
-      sourceVariableState: parent
-    });
-
-    await child.set('childFiles', [runtimeUrl]);
-
-    expect(child.toStoreRecord().childFiles).toEqual([
-      {
-        key: 'chat/app/parent.pdf',
-        name: 'parent.pdf',
-        type: ChatFileTypeEnum.document
-      }
-    ]);
-  });
-
-  it('should restore parent file metadata from runtime url when initializing child state', async () => {
-    const parent = await createState({
-      variablesConfig: [
-        {
-          key: 'files',
-          type: VariableInputEnum.file
-        } as any
-      ],
-      inputVariables: {
-        files: [
-          {
-            key: 'chat/app/parent-init.png',
-            name: 'parent-init.png',
-            type: ChatFileTypeEnum.image
-          }
-        ]
-      }
-    });
-    const [runtimeUrl] = parent.get('files') as string[];
-    const child = await createState({
-      variablesConfig: [
-        {
-          key: 'childFiles',
-          type: VariableInputEnum.file
-        } as any
-      ],
-      inputVariables: {
-        childFiles: [runtimeUrl]
-      },
-      sourceVariableState: parent
-    });
-
-    expect(child.get('childFiles')).toEqual(['http://preview.local/chat/app/parent-init.png']);
-    expect(child.toStoreRecord().childFiles).toEqual([
-      {
-        key: 'chat/app/parent-init.png',
-        name: 'parent-init.png',
-        type: ChatFileTypeEnum.image
-      }
-    ]);
-  });
-
-  it('更新文件变量时保留已有私有元数据，并为新增外链推断元数据', async () => {
-    const state = await createState({
-      variablesConfig: [
-        {
-          key: 'files',
-          type: VariableInputEnum.file
-        } as any
-      ],
-      inputVariables: {
-        files: [{ key: 'chat/app/a.png', name: 'a.png', type: ChatFileTypeEnum.image }]
-      }
-    });
-
-    const [privateUrl] = state.get('files') as string[];
-    const externalUrl = 'https://example.com/report.unknown';
-    await expect(state.set('files', [privateUrl, externalUrl])).resolves.toEqual([
-      privateUrl,
-      externalUrl
-    ]);
-
-    expect(state.toStoreRecord().files).toEqual([
+  it('Child 初始化和更新均恢复父级私有元数据，并单独记录新增外链', async () => {
+    const parentFiles = [
       { key: 'chat/app/a.png', name: 'a.png', type: ChatFileTypeEnum.image },
+      { key: 'chat/app/parent.pdf', name: 'parent.pdf', type: ChatFileTypeEnum.document }
+    ];
+    const parent = await createState({
+      variablesConfig: [{ key: 'files', type: VariableInputEnum.file } as any],
+      inputVariables: { files: parentFiles }
+    });
+    const [initialUrl, addedParentUrl] = parent.get('files') as string[];
+    const child = await createState({
+      variablesConfig: [{ key: 'childFiles', type: VariableInputEnum.file } as any],
+      inputVariables: { childFiles: [initialUrl] },
+      sourceVariableState: parent
+    });
+
+    expect(child.get('childFiles')).toEqual([initialUrl]);
+    expect(child.toStoreRecord().childFiles).toEqual([parentFiles[0]]);
+
+    // 同时命中 Child 自身映射、父级递归映射和未知外链三个分支。
+    const externalUrl = 'https://example.com/report.unknown';
+    await expect(
+      child.set('childFiles', [initialUrl, addedParentUrl, externalUrl])
+    ).resolves.toEqual([initialUrl, addedParentUrl, externalUrl]);
+
+    expect(child.toStoreRecord().childFiles).toEqual([
+      ...parentFiles,
       {
         url: 'https://example.com/report.unknown',
         name: 'report.unknown',
         type: ChatFileTypeEnum.unknown
       }
     ]);
+    expect(parent.get('files')).toEqual([initialUrl, addedParentUrl]);
+    expect(parent.toStoreRecord().files).toEqual(parentFiles);
   });
 
   it.each([

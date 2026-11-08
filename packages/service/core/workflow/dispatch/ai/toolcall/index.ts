@@ -14,7 +14,7 @@ import {
   withAgentSandboxInitLease
 } from '../../../../ai/sandbox/application/runtime/entrypoint';
 import { prepareSandboxToolRuntime } from '../../../../ai/sandbox/application/toolCall';
-import { getWorkflowContext, getWorkflowSandboxContext } from '../../context';
+import { getWorkflowContext, getWorkflowSandboxContext, runWithContext } from '../../context';
 import { loadWorkflowModelResource } from '../../../resource/service';
 import {
   getAgentLoopHistories,
@@ -22,7 +22,6 @@ import {
   removeUnfinishedInteractiveHistories
 } from '../../utils';
 import { getDispatchModerationContext } from '../../utils/runtime';
-import { WorkflowMemoryState } from '../../../memory/state';
 import { buildAgentLoopCoreRequestMessages } from '../agentLoopCore/application/context/messages';
 import { createAgentLoopCoreChildInteractiveParams } from '../agentLoopCore/adapter/interactive/child';
 import { createAgentLoopCoreToolCallNodeResponse } from '../agentLoopCore/adapter/nodeResponse/toolCallNodeResponse';
@@ -160,7 +159,6 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
     // 初始化沙盒
     const sandboxClient = useSandbox
       ? await ensureWorkflowSandboxReadyForUse({
-          workflowStreamResponse: props.workflowStreamResponse,
           sourceType: sandboxSourceType,
           sourceId: sandboxSourceId,
           userId: sandboxContext.userId,
@@ -203,7 +201,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
       props.nodeSummary?.mergeNodeSummary({ hasAgentSandbox: true });
     }
 
-    const toolCallMemoryState = WorkflowMemoryState.fromWorkflow(props).fork(`node:${nodeId}`, {
+    const toolCallMemoryContext = getWorkflowContext().memoryContext.fork(`node:${nodeId}`, {
       history,
       histories: chatHistories,
       hasInteractiveResume: !!lastInteractive
@@ -221,21 +219,27 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
       error,
       requestIds,
       firstTokenTime
-    } = await runToolCall({
-      ...props,
-      memoryState: toolCallMemoryState,
-      currentInputFiles,
-      sandboxClient,
-      runtimeNodes,
-      runtimeEdges,
-      toolNodes,
-      toolModel,
-      messages: adaptMessages,
-      childrenInteractiveParams: createAgentLoopCoreChildInteractiveParams({
-        lastInteractive
-      })
-    });
-    const toolMemories = toolCallMemoryState.getDelta();
+    } = await (async () => {
+      const toolContext = getWorkflowContext().getChildContext({
+        memoryContext: toolCallMemoryContext
+      });
+      return runWithContext(toolContext, () =>
+        runToolCall({
+          ...props,
+          currentInputFiles,
+          sandboxClient,
+          runtimeNodes,
+          runtimeEdges,
+          toolNodes,
+          toolModel,
+          messages: adaptMessages,
+          childrenInteractiveParams: createAgentLoopCoreChildInteractiveParams({
+            lastInteractive
+          })
+        })
+      );
+    })();
+    const toolMemories = toolCallMemoryContext.getDelta();
     const systemMemories = Object.keys(toolMemories).length > 0 ? toolMemories : undefined;
     const { runTimes, toolDetail } =
       summarizeAgentLoopCoreToolRunFlowResponses(toolDispatchFlowResponses);

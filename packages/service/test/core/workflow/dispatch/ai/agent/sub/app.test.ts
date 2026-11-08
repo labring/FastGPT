@@ -155,10 +155,11 @@ describe('agent sub app dispatchPlugin', () => {
     }
     expect(mocks.runWorkflow).toHaveBeenCalledWith(
       expect.objectContaining({
-        stream: false,
-        workflowStreamResponse: undefined
+        stream: false
       })
     );
+    expect(childProps).not.toHaveProperty('workflowStreamResponse');
+    expect(getCapturedTestWorkflowContext(childProps).workflowStreamResponse).toBeUndefined();
   });
 
   it('does not expose system workflow LLM tokens to the parent agent summary', async () => {
@@ -879,9 +880,10 @@ describe('Agent nested workflow memory isolation', () => {
   it.each(['app', 'plugin'] as const)(
     'isolates the shared descendant of two cloned %s tools across calls and reloads',
     async (type) => {
-      const { WorkflowMemoryState } = await import('@fastgpt/service/core/workflow/memory/state');
+      const { WorkflowMemoryContext } =
+        await import('@fastgpt/service/core/workflow/dispatch/context/memory');
       const rootSource = { sourceType: ChatSourceTypeEnum.app, sourceId: 'parent-app' };
-      let rootState = WorkflowMemoryState.fromRecord({}, { rootSource });
+      let rootState = WorkflowMemoryContext.fromRecord({}, { rootSource });
       let agentState = rootState.fork('node:agent1');
       const descendantSource = { sourceType: ChatSourceTypeEnum.app, sourceId: 'shared-plugin' };
       const seen: Array<{ appId: string; previous: unknown; key: string }> = [];
@@ -897,7 +899,8 @@ describe('Agent nested workflow memory isolation', () => {
       });
       mocks.serverGetWorkflowToolRunUserQuery.mockReturnValue({ value: [] });
       mocks.runWorkflow.mockImplementation(async (args: any) => {
-        const descendantState = args.memoryState.fork('node:shared_plugin_node');
+        const descendantState =
+          getCapturedTestWorkflowContext(args).memoryContext.fork('node:shared_plugin_node');
         const key = descendantState.getNodeMemoryKey({
           runningAppInfo: descendantSource,
           nodeId: 'extract_1'
@@ -931,7 +934,7 @@ describe('Agent nested workflow memory isolation', () => {
       const callTool = async (id: string) => {
         const props = {
           app: { id, name: id },
-          memoryState: agentState,
+          memoryContext: agentState,
           runningAppInfo: { ...rootSource, teamId: 'team', tmbId: 'member', name: 'Parent' },
           runningUserInfo: {
             teamId: 'team',
@@ -964,7 +967,7 @@ describe('Agent nested workflow memory isolation', () => {
       expect(Object.keys(agentState.getDelta())).toHaveLength(2);
 
       rootState.merge(agentState.getDelta());
-      rootState = WorkflowMemoryState.fromHistories(
+      rootState = WorkflowMemoryContext.fromHistories(
         [{ obj: ChatRoleEnum.AI, value: [], memories: rootState.toRecord() }],
         { rootSource }
       );

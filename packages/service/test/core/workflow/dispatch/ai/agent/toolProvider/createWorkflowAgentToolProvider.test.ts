@@ -1,6 +1,10 @@
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { createWorkflowAgentToolProvider as createWorkflowAgentToolProviderWithoutContext } from '@fastgpt/service/core/workflow/dispatch/ai/agent/toolProvider';
-import { getWorkflowFileContext } from '@fastgpt/service/core/workflow/dispatch/context';
+import {
+  getWorkflowFileContext,
+  getWorkflowContext
+} from '@fastgpt/service/core/workflow/dispatch/context';
+import { createTestWorkflowFileContext } from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
 import { runWithTestWorkflowContext as runWithContext } from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -107,6 +111,76 @@ const createContext = (overrides: Record<string, any> = {}) =>
   }) as any;
 
 describe('createWorkflowAgentToolProvider', () => {
+  it.each(['executeTool', 'executeInteractiveTool'] as const)(
+    '%s binds the creating memory scope when sibling tools execute from their parent context',
+    async (method) => {
+      await runWithContext(
+        {
+          checkIsStopping: () => false,
+          mcpClientMemory: {},
+          fileContext: await createTestWorkflowFileContext()
+        },
+        async (parent) => {
+          const children = ['a', 'b'].map((id) =>
+            parent.getChildContext({
+              memoryContext: parent.memoryContext.fork(`node:${id}`)
+            })
+          );
+          const providers = children.map((child, index) =>
+            runWithContext(child, () =>
+              createWorkflowAgentToolProvider({
+                context: createContext(),
+                executeToolFactory: () => async () => {
+                  await Promise.resolve();
+                  expect(getWorkflowContext().memoryContext).toBe(child.memoryContext);
+                  child.memoryContext.merge({ [`tool${index}`]: { result: 'ok' } });
+                  return {
+                    response: 'ok',
+                    usages: [],
+                    assistantMessages: [],
+                    interactive: undefined,
+                    stop: false,
+                    nodeSummary: undefined,
+                    nodeResponse: undefined
+                  };
+                }
+              })
+            )
+          );
+          await Promise.all(
+            providers.map((provider) => {
+              const params = {
+                call: {
+                  id: 'call',
+                  type: 'function' as const,
+                  function: { name: 'search', arguments: '{}' }
+                },
+                messages: [],
+                toolCallId: 'call',
+                childrenResponse: {
+                  type: 'userSelect' as const,
+                  params: { description: '', userSelectOptions: [] },
+                  entryNodeIds: ['select'],
+                  memoryEdges: [],
+                  nodeOutputs: []
+                }
+              };
+              return method === 'executeTool'
+                ? provider.executeTool(params)
+                : provider.executeInteractiveTool?.(params);
+            })
+          );
+          expect(children.map((child) => child.memoryContext.getDelta())).toEqual([
+            { tool0: { result: 'ok' } },
+            { tool1: { result: 'ok' } }
+          ]);
+          expect(getWorkflowContext()).toBe(parent);
+          expect(parent.memoryContext.toRecord()).toEqual({});
+        }
+      );
+    }
+  );
+
   it('uses the current Workflow FileContext maxFileAmount limit', () => {
     const provider = runWithContext(
       {

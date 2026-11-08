@@ -23,7 +23,7 @@ import { MODERATION_BLOCKED_ERROR_MESSAGE } from '@fastgpt/global/core/plugin/mo
  * 调度 AI Chat 节点：整理引用、历史和文件上下文，调用 LLM，并写入节点响应与用量。
  */
 export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResponse> => {
-  const { fileContext, checkIsStopping } = getWorkflowContext();
+  const { fileContext, checkIsStopping, workflowStreamResponse } = getWorkflowContext();
   const {
     requestOrigin,
     stream = false,

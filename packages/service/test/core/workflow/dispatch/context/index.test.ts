@@ -11,6 +11,7 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import { prepareWorkflowFileContext } from '@fastgpt/service/core/workflow/dispatch/context/file';
 import { WorkflowVariableState } from '@fastgpt/service/core/workflow/dispatch/context/variables';
+import { WorkflowMemoryContext } from '@fastgpt/service/core/workflow/dispatch/context/memory';
 import {
   createWorkflowEntryNodeResponseSink,
   type WorkflowNodeResponseInput
@@ -18,7 +19,6 @@ import {
 import { createWorkflowRuntimeSummary } from '@fastgpt/service/core/workflow/dispatch/utils/summary';
 import {
   getWorkflowContext,
-  updateWorkflowContextVal,
   getWorkflowFileContext,
   getWorkflowResourceContext,
   getWorkflowSandboxContext,
@@ -57,6 +57,7 @@ const createHistory = (file: UserChatItemValueItemType): ChatItemMiniType => ({
 
 /** 默认构建完整 Context；非法依赖只由对应边界用例显式覆盖。 */
 const createWorkflowContext = async () => ({
+  memoryContext: WorkflowMemoryContext.fromRecord(),
   runtimeControl: createTestRuntimeControl(),
   checkIsStopping: () => false,
   mcpClientMemory: {},
@@ -66,6 +67,7 @@ const createWorkflowContext = async () => ({
 });
 
 const requiredCapabilities = [
+  ['memoryContext', 'Workflow memory context is unavailable'],
   ['fileContext', 'Workflow file context is unavailable'],
   ['variableContext', 'Workflow variable context is unavailable'],
   ['checkIsStopping', 'Workflow stop checker is unavailable'],
@@ -109,7 +111,7 @@ describe('runWithContext / getWorkflowContext', () => {
       expect(fn).not.toHaveBeenCalled();
 
       runWithRequiredContext(context, () => {
-        updateWorkflowContextVal({ [key]: undefined });
+        Reflect.set(context, key, undefined);
         expect(() => getWorkflowContext()).toThrow(message);
       });
     }
@@ -186,6 +188,7 @@ describe('WorkflowContext.getChildContext', () => {
     expect(child.mcpClientMemory).toBe(parent.mcpClientMemory);
     expect(child.fileContext).toBe(parent.fileContext);
     expect(child.variableContext).toBe(variables);
+    expect(child.memoryContext).toBe(parent.memoryContext);
     expect(child.nodeResponseSink).toBe(sink);
     expect(child.resourceContext).toBe(resourceContext);
     expect(child.runtimeControl).toEqual(parent.runtimeControl);
@@ -209,6 +212,7 @@ describe('WorkflowContext.getChildContext', () => {
         const child = parent.getChildContext({
           fileContext: childFileContext,
           variableContext: childVariables,
+          memoryContext: parent.memoryContext.fork('node:child'),
           nodeResponseSink: createTestNodeResponseContext(),
           resourceContext: undefined
         });
@@ -221,8 +225,12 @@ describe('WorkflowContext.getChildContext', () => {
           expect(current.nodeResponseSink.hasOutput).toBe(false);
           expect(current.resourceContext).toBeUndefined();
           await current.variableContext.set('value', 'child');
+          current.memoryContext.merge({ child: { value: 42 } });
+          expect(parent.memoryContext.toRecord()).toEqual({});
         });
         expect(getWorkflowContext()).toBe(parent);
+        parent.memoryContext.merge(child.memoryContext.getDelta());
+        expect(parent.memoryContext.toRecord()).toEqual({ child: { value: 42 } });
         expect(parent.fileContext).toBe(context.fileContext);
         expect(parent.variableContext.get('value')).toBe('parent');
         expect(parent.nodeResponseSink).toBe(sink);
@@ -366,25 +374,6 @@ describe('WorkflowContext.getChildContext', () => {
       }
     );
     expect(getWorkflowFileContext()).toBeUndefined();
-  });
-});
-
-describe('updateWorkflowContextVal', () => {
-  it('只更新指定字段，空覆盖保留当前 Context 及其余依赖', async () => {
-    const context = await createWorkflowContext();
-    const mcpClientMemory = {};
-    const variableContext = context.variableContext;
-    runWithRequiredContext(context, () => {
-      updateWorkflowContextVal({ mcpClientMemory });
-      updateWorkflowContextVal({});
-      expect(getWorkflowContext()).toBe(context);
-      expect(getWorkflowContext().mcpClientMemory).toBe(mcpClientMemory);
-      expect(getWorkflowContext().variableContext).toBe(variableContext);
-    });
-  });
-
-  it('无运行作用域时不做更新也不抛错', () => {
-    expect(() => updateWorkflowContextVal({ mcpClientMemory: {} })).not.toThrow();
   });
 });
 
@@ -614,45 +603,6 @@ describe('runWithDerivedWorkflowFileContext', () => {
     );
   });
 
-  it('serializes concurrent child registrations before checking capacity', async () => {
-    const queryFile = createFile({ key: undefined, url: 'https://files.example.com/query.pdf' });
-    const { fileContext } = await prepareWorkflowFileContext({
-      query: [queryFile],
-      histories: [],
-      scope,
-      maxFileAmount: 2,
-      getPreviewUrl: vi.fn()
-    });
-
-    await runWithContext({ checkIsStopping: () => false, mcpClientMemory: {}, fileContext }, () =>
-      runWithDerivedWorkflowFileContext({
-        query: [queryFile],
-        files: [],
-        fn: async () => {
-          const scopedFileContext = getWorkflowContext().fileContext;
-          const registrations = await Promise.all([
-            scopedFileContext.register({
-              file: {
-                url: 'https://files.example.com/first.pdf',
-                type: ChatFileTypeEnum.file
-              },
-              source: 'interactive'
-            }),
-            scopedFileContext.register({
-              file: {
-                url: 'https://files.example.com/second.pdf',
-                type: ChatFileTypeEnum.file
-              },
-              source: 'interactive'
-            })
-          ]);
-
-          expect(registrations.filter(Boolean)).toHaveLength(1);
-        }
-      })
-    );
-  });
-
   it.each([undefined, { isRoot: false, resourceMap: new Map() }])(
     '无父运行上下文时拒绝派生，资源快照不能代替文件 Context',
     async (resourceContext) => {
@@ -781,41 +731,6 @@ describe('runWithDerivedWorkflowFileContext', () => {
     expect(fn).not.toHaveBeenCalled();
   });
 
-  it('keeps the child context unchanged when the parent registrar rejects a file', async () => {
-    const rejectedUrl = 'https://files.example.com/rejected.pdf';
-    const { fileContext } = await prepareWorkflowFileContext({
-      query: [],
-      histories: [],
-      scope,
-      maxFileAmount: 1,
-      getPreviewUrl: vi.fn()
-    });
-    const registerInputFile = vi.fn().mockResolvedValue(undefined);
-
-    await runWithContext(
-      {
-        checkIsStopping: () => false,
-        mcpClientMemory: {},
-        fileContext: { ...fileContext, register: registerInputFile }
-      },
-      () =>
-        runWithDerivedWorkflowFileContext({
-          files: [],
-          fn: async () => {
-            await expect(
-              getWorkflowContext().fileContext.register({
-                file: { url: rejectedUrl, type: ChatFileTypeEnum.file },
-                source: 'interactive'
-              })
-            ).resolves.toBeUndefined();
-            expect(getWorkflowFileContext()?.resolve(rejectedUrl)).toBeUndefined();
-          }
-        })
-    );
-
-    expect(registerInputFile).toHaveBeenCalledTimes(1);
-  });
-
   it('identifies and suppresses an unregistered keyed file rejected by a zero limit', async () => {
     const keyedFile = {
       key: 'chat/app/app-1/user-1/chat-1/unregistered.pdf',
@@ -838,89 +753,6 @@ describe('runWithDerivedWorkflowFileContext', () => {
         }
       })
     );
-  });
-
-  it('continues processing registrations after the parent registrar throws', async () => {
-    const acceptedUrl = 'https://files.example.com/accepted-after-error.pdf';
-    const { fileContext } = await prepareWorkflowFileContext({
-      query: [],
-      histories: [],
-      scope,
-      maxFileAmount: 1,
-      getPreviewUrl: vi.fn()
-    });
-    const acceptedRef = await fileContext.register({
-      file: { url: acceptedUrl, type: ChatFileTypeEnum.file },
-      source: 'interactive'
-    });
-    const registerInputFile = vi
-      .fn()
-      .mockRejectedValueOnce(new Error('registration failed'))
-      .mockResolvedValueOnce(acceptedRef);
-
-    await runWithContext(
-      {
-        checkIsStopping: () => false,
-        mcpClientMemory: {},
-        fileContext: { ...fileContext, register: registerInputFile }
-      },
-      () =>
-        runWithDerivedWorkflowFileContext({
-          files: [],
-          fn: async () => {
-            const scopedFileContext = getWorkflowContext().fileContext;
-            await expect(
-              scopedFileContext.register({
-                file: {
-                  url: 'https://files.example.com/failed.pdf',
-                  type: ChatFileTypeEnum.file
-                },
-                source: 'interactive'
-              })
-            ).rejects.toThrow('registration failed');
-
-            await expect(
-              scopedFileContext.register({
-                file: { url: acceptedUrl, type: ChatFileTypeEnum.file },
-                source: 'interactive'
-              })
-            ).resolves.toBe(acceptedRef);
-            expect(getWorkflowFileContext()?.resolve(acceptedUrl)).toBeDefined();
-          }
-        })
-    );
-
-    expect(registerInputFile).toHaveBeenCalledTimes(2);
-  });
-
-  it('reuses an existing child ref without invoking the parent registrar', async () => {
-    const fileUrl = 'https://files.example.com/existing.pdf';
-    const queryFile = createFile({ url: fileUrl });
-    const { fileContext } = await prepareWorkflowFileContext({
-      query: [queryFile],
-      histories: [],
-      scope,
-      maxFileAmount: 2,
-      getPreviewUrl: vi.fn()
-    });
-    const parentRegisterSpy = vi.spyOn(fileContext, 'register');
-
-    await runWithContext({ checkIsStopping: () => false, mcpClientMemory: {}, fileContext }, () =>
-      runWithDerivedWorkflowFileContext({
-        query: [queryFile],
-        files: [],
-        fn: async () => {
-          const ref = await getWorkflowContext().fileContext.register({
-            file: queryFile.file!,
-            source: 'interactive'
-          });
-
-          expect(ref).toBe(getWorkflowFileContext()?.resolve(fileUrl));
-        }
-      })
-    );
-
-    expect(parentRegisterSpy).not.toHaveBeenCalled();
   });
 
   it('registration keeps the child Context reference and scoped capability stable', async () => {

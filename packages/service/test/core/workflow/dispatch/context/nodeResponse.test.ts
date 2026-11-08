@@ -1,3 +1,11 @@
+import {
+  runWithTestWorkflowContext,
+  createTestWorkflowFileContext
+} from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
+import {
+  getWorkflowContext,
+  runWithContext
+} from '@fastgpt/service/core/workflow/dispatch/context';
 import { describe, expect, it, vi } from 'vitest';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
@@ -15,6 +23,114 @@ const createWriter = () => ({
 });
 
 describe('createWorkflowEntryNodeResponseSink', () => {
+  it.each([
+    { scopeEmit: true, itemEmit: true, channel: true, record: true, sends: 1 },
+    { scopeEmit: false, itemEmit: true, channel: true, record: true, sends: 0 },
+    { scopeEmit: true, itemEmit: false, channel: true, record: true, sends: 0 },
+    { scopeEmit: true, itemEmit: true, channel: false, record: true, sends: 0 },
+    { scopeEmit: true, itemEmit: true, channel: true, record: false, sends: 1 }
+  ])(
+    'emit 和当前 writer 联合控制 SSE，record 独立控制保存：%j',
+    async ({ scopeEmit, itemEmit, channel, record, sends }) => {
+      const writer = createWriter();
+      const send = vi.fn();
+      const sink = createWorkflowEntryNodeResponseSink({
+        writer: writer as any,
+        apiVersion: 'v2'
+      }).getChildContext({ emit: scopeEmit });
+      await runWithTestWorkflowContext(
+        {
+          fileContext: await createTestWorkflowFileContext(),
+          mcpClientMemory: {},
+          checkIsStopping: () => false,
+          workflowStreamResponse: channel ? send : undefined,
+          nodeResponseSink: sink
+        },
+        () =>
+          sink.publish([
+            {
+              response: {
+                id: 'result',
+                nodeId: 'node',
+                moduleName: 'Node',
+                moduleType: FlowNodeTypeEnum.textEditor,
+                inputTokens: 7
+              },
+              emit: itemEmit,
+              record
+            }
+          ])
+      );
+      expect(send).toHaveBeenCalledTimes(sends);
+      expect(writer.record).toHaveBeenCalledTimes(record ? 1 : 0);
+      expect(sink.workflowRuntimeSummary.llmInputTokens).toBe(7);
+    }
+  );
+
+  it('共享 output 从当前子作用域取通道，异步并行不串流且显式禁流不回退父级', async () => {
+    const writer = createWriter();
+    const releases = new Map<string, () => void>();
+    writer.record.mockImplementation(
+      (responses) =>
+        new Promise((resolve) => {
+          releases.set(responses[0].id!, () => resolve(responses));
+        })
+    );
+    const rootWriter = vi.fn();
+    const siblingWriter = vi.fn();
+    const rootSink = createWorkflowEntryNodeResponseSink({
+      writer: writer as any,
+      apiVersion: 'v2'
+    });
+    await runWithTestWorkflowContext(
+      {
+        fileContext: await createTestWorkflowFileContext(),
+        mcpClientMemory: {},
+        checkIsStopping: () => false,
+        workflowStreamResponse: rootWriter,
+        nodeResponseSink: rootSink
+      },
+      async (parent) => {
+        const children = [undefined, siblingWriter].map((workflowStreamResponse) =>
+          parent.getChildContext({
+            workflowStreamResponse,
+            nodeResponseSink: rootSink.getChildContext({
+              workflowRuntimeSummary: createWorkflowRuntimeSummary()
+            })
+          })
+        );
+        const tasks = children.map((child, index) =>
+          runWithContext(child, () =>
+            child.nodeResponseSink.publish([
+              {
+                response: {
+                  id: String(index),
+                  nodeId: String(index),
+                  moduleName: 'Node',
+                  moduleType: FlowNodeTypeEnum.textEditor,
+                  inputTokens: index + 1
+                }
+              }
+            ])
+          )
+        );
+        releases.get('1')!();
+        await tasks[1];
+        releases.get('0')!();
+        await tasks[0];
+        expect(getWorkflowContext()).toBe(parent);
+        expect(rootWriter).not.toHaveBeenCalled();
+        expect(siblingWriter).toHaveBeenCalledOnce();
+        expect(siblingWriter.mock.calls[0][0].data.id).toBe('1');
+        expect(
+          children.map((child) => child.nodeResponseSink.workflowRuntimeSummary.llmInputTokens)
+        ).toEqual([1, 2]);
+        expect(rootSink.workflowRuntimeSummary.llmInputTokens).toBe(0);
+      }
+    );
+    expect(writer.record).toHaveBeenCalledTimes(2);
+  });
+
   it('派生策略和 activity 视图共享当前 summary，新流程显式替换 summary，子 Scope 无关闭权限', async () => {
     const writer = createWriter();
     const entry = createWorkflowEntryNodeResponseSink({
@@ -45,9 +161,15 @@ describe('createWorkflowEntryNodeResponseSink', () => {
     expect(writer.record).not.toHaveBeenCalled();
     expect(activity.publishedResponseCount).toBe(1);
     expect(writer.close).not.toHaveBeenCalled();
+
+    // Child 无权关闭共享 writer，只有入口可以读取结果并执行收尾。
+    expect(entry.getFlatNodeResponses()).toEqual([]);
+    expect(writer.getFlatNodeResponses).toHaveBeenCalledOnce();
+    await entry.close();
+    expect(writer.close).toHaveBeenCalledOnce();
   });
 
-  it('parentId 和 activity 可显式清空，summary-only 入口关闭与详情读取均安全', async () => {
+  it('summary-only 清空 parentId/activity 后仍统计响应，空发布和收尾安全', async () => {
     const activity = createWorkflowNodeResponseActivity();
     const entry = createWorkflowEntryNodeResponseSink({ defaultParentId: 'parent', activity });
     const child = entry.getChildContext({ defaultParentId: undefined, activity: undefined });
@@ -55,29 +177,19 @@ describe('createWorkflowEntryNodeResponseSink', () => {
       id: 'unparented',
       nodeId: 'node',
       moduleName: 'Node',
-      moduleType: FlowNodeTypeEnum.textEditor
-    };
-    expect(await child.publish([{ response }])).toEqual([response]);
-    expect(activity.publishedResponseCount).toBe(0);
-    expect(child.workflowRuntimeSummary).toBe(entry.workflowRuntimeSummary);
-    expect(entry.getFlatNodeResponses()).toEqual([]);
-    await expect(entry.close()).resolves.toBeUndefined();
-  });
-
-  it('没有 output 时 Scope 仍统计响应，空发布不增加统计', async () => {
-    const summary = createWorkflowRuntimeSummary();
-    const sink = createWorkflowEntryNodeResponseSink({ workflowRuntimeSummary: summary });
-    expect(sink.hasOutput).toBe(false);
-    expect(await sink.publish([])).toEqual([]);
-    const response = {
-      id: 'summary-only',
-      nodeId: 'node',
-      moduleName: 'Node',
       moduleType: FlowNodeTypeEnum.textEditor,
       inputTokens: 3
     };
-    expect(await sink.publish([{ response }])).toEqual([response]);
-    expect(summary.llmInputTokens).toBe(3);
+    expect(entry.hasOutput).toBe(false);
+    expect(child.hasOutput).toBe(false);
+    expect(await child.publish([])).toEqual([]);
+    expect(entry.workflowRuntimeSummary.llmInputTokens).toBe(0);
+    expect(await child.publish([{ response }])).toEqual([response]);
+    expect(activity.publishedResponseCount).toBe(0);
+    expect(child.workflowRuntimeSummary).toBe(entry.workflowRuntimeSummary);
+    expect(entry.workflowRuntimeSummary.llmInputTokens).toBe(3);
+    expect(entry.getFlatNodeResponses()).toEqual([]);
+    await expect(entry.close()).resolves.toBeUndefined();
   });
 
   it('无 output 的策略保持无输出，最小 publish Adapter 可派生 activity 和隐藏策略', async () => {
@@ -109,63 +221,63 @@ describe('createWorkflowEntryNodeResponseSink', () => {
     expect(output.publish).toHaveBeenCalledTimes(1);
   });
 
-  it('入口 Sink 的关闭和结果读取委托给 writer', async () => {
-    const writer = createWriter();
-    const sink = createWorkflowEntryNodeResponseSink({ writer: writer as any });
-    expect(sink.getFlatNodeResponses()).toEqual([]);
-    expect(writer.getFlatNodeResponses).toHaveBeenCalledTimes(1);
-    await sink.close();
-    expect(writer.close).toHaveBeenCalledTimes(1);
-  });
-
   it('隐藏策略跨多层 child scope 继承，child summary 仍独立更新', async () => {
     const writer = createWriter();
     const workflowStreamResponse = vi.fn();
-    const rawSink = createWorkflowEntryNodeResponseSink({
-      writer: writer as any,
-      apiVersion: 'v2',
-      workflowStreamResponse
-    });
-    const parentSummary = createWorkflowRuntimeSummary();
-    const childSummary = createWorkflowRuntimeSummary();
-    const grandchildSummary = createWorkflowRuntimeSummary();
-    const parentSink = rawSink.getChildContext({
-      workflowRuntimeSummary: parentSummary
-    });
-    const hiddenParentSink = parentSink.getChildContext({
-      record: false,
-      emit: false
-    });
-    const childSink = hiddenParentSink.getChildContext({
-      workflowRuntimeSummary: childSummary
-    });
-    const grandchildSink = childSink.getChildContext({
-      workflowRuntimeSummary: grandchildSummary,
-      record: true,
-      emit: true
-    });
-
-    expect(hiddenParentSink?.hasOutput).toBe(false);
-    expect(childSink.hasOutput).toBe(false);
-    expect(grandchildSink.hasOutput).toBe(false);
-
-    await grandchildSink.publish([
+    return runWithTestWorkflowContext(
       {
-        response: {
-          id: 'hidden-child',
-          nodeId: 'child-node',
-          moduleType: FlowNodeTypeEnum.textEditor,
-          inputTokens: 7,
-          outputTokens: 4
-        } as any
-      }
-    ]);
+        checkIsStopping: () => false,
+        mcpClientMemory: {},
+        fileContext: await createTestWorkflowFileContext(),
+        workflowStreamResponse
+      },
+      async () => {
+        const rawSink = createWorkflowEntryNodeResponseSink({
+          writer: writer as any,
+          apiVersion: 'v2'
+        });
+        const parentSummary = createWorkflowRuntimeSummary();
+        const childSummary = createWorkflowRuntimeSummary();
+        const grandchildSummary = createWorkflowRuntimeSummary();
+        const parentSink = rawSink.getChildContext({
+          workflowRuntimeSummary: parentSummary
+        });
+        const hiddenParentSink = parentSink.getChildContext({
+          record: false,
+          emit: false
+        });
+        const childSink = hiddenParentSink.getChildContext({
+          workflowRuntimeSummary: childSummary
+        });
+        const grandchildSink = childSink.getChildContext({
+          workflowRuntimeSummary: grandchildSummary,
+          record: true,
+          emit: true
+        });
 
-    expect(writer.record).not.toHaveBeenCalled();
-    expect(workflowStreamResponse).not.toHaveBeenCalled();
-    expect(parentSummary.llmInputTokens).toBe(0);
-    expect(childSummary.llmInputTokens).toBe(0);
-    expect(grandchildSummary).toMatchObject({ llmInputTokens: 7, llmOutputTokens: 4 });
+        expect(hiddenParentSink?.hasOutput).toBe(false);
+        expect(childSink.hasOutput).toBe(false);
+        expect(grandchildSink.hasOutput).toBe(false);
+
+        await grandchildSink.publish([
+          {
+            response: {
+              id: 'hidden-child',
+              nodeId: 'child-node',
+              moduleType: FlowNodeTypeEnum.textEditor,
+              inputTokens: 7,
+              outputTokens: 4
+            } as any
+          }
+        ]);
+
+        expect(writer.record).not.toHaveBeenCalled();
+        expect(workflowStreamResponse).not.toHaveBeenCalled();
+        expect(parentSummary.llmInputTokens).toBe(0);
+        expect(childSummary.llmInputTokens).toBe(0);
+        expect(grandchildSummary).toMatchObject({ llmInputTokens: 7, llmOutputTokens: 4 });
+      }
+    );
   });
 
   it('child workflow scope 给缺少 parentId 的 response 补默认父级', async () => {
@@ -242,37 +354,46 @@ describe('createWorkflowEntryNodeResponseSink', () => {
   it('V2 按输入顺序逐条发布，并允许父响应只入库不发布', async () => {
     const writer = createWriter();
     const workflowStreamResponse = vi.fn();
-    const sink = createWorkflowEntryNodeResponseSink({
-      writer: writer as any,
-      apiVersion: 'v2',
-      responseAllData: true,
-      responseDetail: true,
-      workflowStreamResponse
-    });
-    const child = {
-      id: 'child',
-      nodeId: 'child-node',
-      moduleName: 'Child',
-      moduleType: FlowNodeTypeEnum.agent
-    };
-    const parent = {
-      id: 'parent',
-      nodeId: 'parent-node',
-      moduleName: 'Parent',
-      moduleType: FlowNodeTypeEnum.agent
-    };
+    return runWithTestWorkflowContext(
+      {
+        checkIsStopping: () => false,
+        mcpClientMemory: {},
+        fileContext: await createTestWorkflowFileContext(),
+        workflowStreamResponse
+      },
+      async () => {
+        const sink = createWorkflowEntryNodeResponseSink({
+          writer: writer as any,
+          apiVersion: 'v2',
+          responseAllData: true,
+          responseDetail: true
+        });
+        const child = {
+          id: 'child',
+          nodeId: 'child-node',
+          moduleName: 'Child',
+          moduleType: FlowNodeTypeEnum.agent
+        };
+        const parent = {
+          id: 'parent',
+          nodeId: 'parent-node',
+          moduleName: 'Parent',
+          moduleType: FlowNodeTypeEnum.agent
+        };
 
-    await sink.publish([
-      { response: child, parentId: 'parent' },
-      { response: parent, emit: false }
-    ]);
+        await sink.publish([
+          { response: child, parentId: 'parent' },
+          { response: parent, emit: false }
+        ]);
 
-    expect(writer.record).toHaveBeenCalledWith([{ ...child, parentId: 'parent' }, parent]);
-    expect(workflowStreamResponse).toHaveBeenCalledTimes(1);
-    expect(workflowStreamResponse).toHaveBeenCalledWith({
-      event: SseResponseEventEnum.flowNodeResponse,
-      data: { ...child, parentId: 'parent' }
-    });
+        expect(writer.record).toHaveBeenCalledWith([{ ...child, parentId: 'parent' }, parent]);
+        expect(workflowStreamResponse).toHaveBeenCalledTimes(1);
+        expect(workflowStreamResponse).toHaveBeenCalledWith({
+          event: SseResponseEventEnum.flowNodeResponse,
+          data: { ...child, parentId: 'parent' }
+        });
+      }
+    );
   });
 
   it('按 child id 和 parentId 共同去重，保留不同父节点下的同 id child', async () => {
@@ -333,111 +454,138 @@ describe('createWorkflowEntryNodeResponseSink', () => {
   it('工具失败 response 正常写入并发布，但不提升为 workflow 错误', async () => {
     const writer = createWriter();
     const workflowStreamResponse = vi.fn();
-    const workflowRuntimeSummary = createWorkflowRuntimeSummary();
-    const rawSink = createWorkflowEntryNodeResponseSink({
-      writer: writer as any,
-      apiVersion: 'v2',
-      workflowStreamResponse
-    });
-    const sink = rawSink.getChildContext({ workflowRuntimeSummary });
-    const response = {
-      id: 'failed-response',
-      nodeId: 'failed-node',
-      moduleName: 'Failed node',
-      moduleType: FlowNodeTypeEnum.tool,
-      inputTokens: 11,
-      outputTokens: 4,
-      error: 'tool failed'
-    } as ChatHistoryItemResType;
+    return runWithTestWorkflowContext(
+      {
+        checkIsStopping: () => false,
+        mcpClientMemory: {},
+        fileContext: await createTestWorkflowFileContext(),
+        workflowStreamResponse
+      },
+      async () => {
+        const workflowRuntimeSummary = createWorkflowRuntimeSummary();
+        const rawSink = createWorkflowEntryNodeResponseSink({
+          writer: writer as any,
+          apiVersion: 'v2'
+        });
+        const sink = rawSink.getChildContext({ workflowRuntimeSummary });
+        const response = {
+          id: 'failed-response',
+          nodeId: 'failed-node',
+          moduleName: 'Failed node',
+          moduleType: FlowNodeTypeEnum.tool,
+          inputTokens: 11,
+          outputTokens: 4,
+          error: 'tool failed'
+        } as ChatHistoryItemResType;
 
-    await sink.publish([{ response }]);
+        await sink.publish([{ response }]);
 
-    expect(workflowRuntimeSummary).toMatchObject({
-      errorCount: 0,
-      llmInputTokens: 11,
-      llmOutputTokens: 4
-    });
-    expect(workflowRuntimeSummary.errorText).toBeUndefined();
-    expect(writer.record).toHaveBeenCalledWith([response]);
-    expect(workflowStreamResponse).toHaveBeenCalledWith({
-      event: SseResponseEventEnum.flowNodeResponse,
-      data: response
-    });
+        expect(workflowRuntimeSummary).toMatchObject({
+          errorCount: 0,
+          llmInputTokens: 11,
+          llmOutputTokens: 4
+        });
+        expect(workflowRuntimeSummary.errorText).toBeUndefined();
+        expect(writer.record).toHaveBeenCalledWith([response]);
+        expect(workflowStreamResponse).toHaveBeenCalledWith({
+          event: SseResponseEventEnum.flowNodeResponse,
+          data: response
+        });
+      }
+    );
   });
 
   it('V1 只写入，不发布逐条 flowNodeResponse', async () => {
     const writer = createWriter();
     const workflowStreamResponse = vi.fn();
-    const sink = createWorkflowEntryNodeResponseSink({
-      writer: writer as any,
-      apiVersion: 'v1',
-      workflowStreamResponse
-    });
-
-    await sink.publish([
+    return runWithTestWorkflowContext(
       {
-        response: {
-          id: 'node',
-          nodeId: 'node',
-          moduleName: 'Node',
-          moduleType: FlowNodeTypeEnum.agent
-        }
-      }
-    ]);
+        checkIsStopping: () => false,
+        mcpClientMemory: {},
+        fileContext: await createTestWorkflowFileContext(),
+        workflowStreamResponse
+      },
+      async () => {
+        const sink = createWorkflowEntryNodeResponseSink({
+          writer: writer as any,
+          apiVersion: 'v1'
+        });
 
-    expect(writer.record).toHaveBeenCalledTimes(1);
-    expect(workflowStreamResponse).not.toHaveBeenCalled();
+        await sink.publish([
+          {
+            response: {
+              id: 'node',
+              nodeId: 'node',
+              moduleName: 'Node',
+              moduleType: FlowNodeTypeEnum.agent
+            }
+          }
+        ]);
+
+        expect(writer.record).toHaveBeenCalledTimes(1);
+        expect(workflowStreamResponse).not.toHaveBeenCalled();
+      }
+    );
   });
 
   it('Share 模式保留 id/parentId，但按详情配置过滤引用和私有字段', async () => {
     const writer = createWriter();
     const workflowStreamResponse = vi.fn();
-    const sink = createWorkflowEntryNodeResponseSink({
-      writer: writer as any,
-      apiVersion: 'v2',
-      responseAllData: false,
-      responseDetail: false,
-      workflowStreamResponse
-    });
-
-    await sink.publish([
+    return runWithTestWorkflowContext(
       {
-        response: {
-          id: 'dataset-search',
-          parentId: 'agent',
-          nodeId: 'dataset-node',
-          moduleName: 'Dataset Search',
-          moduleType: FlowNodeTypeEnum.datasetSearchNode,
-          runningTime: 1,
-          quoteList: [
-            {
-              id: 'quote',
-              datasetId: 'dataset',
-              collectionId: 'collection',
-              sourceName: 'source',
-              chunkIndex: 0,
-              score: []
-            }
-          ],
-          toolInput: { secret: true }
-        } as ChatHistoryItemResType
-      }
-    ]);
+        checkIsStopping: () => false,
+        mcpClientMemory: {},
+        fileContext: await createTestWorkflowFileContext(),
+        workflowStreamResponse
+      },
+      async () => {
+        const sink = createWorkflowEntryNodeResponseSink({
+          writer: writer as any,
+          apiVersion: 'v2',
+          responseAllData: false,
+          responseDetail: false
+        });
 
-    expect(writer.record.mock.calls[0][0][0]).toMatchObject({
-      quoteList: [{ id: 'quote' }],
-      toolInput: { secret: true }
-    });
-    expect(workflowStreamResponse).toHaveBeenCalledWith({
-      event: SseResponseEventEnum.flowNodeResponse,
-      data: {
-        id: 'dataset-search',
-        parentId: 'agent',
-        nodeId: 'dataset-node',
-        moduleName: 'Dataset Search',
-        moduleType: FlowNodeTypeEnum.datasetSearchNode,
-        runningTime: 1
+        await sink.publish([
+          {
+            response: {
+              id: 'dataset-search',
+              parentId: 'agent',
+              nodeId: 'dataset-node',
+              moduleName: 'Dataset Search',
+              moduleType: FlowNodeTypeEnum.datasetSearchNode,
+              runningTime: 1,
+              quoteList: [
+                {
+                  id: 'quote',
+                  datasetId: 'dataset',
+                  collectionId: 'collection',
+                  sourceName: 'source',
+                  chunkIndex: 0,
+                  score: []
+                }
+              ],
+              toolInput: { secret: true }
+            } as ChatHistoryItemResType
+          }
+        ]);
+
+        expect(writer.record.mock.calls[0][0][0]).toMatchObject({
+          quoteList: [{ id: 'quote' }],
+          toolInput: { secret: true }
+        });
+        expect(workflowStreamResponse).toHaveBeenCalledWith({
+          event: SseResponseEventEnum.flowNodeResponse,
+          data: {
+            id: 'dataset-search',
+            parentId: 'agent',
+            nodeId: 'dataset-node',
+            moduleName: 'Dataset Search',
+            moduleType: FlowNodeTypeEnum.datasetSearchNode,
+            runningTime: 1
+          }
+        });
       }
-    });
+    );
   });
 });

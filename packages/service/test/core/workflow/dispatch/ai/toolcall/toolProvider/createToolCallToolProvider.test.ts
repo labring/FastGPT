@@ -20,6 +20,10 @@ import { createToolCallToolProvider } from '@fastgpt/service/core/workflow/dispa
 import { getWorkflowContext } from '@fastgpt/service/core/workflow/dispatch/context';
 import { WorkflowVariableState } from '@fastgpt/service/core/workflow/dispatch/context/variables';
 import { runWithTestWorkflowContext as runWithContext } from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
+import {
+  captureTestWorkflowContext,
+  getCapturedTestWorkflowContext
+} from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { runWorkflowMock } = vi.hoisted(() => ({
@@ -27,7 +31,7 @@ const { runWorkflowMock } = vi.hoisted(() => ({
 }));
 
 vi.mock('@fastgpt/service/core/workflow/dispatch', () => ({
-  runWorkflow: runWorkflowMock
+  runWorkflow: (props: any) => runWorkflowMock(captureTestWorkflowContext(props))
 }));
 
 const createToolNode = (overrides: Record<string, any> = {}) =>
@@ -50,15 +54,19 @@ const createToolNode = (overrides: Record<string, any> = {}) =>
 const createProvider = (overrides: Record<string, any> = {}) => {
   const {
     variableContext,
+    memoryContext,
     checkIsStopping = () => false,
     workflowProps: workflowPropsOverrides,
     ...providerOverrides
   } = overrides;
+  const { workflowStreamResponse, ...workflowProps } = workflowPropsOverrides ?? {};
   return runWithContext(
     {
       checkIsStopping,
       mcpClientMemory: {},
       variableContext,
+      memoryContext,
+      workflowStreamResponse,
       fileContext: {
         limits: { maxFileAmount: 20, maxBytesPerFile: 1024 }
       } as any
@@ -94,7 +102,7 @@ const createProvider = (overrides: Record<string, any> = {}) => {
           },
           chatConfig: {},
           usageId: 'usage_1',
-          ...workflowPropsOverrides
+          ...workflowProps
         } as any,
         runtimeNodes: [
           {
@@ -206,11 +214,13 @@ describe('createToolCallToolProvider', () => {
       const parent = await createVariableContext({ count: 1, nested: { items: [1] } });
       let stopping = false;
       const workflowStreamResponse = vi.fn();
-      runWorkflowMock.mockImplementationOnce(async (props) => {
+      runWorkflowMock.mockImplementationOnce(async () => {
         const child = getWorkflowContext().variableContext;
         await child.set('count', 2);
         (child.get('nested') as { items: number[] }).items.push(2);
-        props.workflowStreamResponse(workflowSseEvent.updateVariables(child.toStoreRecord()));
+        getWorkflowContext().workflowStreamResponse?.(
+          workflowSseEvent.updateVariables(child.toStoreRecord())
+        );
         if (outcome === 'throw') throw new Error('tool failed');
         if (outcome === 'stop') stopping = true;
         return createWorkflowResponse({
@@ -359,7 +369,7 @@ describe('createToolCallToolProvider', () => {
     const dispatchUpdate = callbackMap[FlowNodeTypeEnum.variableUpdate];
     vi.spyOn(callbackMap, FlowNodeTypeEnum.variableUpdate).mockImplementation(async (props) => {
       const result = await dispatchUpdate(props);
-      props.workflowStreamResponse?.({
+      getWorkflowContext().workflowStreamResponse?.({
         event: SseResponseEventEnum.answer,
         data: { choices: [{ delta: { content: props.node.nodeId } }] }
       } as any);
@@ -621,11 +631,14 @@ describe('createToolCallToolProvider', () => {
       expect(runWorkflowMock).toHaveBeenCalledWith(
         expect.objectContaining({
           stream,
-          nodeResponseParentId: 'toolcall_response',
-          workflowStreamResponse: stream ? expect.any(Function) : undefined
+          nodeResponseParentId: 'toolcall_response'
         })
       );
       expect(workflowStreamResponse).not.toHaveBeenCalled();
+      expect(runWorkflowMock.mock.calls[0][0]).not.toHaveProperty('workflowStreamResponse');
+      expect(
+        getCapturedTestWorkflowContext(runWorkflowMock.mock.calls[0][0]).workflowStreamResponse
+      ).toEqual(stream ? expect.any(Function) : undefined);
 
       // 子流程暂停后恢复也必须继承同一流式设置，不能在恢复入口重新禁流。
       const childrenResponse = { type: 'userInput', entryNodeIds: ['search'] };
@@ -638,10 +651,12 @@ describe('createToolCallToolProvider', () => {
         expect.objectContaining({
           stream,
           nodeResponseParentId: 'toolcall_response',
-          workflowStreamResponse: stream ? expect.any(Function) : undefined,
           lastInteractive: childrenResponse
         })
       );
+      expect(
+        getCapturedTestWorkflowContext(runWorkflowMock.mock.calls[0][0]).workflowStreamResponse
+      ).toEqual(stream ? expect.any(Function) : undefined);
     }
   );
 
@@ -810,16 +825,20 @@ describe('createToolCallToolProvider', () => {
     expect(provider.readFileExecutor).toBeDefined();
   });
 
-  it('forks memoryState and merges child system_memories for parallel dataset_search and user tools', async () => {
-    const { WorkflowMemoryState } = await import('@fastgpt/service/core/workflow/memory/state');
-    const parentMemoryState = WorkflowMemoryState.fromRecord({
+  it('forks memoryContext and merges child system_memories for parallel dataset_search and user tools', async () => {
+    const { WorkflowMemoryContext } =
+      await import('@fastgpt/service/core/workflow/dispatch/context/memory');
+    const parentMemoryContext = WorkflowMemoryContext.fromRecord({
       'app:app_1:rootExtract': { memory: 'baseline' }
     }).fork('node:toolCall1');
 
-    runWorkflowMock.mockImplementation(async ({ runtimeNodes, memoryState }) => {
+    runWorkflowMock.mockImplementation(async (args) => {
+      const { runtimeNodes } = args;
+      const { memoryContext } = getWorkflowContext();
+      expect(args).not.toHaveProperty('memoryContext');
       const entryNode = runtimeNodes.find((node: any) => node.isEntry);
-      const key = memoryState.getNodeMemoryKey({
-        runningAppInfo: { sourceType: 'app', sourceId: 'app_1' },
+      const key = memoryContext.getNodeMemoryKey({
+        runningAppInfo: { sourceType: ChatSourceTypeEnum.app, sourceId: 'app_1' },
         nodeId: entryNode.nodeId
       });
       return {
@@ -842,9 +861,9 @@ describe('createToolCallToolProvider', () => {
     });
 
     const provider = await createProvider({
+      memoryContext: parentMemoryContext,
       workflowProps: {
         node: { nodeId: 'toolCall1' },
-        memoryState: parentMemoryState,
         runningAppInfo: { id: 'app_1', sourceType: 'app', sourceId: 'app_1' },
         runningUserInfo: { teamId: 'team_1', tmbId: 'tmb_1' },
         uid: 'user_1',
@@ -917,7 +936,7 @@ describe('createToolCallToolProvider', () => {
       } as any
     });
 
-    expect(parentMemoryState.getDelta()).toEqual({
+    expect(parentMemoryContext.getDelta()).toEqual({
       'node:toolCall1/app:app_1:dataset_node_1': {
         memory: 'ok-dataset_node_1'
       },

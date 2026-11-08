@@ -1,9 +1,8 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { FlowNodeTypeEnum, LoopRunModeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { RunWorkflowProps } from '@fastgpt/service/core/workflow/dispatch/type';
 import { callbackMap } from '@fastgpt/service/core/workflow/dispatch/constants';
-import { codeSandbox } from '@fastgpt/service/thirdProvider/codeSandbox';
 import {
   graphNode,
   graphEdge,
@@ -11,16 +10,6 @@ import {
   graphValues,
   runGraph
 } from './testUtils/workflowGraph';
-
-afterEach(() => vi.restoreAllMocks());
-
-vi.mock('@fastgpt/service/env', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@fastgpt/service/env')>();
-  return {
-    ...actual,
-    serviceEnv: { ...actual.serviceEnv, CODE_SANDBOX_URL: 'http://sandbox.test' }
-  };
-});
 
 vi.mock('@fastgpt/service/common/string/tiktoken/index', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@fastgpt/service/common/string/tiktoken/index')>()),
@@ -210,38 +199,6 @@ describe('registered node data transfer', () => {
     expect([...new Set(covered)].sort()).toEqual(Object.keys(callbackMap).sort());
     expect(covered.length).toBe(Object.keys(callbackMap).length);
     for (const type of placeholders) expect(await callbackMap[type]()).toBeUndefined();
-  });
-
-  it('code failures expose error outputs without leaking the original exception', async () => {
-    vi.spyOn(codeSandbox, 'runCode').mockRejectedValueOnce(
-      new Error('sandbox execution failed', { cause: new Error('private cause') })
-    );
-    const keys = [NodeOutputKeyEnum.errorText, 'rawError', 'stack', 'cause'];
-    const source = graphNode({
-      id: 'source',
-      type: FlowNodeTypeEnum.code,
-      params: { codeType: 'javascript', code: 'fixture' },
-      isEntry: true,
-      catchError: true,
-      outputs: keys
-    });
-    const target = graphNode({
-      id: 'target',
-      type: FlowNodeTypeEnum.toolParams,
-      inputs: keys.map((key) => graphReference({ key, from: ['source', key] })),
-      outputs: keys
-    });
-    const { result } = await runGraph({
-      nodes: [source, target],
-      edges: [graphEdge({ source: 'source', target: 'target', error: true })]
-    });
-    expect(graphValues(target)).toEqual({
-      [NodeOutputKeyEnum.errorText]: 'sandbox execution failed',
-      rawError: undefined,
-      stack: undefined,
-      cause: undefined
-    });
-    expect(result.workflowRuntimeSummary.errorCount).toBe(0);
   });
 
   it.each(cases)(

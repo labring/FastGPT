@@ -1,4 +1,8 @@
 import { createTestWorkflowDispatch } from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
+import {
+  runWithTestWorkflowContext,
+  createTestWorkflowFileContext
+} from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
 import { describe, expect, it, vi } from 'vitest';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import type { RuntimeEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
@@ -35,8 +39,7 @@ import { getWorkflowContext } from '@fastgpt/service/core/workflow/dispatch/cont
 
 const createTestNodeResponseSink = ({
   writer,
-  apiVersion = 'v2',
-  workflowStreamResponse
+  apiVersion = 'v2'
 }: {
   writer: Awaited<ReturnType<typeof createWorkflowNodeResponseWriter>>;
   apiVersion?: 'v1' | 'v2';
@@ -46,8 +49,7 @@ const createTestNodeResponseSink = ({
     writer,
     apiVersion,
     responseAllData: true,
-    responseDetail: true,
-    workflowStreamResponse
+    responseDetail: true
   });
 
 const makeInput = ({
@@ -1103,41 +1105,48 @@ describe('runWorkflow node response persistence', () => {
       writer: nodeResponseWriter,
       apiVersion: 'v2',
       responseAllData: false,
-      responseDetail: false,
-      workflowStreamResponse: (event) => {
-        if (
-          event.event === SseResponseEventEnum.flowNodeResponse &&
-          typeof event.data !== 'string'
-        ) {
-          responseEvents.push(event.data);
-        }
-      }
+      responseDetail: false
     });
-
-    await nodeResponseSink.publish([
+    await runWithTestWorkflowContext(
       {
-        response: {
-          id: 'share-dataset-response',
-          parentId: 'share-agent-response',
-          nodeId: 'share-dataset-node',
-          moduleName: 'Dataset Search',
-          moduleType: FlowNodeTypeEnum.datasetSearchNode,
-          runningTime: 1,
-          quoteList: [
-            {
-              id: 'share-quote',
-              datasetId: 'share-dataset',
-              collectionId: 'share-collection',
-              sourceId: 'share-source',
-              sourceName: 'private-source-name',
-              q: 'private question',
-              a: 'private answer'
-            }
-          ],
-          toolInput: { secret: true }
-        } as ChatHistoryItemResType
-      }
-    ]);
+        fileContext: await createTestWorkflowFileContext(),
+        mcpClientMemory: {},
+        checkIsStopping: () => false,
+        workflowStreamResponse: (event) => {
+          if (
+            event.event === SseResponseEventEnum.flowNodeResponse &&
+            typeof event.data !== 'string'
+          ) {
+            responseEvents.push(event.data);
+          }
+        }
+      },
+      () =>
+        nodeResponseSink.publish([
+          {
+            response: {
+              id: 'share-dataset-response',
+              parentId: 'share-agent-response',
+              nodeId: 'share-dataset-node',
+              moduleName: 'Dataset Search',
+              moduleType: FlowNodeTypeEnum.datasetSearchNode,
+              runningTime: 1,
+              quoteList: [
+                {
+                  id: 'share-quote',
+                  datasetId: 'share-dataset',
+                  collectionId: 'share-collection',
+                  sourceId: 'share-source',
+                  sourceName: 'private-source-name',
+                  q: 'private question',
+                  a: 'private answer'
+                }
+              ],
+              toolInput: { secret: true }
+            } as ChatHistoryItemResType
+          }
+        ])
+    );
     await nodeResponseSink.close();
 
     const row = await MongoChatItemResponse.findOne({

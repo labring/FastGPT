@@ -6,7 +6,6 @@ import {
   normalizeNodeResponseChildren
 } from '@fastgpt/global/core/chat/utils/mergeNode';
 import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
-import type { WorkflowResponseType } from '@fastgpt/global/core/workflow/runtime/sse';
 import {
   createWorkflowNodeResponseWriter,
   type WorkflowNodeResponseWriter
@@ -15,6 +14,7 @@ import type { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import type { WorkflowNodeResponseWriteConfig } from '../utils/entry';
 import type { WorkflowRuntimeSummaryType } from '../type';
 import { createWorkflowRuntimeSummary, updateWorkflowRuntimeSummary } from '../utils/summary';
+import { WorkflowContext } from './index';
 
 export type WorkflowNodeResponseInput = {
   response: ChatHistoryItemResType;
@@ -95,7 +95,6 @@ export const createWorkflowEntryNodeResponseSink = (
     apiVersion?: 'v1' | 'v2';
     responseAllData?: boolean;
     responseDetail?: boolean;
-    workflowStreamResponse?: WorkflowResponseType;
   } & (
       | { writer: WorkflowNodeResponseWriter }
       | { output: WorkflowNodeResponseOutputLike }
@@ -242,32 +241,31 @@ class WorkflowNodeResponseOutput implements WorkflowNodeResponseOutputLike {
   private readonly apiVersion?: 'v1' | 'v2';
   private readonly responseAllData: boolean;
   private readonly responseDetail: boolean;
-  private readonly workflowStreamResponse?: WorkflowResponseType;
 
   constructor({
     writer,
     apiVersion,
     responseAllData = true,
-    responseDetail = true,
-    workflowStreamResponse
+    responseDetail = true
   }: {
     writer: WorkflowNodeResponseWriter;
     apiVersion?: 'v1' | 'v2';
     responseAllData?: boolean;
     responseDetail?: boolean;
-    workflowStreamResponse?: WorkflowResponseType;
   }) {
     this.writer = writer;
     this.apiVersion = apiVersion;
     this.responseAllData = responseAllData;
     this.responseDetail = responseDetail;
-    this.workflowStreamResponse = workflowStreamResponse;
   }
 
   /** 接收一批同一调度步骤产生的响应，保持 writer 的批量写入顺序并发布可见响应。 */
   async publish(inputs: WorkflowNodeResponseInput[]): Promise<ChatHistoryItemResType[]> {
     if (inputs.length === 0) return [];
 
+    // 发布时捕获当前运行的通道，不能固定根 writer，也不能在禁流时回退到根。
+    // 无 ALS 的受控持久化调用仍可保存详情；只有 emit 且存在当前 writer 才发 SSE。
+    const workflowStreamResponse = WorkflowContext.getStore()?.workflowStreamResponse;
     const responses = inputs.map(({ response, parentId }) => {
       const normalizedParentId = response.parentId ?? parentId;
 
@@ -294,7 +292,7 @@ class WorkflowNodeResponseOutput implements WorkflowNodeResponseOutputLike {
       }
     });
 
-    if (this.apiVersion !== 'v2' || !this.workflowStreamResponse) {
+    if (this.apiVersion !== 'v2' || !workflowStreamResponse) {
       return outputResponses;
     }
 
@@ -307,7 +305,7 @@ class WorkflowNodeResponseOutput implements WorkflowNodeResponseOutputLike {
         });
 
     visibleResponses.forEach((response) => {
-      this.workflowStreamResponse?.(workflowSseEvent.flowNodeResponse(response));
+      workflowStreamResponse(workflowSseEvent.flowNodeResponse(response));
     });
 
     return outputResponses;

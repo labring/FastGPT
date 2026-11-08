@@ -23,7 +23,8 @@ import { formatModelChars2Points } from '../../../../support/wallet/usage/utils'
 import { createLLMResponse } from '../../../ai/llm/request';
 import type { DispatchNodeResultType, ModuleDispatchProps } from '../../types/runtime';
 import { loadWorkflowModelResource } from '../../resource/service';
-import { getWorkflowNodeMemoryKey, readWorkflowNodeMemory } from '../../memory/state';
+import { getWorkflowNodeMemoryKey, readWorkflowNodeMemory } from '../context/memory';
+import { getWorkflowContext } from '../context';
 
 const logger = getLogger(LogCategories.MODULE.WORKFLOW.AI);
 
@@ -66,12 +67,12 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
   });
   const chatHistories = getHistories(history, histories);
   const memoryKey = getWorkflowNodeMemoryKey({
-    memoryState: props.memoryState,
+    memoryContext: getWorkflowContext().memoryContext,
     runningAppInfo,
     nodeId
   });
   const lastMemory = readWorkflowNodeMemory<Record<string, any>>({
-    memoryState: props.memoryState,
+    memoryContext: getWorkflowContext().memoryContext,
     runningAppInfo,
     nodeId,
     history,

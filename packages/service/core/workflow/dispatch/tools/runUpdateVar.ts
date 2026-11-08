@@ -68,8 +68,8 @@ type Props = ModuleDispatchProps<{
 type Response = DispatchNodeResultType<Record<string, never>>;
 
 export const dispatchUpdateVariable = async (props: Props): Promise<Response> => {
-  const { params, runtimeNodesMap, workflowStreamResponse, runningAppInfo } = props;
-  const { variableContext: variableState } = getWorkflowContext();
+  const { params, runtimeNodesMap, runningAppInfo } = props;
+  const { variableContext: variableState, workflowStreamResponse } = getWorkflowContext();
 
   const { updateList } = params;
   const nodeIds = Array.from(runtimeNodesMap.keys());

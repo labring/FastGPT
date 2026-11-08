@@ -22,7 +22,6 @@ import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
 import { dispatchWorkflowReadFiles } from '../../readFiles';
 import { getWorkflowContext, runWithContext } from '../../../context';
 import type { DispatchFlowResponse } from '../../../type';
-import { WorkflowMemoryState } from '../../../../memory/state';
 import { WorkflowRunStateSnapshot } from '../../../utils/containerRunState';
 
 type CacheToolFlowResponse = (args: {
@@ -61,7 +60,7 @@ export const createToolCallToolProvider = async ({
   cacheToolFlowResponse: CacheToolFlowResponse;
   onWorkflowRuntimeSummary?: (summary?: DispatchFlowResponse['workflowRuntimeSummary']) => void;
 }): Promise<ToolCallToolProvider> => {
-  const memoryState = WorkflowMemoryState.fromWorkflow(workflowProps);
+  const memoryContext = getWorkflowContext().memoryContext;
   const { finalMessages, tools, getToolInfo } = await useToolCatalog({
     messages,
     toolNodes,
@@ -86,6 +85,17 @@ export const createToolCallToolProvider = async ({
         variableContext: parentVariableContext
       });
       const childContext = parentContext.getChildContext({
+        // 子副本不能发送全量变量；其他事件（包括节点详情）沿当前父通道输出。
+        workflowStreamResponse: parentContext.workflowStreamResponse
+          ? (event) => {
+              if (event.event === SseResponseEventEnum.updateVariables) {
+                hasVariableUpdate = true;
+              } else {
+                parentContext.workflowStreamResponse?.(event);
+              }
+            }
+          : undefined,
+        memoryContext: memoryContext.fork(),
         runtimeControl: { isToolCall: true },
         variableContext: stateSnapshot.variableContext,
         nodeResponseSink: parentContext.nodeResponseSink.getChildContext({
@@ -98,17 +108,6 @@ export const createToolCallToolProvider = async ({
       const result = await runWithContext(childContext, () =>
         runWorkflow({
           ...workflowProps,
-          // 副本的全量变量不能直接覆盖客户端；其他流事件仍按原顺序透传。
-          workflowStreamResponse: workflowProps.workflowStreamResponse
-            ? (event) => {
-                if (event.event === SseResponseEventEnum.updateVariables) {
-                  hasVariableUpdate = true;
-                } else {
-                  workflowProps.workflowStreamResponse?.(event);
-                }
-              }
-            : undefined,
-          memoryState: memoryState.fork(),
           // 继承父流程的流式能力；是否禁流由子节点的 forbidStream 控制。
           // 简易应用在表单转换时强制禁流，不能在共用 ToolCall 层关闭所有工作流的输出。
           ...(lastInteractive ? { lastInteractive } : {}),
@@ -118,7 +117,7 @@ export const createToolCallToolProvider = async ({
           nodeResponseParentId: workflowProps.nodeResponseParentId
         })
       );
-      memoryState.merge(result[DispatchNodeResponseKeyEnum.memories]);
+      memoryContext.merge(result[DispatchNodeResponseKeyEnum.memories]);
       onWorkflowRuntimeSummary?.(result.workflowRuntimeSummary);
 
       if (!result.workflowRuntimeSummary.errorCount && !parentContext.checkIsStopping()) {
@@ -127,7 +126,7 @@ export const createToolCallToolProvider = async ({
           await stateSnapshot.commit();
           // 每个调用按完成顺序发布合并后的父级记录，包含先完成兄弟已提交的无关变量。
           if (hasVariableUpdate) {
-            workflowProps.workflowStreamResponse?.(
+            parentContext.workflowStreamResponse?.(
               workflowSseEvent.updateVariables(parentVariableContext.toStoreRecord())
             );
           }

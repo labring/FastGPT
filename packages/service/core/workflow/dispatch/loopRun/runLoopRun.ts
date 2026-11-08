@@ -34,7 +34,6 @@ import {
   pickCustomOutputInputs,
   readCustomOutputSnapshot
 } from './service';
-import { WorkflowMemoryState } from '../../memory/state';
 import { WorkflowRunStateSnapshot } from '../utils/containerRunState';
 import { getWorkflowContext, runWithContext } from '../context';
 
@@ -151,7 +150,7 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
   const resumeIteration = interactiveData?.iteration;
   let iteration = resumeIteration ?? 1;
   let iterationHistories = props.histories;
-  const loopMemoryState = WorkflowMemoryState.fromWorkflow(props).fork();
+  const loopMemoryContext = getWorkflowContext().memoryContext.fork();
   while (true) {
     if (checkIsStopping()) {
       break;
@@ -197,7 +196,7 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
       });
     }
 
-    const iterationMemoryState = loopMemoryState.fork();
+    const iterationMemoryContext = loopMemoryContext.fork();
     const iterationStateSnapshot = new WorkflowRunStateSnapshot({
       variableContext: parentVariableContext,
       nodeOutputs: {
@@ -208,6 +207,7 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
     });
     const iterationVariableState = iterationStateSnapshot.variableContext;
     const iterationContext = getWorkflowContext().getChildContext({
+      memoryContext: iterationMemoryContext,
       variableContext: iterationVariableState,
       nodeResponseSink: getWorkflowContext().nodeResponseSink.getChildContext({
         workflowRuntimeSummary: createWorkflowRuntimeSummary(),
@@ -218,7 +218,6 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
       runWorkflow({
         ...props,
         histories: iterationHistories,
-        memoryState: iterationMemoryState,
         lastInteractive: interactiveData?.childrenResponse,
         nodeResponseParentId: iterationResponseId,
         runtimeNodes: isolatedNodes,
@@ -295,7 +294,7 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
     if (response.workflowInteractiveResponse) {
       interactiveResponse = response.workflowInteractiveResponse;
       pendingIterationSummary = iterationSummary;
-      loopMemoryState.merge(response[DispatchNodeResponseKeyEnum.memories]);
+      loopMemoryContext.merge(response[DispatchNodeResponseKeyEnum.memories]);
       // 交互暂停是可恢复 checkpoint，需要保留暂停前已完成节点的变量和外部 output 变更。
       await iterationStateSnapshot.commit();
       await pushIterationDetail({});
@@ -319,7 +318,7 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
 
     await pushIterationDetail({});
     loopHistory.push({ iteration, customOutputs, success: true });
-    loopMemoryState.merge(response[DispatchNodeResponseKeyEnum.memories]);
+    loopMemoryContext.merge(response[DispatchNodeResponseKeyEnum.memories]);
     await iterationStateSnapshot.commit();
 
     if (iterationSummary.hasLoopRunBreak) break;
@@ -349,7 +348,7 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
   };
 
   const errorText = loopFailure?.text;
-  const loopMemories = loopMemoryState.getDelta();
+  const loopMemories = loopMemoryContext.getDelta();
   const result = {
     data,
     // 循环失败时不产出 toolResponse，交给工具运行器的 errorMessage 兜底，避免用空快照挡住错误信息

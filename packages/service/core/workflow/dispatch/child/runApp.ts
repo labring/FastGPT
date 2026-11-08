@@ -30,7 +30,6 @@ import { getWorkflowContext, runWithDerivedWorkflowFileContext, runWithContext }
 import { loadChildWorkflowWithResource } from '../../resource/service';
 import { getUserChatInfo } from '../../../../support/user/team/utils';
 import { getWorkflowRuntimeSummary } from '../utils/summary';
-import { WorkflowMemoryState } from '../../memory/state';
 import { MODERATION_BLOCKED_REPLACE_TEXT } from '@fastgpt/global/core/plugin/moderation/constants';
 
 /**
@@ -52,10 +51,9 @@ export const runChildAppWorkflow = async ({
   ...workflowProps
 }: Omit<
   RunWorkflowProps,
-  'runtimeNodes' | 'runtimeEdges' | 'chatConfig' | 'memoryState' | 'histories' | 'stream'
+  'runtimeNodes' | 'runtimeEdges' | 'chatConfig' | 'histories' | 'stream'
 > & {
   stream?: boolean;
-  memoryState?: WorkflowMemoryState;
   histories?: ChatItemMiniType[];
   node?: { nodeId?: string };
   usagePush?: ModuleDispatchProps<any>['usagePush'];
@@ -80,7 +78,7 @@ export const runChildAppWorkflow = async ({
   const isChatAgent = appData.type === AppTypeEnum.chatAgent;
 
   if (!forbidStream && workflowProps.stream) {
-    workflowProps.workflowStreamResponse?.(workflowSseEvent.answerDelta('\n'));
+    getWorkflowContext().workflowStreamResponse?.(workflowSseEvent.answerDelta('\n'));
   }
 
   const resolvedVariables = isTool
@@ -117,7 +115,7 @@ export const runChildAppWorkflow = async ({
     name: appData.name,
     isChildApp: true
   };
-  const parentMemoryState = WorkflowMemoryState.fromWorkflow(workflowProps);
+  const parentMemoryContext = getWorkflowContext().memoryContext;
   // ChatAgent 不支持外部配置聊天记录，运行时直接透传父级历史并由内部 AgentNode 应用默认 50 轮限制。
   const effectiveHistory = isChatAgent ? undefined : history;
   const parentHistories = workflowProps.histories ?? [];
@@ -150,9 +148,9 @@ export const runChildAppWorkflow = async ({
         resolveInputFile
       });
       // 应用工具按 appId 隔离记忆作用域；画布子应用按节点隔离，并在自定义历史切片时跳过继承父级记忆。
-      const childMemoryState = isTool
-        ? parentMemoryState.fork(`app:${childRunningAppInfo.sourceId}`)
-        : parentMemoryState.fork(
+      const childMemoryContext = isTool
+        ? parentMemoryContext.fork(`app:${childRunningAppInfo.sourceId}`)
+        : parentMemoryContext.fork(
             workflowProps.node?.nodeId ? `node:${workflowProps.node.nodeId}` : undefined,
             {
               history: effectiveHistory,
@@ -164,6 +162,8 @@ export const runChildAppWorkflow = async ({
       // 统一入口同时服务画布子应用与 Agent 工具；继承根沙箱，独立变量和本层响应摘要。
       const parentContext = getWorkflowContext();
       const childContext = parentContext.getChildContext({
+        ...(forbidStream ? { workflowStreamResponse: undefined } : {}),
+        memoryContext: childMemoryContext,
         runtimeControl: { isToolCall: isTool || parentContext.runtimeControl.isToolCall },
         variableContext: childrenVariableState,
         nodeResponseSink: parentContext.nodeResponseSink.getChildContext({
@@ -176,9 +176,7 @@ export const runChildAppWorkflow = async ({
       const result = await runWithContext(childContext, () =>
         runWorkflow({
           ...workflowProps,
-          memoryState: childMemoryState,
           stream: forbidStream ? false : Boolean(workflowProps.stream),
-          ...(forbidStream ? { workflowStreamResponse: undefined } : {}),
           runningAppInfo: childRunningAppInfo,
           runtimeNodes,
           runtimeEdges,
@@ -197,7 +195,7 @@ export const runChildAppWorkflow = async ({
     }
   });
   if (isTool) {
-    parentMemoryState.merge(workflowResult.system_memories);
+    parentMemoryContext.merge(workflowResult.system_memories);
   }
 
   // ChatAgent 的 AgentNode 将包含工具中间轮次与交互恢复前序轮次的完整过程文本写入 toolResponse，
