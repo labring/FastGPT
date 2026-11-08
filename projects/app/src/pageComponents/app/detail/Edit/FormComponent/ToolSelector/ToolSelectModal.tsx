@@ -37,7 +37,7 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import ToolTagFilterBox from '@fastgpt/web/components/core/plugin/tool/TagFilterBox';
 import { getPluginToolTags } from '@/web/core/plugin/toolTag/api';
 import { useRouter } from 'next/router';
-import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { AppTypeEnum, AppTypeList } from '@fastgpt/global/core/app/constants';
 import { validateToolConfiguration } from '@fastgpt/global/core/app/formEdit/utils';
 import { isDebugToolSource, getToolIdentityKey } from '@fastgpt/global/core/app/tool/utils';
 import DebugToolTag from '@fastgpt/web/components/core/plugin/tool/DebugToolTag';
@@ -73,7 +73,7 @@ const teamToolTypes = [
   AppTypeEnum.httpToolSet
 ];
 
-const teamAgentTypes = [AppTypeEnum.folder, AppTypeEnum.simple, AppTypeEnum.workflow];
+const teamAgentTypes = [AppTypeEnum.folder, ...AppTypeList];
 
 const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void }) => {
   const { t } = useTranslation();

@@ -409,24 +409,16 @@ export const getAgentToolInputMode = (input: InputRenderTypeState) =>
     : AgentToolInputModeEnum.manual;
 
 /** 将应用内完整 NodeIO 工具投影为 Agent 持久化所需的稀疏配置。 */
-export const serializeAgentTool = ({
-  tool,
-  maxHistories
-}: {
-  tool: SelectedToolItemType;
-  maxHistories?: number;
-}) => {
+export const serializeAgentTool = ({ tool }: { tool: SelectedToolItemType }) => {
   const isInvalidTool = Boolean(tool.pluginData?.error);
   const config = isInvalidTool
     ? (tool.config ?? {})
     : tool.inputs.reduce<Record<string, unknown>>((acc, input) => {
-        if (input.key === NodeInputKeyEnum.forbidStream) return acc;
         if (
-          maxHistories !== undefined &&
-          tool.flowNodeType === FlowNodeTypeEnum.appModule &&
-          input.key === NodeInputKeyEnum.history
+          input.key === NodeInputKeyEnum.forbidStream ||
+          (tool.flowNodeType === FlowNodeTypeEnum.appModule &&
+            input.key === NodeInputKeyEnum.history)
         ) {
-          acc[input.key] = maxHistories;
           return acc;
         }
         acc[input.key] = input.value;

@@ -104,14 +104,14 @@ runtime preparation 不再接受绕过权限检查的布尔参数。随后根据
 agent-sandbox:init:<sandboxId>
 ```
 
-锁覆盖文件部署、entrypoint 和 Skill 扫描，避免并发请求交错修改同一工作区。租约会自动续期，获取失败转换为标准 initializing 错误。
+锁覆盖文件部署、entrypoint 和 Skill 扫描，避免并发请求交错修改同一工作区。租约会自动续期；锁被并发子调用占用时有界等待重试，等待超时或租约异常再转换为标准 initializing 错误。
 
 ### Prepare pipeline
 
 Sandbox 初始化使用 `prepareSandbox(context, ...steps)` 顺序组合步骤。可复用步骤包括：
 
 - 创建或检查工作目录。
-- 注入本轮输入文件到 `user_files`。
+- 注入本轮输入文件到 `user_files`（同一会话沙盒内跨父子/兄弟节点按文件 URL 去重分配文件名，相同 URL 复用原名，不同 URL 的同名文件自动递增后缀并同步回写 `name` / `sandboxPath`，避免互相覆盖）。
 - 配置 npm/pnpm/yarn/bun/pip/uv 镜像。
 - 同步内置 Skill。
 - 注入已发布 Skill 版本。
@@ -141,7 +141,7 @@ App Agent 和 ToolCall 在实际使用 Sandbox 前调用 `ensureAppSandboxRuntim
 
 - 脚本来自 runtime 配置。
 - 在工作目录执行。
-- 按脚本 hash 记录成功状态；内容不变时不重复执行。
+- Workflow Agent/ToolCall 必须按应用与节点分别记录脚本成功 hash；内容不变时不重复执行，父子节点互不覆盖。旧全局成功标记不参与去重，也不迁移到节点状态键。
 - 状态保存在 Sandbox HOME 的 runtime state，不写入用户工作区。
 - runtime state 统一使用 `values: Record<string, string | string[]>`，让 hash、etag 和版本列表共享读写、
   校验、去重与空值清理逻辑。
@@ -152,7 +152,7 @@ App Agent 和 ToolCall 在实际使用 Sandbox 前调用 `ensureAppSandboxRuntim
 - 可选文件名固定为 Skill 版本根目录的 `entrypoint.sh`。
 - 在对应版本目录执行。
 - 成功状态按不可变 `versionId` 记录，只执行一次。
-- 未选中的版本会从执行状态中清理。
+- 未选中的版本仍可能由其他节点或会话使用，成功状态随已安装版本缓存保留；版本目录重新部署后清理对应标记。
 - 输出和运行时间受统一限制，失败不写成功状态。
 
 ## Sandbox 工具
@@ -180,7 +180,7 @@ App Agent 和 ToolCall 在实际使用 Sandbox 前调用 `ensureAppSandboxRuntim
 2. 下载当前版本 ZIP。
 3. 校验解压总大小和路径穿越。
 4. 以 versionId 部署到 runtime 的 projects 目录。
-5. 清理不再选中的版本目录。
+5. 追加缓存并保留其他节点/会话的版本；重建目录前先失效其旧 entrypoint 标记。正式版本在显式清理或沙盒存储删除时回收，归档恢复继续复用。
 6. 执行版本 entrypoint。
 7. 扫描 `SKILL.md`，把名称、描述和路径写入 Agent reminder。
 
@@ -207,6 +207,11 @@ Sandbox 的 Skill，也不准备 runtime；其他对话能力继续运行。关�
 
 Skill Edit 和 Skill 调试保持强依赖。文件 API 在服务端重新校验可用性，`checkExist` 只查询本地
 记录并返回可选关闭原因，不创建或恢复实例。
+
+App 会话的 `summary.hasAgentSandbox` 记录曾成功准备 runtime 的事实：Workflow 在文件、Skill 和
+entrypoint 准备完成后先更新已存在的根会话标记，再发送 `ready`，让本轮流式期间的独立文件/ticket 请求可鉴权。
+鉴权优先读取累计 summary，再读取 Chat Test 本轮根节点 metadata 或应用节点配置，系统/团队权限始终生效。
+Chat Test metadata 不包含子流程启用状态；后续轮次未使用 Sandbox 或本轮就绪后出错均不撤销累计标记。
 
 ## Quota
 
