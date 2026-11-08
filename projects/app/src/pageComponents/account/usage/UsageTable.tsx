@@ -1,3 +1,4 @@
+import { formatToISOWithTimezone } from '@fastgpt/global/common/string/time';
 import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import { Box, Button, Flex, Table, Tbody, Td, Th, Thead, Tr } from '@chakra-ui/react';
 import { formatNumber } from '@fastgpt/global/common/math/tools';
@@ -37,8 +38,8 @@ const UsageTableList = ({
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const requestParams = useMemo(() => {
     return {
-      dateStart: dayjs(dateRange.from || new Date()).format(),
-      dateEnd: dayjs(dateRange.to || new Date()).format(),
+      dateStart: formatToISOWithTimezone(dateRange.from),
+      dateEnd: formatToISOWithTimezone(dateRange.to),
       sources: toMultiSelectFilterQuery(sourceFilter),
       teamMemberIds: toMultiSelectFilterQuery(memberFilter),
       projectName

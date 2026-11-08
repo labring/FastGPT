@@ -1,3 +1,4 @@
+import { getLocalDateRange } from '@fastgpt/global/common/time/dateRange';
 import React, { useState, useMemo } from 'react';
 import type { BoxProps } from '@chakra-ui/react';
 import {
@@ -27,10 +28,7 @@ const DateRangePicker = ({
   onChange,
   onSuccess,
   popPosition = 'bottom',
-  defaultDate = {
-    from: addDays(new Date(), -30),
-    to: new Date()
-  },
+  defaultDate = getLocalDateRange(addDays(new Date(), -30), new Date()),
   dateRange,
   formLabel,
   ...props
@@ -106,28 +104,10 @@ const DateRangePicker = ({
         }
         defaultMonth={range.to}
         selected={range}
-        disabled={[
-          { from: new Date(2022, 3, 1), to: addDays(new Date(), -180) },
-          { from: addDays(new Date(), 1), to: new Date(2099, 1, 1) }
-        ]}
+        disabled={[{ before: addDays(new Date(), -180) }, { after: new Date() }]}
         onSelect={(date) => {
-          let typeDate = date as DateRangeType;
-          if (!typeDate || typeDate?.from === undefined) {
-            typeDate = {
-              from: range?.from,
-              to: range?.from
-            };
-          }
-          if (typeDate?.to === undefined) {
-            typeDate.to = typeDate.from;
-          }
-
-          if (typeDate?.from) {
-            typeDate.from = new Date(typeDate.from.setHours(0, 0, 0, 0));
-          }
-          if (typeDate?.to) {
-            typeDate.to = new Date(typeDate.to.setHours(23, 59, 59, 999));
-          }
+          const from = date?.from ?? range.from;
+          const typeDate = getLocalDateRange(from, date?.to ?? from);
 
           setRange(typeDate);
           onChange?.(typeDate);

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   BoolSchema,
+  DateSchema,
   NumSchema,
   optionalEmptyToUndefined,
   optionalNullToUndefined,
@@ -17,6 +18,41 @@ import {
   FlowNodeOutputTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
 import z from 'zod';
+
+describe('DateSchema', () => {
+  it('preserves ISO milliseconds and embedded offsets, offsetless strings and Date objects', () => {
+    for (const value of [
+      '2026-11-02T00:00:00.000+08:00',
+      '2026-11-09T23:59:59.999-05:00',
+      '2026-11-02T00:00:00.001+05:45',
+      '2026-11-02T00:00:00.000Z',
+      '2026-11-02T00:00:00.000',
+      new Date('2026-11-02T00:00:00.000Z')
+    ]) {
+      const parsed = DateSchema.parse(value);
+      if (value instanceof Date) expect(parsed).toEqual(value);
+      else expect(parsed).toBe(value);
+    }
+  });
+
+  it('normalizes legacy bare dates to server-local midnight without expanding the end boundary', () => {
+    expect(DateSchema.parse('2026-11-02')).toBe('2026-11-02T00:00:00.000');
+  });
+
+  it('rejects invalid calendar dates, timestamps and empty values without coercion', () => {
+    for (const value of [
+      '',
+      'invalid',
+      '2026-02-30T00:00:00.000Z',
+      '2026-11-02T25:00:00.000Z',
+      new Date(NaN),
+      Date.now(),
+      null,
+      undefined
+    ])
+      expect(DateSchema.safeParse(value).success).toBe(false);
+  });
+});
 
 describe('BoolSchema', () => {
   it('should accept boolean values directly', () => {

@@ -7,7 +7,7 @@ import { AppLogKeysEnum, AppLogTimespanEnum } from '../../../../core/app/logs/co
 import { ChatSourceEnum } from '../../../../core/chat/constants';
 import { AppLogKeysSchema } from '../../../../core/app/logs/type';
 import { SourceMemberSchema } from '../../../../support/user/type';
-import { BoolSchema, IntSchema, NumSchema } from '../../../../common/zod';
+import { BoolSchema, DateSchema, IntSchema, NumSchema } from '../../../../common/zod';
 
 /** 保留 offset/page 两种分页方式，并为每种方式提供应用 Key 免 appId 分支。 */
 const createPaginatedAppLogInputSchema = <T extends z.ZodRawShape & { appId: z.ZodString }>(
@@ -145,11 +145,11 @@ const AppChatLogsFilterSchema = FeedbackLogParamSchema.extend({
     example: '68ad85a7463006c963799a05',
     description: '应用 ID'
   }),
-  dateStart: z.union([z.string(), z.date()]).meta({
+  dateStart: DateSchema.meta({
     example: '2024-01-01T00:00:00.000Z',
     description: '开始时间'
   }),
-  dateEnd: z.union([z.string(), z.date()]).meta({
+  dateEnd: DateSchema.meta({
     example: '2024-12-31T23:59:59.999Z',
     description: '结束时间'
   }),
@@ -236,13 +236,14 @@ export const GetChartDataBodySchema = createAppApiKeyInputSchema(
       example: '68ad85a7463006c963799a05',
       description: '应用 ID'
     }),
-    dateStart: z.coerce.date().meta({
+    dateStart: DateSchema.meta({
       example: '2024-01-01T00:00:00.000Z',
-      description: '开始日期'
+      description:
+        '开始时间（包含），ISO 字符串保留时区偏移及毫秒；统计使用该固定偏移，未带偏移时按服务器时区，Z 为 UTC'
     }),
-    dateEnd: z.coerce.date().meta({
+    dateEnd: DateSchema.meta({
       example: '2024-12-31T23:59:59.999Z',
-      description: '结束日期'
+      description: '结束时间（包含），未带偏移时按服务器时区；保持客户端选择的边界，不额外扩展日期'
     }),
     source: z
       .array(z.nativeEnum(ChatSourceEnum))
@@ -253,7 +254,8 @@ export const GetChartDataBodySchema = createAppApiKeyInputSchema(
       }),
     offset: NumSchema.optional().default(1).meta({
       example: 1,
-      description: '用户留存偏移量，单位随 userTimespan 变化；未传时默认 1'
+      description:
+        '用户留存偏移量，单位随 userTimespan 变化；未传时默认 1；仅统计所选时间范围内的后续活跃'
     }),
     userTimespan: z.nativeEnum(AppLogTimespanEnum).meta({
       example: AppLogTimespanEnum.day,
@@ -377,11 +379,11 @@ export const GetLogUsersBodySchema = createPaginatedAppLogInputSchema({
     example: '68ad85a7463006c963799a05',
     description: '应用 ID'
   }),
-  dateStart: z.string().meta({
+  dateStart: DateSchema.meta({
     example: '2024-01-01T00:00:00.000Z',
     description: '开始时间'
   }),
-  dateEnd: z.string().meta({
+  dateEnd: DateSchema.meta({
     example: '2024-12-31T23:59:59.999Z',
     description: '结束时间'
   }),
