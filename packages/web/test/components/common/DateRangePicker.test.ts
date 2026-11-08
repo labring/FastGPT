@@ -110,7 +110,7 @@ describe.each([true, false])('DateRangePicker (desktop=%s)', (isPc) => {
 
   it('submits a complete local day range only after confirmation', async () => {
     const success = vi.fn();
-    await renderPicker({ onSuccess: success });
+    await renderPicker({ onSuccess: success, historyLimitDays: null });
     await act(async () =>
       state.calendar.onSelect({ from: new Date(2020, 0, 1), to: new Date(2020, 0, 2) })
     );
@@ -156,10 +156,21 @@ describe.each([true, false])('DateRangePicker (desktop=%s)', (isPc) => {
     }
   });
 
-  it('keeps the default historical cutoff and blocks future dates', async () => {
-    await renderPicker({ defaultDate: undefined, dateRange: undefined, formLabel: '日期' });
-    expect(state.calendar.disabled).toHaveLength(2);
-    expect(state.calendar.disabled[0].before).toBeInstanceOf(Date);
-    expect(state.calendar.disabled[1].after).toBeInstanceOf(Date);
-  });
+  it.each([
+    { historyLimitDays: null, count: 1 },
+    { historyLimitDays: undefined, count: 2 }
+  ])(
+    'applies the $historyLimitDays history limit and always blocks future dates',
+    async ({ historyLimitDays, count }) => {
+      await renderPicker({
+        historyLimitDays,
+        defaultDate: undefined,
+        dateRange: undefined,
+        formLabel: '日期'
+      });
+      expect(state.calendar.disabled).toHaveLength(count);
+      expect(state.calendar.disabled.at(-1).after).toBeInstanceOf(Date);
+      expect(state.calendar.disabled[0].before instanceof Date).toBe(count === 2);
+    }
+  );
 });
