@@ -6,10 +6,11 @@ import {
 } from '@fastgpt/global/core/chat/constants';
 import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
 import { SANDBOX_USER_FILES_PATH } from '@fastgpt/global/core/ai/sandbox/constants';
-import { runWithTestWorkflowContext as runWithContext, createTestWorkflowFileContext } from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
 import {
-  type WorkflowSandboxContext
-} from '@fastgpt/service/core/workflow/dispatch/context';
+  runWithTestWorkflowContext as runWithContext,
+  createTestWorkflowFileContext
+} from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
+import { type WorkflowSandboxContext } from '@fastgpt/service/core/workflow/dispatch/context';
 import { useToolMessages as useToolMessagesWithoutContext } from '@fastgpt/service/core/workflow/dispatch/ai/toolcall/hooks/useToolMessages';
 
 const useToolMessages = async (
