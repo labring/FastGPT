@@ -683,6 +683,9 @@ importers:
       https-proxy-agent:
         specifier: ^7.0.6
         version: 7.0.6
+      i18next:
+        specifier: 'catalog:'
+        version: 23.16.8
       iconv-lite:
         specifier: ^0.6.3
         version: 0.6.3
