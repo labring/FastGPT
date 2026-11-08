@@ -133,6 +133,7 @@ describe('dispatchWorkFlow explicit stop lifecycle', () => {
     stream: false,
     maxFileAmount: 20,
     maxBytesPerFile: 1024,
+    concatUsage: vi.fn(),
     resourceContext: { isRoot: false, resourceMap: new Map() },
     nodeResponseWriteConfig: { persistToDb: false, retainInMemory: true }
   });
@@ -233,8 +234,13 @@ describe('dispatchWorkFlow entry context isolation', () => {
     });
     initWorkflowSseResponse({ res: res as any, stream, responseWrite: workflowStreamResponse });
 
-    const node = createNode('http-context-node', FlowNodeTypeEnum.textEditor);
+    const nodeType = stream ? FlowNodeTypeEnum.agent : FlowNodeTypeEnum.textEditor;
+    const node = createNode('http-context-node', nodeType);
     node.isEntry = true;
+    const agentSandboxPrepareActions: Parameters<
+      typeof dispatchWorkFlow
+    >[0]['agentSandboxPrepareActions'] = stream ? [async (context) => context] : undefined;
+    const concatUsage = vi.fn();
     const executionContexts: Record<string, unknown>[] = [];
     const fileContexts: ReturnType<typeof getWorkflowFileContext>[] = [];
     const stoppingStates: boolean[] = [];
@@ -247,19 +253,18 @@ describe('dispatchWorkFlow entry context isolation', () => {
       'createWorkflowEntryNodeResponseSink'
     );
     const activeSpan = vi.spyOn(Tracing, 'withActiveSpan');
-    const callback = vi
-      .spyOn(callbackMap, FlowNodeTypeEnum.textEditor)
-      .mockImplementation(async (props) => {
-        executionContexts.push(props);
-        fileContexts.push(getWorkflowFileContext());
-        stoppingStates.push(getWorkflowContext().checkIsStopping());
-        variableValues.push(getWorkflowContext().variableContext.get('chatId'));
-        responseScopes.push(getWorkflowContext().nodeResponseSink);
-        runtimeControls.push(getWorkflowContext().runtimeControl);
-        res.emit('close');
-        stoppingStates.push(getWorkflowContext().checkIsStopping());
-        return {};
-      });
+    const callback = vi.spyOn(callbackMap, nodeType).mockImplementation(async (props) => {
+      executionContexts.push(props);
+      props.usagePush([{ moduleName: 'context test', totalPoints: 2 }]);
+      fileContexts.push(getWorkflowFileContext());
+      stoppingStates.push(getWorkflowContext().checkIsStopping());
+      variableValues.push(getWorkflowContext().variableContext.get('chatId'));
+      responseScopes.push(getWorkflowContext().nodeResponseSink);
+      runtimeControls.push(getWorkflowContext().runtimeControl);
+      res.emit('close');
+      stoppingStates.push(getWorkflowContext().checkIsStopping());
+      return {};
+    });
 
     try {
       const result = await dispatchWorkFlow({
@@ -289,29 +294,48 @@ describe('dispatchWorkFlow entry context isolation', () => {
         maxBytesPerFile: 1024,
         stream,
         workflowStreamResponse,
-        usageId: 'http-context-usage',
+        concatUsage,
+        defaultSkipNodeQueue: [],
+        agentSandboxPrepareActions,
+        // 模拟入口扩展或旧调用方夹带的字段；类型收敛不能代替运行时正向选择。
+        ...{ unexpectedEntryField: 'must not reach callback' },
         nodeResponseWriteConfig: { persistToDb: false, retainInMemory: false },
         resourceContext: { teamId, isRoot: false, resourceMap: new Map() }
       });
 
       expect(executionContexts).toHaveLength(1);
-      expect(executionContexts[0]).not.toHaveProperty('req');
-      expect(executionContexts[0]).not.toHaveProperty('res');
-      expect(executionContexts[0]).not.toHaveProperty('maxFileAmount');
-      expect(executionContexts[0]).not.toHaveProperty('maxBytesPerFile');
-      expect(executionContexts[0]).not.toHaveProperty('apiVersion');
-      expect(executionContexts[0]).not.toHaveProperty('responseAllData');
-      expect(executionContexts[0]).not.toHaveProperty('responseDetail');
-      expect(executionContexts[0]).not.toHaveProperty('showSkillReferences');
-      expect(executionContexts[0]).not.toHaveProperty('mode');
-      expect(executionContexts[0]).not.toHaveProperty('maxRunTimes');
-      expect(executionContexts[0]).not.toHaveProperty('workflowDispatchDeep');
-      expect(executionContexts[0]).not.toHaveProperty('isToolCall');
-      expect(executionContexts[0]).not.toHaveProperty('runtimeControl');
-      expect(executionContexts[0]).not.toHaveProperty('checkIsStopping');
-      expect(executionContexts[0]).not.toHaveProperty('nodeResponseSink');
-      expect(executionContexts[0]).not.toHaveProperty('variableState');
-      expect(executionContexts[0]).not.toHaveProperty('variableContext');
+      expect(Object.keys(executionContexts[0]).sort()).toEqual(
+        [
+          'lang',
+          'requestOrigin',
+          'timezone',
+          'externalProvider',
+          'runningAppInfo',
+          'runningUserInfo',
+          'uid',
+          'chatId',
+          'responseChatItemId',
+          'histories',
+          'query',
+          'chatConfig',
+          'lastInteractive',
+          'stream',
+          'retainDatasetCite',
+          'nodeResponseParentId',
+          'usageId',
+          'agentSandboxPrepareActions',
+          'node',
+          'runtimeNodes',
+          'runtimeNodesMap',
+          'runtimeEdges',
+          'params',
+          'usagePush',
+          'nodeSummary'
+        ].sort()
+      );
+      expect(executionContexts[0].agentSandboxPrepareActions).toBe(agentSandboxPrepareActions);
+      expect(executionContexts[0].node).toBe(node);
+      expect(concatUsage).toHaveBeenCalledExactlyOnceWith(2);
       expect(variableValues).toEqual(['http-context-chat']);
       // 入口激活流程 Context；节点 callback 激活预算快照，runWorkflow 自身不再创建 Context。
       expect(contextRun).toHaveBeenCalledTimes(2);

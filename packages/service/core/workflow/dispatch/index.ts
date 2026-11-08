@@ -33,7 +33,6 @@ import type { WorkflowNodeResponseWriteConfig } from './utils/entry';
 import { createWorkflowEntryNodeResponseSink } from './context/nodeResponse';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { isWorkflowSseResponseInitialized } from './context/streamResponse';
-import type { AgentSandboxPrepareAction } from './ai/agent/sub/sandbox';
 import { getWorkflowSource } from './utils/source';
 import { prepareWorkflowFileContext } from './context/file';
 import type { WorkflowResourceContext } from '@fastgpt/global/core/workflow/runtime/type';
@@ -76,7 +75,7 @@ type Props = Pick<
   res?: NodeHttpResponse; // 仅供入口 SSE 校验和 v1 断连检测使用，不传入 runtime 或节点执行上下文。
   defaultSkipNodeQueue?: WorkflowDebugResponse['skipNodeQueue'];
   nodeResponseWriteConfig: WorkflowNodeResponseWriteConfig;
-  agentSandboxPrepareActions?: AgentSandboxPrepareAction[];
+  agentSandboxPrepareActions?: RunWorkflowProps['agentSandboxPrepareActions'];
   maxFileAmount: number; //已在持久化前计算完成的用户级 Workflow 文件数量和大小上限
   maxBytesPerFile: number;
   resourceContext: WorkflowResourceContext; //本次运行的资源快照，必填：App 入口传选中 Version 的快照；Test/Debug 传当前请求临时快照；
@@ -101,6 +100,9 @@ export async function dispatchWorkFlow({
   res,
   maxFileAmount,
   maxBytesPerFile,
+  variables,
+  resourceContext,
+  nodeResponseWriteConfig,
   mode,
   apiVersion,
   responseAllData,
@@ -209,11 +211,11 @@ export async function dispatchWorkFlow({
         responseChatItemId,
         histories: runtimeHistories,
         variablesConfig: data.chatConfig?.variables,
-        inputVariables: data.variables,
+        inputVariables: variables,
         externalVariables: externalProvider.externalWorkflowVariables,
         runtimeOnlyVariables: getEntryPointRuntimeVariables({
           entryPoints: data.chatConfig?.entryPoints,
-          inputVariables: data.variables
+          inputVariables: variables
         }),
         maxFileAmount: maxFileAmount,
         resolveInputFile: async (file) => {
@@ -234,7 +236,7 @@ export async function dispatchWorkFlow({
         sourceId: data.runningAppInfo.sourceId,
         chatId,
         chatItemDataId: responseChatItemId,
-        nodeResponseWriteConfig: data.nodeResponseWriteConfig,
+        nodeResponseWriteConfig,
         apiVersion: apiVersion,
         responseAllData: responseAllData,
         responseDetail: responseDetail
@@ -258,7 +260,7 @@ export async function dispatchWorkFlow({
         nodeResponseSink,
         mcpClientMemory: {},
         fileContext,
-        resourceContext: data.resourceContext,
+        resourceContext,
         sandboxContext: {
           sourceType: runningAppInfo.sourceType,
           sourceId: runningAppInfo.sourceId,
@@ -288,7 +290,7 @@ export async function dispatchWorkFlow({
           return {
             ...result,
             // 子工作流只消费 summary；完整详情由共享 writer 持久化。
-            ...(data.nodeResponseWriteConfig.retainInMemory
+            ...(nodeResponseWriteConfig.retainInMemory
               ? { flatNodeResponses: nodeResponseSink.getFlatNodeResponses() }
               : {})
           };

@@ -43,7 +43,7 @@ import { ensureWorkflowSandboxReadyForUse } from '../sandbox';
 import { replaceAgentPromptToolReferences } from './adapter/prompt';
 import { createWorkflowAgentLoopRuntime } from './adapter/runtime';
 import { createAgentNodeResponseCollector } from './nodeResponseCollector';
-import { ensureAgentSandboxRuntime, type AgentSandboxPrepareAction } from './sub/sandbox/prepare';
+import { ensureAgentSandboxRuntime } from './sub/sandbox/prepare';
 import { createAgentSubAppLookup, getWorkflowAgentLoopProvider } from './utils';
 
 export type DispatchAgentModuleProps = ModuleDispatchProps<{
@@ -87,9 +87,7 @@ export type DispatchAgentModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.authTmbId]?: boolean;
   [NodeInputKeyEnum.useAgentSandbox]?: boolean;
   [NodeInputKeyEnum.sandboxEntrypoint]?: string;
-}> & {
-  agentSandboxPrepareActions?: AgentSandboxPrepareAction[];
-};
+}>;
 
 type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.answerText]: string;

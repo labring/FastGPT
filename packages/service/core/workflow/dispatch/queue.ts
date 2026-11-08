@@ -634,25 +634,24 @@ export class WorkflowQueue {
       const nodeContext = getWorkflowContext().getChildContext({
         runtimeControl: { ...this.runtimeControl, mode }
       });
-      // 入口配置不属于节点依赖；旧调用方通过对象展开夹带时，也在最终边界剥离。
-      const nodeData = { ...this.data };
-      for (const key of [
-        'apiVersion',
-        'responseAllData',
-        'responseDetail',
-        'showSkillReferences',
-        'mode',
-        'maxRunTimes',
-        'workflowDispatchDeep',
-        'isToolCall',
-        'memoryContext',
-        'workflowStreamResponse'
-      ]) {
-        Reflect.deleteProperty(nodeData, key);
-      }
       const nodeUsage = { inputTokens: 0, outputTokens: 0 };
+      // 正向选择节点业务输入，禁止入口配置、Queue 闭包和旧依赖随对象展开进入 callback。
+      // 图引用仍遵循现有运行协议；Agent 准备动作是实际业务输入，必须显式保留。
       const dispatchData: ModuleDispatchProps<Record<string, any>> = {
-        ...nodeData,
+        lang: this.data.lang,
+        requestOrigin: this.data.requestOrigin,
+        timezone: this.data.timezone,
+        externalProvider: this.data.externalProvider,
+        runningAppInfo: this.data.runningAppInfo,
+        runningUserInfo: this.data.runningUserInfo,
+        uid: this.data.uid,
+        chatId: this.data.chatId,
+        responseChatItemId: this.data.responseChatItemId,
+        query: this.data.query,
+        chatConfig: this.data.chatConfig,
+        stream: this.data.stream,
+        usageId: this.data.usageId,
+        agentSandboxPrepareActions: this.data.agentSandboxPrepareActions,
         usagePush: (usages) => {
           usages.forEach((item) => {
             nodeUsage.inputTokens += item.inputTokens ?? 0;
