@@ -11,7 +11,7 @@ import { useSystemStore } from '../system/useSystemStore';
 import { getWebReqUrl, subRoute } from '@fastgpt/web/common/system/utils';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { formatToISOWithTimezone } from '@fastgpt/global/common/string/time';
+import dayjs from 'dayjs';
 import { getAuthLoginRedirectPath } from '@/web/support/user/loginRedirect/url';
 import { getLanguageRequestHeaders } from '@fastgpt/web/i18n/utils';
 import { ToastHandledError } from '@fastgpt/global/common/error/utils';
@@ -274,7 +274,7 @@ function request(
       if (data[key] === undefined) {
         delete data[key];
       } else if (val instanceof Date) {
-        data[key] = formatToISOWithTimezone(val);
+        data[key] = dayjs(val).format();
       }
     }
   }

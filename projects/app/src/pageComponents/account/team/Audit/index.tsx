@@ -222,7 +222,7 @@ function AuditLog({ Tabs }: { Tabs: React.ReactNode }) {
               )}
               {auditLog.map((log) => {
                 const i18nData = auditLogMap[log.event];
-                const metadata = processAuditMetadata({
+                const metadata: Record<string, unknown> = processAuditMetadata({
                   event: log.event,
                   metadata: log.metadata,
                   t
@@ -245,7 +245,7 @@ function AuditLog({ Tabs }: { Tabs: React.ReactNode }) {
                       wordBreak={['normal', 'break-word']}
                       overflowWrap={['normal', 'anywhere']}
                     >
-                      {t(i18nData.content as any, metadata)}
+                      {t(i18nData.content, metadata)}
                     </Td>
                   </Tr>
                 ) : null;

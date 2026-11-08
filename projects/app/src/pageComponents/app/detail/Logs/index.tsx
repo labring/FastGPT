@@ -1,4 +1,3 @@
-import { getLocalDateRange } from '@fastgpt/global/common/time/dateRange';
 import React, { useState } from 'react';
 import { Box, Flex } from '@chakra-ui/react';
 import LogTable from './LogTable';
@@ -24,9 +23,10 @@ const Logs = () => {
   });
   const appId = useContextSelector(AppContext, (v) => v.appId);
 
-  const [dateRange, setDateRange] = useState<DateRangeType>(() =>
-    getLocalDateRange(addDays(new Date(), -6), new Date())
-  );
+  const [dateRange, setDateRange] = useState<DateRangeType>({
+    from: new Date(addDays(new Date(), -6).setHours(0, 0, 0, 0)),
+    to: new Date(new Date().setHours(23, 59, 59, 999))
+  });
   const [sourceFilter, setSourceFilter] = useState(createMultiSelectFilter<ChatSourceEnum>());
 
   return (

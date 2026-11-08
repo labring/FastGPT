@@ -1,4 +1,3 @@
-import { formatToISOWithTimezone } from '@fastgpt/global/common/string/time';
 import { getDashboardData } from '@/web/support/wallet/usage/api';
 import { Box, Flex } from '@chakra-ui/react';
 import MyBox from '@fastgpt/web/components/common/MyBox';
@@ -28,8 +27,10 @@ const UsageDashboard = ({
   const { data: totalPoints = [], loading: totalPointsLoading } = useRequest(
     () =>
       getDashboardData({
-        dateStart: formatToISOWithTimezone(dateRange.from),
-        dateEnd: formatToISOWithTimezone(dateRange.to),
+        dateStart: dateRange.from
+          ? dayjs(dateRange.from.setHours(0, 0, 0, 0)).format()
+          : dayjs(new Date().setHours(0, 0, 0, 0)).format(),
+        dateEnd: dateRange.to ? dayjs(dateRange.to).format() : dayjs(new Date()).format(),
         sources: toMultiSelectFilterQuery(sourceFilter),
         teamMemberIds: toMultiSelectFilterQuery(memberFilter),
         unit

@@ -28,7 +28,10 @@ const DateRangePicker = ({
   onChange,
   onSuccess,
   popPosition = 'bottom',
-  defaultDate = getLocalDateRange(addDays(new Date(), -30), new Date()),
+  defaultDate = {
+    from: addDays(new Date(), -30),
+    to: new Date()
+  },
   dateRange,
   formLabel,
   historyLimitDays = 180,
