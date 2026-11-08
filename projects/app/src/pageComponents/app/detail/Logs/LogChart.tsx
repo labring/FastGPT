@@ -1,3 +1,4 @@
+import { formatToISOWithTimezone } from '@fastgpt/global/common/string/time';
 import {
   Accordion,
   AccordionButton,
@@ -20,13 +21,10 @@ import {
 } from '@fastgpt/web/components/common/TagFilter';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'next-i18next';
-import { AppContext } from '../context';
-import { useContextSelector } from 'use-context-selector';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getAppChartData, getAppTotalData } from '@/web/core/app/api/log';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import {
-  addDays,
   startOfDay,
   startOfWeek,
   endOfWeek,
@@ -160,8 +158,8 @@ const LogChart = ({
     async () => {
       return getAppChartData({
         appId,
-        dateStart: dateRange.from || new Date(),
-        dateEnd: addDays(dateRange.to || new Date(), 1),
+        dateStart: formatToISOWithTimezone(dateRange.from),
+        dateEnd: formatToISOWithTimezone(dateRange.to),
         offset: parseInt(offset),
         source: chartSources,
         userTimespan,
@@ -857,6 +855,7 @@ const HeaderControl = ({
     <Flex flexDir={['column', 'row']} alignItems={'flex-start'} gap={3} pb={2} px={px}>
       <DateRangePicker
         defaultDate={dateRange}
+        dateRange={dateRange}
         onSuccess={setDateRange}
         formLabel={t('app:logs_date')}
       />

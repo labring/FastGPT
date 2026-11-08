@@ -236,13 +236,13 @@ export const GetChartDataBodySchema = createAppApiKeyInputSchema(
       example: '68ad85a7463006c963799a05',
       description: '应用 ID'
     }),
-    dateStart: z.coerce.date().meta({
+    dateStart: z.union([z.string().datetime({ offset: true }), z.date()]).meta({
       example: '2024-01-01T00:00:00.000Z',
-      description: '开始日期'
+      description: '开始时间（包含），ISO 字符串需包含时区偏移及毫秒；该偏移用于统计分组'
     }),
-    dateEnd: z.coerce.date().meta({
+    dateEnd: z.union([z.string().datetime({ offset: true }), z.date()]).meta({
       example: '2024-12-31T23:59:59.999Z',
-      description: '结束日期'
+      description: '结束时间（包含），保持客户端选择的边界，不额外扩展日期'
     }),
     source: z
       .array(z.nativeEnum(ChatSourceEnum))
@@ -253,7 +253,8 @@ export const GetChartDataBodySchema = createAppApiKeyInputSchema(
       }),
     offset: NumSchema.optional().default(1).meta({
       example: 1,
-      description: '用户留存偏移量，单位随 userTimespan 变化；未传时默认 1'
+      description:
+        '用户留存偏移量，单位随 userTimespan 变化；未传时默认 1；仅统计所选时间范围内的后续活跃'
     }),
     userTimespan: z.nativeEnum(AppLogTimespanEnum).meta({
       example: AppLogTimespanEnum.day,

@@ -1,3 +1,4 @@
+import { formatToISOWithTimezone } from '@fastgpt/global/common/string/time';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import {
   getChatPublishSourceName,
@@ -161,8 +162,8 @@ const LogTable = ({
       filename: t('app:export_log_filename', { name: appName }),
       body: {
         appId,
-        dateStart: dayjs(dateRange.from || new Date()).format(),
-        dateEnd: dayjs(dateRange.to || new Date()).format(),
+        dateStart: formatToISOWithTimezone(dateRange.from),
+        dateEnd: formatToISOWithTimezone(dateRange.to),
         sources: toMultiSelectFilterQuery(sourceFilter),
         tmbIds,
         outLinkUids,
