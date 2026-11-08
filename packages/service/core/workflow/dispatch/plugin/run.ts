@@ -42,7 +42,6 @@ import { runWithDerivedWorkflowFileContext, getWorkflowContext, runWithContext }
 import { createSystemToolResourceContext } from '../context/resource';
 import { loadChildWorkflowWithResource } from '../../resource/service';
 import type { WorkflowResourceContext } from '@fastgpt/global/core/workflow/runtime/type';
-import { WorkflowMemoryState } from '../../memory/state';
 
 type RunPluginProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.forbidStream]?: boolean;
@@ -288,7 +287,7 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
           resolveInputFile
         });
         const runtimeVariables = childVariableState.toRuntimeRecord();
-        const childMemoryState = WorkflowMemoryState.fromWorkflow(props).fork(
+        const childMemoryContext = getWorkflowContext().memoryContext.fork(
           props.node?.nodeId ? `node:${props.node.nodeId}` : undefined
         );
 
@@ -302,18 +301,18 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
           emit: shouldStoreChildNodeResponses
         });
         const childContext = getWorkflowContext().getChildContext({
+          ...(system_forbid_stream ? { workflowStreamResponse: undefined } : {}),
+          memoryContext: childMemoryContext,
           variableContext: childVariableState,
           nodeResponseSink: childNodeResponseScope
         });
         return runWithContext(childContext, () =>
           runWorkflow({
             ...props,
-            memoryState: childMemoryState,
             // Rewrite stream mode
             ...(system_forbid_stream
               ? {
-                  stream: false,
-                  workflowStreamResponse: undefined
+                  stream: false
                 }
               : {}),
             runningAppInfo: childRunningAppInfo,

@@ -21,7 +21,7 @@ import type { ChatProps, ChatResponse } from './type';
  * 调度 AI Chat 节点：整理引用、历史和文件上下文，调用 LLM，并写入节点响应与用量。
  */
 export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResponse> => {
-  const { fileContext, checkIsStopping } = getWorkflowContext();
+  const { fileContext, checkIsStopping, workflowStreamResponse } = getWorkflowContext();
   const {
     requestOrigin,
     stream = false,
@@ -31,7 +31,6 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     node: { name, version, inputs },
     runningUserInfo,
     runningAppInfo,
-    workflowStreamResponse,
     chatConfig,
     usageId,
     params: {

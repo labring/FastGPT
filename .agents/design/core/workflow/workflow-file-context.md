@@ -178,7 +178,9 @@ Context 不暴露绕过根 scope 校验的私有文件登记、`clone` 或文件
 `registerExternalFile` 供分类流程写入已准备的外链；`register` 是必填运行能力。
 `derive()` 直接返回完整 Context：登记操作串行检查当前登记表中去重后的文件数量，
 再委托父 `register` 完成根级鉴权，成功后把可信 Ref 同步加入本地登记表。
-`runWithDerivedWorkflowFileContext` 只负责实际 payload 筛选和运行作用域，不再补装登记能力。
+`prepareDerivedWorkflowFileContext` 位于 `context/file.ts`，显式接收父文件 Context，集中完成实际 payload
+筛选、克隆、文件映射和派生登记表准备，不依赖 ALS。`runWithDerivedWorkflowFileContext` 只负责调用
+准备函数、覆盖 file/resource 引用并激活运行作用域，不再实现文件业务规则或补装登记能力。
 
 运行 Context 统一通过 `workflowContext.getChildContext(overrides)` 派生，再由 `runWithContext` 激活。
 文件适配器先完成 `fileContext.derive()` 的权限与登记表准备，再覆盖派生运行 Context 的 `fileContext`。
@@ -426,7 +428,7 @@ Child 的 `register` 由 `derive()` 完整构建，串行检查额度，成功�
 
 ## 11. 相关代码
 
-- `packages/service/core/workflow/dispatch/context/index.ts`：运行作用域、MCP 连接缓存、统一 getters 与 Child 派生。
+- `packages/service/core/workflow/dispatch/context/index.ts`：运行作用域、简单运行控制/沙盒身份声明、MCP 连接缓存、事件 writer、统一 getters 与 Child 派生。
 - `packages/service/core/workflow/dispatch/context/file.ts`：文件 Context、登记、鉴权、读取与派生。
 - `packages/service/core/workflow/utils/fileLimits.ts`：文件额度计算与入口 query 裁剪。
 - `packages/service/core/workflow/dispatch/context/resource.ts`：资源快照与访问校验。

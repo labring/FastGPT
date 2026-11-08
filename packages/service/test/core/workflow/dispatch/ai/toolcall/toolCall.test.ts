@@ -1,4 +1,6 @@
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
+import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import { getWorkflowContext } from '@fastgpt/service/core/workflow/dispatch/context';
 import { SANDBOX_SHELL_TOOL_NAME } from '@fastgpt/global/core/ai/sandbox/tools';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { UserConfigError } from '@fastgpt/global/common/error/utils';
@@ -380,8 +382,9 @@ describe('runToolCall compression node responses', () => {
       }
     ];
 
-    runWorkflowMock.mockImplementation(async ({ workflowStreamResponse }) => {
-      workflowStreamResponse?.({ event: 'answer', data: 'child answer delta' });
+    runWorkflowMock.mockImplementation(async () => {
+      const { workflowStreamResponse } = getWorkflowContext();
+      workflowStreamResponse?.({ event: SseResponseEventEnum.answer, data: 'child answer delta' });
       return {
         toolResponse: { result: 'child tool result' },
         assistantResponses: childAssistantResponses,
@@ -442,8 +445,7 @@ describe('runToolCall compression node responses', () => {
 
     expect(runWorkflowMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        stream: true,
-        workflowStreamResponse: expect.any(Function)
+        stream: true
       })
     );
     expect(

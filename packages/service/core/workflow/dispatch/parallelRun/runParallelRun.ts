@@ -19,7 +19,6 @@ import {
   type ParallelFullResultItem
 } from './service';
 import { pushSubWorkflowUsage } from '../utils';
-import { WorkflowMemoryState } from '../../memory/state';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { WorkflowRunStateSnapshot } from '../utils/containerRunState';
 import { getWorkflowContext, runWithContext } from '../context';
@@ -69,7 +68,7 @@ export const dispatchParallelRun = async (props: Props): Promise<Response> => {
 
   const maxRetryAttempts = clampParallelRetryTimes(userRetryTimes);
   const attemptResults: ParallelTaskResult[] = [];
-  const parentMemoryState = WorkflowMemoryState.fromWorkflow(props);
+  const parentMemoryContext = getWorkflowContext().memoryContext;
   const successfulTaskMemories: Array<Record<string, any> | undefined> = [];
   // 仅保留并行节点自身未恢复的异常；子流程失败只参与任务结果汇总。
   let parallelFailure: { rawError: unknown } | undefined;
@@ -101,7 +100,7 @@ export const dispatchParallelRun = async (props: Props): Promise<Response> => {
         const getRunningTime = () => +((Date.now() - startTime) / 1000).toFixed(2);
 
         try {
-          const taskMemoryState = parentMemoryState.fork();
+          const taskMemoryContext = parentMemoryContext.fork();
           const taskStateSnapshot = new WorkflowRunStateSnapshot({
             variableContext: parentVariableContext,
             nodeOutputs: {
@@ -111,6 +110,7 @@ export const dispatchParallelRun = async (props: Props): Promise<Response> => {
             }
           });
           const taskContext = getWorkflowContext().getChildContext({
+            memoryContext: taskMemoryContext,
             variableContext: taskStateSnapshot.variableContext,
             nodeResponseSink: getWorkflowContext().nodeResponseSink.getChildContext({
               workflowRuntimeSummary: createWorkflowRuntimeSummary(),
@@ -120,7 +120,6 @@ export const dispatchParallelRun = async (props: Props): Promise<Response> => {
           const response = await runWithContext(taskContext, () =>
             runWorkflow({
               ...props,
-              memoryState: taskMemoryState,
               nodeResponseParentId: taskResponseId,
               runtimeNodes: taskRuntimeNodes,
               runtimeEdges: taskRuntimeEdges

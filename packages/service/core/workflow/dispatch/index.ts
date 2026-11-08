@@ -25,6 +25,7 @@ import { observeWorkflowRun } from '../metrics';
 import { withActiveSpan } from '../../../common/tracing';
 import { onWorkflowEnd, onWorkflowStart } from '../../../common/langfuse/workflow';
 import { getWorkflowContext, runWithContext } from './context';
+import { WorkflowMemoryContext } from './context/memory';
 import { createClientAbortTracker } from './utils/clientAbort';
 import type { IncomingMessage } from 'node:http';
 import type { NodeHttpResponse } from '../../../types/http';
@@ -37,7 +38,8 @@ import { getWorkflowSource } from './utils/source';
 import { prepareWorkflowFileContext } from './context/file';
 import type { WorkflowResourceContext } from '@fastgpt/global/core/workflow/runtime/type';
 import { WorkflowQueue } from './queue';
-import type { WorkflowRuntimeControl } from './context/runtimeControl';
+import type { WorkflowRuntimeControl } from './context';
+import type { WorkflowResponseType } from '@fastgpt/global/core/workflow/runtime/sse';
 import { WORKFLOW_MAX_RUN_TIMES } from '../constants';
 
 const logger = getLogger(LogCategories.MODULE.WORKFLOW.DISPATCH);
@@ -58,10 +60,10 @@ type Props = Pick<
   | 'lastInteractive'
   | 'stream'
   | 'retainDatasetCite'
-  | 'workflowStreamResponse'
   | 'nodeResponseParentId'
   | 'usageId'
 > & {
+  workflowStreamResponse?: WorkflowResponseType;
   mode: WorkflowRuntimeControl['mode'];
   /** 入口协议配置：用于停止检测和响应 Context，不属于节点参数。 */
   apiVersion?: RunWorkflowProps['apiVersion'];
@@ -103,6 +105,7 @@ export async function dispatchWorkFlow({
   apiVersion,
   responseAllData,
   responseDetail,
+  workflowStreamResponse,
   usageSource,
   usageId,
   concatUsage,
@@ -234,8 +237,7 @@ export async function dispatchWorkFlow({
         nodeResponseWriteConfig: data.nodeResponseWriteConfig,
         apiVersion: apiVersion,
         responseAllData: responseAllData,
-        responseDetail: responseDetail,
-        workflowStreamResponse: data.workflowStreamResponse
+        responseDetail: responseDetail
       })
     );
 
@@ -248,7 +250,11 @@ export async function dispatchWorkFlow({
           isToolCall: false
         },
         checkIsStopping,
+        workflowStreamResponse,
         variableContext: variableState,
+        memoryContext: WorkflowMemoryContext.fromHistories(runtimeHistories, {
+          rootSource: runningAppInfo
+        }),
         nodeResponseSink,
         mcpClientMemory: {},
         fileContext,
@@ -306,7 +312,8 @@ export async function dispatchWorkFlow({
 /** 执行当前层工作流，维护独立摘要，并在返回或抛出前完成本层错误上报。 */
 export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowResponse> => {
   // 上层已准备本次运行的变量与独立响应 Scope；runtime 只消费完整 Context。
-  const { variableContext, nodeResponseSink, runtimeControl } = getWorkflowContext();
+  const { variableContext, nodeResponseSink, runtimeControl, workflowStreamResponse } =
+    getWorkflowContext();
   const { workflowRuntimeSummary } = nodeResponseSink;
 
   // 计算当前工作流深度
@@ -451,12 +458,12 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
             });
 
             if (isRootRuntime) {
-              data.workflowStreamResponse?.(workflowSseEvent.workflowDuration(durationSeconds));
+              workflowStreamResponse?.(workflowSseEvent.workflowDuration(durationSeconds));
             }
 
-            const outputMemories = workflowQueue.memoryState.isForked
-              ? workflowQueue.memoryState.getDelta()
-              : workflowQueue.memoryState.toRecord();
+            const outputMemories = workflowQueue.memoryContext.isForked
+              ? workflowQueue.memoryContext.getDelta()
+              : workflowQueue.memoryContext.toRecord();
 
             return {
               flowUsages: workflowQueue.chatNodeUsages,

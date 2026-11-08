@@ -15,6 +15,7 @@ import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/
 import type { WorkflowVariableStateLike } from '@fastgpt/service/core/workflow/dispatch/context/variables';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import type { DispatchFlowResponse } from '@fastgpt/service/core/workflow/dispatch/type';
 import {
   createNodeSummary,
@@ -1380,13 +1381,13 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
 
     runWorkflowMock.mockImplementation((args: any) => {
       iter++;
-      const key = args.memoryState.getNodeMemoryKey({
-        runningAppInfo: { sourceType: 'app', sourceId: 'app_1' },
+      const key = getCapturedTestWorkflowContext(args).memoryContext.getNodeMemoryKey({
+        runningAppInfo: { sourceType: ChatSourceTypeEnum.app, sourceId: 'app_1' },
         nodeId: 'extract1'
       });
       seenMemoriesPerIter.push(
-        args.memoryState.readNodeMemory({
-          runningAppInfo: { sourceType: 'app', sourceId: 'app_1' },
+        getCapturedTestWorkflowContext(args).memoryContext.readNodeMemory({
+          runningAppInfo: { sourceType: ChatSourceTypeEnum.app, sourceId: 'app_1' },
           nodeId: 'extract1'
         })
       );

@@ -4,7 +4,7 @@ import * as secretUtils from '@fastgpt/service/common/secret/utils';
 import * as teamLimit from '@fastgpt/service/support/permission/teamLimit';
 import { WorkflowStopSignalCache } from '@fastgpt/dal/redis/caches/workflowStopSignal';
 import { setAgentRuntimeStop, shouldWorkflowStop } from '@fastgpt/service/core/chat/stop';
-import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatSourceTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import {
   createTestWorkflowDispatch,
   createTestVariableContext
@@ -154,6 +154,25 @@ describe('dispatchWorkFlow explicit stop lifecycle', () => {
       expect(await shouldWorkflowStop(params)).toBe(false);
     }
   );
+
+  it('initializes root memory from histories before running nodes and preserves untouched memories', async () => {
+    const baseline = { untouched: { value: 'history' } };
+    let observed = false;
+    vi.spyOn(callbackMap, FlowNodeTypeEnum.workflowStart).mockImplementationOnce(async (props) => {
+      expect(props).not.toHaveProperty('memoryContext');
+      expect(getWorkflowContext().memoryContext.toRecord()).toEqual(baseline);
+      observed = true;
+      return { system_memories: { updated: { value: 42 } } };
+    });
+    const result = await dispatchWorkFlow({
+      ...createParams(),
+      histories: [
+        { obj: ChatRoleEnum.AI, value: [{ text: { content: 'previous' } }], memories: baseline }
+      ]
+    });
+    expect(observed).toBe(true);
+    expect(result.system_memories).toEqual({ ...baseline, updated: { value: 42 } });
+  });
 
   it('keeps a headless run alive after response close and stops on the shared Redis signal', async () => {
     const res = new EventEmitter();

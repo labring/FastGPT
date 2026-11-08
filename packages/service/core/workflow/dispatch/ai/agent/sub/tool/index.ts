@@ -64,7 +64,6 @@ export type Props = {
   usageId?: WorkflowDispatchProps['usageId'];
   uid: WorkflowDispatchProps['uid'];
   runtimeNodesMap?: Map<string, RuntimeNodeItemType>;
-  workflowStreamResponse: WorkflowDispatchProps['workflowStreamResponse'];
 };
 
 /** 执行 Agent 选择的工具；协议执行错误保留原结果，并返回模型可处理的错误标记。 */
@@ -76,10 +75,9 @@ export const dispatchTool = async ({
   chatId,
   usageId,
   uid,
-  runtimeNodesMap,
-  workflowStreamResponse
+  runtimeNodesMap
 }: Props): Promise<DispatchSubAppResponse> => {
-  const { variableContext: variableState } = getWorkflowContext();
+  const { variableContext: variableState, workflowStreamResponse } = getWorkflowContext();
   const resolveReference = (value: ReferenceValueType) =>
     getReferenceVariableValue({
       value,

@@ -7,7 +7,7 @@ import {
   getWorkflowContext,
   runWithContext
 } from '@fastgpt/service/core/workflow/dispatch/context';
-import type { WorkflowRuntimeControl } from '@fastgpt/service/core/workflow/dispatch/context/runtimeControl';
+import type { WorkflowRuntimeControl } from '@fastgpt/service/core/workflow/dispatch/context';
 import type { RunWorkflowProps } from '@fastgpt/service/core/workflow/dispatch/type';
 import { createWorkflowRuntimeSummary } from '@fastgpt/service/core/workflow/dispatch/utils/summary';
 import {

@@ -1,4 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
+import { getWorkflowContext } from '@fastgpt/service/core/workflow/dispatch/context';
+import {
+  runWithTestWorkflowContext,
+  createTestWorkflowFileContext
+} from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { SubAppIds } from '@fastgpt/global/core/workflow/node/agent/constants';
 import {
@@ -115,11 +120,14 @@ describe('Agent read_files tool protocol', () => {
   });
 
   it('does not forward child tool streams from Agent', async () => {
-    const streamResponseFn = vi.fn();
-    dispatchToolMock.mockResolvedValue({ response: 'ok' });
+    const workflowStreamResponse = vi.fn();
+    dispatchToolMock.mockImplementation(async (props) => {
+      expect(props).not.toHaveProperty('workflowStreamResponse');
+      expect(getWorkflowContext().workflowStreamResponse).toBeUndefined();
+      return { response: 'ok' };
+    });
     const executeTool = createExecuteToolForTest({
       stream: true,
-      streamResponseFn,
       getSubApp: () => ({
         type: 'tool',
         id: 'system-tool',
@@ -130,18 +138,25 @@ describe('Agent read_files tool protocol', () => {
       })
     });
 
-    await executeTool({
-      callId: 'call_system_tool',
-      toolId: 'system-tool',
-      args: '{}'
-    });
-
-    expect(dispatchToolMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        workflowStreamResponse: undefined
-      })
+    await runWithTestWorkflowContext(
+      {
+        fileContext: await createTestWorkflowFileContext(),
+        mcpClientMemory: {},
+        checkIsStopping: () => false,
+        workflowStreamResponse
+      },
+      async () => {
+        const result = await executeTool({
+          callId: 'call_system_tool',
+          toolId: 'system-tool',
+          args: '{}'
+        });
+        expect(result.response).toBe('ok');
+        expect(getWorkflowContext().workflowStreamResponse).toBe(workflowStreamResponse);
+      }
     );
-    expect(streamResponseFn).not.toHaveBeenCalled();
+    expect(dispatchToolMock).toHaveBeenCalledOnce();
+    expect(workflowStreamResponse).not.toHaveBeenCalled();
   });
 
   it('omits built-in history for workflow sub-apps while preserving history business inputs for plugins', async () => {

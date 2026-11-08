@@ -5,6 +5,7 @@ import {
   getCapturedTestWorkflowContext
 } from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import {
   FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
@@ -655,10 +656,10 @@ describe('dispatchParallelRun', () => {
     expect(parentVariableState.get('count')).toBe(2);
   });
 
-  it('并发任务各自 fork 独立 memoryState，重试与失败隔离，并按任务索引顺序确定性合并成功任务的 system_memories', async () => {
-    const parentMemoryState = (
-      await import('@fastgpt/service/core/workflow/memory/state')
-    ).WorkflowMemoryState.fromRecord({
+  it('并发任务各自 fork 独立 memoryContext，重试与失败隔离，并按任务索引顺序确定性合并成功任务的 system_memories', async () => {
+    const parentMemoryContext = (
+      await import('@fastgpt/service/core/workflow/dispatch/context/memory')
+    ).WorkflowMemoryContext.fromRecord({
       'app:app_1:extract1': { memory: 'baseline' }
     });
     const seenTaskMemories: any[] = [];
@@ -666,29 +667,31 @@ describe('dispatchParallelRun', () => {
     runWorkflowMock.mockImplementation(async (args: any) => {
       // 每个并发任务都只能看到父 baseline，看不到其他并发任务的未提交写入
       seenTaskMemories.push(
-        args.memoryState.readNodeMemory({
-          runningAppInfo: { sourceType: 'app', sourceId: 'app_1' },
+        getCapturedTestWorkflowContext(args).memoryContext.readNodeMemory({
+          runningAppInfo: { sourceType: ChatSourceTypeEnum.app, sourceId: 'app_1' },
           nodeId: 'extract1'
         })
       );
 
       if (args.nodeResponseParentId.endsWith('_task_0_attempt_0')) {
-        args.memoryState.merge({
+        getCapturedTestWorkflowContext(args).memoryContext.merge({
           'app:app_1:extract1': { memory: 'failed-attempt' },
           'app:app_1:branch0': { memory: 'failed-branch0' }
         });
         return makeDispatchFlowResponse({
-          [DispatchNodeResponseKeyEnum.memories]: args.memoryState.getDelta(),
+          [DispatchNodeResponseKeyEnum.memories]:
+            getCapturedTestWorkflowContext(args).memoryContext.getDelta(),
           nodeResponses: [makeResponseItem('failed-node', { error: 'failed' })]
         });
       }
       if (args.nodeResponseParentId.endsWith('_task_0_attempt_1')) {
-        args.memoryState.merge({
+        getCapturedTestWorkflowContext(args).memoryContext.merge({
           'app:app_1:extract1': { memory: 'task0-recovered' },
           'app:app_1:branch0': { memory: 'task0-branch' }
         });
         return makeDispatchFlowResponse({
-          [DispatchNodeResponseKeyEnum.memories]: args.memoryState.getDelta(),
+          [DispatchNodeResponseKeyEnum.memories]:
+            getCapturedTestWorkflowContext(args).memoryContext.getDelta(),
           nodeResponses: [
             makeResponseItem('nestedEnd', {
               moduleType: FlowNodeTypeEnum.nestedEnd,
@@ -698,12 +701,13 @@ describe('dispatchParallelRun', () => {
         });
       }
       if (args.nodeResponseParentId.includes('_task_1')) {
-        args.memoryState.merge({
+        getCapturedTestWorkflowContext(args).memoryContext.merge({
           'app:app_1:extract1': { memory: 'task1-ok' },
           'app:app_1:branch1': { memory: 'task1-branch' }
         });
         return makeDispatchFlowResponse({
-          [DispatchNodeResponseKeyEnum.memories]: args.memoryState.getDelta(),
+          [DispatchNodeResponseKeyEnum.memories]:
+            getCapturedTestWorkflowContext(args).memoryContext.getDelta(),
           nodeResponses: [
             makeResponseItem('nestedEnd', {
               moduleType: FlowNodeTypeEnum.nestedEnd,
@@ -712,19 +716,20 @@ describe('dispatchParallelRun', () => {
           ]
         });
       }
-      args.memoryState.merge({
+      getCapturedTestWorkflowContext(args).memoryContext.merge({
         'app:app_1:extract1': { memory: 'task2-failed' },
         'app:app_1:branch2': { memory: 'task2-branch' }
       });
       return makeDispatchFlowResponse({
-        [DispatchNodeResponseKeyEnum.memories]: args.memoryState.getDelta(),
+        [DispatchNodeResponseKeyEnum.memories]:
+          getCapturedTestWorkflowContext(args).memoryContext.getDelta(),
         nodeResponses: [makeResponseItem('failed-node', { error: 'failed' })]
       });
     });
 
     const result: any = await dispatchParallelRun(
       makeProps({
-        memoryState: parentMemoryState,
+        memoryContext: parentMemoryContext,
         params: {
           loopInputArray: ['a', 'b', 'c'],
           [NodeInputKeyEnum.childrenNodeIdList]: [],

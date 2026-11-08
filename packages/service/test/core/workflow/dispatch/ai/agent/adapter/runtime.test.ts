@@ -72,12 +72,16 @@ const createContext = (overrides = {}) =>
     ...overrides
   }) as any;
 
-const createWorkflowAgentLoopRuntime: typeof createWorkflowAgentLoopRuntimeWithoutContext = (
-  props
-) =>
+const createWorkflowAgentLoopRuntime = ({
+  workflowStreamResponse,
+  ...props
+}: Parameters<typeof createWorkflowAgentLoopRuntimeWithoutContext>[0] & {
+  workflowStreamResponse?: import('@fastgpt/global/core/workflow/runtime/sse').WorkflowResponseType;
+}) =>
   runWithContext(
     {
       checkIsStopping: () => false,
+      workflowStreamResponse,
       mcpClientMemory: {},
       fileContext: {
         limits: { maxFileAmount: 20, maxBytesPerFile: 1024 }

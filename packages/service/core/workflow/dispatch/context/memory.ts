@@ -6,7 +6,7 @@ import {
   mergeWorkflowMemories,
   readLegacyWorkflowMemory,
   type WorkflowMemorySource
-} from './utils';
+} from '../../memory/utils';
 
 type ForkWorkflowMemoryOptions = {
   history?: ChatItemMiniType[] | number;
@@ -15,10 +15,11 @@ type ForkWorkflowMemoryOptions = {
 };
 
 /**
- * 保存只读基线、当前增量和调用路径。子运行 fork 后独立写入，仅向父级提交 delta；
+ * 本层工作流的记忆 Context，保存只读基线、当前增量和调用路径，不依赖 ALS。
+ * 子运行 fork 后独立写入，仅向父级提交 delta；
  * 根运行输出完整快照，保留未触发分支的记忆。读写边界深拷贝，防止并行分支共享可变引用。
  */
-export class WorkflowMemoryState {
+export class WorkflowMemoryContext {
   private readonly delta: Record<string, any> = {};
   private readonly baseline: Record<string, any>;
   private readonly scopePath: readonly string[];
@@ -49,40 +50,41 @@ export class WorkflowMemoryState {
   static fromRecord(
     baseline?: Record<string, any>,
     context: { rootSource?: WorkflowMemorySource } = {}
-  ): WorkflowMemoryState {
-    return new WorkflowMemoryState({ baseline: cloneDeep(baseline), ...context });
+  ): WorkflowMemoryContext {
+    return new WorkflowMemoryContext({ baseline: cloneDeep(baseline), ...context });
   }
 
   /** 自定义历史替换基线，同时继承父状态的调用路径和根来源。 */
   static fromHistories(
     histories?: ChatItemMiniType[],
-    context: { parentMemoryState?: WorkflowMemoryState; rootSource?: WorkflowMemorySource } = {}
-  ): WorkflowMemoryState {
-    const { parentMemoryState, rootSource } = context;
-    return new WorkflowMemoryState({
+    context: { parentMemoryContext?: WorkflowMemoryContext; rootSource?: WorkflowMemorySource } = {}
+  ): WorkflowMemoryContext {
+    const { parentMemoryContext, rootSource } = context;
+    return new WorkflowMemoryContext({
       baseline: getHistoryWorkflowMemories(histories),
-      scopePath: parentMemoryState?.scopePath,
-      rootSource: parentMemoryState?.rootSource ?? rootSource
+      scopePath: parentMemoryContext?.scopePath,
+      rootSource: parentMemoryContext?.rootSource ?? rootSource
     });
   }
 
-  /** 工作流入口统一复用已有状态；独立调用节点时才从历史初始化，避免各节点重复兜底逻辑。 */
+  /** 显式参数适配器：复用传入 Context 或从历史构建，供独立 runner 和测试使用，不读取 ALS。 */
   static fromWorkflow({
-    memoryState,
+    memoryContext,
     histories,
     runningAppInfo
   }: {
-    memoryState?: WorkflowMemoryState;
+    memoryContext?: WorkflowMemoryContext;
     histories?: ChatItemMiniType[];
     runningAppInfo?: WorkflowMemorySource;
-  }): WorkflowMemoryState {
+  }): WorkflowMemoryContext {
     return (
-      memoryState ?? WorkflowMemoryState.fromHistories(histories, { rootSource: runningAppInfo })
+      memoryContext ??
+      WorkflowMemoryContext.fromHistories(histories, { rootSource: runningAppInfo })
     );
   }
 
   /** 派生独立写集；交互恢复保留 checkpoint，普通调用遵守禁用历史和自定义历史配置。 */
-  fork(scopeSegment?: string, options?: ForkWorkflowMemoryOptions): WorkflowMemoryState {
+  fork(scopeSegment?: string, options?: ForkWorkflowMemoryOptions): WorkflowMemoryContext {
     const baseline = (() => {
       if (options?.hasInteractiveResume) return this.toRecord();
       if (options?.history === 0) return {};
@@ -92,7 +94,7 @@ export class WorkflowMemoryState {
       return this.toRecord();
     })();
 
-    return new WorkflowMemoryState({
+    return new WorkflowMemoryContext({
       baseline,
       scopePath: scopeSegment ? [...this.scopePath, scopeSegment] : this.scopePath,
       rootSource: this.rootSource,
@@ -150,23 +152,24 @@ export class WorkflowMemoryState {
 
 /** 节点和独立 Agent runner 共用的键入口，兼容没有运行状态的调用。 */
 export const getWorkflowNodeMemoryKey = ({
-  memoryState,
+  memoryContext,
   ...params
 }: {
-  memoryState?: WorkflowMemoryState;
+  memoryContext?: WorkflowMemoryContext;
   runningAppInfo?: WorkflowMemorySource;
   nodeId: string;
-}): string => (memoryState ? memoryState.getNodeMemoryKey(params) : getWorkflowMemoryKey(params));
+}): string =>
+  memoryContext ? memoryContext.getNodeMemoryKey(params) : getWorkflowMemoryKey(params);
 
 /** 统一读取策略：普通调用按 history=0、自定义历史和当前状态依次处理。 */
 export const readWorkflowNodeMemory = <T = any>({
-  memoryState,
+  memoryContext,
   runningAppInfo,
   nodeId,
   history = 6,
   histories
 }: {
-  memoryState?: WorkflowMemoryState;
+  memoryContext?: WorkflowMemoryContext;
   runningAppInfo?: WorkflowMemorySource;
   nodeId: string;
   history?: ChatItemMiniType[] | number;
@@ -174,10 +177,10 @@ export const readWorkflowNodeMemory = <T = any>({
 }): T | undefined => {
   if (history === 0) return undefined;
   const state = Array.isArray(history)
-    ? WorkflowMemoryState.fromHistories(history, {
-        parentMemoryState: memoryState,
+    ? WorkflowMemoryContext.fromHistories(history, {
+        parentMemoryContext: memoryContext,
         rootSource: runningAppInfo
       })
-    : WorkflowMemoryState.fromWorkflow({ memoryState, histories, runningAppInfo });
+    : WorkflowMemoryContext.fromWorkflow({ memoryContext, histories, runningAppInfo });
   return state.readNodeMemory<T>({ runningAppInfo, nodeId });
 };

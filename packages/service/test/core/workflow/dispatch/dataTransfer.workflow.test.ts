@@ -18,6 +18,8 @@ import { UserConfigError } from '@fastgpt/global/common/error/utils';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import * as workflowMetrics from '@fastgpt/service/core/workflow/metrics';
 import { callbackMap } from '@fastgpt/service/core/workflow/dispatch/constants';
+import { getWorkflowContext } from '@fastgpt/service/core/workflow/dispatch/context';
+import { WorkflowMemoryContext } from '@fastgpt/service/core/workflow/dispatch/context/memory';
 import {
   graphNode,
   graphEdge,
@@ -77,6 +79,38 @@ afterEach(() => vi.restoreAllMocks());
 
 // 首例用受控 callback 验证双分支返回契约；其余场景执行真实节点，只替换外部请求边界。
 describe('workflow data transfer through real nodes', () => {
+  it.each([false, true])(
+    'Queue shares current memory without props and returns the correct snapshot: forked=%s',
+    async (forked) => {
+      const root = WorkflowMemoryContext.fromRecord({ untouched: { value: 'baseline' } });
+      const memoryContext = forked ? root.fork('node:child') : root;
+      const visited: string[] = [];
+      vi.spyOn(callbackMap, FlowNodeTypeEnum.code).mockImplementation(async (props) => {
+        expect(props).not.toHaveProperty('memoryContext');
+        expect(getWorkflowContext().memoryContext).toBe(memoryContext);
+        visited.push(props.node.nodeId);
+        if (props.node.nodeId === 'write') return { system_memories: { progress: { value: 42 } } };
+        expect(memoryContext.toRecord().progress).toEqual({ value: 42 });
+        return {};
+      });
+      const { result } = await runGraph({
+        nodes: [
+          graphNode({ id: 'write', type: FlowNodeTypeEnum.code, isEntry: true }),
+          graphNode({ id: 'read', type: FlowNodeTypeEnum.code })
+        ],
+        edges: [graphEdge({ source: 'write', target: 'read' })],
+        overrides: { memoryContext }
+      });
+      expect(visited).toEqual(['write', 'read']);
+      expect(result.system_memories).toEqual(
+        forked
+          ? { progress: { value: 42 } }
+          : { untouched: { value: 'baseline' }, progress: { value: 42 } }
+      );
+      if (forked) expect(root.toRecord()).toEqual({ untouched: { value: 'baseline' } });
+    }
+  );
+
   it('passes both output records through an intentional error branch without logging a fault', async () => {
     const stepObservation = vi.spyOn(workflowMetrics, 'observeWorkflowStep');
     const warn = vi.spyOn(getLogger(LogCategories.MODULE.WORKFLOW.DISPATCH), 'warn');
@@ -425,6 +459,7 @@ describe('real code and HTTP node error routes', () => {
           'flag',
           NodeOutputKeyEnum.errorText,
           'privateErrorField',
+          'rawError',
           'cause',
           'stack',
           {
@@ -451,6 +486,7 @@ describe('real code and HTTP node error routes', () => {
             NodeOutputKeyEnum.errorText,
             'error',
             'privateErrorField',
+            'rawError',
             'cause',
             'stack',
             'default'
@@ -475,6 +511,7 @@ describe('real code and HTTP node error routes', () => {
           system_error_text: 'sandbox failed',
           error: 'sandbox failed',
           privateErrorField: undefined,
+          rawError: undefined,
           cause: undefined,
           stack: undefined,
           default: undefined

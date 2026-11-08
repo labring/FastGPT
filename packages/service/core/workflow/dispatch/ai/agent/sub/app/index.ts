@@ -33,7 +33,6 @@ import { getWorkflowRuntimeSummary, runtimeSummaryToNodeSummary } from '../../..
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { runChildAppWorkflow } from '../../../../child/runApp';
 import { runWithDerivedWorkflowFileContext } from '../../../../context';
-import { WorkflowMemoryState } from '../../../../../memory/state';
 import {
   computedAppToolUsage,
   getAppToolOwnUsage,
@@ -53,7 +52,6 @@ type Props = Pick<
   | 'runningUserInfo'
   | 'retainDatasetCite'
   | 'nodeResponseParentId'
-  | 'memoryState'
   | 'lastInteractive'
   | 'query'
 > & {
@@ -111,7 +109,7 @@ export const dispatchApp = async (props: Props): Promise<DispatchSubAppResponse>
 export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppResponse> => {
   const { runningAppInfo, runningUserInfo, app, customAppVariables, userChatInput, ...data } =
     props;
-  const memoryState = WorkflowMemoryState.fromWorkflow(props);
+  const memoryContext = getWorkflowContext().memoryContext;
   const { variableContext: variableState } = getWorkflowContext();
   // plugin 子应用不接收普通 userChatInput；这里解构只为了避免透传给 runWorkflow。
   void userChatInput;
@@ -285,9 +283,11 @@ export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppRespon
           showStatus: false
         };
       });
-      const childMemoryState = memoryState.fork(`app:${childRunningAppInfo.sourceId}`);
+      const childMemoryContext = memoryContext.fork(`app:${childRunningAppInfo.sourceId}`);
 
       const childContext = getWorkflowContext().getChildContext({
+        workflowStreamResponse: undefined,
+        memoryContext: childMemoryContext,
         runtimeControl: { isToolCall: true },
         variableContext: childrenVariableState,
         nodeResponseSink: getWorkflowContext().nodeResponseSink.getChildContext({
@@ -300,7 +300,6 @@ export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppRespon
       return runWithContext(childContext, () =>
         runWorkflow({
           ...data,
-          memoryState: childMemoryState,
           runningAppInfo: childRunningAppInfo,
           runningUserInfo,
           runtimeNodes,
@@ -316,13 +315,12 @@ export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppRespon
                   ...workflowToolVariables
                 }
               }).value,
-          stream: false,
-          workflowStreamResponse: undefined
+          stream: false
         })
       );
     }
   });
-  memoryState.merge(system_memories);
+  memoryContext.merge(system_memories);
 
   const runtimeSummary = getWorkflowRuntimeSummary({
     workflowRuntimeSummary

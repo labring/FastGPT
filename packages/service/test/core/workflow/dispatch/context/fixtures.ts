@@ -12,9 +12,13 @@ import {
   type WorkflowNodeResponseOutputLike
 } from '@fastgpt/service/core/workflow/dispatch/context/nodeResponse';
 import { createWorkflowRuntimeSummary } from '@fastgpt/service/core/workflow/dispatch/utils/summary';
-import type { WorkflowRuntimeControl } from '@fastgpt/service/core/workflow/dispatch/context/runtimeControl';
+import type { WorkflowRuntimeControl } from '@fastgpt/service/core/workflow/dispatch/context';
+import type { WorkflowResponseType } from '@fastgpt/global/core/workflow/runtime/sse';
+import { WorkflowMemoryContext } from '@fastgpt/service/core/workflow/dispatch/context/memory';
 
 type TestWorkflowContextProps = Partial<WorkflowRuntimeControl> & {
+  workflowStreamResponse?: WorkflowResponseType;
+  memoryContext?: WorkflowMemoryContext;
   runtimeControl?: Partial<WorkflowRuntimeControl>;
   variableContext?: WorkflowVariableStateLike;
   nodeResponseSink?: WorkflowNodeResponseContext | WorkflowNodeResponseOutputLike;
@@ -59,9 +63,10 @@ export const createTestVariableContext = (
 export const runWithTestWorkflowContext = <T>(
   value: Omit<
     Parameters<typeof runWithContext>[0],
-    'variableContext' | 'nodeResponseSink' | 'runtimeControl'
+    'variableContext' | 'nodeResponseSink' | 'runtimeControl' | 'memoryContext'
   > & {
     runtimeControl?: WorkflowRuntimeControl;
+    memoryContext?: WorkflowMemoryContext;
     variableContext?: WorkflowVariableStateLike;
     nodeResponseSink?: WorkflowNodeResponseContext | WorkflowNodeResponseOutputLike;
   },
@@ -71,6 +76,7 @@ export const runWithTestWorkflowContext = <T>(
   const context = Object.assign(value, {
     runtimeControl: value.runtimeControl ?? createTestRuntimeControl(),
     variableContext: value.variableContext ?? createTestVariableContext(),
+    memoryContext: value.memoryContext ?? WorkflowMemoryContext.fromRecord(),
     nodeResponseSink: createTestNodeResponseContext(value.nodeResponseSink)
   });
   return runWithContext(context, fn);
@@ -122,6 +128,8 @@ export const runTestWorkflowDispatch = async <Props extends object, Result>(
 ): Promise<Result> => {
   const {
     variableContext,
+    memoryContext,
+    workflowStreamResponse,
     nodeResponseSink,
     runtimeControl,
     mode,
@@ -130,6 +138,14 @@ export const runTestWorkflowDispatch = async <Props extends object, Result>(
     isToolCall,
     ...nodeProps
   } = props;
+  // 根测试运行从其历史建立基线；已有作用域时继承，显式注入的子记忆始终优先。
+  const initialMemoryContext =
+    memoryContext ??
+    (getWorkflowFileContext()
+      ? undefined
+      : WorkflowMemoryContext.fromWorkflow(
+          nodeProps as Parameters<typeof WorkflowMemoryContext.fromWorkflow>[0]
+        ));
   return runInTestWorkflowContext(async () => {
     // 未显式指定时继承外层输出；显式 undefined 表达当前单节点用例没有输出。
     const parentContext = getWorkflowContext();
@@ -142,6 +158,7 @@ export const runTestWorkflowDispatch = async <Props extends object, Result>(
         ? props.nodeResponseParentId
         : undefined;
     const childContext = parentContext.getChildContext({
+      ...('workflowStreamResponse' in props ? { workflowStreamResponse } : {}),
       runtimeControl: {
         ...(mode !== undefined ? { mode } : {}),
         ...(maxRunTimes !== undefined ? { maxRunTimes } : {}),
@@ -150,6 +167,7 @@ export const runTestWorkflowDispatch = async <Props extends object, Result>(
         ...runtimeControl
       },
       ...(variableContext ? { variableContext } : {}),
+      ...(initialMemoryContext ? { memoryContext: initialMemoryContext } : {}),
       nodeResponseSink: newWorkflow
         ? responseContext.getChildContext({
             workflowRuntimeSummary: createWorkflowRuntimeSummary(),

@@ -17,13 +17,11 @@ import type { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import type { OpenaiAccountType } from '@fastgpt/global/support/user/team/type';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import type { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import type { WorkflowResponseType } from '@fastgpt/global/core/workflow/runtime/sse';
 import type {
   DispatchNodeResponseType,
   RuntimeNodeItemType
 } from '@fastgpt/global/core/workflow/runtime/type';
 import type { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import type { WorkflowMemoryState } from '../memory/state';
 import type { WorkflowRuntimeSummaryFields } from './summary';
 
 /*
@@ -73,13 +71,11 @@ export type WorkflowDispatchProps = {
   /** 当前 AI 回复 chat item 的 dataId；workflow 运行期必须有值，外部入口缺省时由 dispatchWorkFlow 补齐。 */
   responseChatItemId: string;
   histories: ChatItemMiniType[];
-  memoryState?: WorkflowMemoryState; // workflow node memories state
   query: UserChatItemValueItemType[]; // trigger query
   chatConfig?: AppChatConfigType;
   lastInteractive?: WorkflowInteractiveResponseType; // last interactive response
   stream: boolean;
   retainDatasetCite?: boolean;
-  workflowStreamResponse?: WorkflowResponseType;
 
   nodeResponseParentId?: string; // 传递给 child，用于设置 nodeResponse 的 parentId
 

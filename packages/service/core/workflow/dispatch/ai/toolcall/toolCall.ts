@@ -37,7 +37,7 @@ type ResponseType = {
 };
 
 export const runToolCall = async (props: DispatchToolModuleProps): Promise<ResponseType> => {
-  const { checkIsStopping } = getWorkflowContext();
+  const { checkIsStopping, workflowStreamResponse } = getWorkflowContext();
   const { messages, toolNodes, toolModel, childrenInteractiveParams, ...workflowProps } = props;
   const {
     runtimeNodes,
@@ -45,7 +45,6 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
     stream,
     retainDatasetCite = true,
     externalProvider,
-    workflowStreamResponse,
     usagePush,
     params: {
       temperature,

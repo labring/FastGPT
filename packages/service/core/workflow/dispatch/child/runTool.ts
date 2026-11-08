@@ -75,10 +75,9 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
     params,
     runningUserInfo,
     runningAppInfo,
-    workflowStreamResponse,
     node: { name, avatar, toolConfig, version, catchError }
   } = props;
-  const { variableContext: variableState } = getWorkflowContext();
+  const { variableContext: variableState, workflowStreamResponse } = getWorkflowContext();
   const cTime = String(variableState.get('cTime') ?? '');
   const logger = getLogger(LogCategories.MODULE.APP.TOOL);
 

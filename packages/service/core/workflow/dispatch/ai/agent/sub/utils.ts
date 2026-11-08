@@ -9,7 +9,7 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { parseJsonArgs } from '../../../../../ai/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { dispatchTool } from './tool';
-import type { WorkflowResponseItemType } from '@fastgpt/global/core/workflow/runtime/sse';
+import { getWorkflowContext, runWithContext } from '../../../context';
 import { dispatchApp, dispatchPlugin } from './app';
 import { SystemToolRepo } from '../../../../../app/tool/systemTool/systemTool.repo';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
@@ -83,7 +83,6 @@ export type ToolDispatchContext = Pick<
   | 'responseChatItemId'
   | 'usageId'
   | 'uid'
-  | 'memoryState'
   | 'externalProvider'
   | 'lang'
   | 'requestOrigin'
@@ -100,7 +99,6 @@ export type ToolDispatchContext = Pick<
   getSubAppInfo: GetSubAppInfoFnType;
   getSubApp: (id: string) => SubAppRuntimeType | undefined;
   completionTools: ChatCompletionTool[];
-  streamResponseFn?: (args: WorkflowResponseItemType) => void | undefined;
 };
 
 const filterAgentWorkflowRuntimeParams = (
@@ -159,7 +157,6 @@ export const getExecuteTool = ({
   responseChatItemId,
   usageId,
   uid,
-  memoryState,
   runtimeNodesMap,
   externalProvider,
   lang,
@@ -231,23 +228,28 @@ export const getExecuteTool = ({
         });
 
         if (tool.type === 'tool') {
-          const { response, usages, nodeResponse, nodeSummary, errorMessage } = await dispatchTool({
-            tool: {
-              name: tool.name,
-              avatar: tool.avatar,
-              version: tool.version,
-              toolConfig: tool.toolConfig
-            },
-            params: requestParams,
-            runningUserInfo,
-            runningAppInfo,
-            chatId,
-            usageId,
-            uid,
-            runtimeNodesMap,
-            // Agent 统一负责外层流输出，子工具不得绕过 Agent 直接写入响应流。
+          // Agent 统一输出，工具在禁流的派生作用域内运行，不能绕过外层发送事件。
+          const toolContext = getWorkflowContext().getChildContext({
             workflowStreamResponse: undefined
           });
+          const { response, usages, nodeResponse, nodeSummary, errorMessage } =
+            await runWithContext(toolContext, () =>
+              dispatchTool({
+                tool: {
+                  name: tool.name,
+                  avatar: tool.avatar,
+                  version: tool.version,
+                  toolConfig: tool.toolConfig
+                },
+                params: requestParams,
+                runningUserInfo,
+                runningAppInfo,
+                chatId,
+                usageId,
+                uid,
+                runtimeNodesMap
+              })
+            );
 
           return {
             response,
@@ -289,7 +291,6 @@ export const getExecuteTool = ({
             runningUserInfo,
             retainDatasetCite,
             nodeResponseParentId: callId,
-            memoryState,
             lastInteractive,
             query
           });
@@ -359,7 +360,6 @@ export const getExecuteTool = ({
             runningUserInfo,
             retainDatasetCite,
             nodeResponseParentId: callId,
-            memoryState,
             lastInteractive,
             query
           });

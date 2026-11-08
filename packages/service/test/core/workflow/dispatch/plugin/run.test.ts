@@ -118,7 +118,7 @@ describe('dispatchRunPlugin', () => {
         currentCost: 0
       });
       runWorkflowMock.mockImplementation(async (props) => {
-        if (props.stream) props.workflowStreamResponse?.(event);
+        if (props.stream) getCapturedTestWorkflowContext(props).workflowStreamResponse?.(event);
         return {
           flowUsages: [],
           assistantResponses: [{ text: { content: 'child chunk' } }],
@@ -164,12 +164,14 @@ describe('dispatchRunPlugin', () => {
       expect(result.responseData).not.toHaveProperty('inputTokens');
       expect(runWorkflowMock).toHaveBeenCalledWith(
         expect.objectContaining({
-          stream: expectedStream,
-          workflowStreamResponse: expectedStream ? workflowStreamResponse : undefined
+          stream: expectedStream
         })
       );
       if (expectedStream) expect(workflowStreamResponse).toHaveBeenCalledWith(event);
       else expect(workflowStreamResponse).not.toHaveBeenCalled();
+      expect(
+        getCapturedTestWorkflowContext(runWorkflowMock.mock.calls[0][0]).workflowStreamResponse
+      ).toBe(expectedStream ? workflowStreamResponse : undefined);
     }
   );
 

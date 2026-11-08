@@ -207,6 +207,7 @@ describe('prepareWorkflowFileContext', () => {
   afterEach(() => {
     global.s3BucketMap = originalS3BucketMap;
     global.systemEnv = originalSystemEnv;
+    vi.restoreAllMocks();
   });
 
   it('保留文本和非 Human 历史，不共享可变消息对象', async () => {
@@ -690,6 +691,7 @@ describe('prepareWorkflowFileContext', () => {
       getPreviewUrl
     });
     const child = await fileContext.derive([]);
+    const parentRegister = vi.spyOn(fileContext, 'register');
     const register = child.register;
     expect(typeof register).toBe('function');
     const file = { key: privateKey, name: 'report.pdf', type: ChatFileTypeEnum.file };
@@ -707,7 +709,45 @@ describe('prepareWorkflowFileContext', () => {
     expect(child.register).toBe(register);
     expect(child.resolveInputFile(file)).toBe(first);
     expect(child.resolve(first!.modelUrl)).toBe(fileContext.resolve(first!.modelUrl));
+    expect(parentRegister).toHaveBeenCalledExactlyOnceWith({ file, source: 'interactive' });
     expect(getPreviewUrl).toHaveBeenCalledTimes(1);
+  });
+
+  it('父级拒绝或抛错不占 Child 额度，登记队列继续接收后续文件', async () => {
+    const { fileContext } = await prepareWorkflowFileContext({
+      query: [],
+      histories: [],
+      scope,
+      maxFileAmount: 1
+    });
+    const acceptedFile = {
+      url: 'https://files.example.com/accepted.pdf',
+      type: ChatFileTypeEnum.file
+    };
+    const acceptedRef = await fileContext.register({ file: acceptedFile, source: 'interactive' });
+    expect(acceptedRef).toBeDefined();
+    const parentRegister = vi
+      .spyOn(fileContext, 'register')
+      .mockResolvedValueOnce(undefined)
+      .mockRejectedValueOnce(new Error('registration failed'));
+    const child = await fileContext.derive([]);
+    const rejectedFile = { ...acceptedFile, url: 'https://files.example.com/rejected.pdf' };
+    const failedFile = { ...acceptedFile, url: 'https://files.example.com/failed.pdf' };
+
+    await expect(
+      child.register({ file: rejectedFile, source: 'interactive' })
+    ).resolves.toBeUndefined();
+    expect(child.resolve(rejectedFile.url)).toBeUndefined();
+    await expect(child.register({ file: failedFile, source: 'interactive' })).rejects.toThrow(
+      'registration failed'
+    );
+    expect(child.resolve(failedFile.url)).toBeUndefined();
+
+    await expect(child.register({ file: acceptedFile, source: 'interactive' })).resolves.toBe(
+      acceptedRef
+    );
+    expect(child.resolve(acceptedFile.url)).toBe(acceptedRef);
+    expect(parentRegister).toHaveBeenCalledTimes(3);
   });
 
   it('孙级登记依次经过父级额度和根级鉴权，失败后仍可登记且可按可信来源读取', async () => {

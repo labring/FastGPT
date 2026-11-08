@@ -170,12 +170,12 @@ describe('createWorkflowStreamResponseContext', () => {
     vi.useRealTimers();
   });
 
-  it('mirrors stream events after disconnect and flushes completion once', async () => {
+  it('断连后继续镜像并续期，完成时停止续期且只收尾一次', async () => {
     vi.useFakeTimers();
     const res = createRes();
     const params = { teamId, sourceType: ChatSourceTypeEnum.app, sourceId, chatId };
     const redis = getRedisRuntime().getCommandConnection() as any;
-    const keys = streamResume.getStreamResumeRedisKeys(params);
+    const keys = getStreamResumeRedisKeys(params);
     const context = await createWorkflowStreamResponseContext({
       ...params,
       req: createReq({ [STREAM_RESUME_REQUEST_HEADER]: 'true' }),
@@ -183,8 +183,19 @@ describe('createWorkflowStreamResponseContext', () => {
       stream: true,
       detail: true
     });
+
+    context.responseWrite(workflowSseEvent.answerDelta('hello'));
+    await vi.advanceTimersByTimeAsync(10_000);
     res.closed = true;
     res.emit('close');
+    redis.expire.mockClear();
+    vi.mocked(responseWrite).mockClear();
+
+    await vi.advanceTimersByTimeAsync(STREAM_RESUME_MIRROR_KEEPALIVE_INTERVAL_MS);
+    expect(redis.expire).toHaveBeenCalledWith(
+      `${FASTGPT_REDIS_PREFIX}${keys.keyOfStream}`,
+      STREAM_RESUME_TTL_SECONDS
+    );
 
     context.responseWrite(workflowSseEvent.done(SseResponseEventEnum.answer));
     const flush = context.flushResume();
@@ -209,41 +220,17 @@ describe('createWorkflowStreamResponseContext', () => {
         ([, ttl]: [string, number]) => ttl === streamResume.STREAM_RESUME_POST_COMPLETE_TTL_SECONDS
       )
     ).toHaveLength(2);
-  });
 
-  it('should bind heartbeat cleanup to response lifecycle and keep init idempotent', async () => {
-    vi.useFakeTimers();
-    const res = createRes();
-    const responseWrite = vi.fn();
-
-    expect(isWorkflowSseResponseInitialized(res)).toBe(false);
-    initWorkflowSseResponse({
-      res,
-      stream: true,
-      responseWrite
-    });
-    expect(isWorkflowSseResponseInitialized(res)).toBe(true);
-    initWorkflowSseResponse({
-      res,
-      stream: true,
-      responseWrite
-    });
-
-    await vi.advanceTimersByTimeAsync(10000);
-    expect(responseWrite).toHaveBeenCalledTimes(1);
-    expect(res.setHeader).toHaveBeenCalledTimes(5);
-
-    res.emit('finish');
-    expect(isWorkflowSseResponseInitialized(res)).toBe(false);
-    await vi.advanceTimersByTimeAsync(10000);
-    expect(responseWrite).toHaveBeenCalledTimes(1);
+    redis.expire.mockClear();
+    await vi.advanceTimersByTimeAsync(STREAM_RESUME_MIRROR_KEEPALIVE_INTERVAL_MS);
+    expect(redis.expire).not.toHaveBeenCalled();
   });
 
   it.each([ChatSourceTypeEnum.app, ChatSourceTypeEnum.workflowBuilder])(
     'should only create resume mirror when %s stream request opts in',
     async (sourceType) => {
       const redis = getRedisRuntime().getCommandConnection() as any;
-      const keys = streamResume.getStreamResumeRedisKeys({ teamId, sourceType, sourceId, chatId });
+      const keys = getStreamResumeRedisKeys({ teamId, sourceType, sourceId, chatId });
       const rawStreamKey = `${FASTGPT_REDIS_PREFIX}${keys.keyOfStream}`;
 
       const noMirrorContext = await createWorkflowStreamResponseContext({
@@ -302,6 +289,7 @@ describe('createWorkflowStreamResponseContext', () => {
       const mirror = {
         ...streamResume.getStreamResumeRedisKeys({ teamId, sourceType, sourceId, chatId }),
         enqueueRaw: vi.fn(),
+        touch: vi.fn(async () => undefined),
         flush: vi.fn(async () => undefined),
         shrinkTTLAfterComplete: vi.fn(async () => undefined)
       };
@@ -334,47 +322,6 @@ describe('createWorkflowStreamResponseContext', () => {
       res.emit('finish');
     }
   );
-
-  it('should keep the resume mirror alive after the client connection closes', async () => {
-    vi.useFakeTimers();
-    const redis = getRedisRuntime().getCommandConnection() as any;
-    const res = createRes();
-    const keys = getStreamResumeRedisKeys({
-      teamId,
-      sourceType: ChatSourceTypeEnum.app,
-      sourceId,
-      chatId
-    });
-
-    const context = await createWorkflowStreamResponseContext({
-      req: createReq({ [STREAM_RESUME_REQUEST_HEADER]: 'true' }),
-      res,
-      stream: true,
-      detail: true,
-      teamId,
-      sourceType: ChatSourceTypeEnum.app,
-      sourceId,
-      chatId,
-      responseId: chatId
-    });
-
-    context.responseWrite(workflowSseEvent.answerDelta('hello'));
-    await vi.advanceTimersByTimeAsync(10_000);
-    res.closed = true;
-    res.emit('close');
-    redis.expire.mockClear();
-
-    await vi.advanceTimersByTimeAsync(STREAM_RESUME_MIRROR_KEEPALIVE_INTERVAL_MS);
-    expect(redis.expire).toHaveBeenCalledWith(
-      `${FASTGPT_REDIS_PREFIX}${keys.keyOfStream}`,
-      STREAM_RESUME_TTL_SECONDS
-    );
-
-    await context.flushResume();
-    redis.expire.mockClear();
-    await vi.advanceTimersByTimeAsync(STREAM_RESUME_MIRROR_KEEPALIVE_INTERVAL_MS);
-    expect(redis.expire).not.toHaveBeenCalled();
-  });
 
   it('should stop the resume mirror keepalive when the response finishes', async () => {
     vi.useFakeTimers();

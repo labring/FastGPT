@@ -44,7 +44,7 @@ import { observeWorkflowStep } from '../metrics';
 import { withActiveSpan } from '../../../common/tracing';
 import { onWorkflowNodeEnd, onWorkflowNodeStart } from '../../../common/langfuse/workflow';
 import { getWorkflowContext, runWithContext } from './context';
-import type { WorkflowRuntimeControl } from './context/runtimeControl';
+import type { WorkflowRuntimeControl } from './context';
 import { getNodeResponseChildResponseCount } from '../../chat/nodeResponseStorage';
 import {
   addWorkflowStepEvent,
@@ -55,7 +55,7 @@ import {
 import { getWorkflowNodeRunParams } from './utils/runtime';
 import { getWorkflowSource } from './utils/source';
 import { filterToolNodeIdByEdges, getInlineMcpToolSetRuntimeNodes } from './utils/index';
-import { WorkflowMemoryState } from '../memory/state';
+import type { WorkflowMemoryContext } from './context/memory';
 
 const logger = getLogger(LogCategories.MODULE.WORKFLOW.DISPATCH);
 
@@ -105,7 +105,7 @@ export class WorkflowQueue {
         nodeResponseId?: string;
       }
     | undefined;
-  memoryState: WorkflowMemoryState;
+  memoryContext: WorkflowMemoryContext;
   customFeedbackList: string[] = []; // Custom feedbacks collected from nodes
 
   // Debug
@@ -151,7 +151,7 @@ export class WorkflowQueue {
     this.maxConcurrency = maxConcurrency;
     this.resolve = resolve;
     this.workflowRuntimeSummary = workflowRuntimeSummary;
-    this.memoryState = WorkflowMemoryState.fromWorkflow(data);
+    this.memoryContext = getWorkflowContext().memoryContext;
     this.runtimeNodesMap = new Map(data.runtimeNodes.map((item) => [item.nodeId, item]));
     this.isDebugMode = this.runtimeControl.mode === 'debug';
 
@@ -619,7 +619,7 @@ export class WorkflowQueue {
           : getNanoid();
       // push run status messages
       if (node.showStatus && !this.runtimeControl.isToolCall) {
-        this.data.workflowStreamResponse?.(workflowSseEvent.flowNodeStatus(node.name));
+        getWorkflowContext().workflowStreamResponse?.(workflowSseEvent.flowNodeStatus(node.name));
       }
       const startTime = Date.now();
       // get node running params
@@ -644,14 +644,15 @@ export class WorkflowQueue {
         'mode',
         'maxRunTimes',
         'workflowDispatchDeep',
-        'isToolCall'
+        'isToolCall',
+        'memoryContext',
+        'workflowStreamResponse'
       ]) {
         Reflect.deleteProperty(nodeData, key);
       }
       const nodeUsage = { inputTokens: 0, outputTokens: 0 };
       const dispatchData: ModuleDispatchProps<Record<string, any>> = {
         ...nodeData,
-        memoryState: this.memoryState,
         usagePush: (usages) => {
           usages.forEach((item) => {
             nodeUsage.inputTokens += item.inputTokens ?? 0;
@@ -1022,7 +1023,7 @@ export class WorkflowQueue {
       this.runtimeControl.maxRunTimes -= runTimes;
 
       if (newMemories) {
-        this.memoryState.merge(newMemories);
+        this.memoryContext.merge(newMemories);
       }
 
       if (workflowRuntimeSummary) {
@@ -1327,7 +1328,9 @@ export class WorkflowQueue {
 
     // Tool call, not need interactive response
     if (!this.runtimeControl.isToolCall && this.isRootRuntime) {
-      this.data.workflowStreamResponse?.(workflowSseEvent.interactive(interactiveResult));
+      getWorkflowContext().workflowStreamResponse?.(
+        workflowSseEvent.interactive(interactiveResult)
+      );
     }
 
     return {

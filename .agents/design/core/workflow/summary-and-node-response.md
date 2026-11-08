@@ -60,7 +60,7 @@ response 属于 child workflow，并通过 child scope 直接写入请求级 out
 
 ### 2.2 每个 workflow 层只有一份完整 summary
 
-每次 `runWorkflow` 创建一份独立的 `workflowRuntimeSummary`，当前层的 queue 和 sink scope 共享
+每次调用 `runWorkflow` 前由上层创建一份独立的 `workflowRuntimeSummary`，当前层的 queue 和 sink scope 共享
 这一份对象。child workflow 也创建自己的 summary，并在结束时通过 `DispatchFlowResponse` 返回。
 
 queue 不解析 `nodeResponse`。所有当前层 response 都必须经过当前 sink scope，由 scope 更新这份
@@ -176,7 +176,9 @@ type NodeSummaryCollector = Omit<NodeSummary, 'llmInputTokens' | 'llmOutputToken
 
 ### 3.4 Response scope、请求级 output 与 `WorkflowNodeResponseWriter`
 
-`createWorkflowNodeResponseScope` 为每次 `runWorkflow` 创建独立 scope，负责：
+根入口使用 `createWorkflowEntryNodeResponseSink` 构建响应 Context；子流程调用前使用
+`parent.nodeResponseSink.getChildContext({ workflowRuntimeSummary: createWorkflowRuntimeSummary(), ... })`
+创建独立 scope。`runWorkflow` 只消费上层已经准备好的 Context。scope 负责：
 
 - 用 `response.parentId ?? input.parentId ?? scope.defaultParentId` 规范化父级；
 - 对当前 sink scope 的 response 更新对应的 `workflowRuntimeSummary`。
@@ -184,6 +186,16 @@ type NodeSummaryCollector = Omit<NodeSummary, 'llmInputTokens' | 'llmOutputToken
 底层请求级 `WorkflowNodeResponseSink` 是所有 scope 共享的 output，负责把完整 response 交给 writer，
 并按 API 版本和可见性过滤后发送 SSE；它不拥有任何 workflow summary。child scope 直接调用这个
 共享 output，不经过 parent scope 转发，因此 parent summary 不会重复统计 child response。
+
+SSE writer 不保存在共享 output 上。根入口把 `responseWrite` 注入
+`WorkflowContext.workflowStreamResponse`，普通节点和 output 发布时都使用当前作用域的通道。
+output 在本次发布开始时捕获 writer，后续异步写库完成后仍使用同一通道；没有 Context 或 writer 时
+可继续保存和统计，但不发送 SSE，也不能回退根 writer。发送详情要求 Scope 和单次输入的 `emit`
+都允许、当前 writer 存在，并继续遵守 V2 与可见字段过滤。`record` 独立控制持久化。
+
+子流程默认继承 writer；禁流时以 `getChildContext({ workflowStreamResponse: undefined })` 显式覆盖，
+过滤事件时注入包装函数。HTTP/SSE 初始化、错误响应、心跳、续传 flush 与 writer 关闭仍由入口负责。
+Pro Builder 的最终详情在其 `runWithContext` 回调返回前统一 publish，外部不再手动重复发送详情。
 
 `WorkflowNodeResponseWriter` 只负责：
 
@@ -254,8 +266,8 @@ flowchart LR
 
 实际时序如下：
 
-1. `runWorkflow` 创建当前层 `workflowRuntimeSummary`。
-2. `runWorkflow` 基于该对象创建当前层 `nodeResponseSink` scope，并把 queue 和 scope 指向同一
+1. 入口或子流程调用方创建当前层 `workflowRuntimeSummary`。
+2. 调用方基于该对象准备当前层 `nodeResponseSink` scope 并注入 Context，`runWorkflow` 把 queue 和 scope 指向同一
    summary。
 3. `WorkflowQueue` 为每个节点创建独立的 `NodeSummaryCollector`，通过 `ModuleDispatchProps` 传给
    callback。
@@ -644,7 +656,7 @@ id = `${loopRunNodeResponseId}:iter:${iteration}`;
 | `packages/service/core/workflow/dispatch/utils/summary.ts` | 创建、提取、去重、转换和合并 summary |
 | `packages/service/core/workflow/dispatch/index.ts` | 入口 Context 初始化和 workflow 执行生命周期 |
 | `packages/service/core/workflow/dispatch/queue.ts` | WorkflowQueue 节点调度和 callback collector 合并 |
-| `packages/service/core/workflow/dispatch/nodeResponseSink.ts` | 独立 summary scope、共享 output 和 SSE 过滤 |
+| `packages/service/core/workflow/dispatch/context/nodeResponse.ts` | 独立 summary scope、共享持久化 output、当前 Context writer 和 SSE 过滤 |
 | `packages/service/core/chat/nodeResponseStorage.ts` | append-only row 写入和 child count 规范化 |
 | `packages/service/core/chat/saveChat.ts` | 使用根 workflow summary 更新 Chat.summary |
 

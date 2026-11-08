@@ -4,8 +4,8 @@ import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import {
   getWorkflowNodeMemoryKey,
   readWorkflowNodeMemory,
-  WorkflowMemoryState
-} from '@fastgpt/service/core/workflow/memory/state';
+  WorkflowMemoryContext
+} from '@fastgpt/service/core/workflow/dispatch/context/memory';
 
 const rootAppInfo = {
   sourceType: ChatSourceTypeEnum.app,
@@ -36,10 +36,10 @@ const createAiHistory = (memories: Record<string, any>): ChatItemMiniType[] => [
   }
 ];
 
-describe('WorkflowMemoryState & unified node memory helpers', () => {
+describe('WorkflowMemoryContext & unified node memory helpers', () => {
   describe('baseline / delta separation & unified key scoping', () => {
     it('separates baseline and delta so forked child workflows only report their own writes', () => {
-      const rootState = WorkflowMemoryState.fromHistories(
+      const rootState = WorkflowMemoryContext.fromHistories(
         createAiHistory({
           'app:root_app:extract_root': { city: 'Hangzhou' },
           'app:root_app:untouched': { keep: true }
@@ -69,6 +69,21 @@ describe('WorkflowMemoryState & unified node memory helpers', () => {
       childState.merge({
         [childKey]: { slot: 'booked' }
       });
+      childState.merge(undefined);
+      expect(
+        childState.readNodeMemory({
+          runningAppInfo: sharedChildAppInfo,
+          nodeId: 'extract_inner'
+        })
+      ).toEqual({ slot: 'booked' });
+      const sameScope = childState.fork();
+      expect(
+        sameScope.getNodeMemoryKey({
+          runningAppInfo: sharedChildAppInfo,
+          nodeId: 'extract_inner'
+        })
+      ).toBe(childKey);
+      expect(sameScope.getDelta()).toEqual({});
 
       // Child delta ONLY contains keys written inside the child scope, never the inherited baseline
       expect(childState.getDelta()).toEqual({
@@ -84,12 +99,12 @@ describe('WorkflowMemoryState & unified node memory helpers', () => {
     });
 
     it('supports multi-level nested scopes (Root -> Agent -> SubApp -> Plugin)', () => {
-      const rootState = WorkflowMemoryState.fromHistories();
+      const rootState = WorkflowMemoryContext.fromHistories();
       const agentScope = rootState.fork('node:agent_1');
       const pluginScope = agentScope.fork('node:plugin_2');
 
       const nestedKey = getWorkflowNodeMemoryKey({
-        memoryState: pluginScope,
+        memoryContext: pluginScope,
         runningAppInfo: {
           ...sharedChildAppInfo,
           sourceId: 'plugin_workflow_id'
@@ -102,7 +117,7 @@ describe('WorkflowMemoryState & unified node memory helpers', () => {
 
     it('deep-clones values on read and write to prevent reference mutation leaks', () => {
       const initialObj = { nested: { count: 1 } };
-      const state = WorkflowMemoryState.fromHistories(
+      const state = WorkflowMemoryContext.fromHistories(
         createAiHistory({
           'app:root_app:node_1': initialObj
         })
@@ -127,7 +142,7 @@ describe('WorkflowMemoryState & unified node memory helpers', () => {
 
   describe('legacy key compatibility & migration', () => {
     it('reads legacy unscoped child key and legacy agentLoopMemory key, and cleans them up once superseded', () => {
-      const rootState = WorkflowMemoryState.fromHistories(
+      const rootState = WorkflowMemoryContext.fromHistories(
         createAiHistory({
           'app:shared_child_app:extract_1': { legacyChild: true },
           'agentLoopMemory-agent_1': { providerState: { step: 2 } }
@@ -180,7 +195,7 @@ describe('WorkflowMemoryState & unified node memory helpers', () => {
     });
 
     it('does not fall back to legacy unscoped child key if another scoped instance already exists in baseline', () => {
-      const rootState = WorkflowMemoryState.fromHistories(
+      const rootState = WorkflowMemoryContext.fromHistories(
         createAiHistory({
           'app:shared_child_app:extract_1': { staleUnscoped: true },
           'node:runApp_A/app:shared_child_app:extract_1': { fromA: true }
@@ -202,7 +217,7 @@ describe('WorkflowMemoryState & unified node memory helpers', () => {
       const legacyAgentMemory = {
         providerState: { pendingMainContext: { askToolCallId: 'root-ask' } }
       };
-      const rootState = WorkflowMemoryState.fromRecord(
+      const rootState = WorkflowMemoryContext.fromRecord(
         {
           'app:root_app:extract_1': rootMemory,
           'agentLoopMemory-agent_1': legacyAgentMemory
@@ -238,7 +253,7 @@ describe('WorkflowMemoryState & unified node memory helpers', () => {
         [recursiveAgentKey]: undefined
       });
 
-      const reloaded = WorkflowMemoryState.fromHistories(createAiHistory(rootState.toRecord()), {
+      const reloaded = WorkflowMemoryContext.fromHistories(createAiHistory(rootState.toRecord()), {
         rootSource: rootAppInfo
       });
       expect(reloaded.readNodeMemory({ runningAppInfo: rootAppInfo, nodeId: 'extract_1' })).toEqual(
@@ -253,7 +268,7 @@ describe('WorkflowMemoryState & unified node memory helpers', () => {
     });
 
     it('preserves ambiguous unscoped keys when the root source is unknown', () => {
-      const rootState = WorkflowMemoryState.fromRecord({
+      const rootState = WorkflowMemoryContext.fromRecord({
         'app:root_app:extract_1': { keep: true }
       });
       const childState = rootState.fork('node:child');
@@ -272,7 +287,7 @@ describe('WorkflowMemoryState & unified node memory helpers', () => {
 
   describe('history parameter 3-state contract', () => {
     it('respects history === 0, custom ChatItemMiniType[], and numeric window with empty histories', () => {
-      const parentState = WorkflowMemoryState.fromHistories(
+      const parentState = WorkflowMemoryContext.fromHistories(
         createAiHistory({
           'node:agent_1/app:shared_child_app:extract_1': { fromSessionMemory: 'yes' }
         }),
@@ -282,7 +297,7 @@ describe('WorkflowMemoryState & unified node memory helpers', () => {
       // 1. history === 0 disables memory read
       expect(
         readWorkflowNodeMemory({
-          memoryState: parentState,
+          memoryContext: parentState,
           runningAppInfo: sharedChildAppInfo,
           nodeId: 'extract_1',
           history: 0,
@@ -290,10 +305,10 @@ describe('WorkflowMemoryState & unified node memory helpers', () => {
         })
       ).toBeUndefined();
 
-      // 2. Numeric history > 0 reads from memoryState even when histories is [] (Agent sub-app scenario)
+      // 2. Numeric history > 0 reads from memoryContext even when histories is [] (Agent sub-app scenario)
       expect(
         readWorkflowNodeMemory({
-          memoryState: parentState,
+          memoryContext: parentState,
           runningAppInfo: sharedChildAppInfo,
           nodeId: 'extract_1',
           history: 6,
@@ -304,7 +319,7 @@ describe('WorkflowMemoryState & unified node memory helpers', () => {
       // 3. Explicit custom ChatItemMiniType[] array reads only from that custom array
       expect(
         readWorkflowNodeMemory({
-          memoryState: parentState,
+          memoryContext: parentState,
           runningAppInfo: sharedChildAppInfo,
           nodeId: 'extract_1',
           history: [],
@@ -317,7 +332,7 @@ describe('WorkflowMemoryState & unified node memory helpers', () => {
       });
       expect(
         readWorkflowNodeMemory({
-          memoryState: parentState,
+          memoryContext: parentState,
           runningAppInfo: sharedChildAppInfo,
           nodeId: 'extract_1',
           history: customHistories,
@@ -336,7 +351,7 @@ describe('WorkflowMemoryState & unified node memory helpers', () => {
     });
 
     it('isolates fork() baseline when history === 0 or custom history array is passed, unless interactive resume is active', () => {
-      const rootState = WorkflowMemoryState.fromHistories(
+      const rootState = WorkflowMemoryContext.fromHistories(
         createAiHistory({
           'node:runApp_1/app:shared_child_app:extract_1': { fromParentSession: 'leaked' }
         })
@@ -385,7 +400,7 @@ describe('WorkflowMemoryState & unified node memory helpers', () => {
 
   describe('parallel multiple child nodes (并行多子节点) concurrency guarantees', () => {
     it('prevents a slower parallel child workflow from overwriting a faster sibling leaf node update with stale baseline', async () => {
-      const rootState = WorkflowMemoryState.fromHistories(
+      const rootState = WorkflowMemoryContext.fromHistories(
         createAiHistory({
           'app:root_app:extract_fast': { step: 'turn_1_old' }
         })
