@@ -1,4 +1,5 @@
 import { formatToISOWithTimezone } from '@fastgpt/global/common/string/time';
+import { formatDateWithOffset } from '@fastgpt/global/common/time/fixedOffset';
 import {
   Accordion,
   AccordionButton,
@@ -187,8 +188,12 @@ const LogChart = ({
 
     const formatTimestamp = (timestamp: number, timespan: AppLogTimespanEnum) => {
       // 返回的桶按请求起点固定偏移分组；只取其日历日期，避免浏览器 DST 改变标签或覆盖相邻桶。
-      const bucketDate = dayjs(timestamp).utcOffset(dayjs(dateRange.from).utcOffset());
-      const labelDate = new Date(bucketDate.year(), bucketDate.month(), bucketDate.date());
+      const bucketDate = formatDateWithOffset({
+        time: timestamp,
+        offset: dayjs(dateRange.from).format('Z'),
+        format: 'YYYY-MM-DD'
+      });
+      const labelDate = new Date(`${bucketDate}T00:00:00`);
       return timespan === AppLogTimespanEnum.week
         ? formatWeekDate(labelDate)
         : formatDateByTimespan(labelDate.getTime(), timespan);
