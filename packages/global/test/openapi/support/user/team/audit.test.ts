@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 import {
   AuditListBodySchema,
   AuditExportBodySchema
@@ -10,6 +10,7 @@ const filters = {
 };
 
 describe('team audit date contracts', () => {
+  beforeEach(() => vi.useFakeTimers().setSystemTime(new Date('2026-11-08T12:00:00Z')));
   afterEach(() => vi.useRealTimers());
 
   it('keeps milliseconds and embedded offsets without a separate timezone', () => {
@@ -41,19 +42,20 @@ describe('team audit date contracts', () => {
     expect(AuditExportBodySchema.safeParse({ ...input, locale: 'en' }).success).toBe(false);
   });
 
-  it('allows today through its last millisecond using dateEnd offset rather than server time', () => {
-    vi.useFakeTimers().setSystemTime(new Date('2026-03-08T18:00:00Z'));
-    expect(AuditExportBodySchema.safeParse({ ...filters, locale: 'en' }).success).toBe(true);
-    expect(
-      AuditExportBodySchema.safeParse({
-        ...filters,
-        locale: 'en',
-        dateEnd: '2026-03-10T00:00:00.000+08:00'
-      }).success
-    ).toBe(false);
-  });
-
   it.each([
+    {
+      transition: 'fixed +08:00',
+      now: '2026-03-08T18:00:00Z',
+      ...filters,
+      nextDay: '2026-03-10T00:00:00.000+08:00'
+    },
+    {
+      transition: 'UTC',
+      now: '2026-03-09T23:00:00Z',
+      dateStart: '2026-03-09T00:00:00.000Z',
+      dateEnd: '2026-03-09T23:59:59.999Z',
+      nextDay: '2026-03-10T00:00:00.000Z'
+    },
     {
       transition: 'fall back',
       now: '2026-11-01T17:00:00Z',
@@ -69,7 +71,7 @@ describe('team audit date contracts', () => {
       nextDay: '2026-03-09T00:00:00.000-04:00'
     }
   ])(
-    'validates today and tomorrow across DST $transition',
+    'validates the last millisecond of today and rejects tomorrow: $transition',
     ({ now, dateStart, dateEnd, nextDay }) => {
       vi.useFakeTimers().setSystemTime(new Date(now));
       const input = {
@@ -95,15 +97,6 @@ describe('team audit date contracts', () => {
       }
     }
   );
-
-  it('uses UTC when the ISO timestamps end in Z', () => {
-    vi.useFakeTimers().setSystemTime(new Date('2026-03-09T23:00:00Z'));
-    const input = { dateStart: '2026-03-09T00:00:00.000Z', dateEnd: '2026-03-09T23:59:59.999Z' };
-    expect(AuditListBodySchema.safeParse(input).success).toBe(true);
-    expect(
-      AuditListBodySchema.safeParse({ ...input, dateEnd: '2026-03-10T00:00:00.000Z' }).success
-    ).toBe(false);
-  });
 
   it('allows online logs older than 180 days and single days', () => {
     expect(

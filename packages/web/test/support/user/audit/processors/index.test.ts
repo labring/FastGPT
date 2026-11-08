@@ -1,3 +1,9 @@
+import {
+  TeamAppCreateRoleVal,
+  TeamDatasetCreateRoleVal,
+  TeamApikeyCreateRoleVal,
+  TeamModelCreateRoleVal
+} from '@fastgpt/global/support/permission/user/constant';
 import { describe, expect, it, vi } from 'vitest';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { DatasetAuditEventEnum } from '@fastgpt/global/core/dataset/audit/constants/event';
@@ -71,14 +77,29 @@ describe('processAuditMetadata', () => {
       expect(
         processAuditMetadata({
           event: AuditEventEnum.EXPORT_AUDIT_LOGS,
-          metadata: { dateStart: value, dateEnd: value },
+          metadata: {
+            dateStart: value,
+            dateEnd: value,
+            total: '',
+            tmbIds: 'member-id',
+            events: 'LOGIN'
+          },
           t: (key) => key
         })
-      ).toMatchObject({ dateStart: value, dateEnd: value });
+      ).toMatchObject({
+        dateStart: value,
+        dateEnd: value,
+        total: '-',
+        tmbIds: 'member-id',
+        events: 'LOGIN'
+      });
     }
   );
 
-  it('uses the default translations for events without a custom processor', () => {
+  it.each([
+    { labels: ['account_team:member', 'app:type.Chat_Agent'] },
+    { labels: 'account_team:member,app:type.Chat_Agent' }
+  ])('translates historical field label representations: $labels', ({ labels: newItemNames }) => {
     const t = (key: string) => translations[key] ?? key;
 
     expect(
@@ -87,7 +108,7 @@ describe('processAuditMetadata', () => {
         metadata: {
           name: '张三',
           appType: 'app:type.Chat_Agent',
-          newItemNames: ['account_team:member', 'app:type.Chat_Agent']
+          newItemNames
         },
         t
       })
@@ -112,32 +133,57 @@ describe('processAuditMetadata', () => {
     ({ event, typeKey, typeValue, expectedType }) => {
       const t = (key: string) => translations[key] ?? key;
 
-      expect(
-        processAuditMetadata({
-          event,
-          metadata: { [typeKey]: typeValue, permission: String(ReadRoleVal) },
-          t
-        })
-      ).toEqual({
-        [typeKey]: expectedType,
-        permission: String(ReadRoleVal),
-        readPermission: '✔',
-        writePermission: '✘',
-        managePermission: '✘'
-      });
+      for (const [role, read, write, manage] of [
+        [0, '✘', '✘', '✘'],
+        [ReadRoleVal, '✔', '✘', '✘'],
+        [ManageRoleVal, '✔', '✔', '✔']
+      ]) {
+        expect(
+          processAuditMetadata({
+            event,
+            metadata: { [typeKey]: typeValue, permission: String(role) },
+            t
+          })
+        ).toEqual({
+          [typeKey]: expectedType,
+          permission: String(role),
+          readPermission: read,
+          writePermission: write,
+          managePermission: manage
+        });
+      }
     }
   );
 
-  it('keeps translations and team permission markers for permission assignments', () => {
+  it.each([
+    { role: ReadRoleVal, marker: '✘' },
+    {
+      role:
+        ManageRoleVal |
+        TeamAppCreateRoleVal |
+        TeamDatasetCreateRoleVal |
+        TeamApikeyCreateRoleVal |
+        TeamModelCreateRoleVal,
+      marker: '✔'
+    }
+  ])('keeps translated team labels and permission markers for role $role', ({ role, marker }) => {
     const t = (key: string) => translations[key] ?? key;
 
     expect(
       processAuditMetadata({
         event: AuditEventEnum.ASSIGN_PERMISSION,
-        metadata: { objectName: 'account_team:member', permission: String(ManageRoleVal) },
+        metadata: { objectName: 'account_team:member', permission: String(role) },
         t
       })
-    ).toMatchObject({ objectName: '成员', permission: String(ManageRoleVal), manage: '✔' });
+    ).toMatchObject({
+      objectName: '成员',
+      permission: String(role),
+      manage: marker,
+      appCreate: marker,
+      datasetCreate: marker,
+      apiKeyCreate: marker,
+      modelCreate: marker
+    });
   });
 
   it('passes raw metadata to dataset configuration processors and translates only the field label', () => {
