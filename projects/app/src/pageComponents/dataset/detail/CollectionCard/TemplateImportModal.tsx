@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import { useTranslation } from 'next-i18next';
-import { Box, Button, HStack, VStack, Flex, Link } from '@chakra-ui/react';
+import { Box, Button, HStack, VStack, Flex } from '@chakra-ui/react';
+import Link from '@fastgpt/web/components/common/Link';
 import FileSelector, { type SelectFileItemType } from '@/components/Select/FileSelectorBox';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';

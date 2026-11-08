@@ -13,6 +13,7 @@ import { MongoResourcePermission } from '@fastgpt/service/support/permission/sch
 import { getFakeUsers } from '@test/datas/users';
 import { Call } from '@test/utils/request';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 
 // delCollection 会调用 deleteDatasetFilesByKeys，而全局 s3 mock 未提供该方法；本地补齐。
 const { mockDeleteDatasetFilesByKeys } = vi.hoisted(() => ({
@@ -66,6 +67,58 @@ describe('delete collection permission', () => {
   beforeEach(() => {
     mockDeleteDatasetFilesByKeys.mockReset();
     mockDeleteDatasetFilesByKeys.mockResolvedValue(undefined);
+  });
+
+  it('records each selected collection once without expanding implicitly deleted descendants', async () => {
+    const { owner } = await getFakeUsers(1);
+    const { dataset, collection } = await createDatasetWithCollection({
+      teamId: owner.teamId,
+      datasetTmbId: owner.tmbId,
+      collectionTmbId: owner.tmbId
+    });
+    const folder = await MongoDatasetCollection.create({
+      name: 'folder',
+      type: DatasetCollectionTypeEnum.folder,
+      teamId: owner.teamId,
+      tmbId: owner.tmbId,
+      datasetId: dataset._id
+    });
+    const child = await MongoDatasetCollection.create({
+      name: 'implicit-child',
+      type: DatasetCollectionTypeEnum.file,
+      teamId: owner.teamId,
+      tmbId: owner.tmbId,
+      datasetId: dataset._id,
+      parentId: folder._id
+    });
+    vi.mocked(addAuditLog).mockClear();
+
+    const response = await Call(deleteHandler, {
+      auth: owner,
+      body: {
+        collectionIds: [
+          String(collection._id).toUpperCase(),
+          String(folder._id),
+          String(collection._id).toUpperCase()
+        ]
+      }
+    });
+
+    expect(response.code).toBe(200);
+    expect(
+      await MongoDatasetCollection.countDocuments({
+        _id: { $in: [collection._id, folder._id, child._id] }
+      })
+    ).toBe(0);
+    expect(addAuditLog).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({
+        resources: [collection, folder].map((item) => ({
+          collectionId: String(item._id),
+          datasetId: String(dataset._id),
+          collectionType: item.type
+        }))
+      })
+    );
   });
 
   it('only deletes S3 files whose key belongs to the collection dataset', async () => {

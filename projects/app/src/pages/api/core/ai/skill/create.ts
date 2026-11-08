@@ -141,6 +141,7 @@ async function handler(req: ApiRequestProps<CreateSkillBody>): Promise<CreateSki
       tmbId,
       teamId,
       event: AuditEventEnum.CREATE_SKILL,
+      resources: [{ skillId: String(skillId) }],
       params: { skillName: requestedName, skillType: getI18nSkillType(AgentSkillTypeEnum.skill) }
     });
   })();

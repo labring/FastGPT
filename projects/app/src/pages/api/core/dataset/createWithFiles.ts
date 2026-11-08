@@ -205,6 +205,7 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetWithFilesResp
         tmbId,
         teamId,
         event: AuditEventEnum.CREATE_DATASET,
+        resources: [{ datasetId: String(result.datasetId) }],
         params: {
           datasetName: name,
           datasetType: getI18nDatasetType(DatasetTypeEnum.dataset)

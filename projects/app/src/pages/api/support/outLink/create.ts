@@ -47,6 +47,7 @@ export async function handler(
       tmbId,
       teamId,
       event: AuditEventEnum.CREATE_APP_PUBLISH_CHANNEL,
+      resources: [{ appId: String(app._id), appType: app.type }],
       params: {
         appName: app.name,
         channelName: props.name,

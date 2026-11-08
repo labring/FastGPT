@@ -3,6 +3,8 @@ import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { MongoTeamAudit } from '@fastgpt/service/support/user/audit/schema';
 import { addAuditLog, addAuditLogs } from '@fastgpt/service/support/user/audit/util';
 import type { AuditResourceType } from '@fastgpt/global/support/user/audit/type';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 
 vi.unmock('@fastgpt/service/support/user/audit/util');
 
@@ -31,7 +33,7 @@ describe('addAuditLog', () => {
 
   it('writes resource IDs separately from display metadata', async () => {
     const create = vi.spyOn(MongoTeamAudit, 'create').mockResolvedValue(undefined as never);
-    const resources = [{ appId: '68ad85a7463006c963799a05' }];
+    const resources = [{ appId: '68ad85a7463006c963799a05', appType: AppTypeEnum.workflowTool }];
 
     await addAuditLog({ ...input, resources });
 
@@ -129,7 +131,20 @@ describe('audit resource associations', () => {
 
   it('accepts one ID per item and preserves absent resources on legacy logs', async () => {
     expectTypeOf<{ appId: string }>().toExtend<AuditResourceType>();
+    expectTypeOf<{
+      appId: string;
+      appType: AppTypeEnum.workflowTool;
+    }>().toExtend<AuditResourceType>();
     expectTypeOf<{ appId: string; skillId: string }>().not.toExtend<AuditResourceType>();
+    expectTypeOf<{
+      collectionId: string;
+      datasetId: string;
+      collectionType: DatasetCollectionTypeEnum.file;
+    }>().toExtend<AuditResourceType>();
+    expectTypeOf<{
+      datasetId: string;
+      appType: AppTypeEnum.workflowTool;
+    }>().not.toExtend<AuditResourceType>();
 
     const audit = new MongoTeamAudit({
       teamId: objectId,
@@ -137,12 +152,20 @@ describe('audit resource associations', () => {
       event: AuditEventEnum.LOGIN,
       resources: [
         { appId: objectId },
+        { appId: objectId, appType: AppTypeEnum.workflowTool },
         { datasetId: objectId },
         { skillId: objectId },
-        { collectionId: objectId }
+        { collectionId: objectId },
+        {
+          collectionId: objectId,
+          datasetId: objectId,
+          collectionType: DatasetCollectionTypeEnum.file
+        }
       ]
     });
     await expect(audit.validate()).resolves.toBeUndefined();
+    expect(audit.toObject().resources?.[1].appType).toBe(AppTypeEnum.workflowTool);
+    expect(audit.toObject().resources?.at(-1)?.collectionType).toBe(DatasetCollectionTypeEnum.file);
 
     const legacyAudit = new MongoTeamAudit({
       teamId: objectId,
@@ -157,6 +180,11 @@ describe('audit resource associations', () => {
     {},
     { appId: objectId, skillId: objectId },
     { appId: 'invalid-id' },
+    { appId: objectId, appType: 'invalid-type' },
+    { datasetId: objectId, appType: AppTypeEnum.workflowTool },
+    { datasetId: objectId, collectionType: DatasetCollectionTypeEnum.file },
+    { collectionId: objectId, datasetId: 'invalid-id' },
+    { collectionId: objectId, collectionType: 'invalid-type' },
     { appId: objectId, unknownId: objectId }
   ])('rejects an invalid resource item %j', async (resource) => {
     const audit = new MongoTeamAudit({

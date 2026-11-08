@@ -14,10 +14,10 @@ import {
   ModalBody,
   Input,
   Switch,
-  Link,
   IconButton,
   HStack
 } from '@chakra-ui/react';
+import Link from '@fastgpt/web/components/common/Link';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { delShareChatById, createShareChat, putShareChat } from '@/web/support/outLink/api';
 import { formatTimeToChatTime } from '@fastgpt/global/common/string/time';

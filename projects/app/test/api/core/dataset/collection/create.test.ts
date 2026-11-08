@@ -21,6 +21,7 @@ import { Types } from '@fastgpt/service/common/mongo';
 import { getFakeUsers } from '@test/datas/users';
 import { getModelTestDefaults } from '@test/modelCache';
 import { Call } from '@test/utils/request';
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 
 describe('create collection parent checks', () => {
   afterEach(() => vi.restoreAllMocks());
@@ -181,6 +182,17 @@ describe('create collection parent checks', () => {
       }
     });
     expect(last.code).toBe(200);
+    expect(addAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        resources: [
+          {
+            collectionId: String(last.data),
+            datasetId: scope.datasetId,
+            collectionType: DatasetCollectionTypeEnum.folder
+          }
+        ]
+      })
+    );
     const props = {
       ...scope,
       name: 'overflow',
@@ -198,6 +210,17 @@ describe('create collection parent checks', () => {
       body: { ...props, name: 'leaf', type: DatasetCollectionTypeEnum.virtual }
     });
     expect(leaf.code).toBe(200);
+    expect(addAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        resources: [
+          {
+            collectionId: String(leaf.data),
+            datasetId: scope.datasetId,
+            collectionType: DatasetCollectionTypeEnum.virtual
+          }
+        ]
+      })
+    );
     const historical = await MongoDatasetCollection.create({
       ...scope,
       name: 'historical-deep-folder',

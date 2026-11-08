@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
-import { Box, Link } from '@chakra-ui/react';
+import { Box } from '@chakra-ui/react';
+import Link from '@fastgpt/web/components/common/Link';
 import ReactMarkdown from 'react-markdown';
 import RemarkGfm from 'remark-gfm';
 import RemarkMath from 'remark-math';

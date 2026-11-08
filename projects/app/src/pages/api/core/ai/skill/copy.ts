@@ -30,6 +30,7 @@ import {
 } from '@fastgpt/global/openapi/core/ai/skill/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
+import { AgentSkillTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
 
 async function handler(req: ApiRequestProps<CopySkillBody>): Promise<CopySkillResponse> {
   const { skillId } = parseApiInput({ req, bodySchema: CopySkillBodySchema }).body;
@@ -160,6 +161,7 @@ async function handler(req: ApiRequestProps<CopySkillBody>): Promise<CopySkillRe
       tmbId,
       teamId,
       event: AuditEventEnum.COPY_SKILL,
+      ...(skill.type !== AgentSkillTypeEnum.folder ? { resources: [{ skillId }] } : {}),
       params: { skillName: skill.name, skillType: getI18nSkillType(skill.type) }
     });
   })();

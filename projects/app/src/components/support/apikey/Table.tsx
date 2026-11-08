@@ -11,11 +11,11 @@ import {
   Tr,
   Th,
   Td,
-  Link,
   Input,
   IconButton,
   Switch
 } from '@chakra-ui/react';
+import Link from '@fastgpt/web/components/common/Link';
 import {
   getOpenApiKeys,
   createAOpenApiKey,
