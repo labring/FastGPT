@@ -244,6 +244,15 @@ ToolCall 每次工具子运行使用独立变量副本；正常完成或交互�
 - `workflowContext.getChildContext({ runtimeControl: overrides })` 复制当前控制状态并合并局部覆盖，未覆盖时也不共享可变对象。子流程仍继承节点开始执行时的预算，不改为全局共享额度；Agent/ToolCall 工具运行仅覆盖 `isToolCall: true`。
 - `runWorkflow` 从 Context 读取控制状态，进入时递增深度，完成、失败或深度超限时恢复。普通 Context 派生不自动递增深度，不重置预算，也不克隆变量或重置响应 summary。
 
+#### 7.1.3 节点入参的实际运行契约
+
+Queue 在调用 callback 前正向构造 `ModuleDispatchProps`，不展开整份 `RunWorkflowProps` 再用黑名单删字段。
+根入口的 `variables`、`resourceContext`、`nodeResponseWriteConfig` 在初始化阶段消费，不向运行内核透传；
+`concatUsage`、`defaultSkipNodeQueue` 属于 Queue，不进入节点 Props。运行能力从 Context 获取，避免原始变量输入与当前变量状态成为两个来源。
+
+`agentSandboxPrepareActions` 是 Agent 的真实业务输入，显式声明在运行与节点参数中并保留传递，不能因为它不在公共业务 Props 中而丢弃。
+节点运行图引用、`usagePush` 和单次执行的 `nodeSummary` 仍遵循现有协议；这次参数选择不改变图共享、变量提交、计费归属或旧 Loop 兼容行为，也不意味着节点参数已完全可序列化。
+
 ### 7.2 变量读取
 
 全局变量读取统一走：

@@ -44,7 +44,7 @@ import { ensureWorkflowSandboxReadyForUse } from '../sandbox';
 import { replaceAgentPromptToolReferences } from './adapter/prompt';
 import { createWorkflowAgentLoopRuntime } from './adapter/runtime';
 import { createAgentNodeResponseCollector } from './nodeResponseCollector';
-import { ensureAgentSandboxRuntime, type AgentSandboxPrepareAction } from './sub/sandbox/prepare';
+import { ensureAgentSandboxRuntime } from './sub/sandbox/prepare';
 import { createAgentSubAppLookup, getWorkflowAgentLoopProvider } from './utils';
 import { checkModelContextModeration } from '../../../../plugin/moderation/modelInput';
 import { MODERATION_BLOCKED_ERROR_MESSAGE } from '@fastgpt/global/core/plugin/moderation/constants';
@@ -90,9 +90,7 @@ export type DispatchAgentModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.authTmbId]?: boolean;
   [NodeInputKeyEnum.useAgentSandbox]?: boolean;
   [NodeInputKeyEnum.sandboxEntrypoint]?: string;
-}> & {
-  agentSandboxPrepareActions?: AgentSandboxPrepareAction[];
-};
+}>;
 
 type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.answerText]: string;

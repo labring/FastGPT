@@ -215,9 +215,10 @@ scope 还持有两类只影响输出、不影响 summary 的上下文：
 - `record/emit`：分别控制 writer 和 SSE，child 只能与 parent 策略做 AND，不能重新开启已经关闭的
   输出。系统级 workflow tool 使用该策略隐藏所有后代详情，但 child summary 仍正常计算。
 
-每次节点 callback 还会绑定独立 `WorkflowNodeResponseActivity`。callback 直接 publish 的 response
-以及它启动的 child workflow 都继承这个 activity，用来判断当前父 response 是否应抑制重复 SSE。
-兄弟并发节点不共享 activity，因此其他节点的 publish 不会误判为当前节点的 child response。
+Queue 不绑定或读取 activity 计数。共享 output 通过 `(id, parentId)` 记录已经发布的节点，
+移除后续父响应里重复嵌入的 child；不以请求级发布数量判断当前节点是否有子响应。
+Scope 仍保留可选的 `WorkflowNodeResponseActivity` 计数能力，但目前没有生产调用方，不能将其
+描述为 Queue 的 SSE 去重机制，也不应为接回旧链路新增调用。
 
 ### 3.5 `Chat.summary`
 
@@ -350,33 +351,31 @@ props.nodeSummary.mergeNodeSummary({
 
 ### 5.4 Sink scope 与 queue 的关系
 
-每个 `runWorkflow` scope 都拥有自己的 summary：
+每次调用 `runWorkflow` 前，由调用方显式准备独立响应 summary，并注入本层 WorkflowContext：
 
 ```ts
-const workflowRuntimeSummary = createWorkflowRuntimeSummary();
-const nodeResponseSink = createWorkflowNodeResponseScope({
-  sink: parentSink,
-  workflowRuntimeSummary,
-  defaultParentId: nodeResponseParentId
+const parentContext = getWorkflowContext();
+const childContext = parentContext.getChildContext({
+  // 变量、记忆、文件等能力按具体子运行的共享/隔离规则提前准备。
+  nodeResponseSink: parentContext.nodeResponseSink.getChildContext({
+    workflowRuntimeSummary: createWorkflowRuntimeSummary(),
+    ...(nodeResponseParentId !== undefined ? { defaultParentId: nodeResponseParentId } : {})
+  })
 });
+await runWithContext(childContext, () => runWorkflow(childWorkflowProps));
 ```
 
 scope 只统计自己收到的同层 response，并直接调用共享 output。child scope 从 parent scope 取得同一个
 output，但不会以 parent scope 为下游，所以 parent summary 不会重复统计 child response。共享 writer
 不等于共享 summary，`parentId` 也不等于 child summary 层级。
 
-queue 为当前 callback 创建独立 activity view：
+根入口通过 `createWorkflowEntryNodeResponseSink` 创建完整响应 Context，并负责关闭存储 writer。
+`runWorkflow` 不再额外初始化 scope 或 summary；Queue 与当前 scope 共享这一层的 summary。
 
-```ts
-const activity = createWorkflowNodeResponseActivity();
-dispatchData.nodeResponseSink = bindWorkflowNodeResponseActivity({
-  sink: nodeResponseSink,
-  activity
-});
-```
-
-callback 和它启动的 child workflow 发布完成后，queue 只读取该 activity 的发布数。这个计数只解决
-父 response 的 SSE 去重，不参与 summary 统计，也不能做成请求级全局计数。
+节点从 `getWorkflowContext().nodeResponseSink` 获取响应能力，不通过 dispatch Props 注入。
+output 在 publish 时、异步写入前捕获当前 Context 的 `workflowStreamResponse`；只有 scope / input
+均允许 emit 且当前 writer 存在时，才在 V2 和详情可见性策略允许下发送 SSE。禁流子 Context 不回退到
+根 writer，持久化和 summary 仍按各自策略工作。
 
 ## 6. Token 归属矩阵
 
@@ -730,7 +729,7 @@ response token，wrapper 节点断言 child summary，mixed 节点同时断言�
 | K10 | interactive/ToolCall 嵌套恢复 | 各层复用自己的 nodeResponseId |
 | K11 | LoopRun resume | wrapper 只写本次片段，读取不双算 |
 | K12 | append-only 索引回归 | 不存在 `data.id` unique index |
-| K13 | 两个节点 activity scope 并发 publish | activity 互不污染，父 SSE 抑制归属正确 |
+| K13 | 并发 child Context 使用不同 writer 或显式禁流 | 异步写入不串通道，禁流不回退父 writer，记录与 summary 不受影响 |
 | K14 | system workflow 多层嵌套 | 后代不能重新开启 writer/SSE，各层 summary 仍独立统计 |
 | K15 | child workflow 内 Agent 直接 publish | 缺省 parentId 使用 child scope 的 defaultParentId |
 

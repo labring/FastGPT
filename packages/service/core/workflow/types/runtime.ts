@@ -23,6 +23,7 @@ import type {
 } from '@fastgpt/global/core/workflow/runtime/type';
 import type { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { WorkflowRuntimeSummaryFields } from './summary';
+import type { AgentSandboxPrepareAction } from '../dispatch/ai/agent/sub/sandbox/prepare';
 
 /*
   1. 输入线分类：普通线(实际上就是从 start 直接过来的分支）和递归线（可以追溯到自身的分支）
@@ -84,6 +85,8 @@ export type WorkflowDispatchProps = {
 };
 
 export type ModuleDispatchProps<T> = WorkflowDispatchProps & {
+  /** 入口提供的 Agent 沙盒准备动作；属于显式业务输入，不是 Queue 控制能力。 */
+  agentSandboxPrepareActions?: AgentSandboxPrepareAction[];
   node: RuntimeNodeItemType;
   runtimeNodes: RuntimeNodeItemType[];
   runtimeNodesMap: Map<string, RuntimeNodeItemType>;
