@@ -3,7 +3,8 @@ import MyTooltip from '.';
 import { type IconProps } from '@chakra-ui/icons';
 import MyIcon from '../Icon';
 
-type Props = IconProps & {
+// 问号图标固定为 help，排除原生 name 属性，避免透传 string 覆盖 MyIcon 的图标名类型。
+type Props = Omit<IconProps, 'name'> & {
   label?: string | React.ReactNode;
 };
 
