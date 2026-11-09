@@ -21,12 +21,12 @@ export default function VariableLabel({
   const isInvalid = parentLabel === 'undefined' || !!invalidReason;
   const invalidReasonLabel =
     invalidReason === 'invalid_reference'
-      ? t('common:core.workflow.check.invalid_reference')
+      ? t('common:core.workflow.check.invalid_reference_tooltip')
       : invalidReason === 'unreachable_reference'
-        ? t('common:core.workflow.check.unreachable_reference')
+        ? t('common:core.workflow.check.unreachable_reference_tooltip')
         : invalidReason === 'invalid_reference_type'
-          ? t('common:core.workflow.check.reference_type_mismatch')
-          : t('common:invalid_variable');
+          ? t('common:core.workflow.check.invalid_reference_type_tooltip')
+          : t('common:core.workflow.check.invalid_reference_tooltip');
 
   const label = (
     <>

@@ -81,7 +81,7 @@ export default function VariableLabelPickerPlugin({
       onQueryChange={setQueryString}
       onSelectOption={onSelectOption}
       triggerFn={checkForTriggerMatch}
-      options={variableFilter(variables, queryString || '')}
+      options={variableFilter(variables, queryString || '', t)}
       menuRenderFn={(anchorElementRef, { selectedIndex, selectOptionAndCleanUp }) => {
         if (anchorElementRef.current == null) {
           return null;
@@ -104,78 +104,80 @@ export default function VariableLabelPickerPlugin({
                 overflow={'auto'}
                 zIndex={99999}
               >
-                {variableFilter(variables, queryString || '').length === variables.length && (
+                {variableFilter(variables, queryString || '', t).length === variables.length && (
                   <Box fontSize={'xs'}>{t('workflow:variable_picker_tips')}</Box>
                 )}
-                {variableFilter(variables, queryString || '').length > 0 ? (
-                  transformVariables(variableFilter(variables, queryString || '')).map((item) => {
-                    return (
-                      <Flex
-                        key={item.id}
-                        flexDirection={'column'}
-                        pt={2}
-                        _notLast={{
-                          borderBottom: '1px solid',
-                          borderColor: 'myGray.200'
-                        }}
-                      >
-                        <Flex alignItems={'center'} mb={1.5}>
-                          <Avatar
-                            src={item.avatar as any}
-                            w={'16px'}
-                            borderRadius={'2.8px'}
-                            display={'inline-flex'}
-                            verticalAlign={'middle'}
-                          />
-                          <Box
-                            mx={2}
-                            fontSize={'sm'}
-                            whiteSpace={'nowrap'}
-                            color={'myGray.600'}
-                            fontWeight={'semibold'}
-                          >
-                            {t(item.label as any)}
-                          </Box>
-                        </Flex>
-                        {item.children?.map((child) => (
-                          <Flex
-                            alignItems={'center'}
-                            as={'li'}
-                            key={child.key}
-                            px={2}
-                            py={1}
-                            rounded={'4px'}
-                            cursor={'pointer'}
-                            overflow={'auto'}
-                            _notLast={{
-                              mb: 1
-                            }}
-                            ref={selectedIndex === child.index ? highlightedItemRef : null}
-                            {...(selectedIndex === child.index
-                              ? {
-                                  bg: '#1118240D',
-                                  color: 'primary.700'
-                                }
-                              : {
-                                  bg: 'white',
-                                  color: 'myGray.600'
-                                })}
-                            _hover={{
-                              bg: '#1118240D',
-                              color: 'primary.700'
-                            }}
-                            onMouseDown={() => {
-                              selectOptionAndCleanUp({ ...child, parent: item });
-                            }}
-                          >
-                            <Box ml={2} fontSize={'sm'} whiteSpace={'nowrap'}>
-                              {child.label}
+                {variableFilter(variables, queryString || '', t).length > 0 ? (
+                  transformVariables(variableFilter(variables, queryString || '', t), t).map(
+                    (item) => {
+                      return (
+                        <Flex
+                          key={item.id}
+                          flexDirection={'column'}
+                          pt={2}
+                          _notLast={{
+                            borderBottom: '1px solid',
+                            borderColor: 'myGray.200'
+                          }}
+                        >
+                          <Flex alignItems={'center'} mb={1.5}>
+                            <Avatar
+                              src={item.avatar as any}
+                              w={'16px'}
+                              borderRadius={'2.8px'}
+                              display={'inline-flex'}
+                              verticalAlign={'middle'}
+                            />
+                            <Box
+                              mx={2}
+                              fontSize={'sm'}
+                              whiteSpace={'nowrap'}
+                              color={'myGray.600'}
+                              fontWeight={'semibold'}
+                            >
+                              {item.label}
                             </Box>
                           </Flex>
-                        ))}
-                      </Flex>
-                    );
-                  })
+                          {item.children?.map((child) => (
+                            <Flex
+                              alignItems={'center'}
+                              as={'li'}
+                              key={child.key}
+                              px={2}
+                              py={1}
+                              rounded={'4px'}
+                              cursor={'pointer'}
+                              overflow={'auto'}
+                              _notLast={{
+                                mb: 1
+                              }}
+                              ref={selectedIndex === child.index ? highlightedItemRef : null}
+                              {...(selectedIndex === child.index
+                                ? {
+                                    bg: '#1118240D',
+                                    color: 'primary.700'
+                                  }
+                                : {
+                                    bg: 'white',
+                                    color: 'myGray.600'
+                                  })}
+                              _hover={{
+                                bg: '#1118240D',
+                                color: 'primary.700'
+                              }}
+                              onMouseDown={() => {
+                                selectOptionAndCleanUp({ ...child, parent: item });
+                              }}
+                            >
+                              <Box ml={2} fontSize={'sm'} whiteSpace={'nowrap'}>
+                                {child.label}
+                              </Box>
+                            </Flex>
+                          ))}
+                        </Flex>
+                      );
+                    }
+                  )
                 ) : (
                   <Box p={2} color={'myGray.400'} fontSize={'sm'}>
                     {t('common:unusable_variable')}
@@ -190,13 +192,16 @@ export default function VariableLabelPickerPlugin({
   );
 }
 
-function transformVariables(variables: EditorVariableLabelPickerType[]): TransformedParent[] {
+function transformVariables(
+  variables: EditorVariableLabelPickerType[],
+  t: (key: string) => string
+): TransformedParent[] {
   const transformedData: TransformedParent[] = [];
   const parentMap: { [key: string]: TransformedParent } = {};
 
   variables.forEach((item, index) => {
     const parentId = item.parent.id;
-    const parentLabel = item.parent.label;
+    const parentLabel = t(item.parent.label);
     const parentAvatar = item.parent.avatar;
 
     if (!parentMap[parentId]) {
@@ -208,7 +213,7 @@ function transformVariables(variables: EditorVariableLabelPickerType[]): Transfo
       };
     }
     parentMap[parentId].children.push({
-      label: item.label,
+      label: t(item.label),
       key: item.key,
       icon: item.icon,
       index
@@ -229,14 +234,15 @@ function transformVariables(variables: EditorVariableLabelPickerType[]): Transfo
 
 function variableFilter(
   variables: EditorVariableLabelPickerType[],
-  queryString: string
+  queryString: string,
+  t: (key: string) => string
 ): EditorVariableLabelPickerType[] {
   const lowerCaseQuery = queryString.toLowerCase();
 
   return variables.filter((item) => {
-    const labelMatch = item.label.toLowerCase().includes(lowerCaseQuery);
+    const labelMatch = t(item.label).toLowerCase().includes(lowerCaseQuery);
     const keyMatch = item.key.toLowerCase().includes(lowerCaseQuery);
-    const parentLabelMatch = item.parent.label.toLowerCase().includes(lowerCaseQuery);
+    const parentLabelMatch = t(item.parent.label).toLowerCase().includes(lowerCaseQuery);
 
     return labelMatch || keyMatch || parentLabelMatch;
   });

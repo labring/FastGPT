@@ -7,6 +7,7 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
 import { Box, Flex } from '@chakra-ui/react';
 import { useWorkflowUIValue } from '../../../canvas/canvasState';
+import { useWorkflowCanvasValue } from '../../../canvas/workflowCanvasContext';
 import { useWorkflowSelectionValue } from '../../../context/workflowSelectionContext';
 import { useWorkflow } from '@/web/core/workflow/editor/react/useWorkflow';
 import { WorkflowHandleRenderContext } from './handleRenderContext';
@@ -78,6 +79,9 @@ export const MySourceHandle = React.memo(function MySourceHandle({
   const { t } = useTranslation();
   const updateNodeInternals = useUpdateNodeInternals();
   const renderHandle = useContext(WorkflowHandleRenderContext);
+  const cachedHandleCenter = useWorkflowCanvasValue((value) =>
+    value.nodeDimensions.get(nodeId)?.sourceHandleCenters?.get(handleId)
+  );
   const connected = useWorkflow((_structure, graph) =>
     graph.isHandleConnected({ nodeId, handleId, direction: 'source' })
   );
@@ -121,7 +125,8 @@ export const MySourceHandle = React.memo(function MySourceHandle({
       setNodeAnchor({
         card: node,
         left: node.offsetWidth,
-        top: (measureRect.top + measureRect.height / 2 - nodeRect.top) / scale
+        top:
+          cachedHandleCenter?.y ?? (measureRect.top + measureRect.height / 2 - nodeRect.top) / scale
       });
     };
 
@@ -130,7 +135,7 @@ export const MySourceHandle = React.memo(function MySourceHandle({
       typeof ResizeObserver === 'function' ? new ResizeObserver(update) : undefined;
     resizeObserver?.observe(measure);
     return () => resizeObserver?.disconnect();
-  }, [nodeAnchored]);
+  }, [cachedHandleCenter, nodeAnchored]);
 
   useLayoutEffect(() => {
     if (nodeAnchored && nodeAnchor) updateNodeInternals(nodeId);

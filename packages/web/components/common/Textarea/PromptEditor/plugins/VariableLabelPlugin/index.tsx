@@ -50,13 +50,13 @@ export default function VariableLabelPlugin({
 
       return currentVariable
         ? {
-            variableLabel: `${t(currentVariable.parent.label as any)}.${currentVariable.label}`,
+            variableLabel: `${t(currentVariable.parent.label as any)}.${t(currentVariable.label as any)}`,
             nodeAvatar: currentVariable.parent.avatar || '',
             invalidReason
           }
         : currentStatus
           ? {
-              variableLabel: `${currentStatus.sourceLabel || 'undefined'}.${
+              variableLabel: `${t(currentStatus.sourceLabel || 'undefined')}.${
                 currentStatus.outputLabel ? t(currentStatus.outputLabel as any) : childKey
               }`,
               nodeAvatar: currentStatus.icon || '',

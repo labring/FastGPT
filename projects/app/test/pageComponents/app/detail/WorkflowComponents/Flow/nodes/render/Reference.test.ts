@@ -93,7 +93,6 @@ describe('ReferSelector missing reference label', () => {
             ]
           },
           createElement(ReferSelector, {
-            inputName: 'Text',
             list: [],
             value: ['source', 'text'],
             onSelect: vi.fn()
@@ -102,9 +101,7 @@ describe('ReferSelector missing reference label', () => {
       );
     });
 
-    expect(
-      dom.window.document.querySelector('[aria-label="Text 引用的变量类型不匹配，需处理"]')
-    ).not.toBeNull();
+    expect(dom.window.document.querySelector('[aria-label="变量类型不匹配"]')).not.toBeNull();
   });
 
   it('renders the unreachable reference tooltip instead of its i18n key', async () => {
@@ -123,7 +120,6 @@ describe('ReferSelector missing reference label', () => {
             ]
           },
           createElement(ReferSelector, {
-            inputName: 'Text',
             list: [],
             value: ['source', 'text'],
             onSelect: vi.fn()
@@ -135,6 +131,23 @@ describe('ReferSelector missing reference label', () => {
     const labels = [...dom.window.document.querySelectorAll('[aria-label]')].map((element) =>
       element.getAttribute('aria-label')
     );
-    expect(labels).toContain('Text 引用的来源已不在当前连线范围内，需处理');
+    expect(labels).toContain('变量已丢失');
+    expect(labels.every((label) => !label?.includes('{{') && !label?.includes('common:'))).toBe(
+      true
+    );
+  });
+
+  it('uses the deleted variable tooltip when the source is missing', async () => {
+    await act(async () => {
+      root.render(
+        createElement(ReferSelector, {
+          list: [],
+          value: ['deleted', 'token'],
+          onSelect: vi.fn()
+        })
+      );
+    });
+
+    expect(dom.window.document.querySelector('[aria-label="变量已删除"]')).not.toBeNull();
   });
 });
