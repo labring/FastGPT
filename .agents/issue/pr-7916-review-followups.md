@@ -17,20 +17,20 @@
 
 ## 二、需要先拍板的决策
 
-### D1. 有消费但无新入口的字段归属（第 19-25 项）
+### D1. 有消费但无新入口的字段归属（第 19-25 项）— 已拍板
 
-| 字段 | 推荐归属 | 说明 |
-| --- | --- | --- |
-| `show_workflow_builder` | 新 `feature` 字段 | 前后端都读取；默认 `true`，用于隐藏工作流编排入口 |
-| `show_openai_account` | 新 `feature` 字段 | 账号第三方页和账户容器读取；默认 `false` |
-| `enable_team_model` | 新 `feature` 字段 | 模型选择和后端禁用逻辑读取；默认 `false` |
-| `customDomain.enable/domain.*` | 新 `site` 字段 | 自定义域名入口和 CNAME 展示读取；属于站点业务配置 |
-| `systemEnv.customDomain.kc/issuer/nginx.*` | ENV | Pro 证书/Ingress 部署基础设施，不建议进入实例配置 |
-| `sso.title/icon/autoLogin/disablePasswordForSsoUsers` | 新 `auth.sso` 字段 | 登录页和账号同步仍在使用，属于认证业务配置 |
-| `customPdfParse.price` | `providers.documentParse.customPdf.price` | PDF 解析计费仍在使用，应挂在解析 Provider 下 |
-| `botIframeUrl` | 新 `site` 字段 | 客服助手 iframe 地址，属于站点配置 |
+| 字段 | 最终归属 | 版本/展示默认 | 说明 |
+| --- | --- | --- | --- |
+| `show_workflow_builder` | 新 `feature` 字段 | all | 前后端都读取；默认 `true` |
+| `show_openai_account` | 新 `feature` 字段 | all | 账号第三方页和账户容器读取；默认 `false` |
+| `enable_team_model` | 新 `feature` 字段 | all | 模型选择和后端禁用逻辑读取；默认 `false` |
+| `customDomain.enable/domain.*` | 新 `site` 字段 | `isSaasOnly` | 旧页面明确标注“SaaS 服务才会用到” |
+| `systemEnv.customDomain.kc/issuer/nginx.*` | ENV | Pro 部署 | Pro 证书/Ingress 基础设施，不进入实例配置 |
+| `sso.title/icon/autoLogin/disablePasswordForSsoUsers` | 新 `auth.sso` 字段 | pro，按 license `functions.sso` 展示 | 登录页和账号同步仍在使用 |
+| `customPdfParse.price` | `providers.documentParse.customPdf.price` | all | PDF 解析计费挂在解析 Provider 下 |
+| `botIframeUrl` | 新 `site` 字段 | all | 客服助手 iframe 地址 |
 
-需要确认：是否按上表补 Schema/表单/页面映射；`systemEnv.customDomain.*` 是否确认归 ENV。
+版本/展示范围为实施默认值；如某个字段需要额外 SaaS 限制，在 C2 实现时单独标注。
 
 ### D2. `microsoft.customButton`
 
