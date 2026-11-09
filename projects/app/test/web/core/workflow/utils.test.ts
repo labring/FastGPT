@@ -65,7 +65,7 @@ describe('filterSensitiveNodesData', () => {
     expect(JSON.stringify(nodes)).toContain('child-token');
   });
 
-  it('removes auth from Agent selected tools while preserving references', () => {
+  it('clears Agent selected tools while preserving the original workflow', () => {
     const secrets = [
       'mcp-child-secret',
       'http-child-secret',
@@ -149,22 +149,8 @@ describe('filterSensitiveNodesData', () => {
     const exported = filterSensitiveNodesData(nodes);
     const selectedTools = exported[0].inputs[0].value as any[];
 
-    expect(selectedTools[0].toolConfig.mcpTool.toolId).toBe('mcp-app/search');
-    expect(selectedTools[1].toolConfig.httpTool.toolId).toBe('http-app/search');
-    expect(selectedTools[2].toolConfig.mcpToolSet).toMatchObject({
-      toolId: 'mcp-app',
-      toolList: [{ name: 'search', description: 'MCP search' }]
-    });
-    expect(selectedTools[3].toolConfig.httpToolSet).toMatchObject({
-      toolId: 'http-app',
-      toolList: [{ name: 'search', description: 'HTTP search' }]
-    });
-    expect(JSON.stringify(exported)).not.toContain(secrets[0]);
-    expect(JSON.stringify(exported)).not.toContain(secrets[1]);
-    expect(JSON.stringify(exported)).not.toContain(secrets[2]);
-    expect(JSON.stringify(exported)).not.toContain(secrets[3]);
-    expect(JSON.stringify(exported)).not.toContain(secrets[4]);
-    expect(JSON.stringify(exported)).not.toContain(secrets[5]);
+    expect(selectedTools).toEqual([]);
+    secrets.forEach((secret) => expect(JSON.stringify(exported)).not.toContain(secret));
     expect(JSON.stringify(nodes)).toContain(secrets[0]);
   });
 });

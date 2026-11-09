@@ -8,7 +8,7 @@ import type {
 } from '@fastgpt/global/core/workflow/type/edge';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useReactFlow } from 'reactflow';
 import { uiWorkflow2StoreWorkflow } from '../../utils';
 
@@ -27,7 +27,7 @@ import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import { getClientToolPreviewNode } from '@/web/core/app/api/tool';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import dynamic from 'next/dynamic';
-import { type FieldErrors, useForm } from 'react-hook-form';
+import { type FieldErrors, useForm, useWatch } from 'react-hook-form';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '../../../context';
 import { WorkflowDebugContext } from '../../context/workflowDebugContext';
@@ -295,8 +295,8 @@ export const useDebug = () => {
         variables: defaultGlobalVariables
       }
     });
-    const { handleSubmit, resetField } = variablesForm;
-    const debugVariables = variablesForm.watch('variables');
+    const { control, handleSubmit, resetField } = variablesForm;
+    const debugVariables = useWatch({ control, name: 'variables' });
 
     useEffect(() => {
       if (!runtimeNode || !isIndependentToolSet || !hasToolSetSummary) {
