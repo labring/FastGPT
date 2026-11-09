@@ -149,6 +149,173 @@ describe('systemInstanceConfig controller', () => {
       );
       expect(updated.effectiveConfig.documentParse.customPdf.key).toBe('original-secret-key'); // 保留原有密钥！
     });
+
+    describe('partial override merge', () => {
+      it('preserves omitted fields when saving a partial override', async () => {
+        await updateDomainConfig({
+          domain: 'site',
+          expectedRevision: 0,
+          submittedOverrides: {
+            name: 'V1',
+            docUrl: 'https://custom-doc.example.com',
+            scripts: [{ src: 'a.js' }]
+          },
+          actor: { actor: 'admin' }
+        });
+
+        const updated = await updateDomainConfig({
+          domain: 'site',
+          expectedRevision: 1,
+          submittedOverrides: { name: 'V2' },
+          actor: { actor: 'admin' }
+        });
+
+        expect(updated.overrides).toMatchObject({
+          name: 'V2',
+          docUrl: 'https://custom-doc.example.com',
+          scripts: [{ src: 'a.js' }]
+        });
+        expect(updated.effectiveConfig.docUrl).toBe('https://custom-doc.example.com');
+        expect(updated.effectiveConfig.scripts).toEqual([{ src: 'a.js' }]);
+      });
+
+      it('merges nested objects and preserves an omitted secret', async () => {
+        await updateDomainConfig({
+          domain: 'providers',
+          expectedRevision: 0,
+          submittedOverrides: {
+            documentParse: {
+              customPdf: {
+                url: 'https://pdf.example.com',
+                key: 'original-secret-key'
+              }
+            }
+          },
+          actor: { actor: 'admin' }
+        });
+
+        const updated = await updateDomainConfig({
+          domain: 'providers',
+          expectedRevision: 1,
+          submittedOverrides: {
+            documentParse: {
+              customPdf: {
+                url: 'https://pdf.new-domain.com'
+              }
+            }
+          },
+          actor: { actor: 'admin' }
+        });
+
+        expect(updated.overrides.documentParse?.customPdf?.url).toBe('https://pdf.new-domain.com');
+        expect(updated.overrides.documentParse?.customPdf?.key).toBe('original-secret-key');
+        expect(updated.effectiveConfig.documentParse.customPdf.key).toBe('original-secret-key');
+      });
+
+      it('treats an empty string as an explicit override', async () => {
+        await updateDomainConfig({
+          domain: 'site',
+          expectedRevision: 0,
+          submittedOverrides: { docUrl: 'https://custom-doc.example.com' },
+          actor: { actor: 'admin' }
+        });
+
+        const updated = await updateDomainConfig({
+          domain: 'site',
+          expectedRevision: 1,
+          submittedOverrides: { docUrl: '' },
+          actor: { actor: 'admin' }
+        });
+
+        expect(updated.overrides.docUrl).toBe('');
+        expect(updated.effectiveConfig.docUrl).toBe('');
+      });
+
+      it('clears an array explicitly and keeps other fields and explicit-default intent', async () => {
+        await updateDomainConfig({
+          domain: 'site',
+          expectedRevision: 0,
+          submittedOverrides: {
+            name: 'Keep Me',
+            docUrl: 'https://custom-doc.example.com',
+            scripts: [{ src: 'a.js' }]
+          },
+          actor: { actor: 'admin' }
+        });
+
+        const cleared = await updateDomainConfig({
+          domain: 'site',
+          expectedRevision: 1,
+          submittedOverrides: { scripts: [] },
+          actor: { actor: 'admin' }
+        });
+
+        expect(cleared.overrides.scripts).toBeUndefined();
+        expect(cleared.overrides.name).toBe('Keep Me');
+        expect(cleared.overrides.docUrl).toBe('https://custom-doc.example.com');
+
+        let doc = await MongoSystemInstanceConfig.findOne({ domain: 'site' }).lean();
+        expect(doc?.explicitDefaultPaths).toContain('scripts');
+
+        // 后续局部保存不能丢掉此前“明确清空”的意图
+        await updateDomainConfig({
+          domain: 'site',
+          expectedRevision: 2,
+          submittedOverrides: { name: 'Keep Me Too' },
+          actor: { actor: 'admin' }
+        });
+
+        doc = await MongoSystemInstanceConfig.findOne({ domain: 'site' }).lean();
+        expect(doc?.overrides.scripts).toBeUndefined();
+        expect(doc?.explicitDefaultPaths).toContain('scripts');
+        expect(doc?.overrides.name).toBe('Keep Me Too');
+      });
+
+      it('leaves existing overrides unchanged when submitting an empty object', async () => {
+        await updateDomainConfig({
+          domain: 'site',
+          expectedRevision: 0,
+          submittedOverrides: { name: 'Unchanged' },
+          actor: { actor: 'admin' }
+        });
+
+        const updated = await updateDomainConfig({
+          domain: 'site',
+          expectedRevision: 1,
+          submittedOverrides: {},
+          actor: { actor: 'admin' }
+        });
+
+        expect(updated.revision).toBe(2);
+        expect(updated.overrides.name).toBe('Unchanged');
+        expect(updated.effectiveConfig.name).toBe('Unchanged');
+      });
+
+      it('drops deprecated existing fields without blocking a partial save', async () => {
+        await MongoSystemInstanceConfig.collection.insertOne({
+          domain: 'site',
+          schemaVersion: 1,
+          revision: 1,
+          overrides: {
+            name: 'Legacy Name',
+            deprecatedField: 'legacy-value'
+          },
+          explicitDefaultPaths: [],
+          updatedBy: { actor: 'system' }
+        });
+
+        const updated = await updateDomainConfig({
+          domain: 'site',
+          expectedRevision: 1,
+          submittedOverrides: { docUrl: 'https://custom-doc.example.com' },
+          actor: { actor: 'admin' }
+        });
+
+        expect(updated.overrides.name).toBe('Legacy Name');
+        expect(updated.overrides.docUrl).toBe('https://custom-doc.example.com');
+        expect((updated.overrides as Record<string, unknown>).deprecatedField).toBeUndefined();
+      });
+    });
   });
 
   describe('getSystemInstanceConfigSnapshot', () => {
@@ -204,6 +371,42 @@ describe('systemInstanceConfig controller', () => {
       expect(siteDoc?.revision).toBe(1);
       expect(authDoc?.overrides.openApiKeyMaxCount).toBe(88);
       expect(authDoc?.revision).toBe(1);
+    });
+
+    it('merges partial overrides with existing values in batch saves', async () => {
+      await batchUpdateDomainConfigs({
+        items: [
+          {
+            domain: 'site',
+            expectedRevision: 0,
+            overrides: {
+              name: 'Batch V1',
+              docUrl: 'https://custom-doc.example.com',
+              scripts: [{ src: 'a.js' }]
+            }
+          }
+        ],
+        actor: { actor: 'admin' }
+      });
+
+      const [updated] = await batchUpdateDomainConfigs({
+        items: [
+          {
+            domain: 'site',
+            expectedRevision: 1,
+            overrides: { name: 'Batch V2' }
+          }
+        ],
+        actor: { actor: 'admin' }
+      });
+
+      expect(updated.overrides).toMatchObject({
+        name: 'Batch V2',
+        docUrl: 'https://custom-doc.example.com',
+        scripts: [{ src: 'a.js' }]
+      });
+      expect(updated.effectiveConfig.docUrl).toBe('https://custom-doc.example.com');
+      expect(updated.effectiveConfig.scripts).toEqual([{ src: 'a.js' }]);
     });
 
     it('rolls back completely if any domain in the batch encounters a revision conflict', async () => {

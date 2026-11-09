@@ -19,6 +19,7 @@ import {
 } from '@fastgpt/global/common/system/config/permission';
 import {
   collectPrunedLeafPaths,
+  deepMergeConfig,
   hasOverridePath,
   pruneDefaultOverrides
 } from '@fastgpt/global/common/system/config/merge';
@@ -208,6 +209,29 @@ const readExplicitDefaultPaths = (
 ): string[] => (Array.isArray(existing?.explicitDefaultPaths) ? existing.explicitDefaultPaths : []);
 
 /**
+ * 将本次提交的稀疏 overrides 合并到数据库已有值上。
+ *
+ * Admin API 的 overrides 是“局部补丁”而不是整域快照：未提交的字段必须保留库中现值。
+ * 已有值先按宽松模式归一化，避免历史废弃字段阻断保存，也不会把未知字段重新写回；
+ * 数组、标量和 null 由提交值整体覆盖，普通对象递归合并，undefined 视为未提交。
+ */
+const mergeSubmittedOverrides = <T extends SystemInstanceConfigDomainKey>({
+  domain,
+  existingOverrides,
+  submittedOverrides
+}: {
+  domain: T;
+  existingOverrides: unknown;
+  submittedOverrides: DeepPartial<SystemInstanceConfigDomainMap[T]>;
+}): DeepPartial<SystemInstanceConfigDomainMap[T]> => {
+  const normalizedExisting = parseDomainOverrides(domain, existingOverrides ?? {}, {
+    strict: false
+  });
+
+  return deepMergeConfig(normalizedExisting, submittedOverrides);
+};
+
+/**
  * 获取指定 Domain 的配置。
  * 若数据库中不存在记录，则返回内置默认配置及 revision: 0。
  * @param domain 配置域标识
@@ -252,7 +276,8 @@ export const getDomainConfig = async <T extends SystemInstanceConfigDomainKey>(
 
 /**
  * 保存并更新指定 Domain 的稀疏覆盖配置。
- * 包含两阶段校验、敏感数据防丢失恢复、默认值冗余剪枝及乐观锁并发控制。
+ * 本次提交按局部补丁处理，与库中已有 overrides 合并后再执行两阶段校验、
+ * 敏感数据防丢失恢复、默认值冗余剪枝及乐观锁并发控制。
  */
 export const updateDomainConfig = async <T extends SystemInstanceConfigDomainKey>({
   domain,
@@ -260,7 +285,7 @@ export const updateDomainConfig = async <T extends SystemInstanceConfigDomainKey
   submittedOverrides,
   actor
 }: UpdateDomainConfigParams<T>): Promise<GetDomainConfigResult<T>> => {
-  // 1. 查询当前已有文档，检查版本并用于恢复敏感字段
+  // 1. 查询当前已有文档，检查版本并用于局部合并与敏感字段恢复
   const existing = await MongoSystemInstanceConfig.findOne({ domain }).lean();
   const currentRevision = existing?.revision ?? 0;
 
@@ -271,28 +296,35 @@ export const updateDomainConfig = async <T extends SystemInstanceConfigDomainKey
     );
   }
 
-  // 2. 敏感数据防覆盖处理：若用户提交了 '******' 掩码，则自动恢复库中已有值
-  const rawOverrides = restorePreservedSecrets(domain, submittedOverrides, existing?.overrides);
+  // 2. 将本次提交作为局部补丁合并到已有 overrides；未提交字段保留库中现值
+  const mergedOverrides = mergeSubmittedOverrides({
+    domain,
+    existingOverrides: existing?.overrides,
+    submittedOverrides
+  });
 
-  // 3. 阶段 1 校验：检查 overrides 本身的形态与字段类型（拒绝未知字段）
+  // 3. 敏感数据防覆盖处理：若用户提交了 '******' 掩码，则自动恢复库中已有值
+  const rawOverrides = restorePreservedSecrets(domain, mergedOverrides, existing?.overrides);
+
+  // 4. 阶段 1 校验：检查 overrides 本身的形态与字段类型（拒绝未知字段）
   const parsedOverrides = parseDomainOverrides(domain, rawOverrides);
 
-  // 4. 阶段 2 终审校验：合并完整默认值并执行 superRefine 跨字段校验
+  // 5. 阶段 2 终审校验：合并完整默认值并执行 superRefine 跨字段校验
   const nextEffectiveConfig = resolveDomainEffectiveConfig(domain, parsedOverrides);
 
-  // 5. 冗余剪枝：与内置默认值完全相同的项不进入 DB
+  // 6. 冗余剪枝：与内置默认值完全相同的项不进入 DB
   const defaultValues = getDomainDefaultConfig(domain);
   const cleanOverrides = (pruneDefaultOverrides(parsedOverrides, defaultValues) ??
     {}) as DeepPartial<SystemInstanceConfigDomainMap[T]>;
 
-  // 5.1 记录被剪掉的显式默认值路径：让"明确清空"与"从未配置"在文档里可区分
+  // 6.1 记录被剪掉的显式默认值路径：让"明确清空"与"从未配置"在文档里可区分
   const explicitDefaultPaths = resolveExplicitDefaultPaths({
     previousPaths: readExplicitDefaultPaths(existing),
     parsedOverrides,
     cleanOverrides
   });
 
-  // 6. 条件写入与乐观锁递增
+  // 7. 条件写入与乐观锁递增
   let updatedDoc;
 
   if (!existing) {
@@ -423,7 +455,7 @@ export const batchUpdateDomainConfigs = async ({
           }
         })();
 
-  // 1. 预校验与准备阶段：对所有域执行敏感字段恢复、形态校验、终审校验和默认值剪枝
+  // 1. 预校验与准备阶段：对所有域执行局部合并、敏感字段恢复、形态校验、终审校验和默认值剪枝
   const preparedItems = await Promise.all(
     items.map(async ({ domain, expectedRevision, overrides: submittedOverrides }) => {
       const existing = await MongoSystemInstanceConfig.findOne({ domain }).lean();
@@ -435,7 +467,12 @@ export const batchUpdateDomainConfigs = async ({
         );
       }
 
-      const rawOverrides = restorePreservedSecrets(domain, submittedOverrides, existing?.overrides);
+      const mergedOverrides = mergeSubmittedOverrides({
+        domain,
+        existingOverrides: existing?.overrides,
+        submittedOverrides
+      });
+      const rawOverrides = restorePreservedSecrets(domain, mergedOverrides, existing?.overrides);
       const parsedOverrides = parseDomainOverrides(domain, rawOverrides);
       const effectiveConfig = resolveDomainEffectiveConfig(domain, parsedOverrides);
 

@@ -1,0 +1,186 @@
+# PR #7916 评论修复清单（按 review 建议优化）
+
+- 基线：FastGPT `b22b6a55f`，Pro `5845bfa9`
+- 参考：review `5799063192`、评论 `6708236008`、`6708377441`、`6716908328`，以及全部行内评论
+- 结论：最新 review 唯一的 must-fix（PlanEditModal 测试）已完成；11-07 评论的“前两项”是套餐局部保存和套餐版本保护，应最先修。
+
+## 一、评论给出的修复原则
+
+1. **局部保存**：服务端在 revision 校验保护下合并域内已有 overrides，保留“显式清空 / 设回默认值”的语义；必须覆盖省略字段、空字符串、空数组和敏感字段掩码。
+2. **套餐版本**：所有套餐写入口统一版本校验，套餐与对应版本一起读取；不能依赖商业配置页恰好同时提交 `commercial`，旧套餐写入路径也要纳入。
+3. **Pro 刷新**：复用 App 的串行刷新方式，或用明确版本规则阻止旧结果覆盖；不新增分发系统，也不要求全节点确认。
+4. **头像生命周期**：不要按旧提交快照直接删除对象；改为延迟回收并检查当前引用，同时避免“检查后又被重新引用”的新竞态；不要求扩展 S3 客户端重建方案。
+5. **迁移容错**：必须展示被跳过/剔除的域和字段（脱敏），纳入升级验收；是否阻断升级按实际兼容要求逐项决定。
+6. **ENV/config 互斥**：在最终合成处明确 ENV 权威，旧库值只作一次性迁移输入；仍需保留的旧字段先迁走，再收口旧表单和写接口。
+7. **字段收敛判定**：先确认“最终业务实际消费”，不能只看声明或投影；无消费的删除并登记 overrides 清理，有消费但无入口的先决定归属再补 Schema/表单/页面映射。
+8. **SYNC_INDEX**：只处理当前 `deploy/version/main` 模板、生成文件和文档；历史版本部署文件单独判断，不盲删。
+
+## 二、需要先拍板的决策
+
+### D1. 有消费但无新入口的字段归属（第 19-25 项）
+
+| 字段 | 推荐归属 | 说明 |
+| --- | --- | --- |
+| `show_workflow_builder` | 新 `feature` 字段 | 前后端都读取；默认 `true`，用于隐藏工作流编排入口 |
+| `show_openai_account` | 新 `feature` 字段 | 账号第三方页和账户容器读取；默认 `false` |
+| `enable_team_model` | 新 `feature` 字段 | 模型选择和后端禁用逻辑读取；默认 `false` |
+| `customDomain.enable/domain.*` | 新 `site` 字段 | 自定义域名入口和 CNAME 展示读取；属于站点业务配置 |
+| `systemEnv.customDomain.kc/issuer/nginx.*` | ENV | Pro 证书/Ingress 部署基础设施，不建议进入实例配置 |
+| `sso.title/icon/autoLogin/disablePasswordForSsoUsers` | 新 `auth.sso` 字段 | 登录页和账号同步仍在使用，属于认证业务配置 |
+| `customPdfParse.price` | `providers.documentParse.customPdf.price` | PDF 解析计费仍在使用，应挂在解析 Provider 下 |
+| `botIframeUrl` | 新 `site` 字段 | 客服助手 iframe 地址，属于站点配置 |
+
+需要确认：是否按上表补 Schema/表单/页面映射；`systemEnv.customDomain.*` 是否确认归 ENV。
+
+### D2. `microsoft.customButton`
+
+- 现状：表单可编辑并下发，但登录按钮使用 `labels.microsoft`。
+- 选项：A. 接入登录按钮，作为 `labels.microsoft` 的覆盖值（推荐）；B. 确认不需要后删除字段、表单和迁移映射。
+
+### D3. `show_batch_eval`
+
+- 现状：只有初始化赋值，没有消费该标志；license 的 `functions.eval` 是另一层业务授权。
+- 选项：A. 删除 `feConfigs.show_batch_eval` 声明/赋值（推荐）；B. 保留并明确它只作为 license 派生值。
+
+### D4. 旧 Pro `auth.sms.*_EN`
+
+- 现状：有旧类型、表单适配和迁移兼容引用；当前短信发送统一使用中文模板。
+- 选项：A. 标记为历史兼容字段，保留迁移读取，不允许新表单写入（推荐）；B. 删除所有旧类型/适配，并补迁移清理。
+
+### D5. `SYNC_INDEX`
+
+- 现状：运行时已移除；当前 main 模板、生成文件和文档仍有残留；历史版本部署文件也有 13 处左右。
+- 选项：A. 仅清理当前 main 模板/生成文件/文档，历史版本不动（推荐）；B. 暂不修改部署 YAML，只修文档；C. 全部清理（不推荐，需逐个版本确认）。
+- 修改 `deploy/**/*.yml|yaml` 前必须得到明确确认。
+
+### D6. Sangfor 回落 `customPdfParse`
+
+- 现状：`providers.documentParse.sangfor.url` 缺失时成组回落到 `global.systemEnv.customPdfParse`；迁移会把旧 `CUSTOM_PDF_PARSE_URL/KEY` 同时写入两处。
+- 选项：A. 保留迁移兼容，补注释和“迁移完成后移除”的条件（推荐）；B. 删除回落，要求 Sangfor 必须配置自己的 url/key。
+
+### D7. `plugin.remoteDebug` 组合规则
+
+- 现状：`instanceConfig.subservice.plugin.remoteDebug || pluginRemoteDebug`，Plugin 服务探测为 true 时管理员无法关闭。
+- 建议：管理员开关优先；探测只表示“能力可用”，不覆盖显式关闭。需确认是否按此实现。
+
+### D8. 无消费字段删除确认
+
+- 第 11、13、14、15、16 项建议删除；删除时必须同步 registry、pageFields、旧类型、表单、迁移 cleanup 和测试。
+- 若其中某项仍计划接入业务，请改为“补齐消费”，不要删除。
+
+## 三、逐项执行清单
+
+### 批次 A：数据一致性与并发（优先）
+
+- [x] **A1（原第 1 项，P1）局部保存覆盖整域 overrides**
+  - 已实现：controller 的 `updateDomainConfig` 与 `batchUpdateDomainConfigs` 都先宽松归一化已有 overrides，再与本次提交深合并；数组、标量、null 覆盖，普通对象递归合并，未提交字段保留。
+  - 覆盖：省略字段、空字符串、空数组、敏感字段掩码、空对象 no-op、历史废弃字段剔除。
+  - 位置：`packages/service/common/system/systemInstanceConfig/controller.ts`、`packages/service/test/common/system/systemInstanceConfig/controller.test.ts`
+- [ ] **A2（原第 2 项，P1）套餐缺少版本保护**
+  - 按评论建议：套餐与版本同一快照读取；统一所有套餐写入口；旧套餐写入路径也纳入版本校验。
+  - 位置：`packages/service/common/system/systemInstanceConfig/controller.ts`、`projects/app/src/pageComponents/admin/settings/commercial/PlansSettingSection.tsx`、旧套餐管理 API
+- [ ] **A3（原第 3 项，P2）Pro 配置刷新乱序**
+  - 按评论建议：复用 App 串行刷新或版本规则；同一轮读取要保证 legacy 配置和实例快照来自同一版本；不新增分发系统。
+  - 位置：`packages/service/common/mongo/watch.ts`、`pro/admin/src/service/middleware/volumnMongoWatch.ts`
+- [ ] **A4（原第 4 项，P2）头像异步清理竞态**
+  - 按评论建议：延迟回收并检查当前引用；覆盖 A→B→A 时序，避免检查后又被重新引用的新竞态；不扩展 S3 客户端重建。
+  - 位置：`projects/app/src/service/common/system/syncSiteAvatarLifecycle.ts`、`projects/app/src/pages/api/admin/system/config/update.ts`
+- [ ] **A5（原第 5 项，P2）迁移静默剔除/跳过**
+  - 按评论建议：输出脱敏后的跳过域/字段清单，纳入升级验收；关键配置是否阻断升级单独决定。
+  - 位置：`projects/app/src/migration/tasks/4180/20260928_migrate_instance_configs/`
+
+### 批次 B：配置来源与旧入口
+
+- [ ] **B1（原第 6 项，P1）`CHINESE_IP_REDIRECT_URL` 被旧配置覆盖**
+  - 按评论建议：在最终合成处明确 ENV 权威。
+  - 位置：`projects/app/src/service/common/system/index.ts`
+- [ ] **B2（原第 7 项，P1，依赖 D1）旧 `basic`/`user` 页面和写接口**
+  - 按评论建议：先盘点旧页面全部字段，区分“已迁移”“仍有用途”“废弃”；迁走仍有用途的字段后，再收口旧表单和 `/proApi/admin/system/updateConfig`，避免旧页面保存看似成功但实际被新配置覆盖。
+  - 位置：`projects/app/src/pages/admin/settings/basic.tsx`、`user.tsx`、`projects/app/src/web/admin/system/api.ts`、`pro/admin/src/pages/api/admin/system/updateConfig.ts`
+- [ ] **B3（原第 8 项，P2，依赖 D7）`plugin.remoteDebug` 无法关闭**
+  - 管理员开关优先，探测只表示能力可用。
+  - 位置：`projects/app/src/service/common/system/index.ts`
+- [ ] **B4（原第 9 项，P3，依赖 D6）Sangfor 凭据回落**
+  - 按 D6 结论保留并注释，或删除回落。
+  - 位置：`packages/service/thirdProvider/sangfor/index.ts`
+
+### 批次 C：字段收敛
+
+#### C1. 无实际消费或历史残留
+
+- [ ] **C1.1（原第 10 项，依赖 D2）`microsoft.customButton`**：接入登录按钮或删除。
+- [ ] **C1.2（原第 11 项，P3，依赖 D8）`show_appStore`**：无消费，建议删除。
+- [ ] **C1.3（原第 12 项，依赖 D3）`show_batch_eval`**：删除声明/赋值，或明确为 license 派生值。
+- [ ] **C1.4（原第 13 项，P3，依赖 D8）`agentSandboxFree`**：界面使用 `show_agent_sandbox_free_tip`，删除旧字段。
+- [ ] **C1.5（原第 14 项，P3，依赖 D8）`systemEnv.ip_whitelist`**：删除残留声明和旧表单控件。
+- [ ] **C1.6（原第 15 项，P3，依赖 D8）`systemEnv.customDomain.domain.*`**：删除；实际读取 `feConfigs.customDomain.domain`。
+- [ ] **C1.7（原第 16 项，P3，依赖 D8）旧 Pro 钉钉/支付宝类型**：确认无迁移/表单引用后删除旧类型。
+- [ ] **C1.8（原第 17 项，依赖 D4）旧 Pro `auth.sms.*_EN`**：标记历史兼容或删除。
+- [ ] **C1.9（原第 18 项，依赖 D5）`SYNC_INDEX`**：仅清理当前 main 模板/生成文件/文档。
+- 统一验收：registry、pageFields、旧类型、表单、`20260929_cleanup_instance_config_deprecated_fields`、相关测试同步；存量 overrides 不因 strict schema 读取失败。
+
+#### C2. 业务仍在用但没有新配置入口（依赖 D1）
+
+- [ ] **C2.1（原第 19 项）`show_workflow_builder`**：补 `feature` 字段/表单/映射。
+- [ ] **C2.2（原第 20 项）`show_openai_account`、`enable_team_model`**：补 `feature` 字段/表单/映射。
+- [ ] **C2.3（原第 21 项）`customDomain.enable/domain.*`**：补 `site` 字段/表单/映射。
+- [ ] **C2.4（原第 22 项）`systemEnv.customDomain.kc/issuer/nginx.*`**：确认归 ENV，或补 Pro 部署配置入口。
+- [ ] **C2.5（原第 23 项）`sso.title/icon/autoLogin/disablePasswordForSsoUsers`**：补 `auth.sso` 字段/表单/映射。
+- [ ] **C2.6（原第 24 项）`customPdfParse.price`**：补 `providers.documentParse.customPdf.price`。
+- [ ] **C2.7（原第 25 项）`botIframeUrl`**：补 `site` 字段/表单/映射。
+- 统一验收：逐字段矩阵有明确归属；仍需管理的字段可在当前菜单路径编辑，不依赖隐藏旧路由；不新增重复 ENV 来源。
+
+### 批次 D：配置与消费规则一致性（R1-R5）
+
+- [ ] **R1（原第 26 项，P1）登录/注册方式派生未迁移**
+  - 按评论建议：从新邮箱/短信配置重新推导 `login_method`、`find_password_method`、`bind_notification_method` 和手机号 `register_method`。
+  - 位置：`packages/global/common/system/config/frontendProjection.ts`、`projects/app/src/web/admin/config/adapt.ts`、`projects/app/src/pages/api/common/system/getInitData.ts`
+- [ ] **R2（原第 27 项，P1）解析 Provider `none` 语义**
+  - 按评论建议：统一下拉选项、默认值和运行时语义；`none` 必须表示关闭外部解析，不按旧凭据回落。
+  - 位置：`projects/app/src/pageComponents/admin/settings/providers/index.tsx`、`packages/service/common/file/read/utils.ts`
+- [ ] **R3（原第 28 项，P2）`showCustomPdfParse` 推导**
+  - 按当前选中的 Provider 判断，而不是只看旧凭据。
+  - 位置：`packages/service/common/system/tools.ts`
+- [ ] **R4（原第 29 项，P2）内容审核字段版本归属**
+  - 对齐 Pro 实际支持范围，同步 registry、页面可见性和 API 权限。
+  - 位置：`packages/global/common/system/config/registry.ts`、`packages/service/thirdProvider/fastgptPro/api.ts`
+- [ ] **R5（原第 30 项，P2）`ENABLE_SAAS_ADMIN_CONFIG` 范围**
+  - 恢复为仅控制配置展示；工单、企业认证入口按服务实际配置判断。
+  - 位置：`pro/admin/src/service/admin/settings/hooks.ts`
+
+### 批次 E：前端展示与测试
+
+- [ ] **E1（原第 31 项，P2）`auth.fastLogin` 展示规则**
+  - 按评论：仅当加载时既有配置非空显示编辑项和目录项；空配置不提供新建入口；显示状态不随当前编辑内容变化；隐藏时保存保留原值。
+  - 位置：`projects/app/src/pageComponents/admin/settings/auth/index.tsx`
+- [ ] **E2（原第 32 项，P3）StandardPlans/LegacyPlans 中文硬编码回退**
+  - 按最新 review：恢复已有四语言静态翻译调用，覆盖配置按钮、定制套餐标题、取消/确认、名称、购买链接等。
+  - 位置：`projects/app/src/pageComponents/admin/config/components/FormField/StandardPlans.tsx`、`LegacyPlans.tsx`
+- [ ] **E3（原第 33 项，P3）合并丢失的 main 品牌测试**
+  - 按最新 review：恢复约 14 个品牌 ENV 组合和 `initFastGPTConfig` 投影用例，保留本 PR 的实例配置场景。
+  - 位置：品牌配置、`initFastGPTConfig` 相关测试文件
+- [x] **E4（原第 34 项）PlanEditModal 测试**
+  - 已完成：`b22b6a55f`，12 例通过；review 线程已回复并 resolve。
+
+### 批次 F：文档与注释
+
+- [ ] **F1（原第 35 项）`alipay.endpoint` 误标**：实际已传给 Pro `AlipaySdk`，删除“业务未接入”标记。
+- [ ] **F2（原第 36 项）`SYNC_INDEX` 文档**：与 C1.9 一起处理，仍列为保留 ENV 的说明要删除。
+- [ ] **F3（原第 37 项）`CHINESE_IP_REDIRECT_URL` 旧映射说明**：改为 ENV 权威描述。
+- [ ] **F4（原第 38 项）过期注释**：清理已移除 ENV 兜底、旧页面、旧字段相关注释。
+- 位置：`.agents/design/common/admin-instance-config-env-boundary.md` 及相关源码注释
+
+## 四、已完成项（不重复修）
+
+- PlanEditModal 测试兼容性：`b22b6a55f`，12 例通过，review 线程已 resolve。
+- 历史行内问题：TTL 时序、Worker 版本回收、BullMQ 专用参数、续流保活、fastLogin JSON 误报、AI Proxy token、探测结果竞态、对象参数、循环上限复用等，最新 review 已确认保持修复。
+- Pro 旧 review 两项：存储 bucket 重建和 `commercial.billingNotify` 短信投影，当前 Pro 代码已修复；仅旧线程未标 resolve。
+
+## 五、建议执行顺序
+
+1. **A1、A2**：评论明确建议优先处理，先解决数据覆盖和套餐并发。
+2. **B1、R1、R2**：配置来源和登录/解析语义，影响面大且可独立验证。
+3. **A3、A4、A5、B2、B3**：并发、迁移、旧入口收口。
+4. **R3、R4、R5、E1、E2、E3**：规则一致性和前端/测试。
+5. **D1-D8 拍板后**，再做 C1/C2 字段删除或补入口。
+6. **F1-F4、C1.9**：文档和部署模板收尾。
