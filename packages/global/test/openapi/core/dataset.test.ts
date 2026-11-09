@@ -84,17 +84,20 @@ describe('SearchDatasetTestBodySchema', () => {
     ).toBe(expected);
   });
 
-  it.each([9, 101, 10.5, '20.5', '', null, Number.NaN, Infinity, 'invalid'])(
-    'rejects an out-of-range or non-integer rerankCandidateNum: %s',
+  it.each([0, 9, 101, 10.5, '20.5', '', null, Number.NaN, Infinity, 'invalid'])(
+    'defaults an invalid rerankCandidateNum without rejecting either rerank mode: %s',
     (rerankCandidateNum) => {
-      expect(
-        SearchDatasetTestBodySchema.safeParse({
-          datasetId: objectId,
-          text: 'question',
-          queryImageUrls: [],
-          rerankCandidateNum
-        }).success
-      ).toBe(false);
+      for (const usingReRank of [false, true]) {
+        expect(
+          SearchDatasetTestBodySchema.parse({
+            datasetId: objectId,
+            text: 'question',
+            queryImageUrls: [],
+            usingReRank,
+            rerankCandidateNum
+          })
+        ).toMatchObject({ usingReRank, rerankCandidateNum: 100 });
+      }
     }
   );
 

@@ -881,11 +881,8 @@ describe('reRankSearchResults rerank candidate limit', () => {
     expect(mockReRankRecall.mock.calls[0][0].documents).toHaveLength(100);
   });
 
-  it('非法值收敛到 10~100 边界', async () => {
-    await run(0);
-    expect(mockReRankRecall.mock.calls[0][0].documents).toHaveLength(10);
-
-    await run(101);
-    expect(mockReRankRecall.mock.calls[1][0].documents).toHaveLength(100);
+  it.each([0, 9, 101, 55.7, Number.NaN])('非法候选数 %s 按默认 100 执行重排', async (value) => {
+    await run(value);
+    expect(mockReRankRecall.mock.calls[0][0].documents).toHaveLength(100);
   });
 });

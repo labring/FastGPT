@@ -9,15 +9,17 @@ export const rerankCandidateNumRange = {
   default: 100
 } as const;
 
-/** 非法值统一收敛：非有限数回退默认值，数值收敛到 [min,max] 的整数。 */
+/** 仅接受范围内的整数；缺失、非有限数、小数和越界值统一回退默认值，避免中断检索。 */
 export const normalizeRerankCandidateNum = (value?: number | null) => {
-  if (typeof value !== 'number' || !Number.isFinite(value)) {
+  if (
+    typeof value !== 'number' ||
+    !Number.isInteger(value) ||
+    value < rerankCandidateNumRange.min ||
+    value > rerankCandidateNumRange.max
+  ) {
     return rerankCandidateNumRange.default;
   }
-  return Math.min(
-    rerankCandidateNumRange.max,
-    Math.max(rerankCandidateNumRange.min, Math.floor(value))
-  );
+  return value;
 };
 
 /* dataset search result concat */

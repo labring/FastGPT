@@ -780,19 +780,14 @@ describe('datasetSearchResultConcat', () => {
 });
 
 describe('normalizeRerankCandidateNum', () => {
-  it('falls back to the default for missing or non-finite values', () => {
-    expect(normalizeRerankCandidateNum(undefined)).toBe(rerankCandidateNumRange.default);
-    expect(normalizeRerankCandidateNum(null)).toBe(rerankCandidateNumRange.default);
-    expect(normalizeRerankCandidateNum(Number.NaN)).toBe(rerankCandidateNumRange.default);
-    expect(normalizeRerankCandidateNum(Infinity)).toBe(rerankCandidateNumRange.default);
-  });
+  it.each([undefined, null, Number.NaN, Infinity, -Infinity, -1, 0, 9, 101, 55.7])(
+    'falls back to the default for invalid value %s',
+    (value) => {
+      expect(normalizeRerankCandidateNum(value)).toBe(rerankCandidateNumRange.default);
+    }
+  );
 
-  it('clamps to the configured range and floors decimals', () => {
-    expect(normalizeRerankCandidateNum(0)).toBe(rerankCandidateNumRange.min);
-    expect(normalizeRerankCandidateNum(9)).toBe(rerankCandidateNumRange.min);
-    expect(normalizeRerankCandidateNum(10)).toBe(10);
-    expect(normalizeRerankCandidateNum(55.7)).toBe(55);
-    expect(normalizeRerankCandidateNum(100)).toBe(rerankCandidateNumRange.max);
-    expect(normalizeRerankCandidateNum(101)).toBe(rerankCandidateNumRange.max);
+  it.each([10, 11, 55, 100])('preserves a valid integer %s', (value) => {
+    expect(normalizeRerankCandidateNum(value)).toBe(value);
   });
 });
