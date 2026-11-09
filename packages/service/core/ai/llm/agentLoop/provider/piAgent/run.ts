@@ -83,6 +83,8 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
   const requestIds: string[] = [];
   let requestIndex = 0;
   let answerText = '';
+  // 完成检查需要最近一次自然结束的正文，answerText 只保留首个回复用于汇总兼容。
+  let latestAnswerText = '';
   let reasoningText = '';
   let inputTokens = 0;
   let outputTokens = 0;
@@ -591,6 +593,7 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
       if (!answerText && messageData.answerText) {
         answerText = messageData.answerText;
       }
+      latestAnswerText = messageData.answerText;
       if (!reasoningText && messageData.reasoningText) {
         reasoningText = messageData.reasoningText;
       }
@@ -709,7 +712,10 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
       !agent.state.errorMessage &&
       !reachedRunLimit
     ) {
-      const decision = await runtime.completionPolicy({ requestIndex });
+      const decision = await runtime.completionPolicy({
+        requestIndex,
+        answerText: latestAnswerText
+      });
       if (decision.action === 'complete') break;
       if (requestIndex >= maxRunAgentTimes) {
         reachedRunLimit = true;

@@ -40,10 +40,12 @@ export type AgentLoopCompletionDecision =
 
 /**
  * 在模型自然结束且没有工具调用时，决定是否接受本次结束。
- * 策略只接收运行时事实，不接收模型文本，避免业务层通过关键词判断完成状态。
+ * answerText 是本次结束时模型给出的最终正文，供业务层做语义完成检查；
+ * 业务层不得据此做关键词匹配，交付、取消等客观状态仍以自身工具事实为准。
  */
 export type AgentLoopCompletionPolicy = (context: {
   requestIndex: number;
+  answerText: string;
 }) => AgentLoopCompletionDecision | Promise<AgentLoopCompletionDecision>;
 
 export type AgentLoopRuntime<TChildrenResponse = unknown> = {

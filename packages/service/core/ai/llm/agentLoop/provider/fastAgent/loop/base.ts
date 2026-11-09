@@ -758,7 +758,7 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
     // 只有模型自然结束时，才由业务策略决定是否追加指令继续。
     try {
       if (!completionPolicy) break;
-      const decision = await completionPolicy({ requestIndex: runTimes });
+      const decision = await completionPolicy({ requestIndex: runTimes, answerText: answer });
       // 策略可能异步执行，等待期间的取消不能触发下一轮请求。
       if (isAborted?.() || decision.action === 'complete') {
         break;

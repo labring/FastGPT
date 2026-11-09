@@ -427,8 +427,14 @@ describe('runPiAgentLoop', () => {
     expect(result.status).toBe('done');
     expect(agentPromptMock).toHaveBeenNthCalledWith(1, 'build it');
     expect(agentPromptMock).toHaveBeenNthCalledWith(2, 'Continue until terminal facts exist.');
-    expect(completionPolicy).toHaveBeenNthCalledWith(1, { requestIndex: 1 });
-    expect(completionPolicy).toHaveBeenNthCalledWith(2, { requestIndex: 2 });
+    expect(completionPolicy).toHaveBeenNthCalledWith(1, {
+      requestIndex: 1,
+      answerText: expect.any(String)
+    });
+    expect(completionPolicy).toHaveBeenNthCalledWith(2, {
+      requestIndex: 2,
+      answerText: expect.any(String)
+    });
     expect(result.completeMessages).toContainEqual({
       role: 'user',
       content: 'Continue until terminal facts exist.'
