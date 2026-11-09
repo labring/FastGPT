@@ -148,6 +148,12 @@ export const GetCollectionDetailResponseSchema = DatasetCollectionItemSchema.met
 export type GetCollectionDetailResponseType = z.infer<typeof GetCollectionDetailResponseSchema>;
 
 // ============= List Collections V2 =============
+/**
+ * 集合列表排序字段。
+ * `dataAmount` 仅为兼容仍会传该值的调用方：接受但不排序，回落到默认排序。
+ */
+export const CollectionListSortByEnum = z.enum(['name', 'createTime', 'updateTime', 'dataAmount']);
+
 export const ListCollectionV2BodySchema = createPaginationSchema({
   datasetId: z.string().meta({ description: '数据集 ID' }),
   parentId: z.string().nullable().optional().default(null).meta({ description: '父级目录 ID' }),
@@ -156,6 +162,15 @@ export const ListCollectionV2BodySchema = createPaginationSchema({
   tagFilters: z.array(CollectionTagFilterItemSchema).optional().default([]).meta({
     description: '按标签值过滤。同一标签多值为 OR，不同标签为 AND'
   }),
+  sortBy: CollectionListSortByEnum.optional().default('updateTime').meta({
+    description: '排序字段；dataAmount 仅为兼容（按默认排序处理）',
+    example: 'name'
+  }),
+  sortOrder: z
+    .enum(['asc', 'desc'])
+    .optional()
+    .default('desc')
+    .meta({ description: '排序方向', example: 'asc' }),
   simple: z.boolean().optional().default(false).meta({ description: '简单模式（不统计数量）' })
 });
 export type ListCollectionV2BodyType = z.infer<typeof ListCollectionV2BodySchema>;

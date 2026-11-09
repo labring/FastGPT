@@ -161,7 +161,16 @@ const findSubtreeFolderIds = async ({
 
 async function handler(req: ApiRequestProps): Promise<ListCollectionV2ResponseType> {
   const body = parseApiInput({ req, bodySchema: ListCollectionV2BodySchema }).body;
-  const { datasetId, parentId, searchText: rawSearchText, selectFolder, tagFilters, simple } = body;
+  const {
+    datasetId,
+    parentId,
+    searchText: rawSearchText,
+    selectFolder,
+    tagFilters,
+    sortBy,
+    sortOrder,
+    simple
+  } = body;
   const { pageSize, offset } = normalizePagination({
     ...body,
     pageSize: Math.min(body.pageSize ?? 20, 100)
@@ -322,6 +331,42 @@ async function handler(req: ApiRequestProps): Promise<ListCollectionV2ResponseTy
     externalFileId: 1
   };
 
+  // dataAmount 仅为兼容：不实现分块数排序，整体回落到默认排序（updateTime desc）。
+  const sortField = sortBy === 'dataAmount' ? 'updateTime' : sortBy;
+  const sortDirection = sortBy === 'dataAmount' || sortOrder === 'desc' ? -1 : 1;
+
+  /**
+   * 当前页集合。
+   * 名称排序用 lower(name) 聚合排序：大小写不敏感，中文按字符码点排序。
+   * 不使用 query 级 collation，避免它同时改变标签/搜索的匹配语义，导致列表与 countDocuments 不一致。
+   */
+  const queryCollectionPage = async (): Promise<DatasetCollectionSchemaType[]> => {
+    if (sortField === 'name') {
+      return MongoDatasetCollection.aggregate<DatasetCollectionSchemaType>(
+        [
+          { $match: match },
+          { $addFields: { nameSortKey: { $toLower: '$name' } } },
+          { $sort: { nameSortKey: sortDirection } },
+          { $skip: offset },
+          { $limit: pageSize },
+          { $project: selectField }
+        ],
+        { ...readFromSecondary }
+      );
+    }
+
+    return (
+      MongoDatasetCollection.find(match, undefined, { ...readFromSecondary })
+        .select(selectField)
+        // 不加 _id 兜底键：默认 updateTime 排序依赖 (teamId,datasetId,parentId,updateTime) 索引，
+        // 追加非索引字段会让 Mongo 退化为阻塞排序，分页越深代价越高。
+        .sort({ [sortField]: sortDirection })
+        .skip(offset)
+        .limit(pageSize)
+        .lean()
+    );
+  };
+
   /** 分页后批量读取逐 Collection 权限，避免权限查询随 Dataset 集合总量增长。 */
   const loadCollectionPermissionMap = async (collections: DatasetCollectionSchemaType[]) => {
     if (shortCircuitCollectionPermission) return undefined;
@@ -366,13 +411,8 @@ async function handler(req: ApiRequestProps): Promise<ListCollectionV2ResponseTy
 
   // not count data amount
   if (simple) {
-    const [collections, total]: [DatasetCollectionSchemaType[], number] = await Promise.all([
-      MongoDatasetCollection.find(match, undefined, { ...readFromSecondary })
-        .select(selectField)
-        .sort({ updateTime: -1 })
-        .skip(offset)
-        .limit(pageSize)
-        .lean(),
+    const [collections, total] = await Promise.all([
+      queryCollectionPage(),
       MongoDatasetCollection.countDocuments(match)
     ]);
     const [collectionPermissionMap, tags] = await Promise.all([
@@ -397,13 +437,8 @@ async function handler(req: ApiRequestProps): Promise<ListCollectionV2ResponseTy
     });
   }
 
-  const [collections, total]: [DatasetCollectionSchemaType[], number] = await Promise.all([
-    MongoDatasetCollection.find(match, undefined, { ...readFromSecondary })
-      .select(selectField)
-      .sort({ updateTime: -1 })
-      .skip(offset)
-      .limit(pageSize)
-      .lean(),
+  const [collections, total] = await Promise.all([
+    queryCollectionPage(),
     MongoDatasetCollection.countDocuments(match, { ...readFromSecondary })
   ]);
   const collectionIds = collections.map((item) => new Types.ObjectId(item._id));
