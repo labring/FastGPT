@@ -120,7 +120,7 @@ const LegacyPlans = ({
           {levels.map((level, index) => (
             <Flex key={index} alignItems={'center'} px={4} h={12}>
               <Button variant={'primaryOutline'} size={'xs'} onClick={() => setEditedLevel(level)}>
-                点击配置套餐
+                {t('admin:plan_config_button')}
               </Button>
             </Flex>
           ))}

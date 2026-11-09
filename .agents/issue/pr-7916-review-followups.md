@@ -154,10 +154,10 @@
 - [x] **E1（原第 31 项，P2）`auth.fastLogin` 展示规则**
   - 按评论：仅当加载时既有配置非空显示编辑项和目录项；空配置不提供新建入口；显示状态不随当前编辑内容变化；隐藏时保存保留原值。
   - 位置：`projects/app/src/pageComponents/admin/settings/auth/index.tsx`
-- [ ] **E2（原第 32 项，P3）StandardPlans/LegacyPlans 中文硬编码回退**
+- [x] **E2（原第 32 项，P3）StandardPlans/LegacyPlans 中文硬编码回退**
   - 按最新 review：恢复已有四语言静态翻译调用，覆盖配置按钮、定制套餐标题、取消/确认、名称、购买链接等。
   - 位置：`projects/app/src/pageComponents/admin/config/components/FormField/StandardPlans.tsx`、`LegacyPlans.tsx`
-- [ ] **E3（原第 33 项，P3）合并丢失的 main 品牌测试**
+- [x] **E3（原第 33 项，P3）合并丢失的 main 品牌测试**
   - 按最新 review：恢复约 14 个品牌 ENV 组合和 `initFastGPTConfig` 投影用例，保留本 PR 的实例配置场景。
   - 位置：品牌配置、`initFastGPTConfig` 相关测试文件
 - [x] **E4（原第 34 项）PlanEditModal 测试**
@@ -165,10 +165,10 @@
 
 ### 批次 F：文档与注释
 
-- [ ] **F1（原第 35 项）`alipay.endpoint` 误标**：实际已传给 Pro `AlipaySdk`，删除“业务未接入”标记。
+- [x] **F1（原第 35 项）`alipay.endpoint` 误标**：已删除“业务未接入”标记，标注实际传给 Pro `AlipaySdk`。
 - [x] **F2（原第 36 项）`SYNC_INDEX` 文档**：已随 C1.9 删除当前 ENV 文档中的保留说明。
-- [ ] **F3（原第 37 项）`CHINESE_IP_REDIRECT_URL` 旧映射说明**：改为 ENV 权威描述。
-- [ ] **F4（原第 38 项）过期注释**：清理已移除 ENV 兜底、旧页面、旧字段相关注释。
+- [x] **F3（原第 37 项）`CHINESE_IP_REDIRECT_URL` 旧映射说明**：已改为 ENV 独占，不再迁移到 site。
+- [x] **F4（原第 38 项）过期注释**：旧页面和旧字段组件已删除；剩余 ENV 相关注释已核对，未发现继续描述已移除兜底的内容。
 - 位置：`.agents/design/common/admin-instance-config-env-boundary.md` 及相关源码注释
 
 ## 四、已完成项（不重复修）

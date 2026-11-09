@@ -76,7 +76,7 @@ system_instance_configs（按 11 个 Domain 分别保存文档）
 | 配置项 | 当前环境变量 | 目标位置 | 说明 |
 | --- | --- | --- | --- |
 | 站点名称、描述、图标 | `SYSTEM_NAME`、`SYSTEM_DESCRIPTION`、`SYSTEM_FAVICON` | `config.site` | Admin 可直接修改，修改后运行时生效 |
-| 中国大陆 IP 跳转 | `CHINESE_IP_REDIRECT_URL` | `config.site` | 站点行为配置 |
+| 中国大陆 IP 跳转 | `CHINESE_IP_REDIRECT_URL` | **环境变量** | ENV 独占，旧库值不再覆盖表单配置 |
 | 前端、文件和下载公开地址 | `FE_DOMAIN`、`FILE_DOMAIN`、`FILE_DOWNLOAD_PUBLIC_URL_PREFIX` | **环境变量** | 与 DNS、反向代理和已签发链接强绑定，第一版不允许 Admin 直接修改；`NEXT_PUBLIC_BASE_URL` 同样保留环境变量 |
 | Marketplace 地址 | `MARKETPLACE_URL` | `config.site` 或 `config.subservice` | 属于实例的外部服务入口 |
 | 支付表单地址 | `PAY_FORM_URL` | `config.commercial` | 商业化配置 |
@@ -484,7 +484,7 @@ BUILD    -> 构建、测试、脚本或操作系统继承变量，不属于运�
 | `SYSTEM_NAME` | `config.site.name` | 站点名称 |
 | `SYSTEM_DESCRIPTION` | `config.site.description` | 站点描述 |
 | `SYSTEM_FAVICON` | `config.site.favicon` | 站点图标；若当前由构建期注入，需先改为运行时初始化数据 |
-| `CHINESE_IP_REDIRECT_URL` | `config.site.chineseRedirectUrl` | 空字符串表示关闭 |
+| `CHINESE_IP_REDIRECT_URL` | **保留 ENV** | 不再迁移到 `site`；空字符串表示关闭 |
 | `MARKETPLACE_URL` | `config.site.marketplaceUrl` | 外部 Marketplace 地址 |
 | `OPENAPI_KEY_MAX_COUNT` | `config.auth.openApiKeyMaxCount` | OpenAPI Key 数量上限 |
 | `PASSWORD_EXPIRED_MONTH` | `config.auth.passwordExpiredMonth` | 未配置映射为 `null` |
@@ -1202,7 +1202,7 @@ Server、Agent Sandbox Proxy 和 IDE Agent 的运行时变量。为了避免“�
 | `commercial.payment.wx.notifyUrl` | 支付回调地址 | — | ✅ | — | — | 可编辑：`/admin/settings/pay` |
 | `commercial.payment.alipay.appId` | AppId | — | ✅ | — | — | 可编辑：`/admin/settings/pay` |
 | `commercial.payment.alipay.gateway` | 网关地址 | — | ✅ | — | — | 可编辑：`/admin/settings/pay` |
-| `commercial.payment.alipay.endpoint` | 备用 Endpoint | — | ✅ | — | — | 可编辑：`/admin/settings/pay`；业务未接入 |
+| `commercial.payment.alipay.endpoint` | 备用 Endpoint | — | ✅ | — | — | 可编辑：`/admin/settings/pay`；已传给 Pro `AlipaySdk` |
 | `commercial.payment.bank.description` | 对公转账说明文案 | — | ✅ | — | — | 可编辑：`/admin/settings/pay` |
 | `commercial.billingNotify.lackOfPoints.zh` | 余额不足预警 · 中文模板 | — | ✅ | — | — | 可编辑：`/admin/settings/pay` |
 | `commercial.billingNotify.pointsThirtyPercentRemain.zh` | 积分剩余 30% 中文短信模板 | — | ✅ | — | — | 可编辑：`/admin/settings/pay` |

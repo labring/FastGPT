@@ -219,6 +219,28 @@ describe('serviceEnv bootstrap configuration', () => {
       }
     });
   });
+  it.each([
+    { proUrl: undefined, configured: undefined, expected: true },
+    { proUrl: undefined, configured: 'false', expected: true },
+    { proUrl: undefined, configured: 'invalid', expected: true },
+    { proUrl: '', configured: undefined, expected: true },
+    { proUrl: 'https://pro.example.com', configured: undefined, expected: false },
+    { proUrl: 'https://pro.example.com', configured: '', expected: false },
+    { proUrl: 'https://pro.example.com', configured: 'false', expected: false },
+    { proUrl: 'https://pro.example.com', configured: 'true', expected: true },
+    { proUrl: 'https://pro.example.com', configured: 'invalid', expected: false }
+  ])(
+    'resolves share branding with PRO_URL=$proUrl and SHOW_OUTLINK_BRAND=$configured as $expected',
+    async ({ proUrl, configured, expected }) => {
+      vi.stubEnv('PRO_URL', proUrl);
+      vi.stubEnv('PRO_TOKEN', 'custom_pro_token_32_chars_minimum');
+      vi.stubEnv('SHOW_OUTLINK_BRAND', configured);
+
+      const { serviceEnv } = await importServiceEnv();
+      expect(serviceEnv.SHOW_OUTLINK_BRAND).toBe(expected);
+      expect(process.env.SHOW_OUTLINK_BRAND).toBe(configured);
+    }
+  );
   it.each(['AGENT_SANDBOX_CPU_OVERCOMMIT_FACTOR', 'AGENT_SANDBOX_MEMORY_OVERCOMMIT_FACTOR'])(
     'rejects invalid overcommit factors for %s at the env boundary',
     async (name) => {

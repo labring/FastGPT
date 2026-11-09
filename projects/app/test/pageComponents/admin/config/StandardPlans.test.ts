@@ -60,16 +60,16 @@ describe('StandardPlans custom configuration', () => {
     } as StandSubPlanLevelMapType;
     await act(async () => root.render(React.createElement(StandardPlans, { value, onChange })));
     const editButtons = Array.from(container.querySelectorAll('button')).filter(
-      (button) => button.textContent === '点击配置套餐'
+      (button) => button.textContent === 'admin:plan_config_button'
     );
     await act(async () => editButtons[3].click());
     const dialog = container.querySelector('[role="dialog"]')!;
     expect(dialog.textContent).not.toContain('common:share_brand_control');
     expect(dialog.querySelector('input[type="checkbox"]')).toBeNull();
-    expect(dialog.textContent).toContain('套餐购买链接');
+    expect(dialog.textContent).toContain('admin:plan_purchase_link');
 
     const confirm = Array.from(dialog.querySelectorAll('button')).find(
-      (button) => button.textContent === '确认'
+      (button) => button.textContent === 'admin:confirm'
     );
     await act(async () => confirm!.click());
     expect(onChange).toHaveBeenCalledWith(
