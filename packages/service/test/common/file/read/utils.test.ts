@@ -514,10 +514,12 @@ describe('readFileContentByBuffer', () => {
   });
 
   it('should report enhanced PDF usage to the caller without creating usage directly', async () => {
+    // 计费价格以实例配置为权威来源；旧 systemEnv.price 不再参与计算。
+    (global as any).systemInstanceConfig.providers.documentParse.customPdf.price = 4;
     global.systemEnv = {
       customPdfParse: {
         url: 'http://custom-pdf-service.com/parse',
-        price: 4
+        price: 99
       }
     } as any;
     mockAxiosPost.mockResolvedValueOnce({
