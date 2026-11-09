@@ -337,6 +337,7 @@ export const systemInstanceConfigRegistry: readonly SystemInstanceConfigRegistry
     [
       'documentParse.provider',
       'documentParse.customPdf.url',
+      'documentParse.customPdf.price',
       'documentParse.sangfor.url',
       'documentParse.sangfor.extensions',
       'documentParse.sangfor.timeoutSeconds',

@@ -342,6 +342,8 @@
   "parsing_provider": "파싱 서비스 제공자",
   "custom_pdf_parser_service_url": "자체 PDF 파서 서비스 URL",
   "custom_parser_auth_key": "자체 서비스 인증 키",
+  "custom_pdf_parse_price": "PDF 파싱 가격",
+  "custom_pdf_parse_price_tip": "사용자 지정 PDF 파싱 서비스를 사용할 때 파싱당 사용자에게 표시되고 청구되는 가격입니다.",
   "Somark API Key": "Somark API Key",
   "Doc2X Key": "Doc2X Key",
   "TextIn AppId": "TextIn AppId",

@@ -339,7 +339,8 @@ export const buildLegacyDomainOverrides = ({
     doc2xKey: optionalText(legacyCustomPdf.doc2xKey) ?? optionalText(legacyEnv.DOC2X_KEY),
     textinAppId: optionalText(legacyCustomPdf.textinAppId) ?? optionalText(legacyEnv.TEXTIN_APP_ID),
     textinSecretCode:
-      optionalText(legacyCustomPdf.textinSecretCode) ?? optionalText(legacyEnv.TEXTIN_SECRET_CODE)
+      optionalText(legacyCustomPdf.textinSecretCode) ?? optionalText(legacyEnv.TEXTIN_SECRET_CODE),
+    price: optionalNumber(legacyCustomPdf.price)
   };
   const sangforCredentials = isSangfor
     ? resolveCredentialGroup({ legacy: legacyPdfCredentials, env: envPdfCredentials })

@@ -290,6 +290,15 @@ describe('migration buildSparseLegacyOverrides', () => {
     });
   });
 
+  it('migrates the custom PDF parsing price', () => {
+    const sparse = buildSparseLegacyOverrides({
+      feConfigs: {},
+      systemEnv: { customPdfParse: { price: 3.5 } }
+    });
+
+    expect(sparse.providers?.documentParse?.customPdf?.price).toBe(3.5);
+  });
+
   it('keeps sparse output validated by the two-phase resolver', () => {
     const sparse = buildSparseLegacyOverrides({
       feConfigs: { limit: { maxFolderDepth: 8 } },

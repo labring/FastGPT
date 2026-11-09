@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { resolveSystemInstanceConfig } from '@fastgpt/global/common/system/config/schema';
 
 const { serviceEnv } = vi.hoisted(() => ({
   serviceEnv: {
@@ -148,4 +149,24 @@ describe('initFastGPTConfig', () => {
       });
     }
   );
+
+  it('uses the instance-config PDF parsing price instead of legacy systemEnv', () => {
+    global.systemInstanceConfig = resolveSystemInstanceConfig({
+      providers: {
+        documentParse: {
+          customPdf: { price: 6.5 }
+        }
+      }
+    });
+
+    try {
+      initFastGPTConfig({
+        feConfigs: {},
+        systemEnv: { customPdfParse: { price: 2 } }
+      } as any);
+      expect(global.feConfigs.customPdfParsePrice).toBe(6.5);
+    } finally {
+      delete (global as any).systemInstanceConfig;
+    }
+  });
 });

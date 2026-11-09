@@ -1064,7 +1064,7 @@ Server、Agent Sandbox Proxy 和 IDE Agent 的运行时变量。为了避免“�
 
 ### 13.6 逐字段版本、表单与页面映射
 
-本表逐项覆盖注册表的 **207 个配置叶子**，不使用通配符或虚构的聚合字段。字段定义与默认值以 `schemas/*.ts` 为准，版本、敏感项和 SaaS 显示条件以 `registry.ts` 为准；页面归属与 `pageFields.ts`、实际表单保持一致。
+本表逐项覆盖注册表的 **208 个配置叶子**，不使用通配符或虚构的聚合字段。字段定义与默认值以 `schemas/*.ts` 为准，版本、敏感项和 SaaS 显示条件以 `registry.ts` 为准；页面归属与 `pageFields.ts`、实际表单保持一致。
 
 - 社区版／商业版的勾选表示配置 API 的读写权限；商业版按是否配置 `PRO_URL` 判定，不依赖 License 是否激活。
 - “仅 SaaS 显示”表示 `ENABLE_SAAS_ADMIN_CONFIG=true` 才显示对应控件，**不收紧商业版 API 权限**。标为“仅 API”的字段当前没有新表单，开启显示开关也不会产生控件。
@@ -1286,6 +1286,7 @@ Server、Agent Sandbox Proxy 和 IDE Agent 的运行时变量。为了避免“�
 | --- | --- | :---: | :---: | :---: | :---: | --- |
 | `providers.documentParse.provider` | 解析服务提供方 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/providers` |
 | `providers.documentParse.customPdf.url` | 自建 PDF 解析服务地址 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/providers` |
+| `providers.documentParse.customPdf.price` | 自建 PDF 解析计费价格 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/providers` |
 | `providers.documentParse.sangfor.url` | 深信服解析接口地址 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/providers` |
 | `providers.documentParse.sangfor.extensions` | 支持的格式扩展名 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/providers` |
 | `providers.documentParse.sangfor.timeoutSeconds` | 请求超时时间 (秒) | ✅ | ✅ | — | — | 可编辑：`/admin/settings/providers` |

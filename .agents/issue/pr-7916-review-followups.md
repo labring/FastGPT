@@ -127,7 +127,7 @@
 - [x] **C2.3（原第 21 项）`customDomain.enable/domain.*`**：已补 `site` 字段/表单/迁移/App 与 Pro 映射，按 SaaS-only 展示。
 - [x] **C2.4（原第 22 项）`systemEnv.customDomain.kc/issuer/nginx.*`**：已迁 Pro ENV（CUSTOM_DOMAIN_*），旧值只保留迁移告警，不再被运行时读取。
 - [x] **C2.5（原第 23 项）`sso.title/icon/autoLogin/disablePasswordForSsoUsers`**：已补 `auth.sso` 字段/表单/迁移/App 与 Pro 映射，按 license `functions.sso` 展示。
-- [ ] **C2.6（原第 24 项）`customPdfParse.price`**：补 `providers.documentParse.customPdf.price`。
+- [x] **C2.6（原第 24 项）`customPdfParse.price`**：已补 `providers.documentParse.customPdf.price`，页面、迁移和运行时价格读取均已接入。
 - [ ] **C2.7（原第 25 项）`botIframeUrl`**：补 `site` 字段/表单/映射。
 - 统一验收：逐字段矩阵有明确归属；仍需管理的字段可在当前菜单路径编辑，不依赖隐藏旧路由；不新增重复 ENV 来源。
 

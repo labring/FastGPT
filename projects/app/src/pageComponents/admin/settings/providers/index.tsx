@@ -212,12 +212,25 @@ const ProvidersSettingComponent = () => {
             <AdminFormItem
               label={t('admin:custom_parser_auth_key')}
               tooltip={t('admin:bearer_token_used_when_calling_the_custom_parsing_service')}
-              mb={0}
             >
               <Input
                 type="password"
                 {...register('documentParse.customPdf.key')}
                 placeholder="******"
+              />
+            </AdminFormItem>
+
+            <AdminFormItem
+              label={t('admin:custom_pdf_parse_price')}
+              tooltip={t('admin:custom_pdf_parse_price_tip')}
+              mb={0}
+            >
+              <Input
+                type="number"
+                step="0.01"
+                min={0}
+                {...register('documentParse.customPdf.price', { valueAsNumber: true })}
+                placeholder="0"
               />
             </AdminFormItem>
           </Box>

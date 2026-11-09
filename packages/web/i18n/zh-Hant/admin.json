@@ -342,6 +342,8 @@
   "parsing_provider": "解析服務提供方",
   "custom_pdf_parser_service_url": "自建 PDF 解析服務地址",
   "custom_parser_auth_key": "自建服務認證 Key",
+  "custom_pdf_parse_price": "PDF 解析計費價格",
+  "custom_pdf_parse_price_tip": "使用自訂 PDF 解析服務時，每次解析向使用者顯示和計費的價格。",
   "Somark API Key": "Somark API Key",
   "Doc2X Key": "Doc2X Key",
   "TextIn AppId": "TextIn AppId",

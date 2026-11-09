@@ -342,6 +342,8 @@
   "parsing_provider": "Parsing Provider",
   "custom_pdf_parser_service_url": "Custom PDF Parser Service URL",
   "custom_parser_auth_key": "Custom Parser Auth Key",
+  "custom_pdf_parse_price": "PDF Parsing Price",
+  "custom_pdf_parse_price_tip": "Price shown and charged per parse when using the custom PDF parsing service.",
   "Somark API Key": "Somark API Key",
   "Doc2X Key": "Doc2X Key",
   "TextIn AppId": "TextIn AppId",

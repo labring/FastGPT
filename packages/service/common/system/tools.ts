@@ -11,6 +11,7 @@ import {
 } from '../../core/ai/sandbox/config';
 import { serviceEnv } from '../../env';
 import { normalizeSsoConfig } from '@fastgpt/global/common/system/config/sso';
+import { getSystemInstanceConfig } from './systemInstanceConfig/runtime';
 
 const logger = getLogger(LogCategories.ERROR);
 
@@ -50,7 +51,8 @@ export const initFastGPTConfig = (config?: FastGPTConfigFileType) => {
     !!config.systemEnv.customPdfParse?.somarkApiKey ||
     !!config.systemEnv.customPdfParse?.textinAppId ||
     !!config.systemEnv.customPdfParse?.doc2xKey;
-  config.feConfigs.customPdfParsePrice = config.systemEnv.customPdfParse?.price || 0;
+  config.feConfigs.customPdfParsePrice =
+    getSystemInstanceConfig().providers.documentParse.customPdf.price;
   config.feConfigs.show_outlink_brand = serviceEnv.SHOW_OUTLINK_BRAND;
   // provider 只以实例配置为权威，保证后台配置与前端沙箱入口一致。
   config.feConfigs.show_agent_sandbox = getAgentSandboxProvider() !== 'none';

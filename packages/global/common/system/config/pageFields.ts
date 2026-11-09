@@ -162,6 +162,7 @@ export const adminConfigPageFieldsMap: Record<string, readonly string[]> = {
   '/admin/settings/providers': [
     'providers.documentParse.provider',
     'providers.documentParse.customPdf.url',
+    'providers.documentParse.customPdf.price',
     'providers.documentParse.sangfor.url',
     'providers.documentParse.sangfor.extensions',
     'providers.documentParse.sangfor.timeoutSeconds',

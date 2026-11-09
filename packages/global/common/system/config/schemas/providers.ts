@@ -12,7 +12,8 @@ const DocumentParseProviderConfigSchema = z.strictObject({
       somarkApiKey: textWithDefault(),
       doc2xKey: textWithDefault(),
       textinAppId: textWithDefault(),
-      textinSecretCode: textWithDefault()
+      textinSecretCode: textWithDefault(),
+      price: z.number().nonnegative().default(0)
     })
     .prefault({
       url: '',
@@ -20,7 +21,8 @@ const DocumentParseProviderConfigSchema = z.strictObject({
       somarkApiKey: '',
       doc2xKey: '',
       textinAppId: '',
-      textinSecretCode: ''
+      textinSecretCode: '',
+      price: 0
     }),
   sangfor: z
     .strictObject({
