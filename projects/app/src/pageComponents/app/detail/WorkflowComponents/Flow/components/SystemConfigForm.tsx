@@ -38,6 +38,9 @@ import WelcomeQuestionsConfig from '@/components/core/app/WelcomeQuestionsConfig
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { useWorkflowDocument } from '../nodes/render/useWorkflowDocument';
+import { useToast } from '@fastgpt/web/hooks/useToast';
+import { useTranslation } from 'next-i18next';
+import { countNewReferenceIssues } from './utils';
 
 type ComponentProps = {
   setAppDetail: Dispatch<React.SetStateAction<AppDetailType>>;
@@ -230,6 +233,9 @@ function WelcomeQuestions({ setAppDetail, mode }: ComponentProps) {
 const emptyVariables: VariableItemType[] = [];
 
 function ChatStartVariable({ setAppDetail }: ComponentProps) {
+  const { toast } = useToast();
+  const { t } = useTranslation();
+  const runtime = useWorkflowRuntime();
   const variables = useContextSelector(
     AppContext,
     (v) => v.appDetail.chatConfig?.variables ?? emptyVariables
@@ -237,6 +243,32 @@ function ChatStartVariable({ setAppDetail }: ComponentProps) {
   const normalizedVariables = useMemo(() => normalizeAndParseVariableList(variables), [variables]);
   const updateVariables = useCallback(
     (value: VariableItemType[]) => {
+      if (runtime && !runtime.isDisposed()) {
+        const currentIssues = runtime.getWorkflowIssues();
+        const before = [...currentIssues.issues, ...currentIssues.chatConfigIssues];
+        const result = runtime.dispatch({
+          type: 'updateChatConfig',
+          chatConfig: AppChatConfigTypeSchema.parse({
+            ...runtime.getWorkflow().chatConfig,
+            variables: value
+          })
+        });
+
+        if (result.ok) {
+          const nextIssues = runtime.getWorkflowIssues();
+          const affected = countNewReferenceIssues(before, [
+            ...nextIssues.issues,
+            ...nextIssues.chatConfigIssues
+          ]);
+          if (affected > 0) {
+            toast({
+              status: 'warning',
+              title: t('workflow:variable_change_affects_references', { count: affected })
+            });
+          }
+        }
+      }
+
       setAppDetail((state) => ({
         ...state,
         chatConfig: {
@@ -245,7 +277,7 @@ function ChatStartVariable({ setAppDetail }: ComponentProps) {
         }
       }));
     },
-    [setAppDetail]
+    [runtime, setAppDetail, t, toast]
   );
 
   return <VariableEdit variables={normalizedVariables} onChange={updateVariables} />;

@@ -327,6 +327,7 @@
   "var_update_boolean_negate": "取反",
   "variable_description": "变量描述",
   "variable_picker_tips": "可输入节点名或变量名搜索",
+  "variable_change_affects_references": "已影响 {{count}} 处下游引用，请检查相关节点",
   "variable_update": "变量更新",
   "workflow.My edit": "我的编辑",
   "workflow.Switch_success": "切换成功",

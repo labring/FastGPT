@@ -303,6 +303,7 @@
   "var_update_boolean_negate": "부정",
   "variable_description": "변수 설명",
   "variable_picker_tips": "노드 이름이나 변수 이름을 입력하여 검색",
+  "variable_change_affects_references": "다운스트림 참조 {{count}}곳에 영향을 주었습니다. 관련 노드를 확인하세요.",
   "variable_update": "변수 업데이트",
   "workflow.My edit": "내 편집",
   "workflow.Switch_success": "전환 성공",
