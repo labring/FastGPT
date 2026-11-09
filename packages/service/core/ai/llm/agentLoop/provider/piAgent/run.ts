@@ -5,6 +5,7 @@ import type {
   CompletionFinishReason
 } from '@fastgpt/global/core/ai/llm/type';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
+import { isTeamModel } from '@fastgpt/global/core/ai/model/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import type { AgentAskPayload } from '@fastgpt/global/core/ai/agent/type';
 import { getErrText } from '@fastgpt/global/common/error/utils';
@@ -25,6 +26,11 @@ import {
   type AgentLoopUsage
 } from '../../domain';
 import { buildPiModel, getModelApiKey, getPiThinkingLevel } from './modelBridge';
+import { getLegacyModelEndpoint } from '../../../../legacy/requestUrl';
+import {
+  installSafeLegacyFetchShim,
+  runWithSafeLegacyFetch
+} from '../../../../../../common/api/safeFetch';
 import { mergePiAgentPayload } from './payload';
 import { buildPiAgentTools } from './tool/build';
 import { getPiAgentNormalizationTools } from './tool/catalog';
@@ -675,9 +681,17 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
     }
   }, 200);
 
+  // 仅团队成员模型启用运行时 SSRF 防护；系统模型保持原有传输。
+  const legacyEndpoint = isTeamModel(modelData) ? getLegacyModelEndpoint(modelData) : undefined;
+  const runAgent = <T>(run: () => Promise<T>): Promise<T> => {
+    if (!legacyEndpoint) return run();
+    installSafeLegacyFetchShim();
+    return runWithSafeLegacyFetch(legacyEndpoint.baseUrl, run);
+  };
+
   try {
     if (resumedInteractiveTool || resumedAsk || shouldContinueFromMessages) {
-      await agent.continue();
+      await runAgent(() => agent.continue());
     } else {
       const prompt = getPiAgentPrompt(requestMessages);
       const currentUserMessage = requestMessages[lastUserMessageIndex];
@@ -692,9 +706,9 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
           : undefined;
 
       if (piPromptMessage) {
-        await agent.prompt(piPromptMessage);
+        await runAgent(() => agent.prompt(piPromptMessage));
       } else {
-        await agent.prompt(prompt);
+        await runAgent(() => agent.prompt(prompt));
       }
     }
 
@@ -721,7 +735,7 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
         content: decision.message
       };
       completeMessages.push(continuationMessage);
-      await agent.prompt(decision.message);
+      await runAgent(() => agent.prompt(decision.message));
     }
   } catch (error) {
     latestError = error;

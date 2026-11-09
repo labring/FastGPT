@@ -221,7 +221,14 @@ describe('team model management integration: permission, member isolation and AI
 
       const created = await Call(createHandler, {
         auth: installer,
-        body: { modelData: modelDraft('team-model-a'), channelType: 'team' }
+        body: {
+          modelData: {
+            ...modelDraft('team-model-a'),
+            requestUrl: 'https://93.184.216.34/v1',
+            requestAuth: 'sk-team-secret'
+          },
+          channelType: 'team'
+        }
       });
       expect(created.code).toBe(200);
 
@@ -233,6 +240,9 @@ describe('team model management integration: permission, member isolation and AI
       expect(config.data.models.map((item: { model: string }) => item.model)).toEqual([
         'team-model-a'
       ]);
+      expect(config.data.models[0].requestUrl).toBeUndefined();
+      expect(config.data.models[0].requestAuth).toBeUndefined();
+      expect(JSON.stringify(config.data)).not.toContain('sk-team-secret');
 
       const removed = await Call(deleteHandler, {
         auth: installer,

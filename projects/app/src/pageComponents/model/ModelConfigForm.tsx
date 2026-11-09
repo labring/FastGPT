@@ -500,8 +500,6 @@ const ModelConfigForm = ({
         if (val === null || val === undefined) delete modelData[key];
       }
       if (isTeamModel) {
-        delete modelData.requestUrl;
-        delete modelData.requestAuth;
         delete modelData.testMode;
       }
 

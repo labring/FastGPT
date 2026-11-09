@@ -1,7 +1,6 @@
 import type { Readable } from 'node:stream';
-import { getModelAxiosConfig } from '../config';
+import { getModelAxiosConfig, getModelRequestClient } from '../config';
 import { normalizeRelayNoChannelError } from '../../../thirdProvider/aiproxy/error';
-import { axiosWithoutSSRF } from '../../../common/api/axios';
 import FormData from 'form-data';
 import { type STTModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import { UserError } from '@fastgpt/global/common/error/utils';
@@ -42,7 +41,7 @@ export const aiTranscriptions = async ({
   onRequestStart?.();
 
   try {
-    const { data: result } = await axiosWithoutSSRF.post<{
+    const { data: result } = await getModelRequestClient(modelData).post<{
       text: string;
       usage?: { total_tokens: number };
     }>(axiosConfig.url, data, {
