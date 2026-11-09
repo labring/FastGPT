@@ -1,6 +1,9 @@
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { imageBaseUrl } from '@fastgpt/global/common/file/image/constants';
 import { deepMergeConfig } from '@fastgpt/global/common/system/config/merge';
+import { parseDomainOverrides } from '@fastgpt/global/common/system/config/schema';
+import { ApiRequestInputParseError } from '@fastgpt/service/common/zod/requestParseError';
+import { ZodError } from 'zod';
 import { NextAPI } from '@/service/middleware/entry';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
@@ -106,8 +109,20 @@ async function handler(
     }
   }
 
-  // 2. site 域涉及头像资源：先取旧值用于保存后的 S3 生命周期对比
+  // 2. site 域涉及头像资源：先校验本次提交形状，再取旧值做生命周期对比。
+  // parseApiInput 的外壳 Schema 不校验 overrides 叶子，后续 getSiteAvatarRefs 会直接访问
+  // favicon/navbarItems，因此必须在复制/枚举前复用域 override Schema，避免非法值变成 500。
   const siteItem = items.find((item) => item.domain === 'site');
+  if (siteItem) {
+    try {
+      parseDomainOverrides({ domain: 'site', overrides: siteItem.overrides });
+    } catch (error) {
+      if (error instanceof ZodError) {
+        throw new ApiRequestInputParseError(error, { inputSource: 'body' });
+      }
+      throw error;
+    }
+  }
   const previousSiteConfig = siteItem ? (await getDomainConfig('site')).effectiveConfig : undefined;
 
   // 3. 新引用的站点头像先复制为独立对象并改写本次 overrides。

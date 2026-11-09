@@ -242,6 +242,13 @@
   - 覆盖：`evalConcurrency=0`、`provider=customPdf` 缺 URL、`maxLoopTimes=1` 与继承并行值冲突均返回 400；历史坏记录仍为内部错误。
   - 位置：`packages/service/common/system/systemInstanceConfig/controller.ts`、`packages/service/test/common/system/systemInstanceConfig/controller.test.ts`
 
+### 批次 K：最新 review D1 收口
+
+- [x] **K1（review D1，P3）头像复制预处理先校验 site overrides**
+  - 已实现：在读取旧 site 配置、枚举头像引用和复制对象之前，先用域 override Schema 校验本次 site 提交；ZodError 包装为请求入参错误（400），避免 `favicon:7`、`navbarItems:"invalid"`、`navbarItems:[null]` 在 `getSiteAvatarRefs` 中变成 TypeError/500。真实 S3/内部异常仍按原样抛出，不统一降级。
+  - 覆盖：三类非法 site overrides 均返回请求入参错误、不调用头像复制、不写库。
+  - 位置：`projects/app/src/pages/api/admin/system/config/update.ts`、`projects/app/test/api/admin/system/config/update.test.ts`
+
 ## 四、已完成项（不重复修）
 
 - PlanEditModal 测试兼容性：`b22b6a55f`，12 例通过，review 线程已 resolve。

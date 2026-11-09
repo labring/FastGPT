@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MongoSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/schema';
 import { SECRET_MASK } from '@fastgpt/global/common/system/config/permission';
+import { ApiRequestInputParseError } from '@fastgpt/service/common/zod/requestParseError';
 
 const mocks = vi.hoisted(() => ({
   edition: 'pro' as 'pro' | 'community',
@@ -107,6 +108,22 @@ describe('instance config update API', () => {
       overrides: { favicon: '/api/system/img/avatar/team/current.png' }
     });
   });
+
+  it.each([{ favicon: 7 }, { navbarItems: 'invalid' }, { navbarItems: [null] }])(
+    'rejects malformed site avatar values before preprocessing: %j',
+    async (overrides) => {
+      await expect(
+        handler({
+          body: {
+            items: [{ domain: 'site', expectedRevision: 0, overrides }]
+          }
+        } as any)
+      ).rejects.toBeInstanceOf(ApiRequestInputParseError);
+
+      expect(mocks.copyForSiteReference).not.toHaveBeenCalled();
+      expect(await MongoSystemInstanceConfig.findOne({ domain: 'site' })).toBeNull();
+    }
+  );
 
   it('copies a newly referenced site avatar and saves the independent object URL', async () => {
     const previousAvatar = '/api/system/img/avatar/team/current.png';
