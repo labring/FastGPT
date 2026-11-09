@@ -314,12 +314,12 @@ const AIModelSelector = ({
         onChange?.(value);
       }}
       ButtonProps={{
+        size: 'md',
         ...props,
         isDisabled: resolveModelSelectorDisabled({
           isDisabled: props.isDisabled,
           disableTip
         }),
-        h: '40px',
         whiteSpace: 'nowrap'
       }}
     />

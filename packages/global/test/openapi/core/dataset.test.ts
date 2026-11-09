@@ -67,24 +67,36 @@ describe('SearchDatasetTestBodySchema', () => {
     });
   });
 
-  it('accepts string and empty rerankCandidateNum through the shared business schema', () => {
+  it.each([
+    [10, 10],
+    [11, 11],
+    [100, 100],
+    ['20', 20],
+    [undefined, undefined]
+  ])('accepts a valid or omitted rerankCandidateNum: %s', (input, expected) => {
     expect(
       SearchDatasetTestBodySchema.parse({
         datasetId: objectId,
         text: 'question',
         queryImageUrls: [],
-        rerankCandidateNum: '20'
+        rerankCandidateNum: input
       }).rerankCandidateNum
-    ).toBe(20);
-    expect(
-      SearchDatasetTestBodySchema.safeParse({
-        datasetId: objectId,
-        text: 'question',
-        queryImageUrls: [],
-        rerankCandidateNum: ''
-      }).success
-    ).toBe(true);
+    ).toBe(expected);
   });
+
+  it.each([9, 101, 10.5, '20.5', '', null, Number.NaN, Infinity, 'invalid'])(
+    'rejects an out-of-range or non-integer rerankCandidateNum: %s',
+    (rerankCandidateNum) => {
+      expect(
+        SearchDatasetTestBodySchema.safeParse({
+          datasetId: objectId,
+          text: 'question',
+          queryImageUrls: [],
+          rerankCandidateNum
+        }).success
+      ).toBe(false);
+    }
+  );
 
   it.each([
     {},
@@ -121,6 +133,15 @@ describe('SearchDatasetTestBodySchema', () => {
     expect(images.required).not.toContain('text');
     expect(images.properties!.queryImageUrls).toMatchObject({ minItems: 1, maxItems: 10 });
     expect(images.properties!.text).toMatchObject({ default: '' });
+    for (const branch of [text, images]) {
+      expect(branch.properties!.rerankCandidateNum).toMatchObject({
+        type: 'integer',
+        minimum: 10,
+        maximum: 100,
+        default: 100
+      });
+      expect(branch.required).not.toContain('rerankCandidateNum');
+    }
     expect(media.example).toEqual({ text: 'FastGPT 是什么', datasetId: objectId });
     expect(media.examples).toBeUndefined();
     expect(SearchDatasetTestBodySchema.safeParse(media.example).success).toBe(true);

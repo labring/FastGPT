@@ -68,6 +68,7 @@ export type DatasetParamsModalFormType = Omit<
     | [];
 };
 
+/** 提交前移除旧模型标识并归一化候选数，兼容清空或隐藏的数字字段。 */
 export const formatDatasetParamsForSubmit = (
   values: DatasetParamsModalFormType
 ): AppDatasetSearchParamsType => {
@@ -157,6 +158,7 @@ const DatasetParamsModal = ({
   const usingReRankWatch = watch('usingReRank');
   const reRankModelIdWatch = watch('rerankModelId');
   const rerankWeightWatch = watch('rerankWeight');
+  const rerankCandidateNumWatch = watch('rerankCandidateNum');
   const collectionFilterMatchWatch = watch('collectionFilterMatch');
   const isTagFilterOpen = isDatasetTagFilterOpen(collectionFilterMatchWatch);
   const isTagFilterReference = canSwitchTagFilterMode && Array.isArray(collectionFilterMatchWatch);
@@ -352,25 +354,6 @@ const DatasetParamsModal = ({
               </HStack>
               {usingReRankWatch && (
                 <>
-                  <HStack mt={3} justifyContent={'space-between'}>
-                    <Box fontSize={'sm'} flex={'0 0 100px'} color={'myGray.700'}>
-                      {t('common:rerank_weight')}
-                    </Box>
-                    <Box flex={'1 0 0'}>
-                      <InputSlider
-                        min={0.1}
-                        max={1}
-                        step={0.01}
-                        value={rerankWeightWatch}
-                        onChange={(val) => {
-                          setValue(
-                            NodeInputKeyEnum.datasetSearchRerankWeight,
-                            Number(val.toFixed(2))
-                          );
-                        }}
-                      />
-                    </Box>
-                  </HStack>
                   <HStack mt={3}>
                     <Box fontSize={'sm'} flex={'0 0 100px'} color={'myGray.700'}>
                       {t('common:model.type.reRank')}
@@ -394,13 +377,34 @@ const DatasetParamsModal = ({
                       <QuestionTip ml={0.5} label={t('common:rerank_candidate_num_tips')} />
                     </Box>
                     <Box flex={'1 0 0'}>
-                      <MyNumberInput
-                        size={'sm'}
+                      <InputSlider
                         min={rerankCandidateNumRange.min}
                         max={rerankCandidateNumRange.max}
                         step={rerankCandidateNumRange.step}
-                        register={register}
-                        name={NodeInputKeyEnum.datasetSearchRerankCandidateNum}
+                        value={rerankCandidateNumWatch}
+                        onChange={(val) =>
+                          setValue(NodeInputKeyEnum.datasetSearchRerankCandidateNum, val)
+                        }
+                      />
+                    </Box>
+                  </HStack>
+                  <HStack mt={3}>
+                    <Box fontSize={'sm'} flex={'0 0 100px'} color={'myGray.700'}>
+                      {t('common:rerank_weight')}
+                    </Box>
+                    <Box flex={'1 0 0'}>
+                      <InputSlider
+                        min={0.1}
+                        max={1}
+                        step={0.1}
+                        inputStep={0.01}
+                        value={rerankWeightWatch}
+                        onChange={(val) => {
+                          setValue(
+                            NodeInputKeyEnum.datasetSearchRerankWeight,
+                            Number(val.toFixed(2))
+                          );
+                        }}
                       />
                     </Box>
                   </HStack>

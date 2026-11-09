@@ -2,6 +2,7 @@ import { AppTypeEnum } from './constants';
 import { NodeInputKeyEnum } from '../workflow/constants';
 import { DatasetSearchModeEnum } from '../dataset/constants';
 import { DatasetTagFilterValueSchema } from '../dataset/search/tagFilter';
+import { rerankCandidateNumRange } from '../dataset/search/utils';
 import type { ReasoningEffort } from '../ai/llm/type';
 import type { AppPermission } from '../../support/permission/app/controller';
 import {
@@ -408,7 +409,9 @@ export const AppDatasetSearchParamsTypeSchema = z.object({
   /** @deprecated */
   rerankModel: OptionalDatasetModelSchema,
   rerankWeight: NumSchema.optional(),
-  rerankCandidateNum: NumSchema.optional(),
+  rerankCandidateNum: IntSchema.min(rerankCandidateNumRange.min)
+    .max(rerankCandidateNumRange.max)
+    .optional(),
 
   datasetSearchUsingExtensionQuery: BoolSchema.optional(),
   datasetSearchExtensionModelId: OptionalDatasetModelSchema,

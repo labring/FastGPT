@@ -32,7 +32,7 @@ const RerankCandidateNumSchema = AppDatasetSearchParamsTypeSchema.shape.rerankCa
   example: 100,
   default: 100,
   description:
-    '启用重排时，从融合后的召回结果中最多取前 N 条送入重排模型；默认 100，范围 10~100，超出范围按边界收敛'
+    '启用重排时，从融合后的召回结果中最多取前 N 条送入重排模型；默认 100，必须为 10~100 的整数'
 });
 
 /* ============================================================================
