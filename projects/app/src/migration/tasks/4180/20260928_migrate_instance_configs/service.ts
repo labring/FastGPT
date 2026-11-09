@@ -551,7 +551,7 @@ export const buildLegacyProOverrides = (pro: LegacyProConfig): DomainOverrides =
   const microsoft = (auth.microsoft ?? {}) as LegacyProConfig;
   const cancellation = (pro.accountCancellation ?? {}) as LegacyProConfig;
 
-  /** 短信模板已只保留中文：英文模板仅在中文缺失时作为兜底来源。 */
+  /** 短信模板已只保留中文：英文模板仅作为历史兼容的兜底来源，迁移后不再写入运行时。 */
   const pair = (zh?: unknown, en?: unknown) => {
     const zhText = optionalText(zh) ?? optionalText(en);
     if (!zhText) return undefined;

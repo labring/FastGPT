@@ -168,6 +168,7 @@ export function formatConfigStore2FormSchema({
         secure: fastgptPro?.auth?.email?.secure ?? true
       },
       sms: {
+        // 英文模板仅从旧 Pro 配置读取，用于迁移兼容；新表单不再写入。
         LOGIN: fastgptPro?.auth?.sms?.LOGIN || '',
         LOGIN_EN: fastgptPro?.auth?.sms?.LOGIN_EN || '',
         REGISTER: fastgptPro?.auth?.sms?.REGISTER || '',

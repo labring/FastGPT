@@ -50,6 +50,10 @@ export type SystemConfigType = {
       port?: number;
       secure?: boolean;
     };
+    /**
+     * 历史兼容：`*_EN` 英文模板仅用于迁移读取旧数据，不再作为有效运行时配置。
+     * 当前短信发送统一使用中文模板，新表单不写入这些字段。
+     */
     sms: {
       /** 登录二次验证短信模板 CODE；未配置时手机号账号降级为纯密码登录。 */
       LOGIN?: string;

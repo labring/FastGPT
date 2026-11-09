@@ -116,7 +116,7 @@
 - [ ] **C1.5（原第 14 项，P3，依赖 D8）`systemEnv.ip_whitelist`**：删除残留声明和旧表单控件。
 - [ ] **C1.6（原第 15 项，P3，依赖 D8）`systemEnv.customDomain.domain.*`**：删除；实际读取 `feConfigs.customDomain.domain`。
 - [ ] **C1.7（原第 16 项，P3，依赖 D8）旧 Pro 钉钉/支付宝类型**：确认无迁移/表单引用后删除旧类型。
-- [ ] **C1.8（原第 17 项，依赖 D4）旧 Pro `auth.sms.*_EN`**：标记历史兼容或删除。
+- [x] **C1.8（原第 17 项）旧 Pro `auth.sms.*_EN`**：已按 D4 标记历史兼容，仅保留迁移读取，新表单不写入。
 - [ ] **C1.9（原第 18 项，依赖 D5）`SYNC_INDEX`**：仅清理当前 main 模板/生成文件/文档。
 - 统一验收：registry、pageFields、旧类型、表单、`20260929_cleanup_instance_config_deprecated_fields`、相关测试同步；存量 overrides 不因 strict schema 读取失败。
 
