@@ -115,6 +115,7 @@ async function handler(
       tags: finalTags, // Use modified tags
       type: item.type,
       author: item.author,
+      experienceUrl: item.experienceUrl,
       userGuide: item.userGuide,
       workflow: {}
     };
