@@ -11,7 +11,30 @@ type AgentLoopCoreAssistantMetaEventNames = {
 };
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { AgentAskInteractiveSchema } from '@fastgpt/global/core/ai/agent/type';
+import { ChatCompletionToolMessageContentPartSchema } from '@fastgpt/global/core/ai/llm/type';
 import { WorkflowBuilderPreviewInteractiveSchema } from '@fastgpt/global/core/workflow/builder/type';
+
+// 记录用于恢复的工具图片时保留小型内联图片；超过上限的 base64 仍参与当前请求，
+// 但不写入 ChatItem，避免单条 MongoDB 文档超过 16MB。
+const MAX_PERSISTED_INLINE_TOOL_IMAGE_BYTES = 4 * 1024 * 1024;
+
+const getPersistedToolContent = (content: unknown) => {
+  const parsed = ChatCompletionToolMessageContentPartSchema.array().safeParse(content);
+  if (!parsed.success) return;
+
+  let inlineImageBytes = 0;
+  const parts = parsed.data.filter((part) => {
+    if (part.type === 'text') return true;
+
+    const url = part.image_url.url;
+    if (!url.startsWith('data:')) return true;
+    if (inlineImageBytes + url.length > MAX_PERSISTED_INLINE_TOOL_IMAGE_BYTES) return false;
+    inlineImageBytes += url.length;
+    return true;
+  });
+
+  return parts.length ? parts : undefined;
+};
 
 export type CreateAgentLoopCoreAssistantEventCollectorParams = {
   assistantResponses?: AIChatItemValueItemType[];
@@ -160,9 +183,16 @@ export const createAgentLoopCoreAssistantEventCollector = ({
         return;
       }
       case 'tool_run_end': {
+        const content = getPersistedToolContent(event.content);
         if (event.resumed) {
           assistantResponses.push({
-            toolResponses: [{ id: event.call.id, response: event.response }],
+            toolResponses: [
+              {
+                id: event.call.id,
+                response: event.response,
+                ...(content?.length ? { content } : {})
+              }
+            ],
             hideInUI: true
           });
           assistantResponses.push(
@@ -176,6 +206,7 @@ export const createAgentLoopCoreAssistantEventCollector = ({
         const { group, tool } = ensureTool(event.call);
         tool.params = event.call.function.arguments;
         tool.response = event.response;
+        if (content?.length) tool.content = content;
         if (event.hideInUI) tool.hideInUI = true;
         if (event.internalOnly) tool.internalOnly = true;
         refreshVisibility(group);

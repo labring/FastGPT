@@ -29,7 +29,10 @@ import {
   getWorkflowBuilderPreviewToolResponse
 } from '../workflow/builder/utils';
 import { WORKFLOW_BUILDER_PREVIEW_TOOL_NAME } from '../workflow/builder/constants';
-import { ChatCompletionUserMessageParamSchema } from '../ai/llm/type';
+import {
+  ChatCompletionToolMessageContentPartSchema,
+  ChatCompletionUserMessageParamSchema
+} from '../ai/llm/type';
 import { AgentAskInteractiveSchema } from '../ai/agent/type';
 import { ToolCallChildrenInteractiveSchema } from '../workflow/template/system/interactive/type';
 import { extractDeepestInteractive } from '../workflow/runtime/utils';
@@ -298,15 +301,19 @@ export const chats2GPTMessages = ({
         if (parsed.success) inputContexts.set(index - 1, parsed.data);
       }
     });
-  const resumedToolResponses = new Map<string, string>();
+  const resumedToolResponses = new Map<
+    string,
+    {
+      response: string;
+      content?: ToolModuleResponseItemType['content'];
+    }
+  >();
   if (restoreAgentContext)
     sourceMessages.forEach((item) => {
       if (item.obj === ChatRoleEnum.AI)
         item.value.forEach((value) => {
           if (!value.displayOnly)
-            value.toolResponses?.forEach((result) =>
-              resumedToolResponses.set(result.id, result.response)
-            );
+            value.toolResponses?.forEach((result) => resumedToolResponses.set(result.id, result));
         });
     });
 
@@ -392,7 +399,8 @@ export const chats2GPTMessages = ({
     ) {
       return;
     }
-    const response = resumedToolResponses.get(tool.id) ?? tool.response;
+    const resumed = resumedToolResponses.get(tool.id);
+    const response = resumed?.response ?? tool.response;
     if (typeof response !== 'string') return;
 
     const id = tool.id.trim();
@@ -410,7 +418,9 @@ export const chats2GPTMessages = ({
       toolResponse: {
         tool_call_id: id,
         role: ChatCompletionRequestMessageRoleEnum.Tool,
-        content: normalizeToolResponseContent(response)
+        content: resumed
+          ? (resumed.content ?? normalizeToolResponseContent(response))
+          : (tool.content ?? normalizeToolResponseContent(response))
       }
     };
   };
@@ -1002,7 +1012,19 @@ export const GPTMessages2Chats = ({
             value.push({
               ...valueVisibility,
               ...(!hasAttachedReasoning ? reasoning : {}),
-              tools
+              tools: tools.map((tool) => {
+                const toolContent = normalizedMessages.find(
+                  (msg) =>
+                    msg.role === ChatCompletionRequestMessageRoleEnum.Tool &&
+                    msg.tool_call_id === tool.id
+                )?.content;
+                const parsedContent =
+                  ChatCompletionToolMessageContentPartSchema.array().safeParse(toolContent);
+                return {
+                  ...tool,
+                  ...(parsedContent.success ? { content: parsedContent.data } : {})
+                };
+              })
             });
             hasAttachedReasoning = hasAttachedReasoning || Boolean(reasoning.reasoning);
           }

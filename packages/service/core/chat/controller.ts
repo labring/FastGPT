@@ -89,8 +89,15 @@ export async function getChatItems({
       item.value.forEach((value) => {
         if (!includeInternalContext) delete value.inputContext;
         if (!includeInternalContext && value.tools) {
-          value.tools = value.tools.map((tool) =>
-            tool.internalOnly ? { ...tool, params: '', response: '', hideDetails: true } : tool
+          value.tools = value.tools.map((tool) => {
+            if (!tool.internalOnly) return tool;
+            const { content: _content, ...publicTool } = tool;
+            return { ...publicTool, params: '', response: '', hideDetails: true };
+          });
+        }
+        if (!includeInternalContext && value.toolResponses) {
+          value.toolResponses = value.toolResponses.map(
+            ({ content: _content, ...response }) => response
           );
         }
         if (value.agentAsk && !AgentLoopAskSchema.safeParse(value.agentAsk).success)

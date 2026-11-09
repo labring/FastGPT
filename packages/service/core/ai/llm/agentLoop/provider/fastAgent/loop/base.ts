@@ -4,6 +4,7 @@ import type {
   ChatCompletionMessageParam,
   ChatCompletionMessageToolCall,
   ChatCompletionTool,
+  ChatCompletionToolMessageContentPart,
   CompletionFinishReason
 } from '@fastgpt/global/core/ai/llm/type';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
@@ -99,6 +100,7 @@ type RunAgentCallProps<TChildrenResponse = unknown> = {
     hideInUI?: boolean;
     call: ChatCompletionMessageToolCall;
     response: string;
+    content?: string | ChatCompletionToolMessageContentPart[];
     assistantMessages?: ChatCompletionMessageParam[];
     assistantResponses?: AgentLoopAssistantResponse[];
     errorMessage?: string;
@@ -324,7 +326,7 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
       stop,
       errorMessage,
       metadata,
-      content: toolContent
+      content: toolContentParts
     } = await (async () => {
       try {
         return await onRunInteractiveTool({
@@ -343,10 +345,15 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
       }
     })();
 
+    const toolContent = buildToolMessageContent({
+      content: toolContentParts,
+      text: normalizeToolResponseContent(response)
+    });
     onToolRunEnd?.({
       resumed: true,
       call: resumedToolCall,
       response: normalizeToolResponseContent(response),
+      content: toolContent,
       assistantMessages: toolAssistantMessages,
       assistantResponses: toolAssistantResponses,
       errorMessage: interactiveToolErrorMessage || errorMessage,
@@ -358,15 +365,11 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
 
     // FastAgent 只使用 ChatItem 重建的上下文，旧交互中的 memory 快照不再参与恢复。
     // 与普通工具执行路径保持一致：结构化 parts 与最终文本统一通过 buildToolMessageContent 组装。
-    const interactiveToolContent = buildToolMessageContent({
-      content: toolContent,
-      text: normalizeToolResponseContent(response)
-    });
     requestMessages = requestMessages.map((item) =>
       item.role === 'tool' && item.tool_call_id === childrenInteractiveParams.toolCallId
         ? {
             ...item,
-            content: interactiveToolContent
+            content: toolContent
           }
         : item
     );
@@ -376,7 +379,7 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
     assistantMessages.push({
       role: ChatCompletionRequestMessageRoleEnum.Tool,
       tool_call_id: childrenInteractiveParams.toolCallId,
-      content: interactiveToolContent
+      content: toolContent
     });
     assistantMessages.push(...filterEmptyAssistantMessages(toolAssistantMessages));
     // 相同 tool 触发了多次交互, 调用的 toolId 认为是相同的
@@ -651,9 +654,17 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
           };
         })();
 
+        // 工具返回结构化 content 时，保留最终展示/计费文本作为 text part，
+        // 事件、聊天记录和下一轮模型请求必须使用同一份内容。
+        const toolMessageContent = buildToolMessageContent({
+          content: toolContent,
+          text: toolFinalResponse
+        });
+
         onToolRunEnd?.({
           call: tool,
           response: toolFinalResponse,
+          content: toolMessageContent,
           assistantMessages: toolAssistantMessages,
           assistantResponses: toolAssistantResponses,
           ...(toolErrorMessage || errorMessage
@@ -665,14 +676,6 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
           metadata,
           hideInUI,
           interactive
-        });
-
-        // 工具返回结构化 content（如含图片 parts）时，在保留图片的前提下，
-        // 把展示/计费用的最终文本（可能已压缩）作为 text part 一并发送；
-        // 否则直接使用最终文本字符串。
-        const toolMessageContent = buildToolMessageContent({
-          content: toolContent,
-          text: toolFinalResponse
         });
 
         return {

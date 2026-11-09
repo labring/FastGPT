@@ -107,6 +107,12 @@ describe('getChatItems', () => {
       functionName: 'sandbox_read_file',
       params: '{"path":"/private/state"}',
       response: 'private fact',
+      content: [
+        {
+          type: 'image_url',
+          image_url: { url: 'data:image/png;base64,private' }
+        }
+      ],
       internalOnly: true,
       hideInUI: true,
       toolName: 'Read',
@@ -120,6 +126,18 @@ describe('getChatItems', () => {
             {
               modelResponseId: 'response',
               tools: [tool],
+              toolResponses: [
+                {
+                  id: 'private-resume',
+                  response: 'private resumed fact',
+                  content: [
+                    {
+                      type: 'image_url',
+                      image_url: { url: 'data:image/png;base64,resumed-private' }
+                    }
+                  ]
+                }
+              ],
               inputContext: { content: 'Private prepared input' }
             }
           ]
@@ -135,6 +153,17 @@ describe('getChatItems', () => {
     });
     expect(restored.histories[1].value[0]).toMatchObject({
       tools: [tool],
+      toolResponses: [
+        {
+          id: 'private-resume',
+          content: [
+            {
+              type: 'image_url',
+              image_url: { url: 'data:image/png;base64,resumed-private' }
+            }
+          ]
+        }
+      ],
       inputContext: { content: 'Private prepared input' }
     });
     const displayed = await getChatItems({
@@ -147,6 +176,8 @@ describe('getChatItems', () => {
     expect(displayed.histories[1].value[0]).toMatchObject({
       tools: [{ params: '', response: '', hideDetails: true }]
     });
+    expect(displayed.histories[1].value[0].tools?.[0]).not.toHaveProperty('content');
+    expect(displayed.histories[1].value[0].toolResponses?.[0]).not.toHaveProperty('content');
     expect(displayed.histories[1].value[0]).not.toHaveProperty('inputContext');
   });
 

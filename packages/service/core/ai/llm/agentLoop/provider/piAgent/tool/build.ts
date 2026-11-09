@@ -146,10 +146,15 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
     pushAgentLoopUsages(runtime, usages);
     if (result.interactive)
       runtime.emitEvent?.({ type: 'tool_interactive', call, interactive: result.interactive });
+    const toolContent = buildToolMessageContent({
+      content: result.content,
+      text: normalizedResponse
+    });
     runtime.emitEvent?.({
       type: 'tool_run_end',
       call,
       response: normalizedResponse,
+      content: toolContent,
       assistantMessages,
       assistantResponses: result.assistantResponses,
       usages,

@@ -1,6 +1,7 @@
 import type {
   ChatCompletionMessageParam,
   ChatCompletionMessageToolCall,
+  ChatCompletionToolMessageContentPart,
   CompletionFinishReason
 } from '@fastgpt/global/core/ai/llm/type';
 import type { AgentPlanType } from '@fastgpt/global/core/ai/agent/type';
@@ -100,6 +101,8 @@ export type AgentLoopEvent =
       call: ChatCompletionMessageToolCall;
       /** 实际给模型的完整结果；聊天持久化和 SSE 均使用此值，不再额外裁剪。 */
       response: string;
+      /** 工具返回的结构化内容，用于恢复图片等非文本上下文。 */
+      content?: string | ChatCompletionToolMessageContentPart[];
       /** 工具内部产生、需要随本轮 assistant 一起持久化的标准消息。 */
       assistantMessages?: ChatCompletionMessageParam[];
       /** 工具内部产生的展示层 assistant responses，由上层 adapter 解释。 */

@@ -157,49 +157,54 @@ export const convertToolResponseContentToPiContent = async (
  * 将 Workflow 侧标准消息转换为 pi-agent-core 可恢复的上下文。
  * system/developer 由 Agent 的 systemPrompt 单独承载；其余消息保持 tool call/result 关联。
  */
-export const convertChatMessagesToPiAgentMessages = ({
+export const convertChatMessagesToPiAgentMessages = async ({
   messages,
-  model
+  model,
+  useVision = true
 }: {
   messages: ChatCompletionMessageParam[];
   model: Model<any>;
-}): AgentMessage[] => {
+  useVision?: boolean;
+}): Promise<AgentMessage[]> => {
   const toolNames = new Map<string, string>();
-
-  return messages.flatMap((message): AgentMessage[] => {
+  const convertedMessages: AgentMessage[][] = [];
+  for (const message of messages) {
     if (message.role === ChatCompletionRequestMessageRoleEnum.User) {
       if (typeof message.content === 'string') {
-        return [{ role: 'user', content: message.content, timestamp: Date.now() }];
+        convertedMessages.push([{ role: 'user', content: message.content, timestamp: Date.now() }]);
+        continue;
       }
 
-      const content: Array<TextContent | ImageContent> = [];
-      message.content.forEach((item) => {
-        if (item.type === 'text') {
-          content.push({ type: 'text', text: item.text });
-          return;
-        }
-        if (item.type === 'image_url') {
-          const match = item.image_url.url.match(/^data:([^;]+);base64,(.+)$/);
-          if (match) {
-            content.push({ type: 'image', mimeType: match[1], data: match[2] });
-            return;
-          }
-          content.push({ type: 'text', text: `[Image: ${item.image_url.url}]` });
-          return;
-        }
-        if (item.type === 'video_url') {
-          content.push({ type: 'text', text: `[Video: ${item.video_url.url}]` });
-          return;
-        }
-        if (item.type === 'file_url') {
-          content.push({
-            type: 'text',
-            text: `[File: ${item.name ?? item.url}] ${item.url}`
-          });
-        }
-      });
+      const content = (
+        await Promise.all(
+          message.content.map(async (item): Promise<Array<TextContent | ImageContent>> => {
+            if (item.type === 'text') {
+              return [{ type: 'text', text: item.text }];
+            }
+            if (item.type === 'image_url') {
+              return convertToolResponseContentToPiContent(
+                [{ type: 'image_url', image_url: item.image_url }],
+                { useVision }
+              );
+            }
+            if (item.type === 'video_url') {
+              return [{ type: 'text', text: `[Video: ${item.video_url.url}]` }];
+            }
+            if (item.type === 'file_url') {
+              return [
+                {
+                  type: 'text',
+                  text: `[File: ${item.name ?? item.url}] ${item.url}`
+                }
+              ];
+            }
+            return [];
+          })
+        )
+      ).flat();
 
-      return [{ role: 'user', content, timestamp: Date.now() }];
+      convertedMessages.push([{ role: 'user', content, timestamp: Date.now() }]);
+      continue;
     }
 
     if (message.role === ChatCompletionRequestMessageRoleEnum.Assistant) {
@@ -227,7 +232,7 @@ export const convertChatMessagesToPiAgentMessages = ({
         }))
       ];
 
-      return [
+      convertedMessages.push([
         {
           role: 'assistant',
           content,
@@ -238,31 +243,15 @@ export const convertChatMessagesToPiAgentMessages = ({
           stopReason: toolCalls.length > 0 ? 'toolUse' : 'stop',
           timestamp: Date.now()
         }
-      ];
+      ]);
+      continue;
     }
 
     if (message.role === ChatCompletionRequestMessageRoleEnum.Tool) {
-      // 工具消息允许 text / image_url parts：data URI 直接还原为 ImageContent，
-      // 远程图片 URL 与 user 分支一致降级为占位文本，不阻塞转录恢复。
-      const content: Array<TextContent | ImageContent> = [];
-      if (Array.isArray(message.content)) {
-        message.content.forEach((part) => {
-          if (part.type === 'text') {
-            content.push({ type: 'text', text: part.text });
-            return;
-          }
-          const match = part.image_url.url.match(/^data:([^;]+);base64,(.+)$/);
-          if (match) {
-            content.push({ type: 'image', mimeType: match[1], data: match[2] });
-            return;
-          }
-          content.push({ type: 'text', text: getImagePlaceholder(part.image_url.url) });
-        });
-      } else {
-        content.push({ type: 'text', text: getContentText(message.content) });
-      }
+      // 工具消息允许 text / image_url parts：data URI 直接还原，远程图片走统一受限下载。
+      const content = await convertToolResponseContentToPiContent(message.content, { useVision });
 
-      return [
+      convertedMessages.push([
         {
           role: 'toolResult',
           toolCallId: message.tool_call_id,
@@ -272,21 +261,25 @@ export const convertChatMessagesToPiAgentMessages = ({
           isError: false,
           timestamp: Date.now()
         }
-      ];
+      ]);
+      continue;
     }
 
     if (message.role === ChatCompletionRequestMessageRoleEnum.Function) {
-      return [
+      convertedMessages.push([
         {
           role: 'user',
           content: `[Function ${message.name} result]\n${message.content ?? ''}`,
           timestamp: Date.now()
         }
-      ];
+      ]);
+      continue;
     }
 
-    return [];
-  });
+    convertedMessages.push([]);
+  }
+
+  return convertedMessages.flat();
 };
 
 /** 将 pi-agent-core 上下文转换回标准消息，供统一 checkpoint 压缩器消费。 */
@@ -326,12 +319,24 @@ export const convertPiAgentMessagesToChatMessages = (
     }
 
     if (message.role === 'toolResult') {
+      const content = message.content.map((item) =>
+        item.type === 'text'
+          ? { type: 'text' as const, text: item.text }
+          : {
+              type: 'image_url' as const,
+              image_url: {
+                url: `data:${item.mimeType};base64,${item.data}`
+              }
+            }
+      );
       return [
         {
           role: 'tool',
           tool_call_id: message.toolCallId,
           name: message.toolName,
-          content: message.content.map((item) => (item.type === 'text' ? item.text : '')).join('')
+          content: content.some((item) => item.type === 'image_url')
+            ? content
+            : content.map((item) => (item.type === 'text' ? item.text : '')).join('')
         }
       ];
     }

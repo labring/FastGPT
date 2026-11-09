@@ -272,11 +272,12 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
     messages:
       shouldRestoreRawState && state.piMessages?.length
         ? state.piMessages
-        : convertChatMessagesToPiAgentMessages({
+        : await convertChatMessagesToPiAgentMessages({
             messages:
               standardAskResumeMessages ??
               (input.childrenInteractiveParams ? input.messages : standardHistoryMessages),
-            model: piModel
+            model: piModel,
+            useVision
           }),
     completionTools: normalizationTools
   });
@@ -338,21 +339,22 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
     })();
     const normalizedResponse = normalizeToolResponseContent(result.response);
     pushAgentLoopUsages(runtime, result.usages);
+    // 交互恢复与普通执行共用同一套组合规则：response 文本保留，图片追加在后。
+    const toolContent = buildToolMessageContent({
+      content: result.content,
+      text: normalizedResponse
+    });
     runtime.emitEvent?.({
       type: 'tool_run_end',
       call,
       response: normalizedResponse,
+      content: toolContent,
       assistantMessages: result.assistantMessages,
       assistantResponses: result.assistantResponses,
       usages: result.usages,
       errorMessage: result.errorMessage,
       metadata: result.metadata,
       seconds: +((Date.now() - startedAt) / 1000).toFixed(2)
-    });
-    // 交互恢复与普通执行共用同一套组合规则：response 文本保留，图片追加在后。
-    const toolContent = buildToolMessageContent({
-      content: result.content,
-      text: normalizedResponse
     });
     const piToolContent = await convertToolResponseContentToPiContent(toolContent, { useVision });
     initialPiMessages = replaceInteractiveToolResult({
@@ -538,9 +540,10 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
         }
 
         const compressedPiMessages = normalizePiAgentMessages({
-          messages: convertChatMessagesToPiAgentMessages({
+          messages: await convertChatMessagesToPiAgentMessages({
             messages: result.messages,
-            model: piModel
+            model: piModel,
+            useVision
           }),
           completionTools: normalizationTools
         });
@@ -747,10 +750,13 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
         currentUserMessage?.role === ChatCompletionRequestMessageRoleEnum.User &&
         Array.isArray(currentUserMessage.content) &&
         !shouldResumeAsk
-          ? convertChatMessagesToPiAgentMessages({
-              messages: [currentUserMessage],
-              model: piModel
-            })[0]
+          ? (
+              await convertChatMessagesToPiAgentMessages({
+                messages: [currentUserMessage],
+                model: piModel,
+                useVision
+              })
+            )[0]
           : undefined;
 
       if (piPromptMessage) {

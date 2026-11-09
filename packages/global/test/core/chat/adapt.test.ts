@@ -3190,6 +3190,48 @@ describe('GPTMessages2Chats', () => {
     expect((result[0].value[0] as any).tools[0].response).toBe('chunked result');
   });
 
+  it('round-trips structured tool content for agent recovery', () => {
+    const content = [
+      { type: 'text' as const, text: 'tool result' },
+      { type: 'image_url' as const, image_url: { url: 'https://example.com/result.png' } }
+    ];
+    const messages: ChatCompletionMessageParam[] = [
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        tool_calls: [
+          {
+            id: 'call_image',
+            type: 'function',
+            function: {
+              name: 'render',
+              arguments: '{}'
+            }
+          }
+        ]
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Tool,
+        tool_call_id: 'call_image',
+        content
+      }
+    ];
+
+    const chats = GPTMessages2Chats({ messages, reserveTool: true });
+    const tool = chats[0].value[0].tools?.[0];
+    const restored = chats2GPTMessages({
+      messages: chats,
+      reserveId: false,
+      reserveTool: true
+    });
+
+    expect(tool).toMatchObject({ response: 'tool result', content });
+    expect(restored[1]).toMatchObject({
+      role: ChatCompletionRequestMessageRoleEnum.Tool,
+      tool_call_id: 'call_image',
+      content
+    });
+  });
+
   it('should keep assistant content and reasoning separate from tools after chat roundtrip', () => {
     const messages: ChatCompletionMessageParam[] = [
       {
