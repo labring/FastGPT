@@ -1064,7 +1064,7 @@ Server、Agent Sandbox Proxy 和 IDE Agent 的运行时变量。为了避免“�
 
 ### 13.6 逐字段版本、表单与页面映射
 
-本表逐项覆盖注册表的 **203 个配置叶子**，不使用通配符或虚构的聚合字段。字段定义与默认值以 `schemas/*.ts` 为准，版本、敏感项和 SaaS 显示条件以 `registry.ts` 为准；页面归属与 `pageFields.ts`、实际表单保持一致。
+本表逐项覆盖注册表的 **207 个配置叶子**，不使用通配符或虚构的聚合字段。字段定义与默认值以 `schemas/*.ts` 为准，版本、敏感项和 SaaS 显示条件以 `registry.ts` 为准；页面归属与 `pageFields.ts`、实际表单保持一致。
 
 - 社区版／商业版的勾选表示配置 API 的读写权限；商业版按是否配置 `PRO_URL` 判定，不依赖 License 是否激活。
 - “仅 SaaS 显示”表示 `ENABLE_SAAS_ADMIN_CONFIG=true` 才显示对应控件，**不收紧商业版 API 权限**。标为“仅 API”的字段当前没有新表单，开启显示开关也不会产生控件。
@@ -1107,6 +1107,10 @@ Server、Agent Sandbox Proxy 和 IDE Agent 的运行时变量。为了避免“�
 | `auth.defaultTeamBasicPermissionsEnabled` | 新团队默认开启基础权限 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/core` |
 | `auth.teamMode` | 团队模式 | — | ✅ | — | — | 可编辑：`/admin/settings/core` |
 | `auth.fastLogin` | 快捷登录方式 | — | ✅ | — | — | 可编辑：`/admin/settings/auth` |
+| `auth.sso.title` | SSO 登录按钮标题 | — | ✅ | — | — | 可编辑：`/admin/settings/auth` |
+| `auth.sso.icon` | SSO 登录按钮图标 | — | ✅ | — | — | 可编辑：`/admin/settings/auth` |
+| `auth.sso.autoLogin` | SSO 自动跳转 | — | ✅ | — | — | 可编辑：`/admin/settings/auth` |
+| `auth.sso.disablePasswordForSsoUsers` | 禁止 SSO 用户使用密码 | — | ✅ | — | — | 可编辑：`/admin/settings/auth` |
 | `auth.loginProviders.email.smtp` | SMTP 服务地址 | — | ✅ | — | — | 可编辑：`/admin/settings/core` |
 | `auth.loginProviders.email.user` | 发件邮箱账号 | — | ✅ | — | — | 可编辑：`/admin/settings/core` |
 | `auth.loginProviders.email.port` | SMTP 端口 | — | ✅ | — | — | 可编辑：`/admin/settings/core` |

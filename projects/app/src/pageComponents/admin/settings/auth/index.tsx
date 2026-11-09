@@ -22,6 +22,8 @@ import AdminSettingPage from '@/pageComponents/admin/settings/AdminSettingPage';
 import AdminSettingSection from '@/pageComponents/admin/settings/AdminSettingSection';
 import AdminFormItem from '@/pageComponents/admin/settings/AdminFormItem';
 import AdminSwitchRow from '@/pageComponents/admin/settings/AdminSwitchRow';
+import ImageInput from '@/pageComponents/admin/settings/ImageInput';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 import type { SettingTOCItem } from '@/pageComponents/admin/settings/AdminSettingTOC';
 import type { SystemInstanceConfigDomainMap } from '@fastgpt/global/common/system/config/type';
 
@@ -35,6 +37,7 @@ const AuthSettingComponent = () => {
   const { t } = useSafeTranslation();
   const { isFieldVisible, filterConfigData, filterConfigDataByEdition } = useAdminPermission();
   const { toast } = useToast();
+  const { feConfigs, licenseData } = useSystemStore();
 
   const showEmail = isFieldVisible('auth.loginProviders.email.register');
   const showSms = isFieldVisible('auth.loginProviders.sms.login.zh');
@@ -44,6 +47,9 @@ const AuthSettingComponent = () => {
   const showWecomProviderSecret = isFieldVisible('auth.loginProviders.wecom.providerSecret');
   const showWecomSaaS = isFieldVisible('auth.loginProviders.wecom.buyerUserId');
   const showFastLogin = isFieldVisible('auth.fastLogin');
+  const showSso = Boolean(
+    isFieldVisible('auth.sso.title') && licenseData?.functions?.sso && feConfigs?.sso?.enabled
+  );
 
   const tocItems: SettingTOCItem[] = useMemo(
     () => [
@@ -56,12 +62,13 @@ const AuthSettingComponent = () => {
         ? [{ id: 'wechatLogin', label: t('admin:wechat_service_account_wecom') }]
         : []),
       ...(showOauth ? [{ id: 'oauthLogin', label: t('admin:oauth_login') }] : []),
+      ...(showSso ? [{ id: 'ssoLogin', label: t('admin:sso_settings') }] : []),
       ...(showFastLogin ? [{ id: 'fastLogin', label: t('admin:fast_login_entries_json') }] : []),
       ...(showCancellation
         ? [{ id: 'accountCancellation', label: t('admin:account_cancellation') }]
         : [])
     ],
-    [t, showEmail, showSms, showWechat, showOauth, showFastLogin, showCancellation]
+    [t, showEmail, showSms, showWechat, showOauth, showSso, showFastLogin, showCancellation]
   );
 
   const auth = useDomainConfig('auth');
@@ -69,7 +76,7 @@ const AuthSettingComponent = () => {
   const { effectiveConfig } = auth;
   const isLoading = auth.isLoading || security.isLoading;
 
-  const { control, handleSubmit, reset, register } = useForm<AuthConfigForm>({
+  const { control, handleSubmit, reset, register, setValue } = useForm<AuthConfigForm>({
     defaultValues: {
       ...effectiveConfig,
       passwordLoginMinuteLimitCount: 10,
@@ -78,6 +85,8 @@ const AuthSettingComponent = () => {
   });
 
   const emailRegister = useWatch({ control, name: 'loginProviders.email.register' });
+  const ssoAutoLogin = useWatch({ control, name: 'sso.autoLogin' });
+  const ssoDisablePassword = useWatch({ control, name: 'sso.disablePasswordForSsoUsers' });
   const [fastLoginText, setFastLoginText] = useState('');
 
   useEffect(() => {
@@ -528,7 +537,33 @@ const AuthSettingComponent = () => {
         </AdminSettingSection>
       )}
 
-      {/* 8. 快速登录 */}
+      {/* 8. SSO 展示配置 */}
+      {showSso && (
+        <AdminSettingSection id="ssoLogin" title={t('admin:sso_settings')} showDivider>
+          <SimpleGrid columns={[1, 2]} spacing={5}>
+            <AdminFormItem label={t('admin:sso_login_button_title')}>
+              <Input {...register('sso.title')} placeholder={t('admin:sso_login_button_title')} />
+            </AdminFormItem>
+            <AdminFormItem label={t('admin:sso_login_button_icon')}>
+              <ImageInput control={control} name="sso.icon" />
+            </AdminFormItem>
+            <AdminSwitchRow
+              label={t('admin:sso_auto_login')}
+              tooltip={t('admin:sso_auto_login_tip')}
+              isChecked={ssoAutoLogin}
+              onChange={(value) => setValue('sso.autoLogin', value)}
+            />
+            <AdminSwitchRow
+              label={t('admin:disable_password_for_sso_users')}
+              tooltip={t('admin:disable_password_for_sso_users_tip')}
+              isChecked={ssoDisablePassword}
+              onChange={(value) => setValue('sso.disablePasswordForSsoUsers', value)}
+            />
+          </SimpleGrid>
+        </AdminSettingSection>
+      )}
+
+      {/* 9. 快速登录 */}
       {showFastLogin && (
         <AdminSettingSection id="fastLogin" title={t('admin:fast_login_entries_json')} showDivider>
           <AdminFormItem

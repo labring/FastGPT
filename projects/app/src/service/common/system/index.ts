@@ -216,6 +216,13 @@ async function doInitSystemConfig({
       teamMode: instanceConfig.auth.teamMode ?? fastgptConfig.feConfigs?.teamMode,
       wecomLoginAutoRedirect: instanceConfig.auth.wecomLoginAutoRedirect,
       oauth: buildOauthFeConfig(instanceConfig.auth),
+      sso: {
+        ...(fastgptConfig.feConfigs?.sso ?? {}),
+        title: instanceConfig.auth.sso.title,
+        icon: instanceConfig.auth.sso.icon,
+        autoLogin: instanceConfig.auth.sso.autoLogin,
+        disablePasswordForSsoUsers: instanceConfig.auth.sso.disablePasswordForSsoUsers
+      },
       register_method: buildRegisterMethods({
         legacyMethods: fastgptConfig.feConfigs?.register_method,
         auth: instanceConfig.auth

@@ -269,6 +269,27 @@ describe('migration buildSparseLegacyOverrides', () => {
     });
   });
 
+  it('migrates legacy SSO display metadata', () => {
+    const sparse = buildSparseLegacyOverrides({
+      feConfigs: {
+        sso: {
+          title: 'SSO Login',
+          icon: 'https://cdn.example.com/icon.png',
+          autoLogin: true,
+          disablePasswordForSsoUsers: true
+        }
+      },
+      systemEnv: {}
+    });
+
+    expect(sparse.auth?.sso).toEqual({
+      title: 'SSO Login',
+      icon: 'https://cdn.example.com/icon.png',
+      autoLogin: true,
+      disablePasswordForSsoUsers: true
+    });
+  });
+
   it('keeps sparse output validated by the two-phase resolver', () => {
     const sparse = buildSparseLegacyOverrides({
       feConfigs: { limit: { maxFolderDepth: 8 } },

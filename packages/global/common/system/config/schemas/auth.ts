@@ -97,5 +97,14 @@ export const AuthConfigSchema = z.strictObject({
     )
     .max(50)
     .default([]),
-  accountCancellation: AccountCancellationConfigSchema.prefault({})
+  accountCancellation: AccountCancellationConfigSchema.prefault({}),
+  // SSO 展示配置；服务端地址仍由 ENV/旧 systemEnv 提供
+  sso: z
+    .strictObject({
+      title: textWithDefault(),
+      icon: textWithDefault(),
+      autoLogin: z.boolean().default(false),
+      disablePasswordForSsoUsers: z.boolean().default(false)
+    })
+    .prefault({})
 });

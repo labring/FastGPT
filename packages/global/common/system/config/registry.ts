@@ -106,6 +106,11 @@ export const systemInstanceConfigRegistry: readonly SystemInstanceConfigRegistry
   }),
   ...createEntries(
     'auth',
+    ['sso.title', 'sso.icon', 'sso.autoLogin', 'sso.disablePasswordForSsoUsers'],
+    { edition: 'pro', secret: false, applyMode: 'live' }
+  ),
+  ...createEntries(
+    'auth',
     [
       'loginProviders.email.smtp',
       'loginProviders.email.user',

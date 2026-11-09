@@ -163,7 +163,13 @@ export const buildLegacyDomainOverrides = ({
     wecomLoginAutoRedirect: optionalBool(legacyEnv.WECOM_LOGIN_AUTO_REDIRECT),
     defaultTeamBasicPermissionsEnabled: optionalBool(
       legacyEnv.DEFAULT_TEAM_BASIC_PERMISSIONS_ENABLED
-    )
+    ),
+    sso: compact({
+      title: optionalString(feConfigs.sso?.title),
+      icon: optionalString(feConfigs.sso?.icon),
+      autoLogin: optionalBool(feConfigs.sso?.autoLogin),
+      disablePasswordForSsoUsers: optionalBool(feConfigs.sso?.disablePasswordForSsoUsers)
+    })
   }) as DomainOverrides['auth'];
 
   // ---------- security ----------
