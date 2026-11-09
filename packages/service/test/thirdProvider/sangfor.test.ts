@@ -44,11 +44,11 @@ describe('Sangfor provider', () => {
     vi.clearAllMocks();
     global.systemInstanceConfig = createDefaultInstanceConfig();
     getTestInstanceConfig().providers.documentParse.provider = 'none';
+    getTestInstanceConfig().providers.documentParse.sangfor.url =
+      'http://sangfor-parser.test/parse';
+    getTestInstanceConfig().providers.documentParse.sangfor.key = 'sangfor-key';
     getTestInstanceConfig().providers.documentParse.sangfor.extensions = 'pdf';
     getTestInstanceConfig().providers.documentParse.sangfor.timeoutSeconds = 600;
-    vi.stubGlobal('systemEnv', {
-      customPdfParse: { url: 'http://sangfor-parser.test/parse', key: 'sangfor-key' }
-    });
   });
 
   afterEach(() => vi.unstubAllGlobals());
@@ -79,7 +79,7 @@ describe('Sangfor provider', () => {
     expect(useSangforParse('docx')).toBe(false);
     expect(useSangforParse('')).toBe(false);
 
-    vi.stubGlobal('systemEnv', { customPdfParse: { key: 'sangfor-key' } });
+    getTestInstanceConfig().providers.documentParse.sangfor.url = '';
     expect(useSangforParse('pdf')).toBe(false);
   });
 
@@ -93,23 +93,6 @@ describe('Sangfor provider', () => {
 
     getTestInstanceConfig().providers.documentParse.sangfor.extensions = ' , ';
     expect(useSangforParse('pdf')).toBe(false);
-  });
-
-  it('reads the parser URL and key from systemEnv at parse time', async () => {
-    vi.stubGlobal('systemEnv', {
-      customPdfParse: { url: 'http://legacy-parser.test/parse', key: 'legacy-key' }
-    });
-    postMock.mockResolvedValueOnce({ data: { pages: 1, markdown: 'legacy' } });
-
-    await parseFromSangfor({ fileBuffer: Buffer.from('pdf'), extension: 'pdf' });
-
-    expect(postMock).toHaveBeenCalledWith(
-      'http://legacy-parser.test/parse',
-      expect.any(FormData),
-      expect.objectContaining({
-        headers: expect.objectContaining({ Authorization: 'Bearer legacy-key' })
-      })
-    );
   });
 
   it('sends the compatible multipart request and returns normalized content', async () => {
@@ -243,7 +226,7 @@ describe('Sangfor provider', () => {
   });
 
   it('rejects parsing when the provider URL is missing', async () => {
-    vi.stubGlobal('systemEnv', {});
+    getTestInstanceConfig().providers.documentParse.sangfor.url = '';
 
     await expect(
       parseFromSangfor({
@@ -255,7 +238,7 @@ describe('Sangfor provider', () => {
     expect(postMock).not.toHaveBeenCalled();
   });
 
-  it('prefers sangfor.url from instance config over the legacy bridge', async () => {
+  it('reads the parser URL and key from instance config', async () => {
     // 权威来源为 providers.documentParse.sangfor.*；Admin 只填 sangfor.url/key 也应生效。
     // 注意 currentSnapshot 会被 controller 记忆化，这里在原对象上就地改写而非替换 global，
     // 并在用例结束后恢复，避免污染同 worker 的其它文件。
@@ -287,9 +270,9 @@ describe('Sangfor provider', () => {
     }
   });
 
-  it('never pairs sangfor.url with the legacy customPdf key (atomic group resolution)', async () => {
+  it('never borrows customPdf credentials when the sangfor key is empty', async () => {
     // OCR 跨来源凭据风险：sangfor.url 已配置、sangfor.key 为空时，
-    // 不得把 customPdf 服务商的 Bearer Token 发给深信服服务——url/key 成组解析
+    // 不得把 customPdf 服务商的 Bearer Token 发给深信服服务。
     const snapshot = (global as any).systemInstanceConfig;
     const originalProvider = snapshot.providers.documentParse.provider;
     const originalSangfor = snapshot.providers.documentParse.sangfor;
@@ -300,9 +283,6 @@ describe('Sangfor provider', () => {
       extensions: 'docx',
       timeoutSeconds: 600
     };
-    vi.stubGlobal('systemEnv', {
-      customPdfParse: { url: 'http://legacy.test/parse', key: 'custom-pdf-secret' }
-    });
     postMock.mockResolvedValueOnce({ data: { pages: 1, markdown: 'ok' } });
 
     try {

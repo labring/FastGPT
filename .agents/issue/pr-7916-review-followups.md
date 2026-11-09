@@ -101,9 +101,9 @@
 - [ ] **B3（原第 8 项，P2，依赖 D7）`plugin.remoteDebug` 无法关闭**
   - 管理员开关优先，探测只表示能力可用。
   - 位置：`projects/app/src/service/common/system/index.ts`
-- [ ] **B4（原第 9 项，P3，依赖 D6）Sangfor 凭据回落**
-  - 按 D6 结论保留并注释，或删除回落。
-  - 位置：`packages/service/thirdProvider/sangfor/index.ts`
+- [x] **B4（原第 9 项）Sangfor 凭据回落**
+  - 已按 D6 删除旧 `customPdfParse` 回落，只从 `providers.documentParse.sangfor.url/key` 成组取值。
+  - 位置：`packages/service/thirdProvider/sangfor/index.ts`、`packages/service/test/thirdProvider/sangfor.test.ts`
 
 ### 批次 C：字段收敛
 

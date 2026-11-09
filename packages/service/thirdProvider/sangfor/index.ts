@@ -21,46 +21,22 @@ const SangforParseResponseSchema = z.object({
 });
 
 /**
- * 原子解析 sangfor 的 url/key 一组凭据：url 以 providers.documentParse.sangfor 为权威，
- * 命中则 key 也只在 sangfor.key 内取值——两条独立兜底可能拼出跨来源组合，
- * 把 customPdf 服务商的 Bearer Token 发给深信服解析服务（或反之）。
- * 仅当 sangfor.url 整组缺失时，才成对回落到旧桥接 customPdfParse（迁移会把
- * CUSTOM_PDF_PARSE_URL/KEY 同时写入两处，存量部署两处取值一致）。
+ * 解析 sangfor 的 url/key 一组凭据。
+ *
+ * url 和 key 只从 `providers.documentParse.sangfor` 取值，不再回落到旧 customPdfParse；
+ * 避免把 customPdf 服务商的 Bearer Token 发给深信服解析服务（或反之）。
  */
 const resolveSangforEndpoint = (): { url?: string; key?: string } => {
   const sangfor = getSystemInstanceConfig().providers.documentParse.sangfor;
-  if (sangfor.url) {
-    logInstanceConfigRead({
-      callsite: 'runtime.thirdProvider.sangfor.resolveSangforEndpoint',
-      source: 'instance-config',
-      fields: [
-        { path: 'providers.documentParse.sangfor.url', value: sangfor.url },
-        { path: 'providers.documentParse.sangfor.key', value: sangfor.key }
-      ]
-    });
-    return { url: sangfor.url, key: sangfor.key };
-  }
-  const legacy = global.systemEnv?.customPdfParse;
-  if (legacy?.url) {
-    logInstanceConfigRead({
-      callsite: 'runtime.thirdProvider.sangfor.resolveSangforEndpoint',
-      source: 'bridged-system-env',
-      fields: [
-        { path: 'providers.documentParse.sangfor.url', value: legacy.url },
-        { path: 'providers.documentParse.sangfor.key', value: legacy.key }
-      ]
-    });
-    return { url: legacy.url, key: legacy.key };
-  }
   logInstanceConfigRead({
     callsite: 'runtime.thirdProvider.sangfor.resolveSangforEndpoint',
-    source: 'schema-default',
+    source: sangfor.url ? 'instance-config' : 'schema-default',
     fields: [
       { path: 'providers.documentParse.sangfor.url', value: sangfor.url },
       { path: 'providers.documentParse.sangfor.key', value: sangfor.key }
     ]
   });
-  return {};
+  return { url: sangfor.url, key: sangfor.key };
 };
 
 /** Only configured formats use Sangfor; other files retain the original parser chain. */
