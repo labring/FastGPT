@@ -53,14 +53,35 @@ export const UpdateDomainConfigItemSchema = z.object({
 });
 export type UpdateDomainConfigItem = z.infer<typeof UpdateDomainConfigItemSchema>;
 
-export const UpdateDomainConfigBodySchema = z.object({
-  items: z.array(UpdateDomainConfigItemSchema).min(1).max(20).meta({
-    description: '待保存的配置域列表，任意一项冲突则整体回滚'
-  }),
-  subPlans: z.record(z.string(), z.unknown()).optional().meta({
-    description: '仅商业版支持，与配置域同事务保存；社区版携带此字段（包括空对象）返回 403'
+export const UpdateDomainConfigBodySchema = z
+  .object({
+    items: z.array(UpdateDomainConfigItemSchema).min(1).max(20).meta({
+      description: '待保存的配置域列表，任意一项冲突则整体回滚'
+    }),
+    subPlans: z.record(z.string(), z.unknown()).optional().meta({
+      description: '仅商业版支持，与配置域同事务保存；社区版携带此字段（包括空对象）返回 403'
+    }),
+    subPlansExpectedRevision: z.number().int().nonnegative().optional().meta({
+      description:
+        '套餐写入使用的 commercial 配置域 revision；携带 subPlans 时必填，用于防止并发套餐覆盖'
+    })
   })
-});
+  .superRefine((value, ctx) => {
+    if (value.subPlans !== undefined && value.subPlansExpectedRevision === undefined) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['subPlansExpectedRevision'],
+        message: 'subPlansExpectedRevision is required when subPlans is provided'
+      });
+    }
+    if (value.subPlans === undefined && value.subPlansExpectedRevision !== undefined) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['subPlansExpectedRevision'],
+        message: 'subPlansExpectedRevision is only allowed when subPlans is provided'
+      });
+    }
+  });
 export type UpdateDomainConfigBody = z.infer<typeof UpdateDomainConfigBodySchema>;
 
 export const UpdateDomainConfigResponseSchema = z.object({

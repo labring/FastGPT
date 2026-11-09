@@ -76,9 +76,9 @@
   - 已实现：controller 的 `updateDomainConfig` 与 `batchUpdateDomainConfigs` 都先宽松归一化已有 overrides，再与本次提交深合并；数组、标量、null 覆盖，普通对象递归合并，未提交字段保留。
   - 覆盖：省略字段、空字符串、空数组、敏感字段掩码、空对象 no-op、历史废弃字段剔除。
   - 位置：`packages/service/common/system/systemInstanceConfig/controller.ts`、`packages/service/test/common/system/systemInstanceConfig/controller.test.ts`
-- [ ] **A2（原第 2 项，P1）套餐缺少版本保护**
-  - 按评论建议：套餐与版本同一快照读取；统一所有套餐写入口；旧套餐写入路径也纳入版本校验。
-  - 位置：`packages/service/common/system/systemInstanceConfig/controller.ts`、`projects/app/src/pageComponents/admin/settings/commercial/PlansSettingSection.tsx`、旧套餐管理 API
+- [x] **A2（原第 2 项，P1）套餐缺少版本保护**
+  - 已实现：套餐写入绑定 `commercial` revision；请求必须携带 `subPlansExpectedRevision`，页面提交前校验套餐 revision 与 commercial revision 一致；仅提交套餐时自动补空 commercial 更新加锁；旧 `updateConfig` 不再写入套餐，只保留最新套餐。
+  - 位置：`packages/global/openapi/admin/system/instanceConfig/api.ts`、`packages/service/common/system/systemInstanceConfig/controller.ts`、`projects/app/src/pages/api/admin/system/config/update.ts`、`pro/admin/src/pages/api/admin/system/getConfig.ts`、`pro/admin/src/pages/api/admin/system/updateConfig.ts`、`projects/app/src/pageComponents/admin/settings/commercial/`
 - [ ] **A3（原第 3 项，P2）Pro 配置刷新乱序**
   - 按评论建议：复用 App 串行刷新或版本规则；同一轮读取要保证 legacy 配置和实例快照来自同一版本；不新增分发系统。
   - 位置：`packages/service/common/mongo/watch.ts`、`pro/admin/src/service/middleware/volumnMongoWatch.ts`

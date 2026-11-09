@@ -386,19 +386,65 @@ export type BatchUpdateItemInput = {
 /**
  * 跨域批量原子保存：在单个 Mongo 事务中执行全域的 revision 校验与持久化。
  * 可选携带 subPlans（套餐），纳入同一事务与同一版本发布，杜绝商业配置与套餐分步提交留下的半写状态。
+ * 携带套餐时必须同时提供 subPlansExpectedRevision，并绑定 commercial 域的 revision：
+ * 页面同时提交 commercial 时要求两者一致；只提交套餐时自动补一个空 commercial 更新来递增版本。
  * 任一域冲突、套餐写入失败或网络异常整体回滚。返回本次事务写入的数据，
  * 不等待运行时应用、不在提交后重新查询；刷新由业务入口和 Watch 负责。
  */
 export const batchUpdateDomainConfigs = async ({
   items,
   subPlans,
+  subPlansExpectedRevision,
   actor
 }: {
   items: BatchUpdateItemInput[];
   subPlans?: Record<string, unknown>;
+  subPlansExpectedRevision?: number;
   actor: SystemInstanceConfigUpdatedByType;
 }): Promise<GetDomainConfigResult<SystemInstanceConfigDomainKey>[]> => {
+  if (subPlans !== undefined && subPlansExpectedRevision === undefined) {
+    throw new ApiHttpError(400, 'subPlansExpectedRevision is required when subPlans is provided');
+  }
+  if (subPlans === undefined && subPlansExpectedRevision !== undefined) {
+    throw new ApiHttpError(
+      400,
+      'subPlansExpectedRevision is only allowed when subPlans is provided'
+    );
+  }
+
   if (items.length === 0 && subPlans === undefined) return [];
+
+  /**
+   * 套餐没有独立存储版本，统一绑定 commercial 域的 revision：
+   * - 页面同时提交 commercial 时，两个 revision 必须一致，后续由 commercial 的条件更新串行化；
+   * - 只提交套餐时自动补一个空的 commercial 更新，在同一个事务里递增 revision 完成加锁。
+   * 这样两个并发套餐请求最多只有一个能通过 revision 校验。
+   */
+  const hasCommercialItem = items.some((item) => item.domain === 'commercial');
+  const resolvedItems = (() => {
+    if (subPlans === undefined) return items;
+
+    const commercialItem = items.find((item) => item.domain === 'commercial');
+    if (commercialItem) {
+      if (commercialItem.expectedRevision !== subPlansExpectedRevision) {
+        throw new ApiHttpError(
+          409,
+          `Revision conflict for subPlans: commercial item expects ${commercialItem.expectedRevision}, subPlans expects ${subPlansExpectedRevision}`
+        );
+      }
+      return items;
+    }
+
+    return [
+      ...items,
+      {
+        domain: 'commercial' as const,
+        expectedRevision: subPlansExpectedRevision!,
+        overrides: {}
+      }
+    ];
+  })();
+  const hasSyntheticCommercialItem = subPlans !== undefined && !hasCommercialItem;
 
   /**
    * 将 Admin 套餐表单提交的扁平 subPlans 归一化为持久化的嵌套存储形状，并通过
@@ -457,7 +503,7 @@ export const batchUpdateDomainConfigs = async ({
 
   // 1. 预校验与准备阶段：对所有域执行局部合并、敏感字段恢复、形态校验、终审校验和默认值剪枝
   const preparedItems = await Promise.all(
-    items.map(async ({ domain, expectedRevision, overrides: submittedOverrides }) => {
+    resolvedItems.map(async ({ domain, expectedRevision, overrides: submittedOverrides }) => {
       const existing = await MongoSystemInstanceConfig.findOne({ domain }).lean();
       const currentRevision = existing?.revision ?? 0;
       if (currentRevision !== expectedRevision) {
@@ -485,6 +531,7 @@ export const batchUpdateDomainConfigs = async ({
         expectedRevision,
         cleanOverrides,
         effectiveConfig,
+        syntheticCommercial: hasSyntheticCommercialItem && domain === 'commercial',
         explicitDefaultPaths: resolveExplicitDefaultPaths({
           previousPaths: readExplicitDefaultPaths(existing),
           parsedOverrides,
@@ -554,14 +601,17 @@ export const batchUpdateDomainConfigs = async ({
           );
         }
       }
-      results.push({
-        domain: item.domain,
-        revision: updatedDoc.revision,
-        overrides: item.cleanOverrides,
-        effectiveConfig: item.effectiveConfig,
-        updatedAt: updatedDoc.updatedAt,
-        updatedBy: updatedDoc.updatedBy
-      });
+      // 自动补充的 commercial 更新只用于套餐写入加锁，不属于调用方请求的域，不回传。
+      if (!item.syntheticCommercial) {
+        results.push({
+          domain: item.domain,
+          revision: updatedDoc.revision,
+          overrides: item.cleanOverrides,
+          effectiveConfig: item.effectiveConfig,
+          updatedAt: updatedDoc.updatedAt,
+          updatedBy: updatedDoc.updatedBy
+        });
+      }
     }
     return results;
   });

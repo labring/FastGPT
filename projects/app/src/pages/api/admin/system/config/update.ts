@@ -36,7 +36,7 @@ async function handler(
 ): Promise<UpdateDomainConfigResponse> {
   const auth = await authSystemAdmin({ req });
 
-  const { items, subPlans } = parseApiInput({
+  const { items, subPlans, subPlansExpectedRevision } = parseApiInput({
     req,
     bodySchema: UpdateDomainConfigBodySchema
   }).body;
@@ -74,6 +74,7 @@ async function handler(
   const savedConfigs = await batchUpdateDomainConfigs({
     items,
     subPlans,
+    subPlansExpectedRevision,
     actor: {
       actor: 'admin',
       userId: auth.userId

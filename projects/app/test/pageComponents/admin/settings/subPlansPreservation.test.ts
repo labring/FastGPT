@@ -16,7 +16,8 @@ const mocks = vi.hoisted(() => ({
   /** 批量保存控制器完成写入的次数 */
   saved: 0,
   /** 配置域读取已结算次数：挂载一次 + 保存后刷新一次 */
-  loads: 0
+  loads: 0,
+  toast: vi.fn()
 }));
 
 // 支付页本轮按部署版本开放，但套餐仍来自 Pro 的 /proApi/admin/system/getConfig，
@@ -67,6 +68,7 @@ vi.mock('@/web/common/api/request', async (importOriginal) => {
       const results = await batchUpdateDomainConfigs({
         items: data.items,
         subPlans: data.subPlans,
+        subPlansExpectedRevision: data.subPlansExpectedRevision,
         actor: { actor: 'admin', userId: 'root' }
       });
       mocks.saved += 1;
@@ -80,7 +82,7 @@ vi.mock('@fastgpt/web/hooks/useSafeTranslation', () => ({
 }));
 vi.mock('next-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
 vi.mock('@fastgpt/web/hooks/useToast', () => ({
-  useToast: () => ({ toast: vi.fn(), onClose: vi.fn(), closeAll: vi.fn() })
+  useToast: () => ({ toast: mocks.toast, onClose: vi.fn(), closeAll: vi.fn() })
 }));
 vi.mock('@/web/common/system/useSystemStore', () => ({
   useSystemStore: () => ({ feConfigs: { isProService: false, enableSaasAdminConfig: false } })
@@ -190,6 +192,7 @@ beforeEach(() => {
   mocks.planReads = 0;
   mocks.saved = 0;
   mocks.loads = 0;
+  mocks.toast.mockClear();
 });
 
 afterEach(async () => {
@@ -295,7 +298,8 @@ describe('pay settings subPlans preservation', () => {
         systemEnv: {},
         subPlans: structuredClone(storedSubPlans)
       },
-      fastgptPro: {}
+      fastgptPro: {},
+      subPlansRevision: 0
     };
     await seedStoredSubPlans();
     await renderPayPage();
@@ -312,5 +316,37 @@ describe('pay settings subPlans preservation', () => {
       [SubTypeEnum.extraDatasetSize]: { price: 12 },
       [SubTypeEnum.extraPoints]: { packages: [{ points: 1000, price: 15 }] }
     });
+  });
+
+  it('blocks the save when the plan revision and commercial revision differ', async () => {
+    mocks.proConfig = {
+      fastgpt: {
+        feConfigs: {},
+        systemEnv: {},
+        subPlans: structuredClone(storedSubPlans)
+      },
+      fastgptPro: {},
+      // 配置域 GET 返回 revision 0，套餐读取返回 revision 1，二者不是同一快照
+      subPlansRevision: 1
+    };
+    await seedStoredSubPlans();
+    await renderPayPage();
+
+    await fillBankDescription(bankDescription);
+    const button = container.querySelector<HTMLButtonElement>('button[data-action="save"]')!;
+    await act(async () => {
+      button.click();
+      await vi.waitFor(() => {
+        expect(mocks.loads).toBe(2);
+        expect(mocks.planReads).toBe(2);
+      });
+    });
+
+    expect(mocks.posts).toHaveLength(0);
+    expect(mocks.toast).toHaveBeenCalledWith({
+      status: 'warning',
+      title: 'admin:revision_conflict_refresh_required'
+    });
+    expect(await readLatestSubPlans()).toEqual(storedSubPlans);
   });
 });

@@ -109,6 +109,7 @@ let defaultExtraPointPackages: PointsPackageItem[] = [
  */
 export type PlansSettingSectionSubmit = {
   subPlans?: Record<string, unknown>;
+  subPlansExpectedRevision?: number;
 };
 
 export type PlansSettingSectionHandle = {
@@ -169,6 +170,8 @@ const PlansSettingSection = forwardRef<PlansSettingSectionHandle, PlansSettingSe
 
     const { setValue, reset, watch, register, handleSubmit } =
       useForm<ConfigFormType['paySettings']>();
+    /** 套餐读取时一起返回的 commercial revision，提交时用于防并发覆盖 */
+    const [subPlansRevision, setSubPlansRevision] = useState<number>();
 
     const standard = watch('subPlans.standard');
     const extraPointsPackages = watch('subPlans.extraPointsPackages') || [];
@@ -201,9 +204,11 @@ const PlansSettingSection = forwardRef<PlansSettingSectionHandle, PlansSettingSe
         loadedPlans.extraPointsPackages =
           loadedPlans.extraPointsPackages ?? defaultExtraPointPackages;
 
+        setSubPlansRevision(data.subPlansRevision);
         reset(aggregatedConfigs.paySettings);
         setOpenPlan(!!loadedPlans.standard && Object.keys(loadedPlans.standard).length > 0);
       },
+      onError: () => setSubPlansRevision(undefined),
       errorToast: '获取订阅套餐配置出错'
     });
 
@@ -215,7 +220,8 @@ const PlansSettingSection = forwardRef<PlansSettingSectionHandle, PlansSettingSe
      * 此时表单从未 reset，任何取值都是空表单；而后端 subPlans 是整字段替换，
      * 空表单被提交等同于"用户主动清空套餐"，所以只有读取成功后才允许产出套餐数据。
      */
-    const subPlansLoaded = configStore !== null && configStore !== undefined;
+    const subPlansLoaded =
+      configStore !== null && configStore !== undefined && typeof subPlansRevision === 'number';
 
     /**
      * 读取失败已由 useRequest 的 errorToast 呈现，这里吞掉 rejection：
@@ -230,7 +236,7 @@ const PlansSettingSection = forwardRef<PlansSettingSectionHandle, PlansSettingSe
     // 签名取自 PlansSettingSectionHandle，避免父级契约与实现各写一份类型
     const getSubPlansData = useCallback<PlansSettingSectionHandle['getSubPlansData']>(async () => {
       // 读取未成功时返回不带 subPlans 键的对象：父级据此跳过套餐提交，存量套餐保持不变
-      if (!subPlansLoaded) return {};
+      if (!subPlansLoaded || typeof subPlansRevision !== 'number') return {};
 
       const formData = await new Promise<ConfigFormType['paySettings'] | undefined>((resolve) => {
         void handleSubmit(
@@ -239,8 +245,11 @@ const PlansSettingSection = forwardRef<PlansSettingSectionHandle, PlansSettingSe
         )();
       });
       if (!formData) return undefined;
-      return { subPlans: (formData.subPlans as Record<string, unknown>) ?? {} };
-    }, [handleSubmit, subPlansLoaded]);
+      return {
+        subPlans: (formData.subPlans as Record<string, unknown>) ?? {},
+        subPlansExpectedRevision: subPlansRevision
+      };
+    }, [handleSubmit, subPlansLoaded, subPlansRevision]);
 
     // reload 透给父级后多以 void 调用，沿用同一层 rejection 兜底，避免保存后刷新产生重复异常
     useImperativeHandle(ref, () => ({ getSubPlansData, reload: loadPlans }), [

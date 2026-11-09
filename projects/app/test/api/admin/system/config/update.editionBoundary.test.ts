@@ -55,7 +55,8 @@ describe('instance config update: plan edition boundary', () => {
       await expect(
         callUpdate({
           items: [{ domain: 'site', expectedRevision: 1, overrides: { name: 'Do not save' } }],
-          subPlans
+          subPlans,
+          subPlansExpectedRevision: 0
         })
       ).rejects.toMatchObject({ statusCode: 403, message: expect.stringContaining('subPlans') });
       expect(mocks.readSite).not.toHaveBeenCalled();
@@ -72,6 +73,7 @@ describe('instance config update: plan edition boundary', () => {
     expect(mocks.save).toHaveBeenCalledExactlyOnceWith({
       items,
       subPlans: undefined,
+      subPlansExpectedRevision: undefined,
       actor: { actor: 'admin', userId: 'root' }
     });
   });
@@ -81,10 +83,13 @@ describe('instance config update: plan edition boundary', () => {
     async (subPlans) => {
       mocks.edition = 'pro';
       const items = [{ domain: 'commercial' as const, expectedRevision: 2, overrides: {} }];
-      await expect(callUpdate({ items, subPlans })).resolves.toEqual({ results: [] });
+      await expect(callUpdate({ items, subPlans, subPlansExpectedRevision: 2 })).resolves.toEqual({
+        results: []
+      });
       expect(mocks.save).toHaveBeenCalledExactlyOnceWith({
         items,
         subPlans,
+        subPlansExpectedRevision: 2,
         actor: { actor: 'admin', userId: 'root' }
       });
     }

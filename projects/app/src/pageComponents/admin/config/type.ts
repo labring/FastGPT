@@ -146,6 +146,8 @@ export type SystemConfigType = {
 export type ConfigStoreType = {
   [SystemConfigsTypeEnum.fastgpt]: FastGPTConfigFileType;
   [SystemConfigsTypeEnum.fastgptPro]: SystemConfigType;
+  /** 套餐对应的 commercial 域 revision，用于套餐保存的乐观锁校验 */
+  subPlansRevision?: number;
 };
 
 export type ConfigFormType = {

@@ -1,4 +1,5 @@
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import { Input, Textarea, SimpleGrid, Text } from '@chakra-ui/react';
 import { useForm, Controller } from 'react-hook-form';
@@ -22,6 +23,7 @@ type CommercialConfigForm = SystemInstanceConfigDomainMap['commercial'];
 
 const CommercialSettingComponent = () => {
   const { t } = useSafeTranslation();
+  const { toast } = useToast();
   const { isFieldVisible, filterConfigDataByEdition } = useAdminPermission();
 
   // SaaS 运营字段是否展示由 ENABLE_SAAS_ADMIN_CONFIG 控制；支付、套餐、积分包始终保留。
@@ -72,6 +74,18 @@ const CommercialSettingComponent = () => {
       const plansData = await plansRef.current?.getSubPlansData();
       if (plansData === undefined) throw new ToastHandledError('Plans validation failed');
 
+      // 套餐和 commercial revision 分开读取，提交前必须再次确认二者来自同一版本；
+      // 不一致时不能用旧套餐快照写入，直接提示刷新后重试。
+      if (plansData.subPlans !== undefined && plansData.subPlansExpectedRevision !== revision) {
+        toast({
+          status: 'warning',
+          title: t('admin:revision_conflict_refresh_required')
+        });
+        void refetch();
+        void plansRef.current?.reload();
+        throw new ToastHandledError('Plans revision conflict');
+      }
+
       // 2. 只提交当前可见字段，并与库中 overrides 深合并：
       // 隐藏字段和未编辑的嵌套字段保持原值，不因显示开关被清空或重置。
       const billingNotify = structuredClone(formData.billingNotify);
@@ -121,7 +135,9 @@ const CommercialSettingComponent = () => {
 
   // 在点击时再包装，避免 render 期创建会读取 ref 的提交闭包
   const onSave = useCallback(() => {
-    void handleSubmit(onSaveBatch)();
+    // onSaveBatch 的错误已由 useAdminConfigSaveRequest 统一提示；
+    // 这里吞掉事件边界的 rejection，避免 ToastHandledError 变成未处理异常。
+    void handleSubmit(onSaveBatch)().catch(() => undefined);
   }, [handleSubmit, onSaveBatch]);
 
   return (

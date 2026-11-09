@@ -35,7 +35,8 @@ describe('Instance config OpenAPI schemas', () => {
           overrides: { openApiKeyMaxCount: 100 }
         }
       ],
-      subPlans: { standard: { price: 1 } }
+      subPlans: { standard: { price: 1 } },
+      subPlansExpectedRevision: 3
     });
 
     expect(valid.items).toHaveLength(2);
@@ -45,6 +46,21 @@ describe('Instance config OpenAPI schemas', () => {
       overrides: { name: 'New Site Name' }
     });
     expect(valid.subPlans).toEqual({ standard: { price: 1 } });
+    expect(valid.subPlansExpectedRevision).toBe(3);
+
+    // 套餐必须携带 commercial revision，且 revision 不能脱离套餐单独出现
+    expect(
+      UpdateDomainConfigBodySchema.safeParse({
+        items: [{ domain: 'site', expectedRevision: 0, overrides: {} }],
+        subPlans: { standard: { price: 1 } }
+      }).success
+    ).toBe(false);
+    expect(
+      UpdateDomainConfigBodySchema.safeParse({
+        items: [{ domain: 'site', expectedRevision: 0, overrides: {} }],
+        subPlansExpectedRevision: 1
+      }).success
+    ).toBe(false);
 
     // Negative revision should fail
     expect(

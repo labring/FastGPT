@@ -460,6 +460,7 @@ describe('systemInstanceConfig controller', () => {
             extraDatasetSizePrice: 5,
             extraPointsPackages: [{ points: 1000, month: 12, price: 10 }]
           },
+          subPlansExpectedRevision: 0,
           actor: { actor: 'admin' }
         });
 
@@ -487,6 +488,7 @@ describe('systemInstanceConfig controller', () => {
             extraDatasetSize: { price: 9 },
             extraDatasetSizePrice: 1
           },
+          subPlansExpectedRevision: 0,
           actor: { actor: 'admin' }
         });
 
@@ -505,6 +507,7 @@ describe('systemInstanceConfig controller', () => {
             subPlans: {
               extraPointsPackages: [{ points: 'not-a-number', month: 1, price: 1 }]
             },
+            subPlansExpectedRevision: 0,
             actor: { actor: 'admin' }
           })
         ).rejects.toThrow();
@@ -518,6 +521,7 @@ describe('systemInstanceConfig controller', () => {
         await batchUpdateDomainConfigs({
           items: [],
           subPlans: { extraDatasetSizePrice: Number.NaN, extraPointsPackages: Number.NaN },
+          subPlansExpectedRevision: 0,
           actor: { actor: 'admin' }
         });
 
@@ -538,9 +542,146 @@ describe('systemInstanceConfig controller', () => {
           batchUpdateDomainConfigs({
             items: [],
             subPlans: { planDescriptionUrl: 123 },
+            subPlansExpectedRevision: 0,
             actor: { actor: 'admin' }
           })
         ).rejects.toMatchObject({ name: 'ApiRequestInputParseError' });
+      });
+
+      it('requires subPlansExpectedRevision only when subPlans is provided', async () => {
+        await expect(
+          batchUpdateDomainConfigs({
+            items: [],
+            subPlans: { extraDatasetSizePrice: 5 },
+            actor: { actor: 'admin' }
+          })
+        ).rejects.toThrow(/subPlansExpectedRevision is required/);
+
+        await expect(
+          batchUpdateDomainConfigs({
+            items: [{ domain: 'site', expectedRevision: 0, overrides: { name: 'X' } }],
+            subPlansExpectedRevision: 0,
+            actor: { actor: 'admin' }
+          })
+        ).rejects.toThrow(/subPlansExpectedRevision is only allowed/);
+      });
+
+      it('rejects a plan save when the commercial item revision differs', async () => {
+        await MongoSystemInstanceConfig.create({
+          domain: 'commercial',
+          revision: 1,
+          overrides: { showCoupon: true },
+          updatedBy: { actor: 'system' }
+        });
+
+        await expect(
+          batchUpdateDomainConfigs({
+            items: [{ domain: 'commercial', expectedRevision: 1, overrides: {} }],
+            subPlans: { extraDatasetSizePrice: 5 },
+            subPlansExpectedRevision: 0,
+            actor: { actor: 'admin' }
+          })
+        ).rejects.toThrow(/Revision conflict for subPlans/);
+
+        expect(
+          await MongoSystemConfigs.findOne({ type: SystemConfigsTypeEnum.fastgpt }).lean()
+        ).toBeNull();
+        const commercialDoc = await MongoSystemInstanceConfig.findOne({
+          domain: 'commercial'
+        }).lean();
+        expect(commercialDoc?.revision).toBe(1);
+      });
+
+      it('saves plans with a matching commercial revision and preserves commercial overrides', async () => {
+        await MongoSystemInstanceConfig.create({
+          domain: 'commercial',
+          revision: 1,
+          overrides: { showCoupon: true },
+          updatedBy: { actor: 'system' }
+        });
+
+        const results = await batchUpdateDomainConfigs({
+          items: [
+            {
+              domain: 'commercial',
+              expectedRevision: 1,
+              overrides: { payFormUrl: 'https://pay.example.com' }
+            }
+          ],
+          subPlans: { extraDatasetSizePrice: 5 },
+          subPlansExpectedRevision: 1,
+          actor: { actor: 'admin' }
+        });
+
+        expect(results).toHaveLength(1);
+        expect(results[0]).toMatchObject({ domain: 'commercial', revision: 2 });
+
+        const commercialDoc = await MongoSystemInstanceConfig.findOne({
+          domain: 'commercial'
+        }).lean();
+        expect(commercialDoc).toMatchObject({
+          revision: 2,
+          overrides: {
+            showCoupon: true,
+            payFormUrl: 'https://pay.example.com'
+          }
+        });
+
+        const planDoc = await MongoSystemConfigs.findOne({
+          type: SystemConfigsTypeEnum.fastgpt
+        })
+          .sort({ createTime: -1 })
+          .lean();
+        expect(planDoc?.value?.subPlans?.extraDatasetSize).toEqual({ price: 5 });
+      });
+
+      it('synthesizes a commercial revision bump for plan-only saves and rejects stale retries', async () => {
+        await MongoSystemInstanceConfig.create({
+          domain: 'commercial',
+          revision: 2,
+          overrides: { showCoupon: true },
+          updatedBy: { actor: 'system' }
+        });
+
+        const results = await batchUpdateDomainConfigs({
+          items: [],
+          subPlans: { extraDatasetSizePrice: 7 },
+          subPlansExpectedRevision: 2,
+          actor: { actor: 'admin' }
+        });
+
+        // 自动补充的 commercial 更新只用于加锁，不出现在返回结果中
+        expect(results).toEqual([]);
+        const commercialDoc = await MongoSystemInstanceConfig.findOne({
+          domain: 'commercial'
+        }).lean();
+        expect(commercialDoc).toMatchObject({
+          revision: 3,
+          overrides: { showCoupon: true }
+        });
+
+        const firstPlan = await MongoSystemConfigs.findOne({
+          type: SystemConfigsTypeEnum.fastgpt
+        })
+          .sort({ createTime: -1 })
+          .lean();
+        expect(firstPlan?.value?.subPlans?.extraDatasetSize).toEqual({ price: 7 });
+
+        await expect(
+          batchUpdateDomainConfigs({
+            items: [],
+            subPlans: { extraDatasetSizePrice: 8 },
+            subPlansExpectedRevision: 2,
+            actor: { actor: 'admin' }
+          })
+        ).rejects.toThrow(/Revision conflict/);
+
+        const latestPlan = await MongoSystemConfigs.findOne({
+          type: SystemConfigsTypeEnum.fastgpt
+        })
+          .sort({ createTime: -1 })
+          .lean();
+        expect(latestPlan?.value?.subPlans?.extraDatasetSize).toEqual({ price: 7 });
       });
     });
   });

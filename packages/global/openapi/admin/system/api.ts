@@ -24,7 +24,10 @@ export const FastGPTProConfigSchema = z
 
 export const GetConfigResponseSchema = z.object({
   fastgpt: FastGPTConfigSchema.optional(),
-  fastgptPro: FastGPTProConfigSchema.optional()
+  fastgptPro: FastGPTProConfigSchema.optional(),
+  subPlansRevision: z.number().int().nonnegative().optional().meta({
+    description: '套餐对应的 commercial 配置域 revision，用于保存套餐时的乐观锁校验'
+  })
 });
 export type GetConfigResponse = z.infer<typeof GetConfigResponseSchema>;
 
