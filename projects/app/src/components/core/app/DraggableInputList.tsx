@@ -24,6 +24,8 @@ type DraggableInputListProps<T extends DraggableInputListItemType> = {
   addText: string;
   /** 输入框最大字符数，超出后无法继续输入 */
   maxLength?: number;
+  /** 列表最大项数，达到上限后禁用新增按钮 */
+  maxItems?: number;
   /** 改用自动撑高的多行文本框，长文本会在框内换行而不是横向溢出 */
   multiline?: boolean;
   onDragEnd: (items: T[]) => void;
@@ -45,6 +47,7 @@ function DraggableInputList<T extends DraggableInputListItemType>({
   autoFocusKey,
   addText,
   maxLength,
+  maxItems,
   multiline,
   onDragEnd,
   onBeforeCapture,
@@ -55,6 +58,7 @@ function DraggableInputList<T extends DraggableInputListItemType>({
   renderRight
 }: DraggableInputListProps<T>) {
   const canDrag = items.length > 1;
+  const isMaxItemsReached = maxItems !== undefined && items.length >= maxItems;
 
   return (
     <Box>
@@ -122,6 +126,7 @@ function DraggableInputList<T extends DraggableInputListItemType>({
         lineHeight={5}
         letterSpacing={0}
         leftIcon={<MyIcon name={'common/addLight'} w={'18px'} color={'myGray.600'} />}
+        isDisabled={isMaxItemsReached}
         onClick={onAdd}
       >
         {addText}

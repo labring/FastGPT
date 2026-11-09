@@ -1,3 +1,5 @@
+import { authApp } from '@fastgpt/service/support/permission/app/auth';
+import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
@@ -53,6 +55,31 @@ describe('authAgentSandboxProxy', () => {
 describe('authSandboxSession', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  it('keeps the already checked proxy write permission without re-authenticating the key creator', async () => {
+    vi.mocked(authChatTargetCrud).mockResolvedValue({
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: 'app',
+      teamId: 'team',
+      tmbId: 'member-B',
+      uid: 'member-B',
+      isProxy: true
+    } as any);
+    await expect(
+      authSandboxSession({
+        req: {} as any,
+        sourceType: ChatSourceTypeEnum.app,
+        sourceId: 'app',
+        chatId: 'chat',
+        authProxy: { tmbId: 'member-B' },
+        per: WritePermissionVal
+      })
+    ).resolves.toMatchObject({ uid: 'member-B' });
+    expect(authApp).not.toHaveBeenCalled();
+    expect(authChatTargetCrud).toHaveBeenCalledWith(
+      expect.objectContaining({ per: WritePermissionVal, authProxy: { tmbId: 'member-B' } })
+    );
   });
 
   it('returns the source resolved by authChatTargetCrud for share chat sessions', async () => {

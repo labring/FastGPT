@@ -31,6 +31,7 @@ export type AdminPlanType = {
   customDomain?: number;
   maxUploadFileSize?: number;
   maxUploadFileCount?: number;
+  canHideShareBrandOverride?: boolean;
   enableSandbox?: boolean;
 };
 

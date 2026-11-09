@@ -49,3 +49,4 @@ pro/admin/worker/
 
 .pi
 .claude/
+projects/code-sandbox/src/isolated/fastgpt_js_launcher

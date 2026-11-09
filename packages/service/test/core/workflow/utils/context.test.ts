@@ -40,6 +40,7 @@ import {
   getWorkflowFileContext,
   getWorkflowFileMaxAmount,
   getWorkflowResourceContext,
+  getWorkflowSandboxContext,
   getWorkflowFileRegistrar,
   readWorkflowFileBuffer,
   prepareWorkflowFiles,
@@ -51,6 +52,33 @@ const createWorkflowContext = () => ({
 });
 
 describe('WorkflowContext', () => {
+  it('inherits the root sandbox across child resource contexts and isolates concurrent requests', async () => {
+    const fallback = {
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: 'child-app',
+      teamId: 'child-team',
+      userId: 'user',
+      chatId: 'chat'
+    };
+    expect(getWorkflowSandboxContext(fallback)).toBe(fallback);
+    await Promise.all(
+      ['root-a', 'root-b'].map(async (sourceId) => {
+        const sandboxContext = { ...fallback, sourceId, teamId: 'root-team' };
+        await runWithContext({ mcpClientMemory: {}, sandboxContext }, () =>
+          runWithDerivedWorkflowFileContext({
+            files: [],
+            resourceContext: { isRoot: false, resourceMap: new Map() },
+            fn: async () => {
+              await Promise.resolve();
+              expect(getWorkflowSandboxContext(fallback)).toBe(sandboxContext);
+            }
+          })
+        );
+      })
+    );
+    expect(getWorkflowSandboxContext(fallback)).toBe(fallback);
+  });
+
   describe('runWithContext / getWorkflowContext', () => {
     it('should provide context inside callback', async () => {
       const ctx = createWorkflowContext();

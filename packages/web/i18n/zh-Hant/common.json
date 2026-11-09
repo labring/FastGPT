@@ -1,5 +1,12 @@
 {
   "not_set": "不設定",
+  "share_brand": "FastGPT浮水印",
+  "share_brand_control": "控制是否顯示免登入品牌標識",
+  "share_brand_tip": "預設在聊天頁面中顯示「FastGPT」標識。",
+  "share_brand_requires_plan": "目前方案未開啟關閉 FastGPT 浮水印的權益",
+  "share_brand_plan_load_failed": "取得方案內容失敗",
+  "share_brand_visit": "前往 FastGPT",
+  "share_brand_dismiss": "本次造訪關閉 FastGPT 標識",
   "Action": "操作",
   "Add": "新增",
   "Add_new_input": "新增輸入",

@@ -266,12 +266,12 @@ describe('exclusive pagination', () => {
     expect(document.anyOf?.[0]).toMatchObject({
       title: '按偏移量获取',
       required: ['offset'],
-      properties: { offset: { example: 0 } }
+      properties: { offset: { example: 0, 'x-fastgpt-union-parameter': true } }
     });
     expect(document.anyOf?.[0]).not.toHaveProperty('properties.pageNum');
     expect(document.anyOf?.[1]).toMatchObject({
       title: '按页码获取',
-      properties: { pageNum: { default: 1 } }
+      properties: { pageNum: { default: 1, 'x-fastgpt-union-parameter': true } }
     });
     expect(document.anyOf?.[1]).not.toHaveProperty('properties.offset');
   });

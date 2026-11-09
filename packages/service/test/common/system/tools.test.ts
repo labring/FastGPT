@@ -1,8 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { FastGPTConfigFileType } from '@fastgpt/global/common/system/types';
 
 vi.mock('@fastgpt/service/env', () => ({
   hasAgentSandboxConfig: vi.fn(() => false),
   serviceEnv: {
+    SHOW_OUTLINK_BRAND: false,
     AGENT_SANDBOX_SHOW_FREE_TIP: false,
     UPLOAD_FILE_MAX_SIZE: 1000,
     UPLOAD_FILE_MAX_AMOUNT: 1000,
@@ -17,8 +19,44 @@ vi.mock('@fastgpt/service/core/ai/sandbox/config', () => ({
 // setup 已加载过此模块，清缓存后才能使用本文件声明的环境与沙箱 mock。
 vi.resetModules();
 const { initFastGPTConfig } = await import('@fastgpt/service/common/system/tools');
+const { serviceEnv } = await import('@fastgpt/service/env');
 
 describe('initFastGPTConfig', () => {
+  it.each([undefined, false, true])(
+    'loads independent share brand entitlements: %s',
+    (canHideShareBrand) => {
+      initFastGPTConfig({
+        feConfigs: { isPlus: false },
+        systemEnv: {},
+        subPlans: {
+          standard: {
+            custom: canHideShareBrand === undefined ? {} : { canHideShareBrand },
+            advanced: {
+              price: 599,
+              totalPoints: 2000,
+              maxTeamMember: 10,
+              maxAppAmount: 20,
+              maxDatasetAmount: 20,
+              maxDatasetSize: 1000,
+              chatHistoryStoreDuration: 30,
+              canHideShareBrand: true
+            }
+          }
+        }
+      } as FastGPTConfigFileType);
+      expect(global.subPlans?.standard?.custom?.canHideShareBrand).toBe(canHideShareBrand);
+      expect(global.subPlans?.standard?.advanced?.canHideShareBrand).toBe(true);
+    }
+  );
+
+  it.each([false, true])(
+    'derives branding from environment and overrides stale file values=%s',
+    (enabled) => {
+      serviceEnv.SHOW_OUTLINK_BRAND = enabled;
+      initFastGPTConfig({ feConfigs: { show_outlink_brand: !enabled }, systemEnv: {} } as any);
+      expect(global.feConfigs.show_outlink_brand).toBe(enabled);
+    }
+  );
   it.each([false, true])(
     'keeps SSO addresses exclusively in systemEnv when other configuration validation fails=%s',
     (invalid) => {
@@ -40,6 +78,7 @@ describe('initFastGPTConfig', () => {
     expect(global.feConfigs.sso).toEqual({ enabled: false });
   });
   beforeEach(() => {
+    serviceEnv.SHOW_OUTLINK_BRAND = false;
     global.feConfigs = {} as any;
     global.systemEnv = {} as any;
   });

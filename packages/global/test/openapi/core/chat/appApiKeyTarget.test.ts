@@ -19,6 +19,7 @@ import {
 } from '@fastgpt/global/openapi/core/dataset/collection/api';
 import { GetQuoteDataBodySchema } from '@fastgpt/global/openapi/core/dataset/data/api';
 import { openAPIDocument } from '@fastgpt/global/openapi/provider/devapi';
+import { apiDocOpenAPIDocument } from '@fastgpt/global/openapi/provider/systemopenapi';
 import { AppLogTimespanEnum } from '@fastgpt/global/core/app/logs/constants';
 import { ChatSourceEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 
@@ -165,6 +166,40 @@ describe('application API key targets across dialogue APIs', () => {
       expect(JSON.stringify(operation), path).toMatch(/API Key（无需 appId/);
       checkAppKeyBranch(operation, path);
     }
+  });
+
+  it.each([
+    ['DevAPI', openAPIDocument],
+    ['System OpenAPI', apiDocOpenAPIDocument]
+  ] as const)('hides customUid from unsupported Body and Query identities in %s', (_, document) => {
+    const checked = { body: 0, query: 0 };
+
+    /** 检查最终文档的整棵输入 Schema，覆盖分页交集和 Query 对象包装中的来源分支。 */
+    const checkBranches = (value: unknown, location: keyof typeof checked, path: string) => {
+      if (!value || typeof value !== 'object') return;
+      if (
+        'title' in value &&
+        ['Skill 调试会话', '外链会话', '直接访问资源'].includes(String(value.title))
+      ) {
+        expect(JSON.stringify(value), `${location} ${path}: ${value.title}`).not.toMatch(
+          /"customUid":/
+        );
+        checked[location]++;
+      }
+      Object.values(value).forEach((child) => checkBranches(child, location, path));
+    };
+
+    for (const [path, item] of Object.entries(document.paths ?? {})) {
+      for (const method of ['get', 'post', 'put', 'patch', 'delete'] as const) {
+        const operation = item[method];
+        if (!operation) continue;
+        checkBranches(operation.requestBody, 'body', path);
+        checkBranches(operation.parameters, 'query', path);
+      }
+    }
+
+    expect(checked.body).toBeGreaterThan(0);
+    expect(checked.query).toBeGreaterThan(0);
   });
 
   it('derives the App target without accepting caller-controlled type or history source', () => {

@@ -353,7 +353,8 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
       llmInputTokens: runtimeSummary.llmInputTokens,
       llmOutputTokens: runtimeSummary.llmOutputTokens,
       totalPoints: Math.max(0, usagePoints - ownUsagePoints),
-      citeCollectionIds: runtimeSummary.citeCollectionIds
+      citeCollectionIds: runtimeSummary.citeCollectionIds,
+      hasAgentSandbox: runtimeSummary.hasAgentSandbox
     });
     // Child run not push usage
     props.usagePush([

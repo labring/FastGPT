@@ -1,3 +1,5 @@
+import { getOutLinkBrandUpdate } from '@fastgpt/service/support/outLink/branding/service';
+import { getTeamCanHideShareBrand } from '@fastgpt/service/support/wallet/sub/service';
 import { MongoOutLink } from '@fastgpt/service/support/outLink/schema';
 import { authOutLinkCrud } from '@fastgpt/service/support/permission/publish/authLink';
 import { ManagePermissionVal } from '@fastgpt/global/support/permission/constant';
@@ -37,6 +39,7 @@ export async function handler(
     app,
     canDownloadSource,
     allowAnonymous,
+    isShowBrand,
     showRunningStatus,
     showSkillReferences,
     showFullText
@@ -63,8 +66,14 @@ export async function handler(
 
   const isShareLink = outLink.type === PublishChannelEnum.share;
 
+  const brandUpdate = await getOutLinkBrandUpdate({
+    outLink,
+    isShowBrand,
+    getTeamCanHideShareBrand
+  });
   const doc = await MongoOutLink.findByIdAndUpdate(_id, {
-    name,
+    ...brandUpdate,
+    ...(name !== undefined ? { name } : {}),
     showCite,
     canDownloadSource,
     ...(isShareLink && allowAnonymous !== undefined ? { allowAnonymous } : {}),

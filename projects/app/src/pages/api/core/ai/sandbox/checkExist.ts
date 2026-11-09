@@ -12,12 +12,14 @@ import { buildSandboxClientQueryFromChatSource } from '@fastgpt/service/core/ai/
 import { resolveSandboxSessionAvailability } from '@/service/core/sandbox/access';
 
 async function handler(req: ApiRequestProps): Promise<SandboxCheckExistResponse> {
-  const { sourceType, sourceId, chatId, outLinkAuthData } = parseApiInput({
+  const { customUid, authProxy, sourceType, sourceId, chatId, outLinkAuthData } = parseApiInput({
     req,
     bodySchema: SandboxCheckExistBodySchema
   }).body;
 
   const authResult = await authSandboxSession({
+    customUid,
+    authProxy,
     req,
     sourceType,
     sourceId,

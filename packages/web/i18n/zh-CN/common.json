@@ -1,5 +1,12 @@
 {
   "not_set": "不设置",
+  "share_brand": "显示FastGPT标识",
+  "share_brand_control": "控制是否展示免登录品牌标识",
+  "share_brand_tip": "默认在聊天页面中显示「FastGPT」标识。",
+  "share_brand_requires_plan": "当前套餐未开启关闭 FastGPT 水印的权益",
+  "share_brand_plan_load_failed": "获取套餐内容失败",
+  "share_brand_visit": "前往 FastGPT",
+  "share_brand_dismiss": "本次访问关闭 FastGPT 标识",
   "Action": "操作",
   "Add": "添加",
   "Add_new_input": "新增输入",

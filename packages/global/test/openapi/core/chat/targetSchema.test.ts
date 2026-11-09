@@ -217,6 +217,21 @@ describe('openapi/core/chat target schema', () => {
       expect(share.appId).toBeUndefined();
       expect(share.skillId).toBeUndefined();
       expect(share.sourceType).toBeUndefined();
+
+      // customUid 只属于应用调用，不能借助其他 union 分支降级为分享或 Skill 身份。
+      expect(schema.safeParse({ ...business, skillId, customUid: 'customer-42' }).success).toBe(
+        false
+      );
+      expect(
+        schema.safeParse({ ...business, outLinkAuthData: external, customUid: 'customer-42' })
+          .success
+      ).toBe(false);
+      expect(schema.parse({ ...business, appId, customUid: 'customer-42' })).toMatchObject({
+        customUid: 'customer-42'
+      });
+      expect(schema.parse({ ...business, customUid: 'customer-42' })).toMatchObject({
+        customUid: 'customer-42'
+      });
       expect(
         schema.safeParse({
           ...business,

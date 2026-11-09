@@ -185,4 +185,31 @@ describe('AI config user OpenAI account', () => {
       baseUrl: 'https://user.example.com/v1'
     });
   });
+
+  it('omits AI Proxy scope headers and selects SSRF-protected axios only for team custom endpoints', async () => {
+    const [{ getAiproxyScopeHeaders, getModelRequestClient, openaiBaseUrl }, axiosModule] =
+      await Promise.all([importConfig(), import('@fastgpt/service/common/api/axios')]);
+
+    expect(
+      getAiproxyScopeHeaders(
+        {
+          scope: 'team',
+          tmbId: 'tmb-1',
+          requestUrl: 'https://custom.example.com/v1'
+        } as any,
+        openaiBaseUrl
+      )
+    ).toEqual({});
+
+    expect(
+      getModelRequestClient({
+        scope: 'team',
+        requestUrl: 'https://api.example.com/v1'
+      })
+    ).toBe(axiosModule.axios);
+    expect(getModelRequestClient({ scope: 'team' })).toBe(axiosModule.axiosWithoutSSRF);
+    expect(
+      getModelRequestClient({ scope: 'system', requestUrl: 'https://api.example.com/v1' })
+    ).toBe(axiosModule.axiosWithoutSSRF);
+  });
 });

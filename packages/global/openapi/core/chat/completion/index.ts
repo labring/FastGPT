@@ -91,7 +91,7 @@ export const ChatCompletionPath: OpenAPIPath = {
     post: {
       tags: [DevApiTagsMap.chatController, SystemOpenApiTagMap.chatController],
       deprecated: true,
-      summary: '发起会话v1',
+      summary: '发起会话 v1',
       description: `v1 对话接口兼容 GPT 的接口。如果你的项目使用的是标准的 GPT 官方接口，可以直接通过修改 BaseUrl 和 Authorization 来访问 FastGPT 应用。
 
 **注意事项**
@@ -103,7 +103,7 @@ export const ChatCompletionPath: OpenAPIPath = {
 **chatId 行为**
 
 - 不传入（或为空）：不使用 FastGPT 提供的上下文功能，完全通过传入的 \`messages\` 构建上下文。
-- 非空字符串：使用 chatId 进行对话，自动从 FastGPT 数据库取会话中的对话，并使用 \`messages\` 数组最后一个内容作为用户问题，其余 message 会被忽略。请自行确保 chatId 唯一，长度小于 250。
+- 非空字符串：使用 chatId 进行对话，自动从 FastGPT 数据库取会话中的对话，并使用 \`messages\` 数组最后一个内容作为用户问题，其余 message 会被忽略。请自行确保 chatId 唯一，长度最多 1024 字符。
 
 **stream / detail 组合**
 
@@ -179,7 +179,7 @@ export const ChatCompletionPath: OpenAPIPath = {
   '/v2/chat/completions': {
     post: {
       tags: [DevApiTagsMap.chatController, SystemOpenApiTagMap.chatController],
-      summary: '发起对话 v2',
+      summary: '发起会话 v2',
       description: `v2 对话接口兼容 GPT 的接口规范。
 
 **密钥使用规范**
@@ -199,7 +199,7 @@ export const ChatCompletionPath: OpenAPIPath = {
 **chatId 行为**
 
 - 不传入（或为空）：不使用 FastGPT 提供的上下文功能，完全通过传入的 \`messages\` 构建上下文。
-- 非空字符串：使用 chatId 进行对话，自动从 FastGPT 数据库取会话中的对话，并使用 \`messages\` 数组最后一个内容作为用户问题，其余 message 会被忽略。请自行确保 chatId 唯一，长度小于 250。
+- 非空字符串：使用 chatId 进行对话，自动从 FastGPT 数据库取会话中的对话，并使用 \`messages\` 数组最后一个内容作为用户问题，其余 message 会被忽略。请自行确保 chatId 唯一，长度最多 1024 字符。
 
 **stream / detail 组合**
 

@@ -162,6 +162,11 @@ export const UserInputFormItemSchema = AppFileSelectConfigTypeSchema.extend({
     .meta({ ...JsonValueOpenApiMeta, description: '默认值' }),
   required: z.boolean(),
 
+  // timePointSelect & timeRangeSelect
+  timeGranularity: z.enum(['day', 'hour', 'minute', 'second']).optional(),
+  timeRangeStart: z.string().optional(),
+  timeRangeEnd: z.string().optional(),
+
   maxLength: z.number().optional(), // input & textarea
   minLength: z.number().optional(), // password
   max: z.number().optional(), // numberInput

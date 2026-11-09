@@ -65,9 +65,11 @@ export const pluginData2FlowNodeIO = ({
 };
 
 export const appData2FlowNodeIO = ({
-  chatConfig
+  chatConfig,
+  isChatAgent = false
 }: {
   chatConfig?: AppChatConfigType;
+  isChatAgent?: boolean;
 }): {
   inputs: FlowNodeInputItemType[];
   outputs: FlowNodeOutputItemType[];
@@ -108,7 +110,7 @@ export const appData2FlowNodeIO = ({
   return {
     inputs: [
       Input_Template_Stream_MODE,
-      Input_Template_History,
+      ...(isChatAgent ? [] : [Input_Template_History]),
       ...(chatConfig?.fileSelectConfig?.canSelectFile ||
       chatConfig?.fileSelectConfig?.canSelectImg ||
       chatConfig?.fileSelectConfig?.canSelectVideo ||
@@ -120,16 +122,20 @@ export const appData2FlowNodeIO = ({
       ...variableInput
     ],
     outputs: [
-      {
-        id: NodeOutputKeyEnum.history,
-        key: NodeOutputKeyEnum.history,
-        required: true,
-        label: i18nT('common:core.module.output.label.New context'),
-        description: i18nT('common:core.module.output.description.New context'),
-        valueType: WorkflowIOValueTypeEnum.chatHistory,
-        valueDesc: chatHistoryValueDesc,
-        type: FlowNodeOutputTypeEnum.static
-      },
+      ...(isChatAgent
+        ? []
+        : [
+            {
+              id: NodeOutputKeyEnum.history,
+              key: NodeOutputKeyEnum.history,
+              required: true,
+              label: i18nT('common:core.module.output.label.New context'),
+              description: i18nT('common:core.module.output.description.New context'),
+              valueType: WorkflowIOValueTypeEnum.chatHistory,
+              valueDesc: chatHistoryValueDesc,
+              type: FlowNodeOutputTypeEnum.static
+            }
+          ]),
       {
         id: NodeOutputKeyEnum.answerText,
         key: NodeOutputKeyEnum.answerText,

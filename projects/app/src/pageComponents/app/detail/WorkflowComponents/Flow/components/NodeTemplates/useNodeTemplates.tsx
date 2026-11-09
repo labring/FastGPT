@@ -12,7 +12,7 @@ import { useContextSelector } from 'use-context-selector';
 import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { AppContext } from '@/pageComponents/app/detail/context';
 import { getPluginToolTags } from '@/web/core/plugin/toolTag/api';
-import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { AppTypeEnum, AppTypeList } from '@fastgpt/global/core/app/constants';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import {
@@ -54,7 +54,7 @@ export const useNodeTemplates = (context: NodeTemplateContext | null = null) => 
           AppTypeEnum.mcpToolSet,
           AppTypeEnum.httpToolSet
         ]
-      : [AppTypeEnum.folder, AppTypeEnum.simple, AppTypeEnum.workflow];
+      : [AppTypeEnum.folder, ...AppTypeList];
 
   const {
     data: teamTemplates,

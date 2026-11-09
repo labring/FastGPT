@@ -46,6 +46,7 @@
     "gpt-tokenizer": "catalog:",
     "http-proxy-agent": "^7.0.2",
     "https-proxy-agent": "^7.0.6",
+    "i18next": "catalog:",
     "iconv-lite": "^0.6.3",
     "joplin-turndown-plugin-gfm": "^1.0.12",
     "ipaddr.js": "catalog:",

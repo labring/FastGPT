@@ -1,6 +1,8 @@
 import z from 'zod';
-import { ClientTrackEnum } from '../../../common/middle/tracks/constants';
+import { ClientTrackEnum, TrackEnum } from '../../../common/middle/tracks/constants';
 import { IntSchema } from '../../../common/zod';
+import { OutLinkBrandTrackEventSchema } from '../../../support/outLink/branding';
+import { OutLinkChatAuthSchema } from '../../../support/permission/chat';
 
 /* ============================================================================
  * API: 获取远程工作流配置
@@ -27,12 +29,53 @@ export type FetchWorkflowResponseType = z.infer<typeof FetchWorkflowResponseSche
  * API: 上报行为埋点
  * Route: POST /api/common/tracks/push
  * Method: POST
- * Description: 仅上报指定的前端行为事件及关联数据，不接受服务端业务事件
+ * Description: 上报登录态客户端事件或外链品牌事件；两种认证模式的请求结构互不混用
  * Tags: ['通用-基础功能', '其他', 'Write']
  * ============================================================================ */
 
+/** 外链品牌事件使用独立认证上下文，不接受客户端提供的团队、成员或应用归属。 */
+export const PushOutLinkBrandTrackBodySchema = z.discriminatedUnion('event', [
+  z
+    .strictObject({
+      authType: z.literal('outLink').meta({
+        description: '使用外链访问身份认证，不代表请求已通过授权',
+        example: 'outLink'
+      }),
+      event: OutLinkBrandTrackEventSchema.extract([TrackEnum.shareBrandExposure]),
+      eventId: z.string().min(1).max(64).meta({
+        description: '页面生命周期内固定的随机曝光 ID；重试时必须复用',
+        example: 'V1StGXR8_Z5jdHi6B-myT7Ab'
+      }),
+      outLinkAuthData: OutLinkChatAuthSchema.meta({
+        description: '外链访问身份；受保护链接仍需请求头或 Cookie 中的登录态',
+        example: { shareId: 'share-id', outLinkUid: 'outlink-user-id' }
+      })
+    })
+    .meta({
+      title: '外链品牌曝光',
+      description: '按外链服务端配置计算是否展示品牌，曝光事件按 eventId 幂等写入。'
+    }),
+  z
+    .strictObject({
+      authType: z.literal('outLink').meta({
+        description: '使用外链访问身份认证，不代表请求已通过授权',
+        example: 'outLink'
+      }),
+      event: OutLinkBrandTrackEventSchema.extract([TrackEnum.shareBrandClick]),
+      outLinkAuthData: OutLinkChatAuthSchema.meta({
+        description: '外链访问身份；受保护链接仍需请求头或 Cookie 中的登录态',
+        example: { shareId: 'share-id', outLinkUid: 'outlink-user-id' }
+      })
+    })
+    .meta({
+      title: '外链品牌点击',
+      description: '按外链服务端配置计算是否展示品牌，点击事件逐次写入。'
+    })
+]);
+export type PushOutLinkBrandTrackBodyType = z.infer<typeof PushOutLinkBrandTrackBodySchema>;
+
 /** 每个事件绑定自己的 data 结构，拒绝缺失、错配和未声明的字段。 */
-export const PushTrackBodySchema = z
+const PushClientTrackBodySchema = z
   .union([
     z
       .object({
@@ -207,16 +250,23 @@ export const PushTrackBodySchema = z
           '每次点击计数一次，data 可省略或传空对象；按小时全局聚合，不保存团队或成员信息。'
       })
   ])
+  // 旧请求不带认证模式；显式声明时仅允许登录态，不能被 z.object 静默剥除后误入旧分支。
+  .and(z.object({ authType: z.literal('session').optional() }));
+export type PushClientTrackBodyType = z.infer<typeof PushClientTrackBodySchema>;
+
+export const PushTrackBodySchema = z
+  .union([PushClientTrackBodySchema, PushOutLinkBrandTrackBodySchema])
   .meta({
-    description: '客户端事件及对应的数据结构，不接受服务端业务事件或未声明的数据字段',
+    description:
+      '登录态客户端事件及外链品牌事件的请求结构；外链品牌事件必须使用 authType=outLink，不接受服务端业务事件或未声明的数据字段',
     example: {
       event: ClientTrackEnum.useAppTemplate,
       data: { id: 'app-id', name: '示例模板' }
     }
   });
 export type PushTrackBodyType = z.infer<typeof PushTrackBodySchema>;
-export type PushTrackDataType<Event extends PushTrackBodyType['event']> = Extract<
-  PushTrackBodyType,
+export type PushTrackDataType<Event extends PushClientTrackBodyType['event']> = Extract<
+  PushClientTrackBodyType,
   { event: Event }
 >['data'];
 

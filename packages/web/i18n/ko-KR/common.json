@@ -1,5 +1,12 @@
 {
   "not_set": "설정 안 함",
+  "share_brand": "FastGPT 워터마크",
+  "share_brand_control": "로그인 없는 공유 링크의 브랜드 표시 제어",
+  "share_brand_tip": "기본적으로 채팅 페이지에 FastGPT 브랜드가 표시됩니다.",
+  "share_brand_requires_plan": "현재 요금제에는 FastGPT 워터마크 숨기기 권한이 없습니다",
+  "share_brand_plan_load_failed": "요금제 정보를 불러오지 못했습니다",
+  "share_brand_visit": "FastGPT로 이동",
+  "share_brand_dismiss": "이번 방문에서 FastGPT 브랜드 표시 숨기기",
   "Action": "작업",
   "Add": "추가",
   "Add_new_input": "새 입력 추가",
@@ -1397,5 +1404,14 @@
   "core.workflow.check.node_missing": "노드 {{nodeId}}가 더 이상 없습니다. 남아 있는 연결을 삭제하세요",
   "core.workflow.check.option_keys_invalid": "옵션 또는 분류의 키가 없거나 중복되었습니다",
   "core.workflow.check.form_configuration_invalid": "양식 필드 키 또는 해당 출력 구성이 불완전합니다: {{fieldKeys}}",
-  "Version": "버전"
+  "Version": "버전",
+  "code_error.account_cancellation_pending": "계정 삭제가 진행 중입니다. 이 계정은 일시적으로 사용할 수 없습니다.",
+  "code_error.team_error.account_cancellation_pending": "팀 소유자가 계정을 삭제하는 중입니다. 이 팀은 일시적으로 사용할 수 없습니다.",
+  "core.dataset.error.tagNameDuplicate": "태그 이름이 이미 존재합니다",
+  "core.dataset.error.tagNameEmpty": "태그 이름은 비워 둘 수 없습니다",
+  "core.dataset.error.tagNotExist": "태그가 존재하지 않습니다",
+  "core.dataset.error.tagValueInvalid": "태그 값 형식이 유형과 일치하지 않습니다",
+  "core.dataset.error.tagValueDatetimeInvalid": "날짜/시간 태그 값 형식이 올바르지 않습니다",
+  "core.dataset.error.arrayTagValueInvalid": "배열 태그 값이 올바르지 않습니다 (요소는 문자열, 배열 길이 ≤ 64, 요소 길이 ≤ 256)",
+  "error.operation_too_frequently": "작업이 너무 많습니다. 잠시 후 다시 시도하세요."
 }

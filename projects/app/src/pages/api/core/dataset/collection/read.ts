@@ -24,6 +24,8 @@ import {
 
 async function handler(req: ApiRequestProps): Promise<ReadCollectionSourceResponseType> {
   const {
+    customUid,
+    authProxy,
     collectionId,
     sourceType: requestedSourceType,
     sourceId: requestedSourceId,
@@ -40,6 +42,8 @@ async function handler(req: ApiRequestProps): Promise<ReadCollectionSourceRespon
     sourceId: requestedSourceId
   });
 
+  if ((customUid !== undefined || authProxy !== undefined) && (!chatId || !chatItemDataId))
+    throw ChatErrEnum.unAuthChat;
   if (chatId && chatItemDataId && !sourceType) throw ChatErrEnum.unAuthChat;
 
   const { collection } = await (async () => {
@@ -59,6 +63,8 @@ async function handler(req: ApiRequestProps): Promise<ReadCollectionSourceRespon
       3. auth outlink open show quote
     */
     const authRes = await authChatTargetCrud({
+      customUid,
+      authProxy,
       req,
       authToken: true,
       sourceType,

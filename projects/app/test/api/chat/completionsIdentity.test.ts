@@ -15,6 +15,7 @@ import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 import { Call } from '@test/utils/request';
 import { dispatchWorkFlow } from '@fastgpt/service/core/workflow/dispatch';
 import { jsonRes, sseErrRes } from '@fastgpt/service/common/response';
+import { ApiRequestInputParseError } from '@fastgpt/service/common/zod/requestParseError';
 
 vi.mock('@fastgpt/service/core/workflow/dispatch', () => ({ dispatchWorkFlow: vi.fn() }));
 vi.mock('@fastgpt/service/common/api/frequencyLimit', () => ({
@@ -144,7 +145,11 @@ describe.each([
       }
     });
     expect(result.code).toBe(500);
-    expect(String(result.error)).toContain('customUid and authProxy are mutually exclusive');
+    expect(result.error).toBeInstanceOf(ApiRequestInputParseError);
+    expect(result.error).toMatchObject({
+      context: { inputSource: 'body' },
+      cause: { issues: [expect.objectContaining({ code: 'invalid_union' })] }
+    });
     expect(dispatchWorkFlow).not.toHaveBeenCalled();
     expect(await MongoChat.countDocuments()).toBe(0);
   });

@@ -22,8 +22,9 @@ import {
 /**
  * 解析已鉴权 Sandbox Session 的产品可用性。
  *
- * App Chat Test 使用服务端保存的本轮调试开关，旧测试会话回退到草稿节点；其他 App Chat
- * 使用已发布版本。Skill Edit 和辅助调试属于强依赖场景，不返回静默降级原因。
+ * App Chat 优先使用服务端累计的 Sandbox 成功标记；尚未启用时，Chat Test 使用本轮调试开关，
+ * 旧测试会话回退到草稿节点，其他 App Chat 使用已发布版本。
+ * Skill Edit 和辅助调试属于强依赖场景，不返回静默降级原因。
  */
 export async function resolveSandboxSessionAvailability(
   session: SandboxSessionAuthResult
@@ -37,10 +38,20 @@ export async function resolveSandboxSessionAvailability(
     return resolveAppSandboxAvailability({ appEnabled: true, teamId: session.teamId });
   }
 
+  if (session.chat?.summary?.hasAgentSandbox === true) {
+    return resolveAppSandboxAvailability({
+      appEnabled: true,
+      teamId: session.teamId
+    });
+  }
+
   const isChatTest = getChatPublishSourceType(session.chat ?? {}) === ChatSourceEnum.test;
   const chatTestEnabled = session.chat?.metadata?.[APP_SANDBOX_ENABLED_CHAT_METADATA_KEY];
   if (isChatTest && typeof chatTestEnabled === 'boolean') {
-    return resolveAppSandboxAvailability({ appEnabled: chatTestEnabled, teamId: session.teamId });
+    return resolveAppSandboxAvailability({
+      appEnabled: chatTestEnabled,
+      teamId: session.teamId
+    });
   }
 
   const app = await MongoApp.findById(session.sourceId).lean();

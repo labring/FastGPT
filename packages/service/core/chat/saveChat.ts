@@ -7,7 +7,7 @@ import type {
   UserChatItemType
 } from '@fastgpt/global/core/chat/type';
 import {
-  type ChatSourceEnum,
+  ChatSourceEnum,
   ChatRoleEnum,
   ChatSourceTypeEnum
 } from '@fastgpt/global/core/chat/constants';
@@ -44,6 +44,7 @@ import {
 } from './utils/prepare';
 import { buildChatSourceQuery, buildChatSourceWriteFields, type ChatSourceParams } from './source';
 import { mergeWorkflowMemories } from '../workflow/memory/utils';
+import { APP_SANDBOX_ENABLED_CHAT_METADATA_KEY } from '@fastgpt/global/core/ai/sandbox/constants';
 
 const logger = getLogger(LogCategories.MODULE.CHAT);
 
@@ -228,8 +229,16 @@ const getChatDataLog = async ({
  */
 const getRuntimeChatSummary = (summary?: WorkflowRuntimeSummaryType): ChatSummaryType => ({
   llmInputTokens: summary?.llmInputTokens ?? 0,
-  llmOutputTokens: summary?.llmOutputTokens ?? 0
+  llmOutputTokens: summary?.llmOutputTokens ?? 0,
+  ...(summary?.hasAgentSandbox ? { hasAgentSandbox: true } : {})
 });
+
+/** 过滤客户端可传入的会话 metadata，避免非测试入口覆盖服务端保留的沙盒调试开关。 */
+const sanitizeChatMetadata = (metadata: Record<string, any>, source: `${ChatSourceEnum}`) => {
+  if (source === ChatSourceEnum.test) return metadata;
+  const { [APP_SANDBOX_ENABLED_CHAT_METADATA_KEY]: _ignored, ...rest } = metadata;
+  return rest;
+};
 
 type FailChatRoundParams = ChatSourceParams & {
   chatId: string;
@@ -315,10 +324,7 @@ export const finalizeChatRound = async (props: Props) => {
       throw new Error(`Pending chat round chat not found: ${chatId}`);
     }
 
-    const metadataUpdate = {
-      ...chat.metadata,
-      ...metadata
-    };
+    const metadataUpdate = sanitizeChatMetadata({ ...chat.metadata, ...metadata }, source);
 
     // 这里不是新增 chat items，而是把 prepare 阶段创建的占位记录替换成最终内容。
     // obj 是 chat item 的角色标识，只用于查询定位，不在 finalize 阶段修改。
@@ -377,6 +383,7 @@ export const finalizeChatRound = async (props: Props) => {
           pluginInputs,
           outLinkUid,
           metadata: metadataUpdate,
+          ...(runtimeChatSummary.hasAgentSandbox ? { 'summary.hasAgentSandbox': true } : {}),
           updateTime: now,
           hasBeenRead: false
         },
@@ -565,10 +572,7 @@ export const pushChatRecords = async (props: Props) => {
       '_id metadata'
     );
 
-    const metadataUpdate = {
-      ...chat?.metadata,
-      ...metadata
-    };
+    const metadataUpdate = sanitizeChatMetadata({ ...chat?.metadata, ...metadata }, source);
 
     const { welcomeText, variables: variableList } = getAppChatConfig({
       chatConfig: appChatConfig,
@@ -617,6 +621,7 @@ export const pushChatRecords = async (props: Props) => {
             pluginInputs,
             outLinkUid,
             metadata: metadataUpdate,
+            ...(runtimeChatSummary.hasAgentSandbox ? { 'summary.hasAgentSandbox': true } : {}),
             updateTime: new Date()
           },
           $setOnInsert: {
@@ -1007,7 +1012,15 @@ export const updateInteractiveChat = async ({
       {
         $set: {
           variables,
-          updateTime: new Date()
+          updateTime: new Date(),
+          ...(props.source === ChatSourceEnum.test &&
+          typeof props.metadata?.[APP_SANDBOX_ENABLED_CHAT_METADATA_KEY] === 'boolean'
+            ? {
+                [`metadata.${APP_SANDBOX_ENABLED_CHAT_METADATA_KEY}`]:
+                  props.metadata[APP_SANDBOX_ENABLED_CHAT_METADATA_KEY]
+              }
+            : {}),
+          ...(runtimeChatSummary.hasAgentSandbox ? { 'summary.hasAgentSandbox': true } : {})
         },
         $inc: {
           'summary.llmInputTokens': runtimeChatSummary.llmInputTokens,

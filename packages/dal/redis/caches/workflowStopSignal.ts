@@ -1,3 +1,4 @@
+import { ChatIdSchema } from '@fastgpt/global/core/chat/schema';
 import { z } from 'zod';
 import { randomUUID } from 'node:crypto';
 import { asRedisLogicalKey, redisCacheAdapter, type RedisCacheAdapter } from '../adapter';
@@ -16,7 +17,7 @@ return 0
 export const WorkflowStopSignalParamsSchema = z.object({
   sourceType: z.string().min(1),
   sourceId: z.string().min(1),
-  chatId: z.string().min(1)
+  chatId: ChatIdSchema.min(1)
 });
 
 export type WorkflowStopSignalParams = z.infer<typeof WorkflowStopSignalParamsSchema>;

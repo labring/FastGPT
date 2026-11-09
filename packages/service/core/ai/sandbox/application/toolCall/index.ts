@@ -14,6 +14,7 @@ import {
   SANDBOX_WRITE_FILE_TOOL_NAME,
   sandboxToolMap
 } from '@fastgpt/global/core/ai/sandbox/tools';
+import { SANDBOX_USER_FILES_PATH } from '@fastgpt/global/core/ai/sandbox/constants';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
 import { LangEnum } from '@fastgpt/global/common/i18n/type';
@@ -30,6 +31,11 @@ import { parseJsonArgs } from '../../../utils';
 import { writeUrlFilesToSandbox, type SandboxInputFileReader } from '../file';
 import { preparePackageMirrors, prepareSandbox } from '../runtime/prepare';
 import type { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import {
+  buildSandboxInputFileScopeKey,
+  getSandboxInputFileNameAllocation,
+  getSafeSandboxInputFilename
+} from '../../utils';
 import { getRunningSandboxId, getSandboxUserId } from '../../utils/id';
 import { createToolRunner, type SandboxToolCallValidator } from './type';
 
@@ -158,12 +164,42 @@ export const prepareSandboxToolRuntime = async ({
     },
     preparePackageMirrors()
   );
+  const allocation = getSandboxInputFileNameAllocation({
+    scopeKey: buildSandboxInputFileScopeKey({
+      sourceType,
+      sourceId,
+      userId: sandboxUserId,
+      chatId
+    }),
+    sandbox: instance.provider,
+    workDirectory: runtimePaths.sessionWorkDirectory
+  });
+  const usedNames = new Map<string, number>();
+  const batchUsedFilenames = new Set<string>();
   await writeUrlFilesToSandbox(
     instance.provider,
-    files.map((file) => ({
-      ...file,
-      path: instance.resolveRuntimePath(file.path, { allowAbsolutePath: true })
-    })),
+    files.map((file, index) => {
+      const normalizedPath = file.path.replace(/^\.\//, '');
+      if (normalizedPath.startsWith(SANDBOX_USER_FILES_PATH)) {
+        const rawFilename = normalizedPath.slice(SANDBOX_USER_FILES_PATH.length);
+        const filename = getSafeSandboxInputFilename(rawFilename, index, usedNames, {
+          url: file.url,
+          allocation,
+          batchUsedFilenames
+        });
+        const relativePath = `${SANDBOX_USER_FILES_PATH}${filename}`;
+        file.path = relativePath;
+        return {
+          ...file,
+          path: instance.resolveRuntimePath(relativePath, { allowAbsolutePath: true })
+        };
+      }
+
+      return {
+        ...file,
+        path: instance.resolveRuntimePath(file.path, { allowAbsolutePath: true })
+      };
+    }),
     readInputFile
   );
   return instance;

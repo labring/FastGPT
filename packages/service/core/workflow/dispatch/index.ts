@@ -295,7 +295,14 @@ export async function dispatchWorkFlow({
         mcpClientMemory: {},
         fileContext,
         fileRegistrar,
-        resourceContext: data.resourceContext
+        resourceContext: data.resourceContext,
+        sandboxContext: {
+          sourceType: runningAppInfo.sourceType,
+          sourceId: runningAppInfo.sourceId,
+          teamId: runningAppInfo.teamId,
+          userId: data.uid,
+          chatId
+        }
       },
       async (ctx) => {
         try {

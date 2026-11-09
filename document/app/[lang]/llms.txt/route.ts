@@ -1,12 +1,11 @@
 import * as fs from 'node:fs/promises';
-import fg from 'fast-glob';
 import matter from 'gray-matter';
 import { remark } from 'remark';
 import remarkGfm from 'remark-gfm';
 import remarkStringify from 'remark-stringify';
 import remarkMdx from 'remark-mdx';
 import { remarkInclude } from 'fumadocs-mdx/config';
-import { i18n } from '@/lib/i18n';
+import { source } from '@/lib/source';
 
 export const revalidate = false;
 
@@ -21,23 +20,11 @@ const processor = remark()
   // .use(your remark plugins)
   .use(remarkStringify); // to string
 
-export async function GET() {
-  // all scanned content
-  // Select files based on the default language
-  const defaultLanguage = i18n.defaultLanguage;
-  let globPattern;
-
-  if (defaultLanguage === 'zh-CN') {
-    // For Chinese, select *.mdx files
-    globPattern = ['./content/**/*.mdx'];
-  } else {
-    // For other languages (default English), select *.en.mdx files that don't have .mdx. in their path
-    globPattern = ['./content/**/*.en.mdx'];
-  }
-
-  const files = await fg(globPattern);
-
-  const scan = files.map(async (file: string) => {
+/** 导出当前语言的已发布页面，复用统一内容源，避免直接扫描磁盘带出草稿。 */
+export async function GET(_request: Request, { params }: { params: Promise<{ lang: string }> }) {
+  const { lang } = await params;
+  const scan = source.getPages(lang).map(async (page) => {
+    const file = page.absolutePath;
     const fileContent = await fs.readFile(file);
     const { content, data } = matter(fileContent.toString());
 

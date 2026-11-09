@@ -71,6 +71,16 @@ export async function appKeyWorld(context) {
   const { db, ObjectId } = await privateDatabase(context, c);
   const oid = (value) => new ObjectId(value);
   const teamId = oid(c.fixture.teamId);
+  // 业务用例会创建多个独立副本；只扩充本轮自建团队的应用夹具容量，不改变 Key 额度。
+  if (
+    c.fixture.environment === 'local-dev' &&
+    c.fixture.ownedResources?.teamIds?.includes(c.fixture.teamId)
+  ) {
+    await db
+      .collection('team_subscriptions')
+      .updateOne({ teamId, type: 'standard' }, { $max: { maxApp: 100 } });
+    c.record('本轮团队应用夹具容量', { maxApp: 100 });
+  }
   for (const role of ['owner', 'A', 'B', 'N']) await c.sessionInfo(role);
   for (const role of ['A', 'B']) {
     await c.keyInfo(role);
@@ -246,7 +256,8 @@ export async function appKeyWorld(context) {
       assert.equal(current.chats.length, 1);
       assert.equal(current.items.length, (options.round ?? 1) * 2);
       assert.equal(current.logs.length, 1);
-      assert.equal(current.logs[0].userId, uid);
+      // 同一统计桶保留首轮使用者；Key 交接后的默认身份可改变本轮鉴权成员。
+      assert.equal(current.logs[0].userId, options.bucketUserId ?? uid);
       assert.equal(current.logs[0].chatItemCount, options.round ?? 1);
       return current;
     });
@@ -381,7 +392,9 @@ export async function appKeyWorld(context) {
           : undefined;
         if (sandboxResources) c.record('Sandbox 清理前资源', sandboxResources);
         const current = await db.collection('apps').findOne({ _id: oid(id) });
-        if (current && !current.deleteTime) {
+        if (current && sandboxResources?.length && c.fixture.environment === 'local-dev') {
+          await appKeyService(context, c, 'cleanup-owned-sandbox-app', { appId: id });
+        } else if (current && !current.deleteTime) {
           const result = success(
             await c.request({
               role: entry.role,

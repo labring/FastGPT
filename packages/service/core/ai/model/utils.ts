@@ -1,8 +1,10 @@
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { SystemErrEnum } from '@fastgpt/global/common/error/code/system';
+import { UserError } from '@fastgpt/global/common/error/utils';
 import type { AIModelDocumentDataType } from '@fastgpt/global/core/ai/model/schema';
 import type { UpdateQuery } from 'mongoose';
 import { isProVersion } from '../../../common/system/constants';
+import { checkUrlSafety } from '../../../common/system/utils';
 import type { AIModelSchemaType } from '../type';
 
 export type EditableModelData = Omit<AIModelDocumentDataType, 'model'> & {
@@ -66,15 +68,14 @@ export const getModelConfigUpdate = (
 };
 
 /**
- * 团队私有模型不允许配置直连地址、鉴权与测试模式（统一走成员渠道），
+ * 团队私有模型不允许配置测试模式；
+ * 自定义请求地址与鉴权 (requestUrl/requestAuth) 作为升级过渡期能力保留。
  * 返回剔除这些字段后的新对象，不修改入参。
  */
 export const sanitizeTeamModelData = <T extends object>(
   modelData: T
-): Omit<T, 'requestUrl' | 'requestAuth' | 'testMode' | 'tmbId' | 'teamId'> => {
-  const { requestUrl, requestAuth, testMode, tmbId, teamId, ...rest } = modelData as T & {
-    requestUrl?: unknown;
-    requestAuth?: unknown;
+): Omit<T, 'testMode' | 'tmbId' | 'teamId'> => {
+  const { testMode, tmbId, teamId, ...rest } = modelData as T & {
     testMode?: unknown;
     tmbId?: unknown;
     teamId?: unknown;
@@ -82,8 +83,27 @@ export const sanitizeTeamModelData = <T extends object>(
   return rest;
 };
 
-/** 团队模型与渠道是商业版功能；停用时拒绝管理入口，系统模型不受此开关限制。 */
+/** 团队私有模型与渠道是商业版功能；停用时拒绝管理入口，系统模型不受此开关限制。 */
 export const assertTeamModelEnabled = async () => {
   if (!isProVersion()) throw SystemErrEnum.commercialFeature;
   if (global.feConfigs?.enable_team_model === false) throw ModelErrEnum.teamModelDisabled;
+};
+
+/**
+ * 团队模型自定义端点的写入前校验。
+ * 空值表示不配置端点，直接放行；其余情况复用统一的 URL 安全检查
+ * （合法 URL、http/https、命中内网/云元数据时拒绝）。
+ */
+export const assertTeamModelRequestUrlSafe = async (modelData: {
+  requestUrl?: unknown;
+}): Promise<void> => {
+  if (typeof modelData.requestUrl !== 'string') return;
+  const requestUrl = modelData.requestUrl.trim();
+  if (!requestUrl) return;
+
+  try {
+    await checkUrlSafety(requestUrl, 'requestUrl');
+  } catch (error) {
+    throw new UserError(error instanceof Error ? error.message : String(error));
+  }
 };

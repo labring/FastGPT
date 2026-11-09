@@ -91,16 +91,19 @@ const writeFileStreamResponse = async ({
 };
 
 async function handler(req: ApiRequestProps, res: NextApiResponse): Promise<void> {
-  const { sourceType, sourceId, chatId, path, outLinkAuthData } = parseApiInput({
-    req,
-    bodySchema: SandboxDownloadBodySchema
-  }).body;
+  const { customUid, authProxy, sourceType, sourceId, chatId, path, outLinkAuthData } =
+    parseApiInput({
+      req,
+      bodySchema: SandboxDownloadBodySchema
+    }).body;
 
   const {
     uid,
     sourceType: resolvedSourceType,
     sourceId: resolvedSourceId
   } = await authSandboxRuntimeSession({
+    customUid,
+    authProxy,
     req,
     sourceType,
     sourceId,
