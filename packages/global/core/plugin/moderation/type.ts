@@ -1,4 +1,5 @@
 import z from 'zod';
+import { ChatIdSchema } from '../../chat/schema';
 import {
   ModerationActionEnum,
   ModerationExceptionActionEnum,
@@ -131,7 +132,7 @@ export const ModerationRecordSchema = z.object({
   teamId: z.string().optional().meta({ description: '团队 ID' }),
   tmbId: z.string().optional().meta({ description: '操作人 ID' }),
   appId: z.string().optional().meta({ description: '应用 ID' }),
-  chatId: z.string().optional().meta({ description: '会话 ID' }),
+  chatId: ChatIdSchema.optional().meta({ description: '会话 ID' }),
   responseChatItemId: z.string().optional().meta({ description: '回复消息 ID' }),
   requestId: z.string().optional().meta({ description: '全局请求追踪 ID' }),
 
