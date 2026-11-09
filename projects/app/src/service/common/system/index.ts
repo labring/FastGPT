@@ -37,6 +37,7 @@ import { initS3Buckets } from '@fastgpt/service/common/s3';
 import { logInstanceConfigRead } from '@fastgpt/service/common/system/migrationCoverageLog';
 import { buildAuthoritativeSystemEnv } from './buildAuthoritativeSystemEnv';
 import { applyEnvAuthoritativeFeConfigs } from './envAuthoritativeFeConfigs';
+import { resolvePluginRemoteDebug } from './pluginRemoteDebug';
 import {
   buildOauthFeConfig,
   buildPayConfig,
@@ -290,7 +291,11 @@ async function doInitSystemConfig({
       datasetSynonymEnabled: serviceEnv.DATASET_SYNONYM_ENABLED,
       show_dataset_enhance: licenseData?.functions?.datasetEnhance,
       show_intelligent_chunking: !!serviceEnv.SANGFOR_CHUNK_URL,
-      pluginRemoteDebug: instanceConfig.subservice.plugin.remoteDebug || pluginRemoteDebug,
+      // 管理员开关是准入门槛，Plugin 服务探测只表示能力可用；关闭表单后不能继续展示入口。
+      pluginRemoteDebug: resolvePluginRemoteDebug({
+        adminEnabled: instanceConfig.subservice.plugin.remoteDebug,
+        pluginAvailable: pluginRemoteDebug
+      }),
       disableMarketplace: appEnv.DISABLE_MARKETPLACE,
       show_agent_sandbox_free_tip: serviceEnv.AGENT_SANDBOX_SHOW_FREE_TIP,
       agentSandboxProxyUrl: serviceEnv.AGENT_SANDBOX_PROXY_URL

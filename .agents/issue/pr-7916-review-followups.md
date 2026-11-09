@@ -98,8 +98,8 @@
 - [ ] **B2（原第 7 项，P1，依赖 D1）旧 `basic`/`user` 页面和写接口**
   - 按评论建议：先盘点旧页面全部字段，区分“已迁移”“仍有用途”“废弃”；迁走仍有用途的字段后，再收口旧表单和 `/proApi/admin/system/updateConfig`，避免旧页面保存看似成功但实际被新配置覆盖。
   - 位置：`projects/app/src/pages/admin/settings/basic.tsx`、`user.tsx`、`projects/app/src/web/admin/system/api.ts`、`pro/admin/src/pages/api/admin/system/updateConfig.ts`
-- [ ] **B3（原第 8 项，P2，依赖 D7）`plugin.remoteDebug` 无法关闭**
-  - 管理员开关优先，探测只表示能力可用。
+- [x] **B3（原第 8 项）`plugin.remoteDebug` 无法关闭**
+  - 已按 D7 改为 `实例配置开关 && Plugin 能力探测`；管理员关闭后入口一定关闭。
   - 位置：`projects/app/src/service/common/system/index.ts`
 - [x] **B4（原第 9 项）Sangfor 凭据回落**
   - 已按 D6 删除旧 `customPdfParse` 回落，只从 `providers.documentParse.sangfor.url/key` 成组取值。
