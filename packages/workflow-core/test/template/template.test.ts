@@ -10,6 +10,7 @@ import { createWorkflowDocument } from '../../src/domain/document';
 import { formatNodeTemplateRef, parseNodeTemplateRef } from '../../src/template/type';
 import { instantiateNodeFromTemplate } from '../../src/template/instantiate';
 import { normalizeNodeTemplateDescriptor } from '../../src/template/descriptor';
+import enWorkflow from '../../../web/i18n/en/workflow.json';
 
 import { describe, expect, it } from 'vitest';
 
@@ -181,7 +182,12 @@ describe('builtinTemplateProvider', () => {
       'Hello {{$VARIABLE_NODE_ID.name$}}',
       'Topic: {{$validateCode.topic$}}'
     ]);
-    expect(input?.description).toContain('global variables use {{$VARIABLE_NODE_ID.variableKey$}}');
+    // 模板元数据现在保存 i18n key，文案校验从英文资源解析实际展示值。
+    const description =
+      input?.description === 'workflow:cli.input.text_editor'
+        ? enWorkflow['cli.input.text_editor']
+        : input?.description;
+    expect(description).toContain('global variables use {{$VARIABLE_NODE_ID.variableKey$}}');
   });
 
   it('keeps automation metadata aligned with template inputs and explicit for resources', async () => {
