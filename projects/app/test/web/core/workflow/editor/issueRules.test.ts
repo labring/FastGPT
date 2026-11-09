@@ -381,6 +381,7 @@ const EXPECTED_ISSUES: Record<string, { nodes: string[]; config: string[] }> = {
     nodes: ['select|user_select_value_empty|userSelectOptions'],
     config: []
   },
+  'code:user_select_reference': { nodes: [], config: [] },
   'code:form_input_empty': { nodes: ['form|form_input_empty|userInputForms'], config: [] },
   'code:classify_question_empty': {
     nodes: [
@@ -677,6 +678,17 @@ const codeFixtures: Fixture[] = [
     mutate: (canonical) =>
       setValue(canonical, 'select', NodeInputKeyEnum.userSelectOptions, [{ key: 'a', value: '' }]),
     expectCodes: [WorkflowIssueCode.userSelectValueEmpty]
+  },
+  {
+    name: 'code:user_select_reference',
+    nodes: [startNode(), named(UserSelectNode, 'select')],
+    edges: [edge('start', 'select', 0)],
+    mutate: (canonical) => {
+      const input = inputOf(canonical, 'select', NodeInputKeyEnum.userSelectOptions);
+      input.selectedType = FlowNodeInputTypeEnum.reference;
+      input.value = ['start', NodeOutputKeyEnum.userChatInput];
+    },
+    expectCodes: []
   },
   {
     name: 'code:form_input_empty',

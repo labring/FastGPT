@@ -8,11 +8,30 @@ import {
 import { IfElseResultEnum } from '@fastgpt/global/core/workflow/template/system/ifElse/constant';
 import type { IfElseListItemType } from '@fastgpt/global/core/workflow/template/system/ifElse/type';
 import { USER_SELECT_REFERENCE_HANDLE_KEY } from '@fastgpt/global/core/workflow/template/system/interactive/userSelect';
+import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { Position } from '@xyflow/react';
 
+type FoldableSourceHandleNode = Pick<
+  FlowNodeItemType,
+  'nodeId' | 'flowNodeType' | 'showSourceHandle' | 'catchError'
+> & {
+  inputs: ReadonlyArray<{
+    key: string;
+    value?: FlowNodeInputItemType['value'];
+    renderTypeList?: ReadonlyArray<FlowNodeInputItemType['renderTypeList'][number]>;
+    selectedType?: FlowNodeInputItemType['selectedType'];
+  }>;
+  outputs: ReadonlyArray<{
+    key: string;
+    type: FlowNodeOutputTypeEnum;
+    label?: string;
+    invalid?: boolean;
+  }>;
+};
+
 /** 折叠只合并端口位置，保留所有业务端口 ID，避免折叠时已有分支或异常连线找不到端点。 */
-export const getFoldedSourceHandleIds = (node: FlowNodeItemType) => {
+export const getFoldedSourceHandleIds = (node: FoldableSourceHandleNode) => {
   const { nodeId, inputs, outputs, showSourceHandle } = node;
   const keys: string[] = [];
 
@@ -23,7 +42,7 @@ export const getFoldedSourceHandleIds = (node: FlowNodeItemType) => {
     keys.push(...(branches ?? []).map(getIfElseBranchHandleKey), IfElseResultEnum.ELSE);
   } else if (node.flowNodeType === FlowNodeTypeEnum.userSelect) {
     const input = inputs.find((input) => input.key === NodeInputKeyEnum.userSelectOptions);
-    if (input && nodeInputIsReference(input)) {
+    if (input && nodeInputIsReference(input as FlowNodeInputItemType)) {
       keys.push(USER_SELECT_REFERENCE_HANDLE_KEY);
     } else {
       keys.push(...(input?.value ?? []).map((option: { key: string }) => option.key));

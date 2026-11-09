@@ -523,12 +523,19 @@ export const collectNodeIssues = (
     }
 
     if (data.flowNodeType === FlowNodeTypeEnum.userSelect) {
-      const options = inputMap.get(NodeInputKeyEnum.userSelectOptions)?.value as
-        | Array<{ value?: string }>
-        | undefined;
-      if (!options || options.length === 0) {
+      const optionsInput = inputMap.get(NodeInputKeyEnum.userSelectOptions);
+      const options = optionsInput?.value as Array<{ value?: string }> | undefined;
+      if (
+        optionsInput &&
+        !nodeInputIsReference(optionsInput) &&
+        (!options || options.length === 0)
+      ) {
         addIssue({ code: 'user_select_empty', inputKey: NodeInputKeyEnum.userSelectOptions });
-      } else if (options.some((option) => !option.value)) {
+      } else if (
+        optionsInput &&
+        !nodeInputIsReference(optionsInput) &&
+        options?.some((option) => !option.value)
+      ) {
         addIssue({
           code: 'user_select_value_empty',
           inputKey: NodeInputKeyEnum.userSelectOptions

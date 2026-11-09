@@ -402,31 +402,29 @@ describe('workflow render graph classification', () => {
   });
 });
 
-describe('dynamic source handle measurements', () => {
+describe('folded source handle measurements', () => {
   const dimension = measuredDimension({ width: 300, height: 200 });
 
-  it('requires every expected handle to have a finite in-card center', () => {
+  it('uses one valid card measurement for every shared folded anchor', () => {
     expect(
       hasValidSourceHandleMeasurement({
         expectedHandleIds: ['branch-a', 'else'],
-        dimension: {
-          ...dimension,
-          sourceHandleCenters: new Map([['branch-a', { x: 304, y: 80 }]])
-        }
+        dimension
       })
-    ).toBe(false);
+    ).toBe(true);
 
     expect(
       hasValidSourceHandleMeasurement({
         expectedHandleIds: ['branch-a', 'else'],
-        dimension: {
-          ...dimension,
-          sourceHandleCenters: new Map([
-            ['branch-a', { x: 304, y: 80 }],
-            ['else', { x: 304, y: 180 }]
-          ])
-        }
+        dimension
       })
     ).toBe(true);
+
+    expect(
+      hasValidSourceHandleMeasurement({
+        expectedHandleIds: ['branch-a', 'else'],
+        dimension: measuredDimension({ width: 0, height: 0 })
+      })
+    ).toBe(false);
   });
 });

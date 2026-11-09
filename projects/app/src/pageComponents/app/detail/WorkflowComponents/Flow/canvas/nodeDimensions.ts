@@ -706,7 +706,7 @@ const normalizeDimension = (dimension: NodeDimensions) => {
   };
 };
 
-/** 只有所有动态 source Handle 都有卡片内中心点时，shell 才能接管完整节点。 */
+/** 折叠布局共用右侧锚点，只要求完整节点已完成一次有效测量。 */
 export const hasValidSourceHandleMeasurement = ({
   expectedHandleIds,
   dimension
@@ -715,18 +715,13 @@ export const hasValidSourceHandleMeasurement = ({
   dimension: NodeDimensions | undefined;
 }) => {
   if (expectedHandleIds.length === 0) return dimension !== undefined;
-  const centers = dimension?.sourceHandleCenters;
-  if (!centers || centers.size !== expectedHandleIds.length) return false;
-  return expectedHandleIds.every((handleId) => {
-    const center = centers.get(handleId);
-    return (
-      center !== undefined &&
-      Number.isFinite(center.x) &&
-      Number.isFinite(center.y) &&
-      center.y >= 0 &&
-      center.y <= dimension.card.height
-    );
-  });
+  return (
+    dimension !== undefined &&
+    Number.isFinite(dimension.card.width) &&
+    Number.isFinite(dimension.card.height) &&
+    dimension.card.width > 0 &&
+    dimension.card.height > 0
+  );
 };
 
 /**

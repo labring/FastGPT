@@ -299,10 +299,9 @@ const NodeShell = React.memo(
               {!replacesDefaultSource && <ConnectionSourceHandle nodeId={props.id} />}
               <ConnectionTargetHandle nodeId={props.id} />
               {showToolSource && <ToolSourceHandle nodeId={props.id} />}
-              {sourceHandles.map(({ handleId, topPercent, translate }) => {
+              {sourceHandles.map(({ handleId, translate }) => {
+                // 折叠与 shell 共用单一右侧锚点；业务 handle ID 仍各自保留给已有连线。
                 const center = sourceHandleCenters?.get(handleId);
-                const top = center ? `${center.y}px` : `${topPercent}%`;
-                // 测量位置仍保留输出定义的挂载点，补水平差值后把视觉位置推到卡片右边缘。
                 const handleOffset = getNodeShellHandleOffset({
                   cardWidth: dimensions.card.width,
                   centerX: center?.x
@@ -315,7 +314,7 @@ const NodeShell = React.memo(
                   <Box
                     key={handleId}
                     position={'absolute'}
-                    top={top}
+                    top={'50%'}
                     {...(center ? { left: `${center.x}px` } : { right: 0 })}
                     w={0}
                     h={0}
