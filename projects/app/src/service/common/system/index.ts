@@ -290,7 +290,6 @@ async function doInitSystemConfig({
       datasetSynonymEnabled: serviceEnv.DATASET_SYNONYM_ENABLED,
       show_dataset_enhance: licenseData?.functions?.datasetEnhance,
       show_intelligent_chunking: !!serviceEnv.SANGFOR_CHUNK_URL,
-      show_batch_eval: licenseData?.functions?.eval,
       pluginRemoteDebug: instanceConfig.subservice.plugin.remoteDebug || pluginRemoteDebug,
       disableMarketplace: appEnv.DISABLE_MARKETPLACE,
       show_agent_sandbox_free_tip: serviceEnv.AGENT_SANDBOX_SHOW_FREE_TIP,

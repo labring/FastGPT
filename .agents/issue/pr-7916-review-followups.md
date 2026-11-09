@@ -111,7 +111,7 @@
 
 - [x] **C1.1（原第 10 项）`microsoft.customButton`**：已按 D2 删除 Schema、表单、registry/pageFields、旧类型、迁移映射和公开投影；登录按钮继续使用 `labels.microsoft`。
 - [ ] **C1.2（原第 11 项，P3，依赖 D8）`show_appStore`**：无消费，建议删除。
-- [ ] **C1.3（原第 12 项，依赖 D3）`show_batch_eval`**：删除声明/赋值，或明确为 license 派生值。
+- [x] **C1.3（原第 12 项）`show_batch_eval`**：已按 D3 删除 `feConfigs.show_batch_eval` 声明和赋值，保留 license `functions.eval` 业务授权。
 - [ ] **C1.4（原第 13 项，P3，依赖 D8）`agentSandboxFree`**：界面使用 `show_agent_sandbox_free_tip`，删除旧字段。
 - [ ] **C1.5（原第 14 项，P3，依赖 D8）`systemEnv.ip_whitelist`**：删除残留声明和旧表单控件。
 - [ ] **C1.6（原第 15 项，P3，依赖 D8）`systemEnv.customDomain.domain.*`**：删除；实际读取 `feConfigs.customDomain.domain`。

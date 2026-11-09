@@ -221,7 +221,6 @@ export const FastGPTFeConfigsSchema = z.looseObject({
     .boolean()
     .optional()
     .meta({ description: '是否开启数据集增强处理能力（如文本清洗、改写）' }),
-  show_batch_eval: z.boolean().optional().meta({ description: '是否开启批量评测模块' }),
 
   concatMd: z
     .string()
