@@ -396,7 +396,7 @@ const preCreateBatchSize = 500;
  * 提前落库：在调用方 session 内先写入 indexing 数据，再创建携带相同 dataId 的训练任务。
  *
  * 数据与任务共享同一 `dataId`，下游按 DS-07 分流把向量结果写回同一条数据，全流程只有一条数据行。
- * 只由解析最终分块、图片导入和问答叶子这几条入口使用，其他 `pushDataListToTrainingQueue` 调用方行为不变。
+ * 由解析最终分块、图片导入、pushData 和问答叶子等入口使用；auto 超长降级统一在入队时处理。
  *
  * 说明：
  * - 建行前过滤空内容；auto 超长条目保留并在入队时降级为 index，其他模式仍过滤超长内容。
