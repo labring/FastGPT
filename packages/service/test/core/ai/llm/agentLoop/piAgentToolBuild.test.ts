@@ -62,3 +62,53 @@ describe('piAgent tool schema normalization', () => {
     expect(tools[0].parameters).not.toHaveProperty('properties.mode.x-fastgpt-node-input');
   });
 });
+
+describe('piAgent plan execution events', () => {
+  it.each([
+    { name: 'set_plan', args: { name: 'Build', steps: ['Inspect'] }, success: true },
+    { name: 'update_plan', args: { add_steps: ['Validate'] }, success: true },
+    { name: 'set_plan', args: { name: 'Build', steps: [] }, success: false }
+  ])(
+    'emits one hidden tool end for $name with success=$success',
+    async ({ name, args, success }) => {
+      const emitEvent = vi.fn();
+      const onToolResult = vi.fn();
+      const tools = await buildPiAgentTools({
+        runtime: {
+          ...createRuntime([]),
+          systemTools: { plan: { enabled: true } },
+          emitEvent
+        },
+        getActivePlan: () => ({
+          planId: 'plan-1',
+          name: 'Build',
+          steps: [{ id: 'step-1', name: 'Inspect', status: 'pending' }]
+        }),
+        setActivePlan: vi.fn(),
+        setPendingAsk: vi.fn(),
+        getMessages: () => [],
+        onToolCall: vi.fn(),
+        onToolResult
+      });
+
+      await tools.find((tool) => tool.name === name)!.execute('plan-call', args);
+
+      const events = emitEvent.mock.calls.map(([event]) => event);
+      expect(events.filter((event) => event.type === 'plan_operation')).toEqual([
+        expect.objectContaining({ id: 'plan-call', success })
+      ]);
+      expect(events.filter((event) => event.type === 'tool_run_end')).toEqual([
+        expect.objectContaining({
+          call: {
+            id: 'plan-call',
+            type: 'function',
+            function: { name, arguments: JSON.stringify(args) }
+          },
+          response: onToolResult.mock.calls[0][0].response,
+          hideInUI: true
+        })
+      ]);
+      expect(onToolResult).toHaveBeenCalledTimes(1);
+    }
+  );
+});

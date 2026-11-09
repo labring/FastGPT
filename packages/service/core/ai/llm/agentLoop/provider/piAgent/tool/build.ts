@@ -63,7 +63,8 @@ const toPiToolParameters = (parameters: unknown) =>
 
 /**
  * 将统一 runtime tools 和 piAgent 支持的系统工具转换为 pi-agent-core AgentTool。
- * 普通工具统一发 tool 生命周期事件；plan/ask 仅发各自的领域事件。
+ * 普通工具统一发 tool 生命周期事件；plan 保留领域展示并补齐隐藏的结束事件，供运行时统计活动。
+ * Ask 仍通过交互事件暂停，不改变其确认与恢复协议。
  */
 export const buildPiAgentTools = async <TChildrenResponse = unknown>({
   runtime,
@@ -178,6 +179,7 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
         parameters: toPiToolParameters(planTool.function.parameters),
         execute: async (callId: string, args: unknown) => {
           const toolArgs = normalizeToolArgs(args);
+          const call = createToolCall({ id: callId, name: planTool.function.name, args: toolArgs });
           const params = stringifyJson(toolArgs);
           const isSetPlan = planTool.function.name === setPlanToolName;
           runtime.emitEvent?.({
@@ -215,8 +217,16 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
             });
           }
           onToolResult({
-            call: createToolCall({ id: callId, name: planTool.function.name, args: toolArgs }),
+            call,
             response: result.message
+          });
+          // 与 FastAgent 的计划工具保持一致；展示仍由 plan_operation 负责，避免重复工具卡。
+          runtime.emitEvent?.({
+            type: 'tool_run_end',
+            call,
+            response: result.message,
+            seconds: 0,
+            hideInUI: true
           });
           return { content: [{ type: 'text' as const, text: result.message }], details: {} };
         }
