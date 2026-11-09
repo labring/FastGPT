@@ -10,6 +10,7 @@ import { MongoSystemConfigs } from '../../../../common/system/config/schema';
 import { SystemConfigsTypeEnum } from '@fastgpt/global/common/system/config/constants';
 import { getDomainDefaultConfig } from '@fastgpt/global/common/system/config/schema';
 import { SECRET_MASK } from '@fastgpt/global/common/system/config/permission';
+import { ApiRequestInputParseError } from '@fastgpt/service/common/zod/requestParseError';
 
 describe('systemInstanceConfig controller', () => {
   beforeEach(async () => {
@@ -407,6 +408,23 @@ describe('systemInstanceConfig controller', () => {
       });
       expect(updated.effectiveConfig.docUrl).toBe('https://custom-doc.example.com');
       expect(updated.effectiveConfig.scripts).toEqual([{ src: 'a.js' }]);
+    });
+
+    it('reports invalid submitted leaf values as request input errors', async () => {
+      await expect(
+        batchUpdateDomainConfigs({
+          items: [
+            {
+              domain: 'performance',
+              expectedRevision: 0,
+              overrides: { task: { evalConcurrency: 0 } }
+            }
+          ],
+          actor: { actor: 'admin' }
+        })
+      ).rejects.toBeInstanceOf(ApiRequestInputParseError);
+
+      expect(await MongoSystemInstanceConfig.findOne({ domain: 'performance' })).toBeNull();
     });
 
     it('rolls back completely if any domain in the batch encounters a revision conflict', async () => {

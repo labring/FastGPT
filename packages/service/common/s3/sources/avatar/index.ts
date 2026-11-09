@@ -5,6 +5,9 @@ import { MongoS3TTL } from '../../models/ttl';
 import { S3PublicBucket } from '../../buckets/public';
 import { avatarAllowedExtensions, createUploadConstraints } from '../../utils/uploadConstraints';
 
+/** 站点图片失去引用后的回收宽限期：留出撤销/改回以及旧异步清理完成的时间。 */
+export const SITE_AVATAR_DELETE_DELAY_MS = 24 * 60 * 60 * 1000;
+
 class S3AvatarSource extends S3PublicBucket {
   constructor() {
     super();
@@ -46,6 +49,28 @@ class S3AvatarSource extends S3PublicBucket {
   async removeAvatarTTL(avatar: string, session?: ClientSession): Promise<void> {
     const key = avatar.slice(this.prefix.length);
     await MongoS3TTL.deleteOne({ minioKey: key, bucketName: this.bucketName }, session);
+  }
+
+  /**
+   * 为失去引用的站点图片安排延迟删除。
+   * 只写入/延长 TTL，不立即删除对象；期间重新引用会由 removeAvatarTTL 取消，
+   * 到期后由 S3 清理任务在删除前再次核对最新站点配置。
+   */
+  async scheduleAvatarDeletion({
+    avatar,
+    delayMs = SITE_AVATAR_DELETE_DELAY_MS,
+    session
+  }: {
+    avatar: string;
+    delayMs?: number;
+    session?: ClientSession;
+  }): Promise<void> {
+    const key = avatar.slice(this.prefix.length);
+    await MongoS3TTL.updateOne(
+      { minioKey: key, bucketName: this.bucketName },
+      { $max: { expiredTime: new Date(Date.now() + delayMs) } },
+      { upsert: true, session }
+    );
   }
 
   async deleteAvatar(avatar: string, session?: ClientSession): Promise<void> {

@@ -220,6 +220,17 @@
 - [x] **I4 套餐冲突保留草稿**：页面预检与服务端 revision 冲突均只 toast 提示人工刷新，不自动 reload/refetch、不改变 revision、不重提；正常保存成功后的回读保留。
 - [x] **I5 SMS_PROXY 边界确认**：只由 Pro ENV 提供，三个短信通道字段仍在表单；代理仅改变短信发送请求路由，不参与通道能力或登录、注册入口判断。本项不作为投影缺陷，不改变现有判定。
 
+### 批次 I：最新 review 5827451270 收口
+
+- [x] **I1（review R1，P2）旧保存的清理不能删除后来重新引用的图片**
+  - 已实现：站点头像失去引用后改为写 24 小时延迟删除 TTL，不再立即调用 `refreshAvatar` 删除；清理前读取最新 site 配置，旧保存的异步清理晚于新保存执行时会跳过已重新引用的图片。TTL 清理任务和最终删除 executor 都会再次核对最新引用，处理“上传 TTL 已投递删除任务后保存重新引用”的窗口；配置读取失败时保留对象/TTL 等待重试。
+  - 覆盖：旧清理遇到最新配置仍引用旧图时跳过；已入队头像删除遇到最新引用时跳过；过期 TTL 被最新配置引用时不入队；未引用时正常入队。
+  - 位置：`packages/service/common/s3/siteAvatarReferences.ts`、`packages/service/common/s3/sources/avatar/index.ts`、`packages/service/common/s3/lifecycle/cleanup.ts`、`packages/service/common/s3/queue/delete.ts`、`projects/app/src/service/common/system/syncSiteAvatarLifecycle.ts` 及相关测试
+- [x] **I2（review R2，P3）配置叶子值请求校验错误返回 500**
+  - 已实现：批量写入前对本次提交的 overrides 单独执行域 override Schema 校验，叶子值/形状错误包装为 `ApiRequestInputParseError`（400）；跨字段校验仅在全部问题路径都来自本次提交时归为请求错误，数据库坏记录和内部不变量错误仍保持普通 ZodError（500）。
+  - 覆盖：`performance.task.evalConcurrency=0` 返回请求入参错误且不写库。
+  - 位置：`packages/service/common/system/systemInstanceConfig/controller.ts`、`packages/service/test/common/system/systemInstanceConfig/controller.test.ts`
+
 ## 四、已完成项（不重复修）
 
 - PlanEditModal 测试兼容性：`b22b6a55f`，12 例通过，review 线程已 resolve。

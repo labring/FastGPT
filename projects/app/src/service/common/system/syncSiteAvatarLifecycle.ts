@@ -1,5 +1,9 @@
 import { imageBaseUrl } from '@fastgpt/global/common/file/image/constants';
 import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
+import {
+  getCurrentSiteAvatarKeys,
+  toSiteAvatarKey
+} from '@fastgpt/service/common/s3/siteAvatarReferences';
 
 type SiteAvatarFields = {
   favicon?: string;
@@ -7,10 +11,10 @@ type SiteAvatarFields = {
 };
 
 /**
- * 复用应用头像的 refreshAvatar 流程维护站点图片。
- * 先按 favicon 与导航项的全部引用去重：新图取消临时 TTL，彻底失去引用的旧图删除。
+ * 维护站点图片生命周期。
+ * 先按 favicon 与导航项的全部引用去重：新图取消临时 TTL，失去引用的旧图写延迟删除 TTL。
+ * 删除前读取最新站点配置，旧保存的异步清理即使晚于新保存执行，也不能删除已被重新引用的图片。
  * 仅处理本服务上传的 avatar/ 图片，外部 URL 与内置图标不参与清理。
- * 同一图片只移动位置或仍被其他站点字段共用时不删除；null 明确表示只清理旧图。
  * 调用发生在配置保存后，失败由调用方记录，不把已提交的配置报告为保存失败。
  */
 export const syncSiteAvatarLifecycle = async ({
@@ -30,11 +34,22 @@ export const syncSiteAvatarLifecycle = async ({
   const previousRefs = getRefs(previous);
   const nextRefs = getRefs(next);
 
-  // 先确认新图保留，再移除已没有任何站点引用的旧图。
+  // 先确认新图保留，再处理本次快照中失去引用的旧图。
   for (const avatar of nextRefs) {
     if (!previousRefs.has(avatar)) await source.refreshAvatar(avatar);
   }
-  for (const avatar of previousRefs) {
-    if (!nextRefs.has(avatar)) await source.refreshAvatar(null, avatar);
+
+  const removedRefs = [...previousRefs].filter((avatar) => !nextRefs.has(avatar));
+  if (removedRefs.length === 0) return;
+
+  // 以最新配置为准：旧保存的清理晚于新保存执行时，必须跳过新保存重新引用的图片。
+  const currentRefs = await getCurrentSiteAvatarKeys();
+  if (!currentRefs) {
+    throw new Error('Cannot verify current site avatars before scheduling deletion');
+  }
+  for (const avatar of removedRefs) {
+    if (!currentRefs.has(toSiteAvatarKey(avatar))) {
+      await source.scheduleAvatarDeletion({ avatar });
+    }
   }
 };

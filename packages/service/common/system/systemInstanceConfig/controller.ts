@@ -451,6 +451,18 @@ export const batchUpdateDomainConfigs = async ({
         );
       }
 
+      // overrides 内容是 record<string, unknown>，外壳 Schema 不校验域内叶子。
+      // 先在请求边界用域 override Schema 校验本次提交，非法值归为 400；
+      // 合并后的校验仍保留普通 ZodError，用于暴露数据库坏记录或内部不变量错误（500）。
+      try {
+        parseDomainOverrides({ domain, overrides: submittedOverrides });
+      } catch (error) {
+        if (error instanceof ZodError) {
+          throw new ApiRequestInputParseError(error, { inputSource: 'body' });
+        }
+        throw error;
+      }
+
       const mergedOverrides = mergeSubmittedOverrides({
         domain,
         existingOverrides: existing?.overrides,
@@ -462,7 +474,21 @@ export const batchUpdateDomainConfigs = async ({
         previous: existing?.overrides
       });
       const parsedOverrides = parseDomainOverrides({ domain, overrides: rawOverrides });
-      const effectiveConfig = resolveDomainEffectiveConfig({ domain, overrides: parsedOverrides });
+      let effectiveConfig;
+      try {
+        effectiveConfig = resolveDomainEffectiveConfig({ domain, overrides: parsedOverrides });
+      } catch (error) {
+        // 跨字段 superRefine 也可能由本次提交触发；仅当所有问题路径都来自本次 overrides 时
+        // 归为请求错误，数据库坏记录或内部不变量错误仍保持 500。
+        if (
+          error instanceof ZodError &&
+          error.issues.length > 0 &&
+          error.issues.every((issue) => hasOverridePath(submittedOverrides, issue.path.join('.')))
+        ) {
+          throw new ApiRequestInputParseError(error, { inputSource: 'body' });
+        }
+        throw error;
+      }
 
       // 下载策略依赖同域多个字段：必须校验合并后的完整配置，局部补丁既不能绕过校验，
       // 也不能因为省略库中已有的 endpoint 而被误拒绝。校验失败前不启动事务。
