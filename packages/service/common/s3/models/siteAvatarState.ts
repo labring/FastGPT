@@ -15,7 +15,11 @@ export type SiteAvatarStateType = {
   state: 'referenced' | 'pending' | 'deleting';
   /** 最近一次引用它的站点配置 revision；用于让延迟执行的旧保存不会覆盖新引用。 */
   referencedRevision?: number;
+  /** 本次引用预登记的请求所有权；保存失败时只释放自己仍持有的状态。 */
+  reservationId?: string;
   deleteClaimedAt?: Date;
+  /** 领取删除任务的 BullMQ job id；同一任务重试时据此恢复。 */
+  deleteClaimedBy?: string;
 };
 
 const collectionName = 's3_site_avatar_states';
@@ -37,9 +41,19 @@ const SiteAvatarStateSchema = new Schema(
       required: false,
       min: 0
     },
+    reservationId: {
+      type: String,
+      required: false,
+      trim: true
+    },
     deleteClaimedAt: {
       type: Date,
       required: false
+    },
+    deleteClaimedBy: {
+      type: String,
+      required: false,
+      trim: true
     }
   },
   { timestamps: true }

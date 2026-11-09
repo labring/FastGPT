@@ -1,5 +1,5 @@
 import { getLogger, LogCategories } from '../../logger';
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { batchRun } from '@fastgpt/global/common/system/utils';
 import { deleteS3DownloadAliasByObjects } from '../accessLink';
 import { s3FileDeleteMQService, type S3MQJobData } from '@fastgpt/dal/redis/bullmq';
@@ -74,7 +74,10 @@ const assertAllKeysLegacyRawEligible = (keys: string[]) => {
   }
 };
 
-export const executeS3DeleteJob = async ({ prefix, bucketName, key, keys }: S3MQJobData) => {
+export const executeS3DeleteJob = async (
+  { prefix, bucketName, key, keys }: S3MQJobData,
+  { claimId = randomUUID() }: { claimId?: string } = {}
+) => {
   const bucket = global.s3BucketMap?.[bucketName];
 
   if (!bucket) {
@@ -91,46 +94,49 @@ export const executeS3DeleteJob = async ({ prefix, bucketName, key, keys }: S3MQ
     // 无法读取当前配置时抛错交给 BullMQ 重试，宁可暂时保留对象也不误删。
     const avatarKeys = keys.filter((item) => isSiteAvatarObject(bucketName, item));
     const claimedAvatarKeys: string[] = [];
-    if (avatarKeys.length > 0) {
-      const currentSiteRefs = await getCurrentSiteAvatarKeys();
-      if (currentSiteRefs === undefined) {
-        throw new Error('Cannot verify site avatar references before S3 deletion');
-      }
 
-      const deletableAvatarKeys: string[] = [];
-      for (const avatarKey of avatarKeys) {
-        const claim = await claimSiteAvatarDeletion({ avatarKey });
-        if (claim === 'referenced') continue;
-        // 另一个删除任务已领取，交给它完成即可。
-        if (claim === 'deleting') continue;
-        if (currentSiteRefs.avatarKeys.has(avatarKey)) {
-          // 当前任务刚领取了 deleting，但配置已重新引用；先释放再标记 referenced。
-          await releaseSiteAvatarDeletion({ avatarKey });
-          await markSiteAvatarReferenced({
-            avatarKey,
-            siteRevision: currentSiteRefs.revision
-          });
-          continue;
-        }
-        claimedAvatarKeys.push(avatarKey);
-        deletableAvatarKeys.push(avatarKey);
-      }
-
-      keys = [
-        ...keys.filter((item) => !isSiteAvatarObject(bucketName, item)),
-        ...deletableAvatarKeys
-      ];
-      if (keys.length === 0) {
-        logger.info('Skipped S3 delete job for referenced or already-claimed avatars', {
-          bucketName,
-          count: avatarKeys.length
-        });
-        return;
-      }
-    }
-
-    const keysToDelete = keys;
     try {
+      if (avatarKeys.length > 0) {
+        const currentSiteRefs = await getCurrentSiteAvatarKeys();
+        if (currentSiteRefs === undefined) {
+          throw new Error('Cannot verify site avatar references before S3 deletion');
+        }
+
+        const deletableAvatarKeys: string[] = [];
+        for (const avatarKey of avatarKeys) {
+          // claimId 使用 BullMQ job id：同一任务重试可恢复自己持有的 deleting，
+          // 其他任务则跳过，避免进程退出后状态永久卡住。
+          const claim = await claimSiteAvatarDeletion({ avatarKey, claimId });
+          if (claim === 'referenced') continue;
+          // 另一个删除任务已领取，交给它完成即可。
+          if (claim === 'deleting') continue;
+          if (currentSiteRefs.avatarKeys.has(avatarKey)) {
+            // 当前任务刚领取了 deleting，但配置已重新引用；先释放再标记 referenced。
+            await releaseSiteAvatarDeletion({ avatarKey, claimId });
+            await markSiteAvatarReferenced({
+              avatarKey,
+              siteRevision: currentSiteRefs.revision
+            });
+            continue;
+          }
+          claimedAvatarKeys.push(avatarKey);
+          deletableAvatarKeys.push(avatarKey);
+        }
+
+        keys = [
+          ...keys.filter((item) => !isSiteAvatarObject(bucketName, item)),
+          ...deletableAvatarKeys
+        ];
+        if (keys.length === 0) {
+          logger.info('Skipped S3 delete job for referenced or already-claimed avatars', {
+            bucketName,
+            count: avatarKeys.length
+          });
+          return;
+        }
+      }
+
+      const keysToDelete = keys;
       logger.debug('S3 delete by keys', { bucketName, count: keysToDelete.length });
       const result = (await bucket.client
         .deleteObjectsByMultiKeys({ keys: keysToDelete })
@@ -180,12 +186,12 @@ export const executeS3DeleteJob = async ({ prefix, bucketName, key, keys }: S3MQ
       });
 
       await Promise.all(
-        claimedAvatarKeys.map((avatarKey) => clearSiteAvatarDeletionState({ avatarKey }))
+        claimedAvatarKeys.map((avatarKey) => clearSiteAvatarDeletionState({ avatarKey, claimId }))
       );
     } catch (error) {
-      // 删除失败时释放领取，让下一次 BullMQ 重试仍能继续；不把状态永久卡在 deleting。
+      // 领取或删除失败都释放当前任务的 claim；同一个 BullMQ job 重试时可重新领取。
       await Promise.all(
-        claimedAvatarKeys.map((avatarKey) => releaseSiteAvatarDeletion({ avatarKey }))
+        claimedAvatarKeys.map((avatarKey) => releaseSiteAvatarDeletion({ avatarKey, claimId }))
       );
       throw error;
     }
@@ -201,5 +207,7 @@ export const executeS3DeleteJob = async ({ prefix, bucketName, key, keys }: S3MQ
 };
 
 export const startS3DelWorker = async () => {
-  return s3FileDeleteMQService.getWorker(async (job) => executeS3DeleteJob(job.data));
+  return s3FileDeleteMQService.getWorker(async (job) =>
+    executeS3DeleteJob(job.data, { claimId: String(job.id) })
+  );
 };

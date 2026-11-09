@@ -67,10 +67,9 @@ export async function clearExpiredMinioFiles() {
             continue;
           }
 
-          // 只有已登记 pending 的头像才能进入删除队列。若状态仍是 referenced
-          // （说明保存回调尚未完成或存在更新引用），本轮保留对象并清掉过期 TTL。
+          // 只有已登记 pending 的头像才能进入删除队列。若状态仍是 referenced/deleting，
+          // 保留 TTL 作为后续重试记录；删除唯一记录会让无法回收的对象永久失去入口。
           if (!(await markSiteAvatarDeletionPending({ avatarKey: file.minioKey }))) {
-            await MongoS3TTL.deleteOne({ _id: file._id });
             logger.info('Deferred avatar deletion because its state is not pending', {
               key: file.minioKey
             });

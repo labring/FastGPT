@@ -1,6 +1,9 @@
 import type { SystemInstanceConfig } from '@fastgpt/global/common/system/config/schema';
 import { resolveSystemInstanceConfig } from '@fastgpt/global/common/system/config/schema';
+import { getLogger, LogCategories } from '../../logger';
 import { logInstanceConfigRead } from '../migrationCoverageLog';
+
+const logger = getLogger(LogCategories.SYSTEM);
 
 /**
  * 实例配置运行时读取与快照发布。
@@ -98,7 +101,7 @@ export const publishSystemInstanceConfigSnapshot = ({
       listener(snapshot);
     } catch (error) {
       // 单个订阅者失败不能阻断配置发布或其它订阅者
-      console.error('[systemInstanceConfig] snapshot listener failed', error);
+      logger.error('Snapshot listener failed', { error });
     }
   }
 };

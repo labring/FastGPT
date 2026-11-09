@@ -5,6 +5,7 @@ import { S3Buckets } from '@fastgpt/service/common/s3/config/constants';
 import { MongoSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/schema';
 import { MongoSiteAvatarState } from '@fastgpt/service/common/s3/models/siteAvatarState';
 import {
+  claimSiteAvatarDeletion,
   markSiteAvatarDeletionPending,
   reserveSiteAvatarReferences,
   SiteAvatarDeletionInProgressError
@@ -166,6 +167,28 @@ describe('executeS3DeleteJob', () => {
 
     releaseDelete();
     await job;
+
+    expect(deleteObjectsByMultiKeys).toHaveBeenCalledWith({ keys: [avatarKey] });
+    expect(await MongoSiteAvatarState.findOne({ avatarKey })).toBeNull();
+  });
+
+  it('resumes a deletion claim owned by the same BullMQ job after interruption', async () => {
+    const avatarKey = 'avatar/team-1/interrupted.png';
+    const claimId = 'bullmq-job-1';
+    await markSiteAvatarDeletionPending({ avatarKey });
+    await expect(claimSiteAvatarDeletion({ avatarKey, claimId })).resolves.toBe('claimed');
+
+    const deleteObjectsByMultiKeys = vi.fn().mockResolvedValue({ keys: [] });
+    global.s3BucketMap = {
+      [S3Buckets.public]: {
+        client: {
+          deleteObjectsByMultiKeys,
+          deleteObjectsByPrefix: vi.fn().mockResolvedValue({ keys: [] })
+        }
+      }
+    } as any;
+
+    await executeS3DeleteJob({ bucketName: S3Buckets.public, keys: [avatarKey] }, { claimId });
 
     expect(deleteObjectsByMultiKeys).toHaveBeenCalledWith({ keys: [avatarKey] });
     expect(await MongoSiteAvatarState.findOne({ avatarKey })).toBeNull();

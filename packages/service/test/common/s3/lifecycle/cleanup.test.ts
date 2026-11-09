@@ -184,9 +184,10 @@ describe('S3 TTL cleanup', () => {
       state: 'referenced',
       referencedRevision: 2
     });
+    // 保留 TTL 作为后续重试记录：状态解除 referenced 后下一轮仍能回收对象。
     expect(
       await MongoS3TTL.find({ minioKey: avatarKey, bucketName: S3Buckets.public })
-    ).toHaveLength(0);
+    ).toHaveLength(1);
   });
 
   it('keeps avatar TTLs when current site config cannot be read', async () => {

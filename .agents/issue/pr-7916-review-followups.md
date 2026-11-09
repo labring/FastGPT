@@ -202,6 +202,27 @@
   - 覆盖：删除任务已领取时重新引用被拒绝；先引用后删除被跳过；过期 TTL 遇 referenced 状态不删除；S3 删除失败恢复 pending。
   - 位置：`packages/service/common/s3/models/siteAvatarState.ts`、`siteAvatarReferences.ts`、`cleanup.ts`、`queue/delete.ts`、`sources/avatar/index.ts`、`projects/app/src/pages/api/admin/system/config/update.ts`、`syncSiteAvatarLifecycle.ts` 及相关测试
 
+### 批次 H：最新 review 5825692925 收口
+
+- [x] **H1（review N1，P2）条件引用登记必须检查补偿 UPDATE 结果**
+  - 已实现：reservation 改为最多 3 次条件写循环，只有 `matchedCount > 0` 或 create 成功才认为取得保护；补偿写 0 命中时重新协调，最终未命中返回 `SiteAvatarDeletionInProgressError`，不再凭前一次查询继续保存。
+  - 位置：`packages/service/common/s3/siteAvatarReferences.ts`
+- [x] **H2（review N2，P2）保存失败撤销本次预登记**
+  - 已实现：预登记携带 `reservationId`；预检异常与批量事务失败都释放本次仍拥有且当前配置未引用的 referenced 状态；无法读取当前配置时保留状态，避免误释放已提交引用。清理任务无法回收时保留 TTL 作为重试记录，不再删除唯一入口。
+  - 位置：`projects/app/src/pages/api/admin/system/config/update.ts`、`packages/service/common/s3/siteAvatarReferences.ts`、`packages/service/common/s3/lifecycle/cleanup.ts`
+- [x] **H3（review N3，P2）同一 BullMQ 任务恢复已持有 claim**
+  - 已实现：状态记录 `deleteClaimedBy`，worker 使用 `job.id` 作为 claimId；同一任务重试可恢复自己的 deleting，其他任务跳过；领取和删除统一放进 try/catch，批次中途失败会释放已领取 claim。
+  - 位置：`packages/service/common/s3/queue/delete.ts`、`packages/service/common/s3/models/siteAvatarState.ts`
+- [x] **H4（review N4，P2）session 覆盖头像调度全部 Mongo 写入**
+  - 已实现：reserve/mark/claim/clear/release/getCurrent 等状态读写均支持并透传可选 session；`scheduleAvatarDeletion` 把同一 session 传给 pending 状态和 TTL 写入；新增真实 replica-set 事务中止回滚测试。
+  - 位置：`packages/service/common/s3/siteAvatarReferences.ts`、`packages/service/common/s3/sources/avatar/index.ts`、`packages/service/test/common/s3/siteAvatarReferences.test.ts`
+- [x] **H5（review N5，P3）删除无消费者的 Schema/type 别名**
+  - 已实现：删除 `SystemInstanceConfigDocumentSchema`、`parseSystemInstanceConfigDocument`、`SystemInstanceConfigType`、`SystemInstanceConfigDocumentType`、`SystemInstanceDomainOverridesType`、`SystemInstanceDomainDocument` 等无消费者别名，保留实际定义。
+  - 位置：`packages/global/common/system/config/schema.ts`、`packages/global/common/system/config/type.ts`
+- [x] **H6（review N6，P3）监听器异常统一日志**
+  - 已实现：快照监听器异常改用 SYSTEM logger 的 `{ error }` 结构化日志，保留逐监听器 catch 和继续通知其他订阅者。
+  - 位置：`packages/service/common/system/systemInstanceConfig/runtime.ts`
+
 ## 四、已完成项（不重复修）
 
 - PlanEditModal 测试兼容性：`b22b6a55f`，12 例通过，review 线程已 resolve。

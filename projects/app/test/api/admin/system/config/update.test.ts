@@ -147,6 +147,36 @@ describe('instance config update API', () => {
     });
   });
 
+  it('releases the reservation when the config transaction fails', async () => {
+    const avatarKey = 'avatar/team-1/transaction-failed.png';
+    await MongoSystemInstanceConfig.create({
+      domain: 'site',
+      revision: 1,
+      overrides: { favicon: '/api/system/img/avatar/team-1/current.png' },
+      updatedBy: { actor: 'system' }
+    });
+
+    await expect(
+      handler({
+        body: {
+          items: [
+            {
+              domain: 'site',
+              expectedRevision: 0,
+              overrides: { favicon: `/api/system/img/${avatarKey}` }
+            }
+          ]
+        }
+      } as any)
+    ).rejects.toMatchObject({ statusCode: 409 });
+
+    expect(await MongoSiteAvatarState.findOne({ avatarKey })).toBeNull();
+    expect(await MongoSystemInstanceConfig.findOne({ domain: 'site' }).lean()).toMatchObject({
+      revision: 1,
+      overrides: { favicon: '/api/system/img/avatar/team-1/current.png' }
+    });
+  });
+
   it('masks secrets in the transaction result and preserves them on the next save', async () => {
     const overrides = { documentParse: { customPdf: { key: 'private-key' } } };
     const first = await handler({

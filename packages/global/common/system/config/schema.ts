@@ -322,8 +322,6 @@ export const SystemInstanceDomainDocumentSchema = z.strictObject({
   updatedAt: z.date().default(() => new Date())
 });
 
-export const SystemInstanceConfigDocumentSchema = SystemInstanceDomainDocumentSchema;
-
 /** 解析全量生效配置，可用于初始快照构建。 */
 export const parseSystemInstanceConfig = (input: unknown): SystemInstanceConfig =>
   SystemInstanceConfigSchema.parse(input);
@@ -331,4 +329,3 @@ export const parseSystemInstanceConfig = (input: unknown): SystemInstanceConfig 
 /** 解析单个 Domain MongoDB 文档。 */
 export const parseSystemInstanceDomainDocument = (input: unknown) =>
   SystemInstanceDomainDocumentSchema.parse(input);
-export const parseSystemInstanceConfigDocument = parseSystemInstanceDomainDocument;

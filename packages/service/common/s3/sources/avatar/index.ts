@@ -73,7 +73,7 @@ class S3AvatarSource extends S3PublicBucket {
     const key = avatar.slice(this.prefix.length);
     // 先登记待删除状态，最终删除任务只有成功领取该状态后才能删除 S3 对象；
     // 若已有删除任务领取或存在更新的引用，本次不写入 TTL，避免重复排队。
-    if (!(await markSiteAvatarDeletionPending({ avatarKey: key, savedRevision }))) return;
+    if (!(await markSiteAvatarDeletionPending({ avatarKey: key, savedRevision, session }))) return;
     await MongoS3TTL.updateOne(
       { minioKey: key, bucketName: this.bucketName },
       {
