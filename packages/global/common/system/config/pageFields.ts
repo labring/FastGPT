@@ -41,6 +41,10 @@ export const adminConfigPageFieldsMap: Record<string, readonly string[]> = {
     'site.loginGuideDocUrl',
     'site.customApiDomain',
     'site.customSharePageDomain',
+    'site.customDomain.enable',
+    'site.customDomain.domain.aliyun',
+    'site.customDomain.domain.tencent',
+    'site.customDomain.domain.volcengine',
     'site.scripts'
   ],
   '/admin/settings/feature': [

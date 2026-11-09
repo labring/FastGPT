@@ -262,6 +262,7 @@ async function doInitSystemConfig({
       // 权威数据源：实例配置优先（含已迁入的 ENV 初值及管理员显式清空的空值）
       customApiDomain: instanceConfig.site.customApiDomain,
       customSharePageDomain: instanceConfig.site.customSharePageDomain,
+      customDomain: instanceConfig.site.customDomain,
       scripts: instanceConfig.site.scripts,
       mcpServerProxyEndpoint: instanceConfig.subservice.mcp.sseProxyUrl,
       limit: {

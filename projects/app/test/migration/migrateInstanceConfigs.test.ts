@@ -246,6 +246,29 @@ describe('migration buildSparseLegacyOverrides', () => {
     });
   });
 
+  it('migrates legacy custom domain settings', () => {
+    const sparse = buildSparseLegacyOverrides({
+      feConfigs: {
+        customDomain: {
+          enable: true,
+          domain: {
+            aliyun: 'aliyun.example.com',
+            tencent: 'tencent.example.com'
+          }
+        }
+      },
+      systemEnv: {}
+    });
+
+    expect(sparse.site?.customDomain).toEqual({
+      enable: true,
+      domain: {
+        aliyun: 'aliyun.example.com',
+        tencent: 'tencent.example.com'
+      }
+    });
+  });
+
   it('keeps sparse output validated by the two-phase resolver', () => {
     const sparse = buildSparseLegacyOverrides({
       feConfigs: { limit: { maxFolderDepth: 8 } },

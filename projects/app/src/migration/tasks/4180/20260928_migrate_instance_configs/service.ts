@@ -123,6 +123,14 @@ export const buildLegacyDomainOverrides = ({
     customSharePageDomain:
       optionalText(feConfigs.customSharePageDomain) ??
       optionalText(legacyEnv.CUSTOM_SHARE_PAGE_DOMAIN),
+    customDomain: compact({
+      enable: optionalBool(feConfigs.customDomain?.enable),
+      domain: compact({
+        aliyun: optionalText(feConfigs.customDomain?.domain?.aliyun),
+        tencent: optionalText(feConfigs.customDomain?.domain?.tencent),
+        volcengine: optionalText(feConfigs.customDomain?.domain?.volcengine)
+      })
+    }),
     scripts:
       Array.isArray(feConfigs.scripts) && feConfigs.scripts.length > 0
         ? (compactDeep(feConfigs.scripts) as Record<string, string>[])

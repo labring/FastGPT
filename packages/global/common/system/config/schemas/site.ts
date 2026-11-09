@@ -41,6 +41,19 @@ export const SiteConfigSchema = z.strictObject({
   customApiDomain: urlWithDefault(),
   // 自定义免登分享页面独立域名（运行期以实例配置为准）
   customSharePageDomain: urlWithDefault(),
+  // SaaS 自定义独立域名：域名是 CNAME 主机名，不要求带协议
+  customDomain: z
+    .strictObject({
+      enable: z.boolean().default(false),
+      domain: z
+        .strictObject({
+          aliyun: textWithDefault(),
+          tencent: textWithDefault(),
+          volcengine: textWithDefault()
+        })
+        .prefault({})
+    })
+    .prefault({}),
   // 前端注入的外部第三方脚本列表（键值对表示属性，如 src/async）
   scripts: z.array(z.record(z.string(), z.string())).default([])
 });

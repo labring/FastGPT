@@ -78,6 +78,17 @@ export const systemInstanceConfigRegistry: readonly SystemInstanceConfigRegistry
     ],
     { edition: 'all', secret: false, applyMode: 'live' }
   ),
+  // 自定义域名入口与 CNAME 配置沿用旧页面“SaaS 服务才会用到”的定位
+  ...createEntries(
+    'site',
+    [
+      'customDomain.enable',
+      'customDomain.domain.aliyun',
+      'customDomain.domain.tencent',
+      'customDomain.domain.volcengine'
+    ],
+    { edition: 'all', secret: false, applyMode: 'live', isSaasOnly: true }
+  ),
   ...createEntries(
     'auth',
     [

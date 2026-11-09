@@ -8,6 +8,7 @@ import { useAdminPermission } from '@/pageComponents/admin/useAdminPermission';
 import AdminSettingPage from '@/pageComponents/admin/settings/AdminSettingPage';
 import AdminSettingSection from '@/pageComponents/admin/settings/AdminSettingSection';
 import AdminFormItem from '@/pageComponents/admin/settings/AdminFormItem';
+import AdminSwitchRow from '@/pageComponents/admin/settings/AdminSwitchRow';
 import type { SettingTOCItem } from '@/pageComponents/admin/settings/AdminSettingTOC';
 import ImageInput from '@/pageComponents/admin/settings/ImageInput';
 import NavbarItems from '@/pageComponents/admin/config/components/FormField/NavbarItems';
@@ -18,15 +19,17 @@ type SiteConfigForm = SystemInstanceConfigDomainMap['site'];
 
 const SiteSettingComponent = () => {
   const { t } = useSafeTranslation();
-  const { filterConfigData } = useAdminPermission();
+  const { filterConfigData, isFieldVisible } = useAdminPermission();
   const { toast } = useToast();
+  const showCustomDomain = isFieldVisible('site.customDomain.enable');
   const tocItems: SettingTOCItem[] = useMemo(
     () => [
       { id: 'brand', label: t('admin:site_section_brand') },
       { id: 'externalLinks', label: t('admin:site_section_links') },
-      { id: 'siteCustom', label: t('admin:site_section_custom') }
+      { id: 'siteCustom', label: t('admin:site_section_custom') },
+      ...(showCustomDomain ? [{ id: 'customDomain', label: t('admin:custom_domain') }] : [])
     ],
-    [t]
+    [t, showCustomDomain]
   );
 
   const { effectiveConfig, isLoading, isUpdating, patchConfig } = useDomainConfig('site');
@@ -37,6 +40,7 @@ const SiteSettingComponent = () => {
 
   const [scriptsText, setScriptsText] = useState('');
   const navbarItems = useWatch({ control, name: 'navbarItems' });
+  const customDomainEnabled = useWatch({ control, name: 'customDomain.enable' });
 
   // 当服务端返回生效配置后，重置表单为最新值
   useEffect(() => {
@@ -202,6 +206,37 @@ const SiteSettingComponent = () => {
           />
         </AdminFormItem>
       </AdminSettingSection>
+
+      {showCustomDomain && (
+        <AdminSettingSection id="customDomain" title={t('admin:custom_domain')} showDivider>
+          <Controller
+            name="customDomain.enable"
+            control={control}
+            render={({ field }) => (
+              <AdminSwitchRow
+                label={t('admin:enable_custom_domain')}
+                tooltip={t('admin:enable_custom_domain_tip')}
+                isChecked={field.value}
+                onChange={field.onChange}
+              />
+            )}
+          />
+
+          {customDomainEnabled && (
+            <SimpleGrid columns={[1, 2]} spacing={5} mt={4}>
+              <AdminFormItem label={t('admin:custom_domain_aliyun')}>
+                <Input {...register('customDomain.domain.aliyun')} placeholder="example.com" />
+              </AdminFormItem>
+              <AdminFormItem label={t('admin:custom_domain_tencent')}>
+                <Input {...register('customDomain.domain.tencent')} placeholder="example.com" />
+              </AdminFormItem>
+              <AdminFormItem label={t('admin:custom_domain_volcengine')}>
+                <Input {...register('customDomain.domain.volcengine')} placeholder="example.com" />
+              </AdminFormItem>
+            </SimpleGrid>
+          )}
+        </AdminSettingSection>
+      )}
     </AdminSettingPage>
   );
 };
