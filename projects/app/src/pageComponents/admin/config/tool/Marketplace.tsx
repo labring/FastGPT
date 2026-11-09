@@ -1206,7 +1206,7 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
                 ) : (
                   <Flex alignItems={'center'} gap={2} fontSize={'xs'} color={'myGray.600'}>
                     <Text whiteSpace={'nowrap'} fontSize={'12px'} fontWeight={'medium'}>
-                      {t('common:Source') || '来源'}:
+                      {t('app:logs_source')}:
                     </Text>
                     <MySelect
                       w={'110px'}
@@ -1214,10 +1214,13 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
                       fontSize={'xs'}
                       value={sourceFilter ?? 'all'}
                       list={[
-                        { label: t('common:all') || '全部', value: 'all' },
-                        { label: t('common:official') || '官方', value: MarketplaceOfficialSource },
+                        { label: t('common:All'), value: 'all' },
                         {
-                          label: t('common:community') || '社区',
+                          label: t('app:toolkit_official'),
+                          value: MarketplaceOfficialSource
+                        },
+                        {
+                          label: t('app:toolkit_community'),
                           value: MarketplaceCommunitySource
                         }
                       ]}

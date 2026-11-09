@@ -1,9 +1,10 @@
 import { serviceSideProps } from '@/web/common/i18n/utils';
 import { useTranslation } from 'next-i18next';
-import { Box, Button, Flex, Grid, Input, InputGroup, VStack } from '@chakra-ui/react';
+import { Box, Button, Flex, Grid, Input, InputGroup, Text, VStack } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyBox from '@fastgpt/web/components/common/MyBox';
+import MySelect from '@fastgpt/web/components/common/MySelect';
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import ToolCard, { type ToolCardItemType } from '@fastgpt/web/components/core/plugin/tool/ToolCard';
 import ToolTagFilterBox, {
@@ -14,6 +15,10 @@ import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import { useVirtualGridList } from '@fastgpt/web/hooks/useVirtualGridList';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
+import {
+  MarketplaceCommunitySource,
+  MarketplaceOfficialSource
+} from '@fastgpt/global/openapi/core/plugin/marketplace/api';
 import {
   getDownloadURL,
   getMarketplaceToolDetail,
@@ -28,7 +33,8 @@ import {
   buildMarketplacePageUrl,
   getMarketplaceDetailQueryFromSearch,
   getSingleQueryValue,
-  type MarketplaceDetailQuery
+  type MarketplaceDetailQuery,
+  type MarketplaceTab
 } from '@/web/query';
 
 const getToolQuery = (tool: ToolCardItemType | null): MarketplaceDetailQuery | null =>
@@ -41,14 +47,27 @@ const getToolQuery = (tool: ToolCardItemType | null): MarketplaceDetailQuery | n
 
 const createQuerySelectedTool = ({
   pluginId,
-  version
+  version,
+  type
 }: Required<Pick<MarketplaceDetailQuery, 'pluginId'>> &
-  Pick<MarketplaceDetailQuery, 'version'>): ToolCardItemType => ({
+  Pick<MarketplaceDetailQuery, 'version'> & {
+    type?: MarketplaceTab;
+  }): ToolCardItemType => ({
   id: pluginId,
   name: pluginId,
   description: '',
-  version
+  version,
+  type
 });
+
+const getTabFilterValue = (
+  typeValue: string | string[] | undefined,
+  tabValue: string | string[] | undefined
+): MarketplaceTab => {
+  const type = getSingleQueryValue(typeValue);
+  const tab = getSingleQueryValue(tabValue);
+  return type === 'moderation' || tab === 'moderation' ? 'moderation' : 'tool';
+};
 
 const getSourceFilterValue = (value: string | string[] | undefined) => {
   const source = getSingleQueryValue(value);
@@ -71,10 +90,12 @@ const TOOL_GRID_TEMPLATE_COLUMNS =
 const ToolkitMarketplace = () => {
   const { t, i18n } = useTranslation();
   const router = useRouter();
-  const { search, tags, pluginId, version, source } = router.query;
+  const { search, tags, pluginId, version, source, type, tab } = router.query;
   const queryPluginId = getSingleQueryValue(pluginId);
   const queryVersion = getSingleQueryValue(version);
   const querySource = getSourceFilterValue(source);
+  const queryTab = getTabFilterValue(type, tab);
+  const [activeTab, setActiveTab] = useState<MarketplaceTab>(queryTab);
   const [inputValue, setInputValue] = useState('');
   const [searchText, setSearchText] = useState('');
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
@@ -97,6 +118,7 @@ const ToolkitMarketplace = () => {
   // 从 URL 初始化状态
   useEffect(() => {
     try {
+      setActiveTab(queryTab);
       if (search && typeof search === 'string') {
         setInputValue(search);
         setSearchText(search);
@@ -111,12 +133,14 @@ const ToolkitMarketplace = () => {
                 .map((tag) => tag.trim())
             : [];
         setSelectedTagIds(tagArray);
+      } else {
+        setSelectedTagIds([]);
       }
       setSelectedSource(querySource);
     } catch (error) {
       console.warn('Failed to initialize URL params:', error);
     }
-  }, [querySource, search, tags]);
+  }, [querySource, queryTab, search, tags]);
 
   // 使用自定义 debounce 进行实时搜索
   const [debouncedSearchText, setDebouncedSearchText] = useState(inputValue);
@@ -142,14 +166,16 @@ const ToolkitMarketplace = () => {
       newSearch: string,
       newTags: string[],
       detailQuery = detailQueryRef.current,
-      newSource = selectedSource
+      newSource = selectedSource,
+      newTab = activeTab
     ) => {
       try {
         const newUrl = buildMarketplacePageUrl({
           pathname: router.pathname,
           search: newSearch,
-          tags: newTags,
+          tags: newTab === 'tool' ? newTags : [],
           source: newSource,
+          type: newTab,
           pluginId: detailQuery?.pluginId,
           version: detailQuery?.version
         });
@@ -176,7 +202,7 @@ const ToolkitMarketplace = () => {
         // 如果 URL 操作失败，跳过更新
       }
     },
-    [router.pathname, selectedSource]
+    [activeTab, router.pathname, selectedSource]
   );
 
   const getCurrentDetailQuery = useCallback(() => {
@@ -200,9 +226,29 @@ const ToolkitMarketplace = () => {
   const handleSourceSelect = useCallback(
     (nextSource?: MarketplaceSourceFilterValue) => {
       setSelectedSource(nextSource);
-      updateUrlParams(searchText, selectedTagIds, detailQueryRef.current, nextSource);
+      updateUrlParams(searchText, selectedTagIds, detailQueryRef.current, nextSource, activeTab);
     },
-    [searchText, selectedTagIds, updateUrlParams]
+    [activeTab, searchText, selectedTagIds, updateUrlParams]
+  );
+
+  const handleTabChange = useCallback(
+    (nextTab: MarketplaceTab) => {
+      if (nextTab === activeTab) return;
+      detailQueryRef.current = null;
+      setSelectedTool(null);
+      setActiveTab(nextTab);
+      if (nextTab === 'moderation') {
+        setSelectedTagIds([]);
+      }
+      updateUrlParams(
+        searchText,
+        nextTab === 'tool' ? selectedTagIds : [],
+        null,
+        selectedSource,
+        nextTab
+      );
+    },
+    [activeTab, searchText, selectedSource, selectedTagIds, updateUrlParams]
   );
 
   const {
@@ -214,15 +260,16 @@ const ToolkitMarketplace = () => {
       getMarketplaceTools({
         pageNum,
         pageSize,
+        type: activeTab,
         searchKey: searchText || undefined,
-        tags: selectedTagIds.length > 0 ? selectedTagIds : undefined,
+        tags: activeTab === 'tool' && selectedTagIds.length > 0 ? selectedTagIds : undefined,
         source: selectedSource
       }),
     {
       type: 'scroll',
-      pageSizeCacheKey: 'marketplace-tools',
+      pageSizeCacheKey: `marketplace-tools-${activeTab}`,
       throttleWait: 500,
-      refreshDeps: [searchText, selectedTagIds, selectedSource]
+      refreshDeps: [activeTab, searchText, selectedTagIds, selectedSource]
     }
   );
 
@@ -246,17 +293,18 @@ const ToolkitMarketplace = () => {
         }),
         version: tool.version,
         source: tool.source,
-        downloadCount: tool.downloadCount
+        downloadCount: tool.downloadCount,
+        type: tool.type ?? activeTab
       };
     });
-  }, [tools, i18n.language, toolTags]);
+  }, [activeTab, tools, i18n.language, toolTags]);
 
   const selectedTagKey = selectedTagIds.join(',');
   const selectedSourceKey = selectedSource ?? 'all';
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const { gridRef, renderVirtualGridItems } = useVirtualGridList({
     list: displayTools,
-    listKey: `${searchText}-${selectedTagKey}-${selectedSourceKey}-${i18n.language}`,
+    listKey: `${activeTab}-${searchText}-${selectedTagKey}-${selectedSourceKey}-${i18n.language}`,
     scrollContainerRef,
     estimatedRowHeight: 178,
     estimatedRowGap: 20
@@ -268,7 +316,8 @@ const ToolkitMarketplace = () => {
 
     const queryDetail = {
       pluginId: currentDetailQuery.pluginId,
-      version: currentDetailQuery.version
+      version: currentDetailQuery.version,
+      type: activeTab
     };
     const matchedTool = displayTools.find((tool) => tool.id === currentDetailQuery.pluginId);
     const queryTool = matchedTool
@@ -288,38 +337,42 @@ const ToolkitMarketplace = () => {
         prev?.id === queryTool.id &&
         prev.version === queryTool.version &&
         prev.name === queryTool.name &&
-        prev.icon === queryTool.icon
+        prev.icon === queryTool.icon &&
+        prev.type === queryTool.type
       ) {
         return prev;
       }
 
       return queryTool;
     });
-  }, [displayTools, getCurrentDetailQuery]);
+  }, [activeTab, displayTools, getCurrentDetailQuery]);
 
   // 监听 selectedTagIds 变化,更新 URL
   useEffect(() => {
     updateUrlParams(searchText, selectedTagIds);
-  }, [searchText, selectedTagIds, selectedSource, updateUrlParams]);
+  }, [activeTab, searchText, selectedTagIds, selectedSource, updateUrlParams]);
 
-  const onDownload = useCallback(async (toolId: string, version?: string) => {
-    try {
-      const url = await getDownloadURL({ toolId, version });
-      if (url) {
-        // Create download link
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = '';
-        link.style.display = 'none';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+  const onDownload = useCallback(
+    async (toolId: string, version?: string, type: MarketplaceTab = activeTab) => {
+      try {
+        const url = await getDownloadURL({ toolId, version, type });
+        if (url) {
+          // Create download link
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = '';
+          link.style.display = 'none';
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        }
+      } catch (error) {
+        console.error('Download failed:', error);
+        // Can add error prompt here
       }
-    } catch (error) {
-      console.error('Download failed:', error);
-      // Can add error prompt here
-    }
-  }, []);
+    },
+    [activeTab]
+  );
 
   const handleSelectTool = useCallback(
     (tool: ToolCardItemType) => {
@@ -361,7 +414,7 @@ const ToolkitMarketplace = () => {
           item={tool}
           mode="marketplace"
           variant="marketplace"
-          onInstall={() => onDownload(tool.id)}
+          onInstall={() => onDownload(tool.id, tool.version, tool.type)}
           onClickCard={() => handleSelectTool(tool)}
         />
       </Box>
@@ -448,10 +501,53 @@ const ToolkitMarketplace = () => {
             >
               <Flex mt={2} pt={4} alignItems={'center'}>
                 <Flex
+                  p={'2px'}
+                  bg={'myGray.100'}
+                  borderRadius={'6px'}
+                  border={'1px solid'}
+                  borderColor={'myGray.200'}
+                  alignItems={'center'}
+                  mr={3}
+                  flexShrink={0}
+                  userSelect={'none'}
+                >
+                  <Button
+                    size={'xs'}
+                    h={'26px'}
+                    px={3}
+                    borderRadius={'4px'}
+                    fontSize={'12px'}
+                    fontWeight={activeTab === 'tool' ? 'semibold' : 'normal'}
+                    bg={activeTab === 'tool' ? 'white' : 'transparent'}
+                    color={activeTab === 'tool' ? 'myGray.900' : 'myGray.600'}
+                    boxShadow={activeTab === 'tool' ? 'sm' : 'none'}
+                    _hover={{ color: 'myGray.900' }}
+                    onClick={() => handleTabChange('tool')}
+                  >
+                    {t('marketplace:tab_system_tool')}
+                  </Button>
+                  <Button
+                    size={'xs'}
+                    h={'26px'}
+                    px={3}
+                    borderRadius={'4px'}
+                    fontSize={'12px'}
+                    fontWeight={activeTab === 'moderation' ? 'semibold' : 'normal'}
+                    bg={activeTab === 'moderation' ? 'white' : 'transparent'}
+                    color={activeTab === 'moderation' ? 'myGray.900' : 'myGray.600'}
+                    boxShadow={activeTab === 'moderation' ? 'sm' : 'none'}
+                    _hover={{ color: 'myGray.900' }}
+                    onClick={() => handleTabChange('moderation')}
+                  >
+                    {t('marketplace:tab_moderation')}
+                  </Button>
+                </Flex>
+                <Flex
                   alignItems={'center'}
                   transition={'all 0.3s'}
                   w={isSearchExpanded ? '320px' : 'auto'}
                   mr={4}
+                  flexShrink={0}
                 >
                   {isSearchExpanded ? (
                     <InputGroup>
@@ -527,14 +623,44 @@ const ToolkitMarketplace = () => {
                   )}
                 </Flex>
                 <Box overflow={'auto'} mr={6}>
-                  <ToolTagFilterBox
-                    tags={toolTags}
-                    selectedTagIds={selectedTagIds}
-                    onTagSelect={setSelectedTagIds}
-                    selectedSource={selectedSource}
-                    onSourceSelect={handleSourceSelect}
-                    variant="marketplace"
-                  />
+                  {activeTab === 'tool' ? (
+                    <ToolTagFilterBox
+                      tags={toolTags}
+                      selectedTagIds={selectedTagIds}
+                      onTagSelect={setSelectedTagIds}
+                      selectedSource={selectedSource}
+                      onSourceSelect={handleSourceSelect}
+                      variant="marketplace"
+                    />
+                  ) : (
+                    <Flex alignItems={'center'} gap={2} fontSize={'xs'} color={'myGray.600'}>
+                      <Text whiteSpace={'nowrap'} fontSize={'12px'} fontWeight={'medium'}>
+                        {t('app:logs_source')}:
+                      </Text>
+                      <MySelect
+                        w={'110px'}
+                        h={'32px'}
+                        fontSize={'xs'}
+                        value={selectedSource ?? 'all'}
+                        list={[
+                          { label: t('common:All'), value: 'all' },
+                          {
+                            label: t('app:toolkit_official'),
+                            value: MarketplaceOfficialSource
+                          },
+                          {
+                            label: t('app:toolkit_community'),
+                            value: MarketplaceCommunitySource
+                          }
+                        ]}
+                        onChange={(val) =>
+                          handleSourceSelect(
+                            val === 'all' ? undefined : (val as MarketplaceSourceFilterValue)
+                          )
+                        }
+                      />
+                    </Flex>
+                  )}
                 </Box>
               </Flex>
             </Box>
@@ -581,6 +707,47 @@ const ToolkitMarketplace = () => {
             <Box fontSize={'45px'} fontWeight={'semibold'} color={'black'}>
               {t('marketplace:toolkit_marketplace_title')}
             </Box>
+            <Flex
+              p={'3px'}
+              bg={'myGray.100'}
+              borderRadius={'8px'}
+              border={'1px solid'}
+              borderColor={'myGray.200'}
+              alignItems={'center'}
+              gap={1}
+              userSelect={'none'}
+            >
+              <Button
+                size={'sm'}
+                h={'28px'}
+                px={4}
+                borderRadius={'6px'}
+                fontSize={'13px'}
+                fontWeight={activeTab === 'tool' ? 'semibold' : 'normal'}
+                bg={activeTab === 'tool' ? 'white' : 'transparent'}
+                color={activeTab === 'tool' ? 'myGray.900' : 'myGray.600'}
+                boxShadow={activeTab === 'tool' ? 'sm' : 'none'}
+                _hover={{ color: 'myGray.900' }}
+                onClick={() => handleTabChange('tool')}
+              >
+                {t('marketplace:tab_system_tool')}
+              </Button>
+              <Button
+                size={'sm'}
+                h={'28px'}
+                px={4}
+                borderRadius={'6px'}
+                fontSize={'13px'}
+                fontWeight={activeTab === 'moderation' ? 'semibold' : 'normal'}
+                bg={activeTab === 'moderation' ? 'white' : 'transparent'}
+                color={activeTab === 'moderation' ? 'myGray.900' : 'myGray.600'}
+                boxShadow={activeTab === 'moderation' ? 'sm' : 'none'}
+                _hover={{ color: 'myGray.900' }}
+                onClick={() => handleTabChange('moderation')}
+              >
+                {t('marketplace:tab_moderation')}
+              </Button>
+            </Flex>
             <Box>
               <InputGroup position={'relative'}>
                 <MyIcon
@@ -621,14 +788,44 @@ const ToolkitMarketplace = () => {
               pointerEvents={showCompactSearch ? 'none' : 'auto'}
             >
               <Box flex={'1'} overflow={'auto'}>
-                <ToolTagFilterBox
-                  tags={toolTags}
-                  selectedTagIds={selectedTagIds}
-                  onTagSelect={setSelectedTagIds}
-                  selectedSource={selectedSource}
-                  onSourceSelect={handleSourceSelect}
-                  variant="marketplace"
-                />
+                {activeTab === 'tool' ? (
+                  <ToolTagFilterBox
+                    tags={toolTags}
+                    selectedTagIds={selectedTagIds}
+                    onTagSelect={setSelectedTagIds}
+                    selectedSource={selectedSource}
+                    onSourceSelect={handleSourceSelect}
+                    variant="marketplace"
+                  />
+                ) : (
+                  <Flex alignItems={'center'} gap={2} fontSize={'xs'} color={'myGray.600'}>
+                    <Text whiteSpace={'nowrap'} fontSize={'12px'} fontWeight={'medium'}>
+                      {t('app:logs_source')}:
+                    </Text>
+                    <MySelect
+                      w={'110px'}
+                      h={'32px'}
+                      fontSize={'xs'}
+                      value={selectedSource ?? 'all'}
+                      list={[
+                        { label: t('common:All'), value: 'all' },
+                        {
+                          label: t('app:toolkit_official'),
+                          value: MarketplaceOfficialSource
+                        },
+                        {
+                          label: t('app:toolkit_community'),
+                          value: MarketplaceCommunitySource
+                        }
+                      ]}
+                      onChange={(val) =>
+                        handleSourceSelect(
+                          val === 'all' ? undefined : (val as MarketplaceSourceFilterValue)
+                        )
+                      }
+                    />
+                  </Flex>
+                )}
               </Box>
             </Flex>
             {displayTools.length > 0 ? (
@@ -655,12 +852,18 @@ const ToolkitMarketplace = () => {
           selectedTool={selectedTool}
           // @ts-ignore
           onFetchDetail={async (toolId: string, version?: string) =>
-            await getMarketplaceToolDetail({ toolId, version })
+            await getMarketplaceToolDetail({
+              toolId,
+              version,
+              type: selectedTool.type ?? activeTab
+            })
           }
           onToggleInstall={(_, version) => {
-            onDownload(selectedTool.id, version);
+            onDownload(selectedTool.id, version, selectedTool.type ?? activeTab);
           }}
-          onFetchVersions={getMarketplaceToolVersions}
+          onFetchVersions={(toolId?: string) =>
+            getMarketplaceToolVersions(toolId, selectedTool.type ?? activeTab)
+          }
           onVersionChange={handleVersionChange}
         />
       )}

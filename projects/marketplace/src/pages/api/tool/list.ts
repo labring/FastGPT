@@ -17,6 +17,7 @@ export type ToolListBody = PaginationProps<{
   searchKey?: string;
   tags?: string[];
   source?: MarketplaceSourceFilterType;
+  type?: 'tool' | 'moderation';
 }>;
 
 export type ToolListItem = Omit<ToolListItemType, 'type'> & {
