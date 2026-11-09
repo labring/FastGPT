@@ -469,6 +469,9 @@ export const serviceEnv = createEnv({
       description: '图片理解模型最大处理并发数'
     }),
     // ==================== 资源限制 ====================
+    AXIOS_MAX_CONTENT_LENGTH: IntSchema.min(1).default(20).meta({
+      description: 'Default maximum decompressed Axios response size (MiB); callers may override it'
+    }),
     SERVICE_REQUEST_MAX_CONTENT_LENGTH: IntSchema.default(10).meta({
       description: '服务器接收请求的最大大小（MB）'
     }),

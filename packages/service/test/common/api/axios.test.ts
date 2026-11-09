@@ -2,6 +2,7 @@ import { afterEach, describe, it, expect, vi, beforeEach } from 'vitest';
 import http from 'http';
 import os from 'os';
 import dns from 'dns/promises';
+import { gzipSync } from 'node:zlib';
 import { createProxyAxios, type SafeAxiosRequestConfig } from '../../../common/api/axios';
 import { PRIVATE_URL_TEXT } from '../../../common/system/utils';
 import { serviceEnv } from '../../../env';
@@ -227,6 +228,92 @@ describe('axios.ts', () => {
       expect(response.data).toEqual({ ok: true });
       expect(adapter).toHaveBeenCalled();
     });
+  });
+
+  describe('response size limits', () => {
+    it.each([
+      { isDevEnv: false, limitMiB: 1 },
+      { isDevEnv: true, limitMiB: 2 }
+    ])(
+      'should use the configured $limitMiB MiB limit and preserve overrides (isDevEnv=$isDevEnv)',
+      async ({ isDevEnv, limitMiB }) => {
+        vi.resetModules();
+        vi.doMock('@fastgpt/global/common/system/constants', async (importOriginal) => ({
+          ...(await importOriginal<typeof import('@fastgpt/global/common/system/constants')>()),
+          isDevEnv
+        }));
+        vi.doMock('../../../env', async (importOriginal) => {
+          const original = await importOriginal<typeof import('../../../env')>();
+          return {
+            ...original,
+            serviceEnv: { ...original.serviceEnv, AXIOS_MAX_CONTENT_LENGTH: limitMiB }
+          };
+        });
+        clearProxyEnv();
+        const limit = limitMiB * 1024 * 1024;
+        const payload = Buffer.alloc(limit + 1, 'a');
+        const compressed = gzipSync(payload);
+        const server = http.createServer((_req, res) => {
+          res.writeHead(200, {
+            'Content-Encoding': 'gzip',
+            'Content-Length': compressed.length
+          });
+          res.end(compressed);
+        });
+
+        try {
+          const { createProxyAxios, axios, axiosWithoutSSRF } = await import(
+            '../../../common/api/axios'
+          );
+          expect(axios.defaults.maxContentLength).toBe(limit);
+          expect(axiosWithoutSSRF.defaults.maxContentLength).toBe(limit);
+          expect(axios.defaults.maxBodyLength).toBe(-1);
+
+          await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+          const address = server.address();
+          if (!address || typeof address === 'string') {
+            throw new Error('Invalid test server address');
+          }
+          const url = `http://127.0.0.1:${address.port}/`;
+          // Disable SSRF only for the loopback fixture; keep the real HTTP adapter and decompressor.
+          const instance = createProxyAxios({ proxy: false }, false);
+          const configs: Parameters<typeof instance.get>[1][] = [
+            { timeout: 30000 },
+            {
+              responseType: 'text',
+              maxRedirects: 0,
+              timeout: 30000,
+              transformResponse: (value: string) => value
+            }
+          ];
+          for (const config of configs) {
+            await expect(instance.get(url, config)).rejects.toMatchObject({
+              code: 'ERR_BAD_RESPONSE',
+              message: `maxContentLength size of ${limit} exceeded`
+            });
+          }
+
+          const response = await instance.get(url, { maxContentLength: payload.length });
+          expect(response.data.length).toBe(payload.length);
+
+          const customInstance = createProxyAxios(
+            { proxy: false, maxContentLength: payload.length, maxBodyLength: 1024 },
+            false
+          );
+          expect(customInstance.defaults.maxBodyLength).toBe(1024);
+          const customResponse = await customInstance.get(url);
+          expect(customResponse.data.length).toBe(payload.length);
+        } finally {
+          server.closeAllConnections();
+          await new Promise<void>((resolve, reject) => {
+            server.close((error) => (error ? reject(error) : resolve()));
+          });
+          vi.doUnmock('@fastgpt/global/common/system/constants');
+          vi.doUnmock('../../../env');
+          vi.resetModules();
+        }
+      }
+    );
   });
 
   describe('axios 导出实例', () => {

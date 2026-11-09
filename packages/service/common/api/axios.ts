@@ -11,6 +11,7 @@ import { isIP } from 'net';
 import { ProxyAgent, type ProxyAgentOptions } from 'proxy-agent';
 import { getProxyForUrl } from 'proxy-from-env';
 import { isDevEnv } from '@fastgpt/global/common/system/constants';
+import { serviceEnv } from '../../env';
 import { isInternalAddress, isInternalResolvedIP, PRIVATE_URL_TEXT } from '../system/utils';
 
 /**
@@ -398,17 +399,23 @@ export const httpsCertificateIgnoreAgent = createProxyAgent({
   rejectUnauthorized: false
 });
 
+/**
+ * Create a shared HTTP client with the configured decompressed response limit in every environment.
+ * Trusted callers can override maxContentLength per instance or request for larger responses.
+ * Request body limits are intentionally unchanged to preserve upload compatibility.
+ */
 export function createProxyAxios(config?: AxiosRequestConfig, ssrfCheck = true) {
   const agent = createProxyAgent();
 
-  const instance = isDevEnv
-    ? _.create(config)
-    : _.create({
-        proxy: false,
-        httpAgent: agent,
-        httpsAgent: agent,
-        ...config
-      });
+  const instance = _.create({
+    maxContentLength: serviceEnv.AXIOS_MAX_CONTENT_LENGTH * 1024 * 1024,
+    ...(!isDevEnv && {
+      proxy: false,
+      httpAgent: agent,
+      httpsAgent: agent
+    }),
+    ...config
+  });
 
   return ssrfCheck ? addSSRFInterceptor(instance) : instance;
 }
