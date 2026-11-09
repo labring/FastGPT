@@ -229,6 +229,23 @@ describe('migration buildSparseLegacyOverrides', () => {
     expect(sparse.feature?.showGit).toBeUndefined();
   });
 
+  it('migrates legacy feature visibility flags', () => {
+    const sparse = buildSparseLegacyOverrides({
+      feConfigs: {
+        show_workflow_builder: false,
+        show_openai_account: true,
+        enable_team_model: true
+      },
+      systemEnv: {}
+    });
+
+    expect(sparse.feature).toMatchObject({
+      showWorkflowBuilder: false,
+      showOpenaiAccount: true,
+      enableTeamModel: true
+    });
+  });
+
   it('keeps sparse output validated by the two-phase resolver', () => {
     const sparse = buildSparseLegacyOverrides({
       feConfigs: { limit: { maxFolderDepth: 8 } },

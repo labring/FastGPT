@@ -95,6 +95,42 @@ const FeatureSettingComponent = () => {
               />
             )}
           />
+          <Controller
+            name="showWorkflowBuilder"
+            control={control}
+            render={({ field }) => (
+              <AdminSwitchRow
+                label={t('admin:show_workflow_builder')}
+                tooltip={t('admin:show_workflow_builder_tip')}
+                isChecked={field.value}
+                onChange={field.onChange}
+              />
+            )}
+          />
+          <Controller
+            name="showOpenaiAccount"
+            control={control}
+            render={({ field }) => (
+              <AdminSwitchRow
+                label={t('admin:show_openai_account')}
+                tooltip={t('admin:show_openai_account_tip')}
+                isChecked={field.value}
+                onChange={field.onChange}
+              />
+            )}
+          />
+          <Controller
+            name="enableTeamModel"
+            control={control}
+            render={({ field }) => (
+              <AdminSwitchRow
+                label={t('admin:enable_team_model')}
+                tooltip={t('admin:enable_team_model_tip')}
+                isChecked={field.value}
+                onChange={field.onChange}
+              />
+            )}
+          />
         </SimpleGrid>
       </AdminSettingSection>
 

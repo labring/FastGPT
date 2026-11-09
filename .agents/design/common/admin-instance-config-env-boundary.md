@@ -1064,7 +1064,7 @@ Server、Agent Sandbox Proxy 和 IDE Agent 的运行时变量。为了避免“�
 
 ### 13.6 逐字段版本、表单与页面映射
 
-本表逐项覆盖注册表的 **196 个配置叶子**，不使用通配符或虚构的聚合字段。字段定义与默认值以 `schemas/*.ts` 为准，版本、敏感项和 SaaS 显示条件以 `registry.ts` 为准；页面归属与 `pageFields.ts`、实际表单保持一致。
+本表逐项覆盖注册表的 **199 个配置叶子**，不使用通配符或虚构的聚合字段。字段定义与默认值以 `schemas/*.ts` 为准，版本、敏感项和 SaaS 显示条件以 `registry.ts` 为准；页面归属与 `pageFields.ts`、实际表单保持一致。
 
 - 社区版／商业版的勾选表示配置 API 的读写权限；商业版按是否配置 `PRO_URL` 判定，不依赖 License 是否激活。
 - “仅 SaaS 显示”表示 `ENABLE_SAAS_ADMIN_CONFIG=true` 才显示对应控件，**不收紧商业版 API 权限**。标为“仅 API”的字段当前没有新表单，开启显示开关也不会产生控件。
@@ -1168,6 +1168,9 @@ Server、Agent Sandbox Proxy 和 IDE Agent 的运行时变量。为了避免“�
 | `feature.agentEngine` | Agent 执行引擎 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/core` |
 | `feature.disableCache` | 关闭运行时缓存 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/feature` |
 | `feature.enableTeamPluginUpload` | 允许团队上传插件 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/feature` |
+| `feature.showWorkflowBuilder` | 显示工作流编排入口 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/feature` |
+| `feature.showOpenaiAccount` | 用户可配置 OpenAI 账号 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/feature` |
+| `feature.enableTeamModel` | 启用团队模型 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/feature` |
 | `feature.showDatasetFeishu` | 知识库接入飞书 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/feature` |
 | `feature.showDatasetYuque` | 知识库接入语雀 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/feature` |
 | `feature.showDatasetDingtalk` | 知识库接入钉钉 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/feature` |

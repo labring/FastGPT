@@ -6,6 +6,9 @@ export const FeatureConfigSchema = z.strictObject({
   agentEngine: z.enum(['fastAgent', 'piAgent']).default('fastAgent'),
   disableCache: z.boolean().default(false),
   enableTeamPluginUpload: z.boolean().default(false),
+  showWorkflowBuilder: z.boolean().default(true),
+  showOpenaiAccount: z.boolean().default(false),
+  enableTeamModel: z.boolean().default(false),
   // 业务入口可见性开关（决定各接入渠道在前端是否可见）
   showDatasetFeishu: z.boolean().default(true),
   showDatasetYuque: z.boolean().default(true),

@@ -122,8 +122,8 @@
 
 #### C2. 业务仍在用但没有新配置入口（依赖 D1）
 
-- [ ] **C2.1（原第 19 项）`show_workflow_builder`**：补 `feature` 字段/表单/映射。
-- [ ] **C2.2（原第 20 项）`show_openai_account`、`enable_team_model`**：补 `feature` 字段/表单/映射。
+- [x] **C2.1（原第 19 项）`show_workflow_builder`**：已补 `feature` 字段/表单/迁移/App 与 Pro 映射。
+- [x] **C2.2（原第 20 项）`show_openai_account`、`enable_team_model`**：已补 `feature` 字段/表单/迁移/App 与 Pro 映射。
 - [ ] **C2.3（原第 21 项）`customDomain.enable/domain.*`**：补 `site` 字段/表单/映射。
 - [ ] **C2.4（原第 22 项）`systemEnv.customDomain.kc/issuer/nginx.*`**：确认归 ENV，或补 Pro 部署配置入口。
 - [ ] **C2.5（原第 23 项）`sso.title/icon/autoLogin/disablePasswordForSsoUsers`**：补 `auth.sso` 字段/表单/映射。
