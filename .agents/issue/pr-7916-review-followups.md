@@ -166,7 +166,7 @@
 ### 批次 F：文档与注释
 
 - [ ] **F1（原第 35 项）`alipay.endpoint` 误标**：实际已传给 Pro `AlipaySdk`，删除“业务未接入”标记。
-- [ ] **F2（原第 36 项）`SYNC_INDEX` 文档**：与 C1.9 一起处理，仍列为保留 ENV 的说明要删除。
+- [x] **F2（原第 36 项）`SYNC_INDEX` 文档**：已随 C1.9 删除当前 ENV 文档中的保留说明。
 - [ ] **F3（原第 37 项）`CHINESE_IP_REDIRECT_URL` 旧映射说明**：改为 ENV 权威描述。
 - [ ] **F4（原第 38 项）过期注释**：清理已移除 ENV 兜底、旧页面、旧字段相关注释。
 - 位置：`.agents/design/common/admin-instance-config-env-boundary.md` 及相关源码注释
