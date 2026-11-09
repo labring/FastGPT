@@ -414,5 +414,13 @@
   "enterprise_auth_cancel": "취소",
   "enterprise_auth_start": "인증 시작",
   "enterprise_auth_verify_with_remaining": "인증 ({{count}}회 남음)",
-  "move_skill": "스킬 이동"
+  "move_skill": "스킬 이동",
+  "admin_delete_user": "사용자 삭제",
+  "account_cancellation_submit": "계정 삭제 요청",
+  "account_cancellation_cancel": "계정 삭제 취소",
+  "account_cancellation_finalize": "계정 삭제 정리 완료",
+  "log_admin_delete_user": "【{{name}}】님이 사용자 [{{userName}}]을(를) 삭제했습니다",
+  "log_account_cancellation_submit": "【{{name}}】님이 계정 삭제 요청을 제출했습니다",
+  "log_account_cancellation_cancel": "【{{name}}】님이 계정 삭제 요청을 취소했습니다",
+  "log_account_cancellation_finalize": "【{{name}}】님이 계정 삭제 정리를 완료했습니다"
 }
