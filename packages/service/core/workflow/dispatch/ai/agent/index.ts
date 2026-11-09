@@ -26,6 +26,7 @@ import { getWorkflowFileMaxAmount, getWorkflowSandboxContext } from '../../../ut
 import { loadWorkflowModelResource } from '../../../resource/service';
 import { runtimeSummaryToNodeSummary, stripNodeSummaryErrorFields } from '../../utils/summary';
 import { getNodeErrResponse, removeUnfinishedInteractiveHistories } from '../../utils';
+import { getDispatchModerationContext } from '../../utils/runtime';
 import { getWorkflowNodeMemoryKey, WorkflowMemoryState } from '../../../memory/state';
 import {
   buildAgentLoopCoreDoneMemories,
@@ -276,15 +277,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     }
 
     // 锚点 2：进入模型前审查用户输入与系统提示词
-    const moderationContext = {
-      teamId: runningUserInfo?.teamId,
-      tmbId: runningUserInfo?.tmbId,
-      appId: runningAppInfo?.sourceId,
-      chatId,
-      responseChatItemId,
-      nodeId: props.node.nodeId,
-      nodeName: props.node.name
-    };
+    const moderationContext = getDispatchModerationContext(props);
 
     const checked = await checkModelPromptAndInput({
       userChatInput,

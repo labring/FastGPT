@@ -5,6 +5,7 @@ import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
 import { useToast } from '@fastgpt/web/hooks/useToast';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import type { AdminModerationPluginItemType } from '@fastgpt/global/core/plugin/moderation/type';
 
 type PluginItemRowProps = {
@@ -23,6 +24,7 @@ const PluginItemRow: React.FC<PluginItemRowProps> = ({
   onDelete
 }) => {
   const { toast } = useToast();
+  const { t } = useSafeTranslation();
 
   const isConfigured = !!plugin.hasConfiguredSecrets;
 
@@ -32,7 +34,7 @@ const PluginItemRow: React.FC<PluginItemRowProps> = ({
     if (!isConfigured) {
       toast({
         status: 'warning',
-        title: '请先配置插件参数'
+        title: t('admin:moderation.configure_params_first')
       });
       return;
     }
@@ -82,7 +84,7 @@ const PluginItemRow: React.FC<PluginItemRowProps> = ({
           shouldWrapChildren={false}
         >
           <Box minW={0} isTruncated fontSize={'sm'} color={'myGray.600'}>
-            {plugin.description || '暂无介绍'}
+            {plugin.description || t('admin:moderation.no_description')}
           </Box>
         </MyTooltip>
       </Box>
@@ -94,7 +96,9 @@ const PluginItemRow: React.FC<PluginItemRowProps> = ({
           fontWeight={'medium'}
           color={isConfigured ? 'primary.600' : 'red.600'}
         >
-          {isConfigured ? '已配置' : '待配置'}
+          {isConfigured
+            ? t('admin:moderation.status_configured')
+            : t('admin:moderation.status_unconfigured')}
         </Text>
       </Flex>
       {/* Actions column (100px). */}
@@ -103,7 +107,7 @@ const PluginItemRow: React.FC<PluginItemRowProps> = ({
           {/* 编辑配置按钮 */}
           <MyIconButton
             icon="common/setting"
-            tip="配置参数"
+            tip={t('admin:moderation.configure_params')}
             size={'16px'}
             w={'24px'}
             h={'24px'}
@@ -116,12 +120,12 @@ const PluginItemRow: React.FC<PluginItemRowProps> = ({
           {/* 删除插件按钮二次确认气泡 */}
           <PopoverConfirm
             type="delete"
-            content="确认卸载该审核插件？已保存的配置将保留，可从插件市场重新安装恢复。"
+            content={t('admin:moderation.confirm_uninstall_plugin')}
             onConfirm={onDelete}
             Trigger={
               <MyIconButton
                 icon="common/trash"
-                tip="卸载插件"
+                tip={t('admin:moderation.uninstall_plugin')}
                 size={'16px'}
                 w={'24px'}
                 h={'24px'}

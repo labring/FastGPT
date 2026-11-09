@@ -105,5 +105,11 @@ export const findModerationRecords = async ({
       .lean<ModerationRecordType[]>()
   ]);
 
-  return { total, list };
+  return {
+    total,
+    list: list.map((item) => ({
+      ...item,
+      _id: String(item._id)
+    }))
+  };
 };

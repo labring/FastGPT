@@ -3,6 +3,7 @@ import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/type';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
 import { getLocale } from '@fastgpt/service/common/middle/i18n';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { ModerationResultSchema } from '@fastgpt/global/sdk/fastgpt-plugin';
 import {
   RawModerationCheckBodySchema,
   type RawModerationCheckBodyType,
@@ -34,13 +35,15 @@ export async function handler(
     bodySchema: RawModerationCheckBodySchema
   }).body;
 
-  return checkModerationForTest({
+  const result = await checkModerationForTest({
     pluginId,
     version,
     secrets,
     input,
     lang: getLocale(req)
   });
+
+  return ModerationResultSchema.parse(result);
 }
 
 export default NextAPI(handler);

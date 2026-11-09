@@ -19,11 +19,15 @@ export const getMarketplaceToolDetail = (data: GetMarketplaceToolDetailQueryType
 export const getMarketPlaceToolTags = () =>
   GET<GetMarketplaceToolTagsResponseType>('/marketplace/api/tool/tags');
 
-export const getMarketplaceDownloadURL = (
-  toolId: string,
-  version?: string,
-  type?: 'tool' | 'moderation'
-) =>
+export const getMarketplaceDownloadURL = ({
+  toolId,
+  version,
+  type
+}: {
+  toolId: string;
+  version?: string;
+  type?: 'tool' | 'moderation';
+}) =>
   GET<GetMarketplaceDownloadUrlResponseType>('/marketplace/api/tool/getDownloadUrl', {
     toolId,
     ...(version ? { version } : {}),

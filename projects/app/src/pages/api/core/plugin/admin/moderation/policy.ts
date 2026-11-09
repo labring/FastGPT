@@ -32,7 +32,8 @@ export async function handler(
   await authSystemAdmin({ req });
 
   if (req.method === 'GET') {
-    return getModerationPolicy();
+    const policy = await getModerationPolicy();
+    return SystemModerationPolicySchema.parse(policy);
   }
 
   const { body } = parseApiInput({
@@ -40,7 +41,8 @@ export async function handler(
     bodySchema: SystemModerationPolicySchema
   });
 
-  return updateModerationPolicy(body);
+  const updated = await updateModerationPolicy(body);
+  return SystemModerationPolicySchema.parse(updated);
 }
 
 export default NextAPI(handler);

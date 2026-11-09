@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
-import { useTranslation } from 'next-i18next';
+import React, { useState } from 'react';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import AdminContainer from '@/pageComponents/admin/AdminContainer';
 import {
   Badge,
@@ -36,7 +36,7 @@ type StageFilterValue = 'all' | `${ModerationStageEnum}`;
 type VerdictFilterValue = 'all' | NonNullable<GetModerationRecordsBodyType['verdict']>;
 
 const ModerationRecords = () => {
-  const { t } = useTranslation();
+  const { t } = useSafeTranslation();
   const [stageFilter, setStageFilter] = useState<StageFilterValue>('all');
 
   const [verdictFilter, setVerdictFilter] = useState<VerdictFilterValue>('all');
@@ -71,20 +71,41 @@ const ModerationRecords = () => {
     switch (stage) {
       case ModerationStageEnum.entry:
         return (
-          <Badge colorScheme="blue" variant="subtle" px={2} py={0.5} borderRadius={'md'} fontSize={'xs'}>
-            用户输入
+          <Badge
+            colorScheme="blue"
+            variant="subtle"
+            px={2}
+            py={0.5}
+            borderRadius={'md'}
+            fontSize={'xs'}
+          >
+            {t('admin:moderation.hook_user_input')}
           </Badge>
         );
       case ModerationStageEnum.modelInput:
         return (
-          <Badge colorScheme="purple" variant="subtle" px={2} py={0.5} borderRadius={'md'} fontSize={'xs'}>
-            模型输入
+          <Badge
+            colorScheme="purple"
+            variant="subtle"
+            px={2}
+            py={0.5}
+            borderRadius={'md'}
+            fontSize={'xs'}
+          >
+            {t('admin:moderation.hook_model_input')}
           </Badge>
         );
       case ModerationStageEnum.output:
         return (
-          <Badge colorScheme="orange" variant="subtle" px={2} py={0.5} borderRadius={'md'} fontSize={'xs'}>
-            最终输出
+          <Badge
+            colorScheme="orange"
+            variant="subtle"
+            px={2}
+            py={0.5}
+            borderRadius={'md'}
+            fontSize={'xs'}
+          >
+            {t('admin:moderation.hook_final_output')}
           </Badge>
         );
       default:
@@ -97,25 +118,25 @@ const ModerationRecords = () => {
       case 'pass':
         return (
           <Badge colorScheme="green" px={2} py={0.5} borderRadius={'md'} fontSize={'xs'}>
-            通过 (Pass)
+            {t('admin:moderation.verdict_badge_pass')}
           </Badge>
         );
       case 'suspected':
         return (
           <Badge colorScheme="yellow" px={2} py={0.5} borderRadius={'md'} fontSize={'xs'}>
-            疑似 (Suspected)
+            {t('admin:moderation.verdict_badge_suspected')}
           </Badge>
         );
       case 'block':
         return (
           <Badge colorScheme="red" px={2} py={0.5} borderRadius={'md'} fontSize={'xs'}>
-            拦截 (Block)
+            {t('admin:moderation.verdict_badge_block')}
           </Badge>
         );
       case 'error':
         return (
           <Badge colorScheme="gray" px={2} py={0.5} borderRadius={'md'} fontSize={'xs'}>
-            异常 (Error)
+            {t('admin:moderation.verdict_badge_error')}
           </Badge>
         );
       default:
@@ -128,19 +149,19 @@ const ModerationRecords = () => {
       case ModerationActionEnum.pass:
         return (
           <Text fontSize={'xs'} color={'green.600'} fontWeight={'medium'}>
-            放行
+            {t('admin:moderation.action_pass')}
           </Text>
         );
       case ModerationActionEnum.block:
         return (
           <Text fontSize={'xs'} color={'red.600'} fontWeight={'medium'}>
-            拦截
+            {t('admin:moderation.action_block')}
           </Text>
         );
       case ModerationActionEnum.replace:
         return (
           <Text fontSize={'xs'} color={'orange.600'} fontWeight={'medium'}>
-            替换
+            {t('admin:moderation.action_replace')}
           </Text>
         );
       default:
@@ -164,10 +185,10 @@ const ModerationRecords = () => {
         >
           <Flex alignItems={'center'} gap={3}>
             <Text fontSize={'lg'} fontWeight={'bold'} color={'myGray.900'}>
-              审核记录
+              {t('admin:moderation.records_title')}
             </Text>
             <Text fontSize={'xs'} color={'myGray.500'}>
-              共 {total} 条审查记录
+              {t('admin:moderation.records_total', { total })}
             </Text>
           </Flex>
 
@@ -178,10 +199,16 @@ const ModerationRecords = () => {
               h={'32px'}
               value={stageFilter}
               list={[
-                { label: '全部环节', value: 'all' },
-                { label: '用户输入', value: ModerationStageEnum.entry },
-                { label: '模型输入', value: ModerationStageEnum.modelInput },
-                { label: '最终输出', value: ModerationStageEnum.output }
+                { label: t('admin:moderation.all_stages'), value: 'all' },
+                { label: t('admin:moderation.hook_user_input'), value: ModerationStageEnum.entry },
+                {
+                  label: t('admin:moderation.hook_model_input'),
+                  value: ModerationStageEnum.modelInput
+                },
+                {
+                  label: t('admin:moderation.hook_final_output'),
+                  value: ModerationStageEnum.output
+                }
               ]}
               onChange={(val) => setStageFilter(val as StageFilterValue)}
             />
@@ -192,11 +219,11 @@ const ModerationRecords = () => {
               h={'32px'}
               value={verdictFilter}
               list={[
-                { label: '全部裁决', value: 'all' },
-                { label: '通过 (Pass)', value: 'pass' },
-                { label: '疑似 (Suspected)', value: 'suspected' },
-                { label: '拦截 (Block)', value: 'block' },
-                { label: '异常 (Error)', value: 'error' }
+                { label: t('admin:moderation.all_verdicts'), value: 'all' },
+                { label: t('admin:moderation.verdict_badge_pass'), value: 'pass' },
+                { label: t('admin:moderation.verdict_badge_suspected'), value: 'suspected' },
+                { label: t('admin:moderation.verdict_badge_block'), value: 'block' },
+                { label: t('admin:moderation.verdict_badge_error'), value: 'error' }
               ]}
               onChange={(val) => setVerdictFilter(val as VerdictFilterValue)}
             />
@@ -216,8 +243,16 @@ const ModerationRecords = () => {
         {/* 记录表格内容区 */}
         <Box flex={1} overflow={'auto'} p={6}>
           {records.length === 0 && !isLoading ? (
-            <Flex h={'300px'} alignItems={'center'} justifyContent={'center'} bg={'white'} borderRadius={'md'} border={'1px solid'} borderColor={'myGray.200'}>
-              <EmptyTip text="暂无内容审核记录" />
+            <Flex
+              h={'300px'}
+              alignItems={'center'}
+              justifyContent={'center'}
+              bg={'white'}
+              borderRadius={'md'}
+              border={'1px solid'}
+              borderColor={'myGray.200'}
+            >
+              <EmptyTip text={t('admin:moderation.empty_records')} />
             </Flex>
           ) : (
             <Box
@@ -231,28 +266,28 @@ const ModerationRecords = () => {
                 <Thead bg={'myGray.50'}>
                   <Tr h={'40px'}>
                     <Th fontSize={'xs'} color={'myGray.600'} w={'100px'}>
-                      环节
+                      {t('admin:moderation.col_stage')}
                     </Th>
                     <Th fontSize={'xs'} color={'myGray.600'} w={'110px'}>
-                      裁决
+                      {t('admin:moderation.col_verdict')}
                     </Th>
                     <Th fontSize={'xs'} color={'myGray.600'} w={'80px'}>
-                      动作
+                      {t('admin:moderation.col_action')}
                     </Th>
                     <Th fontSize={'xs'} color={'myGray.600'} minW={'220px'}>
-                      送审文本
+                      {t('admin:moderation.col_content')}
                     </Th>
                     <Th fontSize={'xs'} color={'myGray.600'} minW={'140px'}>
-                      敏感词 / 标签
+                      {t('admin:moderation.col_keywords_labels')}
                     </Th>
                     <Th fontSize={'xs'} color={'myGray.600'} w={'140px'}>
-                      服务提供商
+                      {t('admin:moderation.col_provider')}
                     </Th>
                     <Th fontSize={'xs'} color={'myGray.600'} w={'90px'}>
-                      耗时
+                      {t('admin:moderation.col_duration')}
                     </Th>
                     <Th fontSize={'xs'} color={'myGray.600'} w={'160px'}>
-                      触发时间
+                      {t('admin:moderation.col_time')}
                     </Th>
                   </Tr>
                 </Thead>
@@ -273,17 +308,29 @@ const ModerationRecords = () => {
                         <Flex wrap={'wrap'} gap={1}>
                           {item.keywords && item.keywords.length > 0
                             ? item.keywords.map((kw, i) => (
-                                <Badge key={i} colorScheme="red" variant="subtle" fontSize={'2xs'} px={1.5}>
+                                <Badge
+                                  key={i}
+                                  colorScheme="red"
+                                  variant="subtle"
+                                  fontSize={'2xs'}
+                                  px={1.5}
+                                >
                                   {kw}
                                 </Badge>
                               ))
                             : item.hits && item.hits.length > 0
-                            ? item.hits.map((h, i) => (
-                                <Badge key={i} colorScheme="orange" variant="subtle" fontSize={'2xs'} px={1.5}>
-                                  {formatModerationLabel(h.label, t)}
-                                </Badge>
-                              ))
-                            : '-'}
+                              ? item.hits.map((h, i) => (
+                                  <Badge
+                                    key={i}
+                                    colorScheme="orange"
+                                    variant="subtle"
+                                    fontSize={'2xs'}
+                                    px={1.5}
+                                  >
+                                    {formatModerationLabel(h.label, t)}
+                                  </Badge>
+                                ))
+                              : '-'}
                         </Flex>
                       </Td>
                       <Td fontSize={'xs'} color={'myGray.600'}>

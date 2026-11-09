@@ -1,11 +1,14 @@
 'use client';
 
 import React from 'react';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import AdminContainer from '@/pageComponents/admin/AdminContainer';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { Box, Flex, Text } from '@chakra-ui/react';
 
 const ModerationLogsPage = () => {
+  const { t } = useSafeTranslation();
+
   return (
     <AdminContainer>
       <Flex flexDirection={'column'} h={'100%'} bg={'myGray.50'}>
@@ -19,7 +22,7 @@ const ModerationLogsPage = () => {
           bg={'white'}
         >
           <Text fontSize={'lg'} fontWeight={'bold'} color={'myGray.900'}>
-            审核服务日志
+            {t('admin:moderation.logs_title')}
           </Text>
         </Flex>
 
@@ -33,7 +36,7 @@ const ModerationLogsPage = () => {
             border={'1px solid'}
             borderColor={'myGray.200'}
           >
-            <EmptyTip text="当前暂无内容审核服务的异常告警日志" />
+            <EmptyTip text={t('admin:moderation.empty_logs')} />
           </Flex>
         </Box>
       </Flex>

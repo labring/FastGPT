@@ -58,11 +58,15 @@ export const getToolTags = async () => {
   return res.data as Array<SystemPluginToolTagType>;
 };
 
-export const getDownloadURL = async (
-  toolId: string,
-  version?: string,
-  type?: 'tool' | 'moderation'
-) => {
+export const getDownloadURL = async ({
+  toolId,
+  version,
+  type
+}: {
+  toolId: string;
+  version?: string;
+  type?: 'tool' | 'moderation';
+}) => {
   const params = new URLSearchParams({ toolId });
   if (version) {
     params.set('version', version);

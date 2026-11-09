@@ -28,7 +28,7 @@ const isJSONSchemaInput = (value: unknown): value is JSONSchemaInputType =>
 
 const EditPluginModal: React.FC<EditPluginModalProps> = ({ plugin, onClose, onSuccess }) => {
   const { toast } = useToast();
-  const { i18n } = useSafeTranslation();
+  const { t, i18n } = useSafeTranslation();
 
   const inputList = useMemo(
     () =>
@@ -82,7 +82,7 @@ const EditPluginModal: React.FC<EditPluginModalProps> = ({ plugin, onClose, onSu
             ) {
               toast({
                 status: 'warning',
-                title: `请填写必填项: ${field.label || field.key}`
+                title: t('admin:moderation.required_field', { label: field.label || field.key })
               });
               return;
             }
@@ -97,7 +97,7 @@ const EditPluginModal: React.FC<EditPluginModalProps> = ({ plugin, onClose, onSu
 
       toast({
         status: 'success',
-        title: '配置已保存'
+        title: t('admin:moderation.config_saved')
       });
       onSuccess();
       onClose();
@@ -109,8 +109,8 @@ const EditPluginModal: React.FC<EditPluginModalProps> = ({ plugin, onClose, onSu
       onError: () => {
         toast({
           status: 'error',
-          title: '配置保存失败',
-          description: '未能完成配置检测或保存。请检查凭据、接口地址及服务权限，稍后重试。'
+          title: t('admin:moderation.config_save_failed'),
+          description: t('admin:moderation.config_save_failed_desc')
         });
       }
     }
@@ -126,10 +126,10 @@ const EditPluginModal: React.FC<EditPluginModalProps> = ({ plugin, onClose, onSu
       footer={
         <>
           <Button variant={'whiteBase'} onClick={onClose} isDisabled={saving}>
-            取消
+            {t('common:Cancel')}
           </Button>
           <Button onClick={() => void handleSave().catch(() => {})} isLoading={saving}>
-            保存
+            {t('common:Save')}
           </Button>
         </>
       }
@@ -137,7 +137,7 @@ const EditPluginModal: React.FC<EditPluginModalProps> = ({ plugin, onClose, onSu
       <Flex flexDirection={'column'} gap={5}>
         {inputList.length === 0 ? (
           <Text color={'myGray.500'} fontSize={'sm'}>
-            该插件无需配置附加参数。
+            {t('admin:moderation.no_extra_params')}
           </Text>
         ) : (
           inputList.map((item) => {
@@ -177,7 +177,7 @@ const EditPluginModal: React.FC<EditPluginModalProps> = ({ plugin, onClose, onSu
                     >
                       <MyIcon name="checkCircle" w={'16px'} color={'primary.600'} />
                       <Text fontSize={'sm'} color={'primary.700'}>
-                        已配置凭据
+                        {t('admin:moderation.credentials_configured')}
                       </Text>
                     </Flex>
                     <Button
@@ -185,13 +185,16 @@ const EditPluginModal: React.FC<EditPluginModalProps> = ({ plugin, onClose, onSu
                       variant={'whiteBase'}
                       onClick={() => handleClearSecret(item.key)}
                     >
-                      修改
+                      {t('admin:moderation.edit')}
                     </Button>
                   </Flex>
                 ) : item.inputType === 'secret' ? (
                   <HiddenInput
                     h={'36px'}
-                    placeholder={item.placeholder ?? `请输入 ${item.label || item.key}`}
+                    placeholder={
+                      item.placeholder ??
+                      t('admin:moderation.input_placeholder', { label: item.label || item.key })
+                    }
                     value={typeof val === 'string' ? val : ''}
                     onChange={(e) => handleFieldChange(item.key, e.target.value)}
                   />
@@ -204,7 +207,10 @@ const EditPluginModal: React.FC<EditPluginModalProps> = ({ plugin, onClose, onSu
                   <MyNumberInput
                     h={'36px'}
                     w={'100%'}
-                    placeholder={item.placeholder ?? `请输入 ${item.label || item.key}`}
+                    placeholder={
+                      item.placeholder ??
+                      t('admin:moderation.input_placeholder', { label: item.label || item.key })
+                    }
                     value={val ?? ''}
                     onChange={(value) => {
                       // Optional cleared numbers must submit null to explicitly delete the stored field in JSON.
@@ -214,7 +220,10 @@ const EditPluginModal: React.FC<EditPluginModalProps> = ({ plugin, onClose, onSu
                 ) : item.inputType === 'select' ? (
                   <MySelect
                     width={'100%'}
-                    placeholder={item.placeholder ?? `请选择 ${item.label || item.key}`}
+                    placeholder={
+                      item.placeholder ??
+                      t('admin:moderation.select_placeholder', { label: item.label || item.key })
+                    }
                     value={val}
                     list={
                       item.list?.map((opt) => ({
@@ -227,7 +236,10 @@ const EditPluginModal: React.FC<EditPluginModalProps> = ({ plugin, onClose, onSu
                 ) : (
                   <Input
                     h={'36px'}
-                    placeholder={item.placeholder ?? `请输入 ${item.label || item.key}`}
+                    placeholder={
+                      item.placeholder ??
+                      t('admin:moderation.input_placeholder', { label: item.label || item.key })
+                    }
                     value={val ?? ''}
                     onChange={(e) => handleFieldChange(item.key, e.target.value)}
                   />

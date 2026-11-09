@@ -1,13 +1,13 @@
 import React from 'react';
 import { Box } from '@chakra-ui/react';
-import { ModerationStageEnum } from '@fastgpt/global/core/plugin/moderation/constants';
-import type { NodeModerationRecordType } from '@fastgpt/global/core/plugin/moderation/type';
+
+const MAX_SNIPPET_LEN = 120;
 
 /**
  * 从长文本中截取包含关键词的局部文字片段（前后保留适度上下文并添加省略号）
  */
-export const extractContentSnippet = (text: string, keywords: string[], maxLen = 120): string => {
-  if (!text || text.length <= maxLen) return text;
+export const extractContentSnippet = (text: string, keywords: string[]): string => {
+  if (!text || text.length <= MAX_SNIPPET_LEN) return text;
 
   // 寻找首个关键词在文本中的出现位置
   let firstIndex = -1;
@@ -22,14 +22,14 @@ export const extractContentSnippet = (text: string, keywords: string[], maxLen =
     }
   }
 
-  // 若未匹配到具体关键词位置，默认截取前 maxLen 个字符并加省略号
+  // 若未匹配到具体关键词位置，默认截取前 MAX_SNIPPET_LEN 个字符并加省略号
   if (firstIndex === -1) {
-    return `${text.slice(0, maxLen)}...`;
+    return `${text.slice(0, MAX_SNIPPET_LEN)}...`;
   }
 
   // 以首个命中关键词为中心，向前截取约 40 字符，向后截取约 60 字符
   const contextBefore = 40;
-  const contextAfter = Math.max(60, maxLen - contextBefore - matchedKeywordLen);
+  const contextAfter = Math.max(60, MAX_SNIPPET_LEN - contextBefore - matchedKeywordLen);
 
   const start = Math.max(0, firstIndex - contextBefore);
   const end = Math.min(text.length, firstIndex + matchedKeywordLen + contextAfter);
@@ -80,36 +80,4 @@ export const renderHighlightedModerationContent = (
     }
     return <React.Fragment key={index}>{part}</React.Fragment>;
   });
-};
-
-/**
- * 获取审核阶段多语言标签 key
- */
-export const getModerationStageI18nKey = (stage: NodeModerationRecordType['stage']): string => {
-  switch (stage) {
-    case ModerationStageEnum.entry:
-      return 'chat:response.moderation_stage_entry';
-    case ModerationStageEnum.modelInput:
-      return 'chat:response.moderation_stage_model_input';
-    case ModerationStageEnum.output:
-    default:
-      return 'chat:response.moderation_stage_output';
-  }
-};
-
-/**
- * 获取审核裁决结果多语言标签 key
- */
-export const getModerationVerdictI18nKey = (
-  verdict: NodeModerationRecordType['verdict']
-): string => {
-  switch (verdict) {
-    case 'error':
-      return 'chat:response.moderation_result_error';
-    case 'suspected':
-      return 'chat:response.moderation_result_suspected';
-    case 'block':
-    default:
-      return 'chat:response.moderation_result_block';
-  }
 };

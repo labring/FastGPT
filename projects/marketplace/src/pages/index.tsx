@@ -304,7 +304,7 @@ const ToolkitMarketplace = () => {
 
   const onDownload = useCallback(async (toolId: string, version?: string) => {
     try {
-      const url = await getDownloadURL(toolId, version);
+      const url = await getDownloadURL({ toolId, version });
       if (url) {
         // Create download link
         const link = document.createElement('a');

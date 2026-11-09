@@ -3,6 +3,7 @@ import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/type';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
 import { getLocale } from '@fastgpt/service/common/middle/i18n';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { AdminModerationPluginItemSchema } from '@fastgpt/global/core/plugin/moderation/type';
 import {
   SaveModerationConfigBodySchema,
   type SaveModerationConfigBodyType,
@@ -31,13 +32,15 @@ export async function handler(
     bodySchema: SaveModerationConfigBodySchema
   }).body;
 
-  return saveModerationConfig({
+  const result = await saveModerationConfig({
     pluginId,
     version,
     secretsVal,
     enabled,
     lang: getLocale(req)
   });
+
+  return AdminModerationPluginItemSchema.parse(result);
 }
 
 export default NextAPI(handler);

@@ -99,7 +99,7 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
     continuationMessage?: string;
   }) => void;
   isToolCallRejected?: (callId: string) => boolean;
-  onToolRejected?: (callId: string) => void;
+  onToolRejected?: (callId: string, errorMessage?: string) => void;
 }): Promise<AgentTool[]> => {
   const tools: AgentTool[] = [];
 
@@ -124,13 +124,13 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
   }) => {
     if (isToolCallRejected?.(call.id)) {
       const errorMessage = MODERATION_BLOCKED_ERROR_MESSAGE;
+      onToolRejected?.(call.id, errorMessage);
       onToolResult({ call, response: errorMessage, assistantMessages: [] });
       return {
         response: errorMessage,
         assistantMessages: [],
         usages: [],
-        errorMessage,
-        stop: true
+        errorMessage
       };
     }
 
@@ -140,15 +140,14 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
       context: { teamId: runtime.teamId }
     });
     if (!paramCheck.isPass) {
-      onToolRejected?.(call.id);
       const errorMessage = paramCheck.blockErrorMessage || MODERATION_BLOCKED_ERROR_MESSAGE;
+      onToolRejected?.(call.id, errorMessage);
       onToolResult({ call, response: errorMessage, assistantMessages: [] });
       return {
         response: errorMessage,
         assistantMessages: [],
         usages: [],
-        errorMessage,
-        stop: true
+        errorMessage
       };
     }
 
@@ -238,8 +237,8 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
             context: { teamId: runtime.teamId }
           });
           if (!paramCheck.isPass) {
-            onToolRejected?.(callId);
             const errorMessage = paramCheck.blockErrorMessage || MODERATION_BLOCKED_ERROR_MESSAGE;
+            onToolRejected?.(callId, errorMessage);
             onToolResult({
               call,
               response: errorMessage
@@ -321,8 +320,8 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
           context: { teamId: runtime.teamId }
         });
         if (!paramCheck.isPass) {
-          onToolRejected?.(callId);
           const errorMessage = paramCheck.blockErrorMessage || MODERATION_BLOCKED_ERROR_MESSAGE;
+          onToolRejected?.(callId, errorMessage);
           onToolResult({
             call: createToolCall({ id: callId, name: askTool.function.name, args: toolArgs }),
             response: errorMessage

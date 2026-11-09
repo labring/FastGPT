@@ -15,8 +15,6 @@ import {
 import type { NodeModerationRecordType } from '@fastgpt/global/core/plugin/moderation/type';
 import {
   extractContentSnippet,
-  getModerationStageI18nKey,
-  getModerationVerdictI18nKey,
   renderHighlightedModerationContent
 } from '@/web/core/plugin/admin/moderation/highlight';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -37,6 +35,30 @@ const ModerationRecordsRow = ({
   const { t } = useSafeTranslation();
 
   if (!moderationRecords || moderationRecords.length === 0) return null;
+
+  const renderModerationStageText = (stage: NodeModerationRecordType['stage']) => {
+    switch (stage) {
+      case ModerationStageEnum.entry:
+        return t('chat:response.moderation_stage_entry');
+      case ModerationStageEnum.modelInput:
+        return t('chat:response.moderation_stage_model_input');
+      case ModerationStageEnum.output:
+      default:
+        return t('chat:response.moderation_stage_output');
+    }
+  };
+
+  const renderModerationVerdictText = (verdict: NodeModerationRecordType['verdict']) => {
+    switch (verdict) {
+      case 'error':
+        return t('chat:response.moderation_result_error');
+      case 'suspected':
+        return t('chat:response.moderation_result_suspected');
+      case 'block':
+      default:
+        return t('chat:response.moderation_result_block');
+    }
+  };
 
   return (
     <Row
@@ -82,7 +104,7 @@ const ModerationRecordsRow = ({
                       {t('chat:response.moderation_stage')}
                     </Box>
                     <Box flex={'1 0 0'} minW={0} color={'myGray.900'} wordBreak={'break-word'}>
-                      {t(getModerationStageI18nKey(record.stage))}
+                      {renderModerationStageText(record.stage)}
                     </Box>
                   </Flex>
 
@@ -91,7 +113,7 @@ const ModerationRecordsRow = ({
                       {t('chat:response.moderation_result')}
                     </Box>
                     <Box flex={'1 0 0'} minW={0} color={'myGray.900'} wordBreak={'break-word'}>
-                      {t(getModerationVerdictI18nKey(record.verdict))}
+                      {renderModerationVerdictText(record.verdict)}
                     </Box>
                   </Flex>
 

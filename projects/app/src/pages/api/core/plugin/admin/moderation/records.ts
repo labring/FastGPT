@@ -4,6 +4,7 @@ import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   GetModerationRecordsBodySchema,
+  GetModerationRecordsResponseSchema,
   type GetModerationRecordsBodyType,
   type GetModerationRecordsResponseType
 } from '@fastgpt/global/openapi/core/plugin/admin/moderation/api';
@@ -28,12 +29,14 @@ export async function handler(
     bodySchema: GetModerationRecordsBodySchema
   });
 
-  return findModerationRecords({
+  const result = await findModerationRecords({
     stage: body.stage,
     verdict: body.verdict,
     offset: body.offset,
     limit: body.limit
   });
+
+  return GetModerationRecordsResponseSchema.parse(result);
 }
 
 export default NextAPI(handler);

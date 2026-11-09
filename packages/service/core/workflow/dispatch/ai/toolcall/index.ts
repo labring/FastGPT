@@ -21,6 +21,7 @@ import {
   getNodeErrResponse,
   removeUnfinishedInteractiveHistories
 } from '../../utils';
+import { getDispatchModerationContext } from '../../utils/runtime';
 import { WorkflowMemoryState } from '../../../memory/state';
 import { buildAgentLoopCoreRequestMessages } from '../agentLoopCore/application/context/messages';
 import { createAgentLoopCoreChildInteractiveParams } from '../agentLoopCore/adapter/interactive/child';
@@ -126,15 +127,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
     props.node.isEntry = false;
 
     // 锚点 2：进入模型前审查用户输入与系统提示词
-    const moderationContext = {
-      teamId: runningUserInfo?.teamId,
-      tmbId: runningUserInfo?.tmbId,
-      appId: runningAppInfo?.sourceId,
-      chatId: props.chatId,
-      responseChatItemId,
-      nodeId,
-      nodeName: props.node.name
-    };
+    const moderationContext = getDispatchModerationContext(props);
 
     const checked = await checkModelPromptAndInput({
       userChatInput,

@@ -11,6 +11,7 @@ import { computedMaxToken } from '../../../../ai/utils';
 import { getWorkflowFileContext, getWorkflowFileMaxAmount } from '../../../utils/context';
 import { loadWorkflowModelResource } from '../../../resource/service';
 import { checkQuoteQAValue, getHistories, getNodeErrResponse } from '../../utils';
+import { getDispatchModerationContext } from '../../utils/runtime';
 import { getChatMessages } from './chatMessages';
 import { getDatasetCiteData } from './datasetCite';
 import { getAIChatFileContextConfig, getInputFiles } from './fileContext';
@@ -87,15 +88,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     quoteQA = checkQuoteQAValue(quoteQA);
 
     // 锚点 2：进入模型前审查用户输入与系统提示词
-    const moderationContext = {
-      teamId: runningUserInfo?.teamId,
-      tmbId: runningUserInfo?.tmbId,
-      appId: runningAppInfo?.sourceId,
-      chatId: props.chatId,
-      responseChatItemId: props.responseChatItemId,
-      nodeId: props.node.nodeId,
-      nodeName: props.node.name
-    };
+    const moderationContext = getDispatchModerationContext(props);
 
     const checked = await checkModelPromptAndInput({
       userChatInput,

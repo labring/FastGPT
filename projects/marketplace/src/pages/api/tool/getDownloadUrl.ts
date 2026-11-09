@@ -23,11 +23,20 @@ async function handler(
   req: ApiRequestProps<GetDownloadURLBody, GetDownloadURLQuery>,
   res: ApiResponseType<any>
 ): Promise<GetDownloadURLResponse> {
-  const { query, body } = parseApiInput({
-    req,
-    querySchema: GetMarketplaceDownloadUrlQuerySchema.partial(),
-    bodySchema: GetMarketplaceDownloadUrlsBodySchema.partial()
-  });
+  const { query, body } =
+    req.method === 'POST'
+      ? parseApiInput({
+          req,
+          querySchema: GetMarketplaceDownloadUrlQuerySchema.partial(),
+          bodySchema: GetMarketplaceDownloadUrlsBodySchema.partial()
+        })
+      : {
+          query: parseApiInput({
+            req,
+            querySchema: GetMarketplaceDownloadUrlQuerySchema.partial()
+          }).query,
+          body: {} as Partial<GetDownloadURLBody>
+        };
   const { toolId, version, type } = query;
   const { toolIds } = body;
   if (!toolId && !toolIds) {

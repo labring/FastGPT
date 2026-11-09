@@ -441,7 +441,11 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
 
         try {
           if (mode === 'team') {
-            const downloadUrl = await getMarketplaceDownloadURL(tool.id, version, tool.type);
+            const downloadUrl = await getMarketplaceDownloadURL({
+              toolId: tool.id,
+              version,
+              type: tool.type
+            });
             if (!downloadUrl) return;
             await installTeamPluginWithUrl({
               downloadUrls: [downloadUrl],
@@ -459,11 +463,11 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
             try {
               await postAdminRestoreModerationPlugin({ pluginId: tool.id });
             } catch (err) {
-              const downloadUrl = await getMarketplaceDownloadURL(
-                tool.id,
+              const downloadUrl = await getMarketplaceDownloadURL({
+                toolId: tool.id,
                 version,
-                tool.type || 'moderation'
-              );
+                type: tool.type || 'moderation'
+              });
               if (!downloadUrl) throw err;
 
               await intallPluginWithUrl({
@@ -473,7 +477,11 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
           } else if (shouldReinstallOfflineTool && offlineTool) {
             await updateSystemToolStatus(offlineTool.systemToolId, PluginStatusEnum.Normal);
           } else {
-            const downloadUrl = await getMarketplaceDownloadURL(tool.id, version, tool.type);
+            const downloadUrl = await getMarketplaceDownloadURL({
+              toolId: tool.id,
+              version,
+              type: tool.type
+            });
             if (!downloadUrl) return;
 
             await intallPluginWithUrl({
@@ -520,7 +528,11 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
 
         try {
           // Get download URL
-          const downloadUrl = await getMarketplaceDownloadURL(tool.id, version, tool.type);
+          const downloadUrl = await getMarketplaceDownloadURL({
+            toolId: tool.id,
+            version,
+            type: tool.type
+          });
           if (!downloadUrl) return;
 
           // Call install interface for update
@@ -631,7 +643,7 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
         title: t('app:toolkit_uninstall'),
         customContent:
           activeTab === 'moderation'
-            ? t('app:confirm_uninstall_moderation') || '确定卸载该内容审核插件吗？'
+            ? t('app:confirm_uninstall_moderation')
             : t('app:confirm_uninstall_tool'),
         confirmText: t('app:toolkit_uninstall'),
         confirmButtonVariant: 'dangerOutline',
@@ -1029,7 +1041,7 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
                   ) : (
                     <Flex alignItems={'center'} gap={2} fontSize={'xs'} color={'myGray.600'}>
                       <Text whiteSpace={'nowrap'} fontSize={'12px'} fontWeight={'medium'}>
-                        {t('common:Source') || '来源'}:
+                        {t('app:logs_source')}:
                       </Text>
                       <MySelect
                         w={'110px'}
@@ -1037,13 +1049,13 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
                         fontSize={'xs'}
                         value={sourceFilter ?? 'all'}
                         list={[
-                          { label: t('common:all') || '全部', value: 'all' },
+                          { label: t('common:All'), value: 'all' },
                           {
-                            label: t('common:official') || '官方',
+                            label: t('app:toolkit_official'),
                             value: MarketplaceOfficialSource
                           },
                           {
-                            label: t('common:community') || '社区',
+                            label: t('app:toolkit_community'),
                             value: MarketplaceCommunitySource
                           }
                         ]}

@@ -9,8 +9,33 @@ const mocks = vi.hoisted(() => ({
   toast: vi.fn(),
   changeNumber: undefined as ((value?: number | string) => void) | undefined
 }));
+const zhTranslationMap: Record<string, string> = {
+  'common:Cancel': '取消',
+  'common:Save': '保存',
+  'admin:moderation.config_saved': '配置已保存',
+  'admin:moderation.config_save_failed': '配置保存失败',
+  'admin:moderation.config_save_failed_desc':
+    '未能完成配置检测或保存。请检查凭据、接口地址及服务权限，稍后重试。',
+  'admin:moderation.no_extra_params': '该插件无需配置附加参数。',
+  'admin:moderation.credentials_configured': '已配置凭据',
+  'admin:moderation.edit': '修改'
+};
 vi.mock('@fastgpt/web/hooks/useSafeTranslation', () => ({
-  useSafeTranslation: () => ({ i18n: { language: 'zh-CN' } })
+  useSafeTranslation: () => ({
+    i18n: { language: 'zh-CN' },
+    t: (key: string, params?: Record<string, string>) => {
+      if (key === 'admin:moderation.required_field') {
+        return `请填写必填项: ${params?.label ?? ''}`;
+      }
+      if (key === 'admin:moderation.input_placeholder') {
+        return `请输入 ${params?.label ?? ''}`;
+      }
+      if (key === 'admin:moderation.select_placeholder') {
+        return `请选择 ${params?.label ?? ''}`;
+      }
+      return zhTranslationMap[key] ?? key;
+    }
+  })
 }));
 vi.mock('@fastgpt/web/hooks/useToast', () => ({ useToast: () => ({ toast: mocks.toast }) }));
 vi.mock('@fastgpt/web/hooks/useRequest', () => ({

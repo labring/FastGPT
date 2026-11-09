@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { useTranslation } from 'next-i18next';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { Box, Button, Flex, HStack, Text, Textarea } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useToast } from '@fastgpt/web/hooks/useToast';
@@ -18,7 +18,7 @@ type ModerationTestCardProps = {
 };
 
 const ModerationTestCard: React.FC<ModerationTestCardProps> = ({ activePlugin }) => {
-  const { t } = useTranslation();
+  const { t } = useSafeTranslation();
   const { toast } = useToast();
   const [content, setContent] = useState('');
   const [testResult, setTestResult] = useState<RawModerationCheckResponseType | null>(null);
@@ -29,14 +29,14 @@ const ModerationTestCard: React.FC<ModerationTestCardProps> = ({ activePlugin })
       if (!activePlugin) {
         toast({
           status: 'warning',
-          title: '请先在上方勾选当前生效的审核服务'
+          title: t('admin:moderation.select_active_service_first')
         });
         return;
       }
       if (!content.trim()) {
         toast({
           status: 'warning',
-          title: '请输入测试内容'
+          title: t('admin:moderation.enter_test_content')
         });
         return;
       }
@@ -51,7 +51,7 @@ const ModerationTestCard: React.FC<ModerationTestCardProps> = ({ activePlugin })
     },
     {
       manual: true,
-      errorToast: '审查测试失败'
+      errorToast: t('admin:moderation.test_failed')
     }
   );
 
@@ -120,7 +120,7 @@ const ModerationTestCard: React.FC<ModerationTestCardProps> = ({ activePlugin })
           gap={1.5}
         >
           <MyIcon name="checkCircle" w={'14px'} color={'green.600'} />
-          <Text>审核结果：通过</Text>
+          <Text>{t('admin:moderation.verdict_pass')}</Text>
         </Flex>
       );
     }
@@ -140,7 +140,7 @@ const ModerationTestCard: React.FC<ModerationTestCardProps> = ({ activePlugin })
           gap={1.5}
         >
           <MyIcon name="common/errorFill" w={'14px'} color={'red.600'} />
-          <Text>审核结果：不通过</Text>
+          <Text>{t('admin:moderation.verdict_block')}</Text>
         </Flex>
       );
     }
@@ -160,7 +160,7 @@ const ModerationTestCard: React.FC<ModerationTestCardProps> = ({ activePlugin })
           gap={1.5}
         >
           <MyIcon name="common/errorFill" w={'14px'} color={'yellow.600'} />
-          <Text>审核结果：疑似风险</Text>
+          <Text>{t('admin:moderation.verdict_suspected')}</Text>
         </Flex>
       );
     }
@@ -180,7 +180,7 @@ const ModerationTestCard: React.FC<ModerationTestCardProps> = ({ activePlugin })
           gap={1.5}
         >
           <MyIcon name="common/errorFill" w={'14px'} color={'myGray.600'} />
-          <Text>审核结果：服务异常</Text>
+          <Text>{t('admin:moderation.verdict_error')}</Text>
         </Flex>
       );
     }
@@ -191,12 +191,12 @@ const ModerationTestCard: React.FC<ModerationTestCardProps> = ({ activePlugin })
     <Box>
       <Flex flexDirection={'column'}>
         <Text fontSize={'md'} fontWeight={'medium'} color={'myGray.900'} mb={2}>
-          测试输入框
+          {t('admin:moderation.test_input_label')}
         </Text>
 
         <Textarea
           h={'172px'}
-          placeholder="请输入测试文本"
+          placeholder={t('admin:moderation.test_input_placeholder')}
           value={content}
           onChange={(e) => setContent(e.target.value)}
           bg={'white'}
@@ -223,7 +223,7 @@ const ModerationTestCard: React.FC<ModerationTestCardProps> = ({ activePlugin })
               onClick={handleClear}
               isDisabled={runningTest || (!content && !testResult)}
             >
-              清空
+              {t('admin:moderation.clear')}
             </Button>
             <Button
               size={'md'}
@@ -234,7 +234,7 @@ const ModerationTestCard: React.FC<ModerationTestCardProps> = ({ activePlugin })
               isLoading={runningTest}
               isDisabled={!activePlugin || !content.trim()}
             >
-              开始测试
+              {t('admin:moderation.start_test')}
             </Button>
           </HStack>
         </Flex>
@@ -260,7 +260,7 @@ const ModerationTestCard: React.FC<ModerationTestCardProps> = ({ activePlugin })
               color={'myGray.500'}
               _hover={{ color: 'myGray.800' }}
               onClick={() => setIsDetailCardClosed(true)}
-              title="关闭详情"
+              title={t('admin:moderation.close_detail')}
             >
               <MyIcon name="common/closeLight" w={'14px'} />
             </Box>
@@ -270,7 +270,7 @@ const ModerationTestCard: React.FC<ModerationTestCardProps> = ({ activePlugin })
               {flatDetail.hitLabels.length > 0 && (
                 <Flex fontSize={'xs'} lineHeight={'1.5'}>
                   <Text w={'80px'} color={'myGray.600'} flexShrink={0} fontWeight={'medium'}>
-                    命中标签
+                    {t('admin:moderation.hit_labels')}
                   </Text>
                   <Text color={'myGray.900'}>{flatDetail.hitLabels.join('、')}</Text>
                 </Flex>
@@ -280,7 +280,7 @@ const ModerationTestCard: React.FC<ModerationTestCardProps> = ({ activePlugin })
               {flatDetail.allKeywords.length > 0 && (
                 <Flex fontSize={'xs'} lineHeight={'1.5'}>
                   <Text w={'80px'} color={'myGray.600'} flexShrink={0} fontWeight={'medium'}>
-                    关键词
+                    {t('admin:moderation.keywords')}
                   </Text>
                   <Text color={'myGray.900'}>{flatDetail.allKeywords.join('、')}</Text>
                 </Flex>
@@ -290,7 +290,7 @@ const ModerationTestCard: React.FC<ModerationTestCardProps> = ({ activePlugin })
               {content && (
                 <Flex fontSize={'xs'} lineHeight={'1.6'}>
                   <Text w={'80px'} color={'myGray.600'} flexShrink={0} fontWeight={'medium'}>
-                    内容详情
+                    {t('admin:moderation.content_detail')}
                   </Text>
                   <Box
                     color={'myGray.900'}
@@ -310,7 +310,7 @@ const ModerationTestCard: React.FC<ModerationTestCardProps> = ({ activePlugin })
               {flatDetail.errorMessage && (
                 <Flex fontSize={'xs'} lineHeight={'1.5'}>
                   <Text w={'80px'} color={'red.600'} flexShrink={0} fontWeight={'medium'}>
-                    异常信息
+                    {t('admin:moderation.error_message')}
                   </Text>
                   <Text color={'red.600'}>{flatDetail.errorMessage}</Text>
                 </Flex>

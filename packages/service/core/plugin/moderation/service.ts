@@ -200,27 +200,31 @@ const syncPolicyContentionRecord = async ({
     .lean();
 
   const targetId = existing?._id ?? DEFAULT_MODERATION_POLICY_CONFIG_ID;
-  const initialValue = policy ?? {
-    ...DefaultSystemModerationPolicy,
-    ...(activePluginId ? { activePluginId } : {})
-  };
+  const resolvedValue = (() => {
+    if (policy) return policy;
+    if (existing?.value && typeof existing.value === 'object') {
+      return {
+        ...DefaultSystemModerationPolicy,
+        ...existing.value,
+        ...(activePluginId ? { activePluginId } : {})
+      };
+    }
+    return {
+      ...DefaultSystemModerationPolicy,
+      ...(activePluginId ? { activePluginId } : {})
+    };
+  })();
 
   await MongoSystemConfigs.findOneAndUpdate(
     { _id: targetId },
     {
       $set: {
-        ...(policy
-          ? { value: policy }
-          : activePluginId
-            ? { 'value.activePluginId': activePluginId }
-            : {}),
         type: SystemConfigsTypeEnum.moderationPolicy,
+        value: resolvedValue,
         createTime: new Date()
       },
       $setOnInsert: {
-        _id: targetId,
-        type: SystemConfigsTypeEnum.moderationPolicy,
-        value: initialValue
+        _id: targetId
       }
     },
     { upsert: true, new: true, session }

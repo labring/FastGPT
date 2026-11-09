@@ -2057,6 +2057,9 @@ describe('runPiAgentLoop', () => {
 
     expect(executeTool).not.toHaveBeenCalled();
     expect(emittedEvents.some((e) => e.type === 'tool_run_start')).toBe(false);
+    expect(result.status).toBe('error');
+    expect(result.error).toBeInstanceOf(Error);
+    expect((result.error as Error).message).toBe('Tool param violated moderation');
   });
 
   it('blocks toxic control tool parameters like ask_user and returns error instead of paused', async () => {

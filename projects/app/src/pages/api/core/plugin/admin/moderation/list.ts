@@ -5,6 +5,7 @@ import { getLocale } from '@fastgpt/service/common/middle/i18n';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   GetModerationPluginListQuerySchema,
+  GetModerationPluginListResponseSchema,
   type GetModerationPluginListQueryType,
   type GetModerationPluginListResponseType
 } from '@fastgpt/global/openapi/core/plugin/admin/moderation/api';
@@ -26,10 +27,12 @@ export async function handler(
   await authSystemAdmin({ req });
   const { query } = parseApiInput({ req, querySchema: GetModerationPluginListQuerySchema });
 
-  return getAdminModerationPluginList({
+  const result = await getAdminModerationPluginList({
     lang: getLocale(req),
     includeDeleted: query.includeDeleted
   });
+
+  return GetModerationPluginListResponseSchema.parse(result);
 }
 
 export default NextAPI(handler);

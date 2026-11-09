@@ -179,4 +179,14 @@ describe('moderation configuration save and reload', () => {
     expect(list[0].hasConfiguredSecrets).toBe(true);
     expect(list[0].source).toBe('system');
   });
+
+  it('enables plugin via real MongoSystemConfigs upsert without operator path conflicts', async () => {
+    vi.spyOn(remote, 'getModerationPluginDetail').mockResolvedValue(detail);
+    const saved = await saveModerationConfig({
+      pluginId: detail.pluginId,
+      secretsVal: { enableDefaultDict: true },
+      enabled: true
+    });
+    expect(saved.enabled).toBe(true);
+  });
 });

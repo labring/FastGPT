@@ -144,5 +144,13 @@ describe('moderation policy service', () => {
       expect(disableSpy).toHaveBeenCalled();
       expect(updated.enabled).toBe(false);
     });
+
+    it('persists policy via real MongoSystemConfigs upsert without operator path conflicts', async () => {
+      const updated = await updateModerationPolicy({
+        ...DefaultSystemModerationPolicy,
+        enabled: false
+      });
+      expect(updated.enabled).toBe(false);
+    });
   });
 });

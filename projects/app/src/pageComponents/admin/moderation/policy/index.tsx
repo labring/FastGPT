@@ -11,6 +11,7 @@ import MySelect from '@fastgpt/web/components/common/MySelect';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import {
   getAdminModerationPluginList,
   getAdminModerationPolicy,
@@ -37,6 +38,7 @@ const ImportPluginModal = dynamic(() => import('@/pageComponents/admin/config/Im
 export const ModerationPolicy = () => {
   const router = useRouter();
   const { toast } = useToast();
+  const { t } = useSafeTranslation();
 
   const [policy, setPolicy] = useState<SystemModerationPolicyType>(DefaultSystemModerationPolicy);
   const [plugins, setPlugins] = useState<AdminModerationPluginItemType[]>([]);
@@ -63,7 +65,7 @@ export const ModerationPolicy = () => {
         }
       }
     },
-    errorToast: '获取内容审核策略失败',
+    errorToast: t('admin:moderation.fetch_policy_error'),
     manual: false
   });
 
@@ -75,7 +77,7 @@ export const ModerationPolicy = () => {
           setPlugins(data);
         }
       },
-      errorToast: '获取内容审核插件列表失败',
+      errorToast: t('admin:moderation.fetch_plugins_error'),
       manual: false
     }
   );
@@ -90,8 +92,8 @@ export const ModerationPolicy = () => {
     postAdminUpdateModerationPolicy,
     {
       manual: true,
-      successToast: '保存成功',
-      errorToast: '保存失败',
+      successToast: t('admin:moderation.save_success'),
+      errorToast: t('admin:moderation.save_error'),
       onSuccess: () => {
         void fetchPolicy();
         void fetchPlugins();
@@ -101,7 +103,7 @@ export const ModerationPolicy = () => {
 
   const handleSubmit = () => {
     if (policy.enabled && !activePlugin) {
-      toast({ status: 'error', title: '请选择一个审核插件后再保存' });
+      toast({ status: 'error', title: t('admin:moderation.select_plugin_required') });
       return;
     }
     void savePolicy(policy);
@@ -127,13 +129,13 @@ export const ModerationPolicy = () => {
       }
       toast({
         status: 'success',
-        title: '卸载成功'
+        title: t('admin:moderation.uninstall_success')
       });
       void fetchPlugins();
     } catch (err: any) {
       toast({
         status: 'error',
-        title: err?.message || '删除插件失败'
+        title: err?.message || t('admin:moderation.delete_plugin_error')
       });
     }
   };
@@ -146,10 +148,10 @@ export const ModerationPolicy = () => {
 
   // SettingPage 标题列表：审核服务未开启时，下面 3 个板块全部隐藏
   const allTitles = [
-    { mainTitle: '审核服务', subTitles: [] },
-    { mainTitle: '审核生效环节', subTitles: [] },
-    { mainTitle: '处理策略', subTitles: [] },
-    { mainTitle: '审核效果测试', subTitles: [] }
+    { mainTitle: t('admin:moderation.service_title'), subTitles: [] },
+    { mainTitle: t('admin:moderation.hooks_title'), subTitles: [] },
+    { mainTitle: t('admin:moderation.strategy_title'), subTitles: [] },
+    { mainTitle: t('admin:moderation.test_title'), subTitles: [] }
   ];
 
   const visibleTitles = policy.enabled ? allTitles : [allTitles[0]];
@@ -162,13 +164,13 @@ export const ModerationPolicy = () => {
         onSubmit={handleSubmit}
       >
         {/* ================= 1. 审核服务 ================= */}
-        <FirstTitle title="审核服务" />
+        <FirstTitle title={t('admin:moderation.service_title')} />
 
         <Box>
           <Flex alignItems={'center'} minH={'32px'}>
             <Box w={'240px'} maxW={'calc(100% - 36px)'}>
               <Text fontSize={'md'} fontWeight={'medium'} color={'myGray.900'}>
-                是否开启内容审核
+                {t('admin:moderation.enable_moderation')}
               </Text>
             </Box>
             <Switch
@@ -190,10 +192,12 @@ export const ModerationPolicy = () => {
               <Flex alignItems={'center'} justifyContent={'space-between'} mt={4} minH={'32px'}>
                 <Flex alignItems={'center'} gap={2}>
                   <Text fontSize={'md'} fontWeight={'medium'} color={'myGray.900'}>
-                    当前生效服务
+                    {t('admin:moderation.active_service')}
                   </Text>
                   <Text fontSize={'md'} color={'myGray.600'}>
-                    {activePlugin?.name || policy.activePluginId || '请先添加审核插件'}
+                    {activePlugin?.name ||
+                      policy.activePluginId ||
+                      t('admin:moderation.please_add_plugin')}
                   </Text>
                 </Flex>
 
@@ -211,7 +215,11 @@ export const ModerationPolicy = () => {
                     <MyIcon
                       name="core/chat/chevronDown"
                       w={'24px'}
-                      aria-label={isListCollapsed ? '展开列表' : '全部收起'}
+                      aria-label={
+                        isListCollapsed
+                          ? t('admin:moderation.expand_list')
+                          : t('admin:moderation.collapse_all')
+                      }
                       transform={isListCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)'}
                       transition={'transform 0.2s'}
                     />
@@ -242,7 +250,7 @@ export const ModerationPolicy = () => {
                         />
                       </Box>
                       <Text fontSize={'sm'} color={'myGray.500'} mt={4} mb={4}>
-                        您还没有审核插件
+                        {t('admin:moderation.empty_plugins')}
                       </Text>
                       <HStack spacing={3} justifyContent={'center'}>
                         <Button
@@ -252,7 +260,7 @@ export const ModerationPolicy = () => {
                           leftIcon={<MyIcon name="common/addLight" w={'16px'} />}
                           onClick={handleAddFromMarket}
                         >
-                          从插件市场添加
+                          {t('admin:moderation.add_from_marketplace')}
                         </Button>
                         <Button
                           variant={'whiteBase'}
@@ -261,7 +269,7 @@ export const ModerationPolicy = () => {
                           leftIcon={<MyIcon name="common/addLight" w={'16px'} />}
                           onClick={onOpenImport}
                         >
-                          从本地安装
+                          {t('admin:moderation.install_from_local')}
                         </Button>
                       </HStack>
                     </Box>
@@ -288,16 +296,16 @@ export const ModerationPolicy = () => {
                         >
                           <Box w={'48px'} flexShrink={0} />
                           <Box w={'180px'} flexShrink={0} px={6}>
-                            审核插件名称
+                            {t('admin:moderation.table_plugin_name')}
                           </Box>
                           <Box flex={'1 1 0'} minW={0} px={6}>
-                            描述
+                            {t('admin:moderation.table_description')}
                           </Box>
                           <Box w={'100px'} flexShrink={0} px={6}>
-                            状态
+                            {t('admin:moderation.table_status')}
                           </Box>
                           <Box w={'100px'} flexShrink={0} px={6}>
-                            操作
+                            {t('admin:moderation.table_actions')}
                           </Box>
                         </Flex>
 
@@ -324,7 +332,7 @@ export const ModerationPolicy = () => {
                           leftIcon={<MyIcon name="common/addLight" w={'16px'} />}
                           onClick={handleAddFromMarket}
                         >
-                          从插件市场添加
+                          {t('admin:moderation.add_from_marketplace')}
                         </Button>
                         <Button
                           variant={'whiteBase'}
@@ -333,7 +341,7 @@ export const ModerationPolicy = () => {
                           leftIcon={<MyIcon name="common/addLight" w={'16px'} />}
                           onClick={onOpenImport}
                         >
-                          从本地安装
+                          {t('admin:moderation.install_from_local')}
                         </Button>
                       </Flex>
                     </>
@@ -348,7 +356,7 @@ export const ModerationPolicy = () => {
         {policy.enabled && (
           <>
             {/* ================= 2. 审核生效环节 ================= */}
-            <FirstTitle title="审核生效环节" />
+            <FirstTitle title={t('admin:moderation.hooks_title')} />
 
             <Box py={3}>
               <Grid templateColumns={['1fr', '1fr 1fr']} gap={4}>
@@ -364,9 +372,9 @@ export const ModerationPolicy = () => {
                 >
                   <Flex alignItems={'center'} gap={1.5}>
                     <Text fontSize={'md'} fontWeight={'medium'} color={'myGray.900'}>
-                      用户输入
+                      {t('admin:moderation.hook_user_input')}
                     </Text>
-                    <QuestionTip label="开启后，对网页端与 API 传入的本轮用户问题、全局变量和表单输入执行前置安全审查。" />
+                    <QuestionTip label={t('admin:moderation.hook_user_input_tip')} />
                   </Flex>
                   <Switch
                     size={'md'}
@@ -392,9 +400,9 @@ export const ModerationPolicy = () => {
                 >
                   <Flex alignItems={'center'} gap={1.5}>
                     <Text fontSize={'md'} fontWeight={'medium'} color={'myGray.900'}>
-                      模型输入
+                      {t('admin:moderation.hook_model_input')}
                     </Text>
-                    <QuestionTip label="开启后，对发送给模型的输入内容（提示词、知识库引用切片、文件文本等）执行安全审查（历史消息免审）。" />
+                    <QuestionTip label={t('admin:moderation.hook_model_input_tip')} />
                   </Flex>
                   <Switch
                     size={'md'}
@@ -420,9 +428,9 @@ export const ModerationPolicy = () => {
                 >
                   <Flex alignItems={'center'} gap={1.5}>
                     <Text fontSize={'md'} fontWeight={'medium'} color={'myGray.900'}>
-                      最终输出
+                      {t('admin:moderation.hook_final_output')}
                     </Text>
-                    <QuestionTip label="开启后，对平台交付给用户的各类文本输出和流式内容进行安全审查与拦截。" />
+                    <QuestionTip label={t('admin:moderation.hook_final_output_tip')} />
                   </Flex>
                   <Switch
                     size={'md'}
@@ -439,7 +447,7 @@ export const ModerationPolicy = () => {
             </Box>
 
             {/* ================= 3. 处理策略 ================= */}
-            <FirstTitle title="处理策略" />
+            <FirstTitle title={t('admin:moderation.strategy_title')} />
 
             <Box py={3}>
               <Flex flexDirection={'column'} gap={4}>
@@ -447,9 +455,9 @@ export const ModerationPolicy = () => {
                 <Box>
                   <Flex alignItems={'center'} gap={1.5} mb={2}>
                     <Text fontSize={'md'} fontWeight={'medium'} color={'myGray.900'}>
-                      流式审核间隔
+                      {t('admin:moderation.stream_interval')}
                     </Text>
-                    <QuestionTip label="每累计指定字符数先审核再输出。数值越小，等待更短、输出更流畅，但请求量和成本更高；数值越大，成本更低，但等待更长。" />
+                    <QuestionTip label={t('admin:moderation.stream_interval_tip')} />
                   </Flex>
                   <HStack spacing={2}>
                     <MyNumberInput
@@ -472,7 +480,7 @@ export const ModerationPolicy = () => {
                       }}
                     />
                     <Text fontSize={'sm'} color={'myGray.600'}>
-                      字符/次
+                      {t('admin:moderation.chars_per_check')}
                     </Text>
                   </HStack>
                 </Box>
@@ -481,16 +489,22 @@ export const ModerationPolicy = () => {
                 <Box>
                   <Flex alignItems={'center'} gap={1.5} mb={2}>
                     <Text fontSize={'md'} fontWeight={'medium'} color={'myGray.900'}>
-                      疑似风险
+                      {t('admin:moderation.suspected_risk')}
                     </Text>
-                    <QuestionTip label="判定结果为内容疑似存在风险时的处理方式。" />
+                    <QuestionTip label={t('admin:moderation.suspected_risk_tip')} />
                   </Flex>
                   <MySelect
                     width={'100%'}
                     value={policy.strategy.suspectedRiskAction}
                     list={[
-                      { label: '放行并记录', value: ModerationRiskActionEnum.passAndLog },
-                      { label: '拦截并记录', value: ModerationRiskActionEnum.blockAndLog }
+                      {
+                        label: t('admin:moderation.risk_pass_and_log'),
+                        value: ModerationRiskActionEnum.passAndLog
+                      },
+                      {
+                        label: t('admin:moderation.risk_block_and_log'),
+                        value: ModerationRiskActionEnum.blockAndLog
+                      }
                     ]}
                     onChange={(val) => {
                       setPolicy((prev) => ({
@@ -508,18 +522,21 @@ export const ModerationPolicy = () => {
                 <Box>
                   <Flex alignItems={'center'} gap={1.5} mb={2}>
                     <Text fontSize={'md'} fontWeight={'medium'} color={'myGray.900'}>
-                      服务异常
+                      {t('admin:moderation.service_exception')}
                     </Text>
-                    <QuestionTip label="审核服务未返回结果时，选择是否允许未审核内容继续流转。" />
+                    <QuestionTip label={t('admin:moderation.service_exception_tip')} />
                   </Flex>
                   <MySelect
                     width={'100%'}
                     value={policy.strategy.serviceExceptionAction}
                     list={[
-                      { label: '放行未审核内容', value: ModerationExceptionActionEnum.pass },
                       {
-                        label: '拦截未审核内容',
-                        description: '审核服务故障时，应用将不可用，请谨慎选择',
+                        label: t('admin:moderation.exception_pass'),
+                        value: ModerationExceptionActionEnum.pass
+                      },
+                      {
+                        label: t('admin:moderation.exception_block'),
+                        description: t('admin:moderation.exception_block_desc'),
                         value: ModerationExceptionActionEnum.block
                       }
                     ]}
@@ -538,7 +555,7 @@ export const ModerationPolicy = () => {
             </Box>
 
             {/* ================= 4. 审核效果测试 ================= */}
-            <FirstTitle title="审核效果测试" />
+            <FirstTitle title={t('admin:moderation.test_title')} />
 
             <Box>
               <ModerationTestCard activePlugin={activePlugin} />

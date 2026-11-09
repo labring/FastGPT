@@ -436,9 +436,11 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
       if (continuationMessage) toolContinuationMessages.push(continuationMessage);
     },
     isToolCallRejected: (callId) => isRunBlocked || rejectedToolCallIds.has(callId),
-    onToolRejected: (callId) => {
+    onToolRejected: (callId, errorMessage) => {
       rejectedToolCallIds.add(callId);
       isRunBlocked = true;
+      latestError ||= new UserError(errorMessage || MODERATION_BLOCKED_ERROR_MESSAGE);
+      abortCurrentRunRef.current?.();
     }
   });
 
@@ -1023,7 +1025,7 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
     };
   }
 
-  if (pendingToolStop) {
+  if (!isModerationBlocked && pendingToolStop) {
     return {
       status: 'done',
       activePlan,
@@ -1037,7 +1039,7 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
     };
   }
 
-  if (runtime.checkIsStopping?.()) {
+  if (!isModerationBlocked && runtime.checkIsStopping?.()) {
     return {
       status: 'aborted',
       activePlan,
@@ -1048,6 +1050,21 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
       contextCheckpoint: latestContextCheckpoint,
       finishReason,
       usages: resultUsages
+    };
+  }
+
+  if (isModerationBlocked) {
+    return {
+      status: 'error',
+      activePlan,
+      providerState: nextProviderState,
+      completeMessages,
+      assistantMessages,
+      requestIds,
+      contextCheckpoint: latestContextCheckpoint,
+      finishReason: 'error',
+      usages: resultUsages,
+      error: latestError || new UserError(MODERATION_BLOCKED_ERROR_MESSAGE)
     };
   }
 

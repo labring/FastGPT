@@ -110,7 +110,12 @@ describe('admin moderation config handler', () => {
     vi.clearAllMocks();
     mocks.authSystemAdmin.mockResolvedValue({ tmbId: 'tmb-1', userId: 'user-1' });
     mocks.getLocale.mockReturnValue('zh-CN');
-    mocks.saveModerationConfig.mockResolvedValue({ pluginId: 'x' });
+    mocks.saveModerationConfig.mockResolvedValue({
+      pluginId: 'x',
+      source: 'system',
+      name: 'X Moderation',
+      provider: 'x'
+    });
   });
 
   it('forwards config fields to the service', async () => {
