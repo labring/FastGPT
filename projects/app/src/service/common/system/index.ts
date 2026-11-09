@@ -36,6 +36,7 @@ import { applyRuntimeStorageConfig } from '@fastgpt/service/common/s3/config/con
 import { initS3Buckets } from '@fastgpt/service/common/s3';
 import { logInstanceConfigRead } from '@fastgpt/service/common/system/migrationCoverageLog';
 import { buildAuthoritativeSystemEnv } from './buildAuthoritativeSystemEnv';
+import { applyEnvAuthoritativeFeConfigs } from './envAuthoritativeFeConfigs';
 import {
   buildOauthFeConfig,
   buildPayConfig,
@@ -124,8 +125,7 @@ const defaultFeConfigs: FastGPTFeConfigsType = {
     maxFolderDepth: 4
   },
   scripts: [],
-  favicon: '/favicon.ico',
-  chineseRedirectUrl: appEnv.CHINESE_IP_REDIRECT_URL
+  favicon: '/favicon.ico'
 };
 
 async function getPluginRemoteDebugEnabled() {
@@ -195,7 +195,7 @@ async function doInitSystemConfig({
   const payConfig = buildPayConfig(instanceConfig.commercial);
 
   const config: FastGPTConfigFileType = {
-    feConfigs: {
+    feConfigs: applyEnvAuthoritativeFeConfigs({
       ...defaultFeConfigs,
       ...(fastgptConfig.feConfigs || {}),
 
@@ -283,7 +283,7 @@ async function doInitSystemConfig({
       disableMarketplace: appEnv.DISABLE_MARKETPLACE,
       show_agent_sandbox_free_tip: serviceEnv.AGENT_SANDBOX_SHOW_FREE_TIP,
       agentSandboxProxyUrl: serviceEnv.AGENT_SANDBOX_PROXY_URL
-    },
+    }),
     // 权威数据源：实例配置派生值盖过旧库 systemEnv，旧库仅保留 schema 外扩展键
     systemEnv: buildAuthoritativeSystemEnv({
       legacySystemEnv: fastgptConfig.systemEnv,

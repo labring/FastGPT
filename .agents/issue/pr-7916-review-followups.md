@@ -92,9 +92,9 @@
 
 ### 批次 B：配置来源与旧入口
 
-- [ ] **B1（原第 6 项，P1）`CHINESE_IP_REDIRECT_URL` 被旧配置覆盖**
-  - 按评论建议：在最终合成处明确 ENV 权威。
-  - 位置：`projects/app/src/service/common/system/index.ts`
+- [x] **B1（原第 6 项，P1）`CHINESE_IP_REDIRECT_URL` 被旧配置覆盖**
+  - 已实现：从 `defaultFeConfigs` 移除该字段，新增 `applyEnvAuthoritativeFeConfigs` 在最终合成处显式写回 ENV；旧库值不再能覆盖。
+  - 位置：`projects/app/src/service/common/system/index.ts`、`projects/app/src/service/common/system/envAuthoritativeFeConfigs.ts`、`projects/app/test/service/common/system/envAuthoritativeFeConfigs.test.ts`
 - [ ] **B2（原第 7 项，P1，依赖 D1）旧 `basic`/`user` 页面和写接口**
   - 按评论建议：先盘点旧页面全部字段，区分“已迁移”“仍有用途”“废弃”；迁走仍有用途的字段后，再收口旧表单和 `/proApi/admin/system/updateConfig`，避免旧页面保存看似成功但实际被新配置覆盖。
   - 位置：`projects/app/src/pages/admin/settings/basic.tsx`、`user.tsx`、`projects/app/src/web/admin/system/api.ts`、`pro/admin/src/pages/api/admin/system/updateConfig.ts`
