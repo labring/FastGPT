@@ -335,6 +335,10 @@ export const DatasetDataSchema = DatasetDataFieldSchema.extend({
   tmbId: ObjectIdSchema.meta({ description: '团队成员 ID' }),
   datasetId: ObjectIdSchema.meta({ description: '数据集 ID' }),
   collectionId: ObjectIdSchema.meta({ description: '集合 ID' }),
+  createTime: z.coerce
+    .date()
+    .optional()
+    .meta({ description: '创建时间；历史数据缺失时按 ObjectId 生成时间计算' }),
   chunkIndex: z.int().min(0).meta({ description: '块索引' }),
   updateTime: z.coerce.date().meta({ description: '更新时间' }),
   history: z.array(DatasetDataHistorySchema).optional().meta({ description: '历史版本' }),

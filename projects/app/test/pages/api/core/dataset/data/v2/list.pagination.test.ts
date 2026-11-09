@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import type { GetDatasetDataListResponse } from '@fastgpt/global/openapi/core/dataset/data/api';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
+import { Types } from '@fastgpt/service/common/mongo';
 
 const ids = vi.hoisted(() => ({
   teamId: '68ad85a7463006c963799a01',
@@ -113,5 +114,24 @@ describe('dataset data list pagination', () => {
     expect(result.list).toHaveLength(30);
     expect(result.list[0].q).toBe('record 31');
     expect(result.list.at(-1)?.q).toBe('record 60');
+  });
+
+  it('falls back to the ObjectId timestamp for data created before createTime existed', async () => {
+    const legacyId = new Types.ObjectId();
+    await MongoDatasetData.collection.insertOne({
+      _id: legacyId,
+      teamId: new Types.ObjectId(ids.teamId),
+      tmbId: new Types.ObjectId(ids.tmbId),
+      datasetId: new Types.ObjectId(ids.datasetId),
+      collectionId: new Types.ObjectId(ids.collectionId),
+      q: 'legacy record without createTime',
+      a: '',
+      chunkIndex: 999
+    } as any);
+
+    const result = await listData({ searchText: 'legacy record without createTime' });
+
+    expect(result.total).toBe(1);
+    expect(result.list[0].createTime.getTime()).toBe(legacyId.getTimestamp().getTime());
   });
 });
