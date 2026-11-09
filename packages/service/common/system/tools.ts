@@ -46,13 +46,10 @@ export const initFastGPTConfig = (config?: FastGPTConfigFileType) => {
   config.systemEnv.sso = sso.serverConfig;
 
   // Special config computed
-  config.feConfigs.showCustomPdfParse =
-    !!config.systemEnv.customPdfParse?.url ||
-    !!config.systemEnv.customPdfParse?.somarkApiKey ||
-    !!config.systemEnv.customPdfParse?.textinAppId ||
-    !!config.systemEnv.customPdfParse?.doc2xKey;
-  config.feConfigs.customPdfParsePrice =
-    getSystemInstanceConfig().providers.documentParse.customPdf.price;
+  // 解析入口只看当前选中的 Provider；none 表示关闭外部解析，不能被旧凭据重新点亮。
+  const documentParse = getSystemInstanceConfig().providers.documentParse;
+  config.feConfigs.showCustomPdfParse = documentParse.provider !== 'none';
+  config.feConfigs.customPdfParsePrice = documentParse.customPdf.price;
   config.feConfigs.show_outlink_brand = serviceEnv.SHOW_OUTLINK_BRAND;
   // provider 只以实例配置为权威，保证后台配置与前端沙箱入口一致。
   config.feConfigs.show_agent_sandbox = getAgentSandboxProvider() !== 'none';

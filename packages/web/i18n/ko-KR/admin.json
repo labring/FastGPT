@@ -340,6 +340,7 @@
   "wechat_channel_concurrency": "WeChat 채널 메시지 처리 동시성",
   "download_link_presigned_expiry_days": "다운로드 링크 사전 서명 유효 기간 (일)",
   "parsing_provider": "파싱 서비스 제공자",
+  "none": "사용 안 함",
   "custom_pdf_parser_service_url": "자체 PDF 파서 서비스 URL",
   "custom_parser_auth_key": "자체 서비스 인증 키",
   "custom_pdf_parse_price": "PDF 파싱 가격",

@@ -1,4 +1,8 @@
-import type { FastGPTFeConfigsType, FastGPTRegisterMethodCompatType } from '../types';
+import type {
+  FastGPTFeConfigsType,
+  FastGPTRegisterMethodCompatType,
+  FastGPTRegisterMethodType
+} from '../types';
 import type { SystemInstanceConfig } from './schema';
 
 /** 将实例配置中的登录凭据投影为前端 OAuth 入口；缺少完整凭据的 Provider 不展示。 */
@@ -41,12 +45,20 @@ export const buildPayConfig = (
 export const hasPayChannel = (payConfig: ReturnType<typeof buildPayConfig>) =>
   Boolean(payConfig.wx || payConfig.alipay || payConfig.bank);
 
+const hasSmsTemplate = (template?: string) => Boolean(template?.trim());
+const hasPhoneSmsChannel = (auth: SystemInstanceConfig['auth']) => {
+  const phone = auth.loginProviders.phone;
+  return Boolean(phone.accessKeyId && phone.accessKeySecret && phone.signName);
+};
+const hasEmailService = (auth: SystemInstanceConfig['auth']) => {
+  const email = auth.loginProviders.email;
+  return Boolean(email.smtp && email.user && email.pass);
+};
+
 /**
- * 保留旧注册方式数组中的自定义顺序与 phone/sync 配置，仅让新的邮箱注册开关接管 email 项。
- * 旧数组缺失时按历史默认的 email + phone 计算。
- *
- * 邮箱开关必须既能移除也能重新加入 email：只做过滤时，旧数组为 [phone] 或 [] 的实例
- * 管理员重新开启邮箱注册后前端仍不会出现 email 入口，而 Pro 的注册校验已按新布尔值放行。
+ * 从当前认证配置推导注册方式。
+ * 邮箱注册由显式开关决定；手机号注册必须同时具备短信模板和发送通道，
+ * 不再沿用旧 register_method 中的手机号或默认手机号。
  */
 export const buildRegisterMethods = ({
   legacyMethods,
@@ -55,22 +67,62 @@ export const buildRegisterMethods = ({
   legacyMethods?: FastGPTRegisterMethodCompatType[];
   auth: SystemInstanceConfig['auth'];
 }): FastGPTRegisterMethodCompatType[] => {
-  const methods = [...(legacyMethods ?? ['email', 'phone'])];
-  const emailIndex = methods.indexOf('email');
-  const otherMethods: FastGPTRegisterMethodCompatType[] = methods.filter(
-    (method) => method !== 'email'
-  );
+  const methods: FastGPTRegisterMethodCompatType[] = [];
 
-  if (!auth.loginProviders.email.register) {
-    return otherMethods;
+  if (auth.loginProviders.email.register) {
+    methods.push('email');
   }
+  if (hasPhoneSmsChannel(auth) && hasSmsTemplate(auth.loginProviders.sms.register.zh)) {
+    methods.push('phone');
+  }
+  // sync 是团队模式的历史兼容项，团队模式仍以 teamMode 为权威。
+  if (legacyMethods?.includes('sync') || auth.teamMode === 'sync') {
+    methods.push('sync');
+  }
+  return methods;
+};
 
-  // 旧数组本来有 email 时放回原位置；没有时补到首位（历史默认顺序），
-  // 不改变其它注册方式的相对顺序。
-  otherMethods.splice(
-    emailIndex === -1 ? 0 : Math.min(emailIndex, otherMethods.length),
-    0,
-    'email'
-  );
-  return otherMethods;
+/**
+ * 从当前认证配置推导四个兼容前端字段。
+ *
+ * - 邮箱密码登录不依赖 SMTP，login_method 始终保留 email；
+ * - 手机号登录/注册/找回/绑定入口必须同时具备短信通道和对应模板；
+ * - 邮箱找回/绑定通知需要可发送邮件的 SMTP 配置；
+ * - legacyRegisterMethods 只用于保留 sync 历史兼容，不再提供 phone 默认值。
+ */
+export const buildAuthMethodProjection = ({
+  auth,
+  legacyRegisterMethods
+}: {
+  auth: SystemInstanceConfig['auth'];
+  legacyRegisterMethods?: FastGPTRegisterMethodCompatType[];
+}): {
+  login_method: FastGPTRegisterMethodType[];
+  register_method: FastGPTRegisterMethodCompatType[];
+  find_password_method: FastGPTRegisterMethodType[];
+  bind_notification_method: FastGPTRegisterMethodType[];
+} => {
+  const providers = auth.loginProviders;
+  const sms = providers.sms;
+  const phoneReady = hasPhoneSmsChannel(auth);
+  const emailReady = hasEmailService(auth);
+
+  return {
+    login_method: [
+      'email',
+      ...(phoneReady && hasSmsTemplate(sms.login.zh) ? (['phone'] as const) : [])
+    ],
+    register_method: buildRegisterMethods({
+      legacyMethods: legacyRegisterMethods,
+      auth
+    }),
+    find_password_method: [
+      ...(emailReady ? (['email'] as const) : []),
+      ...(phoneReady && hasSmsTemplate(sms.resetPassword.zh) ? (['phone'] as const) : [])
+    ],
+    bind_notification_method: [
+      ...(emailReady ? (['email'] as const) : []),
+      ...(phoneReady && hasSmsTemplate(sms.bindNotification.zh) ? (['phone'] as const) : [])
+    ]
+  };
 };

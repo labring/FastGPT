@@ -340,6 +340,7 @@
   "wechat_channel_concurrency": "微信渠道消息消费并发数",
   "download_link_presigned_expiry_days": "下载链接预签名默认有效期 (天)",
   "parsing_provider": "解析服务提供方",
+  "none": "不启用",
   "custom_pdf_parser_service_url": "自建 PDF 解析服务地址",
   "custom_parser_auth_key": "自建服务认证 Key",
   "custom_pdf_parse_price": "PDF 解析计费价格",

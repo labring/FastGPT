@@ -3,6 +3,7 @@ import React, { useEffect, useMemo } from 'react';
 import { Input, Textarea, SimpleGrid } from '@chakra-ui/react';
 import { useForm, Controller } from 'react-hook-form';
 import { useDomainConfig } from '@/web/common/system/useDomainConfig';
+import { useAdminPermission } from '@/pageComponents/admin/useAdminPermission';
 import AdminSettingPage from '@/pageComponents/admin/settings/AdminSettingPage';
 import AdminSettingSection from '@/pageComponents/admin/settings/AdminSettingSection';
 import AdminFormItem from '@/pageComponents/admin/settings/AdminFormItem';
@@ -20,14 +21,16 @@ type SecurityConfigForm = Omit<
 
 const SecuritySettingComponent = () => {
   const { t } = useSafeTranslation();
+  const { isFieldVisible } = useAdminPermission();
+  const showCensor = isFieldVisible('security.censor.baiduClientId');
   const tocItems: SettingTOCItem[] = useMemo(
     () => [
       { id: 'basic', label: t('admin:security_section_basic') },
       // id 必须与下方 AdminSettingSection 一致：TOC 滚动定位与 ScrollSpy 都按 id 匹配
       { id: 'fileAndRisk', label: t('admin:security_section_file') },
-      { id: 'modelCensor', label: t('admin:security_section_censor') }
+      ...(showCensor ? [{ id: 'modelCensor', label: t('admin:security_section_censor') }] : [])
     ],
-    [t]
+    [t, showCensor]
   );
 
   const { effectiveConfig, isLoading, isUpdating, patchConfig } = useDomainConfig('security');
@@ -70,7 +73,7 @@ const SecuritySettingComponent = () => {
       skipFileTypeCheck: Boolean(formData.skipFileTypeCheck),
       allowedOrigins: parseList(formData.allowedOriginsText),
       fileUrlWhitelist: parseList(formData.fileUrlWhitelistText),
-      censor: formData.censor,
+      ...(showCensor ? { censor: formData.censor } : {}),
       workflowHttpNode: formData.workflowHttpNode
     };
 
@@ -184,33 +187,43 @@ const SecuritySettingComponent = () => {
       </AdminSettingSection>
 
       {/* 3. 模型内容审查 */}
-      <AdminSettingSection id="modelCensor" title={t('admin:model_content_moderation')} showDivider>
-        <SimpleGrid columns={[1, 2]} spacing={5}>
-          <AdminFormItem
-            label={t('admin:baidu_moderation_clientid')}
-            tooltip={t('admin:api_key_for_baidu_text_content_moderation')}
-          >
-            <Input {...register('censor.baiduClientId')} placeholder="******" />
-          </AdminFormItem>
+      {showCensor && (
+        <AdminSettingSection
+          id="modelCensor"
+          title={t('admin:model_content_moderation')}
+          showDivider
+        >
+          <SimpleGrid columns={[1, 2]} spacing={5}>
+            <AdminFormItem
+              label={t('admin:baidu_moderation_clientid')}
+              tooltip={t('admin:api_key_for_baidu_text_content_moderation')}
+            >
+              <Input {...register('censor.baiduClientId')} placeholder="******" />
+            </AdminFormItem>
 
-          <AdminFormItem
-            label={t('admin:baidu_moderation_clientsecret')}
-            tooltip={t('admin:secret_key_for_baidu_text_content_moderation')}
-          >
-            <Input type="password" {...register('censor.baiduClientSecret')} placeholder="******" />
-          </AdminFormItem>
+            <AdminFormItem
+              label={t('admin:baidu_moderation_clientsecret')}
+              tooltip={t('admin:secret_key_for_baidu_text_content_moderation')}
+            >
+              <Input
+                type="password"
+                {...register('censor.baiduClientSecret')}
+                placeholder="******"
+              />
+            </AdminFormItem>
 
-          <AdminFormItem
-            label={t('admin:custom_content_moderation_url')}
-            tooltip={t('admin:custom_content_moderation_url_takes_precedence_over_baidu_mo')}
-          >
-            <Input
-              {...register('censor.customCensorUrl')}
-              placeholder="https://censor.example.com"
-            />
-          </AdminFormItem>
-        </SimpleGrid>
-      </AdminSettingSection>
+            <AdminFormItem
+              label={t('admin:custom_content_moderation_url')}
+              tooltip={t('admin:custom_content_moderation_url_takes_precedence_over_baidu_mo')}
+            >
+              <Input
+                {...register('censor.customCensorUrl')}
+                placeholder="https://censor.example.com"
+              />
+            </AdminFormItem>
+          </SimpleGrid>
+        </AdminSettingSection>
+      )}
     </AdminSettingPage>
   );
 };

@@ -1161,11 +1161,11 @@ Server、Agent Sandbox Proxy 和 IDE Agent 的运行时变量。为了避免“�
 | `security.maxLoginSession` | 最大登录会话数 (Max Sessions) | ✅ | ✅ | — | — | 可编辑：`/admin/settings/auth` |
 | `security.allowedOrigins` | 允许的跨域来源 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/security` |
 | `security.skipFileTypeCheck` | 跳过文件类型检查 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/security` |
-| `security.censor.baiduClientId` | 百度内容审查 ClientId | ✅ | ✅ | — | — | 可编辑：`/admin/settings/security` |
-| `security.censor.customCensorUrl` | 自定义内容审查服务地址 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/security` |
+| `security.censor.baiduClientId` | 百度内容审查 ClientId | — | ✅ | — | — | 可编辑：`/admin/settings/security` |
+| `security.censor.customCensorUrl` | 自定义内容审查服务地址 | — | ✅ | — | — | 可编辑：`/admin/settings/security` |
 | `security.workflowHttpNode.ignoreHttpsCertificate` | HTTP 节点忽略 HTTPS 证书校验 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/security` |
 | `security.fileUrlWhitelist` | 外部文件 URL 白名单 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/security` |
-| `security.censor.baiduClientSecret` | 百度内容审查 ClientSecret | ✅ | ✅ | — | ✅ | 可编辑：`/admin/settings/security` |
+| `security.censor.baiduClientSecret` | 百度内容审查 ClientSecret | — | ✅ | — | ✅ | 可编辑：`/admin/settings/security` |
 
 #### 功能（feature）
 

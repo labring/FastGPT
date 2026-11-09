@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  buildAuthMethodProjection,
   buildOauthFeConfig,
   buildPayConfig,
   buildRegisterMethods,
@@ -48,36 +49,67 @@ describe('buildOauthFeConfig', () => {
 });
 
 describe('buildRegisterMethods', () => {
-  it('uses the historical default methods and applies the email registration switch', () => {
-    expect(buildRegisterMethods({ auth: createAuth({}) })).toEqual(['phone']);
-
-    const enabledAuth = createAuth({ loginProviders: { email: { register: true } } });
-    expect(buildRegisterMethods({ auth: enabledAuth })).toEqual(['email', 'phone']);
+  const phoneReadyAuth = createAuth({
+    loginProviders: {
+      email: { smtp: 'smtp.example.com', user: 'user', pass: 'pass', register: true },
+      phone: { accessKeyId: 'ak', accessKeySecret: 'sk', signName: 'sign' },
+      sms: {
+        login: { zh: 'LOGIN' },
+        register: { zh: 'REGISTER' },
+        resetPassword: { zh: 'RESET' },
+        bindNotification: { zh: 'BIND' }
+      }
+    }
   });
 
-  it('preserves legacy custom methods while filtering email by the new switch', () => {
+  it('derives registration methods from the email switch and SMS channel', () => {
+    expect(buildRegisterMethods({ auth: createAuth({}) })).toEqual([]);
     expect(
-      buildRegisterMethods({ legacyMethods: ['phone', 'email'], auth: createAuth({}) })
-    ).toEqual(['phone']);
+      buildRegisterMethods({ auth: createAuth({ loginProviders: { email: { register: true } } }) })
+    ).toEqual(['email']);
+    expect(buildRegisterMethods({ auth: phoneReadyAuth })).toEqual(['email', 'phone']);
   });
 
-  it('re-enables email when the legacy array never contained it', () => {
-    const enabledAuth = createAuth({ loginProviders: { email: { register: true } } });
+  it('does not add phone registration without both SMS channel and template', () => {
+    const noTemplate = createAuth({
+      loginProviders: {
+        phone: { accessKeyId: 'ak', accessKeySecret: 'sk', signName: 'sign' }
+      }
+    });
+    expect(buildRegisterMethods({ auth: noTemplate })).toEqual([]);
 
-    expect(buildRegisterMethods({ legacyMethods: ['phone'], auth: enabledAuth })).toEqual([
-      'email',
-      'phone'
-    ]);
-    expect(buildRegisterMethods({ legacyMethods: [], auth: enabledAuth })).toEqual(['email']);
+    const noChannel = createAuth({
+      loginProviders: { sms: { register: { zh: 'REGISTER' } } }
+    });
+    expect(buildRegisterMethods({ auth: noChannel })).toEqual([]);
   });
 
-  it('keeps the original email position when the legacy array contains it', () => {
-    const enabledAuth = createAuth({ loginProviders: { email: { register: true } } });
-
-    expect(buildRegisterMethods({ legacyMethods: ['phone', 'email'], auth: enabledAuth })).toEqual([
-      'phone',
-      'email'
+  it('preserves sync as a historical team-mode compatibility value', () => {
+    expect(buildRegisterMethods({ legacyMethods: ['sync'], auth: createAuth({}) })).toEqual([
+      'sync'
     ]);
+    expect(
+      buildRegisterMethods({
+        auth: createAuth({ teamMode: 'sync', loginProviders: { email: { register: true } } })
+      })
+    ).toEqual(['email', 'sync']);
+  });
+
+  it('derives login, find-password and bind-notification methods', () => {
+    expect(buildAuthMethodProjection({ auth: phoneReadyAuth })).toEqual({
+      login_method: ['email', 'phone'],
+      register_method: ['email', 'phone'],
+      find_password_method: ['email', 'phone'],
+      bind_notification_method: ['email', 'phone']
+    });
+
+    const emailLoginOnly = createAuth({});
+    expect(buildAuthMethodProjection({ auth: emailLoginOnly })).toEqual({
+      login_method: ['email'],
+      register_method: [],
+      find_password_method: [],
+      bind_notification_method: []
+    });
   });
 });
 

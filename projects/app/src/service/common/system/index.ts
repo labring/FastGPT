@@ -39,9 +39,9 @@ import { buildAuthoritativeSystemEnv } from './buildAuthoritativeSystemEnv';
 import { applyEnvAuthoritativeFeConfigs } from './envAuthoritativeFeConfigs';
 import { resolvePluginRemoteDebug } from './pluginRemoteDebug';
 import {
+  buildAuthMethodProjection,
   buildOauthFeConfig,
   buildPayConfig,
-  buildRegisterMethods,
   hasPayChannel
 } from '@fastgpt/global/common/system/config/frontendProjection';
 
@@ -194,6 +194,10 @@ async function doInitSystemConfig({
   // 支付渠道是实例配置的派生能力：旧库 feConfigs.payConfig 只是历史快照，
   // 新增渠道不可选、删除渠道后旧入口仍可见，必须在这里统一重算。
   const payConfig = buildPayConfig(instanceConfig.commercial);
+  const authMethods = buildAuthMethodProjection({
+    auth: instanceConfig.auth,
+    legacyRegisterMethods: fastgptConfig.feConfigs?.register_method
+  });
 
   const config: FastGPTConfigFileType = {
     feConfigs: applyEnvAuthoritativeFeConfigs({
@@ -224,10 +228,10 @@ async function doInitSystemConfig({
         autoLogin: instanceConfig.auth.sso.autoLogin,
         disablePasswordForSsoUsers: instanceConfig.auth.sso.disablePasswordForSsoUsers
       },
-      register_method: buildRegisterMethods({
-        legacyMethods: fastgptConfig.feConfigs?.register_method,
-        auth: instanceConfig.auth
-      }),
+      login_method: authMethods.login_method,
+      register_method: authMethods.register_method,
+      find_password_method: authMethods.find_password_method,
+      bind_notification_method: authMethods.bind_notification_method,
       accountCancellation: {
         enabled: instanceConfig.auth.accountCancellation.enabled
       },

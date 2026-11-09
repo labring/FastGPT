@@ -179,15 +179,19 @@ export const systemInstanceConfigRegistry: readonly SystemInstanceConfigRegistry
       'maxLoginSession',
       'allowedOrigins',
       'skipFileTypeCheck',
-      'censor.baiduClientId',
-      'censor.customCensorUrl',
       'workflowHttpNode.ignoreHttpsCertificate',
       'fileUrlWhitelist'
     ],
     { edition: 'all', secret: false, applyMode: 'live' }
   ),
+  // 内容审核只在 Pro 实现，社区版不展示相关凭据入口
+  ...createEntries('security', ['censor.baiduClientId', 'censor.customCensorUrl'], {
+    edition: 'pro',
+    secret: false,
+    applyMode: 'live'
+  }),
   ...createEntries('security', ['censor.baiduClientSecret'], {
-    edition: 'all',
+    edition: 'pro',
     secret: true,
     applyMode: 'live'
   }),

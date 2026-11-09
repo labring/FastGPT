@@ -82,6 +82,7 @@ const ProvidersSettingComponent = () => {
                 width={'400px'}
                 placeholder={t('admin:select_a_parsing_provider')}
                 list={[
+                  { label: t('admin:none'), value: 'none' },
                   { label: 'somark', value: 'somark' },
                   { label: 'doc2x', value: 'doc2x' },
                   { label: 'textln', value: 'textln' },

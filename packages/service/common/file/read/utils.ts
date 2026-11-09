@@ -443,15 +443,6 @@ const readFileContent = async ({
       ]
     });
 
-    /** 旧部署没有 provider 选择：保持 custom → somark → textin → doc2x 的历史顺序。 */
-    const parseWithLegacyProviderOrder = () => {
-      if (global.systemEnv.customPdfParse?.url) return parsePdfFromCustomService();
-      if (global.systemEnv.customPdfParse?.somarkApiKey) return parsePdfFromSomark();
-      if (global.systemEnv.customPdfParse?.textinAppId) return parsePdfFromTextin();
-      if (global.systemEnv.customPdfParse?.doc2xKey) return parsePdfFromDoc2x();
-      return systemParse();
-    };
-
     switch (provider) {
       case 'customPdf':
       case 'custom':
@@ -464,14 +455,11 @@ const readFileContent = async ({
       case 'doc2x':
         return parsePdfFromDoc2x();
       case 'sangfor':
-        // sangfor 是“按扩展名接管”的叠加 provider：命中的扩展名已在前面走 sangfor，
-        // 未命中的 PDF 保持历史行为，继续按旧凭据链选择解析器。
-        return parseWithLegacyProviderOrder();
       case 'none':
       default:
-        // 未选择 provider（迁移完成前的旧快照或旧部署）保持历史固定顺序；
-        // 一旦管理员选中了具体 provider，就只按该 provider 分派，不再被其它旧凭据抢占。
-        return parseWithLegacyProviderOrder();
+        // sangfor 只接管命中的扩展名；其余格式和显式 none 都走系统解析，
+        // 不再按旧 customPdfParse 凭据链回落，避免跨 Provider 使用凭据。
+        return systemParse();
     }
   };
 

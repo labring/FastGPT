@@ -47,21 +47,30 @@ describe('initFastGPTConfig', () => {
     global.systemEnv = {} as any;
   });
 
-  it('只配置 SoMark 时开启 PDF 增强解析入口', () => {
-    initFastGPTConfig({
-      feConfigs: {},
-      systemEnv: {
-        customPdfParse: {
-          somarkApiKey: 'sk-test'
-        }
-      }
-    } as any);
+  it('只配置 SoMark Provider 时开启 PDF 增强解析入口', () => {
+    const originalConfig = (global as any).systemInstanceConfig;
+    (global as any).systemInstanceConfig = resolveSystemInstanceConfig({
+      providers: { documentParse: { provider: 'somark' } }
+    });
 
-    expect(global.feConfigs.showCustomPdfParse).toBe(true);
-    expect(global.systemEnv.customPdfParse?.somarkApiKey).toBe('sk-test');
-    expect(global.systemEnv.datasetParseMaxProcess).toBe(10);
-    expect(global.systemEnv.hnswEfSearch).toBe(200);
-    expect(global.systemEnv.vectorRecallConcurrency).toBe(0);
+    try {
+      initFastGPTConfig({
+        feConfigs: {},
+        systemEnv: {
+          customPdfParse: {
+            somarkApiKey: 'sk-test'
+          }
+        }
+      } as any);
+
+      expect(global.feConfigs.showCustomPdfParse).toBe(true);
+      expect(global.systemEnv.customPdfParse?.somarkApiKey).toBe('sk-test');
+      expect(global.systemEnv.datasetParseMaxProcess).toBe(10);
+      expect(global.systemEnv.hnswEfSearch).toBe(200);
+      expect(global.systemEnv.vectorRecallConcurrency).toBe(0);
+    } finally {
+      (global as any).systemInstanceConfig = originalConfig;
+    }
   });
 
   it('配置校验失败时不中断，仍可降级挂载全局状态', () => {

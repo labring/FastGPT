@@ -133,19 +133,19 @@
 
 ### 批次 D：配置与消费规则一致性（R1-R5）
 
-- [ ] **R1（原第 26 项，P1）登录/注册方式派生未迁移**
+- [x] **R1（原第 26 项，P1）登录/注册方式派生未迁移**
   - 按评论建议：从新邮箱/短信配置重新推导 `login_method`、`find_password_method`、`bind_notification_method` 和手机号 `register_method`。
   - 位置：`packages/global/common/system/config/frontendProjection.ts`、`projects/app/src/web/admin/config/adapt.ts`、`projects/app/src/pages/api/common/system/getInitData.ts`
-- [ ] **R2（原第 27 项，P1）解析 Provider `none` 语义**
+- [x] **R2（原第 27 项，P1）解析 Provider `none` 语义**
   - 按评论建议：统一下拉选项、默认值和运行时语义；`none` 必须表示关闭外部解析，不按旧凭据回落。
   - 位置：`projects/app/src/pageComponents/admin/settings/providers/index.tsx`、`packages/service/common/file/read/utils.ts`
-- [ ] **R3（原第 28 项，P2）`showCustomPdfParse` 推导**
+- [x] **R3（原第 28 项，P2）`showCustomPdfParse` 推导**
   - 按当前选中的 Provider 判断，而不是只看旧凭据。
   - 位置：`packages/service/common/system/tools.ts`
-- [ ] **R4（原第 29 项，P2）内容审核字段版本归属**
+- [x] **R4（原第 29 项，P2）内容审核字段版本归属**
   - 对齐 Pro 实际支持范围，同步 registry、页面可见性和 API 权限。
   - 位置：`packages/global/common/system/config/registry.ts`、`packages/service/thirdProvider/fastgptPro/api.ts`
-- [ ] **R5（原第 30 项，P2）`ENABLE_SAAS_ADMIN_CONFIG` 范围**
+- [x] **R5（原第 30 项，P2）`ENABLE_SAAS_ADMIN_CONFIG` 范围**
   - 恢复为仅控制配置展示；工单、企业认证入口按服务实际配置判断。
   - 位置：`pro/admin/src/service/admin/settings/hooks.ts`
 
