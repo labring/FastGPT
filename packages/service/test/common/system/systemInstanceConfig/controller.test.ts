@@ -410,21 +410,57 @@ describe('systemInstanceConfig controller', () => {
       expect(updated.effectiveConfig.scripts).toEqual([{ src: 'a.js' }]);
     });
 
-    it('reports invalid submitted leaf values as request input errors', async () => {
+    it.each([
+      {
+        domain: 'performance' as const,
+        overrides: { task: { evalConcurrency: 0 } }
+      },
+      {
+        domain: 'providers' as const,
+        overrides: { documentParse: { provider: 'customPdf' } }
+      },
+      {
+        domain: 'performance' as const,
+        overrides: { workflow: { maxLoopTimes: 1 } }
+      }
+    ])(
+      'reports invalid effective config caused by submitted values as request input errors: $domain $overrides',
+      async ({ domain, overrides }) => {
+        await expect(
+          batchUpdateDomainConfigs({
+            items: [{ domain, expectedRevision: 0, overrides }],
+            actor: { actor: 'admin' }
+          })
+        ).rejects.toBeInstanceOf(ApiRequestInputParseError);
+
+        expect(await MongoSystemInstanceConfig.findOne({ domain })).toBeNull();
+      }
+    );
+
+    it('keeps database-originated invalid values as internal errors', async () => {
+      // 直接写 collection 模拟历史坏记录，绕过当前 Schema 的写入校验。
+      await MongoSystemInstanceConfig.collection.insertOne({
+        domain: 'performance',
+        schemaVersion: 1,
+        revision: 1,
+        overrides: { task: { evalConcurrency: 0 } },
+        updatedBy: { actor: 'system' },
+        createdAt: new Date(),
+        updatedAt: new Date()
+      });
+
       await expect(
         batchUpdateDomainConfigs({
           items: [
             {
               domain: 'performance',
-              expectedRevision: 0,
-              overrides: { task: { evalConcurrency: 0 } }
+              expectedRevision: 1,
+              overrides: { workflow: { maxLoopTimes: 2 } }
             }
           ],
           actor: { actor: 'admin' }
         })
-      ).rejects.toBeInstanceOf(ApiRequestInputParseError);
-
-      expect(await MongoSystemInstanceConfig.findOne({ domain: 'performance' })).toBeNull();
+      ).rejects.not.toBeInstanceOf(ApiRequestInputParseError);
     });
 
     it('rolls back completely if any domain in the batch encounters a revision conflict', async () => {

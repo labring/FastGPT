@@ -5,7 +5,8 @@ import { SECRET_MASK } from '@fastgpt/global/common/system/config/permission';
 const mocks = vi.hoisted(() => ({
   edition: 'pro' as 'pro' | 'community',
   initSystemConfig: vi.fn(),
-  syncSiteAvatarLifecycle: vi.fn()
+  syncSiteAvatarLifecycle: vi.fn(),
+  copyForSiteReference: vi.fn(async ({ avatar }: { avatar: string }) => avatar)
 }));
 
 vi.mock('@/service/middleware/entry', () => ({ NextAPI: (handler: unknown) => handler }));
@@ -15,6 +16,12 @@ vi.mock('@fastgpt/service/support/permission/user/auth', () => ({
 vi.mock('@/service/common/system', () => ({ initSystemConfig: mocks.initSystemConfig }));
 vi.mock('@/service/common/system/syncSiteAvatarLifecycle', () => ({
   syncSiteAvatarLifecycle: mocks.syncSiteAvatarLifecycle
+}));
+vi.mock('@fastgpt/service/common/s3/sources/avatar', async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  getS3AvatarSource: () => ({
+    copyForSiteReference: mocks.copyForSiteReference
+  })
 }));
 vi.mock(
   '@fastgpt/service/common/system/systemInstanceConfig/controller',
@@ -33,6 +40,7 @@ describe('instance config update API', () => {
     mocks.edition = 'pro';
     mocks.initSystemConfig.mockRejectedValue(new Error('Runtime apply unavailable'));
     mocks.syncSiteAvatarLifecycle.mockRejectedValue(new Error('Avatar cleanup unavailable'));
+    mocks.copyForSiteReference.mockImplementation(async ({ avatar }: { avatar: string }) => avatar);
   });
 
   it('returns the committed revision without waiting for reload, cleanup or a post-commit read', async () => {
@@ -97,6 +105,38 @@ describe('instance config update API', () => {
     expect(await MongoSystemInstanceConfig.findOne({ domain: 'site' }).lean()).toMatchObject({
       revision: 1,
       overrides: { favicon: '/api/system/img/avatar/team/current.png' }
+    });
+  });
+
+  it('copies a newly referenced site avatar and saves the independent object URL', async () => {
+    const previousAvatar = '/api/system/img/avatar/team/current.png';
+    const nextAvatar = '/api/system/img/avatar/team/next.png';
+    const copiedAvatar = '/api/system/img/avatar/site/file/copied-next.png';
+    await MongoSystemInstanceConfig.create({
+      domain: 'site',
+      revision: 1,
+      overrides: { favicon: previousAvatar },
+      updatedBy: { actor: 'system' }
+    });
+    mocks.copyForSiteReference.mockResolvedValueOnce(copiedAvatar);
+
+    const response = await handler({
+      body: {
+        items: [
+          {
+            domain: 'site',
+            expectedRevision: 1,
+            overrides: { favicon: nextAvatar }
+          }
+        ]
+      }
+    } as any);
+
+    expect(mocks.copyForSiteReference).toHaveBeenCalledWith({ avatar: nextAvatar });
+    expect(response.results[0].overrides.favicon).toBe(copiedAvatar);
+    expect(await MongoSystemInstanceConfig.findOne({ domain: 'site' }).lean()).toMatchObject({
+      revision: 2,
+      overrides: { favicon: copiedAvatar }
     });
   });
 

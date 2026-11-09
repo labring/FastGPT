@@ -16,6 +16,19 @@ export const isSiteAvatarObject = (bucketName: string, key: string): boolean =>
 export const toSiteAvatarKey = (avatar: string): string =>
   avatar.startsWith(imageBaseUrl) ? avatar.slice(imageBaseUrl.length) : avatar;
 
+export type SiteAvatarFields = {
+  favicon?: string;
+  navbarItems?: { avatar?: string }[];
+};
+
+/** 提取站点配置中所有头像引用（favicon 与 navbarItems），保持原始 URL 形态。 */
+export const getSiteAvatarRefs = (site: SiteAvatarFields): Set<string> => {
+  const list = [site.favicon, ...(site.navbarItems ?? []).map((item) => item.avatar)].filter(
+    Boolean
+  ) as string[];
+  return new Set(list);
+};
+
 /**
  * 读取当前站点配置中仍被引用的头像 key 集合。
  *

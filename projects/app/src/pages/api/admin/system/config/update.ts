@@ -1,4 +1,6 @@
 import type { ApiRequestProps } from '@fastgpt/next/type';
+import { imageBaseUrl } from '@fastgpt/global/common/file/image/constants';
+import { deepMergeConfig } from '@fastgpt/global/common/system/config/merge';
 import { NextAPI } from '@/service/middleware/entry';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
@@ -17,11 +19,49 @@ import {
 } from '@fastgpt/service/common/system/systemInstanceConfig/controller';
 import { initSystemConfig } from '@/service/common/system';
 import { syncSiteAvatarLifecycle } from '@/service/common/system/syncSiteAvatarLifecycle';
+import {
+  getS3AvatarSource,
+  SiteAvatarReferenceUnavailableError
+} from '@fastgpt/service/common/s3/sources/avatar';
+import {
+  getSiteAvatarRefs,
+  type SiteAvatarFields
+} from '@fastgpt/service/common/s3/siteAvatarReferences';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { logInstanceConfigWrite } from '@fastgpt/service/common/system/migrationCoverageLog';
 import { ApiHttpError } from '@fastgpt/service/common/http/apiError';
 
 const logger = getLogger(LogCategories.SYSTEM);
+
+const isSiteAvatarUrl = (avatar: string) => avatar.startsWith(`${imageBaseUrl}avatar/`);
+
+/** 将站点 overrides 中本次新引用的头像替换为独立复制对象。 */
+const rewriteSiteAvatarOverrides = ({
+  overrides,
+  replacements
+}: {
+  overrides: Record<string, unknown>;
+  replacements: Map<string, string>;
+}): Record<string, unknown> => {
+  const rewrite = (value: unknown) =>
+    typeof value === 'string' && replacements.has(value) ? replacements.get(value)! : value;
+  const next = structuredClone(overrides);
+
+  if (typeof next.favicon === 'string') {
+    next.favicon = rewrite(next.favicon);
+  }
+  if (Array.isArray(next.navbarItems)) {
+    next.navbarItems = next.navbarItems.map((item) => {
+      if (!item || typeof item !== 'object' || Array.isArray(item)) return item;
+      const navbarItem = item as Record<string, unknown>;
+      return typeof navbarItem.avatar === 'string'
+        ? { ...navbarItem, avatar: rewrite(navbarItem.avatar) }
+        : navbarItem;
+    });
+  }
+
+  return next;
+};
 
 /**
  * Admin API - 保存一个或多个 Domain 的稀疏覆盖配置。
@@ -70,20 +110,58 @@ async function handler(
   const siteItem = items.find((item) => item.domain === 'site');
   const previousSiteConfig = siteItem ? (await getDomainConfig('site')).effectiveConfig : undefined;
 
-  // 3. 单事务写入全部域和可选套餐
+  // 3. 新引用的站点头像先复制为独立对象并改写本次 overrides。
+  // 旧删除任务可能已经领取/正在删除原对象；新配置只引用复制件，避免与旧任务共享同一 key。
+  // 复制件带 24h 临时 TTL，保存成功后由生命周期同步移除；保存失败则由 TTL 回收。
+  let itemsToSave = items;
+  if (siteItem && previousSiteConfig) {
+    const previousRefs = getSiteAvatarRefs(previousSiteConfig);
+    const nextSite = deepMergeConfig(previousSiteConfig, siteItem.overrides) as SiteAvatarFields;
+    const newRefs = [...getSiteAvatarRefs(nextSite)].filter(
+      (avatar) => !previousRefs.has(avatar) && isSiteAvatarUrl(avatar)
+    );
+    const replacements = new Map<string, string>();
+
+    for (const avatar of newRefs) {
+      try {
+        replacements.set(avatar, await getS3AvatarSource().copyForSiteReference({ avatar }));
+      } catch (error) {
+        if (error instanceof SiteAvatarReferenceUnavailableError) {
+          throw new ApiHttpError(400, `Avatar file not found: ${avatar}. Please upload it again.`);
+        }
+        throw error;
+      }
+    }
+
+    if (replacements.size > 0) {
+      itemsToSave = items.map((item) =>
+        item.domain === 'site'
+          ? {
+              ...item,
+              overrides: rewriteSiteAvatarOverrides({
+                overrides: item.overrides,
+                replacements
+              })
+            }
+          : item
+      );
+    }
+  }
+
+  // 4. 单事务写入全部域和可选套餐
   const savedConfigs = await batchUpdateDomainConfigs({
-    items,
+    items: itemsToSave,
     subPlans,
     subPlansExpectedRevision,
     actor: { actor: 'admin', userId: auth.userId }
   });
 
-  // 4. 数据库提交后即保存成功；运行时刷新在后台触发，刷新失败不将已提交的操作报告为失败
+  // 5. 数据库提交后即保存成功；运行时刷新在后台触发，刷新失败不将已提交的操作报告为失败
   void initSystemConfig().catch((error) => {
     logger.error('Failed to apply instance config after save', { error });
   });
 
-  // 5. 站点头像生命周期同步是保存后的清理动作，失败不影响保存结果
+  // 6. 站点头像生命周期同步是保存后的清理动作，失败不影响保存结果
   if (siteItem && previousSiteConfig) {
     const currentSite = savedConfigs.find((result) => result.domain === 'site');
     if (currentSite)
@@ -95,7 +173,7 @@ async function handler(
       });
   }
 
-  // 6. 只投影本次提交结果，不再读库：后续刷新异常或并发保存不能改变这次保存的响应。
+  // 7. 只投影本次提交结果，不再读库：后续刷新异常或并发保存不能改变这次保存的响应。
   const results = savedConfigs.map((result) => formatDomainConfigForAdmin(result, edition));
   logInstanceConfigWrite({
     callsite: 'runtime.app.admin.system.config.update',

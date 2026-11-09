@@ -5,6 +5,14 @@ import { MongoS3TTL } from '../../models/ttl';
 import { S3PublicBucket } from '../../buckets/public';
 import { avatarAllowedExtensions, createUploadConstraints } from '../../utils/uploadConstraints';
 
+/** 站点图片源对象已不存在，调用方应提示重新上传。 */
+export class SiteAvatarReferenceUnavailableError extends Error {
+  constructor(avatar: string) {
+    super(`Site avatar source no longer exists: ${avatar}`);
+    this.name = 'SiteAvatarReferenceUnavailableError';
+  }
+}
+
 /** 站点图片失去引用后的回收宽限期：留出撤销/改回以及旧异步清理完成的时间。 */
 export const SITE_AVATAR_DELETE_DELAY_MS = 24 * 60 * 60 * 1000;
 
@@ -71,6 +79,35 @@ class S3AvatarSource extends S3PublicBucket {
       { $max: { expiredTime: new Date(Date.now() + delayMs) } },
       { upsert: true, session }
     );
+  }
+
+  /**
+   * 为站点保存的新引用复制一份独立对象。
+   *
+   * 旧保存的删除任务可能已经进入队列并正在删除原对象；新配置引用复制后的 key，
+   * 不再与旧删除任务共享同一个对象。复制件先带 24 小时临时 TTL，保存成功后的
+   * 生命周期同步会移除 TTL；保存失败时由 TTL 自动回收。
+   */
+  async copyForSiteReference({ avatar }: { avatar: string }): Promise<string> {
+    const from = avatar.slice(this.prefix.length);
+    if (!(await this.isObjectExists(from))) {
+      throw new SiteAvatarReferenceUnavailableError(avatar);
+    }
+
+    const { fileKey } = getFileS3Key.avatar({
+      teamId: 'site',
+      filename: from.split('/').pop()
+    });
+    try {
+      await this.copy({ from, to: fileKey, options: { temporary: true } });
+    } catch (error) {
+      // 复制期间源对象被旧删除任务删掉：按“需要重新上传”处理，而不是暴露成服务端故障。
+      if (!(await this.isObjectExists(from))) {
+        throw new SiteAvatarReferenceUnavailableError(avatar);
+      }
+      throw error;
+    }
+    return this.prefix.concat(fileKey);
   }
 
   async deleteAvatar(avatar: string, session?: ClientSession): Promise<void> {

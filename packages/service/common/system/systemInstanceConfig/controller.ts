@@ -478,14 +478,25 @@ export const batchUpdateDomainConfigs = async ({
       try {
         effectiveConfig = resolveDomainEffectiveConfig({ domain, overrides: parsedOverrides });
       } catch (error) {
-        // 跨字段 superRefine 也可能由本次提交触发；仅当所有问题路径都来自本次 overrides 时
-        // 归为请求错误，数据库坏记录或内部不变量错误仍保持 500。
-        if (
-          error instanceof ZodError &&
-          error.issues.length > 0 &&
-          error.issues.every((issue) => hasOverridePath(submittedOverrides, issue.path.join('.')))
-        ) {
-          throw new ApiRequestInputParseError(error, { inputSource: 'body' });
+        // 有效配置由默认值 + 库中现值 + 本次补丁共同决定，错误展示路径不一定出现在补丁里。
+        // 用同一份库中现值单独校验一次：基线有效而合并后失败，说明是本次提交触发，归为 400；
+        // 基线本身无效则是数据库坏记录或内部不变量错误，保留 500。
+        if (error instanceof ZodError) {
+          let previousConfigValid = false;
+          try {
+            const previousOverrides = parseDomainOverrides({
+              domain,
+              overrides: existing?.overrides ?? {},
+              options: { strict: false }
+            });
+            resolveDomainEffectiveConfig({ domain, overrides: previousOverrides });
+            previousConfigValid = true;
+          } catch {
+            // 基线校验失败属于内部数据问题，保留下面原始 merged 校验错误。
+          }
+          if (previousConfigValid) {
+            throw new ApiRequestInputParseError(error, { inputSource: 'body' });
+          }
         }
         throw error;
       }

@@ -231,6 +231,17 @@
   - 覆盖：`performance.task.evalConcurrency=0` 返回请求入参错误且不写库。
   - 位置：`packages/service/common/system/systemInstanceConfig/controller.ts`、`packages/service/test/common/system/systemInstanceConfig/controller.test.ts`
 
+### 批次 J：最新 review C1/C2 收口
+
+- [x] **J1（review C1，P2）已开始删除的对象仍可能成为新引用**
+  - 已实现：站点保存时为本次新引用的头像复制一份独立对象（带 24h 临时 TTL），并把本次 site overrides 的 favicon/navbarItems 改写为复制件 URL。旧删除任务即使正在删除原 key，也只影响原对象；保存成功后生命周期同步移除复制件 TTL，保存失败则由 TTL 回收。复制期间源对象被删除会返回“重新上传”的 400。
+  - 覆盖：新引用保存后配置只引用复制件，不复用旧删除任务正在处理的 key。
+  - 位置：`packages/service/common/s3/sources/avatar/index.ts`、`projects/app/src/pages/api/admin/system/config/update.ts`、`projects/app/test/api/admin/system/config/update.test.ts`
+- [x] **J2（review C2，P3）按“本次修改是否使有效配置违反约束”区分错误来源**
+  - 已实现：合并后有效配置校验失败时，再用库中现值 + 默认值单独校验基线；基线有效而合并后失败说明由本次提交触发，包装为请求入参错误（400）；基线本身无效说明数据库坏记录/内部不变量错误，保留原始 ZodError（500）。
+  - 覆盖：`evalConcurrency=0`、`provider=customPdf` 缺 URL、`maxLoopTimes=1` 与继承并行值冲突均返回 400；历史坏记录仍为内部错误。
+  - 位置：`packages/service/common/system/systemInstanceConfig/controller.ts`、`packages/service/test/common/system/systemInstanceConfig/controller.test.ts`
+
 ## 四、已完成项（不重复修）
 
 - PlanEditModal 测试兼容性：`b22b6a55f`，12 例通过，review 线程已 resolve。
