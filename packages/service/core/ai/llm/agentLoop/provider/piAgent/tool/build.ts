@@ -91,6 +91,7 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
     call: ChatCompletionMessageToolCall;
     response: string;
     assistantMessages?: ChatCompletionMessageParam[];
+    continuationMessage?: string;
   }) => void;
 }): Promise<AgentTool[]> => {
   const tools: AgentTool[] = [];
@@ -110,6 +111,8 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
       stop?: boolean;
       errorMessage?: string;
       metadata?: unknown;
+      hideInUI?: boolean;
+      continuationMessage?: string;
     }>;
   }) => {
     const startedAt = Date.now();
@@ -139,9 +142,16 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
       usages,
       errorMessage: result.errorMessage,
       metadata: result.metadata,
+      hideInUI: result.hideInUI,
       seconds: +((Date.now() - startedAt) / 1000).toFixed(2)
     });
-    onToolResult({ call, response: normalizedResponse, assistantMessages });
+    onToolResult({
+      call,
+      response: normalizedResponse,
+      assistantMessages,
+      ...(!result.interactive &&
+        !result.stop && { continuationMessage: result.continuationMessage })
+    });
     return { ...result, response: normalizedResponse, assistantMessages, usages };
   };
 

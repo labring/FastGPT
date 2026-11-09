@@ -245,6 +245,18 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
   const completeMessages: ChatCompletionMessageParam[] = [
     ...(standardAskResumeMessages ?? input.messages)
   ];
+  /** 标准历史、隐藏展示消息和运行事件共用同一条服务端 User 指令。 */
+  const recordContinuationMessage = (content: string): ChatCompletionMessageParam => {
+    const message: ChatCompletionMessageParam = {
+      role: ChatCompletionRequestMessageRoleEnum.User,
+      content,
+      hideInUI: true
+    };
+    completeMessages.push(message);
+    assistantMessages.push(message);
+    runtime.emitEvent?.({ type: 'user_message', content, source: 'server' });
+    return message;
+  };
   const shouldRestoreRawState = !!input.childrenInteractiveParams;
   let initialPiMessages = normalizePiAgentMessages({
     messages:
@@ -384,6 +396,7 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
     });
   }
 
+  const toolContinuationMessages: string[] = [];
   const tools = await buildPiAgentTools({
     runtime,
     getActivePlan: () => activePlan,
@@ -405,12 +418,13 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
     },
     getMessages: () => completeMessages,
     onToolCall: emitOrdinaryToolExecution,
-    onToolResult: ({ call, response, assistantMessages }) => {
+    onToolResult: ({ call, response, assistantMessages, continuationMessage }) => {
       recordToolResult({
         call,
         response,
         childAssistantMessages: assistantMessages
       });
+      if (continuationMessage) toolContinuationMessages.push(continuationMessage);
     }
   });
 
@@ -457,6 +471,16 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
       });
     },
     transformContext: async (messages) => {
+      // 工具全部执行完后才进入下一次请求，在此追加 User，保持工具结果的完整配对。
+      for (const content of toolContinuationMessages.splice(0)) {
+        const message = recordContinuationMessage(content);
+        const nextMessages = [
+          ...messages,
+          ...convertChatMessagesToPiAgentMessages({ messages: [message], model: piModel })
+        ];
+        messages.splice(0, messages.length, ...nextMessages);
+        agent.state.messages = nextMessages;
+      }
       const startTime = Date.now();
       try {
         const standardMessages = convertPiAgentMessagesToChatMessages(messages);
@@ -737,11 +761,7 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
         break;
       }
 
-      const continuationMessage: ChatCompletionMessageParam = {
-        role: ChatCompletionRequestMessageRoleEnum.User,
-        content: decision.message
-      };
-      completeMessages.push(continuationMessage);
+      recordContinuationMessage(decision.message);
       await runAgent(() => agent.prompt(decision.message));
     }
   } catch (error) {

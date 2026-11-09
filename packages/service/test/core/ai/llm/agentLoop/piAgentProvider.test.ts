@@ -404,6 +404,7 @@ describe('runPiAgentLoop', () => {
   });
 
   it('continues the same pi agent when completion policy rejects a natural completion', async () => {
+    const emitEvent = vi.fn();
     const completionPolicy = vi
       .fn()
       .mockResolvedValueOnce({
@@ -418,6 +419,7 @@ describe('runPiAgentLoop', () => {
         teamId: 'team_1',
         llmParams: { model: 'gpt-5' },
         completionPolicy,
+        emitEvent,
         toolCatalog: { runtimeTools: [] },
         executeTool: vi.fn(),
         checkIsStopping: vi.fn(() => false)
@@ -437,7 +439,18 @@ describe('runPiAgentLoop', () => {
     });
     expect(result.completeMessages).toContainEqual({
       role: 'user',
-      content: 'Continue until terminal facts exist.'
+      content: 'Continue until terminal facts exist.',
+      hideInUI: true
+    });
+    expect(result.assistantMessages).toContainEqual({
+      role: 'user',
+      content: 'Continue until terminal facts exist.',
+      hideInUI: true
+    });
+    expect(emitEvent).toHaveBeenCalledWith({
+      type: 'user_message',
+      content: 'Continue until terminal facts exist.',
+      source: 'server'
     });
   });
 

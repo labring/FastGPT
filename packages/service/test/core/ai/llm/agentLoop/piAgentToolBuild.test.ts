@@ -20,6 +20,44 @@ const buildTools = (runtimeTools: ChatCompletionTool[]) =>
   });
 
 describe('piAgent tool schema normalization', () => {
+  it.each(['continue', 'stop', 'interactive'] as const)(
+    'forwards a hidden tool continuation only when the tool can continue: %s',
+    async (outcome) => {
+      const emitEvent = vi.fn();
+      const onToolResult = vi.fn();
+      const tools = await buildPiAgentTools({
+        runtime: {
+          ...createRuntime([
+            { type: 'function', function: { name: 'review', parameters: { type: 'object' } } }
+          ]),
+          emitEvent,
+          executeTool: vi.fn(async () => ({
+            response: 'review required',
+            assistantMessages: [],
+            usages: [],
+            hideInUI: true,
+            continuationMessage: 'Review the draft.',
+            ...(outcome === 'stop' && { stop: true }),
+            ...(outcome === 'interactive' && { interactive: { pending: true } })
+          }))
+        },
+        getActivePlan: () => undefined,
+        setActivePlan: vi.fn(),
+        setPendingAsk: vi.fn(),
+        getMessages: () => [],
+        onToolCall: vi.fn(),
+        onToolResult
+      });
+      await tools[0].execute('review-call', {});
+      expect(onToolResult.mock.calls[0][0].continuationMessage).toBe(
+        outcome === 'continue' ? 'Review the draft.' : undefined
+      );
+      expect(emitEvent).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'tool_run_end', hideInUI: true })
+      );
+    }
+  );
+
   it('normalizes legacy required flags and removes FastGPT-private fields', async () => {
     const tools = await buildTools([
       {
