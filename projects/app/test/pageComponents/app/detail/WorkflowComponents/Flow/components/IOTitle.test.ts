@@ -2,11 +2,13 @@ import { createElement, type ReactNode } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { getHandleId } from '@fastgpt/global/common/workflow/reference';
+import { FlowNodeOutputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import IOTitle from '@/pageComponents/app/detail/WorkflowComponents/Flow/components/IOTitle';
 
 const mocks = vi.hoisted(() => ({
   updateNode: vi.fn(),
   getEdges: vi.fn(),
+  outputs: [] as Array<{ type: FlowNodeOutputTypeEnum }>,
   onToggle: undefined as undefined | ((event: { target: { checked: boolean } }) => void)
 }));
 vi.mock('next-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
@@ -14,6 +16,10 @@ vi.mock('@/web/core/workflow/editor/react/useWorkflow', () => ({
   useWorkflowActions: () => ({ getEdges: mocks.getEdges })
 }));
 vi.mock('@/web/core/workflow/editor/react/useNode', () => ({
+  useNode: (
+    _nodeId: string,
+    selector: (node: { data: { outputs: typeof mocks.outputs } }) => unknown
+  ) => selector({ data: { outputs: mocks.outputs } }),
   useNodeActions: () => ({ updateNode: mocks.updateNode })
 }));
 vi.mock('@/pageComponents/app/detail/WorkflowComponents/Flow/components/ToolParamConfig', () => ({
@@ -37,6 +43,7 @@ describe('IOTitle catch port deletion', () => {
     vi.clearAllMocks();
     mocks.onToggle = undefined;
     mocks.getEdges.mockReturnValue([]);
+    mocks.outputs = [{ type: FlowNodeOutputTypeEnum.error }];
   });
 
   it('deletes all attached catch edges only when explicitly disabling the port', () => {
@@ -88,5 +95,16 @@ describe('IOTitle catch port deletion', () => {
     mocks.onToggle?.({ target: { checked: false } });
     expect(mocks.getEdges).not.toHaveBeenCalled();
     expect(mocks.updateNode).not.toHaveBeenCalled();
+  });
+
+  it('hides catch switching when the node has no error output', () => {
+    mocks.outputs = [{ type: FlowNodeOutputTypeEnum.static }];
+    renderToStaticMarkup(createElement(IOTitle, { nodeId: 'node', catchError: false }));
+    expect(mocks.onToggle).toBeUndefined();
+  });
+
+  it('shows catch switching when the node has an error output', () => {
+    renderToStaticMarkup(createElement(IOTitle, { nodeId: 'node', catchError: false }));
+    expect(mocks.onToggle).toBeTypeOf('function');
   });
 });

@@ -113,6 +113,7 @@ const NodeCQNode = ({ data, selected }: CanvasNodeProps) => {
                     handleId={getHandleId(nodeId, 'source', item.key)}
                     position={Position.Right}
                     translate={sourceTranslate}
+                    nodeAnchored
                   />
                 </Box>
               </Box>

@@ -232,6 +232,7 @@ const Reference = ({ item, nodeId }: RenderInputProps) => {
             handleId={getHandleId(nodeId, 'source', USER_SELECT_REFERENCE_HANDLE_KEY)}
             position={Position.Right}
             translate={[34, 0]}
+            nodeAnchored
           />
         )}
       </Box>

@@ -93,6 +93,7 @@ const OutputLabel = ({ nodeId, output }: { nodeId: string; output: FlowNodeOutpu
           handleId={getHandleId(nodeId, 'source', output.key)}
           translate={sourceTranslate}
           position={Position.Right}
+          nodeAnchored
         />
       )}
     </Box>

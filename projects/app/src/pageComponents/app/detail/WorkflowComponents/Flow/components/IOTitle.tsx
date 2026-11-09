@@ -5,7 +5,8 @@ import ToolParamConfig from './ToolParamConfig';
 import { useTranslation } from 'next-i18next';
 import { getHandleId } from '@fastgpt/global/common/workflow/reference';
 import { Position } from '@xyflow/react';
-import { useNodeActions } from '@/web/core/workflow/editor/react/useNode';
+import { FlowNodeOutputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { useNode, useNodeActions } from '@/web/core/workflow/editor/react/useNode';
 import { useWorkflowActions } from '@/web/core/workflow/editor/react/useWorkflow';
 
 const IOTitle = ({
@@ -25,6 +26,11 @@ const IOTitle = ({
   const { getEdges } = useWorkflowActions();
   // nodeId 是可选 prop：hook 必须无条件调用，空 id 时 useNode 返回 undefined。
   const nodeActions = useNodeActions(nodeId ?? '');
+  const hasErrorOutput = useNode(
+    nodeId ?? '',
+    (node) =>
+      node?.data.outputs.some((output) => output.type === FlowNodeOutputTypeEnum.error) ?? false
+  );
 
   /**
    * 切换异常捕获开关：catchError 与 catch 输出上的连线必须一起消失。
@@ -40,14 +46,14 @@ const IOTitle = ({
         ? []
         : getEdges()
             .filter((edge) => edge.source === nodeId && edge.sourceHandle === catchHandle)
-        .map((edge) => ({
-          edge: {
-            source: edge.source,
-            target: edge.target,
-            sourceHandle: edge.sourceHandle || '',
-            targetHandle: edge.targetHandle || ''
-          }
-        }))
+            .map((edge) => ({
+              edge: {
+                source: edge.source,
+                target: edge.target,
+                sourceHandle: edge.sourceHandle || '',
+                targetHandle: edge.targetHandle || ''
+              }
+            }))
     });
   };
 
@@ -58,7 +64,7 @@ const IOTitle = ({
       <Box flex={1} />
 
       {/* Error catch switch for output */}
-      {catchError !== undefined && (
+      {catchError !== undefined && hasErrorOutput && (
         <HStack spacing={2} className="nodrag">
           <Text fontSize={'sm'} color={'myGray.600'}>
             {t('workflow:error_catch')}

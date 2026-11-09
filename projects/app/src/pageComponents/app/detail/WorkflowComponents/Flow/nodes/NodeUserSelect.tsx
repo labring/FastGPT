@@ -96,6 +96,7 @@ const NodeUserSelect = ({ data, selected }: CanvasNodeProps) => {
                     handleId={getHandleId(nodeId, 'source', item.key)}
                     position={Position.Right}
                     translate={optionHandleTranslate}
+                    nodeAnchored
                   />
                 )
               }

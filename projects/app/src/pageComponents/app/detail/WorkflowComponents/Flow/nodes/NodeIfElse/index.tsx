@@ -35,11 +35,7 @@ const NodeIfElse = ({ data, selected }: CanvasNodeProps) => {
   return (
     <>
       <NodeCard selected={selected} minW={'686px'} maxW={'1000px'} {...data}>
-        <IfElseEditor
-          nodeId={nodeId}
-          onBeforeCapture={onBeforeCapture}
-          onDragEnd={onDragEnd}
-        />
+        <IfElseEditor nodeId={nodeId} onBeforeCapture={onBeforeCapture} onDragEnd={onDragEnd} />
       </NodeCard>
       {draggingHandle}
     </>
@@ -204,6 +200,7 @@ const IfElseEditor = ({
             handleId={elseHandleId}
             position={Position.Right}
             translate={elseHandleTranslate}
+            nodeAnchored
           />
         </Flex>
       </Container>

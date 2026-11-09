@@ -1,5 +1,6 @@
-import React, { useContext, useMemo } from 'react';
-import { Handle, Position } from '@xyflow/react';
+import React, { useContext, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { Handle, Position, useUpdateNodeInternals } from '@xyflow/react';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
@@ -59,6 +60,9 @@ type Props = {
   translate?: [number, number];
   showHandle?: boolean;
   anchor?: { left?: number; top?: number; right?: number };
+  portalTarget?: HTMLElement;
+  /** 动态业务端口等首帧后挂到卡片右边缘；首帧保留局部内容供测量。 */
+  nodeAnchored?: boolean;
 };
 
 export const MySourceHandle = React.memo(function MySourceHandle({
@@ -67,9 +71,12 @@ export const MySourceHandle = React.memo(function MySourceHandle({
   handleId,
   position,
   showHandle = true,
-  anchor
+  anchor,
+  portalTarget,
+  nodeAnchored = false
 }: Props) {
   const { t } = useTranslation();
+  const updateNodeInternals = useUpdateNodeInternals();
   const renderHandle = useContext(WorkflowHandleRenderContext);
   const connected = useWorkflow((_structure, graph) =>
     graph.isHandleConnected({ nodeId, handleId, direction: 'source' })
@@ -92,10 +99,49 @@ export const MySourceHandle = React.memo(function MySourceHandle({
     if (!translate) return '';
     if (position === Position.Right) return `${translate[0] + 5}px, -50%`;
   }, [position, translate]);
+  const measureRef = useRef<HTMLSpanElement>(null);
+  const [nodeAnchor, setNodeAnchor] = useState<{
+    card: HTMLElement;
+    left: number;
+    top: number;
+  }>();
+
+  useLayoutEffect(() => {
+    if (!nodeAnchored || typeof document === 'undefined') return;
+    const measure = measureRef.current;
+    const row = measure?.parentElement;
+    if (!measure || !row) return;
+
+    const update = () => {
+      const node = measure.closest<HTMLElement>('.react-flow__node');
+      if (!node) return;
+      const measureRect = row.getBoundingClientRect();
+      const nodeRect = node.getBoundingClientRect();
+      const scale = node.offsetHeight > 0 ? nodeRect.height / node.offsetHeight : 1;
+      setNodeAnchor({
+        card: node,
+        left: node.offsetWidth,
+        top: (measureRect.top + measureRect.height / 2 - nodeRect.top) / scale
+      });
+    };
+
+    update();
+    const resizeObserver =
+      typeof ResizeObserver === 'function' ? new ResizeObserver(update) : undefined;
+    resizeObserver?.observe(measure);
+    return () => resizeObserver?.disconnect();
+  }, [nodeAnchored]);
+
+  useLayoutEffect(() => {
+    if (nodeAnchored && nodeAnchor) updateNodeInternals(nodeId);
+  }, [nodeAnchored, nodeAnchor, nodeId, updateNodeInternals]);
 
   if (!renderHandle) return null;
 
-  return (
+  const resolvedAnchor =
+    nodeAnchor && nodeAnchored ? { left: nodeAnchor.left, top: nodeAnchor.top } : anchor;
+  const resolvedPortalTarget = nodeAnchored ? nodeAnchor?.card : portalTarget;
+  const handle = (
     <MyTooltip
       label={
         <Box>
@@ -112,10 +158,11 @@ export const MySourceHandle = React.memo(function MySourceHandle({
       shouldWrapChildren={false}
     >
       <Box
+        data-workflow-node-anchored={nodeAnchored && resolvedPortalTarget ? 'true' : undefined}
         position="absolute"
-        right={anchor?.right ?? (anchor?.left === undefined ? 0 : undefined)}
-        left={anchor?.left}
-        top={anchor?.top === undefined ? '50%' : `${anchor.top}px`}
+        right={resolvedAnchor?.right ?? (resolvedAnchor?.left === undefined ? 0 : undefined)}
+        left={resolvedAnchor?.left}
+        top={resolvedAnchor?.top === undefined ? '50%' : `${resolvedAnchor.top}px`}
         w="0px"
         h="0px"
       >
@@ -150,6 +197,19 @@ export const MySourceHandle = React.memo(function MySourceHandle({
         </Handle>
       </Box>
     </MyTooltip>
+  );
+  return resolvedPortalTarget && nodeAnchored ? (
+    <>
+      <span ref={measureRef} style={{ display: 'none' }} />
+      {createPortal(handle, resolvedPortalTarget)}
+    </>
+  ) : nodeAnchored ? (
+    <>
+      <span ref={measureRef} style={{ display: 'none' }} />
+      {handle}
+    </>
+  ) : (
+    handle
   );
 });
 
