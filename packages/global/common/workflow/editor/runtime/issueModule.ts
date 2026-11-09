@@ -1,5 +1,8 @@
 import { FlowNodeTypeEnum } from '../../../../core/workflow/node/constant';
-import type { WorkflowCheckIssue } from '../../../../core/workflow/type/node';
+import {
+  getWorkflowIssueIdentity,
+  type WorkflowCheckIssue
+} from '../../../../core/workflow/type/node';
 import type {
   WorkflowConfigIssue,
   WorkflowEnvironment,
@@ -18,20 +21,6 @@ import type { DocumentReadApi, MutationMeta, ReferenceReadApi } from './types';
 /** 环境事实缺省值：目录未知（跳过模型规则）、sandbox 可用（不产出 sandbox 问题）。 */
 const UNKNOWN_ENVIRONMENT: WorkflowEnvironment = {
   sandbox: { configured: true, planSupported: true }
-};
-
-/** 同一节点、范围、code、字段与插值参数视为同一条问题；message 只影响展示。 */
-const dedupeIssues = <T extends WorkflowCheckIssue | WorkflowConfigIssue>(
-  issues: readonly T[]
-): T[] => {
-  const seen = new Set<string>();
-  return issues.filter((issue) => {
-    const nodeId = 'nodeId' in issue ? issue.nodeId : '';
-    const key = JSON.stringify([nodeId, issue.code, issue.inputKey ?? '', issue.params ?? null]);
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
 };
 
 /** Create the Workflow Issue module. */
@@ -148,6 +137,23 @@ export const createIssueModule = ({
    * 判定规则全在 issueRules，本函数只负责 scope、可达集合与结果身份复用。
    */
   const rebuildIssues = (onlyNodeIds?: ReadonlySet<string>) => {
+    /** 展示参数不参与身份；表单字段等定位参数用于区分同一输入下的不同子项。 */
+    const dedupeIssues = <T extends WorkflowCheckIssue | WorkflowConfigIssue>(
+      issues: readonly T[]
+    ): T[] => {
+      const seen = new Set<string>();
+      return issues.filter((issue) => {
+        const key = getWorkflowIssueIdentity({
+          nodeId: 'nodeId' in issue ? issue.nodeId : '',
+          code: issue.code,
+          inputKey: issue.inputKey,
+          params: issue.params
+        });
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+    };
     const current = document.getDocument();
     // 定向重算在旧视图上增量覆盖；全量重算从空表构建，已删除节点自然消失。
     const nextIssues = onlyNodeIds

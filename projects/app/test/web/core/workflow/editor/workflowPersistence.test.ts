@@ -247,7 +247,7 @@ describe('dedupeWorkflowIssueMessages', () => {
     ).toEqual(['「Answer」core message']);
   });
 
-  it('keeps distinct params and codes', () => {
+  it('keeps distinct field locations and ignores display-only params', () => {
     expect(
       dedupeWorkflowIssueMessages([
         {
@@ -255,8 +255,8 @@ describe('dedupeWorkflowIssueMessages', () => {
             nodeId: 'answer',
             level: 'error',
             code: 'invalid_reference',
-            inputKey: NodeInputKeyEnum.answerText,
-            params: { inputName: 'first' }
+            inputKey: NodeInputKeyEnum.userInputForms,
+            params: { fieldKey: 'first', inputName: 'First' }
           },
           message: 'first'
         },
@@ -265,8 +265,8 @@ describe('dedupeWorkflowIssueMessages', () => {
             nodeId: 'answer',
             level: 'error',
             code: 'invalid_reference',
-            inputKey: NodeInputKeyEnum.answerText,
-            params: { inputName: 'second' }
+            inputKey: NodeInputKeyEnum.userInputForms,
+            params: { fieldKey: 'second', inputName: 'Second' }
           },
           message: 'second'
         },
@@ -281,5 +281,29 @@ describe('dedupeWorkflowIssueMessages', () => {
         }
       ])
     ).toEqual(['first', 'second', 'third']);
+
+    expect(
+      dedupeWorkflowIssueMessages([
+        {
+          issue: {
+            nodeId: 'answer',
+            level: 'error',
+            code: 'invalid_reference',
+            inputKey: NodeInputKeyEnum.answerText
+          },
+          message: 'core'
+        },
+        {
+          issue: {
+            nodeId: 'answer',
+            level: 'error',
+            code: 'invalid_reference',
+            inputKey: NodeInputKeyEnum.answerText,
+            params: { inputName: 'Answer' }
+          },
+          message: 'runtime'
+        }
+      ])
+    ).toEqual(['core']);
   });
 });

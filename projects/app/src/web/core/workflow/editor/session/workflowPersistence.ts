@@ -3,6 +3,7 @@ import type { MutableRefObject } from 'react';
 import type { TFunction } from 'next-i18next';
 import type { StoreWorkflow } from '@fastgpt/global/common/workflow/editor/protocol';
 import type { WorkflowRuntimePort } from '@fastgpt/global/core/workflow/editor/types';
+import { getWorkflowIssueIdentity } from '@fastgpt/global/core/workflow/type/node';
 import { serializeRuntime } from '../codec';
 import { ensureModelCatalog } from '@/web/core/ai/model/modelData';
 import { getWorkflowModelCheckData } from '@/web/core/workflow/modelData';
@@ -47,8 +48,15 @@ export const dedupeWorkflowIssueMessages = (
 ): string[] => {
   const seen = new Set<string>();
   return issues.flatMap(({ issue, message }) => {
-    const nodeId = 'nodeId' in issue ? issue.nodeId : '';
-    const key = JSON.stringify([nodeId, issue.code, issue.inputKey ?? '', issue.params ?? null]);
+    const key = getWorkflowIssueIdentity(
+      {
+        nodeId: 'nodeId' in issue ? issue.nodeId : '',
+        code: issue.code,
+        inputKey: issue.inputKey,
+        params: issue.params
+      },
+      { ignoreDisplayParams: true }
+    );
     if (seen.has(key)) return [];
     seen.add(key);
     return [message];

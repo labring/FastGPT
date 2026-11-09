@@ -102,7 +102,7 @@ describe('workflow dimension batcher', () => {
     expect(flushed).toEqual([]);
   });
 
-  it('keeps the latest dynamic source handle centers in the batch', () => {
+  it('keeps the latest card measurement in the batch', () => {
     const frames: Array<() => void> = [];
     const flushed: DimensionMeasurement[][] = [];
     const batcher = createDimensionBatcher({

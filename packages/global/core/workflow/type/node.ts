@@ -342,6 +342,26 @@ export const WorkflowCheckIssueSchema = z.object({
 });
 export type WorkflowCheckIssue = z.infer<typeof WorkflowCheckIssueSchema>;
 
+/**
+ * Issue 文案和 level 不属于身份；参数排序后参与身份，保留字段下标等真实子问题。
+ * toast 合并跨来源错误时可忽略展示参数，避免不同校验器使用不同插值文案而重复。
+ */
+export const getWorkflowIssueIdentity = (
+  issue: Pick<WorkflowCheckIssue, 'nodeId' | 'code' | 'inputKey' | 'params'>,
+  { ignoreDisplayParams = false }: { ignoreDisplayParams?: boolean } = {}
+) =>
+  JSON.stringify([
+    issue.nodeId,
+    issue.code,
+    issue.inputKey ?? '',
+    Object.entries(issue.params ?? {})
+      .filter(
+        ([key]) =>
+          !ignoreDisplayParams || (key !== 'inputName' && key !== 'model' && key !== 'nodeName')
+      )
+      .sort(([left], [right]) => left.localeCompare(right))
+  ]);
+
 // react flow node type
 export const FlowNodeItemSchema = FlowNodeTemplateTypeSchema.extend({
   nodeId: z.string(),
