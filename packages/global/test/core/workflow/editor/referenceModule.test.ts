@@ -242,6 +242,216 @@ describe('workflow reference reachability', () => {
     );
   });
 
+  it('requires the catch port for an error output reference', () => {
+    const editor = createWorkflowEditor({
+      nodes: [
+        {
+          nodeId: 'source',
+          flowNodeType: FlowNodeTypeEnum.code,
+          name: 'Source',
+          catchError: true,
+          inputs: [],
+          outputs: [
+            {
+              id: '__error',
+              key: '__error',
+              type: FlowNodeOutputTypeEnum.error,
+              valueType: WorkflowIOValueTypeEnum.string
+            }
+          ]
+        },
+        {
+          nodeId: 'target',
+          flowNodeType: FlowNodeTypeEnum.textEditor,
+          name: 'Target',
+          inputs: [
+            {
+              key: 'value',
+              label: 'Value',
+              renderTypeList: [FlowNodeInputTypeEnum.reference],
+              selectedType: FlowNodeInputTypeEnum.reference,
+              valueType: WorkflowIOValueTypeEnum.string,
+              value: ['source', '__error']
+            }
+          ],
+          outputs: []
+        }
+      ],
+      edges: [
+        {
+          source: 'source',
+          target: 'target',
+          sourceHandle: 'source-source-right',
+          targetHandle: 'target-target-left'
+        }
+      ],
+      chatConfig: {}
+    });
+    const query = { nodeId: 'target', fieldKey: 'value' };
+
+    expect(editor.getField(query)?.references).toEqual([
+      expect.objectContaining({ code: 'unreachable_reference' })
+    ]);
+    expect(editor.getReferenceOptions({ nodeId: 'target' })).not.toContainEqual(
+      expect.objectContaining({ reference: ['source', '__error'] })
+    );
+
+    editor.dispatch({
+      type: 'connectEdge',
+      edge: {
+        source: 'source',
+        target: 'target',
+        sourceHandle: 'source-source_catch-right',
+        targetHandle: 'target-target-left'
+      }
+    });
+    expect(editor.getField(query)?.references).toEqual([
+      expect.objectContaining({ code: 'valid' })
+    ]);
+    expect(editor.getReferenceOptions({ nodeId: 'target' })).toContainEqual(
+      expect.objectContaining({ reference: ['source', '__error'] })
+    );
+    editor.dispose();
+  });
+
+  it('allows an error output to reach through the catch branch', () => {
+    const editor = createWorkflowEditor({
+      nodes: [
+        {
+          nodeId: 'source',
+          flowNodeType: FlowNodeTypeEnum.code,
+          name: 'Source',
+          catchError: true,
+          inputs: [],
+          outputs: [
+            {
+              id: '__error',
+              key: '__error',
+              type: FlowNodeOutputTypeEnum.error,
+              valueType: WorkflowIOValueTypeEnum.string
+            }
+          ]
+        },
+        {
+          nodeId: 'relay',
+          flowNodeType: FlowNodeTypeEnum.textEditor,
+          name: 'Relay',
+          inputs: [],
+          outputs: []
+        },
+        {
+          nodeId: 'target',
+          flowNodeType: FlowNodeTypeEnum.textEditor,
+          name: 'Target',
+          inputs: [
+            {
+              key: 'value',
+              label: 'Value',
+              renderTypeList: [FlowNodeInputTypeEnum.reference],
+              selectedType: FlowNodeInputTypeEnum.reference,
+              valueType: WorkflowIOValueTypeEnum.string,
+              value: ['source', '__error']
+            }
+          ],
+          outputs: []
+        }
+      ],
+      edges: [
+        {
+          source: 'source',
+          target: 'relay',
+          sourceHandle: 'source-source_catch-right',
+          targetHandle: 'relay-target-left'
+        },
+        {
+          source: 'relay',
+          target: 'target',
+          sourceHandle: 'relay-source-right',
+          targetHandle: 'target-target-left'
+        }
+      ],
+      chatConfig: {}
+    });
+    const query = { nodeId: 'target', fieldKey: 'value' };
+
+    expect(editor.getField(query)?.references).toEqual([
+      expect.objectContaining({ code: 'valid' })
+    ]);
+    expect(editor.getReferenceOptions({ nodeId: 'target' })).toContainEqual(
+      expect.objectContaining({ reference: ['source', '__error'] })
+    );
+    editor.dispose();
+  });
+
+  it('does not treat a normal branch through a relay as catch reachability', () => {
+    const editor = createWorkflowEditor({
+      nodes: [
+        {
+          nodeId: 'source',
+          flowNodeType: FlowNodeTypeEnum.code,
+          name: 'Source',
+          catchError: true,
+          inputs: [],
+          outputs: [
+            {
+              id: '__error',
+              key: '__error',
+              type: FlowNodeOutputTypeEnum.error,
+              valueType: WorkflowIOValueTypeEnum.string
+            }
+          ]
+        },
+        {
+          nodeId: 'relay',
+          flowNodeType: FlowNodeTypeEnum.textEditor,
+          name: 'Relay',
+          inputs: [],
+          outputs: []
+        },
+        {
+          nodeId: 'target',
+          flowNodeType: FlowNodeTypeEnum.textEditor,
+          name: 'Target',
+          inputs: [
+            {
+              key: 'value',
+              label: 'Value',
+              renderTypeList: [FlowNodeInputTypeEnum.reference],
+              selectedType: FlowNodeInputTypeEnum.reference,
+              valueType: WorkflowIOValueTypeEnum.string,
+              value: ['source', '__error']
+            }
+          ],
+          outputs: []
+        }
+      ],
+      edges: [
+        {
+          source: 'source',
+          target: 'relay',
+          sourceHandle: 'source-source-right',
+          targetHandle: 'relay-target-left'
+        },
+        {
+          source: 'relay',
+          target: 'target',
+          sourceHandle: 'relay-source-right',
+          targetHandle: 'target-target-left'
+        }
+      ],
+      chatConfig: {}
+    });
+    const query = { nodeId: 'target', fieldKey: 'value' };
+
+    expect(editor.getField(query)?.references).toEqual([
+      expect.objectContaining({ code: 'unreachable_reference' })
+    ]);
+    expect(editor.getReferenceOptions({ nodeId: 'target' })).not.toContainEqual(
+      expect.objectContaining({ reference: ['source', '__error'] })
+    );
+    editor.dispose();
+  });
+
   it('allows loop custom outputs to reference child nodes only', () => {
     const editor = createWorkflowEditor({
       nodes: [

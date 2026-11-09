@@ -58,6 +58,7 @@ type Props = {
   position: Position;
   translate?: [number, number];
   showHandle?: boolean;
+  anchor?: { left?: number; top?: number; right?: number };
 };
 
 export const MySourceHandle = React.memo(function MySourceHandle({
@@ -65,7 +66,8 @@ export const MySourceHandle = React.memo(function MySourceHandle({
   translate,
   handleId,
   position,
-  showHandle = true
+  showHandle = true,
+  anchor
 }: Props) {
   const { t } = useTranslation();
   const renderHandle = useContext(WorkflowHandleRenderContext);
@@ -73,7 +75,9 @@ export const MySourceHandle = React.memo(function MySourceHandle({
     graph.isHandleConnected({ nodeId, handleId, direction: 'source' })
   );
   const selected = useWorkflowSelectionValue((value) => value.selectedNodesMap[nodeId]);
-  const isConnectingSelf = useWorkflowUIValue((value) => value.connectingEdge?.handleId === handleId);
+  const isConnectingSelf = useWorkflowUIValue(
+    (value) => value.connectingEdge?.handleId === handleId
+  );
   const isConnectingTool = useWorkflowUIValue(
     (value) => value.connectingEdge?.handleId === NodeOutputKeyEnum.selectedTools
   );
@@ -82,10 +86,7 @@ export const MySourceHandle = React.memo(function MySourceHandle({
   const nodeIsHover = useWorkflowUIValue((value) => value.hoverNodeId === nodeId);
   const active = nodeIsHover || !!selected || isConnectingSelf;
   const visible =
-    showHandle &&
-    (!isConnecting || isConnectingNode) &&
-    !isConnectingTool &&
-    (active || connected);
+    showHandle && (!isConnecting || isConnectingNode) && !isConnectingTool && (active || connected);
 
   const translateStr = useMemo(() => {
     if (!translate) return '';
@@ -110,7 +111,14 @@ export const MySourceHandle = React.memo(function MySourceHandle({
       }
       shouldWrapChildren={false}
     >
-      <Box position="absolute" right={0} top="50%" w="0px" h="0px">
+      <Box
+        position="absolute"
+        right={anchor?.right ?? (anchor?.left === undefined ? 0 : undefined)}
+        left={anchor?.left}
+        top={anchor?.top === undefined ? '50%' : `${anchor.top}px`}
+        w="0px"
+        h="0px"
+      >
         <Handle
           style={{
             ...handleBaseStyle,

@@ -2,6 +2,7 @@ import { WorkflowDiagnosticCodeEnum } from '@fastgpt/global/core/workflow/diagno
 import { VARIABLE_NODE_ID } from '@fastgpt/global/core/workflow/constants';
 import type { WorkflowDocument } from '@fastgpt/global/core/workflow/type/document';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
+import { FlowNodeOutputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import {
   areWorkflowValueTypesCompatible,
   filterSelectableWorkflowNodeOutputs,
@@ -12,6 +13,7 @@ import type { WorkflowDiagnostic } from '../domain/diagnostic';
 import { hasConfiguredValue } from '../template/defaultValue';
 import {
   getInputReferenceSourceNodes,
+  isWorkflowReferenceOutputUpstream,
   getWorkflowReferenceValues,
   isWorkflowReferenceValue
 } from './service';
@@ -92,7 +94,16 @@ export const getWorkflowInputReferenceDiagnostics = ({
     if (sourceNodeId === VARIABLE_NODE_ID) continue;
 
     sourceNodes ??= getInputReferenceSourceNodes({ document, nodeId, input });
-    if (!sourceNodes.some((source) => source.nodeId === sourceNodeId)) {
+    const sourceIsUpstream = sourceNodes.some((source) => source.nodeId === sourceNodeId);
+    if (
+      !sourceIsUpstream ||
+      !isWorkflowReferenceOutputUpstream({
+        document,
+        nodeId,
+        sourceNodeId,
+        isErrorOutput: 'type' in sourceOutput && sourceOutput.type === FlowNodeOutputTypeEnum.error
+      })
+    ) {
       diagnostics.push({
         code: WorkflowDiagnosticCodeEnum.referenceSourceNotUpstream,
         severity: 'error',

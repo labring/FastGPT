@@ -18,10 +18,9 @@ import { isToolWorkflowConnectionAllowed } from '../../connection';
 import {
   buildNodeTemplateContext,
   getWorkflowReferenceItems,
-  isConnectionTargetAllowed,
-  isWorkflowEdgeSourceHandleValid
+  isConnectionTargetAllowed
 } from '../utils';
-import { nodeInputIsReference } from '../../reference';
+import { isWorkflowEdgeSourceHandleValid, nodeInputIsReference } from '../../reference';
 import {
   applyWorkflowStartInputAutoFill,
   getWorkflowStartAutoFillValue,

@@ -1,4 +1,3 @@
-import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { FlowNodeOutputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
@@ -7,7 +6,7 @@ import { getFoldedSourceHandleIds } from '../nodes/render/Handle/utils';
 type NodeShellHandleInput = {
   key: string;
   value?: FlowNodeInputItemType['value'];
-  renderTypeList?: ReadonlyArray<FlowNodeInputItemType['renderTypeList'][number]>;
+  renderTypeList?: readonly FlowNodeInputItemType['renderTypeList'][number][];
   selectedType?: FlowNodeInputItemType['selectedType'];
 };
 
@@ -35,30 +34,31 @@ export type NodeShellHandleModel = {
   replacesDefaultSource: boolean;
 };
 
-/** 根据测量到的输出柄横坐标，计算把视觉位置推到卡片右边缘所需的偏移。 */
-export const getNodeShellHandleOffset = ({
+/** shell 端口固定在卡片右边缘；离屏时仅复用测量出的纵坐标。 */
+export const getNodeShellHandleAnchor = ({
+  isFolded,
   cardWidth,
-  centerX
+  center
 }: {
+  isFolded: boolean;
   cardWidth: number;
-  centerX?: number;
-}) => (centerX === undefined ? 0 : cardWidth - centerX);
+  center?: { x: number; y: number };
+}) => {
+  if (isFolded || !center) return;
+  return { left: cardWidth, top: center.y };
+};
 
-/** 根据折叠与测量状态选择唯一的 handle 宿主，避免拓扑缺失或重复挂载。 */
+/** 根据折叠与完整渲染状态选择唯一的 handle 宿主，避免拓扑缺失或重复挂载。 */
 export const getNodeHandleRenderMode = ({
   isFolded,
-  renderFull,
-  hasMeasuredDynamicHandles,
-  isMeasurement
+  renderFull
 }: {
   isFolded: boolean;
   renderFull: boolean;
-  hasMeasuredDynamicHandles: boolean;
-  isMeasurement: boolean;
 }) => ({
-  // 折叠卡片不渲染业务内容里的分支柄，shell 必须始终保留完整拓扑。
-  renderShellHandles: isFolded || !renderFull || (hasMeasuredDynamicHandles && !isMeasurement),
-  renderFullHandles: !isFolded && (isMeasurement || !hasMeasuredDynamicHandles)
+  // 展开态的独立端口由业务内容提供；只有折叠或离屏 shell 才由 shell 合并端口位置。
+  renderShellHandles: isFolded || !renderFull,
+  renderFullHandles: !isFolded && renderFull
 });
 
 /**
@@ -71,26 +71,11 @@ export const getNodeShellHandleModel = (node: NodeShellHandleData): NodeShellHan
     node.flowNodeType === FlowNodeTypeEnum.userSelect ||
     node.flowNodeType === FlowNodeTypeEnum.classifyQuestion;
 
-  const foldedNode = {
-    ...node,
-    id: node.nodeId,
-    nodeId: node.nodeId,
-    name: '',
-    showSourceHandle: node.showSourceHandle === true,
-    inputs: node.inputs.map((input) => ({
-      ...input,
-      label: '',
-      renderTypeList: [...(input.renderTypeList ?? [])]
-    })),
-    outputs: node.outputs.map((output) => ({
-      ...output,
-      id: output.key,
-      label: output.label ?? ''
-    }))
-  };
-
   return {
-    sourceHandles: getFoldedSourceHandleIds(foldedNode).map((handleId) => ({
+    sourceHandles: getFoldedSourceHandleIds({
+      ...node,
+      showSourceHandle: node.showSourceHandle === true
+    }).map((handleId) => ({
       handleId,
       translate: [9, 0]
     })),

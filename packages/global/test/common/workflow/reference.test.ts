@@ -313,6 +313,10 @@ describe('getWorkflowReferenceSourceValueTypes', () => {
 
 describe('areWorkflowValueTypesCompatible', () => {
   it.each([
+    [WorkflowIOValueTypeEnum.string, WorkflowIOValueTypeEnum.number, true],
+    [WorkflowIOValueTypeEnum.string, WorkflowIOValueTypeEnum.boolean, true],
+    [WorkflowIOValueTypeEnum.number, WorkflowIOValueTypeEnum.string, false],
+    [WorkflowIOValueTypeEnum.boolean, WorkflowIOValueTypeEnum.string, false],
     [WorkflowIOValueTypeEnum.arrayString, WorkflowIOValueTypeEnum.string, true],
     [WorkflowIOValueTypeEnum.arrayString, WorkflowIOValueTypeEnum.arrayString, true],
     [WorkflowIOValueTypeEnum.arrayString, WorkflowIOValueTypeEnum.number, false],

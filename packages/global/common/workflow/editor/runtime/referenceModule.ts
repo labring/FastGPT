@@ -11,6 +11,7 @@ import {
 } from '../../../../core/workflow/node/constant';
 import {
   areWorkflowValueTypesCompatible,
+  getHandleId,
   getSelectedInputRenderType,
   nodeInputIsReference
 } from '../../reference';
@@ -719,8 +720,14 @@ export const createReferenceModule = (document: DocumentReadApi) => {
     allowLoopRunChildSource?: boolean;
   }): WorkflowReferenceStatus => {
     /** 反向 DFS 只判断单个来源是否可达；命中即停，不物化目标的完整上游集合。 */
-    const canReachUpstream = (sourceNodeId: string): boolean => {
-      const cacheKey = `${targetNodeId}\0${sourceNodeId}`;
+    const canReachUpstream = ({
+      sourceNodeId,
+      isErrorOutput
+    }: {
+      sourceNodeId: string;
+      isErrorOutput: boolean;
+    }): boolean => {
+      const cacheKey = `${targetNodeId}\0${sourceNodeId}\0${isErrorOutput}`;
       const cached = reachabilityCache.get(cacheKey);
       if (cached?.stamp === reachabilityStamp) return cached.result;
 
@@ -766,6 +773,11 @@ export const createReferenceModule = (document: DocumentReadApi) => {
         for (const edge of graphIndex.byTarget.get(targetId) ?? []) {
           if (!document.isSourceEdgeValid(edge)) continue;
           if (edge.data.source === sourceNodeId) {
+            if (
+              isErrorOutput !==
+              (edge.data.sourceHandle === getHandleId(sourceNodeId, 'source_catch', 'right'))
+            )
+              continue;
             result = true;
             break;
           }
@@ -813,7 +825,13 @@ export const createReferenceModule = (document: DocumentReadApi) => {
     const isAllowedLoopRunChild =
       allowLoopRunChildSource &&
       document.getGraphIndex().parentByChild.get(sourceNodeId) === targetNodeId;
-    if (!isAllowedLoopRunChild && !canReachUpstream(sourceNodeId)) {
+    if (
+      !isAllowedLoopRunChild &&
+      !canReachUpstream({
+        sourceNodeId,
+        isErrorOutput: sourceOutput.type === FlowNodeOutputTypeEnum.error
+      })
+    ) {
       return {
         code: 'unreachable_reference',
         sourceType: sourceOutput.valueType,
@@ -994,6 +1012,31 @@ export const createReferenceModule = (document: DocumentReadApi) => {
     const graphIndex = document.getGraphIndex();
     const sourceIds = getIncomingSources(nodeId, includeChildren);
     const options: WorkflowReferenceOption[] = [];
+    const errorOutputCanReach = (sourceNodeId: string) => {
+      const catchTargets = new Set(
+        (graphIndex.bySource.get(sourceNodeId) ?? [])
+          .filter(
+            (edge) =>
+              edge.data.source === sourceNodeId &&
+              edge.data.sourceHandle === getHandleId(sourceNodeId, 'source_catch', 'right')
+          )
+          .map((edge) => edge.data.target)
+      );
+      const pending = [nodeId];
+      const visited = new Set<string>();
+      while (pending.length > 0) {
+        const current = pending.pop()!;
+        if (catchTargets.has(current)) return true;
+        if (visited.has(current)) continue;
+        visited.add(current);
+        for (const edge of graphIndex.byTarget.get(current) ?? []) {
+          if (!document.isSourceEdgeValid(edge)) continue;
+          if (edge.data.targetHandle === NodeOutputKeyEnum.selectedTools) continue;
+          pending.push(edge.data.source);
+        }
+      }
+      return false;
+    };
 
     [...sourceIds]
       .sort(
@@ -1015,6 +1058,8 @@ export const createReferenceModule = (document: DocumentReadApi) => {
           valueType,
           catchError: sourceNode.data.catchError
         }).forEach((output) => {
+          if (output.type === FlowNodeOutputTypeEnum.error && !errorOutputCanReach(sourceNodeId))
+            return;
           options.push({
             reference: [sourceNodeId, output.id],
             sourceType: output.valueType,

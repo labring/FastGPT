@@ -8,7 +8,6 @@ import {
 import { IfElseResultEnum } from '@fastgpt/global/core/workflow/template/system/ifElse/constant';
 import type { IfElseListItemType } from '@fastgpt/global/core/workflow/template/system/ifElse/type';
 import { USER_SELECT_REFERENCE_HANDLE_KEY } from '@fastgpt/global/core/workflow/template/system/interactive/userSelect';
-import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { Position } from '@xyflow/react';
 
@@ -18,9 +17,9 @@ type FoldableSourceHandleNode = Pick<
 > & {
   inputs: ReadonlyArray<{
     key: string;
-    value?: FlowNodeInputItemType['value'];
-    renderTypeList?: ReadonlyArray<FlowNodeInputItemType['renderTypeList'][number]>;
-    selectedType?: FlowNodeInputItemType['selectedType'];
+    value?: Array<{ key?: string }> | unknown;
+    renderTypeList?: readonly FlowNodeItemType['inputs'][number]['renderTypeList'][number][];
+    selectedType?: FlowNodeItemType['inputs'][number]['selectedType'];
   }>;
   outputs: ReadonlyArray<{
     key: string;
@@ -42,14 +41,18 @@ export const getFoldedSourceHandleIds = (node: FoldableSourceHandleNode) => {
     keys.push(...(branches ?? []).map(getIfElseBranchHandleKey), IfElseResultEnum.ELSE);
   } else if (node.flowNodeType === FlowNodeTypeEnum.userSelect) {
     const input = inputs.find((input) => input.key === NodeInputKeyEnum.userSelectOptions);
-    if (input && nodeInputIsReference(input as FlowNodeInputItemType)) {
+    if (input && nodeInputIsReference(input)) {
       keys.push(USER_SELECT_REFERENCE_HANDLE_KEY);
     } else {
-      keys.push(...(input?.value ?? []).map((option: { key: string }) => option.key));
+      keys.push(
+        ...((input?.value as Array<{ key: string }> | undefined) ?? []).map((option) => option.key)
+      );
     }
   } else if (node.flowNodeType === FlowNodeTypeEnum.classifyQuestion) {
-    const options = inputs.find((input) => input.key === NodeInputKeyEnum.agents)?.value;
-    keys.push(...(options ?? []).map((option: { key: string }) => option.key));
+    const options = inputs.find((input) => input.key === NodeInputKeyEnum.agents)?.value as
+      | Array<{ key: string }>
+      | undefined;
+    keys.push(...(options ?? []).map((option) => option.key));
   }
 
   if (showSourceHandle) keys.push(Position.Right);

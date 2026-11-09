@@ -1,14 +1,17 @@
 import {
   FlowNodeInputTypeEnum,
   FlowNodeOutputTypeEnum,
+  FlowNodeTypeEnum,
   isNestedParentNodeType
 } from '../../core/workflow/node/constant';
 import { mergeWorkflowSystemVariables } from './editor/variables';
 import {
+  NodeInputKeyEnum,
   NodeOutputKeyEnum,
   VARIABLE_NODE_ID,
   WorkflowIOValueTypeEnum
 } from '../../core/workflow/constants';
+import { USER_SELECT_REFERENCE_HANDLE_KEY } from '../../core/workflow/template/system/interactive/userSelect';
 import type {
   EditorVariablePickerType,
   FlowNodeInputItemType,
@@ -17,7 +20,7 @@ import type {
   ReferenceArrayValueType,
   ReferenceItemValueType
 } from '../../core/workflow/type/io';
-import type { StoreNodeItemType } from '../../core/workflow/type/node';
+import type { FlowNodeItemType, StoreNodeItemType } from '../../core/workflow/type/node';
 import type { AppChatConfigType } from '../../core/app/type';
 import type { StoreEdgeItemType } from '../../core/workflow/type/edge';
 
@@ -123,7 +126,7 @@ export const getWorkflowReferenceSourceNodes = <
 };
 
 export const getSelectedInputRenderType = (input: {
-  renderTypeList?: FlowNodeInputItemType['renderTypeList'];
+  renderTypeList?: readonly FlowNodeInputItemType['renderTypeList'][number][];
   selectedType?: FlowNodeInputItemType['selectedType'];
 }) => input.selectedType ?? input.renderTypeList?.[0];
 
@@ -146,7 +149,10 @@ export const getSelectedInputRenderTypeIndex = (input: {
  * settingDatasetQuotePrompt 内部渲染 Reference 选择器，虽然 renderType 不是 reference，
  * 但它的值仍是 [nodeId, outputId]，运行时必须解析成知识库检索结果。
  */
-export const nodeInputIsReference = (input: FlowNodeInputItemType) => {
+export const nodeInputIsReference = (input: {
+  renderTypeList?: readonly FlowNodeInputItemType['renderTypeList'][number][];
+  selectedType?: FlowNodeInputItemType['selectedType'];
+}) => {
   const renderType = getSelectedInputRenderType(input);
 
   if (
@@ -216,8 +222,54 @@ export const getHandleId = (
   return `${nodeId}-${type}-${key}`;
 };
 
+type WorkflowSourceNode = Pick<FlowNodeItemType, 'nodeId' | 'flowNodeType' | 'inputs'>;
+
+/** 多分支节点只允许当前仍存在的 source handle 参与来源计算。 */
+export const isWorkflowEdgeSourceHandleValid = (
+  sourceNode: WorkflowSourceNode | undefined,
+  sourceHandle: string | null | undefined
+) => {
+  if (!sourceNode) return false;
+
+  const { nodeId, flowNodeType, inputs } = sourceNode;
+  if (sourceHandle === getHandleId(nodeId, 'source_catch', 'right')) {
+    return true;
+  }
+  if (flowNodeType === FlowNodeTypeEnum.userSelect) {
+    if (!sourceHandle) return false;
+    const input = inputs?.find((item) => item.key === NodeInputKeyEnum.userSelectOptions);
+    if (input && nodeInputIsReference(input)) {
+      return sourceHandle === getHandleId(nodeId, 'source', USER_SELECT_REFERENCE_HANDLE_KEY);
+    }
+    const options = input?.value as Array<{ key?: string }> | undefined;
+    return (
+      Array.isArray(options) &&
+      options.some(
+        (option) => option.key && sourceHandle === getHandleId(nodeId, 'source', option.key)
+      )
+    );
+  }
+
+  if (flowNodeType === FlowNodeTypeEnum.classifyQuestion) {
+    if (!sourceHandle) return false;
+    const agents = inputs?.find((input) => input.key === NodeInputKeyEnum.agents)?.value as
+      | Array<{ key?: string }>
+      | undefined;
+    return (
+      Array.isArray(agents) &&
+      agents.some((agent) => agent.key && sourceHandle === getHandleId(nodeId, 'source', agent.key))
+    );
+  }
+
+  return true;
+};
+
 const workflowReferenceSourceTypeMap: Record<WorkflowIOValueTypeEnum, WorkflowIOValueTypeEnum[]> = {
-  [WorkflowIOValueTypeEnum.string]: [WorkflowIOValueTypeEnum.string],
+  [WorkflowIOValueTypeEnum.string]: [
+    WorkflowIOValueTypeEnum.string,
+    WorkflowIOValueTypeEnum.number,
+    WorkflowIOValueTypeEnum.boolean
+  ],
   [WorkflowIOValueTypeEnum.number]: [WorkflowIOValueTypeEnum.number],
   [WorkflowIOValueTypeEnum.boolean]: [WorkflowIOValueTypeEnum.boolean],
   [WorkflowIOValueTypeEnum.object]: [WorkflowIOValueTypeEnum.object],

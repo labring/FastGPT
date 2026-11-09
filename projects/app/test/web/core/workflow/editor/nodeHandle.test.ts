@@ -8,7 +8,7 @@ import {
 import { USER_SELECT_REFERENCE_HANDLE_KEY } from '@fastgpt/global/core/workflow/template/system/interactive/userSelect';
 import {
   getNodeHandleRenderMode,
-  getNodeShellHandleOffset,
+  getNodeShellHandleAnchor,
   getNodeShellHandleModel,
   type NodeShellHandleData
 } from '@/pageComponents/app/detail/WorkflowComponents/Flow/utils/nodeHandle';
@@ -22,18 +22,52 @@ const createNode = (patch: Partial<NodeShellHandleData> = {}): NodeShellHandleDa
 });
 
 describe('workflow shell handle topology', () => {
-  it('offsets measured handles to the card right edge', () => {
-    expect(getNodeShellHandleOffset({ cardWidth: 300, centerX: 260 })).toBe(40);
-    expect(getNodeShellHandleOffset({ cardWidth: 300 })).toBe(0);
+  it('anchors measured shell handles to the card right edge', () => {
+    expect(
+      getNodeShellHandleAnchor({
+        isFolded: false,
+        cardWidth: 320,
+        center: { x: 286, y: 84 }
+      })
+    ).toEqual({ left: 320, top: 84 });
+    expect(
+      getNodeShellHandleAnchor({
+        isFolded: true,
+        cardWidth: 320,
+        center: { x: 286, y: 84 }
+      })
+    ).toBeUndefined();
   });
 
   it('keeps shell handles while a folded node is being measured', () => {
     expect(
       getNodeHandleRenderMode({
         isFolded: true,
-        renderFull: true,
-        hasMeasuredDynamicHandles: false,
-        isMeasurement: true
+        renderFull: true
+      })
+    ).toEqual({
+      renderShellHandles: true,
+      renderFullHandles: false
+    });
+  });
+
+  it('keeps expanded node handles at their original positions after measurement', () => {
+    expect(
+      getNodeHandleRenderMode({
+        isFolded: false,
+        renderFull: true
+      })
+    ).toEqual({
+      renderShellHandles: false,
+      renderFullHandles: true
+    });
+  });
+
+  it('keeps offscreen shell handles while the full node is not mounted', () => {
+    expect(
+      getNodeHandleRenderMode({
+        isFolded: false,
+        renderFull: false
       })
     ).toEqual({
       renderShellHandles: true,

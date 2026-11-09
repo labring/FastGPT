@@ -13,10 +13,13 @@ import {
 } from '@fastgpt/global/core/workflow/node/constant';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { createWorkflowDocument } from '../../src/domain/document';
+import { TextEditorNode } from '@fastgpt/global/core/workflow/template/system/textEditor';
 import {
   getWorkflowInputReferenceDiagnostics,
   resolveWorkflowReferenceDocument
 } from '../../src/reference/validation';
+import { getAvailableInputReferences } from '../../src/reference/query';
+import { createWorkflowErrorBranchIndex } from '../../src/reference/service';
 import { validateWorkflow } from '../../src/validation/index';
 
 /** 最小连通图同时提供稳定 key 和历史 id，用真实引用规则检查两种策略。 */
@@ -78,11 +81,68 @@ const makeDocument = (input: Partial<FlowNodeInputItemType> = {}) =>
   });
 
 describe('getWorkflowInputReferenceDiagnostics', () => {
+  it('ignores removed dynamic source handles in the error branch index', () => {
+    const document = makeDocument();
+    document.nodes[1] = {
+      ...document.nodes[1],
+      flowNodeType: FlowNodeTypeEnum.userSelect,
+      inputs: [
+        {
+          key: NodeInputKeyEnum.userSelectOptions,
+          label: 'Options',
+          renderTypeList: [],
+          value: [{ key: 'removed' }]
+        }
+      ]
+    };
+    document.executionEdges = [
+      {
+        source: { kind: 'branch', nodeId: 'target', branchKey: 'removed' },
+        target: { kind: 'target', nodeId: 'start' }
+      }
+    ];
+
+    expect(createWorkflowErrorBranchIndex(document).sourcesByTarget.get('start')).toContain(
+      'target'
+    );
+
+    document.nodes[1].inputs[0] = { ...document.nodes[1].inputs[0], value: [] };
+    expect(createWorkflowErrorBranchIndex(document).sourcesByTarget.get('start')).toBeUndefined();
+  });
+
+  it('accepts a number global variable as text concatenation input', () => {
+    const document = makeDocument();
+    document.nodes[1].flowNodeType = FlowNodeTypeEnum.textEditor;
+    document.nodes[1].inputs[0] = {
+      ...TextEditorNode.inputs[0],
+      key: NodeInputKeyEnum.textareaInput,
+      value: [VARIABLE_NODE_ID, 'count'],
+      renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference]
+    };
+    document.chatConfig.variables = [
+      {
+        key: 'count',
+        label: 'Count',
+        description: '',
+        type: VariableInputEnum.numberInput,
+        valueType: WorkflowIOValueTypeEnum.number
+      }
+    ];
+
+    expect(
+      getWorkflowInputReferenceDiagnostics({
+        document,
+        nodeId: 'target',
+        input: document.nodes[1].inputs[0]
+      })
+    ).toEqual([]);
+  });
+
   it.each([
     { value: ['start'], code: WorkflowDiagnosticCodeEnum.referenceFormatInvalid },
     { value: ['deleted', 'text'], code: WorkflowDiagnosticCodeEnum.referenceOutputNotFound },
     { value: ['start', 'deleted'], code: WorkflowDiagnosticCodeEnum.referenceOutputNotFound },
-    { value: ['start', 'count'], code: WorkflowDiagnosticCodeEnum.referenceTypeMismatch },
+    { value: ['start', 'count'], code: undefined },
     {
       value: [VARIABLE_NODE_ID, 'deleted'],
       code: WorkflowDiagnosticCodeEnum.referenceOutputNotFound
@@ -97,7 +157,7 @@ describe('getWorkflowInputReferenceDiagnostics', () => {
         nodeId: 'target',
         input: document.nodes[1].inputs[0]
       }).map((issue) => issue.code)
-    ).toEqual([code]);
+    ).toEqual(code ? [code] : []);
   });
 
   it('checks upstream scope and permits error outputs only with catch enabled', () => {
@@ -114,7 +174,49 @@ describe('getWorkflowInputReferenceDiagnostics', () => {
     ];
     document.nodes[0].catchError = true;
     input.value = ['start', 'error'];
+    expect(
+      getWorkflowInputReferenceDiagnostics({ document, nodeId: 'target', input }).map(
+        (item) => item.code
+      )
+    ).toEqual([WorkflowDiagnosticCodeEnum.referenceSourceNotUpstream]);
+    expect(
+      getAvailableInputReferences({ document, nodeId: 'target', inputKey: input.key })
+    ).not.toContainEqual(expect.objectContaining({ ref: { nodeId: 'start', outputKey: 'error' } }));
+
+    document.executionEdges = [
+      { source: { kind: 'catch', nodeId: 'start' }, target: { kind: 'target', nodeId: 'target' } }
+    ];
     expect(getWorkflowInputReferenceDiagnostics({ document, nodeId: 'target', input })).toEqual([]);
+    expect(
+      getAvailableInputReferences({ document, nodeId: 'target', inputKey: input.key })
+    ).toContainEqual(expect.objectContaining({ ref: { nodeId: 'start', outputKey: 'error' } }));
+
+    input.value = ['start', 'text'];
+    expect(getWorkflowInputReferenceDiagnostics({ document, nodeId: 'target', input })).toEqual([]);
+
+    document.executionEdges = [
+      { source: { kind: 'catch', nodeId: 'start' }, target: { kind: 'target', nodeId: 'middle' } },
+      { source: { kind: 'next', nodeId: 'middle' }, target: { kind: 'target', nodeId: 'target' } }
+    ];
+    document.nodes.splice(1, 0, {
+      nodeId: 'middle',
+      name: 'Middle',
+      flowNodeType: FlowNodeTypeEnum.code,
+      inputs: [],
+      outputs: []
+    });
+    input.value = ['start', 'error'];
+    expect(getWorkflowInputReferenceDiagnostics({ document, nodeId: 'target', input })).toEqual([]);
+
+    document.executionEdges = [
+      { source: { kind: 'next', nodeId: 'start' }, target: { kind: 'target', nodeId: 'middle' } },
+      { source: { kind: 'next', nodeId: 'middle' }, target: { kind: 'target', nodeId: 'target' } }
+    ];
+    expect(
+      getWorkflowInputReferenceDiagnostics({ document, nodeId: 'target', input }).map(
+        (item) => item.code
+      )
+    ).toEqual([WorkflowDiagnosticCodeEnum.referenceSourceNotUpstream]);
   });
 });
 
@@ -437,11 +539,11 @@ describe('node and global reference coverage', () => {
       client: [WorkflowDiagnosticCodeEnum.requiredInputMissing]
     },
     {
-      name: 'user global type mismatch',
+      name: 'user global implicit string conversion',
       value: [VARIABLE_NODE_ID, 'count'],
       required: true,
-      strict: [WorkflowDiagnosticCodeEnum.referenceTypeMismatch],
-      client: [WorkflowDiagnosticCodeEnum.requiredInputMissing]
+      strict: [],
+      client: []
     },
     {
       name: 'system global type mismatch',

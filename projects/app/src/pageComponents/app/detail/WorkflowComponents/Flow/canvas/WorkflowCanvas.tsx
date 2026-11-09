@@ -52,7 +52,7 @@ import { ToolSourceHandle, ToolTargetHandle } from '../nodes/render/Handle/ToolH
 import { useIsToolNode } from '../nodes/render/useWorkflowDocument';
 import {
   getNodeHandleRenderMode,
-  getNodeShellHandleOffset,
+  getNodeShellHandleAnchor,
   getNodeShellHandleModel,
   type NodeShellHandleModel
 } from '../utils/nodeHandle';
@@ -239,11 +239,13 @@ const NodeShell = React.memo(
     handleModel,
     overlay = false,
     renderHandles = true,
+    isFolded,
     ...props
   }: CanvasNodeProps & {
     handleModel: NodeShellHandleModel;
     overlay?: boolean;
     renderHandles?: boolean;
+    isFolded: boolean;
   }) => {
     // 按节点订阅尺寸：getter 身份稳定，单独订阅 getter 不会在测量结果更新时重渲染 shell。
     const dimensions =
@@ -300,32 +302,21 @@ const NodeShell = React.memo(
               <ConnectionTargetHandle nodeId={props.id} />
               {showToolSource && <ToolSourceHandle nodeId={props.id} />}
               {sourceHandles.map(({ handleId, translate }) => {
-                // 折叠与 shell 共用单一右侧锚点；业务 handle ID 仍各自保留给已有连线。
-                const center = sourceHandleCenters?.get(handleId);
-                const handleOffset = getNodeShellHandleOffset({
-                  cardWidth: dimensions.card.width,
-                  centerX: center?.x
-                });
-                const handleTranslate = [translate[0] + handleOffset, translate[1]] as [
-                  number,
-                  number
-                ];
+                // 折叠态合并到同一右边缘；离屏 shell 保持测量出的原始纵向位置。
+                const center = isFolded ? undefined : sourceHandleCenters?.get(handleId);
                 return (
-                  <Box
+                  <MySourceHandle
                     key={handleId}
-                    position={'absolute'}
-                    top={'50%'}
-                    {...(center ? { left: `${center.x}px` } : { right: 0 })}
-                    w={0}
-                    h={0}
-                  >
-                    <MySourceHandle
-                      nodeId={props.id}
-                      handleId={handleId}
-                      position={Position.Right}
-                      translate={handleTranslate}
-                    />
-                  </Box>
+                    nodeId={props.id}
+                    handleId={handleId}
+                    position={Position.Right}
+                    translate={center ? [0, 0] : translate}
+                    anchor={getNodeShellHandleAnchor({
+                      isFolded,
+                      cardWidth: dimensions.card.width,
+                      center
+                    })}
+                  />
                 );
               })}
             </>
@@ -362,9 +353,7 @@ const VirtualizedNode = React.memo(
     const isFolded = props.data.isFolded === true;
     const { renderShellHandles, renderFullHandles } = getNodeHandleRenderMode({
       isFolded,
-      renderFull,
-      hasMeasuredDynamicHandles,
-      isMeasurement
+      renderFull
     });
     const pinNodeFocus = useWorkflowCanvasValue((v) => v.pinNodeFocus);
     const unpinNodeFocus = useWorkflowCanvasValue((v) => v.unpinNodeFocus);
@@ -406,6 +395,7 @@ const VirtualizedNode = React.memo(
           handleModel={handleModel}
           overlay={renderFull}
           renderHandles={renderShellHandles}
+          isFolded={isFolded}
         />
         {renderFull && (
           <MeasuredNode

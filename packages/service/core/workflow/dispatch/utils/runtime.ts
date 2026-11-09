@@ -21,9 +21,9 @@ import {
   filterSelectableWorkflowNodeOutputs,
   getWorkflowReferenceItems,
   getWorkflowReferenceItemsFromValue,
-  isWorkflowEdgeSourceHandleValid,
   isWorkflowReferenceItem
 } from '@fastgpt/global/common/workflow/editor/utils';
+import { isWorkflowEdgeSourceHandleValid } from '@fastgpt/global/common/workflow/reference';
 import { formatCollectionFilterMatchParam } from '@fastgpt/global/core/dataset/search/tagFilter';
 import { replaceEditorVariable } from './replaceEditorVariable';
 

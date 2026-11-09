@@ -1314,7 +1314,7 @@ describe('workflow editor runtime modules', () => {
               id: 'output',
               key: 'output',
               type: FlowNodeOutputTypeEnum.source,
-              valueType: WorkflowIOValueTypeEnum.string
+              valueType: WorkflowIOValueTypeEnum.arrayString
             }
           ]
         },

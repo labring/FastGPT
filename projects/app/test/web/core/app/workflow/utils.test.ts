@@ -1161,7 +1161,7 @@ describe('storeNode2FlowNode', () => {
 });
 
 describe('filterWorkflowNodeOutputsByType', () => {
-  it('keeps only outputs compatible with string inputs', () => {
+  it('keeps primitive outputs compatible with string inputs', () => {
     const outputs: FlowNodeOutputItemType[] = [
       {
         id: '1',
@@ -1188,7 +1188,7 @@ describe('filterWorkflowNodeOutputsByType', () => {
 
     const result = filterWorkflowNodeOutputsByType(outputs, WorkflowIOValueTypeEnum.string);
 
-    expect(result.map((output) => output.id)).toEqual(['1']);
+    expect(result.map((output) => output.id)).toEqual(['1', '2', '3']);
   });
 
   it('should return all outputs for any type', () => {

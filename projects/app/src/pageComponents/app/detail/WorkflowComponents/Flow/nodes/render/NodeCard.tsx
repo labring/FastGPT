@@ -555,7 +555,7 @@ const NodeCard = (props: Props) => {
 
         {/* Handle - Always render handles outside the fold/unfold condition */}
         <ToolTargetHandle show={showToolHandle} nodeId={nodeId} />
-        <ConnectionSourceHandle nodeId={nodeId} />
+        {!isFolded && <ConnectionSourceHandle nodeId={nodeId} />}
         <ConnectionTargetHandle nodeId={nodeId} />
         {RenderToolHandle}
 

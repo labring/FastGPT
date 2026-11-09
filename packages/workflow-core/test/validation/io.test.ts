@@ -767,7 +767,7 @@ describe('validateNodeIO', () => {
           key: 'type',
           renderTypeList: [FlowNodeInputTypeEnum.reference],
           value: ['source', 'text'],
-          valueType: WorkflowIOValueTypeEnum.number
+          valueType: WorkflowIOValueTypeEnum.boolean
         }),
         makeInput({
           key: 'array',
