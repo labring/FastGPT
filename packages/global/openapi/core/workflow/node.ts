@@ -72,7 +72,7 @@ const OpenAPIToolDataSchema = ToolDataSchema.meta({
   description: '节点关联工具展示信息'
 });
 
-const OpenAPIToolRefSchema = z
+export const OpenAPIToolRefSchema = z
   .object({
     toolId: z.string().meta({
       description: '节点引用的工具 ID'

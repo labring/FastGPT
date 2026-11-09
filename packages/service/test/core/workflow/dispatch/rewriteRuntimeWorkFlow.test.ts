@@ -8,10 +8,12 @@ import {
   parseOpenAPISchemaString
 } from '@fastgpt/global/common/string/swagger';
 import {
+  filterOrphanEdges,
   rewriteRuntimeWorkFlow,
   getInlineMcpToolSetRuntimeNodes
 } from '@fastgpt/service/core/workflow/dispatch/utils';
 import { getInlineToolSetChildNodeId } from '@fastgpt/global/core/app/tool/utils';
+import { storeEdges2RuntimeEdges } from '@fastgpt/global/core/workflow/runtime/utils';
 
 const mocks = vi.hoisted(() => ({
   loadWorkflowAppResource: vi.fn(),
@@ -360,6 +362,85 @@ describe('rewriteRuntimeWorkFlow independent toolsets', () => {
     expect(mocks.getMcpTools).not.toHaveBeenCalled();
   });
 
+  it('restores a legacy positional child edge for an inline HTTP toolset', async () => {
+    mocks.getHttpSchema.mockResolvedValue({ data: openApiSchema });
+    const toolSetNode = createHttpToolSetNode([{ name: 'search', description: '' }]);
+    const nodes = [toolSetNode];
+    const edges = [
+      {
+        source: 'tool-call',
+        sourceHandle: 'selectedTools',
+        target: `${toolSetNode.nodeId}0`,
+        targetHandle: NodeOutputKeyEnum.selectedTools
+      },
+      {
+        source: 'tool-call',
+        sourceHandle: NodeOutputKeyEnum.selectedTools,
+        target: toolSetNode.nodeId,
+        targetHandle: NodeOutputKeyEnum.selectedTools
+      }
+    ];
+
+    await rewriteRuntimeWorkFlow({ teamId: 'team-1', tmbId: 'member-1', nodes, edges });
+
+    const toolPathByNodeId = new Map(
+      nodes.map((node) => [
+        node.nodeId,
+        node.toolConfig?.httpTool && 'path' in node.toolConfig.httpTool
+          ? node.toolConfig.httpTool.path
+          : undefined
+      ])
+    );
+    expect(edges.every((edge) => nodes.some((node) => node.nodeId === edge.target))).toBe(true);
+    expect(edges.some((edge) => edge.target === `${toolSetNode.nodeId}0`)).toBe(false);
+    expect(edges.map((edge) => toolPathByNodeId.get(edge.target))).toEqual(['/search', '/new']);
+    expect(edges[0]).toMatchObject({
+      source: 'tool-call',
+      sourceHandle: NodeOutputKeyEnum.selectedTools,
+      targetHandle: NodeOutputKeyEnum.selectedTools
+    });
+  });
+
+  it('remaps a legacy HTTP child edge even when the positional ID is a real node', async () => {
+    mocks.getHttpSchema.mockResolvedValue({ data: openApiSchema });
+    const toolSetNode = createHttpToolSetNode([{ name: 'search', description: '' }]);
+    const realNode = {
+      ...toolSetNode,
+      nodeId: `${toolSetNode.nodeId}0`,
+      flowNodeType: FlowNodeTypeEnum.textEditor,
+      toolConfig: undefined
+    };
+    const nodes = [toolSetNode, realNode];
+    const edges = [
+      {
+        source: 'tool-call',
+        sourceHandle: 'selectedTools',
+        target: realNode.nodeId,
+        targetHandle: NodeOutputKeyEnum.selectedTools
+      },
+      {
+        source: 'tool-call',
+        sourceHandle: NodeOutputKeyEnum.selectedTools,
+        target: toolSetNode.nodeId,
+        targetHandle: NodeOutputKeyEnum.selectedTools
+      }
+    ];
+
+    await rewriteRuntimeWorkFlow({ teamId: 'team-1', tmbId: 'member-1', nodes, edges });
+
+    const searchNodeIds = new Set(
+      nodes
+        .filter((node) => {
+          const httpTool = node.toolConfig?.httpTool;
+          return httpTool && 'path' in httpTool && httpTool.path === '/search';
+        })
+        .map((node) => node.nodeId)
+    );
+    expect(nodes.some((node) => node.nodeId === realNode.nodeId)).toBe(true);
+    expect(edges[0].target).toBe(realNode.nodeId);
+    expect(edges.some((edge) => searchNodeIds.has(edge.target))).toBe(true);
+  });
+
   it('restores hash child edges of an unexpanded inline MCP toolset', async () => {
     const tool = { name: 'search', description: 'Search', inputSchema: { type: 'object' } };
     const toolSetNode = createMcpToolSetNode([{ name: tool.name, description: '' }]);
@@ -382,6 +463,49 @@ describe('rewriteRuntimeWorkFlow independent toolsets', () => {
     expect(nodes).toHaveLength(1);
     expect(edges.map((edge) => edge.target)).toEqual([childId, toolSetNode.nodeId]);
     expect(mocks.getMcpTools).not.toHaveBeenCalled();
+  });
+
+  it('keeps the persisted MCP parent edge when the remote catalog differs from the summary', async () => {
+    const savedTool = { name: 'saved_tool', description: 'Saved tool' };
+    const remoteTool = {
+      name: 'remote_tool',
+      description: 'Remote tool'
+    };
+    const toolSetNode = createMcpToolSetNode([savedTool]);
+    const toolCallNode = {
+      nodeId: 'tool-call',
+      flowNodeType: FlowNodeTypeEnum.toolCall,
+      name: 'Tool Call',
+      inputs: [],
+      outputs: []
+    } as RuntimeNodeItemType;
+    const parentEdge = createSelectedToolEdge();
+    const edges = storeEdges2RuntimeEdges([parentEdge], {
+      type: 'userSelect',
+      entryNodeIds: ['tool-call'],
+      memoryEdges: [
+        {
+          ...parentEdge,
+          target: getInlineToolSetChildNodeId({
+            toolSetNodeId: toolSetNode.nodeId,
+            tool: remoteTool
+          }),
+          status: 'active'
+        }
+      ],
+      nodeOutputs: [],
+      params: { description: '', userSelectOptions: [] }
+    });
+
+    const nodes = [toolCallNode, toolSetNode];
+    await rewriteRuntimeWorkFlow({ teamId: 'team-1', tmbId: 'member-1', nodes, edges });
+    const filteredEdges = filterOrphanEdges({
+      nodes,
+      edges,
+      workflowId: 'workflow-app'
+    });
+
+    expect(filteredEdges).toContainEqual(expect.objectContaining(parentEdge));
   });
 
   it('retains multiple inline MCP toolsets until their ToolCall executes', async () => {

@@ -577,6 +577,17 @@ export const rewriteRuntimeWorkFlow = async ({
         // ToolSet 只是编辑态聚合节点，运行态需要把入口边复制到每个实际工具节点。
         const pushEdges = (nodeId: string) => {
           for (const inEdge of incomingEdges) {
+            if (
+              edges.some(
+                (edge) =>
+                  edge.source === inEdge.source &&
+                  edge.sourceHandle === inEdge.sourceHandle &&
+                  edge.target === nodeId &&
+                  edge.targetHandle === NodeOutputKeyEnum.selectedTools
+              )
+            ) {
+              continue;
+            }
             edges.push({
               source: inEdge.source,
               target: nodeId,
@@ -635,6 +646,7 @@ export const rewriteRuntimeWorkFlow = async ({
           if (!toolSetNode.pluginId) {
             const httpToolSet = HttpToolSetNodeConfigSchema.parse(httpToolsetVal);
             if (!httpToolSet.apiSchemaUrl) throw new Error('HTTP tool set schema URL is missing');
+            const nodeIds = new Set(nodes.map((node) => node.nodeId));
 
             await checkUrlSafety(httpToolSet.apiSchemaUrl, 'OpenAPI Schema URL');
             const { data: downloadedSchema } = await axios.get<string>(httpToolSet.apiSchemaUrl, {
@@ -659,7 +671,7 @@ export const rewriteRuntimeWorkFlow = async ({
               summaries: httpToolSet.toolList
             });
 
-            toolList.forEach((tool) => {
+            toolList.forEach((tool, index) => {
               const runtimeNode = getHTTPToolRuntimeNode({
                 tool,
                 nodeId: getInlineToolSetChildNodeId({ toolSetNodeId: toolSetNode.nodeId, tool }),
@@ -681,6 +693,17 @@ export const rewriteRuntimeWorkFlow = async ({
 
               const newToolNode = initToolSetChildNode(runtimeNode);
               nodes.push(newToolNode);
+              const legacyChildId = `${toolSetNode.nodeId}${index}`;
+              if (!nodeIds.has(legacyChildId)) {
+                edges.forEach((edge) => {
+                  if (
+                    edge.target === legacyChildId &&
+                    edge.targetHandle === NodeOutputKeyEnum.selectedTools
+                  ) {
+                    edge.target = newToolNode.nodeId;
+                  }
+                });
+              }
               pushEdges(newToolNode.nodeId);
             });
           } else {

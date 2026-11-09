@@ -25,6 +25,7 @@ import { FlowNodeTypeEnum } from '../../../../core/workflow/node/constant';
 import {
   OpenAPIFlowNodeInputItemTypeSchema,
   OpenAPIFlowNodeOutputItemTypeSchema,
+  OpenAPIToolRefSchema,
   OpenAPIStoreNodeItemTypeSchema,
   PersistedOpenAPIStoreNodeItemTypeSchema
 } from '../../workflow/node';
@@ -225,12 +226,7 @@ const CreateAppPersistedNodeSchema = PersistedOpenAPIStoreNodeItemTypeSchema.saf
   outputs: z.array(OpenAPIFlowNodeOutputItemTypeSchema)
 });
 
-const CreateAppToolReferenceSchema = z
-  .object({
-    toolId: z.string(),
-    source: z.string().optional()
-  })
-  .strict();
+const CreateAppToolReferenceSchema = OpenAPIToolRefSchema.strict();
 
 const OpenAPINodeToolConfigSchema = OpenAPIStoreNodeItemTypeSchema.shape.toolConfig.unwrap();
 const CreateAppRuntimeToolConfigSchema = OpenAPINodeToolConfigSchema.safeExtend({

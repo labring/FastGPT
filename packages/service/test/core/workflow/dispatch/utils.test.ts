@@ -1294,7 +1294,7 @@ describe('rewriteRuntimeWorkFlow', () => {
 
     expect(nodes.find((n) => n.nodeId === 'ts2')).toBeUndefined();
     const childNodeId = edges.find((edge) => edge.source === 'parent')?.target;
-    expect(childNodeId).toBeDefined();
+    expect(childNodeId).toBe('ts20');
     expect(nodes.find((n) => n.nodeId === childNodeId)).toMatchObject({
       intro: 'desc',
       toolConfig: {
