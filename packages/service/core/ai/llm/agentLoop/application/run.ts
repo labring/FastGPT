@@ -14,7 +14,6 @@ import type { AgentLoopEvent } from '../domain/event';
 import { SANDBOX_READ_FILE_TOOL_NAME } from '@fastgpt/global/core/ai/sandbox/tools';
 import { posix } from 'node:path';
 import { parseJsonArgs } from '../../../utils';
-import { maskToolResponseImageData } from '../../../../workflow/dispatch/ai/agentLoopCore/domain/toolContent';
 
 export type RunAgentLoopApplicationParams<TChildrenResponse = unknown> = {
   provider: AgentLoopProvider;
@@ -104,9 +103,6 @@ export const runAgentLoopApplication = async <TChildrenResponse = unknown>({
 
   /** 配置目录过滤的文件读取等待完整参数，其他工具完整透传。 */
   const emitEvent = (event: AgentLoopEvent) => {
-    if (event.type === 'tool_run_end') {
-      event = { ...event, response: maskToolResponseImageData(event.response) };
-    }
     runtime.recordEvent?.(
       event.type === 'tool_run_end' && isInternalToolCall(event.call)
         ? { ...event, internalOnly: true }

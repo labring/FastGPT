@@ -165,7 +165,7 @@ describe('runAgentLoopApplication tool visibility', () => {
     expect((await run({ events })).forwarded).toEqual(events);
   });
 
-  it('masks image data URIs in tool response while preserving content', async () => {
+  it('preserves tool response text and structured image content', async () => {
     const content = [
       { type: 'text' as const, text: 'rendered' },
       {
@@ -185,9 +185,21 @@ describe('runAgentLoopApplication tool visibility', () => {
     const { forwarded } = await run({ events });
     expect(forwarded[1]).toMatchObject({
       type: 'tool_run_end',
-      response: 'rendered [Image: png]',
+      response: 'rendered data:image/png;charset=utf-8;base64,aW1hZ2U=',
       content
     });
+  });
+
+  it('preserves a legacy tool response that declares a data URI as text', async () => {
+    const response = JSON.stringify({
+      jobId: 'legacy',
+      content: 'data:image/png;base64,aW1hZ2U='
+    });
+    const events: AgentLoopEvent[] = [toolEnd({ ...publicCall, id: 'legacy' })];
+    events[0] = { ...events[0], response };
+
+    const { forwarded } = await run({ events });
+    expect(forwarded[0]).toMatchObject({ type: 'tool_run_end', response });
   });
 
   it.each(['request', 'start'] as const)(
