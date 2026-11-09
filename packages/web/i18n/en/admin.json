@@ -809,6 +809,8 @@
   "points_running_out_chinese_template": "Points Running Out · Chinese Template",
   "site_basepath": "Site BasePath",
   "site_description_used_for_the_browser_meta_description_or_ex": "Site description used for the browser meta description or external intro",
+  "bot_iframe_url": "Support Bot Iframe URL",
+  "bot_iframe_url_tip": "Iframe page URL used to embed the support bot on configured pages.",
   "site_scripts": "Global Scripts",
   "site_scripts_tip": "JSON array of third-party scripts to inject globally, such as analytics or monitoring. Only use trusted script sources.",
   "site_scripts_must_be_valid_json_array": "Global scripts must be a valid JSON array",

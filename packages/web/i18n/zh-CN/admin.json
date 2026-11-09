@@ -809,6 +809,8 @@
   "points_running_out_chinese_template": "积分即将耗尽 · 中文模板",
   "site_basepath": "站点 BasePath",
   "site_description_used_for_the_browser_meta_description_or_ex": "站点基础简介，用于浏览器 Meta 描述或对外介绍",
+  "bot_iframe_url": "客服助手 iframe 地址",
+  "bot_iframe_url_tip": "客服助手 iframe 页面地址，用于在指定页面嵌入客服助手。",
   "site_scripts": "全局 Script 脚本",
   "site_scripts_tip": "JSON 数组格式，可全局注入第三方监控、统计等脚本；请确认脚本来源可信。",
   "site_scripts_must_be_valid_json_array": "全局 Script 必须是合法的 JSON 数组",

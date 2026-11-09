@@ -191,6 +191,10 @@ const SiteSettingComponent = () => {
           />
         </Box>
 
+        <AdminFormItem label={t('admin:bot_iframe_url')} tooltip={t('admin:bot_iframe_url_tip')}>
+          <Input {...register('botIframeUrl')} placeholder="https://..." />
+        </AdminFormItem>
+
         <AdminFormItem label={t('admin:site_scripts')} tooltip={t('admin:site_scripts_tip')}>
           <Controller
             name="scripts"

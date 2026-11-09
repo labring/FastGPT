@@ -45,6 +45,7 @@ export const adminConfigPageFieldsMap: Record<string, readonly string[]> = {
     'site.customDomain.domain.aliyun',
     'site.customDomain.domain.tencent',
     'site.customDomain.domain.volcengine',
+    'site.botIframeUrl',
     'site.scripts'
   ],
   '/admin/settings/feature': [

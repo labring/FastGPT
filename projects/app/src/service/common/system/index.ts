@@ -270,6 +270,7 @@ async function doInitSystemConfig({
       customApiDomain: instanceConfig.site.customApiDomain,
       customSharePageDomain: instanceConfig.site.customSharePageDomain,
       customDomain: instanceConfig.site.customDomain,
+      botIframeUrl: instanceConfig.site.botIframeUrl,
       scripts: instanceConfig.site.scripts,
       mcpServerProxyEndpoint: instanceConfig.subservice.mcp.sseProxyUrl,
       limit: {

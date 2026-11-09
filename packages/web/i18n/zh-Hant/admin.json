@@ -809,6 +809,8 @@
   "points_running_out_chinese_template": "積分即將耗盡 · 中文範本",
   "site_basepath": "站點 BasePath",
   "site_description_used_for_the_browser_meta_description_or_ex": "站點基礎簡介，用於瀏覽器 Meta 描述或對外介紹",
+  "bot_iframe_url": "客服助手 iframe 位址",
+  "bot_iframe_url_tip": "客服助手 iframe 頁面位址，用於在指定頁面嵌入客服助手。",
   "site_scripts": "全域 Script 腳本",
   "site_scripts_tip": "JSON 陣列格式，可全域注入第三方監控、統計等腳本；請確認腳本來源可信。",
   "site_scripts_must_be_valid_json_array": "全域 Script 必須是合法的 JSON 陣列",

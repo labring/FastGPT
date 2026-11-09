@@ -809,6 +809,8 @@
   "points_running_out_chinese_template": "포인트 소진 임박 · 중국어 템플릿",
   "site_basepath": "사이트 BasePath",
   "site_description_used_for_the_browser_meta_description_or_ex": "브라우저 메타 설명 또는 외부 소개에 사용하는 사이트 설명",
+  "bot_iframe_url": "고객 지원 봇 iframe URL",
+  "bot_iframe_url_tip": "지정된 페이지에 고객 지원 봇을 삽입하기 위한 iframe 페이지 URL입니다.",
   "site_scripts": "전역 Script",
   "site_scripts_tip": "전역으로 삽입할 타사 스크립트의 JSON 배열입니다. 신뢰할 수 있는 스크립트만 사용하세요.",
   "site_scripts_must_be_valid_json_array": "전역 스크립트는 유효한 JSON 배열이어야 합니다",

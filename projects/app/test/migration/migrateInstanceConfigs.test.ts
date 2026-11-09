@@ -299,6 +299,15 @@ describe('migration buildSparseLegacyOverrides', () => {
     expect(sparse.providers?.documentParse?.customPdf?.price).toBe(3.5);
   });
 
+  it('migrates the support bot iframe URL', () => {
+    const sparse = buildSparseLegacyOverrides({
+      feConfigs: { botIframeUrl: 'https://bot.example.com/embed' },
+      systemEnv: {}
+    });
+
+    expect(sparse.site?.botIframeUrl).toBe('https://bot.example.com/embed');
+  });
+
   it('keeps sparse output validated by the two-phase resolver', () => {
     const sparse = buildSparseLegacyOverrides({
       feConfigs: { limit: { maxFolderDepth: 8 } },

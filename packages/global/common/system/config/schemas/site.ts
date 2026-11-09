@@ -41,6 +41,8 @@ export const SiteConfigSchema = z.strictObject({
   customApiDomain: urlWithDefault(),
   // 自定义免登分享页面独立域名（运行期以实例配置为准）
   customSharePageDomain: urlWithDefault(),
+  // 客服助手 iframe 地址
+  botIframeUrl: textWithDefault(),
   // SaaS 自定义独立域名：域名是 CNAME 主机名，不要求带协议
   customDomain: z
     .strictObject({

@@ -74,6 +74,7 @@ export const systemInstanceConfigRegistry: readonly SystemInstanceConfigRegistry
       'loginGuideDocUrl',
       'customApiDomain',
       'customSharePageDomain',
+      'botIframeUrl',
       'scripts'
     ],
     { edition: 'all', secret: false, applyMode: 'live' }

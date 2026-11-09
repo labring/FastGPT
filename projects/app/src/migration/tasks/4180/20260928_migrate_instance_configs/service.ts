@@ -131,6 +131,7 @@ export const buildLegacyDomainOverrides = ({
         volcengine: optionalText(feConfigs.customDomain?.domain?.volcengine)
       })
     }),
+    botIframeUrl: optionalString(feConfigs.botIframeUrl),
     scripts:
       Array.isArray(feConfigs.scripts) && feConfigs.scripts.length > 0
         ? (compactDeep(feConfigs.scripts) as Record<string, string>[])
