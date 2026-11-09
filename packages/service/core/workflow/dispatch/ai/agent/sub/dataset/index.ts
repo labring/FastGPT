@@ -287,6 +287,7 @@ export const dispatchAgentDatasetSearch = async ({
       usingReRank: datasetParams.usingReRank,
       rerankModel: rerankModelData,
       rerankWeight: datasetParams.rerankWeight ?? 0.5,
+      rerankCandidateNum: datasetParams.rerankCandidateNum,
       datasetSearchUsingExtensionQuery: datasetParams.datasetSearchUsingExtensionQuery ?? false,
       datasetSearchExtensionModel: extensionModelData,
       datasetSearchExtensionBg: datasetParams.datasetSearchExtensionBg,

@@ -1090,6 +1090,8 @@
   "request_more": "클릭하여 더 불러오기",
   "required": "필수",
   "rerank_weight": "재정렬 가중치",
+  "rerank_candidate_num": "재정렬 후보 수",
+  "rerank_candidate_num_tips": "Recall 결과에서 최대 N개의 청크를 재정렬 모델에 전달하며, 초과분은 recall 순서대로 잘려 재정렬에 참여하지 않습니다. 값이 클수록 재정렬 지연과 모델 부하가 커지지만 재정렬 효과는 커질 수 있습니다.",
   "resume_failed": "재개 실패",
   "resume_completed_data_parse_failed": "재개 중 완료된 응답을 분석하지 못했습니다",
   "response_processing_error": "응답 처리 중 오류가 발생했습니다",
