@@ -53,7 +53,10 @@ import {
   normalizeFlowNodeInputType
 } from '@fastgpt/global/core/app/formEdit/utils';
 import { jsonSchema2NodeInput, str2OpenApiSchema } from '@fastgpt/global/core/app/jsonschema';
-import { getToolSetChildDescription } from '@fastgpt/global/core/app/tool/utils';
+import {
+  getInlineToolSetChildNodeId,
+  getToolSetChildDescription
+} from '@fastgpt/global/core/app/tool/utils';
 import {
   bundleOpenAPISchema,
   parseOpenAPISchemaString
@@ -418,10 +421,10 @@ export const getInlineMcpToolSetRuntimeNodes = async ({
     summaries: mcpToolSet.toolList
   });
 
-  return toolList.map((tool, index) => {
+  return toolList.map((tool) => {
     const node = initToolSetChildNode(
       getMCPToolRuntimeNode({
-        nodeId: `${toolSetNode.nodeId}${index}`,
+        nodeId: getInlineToolSetChildNodeId({ toolSetNodeId: toolSetNode.nodeId, tool }),
         toolsetName: toolSetNode.name,
         avatar: toolSetNode.avatar,
         tool,
@@ -538,12 +541,23 @@ export const rewriteRuntimeWorkFlow = async ({
 
       for (const toolSetNode of toolSetNodes) {
         if (!toolSetNode.pluginId && toolSetNode.toolConfig?.mcpToolSet) {
-          // 旧暂停快照只有位置子节点边；先还原聚合连接，待 ToolCall 执行前再展开。
+          // 暂停快照可能只有未展开的子工具边；先还原聚合连接，待 ToolCall 执行前再展开。
+          const nodeIds = new Set(nodes.map((node) => node.nodeId));
+          const inlineMcpChildIds = new Set(
+            (toolSetNode.toolConfig.mcpToolSet.toolList ?? []).map((tool) =>
+              getInlineToolSetChildNodeId({ toolSetNodeId: toolSetNode.nodeId, tool })
+            )
+          );
           for (const edge of [...edges]) {
+            const legacyChildId = edge.target.startsWith(toolSetNode.nodeId)
+              ? edge.target.slice(toolSetNode.nodeId.length)
+              : '';
+            const isLegacyChildId = /^\d+$/.test(legacyChildId) && !nodeIds.has(edge.target);
+            const isUnresolvedInlineChildId =
+              inlineMcpChildIds.has(edge.target) && !nodeIds.has(edge.target);
             if (
               edge.targetHandle === NodeOutputKeyEnum.selectedTools &&
-              edge.target.startsWith(toolSetNode.nodeId) &&
-              /^\d+$/.test(edge.target.slice(toolSetNode.nodeId.length)) &&
+              (isLegacyChildId || isUnresolvedInlineChildId) &&
               !edges.some(
                 (item) => item.source === edge.source && item.target === toolSetNode.nodeId
               )
@@ -645,10 +659,10 @@ export const rewriteRuntimeWorkFlow = async ({
               summaries: httpToolSet.toolList
             });
 
-            toolList.forEach((tool, index) => {
+            toolList.forEach((tool) => {
               const runtimeNode = getHTTPToolRuntimeNode({
                 tool,
-                nodeId: `${toolSetNode.nodeId}${index}`,
+                nodeId: getInlineToolSetChildNodeId({ toolSetNodeId: toolSetNode.nodeId, tool }),
                 avatar: toolSetNode.avatar,
                 toolSetId: 'inline',
                 toolsetName: toolSetNode.name

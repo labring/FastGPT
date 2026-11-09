@@ -1969,14 +1969,19 @@ describe('runWorkflow inline MCP discovery timing', () => {
         .spyOn(callbackMap, FlowNodeTypeEnum.toolCall)
         .mockImplementation(async (props) => {
           expect(discovery).toHaveBeenCalledOnce();
-          expect(props.runtimeNodesMap.get('mcp-set0')?.toolConfig?.mcpTool).toMatchObject({
+          const searchTool = Array.from(props.runtimeNodesMap.values()).find((node) =>
+            node.toolConfig?.mcpTool && 'name' in node.toolConfig.mcpTool
+              ? node.toolConfig.mcpTool.name === 'search'
+              : false
+          );
+          expect(searchTool?.toolConfig?.mcpTool).toMatchObject({
             name: 'search',
             url: 'https://mcp.example.com'
           });
           expect(props.runtimeEdges).toContainEqual(
             expect.objectContaining({
               source: props.node.nodeId,
-              target: 'mcp-set0',
+              target: searchTool?.nodeId,
               targetHandle: 'selectedTools'
             })
           );

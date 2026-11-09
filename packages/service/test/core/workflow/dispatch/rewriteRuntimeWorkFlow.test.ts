@@ -11,6 +11,7 @@ import {
   rewriteRuntimeWorkFlow,
   getInlineMcpToolSetRuntimeNodes
 } from '@fastgpt/service/core/workflow/dispatch/utils';
+import { getInlineToolSetChildNodeId } from '@fastgpt/global/core/app/tool/utils';
 
 const mocks = vi.hoisted(() => ({
   loadWorkflowAppResource: vi.fn(),
@@ -359,6 +360,30 @@ describe('rewriteRuntimeWorkFlow independent toolsets', () => {
     expect(mocks.getMcpTools).not.toHaveBeenCalled();
   });
 
+  it('restores hash child edges of an unexpanded inline MCP toolset', async () => {
+    const tool = { name: 'search', description: 'Search', inputSchema: { type: 'object' } };
+    const toolSetNode = createMcpToolSetNode([{ name: tool.name, description: '' }]);
+    const childId = getInlineToolSetChildNodeId({
+      toolSetNodeId: toolSetNode.nodeId,
+      tool
+    });
+    const nodes = [toolSetNode];
+    const edges = [
+      {
+        source: 'tool-call',
+        sourceHandle: 'selectedTools',
+        target: childId,
+        targetHandle: NodeOutputKeyEnum.selectedTools
+      }
+    ];
+
+    await rewriteRuntimeWorkFlow({ teamId: 'team-1', tmbId: 'member-1', nodes, edges });
+
+    expect(nodes).toHaveLength(1);
+    expect(edges.map((edge) => edge.target)).toEqual([childId, toolSetNode.nodeId]);
+    expect(mocks.getMcpTools).not.toHaveBeenCalled();
+  });
+
   it('retains multiple inline MCP toolsets until their ToolCall executes', async () => {
     mocks.getMcpTools.mockResolvedValue([
       { name: 'search', description: 'Search', inputSchema: { type: 'object' } }
@@ -425,6 +450,50 @@ describe('rewriteRuntimeWorkFlow independent toolsets', () => {
 
     expect(nodes).toHaveLength(2);
     expect(nodes[0].nodeId).not.toBe(nodes[1].nodeId);
+  });
+
+  it('keeps inline MCP child ids stable when remote tools are reordered', async () => {
+    const search = { name: 'search', description: 'Search', inputSchema: { type: 'object' } };
+    const read = { name: 'read', description: 'Read', inputSchema: { type: 'object' } };
+    const toolSetNode = createMcpToolSetNode([]);
+
+    mocks.getMcpTools.mockResolvedValueOnce([search, read]);
+    const original = await getInlineMcpToolSetRuntimeNodes({ toolSetNode });
+    mocks.getMcpTools.mockResolvedValueOnce([read, search]);
+    const reordered = await getInlineMcpToolSetRuntimeNodes({ toolSetNode });
+
+    expect(Object.fromEntries(original.map((node) => [node.name, node.nodeId]))).toEqual(
+      Object.fromEntries(reordered.map((node) => [node.name, node.nodeId]))
+    );
+  });
+
+  it('keeps inline HTTP child ids stable when method keys are reordered', async () => {
+    const schema = (methods: ('get' | 'post')[]) =>
+      JSON.stringify({
+        openapi: '3.0.0',
+        info: { title: 'Stable methods', version: '1.0.0' },
+        servers: [{ url: 'https://api.example.com' }],
+        paths: {
+          '/items': Object.fromEntries(
+            methods.map((method) => [method, { responses: { 200: { description: 'OK' } } }])
+          )
+        }
+      });
+    const getIds = async (methods: ('get' | 'post')[]) => {
+      mocks.getHttpSchema.mockResolvedValue({ data: schema(methods) });
+      const nodes = [createHttpToolSetNode([])];
+      await rewriteRuntimeWorkFlow({ teamId: 'team-1', tmbId: 'member-1', nodes, edges: [] });
+      return Object.fromEntries(
+        nodes.map((node) => {
+          const tool = node.toolConfig?.httpTool;
+          if (!tool || !('method' in tool) || !('path' in tool))
+            throw new Error('Missing HTTP child config');
+          return [`${tool.method}:${tool.path}`, node.nodeId];
+        })
+      );
+    };
+
+    expect(await getIds(['get', 'post'])).toEqual(await getIds(['post', 'get']));
   });
 
   it('uses the OpenAPI server URL when no base URL override is configured', async () => {
