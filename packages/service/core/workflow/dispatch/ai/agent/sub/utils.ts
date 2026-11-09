@@ -141,6 +141,7 @@ export const getAgentDatasetParams = (
     rerankModelId: params[NodeInputKeyEnum.datasetSearchRerankModelId],
     rerankModel: params[NodeInputKeyEnum.datasetSearchRerankModel],
     rerankWeight: params[NodeInputKeyEnum.datasetSearchRerankWeight],
+    rerankCandidateNum: params[NodeInputKeyEnum.datasetSearchRerankCandidateNum],
     datasetSearchUsingExtensionQuery: params[NodeInputKeyEnum.datasetSearchUsingExtensionQuery],
     datasetSearchExtensionModelId: params[NodeInputKeyEnum.datasetSearchExtensionModelId],
     datasetSearchExtensionModel: params[NodeInputKeyEnum.datasetSearchExtensionModel],

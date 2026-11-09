@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { datasetSearchResultConcat } from '@fastgpt/global/core/dataset/search/utils';
+import {
+  datasetSearchResultConcat,
+  normalizeRerankCandidateNum,
+  rerankCandidateNumRange
+} from '@fastgpt/global/core/dataset/search/utils';
 import { SearchScoreTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 
@@ -772,5 +776,23 @@ describe('datasetSearchResultConcat', () => {
       expect(rrfScore).toBeDefined();
       expect(rrfScore!.value).toBeCloseTo(0.001 / 61 + 1.0 / 61, 6);
     });
+  });
+});
+
+describe('normalizeRerankCandidateNum', () => {
+  it('falls back to the default for missing or non-finite values', () => {
+    expect(normalizeRerankCandidateNum(undefined)).toBe(rerankCandidateNumRange.default);
+    expect(normalizeRerankCandidateNum(null)).toBe(rerankCandidateNumRange.default);
+    expect(normalizeRerankCandidateNum(Number.NaN)).toBe(rerankCandidateNumRange.default);
+    expect(normalizeRerankCandidateNum(Infinity)).toBe(rerankCandidateNumRange.default);
+  });
+
+  it('clamps to the configured range and floors decimals', () => {
+    expect(normalizeRerankCandidateNum(0)).toBe(rerankCandidateNumRange.min);
+    expect(normalizeRerankCandidateNum(9)).toBe(rerankCandidateNumRange.min);
+    expect(normalizeRerankCandidateNum(10)).toBe(10);
+    expect(normalizeRerankCandidateNum(55.7)).toBe(55);
+    expect(normalizeRerankCandidateNum(100)).toBe(rerankCandidateNumRange.max);
+    expect(normalizeRerankCandidateNum(101)).toBe(rerankCandidateNumRange.max);
   });
 });

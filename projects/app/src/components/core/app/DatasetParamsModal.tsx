@@ -38,6 +38,10 @@ import { ReferSelector } from '@/pageComponents/app/detail/WorkflowComponents/Fl
 import ValueTypeLabel from '@/pageComponents/app/detail/WorkflowComponents/Flow/nodes/render/ValueTypeLabel';
 import SelectAiModel from '@/components/Select/AIModelSelector';
 import { type AppDatasetSearchParamsType } from '@fastgpt/global/core/app/type';
+import {
+  normalizeRerankCandidateNum,
+  rerankCandidateNumRange
+} from '@fastgpt/global/core/dataset/search/utils';
 import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
@@ -64,6 +68,23 @@ export type DatasetParamsModalFormType = Omit<
     | [];
 };
 
+export const formatDatasetParamsForSubmit = (
+  values: DatasetParamsModalFormType
+): AppDatasetSearchParamsType => {
+  // 兼容读取旧字符串字段，但新的表单提交只保留稳定 modelId。
+  const {
+    rerankModel: _rerankModel,
+    datasetSearchExtensionModel: _extensionModel,
+    ...canonicalValues
+  } = values;
+  return {
+    ...canonicalValues,
+    // 数字控件清空后 react-hook-form 会提交 ''；在提交边界统一归一化，
+    // 避免关闭重排后隐藏字段仍以空字符串进入 API 校验。
+    rerankCandidateNum: normalizeRerankCandidateNum(canonicalValues.rerankCandidateNum)
+  } as AppDatasetSearchParamsType;
+};
+
 const DatasetParamsModal = ({
   searchMode = DatasetSearchModeEnum.embedding,
   limit,
@@ -73,6 +94,7 @@ const DatasetParamsModal = ({
   rerankModelId,
   rerankModel,
   rerankWeight,
+  rerankCandidateNum,
   datasetSearchUsingExtensionQuery,
   datasetSearchExtensionModelId,
   datasetSearchExtensionModel,
@@ -110,6 +132,7 @@ const DatasetParamsModal = ({
     rerankModelId,
     rerankModel,
     rerankWeight: rerankWeight ?? 0.5,
+    rerankCandidateNum: normalizeRerankCandidateNum(rerankCandidateNum),
     limit,
     similarity,
     datasetSearchUsingExtensionQuery,
@@ -189,13 +212,7 @@ const DatasetParamsModal = ({
                   setCurrentTabType(SearchSettingTabEnum.queryExtension);
                   return;
                 }
-                // 兼容读取旧字符串字段，但新的表单提交只保留稳定 modelId。
-                const {
-                  rerankModel: _rerankModel,
-                  datasetSearchExtensionModel: _extensionModel,
-                  ...canonicalValues
-                } = values;
-                onSuccess(canonicalValues as AppDatasetSearchParamsType);
+                onSuccess(formatDatasetParamsForSubmit(values));
                 onClose();
               })();
             }}
@@ -368,6 +385,22 @@ const DatasetParamsModal = ({
                         onChange={(modelId) =>
                           setValue(NodeInputKeyEnum.datasetSearchRerankModelId, modelId)
                         }
+                      />
+                    </Box>
+                  </HStack>
+                  <HStack mt={3}>
+                    <Box fontSize={'sm'} flex={'0 0 100px'} color={'myGray.700'}>
+                      {t('common:rerank_candidate_num')}
+                      <QuestionTip ml={0.5} label={t('common:rerank_candidate_num_tips')} />
+                    </Box>
+                    <Box flex={'1 0 0'}>
+                      <MyNumberInput
+                        size={'sm'}
+                        min={rerankCandidateNumRange.min}
+                        max={rerankCandidateNumRange.max}
+                        step={rerankCandidateNumRange.step}
+                        register={register}
+                        name={NodeInputKeyEnum.datasetSearchRerankCandidateNum}
                       />
                     </Box>
                   </HStack>

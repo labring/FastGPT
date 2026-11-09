@@ -67,6 +67,25 @@ describe('SearchDatasetTestBodySchema', () => {
     });
   });
 
+  it('accepts string and empty rerankCandidateNum through the shared business schema', () => {
+    expect(
+      SearchDatasetTestBodySchema.parse({
+        datasetId: objectId,
+        text: 'question',
+        queryImageUrls: [],
+        rerankCandidateNum: '20'
+      }).rerankCandidateNum
+    ).toBe(20);
+    expect(
+      SearchDatasetTestBodySchema.safeParse({
+        datasetId: objectId,
+        text: 'question',
+        queryImageUrls: [],
+        rerankCandidateNum: ''
+      }).success
+    ).toBe(true);
+  });
+
   it.each([
     {},
     { text: ' \n ', queryImageUrls: [] },

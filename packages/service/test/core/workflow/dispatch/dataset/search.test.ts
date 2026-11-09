@@ -236,6 +236,7 @@ describe('dispatchDatasetSearch', () => {
     const result = await runSearch(
       {
         usingReRank: true,
+        rerankCandidateNum: 30,
         datasetSearchUsingExtensionQuery: true,
         datasetSearchExtensionModelId: 'deleted'
       },
@@ -246,6 +247,7 @@ describe('dispatchDatasetSearch', () => {
     expect(result.error).toBeUndefined();
     expect(defaultSearchDatasetDataMock).toHaveBeenCalledWith(
       expect.objectContaining({
+        rerankCandidateNum: 30,
         rerankModel: expect.objectContaining({ modelId: 'fallback-rerank' }),
         datasetSearchExtensionModel: expect.objectContaining({ modelId: 'fallback-llm' })
       })

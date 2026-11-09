@@ -408,6 +408,7 @@ export const AppDatasetSearchParamsTypeSchema = z.object({
   /** @deprecated */
   rerankModel: OptionalDatasetModelSchema,
   rerankWeight: NumSchema.optional(),
+  rerankCandidateNum: NumSchema.optional(),
 
   datasetSearchUsingExtensionQuery: BoolSchema.optional(),
   datasetSearchExtensionModelId: OptionalDatasetModelSchema,
