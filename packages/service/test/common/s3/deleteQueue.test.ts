@@ -1,15 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { InvalidStorageObjectKeyError } from '@fastgpt-sdk/storage';
-import { imageBaseUrl } from '@fastgpt/global/common/file/image/constants';
-import { S3Buckets } from '@fastgpt/service/common/s3/config/constants';
-import { MongoSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/schema';
-import { MongoSiteAvatarState } from '@fastgpt/service/common/s3/models/siteAvatarState';
-import {
-  claimSiteAvatarDeletion,
-  markSiteAvatarDeletionPending,
-  reserveSiteAvatarReferences,
-  SiteAvatarDeletionInProgressError
-} from '@fastgpt/service/common/s3/siteAvatarReferences';
 
 vi.unmock('@fastgpt/service/common/s3/queue/delete');
 
@@ -22,10 +12,8 @@ describe('executeS3DeleteJob', () => {
     originalS3BucketMap = global.s3BucketMap;
   });
 
-  afterEach(async () => {
+  afterEach(() => {
     global.s3BucketMap = originalS3BucketMap;
-    await MongoSystemInstanceConfig.deleteMany({ domain: 'site' });
-    await MongoSiteAvatarState.deleteMany({});
     vi.clearAllMocks();
   });
 
@@ -71,127 +59,6 @@ describe('executeS3DeleteJob', () => {
         prefix: 'agent-skills/team/skill/'
       })
     ).rejects.toThrow('Failed to delete 1 S3 object');
-  });
-
-  it('skips deleting an avatar that is still referenced by the current site', async () => {
-    const avatarKey = 'avatar/team-1/referenced.png';
-    await MongoSystemInstanceConfig.create({
-      domain: 'site',
-      revision: 1,
-      overrides: { favicon: `${imageBaseUrl}${avatarKey}` },
-      updatedBy: { actor: 'system' }
-    });
-
-    const deleteObjectsByMultiKeys = vi.fn().mockResolvedValue({ keys: [] });
-    global.s3BucketMap = {
-      [S3Buckets.public]: {
-        client: {
-          deleteObjectsByMultiKeys,
-          deleteObjectsByPrefix: vi.fn()
-        }
-      }
-    } as any;
-
-    await executeS3DeleteJob({
-      bucketName: S3Buckets.public,
-      keys: [avatarKey]
-    });
-
-    expect(deleteObjectsByMultiKeys).not.toHaveBeenCalled();
-  });
-
-  it('skips an avatar reserved by a newer site save before the worker claims it', async () => {
-    const avatarKey = 'avatar/team-1/reserved.png';
-    await reserveSiteAvatarReferences({ avatarKeys: [avatarKey], siteRevision: 2 });
-
-    const deleteObjectsByMultiKeys = vi.fn().mockResolvedValue({ keys: [] });
-    global.s3BucketMap = {
-      [S3Buckets.public]: {
-        client: {
-          deleteObjectsByMultiKeys,
-          deleteObjectsByPrefix: vi.fn()
-        }
-      }
-    } as any;
-
-    await executeS3DeleteJob({ bucketName: S3Buckets.public, keys: [avatarKey] });
-
-    expect(deleteObjectsByMultiKeys).not.toHaveBeenCalled();
-    expect(await MongoSiteAvatarState.findOne({ avatarKey }).lean()).toMatchObject({
-      state: 'referenced',
-      referencedRevision: 2
-    });
-  });
-
-  it('rejects a site save that re-references an avatar after the delete worker claimed it', async () => {
-    const avatarKey = 'avatar/team-1/claimed.png';
-    await MongoSystemInstanceConfig.create({
-      domain: 'site',
-      revision: 1,
-      overrides: { favicon: `${imageBaseUrl}avatar/team-1/current.png` },
-      updatedBy: { actor: 'system' }
-    });
-    await markSiteAvatarDeletionPending({ avatarKey });
-
-    let markDeleteStarted!: () => void;
-    const deleteStarted = new Promise<void>((resolve) => {
-      markDeleteStarted = resolve;
-    });
-    let releaseDelete!: () => void;
-    const deleteFinished = new Promise<void>((resolve) => {
-      releaseDelete = resolve;
-    });
-    // 保持远端删除挂起，模拟删除请求已发出但尚未完成。
-    const deleteObjectsByMultiKeys = vi.fn(async () => {
-      markDeleteStarted();
-      await deleteFinished;
-      return { keys: [] };
-    });
-
-    global.s3BucketMap = {
-      [S3Buckets.public]: {
-        client: {
-          deleteObjectsByMultiKeys,
-          deleteObjectsByPrefix: vi.fn().mockResolvedValue({ keys: [] })
-        }
-      }
-    } as any;
-
-    const job = executeS3DeleteJob({ bucketName: S3Buckets.public, keys: [avatarKey] });
-    await deleteStarted;
-
-    // 删除任务已领取 deleting：保存链路必须在写库前失败，不能把站点改回该头像。
-    await expect(
-      reserveSiteAvatarReferences({ avatarKeys: [avatarKey], siteRevision: 2 })
-    ).rejects.toBeInstanceOf(SiteAvatarDeletionInProgressError);
-
-    releaseDelete();
-    await job;
-
-    expect(deleteObjectsByMultiKeys).toHaveBeenCalledWith({ keys: [avatarKey] });
-    expect(await MongoSiteAvatarState.findOne({ avatarKey })).toBeNull();
-  });
-
-  it('resumes a deletion claim owned by the same BullMQ job after interruption', async () => {
-    const avatarKey = 'avatar/team-1/interrupted.png';
-    const claimId = 'bullmq-job-1';
-    await markSiteAvatarDeletionPending({ avatarKey });
-    await expect(claimSiteAvatarDeletion({ avatarKey, claimId })).resolves.toBe('claimed');
-
-    const deleteObjectsByMultiKeys = vi.fn().mockResolvedValue({ keys: [] });
-    global.s3BucketMap = {
-      [S3Buckets.public]: {
-        client: {
-          deleteObjectsByMultiKeys,
-          deleteObjectsByPrefix: vi.fn().mockResolvedValue({ keys: [] })
-        }
-      }
-    } as any;
-
-    await executeS3DeleteJob({ bucketName: S3Buckets.public, keys: [avatarKey] }, { claimId });
-
-    expect(deleteObjectsByMultiKeys).toHaveBeenCalledWith({ keys: [avatarKey] });
-    expect(await MongoSiteAvatarState.findOne({ avatarKey })).toBeNull();
   });
 
   it('throws when multi-key deletion reports failed keys so BullMQ can retry', async () => {

@@ -1,5 +1,5 @@
 import { getLogger, LogCategories } from '../../logger';
-import { createHash, randomUUID } from 'node:crypto';
+import { createHash } from 'node:crypto';
 import { batchRun } from '@fastgpt/global/common/system/utils';
 import { deleteS3DownloadAliasByObjects } from '../accessLink';
 import { s3FileDeleteMQService, type S3MQJobData } from '@fastgpt/dal/redis/bullmq';
@@ -9,14 +9,6 @@ import {
   type InvalidStorageObjectKeyReason
 } from '@fastgpt-sdk/storage';
 import { getS3ParsedPrefix, isOpaqueS3ParsedObjectKey } from '../opaqueKey';
-import {
-  claimSiteAvatarDeletion,
-  clearSiteAvatarDeletionState,
-  getCurrentSiteAvatarKeys,
-  isSiteAvatarObject,
-  markSiteAvatarReferenced,
-  releaseSiteAvatarDeletion
-} from '../siteAvatarReferences';
 
 export type { S3MQJobData } from '@fastgpt/dal/redis/bullmq';
 
@@ -74,10 +66,7 @@ const assertAllKeysLegacyRawEligible = (keys: string[]) => {
   }
 };
 
-export const executeS3DeleteJob = async (
-  { prefix, bucketName, key, keys }: S3MQJobData,
-  { claimId = randomUUID() }: { claimId?: string } = {}
-) => {
+export const executeS3DeleteJob = async ({ prefix, bucketName, key, keys }: S3MQJobData) => {
   const bucket = global.s3BucketMap?.[bucketName];
 
   if (!bucket) {
@@ -89,112 +78,51 @@ export const executeS3DeleteJob = async (
     keys = [key];
   }
   if (keys) {
-    // 头像采用延迟删除；真正删除前先原子领取对象级删除状态，再确认当前站点是否重新引用。
-    // 领取成功后，新的引用保存会看到 deleting 并中止，不会出现保存引用后被旧任务删除的窗口。
-    // 无法读取当前配置时抛错交给 BullMQ 重试，宁可暂时保留对象也不误删。
-    const avatarKeys = keys.filter((item) => isSiteAvatarObject(bucketName, item));
-    const claimedAvatarKeys: string[] = [];
+    logger.debug('S3 delete by keys', { bucketName, count: keys.length });
+    const result = (await bucket.client.deleteObjectsByMultiKeys({ keys }).catch((error) => {
+      if (!isLegacyStorageKeyError(error)) throw error;
+      // 旧数据 key 含控制字符等非规范字符，校验失败但对象确实存在，降级为原始 key 直删。
+      assertAllKeysLegacyRawEligible(keys);
+      logger.warn('Legacy S3 key rejected by validation, falling back to raw key deletion', {
+        bucketName,
+        count: keys.length,
+        reason: error.reason
+      });
+      return bucket.client.deleteObjectsByRawKeys({ keys });
+    })) as { keys?: string[] } | undefined;
+    assertNoFailedKeys(result?.keys, 'keys');
 
-    try {
-      if (avatarKeys.length > 0) {
-        const currentSiteRefs = await getCurrentSiteAvatarKeys();
-        if (currentSiteRefs === undefined) {
-          throw new Error('Cannot verify site avatar references before S3 deletion');
-        }
+    deleteS3DownloadAliasByObjects({
+      bucketName,
+      objectKeys: keys
+    }).catch((error) => {
+      logger.warn('S3 download alias cleanup failed after delete job', {
+        bucketName,
+        count: keys?.length,
+        error
+      });
+    });
 
-        const deletableAvatarKeys: string[] = [];
-        for (const avatarKey of avatarKeys) {
-          // claimId 使用 BullMQ job id：同一任务重试可恢复自己持有的 deleting，
-          // 其他任务则跳过，避免进程退出后状态永久卡住。
-          const claim = await claimSiteAvatarDeletion({ avatarKey, claimId });
-          if (claim === 'referenced') continue;
-          // 另一个删除任务已领取，交给它完成即可。
-          if (claim === 'deleting') continue;
-          if (currentSiteRefs.avatarKeys.has(avatarKey)) {
-            // 当前任务刚领取了 deleting，但配置已重新引用；先释放再标记 referenced。
-            await releaseSiteAvatarDeletion({ avatarKey, claimId });
-            await markSiteAvatarReferenced({
-              avatarKey,
-              siteRevision: currentSiteRefs.revision
-            });
-            continue;
-          }
-          claimedAvatarKeys.push(avatarKey);
-          deletableAvatarKeys.push(avatarKey);
-        }
-
-        keys = [
-          ...keys.filter((item) => !isSiteAvatarObject(bucketName, item)),
-          ...deletableAvatarKeys
-        ];
-        if (keys.length === 0) {
-          logger.info('Skipped S3 delete job for referenced or already-claimed avatars', {
-            bucketName,
-            count: avatarKeys.length
-          });
-          return;
-        }
-      }
-
-      const keysToDelete = keys;
-      logger.debug('S3 delete by keys', { bucketName, count: keysToDelete.length });
+    await batchRun(keys, async (key) => {
+      if (isOpaqueS3ParsedObjectKey(key) || key.includes('-parsed/')) return;
+      const fileParsedPrefix = getS3ParsedPrefix(key);
       const result = (await bucket.client
-        .deleteObjectsByMultiKeys({ keys: keysToDelete })
+        .deleteObjectsByPrefix({ prefix: fileParsedPrefix })
         .catch((error) => {
-          if (!isLegacyStorageKeyError(error)) throw error;
-          // 旧数据 key 含控制字符等非规范字符，校验失败但对象确实存在，降级为原始 key 直删。
-          assertAllKeysLegacyRawEligible(keysToDelete);
-          logger.warn('Legacy S3 key rejected by validation, falling back to raw key deletion', {
+          // 只有源 key 本身是 legacy 时才跳过派生前缀删除；
+          // 合法 key 的派生前缀超长等问题仍按原有方式抛出，避免静默遗留孤儿对象。
+          if (!isLegacyStorageKeyError(error) || !isLegacySourceKey(key)) throw error;
+          // 前缀可能来自文件名/内容片段，只记录 hash 与长度，避免敏感内容进入日志。
+          logger.warn('Skip parsed prefix deletion for legacy key', {
             bucketName,
-            count: keysToDelete.length,
+            prefixHash: createHash('sha256').update(fileParsedPrefix).digest('hex').slice(0, 16),
+            prefixLength: fileParsedPrefix.length,
             reason: error.reason
           });
-          return bucket.client.deleteObjectsByRawKeys({ keys: keysToDelete });
+          return undefined;
         })) as { keys?: string[] } | undefined;
-      assertNoFailedKeys(result?.keys, 'keys');
-
-      deleteS3DownloadAliasByObjects({
-        bucketName,
-        objectKeys: keysToDelete
-      }).catch((error) => {
-        logger.warn('S3 download alias cleanup failed after delete job', {
-          bucketName,
-          count: keysToDelete.length,
-          error
-        });
-      });
-
-      await batchRun(keys, async (key) => {
-        if (isOpaqueS3ParsedObjectKey(key) || key.includes('-parsed/')) return;
-        const fileParsedPrefix = getS3ParsedPrefix(key);
-        const result = (await bucket.client
-          .deleteObjectsByPrefix({ prefix: fileParsedPrefix })
-          .catch((error) => {
-            // 只有源 key 本身是 legacy 时才跳过派生前缀删除；
-            // 合法 key 的派生前缀超长等问题仍按原有方式抛出，避免静默遗留孤儿对象。
-            if (!isLegacyStorageKeyError(error) || !isLegacySourceKey(key)) throw error;
-            // 前缀可能来自文件名/内容片段，只记录 hash 与长度，避免敏感内容进入日志。
-            logger.warn('Skip parsed prefix deletion for legacy key', {
-              bucketName,
-              prefixHash: createHash('sha256').update(fileParsedPrefix).digest('hex').slice(0, 16),
-              prefixLength: fileParsedPrefix.length,
-              reason: error.reason
-            });
-            return undefined;
-          })) as { keys?: string[] } | undefined;
-        assertNoFailedKeys(result?.keys, `parsed prefix ${fileParsedPrefix}`);
-      });
-
-      await Promise.all(
-        claimedAvatarKeys.map((avatarKey) => clearSiteAvatarDeletionState({ avatarKey, claimId }))
-      );
-    } catch (error) {
-      // 领取或删除失败都释放当前任务的 claim；同一个 BullMQ job 重试时可重新领取。
-      await Promise.all(
-        claimedAvatarKeys.map((avatarKey) => releaseSiteAvatarDeletion({ avatarKey, claimId }))
-      );
-      throw error;
-    }
+      assertNoFailedKeys(result?.keys, `parsed prefix ${fileParsedPrefix}`);
+    });
   }
   if (prefix) {
     logger.info('S3 delete by prefix started', { bucketName, prefix });
@@ -207,7 +135,5 @@ export const executeS3DeleteJob = async (
 };
 
 export const startS3DelWorker = async () => {
-  return s3FileDeleteMQService.getWorker(async (job) =>
-    executeS3DeleteJob(job.data, { claimId: String(job.id) })
-  );
+  return s3FileDeleteMQService.getWorker(async (job) => executeS3DeleteJob(job.data));
 };

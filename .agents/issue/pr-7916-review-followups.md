@@ -9,7 +9,7 @@
 1. **局部保存**：服务端在 revision 校验保护下合并域内已有 overrides，保留“显式清空 / 设回默认值”的语义；必须覆盖省略字段、空字符串、空数组和敏感字段掩码。
 2. **套餐版本**：所有套餐写入口统一版本校验，套餐与对应版本一起读取；不能依赖商业配置页恰好同时提交 `commercial`，旧套餐写入路径也要纳入。
 3. **Pro 刷新**：复用 App 的串行刷新方式，或用明确版本规则阻止旧结果覆盖；不新增分发系统，也不要求全节点确认。
-4. **头像生命周期**：不要按旧提交快照直接删除对象；改为延迟回收并检查当前引用，同时避免“检查后又被重新引用”的新竞态；不要求扩展 S3 客户端重建方案。
+4. **头像生命周期（最新确认）**：与应用头像统一复用 `refreshAvatar`，新图片移除临时 TTL，旧图片失去全部站点引用后删除；移除站点专用延迟回收、预约和删除状态机。数据库保存成功与 S3 清理结果分开处理。
 5. **迁移容错**：必须展示被跳过/剔除的域和字段（脱敏），纳入升级验收；是否阻断升级按实际兼容要求逐项决定。
 6. **ENV/config 互斥**：在最终合成处明确 ENV 权威，旧库值只作一次性迁移输入；仍需保留的旧字段先迁走，再收口旧表单和写接口。
 7. **字段收敛判定**：先确认“最终业务实际消费”，不能只看声明或投影；无消费的删除并登记 overrides 清理，有消费但无入口的先决定归属再补 Schema/表单/页面映射。
@@ -82,10 +82,12 @@
 - [x] **A3（原第 3 项，P2）Pro 配置刷新乱序**
   - 已实现：Pro watch 内增加串行刷新队列，实例配置变更和重连补偿都走同一队列；旧读取完成后才执行下一轮，最终状态收敛到最新配置；不新增分发系统。
   - 位置：`pro/admin/src/service/middleware/volumnMongoWatch.ts`、`pro/admin/test/service/middleware/volumnMongoWatch.test.ts`
-- [x] **A4（原第 4 项，P2）头像异步清理竞态**
-  - 已实现：失去引用的头像改为写入 24 小时延迟删除 TTL，不立即删除；重新引用会移除 TTL 取消删除。S3 TTL 清理和最终删除任务都会重新检查当前 site 引用，配置读取失败时保留对象等待重试。
-  - A→B→A 场景已覆盖；旧 `pro/admin` updateConfig 的即时头像删除随 B2 收口旧入口处理。
-  - 位置：`packages/service/common/s3/sources/avatar/index.ts`、`packages/service/common/s3/siteAvatarReferences.ts`、`packages/service/common/s3/lifecycle/cleanup.ts`、`packages/service/common/s3/queue/delete.ts`、`projects/app/src/service/common/system/syncSiteAvatarLifecycle.ts`
+- [x] **A4（原第 4 项，P2）头像生命周期简化**
+  - 按最新确认改为复用 `refreshAvatar`：配置保存后保留新图、删除不再被 favicon 或导航栏引用的旧图；相同 URL 去重，仍被共用的图片保留。
+  - 外部 URL、内置图标和非 avatar 图片不参与 S3 清理；清空字段也会删除失去引用的旧图。
+  - 移除站点专用状态模型及通用 TTL/删除队列中的站点配置依赖；S3 操作不属于 Mongo 事务，失败记录日志，不改写已成功保存的结果。
+  - 位置：`packages/service/common/s3/sources/avatar/index.ts`、`projects/app/src/service/common/system/syncSiteAvatarLifecycle.ts`、`projects/app/src/pages/api/admin/system/config/update.ts`
+
 - [x] **A5（原第 5 项，P2）迁移静默剔除/跳过**
   - 已实现：sanitize 和回填冲突都输出结构化路径清单（只含路径，不含值），迁移结果增加跳过数量/域数量/路径文本；管理端迁移结果新增黄色警告区展示路径。默认不阻断升级，便于人工复核。
   - 位置：`projects/app/src/migration/tasks/4180/20260928_migrate_instance_configs/service.ts`、同目录 `index.ts`、`projects/app/src/pageComponents/admin/config/Migration.tsx`、`packages/web/i18n/*/system_migration.json`
@@ -185,37 +187,24 @@
 - [x] **G4（review F5，P2）新增公共 helper 多位置参数**
   - 已实现：`parseDomainOverrides`、`resolveDomainEffectiveConfig`、`restorePreservedSecrets`、`filterDomainDataByEdition`、`filterDomainDataByVisibleKeys`、`collectPrunedLeafPaths`、`findOverridesNotAllowedByEdition`、`registry.createEntries`、内部 `restoreObject`、迁移 `tryResolveConflictLeaf` 全部改为命名对象参数，并同步调用方。
   - 位置：`packages/global/common/system/config/`、`packages/service/common/system/systemInstanceConfig/controller.ts`、迁移 service 与相关测试
-- [x] **G5（review F6，P2）头像 TTL 写 helper 未透传 session**
-  - 已实现：`scheduleAvatarDeletion` 改为对象参数并支持可选 `session`，透传给 `MongoS3TTL.updateOne`。
+- [x] **G5（review F6，P2）头像 TTL 写 helper 透传 session**
+  - 延迟调度 helper 已随 A4 简化移除；保留的 `refreshAvatar`、`removeAvatarTTL`、`deleteAvatar` 继续支持并透传可选 session，仅覆盖 Mongo TTL 记录。
   - 位置：`packages/service/common/s3/sources/avatar/index.ts`
+
 - [x] **G6（review F7，P2）type.ts 先 import 再 export**
   - 已实现：删除 `SystemInstanceConfigDomainKey/Map` 转导出；消费方直接从 schema 导入。
   - 位置：`packages/global/common/system/config/type.ts`、相关页面
 - [x] **G7（review F8，P3）OpenAPI 字段说明与示例**
   - 已实现：GET 响应 domain/revision/overrides/effectiveConfig/secretKeys/updatedBy 和更新请求 domain/expectedRevision/overrides/items/subPlans/subPlansExpectedRevision 补 description/example；补齐局部补丁、显式清空、套餐绑定 revision 示例。
   - 位置：`packages/global/openapi/admin/system/instanceConfig/api.ts`
-- [x] **G8（review F3，P2，A4 补强）头像最终检查与远端删除之间仍可重新引用**
-  - 已实现：新增 `s3_site_avatar_states` 对象级状态机（referenced/pending/deleting）：
-    - 站点保存前先按新配置登记引用（带 revision），删除任务已领取时返回 409，保存不写库；登记后再校验对象存在，缺失返回 400 并清理状态。
-    - TTL 清理只把 pending 状态提交删除队列；最终删除任务必须原子领取 pending→deleting 才能删除。
-    - 旧保存的延迟回调通过 `savedRevision` 条件降级，不能覆盖新 revision 的引用；删除失败释放回 pending 供重试。
-  - 覆盖：删除任务已领取时重新引用被拒绝；先引用后删除被跳过；过期 TTL 遇 referenced 状态不删除；S3 删除失败恢复 pending。
-  - 位置：`packages/service/common/s3/models/siteAvatarState.ts`、`siteAvatarReferences.ts`、`cleanup.ts`、`queue/delete.ts`、`sources/avatar/index.ts`、`projects/app/src/pages/api/admin/system/config/update.ts`、`syncSiteAvatarLifecycle.ts` 及相关测试
+- [x] **G8（review F3，P2，A4 补强）站点头像删除协调**
+  - 最新决策统一采用应用头像的 `refreshAvatar` 行为，移除站点对象级状态机、保存前预约与对象存在性预检，见 A4。
 
 ### 批次 H：最新 review 5825692925 收口
 
-- [x] **H1（review N1，P2）条件引用登记必须检查补偿 UPDATE 结果**
-  - 已实现：reservation 改为最多 3 次条件写循环，只有 `matchedCount > 0` 或 create 成功才认为取得保护；补偿写 0 命中时重新协调，最终未命中返回 `SiteAvatarDeletionInProgressError`，不再凭前一次查询继续保存。
-  - 位置：`packages/service/common/s3/siteAvatarReferences.ts`
-- [x] **H2（review N2，P2）保存失败撤销本次预登记**
-  - 已实现：预登记携带 `reservationId`；预检异常与批量事务失败都释放本次仍拥有且当前配置未引用的 referenced 状态；无法读取当前配置时保留状态，避免误释放已提交引用。清理任务无法回收时保留 TTL 作为重试记录，不再删除唯一入口。
-  - 位置：`projects/app/src/pages/api/admin/system/config/update.ts`、`packages/service/common/s3/siteAvatarReferences.ts`、`packages/service/common/s3/lifecycle/cleanup.ts`
-- [x] **H3（review N3，P2）同一 BullMQ 任务恢复已持有 claim**
-  - 已实现：状态记录 `deleteClaimedBy`，worker 使用 `job.id` 作为 claimId；同一任务重试可恢复自己的 deleting，其他任务跳过；领取和删除统一放进 try/catch，批次中途失败会释放已领取 claim。
-  - 位置：`packages/service/common/s3/queue/delete.ts`、`packages/service/common/s3/models/siteAvatarState.ts`
-- [x] **H4（review N4，P2）session 覆盖头像调度全部 Mongo 写入**
-  - 已实现：reserve/mark/claim/clear/release/getCurrent 等状态读写均支持并透传可选 session；`scheduleAvatarDeletion` 把同一 session 传给 pending 状态和 TTL 写入；新增真实 replica-set 事务中止回滚测试。
-  - 位置：`packages/service/common/s3/siteAvatarReferences.ts`、`packages/service/common/s3/sources/avatar/index.ts`、`packages/service/test/common/s3/siteAvatarReferences.test.ts`
+- [x] **H1–H4（review N1–N4）头像预约、claim 恢复与状态事务**
+  - 随 A4 的最新简化决策移除上述协调机制及专用测试；不再维护 referenced/pending/deleting 状态，也不在通用 S3 清理任务中读取站点配置。
+  - 保留共享图片不误删、替换与清空字段的局部测试；不扩展分发、锁或补偿系统。
 - [x] **H5（review N5，P3）删除无消费者的 Schema/type 别名**
   - 已实现：删除 `SystemInstanceConfigDocumentSchema`、`parseSystemInstanceConfigDocument`、`SystemInstanceConfigType`、`SystemInstanceConfigDocumentType`、`SystemInstanceDomainOverridesType`、`SystemInstanceDomainDocument` 等无消费者别名，保留实际定义。
   - 位置：`packages/global/common/system/config/schema.ts`、`packages/global/common/system/config/type.ts`

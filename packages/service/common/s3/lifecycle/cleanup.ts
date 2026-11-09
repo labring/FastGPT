@@ -3,12 +3,6 @@ import { getLogger, LogCategories } from '../../logger';
 import { setCron } from '../../system/cron';
 import { checkTimerLock } from '../../system/timerLock/utils';
 import { TimerIdEnum } from '../../system/timerLock/constants';
-import {
-  getCurrentSiteAvatarKeys,
-  isSiteAvatarObject,
-  markSiteAvatarDeletionPending,
-  markSiteAvatarReferenced
-} from '../siteAvatarReferences';
 
 const logger = getLogger(LogCategories.INFRA.S3);
 
@@ -28,12 +22,6 @@ export async function clearExpiredMinioFiles() {
 
     logger.info('Found expired S3 files to clean', { count: expiredFiles.length });
 
-    // 仅当本轮存在头像 TTL 时才读 site 配置，避免普通文件清理承担额外查询。
-    const hasExpiredAvatar = expiredFiles.some((file) =>
-      isSiteAvatarObject(file.bucketName, file.minioKey)
-    );
-    const currentSiteRefs = hasExpiredAvatar ? await getCurrentSiteAvatarKeys() : undefined;
-
     let success = 0;
     let fail = 0;
 
@@ -43,39 +31,6 @@ export async function clearExpiredMinioFiles() {
         const bucket = global.s3BucketMap[bucketName];
         const multipartUploadId = file.multipart?.uploadId?.trim();
         const hasMultipartMarker = file.multipart !== undefined && file.multipart !== null;
-        const isAvatar = isSiteAvatarObject(file.bucketName, file.minioKey);
-
-        if (isAvatar) {
-          if (currentSiteRefs === undefined) {
-            logger.warn(
-              'Deferred avatar S3 TTL cleanup because current site config is unavailable',
-              {
-                key: file.minioKey
-              }
-            );
-            continue;
-          }
-          if (currentSiteRefs.avatarKeys.has(file.minioKey)) {
-            await markSiteAvatarReferenced({
-              avatarKey: file.minioKey,
-              siteRevision: currentSiteRefs.revision
-            });
-            await MongoS3TTL.deleteOne({ _id: file._id });
-            logger.info('Kept referenced avatar and removed its TTL', {
-              key: file.minioKey
-            });
-            continue;
-          }
-
-          // 只有已登记 pending 的头像才能进入删除队列。若状态仍是 referenced/deleting，
-          // 保留 TTL 作为后续重试记录；删除唯一记录会让无法回收的对象永久失去入口。
-          if (!(await markSiteAvatarDeletionPending({ avatarKey: file.minioKey }))) {
-            logger.info('Deferred avatar deletion because its state is not pending', {
-              key: file.minioKey
-            });
-            continue;
-          }
-        }
 
         if (bucket) {
           if (hasMultipartMarker) {

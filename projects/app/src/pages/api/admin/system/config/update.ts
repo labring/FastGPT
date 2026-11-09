@@ -1,4 +1,3 @@
-import { randomUUID } from 'node:crypto';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
@@ -19,18 +18,6 @@ import {
 import { initSystemConfig } from '@/service/common/system';
 import { assertStorageDownloadConfig } from '@fastgpt/service/common/s3/config/utils';
 import { syncSiteAvatarLifecycle } from '@/service/common/system/syncSiteAvatarLifecycle';
-import { resolveDomainEffectiveConfig } from '@fastgpt/global/common/system/config/schema';
-import { deepMergeConfig } from '@fastgpt/global/common/system/config/merge';
-import {
-  AVATAR_KEY_PREFIX,
-  getCurrentSiteAvatarKeys,
-  getSiteAvatarRefs,
-  releaseSiteAvatarReservations,
-  reserveSiteAvatarReferences,
-  SiteAvatarDeletionInProgressError,
-  toSiteAvatarKey
-} from '@fastgpt/service/common/s3/siteAvatarReferences';
-import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { logInstanceConfigWrite } from '@fastgpt/service/common/system/migrationCoverageLog';
 import { ApiHttpError } from '@fastgpt/service/common/http/apiError';
@@ -87,106 +74,13 @@ async function handler(
   const siteItem = items.find((item) => item.domain === 'site');
   const previousSiteConfig = siteItem ? (await getDomainConfig('site')).effectiveConfig : undefined;
 
-  // 2.1 新引用头像必须在提交前完成对象级登记：
-  // - 删除任务已领取的对象返回 409，让用户重试而不是写入一个即将被删除的 URL；
-  // - 对象已不存在时返回 400，提示重新上传；
-  // - 登记成功后，删除任务无法再领取该对象，消除检查后窗口。
-  const avatarReservation = {
-    reservationId: randomUUID(),
-    avatarKeys: [] as string[]
-  };
-  const newAvatarKeys = (() => {
-    if (!siteItem || !previousSiteConfig) return [];
-    const previousAvatarRefs = getSiteAvatarRefs(previousSiteConfig);
-    const nextSiteConfig = resolveDomainEffectiveConfig({
-      domain: 'site',
-      overrides: deepMergeConfig(previousSiteConfig, siteItem.overrides)
-    });
-    return [...getSiteAvatarRefs(nextSiteConfig)]
-      .filter((avatar) => !previousAvatarRefs.has(avatar))
-      .map(toSiteAvatarKey)
-      .filter((avatarKey) => avatarKey.startsWith(AVATAR_KEY_PREFIX));
-  })();
-
-  /**
-   * 只释放本次预约且当前配置未引用的头像。
-   * 若无法读取当前配置，保留 referenced 状态，宁可暂时不回收也不误删可能已提交的引用。
-   */
-  const releaseAvatarReservations = async () => {
-    if (avatarReservation.avatarKeys.length === 0) return;
-    const currentSiteRefs = await getCurrentSiteAvatarKeys();
-    if (!currentSiteRefs) return;
-    const unreferencedKeys = avatarReservation.avatarKeys.filter(
-      (avatarKey) => !currentSiteRefs.avatarKeys.has(avatarKey)
-    );
-    if (unreferencedKeys.length === 0) return;
-    await releaseSiteAvatarReservations({
-      avatarKeys: unreferencedKeys,
-      reservationId: avatarReservation.reservationId
-    });
-  };
-
-  // 2.2 逐个登记引用锁并记录成功项；任何一步失败只释放本次已取得的预约。
-  try {
-    for (const avatarKey of newAvatarKeys) {
-      await reserveSiteAvatarReferences({
-        avatarKeys: [avatarKey],
-        siteRevision: siteItem!.expectedRevision + 1,
-        reservationId: avatarReservation.reservationId
-      });
-      avatarReservation.avatarKeys.push(avatarKey);
-    }
-
-    if (avatarReservation.avatarKeys.length > 0) {
-      // 先登记引用锁，再确认对象存在。若删除任务在检查与登记之间完成并清掉状态，
-      // 登记会失败（deleting）或成功但存在性检查发现对象已缺失，两种情况都不会写库。
-      const missingAvatarKeys: string[] = await getS3AvatarSource().findMissingAvatars({
-        avatarKeys: avatarReservation.avatarKeys
-      });
-      if (missingAvatarKeys.length > 0) {
-        throw new ApiHttpError(
-          400,
-          `Avatar file not found: ${missingAvatarKeys.join(', ')}. Please upload it again.`
-        );
-      }
-    }
-  } catch (error) {
-    await releaseAvatarReservations().catch((releaseError) => {
-      logger.error('Failed to release avatar reservations after preflight failure', {
-        error: releaseError
-      });
-    });
-    if (error instanceof SiteAvatarDeletionInProgressError) {
-      throw new ApiHttpError(
-        409,
-        'Avatar deletion is in progress. Please retry the save in a moment.'
-      );
-    }
-    throw error;
-  }
-
   // 3. 单事务写入全部域和可选套餐
-  let savedConfigs;
-  try {
-    savedConfigs = await batchUpdateDomainConfigs({
-      items,
-      subPlans,
-      subPlansExpectedRevision,
-      actor: {
-        actor: 'admin',
-        userId: auth.userId
-      }
-    });
-  } catch (error) {
-    // revision 冲突、其他域校验失败等都会让事务整体回滚；撤销本次预登记，
-    // 避免留下站点从未引用的 referenced 状态而永久失去自动回收入口。
-    await releaseAvatarReservations().catch((releaseError) => {
-      logger.error('Failed to release avatar reservations after config save failure', {
-        error: releaseError
-      });
-    });
-    throw error;
-  }
+  const savedConfigs = await batchUpdateDomainConfigs({
+    items,
+    subPlans,
+    subPlansExpectedRevision,
+    actor: { actor: 'admin', userId: auth.userId }
+  });
 
   // 4. 数据库提交后即保存成功；运行时刷新在后台触发，刷新失败不将已提交的操作报告为失败
   void initSystemConfig().catch((error) => {
@@ -199,8 +93,7 @@ async function handler(
     if (currentSite)
       void syncSiteAvatarLifecycle({
         previous: previousSiteConfig,
-        next: currentSite.effectiveConfig as typeof previousSiteConfig,
-        savedRevision: currentSite.revision
+        next: currentSite.effectiveConfig as typeof previousSiteConfig
       }).catch((error) => {
         logger.error('Failed to sync site avatar lifecycle after config update', { error });
       });

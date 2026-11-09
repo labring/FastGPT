@@ -4,10 +4,6 @@ import { getFileS3Key } from '../../utils';
 import { MongoS3TTL } from '../../models/ttl';
 import { S3PublicBucket } from '../../buckets/public';
 import { avatarAllowedExtensions, createUploadConstraints } from '../../utils/uploadConstraints';
-import { markSiteAvatarDeletionPending } from '../../siteAvatarReferences';
-
-/** 站点头像失去引用后的回收宽限期：留出撤销/改回的时间，避免误删刚被重新引用的图片。 */
-export const SITE_AVATAR_DELETE_DELAY_MS = 24 * 60 * 60 * 1000;
 
 class S3AvatarSource extends S3PublicBucket {
   constructor() {
@@ -52,59 +48,23 @@ class S3AvatarSource extends S3PublicBucket {
     await MongoS3TTL.deleteOne({ minioKey: key, bucketName: this.bucketName }, session);
   }
 
-  /**
-   * 为失去引用的头像安排延迟删除。
-   *
-   * 只写入/延长 TTL，不立即删除对象；若期间头像重新被引用，removeAvatarTTL 会取消。
-   * 到期的记录由现有 S3 TTL 清理任务处理，避免保存后的异步删除误伤后续重新引用的图片。
-   */
-  async scheduleAvatarDeletion({
-    avatar,
-    delayMs = SITE_AVATAR_DELETE_DELAY_MS,
-    savedRevision,
-    session
-  }: {
-    avatar: string;
-    delayMs?: number;
-    /** 本次站点保存后的 revision，用于避免旧保存的延迟回调覆盖新引用。 */
-    savedRevision?: number;
-    session?: ClientSession;
-  }): Promise<void> {
-    const key = avatar.slice(this.prefix.length);
-    // 先登记待删除状态，最终删除任务只有成功领取该状态后才能删除 S3 对象；
-    // 若已有删除任务领取或存在更新的引用，本次不写入 TTL，避免重复排队。
-    if (!(await markSiteAvatarDeletionPending({ avatarKey: key, savedRevision, session }))) return;
-    await MongoS3TTL.updateOne(
-      { minioKey: key, bucketName: this.bucketName },
-      {
-        // 已有更晚的 TTL 时不缩短
-        $max: { expiredTime: new Date(Date.now() + delayMs) }
-      },
-      { upsert: true, session }
-    );
-  }
-
-  /** 批量检查头像对象是否仍存在，返回缺失对象 key，供保存前拒绝已过期头像。 */
-  async findMissingAvatars({ avatarKeys }: { avatarKeys: string[] }): Promise<string[]> {
-    const missing: string[] = [];
-    for (const avatarKey of avatarKeys) {
-      // 兼容历史 key 的候选格式，避免把仍可读取的旧头像误判为缺失。
-      if (!(await this.isObjectExists(avatarKey))) missing.push(avatarKey);
-    }
-    return missing;
-  }
-
   async deleteAvatar(avatar: string, session?: ClientSession): Promise<void> {
     const key = avatar.slice(this.prefix.length);
     await MongoS3TTL.deleteOne({ minioKey: key, bucketName: this.bucketName }, session);
     await this.removeObject(key);
   }
 
-  async refreshAvatar(newAvatar?: string, oldAvatar?: string, session?: ClientSession) {
-    if (!newAvatar || newAvatar === oldAvatar) return;
+  /**
+   * 更新头像的文件生命周期：新图取消临时 TTL，旧图在替换后删除。
+   * undefined/空字符串沿用原调用约定，表示本次不更新；null 明确表示清空头像。
+   * session 只覆盖 Mongo TTL 记录，S3 对象删除不属于 Mongo 事务。
+   */
+  async refreshAvatar(newAvatar?: string | null, oldAvatar?: string, session?: ClientSession) {
+    if (newAvatar === undefined || newAvatar === '' || newAvatar === oldAvatar) return;
 
-    // remove the TTL for the new avatar
-    await this.removeAvatarTTL(newAvatar, session);
+    if (newAvatar !== null) {
+      await this.removeAvatarTTL(newAvatar, session);
+    }
 
     if (oldAvatar) {
       // delete the old avatar

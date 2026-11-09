@@ -1,13 +1,11 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MongoSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/schema';
-import { MongoSiteAvatarState } from '@fastgpt/service/common/s3/models/siteAvatarState';
 import { SECRET_MASK } from '@fastgpt/global/common/system/config/permission';
 
 const mocks = vi.hoisted(() => ({
   edition: 'pro' as 'pro' | 'community',
   initSystemConfig: vi.fn(),
-  syncSiteAvatarLifecycle: vi.fn(),
-  findMissingAvatars: vi.fn(async () => [] as string[])
+  syncSiteAvatarLifecycle: vi.fn()
 }));
 
 vi.mock('@/service/middleware/entry', () => ({ NextAPI: (handler: unknown) => handler }));
@@ -17,11 +15,6 @@ vi.mock('@fastgpt/service/support/permission/user/auth', () => ({
 vi.mock('@/service/common/system', () => ({ initSystemConfig: mocks.initSystemConfig }));
 vi.mock('@/service/common/system/syncSiteAvatarLifecycle', () => ({
   syncSiteAvatarLifecycle: mocks.syncSiteAvatarLifecycle
-}));
-vi.mock('@fastgpt/service/common/s3/sources/avatar', () => ({
-  getS3AvatarSource: () => ({
-    findMissingAvatars: mocks.findMissingAvatars
-  })
 }));
 vi.mock(
   '@fastgpt/service/common/system/systemInstanceConfig/controller',
@@ -36,14 +29,10 @@ import handler from '@/pages/api/admin/system/config/update';
 describe('instance config update API', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    vi.clearAllMocks();
     mocks.edition = 'pro';
     mocks.initSystemConfig.mockRejectedValue(new Error('Runtime apply unavailable'));
     mocks.syncSiteAvatarLifecycle.mockRejectedValue(new Error('Avatar cleanup unavailable'));
-    mocks.findMissingAvatars.mockResolvedValue([]);
-  });
-
-  afterEach(async () => {
-    await MongoSiteAvatarState.deleteMany({});
   });
 
   it('returns the committed revision without waiting for reload, cleanup or a post-commit read', async () => {
@@ -82,77 +71,11 @@ describe('instance config update API', () => {
     });
   });
 
-  it('rejects a site save that re-references an avatar while its deletion is claimed', async () => {
-    const avatarUrl = '/api/system/img/avatar/team-1/claimed.png';
+  it('does not start avatar cleanup when a stale revision rejects the save', async () => {
     await MongoSystemInstanceConfig.create({
       domain: 'site',
       revision: 1,
-      overrides: { favicon: '/api/system/img/avatar/team-1/current.png' },
-      updatedBy: { actor: 'system' }
-    });
-    await MongoSiteAvatarState.create({
-      avatarKey: 'avatar/team-1/claimed.png',
-      state: 'deleting'
-    });
-
-    await expect(
-      handler({
-        body: {
-          items: [
-            {
-              domain: 'site',
-              expectedRevision: 1,
-              overrides: { favicon: avatarUrl }
-            }
-          ]
-        }
-      } as any)
-    ).rejects.toMatchObject({ statusCode: 409 });
-
-    expect(await MongoSystemInstanceConfig.findOne({ domain: 'site' }).lean()).toMatchObject({
-      revision: 1,
-      overrides: { favicon: '/api/system/img/avatar/team-1/current.png' }
-    });
-  });
-
-  it('clears the reservation and rejects when the avatar object is already missing', async () => {
-    const avatarKey = 'avatar/team-1/missing.png';
-    const avatarUrl = `/api/system/img/${avatarKey}`;
-    await MongoSystemInstanceConfig.create({
-      domain: 'site',
-      revision: 1,
-      overrides: { favicon: '' },
-      updatedBy: { actor: 'system' }
-    });
-    mocks.findMissingAvatars.mockResolvedValueOnce([avatarKey]);
-
-    await expect(
-      handler({
-        body: {
-          items: [
-            {
-              domain: 'site',
-              expectedRevision: 1,
-              overrides: { favicon: avatarUrl }
-            }
-          ]
-        }
-      } as any)
-    ).rejects.toMatchObject({ statusCode: 400 });
-
-    expect(await MongoSiteAvatarState.findOne({ avatarKey })).toBeNull();
-    expect(await MongoSystemInstanceConfig.findOne({ domain: 'site' }).lean()).toMatchObject({
-      revision: 1,
-      overrides: { favicon: '' }
-    });
-  });
-
-  it('releases the reservation when the config transaction fails', async () => {
-    const avatarKey = 'avatar/team-1/transaction-failed.png';
-    await MongoSystemInstanceConfig.create({
-      domain: 'site',
-      revision: 1,
-      overrides: { favicon: '/api/system/img/avatar/team-1/current.png' },
+      overrides: { favicon: '/api/system/img/avatar/team/current.png' },
       updatedBy: { actor: 'system' }
     });
 
@@ -163,17 +86,17 @@ describe('instance config update API', () => {
             {
               domain: 'site',
               expectedRevision: 0,
-              overrides: { favicon: `/api/system/img/${avatarKey}` }
+              overrides: { favicon: '/api/system/img/avatar/team/new.png' }
             }
           ]
         }
       } as any)
     ).rejects.toMatchObject({ statusCode: 409 });
 
-    expect(await MongoSiteAvatarState.findOne({ avatarKey })).toBeNull();
+    expect(mocks.syncSiteAvatarLifecycle).not.toHaveBeenCalled();
     expect(await MongoSystemInstanceConfig.findOne({ domain: 'site' }).lean()).toMatchObject({
       revision: 1,
-      overrides: { favicon: '/api/system/img/avatar/team-1/current.png' }
+      overrides: { favicon: '/api/system/img/avatar/team/current.png' }
     });
   });
 
