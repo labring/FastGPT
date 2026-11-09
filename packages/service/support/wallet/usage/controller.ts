@@ -11,6 +11,7 @@ import { getLogger, LogCategories } from '../../../common/logger';
 import { type ClientSession } from '../../../common/mongo';
 import { mongoSessionRun } from '../../../common/mongo/sessionRun';
 import { getSystemModelHandle } from '../../../core/ai/model/catalog/service';
+import { getSystemInstanceConfig } from '../../../common/system/systemInstanceConfig/runtime';
 import { MongoUsage } from './schema';
 import { MongoUsageItem } from './usageItemSchema';
 import { formatModelChars2Points } from './utils';
@@ -50,7 +51,7 @@ export const createPdfParseUsage = async ({
   pages: number;
   usageId?: string;
 }) => {
-  const unitPrice = global.systemEnv?.customPdfParse?.price || 0;
+  const unitPrice = getSystemInstanceConfig().providers.documentParse.customPdf.price;
   const totalPoints = pages * unitPrice;
 
   if (usageId) {

@@ -25,7 +25,7 @@ import AdminSwitchRow from '@/pageComponents/admin/settings/AdminSwitchRow';
 import ImageInput from '@/pageComponents/admin/settings/ImageInput';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import type { SettingTOCItem } from '@/pageComponents/admin/settings/AdminSettingTOC';
-import type { SystemInstanceConfigDomainMap } from '@fastgpt/global/common/system/config/type';
+import type { SystemInstanceConfigDomainMap } from '@fastgpt/global/common/system/config/schema';
 
 type AuthConfigForm = SystemInstanceConfigDomainMap['auth'] & {
   /** 登录防护字段属 security 域，页面迁入后在此一并编辑 */
@@ -140,6 +140,7 @@ const AuthSettingComponent = () => {
               : null,
           loginProviders: rest.loginProviders,
           accountCancellation: rest.accountCancellation,
+          ...(showSso ? { sso: rest.sso } : {}),
           ...(showFastLogin ? { fastLogin } : {})
         })
       );

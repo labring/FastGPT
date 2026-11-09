@@ -4,7 +4,7 @@ import { logInstanceConfigRead } from '@fastgpt/service/common/system/migrationC
 
 /**
  * 合成运行时 systemEnv：实例配置（SystemInstanceConfig）为权威数据源，
- * 旧库 systemEnv 仅提供 schema 之外的扩展键（如 langfuse、customPdfParse.price）。
+ * 旧库 systemEnv 仅提供 schema 之外的扩展键（如 langfuse）。
  *
  * 设计原因：
  * - 旧实现用 Object.assign 把旧库 systemEnv 排在最后，会覆盖刚从实例配置读取的值，
@@ -36,14 +36,15 @@ export const buildAuthoritativeSystemEnv = ({
     hnswEfSearch: instanceConfig.vector.hnswEfSearch,
     vectorRecallConcurrency: instanceConfig.vector.vectorRecallConcurrency,
     customPdfParse: {
-      // 旧库独有的计费/扩展字段（price 等）深合并保留
+      // 旧库只保留 schema 外的扩展键；计费价格与解析凭据均以实例配置为权威。
       ...(legacySystemEnv?.customPdfParse || {}),
       url: instanceConfig.providers.documentParse.customPdf.url,
       key: instanceConfig.providers.documentParse.customPdf.key,
       somarkApiKey: instanceConfig.providers.documentParse.customPdf.somarkApiKey,
       doc2xKey: instanceConfig.providers.documentParse.customPdf.doc2xKey,
       textinAppId: instanceConfig.providers.documentParse.customPdf.textinAppId,
-      textinSecretCode: instanceConfig.providers.documentParse.customPdf.textinSecretCode
+      textinSecretCode: instanceConfig.providers.documentParse.customPdf.textinSecretCode,
+      price: instanceConfig.providers.documentParse.customPdf.price
     }
   };
 
@@ -104,6 +105,10 @@ export const buildAuthoritativeSystemEnv = ({
       {
         path: 'providers.documentParse.customPdf.textinSecretCode',
         value: instanceConfig.providers.documentParse.customPdf.textinSecretCode
+      },
+      {
+        path: 'providers.documentParse.customPdf.price',
+        value: instanceConfig.providers.documentParse.customPdf.price
       }
     ]
   });

@@ -230,7 +230,7 @@ const readFileContent = async ({
     if (onPdfParseUsage) {
       onPdfParseUsage({
         moduleName: i18nT('account_usage:pdf_enhanced_parse'),
-        totalPoints: pages * (global.systemEnv?.customPdfParse?.price || 0),
+        totalPoints: pages * getSystemInstanceConfig().providers.documentParse.customPdf.price,
         pages
       });
       return;

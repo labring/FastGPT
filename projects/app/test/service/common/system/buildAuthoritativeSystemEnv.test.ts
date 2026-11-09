@@ -30,7 +30,9 @@ describe('buildAuthoritativeSystemEnv', () => {
   });
 
   it('keeps legacy-only extension keys and lets instance config own schema fields', () => {
-    const instanceConfig = resolveSystemInstanceConfig();
+    const instanceConfig = resolveSystemInstanceConfig({
+      providers: { documentParse: { customPdf: { price: 2 } } }
+    });
 
     const result = buildAuthoritativeSystemEnv({
       legacySystemEnv: {
@@ -47,7 +49,7 @@ describe('buildAuthoritativeSystemEnv', () => {
       secretKey: 'sk',
       baseUrl: 'https://lf.example.com'
     });
-    expect((result.customPdfParse as any)?.price).toBe(0.01);
+    expect((result.customPdfParse as any)?.price).toBe(2);
 
     // schema 内桥接字段以实例配置为唯一权威来源：blockStartup 迁移在初始化前
     // 已把旧库 systemEnv.fileUrlWhitelist 回填进 security 域。若此处继续优先
