@@ -95,9 +95,9 @@
 - [x] **B1（原第 6 项，P1）`CHINESE_IP_REDIRECT_URL` 被旧配置覆盖**
   - 已实现：从 `defaultFeConfigs` 移除该字段，新增 `applyEnvAuthoritativeFeConfigs` 在最终合成处显式写回 ENV；旧库值不再能覆盖。
   - 位置：`projects/app/src/service/common/system/index.ts`、`projects/app/src/service/common/system/envAuthoritativeFeConfigs.ts`、`projects/app/test/service/common/system/envAuthoritativeFeConfigs.test.ts`
-- [ ] **B2（原第 7 项，P1，依赖 D1）旧 `basic`/`user` 页面和写接口**
-  - 按评论建议：先盘点旧页面全部字段，区分“已迁移”“仍有用途”“废弃”；迁走仍有用途的字段后，再收口旧表单和 `/proApi/admin/system/updateConfig`，避免旧页面保存看似成功但实际被新配置覆盖。
-  - 位置：`projects/app/src/pages/admin/settings/basic.tsx`、`user.tsx`、`projects/app/src/web/admin/system/api.ts`、`pro/admin/src/pages/api/admin/system/updateConfig.ts`
+- [x] **B2（原第 7 项，P1）旧 `basic`/`user` 页面和写接口**
+  - 已完成：旧 `basic/user/model/thirdParty` 路由改为重定向到新页面；旧 config 组件删除；`postUpdateConfig` 和 Pro `/proApi/admin/system/updateConfig` 写入口删除；`updateSystemConfig` 写 helper 删除。
+  - 位置：`projects/app/src/pages/admin/settings/`、`projects/app/src/pageComponents/admin/config/`、`projects/app/src/web/admin/system/api.ts`、`pro/admin/src/pages/api/admin/system/updateConfig.ts`、`pro/admin/src/service/common/system/config.ts`
 - [x] **B3（原第 8 项）`plugin.remoteDebug` 无法关闭**
   - 已按 D7 改为 `实例配置开关 && Plugin 能力探测`；管理员关闭后入口一定关闭。
   - 位置：`projects/app/src/service/common/system/index.ts`

@@ -1,21 +1,13 @@
-import { serviceSideProps } from '@/web/common/i18n/utils';
-import AdminContainer from '@/pageComponents/admin/AdminContainer';
-import Settings from '@/pageComponents/admin/config/thirdParty';
+import type { GetServerSideProps } from 'next';
 
-const AdminPage = () => {
-  return (
-    <AdminContainer>
-      <Settings />
-    </AdminContainer>
-  );
-};
+/** 旧第三方配置页已由外部提供商页面接管，保留路由重定向避免旧书签 404。 */
+export const getServerSideProps: GetServerSideProps = async () => ({
+  redirect: {
+    destination: '/admin/settings/providers',
+    permanent: false
+  }
+});
 
-export async function getServerSideProps(content: any) {
-  return {
-    props: {
-      ...(await serviceSideProps(content, ['admin']))
-    }
-  };
+export default function LegacyThirdPartySettingsRedirect() {
+  return null;
 }
-
-export default AdminPage;
