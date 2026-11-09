@@ -184,6 +184,23 @@ describe('resolveDomainEffectiveConfig (Two-Phase Validation & Merge)', () => {
     expect(valid.workflow.parallelMaxConcurrency).toBe(5);
   });
 
+  it('requires evaluation concurrency to be an integer of at least one', () => {
+    for (const evalConcurrency of [0, -1, 1.5]) {
+      expect(() =>
+        parseDomainOverrides({
+          domain: 'performance',
+          overrides: { task: { evalConcurrency } }
+        })
+      ).toThrow();
+    }
+    expect(
+      resolveDomainEffectiveConfig({
+        domain: 'performance',
+        overrides: { task: { evalConcurrency: 1 } }
+      }).task.evalConcurrency
+    ).toBe(1);
+  });
+
   it('accepts legacy zero values that mean disable/unlimited at the consumer', () => {
     // 旧 env IntSchema 允许 0，且这些字段的消费点对 0 有明确"禁用/不限"语义
     // （maxRunTimes<=0 停止工作流、maxLoopTimes=0 拒绝循环输入、!qpm 放行限流），

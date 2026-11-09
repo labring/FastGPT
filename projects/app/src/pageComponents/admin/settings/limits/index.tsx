@@ -1258,10 +1258,9 @@ const LimitsSettingComponent = () => {
               render={({ field }) => (
                 <NumberInput
                   {...numberInputProps}
-                  min={0}
+                  min={1}
                   max={50}
                   value={field.value ?? 3}
-                  // 0 = 暂停评测消费（BullMQ 合法取值），不能用 || 吃掉
                   onChange={(valueAsString, val) => field.onChange(valueAsString === '' ? 3 : val)}
                 >
                   <NumberInputField />

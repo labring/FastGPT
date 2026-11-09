@@ -24,6 +24,7 @@ import { formatHttpError, getNodeErrResponse } from '../utils';
 import { isInternalAddress, PRIVATE_URL_TEXT } from '../../../../common/system/utils';
 import { getServiceRequestMaxContentLength } from '../../../../common/system/constants';
 import { logInstanceConfigRead } from '../../../../common/system/migrationCoverageLog';
+import { getSystemInstanceConfig } from '../../../../common/system/systemInstanceConfig/runtime';
 import { axios, type SafeAxiosRequestConfig } from '../../../../common/api/axios';
 import { replaceEditorVariable } from '../utils/replaceEditorVariable';
 import { checkStrOversize, logOversizeString } from '../../../../common/string/replaceVariable';
@@ -34,16 +35,17 @@ const logger = getLogger(LogCategories.MODULE.WORKFLOW.TOOLS);
 
 /**
  * 仅工作流 HTTP 节点允许按系统配置跳过 HTTPS 证书校验。
+ * App 与 Pro 均直接读取实例快照，避免各宿主的旧 systemEnv 桥接遗漏或覆盖新值。
  * 该配置不下沉到通用 axios,避免影响模型请求、HTTP 工具集等其它出站链路。
  */
 export const getWorkflowHttpNodeHttpsAgentConfig = (
   url: string
 ): Pick<SafeAxiosRequestConfig, '__safeAxios'> => {
   const ignoreHttpsCertificate =
-    global.systemEnv?.workflowHttpNode?.ignoreHttpsCertificate === true;
+    getSystemInstanceConfig().security.workflowHttpNode.ignoreHttpsCertificate;
   logInstanceConfigRead({
     callsite: 'runtime.workflow.http468.getWorkflowHttpNodeHttpsAgentConfig',
-    source: 'bridged-system-env',
+    source: 'instance-config',
     fields: [
       {
         path: 'security.workflowHttpNode.ignoreHttpsCertificate',
@@ -335,7 +337,8 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
     logger.warn('HTTP tool request failed', {
       error,
       httpReqUrl: requestUrl,
-      ignoreHttpsCertificate: global.systemEnv?.workflowHttpNode?.ignoreHttpsCertificate === true
+      ignoreHttpsCertificate:
+        getSystemInstanceConfig().security.workflowHttpNode.ignoreHttpsCertificate
     });
 
     // 分类包装不改变 HTTP 输出字段，摘要仍从原始异常提取状态码、响应体等信息。

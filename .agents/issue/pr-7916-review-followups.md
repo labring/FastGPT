@@ -212,6 +212,14 @@
   - 已实现：快照监听器异常改用 SYSTEM logger 的 `{ error }` 结构化日志，保留逐监听器 catch 和继续通知其他订阅者。
   - 位置：`packages/service/common/system/systemInstanceConfig/runtime.ts`
 
+### 批次 I：运行时读取与保存边界复核
+
+- [x] **I1 HTTP 节点证书策略**：App/Pro 共用消费点直接读取 `security.workflowHttpNode.ignoreHttpsCertificate`，旧 `systemEnv` 桥接不再决定 TLS 行为；覆盖新旧值相反、HTTP 与无效 URL 边界。
+- [x] **I2 评测并发下限**：实例 Schema 和表单统一要求正整数、最小为 1；0 不再作为暂停语义，保留默认值 3。
+- [x] **I3 存储局部保存校验**：统一写入控制器在已有 overrides 与提交补丁合并、解析为完整配置后校验下载策略；非法组合返回 400，事务开始前拒绝整批写入。API 不再重复校验原始补丁。
+- [x] **I4 套餐冲突保留草稿**：页面预检与服务端 revision 冲突均只 toast 提示人工刷新，不自动 reload/refetch、不改变 revision、不重提；正常保存成功后的回读保留。
+- [x] **I5 SMS_PROXY 边界确认**：只由 Pro ENV 提供，三个短信通道字段仍在表单；代理仅改变短信发送请求路由，不参与通道能力或登录、注册入口判断。本项不作为投影缺陷，不改变现有判定。
+
 ## 四、已完成项（不重复修）
 
 - PlanEditModal 测试兼容性：`b22b6a55f`，12 例通过，review 线程已 resolve。

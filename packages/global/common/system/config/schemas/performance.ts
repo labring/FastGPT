@@ -51,8 +51,8 @@ export const PerformanceConfigBaseSchema = z.strictObject({
   chat: ChatPerformanceConfigSchema.prefault({}),
   streamResume: StreamResumePerformanceConfigSchema.prefault({}),
   tracking: TrackingPerformanceConfigSchema.prefault({}),
-  // BullMQ concurrency=0 为合法取值（暂停消费），与旧 env nonnegative 语义一致
-  task: z.strictObject({ evalConcurrency: nonNegativeInteger(3) }).prefault({}),
+  // BullMQ Worker 要求并发为正整数；0 不表示暂停，避免保存后更新或重建 Worker 失败。
+  task: z.strictObject({ evalConcurrency: positiveInteger(3) }).prefault({}),
   channel: z.strictObject({ wechatConcurrency: positiveInteger(1000) }).prefault({})
 });
 

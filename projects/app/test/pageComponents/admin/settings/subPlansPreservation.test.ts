@@ -318,7 +318,7 @@ describe('pay settings subPlans preservation', () => {
     });
   });
 
-  it('blocks the save when the plan revision and commercial revision differ', async () => {
+  it('keeps both drafts and only toasts when the plan and commercial revisions differ', async () => {
     mocks.proConfig = {
       fastgpt: {
         feConfigs: {},
@@ -332,16 +332,26 @@ describe('pay settings subPlans preservation', () => {
     await seedStoredSubPlans();
     await renderPayPage();
 
+    await act(async () => planSwitch().click());
     await fillBankDescription(bankDescription);
     const button = container.querySelector<HTMLButtonElement>('button[data-action="save"]')!;
     await act(async () => {
       button.click();
       await vi.waitFor(() => {
-        expect(mocks.loads).toBe(2);
-        expect(mocks.planReads).toBe(2);
+        expect(mocks.toast).toHaveBeenCalledWith({
+          status: 'warning',
+          title: 'admin:revision_conflict_refresh_required'
+        });
       });
     });
 
+    expect(mocks.loads).toBe(1);
+    expect(mocks.planReads).toBe(1);
+    expect(
+      container.querySelector<HTMLTextAreaElement>('textarea[name="payment.bank.description"]')
+        ?.value
+    ).toBe(bankDescription);
+    expect(planSwitch().checked).toBe(true);
     expect(mocks.posts).toHaveLength(0);
     expect(mocks.toast).toHaveBeenCalledWith({
       status: 'warning',

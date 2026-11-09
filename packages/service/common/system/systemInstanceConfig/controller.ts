@@ -464,6 +464,19 @@ export const batchUpdateDomainConfigs = async ({
       const parsedOverrides = parseDomainOverrides({ domain, overrides: rawOverrides });
       const effectiveConfig = resolveDomainEffectiveConfig({ domain, overrides: parsedOverrides });
 
+      // 下载策略依赖同域多个字段：必须校验合并后的完整配置，局部补丁既不能绕过校验，
+      // 也不能因为省略库中已有的 endpoint 而被误拒绝。校验失败前不启动事务。
+      if (domain === 'storage') {
+        try {
+          assertStorageDownloadConfig(effectiveConfig);
+        } catch (error) {
+          throw new ApiHttpError(
+            400,
+            error instanceof Error ? error.message : 'Invalid storage download config'
+          );
+        }
+      }
+
       const defaultValues = getDomainDefaultConfig(domain);
       const cleanOverrides = pruneDefaultOverrides(parsedOverrides, defaultValues) ?? {};
 

@@ -73,14 +73,12 @@ const CommercialSettingComponent = () => {
       if (plansData === undefined) throw new ToastHandledError('Plans validation failed');
 
       // 套餐和 commercial revision 分开读取，提交前必须再次确认二者来自同一版本；
-      // 不一致时不能用旧套餐快照写入，直接提示刷新后重试。
+      // 不一致时只提示人工刷新，保留配置与套餐草稿和原 revision，不自动重载。
       if (plansData.subPlans !== undefined && plansData.subPlansExpectedRevision !== revision) {
         toast({
           status: 'warning',
           title: t('admin:revision_conflict_refresh_required')
         });
-        void refetch();
-        void plansRef.current?.reload();
         throw new ToastHandledError('Plans revision conflict');
       }
 

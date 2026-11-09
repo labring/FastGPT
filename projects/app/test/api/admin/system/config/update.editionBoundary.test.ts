@@ -24,9 +24,6 @@ vi.mock('@/service/common/system', () => ({ initSystemConfig: mocks.init }));
 vi.mock('@/service/common/system/syncSiteAvatarLifecycle', () => ({
   syncSiteAvatarLifecycle: vi.fn()
 }));
-vi.mock('@fastgpt/service/common/s3/config/utils', () => ({
-  assertStorageDownloadConfig: vi.fn()
-}));
 vi.mock('@fastgpt/service/common/logger', () => ({
   getLogger: () => ({ error: vi.fn() }),
   LogCategories: { SYSTEM: 'system' }

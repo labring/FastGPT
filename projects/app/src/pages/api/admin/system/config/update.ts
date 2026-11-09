@@ -16,7 +16,6 @@ import {
   getServiceEdition
 } from '@fastgpt/service/common/system/systemInstanceConfig/controller';
 import { initSystemConfig } from '@/service/common/system';
-import { assertStorageDownloadConfig } from '@fastgpt/service/common/s3/config/utils';
 import { syncSiteAvatarLifecycle } from '@/service/common/system/syncSiteAvatarLifecycle';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { logInstanceConfigWrite } from '@fastgpt/service/common/system/migrationCoverageLog';
@@ -64,9 +63,6 @@ async function handler(
           ', '
         )}`
       );
-    }
-    if (item.domain === 'storage') {
-      assertStorageDownloadConfig(item.overrides);
     }
   }
 
