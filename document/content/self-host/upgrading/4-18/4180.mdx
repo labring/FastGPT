@@ -12,7 +12,7 @@ upgradeTags:
 - `HNSW_EF_SEARCH` / `systemEnv.hnswEfSearch` 的默认值从 `100` 调整为 `200`，适用于 PostgreSQL、Milvus、OceanBase、SeekDB 和 openGauss；显式配置的值继续生效，可按召回率与查询耗时调整。
 - `HNSW_MAX_SCAN_TUPLES` / `systemEnv.hnswMaxScanTuples` 不再生效，管理台移除对应设置；PostgreSQL 的扫描上限改按本次索引检索涉及的最大知识库向量行数自动设置，上限为 `2147483647`，已有部署可移除旧配置。
 - 新增 `SHOW_OUTLINK_BRAND`：未配置 `PRO_URL` 时固定为 `true`；接入 Pro 后默认 `false`，可设为 `true` 启用品牌展示。前端 `show_outlink_brand` 由服务端环境派生，覆盖 `config.json` 中的同名配置。
-- **插件服务部署**：Docker Compose 模板补齐 `fastgpt-plugin` 的 `FASTGPT_BASE_URL=http://fastgpt-app:3000`，将 `MONGODB_URI` 指向独立的 `fastgpt-plugin` 数据库，并显式设置 `DB_MAX_LINK=100`，避免与主库集合混用；自定义部署应填写插件容器可访问的主服务地址。已有部署替换模板前应核对原插件库，保留已使用的独立库连接；若需切换数据库，先备份并迁移既有插件数据。
+- **插件服务部署**：Docker Compose 模板补齐 `fastgpt-plugin` 的 `FASTGPT_BASE_URL=http://fastgpt-app:3000`，将 `MONGODB_URI` 指向独立的 `fastgpt-plugin` 数据库，并显式设置 `DB_MAX_LINK=100`，避免与主库集合混用；自定义部署应填写插件容器可访问的主服务地址；若插件容器日志出现反向上传文件 `401`，优先核对该地址，修正后重建插件容器并重试工具。已有部署替换模板前应核对原插件库，保留已使用的独立库连接；若需切换数据库，先备份并迁移既有插件数据。
 - 默认部署的对象存储改为 RustFS，已有部署可继续使用原存储，如需切换请参考 [MinIO 迁移到 RustFS](/self-host/docker_minio_to_rustfs)。
 
 - **内容审核（Moderation）插件化迁移**：旧版商业版内置的百度文本审核（`censor.BAIDU_TEXT_CENSOR_CLIENTID` / `censor.BAIDU_TEXT_CENSOR_CLIENTSECRET`）、自定义审核地址（`censor.customCensorURL`）以及单模型配置中的 `censor` 开关已废弃，统一升级为由 `fastgpt-plugin` 托管的 `moderation` 插件体系。
