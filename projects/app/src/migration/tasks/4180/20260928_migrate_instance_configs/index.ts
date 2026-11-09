@@ -1,7 +1,56 @@
 import { SYSTEM_INSTANCE_CONFIG_DOMAINS } from '@fastgpt/global/common/system/config/schema';
 import { SystemMigrationStatusEnum } from '@fastgpt/global/migration/constants';
 import type { SystemMigrationContext } from '../../../registry';
-import { applyInstanceConfigMigration, inspectInstanceConfigMigration } from './service';
+import {
+  applyInstanceConfigMigration,
+  inspectInstanceConfigMigration,
+  type SchemaSanitizedIssue
+} from './service';
+
+const MAX_SKIPPED_PATHS_TEXT_LENGTH = 1000;
+
+/**
+ * 汇总迁移时被跳过或需要人工处理的配置项。
+ * 只拼接路径/变量名，不包含配置值，避免密钥进入迁移结果和页面。
+ */
+const buildSkippedConfigSummary = ({
+  schemaSanitizedIssues,
+  backfillSkippedPaths,
+  envRehomedWarnings
+}: {
+  schemaSanitizedIssues: SchemaSanitizedIssue[];
+  backfillSkippedPaths?: string[];
+  envRehomedWarnings: string[];
+}) => {
+  const paths = Array.from(
+    new Set([
+      ...schemaSanitizedIssues.map((issue) =>
+        issue.path ? `${issue.domain}.${issue.path}` : `${issue.domain}.*`
+      ),
+      ...(backfillSkippedPaths ?? []),
+      ...envRehomedWarnings.map((warning) => `ENV: ${warning}`)
+    ])
+  );
+
+  const domains = new Set<string>();
+  for (const issue of schemaSanitizedIssues) domains.add(issue.domain);
+  for (const path of backfillSkippedPaths ?? []) {
+    const domain = path.split('.')[0];
+    if (domain) domains.add(domain);
+  }
+
+  const joinedPaths = paths.join(', ');
+  const skippedPaths =
+    joinedPaths.length > MAX_SKIPPED_PATHS_TEXT_LENGTH
+      ? `${joinedPaths.slice(0, MAX_SKIPPED_PATHS_TEXT_LENGTH - 3)}...`
+      : joinedPaths;
+
+  return {
+    skippedConfigCount: paths.length,
+    skippedDomainCount: domains.size,
+    skippedPaths
+  };
+};
 
 /**
  * 将旧 systemConfigs 集合与 DB 类环境变量迁移到 system_instance_configs。
@@ -39,6 +88,11 @@ export const migrateInstanceConfigs = async (context: SystemMigrationContext) =>
 
   await context.assertActive();
 
+  const inspectionSkippedSummary = buildSkippedConfigSummary({
+    schemaSanitizedIssues: inspection.schemaSanitizedIssues ?? [],
+    envRehomedWarnings: inspection.envRehomedWarnings
+  });
+
   // 迁移目标已全部落库且域内无缺字段：保留现状，避免覆盖管理员已保存的配置。
   // 按域 + 按字段两级判定：部分写入失败后重跑仍会补齐缺失 Domain；
   // 曾被写入过的 Domain 也会补上客户已配置的环境变量，整域跳过会让这些值永久变成默认值。
@@ -60,7 +114,8 @@ export const migrateInstanceConfigs = async (context: SystemMigrationContext) =>
     return {
       migratedDomainCount: 0,
       backfilledDomainCount: 0,
-      skipped: true
+      skipped: true,
+      ...inspectionSkippedSummary
     };
   }
 
@@ -72,6 +127,11 @@ export const migrateInstanceConfigs = async (context: SystemMigrationContext) =>
   const result = await applyInstanceConfigMigration({
     overrides: inspection.overrides,
     logger: context.logger
+  });
+  const skippedSummary = buildSkippedConfigSummary({
+    schemaSanitizedIssues: inspection.schemaSanitizedIssues ?? [],
+    backfillSkippedPaths: result.backfillSkippedPaths,
+    envRehomedWarnings: inspection.envRehomedWarnings
   });
 
   // 补写的字段属客户既有配置，逐条落在日志里便于排查"某个值为什么变成了这个"
@@ -122,6 +182,7 @@ export const migrateInstanceConfigs = async (context: SystemMigrationContext) =>
   return {
     migratedDomainCount: result.migratedCount,
     backfilledDomainCount: result.backfilledDomains.length,
-    skipped: false
+    skipped: false,
+    ...skippedSummary
   };
 };

@@ -62,7 +62,14 @@ describe('migrateInstanceConfigs', () => {
     const context = createContext();
     const result = await migrateInstanceConfigs(context);
 
-    expect(result).toEqual({ migratedDomainCount: 0, backfilledDomainCount: 0, skipped: true });
+    expect(result).toEqual({
+      migratedDomainCount: 0,
+      backfilledDomainCount: 0,
+      skipped: true,
+      skippedConfigCount: 0,
+      skippedDomainCount: 0,
+      skippedPaths: ''
+    });
     // 已初始化时绝不写入，避免覆盖管理员配置
     expect(mocks.applyInstanceConfigMigration).not.toHaveBeenCalled();
     expect(context.logger.info).toHaveBeenCalled();
@@ -101,7 +108,14 @@ describe('migrateInstanceConfigs', () => {
     const context = createContext();
     const result = await migrateInstanceConfigs(context);
 
-    expect(result).toEqual({ migratedDomainCount: 1, backfilledDomainCount: 1, skipped: false });
+    expect(result).toEqual({
+      migratedDomainCount: 1,
+      backfilledDomainCount: 1,
+      skipped: false,
+      skippedConfigCount: 0,
+      skippedDomainCount: 0,
+      skippedPaths: ''
+    });
     expect(mocks.applyInstanceConfigMigration).toHaveBeenCalledTimes(1);
     // 补写的字段要落在日志里，便于排查某个值为什么变成这个
     expect(context.logger.info).toHaveBeenCalledWith(
@@ -136,7 +150,14 @@ describe('migrateInstanceConfigs', () => {
 
     const result = await migrateInstanceConfigs(createContext());
 
-    expect(result).toEqual({ migratedDomainCount: 1, backfilledDomainCount: 0, skipped: false });
+    expect(result).toEqual({
+      migratedDomainCount: 1,
+      backfilledDomainCount: 0,
+      skipped: false,
+      skippedConfigCount: 0,
+      skippedDomainCount: 0,
+      skippedPaths: ''
+    });
     expect(mocks.applyInstanceConfigMigration).toHaveBeenCalledTimes(1);
   });
 
@@ -193,7 +214,14 @@ describe('migrateInstanceConfigs', () => {
     const context = createContext();
     const result = await migrateInstanceConfigs(context);
 
-    expect(result).toEqual({ migratedDomainCount: 2, backfilledDomainCount: 0, skipped: false });
+    expect(result).toEqual({
+      migratedDomainCount: 2,
+      backfilledDomainCount: 0,
+      skipped: false,
+      skippedConfigCount: 0,
+      skippedDomainCount: 0,
+      skippedPaths: ''
+    });
     expect(mocks.applyInstanceConfigMigration).toHaveBeenCalledTimes(1);
 
     // 三个声明阶段都应被标记为成功
@@ -233,7 +261,14 @@ describe('migrateInstanceConfigs', () => {
     const context = createContext();
     const result = await migrateInstanceConfigs(context);
 
-    expect(result).toEqual({ migratedDomainCount: 1, backfilledDomainCount: 0, skipped: false });
+    expect(result).toEqual({
+      migratedDomainCount: 1,
+      backfilledDomainCount: 0,
+      skipped: false,
+      skippedConfigCount: 0,
+      skippedDomainCount: 0,
+      skippedPaths: ''
+    });
     expect(mocks.applyInstanceConfigMigration).toHaveBeenCalledTimes(1);
   });
 
@@ -262,8 +297,79 @@ describe('migrateInstanceConfigs', () => {
     const context = createContext();
     const result = await migrateInstanceConfigs(context);
 
-    expect(result).toEqual({ migratedDomainCount: 1, backfilledDomainCount: 0, skipped: false });
+    expect(result).toEqual({
+      migratedDomainCount: 1,
+      backfilledDomainCount: 0,
+      skipped: false,
+      skippedConfigCount: 0,
+      skippedDomainCount: 0,
+      skippedPaths: ''
+    });
     expect(mocks.applyInstanceConfigMigration).toHaveBeenCalledTimes(1);
+  });
+
+  it('reports sanitized and env-rehomed items when migration is skipped', async () => {
+    mocks.inspectInstanceConfigMigration.mockResolvedValue({
+      existingDomainCount: 11,
+      missingDomainCount: 0,
+      pendingBackfillDomainCount: 0,
+      pendingBackfillPaths: [],
+      hasLegacyConfig: true,
+      hasLegacyProConfig: true,
+      envRehomedWarnings: ['show_git=false -> configure SHOW_GIT=false'],
+      schemaSanitizedWarnings: [],
+      schemaSanitizedIssues: [
+        { domain: 'security', path: 'maxLoginSession' },
+        { domain: 'commercial' }
+      ],
+      overrides: {}
+    });
+
+    const result = await migrateInstanceConfigs(createContext());
+
+    expect(result).toMatchObject({
+      skipped: true,
+      skippedConfigCount: 3,
+      skippedDomainCount: 2
+    });
+    expect(result.skippedPaths).toContain('security.maxLoginSession');
+    expect(result.skippedPaths).toContain('commercial.*');
+    expect(result.skippedPaths).toContain('ENV: show_git=false');
+    expect(mocks.applyInstanceConfigMigration).not.toHaveBeenCalled();
+  });
+
+  it('reports backfill conflict paths in the migration result', async () => {
+    mocks.inspectInstanceConfigMigration
+      .mockResolvedValueOnce({
+        existingDomainCount: 10,
+        missingDomainCount: 1,
+        pendingBackfillDomainCount: 0,
+        pendingBackfillPaths: [],
+        hasLegacyConfig: true,
+        hasLegacyProConfig: true,
+        envRehomedWarnings: [],
+        schemaSanitizedWarnings: [],
+        schemaSanitizedIssues: [],
+        overrides: {}
+      })
+      .mockResolvedValueOnce(successPostInspection);
+    mocks.applyInstanceConfigMigration.mockResolvedValue({
+      domains: ['performance'],
+      migratedCount: 1,
+      createdDomains: ['performance'],
+      backfilledDomains: [],
+      backfilledPaths: [],
+      backfillSkippedPaths: ['performance.workflow.maxLoopTimes']
+    });
+
+    const result = await migrateInstanceConfigs(createContext());
+
+    expect(result).toMatchObject({
+      skipped: false,
+      skippedConfigCount: 1,
+      skippedDomainCount: 1,
+      skippedPaths: 'performance.workflow.maxLoopTimes'
+    });
   });
 
   it('throws on validation when migration leaves unresolved gaps', async () => {

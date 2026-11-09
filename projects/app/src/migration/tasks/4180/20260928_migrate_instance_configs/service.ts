@@ -19,6 +19,13 @@ type LegacySystemEnv = Record<string, any>;
 type LegacyProConfig = Record<string, any>;
 type DomainOverrides = Partial<Record<SystemInstanceConfigDomainKey, Record<string, unknown>>>;
 
+/** 迁移时被 Schema 校验剔除的项；只保留路径，不记录字段值。 */
+export type SchemaSanitizedIssue = {
+  domain: SystemInstanceConfigDomainKey;
+  /** 具体字段相对路径；undefined 表示整个域被跳过并回落默认值。 */
+  path?: string;
+};
+
 const isNonEmpty = (value: unknown): value is string =>
   typeof value === 'string' && value.trim().length > 0;
 
@@ -688,10 +695,12 @@ export const collectEnvRehomedWarnings = ({
  */
 export const sanitizeOverridesForSchema = ({
   overrides,
-  warnings
+  warnings,
+  issues = []
 }: {
   overrides: DomainOverrides;
   warnings: string[];
+  issues?: SchemaSanitizedIssue[];
 }): DomainOverrides => {
   const removePath = (target: Record<string, unknown>, path: (string | number)[]): boolean => {
     const [head, ...rest] = path;
@@ -730,17 +739,19 @@ export const sanitizeOverridesForSchema = ({
         resolveDomainEffectiveConfig(domain, candidate);
         break;
       } catch (error) {
-        const issues = (error as { issues?: { path?: (string | number)[] }[] })?.issues ?? [];
-        const badPath = issues.find(
+        const zodIssues = (error as { issues?: { path?: (string | number)[] }[] })?.issues ?? [];
+        const badPath = zodIssues.find(
           (issue) => Array.isArray(issue.path) && issue.path.length > 0
         )?.path;
         if (!badPath || !removePath(candidate, badPath)) {
           // 无法定位或无法剔除（如整域形态错误）：丢弃整个域，保证迁移不阻塞启动
           warnings.push(`${domain} 配置与当前 Schema 不兼容，已整体跳过迁移并回落默认值`);
+          issues.push({ domain });
           candidate = {};
           break;
         }
         warnings.push(`${domain}.${badPath.join('.')} 值不满足当前校验，已跳过该项`);
+        issues.push({ domain, path: badPath.join('.') });
       }
     }
 
@@ -865,9 +876,11 @@ export const inspectInstanceConfigMigration = async () => {
   const rawOverrides = buildSparseLegacyOverrides({ feConfigs, systemEnv, proConfig });
   // 旧值可能不满足收紧后的 Schema；先净化再统计缺失域，避免 blockStartup 迁移崩溃
   const schemaSanitizedWarnings: string[] = [];
+  const schemaSanitizedIssues: SchemaSanitizedIssue[] = [];
   const overrides = sanitizeOverridesForSchema({
     overrides: rawOverrides,
-    warnings: schemaSanitizedWarnings
+    warnings: schemaSanitizedWarnings,
+    issues: schemaSanitizedIssues
   });
   const existingDomains = new Set<string>(
     existingDocs.map((doc) => String((doc as any).domain ?? doc._id))
@@ -920,6 +933,7 @@ export const inspectInstanceConfigMigration = async () => {
     hasLegacyProConfig: !!legacyPro,
     envRehomedWarnings: collectEnvRehomedWarnings({ feConfigs }),
     schemaSanitizedWarnings,
+    schemaSanitizedIssues,
     overrides
   };
 };
@@ -946,6 +960,7 @@ export const applyInstanceConfigMigration = async ({
   const createdDomains: SystemInstanceConfigDomainKey[] = [];
   const backfilledDomains: SystemInstanceConfigDomainKey[] = [];
   const backfilledPaths: string[] = [];
+  const backfillSkippedPaths: string[] = [];
 
   /** 从对象中按路径删除嵌套叶子；返回是否发生删除。用于回填跨字段冲突时剔除坏叶子。 */
   const removeNestedPath = (
@@ -1048,11 +1063,11 @@ export const applyInstanceConfigMigration = async ({
   const backfillDomain = async (
     domain: SystemInstanceConfigDomainKey,
     targetOverrides: Record<string, unknown>
-  ): Promise<string[]> => {
+  ): Promise<{ acceptedPaths: string[]; skippedPaths: string[] }> => {
     for (let attempt = 0; attempt <= MAX_BACKFILL_CONFLICT_RETRIES; attempt++) {
       const doc = await MongoSystemInstanceConfig.findOne({ domain }).lean();
       // 文档被并发删除：本次不处理，交给下一轮迁移补齐
-      if (!doc) return [];
+      if (!doc) return { acceptedPaths: [], skippedPaths: [] };
 
       const existingOverrides = (doc.overrides ?? {}) as Record<string, unknown>;
       const explicitDefaultPaths = new Set(
@@ -1065,7 +1080,7 @@ export const applyInstanceConfigMigration = async ({
         target: targetOverrides,
         explicitDefaultPaths
       });
-      if (!missing) return [];
+      if (!missing) return { acceptedPaths: [], skippedPaths: [] };
 
       // 循环剔除待补字段中的冲突叶子，直到与既有值合并后能通过终审校验
       const candidateMissing = structuredClone(missing);
@@ -1112,8 +1127,9 @@ export const applyInstanceConfigMigration = async ({
               }
             );
             if (updateRes.modifiedCount > 0) {
-              return [];
+              return { acceptedPaths: [], skippedPaths: unresolvable };
             }
+            skippedConflictPaths.push(...unresolvable);
             unresolvableConflict = true;
             break;
           }
@@ -1135,8 +1151,9 @@ export const applyInstanceConfigMigration = async ({
       const acceptedPaths = flattenOverridePaths(candidateMissing);
       const acceptedSet = new Set(acceptedPaths);
       const autoSkipped = allMissingPaths.filter((p) => !acceptedSet.has(p));
+      const skippedPaths = Array.from(new Set([...skippedConflictPaths, ...autoSkipped]));
       const nextExplicitDefaultPaths = Array.from(
-        new Set([...explicitDefaultPaths, ...skippedConflictPaths, ...autoSkipped])
+        new Set([...explicitDefaultPaths, ...skippedPaths])
       ).slice(0, 200);
 
       const updated = await MongoSystemInstanceConfig.updateOne(
@@ -1151,7 +1168,7 @@ export const applyInstanceConfigMigration = async ({
         },
         { runValidators: false }
       );
-      if (updated.modifiedCount > 0) return acceptedPaths;
+      if (updated.modifiedCount > 0) return { acceptedPaths, skippedPaths };
     }
 
     throw new Error(
@@ -1185,11 +1202,12 @@ export const applyInstanceConfigMigration = async ({
       continue;
     }
 
-    const filledPaths = await backfillDomain(domain, targetOverrides);
-    if (filledPaths.length > 0) {
+    const filled = await backfillDomain(domain, targetOverrides);
+    if (filled.acceptedPaths.length > 0) {
       backfilledDomains.push(domain);
-      backfilledPaths.push(...filledPaths.map((path) => `${domain}.${path}`));
+      backfilledPaths.push(...filled.acceptedPaths.map((path) => `${domain}.${path}`));
     }
+    backfillSkippedPaths.push(...filled.skippedPaths.map((path) => `${domain}.${path}`));
   }
 
   const writtenDomains = [...createdDomains, ...backfilledDomains];
@@ -1197,7 +1215,8 @@ export const applyInstanceConfigMigration = async ({
   logger.info('Instance config migration applied', {
     createdDomains,
     backfilledDomains,
-    backfilledPaths
+    backfilledPaths,
+    backfillSkippedPaths
   });
 
   return {
@@ -1205,6 +1224,7 @@ export const applyInstanceConfigMigration = async ({
     migratedCount: writtenDomains.length,
     createdDomains,
     backfilledDomains,
-    backfilledPaths
+    backfilledPaths,
+    backfillSkippedPaths
   };
 };

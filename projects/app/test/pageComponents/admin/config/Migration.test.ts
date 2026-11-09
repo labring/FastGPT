@@ -74,6 +74,35 @@ const renderProgress = (progress: Omit<SystemMigrationProgressListItem, 'key' | 
   );
 };
 
+const renderSucceededResult = (params: Record<string, string | number>) => {
+  mocks.data = {
+    serverTime: new Date(),
+    migrations: [
+      {
+        id: '20260928_migrate_instance_configs',
+        version: '4.18.0',
+        order: 1,
+        nameKey: 'system_migration:migrations.20260928_migrate_instance_configs.name',
+        descriptionKey: 'system_migration:migrations.20260928_migrate_instance_configs.description',
+        blockStartup: true,
+        independent: false,
+        status: SystemMigrationStatusEnum.succeeded,
+        failedRecordCount: 0,
+        result: {
+          key: 'system_migration:migrations.20260928_migrate_instance_configs.result',
+          params
+        },
+        progress: []
+      }
+    ]
+  } as SystemMigrationListResponse;
+  return new JSDOM(
+    renderToStaticMarkup(
+      React.createElement(ChakraProvider, { theme }, React.createElement(SystemMigrationsPage))
+    )
+  );
+};
+
 describe('migration stage progress', () => {
   it('shows processed counts without a total while running, completed or failed, including zero', () => {
     const dom = renderProgress([
@@ -101,6 +130,23 @@ describe('migration stage progress', () => {
       expect(
         dom.window.document.querySelector('[role="progressbar"]')?.getAttribute('aria-valuenow')
       ).toBe('40');
+    } finally {
+      dom.window.close();
+    }
+  });
+
+  it('shows skipped legacy config paths in a succeeded result', () => {
+    const dom = renderSucceededResult({
+      migratedDomainCount: 11,
+      skippedConfigCount: 2,
+      skippedDomainCount: 1,
+      skippedPaths: 'security.maxLoginSession, commercial.*'
+    });
+    try {
+      const text = dom.window.document.body.textContent ?? '';
+      expect(text).toContain('2 个旧配置项');
+      expect(text).toContain('security.maxLoginSession');
+      expect(text).toContain('commercial.*');
     } finally {
       dom.window.close();
     }

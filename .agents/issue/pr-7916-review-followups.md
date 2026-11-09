@@ -86,9 +86,9 @@
   - 已实现：失去引用的头像改为写入 24 小时延迟删除 TTL，不立即删除；重新引用会移除 TTL 取消删除。S3 TTL 清理和最终删除任务都会重新检查当前 site 引用，配置读取失败时保留对象等待重试。
   - A→B→A 场景已覆盖；旧 `pro/admin` updateConfig 的即时头像删除随 B2 收口旧入口处理。
   - 位置：`packages/service/common/s3/sources/avatar/index.ts`、`packages/service/common/s3/siteAvatarReferences.ts`、`packages/service/common/s3/lifecycle/cleanup.ts`、`packages/service/common/s3/queue/delete.ts`、`projects/app/src/service/common/system/syncSiteAvatarLifecycle.ts`
-- [ ] **A5（原第 5 项，P2）迁移静默剔除/跳过**
-  - 按评论建议：输出脱敏后的跳过域/字段清单，纳入升级验收；关键配置是否阻断升级单独决定。
-  - 位置：`projects/app/src/migration/tasks/4180/20260928_migrate_instance_configs/`
+- [x] **A5（原第 5 项，P2）迁移静默剔除/跳过**
+  - 已实现：sanitize 和回填冲突都输出结构化路径清单（只含路径，不含值），迁移结果增加跳过数量/域数量/路径文本；管理端迁移结果新增黄色警告区展示路径。默认不阻断升级，便于人工复核。
+  - 位置：`projects/app/src/migration/tasks/4180/20260928_migrate_instance_configs/service.ts`、同目录 `index.ts`、`projects/app/src/pageComponents/admin/config/Migration.tsx`、`packages/web/i18n/*/system_migration.json`
 
 ### 批次 B：配置来源与旧入口
 

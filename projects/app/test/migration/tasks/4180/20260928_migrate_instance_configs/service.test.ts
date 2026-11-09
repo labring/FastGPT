@@ -7,7 +7,8 @@ import {
 import {
   applyInstanceConfigMigration,
   inspectInstanceConfigMigration,
-  sanitizeOverridesForSchema
+  sanitizeOverridesForSchema,
+  type SchemaSanitizedIssue
 } from '@/migration/tasks/4180/20260928_migrate_instance_configs/service';
 
 const logger = {
@@ -19,40 +20,48 @@ const logger = {
 describe('sanitizeOverridesForSchema', () => {
   it('drops values that violate the tightened schema and keeps the rest', () => {
     const warnings: string[] = [];
+    const issues: SchemaSanitizedIssue[] = [];
     // maxLoginSession 收紧为 positiveInteger，历史 env 允许 0
     const result = sanitizeOverridesForSchema({
       overrides: {
         security: { maxLoginSession: 0, csrfEnabled: false }
       },
-      warnings
+      warnings,
+      issues
     });
 
     expect(result.security?.maxLoginSession).toBeUndefined();
     // 合法项保留
     expect(result.security?.csrfEnabled).toBe(false);
     expect(warnings.some((w) => w.includes('maxLoginSession'))).toBe(true);
+    expect(issues).toContainEqual({ domain: 'security', path: 'maxLoginSession' });
   });
 
   it('keeps valid overrides untouched with no warnings', () => {
     const warnings: string[] = [];
+    const issues: SchemaSanitizedIssue[] = [];
     const result = sanitizeOverridesForSchema({
       overrides: { security: { maxLoginSession: 20, csrfEnabled: true } },
-      warnings
+      warnings,
+      issues
     });
 
     expect(result.security).toEqual({ maxLoginSession: 20, csrfEnabled: true });
     expect(warnings).toEqual([]);
+    expect(issues).toEqual([]);
   });
 
   it('resolves cross-field conflicts by dropping the offending leaf', () => {
     const warnings: string[] = [];
+    const issues: SchemaSanitizedIssue[] = [];
     // performance superRefine：parallelMaxConcurrency 不得大于 maxLoopTimes。
     // maxLoopTimes=200 合法（默认并发 10 仍满足约束），仅提交的 500 越界。
     const result = sanitizeOverridesForSchema({
       overrides: {
         performance: { workflow: { maxLoopTimes: 200, parallelMaxConcurrency: 500 } }
       },
-      warnings
+      warnings,
+      issues
     });
 
     const workflow = (result.performance as any)?.workflow ?? {};
@@ -60,6 +69,24 @@ describe('sanitizeOverridesForSchema', () => {
     // 冲突项被剔除，回落默认值，迁移不阻塞启动
     expect(workflow.parallelMaxConcurrency).toBeUndefined();
     expect(warnings.some((w) => w.includes('parallelMaxConcurrency'))).toBe(true);
+    expect(issues).toContainEqual({
+      domain: 'performance',
+      path: 'workflow.parallelMaxConcurrency'
+    });
+  });
+
+  it('reports the whole domain when no removable leaf can be located', () => {
+    const warnings: string[] = [];
+    const issues: SchemaSanitizedIssue[] = [];
+    const result = sanitizeOverridesForSchema({
+      overrides: { site: 'not-an-object' } as any,
+      warnings,
+      issues
+    });
+
+    expect(result.site).toBeUndefined();
+    expect(issues).toEqual([{ domain: 'site' }]);
+    expect(warnings.some((w) => w.includes('site'))).toBe(true);
   });
 });
 
@@ -290,6 +317,7 @@ describe('applyInstanceConfigMigration (field-level backfill)', () => {
     expect(result.backfilledPaths).toContain('performance.workflow.maxRunTimes');
     expect(result.backfilledPaths).toContain('performance.dataset.parseMaxProcess');
     expect(result.backfilledPaths).not.toContain('performance.workflow.maxLoopTimes');
+    expect(result.backfillSkippedPaths).toContain('performance.workflow.maxLoopTimes');
     expect(warn).toHaveBeenCalledWith(
       expect.stringContaining('conflicts with existing values'),
       expect.objectContaining({ domain: 'performance', field: 'workflow.maxLoopTimes' })
