@@ -430,7 +430,11 @@ export const formatCollectionParamsByDataset = async ({
     delete formatCreateCollectionParams.chunkTriggerMinSize;
     delete formatCreateCollectionParams.dataEnhanceCollectionName;
     delete formatCreateCollectionParams.imageIndex;
-    delete formatCreateCollectionParams.autoIndexes;
+    // 模板 FAQ 需要保留 autoIndexes，供 getTrainingModeByCollection 选择 auto 队列；
+    // QA/备份导入仍不使用 autoIndex。
+    if (trainingType !== DatasetCollectionDataProcessModeEnum.template) {
+      delete formatCreateCollectionParams.autoIndexes;
+    }
 
     if (
       trainingType === DatasetCollectionDataProcessModeEnum.backup ||
