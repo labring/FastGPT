@@ -79,9 +79,9 @@
 - [x] **A2（原第 2 项，P1）套餐缺少版本保护**
   - 已实现：套餐写入绑定 `commercial` revision；请求必须携带 `subPlansExpectedRevision`，页面提交前校验套餐 revision 与 commercial revision 一致；仅提交套餐时自动补空 commercial 更新加锁；旧 `updateConfig` 不再写入套餐，只保留最新套餐。
   - 位置：`packages/global/openapi/admin/system/instanceConfig/api.ts`、`packages/service/common/system/systemInstanceConfig/controller.ts`、`projects/app/src/pages/api/admin/system/config/update.ts`、`pro/admin/src/pages/api/admin/system/getConfig.ts`、`pro/admin/src/pages/api/admin/system/updateConfig.ts`、`projects/app/src/pageComponents/admin/settings/commercial/`
-- [ ] **A3（原第 3 项，P2）Pro 配置刷新乱序**
-  - 按评论建议：复用 App 串行刷新或版本规则；同一轮读取要保证 legacy 配置和实例快照来自同一版本；不新增分发系统。
-  - 位置：`packages/service/common/mongo/watch.ts`、`pro/admin/src/service/middleware/volumnMongoWatch.ts`
+- [x] **A3（原第 3 项，P2）Pro 配置刷新乱序**
+  - 已实现：Pro watch 内增加串行刷新队列，实例配置变更和重连补偿都走同一队列；旧读取完成后才执行下一轮，最终状态收敛到最新配置；不新增分发系统。
+  - 位置：`pro/admin/src/service/middleware/volumnMongoWatch.ts`、`pro/admin/test/service/middleware/volumnMongoWatch.test.ts`
 - [ ] **A4（原第 4 项，P2）头像异步清理竞态**
   - 按评论建议：延迟回收并检查当前引用；覆盖 A→B→A 时序，避免检查后又被重新引用的新竞态；不扩展 S3 客户端重建。
   - 位置：`projects/app/src/service/common/system/syncSiteAvatarLifecycle.ts`、`projects/app/src/pages/api/admin/system/config/update.ts`
