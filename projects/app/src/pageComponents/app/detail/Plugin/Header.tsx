@@ -33,6 +33,7 @@ import {
   useWorkflowPersistence
 } from '@/web/core/workflow/editor/session/workflowSession';
 import type { WorkflowVersionEntry } from '@/web/core/workflow/editor/session/workflowHistory';
+import { runWorkflowTest } from '../Workflow/runWorkflowTest';
 
 const Header = () => {
   const { t } = useTranslation();
@@ -54,10 +55,7 @@ const Header = () => {
     onClose: onCloseBackConfirm
   } = useDisclosure();
 
-  const {
-    serializeWorkflow: flowData2StoreData,
-    serializeWorkflowAndCheck: flowData2StoreDataAndCheck
-  } = useWorkflowPersistence();
+  const { serializeWorkflowAndCheck: flowData2StoreDataAndCheck } = useWorkflowPersistence();
 
   const openWorkflowTest = useWorkflowModalValue((v) => v.openWorkflowTest);
   const { versions, switchVersion, switchCloudVersion } = useWorkflowHistory();
@@ -184,10 +182,10 @@ const Header = () => {
                 variant={'whitePrimary'}
                 flexShrink={0}
                 onClick={async () => {
-                  const data = flowData2StoreData();
-                  if (data) {
-                    openWorkflowTest(data);
-                  }
+                  await runWorkflowTest({
+                    serializeWorkflowAndCheck: flowData2StoreDataAndCheck,
+                    open: openWorkflowTest
+                  });
                 }}
               >
                 {t('common:core.workflow.Run')}
@@ -217,7 +215,6 @@ const Header = () => {
     openPanel,
     closePanel,
     flowData2StoreDataAndCheck,
-    flowData2StoreData,
     openWorkflowTest
   ]);
 

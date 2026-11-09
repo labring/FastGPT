@@ -121,7 +121,7 @@ type WorkflowSessionValue = {
   leaveSaveSign: MutableRefObject<boolean>;
   /** 出站序列化（保存、草稿、调试共用）；同时捕获内容版本供 markSaved 回填。 */
   serializeWorkflow: () => StoreWorkflow | undefined;
-  /** 发布专用的 host 校验与序列化 gate；普通保存和调试直接序列化。 */
+  /** 运行与发布共用的 host 校验与序列化 gate；普通保存直接序列化。 */
   serializeWorkflowAndCheck: (hideTip?: boolean) => Promise<StoreWorkflow | undefined>;
   /** 保存成功后回填 Savepoint；失败不调用即不回填，请求期间的新编辑仍算未保存。 */
   markSaved: (request: WorkflowSaveRequest) => boolean;
