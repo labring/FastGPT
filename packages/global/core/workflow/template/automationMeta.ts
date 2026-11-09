@@ -1,3 +1,4 @@
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import type { NodeTemplateAutomationMeta } from './type';
 import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '../constants';
 import { FlowNodeInputTypeEnum, FlowNodeTypeEnum } from '../node/constant';
@@ -82,21 +83,21 @@ const automationMetaMap: Record<string, NodeTemplateAutomationMeta> = {
     inputs: {
       [NodeInputKeyEnum.aiModelId]: {
         ...remoteModelInput,
-        agentHint: 'workflow:cli.input.ai_model'
+        agentHint: i18nT('workflow:cli.input.ai_model')
       },
       systemPrompt: {
-        agentHint: 'workflow:cli.input.system_prompt',
+        agentHint: i18nT('workflow:cli.input.system_prompt'),
         examples: ['You are a helpful assistant.']
       },
       userChatInput: {
-        agentHint: 'workflow:cli.input.user_question'
+        agentHint: i18nT('workflow:cli.input.user_question')
       }
     }
   },
   'builtin:text-editor': {
     inputs: {
       system_textareaInput: {
-        agentHint: 'workflow:cli.input.text_editor',
+        agentHint: i18nT('workflow:cli.input.text_editor'),
         examples: [
           'Plain text',
           'Hello {{$VARIABLE_NODE_ID.name$}}',
@@ -108,7 +109,7 @@ const automationMetaMap: Record<string, NodeTemplateAutomationMeta> = {
   'builtin:assigned-answer': {
     inputs: {
       text: {
-        agentHint: 'workflow:cli.input.answer',
+        agentHint: i18nT('workflow:cli.input.answer'),
         valueSchema: {},
         examples: ['Done']
       }
@@ -427,14 +428,14 @@ const automationMetaMap: Record<string, NodeTemplateAutomationMeta> = {
     inputs: {
       [NodeInputKeyEnum.datasetQuoteList]: {
         configurable: false,
-        agentHint: 'workflow:cli.input.dataset_quotes'
+        agentHint: i18nT('workflow:cli.input.dataset_quotes')
       }
     }
   },
   'builtin:custom-feedback': {
     inputs: {
       [NodeInputKeyEnum.textareaInput]: {
-        agentHint: 'workflow:cli.input.custom_feedback'
+        agentHint: i18nT('workflow:cli.input.custom_feedback')
       }
     }
   }
