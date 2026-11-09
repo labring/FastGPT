@@ -431,11 +431,11 @@ export const preCreateDatasetDataAndPushToTrainingQueue = async ({
   const nonEmptyData = filterTrainingDataList({ data, maxToken: Infinity });
   const dataList =
     mode === TrainingModeEnum.auto
-      ? nonEmptyData.filter((item) => ((item.q || '') + (item.a || '')).length <= maxToken)
+      ? nonEmptyData.filter((item) => ((item.q ?? '') + (item.a ?? '')).length <= maxToken)
       : filterTrainingDataList({ data, maxToken });
   const fallbackData =
     mode === TrainingModeEnum.auto
-      ? nonEmptyData.filter((item) => ((item.q || '') + (item.a || '')).length > maxToken)
+      ? nonEmptyData.filter((item) => ((item.q ?? '') + (item.a ?? '')).length > maxToken)
       : [];
 
   if (dataList.length === 0 && fallbackData.length === 0) {

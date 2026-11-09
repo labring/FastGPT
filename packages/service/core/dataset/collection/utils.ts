@@ -452,16 +452,10 @@ export const getTrainingModeByCollection = ({
   ) {
     return TrainingModeEnum.image;
   }
+  // chunk（文件）与 template（FAQ q/a）共用 auto 准入；图片模式优先级在上方。
   if (
-    trainingType === DatasetCollectionDataProcessModeEnum.chunk &&
-    autoIndexes &&
-    global.feConfigs?.isPlus
-  ) {
-    return TrainingModeEnum.auto;
-  }
-  // 模板导入（FAQ q/a）也支持原生 autoIndex；训练阶段仍由 pro 的 autoTrainingProcess 执行。
-  if (
-    trainingType === DatasetCollectionDataProcessModeEnum.template &&
+    (trainingType === DatasetCollectionDataProcessModeEnum.chunk ||
+      trainingType === DatasetCollectionDataProcessModeEnum.template) &&
     autoIndexes &&
     global.feConfigs?.isPlus
   ) {

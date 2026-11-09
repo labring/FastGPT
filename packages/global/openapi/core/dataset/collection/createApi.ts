@@ -10,6 +10,7 @@ import { DatasetCollectionTypeEnum } from '../../../../core/dataset/constants';
 import { ParentIdSchema } from '../../../../common/parentFolder/type';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
 import { APIFileItemSchema } from '../../../../core/dataset/apiDataset/type';
+import { BoolSchema } from '../../../../common/zod';
 
 /* ============================================================================
  * 公共基础 Schema
@@ -249,10 +250,9 @@ export const CreateTemplateCollectionFormSchema = z.object({
   datasetId: z.string().meta({ description: '数据集 ID' }),
   parentId: ParentIdSchema.optional().meta({ description: '父级目录 ID' }),
   tags: CollectionTagsInputSchema,
-  autoIndexes: z
-    .boolean()
-    .optional()
-    .meta({ description: '模板 FAQ 导入是否生成自动索引（需 pro 服务支持）' })
+  autoIndexes: BoolSchema.optional().meta({
+    description: '模板 FAQ 导入是否生成自动索引（需 pro 服务支持）'
+  })
 });
 export type CreateTemplateCollectionFormType = z.infer<typeof CreateTemplateCollectionFormSchema>;
 
