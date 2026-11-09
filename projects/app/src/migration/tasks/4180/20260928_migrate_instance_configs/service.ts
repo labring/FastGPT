@@ -681,9 +681,11 @@ export const buildLegacyProOverrides = (pro: LegacyProConfig): DomainOverrides =
  * show_git 改由环境变量承载：旧库显式关闭（false）时提示补入 SHOW_GIT=false。
  */
 export const collectEnvRehomedWarnings = ({
-  feConfigs
+  feConfigs,
+  systemEnv
 }: {
   feConfigs: LegacyFeConfigs;
+  systemEnv?: LegacySystemEnv;
 }): string[] => {
   const warnings: string[] = [];
 
@@ -693,6 +695,18 @@ export const collectEnvRehomedWarnings = ({
   }
   if (isNonEmpty(feConfigs.ip_whitelist)) {
     warnings.push('ip_whitelist 已废弃，旧值将被忽略');
+  }
+  const legacyCustomDomain = systemEnv?.customDomain;
+  if (
+    legacyCustomDomain &&
+    (legacyCustomDomain.kc ||
+      legacyCustomDomain.issuerServiceName ||
+      legacyCustomDomain.nginxServiceName)
+  ) {
+    // 只提示路径，不输出 kubeconfig 等敏感值
+    warnings.push(
+      'systemEnv.customDomain.* 已改由 Pro ENV 承载，请迁移到 CUSTOM_DOMAIN_* 环境变量'
+    );
   }
 
   return warnings;
@@ -942,7 +956,7 @@ export const inspectInstanceConfigMigration = async () => {
     pendingBackfillPaths,
     hasLegacyConfig: !!legacyFastgpt || !!legacyPro,
     hasLegacyProConfig: !!legacyPro,
-    envRehomedWarnings: collectEnvRehomedWarnings({ feConfigs }),
+    envRehomedWarnings: collectEnvRehomedWarnings({ feConfigs, systemEnv }),
     schemaSanitizedWarnings,
     schemaSanitizedIssues,
     overrides

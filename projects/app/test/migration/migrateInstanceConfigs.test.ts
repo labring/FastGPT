@@ -448,6 +448,17 @@ describe('migration collectEnvRehomedWarnings', () => {
     expect(collectEnvRehomedWarnings({ feConfigs: { show_git: true } })).toEqual([]);
     expect(collectEnvRehomedWarnings({ feConfigs: {} })).toEqual([]);
   });
+
+  it('warns when legacy custom-domain infrastructure must move to ENV', () => {
+    const warnings = collectEnvRehomedWarnings({
+      feConfigs: {},
+      systemEnv: { customDomain: { kc: { aliyun: 'sensitive-kubeconfig' } } }
+    });
+
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toContain('CUSTOM_DOMAIN_*');
+    expect(warnings[0]).not.toContain('sensitive-kubeconfig');
+  });
 });
 
 describe('migration env wiring', () => {
