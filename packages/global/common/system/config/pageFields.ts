@@ -81,7 +81,6 @@ export const adminConfigPageFieldsMap: Record<string, readonly string[]> = {
     'auth.loginProviders.google.clientId',
     'auth.loginProviders.microsoft.clientId',
     'auth.loginProviders.microsoft.tenantId',
-    'auth.loginProviders.microsoft.customButton',
     'auth.accountCancellation.enabled',
     'auth.accountCancellation.cancellationSm.zh',
     'auth.accountCancellation.reminderSm.zh',

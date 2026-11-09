@@ -395,12 +395,6 @@ const UserSetting = () => {
             >
               <Input {...register('microsoft.tenantId')} placeholder="Microsoft Tenant ID" />
             </FormItem>
-            <FormItem
-              title="自定义按钮名"
-              description="自定义按钮的名称，若不填写则使用默认的 Microsoft 按钮"
-            >
-              <Input {...register('microsoft.customButton')} placeholder="自定义按钮名" />
-            </FormItem>
           </>
           <>
             <FirstTitle title="快速登录（不推荐）" />

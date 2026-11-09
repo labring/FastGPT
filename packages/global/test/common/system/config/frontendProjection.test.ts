@@ -20,8 +20,7 @@ describe('buildOauthFeConfig', () => {
         microsoft: {
           clientId: 'microsoft-id',
           secret: 'microsoft-secret',
-          tenantId: 'tenant-id',
-          customButton: 'Login with Microsoft'
+          tenantId: 'tenant-id'
         },
         wecom: { suiteId: 'suite-id', secret: '' }
       }
@@ -33,8 +32,7 @@ describe('buildOauthFeConfig', () => {
       wechat: 'wechat-id',
       microsoft: {
         clientId: 'microsoft-id',
-        tenantId: 'tenant-id',
-        customButton: 'Login with Microsoft'
+        tenantId: 'tenant-id'
       },
       wecom: false
     });

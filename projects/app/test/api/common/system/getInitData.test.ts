@@ -39,8 +39,7 @@ const publicConfig = {
     wecom: true,
     microsoft: {
       clientId: 'microsoft-client',
-      tenantId: 'company-tenant',
-      customButton: 'Company Microsoft'
+      tenantId: 'company-tenant'
     }
   },
   limit: { uploadFileMaxAmount: 7, uploadFileMaxSize: 32 },

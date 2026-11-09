@@ -38,8 +38,7 @@ const OAuthConfigSchema = z.strictObject({
 const MicrosoftOAuthConfigSchema = z.strictObject({
   clientId: textWithDefault(),
   secret: textWithDefault(),
-  tenantId: textWithDefault(),
-  customButton: textWithDefault()
+  tenantId: textWithDefault()
 });
 
 const WechatLoginConfigSchema = z.strictObject({

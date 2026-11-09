@@ -524,15 +524,6 @@ const AuthSettingComponent = () => {
             >
               <Input {...register('loginProviders.microsoft.tenantId')} placeholder="common" />
             </AdminFormItem>
-            <AdminFormItem
-              label={t('admin:microsoft_custom_button_text')}
-              tooltip={t('admin:custom_copy_shown_on_the_login_button')}
-            >
-              <Input
-                {...register('loginProviders.microsoft.customButton')}
-                placeholder={t('admin:sign_in_with_microsoft')}
-              />
-            </AdminFormItem>
           </SimpleGrid>
         </AdminSettingSection>
       )}

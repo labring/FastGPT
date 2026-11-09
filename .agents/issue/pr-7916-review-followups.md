@@ -109,7 +109,7 @@
 
 #### C1. 无实际消费或历史残留
 
-- [ ] **C1.1（原第 10 项，依赖 D2）`microsoft.customButton`**：接入登录按钮或删除。
+- [x] **C1.1（原第 10 项）`microsoft.customButton`**：已按 D2 删除 Schema、表单、registry/pageFields、旧类型、迁移映射和公开投影；登录按钮继续使用 `labels.microsoft`。
 - [ ] **C1.2（原第 11 项，P3，依赖 D8）`show_appStore`**：无消费，建议删除。
 - [ ] **C1.3（原第 12 项，依赖 D3）`show_batch_eval`**：删除声明/赋值，或明确为 license 派生值。
 - [ ] **C1.4（原第 13 项，P3，依赖 D8）`agentSandboxFree`**：界面使用 `show_agent_sandbox_free_tip`，删除旧字段。

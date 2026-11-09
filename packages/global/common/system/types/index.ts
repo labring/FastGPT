@@ -272,8 +272,7 @@ export const FastGPTFeConfigsSchema = z.looseObject({
       microsoft: z
         .object({
           clientId: z.string().optional().meta({ description: '微软 Azure AD Client ID' }),
-          tenantId: z.string().optional().meta({ description: '微软 Azure AD 租户 ID' }),
-          customButton: z.string().optional().meta({ description: '微软登录自定义按钮文案' })
+          tenantId: z.string().optional().meta({ description: '微软 Azure AD 租户 ID' })
         })
         .optional()
         .meta({ description: '微软登录配置' }),

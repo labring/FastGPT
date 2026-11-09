@@ -610,8 +610,7 @@ export const buildLegacyProOverrides = (pro: LegacyProConfig): DomainOverrides =
       microsoft: compact({
         clientId: optionalText(microsoft.clientId),
         secret: optionalText(microsoft.secret),
-        tenantId: optionalText(microsoft.tenantId),
-        customButton: optionalText(microsoft.customButton)
+        tenantId: optionalText(microsoft.tenantId)
       })
     }),
     fastLogin: normalizeFastLogin(pro.fastLogin),

@@ -157,8 +157,7 @@ export function formatConfigStore2FormSchema({
       microsoft: {
         clientId: fastgptPro?.auth?.microsoft?.clientId || '',
         secret: fastgptPro?.auth?.microsoft?.secret || '',
-        tenantId: fastgptPro?.auth?.microsoft?.tenantId || '',
-        customButton: fastgptPro?.auth?.microsoft?.customButton || ''
+        tenantId: fastgptPro?.auth?.microsoft?.tenantId || ''
       },
       email: {
         smtp: fastgptPro?.auth?.email?.smtp || '',
@@ -325,8 +324,7 @@ export function formatFormData2ConfigStore({
       microsoft: microsoft?.clientId
         ? {
             clientId: microsoft?.clientId,
-            tenantId: microsoft?.tenantId,
-            customButton: microsoft?.customButton
+            tenantId: microsoft?.tenantId
           }
         : undefined,
       wecom: !!wecom

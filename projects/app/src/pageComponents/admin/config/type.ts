@@ -41,7 +41,6 @@ export type SystemConfigType = {
       clientId: string;
       secret: string;
       tenantId: string;
-      customButton?: string;
     };
     email?: {
       smtp: string;

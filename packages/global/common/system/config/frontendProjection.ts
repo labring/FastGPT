@@ -15,8 +15,7 @@ export const buildOauthFeConfig = (
     microsoft: providers.microsoft.clientId
       ? {
           clientId: providers.microsoft.clientId,
-          tenantId: providers.microsoft.tenantId,
-          customButton: providers.microsoft.customButton
+          tenantId: providers.microsoft.tenantId
         }
       : undefined,
     wecom: Boolean(providers.wecom.suiteId && providers.wecom.secret)

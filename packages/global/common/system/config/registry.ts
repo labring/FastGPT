@@ -132,7 +132,6 @@ export const systemInstanceConfigRegistry: readonly SystemInstanceConfigRegistry
       'loginProviders.google.clientId',
       'loginProviders.microsoft.clientId',
       'loginProviders.microsoft.tenantId',
-      'loginProviders.microsoft.customButton',
       'accountCancellation.enabled',
       'accountCancellation.cancellationSm.zh',
       'accountCancellation.reminderSm.zh',
