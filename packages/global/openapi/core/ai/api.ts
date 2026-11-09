@@ -1,3 +1,4 @@
+import { ChatIdSchema } from '../../../core/chat/schema';
 import { ObjectIdSchema } from '../../../common/type/mongo';
 import z from 'zod';
 import { OpenObjectOpenApiMeta } from '../../../common/zod/openapi';
@@ -102,7 +103,7 @@ export const ResumeStreamParamsRawSchema = createOutLinkChatTargetQuerySchema({
   outLinkAuthData: OutLinkChatAuthQuerySchema.optional().meta({
     description: '外链鉴权数据。GET query 中需 JSON 序列化。'
   }),
-  chatId: z.string().meta({ example: 'bEdzC6PNupZrr1RoVutMF2DL', description: '聊天 ID' })
+  chatId: ChatIdSchema.meta({ example: 'bEdzC6PNupZrr1RoVutMF2DL', description: '聊天 ID' })
 });
 export const ResumeStreamParamsSchema = ResumeStreamParamsRawSchema.transform(
   transformChatAuthTargetInput

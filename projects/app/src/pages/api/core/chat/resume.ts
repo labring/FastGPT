@@ -87,13 +87,15 @@ export const config = {
 
 // GET /api/core/chat/resume?chatId=xxx&appId=xxx 或 skillId=xxx（断线续传）
 async function handler(req: NextApiRequest, res: NextApiResponse) {
-  const { chatId, sourceType, sourceId, outLinkAuthData } = parseApiInput({
+  const { customUid, authProxy, chatId, sourceType, sourceId, outLinkAuthData } = parseApiInput({
     req,
     querySchema: ResumeStreamParamsSchema
   }).query;
   const respondWithSse = shouldRespondWithSse(req);
 
   const authRes = await authChatTargetCrud({
+    customUid,
+    authProxy,
     sourceType,
     sourceId,
     req,

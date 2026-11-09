@@ -8,19 +8,57 @@ import { openEventStream } from '../../support/stream.mjs';
 
 export const digest = (value) => createHash('sha256').update(value).digest('hex');
 
+/** 草稿签名仍要求成员写权限；实际上传后用同一身份下载，验证文件 namespace 与删除回收。 */
+export async function draftFile(w, { context, key, target, chatId, uid }) {
+  const bytes = Buffer.from(w.label('draft-file'));
+  const input = {
+    ...target,
+    chatId,
+    filename: w.label('draft') + '.txt',
+    size: bytes.length,
+    contentType: 'text/plain',
+    fileSelectConfig: { canSelectFile: true, canSelectImg: true, maxFiles: 5, maxFileSize: 5 }
+  };
+  const uploaded = success(
+    await w.keyRequest(key, '/api/core/chat/file/presignDraftChatFilePostUrl', input)
+  );
+  context.secrets.add(uploaded.url);
+  assert.ok(uploaded.key.includes(uid) || uploaded.key.includes(encodeURIComponent(uid)));
+  assert.ok(
+    (await fetch(uploaded.url, { method: 'PUT', headers: uploaded.headers, body: bytes })).ok
+  );
+  const url = success(
+    await w.keyRequest(key, '/api/core/chat/file/presignChatFileGetUrl', {
+      ...target,
+      chatId,
+      key: uploaded.key
+    })
+  );
+  context.secrets.add(url);
+  const response = await fetch(url);
+  assert.equal(response.status, 200);
+  assert.equal(digest(Buffer.from(await response.arrayBuffer())), digest(bytes));
+  const checks = context.resources.get('storage-check:' + w.W) ?? [];
+  checks.push(url);
+  context.resources.set('storage-check:' + w.W, checks);
+  w.c.record('草稿文件真实身份链路', { chatId, uid, key: uploaded.key, sha256: digest(bytes) });
+  return input;
+}
+
 /** 每个场景从真实 API 建立会话；业务参数夹具仅修改本轮消息，不伪造请求成功。 */
-export async function chatFixture(w) {
-  const chat = await w.completion(w.Ka, w.W);
+export async function chatFixture(w, { key = w.Ka, target = {}, completion = {} } = {}) {
+  const chat = await w.completion(key, w.W, completion);
   const rows = chat.items.sort((a, b) => String(a._id).localeCompare(String(b._id)));
   const ai = rows.find((r) => r.obj === 'AI');
-  const call = async (route, body, method = 'POST', key = w.Ka) =>
-    success(await request(route, body, method, key));
-  const request = (route, body, method = 'POST', key = w.Ka) => {
+  const call = async (route, body, method = 'POST', credential = key) =>
+    success(await request(route, body, method, credential));
+  const request = (route, body, method = 'POST', credential = key) => {
+    body = { ...target, ...body };
     const query = ['GET', 'DELETE'].includes(method) && !route.endsWith('/record/delete');
     return w.c.request({
       role: 'A',
       kind: 'key',
-      keyValue: key.value,
+      keyValue: credential.value,
       method,
       route:
         '/api' +
@@ -108,10 +146,16 @@ export async function quoteFixture(w, context, f) {
 }
 
 /** 在已有 dev 内启动本轮 HTTP barrier，运行真实流和租约；收尾先放行、停止流，再删应用。 */
-export async function runningFixture(w, context) {
-  const tokenName = 'FASTGPT_TEST_GATE_' + randomBytes(6).toString('hex');
-  process.env[tokenName] = randomBytes(24).toString('hex');
-  w.c.fixture.gate = { port: 0, bindHost: '127.0.0.1', tokenEnv: tokenName };
+export async function runningFixture(w, context, proxy) {
+  // 多个场景共用一轮 gate；不能替换已经监听的服务所使用的凭证。
+  if (!context.resources.has('gate')) {
+    const tokenName = 'FASTGPT_TEST_GATE_' + randomBytes(6).toString('hex');
+    process.env[tokenName] = randomBytes(24).toString('hex');
+    w.c.fixture.gate = { port: 0, bindHost: '127.0.0.1', tokenEnv: tokenName };
+    context.finalizers.push(() => {
+      delete process.env[tokenName];
+    });
+  }
   const gate = await getGate(context, w.c),
     redis = await redisTools(context, w.c);
   const { HttpNode468 } = redis.load('packages/global/core/workflow/template/system/http468.ts');
@@ -128,7 +172,7 @@ export async function runningFixture(w, context) {
     [NodeInputKeyEnum.httpTimeout, 100],
     [
       NodeInputKeyEnum.httpHeaders,
-      [{ key: 'x-fastgpt-test-token', value: process.env[tokenName] }]
+      Object.entries(gate.requestHeaders).map(([key, value]) => ({ key, value }))
     ],
     [NodeInputKeyEnum.httpJsonBody, JSON.stringify({ runId: '{{$Start.userChatInput$}}' })]
   ])
@@ -144,9 +188,15 @@ export async function runningFixture(w, context) {
     targetHandle: target + '-target-left'
   }));
   const appId = await w.app('running-matrix', { graph });
-  const key = await w.createKey('owner', appId),
+  if (proxy) {
+    await w.acl('B', appId, 1);
+    await w.acl('A', appId, 0);
+  }
+  if (!proxy) await w.acl('A', appId, 1);
+  const key = proxy?.key ?? (await w.createKey('A', appId)),
     question = w.label('barrier'),
     chatId = w.label('running');
+  if (!proxy) await w.acl('A', appId, 0);
   const barrier = gate.register(question),
     streams = [];
   context.itemFinalizers.push(async () => {
@@ -157,9 +207,16 @@ export async function runningFixture(w, context) {
         assert.equal(await redis.client.get(redis.leaseKey({ sourceId: appId, chatId })), null),
       60000
     );
-    delete process.env[tokenName];
   });
-  const raw = await w.completion(key, appId, { raw: true, stream: true, question, chatId });
+  const raw = await w.completion(key, appId, {
+    raw: true,
+    stream: true,
+    question,
+    chatId,
+    ...(proxy
+      ? { uid: proxy.tmbId, body: { appId, customUid: undefined, authProxy: proxy.authProxy } }
+      : {})
+  });
   streams.push(openEventStream(raw.response));
   await barrier.entered();
   return { appId, key, chatId, barrier, streams };
@@ -266,4 +323,39 @@ export async function audioRequest(
     sha256: result.hash
   });
   return result;
+}
+
+/** 正常 API 创建已开启代理的个人密钥；仅本轮临时成员在准备时升为 owner，测试前恢复原角色。 */
+export async function proxyFixture(w, context) {
+  const memberId = w.oid(w.c.actor('A').tmbId);
+  const member = await w.db.collection('team_members').findOne({ _id: memberId, teamId: w.teamId });
+  let key;
+  try {
+    await w.db.collection('team_members').updateOne({ _id: memberId }, { $set: { role: 'owner' } });
+    key = await w.createKey('A', undefined, { authProxy: true });
+  } finally {
+    await w.db
+      .collection('team_members')
+      .updateOne(
+        { _id: memberId },
+        Object.hasOwn(member, 'role') ? { $set: { role: member.role } } : { $unset: { role: 1 } }
+      );
+  }
+  assert.notEqual((await w.db.collection('team_members').findOne({ _id: memberId })).role, 'owner');
+  await w.acl('A', w.W, 0);
+  const tmbId = w.c.actor('B').tmbId;
+  const authProxy = { tmbId };
+  w.c.record('代理准备后实际角色', {
+    role: member.role,
+    keyId: key.id,
+    credentialMember: String(key.tmbId),
+    proxyMember: tmbId
+  });
+  return {
+    key,
+    tmbId,
+    authProxy,
+    target: { appId: w.W, authProxy },
+    completion: { uid: tmbId, body: { appId: w.W, customUid: undefined, authProxy } }
+  };
 }

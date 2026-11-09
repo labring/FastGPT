@@ -13,10 +13,12 @@ import { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
 
 async function handler(req: NextApiRequest, _res: NextApiResponse): Promise<StopV2ChatResponse> {
   const {
-    body: { sourceType, sourceId, chatId, outLinkAuthData }
+    body: { customUid, authProxy, sourceType, sourceId, chatId, outLinkAuthData }
   } = parseApiInput({ req, bodySchema: StopV2ChatSchema });
 
   const authRes = await authChatTargetCrud({
+    customUid,
+    authProxy,
     req,
     authToken: true,
     authApiKey: true,

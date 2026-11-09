@@ -1,4 +1,10 @@
 {
+  "audit_empty": "暂无符合条件的审计日志",
+  "audit_reset_time": "重置时间范围",
+  "audit_export_limit": "单次最多导出 50,000 条审计日志，请缩小筛选范围后重试。",
+  "audit_export_filename": "审计日志",
+  "export_audit_logs": "导出审计日志",
+  "log_export_audit_logs": "【{{name}}】发起导出审计日志，时间范围【{{dateStart}} 至 {{dateEnd}}】，成员【{{tmbIds}}】，类型【{{events}}】，匹配条数【{{total}}】",
   "1person": "1人",
   "1year": "1年",
   "30mins": "30分钟",

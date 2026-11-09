@@ -336,5 +336,8 @@ describe('agentForm2AppWorkflow model reference', () => {
       chatConfig: workflow.chatConfig
     });
     expect(restored.selectedTools[0].metadataLocale).toBe('en');
+    expect(
+      agentNode?.inputs.find((input) => input.key === NodeInputKeyEnum.history)
+    ).toBeUndefined();
   });
 });

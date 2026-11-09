@@ -39,7 +39,7 @@ related:
   - "FG-INTEGRATION-OPENAPI-002"
   - "FG-PERMISSION-RESOURCE-002"
   - "FG-CHAT-HISTORY-FEEDBACK-003"
-baseline: "d09b4e8849d051182ef4011470945d2b71085807"
+baseline: "e1f6fbbd974c8a8c0a26b6a5f058818808df6c3c"
 ---
 
 # 成员离职、应用转让与注销时应用 Key 持续可用
@@ -54,6 +54,9 @@ baseline: "d09b4e8849d051182ef4011470945d2b71085807"
 
 - L0：独立 T，团队 owner O；普通成员 A，应用 W owner=B、应用 X owner=C、应用 V owner=A；A 持有 W 的 Kw、X 的 Kx、V 的 Kv 和个人 Pa。B/C 另有自己的应用 Key，另一团队 U 有负对照 Key。给接收人的 personal Key 数量准备“已满”变体，不能影响应用交接。
 - 为 Kw/Kx/Kv 保存明文于执行器私有内存并记录 `_id/type/appId/tmbId/createTime/limit/usagePoints` 快照，证据中只保存不可逆摘要或内存恒等比较结论。用各 Key 创建已完成会话及含 customUid 的文件；另备无 customUid 的历史文件变体，按会话实际 uid 保存。历史 Chat.tmbId/outLinkUid 前快照不可省略。
+- 交接后的续聊保持首轮身份模式：外部使用者继续传原 customUid，默认身份继续不传 customUid，不能把旧成员 ID 填入 customUid 改绑；默认模式新运行使用当前 Key 归属成员。交接动作本身不改历史 Chat 身份。
+- 统计桶保留桶内首轮使用者；默认身份交接后续聊的本轮 userId 可变为新归属成员，但已有桶的 userId 不因此重写。分别核对本轮运行和历史桶，不能混为同一个断言。
+- 对离职者自有应用开启同一数据库 change stream，仅监听本轮 V/Kv 的归属更新，记录 apps→openapis 的实际事件顺序和同一事务提交时间。T2、开启交接的 T6、非 owner 注销 T7 都须记录；不能只用最终 owner 一致代替先后顺序。
 - API 移出使用登录 owner 的 `DELETE .../member/delete?tmbId=A`；主动离开为 A 登录态 DELETE leave；主动转让 body 为 `{appId:W,ownerId:新成员真实tmbId}`。各行用独立 L0 副本，调用后重新登录仍有效的观测者，不能用已撤销的离职者 Cookie 推断 Key 失效。
 - 同步边界：基线的批量同步删除另有分支，并受 TRANSFER_RESOURCE_ON_MEMBER_LEAVE 控制，不等于调用 removeUserFromTeam。开启时目标为同一应用 owner 交接规则；关闭时应用及其应用 Key 均不交接，保留现有绑定与归属；恢复成员不夺回已交接 Key。通过真实同步服务传入本轮用户列表；开关仅在该服务子进程中切换，不修改共享 dev 配置，不增加虚构的 disable API。
 - 注销仅针对可回收账号。T7 使用真实 Mongo 与 `cleanupAccountCancellationTeams(userId)`、`checkAccountCancellationResiduals(userId)` 的服务集成，测试入口从最终清理阶段开始；不覆盖用户验证、等待期及完整注销端到端。
@@ -80,7 +83,7 @@ baseline: "d09b4e8849d051182ef4011470945d2b71085807"
 | 子场景 | 特有预期 | 证据获取方式 |
 | --- | --- | --- |
 | T1 | Kw→B、Kx→C，不能都变 O/root；B/C 原持有的 Key、U Key 不变。Pa 不交接且离职身份不能继续使用；原 Kw/Kx 仍可调用/管理历史及文件，不因 Chat.tmbId=A 漏项。 | 应用 owner 与 Key 归属映射、旧 Key 调用/文件摘要、成员状态。 |
-| T2 | V.tmbId 先变 O，Kv 最终→O；Kw/Kx 仍分别→B/C。接收人个人 Key 满不阻塞交接，Key 数量不增加；新会话鉴权者分别为接收人，外部 UID 不改写。 | 最终应用/Key 一致性和事务路径证据、交接窗口快照、前后调用。 |
+| T2 | V.tmbId 先变 O，Kv 最终→O；数据库事件为 apps→openapis，属于同一事务提交。Kw/Kx 仍分别→B/C。接收人个人 Key 满不阻塞交接，Key 数量不增加；新会话鉴权者分别为接收人，外部 UID 不改写。 | 最终应用/Key 一致性、实际归属变更顺序和事务提交时间、交接窗口快照、前后调用。 |
 | T3 | W 中 B 持有的 Key→M，A 的 Key 不变；B 在 X 的 Key 不变，不能因宽泛 resourceList 一起转给 M。相同原 Key 可用，管理权限随当前应用管理关系判断。 | 实际转移应用 ID 清单、四组 Key 精确差集、管理请求。 |
 | T4 | 软删除即拒绝该应用 Key 的后续调用，最终清理覆盖实际删除的子应用；不能 unset appId 后保留为 personal 可用 Key。Pa、X/U Key 与未删除应用不变；不把“未马上物理删除”误判为仍有访问权。 | 删除响应、即时调用拒绝、异步终态及类型/绑定快照。 |
 | T5 | 本次事务内的应用 owner、Key 归属、成员状态、资源 ACL 无半提交；失败不留下部分 Key 已转移。已执行的非事务性登出允许保留。修复后重试收敛；竞争条件不能覆盖已经转交给别人的 Key，最终归属须与获胜业务操作一致；创建与交接共用团队锁，冲突可重试，交接后延迟创建重新鉴权并拒绝。 | 事务前/失败后/重试后快照、竞争时间线，不只看单个 HTTP 成功。 |

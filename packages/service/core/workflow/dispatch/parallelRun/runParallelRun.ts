@@ -122,7 +122,8 @@ export const dispatchParallelRun = async (props: Props): Promise<Response> => {
             llmInputTokens: response.workflowRuntimeSummary.llmInputTokens,
             llmOutputTokens: response.workflowRuntimeSummary.llmOutputTokens,
             totalPoints: attemptPoints,
-            citeCollectionIds: response.workflowRuntimeSummary.citeCollectionIds
+            citeCollectionIds: response.workflowRuntimeSummary.citeCollectionIds,
+            hasAgentSandbox: response.workflowRuntimeSummary.hasAgentSandbox
           });
 
           const result = parseTaskResponse({ index, response });

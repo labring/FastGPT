@@ -1,3 +1,4 @@
+import { getLocalDateRange } from '@fastgpt/global/common/time/dateRange';
 import { sortModelSelectorModels } from '@/components/Select/AIModelSelector.utils';
 import React, { useCallback, useMemo, useState } from 'react';
 import type { BoxProps } from '@chakra-ui/react';
@@ -5,7 +6,7 @@ import { Box, Flex, Grid, useTheme } from '@chakra-ui/react';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
-import { addHours } from 'date-fns';
+import { addDays } from 'date-fns';
 import dayjs from 'dayjs';
 import DateRangePicker, {
   type DateRangeType
@@ -51,16 +52,9 @@ const ChartsBoxStyles: BoxProps = {
   overflow: 'hidden'
 };
 
-// Default date range: Past 7 days
-const getDefaultDateRange = (): DateRangeType => {
-  const from = addHours(new Date(), -24);
-  from.setMinutes(0, 0, 0); // Set minutes to 0
-
-  const to = addHours(new Date(), 1);
-  to.setMinutes(0, 0, 0); // Set minutes to 0
-
-  return { from, to };
-};
+/** 默认展示昨天和今天，与日期选择器的自然日边界保持一致。 */
+const getDefaultDateRange = (): DateRangeType =>
+  getLocalDateRange(addDays(new Date(), -1), new Date());
 
 const ModelDashboard = ({
   Tab,

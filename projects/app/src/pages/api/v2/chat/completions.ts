@@ -174,6 +174,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         req,
         appId,
         chatId,
+        customUid,
         authProxy
       });
     })();

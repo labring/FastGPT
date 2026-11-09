@@ -64,9 +64,17 @@
 
 `rawInputs` 复用 `AgentToolSchema.shape.inputs`，只用于保留无法展开的历史输入来源。保存时 `serializeAgentTool` 根据 `pluginData.error` 回写原始 `rawInputs` 与 `config`，包括未保存 `inputs` 的旧协议，避免一次打开/保存就清空配置或改变历史默认来源。
 
-可用工具按当前完整输入投影稀疏来源配置，过滤最终由 Agent 生成的固定值。子应用历史参数使用 Agent 的 `maxHistories`。
+可用工具按当前完整输入投影稀疏来源配置，过滤最终由 Agent 生成的固定值，且对子应用工具（`appModule`）不持久化或透传内置 `history`（`NodeInputKeyEnum.history`）输入项（插件与普通工具声明的同名业务字段正常保留）。
 
 画布保存先识别完整编辑详情并调用统一序列化器；已是 `AgentToolSchema` 的稀疏记录直接保留。禁止把稀疏输入强制断言为 NodeIO 再序列化。
+
+### 3.3 独立 Agent（`ChatAgent`）作为子应用与工具引用
+
+- `ChatAgent`（`AppTypeEnum.chatAgent`）开放到工作流画布应用选择器（`SelectAppModal`）与 Agent 工具选择器（`ToolSelectModal`），与 `simple` / `workflow` 统一映射为 `FlowNodeTypeEnum.appModule`。
+- `appData2FlowNodeIO({ chatConfig, isChatAgent })` 在 `isChatAgent` 为 `true` 时不生成 `history` 输入项与输出项（`ChatAgent` 的内部 `AgentNode` 固定应用默认 50 轮历史限制）。
+- 画布子应用节点（`dispatchRunAppNode`）与 Agent 子应用工具（`dispatchApp`）统一收敛至 [`runChildAppWorkflow`](../../../packages/service/core/workflow/dispatch/child/runApp.ts)，共用版本与资源快照加载（`loadChildWorkflowWithResource`）、变量与文件上下文准备（`runWithDerivedWorkflowFileContext`）、交互恢复（`lastInteractive`）与工作流执行：
+  - 工具调用（`resourceType === 'tool'`）按子应用输入声明过滤 `rawVariables`，固定以空历史 `[]` 与非流式（`forbidStream = true`）执行，并在完成后合并 `system_memories`（记忆作用域为 `app:${appId}`）。
+  - 画布子应用（`resourceType === 'agent'`）透传原始变量与流式配置，按 `node:${nodeId}` 隔离记忆作用域；当子应用为 `ChatAgent` 时忽略外部 `history` 配置并直接透传父级历史。
 
 ## 4. 统一资源与沙盒校验
 
@@ -158,6 +166,13 @@
 - **简易模式（对话 Agent / Skill 调试）**：不生成外层 `Agent` 容器 `nodeResponse`，内部的 `Agent 对话`、工具调用、任务规划、追问、上下文压缩等步骤继续在当前作用域顶层平铺展示。
 - **工作流模式（画布 `Agent` 节点）**：`dispatchRunAgent` 返回外层 `Agent` 节点的 `nodeResponse`（含 `model`、`query`、`textOutput`、`childResponseCount`、`childrenResponses`、`errorText`），并通过 `createAgentNodeResponseCollector` 为未携带 `parentId` 的内部步骤统一绑定 `parentId = nodeResponseParentId`，使运行详情树将该 `Agent` 节点下的全部执行步骤收纳到该节点下展示（已携带更深层 `parentId` 的子项如 `toolResponseCompress` 保持原有父子关系）。
 
+### 6.5 嵌套沙盒会话归属与启用态传播
+
+- **根会话归属**：根 `dispatchWorkFlow` 在 `WorkflowContext.sandboxContext` 中保存只读的 `(sourceType, sourceId, teamId, userId, chatId)`。子应用、插件、循环与并行分支继承该上下文；Agent/ToolCall 的沙盒与套餐检查使用根身份，应用资源鉴权仍使用自身的 `runningAppInfo`。独立运行节点时使用当前身份兜底，`WorkflowMemoryState` 不参与沙盒管理。
+- **共享 Skill 缓存**：已发布 Skill 按 `versionId` 追加部署，初始化不删除其他正式版本目录。每次执行仍重新校验所选资源，仅扫描当前节点选中的版本；缓存保留到显式清理或沙盒存储删除，归档恢复继续复用。重建版本目录后清除其旧 Skill entrypoint 标记。
+- **启动脚本去重**：Agent 与 ToolCall 使用 `sandboxEntrypoint:<sourceType>:<sourceId>:node:<nodeId>` 分别记录成功 hash，父子脚本互不覆盖。Skill entrypoint 的成功 `versionId` 集合随缓存追加保留；脚本或状态读写失败仍沿用非阻断约定。
+- **启用态汇总与持久化**：`hasAgentSandbox` 表示会话曾成功准备 Sandbox runtime。Agent/ToolCall 共用的 `ensureWorkflowSandboxReadyForUse` 在 runtime 准备成功后，先按根身份及 teamId 幂等更新已有 `Chat.summary.hasAgentSandbox = true`，再发送 `ready` 事件。节点成功后才标记内存摘要，并经由子应用、插件、循环和并行边界向上汇总；`saveChat` / `updateInteractiveChat` 继续单向补写，不清除此前标记。会话鉴权优先使用累计 summary，再读取测试 metadata 或应用节点配置，仍检查系统和团队权限；测试 metadata 只表达本轮根节点开关，不混入子流程摘要。
+
 ## 7. 导出过滤
 
 开启敏感信息过滤后清空 Agent 的技能、工具、手动选择的知识库（保留 `nodeInputIsReference` 变量引用元组）与旧 `datasetParams.datasets`，剥离提示词中的 `{{@...@}}` 资源引用标签，并更新相应多语言说明。资源详情不成为新的持久化协议。
@@ -168,7 +183,8 @@
 
 | 测试层级与模块 | 测试文件 | 核心覆盖场景 |
 | --- | --- | --- |
-| **Agent 节点调度与跨轮次恢复集成测试** | [`packages/service/test/core/workflow/dispatch/ai/agent/index.test.ts`](../../../packages/service/test/core/workflow/dispatch/ai/agent/index.test.ts) | 1. 默认 50 轮历史上下文、文件过滤、提示词 `{{@toolId@}}` 引用解析与沙盒可用性校验；<br/>2. 多步工具调用全过程文本聚合（`answerText` / `toolResponse`）与流式增量去重；<br/>3. 简易模式平铺 vs 工作流模式外层 `Agent` 根 `nodeResponse` 包装与子步骤收纳；<br/>4. `FastAgent` / `PiAgent` 在 `ask_user` 单次与多次暂停/恢复下的节点级 `memoryState` 隔离、暂停前输出保留（`previousAssistantResponses`）、恢复后 `rewriteHistories` 清理及完成态 memory 清空；<br/>5. `ToolCall -> Agent` 子工具作用域下 `ask_user` 暂停与跨轮恢复（父历史 `displayOnly` 隔离）；<br/>6. 静默模式（`isResponseAnswerText = false`）抑制可见 SSE 与 `assistantResponses`、保留恢复上下文；<br/>7. 开启/关闭 `catchError` 时的 `errorText`、`rawError`、气泡文本抑制与异常分支路由 |
+| **Agent 节点调度与跨轮次恢复集成测试** | [`packages/service/test/core/workflow/dispatch/ai/agent/index.test.ts`](../../../packages/service/test/core/workflow/dispatch/ai/agent/index.test.ts) | 1. 默认 50 轮历史上下文、文件过滤、提示词 `{{@toolId@}}` 引用解析与沙盒可用性校验；<br/>2. 多步工具调用全过程文本聚合（`answerText` / `toolResponse`）与流式增量去重；<br/>3. 简易模式平铺 vs 工作流模式外层 `Agent` 根 `nodeResponse` 包装与子步骤收纳；<br/>4. `FastAgent` / `PiAgent` 在 `ask_user` 单次与多次暂停/恢复下的节点级 `memoryState` 隔离、暂停前输出保留（`previousAssistantResponses`）、恢复后 `rewriteHistories` 清理及完成态 memory 清空；<br/>5. `ToolCall -> Agent` 子工具作用域下 `ask_user` 暂停与跨轮恢复（父历史 `displayOnly` 隔离）；<br/>6. 静默模式（`isResponseAnswerText = false`）抑制可见 SSE 与 `assistantResponses`、保留恢复上下文；<br/>7. 开启/关闭 `catchError` 时的 `errorText`、`rawError`、气泡文本抑制与异常分支路由；<br/>8. 嵌套子应用下复用根会话 `(sourceType, sourceId)` 初始化沙盒并上报 `hasAgentSandbox` |
+| **子应用统一执行与嵌套沙盒传播** | [`packages/service/test/core/workflow/dispatch/child/runApp.test.ts`](../../../packages/service/test/core/workflow/dispatch/child/runApp.test.ts)<br/>[`packages/service/test/core/workflow/dispatch/ai/agent/sub/app.test.ts`](../../../packages/service/test/core/workflow/dispatch/ai/agent/sub/app.test.ts)<br/>[`packages/service/test/core/workflow/dispatch/dataTransfer.child.test.ts`](../../../packages/service/test/core/workflow/dispatch/dataTransfer.child.test.ts)<br/>[`packages/service/test/core/chat/saveChat.test.ts`](../../../packages/service/test/core/chat/saveChat.test.ts)<br/>[`projects/app/test/service/core/sandbox/access.test.ts`](../../../projects/app/test/service/core/sandbox/access.test.ts) | 1. `runChildAppWorkflow` 统一驱动画布子应用与 Agent 子应用工具，区分 `agent` / `tool` 资源快照、流式开关与记忆作用域；<br/>2. `ChatAgent` 作为子应用时忽略外部 `history` 配置并透传父级历史；作为工具时过滤 `history` 参数并使用空历史；<br/>3. `hasAgentSandbox` 经由子应用、插件、`loopRun`、`parallelRun`、`runLoop` 向上汇总；<br/>4. `saveChat` / `updateInteractiveChat` 单向持久化服务端 `summary.hasAgentSandbox` 且忽略客户端伪造 `metadata.appSandboxEnabled`；<br/>5. `resolveSandboxSessionAvailability` 基于 `chat.summary.hasAgentSandbox` 放行嵌套沙盒会话 |
 | **AgentLoopCore 输出聚合与去重** | [`packages/service/test/core/workflow/dispatch/ai/agentLoopCore/output/assistantResponses.test.ts`](../../../packages/service/test/core/workflow/dispatch/ai/agentLoopCore/output/assistantResponses.test.ts)<br/>[`packages/service/test/core/workflow/dispatch/ai/agentLoopCore/output/result.test.ts`](../../../packages/service/test/core/workflow/dispatch/ai/agentLoopCore/output/result.test.ts) | 1. `compactAgentLoopCorePlanSnapshots` 多计划快照收敛与完成态 `null` 终止标记；<br/>2. `buildAgentLoopCoreFinalAssistantOutput` 含 `displayOnly` 子工具响应时的判重与缺失后缀补齐；<br/>3. `previousAssistantResponses` 跨交互恢复轮次拼接 `answerText` 且不污染当前轮 `assistantResponses`；<br/>4. 多轮工具调用与错误态下 `summarizeAgentLoopCoreResult` 全过程 `finalText` 与 `reasoningText` 汇总 |
 | **节点级记忆与暂停态存储** | [`packages/service/test/core/workflow/dispatch/ai/agentLoopCore/memory/providerState.test.ts`](../../../packages/service/test/core/workflow/dispatch/ai/agentLoopCore/memory/providerState.test.ts)<br/>[`packages/service/test/core/workflow/memory/state.test.ts`](../../../packages/service/test/core/workflow/memory/state.test.ts) | 1. 根级与 `fork` 作用域键下 `providerState` 及 `assistantResponses` 的写入、恢复与完成态清空；<br/>2. 旧版 `agentLoopMemory-${nodeId}` 键兼容读取与未包装旧数据过滤；<br/>3. `WorkflowMemoryState` 在并行/嵌套子流程下的深拷贝隔离与 delta 合并 |
 | **运行详情收集与错误捕获标记** | [`packages/service/test/core/workflow/dispatch/ai/agent/nodeResponseCollector.test.ts`](../../../packages/service/test/core/workflow/dispatch/ai/agent/nodeResponseCollector.test.ts)<br/>[`packages/service/test/core/workflow/dispatch/ai/agentLoopCore/nodeResponse/eventCollector.test.ts`](../../../packages/service/test/core/workflow/dispatch/ai/agentLoopCore/nodeResponse/eventCollector.test.ts)<br/>[`packages/service/test/core/workflow/dispatch/ai/agentLoopCore/eventStream/createEventStream.test.ts`](../../../packages/service/test/core/workflow/dispatch/ai/agentLoopCore/eventStream/createEventStream.test.ts) | 1. 工作流模式下为内部步骤自动补齐 `parentId = nodeResponseParentId`，同时保留 `toolResponseCompress` 等深层 `parentId`；<br/>2. `node.catchError = true` 时 `llm_request_end` 错误响应自动标记 `errorCaptured: true`；<br/>3. `streamAnswer = false` 时统一拦截 `plan` 与 `planStatus` SSE 事件 |
@@ -201,4 +217,5 @@
 - [x] Agent/ToolCall 使用标准输入渲染管线，删除节点专属的重复沙盒行。
 - [x] 静默输出保留恢复上下文，支持工具/子应用作用域下的交互暂停上下文恢复、跨轮次 `answerText` 拼接与历史清理，补齐工具返回与 `catchError` 错误捕获行为。
 - [x] 支持隐藏标签过滤参数验证、知识库删除后过滤条件清理与导出敏感信息过滤。
+- [x] 支持 `ChatAgent` 作为子应用与 Agent 工具被引用，统一 `runChildAppWorkflow` 执行入口并逐层汇总 `hasAgentSandbox` 沙盒启用状态。
 - [x] 完成本次改动及受影响代码的局部测试、类型检查、定向 lint 与浏览器 E2E 实测验收。

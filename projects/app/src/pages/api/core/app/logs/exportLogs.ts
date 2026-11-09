@@ -7,7 +7,7 @@ import { buildAppChatLogFilter } from '@fastgpt/service/core/app/logs/utils';
 import type { NextApiResponse } from 'next';
 import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
-import dayjs from 'dayjs';
+import { formatDateWithOffset } from '@fastgpt/global/common/time/fixedOffset';
 import { type ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
@@ -403,10 +403,18 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
 
   const renderRow = (doc: any) => {
     const createdTime = doc.createTime
-      ? dayjs(doc.createTime).utcOffset(timezoneCode).format('YYYY-MM-DD HH:mm:ss')
+      ? formatDateWithOffset({
+          time: doc.createTime,
+          offset: timezoneCode,
+          format: 'YYYY-MM-DD HH:mm:ss'
+        })
       : '';
     const lastConversationTime = doc.updateTime
-      ? dayjs(doc.updateTime).utcOffset(timezoneCode).format('YYYY-MM-DD HH:mm:ss')
+      ? formatDateWithOffset({
+          time: doc.updateTime,
+          offset: timezoneCode,
+          format: 'YYYY-MM-DD HH:mm:ss'
+        })
       : '';
     const channelType = doc.publishSource?.type as ChatSourceEnum | undefined;
     const source = channelType ? sourcesMap[channelType]?.label || '-' : '-';

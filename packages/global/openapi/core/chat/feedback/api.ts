@@ -1,8 +1,9 @@
+import { ChatIdSchema } from '../../../../core/chat/schema';
 import z from 'zod';
 import { createOutLinkChatTargetInputSchema, transformChatAuthTargetInput } from '../api';
 
 const FeedbackTargetSchema = {
-  chatId: z.string().min(1).meta({
+  chatId: ChatIdSchema.min(1).meta({
     example: 'chat123',
     description: '对话 ID'
   }),
@@ -109,7 +110,7 @@ export type UpdateUserFeedbackResponseType = z.infer<typeof UpdateUserFeedbackRe
 
 /* =============== getFeedbackRecordIds =============== */
 export const GetFeedbackRecordIdsBodyRawSchema = createOutLinkChatTargetInputSchema({
-  chatId: z.string().meta({
+  chatId: ChatIdSchema.meta({
     example: 'chat123',
     description: '对话 ID'
   }),

@@ -1,3 +1,4 @@
+import { ChatIdSchema } from '@fastgpt/global/core/chat/schema';
 import {
   asRedisLogicalKey,
   redisCacheAdapter,
@@ -14,7 +15,7 @@ export const StreamResumeParamsSchema = z.object({
   teamId: z.string().min(1),
   sourceType: z.string().min(1),
   sourceId: z.string().min(1),
-  chatId: z.string().min(1)
+  chatId: ChatIdSchema.min(1)
 });
 export type StreamResumeParams = z.infer<typeof StreamResumeParamsSchema>;
 

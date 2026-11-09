@@ -1,7 +1,6 @@
 import { source } from '@/lib/source';
 import { DocsPage, DocsBody, DocsDescription, DocsTitle } from 'fumadocs-ui/page';
 import { notFound } from 'next/navigation';
-import NotFound from '@/components/docs/not-found';
 import { createRelativeLink } from 'fumadocs-ui/mdx';
 import { getMDXComponents } from '@/mdx-components';
 import { i18n } from '@/lib/i18n';
@@ -22,18 +21,10 @@ export default async function Page({
   params: Promise<{ lang: string; slug?: string[] }>;
 }) {
   const { lang, slug } = await params;
-  let page = source.getPage(slug, lang);
-
-  // If page not found in current language, fallback to default language
-  // This allows showing Chinese content when English translation is not available
-  // while keeping the URL unchanged (e.g., /en/docs/faq shows Chinese content)
+  // source 已处理缺少翻译的回退；不能把该语言的显式草稿重新回退成已发布页面。
+  const page = source.getPage(slug, lang);
   if (!page || !page.data || !page.file) {
-    page = source.getPage(slug, i18n.defaultLanguage);
-  }
-
-  // If still not found in default language, show 404
-  if (!page || !page.data || !page.file) {
-    return <NotFound />;
+    notFound();
   }
 
   const MDXContent = page.data.body;

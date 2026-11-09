@@ -29,6 +29,8 @@ export type WorkflowRuntimeSummaryFields = {
   totalPoints?: number;
   /** 当前 workflow 响应数量，包含嵌套 childResponseCount。 */
   childResponseCount?: number;
+  /** 当前 workflow 或子应用/子工具是否启用了 Agent Sandbox。 */
+  hasAgentSandbox?: boolean;
   /** 当前 workflow 已归属到本统计链路的 LLM 输入 token。 */
   llmInputTokens: number;
   /** 当前 workflow 已归属到本统计链路的 LLM 输出 token。 */

@@ -47,7 +47,7 @@ export const OpenApiKeySchema = z.object({
     description: '当前用户是否可以复制该 API Key 明文'
   }),
   authProxy: z.boolean().default(false).meta({
-    description: '是否允许 API Key 在 chat/completions 请求中通过 authProxy 代理团队成员身份'
+    description: '是否允许 API Key 在应用对话及对话管理请求中通过 authProxy 代理团队成员身份'
   }),
   appName: z.string().optional().meta({
     example: '客服助手',

@@ -50,6 +50,7 @@ const {
   injectAgentSkillFilesToSandboxMock,
   checkTeamSandboxPermissionMock,
   ensureAppSandboxRuntimeReadyMock,
+  markChatSandboxEnabledMock,
   authSkillByTmbIdMock,
   getLLMModelDataMock
 } = vi.hoisted(() => ({
@@ -77,6 +78,7 @@ const {
   injectAgentSkillFilesToSandboxMock: vi.fn(),
   checkTeamSandboxPermissionMock: vi.fn(),
   ensureAppSandboxRuntimeReadyMock: vi.fn(),
+  markChatSandboxEnabledMock: vi.fn(),
   authSkillByTmbIdMock: vi.fn(),
   getLLMModelDataMock: vi.fn()
 }));
@@ -173,6 +175,9 @@ vi.mock(
 
 vi.mock('@fastgpt/service/support/permission/teamLimit', () => ({
   checkTeamSandboxPermission: checkTeamSandboxPermissionMock
+}));
+vi.mock('@fastgpt/service/core/chat/sandbox/service', () => ({
+  markChatSandboxEnabled: markChatSandboxEnabledMock
 }));
 
 vi.mock('@fastgpt/service/common/api/axios', async (importOriginal) => {
@@ -358,6 +363,7 @@ describe('dispatchRunAgent user context', () => {
     }));
     checkTeamSandboxPermissionMock.mockResolvedValue(undefined);
     ensureAppSandboxRuntimeReadyMock.mockResolvedValue(false);
+    markChatSandboxEnabledMock.mockResolvedValue(undefined);
     getTestInstanceConfig().feature.agentEngine = 'fastAgent';
     (global as any).feConfigs = {
       ...(global as any).feConfigs,
@@ -1896,6 +1902,53 @@ describe('dispatchRunAgent user context', () => {
       query: '当前问题',
       textOutput: 'done answer',
       childResponseCount: 1
+    });
+  });
+
+  it('reuses the parent conversation sandbox when running as a nested child agent', async () => {
+    const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
+    const props = createProps();
+    props.params.useAgentSandbox = true;
+    props.runningAppInfo = {
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: 'child_chat_agent_id',
+      teamId: 'team_1',
+      tmbId: 'tmb_1',
+      name: 'Child ChatAgent',
+      isChildApp: true
+    };
+
+    let promise: Promise<any>;
+    runWithContext(
+      {
+        mcpClientMemory: {},
+        sandboxContext: {
+          sourceType: ChatSourceTypeEnum.app,
+          sourceId: 'parent_app_id',
+          teamId: 'team_1',
+          userId: 'user_1',
+          chatId: 'chat_1'
+        }
+      },
+      () => {
+        promise = dispatchRunAgent(props);
+      }
+    );
+    const result = await promise!;
+
+    expect(result.error).toBeUndefined();
+    expect(getSandboxClientMock).toHaveBeenCalledWith({
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: 'parent_app_id',
+      userId: 'user_1',
+      chatId: 'chat_1'
+    });
+    expect(props.nodeSummary.hasAgentSandbox).toBe(true);
+    expect(markChatSandboxEnabledMock).toHaveBeenCalledWith({
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: 'parent_app_id',
+      chatId: 'chat_1',
+      teamId: 'team_1'
     });
   });
 });

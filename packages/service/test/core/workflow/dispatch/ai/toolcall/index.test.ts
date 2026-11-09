@@ -13,6 +13,7 @@ import {
 } from '@fastgpt/service/core/workflow/dispatch/utils/summary';
 import { checkTeamSandboxPermission } from '@fastgpt/service/support/permission/teamLimit';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { runWithContext } from '@fastgpt/service/core/workflow/utils/context';
 
 const {
   getLLMModelDataMock,
@@ -20,14 +21,20 @@ const {
   runToolCallMock,
   useToolMessagesMock,
   useToolNodeListMock,
-  ensureAppSandboxRuntimeReadyMock
+  ensureAppSandboxRuntimeReadyMock,
+  markChatSandboxEnabledMock
 } = vi.hoisted(() => ({
   getLLMModelDataMock: vi.fn(),
   getSandboxClientMock: vi.fn(),
   runToolCallMock: vi.fn(),
   useToolMessagesMock: vi.fn(),
   useToolNodeListMock: vi.fn(),
-  ensureAppSandboxRuntimeReadyMock: vi.fn()
+  ensureAppSandboxRuntimeReadyMock: vi.fn(),
+  markChatSandboxEnabledMock: vi.fn()
+}));
+
+vi.mock('@fastgpt/service/core/chat/sandbox/service', () => ({
+  markChatSandboxEnabled: markChatSandboxEnabledMock
 }));
 
 vi.mock('@fastgpt/service/core/ai/model/catalog/service', () => ({
@@ -140,11 +147,44 @@ const createProps = (overrides: Record<string, any> = {}) =>
   }) as any;
 
 describe('dispatchRunTools', () => {
+  it('uses root sandbox identity and team permission while keeping the child app identity', async () => {
+    const props = createProps();
+    props.params.useAgentSandbox = true;
+    props.runningAppInfo.sourceId = 'child';
+    props.runningAppInfo.teamId = 'child-team';
+    const result = await runWithContext(
+      {
+        mcpClientMemory: {},
+        sandboxContext: {
+          sourceType: ChatSourceTypeEnum.app,
+          sourceId: 'root',
+          teamId: 'root-team',
+          userId: 'root-user',
+          chatId: 'root-chat'
+        }
+      },
+      () => dispatchRunTools(props)
+    );
+    expect(result.error).toBeUndefined();
+    expect(getSandboxClientMock).toHaveBeenCalledWith(
+      expect.objectContaining({ sourceId: 'root', userId: 'root-user', chatId: 'root-chat' })
+    );
+    expect(checkTeamSandboxPermission).toHaveBeenCalledWith('root-team');
+    expect(markChatSandboxEnabledMock).toHaveBeenCalledWith({
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: 'root',
+      chatId: 'root-chat',
+      teamId: 'root-team'
+    });
+    expect(props.runningAppInfo.sourceId).toBe('child');
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
     global.feConfigs = { ...global.feConfigs, show_agent_sandbox: true };
     vi.mocked(checkTeamSandboxPermission).mockResolvedValue(undefined);
     ensureAppSandboxRuntimeReadyMock.mockResolvedValue(false);
+    markChatSandboxEnabledMock.mockResolvedValue(undefined);
     getLLMModelDataMock.mockReturnValue({
       model: 'gpt-5',
       name: 'GPT-5',

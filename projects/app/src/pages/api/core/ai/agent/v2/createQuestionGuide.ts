@@ -27,6 +27,8 @@ async function handler(
   _res: NextApiResponse<any>
 ): Promise<CreateQuestionGuideResponseType> {
   const {
+    customUid,
+    authProxy,
     sourceType,
     sourceId,
     chatId,
@@ -45,6 +47,8 @@ async function handler(
     sourceType: resolvedSourceType,
     sourceId: resolvedSourceId
   } = await authChatTargetCrud({
+    customUid,
+    authProxy,
     req,
     authToken: true,
     authApiKey: true,

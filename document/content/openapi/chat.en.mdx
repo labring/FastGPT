@@ -101,7 +101,7 @@ curl --location --request POST 'http://localhost:3000/api/v1/chat/completions' \
 - headers.Authorization: Bearer [apikey]
 - chatId: string | undefined.
   - Empty or omitted: FastGPT context is not used, and context is built entirely from `messages`.
-  - Non-empty string: uses `chatId` for the chat, automatically reads messages from the FastGPT session, and uses only the last item in `messages` as the user question. Other messages are ignored. Make sure `chatId` is unique and shorter than 250 characters. You can use the conversation ID from your own system.
+  - Non-empty string: uses `chatId` for the chat, automatically reads messages from the FastGPT session, and uses only the last item in `messages` as the user question. Other messages are ignored. Make sure `chatId` is unique and at most 1024 characters long. You can use the conversation ID from your own system.
 - messages: Same structure as [GPT chat messages](https://platform.openai.com/docs/api-reference/chat/object) .
 - responseChatItemId: string | undefined. If provided, FastGPT uses it as the response message ID and stores it in the database. Make sure it is unique under the current `chatId`.
 - detail: Whether to return intermediate values, such as node status and complete results. In `stream` mode, they are separated by `event`; in non-stream mode, they are stored in `responseData`.
@@ -1207,7 +1207,11 @@ type CreateQuestionGuideParams = OutLinkChatAuthProps & {
   "code": 200,
   "statusText": "",
   "message": "",
-  "data": ["What do you think about AI?", "Would you like to learn about AI applications?", "What would you like AI to do?"]
+  "data": [
+    "What do you think about AI?",
+    "Would you like to learn about AI applications?",
+    "What would you like AI to do?"
+  ]
 }
 ```
 

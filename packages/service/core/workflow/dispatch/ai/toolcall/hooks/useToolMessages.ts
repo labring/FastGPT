@@ -5,7 +5,16 @@ import {
 } from '@fastgpt/global/core/chat/adapt';
 import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import { SANDBOX_USER_FILES_PATH } from '@fastgpt/global/core/ai/sandbox/constants';
-import { getWorkflowFileMaxAmount, prepareWorkflowFiles } from '../../../../utils/context';
+import {
+  buildSandboxInputFileScopeKey,
+  getSandboxInputFileNameAllocation,
+  getSafeSandboxInputFilename
+} from '../../../../../ai/sandbox/utils';
+import {
+  getWorkflowFileMaxAmount,
+  prepareWorkflowFiles,
+  WorkflowContext
+} from '../../../../utils/context';
 import {
   rewriteWorkflowAIHistoryMessageWithFiles,
   rewriteWorkflowAIUserMessageWithFiles
@@ -54,12 +63,39 @@ export const useToolMessages = async ({
    * 文件链接会作为 model URL 暴露给 LLM，供 read_files 和其他工具直接使用。
    * 当前轮输入文件额外记录下来，用于 sandbox 场景先上传到隔离目录。
    */
-  const transformFiles = useSandbox
+  const workflowSandboxContext = WorkflowContext.getStore()?.sandboxContext;
+  const historyTransformFiles = useSandbox
     ? (files: FileInputType[]) =>
         files.map((file) => ({
           ...file,
           sandboxPath: `${SANDBOX_USER_FILES_PATH}${file.name}`
         }))
+    : undefined;
+  const currentTransformFiles = useSandbox
+    ? (files: FileInputType[]) => {
+        const inputFileAllocation = workflowSandboxContext
+          ? getSandboxInputFileNameAllocation({
+              scopeKey: buildSandboxInputFileScopeKey(workflowSandboxContext),
+              contextOwner: workflowSandboxContext
+            })
+          : undefined;
+        const usedNames = new Map<string, number>();
+        const batchUsedFilenames = new Set<string>();
+        return files.map((file, index) => {
+          const filename = inputFileAllocation
+            ? getSafeSandboxInputFilename(file.name, index, usedNames, {
+                url: file.url,
+                allocation: inputFileAllocation,
+                batchUsedFilenames
+              })
+            : file.name;
+          return {
+            ...file,
+            name: filename,
+            sandboxPath: `${SANDBOX_USER_FILES_PATH}${filename}`
+          };
+        });
+      }
     : undefined;
   const messages = await Promise.all(
     historyMessages.map(async (message) => {
@@ -67,7 +103,7 @@ export const useToolMessages = async ({
         message,
         maxFileAmount,
         parseHistoryFiles,
-        transformFiles
+        transformFiles: historyTransformFiles
       });
       return res.message;
     })
@@ -86,7 +122,7 @@ export const useToolMessages = async ({
         })
       },
       maxFileAmount,
-      transformFiles
+      transformFiles: currentTransformFiles
     });
     messages.push(message);
     currentInputFiles.push(...files);

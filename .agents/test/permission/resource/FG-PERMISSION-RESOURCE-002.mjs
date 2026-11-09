@@ -219,8 +219,17 @@ async function execute(context) {
       return '同应用跨 Key 续聊成功；UID 不变、各轮消息保留实际鉴权成员，最近渠道更新，authProxy 单传及互斥组合均拒绝';
     }
     case 'A6': {
-      if (c.fixture.appKeys?.commercial !== true)
-        throw new Blocked('有效期/额度变体需要已核实开启商业版限制的私有 App/Pro 环境');
+      const runtime = success(
+        await c.request({
+          role: 'owner',
+          kind: 'anonymous',
+          method: 'GET',
+          route: '/api/common/system/getInitData'
+        })
+      );
+      if (runtime.feConfigs?.isPlus !== true)
+        throw new Blocked('当前 dev 未启用商业版，不能验证商业版有效期/额度限制');
+      c.record('被测服务实际版本能力', { isPlus: runtime.feConfigs.isPlus });
       for (const mode of ['invalid', 'expired', 'over-quota', 'valid']) {
         const key =
           mode === 'invalid'

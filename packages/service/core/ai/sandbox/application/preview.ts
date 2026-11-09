@@ -1,3 +1,4 @@
+import { ChatIdSchema } from '@fastgpt/global/core/chat/schema';
 /**
  * 沙盒业务层：创建并解析 workspace 只读预览 session。
  *
@@ -41,7 +42,7 @@ const SandboxPreviewSessionSchema = z.object({
   sourceType: z.enum(ChatSourceTypeEnum),
   sourceId: z.string().min(1),
   userId: z.string(),
-  chatId: z.string().min(1)
+  chatId: ChatIdSchema.min(1)
 });
 export type SandboxPreviewSession = z.infer<typeof SandboxPreviewSessionSchema>;
 
