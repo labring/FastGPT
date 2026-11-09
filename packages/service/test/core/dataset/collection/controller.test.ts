@@ -576,8 +576,7 @@ describe('formatCollectionParamsByDataset', () => {
 
   it.each([
     { mode: DatasetCollectionDataProcessModeEnum.qa, keepChunk: true },
-    { mode: DatasetCollectionDataProcessModeEnum.backup, keepChunk: false },
-    { mode: DatasetCollectionDataProcessModeEnum.template, keepChunk: false }
+    { mode: DatasetCollectionDataProcessModeEnum.backup, keepChunk: false }
   ])('$mode 清理互斥字段，并保留该模式需要的参数', async ({ mode, keepChunk }) => {
     const { formatCreateCollectionParams: params } = await formatCollectionParamsByDataset({
       dataset: makeDataset(),
@@ -617,6 +616,40 @@ describe('formatCollectionParamsByDataset', () => {
       ])
         expect(params).not.toHaveProperty(key);
     }
+  });
+
+  it('template 保留 autoIndexes，清理分块与图片增强字段', async () => {
+    const { formatCreateCollectionParams: params } = await formatCollectionParamsByDataset({
+      dataset: makeDataset(),
+      createCollectionParams: {
+        ...collectionParams,
+        trainingType: DatasetCollectionDataProcessModeEnum.template,
+        qaPrompt: '提取问答',
+        chunkTriggerType: ChunkTriggerConfigTypeEnum.minSize,
+        chunkTriggerMinSize: 100,
+        dataEnhanceCollectionName: true,
+        imageIndex: true,
+        autoIndexes: true,
+        indexPrefixTitle: true
+      }
+    });
+    expect(params.autoIndexes).toBe(true);
+    for (const key of [
+      'chunkTriggerType',
+      'chunkTriggerMinSize',
+      'dataEnhanceCollectionName',
+      'imageIndex',
+      'qaPrompt',
+      'paragraphChunkAIMode',
+      'paragraphChunkDeep',
+      'paragraphChunkMinSize',
+      'chunkSplitMode',
+      'chunkSize',
+      'chunkSplitter',
+      'indexSize',
+      'indexPrefixTitle'
+    ])
+      expect(params).not.toHaveProperty(key);
   });
 });
 

@@ -31,7 +31,9 @@ async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResult
     });
     filepaths.push(result.fileMetadata.path);
     const filename = decodeMultipartFilename(result.fileMetadata.originalname);
-    const { datasetId, parentId, tags } = CreateTemplateCollectionFormSchema.parse(result.data);
+    const { datasetId, parentId, tags, autoIndexes } = CreateTemplateCollectionFormSchema.parse(
+      result.data
+    );
 
     const { teamId, tmbId, dataset } = await authDatasetCollectionCreate({
       req,
@@ -85,6 +87,7 @@ async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResult
         type: DatasetCollectionTypeEnum.file,
         fileId,
         trainingType: DatasetCollectionDataProcessModeEnum.template,
+        autoIndexes,
         tags
       }
     });
