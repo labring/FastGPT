@@ -46,10 +46,18 @@ const AuthSettingComponent = () => {
   const showCancellation = isFieldVisible('auth.accountCancellation.enabled');
   const showWecomProviderSecret = isFieldVisible('auth.loginProviders.wecom.providerSecret');
   const showWecomSaaS = isFieldVisible('auth.loginProviders.wecom.buyerUserId');
-  const showFastLogin = isFieldVisible('auth.fastLogin');
+  const showFastLoginPermission = isFieldVisible('auth.fastLogin');
   const showSso = Boolean(
     isFieldVisible('auth.sso.title') && licenseData?.functions?.sso && feConfigs?.sso?.enabled
   );
+
+  const auth = useDomainConfig('auth');
+  const security = useDomainConfig('security');
+  const { effectiveConfig } = auth;
+  const isLoading = auth.isLoading || security.isLoading;
+
+  // 仅当加载时既有 fastLogin 非空才显示编辑器和目录项；不能跟随当前草稿即时变化。
+  const showFastLogin = showFastLoginPermission && (effectiveConfig.fastLogin?.length ?? 0) > 0;
 
   const tocItems: SettingTOCItem[] = useMemo(
     () => [
@@ -70,11 +78,6 @@ const AuthSettingComponent = () => {
     ],
     [t, showEmail, showSms, showWechat, showOauth, showSso, showFastLogin, showCancellation]
   );
-
-  const auth = useDomainConfig('auth');
-  const security = useDomainConfig('security');
-  const { effectiveConfig } = auth;
-  const isLoading = auth.isLoading || security.isLoading;
 
   const { control, handleSubmit, reset, register, setValue } = useForm<AuthConfigForm>({
     defaultValues: {

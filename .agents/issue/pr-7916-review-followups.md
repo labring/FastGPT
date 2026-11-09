@@ -151,7 +151,7 @@
 
 ### 批次 E：前端展示与测试
 
-- [ ] **E1（原第 31 项，P2）`auth.fastLogin` 展示规则**
+- [x] **E1（原第 31 项，P2）`auth.fastLogin` 展示规则**
   - 按评论：仅当加载时既有配置非空显示编辑项和目录项；空配置不提供新建入口；显示状态不随当前编辑内容变化；隐藏时保存保留原值。
   - 位置：`projects/app/src/pageComponents/admin/settings/auth/index.tsx`
 - [ ] **E2（原第 32 项，P3）StandardPlans/LegacyPlans 中文硬编码回退**
