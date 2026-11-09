@@ -478,6 +478,9 @@ export const AppTemplateStorageSchema = z.object({
   recommendText: z.string().optional().meta({
     description: '推荐文案'
   }),
+  experienceUrl: z.string().optional().meta({
+    description: '体验地址；用户可在复制模板前打开该链接预览'
+  }),
   userGuide: z
     .object({
       type: z.enum(['markdown', 'link']).meta({
