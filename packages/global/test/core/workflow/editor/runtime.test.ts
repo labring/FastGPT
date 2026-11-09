@@ -409,6 +409,54 @@ describe('workflow editor runtime modules', () => {
     expect(editor.getWorkflowIssues()).toBe(beforeIssues);
   });
 
+  it('deduplicates node issues by semantic identity instead of message', () => {
+    const editor = createRuntime();
+    const issueFailure = vi.spyOn(issueRules, 'collectNodeIssues').mockReturnValue([
+      {
+        nodeId: 'answer',
+        level: 'error',
+        code: 'invalid_reference',
+        inputKey: NodeInputKeyEnum.answerText,
+        message: 'Answer cites an invalid Variable'
+      },
+      {
+        nodeId: 'answer',
+        level: 'error',
+        code: 'invalid_reference',
+        inputKey: NodeInputKeyEnum.answerText,
+        message: 'invalid_reference'
+      },
+      {
+        nodeId: 'answer',
+        level: 'error',
+        code: 'invalid_reference',
+        inputKey: NodeInputKeyEnum.answerText,
+        message: 'Answer cites a different invalid Variable',
+        params: { inputName: 'different' }
+      }
+    ]);
+
+    try {
+      editor.refreshIssues(['answer']);
+    } finally {
+      issueFailure.mockRestore();
+    }
+
+    expect(editor.getNode('answer')?.issues).toEqual([
+      expect.objectContaining({
+        code: 'invalid_reference',
+        inputKey: NodeInputKeyEnum.answerText,
+        message: 'Answer cites an invalid Variable'
+      }),
+      expect.objectContaining({
+        code: 'invalid_reference',
+        inputKey: NodeInputKeyEnum.answerText,
+        message: 'Answer cites a different invalid Variable',
+        params: { inputName: 'different' }
+      })
+    ]);
+  });
+
   it('treats an unchanged command as a no-op', () => {
     const editor = createRuntime();
     const beforeHistory = editor.getHistory();

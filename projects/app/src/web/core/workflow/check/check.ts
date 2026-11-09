@@ -226,6 +226,18 @@ export const checkWorkflowBeforeRunOrPublish = (input: WorkflowCheckInput) => {
     ...result.workflowIssues
   ];
   const errors = allIssues.filter((issue) => issue.level === 'error');
+  const errorIssueMessages = errors.map((issue) => {
+    const errorMessage = issue.message ?? issue.code;
+    const message =
+      !issue.nodeName || (input.t && issue.code === WorkflowCheckIssueCodeEnum.modelUnavailable)
+        ? errorMessage
+        : `「${issue.nodeName}」${errorMessage}`;
+    return { issue, message };
+  });
+  const uniqueErrorMessages = [
+    ...new Map(errorIssueMessages.map((item) => [item.message, item])).values()
+  ].map((item) => item.message);
+
   return {
     ...result,
     hasError: errors.length > 0,
@@ -234,17 +246,8 @@ export const checkWorkflowBeforeRunOrPublish = (input: WorkflowCheckInput) => {
       ? result.issueMap[firstErrorNodeId].find((issue) => issue.level === 'error')
       : errors[0],
     errorNodeIds,
+    errorIssueMessages,
     // 节点错误统一携带节点名；汇总去重后最多展示 3 条，节点诊断仍完整保留。
-    errorMessages: [
-      ...new Set(
-        errors.map((issue) => {
-          if (!issue.nodeName) return issue.message;
-          // 模型不可用的翻译文案已包含节点名，避免重复拼接。
-          if (input.t && issue.code === WorkflowCheckIssueCodeEnum.modelUnavailable)
-            return issue.message;
-          return `「${issue.nodeName}」${issue.message}`;
-        })
-      )
-    ].slice(0, 3)
+    errorMessages: uniqueErrorMessages.slice(0, 3)
   };
 };

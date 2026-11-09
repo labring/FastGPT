@@ -9,7 +9,10 @@ import {
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { ensureModelCatalog } from '@/web/core/ai/model/modelData';
 import { getWorkflowModelCheckData } from '@/web/core/workflow/modelData';
-import { serializeWorkflowAndCheckData } from '@/web/core/workflow/editor/session/workflowPersistence';
+import {
+  dedupeWorkflowIssueMessages,
+  serializeWorkflowAndCheckData
+} from '@/web/core/workflow/editor/session/workflowPersistence';
 
 vi.mock('@/web/core/ai/model/modelData', () => ({ ensureModelCatalog: vi.fn() }));
 vi.mock('@/web/core/workflow/modelData', () => ({ getWorkflowModelCheckData: vi.fn() }));
@@ -94,6 +97,45 @@ describe('serializeWorkflowAndCheckData', () => {
     expect(gate.pendingSaveRevisionRef.current).toBeUndefined();
   });
 
+  it('deduplicates core and runtime toast messages by semantic identity', async () => {
+    const gate = createGate();
+    const runtime = gate.runtimeRef.current;
+    vi.spyOn(runtime, 'refreshIssues').mockReturnValue({ nodeIds: [] });
+    vi.spyOn(runtime, 'getWorkflowIssues').mockReturnValue({
+      issues: [
+        {
+          nodeId: 'answer',
+          level: 'error',
+          code: 'invalid_reference',
+          inputKey: NodeInputKeyEnum.answerText,
+          message: 'Answer cites an invalid Variable'
+        },
+        {
+          nodeId: 'answer',
+          level: 'error',
+          code: 'invalid_reference',
+          inputKey: NodeInputKeyEnum.answerText,
+          message: 'invalid_reference'
+        },
+        {
+          nodeId: 'answer',
+          level: 'error',
+          code: 'user_select_empty',
+          inputKey: NodeInputKeyEnum.answerText,
+          message: 'Different issue'
+        }
+      ],
+      chatConfigIssues: []
+    });
+
+    expect(await serializeWorkflowAndCheckData(gate)).toBeUndefined();
+    const description = gate.toast.mock.calls[0][0].description as string;
+    expect(description.split('\n')).toEqual([
+      'common:core.workflow.check.invalid_reference',
+      'common:core.workflow.check.user_select_empty'
+    ]);
+  });
+
   it.each(['duplicate-input', 'duplicate-output'])('blocks core IO errors: %s', async (kind) => {
     const gate = createGate();
     const input = gate.runtimeRef.current.getNode('answer')!.inputs[0];
@@ -175,5 +217,69 @@ describe('serializeWorkflowAndCheckData', () => {
       status: 'error',
       title: 'common:model_catalog_load_failed'
     });
+  });
+});
+
+describe('dedupeWorkflowIssueMessages', () => {
+  it('keeps the first message for the same semantic issue across validators', () => {
+    expect(
+      dedupeWorkflowIssueMessages([
+        {
+          issue: {
+            nodeId: 'answer',
+            level: 'error',
+            code: 'invalid_reference',
+            inputKey: NodeInputKeyEnum.answerText
+          },
+          message: '「Answer」core message'
+        },
+        {
+          issue: {
+            nodeId: 'answer',
+            level: 'error',
+            code: 'invalid_reference',
+            inputKey: NodeInputKeyEnum.answerText,
+            message: 'runtime message'
+          },
+          message: 'runtime message'
+        }
+      ])
+    ).toEqual(['「Answer」core message']);
+  });
+
+  it('keeps distinct params and codes', () => {
+    expect(
+      dedupeWorkflowIssueMessages([
+        {
+          issue: {
+            nodeId: 'answer',
+            level: 'error',
+            code: 'invalid_reference',
+            inputKey: NodeInputKeyEnum.answerText,
+            params: { inputName: 'first' }
+          },
+          message: 'first'
+        },
+        {
+          issue: {
+            nodeId: 'answer',
+            level: 'error',
+            code: 'invalid_reference',
+            inputKey: NodeInputKeyEnum.answerText,
+            params: { inputName: 'second' }
+          },
+          message: 'second'
+        },
+        {
+          issue: {
+            nodeId: 'answer',
+            level: 'error',
+            code: 'user_select_empty',
+            inputKey: NodeInputKeyEnum.answerText
+          },
+          message: 'third'
+        }
+      ])
+    ).toEqual(['first', 'second', 'third']);
   });
 });

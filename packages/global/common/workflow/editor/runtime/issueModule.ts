@@ -20,6 +20,20 @@ const UNKNOWN_ENVIRONMENT: WorkflowEnvironment = {
   sandbox: { configured: true, planSupported: true }
 };
 
+/** 同一节点、范围、code、字段与插值参数视为同一条问题；message 只影响展示。 */
+const dedupeIssues = <T extends WorkflowCheckIssue | WorkflowConfigIssue>(
+  issues: readonly T[]
+): T[] => {
+  const seen = new Set<string>();
+  return issues.filter((issue) => {
+    const nodeId = 'nodeId' in issue ? issue.nodeId : '';
+    const key = JSON.stringify([nodeId, issue.code, issue.inputKey ?? '', issue.params ?? null]);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+};
+
 /** Create the Workflow Issue module. */
 export const createIssueModule = ({
   document,
@@ -150,7 +164,7 @@ export const createIssueModule = ({
     current.nodes
       .filter((node) => !onlyNodeIds || onlyNodeIds.has(node.data.nodeId))
       .forEach((node) => {
-        const issues = collectNodeIssues(ruleInput, node);
+        const issues = dedupeIssues(collectNodeIssues(ruleInput, node));
         // 内容未变的节点沿用旧数组身份，节点 snapshot 缓存才不会整表失效。
         const previous = issuesByNode.get(node.data.nodeId);
         nextIssues.set(
@@ -164,7 +178,7 @@ export const createIssueModule = ({
     });
     issuesByNode = nextIssues;
     // 工作流级问题不属于任何节点，每轮按当前 chatConfig 与环境事实整体重算。
-    const nextConfigIssues = collectConfigIssues(ruleInput);
+    const nextConfigIssues = dedupeIssues(collectConfigIssues(ruleInput));
     if (!valuesEqual(configIssues, nextConfigIssues)) configIssues = nextConfigIssues;
   };
 

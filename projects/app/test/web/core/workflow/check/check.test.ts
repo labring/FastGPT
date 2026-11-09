@@ -2659,6 +2659,10 @@ describe('Core validation and Web extension contract', () => {
       '「目标2」需填写必填项 热榜来源',
       '「目标3」需填写必填项 热榜来源'
     ]);
+    expect(result.errorIssueMessages.map(({ message }) => message)).toEqual([
+      ...result.errorMessages,
+      '「目标4」需填写必填项 热榜来源'
+    ]);
     expect(result.errorNodeIds).toEqual(['target', 'target-2', 'target-3', 'target-4']);
     expect(result.issueMap['target-4']).toEqual([
       expect.objectContaining({ message: '需填写必填项 热榜来源' })

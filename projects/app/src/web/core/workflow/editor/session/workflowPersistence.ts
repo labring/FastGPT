@@ -12,6 +12,7 @@ import {
   collectWorkflowErrorIssues,
   renderWorkflowIssueMessage
 } from '@/web/core/workflow/issueView';
+import type { WorkflowIssueLike } from '@/web/core/workflow/issueView';
 
 type WorkflowRuntimeRef = MutableRefObject<WorkflowRuntimePort | null>;
 type PendingSaveRevisionRef = MutableRefObject<number | undefined>;
@@ -35,6 +36,23 @@ type WorkflowSaveRequestScope = {
 type WorkflowPersistenceArgs = {
   runtimeRef: WorkflowRuntimeRef;
   pendingSaveRevisionRef: PendingSaveRevisionRef;
+};
+
+/**
+ * Core 与 Runtime 的展示文案可能不同，合并时按稳定语义键去重；不同 params 仍视为不同问题。
+ * inputKey 与 params 使用 JSON 序列化，文案和 level 不参与身份。
+ */
+export const dedupeWorkflowIssueMessages = (
+  issues: readonly { issue: WorkflowIssueLike; message: string }[]
+): string[] => {
+  const seen = new Set<string>();
+  return issues.flatMap(({ issue, message }) => {
+    const nodeId = 'nodeId' in issue ? issue.nodeId : '';
+    const key = JSON.stringify([nodeId, issue.code, issue.inputKey ?? '', issue.params ?? null]);
+    if (seen.has(key)) return [];
+    seen.add(key);
+    return [message];
+  });
 };
 
 /** 只接受当前 Session、Runtime、应用与请求 token 的保存响应。 */
@@ -160,12 +178,15 @@ export const serializeWorkflowAndCheckData = async ({
     toast({
       status: 'warning',
       title: 'common:core.workflow.Check Failed',
-      description: [
-        ...new Set([
-          ...checked.errorMessages,
-          ...errors.map((issue) => renderWorkflowIssueMessage(issue, t))
-        ])
-      ].join('\n')
+      description: dedupeWorkflowIssueMessages([
+        ...checked.errorIssueMessages,
+        ...errors.map((issue) => ({
+          issue,
+          message: renderWorkflowIssueMessage(issue, t)
+        }))
+      ])
+        .slice(0, 3)
+        .join('\n')
     });
   }
   return undefined;
