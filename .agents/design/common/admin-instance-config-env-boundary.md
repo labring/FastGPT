@@ -281,6 +281,7 @@ RuntimeConfigSchema.parse(runtimeConfig)
 | Agent Sandbox Proxy 密钥 | `AGENT_SANDBOX_PROXY_SECRET` | 独立 Proxy 和主站之间的 HMAC 信任 |
 | 反向代理信任 | `TRUSTED_PROXY_ENABLE`、`TRUSTED_PROXY_IPS` | 与部署拓扑强相关，错误配置影响客户端 IP 和安全判断 |
 | Cookie Secure | `AUTH_COOKIE_SECURE` | 与实际 HTTPS 终止位置强相关 |
+| 短信发送代理 | `SMS_PROXY`（仅 Pro） | 部署级短信代理地址；只读取 ENV，不进入实例配置 Schema 或表单 |
 
 这些字段即使属于“敏感配置”，本轮也不实现加密；它们只是因为安全边界不同而继续留在环境变量。
 
@@ -289,7 +290,6 @@ RuntimeConfigSchema.parse(runtimeConfig)
 | 配置项 | 当前环境变量 | 原因 |
 | --- | --- | --- |
 | Web 路径前缀 | `NEXT_PUBLIC_BASE_URL` | 可能在构建期注入并影响前端资源路径 |
-| 索引同步 | `SYNC_INDEX` | 启动时数据库维护行为，不应通过 Admin 在线切换 |
 | 系统迁移批大小 | `SYSTEM_MIGRATION_BATCH_SIZE` | 迁移执行期保护参数，避免修改配置后影响正在运行的升级 |
 | 默认根用户密码 | `DEFAULT_ROOT_PSW` | 只用于首次初始化/引导；初始化后不能作为运行时配置源 |
 | MCP SSE Proxy 地址 | `SSE_MCP_SERVER_PROXY_ENDPOINT` | 已明确保持环境变量注入 |
@@ -693,7 +693,6 @@ FE_DOMAIN
 FILE_DOMAIN
 FILE_DOWNLOAD_PUBLIC_URL_PREFIX
 NEXT_PUBLIC_BASE_URL
-SYNC_INDEX
 SYSTEM_MIGRATION_BATCH_SIZE
 DEFAULT_ROOT_PSW
 SSE_MCP_SERVER_PROXY_ENDPOINT

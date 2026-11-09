@@ -87,7 +87,7 @@ AGENT_SANDBOX_PYPI_INDEX_URL=
 
 LLM 请求追踪记录（`llm_request_records`）新增 `teamId` 字段，`GET /api/core/ai/record/getRecord` 会按当前登录团队查询 `{ requestId, teamId }`，避免仅凭 `requestId` 读取其他团队的请求体、知识库召回片段和模型响应。
 
-同时，`llm_request_records` 的唯一索引从单字段 `requestId` 调整为复合唯一索引 `{ teamId: 1, requestId: 1 }`。如自托管环境关闭了 `SYNC_INDEX`，升级后需要执行一次索引同步，确保旧的 `requestId_1` 唯一索引被移除。
+同时，`llm_request_records` 的唯一索引从单字段 `requestId` 调整为复合唯一索引 `{ teamId: 1, requestId: 1 }`。如自托管环境关闭了索引同步，升级后需要执行一次索引同步，确保旧的 `requestId_1` 唯一索引被移除。
 
 风险点：升级前已写入的旧追踪记录没有 `teamId`，升级后将无法再通过 `requestId` 查询，页面会按追踪记录已过期处理。该记录本身有 TTL，仅用于临时排查模型调用详情；如需排查历史问题，请在升级前导出相关日志或保留原始请求信息。
 

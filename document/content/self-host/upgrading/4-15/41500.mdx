@@ -50,8 +50,6 @@ PARSE_FILE_TIMEOUT_SECONDS=600
 HTML_TO_MARKDOWN_WORKERS=10
 # 文本切块 worker 并发数(可选)
 TEXT_TO_CHUNKS_WORKERS=10
-# 自动同步 mongo 数据库索引, 改成 boolean 字符串值，而不是 0 和 1(可选)
-SYNC_INDEX=true
 # 是否启用可信反向代理客户端 IP 校验(可选)
 TRUSTED_PROXY_ENABLE=false
 # 可信反向代理 IP/CIDR 列表，逗号或空白分隔。仅 TRUSTED_PROXY_ENABLE=true 时生效；仅显式可信代理传入的 X-Forwarded-For/X-Real-IP 会用于客户端 IP 解析(可选)
@@ -167,7 +165,6 @@ POOL_SERVICE_STARTUP_RETRY_MAX_DELAY=10000
 # ================ 数据库 =====================
 MONGODB_URI=mongodb://username:password@localhost:27017/fastgpt?authSource=admin&directConnection=true
 MONGO_MAX_LINK=20
-SYNC_INDEX=true
 REDIS_URL=redis://default:password@localhost:6379/0
 
 # ================ 对象存储 =====================
@@ -256,7 +253,7 @@ OpenSandbox 的完整配置请参考 [4.15 部署 yml](https://github.com/labrin
 
 #### 6.1 清理重复的 appId-chatId(可选，但建议执行)
 
-正式版会同步 `{ appId, chatId }` 和 `{ sourceType, appId, chatId }` 两个唯一索引。正式版索引最终同步成功前，必须检查并清理 `chats` 集合中重复的 `appId + chatId`；否则开启 `SYNC_INDEX=true` 后，索引同步可能报 `E11000 duplicate key error`，唯一约束不会生效。
+正式版会同步 `{ appId, chatId }` 和 `{ sourceType, appId, chatId }` 两个唯一索引。正式版索引最终同步成功前，必须检查并清理 `chats` 集合中重复的 `appId + chatId`；否则索引同步可能报 `E11000 duplicate key error`，唯一约束不会生效。
 
 该接口依赖升级后的 `fastgpt-app` 镜像。如果首次启动正式版时已经出现唯一索引冲突，但服务仍可访问，可直接执行下面的 dry-run 和清理命令，完成后重启服务重新同步索引。
 
@@ -286,7 +283,7 @@ curl -X POST 'https://{{host}}/api/admin/dataClean/cleanupDuplicateChats' \
 
 清理策略：每组重复的 `appId + chatId` 会保留 `updateTime` 最新的一条；如果时间相同，用 `_id` 倒序作为稳定兜底。接口只删除重复的 `chats` 会话头，不删除 `chatitems`、`chat_item_responses` 中的消息内容。
 
-清理完成后，保持 `SYNC_INDEX=true` 并重启 `fastgpt-app` / `fastgpt-pro`，让服务重新同步索引。可进入 MongoDB 后确认两个索引都已经是 `unique: true`：
+清理完成后，启用索引同步并重启 `fastgpt-app` / `fastgpt-pro`，让服务重新同步索引。可进入 MongoDB 后确认两个索引都已经是 `unique: true`：
 
 ```js
 db.chats
@@ -366,7 +363,7 @@ curl -X POST 'https://{{host}}/api/admin/dataClean/initSandboxArchive' \
 
 1. ApiKey 功能调整，不再区分应用 key 和系统 key，只保留系统 key，如需兼容 openai sdk 用法，可使用 `apikey-appId` 的方式传递 Token。已有的 apikey 保持兼容，不影响使用。具体和查阅 [FastGPT API 文档说明](../../../openapi/intro)
 2. 部分 API 增加了更为严格的数据格式校验，如过遇到报错: `zod parse error` 可提交 issue 反馈，可能因一些旧数据或者自定义数据结构与声明不一致。
-3. LLM 请求追踪记录新增团队隔离：`llm_request_records` 写入 `teamId`，`GET /api/core/ai/record/getRecord` 按 `{ requestId, teamId }` 查询，唯一索引调整为 `{ teamId, requestId }`。升级前没有 `teamId` 的旧追踪记录将无法继续查询，页面会提示追踪记录已过期；如需排查历史调用详情，请在升级前导出相关日志或保留原始请求信息。自托管环境如关闭了 `SYNC_INDEX`，升级后需要执行一次索引同步，确保旧的 `requestId_1` 唯一索引被移除。
+3. LLM 请求追踪记录新增团队隔离：`llm_request_records` 写入 `teamId`，`GET /api/core/ai/record/getRecord` 按 `{ requestId, teamId }` 查询，唯一索引调整为 `{ teamId, requestId }`。升级前没有 `teamId` 的旧追踪记录将无法继续查询，页面会提示追踪记录已过期；如需排查历史调用详情，请在升级前导出相关日志或保留原始请求信息。自托管环境如关闭了索引同步，升级后需要执行一次索引同步，确保旧的 `requestId_1` 唯一索引被移除。
 
 ## 🚀 新增内容
 

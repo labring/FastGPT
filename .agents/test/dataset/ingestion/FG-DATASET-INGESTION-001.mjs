@@ -152,7 +152,6 @@ try {
     REDIS_URL: 'redis://127.0.0.1:' + port,
     MAX_CRAWL_PAGE: '3',
     LOG_ENABLE_OTEL: 'false',
-    SYNC_INDEX: 'false',
     NEXT_PHASE: ''
   });
   delete env.LOG_OTEL_URL;

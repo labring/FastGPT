@@ -85,7 +85,7 @@ baseline: "27d88d71f44614d89aef7d7d04fe65431ea19288"
 - 基线 D0：站点名称、favicon、分享域名、脚本列表、`security.allowedOrigins`、`security.csrfEnabled`、`security.passwordLoginMinuteLimitCount`、`security.maxLoginSession`、`auth.openApiKeyMaxCount`、`auth.passwordExpiredMonth`、`resource.maxFolderDepth`、`resource.uploadFileMaxSize`、`performance.workflow.maxLoopTimes` 的当前生效值全部记录。
 - 复位约定：每个子场景开始前通过 Admin API 保存回 D0，并等待 revision 生效；C3 打开第三个会话后要关闭全部测试会话；C5/C6 使用独立测试目录/应用，避免影响其他测试数据。
 - 验证能力：浏览器可观察标题、favicon、导航项、分享链接和 Toast；HTTP 客户端可发 CORS/CSRF 请求；Mongo 只读查询配置与业务记录；服务日志可按 `requestId`/callsite（如 `runtime.common.system.constants.getPasswordLoginMinuteLimitCount`）检索；向量库或提供商请求需要可观测的代理/日志。
-- 阻塞项：C7 的 Feishu/语雀数据源路由需要可用的应用凭据和可拦截外呼的 mock；没有时该行阻塞，不把“保存成功”当作路由生效。C8 的 HNSW 搜索宽度只能通过向量库查询日志/代理观察，环境没有该观测能力时阻塞。平台不保证对 `SYNC_INDEX` 之类已退役 ENV 的兼容，执行前不要把旧 ENV 当作预期来源。
+- 阻塞项：C7 的 Feishu/语雀数据源路由需要可用的应用凭据和可拦截外呼的 mock；没有时该行阻塞，不把“保存成功”当作路由生效。C8 的 HNSW 搜索宽度只能通过向量库查询日志/代理观察，环境没有该观测能力时阻塞。平台不保证对旧索引同步开关之类已退役 ENV 的兼容，执行前不要把旧 ENV 当作预期来源。
 
 ## 测试步骤
 

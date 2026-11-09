@@ -13,7 +13,7 @@
 5. **迁移容错**：必须展示被跳过/剔除的域和字段（脱敏），纳入升级验收；是否阻断升级按实际兼容要求逐项决定。
 6. **ENV/config 互斥**：在最终合成处明确 ENV 权威，旧库值只作一次性迁移输入；仍需保留的旧字段先迁走，再收口旧表单和写接口。
 7. **字段收敛判定**：先确认“最终业务实际消费”，不能只看声明或投影；无消费的删除并登记 overrides 清理，有消费但无入口的先决定归属再补 Schema/表单/页面映射。
-8. **SYNC_INDEX**：只处理当前 `deploy/version/main` 模板、生成文件和文档；历史版本部署文件单独判断，不盲删。
+8. **旧索引同步开关**：全仓移除该开关，包含 Marketplace、历史部署模板和升级说明；Marketplace 固定使用共享安全索引管理器。
 
 ## 二、需要先拍板的决策
 
@@ -47,11 +47,11 @@
 - 保留旧类型和迁移读取，明确不再作为有效运行时配置。
 - 新表单不再写入这些字段；后续清理时单独移除。
 
-### D5. `SYNC_INDEX` — 已拍板：只清当前 main
+### D5. 旧索引同步开关 — 已拍板：全仓移除
 
-- 清理 `deploy/version/main` 当前模板、生成文件和文档。
-- 历史版本部署文件保持不动。
-- 本次选择已明确授权修改当前 main 的部署 YAML。
+- 清理所有部署模板、生成文件和文档中的旧开关。
+- Marketplace 保留 defineIndex 声明与共享安全同步入口，移除启动开关。
+- 用户已明确授权包含历史版本部署 YAML 的全仓清理。
 
 ### D6. Sangfor 回落 — 已拍板：删除回落
 
@@ -117,7 +117,7 @@
 - [x] **C1.6（原第 15 项）`systemEnv.customDomain.domain.*`**：已从旧 SystemEnv 类型删除；业务域名继续使用 `feConfigs.customDomain.domain`/新 site 字段。
 - [x] **C1.7（原第 16 项）旧 Pro 钉钉/支付宝类型**：已删除旧 Pro/App 类型和旧支付宝 Notify URL 表单项。
 - [x] **C1.8（原第 17 项）旧 Pro `auth.sms.*_EN`**：已按 D4 标记历史兼容，仅保留迁移读取，新表单不写入。
-- [x] **C1.9（原第 18 项）`SYNC_INDEX`**：已按 D5 清理当前 main 部署模板、生成文件和文档；Pro 当前 Helm chart 同步移除；历史 v4.16 文件保持不动。
+- [x] **C1.9（原第 18 项）旧索引同步开关**：已按 D5 清理当前 main 部署模板、生成文件和文档；Pro 当前 Helm chart 同步移除；历史 v4.16 文件也已清理。
 - 统一验收：registry、pageFields、旧类型、表单、`20260929_cleanup_instance_config_deprecated_fields`、相关测试同步；存量 overrides 不因 strict schema 读取失败。
 
 #### C2. 业务仍在用但没有新配置入口（依赖 D1）
@@ -166,7 +166,7 @@
 ### 批次 F：文档与注释
 
 - [x] **F1（原第 35 项）`alipay.endpoint` 误标**：已删除“业务未接入”标记，标注实际传给 Pro `AlipaySdk`。
-- [x] **F2（原第 36 项）`SYNC_INDEX` 文档**：已随 C1.9 删除当前 ENV 文档中的保留说明。
+- [x] **F2（原第 36 项）旧索引同步开关文档**：已随 C1.9 删除当前 ENV 文档中的保留说明。
 - [x] **F3（原第 37 项）`CHINESE_IP_REDIRECT_URL` 旧映射说明**：已改为 ENV 独占，不再迁移到 site。
 - [x] **F4（原第 38 项）过期注释**：旧页面和旧字段组件已删除；剩余 ENV 相关注释已核对，未发现继续描述已移除兜底的内容。
 - 位置：`.agents/design/common/admin-instance-config-env-boundary.md` 及相关源码注释

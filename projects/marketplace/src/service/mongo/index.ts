@@ -32,7 +32,7 @@ export const getMongoModel = <T extends Schema>(name: string, schema: T) => {
 };
 
 const syncMongoIndex = async (model: Model<any>) => {
-  if (process.env.NODE_ENV === 'test' || !marketplaceEnv.SYNC_INDEX || !MONGO_URL) {
+  if (process.env.NODE_ENV === 'test' || !MONGO_URL) {
     return;
   }
 
