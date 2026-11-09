@@ -356,7 +356,10 @@ export const getAgentRuntimeTools = async ({
       };
     }
 
-    const nodeIO = appData2FlowNodeIO({ chatConfig: version.chatConfig });
+    const nodeIO = appData2FlowNodeIO({
+      chatConfig: version.chatConfig,
+      isChatAgent: app.type === AppTypeEnum.chatAgent
+    });
     return {
       ...baseNode,
       flowNodeType: FlowNodeTypeEnum.appModule,

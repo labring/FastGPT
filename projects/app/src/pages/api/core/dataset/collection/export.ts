@@ -48,13 +48,16 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
       };
     }
 
-    const { sourceType, sourceId, chatId, outLinkAuthData, chatTime } = parseBody;
+    const { customUid, authProxy, sourceType, sourceId, chatId, outLinkAuthData, chatTime } =
+      parseBody;
     /*
       1. auth chat read permission
       2. auth collection quote in chat
       3. auth outlink open show quote
     */
     const authRes = await authChatTargetCrud({
+      customUid,
+      authProxy,
       req,
       authToken: true,
       authApiKey: true,

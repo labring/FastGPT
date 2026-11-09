@@ -1,4 +1,10 @@
 {
+  "audit_empty": "No audit logs match your filters",
+  "audit_reset_time": "Reset date range",
+  "audit_export_limit": "You can export up to 50,000 audit logs at a time. Narrow your filters and try again.",
+  "audit_export_filename": "Audit_logs",
+  "export_audit_logs": "Export audit logs",
+  "log_export_audit_logs": "[{{name}}] requested an audit log export. Date range: [{{dateStart}} to {{dateEnd}}], members: [{{tmbIds}}], events: [{{events}}], matching records: [{{total}}]",
   "1person": "1 person",
   "1year": "1 Year",
   "30mins": "30 Minutes",

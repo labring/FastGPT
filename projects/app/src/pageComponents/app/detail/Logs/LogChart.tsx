@@ -1,3 +1,5 @@
+import { formatToISOWithTimezone } from '@fastgpt/global/common/string/time';
+import { formatDateWithOffset } from '@fastgpt/global/common/time/fixedOffset';
 import {
   Accordion,
   AccordionButton,
@@ -20,13 +22,10 @@ import {
 } from '@fastgpt/web/components/common/TagFilter';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'next-i18next';
-import { AppContext } from '../context';
-import { useContextSelector } from 'use-context-selector';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getAppChartData, getAppTotalData } from '@/web/core/app/api/log';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import {
-  addDays,
   startOfDay,
   startOfWeek,
   endOfWeek,
@@ -160,8 +159,8 @@ const LogChart = ({
     async () => {
       return getAppChartData({
         appId,
-        dateStart: dateRange.from || new Date(),
-        dateEnd: addDays(dateRange.to || new Date(), 1),
+        dateStart: formatToISOWithTimezone(dateRange.from),
+        dateEnd: formatToISOWithTimezone(dateRange.to),
         offset: parseInt(offset),
         source: chartSources,
         userTimespan,
@@ -188,9 +187,16 @@ const LogChart = ({
     if (!feConfigs?.isPlus) return fakeChartData;
 
     const formatTimestamp = (timestamp: number, timespan: AppLogTimespanEnum) => {
+      // 返回的桶按请求起点固定偏移分组；只取其日历日期，避免浏览器 DST 改变标签或覆盖相邻桶。
+      const bucketDate = formatDateWithOffset({
+        time: timestamp,
+        offset: dayjs(dateRange.from).format('Z'),
+        format: 'YYYY-MM-DD'
+      });
+      const labelDate = new Date(`${bucketDate}T00:00:00`);
       return timespan === AppLogTimespanEnum.week
-        ? formatWeekDate(new Date(timestamp))
-        : formatDateByTimespan(timestamp, timespan);
+        ? formatWeekDate(labelDate)
+        : formatDateByTimespan(labelDate.getTime(), timespan);
     };
 
     const processChartData = <T extends Record<string, any>>(
@@ -215,7 +221,9 @@ const LogChart = ({
         dataMap.set(dateInfo.date, mappedItem);
       });
 
-      return completeDates.map(
+      // 首尾偏移不同时，范围内的末尾记录可能落入相邻的固定偏移桶；保留响应桶，不能只按浏览器日期轴丢弃。
+      const dates = [...new Set([...completeDates, ...dataMap.keys()])];
+      return dates.map(
         (date) => dataMap.get(date) || ({ x: date, xLabel: date, ...defaultValues } as unknown as T)
       );
     };
@@ -857,6 +865,7 @@ const HeaderControl = ({
     <Flex flexDir={['column', 'row']} alignItems={'flex-start'} gap={3} pb={2} px={px}>
       <DateRangePicker
         defaultDate={dateRange}
+        dateRange={dateRange}
         onSuccess={setDateRange}
         formLabel={t('app:logs_date')}
       />

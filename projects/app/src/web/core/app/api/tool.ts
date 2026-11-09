@@ -17,7 +17,7 @@ import type {
 import { getAllApps, getAppDetailById, getMyAppsV2 } from '../api';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { FlowNodeTemplateTypeEnum } from '@fastgpt/global/core/workflow/constants';
-import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { AppTypeEnum, AppTypeList } from '@fastgpt/global/core/app/constants';
 import type {
   ParentIdType,
   ParentTreePathItemType
@@ -49,12 +49,11 @@ const mapAppToTeamTemplate = (app: AppListItem) => ({
     app.type === AppTypeEnum.httpPlugin ||
     app.type === AppTypeEnum.mcpToolSet,
   templateType: FlowNodeTemplateTypeEnum.teamApp,
-  flowNodeType:
-    app.type === AppTypeEnum.workflow
-      ? FlowNodeTypeEnum.appModule
-      : app.type === AppTypeEnum.mcpToolSet || app.type === AppTypeEnum.httpToolSet
-        ? FlowNodeTypeEnum.toolSet
-        : FlowNodeTypeEnum.pluginModule,
+  flowNodeType: AppTypeList.includes(app.type)
+    ? FlowNodeTypeEnum.appModule
+    : app.type === AppTypeEnum.mcpToolSet || app.type === AppTypeEnum.httpToolSet
+      ? FlowNodeTypeEnum.toolSet
+      : FlowNodeTypeEnum.pluginModule,
   avatar: app.avatar,
   name: app.name,
   intro: app.intro,
@@ -99,34 +98,7 @@ export const getTeamAppTemplates = async (data?: {
       }));
     }
   }
-  return getAllApps(data ? listQuery : undefined).then((res) =>
-    res.map((app) => ({
-      tmbId: app.tmbId,
-      id: app._id,
-      pluginId: app._id,
-      isFolder:
-        app.type === AppTypeEnum.folder ||
-        app.type === AppTypeEnum.toolFolder ||
-        app.type === AppTypeEnum.httpToolSet ||
-        app.type === AppTypeEnum.httpPlugin ||
-        app.type === AppTypeEnum.mcpToolSet,
-      templateType: FlowNodeTemplateTypeEnum.teamApp,
-      flowNodeType:
-        app.type === AppTypeEnum.workflow
-          ? FlowNodeTypeEnum.appModule
-          : app.type === AppTypeEnum.mcpToolSet || app.type === AppTypeEnum.httpToolSet
-            ? FlowNodeTypeEnum.toolSet
-            : FlowNodeTypeEnum.pluginModule,
-      avatar: app.avatar,
-      name: app.name,
-      intro: app.intro,
-      showStatus: false,
-      version: app.pluginData?.nodeVersion,
-      isTool: true,
-      sourceMember: app.sourceMember,
-      appType: app.type
-    }))
-  );
+  return getAllApps(data ? listQuery : undefined).then((res) => res.map(mapAppToTeamTemplate));
 };
 
 /** Load one paginated team app template page while preserving toolset child behavior. */

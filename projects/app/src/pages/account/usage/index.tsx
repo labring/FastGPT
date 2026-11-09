@@ -1,4 +1,5 @@
 'use client';
+import { getLocalDateRange } from '@fastgpt/global/common/time/dateRange';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Flex, Box, Button, useDisclosure } from '@chakra-ui/react';
 import type { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
@@ -49,10 +50,9 @@ const UsageTable = () => {
   } = useDisclosure();
 
   const [unit] = useState<UnitType>('day');
-  const [dateRange, setDateRange] = useState<DateRangeType>({
-    from: addDays(new Date(), -7),
-    to: new Date()
-  });
+  const [dateRange, setDateRange] = useState<DateRangeType>(() =>
+    getLocalDateRange(addDays(new Date(), -7), new Date())
+  );
   const [memberFilter, setMemberFilter] = useState(createMultiSelectFilter());
   const [sourceFilter, setSourceFilter] =
     useState<MultiSelectFilterValue<UsageSourceEnum>>(createMultiSelectFilter());

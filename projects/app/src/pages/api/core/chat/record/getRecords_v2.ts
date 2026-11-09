@@ -24,6 +24,8 @@ import {
 
 async function handler(req: ApiRequestProps): Promise<GetRecordsV2ResponseType> {
   const {
+    customUid,
+    authProxy,
     sourceType,
     sourceId,
     chatId,
@@ -47,6 +49,8 @@ async function handler(req: ApiRequestProps): Promise<GetRecordsV2ResponseType> 
   }
 
   const authRes = await authChatTargetCrud({
+    customUid,
+    authProxy,
     req,
     authToken: true,
     authApiKey: true,

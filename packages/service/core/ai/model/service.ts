@@ -24,7 +24,11 @@ import { deleteModelRecords } from './cleanup';
 import { importSystemModels as importSystemModelRecords } from './import';
 import { MongoAIModel } from './schema';
 import { refreshModelTemplates } from './template';
-import { getModelConfigUpdate, sanitizeTeamModelData } from './utils';
+import {
+  assertTeamModelRequestUrlSafe,
+  getModelConfigUpdate,
+  sanitizeTeamModelData
+} from './utils';
 
 const logger = getLogger(LogCategories.MODULE.AI.MODEL);
 
@@ -73,6 +77,9 @@ export const updateModel = async ({
   ...owner
 }: Omit<UpdateModelBody, 'channelType'> & ModelMutationOwner) => {
   const { context, filter } = getMutationScope(owner);
+  if (context.scope === ModelScopeEnum.team) {
+    await assertTeamModelRequestUrlSafe(modelData);
+  }
   const change = await runModelTransaction(context, async (session) => {
     const existing = await MongoAIModel.findOne({ _id: modelId, ...filter })
       .session(session)
@@ -196,13 +203,16 @@ export const updateModelOrder = async ({
   if (changed) await refreshMutationCatalog(context);
 };
 
-/** 创建时覆盖归属并忽略展示 rank；团队模型去除直连配置，唯一索引负责并发重名兜底。 */
+/** 创建时覆盖归属并忽略展示 rank；团队模型清洗测试模式并保留过渡期直连配置，唯一索引负责并发重名兜底。 */
 export const createModel = async ({
   modelData,
   channelIds,
   ...owner
 }: Pick<CreateModelBody, 'modelData' | 'channelIds'> & ModelMutationOwner) => {
   const { context, filter } = getMutationScope(owner);
+  if (context.scope === ModelScopeEnum.team) {
+    await assertTeamModelRequestUrlSafe(modelData);
+  }
   const {
     tmbId: _tmbId,
     teamId: _teamId,
@@ -261,6 +271,11 @@ export const createModelsFromTemplates = async ({
     .lean();
   const names = new Set(existing.map(({ model }) => model));
   const missing = selected.filter(({ model }) => !names.has(model));
+  // 已安装模型只追加渠道，不写入模板配置，因此仅校验实际待新建的端点。
+  if (context.scope === ModelScopeEnum.team) {
+    await Promise.all(missing.map((template) => assertTeamModelRequestUrlSafe(template)));
+  }
+
   const models =
     missing.length === 0
       ? []

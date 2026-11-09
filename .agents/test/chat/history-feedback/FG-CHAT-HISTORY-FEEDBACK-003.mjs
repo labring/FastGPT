@@ -2,10 +2,10 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { runNodeCase, Blocked } from '../../support/runtime.mjs';
+import { runNodeCase } from '../../support/runtime.mjs';
 import { appKeyWorld, roles } from '../../support/app-key.mjs';
 import { success, poll } from '../../support/scenario.mjs';
-import { getGate } from '../../support/gate.mjs';
+import { runningFixture } from './app-key-chat-fixture.mjs';
 import { openEventStream } from '../../support/stream.mjs';
 import { redisTools } from '../../support/private.mjs';
 
@@ -181,37 +181,8 @@ async function execute(context) {
   }
 
   if (context.itemId === 'D4') {
-    const template = await w.db
-      .collection('app_versions')
-      .findOne(
-        { appId: w.oid(c.fixture.apps.historySwitch), isPublish: true },
-        { sort: { time: -1 } }
-      );
-    if (!template) throw new Blocked('D4 需要已发布的 HTTP gate 工作流 apps.historySwitch');
-    const appId = await w.app('runtime', { graph: template });
-    await w.acl('A', appId, roles.manage);
-    const key = await w.createKey('A', appId);
-    await w.acl('A', appId, roles.none);
-    const gate = await getGate(context, c),
-      redis = await redisTools(context, c),
-      question = w.label('gate'),
-      chatId = w.label('running');
-    const barrier = gate.register(question);
-    const streams = [];
-    context.itemFinalizers.push(async () => {
-      barrier.release();
-      await Promise.all(streams.map((s) => s.cancel()));
-      await poll(
-        async () =>
-          assert.equal(await redis.client.get(redis.leaseKey({ sourceId: appId, chatId })), null),
-        60000
-      );
-    });
-    const live = await w.completion(key, appId, { raw: true, stream: true, question, chatId });
-    const stream = openEventStream(live.response);
-    streams.push(stream);
-    gate.track(stream.finished);
-    await barrier.entered();
+    const { appId, key, chatId, barrier, streams } = await runningFixture(w, context);
+    const stream = streams[0];
     assert.equal((await get('/core/chat/init', { chatId }, key)).chatGenerateStatus, 0);
     const response = await c.request({
       role: 'A',
@@ -225,7 +196,6 @@ async function execute(context) {
     assert.equal(response.status, 200);
     const resumed = openEventStream(response);
     streams.push(resumed);
-    gate.track(resumed.finished);
     assert.equal((await call('/v2/chat/stop', { chatId }, 'POST', key)).success, true);
     barrier.release();
     await stream.cancel();
@@ -352,9 +322,14 @@ async function execute(context) {
     return 'S3 与真实 App 沙盒上传/下载字节摘要一致；个人权限与关闭产品态均拒绝，远端沙盒由删除流程清理';
   }
 
-  if (['D8', 'D9', 'D10', 'D11'].includes(context.itemId)) {
+  if (['D8', 'D9', 'D10', 'D11', 'D13', 'D15'].includes(context.itemId)) {
     const { runChatApiCoverage } = await import('./app-key-chat-matrix.mjs');
     return runChatApiCoverage(w, context);
+  }
+
+  if (['D12', 'D14', 'D16'].includes(context.itemId)) {
+    const { runCustomUidCoverage } = await import('./app-key-customuid.mjs');
+    return runCustomUidCoverage(w, context);
   }
 
   const d = await seed();
@@ -662,6 +637,23 @@ async function execute(context) {
 await runNodeCase(
   'FG-CHAT-HISTORY-FEEDBACK-003',
   Object.fromEntries(
-    ['D1', 'D2', 'D3', 'D4', 'D5', 'D6', 'D7', 'D8', 'D9', 'D10', 'D11'].map((id) => [id, execute])
+    [
+      'D1',
+      'D2',
+      'D3',
+      'D4',
+      'D5',
+      'D6',
+      'D7',
+      'D8',
+      'D9',
+      'D10',
+      'D11',
+      'D12',
+      'D13',
+      'D14',
+      'D15',
+      'D16'
+    ].map((id) => [id, execute])
   )
 );

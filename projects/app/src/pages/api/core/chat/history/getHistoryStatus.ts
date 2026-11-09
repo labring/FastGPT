@@ -18,12 +18,14 @@ export async function handler(
   req: ApiRequestProps,
   _res: ApiResponseType
 ): Promise<GetHistoryStatusResponseType> {
-  const { sourceType, sourceId, chatIds, outLinkAuthData } = parseApiInput({
+  const { customUid, authProxy, sourceType, sourceId, chatIds, outLinkAuthData } = parseApiInput({
     req,
     bodySchema: GetHistoryStatusBodySchema
   }).body;
 
   const match = await buildChatHistoryMatch({
+    customUid,
+    authProxy,
     req,
     sourceType,
     sourceId,

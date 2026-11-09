@@ -10,7 +10,7 @@ import { useVirtualList } from '@fastgpt/web/hooks/useVirtualList';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getAppFolderPath } from '@/web/core/app/api/app';
 import { getMyAppsV2 } from '@/web/core/app/api';
-import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { AppTypeEnum, AppTypeList } from '@fastgpt/global/core/app/constants';
 import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 
 const SelectAppModal = ({
@@ -40,7 +40,7 @@ const SelectAppModal = ({
   const { scrollDataList, ScrollList, isLoading } = useVirtualList(getMyAppsV2, {
     params: {
       parentId,
-      type: [AppTypeEnum.folder, AppTypeEnum.simple, AppTypeEnum.workflow]
+      type: [AppTypeEnum.folder, ...AppTypeList]
     },
     pageSize: 20,
     itemHeight: 40,

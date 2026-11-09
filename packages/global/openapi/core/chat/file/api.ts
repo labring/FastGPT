@@ -1,3 +1,4 @@
+import { ChatIdSchema } from '../../../../core/chat/schema';
 import { OutLinkChatAuthSchema } from '../../../../support/permission/chat';
 import { AppFileSelectConfigTypeSchema } from '../../../../core/app/type/config.schema';
 import z from 'zod';
@@ -17,7 +18,7 @@ const withInternalChatFileTarget = <T extends z.ZodRawShape>(shape: T) =>
 
 export const PresignChatFileGetUrlRawSchema = createOutLinkChatTargetInputSchema({
   key: z.string().min(1).describe('文件key'),
-  chatId: z.string().min(1).describe('对话ID'),
+  chatId: ChatIdSchema.min(1).describe('对话ID'),
   outLinkAuthData: OutLinkChatAuthSchema.optional().describe('外链鉴权数据')
 }).meta({
   example: {
@@ -31,7 +32,7 @@ export const PresignChatFileGetUrlRawSchema = createOutLinkChatTargetInputSchema
 });
 export const PresignChatFileGetUrlSchema = withChatFileTarget({
   key: z.string().min(1).describe('文件key'),
-  chatId: z.string().min(1).describe('对话ID'),
+  chatId: ChatIdSchema.min(1).describe('对话ID'),
   outLinkAuthData: OutLinkChatAuthSchema.optional().describe('外链鉴权数据')
 });
 export type PresignChatFileGetUrlParams = z.input<typeof PresignChatFileGetUrlSchema>;
@@ -47,7 +48,7 @@ const ChatFileUploadHintShape = {
 
 export const PresignChatFilePostUrlRawSchema = createOutLinkChatTargetInputSchema({
   ...ChatFileUploadHintShape,
-  chatId: z.string().min(1).describe('对话ID'),
+  chatId: ChatIdSchema.min(1).describe('对话ID'),
   outLinkAuthData: OutLinkChatAuthSchema.optional().describe('外链鉴权数据')
 }).meta({
   example: {
@@ -61,7 +62,7 @@ export const PresignChatFilePostUrlRawSchema = createOutLinkChatTargetInputSchem
 });
 export const PresignChatFilePostUrlSchema = withChatFileTarget({
   ...ChatFileUploadHintShape,
-  chatId: z.string().min(1).describe('对话ID'),
+  chatId: ChatIdSchema.min(1).describe('对话ID'),
   outLinkAuthData: OutLinkChatAuthSchema.optional().describe('外链鉴权数据')
 });
 export type PresignChatFilePostUrlParams = z.input<typeof PresignChatFilePostUrlSchema>;
@@ -70,7 +71,7 @@ export type PresignChatFilePostUrlRuntimeParams = z.output<typeof PresignChatFil
 export const PresignDraftChatFilePostUrlRawSchema = createChatTargetInputSchema(
   {
     ...ChatFileUploadHintShape,
-    chatId: z.string().min(1).describe('对话ID'),
+    chatId: ChatIdSchema.min(1).describe('对话ID'),
     fileSelectConfig: AppFileSelectConfigTypeSchema.describe('未保存草稿使用的文件选择配置')
   },
   { allowAppApiKey: false }
@@ -87,7 +88,7 @@ export const PresignDraftChatFilePostUrlRawSchema = createChatTargetInputSchema(
 });
 export const PresignDraftChatFilePostUrlSchema = withInternalChatFileTarget({
   ...ChatFileUploadHintShape,
-  chatId: z.string().min(1).describe('对话ID'),
+  chatId: ChatIdSchema.min(1).describe('对话ID'),
   fileSelectConfig: AppFileSelectConfigTypeSchema.describe('未保存草稿使用的文件选择配置')
 });
 export type PresignDraftChatFilePostUrlParams = z.input<typeof PresignDraftChatFilePostUrlSchema>;

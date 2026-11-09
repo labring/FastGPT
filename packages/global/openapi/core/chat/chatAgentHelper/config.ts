@@ -1,3 +1,4 @@
+import { ChatIdSchema } from '../../../../core/chat/schema';
 import z from 'zod';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
 import { ChatAgentConfigFormDataSchema } from '../../../../core/ai/auxiliaryGeneration/type';
@@ -14,7 +15,7 @@ export const ChatAgentConfigLoadBodySchema = z.object({
     description: '应用 ID',
     example: '67f4c91c79a4d61b1f116b2a'
   }),
-  chatId: z.string().min(1).meta({
+  chatId: ChatIdSchema.min(1).meta({
     description: 'Chat Agent 辅助生成会话 ID',
     example: 'helper-chat-id'
   }),

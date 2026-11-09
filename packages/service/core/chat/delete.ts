@@ -33,7 +33,7 @@ type ChatResourceRecord = {
   chatId: string;
   teamId: string;
   tmbId: string;
-  outLinkUid?: unknown;
+  outLinkUid?: string;
 };
 
 const getChatResourceUid = (chat: ChatResourceRecord) => {
@@ -92,8 +92,8 @@ export async function deleteChatResourcesBySource({
   if (scope) {
     for (const chat of rawChatList ?? []) assertChatAccess({ chat, scope });
   }
-  // 成员级授权必须先确认父会话归属；资源级授权仍可清理指定 ID 的历史孤立记录。
-  if (scope?.tmbId !== undefined) {
+  // 成员或使用者级授权必须先确认父会话归属；资源级授权仍可清理指定 ID 的历史孤立记录。
+  if (scope?.tmbId !== undefined || scope?.outLinkUid !== undefined) {
     if (!rawChatList?.length) return;
     Object.assign(chatQuery, { chatId: { $in: rawChatList.map((chat) => chat.chatId) } });
   }

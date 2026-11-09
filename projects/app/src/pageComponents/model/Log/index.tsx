@@ -1,3 +1,4 @@
+import { getLocalDateRange } from '@fastgpt/global/common/time/dateRange';
 import { sortModelSelectorModels } from '@/components/Select/AIModelSelector.utils';
 import { getChannelList, getChannelLog, getLogDetail } from '@/web/core/ai/model/channel';
 import {
@@ -65,18 +66,7 @@ const ChannelLog = ({ Tab, channelType }: { Tab: React.ReactNode; channelType: C
   }>({
     request_id: '',
     code_type: 'all',
-    dateRange: {
-      from: (() => {
-        const today = addDays(new Date(), -1);
-        today.setHours(0, 0, 0, 0);
-        return today;
-      })(),
-      to: (() => {
-        const today = new Date();
-        today.setHours(23, 59, 59, 999);
-        return today;
-      })()
-    }
+    dateRange: getLocalDateRange(addDays(new Date(), -1), new Date())
   });
 
   const { data: channelList = [] } = useRequest(

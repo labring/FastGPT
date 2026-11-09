@@ -1392,4 +1392,41 @@ describe('getAgentToolRuntimeStatus & serializeAgentTool', () => {
     });
     expect(serializeAgentTool({ tool: baseInvalidTool }).inputs).toBeUndefined();
   });
+
+  it('omits built-in history only for appModule tools while preserving plugin and tool history inputs', () => {
+    const inputs = [
+      createMockInput({
+        key: NodeInputKeyEnum.forbidStream,
+        selectedType: FlowNodeInputTypeEnum.switch,
+        renderTypeList: [FlowNodeInputTypeEnum.switch],
+        value: true
+      }),
+      createMockInput({
+        key: NodeInputKeyEnum.history,
+        selectedType: FlowNodeInputTypeEnum.input,
+        renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.agentGenerated],
+        value: 'order audit history'
+      })
+    ];
+    const serializeWithNodeType = (flowNodeType: FlowNodeTypeEnum) =>
+      serializeAgentTool({
+        tool: {
+          id: 'tool-id',
+          pluginId: 'tool-id',
+          name: 'Tool',
+          avatar: '',
+          version: '1.0.0',
+          templateType: 'teamApp',
+          flowNodeType,
+          intro: '',
+          inputs,
+          outputs: []
+        }
+      }).config;
+
+    expect(serializeWithNodeType(FlowNodeTypeEnum.appModule)).toEqual({});
+    expect(serializeWithNodeType(FlowNodeTypeEnum.pluginModule)).toEqual({
+      [NodeInputKeyEnum.history]: 'order audit history'
+    });
+  });
 });

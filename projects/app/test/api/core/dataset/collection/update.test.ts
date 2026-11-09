@@ -17,7 +17,10 @@ import { getFakeUsers } from '@test/datas/users';
 import { Call } from '@test/utils/request';
 
 const defaultSessionRun = vi.mocked(mongoSessionRun).getMockImplementation()!;
-afterEach(() => vi.mocked(mongoSessionRun).mockImplementation(defaultSessionRun));
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.mocked(mongoSessionRun).mockImplementation(defaultSessionRun);
+});
 
 beforeEach(async () => {
   const actual = await vi.importActual<typeof import('@fastgpt/service/common/mongo/sessionRun')>(
@@ -115,6 +118,7 @@ describe('update collection', () => {
 
   it('普通移动复用批量鉴权，只解析一次身份并实际落库', async () => {
     const { actor, file, target } = await fixture();
+    const updateOne = vi.spyOn(MongoDatasetCollection, 'updateOne');
     vi.mocked(parseHeaderCert).mockClear();
     const result = await Call(updateHandler, {
       auth: actor,
@@ -122,10 +126,51 @@ describe('update collection', () => {
     });
     expect(result.code).toBe(200);
     expect(parseHeaderCert).toHaveBeenCalledTimes(1);
+    expect(updateOne).toHaveBeenCalledExactlyOnceWith(
+      { _id: String(file._id) },
+      { $set: { parentId: String(target._id), inheritPermission: false } },
+      { session: expect.anything() }
+    );
     expect(String((await MongoDatasetCollection.findById(file._id).lean())?.parentId)).toBe(
       String(target._id)
     );
   });
+
+  it('skips metadata writes when no fields are provided', async () => {
+    const { owner, file } = await fixture();
+    const updateOne = vi.spyOn(MongoDatasetCollection, 'updateOne');
+
+    const result = await Call(updateHandler, {
+      auth: owner,
+      body: { id: String(file._id) }
+    });
+
+    expect(result.code).toBe(200);
+    expect(updateOne).not.toHaveBeenCalled();
+  });
+
+  it('persists false and empty tags in a non-empty metadata update', async () => {
+    const { owner, file } = await fixture();
+    await MongoDatasetCollection.updateOne({ _id: file._id }, { $set: { forbid: true } });
+    const updateOne = vi.spyOn(MongoDatasetCollection, 'updateOne');
+
+    const result = await Call(updateHandler, {
+      auth: owner,
+      body: { id: String(file._id), forbid: false, tags: [] }
+    });
+
+    expect(result.code).toBe(200);
+    expect(updateOne).toHaveBeenCalledExactlyOnceWith(
+      { _id: String(file._id) },
+      { $set: { forbid: false, tags: [] } },
+      { session: expect.anything() }
+    );
+    expect(await MongoDatasetCollection.findById(file._id).lean()).toMatchObject({
+      forbid: false,
+      tags: []
+    });
+  });
+
   it('externalFileId 定位的 ObjectId 可正常移动，身份只解析一次', async () => {
     const { actor, datasetId, file, target } = await fixture();
     await MongoDatasetCollection.updateOne({ _id: file._id }, { externalFileId: 'external-move' });

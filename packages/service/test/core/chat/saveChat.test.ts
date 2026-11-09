@@ -702,6 +702,38 @@ describe('pushChatRecords', () => {
       });
     });
 
+    it('should strip client appSandboxEnabled metadata on non-test chats and persist runtime hasAgentSandbox in summary', async () => {
+      const props = createMockProps(
+        {
+          chatId: 'sandbox-security-chat',
+          source: ChatSourceEnum.api,
+          metadata: {
+            source: 'api',
+            appSandboxEnabled: true
+          },
+          workflowRuntimeSummary: {
+            citeCollectionIds: [],
+            errorCount: 0,
+            totalPoints: 0,
+            llmInputTokens: 3,
+            llmOutputTokens: 5,
+            hasAgentSandbox: true
+          }
+        },
+        { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
+      );
+
+      await pushChatRecords(props);
+
+      const chat = await MongoChat.findOne({ appId: testAppId, chatId: props.chatId }).lean();
+      expect(chat?.metadata).toEqual({ source: 'api' });
+      expect(chat?.summary).toEqual({
+        llmInputTokens: 3,
+        llmOutputTokens: 5,
+        hasAgentSandbox: true
+      });
+    });
+
     it('should track duration seconds', async () => {
       const props = createMockProps(
         {

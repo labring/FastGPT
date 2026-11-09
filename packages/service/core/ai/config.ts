@@ -1,10 +1,17 @@
 import OpenAI from '@fastgpt/global/core/ai';
 import { type OpenaiAccountType } from '@fastgpt/global/support/user/team/type';
 import type { AIModelDataType } from '@fastgpt/global/core/ai/model/schema';
-import { isSystemModel } from '@fastgpt/global/core/ai/model/utils';
+import { isSystemModel, isTeamModel } from '@fastgpt/global/core/ai/model/utils';
 import { serviceEnv } from '../../env';
 import { getMemberGroupId } from '../../thirdProvider/aiproxy/group';
-import { getLegacyOpenAIRequestOptions, getLegacyAxiosRequestConfig } from './legacy/requestUrl';
+import { axios, axiosWithoutSSRF } from '../../common/api/axios';
+import { safeLegacyFetch } from '../../common/api/safeFetch';
+import {
+  getLegacyAxiosRequestConfig,
+  getLegacyModelEndpoint,
+  getLegacyOpenAIRequestOptions,
+  hasLegacyRequestUrl
+} from './legacy/requestUrl';
 
 const aiProxyBaseUrl = serviceEnv.AIPROXY_API_ENDPOINT
   ? `${serviceEnv.AIPROXY_API_ENDPOINT}/v1`
@@ -35,11 +42,15 @@ export const getAIApi = (props?: {
 }) => {
   const { userKey, timeout, model } = props || {};
   const userOpenAIAccount = getUserOpenAIAccount(userKey);
+  // 仅对团队成员创建的模型启用运行时 SSRF 防护；系统模型由 root 配置，保持原有行为。
+  const legacyEndpoint = userOpenAIAccount ? undefined : getLegacyModelEndpoint(model);
+  const guardedLegacyEndpoint = legacyEndpoint && isTeamModel(model) ? legacyEndpoint : undefined;
 
   const baseUrl = userOpenAIAccount?.baseUrl || openaiBaseUrl;
   const apiKey = userOpenAIAccount?.key || openaiBaseKey;
 
-  const defaultHeaders = model ? getAiproxyScopeHeaders(model, baseUrl) : undefined;
+  const defaultHeaders =
+    model && !guardedLegacyEndpoint ? getAiproxyScopeHeaders(model, baseUrl) : undefined;
 
   return {
     ai: new OpenAI({
@@ -48,7 +59,8 @@ export const getAIApi = (props?: {
       timeout,
       maxRetries: 2,
       defaultHeaders:
-        defaultHeaders && Object.keys(defaultHeaders).length > 0 ? defaultHeaders : undefined
+        defaultHeaders && Object.keys(defaultHeaders).length > 0 ? defaultHeaders : undefined,
+      ...(guardedLegacyEndpoint ? { fetch: safeLegacyFetch } : {})
     }),
     requestMeta: {
       usedUserOpenAIKey: !!userOpenAIAccount,
@@ -83,7 +95,9 @@ export const getAiproxyScopeHeaders = (
   modelData: AiproxyScopeModelInput,
   baseUrl: string | undefined
 ): Record<string, string> => {
-  if (!baseUrl || baseUrl !== aiProxyBaseUrl || !modelData) return {};
+  if (!baseUrl || baseUrl !== aiProxyBaseUrl || !modelData || hasLegacyRequestUrl(modelData)) {
+    return {};
+  }
 
   // System models are served by system channels only (global scope).
   if (isSystemModel(modelData)) {
@@ -104,7 +118,7 @@ export const getAiproxyScopeHeaders = (
 
 /**
  * 统一生成传给 OpenAI SDK 方法的 options（path、Authorization 及 AI Proxy 路由标头）。
- * 内部自动通过 legacy 模块处理系统模型自带的 requestUrl/requestAuth 兼容逻辑。
+ * 内部自动通过 legacy 模块处理模型自带的 requestUrl/requestAuth 兼容逻辑。
  */
 export const getModelOpenAIOptions = ({
   model,
@@ -143,7 +157,7 @@ export const getModelOpenAIOptions = ({
 
 /**
  * 统一生成传给 Axios 方法的目标 URL 与标头（如 Rerank、STT）。
- * 内部自动通过 legacy 模块处理系统模型自带的 requestUrl/requestAuth 兼容逻辑。
+ * 内部自动通过 legacy 模块处理模型自带的 requestUrl/requestAuth 兼容逻辑。
  */
 export const getModelAxiosConfig = ({
   model,
@@ -168,3 +182,10 @@ export const getModelAxiosConfig = ({
     scopeHeaders
   });
 };
+
+/**
+ * 选择模型请求使用的 Axios 实例。
+ * 团队模型命中自定义端点时使用带 SSRF 拦截的实例，系统模型和 AI Proxy 请求保持 axiosWithoutSSRF。
+ */
+export const getModelRequestClient = (model?: AiproxyScopeModelInput) =>
+  hasLegacyRequestUrl(model) && isTeamModel(model) ? axios : axiosWithoutSSRF;

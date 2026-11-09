@@ -85,6 +85,27 @@ describe('request utils', () => {
     dispatchEventMock.mockReturnValue(true);
   });
 
+  it('preserves inclusive date boundaries and milliseconds in GET and POST requests', async () => {
+    const start = new Date(2026, 10, 2, 0, 0, 0, 0);
+    const end = new Date(2026, 10, 9, 23, 59, 59, 999);
+    const spy = vi
+      .spyOn(instance, 'request')
+      .mockResolvedValue({ data: { code: 200, data: null } });
+    try {
+      await GET('/test', { dateStart: start, dateEnd: end });
+      await POST('/test', { dateStart: start, dateEnd: end });
+      const [get, post] = spy.mock.calls.slice(-2).map(([config]) => config);
+      for (const body of [get.params, post.data]) {
+        expect(body.dateStart).toMatch(/T00:00:00\.000[+-]\d{2}:\d{2}$/);
+        expect(body.dateEnd).toMatch(/T23:59:59\.999[+-]\d{2}:\d{2}$/);
+        expect(new Date(body.dateStart).getTime()).toBe(start.getTime());
+        expect(new Date(body.dateEnd).getTime()).toBe(end.getTime());
+      }
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
   describe('deduplicate request', () => {
     it('should share an in-flight request with the same params', async () => {
       let resolveRequest: ((value: any) => void) | undefined;
@@ -294,6 +315,7 @@ describe('request utils', () => {
     });
 
     it('should reject for undefined response', async () => {
+      // @ts-expect-error 验证运行时收到非法空响应时的处理。
       await expect(checkRes(undefined)).rejects.toBe('服务器异常');
     });
   });
