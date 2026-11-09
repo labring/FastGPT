@@ -100,6 +100,13 @@ export const maskToolImagePayload = (
 };
 
 /**
+ * 从持久化 response 文本中移除图片 data URI。
+ * content 通道负责保留可恢复图片；response 只保留展示文本，避免 base64 进入 ChatItem。
+ */
+export const maskToolResponseImageData = (response: string) =>
+  response.replace(/data:image\/([a-z0-9.+-]+)(?:;[^,;]+)*;base64,[a-z0-9+/=_-]+/gi, '[Image: $1]');
+
+/**
  * 把 MCP `CallToolResult.content` 的原生内容块转换成 tool content parts。
  *
  * MCP 协议里的图片块是 `{ type: 'image', data, mimeType }`（base64），不是 `image_url`；

@@ -165,6 +165,31 @@ describe('runAgentLoopApplication tool visibility', () => {
     expect((await run({ events })).forwarded).toEqual(events);
   });
 
+  it('masks image data URIs in tool response while preserving content', async () => {
+    const content = [
+      { type: 'text' as const, text: 'rendered' },
+      {
+        type: 'image_url' as const,
+        image_url: { url: 'data:image/png;base64,aW1hZ2U=' }
+      }
+    ];
+    const events: AgentLoopEvent[] = [
+      requestEnd([publicCall]),
+      {
+        ...toolEnd(publicCall),
+        response: 'rendered data:image/png;charset=utf-8;base64,aW1hZ2U=',
+        content
+      }
+    ];
+
+    const { forwarded } = await run({ events });
+    expect(forwarded[1]).toMatchObject({
+      type: 'tool_run_end',
+      response: 'rendered [Image: png]',
+      content
+    });
+  });
+
   it.each(['request', 'start'] as const)(
     'buffers configured file reads until complete parameters arrive at the %s boundary',
     async (boundary) => {
