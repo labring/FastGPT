@@ -94,10 +94,6 @@ export type SystemConfigType = {
       appID: string;
       appSecret: string;
     };
-    dingtalk?: {
-      clientId: string;
-      secret: string;
-    };
     wecom?: {
       suiteId: string;
       secret: string;
@@ -128,7 +124,6 @@ export type SystemConfigType = {
       ALIPAY_ROOT_CERT_CONTENT?: string;
       ALIPAY_PUBLIC_CERT_CONTENT?: string;
       ALIPAY_ENDPOINT?: string;
-      ALIPAY_NOTIFY_URL?: string;
     };
     bank?: {
       description?: string;
@@ -204,7 +199,6 @@ export type ConfigFormType = {
       vectorRecallConcurrency: FastGPTConfigFileType['systemEnv']['vectorRecallConcurrency'];
       customPdfParse?: customPdfParseType;
       fileUrlWhitelist?: string[];
-      ip_whitelist?: string;
       sso?: FastGPTConfigFileType['systemEnv']['sso'];
       workflowHttpNode?: {
         ignoreHttpsCertificate?: boolean;

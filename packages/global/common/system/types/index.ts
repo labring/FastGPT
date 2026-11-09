@@ -109,7 +109,6 @@ export const FastGPTFeConfigsSchema = z.looseObject({
   chineseRedirectUrl: z.string().optional().meta({ description: '中国大陆地区访问重定向跳转地址' }),
   botIframeUrl: z.string().optional().meta({ description: '嵌入式对话助手 iframe 页面地址' }),
 
-  show_appStore: z.boolean().optional().meta({ description: '是否展示应用市场' }),
   show_git: z.boolean().optional().meta({ description: '是否展示 GitHub 仓库入口及 Star 信息' }),
   show_pay: z.boolean().optional().meta({ description: '是否展示在线充值/支付相关入口' }),
   show_openai_account: z
@@ -340,13 +339,7 @@ export const FastGPTFeConfigsSchema = z.looseObject({
         .meta({ description: '不同云厂商 DNS 绑定域名配置' })
     })
     .optional()
-    .meta({ description: '自定义独立域名绑定与 SSL 证书配置' }),
-
-  // tmp
-  agentSandboxFree: z
-    .boolean()
-    .optional()
-    .meta({ description: 'Agent 代码沙箱环境是否处于免费体验期' })
+    .meta({ description: '自定义独立域名绑定与 SSL 证书配置' })
 });
 export type FastGPTFeConfigsType = z.infer<typeof FastGPTFeConfigsSchema>;
 
@@ -370,13 +363,6 @@ export type LangfuseConfigType = z.infer<typeof LangfuseConfigSchema>;
 
 export const CustomDomainSchema = z.looseObject({
   kc: z
-    .looseObject({
-      aliyun: z.string().optional(),
-      tencent: z.string().optional(),
-      volcengine: z.string().optional()
-    })
-    .optional(),
-  domain: z
     .looseObject({
       aliyun: z.string().optional(),
       tencent: z.string().optional(),
@@ -445,7 +431,6 @@ export const SystemEnvSchema = z.looseObject({
     .array(z.string())
     .optional()
     .meta({ description: '后端外部文件 URL 域名白名单，不向客户端下发' }),
-  ip_whitelist: z.string().optional().meta({ description: '历史 IP 白名单，仅保存在服务端配置中' }),
   customDomain: CustomDomainSchema.optional(),
   workflowHttpNode: z
     .looseObject({

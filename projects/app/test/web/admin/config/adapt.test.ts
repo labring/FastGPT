@@ -219,7 +219,6 @@ describe('backend configuration boundary', () => {
         fastgpt: {
           feConfigs: {
             fileUrlWhitelist: ['private.internal'],
-            ip_whitelist: '10.0.0.1',
             evalFileMaxLines: 100
           },
           systemEnv: { fileUrlWhitelist: configured }
@@ -228,10 +227,8 @@ describe('backend configuration boundary', () => {
       });
       const stored = formatFormData2ConfigStore(form);
       expect(stored.fastgpt.systemEnv.fileUrlWhitelist).toEqual(configured ?? ['private.internal']);
-      expect(stored.fastgpt.systemEnv.ip_whitelist).toBe('10.0.0.1');
       for (const key of [
         'fileUrlWhitelist',
-        'ip_whitelist',
         'evalFileMaxLines',
         'uploadFileMaxAmount',
         'uploadFileMaxSize'

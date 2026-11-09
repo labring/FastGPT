@@ -13,7 +13,6 @@ const removedFeConfigKeys = [
   'agentSandboxProxyUrl',
   'evalFileMaxLines',
   'fileUrlWhitelist',
-  'ip_whitelist',
   'uploadFileMaxAmount',
   'uploadFileMaxSize'
 ];
@@ -92,7 +91,6 @@ export function formatConfigStore2FormSchema({
     fileUrlWhitelist = Array.isArray(feConfigs?.fileUrlWhitelist)
       ? feConfigs.fileUrlWhitelist
       : undefined,
-    ip_whitelist = typeof feConfigs?.ip_whitelist === 'string' ? feConfigs.ip_whitelist : undefined,
     sso: _serverSso,
     workflowHttpNode = { ignoreHttpsCertificate: false },
     ...systemEnvProps
@@ -139,7 +137,6 @@ export function formatConfigStore2FormSchema({
         vlmMaxProcess,
         customPdfParse,
         fileUrlWhitelist,
-        ip_whitelist,
         sso: ssoConfigs.serverConfig,
         workflowHttpNode,
         ...systemEnvProps

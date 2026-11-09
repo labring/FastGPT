@@ -250,16 +250,6 @@ export const Settings = () => {
           </>
         )}
       </>
-
-      {/* <>
-        <FirstTitle title="服务 Ip 地址列表" />
-        <FormItem>
-          <Textarea
-            {...register('feConfigs.ip_whitelist')}
-            placeholder="123.345.567.789\n234.345.456.678;"
-          />
-        </FormItem>
-      </> */}
     </SettingPage>
   );
 };

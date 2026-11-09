@@ -79,7 +79,7 @@ describe('initFastGPTConfig', () => {
   it.each([false, true])('免费提示仅由 ENV 控制：%s，忽略旧配置', (enabled) => {
     serviceEnv.AGENT_SANDBOX_SHOW_FREE_TIP = enabled;
     initFastGPTConfig({
-      feConfigs: { agentSandboxFree: !enabled, show_agent_sandbox_free_tip: !enabled },
+      feConfigs: { show_agent_sandbox_free_tip: !enabled },
       systemEnv: {}
     } as any);
     expect(global.feConfigs.show_agent_sandbox_free_tip).toBe(enabled);
@@ -136,10 +136,9 @@ describe('initFastGPTConfig', () => {
             workflowParallelRunMaxConcurrency: 20
           }
         },
-        systemEnv: { fileUrlWhitelist, ip_whitelist: '10.0.0.1' }
+        systemEnv: { fileUrlWhitelist }
       } as any);
       expect(global.systemEnv.fileUrlWhitelist).toEqual(fileUrlWhitelist);
-      expect(global.systemEnv.ip_whitelist).toBe('10.0.0.1');
       expect(global.feConfigs.limit).toMatchObject({
         uploadFileMaxAmount: 7,
         uploadFileMaxSize: 32,

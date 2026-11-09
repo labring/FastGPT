@@ -374,7 +374,6 @@ describe('getInitData anonymous configuration filtering', () => {
     async (authenticated) => {
       global.feConfigs.agentSandboxProxyUrl = 'wss://private-proxy.example.com';
       global.feConfigs.fileUrlWhitelist = ['private.internal'];
-      global.feConfigs.ip_whitelist = '10.0.0.1';
       global.feConfigs.evalFileMaxLines = 99;
       Object.assign(global.feConfigs, {
         accountCancellation: { enabled: true, secret: 'private' }
@@ -409,7 +408,6 @@ describe('getInitData anonymous configuration filtering', () => {
       for (const key of [
         'agentSandboxProxyUrl',
         'fileUrlWhitelist',
-        'ip_whitelist',
         'evalFileMaxLines',
         'futurePrivateField'
       ]) {

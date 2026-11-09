@@ -110,12 +110,12 @@
 #### C1. 无实际消费或历史残留
 
 - [x] **C1.1（原第 10 项）`microsoft.customButton`**：已按 D2 删除 Schema、表单、registry/pageFields、旧类型、迁移映射和公开投影；登录按钮继续使用 `labels.microsoft`。
-- [ ] **C1.2（原第 11 项，P3，依赖 D8）`show_appStore`**：无消费，建议删除。
+- [x] **C1.2（原第 11 项）`show_appStore`**：已删除旧类型声明。
 - [x] **C1.3（原第 12 项）`show_batch_eval`**：已按 D3 删除 `feConfigs.show_batch_eval` 声明和赋值，保留 license `functions.eval` 业务授权。
-- [ ] **C1.4（原第 13 项，P3，依赖 D8）`agentSandboxFree`**：界面使用 `show_agent_sandbox_free_tip`，删除旧字段。
-- [ ] **C1.5（原第 14 项，P3，依赖 D8）`systemEnv.ip_whitelist`**：删除残留声明和旧表单控件。
-- [ ] **C1.6（原第 15 项，P3，依赖 D8）`systemEnv.customDomain.domain.*`**：删除；实际读取 `feConfigs.customDomain.domain`。
-- [ ] **C1.7（原第 16 项，P3，依赖 D8）旧 Pro 钉钉/支付宝类型**：确认无迁移/表单引用后删除旧类型。
+- [x] **C1.4（原第 13 项）`agentSandboxFree`**：已删除类型声明和运行时赋值，保留 ENV 驱动的 `show_agent_sandbox_free_tip`。
+- [x] **C1.5（原第 14 项）`systemEnv.ip_whitelist`**：已删除 Schema、旧类型、旧表单/注释和 adapt 迁移逻辑。
+- [x] **C1.6（原第 15 项）`systemEnv.customDomain.domain.*`**：已从旧 SystemEnv 类型删除；业务域名继续使用 `feConfigs.customDomain.domain`/新 site 字段。
+- [x] **C1.7（原第 16 项）旧 Pro 钉钉/支付宝类型**：已删除旧 Pro/App 类型和旧支付宝 Notify URL 表单项。
 - [x] **C1.8（原第 17 项）旧 Pro `auth.sms.*_EN`**：已按 D4 标记历史兼容，仅保留迁移读取，新表单不写入。
 - [x] **C1.9（原第 18 项）`SYNC_INDEX`**：已按 D5 清理当前 main 部署模板、生成文件和文档；Pro 当前 Helm chart 同步移除；历史 v4.16 文件保持不动。
 - 统一验收：registry、pageFields、旧类型、表单、`20260929_cleanup_instance_config_deprecated_fields`、相关测试同步；存量 overrides 不因 strict schema 读取失败。

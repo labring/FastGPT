@@ -477,9 +477,6 @@ export const ModelSettings = () => {
       >
         <Input {...register('alipay.ALIPAY_ENDPOINT')} placeholder="" />
       </FormItem>
-      <FormItem title="Notify URL" description="没用到，随便填个">
-        <Input {...register('alipay.ALIPAY_NOTIFY_URL')} placeholder="" />
-      </FormItem>
       <SecondTitle title="对公支付消息提示" />
       <FormItem title="消息提示" description="支持markdown格式">
         <Textarea

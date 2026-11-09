@@ -259,7 +259,6 @@ async function doInitSystemConfig({
       payConfig,
       payFormUrl: instanceConfig.commercial.payFormUrl,
       // 沙箱免费提示仍以 ENV 为权威，未迁入实例配置（Schema 无消费点）。
-      agentSandboxFree: serviceEnv.AGENT_SANDBOX_SHOW_FREE_TIP,
 
       uploadFileMaxSize: instanceConfig.resource.uploadFileMaxSize,
       uploadFileMaxAmount: instanceConfig.resource.uploadFileMaxAmount,
