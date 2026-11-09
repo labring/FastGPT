@@ -23,11 +23,11 @@ vi.mock('@/web/common/system/useDomainConfig', () => ({
     revision: 1,
     isLoading: false,
     overrides: domain === 'auth' ? mocks.authOverrides : {},
-    effectiveConfig: filterDomainDataByEdition(
+    effectiveConfig: filterDomainDataByEdition({
       domain,
-      resolveSystemInstanceConfig({})[domain],
-      mocks.isPro ? 'pro' : 'community'
-    ),
+      data: resolveSystemInstanceConfig({})[domain],
+      edition: mocks.isPro ? 'pro' : 'community'
+    }),
     refetch: vi.fn()
   }),
   updateDomainConfigApi: mocks.update

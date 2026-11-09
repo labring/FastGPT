@@ -3,7 +3,12 @@ import { getLogger, LogCategories } from '../../logger';
 import { setCron } from '../../system/cron';
 import { checkTimerLock } from '../../system/timerLock/utils';
 import { TimerIdEnum } from '../../system/timerLock/constants';
-import { getCurrentSiteAvatarKeys, isSiteAvatarObject } from '../siteAvatarReferences';
+import {
+  getCurrentSiteAvatarKeys,
+  isSiteAvatarObject,
+  markSiteAvatarDeletionPending,
+  markSiteAvatarReferenced
+} from '../siteAvatarReferences';
 
 const logger = getLogger(LogCategories.INFRA.S3);
 
@@ -27,7 +32,7 @@ export async function clearExpiredMinioFiles() {
     const hasExpiredAvatar = expiredFiles.some((file) =>
       isSiteAvatarObject(file.bucketName, file.minioKey)
     );
-    const referencedAvatarKeys = hasExpiredAvatar ? await getCurrentSiteAvatarKeys() : undefined;
+    const currentSiteRefs = hasExpiredAvatar ? await getCurrentSiteAvatarKeys() : undefined;
 
     let success = 0;
     let fail = 0;
@@ -41,7 +46,7 @@ export async function clearExpiredMinioFiles() {
         const isAvatar = isSiteAvatarObject(file.bucketName, file.minioKey);
 
         if (isAvatar) {
-          if (referencedAvatarKeys === undefined) {
+          if (currentSiteRefs === undefined) {
             logger.warn(
               'Deferred avatar S3 TTL cleanup because current site config is unavailable',
               {
@@ -50,9 +55,23 @@ export async function clearExpiredMinioFiles() {
             );
             continue;
           }
-          if (referencedAvatarKeys.has(file.minioKey)) {
+          if (currentSiteRefs.avatarKeys.has(file.minioKey)) {
+            await markSiteAvatarReferenced({
+              avatarKey: file.minioKey,
+              siteRevision: currentSiteRefs.revision
+            });
             await MongoS3TTL.deleteOne({ _id: file._id });
             logger.info('Kept referenced avatar and removed its TTL', {
+              key: file.minioKey
+            });
+            continue;
+          }
+
+          // 只有已登记 pending 的头像才能进入删除队列。若状态仍是 referenced
+          // （说明保存回调尚未完成或存在更新引用），本轮保留对象并清掉过期 TTL。
+          if (!(await markSiteAvatarDeletionPending({ avatarKey: file.minioKey }))) {
+            await MongoS3TTL.deleteOne({ _id: file._id });
+            logger.info('Deferred avatar deletion because its state is not pending', {
               key: file.minioKey
             });
             continue;

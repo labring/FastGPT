@@ -37,27 +37,35 @@ describe('Domain default config and overrides validation', () => {
 
   it('validates sparse overrides and rejects unknown fields in root and nested objects', () => {
     // Valid sparse override
-    const parsed = parseDomainOverrides('site', { name: 'Custom Site' });
+    const parsed = parseDomainOverrides({ domain: 'site', overrides: { name: 'Custom Site' } });
     expect(parsed.name).toBe('Custom Site');
     expect(parsed.description).toBeUndefined();
 
     // Rejects unknown field on top level of domain
-    expect(() => parseDomainOverrides('site', { unknownKey: true })).toThrow();
+    expect(() =>
+      parseDomainOverrides({ domain: 'site', overrides: { unknownKey: true } })
+    ).toThrow();
 
     // Rejects unknown field in deep nested object
     expect(() =>
-      parseDomainOverrides('performance', {
-        workflow: {
-          unknownWorkflowKey: 123
+      parseDomainOverrides({
+        domain: 'performance',
+        overrides: {
+          workflow: {
+            unknownWorkflowKey: 123
+          }
         }
       })
     ).toThrow();
 
     expect(() =>
-      parseDomainOverrides('providers', {
-        documentParse: {
-          customPdf: {
-            unknownPdfKey: 'foo'
+      parseDomainOverrides({
+        domain: 'providers',
+        overrides: {
+          documentParse: {
+            customPdf: {
+              unknownPdfKey: 'foo'
+            }
           }
         }
       })
@@ -66,31 +74,31 @@ describe('Domain default config and overrides validation', () => {
 
   it('strips unknown fields in lenient mode (strict: false) to prevent startup deadlocks', () => {
     // 模拟数据库中包含废弃字段时（清理迁移前），lenient 模式剥离未知字段并安全解析
-    const parsed = parseDomainOverrides(
-      'site',
-      { name: 'Custom Site', legacyDeprecatedField: 'ignored' },
-      { strict: false }
-    );
+    const parsed = parseDomainOverrides({
+      domain: 'site',
+      overrides: { name: 'Custom Site', legacyDeprecatedField: 'ignored' },
+      options: { strict: false }
+    });
     expect(parsed.name).toBe('Custom Site');
     expect((parsed as any).legacyDeprecatedField).toBeUndefined();
 
-    const effective = resolveDomainEffectiveConfig(
-      'site',
-      { name: 'Custom Site', legacyDeprecatedField: 'ignored' },
-      { strict: false }
-    );
+    const effective = resolveDomainEffectiveConfig({
+      domain: 'site',
+      overrides: { name: 'Custom Site', legacyDeprecatedField: 'ignored' },
+      options: { strict: false }
+    });
     expect(effective.name).toBe('Custom Site');
 
     // 递归支持：数组元素内的废弃字段同样在 lenient 模式下被安全剥离（如 navbarItems）
-    const parsedArray = parseDomainOverrides(
-      'site',
-      {
+    const parsedArray = parseDomainOverrides({
+      domain: 'site',
+      overrides: {
         navbarItems: [
           { id: 'nav1', name: 'Nav', avatar: '', url: 'https://nav.com', legacyKey: 'drop_me' }
         ]
       },
-      { strict: false }
-    );
+      options: { strict: false }
+    });
     expect(parsedArray.navbarItems?.[0]).toEqual({
       id: 'nav1',
       name: 'Nav',
@@ -100,8 +108,11 @@ describe('Domain default config and overrides validation', () => {
 
     // 默认 strict 模式下，数组元素内的未知字段依然被严格拒绝
     expect(() =>
-      parseDomainOverrides('site', {
-        navbarItems: [{ id: 'nav1', name: 'Nav', avatar: '', url: 'https://nav.com', badKey: 1 }]
+      parseDomainOverrides({
+        domain: 'site',
+        overrides: {
+          navbarItems: [{ id: 'nav1', name: 'Nav', avatar: '', url: 'https://nav.com', badKey: 1 }]
+        }
       })
     ).toThrow();
   });
@@ -111,23 +122,32 @@ describe('resolveDomainEffectiveConfig (Two-Phase Validation & Merge)', () => {
   it.each(['maxFiles', 'maxSourceSizeMiB', 'maxConcurrency', 'prepareTimeoutSeconds'])(
     '归档参数 %s 允许稀疏保存且必须为正整数',
     (field) => {
-      const config = resolveDomainEffectiveConfig('resource', { datasetArchive: { [field]: 1 } });
+      const config = resolveDomainEffectiveConfig({
+        domain: 'resource',
+        overrides: { datasetArchive: { [field]: 1 } }
+      });
       expect(config.datasetArchive).toEqual({
         ...getDomainDefaultConfig('resource').datasetArchive,
         [field]: 1
       });
       for (const value of [0, 1.5]) {
         expect(() =>
-          parseDomainOverrides('resource', { datasetArchive: { [field]: value } })
+          parseDomainOverrides({
+            domain: 'resource',
+            overrides: { datasetArchive: { [field]: value } }
+          })
         ).toThrow();
       }
     }
   );
 
   it('merges overrides with defaults while preserving untouched default fields', () => {
-    const effective = resolveDomainEffectiveConfig('site', {
-      name: 'Custom FastGPT',
-      description: 'Modified description'
+    const effective = resolveDomainEffectiveConfig({
+      domain: 'site',
+      overrides: {
+        name: 'Custom FastGPT',
+        description: 'Modified description'
+      }
     });
 
     expect(effective.name).toBe('Custom FastGPT');
@@ -140,18 +160,24 @@ describe('resolveDomainEffectiveConfig (Two-Phase Validation & Merge)', () => {
   it('enforces cross-field superRefine constraints on merged result', () => {
     // parallelMaxConcurrency (default 10) > maxLoopTimes (override to 5) -> must fail!
     expect(() =>
-      resolveDomainEffectiveConfig('performance', {
-        workflow: {
-          maxLoopTimes: 5
+      resolveDomainEffectiveConfig({
+        domain: 'performance',
+        overrides: {
+          workflow: {
+            maxLoopTimes: 5
+          }
         }
       })
     ).toThrowError(/parallelMaxConcurrency cannot exceed maxLoopTimes/);
 
     // Both updated compatibly -> must succeed
-    const valid = resolveDomainEffectiveConfig('performance', {
-      workflow: {
-        maxLoopTimes: 5,
-        parallelMaxConcurrency: 5
+    const valid = resolveDomainEffectiveConfig({
+      domain: 'performance',
+      overrides: {
+        workflow: {
+          maxLoopTimes: 5,
+          parallelMaxConcurrency: 5
+        }
       }
     });
     expect(valid.workflow.maxLoopTimes).toBe(5);
@@ -162,10 +188,13 @@ describe('resolveDomainEffectiveConfig (Two-Phase Validation & Merge)', () => {
     // 旧 env IntSchema 允许 0，且这些字段的消费点对 0 有明确"禁用/不限"语义
     // （maxRunTimes<=0 停止工作流、maxLoopTimes=0 拒绝循环输入、!qpm 放行限流），
     // 迁移必须原样保留 0，否则会把客户的禁用配置静默改回默认启用值。
-    const zeroed = resolveDomainEffectiveConfig('performance', {
-      workflow: { maxRunTimes: 0, maxLoopTimes: 0 },
-      chat: { maxQpm: 0 },
-      parse: { maxHtmlTransformChars: 0 }
+    const zeroed = resolveDomainEffectiveConfig({
+      domain: 'performance',
+      overrides: {
+        workflow: { maxRunTimes: 0, maxLoopTimes: 0 },
+        chat: { maxQpm: 0 },
+        parse: { maxHtmlTransformChars: 0 }
+      }
     });
     expect(zeroed.workflow.maxRunTimes).toBe(0);
     expect(zeroed.workflow.maxLoopTimes).toBe(0);
@@ -174,26 +203,34 @@ describe('resolveDomainEffectiveConfig (Two-Phase Validation & Merge)', () => {
 
     // maxLoopTimes=0 表示禁用循环，并行约束此时无意义，不得连带拒绝整个 performance 域
     expect(() =>
-      resolveDomainEffectiveConfig('performance', {
-        workflow: { maxLoopTimes: 0 }
+      resolveDomainEffectiveConfig({
+        domain: 'performance',
+        overrides: {
+          workflow: { maxLoopTimes: 0 }
+        }
       })
     ).not.toThrow();
   });
 
   it('still rejects negative values for zero-tolerant fields', () => {
     expect(() =>
-      parseDomainOverrides('performance', { workflow: { maxRunTimes: -1 } })
+      parseDomainOverrides({ domain: 'performance', overrides: { workflow: { maxRunTimes: -1 } } })
     ).toThrowError();
-    expect(() => parseDomainOverrides('performance', { chat: { maxQpm: -5 } })).toThrowError();
+    expect(() =>
+      parseDomainOverrides({ domain: 'performance', overrides: { chat: { maxQpm: -5 } } })
+    ).toThrowError();
   });
 
   it('validates documentParse providers and constraints', () => {
     // somark does not require customPdf.url
-    const somarkConfig = resolveDomainEffectiveConfig('providers', {
-      documentParse: {
-        provider: 'somark',
-        customPdf: {
-          somarkApiKey: 'sk-somark-xxx'
+    const somarkConfig = resolveDomainEffectiveConfig({
+      domain: 'providers',
+      overrides: {
+        documentParse: {
+          provider: 'somark',
+          customPdf: {
+            somarkApiKey: 'sk-somark-xxx'
+          }
         }
       }
     });
@@ -201,23 +238,29 @@ describe('resolveDomainEffectiveConfig (Two-Phase Validation & Merge)', () => {
     expect(somarkConfig.documentParse.customPdf.somarkApiKey).toBe('sk-somark-xxx');
 
     // doc2x does not require customPdf.url
-    const doc2xConfig = resolveDomainEffectiveConfig('providers', {
-      documentParse: {
-        provider: 'doc2x',
-        customPdf: {
-          doc2xKey: 'doc2x-xxx'
+    const doc2xConfig = resolveDomainEffectiveConfig({
+      domain: 'providers',
+      overrides: {
+        documentParse: {
+          provider: 'doc2x',
+          customPdf: {
+            doc2xKey: 'doc2x-xxx'
+          }
         }
       }
     });
     expect(doc2xConfig.documentParse.provider).toBe('doc2x');
 
     // textln & textin are supported
-    const textlnConfig = resolveDomainEffectiveConfig('providers', {
-      documentParse: {
-        provider: 'textln',
-        customPdf: {
-          textinAppId: 'app-id',
-          textinSecretCode: 'secret-code'
+    const textlnConfig = resolveDomainEffectiveConfig({
+      domain: 'providers',
+      overrides: {
+        documentParse: {
+          provider: 'textln',
+          customPdf: {
+            textinAppId: 'app-id',
+            textinSecretCode: 'secret-code'
+          }
         }
       }
     });
@@ -225,11 +268,14 @@ describe('resolveDomainEffectiveConfig (Two-Phase Validation & Merge)', () => {
 
     // customPdf requires url
     expect(() =>
-      resolveDomainEffectiveConfig('providers', {
-        documentParse: {
-          provider: 'customPdf',
-          customPdf: {
-            url: ''
+      resolveDomainEffectiveConfig({
+        domain: 'providers',
+        overrides: {
+          documentParse: {
+            provider: 'customPdf',
+            customPdf: {
+              url: ''
+            }
           }
         }
       })
@@ -237,23 +283,29 @@ describe('resolveDomainEffectiveConfig (Two-Phase Validation & Merge)', () => {
 
     // custom requires url
     expect(() =>
-      resolveDomainEffectiveConfig('providers', {
-        documentParse: {
-          provider: 'custom',
-          customPdf: {
-            url: ''
+      resolveDomainEffectiveConfig({
+        domain: 'providers',
+        overrides: {
+          documentParse: {
+            provider: 'custom',
+            customPdf: {
+              url: ''
+            }
           }
         }
       })
     ).toThrow();
 
     // valid customPdf
-    const customConfig = resolveDomainEffectiveConfig('providers', {
-      documentParse: {
-        provider: 'customPdf',
-        customPdf: {
-          url: 'https://pdf.example.com',
-          key: 'key-123'
+    const customConfig = resolveDomainEffectiveConfig({
+      domain: 'providers',
+      overrides: {
+        documentParse: {
+          provider: 'customPdf',
+          customPdf: {
+            url: 'https://pdf.example.com',
+            key: 'key-123'
+          }
         }
       }
     });
@@ -389,7 +441,9 @@ describe('systemInstanceConfigRegistry', () => {
       expect(registryKeys.has(leafPath), `Missing registry entry for ${leafPath}`).toBe(true);
     }
     expect(registryKeys.size).toBe(leafPaths.length);
-    expect(() => parseDomainOverrides('feature', { datasetSynonymEnabled: true })).toThrow();
+    expect(() =>
+      parseDomainOverrides({ domain: 'feature', overrides: { datasetSynonymEnabled: true } })
+    ).toThrow();
   });
 
   it('filters commercial fields by edition and SaaS boundary', () => {
@@ -407,10 +461,13 @@ describe('systemInstanceConfigRegistry', () => {
   });
   it('checks subservice resolveDomainEffectiveConfig errors', () => {
     try {
-      resolveDomainEffectiveConfig('subservice', {
-        agentSandbox: {
-          provider: 'sealosdevbox',
-          sealosdevbox: { baseUrl: '', token: '', image: '' }
+      resolveDomainEffectiveConfig({
+        domain: 'subservice',
+        overrides: {
+          agentSandbox: {
+            provider: 'sealosdevbox',
+            sealosdevbox: { baseUrl: '', token: '', image: '' }
+          }
         }
       });
     } catch (e: any) {
@@ -418,15 +475,18 @@ describe('systemInstanceConfigRegistry', () => {
     }
 
     try {
-      resolveDomainEffectiveConfig('subservice', {
-        agentSandbox: {
-          provider: 'opensandbox',
-          opensandbox: {
-            baseUrl: '',
-            apiKey: '',
-            image: '',
-            volumeManagerToken: '',
-            volumeManagerUrl: ''
+      resolveDomainEffectiveConfig({
+        domain: 'subservice',
+        overrides: {
+          agentSandbox: {
+            provider: 'opensandbox',
+            opensandbox: {
+              baseUrl: '',
+              apiKey: '',
+              image: '',
+              volumeManagerToken: '',
+              volumeManagerUrl: ''
+            }
           }
         }
       });
@@ -442,19 +502,30 @@ describe('agentSandbox.opensandbox.volumeNamePrefix validation', () => {
   });
 
   it('accepts a DNS-label-safe prefix', () => {
-    const config = resolveDomainEffectiveConfig('subservice', withPrefix('fastgpt-session'));
+    const config = resolveDomainEffectiveConfig({
+      domain: 'subservice',
+      overrides: withPrefix('fastgpt-session')
+    });
     expect(config.agentSandbox.opensandbox.volumeNamePrefix).toBe('fastgpt-session');
   });
 
   it('rejects prefixes with uppercase, underscore, or dot (must match runtime volume name rules)', () => {
     // 运行时 createSessionVolumeName 会对 `${prefix}-${id}` 做 DNS label 校验，
     // 管理端必须提前拒绝非法前缀，否则保存成功但沙箱启动才报错。
-    expect(() => resolveDomainEffectiveConfig('subservice', withPrefix('FastGPT'))).toThrow();
-    expect(() => resolveDomainEffectiveConfig('subservice', withPrefix('fast_gpt'))).toThrow();
-    expect(() => resolveDomainEffectiveConfig('subservice', withPrefix('fast.gpt'))).toThrow();
+    expect(() =>
+      resolveDomainEffectiveConfig({ domain: 'subservice', overrides: withPrefix('FastGPT') })
+    ).toThrow();
+    expect(() =>
+      resolveDomainEffectiveConfig({ domain: 'subservice', overrides: withPrefix('fast_gpt') })
+    ).toThrow();
+    expect(() =>
+      resolveDomainEffectiveConfig({ domain: 'subservice', overrides: withPrefix('fast.gpt') })
+    ).toThrow();
   });
 
   it('rejects a prefix that does not end with an alphanumeric character', () => {
-    expect(() => resolveDomainEffectiveConfig('subservice', withPrefix('fastgpt-'))).toThrow();
+    expect(() =>
+      resolveDomainEffectiveConfig({ domain: 'subservice', overrides: withPrefix('fastgpt-') })
+    ).toThrow();
   });
 });

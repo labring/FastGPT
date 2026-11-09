@@ -16,21 +16,41 @@ import {
 
 export const GetDomainConfigQuerySchema = z.object({
   domain: SystemInstanceConfigDomainKeySchema.meta({
-    description: '配置域标识，如 site, auth, security, performance 等'
+    description: '配置域标识，如 site, auth, security, performance 等',
+    example: 'site'
   })
 });
 export type GetDomainConfigQuery = z.infer<typeof GetDomainConfigQuerySchema>;
 
 export const GetDomainConfigResponseSchema = z.object({
-  domain: SystemInstanceConfigDomainKeySchema,
-  revision: z.number().int().nonnegative().meta({ description: '当前乐观锁版本号' }),
-  effectiveConfig: z
-    .record(z.string(), z.unknown())
-    .meta({ description: '当前生效的完整配置（敏感字段已脱敏）' }),
-  overrides: z.record(z.string(), z.unknown()).meta({ description: '数据库持久化的稀疏覆盖配置' }),
-  secretKeys: z.array(z.string()).meta({ description: '该 Domain 下所有敏感字段相对路径' }),
-  updatedAt: z.date().optional().meta({ description: '最后更新时间' }),
-  updatedBy: SystemInstanceConfigUpdatedBySchema.optional().meta({ description: '最后修改人信息' })
+  domain: SystemInstanceConfigDomainKeySchema.meta({
+    description: '配置域标识',
+    example: 'site'
+  }),
+  revision: z.number().int().nonnegative().meta({ description: '当前乐观锁版本号', example: 12 }),
+  effectiveConfig: z.record(z.string(), z.unknown()).meta({
+    description: '当前生效的完整配置（敏感字段已脱敏）',
+    example: {
+      favicon: 'https://example.com/avatar/team-1/site.png',
+      navbarItems: []
+    }
+  }),
+  overrides: z.record(z.string(), z.unknown()).meta({
+    description: '数据库持久化的稀疏覆盖配置；只包含与默认值不同的字段',
+    example: { favicon: 'https://example.com/avatar/team-1/site.png' }
+  }),
+  secretKeys: z.array(z.string()).meta({
+    description: '该 Domain 下所有敏感字段相对路径；值在 overrides/effectiveConfig 中以掩码返回',
+    example: ['auth.loginProviders.email.smtp']
+  }),
+  updatedAt: z.date().optional().meta({
+    description: '最后更新时间',
+    example: '2026-01-01T00:00:00.000Z'
+  }),
+  updatedBy: SystemInstanceConfigUpdatedBySchema.optional().meta({
+    description: '最后修改人信息',
+    example: { actor: 'admin', userId: 'user_123', username: 'admin' }
+  })
 });
 export type GetDomainConfigResponse = z.infer<typeof GetDomainConfigResponseSchema>;
 
@@ -43,27 +63,49 @@ export type GetDomainConfigResponse = z.infer<typeof GetDomainConfigResponseSche
  * ============================================================================ */
 
 export const UpdateDomainConfigItemSchema = z.object({
-  domain: SystemInstanceConfigDomainKeySchema.meta({ description: '配置域标识' }),
+  domain: SystemInstanceConfigDomainKeySchema.meta({
+    description: '配置域标识',
+    example: 'site'
+  }),
   expectedRevision: z.number().int().nonnegative().meta({
-    description: '乐观锁期望版本号，必须与当前数据库中版本号一致方可写入'
+    description: '乐观锁期望版本号，必须与当前数据库中版本号一致方可写入',
+    example: 12
   }),
   overrides: z.record(z.string(), z.unknown()).meta({
-    description: '需要覆盖修改的稀疏配置对象；只提交当前页面编辑的字段'
+    description:
+      '需要覆盖修改的稀疏配置对象；只提交当前页面编辑的字段。提交显式默认值（如空数组）表示清空该字段',
+    example: { favicon: 'https://example.com/avatar/team-1/site.png', scripts: [] }
   })
 });
 export type UpdateDomainConfigItem = z.infer<typeof UpdateDomainConfigItemSchema>;
 
 export const UpdateDomainConfigBodySchema = z
   .object({
-    items: z.array(UpdateDomainConfigItemSchema).min(1).max(20).meta({
-      description: '待保存的配置域列表，任意一项冲突则整体回滚'
-    }),
-    subPlans: z.record(z.string(), z.unknown()).optional().meta({
-      description: '仅商业版支持，与配置域同事务保存；社区版携带此字段（包括空对象）返回 403'
-    }),
+    items: z
+      .array(UpdateDomainConfigItemSchema)
+      .min(1)
+      .max(20)
+      .meta({
+        description: '待保存的配置域列表，任意一项冲突则整体回滚',
+        example: [
+          {
+            domain: 'site',
+            expectedRevision: 12,
+            overrides: { favicon: 'https://example.com/avatar/team-1/site.png' }
+          }
+        ]
+      }),
+    subPlans: z
+      .record(z.string(), z.unknown())
+      .optional()
+      .meta({
+        description: '仅商业版支持，与配置域同事务保存；社区版携带此字段（包括空对象）返回 403',
+        example: { standard: { price: 0 } }
+      }),
     subPlansExpectedRevision: z.number().int().nonnegative().optional().meta({
       description:
-        '套餐写入使用的 commercial 配置域 revision；携带 subPlans 时必填，用于防止并发套餐覆盖'
+        '套餐写入使用的 commercial 配置域 revision；携带 subPlans 时必填，用于防止并发套餐覆盖',
+      example: 12
     })
   })
   .superRefine((value, ctx) => {
@@ -81,11 +123,27 @@ export const UpdateDomainConfigBodySchema = z
         message: 'subPlansExpectedRevision is only allowed when subPlans is provided'
       });
     }
+  })
+  .meta({
+    example: {
+      items: [
+        {
+          domain: 'site',
+          expectedRevision: 12,
+          overrides: { favicon: 'https://example.com/avatar/team-1/site.png', scripts: [] }
+        }
+      ],
+      subPlans: { standard: { price: 0 } },
+      subPlansExpectedRevision: 12
+    }
   });
 export type UpdateDomainConfigBody = z.infer<typeof UpdateDomainConfigBodySchema>;
 
 export const UpdateDomainConfigResponseSchema = z.object({
-  results: z.array(GetDomainConfigResponseSchema)
+  results: z.array(GetDomainConfigResponseSchema).meta({
+    description:
+      '本次事务实际写入的配置域结果，顺序与请求 items 一致；自动补充的 commercial 锁不返回'
+  })
 });
 export type UpdateDomainConfigResponse = z.infer<typeof UpdateDomainConfigResponseSchema>;
 
@@ -102,7 +160,8 @@ export const AdminInstanceConfigPath: OpenAPIPath = {
           required: true,
           schema: {
             type: 'string',
-            description: '配置域标识，如 site, auth, security 等'
+            description: '配置域标识，如 site, auth, security 等',
+            example: 'site'
           }
         }
       ],

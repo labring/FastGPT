@@ -13,7 +13,7 @@ import type { SettingTOCItem } from '@/pageComponents/admin/settings/AdminSettin
 import ImageInput from '@/pageComponents/admin/settings/ImageInput';
 import NavbarItems from '@/pageComponents/admin/config/components/FormField/NavbarItems';
 import JsonEditor from '@fastgpt/web/components/common/Textarea/JsonEditor';
-import type { SystemInstanceConfigDomainMap } from '@fastgpt/global/common/system/config/type';
+import type { SystemInstanceConfigDomainMap } from '@fastgpt/global/common/system/config/schema';
 
 type SiteConfigForm = SystemInstanceConfigDomainMap['site'];
 

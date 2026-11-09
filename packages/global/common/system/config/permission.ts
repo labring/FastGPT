@@ -157,23 +157,31 @@ const filterDomainDataByAllowedKeys = <T>(
 /**
  * 按部署版本过滤配置数据，保留该版本 API 允许的全部字段（包括 SaaS 显示开关隐藏的字段）。
  */
-export const filterDomainDataByEdition = <T>(
-  domain: SystemInstanceConfigDomainKey,
-  data: T,
-  edition: SystemInstanceConfigEdition
-): Partial<T> => filterDomainDataByAllowedKeys(data, getDomainAllowedKeys(domain, edition));
+export const filterDomainDataByEdition = <T>({
+  domain,
+  data,
+  edition
+}: {
+  domain: SystemInstanceConfigDomainKey;
+  data: T;
+  edition: SystemInstanceConfigEdition;
+}): Partial<T> => filterDomainDataByAllowedKeys(data, getDomainAllowedKeys(domain, edition));
 
 /**
  * 按部署版本与 SaaS 显示开关过滤配置数据，用于表单展示和用户可编辑值。
  */
-export const filterDomainDataByVisibleKeys = <T>(
-  domain: SystemInstanceConfigDomainKey,
-  data: T,
+export const filterDomainDataByVisibleKeys = <T>({
+  domain,
+  data,
+  options
+}: {
+  domain: SystemInstanceConfigDomainKey;
+  data: T;
   options: {
     edition: SystemInstanceConfigEdition;
     enableSaasAdminConfig?: boolean;
-  }
-): Partial<T> => filterDomainDataByAllowedKeys(data, getDomainVisibleKeys(domain, options));
+  };
+}): Partial<T> => filterDomainDataByAllowedKeys(data, getDomainVisibleKeys(domain, options));
 
 export const SECRET_MASK = '******';
 
@@ -239,11 +247,15 @@ export const maskDomainSecrets = <T>(domain: SystemInstanceConfigDomainKey, data
  * 掩码只表示「保持原值」：上一版本没有可恢复的真实值时（首次保存，或该值来自 Schema 默认值），
  * 必须将该字段视为未提交并丢弃，否则 '******' 会被当作真实密钥写入 DB 覆盖默认值。
  */
-export const restorePreservedSecrets = <T>(
-  domain: SystemInstanceConfigDomainKey,
-  submitted: T,
-  previous?: unknown
-): T => {
+export const restorePreservedSecrets = <T>({
+  domain,
+  submitted,
+  previous
+}: {
+  domain: SystemInstanceConfigDomainKey;
+  submitted: T;
+  previous?: unknown;
+}): T => {
   if (!isPlainObject(submitted)) {
     return submitted;
   }
@@ -256,11 +268,15 @@ export const restorePreservedSecrets = <T>(
   // 首次保存没有上一版本可恢复，按空对象处理，掩码字段将被丢弃
   const previousObj: Record<string, unknown> = isPlainObject(previous) ? previous : {};
 
-  const restoreObject = (
-    subObj: Record<string, unknown>,
-    prevObj: Record<string, unknown>,
+  const restoreObject = ({
+    subObj,
+    prevObj,
     currentPath = ''
-  ): Record<string, unknown> => {
+  }: {
+    subObj: Record<string, unknown>;
+    prevObj: Record<string, unknown>;
+    currentPath?: string;
+  }): Record<string, unknown> => {
     const result: Record<string, unknown> = {};
 
     for (const [key, value] of Object.entries(subObj)) {
@@ -271,7 +287,11 @@ export const restorePreservedSecrets = <T>(
 
       if (isPlainObject(value)) {
         // 无对应上一版本时传空对象继续递归，确保嵌套层的掩码同样被清洗
-        result[key] = restoreObject(value, isPlainObject(prevValue) ? prevValue : {}, path);
+        result[key] = restoreObject({
+          subObj: value,
+          prevObj: isPlainObject(prevValue) ? prevValue : {},
+          currentPath: path
+        });
       } else if (secretKeys.has(path) && value === SECRET_MASK) {
         // 仅当上一版本存在非掩码的字符串值时恢复；否则丢弃该字段（按未提交处理）
         if (typeof prevValue === 'string' && prevValue !== SECRET_MASK) {
@@ -285,5 +305,5 @@ export const restorePreservedSecrets = <T>(
     return result;
   };
 
-  return restoreObject(submitted, previousObj) as T;
+  return restoreObject({ subObj: submitted, prevObj: previousObj }) as T;
 };

@@ -27,7 +27,7 @@ describe('syncSiteAvatarLifecycle', () => {
       next: { favicon: '', navbarItems: [] }
     });
 
-    expect(mocks.scheduleAvatarDeletion).toHaveBeenCalledWith('avatar/old.png');
+    expect(mocks.scheduleAvatarDeletion).toHaveBeenCalledWith({ avatar: 'avatar/old.png' });
     expect(mocks.deleteAvatar).not.toHaveBeenCalled();
     expect(mocks.removeAvatarTTL).not.toHaveBeenCalled();
   });
@@ -40,7 +40,7 @@ describe('syncSiteAvatarLifecycle', () => {
     });
 
     // shared.png 仍在引用中，绝不能安排删除
-    expect(mocks.scheduleAvatarDeletion).not.toHaveBeenCalledWith('avatar/shared.png');
+    expect(mocks.scheduleAvatarDeletion).not.toHaveBeenCalledWith({ avatar: 'avatar/shared.png' });
     // new.png 新加入引用，移除 TTL
     expect(mocks.removeAvatarTTL).toHaveBeenCalledWith('avatar/new.png');
   });
@@ -51,7 +51,7 @@ describe('syncSiteAvatarLifecycle', () => {
       next: { favicon: 'avatar/b.png', navbarItems: [] }
     });
 
-    expect(mocks.scheduleAvatarDeletion).toHaveBeenCalledWith('avatar/a.png');
+    expect(mocks.scheduleAvatarDeletion).toHaveBeenCalledWith({ avatar: 'avatar/a.png' });
     expect(mocks.deleteAvatar).not.toHaveBeenCalled();
     expect(mocks.removeAvatarTTL).toHaveBeenCalledWith('avatar/b.png');
   });
@@ -74,7 +74,7 @@ describe('syncSiteAvatarLifecycle', () => {
       next: { favicon: '', navbarItems: [] }
     });
 
-    expect(mocks.scheduleAvatarDeletion).toHaveBeenCalledWith('avatar/gone.png');
+    expect(mocks.scheduleAvatarDeletion).toHaveBeenCalledWith({ avatar: 'avatar/gone.png' });
     expect(mocks.deleteAvatar).not.toHaveBeenCalled();
   });
 
@@ -90,8 +90,8 @@ describe('syncSiteAvatarLifecycle', () => {
       next: { favicon: 'avatar/a.png', navbarItems: [] }
     });
 
-    expect(mocks.scheduleAvatarDeletion).toHaveBeenNthCalledWith(1, 'avatar/a.png');
-    expect(mocks.scheduleAvatarDeletion).toHaveBeenNthCalledWith(2, 'avatar/b.png');
+    expect(mocks.scheduleAvatarDeletion).toHaveBeenNthCalledWith(1, { avatar: 'avatar/a.png' });
+    expect(mocks.scheduleAvatarDeletion).toHaveBeenNthCalledWith(2, { avatar: 'avatar/b.png' });
     expect(mocks.removeAvatarTTL).toHaveBeenCalledWith('avatar/a.png');
     expect(mocks.deleteAvatar).not.toHaveBeenCalled();
   });

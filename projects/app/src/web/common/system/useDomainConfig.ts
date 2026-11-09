@@ -5,10 +5,8 @@ import { GET, POST } from '@/web/common/api/request';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { ToastHandledError } from '@fastgpt/global/common/error/utils';
 import type { SystemInstanceConfigDomainKey } from '@fastgpt/global/common/system/config/schema';
-import type {
-  SystemInstanceConfigDomainMap,
-  DeepPartial
-} from '@fastgpt/global/common/system/config/type';
+import type { SystemInstanceConfigDomainMap } from '@fastgpt/global/common/system/config/schema';
+import type { DeepPartial } from '@fastgpt/global/common/system/config/type';
 import { deepMergeConfig } from '@fastgpt/global/common/system/config/merge';
 import {
   filterDomainDataByEdition,
@@ -112,7 +110,7 @@ export const useDomainConfig = <T extends SystemInstanceConfigDomainKey>(domain:
     submitOverrides({
       // 只按部署版本清洗旧 overrides；SaaS 显示开关隐藏的字段仍要原样带回，避免被本次替换清空。
       overrides: deepMergeConfig(
-        filterDomainDataByEdition(domain, overrides, edition) as Record<string, unknown>,
+        filterDomainDataByEdition({ domain, data: overrides, edition }) as Record<string, unknown>,
         partial
       ),
       silent: options?.silent

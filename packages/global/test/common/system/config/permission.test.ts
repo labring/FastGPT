@@ -69,39 +69,39 @@ describe('Field permissions by edition', () => {
 
   it('filters data payload to prevent pro fields from leaking or writing in community edition', () => {
     // 商业版字段在社区版下被彻底剥离
-    const filteredCommercial = filterDomainDataByEdition(
-      'commercial',
-      {
+    const filteredCommercial = filterDomainDataByEdition({
+      domain: 'commercial',
+      data: {
         showCoupon: true,
         payFormUrl: 'https://pay.example.com'
       },
-      'community'
-    );
+      edition: 'community'
+    });
     expect(filteredCommercial).toEqual({});
 
     // 商业版环境下完整保留
-    const proCommercial = filterDomainDataByEdition(
-      'commercial',
-      {
+    const proCommercial = filterDomainDataByEdition({
+      domain: 'commercial',
+      data: {
         showCoupon: true,
         payFormUrl: 'https://pay.example.com'
       },
-      'pro'
-    );
+      edition: 'pro'
+    });
     expect(proCommercial).toEqual({
       showCoupon: true,
       payFormUrl: 'https://pay.example.com'
     });
 
     // 基础配置在社区版下正常保留
-    const filteredSite = filterDomainDataByEdition(
-      'site',
-      {
+    const filteredSite = filterDomainDataByEdition({
+      domain: 'site',
+      data: {
         name: 'My Site',
         description: 'Site Description'
       },
-      'community'
-    );
+      edition: 'community'
+    });
     expect(filteredSite).toEqual({
       name: 'My Site',
       description: 'Site Description'
@@ -111,11 +111,11 @@ describe('Field permissions by edition', () => {
 
 describe('restorePreservedSecrets', () => {
   it('restores existing secret when submitted value is the mask', () => {
-    const result = restorePreservedSecrets(
-      'auth',
-      { loginProviders: { github: { secret: SECRET_MASK, clientId: 'my-client' } } },
-      { loginProviders: { github: { secret: 'real-secret', clientId: 'old-client' } } }
-    );
+    const result = restorePreservedSecrets({
+      domain: 'auth',
+      submitted: { loginProviders: { github: { secret: SECRET_MASK, clientId: 'my-client' } } },
+      previous: { loginProviders: { github: { secret: 'real-secret', clientId: 'old-client' } } }
+    });
 
     // 掩码字段恢复库中真实值，非敏感字段按提交值覆盖
     expect(result).toEqual({
@@ -124,15 +124,15 @@ describe('restorePreservedSecrets', () => {
   });
 
   it('drops mask when no previous value can restore it (first save)', () => {
-    const result = restorePreservedSecrets(
-      'subservice',
-      {
+    const result = restorePreservedSecrets({
+      domain: 'subservice',
+      submitted: {
         agentSandbox: {
           sealosdevbox: { token: SECRET_MASK, baseUrl: 'https://sandbox.example.com' }
         }
       },
-      undefined
-    );
+      previous: undefined
+    });
 
     // 无上一版本时掩码按未提交丢弃，绝不能把 '******' 写入 DB
     expect(result).toEqual({
@@ -143,11 +143,11 @@ describe('restorePreservedSecrets', () => {
 
   it('drops mask when previous overrides lacks the secret key', () => {
     // 密钥值来自 Schema 默认值而非 DB overrides：prevObj 中没有该键
-    const result = restorePreservedSecrets(
-      'providers',
-      { documentParse: { customPdf: { key: SECRET_MASK } } },
-      { documentParse: { customPdf: { url: 'https://pdf.example.com' } } }
-    );
+    const result = restorePreservedSecrets({
+      domain: 'providers',
+      submitted: { documentParse: { customPdf: { key: SECRET_MASK } } },
+      previous: { documentParse: { customPdf: { url: 'https://pdf.example.com' } } }
+    });
 
     expect(result).toEqual({ documentParse: { customPdf: {} } });
     expect((result as any).documentParse.customPdf.key).toBeUndefined();
@@ -155,36 +155,36 @@ describe('restorePreservedSecrets', () => {
 
   it('drops nested mask fields under a new parent object', () => {
     // 上一版本没有 loginProviders 结构，嵌套层的掩码同样必须被清洗
-    const result = restorePreservedSecrets(
-      'auth',
-      { loginProviders: { google: { secret: SECRET_MASK } } },
-      {}
-    );
+    const result = restorePreservedSecrets({
+      domain: 'auth',
+      submitted: { loginProviders: { google: { secret: SECRET_MASK } } },
+      previous: {}
+    });
 
     expect((result as any).loginProviders.google.secret).toBeUndefined();
   });
 
   it('drops mask when previous value is itself a mask', () => {
     // 防御上一版本存量为掩码的情况，避免掩码自我固化
-    const result = restorePreservedSecrets(
-      'providers',
-      { documentParse: { customPdf: { key: SECRET_MASK } } },
-      { documentParse: { customPdf: { key: SECRET_MASK } } }
-    );
+    const result = restorePreservedSecrets({
+      domain: 'providers',
+      submitted: { documentParse: { customPdf: { key: SECRET_MASK } } },
+      previous: { documentParse: { customPdf: { key: SECRET_MASK } } }
+    });
 
     expect(result).toEqual({ documentParse: { customPdf: {} } });
   });
 
   it('keeps non-secret fields and real secret submissions untouched', () => {
-    const result = restorePreservedSecrets(
-      'providers',
-      {
+    const result = restorePreservedSecrets({
+      domain: 'providers',
+      submitted: {
         documentParse: {
           customPdf: { key: 'new-real-key', url: 'https://pdf.example.com' }
         }
       },
-      { documentParse: { customPdf: { key: 'old-key' } } }
-    );
+      previous: { documentParse: { customPdf: { key: 'old-key' } } }
+    });
 
     expect(result).toEqual({
       documentParse: {
@@ -194,7 +194,11 @@ describe('restorePreservedSecrets', () => {
   });
 
   it('returns submitted payload unchanged for domains without secret keys', () => {
-    const result = restorePreservedSecrets('site', { name: 'My Site' }, undefined);
+    const result = restorePreservedSecrets({
+      domain: 'site',
+      submitted: { name: 'My Site' },
+      previous: undefined
+    });
     expect(result).toEqual({ name: 'My Site' });
   });
 });

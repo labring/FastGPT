@@ -78,11 +78,15 @@ export const getServiceEdition = (): SystemInstanceConfigEdition =>
  * （设计文档 §6 规则 2）。
  * @param edition 缺省取服务端权威部署版本（PRO_URL 判定）
  */
-export const findOverridesNotAllowedByEdition = (
-  domain: SystemInstanceConfigDomainKey,
-  submittedOverrides: Record<string, unknown>,
-  edition: SystemInstanceConfigEdition = getServiceEdition()
-): string[] => {
+export const findOverridesNotAllowedByEdition = ({
+  domain,
+  submittedOverrides,
+  edition = getServiceEdition()
+}: {
+  domain: SystemInstanceConfigDomainKey;
+  submittedOverrides: Record<string, unknown>;
+  edition?: SystemInstanceConfigEdition;
+}): string[] => {
   if (edition === 'pro') {
     return [];
   }
@@ -158,8 +162,8 @@ export const formatDomainConfigForAdmin = <T extends SystemInstanceConfigDomainK
   return {
     domain: result.domain,
     revision: result.revision,
-    overrides: filterDomainDataByEdition(domain, overrides, edition),
-    effectiveConfig: filterDomainDataByEdition(domain, effectiveConfig, edition),
+    overrides: filterDomainDataByEdition({ domain, data: overrides, edition }),
+    effectiveConfig: filterDomainDataByEdition({ domain, data: effectiveConfig, edition }),
     secretKeys: allowedSecretKeys,
     updatedAt: result.updatedAt,
     updatedBy: result.updatedBy
@@ -197,7 +201,10 @@ const resolveExplicitDefaultPaths = ({
 }): string[] => {
   const next = new Set(previousPaths.filter((path) => !hasOverridePath(cleanOverrides, path)));
 
-  for (const path of collectPrunedLeafPaths(parsedOverrides, cleanOverrides)) {
+  for (const path of collectPrunedLeafPaths({
+    submitted: parsedOverrides,
+    pruned: cleanOverrides
+  })) {
     next.add(path);
   }
 
@@ -224,8 +231,12 @@ const mergeSubmittedOverrides = <T extends SystemInstanceConfigDomainKey>({
   existingOverrides: unknown;
   submittedOverrides: DeepPartial<SystemInstanceConfigDomainMap[T]>;
 }): DeepPartial<SystemInstanceConfigDomainMap[T]> => {
-  const normalizedExisting = parseDomainOverrides(domain, existingOverrides ?? {}, {
-    strict: false
+  const normalizedExisting = parseDomainOverrides({
+    domain,
+    overrides: existingOverrides ?? {},
+    options: {
+      strict: false
+    }
   });
 
   return deepMergeConfig(normalizedExisting, submittedOverrides);
@@ -245,7 +256,11 @@ export const getDomainConfig = async <T extends SystemInstanceConfigDomainKey>(
 
   const revision = doc?.revision ?? 0;
   const overrides = (doc?.overrides ?? {}) as DeepPartial<SystemInstanceConfigDomainMap[T]>;
-  const effectiveConfig = resolveDomainEffectiveConfig(domain, overrides, { strict: false });
+  const effectiveConfig = resolveDomainEffectiveConfig({
+    domain,
+    overrides,
+    options: { strict: false }
+  });
 
   logInstanceConfigRead({
     callsite: 'runtime.systemInstanceConfig.controller.getDomainConfig',
@@ -276,8 +291,9 @@ export const getDomainConfig = async <T extends SystemInstanceConfigDomainKey>(
 
 /**
  * 保存并更新指定 Domain 的稀疏覆盖配置。
- * 本次提交按局部补丁处理，与库中已有 overrides 合并后再执行两阶段校验、
- * 敏感数据防丢失恢复、默认值冗余剪枝及乐观锁并发控制。
+ *
+ * 单域保存只是批量事务引擎的薄适配层，避免单域与批量各维护一套合并、校验、
+ * 剪枝和乐观锁规则。这样两处入口在并发控制、敏感字段恢复和默认值处理上始终一致。
  */
 export const updateDomainConfig = async <T extends SystemInstanceConfigDomainKey>({
   domain,
@@ -285,96 +301,18 @@ export const updateDomainConfig = async <T extends SystemInstanceConfigDomainKey
   submittedOverrides,
   actor
 }: UpdateDomainConfigParams<T>): Promise<GetDomainConfigResult<T>> => {
-  // 1. 查询当前已有文档，检查版本并用于局部合并与敏感字段恢复
-  const existing = await MongoSystemInstanceConfig.findOne({ domain }).lean();
-  const currentRevision = existing?.revision ?? 0;
-
-  if (currentRevision !== expectedRevision) {
-    throw new ApiHttpError(
-      409,
-      `Revision conflict: current revision is ${currentRevision}, expected ${expectedRevision}`
-    );
-  }
-
-  // 2. 将本次提交作为局部补丁合并到已有 overrides；未提交字段保留库中现值
-  const mergedOverrides = mergeSubmittedOverrides({
-    domain,
-    existingOverrides: existing?.overrides,
-    submittedOverrides
-  });
-
-  // 3. 敏感数据防覆盖处理：若用户提交了 '******' 掩码，则自动恢复库中已有值
-  const rawOverrides = restorePreservedSecrets(domain, mergedOverrides, existing?.overrides);
-
-  // 4. 阶段 1 校验：检查 overrides 本身的形态与字段类型（拒绝未知字段）
-  const parsedOverrides = parseDomainOverrides(domain, rawOverrides);
-
-  // 5. 阶段 2 终审校验：合并完整默认值并执行 superRefine 跨字段校验
-  const nextEffectiveConfig = resolveDomainEffectiveConfig(domain, parsedOverrides);
-
-  // 6. 冗余剪枝：与内置默认值完全相同的项不进入 DB
-  const defaultValues = getDomainDefaultConfig(domain);
-  const cleanOverrides = (pruneDefaultOverrides(parsedOverrides, defaultValues) ??
-    {}) as DeepPartial<SystemInstanceConfigDomainMap[T]>;
-
-  // 6.1 记录被剪掉的显式默认值路径：让"明确清空"与"从未配置"在文档里可区分
-  const explicitDefaultPaths = resolveExplicitDefaultPaths({
-    previousPaths: readExplicitDefaultPaths(existing),
-    parsedOverrides,
-    cleanOverrides
-  });
-
-  // 7. 条件写入与乐观锁递增
-  let updatedDoc;
-
-  if (!existing) {
-    // 首次插入，revision 初始化为 1
-    try {
-      const newDoc = new MongoSystemInstanceConfig({
-        domain,
-        revision: 1,
-        overrides: cleanOverrides,
-        explicitDefaultPaths,
-        updatedBy: actor
-      });
-      await newDoc.save();
-      updatedDoc = newDoc.toObject();
-    } catch (err: any) {
-      if (err?.code === 11000) {
-        throw new ApiHttpError(409, 'Revision conflict: document was concurrently created');
-      }
-      throw err;
-    }
-  } else {
-    updatedDoc = await MongoSystemInstanceConfig.findOneAndUpdate(
-      { domain, revision: expectedRevision },
+  const [result] = await batchUpdateDomainConfigs({
+    items: [
       {
-        $set: {
-          overrides: cleanOverrides,
-          explicitDefaultPaths,
-          updatedBy: actor,
-          updatedAt: new Date()
-        },
-        $inc: { revision: 1 }
-      },
-      { new: true, runValidators: false }
-    ).lean();
+        domain,
+        expectedRevision,
+        overrides: submittedOverrides as Record<string, unknown>
+      }
+    ],
+    actor
+  });
 
-    if (!updatedDoc) {
-      throw new ApiHttpError(409, 'Revision conflict: concurrent modification detected');
-    }
-  }
-
-  const result = {
-    domain,
-    revision: updatedDoc.revision,
-    overrides: cleanOverrides,
-    effectiveConfig: nextEffectiveConfig,
-    updatedAt: updatedDoc.updatedAt,
-    updatedBy: updatedDoc.updatedBy
-  };
-
-  return result;
+  return result as GetDomainConfigResult<T>;
 };
 
 export type BatchUpdateItemInput = {
@@ -518,9 +456,13 @@ export const batchUpdateDomainConfigs = async ({
         existingOverrides: existing?.overrides,
         submittedOverrides
       });
-      const rawOverrides = restorePreservedSecrets(domain, mergedOverrides, existing?.overrides);
-      const parsedOverrides = parseDomainOverrides(domain, rawOverrides);
-      const effectiveConfig = resolveDomainEffectiveConfig(domain, parsedOverrides);
+      const rawOverrides = restorePreservedSecrets({
+        domain,
+        submitted: mergedOverrides,
+        previous: existing?.overrides
+      });
+      const parsedOverrides = parseDomainOverrides({ domain, overrides: rawOverrides });
+      const effectiveConfig = resolveDomainEffectiveConfig({ domain, overrides: parsedOverrides });
 
       const defaultValues = getDomainDefaultConfig(domain);
       const cleanOverrides = pruneDefaultOverrides(parsedOverrides, defaultValues) ?? {};
@@ -577,7 +519,14 @@ export const batchUpdateDomainConfigs = async ({
           explicitDefaultPaths: item.explicitDefaultPaths,
           updatedBy: actor
         });
-        await newDoc.save({ session });
+        try {
+          await newDoc.save({ session });
+        } catch (error) {
+          if ((error as { code?: number })?.code === 11000) {
+            throw new ApiHttpError(409, 'Revision conflict: document was concurrently created');
+          }
+          throw error;
+        }
         updatedDoc = newDoc.toObject();
       } else {
         updatedDoc = await MongoSystemInstanceConfig.findOneAndUpdate(

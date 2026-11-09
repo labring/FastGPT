@@ -171,6 +171,37 @@
 - [x] **F4（原第 38 项）过期注释**：旧页面和旧字段组件已删除；剩余 ENV 相关注释已核对，未发现继续描述已移除兜底的内容。
 - 位置：`.agents/design/common/admin-instance-config-env-boundary.md` 及相关源码注释
 
+### 批次 G：最新 review 5824803968 收口
+
+- [x] **G1（review F1，P2）PDF 新价格未进入 App 计费桥**
+  - 已实现：`buildAuthoritativeSystemEnv` 用实例配置覆盖 `customPdfParse.price`；PDF 用量计算与 `createPdfParseUsage` 统一读取 `providers.documentParse.customPdf.price`；测试验证实例价格覆盖旧库值。
+  - 位置：`projects/app/src/service/common/system/buildAuthoritativeSystemEnv.ts`、`packages/service/common/file/read/utils.ts`、`packages/service/support/wallet/usage/controller.ts`
+- [x] **G2（review F2，P2）SSO 草稿未进入保存请求**
+  - 已实现：auth 保存 payload 在 `showSso` 时显式带上 `sso`，与表单可见条件一致。
+  - 位置：`projects/app/src/pageComponents/admin/settings/auth/index.tsx`
+- [x] **G3（review F4，P2）重复维护两套配置写入规则**
+  - 已实现：`updateDomainConfig` 改为 `batchUpdateDomainConfigs` 的单域薄适配层，删除单域独立合并/校验/剪枝/乐观锁实现；批量创建并发冲突继续映射 409。
+  - 位置：`packages/service/common/system/systemInstanceConfig/controller.ts`
+- [x] **G4（review F5，P2）新增公共 helper 多位置参数**
+  - 已实现：`parseDomainOverrides`、`resolveDomainEffectiveConfig`、`restorePreservedSecrets`、`filterDomainDataByEdition`、`filterDomainDataByVisibleKeys`、`collectPrunedLeafPaths`、`findOverridesNotAllowedByEdition`、`registry.createEntries`、内部 `restoreObject`、迁移 `tryResolveConflictLeaf` 全部改为命名对象参数，并同步调用方。
+  - 位置：`packages/global/common/system/config/`、`packages/service/common/system/systemInstanceConfig/controller.ts`、迁移 service 与相关测试
+- [x] **G5（review F6，P2）头像 TTL 写 helper 未透传 session**
+  - 已实现：`scheduleAvatarDeletion` 改为对象参数并支持可选 `session`，透传给 `MongoS3TTL.updateOne`。
+  - 位置：`packages/service/common/s3/sources/avatar/index.ts`
+- [x] **G6（review F7，P2）type.ts 先 import 再 export**
+  - 已实现：删除 `SystemInstanceConfigDomainKey/Map` 转导出；消费方直接从 schema 导入。
+  - 位置：`packages/global/common/system/config/type.ts`、相关页面
+- [x] **G7（review F8，P3）OpenAPI 字段说明与示例**
+  - 已实现：GET 响应 domain/revision/overrides/effectiveConfig/secretKeys/updatedBy 和更新请求 domain/expectedRevision/overrides/items/subPlans/subPlansExpectedRevision 补 description/example；补齐局部补丁、显式清空、套餐绑定 revision 示例。
+  - 位置：`packages/global/openapi/admin/system/instanceConfig/api.ts`
+- [x] **G8（review F3，P2，A4 补强）头像最终检查与远端删除之间仍可重新引用**
+  - 已实现：新增 `s3_site_avatar_states` 对象级状态机（referenced/pending/deleting）：
+    - 站点保存前先按新配置登记引用（带 revision），删除任务已领取时返回 409，保存不写库；登记后再校验对象存在，缺失返回 400 并清理状态。
+    - TTL 清理只把 pending 状态提交删除队列；最终删除任务必须原子领取 pending→deleting 才能删除。
+    - 旧保存的延迟回调通过 `savedRevision` 条件降级，不能覆盖新 revision 的引用；删除失败释放回 pending 供重试。
+  - 覆盖：删除任务已领取时重新引用被拒绝；先引用后删除被跳过；过期 TTL 遇 referenced 状态不删除；S3 删除失败恢复 pending。
+  - 位置：`packages/service/common/s3/models/siteAvatarState.ts`、`siteAvatarReferences.ts`、`cleanup.ts`、`queue/delete.ts`、`sources/avatar/index.ts`、`projects/app/src/pages/api/admin/system/config/update.ts`、`syncSiteAvatarLifecycle.ts` 及相关测试
+
 ## 四、已完成项（不重复修）
 
 - PlanEditModal 测试兼容性：`b22b6a55f`，12 例通过，review 线程已 resolve。

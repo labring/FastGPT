@@ -172,11 +172,15 @@ export const getDomainDefaultConfig = <T extends SystemInstanceConfigDomainKey>(
  * - 默认 strict 模式：拒绝未知字段，用于 Admin API 输入检验；
  * - strict: false 模式：剥离未知字段，用于数据库快照读取。
  */
-export const parseDomainOverrides = <T extends SystemInstanceConfigDomainKey>(
-  domain: T,
-  overrides: unknown,
-  options?: { strict?: boolean }
-): DeepPartial<SystemInstanceConfigDomainMap[T]> => {
+export const parseDomainOverrides = <T extends SystemInstanceConfigDomainKey>({
+  domain,
+  overrides,
+  options
+}: {
+  domain: T;
+  overrides: unknown;
+  options?: { strict?: boolean };
+}): DeepPartial<SystemInstanceConfigDomainMap[T]> => {
   const schema =
     options?.strict === false
       ? systemInstanceConfigDomainLenientOverrideSchemaMap[domain]
@@ -190,13 +194,17 @@ export const parseDomainOverrides = <T extends SystemInstanceConfigDomainKey>(
  * 2. 深度合并默认值与 overrides；
  * 3. 阶段 2 执行完整 DomainSchema（含 superRefine 跨字段校验）终审并返回生效配置。
  */
-export const resolveDomainEffectiveConfig = <T extends SystemInstanceConfigDomainKey>(
-  domain: T,
-  overrides?: unknown,
-  options?: { strict?: boolean }
-): SystemInstanceConfigDomainMap[T] => {
+export const resolveDomainEffectiveConfig = <T extends SystemInstanceConfigDomainKey>({
+  domain,
+  overrides,
+  options
+}: {
+  domain: T;
+  overrides?: unknown;
+  options?: { strict?: boolean };
+}): SystemInstanceConfigDomainMap[T] => {
   const defaultValues = getDomainDefaultConfig(domain);
-  const parsedOverrides = parseDomainOverrides(domain, overrides, options);
+  const parsedOverrides = parseDomainOverrides({ domain, overrides, options });
   const merged = deepMergeConfig(defaultValues, parsedOverrides);
   const fullSchema = systemInstanceConfigDomainSchemaMap[domain];
   return fullSchema.parse(merged) as SystemInstanceConfigDomainMap[T];
@@ -231,21 +239,61 @@ export const resolveSystemInstanceConfig = (
   options?: { strict?: boolean }
 ): SystemInstanceConfig => {
   return {
-    site: resolveDomainEffectiveConfig('site', domainOverridesMap.site, options),
-    auth: resolveDomainEffectiveConfig('auth', domainOverridesMap.auth, options),
-    security: resolveDomainEffectiveConfig('security', domainOverridesMap.security, options),
-    feature: resolveDomainEffectiveConfig('feature', domainOverridesMap.feature, options),
-    commercial: resolveDomainEffectiveConfig('commercial', domainOverridesMap.commercial, options),
-    resource: resolveDomainEffectiveConfig('resource', domainOverridesMap.resource, options),
-    performance: resolveDomainEffectiveConfig(
-      'performance',
-      domainOverridesMap.performance,
+    site: resolveDomainEffectiveConfig({
+      domain: 'site',
+      overrides: domainOverridesMap.site,
       options
-    ),
-    storage: resolveDomainEffectiveConfig('storage', domainOverridesMap.storage, options),
-    vector: resolveDomainEffectiveConfig('vector', domainOverridesMap.vector, options),
-    providers: resolveDomainEffectiveConfig('providers', domainOverridesMap.providers, options),
-    subservice: resolveDomainEffectiveConfig('subservice', domainOverridesMap.subservice, options)
+    }),
+    auth: resolveDomainEffectiveConfig({
+      domain: 'auth',
+      overrides: domainOverridesMap.auth,
+      options
+    }),
+    security: resolveDomainEffectiveConfig({
+      domain: 'security',
+      overrides: domainOverridesMap.security,
+      options
+    }),
+    feature: resolveDomainEffectiveConfig({
+      domain: 'feature',
+      overrides: domainOverridesMap.feature,
+      options
+    }),
+    commercial: resolveDomainEffectiveConfig({
+      domain: 'commercial',
+      overrides: domainOverridesMap.commercial,
+      options
+    }),
+    resource: resolveDomainEffectiveConfig({
+      domain: 'resource',
+      overrides: domainOverridesMap.resource,
+      options
+    }),
+    performance: resolveDomainEffectiveConfig({
+      domain: 'performance',
+      overrides: domainOverridesMap.performance,
+      options
+    }),
+    storage: resolveDomainEffectiveConfig({
+      domain: 'storage',
+      overrides: domainOverridesMap.storage,
+      options
+    }),
+    vector: resolveDomainEffectiveConfig({
+      domain: 'vector',
+      overrides: domainOverridesMap.vector,
+      options
+    }),
+    providers: resolveDomainEffectiveConfig({
+      domain: 'providers',
+      overrides: domainOverridesMap.providers,
+      options
+    }),
+    subservice: resolveDomainEffectiveConfig({
+      domain: 'subservice',
+      overrides: domainOverridesMap.subservice,
+      options
+    })
   };
 };
 

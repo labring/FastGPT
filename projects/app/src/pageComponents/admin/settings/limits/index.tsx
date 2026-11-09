@@ -18,7 +18,7 @@ import AdminSettingSection from '@/pageComponents/admin/settings/AdminSettingSec
 import AdminFormItem from '@/pageComponents/admin/settings/AdminFormItem';
 import AdminReadonlyInput from '@/pageComponents/admin/settings/AdminReadonlyInput';
 import type { SettingTOCItem } from '@/pageComponents/admin/settings/AdminSettingTOC';
-import type { SystemInstanceConfigDomainMap } from '@fastgpt/global/common/system/config/type';
+import type { SystemInstanceConfigDomainMap } from '@fastgpt/global/common/system/config/schema';
 
 type LimitsConfigForm = SystemInstanceConfigDomainMap['resource'] &
   SystemInstanceConfigDomainMap['performance'] & {

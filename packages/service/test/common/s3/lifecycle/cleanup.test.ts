@@ -4,6 +4,7 @@ import { imageBaseUrl } from '@fastgpt/global/common/file/image/constants';
 import { MongoS3TTL } from '@fastgpt/service/common/s3/models/ttl';
 import { S3Buckets } from '@fastgpt/service/common/s3/config/constants';
 import { MongoSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/schema';
+import { MongoSiteAvatarState } from '@fastgpt/service/common/s3/models/siteAvatarState';
 
 const { S3BaseBucket } = await vi.importActual<
   typeof import('@fastgpt/service/common/s3/buckets/base')
@@ -33,6 +34,7 @@ describe('S3 TTL cleanup', () => {
   afterEach(async () => {
     global.s3BucketMap = originalS3BucketMap;
     await MongoSystemInstanceConfig.deleteMany({ domain: 'site' });
+    await MongoSiteAvatarState.deleteMany({});
     vi.restoreAllMocks();
   });
 
@@ -152,6 +154,36 @@ describe('S3 TTL cleanup', () => {
     await clearExpiredMinioFiles();
 
     expect(addDeleteJob).toHaveBeenCalledWith({ key: avatarKey });
+    expect(
+      await MongoS3TTL.find({ minioKey: avatarKey, bucketName: S3Buckets.public })
+    ).toHaveLength(0);
+  });
+
+  it('keeps an avatar whose coordination state is still referenced', async () => {
+    const avatarKey = 'avatar/team-1/stale-ttl.png';
+    await MongoSiteAvatarState.create({
+      avatarKey,
+      state: 'referenced',
+      referencedRevision: 2
+    });
+
+    const storage = createVitestStorageMock({ vi, bucketName: S3Buckets.public });
+    const bucket = new S3BaseBucket(storage, undefined);
+    const addDeleteJob = vi.spyOn(bucket, 'addDeleteJob').mockResolvedValue(undefined);
+    await MongoS3TTL.create({
+      bucketName: S3Buckets.public,
+      minioKey: avatarKey,
+      expiredTime: new Date(Date.now() - 1000)
+    });
+    global.s3BucketMap = { [S3Buckets.public]: bucket };
+
+    await clearExpiredMinioFiles();
+
+    expect(addDeleteJob).not.toHaveBeenCalled();
+    expect(await MongoSiteAvatarState.findOne({ avatarKey }).lean()).toMatchObject({
+      state: 'referenced',
+      referencedRevision: 2
+    });
     expect(
       await MongoS3TTL.find({ minioKey: avatarKey, bucketName: S3Buckets.public })
     ).toHaveLength(0);

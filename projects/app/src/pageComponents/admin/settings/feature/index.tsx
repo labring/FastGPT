@@ -8,7 +8,7 @@ import AdminSettingPage from '@/pageComponents/admin/settings/AdminSettingPage';
 import AdminSettingSection from '@/pageComponents/admin/settings/AdminSettingSection';
 import AdminSwitchRow from '@/pageComponents/admin/settings/AdminSwitchRow';
 import type { SettingTOCItem } from '@/pageComponents/admin/settings/AdminSettingTOC';
-import type { SystemInstanceConfigDomainMap } from '@fastgpt/global/common/system/config/type';
+import type { SystemInstanceConfigDomainMap } from '@fastgpt/global/common/system/config/schema';
 
 type FeatureConfigForm = SystemInstanceConfigDomainMap['feature'];
 

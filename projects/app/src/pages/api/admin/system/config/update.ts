@@ -18,6 +18,17 @@ import {
 import { initSystemConfig } from '@/service/common/system';
 import { assertStorageDownloadConfig } from '@fastgpt/service/common/s3/config/utils';
 import { syncSiteAvatarLifecycle } from '@/service/common/system/syncSiteAvatarLifecycle';
+import { resolveDomainEffectiveConfig } from '@fastgpt/global/common/system/config/schema';
+import { deepMergeConfig } from '@fastgpt/global/common/system/config/merge';
+import {
+  AVATAR_KEY_PREFIX,
+  clearSiteAvatarDeletionState,
+  getSiteAvatarRefs,
+  reserveSiteAvatarReferences,
+  SiteAvatarDeletionInProgressError,
+  toSiteAvatarKey
+} from '@fastgpt/service/common/s3/siteAvatarReferences';
+import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { logInstanceConfigWrite } from '@fastgpt/service/common/system/migrationCoverageLog';
 import { ApiHttpError } from '@fastgpt/service/common/http/apiError';
@@ -52,7 +63,11 @@ async function handler(
     );
   }
   for (const item of items) {
-    const notAllowedKeys = findOverridesNotAllowedByEdition(item.domain, item.overrides, edition);
+    const notAllowedKeys = findOverridesNotAllowedByEdition({
+      domain: item.domain,
+      submittedOverrides: item.overrides,
+      edition
+    });
     if (notAllowedKeys.length > 0) {
       throw new ApiHttpError(
         403,
@@ -69,6 +84,55 @@ async function handler(
   // 2. site 域涉及头像资源：先取旧值用于保存后的 S3 生命周期对比
   const siteItem = items.find((item) => item.domain === 'site');
   const previousSiteConfig = siteItem ? (await getDomainConfig('site')).effectiveConfig : undefined;
+
+  // 2.1 新引用头像必须在提交前完成对象级登记：
+  // - 删除任务已领取的对象返回 409，让用户重试而不是写入一个即将被删除的 URL；
+  // - 对象已不存在时返回 400，提示重新上传；
+  // - 登记成功后，删除任务无法再领取该对象，消除检查后窗口。
+  if (siteItem && previousSiteConfig) {
+    const previousAvatarRefs = getSiteAvatarRefs(previousSiteConfig);
+    const nextSiteConfig = resolveDomainEffectiveConfig({
+      domain: 'site',
+      overrides: deepMergeConfig(previousSiteConfig, siteItem.overrides)
+    });
+    const newAvatarKeys = [...getSiteAvatarRefs(nextSiteConfig)]
+      .filter((avatar) => !previousAvatarRefs.has(avatar))
+      .map(toSiteAvatarKey)
+      .filter((avatarKey) => avatarKey.startsWith(AVATAR_KEY_PREFIX));
+
+    if (newAvatarKeys.length > 0) {
+      // 先登记引用锁，再确认对象存在。若删除任务在检查与登记之间完成并清掉状态，
+      // 登记会失败（deleting）或成功但存在性检查发现对象已缺失，两种情况都不会写库。
+      try {
+        await reserveSiteAvatarReferences({
+          avatarKeys: newAvatarKeys,
+          siteRevision: siteItem.expectedRevision + 1
+        });
+      } catch (error) {
+        if (error instanceof SiteAvatarDeletionInProgressError) {
+          throw new ApiHttpError(
+            409,
+            'Avatar deletion is in progress. Please retry the save in a moment.'
+          );
+        }
+        throw error;
+      }
+
+      const missingAvatarKeys: string[] = await getS3AvatarSource().findMissingAvatars({
+        avatarKeys: newAvatarKeys
+      });
+      if (missingAvatarKeys.length > 0) {
+        // 对象已不存在时不会写库，清理刚登记的引用锁，避免留下无意义状态。
+        await Promise.all(
+          missingAvatarKeys.map((avatarKey) => clearSiteAvatarDeletionState({ avatarKey }))
+        );
+        throw new ApiHttpError(
+          400,
+          `Avatar file not found: ${missingAvatarKeys.join(', ')}. Please upload it again.`
+        );
+      }
+    }
+  }
 
   // 3. 单事务写入全部域和可选套餐
   const savedConfigs = await batchUpdateDomainConfigs({
@@ -92,7 +156,8 @@ async function handler(
     if (currentSite)
       void syncSiteAvatarLifecycle({
         previous: previousSiteConfig,
-        next: currentSite.effectiveConfig as typeof previousSiteConfig
+        next: currentSite.effectiveConfig as typeof previousSiteConfig,
+        savedRevision: currentSite.revision
       }).catch((error) => {
         logger.error('Failed to sync site avatar lifecycle after config update', { error });
       });

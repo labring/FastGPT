@@ -7,7 +7,7 @@ import AdminSettingSection from '@/pageComponents/admin/settings/AdminSettingSec
 import AdminFormItem from '@/pageComponents/admin/settings/AdminFormItem';
 import ConnectivityTestInput from '@/pageComponents/admin/settings/ConnectivityTestInput';
 import type { SettingTOCItem } from '@/pageComponents/admin/settings/AdminSettingTOC';
-import type { SystemInstanceConfigDomainMap } from '@fastgpt/global/common/system/config/type';
+import type { SystemInstanceConfigDomainMap } from '@fastgpt/global/common/system/config/schema';
 
 type SubserviceConfigForm = SystemInstanceConfigDomainMap['subservice'];
 

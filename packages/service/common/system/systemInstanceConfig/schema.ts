@@ -80,9 +80,9 @@ const systemInstanceConfigSchema = new Schema(
           }
 
           try {
-            resolveDomainEffectiveConfig(domain, value);
+            resolveDomainEffectiveConfig({ domain, overrides: value });
             return true;
-          } catch (err: any) {
+          } catch {
             return false;
           }
         },

@@ -768,7 +768,7 @@ export const sanitizeOverridesForSchema = ({
     // 循环剔除：每轮校验拿到一个非法叶子路径就删掉重试，直到整域通过
     for (;;) {
       try {
-        resolveDomainEffectiveConfig(domain, candidate);
+        resolveDomainEffectiveConfig({ domain, overrides: candidate });
         break;
       } catch (error) {
         const zodIssues = (error as { issues?: { path?: (string | number)[] }[] })?.issues ?? [];
@@ -1026,12 +1026,17 @@ export const applyInstanceConfigMigration = async ({
    * 2. 只有当剔除某个待补叶子后，原 badPath 报错确实消解时，才确认该叶子为冲突根因并正式剔除；
    * 3. 杜绝盲目剔除首个叶子导致合法的同胞字段（如 maxRunTimes）被误删丢失。
    */
-  const tryResolveConflictLeaf = (
-    domain: SystemInstanceConfigDomainKey,
-    existingOverrides: Record<string, unknown>,
-    candidateMissing: Record<string, unknown>,
-    badPath: (string | number)[]
-  ): string | undefined => {
+  const tryResolveConflictLeaf = ({
+    domain,
+    existingOverrides,
+    candidateMissing,
+    badPath
+  }: {
+    domain: SystemInstanceConfigDomainKey;
+    existingOverrides: Record<string, unknown>;
+    candidateMissing: Record<string, unknown>;
+    badPath: (string | number)[];
+  }): string | undefined => {
     const badPathStr = badPath.join('.');
 
     // 若 badPath 本身就是待补集合中的叶子，直接试删复验
@@ -1063,7 +1068,7 @@ export const applyInstanceConfigMigration = async ({
       const testMerged = mergeMissingOverrides(existingOverrides, cloned);
       try {
         // 试删后复验：若完全通过或不再报出当前 badPath，说明此待补字段即为冲突源
-        resolveDomainEffectiveConfig(domain, testMerged, { strict: false });
+        resolveDomainEffectiveConfig({ domain, overrides: testMerged, options: { strict: false } });
         removeNestedPath(candidateMissing, testPath);
         return testPathStr;
       } catch (err: any) {
@@ -1122,7 +1127,7 @@ export const applyInstanceConfigMigration = async ({
       for (;;) {
         const merged = mergeMissingOverrides(existingOverrides, candidateMissing);
         try {
-          resolveDomainEffectiveConfig(domain, merged, { strict: false });
+          resolveDomainEffectiveConfig({ domain, overrides: merged, options: { strict: false } });
           break;
         } catch (error) {
           const isZod = error instanceof z.ZodError || Array.isArray((error as any)?.issues);
@@ -1136,7 +1141,7 @@ export const applyInstanceConfigMigration = async ({
             (issue) => Array.isArray(issue.path) && issue.path.length > 0
           )?.path;
           const removedField = badPath
-            ? tryResolveConflictLeaf(domain, existingOverrides, candidateMissing, badPath)
+            ? tryResolveConflictLeaf({ domain, existingOverrides, candidateMissing, badPath })
             : undefined;
 
           if (!removedField) {
@@ -1213,7 +1218,7 @@ export const applyInstanceConfigMigration = async ({
     const targetOverrides = overrides[domain] ?? {};
     // 先执行两阶段校验，确保写入值与运行时解析结果一致（与 controller 写入路径一致，
     // updateOne 不跑 schema validator，由这里显式校验兜底）。
-    resolveDomainEffectiveConfig(domain, targetOverrides);
+    resolveDomainEffectiveConfig({ domain, overrides: targetOverrides });
 
     const inserted = await MongoSystemInstanceConfig.updateOne(
       { domain },

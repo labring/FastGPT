@@ -4,9 +4,7 @@ import {
   getSystemEdition,
   isCommunityEdition,
   isProEdition,
-  isConfigFieldAllowed,
   isConfigFieldVisible,
-  getDomainAllowedKeys,
   getDomainVisibleKeys,
   filterDomainDataByEdition,
   filterDomainDataByVisibleKeys
@@ -54,7 +52,7 @@ export const useAdminPermission = () => {
    */
   const filterConfigDataByEdition = useCallback(
     <T>(domain: SystemInstanceConfigDomainKey, data: T): Partial<T> => {
-      return filterDomainDataByEdition(domain, data, edition);
+      return filterDomainDataByEdition({ domain, data, edition });
     },
     [edition]
   );
@@ -64,7 +62,11 @@ export const useAdminPermission = () => {
    */
   const filterConfigData = useCallback(
     <T>(domain: SystemInstanceConfigDomainKey, data: T): Partial<T> => {
-      return filterDomainDataByVisibleKeys(domain, data, { edition, enableSaasAdminConfig });
+      return filterDomainDataByVisibleKeys({
+        domain,
+        data,
+        options: { edition, enableSaasAdminConfig }
+      });
     },
     [edition, enableSaasAdminConfig]
   );

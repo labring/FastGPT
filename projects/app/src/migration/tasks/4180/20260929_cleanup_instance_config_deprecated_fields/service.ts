@@ -171,7 +171,7 @@ export const cleanupInstanceConfigDeprecatedFields = async ({
     // 写回前先按新 Schema 终审，确保清理结果可被运行时解析。
     // 失败时补充 domain 上下文：blockStartup 下该错误会直接阻塞启动，需能定位到具体域。
     try {
-      resolveDomainEffectiveConfig(domain, overrides);
+      resolveDomainEffectiveConfig({ domain, overrides });
     } catch (error) {
       throw new Error(
         `Instance config cleanup rejected by schema for domain "${domain}": ${
@@ -200,7 +200,7 @@ export const cleanupInstanceConfigDeprecatedFields = async ({
       if (retry.removedFieldCount > 0 && retry.overrides) {
         // 与首次路径一致：写回前按新 Schema 终审，避免清理结果运行时不可解析
         try {
-          resolveDomainEffectiveConfig(domain, retry.overrides);
+          resolveDomainEffectiveConfig({ domain, overrides: retry.overrides });
         } catch (error) {
           throw new Error(
             `Instance config cleanup rejected by schema for domain "${domain}": ${
@@ -257,7 +257,7 @@ export const verifyInstanceConfigDeprecatedFields = async () => {
     }
 
     try {
-      resolveDomainEffectiveConfig(domain, doc.overrides);
+      resolveDomainEffectiveConfig({ domain, overrides: doc.overrides });
     } catch {
       invalidDomains.push(domain);
     }

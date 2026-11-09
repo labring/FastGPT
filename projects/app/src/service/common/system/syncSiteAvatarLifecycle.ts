@@ -1,9 +1,8 @@
 import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
-
-type SiteAvatarFields = {
-  favicon?: string;
-  navbarItems?: { avatar?: string }[];
-};
+import {
+  getSiteAvatarRefs,
+  type SiteAvatarFields
+} from '@fastgpt/service/common/s3/siteAvatarReferences';
 
 /**
  * 站点域保存前后同步 S3 头像资源生命周期。
@@ -18,22 +17,18 @@ type SiteAvatarFields = {
  */
 export const syncSiteAvatarLifecycle = async ({
   previous,
-  next
+  next,
+  savedRevision
 }: {
   previous: SiteAvatarFields;
   next: SiteAvatarFields;
+  /** 本次保存后的站点 revision，用于让延迟回调识别更新的引用。 */
+  savedRevision?: number;
 }) => {
   const s3AvatarSource = getS3AvatarSource();
 
-  const getReferencedAvatars = (site: SiteAvatarFields): Set<string> => {
-    const list = [site.favicon, ...(site.navbarItems ?? []).map((item) => item.avatar)].filter(
-      Boolean
-    ) as string[];
-    return new Set(list);
-  };
-
-  const previousAll = getReferencedAvatars(previous);
-  const nextAll = getReferencedAvatars(next);
+  const previousAll = getSiteAvatarRefs(previous);
+  const nextAll = getSiteAvatarRefs(next);
 
   // 1. 新增引用的头像：移除 TTL 避免被定时回收
   for (const avatar of nextAll) {
@@ -46,7 +41,7 @@ export const syncSiteAvatarLifecycle = async ({
   //    宽限期内重新引用会通过 removeAvatarTTL 取消删除。
   for (const avatar of previousAll) {
     if (!nextAll.has(avatar)) {
-      await s3AvatarSource.scheduleAvatarDeletion(avatar);
+      await s3AvatarSource.scheduleAvatarDeletion({ avatar, savedRevision });
     }
   }
 };

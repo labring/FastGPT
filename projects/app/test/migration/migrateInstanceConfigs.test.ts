@@ -137,7 +137,9 @@ describe('migration buildLegacyDomainOverrides', () => {
     for (const domain of SYSTEM_INSTANCE_CONFIG_DOMAINS) {
       const domainOverrides = overrides[domain];
       if (!domainOverrides) continue;
-      expect(() => resolveDomainEffectiveConfig(domain, domainOverrides)).not.toThrow();
+      expect(() =>
+        resolveDomainEffectiveConfig({ domain, overrides: domainOverrides })
+      ).not.toThrow();
     }
   });
 
@@ -162,7 +164,9 @@ describe('migration buildLegacyDomainOverrides', () => {
     for (const domain of SYSTEM_INSTANCE_CONFIG_DOMAINS) {
       const domainOverrides = overrides[domain];
       if (!domainOverrides) continue;
-      expect(() => resolveDomainEffectiveConfig(domain, domainOverrides)).not.toThrow();
+      expect(() =>
+        resolveDomainEffectiveConfig({ domain, overrides: domainOverrides })
+      ).not.toThrow();
     }
 
     expect(overrides.resource).toMatchObject({
@@ -317,7 +321,9 @@ describe('migration buildSparseLegacyOverrides', () => {
     for (const domain of SYSTEM_INSTANCE_CONFIG_DOMAINS) {
       const domainOverrides = sparse[domain];
       if (!domainOverrides) continue;
-      expect(() => resolveDomainEffectiveConfig(domain, domainOverrides)).not.toThrow();
+      expect(() =>
+        resolveDomainEffectiveConfig({ domain, overrides: domainOverrides })
+      ).not.toThrow();
     }
   });
 
@@ -336,7 +342,8 @@ describe('migration buildSparseLegacyOverrides', () => {
       proConfig: { auth: { email: { smtp: 'smtp.example.com' } } }
     });
     expect(
-      resolveDomainEffectiveConfig('auth', disabled.auth ?? {}).loginProviders.email.register
+      resolveDomainEffectiveConfig({ domain: 'auth', overrides: disabled.auth ?? {} })
+        .loginProviders.email.register
     ).toBe(false);
   });
 
@@ -396,7 +403,9 @@ describe('migration buildSparseLegacyOverrides', () => {
     for (const domain of SYSTEM_INSTANCE_CONFIG_DOMAINS) {
       const domainOverrides = sparse[domain];
       if (!domainOverrides) continue;
-      expect(() => resolveDomainEffectiveConfig(domain, domainOverrides)).not.toThrow();
+      expect(() =>
+        resolveDomainEffectiveConfig({ domain, overrides: domainOverrides })
+      ).not.toThrow();
     }
   });
 
@@ -426,7 +435,9 @@ describe('migration buildSparseLegacyOverrides', () => {
       pointsThirtyPercentRemain: { zh: 'SMS_POINTS_30' },
       pointsTenPercentRemain: { zh: 'SMS_POINTS_10' }
     });
-    expect(() => resolveDomainEffectiveConfig('commercial', pro.commercial ?? {})).not.toThrow();
+    expect(() =>
+      resolveDomainEffectiveConfig({ domain: 'commercial', overrides: pro.commercial ?? {} })
+    ).not.toThrow();
   });
 
   it('normalizes legacy object-shape fastLogin into the array contract', () => {
@@ -472,7 +483,9 @@ describe('migration buildSparseLegacyOverrides', () => {
     for (const domain of SYSTEM_INSTANCE_CONFIG_DOMAINS) {
       const domainOverrides = pro[domain];
       if (!domainOverrides) continue;
-      expect(() => resolveDomainEffectiveConfig(domain, domainOverrides)).not.toThrow();
+      expect(() =>
+        resolveDomainEffectiveConfig({ domain, overrides: domainOverrides })
+      ).not.toThrow();
     }
   });
 });

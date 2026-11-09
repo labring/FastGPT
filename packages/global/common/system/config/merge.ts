@@ -98,11 +98,15 @@ export const hasOverridePath = (overrides: unknown, path: string): boolean => {
  * 被剪掉的路径代表"提交了、但与内置默认值取值相同"的字段，即使用方明确要求该字段取默认值。
  * 必须与"从未配置"区分开：迁移回填若把它们当成缺失字段，会把使用方刚清空的值重新填回。
  */
-export const collectPrunedLeafPaths = (
-  submitted: unknown,
-  pruned: unknown,
-  prefix: string[] = []
-): string[] => {
+export const collectPrunedLeafPaths = ({
+  submitted,
+  pruned,
+  prefix = []
+}: {
+  submitted: unknown;
+  pruned: unknown;
+  prefix?: string[];
+}): string[] => {
   if (!isPlainObject(submitted)) return [];
 
   const prunedObject = isPlainObject(pruned) ? pruned : {};
@@ -113,7 +117,9 @@ export const collectPrunedLeafPaths = (
 
     const path = [...prefix, key];
     if (isPlainObject(value)) {
-      paths.push(...collectPrunedLeafPaths(value, prunedObject[key], path));
+      paths.push(
+        ...collectPrunedLeafPaths({ submitted: value, pruned: prunedObject[key], prefix: path })
+      );
       continue;
     }
 

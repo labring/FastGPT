@@ -65,7 +65,10 @@ describe('fileUrlValidator', () => {
       global.systemEnv = { fileUrlWhitelist: ['other.com'] } as any;
 
       expect(() =>
-        resolveDomainEffectiveConfig('storage', { externalEndpoint: 'not-a-valid-url' })
+        resolveDomainEffectiveConfig({
+          domain: 'storage',
+          overrides: { externalEndpoint: 'not-a-valid-url' }
+        })
       ).toThrow();
       await expect(
         import('@fastgpt/service/common/security/fileUrlValidator')

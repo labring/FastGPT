@@ -9,7 +9,7 @@ import AdminSettingSection from '@/pageComponents/admin/settings/AdminSettingSec
 import AdminFormItem from '@/pageComponents/admin/settings/AdminFormItem';
 import AdminSwitchRow from '@/pageComponents/admin/settings/AdminSwitchRow';
 import type { SettingTOCItem } from '@/pageComponents/admin/settings/AdminSettingTOC';
-import type { SystemInstanceConfigDomainMap } from '@fastgpt/global/common/system/config/type';
+import type { SystemInstanceConfigDomainMap } from '@fastgpt/global/common/system/config/schema';
 
 type SecurityConfigForm = Omit<
   SystemInstanceConfigDomainMap['security'],

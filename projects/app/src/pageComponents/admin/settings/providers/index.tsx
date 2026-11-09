@@ -20,7 +20,7 @@ import AdminFormItem from '@/pageComponents/admin/settings/AdminFormItem';
 import ConnectivityTestInput from '@/pageComponents/admin/settings/ConnectivityTestInput';
 import type { SettingTOCItem } from '@/pageComponents/admin/settings/AdminSettingTOC';
 import ThirdPartyVariables from '@/pageComponents/admin/config/components/FormField/ThirdPartyVariables';
-import type { SystemInstanceConfigDomainMap } from '@fastgpt/global/common/system/config/type';
+import type { SystemInstanceConfigDomainMap } from '@fastgpt/global/common/system/config/schema';
 
 type ProvidersConfigForm = SystemInstanceConfigDomainMap['providers'];
 

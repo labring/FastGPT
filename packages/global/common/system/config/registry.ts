@@ -37,13 +37,17 @@ export type SystemInstanceConfigRegistryItem = {
   applyMode: SystemInstanceConfigApplyMode;
 };
 
-const createEntries = (
-  section: SystemInstanceConfigSection,
-  keys: readonly string[],
+const createEntries = ({
+  section,
+  keys,
+  options
+}: {
+  section: SystemInstanceConfigSection;
+  keys: readonly string[];
   options: Omit<SystemInstanceConfigRegistryItem, 'key' | 'section' | 'isSaasOnly'> & {
     isSaasOnly?: boolean;
-  }
-): SystemInstanceConfigRegistryItem[] =>
+  };
+}): SystemInstanceConfigRegistryItem[] =>
   keys.map((key) => ({
     key: `${section}.${key}`,
     section,
@@ -58,9 +62,9 @@ const createEntries = (
  * 保留在 ENV 的字段（例如同义词开关）不进入实例配置 Schema 和注册表，避免 API 接收后无人消费。
  */
 export const systemInstanceConfigRegistry: readonly SystemInstanceConfigRegistryItem[] = [
-  ...createEntries(
-    'site',
-    [
+  ...createEntries({
+    section: 'site',
+    keys: [
       'name',
       'description',
       'favicon',
@@ -77,42 +81,46 @@ export const systemInstanceConfigRegistry: readonly SystemInstanceConfigRegistry
       'botIframeUrl',
       'scripts'
     ],
-    { edition: 'all', secret: false, applyMode: 'live' }
-  ),
+    options: { edition: 'all', secret: false, applyMode: 'live' }
+  }),
   // 自定义域名入口与 CNAME 配置沿用旧页面“SaaS 服务才会用到”的定位
-  ...createEntries(
-    'site',
-    [
+  ...createEntries({
+    section: 'site',
+    keys: [
       'customDomain.enable',
       'customDomain.domain.aliyun',
       'customDomain.domain.tencent',
       'customDomain.domain.volcengine'
     ],
-    { edition: 'all', secret: false, applyMode: 'live', isSaasOnly: true }
-  ),
-  ...createEntries(
-    'auth',
-    [
+    options: { edition: 'all', secret: false, applyMode: 'live', isSaasOnly: true }
+  }),
+  ...createEntries({
+    section: 'auth',
+    keys: [
       'openApiKeyMaxCount',
       'passwordExpiredMonth',
       'wecomLoginAutoRedirect',
       'defaultTeamBasicPermissionsEnabled'
     ],
-    { edition: 'all', secret: false, applyMode: 'live' }
-  ),
-  ...createEntries('auth', ['teamMode', 'fastLogin'], {
-    edition: 'pro',
-    secret: false,
-    applyMode: 'live'
+    options: { edition: 'all', secret: false, applyMode: 'live' }
   }),
-  ...createEntries(
-    'auth',
-    ['sso.title', 'sso.icon', 'sso.autoLogin', 'sso.disablePasswordForSsoUsers'],
-    { edition: 'pro', secret: false, applyMode: 'live' }
-  ),
-  ...createEntries(
-    'auth',
-    [
+  ...createEntries({
+    section: 'auth',
+    keys: ['teamMode', 'fastLogin'],
+    options: {
+      edition: 'pro',
+      secret: false,
+      applyMode: 'live'
+    }
+  }),
+  ...createEntries({
+    section: 'auth',
+    keys: ['sso.title', 'sso.icon', 'sso.autoLogin', 'sso.disablePasswordForSsoUsers'],
+    options: { edition: 'pro', secret: false, applyMode: 'live' }
+  }),
+  ...createEntries({
+    section: 'auth',
+    keys: [
       'loginProviders.email.smtp',
       'loginProviders.email.user',
       'loginProviders.email.port',
@@ -137,21 +145,21 @@ export const systemInstanceConfigRegistry: readonly SystemInstanceConfigRegistry
       'accountCancellation.reminderSm.zh',
       'accountCancellation.todaySm.zh'
     ],
-    { edition: 'pro', secret: false, applyMode: 'live' }
-  ),
+    options: { edition: 'pro', secret: false, applyMode: 'live' }
+  }),
   // 企微服务商运营字段：仅 SaaS 开启时在管理端表单展示
-  ...createEntries(
-    'auth',
-    [
+  ...createEntries({
+    section: 'auth',
+    keys: [
       'loginProviders.wecom.buyerUserId',
       'loginProviders.wecom.basicVersionId',
       'loginProviders.wecom.advancedVersionId'
     ],
-    { edition: 'pro', secret: false, applyMode: 'live', isSaasOnly: true }
-  ),
-  ...createEntries(
-    'auth',
-    [
+    options: { edition: 'pro', secret: false, applyMode: 'live', isSaasOnly: true }
+  }),
+  ...createEntries({
+    section: 'auth',
+    keys: [
       'loginProviders.email.pass',
       'loginProviders.phone.accessKeySecret',
       'loginProviders.wechat.appSecret',
@@ -162,16 +170,16 @@ export const systemInstanceConfigRegistry: readonly SystemInstanceConfigRegistry
       'loginProviders.google.secret',
       'loginProviders.microsoft.secret'
     ],
-    { edition: 'pro', secret: true, applyMode: 'live' }
-  ),
-  ...createEntries(
-    'auth',
-    ['loginProviders.wecom.providerSecret', 'loginProviders.wecom.paySecret'],
-    { edition: 'pro', secret: true, applyMode: 'live', isSaasOnly: true }
-  ),
-  ...createEntries(
-    'security',
-    [
+    options: { edition: 'pro', secret: true, applyMode: 'live' }
+  }),
+  ...createEntries({
+    section: 'auth',
+    keys: ['loginProviders.wecom.providerSecret', 'loginProviders.wecom.paySecret'],
+    options: { edition: 'pro', secret: true, applyMode: 'live', isSaasOnly: true }
+  }),
+  ...createEntries({
+    section: 'security',
+    keys: [
       'useIpLimit',
       'checkInternalIp',
       'csrfEnabled',
@@ -182,22 +190,30 @@ export const systemInstanceConfigRegistry: readonly SystemInstanceConfigRegistry
       'workflowHttpNode.ignoreHttpsCertificate',
       'fileUrlWhitelist'
     ],
-    { edition: 'all', secret: false, applyMode: 'live' }
-  ),
+    options: { edition: 'all', secret: false, applyMode: 'live' }
+  }),
   // 内容审核只在 Pro 实现，社区版不展示相关凭据入口
-  ...createEntries('security', ['censor.baiduClientId', 'censor.customCensorUrl'], {
-    edition: 'pro',
-    secret: false,
-    applyMode: 'live'
+  ...createEntries({
+    section: 'security',
+    keys: ['censor.baiduClientId', 'censor.customCensorUrl'],
+    options: {
+      edition: 'pro',
+      secret: false,
+      applyMode: 'live'
+    }
   }),
-  ...createEntries('security', ['censor.baiduClientSecret'], {
-    edition: 'pro',
-    secret: true,
-    applyMode: 'live'
+  ...createEntries({
+    section: 'security',
+    keys: ['censor.baiduClientSecret'],
+    options: {
+      edition: 'pro',
+      secret: true,
+      applyMode: 'live'
+    }
   }),
-  ...createEntries(
-    'feature',
-    [
+  ...createEntries({
+    section: 'feature',
+    keys: [
       'hideChatCopyrightSetting',
       'multipleDataToBase64',
       'agentEngine',
@@ -216,18 +232,22 @@ export const systemInstanceConfigRegistry: readonly SystemInstanceConfigRegistry
       'showPublishWechat',
       'showComplianceCopywriting'
     ],
-    { edition: 'all', secret: false, applyMode: 'live' }
-  ),
-  // 营销与收款运营开关：私有化部署不展示，仅 SaaS 运营（ENABLE_SAAS_ADMIN_CONFIG）可配
-  ...createEntries('commercial', ['showCoupon', 'showDiscountCoupon', 'payFormUrl'], {
-    edition: 'pro',
-    secret: false,
-    applyMode: 'live',
-    isSaasOnly: true
+    options: { edition: 'all', secret: false, applyMode: 'live' }
   }),
-  ...createEntries(
-    'commercial',
-    [
+  // 营销与收款运营开关：私有化部署不展示，仅 SaaS 运营（ENABLE_SAAS_ADMIN_CONFIG）可配
+  ...createEntries({
+    section: 'commercial',
+    keys: ['showCoupon', 'showDiscountCoupon', 'payFormUrl'],
+    options: {
+      edition: 'pro',
+      secret: false,
+      applyMode: 'live',
+      isSaasOnly: true
+    }
+  }),
+  ...createEntries({
+    section: 'commercial',
+    keys: [
       'payment.wx.appId',
       'payment.wx.mchId',
       'payment.wx.serialNo',
@@ -242,18 +262,22 @@ export const systemInstanceConfigRegistry: readonly SystemInstanceConfigRegistry
       'billingNotify.expireSoon.zh',
       'billingNotify.expired.zh'
     ],
-    { edition: 'pro', secret: false, applyMode: 'live' }
-  ),
-  // 免费账号清理属于 SaaS 运营任务，通知模板只在 SaaS 表单展示
-  ...createEntries('commercial', ['billingNotify.freeClean.zh'], {
-    edition: 'pro',
-    secret: false,
-    applyMode: 'live',
-    isSaasOnly: true
+    options: { edition: 'pro', secret: false, applyMode: 'live' }
   }),
-  ...createEntries(
-    'commercial',
-    [
+  // 免费账号清理属于 SaaS 运营任务，通知模板只在 SaaS 表单展示
+  ...createEntries({
+    section: 'commercial',
+    keys: ['billingNotify.freeClean.zh'],
+    options: {
+      edition: 'pro',
+      secret: false,
+      applyMode: 'live',
+      isSaasOnly: true
+    }
+  }),
+  ...createEntries({
+    section: 'commercial',
+    keys: [
       'payment.wx.apiV3Key',
       'payment.wx.privateKey',
       'payment.alipay.appPrivateKey',
@@ -261,11 +285,11 @@ export const systemInstanceConfigRegistry: readonly SystemInstanceConfigRegistry
       'payment.alipay.rootCertContent',
       'payment.alipay.publicCertContent'
     ],
-    { edition: 'pro', secret: true, applyMode: 'live' }
-  ),
-  ...createEntries(
-    'resource',
-    [
+    options: { edition: 'pro', secret: true, applyMode: 'live' }
+  }),
+  ...createEntries({
+    section: 'resource',
+    keys: [
       'serviceRequestMaxContentLength',
       'maxFolderDepth',
       'appFolderMaxAmount',
@@ -276,21 +300,21 @@ export const systemInstanceConfigRegistry: readonly SystemInstanceConfigRegistry
       'exportDatasetLimitMinutes',
       'websiteSyncLimitMinuted'
     ],
-    { edition: 'all', secret: false, applyMode: 'reload' }
-  ),
-  ...createEntries(
-    'resource',
-    [
+    options: { edition: 'all', secret: false, applyMode: 'reload' }
+  }),
+  ...createEntries({
+    section: 'resource',
+    keys: [
       'datasetArchive.maxFiles',
       'datasetArchive.maxSourceSizeMiB',
       'datasetArchive.maxConcurrency',
       'datasetArchive.prepareTimeoutSeconds'
     ],
-    { edition: 'all', secret: false, applyMode: 'live' }
-  ),
-  ...createEntries(
-    'performance',
-    [
+    options: { edition: 'all', secret: false, applyMode: 'live' }
+  }),
+  ...createEntries({
+    section: 'performance',
+    keys: [
       'workflow.maxRunTimes',
       'workflow.maxLoopTimes',
       'workflow.parallelMaxConcurrency',
@@ -315,30 +339,44 @@ export const systemInstanceConfigRegistry: readonly SystemInstanceConfigRegistry
       'task.evalConcurrency',
       'channel.wechatConcurrency'
     ],
-    { edition: 'all', secret: false, applyMode: 'reload' }
-  ),
-  ...createEntries(
-    'storage',
-    ['downloadMode', 'externalEndpoint', 'cdnEndpoint', 'fileUrlExpiredDays', 'redirectTtlSeconds'],
-    {
+    options: { edition: 'all', secret: false, applyMode: 'reload' }
+  }),
+  ...createEntries({
+    section: 'storage',
+    keys: [
+      'downloadMode',
+      'externalEndpoint',
+      'cdnEndpoint',
+      'fileUrlExpiredDays',
+      'redirectTtlSeconds'
+    ],
+    options: {
       edition: 'all',
       secret: false,
       applyMode: 'reload'
     }
-  ),
-  ...createEntries('vector', ['hnswEfSearch'], {
-    edition: 'all',
-    secret: false,
-    applyMode: 'reload'
   }),
-  ...createEntries('vector', ['vectorRecallConcurrency'], {
-    edition: 'pro',
-    secret: false,
-    applyMode: 'reload'
+  ...createEntries({
+    section: 'vector',
+    keys: ['hnswEfSearch'],
+    options: {
+      edition: 'all',
+      secret: false,
+      applyMode: 'reload'
+    }
   }),
-  ...createEntries(
-    'providers',
-    [
+  ...createEntries({
+    section: 'vector',
+    keys: ['vectorRecallConcurrency'],
+    options: {
+      edition: 'pro',
+      secret: false,
+      applyMode: 'reload'
+    }
+  }),
+  ...createEntries({
+    section: 'providers',
+    keys: [
       'documentParse.provider',
       'documentParse.customPdf.url',
       'documentParse.customPdf.price',
@@ -351,11 +389,11 @@ export const systemInstanceConfigRegistry: readonly SystemInstanceConfigRegistry
       'dataSource.yuqueDatasetBaseUrl',
       'externalProviderWorkflowVariables'
     ],
-    { edition: 'all', secret: false, applyMode: 'reload' }
-  ),
-  ...createEntries(
-    'subservice',
-    [
+    options: { edition: 'all', secret: false, applyMode: 'reload' }
+  }),
+  ...createEntries({
+    section: 'subservice',
+    keys: [
       'plugin.remoteDebug',
       'codeSandbox.enabled',
       'aiProxy.enabled',
@@ -384,20 +422,20 @@ export const systemInstanceConfigRegistry: readonly SystemInstanceConfigRegistry
       'agentSandbox.opensandbox.volumeManagerUrl',
       'agentSandbox.opensandbox.volumeNamePrefix'
     ],
-    { edition: 'pro', secret: false, applyMode: 'restart' }
-  ),
-  ...createEntries(
-    'subservice',
-    [
+    options: { edition: 'pro', secret: false, applyMode: 'restart' }
+  }),
+  ...createEntries({
+    section: 'subservice',
+    keys: [
       'agentSandbox.sealosdevbox.token',
       'agentSandbox.opensandbox.apiKey',
       'agentSandbox.opensandbox.volumeManagerToken'
     ],
-    { edition: 'pro', secret: true, applyMode: 'restart' }
-  ),
-  ...createEntries(
-    'providers',
-    [
+    options: { edition: 'pro', secret: true, applyMode: 'restart' }
+  }),
+  ...createEntries({
+    section: 'providers',
+    keys: [
       'documentParse.customPdf.key',
       'documentParse.customPdf.somarkApiKey',
       'documentParse.customPdf.doc2xKey',
@@ -405,8 +443,8 @@ export const systemInstanceConfigRegistry: readonly SystemInstanceConfigRegistry
       'documentParse.customPdf.textinSecretCode',
       'documentParse.sangfor.key'
     ],
-    { edition: 'all', secret: true, applyMode: 'reload' }
-  )
+    options: { edition: 'all', secret: true, applyMode: 'reload' }
+  })
 ];
 
 /**

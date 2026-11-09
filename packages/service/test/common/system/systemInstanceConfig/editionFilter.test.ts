@@ -60,40 +60,49 @@ describe('service edition gating for Admin config APIs', () => {
   });
 
   it('lists pro-only keys as offenders for community submissions', () => {
-    const offenders = findOverridesNotAllowedByEdition(
-      'auth',
-      { teamMode: 'multi', openApiKeyMaxCount: 100 },
-      'community'
-    );
+    const offenders = findOverridesNotAllowedByEdition({
+      domain: 'auth',
+      submittedOverrides: { teamMode: 'multi', openApiKeyMaxCount: 100 },
+      edition: 'community'
+    });
 
     expect(offenders).toEqual(['teamMode']);
 
-    const proOffenders = findOverridesNotAllowedByEdition(
-      'auth',
-      { teamMode: 'multi', loginProviders: { github: { clientId: 'cid' } } },
-      'pro'
-    );
+    const proOffenders = findOverridesNotAllowedByEdition({
+      domain: 'auth',
+      submittedOverrides: { teamMode: 'multi', loginProviders: { github: { clientId: 'cid' } } },
+      edition: 'pro'
+    });
     expect(proOffenders).toEqual([]);
 
     // 空提交不应产生越权字段
-    expect(findOverridesNotAllowedByEdition('auth', {}, 'community')).toEqual([]);
+    expect(
+      findOverridesNotAllowedByEdition({
+        domain: 'auth',
+        submittedOverrides: {},
+        edition: 'community'
+      })
+    ).toEqual([]);
   });
 
   it('treats arrays and nested objects as leaves or paths consistently', () => {
     // fastLogin 是 pro-only 数组字段，整体按一个越权路径上报
-    const offenders = findOverridesNotAllowedByEdition(
-      'auth',
-      { fastLogin: [{ key: 'k1', authUrl: 'https://x.example.com' }], openApiKeyMaxCount: 50 },
-      'community'
-    );
+    const offenders = findOverridesNotAllowedByEdition({
+      domain: 'auth',
+      submittedOverrides: {
+        fastLogin: [{ key: 'k1', authUrl: 'https://x.example.com' }],
+        openApiKeyMaxCount: 50
+      },
+      edition: 'community'
+    });
     expect(offenders).toEqual(['fastLogin']);
 
     // 嵌套 pro-only 对象按叶子路径上报
-    const nested = findOverridesNotAllowedByEdition(
-      'auth',
-      { loginProviders: { github: { clientId: 'cid', secret: 's' } } },
-      'community'
-    );
+    const nested = findOverridesNotAllowedByEdition({
+      domain: 'auth',
+      submittedOverrides: { loginProviders: { github: { clientId: 'cid', secret: 's' } } },
+      edition: 'community'
+    });
     expect(nested.sort()).toEqual([
       'loginProviders.github.clientId',
       'loginProviders.github.secret'
