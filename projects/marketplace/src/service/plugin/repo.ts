@@ -230,11 +230,11 @@ export class PluginRepo {
   }
 
   async publishToolManifest(record: MarketplaceToolManifestSchemaType) {
-    const existing = await this.getToolIndex({
+    const existingRaw = await MongoMarketplaceTool.findOne({
       pluginId: record.pluginId,
-      version: record.version,
-      type: record.type
-    });
+      version: record.version
+    }).lean();
+    const existing = existingRaw ? MarketplaceToolIndexZodSchema.parse(existingRaw) : null;
     if (existing && existing.type !== record.type) {
       throw new Error(`Marketplace plugin type cannot be changed: ${record.pluginId}`);
     }

@@ -217,6 +217,8 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
   // 只有新 User 输入才拆出最后一条消息交给 prompt，避免重复发送原始需求或丢失工具结果。
   const shouldContinueFromMessages =
     requestMessages.at(-1)?.role === ChatCompletionRequestMessageRoleEnum.Tool;
+  const rejectedToolCallIds = new Set<string>();
+  let isRunBlocked = false;
   const lastUserMessageIndex = requestMessages.findLastIndex(
     (message) => message.role === ChatCompletionRequestMessageRoleEnum.User
   );
@@ -432,6 +434,11 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
         childAssistantMessages: assistantMessages
       });
       if (continuationMessage) toolContinuationMessages.push(continuationMessage);
+    },
+    isToolCallRejected: (callId) => isRunBlocked || rejectedToolCallIds.has(callId),
+    onToolRejected: (callId) => {
+      rejectedToolCallIds.add(callId);
+      isRunBlocked = true;
     }
   });
 
@@ -553,6 +560,7 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
       });
     },
     onBlocked: () => {
+      isRunBlocked = true;
       agent.abort();
     }
   });
@@ -576,6 +584,9 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
 
   agent.subscribe(async (event: AgentEvent) => {
     if (event.type === 'tool_execution_start') {
+      if (isRunBlocked || rejectedToolCallIds.has(event.toolCallId)) {
+        return;
+      }
       emitOrdinaryToolExecution({
         id: event.toolCallId,
         type: 'function',
@@ -618,6 +629,7 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
         return;
       }
       if (assistantEvent.type === 'toolcall_start' || assistantEvent.type === 'toolcall_delta') {
+        if (isRunBlocked) return;
         const toolCall = assistantEvent.partial.content[assistantEvent.contentIndex];
         if (toolCall?.type !== 'toolCall') return;
 
@@ -684,6 +696,7 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
         });
         if (!toolCheck.isPass) {
           isToolCallsBlocked = true;
+          messageData.toolCalls.forEach((call) => rejectedToolCallIds.add(call.id));
           latestError = new UserError(
             toolCheck.blockErrorMessage || MODERATION_BLOCKED_ERROR_MESSAGE
           );
@@ -691,6 +704,8 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
       }
       const isBlocked = isContentBlocked || isToolCallsBlocked;
       if (isBlocked) {
+        isRunBlocked = true;
+        messageData.toolCalls.forEach((call) => rejectedToolCallIds.add(call.id));
         answerText = '';
         latestAnswerText = '';
         reasoningText = '';
@@ -863,10 +878,11 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
     } catch (err) {
       latestError = err;
     }
-    if (streamModerationBuffer.blocked || reasoningModerationBuffer?.blocked) {
+    if (isRunBlocked || streamModerationBuffer.blocked || reasoningModerationBuffer?.blocked) {
+      isRunBlocked = true;
       answerText = '';
       reasoningText = '';
-      latestError = new UserError(MODERATION_BLOCKED_ERROR_MESSAGE);
+      latestError ||= new UserError(MODERATION_BLOCKED_ERROR_MESSAGE);
       completeMessages.forEach((msg) => {
         if (msg.role === ChatCompletionRequestMessageRoleEnum.Assistant) {
           msg.content = '';
@@ -940,7 +956,18 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
         activePlan
       };
 
-  if (pendingAsk && resolvedPendingAskId) {
+  const isModerationBlocked =
+    isRunBlocked ||
+    streamModerationBuffer.blocked ||
+    reasoningModerationBuffer?.blocked ||
+    (latestError instanceof UserError && latestError.message === MODERATION_BLOCKED_ERROR_MESSAGE);
+
+  if (
+    !isModerationBlocked &&
+    pendingAsk &&
+    resolvedPendingAskId &&
+    !rejectedToolCallIds.has(resolvedPendingAskId)
+  ) {
     runtime.emitEvent?.({
       type: 'ask',
       ask: pendingAsk,
@@ -974,7 +1001,11 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
     };
   }
 
-  if (pendingToolChild) {
+  if (
+    !isModerationBlocked &&
+    pendingToolChild &&
+    !rejectedToolCallIds.has(pendingToolChild.toolCallId)
+  ) {
     return {
       status: 'paused',
       pause: {

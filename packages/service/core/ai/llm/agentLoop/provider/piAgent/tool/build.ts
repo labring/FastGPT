@@ -79,7 +79,9 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
   onToolStop,
   getMessages,
   onToolCall,
-  onToolResult
+  onToolResult,
+  isToolCallRejected,
+  onToolRejected
 }: {
   runtime: AgentLoopRuntime<TChildrenResponse>;
   getActivePlan: () => AgentPlanType | undefined;
@@ -96,6 +98,8 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
     assistantMessages?: ChatCompletionMessageParam[];
     continuationMessage?: string;
   }) => void;
+  isToolCallRejected?: (callId: string) => boolean;
+  onToolRejected?: (callId: string) => void;
 }): Promise<AgentTool[]> => {
   const tools: AgentTool[] = [];
 
@@ -118,12 +122,25 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
       continuationMessage?: string;
     }>;
   }) => {
+    if (isToolCallRejected?.(call.id)) {
+      const errorMessage = MODERATION_BLOCKED_ERROR_MESSAGE;
+      onToolResult({ call, response: errorMessage, assistantMessages: [] });
+      return {
+        response: errorMessage,
+        assistantMessages: [],
+        usages: [],
+        errorMessage,
+        stop: true
+      };
+    }
+
     // 检查工具参数是否违规，违规不派发调用、不触发 start 事件且不执行工具
     const paramCheck = await checkToolParamsModeration({
       toolCalls: [call],
       context: { teamId: runtime.teamId }
     });
     if (!paramCheck.isPass) {
+      onToolRejected?.(call.id);
       const errorMessage = paramCheck.blockErrorMessage || MODERATION_BLOCKED_ERROR_MESSAGE;
       onToolResult({ call, response: errorMessage, assistantMessages: [] });
       return {
@@ -208,8 +225,27 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
         description: planTool.function.description || '',
         parameters: toPiToolParameters(planTool.function.parameters),
         execute: async (callId: string, args: unknown) => {
+          if (isToolCallRejected?.(callId)) {
+            return {
+              content: [{ type: 'text' as const, text: MODERATION_BLOCKED_ERROR_MESSAGE }],
+              details: {}
+            };
+          }
           const toolArgs = normalizeToolArgs(args);
           const call = createToolCall({ id: callId, name: planTool.function.name, args: toolArgs });
+          const paramCheck = await checkToolParamsModeration({
+            toolCalls: [call],
+            context: { teamId: runtime.teamId }
+          });
+          if (!paramCheck.isPass) {
+            onToolRejected?.(callId);
+            const errorMessage = paramCheck.blockErrorMessage || MODERATION_BLOCKED_ERROR_MESSAGE;
+            onToolResult({
+              call,
+              response: errorMessage
+            });
+            return { content: [{ type: 'text' as const, text: errorMessage }], details: {} };
+          }
           const params = stringifyJson(toolArgs);
           const isSetPlan = planTool.function.name === setPlanToolName;
           runtime.emitEvent?.({
@@ -273,7 +309,26 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
       description: askTool.function.description || '',
       parameters: toPiToolParameters(askTool.function.parameters),
       execute: async (callId: string, args: unknown) => {
+        if (isToolCallRejected?.(callId)) {
+          return {
+            content: [{ type: 'text' as const, text: MODERATION_BLOCKED_ERROR_MESSAGE }],
+            details: {}
+          };
+        }
         const toolArgs = normalizeToolArgs(args);
+        const paramCheck = await checkToolParamsModeration({
+          toolCalls: [createToolCall({ id: callId, name: askTool.function.name, args: toolArgs })],
+          context: { teamId: runtime.teamId }
+        });
+        if (!paramCheck.isPass) {
+          onToolRejected?.(callId);
+          const errorMessage = paramCheck.blockErrorMessage || MODERATION_BLOCKED_ERROR_MESSAGE;
+          onToolResult({
+            call: createToolCall({ id: callId, name: askTool.function.name, args: toolArgs }),
+            response: errorMessage
+          });
+          return { content: [{ type: 'text' as const, text: errorMessage }], details: {} };
+        }
         const params = stringifyJson(toolArgs);
         const parsed = AgentAskPayloadSchema.safeParse(toolArgs);
         if (!parsed.success) {

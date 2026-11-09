@@ -20,6 +20,7 @@ import {
 import type { ModerationConfigRecord } from './entity';
 import type { AdminModerationPluginItemType } from '@fastgpt/global/core/plugin/moderation/type';
 import {
+  DEFAULT_MODERATION_POLICY_CONFIG_ID,
   DefaultSystemModerationPolicy,
   SystemModerationPolicySchema,
   type SystemModerationPolicyType
@@ -205,40 +206,32 @@ const syncPolicyContentionRecord = async ({
     .session(session ?? null)
     .lean();
 
-  if (existing) {
-    await MongoSystemConfigs.findOneAndUpdate(
-      { _id: existing._id },
-      {
-        $set: {
-          ...(policy
-            ? { value: policy }
-            : activePluginId
-              ? { 'value.activePluginId': activePluginId }
-              : {}),
-          createTime: new Date()
-        }
+  const targetId = existing?._id ?? DEFAULT_MODERATION_POLICY_CONFIG_ID;
+  const initialValue = policy ?? {
+    ...DefaultSystemModerationPolicy,
+    ...(activePluginId ? { activePluginId } : {})
+  };
+
+  await MongoSystemConfigs.findOneAndUpdate(
+    { _id: targetId },
+    {
+      $set: {
+        ...(policy
+          ? { value: policy }
+          : activePluginId
+            ? { 'value.activePluginId': activePluginId }
+            : {}),
+        type: SystemConfigsTypeEnum.moderationPolicy,
+        createTime: new Date()
       },
-      { new: true, session }
-    );
-  } else {
-    const value = policy ?? {
-      ...DefaultSystemModerationPolicy,
-      ...(activePluginId ? { activePluginId } : {})
-    };
-    await MongoSystemConfigs.findOneAndUpdate(
-      { type: SystemConfigsTypeEnum.moderationPolicy },
-      {
-        $set: {
-          value,
-          createTime: new Date()
-        },
-        $setOnInsert: {
-          type: SystemConfigsTypeEnum.moderationPolicy
-        }
-      },
-      { upsert: true, new: true, session }
-    );
-  }
+      $setOnInsert: {
+        _id: targetId,
+        type: SystemConfigsTypeEnum.moderationPolicy,
+        value: initialValue
+      }
+    },
+    { upsert: true, new: true, session }
+  );
 };
 
 export const saveModerationConfig = async ({

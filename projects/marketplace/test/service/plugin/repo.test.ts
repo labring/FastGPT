@@ -250,7 +250,6 @@ describe('PluginRepo', () => {
     await new PluginRepo().publishToolManifest(record);
 
     const indexFilter = {
-      type: 'tool',
       pluginId: 'tool-a',
       version: '1.0.0'
     };

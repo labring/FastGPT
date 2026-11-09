@@ -3,8 +3,11 @@ import {
   ModerationActionEnum,
   ModerationExceptionActionEnum,
   ModerationRiskActionEnum,
-  ModerationStageEnum
+  ModerationStageEnum,
+  DEFAULT_MODERATION_POLICY_CONFIG_ID
 } from './constants';
+
+export { DEFAULT_MODERATION_POLICY_CONFIG_ID };
 
 /**
  * 内容审查插件的本地配置记录。

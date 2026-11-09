@@ -31,6 +31,9 @@ export enum ModerationExceptionActionEnum {
   block = 'block'
 }
 
+/** 全局策略记录默认唯一 ID，用于无既有记录时的首次并发竞争 */
+export const DEFAULT_MODERATION_POLICY_CONFIG_ID = '000000000000000000000021';
+
 /** 审查插件凭据脱敏占位符 */
 export const ModerationSecretMaskedValue = '__fastgpt_masked_secret__';
 
@@ -49,9 +52,7 @@ export const MODERATION_ERROR_BLOCKED_MESSAGE = '内容审核异常，已拦截'
 export const getModerationBlockErrorMessage = (
   verdict?: 'pass' | 'suspected' | 'block' | 'error'
 ): string => {
-  return verdict === 'error'
-    ? MODERATION_ERROR_BLOCKED_MESSAGE
-    : MODERATION_BLOCKED_ERROR_MESSAGE;
+  return verdict === 'error' ? MODERATION_ERROR_BLOCKED_MESSAGE : MODERATION_BLOCKED_ERROR_MESSAGE;
 };
 
 /** 归一化审查标签定义 */
@@ -140,10 +141,7 @@ export const ModerationLabelMap: Record<
 /**
  * 格式化归一化审查标签，支持传入翻译函数 t
  */
-export const formatModerationLabel = (
-  label: string,
-  t?: (key: string) => string
-): string => {
+export const formatModerationLabel = (label: string, t?: (key: string) => string): string => {
   const item = ModerationLabelMap[label];
   if (!item) return label;
   if (t) {

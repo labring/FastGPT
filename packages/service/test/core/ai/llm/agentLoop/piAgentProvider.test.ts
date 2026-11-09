@@ -2058,4 +2058,41 @@ describe('runPiAgentLoop', () => {
     expect(executeTool).not.toHaveBeenCalled();
     expect(emittedEvents.some((e) => e.type === 'tool_run_start')).toBe(false);
   });
+
+  it('blocks toxic control tool parameters like ask_user and returns error instead of paused', async () => {
+    const outputMod = await import('@fastgpt/service/core/plugin/moderation/output');
+    vi.spyOn(outputMod, 'checkToolParamsModeration').mockResolvedValue({
+      isPass: false,
+      blockErrorMessage: 'Ask question violated moderation'
+    });
+
+    const emittedEvents: any[] = [];
+    agentToolToExecute.value = {
+      name: 'ask_user',
+      callId: 'call_toxic_ask',
+      args: {
+        question: 'toxic question',
+        reason: 'toxic reason'
+      }
+    };
+
+    const result = await runPiAgentLoop({
+      input: {
+        messages: [{ role: 'user', content: 'hello' }]
+      },
+      runtime: {
+        llmParams: { model: 'gpt-5' },
+        toolCatalog: { runtimeTools: [] },
+        systemTools: { ask: { enabled: true } },
+        executeTool: vi.fn(),
+        checkIsStopping: vi.fn(() => false),
+        teamId: 'test_team',
+        emitEvent: (e) => emittedEvents.push(e)
+      }
+    });
+
+    expect(result.status).toBe('error');
+    expect(emittedEvents.some((e) => e.type === 'tool_interactive')).toBe(false);
+    expect(emittedEvents.some((e) => e.type === 'ask')).toBe(false);
+  });
 });
