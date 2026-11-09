@@ -1,4 +1,3 @@
-import { isSystemModel } from '@fastgpt/global/core/ai/model/utils';
 import type { AiproxyScopeModelInput } from '../config';
 
 export type LegacyModelEndpoint = {
@@ -8,17 +7,16 @@ export type LegacyModelEndpoint = {
 };
 
 /**
- * 提取系统模型配置的 requestUrl 与 requestAuth 直连端点配置（向前兼容）。
+ * 提取模型配置的 requestUrl 与 requestAuth 直连端点配置（向前兼容）。
  *
- * 仅在满足以下条件时返回有效端点：
- * 1. 属于系统模型（团队模型严格隔离，不开放直接端点入口，必须走 AI Proxy 渠道）；
- * 2. 显式配置了非空的 requestUrl。
+ * 系统模型与团队模型均可使用：团队模型的自定义端点属于升级过渡期能力，
+ * 命中后直接请求该地址，不携带 AI Proxy 路由/渠道 Header。
+ * 仅在显式配置了非空 requestUrl 时返回有效端点。
  */
 export const getLegacyModelEndpoint = (
   modelData?: AiproxyScopeModelInput
 ): LegacyModelEndpoint | undefined => {
   if (!modelData) return undefined;
-  if (!isSystemModel(modelData)) return undefined;
 
   const rawUrl = (modelData as { requestUrl?: string })?.requestUrl?.trim();
   if (!rawUrl) return undefined;
@@ -40,7 +38,7 @@ export const hasLegacyRequestUrl = (modelData?: AiproxyScopeModelInput): boolean
 
 export type LegacyOpenAIRequestOptions = {
   path?: string;
-  headers?: Record<string, string>;
+  headers?: Record<string, string | null>;
 };
 
 /**
@@ -76,7 +74,10 @@ export const getLegacyOpenAIRequestOptions = ({
       path: legacyEndpoint.baseUrl,
       headers: {
         ...baseHeaders,
-        ...(legacyEndpoint.authorization ? { Authorization: legacyEndpoint.authorization } : {})
+        // 命中自定义端点时显式覆盖 Authorization：
+        // 未配置 requestAuth 也必须用 null 清除客户端默认的 AIPROXY_API_TOKEN，
+        // 否则会把代理令牌发给用户指定的地址。
+        Authorization: legacyEndpoint.authorization ?? null
       }
     };
   }

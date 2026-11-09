@@ -216,3 +216,11 @@ for o in "" "--security-opt seccomp=unconfined"; do docker run --rm $o -v <卷�
 解决方法：在 compose 里 `opensandbox-config` 的 `[docker]` 下增加 `seccomp_profile = "unconfined"`，执行 `docker compose up -d --force-recreate fastgpt-opensandbox-server`，再到页面点「重试」。这会放宽沙箱容器的系统调用限制，确认是 seccomp 引起后再使用。
 
 ---
+
+### 工具报“反向调用上传文件失败”，日志里 /api/invoke/fileUpload 返回 401 怎么办？
+
+使用官方 `main` 版 docker-compose（官网部署页和 `install.sh` 默认使用）部署 4.15.0 到 4.17.4 时，`fastgpt-plugin` 没有配置 `FASTGPT_BASE_URL`（`v4.15` 版 compose 从 4.15.2 起已经配置）。插件的工具（例如基础图表）生成文件后，会通过它反向调用 FastGPT 的 `/api/invoke/fileUpload` 上传文件。它默认是 `http://localhost:3000`，指向插件容器自己，请求被插件自己的鉴权拒绝（401），工具就报“反向调用上传文件失败”。
+
+如果 401 日志由 `fastgpt-plugin` 输出（含 `HTTP Exception: Unauthorized`），在它的环境变量里增加 `FASTGPT_BASE_URL: http://fastgpt-app:3000`（服务名按你 compose 里 FastGPT 主服务的名字写），执行 `docker compose up -d fastgpt-plugin` 重建容器，再重新运行工具。
+
+---
