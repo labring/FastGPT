@@ -32,41 +32,41 @@
 
 版本/展示范围为实施默认值；如某个字段需要额外 SaaS 限制，在 C2 实现时单独标注。
 
-### D2. `microsoft.customButton`
+### D2. `microsoft.customButton` — 已拍板：删除字段
 
-- 现状：表单可编辑并下发，但登录按钮使用 `labels.microsoft`。
-- 选项：A. 接入登录按钮，作为 `labels.microsoft` 的覆盖值（推荐）；B. 确认不需要后删除字段、表单和迁移映射。
+- 删除 `auth.loginProviders.microsoft.customButton` 的 Schema、表单、registry/pageFields 和迁移映射。
+- 登录按钮继续使用 `labels.microsoft`。
 
-### D3. `show_batch_eval`
+### D3. `show_batch_eval` — 已拍板：删除 feConfigs 标志
 
-- 现状：只有初始化赋值，没有消费该标志；license 的 `functions.eval` 是另一层业务授权。
-- 选项：A. 删除 `feConfigs.show_batch_eval` 声明/赋值（推荐）；B. 保留并明确它只作为 license 派生值。
+- 删除 `feConfigs.show_batch_eval` 声明和初始化赋值。
+- 保留 license `functions.eval` 的业务授权逻辑。
 
-### D4. 旧 Pro `auth.sms.*_EN`
+### D4. 旧 Pro `auth.sms.*_EN` — 已拍板：标记历史兼容
 
-- 现状：有旧类型、表单适配和迁移兼容引用；当前短信发送统一使用中文模板。
-- 选项：A. 标记为历史兼容字段，保留迁移读取，不允许新表单写入（推荐）；B. 删除所有旧类型/适配，并补迁移清理。
+- 保留旧类型和迁移读取，明确不再作为有效运行时配置。
+- 新表单不再写入这些字段；后续清理时单独移除。
 
-### D5. `SYNC_INDEX`
+### D5. `SYNC_INDEX` — 已拍板：只清当前 main
 
-- 现状：运行时已移除；当前 main 模板、生成文件和文档仍有残留；历史版本部署文件也有 13 处左右。
-- 选项：A. 仅清理当前 main 模板/生成文件/文档，历史版本不动（推荐）；B. 暂不修改部署 YAML，只修文档；C. 全部清理（不推荐，需逐个版本确认）。
-- 修改 `deploy/**/*.yml|yaml` 前必须得到明确确认。
+- 清理 `deploy/version/main` 当前模板、生成文件和文档。
+- 历史版本部署文件保持不动。
+- 本次选择已明确授权修改当前 main 的部署 YAML。
 
-### D6. Sangfor 回落 `customPdfParse`
+### D6. Sangfor 回落 — 已拍板：删除回落
 
-- 现状：`providers.documentParse.sangfor.url` 缺失时成组回落到 `global.systemEnv.customPdfParse`；迁移会把旧 `CUSTOM_PDF_PARSE_URL/KEY` 同时写入两处。
-- 选项：A. 保留迁移兼容，补注释和“迁移完成后移除”的条件（推荐）；B. 删除回落，要求 Sangfor 必须配置自己的 url/key。
+- 删除 `providers.documentParse.sangfor.url` 缺失时回落到旧 `customPdfParse` 的逻辑。
+- Sangfor 必须使用自己的 `url/key`；缺失时按现有校验报错/不使用外部解析。
 
-### D7. `plugin.remoteDebug` 组合规则
+### D7. `plugin.remoteDebug` — 已拍板：管理员开关 AND 探测
 
-- 现状：`instanceConfig.subservice.plugin.remoteDebug || pluginRemoteDebug`，Plugin 服务探测为 true 时管理员无法关闭。
-- 建议：管理员开关优先；探测只表示“能力可用”，不覆盖显式关闭。需确认是否按此实现。
+- 最终值改为 `instanceConfig.subservice.plugin.remoteDebug && pluginRemoteDebug`。
+- 管理员关闭后一定关闭；管理员开启但 Plugin 服务不支持时也不展示。
 
-### D8. 无消费字段删除确认
+### D8. 无消费字段删除 — 已拍板：全部删除
 
-- 第 11、13、14、15、16 项建议删除；删除时必须同步 registry、pageFields、旧类型、表单、迁移 cleanup 和测试。
-- 若其中某项仍计划接入业务，请改为“补齐消费”，不要删除。
+- 删除 `show_appStore`、`agentSandboxFree`、`systemEnv.ip_whitelist`、`systemEnv.customDomain.domain.*`、旧 Pro 钉钉/支付宝类型。
+- 删除时同步 registry、pageFields、旧类型、表单、迁移 cleanup 和测试；先确认无迁移/表单引用。
 
 ## 三、逐项执行清单
 
