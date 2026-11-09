@@ -3,6 +3,7 @@ import { ModelDeprecationInformChannelEnum } from '@fastgpt/global/support/user/
 import {
   getModelDeprecationInformChannels,
   getLocalDateLabel,
+  getPlannedDateBounds,
   getSelectableDeprecationModels
 } from '@/pageComponents/admin/inform/modelDeprecationUtils';
 
@@ -36,5 +37,14 @@ describe('getModelDeprecationInformChannels', () => {
 describe('getLocalDateLabel', () => {
   it('keeps the selected local calendar day', () => {
     expect(getLocalDateLabel(new Date(2026, 11, 31))).toBe('2026-12-31');
+  });
+});
+
+describe('getPlannedDateBounds', () => {
+  it('allows tomorrow through 90 days after today', () => {
+    const { min, max } = getPlannedDateBounds(new Date(2026, 10, 9, 18, 30));
+
+    expect(getLocalDateLabel(min)).toBe('2026-11-10');
+    expect(getLocalDateLabel(max)).toBe('2027-02-07');
   });
 });

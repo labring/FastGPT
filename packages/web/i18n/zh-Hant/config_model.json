@@ -237,7 +237,6 @@
   "model_deprecation.send_title": "傳送下架通知",
   "model_deprecation.history_title": "通知傳送記錄",
   "model_deprecation.send_description": "目前正在使用標記為「即將下架」模型的團隊，將會收到「模型即將下架」的通知。",
-  "model_deprecation.frequency": "通知頻率：自本日起，每間隔兩天傳送一次，最多傳送 3 次。",
   "model_deprecation.planned_date": "計畫下架時間",
   "model_deprecation.models": "下架模型範圍",
   "model_deprecation.channel_in_app": "傳送站內信",

@@ -37,7 +37,8 @@ export const CreateModelDeprecationInformBodySchema = z.object({
     example: ['68ad85a7463006c963799a05']
   }),
   plannedDeprecationAt: z.string().date().meta({
-    description: '浏览器选择的计划下架日，格式 YYYY-MM-DD，用于通知文案',
+    description:
+      '计划下架日，格式 YYYY-MM-DD，服务端按自身时区解释；距服务端当天最多 90 天',
     example: '2026-12-31'
   }),
   channels: z
@@ -50,7 +51,7 @@ export const CreateModelDeprecationInformBodySchema = z.object({
       }
     })
     .meta({
-      description: '通知渠道；站内信只在首轮发送',
+      description: '通知渠道；站内信必选，external 表示邮件/短信二选一',
       example: ['inApp', 'email']
     })
 });

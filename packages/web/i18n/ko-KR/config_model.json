@@ -237,7 +237,6 @@
   "model_deprecation.send_title": "지원 중단 알림 보내기",
   "model_deprecation.history_title": "알림 전송 기록",
   "model_deprecation.send_description": "지원 중단 예정으로 표시된 모델을 현재 사용 중인 팀에 모델 지원 중단 예정 알림이 발송됩니다.",
-  "model_deprecation.frequency": "알림은 오늘부터 이틀마다 최대 3회 발송됩니다.",
   "model_deprecation.planned_date": "예정된 지원 중단 날짜",
   "model_deprecation.models": "지원 중단 모델 범위",
   "model_deprecation.channel_in_app": "앱 내 알림",

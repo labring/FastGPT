@@ -1,5 +1,7 @@
 import { ModelDeprecationInformChannelEnum } from '@fastgpt/global/support/user/inform/constants';
 
+const MAX_PLANNED_DAYS = 90;
+
 type UpcomingDeprecationModel = {
   modelId: string;
   isActive?: boolean;
@@ -31,3 +33,17 @@ export const getLocalDateLabel = (date: Date) =>
   [date.getFullYear(), date.getMonth() + 1, date.getDate()]
     .map((value) => String(value).padStart(2, '0'))
     .join('-');
+
+/** 计算计划下架日可选范围：明天至今天后 90 天，按浏览器本地日历日比较。 */
+export const getPlannedDateBounds = (now = new Date()) => {
+  const today = new Date(now);
+  today.setHours(0, 0, 0, 0);
+
+  const min = new Date(today);
+  min.setDate(min.getDate() + 1);
+
+  const max = new Date(today);
+  max.setDate(max.getDate() + MAX_PLANNED_DAYS);
+
+  return { min, max };
+};

@@ -237,7 +237,6 @@
   "model_deprecation.send_title": "Send deprecation notice",
   "model_deprecation.history_title": "Notification history",
   "model_deprecation.send_description": "Teams currently using models marked as “upcoming deprecation” will receive a model deprecation notice.",
-  "model_deprecation.frequency": "The notice is sent every two days, up to three times.",
   "model_deprecation.planned_date": "Planned deprecation date",
   "model_deprecation.models": "Deprecated models",
   "model_deprecation.channel_in_app": "In-app message",

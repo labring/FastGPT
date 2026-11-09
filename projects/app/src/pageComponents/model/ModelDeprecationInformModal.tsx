@@ -9,16 +9,11 @@ import React from 'react';
 import {
   getModelDeprecationInformChannels,
   getLocalDateLabel,
-  getSelectableDeprecationModels,
-  type ModelDeprecationInformChannelOption
+  getPlannedDateBounds,
+  getSelectableDeprecationModels
 } from '@/pageComponents/admin/inform/modelDeprecationUtils';
 import { postCreateModelDeprecationInform } from '@/web/admin/system/inform/api';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-
-const defaultChannels: ModelDeprecationInformChannelOption[] = [
-  ModelDeprecationInformChannelEnum.inApp,
-  'email_or_sms'
-];
 
 /** 创建模型下架通知计划；成功后可在同一 modal 切换到发送记录。 */
 const ModelDeprecationInformModal = ({
@@ -32,14 +27,8 @@ const ModelDeprecationInformModal = ({
 }) => {
   const { t } = useSafeTranslation();
   const [plannedDate, setPlannedDate] = React.useState<Date>();
-  const [channels, setChannels] =
-    React.useState<ModelDeprecationInformChannelOption[]>(defaultChannels);
-  const [minPlannedDate] = React.useState(() => {
-    const date = new Date();
-    date.setHours(0, 0, 0, 0);
-    date.setDate(date.getDate() + 1);
-    return date;
-  });
+  const [sendExternal, setSendExternal] = React.useState(true);
+  const [plannedDateBounds] = React.useState(() => getPlannedDateBounds());
   const requestId = React.useRef<string>();
   const selectableModels = React.useMemo(() => getSelectableDeprecationModels(models), [models]);
   const selectedModels = selectableModels.map((model) => model.modelId);
@@ -49,17 +38,7 @@ const ModelDeprecationInformModal = ({
     onSuccess: onShowHistory
   });
 
-  const canSubmit = selectedModels.length > 0 && !!plannedDate && channels.length > 0;
-  const channelOptions = [
-    {
-      value: ModelDeprecationInformChannelEnum.inApp,
-      label: t('config_model:model_deprecation.channel_in_app')
-    },
-    {
-      value: 'email_or_sms',
-      label: t('config_model:model_deprecation.channel_email')
-    }
-  ] as const;
+  const canSubmit = selectedModels.length > 0 && !!plannedDate;
 
   return (
     <MyModal
@@ -84,7 +63,10 @@ const ModelDeprecationInformModal = ({
                 requestId: requestId.current,
                 models: selectedModels,
                 plannedDeprecationAt: getLocalDateLabel(plannedDate),
-                channels: getModelDeprecationInformChannels(channels)
+                channels: getModelDeprecationInformChannels([
+                  ModelDeprecationInformChannelEnum.inApp,
+                  ...(sendExternal ? (['email_or_sms'] as const) : [])
+                ])
               });
             }}
           >
@@ -95,14 +77,13 @@ const ModelDeprecationInformModal = ({
     >
       <Box color={'myGray.700'} lineHeight={'20px'}>
         <Box>{t('config_model:model_deprecation.send_description')}</Box>
-        <Box fontWeight={'500'}>{t('config_model:model_deprecation.frequency')}</Box>
       </Box>
       <Box mt={4} mb={2} lineHeight={'20px'}>
         {t('config_model:model_deprecation.planned_date')}
       </Box>
       <DateTimePicker
         selectedDateTime={plannedDate}
-        disabled={[{ before: minPlannedDate }]}
+        disabled={[{ before: plannedDateBounds.min }, { after: plannedDateBounds.max }]}
         h={'2rem'}
         onChange={(value) => {
           requestId.current = undefined;
@@ -110,22 +91,18 @@ const ModelDeprecationInformModal = ({
         }}
       />
       <HStack mt={4} spacing={6}>
-        {channelOptions.map((channel) => (
-          <Checkbox
-            key={channel.value}
-            isChecked={channels.includes(channel.value)}
-            onChange={() => {
-              requestId.current = undefined;
-              setChannels((current) =>
-                current.includes(channel.value)
-                  ? current.filter((value) => value !== channel.value)
-                  : [...current, channel.value]
-              );
-            }}
-          >
-            {channel.label}
-          </Checkbox>
-        ))}
+        <Checkbox isChecked isDisabled>
+          {t('config_model:model_deprecation.channel_in_app')}
+        </Checkbox>
+        <Checkbox
+          isChecked={sendExternal}
+          onChange={() => {
+            requestId.current = undefined;
+            setSendExternal((current) => !current);
+          }}
+        >
+          {t('config_model:model_deprecation.channel_email')}
+        </Checkbox>
       </HStack>
     </MyModal>
   );
