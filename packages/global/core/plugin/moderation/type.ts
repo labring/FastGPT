@@ -1,14 +1,12 @@
 import z from 'zod';
+import { BoolSchema, IntSchema } from '../../../common/zod';
 import { ChatIdSchema } from '../../chat/schema';
 import {
   ModerationActionEnum,
   ModerationExceptionActionEnum,
   ModerationRiskActionEnum,
-  ModerationStageEnum,
-  DEFAULT_MODERATION_POLICY_CONFIG_ID
+  ModerationStageEnum
 } from './constants';
-
-export { DEFAULT_MODERATION_POLICY_CONFIG_ID };
 
 /**
  * 内容审查插件的本地配置记录。
@@ -83,18 +81,18 @@ export type AdminModerationPluginItemType = z.infer<typeof AdminModerationPlugin
 /** 全局内容审核策略 Schema */
 export const SystemModerationPolicySchema = z.object({
   /** 是否开启内容审核 */
-  enabled: z.boolean().default(false).meta({ description: '是否开启内容审核' }),
+  enabled: BoolSchema.default(false).meta({ description: '是否开启内容审核' }),
   /** 当前生效的审核插件 ID */
   activePluginId: z.string().optional().meta({ description: '当前生效的审核插件 ID' }),
   /** 审核生效环节 */
   hooks: z.object({
-    userInput: z.boolean().default(true).meta({ description: '用户输入' }),
-    modelInput: z.boolean().default(false).meta({ description: '模型输入' }),
-    finalOutput: z.boolean().default(true).meta({ description: '最终输出' })
+    userInput: BoolSchema.default(true).meta({ description: '用户输入' }),
+    modelInput: BoolSchema.default(false).meta({ description: '模型输入' }),
+    finalOutput: BoolSchema.default(true).meta({ description: '最终输出' })
   }),
   /** 处理策略 */
   strategy: z.object({
-    streamInterval: z.number().min(1).default(50).meta({ description: '流式审核间隔（字符/次）' }),
+    streamInterval: IntSchema.min(1).default(50).meta({ description: '流式审核间隔（字符/次）' }),
     suspectedRiskAction: z
       .enum([ModerationRiskActionEnum.blockAndLog, ModerationRiskActionEnum.passAndLog])
       .default(ModerationRiskActionEnum.blockAndLog)

@@ -38,14 +38,47 @@ export const checkModelPromptAndInput = async ({
   datasetCitePrompt,
   context
 }: CheckModelPromptAndInputParams): Promise<CheckModelPromptAndInputResult> => {
-  let isUserChatInputBlocked = false;
-  let blockErrorMessage: string | undefined;
-  let effectiveUserInput = userChatInput;
-  let effectiveSystemPrompt = systemPrompt;
-  let effectiveDatasetCitePrompt = datasetCitePrompt;
+  // 审查单个可替换字段：命中违规时记录节点审核记录并替换为脱敏提示文案
+  const moderateReplaceField = async <T extends string | undefined>({
+    text,
+    targetField
+  }: {
+    text: T;
+    targetField: string;
+  }): Promise<T> => {
+    if (!text?.trim()) return text;
+
+    const res = await checkContentByPolicy({
+      text,
+      stage: ModerationStageEnum.modelInput,
+      targetField,
+      actionOnBlock: ModerationActionEnum.replace,
+      context
+    });
+
+    if (res.action !== ModerationActionEnum.pass) {
+      ensureNodeModerationRecord(res, {
+        stage: ModerationStageEnum.modelInput,
+        targetField,
+        content: text,
+        actionTaken: ModerationActionEnum.replace
+      });
+      return MODERATION_BLOCKED_REPLACE_TEXT as T;
+    }
+
+    return text;
+  };
 
   // 1. 审查用户问题输入
-  if (userChatInput && userChatInput.trim()) {
+  const userInputModeration = await (async () => {
+    if (!userChatInput?.trim()) {
+      return {
+        effectiveUserInput: userChatInput,
+        isUserChatInputBlocked: false,
+        blockErrorMessage: undefined
+      };
+    }
+
     const res = await checkContentByPolicy({
       text: userChatInput,
       stage: ModerationStageEnum.modelInput,
@@ -59,60 +92,38 @@ export const checkModelPromptAndInput = async ({
         targetField: 'userChatInput',
         content: userChatInput
       });
-      isUserChatInputBlocked = true;
-      blockErrorMessage = getModerationBlockErrorMessage(res.verdict);
-      effectiveUserInput = MODERATION_BLOCKED_REPLACE_TEXT;
+      return {
+        effectiveUserInput: MODERATION_BLOCKED_REPLACE_TEXT,
+        isUserChatInputBlocked: true,
+        blockErrorMessage: getModerationBlockErrorMessage(res.verdict)
+      };
     }
-  }
+
+    return {
+      effectiveUserInput: userChatInput,
+      isUserChatInputBlocked: false,
+      blockErrorMessage: undefined
+    };
+  })();
 
   // 2. 审查系统提示词
-  if (systemPrompt && systemPrompt.trim()) {
-    const res = await checkContentByPolicy({
-      text: systemPrompt,
-      stage: ModerationStageEnum.modelInput,
-      targetField: 'systemPrompt',
-      actionOnBlock: ModerationActionEnum.replace,
-      context
-    });
-
-    if (res.action !== ModerationActionEnum.pass) {
-      ensureNodeModerationRecord(res, {
-        stage: ModerationStageEnum.modelInput,
-        targetField: 'systemPrompt',
-        content: systemPrompt,
-        actionTaken: ModerationActionEnum.replace
-      });
-      effectiveSystemPrompt = MODERATION_BLOCKED_REPLACE_TEXT;
-    }
-  }
+  const effectiveSystemPrompt = await moderateReplaceField({
+    text: systemPrompt,
+    targetField: 'systemPrompt'
+  });
 
   // 3. 审查知识库切片引用
-  if (datasetCitePrompt && datasetCitePrompt.trim()) {
-    const res = await checkContentByPolicy({
-      text: datasetCitePrompt,
-      stage: ModerationStageEnum.modelInput,
-      targetField: 'datasetCite',
-      actionOnBlock: ModerationActionEnum.replace,
-      context
-    });
-
-    if (res.action !== ModerationActionEnum.pass) {
-      ensureNodeModerationRecord(res, {
-        stage: ModerationStageEnum.modelInput,
-        targetField: 'datasetCite',
-        content: datasetCitePrompt,
-        actionTaken: ModerationActionEnum.replace
-      });
-      effectiveDatasetCitePrompt = MODERATION_BLOCKED_REPLACE_TEXT;
-    }
-  }
+  const effectiveDatasetCitePrompt = await moderateReplaceField({
+    text: datasetCitePrompt,
+    targetField: 'datasetCite'
+  });
 
   return {
-    userChatInput: effectiveUserInput,
+    userChatInput: userInputModeration.effectiveUserInput,
     systemPrompt: effectiveSystemPrompt,
     datasetCitePrompt: effectiveDatasetCitePrompt,
-    isUserChatInputBlocked,
-    blockErrorMessage
+    isUserChatInputBlocked: userInputModeration.isUserChatInputBlocked,
+    blockErrorMessage: userInputModeration.blockErrorMessage
   };
 };
 
@@ -182,7 +193,7 @@ export const checkFileContentModeration = async ({
   fileName?: string;
   context?: CheckContentByPolicyParams['context'];
 }): Promise<string> => {
-  if (!content || !content.trim()) return content || '';
+  if (!content?.trim()) return content ?? '';
 
   const targetField = fileName ? `file.${fileName}` : 'fileContent';
   const res = await checkContentByPolicy({
@@ -220,7 +231,7 @@ export const checkToolResultModeration = async ({
   response?: string;
   context?: CheckContentByPolicyParams['context'];
 }): Promise<string> => {
-  if (!response || !response.trim()) return response || '';
+  if (!response?.trim()) return response ?? '';
 
   const policy = await getModerationPolicy();
   const stage =

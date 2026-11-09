@@ -8,7 +8,10 @@ import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
 import HiddenInput from '@/components/common/HiddenInput';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { jsonSchema2SecretInput } from '@fastgpt/global/core/app/jsonschema';
+import {
+  jsonSchema2SecretInput,
+  type JSONSchemaInputType
+} from '@fastgpt/global/core/app/jsonschema';
 import { ModerationSecretMaskedValue } from '@fastgpt/global/core/plugin/moderation/constants';
 import type { AdminModerationPluginItemType } from '@fastgpt/global/core/plugin/moderation/type';
 import { postAdminSaveModerationConfig } from '@/web/core/plugin/admin/moderation/api';
@@ -20,13 +23,19 @@ type EditPluginModalProps = {
   onSuccess: () => void;
 };
 
+const isJSONSchemaInput = (value: unknown): value is JSONSchemaInputType =>
+  typeof value === 'object' && value !== null;
+
 const EditPluginModal: React.FC<EditPluginModalProps> = ({ plugin, onClose, onSuccess }) => {
   const { toast } = useToast();
   const { i18n } = useSafeTranslation();
 
   const inputList = useMemo(
     () =>
-      jsonSchema2SecretInput({ jsonSchema: plugin.secretSchema as any, lang: i18n.language }) ?? [],
+      jsonSchema2SecretInput({
+        jsonSchema: isJSONSchemaInput(plugin.secretSchema) ? plugin.secretSchema : undefined,
+        lang: i18n.language
+      }) ?? [],
     [plugin.secretSchema, i18n.language]
   );
 

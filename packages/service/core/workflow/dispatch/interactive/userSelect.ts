@@ -9,7 +9,8 @@ import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
 import { resolveDynamicOptionStrings } from './dynamicOptions';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { checkOutputTextModeration } from '../../../plugin/moderation/output';
-import { getNodeErrResponse, getDispatchModerationContext } from '../utils';
+import { getNodeErrResponse } from '../utils';
+import { getDispatchModerationContext } from '../utils/runtime';
 import { MODERATION_BLOCKED_ERROR_MESSAGE } from '@fastgpt/global/core/plugin/moderation/constants';
 
 type Props = ModuleDispatchProps<{

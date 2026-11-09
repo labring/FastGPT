@@ -1,4 +1,9 @@
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/type';
+import {
+  GetMarketplaceDownloadUrlQuerySchema,
+  GetMarketplaceDownloadUrlsBodySchema
+} from '@fastgpt/global/openapi/core/plugin/marketplace/api';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { NextAPI } from '@/service/middleware/entry';
 import { getToolList } from '@/service/tool/data';
 import { getPkgdownloadURL } from '@/service/s3';
@@ -18,8 +23,13 @@ async function handler(
   req: ApiRequestProps<GetDownloadURLBody, GetDownloadURLQuery>,
   res: ApiResponseType<any>
 ): Promise<GetDownloadURLResponse> {
-  const { toolId, version, type } = req.query;
-  const { toolIds } = req.body;
+  const { query, body } = parseApiInput({
+    req,
+    querySchema: GetMarketplaceDownloadUrlQuerySchema.partial(),
+    bodySchema: GetMarketplaceDownloadUrlsBodySchema.partial()
+  });
+  const { toolId, version, type } = query;
+  const { toolIds } = body;
   if (!toolId && !toolIds) {
     throw new Error('toolId or toolIds is required');
   }
@@ -36,7 +46,7 @@ async function handler(
   }
 
   for await (const tool of tools) {
-    await increaseDownloadCount(tool.toolId, (tool as any).type || type || 'tool');
+    await increaseDownloadCount(tool.toolId, tool.type ?? type ?? 'tool');
   }
 
   return toolId

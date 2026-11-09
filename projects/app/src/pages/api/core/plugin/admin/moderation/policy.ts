@@ -2,11 +2,11 @@ import { NextAPI } from '@/service/middleware/entry';
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/type';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
-import {
-  UpdateModerationPolicyBodySchema,
-  type GetModerationPolicyResponseType,
-  type UpdateModerationPolicyBodyType,
-  type UpdateModerationPolicyResponseType
+import { SystemModerationPolicySchema } from '@fastgpt/global/core/plugin/moderation/type';
+import type {
+  GetModerationPolicyResponseType,
+  UpdateModerationPolicyBodyType,
+  UpdateModerationPolicyResponseType
 } from '@fastgpt/global/openapi/core/plugin/admin/moderation/api';
 import {
   getModerationPolicy,
@@ -37,7 +37,7 @@ export async function handler(
 
   const { body } = parseApiInput({
     req,
-    bodySchema: UpdateModerationPolicyBodySchema
+    bodySchema: SystemModerationPolicySchema
   });
 
   return updateModerationPolicy(body);

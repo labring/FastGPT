@@ -1,9 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  ModerationCheckInputSchema,
-  ModerationResultSchema
-} from '@fastgpt-plugin/sdk-client';
+import { ModerationCheckInputSchema, ModerationResultSchema } from '@fastgpt-plugin/sdk-client';
 import {
   DefaultSystemModerationPolicy,
   ModerationPluginConfigSchema,
@@ -12,12 +9,10 @@ import {
 import {
   DeleteModerationPluginBodySchema,
   GetModerationPluginListQuerySchema,
-  GetModerationPolicyResponseSchema,
   GetModerationRecordsBodySchema,
   GetModerationRecordsResponseSchema,
   RawModerationCheckBodySchema,
-  SaveModerationConfigBodySchema,
-  UpdateModerationPolicyBodySchema
+  SaveModerationConfigBodySchema
 } from '../../../../openapi/core/plugin/admin/moderation/api';
 import { PluginPath } from '../../../../openapi/core/plugin/index';
 
@@ -34,36 +29,42 @@ describe('moderation admin OpenAPI contracts', () => {
 
   it('reuses the plugin-side moderation result schema instead of redefining it', () => {
     // 标准结构只有一份：FastGPT 不重复定义 verdict / hits / label
-    expect(ModerationResultSchema.safeParse({
-      verdict: 'block',
-      keywords: ['badword'],
-      hits: [{ label: 'porn', providerLabel: 'Porn', score: 80, keywords: ['badword'] }],
-      provider: 'baidu'
-    }).success).toBe(true);
+    expect(
+      ModerationResultSchema.safeParse({
+        verdict: 'block',
+        keywords: ['badword'],
+        hits: [{ label: 'porn', providerLabel: 'Porn', score: 80, keywords: ['badword'] }],
+        provider: 'baidu'
+      }).success
+    ).toBe(true);
 
     // 不在四档内的裁决必须被拒绝
-    expect(ModerationResultSchema.safeParse({
-      verdict: 'unknown',
-      keywords: [],
-      hits: [],
-      provider: 'baidu'
-    }).success).toBe(false);
+    expect(
+      ModerationResultSchema.safeParse({
+        verdict: 'unknown',
+        keywords: [],
+        hits: [],
+        provider: 'baidu'
+      }).success
+    ).toBe(false);
 
     // error 档是正常结果，不是失败
-    expect(ModerationResultSchema.safeParse({
-      verdict: 'error',
-      keywords: [],
-      hits: [],
-      provider: 'baidu',
-      errorMessage: 'provider timeout'
-    }).success).toBe(true);
+    expect(
+      ModerationResultSchema.safeParse({
+        verdict: 'error',
+        keywords: [],
+        hits: [],
+        provider: 'baidu',
+        errorMessage: 'provider timeout'
+      }).success
+    ).toBe(true);
   });
 
   it('rejects unknown fields in the check input', () => {
     expect(ModerationCheckInputSchema.safeParse({ content: 'hello' }).success).toBe(true);
-    expect(ModerationCheckInputSchema.safeParse({ content: 'hello', modality: 'image' }).success).toBe(
-      false
-    );
+    expect(
+      ModerationCheckInputSchema.safeParse({ content: 'hello', modality: 'image' }).success
+    ).toBe(false);
   });
 
   it('validates admin request bodies', () => {
@@ -100,12 +101,11 @@ describe('moderation admin OpenAPI contracts', () => {
   });
 
   it('validates moderation policy schema and defaults', () => {
-    expect(SystemModerationPolicySchema.safeParse(DefaultSystemModerationPolicy).success).toBe(true);
-    expect(GetModerationPolicyResponseSchema.safeParse(DefaultSystemModerationPolicy).success).toBe(
+    expect(SystemModerationPolicySchema.safeParse(DefaultSystemModerationPolicy).success).toBe(
       true
     );
     expect(
-      UpdateModerationPolicyBodySchema.safeParse({
+      SystemModerationPolicySchema.safeParse({
         enabled: true,
         activePluginId: 'baidu-moderation',
         hooks: {

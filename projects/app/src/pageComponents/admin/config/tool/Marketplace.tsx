@@ -318,6 +318,7 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
           return [
             {
               id,
+              type: 'tool' as 'tool' | 'moderation',
               systemToolId: tool.id,
               status: tool.status,
               version: tool.version,
@@ -355,6 +356,7 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
         return [
           {
             id,
+            type: 'tool' as 'tool' | 'moderation',
             systemToolId: tool.id,
             status: tool.status,
             version: tool.version,
@@ -370,6 +372,7 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
 
       const moderationInstalledTools = moderationList.map((item) => ({
         id: item.pluginId,
+        type: 'moderation' as 'tool' | 'moderation',
         systemToolId: item.pluginId,
         status: item.deleted ? PluginStatusEnum.Offline : PluginStatusEnum.Normal,
         version: item.version || '',
@@ -739,7 +742,7 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
           version: marketplaceTool?.version,
           etag: marketplaceTool?.etag,
           downloadCount: 0,
-          type: (installedPlugin as any).type ?? marketplaceTool?.type
+          type: installedPlugin.type ?? marketplaceTool?.type
         };
       });
 

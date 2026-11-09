@@ -9,9 +9,12 @@ import type {
   ModerationRuntimeContext,
   SystemModerationPolicyType
 } from '@fastgpt/global/core/plugin/moderation/type';
+import { workflowSystemVariables } from '@fastgpt/global/core/workflow/node/constant';
 import { checkContentByPolicy, isModerationHookEnabled } from './checker';
 import { ensureNodeModerationRecord } from './collector';
 import { getModerationPolicy } from './service';
+
+const SYSTEM_VARIABLE_KEYS = new Set<string>(workflowSystemVariables.map((item) => item.key));
 
 export type CheckEntryModerationParams = {
   /** 本轮用户问题输入 */
@@ -92,9 +95,10 @@ export const checkEntryModeration = async ({
     }
   }
 
-  // 2. 审查全局变量与表单输入 (variables)
+  // 2. 审查全局变量与表单输入 (variables，排除运行时系统变量)
   if (variables && typeof variables === 'object') {
     for (const [key, val] of Object.entries(variables)) {
+      if (SYSTEM_VARIABLE_KEYS.has(key)) continue;
       const strings = extractStringsFromUnknown(val);
       for (const text of strings) {
         const result = await checkContentByPolicy({

@@ -17,7 +17,7 @@ status: DRAFT（已对齐需求，准备进入实现）
 3. **Agent 内部工具结果容错与连续性**：Agent Loop 内部的工具结果并非直接展示给用户，而是喂回给模型。因此工具结果违规时，将其替换为统一提示文案（“该信息因内容审核不通过，无法返回”），让 Agent 感知结果被阻断并继续后续规划，不中断整个 Agent 思考链。
 4. **历史上下文免审**：进入模型的审核跳过已归档的历史消息，避免重复审查历史导致延迟与 Token 成本陡增。
 5. **审计闭环与结果持久化**：所有触发的审查调用均支持落库到审核记录表，为企业合规审计与管理端“审核记录”页面提供完整的数据源。
-6. **彻底替换旧 Censor**：清理并移除 Pro / Core 中遗留的旧版文本审查（`global.textCensorHandler`、`censorCheckBaidu`、`censorCheckCustom` 等），全流程统一收归至 Moderation 体系。
+6. **彻底替换旧 Censor**：清理并移除运行时业务链路中遗留的旧版文本审查（`censorCheckBaidu`、`censorCheckCustom`、`postTextCensor` 等），全流程统一收归至 Moderation 体系。仅保留 `packages/service/common/api/type.d.ts` 中的 `global.textCensorHandler` 类型声明以及模型配置 Schema（`admin/config/type.ts`、`adapt.ts`、`model/schema.ts`）中的历史 `censor` 字段，用于兼容 `pro` 子模块类型检查与存量数据库记录反序列化，运行时不再读取或执行旧版 censor。
 
 ---
 
@@ -146,9 +146,9 @@ export const ModerationRecordSchema = z.object({
   - 导出 `createModerationRecord` 异步方法，带索引声明与单测。
 
 ### 阶段 2.2：旧 Censor 彻底清理与替换
-- [ ] **T12: 移除旧版 Censor 链路**
-  - 搜索并移除 `censorCheckBaidu`、`censorCheckCustom`、`global.textCensorHandler`、`postTextCensor`。
-  - 清理 `dispatchChatCompletion` 及工具调用中原有的 `modelConstantsData.config.censor` 相关逻辑。
+- [x] **T12: 移除旧版 Censor 链路**
+  - 搜索并移除运行时 `censorCheckBaidu`、`censorCheckCustom`、`postTextCensor` 调用链路。
+  - 清理 `dispatchChatCompletion` 及工具调用中原有的 `modelConstantsData.config.censor` 相关逻辑（仅保留 `type.d.ts` 与模型配置 Schema 的历史兼容字段定义以维持 `pro` 子模块编译及历史数据读取兼容）。
 
 ### 阶段 2.3：三大审核锚点落地
 - [ ] **T13: 锚点 1（信息接入平台）拦截实现**

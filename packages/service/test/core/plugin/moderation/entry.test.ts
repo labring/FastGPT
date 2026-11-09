@@ -196,5 +196,34 @@ describe('checkEntryModeration (Entry Guard)', () => {
         })
       ).rejects.toThrow(new UserError(MODERATION_BLOCKED_ERROR_MESSAGE));
     });
+
+    it('skips workflow system variables (userId, appId, chatId, responseChatItemId, histories, cTime)', async () => {
+      const checkerSpy = vi.spyOn(checkerMod, 'checkContentByPolicy').mockResolvedValue({
+        action: ModerationActionEnum.pass,
+        isPass: true,
+        text: 'safe'
+      });
+
+      await checkEntryModeration({
+        variables: {
+          userId: 'user-1',
+          appId: 'app-1',
+          chatId: 'chat-1',
+          responseChatItemId: 'resp-1',
+          histories: [{ obj: 'Human', value: 'past history' }],
+          cTime: '2026-04-20 12:00:00',
+          customVar: 'user-provided value'
+        },
+        policy: basePolicy
+      });
+
+      expect(checkerSpy).toHaveBeenCalledTimes(1);
+      expect(checkerSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          text: 'user-provided value',
+          targetField: 'variable.customVar'
+        })
+      );
+    });
   });
 });

@@ -191,7 +191,12 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
             result.error = new UserError(blockedReason);
           }
 
-          return Object.assign(result, { isOutputModerationEnabled });
+          return Object.assign(result, {
+            isOutputModerationEnabled,
+            isBlockedByModeration: Boolean(
+              streamModerationBuffer.blocked || reasoningModerationBuffer?.blocked
+            )
+          });
         }
 
         const completeResult = await createCompleteResponse({
@@ -234,7 +239,10 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
           }
         }
 
-        return Object.assign(completeResult, { isBlockedByModeration });
+        return Object.assign(completeResult, {
+          isOutputModerationEnabled: false,
+          isBlockedByModeration
+        });
       })();
 
       let isToolBlockedByModeration = false;
@@ -255,7 +263,7 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
       }
 
       // 审核全部通过后派发回调（未被审核拦截的内容正常对外派发）
-      const isBlockedByModeration = (parsedResponse as any).isBlockedByModeration;
+      const isBlockedByModeration = parsedResponse.isBlockedByModeration;
       if (!currentIsStreamResponse) {
         if (!isBlockedByModeration) {
           if (parsedResponse.reasoningText) {
@@ -271,7 +279,7 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
           });
         }
       } else if (
-        (parsedResponse as any).isOutputModerationEnabled &&
+        parsedResponse.isOutputModerationEnabled &&
         !isToolBlockedByModeration &&
         parsedResponse.toolCalls?.length
       ) {

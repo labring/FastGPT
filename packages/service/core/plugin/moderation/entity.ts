@@ -36,12 +36,6 @@ export const findModerationConfig = (
     .lean<ModerationConfigRecord>();
 
 /** 读取所有插件配置记录 */
-export const findActiveModerationConfigs = (): Promise<ModerationConfigRecord[]> =>
-  MongoSystemModerationPlugin.find({
-    deleted: { $ne: true }
-  }).lean<ModerationConfigRecord[]>();
-
-/** 读取所有插件配置记录 */
 export const findAllModerationConfigs = (): Promise<ModerationConfigRecord[]> =>
   MongoSystemModerationPlugin.find({})
     .sort({ updateTime: -1, _id: -1 })

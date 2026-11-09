@@ -2,8 +2,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { AgentNodeResponseDisplay } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/interface';
 
-const { getFileContentByUrlMock } = vi.hoisted(() => ({
-  getFileContentByUrlMock: vi.fn()
+const { getFileContentByUrlMock, checkFileContentModerationMock } = vi.hoisted(() => ({
+  getFileContentByUrlMock: vi.fn(),
+  checkFileContentModerationMock: vi.fn(async ({ content }: { content?: string }) => content ?? '')
 }));
 
 vi.mock('@fastgpt/service/core/chat/fileContext', async (importOriginal) => ({
@@ -11,11 +12,18 @@ vi.mock('@fastgpt/service/core/chat/fileContext', async (importOriginal) => ({
   getFileContentByUrl: getFileContentByUrlMock
 }));
 
+vi.mock('@fastgpt/service/core/plugin/moderation/modelInput', () => ({
+  checkFileContentModeration: checkFileContentModerationMock
+}));
+
 import { dispatchWorkflowReadFiles } from '@fastgpt/service/core/workflow/dispatch/ai/readFiles';
 
 describe('dispatchWorkflowReadFiles', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    checkFileContentModerationMock.mockImplementation(
+      async ({ content }: { content?: string }) => content ?? ''
+    );
   });
 
   it('returns the shared JSON response and node response for parsed files', async () => {
@@ -185,5 +193,39 @@ describe('dispatchWorkflowReadFiles', () => {
     expect(getFileContentByUrlMock).toHaveBeenCalledTimes(7);
     expect(JSON.parse(result.response)).toHaveLength(7);
     expect(result.nodeResponse.readFiles.at(-1)?.url).toBe('https://files.example.com/7.pdf');
+  });
+
+  it('replaces blocked file content via checkFileContentModeration while keeping normal files intact', async () => {
+    getFileContentByUrlMock.mockImplementation(async ({ url }: { url: string }) => {
+      if (url.endsWith('/blocked.txt')) {
+        return { name: 'blocked.txt', content: 'sensitive file text' };
+      }
+      return { name: 'safe.txt', content: 'normal file text' };
+    });
+    checkFileContentModerationMock.mockImplementation(
+      async ({ content, fileName }: { content?: string; fileName?: string }) =>
+        fileName === 'blocked.txt' ? '[因内容违规，该内容已被屏蔽]' : (content ?? '')
+    );
+
+    const result = await dispatchWorkflowReadFiles({
+      files: [
+        { url: 'https://files.example.com/safe.txt' },
+        { url: 'https://files.example.com/blocked.txt' }
+      ],
+      teamId: 'team_1',
+      tmbId: 'tmb_1',
+      maxFileAmount: 20
+    });
+
+    expect(checkFileContentModerationMock).toHaveBeenCalledTimes(2);
+    expect(checkFileContentModerationMock).toHaveBeenCalledWith({
+      content: 'sensitive file text',
+      fileName: 'blocked.txt',
+      context: { teamId: 'team_1', tmbId: 'tmb_1' }
+    });
+    expect(JSON.parse(result.response)).toEqual([
+      { name: 'safe.txt', content: 'normal file text' },
+      { name: 'blocked.txt', content: '[因内容违规，该内容已被屏蔽]' }
+    ]);
   });
 });

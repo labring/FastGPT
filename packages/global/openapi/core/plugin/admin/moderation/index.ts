@@ -1,17 +1,17 @@
 import type { OpenAPIPath } from '../../../../type';
 import { DevApiTagsMap } from '../../../../tag';
+import { ModerationResultSchema } from '@fastgpt-plugin/sdk-client';
+import {
+  AdminModerationPluginItemSchema,
+  SystemModerationPolicySchema
+} from '../../../../../core/plugin/moderation/type';
 import {
   DeleteModerationPluginBodySchema,
   RestoreModerationPluginBodySchema,
   GetModerationPluginListQuerySchema,
   GetModerationPluginListResponseSchema,
-  GetModerationPolicyResponseSchema,
   RawModerationCheckBodySchema,
-  RawModerationCheckResponseSchema,
   SaveModerationConfigBodySchema,
-  SaveModerationConfigResponseSchema,
-  UpdateModerationPolicyBodySchema,
-  UpdateModerationPolicyResponseSchema,
   GetModerationRecordsBodySchema,
   GetModerationRecordsResponseSchema
 } from './api';
@@ -69,7 +69,7 @@ export const AdminPluginModerationPath: OpenAPIPath = {
           description: '成功保存配置',
           content: {
             'application/json': {
-              schema: SaveModerationConfigResponseSchema
+              schema: AdminModerationPluginItemSchema
             }
           }
         }
@@ -95,7 +95,7 @@ export const AdminPluginModerationPath: OpenAPIPath = {
           description: '审查完成，返回 verdict 与逐项命中明细',
           content: {
             'application/json': {
-              schema: RawModerationCheckResponseSchema
+              schema: ModerationResultSchema
             }
           }
         }
@@ -135,7 +135,7 @@ export const AdminPluginModerationPath: OpenAPIPath = {
           description: '成功获取全局策略',
           content: {
             'application/json': {
-              schema: GetModerationPolicyResponseSchema
+              schema: SystemModerationPolicySchema
             }
           }
         }
@@ -150,7 +150,7 @@ export const AdminPluginModerationPath: OpenAPIPath = {
         required: true,
         content: {
           'application/json': {
-            schema: UpdateModerationPolicyBodySchema
+            schema: SystemModerationPolicySchema
           }
         }
       },
@@ -159,7 +159,7 @@ export const AdminPluginModerationPath: OpenAPIPath = {
           description: '成功保存全局策略',
           content: {
             'application/json': {
-              schema: UpdateModerationPolicyResponseSchema
+              schema: SystemModerationPolicySchema
             }
           }
         }

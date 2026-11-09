@@ -7,7 +7,7 @@ import {
 import { NextAPI } from '@/service/middleware/entry';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { authChatTargetCrud } from '@fastgpt/service/core/chat/auth';
-import { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatGenerateStatusEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import {
   StreamResumeCompletedEvent,
   StreamResumePhaseEnum,
@@ -151,10 +151,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         ...item,
         id: item.dataId!
       };
-      if (!canReadModerationRecords && (chatItem as any).responseData) {
-        (chatItem as any).responseData = stripModerationRecordsFromNodeResponses(
-          (chatItem as any).responseData
-        );
+      if (!canReadModerationRecords && chatItem.obj === ChatRoleEnum.AI && chatItem.responseData) {
+        chatItem.responseData = stripModerationRecordsFromNodeResponses(chatItem.responseData);
       }
       return chatItem;
     });

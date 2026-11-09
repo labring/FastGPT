@@ -1,11 +1,12 @@
 import z from 'zod';
-import { ModerationCheckInputSchema, ModerationResultSchema } from '@fastgpt-plugin/sdk-client';
+import { ModerationCheckInputSchema, type ModerationResultType } from '@fastgpt-plugin/sdk-client';
 import { BoolSchema, IntSchema } from '../../../../../common/zod';
 import { ModerationStageEnum } from '../../../../../core/plugin/moderation/constants';
 import {
   AdminModerationPluginItemSchema,
+  type AdminModerationPluginItemType,
   ModerationRecordSchema,
-  SystemModerationPolicySchema
+  type SystemModerationPolicyType
 } from '../../../../../core/plugin/moderation/type';
 
 /* ============================================================================
@@ -54,12 +55,11 @@ export const SaveModerationConfigBodySchema = z.object({
    * 是否启用。传 true 时会把其他已启用的审查插件置为停用（全局互斥）。
    * 不传表示不改变当前启用状态。
    */
-  enabled: z.boolean().optional().meta({ description: '是否启用（全局互斥）' })
+  enabled: BoolSchema.optional().meta({ description: '是否启用（全局互斥）' })
 });
 export type SaveModerationConfigBodyType = z.infer<typeof SaveModerationConfigBodySchema>;
 
-export const SaveModerationConfigResponseSchema = AdminModerationPluginItemSchema;
-export type SaveModerationConfigResponseType = z.infer<typeof SaveModerationConfigResponseSchema>;
+export type SaveModerationConfigResponseType = AdminModerationPluginItemType;
 
 /* ============================================================================
  * API: 测试调用内容审查插件
@@ -82,8 +82,7 @@ export const RawModerationCheckBodySchema = z.object({
 });
 export type RawModerationCheckBodyType = z.infer<typeof RawModerationCheckBodySchema>;
 
-export const RawModerationCheckResponseSchema = ModerationResultSchema;
-export type RawModerationCheckResponseType = z.infer<typeof RawModerationCheckResponseSchema>;
+export type RawModerationCheckResponseType = ModerationResultType;
 
 /* ============================================================================
  * API: 删除（卸装）内容审查插件
@@ -107,8 +106,7 @@ export type DeleteModerationPluginBodyType = z.infer<typeof DeleteModerationPlug
  * Tags: ['PluginAdmin', 'Read']
  * ============================================================================ */
 
-export const GetModerationPolicyResponseSchema = SystemModerationPolicySchema;
-export type GetModerationPolicyResponseType = z.infer<typeof GetModerationPolicyResponseSchema>;
+export type GetModerationPolicyResponseType = SystemModerationPolicyType;
 
 /* ============================================================================
  * API: 更新全局内容审核策略
@@ -118,13 +116,8 @@ export type GetModerationPolicyResponseType = z.infer<typeof GetModerationPolicy
  * Tags: ['PluginAdmin', 'Write']
  * ============================================================================ */
 
-export const UpdateModerationPolicyBodySchema = SystemModerationPolicySchema;
-export type UpdateModerationPolicyBodyType = z.infer<typeof UpdateModerationPolicyBodySchema>;
-
-export const UpdateModerationPolicyResponseSchema = SystemModerationPolicySchema;
-export type UpdateModerationPolicyResponseType = z.infer<
-  typeof UpdateModerationPolicyResponseSchema
->;
+export type UpdateModerationPolicyBodyType = SystemModerationPolicyType;
+export type UpdateModerationPolicyResponseType = SystemModerationPolicyType;
 
 /* ============================================================================
  * API: 分页查询内容审核记录

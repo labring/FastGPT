@@ -43,7 +43,7 @@ export const checkOutputTextModeration = async ({
     return {
       isPass: true,
       action: ModerationActionEnum.pass,
-      text: text || ''
+      text: text ?? ''
     };
   }
 

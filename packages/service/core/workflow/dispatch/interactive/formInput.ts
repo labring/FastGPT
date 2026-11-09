@@ -15,7 +15,8 @@ import {
 } from '../../../chat/fileStoreValue';
 import { getWorkflowFileContext, getWorkflowFileRegistrar } from '../../utils/context';
 import { checkOutputTextModeration } from '../../../plugin/moderation/output';
-import { getNodeErrResponse, getDispatchModerationContext } from '../utils';
+import { getNodeErrResponse } from '../utils';
+import { getDispatchModerationContext } from '../utils/runtime';
 import { MODERATION_BLOCKED_ERROR_MESSAGE } from '@fastgpt/global/core/plugin/moderation/constants';
 import type { WorkflowFileRegistrar } from '../../utils/fileContext';
 import { getModuleFileAmountLimit } from '@fastgpt/global/core/workflow/fileLimit';

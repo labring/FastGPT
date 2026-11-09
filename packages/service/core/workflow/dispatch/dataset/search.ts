@@ -21,7 +21,8 @@ import {
   loadWorkflowDatasetResource,
   loadWorkflowModelResource
 } from '../../resource/service';
-import { getNodeErrResponse, getDispatchModerationContext } from '../utils';
+import { getNodeErrResponse } from '../utils';
+import { getDispatchModerationContext } from '../utils/runtime';
 import {
   createImageCaptionChildNodeResponse,
   createQueryExtensionChildNodeResponse

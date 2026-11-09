@@ -153,7 +153,7 @@ T1 升级 sdk-client
 - [x] **T7 admin 导航与页面框架（审核策略配置）（M）** — DONE
   - **需求与原型**：
     - 在 `AdminContainer` 新增独立一级菜单「内容审核」（商业版才展示，未激活 License 时受 `unlicensedAdminRoutes` 拦截与自动过滤）。
-    - 第一版二级子目录包含「审核策略配置」（`/admin/moderation/policy`）、「审核记录」（`/admin/moderation/records`）与「审核服务日志」（`/admin/moderation/logs`，占位）。
+    - 管理端导航仅暴露单一入口「内容审核 / 审核策略配置」（`/admin/moderation/policy`）；原规划的 `/admin/moderation/records` 与 `/admin/moderation/logs` 子页面按最新产品要求不暴露在管理后台菜单中（审查明细直接在对话完整响应卡片与底层 `system_moderation_records` 中留存）。
     - 页面采用 `SettingPage` 构建，右侧四级锚点（审核服务、审核生效环节、处理策略、审核效果测试）与全局保存按钮联动。
     - 持久化：全局策略配置存储于 `MongoSystemConfigs`（`type: moderationPolicy`），通过 `/api/core/plugin/admin/moderation/policy`（GET/POST）与插件启用状态联动。
   - **实施细节**：
@@ -201,7 +201,7 @@ T1 升级 sdk-client
   - **信息进入模型（Model Input Guard）**：AI对话、工具调用、Agent应用，进入 agent loop 前节点报错，无有效输入不运行；agent loop 内部工具响应结果统一文案替换不中断 agent；历史上下文免审。
   - **输出检查（Output / Stream Guard）**：面向用户输出统一拦截，非流式整次不发送，流式立即停止并丢弃未展示内容；工具参数不返回客户端终止模型调用抛错；工具调用结果不返回客户端以固定特殊内容给模型。
   - **审查记录持久化**：新增 `system_moderation_records`，异步静默落库所有业务审查结果，支撑后续“审核记录”页面。
-  - **清理旧 Censor**：旧版 Censor 链路无需保留，本次修改完全替换之并移除。
+  - **清理旧 Censor**：运行时旧版 Censor 调用链路完全移除并由 Moderation 替代（仅保留 `type.d.ts` 中 `global.textCensorHandler` 声明与模型配置 Schema 中 `censor` 布尔字段用于 `pro` 子模块编译及历史配置反序列化兼容）。
 - **P3 多视角展示**：依赖 P2 确定审查结果落库的形状（`system_moderation_records` 已规划 `hits` 与 `providerLabel`）。
 - **P4 Marketplace**：`MarketplaceToolBaseSchema.type` 与 `TeamInstalledPluginSchema.pluginType` 放开 `moderation`，按市场计划独立推进。
 

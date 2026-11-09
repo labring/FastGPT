@@ -4,7 +4,8 @@ import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { DispatchNodeResultType, ModuleDispatchProps } from '../../types/runtime';
 import { checkOutputTextModeration } from '../../../plugin/moderation/output';
-import { getNodeErrResponse, getDispatchModerationContext } from '../utils';
+import { getNodeErrResponse } from '../utils';
+import { getDispatchModerationContext } from '../utils/runtime';
 import { MODERATION_BLOCKED_ERROR_MESSAGE } from '@fastgpt/global/core/plugin/moderation/constants';
 export type AnswerProps = ModuleDispatchProps<{
   text: string;

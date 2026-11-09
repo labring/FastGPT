@@ -4,7 +4,8 @@ import { getDownloadCounts } from '../downloadCount';
 import { compareVersions, pluginRepo } from '../plugin/repo';
 import type { MarketplaceToolManifestSchemaType } from '../mongo/models/tool';
 
-export type MarketplaceToolListDataItem = ToolDetailType & {
+export type MarketplaceToolListDataItem = Omit<ToolDetailType, 'type'> & {
+  type?: 'tool' | 'moderation';
   toolId: string;
   id: string;
   downloadCount: number;

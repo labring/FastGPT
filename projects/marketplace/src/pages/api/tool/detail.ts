@@ -3,18 +3,23 @@ import { type ToolDetailType } from '@fastgpt/global/sdk/fastgpt-plugin';
 import { getPkgdownloadURL, getReadmeURL } from '@/service/s3';
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/type';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
+import {
+  GetMarketplaceToolDetailQuerySchema,
+  type GetMarketplaceToolDetailQueryType
+} from '@fastgpt/global/openapi/core/plugin/marketplace/api';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { NextAPI } from '@/service/middleware/entry';
 
-export type ToolDetailQuery = {
-  toolId: string;
-  version?: string;
-  type?: 'tool' | 'moderation';
-};
+export type ToolDetailQuery = GetMarketplaceToolDetailQueryType;
 export type ToolDetailBody = {};
 
 export type ToolDetailResponse = {
   tools: Array<
-    ToolDetailType & { readme: string; readmeUrls?: Partial<Record<localeType, string>> }
+    Omit<ToolDetailType, 'type'> & {
+      type?: 'tool' | 'moderation';
+      readme: string;
+      readmeUrls?: Partial<Record<localeType, string>>;
+    }
   >;
   downloadCount: number;
   downloadUrl: string;
@@ -24,11 +29,12 @@ async function handler(
   req: ApiRequestProps<ToolDetailBody, ToolDetailQuery>,
   res: ApiResponseType<any>
 ): Promise<ToolDetailResponse> {
-  const { toolId, version, type } = req.query;
-
-  if (!toolId) {
-    throw new Error('toolId is required');
-  }
+  const {
+    query: { toolId, version, type }
+  } = parseApiInput({
+    req,
+    querySchema: GetMarketplaceToolDetailQuerySchema
+  });
 
   const parentToolId = toolId.split('/')[0];
   const toolList = await getToolList({ type, toolId: parentToolId, version });

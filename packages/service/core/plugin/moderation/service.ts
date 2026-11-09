@@ -19,8 +19,8 @@ import {
 } from './entity';
 import type { ModerationConfigRecord } from './entity';
 import type { AdminModerationPluginItemType } from '@fastgpt/global/core/plugin/moderation/type';
+import { DEFAULT_MODERATION_POLICY_CONFIG_ID } from '@fastgpt/global/core/plugin/moderation/constants';
 import {
-  DEFAULT_MODERATION_POLICY_CONFIG_ID,
   DefaultSystemModerationPolicy,
   SystemModerationPolicySchema,
   type SystemModerationPolicyType
@@ -179,13 +179,6 @@ export const getAdminModerationPluginList = async ({
 };
 
 /**
- * 保存审查插件配置。
- *
- * 启用是全局互斥的：传 `enabled: true` 会先把其他插件置为停用。
- * Saving synchronously probes the resolved configuration before any writes or enablement.
- * A block/suspected verdict is a healthy response; provider errors and runtime failures reject the save.
- */
-/**
  * 权威策略记录竞争点：所有启用操作均争用同一条 moderationPolicy 记录，
  * 通过在同一事务内更新合法字段（value / createTime）产生排他行锁或写冲突，避免并发双启用。
  */
@@ -234,6 +227,13 @@ const syncPolicyContentionRecord = async ({
   );
 };
 
+/**
+ * 保存审查插件配置。
+ *
+ * 启用是全局互斥的：传 `enabled: true` 会先把其他插件置为停用。
+ * Saving synchronously probes the resolved configuration before any writes or enablement.
+ * A block/suspected verdict is a healthy response; provider errors and runtime failures reject the save.
+ */
 export const saveModerationConfig = async ({
   pluginId,
   source,

@@ -15,6 +15,8 @@ import {
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { jsonSchema2SecretInput } from '@fastgpt/global/core/app/jsonschema';
 import { SystemToolCodec } from '@fastgpt/global/core/app/tool/systemTool/codec';
+import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
+import { splitCombineToolId } from '@fastgpt/global/core/app/tool/utils';
 import { SystemToolRepo } from '@fastgpt/service/core/app/tool/systemTool/systemTool.repo';
 import {
   encryptSystemToolSecrets,
@@ -54,9 +56,9 @@ export async function handler(
 
   // Remote lifecycle must succeed before committing the local business status.
   // Only bundle-level system tools invoke remote lifecycle; child tools only update local state.
-  const isChildTool = pluginId.slice('systemTool-'.length).includes('/');
-  if (pluginId.startsWith('systemTool-') && !isChildTool) {
-    const rawPluginId = pluginId.slice('systemTool-'.length);
+  const { source, pluginId: rawPluginId } = splitCombineToolId(pluginId);
+  const isChildTool = rawPluginId.includes('/');
+  if (source === AppToolSourceEnum.systemTool && !isChildTool) {
     if (updateFields.status === PluginStatusEnum.Offline) await disableSystemPlugin(rawPluginId);
     else if (
       updateFields.status === PluginStatusEnum.Normal &&
