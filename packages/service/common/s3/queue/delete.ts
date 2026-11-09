@@ -9,6 +9,7 @@ import {
   type InvalidStorageObjectKeyReason
 } from '@fastgpt-sdk/storage';
 import { getS3ParsedPrefix, isOpaqueS3ParsedObjectKey } from '../opaqueKey';
+import { getCurrentSiteAvatarKeys, isSiteAvatarObject } from '../siteAvatarReferences';
 
 export type { S3MQJobData } from '@fastgpt/dal/redis/bullmq';
 
@@ -78,27 +79,50 @@ export const executeS3DeleteJob = async ({ prefix, bucketName, key, keys }: S3MQ
     keys = [key];
   }
   if (keys) {
-    logger.debug('S3 delete by keys', { bucketName, count: keys.length });
-    const result = (await bucket.client.deleteObjectsByMultiKeys({ keys }).catch((error) => {
-      if (!isLegacyStorageKeyError(error)) throw error;
-      // 旧数据 key 含控制字符等非规范字符，校验失败但对象确实存在，降级为原始 key 直删。
-      assertAllKeysLegacyRawEligible(keys);
-      logger.warn('Legacy S3 key rejected by validation, falling back to raw key deletion', {
-        bucketName,
-        count: keys.length,
-        reason: error.reason
-      });
-      return bucket.client.deleteObjectsByRawKeys({ keys });
-    })) as { keys?: string[] } | undefined;
+    // 头像采用延迟删除；真正删除前再确认当前站点是否重新引用了它。
+    // 无法读取当前配置时抛错交给 BullMQ 重试，宁可暂时保留对象也不误删。
+    const avatarKeys = keys.filter((item) => isSiteAvatarObject(bucketName, item));
+    if (avatarKeys.length > 0) {
+      const referencedAvatarKeys = await getCurrentSiteAvatarKeys();
+      if (referencedAvatarKeys === undefined) {
+        throw new Error('Cannot verify site avatar references before S3 deletion');
+      }
+      keys = keys.filter(
+        (item) => !isSiteAvatarObject(bucketName, item) || !referencedAvatarKeys.has(item)
+      );
+      if (keys.length === 0) {
+        logger.info('Skipped S3 delete job for referenced avatars', {
+          bucketName,
+          count: avatarKeys.length
+        });
+        return;
+      }
+    }
+
+    const keysToDelete = keys;
+    logger.debug('S3 delete by keys', { bucketName, count: keysToDelete.length });
+    const result = (await bucket.client
+      .deleteObjectsByMultiKeys({ keys: keysToDelete })
+      .catch((error) => {
+        if (!isLegacyStorageKeyError(error)) throw error;
+        // 旧数据 key 含控制字符等非规范字符，校验失败但对象确实存在，降级为原始 key 直删。
+        assertAllKeysLegacyRawEligible(keysToDelete);
+        logger.warn('Legacy S3 key rejected by validation, falling back to raw key deletion', {
+          bucketName,
+          count: keysToDelete.length,
+          reason: error.reason
+        });
+        return bucket.client.deleteObjectsByRawKeys({ keys: keysToDelete });
+      })) as { keys?: string[] } | undefined;
     assertNoFailedKeys(result?.keys, 'keys');
 
     deleteS3DownloadAliasByObjects({
       bucketName,
-      objectKeys: keys
+      objectKeys: keysToDelete
     }).catch((error) => {
       logger.warn('S3 download alias cleanup failed after delete job', {
         bucketName,
-        count: keys?.length,
+        count: keysToDelete.length,
         error
       });
     });

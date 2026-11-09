@@ -82,9 +82,10 @@
 - [x] **A3（原第 3 项，P2）Pro 配置刷新乱序**
   - 已实现：Pro watch 内增加串行刷新队列，实例配置变更和重连补偿都走同一队列；旧读取完成后才执行下一轮，最终状态收敛到最新配置；不新增分发系统。
   - 位置：`pro/admin/src/service/middleware/volumnMongoWatch.ts`、`pro/admin/test/service/middleware/volumnMongoWatch.test.ts`
-- [ ] **A4（原第 4 项，P2）头像异步清理竞态**
-  - 按评论建议：延迟回收并检查当前引用；覆盖 A→B→A 时序，避免检查后又被重新引用的新竞态；不扩展 S3 客户端重建。
-  - 位置：`projects/app/src/service/common/system/syncSiteAvatarLifecycle.ts`、`projects/app/src/pages/api/admin/system/config/update.ts`
+- [x] **A4（原第 4 项，P2）头像异步清理竞态**
+  - 已实现：失去引用的头像改为写入 24 小时延迟删除 TTL，不立即删除；重新引用会移除 TTL 取消删除。S3 TTL 清理和最终删除任务都会重新检查当前 site 引用，配置读取失败时保留对象等待重试。
+  - A→B→A 场景已覆盖；旧 `pro/admin` updateConfig 的即时头像删除随 B2 收口旧入口处理。
+  - 位置：`packages/service/common/s3/sources/avatar/index.ts`、`packages/service/common/s3/siteAvatarReferences.ts`、`packages/service/common/s3/lifecycle/cleanup.ts`、`packages/service/common/s3/queue/delete.ts`、`projects/app/src/service/common/system/syncSiteAvatarLifecycle.ts`
 - [ ] **A5（原第 5 项，P2）迁移静默剔除/跳过**
   - 按评论建议：输出脱敏后的跳过域/字段清单，纳入升级验收；关键配置是否阻断升级单独决定。
   - 位置：`projects/app/src/migration/tasks/4180/20260928_migrate_instance_configs/`

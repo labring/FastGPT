@@ -1,5 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { InvalidStorageObjectKeyError } from '@fastgpt-sdk/storage';
+import { imageBaseUrl } from '@fastgpt/global/common/file/image/constants';
+import { S3Buckets } from '@fastgpt/service/common/s3/config/constants';
+import { MongoSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/schema';
 
 vi.unmock('@fastgpt/service/common/s3/queue/delete');
 
@@ -12,8 +15,9 @@ describe('executeS3DeleteJob', () => {
     originalS3BucketMap = global.s3BucketMap;
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     global.s3BucketMap = originalS3BucketMap;
+    await MongoSystemInstanceConfig.deleteMany({ domain: 'site' });
     vi.clearAllMocks();
   });
 
@@ -59,6 +63,33 @@ describe('executeS3DeleteJob', () => {
         prefix: 'agent-skills/team/skill/'
       })
     ).rejects.toThrow('Failed to delete 1 S3 object');
+  });
+
+  it('skips deleting an avatar that is still referenced by the current site', async () => {
+    const avatarKey = 'avatar/team-1/referenced.png';
+    await MongoSystemInstanceConfig.create({
+      domain: 'site',
+      revision: 1,
+      overrides: { favicon: `${imageBaseUrl}${avatarKey}` },
+      updatedBy: { actor: 'system' }
+    });
+
+    const deleteObjectsByMultiKeys = vi.fn().mockResolvedValue({ keys: [] });
+    global.s3BucketMap = {
+      [S3Buckets.public]: {
+        client: {
+          deleteObjectsByMultiKeys,
+          deleteObjectsByPrefix: vi.fn()
+        }
+      }
+    } as any;
+
+    await executeS3DeleteJob({
+      bucketName: S3Buckets.public,
+      keys: [avatarKey]
+    });
+
+    expect(deleteObjectsByMultiKeys).not.toHaveBeenCalled();
   });
 
   it('throws when multi-key deletion reports failed keys so BullMQ can retry', async () => {
