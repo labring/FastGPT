@@ -1,7 +1,7 @@
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import React, { useEffect, useMemo } from 'react';
 import { Input, Textarea, SimpleGrid } from '@chakra-ui/react';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm, Controller, useWatch } from 'react-hook-form';
 import { useDomainConfig } from '@/web/common/system/useDomainConfig';
 import { useAdminPermission } from '@/pageComponents/admin/useAdminPermission';
 import AdminSettingPage from '@/pageComponents/admin/settings/AdminSettingPage';
@@ -37,16 +37,18 @@ const SecuritySettingComponent = () => {
 
   const { control, handleSubmit, reset, register } = useForm<SecurityConfigForm>({
     defaultValues: {
-      useIpLimit: false,
       checkInternalIp: false,
       csrfEnabled: true,
       skipFileTypeCheck: false,
+      checkExternalFile: false,
       allowedOriginsText: '',
       fileUrlWhitelistText: '',
       censor: { baiduClientId: '', baiduClientSecret: '', customCensorUrl: '' },
       workflowHttpNode: { ignoreHttpsCertificate: false }
     }
   });
+
+  const checkExternalFile = useWatch({ control, name: 'checkExternalFile' });
 
   useEffect(() => {
     if (effectiveConfig && Object.keys(effectiveConfig).length > 0) {
@@ -67,10 +69,10 @@ const SecuritySettingComponent = () => {
         .filter(Boolean);
 
     const payload = {
-      useIpLimit: Boolean(formData.useIpLimit),
       checkInternalIp: Boolean(formData.checkInternalIp),
       csrfEnabled: Boolean(formData.csrfEnabled),
       skipFileTypeCheck: Boolean(formData.skipFileTypeCheck),
+      checkExternalFile: Boolean(formData.checkExternalFile),
       allowedOrigins: parseList(formData.allowedOriginsText),
       fileUrlWhitelist: parseList(formData.fileUrlWhitelistText),
       ...(showCensor ? { censor: formData.censor } : {}),
@@ -92,19 +94,6 @@ const SecuritySettingComponent = () => {
       {/* 1. 基础 */}
       <AdminSettingSection id="basic" title={t('admin:security_section_basic')}>
         <SimpleGrid columns={[1, 2]} spacingX={16} spacingY={4} mb={6}>
-          <Controller
-            name="useIpLimit"
-            control={control}
-            render={({ field }) => (
-              <AdminSwitchRow
-                label={t('admin:ip_rate_limiting')}
-                tooltip={t('admin:when_enabled_main_site_requests_are_subject_to_a_unified_ip')}
-                isChecked={field.value}
-                onChange={field.onChange}
-              />
-            )}
-          />
-
           <Controller
             name="checkInternalIp"
             control={control}
@@ -165,8 +154,20 @@ const SecuritySettingComponent = () => {
             control={control}
             render={({ field }) => (
               <AdminSwitchRow
-                label={t('admin:skip_file_type_check')}
-                tooltip={t('admin:high_risk_enabling_this_stops_strict_mime_magic_number_valid')}
+                label={t('admin:upload_file_type_check')}
+                tooltip={t('admin:upload_file_type_check_tip')}
+                isChecked={!field.value}
+                onChange={(checked) => field.onChange(!checked)}
+              />
+            )}
+          />
+          <Controller
+            name="checkExternalFile"
+            control={control}
+            render={({ field }) => (
+              <AdminSwitchRow
+                label={t('admin:check_external_file')}
+                tooltip={t('admin:check_external_file_tip')}
                 isChecked={field.value}
                 onChange={field.onChange}
               />
@@ -174,16 +175,18 @@ const SecuritySettingComponent = () => {
           />
         </SimpleGrid>
 
-        <AdminFormItem
-          label={t('admin:external_resource_domain_whitelist')}
-          tooltip={t('admin:domain_list_allowed_for_loading_external_file_resources_sepa')}
-        >
-          <Textarea
-            {...register('fileUrlWhitelistText')}
-            rows={3}
-            placeholder="https://cdn.example.com&#10;https://oss.example.com"
-          />
-        </AdminFormItem>
+        {checkExternalFile && (
+          <AdminFormItem
+            label={t('admin:external_resource_domain_whitelist')}
+            tooltip={t('admin:domain_list_allowed_for_loading_external_file_resources_sepa')}
+          >
+            <Textarea
+              {...register('fileUrlWhitelistText')}
+              rows={3}
+              placeholder="cdn.example.com&#10;oss.example.com"
+            />
+          </AdminFormItem>
+        )}
       </AdminSettingSection>
 
       {/* 3. 模型内容审查 */}

@@ -7,6 +7,24 @@ import { SandboxVolumeNameSchema } from '@fastgpt/global/core/ai/sandbox/volume'
 const defaultableIntSchema = (defaultValue: number) =>
   z.preprocess((value) => (value === '' || value === undefined ? defaultValue : value), IntSchema);
 
+// 公共 BoolSchema 会把未知字符串解析成 false，迁移时必须拒绝拼写错误以免静默关闭安全设置。
+const legacyBooleanValues = new Set([
+  'true',
+  '1',
+  'yes',
+  'y',
+  'on',
+  'false',
+  '0',
+  'no',
+  'n',
+  'off'
+]);
+const LegacyEnvBooleanSchema = z
+  .string()
+  .refine((value) => legacyBooleanValues.has(value.trim().toLowerCase()))
+  .transform((value) => BoolSchema.parse(value));
+
 /**
  * 仅供 4.18 实例配置迁移读取的历史 ENV 合约。
  * 运行时 serviceEnv/appEnv 不再声明这些字段；保留历史校验和默认值以承接已有部署，
@@ -45,7 +63,7 @@ const LegacyInstanceConfigEnvSchema = z.object({
   AGENT_SANDBOX_OPENSANDBOX_IMAGE: z.string().optional().meta({
     description: 'OpenSandbox 使用的运行态镜像；启用 opensandbox 时必填'
   }),
-  AGENT_SANDBOX_OPENSANDBOX_USE_SERVER_PROXY: BoolSchema.default(true),
+  AGENT_SANDBOX_OPENSANDBOX_USE_SERVER_PROXY: LegacyEnvBooleanSchema.default(true),
   AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL: UrlSchema.optional(),
   AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN: z.string().optional(),
   AGENT_SANDBOX_OPENSANDBOX_VOLUME_NAME_PREFIX: SandboxVolumeNameSchema.default(
@@ -111,18 +129,6 @@ const LegacyInstanceConfigEnvSchema = z.object({
   SANGFOR_PARSE_TIMEOUT_SECONDS: IntSchema.min(1).max(7200).default(600).meta({
     description: 'Sangfor 文档解析请求超时时间（秒），默认 10 分钟，最大 2 小时'
   }),
-  STREAM_RESUME_TTL_SECONDS: IntSchema.default(5 * 60).meta({
-    description: 'Redis 流式镜像续期：生成中（秒）'
-  }),
-  STREAM_RESUME_POST_COMPLETE_TTL_SECONDS: IntSchema.default(30).meta({
-    description: '流结束后缩短 TTL，便于回收（秒）'
-  }),
-  STREAM_RESUME_REDIS_MAXMEMORY_RATIO: NumSchema.max(1).default(0.5).meta({
-    description: '当 Redis 已用内存 / maxmemory 达到该阈值时，停止为新请求创建流恢复镜像'
-  }),
-  STREAM_RESUME_REDIS_MEMORY_CHECK_INTERVAL_MS: IntSchema.default(5000).meta({
-    description: 'Redis 内存水位检测缓存时长（毫秒），避免每个流请求都调用 INFO MEMORY'
-  }),
   HNSW_EF_SEARCH: IntSchema.min(1).default(200).meta({
     description: 'HNSW 向量检索搜索宽度，对 PG / Milvus / OceanBase / SeekDB / OpenGauss 生效'
   }),
@@ -144,9 +150,10 @@ const LegacyInstanceConfigEnvSchema = z.object({
   FILE_URL_EXPIRED_DAYS: NumSchema.positive().default(90).meta({
     description: '聊天记录中文件访问短链有效期（天），支持小数'
   }),
-  USE_IP_LIMIT: BoolSchema.default(false).meta({ description: '是否启用 IP 限流' }),
-  CHECK_INTERNAL_IP: BoolSchema.default(false).meta({ description: '是否启用内网 IP 检查' }),
-  CSRF_ENABLED: BoolSchema.default(true).meta({
+  CHECK_INTERNAL_IP: LegacyEnvBooleanSchema.default(false).meta({
+    description: '是否启用内网 IP 检查'
+  }),
+  CSRF_ENABLED: LegacyEnvBooleanSchema.default(true).meta({
     description: '是否启用 CSRF Web 请求标记校验'
   }),
   PASSWORD_LOGIN_MINUTE_LIMIT_COUNT: defaultableIntSchema(10).meta({
@@ -157,20 +164,14 @@ const LegacyInstanceConfigEnvSchema = z.object({
     .string()
     .optional()
     .meta({ description: '自定义跨域；不配置时默认允许所有跨域（逗号分割）' }),
-  MULTIPLE_DATA_TO_BASE64: BoolSchema.default(false).meta({
+  MULTIPLE_DATA_TO_BASE64: LegacyEnvBooleanSchema.default(false).meta({
     description: '是否强制将图片、音频、视频转成 base64 传递给模型'
   }),
   AGENT_ENGINE: z.enum(['fastAgent', 'piAgent']).default('fastAgent').meta({
     description: 'Agent 引擎选择：fastAgent（FastGPT agent loop）| piAgent（pi-agent-core 引擎）'
   }),
-  SKIP_FILE_TYPE_CHECK: BoolSchema.default(false).meta({
+  SKIP_FILE_TYPE_CHECK: LegacyEnvBooleanSchema.default(false).meta({
     description: '是否跳过文件类型检查'
-  }),
-  DISABLE_CACHE: BoolSchema.default(false).meta({
-    description: '是否禁用系统内存缓存'
-  }),
-  DEFAULT_TEAM_BASIC_PERMISSIONS_ENABLED: BoolSchema.default(false).meta({
-    description: '新建团队时是否为默认全员组授予应用、Skill、知识库和 API Key 创建权限'
   }),
   WECHAT_CHANNEL_CONCURRENCY: IntSchema.min(10).default(1000).meta({
     description: '微信渠道 poll worker 并发数'
@@ -196,9 +197,6 @@ const LegacyInstanceConfigEnvSchema = z.object({
   WORKFLOW_MAX_RUN_TIMES: IntSchema.default(500).meta({
     description: '工作流最大运行次数，避免极端死循环'
   }),
-  RETRIEVAL_RESULTS_LIMIT: IntSchema.default(0).meta({
-    description: '知识库检索节点日志详情记录的召回候选集上限，默认 0 表示不记录'
-  }),
   WORKFLOW_MAX_LOOP_TIMES: IntSchema.default(100).meta({
     description: '循环/并行节点最大输入数组长度（默认 100）'
   }),
@@ -211,9 +209,6 @@ const LegacyInstanceConfigEnvSchema = z.object({
   }),
   CHAT_MAX_QPM: IntSchema.default(5000).meta({
     description: '聊天 QPM（若用户套餐有限制，这里不生效）'
-  }),
-  TRACK_BATCH_UPDATE_TIME: IntSchema.default(10000).meta({
-    description: '埋点批量写入间隔（毫秒）'
   }),
   EVAL_CONCURRENCY: IntSchema.default(3).meta({
     description: '评估任务 worker 并发数'
@@ -267,10 +262,10 @@ const LegacyInstanceConfigEnvSchema = z.object({
   SYSTEM_DESCRIPTION: z.string().default(''),
   SYSTEM_FAVICON: z.string().default(''),
   PAY_FORM_URL: UrlSchema.default(''),
-  SHOW_COUPON: BoolSchema.default(false),
-  SHOW_DISCOUNT_COUPON: BoolSchema.default(false),
-  HIDE_CHAT_COPYRIGHT_SETTING: BoolSchema.default(false),
-  WECOM_LOGIN_AUTO_REDIRECT: BoolSchema.default(false),
+  SHOW_COUPON: LegacyEnvBooleanSchema.default(false),
+  SHOW_DISCOUNT_COUPON: LegacyEnvBooleanSchema.default(false),
+  HIDE_CHAT_COPYRIGHT_SETTING: LegacyEnvBooleanSchema.default(false),
+  WECOM_LOGIN_AUTO_REDIRECT: LegacyEnvBooleanSchema.default(false),
   OPENAPI_KEY_MAX_COUNT: IntSchema.min(1).default(100),
   MARKETPLACE_URL: UrlSchema.default('https://v3.marketplace.fastgpt.cn'),
   PASSWORD_EXPIRED_MONTH: IntSchema.optional(),

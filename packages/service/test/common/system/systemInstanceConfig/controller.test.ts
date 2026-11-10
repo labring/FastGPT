@@ -1,4 +1,4 @@
-import { describe, expect, it, beforeEach } from 'vitest';
+import { describe, expect, it, beforeEach, vi } from 'vitest';
 import {
   getDomainConfig,
   updateDomainConfig,
@@ -320,6 +320,21 @@ describe('systemInstanceConfig controller', () => {
   });
 
   describe('getSystemInstanceConfigSnapshot', () => {
+    it('uses the primary when the caller requests an authoritative snapshot', async () => {
+      const read = vi.fn().mockReturnThis();
+      const lean = vi.fn().mockResolvedValue([]);
+      const find = vi
+        .spyOn(MongoSystemInstanceConfig, 'find')
+        .mockReturnValue({ read, lean } as any);
+
+      try {
+        await getSystemInstanceConfigSnapshot({ readPreference: 'primary' });
+        expect(read).toHaveBeenCalledExactlyOnceWith('primary');
+      } finally {
+        find.mockRestore();
+      }
+    });
+
     it('aggregates overrides across domains into a complete snapshot', async () => {
       await updateDomainConfig({
         domain: 'site',

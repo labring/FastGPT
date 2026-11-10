@@ -1,6 +1,6 @@
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import React, { useEffect, useMemo } from 'react';
-import { SimpleGrid, Text } from '@chakra-ui/react';
+import { SimpleGrid } from '@chakra-ui/react';
 import { useForm, Controller } from 'react-hook-form';
 import { useDomainConfig } from '@/web/common/system/useDomainConfig';
 import { useAdminPermission } from '@/pageComponents/admin/useAdminPermission';
@@ -19,8 +19,8 @@ const FeatureSettingComponent = () => {
     () => [
       { id: 'chatAndDisplay', label: t('admin:chat_display') },
       { id: 'systemFunction', label: t('admin:system_features') },
-      { id: 'runtimeCapability', label: t('admin:runtime_capabilities') },
-      { id: 'entryVisibility', label: t('admin:feature_section_display') }
+      { id: 'thirdPartyDatasets', label: t('admin:third_party_datasets') },
+      { id: 'thirdPartyPublishChannels', label: t('admin:third_party_publish_channels') }
     ],
     [t]
   );
@@ -59,8 +59,8 @@ const FeatureSettingComponent = () => {
               <AdminSwitchRow
                 label={t('admin:hide_chat_copyright_setting')}
                 tooltip={t('admin:when_enabled_share_pages_and_embedded_chat_windows_can_turn')}
-                isChecked={field.value}
-                onChange={field.onChange}
+                isChecked={!field.value}
+                onChange={(checked) => field.onChange(!checked)}
               />
             )}
           />
@@ -96,18 +96,6 @@ const FeatureSettingComponent = () => {
             )}
           />
           <Controller
-            name="showWorkflowBuilder"
-            control={control}
-            render={({ field }) => (
-              <AdminSwitchRow
-                label={t('admin:show_workflow_builder')}
-                tooltip={t('admin:show_workflow_builder_tip')}
-                isChecked={field.value}
-                onChange={field.onChange}
-              />
-            )}
-          />
-          <Controller
             name="showOpenaiAccount"
             control={control}
             render={({ field }) => (
@@ -134,37 +122,12 @@ const FeatureSettingComponent = () => {
         </SimpleGrid>
       </AdminSettingSection>
 
-      {/* 3. 运行时能力 */}
+      {/* 3. 三方知识库 */}
       <AdminSettingSection
-        id="runtimeCapability"
-        title={t('admin:runtime_capabilities')}
+        id="thirdPartyDatasets"
+        title={t('admin:third_party_datasets')}
         showDivider
       >
-        <SimpleGrid columns={[1, 2]} spacingX={16} spacingY={4}>
-          <Controller
-            name="disableCache"
-            control={control}
-            render={({ field }) => (
-              <AdminSwitchRow
-                label={t('admin:disable_runtime_cache')}
-                tooltip={t('admin:disable_runtime_cache_tip')}
-                isChecked={field.value}
-                onChange={field.onChange}
-              />
-            )}
-          />
-        </SimpleGrid>
-      </AdminSettingSection>
-
-      {/* 4. 业务入口可见性 */}
-      <AdminSettingSection
-        id="entryVisibility"
-        title={t('admin:feature_section_display')}
-        showDivider
-      >
-        <Text fontSize={'sm'} fontWeight={'medium'} color={'myGray.700'} mb={3}>
-          {t('admin:dataset')}
-        </Text>
         <SimpleGrid columns={[1, 2]} spacingX={16} spacingY={4}>
           <Controller
             name="showDatasetFeishu"
@@ -203,10 +166,14 @@ const FeatureSettingComponent = () => {
             )}
           />
         </SimpleGrid>
+      </AdminSettingSection>
 
-        <Text fontSize={'sm'} fontWeight={'medium'} color={'myGray.700'} mt={6} mb={3}>
-          {t('admin:third_party_publish_channels')}
-        </Text>
+      {/* 4. 三方发布渠道 */}
+      <AdminSettingSection
+        id="thirdPartyPublishChannels"
+        title={t('admin:third_party_publish_channels')}
+        showDivider
+      >
         <SimpleGrid columns={[1, 2]} spacingX={16} spacingY={4}>
           <Controller
             name="showPublishFeishu"
@@ -261,8 +228,8 @@ const FeatureSettingComponent = () => {
             control={control}
             render={({ field }) => (
               <AdminSwitchRow
-                label={t('admin:publish_channel_wechat_customer_service')}
-                tooltip={t('admin:show_the_wechat_customer_service_publish_channel_on_the_app')}
+                label={t('admin:publish_channel_personal_wechat')}
+                tooltip={t('admin:show_the_personal_wechat_publish_channel_on_the_app')}
                 isChecked={field.value}
                 onChange={field.onChange}
               />

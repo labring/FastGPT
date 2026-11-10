@@ -23,8 +23,7 @@ const DatasetPerformanceConfigSchema = z.strictObject({
   parseMaxProcess: positiveInteger(10),
   vectorMaxProcess: positiveInteger(10),
   qaMaxProcess: positiveInteger(10),
-  vlmMaxProcess: positiveInteger(10),
-  retrievalResultsLimit: nonNegativeInteger(0)
+  vlmMaxProcess: positiveInteger(10)
 });
 
 const ChatPerformanceConfigSchema = z.strictObject({
@@ -32,15 +31,7 @@ const ChatPerformanceConfigSchema = z.strictObject({
   maxQpm: nonNegativeInteger(5000)
 });
 
-const StreamResumePerformanceConfigSchema = z.strictObject({
-  ttlSeconds: positiveInteger(5 * 60),
-  postCompleteTtlSeconds: positiveInteger(30),
-  redisMaxmemoryRatio: z.number().gt(0).lte(1).default(0.5),
-  redisMemoryCheckIntervalMs: positiveInteger(5000)
-});
-
 const TrackingPerformanceConfigSchema = z.strictObject({
-  batchUpdateTime: positiveInteger(10_000),
   retentionHours: positiveInteger(6)
 });
 
@@ -49,7 +40,6 @@ export const PerformanceConfigBaseSchema = z.strictObject({
   parse: ParsePerformanceConfigSchema.prefault({}),
   dataset: DatasetPerformanceConfigSchema.prefault({}),
   chat: ChatPerformanceConfigSchema.prefault({}),
-  streamResume: StreamResumePerformanceConfigSchema.prefault({}),
   tracking: TrackingPerformanceConfigSchema.prefault({}),
   // BullMQ Worker 要求并发为正整数；0 不表示暂停，避免保存后更新或重建 Worker 失败。
   task: z.strictObject({ evalConcurrency: positiveInteger(3) }).prefault({}),

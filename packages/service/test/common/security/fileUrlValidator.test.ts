@@ -34,10 +34,22 @@ describe('fileUrlValidator', () => {
     global.systemEnv = originalSystemEnv;
   });
 
+  it('only applies a non-empty allowlist when external file checking is enabled', async () => {
+    const { validateFileUrlDomain } =
+      await import('@fastgpt/service/common/security/fileUrlValidator');
+    global.systemEnv = { checkExternalFile: false, fileUrlWhitelist: ['allowed.com'] } as any;
+    expect(validateFileUrlDomain('https://other.com/a.txt')).toBe(true);
+    global.systemEnv.checkExternalFile = true;
+    expect(validateFileUrlDomain('https://other.com/a.txt')).toBe(false);
+    expect(validateFileUrlDomain('https://allowed.com/a.txt')).toBe(true);
+    global.systemEnv.fileUrlWhitelist = [];
+    expect(validateFileUrlDomain('https://other.com/a.txt')).toBe(true);
+  });
+
   describe('systemWhiteList construction', () => {
     it('should include STORAGE_S3_ENDPOINT when set', async () => {
       vi.stubEnv('STORAGE_S3_ENDPOINT', 'http://s3.example.com');
-      global.systemEnv = { fileUrlWhitelist: ['other.com'] } as any;
+      global.systemEnv = { checkExternalFile: true, fileUrlWhitelist: ['other.com'] } as any;
       const { validateFileUrlDomain } =
         await import('@fastgpt/service/common/security/fileUrlValidator');
       expect(validateFileUrlDomain('http://s3.example.com/file.png')).toBe(true);
@@ -45,7 +57,7 @@ describe('fileUrlValidator', () => {
 
     it('should extract hostname from the instance storage external endpoint', async () => {
       global.systemInstanceConfig.storage.externalEndpoint = 'https://external.example.com/path';
-      global.systemEnv = { fileUrlWhitelist: ['other.com'] } as any;
+      global.systemEnv = { checkExternalFile: true, fileUrlWhitelist: ['other.com'] } as any;
       const { validateFileUrlDomain } =
         await import('@fastgpt/service/common/security/fileUrlValidator');
       expect(validateFileUrlDomain('http://external.example.com/file.png')).toBe(true);
@@ -54,7 +66,7 @@ describe('fileUrlValidator', () => {
     it('should extract hostname from the instance storage CDN endpoint', async () => {
       global.systemInstanceConfig.storage.externalEndpoint = 'https://external.example.com';
       global.systemInstanceConfig.storage.cdnEndpoint = 'https://cdn.example.com/files';
-      global.systemEnv = { fileUrlWhitelist: ['other.com'] } as any;
+      global.systemEnv = { checkExternalFile: true, fileUrlWhitelist: ['other.com'] } as any;
       const { validateFileUrlDomain } =
         await import('@fastgpt/service/common/security/fileUrlValidator');
       expect(validateFileUrlDomain('http://cdn.example.com/file.png')).toBe(true);
@@ -62,7 +74,7 @@ describe('fileUrlValidator', () => {
 
     it('rejects invalid external endpoints at the config boundary and ignores the retired ENV', async () => {
       vi.stubEnv('STORAGE_EXTERNAL_ENDPOINT', 'not-a-valid-url');
-      global.systemEnv = { fileUrlWhitelist: ['other.com'] } as any;
+      global.systemEnv = { checkExternalFile: true, fileUrlWhitelist: ['other.com'] } as any;
 
       expect(() =>
         resolveDomainEffectiveConfig({
@@ -77,7 +89,7 @@ describe('fileUrlValidator', () => {
 
     it('should extract hostname from FE_DOMAIN', async () => {
       vi.stubEnv('FE_DOMAIN', 'https://fe.example.com');
-      global.systemEnv = { fileUrlWhitelist: ['other.com'] } as any;
+      global.systemEnv = { checkExternalFile: true, fileUrlWhitelist: ['other.com'] } as any;
       const { validateFileUrlDomain } =
         await import('@fastgpt/service/common/security/fileUrlValidator');
       expect(validateFileUrlDomain('http://fe.example.com/page')).toBe(true);
@@ -85,7 +97,7 @@ describe('fileUrlValidator', () => {
 
     it('should reject invalid FE_DOMAIN at env validation stage', async () => {
       vi.stubEnv('FE_DOMAIN', 'invalid-url');
-      global.systemEnv = { fileUrlWhitelist: ['other.com'] } as any;
+      global.systemEnv = { checkExternalFile: true, fileUrlWhitelist: ['other.com'] } as any;
 
       await expect(import('@fastgpt/service/common/security/fileUrlValidator')).rejects.toThrow(
         'Invalid environment variables. Please check: FE_DOMAIN'
@@ -94,7 +106,7 @@ describe('fileUrlValidator', () => {
 
     it('should extract hostname from PRO_URL', async () => {
       vi.stubEnv('PRO_URL', 'https://pro.example.com/api');
-      global.systemEnv = { fileUrlWhitelist: ['other.com'] } as any;
+      global.systemEnv = { checkExternalFile: true, fileUrlWhitelist: ['other.com'] } as any;
       const { validateFileUrlDomain } =
         await import('@fastgpt/service/common/security/fileUrlValidator');
       expect(validateFileUrlDomain('http://pro.example.com/resource')).toBe(true);
@@ -102,7 +114,7 @@ describe('fileUrlValidator', () => {
 
     it('should reject invalid PRO_URL at env validation stage', async () => {
       vi.stubEnv('PRO_URL', 'bad-url');
-      global.systemEnv = { fileUrlWhitelist: ['other.com'] } as any;
+      global.systemEnv = { checkExternalFile: true, fileUrlWhitelist: ['other.com'] } as any;
 
       await expect(import('@fastgpt/service/common/security/fileUrlValidator')).rejects.toThrow(
         'Invalid environment variables. Please check: PRO_URL'
@@ -116,7 +128,7 @@ describe('fileUrlValidator', () => {
       vi.stubEnv('PRO_URL', 'https://pro.example.com');
       global.systemInstanceConfig.storage.externalEndpoint = 'https://external.example.com';
       global.systemInstanceConfig.storage.cdnEndpoint = 'https://cdn.example.com';
-      global.systemEnv = { fileUrlWhitelist: ['user.com'] } as any;
+      global.systemEnv = { checkExternalFile: true, fileUrlWhitelist: ['user.com'] } as any;
       const { validateFileUrlDomain } =
         await import('@fastgpt/service/common/security/fileUrlValidator');
       expect(validateFileUrlDomain('http://s3.example.com/f')).toBe(true);
@@ -152,21 +164,21 @@ describe('fileUrlValidator', () => {
     });
 
     it('should return true when URL hostname matches whitelist', async () => {
-      global.systemEnv = { fileUrlWhitelist: ['allowed.com'] } as any;
+      global.systemEnv = { checkExternalFile: true, fileUrlWhitelist: ['allowed.com'] } as any;
       const { validateFileUrlDomain } =
         await import('@fastgpt/service/common/security/fileUrlValidator');
       expect(validateFileUrlDomain('https://allowed.com/path/file.png')).toBe(true);
     });
 
     it('should return false when URL hostname does not match', async () => {
-      global.systemEnv = { fileUrlWhitelist: ['allowed.com'] } as any;
+      global.systemEnv = { checkExternalFile: true, fileUrlWhitelist: ['allowed.com'] } as any;
       const { validateFileUrlDomain } =
         await import('@fastgpt/service/common/security/fileUrlValidator');
       expect(validateFileUrlDomain('https://blocked.com/path/file.png')).toBe(false);
     });
 
     it('should return true for invalid URL (catch block)', async () => {
-      global.systemEnv = { fileUrlWhitelist: ['allowed.com'] } as any;
+      global.systemEnv = { checkExternalFile: true, fileUrlWhitelist: ['allowed.com'] } as any;
       const { validateFileUrlDomain } =
         await import('@fastgpt/service/common/security/fileUrlValidator');
       expect(validateFileUrlDomain('not-a-valid-url')).toBe(true);
@@ -174,6 +186,7 @@ describe('fileUrlValidator', () => {
 
     it('should skip null/undefined/non-string/empty domains', async () => {
       global.systemEnv = {
+        checkExternalFile: true,
         fileUrlWhitelist: [null, undefined, 123, '', 'valid.com'] as any
       } as any;
       const { validateFileUrlDomain } =
@@ -184,7 +197,7 @@ describe('fileUrlValidator', () => {
 
     it('should match against both fileUrlWhitelist and systemWhiteList', async () => {
       vi.stubEnv('STORAGE_S3_ENDPOINT', 'http://s3.system.com');
-      global.systemEnv = { fileUrlWhitelist: ['user.com'] } as any;
+      global.systemEnv = { checkExternalFile: true, fileUrlWhitelist: ['user.com'] } as any;
       const { validateFileUrlDomain } =
         await import('@fastgpt/service/common/security/fileUrlValidator');
       expect(validateFileUrlDomain('http://user.com/file')).toBe(true);

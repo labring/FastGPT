@@ -238,7 +238,6 @@ async function doInitSystemConfig({
 
       hideChatCopyrightSetting: instanceConfig.feature.hideChatCopyrightSetting,
       enable_team_plugin_upload: instanceConfig.feature.enableTeamPluginUpload,
-      show_workflow_builder: instanceConfig.feature.showWorkflowBuilder,
       show_openai_account: instanceConfig.feature.showOpenaiAccount,
       enable_team_model: instanceConfig.feature.enableTeamModel,
       // Pro 保留其 ENV 下发值（默认 false），社区版使用 App ENV（默认 true）。

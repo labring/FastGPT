@@ -19,7 +19,8 @@ describe('validateSystemMigrationRegistry', () => {
       '20261104_backfill_chat_publish_source',
       '20261104_backfill_openapi_key_type',
       '20260928_migrate_instance_configs',
-      '20260929_cleanup_instance_config_deprecated_fields'
+      '20260929_cleanup_instance_config_deprecated_fields',
+      '20261110_backfill_external_file_check'
     ]);
     expect(
       systemMigrations.filter((task: SystemMigration) => task.delay).map(({ id }) => id)
@@ -30,29 +31,35 @@ describe('validateSystemMigrationRegistry', () => {
     // 只有「声明集合可能增长、老库必须能补建新成员」的任务才允许每轮重跑
     expect(
       systemMigrations.filter((task: SystemMigration) => task.resumable).map(({ id }) => id)
-    ).toEqual([
-      '20260928_migrate_instance_configs',
-      '20260929_cleanup_instance_config_deprecated_fields'
-    ]);
+    ).toEqual(['20260929_cleanup_instance_config_deprecated_fields']);
     expect(
       systemMigrations.filter((task: SystemMigration) => task.blockStartup).map(({ id }) => id)
     ).toEqual([
       '20260928_migrate_instance_configs',
-      '20260929_cleanup_instance_config_deprecated_fields'
+      '20260929_cleanup_instance_config_deprecated_fields',
+      '20261110_backfill_external_file_check'
     ]);
-    expect(systemMigrations.at(-2)).toMatchObject({
+    expect(systemMigrations.at(-3)).toMatchObject({
       id: '20260928_migrate_instance_configs',
       version: '4.18.0',
       blockStartup: true,
-      resumable: true,
       progressSteps: [{ key: 'inspect' }, { key: 'migrate' }, { key: 'validate' }]
     });
-    expect(systemMigrations.at(-1)).toMatchObject({
+    expect(systemMigrations.at(-3)).not.toHaveProperty('resumable', true);
+    expect(systemMigrations.at(-2)).toMatchObject({
       id: '20260929_cleanup_instance_config_deprecated_fields',
       version: '4.18.0',
       blockStartup: true,
       resumable: true,
       progressSteps: [{ key: 'cleanup' }, { key: 'validation' }]
+    });
+    expect(systemMigrations.at(-1)).toMatchObject({
+      id: '20261110_backfill_external_file_check',
+      blockStartup: true,
+      dependsOn: [
+        '20260928_migrate_instance_configs',
+        '20260929_cleanup_instance_config_deprecated_fields'
+      ]
     });
     expect(() => validateSystemMigrationRegistry(systemMigrations)).not.toThrow();
   });

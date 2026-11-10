@@ -22,6 +22,15 @@ export const serviceEnv = createEnv({
       .default(10)
       .transform((value) => Math.min(1000, Math.max(10, value))),
 
+    RETRIEVAL_RESULTS_LIMIT: IntSchema.min(0).default(0).meta({
+      description: '知识库检索启用重排时，日志详情记录的重排前召回候选集上限，0 表示不记录'
+    }),
+
+    DEFAULT_TEAM_BASIC_PERMISSIONS_ENABLED: BoolSchema.default(false).meta({
+      description:
+        '新建团队时是否为默认全员组授予应用、Skill、知识库和 API Key 创建权限，不影响已有团队'
+    }),
+
     // ==================== 管理端展示控制 ====================
     ENABLE_SAAS_ADMIN_CONFIG: BoolSchema.default(false).meta({
       description: '是否在管理端展示 SaaS 专用配置项，默认为 false（私有化部署隐藏）'

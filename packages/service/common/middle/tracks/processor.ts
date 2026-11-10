@@ -2,12 +2,11 @@ import { delay } from '@fastgpt/global/common/system/utils';
 import { TrackModel } from './schema';
 import { TrackEnum } from '@fastgpt/global/common/middle/tracks/constants';
 import { getLogger, LogCategories } from '../../logger';
-import { getSystemInstanceConfig } from '../../system/systemInstanceConfig/runtime';
 
 const logger = getLogger(LogCategories.EVENT.TRACK);
 
-/** 批量刷新间隔只读实例配置 performance.tracking.batchUpdateTime。 */
-const getBatchUpdateTime = () => getSystemInstanceConfig().performance.tracking.batchUpdateTime;
+// 埋点计数批量写入统一使用固定间隔，单位为毫秒。
+const TRACK_BATCH_INTERVAL_MS = 5_000;
 
 const getCurrentTenMinuteBoundary = () => {
   const now = new Date();
@@ -26,11 +25,11 @@ const getCurrentMinuteBoundary = () => {
   return boundary;
 };
 
+/** 启动埋点计数刷新循环；首轮立即处理，之后每轮等待固定 5 秒。 */
 export const trackTimerProcess = async () => {
   while (true) {
     await countTrackTimer();
-    // 每轮重新读取，Admin 保存后无需重启即可生效
-    await delay(getBatchUpdateTime());
+    await delay(TRACK_BATCH_INTERVAL_MS);
   }
 };
 

@@ -21,7 +21,7 @@ describe('Domain default config and overrides validation', () => {
 
     const performanceConfig = getDomainDefaultConfig('performance');
     expect(performanceConfig.workflow.parallelMaxConcurrency).toBe(10);
-    expect(performanceConfig.dataset.retrievalResultsLimit).toBe(0);
+    expect(performanceConfig.dataset).not.toHaveProperty('retrievalResultsLimit');
 
     expect(getDomainDefaultConfig('resource').datasetArchive).toEqual({
       maxFiles: 2000,
@@ -70,6 +70,82 @@ describe('Domain default config and overrides validation', () => {
         }
       })
     ).toThrow();
+  });
+
+  it('ignores retired feature overrides on read and rejects configuring them again', () => {
+    const overrides = {
+      showWorkflowBuilder: false,
+      disableCache: true,
+      enableTeamModel: true
+    };
+    const effective = resolveDomainEffectiveConfig({
+      domain: 'feature',
+      overrides,
+      options: { strict: false }
+    });
+    expect(effective.enableTeamModel).toBe(true);
+    for (const key of ['showWorkflowBuilder', 'disableCache']) {
+      expect(effective).not.toHaveProperty(key);
+      expect(systemInstanceConfigRegistry.some((item) => item.key === `feature.${key}`)).toBe(
+        false
+      );
+      expect(() =>
+        parseDomainOverrides({ domain: 'feature', overrides: { [key]: false } })
+      ).toThrow();
+    }
+  });
+
+  it('ignores the retired new-team permission override and rejects writing it again', () => {
+    const overrides = { defaultTeamBasicPermissionsEnabled: true };
+    expect(parseDomainOverrides({ domain: 'auth', overrides, options: { strict: false } })).toEqual(
+      {}
+    );
+    expect(() => parseDomainOverrides({ domain: 'auth', overrides })).toThrow();
+  });
+
+  it('ignores the retired IP rate-limit switch on read and rejects configuring it again', () => {
+    const overrides = { useIpLimit: false, checkInternalIp: true };
+    expect(
+      parseDomainOverrides({ domain: 'security', overrides, options: { strict: false } })
+    ).toEqual({
+      checkInternalIp: true
+    });
+    expect(() => parseDomainOverrides({ domain: 'security', overrides })).toThrow();
+  });
+
+  it('ignores the retired tracking interval while preserving retention settings', () => {
+    const overrides = { tracking: { batchUpdateTime: 1, retentionHours: 12 } };
+    expect(
+      parseDomainOverrides({ domain: 'performance', overrides, options: { strict: false } })
+    ).toEqual({
+      tracking: { retentionHours: 12 }
+    });
+    expect(() => parseDomainOverrides({ domain: 'performance', overrides })).toThrow();
+  });
+
+  it('ignores the retired retrieval log limit while preserving dataset concurrency', () => {
+    const overrides = { dataset: { retrievalResultsLimit: 20, vectorMaxProcess: 3 } };
+    expect(
+      parseDomainOverrides({ domain: 'performance', overrides, options: { strict: false } })
+    ).toEqual({
+      dataset: { vectorMaxProcess: 3 }
+    });
+    expect(() => parseDomainOverrides({ domain: 'performance', overrides })).toThrow();
+  });
+
+  it('ignores retired stream resume settings and rejects configuring them again', () => {
+    const overrides = {
+      streamResume: {
+        ttlSeconds: 1,
+        postCompleteTtlSeconds: 1,
+        redisMaxmemoryRatio: 1,
+        redisMemoryCheckIntervalMs: 1
+      }
+    };
+    expect(
+      parseDomainOverrides({ domain: 'performance', overrides, options: { strict: false } })
+    ).toEqual({});
+    expect(() => parseDomainOverrides({ domain: 'performance', overrides })).toThrow();
   });
 
   it('strips unknown fields in lenient mode (strict: false) to prevent startup deadlocks', () => {

@@ -17,6 +17,31 @@ describe('serviceEnv bootstrap configuration', () => {
     const { serviceEnv } = await importServiceEnv();
     expect(serviceEnv.AUXILIARY_GENERATION_SHOW_RUN_DETAIL).toBe(expected);
   });
+  it.each([
+    [undefined, false],
+    ['false', false],
+    ['true', true]
+  ] as const)('reads new-team basic permissions from ENV: %s', async (value, expected) => {
+    vi.stubEnv('DEFAULT_TEAM_BASIC_PERMISSIONS_ENABLED', value);
+    const { serviceEnv } = await importServiceEnv();
+    expect(serviceEnv.DEFAULT_TEAM_BASIC_PERMISSIONS_ENABLED).toBe(expected);
+  });
+
+  it.each([
+    [undefined, 0],
+    ['0', 0],
+    ['20', 20]
+  ] as const)('reads the retrieval log limit from ENV: %s', async (value, expected) => {
+    vi.stubEnv('RETRIEVAL_RESULTS_LIMIT', value);
+    const { serviceEnv } = await importServiceEnv();
+    expect(serviceEnv.RETRIEVAL_RESULTS_LIMIT).toBe(expected);
+  });
+
+  it('rejects a negative retrieval log limit', async () => {
+    vi.stubEnv('RETRIEVAL_RESULTS_LIMIT', '-1');
+    await expect(importServiceEnv()).rejects.toThrow('Invalid environment variables');
+  });
+
   it('ignores the retired HNSW scan budget environment variable', async () => {
     vi.stubEnv('HNSW_MAX_SCAN_TUPLES', 'no-longer-used');
     const { serviceEnv } = await importServiceEnv();

@@ -20,11 +20,17 @@ describe('deprecatedOverridePaths', () => {
       expect.arrayContaining([
         'site.chineseRedirectUrl',
         'site.systemTitle',
+        'security.useIpLimit',
+        'performance.streamResume',
+        'performance.tracking.batchUpdateTime',
+        'performance.dataset.retrievalResultsLimit',
         'performance.chat.logUrl',
         'performance.chat.logInterval',
         'performance.chat.logSourceIdPrefix',
         'storage.downloadRedirectTtlSeconds',
         'storage.downloadRedirectEndpoint',
+        'feature.showWorkflowBuilder',
+        'feature.disableCache',
         'feature.showWorkorder',
         'feature.showEnterpriseAuth',
         'feature.showGit',
@@ -33,6 +39,7 @@ describe('deprecatedOverridePaths', () => {
         'vector.hnswMaxScanTuples',
         'providers.chunk',
         'providers.crm',
+        'auth.defaultTeamBasicPermissionsEnabled',
         'auth.loginProviders.dingtalk',
         'auth.loginProviders.sms.login.en',
         'auth.accountCancellation.cancellationSm.en',
@@ -61,6 +68,21 @@ describe('stripDeprecatedOverrides', () => {
 
     expect(overrides).toEqual({ hnswEfSearch: 200 });
     expect(removedFieldCount).toBe(3);
+  });
+
+  it('removes retired feature switches while preserving supported settings', () => {
+    const input = { showWorkflowBuilder: false, disableCache: true, enableTeamModel: true };
+    const first = stripDeprecatedOverrides('feature', input);
+    expect(first).toEqual({ overrides: { enableTeamModel: true }, removedFieldCount: 2 });
+    expect(input).toEqual({
+      showWorkflowBuilder: false,
+      disableCache: true,
+      enableTeamModel: true
+    });
+    expect(stripDeprecatedOverrides('feature', first.overrides)).toEqual({
+      overrides: { enableTeamModel: true },
+      removedFieldCount: 0
+    });
   });
 
   it('drops parent objects that become empty after cleanup', () => {
@@ -110,7 +132,7 @@ describe('stripDeprecatedOverrides', () => {
     expect(second).toEqual({ overrides: { hnswEfSearch: 100 }, removedFieldCount: 0 });
   });
 
-  it('returns zero removals for domains without deprecated fields', () => {
+  it('keeps supported fields when no deprecated overrides are present', () => {
     const { overrides, removedFieldCount } = stripDeprecatedOverrides('security', {
       csrfEnabled: true
     });
@@ -184,6 +206,33 @@ describe('cleanupInstanceConfigDeprecatedFields (integration)', () => {
     expect(verification.invalidDomains).toEqual([]);
   });
 
+  it('cleans a legacy string-id security document without a domain field', async () => {
+    await MongoSystemInstanceConfig.collection.insertOne({
+      _id: 'security',
+      revision: 3,
+      overrides: {
+        useIpLimit: false,
+        checkExternalFile: false,
+        fileUrlWhitelist: ['cdn.example.com']
+      },
+      explicitDefaultPaths: ['csrfEnabled']
+    } as any);
+
+    expect((await cleanupInstanceConfigDeprecatedFields({ logger })).updatedDomains).toEqual([
+      'security'
+    ]);
+    const doc = await MongoSystemInstanceConfig.collection.findOne({ _id: 'security' } as any);
+    expect(doc).toMatchObject({
+      _id: 'security',
+      revision: 4,
+      overrides: { checkExternalFile: false, fileUrlWhitelist: ['cdn.example.com'] },
+      explicitDefaultPaths: ['csrfEnabled']
+    });
+    expect(doc).not.toHaveProperty('domain');
+    expect((await verifyInstanceConfigDeprecatedFields()).remainingDocuments).toEqual([]);
+    expect((await cleanupInstanceConfigDeprecatedFields({ logger })).updatedDomains).toEqual([]);
+  });
+
   it('wraps schema rejection with the domain name for diagnosability', async () => {
     // logUrl 属废弃字段会被剔除，但残留的 maxRunTimes=-1 违反 nonNegativeInteger
     // （0 是合法的"禁用"取值，不能用作非法样例）；
@@ -206,20 +255,16 @@ describe('cleanupInstanceConfigDeprecatedFields (integration)', () => {
       overrides: { vqLevel: 32, hnswEfSearch: 200 }
     });
 
-    // 模拟并发：首次条件更新返回 null（revision 被他人推进），重试路径应基于最新文档再次清理。
-    // 代码对 findOneAndUpdate 结果链式调用 .lean()，mock 必须返回同形状的查询对象。
-    const original = MongoSystemInstanceConfig.findOneAndUpdate.bind(MongoSystemInstanceConfig);
-    let firstCall = true;
-    const spy = vi.spyOn(MongoSystemInstanceConfig, 'findOneAndUpdate').mockImplementation(((
-      filter: any,
-      update: any,
-      options: any
+    // 首次 CAS 前真实推进版本并修改保留字段，重试必须保留并发写入的值。
+    const collection = MongoSystemInstanceConfig.collection;
+    const spy = vi.spyOn(collection, 'findOneAndUpdate').mockImplementationOnce((async (
+      filter: any
     ) => {
-      if (firstCall) {
-        firstCall = false;
-        return { lean: () => Promise.resolve(null) } as any;
-      }
-      return original(filter, update, options);
+      await collection.updateOne(
+        { _id: filter._id },
+        { $set: { 'overrides.hnswEfSearch': 250 }, $inc: { revision: 1 } }
+      );
+      return null;
     }) as any);
 
     const result = await cleanupInstanceConfigDeprecatedFields({ logger });
@@ -230,7 +275,8 @@ describe('cleanupInstanceConfigDeprecatedFields (integration)', () => {
     expect(result.removedFieldCount).toBe(1);
 
     const doc = await MongoSystemInstanceConfig.findOne({ domain: 'vector' }).lean();
-    expect(doc?.overrides).toEqual({ hnswEfSearch: 200 });
+    expect(doc?.overrides).toEqual({ hnswEfSearch: 250 });
+    expect(doc?.revision).toBe(3);
 
     const verification = await verifyInstanceConfigDeprecatedFields();
     expect(verification.remainingDocuments).toEqual([]);

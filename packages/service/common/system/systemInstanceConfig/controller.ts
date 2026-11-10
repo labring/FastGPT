@@ -623,11 +623,14 @@ export const batchUpdateDomainConfigs = async ({
  *
  * 只按「Schema 默认值 + 数据库 overrides」合成，不再拼接 ENV；旧 ENV 只在首次迁移时写入。
  */
-export const getSystemInstanceConfigSnapshot = async (): Promise<{
+export const getSystemInstanceConfigSnapshot = async ({
+  readPreference
+}: { readPreference?: 'primary' } = {}): Promise<{
   snapshot: SystemInstanceConfig;
   versionTag: string;
 }> => {
-  const docs = await MongoSystemInstanceConfig.find({}).lean();
+  const query = MongoSystemInstanceConfig.find({});
+  const docs = await (readPreference ? query.read(readPreference) : query).lean();
 
   const versionTag =
     docs
@@ -665,8 +668,10 @@ export const getSystemInstanceConfigSnapshot = async (): Promise<{
  * 重新加载并刷新系统实例配置内存快照。
  * 供服务启动、Admin API 保存后以及集群变更通知时调用。
  */
-export const reloadSystemInstanceConfig = async (): Promise<SystemInstanceConfig> => {
-  const { snapshot, versionTag } = await getSystemInstanceConfigSnapshot();
+export const reloadSystemInstanceConfig = async (options?: {
+  readPreference?: 'primary';
+}): Promise<SystemInstanceConfig> => {
+  const { snapshot, versionTag } = await getSystemInstanceConfigSnapshot(options);
   // 环境变量仅提供基础设施 vendor；下载策略来自已加载配置，校验失败保留旧快照。
   assertStorageDownloadConfig(snapshot.storage);
   publishSystemInstanceConfigSnapshot({ snapshot, versionTag });

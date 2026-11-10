@@ -25,11 +25,11 @@ describe('legacy instance config ENV import', () => {
   it('reads legacy values only when the migration runs, including updated values after module import', () => {
     vi.stubEnv('SYSTEM_NAME', 'Migrated name');
     vi.stubEnv('WORKFLOW_MAX_RUN_TIMES', '777');
-    vi.stubEnv('USE_IP_LIMIT', 'true');
+    vi.stubEnv('CSRF_ENABLED', 'false');
     const first = buildLegacyDomainOverrides({ feConfigs: {}, systemEnv: {} });
     expect(first.site?.name).toBe('Migrated name');
     expect(first.performance?.workflow?.maxRunTimes).toBe(777);
-    expect(first.security?.useIpLimit).toBe(true);
+    expect(first.security?.csrfEnabled).toBe(false);
     vi.stubEnv('WORKFLOW_MAX_RUN_TIMES', '888');
     expect(readLegacyInstanceConfigEnv().WORKFLOW_MAX_RUN_TIMES).toBe(888);
   });
@@ -54,5 +54,33 @@ describe('legacy instance config ENV import', () => {
     } catch (error) {
       expect(String(error)).not.toContain('not-a-url-secret-value');
     }
+  });
+
+  it.each([
+    ['true', true],
+    [' YES ', true],
+    ['1', true],
+    ['false', false],
+    ['OFF', false],
+    ['0', false]
+  ])('accepts legacy boolean %s as %s', (value, expected) => {
+    vi.stubEnv('CSRF_ENABLED', value);
+    expect(readLegacyInstanceConfigEnv().CSRF_ENABLED).toBe(expected);
+  });
+
+  it.each([
+    'AGENT_SANDBOX_OPENSANDBOX_USE_SERVER_PROXY',
+    'CHECK_INTERNAL_IP',
+    'CSRF_ENABLED',
+    'MULTIPLE_DATA_TO_BASE64',
+    'SKIP_FILE_TYPE_CHECK',
+    'SHOW_COUPON',
+    'SHOW_DISCOUNT_COUPON',
+    'HIDE_CHAT_COPYRIGHT_SETTING',
+    'WECOM_LOGIN_AUTO_REDIRECT'
+  ])('rejects invalid boolean for %s without printing its value', (key) => {
+    vi.stubEnv(key, 'treu-secret-value');
+    expect(readLegacyInstanceConfigEnv).toThrow(key);
+    expect(readLegacyInstanceConfigEnv).not.toThrow('treu-secret-value');
   });
 });

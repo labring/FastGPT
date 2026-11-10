@@ -14,9 +14,8 @@ import {
   removeDuplicateSearchResults
 } from './result';
 import { countRecallLimit, filterDatasetDataByMaxTokens } from './utils';
-import { getSystemInstanceConfig } from '../../../../common/system/systemInstanceConfig/runtime';
-import { logInstanceConfigRead } from '../../../../common/system/migrationCoverageLog';
 import { attachSynonymMappingsToSearchResults } from '../../synonym/searchResult';
+import { serviceEnv } from '../../../../env';
 
 /**
  * 执行默认知识库召回主流程。
@@ -129,17 +128,8 @@ export async function searchDatasetData(
 
   // 重排前取快照：保存 textRecallResults，即重排前的文本召回候选集，
   // 仅用于日志详情对比召回与重排。仅重排开启时产出，避免未开启重排时切了切片又没人用。
-  // 上限由实例配置 performance.dataset.retrievalResultsLimit 控制，0 表示不产出。
-  const retrievalLimit = getSystemInstanceConfig().performance.dataset.retrievalResultsLimit;
-  logInstanceConfigRead({
-    callsite: 'runtime.dataset.defaultRecall.searchDatasetData',
-    fields: [
-      {
-        path: 'performance.dataset.retrievalResultsLimit',
-        value: retrievalLimit
-      }
-    ]
-  });
+  // 上限由部署环境变量 RETRIEVAL_RESULTS_LIMIT 控制，0 表示不产出。
+  const retrievalLimit = serviceEnv.RETRIEVAL_RESULTS_LIMIT;
   const retrievalResults =
     usingReRank && retrievalLimit > 0 ? textRecallResults.slice(0, retrievalLimit) : undefined;
 

@@ -11,6 +11,7 @@ import { migrateInstanceConfigs } from './tasks/4180/20260928_migrate_instance_c
 import { cleanupInstanceConfigDeprecatedFieldsTask } from './tasks/4180/20260929_cleanup_instance_config_deprecated_fields';
 import { backfillChatPublishSource } from './tasks/4180/20261104_backfill_chat_publish_source';
 import { backfillOpenApiKeyType } from './tasks/4180/20261104_backfill_openapi_key_type';
+import { backfillExternalFileCheckTask } from './tasks/4180/20261110_backfill_external_file_check';
 
 export type SystemMigrationLogger = {
   info: (message: string, metadata?: Record<string, unknown>) => void;
@@ -199,9 +200,7 @@ export const systemMigrations = [
     ],
     // 阻塞启动：迁移成功前节点不进入 ready，避免运行时读到 Schema 默认值而导致配置被静默重置。
     blockStartup: true,
-    // 可重入：SYSTEM_INSTANCE_CONFIG_DOMAINS 后续新增域时，已 succeeded 的老库也要补建缺失文档，
-    // 否则 Pro 的全域启动断言永久失败（任务在域齐全时只做只读校验并 skipped）。
-    resumable: true,
+    // 完成后数据库成为权威配置，不再重读历史 ENV。未来新增域应追加独立迁移补建。
     run: migrateInstanceConfigs
   },
   {
@@ -236,6 +235,35 @@ export const systemMigrations = [
     // 任务本身声明为「确定性覆盖、重复执行无副作用」，无残留时不写库。
     resumable: true,
     run: cleanupInstanceConfigDeprecatedFieldsTask
+  },
+  {
+    id: '20261110_backfill_external_file_check',
+    version: '4.18.0',
+    nameKey: i18nT('system_migration:migrations.20261110_backfill_external_file_check.name'),
+    descriptionKey: i18nT(
+      'system_migration:migrations.20261110_backfill_external_file_check.description'
+    ),
+    resultKey: i18nT('system_migration:migrations.20261110_backfill_external_file_check.result'),
+    progressSteps: [
+      {
+        key: 'backfill',
+        labelKey: i18nT(
+          'system_migration:migrations.20261110_backfill_external_file_check.backfill'
+        )
+      },
+      {
+        key: 'validation',
+        labelKey: i18nT(
+          'system_migration:migrations.20261110_backfill_external_file_check.validation'
+        )
+      }
+    ],
+    dependsOn: [
+      '20260928_migrate_instance_configs',
+      '20260929_cleanup_instance_config_deprecated_fields'
+    ],
+    blockStartup: true,
+    run: backfillExternalFileCheckTask
   }
 ] as const satisfies readonly SystemMigration[];
 

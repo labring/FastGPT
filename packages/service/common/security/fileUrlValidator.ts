@@ -45,14 +45,21 @@ export const validateFileUrlDomain = (url: string): boolean => {
       source: 'bridged-system-env',
       fields: [
         {
+          path: 'security.checkExternalFile',
+          value: global.systemEnv?.checkExternalFile
+        },
+        {
           path: 'security.fileUrlWhitelist',
           value: global.systemEnv?.fileUrlWhitelist
         }
       ]
     });
 
-    // Allow all URLs if the whitelist is empty
-    if ((global.systemEnv?.fileUrlWhitelist || []).length === 0) {
+    // 关闭时保留已保存名单但不执行域名限制；开启后空名单仍表示不限域名。
+    if (
+      !global.systemEnv?.checkExternalFile ||
+      (global.systemEnv.fileUrlWhitelist || []).length === 0
+    ) {
       return true;
     }
 
@@ -70,7 +77,7 @@ export const validateFileUrlDomain = (url: string): boolean => {
     }
 
     return true;
-  } catch (error) {
+  } catch {
     return true;
   }
 };

@@ -25,7 +25,7 @@ describe('buildInstanceConfigCoverageFields', () => {
           value: 'admin@example.com'
         },
         {
-          path: 'feature.disableCache',
+          path: 'feature.enableTeamModel',
           value: undefined
         }
       ]
@@ -38,7 +38,7 @@ describe('buildInstanceConfigCoverageFields', () => {
         state: 'set'
       },
       {
-        path: 'feature.disableCache',
+        path: 'feature.enableTeamModel',
         source: 'instance-config',
         state: 'unset'
       }

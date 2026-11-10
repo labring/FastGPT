@@ -86,10 +86,6 @@ describe('createWorkflowStreamResponseContext', () => {
   beforeEach(async () => {
     vi.clearAllMocks();
     global.systemInstanceConfig = createDefaultInstanceConfig();
-    Object.assign(global.systemInstanceConfig.performance.streamResume, {
-      ttlSeconds: 180,
-      postCompleteTtlSeconds: 45
-    });
     streamResume.resetStreamResumeMirrorGuardForTest();
 
     const redis = getRedisRuntime().getCommandConnection() as any;
@@ -309,20 +305,18 @@ describe('createWorkflowStreamResponseContext', () => {
     expect(redis.expire).not.toHaveBeenCalled();
   });
 
-  it('uses the current mirror TTL for the keepalive interval', async () => {
+  it('uses the fixed keepalive interval', async () => {
     vi.useFakeTimers();
-    global.systemInstanceConfig!.performance.streamResume.ttlSeconds = 3;
     const touch = vi.fn().mockResolvedValue(undefined);
     const stop = startStreamResumeMirrorKeepAlive({ touch });
 
     try {
-      await vi.advanceTimersByTimeAsync(999);
+      await vi.advanceTimersByTimeAsync(STREAM_RESUME_MIRROR_KEEPALIVE_INTERVAL_MS - 1);
       expect(touch).not.toHaveBeenCalled();
       await vi.advanceTimersByTimeAsync(1);
       expect(touch).toHaveBeenCalledTimes(1);
     } finally {
       stop();
-      global.systemInstanceConfig!.performance.streamResume.ttlSeconds = 180;
     }
   });
 

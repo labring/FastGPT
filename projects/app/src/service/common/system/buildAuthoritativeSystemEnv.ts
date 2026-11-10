@@ -21,6 +21,7 @@ export const buildAuthoritativeSystemEnv = ({
   const systemEnv: SystemEnvType = {
     ...(legacySystemEnv || {}),
     openapiPrefix: instanceConfig.site.openApiPrefix,
+    checkExternalFile: instanceConfig.security.checkExternalFile,
     fileUrlWhitelist: instanceConfig.security.fileUrlWhitelist,
     agentSandboxMax: instanceConfig.subservice.agentSandbox.common.maxEditDebug,
     // 保留 null：它是"明确不限量"，转成 undefined 会让 getAgentSandboxMaxPerTeam 回落 env。
@@ -52,6 +53,7 @@ export const buildAuthoritativeSystemEnv = ({
     callsite: 'startup.app.system.buildAuthoritativeSystemEnv',
     fields: [
       { path: 'site.openApiPrefix', value: instanceConfig.site.openApiPrefix },
+      { path: 'security.checkExternalFile', value: instanceConfig.security.checkExternalFile },
       { path: 'security.fileUrlWhitelist', value: instanceConfig.security.fileUrlWhitelist },
       {
         path: 'subservice.agentSandbox.common.maxEditDebug',

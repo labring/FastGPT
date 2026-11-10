@@ -1,6 +1,5 @@
 import { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
 import { getChatGenerationStatuses } from './generationLease';
-import { getSystemInstanceConfig } from '../../common/system/systemInstanceConfig/runtime';
 import { getLogger, LogCategories } from '../../common/logger';
 import {
   StreamResumeCache,
@@ -13,55 +12,47 @@ import { StreamResumeUnavailableReasonEnum } from '@fastgpt/global/core/workflow
 
 const logger = getLogger(LogCategories.MODULE.CHAT.RESUME);
 
-/** 流恢复配置以实例配置 performance.streamResume 为唯一运行时来源，ENV 只在启动迁移时 seed。 */
-const getStreamResumeConfig = () => getSystemInstanceConfig().performance.streamResume;
+/** 流式恢复统一采用固定策略，后台配置与环境变量均不能覆盖。 */
+const streamResumePolicy = {
+  ttlSeconds: 300,
+  postCompleteTtlSeconds: 30,
+  redisMaxmemoryRatio: 0.5,
+  redisMemoryCheckIntervalMs: 5_000
+} as const;
 
-/** 生成中：定期续期的 TTL 秒数。 */
-export const getStreamResumeTtlSeconds = () => getStreamResumeConfig().ttlSeconds;
+/** 生成中镜像定期续期，固定保留 300 秒。 */
+export const getStreamResumeTtlSeconds = () => streamResumePolicy.ttlSeconds;
 
-/** 流结束后短 TTL 秒数。 */
+/** 流结束后固定保留 30 秒，供客户端完成恢复。 */
 export const getStreamResumePostCompleteTtlSeconds = () =>
-  getStreamResumeConfig().postCompleteTtlSeconds;
+  streamResumePolicy.postCompleteTtlSeconds;
 
-/** 当 Redis 已用内存 / maxmemory 达到该阈值时，停止为新请求创建镜像。 */
-export const getStreamResumeRedisMaxmemoryRatio = () => getStreamResumeConfig().redisMaxmemoryRatio;
+/** Redis 已用内存达到 maxmemory 的 50% 时，停止为新请求创建镜像。 */
+export const getStreamResumeRedisMaxmemoryRatio = () => streamResumePolicy.redisMaxmemoryRatio;
 
-/** Redis 内存检测缓存时间，避免每个流请求都去调用 INFO MEMORY。 */
+/** Redis 内存检测结果固定缓存 5 秒，避免每个流请求都调用 INFO MEMORY。 */
 const getStreamResumeRedisMemoryCheckIntervalMs = () =>
-  getStreamResumeConfig().redisMemoryCheckIntervalMs;
+  streamResumePolicy.redisMemoryCheckIntervalMs;
 /**
  * One active resume request keeps one dedicated blocking Redis connection alive for at most this
  * long before the XREAD call returns and the loop re-checks the HTTP socket state.
  */
 export const STREAM_RESUME_BLOCK_MS = 30000;
 export const STREAM_RESUME_TTL_TOUCH_INTERVAL_MS = 1000;
-const getStreamResumeMirrorKeepaliveIntervalMs = () =>
-  Math.max(1_000, Math.min(30_000, (getStreamResumeTtlSeconds() * 1000) / 3));
-
-/** 默认配置下的保活间隔，保留导出供测试与兼容使用；实际定时器在创建时按当前 TTL 计算。 */
-export const STREAM_RESUME_MIRROR_KEEPALIVE_INTERVAL_MS =
-  getStreamResumeMirrorKeepaliveIntervalMs();
+/** 按固定 TTL 确定保活周期；生成期间每 30 秒续期一次。 */
+export const STREAM_RESUME_MIRROR_KEEPALIVE_INTERVAL_MS = 30_000;
 
 let streamResumeCache: StreamResumeCache | undefined;
-let streamResumeCacheTtlKey = '';
 
-/**
- * TTL 是 StreamResumeCache 的构造参数，配置变化后需要重建实例。
- * Redis key 计算与缓存实例无关，重建不会影响正在进行的流恢复。
- */
+/** 惰性创建使用系统固定 TTL 策略的流恢复缓存。 */
 const getStreamResumeCache = () => {
-  const streamTtlSeconds = getStreamResumeTtlSeconds();
-  const postCompleteTtlSeconds = getStreamResumePostCompleteTtlSeconds();
-  const ttlKey = `${streamTtlSeconds}:${postCompleteTtlSeconds}`;
-
-  if (!streamResumeCache || streamResumeCacheTtlKey !== ttlKey) {
+  if (!streamResumeCache) {
     streamResumeCache = new StreamResumeCache({
       logger,
-      streamTtlSeconds,
-      postCompleteTtlSeconds,
+      streamTtlSeconds: getStreamResumeTtlSeconds(),
+      postCompleteTtlSeconds: getStreamResumePostCompleteTtlSeconds(),
       ttlTouchIntervalMs: STREAM_RESUME_TTL_TOUCH_INTERVAL_MS
     });
-    streamResumeCacheTtlKey = ttlKey;
   }
 
   return streamResumeCache;
@@ -233,13 +224,12 @@ export const startStreamResumeMirrorKeepAlive = (
   const touch = mirror?.touch;
   if (!touch) return () => undefined;
 
-  // 保活间隔跟随创建 mirror 时的 TTL；配置变更只影响之后创建的 mirror，
-  // 进行中的 mirror 保持创建时策略，避免运行中突然改变续期节奏。
+  // 固定每 30 秒续期，覆盖客户端断开后仍在生成的场景。
   const timer = setInterval(() => {
     void touch().catch((error) => {
       logger.warn('Stream resume mirror keepalive failed', { error });
     });
-  }, getStreamResumeMirrorKeepaliveIntervalMs());
+  }, STREAM_RESUME_MIRROR_KEEPALIVE_INTERVAL_MS);
   timer.unref?.();
 
   return () => clearInterval(timer);

@@ -24,7 +24,6 @@ import type { SystemInstanceConfigDomainMap } from '@fastgpt/global/common/syste
 
 type CoreConfigForm = {
   teamMode: SystemInstanceConfigDomainMap['auth']['teamMode'];
-  defaultTeamBasicPermissionsEnabled: SystemInstanceConfigDomainMap['auth']['defaultTeamBasicPermissionsEnabled'];
   agentEngine: SystemInstanceConfigDomainMap['feature']['agentEngine'];
   multipleDataToBase64: SystemInstanceConfigDomainMap['feature']['multipleDataToBase64'];
   downloadMode: SystemInstanceConfigDomainMap['storage']['downloadMode'];
@@ -32,7 +31,7 @@ type CoreConfigForm = {
   cdnEndpoint: SystemInstanceConfigDomainMap['storage']['cdnEndpoint'];
   redirectTtlSeconds: SystemInstanceConfigDomainMap['storage']['redirectTtlSeconds'];
   openApiPrefix: SystemInstanceConfigDomainMap['site']['openApiPrefix'];
-  email: SystemInstanceConfigDomainMap['auth']['loginProviders']['email'];
+  email: Omit<SystemInstanceConfigDomainMap['auth']['loginProviders']['email'], 'register'>;
   phone: SystemInstanceConfigDomainMap['auth']['loginProviders']['phone'];
 };
 
@@ -52,7 +51,7 @@ const CoreSettingComponent = () => {
 
   const tocItems: SettingTOCItem[] = useMemo(
     () => [
-      { id: 'team', label: t('admin:core_section_team') },
+      ...(showTeamMode ? [{ id: 'team', label: t('admin:core_section_team') }] : []),
       { id: 'engine', label: t('admin:core_section_engine') },
       { id: 'applicationRuntime', label: t('admin:application_runtime') },
       { id: 'download', label: t('admin:core_section_download') },
@@ -60,7 +59,7 @@ const CoreSettingComponent = () => {
       ...(showEmail ? [{ id: 'email', label: t('admin:email_notification_config') }] : []),
       ...(showPhone ? [{ id: 'sms', label: t('admin:aliyun_sms_credentials') }] : [])
     ],
-    [t, showEmail, showPhone]
+    [t, showTeamMode, showEmail, showPhone]
   );
 
   const auth = useDomainConfig('auth');
@@ -73,7 +72,6 @@ const CoreSettingComponent = () => {
   const { control, handleSubmit, reset, register } = useForm<CoreConfigForm>({
     defaultValues: {
       teamMode: 'single',
-      defaultTeamBasicPermissionsEnabled: false,
       agentEngine: 'fastAgent',
       multipleDataToBase64: false,
       downloadMode: 'short-proxy',
@@ -86,8 +84,7 @@ const CoreSettingComponent = () => {
         user: '',
         pass: '',
         port: 465,
-        secure: true,
-        register: false
+        secure: true
       },
       phone: { accessKeyId: '', accessKeySecret: '', signName: '' }
     }
@@ -99,8 +96,6 @@ const CoreSettingComponent = () => {
     if (isLoading) return;
     reset({
       teamMode: auth.effectiveConfig?.teamMode ?? 'single',
-      defaultTeamBasicPermissionsEnabled:
-        auth.effectiveConfig?.defaultTeamBasicPermissionsEnabled ?? false,
       agentEngine: feature.effectiveConfig?.agentEngine ?? 'fastAgent',
       multipleDataToBase64: feature.effectiveConfig?.multipleDataToBase64 ?? false,
       downloadMode: storage.effectiveConfig?.downloadMode ?? 'short-proxy',
@@ -108,13 +103,12 @@ const CoreSettingComponent = () => {
       cdnEndpoint: storage.effectiveConfig?.cdnEndpoint ?? '',
       redirectTtlSeconds: storage.effectiveConfig?.redirectTtlSeconds ?? 300,
       openApiPrefix: site.effectiveConfig?.openApiPrefix ?? 'fastgpt',
-      email: auth.effectiveConfig?.loginProviders?.email ?? {
-        smtp: '',
-        user: '',
-        pass: '',
-        port: 465,
-        secure: true,
-        register: false
+      email: {
+        smtp: auth.effectiveConfig?.loginProviders?.email.smtp ?? '',
+        user: auth.effectiveConfig?.loginProviders?.email.user ?? '',
+        pass: auth.effectiveConfig?.loginProviders?.email.pass ?? '',
+        port: auth.effectiveConfig?.loginProviders?.email.port ?? 465,
+        secure: auth.effectiveConfig?.loginProviders?.email.secure ?? true
       },
       phone: auth.effectiveConfig?.loginProviders?.phone ?? {
         accessKeyId: '',
@@ -142,10 +136,16 @@ const CoreSettingComponent = () => {
             overrides: deepMergeConfig(
               filterConfigDataByEdition('auth', auth.overrides) as Record<string, unknown>,
               filterConfigData('auth', {
-                defaultTeamBasicPermissionsEnabled: formData.defaultTeamBasicPermissionsEnabled,
                 ...(showTeamMode ? { teamMode: formData.teamMode } : {}),
                 loginProviders: {
-                  email: formData.email,
+                  // 核心页只保存 SMTP 字段，邮箱注册由账号与登录页维护。
+                  email: {
+                    smtp: formData.email.smtp,
+                    user: formData.email.user,
+                    pass: formData.email.pass,
+                    port: formData.email.port,
+                    secure: formData.email.secure
+                  },
                   phone: formData.phone
                 }
               })
@@ -211,23 +211,8 @@ const CoreSettingComponent = () => {
       onSave={submit}
     >
       {/* 1. 团队 */}
-      <AdminSettingSection id="team" title={t('admin:core_section_team')}>
-        <SimpleGrid columns={[1, 2]} spacingX={16} spacingY={4}>
-          <Controller
-            name="defaultTeamBasicPermissionsEnabled"
-            control={control}
-            render={({ field }) => (
-              <AdminSwitchRow
-                label={t('admin:enable_basic_permissions_for_new_teams_by_default')}
-                tooltip={t('admin:enable_the_basic_member_permission_template_by_default_for_n')}
-                isChecked={field.value}
-                onChange={field.onChange}
-              />
-            )}
-          />
-        </SimpleGrid>
-
-        {showTeamMode && (
+      {showTeamMode && (
+        <AdminSettingSection id="team" title={t('admin:core_section_team')}>
           <AdminFormItem
             label={t('admin:team_mode')}
             tooltip={t('admin:multi_multiple_teams_single_single_team_sync_account_sync_sy')}
@@ -259,8 +244,8 @@ const CoreSettingComponent = () => {
               )}
             />
           </AdminFormItem>
-        )}
-      </AdminSettingSection>
+        </AdminSettingSection>
+      )}
 
       {/* 2. 执行引擎 */}
       <AdminSettingSection id="engine" title={t('admin:core_section_engine')} showDivider>
@@ -457,18 +442,6 @@ const CoreSettingComponent = () => {
                 <AdminSwitchRow
                   label={t('admin:enable_ssl')}
                   tooltip={t('admin:port_465_is_usually_enabled_port_587_recommends_starttls')}
-                  isChecked={field.value}
-                  onChange={field.onChange}
-                />
-              )}
-            />
-            <Controller
-              name="email.register"
-              control={control}
-              render={({ field }) => (
-                <AdminSwitchRow
-                  label={t('admin:enable_email_self_registration')}
-                  tooltip={t('admin:allow_users_to_register_with_email')}
                   isChecked={field.value}
                   onChange={field.onChange}
                 />

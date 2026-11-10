@@ -3,6 +3,18 @@ import { resolveSystemInstanceConfig } from '@fastgpt/global/common/system/confi
 import { buildAuthoritativeSystemEnv } from '@/service/common/system/buildAuthoritativeSystemEnv';
 
 describe('buildAuthoritativeSystemEnv', () => {
+  it('takes the external file switch and preserved allowlist from the same current snapshot', () => {
+    const instanceConfig = resolveSystemInstanceConfig({
+      security: { checkExternalFile: false, fileUrlWhitelist: ['cdn.example.com'] }
+    });
+    const result = buildAuthoritativeSystemEnv({
+      legacySystemEnv: { checkExternalFile: true, fileUrlWhitelist: ['old.example.com'] },
+      instanceConfig
+    });
+    expect(result.checkExternalFile).toBe(false);
+    expect(result.fileUrlWhitelist).toEqual(['cdn.example.com']);
+  });
+
   it('instance config wins over legacy systemEnv for authoritative keys', () => {
     const instanceConfig = resolveSystemInstanceConfig({
       performance: { dataset: { parseMaxProcess: 42 } },

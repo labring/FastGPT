@@ -243,8 +243,7 @@ describe('migration buildSparseLegacyOverrides', () => {
       systemEnv: {}
     });
 
-    expect(sparse.feature).toMatchObject({
-      showWorkflowBuilder: false,
+    expect(sparse.feature).toEqual({
       showOpenaiAccount: true,
       enableTeamModel: true
     });
@@ -658,9 +657,7 @@ describe('migration env wiring', () => {
       ['auth.openApiKeyMaxCount', legacyEnv.OPENAPI_KEY_MAX_COUNT],
       ['auth.passwordExpiredMonth', legacyEnv.PASSWORD_EXPIRED_MONTH ?? null],
       ['auth.wecomLoginAutoRedirect', legacyEnv.WECOM_LOGIN_AUTO_REDIRECT],
-      ['auth.defaultTeamBasicPermissionsEnabled', legacyEnv.DEFAULT_TEAM_BASIC_PERMISSIONS_ENABLED],
       // security
-      ['security.useIpLimit', legacyEnv.USE_IP_LIMIT],
       ['security.checkInternalIp', legacyEnv.CHECK_INTERNAL_IP],
       ['security.csrfEnabled', legacyEnv.CSRF_ENABLED],
       ['security.passwordLoginMinuteLimitCount', legacyEnv.PASSWORD_LOGIN_MINUTE_LIMIT_COUNT],
@@ -670,7 +667,6 @@ describe('migration env wiring', () => {
       ['feature.hideChatCopyrightSetting', legacyEnv.HIDE_CHAT_COPYRIGHT_SETTING],
       ['feature.multipleDataToBase64', legacyEnv.MULTIPLE_DATA_TO_BASE64],
       ['feature.agentEngine', legacyEnv.AGENT_ENGINE],
-      ['feature.disableCache', legacyEnv.DISABLE_CACHE],
       // commercial
       ['commercial.showCoupon', legacyEnv.SHOW_COUPON],
       ['commercial.showDiscountCoupon', legacyEnv.SHOW_DISCOUNT_COUPON],
@@ -704,22 +700,7 @@ describe('migration env wiring', () => {
       ['performance.dataset.vectorMaxProcess', legacyEnv.VECTOR_MAX_PROCESS],
       ['performance.dataset.qaMaxProcess', legacyEnv.QA_MAX_PROCESS],
       ['performance.dataset.vlmMaxProcess', legacyEnv.VLM_MAX_PROCESS],
-      ['performance.dataset.retrievalResultsLimit', legacyEnv.RETRIEVAL_RESULTS_LIMIT],
       ['performance.chat.maxQpm', legacyEnv.CHAT_MAX_QPM],
-      ['performance.streamResume.ttlSeconds', legacyEnv.STREAM_RESUME_TTL_SECONDS],
-      [
-        'performance.streamResume.postCompleteTtlSeconds',
-        legacyEnv.STREAM_RESUME_POST_COMPLETE_TTL_SECONDS
-      ],
-      [
-        'performance.streamResume.redisMaxmemoryRatio',
-        legacyEnv.STREAM_RESUME_REDIS_MAXMEMORY_RATIO
-      ],
-      [
-        'performance.streamResume.redisMemoryCheckIntervalMs',
-        legacyEnv.STREAM_RESUME_REDIS_MEMORY_CHECK_INTERVAL_MS
-      ],
-      ['performance.tracking.batchUpdateTime', legacyEnv.TRACK_BATCH_UPDATE_TIME],
       ['performance.tracking.retentionHours', legacyEnv.LLM_REQUEST_TRACKING_RETENTION_HOURS],
       ['performance.task.evalConcurrency', legacyEnv.EVAL_CONCURRENCY],
       ['performance.channel.wechatConcurrency', legacyEnv.WECHAT_CHANNEL_CONCURRENCY],
@@ -803,7 +784,7 @@ describe('migration env wiring', () => {
     // 兜底：有取值才能验证绑定，条数过少说明表格被削掉了
     expect(
       cases.filter(([, expected]) => expected !== undefined && expected !== '').length
-    ).toBeGreaterThanOrEqual(75);
+    ).toBeGreaterThanOrEqual(66);
 
     const mismatched = cases
       .filter(([path, expected]) => {

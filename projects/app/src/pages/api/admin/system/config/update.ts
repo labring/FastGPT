@@ -33,6 +33,8 @@ import {
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { logInstanceConfigWrite } from '@fastgpt/service/common/system/migrationCoverageLog';
 import { ApiHttpError } from '@fastgpt/service/common/http/apiError';
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { AdminAuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 
 const logger = getLogger(LogCategories.SYSTEM);
 
@@ -170,6 +172,18 @@ async function handler(
     subPlansExpectedRevision,
     actor: { actor: 'admin', userId: auth.userId }
   });
+
+  // 只在提交后记录操作者，不记录可能包含密钥的配置；审计失败不影响已提交的保存。
+  void Promise.resolve()
+    .then(() =>
+      addAuditLog({
+        tmbId: auth.tmbId,
+        teamId: auth.teamId,
+        event: AdminAuditEventEnum.ADMIN_UPDATE_SYSTEM_CONFIG,
+        params: { name: 'root' }
+      })
+    )
+    .catch((error) => logger.error('Failed to add system config audit log', { error }));
 
   // 5. 数据库提交后即保存成功；运行时刷新在后台触发，刷新失败不将已提交的操作报告为失败
   void initSystemConfig().catch((error) => {

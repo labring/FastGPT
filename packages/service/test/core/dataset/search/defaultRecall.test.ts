@@ -635,18 +635,16 @@ describe('default recall dataset search', () => {
         ...params
       });
 
-    const originalLimit = getTestInstanceConfig().performance.dataset.retrievalResultsLimit;
+    const originalLimit = serviceEnv.RETRIEVAL_RESULTS_LIMIT;
     const originalSynonymEnabled = serviceEnv.DATASET_SYNONYM_ENABLED;
     afterEach(() => {
-      getTestInstanceConfig().performance.dataset.retrievalResultsLimit = originalLimit;
+      serviceEnv.RETRIEVAL_RESULTS_LIMIT = originalLimit;
       serviceEnv.DATASET_SYNONYM_ENABLED = originalSynonymEnabled;
-      global.systemInstanceConfig!.performance.dataset.retrievalResultsLimit = originalLimit;
     });
 
     it('重排生效时产出重排前的召回快照，含被重排淘汰的候选，且同义词只装饰最终结果', async () => {
       arrangeTwoCandidates();
-      getTestInstanceConfig().performance.dataset.retrievalResultsLimit = 20;
-      global.systemInstanceConfig!.performance.dataset.retrievalResultsLimit = 20;
+      serviceEnv.RETRIEVAL_RESULTS_LIMIT = 20;
       serviceEnv.DATASET_SYNONYM_ENABLED = true;
 
       const result = await runSearch({ usingReRank: true, rerankWeight: 1 });
@@ -665,7 +663,7 @@ describe('default recall dataset search', () => {
 
     it('为召回候选写入 retrievalRank，重排后最终结果仍可回溯召回位置', async () => {
       arrangeTwoCandidates();
-      getTestInstanceConfig().performance.dataset.retrievalResultsLimit = 20;
+      serviceEnv.RETRIEVAL_RESULTS_LIMIT = 20;
 
       const result = await runSearch({ usingReRank: true, rerankWeight: 1 });
 
@@ -682,8 +680,7 @@ describe('default recall dataset search', () => {
 
     it('重排未生效时不产出候选集，避免占用内存又最终不用', async () => {
       arrangeTwoCandidates();
-      getTestInstanceConfig().performance.dataset.retrievalResultsLimit = 20;
-      global.systemInstanceConfig!.performance.dataset.retrievalResultsLimit = 20;
+      serviceEnv.RETRIEVAL_RESULTS_LIMIT = 20;
 
       const result = await runSearch({ usingReRank: false });
 
@@ -695,8 +692,7 @@ describe('default recall dataset search', () => {
 
     it('重排请求但 rerank 模型缺失时不产出候选集', async () => {
       arrangeTwoCandidates();
-      getTestInstanceConfig().performance.dataset.retrievalResultsLimit = 20;
-      global.systemInstanceConfig!.performance.dataset.retrievalResultsLimit = 20;
+      serviceEnv.RETRIEVAL_RESULTS_LIMIT = 20;
 
       const result = await runSearch({ usingReRank: true, rerankModel: undefined });
 
@@ -708,8 +704,7 @@ describe('default recall dataset search', () => {
 
     it('RETRIEVAL_RESULTS_LIMIT 为 0 时不产出候选集', async () => {
       arrangeTwoCandidates();
-      getTestInstanceConfig().performance.dataset.retrievalResultsLimit = 0;
-      global.systemInstanceConfig!.performance.dataset.retrievalResultsLimit = 0;
+      serviceEnv.RETRIEVAL_RESULTS_LIMIT = 0;
 
       const result = await runSearch({ usingReRank: true, rerankWeight: 1 });
 
@@ -719,8 +714,7 @@ describe('default recall dataset search', () => {
 
     it('候选数超过上限时按上限截断', async () => {
       arrangeTwoCandidates();
-      getTestInstanceConfig().performance.dataset.retrievalResultsLimit = 1;
-      global.systemInstanceConfig!.performance.dataset.retrievalResultsLimit = 1;
+      serviceEnv.RETRIEVAL_RESULTS_LIMIT = 1;
 
       const result = await runSearch({ usingReRank: true, rerankWeight: 1 });
 

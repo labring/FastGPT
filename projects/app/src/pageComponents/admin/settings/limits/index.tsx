@@ -75,7 +75,6 @@ const LimitsSettingComponent = () => {
       { id: 'dataset', label: t('admin:dataset_processing_concurrency') },
       { id: 'vectorIndex', label: t('admin:vector_index_parameters') },
       { id: 'chatAndTracking', label: t('admin:chat_rate_limiting_tracking') },
-      { id: 'streamResume', label: t('admin:stream_resume_protection') },
       { id: 'taskAndChannel', label: t('admin:task_channel_concurrency') }
     ],
     [t]
@@ -153,7 +152,6 @@ const LimitsSettingComponent = () => {
               parse: formData.parse,
               dataset: formData.dataset,
               chat: formData.chat,
-              streamResume: formData.streamResume,
               tracking: formData.tracking,
               task: formData.task,
               channel: formData.channel
@@ -272,7 +270,7 @@ const LimitsSettingComponent = () => {
 
           <AdminFormItem
             label={t('admin:openapi_key_max_count')}
-            tooltip={t('admin:max_openapi_keys_per_team_to_prevent_key_sprawl')}
+            tooltip={t('admin:max_personal_openapi_keys_per_team_member')}
             isRequired
           >
             <Controller
@@ -944,33 +942,6 @@ const LimitsSettingComponent = () => {
               )}
             />
           </AdminFormItem>
-
-          <AdminFormItem
-            label={t('admin:retrieval_candidate_limit')}
-            tooltip={t('admin:retrieval_candidate_limit_tip')}
-            isRequired
-          >
-            <Controller
-              name="dataset.retrievalResultsLimit"
-              control={control}
-              render={({ field }) => (
-                <NumberInput
-                  {...numberInputProps}
-                  min={0}
-                  max={10000}
-                  value={field.value ?? 0}
-                  // 0 表示不记录召回候选集，不能用 || 兜底
-                  onChange={(valueAsString, val) => field.onChange(valueAsString === '' ? 0 : val)}
-                >
-                  <NumberInputField />
-                  <NumberInputStepper>
-                    <NumberIncrementStepper />
-                    <NumberDecrementStepper />
-                  </NumberInputStepper>
-                </NumberInput>
-              )}
-            />
-          </AdminFormItem>
         </SimpleGrid>
       </AdminSettingSection>
 
@@ -1073,32 +1044,6 @@ const LimitsSettingComponent = () => {
           </AdminFormItem>
 
           <AdminFormItem
-            label={t('admin:tracking_batch_flush_interval_ms')}
-            tooltip={t('admin:buffer_time_for_aggregating_tracking_events_before_writing_t')}
-            isRequired
-          >
-            <Controller
-              name="tracking.batchUpdateTime"
-              control={control}
-              render={({ field }) => (
-                <NumberInput
-                  {...numberInputProps}
-                  min={100}
-                  max={60000}
-                  value={field.value ?? 10000}
-                  onChange={(_, val) => field.onChange(val || 10000)}
-                >
-                  <NumberInputField />
-                  <NumberInputStepper>
-                    <NumberIncrementStepper />
-                    <NumberDecrementStepper />
-                  </NumberInputStepper>
-                </NumberInput>
-              )}
-            />
-          </AdminFormItem>
-
-          <AdminFormItem
             label={t('admin:llm_trace_retention_hours')}
             tooltip={t('admin:retention_period_for_detailed_llm_tracing_logs_hours')}
             isRequired
@@ -1126,121 +1071,7 @@ const LimitsSettingComponent = () => {
         </SimpleGrid>
       </AdminSettingSection>
 
-      {/* 10. 流式恢复与保护 */}
-      <AdminSettingSection
-        id="streamResume"
-        title={t('admin:stream_resume_protection')}
-        showDivider
-      >
-        <SimpleGrid columns={[1, 2]} spacing={5}>
-          <AdminFormItem
-            label={t('admin:stream_session_retention_seconds')}
-            tooltip={t('admin:ttl_in_redis_for_resumable_streaming_chats_seconds')}
-            isRequired
-          >
-            <Controller
-              name="streamResume.ttlSeconds"
-              control={control}
-              render={({ field }) => (
-                <NumberInput
-                  {...numberInputProps}
-                  min={30}
-                  max={3600}
-                  value={field.value ?? 300}
-                  onChange={(_, val) => field.onChange(val || 300)}
-                >
-                  <NumberInputField />
-                  <NumberInputStepper>
-                    <NumberIncrementStepper />
-                    <NumberDecrementStepper />
-                  </NumberInputStepper>
-                </NumberInput>
-              )}
-            />
-          </AdminFormItem>
-
-          <AdminFormItem
-            label={t('admin:retention_after_completion_seconds')}
-            tooltip={t('admin:how_long_the_cache_snapshot_stays_available_for_clients_afte')}
-            isRequired
-          >
-            <Controller
-              name="streamResume.postCompleteTtlSeconds"
-              control={control}
-              render={({ field }) => (
-                <NumberInput
-                  {...numberInputProps}
-                  min={5}
-                  max={600}
-                  value={field.value ?? 30}
-                  onChange={(_, val) => field.onChange(val || 30)}
-                >
-                  <NumberInputField />
-                  <NumberInputStepper>
-                    <NumberIncrementStepper />
-                    <NumberDecrementStepper />
-                  </NumberInputStepper>
-                </NumberInput>
-              )}
-            />
-          </AdminFormItem>
-
-          <AdminFormItem
-            label={t('admin:redis_max_memory_ratio_2')}
-            tooltip={t('admin:max_share_of_redis_maxmemory_the_stream_cache_may_use_0_0_1')}
-            isRequired
-          >
-            <Controller
-              name="streamResume.redisMaxmemoryRatio"
-              control={control}
-              render={({ field }) => (
-                <NumberInput
-                  {...numberInputProps}
-                  min={0.1}
-                  max={1.0}
-                  step={0.05}
-                  value={field.value ?? 0.5}
-                  onChange={(_, val) => field.onChange(val || 0.5)}
-                >
-                  <NumberInputField />
-                  <NumberInputStepper>
-                    <NumberIncrementStepper />
-                    <NumberDecrementStepper />
-                  </NumberInputStepper>
-                </NumberInput>
-              )}
-            />
-          </AdminFormItem>
-
-          <AdminFormItem
-            label={t('admin:redis_memory_check_interval_ms_2')}
-            tooltip={t('admin:polling_interval_for_checking_the_redis_memory_threshold_ms')}
-            isRequired
-          >
-            <Controller
-              name="streamResume.redisMemoryCheckIntervalMs"
-              control={control}
-              render={({ field }) => (
-                <NumberInput
-                  {...numberInputProps}
-                  min={500}
-                  max={60000}
-                  value={field.value ?? 5000}
-                  onChange={(_, val) => field.onChange(val || 5000)}
-                >
-                  <NumberInputField />
-                  <NumberInputStepper>
-                    <NumberIncrementStepper />
-                    <NumberDecrementStepper />
-                  </NumberInputStepper>
-                </NumberInput>
-              )}
-            />
-          </AdminFormItem>
-        </SimpleGrid>
-      </AdminSettingSection>
-
-      {/* 11. 任务与渠道并发 */}
+      {/* 10. 任务与渠道并发 */}
       <AdminSettingSection
         id="taskAndChannel"
         title={t('admin:task_channel_concurrency')}

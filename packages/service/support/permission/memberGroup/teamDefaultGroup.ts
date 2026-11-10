@@ -5,8 +5,7 @@ import {
   TeamSkillCreateRoleVal
 } from '@fastgpt/global/support/permission/user/constant';
 import { DefaultGroupName } from '@fastgpt/global/support/user/team/group/constant';
-import { getSystemInstanceConfig } from '../../../common/system/systemInstanceConfig/runtime';
-import { logInstanceConfigRead } from '../../../common/system/migrationCoverageLog';
+import { serviceEnv } from '../../../env';
 import type { ClientSession } from '../../../common/mongo';
 import { mongoSessionRun } from '../../../common/mongo/sessionRun';
 import { updateTeamCollaborator } from '../resourcePermissionService';
@@ -43,14 +42,7 @@ export async function createTeamDefaultGroup({
       { session: activeSession, ordered: true }
     );
 
-    const basicPermissionsEnabled =
-      getSystemInstanceConfig().auth.defaultTeamBasicPermissionsEnabled;
-    logInstanceConfigRead({
-      callsite: 'runtime.support.permission.teamDefaultGroup.createTeamDefaultGroup',
-      fields: [{ path: 'auth.defaultTeamBasicPermissionsEnabled', value: basicPermissionsEnabled }]
-    });
-
-    if (basicPermissionsEnabled) {
+    if (serviceEnv.DEFAULT_TEAM_BASIC_PERMISSIONS_ENABLED) {
       await updateTeamCollaborator({
         teamId,
         collaborator: { groupId: String(group._id) },

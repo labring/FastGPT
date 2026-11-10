@@ -1,10 +1,4 @@
-import {
-  getTestInstanceConfig,
-  createDefaultInstanceConfig
-} from '@test/utils/instanceConfigSnapshot';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-
-(global as any).systemInstanceConfig = createDefaultInstanceConfig();
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { getCachedData, getVersionKey, refreshVersionKey } from '@fastgpt/service/common/cache';
 import { initCache } from '@fastgpt/service/common/cache/init';
@@ -21,12 +15,8 @@ vi.mock('@fastgpt/dal/redis/caches', () => ({
   systemVersionCache: mockSystemVersionCache
 }));
 
-const originalDisableCache = getTestInstanceConfig().feature.disableCache;
-
 beforeEach(() => {
   delete (global as any).systemCache;
-  (global as any).systemInstanceConfig = createDefaultInstanceConfig();
-  (global as any).systemInstanceConfig.feature.disableCache = false;
   vi.clearAllMocks();
   mockSystemVersionCache.getOrInitialize.mockResolvedValue('version-1');
   mockSystemVersionCache.refresh.mockResolvedValue(undefined);
@@ -93,11 +83,6 @@ describe('getCachedData', () => {
 
   beforeEach(() => {
     mockRefreshFunc.mockReset();
-    getTestInstanceConfig().feature.disableCache = false;
-  });
-
-  afterEach(() => {
-    getTestInstanceConfig().feature.disableCache = originalDisableCache;
   });
 
   it('initializes systemCache on first access', async () => {
@@ -133,21 +118,6 @@ describe('getCachedData', () => {
 
     expect(mockRefreshFunc).not.toHaveBeenCalled();
     expect(result).toEqual(mockData);
-  });
-
-  it('refreshes when DISABLE_CACHE is true', async () => {
-    (global as any).systemInstanceConfig.feature.disableCache = true;
-    mockRefreshFunc.mockResolvedValue({ permission: 'first' });
-    initCache();
-    global.systemCache[SystemCacheKeyEnum.modelPermission].refreshFunc = mockRefreshFunc;
-
-    await getCachedData(SystemCacheKeyEnum.modelPermission);
-    mockRefreshFunc.mockClear();
-    mockRefreshFunc.mockResolvedValue({ permission: 'second' });
-    const result = await getCachedData(SystemCacheKeyEnum.modelPermission);
-
-    expect(mockRefreshFunc).toHaveBeenCalled();
-    expect(result).toEqual({ permission: 'second' });
   });
 
   it('uses cache for modelPermission when the version matches', async () => {

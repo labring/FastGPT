@@ -1025,6 +1025,13 @@ Server、Agent Sandbox Proxy 和 IDE Agent 的运行时变量。为了避免“�
    - 部署与构建：`SHOW_GIT`（Git 提交信息展示开关）、构建路径。
    - 实验性与未进表单配置：`DATASET_SYNONYM_ENABLED`（同义词开关暂留 ENV，不进实例配置表单）。
 
+**当前固定策略与 ENV 权威**：
+
+- 流式恢复镜像生成期间 TTL 固定为 300 秒、完成后为 30 秒；Redis 内存水位阈值为 50%，检查结果缓存 5 秒。四个旧 `STREAM_RESUME_*` 环境变量和原实例配置均不再生效。
+- 埋点计数每轮刷新后等待 5 秒；`TRACK_BATCH_UPDATE_TIME` 和原实例配置不再生效。
+- 已注册的 IP 限流中间件始终执行；`USE_IP_LIMIT` 和 `security.useIpLimit` 不再作为开关。`DISABLE_CACHE` 和 `feature.disableCache` 不再关闭系统缓存，开发模式仍遵循缓存项自身的刷新策略。
+- 新团队基础权限读取 `DEFAULT_TEAM_BASIC_PERMISSIONS_ENABLED`；重排前检索候选快照上限读取 `RETRIEVAL_RESULTS_LIMIT`。两项均以各进程 ENV 为权威，修改后需重启对应服务；FastGPT 和 Pro Admin 的新团队权限 ENV 应保持一致。
+
 ### 13.2 SaaS 与私有化展示边界（`ENABLE_SAAS_ADMIN_CONFIG`）
 
 为防止公有云 SaaS 运营项暴露在私有化部署环境中引发困惑，引入环境变量 `ENABLE_SAAS_ADMIN_CONFIG`（boolean，默认 `false`）：
@@ -1063,7 +1070,7 @@ Server、Agent Sandbox Proxy 和 IDE Agent 的运行时变量。为了避免“�
 
 ### 13.6 逐字段版本、表单与页面映射
 
-本表逐项覆盖注册表的 **208 个配置叶子**，不使用通配符或虚构的聚合字段。字段定义与默认值以 `schemas/*.ts` 为准，版本、敏感项和 SaaS 显示条件以 `registry.ts` 为准；页面归属与 `pageFields.ts`、实际表单保持一致。
+本表逐项覆盖注册表的 **199 个配置叶子**，不使用通配符或虚构的聚合字段。字段定义与默认值以 `schemas/*.ts` 为准，版本、敏感项和 SaaS 显示条件以 `registry.ts` 为准；页面归属与 `pageFields.ts`、实际表单保持一致。
 
 - 社区版／商业版的勾选表示配置 API 的读写权限；商业版按是否配置 `PRO_URL` 判定，不依赖 License 是否激活。
 - “仅 SaaS 显示”表示 `ENABLE_SAAS_ADMIN_CONFIG=true` 才显示对应控件，**不收紧商业版 API 权限**。标为“仅 API”的字段当前没有新表单，开启显示开关也不会产生控件。
@@ -1104,7 +1111,6 @@ Server、Agent Sandbox Proxy 和 IDE Agent 的运行时变量。为了避免“�
 | `auth.openApiKeyMaxCount` | OpenAPI Key 数量上限 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
 | `auth.passwordExpiredMonth` | 密码有效周期（月） | ✅ | ✅ | — | — | 可编辑：`/admin/settings/auth` |
 | `auth.wecomLoginAutoRedirect` | 企业微信自动跳转 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/auth` |
-| `auth.defaultTeamBasicPermissionsEnabled` | 新团队默认开启基础权限 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/core` |
 | `auth.teamMode` | 团队模式 | — | ✅ | — | — | 可编辑：`/admin/settings/core` |
 | `auth.fastLogin` | 快捷登录方式 | — | ✅ | — | — | 可编辑：`/admin/settings/auth` |
 | `auth.sso.title` | SSO 登录按钮标题 | — | ✅ | — | — | 可编辑：`/admin/settings/auth` |
@@ -1115,7 +1121,7 @@ Server、Agent Sandbox Proxy 和 IDE Agent 的运行时变量。为了避免“�
 | `auth.loginProviders.email.user` | 发件邮箱账号 | — | ✅ | — | — | 可编辑：`/admin/settings/core` |
 | `auth.loginProviders.email.port` | SMTP 端口 | — | ✅ | — | — | 可编辑：`/admin/settings/core` |
 | `auth.loginProviders.email.secure` | 启用 SSL 加密连接 | — | ✅ | — | — | 可编辑：`/admin/settings/core` |
-| `auth.loginProviders.email.register` | 开放邮箱自助注册 | — | ✅ | — | — | 可编辑：`/admin/settings/core`<br>`/admin/settings/auth` |
+| `auth.loginProviders.email.register` | 开放邮箱自助注册 | — | ✅ | — | — | 可编辑：`/admin/settings/auth` |
 | `auth.loginProviders.sms.login.zh` | 登录验证码 · 中文模板 | — | ✅ | — | — | 可编辑：`/admin/settings/auth` |
 | `auth.loginProviders.sms.register.zh` | 注册验证码 · 中文模板 | — | ✅ | — | — | 可编辑：`/admin/settings/auth` |
 | `auth.loginProviders.sms.resetPassword.zh` | 找回密码 · 中文模板 | — | ✅ | — | — | 可编辑：`/admin/settings/auth` |
@@ -1153,29 +1159,27 @@ Server、Agent Sandbox Proxy 和 IDE Agent 的运行时变量。为了避免“�
 
 | 配置字段 | 用途 | 社区版 | 商业版 | 仅 SaaS 显示 | 敏感项 | 当前管理入口 |
 | --- | --- | :---: | :---: | :---: | :---: | --- |
-| `security.useIpLimit` | IP 限流保护 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/security` |
 | `security.checkInternalIp` | 内网 IP 访问拦截 (SSRF) | ✅ | ✅ | — | — | 可编辑：`/admin/settings/security` |
 | `security.csrfEnabled` | CSRF 严格校验 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/security` |
 | `security.passwordLoginMinuteLimitCount` | 密码登录分钟限流次数 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/auth` |
 | `security.maxLoginSession` | 最大登录会话数 (Max Sessions) | ✅ | ✅ | — | — | 可编辑：`/admin/settings/auth` |
 | `security.allowedOrigins` | 允许的跨域来源 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/security` |
-| `security.skipFileTypeCheck` | 跳过文件类型检查 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/security` |
+| `security.skipFileTypeCheck` | 上传文件类型检查 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/security` |
 | `security.censor.baiduClientId` | 百度内容审查 ClientId | — | ✅ | — | — | 可编辑：`/admin/settings/security` |
 | `security.censor.customCensorUrl` | 自定义内容审查服务地址 | — | ✅ | — | — | 可编辑：`/admin/settings/security` |
 | `security.workflowHttpNode.ignoreHttpsCertificate` | HTTP 节点忽略 HTTPS 证书校验 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/security` |
-| `security.fileUrlWhitelist` | 外部文件 URL 白名单 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/security` |
+| `security.checkExternalFile` | 检查外部文件（关闭时保留名单） | ✅ | ✅ | — | — | 可编辑：`/admin/settings/security` |
+| `security.fileUrlWhitelist` | 聊天及工作流输入文件域名白名单（开关开启时显示） | ✅ | ✅ | — | — | 可编辑：`/admin/settings/security` |
 | `security.censor.baiduClientSecret` | 百度内容审查 ClientSecret | — | ✅ | — | ✅ | 可编辑：`/admin/settings/security` |
 
 #### 功能（feature）
 
 | 配置字段 | 用途 | 社区版 | 商业版 | 仅 SaaS 显示 | 敏感项 | 当前管理入口 |
 | --- | --- | :---: | :---: | :---: | :---: | --- |
-| `feature.hideChatCopyrightSetting` | 隐藏聊天版权设置 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/feature` |
+| `feature.hideChatCopyrightSetting` | 分享链接版权配置 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/feature` |
 | `feature.multipleDataToBase64` | 发送给模型的多模态内容转换为 base64 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/core` |
 | `feature.agentEngine` | Agent 执行引擎 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/core` |
-| `feature.disableCache` | 关闭运行时缓存 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/feature` |
 | `feature.enableTeamPluginUpload` | 允许团队上传插件 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/feature` |
-| `feature.showWorkflowBuilder` | 显示工作流编排入口 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/feature` |
 | `feature.showOpenaiAccount` | 用户可配置 OpenAI 账号 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/feature` |
 | `feature.enableTeamModel` | 启用团队模型 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/feature` |
 | `feature.showDatasetFeishu` | 知识库接入飞书 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/feature` |
@@ -1201,7 +1205,7 @@ Server、Agent Sandbox Proxy 和 IDE Agent 的运行时变量。为了避免“�
 | `commercial.payment.wx.notifyUrl` | 支付回调地址 | — | ✅ | — | — | 可编辑：`/admin/settings/pay` |
 | `commercial.payment.alipay.appId` | AppId | — | ✅ | — | — | 可编辑：`/admin/settings/pay` |
 | `commercial.payment.alipay.gateway` | 网关地址 | — | ✅ | — | — | 可编辑：`/admin/settings/pay` |
-| `commercial.payment.alipay.endpoint` | 备用 Endpoint | — | ✅ | — | — | 可编辑：`/admin/settings/pay`；已传给 Pro `AlipaySdk` |
+| `commercial.payment.alipay.endpoint` | 备用 Endpoint | — | ✅ | — | — | 可编辑：`/admin/settings/pay` |
 | `commercial.payment.bank.description` | 对公转账说明文案 | — | ✅ | — | — | 可编辑：`/admin/settings/pay` |
 | `commercial.billingNotify.lackOfPoints.zh` | 余额不足预警 · 中文模板 | — | ✅ | — | — | 可编辑：`/admin/settings/pay` |
 | `commercial.billingNotify.pointsThirtyPercentRemain.zh` | 积分剩余 30% 中文短信模板 | — | ✅ | — | — | 可编辑：`/admin/settings/pay` |
@@ -1251,13 +1255,7 @@ Server、Agent Sandbox Proxy 和 IDE Agent 的运行时变量。为了避免“�
 | `performance.dataset.vectorMaxProcess` | 向量化处理并发数 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
 | `performance.dataset.qaMaxProcess` | QA 自动生成并发数 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
 | `performance.dataset.vlmMaxProcess` | 多模态理解并发数 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
-| `performance.dataset.retrievalResultsLimit` | 知识库检索中间结果数量上限 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
 | `performance.chat.maxQpm` | 对话 QPM 上限 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
-| `performance.streamResume.ttlSeconds` | 流会话保留时长 (秒) | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
-| `performance.streamResume.postCompleteTtlSeconds` | 对话完成后保留时长 (秒) | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
-| `performance.streamResume.redisMaxmemoryRatio` | Redis 内存占用比例上限 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
-| `performance.streamResume.redisMemoryCheckIntervalMs` | Redis 内存检查间隔 (毫秒) | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
-| `performance.tracking.batchUpdateTime` | 埋点批量写入间隔 (毫秒) | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
 | `performance.tracking.retentionHours` | LLM 追踪保留时长 (小时) | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
 | `performance.task.evalConcurrency` | 评估任务并发上限 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
 | `performance.channel.wechatConcurrency` | 公众号渠道消息处理并发 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |

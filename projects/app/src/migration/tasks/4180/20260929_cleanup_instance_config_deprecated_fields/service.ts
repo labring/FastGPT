@@ -17,13 +17,25 @@ export const deprecatedOverridePaths: Partial<
   Record<SystemInstanceConfigDomainKey, readonly (readonly string[])[]>
 > = {
   site: [['chineseRedirectUrl'], ['systemTitle']],
+  // 接口注册 IP 限流即强制执行，废弃实例级关闭开关。
+  security: [['useIpLimit']],
   performance: [
+    // 流式恢复采用固定系统策略，清理整个旧配置分支。
+    ['streamResume'],
+    // 日志候选集记录上限恢复为 ENV 权威。
+    ['dataset', 'retrievalResultsLimit'],
+    // 埋点批量刷新统一固定为 5 秒，存量配置不再生效。
+    ['tracking', 'batchUpdateTime'],
     ['chat', 'logUrl'],
     ['chat', 'logInterval'],
     ['chat', 'logSourceIdPrefix']
   ],
   storage: [['downloadRedirectTtlSeconds'], ['downloadRedirectEndpoint']],
   feature: [
+    // Builder 入口仅由版本、编辑权限和 Sandbox 能力决定，不再提供单独显示开关。
+    ['showWorkflowBuilder'],
+    // 运行时缓存不再允许通过实例配置禁用。
+    ['disableCache'],
     ['showWorkorder'],
     ['showEnterpriseAuth'],
     ['showGit'],
@@ -51,6 +63,8 @@ export const deprecatedOverridePaths: Partial<
     ['agentSandbox', 'proxy', 'httpUrl']
   ],
   auth: [
+    // 新团队基础权限恢复为 ENV 权威，存量实例配置不再参与运行时决策。
+    ['defaultTeamBasicPermissionsEnabled'],
     // 钉钉登录未实现，Provider 字段已从 Schema 删除
     ['loginProviders', 'dingtalk'],
     ['loginProviders', 'sms', 'login', 'en'],
@@ -153,7 +167,8 @@ export const cleanupInstanceConfigDeprecatedFields = async ({
 }: {
   logger: SystemMigrationLogger;
 }) => {
-  const docs = await MongoSystemInstanceConfig.find({}).lean();
+  // 早期文档可能以域名字符串作为 _id，原生读取才能保留真实 BSON 身份用于 CAS。
+  const docs = await MongoSystemInstanceConfig.collection.find({}).toArray();
 
   const updatedDomains: SystemInstanceConfigDomainKey[] = [];
   let removedFieldCount = 0;
@@ -180,11 +195,11 @@ export const cleanupInstanceConfigDeprecatedFields = async ({
       );
     }
 
-    const updated = await MongoSystemInstanceConfig.findOneAndUpdate(
-      { domain, revision: doc.revision },
+    const updated = await MongoSystemInstanceConfig.collection.findOneAndUpdate(
+      { _id: doc._id, revision: doc.revision },
       { $set: { overrides, updatedAt: new Date() }, $inc: { revision: 1 } },
-      { new: true, runValidators: true }
-    ).lean();
+      { returnDocument: 'after' }
+    );
 
     // revision 被并发修改：基于最新文档重试一次清理，而不是跳过写回。
     // 跳过会让 verify 判定残留并抛错，blockStartup + 失败持锁会持续阻塞启动。
@@ -193,7 +208,7 @@ export const cleanupInstanceConfigDeprecatedFields = async ({
         domain,
         revision: doc.revision
       });
-      const latest = await MongoSystemInstanceConfig.findOne({ domain }).lean();
+      const latest = await MongoSystemInstanceConfig.collection.findOne({ _id: doc._id });
       const retry = latest
         ? stripDeprecatedOverrides(domain, latest.overrides)
         : { overrides: undefined, removedFieldCount: 0 };
@@ -208,11 +223,11 @@ export const cleanupInstanceConfigDeprecatedFields = async ({
             }`
           );
         }
-        const retried = await MongoSystemInstanceConfig.findOneAndUpdate(
-          { domain, revision: latest!.revision },
+        const retried = await MongoSystemInstanceConfig.collection.findOneAndUpdate(
+          { _id: doc._id, revision: latest!.revision },
           { $set: { overrides: retry.overrides, updatedAt: new Date() }, $inc: { revision: 1 } },
-          { new: true, runValidators: true }
-        ).lean();
+          { returnDocument: 'after' }
+        );
         if (!retried) {
           // 二次冲突说明存在持续并发写入，抛错上报异常而不是静默留下残留
           throw new Error(

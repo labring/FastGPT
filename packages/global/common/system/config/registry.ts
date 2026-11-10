@@ -96,12 +96,7 @@ export const systemInstanceConfigRegistry: readonly SystemInstanceConfigRegistry
   }),
   ...createEntries({
     section: 'auth',
-    keys: [
-      'openApiKeyMaxCount',
-      'passwordExpiredMonth',
-      'wecomLoginAutoRedirect',
-      'defaultTeamBasicPermissionsEnabled'
-    ],
+    keys: ['openApiKeyMaxCount', 'passwordExpiredMonth', 'wecomLoginAutoRedirect'],
     options: { edition: 'all', secret: false, applyMode: 'live' }
   }),
   ...createEntries({
@@ -180,13 +175,13 @@ export const systemInstanceConfigRegistry: readonly SystemInstanceConfigRegistry
   ...createEntries({
     section: 'security',
     keys: [
-      'useIpLimit',
       'checkInternalIp',
       'csrfEnabled',
       'passwordLoginMinuteLimitCount',
       'maxLoginSession',
       'allowedOrigins',
       'skipFileTypeCheck',
+      'checkExternalFile',
       'workflowHttpNode.ignoreHttpsCertificate',
       'fileUrlWhitelist'
     ],
@@ -217,9 +212,7 @@ export const systemInstanceConfigRegistry: readonly SystemInstanceConfigRegistry
       'hideChatCopyrightSetting',
       'multipleDataToBase64',
       'agentEngine',
-      'disableCache',
       'enableTeamPluginUpload',
-      'showWorkflowBuilder',
       'showOpenaiAccount',
       'enableTeamModel',
       'showDatasetFeishu',
@@ -328,13 +321,7 @@ export const systemInstanceConfigRegistry: readonly SystemInstanceConfigRegistry
       'dataset.vectorMaxProcess',
       'dataset.qaMaxProcess',
       'dataset.vlmMaxProcess',
-      'dataset.retrievalResultsLimit',
       'chat.maxQpm',
-      'streamResume.ttlSeconds',
-      'streamResume.postCompleteTtlSeconds',
-      'streamResume.redisMaxmemoryRatio',
-      'streamResume.redisMemoryCheckIntervalMs',
-      'tracking.batchUpdateTime',
       'tracking.retentionHours',
       'task.evalConcurrency',
       'channel.wechatConcurrency'

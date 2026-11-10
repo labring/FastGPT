@@ -1,4 +1,3 @@
-import { createDefaultInstanceConfig } from '@test/utils/instanceConfigSnapshot';
 import { getChatGenerationStatuses } from '@fastgpt/service/core/chat/generationLease';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Call } from '@test/utils/request';
@@ -33,9 +32,6 @@ import {
   getStreamResumeTtlSeconds,
   STREAM_RESUME_TTL_TOUCH_INTERVAL_MS
 } from '@fastgpt/service/core/chat/resume';
-
-// TTL 与内存阈值改为实例配置驱动，测试用默认快照保持与生产一致的叶子齐全
-(global as any).systemInstanceConfig = createDefaultInstanceConfig();
 
 vi.mock('@fastgpt/service/core/chat/generationLease', () => ({
   getChatGenerationStatuses: vi.fn()
@@ -995,6 +991,29 @@ describe('stream resume helpers', () => {
     expect(redis.del).toHaveBeenCalledWith(`${FASTGPT_REDIS_PREFIX}${keys.keyOfActive}`);
     expect(redis.call).toHaveBeenNthCalledWith(1, 'XADD', rawStream, '*', 'raw', 'event: answer\n');
     expect(redis.call).toHaveBeenNthCalledWith(2, 'XADD', rawStream, '*', 'raw', 'data: hello\n\n');
+  });
+
+  it('uses the fixed system defaults for stream recovery', () => {
+    expect(getStreamResumeTtlSeconds()).toBe(300);
+    expect(getStreamResumePostCompleteTtlSeconds()).toBe(30);
+    expect(getStreamResumeRedisMaxmemoryRatio()).toBe(0.5);
+  });
+
+  it('caches memory pressure for five seconds and blocks at the fixed 50% watermark', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    const redis = getRedisRuntime().getCommandConnection() as any;
+    redis.info = vi.fn().mockResolvedValue('used_memory:49\r\nmaxmemory:100\r\n');
+    const request = { resumeRequestHeaderValue: '1', teamId, ...appSource, chatId };
+
+    expect(await getStreamResumeMirror(request)).toBeDefined();
+    redis.info.mockResolvedValue('used_memory:50\r\nmaxmemory:100\r\n');
+    vi.advanceTimersByTime(4_999);
+    expect(await getStreamResumeMirror(request)).toBeDefined();
+    expect(redis.info).toHaveBeenCalledTimes(1);
+
+    vi.advanceTimersByTime(1);
+    expect(await getStreamResumeMirror(request)).toBeUndefined();
+    expect(redis.info).toHaveBeenCalledTimes(2);
   });
 
   it('should require the opt-in header before creating a mirror', async () => {

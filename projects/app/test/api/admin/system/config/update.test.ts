@@ -1,10 +1,18 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MongoSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/schema';
+import { MongoTeamAudit } from '@fastgpt/service/support/user/audit/schema';
+import * as auditUtils from '@fastgpt/service/support/user/audit/util';
+import { AdminAuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { SECRET_MASK } from '@fastgpt/global/common/system/config/permission';
 import { ApiRequestInputParseError } from '@fastgpt/service/common/zod/requestParseError';
 
+vi.hoisted(() => vi.resetModules());
+vi.unmock('@fastgpt/service/support/user/audit/util');
+
 const mocks = vi.hoisted(() => ({
   edition: 'pro' as 'pro' | 'community',
+  teamId: '68ad85a7463006c963799a05',
+  tmbId: '68ad85a7463006c963799a06',
   initSystemConfig: vi.fn(),
   syncSiteAvatarLifecycle: vi.fn(),
   copyForSiteReference: vi.fn(async ({ avatar }: { avatar: string }) => avatar)
@@ -12,7 +20,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('@/service/middleware/entry', () => ({ NextAPI: (handler: unknown) => handler }));
 vi.mock('@fastgpt/service/support/permission/user/auth', () => ({
-  authSystemAdmin: async () => ({ userId: 'root' })
+  authSystemAdmin: async () => ({ userId: 'root', teamId: mocks.teamId, tmbId: mocks.tmbId })
 }));
 vi.mock('@/service/common/system', () => ({ initSystemConfig: mocks.initSystemConfig }));
 vi.mock('@/service/common/system/syncSiteAvatarLifecycle', () => ({
@@ -78,6 +86,14 @@ describe('instance config update API', () => {
       revision: 1,
       overrides: { name: 'Committed name' }
     });
+    await vi.waitFor(async () => {
+      const audit = await MongoTeamAudit.findOne({
+        event: AdminAuditEventEnum.ADMIN_UPDATE_SYSTEM_CONFIG
+      }).lean();
+      expect(audit).toMatchObject({ metadata: { name: 'root' } });
+      expect(String(audit?.teamId)).toBe(mocks.teamId);
+      expect(String(audit?.tmbId)).toBe(mocks.tmbId);
+    });
   });
 
   it('does not start avatar cleanup when a stale revision rejects the save', async () => {
@@ -107,6 +123,9 @@ describe('instance config update API', () => {
       revision: 1,
       overrides: { favicon: '/api/system/img/avatar/team/current.png' }
     });
+    expect(
+      await MongoTeamAudit.countDocuments({ event: AdminAuditEventEnum.ADMIN_UPDATE_SYSTEM_CONFIG })
+    ).toBe(0);
   });
 
   it.each([{ favicon: 7 }, { navbarItems: 'invalid' }, { navbarItems: [null] }])(
@@ -155,6 +174,13 @@ describe('instance config update API', () => {
       revision: 2,
       overrides: { favicon: copiedAvatar }
     });
+    await vi.waitFor(async () => {
+      expect(
+        await MongoTeamAudit.countDocuments({
+          event: AdminAuditEventEnum.ADMIN_UPDATE_SYSTEM_CONFIG
+        })
+      ).toBe(1);
+    });
   });
 
   it('masks secrets in the transaction result and preserves them on the next save', async () => {
@@ -175,6 +201,40 @@ describe('instance config update API', () => {
     expect(
       (await MongoSystemInstanceConfig.findOne({ domain: 'providers' }).lean())?.overrides
     ).toMatchObject(overrides);
+    await vi.waitFor(async () => {
+      const auditLogs = await MongoTeamAudit.find({
+        event: AdminAuditEventEnum.ADMIN_UPDATE_SYSTEM_CONFIG
+      }).lean();
+      expect(auditLogs).toHaveLength(2);
+      for (const audit of auditLogs) {
+        expect(String(audit.teamId)).toBe(mocks.teamId);
+        expect(String(audit.tmbId)).toBe(mocks.tmbId);
+        expect(audit.metadata).toEqual({ name: 'root' });
+      }
+      expect(JSON.stringify(auditLogs)).not.toContain('private-key');
+    });
+  });
+
+  it('returns the committed config when audit writing fails', async () => {
+    const auditSpy = vi
+      .spyOn(auditUtils, 'addAuditLog')
+      .mockRejectedValueOnce(new Error('audit failed'));
+
+    const response = await handler({
+      body: {
+        items: [{ domain: 'auth', expectedRevision: 0, overrides: { passwordExpiredMonth: 2 } }]
+      }
+    } as any);
+
+    expect(response.results[0]).toMatchObject({ domain: 'auth', revision: 1 });
+    expect(await MongoSystemInstanceConfig.findOne({ domain: 'auth' }).lean()).toMatchObject({
+      revision: 1,
+      overrides: { passwordExpiredMonth: 2 }
+    });
+    expect(auditSpy).toHaveBeenCalledOnce();
+    expect(
+      await MongoTeamAudit.countDocuments({ event: AdminAuditEventEnum.ADMIN_UPDATE_SYSTEM_CONFIG })
+    ).toBe(0);
   });
 
   it('allows community fields, filters the response and rejects Pro fields before writing', async () => {
@@ -201,5 +261,12 @@ describe('instance config update API', () => {
       } as any)
     ).rejects.toThrow('Edition boundary violation');
     expect((await MongoSystemInstanceConfig.findOne({ domain: 'auth' }).lean())?.revision).toBe(1);
+    await vi.waitFor(async () => {
+      expect(
+        await MongoTeamAudit.countDocuments({
+          event: AdminAuditEventEnum.ADMIN_UPDATE_SYSTEM_CONFIG
+        })
+      ).toBe(1);
+    });
   });
 });

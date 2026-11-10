@@ -7,20 +7,8 @@ import { SystemMigrationStatusEnum } from '@fastgpt/global/migration/constants';
 import { MongoSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/schema';
 import { MongoSystemMigrationState } from '@/migration/mongoSchema';
 import { systemMigrations, type SystemMigrationLogger } from '@/migration/registry';
-import {
-  claimMigrationLease,
-  completeMigration,
-  ensureMigrationStates,
-  failMigration,
-  getMigrationFailedRecords,
-  getMigrationStates,
-  isMigrationLeaseActive,
-  renewMigrationLease,
-  saveMigrationCheckpoint,
-  saveMigrationFailedRecords,
-  saveMigrationProgress
-} from '@/migration/entity';
-import { createSystemMigrationRunner, type SystemMigrationRunnerStore } from '@/migration/runner';
+import { createSystemMigrationRunner } from '@/migration/runner';
+import * as legacyEnv from '@/migration/tasks/4180/20260928_migrate_instance_configs/env';
 
 const logger: SystemMigrationLogger = {
   info: vi.fn(),
@@ -29,6 +17,9 @@ const logger: SystemMigrationLogger = {
 };
 
 const migration = systemMigrations.find(({ id }) => id === '20260928_migrate_instance_configs')!;
+const cleanup = systemMigrations.find(
+  ({ id }) => id === '20260929_cleanup_instance_config_deprecated_fields'
+)!;
 
 /** 造出「存量库只迁入了一部分域」的场景：其余域必须由本任务补建。 */
 const seedPartialDomains = async (count: number) => {
@@ -52,7 +43,6 @@ const seedPartialDomains = async (count: number) => {
  */
 describe('migrateInstanceConfigs progress with the real runner', () => {
   beforeEach(() => {
-    // 第二个用例会故意让 tick 记录扫描异常，不能污染第一个用例的日志断言
     vi.clearAllMocks();
   });
 
@@ -83,65 +73,66 @@ describe('migrateInstanceConfigs progress with the real runner', () => {
     }
   });
 
-  it('keeps the startup gate closed when the resumable re-run fails to claim', async () => {
-    await seedPartialDomains(8);
-    // 上一轮进程留下的成功态：resumable 不能只凭它放行
-    await ensureMigrationStates([migration]);
-    await MongoSystemMigrationState.updateOne(
-      { _id: migration.id },
-      { $set: { status: SystemMigrationStatusEnum.succeeded, runId: 'previous-run' } }
-    );
-
-    let claimAttempts = 0;
-    const store: SystemMigrationRunnerStore = {
-      ensureStates: ensureMigrationStates,
-      getStates: getMigrationStates,
-      getFailedRecords: getMigrationFailedRecords,
-      claimLease: async (params) => {
-        claimAttempts += 1;
-        if (claimAttempts === 1) throw new Error('claim unavailable');
-        return claimMigrationLease(params);
-      },
-      renewLease: renewMigrationLease,
-      isLeaseActive: isMigrationLeaseActive,
-      saveCheckpoint: saveMigrationCheckpoint,
-      saveFailedRecords: saveMigrationFailedRecords,
-      saveProgress: saveMigrationProgress,
-      complete: completeMigration,
-      fail: failMigration
-    };
-
-    const runner = createSystemMigrationRunner({
-      migrations: [migration],
-      runnerId: 'runner-instance-config-claim-failure',
-      timing: { blockingPollIntervalMs: 10 },
-      store,
+  it('does not re-import completed ENV migration but still reruns deprecated-field cleanup', async () => {
+    await seedPartialDomains(0);
+    vi.stubEnv('CSRF_ENABLED', 'false');
+    const readLegacyEnv = vi.spyOn(legacyEnv, 'readLegacyInstanceConfigEnv');
+    const firstRunner = createSystemMigrationRunner({
+      migrations: [migration, cleanup],
+      runnerId: 'runner-instance-config-first-start',
+      logger
+    });
+    const restartedRunner = createSystemMigrationRunner({
+      migrations: [migration, cleanup],
+      runnerId: 'runner-instance-config-restart',
       logger
     });
 
     try {
-      // tick 的 catch 会吞掉扫描异常，start 仍正常返回，因此门禁必须自己守住
-      await runner.start();
-      expect(await MongoSystemInstanceConfig.countDocuments({})).toBe(8);
-
-      const gate = runner.waitForBlockingMigrations();
-      let released = false;
-      void gate.then(() => {
-        released = true;
+      await firstRunner.start();
+      expect(await MongoSystemMigrationState.findById(migration.id).lean()).toMatchObject({
+        status: SystemMigrationStatusEnum.succeeded
       });
-      await new Promise((resolve) => setTimeout(resolve, 100));
-      expect(released).toBe(false);
+      expect(await MongoSystemMigrationState.findById(cleanup.id).lean()).toMatchObject({
+        status: SystemMigrationStatusEnum.succeeded
+      });
+      await firstRunner.waitForBlockingMigrations();
+      const previousState = await MongoSystemMigrationState.findById(migration.id).lean();
+      const previousConfig = await MongoSystemInstanceConfig.findOne({ domain: 'security' }).lean();
+      expect(previousConfig?.overrides).toMatchObject({ csrfEnabled: false });
+      expect(readLegacyEnv).toHaveBeenCalled();
+      readLegacyEnv.mockClear();
+      firstRunner.stop();
 
-      // 本轮补建真正跑完之后才放行
-      await runner.tick();
-      await gate;
-      expect(await MongoSystemInstanceConfig.countDocuments({})).toBe(
-        SYSTEM_INSTANCE_CONFIG_DOMAINS.length
+      // 新增的废弃字段仍需清理，但已完成的 ENV 导入不能受后来配置变化影响。
+      await MongoSystemInstanceConfig.updateOne(
+        { domain: 'vector' },
+        { $set: { 'overrides.vqLevel': 32 }, $inc: { revision: 1 } }
       );
+      vi.stubEnv('CSRF_ENABLED', 'true');
+      vi.stubEnv('WORKFLOW_MAX_RUN_TIMES', 'not-a-number');
+      await restartedRunner.start();
+
+      const state = await MongoSystemMigrationState.findById(migration.id).lean();
+      const cleanupState = await MongoSystemMigrationState.findById(cleanup.id).lean();
+      expect(state?.status).toBe(SystemMigrationStatusEnum.succeeded);
+      expect(state?.lastStartedAt).toEqual(previousState?.lastStartedAt);
+      expect(readLegacyEnv).not.toHaveBeenCalled();
+      expect(cleanupState?.status).toBe(SystemMigrationStatusEnum.succeeded);
+      expect(await MongoSystemInstanceConfig.findOne({ domain: 'security' }).lean()).toEqual(
+        previousConfig
+      );
+      expect(
+        (await MongoSystemInstanceConfig.findOne({ domain: 'vector' }).lean())?.overrides
+      ).not.toHaveProperty('vqLevel');
+      await restartedRunner.waitForBlockingMigrations();
     } finally {
-      runner.stop();
+      firstRunner.stop();
+      restartedRunner.stop();
+      readLegacyEnv.mockRestore();
+      vi.unstubAllEnvs();
       await MongoSystemInstanceConfig.deleteMany({});
-      await MongoSystemMigrationState.deleteMany({ _id: migration.id });
+      await MongoSystemMigrationState.deleteMany({ _id: { $in: [migration.id, cleanup.id] } });
     }
   });
 });

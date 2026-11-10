@@ -1,15 +1,10 @@
-import {
-  getTestInstanceConfig,
-  createDefaultInstanceConfig
-} from '@test/utils/instanceConfigSnapshot';
+import { serviceEnv } from '@fastgpt/service/env';
 import {
   TeamApikeyCreateRoleVal,
   TeamAppCreateRoleVal,
   TeamDatasetCreateRoleVal,
   TeamSkillCreateRoleVal
 } from '@fastgpt/global/support/permission/user/constant';
-
-(global as any).systemInstanceConfig = createDefaultInstanceConfig();
 
 import { DefaultGroupName } from '@fastgpt/global/support/user/team/group/constant';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
@@ -26,15 +21,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.unmock(import('@fastgpt/service/common/mongo/sessionRun'));
 
-const originalDefaultPermissionsEnabled =
-  getTestInstanceConfig().auth.defaultTeamBasicPermissionsEnabled;
+const originalDefaultPermissionsEnabled = serviceEnv.DEFAULT_TEAM_BASIC_PERMISSIONS_ENABLED;
 const defaultBasicRole =
   TeamAppCreateRoleVal |
   TeamSkillCreateRoleVal |
   TeamDatasetCreateRoleVal |
   TeamApikeyCreateRoleVal;
 const setDefaultPermissionsEnabled = (enabled: boolean) =>
-  (getTestInstanceConfig().auth.defaultTeamBasicPermissionsEnabled = enabled);
+  Reflect.set(serviceEnv, 'DEFAULT_TEAM_BASIC_PERMISSIONS_ENABLED', enabled);
 
 describe('createDefaultTeam', () => {
   beforeEach(() => {

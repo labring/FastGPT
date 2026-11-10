@@ -162,9 +162,6 @@ export const buildLegacyDomainOverrides = ({
     openApiKeyMaxCount: optionalNumber(legacyEnv.OPENAPI_KEY_MAX_COUNT),
     passwordExpiredMonth: optionalNumber(legacyEnv.PASSWORD_EXPIRED_MONTH) ?? null,
     wecomLoginAutoRedirect: optionalBool(legacyEnv.WECOM_LOGIN_AUTO_REDIRECT),
-    defaultTeamBasicPermissionsEnabled: optionalBool(
-      legacyEnv.DEFAULT_TEAM_BASIC_PERMISSIONS_ENABLED
-    ),
     sso: compact({
       title: optionalString(feConfigs.sso?.title),
       icon: optionalString(feConfigs.sso?.icon),
@@ -179,7 +176,6 @@ export const buildLegacyDomainOverrides = ({
   // fastgptPro.censor，因此这里不读取 systemEnv.censor，改由 buildLegacyProOverrides 迁移。
   const legacyWorkflowHttpNode = systemEnv.workflowHttpNode as LegacyFeConfigs | undefined;
   overrides.security = compact({
-    useIpLimit: optionalBool(legacyEnv.USE_IP_LIMIT),
     checkInternalIp: optionalBool(legacyEnv.CHECK_INTERNAL_IP),
     csrfEnabled: optionalBool(legacyEnv.CSRF_ENABLED),
     passwordLoginMinuteLimitCount: optionalNumber(legacyEnv.PASSWORD_LOGIN_MINUTE_LIMIT_COUNT),
@@ -199,9 +195,7 @@ export const buildLegacyDomainOverrides = ({
     hideChatCopyrightSetting: optionalBool(legacyEnv.HIDE_CHAT_COPYRIGHT_SETTING),
     multipleDataToBase64: optionalBool(legacyEnv.MULTIPLE_DATA_TO_BASE64),
     agentEngine: optionalText(legacyEnv.AGENT_ENGINE),
-    disableCache: optionalBool(legacyEnv.DISABLE_CACHE),
     enableTeamPluginUpload: optionalBool(feConfigs.enable_team_plugin_upload),
-    showWorkflowBuilder: optionalBool(feConfigs.show_workflow_builder),
     showOpenaiAccount: optionalBool(feConfigs.show_openai_account),
     enableTeamModel: optionalBool(feConfigs.enable_team_model),
     showDatasetFeishu: optionalBool(feConfigs.show_dataset_feishu),
@@ -276,22 +270,12 @@ export const buildLegacyDomainOverrides = ({
       qaMaxProcess:
         optionalNumber(systemEnv.qaMaxProcess) ?? optionalNumber(legacyEnv.QA_MAX_PROCESS),
       vlmMaxProcess:
-        optionalNumber(systemEnv.vlmMaxProcess) ?? optionalNumber(legacyEnv.VLM_MAX_PROCESS),
-      retrievalResultsLimit: optionalNumber(legacyEnv.RETRIEVAL_RESULTS_LIMIT)
+        optionalNumber(systemEnv.vlmMaxProcess) ?? optionalNumber(legacyEnv.VLM_MAX_PROCESS)
     }),
     chat: compact({
       maxQpm: optionalNumber(legacyEnv.CHAT_MAX_QPM)
     }),
-    streamResume: compact({
-      ttlSeconds: optionalNumber(legacyEnv.STREAM_RESUME_TTL_SECONDS),
-      postCompleteTtlSeconds: optionalNumber(legacyEnv.STREAM_RESUME_POST_COMPLETE_TTL_SECONDS),
-      redisMaxmemoryRatio: optionalNumber(legacyEnv.STREAM_RESUME_REDIS_MAXMEMORY_RATIO),
-      redisMemoryCheckIntervalMs: optionalNumber(
-        legacyEnv.STREAM_RESUME_REDIS_MEMORY_CHECK_INTERVAL_MS
-      )
-    }),
     tracking: compact({
-      batchUpdateTime: optionalNumber(legacyEnv.TRACK_BATCH_UPDATE_TIME),
       retentionHours: optionalNumber(legacyEnv.LLM_REQUEST_TRACKING_RETENTION_HOURS)
     }),
     task: compact({ evalConcurrency: optionalNumber(legacyEnv.EVAL_CONCURRENCY) }),

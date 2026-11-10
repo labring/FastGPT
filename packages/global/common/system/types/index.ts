@@ -202,9 +202,6 @@ export const FastGPTFeConfigsSchema = z.looseObject({
     .boolean()
     .optional()
     .meta({ description: '是否开启 Agent 代码沙箱执行环境' }),
-  show_workflow_builder: BoolSchema.optional().meta({
-    description: '是否展示工作流 AI 辅助构建入口'
-  }),
   show_agent_sandbox_free_tip: z
     .boolean()
     .optional()
@@ -427,6 +424,10 @@ export const SystemEnvSchema = z.looseObject({
     })
     .optional()
     .meta({ description: 'SSO 服务端连接配置，不向普通客户端下发' }),
+  checkExternalFile: z
+    .boolean()
+    .optional()
+    .meta({ description: '是否对外部输入文件应用域名白名单，不向客户端下发' }),
   fileUrlWhitelist: z
     .array(z.string())
     .optional()

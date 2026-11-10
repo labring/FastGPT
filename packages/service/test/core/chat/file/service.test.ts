@@ -330,6 +330,7 @@ describe('parseUrlToChatFileType', () => {
   });
 
   it('分类被域名策略拒绝的未知链接时不探测', async () => {
+    global.systemEnv.checkExternalFile = true;
     global.systemEnv.fileUrlWhitelist = ['allowed.example.com'];
     expect((await parseUrlToChatFileType({ url }))?.type).toBe(FileType.unknown);
     expect(axios.head).not.toHaveBeenCalled();
@@ -347,6 +348,7 @@ describe('validateChatFileInput', () => {
   });
 
   it('已登记签名域名可用，但不能放行其他被阻止的文件', () => {
+    global.systemEnv.checkExternalFile = true;
     global.systemEnv.fileUrlWhitelist = ['allowed.example.com'];
     const { context, files } = createContext();
     files.set(url, { url, name: '报告', type: FileType.file });
@@ -360,6 +362,7 @@ describe('validateChatFileInput', () => {
 
 describe('prepareChatFiles', () => {
   it('清理空输入，按 Context 身份去重并在校验、探测、登记前截断', async () => {
+    global.systemEnv.checkExternalFile = true;
     global.systemEnv.fileUrlWhitelist = ['files.example.com'];
     const { context } = createContext();
     context.getIdentity = (input) => (input.includes('/alias') ? 'same-object' : undefined);

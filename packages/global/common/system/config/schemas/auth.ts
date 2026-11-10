@@ -71,7 +71,6 @@ export const AuthConfigSchema = z.strictObject({
   openApiKeyMaxCount: positiveInteger(100),
   passwordExpiredMonth: z.number().int().positive().nullable().default(null),
   wecomLoginAutoRedirect: z.boolean().default(false),
-  defaultTeamBasicPermissionsEnabled: z.boolean().default(false),
   // 团队模式：multi 多团队 / single 单团队 / sync 账号同步
   teamMode: z.enum(['multi', 'single', 'sync']).default('single'),
   loginProviders: z

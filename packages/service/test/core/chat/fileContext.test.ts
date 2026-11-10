@@ -287,7 +287,10 @@ describe('parseFileContentFromUrls (buffer hit)', () => {
 
   it('不在文件域名白名单的 URL 不查询 raw-text 缓存', async () => {
     const originalSystemEnv = global.systemEnv;
-    global.systemEnv = { fileUrlWhitelist: ['allowed.example.com'] } as any;
+    global.systemEnv = {
+      checkExternalFile: true,
+      fileUrlWhitelist: ['allowed.example.com']
+    } as any;
     mockIsInternalAddress.mockResolvedValue(false);
     mockGetRawTextBuffer.mockResolvedValue({
       filename: 'cached.pdf',
@@ -320,7 +323,10 @@ describe('parseFileContentFromUrls (buffer hit)', () => {
 
   it('动态工具 URL 可跳过文件域名白名单，但仍先执行内网地址检查', async () => {
     const originalSystemEnv = global.systemEnv;
-    global.systemEnv = { fileUrlWhitelist: ['allowed.example.com'] } as any;
+    global.systemEnv = {
+      checkExternalFile: true,
+      fileUrlWhitelist: ['allowed.example.com']
+    } as any;
     mockGetRawTextBuffer.mockResolvedValue({
       filename: 'generated.pdf',
       text: 'generated content'
@@ -1140,7 +1146,11 @@ describe('getFileInfoFromUrl', () => {
 describe('getFileContentByUrl', () => {
   it('未登记文件在命中缓存之前仍须通过协议和 Context 域名策略', async () => {
     const savedEnv = global.systemEnv;
-    global.systemEnv = { ...savedEnv, fileUrlWhitelist: ['allowed.example.com'] };
+    global.systemEnv = {
+      ...savedEnv,
+      checkExternalFile: true,
+      fileUrlWhitelist: ['allowed.example.com']
+    };
     mockGetRawTextBuffer.mockClear();
     try {
       await expect(
