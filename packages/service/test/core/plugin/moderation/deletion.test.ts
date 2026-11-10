@@ -140,6 +140,28 @@ describe('moderation plugin deletion and filtering', () => {
     ).toMatchObject({ deleted: true });
   });
 
+  it('forwards optional session when restoring moderation configs', async () => {
+    const updateManySpy = vi
+      .spyOn(MongoSystemModerationPlugin, 'updateMany')
+      .mockResolvedValue({ modifiedCount: 1 } as any);
+    const fakeSession = { id: 'mock-session' } as any;
+
+    await entity.restoreModerationConfigs({
+      pluginIds: ['restore-saved'],
+      source: 'system',
+      session: fakeSession
+    });
+
+    expect(updateManySpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        pluginId: { $in: ['restore-saved'] },
+        deleted: true
+      }),
+      expect.any(Object),
+      { session: fakeSession }
+    );
+  });
+
   it('rejects deletion if the plugin is currently enabled', async () => {
     vi.spyOn(entity, 'findModerationConfig').mockResolvedValue({
       pluginId: 'active-plugin',

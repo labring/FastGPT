@@ -181,6 +181,7 @@ export const getAdminModerationPluginList = async ({
 /**
  * 权威策略记录竞争点：所有启用操作均争用同一条 moderationPolicy 记录，
  * 通过在同一事务内更新合法字段（value / createTime）产生排他行锁或写冲突，避免并发双启用。
+ * 若存在历史重复记录，则以最新策略值为准收敛至单条权威记录。
  */
 const syncPolicyContentionRecord = async ({
   session,
@@ -191,21 +192,24 @@ const syncPolicyContentionRecord = async ({
   activePluginId?: string;
   policy?: SystemModerationPolicyType;
 }) => {
-  const existing = await MongoSystemConfigs.findOne({
+  const records = await MongoSystemConfigs.find({
     type: SystemConfigsTypeEnum.moderationPolicy
   })
-    .sort({ createTime: 1 })
+    .sort({ createTime: -1, _id: -1 })
     .select('_id value')
     .session(session ?? null)
     .lean();
 
-  const targetId = existing?._id ?? DEFAULT_MODERATION_POLICY_CONFIG_ID;
+  const latest = records[0];
+  const canonicalRecord =
+    records.find((item) => String(item._id) === DEFAULT_MODERATION_POLICY_CONFIG_ID) ?? latest;
+  const targetId = canonicalRecord?._id ?? DEFAULT_MODERATION_POLICY_CONFIG_ID;
   const resolvedValue = (() => {
     if (policy) return policy;
-    if (existing?.value && typeof existing.value === 'object') {
+    if (latest?.value && typeof latest.value === 'object') {
       return {
         ...DefaultSystemModerationPolicy,
-        ...existing.value,
+        ...latest.value,
         ...(activePluginId ? { activePluginId } : {})
       };
     }
@@ -229,6 +233,16 @@ const syncPolicyContentionRecord = async ({
     },
     { upsert: true, new: true, session }
   );
+
+  const duplicateIds = records
+    .map((item) => item._id)
+    .filter((id) => String(id) !== String(targetId));
+  if (duplicateIds.length > 0) {
+    await MongoSystemConfigs.deleteMany(
+      { _id: { $in: duplicateIds }, type: SystemConfigsTypeEnum.moderationPolicy },
+      { session: session ?? undefined }
+    );
+  }
 };
 
 /**
@@ -349,16 +363,22 @@ export const deleteModerationPlugin = async ({
 /** Validate the installed package before restoring its local state; keep it disabled. */
 export const restoreModerationPlugin = async ({
   pluginId,
-  source = 'system'
+  source = 'system',
+  session
 }: {
   pluginId: string;
   source?: string;
+  session?: ClientSession;
 }) => {
   if (source !== 'system') throw new Error('Only system moderation plugins can be restored here');
   const detail = await getRetainedModerationDetail(pluginId, source);
   if (detail.type !== 'moderation') throw new Error('Not a moderation plugin');
   await restoreSystemPlugin(pluginId);
-  await restoreModerationConfigs({ pluginIds: [pluginId], source });
+  await restoreModerationConfigs({
+    pluginIds: [pluginId],
+    source,
+    ...(session ? { session } : {})
+  });
 };
 
 /**
@@ -469,7 +489,7 @@ export const getModerationPolicy = async (): Promise<SystemModerationPolicyType>
     MongoSystemConfigs.findOne({
       type: SystemConfigsTypeEnum.moderationPolicy
     })
-      .sort({ createTime: -1 })
+      .sort({ createTime: -1, _id: -1 })
       .lean(),
     findEnabledModerationConfig()
   ]);

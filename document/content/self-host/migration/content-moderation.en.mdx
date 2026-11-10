@@ -229,7 +229,7 @@ export default defineModeration({
   - `suspected`: Content is flagged as suspected risk; FastGPT applies the global **Suspected risk** policy (`Block and log` or `Pass and log`).
   - `error`: Upstream timeout, network failure, authentication error, or invalid response. **Do not let uncaught exceptions escape `check`**—return `ctx.moderationError('...')` (`verdict: 'error'` with `errorMessage`) so FastGPT applies the configured **Service exception** policy and records the failure in the moderation service logs.
 - **Normalized risk labels (`hits[].label`)**:
-  Supported values are `porn`, `politics`, `terror`, `contraband`, `abuse`, `hate`, `ad`, `advertising_law`, `privacy`, `flood`, `self_harm`, `violence`, `sexual_minors`, and `other`.
+  Supported values are `porn`, `politics`, `terror`, `contraband`, `abuse`, `hate`, `ad`, `advertising-law`, `privacy`, `flood`, `self-harm`, `violence`, `sexual-minors`, and `other`.
 - **Localized README files**:
   Provide `README.zh-CN.md` and `README.en.md` (plus optional `README.zh-Hant.md`) in the Plugin root directory so they are bundled into the `.pkg` archive and displayed in the admin console.
 
@@ -246,7 +246,7 @@ npx @fastgpt-plugin/cli debug . --run \
 # Build, validate, and package into a .pkg archive
 pnpm build
 npx @fastgpt-plugin/cli check --entry . --output ./dist
-pnpm pack
+pnpm run pack
 ```
 
 After packaging, go to **Admin Console > Content Moderation > Moderation Policy**, click **Install from local**, and upload the generated `.pkg` file to configure and enable your Plugin.

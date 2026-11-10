@@ -228,7 +228,7 @@ export default defineModeration({
   - `block`：内容明确违规，直接拦截。
   - `suspected`：内容疑似违规，由 FastGPT 全局策略中的「疑似风险」（`拦截并记录` / `放行并记录`）决定后续动作。
   - `error`：上游服务超时、网络错误、鉴权失败或返回格式非法。**请勿将上游异常直接 `throw` 抛出**，应返回 `ctx.moderationError('...')`（即 `verdict: 'error'` 且包含 `errorMessage`），以便宿主按「服务异常」策略处理并记入审核服务日志。
-- **标准风险标签（`hits[].label`）**：支持 `porn`（色情）、`politics`（涉政）、`terror`（暴恐）、`contraband`（违禁）、`abuse`（辱骂）、`hate`（仇恨）、`ad`（广告）、`advertising_law`（广告法违规）、`privacy`（隐私泄露）、`flood`（灌水）、`self_harm`（自残自杀）、`violence`（暴力血腥）、`sexual_minors`（涉未成年人）与 `other`（其他）。
+- **标准风险标签（`hits[].label`）**：支持 `porn`（色情）、`politics`（涉政）、`terror`（暴恐）、`contraband`（违禁）、`abuse`（辱骂）、`hate`（仇恨）、`ad`（广告）、`advertising-law`（广告法违规）、`privacy`（隐私泄露）、`flood`（灌水）、`self-harm`（自残自杀）、`violence`（暴力血腥）、`sexual-minors`（涉未成年人）与 `other`（其他）。
 - **多语言说明文档**：在插件根目录提供 `README.zh-CN.md` 与 `README.en.md`（可选 `README.zh-Hant.md`），打包时会自动收录并在管理后台插件详情中展示。
 
 #### 4. 本地调试、打包与上传安装
@@ -244,7 +244,7 @@ npx @fastgpt-plugin/cli debug . --run \
 # 构建、检查并打包为 .pkg 文件
 pnpm build
 npx @fastgpt-plugin/cli check --entry . --output ./dist
-pnpm pack
+pnpm run pack
 ```
 
 打包完成后，进入 FastGPT **管理后台 > 内容审核 > 审核策略配置**，点击 **从本地安装** 上传生成的 `.pkg` 文件，即可按常规流程配置参数并启用。

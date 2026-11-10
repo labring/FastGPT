@@ -161,10 +161,12 @@ export const softDeleteModerationConfig = ({
 /** Restore only tombstones, preserving credentials and never enabling moderation implicitly. */
 export const restoreModerationConfigs = ({
   pluginIds,
-  source = 'system'
+  source = 'system',
+  session
 }: {
   pluginIds: string[];
   source?: string;
+  session?: ClientSession;
 }) =>
   MongoSystemModerationPlugin.updateMany(
     {
@@ -175,5 +177,6 @@ export const restoreModerationConfigs = ({
     {
       $set: { deleted: false, enabled: false, updateTime: new Date() },
       $unset: { deletedAt: '', deletedByTmbId: '' }
-    }
+    },
+    { session }
   );

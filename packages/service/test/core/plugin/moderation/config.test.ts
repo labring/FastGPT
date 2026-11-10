@@ -1,10 +1,13 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 import {
   saveModerationConfig,
-  getAdminModerationPluginList
+  getAdminModerationPluginList,
+  getModerationPolicy
 } from '../../../../core/plugin/moderation/service';
 import * as remote from '../../../../thirdProvider/fastgptPlugin/moderation';
 import { MongoSystemModerationPlugin } from '../../../../core/plugin/moderation/schema';
+import { MongoSystemConfigs } from '../../../../common/system/config/schema';
+import { SystemConfigsTypeEnum } from '@fastgpt/global/common/system/config/constants';
 import { encryptSecret } from '../../../../common/secret/aes256gcm';
 import { ModerationSecretMaskedValue } from '@fastgpt/global/core/plugin/moderation/constants';
 
@@ -188,5 +191,70 @@ describe('moderation configuration save and reload', () => {
       enabled: true
     });
     expect(saved.enabled).toBe(true);
+  });
+
+  it('preserves latest moderation policy values and converges duplicate policy records when enabling a plugin', async () => {
+    vi.spyOn(remote, 'getModerationPluginDetail').mockResolvedValue(detail);
+    await MongoSystemConfigs.create([
+      {
+        type: SystemConfigsTypeEnum.moderationPolicy,
+        createTime: new Date('2026-01-01T00:00:00.000Z'),
+        value: {
+          enabled: false,
+          hooks: {
+            userInput: false,
+            modelInput: false,
+            finalOutput: false
+          },
+          strategy: {
+            streamInterval: 100,
+            suspectedRiskAction: 'passAndLog',
+            serviceExceptionAction: 'pass'
+          }
+        }
+      },
+      {
+        type: SystemConfigsTypeEnum.moderationPolicy,
+        createTime: new Date('2026-01-02T00:00:00.000Z'),
+        value: {
+          enabled: true,
+          hooks: {
+            userInput: true,
+            modelInput: true,
+            finalOutput: false
+          },
+          strategy: {
+            streamInterval: 25,
+            suspectedRiskAction: 'blockAndLog',
+            serviceExceptionAction: 'block'
+          }
+        }
+      }
+    ]);
+
+    await saveModerationConfig({
+      pluginId: detail.pluginId,
+      secretsVal: { enableDefaultDict: true },
+      enabled: true
+    });
+
+    const policy = await getModerationPolicy();
+    expect(policy).toMatchObject({
+      enabled: true,
+      activePluginId: detail.pluginId,
+      hooks: {
+        userInput: true,
+        modelInput: true,
+        finalOutput: false
+      },
+      strategy: {
+        streamInterval: 25,
+        suspectedRiskAction: 'blockAndLog',
+        serviceExceptionAction: 'block'
+      }
+    });
+    expect(
+      await MongoSystemConfigs.countDocuments({ type: SystemConfigsTypeEnum.moderationPolicy })
+    ).toBe(1);
   });
 });
