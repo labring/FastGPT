@@ -1224,7 +1224,7 @@ Server、Agent Sandbox Proxy 和 IDE Agent 的运行时变量。为了避免“�
 
 | 配置字段 | 用途 | 社区版 | 商业版 | 仅 SaaS 显示 | 敏感项 | 当前管理入口 |
 | --- | --- | :---: | :---: | :---: | :---: | --- |
-| `resource.serviceRequestMaxContentLength` | 服务端请求体上限 (MB) | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
+| `resource.serviceRequestMaxContentLength` | 工作流 HTTP 节点响应体上限 (MB) | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
 | `resource.maxFolderDepth` | 最大目录层级深度 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
 | `resource.appFolderMaxAmount` | 应用文件夹数量上限 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
 | `resource.datasetFolderMaxAmount` | 知识库文件夹数量上限 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |

@@ -226,7 +226,7 @@ const LegacyInstanceConfigEnvSchema = z.object({
     description: '图片理解模型最大处理并发数'
   }),
   SERVICE_REQUEST_MAX_CONTENT_LENGTH: IntSchema.default(10).meta({
-    description: '服务器接收请求的最大大小（MB）'
+    description: '工作流 HTTP 节点响应体大小上限（MB，按解压后计算）'
   }),
   MAX_FOLDER_DEPTH: IntSchema.min(2).max(20).default(DEFAULT_MAX_FOLDER_DEPTH).meta({
     description: '允许的最深文件夹层级，默认 4（根目录下最多 4 层文件夹）'

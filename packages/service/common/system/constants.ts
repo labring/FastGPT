@@ -13,7 +13,8 @@ export const isProVersion = () => {
 };
 
 /**
- * 请求体大小上限（MB → byte）。
+ * 工作流 HTTP 节点的响应体大小上限（MB → 字节），按解压后的大小计算。
+ * 不限制服务端接收的请求体或节点发出的请求体。
  * 实例配置 resource.serviceRequestMaxContentLength 是唯一运行时来源；ENV 只在启动迁移时 seed。
  */
 export const getServiceRequestMaxContentLength = () => {
