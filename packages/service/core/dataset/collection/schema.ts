@@ -123,19 +123,9 @@ defineIndex(DatasetCollectionSchema, {
     _id: 1
   }
 });
-defineIndex(DatasetCollectionSchema, {
-  key: { teamId: 1, datasetId: 1, parentId: 1, inheritPermission: 1 },
-  deprecated: true
-});
-
 // 同一 tags 元素内按 ID 和值筛选，兼容标量和多选数组。
 defineIndex(DatasetCollectionSchema, {
   key: { teamId: 1, datasetId: 1, 'tags.tagId': 1, 'tags.value': 1 }
-});
-// 旧格式标签索引不支持结构化字段定位；team/dataset 前缀由当前索引继续提供。
-defineIndex(DatasetCollectionSchema, {
-  key: { teamId: 1, datasetId: 1, tags: 1 },
-  deprecated: true
 });
 // 保留旧检索实例显式 hint 的索引，避免滚动更新期间旧查询失败。
 defineIndex(DatasetCollectionSchema, {
@@ -161,6 +151,18 @@ defineIndex(DatasetCollectionSchema, {
 defineIndex(DatasetCollectionSchema, {
   key: { teamId: 1, datasetId: 1, forbid: 1, _id: 1 },
   options: { partialFilterExpression: { forbid: true } }
+});
+
+// 废弃索引集中登记，启动时按名称和 key 精确清理。
+// 原继承状态索引已合并到上方类型/目录索引。
+defineIndex(DatasetCollectionSchema, {
+  key: { teamId: 1, datasetId: 1, parentId: 1, inheritPermission: 1 },
+  deprecated: true
+});
+// 旧格式标签索引不支持结构化字段定位；team/dataset 前缀由当前索引继续提供。
+defineIndex(DatasetCollectionSchema, {
+  key: { teamId: 1, datasetId: 1, tags: 1 },
+  deprecated: true
 });
 // 旧图片清理任务已删除，当前不再按 relatedImgId 查询 Collection。
 defineIndex(DatasetCollectionSchema, {
