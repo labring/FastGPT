@@ -29,6 +29,32 @@ export const isCompletionResultCurrent = ({
   searchKey: string;
 }) => getCompletionSearchKeys(text).includes(searchKey);
 
+/** 过滤当前问题、去重并截取可展示候选。 */
+export const getCompletionResultData = ({ data, text }: { data: string[]; text: string }) => {
+  const currentText = text.trim();
+
+  return [...new Set(data)].filter((item) => item.trim() !== currentText).slice(0, 5);
+};
+
+/** 依次查询后缀，首个存在可展示候选的后缀即返回。 */
+export const getFirstCompletionResult = async <T extends string>({
+  queries,
+  text,
+  request
+}: {
+  queries: string[];
+  text: string;
+  request: (searchKey: string) => Promise<T[]>;
+}) => {
+  for (const searchKey of queries) {
+    if (searchKey.length > 20) continue;
+    const data = getCompletionResultData({ data: await request(searchKey), text });
+    if (data.length) return { data, searchKey };
+  }
+
+  return { data: [], searchKey: '' };
+};
+
 type CompletionKeyAction = 'previous' | 'next' | 'close' | 'accept';
 
 /**

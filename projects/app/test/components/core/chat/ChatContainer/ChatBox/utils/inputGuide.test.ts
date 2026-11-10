@@ -4,6 +4,8 @@ import {
   getCompletionKeyAction,
   getChangedTextStart,
   getCompletionContext,
+  getCompletionResultData,
+  getFirstCompletionResult,
   getCompletionSearchKeys,
   getEditedCompletionContext,
   getNextCompletionIndex,
@@ -56,6 +58,47 @@ describe('input guide completion context', () => {
       '么？',
       '？'
     ]);
+  });
+
+  it('filters the current question and duplicate candidates before returning results', () => {
+    expect(
+      getCompletionResultData({
+        data: ['FastGPT 是什么？', '是什么？还能做什么？', '是什么？还能做什么？'],
+        text: 'FastGPT 是什么？ '
+      })
+    ).toEqual(['是什么？还能做什么？']);
+  });
+
+  it('treats a self-only result as unavailable for suffix fallback', () => {
+    expect(
+      getCompletionResultData({
+        data: ['FastGPT 是什么？'],
+        text: 'FastGPT 是什么？'
+      })
+    ).toEqual([]);
+  });
+
+  it('continues suffix fallback when a result contains only the current text', async () => {
+    const responses: Record<string, string[]> = {
+      'FastGPT 是什么？': ['FastGPT 是什么？'],
+      '是什么？': ['是什么？还能做什么？']
+    };
+    const requested: string[] = [];
+
+    await expect(
+      getFirstCompletionResult({
+        queries: ['FastGPT 是什么？', '是什么？'],
+        text: 'FastGPT 是什么？',
+        request: async (searchKey) => {
+          requested.push(searchKey);
+          return responses[searchKey] ?? [];
+        }
+      })
+    ).resolves.toEqual({
+      data: ['是什么？还能做什么？'],
+      searchKey: '是什么？'
+    });
+    expect(requested).toEqual(['FastGPT 是什么？', '是什么？']);
   });
 
   it('updates the query when the caret moves after the anchor', () => {

@@ -10,7 +10,11 @@ import { ChatBoxContext } from '../Provider';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowRuntimeContext } from '../../context/workflowRuntimeContext';
 import type { ChatSourceTarget } from '@/web/core/chat/utils';
-import { getCompletionSearchKeys, isCompletionResultCurrent } from '../utils/inputGuide';
+import {
+  getFirstCompletionResult,
+  getCompletionSearchKeys,
+  isCompletionResultCurrent
+} from '../utils/inputGuide';
 
 export default function InputGuideBox({
   id,
@@ -35,22 +39,20 @@ export default function InputGuideBox({
 
   const { data } = useRequest(
     async () => {
-      for (const searchKey of getCompletionSearchKeys(text)) {
-        // More than 20 characters, it's basically meaningless
-        if (searchKey.length > 20) continue;
-        const result = await queryChatInputGuideList(
-          {
-            sourceType: sourceTarget.sourceType,
-            sourceId: sourceTarget.sourceId,
-            searchKey,
-            outLinkAuthData
-          },
-          chatInputGuide.customUrl ? chatInputGuide.customUrl : undefined
-        );
-        if (result.length) return { data: result, searchKey };
-      }
-
-      return { data: [], searchKey: '' };
+      return getFirstCompletionResult({
+        queries: getCompletionSearchKeys(text),
+        text,
+        request: (searchKey) =>
+          queryChatInputGuideList(
+            {
+              sourceType: sourceTarget.sourceType,
+              sourceId: sourceTarget.sourceId,
+              searchKey,
+              outLinkAuthData
+            },
+            chatInputGuide.customUrl ? chatInputGuide.customUrl : undefined
+          )
+      });
     },
     {
       manual: false,
@@ -62,7 +64,7 @@ export default function InputGuideBox({
   const filterData = useMemo(
     () =>
       data?.searchKey && isCompletionResultCurrent({ text, searchKey: data.searchKey })
-        ? [...new Set(data.data)].filter((item) => item !== text).slice(0, 5)
+        ? data.data
         : [],
     [data, text]
   );
