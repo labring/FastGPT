@@ -10,6 +10,7 @@ import {
   GetWXLoginQRResponseSchema,
   LoginSuccessResponseSchema,
   LoginByPasswordResponseSchema,
+  LoginVerificationConfigResponseSchema,
   LoginVerificationChallengeBodySchema,
   LoginVerificationCaptchaResponseSchema,
   LoginVerificationSendCodeBodySchema,
@@ -24,6 +25,24 @@ import {
 } from './api';
 
 export const LoginPath: OpenAPIPath = {
+  '/support/user/account/login/verification/config': {
+    get: {
+      summary: '获取登录二次验证开关（Pro 内部接口）',
+      description:
+        '只供 FastGPT 主服务直连 Pro 服务的 /api 路由使用，必须携带 x-fastgpt-pro-token 服务间凭据。',
+      tags: [DevApiTagsMap.userLogin],
+      responses: {
+        200: {
+          description: 'Pro 当前的登录二次验证开关',
+          content: {
+            'application/json': {
+              schema: LoginVerificationConfigResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
   '/support/user/account/tokenLogin': {
     get: {
       summary: 'Token 登录',
