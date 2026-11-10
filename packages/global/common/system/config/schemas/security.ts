@@ -21,5 +21,7 @@ export const SecurityConfigSchema = z.strictObject({
   checkExternalFile: z.boolean().default(false),
   censor: CensorConfigSchema.prefault({}),
   workflowHttpNode: WorkflowHttpNodeSecuritySchema.prefault({}),
-  fileUrlWhitelist: z.array(z.string().min(1).max(2048)).max(200).default([])
+  // 旧名单没有条数上限；限制条数会让迁移净化器删除整个名单并关闭外链校验。
+  // 保留逐项格式校验，避免升级后丢失既有访问限制。
+  fileUrlWhitelist: z.array(z.string().min(1).max(2048)).default([])
 });

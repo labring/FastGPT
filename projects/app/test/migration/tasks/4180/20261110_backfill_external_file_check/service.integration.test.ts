@@ -4,6 +4,13 @@ import {
   backfillExternalFileCheck,
   verifyExternalFileCheck
 } from '@/migration/tasks/4180/20261110_backfill_external_file_check/service';
+import {
+  applyInstanceConfigMigration,
+  buildLegacyDomainOverrides,
+  sanitizeOverridesForSchema
+} from '@/migration/tasks/4180/20260928_migrate_instance_configs/service';
+import { resolveDomainEffectiveConfig } from '@fastgpt/global/common/system/config/schema';
+import { readLegacyInstanceConfigEnv } from '@/migration/tasks/4180/20260928_migrate_instance_configs/env';
 
 const collection = MongoSystemInstanceConfig.collection;
 const run = () => backfillExternalFileCheck({ assertActive: async () => {} });
@@ -12,6 +19,36 @@ describe('external file check backfill with MongoDB', () => {
   beforeEach(async () => {
     await MongoSystemInstanceConfig.deleteMany({});
   });
+
+  it.each([200, 201, 1000])(
+    'preserves all %i valid legacy hosts and keeps external file checking enabled',
+    async (count) => {
+      const hosts = Array.from({ length: count }, (_, index) => `host-${index}.example.test`);
+      const warnings: string[] = [];
+      const raw = buildLegacyDomainOverrides({
+        feConfigs: {},
+        systemEnv: { fileUrlWhitelist: hosts },
+        legacyEnv: readLegacyInstanceConfigEnv()
+      });
+      const overrides = sanitizeOverridesForSchema({ overrides: raw, warnings });
+      await applyInstanceConfigMigration({
+        overrides,
+        logger: { info: () => {}, warn: () => {}, error: () => {} }
+      });
+
+      expect(await run()).toEqual({ updatedDocuments: 1 });
+      await expect(verifyExternalFileCheck()).resolves.toBeUndefined();
+      const document = await MongoSystemInstanceConfig.findOne({ domain: 'security' }).lean();
+      const effective = resolveDomainEffectiveConfig({
+        domain: 'security',
+        overrides: document?.overrides
+      });
+      expect(effective.fileUrlWhitelist).toEqual(hosts);
+      expect(effective.checkExternalFile).toBe(true);
+      expect(warnings).toEqual([]);
+      expect(await run()).toEqual({ updatedDocuments: 0 });
+    }
+  );
 
   it.each(['missing', 'null'] as const)(
     'treats %s overrides as empty and safely reruns',
