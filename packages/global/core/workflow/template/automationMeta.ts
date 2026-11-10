@@ -1,4 +1,4 @@
-import { i18nT } from '@fastgpt/global/common/i18n/utils';
+import { i18nT } from '../../../common/i18n/utils';
 import type { NodeTemplateAutomationMeta } from './type';
 import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '../constants';
 import { FlowNodeInputTypeEnum, FlowNodeTypeEnum } from '../node/constant';
