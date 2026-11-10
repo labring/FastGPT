@@ -7,7 +7,10 @@ import {
 import * as checkerMod from '../../../../core/plugin/moderation/checker';
 import * as serviceMod from '../../../../core/plugin/moderation/service';
 import { dispatchWorkFlow } from '../../../../core/workflow/dispatch';
-import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatSourceTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import { preChatRound } from '../../../../core/chat/utils/prepare';
+import { MongoChat } from '../../../../core/chat/chatSchema';
+import { MongoChatItem } from '../../../../core/chat/chatItemSchema';
 
 describe('dispatchWorkFlow Entry Guard integration', () => {
   afterEach(() => {
@@ -76,5 +79,50 @@ describe('dispatchWorkFlow Entry Guard integration', () => {
         }
       })
     ).rejects.toThrow(new UserError(MODERATION_BLOCKED_ERROR_MESSAGE));
+  });
+
+  it('rejects preChatRound before persisting chat or chat items when entry moderation blocks user input', async () => {
+    vi.spyOn(serviceMod, 'getModerationPolicy').mockResolvedValue({
+      enabled: true,
+      activePluginId: 'test-plugin',
+      hooks: {
+        userInput: true,
+        modelInput: false,
+        finalOutput: false
+      },
+      strategy: {
+        streamInterval: 50,
+        suspectedRiskAction: 'blockAndLog' as any,
+        serviceExceptionAction: 'pass' as any
+      }
+    });
+
+    vi.spyOn(checkerMod, 'checkContentByPolicy').mockResolvedValue({
+      action: ModerationActionEnum.block,
+      isPass: false,
+      text: '甲基苯丙胺'
+    });
+
+    const chatCreateSpy = vi.spyOn(MongoChat, 'findOneAndUpdate');
+    const chatItemCreateSpy = vi.spyOn(MongoChatItem, 'create');
+
+    await expect(
+      preChatRound({
+        sourceType: ChatSourceTypeEnum.app,
+        sourceId: '67e0d5535c02d1d5cdede71f',
+        chatId: 'blocked-chat-id',
+        teamId: '654a4107c32f3bf5f998452f',
+        tmbId: '65ab7007462ada7dbb899948',
+        source: 'online' as any,
+        userContent: {
+          obj: ChatRoleEnum.Human,
+          value: [{ text: { content: '甲基苯丙胺' } }]
+        },
+        responseChatItemId: 'blocked-resp-id'
+      })
+    ).rejects.toThrow(new UserError(MODERATION_BLOCKED_ERROR_MESSAGE));
+
+    expect(chatCreateSpy).not.toHaveBeenCalled();
+    expect(chatItemCreateSpy).not.toHaveBeenCalled();
   });
 });

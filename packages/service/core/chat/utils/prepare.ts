@@ -17,6 +17,7 @@ import { canWriteGeneratedTitle, syncGeneratedChatTitleFromUserContent } from '.
 import { buildChatSourceQuery, buildChatSourceWriteFields, type ChatSourceParams } from '../source';
 import { tryStartChatGenerationLease } from '../generationLease';
 import { delAgentRuntimeStopSign } from '../stop';
+import { checkEntryModeration, markEntryModerationChecked } from '../../plugin/moderation/entry';
 
 export const NO_RECORD_CHAT_ID = 'NO_RECORD_HISTORIES';
 
@@ -68,6 +69,8 @@ export type PreChatRoundParams = Omit<PrepareChatRoundParams, 'chatId' | 'respon
   chatId?: string;
   responseChatItemId?: string;
   interactive?: WorkflowInteractiveResponseType;
+  variables?: Record<string, any>;
+  requestId?: string;
   fixedTitle?: string;
   /** 固定标题语言；无请求上下文的入口缺省并由标题模块回退 zh-CN。 */
   locale?: localeType;
@@ -203,6 +206,21 @@ export const preChatRound = async (params: PreChatRoundParams): Promise<PreChatR
     userContent: params.userContent
   });
   const isInteractiveContinue = !!params.interactive && interactiveStatus !== 'query';
+
+  // 入口审核必须在获取生成租约和落库 Human/AI 占位消息之前执行：违规直接拒绝，不产生任何会话或消息持久化。
+  await checkEntryModeration({
+    query: params.userContent.value,
+    variables: params.variables,
+    context: {
+      teamId: params.teamId,
+      tmbId: params.tmbId,
+      appId: params.sourceId,
+      chatId,
+      responseChatItemId,
+      requestId: params.requestId
+    }
+  });
+  markEntryModerationChecked({ chatId, responseChatItemId });
 
   if (!shouldPersistChatRound) {
     // 不落库的入口没有 lease，在准备阶段重置旧信号；执行器启动后不再清理主动停止。

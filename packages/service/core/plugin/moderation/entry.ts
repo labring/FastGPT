@@ -11,10 +11,52 @@ import type {
 } from '@fastgpt/global/core/plugin/moderation/type';
 import { workflowSystemVariables } from '@fastgpt/global/core/workflow/node/constant';
 import { checkContentByPolicy, isModerationHookEnabled } from './checker';
-import { ensureNodeModerationRecord } from './collector';
 import { getModerationPolicy } from './service';
 
 const SYSTEM_VARIABLE_KEYS = new Set<string>(workflowSystemVariables.map((item) => item.key));
+const ENTRY_CHECKED_TTL_MS = 60_000;
+const entryCheckedRounds = new Map<string, number>();
+
+const buildEntryRoundKey = ({
+  chatId,
+  responseChatItemId
+}: {
+  chatId?: string;
+  responseChatItemId?: string;
+}) => (chatId && responseChatItemId ? `${chatId}:${responseChatItemId}` : undefined);
+
+/**
+ * 标记当前对话轮次已在 preChatRound 完成入口审核，避免后续紧邻的 dispatchWorkFlow 重复调用插件与落库审计记录。
+ */
+export const markEntryModerationChecked = (params: {
+  chatId?: string;
+  responseChatItemId?: string;
+}) => {
+  const key = buildEntryRoundKey(params);
+  if (!key) return;
+  const now = Date.now();
+  if (entryCheckedRounds.size > 500) {
+    for (const [k, expiresAt] of entryCheckedRounds.entries()) {
+      if (expiresAt <= now) entryCheckedRounds.delete(k);
+    }
+  }
+  entryCheckedRounds.set(key, now + ENTRY_CHECKED_TTL_MS);
+};
+
+/**
+ * 消费一次性的入口已审标记；若未在 preChatRound 预审（如直接调用 dispatchWorkFlow），返回 false。
+ */
+export const consumeEntryModerationChecked = (params: {
+  chatId?: string;
+  responseChatItemId?: string;
+}): boolean => {
+  const key = buildEntryRoundKey(params);
+  if (!key) return false;
+  const expiresAt = entryCheckedRounds.get(key);
+  if (expiresAt === undefined) return false;
+  entryCheckedRounds.delete(key);
+  return expiresAt > Date.now();
+};
 
 export type CheckEntryModerationParams = {
   /** 本轮用户问题输入 */
@@ -83,11 +125,6 @@ export const checkEntryModeration = async ({
           });
 
           if (result.action === ModerationActionEnum.block) {
-            ensureNodeModerationRecord(result, {
-              stage: ModerationStageEnum.entry,
-              targetField: 'query',
-              content: text
-            });
             throw new UserError(getModerationBlockErrorMessage(result.verdict));
           }
         }
@@ -110,11 +147,6 @@ export const checkEntryModeration = async ({
         });
 
         if (result.action === ModerationActionEnum.block) {
-          ensureNodeModerationRecord(result, {
-            stage: ModerationStageEnum.entry,
-            targetField: `variable.${key}`,
-            content: text
-          });
           throw new UserError(getModerationBlockErrorMessage(result.verdict));
         }
       }

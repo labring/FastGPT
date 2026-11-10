@@ -84,7 +84,7 @@ baseline: "c915077feb8edd7cfa36fe73b49c9d00550d24a1"
 
 | 子场景 | 验证方式 | 特有预期 | 证据获取方式 |
 | --- | --- | --- | --- |
-| C1 | API、数据库 | 1) 和 2) 在进入工作流节点执行前立即抛出 `UserError("内容包含敏感信息，已拦截")`，不调用 LLM、不产生模型 Token 计费，入口节点响应记录 `stage: 'entry', targetField: 'query' | 'variable.customVar', actionTaken: 'block'`；3) 系统变量键（`userId`/`appId`/`chatId`/`responseChatItemId`/`histories`/`cTime`）被跳过免审，请求正常通过。 | HTTP/SSE 错误响应、账单 usage 查询、`system_moderation_records` 与入口节点 `moderationRecords`。 |
+| C1 | API、UI、数据库 | 1) 和 2) 在进入 `preChatRound` 与工作流节点执行前立即抛出 `UserError("内容包含敏感信息，已拦截")`，不调用 LLM、不产生模型 Token 计费、不落库 `chats` / `chatitems` / `chatitemresponses`（仅在 `system_moderation_records` 记录 `stage: 'entry', targetField: 'query' | 'variable.customVar', actionTaken: 'block'`），前端弹出 Toast 提示、回滚占位消息并保留输入内容；3) 系统变量键（`userId`/`appId`/`chatId`/`responseChatItemId`/`histories`/`cTime`）被跳过免审，请求正常通过。 | HTTP/SSE 错误响应、前端 Toast 与消息列表状态、账单 usage 查询、`chats`/`chatitems` 空记录验证及 `system_moderation_records`。 |
 | C2 | API、数据库 | 1) 违规的 `systemPrompt`、`Q_blk` 内容及 `F_blk.txt` 正文被替换为 `"该信息因内容审核不通过，无法返回"`（`actionTaken: 'replace'`），同批正常的 `Q_safe` 与 `F_safe.txt` 原文完整保留，节点继续调用模型完成回答；2) 当必需的 `userChatInput` 被拦截时，节点不发起模型调用，直接返回节点错误（可走工作流错误捕获分支）。 | 模型实际接收上下文/节点详情快照、`system_moderation_records` 中 `actionTaken: 'replace' | 'block'` 记录。 |
 | C3 | API、数据库 | 1) `dispatchWorkflowReadFiles` 逐文件审查：`F_blk.txt` 的 `content` 替换为 `"该信息因内容审核不通过，无法返回"`，`F_safe.txt` 保持原文；2) 工具返回结果违规时被替换为同一脱敏提示回传给模型，不中断 Agent Loop，Agent 正常完成后续回复。 | Agent 工具响应 JSON、节点响应详情、`system_moderation_records`（`targetField: 'file.F_blk.txt' | 'toolResult'`）。 |
 | C4 | API、数据库 | 所有面向用户的非流式输出命中违规时均被阻断，不向客户端返回违规文本、`userSelect` 选项或 `formInput` 表单交互，也不生成假空问题列表。 | 各节点触发后的响应报文与 `chatitems` 落库内容。 |

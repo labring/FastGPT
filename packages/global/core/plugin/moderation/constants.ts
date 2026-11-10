@@ -55,6 +55,15 @@ export const getModerationBlockErrorMessage = (
   return verdict === 'error' ? MODERATION_ERROR_BLOCKED_MESSAGE : MODERATION_BLOCKED_ERROR_MESSAGE;
 };
 
+/**
+ * 判断错误文案是否为内容审核拦截提示
+ */
+export const isModerationBlockErrorMessage = (message?: string): boolean => {
+  return (
+    message === MODERATION_BLOCKED_ERROR_MESSAGE || message === MODERATION_ERROR_BLOCKED_MESSAGE
+  );
+};
+
 /** 归一化审查标签定义 */
 export enum ModerationLabelEnum {
   porn = 'porn',

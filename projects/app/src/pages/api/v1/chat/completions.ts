@@ -283,6 +283,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
     // Get runtimeNodes
     let runtimeNodes = storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes, interactive));
+    const entryVariables = variables;
     if (isPlugin) {
       // Assign values to runtimeNodes using variables
       runtimeNodes = updateWorkflowToolInputByVariables(runtimeNodes, variables);
@@ -326,6 +327,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       sourceName: sourceName || '',
       outLinkUid: outLinkUserId,
       userContent: workflowUserQuestion,
+      variables: entryVariables,
+      requestId:
+        typeof req.headers['x-request-id'] === 'string' ? req.headers['x-request-id'] : undefined,
       responseChatItemId: roundState.responseChatItemId,
       interactive,
       fixedTitle: pluginFixedTitle,

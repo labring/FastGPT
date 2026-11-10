@@ -97,7 +97,7 @@ import { getWorkflowSource } from './utils/source';
 import { WorkflowMemoryState } from '../memory/state';
 import { prepareWorkflowFileContext } from '../utils/fileContext';
 import { markProfileError, profileStage } from '../../../common/profiling';
-import { checkEntryModeration } from '../../plugin/moderation/entry';
+import { checkEntryModeration, consumeEntryModerationChecked } from '../../plugin/moderation/entry';
 import { runWithNodeModerationContext } from '../../plugin/moderation/collector';
 import type { NodeModerationRecordType } from '@fastgpt/global/core/plugin/moderation/type';
 
@@ -175,71 +175,26 @@ export async function dispatchWorkFlow({
     clientAbortTracker?.isClientAborted() ?? stopController?.checkIsStopping() ?? false;
 
   try {
-    // 锚点 1：信息接入平台（Entry Guard）- 校验用户输入与全局变量/表单输入，违规直接阻断
-    const entryModerationRecords: NodeModerationRecordType[] = [];
-    const entryNode = data.runtimeNodes?.find((item) => item.isEntry) || data.runtimeNodes?.[0];
-    try {
-      await runWithNodeModerationContext(entryModerationRecords, () =>
-        checkEntryModeration({
-          query,
-          variables: data.variables,
-          context: {
-            teamId: runningUserInfo.teamId,
-            tmbId: runningUserInfo.tmbId,
-            appId: runningAppInfo.sourceId,
-            chatId,
-            responseChatItemId,
-            nodeId: entryNode?.nodeId,
-            nodeName: entryNode?.name,
-            requestId:
-              typeof data.req?.headers?.['x-request-id'] === 'string'
-                ? data.req.headers['x-request-id']
-                : undefined
-          }
-        })
-      );
-    } catch (error) {
-      if (
-        entryNode &&
-        (data.nodeResponseWriteConfig?.persistToDb ||
-          data.nodeResponseWriteConfig?.retainInMemory ||
-          data.workflowStreamResponse)
-      ) {
-        try {
-          const entrySink = await createWorkflowEntryNodeResponseSink({
-            teamId: data.runningAppInfo.teamId,
-            sourceType: data.runningAppInfo.sourceType,
-            sourceId: data.runningAppInfo.sourceId,
-            chatId,
-            chatItemDataId: responseChatItemId,
-            nodeResponseWriteConfig: data.nodeResponseWriteConfig,
-            apiVersion: data.apiVersion,
-            responseAllData: data.responseAllData,
-            responseDetail: data.responseDetail,
-            workflowStreamResponse: data.workflowStreamResponse
-          });
-          await entrySink.publish([
-            {
-              response: {
-                id: getNanoid(),
-                nodeId: entryNode.nodeId,
-                moduleName: entryNode.name,
-                moduleType: entryNode.flowNodeType,
-                moduleLogo: entryNode.avatar,
-                error: getErrText(error),
-                runningTime: 0,
-                ...(entryModerationRecords.length > 0
-                  ? { moderationRecords: entryModerationRecords }
-                  : {})
-              }
-            }
-          ]);
-          await entrySink.close();
-        } catch (sinkErr) {
-          logger.warn('Failed to persist entry moderation node response', { error: sinkErr });
+    // 锚点 1：信息接入平台（Entry Guard）- 校验用户输入与全局变量/表单输入，违规直接阻断且不写入节点响应
+    if (!consumeEntryModerationChecked({ chatId, responseChatItemId })) {
+      const entryNode = data.runtimeNodes?.find((item) => item.isEntry) || data.runtimeNodes?.[0];
+      await checkEntryModeration({
+        query,
+        variables: data.variables,
+        context: {
+          teamId: runningUserInfo.teamId,
+          tmbId: runningUserInfo.tmbId,
+          appId: runningAppInfo.sourceId,
+          chatId,
+          responseChatItemId,
+          nodeId: entryNode?.nodeId,
+          nodeName: entryNode?.name,
+          requestId:
+            typeof data.req?.headers?.['x-request-id'] === 'string'
+              ? data.req.headers['x-request-id']
+              : undefined
         }
-      }
-      throw error;
+      });
     }
 
     /* Init function */
