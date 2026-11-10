@@ -303,6 +303,23 @@ describe('runPiAgentLoop', () => {
     compressRequestMessagesMock.mockImplementation(async ({ messages }) => ({ messages }));
   });
 
+  it('passes the business recovery hook through piAgent context transformation', async () => {
+    agentRunTransformContext.value = true;
+    const getCheckpointContext = vi.fn(async () => 'task-memory/index.json');
+    await runPiAgentLoop({
+      input: { messages: [{ role: 'user', content: 'continue' }] },
+      runtime: {
+        llmParams: { model: 'gpt-5' },
+        toolCatalog: { runtimeTools: [] },
+        executeTool: vi.fn(),
+        getCheckpointContext
+      }
+    });
+    expect(compressRequestMessagesMock).toHaveBeenCalledWith(
+      expect.objectContaining({ getCheckpointContext })
+    );
+  });
+
   it('runs pi-agent-core through the provider contract and returns provider state', async () => {
     const events: any[] = [];
     const usagePush = vi.fn();
@@ -387,6 +404,7 @@ describe('runPiAgentLoop', () => {
   });
 
   it('continues the same pi agent when completion policy rejects a natural completion', async () => {
+    const emitEvent = vi.fn();
     const completionPolicy = vi
       .fn()
       .mockResolvedValueOnce({
@@ -401,6 +419,7 @@ describe('runPiAgentLoop', () => {
         teamId: 'team_1',
         llmParams: { model: 'gpt-5' },
         completionPolicy,
+        emitEvent,
         toolCatalog: { runtimeTools: [] },
         executeTool: vi.fn(),
         checkIsStopping: vi.fn(() => false)
@@ -410,11 +429,28 @@ describe('runPiAgentLoop', () => {
     expect(result.status).toBe('done');
     expect(agentPromptMock).toHaveBeenNthCalledWith(1, 'build it');
     expect(agentPromptMock).toHaveBeenNthCalledWith(2, 'Continue until terminal facts exist.');
-    expect(completionPolicy).toHaveBeenNthCalledWith(1, { requestIndex: 1 });
-    expect(completionPolicy).toHaveBeenNthCalledWith(2, { requestIndex: 2 });
+    expect(completionPolicy).toHaveBeenNthCalledWith(1, {
+      requestIndex: 1,
+      answerText: expect.any(String)
+    });
+    expect(completionPolicy).toHaveBeenNthCalledWith(2, {
+      requestIndex: 2,
+      answerText: expect.any(String)
+    });
     expect(result.completeMessages).toContainEqual({
       role: 'user',
-      content: 'Continue until terminal facts exist.'
+      content: 'Continue until terminal facts exist.',
+      hideInUI: true
+    });
+    expect(result.assistantMessages).toContainEqual({
+      role: 'user',
+      content: 'Continue until terminal facts exist.',
+      hideInUI: true
+    });
+    expect(emitEvent).toHaveBeenCalledWith({
+      type: 'user_message',
+      content: 'Continue until terminal facts exist.',
+      source: 'server'
     });
   });
 
