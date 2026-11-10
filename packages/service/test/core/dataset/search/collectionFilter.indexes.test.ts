@@ -21,16 +21,21 @@ const tagDefinitions = [
   { _id: new Types.ObjectId(), tag: 'time', tagType: 'datetime' }
 ];
 const definitions = new Map(tagDefinitions.map((tag) => [tag.tag, tag]));
-const makeTags = (
-  score: number | string,
-  multi: string[] | string,
-  text: string | string[],
-  time: number | string = 1700000000000
-) =>
+const makeTags = ({
+  score,
+  multi,
+  text,
+  time = 1700000000000
+}: {
+  score: number | string;
+  multi: string[] | string;
+  text: string | string[];
+  time?: number | string;
+}) =>
   [score, multi, text, time].map((value, i) => ({ tagId: String(tagDefinitions[i]._id), value }));
 
 /** 用原值比较器计算完整候选的结果，校验 Mongo 预筛不会改变旧值/空值语义。 */
-const expectedIds = (docs: any[], and: any[], or: any[]) => {
+const expectedIds = ({ docs, and, or }: { docs: any[]; and: any[]; or: any[] }) => {
   const matches = (doc: any, condition: any) => {
     const name = Object.keys(condition)[0];
     const op = Object.keys(condition[name])[0];
@@ -66,23 +71,28 @@ describe('collection filters with consolidated indexes', () => {
       parentId,
       type: 'file',
       name: String(i),
-      tags: makeTags(
-        i,
-        i % 1000 === 0 ? ['rare'] : ['common'],
-        i % 1000 === 0 ? 'rare' : 'common',
-        1700000000000 + i * 1000
-      )
+      tags: makeTags({
+        score: i,
+        multi: i % 1000 === 0 ? ['rare'] : ['common'],
+        text: i % 1000 === 0 ? 'rare' : 'common',
+        time: 1700000000000 + i * 1000
+      })
     }));
     docs.push(
       {
         ...docs[0],
         _id: new Types.ObjectId(),
-        tags: makeTags('999', [], ['a', 'b'], new Date(1700000999000).toISOString())
+        tags: makeTags({
+          score: '999',
+          multi: [],
+          text: ['a', 'b'],
+          time: new Date(1700000999000).toISOString()
+        })
       },
       {
         ...docs[0],
         _id: new Types.ObjectId(),
-        tags: makeTags('invalid', 'rare', 'legacy', 'invalid')
+        tags: makeTags({ score: 'invalid', multi: 'rare', text: 'legacy', time: 'invalid' })
       },
       { ...docs[0], _id: new Types.ObjectId(), tags: [] }
     );
@@ -113,7 +123,7 @@ describe('collection filters with consolidated indexes', () => {
         $or: or
       });
       const query = find.mock.calls.at(-1)![0];
-      expect(actual?.sort()).toEqual(expectedIds(docs, and, or));
+      expect(actual?.sort()).toEqual(expectedIds({ docs, and, or }));
       if (and[0]?.score?.$eq === 999 || and[0]?.multi?.$contains) {
         const explain = await MongoDatasetCollection.find(query, '_id tags').explain(
           'executionStats'
