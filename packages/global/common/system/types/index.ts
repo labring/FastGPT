@@ -125,7 +125,7 @@ export const FastGPTFeConfigsSchema = z.looseObject({
   showWecomConfig: z.boolean().optional().meta({ description: '是否展示企业微信集成配置' }),
   login2faEnabled: z.boolean().optional().meta({
     description:
-      '登录二次验证开关；由 Pro 的 LOGIN_2FA_ENABLED 下发，主服务据此决定是否要求二次验证'
+      '登录二次验证展示兼容字段；实际登录策略由主服务实时向 Pro 读取 LOGIN_2FA_ENABLED，不读取此值'
   }),
   wecomLoginAutoRedirect: z
     .boolean()
