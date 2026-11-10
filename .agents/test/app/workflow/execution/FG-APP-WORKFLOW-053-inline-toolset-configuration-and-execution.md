@@ -11,6 +11,7 @@ status: ready
 tags: [pr-8074, inline-toolset, mcp, http, toolcall, 覆盖基础场景, 覆盖异常场景, 覆盖边界场景]
 evidence: [ui, response, database, log]
 sources:
+  - .agents/test/support/toolset-fixture.mjs
   - packages/global/core/workflow/template/system/mcpToolSet.ts
   - packages/global/core/workflow/template/system/httpToolSet.ts
   - packages/global/core/workflow/type/node.ts
@@ -53,6 +54,7 @@ baseline: 346deb76c7fb8f7d961f0312d57bdea3d541180a
 - 版本：部署 PR #8074 基线或其修复版本，记录实际 commit；用例格式取自 upstream/main `dd3cc357757bfb7c11a607c279a69a5f73a48c74`。仅部署该 main 不包含本需求，不能据此判断功能缺失为失败。
 - 身份：独立测试团队及有工作流创建、编辑、发布、运行和删除权限的账号；记录 `BASE_URL`、`teamId`、`appId` 和 `RUN_ID=pr8074-<唯一后缀>`。
 - 协议夹具：提供通过现有地址安全检查、可从服务端访问的 HTTPS MCP 服务与 OpenAPI 文档/HTTP 服务。测试依赖替代的是远端工具和模型，FastGPT 的 UI、API、工作流引擎、MongoDB 使用真实实例，不通过 mock handler 代替业务入口。
+- 可复用 `.agents/test/support/toolset-fixture.mjs`：通过 `FASTGPT_FIXTURE_TLS_KEY` 和 `FASTGPT_FIXTURE_TLS_CERT` 指定仅用于测试的私钥、证书后启动；证书须受 dev 服务信任。默认本机 9446 为控制端和模型网关，9447/9448 为两个 HTTPS 服务端。控制端接受 `version`、`reverse`、`plan` 等测试状态，审计包含模型消息，所有数据和鉴权值均须使用本轮合成值。
 - MCP M0：工具 `echo`，描述 `remote-echo-v1`，参数为 object，必填字符串 `q`、可选整数 `limit`；`tools/call` 返回文本中的 JSON `{fixture:"mcp",q,limit}`。另有 `fail`，调用时返回 MCP `isError: true`；协议端允许将目录临时切换为无效响应并恢复。
 - HTTP H0：公开 OpenAPI 3.0 文档，`servers[0].url=HTTP_ORIGIN_A`；`GET /echo` 的 `operationId=echo`、描述 `remote-echo-v1`，query 参数同 M0；接口返回 `{fixture:"http-A",q,limit}`。`HTTP_ORIGIN_B` 同路由返回 `fixture:"http-B"`。另有 `GET /fail`，返回 HTTP 500。原始文档不含 FastGPT 扩展 `isToolParam`。
 - 两种协议的 v2 夹具：保留 `echo`，新增必填字符串 `locale`，描述改为 `remote-echo-v2`；新增工具 `lookup`（HTTP 为 GET /lookup、operationId=lookup），参数为必填字符串 q，返回 `{fixture:"对应协议标记",operation:"lookup",q}`。远端调用审计记录 `RUN_ID`（来自 q）、工具/方法/路径、参数、结果和开始/结束时间，不能记录真实凭据。
