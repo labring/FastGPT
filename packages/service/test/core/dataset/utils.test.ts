@@ -205,6 +205,22 @@ describe('getTrainingModeByCollection', () => {
       })
     ).toBe(TrainingModeEnum.index);
   });
+
+  it('模板 FAQ 在开启 autoIndexes 时进入 auto 队列', () => {
+    expect(
+      getTrainingModeByCollection({
+        trainingType: DatasetCollectionDataProcessModeEnum.template,
+        autoIndexes: true
+      })
+    ).toBe(TrainingModeEnum.auto);
+
+    expect(
+      getTrainingModeByCollection({
+        trainingType: DatasetCollectionDataProcessModeEnum.template,
+        autoIndexes: false
+      })
+    ).toBe(TrainingModeEnum.index);
+  });
 });
 
 describe('getDatasetImageIndexCapability', () => {

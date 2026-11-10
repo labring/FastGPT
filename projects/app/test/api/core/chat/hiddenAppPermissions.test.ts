@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import initHandler from '@/pages/api/core/chat/init';
+import markReadHandler from '@/pages/api/core/chat/history/markRead';
 import permissionHandler from '@/pages/api/core/app/getPermission';
 import recordsHandler from '@/pages/api/core/chat/record/getPaginationRecords';
 import deleteRecordHandler from '@/pages/api/core/chat/record/delete';
@@ -149,6 +150,26 @@ describe('hidden application chat permissions', () => {
     expect(
       (await MongoChatItem.findOne({ appId, chatId, dataId }).lean())?.deleteTime
     ).toBeInstanceOf(Date);
+  });
+
+  it.each(['owner', 'member'] as const)(
+    'allows %s to mark their own chat as read',
+    async (role) => {
+      const auth = role === 'owner' ? owner : member;
+      await MongoChat.updateOne({ appId, chatId }, { $set: { tmbId: auth.tmbId } });
+
+      const res = await Call(markReadHandler, { auth, body: { appId, chatId } });
+
+      expect(res).toMatchObject({ code: 200 });
+      expect((await MongoChat.findOne({ appId, chatId }).lean())?.hasBeenRead).toBe(true);
+    }
+  );
+
+  it('rejects ordinary members marking another member chat as read', async () => {
+    const res = await Call(markReadHandler, { auth: member, body: { appId, chatId } });
+
+    expect(res.code).toBe(500);
+    expect((await MongoChat.findOne({ appId, chatId }).lean())?.hasBeenRead).toBe(false);
   });
 
   it.each(['owner', 'manager'] as const)(

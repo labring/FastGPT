@@ -193,6 +193,7 @@ export enum NodeInputKeyEnum {
 
   datasetSearchUsingReRank = 'usingReRank',
   datasetSearchRerankWeight = 'rerankWeight',
+  datasetSearchRerankCandidateNum = 'rerankCandidateNum',
   datasetSearchRerankModelId = 'rerankModelId',
   /** @deprecated */
   datasetSearchRerankModel = 'rerankModel',

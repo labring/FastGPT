@@ -1090,6 +1090,8 @@
   "request_more": "클릭하여 더 불러오기",
   "required": "필수",
   "rerank_weight": "재정렬 가중치",
+  "rerank_candidate_num": "재정렬 후보 수",
+  "rerank_candidate_num_tips": "Recall 결과에서 최대 N개의 청크를 재정렬 모델에 전달하며, 초과분은 recall 순서대로 잘려 재정렬에 참여하지 않습니다. 값이 클수록 재정렬 지연과 모델 부하가 커지지만 재정렬 효과는 커질 수 있습니다.",
   "resume_failed": "재개 실패",
   "resume_completed_data_parse_failed": "재개 중 완료된 응답을 분석하지 못했습니다",
   "response_processing_error": "응답 처리 중 오류가 발생했습니다",
@@ -1397,5 +1399,14 @@
   "core.workflow.check.node_missing": "노드 {{nodeId}}가 더 이상 없습니다. 남아 있는 연결을 삭제하세요",
   "core.workflow.check.option_keys_invalid": "옵션 또는 분류의 키가 없거나 중복되었습니다",
   "core.workflow.check.form_configuration_invalid": "양식 필드 키 또는 해당 출력 구성이 불완전합니다: {{fieldKeys}}",
-  "Version": "버전"
+  "Version": "버전",
+  "code_error.account_cancellation_pending": "계정 삭제가 진행 중입니다. 이 계정은 일시적으로 사용할 수 없습니다.",
+  "code_error.team_error.account_cancellation_pending": "팀 소유자가 계정을 삭제하는 중입니다. 이 팀은 일시적으로 사용할 수 없습니다.",
+  "core.dataset.error.tagNameDuplicate": "태그 이름이 이미 존재합니다",
+  "core.dataset.error.tagNameEmpty": "태그 이름은 비워 둘 수 없습니다",
+  "core.dataset.error.tagNotExist": "태그가 존재하지 않습니다",
+  "core.dataset.error.tagValueInvalid": "태그 값 형식이 유형과 일치하지 않습니다",
+  "core.dataset.error.tagValueDatetimeInvalid": "날짜/시간 태그 값 형식이 올바르지 않습니다",
+  "core.dataset.error.arrayTagValueInvalid": "배열 태그 값이 올바르지 않습니다 (요소는 문자열, 배열 길이 ≤ 64, 요소 길이 ≤ 256)",
+  "error.operation_too_frequently": "작업이 너무 많습니다. 잠시 후 다시 시도하세요."
 }

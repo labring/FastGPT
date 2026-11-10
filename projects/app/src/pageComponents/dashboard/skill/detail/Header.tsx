@@ -354,7 +354,6 @@ export const RightHeader = () => {
       publishButton={
         <Button
           size={'sm'}
-          h={'34px'}
           px={'14px'}
           variant={'primary'}
           isLoading={isSaving}

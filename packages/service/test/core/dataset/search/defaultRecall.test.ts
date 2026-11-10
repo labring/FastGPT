@@ -150,6 +150,8 @@ vi.mock('@fastgpt/service/core/dataset/data/textStore', async (importOriginal) =
 });
 
 import { searchDatasetData } from '../../../../core/dataset/search/defaultRecall';
+import { reRankSearchResults } from '../../../../core/dataset/search/defaultRecall/rerank';
+import { filterSearchResultsByScore } from '../../../../core/dataset/search/defaultRecall/result';
 import { fullTextRecall } from '../../../../core/dataset/search/defaultRecall/fullTextRecall';
 
 afterEach(() => {
@@ -815,5 +817,103 @@ describe('fullTextRecall engine dispatch', () => {
 
     expect(mockFullTextStoreSearch).toHaveBeenCalledTimes(1);
     expect(res.imageCaptionFullTextRecallResults[0].id).toBe('68ad85a7463006c963799a05');
+  });
+});
+
+describe('reRankSearchResults rerank candidate limit', () => {
+  const rerankModel = {
+    modelId: 'rerank-model',
+    provider: 'openai',
+    model: 'rerank-model',
+    name: 'Rerank Model',
+    type: ModelTypeEnum.rerank,
+    scope: 'system' as const,
+    isActive: true,
+    config: {}
+  } as any;
+
+  const candidates = Array.from({ length: 150 }, (_, index) => ({
+    id: `data-${index}`,
+    datasetId: 'dataset-1',
+    collectionId: 'collection-1',
+    q: `Q${index}`,
+    a: `A${index}`,
+    chunkIndex: index,
+    updateTime: new Date('2026-01-01'),
+    score: []
+  }));
+
+  const run = (rerankCandidateNum?: number, textRecallResults = candidates) =>
+    reRankSearchResults({
+      usingReRank: true,
+      textRecallResults: textRecallResults as any,
+      rerankModel,
+      query: 'query',
+      rerankWeight: 1,
+      rerankCandidateNum,
+      teamId: 'team-1'
+    });
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockReRankRecall.mockResolvedValue({
+      results: candidates.map((item) => ({ id: item.id, score: 0.9 })),
+      inputTokens: 1
+    });
+  });
+
+  it('只把融合列表按顺序的前 N 条送入重排', async () => {
+    await run(20);
+
+    expect(mockReRankRecall.mock.calls[0][0].documents.map((item: any) => item.id)).toEqual(
+      Array.from({ length: 20 }, (_, index) => `data-${index}`)
+    );
+  });
+
+  it('召回少于限制时全部送入重排', async () => {
+    await run(100, candidates.slice(0, 80));
+
+    expect(mockReRankRecall.mock.calls[0][0].documents).toHaveLength(80);
+  });
+
+  it('缺省时按默认 100 截断超过 100 的召回', async () => {
+    await run();
+
+    expect(mockReRankRecall.mock.calls[0][0].documents).toHaveLength(100);
+  });
+
+  it.each([0, 9, 101, 55.7, Number.NaN])('非法候选数 %s 按默认 100 执行重排', async (value) => {
+    await run(value);
+    expect(mockReRankRecall.mock.calls[0][0].documents).toHaveLength(100);
+  });
+
+  it('重排权重小于 1 时，超出候选数的召回不进入融合结果，不能绕过重排分数过滤', async () => {
+    mockReRankRecall.mockResolvedValue({
+      results: candidates.slice(0, 20).map((item) => ({ id: item.id, score: 0.1 })),
+      inputTokens: 1
+    });
+
+    const { results } = await reRankSearchResults({
+      usingReRank: true,
+      textRecallResults: candidates.slice(0, 30) as any,
+      rerankModel,
+      query: 'query',
+      rerankWeight: 0.5,
+      rerankCandidateNum: 20,
+      teamId: 'team-1'
+    });
+
+    // 20 条重排结果都低于阈值，没有候选应该通过相似度过滤
+    expect(
+      filterSearchResultsByScore({
+        data: results,
+        usingReRank: true,
+        searchMode: DatasetSearchModeEnum.mixedRecall,
+        similarity: 0.4
+      }).results.map((item) => item.id)
+    ).toEqual([]);
+    expect(results.map((item) => item.id)).toEqual(
+      Array.from({ length: 20 }, (_, index) => `data-${index}`)
+    );
   });
 });

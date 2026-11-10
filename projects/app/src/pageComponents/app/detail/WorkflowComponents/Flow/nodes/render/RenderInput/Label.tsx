@@ -165,6 +165,7 @@ const InputLabel = ({ nodeId, input, RightComponent, isTool }: Props) => {
       {!isTagFilterClosed && displayRenderTypeList && displayRenderTypeList.length > 1 && (
         <Box ml={2} className="nodrag">
           <NodeInputSelect
+            strategy="absolute"
             renderTypeList={displayRenderTypeList}
             selectedType={renderType}
             onChange={onChangeRenderType}

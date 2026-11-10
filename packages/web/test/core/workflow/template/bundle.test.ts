@@ -18,7 +18,7 @@ describe('createWorkflowTemplateBundle', () => {
       'ko-KR',
       '시작',
       '이 AI 노드에서 사용하는 모델',
-      ['Greeting', 'Question regarding xxx', 'Other Questions']
+      ['인사', 'xxx 관련 질문', '기타 질문']
     ],
     [
       'unknown',

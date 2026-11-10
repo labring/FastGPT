@@ -359,8 +359,10 @@
   "workflow_builder_tool_cancel": "작업 취소",
   "cli.input.ai_model": "이 AI 노드에서 사용하는 모델",
   "cli.input.answer": "고정 응답 텍스트 또는 업스트림 출력 참조",
+  "cli.input.custom_feedback": "현재 대화 기록에 추가할 피드백 내용",
+  "cli.input.dataset_quotes": "상위 노드에서 제공하는 데이터셋 참조",
   "cli.input.system_prompt": "어시스턴트 역할과 응답 규칙을 정의하는 지침",
-  "cli.input.text_editor": "정적 텍스트 또는 업스트림 변수로 결합된 텍스트",
+  "cli.input.text_editor": "정적 텍스트 또는 업스트림 변수로 결합된 텍스트입니다. 이것은 순수 텍스트 입력란입니다. 상위 출력은 {{$nodeId.outputKey$}}로, 전역 변수는 {{$VARIABLE_NODE_ID.variableKey$}}로 참조하세요. {{variableKey}} 또는 {{nodeId.outputKey}} 형태의 자리표시자를 그대로 만들지 마세요.",
   "cli.input.user_question": "워크플로 시작 노드에서 제공하는 사용자 질문",
   "cli.config.auto_execute": "대화 진입 시 즉시 자동 실행해야 하는 경우 구성합니다. 스위치와 기본 프롬프트를 함께 설정해야 합니다.",
   "cli.config.auto_execute_open": "대화 진입 즉시 사용자 입력 없이 워크플로를 실행해야 하는 경우에만 활성화합니다.",
@@ -384,5 +386,8 @@
   "workflow_builder_preview_cancel": "이번 빌드 취소",
   "workflow_builder_preview_revise_placeholder": "변경할 노드나 흐름을 설명해 주세요",
   "workflow_builder_preview_pending": "확인 대기 중",
-  "workflow_builder_preview_flow": "워크플로 미리보기"
+  "workflow_builder_preview_flow": "워크플로 미리보기",
+  "question_classification_default_1": "인사",
+  "question_classification_default_2": "xxx 관련 질문",
+  "question_classification_default_3": "기타 질문"
 }
