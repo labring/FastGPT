@@ -181,6 +181,8 @@ describe('builtinTemplateProvider', () => {
       'Hello {{$VARIABLE_NODE_ID.name$}}',
       'Topic: {{$validateCode.topic$}}'
     ]);
+    // 参考格式说明已下沉到 packages/web/i18n/*/workflow.json，这里只校验可翻译 key，
+    // 避免描述重新变回硬编码文本。
     expect(input?.description).toBe('workflow:cli.input.text_editor');
   });
 
