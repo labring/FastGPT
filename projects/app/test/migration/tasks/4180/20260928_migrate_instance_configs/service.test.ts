@@ -2,20 +2,54 @@ import { describe, expect, it, beforeEach, vi } from 'vitest';
 import { MongoSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/schema';
 import {
   SYSTEM_INSTANCE_CONFIG_DOMAINS,
+  resolveDomainEffectiveConfig,
   type SystemInstanceConfigDomainKey
 } from '@fastgpt/global/common/system/config/schema';
 import {
   applyInstanceConfigMigration,
+  buildLegacyDomainOverrides,
   inspectInstanceConfigMigration,
   sanitizeOverridesForSchema,
   type SchemaSanitizedIssue
 } from '@/migration/tasks/4180/20260928_migrate_instance_configs/service';
+import { readLegacyInstanceConfigEnv } from '@/migration/tasks/4180/20260928_migrate_instance_configs/env';
 
 const logger = {
   info: () => {},
   warn: () => {},
   error: () => {}
 };
+
+describe('legacy CORS allowlist migration', () => {
+  beforeEach(async () => {
+    await MongoSystemInstanceConfig.deleteMany({});
+  });
+
+  it.each([100, 101])(
+    'preserves all %i configured origins instead of allowing every origin',
+    async (count) => {
+      const origins = Array.from(
+        { length: count },
+        (_, index) => `https://origin-${index}.example.test`
+      );
+      const warnings: string[] = [];
+      const raw = buildLegacyDomainOverrides({
+        feConfigs: {},
+        systemEnv: {},
+        legacyEnv: { ...readLegacyInstanceConfigEnv(), ALLOWED_ORIGINS: origins.join(',') }
+      });
+      const overrides = sanitizeOverridesForSchema({ overrides: raw, warnings });
+      await applyInstanceConfigMigration({ overrides, logger });
+      const doc = await MongoSystemInstanceConfig.findOne({ domain: 'security' }).lean();
+      const effective = resolveDomainEffectiveConfig({
+        domain: 'security',
+        overrides: doc?.overrides
+      });
+      expect(effective.allowedOrigins).toEqual(origins);
+      expect(warnings).toEqual([]);
+    }
+  );
+});
 
 describe('sanitizeOverridesForSchema', () => {
   it('drops values that violate the tightened schema and keeps the rest', () => {

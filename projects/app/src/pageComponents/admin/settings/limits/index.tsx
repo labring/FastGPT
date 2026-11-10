@@ -217,8 +217,8 @@ const LimitsSettingComponent = () => {
       <AdminSettingSection id="requestAndText" title={t('admin:request_text_limits')}>
         <SimpleGrid columns={[1, 2]} spacing={5}>
           <AdminFormItem
-            label={t('admin:server_request_body_max_size_mb')}
-            tooltip={t('admin:max_request_body_size_accepted_by_the_service_api_mb')}
+            label={t('admin:workflow_http_response_max_size_mb')}
+            tooltip={t('admin:workflow_http_response_max_size_tip')}
             isRequired
           >
             <Controller
