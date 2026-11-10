@@ -12,6 +12,7 @@ import {
 import { VariableItemTypeSchema } from '../../../../core/app/variable/type';
 import { ShortUrlSchema } from '../../../../support/marketing/type';
 import { AppPermissionSchema } from '../../../../support/permission/app/controller.schema';
+import { InheritPermissionSchema } from '../../../../support/permission/inheritPermission';
 import { SourceMemberSchema } from '../../../../support/user/type';
 import {
   OpenAPIFlowNodeInputItemTypeSchema,
@@ -223,11 +224,7 @@ export const CreateAppBodySchema = z
       example: '68ad85a7463006c963799a05',
       description: '父级应用/文件夹 ID'
     }),
-    inheritPermission: BoolSchema.optional().meta({
-      example: true,
-      description:
-        '是否继承父级权限（默认 true）：true = 创建时合并父级权限快照，并跟随父级后续权限变更；false = 独立创建，仅写创建者 owner 权限，不合并父级权限，父级后续权限变更也不再传播到该节点'
-    }),
+    inheritPermission: InheritPermissionSchema,
     name: z.string().min(1).meta({
       example: '新应用',
       description: '应用名称'

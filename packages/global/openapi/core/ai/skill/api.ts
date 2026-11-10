@@ -15,6 +15,7 @@ import {
   ZipEntryInfoSchema
 } from '../../../../core/ai/skill/type';
 import { SkillPermissionSchema } from '../../../../support/permission/skill/controller.schema';
+import { InheritPermissionSchema } from '../../../../support/permission/inheritPermission';
 import { ChatCompletionMessageParamSchema } from '../../../../core/ai/llm/type';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
 import {
@@ -125,11 +126,7 @@ export const CreateSkillBodySchema = z.object({
   description: z.string().optional().describe('技能描述'),
   category: z.array(AgentSkillCategorySchema).optional().describe('技能分类'),
   avatar: z.string().optional().describe('技能头像'),
-  inheritPermission: BoolSchema.optional().meta({
-    example: true,
-    description:
-      '是否继承父级权限（默认 true）：true = 创建时合并父级权限快照，并跟随父级后续权限变更；false = 独立创建，仅写创建者 owner 权限，不合并父级权限，父级后续权限变更也不再传播到该节点'
-  })
+  inheritPermission: InheritPermissionSchema
 });
 export type CreateSkillBody = z.infer<typeof CreateSkillBodySchema>;
 
@@ -414,11 +411,7 @@ export const CreateSkillFolderBodySchema = z.object({
   parentId: NullableParentIdSchema,
   name: z.string(),
   description: z.string().optional(),
-  inheritPermission: BoolSchema.optional().meta({
-    example: true,
-    description:
-      '是否继承父级权限（默认 true）：true = 创建时合并父级权限快照，并跟随父级后续权限变更；false = 独立创建，仅写创建者 owner 权限，不合并父级权限，父级后续权限变更也不再传播到该节点'
-  })
+  inheritPermission: InheritPermissionSchema
 });
 export type CreateSkillFolderBody = z.infer<typeof CreateSkillFolderBodySchema>;
 

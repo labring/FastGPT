@@ -10,10 +10,12 @@ import {
   DatasetSchema,
   DatasetListItemSchema,
   sangforFileParseConfigSchema,
-  InheritPermissionInputSchema,
-  SearchDataResponseItemSchema,
-  type WithOptionalInheritPermission
+  SearchDataResponseItemSchema
 } from '../../../core/dataset/type';
+import {
+  InheritPermissionInputSchema,
+  type WithOptionalInheritPermission
+} from '../../../support/permission/inheritPermission';
 import { AppListSortSchema } from '../../../core/app/constants';
 import { AppDatasetSearchParamsTypeSchema } from '../../../core/app/type';
 import {
