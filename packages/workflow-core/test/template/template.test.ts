@@ -10,7 +10,7 @@ import { createWorkflowDocument } from '../../src/domain/document';
 import { formatNodeTemplateRef, parseNodeTemplateRef } from '../../src/template/type';
 import { instantiateNodeFromTemplate } from '../../src/template/instantiate';
 import { normalizeNodeTemplateDescriptor } from '../../src/template/descriptor';
-import { createTranslator } from '../../../web/i18n/workflowTemplate';
+import { createTranslator } from '@fastgpt/web/i18n/workflowTemplate';
 
 import { describe, expect, it } from 'vitest';
 
