@@ -1586,6 +1586,56 @@ describe('rewriteRuntimeWorkFlow', () => {
     });
   });
 
+  it('defaults newly discovered MCP inputs to AI while preserving saved input choices', async () => {
+    const node = makeNode('mcp1', FlowNodeTypeEnum.tool, {
+      toolConfig: { mcpTool: { toolId: 'mcp-toolset-1/toolA' } },
+      inputs: [
+        {
+          key: 'query',
+          valueType: 'string',
+          required: true,
+          renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
+          selectedType: FlowNodeInputTypeEnum.input,
+          value: 'fixed query'
+        }
+      ]
+    } as any);
+    setupFindByIdMap({
+      'toolset-1': {
+        _id: 'toolset-1',
+        modules: [
+          {
+            toolConfig: {
+              mcpToolSet: {
+                toolList: [
+                  {
+                    name: 'toolA',
+                    inputSchema: {
+                      type: 'object',
+                      properties: { query: { type: 'string' }, locale: { type: 'string' } },
+                      required: ['query', 'locale']
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    });
+
+    await rewriteRuntimeWorkFlow({ teamId: 'team1', tmbId: 'tmb1', nodes: [node], edges: [] });
+
+    expect(node.inputs.find((input) => input.key === 'query')).toMatchObject({
+      selectedType: FlowNodeInputTypeEnum.input,
+      value: 'fixed query'
+    });
+    expect(node.inputs.find((input) => input.key === 'locale')).toMatchObject({
+      selectedType: FlowNodeInputTypeEnum.agentGenerated,
+      required: true
+    });
+  });
+
   it('should inject jsonSchema and intro for standalone HTTP tool nodes', async () => {
     const httpToolNode = makeNode('http1', FlowNodeTypeEnum.tool, {
       toolConfig: {
