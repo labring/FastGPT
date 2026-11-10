@@ -12,12 +12,14 @@ import { BoolSchema, NumSchema } from '../../../common/zod';
  * ============================================================================ */
 
 // 能力字段只接受真正的布尔值；错误或旧版本响应不能作为开启能力的依据。
-export const ProFrontendCapabilitiesSchema = z.strictObject({
-  show_git: z.boolean().meta({ description: '是否显示 Git 信息', example: false }),
-  show_workorder: z.boolean().meta({ description: '是否配置工单服务', example: false }),
-  show_enterprise_auth: z.boolean().meta({ description: '是否配置企业认证服务', example: false }),
-  showWecomConfig: z.boolean().meta({ description: '是否显示企业微信配置', example: false })
-});
+export const ProFrontendCapabilitiesSchema = FastGPTFeConfigsSchema.pick({
+  show_git: true,
+  show_workorder: true,
+  show_enterprise_auth: true,
+  showWecomConfig: true
+})
+  .required()
+  .strict();
 export type ProFrontendCapabilities = z.infer<typeof ProFrontendCapabilitiesSchema>;
 
 export const ProHealthResponseSchema = z.object({
