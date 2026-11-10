@@ -1,21 +1,14 @@
 import { getNodeAllSource } from '@/web/core/workflow/utils';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import { storeNodes2RuntimeNodes } from '@fastgpt/global/core/workflow/runtime/utils';
+import type { RuntimeEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import { cloneDeep } from 'lodash-es';
-import type {
-  RuntimeEdgeItemType,
-  StoreEdgeItemType
-} from '@fastgpt/global/core/workflow/type/edge';
-import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import { useToast } from '@fastgpt/web/hooks/useToast';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useReactFlow } from 'reactflow';
-import { uiWorkflow2StoreWorkflow } from '../../utils';
 
 import LabelAndFormRender from '@/components/core/app/formRender/LabelAndForm';
 import { variableInputTypeToInputType } from '@/components/core/app/formRender/utils';
 import { WorkflowRuntimeContext } from '@/components/core/chat/ChatContainer/context/workflowRuntimeContext';
-import { Box, Button, Flex } from '@chakra-ui/react';
+import { Box, Button, Flex, useToast } from '@chakra-ui/react';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
@@ -85,6 +78,7 @@ export const resetDebugNodeVariables = ({
 export const useDebug = () => {
   const { t } = useSafeTranslation();
   const { t: workflowT } = useTranslation();
+  const toast = useToast();
 
   const setNodes = useContextSelector(WorkflowBufferDataContext, (v) => v.setNodes);
   const edges = useContextSelector(WorkflowBufferDataContext, (v) => v.edges);

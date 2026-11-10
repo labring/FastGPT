@@ -80,6 +80,7 @@ export const dispatchApp = async (props: Props): Promise<DispatchSubAppResponse>
   const { flowUsages, workflowInteractiveResponse, resolvedVariables, text, runtimeSummary } =
     await runChildAppWorkflow({
       ...data,
+      lastInteractive: props.lastInteractive,
       appId: app.id,
       versionId: app.version,
       resourceType: 'tool',
@@ -308,7 +309,6 @@ export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppRespon
         histories: [],
         variableState: childrenVariableState,
         isToolCall: true,
-        lastInteractive: data.lastInteractive,
         query: data.lastInteractive
           ? data.query
           : serverGetWorkflowToolRunUserQuery({

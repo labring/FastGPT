@@ -218,8 +218,8 @@ export async function dispatchWorkFlow({
               }
             : getUserChatInfo(runningUserInfo.tmbId),
           (() => {
-            if (lastInteractive?.usageId) {
-              return lastInteractive.usageId;
+            if (data.lastInteractive?.usageId) {
+              return data.lastInteractive.usageId;
             }
             if (usageSource) {
               return createChatUsageRecord({
