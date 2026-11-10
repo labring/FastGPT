@@ -15,8 +15,9 @@ import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import AdminFormItem from '@/pageComponents/admin/settings/AdminFormItem';
 import { getInitFormData } from '@/web/admin/system/api';
-import { formatConfigStore2FormSchema } from '@/web/admin/config/adapt';
-import type { ConfigFormType, ConfigStoreType } from '@/pageComponents/admin/config/type';
+import { formatSubPlansStore2FormSchema } from '@/web/admin/config/adapt';
+import type { ConfigFormType } from '@/pageComponents/admin/config/type';
+import type { GetConfigResponse } from '@fastgpt/global/openapi/admin/system/api';
 import {
   defaultAuditLogRetentionDays,
   StandardSubLevelEnum
@@ -193,9 +194,8 @@ const PlansSettingSection = forwardRef<PlansSettingSectionHandle, PlansSettingSe
       runAsync: loadConfig
     } = useRequest(getInitFormData, {
       manual: true,
-      onSuccess: (data: ConfigStoreType) => {
-        const aggregatedConfigs = formatConfigStore2FormSchema(data);
-        const loadedPlans = aggregatedConfigs.paySettings.subPlans;
+      onSuccess: (data: GetConfigResponse) => {
+        const loadedPlans = formatSubPlansStore2FormSchema(data.fastgpt?.subPlans);
 
         // 套餐等级补齐默认字段；积分包为空时落回常用档位
         loadedPlans.standard = loadedPlans.standard
@@ -205,7 +205,7 @@ const PlansSettingSection = forwardRef<PlansSettingSectionHandle, PlansSettingSe
           loadedPlans.extraPointsPackages ?? defaultExtraPointPackages;
 
         setSubPlansRevision(data.subPlansRevision);
-        reset(aggregatedConfigs.paySettings);
+        reset({ subPlans: loadedPlans });
         setOpenPlan(!!loadedPlans.standard && Object.keys(loadedPlans.standard).length > 0);
       },
       onError: () => setSubPlansRevision(undefined),

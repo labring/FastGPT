@@ -5,6 +5,7 @@ import type {
   FastGPTRegisterMethodType
 } from '@fastgpt/global/common/system/types';
 import { SubTypeEnum } from '@fastgpt/global/support/wallet/sub/constants';
+import type { SubPlanType } from '@fastgpt/global/support/wallet/sub/type';
 import { normalizeSsoConfig } from '@fastgpt/global/common/system/config/sso';
 
 const removedFeConfigKeys = [
@@ -26,6 +27,21 @@ const omitRemovedFeConfigs = <T extends object>(configs: T): T => {
 
   return filtered as T;
 };
+
+/** 将存储的订阅套餐转为管理表单，缺失时保留原有的空值默认行为。 */
+export function formatSubPlansStore2FormSchema(
+  subPlans: SubPlanType | undefined
+): ConfigFormType['paySettings']['subPlans'] {
+  return {
+    planDescriptionUrl: subPlans?.planDescriptionUrl ?? '',
+    appRegistrationUrl: subPlans?.appRegistrationUrl ?? '',
+    communitySupportTip: subPlans?.communitySupportTip ?? '',
+    activityExpirationTime: subPlans?.activityExpirationTime,
+    standard: subPlans?.[SubTypeEnum.standard],
+    extraDatasetSizePrice: subPlans?.[SubTypeEnum.extraDatasetSize]?.price ?? 0,
+    extraPointsPackages: subPlans?.[SubTypeEnum.extraPoints]?.packages ?? []
+  };
+}
 
 /** 将存储配置转换为管理表单；旧后端白名单迁入 systemEnv，显式配置优先。 */
 export function formatConfigStore2FormSchema({
@@ -243,15 +259,7 @@ export function formatConfigStore2FormSchema({
       wx: fastgptPro?.pay?.wx || {},
       alipay: fastgptPro?.pay?.alipay || {},
       bank: fastgptPro?.pay?.bank || {},
-      subPlans: {
-        planDescriptionUrl: subPlans?.planDescriptionUrl || '',
-        appRegistrationUrl: subPlans?.appRegistrationUrl || '',
-        communitySupportTip: subPlans?.communitySupportTip || '',
-        activityExpirationTime: subPlans?.activityExpirationTime,
-        standard: subPlans?.[SubTypeEnum.standard],
-        extraDatasetSizePrice: subPlans?.[SubTypeEnum.extraDatasetSize]?.price || 0,
-        extraPointsPackages: subPlans?.[SubTypeEnum.extraPoints]?.packages || []
-      }
+      subPlans: formatSubPlansStore2FormSchema(subPlans)
     },
     securitySettings: {
       censor: {
