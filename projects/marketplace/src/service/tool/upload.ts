@@ -132,6 +132,15 @@ export const uploadMarketplacePkg = async ({
           })
         ]
       : []),
+    ...Object.values(parsedPkg.files.readmes ?? {}).map((file) =>
+      uploadParsedFile({
+        file,
+        source,
+        pluginId: tool.pluginId,
+        version: tool.version,
+        etag: tool.etag
+      })
+    ),
     ...(parsedPkg.files.logos ?? []).map((file) =>
       uploadParsedFile({
         file,
@@ -163,6 +172,7 @@ export const uploadMarketplacePkg = async ({
     downloadObjectKey: pkgObjectKey,
     downloadUrl,
     readmeUrl: tool.readmeUrl,
+    readmeUrls: tool.readmeUrls,
     filename: pkgFilename,
     size: buffer.length,
     createTime: now,
