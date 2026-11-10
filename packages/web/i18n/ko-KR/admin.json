@@ -72,6 +72,7 @@
   "moderation.select_plugin_required": "저장하기 전에 심사 플러그인을 선택해 주세요",
   "moderation.uninstall_success": "제거되었습니다",
   "moderation.delete_plugin_error": "플러그인 삭제에 실패했습니다",
+  "moderation.disable_before_delete": "삭제하기 전에 먼저 심사 플러그인을 비활성화해 주세요",
   "moderation.service_title": "심사 서비스",
   "moderation.hooks_title": "심사 적용 단계",
   "moderation.strategy_title": "처리 전략",

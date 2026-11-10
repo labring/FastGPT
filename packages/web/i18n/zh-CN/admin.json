@@ -72,6 +72,7 @@
   "moderation.select_plugin_required": "请选择一个审核插件后再保存",
   "moderation.uninstall_success": "卸载成功",
   "moderation.delete_plugin_error": "删除插件失败",
+  "moderation.disable_before_delete": "请先停用该内容审核插件后再删除",
   "moderation.service_title": "审核服务",
   "moderation.hooks_title": "审核生效环节",
   "moderation.strategy_title": "处理策略",

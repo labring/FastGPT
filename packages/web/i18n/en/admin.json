@@ -72,6 +72,7 @@
   "moderation.select_plugin_required": "Please select a moderation plugin before saving",
   "moderation.uninstall_success": "Uninstalled successfully",
   "moderation.delete_plugin_error": "Failed to delete plugin",
+  "moderation.disable_before_delete": "Please disable the moderation plugin before deleting it",
   "moderation.service_title": "Moderation Service",
   "moderation.hooks_title": "Moderation Stages",
   "moderation.strategy_title": "Handling Strategy",

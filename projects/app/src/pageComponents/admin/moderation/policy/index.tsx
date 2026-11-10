@@ -119,6 +119,13 @@ export const ModerationPolicy = () => {
 
   // 删除插件
   const handleDeletePlugin = async (plugin: AdminModerationPluginItemType) => {
+    if (plugin.enabled) {
+      toast({
+        status: 'warning',
+        title: t('admin:moderation.disable_before_delete')
+      });
+      return;
+    }
     try {
       await postAdminDeleteModerationPlugin({
         pluginId: plugin.pluginId,
@@ -133,9 +140,13 @@ export const ModerationPolicy = () => {
       });
       void fetchPlugins();
     } catch (err: any) {
+      const isDisableRequiredError =
+        err?.message === 'Disable the moderation plugin before deleting it';
       toast({
         status: 'error',
-        title: err?.message || t('admin:moderation.delete_plugin_error')
+        title: isDisableRequiredError
+          ? t('admin:moderation.disable_before_delete')
+          : err?.message || t('admin:moderation.delete_plugin_error')
       });
     }
   };

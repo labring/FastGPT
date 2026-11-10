@@ -72,6 +72,7 @@
   "moderation.select_plugin_required": "請選擇一個審核外掛程式後再儲存",
   "moderation.uninstall_success": "卸載成功",
   "moderation.delete_plugin_error": "刪除外掛程式失敗",
+  "moderation.disable_before_delete": "請先停用該內容審核外掛程式後再刪除",
   "moderation.service_title": "審核服務",
   "moderation.hooks_title": "審核生效環節",
   "moderation.strategy_title": "處理策略",
