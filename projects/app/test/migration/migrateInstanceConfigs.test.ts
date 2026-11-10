@@ -52,6 +52,22 @@ describe('migration buildLegacyDomainOverrides', () => {
 
     expect(overrides.security).toMatchObject({
       workflowHttpNode: { ignoreHttpsCertificate: true },
+      checkExternalFile: true,
+      fileUrlWhitelist: ['https://cdn.example.com']
+    });
+  });
+
+  it('preserves an explicit legacy checkExternalFile=false with a non-empty whitelist', () => {
+    const overrides = buildLegacyDomainOverrides({
+      feConfigs: {},
+      systemEnv: {
+        checkExternalFile: false,
+        fileUrlWhitelist: ['https://cdn.example.com']
+      }
+    });
+
+    expect(overrides.security).toMatchObject({
+      checkExternalFile: false,
       fileUrlWhitelist: ['https://cdn.example.com']
     });
   });

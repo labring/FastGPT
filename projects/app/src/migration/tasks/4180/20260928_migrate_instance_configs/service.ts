@@ -182,6 +182,14 @@ export const buildLegacyDomainOverrides = ({
     maxLoginSession: optionalNumber(legacyEnv.MAX_LOGIN_SESSION),
     allowedOrigins: splitList(legacyEnv.ALLOWED_ORIGINS),
     skipFileTypeCheck: optionalBool(legacyEnv.SKIP_FILE_TYPE_CHECK),
+    // 旧版只在名单非空时执行限制；显式开关优先。初始迁移同时写开关，
+    // 避免 11 域已齐全但 backfill 尚未执行时 Pro 把缺失值解析成默认 false。
+    checkExternalFile:
+      typeof systemEnv.checkExternalFile === 'boolean'
+        ? systemEnv.checkExternalFile
+        : Array.isArray(systemEnv.fileUrlWhitelist)
+          ? systemEnv.fileUrlWhitelist.length > 0
+          : undefined,
     workflowHttpNode: compact({
       ignoreHttpsCertificate: optionalBool(legacyWorkflowHttpNode?.ignoreHttpsCertificate)
     }),
