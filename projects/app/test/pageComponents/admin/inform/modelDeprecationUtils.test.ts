@@ -36,7 +36,7 @@ describe('getModelDeprecationInformChannels', () => {
 
 describe('getUTCDateLabel', () => {
   it('keeps the selected UTC calendar day', () => {
-    expect(getUTCDateLabel(new Date('2026-12-31T18:30:00.000Z'))).toBe('2026-12-31');
+    expect(getUTCDateLabel(new Date('2026-12-31T00:00:00.000Z'))).toBe('2026-12-31');
   });
 });
 

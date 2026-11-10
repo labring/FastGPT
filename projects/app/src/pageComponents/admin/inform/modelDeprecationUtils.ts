@@ -28,13 +28,13 @@ export const getModelDeprecationInformChannels = (
       : [channel]
   );
 
-/** 日期选择器与服务端统一按 UTC 日历日解释并提交 YYYY-MM-DD。 */
+/** 将日期选择器的 UTC 日期格式化为 YYYY-MM-DD。 */
 export const getUTCDateLabel = (date: Date) =>
   [date.getUTCFullYear(), date.getUTCMonth() + 1, date.getUTCDate()]
     .map((value) => String(value).padStart(2, '0'))
     .join('-');
 
-/** 计算计划下架日可选范围：UTC 明天至 UTC 今天后 90 天。 */
+/** 计算计划下架日可选范围：服务端 UTC 明天至 UTC 今天后 90 天。 */
 export const getPlannedDateBounds = (now = new Date()) => {
   const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
 

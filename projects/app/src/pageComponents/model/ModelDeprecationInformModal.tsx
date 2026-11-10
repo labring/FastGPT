@@ -84,6 +84,7 @@ const ModelDeprecationInformModal = ({
       <DateTimePicker
         selectedDateTime={plannedDate}
         disabled={[{ before: plannedDateBounds.min }, { after: plannedDateBounds.max }]}
+        timeZone={'UTC'}
         h={'2rem'}
         onChange={(value) => {
           requestId.current = undefined;
