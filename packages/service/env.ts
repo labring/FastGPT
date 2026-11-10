@@ -472,6 +472,9 @@ export const serviceEnv = createEnv({
     SERVICE_REQUEST_MAX_CONTENT_LENGTH: IntSchema.default(10).meta({
       description: '服务器接收请求的最大大小（MB）'
     }),
+    SERVICE_AXIOS_MAX_CONTENT_LENGTH: IntSchema.default(20).meta({
+      description: '服务端共享 HTTP 客户端单次响应体的最大大小（MB，按解压后大小计算）'
+    }),
     MAX_FOLDER_DEPTH: IntSchema.min(2).max(20).default(DEFAULT_MAX_FOLDER_DEPTH).meta({
       description: '允许的最深文件夹层级，默认 4（根目录下最多 4 层文件夹）'
     }),

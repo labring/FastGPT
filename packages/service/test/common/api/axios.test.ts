@@ -2,8 +2,10 @@ import { afterEach, describe, it, expect, vi, beforeEach } from 'vitest';
 import http from 'http';
 import os from 'os';
 import dns from 'dns/promises';
+import zlib from 'node:zlib';
 import { createProxyAxios, type SafeAxiosRequestConfig } from '../../../common/api/axios';
 import { PRIVATE_URL_TEXT } from '../../../common/system/utils';
+import { serviceAxiosMaxContentLength } from '../../../common/system/constants';
 import { serviceEnv } from '../../../env';
 
 type AxiosRequestConfig = {
@@ -13,6 +15,7 @@ type AxiosRequestConfig = {
   baseURL?: string;
   httpAgent?: any;
   httpsAgent?: any;
+  maxContentLength?: number;
 };
 
 describe('axios.ts', () => {
@@ -120,6 +123,12 @@ describe('axios.ts', () => {
       expect(instance.defaults.proxy).toBe(false);
       expect(instance.defaults.httpAgent).toBeDefined();
       expect(instance.defaults.httpsAgent).toBeDefined();
+    });
+
+    it('默认应该限制响应体大小', () => {
+      const instance = createProxyAxios();
+
+      expect(instance.defaults.maxContentLength).toBe(serviceAxiosMaxContentLength);
     });
 
     it('应该允许自定义配置覆盖默认的 proxy 设置', () => {
@@ -238,6 +247,7 @@ describe('axios.ts', () => {
       expect(axios.defaults.proxy).toBe(false);
       expect(axios.defaults.httpAgent).toBeDefined();
       expect(axios.defaults.httpsAgent).toBeDefined();
+      expect(axios.defaults.maxContentLength).toBe(serviceAxiosMaxContentLength);
     });
   });
 
@@ -568,6 +578,75 @@ describe('axios.ts', () => {
         'DNS lookup failed'
       );
       expect(adapter).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('safe axios response size limit', () => {
+    const listen = (handler: http.RequestListener, host = '127.0.0.1') =>
+      new Promise<http.Server>((resolve) => {
+        const server = http.createServer(handler);
+        server.listen(0, host, () => resolve(server));
+      });
+
+    const closeServer = (server: http.Server) =>
+      new Promise<void>((resolve, reject) => {
+        server.close((err) => (err ? reject(err) : resolve()));
+      });
+
+    const getServerPort = (server: http.Server): number => {
+      const address = server.address();
+      if (!address || typeof address === 'string') {
+        throw new Error('Invalid test server address');
+      }
+      return address.port;
+    };
+
+    const getReachablePrivateHost = () => {
+      const interfaces = os.networkInterfaces();
+      for (const items of Object.values(interfaces)) {
+        for (const item of items || []) {
+          if (item.family === 'IPv4' && !item.internal) {
+            return item.address;
+          }
+        }
+      }
+      return undefined;
+    };
+
+    it('应该在解压后的响应体超过 maxContentLength 时中止', async () => {
+      clearProxyEnv();
+      mutableServiceEnv.CHECK_INTERNAL_IP = false;
+      const carrierHost = getReachablePrivateHost();
+      if (!carrierHost) {
+        return;
+      }
+
+      // 2MB 零字节压缩后只有几 KB，用于模拟 gzip 炸弹。
+      const gzipBody = zlib.gzipSync(Buffer.alloc(2 * 1024 * 1024));
+      const server = await listen((req, res) => {
+        res.setHeader('Content-Encoding', 'gzip');
+        res.setHeader('Content-Type', 'text/plain');
+        res.end(gzipBody);
+      }, '0.0.0.0');
+      const port = getServerPort(server);
+
+      try {
+        const instance = createProxyAxios();
+        await expect(
+          instance.get(`http://${carrierHost}:${port}/bomb`, {
+            responseType: 'text',
+            maxContentLength: 128 * 1024
+          })
+        ).rejects.toThrow(/maxContentLength/i);
+      } finally {
+        await closeServer(server);
+      }
+    });
+
+    it('调用方传入的 maxContentLength 应该覆盖实例默认值', () => {
+      const instance = createProxyAxios({ maxContentLength: 1024 });
+
+      expect(instance.defaults.maxContentLength).toBe(1024);
     });
   });
 });

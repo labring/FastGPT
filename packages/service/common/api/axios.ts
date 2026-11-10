@@ -12,6 +12,7 @@ import { ProxyAgent, type ProxyAgentOptions } from 'proxy-agent';
 import { getProxyForUrl } from 'proxy-from-env';
 import { isDevEnv } from '@fastgpt/global/common/system/constants';
 import { isInternalAddress, isInternalResolvedIP, PRIVATE_URL_TEXT } from '../system/utils';
+import { serviceAxiosMaxContentLength } from '../system/constants';
 
 /**
  * 给 shared axios 实例添加 SSRF 防护。
@@ -398,15 +399,26 @@ export const httpsCertificateIgnoreAgent = createProxyAgent({
   rejectUnauthorized: false
 });
 
+/**
+ * 创建共享 axios 实例。
+ *
+ * 默认限制响应体大小（按解压后字节计算），避免请求攻击者控制的 URL 时被
+ * gzip 炸弹等高压缩比响应耗尽内存；调用方可按请求传入 maxContentLength 覆盖。
+ * 这里不限制 maxBodyLength：共享实例还承担大文件上传（文档解析、API 数据集等）。
+ */
 export function createProxyAxios(config?: AxiosRequestConfig, ssrfCheck = true) {
   const agent = createProxyAgent();
 
   const instance = isDevEnv
-    ? _.create(config)
+    ? _.create({
+        maxContentLength: serviceAxiosMaxContentLength,
+        ...config
+      })
     : _.create({
         proxy: false,
         httpAgent: agent,
         httpsAgent: agent,
+        maxContentLength: serviceAxiosMaxContentLength,
         ...config
       });
 
