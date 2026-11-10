@@ -33,9 +33,10 @@ export default function InputGuideBox({
   const chatInputGuide = useContextSelector(ChatBoxContext, (v) => v.chatInputGuide);
   const outLinkAuthData = useContextSelector(WorkflowRuntimeContext, (v) => v.outLinkAuthData);
 
-  const { data = [] } = useRequest(
+  const { data } = useRequest(
     async () => {
       for (const searchKey of getCompletionSearchKeys(text)) {
+        // More than 20 characters, it's basically meaningless
         if (searchKey.length > 20) continue;
         const result = await queryChatInputGuideList(
           {
@@ -46,10 +47,10 @@ export default function InputGuideBox({
           },
           chatInputGuide.customUrl ? chatInputGuide.customUrl : undefined
         );
-        if (result.length) return result;
+        if (result.length) return { data: result, searchKey };
       }
 
-      return [];
+      return { data: [], searchKey: '' };
     },
     {
       manual: false,
@@ -58,8 +59,9 @@ export default function InputGuideBox({
     }
   );
 
+  const matchText = data?.searchKey ?? '';
   const filterData = useMemo(
-    () => [...new Set(data)].filter((item) => item !== text).slice(0, 5),
+    () => [...new Set(data?.data ?? [])].filter((item) => item !== text).slice(0, 5),
     [data, text]
   );
 
@@ -115,7 +117,7 @@ export default function InputGuideBox({
           onClick={() => onSelect(item)}
         >
           <Box fontSize={'sm'} flex={'1 0 0'}>
-            <HighlightText rawText={item} matchText={text} />
+            <HighlightText rawText={item} matchText={matchText} />
           </Box>
           <MyTooltip label={t('common:core.chat.markdown.Send Question')}>
             <MyIcon
