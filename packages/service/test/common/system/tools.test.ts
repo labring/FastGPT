@@ -146,6 +146,11 @@ describe('initFastGPTConfig', () => {
     }
   );
 
+  it('刷新配置时保留 0 个沙盒的系统配额', () => {
+    initFastGPTConfig({ feConfigs: {}, systemEnv: { agentSandboxMax: 0 } } as any);
+    expect(global.systemEnv.agentSandboxMax).toBe(0);
+  });
+
   it('其他配置降级时仍归一化配额，并保留无关字段', () => {
     initFastGPTConfig(
       JSON.parse(

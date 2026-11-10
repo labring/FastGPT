@@ -6,6 +6,7 @@ import {
   UpdateConfigResponseSchema
 } from '../../../openapi/admin/system/api';
 import { StandardSubLevelEnum, SubTypeEnum } from '../../../support/wallet/sub/constants';
+import { SystemEnvSchema } from '../../../common/system/types';
 
 const createBody = (subPlans: unknown) => ({
   fastgpt: {
@@ -129,7 +130,9 @@ describe('UpdateConfigBodySchema', () => {
   it.each(['agentSandboxMax', 'agentSandboxMaxPerTeam'])(
     'rejects invalid quota values for %s at the update boundary',
     (field) => {
-      for (const value of [0, -1, 1.5, '1.5', '', 'invalid']) {
+      const values = [-1, 1.5, '1.5', '', '  ', 'invalid'];
+      if (field === 'agentSandboxMaxPerTeam') values.push(0);
+      for (const value of values) {
         const body = {
           fastgpt: { feConfigs: {}, systemEnv: { [field]: value } },
           fastgptPro: {}
@@ -138,6 +141,13 @@ describe('UpdateConfigBodySchema', () => {
       }
     }
   );
+
+  it('accepts a zero system-wide sandbox quota', () => {
+    expect(SystemEnvSchema.parse({ agentSandboxMax: 0 }).agentSandboxMax).toBe(0);
+    expect(SystemEnvSchema.parse({ agentSandboxMax: '0' }).agentSandboxMax).toBe(0);
+    const body = { fastgpt: { feConfigs: {}, systemEnv: { agentSandboxMax: 0 } }, fastgptPro: {} };
+    expect(UpdateConfigBodySchema.parse(body).fastgpt.systemEnv.agentSandboxMax).toBe(0);
+  });
 
   it('declares open object schemas for dynamic system configurations', () => {
     const parsed = GetConfigResponseSchema.parse({

@@ -384,9 +384,15 @@ export const CustomDomainSchema = z.looseObject({
 export type customDomainType = z.infer<typeof CustomDomainSchema>;
 
 export const SystemEnvSchema = z.looseObject({
-  agentSandboxMax: optionalNullToUndefined(IntSchema.min(1)).meta({
+  // 0 表示禁止新实例激活；空字符串不能因数字强制转换变成 0 而意外禁用。
+  agentSandboxMax: optionalNullToUndefined(
+    z.preprocess(
+      (value) => (typeof value === 'string' && !value.trim() ? NaN : value),
+      IntSchema.min(0)
+    )
+  ).meta({
     description:
-      'Agent 沙箱活跃实例系统总上限，须为正整数（app 会话与技能编辑共用计数池）；未配置时使用环境变量',
+      'Agent 沙箱活跃实例系统总上限，须为非负整数；0 表示禁止新实例激活，已活跃实例可继续使用',
     example: 100
   }),
   // null 是显式"不限量"，必须与"未配置"区分：未配置时回落环境变量，

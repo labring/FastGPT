@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { resolveSystemInstanceConfig } from '@fastgpt/global/common/system/config/schema';
 import { buildAuthoritativeSystemEnv } from '@/service/common/system/buildAuthoritativeSystemEnv';
+import { SystemEnvSchema } from '@fastgpt/global/common/system/types';
 
 describe('buildAuthoritativeSystemEnv', () => {
   it('takes the external file switch and preserved allowlist from the same current snapshot', () => {
@@ -78,6 +79,14 @@ describe('buildAuthoritativeSystemEnv', () => {
 
     // null 表示明确不限量；不能转成 undefined，否则 getAgentSandboxMaxPerTeam 会回落 env
     expect(result.agentSandboxMaxPerTeam).toBeNull();
+  });
+
+  it('keeps zero total sandbox quota valid through the legacy projection', () => {
+    const instanceConfig = resolveSystemInstanceConfig({
+      subservice: { agentSandbox: { common: { maxEditDebug: 0 } } }
+    });
+    const projected = buildAuthoritativeSystemEnv({ legacySystemEnv: undefined, instanceConfig });
+    expect(SystemEnvSchema.parse(projected).agentSandboxMax).toBe(0);
   });
 
   it('works with no legacy systemEnv at all', () => {
