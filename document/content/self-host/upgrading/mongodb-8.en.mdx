@@ -284,15 +284,21 @@ docker exec "$NEW" getent hosts fastgpt-mongo
 
 It should resolve to the new container's IP. After verification, start FastGPT and check the UI, knowledge bases, and chat.
 
-If the application container still exists, start it with `docker start fastgpt-app`. If you need to recreate it with Compose, add `--no-deps` so the old `fastgpt-mongo` service is not started:
+Restore all business services stopped for the migration. Start `fastgpt-plugin` and other dependencies first and confirm they are healthy, then start `fastgpt-app`. Use `docker start` when the containers still exist, or keep `--no-deps` with Compose so the old `fastgpt-mongo` service is not started:
 
 ```bash
+# Start dependency services first (adjust the service names):
+docker start fastgpt-plugin
+# After fastgpt-plugin is healthy, start the main application:
 docker start fastgpt-app
-# or
+
+# Or use Compose:
+docker compose up -d --no-deps fastgpt-plugin
+# After fastgpt-plugin is healthy:
 docker compose up -d --no-deps fastgpt-app
 ```
 
-If FastGPT runs outside Docker, start your local application directly.
+If FastGPT runs outside Docker, start its dependencies first, then start the local application.
 
 ## 7. Make the change permanent in Compose
 

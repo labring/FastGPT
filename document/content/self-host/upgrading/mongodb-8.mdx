@@ -284,15 +284,21 @@ docker exec "$NEW" getent hosts fastgpt-mongo
 
 应该解析到新容器的 IP。确认无误后，启动 FastGPT，检查页面、知识库和聊天是否正常。
 
-如果应用容器还在，用 `docker start fastgpt-app` 启动；如果需要用 compose 重建，加 `--no-deps`，避免把旧的 `fastgpt-mongo` 服务一起拉起来：
+先恢复本轮停止的所有业务服务。先启动 `fastgpt-plugin` 等依赖并确认健康，再启动 `fastgpt-app`；容器还在时用 `docker start`，用 compose 重建时保留 `--no-deps`，避免把旧的 `fastgpt-mongo` 服务一起拉起来：
 
 ```bash
+# 先启动依赖服务（按实际服务名调整）：
+docker start fastgpt-plugin
+# 确认 fastgpt-plugin 健康后，再启动主应用：
 docker start fastgpt-app
-# 或者
+
+# 或者用 compose：
+docker compose up -d --no-deps fastgpt-plugin
+# 确认 fastgpt-plugin 健康后：
 docker compose up -d --no-deps fastgpt-app
 ```
 
-如果 FastGPT 不在 Docker 里运行，直接启动你的本地应用即可。
+如果 FastGPT 不在 Docker 里运行，先启动它依赖的服务，再启动本地应用。
 
 ## 7. 固化到 compose
 
