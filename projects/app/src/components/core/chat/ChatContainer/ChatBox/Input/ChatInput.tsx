@@ -29,9 +29,27 @@ import VoiceInput, { type VoiceInputComponentRef } from './VoiceInput';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import {
+  applyInputGuide,
+  getCompletionKeyAction,
+  getNextCompletionIndex,
+  getCompletionContext,
+  getEditedCompletionContext,
+  insertNewline,
+  type CompletionContext
+} from '../utils/inputGuide';
 
 const InputGuideBox = dynamic(() => import('./InputGuideBox'));
+const INPUT_GUIDE_ID = 'chat-input-guide';
 const PLACEHOLDER_APP_NAME_TOKEN = '__APP_NAME__';
+const completionNavigationKeys = new Set([
+  'ArrowLeft',
+  'ArrowRight',
+  'Home',
+  'End',
+  'PageUp',
+  'PageDown'
+]);
 
 type ChatInputProps = BoxProps & {
   lastInteractive?: WorkflowInteractiveResponseType;
@@ -73,6 +91,10 @@ const ChatInput = ({
   });
 
   const [focusing, { on: onFocus, off: offFocus }] = useBoolean();
+  const [completionContext, setCompletionContext] = useState<CompletionContext>();
+  const [completionOptions, setCompletionOptions] = useState<string[]>([]);
+  const [activeCompletionIndex, setActiveCompletionIndex] = useState(0);
+  const completionOptionsRef = useRef<string[]>([]);
 
   // Check voice input state
   const [mobilePreSpeak, setMobilePreSpeak] = useState(false);
@@ -163,6 +185,49 @@ const ChatInput = ({
   const isDefaultInputHeight =
     !mobilePreSpeak && !inputValue && fileList.length === 0 && !canUseInputGuide;
 
+  const resetCompletionContext = useCallback(() => {
+    setCompletionContext(undefined);
+    setCompletionOptions([]);
+    completionOptionsRef.current = [];
+    setActiveCompletionIndex(0);
+  }, []);
+
+  const handleCompletionOptionsChange = useCallback((options: string[]) => {
+    completionOptionsRef.current = options;
+    setCompletionOptions((current) =>
+      current.length === options.length && current.every((item, index) => item === options[index])
+        ? current
+        : options
+    );
+    setActiveCompletionIndex((current) => Math.min(current, Math.max(options.length - 1, 0)));
+  }, []);
+
+  const acceptCompletion = useCallback(
+    (guide: string) => {
+      if (!completionContext) return;
+
+      const textarea = TextareaDom.current;
+      const result = applyInputGuide({
+        context: completionContext,
+        value: inputValue,
+        cursor: textarea?.selectionStart ?? inputValue.length,
+        guide
+      });
+
+      resetCompletionContext();
+      setValue('input', result.value, {
+        shouldDirty: true,
+        shouldTouch: true
+      });
+
+      requestAnimationFrame(() => {
+        textarea?.focus();
+        textarea?.setSelectionRange(result.cursor, result.cursor);
+      });
+    },
+    [completionContext, inputValue, resetCompletionContext, setValue, TextareaDom]
+  );
+
   // Upload files
   useRequest(uploadFiles, {
     manual: false,
@@ -175,6 +240,7 @@ const ChatInput = ({
     async (val: string = inputValue) => {
       if (!canSendMessage) return;
 
+      resetCompletionContext();
       onSendMessage({
         text: val.trim(),
         files: fileList,
@@ -182,7 +248,7 @@ const ChatInput = ({
         clearInput: true
       });
     },
-    [inputValue, lastInteractive, canSendMessage, fileList, onSendMessage]
+    [inputValue, lastInteractive, canSendMessage, fileList, onSendMessage, resetCompletionContext]
   );
   const { runAsync: handleStop, loading: isStopping } = useRequest(async () => {
     try {
@@ -238,8 +304,20 @@ const ChatInput = ({
               letterSpacing: 'inherit'
             }}
             value={inputValue}
+            role={'combobox'}
+            aria-autocomplete={'list'}
+            aria-controls={completionContext ? INPUT_GUIDE_ID : undefined}
+            aria-activedescendant={
+              completionContext && completionOptions.length
+                ? `${INPUT_GUIDE_ID}-${Math.min(
+                    activeCompletionIndex,
+                    completionOptions.length - 1
+                  )}`
+                : undefined
+            }
             onChange={(e) => {
               const textarea = e.target;
+              const value = textarea.value;
               textarea.style.height = textareaMinH;
               const maxHeight = 128;
               const newHeight = Math.min(textarea.scrollHeight, maxHeight);
@@ -252,26 +330,103 @@ const ChatInput = ({
                 textarea.style.overflowY = 'hidden';
               }
 
-              setValue('input', textarea.value, {
+              setValue('input', value, {
                 shouldDirty: true,
                 shouldTouch: true
               });
+
+              // 根据输入事件建立或刷新引导补全上下文。
+              const inputType =
+                e.nativeEvent instanceof InputEvent ? e.nativeEvent.inputType : undefined;
+              const isInsertion = inputType
+                ? inputType.startsWith('insert')
+                : value.length > inputValue.length;
+              setCompletionContext(
+                getEditedCompletionContext({
+                  context: completionContext,
+                  before: inputValue,
+                  after: value,
+                  cursor: textarea.selectionStart,
+                  isInsertion
+                })
+              );
+              setActiveCompletionIndex(0);
             }}
+            onKeyUp={(e) => {
+              if (!completionContext || !completionNavigationKeys.has(e.key)) return;
+              const textarea = e.currentTarget;
+              setCompletionContext(
+                getCompletionContext({
+                  anchor: completionContext.anchor,
+                  value: textarea.value,
+                  cursor: textarea.selectionStart
+                })
+              );
+            }}
+            onPointerDown={resetCompletionContext}
             onKeyDown={(e) => {
               // enter send.(pc or iframe && enter and unPress shift)
               const isEnter = e.key === 'Enter';
               const textarea = e.currentTarget;
+              // 上下键只切换候选；左右键仍交给 textarea 原生处理光标。
+              const completionAction = getCompletionKeyAction({
+                key: e.key,
+                hasContext: !!completionContext,
+                canAccept: !!completionContext && completionOptions.length > 0
+              });
+              if (completionAction) {
+                if (completionAction === 'previous' || completionAction === 'next') {
+                  setActiveCompletionIndex(
+                    getNextCompletionIndex({
+                      index: activeCompletionIndex,
+                      length: completionOptions.length,
+                      direction: completionAction === 'next' ? 1 : -1
+                    })
+                  );
+                  e.preventDefault();
+                  return;
+                }
+                if (completionAction === 'close') {
+                  resetCompletionContext();
+                  e.preventDefault();
+                  return;
+                }
+                if (e.shiftKey || e.nativeEvent.isComposing || e.keyCode === 229) return;
+                if (completionAction === 'accept') {
+                  const options = completionOptionsRef.current;
+                  acceptCompletion(options[Math.min(activeCompletionIndex, options.length - 1)]);
+                  e.preventDefault();
+                  return;
+                }
+              }
+
               if (isEnter && (e.ctrlKey || e.altKey)) {
                 // Add a new line
-                const index = textarea.selectionStart;
-                const val = textarea.value;
-                textarea.value = `${val.slice(0, index)}\n${val.slice(index)}`;
-                textarea.selectionStart = index + 1;
-                textarea.selectionEnd = index + 1;
+                const { value, cursor } = insertNewline({
+                  value: textarea.value,
+                  cursor: textarea.selectionStart
+                });
+                setValue('input', value, {
+                  shouldDirty: true,
+                  shouldTouch: true
+                });
 
                 textarea.style.height = textareaMinH;
                 textarea.style.height = `${textarea.scrollHeight}px`;
 
+                setCompletionContext(
+                  completionContext &&
+                    getCompletionContext({
+                      anchor: completionContext.anchor,
+                      value,
+                      cursor
+                    })
+                );
+
+                requestAnimationFrame(() => {
+                  textarea.setSelectionRange(cursor, cursor);
+                });
+                e.preventDefault();
                 return;
               }
 
@@ -351,6 +506,11 @@ const ChatInput = ({
       onFocus,
       offFocus,
       setValue,
+      completionContext,
+      resetCompletionContext,
+      completionOptions,
+      activeCompletionIndex,
+      acceptCompletion,
       handleSend,
       canUploadFile,
       isFileTypeAllowed,
@@ -568,16 +728,14 @@ const ChatInput = ({
       >
         <Box flex={1}>
           {/* Chat input guide box */}
-          {canUseInputGuide && (
+          {canUseInputGuide && completionContext && (
             <InputGuideBox
+              id={INPUT_GUIDE_ID}
               sourceTarget={sourceTarget}
-              text={inputValue}
-              onSelect={(e) => {
-                setValue('input', e, {
-                  shouldDirty: true,
-                  shouldTouch: true
-                });
-              }}
+              text={completionContext.userQuery}
+              activeIndex={activeCompletionIndex}
+              onOptionsChange={handleCompletionOptionsChange}
+              onSelect={acceptCompletion}
               onSend={(e) => {
                 handleSend(e);
               }}

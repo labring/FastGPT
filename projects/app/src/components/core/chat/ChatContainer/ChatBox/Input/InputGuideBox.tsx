@@ -1,5 +1,5 @@
 import { Box, Flex } from '@chakra-ui/react';
-import React from 'react';
+import React, { useEffect, useMemo } from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { queryChatInputGuideList } from '@/web/core/chat/inputGuide/api';
@@ -12,13 +12,19 @@ import { WorkflowRuntimeContext } from '../../context/workflowRuntimeContext';
 import type { ChatSourceTarget } from '@/web/core/chat/utils';
 
 export default function InputGuideBox({
+  id,
   sourceTarget,
   text,
+  activeIndex,
+  onOptionsChange,
   onSelect,
   onSend
 }: {
+  id: string;
   sourceTarget: ChatSourceTarget;
   text: string;
+  activeIndex: number;
+  onOptionsChange: (options: string[]) => void;
   onSelect: (text: string) => void;
   onSend: (text: string) => void;
 }) {
@@ -48,10 +54,16 @@ export default function InputGuideBox({
     }
   );
 
-  const filterData = data.filter((item) => item !== text).slice(0, 5);
+  const filterData = useMemo(() => data.filter((item) => item !== text).slice(0, 5), [data, text]);
+
+  useEffect(() => {
+    onOptionsChange(filterData);
+  }, [filterData, onOptionsChange]);
 
   return filterData.length ? (
     <Box
+      id={id}
+      role={'listbox'}
       bg={'white'}
       boxShadow={'lg'}
       borderWidth={'1px'}
@@ -68,11 +80,13 @@ export default function InputGuideBox({
         <MyIcon name={'union'} />
         <Box>{t('chat:input_guide')}</Box>
       </Flex>
-      {data.map((item) => (
+      {filterData.map((item, index) => (
         <Flex
           alignItems={'center'}
           as={'li'}
           key={item}
+          id={`${id}-${index}`}
+          role={'option'}
           px={4}
           py={3}
           borderRadius={'sm'}
@@ -81,8 +95,9 @@ export default function InputGuideBox({
           _notLast={{
             mb: 1
           }}
-          bg={'myGray.50'}
+          bg={index === activeIndex ? 'primary.50' : 'myGray.50'}
           color={'myGray.600'}
+          aria-selected={index === activeIndex}
           _hover={{
             bg: 'primary.50',
             color: 'primary.600',
