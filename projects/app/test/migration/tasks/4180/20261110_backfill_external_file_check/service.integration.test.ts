@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MongoSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/schema';
+import { MongoSystemConfigs } from '@fastgpt/service/common/system/config/schema';
 import {
   backfillExternalFileCheck,
   verifyExternalFileCheck
@@ -8,6 +9,7 @@ import {
   applyInstanceConfigMigration,
   buildLegacyDomainOverrides,
   buildSparseLegacyMigrationPlan,
+  inspectInstanceConfigMigration,
   sanitizeOverridesForSchema
 } from '@/migration/tasks/4180/20260928_migrate_instance_configs/service';
 import { resolveDomainEffectiveConfig } from '@fastgpt/global/common/system/config/schema';
@@ -86,6 +88,72 @@ describe('external file check backfill with MongoDB', () => {
         overrides: document?.overrides
       }).checkExternalFile
     ).toBe(false);
+  });
+
+  it('keeps an existing administrator override ahead of a stale legacy default marker', async () => {
+    const logger = { info: () => {}, warn: () => {}, error: () => {} };
+    await MongoSystemConfigs.create({
+      type: 'fastgpt',
+      value: { feConfigs: {}, systemEnv: { checkExternalFile: false } }
+    });
+    const initial = await inspectInstanceConfigMigration();
+    await applyInstanceConfigMigration({
+      overrides: {
+        ...initial.overrides,
+        security: { ...initial.overrides.security, checkExternalFile: true }
+      },
+      logger
+    });
+    const before = await MongoSystemInstanceConfig.findOne({ domain: 'security' }).lean();
+    const inspection = await inspectInstanceConfigMigration();
+    expect(inspection.pendingBackfillPaths).not.toContain('security.checkExternalFile');
+    const result = await applyInstanceConfigMigration({
+      overrides: inspection.overrides,
+      explicitDefaultPaths: inspection.explicitDefaultPaths,
+      logger
+    });
+    const after = await MongoSystemInstanceConfig.findOne({ domain: 'security' }).lean();
+
+    expect(after?.overrides).toMatchObject({ checkExternalFile: true });
+    expect(after?.explicitDefaultPaths).not.toContain('checkExternalFile');
+    expect(after?.revision).toBe(before?.revision);
+    expect(result.backfilledDomains).not.toContain('security');
+  });
+
+  it('counts a marker-only backfill and does not write again on rerun', async () => {
+    const logger = { info: () => {}, warn: () => {}, error: () => {} };
+    await MongoSystemConfigs.create({
+      type: 'fastgpt',
+      value: { feConfigs: {}, systemEnv: { checkExternalFile: false } }
+    });
+    const initial = await inspectInstanceConfigMigration();
+    await applyInstanceConfigMigration({ overrides: initial.overrides, logger });
+    const before = await MongoSystemInstanceConfig.findOne({ domain: 'security' }).lean();
+    const inspection = await inspectInstanceConfigMigration();
+    expect(inspection.pendingBackfillPaths).toContain('security.checkExternalFile');
+
+    const result = await applyInstanceConfigMigration({
+      overrides: inspection.overrides,
+      explicitDefaultPaths: inspection.explicitDefaultPaths,
+      logger
+    });
+    const after = await MongoSystemInstanceConfig.findOne({ domain: 'security' }).lean();
+    expect(after?.explicitDefaultPaths).toContain('checkExternalFile');
+    expect(after?.revision).toBe(before!.revision + 1);
+    expect(result.backfilledDomains).toContain('security');
+    expect(result.backfilledPaths).toContain('security.checkExternalFile');
+    expect(result.migratedCount).toBe(1);
+
+    const nextInspection = await inspectInstanceConfigMigration();
+    expect(nextInspection.pendingBackfillPaths).not.toContain('security.checkExternalFile');
+    const rerun = await applyInstanceConfigMigration({
+      overrides: nextInspection.overrides,
+      explicitDefaultPaths: nextInspection.explicitDefaultPaths,
+      logger
+    });
+    const final = await MongoSystemInstanceConfig.findOne({ domain: 'security' }).lean();
+    expect(rerun.migratedCount).toBe(0);
+    expect(final?.revision).toBe(after?.revision);
   });
 
   it.each(['missing', 'null'] as const)(

@@ -8,7 +8,7 @@ import {
   getDomainDefaultConfig,
   resolveDomainEffectiveConfig
 } from '@fastgpt/global/common/system/config/schema';
-import { pruneDefaultOverrides } from '@fastgpt/global/common/system/config/merge';
+import { hasOverridePath, pruneDefaultOverrides } from '@fastgpt/global/common/system/config/merge';
 import { MongoSystemConfigs } from '@fastgpt/service/common/system/config/schema';
 import { MongoSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/schema';
 import { logInstanceConfigRead } from '@fastgpt/service/common/system/migrationCoverageLog';
@@ -890,6 +890,18 @@ const flattenOverridePaths = (value: Record<string, unknown>, prefix: string[] =
       : [[...prefix, key].join('.')]
   );
 
+/** 已有 override 比旧配置的默认值意图更新，不能再为同一路径补写默认值标记。 */
+const missingLegacyDefaultPaths = ({
+  declared,
+  existingOverrides,
+  existingPaths
+}: {
+  declared: string[];
+  existingOverrides: Record<string, unknown>;
+  existingPaths: Set<string>;
+}): string[] =>
+  declared.filter((path) => !existingPaths.has(path) && !hasOverridePath(existingOverrides, path));
+
 /**
  * 读取旧配置来源并生成迁移计划。
  *
@@ -958,13 +970,18 @@ export const inspectInstanceConfigMigration = async () => {
     if (!existingEntry) return false;
 
     const declaredExplicit = legacyExplicitDefaultPaths[domain] ?? [];
-    const missingExplicitPaths = declaredExplicit.filter(
-      (path) => !existingEntry.explicitDefaultPaths.has(path)
-    );
+    const missingExplicitPaths = missingLegacyDefaultPaths({
+      declared: declaredExplicit,
+      existingOverrides: existingEntry.overrides,
+      existingPaths: existingEntry.explicitDefaultPaths
+    });
     const missing = computeMissingOverrides({
       existing: existingEntry.overrides,
       target: targetOverrides,
-      explicitDefaultPaths: new Set([...existingEntry.explicitDefaultPaths, ...declaredExplicit])
+      explicitDefaultPaths: new Set([
+        ...existingEntry.explicitDefaultPaths,
+        ...missingExplicitPaths
+      ])
     });
     if (!missing && missingExplicitPaths.length === 0) return false;
 
@@ -1137,13 +1154,15 @@ export const applyInstanceConfigMigration = async ({
           : []
       );
       const declaredExplicitDefaultPaths = explicitDefaultPaths?.[domain] ?? [];
+      const missingExplicitPaths = missingLegacyDefaultPaths({
+        declared: declaredExplicitDefaultPaths,
+        existingOverrides,
+        existingPaths: existingExplicitDefaultPaths
+      });
       const explicitDefaultPathsSet = new Set([
         ...existingExplicitDefaultPaths,
-        ...declaredExplicitDefaultPaths
+        ...missingExplicitPaths
       ]);
-      const missingExplicitPaths = declaredExplicitDefaultPaths.filter(
-        (path) => !existingExplicitDefaultPaths.has(path)
-      );
       const missing = computeMissingOverrides({
         existing: existingOverrides,
         target: targetOverrides,
@@ -1192,7 +1211,7 @@ export const applyInstanceConfigMigration = async ({
                   explicitDefaultPaths: Array.from(
                     new Set([
                       ...existingExplicitDefaultPaths,
-                      ...declaredExplicitDefaultPaths,
+                      ...missingExplicitPaths,
                       ...unresolvable
                     ])
                   ).slice(0, 200),
@@ -1228,7 +1247,7 @@ export const applyInstanceConfigMigration = async ({
       const autoSkipped = allMissingPaths.filter((p) => !acceptedSet.has(p));
       const skippedPaths = Array.from(new Set([...skippedConflictPaths, ...autoSkipped]));
       const nextExplicitDefaultPaths = Array.from(
-        new Set([...existingExplicitDefaultPaths, ...declaredExplicitDefaultPaths, ...skippedPaths])
+        new Set([...existingExplicitDefaultPaths, ...missingExplicitPaths, ...skippedPaths])
       ).slice(0, 200);
 
       const updated = await MongoSystemInstanceConfig.updateOne(
@@ -1243,7 +1262,12 @@ export const applyInstanceConfigMigration = async ({
         },
         { runValidators: false }
       );
-      if (updated.modifiedCount > 0) return { acceptedPaths, skippedPaths };
+      if (updated.modifiedCount > 0) {
+        const acceptedExplicitPaths = missingExplicitPaths.filter((path) =>
+          nextExplicitDefaultPaths.includes(path)
+        );
+        return { acceptedPaths: [...acceptedPaths, ...acceptedExplicitPaths], skippedPaths };
+      }
     }
 
     throw new Error(
