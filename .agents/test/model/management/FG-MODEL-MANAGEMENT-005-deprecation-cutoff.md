@@ -7,7 +7,7 @@ types: ["api", "integration"]
 category: "boundary"
 scenario: "special"
 priority: "P1"
-status: "draft"
+status: "ready"
 tags: ["pr-8205", "model-deprecation", "覆盖基础场景", "覆盖异常场景", "覆盖边界场景"]
 evidence: ["response", "database", "queue"]
 sources:
@@ -28,7 +28,7 @@ related:
   - "FG-MODEL-MANAGEMENT-002"
   - "FG-MODEL-MANAGEMENT-003"
   - "FG-MODEL-MANAGEMENT-004"
-baseline: "e11ba6771f; pro=a4e8e9016e70fbaf7972c44d7f01b38cb635c6a5"
+baseline: "0ff94ba7326fecf7aaf35f4413d7d93b78a94dae; pro=c60a9d5244dabda2fe12ab73ce70659e7d5cb00a"
 ---
 
 # 实际下架截止时刻起所有通知路径停止投递
@@ -41,7 +41,9 @@ baseline: "e11ba6771f; pro=a4e8e9016e70fbaf7972c44d7f01b38cb635c6a5"
 
 - 需求依据：用户确认接口接收并保存带 offset 的下架时间；发送锚点另用 notificationTime 保存创建时钟点。最新要求取代“下架日 00:00”口径，允许发送的条件为 `now < new Date(plannedDeprecationAt)`，等于 DDL 即停止。
 - 复用 MANAGEMENT-002/003/004 的 dev App/Pro/Mongo/Redis、成功接收端、独立 campaign/团队及清理清单。仅限本例资源使用时钟/gate，不调整宿主、共享服务或数据库时钟。
-- 阻塞项：尚无已验证的真实 HTTP/worker 毫秒级时钟控制启动夹具；C2/C5 及内部重试精确边界需补齐可复现入口才可改 ready。已有局部 Vitest 边界测试不能替代本用例的真实服务执行证据；时区语义已经确认，不再作为阻塞项。
+- 受控时钟：只在本轮专用 App/Pro 子进程设置 `FASTGPT_TEST_CLOCK_FILE=/绝对路径/clock.json` 和 `NODE_OPTIONS="--require=/仓库绝对路径/.agents/test/support/controlled-clock.cjs"`。初始文件为 `{"now":null}`；启动成功后原子写入 `{"now":毫秒时间戳}` 冻结 Date，系统定时器仍走真实时间。测试控制器不加载此文件，使用真实时间作超时。先验证真实 create 的 createdAt 与冻结值精确相等、真实 worker 已消费且 inform.time 相等，再执行边界断言。
+- 投递 gate：SMTP 接收端在 DATA 后保留响应，可在 D 前进入、推进时钟到 D 后返回 550，验证发送器内部重试不再发起请求。站内信测试在本轮隔离工作树的 `createModelDeprecationUserInform` 中，仅于真实 Mongo insert 完成后等待本机 HTTP gate；记录返回的 inform.time，放行后继续原业务。此临时插桩只增加等待，不替代扫描器、写入、sendMessage 或状态推进，结束后恢复源文件并校验 git diff；不把插桩提交到产品代码。
+- 正向与负向分别用独立计划，入队前冻结到 D-2ms，暂停本轮专用队列，计划保存后将时钟设为 D-1ms、D、D+1ms 再放行；该队列必须是本轮专用 Redis DB，不能暂停共享业务队列。API 与 worker 观察的时间必须与控制文件一致。
 - 夹具示例：notificationTime=`2026-11-01T14:00:00+08:00`，DDL D=`2026-11-21T23:59:00+08:00`；测试时替换成当前未来日期。正常候选为即时首轮及 11/06、11/11、11/14、11/18、11/20 的 14:00+08:00。各行独立 campaign，模型/团队有效且仍引用计划模型，排除“无人命中”造成的零投递。
 - 记录接收端每个请求的发起时刻、worker 观测时间及数据库新增 inform；D 前已经发起的请求在 D 后回执可正常完成，不属于 D 后新投递。负向对照先证明同夹具在 D 前可送达，并确认 Job 已消费或明确停止，不能只 sleep 后看“未收到”。
 - 每 1 秒最多 120 秒等待停止推进；稳定后观察 10 秒无新接收请求。到期将 scheduled/running/failed/interrupted 轮次改为 skipped，errorSummary=`Model deprecation deadline reached`，保留 completed/terminated、游标和既有计数。
