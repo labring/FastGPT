@@ -44,6 +44,7 @@ type DatasetSearchProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.datasetSearchRerankModelId]?: string;
   [NodeInputKeyEnum.datasetSearchRerankModel]?: string;
   [NodeInputKeyEnum.datasetSearchRerankWeight]?: number;
+  [NodeInputKeyEnum.datasetSearchRerankCandidateNum]?: number;
 
   [NodeInputKeyEnum.collectionFilterMatch]: string;
   [NodeInputKeyEnum.authTmbId]?: boolean;
@@ -99,6 +100,7 @@ export const dispatchDatasetSearch = async (
       rerankModelId,
       rerankModel,
       rerankWeight,
+      rerankCandidateNum,
 
       datasetSearchUsingExtensionQuery,
       datasetSearchExtensionModelId,
@@ -217,6 +219,7 @@ export const dispatchDatasetSearch = async (
       usingReRank,
       rerankModel: rerankModelData,
       rerankWeight,
+      rerankCandidateNum,
       collectionFilterMatch,
       readableCollectionIdList
     };

@@ -7,6 +7,7 @@ import { i18n } from '@/lib/i18n';
 import { generateArticleSchema, generateBreadcrumbSchema } from '@/lib/schema';
 import { getFastGPTDocsOrigin } from '@/lib/fastgpt-home-url';
 import { CalendarDays } from 'lucide-react';
+import DocsTocCta from '@/components/docs/DocsTocCta';
 import {
   UpgradeVersionTimeline,
   type UpgradeVersionTimelineItem
@@ -95,7 +96,8 @@ export default async function Page({
         toc={page.data.toc}
         full={page.data.full}
         tableOfContent={{
-          style: 'clerk'
+          style: 'clerk',
+          footer: <DocsTocCta lang={lang} />
         }}
         editOnGithub={{
           owner: 'labring',

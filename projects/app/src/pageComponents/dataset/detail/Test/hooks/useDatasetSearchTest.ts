@@ -5,6 +5,7 @@ import {
 } from '@/web/core/dataset/store/searchTest';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
+import { rerankCandidateNumRange } from '@fastgpt/global/core/dataset/search/utils';
 import type { SearchDatasetTestResponse } from '@fastgpt/global/openapi/core/dataset/api';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useToast } from '@fastgpt/web/hooks/useToast';
@@ -33,6 +34,7 @@ export const useDatasetSearchTest = ({
         embeddingWeight: 0.5,
         usingReRank: false,
         rerankWeight: 0.5,
+        rerankCandidateNum: rerankCandidateNumRange.default,
         limit: 5000,
         similarity: 0,
         datasetSearchUsingExtensionQuery: false,

@@ -3,6 +3,7 @@ import { RootProvider } from 'fumadocs-ui/provider';
 import type { ReactNode } from 'react';
 import type { Translations } from 'fumadocs-ui/i18n';
 import CustomSearchDialog from '@/components/CustomSearchDialog';
+import TopBanner from '@/components/docs/TopBanner';
 import Script from 'next/script';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
@@ -172,6 +173,7 @@ export default async function Layout({
             enabled: true
           }}
         >
+          <TopBanner lang={lang} />
           {children}
         </RootProvider>
       </body>

@@ -46,6 +46,7 @@ export async function handler(
     rerankModelId,
     rerankModel,
     rerankWeight,
+    rerankCandidateNum,
 
     datasetSearchUsingExtensionQuery = false,
     datasetSearchExtensionModelId,
@@ -148,6 +149,7 @@ export async function handler(
     usingReRank,
     rerankModel: rerankModelData,
     rerankWeight,
+    rerankCandidateNum,
     readableCollectionIdList
   };
   const {

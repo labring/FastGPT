@@ -167,7 +167,7 @@ describe('builtinTemplateProvider', () => {
     ).toBe(false);
   });
 
-  it('documents one inline reference format for node outputs and global variables', async () => {
+  it('preserves inline reference examples and the description key for caller translation', async () => {
     const ref = parseNodeTemplateRef('builtin:text-editor');
     const resolved = await builtinTemplateProvider.resolve(ref, { locale: 'en' });
     const descriptor = normalizeNodeTemplateDescriptor({

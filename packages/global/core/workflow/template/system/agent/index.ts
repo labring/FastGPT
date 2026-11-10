@@ -23,6 +23,7 @@ import { systemPromptTip } from '../../tip';
 import { i18nT } from '../../../../../common/i18n/utils';
 import { Output_Template_Error_Message } from '../../output';
 import { DatasetSearchModeEnum } from '../../../../dataset/constants';
+import { rerankCandidateNumRange } from '../../../../dataset/search/utils';
 import { createHideInContext } from '../../context';
 
 export const AgentNode: FlowNodeTemplateType = {
@@ -224,6 +225,13 @@ export const AgentNode: FlowNodeTemplateType = {
       label: '',
       valueType: WorkflowIOValueTypeEnum.number,
       value: 0.5
+    },
+    {
+      key: NodeInputKeyEnum.datasetSearchRerankCandidateNum,
+      renderTypeList: [FlowNodeInputTypeEnum.hidden],
+      label: '',
+      valueType: WorkflowIOValueTypeEnum.number,
+      value: rerankCandidateNumRange.default
     },
     {
       key: NodeInputKeyEnum.datasetSearchUsingExtensionQuery,

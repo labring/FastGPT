@@ -15,6 +15,7 @@ import {
 } from '../../constants';
 import { Input_Template_Dataset_Tag_Filter_Version, Input_Template_UserChatInput } from '../input';
 import { DatasetSearchModeEnum } from '../../../dataset/constants';
+import { rerankCandidateNumRange } from '../../../dataset/search/utils';
 import { i18nT } from '../../../../common/i18n/utils';
 import { Output_Template_Error_Message } from '../output';
 
@@ -95,6 +96,13 @@ export const DatasetSearchModule: FlowNodeTemplateType = {
       label: '',
       valueType: WorkflowIOValueTypeEnum.number,
       value: 0.5
+    },
+    {
+      key: NodeInputKeyEnum.datasetSearchRerankCandidateNum,
+      renderTypeList: [FlowNodeInputTypeEnum.hidden],
+      label: '',
+      valueType: WorkflowIOValueTypeEnum.number,
+      value: rerankCandidateNumRange.default
     },
     // Query Extension
     {

@@ -70,7 +70,6 @@ const SaveButton = ({
         Trigger={
           <Button
             w={'95px'}
-            h={'34px'}
             bg={bg}
             color={'white'}
             isDisabled={isDisabled}
