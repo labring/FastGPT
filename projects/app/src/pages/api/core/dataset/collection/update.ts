@@ -109,7 +109,7 @@ async function handler(req: ApiRequestProps) {
 
   const isMove = parentId !== undefined;
   const targetParentId = parentId || null;
-  // move 只校验源父级/目标父级；字段更新要求节点自身 manage。
+  // move 只校验源父级/目标父级（根级移动校验节点自身 manage）；字段更新要求节点自身 manage。
   const hasMetaUpdate =
     !!name || tags !== undefined || forbid !== undefined || createTime !== undefined;
   const auth = { req, authToken: true, authApiKey: true, collectionId: id };
