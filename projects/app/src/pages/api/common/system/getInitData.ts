@@ -6,10 +6,15 @@ import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   GetSystemInitDataQuerySchema,
   GetSystemInitDataResponseSchema,
+  ProHealthResponseSchema,
   type GetSystemInitDataResponse
 } from '@fastgpt/global/openapi/common/system/api';
 import { getRuntimeSubPlansConfig } from '@fastgpt/global/support/wallet/sub/utils';
 import { serviceEnv } from '@fastgpt/service/env';
+import { postHealth } from '@fastgpt/service/thirdProvider/fastgptPro/api';
+import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
+
+const logger = getLogger(LogCategories.SYSTEM);
 
 /** 按会话鉴权返回初始化数据；匿名白名单覆盖登录、价格和分享聊天的公共依赖。 */
 async function handler(
@@ -77,7 +82,28 @@ async function handler(
   const isAuthenticated = await authCert({ req, authToken: true })
     .then(() => true)
     .catch(() => false);
-  const feConfigs = filterFeConfigs(isAuthenticated);
+  // Pro 环境能力不写入 Mongo；只在登录态按需读取，避免启动迁移与 Pro 互相等待。
+  const proFrontendCapabilities = await (async () => {
+    if (!isAuthenticated || !serviceEnv.PRO_URL) return undefined;
+
+    const disabled = {
+      show_git: false,
+      show_workorder: false,
+      show_enterprise_auth: false,
+      showWecomConfig: false
+    };
+    try {
+      const health = ProHealthResponseSchema.safeParse(await postHealth({ timeout: 1500 }));
+      if (health.success && health.data.auth === true && health.data.frontendCapabilities) {
+        return health.data.frontendCapabilities;
+      }
+    } catch {
+      // 连接失败和超时都只关闭展示入口；不记录可能携带凭据的请求错误。
+    }
+    logger.debug('Pro frontend capabilities unavailable');
+    return disabled;
+  })();
+  const feConfigs = { ...filterFeConfigs(isAuthenticated), ...proFrontendCapabilities };
 
   const response = (() => {
     if (isAuthenticated) {

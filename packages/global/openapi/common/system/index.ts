@@ -3,11 +3,30 @@ import { DevApiTagsMap } from '../../tag';
 import {
   GetSystemInitDataQuerySchema,
   GetSystemInitDataResponseSchema,
+  ProHealthResponseSchema,
   UnlockSystemTaskQuerySchema,
   UnlockSystemTaskResponseSchema
 } from './api';
 
 export const CommonSystemPath: OpenAPIPath = {
+  '/proApi/health': {
+    post: {
+      summary: 'Pro 服务健康检查',
+      description:
+        'Pro 直连 /api/health 的内部令牌认证分支返回前端能力；App 浏览器代理会移除内部令牌，仅返回健康状态',
+      tags: [DevApiTagsMap.commonSystem],
+      responses: {
+        200: {
+          description: '服务健康状态和可选的内部能力投影',
+          content: {
+            'application/json': {
+              schema: ProHealthResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
   '/common/system/getInitData': {
     get: {
       summary: '获取系统初始化数据',

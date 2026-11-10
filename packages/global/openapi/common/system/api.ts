@@ -4,6 +4,32 @@ import { FastGPTFeConfigsSchema } from '../../../common/system/types';
 import { BoolSchema, NumSchema } from '../../../common/zod';
 
 /* ============================================================================
+ * API: Pro 服务健康检查
+ * Route: POST /api/health (Pro), /proApi/health (App 代理)
+ * Method: POST
+ * Description: 检查服务是否可访问；服务间认证成功时返回 Pro 环境决定的前端能力
+ * Tags: ['系统接口', 'Read']
+ * ============================================================================ */
+
+// 能力字段只接受真正的布尔值；错误或旧版本响应不能作为开启能力的依据。
+export const ProFrontendCapabilitiesSchema = z.strictObject({
+  show_git: z.boolean().meta({ description: '是否显示 Git 信息', example: false }),
+  show_workorder: z.boolean().meta({ description: '是否配置工单服务', example: false }),
+  show_enterprise_auth: z.boolean().meta({ description: '是否配置企业认证服务', example: false }),
+  showWecomConfig: z.boolean().meta({ description: '是否显示企业微信配置', example: false })
+});
+export type ProFrontendCapabilities = z.infer<typeof ProFrontendCapabilitiesSchema>;
+
+export const ProHealthResponseSchema = z.object({
+  data: z.literal('success').meta({ description: '健康检查成功', example: 'success' }),
+  auth: z.literal(true).optional().meta({ description: '服务间认证成功时为 true', example: true }),
+  frontendCapabilities: ProFrontendCapabilitiesSchema.optional().meta({
+    description: '仅服务间认证成功时返回的 Pro 前端能力'
+  })
+});
+export type ProHealthResponse = z.infer<typeof ProHealthResponseSchema>;
+
+/* ============================================================================
  * API: 获取系统初始化数据
  * Route: GET /api/common/system/getInitData
  * Method: GET

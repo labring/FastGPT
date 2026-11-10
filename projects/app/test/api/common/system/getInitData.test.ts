@@ -9,8 +9,15 @@ import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { ApiRequestInputParseError } from '@fastgpt/service/common/zod/requestParseError';
 import { ZodError } from 'zod';
 import { serviceEnv } from '@fastgpt/service/env';
+import { postHealth } from '@fastgpt/service/thirdProvider/fastgptPro/api';
+
+vi.mock('@fastgpt/service/thirdProvider/fastgptPro/api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@fastgpt/service/thirdProvider/fastgptPro/api')>()),
+  postHealth: vi.fn()
+}));
 
 const originalShowRunDetail = serviceEnv.AUXILIARY_GENERATION_SHOW_RUN_DETAIL;
+const originalProUrl = serviceEnv.PRO_URL;
 
 // 公开字段和值只维护一份；精确响应断言同时验证保留值和顶层、嵌套字段过滤。
 const publicConfig = {
@@ -80,6 +87,7 @@ describe('getInitData anonymous configuration filtering', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     serviceEnv.AUXILIARY_GENERATION_SHOW_RUN_DETAIL = false;
+    serviceEnv.PRO_URL = undefined;
     global.systemInitBufferId = 'config-1';
     global.systemVersion = '4.17.3';
     global.systemEnv = { ...global.systemEnv, sso: { url: 'https://sso.internal.example.com' } };
@@ -115,6 +123,7 @@ describe('getInitData anonymous configuration filtering', () => {
 
   afterEach(() => {
     serviceEnv.AUXILIARY_GENERATION_SHOW_RUN_DETAIL = originalShowRunDetail;
+    serviceEnv.PRO_URL = originalProUrl;
     vi.restoreAllMocks();
   });
 
@@ -177,6 +186,104 @@ describe('getInitData anonymous configuration filtering', () => {
       bufferId: 'config-1',
       feConfigs: expectedAuthenticatedConfig(),
       systemVersion: '4.17.3'
+    });
+  });
+
+  it('uses fresh Pro capabilities on authenticated requests, including cache hits', async () => {
+    serviceEnv.PRO_URL = 'http://127.0.0.1:3001';
+    const capabilities = {
+      show_git: true,
+      show_workorder: false,
+      show_enterprise_auth: true,
+      showWecomConfig: false
+    };
+    Object.assign(global.feConfigs, {
+      show_git: false,
+      show_workorder: true,
+      show_enterprise_auth: false,
+      showWecomConfig: true
+    });
+    const before = structuredClone(global.feConfigs);
+    vi.mocked(postHealth)
+      .mockResolvedValueOnce({ data: 'success', auth: true, frontendCapabilities: capabilities })
+      .mockResolvedValueOnce({
+        data: 'success',
+        auth: true,
+        frontendCapabilities: {
+          show_git: false,
+          show_workorder: true,
+          show_enterprise_auth: false,
+          showWecomConfig: true
+        }
+      });
+
+    const first = await Call(handler, { auth, headers: {} });
+    const cached = await Call(handler, { auth, headers: {}, query: { bufferId: 'config-1' } });
+
+    expect(first.data.feConfigs).toMatchObject(capabilities);
+    expect(cached.data.feConfigs).toMatchObject({
+      show_git: false,
+      show_workorder: true,
+      show_enterprise_auth: false,
+      showWecomConfig: true
+    });
+    expect(postHealth).toHaveBeenCalledTimes(2);
+    expect(postHealth).toHaveBeenCalledWith({ timeout: 1500 });
+    expect(global.feConfigs).toEqual(before);
+  });
+
+  it('does not request Pro for anonymous sessions or a community deployment', async () => {
+    serviceEnv.PRO_URL = 'http://127.0.0.1:3001';
+    await Call(handler, { headers: {} });
+    expect(postHealth).not.toHaveBeenCalled();
+
+    serviceEnv.PRO_URL = undefined;
+    global.feConfigs.show_git = true;
+    const response = await Call(handler, { auth, headers: {} });
+    expect(response.data.feConfigs.show_git).toBe(true);
+    expect(postHealth).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    { name: 'connection failure', failure: new Error('unavailable') },
+    { name: 'timeout', failure: Object.assign(new Error('timeout'), { code: 'ECONNABORTED' }) },
+    {
+      name: 'malformed data',
+      response: { data: 'success', auth: true, frontendCapabilities: { show_git: true } }
+    },
+    {
+      name: 'unexpected extra field',
+      response: {
+        data: 'success',
+        auth: true,
+        frontendCapabilities: {
+          show_git: true,
+          show_workorder: true,
+          show_enterprise_auth: true,
+          showWecomConfig: true,
+          secret: 'ignored'
+        }
+      }
+    },
+    { name: 'missing authentication', response: { data: 'success' } }
+  ])('disables all Pro display capabilities on $name', async ({ failure, response }) => {
+    serviceEnv.PRO_URL = 'http://127.0.0.1:3001';
+    Object.assign(global.feConfigs, {
+      show_git: true,
+      show_workorder: true,
+      show_enterprise_auth: true,
+      showWecomConfig: true
+    });
+    if (failure) vi.mocked(postHealth).mockRejectedValueOnce(failure);
+    else vi.mocked(postHealth).mockResolvedValueOnce(response as never);
+
+    const result = await Call(handler, { auth, headers: {} });
+    expect(result.code).toBe(200);
+    expect(result.data.feConfigs).toMatchObject({
+      show_git: false,
+      show_workorder: false,
+      show_enterprise_auth: false,
+      showWecomConfig: false
     });
   });
 
