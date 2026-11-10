@@ -39,6 +39,21 @@ describe('createSkillFolder', () => {
     expect(await MongoAgentSkills.countDocuments({ _id: child._id })).toBe(1);
   });
 
+  it('persists inheritPermission and defaults it to true', async () => {
+    const scope = fixture();
+    const inherited = await createSkillFolder({ ...scope, name: 'inherited-folder' });
+    expect(inherited.inheritPermission).toBe(true);
+    const independent = await createSkillFolder({
+      ...scope,
+      name: 'independent-folder',
+      inheritPermission: false
+    });
+    expect(independent.inheritPermission).toBe(false);
+    await expect(MongoAgentSkills.findById(independent._id).lean()).resolves.toMatchObject({
+      inheritPermission: false
+    });
+  });
+
   it('rejects leaf parents and enforces the folder creation depth boundary', async () => {
     const scope = fixture();
     const leaf = await MongoAgentSkills.create({

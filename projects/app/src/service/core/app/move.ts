@@ -25,6 +25,7 @@ import {
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
 import { addAuditLog, getI18nAppType } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
+import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { updateParentFoldersUpdateTime } from '@fastgpt/service/core/app/controller';
 import { getAppFolderTree, validateParentFolderType } from '@fastgpt/service/core/app/folderTree';
 
@@ -82,6 +83,8 @@ export const moveApp = async ({
 
   if (app.parentId) {
     await authApp({ req, authToken: true, appId: app.parentId, per: ManagePermissionVal });
+  } else if (!app.permission.hasManagePer) {
+    return Promise.reject(AppErrEnum.unAuthApp);
   }
   if (parentId === null || !app.parentId) {
     await authUserPer({

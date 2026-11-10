@@ -261,15 +261,31 @@ describe('create dataset inheritPermission', () => {
     ]);
   });
 
-  // type=folder 之外的类型忽略该参数：只有 folder 声明了该字段。
-  it('ignores the flag for a non-folder type', async () => {
-    const { owner, collaborator, teamId, parent } = await setupParentFolder();
+  // 普通知识库与 folder 一致：非 folder 类型同样写入并生效。
+  it('writes only the owner snapshot for an independent dataset', async () => {
+    const { owner, teamId, parent } = await setupParentFolder();
 
     const { res, dataset } = await createChild({
       owner,
       parentId: String(parent._id),
       type: DatasetTypeEnum.dataset,
       inheritPermission: false
+    });
+
+    expect(res.code).toBe(200);
+    expect(dataset?.inheritPermission).toBe(false);
+    await expect(datasetPermissions({ teamId, datasetId: String(dataset?._id) })).resolves.toEqual([
+      `${String(owner.tmbId)}:${OwnerRoleVal}`
+    ]);
+  });
+
+  it('inherits the parent snapshot for a dataset when inheritPermission is omitted', async () => {
+    const { owner, collaborator, teamId, parent } = await setupParentFolder();
+
+    const { res, dataset } = await createChild({
+      owner,
+      parentId: String(parent._id),
+      type: DatasetTypeEnum.dataset
     });
 
     expect(res.code).toBe(200);

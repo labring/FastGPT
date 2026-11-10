@@ -10,6 +10,7 @@ import {
 } from '@fastgpt/global/core/dataset/constants';
 import type { UpdateDatasetBody } from '@fastgpt/global/openapi/core/dataset/api';
 import { RebuildEmbeddingBodySchema } from '@fastgpt/global/openapi/core/dataset/training/api';
+import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import {
   ManageRoleVal,
   OwnerRoleVal,
@@ -808,6 +809,54 @@ describe('update dataset', () => {
     });
     expect(allowed.code).toBe(200);
     expect((await MongoDataset.findById(dataset._id).lean())?.name).toBe('renamed-by-manage');
+  });
+
+  it('rejects moving a root dataset when the member only has read permission on it', async () => {
+    const { owner, members } = await getFakeUsers(1);
+    const member = members[0];
+    const teamId = String(owner.teamId);
+
+    await MongoResourcePermission.create({
+      resourceType: PerResourceTypeEnum.team,
+      teamId,
+      resourceId: null,
+      tmbId: member.tmbId,
+      permission: TeamDatasetCreatePermissionVal
+    });
+
+    const dataset = await createDatasetWithOwnerSnapshot({
+      teamId,
+      tmbId: String(owner.tmbId),
+      name: 'root-dataset',
+      type: DatasetTypeEnum.dataset
+    });
+    await setDatasetCollaborators({
+      datasetId: String(dataset._id),
+      teamId,
+      type: dataset.type,
+      collaborators: [
+        { tmbId: String(owner.tmbId), permission: OwnerRoleVal },
+        { tmbId: String(member.tmbId), permission: ReadRoleVal }
+      ]
+    });
+
+    const memberFolder = await createDatasetWithOwnerSnapshot({
+      teamId,
+      tmbId: String(member.tmbId),
+      name: 'member-folder',
+      type: DatasetTypeEnum.folder
+    });
+
+    const res = await Call<UpdateDatasetBody, Record<string, never>, string>(updateHandler, {
+      auth: member,
+      body: { id: String(dataset._id), parentId: String(memberFolder._id) }
+    });
+
+    expect(res.code).toBe(500);
+    expect(res.error).toBe(DatasetErrEnum.unAuthDataset);
+
+    const unchanged = await MongoDataset.findById(dataset._id).lean();
+    expect(unchanged?.parentId ?? null).toBeNull();
   });
 });
 

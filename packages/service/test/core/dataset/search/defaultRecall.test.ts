@@ -193,7 +193,7 @@ describe('default recall dataset search', () => {
       results: []
     });
     mockMongoDatasetCollectionFind.mockImplementation((query: Record<string, any>) => {
-      if (query?.forbid) return [];
+      if (query?.forbid) return { lean: vi.fn().mockResolvedValue([]) };
       return {
         lean: vi.fn().mockResolvedValue([])
       };
@@ -502,7 +502,7 @@ describe('default recall dataset search', () => {
       ]
     });
     mockMongoDatasetCollectionFind.mockImplementation((query: Record<string, any>) => {
-      if (query?.forbid) return [];
+      if (query?.forbid) return { lean: vi.fn().mockResolvedValue([]) };
       return {
         lean: vi.fn().mockResolvedValue([{ _id: 'collection-1', name: 'Source' }])
       };
@@ -584,7 +584,7 @@ describe('default recall dataset search', () => {
         ]
       });
       mockMongoDatasetCollectionFind.mockImplementation((query: Record<string, any>) => {
-        if (query?.forbid) return [];
+        if (query?.forbid) return { lean: vi.fn().mockResolvedValue([]) };
         return { lean: vi.fn().mockResolvedValue([{ _id: 'collection-1', name: 'Source' }]) };
       });
       mockMongoDatasetDataFind.mockReturnValue({
@@ -762,7 +762,7 @@ describe('fullTextRecall engine dispatch', () => {
       ])
     });
     mockMongoDatasetCollectionFind.mockImplementation((query: Record<string, any>) => {
-      if (query?.forbid) return [];
+      if (query?.forbid) return { lean: vi.fn().mockResolvedValue([]) };
       return {
         lean: vi.fn().mockResolvedValue([{ _id: 'col1', name: 'Source' }])
       };
@@ -807,7 +807,7 @@ describe('fullTextRecall engine dispatch', () => {
       ])
     });
     mockMongoDatasetCollectionFind.mockImplementation((query: Record<string, any>) => {
-      if (query?.forbid) return [];
+      if (query?.forbid) return { lean: vi.fn().mockResolvedValue([]) };
       return {
         lean: vi.fn().mockResolvedValue([{ _id: 'col1', name: 'Source' }])
       };
@@ -856,7 +856,7 @@ describe('fullTextRecall engine dispatch', () => {
       ])
     });
     mockMongoDatasetCollectionFind.mockImplementation((query: Record<string, any>) => {
-      if (query?.forbid) return [];
+      if (query?.forbid) return { lean: vi.fn().mockResolvedValue([]) };
       return {
         lean: vi.fn().mockResolvedValue([{ _id: 'col1', name: 'Source' }])
       };

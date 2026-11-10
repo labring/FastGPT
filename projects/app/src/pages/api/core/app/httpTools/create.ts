@@ -26,7 +26,7 @@ async function handler(
   req: ApiRequestProps<CreateHttpToolsBodyType>
 ): Promise<CreateAppResponseType> {
   const {
-    body: { name, avatar, intro, parentId, createType }
+    body: { name, avatar, intro, parentId, createType, inheritPermission }
   } = parseApiInput({
     req,
     bodySchema: CreateHttpToolsBodySchema
@@ -58,6 +58,7 @@ async function handler(
       type: AppTypeEnum.httpToolSet,
       nodes: [toolSetRuntimeNode],
       storageNodes: encodeHttpToolSetNodesForStorage([toolSetRuntimeNode]),
+      inheritPermission,
       session
     });
 
