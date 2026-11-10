@@ -817,10 +817,12 @@ const ModelTable = ({ Tab, channelType }: { Tab: React.ReactNode; channelType: C
                               />
                             </Td>
                             <Td fontSize={'sm'}>
-                              <HStack>
+                              <HStack minW={0}>
                                 <Avatar src={item.avatar} w={'1.2rem'} borderRadius={'50%'} />
-                                <Flex alignItems={'center'} gap={1} minW={0}>
+                                <Flex alignItems={'center'} gap={1} minW={0} flex={'1 1 0'}>
                                   <CopyBox
+                                    minW={0}
+                                    flex={'1 1 auto'}
                                     value={showModelId ? item.model : item.name}
                                     data-row-action
                                     color={'myGray.900'}
@@ -829,16 +831,20 @@ const ModelTable = ({ Tab, channelType }: { Tab: React.ReactNode; channelType: C
                                   >
                                     {showModelId ? item.model : item.name}
                                   </CopyBox>
+                                  {item.scope === ModelScopeEnum.system &&
+                                    item.isUpcomingDeprecation === true && (
+                                      <DeprecationTag size={'sm'} />
+                                    )}
+                                  {item.testMode &&
+                                    !(
+                                      item.scope === ModelScopeEnum.system &&
+                                      item.isUpcomingDeprecation === true
+                                    ) && <TestModeBetaTag />}
                                   {isTeam && item.scope === ModelScopeEnum.system && (
                                     <MyTag type={'borderFill'} colorSchema={'gray'}>
                                       {t('config_model:system_model_tag')}
                                     </MyTag>
                                   )}
-                                  {item.testMode && <TestModeBetaTag />}
-                                  {channelType === 'system' &&
-                                    item.isUpcomingDeprecation === true && (
-                                      <DeprecationTag size={'sm'} />
-                                    )}
                                 </Flex>
                               </HStack>
                               <HStack mt={2} spacing={2} flexWrap={'nowrap'}>

@@ -14,6 +14,7 @@ import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { defaultTTSConfig } from '@fastgpt/global/core/app/constants';
 import type { AppTTSConfigType } from '@fastgpt/global/core/app/type';
 import Avatar from '@fastgpt/web/components/common/Avatar';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyImage from '@fastgpt/web/components/common/Image/MyImage';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
@@ -74,11 +75,13 @@ const TTSSelect = ({
           avatar: providerData.avatar,
           label: (
             <HStack minW={0} maxW={'100%'} justifyContent={'space-between'}>
-              <HStack minW={0}>
+              <HStack minW={0} flex={'1 1 0'}>
                 <Avatar borderRadius={'0'} w={'1.25rem'} flexShrink={0} src={providerData.avatar} />
-                <Box minW={0} className={'textEllipsis'}>
-                  {modelName}
-                </Box>
+                <MyTooltip label={modelName} showOnlyWhenOverflow shouldWrapChildren={false}>
+                  <Box minW={0} className={'textEllipsis'}>
+                    {modelName}
+                  </Box>
+                </MyTooltip>
               </HStack>
               {model.isUpcomingDeprecation === true && <DeprecationTag size={'sm'} />}
             </HStack>
@@ -109,11 +112,12 @@ const TTSSelect = ({
       <Flex minW={0} w={'100%'} overflow="hidden" alignItems="center" gap={1}>
         <Flex minW={0} flex={'1 1 0'} overflow="hidden" alignItems="center" gap={1}>
           <Flex minW={0} flex={'1 1 0'}>
-            <ModelStatusLabel modelId={modelId} {...detailState} />
+            <ModelStatusLabel
+              modelId={modelId}
+              {...detailState}
+              nameSuffix={voice ? ` / ${voice.label}` : undefined}
+            />
           </Flex>
-          {detailState.detail?.status === 'active' && voice && (
-            <Box className="textEllipsis">/ {voice.label}</Box>
-          )}
         </Flex>
         {detailState.detail?.isUpcomingDeprecation === true && (
           <Box mr={2}>
@@ -213,11 +217,12 @@ const TTSSelect = ({
           </>
         }
       >
-        <Flex justifyContent={'space-between'} alignItems={'center'}>
-          <FormLabel>{t('common:core.app.tts.Speech model')}</FormLabel>
+        <Flex justifyContent={'space-between'} alignItems={'center'} gap={3} minW={0}>
+          <FormLabel flexShrink={0}>{t('common:core.app.tts.Speech model')}</FormLabel>
           <MultipleRowSelect
             rowMinWidth="160px"
-            label={<Box w={'220px'}>{formLabel}</Box>}
+            ButtonProps={{ w: '220px', maxW: '100%', minW: 0 }}
+            label={formLabel}
             value={formatValue}
             list={selectorList}
             onSelect={onclickChange}

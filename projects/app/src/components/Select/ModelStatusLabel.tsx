@@ -19,7 +19,8 @@ export const ModelStatusLabel = ({
   noTruncate = false,
   showUpcomingDeprecationTag = false,
   hideUpcomingDeprecationTagWhenDisabled = false,
-  disabledLabel
+  disabledLabel,
+  nameSuffix
 }: {
   modelId?: string;
   detail?: ModelSummary;
@@ -31,6 +32,8 @@ export const ModelStatusLabel = ({
   showUpcomingDeprecationTag?: boolean;
   hideUpcomingDeprecationTagWhenDisabled?: boolean;
   disabledLabel?: (modelName: string) => string;
+  /** 将音色等附加展示内容纳入同一个省略和完整名称 tooltip。 */
+  nameSuffix?: string;
 }) => {
   const { t } = useTranslation();
   if (isEmptyModelValue(modelId)) return <>{emptyLabel ?? t('common:not_model_config')}</>;
@@ -42,7 +45,7 @@ export const ModelStatusLabel = ({
       ? t('common:model_forbidden', { model: detail.name })
       : detail.status === 'disabled'
         ? (disabledLabel?.(detail.name) ?? t('common:model_disabled', { model: detail.name }))
-        : detail.name;
+        : `${detail.name}${nameSuffix ?? ''}`;
   return (
     <Flex
       alignItems="center"

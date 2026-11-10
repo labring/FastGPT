@@ -100,6 +100,7 @@ const ModelLabel = ({
       </Flex>
       {showTags && (
         <Flex alignItems={'center'} gap={1} ml={2} flexShrink={0}>
+          {isSystem && model.isUpcomingDeprecation === true && <DeprecationTag size={'sm'} />}
           {isSystem && enableTeamModel && (
             <MyTag type={'borderFill'} colorSchema={'gray'} fontSize={'xs'} px={1.5} py={0.5}>
               {t('common:model.system_model_tag')}
@@ -107,7 +108,6 @@ const ModelLabel = ({
           )}
           {shouldShowTestModeTag(model) && <TestModeBetaTag />}
           {multimodalEmbedding && <MultimodalTag />}
-          {isSystem && model.isUpcomingDeprecation === true && <DeprecationTag size={'sm'} />}
         </Flex>
       )}
     </Flex>
