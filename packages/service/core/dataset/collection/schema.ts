@@ -130,13 +130,14 @@ defineIndex(DatasetCollectionSchema, {
 defineIndex(DatasetCollectionSchema, {
   key: { teamId: 1, datasetId: 1, 'tags.tagId': 1 }
 });
-// create time filter
+// 跨目录时间过滤与创建时间排序共用；目录候选可由已有 parentId 索引筛选后排序。
 defineIndex(DatasetCollectionSchema, {
   key: { teamId: 1, datasetId: 1, createTime: 1 }
 });
-// 目录内按创建时间排序，避免扫描同一知识库其他目录的数据；保留上方索引用于跨目录查询。
+// 撤回目录创建时间专用索引，减少写入维护成本；兼容清理曾运行过该声明的环境。
 defineIndex(DatasetCollectionSchema, {
-  key: { teamId: 1, datasetId: 1, parentId: 1, createTime: 1 }
+  key: { teamId: 1, datasetId: 1, parentId: 1, createTime: 1 },
+  deprecated: true
 });
 
 // Get collection by external file id
