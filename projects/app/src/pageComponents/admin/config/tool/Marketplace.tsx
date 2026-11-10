@@ -638,12 +638,21 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
   const openMarketplaceUninstallConfirm = useCallback(
     (tool: ToolCardItemType) => {
       const toolName = selectPluginText(tool.name, i18n.language) || tool.id;
+      const isLastModerationPlugin =
+        activeTab === 'moderation' &&
+        (systemInstalledPlugins?.list.filter((item) => item.type === 'moderation').length ?? 0) <=
+          1;
 
       openUninstallConfirm({
-        title: t('app:toolkit_uninstall'),
+        title:
+          activeTab === 'moderation' && isLastModerationPlugin
+            ? t('admin:moderation.uninstall_last_plugin_title')
+            : t('app:toolkit_uninstall'),
         customContent:
           activeTab === 'moderation'
-            ? t('app:confirm_uninstall_moderation')
+            ? isLastModerationPlugin
+              ? t('admin:moderation.confirm_uninstall_last_plugin')
+              : t('app:confirm_uninstall_moderation')
             : t('app:confirm_uninstall_tool'),
         confirmText: t('app:toolkit_uninstall'),
         confirmButtonVariant: 'dangerOutline',
@@ -651,7 +660,7 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
         onConfirm: () => handleUninstallTool(tool)
       })();
     },
-    [activeTab, handleUninstallTool, i18n.language, openUninstallConfirm, t]
+    [activeTab, handleUninstallTool, i18n.language, openUninstallConfirm, systemInstalledPlugins, t]
   );
 
   const heroSectionRef = useRef<HTMLDivElement>(null);

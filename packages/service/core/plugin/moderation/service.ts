@@ -204,7 +204,7 @@ const syncPolicyContentionRecord = async ({
   const canonicalRecord =
     records.find((item) => String(item._id) === DEFAULT_MODERATION_POLICY_CONFIG_ID) ?? latest;
   const targetId = canonicalRecord?._id ?? DEFAULT_MODERATION_POLICY_CONFIG_ID;
-  const resolvedValue = (() => {
+  const rawValue = (() => {
     if (policy) return policy;
     if (latest?.value && typeof latest.value === 'object') {
       return {
@@ -218,6 +218,11 @@ const syncPolicyContentionRecord = async ({
       ...(activePluginId ? { activePluginId } : {})
     };
   })();
+  // BSON 会将对象自有的 undefined 属性序列化为 null，进而导致读取时 z.string().optional() 校验失败；无生效插件时直接省略该键。
+  const { activePluginId: resolvedActivePluginId, ...restValue } = rawValue;
+  const resolvedValue = resolvedActivePluginId
+    ? { ...restValue, activePluginId: resolvedActivePluginId }
+    : restValue;
 
   await MongoSystemConfigs.findOneAndUpdate(
     { _id: targetId },
@@ -340,7 +345,12 @@ export const saveModerationConfig = async ({
   return buildAdminItem({ detail, config: saved, lang });
 };
 
-/** Soft-uninstall a disabled plugin while preserving its configuration for restoration. */
+/**
+ * 软卸载内容审核插件并保留已存配置以便重装恢复。
+ *
+ * - 当还存在其他已安装的审核插件时，禁止直接卸载当前启用中的插件（需先切换生效插件或停用审核）。
+ * - 当卸载的是系统中最后一个已安装的内容审核插件时，允许直接卸载，并在数据库内自动关闭全局内容审核总开关。
+ */
 export const deleteModerationPlugin = async ({
   pluginId,
   source
@@ -348,16 +358,52 @@ export const deleteModerationPlugin = async ({
   pluginId: string;
   source?: string;
 }): Promise<void> => {
-  const existing = await findModerationConfig({ pluginId, source });
+  if (source && source !== 'system')
+    throw new Error('Only system moderation plugins can be uninstalled here');
 
-  if (existing?.enabled) {
+  const [existing, remotePlugins, allConfigs] = await Promise.all([
+    findModerationConfig({ pluginId, source }),
+    listModerationPlugins().catch(() => []),
+    findAllModerationConfigs()
+  ]);
+
+  const configMap = new Map<string, ModerationConfigRecord>();
+  for (const item of allConfigs) {
+    const key = `${item.source ?? 'system'}:${item.pluginId}`;
+    if (!configMap.has(key)) configMap.set(key, item);
+  }
+  const targetKey = `${source ?? 'system'}:${pluginId}`;
+  const remainingInstalledPlugins = remotePlugins.filter((plugin) => {
+    const key = `${plugin.source ?? 'system'}:${plugin.pluginId}`;
+    if (key === targetKey) return false;
+    if ('installationStatus' in plugin && plugin.installationStatus === 'disabled') {
+      return false;
+    }
+    return !configMap.get(key)?.deleted;
+  });
+  const isLastModerationPlugin = remainingInstalledPlugins.length === 0;
+
+  if (existing?.enabled && !isLastModerationPlugin) {
     return Promise.reject('Disable the moderation plugin before deleting it');
   }
 
-  if (source && source !== 'system')
-    throw new Error('Only system moderation plugins can be uninstalled here');
   await disableSystemPlugin(pluginId);
   await softDeleteModerationConfig({ pluginId, source });
+
+  if (isLastModerationPlugin) {
+    const currentPolicy = await getModerationPolicy();
+    await mongoSessionRun(async (session) => {
+      await syncPolicyContentionRecord({
+        session,
+        policy: {
+          ...currentPolicy,
+          enabled: false,
+          activePluginId: undefined
+        }
+      });
+      await disableAllModerationConfigs({ session });
+    });
+  }
 };
 
 /** Validate the installed package before restoring its local state; keep it disabled. */
@@ -494,9 +540,15 @@ export const getModerationPolicy = async (): Promise<SystemModerationPolicyType>
     findEnabledModerationConfig()
   ]);
 
+  const rawConfigValue =
+    configRecord?.value && typeof configRecord.value === 'object' ? configRecord.value : {};
   const parsed = SystemModerationPolicySchema.safeParse({
     ...DefaultSystemModerationPolicy,
-    ...(configRecord?.value ?? {})
+    ...rawConfigValue,
+    activePluginId:
+      typeof (rawConfigValue as Record<string, unknown>).activePluginId === 'string'
+        ? (rawConfigValue as Record<string, unknown>).activePluginId
+        : undefined
   });
 
   const basePolicy = parsed.success ? parsed.data : DefaultSystemModerationPolicy;

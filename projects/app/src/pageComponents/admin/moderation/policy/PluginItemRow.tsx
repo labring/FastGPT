@@ -11,6 +11,7 @@ import type { AdminModerationPluginItemType } from '@fastgpt/global/core/plugin/
 type PluginItemRowProps = {
   plugin: AdminModerationPluginItemType;
   isActive: boolean;
+  isLastPlugin?: boolean;
   onSelect: () => void;
   onEdit: () => void;
   onDelete: () => void;
@@ -19,6 +20,7 @@ type PluginItemRowProps = {
 const PluginItemRow: React.FC<PluginItemRowProps> = ({
   plugin,
   isActive,
+  isLastPlugin = false,
   onSelect,
   onEdit,
   onDelete
@@ -117,23 +119,39 @@ const PluginItemRow: React.FC<PluginItemRowProps> = ({
             }}
           />
 
-          {/* 删除插件按钮二次确认气泡 */}
-          <PopoverConfirm
-            type="delete"
-            content={t('admin:moderation.confirm_uninstall_plugin')}
-            onConfirm={onDelete}
-            Trigger={
-              <MyIconButton
-                icon="common/trash"
-                tip={t('admin:moderation.uninstall_plugin')}
-                size={'16px'}
-                w={'24px'}
-                h={'24px'}
-                hoverBg="red.50"
-                hoverColor="red.600"
-              />
-            }
-          />
+          {/* 删除插件按钮：仅剩最后一个插件或当前正处于生效状态时交由外层 Modal/提示处理，其余情况使用气泡二次确认 */}
+          {isLastPlugin || isActive || plugin.enabled ? (
+            <MyIconButton
+              icon="common/trash"
+              tip={t('admin:moderation.uninstall_plugin')}
+              size={'16px'}
+              w={'24px'}
+              h={'24px'}
+              hoverBg="red.50"
+              hoverColor="red.600"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete();
+              }}
+            />
+          ) : (
+            <PopoverConfirm
+              type="delete"
+              content={t('admin:moderation.confirm_uninstall_plugin')}
+              onConfirm={onDelete}
+              Trigger={
+                <MyIconButton
+                  icon="common/trash"
+                  tip={t('admin:moderation.uninstall_plugin')}
+                  size={'16px'}
+                  w={'24px'}
+                  h={'24px'}
+                  hoverBg="red.50"
+                  hoverColor="red.600"
+                />
+              }
+            />
+          )}
         </HStack>
       </Flex>
     </Flex>

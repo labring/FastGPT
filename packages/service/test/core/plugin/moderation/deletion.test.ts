@@ -6,7 +6,9 @@ import * as fastgptPluginMod from '../../../../thirdProvider/fastgptPlugin/moder
 import {
   deleteModerationPlugin,
   restoreModerationPlugin,
-  getAdminModerationPluginList
+  getAdminModerationPluginList,
+  getModerationPolicy,
+  updateModerationPolicy
 } from '../../../../core/plugin/moderation/service';
 
 describe('moderation plugin deletion and filtering', () => {
@@ -162,7 +164,21 @@ describe('moderation plugin deletion and filtering', () => {
     );
   });
 
-  it('rejects deletion if the plugin is currently enabled', async () => {
+  it('rejects deletion if the plugin is currently enabled and other moderation plugins remain installed', async () => {
+    vi.spyOn(fastgptPluginMod, 'listModerationPlugins').mockResolvedValue([
+      {
+        pluginId: 'active-plugin',
+        source: 'system',
+        type: 'moderation' as any,
+        version: '1.0.0'
+      },
+      {
+        pluginId: 'backup-plugin',
+        source: 'system',
+        type: 'moderation' as any,
+        version: '1.0.0'
+      }
+    ]);
     vi.spyOn(entity, 'findModerationConfig').mockResolvedValue({
       pluginId: 'active-plugin',
       enabled: true
@@ -173,5 +189,58 @@ describe('moderation plugin deletion and filtering', () => {
       'Disable the moderation plugin before deleting it'
     );
     expect(deleteConfigSpy).not.toHaveBeenCalled();
+  });
+
+  it('allows uninstalling the last remaining moderation plugin even when enabled and turns off global moderation policy', async () => {
+    vi.spyOn(fastgptPluginMod, 'listModerationPlugins').mockResolvedValue([
+      {
+        pluginId: 'last-active-plugin',
+        source: 'system',
+        type: 'moderation' as any,
+        version: '1.0.0'
+      }
+    ]);
+    await updateModerationPolicy({
+      enabled: true,
+      activePluginId: 'last-active-plugin',
+      hooks: {
+        userInput: true,
+        modelInput: true,
+        finalOutput: true
+      },
+      strategy: {
+        streamInterval: 30,
+        suspectedRiskAction: 'blockAndLog' as any,
+        serviceExceptionAction: 'block' as any
+      }
+    });
+
+    await expect(
+      deleteModerationPlugin({ pluginId: 'last-active-plugin', source: 'system' })
+    ).resolves.toBeUndefined();
+
+    const deletedRecord = await MongoSystemModerationPlugin.findOne({
+      pluginId: 'last-active-plugin'
+    }).lean();
+    expect(deletedRecord).toMatchObject({
+      deleted: true,
+      enabled: false
+    });
+
+    const policyAfterDelete = await getModerationPolicy();
+    expect(policyAfterDelete).toMatchObject({
+      enabled: false,
+      activePluginId: undefined,
+      hooks: {
+        userInput: true,
+        modelInput: true,
+        finalOutput: true
+      },
+      strategy: {
+        streamInterval: 30,
+        suspectedRiskAction: 'blockAndLog',
+        serviceExceptionAction: 'block'
+      }
+    });
   });
 });

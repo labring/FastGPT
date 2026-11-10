@@ -10,6 +10,7 @@ import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { useToast } from '@fastgpt/web/hooks/useToast';
+import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import {
@@ -49,6 +50,11 @@ export const ModerationPolicy = () => {
   const [editingPlugin, setEditingPlugin] = useState<AdminModerationPluginItemType | null>(null);
 
   const { isOpen: isImportOpen, onOpen: onOpenImport, onClose: onCloseImport } = useDisclosure();
+  const [uninstallingLastPlugin, setUninstallingLastPlugin] = useState(false);
+  const { openConfirm: openUninstallLastConfirm, ConfirmModal: UninstallLastPluginModal } =
+    useConfirm({
+      type: 'delete'
+    });
 
   // 1. 获取全局策略与插件列表
   const { loading: loadingPolicy, runAsync: fetchPolicy } = useRequest(getAdminModerationPolicy, {
@@ -117,38 +123,72 @@ export const ModerationPolicy = () => {
     }));
   };
 
-  // 删除插件
-  const handleDeletePlugin = async (plugin: AdminModerationPluginItemType) => {
-    if (plugin.enabled) {
-      toast({
-        status: 'warning',
-        title: t('admin:moderation.disable_before_delete')
-      });
-      return;
-    }
+  // 执行删除插件请求
+  const executeDeletePlugin = async ({
+    plugin,
+    isLastPlugin
+  }: {
+    plugin: AdminModerationPluginItemType;
+    isLastPlugin: boolean;
+  }) => {
     try {
+      if (isLastPlugin) setUninstallingLastPlugin(true);
       await postAdminDeleteModerationPlugin({
         pluginId: plugin.pluginId,
         source: plugin.source
       });
-      if (policy.activePluginId === plugin.pluginId) {
+      if (isLastPlugin) {
+        setPolicy((prev) => ({
+          ...prev,
+          enabled: false,
+          activePluginId: undefined
+        }));
+        setIsListCollapsed(false);
+        useModerationPolicyDraftStore.getState().setDraft(undefined);
+      } else if (policy.activePluginId === plugin.pluginId) {
         setPolicy((prev) => ({ ...prev, activePluginId: undefined }));
       }
       toast({
         status: 'success',
         title: t('admin:moderation.uninstall_success')
       });
-      void fetchPlugins();
+      await Promise.all([fetchPolicy(), fetchPlugins()]);
     } catch (err: any) {
-      const isDisableRequiredError =
-        err?.message === 'Disable the moderation plugin before deleting it';
+      const errorTitle =
+        err?.message === 'Disable the moderation plugin before deleting it'
+          ? t('admin:moderation.disable_before_delete')
+          : err?.message || t('admin:moderation.delete_plugin_error');
       toast({
         status: 'error',
-        title: isDisableRequiredError
-          ? t('admin:moderation.disable_before_delete')
-          : err?.message || t('admin:moderation.delete_plugin_error')
+        title: errorTitle
       });
+    } finally {
+      if (isLastPlugin) setUninstallingLastPlugin(false);
     }
+  };
+
+  // 删除插件入口：仅剩最后一个审核插件时弹出专用 Modal 提示并允许直接卸载及关闭总开关
+  const handleDeletePlugin = (plugin: AdminModerationPluginItemType) => {
+    const isLastPlugin = plugins.length <= 1;
+    if (isLastPlugin) {
+      openUninstallLastConfirm({
+        title: t('admin:moderation.uninstall_last_plugin_title'),
+        customContent: t('admin:moderation.confirm_uninstall_last_plugin'),
+        confirmText: t('admin:moderation.uninstall_plugin'),
+        onConfirm: () => executeDeletePlugin({ plugin, isLastPlugin: true })
+      })();
+      return;
+    }
+
+    if (plugin.enabled || (policy.enabled && policy.activePluginId === plugin.pluginId)) {
+      toast({
+        status: 'warning',
+        title: t('admin:moderation.disable_before_delete')
+      });
+      return;
+    }
+
+    void executeDeletePlugin({ plugin, isLastPlugin: false });
   };
 
   /** Preserve all unsaved fields while visiting the marketplace to install a plugin. */
@@ -327,6 +367,7 @@ export const ModerationPolicy = () => {
                               key={plugin.pluginId}
                               plugin={plugin}
                               isActive={policy.activePluginId === plugin.pluginId}
+                              isLastPlugin={plugins.length <= 1}
                               onSelect={() => handleToggleActivePlugin(plugin.pluginId)}
                               onEdit={() => setEditingPlugin(plugin)}
                               onDelete={() => handleDeletePlugin(plugin)}
@@ -596,6 +637,9 @@ export const ModerationPolicy = () => {
           }}
         />
       )}
+
+      {/* 卸载最后一个审核插件确认弹窗 */}
+      <UninstallLastPluginModal isLoading={uninstallingLastPlugin} />
     </>
   );
 };
