@@ -28,22 +28,21 @@ export const getModelDeprecationInformChannels = (
       : [channel]
   );
 
-/** 将日期选择器的本地日期格式化为 YYYY-MM-DD，避免 toISOString 提前 UTC 日界。 */
-export const getLocalDateLabel = (date: Date) =>
-  [date.getFullYear(), date.getMonth() + 1, date.getDate()]
+/** 日期选择器与服务端统一按 UTC 日历日解释并提交 YYYY-MM-DD。 */
+export const getUTCDateLabel = (date: Date) =>
+  [date.getUTCFullYear(), date.getUTCMonth() + 1, date.getUTCDate()]
     .map((value) => String(value).padStart(2, '0'))
     .join('-');
 
-/** 计算计划下架日可选范围：明天至今天后 90 天，按浏览器本地日历日比较。 */
+/** 计算计划下架日可选范围：UTC 明天至 UTC 今天后 90 天。 */
 export const getPlannedDateBounds = (now = new Date()) => {
-  const today = new Date(now);
-  today.setHours(0, 0, 0, 0);
+  const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
 
   const min = new Date(today);
-  min.setDate(min.getDate() + 1);
+  min.setUTCDate(min.getUTCDate() + 1);
 
   const max = new Date(today);
-  max.setDate(max.getDate() + MAX_PLANNED_DAYS);
+  max.setUTCDate(max.getUTCDate() + MAX_PLANNED_DAYS);
 
   return { min, max };
 };

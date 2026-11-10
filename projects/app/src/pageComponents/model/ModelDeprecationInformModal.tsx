@@ -8,8 +8,8 @@ import { nanoid } from 'nanoid';
 import React from 'react';
 import {
   getModelDeprecationInformChannels,
-  getLocalDateLabel,
   getPlannedDateBounds,
+  getUTCDateLabel,
   getSelectableDeprecationModels
 } from '@/pageComponents/admin/inform/modelDeprecationUtils';
 import { postCreateModelDeprecationInform } from '@/web/admin/system/inform/api';
@@ -62,7 +62,7 @@ const ModelDeprecationInformModal = ({
               return createPlan({
                 requestId: requestId.current,
                 models: selectedModels,
-                plannedDeprecationAt: getLocalDateLabel(plannedDate),
+                plannedDeprecationAt: getUTCDateLabel(plannedDate),
                 channels: getModelDeprecationInformChannels([
                   ModelDeprecationInformChannelEnum.inApp,
                   ...(sendExternal ? (['email_or_sms'] as const) : [])

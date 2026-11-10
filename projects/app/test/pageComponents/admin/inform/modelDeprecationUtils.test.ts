@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { ModelDeprecationInformChannelEnum } from '@fastgpt/global/support/user/inform/constants';
 import {
   getModelDeprecationInformChannels,
-  getLocalDateLabel,
   getPlannedDateBounds,
+  getUTCDateLabel,
   getSelectableDeprecationModels
 } from '@/pageComponents/admin/inform/modelDeprecationUtils';
 
@@ -34,17 +34,17 @@ describe('getModelDeprecationInformChannels', () => {
   });
 });
 
-describe('getLocalDateLabel', () => {
-  it('keeps the selected local calendar day', () => {
-    expect(getLocalDateLabel(new Date(2026, 11, 31))).toBe('2026-12-31');
+describe('getUTCDateLabel', () => {
+  it('keeps the selected UTC calendar day', () => {
+    expect(getUTCDateLabel(new Date('2026-12-31T18:30:00.000Z'))).toBe('2026-12-31');
   });
 });
 
 describe('getPlannedDateBounds', () => {
-  it('allows tomorrow through 90 days after today', () => {
-    const { min, max } = getPlannedDateBounds(new Date(2026, 10, 9, 18, 30));
+  it('uses the same UTC day boundary regardless of browser timezone', () => {
+    const { min, max } = getPlannedDateBounds(new Date('2026-11-09T23:30:00.000Z'));
 
-    expect(getLocalDateLabel(min)).toBe('2026-11-10');
-    expect(getLocalDateLabel(max)).toBe('2027-02-07');
+    expect(getUTCDateLabel(min)).toBe('2026-11-10');
+    expect(getUTCDateLabel(max)).toBe('2027-02-07');
   });
 });
