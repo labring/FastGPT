@@ -18,6 +18,7 @@ type LegacyFeConfigs = Record<string, any>;
 type LegacySystemEnv = Record<string, any>;
 type LegacyProConfig = Record<string, any>;
 type DomainOverrides = Partial<Record<SystemInstanceConfigDomainKey, Record<string, unknown>>>;
+type DomainExplicitDefaultPaths = Partial<Record<SystemInstanceConfigDomainKey, string[]>>;
 
 /** 迁移时被 Schema 校验剔除的项；只保留路径，不记录字段值。 */
 export type SchemaSanitizedIssue = {
@@ -449,7 +450,7 @@ export const buildLegacyDomainOverrides = ({
  * 与环境变量默认值相同的项被剪枝，避免把当前默认值固化成覆盖项，
  * 使后续版本调整默认值时老实例也能自动跟随。
  */
-export const buildSparseLegacyOverrides = ({
+export const buildSparseLegacyMigrationPlan = ({
   feConfigs,
   systemEnv,
   proConfig
@@ -457,7 +458,7 @@ export const buildSparseLegacyOverrides = ({
   feConfigs: LegacyFeConfigs;
   systemEnv: LegacySystemEnv;
   proConfig?: LegacyProConfig;
-}): DomainOverrides => {
+}): { overrides: DomainOverrides; explicitDefaultPaths: DomainExplicitDefaultPaths } => {
   const raw = buildLegacyDomainOverrides({ feConfigs, systemEnv });
   const pro = buildLegacyProOverrides(proConfig ?? {});
 
@@ -498,8 +499,26 @@ export const buildSparseLegacyOverrides = ({
     }
   }
 
-  return sparse;
+  /**
+   * checkExternalFile=false 等于 Schema 默认值，会被稀疏剪枝删除。
+   * 但旧配置显式关闭外链检查是管理员意图，必须通过 explicitDefaultPaths 带过迁移，
+   * 否则后置 backfill 会把非空白名单误判为“未初始化”并重新开启检查。
+   */
+  const explicitDefaultPaths: DomainExplicitDefaultPaths = {};
+  if (
+    typeof systemEnv.checkExternalFile === 'boolean' &&
+    sparse.security?.checkExternalFile === undefined
+  ) {
+    explicitDefaultPaths.security = ['checkExternalFile'];
+  }
+
+  return { overrides: sparse, explicitDefaultPaths };
 };
+
+/** 兼容旧调用：只返回稀疏 overrides；需要显式默认意图时使用 migration plan。 */
+export const buildSparseLegacyOverrides = (
+  input: Parameters<typeof buildSparseLegacyMigrationPlan>[0]
+): DomainOverrides => buildSparseLegacyMigrationPlan(input).overrides;
 
 /**
  * 将旧 fastLogin 配置规范化为新 schema 的数组形状。
@@ -897,7 +916,8 @@ export const inspectInstanceConfigMigration = async () => {
   const systemEnv = (legacyFastgpt?.value?.systemEnv ?? {}) as LegacySystemEnv;
   const proConfig = (legacyPro?.value ?? {}) as LegacyProConfig;
 
-  const rawOverrides = buildSparseLegacyOverrides({ feConfigs, systemEnv, proConfig });
+  const { overrides: rawOverrides, explicitDefaultPaths: legacyExplicitDefaultPaths } =
+    buildSparseLegacyMigrationPlan({ feConfigs, systemEnv, proConfig });
   // 旧值可能不满足收紧后的 Schema；先净化再统计缺失域，避免 blockStartup 迁移崩溃
   const schemaSanitizedWarnings: string[] = [];
   const schemaSanitizedIssues: SchemaSanitizedIssue[] = [];
@@ -933,18 +953,27 @@ export const inspectInstanceConfigMigration = async () => {
   );
   const pendingBackfillPaths: string[] = [];
   const pendingBackfillDomainCount = SYSTEM_INSTANCE_CONFIG_DOMAINS.filter((domain) => {
-    const targetOverrides = overrides[domain];
+    const targetOverrides = overrides[domain] ?? {};
     const existingEntry = existingDocsByDomain.get(domain);
-    if (!targetOverrides || !existingEntry) return false;
+    if (!existingEntry) return false;
 
+    const declaredExplicit = legacyExplicitDefaultPaths[domain] ?? [];
+    const missingExplicitPaths = declaredExplicit.filter(
+      (path) => !existingEntry.explicitDefaultPaths.has(path)
+    );
     const missing = computeMissingOverrides({
       existing: existingEntry.overrides,
       target: targetOverrides,
-      explicitDefaultPaths: existingEntry.explicitDefaultPaths
+      explicitDefaultPaths: new Set([...existingEntry.explicitDefaultPaths, ...declaredExplicit])
     });
-    if (!missing) return false;
+    if (!missing && missingExplicitPaths.length === 0) return false;
 
-    pendingBackfillPaths.push(...flattenOverridePaths(missing).map((path) => `${domain}.${path}`));
+    if (missing) {
+      pendingBackfillPaths.push(
+        ...flattenOverridePaths(missing).map((path) => `${domain}.${path}`)
+      );
+    }
+    pendingBackfillPaths.push(...missingExplicitPaths.map((path) => `${domain}.${path}`));
     return true;
   }).length;
 
@@ -958,7 +987,8 @@ export const inspectInstanceConfigMigration = async () => {
     envRehomedWarnings: collectEnvRehomedWarnings({ feConfigs, systemEnv }),
     schemaSanitizedWarnings,
     schemaSanitizedIssues,
-    overrides
+    overrides,
+    explicitDefaultPaths: legacyExplicitDefaultPaths
   };
 };
 
@@ -975,9 +1005,11 @@ const MAX_BACKFILL_CONFLICT_RETRIES = 3;
  */
 export const applyInstanceConfigMigration = async ({
   overrides,
+  explicitDefaultPaths,
   logger
 }: {
   overrides: DomainOverrides;
+  explicitDefaultPaths?: DomainExplicitDefaultPaths;
   logger: SystemMigrationLogger;
 }) => {
   const domains = SYSTEM_INSTANCE_CONFIG_DOMAINS;
@@ -1099,20 +1131,30 @@ export const applyInstanceConfigMigration = async ({
       if (!doc) return { acceptedPaths: [], skippedPaths: [] };
 
       const existingOverrides = (doc.overrides ?? {}) as Record<string, unknown>;
-      const explicitDefaultPaths = new Set(
+      const existingExplicitDefaultPaths = new Set(
         Array.isArray((doc as any).explicitDefaultPaths)
           ? ((doc as any).explicitDefaultPaths as string[])
           : []
       );
+      const declaredExplicitDefaultPaths = explicitDefaultPaths?.[domain] ?? [];
+      const explicitDefaultPathsSet = new Set([
+        ...existingExplicitDefaultPaths,
+        ...declaredExplicitDefaultPaths
+      ]);
+      const missingExplicitPaths = declaredExplicitDefaultPaths.filter(
+        (path) => !existingExplicitDefaultPaths.has(path)
+      );
       const missing = computeMissingOverrides({
         existing: existingOverrides,
         target: targetOverrides,
-        explicitDefaultPaths
+        explicitDefaultPaths: explicitDefaultPathsSet
       });
-      if (!missing) return { acceptedPaths: [], skippedPaths: [] };
+      if (!missing && missingExplicitPaths.length === 0) {
+        return { acceptedPaths: [], skippedPaths: [] };
+      }
 
       // 循环剔除待补字段中的冲突叶子，直到与既有值合并后能通过终审校验
-      const candidateMissing = structuredClone(missing);
+      const candidateMissing = missing ? structuredClone(missing) : {};
       const skippedConflictPaths: string[] = [];
       let unresolvableConflict = false;
 
@@ -1138,7 +1180,7 @@ export const applyInstanceConfigMigration = async ({
 
           if (!removedField) {
             // 无法定位具体叶子（例如整域类型矛盾）：将全部待补路径记入 explicitDefaultPaths 并告警跳过
-            const unresolvable = flattenOverridePaths(missing);
+            const unresolvable = missing ? flattenOverridePaths(missing) : missingExplicitPaths;
             logger.warn(
               'Instance config backfill skipped: unresolvable conflict with existing values',
               { domain, missingPaths: unresolvable, error }
@@ -1148,7 +1190,11 @@ export const applyInstanceConfigMigration = async ({
               {
                 $set: {
                   explicitDefaultPaths: Array.from(
-                    new Set([...explicitDefaultPaths, ...unresolvable])
+                    new Set([
+                      ...existingExplicitDefaultPaths,
+                      ...declaredExplicitDefaultPaths,
+                      ...unresolvable
+                    ])
                   ).slice(0, 200),
                   updatedAt: new Date()
                 },
@@ -1176,13 +1222,13 @@ export const applyInstanceConfigMigration = async ({
       }
 
       const mergedOverrides = mergeMissingOverrides(existingOverrides, candidateMissing);
-      const allMissingPaths = flattenOverridePaths(missing);
+      const allMissingPaths = missing ? flattenOverridePaths(missing) : [];
       const acceptedPaths = flattenOverridePaths(candidateMissing);
       const acceptedSet = new Set(acceptedPaths);
       const autoSkipped = allMissingPaths.filter((p) => !acceptedSet.has(p));
       const skippedPaths = Array.from(new Set([...skippedConflictPaths, ...autoSkipped]));
       const nextExplicitDefaultPaths = Array.from(
-        new Set([...explicitDefaultPaths, ...skippedPaths])
+        new Set([...existingExplicitDefaultPaths, ...declaredExplicitDefaultPaths, ...skippedPaths])
       ).slice(0, 200);
 
       const updated = await MongoSystemInstanceConfig.updateOne(
@@ -1220,6 +1266,9 @@ export const applyInstanceConfigMigration = async ({
           schemaVersion: SYSTEM_INSTANCE_CONFIG_SCHEMA_VERSION,
           revision: 1,
           overrides: targetOverrides,
+          ...(explicitDefaultPaths?.[domain]?.length
+            ? { explicitDefaultPaths: explicitDefaultPaths[domain] }
+            : {}),
           updatedBy: { actor: 'migration' }
         }
       },

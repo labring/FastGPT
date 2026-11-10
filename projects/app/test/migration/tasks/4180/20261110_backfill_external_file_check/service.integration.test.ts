@@ -7,6 +7,7 @@ import {
 import {
   applyInstanceConfigMigration,
   buildLegacyDomainOverrides,
+  buildSparseLegacyMigrationPlan,
   sanitizeOverridesForSchema
 } from '@/migration/tasks/4180/20260928_migrate_instance_configs/service';
 import { resolveDomainEffectiveConfig } from '@fastgpt/global/common/system/config/schema';
@@ -51,6 +52,41 @@ describe('external file check backfill with MongoDB', () => {
       expect(await run()).toEqual({ updatedDocuments: 0 });
     }
   );
+
+  it('preserves an explicitly disabled external file check through sparse migration and backfill', async () => {
+    const plan = buildSparseLegacyMigrationPlan({
+      feConfigs: {},
+      systemEnv: {
+        checkExternalFile: false,
+        fileUrlWhitelist: ['cdn.example.com']
+      }
+    });
+
+    // 默认值 false 被稀疏剪枝，但显式意图必须通过 explicitDefaultPaths 带过迁移。
+    expect(plan.overrides.security).toMatchObject({ fileUrlWhitelist: ['cdn.example.com'] });
+    expect(plan.overrides.security).not.toHaveProperty('checkExternalFile');
+    expect(plan.explicitDefaultPaths.security).toEqual(['checkExternalFile']);
+
+    await applyInstanceConfigMigration({
+      overrides: plan.overrides,
+      explicitDefaultPaths: plan.explicitDefaultPaths,
+      logger: { info: () => {}, warn: () => {}, error: () => {} }
+    });
+
+    const document = await MongoSystemInstanceConfig.findOne({ domain: 'security' }).lean();
+    expect(document?.overrides).toMatchObject({ fileUrlWhitelist: ['cdn.example.com'] });
+    expect(document?.overrides).not.toHaveProperty('checkExternalFile');
+    expect(document?.explicitDefaultPaths).toContain('checkExternalFile');
+
+    expect(await run()).toEqual({ updatedDocuments: 0 });
+    await expect(verifyExternalFileCheck()).resolves.toBeUndefined();
+    expect(
+      resolveDomainEffectiveConfig({
+        domain: 'security',
+        overrides: document?.overrides
+      }).checkExternalFile
+    ).toBe(false);
+  });
 
   it.each(['missing', 'null'] as const)(
     'treats %s overrides as empty and safely reruns',

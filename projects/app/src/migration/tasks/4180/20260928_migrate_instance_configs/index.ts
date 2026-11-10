@@ -126,6 +126,7 @@ export const migrateInstanceConfigs = async (context: SystemMigrationContext) =>
 
   const result = await applyInstanceConfigMigration({
     overrides: inspection.overrides,
+    explicitDefaultPaths: inspection.explicitDefaultPaths,
     logger: context.logger
   });
   const skippedSummary = buildSkippedConfigSummary({
