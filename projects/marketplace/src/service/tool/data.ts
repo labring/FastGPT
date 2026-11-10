@@ -1,4 +1,5 @@
 import type { ToolDetailType } from '@fastgpt/global/sdk/fastgpt-plugin';
+import type { localeType } from '@fastgpt/global/common/i18n/type';
 import { getDownloadCounts } from '../downloadCount';
 import { compareVersions, pluginRepo } from '../plugin/repo';
 import type { MarketplaceToolManifestSchemaType } from '../mongo/models/tool';
@@ -9,6 +10,7 @@ export type MarketplaceToolListDataItem = ToolDetailType & {
   downloadCount: number;
   downloadUrl?: string;
   readme?: string;
+  readmeUrls?: Partial<Record<localeType, string>>;
   parentId?: string;
   source?: string;
 };
@@ -54,7 +56,8 @@ const getMarketplaceToolFromRecord = (
     downloadCount,
     downloadUrl: record.downloadUrl,
     readme: record.readmeUrl,
-    readmeUrl: record.readmeUrl
+    readmeUrl: record.readmeUrl,
+    readmeUrls: record.readmeUrls ?? tool.readmeUrls
   } as MarketplaceToolListDataItem;
 };
 
@@ -78,6 +81,7 @@ const getMarketplaceChildToolsFromRecord = (record: MarketplaceToolManifestSchem
       tags: tool.tags,
       readme: record.readmeUrl,
       readmeUrl: record.readmeUrl,
+      readmeUrls: record.readmeUrls ?? tool.readmeUrls,
       isLatestVersion: true,
       isToolset: false,
       downloadUrl: record.downloadUrl,

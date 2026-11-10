@@ -236,7 +236,12 @@ export const serviceEnv = createEnv({
     CHAT_LOG_INTERVAL: IntSchema.optional().meta({
       description: '聊天日志推送延迟时间（毫秒）'
     }),
-    CHAT_LOG_SOURCE_ID_PREFIX: z.string().default('fastgpt-')
+    CHAT_LOG_SOURCE_ID_PREFIX: z.string().default('fastgpt-'),
+    // 共享 axios 的缓冲响应体上限仍是服务端基础设施配置，不进入实例配置。
+    SERVICE_AXIOS_MAX_CONTENT_LENGTH: IntSchema.default(20).meta({
+      description:
+        '服务端共享 HTTP 客户端缓冲型响应体的最大大小（MB，按解压后大小计算）；流式下载由调用方或业务配额限制'
+    })
   },
   emptyStringAsUndefined: true,
   runtimeEnv: getRuntimeEnv(),
