@@ -100,6 +100,21 @@ describe('s3 storage constants', () => {
     ).toBe('https://cdn.example.com/files/chat/app/file.png?X-Amz-Signature=abc#preview');
   });
 
+  it.each([
+    ['https://cdn.example.com/assets', 'https://cdn.example.com/assets'],
+    ['https://cdn.example.com:8443/assets', 'https://cdn.example.com:8443/assets'],
+    ['http://cdn.example.com/assets', 'http://cdn.example.com/assets']
+  ])('uses only the port configured by CDN endpoint %s', async (endpoint, expected) => {
+    const { replaceS3UrlWithCdnEndpoint } = await loadConstants();
+    getTestInstanceConfig().storage.cdnEndpoint = endpoint;
+
+    expect(
+      replaceS3UrlWithCdnEndpoint(
+        'http://user:password@s3.example.com:9000/bucket/file.txt?signature=abc#preview'
+      )
+    ).toBe(`${expected}/bucket/file.txt?signature=abc#preview`);
+  });
+
   it('reads explicit short redirect mode and TTL from instance config', async () => {
     getTestInstanceConfig().storage.redirectTtlSeconds = 120;
 

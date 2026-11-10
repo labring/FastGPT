@@ -248,6 +248,7 @@ export function createDefaultStorageOptions() {
   }
 }
 
+/** 将下载地址替换为当前 CDN 的协议、主机和端口，保留对象路径与签名参数。 */
 export function replaceS3UrlWithCdnEndpoint(url: string) {
   const storageS3CdnEndpoint = getStorageS3CdnEndpoint();
   if (!storageS3CdnEndpoint || storageVendor === 'r2') {
@@ -261,7 +262,9 @@ export function replaceS3UrlWithCdnEndpoint(url: string) {
     const sourcePath = parsedUrl.pathname.replace(/^\//, '');
 
     parsedUrl.protocol = cdnUrl.protocol;
-    parsedUrl.host = cdnUrl.host;
+    parsedUrl.hostname = cdnUrl.hostname;
+    // host 赋值不会清除源地址的显式端口，必须同时覆盖端口（包括 CDN 的空端口）。
+    parsedUrl.port = cdnUrl.port;
     parsedUrl.username = '';
     parsedUrl.password = '';
 
