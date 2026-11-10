@@ -401,7 +401,7 @@ describe('rewriteRuntimeWorkFlow independent toolsets', () => {
     });
   });
 
-  it('remaps a legacy HTTP child edge even when the positional ID is a real node', async () => {
+  it('preserves a real node edge and adds the HTTP child edge when a positional ID collides', async () => {
     mocks.getHttpSchema.mockResolvedValue({ data: openApiSchema });
     const toolSetNode = createHttpToolSetNode([{ name: 'search', description: '' }]);
     const realNode = {

@@ -468,15 +468,7 @@ export const rewriteRuntimeWorkFlow = async ({
     jsonSchema?: Parameters<typeof jsonSchema2NodeInput>[0]['jsonSchema'];
     schemaType: 'mcp' | 'http';
   }) => {
-    const schemaInputs = jsonSchema2NodeInput({ jsonSchema, schemaType }).map((input) =>
-      schemaType === 'mcp'
-        ? {
-            ...input,
-            // MCP 新发现的参数沿用首次创建工具时的默认值；已保存的输入方式仍优先。
-            defaultToAgentGenerated: input.defaultToAgentGenerated ?? true
-          }
-        : input
-    );
+    const schemaInputs = jsonSchema2NodeInput({ jsonSchema, schemaType });
     if (!schemaInputs.length) return;
 
     const savedInputMap = new Map(node.inputs.map((input) => [input.key, input]));

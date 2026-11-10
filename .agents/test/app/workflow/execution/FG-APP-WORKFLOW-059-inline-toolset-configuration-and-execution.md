@@ -1,6 +1,6 @@
 ---
 case_version: 1
-id: FG-APP-WORKFLOW-053
+id: FG-APP-WORKFLOW-059
 title: 内联 MCP 与 HTTP 工具集从配置到调用
 business: app/workflow/execution
 category: basic
@@ -50,6 +50,9 @@ baseline: 346deb76c7fb8f7d961f0312d57bdea3d541180a
 工作流作者直接在工具调用节点旁配置 MCP 或 HTTP 工具集，无需先创建独立工具集 App。配置保存后能够重载、选择单个工具调试，并在完整对话中由 AI 生成参数调用；远端定义更新后，可用工具和参数以当次远端定义为准，本地只覆盖同名描述。
 
 ## 前置准备
+
+- 编号说明：本用例在 PR 分支中原编号为 053；合入前与 main 新增的 Builder 用例重号，调整为 059，历史执行报告仍保留原编号。
+- 夹具协议回归：手动运行 `node --test .agents/test/support/toolset-fixture.selftest.mjs`，先核实相同目录下的连续调用、单步结束和后续回合推进，再执行真实工作流验收。
 
 - 版本：部署 PR #8074 基线或其修复版本，记录实际 commit；用例格式取自 upstream/main `dd3cc357757bfb7c11a607c279a69a5f73a48c74`。仅部署该 main 不包含本需求，不能据此判断功能缺失为失败。
 - 身份：独立测试团队及有工作流创建、编辑、发布、运行和删除权限的账号；记录 `BASE_URL`、`teamId`、`appId` 和 `RUN_ID=pr8074-<唯一后缀>`。

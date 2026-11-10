@@ -31,7 +31,7 @@ const state = {
   writes: 0
 };
 const held = new Map();
-const send = (res, body, status = 200) => {
+const send = ({ res, body, status = 200 }) => {
   res.writeHead(status, { 'content-type': 'application/json' });
   res.end(JSON.stringify(body));
 };
@@ -129,60 +129,96 @@ async function completion(req, res) {
     names.every((s) => /^[a-zA-Z0-9_-]{1,64}$/.test(s)) && new Set(names).size === names.length;
   record('model', { body: input, valid });
   if (!valid)
-    return send(
+    return send({
       res,
-      {
+      body: {
         error: { message: 'Invalid or duplicate tool function name', type: 'invalid_request_error' }
       },
-      400
-    );
+      status: 400
+    });
   const plan = state.plan;
-  if (!plan) return send(res, { error: { message: 'No deterministic test plan configured' } }, 400);
-  const signature = names.join('|');
+  if (!plan)
+    return send({
+      res,
+      body: { error: { message: 'No deterministic test plan configured' } },
+      status: 400
+    });
+  // 目录可在连续调用和后续回合中保持相同；只有收到本计划发出的调用结果才推进步骤。
+  const pendingCall = plan.pendingCall;
+  const requestIdentity = JSON.stringify({
+    model: input.model,
+    user: input.user,
+    messages: input.messages,
+    tools: input.tools
+  });
+  const receivedResult =
+    pendingCall &&
+    input.messages?.some(
+      (message) => message.role === 'tool' && message.tool_call_id === pendingCall.id
+    );
+  if (receivedResult) {
+    plan.index = (plan.index ?? 0) + 1;
+    delete plan.pendingCall;
+    delete plan.pendingRequest;
+  } else if (pendingCall && plan.pendingRequest !== requestIdentity) {
+    return send({
+      res,
+      body: { error: { message: 'Pending planned tool call has no matching result' } },
+      status: 400
+    });
+  }
   let call;
   const step = plan.steps[plan.index ?? 0];
-  if (step && !plan.completed?.includes(signature)) {
+  if (plan.pendingCall) {
+    // 重复请求重放同一次调用，不能因为重试跳过步骤或生成另一个调用 ID。
+    call = plan.pendingCall;
+  } else if (step) {
     const match = (input.tools ?? []).filter((t) =>
       new RegExp(step.match, 'i').test(t.function.description ?? '')
     );
-    if (match.length !== 1)
-      return send(
+    // 下一步属于后续工作流节点时先结束当前模型循环，保持该步供下一次模型请求使用。
+    if (match.length !== 1 && !(receivedResult && match.length === 0))
+      return send({
         res,
-        { error: { message: `Plan matched ${match.length} tools: ${step.match}` } },
-        400
-      );
-    const selected = match[0].function;
-    for (const key of selected.parameters?.required ?? [])
-      assert.ok(Object.hasOwn(step.args ?? {}, key), `Plan lacks ${key}`);
-    call = {
-      id: 'call_' + randomUUID().replaceAll('-', ''),
-      type: 'function',
-      function: { name: selected.name, arguments: JSON.stringify(step.args ?? {}) }
-    };
-    plan.completed ??= [];
-    plan.completed.push(signature);
-    plan.index = (plan.index ?? 0) + 1;
+        body: { error: { message: `Plan matched ${match.length} tools: ${step.match}` } },
+        status: 400
+      });
+    const selected = match[0]?.function;
+    if (selected) {
+      for (const key of selected.parameters?.required ?? [])
+        assert.ok(Object.hasOwn(step.args ?? {}, key), `Plan lacks ${key}`);
+      call = {
+        id: 'call_' + randomUUID().replaceAll('-', ''),
+        type: 'function',
+        function: { name: selected.name, arguments: JSON.stringify(step.args ?? {}) }
+      };
+      plan.pendingCall = call;
+      plan.pendingRequest = requestIdentity;
+    }
   }
   const id = 'chatcmpl-' + randomUUID();
   const base = { id, created: Math.floor(Date.now() / 1000), model: input.model };
   const final = 'FG-TEST complete';
   if (!input.stream)
-    return send(res, {
-      ...base,
-      object: 'chat.completion',
-      choices: [
-        {
-          index: 0,
-          message: call
-            ? { role: 'assistant', content: null, tool_calls: [call] }
-            : { role: 'assistant', content: final },
-          finish_reason: call ? 'tool_calls' : 'stop'
-        }
-      ],
-      usage: { prompt_tokens: 20, completion_tokens: 10, total_tokens: 30 }
+    return send({
+      res,
+      body: {
+        ...base,
+        object: 'chat.completion',
+        choices: [
+          {
+            index: 0,
+            message: call
+              ? { role: 'assistant', content: null, tool_calls: [call] }
+              : { role: 'assistant', content: final },
+            finish_reason: call ? 'tool_calls' : 'stop'
+          }
+        ],
+        usage: { prompt_tokens: 20, completion_tokens: 10, total_tokens: 30 }
+      }
     });
   res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-cache' });
-  const chunk = (delta, finish_reason = null, usage) =>
+  const chunk = ({ delta, finish_reason = null, usage }) =>
     res.write(
       'data: ' +
         JSON.stringify({
@@ -194,17 +230,23 @@ async function completion(req, res) {
         '\n\n'
     );
   chunk({
-    role: 'assistant',
-    ...(call ? { tool_calls: [{ index: 0, ...call }] } : { content: final })
+    delta: {
+      role: 'assistant',
+      ...(call ? { tool_calls: [{ index: 0, ...call }] } : { content: final })
+    }
   });
-  chunk({}, call ? 'tool_calls' : 'stop', {
-    prompt_tokens: 20,
-    completion_tokens: 10,
-    total_tokens: 30
+  chunk({
+    delta: {},
+    finish_reason: call ? 'tool_calls' : 'stop',
+    usage: {
+      prompt_tokens: 20,
+      completion_tokens: 10,
+      total_tokens: 30
+    }
   });
   res.end('data: [DONE]\n\n');
 }
-async function handler(req, res, marker) {
+async function handler({ req, res, marker }) {
   try {
     const url = new URL(req.url, originA);
     if (url.pathname.startsWith('/schema/')) {
@@ -213,12 +255,12 @@ async function handler(req, res, marker) {
       record('schema', { variant, marker, requestId });
       if (variant === 'slowA') await new Promise((resolve) => held.set('slowA', resolve));
       record('schema-response', { variant, marker, requestId });
-      return send(
+      return send({
         res,
-        state.invalidHttp
+        body: state.invalidHttp
           ? { invalid: true }
           : schema(variant, marker === 'http-B' ? `https://127.0.0.1:${portB}` : originA)
-      );
+      });
     }
     const protectedRoute = url.pathname.includes('/auth');
     const authAlias =
@@ -249,7 +291,7 @@ async function handler(req, res, marker) {
         authAlias,
         ...(isMcp ? {} : { apiKeyAlias })
       });
-      if (!authorized) return send(res, { error: 'Unauthorized' }, 401);
+      if (!authorized) return send({ res, body: { error: 'Unauthorized' }, status: 401 });
       if (!Object.hasOwn(input, 'id')) {
         res.writeHead(202);
         return res.end();
@@ -266,10 +308,13 @@ async function handler(req, res, marker) {
       else if (input.method === 'tools/call') {
         const name = input.params.name;
         if (!tools(variant).some((t) => t.name === name))
-          return send(res, {
-            jsonrpc: '2.0',
-            id: input.id,
-            error: { code: -32602, message: 'Unknown tool' }
+          return send({
+            res,
+            body: {
+              jsonrpc: '2.0',
+              id: input.id,
+              error: { code: -32602, message: 'Unknown tool' }
+            }
           });
         result =
           name === 'fail'
@@ -287,12 +332,15 @@ async function handler(req, res, marker) {
                 ]
               };
       } else
-        return send(res, {
-          jsonrpc: '2.0',
-          id: input.id,
-          error: { code: -32601, message: 'Unknown method' }
+        return send({
+          res,
+          body: {
+            jsonrpc: '2.0',
+            id: input.id,
+            error: { code: -32601, message: 'Unknown method' }
+          }
         });
-      return send(res, { jsonrpc: '2.0', id: input.id, result });
+      return send({ res, body: { jsonrpc: '2.0', id: input.id, result } });
     }
     const route = url.pathname.replace(/^\/auth/, '');
     record('http', {
@@ -304,22 +352,29 @@ async function handler(req, res, marker) {
       authAlias,
       ...(isMcp ? {} : { apiKeyAlias })
     });
-    if (!authorized) return send(res, { error: 'Unauthorized' }, 401);
-    if (route === '/fail') return send(res, { error: 'FG-TEST HTTP failure' }, 500);
+    if (!authorized) return send({ res, body: { error: 'Unauthorized' }, status: 401 });
+    if (route === '/fail')
+      return send({ res, body: { error: 'FG-TEST HTTP failure' }, status: 500 });
     if (route === '/items') {
       if (req.method === 'POST') state.writes++;
-      return send(res, { fixture: marker, operation: req.method === 'GET' ? 'read' : 'write' });
+      return send({
+        res,
+        body: { fixture: marker, operation: req.method === 'GET' ? 'read' : 'write' }
+      });
     }
-    return send(res, {
-      fixture: marker,
-      ...(route === '/lookup' ? { operation: 'lookup' } : {}),
-      ...Object.fromEntries(
-        [...url.searchParams].map(([k, v]) => [k, k === 'limit' ? Number(v) : v])
-      )
+    return send({
+      res,
+      body: {
+        fixture: marker,
+        ...(route === '/lookup' ? { operation: 'lookup' } : {}),
+        ...Object.fromEntries(
+          [...url.searchParams].map(([k, v]) => [k, k === 'limit' ? Number(v) : v])
+        )
+      }
     });
   } catch (error) {
     record('fixture-error', { message: error.message });
-    if (!res.headersSent) send(res, { error: error.message }, 500);
+    if (!res.headersSent) send({ res, body: { error: error.message }, status: 500 });
     else res.end();
   }
 }
@@ -331,17 +386,20 @@ for (const [port, marker] of [
   [portA, 'http-A'],
   [portB, 'http-B']
 ])
-  https.createServer(tls, (req, res) => handler(req, res, marker)).listen(port, '127.0.0.1');
+  https.createServer(tls, (req, res) => handler({ req, res, marker })).listen(port, '127.0.0.1');
 http
   .createServer(async (req, res) => {
     try {
       if (req.url === '/v1/chat/completions') return await completion(req, res);
       if (req.method === 'GET')
-        return send(res, {
-          state: { ...state, authTokens: Object.keys(state.authTokens) },
-          audits,
-          held: [...held.keys()],
-          longName
+        return send({
+          res,
+          body: {
+            state: { ...state, authTokens: Object.keys(state.authTokens) },
+            audits,
+            held: [...held.keys()],
+            longName
+          }
         });
       const input = await body(req);
       if (input.release) {
@@ -361,9 +419,9 @@ http
         'plan'
       ])
         if (Object.hasOwn(input, k)) state[k] = input[k];
-      send(res, { ok: true });
+      send({ res, body: { ok: true } });
     } catch (error) {
-      send(res, { error: error.message }, 500);
+      send({ res, body: { error: error.message }, status: 500 });
     }
   })
   .listen(controlPort, '127.0.0.1');

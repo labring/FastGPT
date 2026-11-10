@@ -28,7 +28,7 @@ sources:
 routes:
   - POST /api/v1/chat/completions
   - POST /api/core/workflow/debug
-related: [FG-APP-WORKFLOW-053, FG-APP-WORKFLOW-055, FG-APP-WORKFLOW-056]
+related: [FG-APP-WORKFLOW-059, FG-APP-WORKFLOW-055, FG-APP-WORKFLOW-056]
 baseline: 346deb76c7fb8f7d961f0312d57bdea3d541180a
 ---
 

@@ -27,7 +27,7 @@ routes:
   - GET /api/core/app/detail
   - POST /api/core/workflow/debug
   - POST /api/v1/chat/completions
-related: [FG-APP-WORKFLOW-053, FG-APP-WORKFLOW-054, FG-APP-WORKFLOW-056]
+related: [FG-APP-WORKFLOW-059, FG-APP-WORKFLOW-054, FG-APP-WORKFLOW-056]
 baseline: 346deb76c7fb8f7d961f0312d57bdea3d541180a
 ---
 
@@ -39,7 +39,7 @@ baseline: 346deb76c7fb8f7d961f0312d57bdea3d541180a
 
 ## 前置准备
 
-- 夹具与测试网关复用 FG-APP-WORKFLOW-053，源 App 准备复用 056 的 S0 当前版本部分，不依赖其历史归档。MCP、HTTP 作为相同授权规则的两个变体，每个变体独立资源。
+- 夹具与测试网关复用 FG-APP-WORKFLOW-059，源 App 准备复用 056 的 S0 当前版本部分，不依赖其历史归档。MCP、HTTP 作为相同授权规则的两个变体，每个变体独立资源。
 - 身份：同一测试团队 A 的发布者 P 有工作流写入、源工具集 S 的读取/管理权限；运行者 R 可运行已发布工作流，无 S 直接读取权限。另准备团队 B 的工具集 Sforeign，P/R 不具有其授权。R 为普通成员，不使用 root 身份或发布者 API Key 代替。
 - V0：P 把仅含 echo 的 S 以整集引用挂载并发布工作流 W；记录 publishedVersionId 与 resources，确认 tool 主体是 S 的 App ID，且没有 toolNames 限制。另创建只选择 S/echo 的工作流 Wsingle，其快照明确包含 `toolNames: ["echo"]`。记录 P/R 的实际权限，模型资源配置独立可用。
 - 后续 S1：S 新增 lookup，echo 增加一个必填参数并保存源版本，但不更新 W 或 Wsingle。模型网关记录实际暴露的工具目录，并可要求选择 lookup；对于目录里不存在的工具不伪造合法工具调用。

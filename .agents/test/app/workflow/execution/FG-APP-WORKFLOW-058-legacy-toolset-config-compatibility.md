@@ -33,7 +33,7 @@ routes:
   - GET /api/core/app/detail
   - GET /api/core/app/version/detail
   - POST /api/v1/chat/completions
-related: [FG-APP-WORKFLOW-053, FG-APP-WORKFLOW-054, FG-APP-WORKFLOW-056, FG-PERMISSION-RESOURCE-003]
+related: [FG-APP-WORKFLOW-059, FG-APP-WORKFLOW-054, FG-APP-WORKFLOW-056, FG-PERMISSION-RESOURCE-003]
 baseline: 346deb76c7fb8f7d961f0312d57bdea3d541180a
 ---
 
