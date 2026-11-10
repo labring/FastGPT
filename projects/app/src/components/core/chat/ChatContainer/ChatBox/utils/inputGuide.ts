@@ -5,6 +5,21 @@ export type CompletionContext = {
   userQuery: string;
 };
 
+/** 生成从完整查询到末段的后缀搜索词，优先保留更多上下文。 */
+export const getCompletionSearchKeys = (query: string) => {
+  const keys: string[] = [];
+  let key = query.trim();
+
+  while (key) {
+    keys.push(key);
+    const nextKey = key.slice(1).trimStart();
+    if (nextKey === key) break;
+    key = nextKey;
+  }
+
+  return keys;
+};
+
 type CompletionKeyAction = 'previous' | 'next' | 'close' | 'accept';
 
 /**

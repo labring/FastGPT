@@ -10,6 +10,7 @@ import { ChatBoxContext } from '../Provider';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowRuntimeContext } from '../../context/workflowRuntimeContext';
 import type { ChatSourceTarget } from '@/web/core/chat/utils';
+import { getCompletionSearchKeys } from '../utils/inputGuide';
 
 export default function InputGuideBox({
   id,
@@ -34,18 +35,21 @@ export default function InputGuideBox({
 
   const { data = [] } = useRequest(
     async () => {
-      if (!text) return [];
-      // More than 20 characters, it's basically meaningless
-      if (text.length > 20) return [];
-      return await queryChatInputGuideList(
-        {
-          sourceType: sourceTarget.sourceType,
-          sourceId: sourceTarget.sourceId,
-          searchKey: text,
-          outLinkAuthData
-        },
-        chatInputGuide.customUrl ? chatInputGuide.customUrl : undefined
-      );
+      for (const searchKey of getCompletionSearchKeys(text)) {
+        if (searchKey.length > 20) continue;
+        const result = await queryChatInputGuideList(
+          {
+            sourceType: sourceTarget.sourceType,
+            sourceId: sourceTarget.sourceId,
+            searchKey,
+            outLinkAuthData
+          },
+          chatInputGuide.customUrl ? chatInputGuide.customUrl : undefined
+        );
+        if (result.length) return result;
+      }
+
+      return [];
     },
     {
       manual: false,
@@ -54,7 +58,10 @@ export default function InputGuideBox({
     }
   );
 
-  const filterData = useMemo(() => data.filter((item) => item !== text).slice(0, 5), [data, text]);
+  const filterData = useMemo(
+    () => [...new Set(data)].filter((item) => item !== text).slice(0, 5),
+    [data, text]
+  );
 
   useEffect(() => {
     onOptionsChange(filterData);

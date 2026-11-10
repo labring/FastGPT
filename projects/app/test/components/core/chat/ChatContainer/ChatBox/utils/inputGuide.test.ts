@@ -4,6 +4,7 @@ import {
   getCompletionKeyAction,
   getChangedTextStart,
   getCompletionContext,
+  getCompletionSearchKeys,
   getEditedCompletionContext,
   getNextCompletionIndex,
   insertNewline,
@@ -22,6 +23,38 @@ describe('input guide completion context', () => {
       anchor: 3,
       userQuery: 'FastG'
     });
+  });
+
+  it('tries full query before shorter non-whitespace suffixes', () => {
+    expect(getCompletionSearchKeys('FastGPT 是什么， ')).toEqual([
+      'FastGPT 是什么，',
+      'astGPT 是什么，',
+      'stGPT 是什么，',
+      'tGPT 是什么，',
+      'GPT 是什么，',
+      'PT 是什么，',
+      'T 是什么，',
+      '是什么，',
+      '什么，',
+      '么，',
+      '，'
+    ]);
+  });
+
+  it('supports a query that starts as a suffix after an accepted guide', () => {
+    expect(getCompletionSearchKeys('FastGPT 是什么？ ')).toEqual([
+      'FastGPT 是什么？',
+      'astGPT 是什么？',
+      'stGPT 是什么？',
+      'tGPT 是什么？',
+      'GPT 是什么？',
+      'PT 是什么？',
+      'T 是什么？',
+      '是什么？',
+      '什么？',
+      '么？',
+      '？'
+    ]);
   });
 
   it('updates the query when the caret moves after the anchor', () => {
