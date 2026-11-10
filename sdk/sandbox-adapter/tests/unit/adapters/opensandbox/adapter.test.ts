@@ -218,11 +218,8 @@ describe('OpenSandboxAdapter', () => {
   it('waits for an allocated session resource discovered by metadata before connecting', async () => {
     vi.useFakeTimers();
     try {
-      const manager = mockManager([sdkInfo('Allocated')]);
-      manager.getSandboxInfo
-        .mockResolvedValueOnce(sdkInfo('Allocated'))
-        .mockResolvedValueOnce(sdkInfo('Running'))
-        .mockResolvedValue(sdkInfo('Running'));
+      // 直接指定轮询序列，避免 helper 默认排队的 Deleted 响应先于 Allocated 生效。
+      mockManager([sdkInfo('Allocated')], [sdkInfo('Allocated'), sdkInfo('Running')]);
       const bound = createSdkSandbox();
       const connect = vi.spyOn(Sandbox, 'connect').mockResolvedValue(bound.sandbox);
       const adapter = new OpenSandboxAdapter(CONNECTION);
