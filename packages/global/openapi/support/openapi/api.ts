@@ -279,13 +279,21 @@ export const CopyApiKeyResponseSchema = z.string().meta({
 });
 export type CopyApiKeyResponseType = z.infer<typeof CopyApiKeyResponseSchema>;
 
-export const ApiKeyHealthParamsSchema = z.object({
-  apiKey: z.string().nonempty().meta({
-    example: 'fastgpt-xxxxxxxx',
-    description: '待校验的 API Key 明文'
+/* ============================================================================
+ * API: 检查 API Key 是否健康
+ * Route: GET /api/support/openapi/health
+ * Method: GET
+ * Description: 通过 Authorization 请求头校验 API Key 是否有效，并返回用量信息。
+ * Tags: ['API Key 管理']
+ * ============================================================================ */
+
+export const ApiKeyHealthHeaderSchema = z.object({
+  authorization: z.string().trim().min(1).meta({
+    example: 'Bearer fastgpt-xxxxxxxx',
+    description: '待校验的 API Key 凭证，格式为 Bearer <apiKey>'
   })
 });
-export type ApiKeyHealthParamsType = z.infer<typeof ApiKeyHealthParamsSchema>;
+export type ApiKeyHealthHeaderType = z.infer<typeof ApiKeyHealthHeaderSchema>;
 
 export const ApiKeyHealthResponseSchema = z.object({
   type: ApiKeyTypeSchema,
