@@ -4,7 +4,10 @@ import { type AppResourcesType, type AppSchemaType } from '@fastgpt/global/core/
 import type { AppVersionSchemaType } from '@fastgpt/global/core/app/version/type';
 import { migrateWorkflowToCurrent } from '@fastgpt/global/core/workflow/migration';
 import { LegacyMcpToolSetRuntimeConfigSchema } from '@fastgpt/global/core/workflow/migration/legacy/schema';
+import { migrateSecretStoreToCurrent } from '@fastgpt/global/core/workflow/migration/secret';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import {
+  FlowNodeInputTypeEnum,
   FlowNodeTypeEnum,
   isInteractiveNodeType
 } from '@fastgpt/global/core/workflow/node/constant';
@@ -44,10 +47,54 @@ export const normalizeAppWorkflow = (
   workflow: { nodes: unknown[]; edges?: unknown; chatConfig?: unknown },
   appType?: AppTypeEnum
 ) => {
-  const nodes = decodeToolSetNodesFromStorage(workflow.nodes);
-  const root = nodes[0];
   const isRecord = (value: unknown): value is Record<string, unknown> =>
     typeof value === 'object' && value !== null && !Array.isArray(value);
+  const decodedNodes = decodeToolSetNodesFromStorage(workflow.nodes);
+  const decodedRoot = decodedNodes[0];
+  const nodes = (() => {
+    if (
+      appType !== AppTypeEnum.mcpToolSet ||
+      !isRecord(decodedRoot) ||
+      decodedRoot.flowNodeType !== FlowNodeTypeEnum.toolSet ||
+      decodedRoot.pluginId ||
+      !Array.isArray(decodedRoot.inputs)
+    ) {
+      return decodedNodes;
+    }
+
+    const toolConfig = isRecord(decodedRoot.toolConfig) ? decodedRoot.toolConfig : {};
+    const input = decodedRoot.inputs[0];
+    if (
+      toolConfig.mcpToolSet ||
+      toolConfig.httpToolSet ||
+      toolConfig.systemToolSet ||
+      !isRecord(input) ||
+      input.key !== NodeInputKeyEnum.toolSetData ||
+      !Array.isArray(input.renderTypeList) ||
+      !input.renderTypeList.includes(FlowNodeInputTypeEnum.hidden) ||
+      !isRecord(input.value)
+    ) {
+      return decodedNodes;
+    }
+
+    // 2025 年的 MCP 源 App 把完整定义存在首个隐藏输入中；只有校验成功才替换，避免误删业务输入。
+    const parsed = LegacyMcpToolSetRuntimeConfigSchema.safeParse({
+      url: input.value.url,
+      headerSecret: migrateSecretStoreToCurrent(input.value.headerSecret),
+      toolList: input.value.toolList
+    });
+    if (!parsed.success) return decodedNodes;
+
+    return [
+      {
+        ...decodedRoot,
+        inputs: decodedRoot.inputs.slice(1),
+        toolConfig: { ...toolConfig, mcpToolSet: parsed.data }
+      },
+      ...decodedNodes.slice(1)
+    ];
+  })();
+  const root = nodes[0];
   const rootToolSet = (() => {
     if (
       !isRecord(root) ||

@@ -55,6 +55,7 @@ import {
   getAppLatestVersion,
   getAppPublishedWorkflowMap,
   getAppVersionById,
+  normalizeAppWorkflow,
   updateAppPublishedVersion
 } from '@fastgpt/service/core/app/version/controller';
 
@@ -145,6 +146,88 @@ const toolSetVersionCases = [
     })
   }
 ] as const;
+
+describe('normalizeAppWorkflow', () => {
+  it('preserves the full MCP source definition from the legacy hidden input', () => {
+    const tool = {
+      name: 'search',
+      description: 'Search documents',
+      inputSchema: { type: 'object', properties: { query: { type: 'string' } } }
+    };
+    const workflow = {
+      nodes: [
+        {
+          nodeId: 'legacy-root',
+          name: 'Legacy MCP',
+          flowNodeType: FlowNodeTypeEnum.toolSet,
+          inputs: [
+            {
+              key: NodeInputKeyEnum.toolSetData,
+              label: '',
+              renderTypeList: [FlowNodeInputTypeEnum.hidden],
+              value: {
+                url: 'https://example.com/mcp',
+                headerSecret: { Authorization: { secret: 'encrypted', value: '' } },
+                toolList: [tool]
+              }
+            },
+            { key: 'option', label: 'Option', renderTypeList: [FlowNodeInputTypeEnum.input] }
+          ],
+          outputs: []
+        }
+      ],
+      edges: []
+    };
+    const original = structuredClone(workflow);
+
+    const result = normalizeAppWorkflow(workflow, AppTypeEnum.mcpToolSet);
+
+    expect(result.nodes[0].toolConfig?.mcpToolSet).toEqual({
+      url: 'https://example.com/mcp',
+      headerSecret: { Authorization: { secret: 'encrypted' } },
+      toolList: [tool]
+    });
+    expect(result.nodes[0].inputs.map(({ key }) => key)).toEqual(['option']);
+    expect(workflow).toEqual(original);
+  });
+
+  it.each([
+    { key: 'other', renderTypeList: [FlowNodeInputTypeEnum.hidden], toolList: [] },
+    {
+      key: NodeInputKeyEnum.toolSetData,
+      renderTypeList: [FlowNodeInputTypeEnum.input],
+      toolList: []
+    },
+    {
+      key: NodeInputKeyEnum.toolSetData,
+      renderTypeList: [FlowNodeInputTypeEnum.hidden],
+      toolList: 'invalid'
+    }
+  ])(
+    'keeps non-legacy or invalid source inputs untouched: %j',
+    ({ key, renderTypeList, toolList }) => {
+      const result = normalizeAppWorkflow(
+        {
+          nodes: [
+            {
+              nodeId: 'root',
+              name: 'Toolset',
+              flowNodeType: FlowNodeTypeEnum.toolSet,
+              inputs: [
+                { key, label: '', renderTypeList, value: { url: 'https://example.com', toolList } }
+              ],
+              outputs: []
+            }
+          ]
+        },
+        AppTypeEnum.mcpToolSet
+      );
+
+      expect(result.nodes[0].toolConfig?.mcpToolSet).toBeUndefined();
+      expect(result.nodes[0].inputs[0]).toMatchObject({ key, value: { toolList } });
+    }
+  );
+});
 
 describe('getAppLatestVersion', () => {
   beforeEach(() => {
