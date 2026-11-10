@@ -462,14 +462,16 @@ const ModelTable = ({ Tab, channelType }: { Tab: React.ReactNode; channelType: C
               isSortMode
                 ? ['repeat(2, minmax(0, 1fr))', 'repeat(2, auto)']
                 : !isTeam && isRoot
-                  ? ['repeat(2, minmax(0, 1fr))', `repeat(${feConfigs?.isPlus ? 5 : 4}, minmax(0, 1fr))`]
+                  ? [
+                      'repeat(2, minmax(0, 1fr))',
+                      `repeat(${feConfigs?.isPlus ? 5 : 4}, minmax(0, 1fr))`
+                    ]
                   : ['repeat(2, minmax(0, 1fr))', 'repeat(2, minmax(0, 1fr))']
             }
             gap={2}
           >
             {isSortMode ? (
               <>
-
                 <Button
                   w={['100%', '81px']}
                   minW={0}
@@ -833,9 +835,10 @@ const ModelTable = ({ Tab, channelType }: { Tab: React.ReactNode; channelType: C
                                     </MyTag>
                                   )}
                                   {item.testMode && <TestModeBetaTag />}
-                                  {channelType === 'system' && item.isUpcomingDeprecation === true && (
-                                    <DeprecationTag size={'sm'} />
-                                  )}
+                                  {channelType === 'system' &&
+                                    item.isUpcomingDeprecation === true && (
+                                      <DeprecationTag size={'sm'} />
+                                    )}
                                 </Flex>
                               </HStack>
                               <HStack mt={2} spacing={2} flexWrap={'nowrap'}>
