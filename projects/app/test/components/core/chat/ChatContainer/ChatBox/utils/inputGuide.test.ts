@@ -6,7 +6,8 @@ import {
   getCompletionContext,
   getEditedCompletionContext,
   getNextCompletionIndex,
-  insertNewline
+  insertNewline,
+  isCompletionContextCurrent
 } from '@/components/core/chat/ChatContainer/ChatBox/utils/inputGuide';
 
 describe('input guide completion context', () => {
@@ -120,6 +121,12 @@ describe('input guide completion context', () => {
     expect(getNextCompletionIndex({ index: 2, length: 3, direction: 1 })).toBe(0);
     expect(getNextCompletionIndex({ index: 0, length: 3, direction: -1 })).toBe(2);
     expect(getNextCompletionIndex({ index: 0, length: 0, direction: 1 })).toBe(0);
+  });
+
+  it('rejects a context after the form value is filled externally', () => {
+    const context = { anchor: 0, userQuery: 'FastG' };
+    expect(isCompletionContextCurrent({ context, value: 'FastGPT' })).toBe(true);
+    expect(isCompletionContextCurrent({ context, value: '请帮我写周报' })).toBe(false);
   });
 
   it('replaces only the queried range and keeps surrounding text', () => {

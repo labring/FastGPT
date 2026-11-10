@@ -47,6 +47,18 @@ export const getNextCompletionIndex = ({
   direction: -1 | 1;
 }) => (length === 0 ? index : (index + direction + length) % length);
 
+/** 程序回填后旧 context 不再对应当前文本。 */
+export const isCompletionContextCurrent = ({
+  context,
+  value
+}: {
+  context: CompletionContext;
+  value: string;
+}) => {
+  const cursor = context.anchor + context.userQuery.length;
+  return value.slice(context.anchor, cursor) === context.userQuery;
+};
+
 /**
  * 根据光标位置刷新引导补全上下文。
  * 光标回到 anchor 或 anchor 之前时返回 undefined，表示关闭补全。

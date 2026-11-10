@@ -1,6 +1,6 @@
 import type { FlexProps, BoxProps } from '@chakra-ui/react';
 import { Box, Flex, Textarea, useBoolean } from '@chakra-ui/react';
-import React, { useRef, useCallback, useMemo, useState } from 'react';
+import React, { useEffect, useRef, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -36,6 +36,7 @@ import {
   getCompletionContext,
   getEditedCompletionContext,
   insertNewline,
+  isCompletionContextCurrent,
   type CompletionContext
 } from '../utils/inputGuide';
 
@@ -94,6 +95,7 @@ const ChatInput = ({
   const [completionContext, setCompletionContext] = useState<CompletionContext>();
   const [completionOptions, setCompletionOptions] = useState<string[]>([]);
   const [activeCompletionIndex, setActiveCompletionIndex] = useState(0);
+  const completionInputValueRef = useRef(inputValue);
 
   // Check voice input state
   const [mobilePreSpeak, setMobilePreSpeak] = useState(false);
@@ -190,6 +192,18 @@ const ChatInput = ({
     setActiveCompletionIndex(0);
   }, []);
 
+  useEffect(() => {
+    return chatForm.watch((values, { name }) => {
+      if (name !== 'input') return;
+      const value = values.input ?? '';
+      if (value === completionInputValueRef.current) return;
+
+      // 非 textarea 来源的表单写入属于外部扰动，旧补全上下文必须失效。
+      completionInputValueRef.current = value;
+      resetCompletionContext();
+    }).unsubscribe;
+  }, [chatForm, resetCompletionContext]);
+
   const handleCompletionOptionsChange = useCallback((options: string[]) => {
     setCompletionOptions((current) =>
       current.length === options.length && current.every((item, index) => item === options[index])
@@ -202,6 +216,14 @@ const ChatInput = ({
   const acceptCompletion = useCallback(
     (guide: string) => {
       if (!completionContext) return;
+      if (completionInputValueRef.current !== inputValue) {
+        resetCompletionContext();
+        return;
+      }
+      if (!isCompletionContextCurrent({ context: completionContext, value: inputValue })) {
+        resetCompletionContext();
+        return;
+      }
 
       const textarea = TextareaDom.current;
       const result = applyInputGuide({
@@ -216,6 +238,7 @@ const ChatInput = ({
         shouldDirty: true,
         shouldTouch: true
       });
+      completionInputValueRef.current = result.value;
 
       requestAnimationFrame(() => {
         textarea?.focus();
@@ -331,6 +354,7 @@ const ChatInput = ({
                 shouldDirty: true,
                 shouldTouch: true
               });
+              completionInputValueRef.current = value;
 
               // 根据输入事件建立或刷新引导补全上下文。
               const inputType =
@@ -412,6 +436,7 @@ const ChatInput = ({
                   shouldDirty: true,
                   shouldTouch: true
                 });
+                completionInputValueRef.current = value;
 
                 textarea.style.height = textareaMinH;
                 textarea.style.height = `${textarea.scrollHeight}px`;
@@ -730,19 +755,21 @@ const ChatInput = ({
       >
         <Box flex={1}>
           {/* Chat input guide box */}
-          {canUseInputGuide && completionContext && (
-            <InputGuideBox
-              id={INPUT_GUIDE_ID}
-              sourceTarget={sourceTarget}
-              text={completionContext.userQuery}
-              activeIndex={activeCompletionIndex}
-              onOptionsChange={handleCompletionOptionsChange}
-              onSelect={acceptCompletion}
-              onSend={(e) => {
-                handleSend(e);
-              }}
-            />
-          )}
+          {canUseInputGuide &&
+            completionContext &&
+            isCompletionContextCurrent({ context: completionContext, value: inputValue }) && (
+              <InputGuideBox
+                id={INPUT_GUIDE_ID}
+                sourceTarget={sourceTarget}
+                text={completionContext.userQuery}
+                activeIndex={activeCompletionIndex}
+                onOptionsChange={handleCompletionOptionsChange}
+                onSelect={acceptCompletion}
+                onSend={(e) => {
+                  handleSend(e);
+                }}
+              />
+            )}
           {/* file preview */}
           {(!mobilePreSpeak || isPc || inputValue) && (
             <Box>
