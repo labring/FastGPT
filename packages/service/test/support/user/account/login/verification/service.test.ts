@@ -87,11 +87,21 @@ describe('login verification service', () => {
   });
 
   it('fails closed when Pro is unreachable or returns an invalid flag', async () => {
-    mocks.getProConfig.mockRejectedValueOnce(new Error('Pro unavailable'));
-    await expect(isLoginVerificationEnabled()).rejects.toThrow('Pro unavailable');
+    const internalError = Object.assign(new Error('Pro unavailable'), {
+      config: { headers: { 'x-fastgpt-pro-token': 'synthetic-private-pro-token' } }
+    });
+    mocks.getProConfig.mockRejectedValueOnce(internalError);
+    const error = await isLoginVerificationEnabled().catch((error: unknown) => error);
+    expect(error).toBeInstanceOf(Error);
+    expect(error).toHaveProperty('message', 'Login verification configuration is unavailable');
+    expect(error).not.toBe(internalError);
+    expect(error).not.toHaveProperty('config');
+    expect(error).not.toHaveProperty('cause');
 
     mocks.getProConfig.mockResolvedValueOnce({ enabled: 'true' });
-    await expect(isLoginVerificationEnabled()).rejects.toThrow();
+    await expect(isLoginVerificationEnabled()).rejects.toThrow(
+      'Login verification configuration is unavailable'
+    );
   });
 
   it('recognizes only email and phone login identifiers', () => {
@@ -220,14 +230,14 @@ describe('login verification service', () => {
 
     mocks.getProConfig.mockRejectedValue(new Error('Pro unavailable'));
     await expect(createLoginVerificationCaptcha({ challenge: 'disabled' })).rejects.toThrow(
-      'Pro unavailable'
+      'Login verification configuration is unavailable'
     );
     await expect(
       sendLoginVerificationCode({ challenge: 'disabled', captcha: '1234' })
-    ).rejects.toThrow('Pro unavailable');
+    ).rejects.toThrow('Login verification configuration is unavailable');
     await expect(
       consumeLoginVerification({ challenge: 'disabled', code: '123456' }, vi.fn())
-    ).rejects.toThrow('Pro unavailable');
+    ).rejects.toThrow('Login verification configuration is unavailable');
     expect(mocks.postToPro).not.toHaveBeenCalled();
   });
 

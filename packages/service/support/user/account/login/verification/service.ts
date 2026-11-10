@@ -63,10 +63,15 @@ export const isLoginContactUsername = (username: string) =>
 export const isLoginVerificationEnabled = async () => {
   if (!FastGPTProUrl) return false;
 
-  const config = await GET<LoginVerificationConfigResponseType>(
-    '/support/user/account/login/verification/config'
-  );
-  return LoginVerificationConfigResponseSchema.parse(config).enabled;
+  try {
+    const config = await GET<LoginVerificationConfigResponseType>(
+      '/support/user/account/login/verification/config'
+    );
+    return LoginVerificationConfigResponseSchema.parse(config).enabled;
+  } catch {
+    // 网络异常可能包含服务间令牌，响应校验异常也可能包含服务端数据；禁止交给公共登录日志。
+    throw new Error('Login verification configuration is unavailable');
+  }
 };
 
 /** 防止开关关闭后仍使用已经生成的登录 Challenge 完成二次验证。 */
