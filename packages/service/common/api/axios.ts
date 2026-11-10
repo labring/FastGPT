@@ -400,29 +400,48 @@ export const httpsCertificateIgnoreAgent = createProxyAgent({
 });
 
 /**
+ * 为共享实例补充默认响应体上限。
+ *
+ * axios 1.18 起对 responseType=stream 也会执行 maxContentLength，而流式下载入口
+ * 已经有各自的业务配额，并在消费流时限制字节数。如果把上限放在实例默认值上，
+ * 会先于业务配额截断合法的附件下载（例如 Pro 渠道按团队配额允许 100 MiB）。
+ * 因此这里只在调用方没有显式限制（保持 axios 默认 -1）且非流式响应时注入默认值，
+ * 仍覆盖网页、OpenAPI 等会完整缓冲响应的入口。
+ */
+const addResponseSizeLimitInterceptor = (instance: AxiosInstance) => {
+  instance.interceptors.request.use((config) => {
+    if (config.responseType !== 'stream' && config.maxContentLength === -1) {
+      config.maxContentLength = serviceAxiosMaxContentLength;
+    }
+    return config;
+  });
+
+  return instance;
+};
+
+/**
  * 创建共享 axios 实例。
  *
- * 默认限制响应体大小（按解压后字节计算），避免请求攻击者控制的 URL 时被
- * gzip 炸弹等高压缩比响应耗尽内存；调用方可按请求传入 maxContentLength 覆盖。
+ * 缓冲型响应默认限制解压后的响应体大小，避免请求攻击者控制的 URL 时被 gzip
+ * 炸弹等高压缩比响应耗尽内存；调用方可按请求传入 maxContentLength 覆盖。
+ * 流式响应保持调用方或业务层自己的配额限制。
  * 这里不限制 maxBodyLength：共享实例还承担大文件上传（文档解析、API 数据集等）。
  */
 export function createProxyAxios(config?: AxiosRequestConfig, ssrfCheck = true) {
   const agent = createProxyAgent();
 
   const instance = isDevEnv
-    ? _.create({
-        maxContentLength: serviceAxiosMaxContentLength,
-        ...config
-      })
+    ? _.create(config)
     : _.create({
         proxy: false,
         httpAgent: agent,
         httpsAgent: agent,
-        maxContentLength: serviceAxiosMaxContentLength,
         ...config
       });
 
-  return ssrfCheck ? addSSRFInterceptor(instance) : instance;
+  const instanceWithSizeLimit = addResponseSizeLimitInterceptor(instance);
+
+  return ssrfCheck ? addSSRFInterceptor(instanceWithSizeLimit) : instanceWithSizeLimit;
 }
 
 /** @see https://github.com/axios/axios/issues/4531 */

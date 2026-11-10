@@ -62,6 +62,41 @@ describe('axios.ts', () => {
     }
   };
 
+  const listen = (handler: http.RequestListener, host = '127.0.0.1') =>
+    new Promise<http.Server>((resolve) => {
+      const server = http.createServer(handler);
+      server.listen(0, host, () => resolve(server));
+    });
+
+  const closeServer = (server: http.Server) =>
+    new Promise<void>((resolve, reject) => {
+      server.close((err) => (err ? reject(err) : resolve()));
+    });
+
+  const getServerPort = (server: http.Server): number => {
+    const address = server.address();
+    if (!address || typeof address === 'string') {
+      throw new Error('Invalid test server address');
+    }
+    return address.port;
+  };
+
+  /**
+   * 构造一个非 loopback 的本机访问地址，用于模拟“初始 URL 通过 SSRF 校验”。
+   * CHECK_INTERNAL_IP=false 时私网地址会放行，但 loopback/metadata 仍然恒拦截。
+   */
+  const getReachablePrivateHost = () => {
+    const interfaces = os.networkInterfaces();
+    for (const items of Object.values(interfaces)) {
+      for (const item of items ?? []) {
+        if (item.family === 'IPv4' && !item.internal) {
+          return item.address;
+        }
+      }
+    }
+    return undefined;
+  };
+
   describe('createProxyAxios', () => {
     beforeEach(() => {
       vi.clearAllMocks();
@@ -123,12 +158,6 @@ describe('axios.ts', () => {
       expect(instance.defaults.proxy).toBe(false);
       expect(instance.defaults.httpAgent).toBeDefined();
       expect(instance.defaults.httpsAgent).toBeDefined();
-    });
-
-    it('默认应该限制响应体大小', () => {
-      const instance = createProxyAxios();
-
-      expect(instance.defaults.maxContentLength).toBe(serviceAxiosMaxContentLength);
     });
 
     it('应该允许自定义配置覆盖默认的 proxy 设置', () => {
@@ -247,46 +276,10 @@ describe('axios.ts', () => {
       expect(axios.defaults.proxy).toBe(false);
       expect(axios.defaults.httpAgent).toBeDefined();
       expect(axios.defaults.httpsAgent).toBeDefined();
-      expect(axios.defaults.maxContentLength).toBe(serviceAxiosMaxContentLength);
     });
   });
 
   describe('safe axios redirect protection', () => {
-    const listen = (handler: http.RequestListener, host = '127.0.0.1') =>
-      new Promise<http.Server>((resolve) => {
-        const server = http.createServer(handler);
-        server.listen(0, host, () => resolve(server));
-      });
-
-    const closeServer = (server: http.Server) =>
-      new Promise<void>((resolve, reject) => {
-        server.close((err) => (err ? reject(err) : resolve()));
-      });
-
-    const getServerPort = (server: http.Server): number => {
-      const address = server.address();
-      if (!address || typeof address === 'string') {
-        throw new Error('Invalid test server address');
-      }
-      return address.port;
-    };
-
-    /**
-     * 构造一个非 loopback 的本机访问地址,用于模拟“初始 URL 通过 SSRF 校验”。
-     * CHECK_INTERNAL_IP=false 时私网地址会放行,但 loopback/metadata 仍然恒拦截。
-     */
-    const getReachablePrivateHost = () => {
-      const interfaces = os.networkInterfaces();
-      for (const items of Object.values(interfaces)) {
-        for (const item of items || []) {
-          if (item.family === 'IPv4' && !item.internal) {
-            return item.address;
-          }
-        }
-      }
-      return undefined;
-    };
-
     it('应该逐跳跟随公网重定向', async () => {
       mutableServiceEnv.CHECK_INTERNAL_IP = false;
       const carrierHost = getReachablePrivateHost();
@@ -384,37 +377,6 @@ describe('axios.ts', () => {
   });
 
   describe('safe axios DNS pinning', () => {
-    const listen = (handler: http.RequestListener, host = '127.0.0.1') =>
-      new Promise<http.Server>((resolve) => {
-        const server = http.createServer(handler);
-        server.listen(0, host, () => resolve(server));
-      });
-
-    const closeServer = (server: http.Server) =>
-      new Promise<void>((resolve, reject) => {
-        server.close((err) => (err ? reject(err) : resolve()));
-      });
-
-    const getServerPort = (server: http.Server): number => {
-      const address = server.address();
-      if (!address || typeof address === 'string') {
-        throw new Error('Invalid test server address');
-      }
-      return address.port;
-    };
-
-    const getReachablePrivateHost = () => {
-      const interfaces = os.networkInterfaces();
-      for (const items of Object.values(interfaces)) {
-        for (const item of items || []) {
-          if (item.family === 'IPv4' && !item.internal) {
-            return item.address;
-          }
-        }
-      }
-      return undefined;
-    };
-
     it('应该拒绝直连路径中预检后重绑定到 loopback 的地址', async () => {
       clearProxyEnv();
       mutableServiceEnv.CHECK_INTERNAL_IP = false;
@@ -582,36 +544,22 @@ describe('axios.ts', () => {
   });
 
   describe('safe axios response size limit', () => {
-    const listen = (handler: http.RequestListener, host = '127.0.0.1') =>
-      new Promise<http.Server>((resolve) => {
-        const server = http.createServer(handler);
-        server.listen(0, host, () => resolve(server));
-      });
-
-    const closeServer = (server: http.Server) =>
-      new Promise<void>((resolve, reject) => {
-        server.close((err) => (err ? reject(err) : resolve()));
-      });
-
-    const getServerPort = (server: http.Server): number => {
-      const address = server.address();
-      if (!address || typeof address === 'string') {
-        throw new Error('Invalid test server address');
-      }
-      return address.port;
+    const mockPublicDns = () => {
+      vi.spyOn(dns, 'resolve4').mockResolvedValue(['8.8.8.8']);
+      vi.spyOn(dns, 'resolve6').mockRejectedValue(new Error('No AAAA records'));
+      vi.spyOn(dns, 'lookup').mockImplementation(
+        async () => [{ address: '8.8.8.8', family: 4 }] as any
+      );
     };
 
-    const getReachablePrivateHost = () => {
-      const interfaces = os.networkInterfaces();
-      for (const items of Object.values(interfaces)) {
-        for (const item of items || []) {
-          if (item.family === 'IPv4' && !item.internal) {
-            return item.address;
-          }
-        }
-      }
-      return undefined;
-    };
+    const createAdapter = () =>
+      vi.fn(async (config) => ({
+        status: 200,
+        statusText: 'OK',
+        data: {},
+        headers: {},
+        config
+      }));
 
     it('应该在解压后的响应体超过 maxContentLength 时中止', async () => {
       clearProxyEnv();
@@ -643,10 +591,78 @@ describe('axios.ts', () => {
       }
     });
 
-    it('调用方传入的 maxContentLength 应该覆盖实例默认值', () => {
-      const instance = createProxyAxios({ maxContentLength: 1024 });
+    it('缓冲型响应未显式限制时应该注入默认上限', async () => {
+      clearProxyEnv();
+      mockPublicDns();
+      const adapter = createAdapter();
+      const instance = createProxyAxios({ adapter });
 
-      expect(instance.defaults.maxContentLength).toBe(1024);
+      await instance.get('https://example.com/api');
+
+      expect(adapter).toHaveBeenCalledWith(
+        expect.objectContaining({ maxContentLength: serviceAxiosMaxContentLength })
+      );
+    });
+
+    it('流式响应未显式限制时应该保留 axios 默认值', async () => {
+      clearProxyEnv();
+      mockPublicDns();
+      const adapter = createAdapter();
+      const instance = createProxyAxios({ adapter });
+
+      await instance.get('https://example.com/file', { responseType: 'stream' });
+
+      expect(adapter).toHaveBeenCalledWith(
+        expect.objectContaining({ responseType: 'stream', maxContentLength: -1 })
+      );
+    });
+
+    it('流式响应应该保留调用方显式指定的上限', async () => {
+      clearProxyEnv();
+      mockPublicDns();
+      const adapter = createAdapter();
+      const instance = createProxyAxios({ adapter });
+
+      await instance.get('https://example.com/file', {
+        responseType: 'stream',
+        maxContentLength: 100 * 1024 * 1024
+      });
+
+      expect(adapter).toHaveBeenCalledWith(
+        expect.objectContaining({ maxContentLength: 100 * 1024 * 1024 })
+      );
+    });
+
+    it('流式响应未显式限制时应该允许读取超过默认上限的业务文件', async () => {
+      clearProxyEnv();
+      mutableServiceEnv.CHECK_INTERNAL_IP = false;
+      const carrierHost = getReachablePrivateHost();
+      if (!carrierHost) {
+        return;
+      }
+
+      // 模拟渠道附件下载：文件超过共享默认 20 MiB，但未超过 100 MiB 业务配额。
+      const body = Buffer.alloc(25 * 1024 * 1024, 1);
+      const server = await listen((req, res) => {
+        res.setHeader('Content-Type', 'application/octet-stream');
+        res.end(body);
+      }, '0.0.0.0');
+      const port = getServerPort(server);
+
+      try {
+        const instance = createProxyAxios();
+        const response = await instance.get(`http://${carrierHost}:${port}/file`, {
+          responseType: 'stream'
+        });
+        let totalBytes = 0;
+        for await (const chunk of response.data as AsyncIterable<Buffer>) {
+          totalBytes += chunk.length;
+        }
+
+        expect(totalBytes).toBe(body.length);
+      } finally {
+        await closeServer(server);
+      }
     });
   });
 });
