@@ -4,6 +4,7 @@ import {
   CanonicalWorkflowDataSchema
 } from '../../core/workflow/migration/schema';
 import type { LegacyWorkflowDataInput } from '../../core/workflow/migration/legacy/schema';
+import { LegacyAgentToolInputConfigSchema } from '../../core/workflow/migration/legacy/schema';
 import { migrateLegacyWorkflowStructureToCurrent } from '../../core/workflow/migration/legacy/workflow';
 import { migrateLegacyWorkflowStructureData } from '../../core/workflow/migration/legacy/structure';
 import { migrateWorkflowSecretValues } from '../../core/workflow/migration/secret';
@@ -98,8 +99,9 @@ export const migrateWorkflowToCurrent = (input: LegacyWorkflowDataInput): Canoni
             rawConfig && typeof rawConfig === 'object' && !Array.isArray(rawConfig)
               ? rawConfig
               : {};
-          const inputs = Array.isArray(tool.inputs)
-            ? tool.inputs
+          const savedInputs = Array.isArray(tool.inputs) ? (tool.inputs as unknown[]) : undefined;
+          const inputs = savedInputs
+            ? savedInputs.map((input) => LegacyAgentToolInputConfigSchema.parse(input))
             : Object.entries(config).map(([key, value]) => ({
                 key,
                 mode: isToolInputValueConfigured({
@@ -108,8 +110,28 @@ export const migrateWorkflowToCurrent = (input: LegacyWorkflowDataInput): Canoni
                   ? AgentToolInputModeEnum.manual
                   : AgentToolInputModeEnum.agentGenerated
               }));
+          const legacyConfig = Object.fromEntries(
+            inputs.flatMap(({ key, mode }) => {
+              if (mode !== AgentToolInputModeEnum.manual) return [];
+              const savedInput = savedInputs?.find(
+                (input): input is Record<string, unknown> =>
+                  !!input &&
+                  typeof input === 'object' &&
+                  !Array.isArray(input) &&
+                  (input as Record<string, unknown>).key === key
+              );
+              if (!savedInput) return [];
+              const hasValue = Object.prototype.hasOwnProperty.call(savedInput, 'value');
+              const hasDefaultValue = Object.prototype.hasOwnProperty.call(
+                savedInput,
+                'defaultValue'
+              );
+              if (!hasValue && !hasDefaultValue) return [];
+              return [[key, hasValue ? savedInput.value : savedInput.defaultValue]];
+            })
+          );
 
-          return { ...availableTool, inputs, config };
+          return { ...availableTool, inputs, config: { ...legacyConfig, ...config } };
         });
 
         return {

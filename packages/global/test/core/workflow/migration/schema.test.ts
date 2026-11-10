@@ -994,8 +994,8 @@ describe('workflow migration boundary', () => {
     });
   });
 
-  it('rejects legacy tool input snapshots and invalid modes', async () => {
-    expect(() =>
+  it('normalizes legacy tool input snapshots and rejects invalid modes', async () => {
+    expect(
       migrateWorkflowToCurrent({
         nodes: [
           {
@@ -1020,7 +1020,17 @@ describe('workflow migration boundary', () => {
           }
         ]
       } as any)
-    ).toThrow();
+    ).toMatchObject({
+      nodes: [
+        {
+          inputs: [
+            {
+              value: [{ id: 'tool-1', inputs: [{ key: 'query', mode: 'agentGenerated' }] }]
+            }
+          ]
+        }
+      ]
+    });
 
     expect(() =>
       migrateWorkflowToCurrent({

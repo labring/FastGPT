@@ -198,3 +198,125 @@ describe('workflow reference snapshot migration', () => {
     ]);
   });
 });
+
+describe('Agent tool input migration', () => {
+  it('normalizes legacy NodeIO snapshots and derives modes from config', () => {
+    const legacyInputs = [
+      {
+        key: 'query',
+        label: 'Query',
+        renderTypeList: [FlowNodeInputTypeEnum.agentGenerated, FlowNodeInputTypeEnum.input],
+        selectedTypeIndex: 0,
+        customJsonSchema: { type: 'string' },
+        required: true,
+        value: 'agent generated'
+      },
+      {
+        key: 'fixed',
+        label: 'Fixed',
+        renderTypeList: [FlowNodeInputTypeEnum.input],
+        selectedType: FlowNodeInputTypeEnum.input,
+        value: 'saved from snapshot',
+        defaultValue: 'default from snapshot',
+        inputList: [{ key: 'secret', label: 'Secret', inputType: 'secret' }]
+      }
+    ];
+    const workflow = migrateWorkflowToCurrent({
+      nodes: [
+        {
+          nodeId: 'agent',
+          flowNodeType: FlowNodeTypeEnum.agent,
+          name: 'Agent',
+          inputs: [
+            {
+              key: NodeInputKeyEnum.selectedTools,
+              label: 'Tools',
+              renderTypeList: [FlowNodeInputTypeEnum.selectTool],
+              value: [
+                {
+                  id: 'tool',
+                  config: {},
+                  inputs: legacyInputs
+                },
+                {
+                  id: 'config-only-tool',
+                  config: { fixed: 'saved', empty: null }
+                }
+              ]
+            }
+          ],
+          outputs: []
+        }
+      ],
+      edges: []
+    });
+    const tools = workflow.nodes[0].inputs[0].value as Array<{
+      inputs: unknown[];
+      config: Record<string, unknown>;
+    }>;
+
+    expect(tools[0].inputs).toEqual([
+      { key: 'query', mode: 'agentGenerated' },
+      { key: 'fixed', mode: 'manual' }
+    ]);
+    expect(legacyInputs[0]).toHaveProperty('customJsonSchema');
+    expect(legacyInputs[1]).toHaveProperty('inputList');
+    expect(tools[0]).not.toHaveProperty('inputs.0.label');
+    expect(tools[0].config).toEqual({ fixed: 'saved from snapshot' });
+    expect(tools[1].inputs).toEqual([
+      { key: 'fixed', mode: 'manual' },
+      { key: 'empty', mode: 'agentGenerated' }
+    ]);
+  });
+
+  it('preserves explicit modes and rejects unknown modes', () => {
+    const tools = migrateWorkflowToCurrent({
+      nodes: [
+        {
+          nodeId: 'agent',
+          flowNodeType: FlowNodeTypeEnum.agent,
+          name: 'Agent',
+          inputs: [
+            {
+              key: NodeInputKeyEnum.selectedTools,
+              label: 'Tools',
+              renderTypeList: [FlowNodeInputTypeEnum.selectTool],
+              value: [
+                {
+                  id: 'tool',
+                  config: {},
+                  inputs: [{ key: 'query', mode: 'manual' }]
+                }
+              ]
+            }
+          ],
+          outputs: []
+        }
+      ],
+      edges: []
+    }).nodes[0].inputs[0].value as Array<{ inputs: unknown[] }>;
+
+    expect(tools[0].inputs).toEqual([{ key: 'query', mode: 'manual' }]);
+    expect(() =>
+      migrateWorkflowToCurrent({
+        nodes: [
+          {
+            nodeId: 'agent',
+            flowNodeType: FlowNodeTypeEnum.agent,
+            name: 'Agent',
+            inputs: [
+              {
+                key: NodeInputKeyEnum.selectedTools,
+                label: 'Tools',
+                renderTypeList: [FlowNodeInputTypeEnum.selectTool],
+                value: [{ id: 'tool', config: {}, inputs: [{ key: 'query', mode: 'other' }] }]
+              }
+            ],
+            outputs: []
+          }
+        ],
+        edges: []
+      })
+    ).toThrow();
+  });
+});
