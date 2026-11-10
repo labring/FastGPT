@@ -25,8 +25,8 @@ export default function InputGuideBox({
   sourceTarget: ChatSourceTarget;
   text: string;
   activeIndex: number;
-  onOptionsChange: (options: string[]) => void;
-  onSelect: (text: string) => void;
+  onOptionsChange: (options: string[], matchText: string) => void;
+  onSelect: (text: string, matchText: string) => void;
   onSend: (text: string) => void;
 }) {
   const { t } = useTranslation();
@@ -66,8 +66,8 @@ export default function InputGuideBox({
   );
 
   useEffect(() => {
-    onOptionsChange(filterData);
-  }, [filterData, onOptionsChange]);
+    onOptionsChange(filterData, matchText);
+  }, [filterData, matchText, onOptionsChange]);
 
   return filterData.length ? (
     <Box
@@ -114,7 +114,7 @@ export default function InputGuideBox({
               display: 'block'
             }
           }}
-          onClick={() => onSelect(item)}
+          onClick={() => onSelect(item, matchText)}
         >
           <Box fontSize={'sm'} flex={'1 0 0'}>
             <HighlightText rawText={item} matchText={matchText} />

@@ -168,11 +168,28 @@ describe('input guide completion context', () => {
         context: { anchor: 3, userQuery: 'FastG' },
         value: '请介绍FastGPT世界',
         cursor: 8,
-        guide: 'FastGPT 是什么？'
+        guide: 'FastGPT 是什么？',
+        matchText: 'FastG'
       })
     ).toEqual({
       value: '请介绍FastGPT 是什么？PT世界',
       cursor: 15
+    });
+  });
+
+  it('replaces only the matched suffix and preserves the entered prefix', () => {
+    const value = 'FastGPT 是什么？，';
+    expect(
+      applyInputGuide({
+        context: { anchor: 0, userQuery: value },
+        value,
+        cursor: value.length,
+        guide: '还能做什么？',
+        matchText: '是什么？，'
+      })
+    ).toEqual({
+      value: 'FastGPT 还能做什么？',
+      cursor: 14
     });
   });
 });

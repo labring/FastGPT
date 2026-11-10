@@ -96,6 +96,7 @@ const ChatInput = ({
   const [completionOptions, setCompletionOptions] = useState<string[]>([]);
   const [activeCompletionIndex, setActiveCompletionIndex] = useState(0);
   const completionInputValueRef = useRef(inputValue);
+  const matchTextRef = useRef('');
 
   // Check voice input state
   const [mobilePreSpeak, setMobilePreSpeak] = useState(false);
@@ -190,6 +191,7 @@ const ChatInput = ({
     setCompletionContext(undefined);
     setCompletionOptions([]);
     setActiveCompletionIndex(0);
+    matchTextRef.current = '';
   }, []);
 
   useEffect(() => {
@@ -204,7 +206,8 @@ const ChatInput = ({
     }).unsubscribe;
   }, [chatForm, resetCompletionContext]);
 
-  const handleCompletionOptionsChange = useCallback((options: string[]) => {
+  const handleCompletionOptionsChange = useCallback((options: string[], matchText: string) => {
+    matchTextRef.current = matchText;
     setCompletionOptions((current) =>
       current.length === options.length && current.every((item, index) => item === options[index])
         ? current
@@ -214,7 +217,7 @@ const ChatInput = ({
   }, []);
 
   const acceptCompletion = useCallback(
-    (guide: string) => {
+    (guide: string, matchText: string) => {
       if (!completionContext) return;
       if (completionInputValueRef.current !== inputValue) {
         resetCompletionContext();
@@ -230,7 +233,8 @@ const ChatInput = ({
         context: completionContext,
         value: inputValue,
         cursor: textarea?.selectionStart ?? inputValue.length,
-        guide
+        guide,
+        matchText
       });
 
       resetCompletionContext();
@@ -419,7 +423,10 @@ const ChatInput = ({
                 }
                 if (completionAction === 'accept') {
                   acceptCompletion(
-                    completionOptions[Math.min(activeCompletionIndex, completionOptions.length - 1)]
+                    completionOptions[
+                      Math.min(activeCompletionIndex, completionOptions.length - 1)
+                    ],
+                    matchTextRef.current
                   );
                   e.preventDefault();
                   return;

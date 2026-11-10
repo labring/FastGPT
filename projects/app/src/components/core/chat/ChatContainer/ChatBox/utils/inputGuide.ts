@@ -146,20 +146,23 @@ export const insertNewline = ({ value, cursor }: { value: string; cursor: number
   cursor: cursor + 1
 });
 
-/** 用选中的引导词替换 userQuery，并返回补全后的文本和光标位置。 */
+/** 用选中的引导词替换命中的查询后缀，保留已经输入的前缀。 */
 export const applyInputGuide = ({
   context,
   value,
   cursor,
-  guide
+  guide,
+  matchText
 }: {
   context: CompletionContext;
   value: string;
   cursor: number;
   guide: string;
+  matchText: string;
 }) => {
-  const prefix = value.slice(0, context.anchor);
-  const suffix = value.slice(Math.max(cursor, context.anchor));
+  const replaceStart = Math.max(context.anchor, cursor - matchText.length);
+  const prefix = value.slice(0, replaceStart);
+  const suffix = value.slice(cursor);
   const nextValue = `${prefix}${guide}${suffix}`;
 
   return {
