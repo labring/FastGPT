@@ -1,0 +1,224 @@
+{
+  "nodes": [
+    {
+      "id": "workflowStart",
+      "templateType": "systemInput",
+      "flowNodeType": "workflowStart",
+      "showSourceHandle": true,
+      "showTargetHandle": false,
+      "avatar": "core/workflow/template/workflowStart",
+      "avatarLinear": "core/workflow/template/workflowStartLinear",
+      "colorSchema": "blue",
+      "name": "Start",
+      "intro": "",
+      "forbidDelete": true,
+      "unique": true,
+      "inputs": [
+        {
+          "key": "userChatInput",
+          "renderTypeList": [
+            "reference",
+            "textarea"
+          ],
+          "valueType": "string",
+          "label": "workflow:user_question",
+          "toolDescription": "workflow:user_question",
+          "required": true,
+          "defaultToAgentGenerated": true
+        }
+      ],
+      "outputs": [
+        {
+          "id": "userChatInput",
+          "key": "userChatInput",
+          "label": "common:core.module.input.label.user question",
+          "type": "static",
+          "valueType": "string"
+        }
+      ],
+      "nodeId": "Start",
+      "position": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "appModule",
+      "templateType": "other",
+      "flowNodeType": "appModule",
+      "showSourceHandle": true,
+      "showTargetHandle": true,
+      "colorSchema": "skyBlue",
+      "intro": "",
+      "name": "Child",
+      "showStatus": false,
+      "isTool": true,
+      "inputs": [
+        {
+          "key": "userChatInput",
+          "label": "userChatInput",
+          "value": "{{$Start.userChatInput$}}",
+          "valueType": "any",
+          "renderTypeList": [
+            "input"
+          ]
+        },
+        {
+          "key": "a",
+          "label": "a",
+          "value": "child-input",
+          "valueType": "any",
+          "renderTypeList": [
+            "input"
+          ]
+        },
+        {
+          "key": "system_forbid_stream",
+          "label": "system_forbid_stream",
+          "value": true,
+          "valueType": "any",
+          "renderTypeList": [
+            "input"
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "id": "answerText",
+          "key": "answerText",
+          "label": "Child answer",
+          "type": "static",
+          "valueType": "string"
+        }
+      ],
+      "nodeId": "Child",
+      "position": {
+        "x": 300,
+        "y": 0
+      },
+      "pluginId": "__CHILD_APP_ID__"
+    },
+    {
+      "id": "answerNode",
+      "templateType": "tools",
+      "flowNodeType": "answerNode",
+      "showSourceHandle": true,
+      "showTargetHandle": true,
+      "avatar": "core/workflow/template/reply",
+      "avatarLinear": "core/workflow/template/replyLinear",
+      "colorSchema": "blue",
+      "name": "ParentReply",
+      "intro": "workflow:intro_assigned_reply",
+      "courseUrl": "/guide/build/workflow/nodes/reply",
+      "isTool": true,
+      "inputs": [
+        {
+          "key": "text",
+          "renderTypeList": [
+            "textarea",
+            "reference"
+          ],
+          "valueType": "any",
+          "required": true,
+          "isRichText": false,
+          "maxLength": 100000,
+          "label": "common:core.module.input.label.Response content",
+          "description": "common:core.module.input.description.Response content",
+          "placeholder": "common:core.module.input.description.Response content",
+          "value": "PARENT:{{$VARIABLE_NODE_ID.a$}}|{{$Child.answerText$}}"
+        }
+      ],
+      "outputs": [],
+      "nodeId": "ParentReply",
+      "position": {
+        "x": 600,
+        "y": 0
+      }
+    }
+  ],
+  "edges": [
+    {
+      "source": "Start",
+      "target": "Child",
+      "sourceHandle": "Start-source-right",
+      "targetHandle": "Child-target-left"
+    },
+    {
+      "source": "Child",
+      "target": "ParentReply",
+      "sourceHandle": "Child-source-right",
+      "targetHandle": "ParentReply-target-left"
+    }
+  ],
+  "chatConfig": {
+    "variables": [
+      {
+        "key": "a",
+        "label": "a",
+        "description": "",
+        "type": "input",
+        "valueType": "string",
+        "defaultValue": "A0",
+        "required": false
+      },
+      {
+        "key": "b",
+        "label": "b",
+        "description": "",
+        "type": "input",
+        "valueType": "string",
+        "defaultValue": "B0",
+        "required": false
+      },
+      {
+        "key": "stamp",
+        "label": "stamp",
+        "description": "",
+        "type": "input",
+        "valueType": "string",
+        "defaultValue": "S0",
+        "required": false
+      },
+      {
+        "key": "n",
+        "label": "n",
+        "description": "",
+        "type": "input",
+        "valueType": "number",
+        "defaultValue": 9,
+        "required": false
+      },
+      {
+        "key": "flag",
+        "label": "flag",
+        "description": "",
+        "type": "input",
+        "valueType": "boolean",
+        "defaultValue": true,
+        "required": false
+      },
+      {
+        "key": "text",
+        "label": "text",
+        "description": "",
+        "type": "input",
+        "valueType": "string",
+        "defaultValue": "seed",
+        "required": false
+      },
+      {
+        "key": "obj",
+        "label": "obj",
+        "description": "",
+        "type": "input",
+        "valueType": "object",
+        "defaultValue": {
+          "items": [
+            1
+          ]
+        },
+        "required": false
+      }
+    ]
+  }
+}

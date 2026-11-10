@@ -1,0 +1,235 @@
+{
+  "nodes": [
+    {
+      "id": "pluginInput",
+      "templateType": "systemInput",
+      "flowNodeType": "pluginInput",
+      "showSourceHandle": true,
+      "showTargetHandle": false,
+      "unique": true,
+      "forbidDelete": true,
+      "avatar": "core/workflow/template/workflowStart",
+      "avatarLinear": "core/workflow/template/workflowStartLinear",
+      "colorSchema": "blue",
+      "name": "Input",
+      "intro": "workflow:intro_plugin_input",
+      "showStatus": false,
+      "inputs": [
+        {
+          "key": "label",
+          "label": "label",
+          "valueType": "string",
+          "renderTypeList": [
+            "input",
+            "reference"
+          ],
+          "selectedType": "input",
+          "canEdit": true,
+          "defaultValue": "TOOL-DEFAULT",
+          "required": false
+        },
+        {
+          "key": "amount",
+          "label": "amount",
+          "valueType": "number",
+          "renderTypeList": [
+            "input",
+            "reference"
+          ],
+          "selectedType": "input",
+          "canEdit": true,
+          "defaultValue": 8,
+          "required": false
+        },
+        {
+          "key": "enabled",
+          "label": "enabled",
+          "valueType": "boolean",
+          "renderTypeList": [
+            "input",
+            "reference"
+          ],
+          "selectedType": "input",
+          "canEdit": true,
+          "defaultValue": true,
+          "required": false
+        }
+      ],
+      "outputs": [
+        {
+          "id": "label",
+          "key": "label",
+          "label": "label",
+          "valueType": "string",
+          "type": "dynamic"
+        },
+        {
+          "id": "amount",
+          "key": "amount",
+          "label": "amount",
+          "valueType": "number",
+          "type": "dynamic"
+        },
+        {
+          "id": "enabled",
+          "key": "enabled",
+          "label": "enabled",
+          "valueType": "boolean",
+          "type": "dynamic"
+        }
+      ],
+      "nodeId": "Input",
+      "position": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "pluginOutput",
+      "templateType": "systemInput",
+      "flowNodeType": "pluginOutput",
+      "showSourceHandle": false,
+      "showTargetHandle": true,
+      "avatar": "core/workflow/template/pluginOutput",
+      "avatarLinear": "core/workflow/template/pluginOutputLinear",
+      "colorSchema": "blue",
+      "name": "Output",
+      "intro": "workflow:intro_custom_plugin_output",
+      "showStatus": false,
+      "unique": true,
+      "forbidDelete": true,
+      "inputs": [
+        {
+          "key": "label",
+          "label": "label",
+          "value": [
+            "Input",
+            "label"
+          ],
+          "valueType": "string",
+          "renderTypeList": [
+            "reference",
+            "input"
+          ],
+          "selectedType": "reference",
+          "canEdit": true
+        },
+        {
+          "key": "amount",
+          "label": "amount",
+          "value": [
+            "Input",
+            "amount"
+          ],
+          "valueType": "number",
+          "renderTypeList": [
+            "reference",
+            "input"
+          ],
+          "selectedType": "reference",
+          "canEdit": true
+        },
+        {
+          "key": "enabled",
+          "label": "enabled",
+          "value": [
+            "Input",
+            "enabled"
+          ],
+          "valueType": "boolean",
+          "renderTypeList": [
+            "reference",
+            "input"
+          ],
+          "selectedType": "reference",
+          "canEdit": true
+        }
+      ],
+      "outputs": [],
+      "nodeId": "Output",
+      "position": {
+        "x": 300,
+        "y": 0
+      }
+    }
+  ],
+  "edges": [
+    {
+      "source": "Input",
+      "target": "Output",
+      "sourceHandle": "Input-source-right",
+      "targetHandle": "Output-target-left"
+    }
+  ],
+  "chatConfig": {
+    "variables": [
+      {
+        "key": "a",
+        "label": "a",
+        "description": "",
+        "type": "input",
+        "valueType": "string",
+        "defaultValue": "A0",
+        "required": false
+      },
+      {
+        "key": "b",
+        "label": "b",
+        "description": "",
+        "type": "input",
+        "valueType": "string",
+        "defaultValue": "B0",
+        "required": false
+      },
+      {
+        "key": "stamp",
+        "label": "stamp",
+        "description": "",
+        "type": "input",
+        "valueType": "string",
+        "defaultValue": "S0",
+        "required": false
+      },
+      {
+        "key": "n",
+        "label": "n",
+        "description": "",
+        "type": "input",
+        "valueType": "number",
+        "defaultValue": 9,
+        "required": false
+      },
+      {
+        "key": "flag",
+        "label": "flag",
+        "description": "",
+        "type": "input",
+        "valueType": "boolean",
+        "defaultValue": true,
+        "required": false
+      },
+      {
+        "key": "text",
+        "label": "text",
+        "description": "",
+        "type": "input",
+        "valueType": "string",
+        "defaultValue": "seed",
+        "required": false
+      },
+      {
+        "key": "obj",
+        "label": "obj",
+        "description": "",
+        "type": "input",
+        "valueType": "object",
+        "defaultValue": {
+          "items": [
+            1
+          ]
+        },
+        "required": false
+      }
+    ]
+  }
+}

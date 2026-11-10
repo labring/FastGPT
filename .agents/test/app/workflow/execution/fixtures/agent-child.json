@@ -1,0 +1,506 @@
+{
+  "nodes": [
+    {
+      "id": "workflowStart",
+      "templateType": "systemInput",
+      "flowNodeType": "workflowStart",
+      "showSourceHandle": true,
+      "showTargetHandle": false,
+      "avatar": "core/workflow/template/workflowStart",
+      "avatarLinear": "core/workflow/template/workflowStartLinear",
+      "colorSchema": "blue",
+      "name": "Start",
+      "intro": "",
+      "forbidDelete": true,
+      "unique": true,
+      "inputs": [
+        {
+          "key": "userChatInput",
+          "renderTypeList": [
+            "reference",
+            "textarea"
+          ],
+          "valueType": "string",
+          "label": "workflow:user_question",
+          "toolDescription": "workflow:user_question",
+          "required": true,
+          "defaultToAgentGenerated": true
+        }
+      ],
+      "outputs": [
+        {
+          "id": "userChatInput",
+          "key": "userChatInput",
+          "label": "common:core.module.input.label.user question",
+          "type": "static",
+          "valueType": "string"
+        }
+      ],
+      "nodeId": "Start",
+      "position": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "agent",
+      "flowNodeType": "agent",
+      "templateType": "ai",
+      "showSourceHandle": true,
+      "showTargetHandle": true,
+      "avatar": "core/workflow/template/agent",
+      "avatarLinear": "core/workflow/template/agentLinear",
+      "colorSchema": "emerald",
+      "name": "Agent",
+      "intro": "workflow:template.agent_module_intro",
+      "showStatus": true,
+      "isTool": true,
+      "catchError": false,
+      "version": "4.17.0",
+      "inputs": [
+        {
+          "key": "modelId",
+          "renderTypeList": [
+            "settingLLMModel",
+            "reference"
+          ],
+          "label": "common:core.module.input.label.aiModel",
+          "valueType": "string",
+          "value": "__MODEL_ID__"
+        },
+        {
+          "key": "temperature",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "label": "",
+          "valueType": "number"
+        },
+        {
+          "key": "maxToken",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "label": "",
+          "valueType": "number"
+        },
+        {
+          "key": "isResponseAnswerText",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "label": "",
+          "value": true,
+          "valueType": "boolean"
+        },
+        {
+          "key": "aiChatVision",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "label": "",
+          "valueType": "boolean",
+          "value": true
+        },
+        {
+          "key": "aiChatAudio",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "label": "",
+          "valueType": "boolean",
+          "value": false
+        },
+        {
+          "key": "aiChatVideo",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "label": "",
+          "valueType": "boolean",
+          "value": false
+        },
+        {
+          "key": "aiChatExtractFiles",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "label": "",
+          "valueType": "boolean",
+          "value": true
+        },
+        {
+          "key": "aiChatReasoning",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "label": "",
+          "valueType": "boolean",
+          "value": true
+        },
+        {
+          "key": "aiChatReasoningEffort",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "label": "",
+          "valueType": "string"
+        },
+        {
+          "key": "aiChatTopP",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "label": "",
+          "valueType": "number"
+        },
+        {
+          "key": "aiChatStopSign",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "label": "",
+          "valueType": "string"
+        },
+        {
+          "key": "aiChatResponseFormat",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "label": "",
+          "valueType": "string"
+        },
+        {
+          "key": "aiChatJsonSchema",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "label": "",
+          "valueType": "string"
+        },
+        {
+          "key": "systemPrompt",
+          "renderTypeList": [
+            "textarea",
+            "reference"
+          ],
+          "maxLength": 100000,
+          "isRichText": true,
+          "valueType": "string",
+          "label": "common:core.ai.Prompt",
+          "description": "common:core.app.tip.systemPromptTip",
+          "placeholder": "workflow:agent.prompt_placeholder"
+        },
+        {
+          "key": "useAgentSandbox",
+          "renderTypeList": [
+            "switch"
+          ],
+          "label": "app:use_agent_sandbox",
+          "description": "app:use_computer_desc",
+          "valueType": "boolean",
+          "canAgentGenerated": false,
+          "value": false
+        },
+        {
+          "key": "sandboxEntrypoint",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "label": "",
+          "valueType": "string"
+        },
+        {
+          "key": "skills",
+          "renderTypeList": [
+            "selectSkill"
+          ],
+          "label": "common:navbar.Skill",
+          "valueType": "arrayObject",
+          "valueDesc": "{\n skillId:string;\n}[]",
+          "value": []
+        },
+        {
+          "key": "agent_selectedTools",
+          "renderTypeList": [
+            "selectTool"
+          ],
+          "label": "workflow:agent.tools",
+          "valueType": "arrayObject",
+          "valueDesc": "{\n toolId:string;\n}[]",
+          "value": [
+            {
+              "toolId": "__CHILD_APP_ID__"
+            }
+          ]
+        },
+        {
+          "key": "datasets",
+          "renderTypeList": [
+            "selectDataset",
+            "reference"
+          ],
+          "label": "common:core.dataset.Dataset",
+          "value": [],
+          "valueType": "selectDataset",
+          "canAgentGenerated": false,
+          "valueDesc": "[\n  {\n    \"datasetId\": \"6693a4a6b69b7a9b0e37d9b0\"\n  }\n]"
+        },
+        {
+          "key": "similarity",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "label": "",
+          "value": 0.4,
+          "valueType": "number"
+        },
+        {
+          "key": "limit",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "label": "",
+          "value": 5000,
+          "valueType": "number"
+        },
+        {
+          "key": "searchMode",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "label": "",
+          "valueType": "string",
+          "value": "embedding"
+        },
+        {
+          "key": "embeddingWeight",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "label": "",
+          "valueType": "number",
+          "value": 0.5
+        },
+        {
+          "key": "usingReRank",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "label": "",
+          "valueType": "boolean",
+          "value": false
+        },
+        {
+          "key": "rerankModelId",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "label": "",
+          "valueType": "string"
+        },
+        {
+          "key": "rerankWeight",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "label": "",
+          "valueType": "number",
+          "value": 0.5
+        },
+        {
+          "key": "rerankCandidateNum",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "label": "",
+          "valueType": "number",
+          "value": 100
+        },
+        {
+          "key": "datasetSearchUsingExtensionQuery",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "label": "",
+          "valueType": "boolean",
+          "value": true
+        },
+        {
+          "key": "datasetSearchExtensionModelId",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "label": "",
+          "valueType": "string"
+        },
+        {
+          "key": "datasetSearchExtensionBg",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "label": "",
+          "valueType": "string",
+          "value": ""
+        },
+        {
+          "key": "authTmbId",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "label": "",
+          "valueType": "boolean",
+          "value": false
+        },
+        {
+          "key": "collectionFilterVersion",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "label": "",
+          "valueType": "string",
+          "value": "structured"
+        },
+        {
+          "key": "collectionFilterMatch",
+          "renderTypeList": [
+            "hidden",
+            "reference"
+          ],
+          "label": "workflow:tag_filter",
+          "valueType": "string",
+          "isPro": true,
+          "description": "workflow:tag_filter_description",
+          "valueDesc": "{\n  \"tags\": {\n    \"$and\": [\n      { \"tag_name\": { \"$eq\": \"value\" } },\n      { \"tag_name2\": { \"$eq\": \"value\" } }\n    ]\n  },\n  \"createTime\": {\n    \"$gte\": \"YYYY-MM-DD HH:mm\",\n    \"$lte\": \"YYYY-MM-DD HH:mm\"\n  },\n  \"collectionIds\": [\"collectionId\"]\n}"
+        },
+        {
+          "key": "fileUrlList",
+          "renderTypeList": [
+            "reference",
+            "JSONEditor"
+          ],
+          "label": "app:workflow.user_file_input",
+          "debugLabel": "app:workflow.user_file_input",
+          "description": "app:workflow.user_file_input_desc",
+          "valueType": "arrayString",
+          "defaultToAgentGenerated": true,
+          "toolDescription": "app:workflow.user_file_input"
+        },
+        {
+          "key": "userChatInput",
+          "renderTypeList": [
+            "reference",
+            "textarea"
+          ],
+          "valueType": "string",
+          "label": "workflow:user_question",
+          "toolDescription": "user question",
+          "required": true,
+          "defaultToAgentGenerated": true,
+          "value": "{{$Start.userChatInput$}}"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "answerText",
+          "key": "answerText",
+          "label": "common:core.module.output.label.Ai response content",
+          "description": "common:core.module.output.description.Ai response content",
+          "valueType": "string",
+          "type": "static"
+        },
+        {
+          "id": "system_error_text",
+          "key": "system_error_text",
+          "type": "error",
+          "valueType": "string",
+          "label": "workflow:error_text"
+        }
+      ],
+      "nodeId": "Agent",
+      "position": {
+        "x": 300,
+        "y": 0
+      }
+    }
+  ],
+  "edges": [
+    {
+      "source": "Start",
+      "target": "Agent",
+      "sourceHandle": "Start-source-right",
+      "targetHandle": "Agent-target-left"
+    }
+  ],
+  "chatConfig": {
+    "variables": [
+      {
+        "key": "a",
+        "label": "a",
+        "description": "",
+        "type": "input",
+        "valueType": "string",
+        "defaultValue": "A0",
+        "required": false
+      },
+      {
+        "key": "b",
+        "label": "b",
+        "description": "",
+        "type": "input",
+        "valueType": "string",
+        "defaultValue": "B0",
+        "required": false
+      },
+      {
+        "key": "stamp",
+        "label": "stamp",
+        "description": "",
+        "type": "input",
+        "valueType": "string",
+        "defaultValue": "S0",
+        "required": false
+      },
+      {
+        "key": "n",
+        "label": "n",
+        "description": "",
+        "type": "input",
+        "valueType": "number",
+        "defaultValue": 9,
+        "required": false
+      },
+      {
+        "key": "flag",
+        "label": "flag",
+        "description": "",
+        "type": "input",
+        "valueType": "boolean",
+        "defaultValue": true,
+        "required": false
+      },
+      {
+        "key": "text",
+        "label": "text",
+        "description": "",
+        "type": "input",
+        "valueType": "string",
+        "defaultValue": "seed",
+        "required": false
+      },
+      {
+        "key": "obj",
+        "label": "obj",
+        "description": "",
+        "type": "input",
+        "valueType": "object",
+        "defaultValue": {
+          "items": [
+            1
+          ]
+        },
+        "required": false
+      }
+    ]
+  }
+}

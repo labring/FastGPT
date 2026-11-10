@@ -1,0 +1,773 @@
+{
+  "nodes": [
+    {
+      "id": "workflowStart",
+      "templateType": "systemInput",
+      "flowNodeType": "workflowStart",
+      "showSourceHandle": true,
+      "showTargetHandle": false,
+      "avatar": "core/workflow/template/workflowStart",
+      "avatarLinear": "core/workflow/template/workflowStartLinear",
+      "colorSchema": "blue",
+      "name": "Start",
+      "intro": "",
+      "forbidDelete": true,
+      "unique": true,
+      "inputs": [
+        {
+          "key": "userChatInput",
+          "renderTypeList": [
+            "reference",
+            "textarea"
+          ],
+          "valueType": "string",
+          "label": "workflow:user_question",
+          "toolDescription": "workflow:user_question",
+          "required": true,
+          "defaultToAgentGenerated": true
+        }
+      ],
+      "outputs": [
+        {
+          "id": "userChatInput",
+          "key": "userChatInput",
+          "label": "common:core.module.input.label.user question",
+          "type": "static",
+          "valueType": "string"
+        }
+      ],
+      "nodeId": "Start",
+      "position": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "httpRequest468",
+      "templateType": "tools",
+      "flowNodeType": "httpRequest468",
+      "showSourceHandle": true,
+      "showTargetHandle": true,
+      "avatar": "core/workflow/template/httpRequest",
+      "avatarLinear": "core/workflow/template/httpRequestLinear",
+      "colorSchema": "indigo",
+      "name": "Echo",
+      "intro": "workflow:intro_http_request",
+      "showStatus": true,
+      "isTool": true,
+      "hasToolInput": true,
+      "catchError": false,
+      "courseUrl": "/guide/build/workflow/nodes/http",
+      "inputs": [
+        {
+          "key": "system_addInputParam",
+          "renderTypeList": [
+            "addInputParam"
+          ],
+          "valueType": "dynamic",
+          "label": "",
+          "required": false,
+          "description": "common:core.module.input.description.HTTP Dynamic Input",
+          "customInputConfig": {
+            "selectValueTypeList": [
+              "string",
+              "number",
+              "boolean",
+              "object",
+              "arrayString",
+              "arrayNumber",
+              "arrayBoolean",
+              "arrayObject",
+              "arrayAny",
+              "any",
+              "chatHistory",
+              "datasetQuote",
+              "dynamic",
+              "selectDataset",
+              "selectApp"
+            ],
+            "showDescription": false,
+            "showDefaultValue": true
+          },
+          "deprecated": true
+        },
+        {
+          "key": "system_httpMethod",
+          "renderTypeList": [
+            "custom"
+          ],
+          "valueType": "string",
+          "label": "",
+          "value": "POST",
+          "required": true
+        },
+        {
+          "key": "system_httpTimeout",
+          "renderTypeList": [
+            "custom"
+          ],
+          "valueType": "number",
+          "label": "",
+          "value": 30,
+          "min": 5,
+          "max": 600,
+          "required": true
+        },
+        {
+          "key": "system_httpReqUrl",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "valueType": "string",
+          "label": "",
+          "description": "common:core.module.input.description.Http Request Url",
+          "placeholder": "https://api.ai.com/getInventory",
+          "required": true,
+          "value": "__GATE_URL__/echo"
+        },
+        {
+          "key": "system_header_secret",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "valueType": "object",
+          "label": "",
+          "required": false
+        },
+        {
+          "key": "system_httpHeader",
+          "renderTypeList": [
+            "custom"
+          ],
+          "valueType": "any",
+          "value": [
+            {
+              "key": "x-fg-test",
+              "type": "string",
+              "value": "{{$Start.userChatInput$}}"
+            }
+          ],
+          "label": "",
+          "description": "common:core.module.input.description.Http Request Header",
+          "placeholder": "common:core.module.input.description.Http Request Header",
+          "required": false
+        },
+        {
+          "key": "system_httpParams",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "valueType": "any",
+          "value": [
+            {
+              "key": "runId",
+              "type": "string",
+              "value": "{{$Start.userChatInput$}}"
+            }
+          ],
+          "label": "",
+          "required": false
+        },
+        {
+          "key": "system_httpJsonBody",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "valueType": "any",
+          "value": "{\"runId\":\"{{$Start.userChatInput$}}\",\"text\":\"{{text}}\",\"n\":{{n}},\"obj\":{{obj}},\"arr\":[0,false,\"\"]}",
+          "label": "",
+          "required": false
+        },
+        {
+          "key": "system_httpFormBody",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "valueType": "any",
+          "value": [],
+          "label": "",
+          "required": false
+        },
+        {
+          "key": "system_httpContentType",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "valueType": "string",
+          "value": "json",
+          "label": "",
+          "required": false
+        }
+      ],
+      "outputs": [
+        {
+          "id": "system_addOutputParam",
+          "key": "system_addOutputParam",
+          "type": "dynamic",
+          "valueType": "dynamic",
+          "label": "workflow:http_extract_output",
+          "customFieldConfig": {
+            "selectValueTypeList": [
+              "string",
+              "number",
+              "boolean",
+              "object",
+              "arrayString",
+              "arrayNumber",
+              "arrayBoolean",
+              "arrayObject",
+              "arrayAny",
+              "any",
+              "chatHistory",
+              "datasetQuote",
+              "dynamic",
+              "selectDataset",
+              "selectApp"
+            ],
+            "showDescription": false,
+            "showDefaultValue": false
+          },
+          "description": "workflow:http_extract_output_description"
+        },
+        {
+          "id": "httpRawResponse",
+          "key": "httpRawResponse",
+          "required": true,
+          "label": "workflow:raw_response",
+          "description": "workflow:http_raw_response_description",
+          "valueType": "any",
+          "type": "static"
+        },
+        {
+          "id": "system_httpRawError",
+          "key": "system_httpRawError",
+          "label": "workflow:http_full_error",
+          "description": "workflow:http_full_error_description",
+          "valueType": "object",
+          "type": "error"
+        },
+        {
+          "id": "error",
+          "key": "error",
+          "label": "workflow:error_text",
+          "valueType": "string",
+          "type": "error"
+        },
+        {
+          "id": "echo-text",
+          "key": "body.text",
+          "label": "body.text",
+          "valueType": "string",
+          "type": "dynamic"
+        },
+        {
+          "id": "echo-number",
+          "key": "body.n",
+          "label": "body.n",
+          "valueType": "number",
+          "type": "dynamic"
+        },
+        {
+          "id": "echo-object",
+          "key": "body.obj",
+          "label": "body.obj",
+          "valueType": "object",
+          "type": "dynamic"
+        },
+        {
+          "id": "echo-array",
+          "key": "body.arr",
+          "label": "body.arr",
+          "valueType": "arrayAny",
+          "type": "dynamic"
+        },
+        {
+          "id": "echo-wildcard",
+          "key": "$.body.arr[*]",
+          "label": "$.body.arr[*]",
+          "valueType": "arrayAny",
+          "type": "dynamic"
+        },
+        {
+          "id": "fallback",
+          "key": "absent",
+          "label": "absent",
+          "valueType": "string",
+          "type": "dynamic",
+          "required": true,
+          "defaultValue": "FALLBACK"
+        },
+        {
+          "id": "optional",
+          "key": "optional",
+          "label": "optional",
+          "valueType": "string",
+          "type": "dynamic",
+          "required": false,
+          "defaultValue": "MUST-NOT-FILL"
+        },
+        {
+          "id": "nil",
+          "key": "nil",
+          "label": "nil",
+          "valueType": "any",
+          "type": "dynamic",
+          "required": true,
+          "defaultValue": "MUST-NOT-FILL"
+        },
+        {
+          "id": "zero",
+          "key": "zero",
+          "label": "zero",
+          "valueType": "number",
+          "type": "dynamic",
+          "required": true,
+          "defaultValue": 9
+        },
+        {
+          "id": "flag",
+          "key": "flag",
+          "label": "flag",
+          "valueType": "boolean",
+          "type": "dynamic",
+          "required": true,
+          "defaultValue": true
+        },
+        {
+          "id": "empty",
+          "key": "empty",
+          "label": "empty",
+          "valueType": "string",
+          "type": "dynamic",
+          "required": true,
+          "defaultValue": "MUST-NOT-FILL"
+        }
+      ],
+      "nodeId": "Echo",
+      "position": {
+        "x": 300,
+        "y": 0
+      }
+    },
+    {
+      "id": "code",
+      "templateType": "tools",
+      "flowNodeType": "code",
+      "showSourceHandle": true,
+      "showTargetHandle": true,
+      "avatar": "core/workflow/template/codeRun",
+      "avatarLinear": "core/workflow/template/codeRunLinear",
+      "colorSchema": "lime",
+      "name": "Observe",
+      "intro": "workflow:code_sandbox_intro",
+      "showStatus": true,
+      "isTool": true,
+      "hasToolInput": true,
+      "catchError": false,
+      "courseUrl": "/guide/build/workflow/nodes/sandbox-v2",
+      "inputs": [
+        {
+          "key": "system_addInputParam",
+          "renderTypeList": [
+            "addInputParam"
+          ],
+          "valueType": "dynamic",
+          "label": "",
+          "required": false,
+          "description": "workflow:these_variables_will_be_input_parameters_for_code_execution",
+          "canAgentGenerated": false,
+          "customInputConfig": {
+            "selectValueTypeList": [
+              "string",
+              "number",
+              "boolean",
+              "object",
+              "arrayString",
+              "arrayNumber",
+              "arrayBoolean",
+              "arrayObject",
+              "arrayAny",
+              "any",
+              "chatHistory",
+              "datasetQuote",
+              "dynamic",
+              "selectDataset",
+              "selectApp"
+            ],
+            "showDescription": false,
+            "showDefaultValue": true
+          }
+        },
+        {
+          "key": "codeType",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "label": "",
+          "valueType": "string",
+          "value": "js"
+        },
+        {
+          "key": "code",
+          "renderTypeList": [
+            "custom"
+          ],
+          "label": "",
+          "valueType": "string",
+          "value": "function main(inputs) { return { observed: inputs }; }"
+        },
+        {
+          "key": "raw",
+          "label": "raw",
+          "value": [
+            "Echo",
+            "httpRawResponse"
+          ],
+          "valueType": "object",
+          "renderTypeList": [
+            "reference",
+            "input"
+          ],
+          "selectedType": "reference",
+          "canEdit": true
+        },
+        {
+          "key": "system_addOutputParam",
+          "label": "system_addOutputParam",
+          "value": [
+            "Echo",
+            "system_addOutputParam"
+          ],
+          "valueType": "dynamic",
+          "renderTypeList": [
+            "reference",
+            "input"
+          ],
+          "selectedType": "reference",
+          "canEdit": true
+        },
+        {
+          "key": "echo-text",
+          "label": "echo-text",
+          "value": [
+            "Echo",
+            "echo-text"
+          ],
+          "valueType": "string",
+          "renderTypeList": [
+            "reference",
+            "input"
+          ],
+          "selectedType": "reference",
+          "canEdit": true
+        },
+        {
+          "key": "echo-number",
+          "label": "echo-number",
+          "value": [
+            "Echo",
+            "echo-number"
+          ],
+          "valueType": "number",
+          "renderTypeList": [
+            "reference",
+            "input"
+          ],
+          "selectedType": "reference",
+          "canEdit": true
+        },
+        {
+          "key": "echo-object",
+          "label": "echo-object",
+          "value": [
+            "Echo",
+            "echo-object"
+          ],
+          "valueType": "object",
+          "renderTypeList": [
+            "reference",
+            "input"
+          ],
+          "selectedType": "reference",
+          "canEdit": true
+        },
+        {
+          "key": "echo-array",
+          "label": "echo-array",
+          "value": [
+            "Echo",
+            "echo-array"
+          ],
+          "valueType": "arrayAny",
+          "renderTypeList": [
+            "reference",
+            "input"
+          ],
+          "selectedType": "reference",
+          "canEdit": true
+        },
+        {
+          "key": "echo-wildcard",
+          "label": "echo-wildcard",
+          "value": [
+            "Echo",
+            "echo-wildcard"
+          ],
+          "valueType": "arrayAny",
+          "renderTypeList": [
+            "reference",
+            "input"
+          ],
+          "selectedType": "reference",
+          "canEdit": true
+        },
+        {
+          "key": "fallback",
+          "label": "fallback",
+          "value": [
+            "Echo",
+            "fallback"
+          ],
+          "valueType": "string",
+          "renderTypeList": [
+            "reference",
+            "input"
+          ],
+          "selectedType": "reference",
+          "canEdit": true
+        },
+        {
+          "key": "optional",
+          "label": "optional",
+          "value": [
+            "Echo",
+            "optional"
+          ],
+          "valueType": "string",
+          "renderTypeList": [
+            "reference",
+            "input"
+          ],
+          "selectedType": "reference",
+          "canEdit": true
+        },
+        {
+          "key": "nil",
+          "label": "nil",
+          "value": [
+            "Echo",
+            "nil"
+          ],
+          "valueType": "any",
+          "renderTypeList": [
+            "reference",
+            "input"
+          ],
+          "selectedType": "reference",
+          "canEdit": true
+        },
+        {
+          "key": "zero",
+          "label": "zero",
+          "value": [
+            "Echo",
+            "zero"
+          ],
+          "valueType": "number",
+          "renderTypeList": [
+            "reference",
+            "input"
+          ],
+          "selectedType": "reference",
+          "canEdit": true
+        },
+        {
+          "key": "flag",
+          "label": "flag",
+          "value": [
+            "Echo",
+            "flag"
+          ],
+          "valueType": "boolean",
+          "renderTypeList": [
+            "reference",
+            "input"
+          ],
+          "selectedType": "reference",
+          "canEdit": true
+        },
+        {
+          "key": "empty",
+          "label": "empty",
+          "value": [
+            "Echo",
+            "empty"
+          ],
+          "valueType": "string",
+          "renderTypeList": [
+            "reference",
+            "input"
+          ],
+          "selectedType": "reference",
+          "canEdit": true
+        }
+      ],
+      "outputs": [
+        {
+          "id": "system_rawResponse",
+          "key": "system_rawResponse",
+          "label": "workflow:full_response_data",
+          "valueType": "object",
+          "type": "static"
+        },
+        {
+          "id": "error",
+          "key": "error",
+          "label": "workflow:error_text",
+          "valueType": "string",
+          "type": "error"
+        },
+        {
+          "id": "observed",
+          "key": "observed",
+          "label": "observed",
+          "valueType": "object",
+          "type": "dynamic"
+        }
+      ],
+      "nodeId": "Observe",
+      "position": {
+        "x": 600,
+        "y": 0
+      }
+    },
+    {
+      "id": "answerNode",
+      "templateType": "tools",
+      "flowNodeType": "answerNode",
+      "showSourceHandle": true,
+      "showTargetHandle": true,
+      "avatar": "core/workflow/template/reply",
+      "avatarLinear": "core/workflow/template/replyLinear",
+      "colorSchema": "blue",
+      "name": "Reply",
+      "intro": "workflow:intro_assigned_reply",
+      "courseUrl": "/guide/build/workflow/nodes/reply",
+      "isTool": true,
+      "inputs": [
+        {
+          "key": "text",
+          "renderTypeList": [
+            "textarea",
+            "reference"
+          ],
+          "valueType": "any",
+          "required": true,
+          "isRichText": false,
+          "maxLength": 100000,
+          "label": "common:core.module.input.label.Response content",
+          "description": "common:core.module.input.description.Response content",
+          "placeholder": "common:core.module.input.description.Response content",
+          "value": "{{$Observe.observed$}}"
+        }
+      ],
+      "outputs": [],
+      "nodeId": "Reply",
+      "position": {
+        "x": 900,
+        "y": 0
+      }
+    }
+  ],
+  "edges": [
+    {
+      "source": "Start",
+      "target": "Echo",
+      "sourceHandle": "Start-source-right",
+      "targetHandle": "Echo-target-left"
+    },
+    {
+      "source": "Echo",
+      "target": "Observe",
+      "sourceHandle": "Echo-source-right",
+      "targetHandle": "Observe-target-left"
+    },
+    {
+      "source": "Observe",
+      "target": "Reply",
+      "sourceHandle": "Observe-source-right",
+      "targetHandle": "Reply-target-left"
+    }
+  ],
+  "chatConfig": {
+    "variables": [
+      {
+        "key": "a",
+        "label": "a",
+        "description": "",
+        "type": "input",
+        "valueType": "string",
+        "defaultValue": "A0",
+        "required": false
+      },
+      {
+        "key": "b",
+        "label": "b",
+        "description": "",
+        "type": "input",
+        "valueType": "string",
+        "defaultValue": "B0",
+        "required": false
+      },
+      {
+        "key": "stamp",
+        "label": "stamp",
+        "description": "",
+        "type": "input",
+        "valueType": "string",
+        "defaultValue": "S0",
+        "required": false
+      },
+      {
+        "key": "n",
+        "label": "n",
+        "description": "",
+        "type": "input",
+        "valueType": "number",
+        "defaultValue": 9,
+        "required": false
+      },
+      {
+        "key": "flag",
+        "label": "flag",
+        "description": "",
+        "type": "input",
+        "valueType": "boolean",
+        "defaultValue": true,
+        "required": false
+      },
+      {
+        "key": "text",
+        "label": "text",
+        "description": "",
+        "type": "input",
+        "valueType": "string",
+        "defaultValue": "seed",
+        "required": false
+      },
+      {
+        "key": "obj",
+        "label": "obj",
+        "description": "",
+        "type": "input",
+        "valueType": "object",
+        "defaultValue": {
+          "items": [
+            1
+          ]
+        },
+        "required": false
+      }
+    ]
+  }
+}

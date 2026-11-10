@@ -616,63 +616,67 @@ describe('child workflow data transfer without mocking runWorkflow', () => {
     }
   );
 
-  it('propagates a failed grandchild through an app and plugin to the outer catch branch', async () => {
-    const failure = new Error('grandchild sandbox failed');
-    vi.spyOn(codeSandbox, 'runCode').mockRejectedValueOnce(failure);
-    const start = graphNode({ id: 'childstart', type: FlowNodeTypeEnum.workflowStart });
-    const plugin = graphNode({
-      id: 'childplugin',
-      type: FlowNodeTypeEnum.pluginModule,
-      pluginId: 'grandchild',
-      outputs: [NodeOutputKeyEnum.errorText]
-    });
-    const input = graphNode({ id: 'plugininput', type: FlowNodeTypeEnum.pluginInput });
-    const code = graphNode({
-      id: 'grandchildcode',
-      type: FlowNodeTypeEnum.code,
-      params: { codeType: 'javascript', code: 'fixture' },
-      outputs: [NodeOutputKeyEnum.errorText]
-    });
-    loadChild.mockImplementation(async ({ appId }) =>
-      childResource(
-        appId === 'childapp'
-          ? {
-              nodes: [start, plugin],
-              edges: [graphEdge({ source: 'childstart', target: 'childplugin' })]
-            }
-          : {
-              nodes: [input, code],
-              edges: [graphEdge({ source: 'plugininput', target: 'grandchildcode' })]
-            }
-      )
-    );
-    const source = graphNode({
-      id: 'source',
-      type: FlowNodeTypeEnum.appModule,
-      pluginId: 'childapp',
-      params: { userChatInput: 'hello' },
-      outputs: [NodeOutputKeyEnum.errorText],
-      isEntry: true,
-      catchError: true
-    });
-    const caught = graphNode({
-      id: 'caught',
-      type: FlowNodeTypeEnum.toolParams,
-      inputs: [graphReference({ key: 'message', from: ['source', NodeOutputKeyEnum.errorText] })],
-      outputs: ['message']
-    });
-    const { result, responses } = await runGraph({
-      nodes: [source, caught],
-      edges: [graphEdge({ source: 'source', target: 'caught', error: true })]
-    });
+  it.each([false, true])(
+    'propagates a failed grandchild through an app and plugin with outer catchError=%s',
+    async (catchError) => {
+      const failure = new Error('grandchild sandbox failed');
+      vi.spyOn(codeSandbox, 'runCode').mockRejectedValueOnce(failure);
+      const start = graphNode({ id: 'childstart', type: FlowNodeTypeEnum.workflowStart });
+      const plugin = graphNode({
+        id: 'childplugin',
+        type: FlowNodeTypeEnum.pluginModule,
+        pluginId: 'grandchild',
+        outputs: [NodeOutputKeyEnum.errorText]
+      });
+      const input = graphNode({ id: 'plugininput', type: FlowNodeTypeEnum.pluginInput });
+      const code = graphNode({
+        id: 'grandchildcode',
+        type: FlowNodeTypeEnum.code,
+        params: { codeType: 'javascript', code: 'fixture' },
+        outputs: [NodeOutputKeyEnum.errorText]
+      });
+      loadChild.mockImplementation(async ({ appId }) =>
+        childResource(
+          appId === 'childapp'
+            ? {
+                nodes: [start, plugin],
+                edges: [graphEdge({ source: 'childstart', target: 'childplugin' })]
+              }
+            : {
+                nodes: [input, code],
+                edges: [graphEdge({ source: 'plugininput', target: 'grandchildcode' })]
+              }
+        )
+      );
+      const source = graphNode({
+        id: 'source',
+        type: FlowNodeTypeEnum.appModule,
+        pluginId: 'childapp',
+        params: { userChatInput: 'hello' },
+        outputs: [NodeOutputKeyEnum.errorText],
+        isEntry: true,
+        catchError
+      });
+      const caught = graphNode({
+        id: 'caught',
+        type: FlowNodeTypeEnum.toolParams,
+        inputs: [graphReference({ key: 'message', from: ['source', NodeOutputKeyEnum.errorText] })],
+        outputs: ['message']
+      });
+      const { result, responses } = await runGraph({
+        nodes: [source, caught],
+        edges: [graphEdge({ source: 'source', target: 'caught', error: true })]
+      });
 
-    expect(graphValues(caught).message).toBe(failure.message);
-    expect(responses.find((response) => response.nodeId === 'childplugin')?.errorText).toBe(
-      failure.message
-    );
-    expect(result.workflowRuntimeSummary.errorCount).toBe(0);
-    expect(Object.hasOwn(result, 'rawError')).toBe(false);
-  });
+      expect(graphValues(caught).message).toBe(catchError ? failure.message : undefined);
+      expect(responses.find((response) => response.nodeId === 'childplugin')?.errorText).toBe(
+        failure.message
+      );
+      expect(result.workflowRuntimeSummary.errorCount).toBe(catchError ? 0 : 1);
+      expect(findFailedResponseNode(responses)?.nodeId).toBe(catchError ? undefined : 'source');
+      expect(Object.hasOwn(result, 'rawError')).toBe(false);
+    }
+  );
 
   it.each(['loopRun', 'parallelRun', 'loop'] as const)(
     'propagates hasAgentSandbox from a nested child app through %s container',

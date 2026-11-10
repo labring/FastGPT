@@ -1,0 +1,230 @@
+{
+  "nodes": [
+    {
+      "id": "workflowStart",
+      "templateType": "systemInput",
+      "flowNodeType": "workflowStart",
+      "showSourceHandle": true,
+      "showTargetHandle": false,
+      "avatar": "core/workflow/template/workflowStart",
+      "avatarLinear": "core/workflow/template/workflowStartLinear",
+      "colorSchema": "blue",
+      "name": "Start",
+      "intro": "",
+      "forbidDelete": true,
+      "unique": true,
+      "inputs": [
+        {
+          "key": "userChatInput",
+          "renderTypeList": [
+            "reference",
+            "textarea"
+          ],
+          "valueType": "string",
+          "label": "workflow:user_question",
+          "toolDescription": "workflow:user_question",
+          "required": true,
+          "defaultToAgentGenerated": true
+        }
+      ],
+      "outputs": [
+        {
+          "id": "userChatInput",
+          "key": "userChatInput",
+          "label": "common:core.module.input.label.user question",
+          "type": "static",
+          "valueType": "string"
+        }
+      ],
+      "nodeId": "Start",
+      "position": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "readFiles",
+      "templateType": "tools",
+      "flowNodeType": "readFiles",
+      "showSourceHandle": true,
+      "showTargetHandle": true,
+      "avatar": "core/workflow/template/readFiles",
+      "avatarLinear": "core/workflow/template/readFilesLinear",
+      "colorSchema": "green",
+      "name": "Files",
+      "intro": "app:workflow.read_files_tip",
+      "showStatus": true,
+      "version": "4.9.2",
+      "isTool": true,
+      "courseUrl": "/guide/build/general/fileInput",
+      "inputs": [
+        {
+          "key": "fileUrlList",
+          "renderTypeList": [
+            "reference"
+          ],
+          "valueType": "arrayString",
+          "label": "app:workflow.file_url",
+          "required": true,
+          "value": [
+            "__FILE_URL__"
+          ],
+          "toolDescription": "app:workflow.file_url",
+          "defaultToAgentGenerated": true
+        }
+      ],
+      "outputs": [
+        {
+          "id": "system_text",
+          "key": "system_text",
+          "label": "app:workflow.read_files_result",
+          "description": "app:workflow.read_files_result_desc",
+          "valueType": "string",
+          "type": "static"
+        },
+        {
+          "id": "system_rawResponse",
+          "key": "system_rawResponse",
+          "label": "workflow:raw_response",
+          "description": "workflow:tool_raw_response_description",
+          "valueType": "arrayObject",
+          "type": "static"
+        },
+        {
+          "id": "system_error_text",
+          "key": "system_error_text",
+          "type": "error",
+          "valueType": "string",
+          "label": "workflow:error_text"
+        }
+      ],
+      "nodeId": "Files",
+      "position": {
+        "x": 300,
+        "y": 0
+      }
+    },
+    {
+      "id": "answerNode",
+      "templateType": "tools",
+      "flowNodeType": "answerNode",
+      "showSourceHandle": true,
+      "showTargetHandle": true,
+      "avatar": "core/workflow/template/reply",
+      "avatarLinear": "core/workflow/template/replyLinear",
+      "colorSchema": "blue",
+      "name": "FileReply",
+      "intro": "workflow:intro_assigned_reply",
+      "courseUrl": "/guide/build/workflow/nodes/reply",
+      "isTool": true,
+      "inputs": [
+        {
+          "key": "text",
+          "renderTypeList": [
+            "textarea",
+            "reference"
+          ],
+          "valueType": "any",
+          "required": true,
+          "isRichText": false,
+          "maxLength": 100000,
+          "label": "common:core.module.input.label.Response content",
+          "description": "common:core.module.input.description.Response content",
+          "placeholder": "common:core.module.input.description.Response content",
+          "value": "{{$Files.system_text$}}"
+        }
+      ],
+      "outputs": [],
+      "nodeId": "FileReply",
+      "position": {
+        "x": 600,
+        "y": 0
+      }
+    }
+  ],
+  "edges": [
+    {
+      "source": "Start",
+      "target": "Files",
+      "sourceHandle": "Start-source-right",
+      "targetHandle": "Files-target-left"
+    },
+    {
+      "source": "Files",
+      "target": "FileReply",
+      "sourceHandle": "Files-source-right",
+      "targetHandle": "FileReply-target-left"
+    }
+  ],
+  "chatConfig": {
+    "variables": [
+      {
+        "key": "a",
+        "label": "a",
+        "description": "",
+        "type": "input",
+        "valueType": "string",
+        "defaultValue": "A0",
+        "required": false
+      },
+      {
+        "key": "b",
+        "label": "b",
+        "description": "",
+        "type": "input",
+        "valueType": "string",
+        "defaultValue": "B0",
+        "required": false
+      },
+      {
+        "key": "stamp",
+        "label": "stamp",
+        "description": "",
+        "type": "input",
+        "valueType": "string",
+        "defaultValue": "S0",
+        "required": false
+      },
+      {
+        "key": "n",
+        "label": "n",
+        "description": "",
+        "type": "input",
+        "valueType": "number",
+        "defaultValue": 9,
+        "required": false
+      },
+      {
+        "key": "flag",
+        "label": "flag",
+        "description": "",
+        "type": "input",
+        "valueType": "boolean",
+        "defaultValue": true,
+        "required": false
+      },
+      {
+        "key": "text",
+        "label": "text",
+        "description": "",
+        "type": "input",
+        "valueType": "string",
+        "defaultValue": "seed",
+        "required": false
+      },
+      {
+        "key": "obj",
+        "label": "obj",
+        "description": "",
+        "type": "input",
+        "valueType": "object",
+        "defaultValue": {
+          "items": [
+            1
+          ]
+        },
+        "required": false
+      }
+    ]
+  }
+}
