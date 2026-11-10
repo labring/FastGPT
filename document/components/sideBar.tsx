@@ -19,6 +19,7 @@ import { type SidebarComponents } from 'fumadocs-ui/components/layout/sidebar';
 import { type PageTree } from 'fumadocs-core/server';
 import { ExternalLink } from 'lucide-react';
 import { cn } from '@/lib/cn';
+import { SIDEBAR_SCROLL_STORAGE_KEY } from '@/components/sidebarScrollFix';
 
 const VIRTUAL_SECTION_ID_SUFFIX = '#virtual-section';
 
@@ -61,12 +62,24 @@ const CustomItem: FC<{ item: PageTree.Item }> = ({ item }) => {
   const { deprecated, tags, isUpgradeTag } = getSidebarItemTags(item);
 
   useEffect(() => {
-    if (isActive) {
-      const anchor = document.querySelector(`a[href='${item.url}']`);
-      if (anchor) {
-        setTimeout(() => {
-          anchor.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }, 100);
+    if (!isActive) return;
+    const viewport = document.querySelector<HTMLElement>(
+      '#nd-sidebar [data-radix-scroll-area-viewport]'
+    );
+    const anchor = viewport?.querySelector<HTMLElement>(`a[href='${item.url}']`);
+    if (!viewport || !anchor) return;
+
+    const viewportRect = viewport.getBoundingClientRect();
+    const anchorRect = anchor.getBoundingClientRect();
+    if (viewportRect.height <= 0) return;
+
+    if (anchorRect.top < viewportRect.top || anchorRect.bottom > viewportRect.bottom) {
+      viewport.scrollTop +=
+        anchorRect.top - viewportRect.top - viewportRect.height / 2 + anchorRect.height / 2;
+      try {
+        sessionStorage.setItem(SIDEBAR_SCROLL_STORAGE_KEY, String(viewport.scrollTop));
+      } catch {
+        // Ignore storage errors in restricted browsing contexts.
       }
     }
   }, [isActive, item.url]);

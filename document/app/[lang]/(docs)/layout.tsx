@@ -7,7 +7,7 @@ import { baseOptions } from '@/app/layout.config';
 import { getLocalizedPath, i18n, t } from '@/lib/i18n';
 import '@/app/global.css';
 import { CustomSidebarComponents } from '@/components/sideBar';
-import { SidebarScrollFix } from '@/components/sidebarScrollFix';
+import { SidebarScrollFix, SidebarScrollRestoreScript } from '@/components/sidebarScrollFix';
 import { CategorySwitcher } from '@/components/docs/categorySwitcher';
 import { MobileNav } from '@/components/docs/mobileNav';
 import { LanguageSwitcher } from '@/components/docs/languageSwitcher';
@@ -113,6 +113,7 @@ export default async function Layout({
         ),
         footer: (
           <section className="flex w-full items-center justify-between">
+            <SidebarScrollRestoreScript />
             <ThemeToggle
               className="h-8 p-0 [&_svg]:size-8 [&_svg]:p-2"
               mode={base.themeSwitch?.mode}
