@@ -5,7 +5,7 @@ import { MongoDatasetCollection } from './schema';
 /**
  * 批量统计指定团队知识库内所有层级的非目录 collection 数量，不按文件权限过滤。
  * 未命中或非法的 datasetId 返回 0；没有有效 ID 时不查询数据库。
- * `type` 未包含在现有索引中，需要回表过滤，成本与范围内 collection 总数线性相关。
+ * 复用类型/目录索引避免回表，精确计数仍需扫描范围内的非目录索引项。
  */
 export const countDatasetCollectionsByDatasetIds = async ({
   teamId,
