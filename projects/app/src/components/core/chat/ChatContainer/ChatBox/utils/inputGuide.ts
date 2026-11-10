@@ -65,13 +65,18 @@ export const getNextCompletionIndex = ({
 /** 程序回填后旧 context 不再对应当前文本。 */
 export const isCompletionContextCurrent = ({
   context,
-  value
+  value,
+  matchText
 }: {
   context: CompletionContext;
   value: string;
+  matchText?: string;
 }) => {
   const cursor = context.anchor + context.userQuery.length;
-  return value.slice(context.anchor, cursor) === context.userQuery;
+  if (value.slice(context.anchor, cursor) !== context.userQuery) return false;
+  if (matchText === undefined) return true;
+
+  return value.lastIndexOf(matchText, cursor) >= context.anchor;
 };
 
 /**
@@ -160,7 +165,9 @@ export const applyInputGuide = ({
   guide: string;
   matchText: string;
 }) => {
-  const replaceStart = Math.max(context.anchor, cursor - matchText.length);
+  const matchIndex = value.lastIndexOf(matchText, cursor);
+  const replaceStart =
+    matchIndex >= context.anchor ? Math.max(context.anchor, matchIndex) : context.anchor;
   const prefix = value.slice(0, replaceStart);
   const suffix = value.slice(cursor);
   const nextValue = `${prefix}${guide}${suffix}`;

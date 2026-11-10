@@ -192,4 +192,20 @@ describe('input guide completion context', () => {
       cursor: 14
     });
   });
+
+  it('replaces the matched suffix when a trailing space follows it', () => {
+    const value = 'FastGPT 是什么？ ';
+    expect(
+      applyInputGuide({
+        context: { anchor: 0, userQuery: value },
+        value,
+        cursor: value.length,
+        guide: '还能做什么？',
+        matchText: '是什么？'
+      })
+    ).toEqual({
+      value: 'FastGPT 还能做什么？',
+      cursor: 14
+    });
+  });
 });

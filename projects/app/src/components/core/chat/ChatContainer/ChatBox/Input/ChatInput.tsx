@@ -96,7 +96,7 @@ const ChatInput = ({
   const [completionOptions, setCompletionOptions] = useState<string[]>([]);
   const [activeCompletionIndex, setActiveCompletionIndex] = useState(0);
   const completionInputValueRef = useRef(inputValue);
-  const matchTextRef = useRef('');
+  const [matchText, setMatchText] = useState('');
 
   // Check voice input state
   const [mobilePreSpeak, setMobilePreSpeak] = useState(false);
@@ -191,7 +191,7 @@ const ChatInput = ({
     setCompletionContext(undefined);
     setCompletionOptions([]);
     setActiveCompletionIndex(0);
-    matchTextRef.current = '';
+    setMatchText('');
   }, []);
 
   useEffect(() => {
@@ -207,7 +207,7 @@ const ChatInput = ({
   }, [chatForm, resetCompletionContext]);
 
   const handleCompletionOptionsChange = useCallback((options: string[], matchText: string) => {
-    matchTextRef.current = matchText;
+    setMatchText(matchText);
     setCompletionOptions((current) =>
       current.length === options.length && current.every((item, index) => item === options[index])
         ? current
@@ -223,7 +223,13 @@ const ChatInput = ({
         resetCompletionContext();
         return;
       }
-      if (!isCompletionContextCurrent({ context: completionContext, value: inputValue })) {
+      if (
+        !isCompletionContextCurrent({
+          context: completionContext,
+          value: inputValue,
+          matchText
+        })
+      ) {
         resetCompletionContext();
         return;
       }
@@ -426,7 +432,7 @@ const ChatInput = ({
                     completionOptions[
                       Math.min(activeCompletionIndex, completionOptions.length - 1)
                     ],
-                    matchTextRef.current
+                    matchText
                   );
                   e.preventDefault();
                   return;
@@ -544,6 +550,7 @@ const ChatInput = ({
       resetCompletionContext,
       completionOptions,
       activeCompletionIndex,
+      matchText,
       acceptCompletion,
       handleSend,
       canUploadFile,
@@ -764,7 +771,11 @@ const ChatInput = ({
           {/* Chat input guide box */}
           {canUseInputGuide &&
             completionContext &&
-            isCompletionContextCurrent({ context: completionContext, value: inputValue }) && (
+            isCompletionContextCurrent({
+              context: completionContext,
+              value: inputValue,
+              matchText
+            }) && (
               <InputGuideBox
                 id={INPUT_GUIDE_ID}
                 sourceTarget={sourceTarget}
