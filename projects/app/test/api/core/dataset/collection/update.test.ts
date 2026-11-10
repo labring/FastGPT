@@ -1,4 +1,5 @@
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
+import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import updateHandler from '@/pages/api/core/dataset/collection/update';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
@@ -8,6 +9,7 @@ import {
   ReadRoleVal,
   WriteRoleVal
 } from '@fastgpt/global/support/permission/constant';
+import { TeamDatasetCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
@@ -260,6 +262,36 @@ describe('update collection', () => {
     });
     expect(allowed.code).toBe(200);
     expect((await MongoDatasetCollection.findById(file._id).lean())?.parentId).toBeNull();
+  });
+
+  it('rejects moving a root collection when the member only has read permission on it', async () => {
+    const { actor, file, target, grant } = await fixture();
+    await MongoDatasetCollection.updateOne({ _id: file._id }, { parentId: null });
+    await MongoResourcePermission.create({
+      resourceType: PerResourceTypeEnum.team,
+      teamId: actor.teamId,
+      resourceId: null,
+      tmbId: actor.tmbId,
+      permission: TeamDatasetCreatePermissionVal
+    });
+
+    const denied = await Call(updateHandler, {
+      auth: actor,
+      body: { id: String(file._id), parentId: String(target._id) }
+    });
+    expect(denied.code).toBe(500);
+    expect(denied.error).toBe(DatasetErrEnum.unAuthDatasetCollection);
+    expect((await MongoDatasetCollection.findById(file._id).lean())?.parentId).toBeNull();
+
+    await grant(String(file._id), ManageRoleVal);
+    const allowed = await Call(updateHandler, {
+      auth: actor,
+      body: { id: String(file._id), parentId: String(target._id) }
+    });
+    expect(allowed.code).toBe(200);
+    expect(String((await MongoDatasetCollection.findById(file._id).lean())?.parentId)).toBe(
+      String(target._id)
+    );
   });
 });
 
