@@ -5,7 +5,7 @@ description: 将 FastGPT 自带的 MongoDB 5.x 数据导出，并恢复到新的
 
 本文适用于使用 Docker Compose 部署、并希望把 FastGPT 自带的 MongoDB 5.x 数据迁移到 MongoDB 8.x 的环境。做法是：从旧容器导出业务库，创建一个新的 MongoDB 8.0.34 容器（使用新数据卷），再把数据恢复进去。
 
-> 本方案不会复用旧数据卷；旧容器和旧卷会保留，便于回滚。迁移期间需要停止 FastGPT 和旧 MongoDB，请安排维护窗口。
+> 本方案不会复用旧数据卷；迁移阶段旧容器和旧卷会保留。固化到 compose 时会删除旧容器，但旧卷保留，回滚时用旧镜像和旧卷重建。迁移期间需要停止 FastGPT 和旧 MongoDB，请安排维护窗口。
 
 > MongoDB 8.x 要求 x86_64 CPU 支持 AVX。如果当前已经运行 5.x，说明 CPU 已支持 AVX；如果仍在 4.4.x，请不要直接套用本文，先确认 CPU 或改用外部 MongoDB。
 
@@ -30,6 +30,14 @@ echo "$NET"
 
 ## 1. 导出数据
 
+先停止 FastGPT 应用，避免导出期间继续写入；旧 MongoDB 保持运行。下面的 `fastgpt-app` 按你的实际服务名调整：
+
+```bash
+docker compose stop fastgpt-app
+```
+
+> 下面的导出、恢复和校验命令建议保存为脚本执行；任一库失败会立即退出，不要只看最后一个库的退出码。
+
 旧容器保持运行。先列出业务库，排除 `admin`、`config`、`local` 和测试库：
 
 ```bash
@@ -44,19 +52,39 @@ docker exec "$OLD" mongosh --quiet -u "$USER" -p "$PASS" \
 cat /tmp/mongo8-migrate/dbs.txt
 ```
 
-确认 `dbs.txt` 里是你要迁移的库。然后逐个库导出：
+确认 `dbs.txt` 里是你要迁移的库。先记录源库的集合文档数和索引，便于迁移后对比：
+
+```bash
+docker exec "$OLD" mongosh --quiet -u "$USER" -p "$PASS" \
+  --authenticationDatabase admin --eval '
+const dbs = db.adminCommand({listDatabases:1}).databases.map(d=>d.name).filter(n=>!["admin","config","local"].includes(n) && !n.startsWith("fastgpt_test_"));
+dbs.forEach(name => { const d=db.getSiblingDB(name); print("## "+name); d.getCollectionNames().sort().forEach(c=>print(c+" "+d.getCollection(c).countDocuments({}))); });
+' > /tmp/mongo8-migrate/counts-before.txt
+
+docker exec "$OLD" mongosh --quiet -u "$USER" -p "$PASS" \
+  --authenticationDatabase admin --eval '
+const dbs = db.adminCommand({listDatabases:1}).databases.map(d=>d.name).filter(n=>!["admin","config","local"].includes(n) && !n.startsWith("fastgpt_test_"));
+dbs.forEach(name => { const d=db.getSiblingDB(name); d.getCollectionNames().sort().forEach(c=>print(name+"."+c+" "+d.getCollection(c).getIndexes().map(i=>i.name).sort().join(","))); });
+' > /tmp/mongo8-migrate/indexes-before.txt
+```
+
+然后逐个库导出：
 
 ```bash
 docker exec "$OLD" rm -rf /tmp/mongo8-migrate
 docker exec "$OLD" mkdir -p /tmp/mongo8-migrate
 
 while IFS= read -r db; do
-  docker exec "$OLD" mongodump --quiet \
+  echo "Exporting $db"
+  if ! docker exec "$OLD" mongodump --quiet \
     --username "$USER" --password "$PASS" \
     --authenticationDatabase admin \
     --host 127.0.0.1 --port 27017 \
     --db "$db" \
-    --archive="/tmp/mongo8-migrate/$db.gz" --gzip
+    --archive="/tmp/mongo8-migrate/$db.gz" --gzip; then
+    echo "Failed to export $db" >&2
+    exit 1
+  fi
 done < /tmp/mongo8-migrate/dbs.txt
 ```
 
@@ -65,9 +93,18 @@ done < /tmp/mongo8-migrate/dbs.txt
 ```bash
 docker cp "$OLD:/tmp/mongo8-migrate" /tmp/mongo8-migrate/archive
 ls -lh /tmp/mongo8-migrate/archive
+
+while IFS= read -r db; do
+  [ -s "/tmp/mongo8-migrate/archive/$db.gz" ] || {
+    echo "Missing dump for $db" >&2
+    exit 1
+  }
+done < /tmp/mongo8-migrate/dbs.txt
 ```
 
 ## 2. 停掉旧容器
+
+只有在导出脚本成功退出、且归档检查通过后才执行本步骤。
 
 ```bash
 docker update --restart no "$OLD"
@@ -94,7 +131,6 @@ docker volume create "$VOL"
 docker run -d --name "$NEW" \
   --network "$NET" \
   --network-alias fastgpt-mongo \
-  -p 27017:27017 \
   --restart unless-stopped \
   -e MONGO_INITDB_ROOT_USERNAME="$USER" \
   -e MONGO_INITDB_ROOT_PASSWORD="$PASS" \
@@ -107,7 +143,8 @@ docker run -d --name "$NEW" \
 说明：
 
 - `--network-alias fastgpt-mongo`：让 FastGPT 和其他容器继续用 `fastgpt-mongo:27017` 连新库；
-- `-p 27017:27017`：宿主机上的应用继续用 `127.0.0.1:27017`；如果只在 Docker 网络内访问，可以去掉；
+- 默认不发布宿主机端口，FastGPT 和其他容器通过 Docker 网络访问 `fastgpt-mongo:27017`；
+- 如果宿主机上的应用需要连接，再增加 `-p 127.0.0.1:27017:27017`，只绑定回环地址；不要使用 `-p 27017:27017` 暴露到所有网卡；
 - 新卷 `fastgpt-mongo8`：完全新的数据目录；
 - 如果使用阿里云镜像，把 `mongo:8.0.34` 替换为对应的镜像地址即可。
 
@@ -166,11 +203,15 @@ docker cp /tmp/mongo8-migrate/archive/. "$NEW:/tmp/mongo8-migrate/"
 
 ```bash
 while IFS= read -r db; do
-  docker exec "$NEW" mongorestore --quiet \
+  echo "Restoring $db"
+  if ! docker exec "$NEW" mongorestore --quiet \
     --username "$USER" --password "$PASS" \
     --authenticationDatabase admin \
     --host 127.0.0.1 --port 27017 \
-    --archive="/tmp/mongo8-migrate/$db.gz" --gzip
+    --archive="/tmp/mongo8-migrate/$db.gz" --gzip; then
+    echo "Failed to restore $db" >&2
+    exit 1
+  fi
 done < /tmp/mongo8-migrate/dbs.txt
 ```
 
@@ -179,6 +220,32 @@ done < /tmp/mongo8-migrate/dbs.txt
 - 恢复时不要加 `--db`，归档里已经带了原来的库名；
 - `mongorestore` 会恢复集合和索引，FastGPT 启动时还会做一次索引同步；
 - 本方案只迁移业务库，不迁移 `admin` 用户和角色；新容器会用 `MONGO_INITDB_ROOT_USERNAME/PASSWORD` 重新创建 root 用户。如果存在自定义 MongoDB 用户，需要手动重建。
+
+恢复完成后，对比迁移前后的文档数和索引；有差异就停止，不要启动 FastGPT：
+
+```bash
+docker exec "$NEW" mongosh --quiet -u "$USER" -p "$PASS" \
+  --authenticationDatabase admin --eval '
+const dbs = db.adminCommand({listDatabases:1}).databases.map(d=>d.name).filter(n=>!["admin","config","local"].includes(n) && !n.startsWith("fastgpt_test_"));
+dbs.forEach(name => { const d=db.getSiblingDB(name); print("## "+name); d.getCollectionNames().sort().forEach(c=>print(c+" "+d.getCollection(c).countDocuments({}))); });
+' > /tmp/mongo8-migrate/counts-after.txt
+
+docker exec "$NEW" mongosh --quiet -u "$USER" -p "$PASS" \
+  --authenticationDatabase admin --eval '
+const dbs = db.adminCommand({listDatabases:1}).databases.map(d=>d.name).filter(n=>!["admin","config","local"].includes(n) && !n.startsWith("fastgpt_test_"));
+dbs.forEach(name => { const d=db.getSiblingDB(name); d.getCollectionNames().sort().forEach(c=>print(name+"."+c+" "+d.getCollection(c).getIndexes().map(i=>i.name).sort().join(","))); });
+' > /tmp/mongo8-migrate/indexes-after.txt
+
+if ! diff -u /tmp/mongo8-migrate/counts-before.txt /tmp/mongo8-migrate/counts-after.txt; then
+  echo "Document counts differ" >&2
+  exit 1
+fi
+
+if ! diff -u /tmp/mongo8-migrate/indexes-before.txt /tmp/mongo8-migrate/indexes-after.txt; then
+  echo "Indexes differ" >&2
+  exit 1
+fi
+```
 
 ## 6. 校验
 
@@ -215,6 +282,16 @@ docker exec "$NEW" getent hosts fastgpt-mongo
 
 应该解析到新容器的 IP。确认无误后，启动 FastGPT，检查页面、知识库和聊天是否正常。
 
+如果应用容器还在，用 `docker start fastgpt-app` 启动；如果需要用 compose 重建，加 `--no-deps`，避免把旧的 `fastgpt-mongo` 服务一起拉起来：
+
+```bash
+docker start fastgpt-app
+# 或者
+docker compose up -d --no-deps fastgpt-app
+```
+
+如果 FastGPT 不在 Docker 里运行，直接启动你的本地应用即可。
+
 ## 7. 固化到 compose
 
 测试通过后，建议把新容器固化到 `docker-compose.yml`，否则下次执行 `docker compose up -d` 可能重新创建旧的 5.0.32 容器。
@@ -243,12 +320,12 @@ volumes:
     external: true
 ```
 
-5. 把旧容器改名保留（不要删除），停掉并删除手动创建的新容器：
+5. 停掉并删除手动创建的新容器，同时删除旧的 `fastgpt-mongo` 容器（旧卷保留）：
 
 ```bash
-docker rename "$OLD" "${OLD}-legacy"
 docker stop "$NEW"
 docker rm "$NEW"
+docker rm "$OLD"
 ```
 
 6. 用 compose 启动新的 Mongo 服务，并确认状态：
@@ -259,7 +336,7 @@ docker compose ps
 docker compose up -d
 ```
 
-> 固化后旧容器名为 `fastgpt-mongo-legacy`，旧卷仍然保留。如果要回滚，需要把 compose 改回 5.0.32 + 旧卷，并把旧容器改回 `fastgpt-mongo`；建议在固化前完成全部验证。
+> 固化后旧容器会被删除，但旧卷 `fastgpt-mongo` 保留。回滚时通过旧镜像和旧卷重新创建 `fastgpt-mongo` 容器（见下一节），不要依赖被删除的旧容器。建议在固化前完成全部验证。
 
 ## 8. 回滚
 
@@ -273,7 +350,24 @@ docker start "$OLD"
 
 旧容器和旧卷都还在，启动后 MongoDB 会做一次恢复。
 
-如果已经固化到 compose，先停止并移除 compose 创建的 Mongo 容器，把 compose 的 Mongo 镜像和数据卷改回旧配置，把 `fastgpt-mongo-legacy` 改回 `fastgpt-mongo`，并把重启策略改回 `always`，再启动旧容器；旧卷仍然保留。
+如果已经固化到 compose：
+
+1. 停止并移除 compose 创建的 Mongo 容器：
+
+```bash
+docker compose stop fastgpt-mongo
+docker compose rm -f fastgpt-mongo
+```
+
+2. 把 compose 的 Mongo 镜像改回 5.0.32，数据卷改回 `fastgpt-mongo:/data/db`，healthcheck/entrypoint 改回 `mongo`（或恢复原 compose 文件）。
+
+3. 用旧镜像和旧卷重新创建：
+
+```bash
+docker compose up -d fastgpt-mongo
+```
+
+旧卷 `fastgpt-mongo` 里是完整的旧数据，compose 会用旧镜像重新创建 `fastgpt-mongo` 容器。
 
 ## 注意事项
 
@@ -281,16 +375,16 @@ docker start "$OLD"
 - 如果新容器没有成为 PRIMARY，先看 `docker exec fastgpt-mongo8 getent hosts fastgpt-mongo` 是否解析到新 IP；如果同时解析到旧容器，执行：
 
 ```bash
-docker network disconnect "$NET" fastgpt-mongo
+docker network disconnect "$NET" "$OLD"
 ```
 
 把旧容器从网络摘掉，再重新初始化。回滚时用：
 
 ```bash
-docker network connect --alias fastgpt-mongo "$NET" fastgpt-mongo
+docker network connect --alias fastgpt-mongo "$NET" "$OLD"
 ```
 
 把旧容器接回去。
 
-- 如果已经执行了第 7 步的改名，把命令里的 `fastgpt-mongo` 换成 `fastgpt-mongo-legacy`；如果之前断开过网络，回滚时先重新连接网络。
+- 固化到 compose 后旧容器会被删除，旧卷保留；回滚时用旧镜像和旧卷重建，不要依赖旧容器。
 - 迁移期间不要执行 `docker compose up -d`，以免旧容器被重新创建并与新容器争抢 27017 端口和 `fastgpt-mongo` 别名。
