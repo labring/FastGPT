@@ -130,6 +130,10 @@ describe('registerNodeInstrumentation', () => {
       {
         _id: '20260929_cleanup_instance_config_deprecated_fields',
         status: SystemMigrationStatusEnum.succeeded
+      },
+      {
+        _id: '20261110_backfill_external_file_check',
+        status: SystemMigrationStatusEnum.succeeded
       }
     ]);
     const legacyState = await MongoSystemMigrationState.findById(legacyMigrationId).lean();
