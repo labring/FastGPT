@@ -33,7 +33,7 @@ routes:
   - POST /api/core/app/mcpTools/getTools
   - POST /api/core/workflow/debug
   - POST /api/v1/chat/completions
-related: [FG-APP-WORKFLOW-053, FG-APP-WORKFLOW-056, FG-PERMISSION-RESOURCE-001]
+related: [FG-APP-WORKFLOW-053, FG-APP-WORKFLOW-056, FG-PERMISSION-RESOURCE-003]
 baseline: 346deb76c7fb8f7d961f0312d57bdea3d541180a
 ---
 
