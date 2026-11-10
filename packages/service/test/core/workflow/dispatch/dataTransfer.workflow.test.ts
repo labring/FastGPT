@@ -15,6 +15,7 @@ import {
 import { VariableConditionEnum } from '@fastgpt/global/core/workflow/template/system/ifElse/constant';
 import { codeSandbox } from '@fastgpt/service/thirdProvider/codeSandbox';
 import { UserConfigError } from '@fastgpt/global/common/error/utils';
+import { findFailedResponseNode } from '@fastgpt/global/core/chat/utils';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import * as workflowMetrics from '@fastgpt/service/core/workflow/metrics';
 import { callbackMap } from '@fastgpt/service/core/workflow/dispatch/constants';
@@ -796,9 +797,14 @@ describe('real container child workflows', () => {
     }
   );
 
-  it.each(['success', 'error', 'omitted'] as const)(
-    'loopRun forwards the last snapshot and never reuses skipped outputs after %s',
-    async (scenario) => {
+  it.each([
+    { scenario: 'success', catchError: true },
+    { scenario: 'omitted', catchError: true },
+    { scenario: 'error', catchError: true },
+    { scenario: 'error', catchError: false }
+  ] as const)(
+    'loopRun forwards the last snapshot after $scenario with catchError=$catchError',
+    async ({ scenario, catchError }) => {
       const fails = scenario === 'error';
       const omitted = scenario === 'omitted';
       const { start, body } = containerNodes(FlowNodeTypeEnum.loopRun);
@@ -834,13 +840,13 @@ describe('real container child workflows', () => {
           NodeOutputKeyEnum.errorText
         ],
         isEntry: true,
-        catchError: true
+        catchError
       });
       const target = consumer('target', {
         value: ['container', 'value'],
         errorText: ['container', NodeOutputKeyEnum.errorText]
       });
-      const { responses } = await runGraph({
+      const { result, responses } = await runGraph({
         nodes: [source, start, body, target],
         edges: [
           graphEdge({ source: 'container', target: 'target', error: fails }),
@@ -849,13 +855,24 @@ describe('real container child workflows', () => {
       });
       expect(graphValues(target)).toEqual({
         value: fails || omitted ? undefined : '',
-        errorText: fails ? failure.message : undefined
+        errorText: fails && catchError ? failure.message : undefined
       });
       const history = responses.find((response) => response.nodeId === 'container')?.loopRunHistory;
       expect(history?.map((item) => item.customOutputs.value)).toEqual(
         fails || omitted ? [0, undefined] : [0, false, '']
       );
       expect(codeSandbox.runCode).toHaveBeenCalledTimes(fails || omitted ? 2 : 3);
+      expect(result.workflowRuntimeSummary.errorCount).toBe(fails && !catchError ? 1 : 0);
+      expect(findFailedResponseNode(responses)?.nodeId).toBe(
+        fails && !catchError ? 'container' : undefined
+      );
+      if (fails) {
+        const iteration = responses.find((response) => response.error === failure.message);
+        expect(iteration).toMatchObject({ errorCaptured: true });
+        expect(responses.find((response) => response.nodeId === 'container')?.errorCaptured).toBe(
+          catchError ? true : undefined
+        );
+      }
       expect(warn).toHaveBeenCalledTimes(fails ? 1 : 0);
       if (fails)
         expect(warn).toHaveBeenCalledWith('Workflow node returned error', { error: failure });
