@@ -5,21 +5,35 @@ export type CompletionContext = {
   userQuery: string;
 };
 
-/** 将补全面板内的按键映射为候选项导航或关闭动作。 */
+type CompletionKeyAction = 'previous' | 'next' | 'close' | 'accept';
+
+/**
+ * 将补全面板内的按键映射为候选项导航、关闭或接受动作。
+ * 空候选和带修饰键的接受按键保留原生输入行为。
+ */
 export const getCompletionKeyAction = ({
   key,
   hasContext,
-  canAccept
+  hasOptions,
+  shiftKey,
+  ctrlKey,
+  altKey
 }: {
   key: string;
   hasContext: boolean;
-  canAccept: boolean;
-}) => {
+  hasOptions: boolean;
+  shiftKey: boolean;
+  ctrlKey: boolean;
+  altKey: boolean;
+}): CompletionKeyAction | undefined => {
   if (!hasContext) return;
+  if (key === 'Escape') return 'close';
+  if (!hasOptions) return;
   if (key === 'ArrowUp') return 'previous';
   if (key === 'ArrowDown') return 'next';
-  if (key === 'Escape') return 'close';
-  if (canAccept && (key === 'Enter' || key === 'Tab')) return 'accept';
+  if ((key === 'Enter' || key === 'Tab') && !shiftKey && !ctrlKey && !altKey) {
+    return 'accept';
+  }
 };
 
 /** 循环切换候选项，保证首尾连续。 */
@@ -31,7 +45,7 @@ export const getNextCompletionIndex = ({
   index: number;
   length: number;
   direction: -1 | 1;
-}) => (index + direction + length) % length;
+}) => (length === 0 ? index : (index + direction + length) % length);
 
 /**
  * 根据光标位置刷新引导补全上下文。

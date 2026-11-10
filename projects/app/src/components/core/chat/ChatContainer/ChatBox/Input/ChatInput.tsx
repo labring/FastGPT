@@ -94,7 +94,6 @@ const ChatInput = ({
   const [completionContext, setCompletionContext] = useState<CompletionContext>();
   const [completionOptions, setCompletionOptions] = useState<string[]>([]);
   const [activeCompletionIndex, setActiveCompletionIndex] = useState(0);
-  const completionOptionsRef = useRef<string[]>([]);
 
   // Check voice input state
   const [mobilePreSpeak, setMobilePreSpeak] = useState(false);
@@ -188,12 +187,10 @@ const ChatInput = ({
   const resetCompletionContext = useCallback(() => {
     setCompletionContext(undefined);
     setCompletionOptions([]);
-    completionOptionsRef.current = [];
     setActiveCompletionIndex(0);
   }, []);
 
   const handleCompletionOptionsChange = useCallback((options: string[]) => {
-    completionOptionsRef.current = options;
     setCompletionOptions((current) =>
       current.length === options.length && current.every((item, index) => item === options[index])
         ? current
@@ -365,6 +362,8 @@ const ChatInput = ({
             }}
             onPointerDown={resetCompletionContext}
             onKeyDown={(e) => {
+              if (e.nativeEvent.isComposing || e.keyCode === 229) return;
+
               // enter send.(pc or iframe && enter and unPress shift)
               const isEnter = e.key === 'Enter';
               const textarea = e.currentTarget;
@@ -372,7 +371,10 @@ const ChatInput = ({
               const completionAction = getCompletionKeyAction({
                 key: e.key,
                 hasContext: !!completionContext,
-                canAccept: !!completionContext && completionOptions.length > 0
+                hasOptions: completionOptions.length > 0,
+                shiftKey: e.shiftKey,
+                ctrlKey: e.ctrlKey,
+                altKey: e.altKey
               });
               if (completionAction) {
                 if (completionAction === 'previous' || completionAction === 'next') {
@@ -391,10 +393,10 @@ const ChatInput = ({
                   e.preventDefault();
                   return;
                 }
-                if (e.shiftKey || e.nativeEvent.isComposing || e.keyCode === 229) return;
                 if (completionAction === 'accept') {
-                  const options = completionOptionsRef.current;
-                  acceptCompletion(options[Math.min(activeCompletionIndex, options.length - 1)]);
+                  acceptCompletion(
+                    completionOptions[Math.min(activeCompletionIndex, completionOptions.length - 1)]
+                  );
                   e.preventDefault();
                   return;
                 }

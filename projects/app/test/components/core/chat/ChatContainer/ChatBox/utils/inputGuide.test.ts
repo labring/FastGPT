@@ -89,25 +89,37 @@ describe('input guide completion context', () => {
   });
 
   it('maps completion keys only while options are available', () => {
-    const base = { hasContext: true };
-    expect(getCompletionKeyAction({ ...base, key: 'ArrowUp', canAccept: true })).toBe('previous');
-    expect(getCompletionKeyAction({ ...base, key: 'ArrowDown', canAccept: true })).toBe('next');
-    expect(getCompletionKeyAction({ ...base, key: 'Escape', canAccept: false })).toBe('close');
-    expect(getCompletionKeyAction({ ...base, key: 'Enter', canAccept: true })).toBe('accept');
-    expect(getCompletionKeyAction({ ...base, key: 'Tab', canAccept: true })).toBe('accept');
-    expect(getCompletionKeyAction({ ...base, key: 'Enter', canAccept: false })).toBeUndefined();
-    expect(getCompletionKeyAction({ ...base, key: 'Tab', canAccept: false })).toBeUndefined();
-    expect(getCompletionKeyAction({ ...base, key: 'ArrowLeft', canAccept: true })).toBeUndefined();
-    expect(getCompletionKeyAction({ ...base, key: 'ArrowRight', canAccept: true })).toBeUndefined();
+    const base = {
+      hasContext: true,
+      hasOptions: true,
+      shiftKey: false,
+      ctrlKey: false,
+      altKey: false
+    };
+    expect(getCompletionKeyAction({ ...base, key: 'ArrowUp' })).toBe('previous');
+    expect(getCompletionKeyAction({ ...base, key: 'ArrowDown' })).toBe('next');
+    expect(getCompletionKeyAction({ ...base, key: 'Escape', hasOptions: false })).toBe('close');
+    expect(getCompletionKeyAction({ ...base, key: 'Enter' })).toBe('accept');
+    expect(getCompletionKeyAction({ ...base, key: 'Tab' })).toBe('accept');
+    expect(getCompletionKeyAction({ ...base, key: 'ArrowUp', hasOptions: false })).toBeUndefined();
     expect(
-      getCompletionKeyAction({ hasContext: false, key: 'Escape', canAccept: false })
+      getCompletionKeyAction({ ...base, key: 'ArrowDown', hasOptions: false })
     ).toBeUndefined();
+    expect(getCompletionKeyAction({ ...base, key: 'Enter', hasOptions: false })).toBeUndefined();
+    expect(getCompletionKeyAction({ ...base, key: 'Tab', hasOptions: false })).toBeUndefined();
+    expect(getCompletionKeyAction({ ...base, key: 'ArrowLeft' })).toBeUndefined();
+    expect(getCompletionKeyAction({ ...base, key: 'ArrowRight' })).toBeUndefined();
+    expect(getCompletionKeyAction({ ...base, key: 'Enter', ctrlKey: true })).toBeUndefined();
+    expect(getCompletionKeyAction({ ...base, key: 'Enter', altKey: true })).toBeUndefined();
+    expect(getCompletionKeyAction({ ...base, key: 'Enter', shiftKey: true })).toBeUndefined();
+    expect(getCompletionKeyAction({ ...base, key: 'Escape', hasContext: false })).toBeUndefined();
   });
 
   it('cycles completion options in both directions', () => {
     expect(getNextCompletionIndex({ index: 0, length: 3, direction: 1 })).toBe(1);
     expect(getNextCompletionIndex({ index: 2, length: 3, direction: 1 })).toBe(0);
     expect(getNextCompletionIndex({ index: 0, length: 3, direction: -1 })).toBe(2);
+    expect(getNextCompletionIndex({ index: 0, length: 0, direction: 1 })).toBe(0);
   });
 
   it('replaces only the queried range and keeps surrounding text', () => {
