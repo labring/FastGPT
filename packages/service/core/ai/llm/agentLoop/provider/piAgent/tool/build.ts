@@ -163,12 +163,6 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
       hideInUI: result.hideInUI,
       seconds: +((Date.now() - startedAt) / 1000).toFixed(2)
     });
-    // 与 fastAgent 保持一致：业务 response 文本始终保留，结构化 parts 只在其后追加图片，
-    // 避免 `{ jobId, content: [image_url] }` 这类输出把业务字段丢掉。
-    const toolContent = buildToolMessageContent({
-      content: result.content,
-      text: normalizedResponse
-    });
     onToolResult({
       call,
       response: normalizedResponse,

@@ -498,7 +498,7 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
         if (!message) break;
         const nextMessages = [
           ...messages,
-          ...convertChatMessagesToPiAgentMessages({ messages: [message], model: piModel })
+          ...(await convertChatMessagesToPiAgentMessages({ messages: [message], model: piModel }))
         ];
         messages.splice(0, messages.length, ...nextMessages);
         agent.state.messages = nextMessages;
