@@ -167,7 +167,7 @@ describe('builtinTemplateProvider', () => {
     ).toBe(false);
   });
 
-  it('documents one inline reference format for node outputs and global variables', async () => {
+  it('preserves inline reference examples and the description key for caller translation', async () => {
     const ref = parseNodeTemplateRef('builtin:text-editor');
     const resolved = await builtinTemplateProvider.resolve(ref, { locale: 'en' });
     const descriptor = normalizeNodeTemplateDescriptor({
@@ -181,7 +181,7 @@ describe('builtinTemplateProvider', () => {
       'Hello {{$VARIABLE_NODE_ID.name$}}',
       'Topic: {{$validateCode.topic$}}'
     ]);
-    expect(input?.description).toContain('global variables use {{$VARIABLE_NODE_ID.variableKey$}}');
+    expect(input?.description).toBe('workflow:cli.input.text_editor');
   });
 
   it('keeps automation metadata aligned with template inputs and explicit for resources', async () => {
