@@ -23,8 +23,7 @@ export type DatasetPermissionSyncJobData = {
 /** processor 额外拿到同库租约上下文：写入前可据此确认自己仍是当前执行者。 */
 export type DatasetPermissionSyncProcessor<T> = (
   job: Job<DatasetPermissionSyncJobData>,
-  token: string | undefined,
-  lease: RedisLeaseContext
+  context: { token: string | undefined; lease: RedisLeaseContext }
 ) => Promise<T>;
 
 /**
@@ -78,7 +77,7 @@ export class DatasetPermissionSyncMQService {
             label: 'dataset-permission-sync',
             ttlMs: DATASET_PERMISSION_SYNC_LEASE_TTL_MS,
             fn: async (lease) => {
-              const result = await processor(job, token, lease);
+              const result = await processor(job, { token, lease });
               // 清理只能发生在成功路径，且失败不能把已成功的任务判失败：
               // 残留的失败记录最多让状态多显示一轮 error，下一次成功会再清。
               await this.cleanupFailedJobs(job).catch((error) => {
@@ -148,7 +147,9 @@ export class DatasetPermissionSyncMQService {
    * 复用 dataset 同步的四态：active/syncing/waiting/error。
    *
    * 定向 job 的去重键含 collectionIds 指纹，无法按 datasetId 反查 dedup id，
-   * 因此改为遍历在途集合按 `data.datasetId` 过滤（active 大小有界，waiting 与待同步库数同阶）。
+   * 因此只能遍历在途集合按 `data.datasetId` 过滤。BullMQ 的 getActive/getWaiting/
+   * getDelayed/getFailed 都是截断查询，必须按页扫完该状态，不能把固定窗口未命中
+   * 当作「目标库没有任务」。
    * 旧一轮 failed job 与新一轮 waiting 并存时，以在途状态为准，避免已修复的错误一直顶在前台。
    */
   async getStatus(datasetId: string) {
@@ -156,21 +157,29 @@ export class DatasetPermissionSyncMQService {
     const matchDataset = (job: { data?: DatasetPermissionSyncJobData }) =>
       String(job.data?.datasetId ?? '') === String(datasetId);
 
-    const [activeJobs, waitingJobs, delayedJobs, failedJobs] = await Promise.all([
-      queue.getActive(0, 20),
-      queue.getWaiting(0, 500),
-      queue.getDelayed(0, 500),
-      // 默认按入队倒序返回，首条即最近一次失败
-      queue.getFailed(0, 100)
-    ]);
+    const PAGE_SIZE = 500;
+    const findJob = async (
+      fetchPage: (start: number, end: number) => Promise<Job<DatasetPermissionSyncJobData>[]>
+    ) => {
+      for (let start = 0; ; start += PAGE_SIZE) {
+        const page = await fetchPage(start, start + PAGE_SIZE - 1);
+        const job = page.find(matchDataset);
+        if (job) return job;
+        // 不足一页说明该状态已扫完
+        if (page.length < PAGE_SIZE) return undefined;
+      }
+    };
 
-    if (activeJobs.some(matchDataset)) {
+    if (await findJob((start, end) => queue.getActive(start, end))) {
       return { status: DatasetStatusEnum.syncing, errorMsg: undefined };
     }
-    if (waitingJobs.some(matchDataset) || delayedJobs.some(matchDataset)) {
+    const waitingJob =
+      (await findJob((start, end) => queue.getWaiting(start, end))) ??
+      (await findJob((start, end) => queue.getDelayed(start, end)));
+    if (waitingJob) {
       return { status: DatasetStatusEnum.waiting, errorMsg: undefined };
     }
-    const failedJob = failedJobs.find(matchDataset);
+    const failedJob = await findJob((start, end) => queue.getFailed(start, end));
     if (failedJob) {
       return { status: DatasetStatusEnum.error, errorMsg: failedJob.failedReason };
     }

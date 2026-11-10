@@ -162,6 +162,31 @@ describe('DatasetPermissionSyncMQService', () => {
     ).resolves.toEqual({ status: DatasetStatusEnum.active, errorMsg: undefined });
   });
 
+  it('pages through a truncated status window instead of treating a miss as no job', async () => {
+    const otherJobs = Array.from({ length: 600 }, (_, i) => ({
+      id: `other-${i}`,
+      data: { datasetId: 'other' }
+    }));
+    const failed = [...otherJobs, { data: { datasetId: 'dataset-1' }, failedReason: 'boom' }];
+    const queue = {
+      getActive: vi.fn().mockResolvedValue([]),
+      getWaiting: vi.fn().mockResolvedValue([]),
+      getDelayed: vi.fn().mockResolvedValue([]),
+      getFailed: vi.fn((start: number, end: number) =>
+        Promise.resolve(failed.slice(start, end + 1))
+      )
+    };
+    const service = new DatasetPermissionSyncMQService(createBinding(queue));
+
+    await expect(service.getStatus('dataset-1')).resolves.toEqual({
+      status: DatasetStatusEnum.error,
+      errorMsg: 'boom'
+    });
+    // 第一页（0-499）没有目标库，必须继续翻页才能找到第 601 条失败记录
+    expect(queue.getFailed).toHaveBeenCalledTimes(2);
+    expect(queue.getFailed).toHaveBeenLastCalledWith(500, 999);
+  });
+
   it('registers the worker with a processor wrapper and single local concurrency', () => {
     const binding = createBinding({ add: vi.fn() });
     const processor = vi.fn();
@@ -202,7 +227,7 @@ describe('DatasetPermissionSyncMQService', () => {
       })
     );
     // processor 必须拿到租约上下文，写入前才能确认自己仍是当前执行者
-    expect(processor).toHaveBeenCalledWith(job, 'token', lease);
+    expect(processor).toHaveBeenCalledWith(job, { token: 'token', lease });
     expect(failed.remove).toHaveBeenCalledTimes(1);
   });
 

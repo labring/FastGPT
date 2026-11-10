@@ -1901,7 +1901,15 @@ describe.sequential('syncDatasetToCollections', () => {
     const ownerTmbId = String(users.owner.tmbId);
     const memberTmbId = String(users.members[0].tmbId);
 
-    const createFolder = (name: string, parentId?: Types.ObjectId, legacyManaged = false) =>
+    const createFolder = ({
+      name,
+      parentId,
+      legacyManaged = false
+    }: {
+      name: string;
+      parentId?: Types.ObjectId;
+      legacyManaged?: boolean;
+    }) =>
       mongoSessionRun(async (session) => {
         const folder = await MongoDataset.create({
           teamId,
@@ -1927,9 +1935,13 @@ describe.sequential('syncDatasetToCollections', () => {
         return folder;
       });
 
-    const root = await createFolder('root-folder');
+    const root = await createFolder({ name: 'root-folder' });
     // 中间层 folder 携带存量脏开关，不能把下面的正常知识库一起剪掉
-    const middle = await createFolder('legacy-managed-middle', root._id, true);
+    const middle = await createFolder({
+      name: 'legacy-managed-middle',
+      parentId: root._id,
+      legacyManaged: true
+    });
     const dataset = await mongoSessionRun(async (session) => {
       const child = await MongoDataset.create({
         teamId,

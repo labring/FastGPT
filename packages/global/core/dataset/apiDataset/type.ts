@@ -113,14 +113,17 @@ export const ApiDatasetServerPatchSchema = z.object({
   // default 会把字段补进来，破坏「存量记录原样返回」和既有精确断言。
   permissionSync: BoolSchema.optional().meta({
     description:
-      '外部文件权限同步。仅 custom apiServer 支持；开启即由外部列表全量接管 collection ACL'
+      '外部文件权限同步。仅 custom apiServer 支持；开启即由外部列表全量接管 collection ACL',
+    example: true
   }),
   disableSuperAdmin: BoolSchema.optional().meta({
     description:
-      '关闭 root/团队 owner 在知识库管理侧（Dataset / Collection 鉴权、列表、导出）的旁路；检索不读取该开关'
+      '关闭 root/团队 owner 在知识库管理侧（Dataset / Collection 鉴权、列表、导出）的旁路；检索不读取该开关',
+    example: true
   }),
   syncAllFiles: BoolSchema.optional().meta({
-    description: '整库同步：每日同步的根范围来自知识库根目录，而不是本地最外层节点'
+    description: '整库同步：每日同步的根范围来自知识库根目录，而不是本地最外层节点',
+    example: true
   })
 });
 

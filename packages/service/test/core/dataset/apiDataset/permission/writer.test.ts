@@ -153,6 +153,29 @@ describe('applyCollectionPermissionStates', () => {
     );
   });
 
+  it('reuses a caller-provided session instead of opening a new transaction', async () => {
+    const result = await applyCollectionPermissionStates({
+      teamId,
+      datasetId,
+      states: [folderState()],
+      expectedApiDatasetServer: apiDatasetServer,
+      session: 'outer-session' as never
+    });
+
+    expect(result).toEqual({ updated: 1 });
+    expect(mongoSessionRun).not.toHaveBeenCalled();
+    expect(datasetFindOneAndUpdate).toHaveBeenCalledWith(expect.anything(), expect.anything(), {
+      session: 'outer-session',
+      new: true
+    });
+    expect(replaceResources).toHaveBeenCalledWith(
+      expect.objectContaining({ session: 'outer-session' })
+    );
+    expect(updateMany).toHaveBeenCalledWith(expect.anything(), expect.anything(), {
+      session: 'outer-session'
+    });
+  });
+
   it('skips materialization when a folder ACL is unchanged', async () => {
     const shared = [{ tmbId: 'owner', permission: OwnerRoleVal }];
 

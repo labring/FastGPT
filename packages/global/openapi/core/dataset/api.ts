@@ -93,7 +93,13 @@ const CreateDatasetBodyObjectSchema = z.object({
     deprecated: true
   }),
   apiDatasetServer: ApiDatasetServerSchema.optional().meta({
-    description: '第三方知识库服务器配置(API/飞书/语雀/钉钉)'
+    description: '第三方知识库服务器配置(API/飞书/语雀/钉钉)',
+    example: {
+      apiServer: { baseUrl: 'https://example.com', authorization: 'Bearer token' },
+      permissionSync: true,
+      disableSuperAdmin: false,
+      syncAllFiles: true
+    }
   }),
   sangforFileParseConfig: sangforFileParseConfigSchema.optional().meta({
     description: '外部文档解析开关(页眉页脚/附录/图片识别/图转表),仅对 customPdfParse 解析路径生效'

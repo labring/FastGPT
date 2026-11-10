@@ -14,6 +14,7 @@ import { getPermissionSubjectKey } from './resolver';
 import { assertPermissionSyncActive, PermissionSyncStaleRoundError } from './utils';
 import type { CollectionPermissionTargetState } from './types';
 import type { RedisLeaseContext } from '@fastgpt/dal/redis/caches';
+import type { ClientSession } from 'mongoose';
 
 /** 协作者集合比较键：subject + role。ACL 行里存的就是这两项。 */
 const collaboratorKey = (collaborator: CollaboratorItemType) =>
@@ -44,6 +45,8 @@ export const isSameCollaboratorSet = (a: CollaboratorItemType[], b: Collaborator
  *
  * `stopResourceIds` 是本轮所有拿到明确目标态的节点：它们自己已是独立态，
  * 物化子树时不能越过它们去改它们下面的节点。
+ *
+ * 调用方已在事务内时传入 `session` 复用同一事务；缺省时函数自建事务。
  */
 export const applyCollectionPermissionStates = async ({
   teamId,
@@ -51,7 +54,8 @@ export const applyCollectionPermissionStates = async ({
   states,
   expectedApiDatasetServer,
   deadlineAt,
-  lease
+  lease,
+  session
 }: {
   teamId: string;
   datasetId: string;
@@ -62,6 +66,8 @@ export const applyCollectionPermissionStates = async ({
   deadlineAt?: number;
   /** 同库租约上下文；丢失后停止后续写入。已提交的事务无法回滚，靠下一个检查点收敛。 */
   lease?: RedisLeaseContext;
+  /** 调用方已开启事务时传入，复用同一事务；缺省时函数自建事务。 */
+  session?: ClientSession;
 }): Promise<{ updated: number }> => {
   const changedStates = states.filter((state) => state.changed);
   if (changedStates.length === 0) return { updated: 0 };
@@ -70,7 +76,7 @@ export const applyCollectionPermissionStates = async ({
 
   const stopResourceIds = new Set(states.map((state) => state.collectionId));
 
-  await mongoSessionRun(async (session) => {
+  const run = async (writeSession: ClientSession) => {
     // 事务可能被 driver 重试，检查放在回调内才能覆盖每一次重试。
     assertPermissionSyncActive({ deadlineAt, lease });
 
@@ -80,7 +86,7 @@ export const applyCollectionPermissionStates = async ({
     const dataset = await MongoDataset.findOneAndUpdate(
       { _id: datasetId, teamId },
       { $inc: { collectionPermissionVersion: 1 } },
-      { session, new: true }
+      { session: writeSession, new: true }
     )
       .select('apiDatasetServer')
       .lean();
@@ -99,13 +105,13 @@ export const applyCollectionPermissionStates = async ({
         resourceId: state.collectionId,
         collaborators: state.collaborators
       })),
-      session
+      session: writeSession
     });
 
     await MongoDatasetCollection.updateMany(
       { teamId, datasetId, _id: { $in: changedStates.map((state) => state.collectionId) } },
       { $set: { inheritPermission: false } },
-      { session }
+      { session: writeSession }
     );
 
     for (const state of changedStates) {
@@ -130,14 +136,20 @@ export const applyCollectionPermissionStates = async ({
         oldParentCollaborators: state.currentCollaborators,
         newParentCollaborators: state.collaborators,
         stopResourceIds,
-        session
+        session: writeSession
       });
     }
 
-    // 回调返回后 driver 立即提交，这是提交前最后一个应用层检查点：租约已丢失时
+    // 回调结束即提交（自建事务时），这是提交前最后一个应用层检查点：租约已丢失时
     // 必须让事务回滚，否则本轮写入会在新任务开始后再落地。
     assertPermissionSyncActive({ deadlineAt, lease });
-  });
+  };
+
+  if (session) {
+    await run(session);
+  } else {
+    await mongoSessionRun(run);
+  }
 
   // 覆盖「提交过程中租约才丢失」的窗口：写入可能已经落库，抛出取消让调用方按失败处理，
   // 由下一轮同步收敛，不能把结果当成成功。

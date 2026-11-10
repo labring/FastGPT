@@ -22,7 +22,7 @@ const logger = getLogger(LogCategories.MODULE.DATASET);
  */
 export const datasetPermissionSyncProcessor: DatasetPermissionSyncProcessor<
   CollectionPermissionSyncStats
-> = async (job, _token, lease) => {
+> = async (job, { lease }) => {
   const startedAt = Date.now();
   // 作业级起见日志：sync 内部只在真正进入拉取后才打 round 日志，
   // 早期失败（dataset 被删/开关关闭/超时）在那边看不到。
