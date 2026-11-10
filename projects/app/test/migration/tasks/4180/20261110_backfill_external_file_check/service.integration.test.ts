@@ -36,7 +36,8 @@ describe('external file check backfill with MongoDB', () => {
         logger: { info: () => {}, warn: () => {}, error: () => {} }
       });
 
-      expect(await run()).toEqual({ updatedDocuments: 1 });
+      // 初始迁移已同步写入 checkExternalFile，回填任务应幂等跳过。
+      expect(await run()).toEqual({ updatedDocuments: 0 });
       await expect(verifyExternalFileCheck()).resolves.toBeUndefined();
       const document = await MongoSystemInstanceConfig.findOne({ domain: 'security' }).lean();
       const effective = resolveDomainEffectiveConfig({
@@ -45,6 +46,7 @@ describe('external file check backfill with MongoDB', () => {
       });
       expect(effective.fileUrlWhitelist).toEqual(hosts);
       expect(effective.checkExternalFile).toBe(true);
+      expect(document?.overrides).toMatchObject({ checkExternalFile: true });
       expect(warnings).toEqual([]);
       expect(await run()).toEqual({ updatedDocuments: 0 });
     }
