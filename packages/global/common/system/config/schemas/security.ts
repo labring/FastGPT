@@ -16,7 +16,8 @@ export const SecurityConfigSchema = z.strictObject({
   csrfEnabled: z.boolean().default(true),
   passwordLoginMinuteLimitCount: positiveInteger(10),
   maxLoginSession: positiveInteger(10),
-  allowedOrigins: z.array(z.string().min(1).max(2048)).max(100).default([]),
+  // 旧 ENV 未限制来源数量；迁移时不能因数量上限清空名单并回落为允许所有来源。
+  allowedOrigins: z.array(z.string().min(1).max(2048)).default([]),
   skipFileTypeCheck: z.boolean().default(false),
   checkExternalFile: z.boolean().default(false),
   censor: CensorConfigSchema.prefault({}),
