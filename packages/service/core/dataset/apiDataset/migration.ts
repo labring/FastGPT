@@ -5,6 +5,7 @@ import { MongoDataset } from '../schema';
 import { MongoResourcePermission } from '../../../support/permission/schema';
 import { mongoSessionRun } from '../../../common/mongo/sessionRun';
 import { getLogger, LogCategories } from '../../../common/logger';
+import type { ClientSession } from 'mongoose';
 
 const logger = getLogger(LogCategories.MODULE.DATASET);
 
@@ -20,32 +21,38 @@ const logger = getLogger(LogCategories.MODULE.DATASET);
  * 外部权限同步走同步作业），迁移期间不需要也不应该重塑权限。
  *
  * 必须在 seed 计算之前调用：否则哨兵的旧行会让 `getApiFileSyncRootIds` 把它当成同步根。
+ *
+ * 调用方已在事务内时传入 `session` 复用；缺省时函数自建事务。
  */
 export const migrateRootSentinelCollection = async ({
   teamId,
-  datasetId
+  datasetId,
+  session
 }: {
   teamId: string;
   datasetId: string;
+  /** 调用方已开启事务时传入，复用同一事务；缺省时函数自建事务。 */
+  session?: ClientSession;
 }): Promise<boolean> => {
-  const sentinel = await MongoDatasetCollection.findOne(
+  const sentinelQuery = MongoDatasetCollection.findOne(
     { teamId, datasetId, apiFileId: RootCollectionId },
     '_id'
-  ).lean();
+  );
+  const sentinel = await (session ? sentinelQuery.session(session) : sentinelQuery).lean();
   if (!sentinel) return false;
 
   const sentinelId = String(sentinel._id);
 
-  await mongoSessionRun(async (session) => {
+  const migrate = async (migrationSession: ClientSession) => {
     const dataset = await MongoDataset.findOne({ _id: datasetId, teamId }, '_id')
-      .session(session)
+      .session(migrationSession)
       .lean();
     if (!dataset) return;
 
     await MongoDataset.updateOne(
       { _id: datasetId, teamId },
       { $set: { 'apiDatasetServer.syncAllFiles': true } },
-      { session }
+      { session: migrationSession }
     );
 
     // 子节点上提为根：父级与 server 父级都清空，后续按知识库根重新计算。
@@ -53,7 +60,7 @@ export const migrateRootSentinelCollection = async ({
     await MongoDatasetCollection.updateMany(
       { teamId, datasetId, parentId: sentinel._id },
       { $set: { parentId: null }, $unset: { apiFileParentId: 1 } },
-      { session }
+      { session: migrationSession }
     );
 
     await MongoResourcePermission.deleteMany(
@@ -62,10 +69,19 @@ export const migrateRootSentinelCollection = async ({
         resourceType: PerResourceTypeEnum.collection,
         resourceId: sentinelId
       },
-      { session }
+      { session: migrationSession }
     );
-    await MongoDatasetCollection.deleteOne({ _id: sentinel._id, teamId }, { session });
-  });
+    await MongoDatasetCollection.deleteOne(
+      { _id: sentinel._id, teamId },
+      { session: migrationSession }
+    );
+  };
+
+  if (session) {
+    await migrate(session);
+  } else {
+    await mongoSessionRun(migrate);
+  }
 
   logger.info('[permissionSync] migrated legacy root sentinel collection', {
     teamId,

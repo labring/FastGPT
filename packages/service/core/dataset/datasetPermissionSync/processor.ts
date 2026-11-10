@@ -3,7 +3,6 @@ import type {
   DatasetPermissionSyncProcessor
 } from '@fastgpt/dal/redis/bullmq/services/datasetPermissionSync';
 import { UnrecoverableError } from '@fastgpt/dal/redis/bullmq';
-import type { RedisLeaseContext } from '@fastgpt/dal/redis/caches';
 import { withTimeout } from '@fastgpt/global/common/system/utils';
 import { DATASET_PERMISSION_SYNC_JOB_TIMEOUT_MS } from '@fastgpt/global/core/dataset/apiDataset/constants';
 import { isPermissionSyncDataset } from '@fastgpt/global/core/dataset/apiDataset/utils';
@@ -38,9 +37,38 @@ export const datasetPermissionSyncProcessor: DatasetPermissionSyncProcessor<
   });
 
   const deadlineAt = startedAt + DATASET_PERMISSION_SYNC_JOB_TIMEOUT_MS;
+  // 每次尝试都重读开关：作业排队期间可能被关闭，此时重试没有意义。
+  const runPermissionSyncJob = async ({
+    datasetId,
+    collectionIds,
+    traceId
+  }: DatasetPermissionSyncJobData) => {
+    const dataset = await MongoDataset.findOne(
+      { _id: datasetId, $or: [{ deleteTime: null }, { deleteTime: { $exists: false } }] },
+      'teamId apiDatasetServer'
+    ).lean();
+
+    if (!dataset) {
+      throw new UnrecoverableError(`Dataset ${datasetId} not found`);
+    }
+    if (!isPermissionSyncDataset(dataset.apiDatasetServer)) {
+      throw new UnrecoverableError(`Permission sync is not enabled for dataset ${datasetId}`);
+    }
+
+    return syncCollectionPermissions({
+      teamId: String(dataset.teamId),
+      datasetId,
+      // 定向任务的 collectionIds 是根节点，由同步逻辑展开子树
+      collectionIds,
+      traceId,
+      deadlineAt,
+      lease
+    });
+  };
+
   try {
     const stats = await withTimeout(
-      runPermissionSyncJob(job.data, deadlineAt, lease),
+      runPermissionSyncJob(job.data),
       DATASET_PERMISSION_SYNC_JOB_TIMEOUT_MS,
       `Dataset permission sync job timed out: ${job.data.datasetId}`
     );
@@ -65,32 +93,4 @@ export const datasetPermissionSyncProcessor: DatasetPermissionSyncProcessor<
     });
     throw error;
   }
-};
-
-const runPermissionSyncJob = async (
-  { datasetId, collectionIds, traceId }: DatasetPermissionSyncJobData,
-  deadlineAt: number,
-  lease: RedisLeaseContext
-) => {
-  const dataset = await MongoDataset.findOne(
-    { _id: datasetId, $or: [{ deleteTime: null }, { deleteTime: { $exists: false } }] },
-    'teamId apiDatasetServer'
-  ).lean();
-
-  if (!dataset) {
-    throw new UnrecoverableError(`Dataset ${datasetId} not found`);
-  }
-  if (!isPermissionSyncDataset(dataset.apiDatasetServer)) {
-    throw new UnrecoverableError(`Permission sync is not enabled for dataset ${datasetId}`);
-  }
-
-  return syncCollectionPermissions({
-    teamId: String(dataset.teamId),
-    datasetId,
-    // 定向任务的 collectionIds 是根节点，由同步逻辑展开子树
-    collectionIds,
-    traceId,
-    deadlineAt,
-    lease
-  });
 };

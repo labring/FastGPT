@@ -182,7 +182,10 @@ export const syncCollectionPermissions = async ({
     collections.map((row) => ({
       _id: row._id,
       apiFileId: String(row.apiFileId),
-      apiFileParentId: row.apiFileParentId == null ? null : String(row.apiFileParentId),
+      apiFileParentId:
+        row.apiFileParentId === null || row.apiFileParentId === undefined
+          ? null
+          : String(row.apiFileParentId),
       parentId: row.parentId,
       type: row.type as DatasetCollectionTypeEnum,
       metadata: row.metadata

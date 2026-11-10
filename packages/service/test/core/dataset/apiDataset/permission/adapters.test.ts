@@ -80,6 +80,16 @@ describe('fetchCustomApiFilePermissions', () => {
     );
   });
 
+  it('throws when the whole round fails below the batch size', async () => {
+    // 少于一个并发批次时单批就是整轮：全失败必须判为外部不可用，否则 job 以成功结束且不重试。
+    const apiFileIds = ['f0', 'f1'];
+    const request = createRequest(Object.fromEntries(apiFileIds.map((id) => [id, RATE_LIMIT])));
+
+    await expect(fetchCustomApiFilePermissions({ request, apiFileIds })).rejects.toThrow(
+      /whole round/
+    );
+  });
+
   it('keeps going when only the trailing partial batch fails', async () => {
     const ids = Array.from({ length: PERMISSION_FETCH_CONCURRENCY + 1 }, (_, i) => `f${i}`);
     const results: Record<string, unknown> = Object.fromEntries(ids.map((id) => [id, OK_EMPTY]));

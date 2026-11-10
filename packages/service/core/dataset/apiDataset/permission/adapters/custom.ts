@@ -36,8 +36,8 @@ class ApiFilePermissionUnauthorizedError extends Error {
  * 容错边界：
  *  - 单节点超时 / 5xx / 限流 → `status: 'failed'`，本轮跳过该节点，不中止整轮；
  *  - 凭据失效（`UNAUTHORIZED`）→ 立即抛错（重试无意义）；
- *  - 一整批（满并发度）全部失败 → 判定外部整体不可用，抛错中止，避免半轮写入；
- *    末尾不足并发度的批次全失败只记 failed，符合「单节点失败不中止」。
+ *  - 一整批（满并发度）全部失败，或整轮（不足一个并发批次）全部失败 → 判定外部整体不可用，
+ *    抛错中止，避免半轮写入并让 BullMQ 重试；只有部分节点失败才按「单节点失败不中止整轮」处理。
  *  - deadline 错误穿透所有 catch，保证超时任务不会继续拉取；预算耗尽导致的单请求
  *    超时同样按 deadline 处理，不计入 failed。
  */
@@ -53,6 +53,7 @@ export const fetchCustomApiFilePermissions = async ({
   lease?: RedisLeaseContext;
 }): Promise<Map<string, RawApiFilePermissionSnapshot>> => {
   const result = new Map<string, RawApiFilePermissionSnapshot>();
+  let failedInRound = 0;
 
   for (let offset = 0; offset < apiFileIds.length; offset += PERMISSION_FETCH_CONCURRENCY) {
     assertPermissionSyncActive({ deadlineAt, lease });
@@ -120,12 +121,21 @@ export const fetchCustomApiFilePermissions = async ({
       if (snapshot.status === 'failed') failedCount++;
       result.set(snapshot.apiFileId, snapshot);
     }
-    // 满并发批次全部失败 = 外部整体不可用；否则（末批不足并发度）只记失败，继续本轮。
+    failedInRound += failedCount;
+    // 满并发批次全部失败 = 外部整体不可用；否则（末批不足并发度）先记失败，最后由整轮判定。
     if (chunk.length === PERMISSION_FETCH_CONCURRENCY && failedCount === chunk.length) {
       throw new Error(
         `Fetch api file permissions failed for the whole batch (${failedCount} files)`
       );
     }
+  }
+
+  // 不足一个并发批次的知识库或定向任务，单批就是整轮：整轮全失败同样视为外部不可用。
+  // 否则 job 会以「成功但 failed > 0」结束，既不触发 BullMQ 重试，也没有下一轮及时纠正。
+  if (apiFileIds.length > 0 && failedInRound === apiFileIds.length) {
+    throw new Error(
+      `Fetch api file permissions failed for the whole round (${failedInRound} files)`
+    );
   }
 
   return result;

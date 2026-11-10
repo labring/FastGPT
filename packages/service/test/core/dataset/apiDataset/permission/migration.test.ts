@@ -107,6 +107,32 @@ describe('migrateRootSentinelCollection', () => {
     expect(collectionDeleteOne).not.toHaveBeenCalled();
   });
 
+  it('reuses a caller-provided session instead of opening a new transaction', async () => {
+    collectionFindOne.mockReturnValue({
+      session: vi.fn(() => lean({ _id: sentinelId }))
+    });
+    datasetFindOne.mockReturnValue(sessionLean({ _id: 'dataset-1' }));
+
+    await expect(
+      migrateRootSentinelCollection({
+        teamId: 'team-1',
+        datasetId: 'dataset-1',
+        session: 'outer-session' as never
+      })
+    ).resolves.toBe(true);
+
+    expect(mongoSessionRun).not.toHaveBeenCalled();
+    expect(datasetUpdateOne).toHaveBeenCalledWith(
+      { _id: 'dataset-1', teamId: 'team-1' },
+      { $set: { 'apiDatasetServer.syncAllFiles': true } },
+      { session: 'outer-session' }
+    );
+    expect(collectionDeleteOne).toHaveBeenCalledWith(
+      { _id: sentinelId, teamId: 'team-1' },
+      { session: 'outer-session' }
+    );
+  });
+
   it('queries the sentinel by dataset-scoped apiFileId', async () => {
     await migrateRootSentinelCollection({ teamId: 'team-1', datasetId: 'dataset-1' });
     expect(collectionFindOne).toHaveBeenCalledWith(
