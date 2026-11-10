@@ -756,6 +756,8 @@ export const compareSnapshot = (
           intro: node.data.intro,
           avatar: node.data.avatar,
           version: node.data.version,
+          // 工具集配置随节点持久化，必须参与脏状态和撤销快照比较。
+          toolConfig: node.data.toolConfig,
           isFolded: node.data.isFolded
         }
       }));

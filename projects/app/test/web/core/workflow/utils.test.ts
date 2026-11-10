@@ -2,7 +2,43 @@ import { describe, expect, it } from 'vitest';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import { filterSensitiveNodesData } from '../../../../src/web/core/workflow/utils';
+import type { Node } from 'reactflow';
+import { compareSnapshot, filterSensitiveNodesData } from '../../../../src/web/core/workflow/utils';
+
+describe('compareSnapshot', () => {
+  const snapshot = (toolConfig: unknown) => ({
+    nodes: [
+      {
+        id: 'tool-set',
+        type: 'toolSet',
+        position: { x: 0, y: 0 },
+        data: { flowNodeType: FlowNodeTypeEnum.toolSet, inputs: [], outputs: [], toolConfig }
+      } as Node
+    ],
+    edges: []
+  });
+
+  it.each([
+    [
+      'MCP address',
+      { mcpToolSet: { url: 'https://example.com/a', toolList: [] } },
+      { mcpToolSet: { url: 'https://example.com/b', toolList: [] } }
+    ],
+    [
+      'HTTP credential',
+      { httpToolSet: { headerSecret: { 'X-API-Key': { secret: 'old' } } } },
+      { httpToolSet: { headerSecret: { 'X-API-Key': { value: 'new' } } } }
+    ],
+    [
+      'tool description',
+      { mcpToolSet: { toolList: [{ name: 'search', description: 'before' }] } },
+      { mcpToolSet: { toolList: [{ name: 'search', description: 'after' }] } }
+    ]
+  ])('detects changes to %s', (_label, before, after) => {
+    expect(compareSnapshot(snapshot(before), snapshot(structuredClone(before)))).toBe(true);
+    expect(compareSnapshot(snapshot(before), snapshot(after))).toBe(false);
+  });
+});
 
 describe('filterSensitiveNodesData', () => {
   it('removes node-local MCP auth from exports without mutating the workflow', () => {
