@@ -21,6 +21,7 @@ const ModerationTestCard: React.FC<ModerationTestCardProps> = ({ activePlugin })
   const { t } = useSafeTranslation();
   const { toast } = useToast();
   const [content, setContent] = useState('');
+  const [testedContent, setTestedContent] = useState('');
   const [testResult, setTestResult] = useState<RawModerationCheckResponseType | null>(null);
   const [isDetailCardClosed, setIsDetailCardClosed] = useState(false);
 
@@ -33,7 +34,8 @@ const ModerationTestCard: React.FC<ModerationTestCardProps> = ({ activePlugin })
         });
         return;
       }
-      if (!content.trim()) {
+      const submittedContent = content.trim();
+      if (!submittedContent) {
         toast({
           status: 'warning',
           title: t('admin:moderation.enter_test_content')
@@ -43,9 +45,10 @@ const ModerationTestCard: React.FC<ModerationTestCardProps> = ({ activePlugin })
 
       const res = await postAdminCheckModeration({
         pluginId: activePlugin.pluginId,
-        input: { content: content.trim() }
+        input: { content: submittedContent }
       });
 
+      setTestedContent(submittedContent);
       setTestResult(res);
       setIsDetailCardClosed(false);
     },
@@ -57,6 +60,7 @@ const ModerationTestCard: React.FC<ModerationTestCardProps> = ({ activePlugin })
 
   const handleClear = () => {
     setContent('');
+    setTestedContent('');
     setTestResult(null);
     setIsDetailCardClosed(false);
   };
@@ -90,7 +94,7 @@ const ModerationTestCard: React.FC<ModerationTestCardProps> = ({ activePlugin })
     if (
       hitLabels.length === 0 &&
       allKeywords.length === 0 &&
-      !content.trim() &&
+      !testedContent &&
       !testResult.errorMessage
     ) {
       return null;
@@ -101,7 +105,7 @@ const ModerationTestCard: React.FC<ModerationTestCardProps> = ({ activePlugin })
       allKeywords,
       errorMessage: testResult.errorMessage
     };
-  }, [testResult, content, t]);
+  }, [testResult, testedContent, t]);
 
   const renderVerdictTag = (verdict?: string) => {
     if (verdict === 'pass') {
@@ -287,7 +291,7 @@ const ModerationTestCard: React.FC<ModerationTestCardProps> = ({ activePlugin })
               )}
 
               {/* 内容详情 */}
-              {content && (
+              {testedContent && (
                 <Flex fontSize={'xs'} lineHeight={'1.6'}>
                   <Text w={'80px'} color={'myGray.600'} flexShrink={0} fontWeight={'medium'}>
                     {t('admin:moderation.content_detail')}
@@ -299,7 +303,7 @@ const ModerationTestCard: React.FC<ModerationTestCardProps> = ({ activePlugin })
                     wordBreak={'break-word'}
                   >
                     {renderHighlightedModerationContent(
-                      extractContentSnippet(content, flatDetail.allKeywords),
+                      extractContentSnippet(testedContent, flatDetail.allKeywords),
                       flatDetail.allKeywords
                     )}
                   </Box>
