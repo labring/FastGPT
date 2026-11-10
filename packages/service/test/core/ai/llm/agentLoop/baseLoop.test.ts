@@ -1075,6 +1075,89 @@ describe('runAgentLoop with mocked createLLMResponse', () => {
     }
   );
 
+  it.each([true, false])(
+    'does not execute truncated tool calls: nativeToolChoice=%s',
+    async (nativeToolChoice) => {
+      const onRunTool = vi.fn(async () => ({
+        response: 'This tool must not run.',
+        assistantMessages: [],
+        usages: []
+      }));
+      const onRunInteractiveTool = vi.fn();
+      const onLLMRequestEnd = vi.fn();
+      const truncated = toolCall({ name: 'search', args: '{"q":"incomplete' });
+      const parallel = toolCall({ name: 'calculator' });
+      mockCreateLLMResponseQueue(createLLMResponseMock, [
+        {
+          ...truncated,
+          finishReason: 'length',
+          toolCalls: [...truncated.toolCalls!, ...parallel.toolCalls!]
+        },
+        text({ content: 'This response must not be requested.' })
+      ]);
+
+      const result = await runAgentLoop({
+        maxRunAgentTimes: 5,
+        batchToolSize: 2,
+        teamId: 'team_1',
+        body: {
+          model: {
+            ...modelData,
+            config: { ...modelData.config, toolChoice: nativeToolChoice }
+          },
+          messages: [{ role: 'user', content: 'search and calculate' }],
+          tools: [searchTool, calculatorTool]
+        },
+        isAborted: () => false,
+        onRunTool,
+        onRunInteractiveTool,
+        onLLMRequestEnd
+      });
+
+      expect(onRunTool).not.toHaveBeenCalled();
+      expect(onRunInteractiveTool).not.toHaveBeenCalled();
+      expect(createLLMResponseMock).toHaveBeenCalledTimes(1);
+      expect(result.error).toBeInstanceOf(Error);
+      expect(result.error.message).toMatch(/truncated.*output token limit/i);
+      expect(result.finish_reason).toBe('length');
+      expect(result.inputTokens).toBe(100);
+      expect(result.outputTokens).toBe(20);
+      expect(result.llmTotalPoints).toBe(1);
+      expect(result.requestIds).toEqual(['req_search']);
+      expect(result.assistantMessages).toEqual([]);
+      expect(result.completeMessages).toEqual([{ role: 'user', content: 'search and calculate' }]);
+      expect(onLLMRequestEnd).toHaveBeenCalledWith(
+        expect.objectContaining({ error: result.error, finishReason: 'length' })
+      );
+    }
+  );
+
+  it('preserves a text-only answer stopped at the output limit', async () => {
+    mockCreateLLMResponseQueue(createLLMResponseMock, [
+      { ...text({ content: 'Partial answer' }), finishReason: 'length' }
+    ]);
+    const onRunTool = vi.fn();
+    const result = await runAgentLoop({
+      teamId: 'team_1',
+      maxRunAgentTimes: 5,
+      body: {
+        model: modelData,
+        messages: [{ role: 'user', content: 'answer' }],
+        tools: []
+      },
+      isAborted: () => false,
+      onRunTool,
+      onRunInteractiveTool: vi.fn()
+    });
+
+    expect(result.error).toBeUndefined();
+    expect(result.finish_reason).toBe('length');
+    expect(result.assistantMessages).toEqual([
+      expect.objectContaining({ content: 'Partial answer' })
+    ]);
+    expect(onRunTool).not.toHaveBeenCalled();
+  });
+
   it('keeps requestId and usage when LLM returns empty tool_calls finish', async () => {
     const onLLMRequestEnd = vi.fn();
 
