@@ -189,7 +189,7 @@ describe('collection listV2 sort', () => {
     return { root, dataset, createCollection, list };
   };
 
-  it('sorts by name/createTime/updateTime, and falls back to the default order', async () => {
+  it('sorts by name/createTime/updateTime, and defaults to updateTime desc', async () => {
     const { createCollection, list } = await createFixture();
     await createCollection('banana', {
       createTime: new Date('2026-01-02T00:00:00Z'),
@@ -234,12 +234,6 @@ describe('collection listV2 sort', () => {
     ]);
     // 默认 updateTime desc
     expect(await names()).toEqual(['Apple', 'banana', 'cherry']);
-    // 旧前端的 dataAmount 仅兼容，不参与排序
-    expect(await names({ sortBy: 'dataAmount', sortOrder: 'asc' })).toEqual([
-      'Apple',
-      'banana',
-      'cherry'
-    ]);
   });
 
   it('supports sorting in simple mode', async () => {
@@ -360,7 +354,7 @@ describe('collection listV2 sort', () => {
   it('rejects unsupported sortBy and sortOrder values', async () => {
     const { root, dataset } = await createFixture();
 
-    for (const body of [{ sortBy: 'chunkSize' }, { sortOrder: 'up' }]) {
+    for (const body of [{ sortBy: 'chunkSize' }, { sortBy: 'dataAmount' }, { sortOrder: 'up' }]) {
       const response = await Call(listHandler, {
         auth: root,
         body: { datasetId: dataset._id, ...body }

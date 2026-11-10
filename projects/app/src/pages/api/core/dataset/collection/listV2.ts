@@ -331,9 +331,7 @@ async function handler(req: ApiRequestProps): Promise<ListCollectionV2ResponseTy
     externalFileId: 1
   };
 
-  // dataAmount 仅为兼容：不实现分块数排序，整体回落到默认排序（updateTime desc）。
-  const sortField = sortBy === 'dataAmount' ? 'updateTime' : sortBy;
-  const sortDirection = sortBy === 'dataAmount' || sortOrder === 'desc' ? -1 : 1;
+  const sortDirection = sortOrder === 'desc' ? -1 : 1;
 
   /**
    * 当前页集合。
@@ -341,7 +339,7 @@ async function handler(req: ApiRequestProps): Promise<ListCollectionV2ResponseTy
    * 不使用 query 级 collation，避免它同时改变标签/搜索的匹配语义，导致列表与 countDocuments 不一致。
    */
   const queryCollectionPage = async (): Promise<DatasetCollectionSchemaType[]> => {
-    if (sortField === 'name') {
+    if (sortBy === 'name') {
       return MongoDatasetCollection.aggregate<DatasetCollectionSchemaType>(
         [
           { $match: match },
@@ -360,7 +358,7 @@ async function handler(req: ApiRequestProps): Promise<ListCollectionV2ResponseTy
         .select(selectField)
         // 不加 _id 兜底键：默认 updateTime 排序依赖 (teamId,datasetId,parentId,updateTime) 索引，
         // 追加非索引字段会让 Mongo 退化为阻塞排序，分页越深代价越高。
-        .sort({ [sortField]: sortDirection })
+        .sort({ [sortBy]: sortDirection })
         .skip(offset)
         .limit(pageSize)
         .lean()

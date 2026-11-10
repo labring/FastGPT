@@ -148,11 +148,8 @@ export const GetCollectionDetailResponseSchema = DatasetCollectionItemSchema.met
 export type GetCollectionDetailResponseType = z.infer<typeof GetCollectionDetailResponseSchema>;
 
 // ============= List Collections V2 =============
-/**
- * 集合列表排序字段。
- * `dataAmount` 仅为兼容仍会传该值的调用方：接受但不排序，回落到默认排序。
- */
-export const CollectionListSortByEnum = z.enum(['name', 'createTime', 'updateTime', 'dataAmount']);
+/** 集合列表支持的排序字段。 */
+export const CollectionListSortByEnum = z.enum(['name', 'createTime', 'updateTime']);
 
 export const ListCollectionV2BodySchema = createPaginationSchema({
   datasetId: z.string().meta({ description: '数据集 ID' }),
@@ -163,7 +160,7 @@ export const ListCollectionV2BodySchema = createPaginationSchema({
     description: '按标签值过滤。同一标签多值为 OR，不同标签为 AND'
   }),
   sortBy: CollectionListSortByEnum.optional().default('updateTime').meta({
-    description: '排序字段；dataAmount 仅为兼容（按默认排序处理）',
+    description: '排序字段，支持名称、创建时间和更新时间',
     example: 'name'
   }),
   sortOrder: z
