@@ -145,7 +145,40 @@ export const formatModerationLabel = (label: string, t?: (key: string) => string
   const item = ModerationLabelMap[label];
   if (!item) return label;
   if (t) {
-    const translated = t(item.i18nKey);
+    const translated = (() => {
+      switch (label) {
+        case ModerationLabelEnum.porn:
+          return t('admin:moderation.label.porn');
+        case ModerationLabelEnum.politics:
+          return t('admin:moderation.label.politics');
+        case ModerationLabelEnum.terror:
+          return t('admin:moderation.label.terror');
+        case ModerationLabelEnum.contraband:
+          return t('admin:moderation.label.contraband');
+        case ModerationLabelEnum.abuse:
+          return t('admin:moderation.label.abuse');
+        case ModerationLabelEnum.hate:
+          return t('admin:moderation.label.hate');
+        case ModerationLabelEnum.ad:
+          return t('admin:moderation.label.ad');
+        case ModerationLabelEnum.advertisingLaw:
+          return t('admin:moderation.label.advertising_law');
+        case ModerationLabelEnum.privacy:
+          return t('admin:moderation.label.privacy');
+        case ModerationLabelEnum.flood:
+          return t('admin:moderation.label.flood');
+        case ModerationLabelEnum.selfHarm:
+          return t('admin:moderation.label.self_harm');
+        case ModerationLabelEnum.violence:
+          return t('admin:moderation.label.violence');
+        case ModerationLabelEnum.sexualMinors:
+          return t('admin:moderation.label.sexual_minors');
+        case ModerationLabelEnum.other:
+          return t('admin:moderation.label.other');
+        default:
+          return undefined;
+      }
+    })();
     if (translated && translated !== item.i18nKey) {
       return translated;
     }

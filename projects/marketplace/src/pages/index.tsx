@@ -162,13 +162,19 @@ const ToolkitMarketplace = () => {
 
   // 更新 URL 的函数
   const updateUrlParams = useCallback(
-    (
-      newSearch: string,
-      newTags: string[],
+    ({
+      search: newSearch = searchText,
+      tags: newTags = selectedTagIds,
       detailQuery = detailQueryRef.current,
-      newSource = selectedSource,
-      newTab = activeTab
-    ) => {
+      source: newSource = selectedSource,
+      tab: newTab = activeTab
+    }: {
+      search?: string;
+      tags?: string[];
+      detailQuery?: MarketplaceDetailQuery | null;
+      source?: MarketplaceSourceFilterValue;
+      tab?: MarketplaceTab;
+    } = {}) => {
       try {
         const newUrl = buildMarketplacePageUrl({
           pathname: router.pathname,
@@ -202,7 +208,7 @@ const ToolkitMarketplace = () => {
         // 如果 URL 操作失败，跳过更新
       }
     },
-    [activeTab, router.pathname, selectedSource]
+    [activeTab, router.pathname, searchText, selectedSource, selectedTagIds]
   );
 
   const getCurrentDetailQuery = useCallback(() => {
@@ -220,13 +226,19 @@ const ToolkitMarketplace = () => {
 
   // 处理搜索框失焦,更新 URL
   const handleSearchBlur = useCallback(() => {
-    updateUrlParams(searchText, selectedTagIds);
+    updateUrlParams({ search: searchText, tags: selectedTagIds });
   }, [searchText, selectedTagIds, updateUrlParams]);
 
   const handleSourceSelect = useCallback(
     (nextSource?: MarketplaceSourceFilterValue) => {
       setSelectedSource(nextSource);
-      updateUrlParams(searchText, selectedTagIds, detailQueryRef.current, nextSource, activeTab);
+      updateUrlParams({
+        search: searchText,
+        tags: selectedTagIds,
+        detailQuery: detailQueryRef.current,
+        source: nextSource,
+        tab: activeTab
+      });
     },
     [activeTab, searchText, selectedTagIds, updateUrlParams]
   );
@@ -240,13 +252,13 @@ const ToolkitMarketplace = () => {
       if (nextTab === 'moderation') {
         setSelectedTagIds([]);
       }
-      updateUrlParams(
-        searchText,
-        nextTab === 'tool' ? selectedTagIds : [],
-        null,
-        selectedSource,
-        nextTab
-      );
+      updateUrlParams({
+        search: searchText,
+        tags: nextTab === 'tool' ? selectedTagIds : [],
+        detailQuery: null,
+        source: selectedSource,
+        tab: nextTab
+      });
     },
     [activeTab, searchText, selectedSource, selectedTagIds, updateUrlParams]
   );
@@ -349,11 +361,19 @@ const ToolkitMarketplace = () => {
 
   // 监听 selectedTagIds 变化,更新 URL
   useEffect(() => {
-    updateUrlParams(searchText, selectedTagIds);
+    updateUrlParams({ search: searchText, tags: selectedTagIds });
   }, [activeTab, searchText, selectedTagIds, selectedSource, updateUrlParams]);
 
   const onDownload = useCallback(
-    async (toolId: string, version?: string, type: MarketplaceTab = activeTab) => {
+    async ({
+      toolId,
+      version,
+      type = activeTab
+    }: {
+      toolId: string;
+      version?: string;
+      type?: MarketplaceTab;
+    }) => {
       try {
         const url = await getDownloadURL({ toolId, version, type });
         if (url) {
@@ -380,7 +400,7 @@ const ToolkitMarketplace = () => {
 
       detailQueryRef.current = detailQuery;
       setSelectedTool(tool);
-      updateUrlParams(searchText, selectedTagIds, detailQuery);
+      updateUrlParams({ search: searchText, tags: selectedTagIds, detailQuery });
     },
     [searchText, selectedTagIds, updateUrlParams]
   );
@@ -388,7 +408,7 @@ const ToolkitMarketplace = () => {
   const handleCloseToolDetail = useCallback(() => {
     detailQueryRef.current = null;
     setSelectedTool(null);
-    updateUrlParams(searchText, selectedTagIds, null);
+    updateUrlParams({ search: searchText, tags: selectedTagIds, detailQuery: null });
   }, [searchText, selectedTagIds, updateUrlParams]);
 
   const handleVersionChange = useCallback(
@@ -402,7 +422,7 @@ const ToolkitMarketplace = () => {
 
       detailQueryRef.current = detailQuery;
       setSelectedTool((prev) => (prev ? { ...prev, version: nextVersion } : prev));
-      updateUrlParams(searchText, selectedTagIds, detailQuery);
+      updateUrlParams({ search: searchText, tags: selectedTagIds, detailQuery });
     },
     [searchText, selectedTagIds, selectedTool, updateUrlParams]
   );
@@ -414,7 +434,7 @@ const ToolkitMarketplace = () => {
           item={tool}
           mode="marketplace"
           variant="marketplace"
-          onInstall={() => onDownload(tool.id, tool.version, tool.type)}
+          onInstall={() => onDownload({ toolId: tool.id, version: tool.version, type: tool.type })}
           onClickCard={() => handleSelectTool(tool)}
         />
       </Box>
@@ -859,7 +879,11 @@ const ToolkitMarketplace = () => {
             })
           }
           onToggleInstall={(_, version) => {
-            onDownload(selectedTool.id, version, selectedTool.type ?? activeTab);
+            onDownload({
+              toolId: selectedTool.id,
+              version,
+              type: selectedTool.type ?? activeTab
+            });
           }}
           onFetchVersions={(toolId?: string) =>
             getMarketplaceToolVersions(toolId, selectedTool.type ?? activeTab)
