@@ -192,3 +192,19 @@ description: 汇总 FastGPT 私有部署启动、端口占用、向量库切换�
 2. 对象数组的追加框是 JSON 输入框。要追加上游节点输出的对象，可以在循环体里加一个「代码运行」节点，把原数组和本轮的对象拼成新数组，再用「变量引用」更新这个变量。
 
 ---
+
+### Docker Compose 各组件版本对应与环境变量检查
+
+- **组件镜像版本**：使用目标 FastGPT 版本配套 Compose 模板中的各组件镜像版本，升级前阅读 [升级说明](/zh-CN/self-host/upgrading/upgrade-instruction)。
+- **AI Proxy 接入（v4.17.0+）**：在 `fastgpt-app`（及复用配置的商业版 Admin 服务）中配置 `AIPROXY_API_ENDPOINT`（根地址，如 `http://fastgpt-aiproxy:3000`）与 `AIPROXY_API_TOKEN`，修改 `docker-compose.yml` 后执行 `docker compose up -d` 生效。
+- **验证环境变量加载**：执行 `docker exec -it fastgpt-app sh` 进入容器后运行 `env` 查看当前生效的环境变量。
+- **连接本地模型容器**：将模型服务容器加入 FastGPT 所在的 Docker 网络，使用 `http://服务名:容器端口` 作为上游地址。
+
+---
+
+### Docker 部署常见数据库与对象存储报错
+
+- **Mongo 副本集初始化失败 / `Operation auth_codes.findOne() buffering timed out` / 首次部署提示 `root` 未注册**：检查 `docker compose ps` 与 MongoDB 日志，核对副本集名称、内网主机名、账号密码、key 文件权限与持久卷属主；新建未初始化的副本集可在 MongoDB 客户端核对 `rs.status()` 后执行 `rs.initiate()`。
+- **`Illegal instruction`**：核对报错容器镜像、宿主机 CPU 架构与 MongoDB 版本所需的指令集（如 AVX），选用受支持的宿主机与镜像组合。
+- **`relation "modeldata" does not exist`**：PostgreSQL 尚未就绪或缺少 `vector` 扩展，检查 PG 容器日志并确认已启用 pgvector 插件。
+- **S3 / 对象存储无法正常连接**：核对 FastGPT 容器可访问的对象存储地址与签名主机名，详见 [对象存储配置](/zh-CN/self-host/config/object-storage) 与 [Docker Compose 从 MinIO 迁移到 RustFS](/zh-CN/self-host/docker_minio_to_rustfs)。

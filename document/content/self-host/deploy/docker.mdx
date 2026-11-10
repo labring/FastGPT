@@ -238,7 +238,7 @@ FASTGPT_LOCAL_COMPOSE_PATH=./docker-compose.yml bash install.sh
 
 使用交互式安装脚本时，脚本会在确认部署前询问这些地址。
 
-对于 `Zilliz 版本` 还需要获取密钥，参考 [部署 Zilliz 版本获取账号和密钥](#部署-zilliz-版本获取账号和密钥), 其他版本可直接下一步。
+对于 `Zilliz 版本` 还需要获取密钥，参考 [部署 Zilliz 版本时获取账号和密钥](#8-部署-zilliz-版本时获取账号和密钥), 其他版本可直接下一步。
 
 ### 3. 开放外网端口/配置域名
 
@@ -282,114 +282,7 @@ docker compose up -d
 
 ![7. 按需安装系统插件：界面示例](/imgs/optimized/image-121.png.webp)
 
-## FAQ
-
-### FastGPT 和 FastGPT-plugin 版本对应
-
-使用目标 FastGPT 版本配套 Compose 模板中的各组件镜像版本。升级前核对发布说明，保留原密钥与持久化数据。历史 0.x 插件版本对应关系仅适用于相应旧版本。
-
-### S3 无法正常连接
-
-先核对 FastGPT 可访问的对象存储地址。默认 `short-proxy` 模式由 FastGPT 校验短链并代理私有文件下载；使用 `short-redirect` 或插件 Logo 等公开直连资源时，应配置相关客户端与服务可访问的外部地址。遇到 403 时核对签名主机名与代理路径。
-
-详见[对象存储配置](/zh-CN/self-host/config/object-storage)；从旧版 MinIO 模板升级到当前 RustFS 模板时参见[Docker Compose 从 MinIO 迁移到 RustFS](/zh-CN/self-host/docker_minio_to_rustfs)。
-
-### 登录系统后，浏览器无法响应
-
-无法点击任何内容，刷新也无效。此时需要删除该 tab，重新打开一次即可。
-
-### Mongo 副本集自动初始化失败
-
-检查 `docker compose ps` 与 MongoDB 初始化日志，按所选模板核对副本集名称、内网主机名、账号、key 文件权限和持久卷属主。手动初始化前，使用对应 MongoDB 镜像提供的客户端执行 `rs.status()`；只有新建且尚未初始化的副本集才执行 `rs.initiate()`。已有副本集应保留配置，并按对应版本的 MongoDB 恢复流程处理。
-
-### 如何修改 API 地址和密钥
-
-从 V4.17.0 起，**必须部署或接入 AI Proxy**，并在 FastGPT 容器中配置以下环境变量：
-
-- `AIPROXY_API_ENDPOINT`：FastGPT 可访问的 AI Proxy 服务根地址，例如 `http://fastgpt-aiproxy:3000`，不要附加 `/v1`；FastGPT 会按接口补充路径。
-- `AIPROXY_API_TOKEN`：AI Proxy 管理员 Token，必须与 AI Proxy 服务端的管理员凭证一致。
-
-AI Proxy 提供模型路由与渠道管理。模型服务商的地址和密钥在管理员渠道配置中维护；模型级请求覆盖配置应单独核对。
-
-可以通过修改 `docker-compose.yml` 中 FastGPT 容器的环境变量更新 AI Proxy 连接配置；商业版 Admin 服务若复用 App/Service 配置，也需要设置这两个变量。
-
-修改完后重启：
-
-```bash
-docker compose down
-docker compose up -d
-```
-
-### 如何更新版本？
-
-1. 查看[更新文档](/zh-CN/self-host/upgrading/upgrade-instruction)，确认要升级的版本，避免跨版本升级。
-2. 修改镜像 tag 到指定版本
-3. 执行下面命令会自动拉取镜像：
-
-   ```bash
-   docker compose up -d
-   ```
-
-4. 执行初始化脚本（如果有）
-
-### 如何自定义环境变量？
-
-修改 `docker-compose.yml` 中 `fastgpt-app` 的 `environment` 配置，并执行 `docker compose up -d` 重启容器。具体配置参考[环境变量说明](/zh-CN/self-host/config/env)。
-
-### 如何检查环境变量是否正常加载
-
-1. `docker exec -it fastgpt-app sh` 进入 FastGPT 容器。
-2. 直接输入 `env` 命令查看所有环境变量。
-
-### 为什么无法连接 `本地模型` 镜像
-
-把模型服务容器加入 FastGPT 所在的 Docker 网络，使用 `http://服务名:容器端口` 配置上游地址。`0.0.0.0` 用于服务监听；客户端应使用可达主机名或 IP。宿主机上的服务应使用容器可达的宿主机地址，并检查防火墙。
-
-### 端口冲突怎么解决？
-
-docker-compose 端口定义为：`映射端口:运行端口`。
-
-在桥接网络模式下，只需调整 Compose 中的宿主机映射端口（左侧端口）即可规避宿主机端口冲突。
-
-如果 `容器1` 需要连接 `容器2`，使用 `容器2:运行端口` 来进行连接即可。
-
-### relation "modeldata" does not exist
-
-PG 数据库没有连接上/初始化失败，可以查看日志。FastGPT 会在每次连接上 PG 时进行表初始化，如果报错会有对应日志。
-
-1. 检查数据库容器是否正常启动
-2. 非 docker 部署的，需要手动安装 pg vector 插件
-3. 查看 fastgpt 日志，有没有相关报错
-
-### Illegal instruction
-
-核对报错镜像、CPU 架构和该 MongoDB 版本要求的指令集，选择受支持的宿主机与镜像组合。数据库版本变更应先验证备份，再按官方升级或迁移路径操作，保留原数据卷直到恢复验收完成。
-
-### Operation `auth_codes.findOne()` buffering timed out after 10000ms
-
-该错误表示 MongoDB 操作等待可用连接超时。检查 MongoDB 启动日志、FastGPT 容器内的 DNS 与端口连通性、账号密码、TLS、副本集健康状态及成员广播地址。连接参数按实际部署拓扑配置；排查启动故障时保留数据卷。
-
-### 首次部署，root 用户提示未注册
-
-日志会有错误提示。大概率是没有启动 Mongo 副本集模式。
-
-### 无法导出知识库、无法使用语音输入/播报
-
-语音输入需要检查 HTTPS、浏览器麦克风权限和语音模型配置；播放问题需检查媒体请求与自动播放策略。导出失败应检查下载请求、文件访问地址与权限。参见[通用问题排查](/zh-CN/self-host/troubleshooting/faq)。
-
-### 登录提示 Network Error
-
-检查浏览器失败请求的状态码与 FastGPT 日志，核对服务就绪状态、网关路由、API 域名和数据库连接。先解决最早的初始化错误，再重试登录。
-
-### 如何修改密码
-
-- **Web 界面修改**：以 `root` 登录后，进入左侧导航栏「账号 → 个人信息」，在「通用信息」区的「密码」行点击「变更」。
-- **命令行重置（忘记密码）**：在宿主机 `docker-compose.yml` 所在目录执行 `docker compose exec fastgpt-app node /app/scripts/reset-root-password.cjs '新密码'` 即可直接重置，无需重启容器。
-- **旧版本（v4.17.2 及更早）**：修改 `docker-compose.yml` 中的 `DEFAULT_ROOT_PSW` 并重启容器。
-
-详细说明请参考 [修改与重置 root 密码](/zh-CN/self-host/config/root-password)。
-
-### 部署 Zilliz 版本，获取账号和密钥
+### 8. 部署 Zilliz 版本时获取账号和密钥
 
 打开 [Zilliz Cloud](https://zilliz.com.cn/) , 创建实例并获取相关秘钥。
 
@@ -400,3 +293,8 @@ PG 数据库没有连接上/初始化失败，可以查看日志。FastGPT 会�
 1. 修改 `MILVUS_ADDRESS` 和 `MILVUS_TOKEN` 链接参数，分别对应 `zilliz` 的 `Public Endpoint` 和 `Api key`，记得把自己 ip 加入白名单。
 
 </Alert>
+
+## 部署后运维与故障排查
+
+- **日常运维**：修改容器环境变量参见 [环境变量说明](/zh-CN/self-host/config/env)；修改或重置管理员密码参见 [修改与重置 root 密码](/zh-CN/self-host/config/root-password)；跨版本升级前请先阅读 [升级说明](/zh-CN/self-host/upgrading/upgrade-instruction)。
+- **故障排查**：遇到组件镜像版本匹配、S3 连接异常、MongoDB 副本集初始化、`relation "modeldata" does not exist`、`Illegal instruction` 或端口冲突等问题时，请查阅 [通用问题排查](/zh-CN/self-host/troubleshooting/faq)。

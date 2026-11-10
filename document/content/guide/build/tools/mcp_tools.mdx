@@ -13,6 +13,8 @@ MCP 工具集把外部服务能力接入 FastGPT。向外部客户端提供 Fast
 2. 填写服务提供方给出的 **MCP 地址** 和 **鉴权配置**（鉴权类型支持无、`Bearer`、`Basic` 或自定义）。
 3. 点击解析，检查返回的工具名称、用途与参数，再创建工具集。
 
+![创建并解析 MCP 工具集](/imgs/optimized/current/mcp-tool-config.png.webp)
+
 当前连接优先使用 Streamable HTTP。当该传输返回 429 以外的任意 4xx 状态码时，客户端回退尝试 SSE。认证、网络或服务端问题仍需根据返回错误处理；仅修改 URL 后缀无法确认协议兼容。
 
 ## 接入需要鉴权的 Streamable HTTP 服务

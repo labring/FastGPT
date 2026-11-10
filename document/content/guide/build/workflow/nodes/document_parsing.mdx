@@ -15,6 +15,8 @@ description: 将文件链接解析为文本，并把解析结果传给后续节�
 | 文档解析结果 | 字符串 | 提供给后续节点的文本 |
 | 原始响应 | 对象数组 | 各文件解析的原始结果，供进一步处理 |
 
+![文档解析节点配置](/imgs/optimized/current/document-parse-node.png.webp)
+
 解析失败时，在运行详情中查看错误信息。
 
 ## 作用
@@ -28,5 +30,7 @@ description: 将文件链接解析为文本，并把解析结果传给后续节�
 3. 文档解析的文档链接引用开始节点提供的文件链接列表。
 4. AI 对话的输入引用文档解析结果，提示词填写 `Summarize the supplied document in three bullet points. Preserve dates and amounts.`。
 5. 调试时上传文件，检查文档解析结果是否包含原文，再检查模型摘要。
+
+![文档解析调试与摘要输出](/imgs/optimized/current/document-parse-result.png.webp)
 
 验收时逐条对照原文中的日期和金额。空文本时检查扫描件、文件内容与解析服务；读取失败时检查 URL 可达性、过期状态和上传限制。完整能力说明见[文件输入](/zh-CN/guide/build/general/fileInput)。

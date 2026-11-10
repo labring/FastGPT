@@ -90,7 +90,7 @@ After migration, the old `modeldata` table is **never auto-deleted**. Once the a
 - If `removeOld` was run (old table dropped): restore the Milvus data volume from backup before downgrading.
 - Migration is re-runnable (idempotent upsert); on failure, resume with `resumeMigrationId`.
 
-## FAQ
+## Migration Troubleshooting
 
 - **Startup fails with `Milvus version ... is not supported`**: Milvus is below 2.5.16; upgrade to 2.5.16+.
 - **Migration reports that the old `modeldata` collection is missing or empty**: stop the migration and check whether FastGPT is connected to the correct Milvus instance and whether the data volume is mounted correctly. Restore from backup if the data is lost.

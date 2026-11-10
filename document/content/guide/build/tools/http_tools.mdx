@@ -22,6 +22,10 @@ HTTP 工具支持通过 **OpenAPI Schema 批量导入**或**手动配置单接�
 4. 检查请求参数、请求体和输出结构，保存配置。
 5. 选中一个工具，在调试区输入已知参数运行，检查响应结构及错误。
 
+![OpenAPI Schema 批量创建 HTTP 工具集](/imgs/optimized/current/http-tool-schema.png.webp)
+
+![手动创建与配置单接口 HTTP 工具](/imgs/optimized/current/http-tool-manual.png.webp)
+
 例如，把自有测试服务的只读 `GET /status` 配置为工具。预期返回由该服务契约定义的状态字段；先用同一凭证确认服务端能够访问，再验证 FastGPT 的调试结果。
 
 ## 鉴权方式与参数映射规范

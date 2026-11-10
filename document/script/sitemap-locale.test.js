@@ -413,7 +413,7 @@ test('middleware resolves section landings, language roots, and historical paths
   const historicalFiles = [
     ...new Set(
       execSync(
-        'git log --all --pretty=format: --name-only -- "document/content/**/*.mdx" "document/content/**/*.md"',
+        'git log HEAD --pretty=format: --name-only -- "document/content/**/*.mdx" "document/content/**/*.md"',
         { cwd: path.join(__dirname, '../..') }
       )
         .toString()

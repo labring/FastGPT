@@ -238,7 +238,7 @@ When Agent/Skill Sandbox is enabled, also configure:
 
 The interactive install script prompts for these addresses before the final confirmation.
 
-For `Zilliz version`, you also need credentials — see [Deploy Zilliz Version: Get Account and Credentials](#deploy-zilliz-version-get-account-and-credentials). Other versions can skip to the next step.
+For `Zilliz version`, you also need credentials — see [Obtain Zilliz Cloud Credentials](#8-obtain-zilliz-cloud-credentials-for-zilliz-compose-templates). Other versions can skip to the next step.
 
 ### 3. Open External Ports / Configure Domain
 
@@ -282,114 +282,7 @@ Starting from V4.14.0, the `fastgpt-plugin` image provides the runtime environme
 
 ![7. Install System Plugins as Needed — interface example](/imgs/optimized/image-121.png.webp)
 
-## FAQ
-
-### FastGPT and FastGPT-plugin Version Compatibility
-
-Use the component image versions bundled in the Compose template for your target FastGPT release. For upgrades, read the release notes and retain existing secrets and persistent data. Historical 0.x plugin mappings apply only to their corresponding old releases.
-
-### S3 Connection Issues
-
-Check the storage endpoint reachable from FastGPT first. With the default `short-proxy` mode, FastGPT validates short links and proxies private-file downloads. For `short-redirect` and directly served public resources such as plugin logos, configure an external address reachable by the required clients and services. Verify signing hosts and proxy paths when diagnosing 403 responses.
-
-See [Object Storage Configuration](/en/self-host/config/object-storage) and [Migrate Docker Compose from MinIO to RustFS](/en/self-host/docker_minio_to_rustfs) when upgrading an existing MinIO deployment to the RustFS template.
-
-### Browser Unresponsive After Login
-
-Can't click anything, refresh doesn't help. Close the tab and reopen it.
-
-### Mongo Replica Set Auto-Initialization Failed
-
-Inspect `docker compose ps` and the MongoDB initialization logs. Verify the replica-set name, internal hostname, credentials, key-file permissions, and persistent-volume ownership against the selected template. Before manual initialization, connect with the shell supplied by your MongoDB image and run `rs.status()`; use `rs.initiate()` only for a new, uninitialized replica set. Preserve an existing replica-set configuration and follow the MongoDB recovery procedure for that version.
-
-### How to Change API Address and Key
-
-Starting with V4.17.0, **you must deploy or connect to AI Proxy** and set these environment variables in the FastGPT container:
-
-- `AIPROXY_API_ENDPOINT`: The AI Proxy service root URL reachable from FastGPT, such as `http://fastgpt-aiproxy:3000`. Do not append `/v1`; FastGPT adds the path required by each API.
-- `AIPROXY_API_TOKEN`: The AI Proxy administrator token matching credentials configured on the AI Proxy server.
-
-AI Proxy supplies model routing and channel management. Configure upstream provider endpoints and keys in the Admin channel interface; verify any model-specific request overrides separately.
-
-To update the AI Proxy connection, edit the FastGPT container's environment variables in `docker-compose.yml`. Commercial Admin services that share App/Service configuration also need both variables.
-
-After modifying, restart:
-
-```bash
-docker compose down
-docker compose up -d
-```
-
-### How to Update Versions?
-
-1. Check the [update documentation](/en/self-host/upgrading/upgrade-instruction) to confirm the target version — avoid skipping versions.
-2. Change the image tag to the target version
-3. Run these commands to pull and restart:
-
-   ```bash
-   docker compose up -d
-   ```
-
-4. Run initialization scripts (if any)
-
-### How to Customize Environment Variables?
-
-Edit the `environment` section of `fastgpt-app` in `docker-compose.yml`, then run `docker compose up -d` to restart the container. For details, see [Environment Variables](/en/self-host/config/env).
-
-### How to Check if Environment Variables Loaded
-
-1. `docker exec -it fastgpt-app sh` to enter the container.
-2. Run `env` to view all environment variables.
-
-### Why Can't I Connect to Local Model Images
-
-Join the model container to the FastGPT Docker network and use `http://service-name:container-port` as its upstream address. `0.0.0.0` is a listening address; clients need a reachable hostname or IP. For services on the host, use a host address reachable from the container and check the firewall.
-
-### How to Resolve Port Conflicts?
-
-Docker-compose port format: `mapped_port:running_port`.
-
-In bridge mode, container running ports don't conflict, but mapped ports can. Change the mapped port to a different value.
-
-If `container1` needs to connect to `container2`, use `container2:running_port`.
-
-### relation "modeldata" does not exist
-
-PG database not connected or initialization failed — check logs. FastGPT initializes tables on each PG connection. Errors will appear in the logs.
-
-1. Check if the database container started normally
-2. For non-Docker deployments, manually install the pg vector extension
-3. Check fastgpt logs for related errors
-
-### Illegal instruction
-
-Check the failing image, CPU architecture, and required instruction set against MongoDB’s requirements for that image version. Select a supported host/image combination. Database version changes require a validated backup and the documented upgrade or migration path; preserve existing volumes until restoration is verified.
-
-### Operation `auth_codes.findOne()` buffering timed out after 10000ms
-
-This error means a MongoDB operation timed out while waiting for a usable connection. Check MongoDB startup logs, DNS and ports from the FastGPT container, credentials, TLS settings, replica-set health, and the advertised replica-set hostnames. Use the connection settings documented for your deployment topology. Preserve data volumes while diagnosing startup errors.
-
-### First Deployment: Root User Shows Unregistered
-
-Logs will show error messages. Most likely Mongo replica set mode wasn't started.
-
-### Can't Export Dataset / Can't Use Voice Input or Playback
-
-For voice input, verify HTTPS, browser microphone permissions, and the configured speech model. For playback, check media requests and browser autoplay policy. For export, inspect the failed download request, file access configuration, and permissions. See [General Troubleshooting](/en/self-host/troubleshooting/faq).
-
-### Login Shows Network Error
-
-Inspect the failed browser request and FastGPT logs for its HTTP status and underlying error. Check service readiness, gateway routing, API domain, and database connections. Resolve the first initialization failure before retrying login.
-
-### How to Change Password
-
-- **Web UI**: Log in as `root`, open **Account → Personal information** in the left navigation, and click **Change** on the **Password** row under **General information**.
-- **CLI Reset (Forgotten Password)**: From the directory containing `docker-compose.yml` on the host, run `docker compose exec fastgpt-app node /app/scripts/reset-root-password.cjs 'your_new_password'` to reset the password without restarting.
-- **Legacy versions (v4.17.2 and earlier)**: Update `DEFAULT_ROOT_PSW` in `docker-compose.yml` and restart the container.
-
-For more details, see [Modify and Reset Root Password](/en/self-host/config/root-password).
-
-### Deploy Zilliz Version: Get Account and Credentials
+### 8. Obtain Zilliz Cloud Credentials (For Zilliz Compose Templates)
 
 Open [Zilliz Cloud](https://zilliz.com.cn/), create an instance, and get the credentials.
 
@@ -400,3 +293,8 @@ Open [Zilliz Cloud](https://zilliz.com.cn/), create an instance, and get the cre
 1. Set `MILVUS_ADDRESS` and `MILVUS_TOKEN` to match Zilliz's `Public Endpoint` and `Api key`. Remember to add your IP to the whitelist.
 
 </Alert>
+
+## Post-Deployment Operations and Troubleshooting
+
+- **Routine Operations**: See [Environment Variables](/en/self-host/config/env) to customize container variables, [Modify and Reset Root Password](/en/self-host/config/root-password) to update administrator credentials, and [Upgrade Instructions](/en/self-host/upgrading/upgrade-instruction) before upgrading across releases.
+- **Troubleshooting**: For component version compatibility, S3 connection errors, MongoDB replica set initialization, `relation "modeldata" does not exist`, `Illegal instruction`, or port conflicts, see [General Troubleshooting](/en/self-host/troubleshooting/faq).

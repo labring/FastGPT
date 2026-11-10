@@ -130,28 +130,9 @@ Top-level fields are joined by `AND` logic:
 | **Number** | `$gte` / `$lte` | Greater than or equal / Less than or equal | `{"Confidentiality": {"$lte": 2}}` |
 | **Number / Date** | `$empty` / `$notEmpty` | Is empty / Is not empty | `{"Confidentiality": {"$notEmpty": true}}` |
 
-## FAQ
-
-### 1. Why is a tag missing from the Tag Filter dropdown?
-
-When an application or workflow node attaches multiple knowledge bases, the Custom Tag dropdown lists only shared tags whose **names and attribute types match across every selected knowledge base**. Confirm that each attached knowledge base defines the tag with the same name and attribute type.
-
-### 2. Where did my legacy string tags go after upgrading?
-
-During upgrade, legacy string tags are migrated without data loss into an **Option** tag named `default_tag`, preserving all existing file associations. Rename `default_tag` in **Tagging** to your preferred business label (such as `Category`).
-
-### 3. Does renaming a tag or option affect existing Tag Filters?
-
-Tag Filters match by tag name and option text. After renaming a tag or option in **Tagging**, update the corresponding filter conditions in your applications and workflows.
-
-## Acceptance Checklist
-
-- [ ] Verify collection tag names, types, and assigned values.
-- [ ] Applications configured with a tag filter return chunks belonging exclusively to that tag.
-- [ ] Switch between Finance and Support filters, then verify the returned sources and the application's handling of insufficient evidence.
-
 ## Next Steps
 
 - Access permissions: Study [Collection Permission Control](/en/guide/dataset/collection_permission).
 - Connect to chat models: Follow [Connecting Knowledge Bases to Applications](/en/guide/dataset/connect-application).
 - Maintain assets: Review [Data Maintenance and Incremental Updates](/en/guide/dataset/update-data).
+- Tag troubleshooting: Consult [Knowledge Base Troubleshooting](/en/guide/dataset/faq).

@@ -51,13 +51,6 @@ When switching embedding models and refreshing all vector indexes across a datas
 3. Confirm the operation. The platform generates batch task records in the background for all ready data chunks.
 4. Workers recompute and commit indexes per chunk, checking that source content still matches the task snapshot. Old vectors are cleaned up after each successful commit. Monitor partial completion and retry failed tasks.
 
-## Maintenance Checklist
-
-- [ ] After indexing completes, edited chunks match expected queries in Search Test.
-- [ ] Replacement collections finish processing; tags, permissions, and external IDs are verified.
-- [ ] Disabled collections have all of their chunks excluded from search testing results.
-- [ ] Full rebuild tasks display "Ready" with zero unhandled errors.
-
 ## Next Steps
 
 - Multidimensional tagging: Explore [Collection Tag System](/en/guide/dataset/collection_tags).

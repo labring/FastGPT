@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 
 export const SIDEBAR_SCROLL_STORAGE_KEY = 'fastgpt-docs-sidebar-scroll-top';
 
-const RESTORE_SIDEBAR_SCROLL_SCRIPT = `(function(){try{var vp=document.querySelector('#nd-sidebar [data-radix-scroll-area-viewport]');if(!vp)return;var key='${SIDEBAR_SCROLL_STORAGE_KEY}';var raw=sessionStorage.getItem(key);if(raw!==null){var saved=Number(raw);if(Number.isFinite(saved)&&saved>=0){vp.scrollTop=saved;}}var active=vp.querySelector('a[data-active="true"]')||vp.querySelector('a[href="'+location.pathname+'"]');if(active){var vpRect=vp.getBoundingClientRect();var activeRect=active.getBoundingClientRect();if(vpRect.height>0&&(activeRect.top<vpRect.top||activeRect.bottom>vpRect.bottom)){vp.scrollTop+=activeRect.top-vpRect.top-vpRect.height/2+activeRect.height/2;sessionStorage.setItem(key,String(vp.scrollTop));}}}catch(e){}})();`;
+const RESTORE_SIDEBAR_SCROLL_SCRIPT = `(function(){try{var vp=document.querySelector('#nd-sidebar [data-radix-scroll-area-viewport]');if(!vp)return;vp.style.overflowY='scroll';var key='${SIDEBAR_SCROLL_STORAGE_KEY}';var raw=sessionStorage.getItem(key);if(raw!==null){var saved=Number(raw);if(Number.isFinite(saved)&&saved>=0){vp.scrollTop=saved;}}var active=vp.querySelector('a[data-active="true"]')||vp.querySelector('a[href="'+location.pathname+'"]');if(active){var vpRect=vp.getBoundingClientRect();var activeRect=active.getBoundingClientRect();if(vpRect.height>0&&(activeRect.top<vpRect.top||activeRect.bottom>vpRect.bottom)){vp.scrollTop+=activeRect.top-vpRect.top-vpRect.height/2+activeRect.height/2;sessionStorage.setItem(key,String(vp.scrollTop));}}}catch(e){}})();`;
 
 /**
  * Restores the desktop sidebar scroll position synchronously before first paint
@@ -46,6 +46,18 @@ export function SidebarScrollFix() {
     }
 
     if (viewport) {
+      try {
+        const raw = sessionStorage.getItem(SIDEBAR_SCROLL_STORAGE_KEY);
+        if (raw !== null) {
+          const saved = Number(raw);
+          if (Number.isFinite(saved) && saved >= 0 && Math.abs(viewport.scrollTop - saved) > 1) {
+            viewport.style.overflowY = 'scroll';
+            viewport.scrollTop = saved;
+          }
+        }
+      } catch {
+        // Ignore storage errors in restricted browsing contexts.
+      }
       viewport.addEventListener('scroll', saveScrollTop, { passive: true });
       viewport.addEventListener('pointerdown', saveScrollTop, { passive: true });
       viewport.addEventListener('click', saveScrollTop, { passive: true });

@@ -73,6 +73,30 @@ This manual compiles typical issues encountered during knowledge base ingestion,
 - **Diagnostic Focus**: S3 / MinIO bucket lifecycle policies enforce aggressive expiration, or persistent volume mounts are missing.
 - **Actionable Fix**: Review bucket retention policies and confirm persistent volume claims map to durable host storage.
 
+---
+
+## 5. Collection Tags and Access Permissions
+
+### Issue: Why is a tag missing from the Tag Filter dropdown?
+- **Diagnostic Focus**: When an application or workflow node attaches multiple knowledge bases, the Custom Tag dropdown lists only shared tags whose **names and attribute types match across every selected knowledge base**.
+- **Actionable Fix**: Confirm that each attached knowledge base defines the tag with the same name and attribute type; see [Collection Tag System and Scope Filtering](/en/guide/dataset/collection_tags).
+
+### Issue: Where did legacy string tags go after upgrading?
+- **Diagnostic Focus**: During upgrade, legacy string tags are migrated without data loss into an **Option** tag named `default_tag`, preserving all existing file associations.
+- **Actionable Fix**: Rename `default_tag` in **Tagging** to your preferred business label (such as `Category`).
+
+### Issue: Does renaming a tag or option affect existing Tag Filters?
+- **Diagnostic Focus**: Tag Filters match by tag name and option text.
+- **Actionable Fix**: After renaming a tag or option in **Tagging**, update the corresponding filter conditions in your applications and workflows.
+
+### Issue: Why is the "Permission" entry missing from the file row menu, or why does the system prompt that dataset permissions are not enabled?
+- **Diagnostic Focus**: The "Permission" menu entry is visible only to members with `Administrator` permission on that file, and the prompt indicates that the knowledge base is still in its default disabled state.
+- **Actionable Fix**: Ask a knowledge base administrator to enable collection permissions from a row's `··· → Permission` menu and grant the required collaborator role; see [Collection Permission Control](/en/guide/dataset/collection_permission).
+
+### Issue: Are custom permissions preserved after turning collection permissions off?
+- **Diagnostic Focus**: Turning the switch off deletes all collection-level collaborator records in that knowledge base and reverts every collection to knowledge base inheritance; re-enabling generates fresh inherited snapshots from current knowledge base collaborators.
+- **Actionable Fix**: Record custom grants for critical collections before disabling the switch.
+
 ## Next Steps
 
 - Holistic overview: Read [Knowledge Base Full Lifecycle](/en/guide/dataset/lifecycle).

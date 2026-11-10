@@ -174,7 +174,7 @@ curl http://localhost:3020/health
 - Debug source invocations use the remote debug path. If the connection or session is missing, the invocation fails instead of falling back to the production plugin runtime.
 - Multi-replica Gateway deployments must route session deletion requests to the node that owns the WebSocket, or accept that calls fail after the Redis session is deleted.
 
-## FAQ
+## Connection and Invocation Troubleshooting
 
 ### The debug channel opens, but the CLI cannot connect
 

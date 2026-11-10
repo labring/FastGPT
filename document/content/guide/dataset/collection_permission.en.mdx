@@ -89,29 +89,9 @@ Renaming, disabling, or otherwise changing the knowledge base or collection itse
 3. **Special identities**: Team owners (the account that created the team, shown as **Owner** under **Account → Team → Members**) and the system `root` account in self-hosted deployments have elevated access. Team administrators (members granted **Admin** permission under **Account → Team → Permission**) still follow resource collaborator permissions.
 4. **Source file links**: Download and preview links use the storage service's authorization and signing rules. Signed links can grant access to their holders until expiry; handle them as sensitive credentials.
 
-## FAQ
-
-### 1. Why is the "Permission" entry missing from the file row menu?
-
-The entry is visible only to members with `Administrator` permission on that file. Ask the file owner or knowledge base administrator to grant Administrator permission.
-
-### 2. Why does the system prompt that dataset permissions are not enabled?
-
-The knowledge base is still in its default disabled state. A knowledge base administrator must enable collection permissions from a row's `··· → Permission` menu as described in Step 1.
-
-### 3. Are custom permissions preserved after turning collection permissions off?
-
-Turning the switch off deletes all collection-level collaborator records in that knowledge base and reverts every collection to knowledge base inheritance. Re-enabling generates fresh inherited snapshots from the current knowledge base collaborators, so record custom grants before disabling.
-
-## Acceptance Checklist
-
-- [ ] Test both an authorized member and a restricted member against the same source document.
-- [ ] Verify write, collaborator-management, deletion, and ownership-transfer controls separately.
-- [ ] Test published channels and API calls using their actual execution identities.
-- [ ] Confirm that returned citations, file links, and previous conversation history meet the intended disclosure scope.
-
 ## Next Steps
 
 - [Team Roles and Permissions](/en/guide/workspace/team/team_roles_permissions).
 - [Collection Tag Filtering](/en/guide/dataset/collection_tags).
 - [Connect a Knowledge Base to an Application](/en/guide/dataset/connect-application).
+- [Knowledge Base Troubleshooting](/en/guide/dataset/faq).

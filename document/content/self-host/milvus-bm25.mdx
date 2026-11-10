@@ -90,7 +90,7 @@ curl 'http://host/api/admin/4162/milvus?resumeMigrationId=<uuid>' \
 - 已执行 `removeOld`（旧表已删）：需从备份恢复 Milvus 数据卷后再降级。
 - 迁移可重复执行（幂等 upsert），迁移失败后用 `resumeMigrationId` 续跑。
 
-## 常见问题
+## 迁移异常排查
 
 - **启动报 `Milvus version ... is not supported`**：Milvus 版本低于 2.5.16，升级到 2.5.16+。
 - **迁移报旧 `modeldata` 缺失或为空**：停止迁移并检查是否连接了错误的 Milvus 实例、数据卷是否正确挂载；确认数据丢失时从备份恢复。

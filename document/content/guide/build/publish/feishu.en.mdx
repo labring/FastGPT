@@ -62,22 +62,4 @@ In the Lark console, click `Permission Management` on the left sidebar, enter `s
 Click `Version Management & Publishing` on the left side of the Lark console to publish the bot.
 
 You can then find your bot in Lark Workplace. Next, add the bot to a group or chat with it privately.
-
-## FAQ
-
-### Sent a message but no response
-
-1. Check if the Lark bot callback URL, permissions, etc. are configured correctly.
-2. Check FastGPT chat logs to see if there is a corresponding question record.
-3. If there is a record but Lark does not respond, the bot is missing the required permissions.
-4. If there is no record, the app may have encountered an error. Try the simplest bot first. (Lark bots cannot accept global variables, files, or image content as input)
-
-### How to start a new chat history
-
-Lark bot chat history chatId comes from several sources:
-
-1. Private chat window
-2. Individual topics in Lark topic groups
-3. In group chats, composed of group ID + personal ID.
-
-To reset your chat history, send a `Reset` message to the bot (case-sensitive), and the bot will start a new chat history.
+Send `Reset` (case-sensitive) in chat to start a fresh session; if the bot does not respond, check callback URLs, permissions, and conversation logs via [App, Chat, and Plugin FAQ](/en/guide/build/faq).

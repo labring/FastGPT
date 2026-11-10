@@ -69,6 +69,19 @@ const CustomItem: FC<{ item: PageTree.Item }> = ({ item }) => {
     const anchor = viewport?.querySelector<HTMLElement>(`a[href='${item.url}']`);
     if (!viewport || !anchor) return;
 
+    try {
+      const raw = sessionStorage.getItem(SIDEBAR_SCROLL_STORAGE_KEY);
+      if (raw !== null) {
+        const saved = Number(raw);
+        if (Number.isFinite(saved) && saved >= 0 && Math.abs(viewport.scrollTop - saved) > 1) {
+          viewport.style.overflowY = 'scroll';
+          viewport.scrollTop = saved;
+        }
+      }
+    } catch {
+      // Ignore storage errors in restricted browsing contexts.
+    }
+
     const viewportRect = viewport.getBoundingClientRect();
     const anchorRect = anchor.getBoundingClientRect();
     if (viewportRect.height <= 0) return;

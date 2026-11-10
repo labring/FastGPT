@@ -190,3 +190,19 @@ The Loop Node added in 4.15.0 keeps only the value of the last iteration in its 
 2. The append box of an object array is a JSON input. To append an object output by an upstream node, add a Code run node in the loop body that combines the existing array and the current object into a new array, then update the variable with Variable Citation.
 
 ---
+
+### Docker Compose Component Compatibility and Environment Inspection
+
+- **Component image versions**: Use the component image tags defined in the official Compose template for your target FastGPT version, and review [Upgrade Instructions](/en/self-host/upgrading/upgrade-instruction) before upgrading.
+- **AI Proxy configuration (v4.17.0+)**: Configure `AIPROXY_API_ENDPOINT` (root URL such as `http://fastgpt-aiproxy:3000`) and `AIPROXY_API_TOKEN` on `fastgpt-app` (and commercial Admin services sharing app config), then run `docker compose up -d`.
+- **Verify loaded environment variables**: Run `docker exec -it fastgpt-app sh` and execute `env` inside the container.
+- **Connect to local model containers**: Attach the model container to the FastGPT Docker network and reference `http://service-name:container-port`.
+
+---
+
+### Common Database and Object Storage Errors in Docker Deployments
+
+- **Mongo replica set initialization failure / `Operation auth_codes.findOne() buffering timed out` / `root` shown as unregistered on first login**: Inspect `docker compose ps` and MongoDB logs to verify replica-set name, internal hostname, credentials, key-file permissions, and volume ownership; for a brand-new uninitialized replica set, check `rs.status()` in the Mongo shell before running `rs.initiate()`.
+- **`Illegal instruction`**: Verify host CPU instruction set support (such as AVX) against the MongoDB image requirements and choose a compatible host/image combination.
+- **`relation "modeldata" does not exist`**: PostgreSQL is unreachable or missing the `vector` extension; inspect PG logs and ensure `pgvector` is installed.
+- **S3 / Object Storage connection errors**: Verify the storage endpoint reachable from FastGPT and signing host headers; see [Object Storage Configuration](/en/self-host/config/object-storage) and [Migrate Docker Compose from MinIO to RustFS](/en/self-host/docker_minio_to_rustfs).

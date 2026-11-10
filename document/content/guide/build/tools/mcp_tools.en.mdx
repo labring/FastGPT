@@ -20,6 +20,8 @@ You need tool creation permission, an external service URL and credentials, and 
 2. Enter the provider's **MCP Address** and **Auth Configuration** (**Auth Type** supports None, `Bearer`, `Basic`, or Custom).
 3. Parse the service, inspect the returned tool names, purposes, and parameters, then create the set.
 
+![Create and parse an MCP tool set](/imgs/optimized/current/mcp-tool-config.png.webp)
+
 The current client tries Streamable HTTP first. Any 4xx status code other than 429 from that transport triggers a fallback attempt over SSE. Diagnose authentication, network, and service failures from their errors; changing a URL suffix alone does not establish transport compatibility.
 
 ## Connect an authenticated Streamable HTTP service

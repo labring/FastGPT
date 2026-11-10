@@ -19,6 +19,8 @@ The document-parsing node reads a list of file links and outputs text for a mode
 | Document Parsing Result | String | Text for downstream nodes |
 | Raw Response | Object array | Original per-file parsing results for further processing |
 
+![Document Parse node configuration](/imgs/optimized/current/document-parse-node.png.webp)
+
 If parsing fails, check the error in Run Details.
 
 ## Purpose
@@ -32,5 +34,7 @@ Use parsing before summarization, extraction, or question answering. Knowledge-b
 3. Reference the start node's file-link list as the **Document Link** input.
 4. Reference the **Document Parsing Result** in AI Chat and set instructions to `Summarize the supplied document in three bullet points. Preserve dates and amounts.`
 5. Upload the file in debug preview. Inspect the parsed text before checking the summary.
+
+![Document Parse debug output and summary](/imgs/optimized/current/document-parse-result.png.webp)
 
 Compare every date and amount with the source. For empty text, inspect scans, source content, and parsing services. For reading failures, check URL reachability, expiration, and upload limits. See [file input](/en/guide/build/general/fileInput) for the full capability guide.

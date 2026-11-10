@@ -97,3 +97,24 @@ Team installations and system installations use separate sources. Removing a tea
 ### Does a team plugin inherit system plugin secrets?
 
 Team plugins are isolated from system plugins and require their own runtime parameters and secrets.
+
+### Why is "+ New Tool → Install from local" missing on the System Tools page?
+
+Uploading and deleting system-wide tools require the `root` administrator account. Sign in as `root` to manage system tool packages; see [Upload System Tools](/en/guide/build/tools/system-plugins/upload_system_tool).
+
+## Third-Party Channel Integration
+
+### Why does a Lark, WeCom, DingTalk, or WeChat Official Account bot fail to reply?
+
+1. Verify that the callback URL, trusted domain, `Token`, `Encoding-AESKey`, or `Client Secret` in the third-party developer console match the FastGPT publishing channel configuration.
+2. Open the application's **Conversation Logs** in FastGPT to check whether the incoming message was recorded.
+3. When a log record exists without a client reply, confirm that message-read and message-send permissions are enabled and that the latest app version is published in the third-party console.
+4. When no log record appears, test with a minimal Q&A application first to rule out required global variables, file inputs, or image inputs.
+
+### How do I reset conversation history in Lark, DingTalk, WeChat Official Account, or WeChat Personal channels?
+
+Send `Reset` (case-sensitive; WeChat Personal also accepts `/reset`) to the bot to start a fresh conversation session. In Lark, `chatId` is scoped per direct chat, per topic thread, or per `group ID + user ID` pair.
+
+### Why is the WeChat ClawBot entry missing in WeChat Personal integration?
+
+The WeChat Personal integration path requires iOS and the latest WeChat client release, and entry visibility depends on client version and account rollout status.

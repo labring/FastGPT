@@ -174,7 +174,7 @@ curl http://localhost:3020/health
 - 调试 source 命中后按远程调试路径处理，断连或 session 不存在时会失败，不会回退到生产插件运行时。
 - 多副本 Gateway 部署需要保证 session 删除请求能路由到持有 WebSocket 的节点，或接受 Redis session 删除后后续调用失败。
 
-## 常见问题
+## 连接与调用排障
 
 ### 页面可以开启调试，但 CLI 连接失败
 
