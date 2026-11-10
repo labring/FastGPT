@@ -151,6 +151,7 @@ vi.mock('@fastgpt/service/core/dataset/data/textStore', async (importOriginal) =
 
 import { searchDatasetData } from '../../../../core/dataset/search/defaultRecall';
 import { reRankSearchResults } from '../../../../core/dataset/search/defaultRecall/rerank';
+import { filterSearchResultsByScore } from '../../../../core/dataset/search/defaultRecall/result';
 import { fullTextRecall } from '../../../../core/dataset/search/defaultRecall/fullTextRecall';
 
 afterEach(() => {
@@ -884,5 +885,35 @@ describe('reRankSearchResults rerank candidate limit', () => {
   it.each([0, 9, 101, 55.7, Number.NaN])('非法候选数 %s 按默认 100 执行重排', async (value) => {
     await run(value);
     expect(mockReRankRecall.mock.calls[0][0].documents).toHaveLength(100);
+  });
+
+  it('重排权重小于 1 时，超出候选数的召回不进入融合结果，不能绕过重排分数过滤', async () => {
+    mockReRankRecall.mockResolvedValue({
+      results: candidates.slice(0, 20).map((item) => ({ id: item.id, score: 0.1 })),
+      inputTokens: 1
+    });
+
+    const { results } = await reRankSearchResults({
+      usingReRank: true,
+      textRecallResults: candidates.slice(0, 30) as any,
+      rerankModel,
+      query: 'query',
+      rerankWeight: 0.5,
+      rerankCandidateNum: 20,
+      teamId: 'team-1'
+    });
+
+    // 20 条重排结果都低于阈值，没有候选应该通过相似度过滤
+    expect(
+      filterSearchResultsByScore({
+        data: results,
+        usingReRank: true,
+        searchMode: DatasetSearchModeEnum.mixedRecall,
+        similarity: 0.4
+      }).results.map((item) => item.id)
+    ).toEqual([]);
+    expect(results.map((item) => item.id)).toEqual(
+      Array.from({ length: 20 }, (_, index) => `data-${index}`)
+    );
   });
 });
