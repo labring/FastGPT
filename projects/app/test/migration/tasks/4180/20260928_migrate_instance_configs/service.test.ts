@@ -52,6 +52,34 @@ describe('legacy CORS allowlist migration', () => {
 });
 
 describe('sanitizeOverridesForSchema', () => {
+  it('drops undersized sandbox storage while keeping other values refreshable', () => {
+    const warnings: string[] = [];
+    const issues: SchemaSanitizedIssue[] = [];
+    const overrides = sanitizeOverridesForSchema({
+      overrides: {
+        subservice: {
+          agentSandbox: { common: { storageSizeGi: 0.1, memoryMiB: 4096 } }
+        }
+      },
+      warnings,
+      issues
+    });
+
+    expect(issues).toContainEqual({
+      domain: 'subservice',
+      path: 'agentSandbox.common.storageSizeGi'
+    });
+    expect(warnings.some((warning) => warning.includes('agentSandbox.common.storageSizeGi'))).toBe(
+      true
+    );
+    const config = resolveDomainEffectiveConfig({
+      domain: 'subservice',
+      overrides: overrides.subservice
+    });
+    expect(config.agentSandbox.common.storageSizeGi).toBe(1);
+    expect(config.agentSandbox.common.memoryMiB).toBe(4096);
+  });
+
   it('drops values that violate the tightened schema and keeps the rest', () => {
     const warnings: string[] = [];
     const issues: SchemaSanitizedIssue[] = [];

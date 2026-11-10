@@ -30,7 +30,8 @@ const AgentSandboxSubserviceConfigSchema = z.strictObject({
     .strictObject({
       cpuCount: positiveNumber(1),
       memoryMiB: positiveInteger(2048),
-      storageSizeGi: positiveNumber(1),
+      // 与旧环境变量和管理表单的下限一致，保证磁盘预留后仍有可用空间。
+      storageSizeGi: z.number().min(1).default(1),
       suspendMinutes: positiveInteger(60),
       archiveInactiveDays: positiveInteger(7),
       maxEditDebug: nonNegativeInteger(100),

@@ -622,3 +622,21 @@ describe('agentSandbox.opensandbox.volumeNamePrefix validation', () => {
     ).toThrow();
   });
 });
+
+describe('agentSandbox.common.storageSizeGi validation', () => {
+  const withStorageSize = (storageSizeGi: number) => ({
+    agentSandbox: { common: { storageSizeGi } }
+  });
+
+  it('rejects less than 1 Gi and keeps valid fractional sizes', () => {
+    expect(() =>
+      resolveDomainEffectiveConfig({ domain: 'subservice', overrides: withStorageSize(0.1) })
+    ).toThrow();
+    for (const size of [1, 1.5]) {
+      expect(
+        resolveDomainEffectiveConfig({ domain: 'subservice', overrides: withStorageSize(size) })
+          .agentSandbox.common.storageSizeGi
+      ).toBe(size);
+    }
+  });
+});
