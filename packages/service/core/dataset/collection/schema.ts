@@ -134,6 +134,10 @@ defineIndex(DatasetCollectionSchema, {
 defineIndex(DatasetCollectionSchema, {
   key: { teamId: 1, datasetId: 1, createTime: 1 }
 });
+// 目录内按创建时间排序，避免扫描同一知识库其他目录的数据；保留上方索引用于跨目录查询。
+defineIndex(DatasetCollectionSchema, {
+  key: { teamId: 1, datasetId: 1, parentId: 1, createTime: 1 }
+});
 
 // Get collection by external file id
 defineIndex(DatasetCollectionSchema, {

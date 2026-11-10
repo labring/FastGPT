@@ -344,7 +344,8 @@ async function handler(req: ApiRequestProps): Promise<ListCollectionV2ResponseTy
         [
           { $match: match },
           { $addFields: { nameSortKey: { $toLower: '$name' } } },
-          { $sort: { nameSortKey: sortDirection } },
+          // 名称忽略大小写后可能相同，用唯一 ID 固定同值顺序，避免跨页重复或漏项。
+          { $sort: { nameSortKey: sortDirection, _id: sortDirection } },
           { $skip: offset },
           { $limit: pageSize },
           { $project: selectField }

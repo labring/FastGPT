@@ -247,6 +247,45 @@ describe('collection listV2 sort', () => {
     expect(names).toEqual(['alpha', 'beta']);
   });
 
+  it.each([false, true])('keeps equal-name pagination stable (simple=%s)', async (simple) => {
+    const { root, dataset, createCollection } = await createFixture();
+    const sameNameCollections = await Promise.all(
+      Array.from({ length: 12 }, (_, index) =>
+        createCollection(['Apple.txt', 'apple.txt', 'APPLE.txt'][index % 3])
+      )
+    );
+    const first = await createCollection('alpha.txt');
+    const last = await createCollection('zulu.txt');
+    const ascendingIds = [
+      String(first._id),
+      ...sameNameCollections.map(({ _id }) => String(_id)).sort(),
+      String(last._id)
+    ];
+
+    for (const sortOrder of ['asc', 'desc'] as const) {
+      const actualIds: string[] = [];
+      for (let offset = 0; offset < ascendingIds.length; offset += 2) {
+        const response = await Call(listHandler, {
+          auth: root,
+          body: {
+            datasetId: String(dataset._id),
+            sortBy: 'name',
+            sortOrder,
+            simple,
+            offset,
+            pageSize: 2
+          }
+        });
+        expect(response.code).toBe(200);
+        expect(response.data.total).toBe(ascendingIds.length);
+        actualIds.push(...response.data.list.map((item: { _id: string }) => String(item._id)));
+      }
+
+      // 同时验证主排序、同名记录的固定顺序，以及跨页没有重复或遗漏。
+      expect(actualIds).toEqual(sortOrder === 'asc' ? ascendingIds : [...ascendingIds].reverse());
+    }
+  });
+
   it('keeps string filter semantics independent from name sorting', async () => {
     const { root, dataset, createCollection } = await createFixture();
     const tagId = '68ad85a7463006c963799a05';
