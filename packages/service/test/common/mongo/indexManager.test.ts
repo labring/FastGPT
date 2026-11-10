@@ -9,7 +9,6 @@ import {
 import type { DeprecatedMongoIndexDefinition } from '@fastgpt/service/common/mongo/schemaIndexes';
 import { MongoIndexManager } from '@fastgpt/service/common/mongo/indexManager';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
-import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import {
   MongoDatasetSynonym,
@@ -628,44 +627,6 @@ describe('MongoIndexManager.cleanupModelDeprecatedIndexes', () => {
       errors: 1
     });
     expect(MongoIndexManager.formatCleanupReport(report)).toContain('error=test error');
-  });
-});
-
-describe('dataset collection create-time index cleanup', () => {
-  it('removes the withdrawn folder index and retains shared and customer indexes', async () => {
-    const schema = new Schema({}, { autoIndex: false });
-    MongoDatasetCollection.schema.indexes().forEach(([key, options]) => {
-      defineIndex(schema, { key, options });
-    });
-    defineDeprecatedTestIndexes(
-      schema,
-      getSchemaDeprecatedMongoIndexes(MongoDatasetCollection.schema)
-    );
-    const model = createModel({ schema, prefix: 'DatasetCollectionCreateTimeIndex' });
-    const folderIndexName = 'teamId_1_datasetId_1_parentId_1_createTime_1';
-    await model.collection.createIndex({ teamId: 1, datasetId: 1, parentId: 1, createTime: 1 });
-    await model.collection.createIndex(
-      { createTime: -1 },
-      { name: 'customer_collection_create_time' }
-    );
-
-    const result = await MongoIndexManager.syncModelIndexes({ model, logger });
-
-    const names = await getIndexNames(model);
-    expect(names).not.toContain(folderIndexName);
-    expect(names).toContain('teamId_1_datasetId_1_createTime_1');
-    expect(names).toContain('teamId_1_datasetId_1_parentId_1_updateTime_-1');
-    expect(names).toContain('customer_collection_create_time');
-    expect(result.cleanupReport.items).toEqual([
-      expect.objectContaining({ action: 'drop', applied: true, indexName: folderIndexName })
-    ]);
-
-    // 再次同步不能重建已撤回的索引；未运行过旧声明的环境也应安全跳过清理。
-    const repeated = await MongoIndexManager.syncModelIndexes({ model, logger });
-    expect(await getIndexNames(model)).not.toContain(folderIndexName);
-    expect(repeated.cleanupReport.items).toEqual([
-      expect.objectContaining({ action: 'skip_missing', indexName: folderIndexName })
-    ]);
   });
 });
 

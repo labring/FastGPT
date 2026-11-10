@@ -134,11 +134,6 @@ defineIndex(DatasetCollectionSchema, {
 defineIndex(DatasetCollectionSchema, {
   key: { teamId: 1, datasetId: 1, createTime: 1 }
 });
-// 撤回目录创建时间专用索引，减少写入维护成本；兼容清理曾运行过该声明的环境。
-defineIndex(DatasetCollectionSchema, {
-  key: { teamId: 1, datasetId: 1, parentId: 1, createTime: 1 },
-  deprecated: true
-});
 
 // Get collection by external file id
 defineIndex(DatasetCollectionSchema, {
