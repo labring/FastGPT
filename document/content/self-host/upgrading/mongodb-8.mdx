@@ -30,10 +30,12 @@ echo "$NET"
 
 ## 1. 导出数据
 
-先停止 FastGPT 应用，避免导出期间继续写入；旧 MongoDB 保持运行。下面的 `fastgpt-app` 按你的实际服务名调整：
+先停止所有会写入 MongoDB 的业务服务（至少 `fastgpt-app`；如果还有 `fastgpt-plugin` 等，也一并停止），旧 MongoDB 保持运行。下面的服务名按你的实际部署调整：
 
 ```bash
 docker compose stop fastgpt-app
+# 如果还有 fastgpt-plugin 等写入服务：
+# docker compose stop fastgpt-plugin
 ```
 
 > 下面的导出、恢复和校验命令建议保存为脚本执行；任一库失败会立即退出，不要只看最后一个库的退出码。

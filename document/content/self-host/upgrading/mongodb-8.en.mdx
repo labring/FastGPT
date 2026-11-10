@@ -30,10 +30,12 @@ If `USER` or `PASS` is empty, check the old container's environment variables or
 
 ## 1. Export data
 
-Stop the FastGPT application first to avoid writes during the export, but keep the old MongoDB running. Adjust `fastgpt-app` to your actual service name:
+Stop all business services that write to MongoDB first (at least `fastgpt-app`; also stop `fastgpt-plugin` or other writers if present), but keep the old MongoDB running. Adjust the service names to your deployment:
 
 ```bash
 docker compose stop fastgpt-app
+# If you also run fastgpt-plugin or other writers:
+# docker compose stop fastgpt-plugin
 ```
 
 > Save the export, restore, and verification commands as a script. Each database failure exits immediately; do not rely only on the last database's exit code.
