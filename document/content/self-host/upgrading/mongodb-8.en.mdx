@@ -1,0 +1,294 @@
+---
+title: Migrate MongoDB 5.x to 8.x (Dump/Restore)
+description: Export FastGPT's bundled MongoDB 5.x data and restore it into a new MongoDB 8.x container
+---
+
+This guide is for Docker Compose deployments that use FastGPT's bundled MongoDB 5.x and want to move the data to MongoDB 8.x. The procedure exports the business databases from the old container, creates a new MongoDB 8.0.34 container with a new data volume, and restores the data into it.
+
+> This procedure does not reuse the old data volume. The old container and volume are kept for rollback. FastGPT and the old MongoDB must be stopped during the migration, so plan a maintenance window.
+
+> MongoDB 8.x requires AVX on x86_64. If you are already running 5.x, your CPU supports AVX. If you are still on 4.4.x, do not use this guide directly; verify the CPU first or move MongoDB to a host that supports AVX.
+
+## Prepare variables
+
+The commands below assume the old container is named `fastgpt-mongo`. Replace `OLD` if your deployment uses a different name.
+
+```bash
+OLD=fastgpt-mongo
+NEW=fastgpt-mongo8
+VOL=fastgpt-mongo8
+NET=$(docker inspect "$OLD" --format '{{range $k,$v := .NetworkSettings.Networks}}{{$k}}{{end}}')
+
+USER=$(docker inspect "$OLD" --format '{{range .Config.Env}}{{println .}}{{end}}' | sed -n 's/^MONGO_INITDB_ROOT_USERNAME=//p')
+PASS=$(docker inspect "$OLD" --format '{{range .Config.Env}}{{println .}}{{end}}' | sed -n 's/^MONGO_INITDB_ROOT_PASSWORD=//p')
+
+echo "$USER"
+echo "$NET"
+```
+
+If `USER` or `PASS` is empty, check the old container's environment variables or set the two variables manually.
+
+## 1. Export data
+
+Keep the old container running. List the business databases, excluding `admin`, `config`, `local`, and test databases:
+
+```bash
+rm -rf /tmp/mongo8-migrate
+mkdir -p /tmp/mongo8-migrate
+
+docker exec "$OLD" mongosh --quiet -u "$USER" -p "$PASS" \
+  --authenticationDatabase admin \
+  --eval 'db.adminCommand({listDatabases:1}).databases.map(d=>d.name).filter(n=>!["admin","config","local"].includes(n) && !n.startsWith("fastgpt_test_")).join("\n")' \
+  > /tmp/mongo8-migrate/dbs.txt
+
+cat /tmp/mongo8-migrate/dbs.txt
+```
+
+Confirm that `dbs.txt` contains the databases you want to migrate. Then export each database:
+
+```bash
+docker exec "$OLD" rm -rf /tmp/mongo8-migrate
+docker exec "$OLD" mkdir -p /tmp/mongo8-migrate
+
+while IFS= read -r db; do
+  docker exec "$OLD" mongodump --quiet \
+    --username "$USER" --password "$PASS" \
+    --authenticationDatabase admin \
+    --host 127.0.0.1 --port 27017 \
+    --db "$db" \
+    --archive="/tmp/mongo8-migrate/$db.gz" --gzip
+done < /tmp/mongo8-migrate/dbs.txt
+```
+
+Copy the dumps and the database list to the host:
+
+```bash
+docker cp "$OLD:/tmp/mongo8-migrate" /tmp/mongo8-migrate/archive
+ls -lh /tmp/mongo8-migrate/archive
+```
+
+## 2. Stop the old container
+
+```bash
+docker update --restart no "$OLD"
+docker stop "$OLD"
+```
+
+Notes:
+
+- Only `stop` the container; do not `rm` it, so the old data volume is preserved.
+- Change the restart policy to `no` so the old container does not start automatically and compete for port 27017 when Docker restarts.
+- The old container may show `Exited (137)` if `docker stop` times out and sends SIGKILL. The data volume is still intact, and MongoDB performs recovery when the container starts again.
+
+## 3. Create the new container
+
+Create a new data volume instead of reusing the old one:
+
+```bash
+docker volume create "$VOL"
+```
+
+Start 8.0.34 on the same network with the same alias:
+
+```bash
+docker run -d --name "$NEW" \
+  --network "$NET" \
+  --network-alias fastgpt-mongo \
+  -p 27017:27017 \
+  --restart unless-stopped \
+  -e MONGO_INITDB_ROOT_USERNAME="$USER" \
+  -e MONGO_INITDB_ROOT_PASSWORD="$PASS" \
+  -v "$VOL":/data/db \
+  --entrypoint bash \
+  mongo:8.0.34 \
+  -c 'openssl rand -base64 128 > /data/mongodb.key; chmod 400 /data/mongodb.key; chown 999:999 /data/mongodb.key; exec docker-entrypoint.sh mongod --keyFile /data/mongodb.key --replSet rs0 --bind_ip_all'
+```
+
+Notes:
+
+- `--network-alias fastgpt-mongo` keeps `fastgpt-mongo:27017` reachable for FastGPT and other containers.
+- `-p 27017:27017` keeps `127.0.0.1:27017` available on the host. You can remove it if MongoDB is only accessed inside the Docker network.
+- `fastgpt-mongo8` is a brand-new data volume.
+- For Alibaba Cloud, replace `mongo:8.0.34` with the corresponding mirror image.
+
+Wait for it to start:
+
+```bash
+for i in $(seq 1 60); do
+  docker exec "$NEW" mongosh --quiet -u "$USER" -p "$PASS" \
+    --authenticationDatabase admin --eval 'db.adminCommand({ping:1}).ok' >/dev/null 2>&1 && break
+  sleep 1
+done
+```
+
+## 4. Initialize the replica set
+
+The new data directory has no `rs0` yet. Initialize it once:
+
+```bash
+docker exec "$NEW" mongosh --quiet -u "$USER" -p "$PASS" \
+  --authenticationDatabase admin --eval '
+try { rs.status(); } catch (e) {
+  rs.initiate({
+    _id: "rs0",
+    members: [{ _id: 0, host: "fastgpt-mongo:27017" }]
+  });
+}
+'
+```
+
+Wait until it becomes PRIMARY:
+
+```bash
+for i in $(seq 1 60); do
+  s=$(docker exec "$NEW" mongosh --quiet -u "$USER" -p "$PASS" \
+    --authenticationDatabase admin \
+    --eval 'try { rs.status().myState } catch(e) { 0 }' 2>/dev/null | tail -1)
+  [ "$s" = "1" ] && break
+  sleep 1
+done
+echo "myState=$s"
+```
+
+`myState=1` means PRIMARY.
+
+## 5. Restore data
+
+Copy the dumps into the new container:
+
+```bash
+docker exec "$NEW" rm -rf /tmp/mongo8-migrate
+docker exec "$NEW" mkdir -p /tmp/mongo8-migrate
+docker cp /tmp/mongo8-migrate/archive/. "$NEW:/tmp/mongo8-migrate/"
+```
+
+Restore each database:
+
+```bash
+while IFS= read -r db; do
+  docker exec "$NEW" mongorestore --quiet \
+    --username "$USER" --password "$PASS" \
+    --authenticationDatabase admin \
+    --host 127.0.0.1 --port 27017 \
+    --archive="/tmp/mongo8-migrate/$db.gz" --gzip
+done < /tmp/mongo8-migrate/dbs.txt
+```
+
+Notes:
+
+- Do not pass `--db`; the archive already contains the original database names.
+- `mongorestore` restores collections and indexes. FastGPT also synchronizes indexes when it starts.
+- This procedure migrates business databases only, not `admin` users and roles. The new container recreates the root user from `MONGO_INITDB_ROOT_USERNAME/PASSWORD`. Recreate any custom MongoDB users manually.
+
+## 6. Verify
+
+Check the version, FCV, and replica set status:
+
+```bash
+docker exec "$NEW" mongosh --quiet -u "$USER" -p "$PASS" \
+  --authenticationDatabase admin --eval '
+print("version=" + db.version());
+print("fcv=" + db.adminCommand({getParameter:1,featureCompatibilityVersion:1}).featureCompatibilityVersion.version);
+const s = rs.status();
+print("set=" + s.set + " myState=" + s.myState);
+'
+```
+
+Check the document counts of a few key collections:
+
+```bash
+docker exec "$NEW" mongosh --quiet -u "$USER" -p "$PASS" \
+  --authenticationDatabase admin --eval '
+const d = db.getSiblingDB("fastgpt");
+print("apps=" + d.apps.countDocuments({}));
+print("users=" + d.users.countDocuments({}));
+print("datasets=" + d.datasets.countDocuments({}));
+print("chatitems=" + d.chatitems.countDocuments({}));
+'
+```
+
+Check the container network alias:
+
+```bash
+docker exec "$NEW" getent hosts fastgpt-mongo
+```
+
+It should resolve to the new container's IP. After verification, start FastGPT and check the UI, knowledge bases, and chat.
+
+## 7. Make the change permanent in Compose
+
+After testing, make the new container permanent in `docker-compose.yml`; otherwise a later `docker compose up -d` may recreate the old 5.0.32 container.
+
+1. Change the MongoDB image:
+
+```yaml
+fastgpt-mongo:
+  image: mongo:8.0.34
+```
+
+2. Point the MongoDB data volume to the new volume:
+
+```yaml
+volumes:
+  - fastgpt-mongo8:/data/db
+```
+
+3. Change the `mongo` commands in the health check and entrypoint to `mongosh`. If you use a newer Compose template with `MONGO_CLI` auto-detection, skip this step. An old template that is switched directly to 8.0.34 will block while waiting for MongoDB to start.
+
+4. Declare the new volume at the top level:
+
+```yaml
+volumes:
+  fastgpt-mongo8:
+    external: true
+```
+
+5. Rename the old container so it is kept, then stop and remove the manually created new container:
+
+```bash
+docker rename "$OLD" "${OLD}-legacy"
+docker stop "$NEW"
+docker rm "$NEW"
+```
+
+6. Start the new MongoDB service with Compose and check its status:
+
+```bash
+docker compose up -d fastgpt-mongo
+docker compose ps
+docker compose up -d
+```
+
+> After this step, the old container is named `fastgpt-mongo-legacy` and the old volume is still preserved. To roll back, restore the Compose image and volume to the old values, rename the old container back to `fastgpt-mongo`, and start it. Complete all verification before making the change permanent.
+
+## 8. Roll back
+
+If testing fails and the change has not been made permanent in Compose:
+
+```bash
+docker stop "$NEW"
+docker update --restart always "$OLD"
+docker start "$OLD"
+```
+
+The old container and volume are still present, and MongoDB performs recovery when the container starts.
+
+If the change has already been made permanent in Compose, stop and remove the MongoDB container created by Compose, restore the Compose image and volume to the old values, rename `fastgpt-mongo-legacy` back to `fastgpt-mongo`, set its restart policy back to `always`, and start the old container. The old volume is still preserved.
+
+## Notes
+
+- When connecting from the host, keep `directConnection=true` in `MONGODB_URI`, because the replica set member host is `fastgpt-mongo`, which the host may not resolve.
+- If the new container does not become PRIMARY, check `docker exec fastgpt-mongo8 getent hosts fastgpt-mongo` first. If it resolves to the old container as well, disconnect the old container from the network:
+
+```bash
+docker network disconnect "$NET" fastgpt-mongo
+```
+
+Then initialize the replica set again. To roll back, reconnect the old container:
+
+```bash
+docker network connect --alias fastgpt-mongo "$NET" fastgpt-mongo
+```
+
+- If you already renamed the old container in step 7, replace `fastgpt-mongo` with `fastgpt-mongo-legacy` in the command. If you disconnected it from the network, reconnect it before rollback.
+- Do not run `docker compose up -d` during the migration, or the old container may be recreated and compete with the new container for port 27017 and the `fastgpt-mongo` alias.
