@@ -9,13 +9,26 @@ import { MongoDatasetCollection } from '../../collection/schema';
 import { MongoDatasetCollectionTagsV2 } from '../../tag/schemaV2';
 import { isCollectionTagValue } from '@fastgpt/global/core/dataset/tagUtils';
 import { readFromSecondary } from '../../../../common/mongo/utils';
-import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { applySharedCollectionMetadataFilters } from './shared';
 
 /* ========== Key-Value 标签过滤类型 ========== */
 
 /** 单条 Key-Value 标签条件：{ tagName: { $op: value } } */
 type TagCondition = Record<string, Record<string, unknown>>;
+
+/** 保持数字/时间标签对历史字符串值的转换约定，候选筛选与最终比对共用。 */
+const toNumericOrTimestamp = (val: unknown): number => {
+  if (typeof val === 'number') return val;
+  if (typeof val === 'string') {
+    const trimmed = val.trim();
+    if (!trimmed) return NaN;
+    const num = Number(trimmed);
+    if (Number.isFinite(num)) return num;
+    const time = new Date(trimmed).getTime();
+    return Number.isNaN(time) ? NaN : time;
+  }
+  return NaN;
+};
 
 /* ========== checkValue: 纯值比对算法 ========== */
 
@@ -88,19 +101,6 @@ export function checkValue(
   switch (tagType) {
     case 'number':
     case 'datetime': {
-      const toNumericOrTimestamp = (val: unknown): number => {
-        if (typeof val === 'number') return val;
-        if (typeof val === 'string') {
-          const trimmed = val.trim();
-          if (!trimmed) return NaN;
-          const num = Number(trimmed);
-          if (Number.isFinite(num)) return num;
-          const time = new Date(trimmed).getTime();
-          return Number.isNaN(time) ? NaN : time;
-        }
-        return NaN;
-      };
-
       const stored = toNumericOrTimestamp(storedVal);
       const t = toNumericOrTimestamp(target);
       if (isNaN(t)) return false;
@@ -353,12 +353,74 @@ export async function filterCollectionByKeyValueTags({
       }
     }
 
+    /** 仅下推不会漏掉旧数据的必要条件，最终仍由 checkValue 保持原有精确语义。 */
+    const buildValueMatch = (condition: TagCondition): Record<string, unknown> | undefined => {
+      const tagName = Object.keys(condition)[0];
+      const tag = tagMap.get(tagName);
+      if (!tag) return;
+      const op = Object.keys(condition[tagName])[0];
+      const target = condition[tagName][op];
+      const matchValue = (value: unknown) => ({ tags: { $elemMatch: { tagId: tag.id, value } } });
+
+      if (tag.type === 'array' && (op === '$contains' || op === '$is')) {
+        const values = Array.isArray(target)
+          ? target.filter((item): item is string => typeof item === 'string')
+          : op === '$contains' && typeof target === 'string'
+            ? [target]
+            : [];
+        // 空数组的 $is/$in 允许命中空集合，不能用 $all:[] 预筛。
+        if (values.length > 0) return matchValue({ $all: values });
+      }
+
+      if (
+        (tag.type === 'number' || tag.type === 'datetime') &&
+        ['$eq', '$gt', '$gte', '$lt', '$lte'].includes(op)
+      ) {
+        const numeric = toNumericOrTimestamp(target);
+        if (!Number.isNaN(numeric)) {
+          // 历史字符串可能是数字或日期，全部保留给 checkValue 转换，避免 BSON 类型比较漏项。
+          return {
+            $or: [matchValue({ [op]: numeric }), matchValue({ $type: 'string' })]
+          };
+        }
+      }
+      // 字符串比较包含 String 转换；否定、空值等条件也保留原规则，避免预筛漏项。
+    };
+
+    const valueMatches = $and
+      .map(buildValueMatch)
+      .filter((match): match is Record<string, unknown> => match !== undefined);
+    if (
+      $or.length > 0 &&
+      $or.every((cond) => {
+        const opObj = Object.values(cond)[0];
+        const op = opObj ? Object.keys(opObj)[0] : undefined;
+        return op !== undefined && !isAbsentAllowedOp(op);
+      })
+    ) {
+      const orValueMatches = $or.map(buildValueMatch);
+      if (orValueMatches.some((match) => match !== undefined)) {
+        const orMatches = $or
+          .map((cond, index) => {
+            const tag = tagMap.get(Object.keys(cond)[0]);
+            return orValueMatches[index] ?? (tag ? { 'tags.tagId': tag.id } : undefined);
+          })
+          .filter((match): match is Record<string, unknown> => match !== undefined);
+        valueMatches.push({ $or: orMatches });
+      }
+    }
+
     const findQuery = MongoDatasetCollection.find(
-      { teamId, datasetId: dsId, ...(tagIdQuery ?? {}) },
+      {
+        teamId,
+        datasetId: dsId,
+        ...(tagIdQuery ?? {}),
+        ...(valueMatches.length > 0 ? { $and: valueMatches } : {})
+      },
       '_id tags',
       { ...readFromSecondary }
     );
-    if (useTagIndexHint) {
+    if (useTagIndexHint && valueMatches.length === 0) {
       findQuery.hint({ teamId: 1, datasetId: 1, 'tags.tagId': 1 });
     }
     const collections = await findQuery.lean();
@@ -381,6 +443,7 @@ export async function filterCollectionByKeyValueTags({
   return allCollectionIds.length > 0 ? allCollectionIds : [];
 }
 
+/** 读取禁用集合 ID，使用 forbid=true 部分覆盖索引，避免逐文档回表与实例化。 */
 export const getForbidCollectionIdList = async ({
   teamId,
   datasetIds
@@ -395,7 +458,7 @@ export const getForbidCollectionIdList = async ({
       forbid: true
     },
     '_id'
-  );
+  ).lean();
 
   return collections.map((item) => String(item._id));
 };
