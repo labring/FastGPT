@@ -168,7 +168,7 @@ describe('builtinTemplateProvider', () => {
     ).toBe(false);
   });
 
-  it('documents one inline reference format for node outputs and global variables', async () => {
+  it('preserves inline reference examples and the description key for caller translation', async () => {
     const ref = parseNodeTemplateRef('builtin:text-editor');
     const resolved = await builtinTemplateProvider.resolve(ref, { locale: 'en' });
     const descriptor = normalizeNodeTemplateDescriptor({
@@ -182,12 +182,11 @@ describe('builtinTemplateProvider', () => {
       'Hello {{$VARIABLE_NODE_ID.name$}}',
       'Topic: {{$validateCode.topic$}}'
     ]);
-    // 模板元数据现在保存 i18n key，文案校验从英文资源解析实际展示值。
-    const description =
-      input?.description === 'workflow:cli.input.text_editor'
-        ? enWorkflow['cli.input.text_editor']
-        : input?.description;
-    expect(description).toContain('global variables use {{$VARIABLE_NODE_ID.variableKey$}}');
+    expect(input?.description).toBe('workflow:cli.input.text_editor');
+    // 英文资源仍保留完整引用格式说明，避免只校验 key 而丢失文案内容。
+    expect(enWorkflow['cli.input.text_editor']).toContain(
+      'global variables use {{$VARIABLE_NODE_ID.variableKey$}}'
+    );
   });
 
   it('keeps automation metadata aligned with template inputs and explicit for resources', async () => {

@@ -51,6 +51,7 @@ export async function searchDatasetData(
     usingReRank: inputUsingReRank = false,
     rerankModel,
     rerankWeight = 0.5,
+    rerankCandidateNum,
     datasetIds = [],
     collectionFilterMatch,
     readableCollectionIdList
@@ -154,7 +155,8 @@ export async function searchDatasetData(
     textRecallResults,
     rerankModel,
     query: reRankQuery,
-    rerankWeight
+    rerankWeight,
+    rerankCandidateNum
   });
 
   const hasTextQuery = textQueries.some((item) => item.trim());

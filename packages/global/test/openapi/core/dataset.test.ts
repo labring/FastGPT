@@ -68,6 +68,40 @@ describe('SearchDatasetTestBodySchema', () => {
   });
 
   it.each([
+    [10, 10],
+    [11, 11],
+    [100, 100],
+    ['20', 20],
+    [undefined, undefined]
+  ])('accepts a valid or omitted rerankCandidateNum: %s', (input, expected) => {
+    expect(
+      SearchDatasetTestBodySchema.parse({
+        datasetId: objectId,
+        text: 'question',
+        queryImageUrls: [],
+        rerankCandidateNum: input
+      }).rerankCandidateNum
+    ).toBe(expected);
+  });
+
+  it.each([0, 9, 101, 10.5, '20.5', '', null, Number.NaN, Infinity, 'invalid'])(
+    'defaults an invalid rerankCandidateNum without rejecting either rerank mode: %s',
+    (rerankCandidateNum) => {
+      for (const usingReRank of [false, true]) {
+        expect(
+          SearchDatasetTestBodySchema.parse({
+            datasetId: objectId,
+            text: 'question',
+            queryImageUrls: [],
+            usingReRank,
+            rerankCandidateNum
+          })
+        ).toMatchObject({ usingReRank, rerankCandidateNum: 100 });
+      }
+    }
+  );
+
+  it.each([
     {},
     { text: ' \n ', queryImageUrls: [] },
     { queryImageUrls: [] },
@@ -102,6 +136,15 @@ describe('SearchDatasetTestBodySchema', () => {
     expect(images.required).not.toContain('text');
     expect(images.properties!.queryImageUrls).toMatchObject({ minItems: 1, maxItems: 10 });
     expect(images.properties!.text).toMatchObject({ default: '' });
+    for (const branch of [text, images]) {
+      expect(branch.properties!.rerankCandidateNum).toMatchObject({
+        type: 'integer',
+        minimum: 10,
+        maximum: 100,
+        default: 100
+      });
+      expect(branch.required).not.toContain('rerankCandidateNum');
+    }
     expect(media.example).toEqual({ text: 'FastGPT 是什么', datasetId: objectId });
     expect(media.examples).toBeUndefined();
     expect(SearchDatasetTestBodySchema.safeParse(media.example).success).toBe(true);

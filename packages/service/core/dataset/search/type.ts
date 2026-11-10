@@ -33,6 +33,7 @@ export type SearchDatasetDataProps = {
   [NodeInputKeyEnum.datasetSearchUsingReRank]?: boolean;
   [NodeInputKeyEnum.datasetSearchRerankModel]?: RerankModelDataType;
   [NodeInputKeyEnum.datasetSearchRerankWeight]?: number;
+  [NodeInputKeyEnum.datasetSearchRerankCandidateNum]?: number;
 
   /*
     {

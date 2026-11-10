@@ -9,6 +9,7 @@ export type SearchTestFormType = {
     usingReRank?: boolean;
     rerankModel?: string;
     rerankWeight?: number;
+    rerankCandidateNum?: number;
 
     similarity?: number;
     limit?: number;

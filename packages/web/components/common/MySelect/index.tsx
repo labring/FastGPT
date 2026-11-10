@@ -225,7 +225,6 @@ const MySelect = <T = any,>(
           size={'md'}
           fontSize={'sm'}
           textAlign={'left'}
-          h={'auto'}
           whiteSpace={'pre-wrap'}
           wordBreak={'break-word'}
           transition={'border-color 0.1s ease-in-out, box-shadow 0.1s ease-in-out'}
