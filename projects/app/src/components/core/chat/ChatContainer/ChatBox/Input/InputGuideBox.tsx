@@ -10,7 +10,7 @@ import { ChatBoxContext } from '../Provider';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowRuntimeContext } from '../../context/workflowRuntimeContext';
 import type { ChatSourceTarget } from '@/web/core/chat/utils';
-import { getCompletionSearchKeys } from '../utils/inputGuide';
+import { getCompletionSearchKeys, isCompletionResultCurrent } from '../utils/inputGuide';
 
 export default function InputGuideBox({
   id,
@@ -59,11 +59,14 @@ export default function InputGuideBox({
     }
   );
 
-  const matchText = data?.searchKey ?? '';
   const filterData = useMemo(
-    () => [...new Set(data?.data ?? [])].filter((item) => item !== text).slice(0, 5),
+    () =>
+      data?.searchKey && isCompletionResultCurrent({ text, searchKey: data.searchKey })
+        ? [...new Set(data.data)].filter((item) => item !== text).slice(0, 5)
+        : [],
     [data, text]
   );
+  const matchText = data?.searchKey && filterData.length ? data.searchKey : '';
 
   useEffect(() => {
     onOptionsChange(filterData, matchText);

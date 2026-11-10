@@ -187,12 +187,16 @@ const ChatInput = ({
   const isDefaultInputHeight =
     !mobilePreSpeak && !inputValue && fileList.length === 0 && !canUseInputGuide;
 
+  const resetCompletionOptions = useCallback(() => {
+    setCompletionOptions([]);
+    setMatchText('');
+    setActiveCompletionIndex(0);
+  }, []);
+
   const resetCompletionContext = useCallback(() => {
     setCompletionContext(undefined);
-    setCompletionOptions([]);
-    setActiveCompletionIndex(0);
-    setMatchText('');
-  }, []);
+    resetCompletionOptions();
+  }, [resetCompletionOptions]);
 
   useEffect(() => {
     return chatForm.watch((values, { name }) => {
@@ -223,10 +227,13 @@ const ChatInput = ({
         resetCompletionContext();
         return;
       }
+      const textarea = TextareaDom.current;
+      const cursor = textarea?.selectionStart ?? inputValue.length;
       if (
         !isCompletionContextCurrent({
           context: completionContext,
           value: inputValue,
+          cursor,
           matchText
         })
       ) {
@@ -234,11 +241,10 @@ const ChatInput = ({
         return;
       }
 
-      const textarea = TextareaDom.current;
       const result = applyInputGuide({
         context: completionContext,
         value: inputValue,
-        cursor: textarea?.selectionStart ?? inputValue.length,
+        cursor,
         guide,
         matchText
       });
@@ -381,7 +387,7 @@ const ChatInput = ({
                   isInsertion
                 })
               );
-              setActiveCompletionIndex(0);
+              resetCompletionOptions();
             }}
             onKeyUp={(e) => {
               if (!completionContext || !completionNavigationKeys.has(e.key)) return;
@@ -393,6 +399,7 @@ const ChatInput = ({
                   cursor: textarea.selectionStart
                 })
               );
+              resetCompletionOptions();
             }}
             onPointerDown={resetCompletionContext}
             onKeyDown={(e) => {
@@ -462,6 +469,7 @@ const ChatInput = ({
                       cursor
                     })
                 );
+                resetCompletionOptions();
 
                 requestAnimationFrame(() => {
                   textarea.setSelectionRange(cursor, cursor);
@@ -548,6 +556,7 @@ const ChatInput = ({
       setValue,
       completionContext,
       resetCompletionContext,
+      resetCompletionOptions,
       completionOptions,
       activeCompletionIndex,
       matchText,
@@ -769,25 +778,19 @@ const ChatInput = ({
       >
         <Box flex={1}>
           {/* Chat input guide box */}
-          {canUseInputGuide &&
-            completionContext &&
-            isCompletionContextCurrent({
-              context: completionContext,
-              value: inputValue,
-              matchText
-            }) && (
-              <InputGuideBox
-                id={INPUT_GUIDE_ID}
-                sourceTarget={sourceTarget}
-                text={completionContext.userQuery}
-                activeIndex={activeCompletionIndex}
-                onOptionsChange={handleCompletionOptionsChange}
-                onSelect={acceptCompletion}
-                onSend={(e) => {
-                  handleSend(e);
-                }}
-              />
-            )}
+          {canUseInputGuide && completionContext && (
+            <InputGuideBox
+              id={INPUT_GUIDE_ID}
+              sourceTarget={sourceTarget}
+              text={completionContext.userQuery}
+              activeIndex={activeCompletionIndex}
+              onOptionsChange={handleCompletionOptionsChange}
+              onSelect={acceptCompletion}
+              onSend={(e) => {
+                handleSend(e);
+              }}
+            />
+          )}
           {/* file preview */}
           {(!mobilePreSpeak || isPc || inputValue) && (
             <Box>

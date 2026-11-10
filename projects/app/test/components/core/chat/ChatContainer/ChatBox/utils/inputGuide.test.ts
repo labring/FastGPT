@@ -8,7 +8,8 @@ import {
   getEditedCompletionContext,
   getNextCompletionIndex,
   insertNewline,
-  isCompletionContextCurrent
+  isCompletionContextCurrent,
+  isCompletionResultCurrent
 } from '@/components/core/chat/ChatContainer/ChatBox/utils/inputGuide';
 
 describe('input guide completion context', () => {
@@ -160,6 +161,54 @@ describe('input guide completion context', () => {
     const context = { anchor: 0, userQuery: 'FastG' };
     expect(isCompletionContextCurrent({ context, value: 'FastGPT' })).toBe(true);
     expect(isCompletionContextCurrent({ context, value: '请帮我写周报' })).toBe(false);
+  });
+
+  it('only validates a completion match inside the query before the caret', () => {
+    expect(
+      isCompletionContextCurrent({
+        context: { anchor: 0, userQuery: 'Fast' },
+        value: 'FastFastG',
+        matchText: 'FastG'
+      })
+    ).toBe(false);
+    expect(
+      isCompletionContextCurrent({
+        context: { anchor: 0, userQuery: 'FastG' },
+        value: 'FastGFastG',
+        matchText: 'FastG'
+      })
+    ).toBe(true);
+    expect(
+      isCompletionContextCurrent({
+        context: { anchor: 0, userQuery: 'FastG' },
+        value: 'FastG',
+        cursor: 3,
+        matchText: 'FastG'
+      })
+    ).toBe(false);
+  });
+
+  it('rejects stale search keys from a previous query', () => {
+    expect(isCompletionResultCurrent({ text: 'FastG', searchKey: 'FastG' })).toBe(true);
+    expect(isCompletionResultCurrent({ text: 'Fast', searchKey: 'FastG' })).toBe(false);
+    expect(isCompletionResultCurrent({ text: 'FastGPT 是什么？ ', searchKey: '是什么？' })).toBe(
+      true
+    );
+  });
+
+  it('replaces only the match before the caret when the same word appears after it', () => {
+    expect(
+      applyInputGuide({
+        context: { anchor: 0, userQuery: 'FastG' },
+        value: 'FastGFastG',
+        cursor: 5,
+        guide: 'FastGPT 是什么？',
+        matchText: 'FastG'
+      })
+    ).toEqual({
+      value: 'FastGPT 是什么？FastG',
+      cursor: 12
+    });
   });
 
   it('replaces only the queried range and keeps surrounding text', () => {

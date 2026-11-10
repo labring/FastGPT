@@ -20,6 +20,15 @@ export const getCompletionSearchKeys = (query: string) => {
   return keys;
 };
 
+/** 判断返回的检索词是否仍属于当前查询的后缀。 */
+export const isCompletionResultCurrent = ({
+  text,
+  searchKey
+}: {
+  text: string;
+  searchKey: string;
+}) => getCompletionSearchKeys(text).includes(searchKey);
+
 type CompletionKeyAction = 'previous' | 'next' | 'close' | 'accept';
 
 /**
@@ -62,21 +71,50 @@ export const getNextCompletionIndex = ({
   direction: -1 | 1;
 }) => (length === 0 ? index : (index + direction + length) % length);
 
-/** 程序回填后旧 context 不再对应当前文本。 */
-export const isCompletionContextCurrent = ({
+/** 在当前 context 的光标前区间内定位补全匹配词。 */
+const getCompletionMatchIndex = ({
   context,
   value,
+  cursor,
   matchText
 }: {
   context: CompletionContext;
   value: string;
+  cursor: number;
+  matchText: string;
+}) => {
+  if (matchText.length === 0) return;
+
+  const query = value.slice(context.anchor, cursor);
+  const matchIndex = query.lastIndexOf(matchText);
+
+  return matchIndex < 0 ? undefined : context.anchor + matchIndex;
+};
+
+/** 程序回填后旧 context 不再对应当前文本。 */
+export const isCompletionContextCurrent = ({
+  context,
+  value,
+  cursor,
+  matchText
+}: {
+  context: CompletionContext;
+  value: string;
+  cursor?: number;
   matchText?: string;
 }) => {
-  const cursor = context.anchor + context.userQuery.length;
-  if (value.slice(context.anchor, cursor) !== context.userQuery) return false;
+  const resolvedCursor = cursor ?? context.anchor + context.userQuery.length;
+  if (value.slice(context.anchor, resolvedCursor) !== context.userQuery) return false;
   if (matchText === undefined) return true;
 
-  return value.lastIndexOf(matchText, cursor) >= context.anchor;
+  return (
+    getCompletionMatchIndex({
+      context,
+      value,
+      cursor: resolvedCursor,
+      matchText
+    }) !== undefined
+  );
 };
 
 /**
@@ -165,9 +203,8 @@ export const applyInputGuide = ({
   guide: string;
   matchText: string;
 }) => {
-  const matchIndex = value.lastIndexOf(matchText, cursor);
   const replaceStart =
-    matchIndex >= context.anchor ? Math.max(context.anchor, matchIndex) : context.anchor;
+    getCompletionMatchIndex({ context, value, cursor, matchText }) ?? context.anchor;
   const prefix = value.slice(0, replaceStart);
   const suffix = value.slice(cursor);
   const nextValue = `${prefix}${guide}${suffix}`;
