@@ -53,8 +53,19 @@ async function handler(req: ApiRequestProps<CreateAppBodyType>) {
     req,
     bodySchema: CreateAppRequestBodySchema
   });
-  const { parentId, name, avatar, intro, type, nodes, edges, chatConfig, templateId, utmParams } =
-    body;
+  const {
+    parentId,
+    name,
+    avatar,
+    intro,
+    type,
+    nodes,
+    edges,
+    chatConfig,
+    templateId,
+    utmParams,
+    inheritPermission
+  } = body;
 
   // 凭证校验
   const { teamId, tmbId, isRoot } = parentId
@@ -93,6 +104,7 @@ async function handler(req: ApiRequestProps<CreateAppBodyType>) {
     userAvatar: tmb?.avatar,
     username: tmb?.user?.username,
     templateId,
+    inheritPermission,
     isRoot
   });
 
@@ -178,6 +190,7 @@ export const onCreateApp = async ({
   username,
   userAvatar,
   templateId,
+  inheritPermission,
   isRoot,
   session
 }: {
@@ -196,6 +209,7 @@ export const onCreateApp = async ({
   username?: string;
   userAvatar?: string;
   templateId?: string;
+  inheritPermission?: boolean;
   isRoot?: boolean;
   session?: ClientSession;
 }) => {
@@ -293,7 +307,8 @@ export const onCreateApp = async ({
           type,
           version: 'v2',
           pluginData,
-          templateId
+          templateId,
+          inheritPermission: inheritPermission ?? true
         }
       ],
       { session, ordered: true }
