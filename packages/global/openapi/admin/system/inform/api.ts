@@ -36,10 +36,15 @@ export const CreateModelDeprecationInformBodySchema = z.object({
     description: '计划通知的模型稳定 ID 列表',
     example: ['68ad85a7463006c963799a05']
   }),
-  plannedDeprecationAt: z.string().date().meta({
+  plannedDeprecationAt: z.string().datetime({ offset: true }).meta({
     description:
-      '计划下架日，格式 YYYY-MM-DD，按 UTC 日历日解释；距 UTC 当天最多 90 天',
-    example: '2026-12-31'
+      '实际下架截止时间，必须携带时区偏移；前端传所选日期的浏览器本地时间 23:59，原样保存 offset，最远为发送时间 offset 下当天后 90 个日历日',
+    example: '2026-12-31T23:59:00+08:00'
+  }),
+  notificationTime: z.string().datetime({ offset: true }).meta({
+    description:
+      '浏览器提交任务时的时间；保留原始 offset，后续提醒在对应日期沿用该时分秒和 offset，服务端另行记录实际 createdAt',
+    example: '2026-11-10T14:00:00+08:00'
   }),
   channels: z
     .array(ModelDeprecationInformChannelSchema)
@@ -51,7 +56,7 @@ export const CreateModelDeprecationInformBodySchema = z.object({
       }
     })
     .meta({
-      description: '通知渠道；站内信由前端默认选中，external 表示邮件/短信二选一',
+      description: '通知渠道；界面固定勾选站内信，短信/邮件按通知账号二选一，每轮沿用所选渠道',
       example: ['inApp', 'email']
     })
 });
@@ -125,9 +130,14 @@ export const ModelDeprecationInformHistoryItemSchema = z.object({
     description: '通知计划中的模型稳定 ID',
     example: ['68ad85a7463006c963799a05']
   }),
-  plannedDeprecationAt: z.string().date().meta({
-    description: '浏览器选择的计划下架日，格式 YYYY-MM-DD',
-    example: '2026-12-31'
+  // 历史预览版本只存日期；只读响应继续原样返回，新创建请求必须提供带 offset 的时间。
+  plannedDeprecationAt: z.union([z.string().datetime({ offset: true }), z.string().date()]).meta({
+    description: '原样保存的下架截止时间及 offset；历史记录兼容 YYYY-MM-DD',
+    example: '2026-12-31T23:59:00+08:00'
+  }),
+  notificationTime: z.string().datetime({ offset: true }).optional().meta({
+    description: '原始发送时间锚点及 offset；历史记录可能缺失',
+    example: '2026-11-10T14:00:00+08:00'
   }),
   createdAt: z.string().datetime().meta({
     description: '通知计划创建时间',

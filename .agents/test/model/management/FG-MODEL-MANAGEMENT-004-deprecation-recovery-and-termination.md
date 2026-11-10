@@ -32,7 +32,7 @@ related:
   - "FG-MODEL-MANAGEMENT-002"
   - "FG-MODEL-MANAGEMENT-003"
   - "FG-MODEL-MANAGEMENT-005"
-baseline: "3eca129944291a82acda9471201dccc5cb2525cf; pro=48ee04dd34d4d5b13e77ed4ce184124e491a765a"
+baseline: "e11ba6771f; pro=a4e8e9016e70fbaf7972c44d7f01b38cb635c6a5"
 ---
 
 # 通知失败可定位重发且计划终止后不再恢复
@@ -43,9 +43,9 @@ baseline: "3eca129944291a82acda9471201dccc5cb2525cf; pro=48ee04dd34d4d5b13e77ed4
 
 ## 前置准备
 
-- 复用 MANAGEMENT-002/003 的专用服务、SMTP/SMS_PROXY、受众和清理；下架日远于本例所有操作，截止由 MANAGEMENT-005 单独验收。
+- 复用 MANAGEMENT-002/003 的 dev 服务与隔离资源、SMTP/SMS_PROXY、受众和清理；下架日远于本例所有操作，截止由 MANAGEMENT-005 单独验收。
 - R0 正常投递计划；F0 是接收端对一个指定团队持续失败、其他团队成功后得到的 completed 轮次和 unresolved 失败记录。外部 sendMessage 自身会重试，失败计数按最终记录计，不能把网络尝试次数当 failureCount。
-- 恢复夹具 G0：暂停专用队列，从合法计划结构在隔离 Mongo 制作独立 campaign 副本，设置原 runIndex 的 failed/interrupted/scheduled/running 状态及有效 upperTeamId/cursorTeamId。保存夹具 BSON和唯一 requestId；明确这是状态恢复集成，不声称已复现真实进程崩溃。游标前后各准备一个可命中的团队，当前页没有未提交消息。
+- 恢复夹具 G0：使用按 campaignId 限定的 worker gate，从合法计划结构在 dev Mongo 制作独立 campaign 副本，设置原 runIndex 的 failed/interrupted/scheduled/running 状态及有效 upperTeamId/cursorTeamId。保存夹具 BSON和唯一 requestId；明确这是状态恢复集成，不声称已复现真实进程崩溃。游标前后各准备一个可命中的团队，当前页没有未提交消息。
 - 接口 body：failures=`{campaignId,runIndex,pageNum:1,pageSize:20}`，recover/retry=`{campaignId,runIndex}`，terminate=`{campaignId}`。每次 UI 操作保留实际请求，失败列表以 data.list 为准。
 - 只读：`db.model_deprecation_informs.findOne({_id:CAMPAIGN_ID})`；`db.model_deprecation_inform_failures.find({campaignId:CAMPAIGN_ID,runIndex:INDEX})`；其他消息查询复用 MANAGEMENT-003。点击历史行异常数量按需读取只读 JSON；准备至少 21 条本例失败记录检查分页，不能读取其他计划。
 - 每 1 秒轮询原/重发轮次，最多 120 秒到 completed 或预期失败终态；恢复启动查询最多 30 秒。运行中终止用接收端 gate 暂停本页、提交终止、放行已开始页，至少准备两页团队。不能要求撤回已发出的外部请求。

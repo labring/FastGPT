@@ -1,6 +1,6 @@
 ---
 case_version: 1
-id: "FG-DATASET-INGESTION-001"
+id: "FG-DATASET-INGESTION-002"
 title: "知识库导入与重训练先校验索引模型可用性"
 business: "dataset/ingestion"
 types: ["api", "ui", "integration"]

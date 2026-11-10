@@ -9,7 +9,8 @@ import React from 'react';
 import {
   getModelDeprecationInformChannels,
   getPlannedDateBounds,
-  getUTCDateLabel,
+  getPlannedDeprecationAt,
+  getModelDeprecationNotificationTime,
   getSelectableDeprecationModels
 } from '@/pageComponents/admin/inform/modelDeprecationUtils';
 import { postCreateModelDeprecationInform } from '@/web/admin/system/inform/api';
@@ -29,7 +30,7 @@ const ModelDeprecationInformModal = ({
   const [plannedDate, setPlannedDate] = React.useState<Date>();
   const [sendExternal, setSendExternal] = React.useState(true);
   const [plannedDateBounds] = React.useState(() => getPlannedDateBounds());
-  const requestId = React.useRef<string>();
+  const request = React.useRef<{ requestId: string; notificationTime: string }>();
   const selectableModels = React.useMemo(() => getSelectableDeprecationModels(models), [models]);
   const selectedModels = selectableModels.map((model) => model.modelId);
   const { runAsync: createPlan, loading } = useRequest(postCreateModelDeprecationInform, {
@@ -58,11 +59,14 @@ const ModelDeprecationInformModal = ({
             isDisabled={!canSubmit}
             onClick={() => {
               if (!plannedDate) return;
-              requestId.current ??= nanoid();
+              request.current ??= {
+                requestId: nanoid(),
+                notificationTime: getModelDeprecationNotificationTime()
+              };
               return createPlan({
-                requestId: requestId.current,
+                ...request.current,
                 models: selectedModels,
-                plannedDeprecationAt: getUTCDateLabel(plannedDate),
+                plannedDeprecationAt: getPlannedDeprecationAt(plannedDate),
                 channels: getModelDeprecationInformChannels([
                   ModelDeprecationInformChannelEnum.inApp,
                   ...(sendExternal ? (['email_or_sms'] as const) : [])
@@ -84,10 +88,9 @@ const ModelDeprecationInformModal = ({
       <DateTimePicker
         selectedDateTime={plannedDate}
         disabled={[{ before: plannedDateBounds.min }, { after: plannedDateBounds.max }]}
-        timeZone={'UTC'}
         h={'2rem'}
         onChange={(value) => {
-          requestId.current = undefined;
+          request.current = undefined;
           setPlannedDate(value);
         }}
       />
@@ -98,7 +101,7 @@ const ModelDeprecationInformModal = ({
         <Checkbox
           isChecked={sendExternal}
           onChange={() => {
-            requestId.current = undefined;
+            request.current = undefined;
             setSendExternal((current) => !current);
           }}
         >

@@ -18,7 +18,8 @@ export const AdminInformPath: OpenAPIPath = {
   '/proApi/admin/system/inform/modelDeprecation/create': {
     post: {
       summary: '创建模型下架通知计划',
-      description: '为一组即将下架模型创建多轮通知计划',
+      description:
+        '接收带 offset 的下架截止时间和发送时间锚点，按锚点时分秒安排多轮提醒；实际下架后停止投递',
       tags: [DevApiTagsMap.adminInform],
       requestBody: {
         content: {

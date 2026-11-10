@@ -3,7 +3,8 @@ import { ModelDeprecationInformChannelEnum } from '@fastgpt/global/support/user/
 import {
   getModelDeprecationInformChannels,
   getPlannedDateBounds,
-  getUTCDateLabel,
+  getPlannedDeprecationAt,
+  getModelDeprecationNotificationTime,
   getSelectableDeprecationModels
 } from '@/pageComponents/admin/inform/modelDeprecationUtils';
 
@@ -34,17 +35,27 @@ describe('getModelDeprecationInformChannels', () => {
   });
 });
 
-describe('getUTCDateLabel', () => {
-  it('keeps the selected UTC calendar day', () => {
-    expect(getUTCDateLabel(new Date('2026-12-31T00:00:00.000Z'))).toBe('2026-12-31');
+describe('getPlannedDeprecationAt', () => {
+  it('uses the selected browser calendar day at 23:59 with an explicit offset', () => {
+    const value = getPlannedDeprecationAt(new Date(2026, 11, 31));
+    expect(value).toMatch(/^2026-12-31T23:59:00[+-]\d{2}:\d{2}$/);
+    expect(new Date(value)).toEqual(new Date(2026, 11, 31, 23, 59));
+  });
+});
+
+describe('getModelDeprecationNotificationTime', () => {
+  it('keeps the browser clock time and offset without changing the instant', () => {
+    const now = new Date(2026, 10, 10, 14, 15, 16);
+    const value = getModelDeprecationNotificationTime(now);
+    expect(value).toMatch(/^2026-11-10T14:15:16[+-]\d{2}:\d{2}$/);
+    expect(new Date(value)).toEqual(now);
   });
 });
 
 describe('getPlannedDateBounds', () => {
-  it('uses the same UTC day boundary regardless of browser timezone', () => {
-    const { min, max } = getPlannedDateBounds(new Date('2026-11-09T23:30:00.000Z'));
-
-    expect(getUTCDateLabel(min)).toBe('2026-11-10');
-    expect(getUTCDateLabel(max)).toBe('2027-02-07');
+  it('uses browser calendar dates for tomorrow and the inclusive 90-day bound', () => {
+    const { min, max } = getPlannedDateBounds(new Date(2026, 10, 9, 23, 30));
+    expect(min).toEqual(new Date(2026, 10, 10));
+    expect(max).toEqual(new Date(2027, 1, 7));
   });
 });

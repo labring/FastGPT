@@ -1,3 +1,4 @@
+import { format } from 'date-fns';
 import { ModelDeprecationInformChannelEnum } from '@fastgpt/global/support/user/inform/constants';
 
 const MAX_PLANNED_DAYS = 90;
@@ -28,21 +29,23 @@ export const getModelDeprecationInformChannels = (
       : [channel]
   );
 
-/** 将日期选择器的 UTC 日期格式化为 YYYY-MM-DD。 */
-export const getUTCDateLabel = (date: Date) =>
-  [date.getUTCFullYear(), date.getUTCMonth() + 1, date.getUTCDate()]
-    .map((value) => String(value).padStart(2, '0'))
-    .join('-');
+/** 所选日期按浏览器本地时间 23:59 截止；使用该日期的 offset，保留夏令时差异。 */
+export const getPlannedDeprecationAt = (date: Date) => {
+  const deadline = new Date(date);
+  deadline.setHours(23, 59, 0, 0);
+  return format(deadline, "yyyy-MM-dd'T'HH:mm:ssxxx");
+};
 
-/** 计算计划下架日可选范围：服务端 UTC 明天至 UTC 今天后 90 天。 */
+/** 捕获浏览器提交时的发送时间及 offset；同一幂等请求必须复用这个值。 */
+export const getModelDeprecationNotificationTime = (now = new Date()) =>
+  format(now, "yyyy-MM-dd'T'HH:mm:ssxxx");
+
+/** 计算浏览器本地日期的可选范围：明天至今天后 90 天。 */
 export const getPlannedDateBounds = (now = new Date()) => {
-  const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const min = new Date(today);
-  min.setUTCDate(min.getUTCDate() + 1);
-
+  min.setDate(min.getDate() + 1);
   const max = new Date(today);
-  max.setUTCDate(max.getUTCDate() + MAX_PLANNED_DAYS);
-
+  max.setDate(max.getDate() + MAX_PLANNED_DAYS);
   return { min, max };
 };

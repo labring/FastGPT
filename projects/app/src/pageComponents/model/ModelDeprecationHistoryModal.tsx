@@ -281,7 +281,7 @@ export const HistoryRow = ({
           <HistoryLines values={models} />
         </Td>
         <Td verticalAlign={'middle'} px={3}>
-          {item.plannedDeprecationAt}
+          {item.plannedDeprecationAt.replace('T', ' ')}
         </Td>
         <Td verticalAlign={'middle'} px={3}>
           <HistoryLines values={channels} />

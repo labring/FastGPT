@@ -36,7 +36,7 @@ routes:
   - "POST /api/core/dataset/data/index/update"
   - "POST /api/core/dataset/searchTest"
 related:
-  - "FG-DATASET-INGESTION-001"
+  - "FG-DATASET-INGESTION-002"
   - "FG-APP-MANAGEMENT-001"
 baseline: "3eca129944291a82acda9471201dccc5cb2525cf; pro=48ee04dd34d4d5b13e77ed4ce184124e491a765a"
 ---
