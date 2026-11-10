@@ -113,6 +113,7 @@ export async function parseHeaderCert({
     isRoot,
     sourceName,
     sessionId,
+    sessionCreatedAt,
     legacyAppId,
     parsedAppId,
     apiKeyAuthProxy,
@@ -151,7 +152,8 @@ export async function parseHeaderCert({
         openApiKey: '',
         authType: AuthUserTypeEnum.token,
         isRoot: res.isRoot,
-        sessionId: res.sessionId
+        sessionId: res.sessionId,
+        sessionCreatedAt: res.createdAt
       };
     }
     if (authRoot && rootkey) {
@@ -201,7 +203,8 @@ export async function parseHeaderCert({
     boundAppId,
     apikey: openApiKey,
     isRoot: !!isRoot,
-    sessionId
+    sessionId,
+    sessionCreatedAt
   };
 }
 
