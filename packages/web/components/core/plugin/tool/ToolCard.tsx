@@ -173,12 +173,15 @@ const ToolCard = ({
   return (
     <MyBox
       key={item.id}
+      h={'full'}
       {...(isMarketplaceVariant
         ? {
             px: '17px',
             pt: '17px',
             pb: '13px',
+            h: '178px',
             minH: '178px',
+            maxH: '178px',
             border: '1px solid',
             borderColor: '#DFE2EA'
           }
@@ -320,7 +323,7 @@ const ToolCard = ({
         lineHeight={isMarketplaceVariant ? '19.2px' : undefined}
         color={isMarketplaceVariant ? '#667085' : 'myGray.500'}
       >
-        <Box className={'textEllipsis2'}>
+        <Box className={'textEllipsis2'} noOfLines={2}>
           {selectPluginText(item.description, i18n.language) || t('app:templateMarket.no_intro')}
         </Box>
       </Box>

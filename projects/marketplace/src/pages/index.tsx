@@ -409,7 +409,7 @@ const ToolkitMarketplace = () => {
 
   const renderToolCard = useCallback(
     (tool: ToolCardItemType) => (
-      <Box key={tool.id} data-virtual-item="">
+      <Box key={tool.id} data-virtual-item="" h={'full'}>
         <ToolCard
           item={tool}
           mode="marketplace"
