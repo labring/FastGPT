@@ -889,7 +889,7 @@ describe('real container child workflows', () => {
       'target',
       Object.fromEntries(keys.map((key) => [key, ['container', key] as [string, string]]))
     );
-    const { result } = await runGraph({
+    const { result, responses } = await runGraph({
       nodes: [source, start, body, end, target],
       edges: [
         graphEdge({ source: 'container', target: 'target' }),
@@ -907,6 +907,10 @@ describe('real container child workflows', () => {
       ParallelRunStatusEnum.success
     );
     expect(Object.hasOwn(result, 'rawError')).toBe(false);
+    expect(result.workflowRuntimeSummary.errorCount).toBe(1);
+    const failedAttempt = responses.find((response) => response.error === 'failed task');
+    expect(failedAttempt).toBeDefined();
+    expect(failedAttempt?.errorCaptured).toBeUndefined();
   });
   it('loopRunBreak stops later iterations while preserving the current output', async () => {
     const { start, body } = containerNodes(FlowNodeTypeEnum.loopRun);
@@ -973,7 +977,7 @@ describe('real container child workflows', () => {
       values: ['container', NodeOutputKeyEnum.parallelSuccessResults],
       status: ['container', NodeOutputKeyEnum.parallelStatus]
     });
-    await runGraph({
+    const { result, responses } = await runGraph({
       nodes: [source, start, body, end, target],
       edges: [
         graphEdge({ source: 'container', target: 'target' }),
@@ -986,5 +990,10 @@ describe('real container child workflows', () => {
       status: ParallelRunStatusEnum.success
     });
     expect(codeSandbox.runCode).toHaveBeenCalledTimes(3);
+    expect(result.workflowRuntimeSummary.errorCount).toBe(0);
+    expect(result.workflowRuntimeSummary.errorText).toBeUndefined();
+    expect(responses.find((response) => response.error === 'retry once')).toMatchObject({
+      errorCaptured: true
+    });
   });
 });

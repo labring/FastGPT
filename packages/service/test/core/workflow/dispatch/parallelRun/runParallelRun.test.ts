@@ -24,6 +24,7 @@ import {
   createWorkflowRuntimeSummary,
   summarizeRuntimeNodeResponses
 } from '@fastgpt/service/core/workflow/dispatch/utils/summary';
+import { createWorkflowEntryNodeResponseSink } from '@fastgpt/service/core/workflow/dispatch/context/nodeResponse';
 
 const runWorkflowMock = vi.fn();
 
@@ -76,9 +77,10 @@ const makeNode = (): RuntimeNodeItemType =>
     outputs: []
   }) as RuntimeNodeItemType;
 
+/** 允许构造带旧 childTotalPoints 的历史响应，以验证新汇总不会重复计费。 */
 const makeResponseItem = (
   nodeId: string,
-  override: Partial<ChatHistoryItemResType> = {}
+  override: Partial<ChatHistoryItemResType> & { childTotalPoints?: number } = {}
 ): ChatHistoryItemResType =>
   ({
     id: nodeId,
@@ -168,7 +170,8 @@ describe('dispatchParallelRun', () => {
   );
 
   it('does not return an old task-local exception after a successful retry', async () => {
-    const props = makeProps();
+    const nodeResponseSink = createWorkflowEntryNodeResponseSink();
+    const props = makeProps({ nodeResponseSink });
     props.params.parallelRunMaxRetryTimes = 1;
     props.variableContext.clone.mockImplementationOnce(() => {
       throw new Error('transient state clone failure');
@@ -191,6 +194,7 @@ describe('dispatchParallelRun', () => {
     expect(Object.hasOwn(props.nodeSummary, 'error')).toBe(false);
     expect(result.data?.[NodeOutputKeyEnum.parallelStatus]).toBe(ParallelRunStatusEnum.success);
     expect(result.data?.[NodeOutputKeyEnum.parallelSuccessResults]).toEqual(['recovered']);
+    expect(nodeResponseSink.workflowRuntimeSummary.errorCount).toBe(0);
   });
 
   it.each([false, true])(
@@ -288,7 +292,9 @@ describe('dispatchParallelRun', () => {
       childResponseCount: 2,
       childrenResponses: undefined
     });
-    expect(nodeResponseSink.publish.mock.calls[0][0][0].response.childTotalPoints).toBeUndefined();
+    expect(
+      Reflect.get(nodeResponseSink.publish.mock.calls[0][0][0].response, 'childTotalPoints')
+    ).toBeUndefined();
     expect(nodeResponseSink.publish.mock.calls[0][0][0].response.totalPoints).toBeUndefined();
     expect(nodeResponse.totalPoints).toBeUndefined();
     expect(props.nodeSummary.totalPoints).toBe(3);

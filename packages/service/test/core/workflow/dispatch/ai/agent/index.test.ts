@@ -12,9 +12,11 @@ import { UserConfigError } from '@fastgpt/global/common/error/utils';
 import { getRunningSandboxId } from '@fastgpt/service/core/ai/sandbox/utils/id';
 import { getSandboxRuntimeProfile } from '@fastgpt/service/core/ai/sandbox/application/runtime';
 import { createNodeSummary } from '@fastgpt/service/core/workflow/dispatch/utils/summary';
-import { runWithTestWorkflowContext as runWithWorkflowContext } from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
-import { createTestWorkflowFileContext } from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
-import { runTestWorkflowDispatch } from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
+import {
+  createTestWorkflowFileContext,
+  runTestWorkflowDispatch,
+  runWithTestWorkflowContext as runWithWorkflowContext
+} from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
 import { WorkflowMemoryContext } from '@fastgpt/service/core/workflow/dispatch/context/memory';
 import { dispatchRunAgent as dispatchRunAgentWithoutContext } from '@fastgpt/service/core/workflow/dispatch/ai/agent';
 import { Readable } from 'node:stream';
@@ -34,9 +36,8 @@ const dispatchRunAgent = (
   );
 
 const runWithContext = <T>(
-  value: Omit<Parameters<typeof runWithWorkflowContext>[0], 'fileContext'> & {
-    fileContext?: Parameters<typeof runWithWorkflowContext>[0]['fileContext'];
-  },
+  value: Omit<Parameters<typeof runWithWorkflowContext>[0], 'fileContext' | 'checkIsStopping'> &
+    Partial<Pick<Parameters<typeof runWithWorkflowContext>[0], 'fileContext' | 'checkIsStopping'>>,
   fn: (ctx: Parameters<typeof runWithWorkflowContext>[0]) => T
 ): T =>
   runWithWorkflowContext(
@@ -138,15 +139,6 @@ vi.mock('@fastgpt/service/core/ai/llm/agentLoop/interface', async (importOrigina
 vi.mock('@fastgpt/service/core/workflow/dispatch/ai/agent/sub/tool/utils', () => ({
   getAgentRuntimeTools: getAgentRuntimeToolsMock
 }));
-
-vi.mock('@fastgpt/service/core/ai/skill/runtime', async (importOriginal) => {
-  const original = await importOriginal<typeof import('@fastgpt/service/core/ai/skill/runtime')>();
-  return {
-    ...original,
-    getAgentSkillInfos: getAgentSkillInfosMock,
-    injectAgentSkillFilesToSandbox: injectAgentSkillFilesToSandboxMock
-  };
-});
 
 vi.mock('@fastgpt/service/core/ai/sandbox/application/runtime', async (importOriginal) => {
   const original =
@@ -434,9 +426,6 @@ describe('dispatchRunAgent user context', () => {
     let result: any;
     runWithContext(
       {
-        fileContext: await createTestWorkflowFileContext(),
-
-        checkIsStopping: () => false,
         mcpClientMemory: {}
       },
       () => {
@@ -477,8 +466,6 @@ describe('dispatchRunAgent user context', () => {
     let result: any;
     runWithContext(
       {
-        fileContext: await createTestWorkflowFileContext(),
-        checkIsStopping: () => false,
         mcpClientMemory: {}
       },
       () => {
@@ -527,8 +514,6 @@ describe('dispatchRunAgent user context', () => {
     let resultPromise: Promise<any>;
     runWithContext(
       {
-        fileContext: await createTestWorkflowFileContext(),
-        checkIsStopping: () => false,
         mcpClientMemory: {}
       },
       () => {
@@ -549,8 +534,6 @@ describe('dispatchRunAgent user context', () => {
     let resultPromise: Promise<any>;
     runWithContext(
       {
-        fileContext: await createTestWorkflowFileContext(),
-        checkIsStopping: () => false,
         mcpClientMemory: {}
       },
       () => {
@@ -593,8 +576,6 @@ describe('dispatchRunAgent user context', () => {
     let result: any;
     runWithContext(
       {
-        fileContext: await createTestWorkflowFileContext(),
-        checkIsStopping: () => false,
         mcpClientMemory: {}
       },
       () => {
@@ -661,9 +642,6 @@ describe('dispatchRunAgent user context', () => {
 
     const result = await runWithContext(
       {
-        fileContext: await createTestWorkflowFileContext(),
-
-        checkIsStopping: () => false,
         mcpClientMemory: {}
       },
       () => dispatchRunAgent(props)
@@ -694,9 +672,6 @@ describe('dispatchRunAgent user context', () => {
     let resultPromise: Promise<any> | undefined;
     runWithContext(
       {
-        fileContext: await createTestWorkflowFileContext(),
-
-        checkIsStopping: () => false,
         mcpClientMemory: {}
       },
       () => {
@@ -735,8 +710,6 @@ describe('dispatchRunAgent user context', () => {
     let resultPromise: Promise<any> | undefined;
     runWithContext(
       {
-        fileContext: await createTestWorkflowFileContext(),
-        checkIsStopping: () => false,
         mcpClientMemory: {}
       },
       () => {
@@ -767,8 +740,6 @@ describe('dispatchRunAgent user context', () => {
     let result: any;
     runWithContext(
       {
-        fileContext: await createTestWorkflowFileContext(),
-        checkIsStopping: () => false,
         mcpClientMemory: {}
       },
       () => {
@@ -834,8 +805,6 @@ describe('dispatchRunAgent user context', () => {
     let resultPromise: Promise<any>;
     runWithContext(
       {
-        fileContext: await createTestWorkflowFileContext(),
-        checkIsStopping: () => false,
         mcpClientMemory: {}
       },
       () => {
@@ -880,9 +849,6 @@ describe('dispatchRunAgent user context', () => {
       let resultPromise: Promise<any>;
       runWithContext(
         {
-          checkIsStopping: () => false,
-          fileContext: await createTestWorkflowFileContext(),
-
           mcpClientMemory: {}
         },
         () => {
@@ -1100,8 +1066,6 @@ describe('dispatchRunAgent user context', () => {
     let resultPromise: Promise<any>;
     runWithContext(
       {
-        fileContext: await createTestWorkflowFileContext(),
-        checkIsStopping: () => false,
         mcpClientMemory: {},
         nodeResponseSink
       },
@@ -1142,8 +1106,6 @@ describe('dispatchRunAgent user context', () => {
     let resultPromise: Promise<any>;
     runWithContext(
       {
-        fileContext: await createTestWorkflowFileContext(),
-        checkIsStopping: () => false,
         mcpClientMemory: {}
       },
       () => {
@@ -1189,8 +1151,6 @@ describe('dispatchRunAgent user context', () => {
     let resultPromise: Promise<any>;
     runWithContext(
       {
-        fileContext: await createTestWorkflowFileContext(),
-        checkIsStopping: () => false,
         mcpClientMemory: {}
       },
       () => {
@@ -1281,8 +1241,6 @@ describe('dispatchRunAgent user context', () => {
     let resultPromise: Promise<any>;
     runWithContext(
       {
-        fileContext: await createTestWorkflowFileContext(),
-        checkIsStopping: () => false,
         mcpClientMemory: {}
       },
       () => {
@@ -1385,6 +1343,8 @@ describe('dispatchRunAgent user context', () => {
     const scopedMemoryKey = 'node:parent_toolcall/app:app_1:agent_node';
     expect(turn1Result[DispatchNodeResponseKeyEnum.interactive]).toEqual(askInteractive);
     expect(turn1Result[DispatchNodeResponseKeyEnum.memories]).toHaveProperty(scopedMemoryKey);
+    const turn1AssistantResponses = turn1Result[DispatchNodeResponseKeyEnum.assistantResponses];
+    if (!turn1AssistantResponses) throw new Error('Expected first-turn assistant responses');
 
     // Turn 2: 父流程落库后将子 Agent 输出标为 displayOnly，通过 memoryContext 恢复子 Agent 自身 transcript
     const turn2Props = createProps();
@@ -1417,7 +1377,7 @@ describe('dispatchRunAgent user context', () => {
               }
             ]
           },
-          ...turn1Result[DispatchNodeResponseKeyEnum.assistantResponses].map((item: any) => ({
+          ...turn1AssistantResponses.map((item: any) => ({
             ...item,
             displayOnly: true
           }))
@@ -1469,12 +1429,12 @@ describe('dispatchRunAgent user context', () => {
         })
       ])
     );
-    expect(turn2Result.data.answerText).toBe('先确认一下方向。子任务完成：技术架构介绍');
+    expect(turn2Result.data?.answerText).toBe('先确认一下方向。子任务完成：技术架构介绍');
     expect(turn2Result[DispatchNodeResponseKeyEnum.toolResponse]).toBe(
       '先确认一下方向。子任务完成：技术架构介绍'
     );
     expect(
-      turn2Result[DispatchNodeResponseKeyEnum.assistantResponses].filter((item: any) => item.text)
+      turn2Result[DispatchNodeResponseKeyEnum.assistantResponses]?.filter((item: any) => item.text)
     ).toEqual([
       {
         text: {
@@ -1612,8 +1572,6 @@ describe('dispatchRunAgent user context', () => {
     let resultPromise: Promise<any>;
     runWithContext(
       {
-        fileContext: await createTestWorkflowFileContext(),
-        checkIsStopping: () => false,
         mcpClientMemory: {}
       },
       () => {
@@ -1723,8 +1681,6 @@ describe('dispatchRunAgent user context', () => {
 
     await runWithContext(
       {
-        checkIsStopping: () => false,
-        fileContext: await createTestWorkflowFileContext(),
         mcpClientMemory: {}
       },
       () => dispatchRunAgent(props)
@@ -1755,8 +1711,6 @@ describe('dispatchRunAgent user context', () => {
     let resultPromise: Promise<any>;
     runWithContext(
       {
-        fileContext: await createTestWorkflowFileContext(),
-        checkIsStopping: () => false,
         mcpClientMemory: {}
       },
       () => {
@@ -1805,8 +1759,6 @@ describe('dispatchRunAgent user context', () => {
     let promise: any;
     runWithContext(
       {
-        fileContext: await createTestWorkflowFileContext(),
-        checkIsStopping: () => false,
         mcpClientMemory: {}
       },
       () => {
@@ -1839,8 +1791,6 @@ describe('dispatchRunAgent user context', () => {
     let promise: Promise<any>;
     runWithContext(
       {
-        fileContext: await createTestWorkflowFileContext(),
-        checkIsStopping: () => false,
         mcpClientMemory: {}
       },
       () => {

@@ -505,7 +505,7 @@ describe('runWithDerivedWorkflowFileContext', () => {
     );
   });
 
-  it('deduplicates child inputs before silently enforcing the workflow file limit', async () => {
+  it('deduplicates child inputs and keeps scoped registration stable when enforcing the file limit', async () => {
     const getPreviewUrl = vi.fn(async (key: string) => `https://files.example.com/${key}`);
     const queryFile = createFile({ key: privateKey });
     const { fileContext, query } = await prepareWorkflowFileContext({
@@ -519,8 +519,10 @@ describe('runWithDerivedWorkflowFileContext', () => {
     await runWithContext({ checkIsStopping: () => false, mcpClientMemory: {}, fileContext }, () =>
       runWithDerivedWorkflowFileContext({
         files: [query[0].file!.url, query[0].file!.url],
-        fn: async () => {
-          const acceptedRef = await getWorkflowContext().fileContext.register({
+        fn: async ({ filterFiles }) => {
+          const childContext = getWorkflowContext().fileContext;
+          const register = childContext.register;
+          const acceptedRef = await register({
             file: {
               url: 'https://external.example.com/accepted.pdf',
               name: 'accepted.pdf',
@@ -528,7 +530,7 @@ describe('runWithDerivedWorkflowFileContext', () => {
             },
             source: 'interactive'
           });
-          const overflowRef = await getWorkflowContext().fileContext.register({
+          const overflowRef = await register({
             file: {
               url: 'https://external.example.com/overflow.pdf',
               name: 'overflow.pdf',
@@ -539,12 +541,21 @@ describe('runWithDerivedWorkflowFileContext', () => {
 
           expect(acceptedRef).toBeDefined();
           expect(overflowRef).toBeUndefined();
+          expect(getWorkflowContext().fileContext).toBe(childContext);
+          expect(childContext.register).toBe(register);
+          expect(childContext.resolve('https://external.example.com/accepted.pdf')).toBe(
+            acceptedRef
+          );
+          expect(fileContext.resolve('https://external.example.com/accepted.pdf')).toBe(
+            acceptedRef
+          );
+          expect(childContext.resolve('https://external.example.com/overflow.pdf')).toBeUndefined();
           expect(
-            getWorkflowFileContext()?.resolve('https://external.example.com/accepted.pdf')
-          ).toBe(acceptedRef);
-          expect(
-            getWorkflowFileContext()?.resolve('https://external.example.com/overflow.pdf')
-          ).toBeUndefined();
+            filterFiles([
+              'https://external.example.com/accepted.pdf',
+              'https://external.example.com/overflow.pdf'
+            ])
+          ).toEqual(['https://external.example.com/accepted.pdf']);
         }
       })
     );
@@ -735,49 +746,6 @@ describe('runWithDerivedWorkflowFileContext', () => {
         }
       })
     );
-  });
-
-  it('registration keeps the child Context reference and scoped capability stable', async () => {
-    const getPreviewUrl = vi.fn(async () => 'https://signed.example.com/new-input.pdf');
-    const { fileContext } = await prepareWorkflowFileContext({
-      query: [],
-      histories: [],
-      scope,
-      maxFileAmount: 1,
-      getPreviewUrl
-    });
-
-    await runWithContext({ checkIsStopping: () => false, mcpClientMemory: {}, fileContext }, () =>
-      runWithDerivedWorkflowFileContext({
-        files: [],
-        fn: async ({ filterFiles }) => {
-          const childContext = getWorkflowContext().fileContext;
-          const register = childContext.register;
-          const ref = await register({
-            file: { key: privateKey, name: 'report.pdf', type: ChatFileTypeEnum.file },
-            source: 'interactive'
-          });
-
-          expect(ref).toBeDefined();
-          expect(getWorkflowContext().fileContext).toBe(childContext);
-          expect(childContext.register).toBe(register);
-          expect(childContext.resolve(ref!.modelUrl)).toBe(ref);
-          expect(filterFiles([ref!.modelUrl])).toEqual([ref!.modelUrl]);
-          expect(fileContext.resolve(ref!.modelUrl)).toBe(ref);
-          await expect(
-            register({
-              file: {
-                key: 'chat/app/app-1/user-1/chat-1/overflow.pdf',
-                name: 'overflow.pdf',
-                type: ChatFileTypeEnum.file
-              },
-              source: 'interactive'
-            })
-          ).resolves.toBeUndefined();
-        }
-      })
-    );
-    expect(getPreviewUrl).toHaveBeenCalledTimes(1);
   });
 
   it('normalizes child query and history using its registered classifications', async () => {

@@ -134,7 +134,7 @@ export type PreparedWorkflowFileContext = {
  * 通过实际接收者读取当前登记表和限额，不依赖 AsyncLocalStorage；派生、装饰后的 Context
  * 仍使用自身权限范围。保留批次显式额度，不在能力迁移时额外改变准入规则。
  */
-const workflowFileOperations: Pick<WorkflowFileContext, 'readBuffer' | 'prepareFiles'> = {
+const fileOperations: Pick<WorkflowFileContext, 'readBuffer' | 'prepareFiles' | 'derive'> = {
   async readBuffer(this: WorkflowFileContext, { url, signal = new AbortController().signal }) {
     const ref = this.resolve(url);
     const sourceResult = ref
@@ -155,6 +155,9 @@ const workflowFileOperations: Pick<WorkflowFileContext, 'readBuffer' | 'prepareF
       fileContext: this,
       allowDataUrl
     });
+  },
+  derive(this: WorkflowFileContext, files) {
+    return createDerivedWorkflowFileContext({ parent: this, files });
   }
 };
 
@@ -301,7 +304,7 @@ const createDerivedWorkflowFileContext = async ({
   const fileContext: WorkflowFileContext = {
     limits: parent.limits,
     ...registry.context,
-    ...workflowFileOperations,
+    ...fileOperations,
     register: (params) => {
       // 同一 Child 的额度检查和新增登记串行执行，避免并发输入同时占用最后一个名额。
       const registration = registrationQueue.then(async () => {
@@ -348,9 +351,6 @@ const createDerivedWorkflowFileContext = async ({
         }),
         sourceKind: 'external'
       };
-    },
-    derive(childFiles) {
-      return createDerivedWorkflowFileContext({ parent: this, files: childFiles });
     }
   };
 
@@ -599,11 +599,8 @@ export const prepareWorkflowFileContext = async ({
     limits,
     register: registerInputFile,
     ...registry.context,
-    ...workflowFileOperations,
-    getSource,
-    derive(files) {
-      return createDerivedWorkflowFileContext({ parent: this, files });
-    }
+    ...fileOperations,
+    getSource
   };
 
   const preparedQuery: UserChatItemValueItemType[] = await Promise.all(
