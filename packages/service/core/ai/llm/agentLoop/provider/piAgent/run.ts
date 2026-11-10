@@ -245,8 +245,10 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
   const completeMessages: ChatCompletionMessageParam[] = [
     ...(standardAskResumeMessages ?? input.messages)
   ];
-  /** 标准历史、隐藏展示消息和运行事件共用同一条服务端 User 指令。 */
-  const recordContinuationMessage = (content: string): ChatCompletionMessageParam => {
+  /** 同步核对取消、暂停和工具停止；终止后不能写入续跑历史或事件，不等待取消轮询。 */
+  const recordContinuationMessage = (content: string): ChatCompletionMessageParam | undefined => {
+    if (pendingAsk || pendingToolChild || pendingToolStop || runtime.checkIsStopping?.()) return;
+
     const message: ChatCompletionMessageParam = {
       role: ChatCompletionRequestMessageRoleEnum.User,
       content,
@@ -474,6 +476,7 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
       // 工具全部执行完后才进入下一次请求，在此追加 User，保持工具结果的完整配对。
       for (const content of toolContinuationMessages.splice(0)) {
         const message = recordContinuationMessage(content);
+        if (!message) break;
         const nextMessages = [
           ...messages,
           ...convertChatMessagesToPiAgentMessages({ messages: [message], model: piModel })
@@ -761,7 +764,7 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
         break;
       }
 
-      recordContinuationMessage(decision.message);
+      if (!recordContinuationMessage(decision.message)) break;
       await runAgent(() => agent.prompt(decision.message));
     }
   } catch (error) {
