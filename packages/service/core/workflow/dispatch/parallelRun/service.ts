@@ -261,6 +261,9 @@ export const aggregateParallelResults = (
 ): AggregatedParallelResults => {
   // Sort by input index so all output arrays are in input order
   const sorted = [...taskResults].sort((a, b) => a.index - b.index);
+  const successfulTaskIndexes = new Set(
+    sorted.filter((result) => result.success).map(({ index }) => index)
+  );
 
   const filteredArray: any[] = [];
   const fullResultsArray: ParallelFullResultItem[] = [];
@@ -273,13 +276,15 @@ export const aggregateParallelResults = (
       if (a.index !== b.index) return a.index - b.index;
       return (a.taskResponseId || '').localeCompare(b.taskResponseId || '');
     })
-    .map((result) =>
-      buildParallelTaskWrapper({
+    .map((result) => ({
+      ...buildParallelTaskWrapper({
         result,
         input: opts.taskInputs[result.index],
         parentNodeId: opts.parentNodeId
-      })
-    );
+      }),
+      // 重试已恢复的失败只保留详情，不能把最终成功的工作流标记成失败。
+      ...(!result.success && successfulTaskIndexes.has(result.index) ? { errorCaptured: true } : {})
+    }));
   const assistantResponses: AIChatItemValueItemType[] = [];
   const customFeedbacks: string[] = [];
 

@@ -72,16 +72,14 @@ import {
 } from '@fastgpt/service/core/workflow/dispatch/context/resource';
 
 /** 资源单测仍补齐真实文件 Context，不降低生产节点对完整运行依赖的要求。 */
-const runWithContext = async <T>(
-  value: Pick<
-    Parameters<typeof runWithTestWorkflowContext>[0],
-    'mcpClientMemory' | 'resourceContext'
-  >,
+const runWithResourceContext = async <T>(
+  resourceContext: Parameters<typeof runWithTestWorkflowContext>[0]['resourceContext'],
   fn: () => T
 ): Promise<Awaited<T>> =>
   await runWithTestWorkflowContext(
     {
-      ...value,
+      resourceContext,
+      mcpClientMemory: {},
       checkIsStopping: () => false,
       fileContext: await createTestWorkflowFileContext()
     },
@@ -167,31 +165,18 @@ describe('workflow resource context', () => {
     expect(mocks.mongoDatasetFind).not.toHaveBeenCalled();
     expect(mocks.mongoDatasetFindOne).not.toHaveBeenCalled();
 
-    const childContext = await runWithContext(
-      {
-        checkIsStopping: () => false,
-        fileContext: await createTestWorkflowFileContext(),
-        mcpClientMemory: {},
-        resourceContext: rootContext
-      },
-      () =>
-        createWorkflowResourceContext({
-          resources: [{ type: 'dataset', id: 'dataset-2' }],
-          teamId: 'child-team'
-        })
+    const childContext = await runWithResourceContext(rootContext, () =>
+      createWorkflowResourceContext({
+        resources: [{ type: 'dataset', id: 'dataset-2' }],
+        teamId: 'child-team'
+      })
     );
 
     expect(childContext.isRoot).toBe(true);
 
     // root 身份继续传递，但读取快照仍按子工作流团队过滤。
-    await runWithContext(
-      {
-        checkIsStopping: () => false,
-        fileContext: await createTestWorkflowFileContext(),
-        mcpClientMemory: {},
-        resourceContext: childContext
-      },
-      () => loadWorkflowDatasetResource({ datasetId: 'dataset-2' })
+    await runWithResourceContext(childContext, () =>
+      loadWorkflowDatasetResource({ datasetId: 'dataset-2' })
     );
 
     expect(mocks.mongoDatasetFind).toHaveBeenCalledWith({
@@ -205,42 +190,34 @@ describe('workflow resource context', () => {
     const modelResource = { type: 'model' as const, id: 'model-1' };
     const context = createWorkflowResourceContext({ resources: [modelResource] });
 
-    await runWithContext(
-      {
-        checkIsStopping: () => false,
-        fileContext: await createTestWorkflowFileContext(),
-        mcpClientMemory: {},
-        resourceContext: context
-      },
-      async () => {
-        await expect(
-          loadWorkflowModelResource({
-            modelId: 'model-1',
-            appTeamId: 'team-1',
-            userInfo: { teamId: 'team-1', tmbId: 'tmb-1' }
-          })
-        ).resolves.toMatchObject({ modelId: 'model-1' });
-        expect(mocks.assertAuthModels).not.toHaveBeenCalled();
+    await runWithResourceContext(context, async () => {
+      await expect(
+        loadWorkflowModelResource({
+          modelId: 'model-1',
+          appTeamId: 'team-1',
+          userInfo: { teamId: 'team-1', tmbId: 'tmb-1' }
+        })
+      ).resolves.toMatchObject({ modelId: 'model-1' });
+      expect(mocks.assertAuthModels).not.toHaveBeenCalled();
 
-        // legacy model 命中快照时直接放行
-        await expect(
-          loadWorkflowModelResource({
-            model: 'legacy-hit',
-            appTeamId: 'team-1',
-            userInfo: { teamId: 'team-1', tmbId: 'tmb-1' }
-          })
-        ).resolves.toMatchObject({ modelId: 'model-1' });
-        expect(mocks.assertAuthModels).not.toHaveBeenCalled();
+      // legacy model 命中快照时直接放行
+      await expect(
+        loadWorkflowModelResource({
+          model: 'legacy-hit',
+          appTeamId: 'team-1',
+          userInfo: { teamId: 'team-1', tmbId: 'tmb-1' }
+        })
+      ).resolves.toMatchObject({ modelId: 'model-1' });
+      expect(mocks.assertAuthModels).not.toHaveBeenCalled();
 
-        await expect(
-          loadWorkflowModelResource({
-            modelId: 'missing-model',
-            appTeamId: 'team-1',
-            userInfo: { teamId: 'team-1', tmbId: 'tmb-1' }
-          })
-        ).resolves.toMatchObject({ modelId: 'missing-model' });
-      }
-    );
+      await expect(
+        loadWorkflowModelResource({
+          modelId: 'missing-model',
+          appTeamId: 'team-1',
+          userInfo: { teamId: 'team-1', tmbId: 'tmb-1' }
+        })
+      ).resolves.toMatchObject({ modelId: 'missing-model' });
+    });
 
     expect(mocks.assertAuthModels).toHaveBeenCalledExactlyOnceWith({
       actor: { teamId: 'team-1', tmbId: 'tmb-1', isRoot: false },
@@ -260,17 +237,10 @@ describe('workflow resource context', () => {
       isRoot: true
     });
     mocks.mongoDatasetFind.mockReturnValueOnce(createFindResult([{ _id: 'local' }]));
-    await runWithContext(
-      {
-        checkIsStopping: () => false,
-        fileContext: await createTestWorkflowFileContext(),
-        mcpClientMemory: {},
-        resourceContext: context
-      },
-      () =>
-        expect(
-          loadWorkflowDatasetResource({ datasetId: 'local', datasetIds: ['local', 'foreign'] })
-        ).rejects.toBe(DatasetErrEnum.unExist)
+    await runWithResourceContext(context, () =>
+      expect(
+        loadWorkflowDatasetResource({ datasetId: 'local', datasetIds: ['local', 'foreign'] })
+      ).rejects.toBe(DatasetErrEnum.unExist)
     );
     expect(mocks.mongoDatasetFind).toHaveBeenCalledWith({
       _id: { $in: ['local', 'foreign'] },
@@ -291,22 +261,14 @@ describe('workflow resource context', () => {
     mocks.authDatasetByTmbId.mockResolvedValueOnce({
       dataset: { _id: 'foreign', teamId: 'other-team' }
     });
-    await runWithContext(
-      {
-        checkIsStopping: () => false,
-        fileContext: await createTestWorkflowFileContext(),
-        mcpClientMemory: {},
-        resourceContext: context
-      },
-      async () => {
-        await expect(
-          loadWorkflowDatasetResource({ datasetId: 'local', tmbId: 'root' })
-        ).resolves.toMatchObject({ _id: 'local' });
-        await expect(
-          loadWorkflowDatasetResource({ datasetId: 'foreign', tmbId: 'root' })
-        ).rejects.toBe(DatasetErrEnum.unAuthDataset);
-      }
-    );
+    await runWithResourceContext(context, async () => {
+      await expect(
+        loadWorkflowDatasetResource({ datasetId: 'local', tmbId: 'root' })
+      ).resolves.toMatchObject({ _id: 'local' });
+      await expect(
+        loadWorkflowDatasetResource({ datasetId: 'foreign', tmbId: 'root' })
+      ).rejects.toBe(DatasetErrEnum.unAuthDataset);
+    });
     expect(mocks.authDatasetByTmbId).toHaveBeenCalledWith(
       expect.objectContaining({ isRoot: true })
     );
@@ -333,29 +295,15 @@ describe('workflow resource context', () => {
       userInfo: { teamId: 'current-team', tmbId: 'root' },
       fallbackToDefault: true as const
     };
-    await runWithContext(
-      {
-        checkIsStopping: () => false,
-        fileContext: await createTestWorkflowFileContext(),
-        mcpClientMemory: {},
-        resourceContext: context
-      },
-      () =>
-        expect(loadWorkflowModelResource(args)).rejects.toMatchObject({
-          message: ModelErrEnum.unAuthModel
-        })
+    await runWithResourceContext(context, () =>
+      expect(loadWorkflowModelResource(args)).rejects.toMatchObject({
+        message: ModelErrEnum.unAuthModel
+      })
     );
     expect(handle.getDefaultModelData).not.toHaveBeenCalled();
     const systemContext = createWorkflowResourceContext({ resources, isRoot: true });
-    await runWithContext(
-      {
-        checkIsStopping: () => false,
-        fileContext: await createTestWorkflowFileContext(),
-        mcpClientMemory: {},
-        resourceContext: systemContext
-      },
-      () =>
-        expect(loadWorkflowModelResource(args)).resolves.toMatchObject({ modelId: 'foreign-model' })
+    await runWithResourceContext(systemContext, () =>
+      expect(loadWorkflowModelResource(args)).resolves.toMatchObject({ modelId: 'foreign-model' })
     );
   });
 
@@ -375,47 +323,31 @@ describe('workflow resource context', () => {
         teamId: root.teamId,
         isRoot: true
       });
-      await runWithContext(
-        {
-          checkIsStopping: () => false,
-          fileContext: await createTestWorkflowFileContext(),
-          mcpClientMemory: {},
-          resourceContext: context
-        },
-        () => {
-          const loaded = loadWorkflowAppResource({
-            appId: resource.id,
-            type: 'tool',
-            tmbId: root.tmbId
-          });
-          return snapshot
-            ? expect(loaded).rejects.toBeInstanceOf(WorkflowResourceError)
-            : expect(loaded).rejects.toBe(AppErrEnum.unAuthApp);
-        }
-      );
+      await runWithResourceContext(context, () => {
+        const loaded = loadWorkflowAppResource({
+          appId: resource.id,
+          type: 'tool',
+          tmbId: root.tmbId
+        });
+        return snapshot
+          ? expect(loaded).rejects.toBeInstanceOf(WorkflowResourceError)
+          : expect(loaded).rejects.toBe(AppErrEnum.unAuthApp);
+      });
     }
   });
 
   it('authorizes legacy model references against member permissions when snapshot misses', async () => {
     const context = createWorkflowResourceContext({ resources: [] });
 
-    await runWithContext(
-      {
-        checkIsStopping: () => false,
-        fileContext: await createTestWorkflowFileContext(),
-        mcpClientMemory: {},
-        resourceContext: context
-      },
-      async () => {
-        await expect(
-          loadWorkflowModelResource({
-            model: 'legacy-llm',
-            appTeamId: 'team-1',
-            userInfo: { teamId: 'team-1', tmbId: 'tmb-1' }
-          })
-        ).resolves.toMatchObject({ modelId: 'model-1' });
-      }
-    );
+    await runWithResourceContext(context, async () => {
+      await expect(
+        loadWorkflowModelResource({
+          model: 'legacy-llm',
+          appTeamId: 'team-1',
+          userInfo: { teamId: 'team-1', tmbId: 'tmb-1' }
+        })
+      ).resolves.toMatchObject({ modelId: 'model-1' });
+    });
 
     expect(mocks.assertAuthModels).toHaveBeenCalledExactlyOnceWith({
       actor: { teamId: 'team-1', tmbId: 'tmb-1', isRoot: false },
@@ -479,34 +411,26 @@ describe('workflow resource context', () => {
       teamId: 'app-team'
     });
 
-    await runWithContext(
-      {
-        checkIsStopping: () => false,
-        fileContext: await createTestWorkflowFileContext(),
-        mcpClientMemory: {},
-        resourceContext: context
-      },
-      async () => {
-        // 命中子应用快照的模型按 appTeamId 目录放行，不触发运行人鉴权
-        await expect(
-          loadWorkflowModelResource({
-            modelId: 'snapshot-model',
-            appTeamId: 'app-team',
-            userInfo: { teamId: 'runner-team', tmbId: 'runner-tmb' }
-          })
-        ).resolves.toMatchObject({ modelId: 'snapshot-model' });
-        expect(mocks.assertAuthModels).not.toHaveBeenCalled();
+    await runWithResourceContext(context, async () => {
+      // 命中子应用快照的模型按 appTeamId 目录放行，不触发运行人鉴权
+      await expect(
+        loadWorkflowModelResource({
+          modelId: 'snapshot-model',
+          appTeamId: 'app-team',
+          userInfo: { teamId: 'runner-team', tmbId: 'runner-tmb' }
+        })
+      ).resolves.toMatchObject({ modelId: 'snapshot-model' });
+      expect(mocks.assertAuthModels).not.toHaveBeenCalled();
 
-        // 未命中快照的模型必须使用 runner-team 与 runnerHandle 鉴权，拒绝未授权模型
-        await expect(
-          loadWorkflowModelResource({
-            modelId: 'restricted-system-model',
-            appTeamId: 'app-team',
-            userInfo: { teamId: 'runner-team', tmbId: 'runner-tmb' }
-          })
-        ).rejects.toMatchObject({ message: ModelErrEnum.unAuthModel });
-      }
-    );
+      // 未命中快照的模型必须使用 runner-team 与 runnerHandle 鉴权，拒绝未授权模型
+      await expect(
+        loadWorkflowModelResource({
+          modelId: 'restricted-system-model',
+          appTeamId: 'app-team',
+          userInfo: { teamId: 'runner-team', tmbId: 'runner-tmb' }
+        })
+      ).rejects.toMatchObject({ message: ModelErrEnum.unAuthModel });
+    });
 
     expect(mocks.assertAuthModels).toHaveBeenCalledExactlyOnceWith({
       actor: { teamId: 'runner-team', tmbId: 'runner-tmb', isRoot: false },
@@ -527,35 +451,27 @@ describe('workflow resource context', () => {
     });
     mocks.assertAuthModels.mockRejectedValueOnce(new UserError(ModelErrEnum.unAuthModel));
 
-    await runWithContext(
-      {
-        checkIsStopping: () => false,
-        fileContext: await createTestWorkflowFileContext(),
-        mcpClientMemory: {},
-        resourceContext: context
-      },
-      async () => {
-        await expect(
-          loadWorkflowModelResource({
-            modelId: 'deleted-static-model',
-            type: 'rerank',
-            fallbackToDefault: true,
-            appTeamId: 'team-1',
-            userInfo: { teamId: 'team-1', tmbId: 'tmb-1' }
-          })
-        ).resolves.toMatchObject({ modelId: 'default-rerank' });
+    await runWithResourceContext(context, async () => {
+      await expect(
+        loadWorkflowModelResource({
+          modelId: 'deleted-static-model',
+          type: 'rerank',
+          fallbackToDefault: true,
+          appTeamId: 'team-1',
+          userInfo: { teamId: 'team-1', tmbId: 'tmb-1' }
+        })
+      ).resolves.toMatchObject({ modelId: 'default-rerank' });
 
-        await expect(
-          loadWorkflowModelResource({
-            modelId: 'unauthorized-runtime-model',
-            type: 'rerank',
-            fallbackToDefault: true,
-            appTeamId: 'team-1',
-            userInfo: { teamId: 'team-1', tmbId: 'tmb-1' }
-          })
-        ).rejects.toMatchObject({ message: ModelErrEnum.unAuthModel });
-      }
-    );
+      await expect(
+        loadWorkflowModelResource({
+          modelId: 'unauthorized-runtime-model',
+          type: 'rerank',
+          fallbackToDefault: true,
+          appTeamId: 'team-1',
+          userInfo: { teamId: 'team-1', tmbId: 'tmb-1' }
+        })
+      ).rejects.toMatchObject({ message: ModelErrEnum.unAuthModel });
+    });
   });
 
   it('system tool context extracts static resources into snapshot and authorizes undeclared resources by member', async () => {
@@ -586,14 +502,8 @@ describe('workflow resource context', () => {
         ]
       }
     ] as any;
-    const context = await runWithContext(
-      {
-        checkIsStopping: () => false,
-        fileContext: await createTestWorkflowFileContext(),
-        mcpClientMemory: {},
-        resourceContext: rootContext
-      },
-      () => createSystemToolResourceContext({ nodes: systemNodes })
+    const context = await runWithResourceContext(rootContext, () =>
+      createSystemToolResourceContext({ nodes: systemNodes })
     );
     expect(context).toMatchObject({ isRoot: true });
     expect(context.teamId).toBeUndefined();
@@ -601,41 +511,33 @@ describe('workflow resource context', () => {
     expect(hasWorkflowResource({ context, type: 'dataset', id: 'dataset-2' })).toBe(true);
     expect(hasWorkflowResource({ context, type: 'model', id: 'dynamic-model' })).toBe(false);
 
-    await runWithContext(
-      {
-        checkIsStopping: () => false,
-        fileContext: await createTestWorkflowFileContext(),
-        mcpClientMemory: {},
-        resourceContext: context
-      },
-      async () => {
-        // 命中静态快照的模型不按运行人鉴权。
-        await loadWorkflowModelResource({
-          modelId: 'static-model-1',
-          appTeamId: 'team-1',
-          userInfo: { teamId: 'team-1', tmbId: 'tmb-1' }
-        });
-        expect(mocks.assertAuthModels).not.toHaveBeenCalled();
+    await runWithResourceContext(context, async () => {
+      // 命中静态快照的模型不按运行人鉴权。
+      await loadWorkflowModelResource({
+        modelId: 'static-model-1',
+        appTeamId: 'team-1',
+        userInfo: { teamId: 'team-1', tmbId: 'tmb-1' }
+      });
+      expect(mocks.assertAuthModels).not.toHaveBeenCalled();
 
-        // 命中静态快照的知识库按 ID 直接读取，且因无 teamId 跳过团队限制。
-        await loadWorkflowDatasetResource({ datasetId: 'dataset-2' });
-        expect(mocks.mongoDatasetFind).toHaveBeenCalledWith({
-          _id: { $in: ['dataset-2'] },
-          deleteTime: null
-        });
+      // 命中静态快照的知识库按 ID 直接读取，且因无 teamId 跳过团队限制。
+      await loadWorkflowDatasetResource({ datasetId: 'dataset-2' });
+      expect(mocks.mongoDatasetFind).toHaveBeenCalledWith({
+        _id: { $in: ['dataset-2'] },
+        deleteTime: null
+      });
 
-        // 工具集不按快照裁剪子工具。
-        const tools = [{ name: 'a' }, { name: 'b' }];
-        expect(filterWorkflowToolList({ context, appId: 'tool-1', tools })).toBe(tools);
+      // 工具集不按快照裁剪子工具。
+      const tools = [{ name: 'a' }, { name: 'b' }];
+      expect(filterWorkflowToolList({ context, appId: 'tool-1', tools })).toBe(tools);
 
-        // 未命中快照的模型按运行人鉴权。
-        await loadWorkflowModelResource({
-          modelId: 'dynamic-model',
-          appTeamId: 'team-1',
-          userInfo: { teamId: 'team-1', tmbId: 'tmb-1' }
-        });
-      }
-    );
+      // 未命中快照的模型按运行人鉴权。
+      await loadWorkflowModelResource({
+        modelId: 'dynamic-model',
+        appTeamId: 'team-1',
+        userInfo: { teamId: 'team-1', tmbId: 'tmb-1' }
+      });
+    });
 
     expect(mocks.assertAuthModels).toHaveBeenCalledExactlyOnceWith({
       actor: { teamId: 'team-1', tmbId: 'tmb-1', isRoot: true },
@@ -649,23 +551,15 @@ describe('workflow resource context', () => {
     const context = createWorkflowResourceContext({
       resources: [{ type: 'dataset', id: 'snapshot' }]
     });
-    await runWithContext(
-      {
-        checkIsStopping: () => false,
-        fileContext: await createTestWorkflowFileContext(),
-        mcpClientMemory: {},
-        resourceContext: context
-      },
-      async () => {
-        await expect(
-          loadWorkflowDatasetResource({
-            datasetId: 'member',
-            datasetIds: ['member', 'snapshot'],
-            tmbId: 'member'
-          })
-        ).resolves.toEqual({ _id: 'member' });
-      }
-    );
+    await runWithResourceContext(context, async () => {
+      await expect(
+        loadWorkflowDatasetResource({
+          datasetId: 'member',
+          datasetIds: ['member', 'snapshot'],
+          tmbId: 'member'
+        })
+      ).resolves.toEqual({ _id: 'member' });
+    });
     expect(mocks.authDatasetByTmbId).toHaveBeenCalledExactlyOnceWith(
       expect.objectContaining({ datasetId: 'member' })
     );
@@ -677,21 +571,14 @@ describe('workflow resource context', () => {
     const context = createWorkflowResourceContext({
       resources: [{ type: 'dataset', id: 'snapshot' }]
     });
-    await runWithContext(
-      {
-        checkIsStopping: () => false,
-        fileContext: await createTestWorkflowFileContext(),
-        mcpClientMemory: {},
-        resourceContext: context
-      },
-      () =>
-        expect(
-          loadWorkflowDatasetResource({
-            datasetId: 'snapshot',
-            datasetIds: ['snapshot', 'forbidden'],
-            tmbId: 'member'
-          })
-        ).rejects.toBe(DatasetErrEnum.unAuthDataset)
+    await runWithResourceContext(context, () =>
+      expect(
+        loadWorkflowDatasetResource({
+          datasetId: 'snapshot',
+          datasetIds: ['snapshot', 'forbidden'],
+          tmbId: 'member'
+        })
+      ).rejects.toBe(DatasetErrEnum.unAuthDataset)
     );
     expect(mocks.mongoDatasetFindOne).not.toHaveBeenCalled();
   });
@@ -709,20 +596,12 @@ describe('workflow resource context', () => {
       throw error;
     });
     try {
-      await runWithContext(
-        {
-          checkIsStopping: () => false,
-          fileContext: await createTestWorkflowFileContext(),
-          mcpClientMemory: {},
-          resourceContext: context
-        },
-        async () => {
-          await expect(loadWorkflowDatasetResource({ datasetId: 'dataset' })).rejects.toBe(error);
-          await expect(
-            loadWorkflowAppResource({ appId: 'tool', type: 'tool', tmbId: 'member' })
-          ).rejects.toBe(error);
-        }
-      );
+      await runWithResourceContext(context, async () => {
+        await expect(loadWorkflowDatasetResource({ datasetId: 'dataset' })).rejects.toBe(error);
+        await expect(
+          loadWorkflowAppResource({ appId: 'tool', type: 'tool', tmbId: 'member' })
+        ).rejects.toBe(error);
+      });
     } finally {
       appQuery.mockRestore();
     }
@@ -735,21 +614,14 @@ describe('workflow resource context', () => {
       resourceMap: new Map([['tool:missing-tool', resource]])
     };
 
-    await runWithContext(
-      {
-        checkIsStopping: () => false,
-        fileContext: await createTestWorkflowFileContext(),
-        mcpClientMemory: {},
-        resourceContext
-      },
-      () =>
-        expect(
-          loadWorkflowAppResource({
-            appId: resource.id,
-            tmbId: 'tmb-1',
-            type: 'tool'
-          })
-        ).rejects.toBeInstanceOf(WorkflowResourceError)
+    await runWithResourceContext(resourceContext, () =>
+      expect(
+        loadWorkflowAppResource({
+          appId: resource.id,
+          tmbId: 'tmb-1',
+          type: 'tool'
+        })
+      ).rejects.toBeInstanceOf(WorkflowResourceError)
     );
   });
 });
@@ -759,17 +631,10 @@ describe('loadWorkflowSkillResources', () => {
     const resourceContext = createWorkflowResourceContext({
       resources: [{ type: 'skill', id: 'missing-skill' }]
     });
-    await runWithContext(
-      {
-        checkIsStopping: () => false,
-        fileContext: await createTestWorkflowFileContext(),
-        mcpClientMemory: {},
-        resourceContext
-      },
-      () =>
-        expect(
-          loadWorkflowSkillResources({ skillIds: ['missing-skill'], tmbId: 'member' })
-        ).rejects.toBe(SkillErrEnum.unExist)
+    await runWithResourceContext(resourceContext, () =>
+      expect(
+        loadWorkflowSkillResources({ skillIds: ['missing-skill'], tmbId: 'member' })
+      ).rejects.toBe(SkillErrEnum.unExist)
     );
   });
   it('uses member permission for new Skills and keeps snapshot authorization for existing Skills', async () => {
@@ -793,87 +658,51 @@ describe('loadWorkflowSkillResources', () => {
       resources: [{ type: 'skill', id: skillId }],
       teamId: owner.teamId
     });
-    await runWithContext(
-      {
-        checkIsStopping: () => false,
-        fileContext: await createTestWorkflowFileContext(),
-        mcpClientMemory: {},
-        resourceContext
-      },
-      async () => {
-        const resources = await loadWorkflowSkillResources({
-          skillIds: [skillId, skillId],
-          tmbId: member.tmbId
-        });
-        expect(resources.map((skill) => String(skill._id))).toEqual([skillId]);
-      }
-    );
+    await runWithResourceContext(resourceContext, async () => {
+      const resources = await loadWorkflowSkillResources({
+        skillIds: [skillId, skillId],
+        tmbId: member.tmbId
+      });
+      expect(resources.map((skill) => String(skill._id))).toEqual([skillId]);
+    });
     const otherTeam = createWorkflowResourceContext({
       resources: [{ type: 'skill', id: skillId }],
       teamId: '65f000000000000000000099'
     });
-    await runWithContext(
-      {
-        checkIsStopping: () => false,
-        fileContext: await createTestWorkflowFileContext(),
-        mcpClientMemory: {},
-        resourceContext: otherTeam
-      },
-      () =>
-        expect(
-          loadWorkflowSkillResources({ skillIds: [skillId], tmbId: member.tmbId })
-        ).rejects.toBe(SkillErrEnum.unExist)
+    await runWithResourceContext(otherTeam, () =>
+      expect(loadWorkflowSkillResources({ skillIds: [skillId], tmbId: member.tmbId })).rejects.toBe(
+        SkillErrEnum.unExist
+      )
     );
     const root = createWorkflowResourceContext({
       resources: [{ type: 'skill', id: skillId }],
       teamId: '65f000000000000000000099',
       isRoot: true
     });
-    await runWithContext(
-      {
-        checkIsStopping: () => false,
-        fileContext: await createTestWorkflowFileContext(),
-        mcpClientMemory: {},
-        resourceContext: root
-      },
-      () =>
-        expect(
-          loadWorkflowSkillResources({ skillIds: [skillId], tmbId: member.tmbId })
-        ).rejects.toBe(SkillErrEnum.unExist)
+    await runWithResourceContext(root, () =>
+      expect(loadWorkflowSkillResources({ skillIds: [skillId], tmbId: member.tmbId })).rejects.toBe(
+        SkillErrEnum.unExist
+      )
     );
     const dynamicRoot = createWorkflowResourceContext({
       resources: [],
       teamId: '65f000000000000000000099',
       isRoot: true
     });
-    await runWithContext(
-      {
-        checkIsStopping: () => false,
-        fileContext: await createTestWorkflowFileContext(),
-        mcpClientMemory: {},
-        resourceContext: dynamicRoot
-      },
-      () =>
-        expect(
-          loadWorkflowSkillResources({ skillIds: [skillId], tmbId: member.tmbId })
-        ).resolves.toEqual([])
+    await runWithResourceContext(dynamicRoot, () =>
+      expect(
+        loadWorkflowSkillResources({ skillIds: [skillId], tmbId: member.tmbId })
+      ).resolves.toEqual([])
     );
     const sameTeamRoot = createWorkflowResourceContext({
       resources: [],
       teamId: owner.teamId,
       isRoot: true
     });
-    await runWithContext(
-      {
-        checkIsStopping: () => false,
-        fileContext: await createTestWorkflowFileContext(),
-        mcpClientMemory: {},
-        resourceContext: sameTeamRoot
-      },
-      () =>
-        expect(
-          loadWorkflowSkillResources({ skillIds: [skillId], tmbId: member.tmbId })
-        ).resolves.toHaveLength(1)
+    await runWithResourceContext(sameTeamRoot, () =>
+      expect(
+        loadWorkflowSkillResources({ skillIds: [skillId], tmbId: member.tmbId })
+      ).resolves.toHaveLength(1)
     );
   });
 });

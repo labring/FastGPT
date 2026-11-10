@@ -19,10 +19,11 @@ import {
 import { createToolCallToolProvider } from '@fastgpt/service/core/workflow/dispatch/ai/toolcall/toolProvider/createToolCallToolProvider';
 import { getWorkflowContext } from '@fastgpt/service/core/workflow/dispatch/context';
 import { WorkflowVariableState } from '@fastgpt/service/core/workflow/dispatch/context/variables';
-import { runWithTestWorkflowContext as runWithContext } from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
 import {
   captureTestWorkflowContext,
-  getCapturedTestWorkflowContext
+  createTestWorkflowFileContext,
+  getCapturedTestWorkflowContext,
+  runWithTestWorkflowContext as runWithContext
 } from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -51,7 +52,7 @@ const createToolNode = (overrides: Record<string, any> = {}) =>
     ...overrides
   }) as any;
 
-const createProvider = (overrides: Record<string, any> = {}) => {
+const createProvider = async (overrides: Record<string, any> = {}) => {
   const {
     variableContext,
     memoryContext,
@@ -67,9 +68,7 @@ const createProvider = (overrides: Record<string, any> = {}) => {
       variableContext,
       memoryContext,
       workflowStreamResponse,
-      fileContext: {
-        limits: { maxFileAmount: 20, maxBytesPerFile: 1024 }
-      } as any
+      fileContext: await createTestWorkflowFileContext()
     },
     () =>
       createToolCallToolProvider({
@@ -386,21 +385,6 @@ describe('createToolCallToolProvider', () => {
       runtimeNodes: updates,
       runtimeEdges: [],
       workflowProps: {
-        runningAppInfo: {
-          sourceType: ChatSourceTypeEnum.app,
-          sourceId: 'app_1',
-          teamId: 'team_1',
-          tmbId: 'tmb_1',
-          name: 'App'
-        },
-        runningUserInfo: { teamId: 'team_1', tmbId: 'tmb_1' },
-        uid: 'user_1',
-        chatId: 'chat_1',
-        responseChatItemId: 'response_1',
-        timezone: 'Asia/Shanghai',
-        query: [],
-        histories: [],
-        chatConfig: {},
         stream: true,
         workflowStreamResponse: (event: any) => events.push(structuredClone(event))
       }
@@ -434,84 +418,68 @@ describe('createToolCallToolProvider', () => {
     ).toEqual(['search', 'other']);
   });
 
-  it('commits variable deltas as each concurrent tool completes, without waiting for invocation order', async () => {
-    const parent = await createVariableContext({ shared: 0, firstOnly: 0, secondOnly: 0 });
-    let releaseFirst!: () => void;
-    const firstGate = new Promise<void>((resolve) => {
-      releaseFirst = resolve;
-    });
-    const children: unknown[] = [];
-    runWorkflowMock
-      .mockImplementationOnce(async () => {
-        const child = getWorkflowContext().variableContext;
-        children.push(child);
-        await child.set('shared', 1);
-        await child.set('firstOnly', 1);
-        await firstGate;
-        return createWorkflowResponse();
-      })
-      .mockImplementationOnce(async () => {
-        const child = getWorkflowContext().variableContext;
-        children.push(child);
-        expect(child.get('shared')).toBe(0);
-        await child.set('shared', 2);
-        await child.set('secondOnly', 2);
-        return createWorkflowResponse();
+  it.each(['success', 'throw'] as const)(
+    'commits the faster concurrent tool first when the earlier call ends with %s',
+    async (firstOutcome) => {
+      const parent = await createVariableContext({ shared: 0, firstOnly: 0, secondOnly: 0 });
+      let releaseFirst!: () => void;
+      const firstGate = new Promise<void>((resolve) => {
+        releaseFirst = resolve;
       });
-    const provider = await createProvider({ variableContext: parent });
-    const parentSet = vi.spyOn(parent, 'set');
-    const first = provider.executeTool({ call: createCall('first'), messages: [] });
-    const second = provider.executeTool({ call: createCall('second'), messages: [] });
-    try {
-      await second;
-      expect(children[0]).not.toBe(children[1]);
-      expect(parent.toStoreRecord()).toEqual({ shared: 2, firstOnly: 0, secondOnly: 2 });
+      const children: unknown[] = [];
+      runWorkflowMock
+        .mockImplementationOnce(async () => {
+          const child = getWorkflowContext().variableContext;
+          children.push(child);
+          await child.set('shared', 1);
+          await child.set('firstOnly', 1);
+          await firstGate;
+          if (firstOutcome === 'throw') throw new Error('first failed');
+          return createWorkflowResponse();
+        })
+        .mockImplementationOnce(async () => {
+          const child = getWorkflowContext().variableContext;
+          children.push(child);
+          expect(child.get('shared')).toBe(0);
+          await child.set('shared', 2);
+          await child.set('secondOnly', 2);
+          return createWorkflowResponse();
+        });
+      const provider = await createProvider({ variableContext: parent });
+      const parentSet = vi.spyOn(parent, 'set');
+      const first = provider.executeTool({ call: createCall('first'), messages: [] });
+      const firstResult =
+        firstOutcome === 'throw' ? expect(first).rejects.toThrow('first failed') : first;
+      const second = provider.executeTool({ call: createCall('second'), messages: [] });
+      try {
+        await second;
+        expect(children[0]).not.toBe(children[1]);
+        expect(parent.toStoreRecord()).toEqual({ shared: 2, firstOnly: 0, secondOnly: 2 });
+        expect(parentSet.mock.calls).toEqual([
+          ['shared', 2],
+          ['secondOnly', 2]
+        ]);
+      } finally {
+        releaseFirst();
+      }
+      await Promise.all([firstResult, second]);
+      expect(parent.toStoreRecord()).toEqual(
+        firstOutcome === 'success'
+          ? { shared: 1, firstOnly: 1, secondOnly: 2 }
+          : { shared: 2, firstOnly: 0, secondOnly: 2 }
+      );
       expect(parentSet.mock.calls).toEqual([
         ['shared', 2],
-        ['secondOnly', 2]
+        ['secondOnly', 2],
+        ...(firstOutcome === 'success'
+          ? [
+              ['shared', 1],
+              ['firstOnly', 1]
+            ]
+          : [])
       ]);
-    } finally {
-      releaseFirst();
     }
-    await Promise.all([first, second]);
-    expect(parent.toStoreRecord()).toEqual({ shared: 1, firstOnly: 1, secondOnly: 2 });
-    expect(parentSet.mock.calls).toEqual([
-      ['shared', 2],
-      ['secondOnly', 2],
-      ['shared', 1],
-      ['firstOnly', 1]
-    ]);
-  });
-
-  it('commits a completed concurrent call before an earlier pending call throws', async () => {
-    const parent = await createVariableContext({ shared: 0 });
-    let releaseFirst!: () => void;
-    const firstGate = new Promise<void>((resolve) => {
-      releaseFirst = resolve;
-    });
-    runWorkflowMock
-      .mockImplementationOnce(async () => {
-        await getWorkflowContext().variableContext.set('shared', 1);
-        await firstGate;
-        throw new Error('first failed');
-      })
-      .mockImplementationOnce(async () => {
-        await getWorkflowContext().variableContext.set('shared', 2);
-        return createWorkflowResponse();
-      });
-    const provider = await createProvider({ variableContext: parent });
-    const first = provider.executeTool({ call: createCall('first'), messages: [] });
-    const firstFailed = expect(first).rejects.toThrow('first failed');
-    const second = provider.executeTool({ call: createCall('second'), messages: [] });
-    try {
-      await second;
-      expect(parent.get('shared')).toBe(2);
-    } finally {
-      releaseFirst();
-    }
-    await Promise.all([firstFailed, second]);
-    expect(parent.get('shared')).toBe(2);
-  });
+  );
 
   it('allows the next call to commit after writing back a variable fails', async () => {
     const parent = await createVariableContext({ count: 0 });
