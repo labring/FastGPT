@@ -1161,7 +1161,7 @@ describe('storeNode2FlowNode', () => {
 });
 
 describe('filterWorkflowNodeOutputsByType', () => {
-  it('keeps primitive outputs compatible with string inputs', () => {
+  it('only keeps string outputs for string references', () => {
     const outputs: FlowNodeOutputItemType[] = [
       {
         id: '1',
@@ -1183,12 +1183,26 @@ describe('filterWorkflowNodeOutputsByType', () => {
         key: '3',
         label: '3',
         type: FlowNodeOutputTypeEnum.static
+      },
+      {
+        id: '4',
+        valueType: WorkflowIOValueTypeEnum.object,
+        key: '4',
+        label: '4',
+        type: FlowNodeOutputTypeEnum.static
+      },
+      {
+        id: '5',
+        valueType: WorkflowIOValueTypeEnum.arrayString,
+        key: '5',
+        label: '5',
+        type: FlowNodeOutputTypeEnum.static
       }
     ];
 
     const result = filterWorkflowNodeOutputsByType(outputs, WorkflowIOValueTypeEnum.string);
 
-    expect(result.map((output) => output.id)).toEqual(['1', '2', '3']);
+    expect(result.map((output) => output.id)).toEqual(['1']);
   });
 
   it('should return all outputs for any type', () => {

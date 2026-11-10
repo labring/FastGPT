@@ -1,5 +1,6 @@
 import { ChevronRightIcon } from '@chakra-ui/icons';
 import { Box, Flex } from '@chakra-ui/react';
+import React from 'react';
 import { useTranslation } from 'next-i18next';
 import Avatar from '../../../../../../../components/common/Avatar';
 import MyTooltip from '../../../../../MyTooltip';
@@ -49,7 +50,9 @@ export default function VariableLabel({
           </Flex>
         ) : (
           <Flex alignItems={'center'} fontSize={'sm'}>
-            {t('common:invalid_variable')}
+            {childLabel
+              ? `${t('common:invalid_variable')}: ${childLabel}`
+              : t('common:invalid_variable')}
           </Flex>
         )}
       </Box>

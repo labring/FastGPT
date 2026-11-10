@@ -265,11 +265,7 @@ export const isWorkflowEdgeSourceHandleValid = (
 };
 
 const workflowReferenceSourceTypeMap: Record<WorkflowIOValueTypeEnum, WorkflowIOValueTypeEnum[]> = {
-  [WorkflowIOValueTypeEnum.string]: [
-    WorkflowIOValueTypeEnum.string,
-    WorkflowIOValueTypeEnum.number,
-    WorkflowIOValueTypeEnum.boolean
-  ],
+  [WorkflowIOValueTypeEnum.string]: [WorkflowIOValueTypeEnum.string],
   [WorkflowIOValueTypeEnum.number]: [WorkflowIOValueTypeEnum.number],
   [WorkflowIOValueTypeEnum.boolean]: [WorkflowIOValueTypeEnum.boolean],
   [WorkflowIOValueTypeEnum.object]: [WorkflowIOValueTypeEnum.object],
@@ -333,6 +329,10 @@ export const getWorkflowReferenceSourceValueTypes = (
   const acceptedTypes = workflowReferenceSourceTypeMap[expected as WorkflowIOValueTypeEnum] ?? [];
   return [...new Set([...acceptedTypes, WorkflowIOValueTypeEnum.any])];
 };
+
+/** 文本插值会先把任意值转成字符串，因此可接受所有来源类型。 */
+export const getWorkflowInterpolationSourceValueTypes = () =>
+  Object.values(WorkflowIOValueTypeEnum);
 
 /** 判断一个上游输出类型能否作为目标输入的完整引用值。 */
 export const areWorkflowValueTypesCompatible = ({

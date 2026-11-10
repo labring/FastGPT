@@ -11,10 +11,7 @@ import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runti
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import type { DispatchNodeResultType, ModuleDispatchProps } from '../../types/runtime';
 import { getReferenceVariableValue } from '@fastgpt/global/common/workflow/runtime';
-import {
-  formatVariableValByType,
-  valueTypeFormat
-} from '@fastgpt/global/core/workflow/runtime/utils';
+import { valueTypeFormat } from '@fastgpt/global/core/workflow/runtime/utils';
 import json5 from 'json5';
 import { JSONPath } from 'jsonpath-plus';
 import { getSecretValue } from '../../../../common/secret/utils';
@@ -481,7 +478,7 @@ export const replaceJsonBodyString = (
           if (!node) return;
 
           const output = node.outputs.find((output) => output.id === id);
-          if (output) return formatVariableValByType(output.value, output.valueType);
+          if (output) return output.value;
 
           const input = node.inputs.find((input) => input.key === id);
           if (input && nodeInputIsReference(input)) {

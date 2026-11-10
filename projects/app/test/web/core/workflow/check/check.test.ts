@@ -883,7 +883,7 @@ describe('checkWorkflowNodeIssues', () => {
     }
   );
 
-  it('filters missing outputs and keeps compatible references when storing workflow data', () => {
+  it('filters missing outputs and incompatible scalar references when storing workflow data', () => {
     const sourceNode = makeNode('source', FlowNodeTypeEnum.workflowStart, {
       outputs: [
         {
@@ -943,7 +943,7 @@ describe('checkWorkflowNodeIssues', () => {
       storedNode?.inputs.find((input) => input.key === NodeInputKeyEnum.userChatInput)
     ).toEqual(
       expect.objectContaining({
-        value: ['source', 'count']
+        value: undefined
       })
     );
     expect(storedNode?.inputs.find((input) => input.key === NodeInputKeyEnum.fileUrlList)).toEqual(

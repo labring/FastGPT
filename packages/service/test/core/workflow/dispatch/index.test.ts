@@ -773,6 +773,58 @@ describe('getWorkflowNodeRunParams', () => {
     expect(variableState.getToRuntimeRecordCount()).toBe(1);
   });
 
+  it('manual text input interpolates typed values into one string', () => {
+    const node = createNode('target', FlowNodeTypeEnum.textEditor);
+    node.inputs = [
+      {
+        key: NodeInputKeyEnum.textareaInput,
+        label: '',
+        renderTypeList: [FlowNodeInputTypeEnum.textarea],
+        value: '{{$source.number$}}|{{$source.boolean$}}|{{$source.object$}}|{{$source.array$}}',
+        valueType: WorkflowIOValueTypeEnum.string
+      }
+    ];
+    const sourceNode = createNode('source', FlowNodeTypeEnum.textEditor);
+    sourceNode.outputs = [
+      {
+        id: 'number',
+        key: 'number',
+        type: FlowNodeOutputTypeEnum.static,
+        value: 42,
+        valueType: WorkflowIOValueTypeEnum.number
+      },
+      {
+        id: 'boolean',
+        key: 'boolean',
+        type: FlowNodeOutputTypeEnum.static,
+        value: false,
+        valueType: WorkflowIOValueTypeEnum.boolean
+      },
+      {
+        id: 'object',
+        key: 'object',
+        type: FlowNodeOutputTypeEnum.static,
+        value: { enabled: true },
+        valueType: WorkflowIOValueTypeEnum.object
+      },
+      {
+        id: 'array',
+        key: 'array',
+        type: FlowNodeOutputTypeEnum.static,
+        value: ['a', 'b'],
+        valueType: WorkflowIOValueTypeEnum.arrayString
+      }
+    ];
+
+    expect(
+      getWorkflowNodeRunParams({
+        node,
+        runtimeNodesMap: new Map([['source', sourceNode]]),
+        variableState: createVariableState().state
+      })[NodeInputKeyEnum.textareaInput]
+    ).toBe('42|false|{"enabled":true}|["a","b"]');
+  });
+
   it('纯引用 input 直接解析原始对象', () => {
     const refValue = { nested: true };
     const variableState = createVariableState({ payload: refValue });

@@ -712,12 +712,14 @@ export const createReferenceModule = (document: DocumentReadApi) => {
     reference,
     targetType,
     targetNodeId,
-    allowLoopRunChildSource
+    allowLoopRunChildSource,
+    allowAllSourceTypes = false
   }: {
     reference: ReferenceItemValueType;
     targetType?: WorkflowIOValueTypeEnum;
     targetNodeId: string;
     allowLoopRunChildSource?: boolean;
+    allowAllSourceTypes?: boolean;
   }): WorkflowReferenceStatus => {
     /** 反向 DFS 只判断单个来源是否可达；命中即停，不物化目标的完整上游集合。 */
     const canReachUpstream = ({
@@ -798,6 +800,9 @@ export const createReferenceModule = (document: DocumentReadApi) => {
     };
     if (sourceNodeId === VARIABLE_NODE_ID) {
       if (!source.output) return { code: 'invalid_reference', reference, ...sourceMetadata };
+      if (allowAllSourceTypes) {
+        return { code: 'valid', sourceType: source.output.valueType, reference, ...sourceMetadata };
+      }
       return areWorkflowValueTypesCompatible({
         actual: source.output.valueType,
         expected: targetType
@@ -839,7 +844,8 @@ export const createReferenceModule = (document: DocumentReadApi) => {
         ...sourceMetadata
       };
     }
-    return areWorkflowValueTypesCompatible({ actual: sourceOutput.valueType, expected: targetType })
+    return allowAllSourceTypes ||
+      areWorkflowValueTypesCompatible({ actual: sourceOutput.valueType, expected: targetType })
       ? { code: 'valid', sourceType: sourceOutput.valueType, reference, ...sourceMetadata }
       : {
           code: 'invalid_reference_type',
@@ -918,7 +924,8 @@ export const createReferenceModule = (document: DocumentReadApi) => {
             const result: WorkflowReferenceStatus[] = [];
             const addStatus = (
               reference: ReferenceItemValueType,
-              referenceTargetType?: WorkflowIOValueTypeEnum
+              referenceTargetType?: WorkflowIOValueTypeEnum,
+              allowAllSourceTypes = false
             ) => {
               const referenceKey = reference.join('\0');
               if (seen.has(referenceKey)) return;
@@ -928,7 +935,8 @@ export const createReferenceModule = (document: DocumentReadApi) => {
                   reference,
                   targetType: referenceTargetType,
                   targetNodeId: nodeId,
-                  allowLoopRunChildSource
+                  allowLoopRunChildSource,
+                  allowAllSourceTypes
                 })
               );
             };
@@ -942,7 +950,13 @@ export const createReferenceModule = (document: DocumentReadApi) => {
               const variableType = getReferenceValueType(item.variable);
               getWorkflowReferenceItemsFromValue(item.value, {
                 includeCanonicalReferences: item.renderType === FlowNodeInputTypeEnum.reference
-              }).forEach((reference) => addStatus(reference, variableType));
+              }).forEach((reference) =>
+                addStatus(
+                  reference,
+                  variableType,
+                  item.renderType !== FlowNodeInputTypeEnum.reference
+                )
+              );
             });
             return result;
           })()
@@ -951,7 +965,8 @@ export const createReferenceModule = (document: DocumentReadApi) => {
               reference,
               targetType: getTargetType(reference),
               targetNodeId: nodeId,
-              allowLoopRunChildSource
+              allowLoopRunChildSource,
+              allowAllSourceTypes: !nodeInputIsReference(field)
             })
           );
     const result = hasMalformedReferenceArray(value)
@@ -979,18 +994,27 @@ export const createReferenceModule = (document: DocumentReadApi) => {
   const getValueStatuses = ({
     value,
     targetNodeId,
-    targetType
+    targetType,
+    allowAllSourceTypes = false
   }: {
     value: unknown;
     targetNodeId: string;
     targetType?: WorkflowIOValueTypeEnum;
+    allowAllSourceTypes?: boolean;
   }): WorkflowReferenceStatus[] => {
     // Multiple-select 的选项值也可能是二元字符串数组；只有选中 reference 模式才按引用解释。
     if (isOrdinaryMultipleSelectValue(targetNodeId, value)) return [];
 
     const statuses = getWorkflowReferenceItemsFromValue(value, {
       includeCanonicalReferences: true
-    }).map((reference) => getReferenceStatus({ reference, targetType, targetNodeId }));
+    }).map((reference) =>
+      getReferenceStatus({
+        reference,
+        targetType,
+        targetNodeId,
+        allowAllSourceTypes
+      })
+    );
     return hasMalformedReferenceArray(value) || (statuses.length === 0 && !isEmptyValue(value))
       ? [{ code: 'invalid_reference' as const }, ...statuses]
       : statuses;
@@ -1006,6 +1030,7 @@ export const createReferenceModule = (document: DocumentReadApi) => {
   const getReferenceOptions = ({
     nodeId,
     valueType,
+    allowedValueTypes,
     includeChildren
   }: WorkflowReferenceOptionsQuery): WorkflowReferenceOption[] => {
     const nodeIndex = document.getNodeIndex();
@@ -1056,6 +1081,7 @@ export const createReferenceModule = (document: DocumentReadApi) => {
               : [])
           ],
           valueType,
+          allowedValueTypes,
           catchError: sourceNode.data.catchError
         }).forEach((output) => {
           if (output.type === FlowNodeOutputTypeEnum.error && !errorOutputCanReach(sourceNodeId))
@@ -1072,7 +1098,11 @@ export const createReferenceModule = (document: DocumentReadApi) => {
 
     getWorkflowGlobalVariables({ chatConfig: document.getDocument().chatConfig }).forEach(
       (variable) => {
-        if (!areWorkflowValueTypesCompatible({ actual: variable.valueType, expected: valueType }))
+        if (
+          allowedValueTypes
+            ? variable.valueType !== undefined && !allowedValueTypes.includes(variable.valueType)
+            : !areWorkflowValueTypesCompatible({ actual: variable.valueType, expected: valueType })
+        )
           return;
         options.push({
           reference: [VARIABLE_NODE_ID, variable.key],

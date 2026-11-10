@@ -1,7 +1,6 @@
 import { VARIABLE_NODE_ID } from '@fastgpt/global/core/workflow/constants';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import { getReferenceVariableValue } from '@fastgpt/global/common/workflow/runtime';
-import { formatVariableValByType } from '@fastgpt/global/core/workflow/runtime/utils';
 import { nodeInputIsReference } from '@fastgpt/global/common/workflow/reference';
 import {
   checkStrOversize,
@@ -74,7 +73,7 @@ export function replaceEditorVariable({
         if (!node) return;
 
         const output = node.outputs.find((output) => output.id === id);
-        if (output) return formatVariableValByType(output.value, output.valueType);
+        if (output) return output.value;
 
         // Use the node's input as the variable value(Example: HTTP data will reference its own dynamic input)
         const input = node.inputs.find((input) => input.key === id);

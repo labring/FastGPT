@@ -18,12 +18,6 @@ import { useIsToolNode } from '../render/useWorkflowDocument';
 import { AgentNodeInputProvider, useAgentNodeInputContext } from './context';
 import { AgentPromptInput, AgentPromptLabel } from './AgentInputs';
 
-const promptRenderer = {
-  [NodeInputKeyEnum.aiSystemPrompt]: (item: FlowNodeInputItemType) => (
-    <AgentPromptInput item={item} />
-  )
-};
-
 const agentModelSettingProps = {
   showTemperature: false,
   showTopP: false,
@@ -66,7 +60,11 @@ const AgentNodeContent = ({ data, selected }: CanvasNodeProps) => {
         <RenderInput
           nodeId={nodeId}
           flowInputList={commonInputs}
-          CustomComponent={promptRenderer}
+          CustomComponent={{
+            [NodeInputKeyEnum.aiSystemPrompt]: (item: FlowNodeInputItemType) => (
+              <AgentPromptInput item={item} nodeId={nodeId} />
+            )
+          }}
           CustomLabelRightComponent={{
             [NodeInputKeyEnum.aiSystemPrompt]: promptInput ? (
               <AgentPromptLabel item={promptInput} nodeId={nodeId} />

@@ -178,6 +178,7 @@ export type ReferenceReadApi = {
     value: unknown;
     targetNodeId: string;
     targetType?: WorkflowIOValueTypeEnum;
+    allowAllSourceTypes?: boolean;
   }) => WorkflowReferenceStatus[];
   /** 引用来源的值类型；来源不存在时返回 undefined，调用方按 any 处理。 */
   readonly getReferenceValueType: (reference: unknown) => WorkflowIOValueTypeEnum | undefined;
@@ -211,6 +212,8 @@ export type SnapshotFieldCacheEntry = {
   fieldKey: string;
   kind: 'input' | 'output';
   field: FlowNodeInputItemType | FlowNodeOutputItemType;
+  /** 引用模式影响候选与状态；同一条输入记录切换模式时必须重建 snapshot。 */
+  referenceMode?: boolean;
   snapshot: WorkflowFieldSnapshot;
 };
 

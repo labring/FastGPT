@@ -239,10 +239,12 @@ export const isConnectionTargetAllowed = ({
 export const filterSelectableWorkflowNodeOutputs = ({
   outputs,
   valueType,
+  allowedValueTypes,
   catchError
 }: {
   outputs: FlowNodeOutputItemType[];
   valueType?: WorkflowIOValueTypeEnum;
+  allowedValueTypes?: WorkflowIOValueTypeEnum[];
   catchError?: boolean;
 }) => {
   const selectableOutputs = outputs.filter((output) => {
@@ -251,10 +253,11 @@ export const filterSelectableWorkflowNodeOutputs = ({
     return true;
   });
 
-  return filterWorkflowNodeOutputsByType(
-    selectableOutputs,
-    valueType ?? WorkflowIOValueTypeEnum.any
-  );
+  return allowedValueTypes
+    ? selectableOutputs.filter(
+        (output) => output.valueType === undefined || allowedValueTypes.includes(output.valueType)
+      )
+    : filterWorkflowNodeOutputsByType(selectableOutputs, valueType ?? WorkflowIOValueTypeEnum.any);
 };
 
 export const isWorkflowReferenceItem = (value: unknown): value is ReferenceItemValueType =>

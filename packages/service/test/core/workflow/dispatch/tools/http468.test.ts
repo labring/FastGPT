@@ -28,7 +28,15 @@ vi.mock('@fastgpt/service/common/system/utils', async (importOriginal) => {
   };
 });
 
-import { dispatchHttp468Request } from '@fastgpt/service/core/workflow/dispatch/tools/http468';
+import {
+  dispatchHttp468Request,
+  replaceJsonBodyString
+} from '@fastgpt/service/core/workflow/dispatch/tools/http468';
+import {
+  FlowNodeOutputTypeEnum,
+  FlowNodeTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
+import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 
 const buildProps = (httpContentType: ContentTypes) =>
   ({
@@ -107,6 +115,63 @@ describe('dispatchHttp468Request empty keys', () => {
       expect(props.params).toEqual(before);
     }
   );
+});
+
+describe('replaceJsonBodyString', () => {
+  it('interpolates typed node outputs as text', () => {
+    const runtimeNodesMap = new Map([
+      [
+        'source',
+        {
+          nodeId: 'source',
+          name: 'Source',
+          flowNodeType: FlowNodeTypeEnum.textEditor,
+          inputs: [],
+          outputs: [
+            {
+              id: 'number',
+              key: 'number',
+              type: FlowNodeOutputTypeEnum.static,
+              value: 42,
+              valueType: WorkflowIOValueTypeEnum.number
+            },
+            {
+              id: 'boolean',
+              key: 'boolean',
+              type: FlowNodeOutputTypeEnum.static,
+              value: false,
+              valueType: WorkflowIOValueTypeEnum.boolean
+            },
+            {
+              id: 'object',
+              key: 'object',
+              type: FlowNodeOutputTypeEnum.static,
+              value: { enabled: true },
+              valueType: WorkflowIOValueTypeEnum.object
+            },
+            {
+              id: 'array',
+              key: 'array',
+              type: FlowNodeOutputTypeEnum.static,
+              value: ['a', 'b'],
+              valueType: WorkflowIOValueTypeEnum.arrayString
+            }
+          ]
+        }
+      ]
+    ]);
+
+    expect(
+      replaceJsonBodyString(
+        {
+          text: '{"number":"{{$source.number$}}","boolean":"{{$source.boolean$}}","object":"{{$source.object$}}","array":"{{$source.array$}}"}'
+        },
+        { allVariables: {}, runtimeNodesMap }
+      )
+    ).toBe(
+      '{"number":"42","boolean":"false","object":"{\\"enabled\\":true}","array":"[\\"a\\",\\"b\\"]"}'
+    );
+  });
 });
 
 describe('dispatchHttp468Request error body', () => {

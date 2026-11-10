@@ -110,14 +110,15 @@ describe('getWorkflowInputReferenceDiagnostics', () => {
     expect(createWorkflowErrorBranchIndex(document).sourcesByTarget.get('start')).toBeUndefined();
   });
 
-  it('accepts a number global variable as text concatenation input', () => {
+  it('only accepts string references for a selected reference input', () => {
     const document = makeDocument();
     document.nodes[1].flowNodeType = FlowNodeTypeEnum.textEditor;
     document.nodes[1].inputs[0] = {
       ...TextEditorNode.inputs[0],
       key: NodeInputKeyEnum.textareaInput,
       value: [VARIABLE_NODE_ID, 'count'],
-      renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference]
+      renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
+      selectedType: FlowNodeInputTypeEnum.reference
     };
     document.chatConfig.variables = [
       {
@@ -135,14 +136,16 @@ describe('getWorkflowInputReferenceDiagnostics', () => {
         nodeId: 'target',
         input: document.nodes[1].inputs[0]
       })
-    ).toEqual([]);
+    ).toEqual([
+      expect.objectContaining({ code: WorkflowDiagnosticCodeEnum.referenceTypeMismatch })
+    ]);
   });
 
   it.each([
     { value: ['start'], code: WorkflowDiagnosticCodeEnum.referenceFormatInvalid },
     { value: ['deleted', 'text'], code: WorkflowDiagnosticCodeEnum.referenceOutputNotFound },
     { value: ['start', 'deleted'], code: WorkflowDiagnosticCodeEnum.referenceOutputNotFound },
-    { value: ['start', 'count'], code: undefined },
+    { value: ['start', 'count'], code: WorkflowDiagnosticCodeEnum.referenceTypeMismatch },
     {
       value: [VARIABLE_NODE_ID, 'deleted'],
       code: WorkflowDiagnosticCodeEnum.referenceOutputNotFound
@@ -157,7 +160,7 @@ describe('getWorkflowInputReferenceDiagnostics', () => {
         nodeId: 'target',
         input: document.nodes[1].inputs[0]
       }).map((issue) => issue.code)
-    ).toEqual(code ? [code] : []);
+    ).toEqual([code]);
   });
 
   it('checks upstream scope and permits error outputs only with catch enabled', () => {
@@ -539,11 +542,11 @@ describe('node and global reference coverage', () => {
       client: [WorkflowDiagnosticCodeEnum.requiredInputMissing]
     },
     {
-      name: 'user global implicit string conversion',
+      name: 'user global reference type mismatch',
       value: [VARIABLE_NODE_ID, 'count'],
       required: true,
-      strict: [],
-      client: []
+      strict: [WorkflowDiagnosticCodeEnum.referenceTypeMismatch],
+      client: [WorkflowDiagnosticCodeEnum.requiredInputMissing]
     },
     {
       name: 'system global type mismatch',

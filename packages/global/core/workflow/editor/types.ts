@@ -141,6 +141,8 @@ export type WorkflowFieldQuery = {
 export type WorkflowReferenceOptionsQuery = {
   nodeId: string;
   valueType?: WorkflowIOValueTypeEnum;
+  /** 当前输入模式允许的来源类型；不传时按 valueType 使用显式引用规则。 */
+  allowedValueTypes?: WorkflowIOValueTypeEnum[];
   /** 容器节点是否额外暴露直接子节点输出。 */
   includeChildren?: boolean;
 };

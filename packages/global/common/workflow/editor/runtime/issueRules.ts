@@ -742,7 +742,8 @@ export const collectNodeIssues = (
             ? reference.getValueStatuses({
                 value: effectiveValue,
                 targetNodeId: nodeId,
-                targetType: input.valueType
+                targetType: input.valueType,
+                allowAllSourceTypes: true
               })
             : [];
       const referenceIssueCode = pickReferenceIssueCode(referenceStatuses);

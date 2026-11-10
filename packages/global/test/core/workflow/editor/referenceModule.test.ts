@@ -8,6 +8,134 @@ import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/
 import { createWorkflowEditor } from '@fastgpt/global/common/workflow/editor/runtime/runtime';
 
 describe('workflow reference reachability', () => {
+  it('keeps strict string references and allows all types for interpolation fields', () => {
+    const editor = createWorkflowEditor({
+      nodes: [
+        {
+          nodeId: 'source',
+          flowNodeType: FlowNodeTypeEnum.textEditor,
+          name: 'Source',
+          inputs: [],
+          outputs: [
+            {
+              id: 'text',
+              key: 'text',
+              type: FlowNodeOutputTypeEnum.static,
+              valueType: WorkflowIOValueTypeEnum.string
+            },
+            {
+              id: 'count',
+              key: 'count',
+              type: FlowNodeOutputTypeEnum.static,
+              valueType: WorkflowIOValueTypeEnum.number
+            },
+            {
+              id: 'object',
+              key: 'object',
+              type: FlowNodeOutputTypeEnum.static,
+              valueType: WorkflowIOValueTypeEnum.object
+            },
+            {
+              id: 'array',
+              key: 'array',
+              type: FlowNodeOutputTypeEnum.static,
+              valueType: WorkflowIOValueTypeEnum.arrayString
+            }
+          ]
+        },
+        {
+          nodeId: 'reference',
+          flowNodeType: FlowNodeTypeEnum.textEditor,
+          name: 'Reference',
+          inputs: [
+            {
+              key: 'value',
+              label: 'Value',
+              renderTypeList: [FlowNodeInputTypeEnum.reference],
+              selectedType: FlowNodeInputTypeEnum.reference,
+              valueType: WorkflowIOValueTypeEnum.string
+            }
+          ],
+          outputs: []
+        },
+        {
+          nodeId: 'interpolation',
+          flowNodeType: FlowNodeTypeEnum.textEditor,
+          name: 'Interpolation',
+          inputs: [
+            {
+              key: 'value',
+              label: 'Value',
+              renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
+              selectedType: FlowNodeInputTypeEnum.input,
+              valueType: WorkflowIOValueTypeEnum.string,
+              value: '{{$source.count$}}'
+            }
+          ],
+          outputs: []
+        }
+      ],
+      edges: [
+        {
+          source: 'source',
+          target: 'reference',
+          sourceHandle: 'source',
+          targetHandle: 'target'
+        },
+        {
+          source: 'source',
+          target: 'interpolation',
+          sourceHandle: 'source',
+          targetHandle: 'target'
+        }
+      ],
+      chatConfig: {}
+    });
+    const referenceQuery = { nodeId: 'reference', fieldKey: 'value' };
+    const interpolationQuery = { nodeId: 'interpolation', fieldKey: 'value' };
+
+    const referenceOptions = editor
+      .getField(referenceQuery)
+      ?.referenceOptions.filter(({ reference }) => reference[0] !== 'VARIABLE_NODE_ID')
+      .map(({ reference }) => reference);
+    expect(referenceOptions).toEqual([['source', 'text']]);
+    const interpolationOptions = editor
+      .getField(interpolationQuery)
+      ?.referenceOptions.filter(({ reference }) => reference[0] !== 'VARIABLE_NODE_ID')
+      .map(({ reference }) => reference);
+    expect(interpolationOptions).toEqual([
+      ['source', 'text'],
+      ['source', 'count'],
+      ['source', 'object'],
+      ['source', 'array']
+    ]);
+    expect(editor.getField(interpolationQuery)?.references).toEqual([
+      expect.objectContaining({ code: 'valid', reference: ['source', 'count'] })
+    ]);
+    expect(editor.getNode('interpolation')?.issues.map(({ code }) => code)).not.toContain(
+      'invalid_reference_type'
+    );
+
+    const interpolation = editor.getNode('interpolation')!;
+    editor.dispatch({
+      type: 'updateNode',
+      nodeId: 'interpolation',
+      patch: {
+        inputs: interpolation.inputs.map((input) =>
+          input.key === 'value'
+            ? { ...input, selectedType: FlowNodeInputTypeEnum.reference }
+            : input
+        )
+      }
+    });
+    expect(
+      editor
+        .getField(interpolationQuery)
+        ?.referenceOptions.filter(({ reference }) => reference[0] !== 'VARIABLE_NODE_ID')
+        .map(({ reference }) => reference)
+    ).toEqual([['source', 'text']]);
+  });
+
   it('refreshes container references without exposing an unconnected sibling', () => {
     const editor = createWorkflowEditor({
       nodes: [

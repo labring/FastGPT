@@ -30,6 +30,12 @@ import type {
   DeepReadonly,
   WorkflowNodeViewSnapshot
 } from '../../../../core/workflow/editor/types';
+import { WorkflowIOValueTypeEnum } from '../../../../core/workflow/constants';
+import { FlowNodeInputTypeEnum } from '../../../../core/workflow/node/constant';
+import {
+  getSelectedInputRenderType,
+  getWorkflowInterpolationSourceValueTypes
+} from '../../reference';
 import { cloneValue, freezeValue, getFieldIdentityKey } from './kernel';
 import type {
   DocumentReadApi,
@@ -303,11 +309,19 @@ export const createSnapshotModule = ({
     const fieldKind = input ? 'input' : 'output';
     const cacheKey = getFieldIdentityKey({ nodeId, kind: fieldKind, key: fieldKey });
     const cached = fieldSnapshotCache.get(cacheKey);
-    if (cached?.field === field) return cached.snapshot;
+    const isReferenceMode =
+      input !== undefined && getSelectedInputRenderType(input) === FlowNodeInputTypeEnum.reference;
+    if (cached?.field === field && cached.referenceMode === isReferenceMode) return cached.snapshot;
 
     const statuses = input ? reference.getFieldStatuses(nodeId, input) : [];
     const referenceOptions = input
-      ? reference.getReferenceOptions({ nodeId, valueType: input.valueType })
+      ? reference.getReferenceOptions({
+          nodeId,
+          valueType: isReferenceMode ? input.valueType : WorkflowIOValueTypeEnum.any,
+          allowedValueTypes: isReferenceMode
+            ? undefined
+            : getWorkflowInterpolationSourceValueTypes()
+        })
       : [];
     const snapshot = freezeValue({
       nodeId,
@@ -322,6 +336,7 @@ export const createSnapshotModule = ({
       fieldKey,
       kind: fieldKind,
       field,
+      referenceMode: isReferenceMode,
       snapshot
     });
     return snapshot;
@@ -372,8 +387,10 @@ export const createSnapshotModule = ({
     query: WorkflowReferenceOptionsQuery
   ): readonly WorkflowReferenceOption[] => {
     ensureActive();
-    const { nodeId, valueType, includeChildren } = query;
-    const cacheKey = `${nodeId}\0${valueType ?? '*'}\0${includeChildren ? 'children' : 'direct'}`;
+    const { nodeId, valueType, allowedValueTypes, includeChildren } = query;
+    const cacheKey = `${nodeId}\0${valueType ?? '*'}\0${
+      allowedValueTypes?.join(',') ?? '*'
+    }\0${includeChildren ? 'children' : 'direct'}`;
     const cached = referenceOptionsCache.get(cacheKey);
     if (cached) return cached;
     const options = freezeValue(

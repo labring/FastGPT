@@ -292,6 +292,55 @@ describe('replaceEditorVariable', () => {
     expect(result).toBe('Object: {"a":1}');
   });
 
+  it('should interpolate every node output value type as text', () => {
+    const nodesMap: Record<string, RuntimeNodeItemType> = {
+      node1: {
+        nodeId: 'node1',
+        name: 'test',
+        flowNodeType: FlowNodeTypeEnum.textEditor,
+        inputs: [],
+        outputs: [
+          {
+            id: 'number',
+            key: 'number',
+            type: FlowNodeOutputTypeEnum.static,
+            value: 42,
+            valueType: WorkflowIOValueTypeEnum.number
+          },
+          {
+            id: 'boolean',
+            key: 'boolean',
+            type: FlowNodeOutputTypeEnum.static,
+            value: false,
+            valueType: WorkflowIOValueTypeEnum.boolean
+          },
+          {
+            id: 'object',
+            key: 'object',
+            type: FlowNodeOutputTypeEnum.static,
+            value: { enabled: true },
+            valueType: WorkflowIOValueTypeEnum.object
+          },
+          {
+            id: 'array',
+            key: 'array',
+            type: FlowNodeOutputTypeEnum.static,
+            value: ['a', 'b'],
+            valueType: WorkflowIOValueTypeEnum.arrayString
+          }
+        ]
+      }
+    };
+
+    expect(
+      replaceEditorVariable({
+        text: '{{$node1.number$}}|{{$node1.boolean$}}|{{$node1.object$}}|{{$node1.array$}}',
+        nodesMap,
+        variables: {}
+      })
+    ).toBe('42|false|{"enabled":true}|["a","b"]');
+  });
+
   it('should keep old empty-string behavior when node not found', () => {
     const result = replaceEditorVariable({
       text: '{{$nonexistent.out$}}',

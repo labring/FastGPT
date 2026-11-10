@@ -314,7 +314,7 @@ describe('validateWorkflow', () => {
       (item) => item.code
     );
     expect(codes).toContain(WorkflowDiagnosticCodeEnum.parentNodeNotFound);
-    expect(codes).not.toContain(WorkflowDiagnosticCodeEnum.referenceTypeMismatch);
+    expect(codes).toContain(WorkflowDiagnosticCodeEnum.referenceTypeMismatch);
 
     textInput.value = [VARIABLE_NODE_ID, 'deleted-variable'];
     expect(

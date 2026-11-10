@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   areWorkflowValueTypesCompatible,
+  getWorkflowInterpolationSourceValueTypes,
   getWorkflowReferenceSourceValueTypes,
   getSelectedInputRenderType,
   nodeInputIsReference,
@@ -309,12 +310,27 @@ describe('getWorkflowReferenceSourceValueTypes', () => {
       WorkflowIOValueTypeEnum.any
     ]);
   });
+
+  it('allows every source type for text interpolation', () => {
+    expect(getWorkflowInterpolationSourceValueTypes()).toEqual(
+      expect.arrayContaining([
+        WorkflowIOValueTypeEnum.string,
+        WorkflowIOValueTypeEnum.number,
+        WorkflowIOValueTypeEnum.boolean,
+        WorkflowIOValueTypeEnum.object,
+        WorkflowIOValueTypeEnum.arrayAny
+      ])
+    );
+  });
 });
 
 describe('areWorkflowValueTypesCompatible', () => {
   it.each([
-    [WorkflowIOValueTypeEnum.string, WorkflowIOValueTypeEnum.number, true],
-    [WorkflowIOValueTypeEnum.string, WorkflowIOValueTypeEnum.boolean, true],
+    [WorkflowIOValueTypeEnum.string, WorkflowIOValueTypeEnum.string, true],
+    [WorkflowIOValueTypeEnum.string, WorkflowIOValueTypeEnum.number, false],
+    [WorkflowIOValueTypeEnum.string, WorkflowIOValueTypeEnum.boolean, false],
+    [WorkflowIOValueTypeEnum.string, WorkflowIOValueTypeEnum.object, false],
+    [WorkflowIOValueTypeEnum.string, WorkflowIOValueTypeEnum.arrayString, false],
     [WorkflowIOValueTypeEnum.number, WorkflowIOValueTypeEnum.string, false],
     [WorkflowIOValueTypeEnum.boolean, WorkflowIOValueTypeEnum.string, false],
     [WorkflowIOValueTypeEnum.arrayString, WorkflowIOValueTypeEnum.string, true],

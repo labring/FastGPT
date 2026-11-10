@@ -26,9 +26,12 @@ export const useReferenceOptions = (
     () => ({
       nodeId: query.nodeId,
       ...(query.valueType !== undefined ? { valueType: query.valueType } : {}),
+      ...(query.allowedValueTypes !== undefined
+        ? { allowedValueTypes: query.allowedValueTypes }
+        : {}),
       ...(query.includeChildren ? { includeChildren: true } : {})
     }),
-    [query.includeChildren, query.nodeId, query.valueType]
+    [query.allowedValueTypes, query.includeChildren, query.nodeId, query.valueType]
   );
   const subscribe = useMemo(
     () => (listener: Listener) => adapter.subscribeReferenceOptions(listener),
