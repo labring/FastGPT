@@ -1,0 +1,1005 @@
+{
+  "nodes": [
+    {
+      "id": "workflowStart",
+      "templateType": "systemInput",
+      "flowNodeType": "workflowStart",
+      "showSourceHandle": true,
+      "showTargetHandle": false,
+      "avatar": "core/workflow/template/workflowStart",
+      "avatarLinear": "core/workflow/template/workflowStartLinear",
+      "colorSchema": "blue",
+      "name": "Start",
+      "intro": "",
+      "forbidDelete": true,
+      "unique": true,
+      "inputs": [
+        {
+          "key": "userChatInput",
+          "renderTypeList": [
+            "reference",
+            "textarea"
+          ],
+          "valueType": "string",
+          "label": "workflow:user_question",
+          "toolDescription": "workflow:user_question",
+          "required": true,
+          "defaultToAgentGenerated": true
+        }
+      ],
+      "outputs": [
+        {
+          "id": "userChatInput",
+          "key": "userChatInput",
+          "label": "common:core.module.input.label.user question",
+          "type": "static",
+          "valueType": "string"
+        }
+      ],
+      "nodeId": "Start",
+      "position": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "tools",
+      "flowNodeType": "tools",
+      "templateType": "ai",
+      "showSourceHandle": true,
+      "showTargetHandle": true,
+      "avatar": "core/workflow/template/toolCall",
+      "avatarLinear": "core/workflow/template/toolCallLinear",
+      "colorSchema": "indigo",
+      "name": "Tools",
+      "intro": "workflow:template.agent_intro",
+      "showStatus": true,
+      "isTool": true,
+      "catchError": false,
+      "courseUrl": "/guide/build/workflow/nodes/tool",
+      "version": "4.9.2",
+      "inputs": [
+        {
+          "key": "modelId",
+          "renderTypeList": [
+            "settingLLMModel",
+            "reference"
+          ],
+          "label": "common:core.module.input.label.aiModel",
+          "valueType": "string",
+          "value": "__MODEL_ID__"
+        },
+        {
+          "key": "temperature",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "label": "",
+          "valueType": "number"
+        },
+        {
+          "key": "maxToken",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "label": "",
+          "valueType": "number"
+        },
+        {
+          "key": "isResponseAnswerText",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "label": "",
+          "value": true,
+          "valueType": "boolean"
+        },
+        {
+          "key": "aiChatVision",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "label": "",
+          "valueType": "boolean",
+          "value": true
+        },
+        {
+          "key": "aiChatAudio",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "label": "",
+          "valueType": "boolean",
+          "value": false
+        },
+        {
+          "key": "aiChatVideo",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "label": "",
+          "valueType": "boolean",
+          "value": false
+        },
+        {
+          "key": "aiChatExtractFiles",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "label": "",
+          "valueType": "boolean",
+          "value": true
+        },
+        {
+          "key": "aiChatReasoning",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "label": "",
+          "valueType": "boolean",
+          "value": true
+        },
+        {
+          "key": "aiChatReasoningEffort",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "label": "",
+          "valueType": "string"
+        },
+        {
+          "key": "aiChatTopP",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "label": "",
+          "valueType": "number"
+        },
+        {
+          "key": "aiChatStopSign",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "label": "",
+          "valueType": "string"
+        },
+        {
+          "key": "aiChatResponseFormat",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "label": "",
+          "valueType": "string"
+        },
+        {
+          "key": "aiChatJsonSchema",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "label": "",
+          "valueType": "string"
+        },
+        {
+          "key": "useAgentSandbox",
+          "canAgentGenerated": false,
+          "renderTypeList": [
+            "switch"
+          ],
+          "label": "app:use_agent_sandbox",
+          "description": "app:use_computer_desc",
+          "valueType": "boolean",
+          "value": false
+        },
+        {
+          "key": "sandboxEntrypoint",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "label": "",
+          "valueType": "string"
+        },
+        {
+          "key": "systemPrompt",
+          "renderTypeList": [
+            "textarea",
+            "reference"
+          ],
+          "maxLength": 100000,
+          "isRichText": true,
+          "valueType": "string",
+          "label": "common:core.ai.Prompt",
+          "description": "common:core.app.tip.systemPromptTip",
+          "placeholder": "common:core.app.tip.chatNodeSystemPromptTip",
+          "toolDescription": "common:core.ai.Prompt"
+        },
+        {
+          "key": "history",
+          "renderTypeList": [
+            "numberInput",
+            "reference"
+          ],
+          "valueType": "chatHistory",
+          "label": "common:core.module.input.label.chat history",
+          "description": "workflow:max_dialog_rounds",
+          "required": true,
+          "min": 0,
+          "max": 50,
+          "value": 6,
+          "toolDescription": "common:core.module.input.label.chat history"
+        },
+        {
+          "key": "fileUrlList",
+          "renderTypeList": [
+            "reference",
+            "JSONEditor"
+          ],
+          "label": "app:workflow.user_file_input",
+          "debugLabel": "app:workflow.user_file_input",
+          "description": "app:workflow.user_file_input_desc",
+          "valueType": "arrayString",
+          "defaultToAgentGenerated": true,
+          "toolDescription": "app:workflow.user_file_input"
+        },
+        {
+          "key": "userChatInput",
+          "renderTypeList": [
+            "reference",
+            "textarea"
+          ],
+          "valueType": "string",
+          "label": "workflow:user_question",
+          "toolDescription": "user question",
+          "required": true,
+          "defaultToAgentGenerated": true,
+          "value": "{{$Start.userChatInput$}}"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "answerText",
+          "key": "answerText",
+          "label": "common:core.module.output.label.Ai response content",
+          "description": "common:core.module.output.description.Ai response content",
+          "valueType": "string",
+          "type": "static"
+        },
+        {
+          "id": "system_error_text",
+          "key": "system_error_text",
+          "type": "error",
+          "valueType": "string",
+          "label": "workflow:error_text"
+        }
+      ],
+      "nodeId": "Tools",
+      "position": {
+        "x": 300,
+        "y": 0
+      }
+    },
+    {
+      "id": "toolParams",
+      "templateType": "ai",
+      "flowNodeType": "toolParams",
+      "showSourceHandle": true,
+      "showTargetHandle": true,
+      "avatar": "core/workflow/template/toolParams",
+      "avatarLinear": "core/workflow/template/toolParamsLinear",
+      "colorSchema": "indigo",
+      "name": "Slow",
+      "intro": "slow deterministic tool",
+      "isTool": true,
+      "inputs": [],
+      "outputs": [],
+      "nodeId": "Slow",
+      "position": {
+        "x": 600,
+        "y": 0
+      }
+    },
+    {
+      "id": "toolParams",
+      "templateType": "ai",
+      "flowNodeType": "toolParams",
+      "showSourceHandle": true,
+      "showTargetHandle": true,
+      "avatar": "core/workflow/template/toolParams",
+      "avatarLinear": "core/workflow/template/toolParamsLinear",
+      "colorSchema": "indigo",
+      "name": "Fast",
+      "intro": "fast deterministic tool",
+      "isTool": true,
+      "inputs": [],
+      "outputs": [],
+      "nodeId": "Fast",
+      "position": {
+        "x": 900,
+        "y": 0
+      }
+    },
+    {
+      "id": "httpRequest468",
+      "templateType": "tools",
+      "flowNodeType": "httpRequest468",
+      "showSourceHandle": true,
+      "showTargetHandle": true,
+      "avatar": "core/workflow/template/httpRequest",
+      "avatarLinear": "core/workflow/template/httpRequestLinear",
+      "colorSchema": "indigo",
+      "name": "SlowGate",
+      "intro": "workflow:intro_http_request",
+      "showStatus": true,
+      "isTool": true,
+      "hasToolInput": true,
+      "catchError": false,
+      "courseUrl": "/guide/build/workflow/nodes/http",
+      "inputs": [
+        {
+          "key": "system_addInputParam",
+          "renderTypeList": [
+            "addInputParam"
+          ],
+          "valueType": "dynamic",
+          "label": "",
+          "required": false,
+          "description": "common:core.module.input.description.HTTP Dynamic Input",
+          "customInputConfig": {
+            "selectValueTypeList": [
+              "string",
+              "number",
+              "boolean",
+              "object",
+              "arrayString",
+              "arrayNumber",
+              "arrayBoolean",
+              "arrayObject",
+              "arrayAny",
+              "any",
+              "chatHistory",
+              "datasetQuote",
+              "dynamic",
+              "selectDataset",
+              "selectApp"
+            ],
+            "showDescription": false,
+            "showDefaultValue": true
+          },
+          "deprecated": true
+        },
+        {
+          "key": "system_httpMethod",
+          "renderTypeList": [
+            "custom"
+          ],
+          "valueType": "string",
+          "label": "",
+          "value": "POST",
+          "required": true
+        },
+        {
+          "key": "system_httpTimeout",
+          "renderTypeList": [
+            "custom"
+          ],
+          "valueType": "number",
+          "label": "",
+          "value": 100,
+          "min": 5,
+          "max": 600,
+          "required": true
+        },
+        {
+          "key": "system_httpReqUrl",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "valueType": "string",
+          "label": "",
+          "description": "common:core.module.input.description.Http Request Url",
+          "placeholder": "https://api.ai.com/getInventory",
+          "required": true,
+          "value": "__GATE_URL__/slow"
+        },
+        {
+          "key": "system_header_secret",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "valueType": "object",
+          "label": "",
+          "required": false
+        },
+        {
+          "key": "system_httpHeader",
+          "renderTypeList": [
+            "custom"
+          ],
+          "valueType": "any",
+          "value": [],
+          "label": "",
+          "description": "common:core.module.input.description.Http Request Header",
+          "placeholder": "common:core.module.input.description.Http Request Header",
+          "required": false
+        },
+        {
+          "key": "system_httpParams",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "valueType": "any",
+          "value": [],
+          "label": "",
+          "required": false
+        },
+        {
+          "key": "system_httpJsonBody",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "valueType": "any",
+          "value": "{\"runId\":\"{{$Start.userChatInput$}}\",\"node\":\"SlowGate\"}",
+          "label": "",
+          "required": false
+        },
+        {
+          "key": "system_httpFormBody",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "valueType": "any",
+          "value": [],
+          "label": "",
+          "required": false
+        },
+        {
+          "key": "system_httpContentType",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "valueType": "string",
+          "value": "json",
+          "label": "",
+          "required": false
+        }
+      ],
+      "outputs": [
+        {
+          "id": "system_addOutputParam",
+          "key": "system_addOutputParam",
+          "type": "dynamic",
+          "valueType": "dynamic",
+          "label": "workflow:http_extract_output",
+          "customFieldConfig": {
+            "selectValueTypeList": [
+              "string",
+              "number",
+              "boolean",
+              "object",
+              "arrayString",
+              "arrayNumber",
+              "arrayBoolean",
+              "arrayObject",
+              "arrayAny",
+              "any",
+              "chatHistory",
+              "datasetQuote",
+              "dynamic",
+              "selectDataset",
+              "selectApp"
+            ],
+            "showDescription": false,
+            "showDefaultValue": false
+          },
+          "description": "workflow:http_extract_output_description"
+        },
+        {
+          "id": "httpRawResponse",
+          "key": "httpRawResponse",
+          "required": true,
+          "label": "workflow:raw_response",
+          "description": "workflow:http_raw_response_description",
+          "valueType": "any",
+          "type": "static"
+        },
+        {
+          "id": "system_httpRawError",
+          "key": "system_httpRawError",
+          "label": "workflow:http_full_error",
+          "description": "workflow:http_full_error_description",
+          "valueType": "object",
+          "type": "error"
+        },
+        {
+          "id": "error",
+          "key": "error",
+          "label": "workflow:error_text",
+          "valueType": "string",
+          "type": "error"
+        }
+      ],
+      "nodeId": "SlowGate",
+      "position": {
+        "x": 1200,
+        "y": 0
+      }
+    },
+    {
+      "id": "httpRequest468",
+      "templateType": "tools",
+      "flowNodeType": "httpRequest468",
+      "showSourceHandle": true,
+      "showTargetHandle": true,
+      "avatar": "core/workflow/template/httpRequest",
+      "avatarLinear": "core/workflow/template/httpRequestLinear",
+      "colorSchema": "indigo",
+      "name": "FastGate",
+      "intro": "workflow:intro_http_request",
+      "showStatus": true,
+      "isTool": true,
+      "hasToolInput": true,
+      "catchError": false,
+      "courseUrl": "/guide/build/workflow/nodes/http",
+      "inputs": [
+        {
+          "key": "system_addInputParam",
+          "renderTypeList": [
+            "addInputParam"
+          ],
+          "valueType": "dynamic",
+          "label": "",
+          "required": false,
+          "description": "common:core.module.input.description.HTTP Dynamic Input",
+          "customInputConfig": {
+            "selectValueTypeList": [
+              "string",
+              "number",
+              "boolean",
+              "object",
+              "arrayString",
+              "arrayNumber",
+              "arrayBoolean",
+              "arrayObject",
+              "arrayAny",
+              "any",
+              "chatHistory",
+              "datasetQuote",
+              "dynamic",
+              "selectDataset",
+              "selectApp"
+            ],
+            "showDescription": false,
+            "showDefaultValue": true
+          },
+          "deprecated": true
+        },
+        {
+          "key": "system_httpMethod",
+          "renderTypeList": [
+            "custom"
+          ],
+          "valueType": "string",
+          "label": "",
+          "value": "POST",
+          "required": true
+        },
+        {
+          "key": "system_httpTimeout",
+          "renderTypeList": [
+            "custom"
+          ],
+          "valueType": "number",
+          "label": "",
+          "value": 100,
+          "min": 5,
+          "max": 600,
+          "required": true
+        },
+        {
+          "key": "system_httpReqUrl",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "valueType": "string",
+          "label": "",
+          "description": "common:core.module.input.description.Http Request Url",
+          "placeholder": "https://api.ai.com/getInventory",
+          "required": true,
+          "value": "__GATE_URL__/fast"
+        },
+        {
+          "key": "system_header_secret",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "valueType": "object",
+          "label": "",
+          "required": false
+        },
+        {
+          "key": "system_httpHeader",
+          "renderTypeList": [
+            "custom"
+          ],
+          "valueType": "any",
+          "value": [],
+          "label": "",
+          "description": "common:core.module.input.description.Http Request Header",
+          "placeholder": "common:core.module.input.description.Http Request Header",
+          "required": false
+        },
+        {
+          "key": "system_httpParams",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "valueType": "any",
+          "value": [],
+          "label": "",
+          "required": false
+        },
+        {
+          "key": "system_httpJsonBody",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "valueType": "any",
+          "value": "{\"runId\":\"{{$Start.userChatInput$}}\",\"node\":\"FastGate\"}",
+          "label": "",
+          "required": false
+        },
+        {
+          "key": "system_httpFormBody",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "valueType": "any",
+          "value": [],
+          "label": "",
+          "required": false
+        },
+        {
+          "key": "system_httpContentType",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "valueType": "string",
+          "value": "json",
+          "label": "",
+          "required": false
+        }
+      ],
+      "outputs": [
+        {
+          "id": "system_addOutputParam",
+          "key": "system_addOutputParam",
+          "type": "dynamic",
+          "valueType": "dynamic",
+          "label": "workflow:http_extract_output",
+          "customFieldConfig": {
+            "selectValueTypeList": [
+              "string",
+              "number",
+              "boolean",
+              "object",
+              "arrayString",
+              "arrayNumber",
+              "arrayBoolean",
+              "arrayObject",
+              "arrayAny",
+              "any",
+              "chatHistory",
+              "datasetQuote",
+              "dynamic",
+              "selectDataset",
+              "selectApp"
+            ],
+            "showDescription": false,
+            "showDefaultValue": false
+          },
+          "description": "workflow:http_extract_output_description"
+        },
+        {
+          "id": "httpRawResponse",
+          "key": "httpRawResponse",
+          "required": true,
+          "label": "workflow:raw_response",
+          "description": "workflow:http_raw_response_description",
+          "valueType": "any",
+          "type": "static"
+        },
+        {
+          "id": "system_httpRawError",
+          "key": "system_httpRawError",
+          "label": "workflow:http_full_error",
+          "description": "workflow:http_full_error_description",
+          "valueType": "object",
+          "type": "error"
+        },
+        {
+          "id": "error",
+          "key": "error",
+          "label": "workflow:error_text",
+          "valueType": "string",
+          "type": "error"
+        }
+      ],
+      "nodeId": "FastGate",
+      "position": {
+        "x": 1500,
+        "y": 0
+      }
+    },
+    {
+      "id": "variableUpdate",
+      "templateType": "tools",
+      "flowNodeType": "variableUpdate",
+      "showSourceHandle": true,
+      "showTargetHandle": true,
+      "avatar": "core/workflow/template/variableUpdate",
+      "avatarLinear": "core/workflow/template/variableUpdateLinear",
+      "colorSchema": "coral",
+      "name": "SlowUpdate",
+      "intro": "workflow:update_specified_node_output_or_global_variable",
+      "showStatus": false,
+      "isTool": true,
+      "courseUrl": "/guide/build/workflow/nodes/variable_update",
+      "inputs": [
+        {
+          "key": "updateList",
+          "valueType": "any",
+          "label": "",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "value": [
+            {
+              "variable": [
+                "VARIABLE_NODE_ID",
+                "a"
+              ],
+              "value": [
+                "",
+                "A1"
+              ],
+              "valueType": "string",
+              "renderType": "input"
+            },
+            {
+              "variable": [
+                "VARIABLE_NODE_ID",
+                "stamp"
+              ],
+              "value": [
+                "",
+                "slow"
+              ],
+              "valueType": "string",
+              "renderType": "input"
+            }
+          ]
+        }
+      ],
+      "outputs": [],
+      "nodeId": "SlowUpdate",
+      "position": {
+        "x": 1800,
+        "y": 0
+      }
+    },
+    {
+      "id": "variableUpdate",
+      "templateType": "tools",
+      "flowNodeType": "variableUpdate",
+      "showSourceHandle": true,
+      "showTargetHandle": true,
+      "avatar": "core/workflow/template/variableUpdate",
+      "avatarLinear": "core/workflow/template/variableUpdateLinear",
+      "colorSchema": "coral",
+      "name": "FastUpdate",
+      "intro": "workflow:update_specified_node_output_or_global_variable",
+      "showStatus": false,
+      "isTool": true,
+      "courseUrl": "/guide/build/workflow/nodes/variable_update",
+      "inputs": [
+        {
+          "key": "updateList",
+          "valueType": "any",
+          "label": "",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "value": [
+            {
+              "variable": [
+                "VARIABLE_NODE_ID",
+                "b"
+              ],
+              "value": [
+                "",
+                "B1"
+              ],
+              "valueType": "string",
+              "renderType": "input"
+            },
+            {
+              "variable": [
+                "VARIABLE_NODE_ID",
+                "stamp"
+              ],
+              "value": [
+                "",
+                "fast"
+              ],
+              "valueType": "string",
+              "renderType": "input"
+            }
+          ]
+        }
+      ],
+      "outputs": [],
+      "nodeId": "FastUpdate",
+      "position": {
+        "x": 2100,
+        "y": 0
+      }
+    },
+    {
+      "id": "answerNode",
+      "templateType": "tools",
+      "flowNodeType": "answerNode",
+      "showSourceHandle": true,
+      "showTargetHandle": true,
+      "avatar": "core/workflow/template/reply",
+      "avatarLinear": "core/workflow/template/replyLinear",
+      "colorSchema": "blue",
+      "name": "ReadVariables",
+      "intro": "workflow:intro_assigned_reply",
+      "courseUrl": "/guide/build/workflow/nodes/reply",
+      "isTool": true,
+      "inputs": [
+        {
+          "key": "text",
+          "renderTypeList": [
+            "textarea",
+            "reference"
+          ],
+          "valueType": "any",
+          "required": true,
+          "isRichText": false,
+          "maxLength": 100000,
+          "label": "common:core.module.input.label.Response content",
+          "description": "common:core.module.input.description.Response content",
+          "placeholder": "common:core.module.input.description.Response content",
+          "value": "a={{$VARIABLE_NODE_ID.a$}}|b={{$VARIABLE_NODE_ID.b$}}|stamp={{$VARIABLE_NODE_ID.stamp$}}|n={{$VARIABLE_NODE_ID.n$}}|flag={{$VARIABLE_NODE_ID.flag$}}|text={{$VARIABLE_NODE_ID.text$}}"
+        }
+      ],
+      "outputs": [],
+      "nodeId": "ReadVariables",
+      "position": {
+        "x": 2400,
+        "y": 0
+      }
+    }
+  ],
+  "edges": [
+    {
+      "source": "Start",
+      "target": "Tools",
+      "sourceHandle": "Start-source-right",
+      "targetHandle": "Tools-target-left"
+    },
+    {
+      "source": "Tools",
+      "target": "Slow",
+      "sourceHandle": "selectedTools",
+      "targetHandle": "selectedTools"
+    },
+    {
+      "source": "Tools",
+      "target": "Fast",
+      "sourceHandle": "selectedTools",
+      "targetHandle": "selectedTools"
+    },
+    {
+      "source": "Slow",
+      "target": "SlowGate",
+      "sourceHandle": "Slow-source-right",
+      "targetHandle": "SlowGate-target-left"
+    },
+    {
+      "source": "Fast",
+      "target": "FastGate",
+      "sourceHandle": "Fast-source-right",
+      "targetHandle": "FastGate-target-left"
+    },
+    {
+      "source": "SlowGate",
+      "target": "SlowUpdate",
+      "sourceHandle": "SlowGate-source-right",
+      "targetHandle": "SlowUpdate-target-left"
+    },
+    {
+      "source": "FastGate",
+      "target": "FastUpdate",
+      "sourceHandle": "FastGate-source-right",
+      "targetHandle": "FastUpdate-target-left"
+    },
+    {
+      "source": "Tools",
+      "target": "ReadVariables",
+      "sourceHandle": "Tools-source-right",
+      "targetHandle": "ReadVariables-target-left"
+    }
+  ],
+  "chatConfig": {
+    "variables": [
+      {
+        "key": "a",
+        "label": "a",
+        "description": "",
+        "type": "input",
+        "valueType": "string",
+        "defaultValue": "A0",
+        "required": false
+      },
+      {
+        "key": "b",
+        "label": "b",
+        "description": "",
+        "type": "input",
+        "valueType": "string",
+        "defaultValue": "B0",
+        "required": false
+      },
+      {
+        "key": "stamp",
+        "label": "stamp",
+        "description": "",
+        "type": "input",
+        "valueType": "string",
+        "defaultValue": "S0",
+        "required": false
+      },
+      {
+        "key": "n",
+        "label": "n",
+        "description": "",
+        "type": "input",
+        "valueType": "number",
+        "defaultValue": 9,
+        "required": false
+      },
+      {
+        "key": "flag",
+        "label": "flag",
+        "description": "",
+        "type": "input",
+        "valueType": "boolean",
+        "defaultValue": true,
+        "required": false
+      },
+      {
+        "key": "text",
+        "label": "text",
+        "description": "",
+        "type": "input",
+        "valueType": "string",
+        "defaultValue": "seed",
+        "required": false
+      },
+      {
+        "key": "obj",
+        "label": "obj",
+        "description": "",
+        "type": "input",
+        "valueType": "object",
+        "defaultValue": {
+          "items": [
+            1
+          ]
+        },
+        "required": false
+      }
+    ]
+  }
+}
