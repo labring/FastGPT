@@ -633,6 +633,16 @@ describe('axios.ts', () => {
       );
     });
 
+    const createLargeFileServer = async () => {
+      // 模拟渠道附件下载：文件超过共享默认 20 MiB，但未超过 100 MiB 业务配额。
+      const body = Buffer.alloc(25 * 1024 * 1024, 1);
+      const server = await listen((req, res) => {
+        res.setHeader('Content-Type', 'application/octet-stream');
+        res.end(body);
+      }, '0.0.0.0');
+      return { body, server, port: getServerPort(server) };
+    };
+
     it('流式响应未显式限制时应该允许读取超过默认上限的业务文件', async () => {
       clearProxyEnv();
       mutableServiceEnv.CHECK_INTERNAL_IP = false;
@@ -641,13 +651,7 @@ describe('axios.ts', () => {
         return;
       }
 
-      // 模拟渠道附件下载：文件超过共享默认 20 MiB，但未超过 100 MiB 业务配额。
-      const body = Buffer.alloc(25 * 1024 * 1024, 1);
-      const server = await listen((req, res) => {
-        res.setHeader('Content-Type', 'application/octet-stream');
-        res.end(body);
-      }, '0.0.0.0');
-      const port = getServerPort(server);
+      const { body, server, port } = await createLargeFileServer();
 
       try {
         const instance = createProxyAxios();
@@ -660,6 +664,51 @@ describe('axios.ts', () => {
         }
 
         expect(totalBytes).toBe(body.length);
+      } finally {
+        await closeServer(server);
+      }
+    });
+
+    it('构造实例时显式传入 maxContentLength: -1 应该保留取消限制的语义', async () => {
+      clearProxyEnv();
+      mutableServiceEnv.CHECK_INTERNAL_IP = false;
+      const carrierHost = getReachablePrivateHost();
+      if (!carrierHost) {
+        return;
+      }
+
+      const { body, server, port } = await createLargeFileServer();
+
+      try {
+        const instance = createProxyAxios({ maxContentLength: -1 });
+        const response = await instance.get(`http://${carrierHost}:${port}/file`, {
+          responseType: 'arraybuffer'
+        });
+
+        expect(Buffer.byteLength(response.data)).toBe(body.length);
+      } finally {
+        await closeServer(server);
+      }
+    });
+
+    it('单次请求显式传入 maxContentLength: -1 应该保留取消限制的语义', async () => {
+      clearProxyEnv();
+      mutableServiceEnv.CHECK_INTERNAL_IP = false;
+      const carrierHost = getReachablePrivateHost();
+      if (!carrierHost) {
+        return;
+      }
+
+      const { body, server, port } = await createLargeFileServer();
+
+      try {
+        const instance = createProxyAxios();
+        const response = await instance.get(`http://${carrierHost}:${port}/file`, {
+          responseType: 'arraybuffer',
+          maxContentLength: -1
+        });
+
+        expect(Buffer.byteLength(response.data)).toBe(body.length);
       } finally {
         await closeServer(server);
       }

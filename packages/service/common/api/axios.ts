@@ -410,8 +410,11 @@ export const httpsCertificateIgnoreAgent = createProxyAgent({
  */
 const addResponseSizeLimitInterceptor = (instance: AxiosInstance) => {
   instance.interceptors.request.use((config) => {
-    if (config.responseType !== 'stream' && config.maxContentLength === -1) {
-      config.maxContentLength = serviceAxiosMaxContentLength;
+    // undefined 表示调用方没有提供上限（工厂会清空 axios 的 -1 默认值），
+    // 以便与调用方显式传入 -1 取消限制的语义区分开。
+    if (config.maxContentLength === undefined) {
+      config.maxContentLength =
+        config.responseType === 'stream' ? -1 : serviceAxiosMaxContentLength;
     }
     return config;
   });
@@ -438,6 +441,12 @@ export function createProxyAxios(config?: AxiosRequestConfig, ssrfCheck = true) 
         httpsAgent: agent,
         ...config
       });
+
+  // axios 自身默认 maxContentLength=-1，仅看合并后的配置无法区分“未提供”和
+  // “显式取消限制”。未显式提供时清空实例默认值，交给请求拦截器按响应类型注入。
+  if (typeof config?.maxContentLength !== 'number') {
+    instance.defaults.maxContentLength = undefined;
+  }
 
   const instanceWithSizeLimit = addResponseSizeLimitInterceptor(instance);
 
