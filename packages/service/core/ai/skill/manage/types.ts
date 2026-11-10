@@ -9,6 +9,7 @@ export type CreateSkillData = {
   avatar?: string;
   teamId: string;
   tmbId: string;
+  inheritPermission?: boolean;
   creationStatus?: AgentSkillCreationStatusEnum;
 };
 

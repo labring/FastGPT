@@ -132,8 +132,8 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetResponse> {
           type,
           apiDatasetServer,
           ...(sangforFileParseConfig && { sangforFileParseConfig }),
-          // 独立态创建（sangfor 专用）只对文件夹生效，其余类型固定按继承态创建
-          inheritPermission: type === DatasetTypeEnum.folder ? inheritPermission : true
+          // folder 与普通知识库均支持独立态创建；未传时 schema 已按继承态解析。
+          inheritPermission
         }
       ],
       { session, ordered: true }

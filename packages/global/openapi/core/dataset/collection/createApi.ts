@@ -1,11 +1,10 @@
 import z from 'zod';
+import { ChunkSettingsSchema, CollectionTagLabelSchema } from '../../../../core/dataset/type';
 import {
-  ChunkSettingsSchema,
-  CollectionTagLabelSchema,
   InheritPermissionInputSchema,
   InheritPermissionSchema,
   type WithOptionalInheritPermission
-} from '../../../../core/dataset/type';
+} from '../../../../support/permission/inheritPermission';
 import { DatasetCollectionTypeEnum } from '../../../../core/dataset/constants';
 import { ParentIdSchema } from '../../../../common/parentFolder/type';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
