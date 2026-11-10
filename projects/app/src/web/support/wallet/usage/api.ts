@@ -1,14 +1,20 @@
 import { POST } from '@/web/common/api/request';
 import type {
-  GetUsageDashboardProps,
-  GetUsageDashboardResponseItem,
-  GetUsageProps
-} from '@fastgpt/global/support/wallet/usage/api';
-import type { UsageListItemType } from '@fastgpt/global/support/wallet/usage/type';
-import type { PaginationProps, PaginationResponse } from '@fastgpt/global/openapi/api';
+  GetUsageBodyType,
+  GetUsageDashboardBodyType,
+  GetUsageDashboardResponseType,
+  GetUsageResponseType,
+  UsageFilterOptionsBody,
+  UsageFilterOptionsResponse
+} from '@fastgpt/global/openapi/support/wallet/usage/api';
 
-export const getUserUsages = (data: PaginationProps<GetUsageProps>) =>
-  POST<PaginationResponse<UsageListItemType>>(`/proApi/support/wallet/usage/getUsage`, data);
+export const getUserUsages = (data: GetUsageBodyType) =>
+  POST<GetUsageResponseType>(`/proApi/support/wallet/usage/getUsage`, data);
 
-export const getDashboardData = (data: GetUsageDashboardProps) =>
-  POST<GetUsageDashboardResponseItem[]>(`/proApi/support/wallet/usage/getDashboardData`, data);
+export const getDashboardData = (data: GetUsageDashboardBodyType) =>
+  POST<GetUsageDashboardResponseType>(`/proApi/support/wallet/usage/getDashboardData`, data);
+
+export const getUsageFilterOptions = (body: UsageFilterOptionsBody, controller?: AbortController) =>
+  POST<UsageFilterOptionsResponse>(`/proApi/support/wallet/usage/filterOptions`, body, {
+    cancelToken: controller
+  });
