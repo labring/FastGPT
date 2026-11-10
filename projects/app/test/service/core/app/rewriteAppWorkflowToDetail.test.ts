@@ -51,6 +51,58 @@ describe('rewriteAppWorkflowToDetail - current workflow tool inputs', () => {
     authAppByTmbIdMock.mockReset();
   });
 
+  it('protects historical Agent tool credentials in detail when the preview is unavailable', async () => {
+    getClientToolPreviewNodeMock.mockRejectedValue(new Error('Tool deleted'));
+    const nodes = [
+      {
+        nodeId: 'agent',
+        flowNodeType: FlowNodeTypeEnum.agent,
+        name: 'Agent',
+        inputs: [
+          {
+            key: NodeInputKeyEnum.selectedTools,
+            label: 'Selected tools',
+            renderTypeList: [FlowNodeInputTypeEnum.selectTool],
+            value: [
+              {
+                id: 'systemTool-missing',
+                config: {},
+                toolConfig: {
+                  mcpToolSet: {
+                    url: 'https://mcp.example.com',
+                    headerSecret: { Authorization: { value: 'historical-plaintext' } },
+                    toolList: []
+                  }
+                }
+              }
+            ]
+          },
+          {
+            key: 'business',
+            label: 'Business',
+            renderTypeList: [],
+            value: { headerSecret: 'ordinary-business-value' }
+          }
+        ],
+        outputs: []
+      } as StoreNodeItemType
+    ];
+
+    await rewriteAppWorkflowToDetail({
+      nodes,
+      teamId: 'team-1',
+      ownerTmbId: 'tmb-1',
+      isRoot: false
+    });
+
+    const tool = nodes[0].inputs[0].value[0];
+    expect(tool.toolConfig.mcpToolSet.headerSecret.Authorization).toEqual({
+      secret: expect.any(String)
+    });
+    expect(JSON.stringify(nodes)).not.toContain('historical-plaintext');
+    expect(nodes[0].inputs[1].value).toEqual({ headerSecret: 'ordinary-business-value' });
+  });
+
   it('keeps the baseline invalid placeholder and error detail', async () => {
     getClientToolPreviewNodeMock.mockRejectedValue(new Error('Tool deleted'));
     const nodes = [

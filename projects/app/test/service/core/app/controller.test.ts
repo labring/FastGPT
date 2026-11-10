@@ -42,6 +42,57 @@ const mocks = vi.hoisted(() => ({
 vi.mock('@fastgpt/service/core/app/tool/utils/client', () => mocks);
 
 describe('beforeUpdateAppFormat', () => {
+  it('encrypts Agent selected tool credentials even when previews are unavailable', async () => {
+    const tools = ['mcpTool', 'httpTool', 'mcpToolSet', 'httpToolSet'].map((key) => ({
+      id: `mcp-unavailable-${key}`,
+      config: {},
+      toolConfig: {
+        [key]: {
+          headerSecret: {
+            Authorization: { value: `plain-${key}` },
+            Reference: { ref: ['VARIABLE_NODE_ID', 'token'] }
+          },
+          toolList: [{ name: 'child', headerSecret: { 'X-Key': { value: `child-${key}` } } }]
+        }
+      }
+    }));
+    const businessValue = { headerSecret: 'ordinary-business-value' };
+    const nodes = [
+      {
+        flowNodeType: FlowNodeTypeEnum.agent,
+        inputs: [
+          { key: NodeInputKeyEnum.selectedTools, renderTypeList: [], value: tools },
+          { key: 'business', renderTypeList: [], value: businessValue }
+        ]
+      }
+    ] as unknown as StoreNodeItemType[];
+    tools.forEach(() => mocks.getClientToolPreviewNode.mockRejectedValueOnce(new Error('missing')));
+
+    await beforeUpdateAppFormat({ nodes });
+
+    tools.forEach((tool, index) => {
+      const key = ['mcpTool', 'httpTool', 'mcpToolSet', 'httpToolSet'][index];
+      const config = tool.toolConfig[key as keyof typeof tool.toolConfig];
+      expect(
+        getSecretValue({ storeSecret: { Authorization: config.headerSecret.Authorization } })
+      ).toEqual({
+        Authorization: `plain-${key}`
+      });
+      expect(config.headerSecret.Reference).toEqual({ ref: ['VARIABLE_NODE_ID', 'token'] });
+      expect(getSecretValue({ storeSecret: config.toolList[0].headerSecret })).toEqual({
+        'X-Key': `child-${key}`
+      });
+    });
+    expect(JSON.stringify(nodes)).not.toContain('plain-mcpTool');
+    expect(JSON.stringify(nodes)).not.toContain('child-httpToolSet');
+    expect(nodes[0].inputs[1].value).toEqual(businessValue);
+
+    const encrypted = JSON.stringify(tools);
+    tools.forEach(() => mocks.getClientToolPreviewNode.mockRejectedValueOnce(new Error('missing')));
+    await beforeUpdateAppFormat({ nodes });
+    expect(JSON.stringify(tools)).toBe(encrypted);
+  });
+
   it.each(['mcpToolSet', 'httpToolSet'] as const)(
     'encrypts node-local %s auth and preserves it on repeat saves',
     async (toolSetKey) => {

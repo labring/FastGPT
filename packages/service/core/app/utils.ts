@@ -43,7 +43,7 @@ import type {
   SelectedDatasetType
 } from '@fastgpt/global/core/workflow/type/io';
 import type { AppResourcesType } from '@fastgpt/global/core/app/type';
-import { formatToolInputSecrets } from './tool/secretConfig';
+import { formatToolConfigHeaderSecrets, formatToolInputSecrets } from './tool/secretConfig';
 import { storeSecretValue } from '../../common/secret/utils';
 import { StoreSecretValueTypeSchema } from '@fastgpt/global/common/secret/type';
 import z from 'zod';
@@ -703,6 +703,22 @@ export async function rewriteAppWorkflowToDetail({
   };
 
   nodes.forEach((node) => {
+    if (node.flowNodeType === FlowNodeTypeEnum.agent) {
+      const selectedTools = node.inputs.find(
+        (input) => input.key === NodeInputKeyEnum.selectedTools
+      );
+      if (
+        selectedTools &&
+        !nodeInputIsReference(selectedTools) &&
+        Array.isArray(selectedTools.value)
+      ) {
+        // 历史版本可能含明文；详情只输出安全包装，等待用户保存时再写回。
+        selectedTools.value.forEach((tool) => {
+          if (isRecord(tool)) formatToolConfigHeaderSecrets(tool.toolConfig);
+        });
+      }
+    }
+
     clearToolCredentials({
       toolConfig: node.toolConfig,
       externalNodeReference: Boolean(node.pluginId),

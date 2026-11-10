@@ -8,7 +8,7 @@ import { HttpToolSetRuntimeConfigSchema } from '@fastgpt/global/core/workflow/ty
 import { MongoApp } from './schema';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { getClientToolPreviewNode } from './tool/utils/client';
-import { formatToolInputSecrets } from './tool/secretConfig';
+import { formatToolConfigHeaderSecrets, formatToolInputSecrets } from './tool/secretConfig';
 import { storeSecretValue } from '../../common/secret/utils';
 import { MongoEvaluation } from './evaluation/evalSchema';
 import { removeEvaluationJob } from './evaluation/mq';
@@ -149,6 +149,8 @@ export const beforeUpdateAppFormat = async ({
 
       await Promise.all(
         selectedToolsInput.value.map(async (selectedTool: any) => {
+          // 即使工具预览不可用，已确认的鉴权容器也不能保存明文。
+          formatToolConfigHeaderSecrets(selectedTool?.toolConfig);
           if (!selectedTool?.id || !selectedTool.config) return;
 
           try {
