@@ -240,22 +240,6 @@ export const syncResourceTreePermissions = async ({
     return;
   }
 
-  // Collection 的 parentId 索引以 datasetId 为前缀；固定根的范围并复用于每层查询。
-  // 兼容未携带 datasetId 的旧调用方，避免后续每层跨知识库定位 parentId。
-  const collectionScope = await (async () => {
-    if (resourceType !== PerResourceTypeEnum.collection) return {};
-    const datasetId =
-      resource.datasetId ??
-      (
-        await resourceModel
-          .findOne({ _id: resource._id, teamId: resource.teamId }, 'datasetId')
-          .lean<{ datasetId?: string } | null>()
-          .session(session)
-      )?.datasetId;
-    if (!datasetId) throw new Error('Collection dataset not found');
-    return { datasetId };
-  })();
-
   const allDescendantIds: string[] = [];
   const descendantNodes: SyncChildrenPermissionResourceType[] = [];
   let pendingParentIds = [String(resource._id)];
@@ -264,7 +248,7 @@ export const syncResourceTreePermissions = async ({
   while (pendingParentIds.length > 0) {
     const children = await resourceModel
       .find(
-        { teamId: resource.teamId, ...collectionScope, parentId: { $in: pendingParentIds } },
+        { teamId: resource.teamId, parentId: { $in: pendingParentIds } },
         '_id parentId inheritPermission'
       )
       .lean<SyncChildrenPermissionResourceType[]>()
