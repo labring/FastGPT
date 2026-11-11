@@ -92,6 +92,8 @@ export type SafeAxiosRequestOptions = {
   /** 请求前及每次重定向时执行入口专属的 URL 策略。 */
   validateUrl?: (url: string) => boolean;
   rejectUnauthorized?: boolean;
+  /** 单次请求专属的 HTTP(S) 代理；覆盖环境代理，每一跳仍校验目标和代理地址。 */
+  proxyUrl?: string;
 };
 
 export type SafeAxiosRequestConfig = AxiosRequestConfig & {
@@ -154,6 +156,28 @@ const prepareSafeRequestConfig = async (
 
   if (await isInternalAddress(requestUrl)) {
     return Promise.reject(new Error(PRIVATE_URL_TEXT));
+  }
+
+  const proxyUrl = config.__safeAxios?.proxyUrl;
+  if (proxyUrl) {
+    // 节点代理来自用户配置，与环境代理不同，代理端点自身也必须通过地址策略。
+    if (await isInternalAddress(proxyUrl)) {
+      throw new Error(PRIVATE_URL_TEXT);
+    }
+    const parsedProxyUrl = new URL(proxyUrl);
+    if (!['http:', 'https:'].includes(parsedProxyUrl.protocol)) {
+      throw new Error('Unsupported HTTP proxy protocol');
+    }
+    const resolvedProxy = await resolveSafeConnectAddress(
+      parsedProxyUrl.hostname.replace(/^\[|\]$/g, '')
+    );
+    const agent = createProxyAgent({
+      getProxyForUrl: () => proxyUrl,
+      // 代理主机也固定 DNS 结果，防止预检后第二次解析转向本机或云元数据地址。
+      lookup: createPinnedLookup(resolvedProxy),
+      rejectUnauthorized: config.__safeAxios?.rejectUnauthorized ?? true
+    });
+    return { ...config, proxy: false, httpAgent: agent, httpsAgent: agent };
   }
 
   if (isRequestUsingProxy(requestUrl, config)) {

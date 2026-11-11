@@ -50,6 +50,14 @@ Use `{{key}}` to reference variables. For example:
 | appId         | `{{appId}}`        |
 | Authorization | Bearer `{{token}}` |
 
+### HTTP Proxy
+
+Set **HTTP proxy** to an HTTP or HTTPS forward proxy URL, such as `http://user:password@proxy.example.com:8080`. Percent-encode special characters in the username and password. The complete URL uses the password input and is encrypted when the workflow is saved.
+
+The proxy applies only to this node and its redirects, overriding environment proxy settings (including `NO_PROXY`). Leave it empty to keep the existing network configuration. Exported workflows omit this setting; configure it again after import.
+
+The target URL, redirect targets, and proxy endpoint must pass the deployment's outbound address policy. Proxy-side DNS resolution follows the proxy server's network policy.
+
 ### Body
 
 Only takes effect with certain request types.

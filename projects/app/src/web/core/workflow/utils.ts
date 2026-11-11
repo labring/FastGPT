@@ -512,6 +512,13 @@ export const filterSensitiveNodesData = (nodes: StoreNodeItemType[]) => {
     }
 
     for (const input of node.inputs) {
+      if (
+        node.flowNodeType === FlowNodeTypeEnum.httpRequest468 &&
+        input.key === NodeInputKeyEnum.httpProxy
+      ) {
+        input.value = undefined;
+        input.defaultValue = undefined;
+      }
       if (input.key === NodeInputKeyEnum.systemInputConfig) {
         input.value = undefined;
       }
