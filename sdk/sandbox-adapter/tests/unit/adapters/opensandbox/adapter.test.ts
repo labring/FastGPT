@@ -60,9 +60,6 @@ const createSdkSandbox = (
     yield new TextEncoder().encode('stream');
   });
   const writeFiles = vi.fn(async (_entries: WriteEntry[]) => undefined);
-  const replaceContents = vi.fn(
-    async (_entries: Array<{ path: string; oldContent: string; newContent: string }>) => undefined
-  );
   const replaceContentsDetailed = vi.fn(
     async (
       entries: Array<{ path: string; oldContent: string; newContent: string }>
@@ -90,7 +87,6 @@ const createSdkSandbox = (
       readBytes,
       readBytesStream,
       writeFiles,
-      replaceContents,
       replaceContentsDetailed,
       getFileInfo
     }
@@ -102,7 +98,6 @@ const createSdkSandbox = (
     readBytes,
     readBytesStream,
     writeFiles,
-    replaceContents,
     replaceContentsDetailed,
     getFileInfo,
     commandInterrupt,
@@ -410,9 +405,6 @@ describe('OpenSandboxAdapter', () => {
         return { path, replacedCount: content.split(edit.old).length - 1 };
       });
     };
-    bound.replaceContents.mockImplementation(async (entries) => {
-      applyEdits(entries);
-    });
     bound.replaceContentsDetailed.mockImplementation(async (entries) => applyEdits(entries));
     bindSandbox(adapter, bound.sandbox);
 
@@ -454,25 +446,17 @@ describe('OpenSandboxAdapter', () => {
     ]);
   });
 
-  it('reports unmatched content through the real SDK without changing the file', async () => {
+  it('reports a zero-match response from a verbose request through the real SDK', async () => {
     const adapter = new OpenSandboxAdapter(CONNECTION);
     const bound = createSdkSandbox();
-    let content = 'original content';
-    const requests: URL[] = [];
+    const requests: Request[] = [];
     const mockFetch: typeof fetch = async (input, init) => {
       const request = new Request(input, init);
+      requests.push(request);
       const url = new URL(request.url);
-      requests.push(url);
-      const body = (await request.json()) as Record<string, { old: string; new: string }>;
-      const result: Record<string, { replacedCount: number }> = {};
-      for (const [path, edit] of Object.entries(body)) {
-        const replacedCount = content.split(edit.old).length - 1;
-        content = content.split(edit.old).join(edit.new);
-        result[path] = { replacedCount };
-      }
       // 与 execd 一致：没有 verbose 时，HTTP 200 不携带替换次数。
       return url.searchParams.get('verbose') === 'true'
-        ? Response.json(result)
+        ? Response.json({ '/workspace/a.txt': { replacedCount: 0 } })
         : new Response(null, { status: 200 });
     };
     const options = { baseUrl: 'http://sandbox.test', fetch: mockFetch };
@@ -488,10 +472,13 @@ describe('OpenSandboxAdapter', () => {
       path: '/workspace/a.txt'
     });
 
-    expect(content).toBe('original content');
     expect(requests).toHaveLength(1);
-    expect(requests[0].pathname).toBe('/files/replace');
-    expect(requests[0].searchParams.get('verbose')).toBe('true');
+    const [request] = requests;
+    const url = new URL(request.url);
+    expect(url.pathname).toBe('/files/replace');
+    expect(url.searchParams.get('verbose')).toBe('true');
+    const body: unknown = await request.json();
+    expect(body).toStrictEqual({ '/workspace/a.txt': { old: 'missing', new: 'new' } });
   });
 
   it('stops later edits to the same file after an unmatched edit', async () => {
