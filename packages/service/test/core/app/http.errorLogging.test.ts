@@ -60,15 +60,19 @@ describe('runHTTPTool error logging', () => {
       consoleRecords.length = 0;
       otelRecords.length = 0;
       let called = false;
+      let interceptorApplied = false;
+      let secretHeaderPresent = false;
       axios.defaults.adapter = (async (config) => {
         called = true;
+        interceptorApplied = config.maxRedirects === 0 && '__safeRedirect' in config;
+        secretHeaderPresent = config.headers.Authorization === marker;
         const error =
           kind === 'axios'
             ? new AxiosError(`request ${marker}`, 'ECONNRESET', config)
             : Object.assign(new Error(`failure ${marker}`), { code: marker });
         Object.assign(error, {
           cause: new Error(`cause ${marker}`),
-          response: { status: kind === 'axios' ? 503 : marker, data: { message: marker } }
+          response: { status: kind === 'axios' ? 503 : 999, data: { message: marker } }
         });
         throw error;
       }) satisfies AxiosAdapter;
@@ -82,6 +86,8 @@ describe('runHTTPTool error logging', () => {
       });
 
       expect(called).toBe(true);
+      expect(interceptorApplied).toBe(true);
+      expect(secretHeaderPresent).toBe(true);
       expect(result.errorMsg).toBeTruthy();
       expect(consoleRecords).toHaveLength(1);
       expect(otelRecords).toHaveLength(1);
@@ -96,6 +102,7 @@ describe('runHTTPTool error logging', () => {
         expect(allLogs).toContain('503');
       } else {
         expect(allLogs).not.toContain('503');
+        expect(allLogs).not.toContain('999');
       }
     }
   );
