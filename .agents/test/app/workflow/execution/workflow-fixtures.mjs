@@ -50,7 +50,7 @@ const templates = {
 const clone = (value) => JSON.parse(JSON.stringify(value));
 
 /** 从真实节点模板构建可导入图；只替换可配置输入，不向 JSON 写入运行 Context 或函数。 */
-export function fixtureNode(kind, id, values = {}, extra = {}) {
+export function fixtureNode({ kind, id, values = {}, extra = {} }) {
   const node = {
     ...clone(templates[kind]),
     nodeId: id,
@@ -68,14 +68,14 @@ export function fixtureNode(kind, id, values = {}, extra = {}) {
 }
 
 /** 使用生产端口格式；容器内边与主链路边分别显式声明。 */
-export const fixtureEdge = (source, target, handle = 'right') => ({
+export const fixtureEdge = ({ source, target, handle = 'right' }) => ({
   source,
   target,
   sourceHandle: handle === O.selectedTools ? O.selectedTools : `${source}-source-${handle}`,
   targetHandle: handle === O.selectedTools ? O.selectedTools : `${target}-target-left`
 });
 const ref = (node, key) => `{{$${node}.${key}$}}`;
-const valueConfig = (key, valueType, defaultValue) => ({
+const valueConfig = ({ key, valueType, defaultValue }) => ({
   key,
   label: key,
   description: '',
@@ -85,29 +85,34 @@ const valueConfig = (key, valueType, defaultValue) => ({
   required: false
 });
 const variables = [
-  valueConfig('a', V.string, 'A0'),
-  valueConfig('b', V.string, 'B0'),
-  valueConfig('stamp', V.string, 'S0'),
-  valueConfig('n', V.number, 9),
-  valueConfig('flag', V.boolean, true),
-  valueConfig('text', V.string, 'seed'),
-  valueConfig('obj', V.object, { items: [1] })
+  valueConfig({ key: 'a', valueType: V.string, defaultValue: 'A0' }),
+  valueConfig({ key: 'b', valueType: V.string, defaultValue: 'B0' }),
+  valueConfig({ key: 'stamp', valueType: V.string, defaultValue: 'S0' }),
+  valueConfig({ key: 'n', valueType: V.number, defaultValue: 9 }),
+  valueConfig({ key: 'flag', valueType: V.boolean, defaultValue: true }),
+  valueConfig({ key: 'text', valueType: V.string, defaultValue: 'seed' }),
+  valueConfig({ key: 'obj', valueType: V.object, defaultValue: { items: [1] } })
 ];
-const assignment = (key, value, valueType = V.string) => ({
+const assignment = ({ key, value, valueType = V.string }) => ({
   variable: [GLOBAL, key],
   value: ['', value],
   valueType,
   renderType: Input.input
 });
-const answer = (id, text) => fixtureNode('answer', id, { [I.answerText]: text });
-const update = (id, items) => fixtureNode('update', id, { [I.updateList]: items });
+const answer = (id, text) => fixtureNode({ kind: 'answer', id, values: { [I.answerText]: text } });
+const update = (id, items) =>
+  fixtureNode({ kind: 'update', id, values: { [I.updateList]: items } });
 const http = (id, path) =>
-  fixtureNode('http', id, {
-    [I.httpReqUrl]: '__GATE_URL__' + path,
-    [I.httpTimeout]: 100,
-    [I.httpJsonBody]: JSON.stringify({ runId: ref('Start', O.userChatInput), node: id })
+  fixtureNode({
+    kind: 'http',
+    id,
+    values: {
+      [I.httpReqUrl]: '__GATE_URL__' + path,
+      [I.httpTimeout]: 100,
+      [I.httpJsonBody]: JSON.stringify({ runId: ref('Start', O.userChatInput), node: id })
+    }
   });
-const graph = (nodes, edges, chatConfig = { variables }) => ({
+const graph = ({ nodes, edges, chatConfig = { variables } }) => ({
   nodes: nodes.map((node, index) => ({
     ...node,
     position: { x: index * 300, y: node.parentNodeId ? 300 : 0 }
@@ -116,11 +121,13 @@ const graph = (nodes, edges, chatConfig = { variables }) => ({
   chatConfig: clone(chatConfig)
 });
 const chain = (...nodes) =>
-  graph(
+  graph({
     nodes,
-    nodes.slice(1).map((node, index) => fixtureEdge(nodes[index].nodeId, node.nodeId))
-  );
-const start = () => fixtureNode('start', 'Start');
+    edges: nodes
+      .slice(1)
+      .map((node, index) => fixtureEdge({ source: nodes[index].nodeId, target: node.nodeId }))
+  });
+const start = () => fixtureNode({ kind: 'start', id: 'Start' });
 const readVariables = () =>
   answer(
     'ReadVariables',
@@ -133,10 +140,10 @@ export function buildWorkflowFixtures() {
   result['root-variables'] = chain(
     start(),
     update('Update', [
-      assignment('n', 0, V.number),
-      assignment('flag', false, V.boolean),
-      assignment('text', '', V.string),
-      assignment('obj', { items: [1, 2] }, V.object)
+      assignment({ key: 'n', value: 0, valueType: V.number }),
+      assignment({ key: 'flag', value: false, valueType: V.boolean }),
+      assignment({ key: 'text', value: '', valueType: V.string }),
+      assignment({ key: 'obj', value: { items: [1, 2] }, valueType: V.object })
     ]),
     readVariables()
   );
@@ -163,8 +170,8 @@ export function buildWorkflowFixtures() {
     .find((node) => node.nodeId === 'Update')
     .inputs.find((input) => input.key === I.updateList)
     .value.push(
-      assignment('files', ['__FILE_URL__'], V.arrayString),
-      assignment('password', 'FG-TEST-after')
+      assignment({ key: 'files', value: ['__FILE_URL__'], valueType: V.arrayString }),
+      assignment({ key: 'password', value: 'FG-TEST-after' })
     );
   result['input-precedence'] = chain(start(), readVariables());
   result['stream-lifecycle'] = chain(
@@ -173,32 +180,40 @@ export function buildWorkflowFixtures() {
     http('Gate', '/wait'),
     answer('Tail', 'TAIL:' + ref('Start', O.userChatInput))
   );
-  result['error-routing'] = graph(
-    [
+  result['error-routing'] = graph({
+    nodes: [
       start(),
       { ...http('Fail', '/fail'), catchError: true },
       answer('Normal', 'MUST-NOT-RUN'),
       answer('Caught', 'CAUGHT:' + ref('Fail', O.error))
     ],
-    [
-      fixtureEdge('Start', 'Fail'),
-      fixtureEdge('Fail', 'Normal'),
-      fixtureEdge('Fail', 'Caught', 'catch-right')
+    edges: [
+      fixtureEdge({ source: 'Start', target: 'Fail' }),
+      fixtureEdge({ source: 'Fail', target: 'Normal' }),
+      fixtureEdge({ source: 'Fail', target: 'Caught', handle: 'catch-right' })
     ]
-  );
+  });
   // 错误 handle 的分隔符与普通 handle 不同，使用生产错误端口。
   result['error-routing'].edges[2].sourceHandle = 'Fail-source_catch-right';
   result['child-leaf'] = chain(
     start(),
-    fixtureNode('text', 'ChildInput', { [I.textareaInput]: ref(GLOBAL, 'a') }),
-    update('ChildUpdate', [assignment('a', 'child-output')]),
+    fixtureNode({
+      kind: 'text',
+      id: 'ChildInput',
+      values: { [I.textareaInput]: ref(GLOBAL, 'a') }
+    }),
+    update('ChildUpdate', [assignment({ key: 'a', value: 'child-output' })]),
     answer('ChildReply', 'CHILD:' + ref(GLOBAL, 'a'))
   );
-  const child = fixtureNode(
-    'app',
-    'Child',
-    { [I.userChatInput]: ref('Start', O.userChatInput), a: 'child-input', [I.forbidStream]: true },
-    {
+  const child = fixtureNode({
+    kind: 'app',
+    id: 'Child',
+    values: {
+      [I.userChatInput]: ref('Start', O.userChatInput),
+      a: 'child-input',
+      [I.forbidStream]: true
+    },
+    extra: {
       pluginId: '__CHILD_APP_ID__',
       outputs: [
         {
@@ -210,38 +225,45 @@ export function buildWorkflowFixtures() {
         }
       ]
     }
-  );
+  });
   result['child-parent'] = chain(
     start(),
     child,
     answer('ParentReply', 'PARENT:' + ref(GLOBAL, 'a') + '|' + ref('Child', O.answerText))
   );
-  const form = fixtureNode('form', 'Form', {
-    [I.userInputForms]: [
-      { key: 'value', label: 'value', type: 'input', valueType: V.string, required: true }
-    ]
+  const form = fixtureNode({
+    kind: 'form',
+    id: 'Form',
+    values: {
+      [I.userInputForms]: [
+        { key: 'value', label: 'value', type: 'input', valueType: V.string, required: true }
+      ]
+    }
   });
   result['interactive-checkpoint'] = chain(
     start(),
     http('Once', '/count'),
-    update('Checkpoint', [assignment('a', 'checkpoint')]),
+    update('Checkpoint', [assignment({ key: 'a', value: 'checkpoint' })]),
     form,
     answer('Resumed', ref('Form', O.formInputResult))
   );
   for (const kind of ['loop', 'parallel']) {
-    const container = fixtureNode(kind, 'Container', {
-      [kind === 'loop' ? I.loopRunInputArray : I.nestedInputArray]: [0, false, ''],
-      [I.childrenNodeIdList]: ['BodyStart', 'BodyUpdate', 'BodyEnd'],
-      ...(kind === 'parallel'
-        ? { [I.parallelRunMaxConcurrency]: 2, [I.parallelRunMaxRetryTimes]: 0 }
-        : {})
+    const container = fixtureNode({
+      kind,
+      id: 'Container',
+      values: {
+        [kind === 'loop' ? I.loopRunInputArray : I.nestedInputArray]: [0, false, ''],
+        [I.childrenNodeIdList]: ['BodyStart', 'BodyUpdate', 'BodyEnd'],
+        ...(kind === 'parallel'
+          ? { [I.parallelRunMaxConcurrency]: 2, [I.parallelRunMaxRetryTimes]: 0 }
+          : {})
+      }
     });
-    const bodyStart = fixtureNode(
-      kind === 'loop' ? 'loopStart' : 'nestedStart',
-      'BodyStart',
-      {},
-      { parentNodeId: 'Container' }
-    );
+    const bodyStart = fixtureNode({
+      kind: kind === 'loop' ? 'loopStart' : 'nestedStart',
+      id: 'BodyStart',
+      extra: { parentNodeId: 'Container' }
+    });
     if (kind === 'parallel')
       bodyStart.outputs.push({
         id: O.nestedStartInput,
@@ -251,30 +273,40 @@ export function buildWorkflowFixtures() {
         valueType: V.any
       });
     const bodyUpdate = {
-      ...update('BodyUpdate', [assignment('a', 'body-complete')]),
+      ...update('BodyUpdate', [assignment({ key: 'a', value: 'body-complete' })]),
       parentNodeId: 'Container'
     };
-    const bodyEnd = fixtureNode('nestedEnd', 'BodyEnd', {}, { parentNodeId: 'Container' });
+    const bodyEnd = fixtureNode({
+      kind: 'nestedEnd',
+      id: 'BodyEnd',
+      extra: { parentNodeId: 'Container' }
+    });
     bodyEnd.inputs.find((item) => item.key === I.nestedEndInput).value = [
       'BodyStart',
       kind === 'loop' ? O.currentItem : O.nestedStartInput
     ];
-    result[kind + '-container'] = graph(
-      [start(), container, bodyStart, bodyUpdate, bodyEnd, readVariables()],
-      [
-        fixtureEdge('Start', 'Container'),
-        fixtureEdge('Container', 'ReadVariables'),
-        fixtureEdge('BodyStart', 'BodyUpdate'),
-        fixtureEdge('BodyUpdate', 'BodyEnd')
+    result[kind + '-container'] = graph({
+      nodes: [start(), container, bodyStart, bodyUpdate, bodyEnd, readVariables()],
+      edges: [
+        fixtureEdge({ source: 'Start', target: 'Container' }),
+        fixtureEdge({ source: 'Container', target: 'ReadVariables' }),
+        fixtureEdge({ source: 'BodyStart', target: 'BodyUpdate' }),
+        fixtureEdge({ source: 'BodyUpdate', target: 'BodyEnd' })
       ]
-    );
+    });
   }
   result['loop-break'] = clone(result['loop-container']);
   const breaking = result['loop-break'];
   breaking.nodes = breaking.nodes.filter(
     (node) => !['BodyUpdate', 'BodyEnd'].includes(node.nodeId)
   );
-  breaking.nodes.push(fixtureNode('loopBreak', 'Break', {}, { parentNodeId: 'Container' }));
+  breaking.nodes.push(
+    fixtureNode({
+      kind: 'loopBreak',
+      id: 'Break',
+      extra: { parentNodeId: 'Container' }
+    })
+  );
   breaking.nodes
     .find((node) => node.nodeId === 'Container')
     .inputs.find((input) => input.key === I.childrenNodeIdList).value = ['BodyStart', 'Break'];
@@ -283,7 +315,7 @@ export function buildWorkflowFixtures() {
       !['BodyUpdate', 'BodyEnd'].includes(edge.source) &&
       !['BodyUpdate', 'BodyEnd'].includes(edge.target)
   );
-  breaking.edges.push(fixtureEdge('BodyStart', 'Break'));
+  breaking.edges.push(fixtureEdge({ source: 'BodyStart', target: 'Break' }));
   result['loop-checkpoint'] = clone(result['loop-container']);
   const checkpoint = result['loop-checkpoint'];
   checkpoint.nodes
@@ -295,7 +327,10 @@ export function buildWorkflowFixtures() {
     .inputs.find((item) => item.key === I.childrenNodeIdList)
     .value.push('Form');
   checkpoint.edges = checkpoint.edges.filter((edge) => edge.source !== 'BodyUpdate');
-  checkpoint.edges.push(fixtureEdge('BodyUpdate', 'Form'), fixtureEdge('Form', 'BodyEnd'));
+  checkpoint.edges.push(
+    fixtureEdge({ source: 'BodyUpdate', target: 'Form' }),
+    fixtureEdge({ source: 'Form', target: 'BodyEnd' })
+  );
   result['parallel-retry'] = clone(result['parallel-container']);
   const retry = result['parallel-retry'];
   const parallel = retry.nodes.find((node) => node.nodeId === 'Container');
@@ -303,26 +338,30 @@ export function buildWorkflowFixtures() {
   parallel.inputs.find((item) => item.key === I.parallelRunMaxRetryTimes).value = 1;
   retry.nodes = retry.nodes.filter((node) => node.nodeId !== 'BodyUpdate');
   const retryChildren = [
-    fixtureNode('condition', 'TaskBranch', {
-      [I.ifElseList]: [
-        {
-          branchId: 'first',
-          condition: 'AND',
-          list: [
-            {
-              variable: ['BodyStart', O.nestedStartIndex],
-              condition: 'equalTo',
-              value: '1',
-              valueType: 'input'
-            }
-          ]
-        }
-      ]
+    fixtureNode({
+      kind: 'condition',
+      id: 'TaskBranch',
+      values: {
+        [I.ifElseList]: [
+          {
+            branchId: 'first',
+            condition: 'AND',
+            list: [
+              {
+                variable: ['BodyStart', O.nestedStartIndex],
+                condition: 'equalTo',
+                value: '1',
+                valueType: 'input'
+              }
+            ]
+          }
+        ]
+      }
     }),
-    update('FailedWrite', [assignment('a', 'failed')]),
+    update('FailedWrite', [assignment({ key: 'a', value: 'failed' })]),
     http('Attempt', '/attempt'),
-    update('SuccessWrite', [assignment('a', 'retry-ok')]),
-    update('SiblingWrite', [assignment('b', 'B1')])
+    update('SuccessWrite', [assignment({ key: 'a', value: 'retry-ok' })]),
+    update('SiblingWrite', [assignment({ key: 'b', value: 'B1' })])
   ].map((node) => ({ ...node, parentNodeId: 'Container' }));
   retry.nodes.push(...retryChildren);
   parallel.inputs.find((item) => item.key === I.childrenNodeIdList).value = [
@@ -332,69 +371,99 @@ export function buildWorkflowFixtures() {
   ];
   retry.edges = retry.edges.filter((edge) => !['BodyStart', 'BodyUpdate'].includes(edge.source));
   retry.edges.push(
-    fixtureEdge('BodyStart', 'TaskBranch'),
-    fixtureEdge('TaskBranch', 'FailedWrite', 'first'),
-    fixtureEdge('FailedWrite', 'Attempt'),
-    fixtureEdge('Attempt', 'SuccessWrite'),
-    fixtureEdge('SuccessWrite', 'BodyEnd'),
-    fixtureEdge('TaskBranch', 'SiblingWrite', 'ELSE'),
-    fixtureEdge('SiblingWrite', 'BodyEnd')
+    fixtureEdge({ source: 'BodyStart', target: 'TaskBranch' }),
+    fixtureEdge({ source: 'TaskBranch', target: 'FailedWrite', handle: 'first' }),
+    fixtureEdge({ source: 'FailedWrite', target: 'Attempt' }),
+    fixtureEdge({ source: 'Attempt', target: 'SuccessWrite' }),
+    fixtureEdge({ source: 'SuccessWrite', target: 'BodyEnd' }),
+    fixtureEdge({ source: 'TaskBranch', target: 'SiblingWrite', handle: 'ELSE' }),
+    fixtureEdge({ source: 'SiblingWrite', target: 'BodyEnd' })
   );
   result['file-reader'] = chain(
     start(),
-    fixtureNode('files', 'Files', { [I.fileUrlList]: ['__FILE_URL__'] }),
+    fixtureNode({ kind: 'files', id: 'Files', values: { [I.fileUrlList]: ['__FILE_URL__'] } }),
     answer('FileReply', ref('Files', O.text))
   );
   result['file-form'] = chain(
     start(),
-    fixtureNode('form', 'FileForm', {
-      [I.userInputForms]: [
-        { key: 'first', label: 'first', type: 'fileSelect', required: true, maxFiles: 2 },
-        { key: 'second', label: 'second', type: 'fileSelect', required: true, maxFiles: 2 }
-      ]
+    fixtureNode({
+      kind: 'form',
+      id: 'FileForm',
+      values: {
+        [I.userInputForms]: [
+          { key: 'first', label: 'first', type: 'fileSelect', required: true, maxFiles: 2 },
+          { key: 'second', label: 'second', type: 'fileSelect', required: true, maxFiles: 2 }
+        ]
+      }
     }),
     answer('FileResult', ref('FileForm', O.formInputResult))
   );
-  result['tool-concurrent'] = graph(
-    [
+  result['tool-concurrent'] = graph({
+    nodes: [
       start(),
-      fixtureNode('tool', 'Tools', {
-        [I.aiModelId]: '__MODEL_ID__',
-        [I.userChatInput]: ref('Start', O.userChatInput)
+      fixtureNode({
+        kind: 'tool',
+        id: 'Tools',
+        values: {
+          [I.aiModelId]: '__MODEL_ID__',
+          [I.userChatInput]: ref('Start', O.userChatInput)
+        }
       }),
-      fixtureNode('toolParams', 'Slow', {}, { intro: 'slow deterministic tool' }),
-      fixtureNode('toolParams', 'Fast', {}, { intro: 'fast deterministic tool' }),
+      fixtureNode({
+        kind: 'toolParams',
+        id: 'Slow',
+        extra: { intro: 'slow deterministic tool' }
+      }),
+      fixtureNode({
+        kind: 'toolParams',
+        id: 'Fast',
+        extra: { intro: 'fast deterministic tool' }
+      }),
       http('SlowGate', '/slow'),
       http('FastGate', '/fast'),
-      update('SlowUpdate', [assignment('a', 'A1'), assignment('stamp', 'slow')]),
-      update('FastUpdate', [assignment('b', 'B1'), assignment('stamp', 'fast')]),
+      update('SlowUpdate', [
+        assignment({ key: 'a', value: 'A1' }),
+        assignment({ key: 'stamp', value: 'slow' })
+      ]),
+      update('FastUpdate', [
+        assignment({ key: 'b', value: 'B1' }),
+        assignment({ key: 'stamp', value: 'fast' })
+      ]),
       readVariables()
     ],
-    [
-      fixtureEdge('Start', 'Tools'),
-      fixtureEdge('Tools', 'Slow', O.selectedTools),
-      fixtureEdge('Tools', 'Fast', O.selectedTools),
-      fixtureEdge('Slow', 'SlowGate'),
-      fixtureEdge('Fast', 'FastGate'),
-      fixtureEdge('SlowGate', 'SlowUpdate'),
-      fixtureEdge('FastGate', 'FastUpdate'),
-      fixtureEdge('Tools', 'ReadVariables')
+    edges: [
+      fixtureEdge({ source: 'Start', target: 'Tools' }),
+      fixtureEdge({ source: 'Tools', target: 'Slow', handle: O.selectedTools }),
+      fixtureEdge({ source: 'Tools', target: 'Fast', handle: O.selectedTools }),
+      fixtureEdge({ source: 'Slow', target: 'SlowGate' }),
+      fixtureEdge({ source: 'Fast', target: 'FastGate' }),
+      fixtureEdge({ source: 'SlowGate', target: 'SlowUpdate' }),
+      fixtureEdge({ source: 'FastGate', target: 'FastUpdate' }),
+      fixtureEdge({ source: 'Tools', target: 'ReadVariables' })
     ]
-  );
+  });
   result['agent-child'] = chain(
     start(),
-    fixtureNode('agent', 'Agent', {
-      [I.aiModelId]: '__MODEL_ID__',
-      [I.userChatInput]: ref('Start', O.userChatInput),
-      [I.datasetSearchUsingExtensionQuery]: true,
-      [I.selectedTools]: [{ toolId: '__CHILD_APP_ID__' }]
+    fixtureNode({
+      kind: 'agent',
+      id: 'Agent',
+      values: {
+        [I.aiModelId]: '__MODEL_ID__',
+        [I.userChatInput]: ref('Start', O.userChatInput),
+        [I.datasetSearchUsingExtensionQuery]: true,
+        [I.selectedTools]: [{ toolId: '__CHILD_APP_ID__' }]
+      }
     })
   );
   result['model-resource'] = chain(
     start(),
-    fixtureNode('llm', 'Model', {
-      [I.aiModelId]: '__MODEL_ID__',
-      [I.userChatInput]: ref('Start', O.userChatInput)
+    fixtureNode({
+      kind: 'llm',
+      id: 'Model',
+      values: {
+        [I.aiModelId]: '__MODEL_ID__',
+        [I.userChatInput]: ref('Start', O.userChatInput)
+      }
     })
   );
   result['empty-input'] = chain(start(), answer('Reply', 'EMPTY-OK'));
@@ -419,13 +488,13 @@ export function buildWorkflowFixtures() {
     ...extra
   });
   const codeNode = ({ id, inputs, source, outputs = [] }) => {
-    const node = fixtureNode('code', id, { [I.code]: source });
+    const node = fixtureNode({ kind: 'code', id, values: { [I.code]: source } });
     node.inputs = node.inputs.filter((input) => !input.canEdit).concat(inputs);
     node.outputs = node.outputs.filter((output) => output.type !== Output.dynamic).concat(outputs);
     return node;
   };
   const condition = ({ id, branches }) =>
-    fixtureNode('condition', id, { [I.ifElseList]: branches });
+    fixtureNode({ kind: 'condition', id, values: { [I.ifElseList]: branches } });
   const comparison = (key, value) => ({
     variable: [GLOBAL, key],
     condition: 'lessThan',
@@ -435,7 +504,11 @@ export function buildWorkflowFixtures() {
 
   result['basic-dataflow'] = chain(
     start(),
-    fixtureNode('text', 'Compose', { [I.textareaInput]: 'V1:' + ref('Start', O.userChatInput) }),
+    fixtureNode({
+      kind: 'text',
+      id: 'Compose',
+      values: { [I.textareaInput]: 'V1:' + ref('Start', O.userChatInput) }
+    }),
     update('Remember', [
       {
         variable: [GLOBAL, 'a'],
@@ -446,7 +519,11 @@ export function buildWorkflowFixtures() {
     ]),
     answer('Reply', 'a=' + ref(GLOBAL, 'a') + '|node=' + ref('Compose', O.text))
   );
-  const source = fixtureNode('text', 'Source', { [I.textareaInput]: 'SOURCE' });
+  const source = fixtureNode({
+    kind: 'text',
+    id: 'Source',
+    values: { [I.textareaInput]: 'SOURCE' }
+  });
   source.outputs.find((output) => output.key === O.text).id = 'source-output-id';
   result['basic-parameters'] = chain(
     start(),
@@ -479,15 +556,19 @@ export function buildWorkflowFixtures() {
     }),
     answer('Reply', ref('Probe', 'probe-result-id'))
   );
-  const echo = fixtureNode('http', 'Echo', {
-    [I.httpReqUrl]: '__GATE_URL__/echo',
-    [I.httpMethod]: 'POST',
-    [I.httpHeaders]: [{ key: 'x-fg-test', type: 'string', value: ref('Start', O.userChatInput) }],
-    [I.httpParams]: [{ key: 'runId', type: 'string', value: ref('Start', O.userChatInput) }],
-    [I.httpJsonBody]:
-      '{"runId":"' +
-      ref('Start', O.userChatInput) +
-      '","text":"{{text}}","n":{{n}},"obj":{{obj}},"arr":[0,false,""]}'
+  const echo = fixtureNode({
+    kind: 'http',
+    id: 'Echo',
+    values: {
+      [I.httpReqUrl]: '__GATE_URL__/echo',
+      [I.httpMethod]: 'POST',
+      [I.httpHeaders]: [{ key: 'x-fg-test', type: 'string', value: ref('Start', O.userChatInput) }],
+      [I.httpParams]: [{ key: 'runId', type: 'string', value: ref('Start', O.userChatInput) }],
+      [I.httpJsonBody]:
+        '{"runId":"' +
+        ref('Start', O.userChatInput) +
+        '","text":"{{text}}","n":{{n}},"obj":{{obj}},"arr":[0,false,""]}'
+    }
   });
   echo.outputs.push(
     customOutput({ key: 'body.text', id: 'echo-text' }),
@@ -548,27 +629,27 @@ export function buildWorkflowFixtures() {
     echoProbe,
     answer('Reply', ref('Observe', 'observed'))
   );
-  result['basic-fan-in'] = graph(
-    [
+  result['basic-fan-in'] = graph({
+    nodes: [
       start(),
       http('Fast', '/fast'),
       http('Slow', '/slow'),
-      fixtureNode('text', 'FastValue', { [I.textareaInput]: 'FAST' }),
-      fixtureNode('text', 'SlowValue', { [I.textareaInput]: 'SLOW' }),
+      fixtureNode({ kind: 'text', id: 'FastValue', values: { [I.textareaInput]: 'FAST' } }),
+      fixtureNode({ kind: 'text', id: 'SlowValue', values: { [I.textareaInput]: 'SLOW' } }),
       http('Merge', '/count'),
       answer('Reply', ref('FastValue', O.text) + '|' + ref('SlowValue', O.text)),
       http('Unreachable', '/count')
     ],
-    [
-      fixtureEdge('Start', 'Fast'),
-      fixtureEdge('Start', 'Slow'),
-      fixtureEdge('Fast', 'FastValue'),
-      fixtureEdge('Slow', 'SlowValue'),
-      fixtureEdge('FastValue', 'Merge'),
-      fixtureEdge('SlowValue', 'Merge'),
-      fixtureEdge('Merge', 'Reply')
+    edges: [
+      fixtureEdge({ source: 'Start', target: 'Fast' }),
+      fixtureEdge({ source: 'Start', target: 'Slow' }),
+      fixtureEdge({ source: 'Fast', target: 'FastValue' }),
+      fixtureEdge({ source: 'Slow', target: 'SlowValue' }),
+      fixtureEdge({ source: 'FastValue', target: 'Merge' }),
+      fixtureEdge({ source: 'SlowValue', target: 'Merge' }),
+      fixtureEdge({ source: 'Merge', target: 'Reply' })
     ]
-  );
+  });
   // 两个 gate 独立放行，不能一次 release 同时释放两个分支而掩盖汇合等待错误。
   for (const id of ['Fast', 'Slow']) {
     result['basic-fan-in'].nodes
@@ -578,8 +659,8 @@ export function buildWorkflowFixtures() {
       node: id
     });
   }
-  result['basic-branch'] = graph(
-    [
+  result['basic-branch'] = graph({
+    nodes: [
       start(),
       condition({
         id: 'Choose',
@@ -610,24 +691,28 @@ export function buildWorkflowFixtures() {
       ),
       answer('Reply', 'BRANCH:' + ref('Choose', O.ifElseResult))
     ],
-    [
-      fixtureEdge('Start', 'Choose'),
-      fixtureEdge('Choose', 'Nested', 'low'),
-      fixtureEdge('Choose', 'Mid', 'mid'),
-      fixtureEdge('Choose', 'High', 'ELSE'),
-      fixtureEdge('Nested', 'LowTrue', 'yes'),
-      fixtureEdge('Nested', 'LowFalse', 'ELSE'),
-      ...['LowTrue', 'LowFalse', 'Mid', 'High'].map((id) => fixtureEdge(id, 'Merge')),
-      fixtureEdge('Merge', 'Reply')
+    edges: [
+      fixtureEdge({ source: 'Start', target: 'Choose' }),
+      fixtureEdge({ source: 'Choose', target: 'Nested', handle: 'low' }),
+      fixtureEdge({ source: 'Choose', target: 'Mid', handle: 'mid' }),
+      fixtureEdge({ source: 'Choose', target: 'High', handle: 'ELSE' }),
+      fixtureEdge({ source: 'Nested', target: 'LowTrue', handle: 'yes' }),
+      fixtureEdge({ source: 'Nested', target: 'LowFalse', handle: 'ELSE' }),
+      ...['LowTrue', 'LowFalse', 'Mid', 'High'].map((id) =>
+        fixtureEdge({ source: id, target: 'Merge' })
+      ),
+      fixtureEdge({ source: 'Merge', target: 'Reply' })
     ]
-  );
+  });
   const count = http('Count', '/count');
   count.inputs.find((input) => input.key === I.httpJsonBody).value =
     '{"runId":"' + ref('Start', O.userChatInput) + '","node":"Count","n":{{n}}}';
-  result['basic-cycle'] = graph(
-    [
+  result['basic-cycle'] = graph({
+    nodes: [
       start(),
-      update('Increment', [{ ...assignment('n', 1, V.number), numberOperator: '+' }]),
+      update('Increment', [
+        { ...assignment({ key: 'n', value: 1, valueType: V.number }), numberOperator: '+' }
+      ]),
       count,
       condition({
         id: 'Continue',
@@ -635,36 +720,48 @@ export function buildWorkflowFixtures() {
       }),
       answer('Reply', 'DONE:' + ref(GLOBAL, 'n'))
     ],
-    [
-      fixtureEdge('Start', 'Increment'),
-      fixtureEdge('Increment', 'Count'),
-      fixtureEdge('Count', 'Continue'),
-      fixtureEdge('Continue', 'Increment', 'again'),
-      fixtureEdge('Continue', 'Reply', 'ELSE')
+    edges: [
+      fixtureEdge({ source: 'Start', target: 'Increment' }),
+      fixtureEdge({ source: 'Increment', target: 'Count' }),
+      fixtureEdge({ source: 'Count', target: 'Continue' }),
+      fixtureEdge({ source: 'Continue', target: 'Increment', handle: 'again' }),
+      fixtureEdge({ source: 'Continue', target: 'Reply', handle: 'ELSE' })
     ]
-  );
+  });
   result['basic-cycle'].chatConfig.variables.find((variable) => variable.key === 'n').defaultValue =
     0;
   result['basic-model-chain'] = chain(
     start(),
-    fixtureNode('text', 'Prompt', {
-      [I.textareaInput]: 'QUESTION:' + ref('Start', O.userChatInput)
+    fixtureNode({
+      kind: 'text',
+      id: 'Prompt',
+      values: {
+        [I.textareaInput]: 'QUESTION:' + ref('Start', O.userChatInput)
+      }
     }),
-    fixtureNode('llm', 'Model', {
-      [I.aiModelId]: '__MODEL_ID__',
-      [I.aiSystemPrompt]: 'Return the marker FG-TEST-MODEL and preserve the current question.',
-      [I.userChatInput]: ['Prompt', O.text],
-      [I.history]: 0,
-      [I.aiChatIsResponseText]: false
+    fixtureNode({
+      kind: 'llm',
+      id: 'Model',
+      values: {
+        [I.aiModelId]: '__MODEL_ID__',
+        [I.aiSystemPrompt]: 'Return the marker FG-TEST-MODEL and preserve the current question.',
+        [I.userChatInput]: ['Prompt', O.text],
+        [I.history]: 0,
+        [I.aiChatIsResponseText]: false
+      }
     }),
     answer('Reply', 'FINAL:' + ref('Model', O.answerText))
   );
-  const search = fixtureNode('dataset', 'Search', {
-    [I.datasetSelectList]: [{ datasetId: '__DATASET_ID__' }],
-    [I.userChatInput]: ['Start', O.userChatInput],
-    [I.datasetSearchMode]: 'fullTextRecall',
-    [I.datasetSearchUsingReRank]: false,
-    [I.datasetSearchUsingExtensionQuery]: false
+  const search = fixtureNode({
+    kind: 'dataset',
+    id: 'Search',
+    values: {
+      [I.datasetSelectList]: [{ datasetId: '__DATASET_ID__' }],
+      [I.userChatInput]: ['Start', O.userChatInput],
+      [I.datasetSearchMode]: 'fullTextRecall',
+      [I.datasetSearchUsingReRank]: false,
+      [I.datasetSearchUsingExtensionQuery]: false
+    }
   });
   result['basic-dataset-chain'] = clone(result['basic-model-chain']);
   result['basic-dataset-chain'].nodes[1] = search;
@@ -678,9 +775,9 @@ export function buildWorkflowFixtures() {
     O.datasetQuoteQA
   ];
   result['basic-dataset-chain'].edges = [
-    fixtureEdge('Start', 'Search'),
-    fixtureEdge('Search', 'Model'),
-    fixtureEdge('Model', 'Reply')
+    fixtureEdge({ source: 'Start', target: 'Search' }),
+    fixtureEdge({ source: 'Search', target: 'Model' }),
+    fixtureEdge({ source: 'Model', target: 'Reply' })
   ];
   const pluginInputs = [
     customInput({ key: 'label', defaultValue: 'TOOL-DEFAULT', required: false }),
@@ -688,22 +785,20 @@ export function buildWorkflowFixtures() {
     customInput({ key: 'enabled', valueType: V.boolean, defaultValue: true, required: false })
   ];
   result['basic-tool-child'] = chain(
-    fixtureNode(
-      'pluginInput',
-      'Input',
-      {},
-      {
+    fixtureNode({
+      kind: 'pluginInput',
+      id: 'Input',
+      extra: {
         inputs: pluginInputs,
         outputs: pluginInputs.map((input) =>
           customOutput({ key: input.key, valueType: input.valueType })
         )
       }
-    ),
-    fixtureNode(
-      'pluginOutput',
-      'Output',
-      {},
-      {
+    }),
+    fixtureNode({
+      kind: 'pluginOutput',
+      id: 'Output',
+      extra: {
         inputs: pluginInputs.map((input) =>
           customInput({
             key: input.key,
@@ -713,15 +808,14 @@ export function buildWorkflowFixtures() {
           })
         )
       }
-    )
+    })
   );
   result['basic-tool-parent'] = chain(
     start(),
-    fixtureNode(
-      'plugin',
-      'Tool',
-      {},
-      {
+    fixtureNode({
+      kind: 'plugin',
+      id: 'Tool',
+      extra: {
         pluginId: '__CHILD_TOOL_ID__',
         inputs: [
           customInput({ key: 'label', value: ['Start', O.userChatInput], reference: true }),
@@ -734,57 +828,65 @@ export function buildWorkflowFixtures() {
           customOutput({ key: 'enabled', valueType: V.boolean })
         ]
       }
-    ),
+    }),
     answer(
       'Reply',
       'TOOL:' + ref('Tool', 'label-id') + '|' + ref('Tool', 'amount') + '|' + ref('Tool', 'enabled')
     )
   );
-  result['basic-interactive'] = graph(
-    [
+  result['basic-interactive'] = graph({
+    nodes: [
       start(),
       http('Once', '/count'),
-      fixtureNode('select', 'Select', {
-        [I.description]: 'FG-TEST select',
-        [I.userSelectOptions]: [
-          { key: 'a', value: 'A' },
-          { key: 'b', value: 'B' }
-        ]
+      fixtureNode({
+        kind: 'select',
+        id: 'Select',
+        values: {
+          [I.description]: 'FG-TEST select',
+          [I.userSelectOptions]: [
+            { key: 'a', value: 'A' },
+            { key: 'b', value: 'B' }
+          ]
+        }
       }),
       answer('SelectedA', 'SELECTED:A'),
       answer('SelectedB', 'SELECTED:B'),
-      fixtureNode('form', 'Form', {
-        [I.userInputForms]: [
-          {
-            key: 'name',
-            label: 'name',
-            type: Input.input,
-            value: '',
-            valueType: V.string,
-            required: true
-          },
-          {
-            key: 'count',
-            label: 'count',
-            type: Input.numberInput,
-            value: 0,
-            valueType: V.number,
-            required: true
-          }
-        ]
+      fixtureNode({
+        kind: 'form',
+        id: 'Form',
+        values: {
+          [I.userInputForms]: [
+            {
+              key: 'name',
+              label: 'name',
+              type: Input.input,
+              value: '',
+              valueType: V.string,
+              required: true
+            },
+            {
+              key: 'count',
+              label: 'count',
+              type: Input.numberInput,
+              value: 0,
+              valueType: V.number,
+              required: true
+            }
+          ]
+        }
       }),
       answer('Reply', 'FORM:' + ref('Form', O.formInputResult))
     ],
-    [
-      fixtureEdge('Start', 'Once'),
-      fixtureEdge('Once', 'Select'),
-      fixtureEdge('Select', 'SelectedA', 'a'),
-      fixtureEdge('Select', 'SelectedB', 'b'),
-      fixtureEdge('SelectedA', 'Form'),
-      fixtureEdge('SelectedB', 'Form'),
-      fixtureEdge('Form', 'Reply')
+    edges: [
+      fixtureEdge({ source: 'Start', target: 'Once' }),
+      fixtureEdge({ source: 'Once', target: 'Select' }),
+      fixtureEdge({ source: 'Select', target: 'SelectedA', handle: 'a' }),
+      fixtureEdge({ source: 'Select', target: 'SelectedB', handle: 'b' }),
+      fixtureEdge({ source: 'SelectedA', target: 'Form' }),
+      fixtureEdge({ source: 'SelectedB', target: 'Form' }),
+      fixtureEdge({ source: 'Form', target: 'Reply' })
     ]
-  );
+  });
   return result;
 }
 
