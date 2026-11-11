@@ -33,20 +33,24 @@ vi.mock('../../../components/common/Icon', () => ({
   default: () => React.createElement('span', { 'data-testid': 'mock-icon' })
 }));
 
+const mockDayPicker = vi.hoisted(() => vi.fn());
+
 vi.mock('react-day-picker', () => ({
-  DayPicker: ({ onSelect }: { onSelect?: (date: Date) => void }) =>
-    React.createElement(
+  DayPicker: (props: { onSelect?: (date: Date) => void; timeZone?: string }) => {
+    mockDayPicker(props);
+    return React.createElement(
       'div',
       { 'data-testid': 'mock-day-picker' },
       React.createElement(
         'button',
         {
           'data-testid': 'mock-select-date-btn',
-          onClick: () => onSelect?.(new Date('2026-09-20T00:00:00.000Z'))
+          onClick: () => props.onSelect?.(new Date('2026-09-20T00:00:00.000Z'))
         },
         'Pick Date'
       )
-    )
+    );
+  }
 }));
 
 import DateTimePicker from '../../../components/common/DateTimePicker';
@@ -60,6 +64,31 @@ const createTestRoot = () => {
 describe('DateTimePicker controlled and uncontrolled behavior', () => {
   afterEach(() => {
     document.body.replaceChildren();
+    mockDayPicker.mockClear();
+  });
+
+  it('uses the configured timezone for the display and calendar', async () => {
+    const { host, root } = createTestRoot();
+
+    await act(async () => {
+      root.render(
+        React.createElement(DateTimePicker, {
+          selectedDateTime: new Date('2026-12-30T16:00:00.000Z'),
+          timeZone: 'UTC',
+          'data-testid': 'datetime-trigger'
+        })
+      );
+    });
+
+    expect(host.textContent).toContain('2026/12/30');
+
+    const trigger = host.querySelector('[data-testid="datetime-trigger"]') as HTMLElement;
+    await act(async () => {
+      trigger.click();
+    });
+
+    expect(mockDayPicker).toHaveBeenCalledWith(expect.objectContaining({ timeZone: 'UTC' }));
+    root.unmount();
   });
 
   it('controlled mode: clears displayed date when selectedDateTime changes to undefined', async () => {

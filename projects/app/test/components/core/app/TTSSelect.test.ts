@@ -7,6 +7,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({
   effects: [] as (() => void)[],
   status: 'active' as 'active' | 'disabled' | 'deleted',
+  isUpcomingDeprecation: false,
+  listIsUpcomingDeprecation: false,
   prime: vi.fn()
 }));
 vi.mock('react', async (importOriginal) => ({
@@ -30,17 +32,21 @@ vi.mock('@/web/core/ai/model/useUserModelStore', () => ({
 }));
 vi.mock('@/web/core/ai/model/useModelList', () => ({
   useModelList: () => ({
-    modelList: [
-      {
-        modelId: 'tts',
-        model: 'tts-name',
-        name: 'Default TTS',
-        type: 'tts',
-        provider: 'OpenAI',
-        isActive: true,
-        config: { voices: [{ label: 'First voice', value: 'first' }] }
-      }
-    ]
+    modelList:
+      mocks.status === 'active'
+        ? [
+            {
+              modelId: 'tts',
+              model: 'tts-name',
+              name: 'Default TTS',
+              type: 'tts',
+              provider: 'OpenAI',
+              isActive: true,
+              isUpcomingDeprecation: mocks.listIsUpcomingDeprecation,
+              config: { voices: [{ label: 'First voice', value: 'first' }] }
+            }
+          ]
+        : []
   })
 }));
 vi.mock('@/web/core/ai/model/useModelDetail', () => ({
@@ -50,7 +56,14 @@ vi.mock('@/web/core/ai/model/useModelDetail', () => ({
 }));
 vi.mock('@/web/core/ai/model/useModelSummary', () => ({
   useModelSummary: ({ modelId }: { modelId?: string }) => ({
-    detail: modelId ? { modelId, name: 'Default TTS', status: mocks.status } : undefined,
+    detail: modelId
+      ? {
+          modelId,
+          name: 'Default TTS',
+          status: mocks.status,
+          isUpcomingDeprecation: mocks.isUpcomingDeprecation
+        }
+      : undefined,
     loading: false,
     error: false,
     setFromCatalog: mocks.prime
@@ -104,6 +117,8 @@ describe('TTSSelect actual selection and display', () => {
   beforeEach(() => {
     mocks.effects = [];
     mocks.status = 'active';
+    mocks.isUpcomingDeprecation = false;
+    mocks.listIsUpcomingDeprecation = false;
     mocks.prime.mockClear();
   });
   it('does not assign a model or switch modes merely by mounting', () => {
@@ -142,5 +157,37 @@ describe('TTSSelect actual selection and display', () => {
     renderToStaticMarkup(React.createElement(TTSSelect, { value: { type }, onChange }));
     mocks.effects.forEach((effect) => effect());
     expect(onChange).not.toHaveBeenCalled();
+  });
+  it.each(['disabled', 'deleted'] as const)(
+    'hides upcoming deprecation for an unavailable selected TTS (%s)',
+    (status) => {
+      mocks.status = status;
+      mocks.isUpcomingDeprecation = true;
+      mocks.listIsUpcomingDeprecation = true;
+      const onChange = vi.fn();
+      const html = renderToStaticMarkup(
+        React.createElement(TTSSelect, {
+          value: { type: TTSTypeEnum.model, modelId: 'tts' },
+          onChange
+        })
+      );
+      expect(html).toContain(
+        status === 'disabled' ? 'common:model_disabled' : 'common:model_delisted'
+      );
+      expect(html).not.toContain('common:model.upcoming_deprecation');
+      expect(onChange).not.toHaveBeenCalled();
+    }
+  );
+  it('shows the deprecation tag for an upcoming TTS model', () => {
+    mocks.isUpcomingDeprecation = true;
+    mocks.listIsUpcomingDeprecation = true;
+    const html = renderToStaticMarkup(
+      React.createElement(TTSSelect, {
+        value: { type: TTSTypeEnum.model, modelId: 'tts' },
+        onChange: vi.fn()
+      })
+    );
+
+    expect(html.match(/common:model\.upcoming_deprecation/g)).toHaveLength(2);
   });
 });

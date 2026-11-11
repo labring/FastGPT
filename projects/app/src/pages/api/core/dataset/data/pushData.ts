@@ -1,5 +1,9 @@
+import {
+  assertAppDatasetIndexModelsAvailable,
+  getAssertedDatasetEmbeddingModel,
+  getDatasetModelReference
+} from '@fastgpt/service/core/dataset/model';
 import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/catalog/service';
-import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
 /* push data to training queue */
 import { NextAPI } from '@/service/middleware/entry';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
@@ -18,6 +22,7 @@ import {
 } from '@fastgpt/service/core/dataset/training/controller';
 import { getDatasetImageIndexCapability } from '@fastgpt/service/core/dataset/utils';
 import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
+import { getAuthorizedModelIds } from '@fastgpt/service/support/permission/model/auth';
 import { checkDatasetIndexLimit } from '@fastgpt/service/support/permission/teamLimit';
 
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
@@ -34,7 +39,7 @@ async function handler(req: ApiRequestProps): Promise<PushDataResponseType> {
   const { collectionId, billId, data } = body;
 
   // 凭证校验
-  const { teamId, tmbId, collection } = await authDatasetCollection({
+  const { teamId, tmbId, isRoot, collection } = await authDatasetCollection({
     req,
     authToken: true,
     authApiKey: true,
@@ -42,9 +47,19 @@ async function handler(req: ApiRequestProps): Promise<PushDataResponseType> {
     per: WritePermissionVal
   });
   const modelHandle = await getTeamModelHandle({ teamId });
-  const vectorModelData = modelHandle.getModelData(
-    getDatasetModelReference(collection.dataset, 'embedding'),
-    { type: 'embedding' }
+  const authorizedIds = await getAuthorizedModelIds({
+    actor: { teamId, tmbId, isRoot },
+    handle: modelHandle
+  });
+  const embeddingModels = await assertAppDatasetIndexModelsAvailable({
+    resources: [{ type: 'dataset', id: String(collection.datasetId) }],
+    teamId,
+    modelHandle,
+    authorizedIds
+  });
+  const vectorModelData = getAssertedDatasetEmbeddingModel(
+    embeddingModels,
+    String(collection.datasetId)
   );
   const agentModelData = modelHandle.getModelData(
     getDatasetModelReference(collection.dataset, 'agent'),
