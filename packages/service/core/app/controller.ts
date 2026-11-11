@@ -273,8 +273,12 @@ export const deleteAppDataProcessor = async ({
 
   // 2. 删除聊天记录、S3 文件和 sandbox 资源。App logs 属于应用统计域，单独清理。
   await deleteAppSandboxes(appId);
-  // Builder 与 App 共享应用身份，但聊天数据和文件前缀按 sourceType 独立隔离。
-  for (const sourceType of [ChatSourceTypeEnum.app, ChatSourceTypeEnum.workflowBuilder] as const) {
+  // 三类会话都属于应用，但按 sourceType 清理，避免误删独立 Skill 的同 ID 记录。
+  for (const sourceType of [
+    ChatSourceTypeEnum.app,
+    ChatSourceTypeEnum.workflowBuilder,
+    ChatSourceTypeEnum.chatAgentHelper
+  ] as const) {
     await deleteChatResourcesBySource({ sourceType, sourceId: appId });
   }
   await MongoAppChatLog.deleteMany({ teamId, appId });

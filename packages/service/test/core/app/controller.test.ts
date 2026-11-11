@@ -74,7 +74,7 @@ describe('deleteAppDataProcessor', () => {
   });
 
   it.each([AppTypeEnum.workflow, AppTypeEnum.workflowTool])(
-    'deletes %s app and Builder chat resources without touching other sources',
+    'deletes all %s app chat sources without touching other resources',
     async (type) => {
       const app = await MongoApp.create({
         name: 'target',
@@ -97,9 +97,19 @@ describe('deleteAppDataProcessor', () => {
         chatId: 'builder'
       });
       await createChatTree({
+        sourceId,
+        sourceType: ChatSourceTypeEnum.chatAgentHelper,
+        chatId: 'helper'
+      });
+      await createChatTree({
         sourceId: otherId,
         sourceType: ChatSourceTypeEnum.workflowBuilder,
         chatId: 'other-app'
+      });
+      await createChatTree({
+        sourceId: otherId,
+        sourceType: ChatSourceTypeEnum.chatAgentHelper,
+        chatId: 'other-helper'
       });
       await createChatTree({ sourceId, sourceType: ChatSourceTypeEnum.skillEdit, chatId: 'skill' });
 
@@ -111,10 +121,14 @@ describe('deleteAppDataProcessor', () => {
         MongoChatItemResponse.find({}, 'chatId').lean()
       ]);
       for (const items of remaining)
-        expect(items.map((item) => item.chatId).sort()).toEqual(['other-app', 'skill']);
+        expect(items.map((item) => item.chatId).sort()).toEqual([
+          'other-app',
+          'other-helper',
+          'skill'
+        ]);
       expect(await MongoApp.exists({ _id: sourceId })).toBeNull();
       expect(mocks.deleteAppSandboxes).toHaveBeenCalledExactlyOnceWith(sourceId);
-      expect(mocks.deleteChatFilesByPrefix).toHaveBeenCalledTimes(2);
+      expect(mocks.deleteChatFilesByPrefix).toHaveBeenCalledTimes(3);
       expect(mocks.deleteChatFilesByPrefix).toHaveBeenCalledWith({
         sourceType: ChatSourceTypeEnum.app,
         sourceId
@@ -123,37 +137,50 @@ describe('deleteAppDataProcessor', () => {
         sourceType: ChatSourceTypeEnum.workflowBuilder,
         sourceId
       });
+      expect(mocks.deleteChatFilesByPrefix).toHaveBeenCalledWith({
+        sourceType: ChatSourceTypeEnum.chatAgentHelper,
+        sourceId
+      });
     }
   );
 
-  it('retries Builder file cleanup after an external deletion failure', async () => {
-    const app = await MongoApp.create({
-      name: 'target',
-      type: AppTypeEnum.workflow,
-      teamId,
-      tmbId
-    });
-    const sourceId = String(app._id);
-    await createChatTree({
-      sourceId,
-      sourceType: ChatSourceTypeEnum.workflowBuilder,
-      chatId: 'builder'
-    });
-    mocks.deleteChatFilesByPrefix.mockImplementation(async ({ sourceType }) => {
-      if (sourceType === ChatSourceTypeEnum.workflowBuilder) throw new Error('file cleanup failed');
-    });
+  it.each([
+    { failedSource: ChatSourceTypeEnum.workflowBuilder, firstAttemptCalls: 2 },
+    { failedSource: ChatSourceTypeEnum.chatAgentHelper, firstAttemptCalls: 3 }
+  ])(
+    'retries $failedSource file cleanup after an external deletion failure',
+    async ({ failedSource, firstAttemptCalls }) => {
+      const app = await MongoApp.create({
+        name: 'target',
+        type: AppTypeEnum.workflow,
+        teamId,
+        tmbId
+      });
+      const sourceId = String(app._id);
+      for (const sourceType of [
+        ChatSourceTypeEnum.app,
+        ChatSourceTypeEnum.workflowBuilder,
+        ChatSourceTypeEnum.chatAgentHelper
+      ]) {
+        await createChatTree({ sourceId, sourceType, chatId: sourceType });
+      }
+      mocks.deleteChatFilesByPrefix.mockImplementation(async ({ sourceType }) => {
+        if (sourceType === failedSource) throw new Error('file cleanup failed');
+      });
 
-    await expect(deleteAppDataProcessor({ app: app.toObject(), teamId })).rejects.toThrow(
-      'file cleanup failed'
-    );
-    expect(await MongoApp.exists({ _id: sourceId })).not.toBeNull();
+      await expect(deleteAppDataProcessor({ app: app.toObject(), teamId })).rejects.toThrow(
+        'file cleanup failed'
+      );
+      expect(await MongoApp.exists({ _id: sourceId })).not.toBeNull();
+      expect(mocks.deleteChatFilesByPrefix).toHaveBeenCalledTimes(firstAttemptCalls);
 
-    mocks.deleteChatFilesByPrefix.mockResolvedValue(undefined);
-    await deleteAppDataProcessor({ app: app.toObject(), teamId });
-    expect(await MongoApp.exists({ _id: sourceId })).toBeNull();
-    expect(mocks.deleteChatFilesByPrefix).toHaveBeenCalledTimes(4);
-    expect(await MongoChat.countDocuments({ appId: sourceId })).toBe(0);
-    expect(await MongoChatItem.countDocuments({ appId: sourceId })).toBe(0);
-    expect(await MongoChatItemResponse.countDocuments({ appId: sourceId })).toBe(0);
-  });
+      mocks.deleteChatFilesByPrefix.mockResolvedValue(undefined);
+      await deleteAppDataProcessor({ app: app.toObject(), teamId });
+      expect(await MongoApp.exists({ _id: sourceId })).toBeNull();
+      expect(mocks.deleteChatFilesByPrefix).toHaveBeenCalledTimes(firstAttemptCalls + 3);
+      expect(await MongoChat.countDocuments({ appId: sourceId })).toBe(0);
+      expect(await MongoChatItem.countDocuments({ appId: sourceId })).toBe(0);
+      expect(await MongoChatItemResponse.countDocuments({ appId: sourceId })).toBe(0);
+    }
+  );
 });
