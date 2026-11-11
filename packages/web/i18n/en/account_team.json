@@ -33,6 +33,7 @@
   "admin_update_system_modal": "System announcement configuration",
   "admin_update_team": "Edit team information",
   "admin_switch_team": "Switch team",
+  "enter_team": "Enter team",
   "admin_update_user": "Edit User",
   "admin_delete_user": "Delete User",
   "account_cancellation_submit": "Submit Account Deletion",

@@ -33,6 +33,7 @@
   "admin_update_system_modal": "시스템 공지 설정",
   "admin_update_team": "팀 정보 편집",
   "admin_switch_team": "팀 전환",
+  "enter_team": "팀 들어가기",
   "admin_update_user": "사용자 편집",
   "assign_permission": "권한 변경",
   "audit_log": "감사",

@@ -39,7 +39,6 @@ sources:
   - projects/app/src/pages/api/admin/team/switch.ts
   - projects/app/src/pages/api/admin/team/list.ts
   - projects/app/src/pages/api/proApi/[...path].ts
-  - projects/app/src/service/support/user/team/proApiRootGuard.ts
   - projects/app/src/pages/api/support/user/team/plan/getTeamPlanStatus.ts
   - projects/app/src/pages/api/support/mcp/list.ts
   - projects/app/src/pageComponents/admin/teams/index.tsx
@@ -91,7 +90,7 @@ baseline: "1dedf6dcf75fbd23b86e11d19983a088c80e45d4"
 
 ## 前置准备
 
-- 环境与版本：本地 dev 主应用（`BASE_URL`）及已配置的 MongoDB（主库 + 日志库）、Redis 与 Pro 服务（`FastGPTProUrl`）；记录实际运行进程的源码基线与提交，登录凭证通过环境变量（如 `FASTGPT_ROOT_PASSWORD`）注入，不硬编码真实密码。本用例暂未绑定自动化脚本（`automation: []`），由 AI 结合真实 HTTP、无头浏览器与只读库/缓存查询执行；若当前环境未启动 Pro 服务，仅依赖 `/api/proApi/*` 上游成功的协作者写入与成员列表回包过滤项标记商业版依赖边界，前置 403 防篡改拦截与主应用原生切换、资源穿透项仍完整执行。
+- 环境与版本：本地 dev 主应用（`BASE_URL`）及已配置的 MongoDB（主库 + 日志库）、Redis 与 Pro 服务（`FastGPTProUrl`）；记录实际运行进程的源码基线与提交，登录凭证通过环境变量（如 `FASTGPT_ROOT_PASSWORD`）注入，不硬编码真实密码。本用例暂未绑定自动化脚本（`automation: []`），由 AI 结合真实 HTTP、无头浏览器与只读库/缓存查询执行；`/api/proApi/*` 路由保持纯净流式转发，隐私隐藏、防篡改 403 拦截及团队所有权变更均由商业版 Pro 服务原生执行（若当前环境未启动 Pro 服务，对应 `/api/proApi/*` 项按商业版服务依赖边界登记）。
 - 身份与权限：准备系统 `root` 账号（记录其初始主团队 `T_root` 及默认成员 `rootOwnTmbId`），以及本轮新建的独立租户团队 `T` 的真实所有者 `O`（`role: "owner"`）和普通成员 `M`（无管理权限）。另准备无 `root` 访问历史的租户团队 `T2`（名称含正则特殊字符 `RUN_<id> [Prod] Team`）、已软删除团队 `T_deleted`（`deleteTime` 非空）及处于注销冷静期的独立测试团队 `T_cancel`。
 - 测试数据（公共基线 `D0`）：
   - 将 `T` 的套餐成员上限配置为 `maxTeamMember = 2`（由 `O` 与 `M` 恰好占满 2 席）。

@@ -6,26 +6,16 @@ import { buildSameOriginUrl } from '@fastgpt/service/common/security/network';
 import { Readable } from 'stream';
 import { finished, pipeline } from 'node:stream/promises';
 import { FASTGPT_PRO_TOKEN_HEADER } from '@fastgpt/global/common/system/constants';
-import {
-  isRootMemberForbiddenError,
-  normalizeProApiSubPath,
-  prepareProApiRootGuard
-} from '@/service/support/user/team/proApiRootGuard';
 
 /** 原样转发 Pro API 的请求和响应流；等待回包结束，避免 NextAPI 抢先生成默认 JSON。 */
 async function handler(req: NextApiRequest, res: NextApiResponse): Promise<void> {
   try {
     const { path = [], ...query } = req.query as any;
-    const subPath = normalizeProApiSubPath(path);
     const requestPath = `/api/${path?.join('/')}?${new URLSearchParams(query).toString()}`;
 
     if (!requestPath) {
       throw new Error('url is empty');
     }
-
-    // 在代理转发前校验租户成员对系统 root 成员的越权写操作（即使未启动商业版服务也优先生效拦截）。
-    const guardPlan = await prepareProApiRootGuard({ req, subPath });
-
     if (!FastGPTProUrl) {
       throw new Error(`未配置商业版链接: ${path}`);
     }
@@ -48,50 +38,15 @@ async function handler(req: NextApiRequest, res: NextApiResponse): Promise<void>
       }
     }
 
-    const requestBody = (() => {
-      if (req.method === 'GET' || req.method === 'HEAD') return null;
-      if (guardPlan.kind === 'guarded' && guardPlan.rawBody !== undefined) {
-        return guardPlan.rawBody.length > 0 ? new Uint8Array(guardPlan.rawBody) : null;
-      }
-      return req as any;
-    })();
-
     const request = new Request(targetUrl, {
       // @ts-ignore
-      ...(requestBody && !(requestBody instanceof Uint8Array) ? { duplex: 'half' } : {}),
+      duplex: 'half',
       method: req.method,
       headers,
-      body: requestBody
+      body: req.method === 'GET' || req.method === 'HEAD' ? null : (req as any)
     });
 
     const response = await fetch(request);
-
-    if (
-      guardPlan.kind === 'guarded' &&
-      guardPlan.transformJsonResponse &&
-      response.ok &&
-      (response.headers.get('content-type') || '').includes('application/json')
-    ) {
-      const responseText = await response.text();
-      const filteredBody = guardPlan.transformJsonResponse(responseText);
-
-      response.headers.forEach((value, key) => {
-        const lowerKey = key.toLowerCase();
-        if (
-          lowerKey === 'content-encoding' ||
-          lowerKey === 'transfer-encoding' ||
-          lowerKey === 'content-length'
-        ) {
-          return;
-        }
-        res.setHeader(key, value);
-      });
-      res.setHeader('Content-Length', Buffer.byteLength(filteredBody, 'utf8'));
-      res.status(response.status);
-      res.end(filteredBody);
-      await finished(res, { cleanup: true });
-      return;
-    }
 
     response.headers.forEach((value, key) => {
       const lowerKey = key.toLowerCase();
@@ -115,7 +70,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse): Promise<void>
     }
 
     jsonRes(res, {
-      code: isRootMemberForbiddenError(error) ? 403 : 500,
+      code: 500,
       error
     });
   }

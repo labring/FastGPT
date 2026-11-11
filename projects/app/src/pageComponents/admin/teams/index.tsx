@@ -145,7 +145,7 @@ const TeamTable = () => {
                       isDisabled={Boolean(switchingTeamId) && switchingTeamId !== item.id}
                       onClick={() => onEnterTeam(item.id)}
                     >
-                      进入团队
+                      {t('account_team:enter_team')}
                     </Button>
                   </HStack>
                 </Td>

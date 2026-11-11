@@ -1,7 +1,7 @@
 # Root 用户跨团队切换与全资源管理设计方案
 
-> 状态：**已确认（Frontier Settled / Ready for Implementation）**  
-> 责任模块：`packages/service`、`projects/app`、`packages/global`  
+> 状态：**已实现（Implemented）**
+> 责任模块：`packages/service`、`projects/app`、`packages/global`、`pro/admin`
 > 目标群体：系统超级管理员（`root` 用户）
 
 ---
@@ -15,11 +15,13 @@
 3. **运维与客户支持痛点**：多租户场景下，当某个团队遇到复杂的应用编排 Bug、向量检索异常、敏感数据审计或权限配置死锁时，管理员无法直接进入该团队现场调试和配置。
 
 ### 1.2 核心决断（经过多轮确认）
-1. **JIT 专属成员锚定（方案 A）**：root 首次切换到目标团队时，在底层原子为其 upsert 一条专属的 `MongoTeamMember` 记录（`role: 'owner'`, `name: 'root'`, `status: 'active'`），拥有真实 `ObjectId` 物理记录，零侵入兼容全站 `$lookup`、联表查询与鉴权函数，真实归属审计。
-2. **成员生命周期持久保留**：root 离开团队时不删除该记录，确保历史创建的资源和审计关联始终有效。
-3. **租户视角隐私隔离**：在普通租户成员拉取团队成员列表时，自动过滤隐藏 root 成员，避免困惑。
-4. **防篡改安全保护**：服务端严格禁止租户任何成员（包括租户原 Owner）修改、降级或删除 root 成员。
-5. **轻量一键切换**：点击直接切换并后台静默记录 `ADMIN_SWITCH_TEAM` 审计日志，不增加阻塞工单弹窗。
+1. **JIT 专属成员锚定（方案 A）**：root 首次切换到目标团队时，在底层原子为其 upsert 一条专属的 `MongoTeamMember` 记录（`name: 'root'`, `status: 'active'`；非 root 自有团队不持久化 `role: 'owner'` 以避免污染单 owner 查询与迁移约束，而在运行时动态授予 `TeamPermission({ isOwner: true })`），拥有真实 `ObjectId` 物理记录，零侵入兼容全站 `$lookup`、联表查询与鉴权函数，真实归属审计。
+2. **成员生命周期持久保留**：root 离开团队时不删除该记录，且禁止通过成员退出接口（`member/leave`）移除，确保历史创建的资源和审计关联始终有效。
+3. **租户视角隐私隔离（`fastgpt-pro` 原生执行）**：在普通租户成员拉取团队成员列表、成员计数、CSV 导出、聚合检索、协作者列表及全员组预览时，商业版服务在数据库查询层直接过滤隐藏外来 root 成员；开源侧 `/api/proApi/[...path]` 保持纯净流式透传。
+4. **防篡改安全保护与超管所有权变更（`fastgpt-pro` 原生执行）**：
+   - 商业版服务端严格禁止非 root 租户成员（包括租户原 Owner）删除、改名、恢复、修改协作者权限或向外来 root 成员强制转移所有权（返回 HTTP `403` `TeamErrEnum.unPermission`）。
+   - `root` 本人作为系统最高超管，可在 `team/changeOwner` 中将任意团队的所有权从当前 `ownerId` 转让给同团队任意活跃成员（包括转让给 `root` 自身，并豁免 `MAX_TEAM_OWNER_COUNT` 上限）。
+5. **轻量一键切换与全站审计**：点击直接切换并后台静默记录 `ADMIN_SWITCH_TEAM` 审计日志；管理员后台系统审计日志（`/proApi/admin/system/audit/list`）使用 `adminCert` 鉴权并取消 `teamId` 过滤，跨团队切换后仍可查看全站管理操作日志。
 6. **不使用顶部横幅**：界面保持纯净简洁，不增加常驻横幅。
 7. **切换后直达 `/dashboard`**：重置聊天缓存后直接重定向至工作台应用列表。
 8. **`TeamSelector` 交互升级**：
@@ -44,33 +46,26 @@ export const ensureRootTeamMember = async ({
   targetTeamId: string;
   rootUserId: string;
   session?: ClientSession;
-}): Promise<TeamMemberSchema> => {
-  let tmb = await MongoTeamMember.findOne({
-    teamId: targetTeamId,
-    userId: rootUserId
-  }).session(session);
+}) => {
+  const isOwnTeam = String(targetTeam.ownerId) === String(rootUserId);
+  const tmb = await MongoTeamMember.findOneAndUpdate(
+    { teamId: targetTeam._id, userId: rootUserId },
+    {
+      $set: {
+        status: TeamMemberStatusEnum.active,
+        ...(isOwnTeam ? { role: TeamMemberRoleEnum.owner } : {})
+      },
+      $setOnInsert: {
+        name: 'root',
+        avatar: LOGO_ICON,
+        isSetMemberName: true,
+        createTime: new Date()
+      }
+    },
+    { upsert: true, new: true, ...(session ? { session } : {}) }
+  ).lean();
 
-  if (!tmb) {
-    [tmb] = await MongoTeamMember.create(
-      [
-        {
-          teamId: targetTeamId,
-          userId: rootUserId,
-          name: 'root',
-          role: TeamMemberRoleEnum.owner, // 赋予团队最高权限
-          status: TeamMemberStatusEnum.active,
-          isSetMemberName: true,
-          createTime: new Date()
-        }
-      ],
-      { session }
-    );
-  } else if (tmb.status !== TeamMemberStatusEnum.active) {
-    tmb.status = TeamMemberStatusEnum.active;
-    await tmb.save({ session });
-  }
-
-  return tmb;
+  return { team: targetTeam, tmb };
 };
 ```
 
@@ -78,9 +73,9 @@ export const ensureRootTeamMember = async ({
 - 该创建逻辑在 `switchTeamAsRoot` 内直接执行，绕过团队 `maxTeamMember` 席位检查。
 - root 成员记录长期落库持久保留，切换离开时不删除，保证其名下创建的资源外键关联完好。
 
-#### 2.1.3 租户视角隐藏与防操作防护
-- **成员列表过滤**：在拉取成员列表（`POST /api/proApi/support/user/team/member/list`）时，若当前请求者非 root 用户，增加过滤条件 `{ userId: { $ne: rootUserId } }`。
-- **服务端防修改拦截**：在成员删除、角色更新等接口中，若检测到目标成员的 `userId` 对应 root 用户，直接拦截并抛出无权操作异常。
+#### 2.1.3 租户视角隐藏与防操作防护（`fastgpt-pro` 原生实现）
+- **成员只读接口原生过滤**：在商业版 `member/list`、`member/count`、`member/export`、`searchMembersOrgsGroups`、`collaborator/list`、`group/list`、`org/list` 中，当请求者非 `root` 且团队并非 `root` 自有团队时，通过 `getForeignRootMemberInfo(teamId)` 在查询与聚合阶段排除外来 `root` 成员，确保分页总数、导出 CSV 和全员组计数一致准确。
+- **服务端防修改拦截**：在商业版 `member/delete`、`member/updateNameByManager`、`member/restore`、`collaborator/{update,updateOne,delete}`、`team/changeOwner` 及部门/成员组/资源变更接口中，通过 `assertTargetMemberNotRoot` / `getForeignRootMemberInfo` 原生拦截非 `root` 对外来 `root` 成员的变更（HTTP `403` `unPermission`）。
 
 ---
 

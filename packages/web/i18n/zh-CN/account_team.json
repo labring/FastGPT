@@ -33,6 +33,7 @@
   "admin_update_system_modal": "系统公告配置",
   "admin_update_team": "编辑团队信息",
   "admin_switch_team": "切换团队",
+  "enter_team": "进入团队",
   "admin_update_user": "编辑用户信息",
   "admin_delete_user": "删除用户",
   "account_cancellation_submit": "提交账号注销",

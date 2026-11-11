@@ -69,7 +69,12 @@ const Team = () => {
         ]}
         value={teamTab}
         onChange={(e) => {
-          if (e === TeamTabEnum.audit && planContent && !planContent?.auditLogStoreDuration) {
+          if (
+            userInfo?.username !== 'root' &&
+            e === TeamTabEnum.audit &&
+            planContent &&
+            !planContent?.auditLogStoreDuration
+          ) {
             toast({
               status: 'warning',
               title: t('common:not_permission')
@@ -85,7 +90,15 @@ const Team = () => {
         }}
       />
     ),
-    [planContent, router, t, teamTab, toast, userInfo?.team.permission.hasManagePer]
+    [
+      planContent,
+      router,
+      t,
+      teamTab,
+      toast,
+      userInfo?.team.permission.hasManagePer,
+      userInfo?.username
+    ]
   );
 
   return (
