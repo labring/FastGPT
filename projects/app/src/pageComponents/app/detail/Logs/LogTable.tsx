@@ -682,7 +682,11 @@ const LogTable = ({
         <PopoverConfirm
           Trigger={<Button size={'md'}>{t('common:Export')}</Button>}
           showCancel
-          content={t('app:logs_export_confirm_tip', { total })}
+          content={
+            isCursorSearchMode
+              ? t('app:logs_export_confirm_tip_without_total')
+              : t('app:logs_export_confirm_tip', { total })
+          }
           onConfirm={exportLogs}
         />
       </Flex>

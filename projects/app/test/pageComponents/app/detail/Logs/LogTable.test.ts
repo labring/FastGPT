@@ -7,8 +7,9 @@ import { getLogKeys, searchAppChatLogs, updateLogKeys } from '@/web/core/app/api
 
 const getLogRows = vi.hoisted(() => vi.fn());
 const getPaginationOptions = vi.hoisted(() => vi.fn());
+const translate = vi.hoisted(() => vi.fn());
 
-vi.mock('next-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
+vi.mock('next-i18next', () => ({ useTranslation: () => ({ t: translate }) }));
 vi.mock('next/dynamic', () => ({ default: () => () => null }));
 vi.mock('ahooks', async (importOriginal) => ({
   ...(await importOriginal<typeof import('ahooks')>()),
@@ -133,8 +134,13 @@ vi.mock('@fastgpt/web/components/common/MyPopover', async () => {
 vi.mock('@fastgpt/web/components/common/MyPopover/PopoverConfirm', async () => {
   const React = await import('react');
   return {
-    default: ({ onConfirm }: any) =>
-      React.createElement('button', { onClick: onConfirm }, 'confirm-export')
+    default: ({ content, onConfirm }: any) =>
+      React.createElement(
+        React.Fragment,
+        null,
+        React.createElement('span', { 'data-testid': 'export-confirm-content' }, content),
+        React.createElement('button', { onClick: onConfirm }, 'confirm-export')
+      )
   };
 });
 vi.mock('@fastgpt/web/components/common/DndDrag', async () => {
@@ -186,6 +192,7 @@ describe('LogTable identity columns UI', () => {
     vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
     localStorage.clear();
     vi.clearAllMocks();
+    translate.mockImplementation((key: string) => key);
     vi.mocked(getLogKeys).mockResolvedValue({ logKeys: [] });
     getLogRows.mockReturnValue([
       {
@@ -396,6 +403,20 @@ describe('LogTable identity columns UI', () => {
     expect(searchAppChatLogs).toHaveBeenCalledTimes(2);
     expect(vi.mocked(searchAppChatLogs).mock.calls[1][0].cursor).toBeUndefined();
     expect(container.textContent).toContain('common:request_end');
+  });
+  it('uses the export confirmation without total in search mode', async () => {
+    await render({ cursorSearch: true });
+    await setSearch();
+    expect(container.querySelector('[data-testid="export-confirm-content"]')?.textContent).toBe(
+      'app:logs_export_confirm_tip_without_total'
+    );
+  });
+  it('keeps the total in the export confirmation on paginated logs', async () => {
+    await render();
+    expect(container.querySelector('[data-testid="export-confirm-content"]')?.textContent).toBe(
+      'app:logs_export_confirm_tip'
+    );
+    expect(translate).toHaveBeenCalledWith('app:logs_export_confirm_tip', { total: 1 });
   });
   it('connects pagination to the actual table body scroll container', async () => {
     await render();
