@@ -4,7 +4,13 @@ import { MongoAppChatLog } from '@fastgpt/service/core/app/logs/chatLogsSchema';
 import { MongoOutLink } from '@fastgpt/service/support/outLink/schema';
 import { getChatSourceByPublishChannel } from '@fastgpt/global/core/chat/utils';
 import { ChatPublishSourceSchema } from '@fastgpt/global/core/chat/publishSource/type';
+import { ChatSourceSchema } from '@fastgpt/global/core/chat/schema';
 import { LegacyPublishSourceRecordSchema, canRestoreOutLinkReference } from './utils';
+
+// 日常读取可归类为未知；迁移核验已落库的新来源时必须检查原值，不能把解析兜底视为已完成写入。
+const StoredPublishSourceSchema = ChatPublishSourceSchema.extend({
+  type: ChatSourceSchema.unwrap()
+});
 
 export type PublishSourceMigrationStage = 'chats' | 'chatLogs';
 
@@ -51,7 +57,7 @@ export const backfillPublishSourceBatch = async ({
   const records = rawRecords.flatMap((raw) => {
     try {
       if (raw.publishSource !== undefined && raw.publishSource !== null) {
-        ChatPublishSourceSchema.parse(raw.publishSource);
+        StoredPublishSourceSchema.parse(raw.publishSource);
         return [];
       }
       return [{ raw, record: LegacyPublishSourceRecordSchema.parse(raw) }];
@@ -147,7 +153,7 @@ export const backfillPublishSourceBatch = async ({
       if (raw.publishSource === undefined || raw.publishSource === null) {
         throw new Error('Conversation source changed while backfilling; retry required');
       }
-      ChatPublishSourceSchema.parse(raw.publishSource);
+      StoredPublishSourceSchema.parse(raw.publishSource);
     } catch (error) {
       failures.set(String(raw._id), error);
     }

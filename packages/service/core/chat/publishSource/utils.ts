@@ -5,7 +5,7 @@ import {
   type ChatPublishSourceType
 } from '@fastgpt/global/core/chat/publishSource/type';
 
-/** 新运行的外部渠道必须带可信记录 ID；历史读取仍允许 type-only。 */
+/** 已知外部渠道必须带可信记录 ID；内部及未知来源不保留渠道引用，避免误认其归属。 */
 export const resolveCurrentChatPublishSource = ({
   source,
   publishSource
@@ -14,8 +14,13 @@ export const resolveCurrentChatPublishSource = ({
   publishSource?: ChatPublishSourceType;
 }): ChatPublishSourceType => {
   const result = ChatPublishSourceSchema.parse(publishSource ?? { type: source });
-  const internal = [ChatSourceEnum.online, ChatSourceEnum.test, ChatSourceEnum.cronJob];
-  if (internal.includes(result.type)) return { type: result.type };
+  const sourcesWithoutChannelId = [
+    ChatSourceEnum.online,
+    ChatSourceEnum.test,
+    ChatSourceEnum.cronJob,
+    ChatSourceEnum.unknown
+  ];
+  if (sourcesWithoutChannelId.includes(result.type)) return { type: result.type };
   if (!result.id) throw new Error('External chat publish source ID is missing');
   return result;
 };

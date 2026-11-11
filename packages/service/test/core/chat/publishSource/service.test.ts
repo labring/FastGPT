@@ -22,6 +22,20 @@ beforeEach(() => {
 });
 
 describe('updateChatPublishSource', () => {
+  it('新运行的未知来源可正常保存，并清除无归属的渠道 ID 和名称', async () => {
+    await updateChatPublishSource({
+      ...scope,
+      chatId,
+      source: 'future',
+      publishSource: { type: ChatSourceEnum.unknown, id: oid() },
+      sourceName: '无法确认的渠道'
+    });
+    const chat = await MongoChat.findOne({ chatId }).lean();
+    expect(chat).toMatchObject({ source: 'unknown', publishSource: { type: 'unknown' } });
+    expect(chat?.publishSource).not.toHaveProperty('id');
+    expect(chat).not.toHaveProperty('sourceName');
+  });
+
   it('创建并整体替换最新来源，内部入口清除旧渠道和名称', async () => {
     const id = oid();
     await updateChatPublishSource({
