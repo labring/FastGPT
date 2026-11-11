@@ -1,6 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import {
+  MODERATION_BLOCKED_ERROR_MESSAGE,
   MODERATION_BLOCKED_REPLACE_TEXT,
+  MODERATION_ERROR_BLOCKED_MESSAGE,
   ModerationActionEnum,
   ModerationExceptionActionEnum,
   ModerationRiskActionEnum,
@@ -10,8 +13,7 @@ import type { SystemModerationPolicyType } from '@fastgpt/global/core/plugin/mod
 import * as checkerMod from '../../../../core/plugin/moderation/checker';
 import * as serviceMod from '../../../../core/plugin/moderation/service';
 import {
-  checkFileContentModeration,
-  checkModelPromptAndInput,
+  checkModelContextModeration,
   checkToolResultModeration
 } from '../../../../core/plugin/moderation/modelInput';
 
@@ -35,134 +37,111 @@ describe('Model Input Guard (Anchor 2)', () => {
     }
   };
 
-  describe('checkModelPromptAndInput', () => {
-    it('passes all inputs when moderation passes', async () => {
+  describe('checkModelContextModeration', () => {
+    it('combines system prompt and current user message into a single check while skipping histories', async () => {
       const checkerSpy = vi.spyOn(checkerMod, 'checkContentByPolicy').mockResolvedValue({
         action: ModerationActionEnum.pass,
         isPass: true,
         text: 'safe text'
       });
 
-      const res = await checkModelPromptAndInput({
-        userChatInput: 'what is FastGPT?',
-        systemPrompt: 'You are an AI assistant',
-        datasetCitePrompt: 'FastGPT is an AI agent platform'
+      const res = await checkModelContextModeration({
+        messages: [
+          {
+            role: ChatCompletionRequestMessageRoleEnum.System,
+            content: 'You are an AI assistant.\nDataset quote: FastGPT docs'
+          },
+          {
+            role: ChatCompletionRequestMessageRoleEnum.User,
+            content: 'historical sensitive text that must be skipped'
+          },
+          {
+            role: ChatCompletionRequestMessageRoleEnum.Assistant,
+            content: 'historical assistant reply'
+          },
+          {
+            role: ChatCompletionRequestMessageRoleEnum.User,
+            content: [
+              { type: 'text', text: 'Current user question' },
+              { type: 'text', text: 'Parsed file content' }
+            ]
+          }
+        ]
       });
 
-      expect(res.isUserChatInputBlocked).toBe(false);
-      expect(res.userChatInput).toBe('what is FastGPT?');
-      expect(res.systemPrompt).toBe('You are an AI assistant');
-      expect(res.datasetCitePrompt).toBe('FastGPT is an AI agent platform');
-      expect(checkerSpy).toHaveBeenCalledTimes(3);
+      expect(res.isBlocked).toBe(false);
+      expect(checkerSpy).toHaveBeenCalledTimes(1);
+      const checkedText = checkerSpy.mock.calls[0][0].text;
+      expect(checkedText).toContain('You are an AI assistant.');
+      expect(checkedText).toContain('Dataset quote: FastGPT docs');
+      expect(checkedText).toContain('Current user question');
+      expect(checkedText).toContain('Parsed file content');
+      expect(checkedText).not.toContain('historical sensitive text that must be skipped');
+      expect(checkedText).not.toContain('historical assistant reply');
     });
 
-    it('flags isUserChatInputBlocked and sanitizes user input when user question is blocked', async () => {
-      vi.spyOn(checkerMod, 'checkContentByPolicy').mockImplementation(async ({ targetField, text }) => {
-        if (targetField === 'userChatInput') {
-          return {
-            action: ModerationActionEnum.block,
-            isPass: false,
-            text
-          };
-        }
-        return {
-          action: ModerationActionEnum.pass,
-          isPass: true,
-          text
-        };
-      });
-
-      const res = await checkModelPromptAndInput({
-        userChatInput: 'illegal question',
-        systemPrompt: 'You are an AI assistant'
-      });
-
-      expect(res.isUserChatInputBlocked).toBe(true);
-      expect(res.userChatInput).toBe(MODERATION_BLOCKED_REPLACE_TEXT);
-      expect(res.systemPrompt).toBe('You are an AI assistant');
-    });
-
-    it('sanitizes system prompt with MODERATION_BLOCKED_REPLACE_TEXT when system prompt is blocked', async () => {
-      vi.spyOn(checkerMod, 'checkContentByPolicy').mockImplementation(async ({ targetField, text }) => {
-        if (targetField === 'systemPrompt') {
-          return {
-            action: ModerationActionEnum.block,
-            isPass: false,
-            text
-          };
-        }
-        return {
-          action: ModerationActionEnum.pass,
-          isPass: true,
-          text
-        };
-      });
-
-      const res = await checkModelPromptAndInput({
-        userChatInput: 'normal question',
-        systemPrompt: 'toxic system prompt'
-      });
-
-      expect(res.isUserChatInputBlocked).toBe(false);
-      expect(res.userChatInput).toBe('normal question');
-      expect(res.systemPrompt).toBe(MODERATION_BLOCKED_REPLACE_TEXT);
-    });
-
-    it('sanitizes dataset citation slice with MODERATION_BLOCKED_REPLACE_TEXT when citation is blocked', async () => {
-      vi.spyOn(checkerMod, 'checkContentByPolicy').mockImplementation(async ({ targetField, text }) => {
-        if (targetField === 'datasetCite') {
-          return {
-            action: ModerationActionEnum.block,
-            isPass: false,
-            text
-          };
-        }
-        return {
-          action: ModerationActionEnum.pass,
-          isPass: true,
-          text
-        };
-      });
-
-      const res = await checkModelPromptAndInput({
-        userChatInput: 'normal question',
-        datasetCitePrompt: 'sensitive leaked doc content'
-      });
-
-      expect(res.isUserChatInputBlocked).toBe(false);
-      expect(res.datasetCitePrompt).toBe(MODERATION_BLOCKED_REPLACE_TEXT);
-    });
-  });
-
-  describe('checkFileContentModeration', () => {
-    it('returns original content when content passes', async () => {
-      vi.spyOn(checkerMod, 'checkContentByPolicy').mockResolvedValue({
-        action: ModerationActionEnum.pass,
-        isPass: true,
-        text: 'safe file text'
-      });
-
-      const result = await checkFileContentModeration({
-        content: 'safe file text',
-        fileName: 'readme.txt'
-      });
-
-      expect(result).toBe('safe file text');
-    });
-
-    it('replaces content with MODERATION_BLOCKED_REPLACE_TEXT when file content is blocked', async () => {
+    it('returns isBlocked: true and error message when combined context violates moderation', async () => {
       vi.spyOn(checkerMod, 'checkContentByPolicy').mockResolvedValue({
         action: ModerationActionEnum.block,
         isPass: false,
-        text: 'bad file content'
+        verdict: 'block',
+        text: 'blocked'
       });
 
-      const result = await checkFileContentModeration({
-        content: 'bad file content',
-        fileName: 'secret.pdf'
+      const res = await checkModelContextModeration({
+        systemPrompt: 'toxic system prompt',
+        messages: [
+          {
+            role: ChatCompletionRequestMessageRoleEnum.User,
+            content: 'normal question'
+          }
+        ]
       });
 
-      expect(result).toBe(MODERATION_BLOCKED_REPLACE_TEXT);
+      expect(res).toEqual({
+        isBlocked: true,
+        blockErrorMessage: MODERATION_BLOCKED_ERROR_MESSAGE
+      });
+    });
+
+    it('maps error verdict to MODERATION_ERROR_BLOCKED_MESSAGE when service exception policy blocks', async () => {
+      vi.spyOn(checkerMod, 'checkContentByPolicy').mockResolvedValue({
+        action: ModerationActionEnum.block,
+        isPass: false,
+        verdict: 'error',
+        text: 'error'
+      });
+
+      const res = await checkModelContextModeration({
+        systemPrompt: 'any prompt'
+      });
+
+      expect(res).toEqual({
+        isBlocked: true,
+        blockErrorMessage: MODERATION_ERROR_BLOCKED_MESSAGE
+      });
+    });
+
+    it('skips last user message when includeLastUserMessage is false (interactive resume)', async () => {
+      const checkerSpy = vi.spyOn(checkerMod, 'checkContentByPolicy').mockResolvedValue({
+        action: ModerationActionEnum.pass,
+        isPass: true,
+        text: 'safe'
+      });
+
+      await checkModelContextModeration({
+        systemPrompt: 'Agent system prompt',
+        includeLastUserMessage: false,
+        messages: [
+          {
+            role: ChatCompletionRequestMessageRoleEnum.User,
+            content: 'previous turn user message'
+          }
+        ]
+      });
+
+      expect(checkerSpy).toHaveBeenCalledTimes(1);
+      expect(checkerSpy.mock.calls[0][0].text).toBe('Agent system prompt');
     });
   });
 

@@ -5,7 +5,6 @@ import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type
 import { batchRun } from '@fastgpt/global/common/system/utils';
 import { getFileContentByUrl } from '../../../chat/fileContext';
 import { getWorkflowFileContext } from '../../utils/context';
-import { checkFileContentModeration } from '../../../plugin/moderation/modelInput';
 import { AgentNodeResponseDisplay } from './agentLoopCore/domain/constants';
 
 export type WorkflowReadFileItem = {
@@ -60,16 +59,11 @@ export const dispatchWorkflowReadFiles = async ({
         });
 
         const resolvedName = inputName ?? name;
-        const moderatedContent = await checkFileContentModeration({
-          content,
-          fileName: resolvedName,
-          context: { teamId, tmbId }
-        });
 
         return {
           url,
           name: resolvedName,
-          content: moderatedContent
+          content
         };
       } catch (error) {
         return {

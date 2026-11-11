@@ -16,7 +16,7 @@ import { getChatMessages } from './chatMessages';
 import { getDatasetCiteData } from './datasetCite';
 import { getAIChatFileContextConfig, getInputFiles } from './fileContext';
 import type { ChatProps, ChatResponse } from './type';
-import { checkModelPromptAndInput } from '../../../../plugin/moderation/modelInput';
+import { checkModelContextModeration } from '../../../../plugin/moderation/modelInput';
 import { MODERATION_BLOCKED_ERROR_MESSAGE } from '@fastgpt/global/core/plugin/moderation/constants';
 
 /**
@@ -69,7 +69,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
   let aiChatVideo = rawAiChatVideo;
   let fileLinks = rawFileLinks;
   let userChatInput = rawUserChatInput;
-  let systemPrompt = rawSystemPrompt;
+  const systemPrompt = rawSystemPrompt;
   const modelConstantsData = await loadWorkflowModelResource({
     appTeamId: runningAppInfo.teamId,
     userInfo: runningUserInfo,
@@ -87,25 +87,6 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     const chatHistories = getHistories(history, histories);
     quoteQA = checkQuoteQAValue(quoteQA);
 
-    // 锚点 2：进入模型前审查用户输入与系统提示词
-    const moderationContext = getDispatchModerationContext(props);
-
-    const checked = await checkModelPromptAndInput({
-      userChatInput,
-      systemPrompt,
-      context: moderationContext
-    });
-
-    // 必需输入有效性校验：若用户问题被拦截导致节点无有效输入，该节点本次不运行并报错终止
-    if (checked.isUserChatInputBlocked) {
-      return getNodeErrResponse({
-        error: checked.blockErrorMessage || MODERATION_BLOCKED_ERROR_MESSAGE
-      });
-    }
-
-    userChatInput = checked.userChatInput;
-    systemPrompt = checked.systemPrompt;
-
     const [datasetCiteData, userFiles] = await Promise.all([
       getDatasetCiteData({
         quoteQA,
@@ -121,27 +102,6 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
         fileLinks
       })
     ]);
-    // 审查知识库引用切片（若引用被拼入 systemPrompt 或拼入 userInput，均需送审）
-    if (datasetCiteData.systemPrompt) {
-      const citeChecked = await checkModelPromptAndInput({
-        datasetCitePrompt: datasetCiteData.systemPrompt,
-        context: moderationContext
-      });
-      datasetCiteData.systemPrompt = citeChecked.datasetCitePrompt ?? '';
-    }
-
-    if (datasetCiteData.userInput && datasetCiteData.userInput !== userChatInput) {
-      const userCiteChecked = await checkModelPromptAndInput({
-        userChatInput: datasetCiteData.userInput,
-        context: moderationContext
-      });
-      if (userCiteChecked.isUserChatInputBlocked) {
-        return getNodeErrResponse({
-          error: userCiteChecked.blockErrorMessage || MODERATION_BLOCKED_ERROR_MESSAGE
-        });
-      }
-      datasetCiteData.userInput = userCiteChecked.userChatInput ?? '';
-    }
 
     userChatInput = datasetCiteData.userInput;
 
@@ -168,6 +128,17 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       usageId,
       runningUserInfo
     });
+
+    // 锚点 2：对最终发给 AI 的本轮上下文（系统提示词 + 本轮用户消息，跳过历史消息）进行一次统一拦截，违规直接节点报错
+    const contextCheck = await checkModelContextModeration({
+      messages: filterMessages,
+      context: getDispatchModerationContext(props)
+    });
+    if (contextCheck.isBlocked) {
+      return getNodeErrResponse({
+        error: contextCheck.blockErrorMessage || MODERATION_BLOCKED_ERROR_MESSAGE
+      });
+    }
 
     const requestStartTime = Date.now();
     let firstTokenTime: number | undefined; // 首个模型输出 token 到达时刻(含思考)

@@ -25,9 +25,8 @@ sources:
   - packages/service/core/workflow/dispatch/ai/chat/dispatchChatCompletion.ts
   - packages/service/core/workflow/dispatch/ai/agent/index.ts
   - packages/service/core/workflow/dispatch/ai/toolcall/index.ts
-  - packages/service/core/workflow/dispatch/ai/readFiles.ts
-  - packages/service/core/workflow/dispatch/dataset/search.ts
-  - packages/service/core/workflow/dispatch/tools/readFiles.ts
+  - packages/service/core/workflow/dispatch/ai/agentLoopCore/application/runtime/systemTools.ts
+  - packages/service/core/workflow/dispatch/ai/agentLoopCore/application/runtime/toolRuntime.ts
   - packages/service/core/workflow/dispatch/tools/answer.ts
   - packages/service/core/workflow/dispatch/tools/queryExternsion.ts
   - packages/service/core/workflow/dispatch/interactive/userSelect.ts
@@ -71,8 +70,8 @@ baseline: "c915077feb8edd7cfa36fe73b49c9d00550d24a1"
 | 子场景 | 类型与起始状态 | 输入与操作 |
 | --- | --- | --- |
 | C1 | 异常（入口拦截）；策略 `P0` | 1) 向 `W_chat` 发送包含 `BLK_WORD` 的用户 `query`；2) 发送正常 `query`，但在自定义变量 `variables.customVar`（或交互表单提交值）中传入 `BLK_WORD`；3) 发送正常 `query` 与正常 `customVar`，但 `histories`（历史消息）或系统变量字段（`cTime`/`userId`/`appId`/`chatId`）带有历史文本。 |
-| C2 | 边界（模型输入替换与阻断）；仅开启 `hooks.modelInput: true`（关闭 `userInput`） | 1) 运行 `W_chat`：传入正常 `userChatInput`，但节点 `systemPrompt` 含 `BLK_WORD`、知识库检索召回 `[Q_safe, Q_blk]`、文件读取传入 `[F_safe.txt, F_blk.txt]`；2) 传入含 `BLK_WORD` 的 `userChatInput` 给 AI 对话 / ToolCall / Agent 节点。 |
-| C3 | 基础（Agent 内部工具结果与文件读取替换）；开启 `hooks.modelInput: true` | 运行 `W_agent`：1) 让模型调用内置 `read_files` 同时读取 `[F_safe.txt, F_blk.txt]`；2) 让模型调用普通工具 `T_echo`，工具返回含 `BLK_WORD` 的结果字符串，观察 Agent 后续规划与完成状态。 |
+| C2 | 异常/边界（进入模型上下文单次统一阻断）；仅开启 `hooks.modelInput: true`（关闭 `userInput`） | 1) 分别向 `W_chat`（AI 对话节点）传入含 `BLK_WORD` 的 `userChatInput`、含 `BLK_WORD` 的 `systemPrompt`、知识库检索召回含 `BLK_WORD` 的 `Q_blk`（覆盖 `system` 与 `user` 两种引用角色）、以及含 `BLK_WORD` 的文档 `F_blk.txt`；2) 验证上游 `知识库搜索` 与 `文档解析` 节点单独运行时不拦截、保留原文；3) 传入全部正常的本轮输入，但 `histories`（含历史轮文件）中带有 `BLK_WORD`。 |
+| C3 | 基础（Agent / ToolCall 工具调用结果整体屏蔽）；开启 `hooks.modelInput: true` | 运行 `W_agent`：1) 让模型调用内置 `read_files` 读取包含 `[F_safe.txt, F_blk.txt]` 的文件列表；2) 让模型调用普通工具 `T_echo` 或子工作流，返回含 `BLK_WORD` 的结果，观察工具结果屏蔽与 Agent 后续规划状态。 |
 | C4 | 异常（非流式输出与交互节点拦截）；仅开启 `hooks.finalOutput: true` | 以 `stream: false` 运行 `W_chat`：分别触发 AI 对话输出、`answerNode` 回复、`userSelect` 选项、`formInput` 提示/选项、`queryExtension` 输出包含 `BLK_WORD`。 |
 | C5 | 边界（流式分块输出截断）；仅开启 `hooks.finalOutput: true, streamInterval: 20` | 以 `stream: true` 运行 `W_chat` / `W_agent`：让模型先流式输出 25 个正常字符（超过第一个 20 字符窗口），随后在第二段输出或思考链（`reasoning`）中生成 `BLK_WORD`，后续还有剩余文本。捕获完整 SSE 事件流与最终落库消息。 |
 | C6 | 边界（工具调用参数违规脱敏回传与 Loop 续跑）；仅开启 `hooks.finalOutput: true` | 在 `W_agent`（覆盖普通 Agent Loop 与 PiAgent provider）中：1) 模型生成调用普通工具 `T_echo` 且参数含 `BLK_WORD`；2) 模型生成调用控制工具 `ask_user` 或 `set_plan` 且参数含 `BLK_WORD`。检查底层工具是否执行、SSE 事件、客户端是否出现报错卡片及 Agent Loop 后续运行状态。 |
@@ -85,8 +84,8 @@ baseline: "c915077feb8edd7cfa36fe73b49c9d00550d24a1"
 | 子场景 | 验证方式 | 特有预期 | 证据获取方式 |
 | --- | --- | --- | --- |
 | C1 | API、UI、数据库 | 1) 和 2) 在进入 `preChatRound` 与工作流节点执行前立即抛出 `UserError("内容包含敏感信息，已拦截")`，不调用 LLM、不产生模型 Token 计费、不落库 `chats` / `chatitems` / `chatitemresponses`（仅在 `system_moderation_records` 记录 `stage: 'entry', targetField: 'query' | 'variable.customVar', actionTaken: 'block'`），前端弹出 Toast 提示、回滚占位消息并保留输入内容；3) 系统变量键（`userId`/`appId`/`chatId`/`responseChatItemId`/`histories`/`cTime`）被跳过免审，请求正常通过。 | HTTP/SSE 错误响应、前端 Toast 与消息列表状态、账单 usage 查询、`chats`/`chatitems` 空记录验证及 `system_moderation_records`。 |
-| C2 | API、数据库 | 1) 违规的 `systemPrompt`、`Q_blk` 内容及 `F_blk.txt` 正文被替换为 `"该信息因内容审核不通过，无法返回"`（`actionTaken: 'replace'`），同批正常的 `Q_safe` 与 `F_safe.txt` 原文完整保留，节点继续调用模型完成回答；2) 当必需的 `userChatInput` 被拦截时，节点不发起模型调用，直接返回节点错误（可走工作流错误捕获分支）。 | 模型实际接收上下文/节点详情快照、`system_moderation_records` 中 `actionTaken: 'replace' | 'block'` 记录。 |
-| C3 | API、数据库 | 1) `dispatchWorkflowReadFiles` 逐文件审查：`F_blk.txt` 的 `content` 替换为 `"该信息因内容审核不通过，无法返回"`，`F_safe.txt` 保持原文；2) 工具返回结果违规时被替换为同一脱敏提示回传给模型，不中断 Agent Loop，Agent 正常完成后续回复。 | Agent 工具响应 JSON、节点响应详情、`system_moderation_records`（`targetField: 'file.F_blk.txt' | 'toolResult'`）。 |
+| C2 | API、数据库 | 1) 四种输入（用户输入、提示词、知识库检索结果、文件读取结果）任一包含 `BLK_WORD` 时，AI 对话节点在组装完最终发给模型的上下文后**只发起 1 次 `model_input` 审核**，立即返回节点错误（`actionTaken: 'block'`，可走工作流错误捕获分支），不发起模型调用、不产生 Token 计费；2) 上游独立的 `知识库搜索` 与 `文档解析` 节点不做拦截或脱敏替换；3) `histories` 历史消息及历史轮次文件免审，请求正常通过。 | 审核请求次数、节点响应 `error`/`moderationRecords`、账单 usage 查询及 `system_moderation_records`（`targetField: 'modelContext', actionTaken: 'block'`）。 |
+| C3 | API、数据库 | 1) 内置 `read_files` 与普通工具 / 子工作流返回结果命中违规时，不会触发 Agent / ToolCall 节点报错，而是将整次工具调用结果整体屏蔽替换为 `"该信息因内容审核不通过，无法返回"`（`actionTaken: 'replace'`）回传给模型；2) 不中断 Agent Loop，Agent 正常完成后续回复且客户端无节点报错横幅。 | Agent 工具响应内容、节点响应详情、`system_moderation_records`（`targetField: 'toolResult'`）。 |
 | C4 | API、数据库 | 所有面向用户的非流式输出命中违规时均被阻断，不向客户端返回违规文本、`userSelect` 选项或 `formInput` 表单交互，也不生成假空问题列表。 | 各节点触发后的响应报文与 `chatitems` 落库内容。 |
 | C5 | SSE、数据库 | 第一段已通过审核的 20 字符正常推送 `answer_delta`；当累计前缀出现 `BLK_WORD` 时，流式缓冲器立即触发 `abortController.abort()` 停止生成，后续含敏感词及未展示的增量绝不通过 SSE 发送给客户端；同一流式窗口复用相同 `sessionId` 且流中 `partial: true`、收尾 `partial: false`；已发生的模型 Token 用量正常保留。 | SSE 原始事件序列、最终 `chatitems` 消息内容、`system_moderation_records`。 |
 | C6 | API、SSE、数据库 | 无论普通工具还是 `ask_user`/`set_plan`，参数违规时底层工具均不执行、不向客户端流式暴露原始敏感 `toolParams` 或进入 `agentAsk` 暂停状态；当前工具调用统一以 `"该信息因内容审核不通过，无法返回"` 回填给模型，不阻断整个 Agent Loop，客户端气泡与节点运行详情均不产生节点 `error`/`errorText` 报错横幅，由 Agent Loop 自主决定继续调用或结束。 | 工具调用计数、SSE 事件流、节点响应详情（无 `error`/`errorText`）及 Agent 最终完成回复。 |

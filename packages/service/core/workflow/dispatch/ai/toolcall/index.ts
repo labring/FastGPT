@@ -33,7 +33,7 @@ import { useToolMessages } from './hooks/useToolMessages';
 import { useToolNodeList } from './hooks/useToolNodeList';
 import { runToolCall } from './toolCall';
 import { type DispatchToolModuleProps } from './type';
-import { checkModelPromptAndInput } from '../../../../plugin/moderation/modelInput';
+import { checkModelContextModeration } from '../../../../plugin/moderation/modelInput';
 import { MODERATION_BLOCKED_ERROR_MESSAGE } from '@fastgpt/global/core/plugin/moderation/constants';
 
 type Response = DispatchNodeResultType<{
@@ -126,30 +126,12 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
     // 交互恢复入口会由子工具继续接管，父 ToolCall 节点本轮不再作为入口节点。
     props.node.isEntry = false;
 
-    // 锚点 2：进入模型前审查用户输入与系统提示词
-    const moderationContext = getDispatchModerationContext(props);
-
-    const checked = await checkModelPromptAndInput({
-      userChatInput,
-      systemPrompt,
-      context: moderationContext
-    });
-
-    if (checked.isUserChatInputBlocked) {
-      return getNodeErrResponse({
-        error: checked.blockErrorMessage || MODERATION_BLOCKED_ERROR_MESSAGE
-      });
-    }
-
-    const effectiveUserChatInput = checked.userChatInput;
-    const effectiveSystemPrompt = checked.systemPrompt;
-
     const { messages, currentInputFiles } = await useToolMessages({
       defaultSystemPrompt: toolModel.config.defaultSystemChatPrompt,
-      systemPrompt: effectiveSystemPrompt,
+      systemPrompt,
       chatHistories,
       responseChatItemId,
-      userChatInput: effectiveUserChatInput,
+      userChatInput,
       fileLinks,
       parseHistoryFiles,
       lastInteractive,
@@ -157,6 +139,23 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
       chatConfig,
       useSandbox
     });
+
+    const adaptMessages = buildAgentLoopCoreRequestMessages({
+      messages,
+      removeSystemMessages: false
+    });
+
+    // 锚点 2：对发给 AI 的本轮初始上下文（跳过历史消息）进行一次统一拦截，违规直接节点报错
+    const contextCheck = await checkModelContextModeration({
+      messages: adaptMessages,
+      includeLastUserMessage: !(!!lastInteractive && !!isEntry),
+      context: getDispatchModerationContext(props)
+    });
+    if (contextCheck.isBlocked) {
+      return getNodeErrResponse({
+        error: contextCheck.blockErrorMessage || MODERATION_BLOCKED_ERROR_MESSAGE
+      });
+    }
 
     // 初始化沙盒
     const sandboxClient = useSandbox
@@ -222,27 +221,20 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
       error,
       requestIds,
       firstTokenTime
-    } = await (async () => {
-      const adaptMessages = buildAgentLoopCoreRequestMessages({
-        messages,
-        removeSystemMessages: false
-      });
-
-      return runToolCall({
-        ...props,
-        memoryState: toolCallMemoryState,
-        currentInputFiles,
-        sandboxClient,
-        runtimeNodes,
-        runtimeEdges,
-        toolNodes,
-        toolModel,
-        messages: adaptMessages,
-        childrenInteractiveParams: createAgentLoopCoreChildInteractiveParams({
-          lastInteractive
-        })
-      });
-    })();
+    } = await runToolCall({
+      ...props,
+      memoryState: toolCallMemoryState,
+      currentInputFiles,
+      sandboxClient,
+      runtimeNodes,
+      runtimeEdges,
+      toolNodes,
+      toolModel,
+      messages: adaptMessages,
+      childrenInteractiveParams: createAgentLoopCoreChildInteractiveParams({
+        lastInteractive
+      })
+    });
     const toolMemories = toolCallMemoryState.getDelta();
     const systemMemories = Object.keys(toolMemories).length > 0 ? toolMemories : undefined;
     const { runTimes, toolDetail } =

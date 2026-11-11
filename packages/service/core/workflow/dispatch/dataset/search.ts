@@ -22,14 +22,12 @@ import {
   loadWorkflowModelResource
 } from '../../resource/service';
 import { getNodeErrResponse } from '../utils';
-import { getDispatchModerationContext } from '../utils/runtime';
 import {
   createImageCaptionChildNodeResponse,
   createQueryExtensionChildNodeResponse
 } from './nodeResponse';
 import { normalizeDatasetSearchInput } from './utils';
 import { formatDatasetSearchToolResponse } from './toolResponse';
-import { checkDatasetQuotesModeration } from '../../../plugin/moderation/modelInput';
 
 const logger = getLogger(LogCategories.MODULE.WORKFLOW.DATASET);
 
@@ -343,14 +341,9 @@ export const dispatchDatasetSearch = async (
       nodeUsages.reduce((acc, item) => acc + item.totalPoints, 0) - childrenResponsePoints;
     props.usagePush(nodeUsages);
 
-    const moderatedSearchRes = await checkDatasetQuotesModeration({
-      quotes: searchRes,
-      context: getDispatchModerationContext(props)
-    });
-
     return {
       data: {
-        quoteQA: moderatedSearchRes
+        quoteQA: searchRes
       },
       [DispatchNodeResponseKeyEnum.nodeResponse]: {
         totalPoints,
@@ -371,14 +364,12 @@ export const dispatchDatasetSearch = async (
         searchUsingReRank,
         ...(childrenResponses.length > 0 ? { childrenResponses } : {}),
         // Results
-        quoteList: moderatedSearchRes,
+        quoteList: searchRes,
         // 融合候选集快照，仅在重排开启且未超过上限时由检索层产出，便于日志详情对比召回与重排结果
         ...(retrievalResults?.length ? { retrievalResults } : {})
       },
       [DispatchNodeResponseKeyEnum.toolResponse]:
-        moderatedSearchRes.length > 0
-          ? formatDatasetSearchToolResponse(moderatedSearchRes)
-          : 'No results'
+        searchRes.length > 0 ? formatDatasetSearchToolResponse(searchRes) : 'No results'
     };
   } catch (error) {
     if (isDatasetResourceMissingError(error)) {

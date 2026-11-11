@@ -1,3 +1,5 @@
+import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
+import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/llm/type';
 import {
   getModerationBlockErrorMessage,
   MODERATION_BLOCKED_REPLACE_TEXT,
@@ -6,216 +8,101 @@ import {
 } from '@fastgpt/global/core/plugin/moderation/constants';
 import type { CheckContentByPolicyParams } from '@fastgpt/global/core/plugin/moderation/type';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
-import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
-import { checkContentByPolicy, isModerationHookEnabled } from './checker';
+import { checkContentByPolicy } from './checker';
 import { ensureNodeModerationRecord } from './collector';
 import { getModerationPolicy } from './service';
 
-export type CheckModelPromptAndInputParams = {
-  userChatInput?: string;
+export type CheckModelContextModerationParams = {
+  /** 组装后的发给模型的消息列表（自动提取 system/developer 消息，及可选的最后一条本轮 user 消息；跳过中间历史消息） */
+  messages?: ChatCompletionMessageParam[];
+  /** 独立传入的系统提示词（如 Agent 节点独立传入 systemPrompt 的场景） */
   systemPrompt?: string;
-  datasetCitePrompt?: string;
+  /** 额外传入的本轮用户输入（如 ask_user 恢复时的 userAnswer） */
+  extraUserText?: string;
+  /** 是否将 messages 的最后一条 user 消息视为本轮新输入纳入审查（默认 true；交互恢复未追加新 user 消息时传 false） */
+  includeLastUserMessage?: boolean;
+  /** 业务上下文 */
   context?: CheckContentByPolicyParams['context'];
 };
 
-export type CheckModelPromptAndInputResult = {
-  userChatInput: string;
-  systemPrompt: string;
-  datasetCitePrompt?: string;
-  isUserChatInputBlocked: boolean;
+export type CheckModelContextModerationResult = {
+  isBlocked: boolean;
   blockErrorMessage?: string;
 };
 
 /**
- * 锚点 2：进入模型前（Pre-loop）审查用户输入、系统提示词与知识库引用
+ * 锚点 2：对发给 AI 模型的本轮完整上下文执行单次统一审查（Model Input Guard）
  *
- * - 审查项：用户输入 (userChatInput)、系统提示词 (systemPrompt)、知识库切片引用 (datasetCitePrompt)
- * - 免审项：历史上下文 (Chat Histories) 免审
- * - 违规处理：违规项替换为统一提示文案；用户问题被拦截时标记 isUserChatInputBlocked
+ * - 审查范围：系统提示词（system/developer 消息与独立 systemPrompt）+ 本轮新增的用户上下文（包含用户输入、知识库引用、解析合并后的文档内容等）
+ * - 免审范围：历史对话消息（histories）及历史轮次文件免审
+ * - 触发效果：命中拦截时返回 isBlocked: true，由模型节点直接报错阻断，不发起模型请求、不计费
  */
-export const checkModelPromptAndInput = async ({
-  userChatInput = '',
-  systemPrompt = '',
-  datasetCitePrompt,
+export const checkModelContextModeration = async ({
+  messages = [],
+  systemPrompt,
+  extraUserText,
+  includeLastUserMessage = true,
   context
-}: CheckModelPromptAndInputParams): Promise<CheckModelPromptAndInputResult> => {
-  // 审查单个可替换字段：命中违规时记录节点审核记录并替换为脱敏提示文案
-  const moderateReplaceField = async <T extends string | undefined>({
-    text,
-    targetField
-  }: {
-    text: T;
-    targetField: string;
-  }): Promise<T> => {
-    if (!text?.trim()) return text;
-
-    const res = await checkContentByPolicy({
-      text,
-      stage: ModerationStageEnum.modelInput,
-      targetField,
-      actionOnBlock: ModerationActionEnum.replace,
-      context
-    });
-
-    if (res.action !== ModerationActionEnum.pass) {
-      ensureNodeModerationRecord(res, {
-        stage: ModerationStageEnum.modelInput,
-        targetField,
-        content: text,
-        actionTaken: ModerationActionEnum.replace
-      });
-      return MODERATION_BLOCKED_REPLACE_TEXT as T;
+}: CheckModelContextModerationParams): Promise<CheckModelContextModerationResult> => {
+  const extractMessageText = (message?: ChatCompletionMessageParam): string => {
+    if (!message) return '';
+    if (typeof message.content === 'string') {
+      return message.content.trim();
     }
-
-    return text;
+    if (Array.isArray(message.content)) {
+      return message.content
+        .map((part) =>
+          part.type === 'text' && typeof part.text === 'string' ? part.text.trim() : ''
+        )
+        .filter(Boolean)
+        .join('\n');
+    }
+    return '';
   };
 
-  // 1. 审查用户问题输入
-  const userInputModeration = await (async () => {
-    if (!userChatInput?.trim()) {
-      return {
-        effectiveUserInput: userChatInput,
-        isUserChatInputBlocked: false,
-        blockErrorMessage: undefined
-      };
-    }
+  const systemTexts = [
+    systemPrompt?.trim() ?? '',
+    ...messages
+      .filter(
+        (msg) =>
+          msg.role === ChatCompletionRequestMessageRoleEnum.System ||
+          msg.role === ChatCompletionRequestMessageRoleEnum.Developer
+      )
+      .map(extractMessageText)
+  ].filter(Boolean);
 
-    const res = await checkContentByPolicy({
-      text: userChatInput,
-      stage: ModerationStageEnum.modelInput,
-      targetField: 'userChatInput',
-      context
-    });
+  const lastMessage = includeLastUserMessage ? messages.at(-1) : undefined;
+  const lastUserText =
+    lastMessage?.role === ChatCompletionRequestMessageRoleEnum.User
+      ? extractMessageText(lastMessage)
+      : '';
+  const userTexts = [lastUserText, extraUserText?.trim() ?? ''].filter(Boolean);
 
-    if (res.action === ModerationActionEnum.block) {
-      ensureNodeModerationRecord(res, {
-        stage: ModerationStageEnum.modelInput,
-        targetField: 'userChatInput',
-        content: userChatInput
-      });
-      return {
-        effectiveUserInput: MODERATION_BLOCKED_REPLACE_TEXT,
-        isUserChatInputBlocked: true,
-        blockErrorMessage: getModerationBlockErrorMessage(res.verdict)
-      };
-    }
-
-    return {
-      effectiveUserInput: userChatInput,
-      isUserChatInputBlocked: false,
-      blockErrorMessage: undefined
-    };
-  })();
-
-  // 2. 审查系统提示词
-  const effectiveSystemPrompt = await moderateReplaceField({
-    text: systemPrompt,
-    targetField: 'systemPrompt'
-  });
-
-  // 3. 审查知识库切片引用
-  const effectiveDatasetCitePrompt = await moderateReplaceField({
-    text: datasetCitePrompt,
-    targetField: 'datasetCite'
-  });
-
-  return {
-    userChatInput: userInputModeration.effectiveUserInput,
-    systemPrompt: effectiveSystemPrompt,
-    datasetCitePrompt: effectiveDatasetCitePrompt,
-    isUserChatInputBlocked: userInputModeration.isUserChatInputBlocked,
-    blockErrorMessage: userInputModeration.blockErrorMessage
-  };
-};
-
-/**
- * 审查知识库检索返回的引用切片列表
- *
- * 违规切片替换为统一脱敏文案，保留其余正常切片继续供后续节点使用。
- */
-export const checkDatasetQuotesModeration = async ({
-  quotes,
-  context
-}: {
-  quotes: SearchDataResponseItemType[];
-  context?: CheckContentByPolicyParams['context'];
-}): Promise<SearchDataResponseItemType[]> => {
-  if (!Array.isArray(quotes) || quotes.length === 0) return quotes;
-
-  const policy = await getModerationPolicy();
-  if (!isModerationHookEnabled({ stage: ModerationStageEnum.modelInput, policy })) {
-    return quotes;
+  const contextText = [...systemTexts, ...userTexts].join('\n\n').trim();
+  if (!contextText) {
+    return { isBlocked: false };
   }
 
-  return Promise.all(
-    quotes.map(async (item) => {
-      const combinedText = [item.q, item.a].filter(Boolean).join('\n').trim();
-      if (!combinedText) return item;
-
-      const res = await checkContentByPolicy({
-        text: combinedText,
-        stage: ModerationStageEnum.modelInput,
-        targetField: 'datasetCite',
-        actionOnBlock: ModerationActionEnum.replace,
-        policy,
-        context
-      });
-
-      if (res.action !== ModerationActionEnum.pass) {
-        ensureNodeModerationRecord(res, {
-          stage: ModerationStageEnum.modelInput,
-          targetField: 'datasetCite',
-          content: combinedText,
-          actionTaken: ModerationActionEnum.replace
-        });
-        return {
-          ...item,
-          q: MODERATION_BLOCKED_REPLACE_TEXT,
-          a: ''
-        };
-      }
-
-      return item;
-    })
-  );
-};
-
-/**
- * 审查文件提取文本内容
- *
- * 违规时替换为统一提示文案
- */
-export const checkFileContentModeration = async ({
-  content,
-  fileName,
-  context
-}: {
-  content?: string;
-  fileName?: string;
-  context?: CheckContentByPolicyParams['context'];
-}): Promise<string> => {
-  if (!content?.trim()) return content ?? '';
-
-  const targetField = fileName ? `file.${fileName}` : 'fileContent';
   const res = await checkContentByPolicy({
-    text: content,
+    text: contextText,
     stage: ModerationStageEnum.modelInput,
-    targetField,
-    actionOnBlock: ModerationActionEnum.replace,
+    targetField: 'modelContext',
     context
   });
 
-  if (res.action !== ModerationActionEnum.pass) {
+  if (res.action === ModerationActionEnum.block) {
     ensureNodeModerationRecord(res, {
       stage: ModerationStageEnum.modelInput,
-      targetField,
-      content,
-      actionTaken: ModerationActionEnum.replace
+      targetField: 'modelContext',
+      content: contextText
     });
-    return MODERATION_BLOCKED_REPLACE_TEXT;
+    return {
+      isBlocked: true,
+      blockErrorMessage: getModerationBlockErrorMessage(res.verdict)
+    };
   }
 
-  return content;
+  return { isBlocked: false };
 };
 
 /**

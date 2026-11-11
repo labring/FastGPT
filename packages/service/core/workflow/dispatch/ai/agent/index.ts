@@ -46,7 +46,7 @@ import { createWorkflowAgentLoopRuntime } from './adapter/runtime';
 import { createAgentNodeResponseCollector } from './nodeResponseCollector';
 import { ensureAgentSandboxRuntime, type AgentSandboxPrepareAction } from './sub/sandbox/prepare';
 import { createAgentSubAppLookup, getWorkflowAgentLoopProvider } from './utils';
-import { checkModelPromptAndInput } from '../../../../plugin/moderation/modelInput';
+import { checkModelContextModeration } from '../../../../plugin/moderation/modelInput';
 import { MODERATION_BLOCKED_ERROR_MESSAGE } from '@fastgpt/global/core/plugin/moderation/constants';
 
 export type DispatchAgentModuleProps = ModuleDispatchProps<{
@@ -276,28 +276,10 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       await assertSandboxAvailable(sandboxContext.teamId);
     }
 
-    // 锚点 2：进入模型前审查用户输入与系统提示词
-    const moderationContext = getDispatchModerationContext(props);
-
-    const checked = await checkModelPromptAndInput({
-      userChatInput,
-      systemPrompt,
-      context: moderationContext
-    });
-
-    if (checked.isUserChatInputBlocked) {
-      return getNodeErrResponse({
-        error: checked.blockErrorMessage || MODERATION_BLOCKED_ERROR_MESSAGE
-      });
-    }
-
-    const effectiveUserChatInput = checked.userChatInput;
-    const effectiveSystemPrompt = checked.systemPrompt;
-
     const userContext = await useUserContext({
       histories: restoredMessages ? [] : histories,
       currentFiles: fileLinks,
-      currentUserInput: effectiveUserChatInput,
+      currentUserInput: userChatInput,
       currentQuery: query,
       currentDataId: responseChatItemId,
       parseHistoryFiles,
@@ -379,9 +361,61 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     // 历史里的 system 只作为外部噪音过滤；最终 systemPrompt 在创建 runtime 后按工具能力构建。
     // PromptEditor 保存的是工具 ID，进入主 Agent 前转换为具体名称，避免模型看到不可调用的 ID。
     const formattedUserSystemPrompt = replaceAgentPromptToolReferences({
-      text: effectiveSystemPrompt,
+      text: systemPrompt,
       resolveName: (id) => promptToolReferenceInfoMap.get(id) || getSubAppInfo(id).name || undefined
     });
+
+    // providerState 统一保存 provider 内部恢复信息。
+    // FastAgent 使用 ChatItem 重建消息；Pi 暂时保留其原生 providerState。
+    const restoredMemory =
+      provider === 'piAgent'
+        ? readAgentLoopCoreProviderStateMemory({
+            memoryState,
+            runningAppInfo,
+            nodeId
+          })
+        : {};
+    const activePlan = readAgentLoopCoreActivePlan({
+      histories: restoredMessages ?? histories
+    });
+    const { providerState: runtimeProviderState, isAskResume } =
+      prepareAgentLoopCoreProviderRunState({
+        restoredProviderState: restoredMemory.providerState,
+        hasLastInteractive: !!lastInteractive
+      });
+    const previousAssistantResponses = lastInteractive
+      ? provider === 'piAgent'
+        ? (restoredMemory.assistantResponses ?? [])
+        : getRestoredAssistantResponses(restoredMessages)
+      : [];
+
+    // 锚点 2：对发给 AI 的本轮初始上下文（跳过历史消息）进行一次统一拦截，违规直接节点报错
+    const hasCurrentTurnUserMessage =
+      !lastInteractive || (provider === 'fastAgent' && lastInteractive?.type === 'agentAsk');
+    const contextCheck = await checkModelContextModeration({
+      messages: loopMessages,
+      systemPrompt: formattedUserSystemPrompt,
+      includeLastUserMessage: hasCurrentTurnUserMessage,
+      extraUserText:
+        provider !== 'fastAgent' && isAskResume ? queryInput || userChatInput : undefined,
+      context: getDispatchModerationContext(props)
+    });
+    if (contextCheck.isBlocked) {
+      const errorText = contextCheck.blockErrorMessage ?? MODERATION_BLOCKED_ERROR_MESSAGE;
+      return {
+        ...getNodeErrResponse({
+          error: errorText,
+          responseData: buildAgentNodeResponse({ errorText }),
+          system_memories: buildAgentMemories(buildClearedNodeMemories())
+        }),
+        ...(cleanedInteractiveHistories
+          ? { [DispatchNodeResponseKeyEnum.rewriteHistories]: cleanedInteractiveHistories }
+          : {}),
+        [DispatchNodeResponseKeyEnum.assistantResponses]: isResponseAnswerText
+          ? assistantResponses
+          : undefined
+      };
+    }
 
     // 2. 创建 workflow adapter。
     // 通用 agent loop 不感知 workflow；工具执行、SSE、usage、nodeResponse 都通过 runtime 参数回调进来。
@@ -412,29 +446,6 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       sandboxEnabled: !!sandboxClient
     });
 
-    // providerState 统一保存 provider 内部恢复信息。
-    // FastAgent 使用 ChatItem 重建消息；Pi 暂时保留其原生 providerState。
-    const restoredMemory =
-      provider === 'piAgent'
-        ? readAgentLoopCoreProviderStateMemory({
-            memoryState,
-            runningAppInfo,
-            nodeId
-          })
-        : {};
-    const activePlan = readAgentLoopCoreActivePlan({
-      histories: restoredMessages ?? histories
-    });
-    const { providerState: runtimeProviderState, isAskResume } =
-      prepareAgentLoopCoreProviderRunState({
-        restoredProviderState: restoredMemory.providerState,
-        hasLastInteractive: !!lastInteractive
-      });
-    const previousAssistantResponses = lastInteractive
-      ? provider === 'piAgent'
-        ? (restoredMemory.assistantResponses ?? [])
-        : getRestoredAssistantResponses(restoredMessages)
-      : [];
     // 3. 运行单主 loop。
     // 如果上一轮因 ask_user 暂停，这里会把用户回答作为 ask tool response 接回原 messages。
     const { result: coreResult, summary: outputSummary } = await runAgentLoopCoreWithSummary({
