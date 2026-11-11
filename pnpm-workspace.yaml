@@ -11,6 +11,7 @@ packages:
   - pro/browser-sandbox
   - pro/license-server
 
+  - cli
   - document/
   - scripts/icon
   - sdk/*

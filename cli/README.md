@@ -13,17 +13,17 @@ pnpm --filter @fastgpt/cli build:tsdown
 pnpm --filter @fastgpt/cli compile
 
 # 查看帮助
-node packages/cli/dist/cli.mjs --help
+node cli/dist/cli.mjs --help
 
 # 交互登录（内置 localhost:3000 / cloud.fastgpt.cn / cloud.fastgpt.io 与自定义地址选项；支持密码 + 2FA、API Key、Session Token）
-node packages/cli/dist/cli.mjs login
+node cli/dist/cli.mjs login
 
 # 无交互登录（CI / Agent）
-printf '%s\n' "$FASTGPT_API_KEY" | node packages/cli/dist/cli.mjs login --base-url https://cloud.fastgpt.cn --api-key-stdin
+printf '%s\n' "$FASTGPT_API_KEY" | node cli/dist/cli.mjs login --base-url https://cloud.fastgpt.cn --api-key-stdin
 
 # 查看当前身份与环境诊断
-node packages/cli/dist/cli.mjs whoami
-node packages/cli/dist/cli.mjs doctor
+node cli/dist/cli.mjs whoami
+node cli/dist/cli.mjs doctor
 ```
 
 ## 命令一览

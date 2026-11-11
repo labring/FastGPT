@@ -378,6 +378,42 @@ importers:
         specifier: 'catalog:'
         version: 4.1.5(@opentelemetry/api@1.9.0)(@types/node@24.13.3)(@vitest/coverage-v8@4.1.5)(jsdom@26.1.0(bufferutil@4.1.0)(canvas@3.2.3)(utf-8-validate@5.0.10))(vite@6.4.5(@types/node@24.13.3)(jiti@2.7.0)(lightningcss@1.32.0)(sass@1.85.1)(terser@5.39.0)(tsx@4.20.6)(yaml@2.8.4))
 
+  cli:
+    devDependencies:
+      '@clack/prompts':
+        specifier: 'catalog:'
+        version: 1.9.0
+      '@fastgpt/global':
+        specifier: workspace:*
+        version: link:../packages/global
+      '@types/node':
+        specifier: 'catalog:'
+        version: 24.13.3
+      '@vitest/coverage-v8':
+        specifier: 'catalog:'
+        version: 4.1.5(vitest@4.1.5)
+      commander:
+        specifier: 'catalog:'
+        version: 14.0.3
+      ky:
+        specifier: 'catalog:'
+        version: 1.14.3
+      picocolors:
+        specifier: 'catalog:'
+        version: 1.1.1
+      tsdown:
+        specifier: 'catalog:'
+        version: 0.23.7(tsx@4.20.6)(typescript@6.0.3)(unrun@0.2.39)
+      typescript:
+        specifier: 'catalog:'
+        version: 6.0.3
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.5(@opentelemetry/api@1.9.0)(@types/node@24.13.3)(@vitest/coverage-v8@4.1.5)(jsdom@26.1.0(bufferutil@4.1.0)(canvas@3.2.3)(utf-8-validate@5.0.10))(vite@6.4.5(@types/node@24.13.3)(jiti@2.7.0)(lightningcss@1.32.0)(sass@1.85.1)(terser@5.39.0)(tsx@4.20.6)(yaml@2.8.4))
+      zod:
+        specifier: 'catalog:'
+        version: 4.1.12
+
   document:
     dependencies:
       '@orama/orama':
@@ -489,42 +525,6 @@ importers:
       zod:
         specifier: ^4.6.6
         version: 4.6.7
-
-  packages/cli:
-    devDependencies:
-      '@clack/prompts':
-        specifier: 'catalog:'
-        version: 1.9.0
-      '@fastgpt/global':
-        specifier: workspace:*
-        version: link:../global
-      '@types/node':
-        specifier: 'catalog:'
-        version: 24.13.3
-      '@vitest/coverage-v8':
-        specifier: 'catalog:'
-        version: 4.1.5(vitest@4.1.5)
-      commander:
-        specifier: 'catalog:'
-        version: 14.0.3
-      ky:
-        specifier: 'catalog:'
-        version: 1.14.3
-      picocolors:
-        specifier: 'catalog:'
-        version: 1.1.1
-      tsdown:
-        specifier: 'catalog:'
-        version: 0.23.7(tsx@4.20.6)(typescript@6.0.3)(unrun@0.2.39)
-      typescript:
-        specifier: 'catalog:'
-        version: 6.0.3
-      vitest:
-        specifier: 'catalog:'
-        version: 4.1.5(@opentelemetry/api@1.9.0)(@types/node@24.13.3)(@vitest/coverage-v8@4.1.5)(jsdom@26.1.0(bufferutil@4.1.0)(canvas@3.2.3)(utf-8-validate@5.0.10))(vite@6.4.5(@types/node@24.13.3)(jiti@2.7.0)(lightningcss@1.32.0)(sass@1.85.1)(terser@5.39.0)(tsx@4.20.6)(yaml@2.8.4))
-      zod:
-        specifier: 'catalog:'
-        version: 4.1.12
 
   packages/dal:
     dependencies:
