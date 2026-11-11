@@ -13,13 +13,13 @@
 | **前置与底座 Draft PR** | [labring/FastGPT#8334](https://github.com/labring/FastGPT/pull/8334) | 服务端 `whoami` 接口 + `@fastgpt/cli` 认证底座与双路构建（Phase 0） |
 | **本地包目录** | [cli/](../../../cli/) | `@fastgpt/cli` 源码、单测、`tsdown` / `bun` 构建脚本 |
 
-### 飞书多维表格三表与视图导航
+### 飞书多维表格三表与视图导航（已按表顺序重构，首视图均默认可折叠分组）
 
-| 数据表 | Table ID | 默认 / 关键视图 | 视图 ID |
+| 顺序 / 数据表 | Table ID | 默认首视图（可折叠分组） | 其余视图 |
 |---|---|---|---|
-| **需求包** | `tbltZMVyb9WKXFw5` | 表格总览 / 阶段看板 | `vewP6gtHYd` / `vewwBBg01V` |
-| **FR 功能需求** | `tblNyRRtu9OoC9c4` | **按需求包与PRD分组** / 状态看板 | `vewos188df` / `vewHqvXkU1` |
-| **PRD 开发任务单** | `tblsOxwpSdMPxncf` | **按需求包分组** / 状态看板 | `vewghBPY33` / `vewf9gYsOF` |
+| **1. 需求包** | `tbltZMVyb9WKXFw5` | **按阶段分组**（`vewP6gtHYd`） | 阶段看板（`vewwBBg01V`） |
+| **2. FR 功能需求** | `tblNyRRtu9OoC9c4` | **按需求包与PRD分组**（`vewY4pp5TG`，二级折叠） | 状态看板（`vewHqvXkU1`）、仅按需求包分组（`vewExsQ2GJ`） |
+| **3. PRD 开发任务单** | `tblsOxwpSdMPxncf` | **按需求包分组**（`vew4tpO8fm`） | 状态看板（`vewf9gYsOF`） |
 
 ---
 
