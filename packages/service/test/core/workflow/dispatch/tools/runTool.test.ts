@@ -792,6 +792,26 @@ describe('dispatchRunTool runtime toolset auth', () => {
       expect.objectContaining({ input: { keyword: 'fastgpt' } })
     );
   });
+  it('should inject usageId into systemVar and invokeToken', async () => {
+    const props = createRunToolProps({ systemTool: { toolId: 'search' } });
+    props.usageId = 'usage-1';
+    props.runningAppInfo = {
+      ...props.runningAppInfo,
+      sourceType: 'app',
+      sourceId: 'app-id'
+    };
+
+    await dispatchRunTool(props);
+
+    const runParams = runToolStreamMock.mock.calls[0][0];
+    expect(runParams.systemVar.chat.usageId).toBe('usage-1');
+    expect(runParams.systemVar.usageId).toBe('usage-1');
+
+    const token = runParams.systemVar.invokeToken as string;
+    const [, payload] = token.split('.');
+    const tokenPayload = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
+    expect(tokenPayload.usageId).toBe('usage-1');
+  });
 });
 
 describe('parseToolId', () => {

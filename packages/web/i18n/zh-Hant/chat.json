@@ -1,5 +1,6 @@
 {
   "source_dingtalk": "釘釘",
+  "source_unknown": "未知",
   "AI_input_is_empty": "傳送至 AI 節點的內容為空",
   "LLM_model_response_empty": "模型響應為空，請查看模型詳情請求",
   "Next": "下一個",
@@ -58,6 +59,7 @@
   "image_parse": "圖片解析",
   "in_progress": "進行中",
   "input_guide": "輸入導引",
+  "input_guide_hint": "使用鍵盤 ↑↓ 切換，Enter 填充",
   "input_placeholder_phone": "請輸入問題",
   "internal_variables_tip": "內部變量僅調試時可見",
   "invalid_share_url": "無效的分享鏈接",
