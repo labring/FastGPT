@@ -7,7 +7,9 @@ const createSandboxInstance = () =>
     ensureAvailable: vi.fn(async () => undefined),
     resolveRuntimePath: vi.fn((path: string) => path),
     provider: {
-      replaceContent: vi.fn(async () => undefined)
+      replaceContent: vi.fn(async (entries: { path: string }[]) =>
+        entries.map((entry) => ({ path: entry.path, replacedCount: 1, error: null }))
+      )
     }
   }) as any;
 
@@ -32,5 +34,27 @@ describe('sandboxEditFileTool', () => {
     expect(sandbox.provider.replaceContent).toHaveBeenCalledWith([
       { path: '/workspace/a.txt', oldContent: 'old', newContent: 'new' }
     ]);
+  });
+
+  it('reports a path whose oldContent matched nothing instead of claiming success', async () => {
+    const sandbox = createSandboxInstance();
+    sandbox.provider.replaceContent = vi.fn(async (entries: { path: string }[]) =>
+      entries.map((entry) => ({ path: entry.path, replacedCount: 0, error: null }))
+    );
+
+    await expect(
+      sandboxEditFileTool.execute({
+        sourceType: ChatSourceTypeEnum.app,
+        sourceId: 'app',
+        userId: 'user',
+        chatId: 'chat',
+        sandboxInstance: sandbox,
+        params: {
+          entries: [{ path: '/workspace/a.txt', oldContent: 'missing', newContent: 'new' }]
+        }
+      })
+    ).resolves.toEqual({
+      response: 'Files not edited (oldContent not found): /workspace/a.txt'
+    });
   });
 });

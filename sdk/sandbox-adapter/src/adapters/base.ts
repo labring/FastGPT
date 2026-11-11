@@ -3,6 +3,7 @@ import type { ISandbox } from '../contracts';
 import type { CommandFilesystemPolyfill } from '../polyfills/command-filesystem';
 import type {
   ContentReplaceEntry,
+  ContentReplaceResult,
   DirectoryEntry,
   Endpoint,
   ExecuteOptions,
@@ -255,13 +256,13 @@ export abstract class BaseSandboxAdapter implements ISandbox {
     );
   }
 
-  async replaceContent(entries: ContentReplaceEntry[]): Promise<void> {
+  async replaceContent(entries: ContentReplaceEntry[]): Promise<ContentReplaceResult[]> {
     const polyfillService = this.requirePolyfillService(
       'replaceContent',
       'Content replace not supported by this provider'
     );
 
-    await polyfillService.replaceContent(
+    return polyfillService.replaceContent(
       entries.map((entry) => ({ ...entry, path: this.normalizePath(entry.path) }))
     );
   }

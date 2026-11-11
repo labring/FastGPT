@@ -8,15 +8,11 @@ import {
   type ServerStreamEvent,
   type WriteEntry
 } from '@alibaba-group/opensandbox';
-import {
-  CommandExecutionError,
-  FeatureNotSupportedError,
-  FileOperationError,
-  SandboxStateError
-} from '../../errors';
+import { CommandExecutionError, FeatureNotSupportedError, SandboxStateError } from '../../errors';
 import type {
   BackgroundExecution,
   ContentReplaceEntry,
+  ContentReplaceResult,
   DirectoryEntry,
   Endpoint,
   ExecuteOptions,
@@ -248,10 +244,8 @@ export class OpenSandboxAdapter extends BaseSandboxAdapter {
    *
    * OpenSandbox 的 /files/replace 请求体以路径为键，同一请求里同一路径只保留最后一项，
    * 因此按“每个文件的第 n 处修改”分批：不同文件仍合并在同一请求，同一文件的后续修改进入下一批。
-   * 服务端明确返回零匹配时抛出错误并停止后续批次；当前批次的其他修改可能已生效。
-   * 不支持 verbose 的旧服务返回空结果，保留原有兼容行为，不将未知结果视为零匹配。
    */
-  async replaceContent(entries: ContentReplaceEntry[]): Promise<void> {
+  async replaceContent(entries: ContentReplaceEntry[]): Promise<ContentReplaceResult[]> {
     const batches: ContentReplaceEntry[][] = [];
     const editCountByPath = new Map<string, number>();
     for (const entry of entries) {
@@ -261,19 +255,26 @@ export class OpenSandboxAdapter extends BaseSandboxAdapter {
       (batches[batchIndex] ??= []).push({ ...entry, path });
     }
 
+    // `replaceContentsDetailed` reports how many occurrences each entry replaced, which
+    // is the only way the tool layer can tell an edit that matched nothing from one that
+    // landed. Counts accumulate per path because a file with several edits is split across
+    // batches.
+    const replacedByPath = new Map<string, number>();
     for (const batch of batches) {
       const results = await this.lifecycle.sandbox.files.replaceContentsDetailed(batch);
-      const unmatchedPaths = results
-        .filter(({ replacedCount }) => replacedCount === 0)
-        .map(({ path }) => path);
-      if (unmatchedPaths.length > 0) {
-        throw new FileOperationError(
-          `Content to replace was not found in: ${unmatchedPaths.join(', ')}. Other edits in this batch may have been applied; read the files before retrying.`,
-          unmatchedPaths[0],
-          'TRANSFER_ERROR'
+      for (const result of results) {
+        replacedByPath.set(
+          result.path,
+          (replacedByPath.get(result.path) ?? 0) + result.replacedCount
         );
       }
     }
+
+    return entries.map((entry) => ({
+      path: entry.path,
+      replacedCount: replacedByPath.get(this.normalizePath(entry.path)) ?? 0,
+      error: null
+    }));
   }
 
   async createDirectories(

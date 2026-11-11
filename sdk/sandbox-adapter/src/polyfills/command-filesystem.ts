@@ -1,6 +1,6 @@
 import { CommandExecutionError, FileOperationError } from '../errors';
 import type { ICommandExecution } from '../contracts';
-import type { DirectoryEntry, FileInfo, SearchResult } from '../types';
+import type { ContentReplaceResult, DirectoryEntry, FileInfo, SearchResult } from '../types';
 import { base64ToBytes, bytesToBase64 } from '../utils/base64';
 
 /**
@@ -487,7 +487,8 @@ export class CommandFilesystemPolyfill {
    */
   async replaceContent(
     entries: { path: string; oldContent: string; newContent: string }[]
-  ): Promise<void> {
+  ): Promise<ContentReplaceResult[]> {
+    const results: ContentReplaceResult[] = [];
     for (const { path, oldContent, newContent } of entries) {
       if (!oldContent) {
         throw new FileOperationError('Content to replace must not be empty', path, 'INVALID_PATH');
@@ -502,13 +503,19 @@ export class CommandFilesystemPolyfill {
       } catch {
         throw new FileOperationError('File is not valid UTF-8 text', path, 'TRANSFER_ERROR');
       }
-      if (!content.includes(oldContent)) continue;
+      const occurrences = content.split(oldContent).length - 1;
+      if (occurrences === 0) {
+        results.push({ path, replacedCount: 0, error: null });
+        continue;
+      }
 
       await this.replaceFileContents(
         path,
         new TextEncoder().encode(content.split(oldContent).join(newContent))
       );
+      results.push({ path, replacedCount: occurrences, error: null });
     }
+    return results;
   }
 
   /**

@@ -108,3 +108,15 @@ export type ContentReplaceEntry = {
   oldContent: string;
   newContent: string;
 };
+
+/**
+ * Result of replacing content in one file.
+ *
+ * `replacedCount` is 0 when `oldContent` did not occur in the file, which is how a
+ * caller tells "nothing to replace" from "replaced".
+ */
+export type ContentReplaceResult = {
+  path: string;
+  replacedCount: number;
+  error: Error | null;
+};

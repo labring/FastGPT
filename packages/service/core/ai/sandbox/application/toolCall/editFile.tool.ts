@@ -20,13 +20,24 @@ export const sandboxEditFileTool = defineTool({
   zodSchema: SandboxEditFileToolSchema,
   execute: async ({ sandboxInstance, params }) => {
     await sandboxInstance.ensureAvailable();
-    await sandboxInstance.provider.replaceContent(
+    const results = await sandboxInstance.provider.replaceContent(
       params.entries.map((entry) => ({
         path: sandboxInstance.resolveRuntimePath(entry.path, { allowAbsolutePath: true }),
         oldContent: entry.oldContent,
         newContent: entry.newContent
       }))
     );
+
+    // `oldContent` that never matched leaves the file untouched. Saying "edited" anyway
+    // makes the agent believe its change landed and continue on a wrong assumption.
+    const unmatched = results
+      .filter((result) => result.replacedCount === 0)
+      .map((result) => result.path);
+    if (unmatched.length > 0) {
+      return {
+        response: `Files not edited (oldContent not found): ${unmatched.join(', ')}`
+      };
+    }
 
     return {
       response: `Files edited successfully: ${params.entries.map((entry) => entry.path).join(', ')}`

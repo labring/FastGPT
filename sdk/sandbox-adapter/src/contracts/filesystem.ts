@@ -1,5 +1,6 @@
 import type {
   ContentReplaceEntry,
+  ContentReplaceResult,
   DirectoryEntry,
   FileDeleteResult,
   FileInfo,
@@ -17,7 +18,7 @@ export type IFileSystem = {
   writeFiles(entries: FileWriteEntry[]): Promise<FileWriteResult[]>;
   deleteFiles(paths: string[]): Promise<FileDeleteResult[]>;
   moveFiles(entries: MoveEntry[]): Promise<void>;
-  replaceContent(entries: ContentReplaceEntry[]): Promise<void>;
+  replaceContent(entries: ContentReplaceEntry[]): Promise<ContentReplaceResult[]>;
 
   readFileStream(path: string): AsyncIterable<Uint8Array>;
   writeFileStream(path: string, stream: ReadableStream<Uint8Array>): Promise<void>;
