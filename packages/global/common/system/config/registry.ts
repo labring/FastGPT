@@ -126,6 +126,7 @@ export const systemInstanceConfigRegistry: readonly SystemInstanceConfigRegistry
       'loginProviders.sms.resetPassword.zh',
       'loginProviders.sms.changePassword.zh',
       'loginProviders.sms.bindNotification.zh',
+      'loginProviders.sms.modelDeprecation.zh',
       'loginProviders.phone.accessKeyId',
       'loginProviders.phone.signName',
       'loginProviders.wechat.appId',

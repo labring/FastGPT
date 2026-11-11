@@ -426,12 +426,21 @@ describe('migration buildSparseLegacyOverrides', () => {
 
   it('keeps only the Chinese sms template and falls back to English when missing', () => {
     const pro = buildLegacyProOverrides({
-      auth: { sms: { LOGIN: 'SMS_LOGIN_ZH', REGISTER_EN: 'SMS_REGISTER_EN' } }
+      auth: {
+        sms: {
+          LOGIN: 'SMS_LOGIN_ZH',
+          REGISTER_EN: 'SMS_REGISTER_EN',
+          MODEL_DEPRECATION_EN: 'SMS_MODEL_DEPRECATION_EN'
+        }
+      }
     });
 
     expect(pro.auth?.loginProviders?.sms?.login).toEqual({ zh: 'SMS_LOGIN_ZH' });
     // 中文缺失时用英文兜底，避免历史仅配置英文模板的实例丢失模板
     expect(pro.auth?.loginProviders?.sms?.register).toEqual({ zh: 'SMS_REGISTER_EN' });
+    expect(pro.auth?.loginProviders?.sms?.modelDeprecation).toEqual({
+      zh: 'SMS_MODEL_DEPRECATION_EN'
+    });
   });
 
   it('migrates free-clean and 30-percent billing SMS templates', () => {

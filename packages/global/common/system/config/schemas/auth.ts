@@ -11,7 +11,8 @@ const LoginSmsConfigSchema = z.strictObject({
   register: SmsTemplateConfigSchema.prefault({}),
   resetPassword: SmsTemplateConfigSchema.prefault({}),
   changePassword: SmsTemplateConfigSchema.prefault({}),
-  bindNotification: SmsTemplateConfigSchema.prefault({})
+  bindNotification: SmsTemplateConfigSchema.prefault({}),
+  modelDeprecation: SmsTemplateConfigSchema.prefault({})
 });
 
 const EmailLoginConfigSchema = z.strictObject({

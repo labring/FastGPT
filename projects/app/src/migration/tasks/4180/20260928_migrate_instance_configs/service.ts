@@ -588,7 +588,8 @@ export const buildLegacyProOverrides = (pro: LegacyProConfig): DomainOverrides =
         register: pair(sms.REGISTER, sms.REGISTER_EN),
         resetPassword: pair(sms.RESET_PASSWORD, sms.RESET_PASSWORD_EN),
         changePassword: pair(sms.CHANGE_PASSWORD, sms.CHANGE_PASSWORD_EN),
-        bindNotification: pair(sms.BIND_NOTIFICATION, sms.BIND_NOTIFICATION_EN)
+        bindNotification: pair(sms.BIND_NOTIFICATION, sms.BIND_NOTIFICATION_EN),
+        modelDeprecation: pair(sms.MODEL_DEPRECATION, sms.MODEL_DEPRECATION_EN)
       }),
       phone: compact({
         accessKeyId: optionalText(phone.SNED_PHONE_ACCESSKEYID),
