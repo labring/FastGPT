@@ -405,6 +405,7 @@
   "supported_python_libraries": "지원되는 Python 라이브러리",
   "supported_node_js_libraries": "지원되는 Node.js 라이브러리",
   "ai_proxy_health_check_endpoint": "AI Proxy 헬스체크 엔드포인트",
+  "invalid_subservice_base_url": "계정 정보, 쿼리 매개변수 또는 프래그먼트가 없는 HTTP(S) 서비스 기본 URL을 입력하세요.",
   "mcp_sse_proxy_url": "MCP SSE 프록시 URL",
   "enable_mcp_sse": "MCP SSE 서비스 사용",
   "required": "* 필수",

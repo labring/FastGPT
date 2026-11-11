@@ -126,6 +126,30 @@ describe('probeUrlConnection', () => {
     expect(sandboxCalls).toBe(count);
   });
 
+  it('rejects unsafe service URLs before making a request, while retaining generic query probes', async () => {
+    const count = sandboxCalls;
+    for (const service of ['codeSandbox', 'mcpSse'] as const) {
+      for (const url of [
+        `${baseUrl}?x=1`,
+        `${baseUrl}#fragment`,
+        baseUrl.replace('://', '://user:secret@')
+      ]) {
+        const result = await probeUrlConnection({
+          service,
+          url,
+          token: 'sandbox-secret',
+          timeoutMs: 2000
+        });
+        expect(result).toMatchObject({ connected: false, errorCode: 'response' });
+        expect(JSON.stringify(result)).not.toContain('secret');
+      }
+    }
+    expect(sandboxCalls).toBe(count);
+    await expect(
+      probeUrlConnection({ url: `${baseUrl}/api/status?x=1`, timeoutMs: 2000 })
+    ).resolves.toMatchObject({ connected: true });
+  });
+
   it('validates an SSE endpoint handshake, closes it, and rejects foreign origins or redirects', async () => {
     const before = sseCloses;
     await expect(

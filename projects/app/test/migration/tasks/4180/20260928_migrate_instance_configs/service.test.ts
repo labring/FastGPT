@@ -52,6 +52,29 @@ describe('legacy CORS allowlist migration', () => {
 });
 
 describe('sanitizeOverridesForSchema', () => {
+  it('drops unsafe legacy subservice URLs with path-only warnings', () => {
+    const warnings: string[] = [];
+    const issues: SchemaSanitizedIssue[] = [];
+    const overrides = sanitizeOverridesForSchema({
+      overrides: {
+        subservice: {
+          codeSandbox: { enabled: true, url: 'https://user:secret@sandbox.test', token: 'secret' },
+          mcp: { enabled: true, sseProxyUrl: 'https://mcp.test?private=secret' }
+        }
+      },
+      warnings,
+      issues
+    });
+    expect(overrides.subservice?.codeSandbox?.url).toBeUndefined();
+    expect(overrides.subservice?.mcp?.sseProxyUrl).toBeUndefined();
+    expect(issues).toEqual(
+      expect.arrayContaining([
+        { domain: 'subservice', path: 'codeSandbox.url' },
+        { domain: 'subservice', path: 'mcp.sseProxyUrl' }
+      ])
+    );
+    expect(JSON.stringify(warnings)).not.toContain('secret');
+  });
   it('drops undersized sandbox storage while keeping other values refreshable', () => {
     const warnings: string[] = [];
     const issues: SchemaSanitizedIssue[] = [];

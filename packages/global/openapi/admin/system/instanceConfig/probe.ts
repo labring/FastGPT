@@ -2,6 +2,7 @@ import z from 'zod';
 import type { OpenAPIPath } from '../../../type';
 import { DevApiTagsMap } from '../../../tag';
 import { IntSchema } from '../../../../common/zod';
+import { isValidServiceBaseUrl } from '../../../../common/string/url';
 
 /* ============================================================================
  * API: 后端探测目标 URL 连通性
@@ -14,7 +15,7 @@ import { IntSchema } from '../../../../common/zod';
 export const ProbeConnectionBodySchema = z
   .object({
     url: z.string().url().meta({
-      description: '待测试连通性的目标服务地址',
+      description: '待测试的地址；子服务探测要求不含凭据、查询参数或片段的 HTTP(S) 基地址',
       example: 'http://sandbox:3002'
     }),
     timeoutMs: IntSchema.min(500).max(30000).default(5000).meta({
@@ -31,6 +32,10 @@ export const ProbeConnectionBodySchema = z
   .refine((body) => body.token === undefined || body.service === 'codeSandbox', {
     message: 'Token is only supported for code sandbox probes',
     path: ['token']
+  })
+  .refine((body) => body.service === undefined || isValidServiceBaseUrl(body.url), {
+    message: 'Expected an HTTP(S) base URL without credentials, query or fragment',
+    path: ['url']
   });
 export type ProbeConnectionBody = z.infer<typeof ProbeConnectionBodySchema>;
 

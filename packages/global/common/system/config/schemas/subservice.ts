@@ -1,5 +1,6 @@
 import z from 'zod';
 import { SANDBOX_VOLUME_NAME_RE } from '../../../../core/ai/sandbox/volume';
+import { isValidServiceBaseUrl } from '../../../string/url';
 import {
   nonNegativeInteger,
   positiveInteger,
@@ -8,14 +9,23 @@ import {
   urlWithDefault
 } from './primitives';
 
+/** 两类子服务均从此基地址追加固定路由；空值表示尚未配置。 */
+const serviceBaseUrl = z
+  .string()
+  .trim()
+  .refine((value) => value === '' || isValidServiceBaseUrl(value), {
+    message: 'Expected an HTTP(S) base URL without credentials, query or fragment'
+  })
+  .default('');
+
 const McpSubserviceConfigSchema = z.strictObject({
   enabled: z.boolean().default(false),
-  sseProxyUrl: urlWithDefault()
+  sseProxyUrl: serviceBaseUrl
 });
 
 const CodeSandboxSubserviceConfigSchema = z.strictObject({
   enabled: z.boolean().default(false),
-  url: urlWithDefault(),
+  url: serviceBaseUrl,
   token: textWithDefault()
 });
 

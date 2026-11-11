@@ -2,10 +2,14 @@ import { resolveDomainEffectiveConfig } from '@fastgpt/global/common/system/conf
 import { MongoSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/schema';
 import { isDeepStrictEqual } from 'node:util';
 import z from 'zod';
+import { isValidServiceBaseUrl } from '@fastgpt/global/common/string/url';
 import { stripDeprecatedOverrides } from '../20260929_cleanup_instance_config_deprecated_fields/service';
 
 const LegacyConnectionEnvSchema = z.object({
-  CODE_SANDBOX_URL: z.union([z.url(), z.literal('')]).optional(),
+  CODE_SANDBOX_URL: z
+    .string()
+    .refine((value) => value === '' || isValidServiceBaseUrl(value))
+    .optional(),
   CODE_SANDBOX_TOKEN: z.string().optional()
 });
 
@@ -28,7 +32,14 @@ export const rehomeSubserviceConnections = async ({
     if (!doc) throw new Error('Subservice instance config is missing');
     // 旧清理任务可能已成功，不会因本轮新增废弃字段而重跑；本任务仍需清理本域残留。
     const { overrides } = stripDeprecatedOverrides('subservice', doc.overrides);
-    const config = resolveDomainEffectiveConfig({ domain: 'subservice', overrides });
+    // 既有地址可能包含凭据，解析失败时不能将原始配置带入迁移错误。
+    const config = (() => {
+      try {
+        return resolveDomainEffectiveConfig({ domain: 'subservice', overrides });
+      } catch {
+        throw new Error('Invalid existing subservice configuration');
+      }
+    })();
     const paths = doc.explicitDefaultPaths ?? [];
     if (!Array.isArray(paths) || !paths.every((path) => typeof path === 'string')) {
       throw new Error('Invalid subservice explicit-default metadata');

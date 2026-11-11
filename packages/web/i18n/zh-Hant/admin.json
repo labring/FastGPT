@@ -405,6 +405,7 @@
   "supported_python_libraries": "已支援 Python 模組庫",
   "supported_node_js_libraries": "已支援 Node.js / JavaScript 模組庫",
   "ai_proxy_health_check_endpoint": "AI Proxy 健康檢查端點",
+  "invalid_subservice_base_url": "請輸入不含帳號密碼、查詢參數或片段的 HTTP(S) 服務基底位址。",
   "mcp_sse_proxy_url": "MCP SSE 代理地址",
   "enable_mcp_sse": "啟用 MCP SSE 服務",
   "required": "*必填",

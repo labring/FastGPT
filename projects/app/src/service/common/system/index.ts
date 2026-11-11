@@ -38,7 +38,7 @@ import { logInstanceConfigRead } from '@fastgpt/service/common/system/migrationC
 import { buildAuthoritativeSystemEnv } from './buildAuthoritativeSystemEnv';
 import { applyEnvAuthoritativeFeConfigs } from './envAuthoritativeFeConfigs';
 import { isCodeSandboxConfigured } from '@fastgpt/service/thirdProvider/codeSandbox';
-import { isValidHttpUrl } from '@fastgpt/global/common/string/url';
+import { isValidServiceBaseUrl } from '@fastgpt/global/common/string/url';
 import {
   buildAuthMethodProjection,
   buildOauthFeConfig,
@@ -278,8 +278,8 @@ async function doInitSystemConfig({
       scripts: instanceConfig.site.scripts,
       mcpServerProxyEndpoint:
         instanceConfig.subservice.mcp.enabled &&
-        isValidHttpUrl(instanceConfig.subservice.mcp.sseProxyUrl)
-          ? instanceConfig.subservice.mcp.sseProxyUrl
+        isValidServiceBaseUrl(instanceConfig.subservice.mcp.sseProxyUrl)
+          ? instanceConfig.subservice.mcp.sseProxyUrl.trim()
           : undefined,
       codeSandboxEnabled: isCodeSandboxConfigured(instanceConfig.subservice.codeSandbox),
       limit: {

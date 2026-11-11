@@ -405,6 +405,7 @@
   "supported_python_libraries": "Supported Python Libraries",
   "supported_node_js_libraries": "Supported Node.js Libraries",
   "ai_proxy_health_check_endpoint": "AI Proxy Health Check Endpoint",
+  "invalid_subservice_base_url": "Enter an HTTP(S) base URL without credentials, query parameters, or a fragment.",
   "mcp_sse_proxy_url": "MCP SSE Proxy URL",
   "enable_mcp_sse": "Enable MCP SSE service",
   "required": "* Required",

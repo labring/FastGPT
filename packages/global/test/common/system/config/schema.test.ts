@@ -14,6 +14,30 @@ import {
 } from '@fastgpt/global/common/system/config/registry';
 
 describe('Domain default config and overrides validation', () => {
+  it('validates only the sandbox and MCP connection base URLs', () => {
+    for (const key of ['codeSandbox', 'mcp'] as const) {
+      const field = key === 'codeSandbox' ? 'url' : 'sseProxyUrl';
+      for (const url of [
+        'ftp://example.com',
+        'https://u:p@example.com',
+        'https://example.com?x=1',
+        'https://example.com#x'
+      ]) {
+        expect(() =>
+          parseDomainOverrides({ domain: 'subservice', overrides: { [key]: { [field]: url } } })
+        ).toThrow();
+      }
+      const config = resolveDomainEffectiveConfig({
+        domain: 'subservice',
+        overrides: { [key]: { [field]: '  https://example.com/base/  ' } }
+      });
+      expect(key === 'codeSandbox' ? config.codeSandbox.url : config.mcp.sseProxyUrl).toBe(
+        'https://example.com/base/'
+      );
+    }
+    expect(resolveDomainEffectiveConfig({ domain: 'subservice' }).codeSandbox.url).toBe('');
+    expect(resolveDomainEffectiveConfig({ domain: 'subservice' }).mcp.sseProxyUrl).toBe('');
+  });
   it('returns complete default config for any domain', () => {
     const siteConfig = getDomainDefaultConfig('site');
     expect(siteConfig.name).toBe('AI');

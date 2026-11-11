@@ -54,6 +54,9 @@ describe('CodeSandbox runtime configuration', () => {
       { enabled: false, url: baseUrl, token: 'second' },
       { enabled: true, url: '', token: 'second' },
       { enabled: true, url: 'ftp://sandbox.test', token: 'second' },
+      { enabled: true, url: `${baseUrl}?foo=bar`, token: 'second' },
+      { enabled: true, url: `${baseUrl}#fragment`, token: 'second' },
+      { enabled: true, url: baseUrl.replace('://', '://user:secret@'), token: 'second' },
       { enabled: true, url: baseUrl, token: ' ' }
     ]) {
       getTestInstanceConfig().subservice.codeSandbox = config;

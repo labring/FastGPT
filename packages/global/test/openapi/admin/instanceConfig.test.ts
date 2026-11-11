@@ -112,6 +112,24 @@ describe('Instance config OpenAPI schemas', () => {
 
     expect(ProbeConnectionBodySchema.safeParse({ url: 'not-a-valid-url' }).success).toBe(false);
 
+    for (const service of ['codeSandbox', 'mcpSse'] as const) {
+      expect(
+        ProbeConnectionBodySchema.safeParse({ service, url: 'https://example.com/base' }).success
+      ).toBe(true);
+      for (const url of [
+        'ftp://example.com',
+        'https://u:p@example.com',
+        'https://example.com?x=1',
+        'https://example.com#x'
+      ]) {
+        expect(ProbeConnectionBodySchema.safeParse({ service, url }).success).toBe(false);
+      }
+    }
+    // 通用探测仍接收含参数的目标 URL。
+    expect(ProbeConnectionBodySchema.safeParse({ url: 'https://example.com?x=1' }).success).toBe(
+      true
+    );
+
     const validRes = ProbeConnectionResponseSchema.parse({
       connected: true,
       status: 200,

@@ -109,6 +109,36 @@ describe('rehomeSubserviceConnections', () => {
     expect(assertActive).not.toHaveBeenCalled();
   });
 
+  it.each([
+    'ftp://sandbox.test',
+    'https://sandbox.test?token=private-value',
+    'https://sandbox.test#private-value',
+    'https://user:private-value@sandbox.test'
+  ])('rejects a legacy connection with an unsafe base URL without leaking it', async (url) => {
+    const before = await read();
+    const error = await run({ CODE_SANDBOX_URL: url, CODE_SANDBOX_TOKEN: 'private-token' }).catch(
+      (err: Error) => err
+    );
+    expect(error).toBeInstanceOf(Error);
+    expect(String(error)).toBe('Error: Invalid legacy Code Sandbox connection environment');
+    expect(String(error)).not.toContain('private');
+    expect(await read()).toEqual(before);
+    expect(assertActive).not.toHaveBeenCalled();
+  });
+
+  it('rejects an unsafe stored MCP address without logging its credentials', async () => {
+    await collection.updateOne(
+      { domain: 'subservice' },
+      { $set: { 'overrides.mcp.sseProxyUrl': 'https://user:private-value@mcp.test' } }
+    );
+    const before = await read();
+    const error = await run().catch((err: Error) => err);
+    expect(error).toBeInstanceOf(Error);
+    expect(String(error)).toBe('Error: Invalid existing subservice configuration');
+    expect(await read()).toEqual(before);
+    expect(assertActive).not.toHaveBeenCalled();
+  });
+
   it('retries a concurrent admin save and does not overwrite its connection', async () => {
     assertActive.mockImplementationOnce(async () => {
       await collection.updateOne(

@@ -10,6 +10,7 @@ import AdminSwitchRow from '@/pageComponents/admin/settings/AdminSwitchRow';
 import ConnectivityTestInput from '@/pageComponents/admin/settings/ConnectivityTestInput';
 import type { SettingTOCItem } from '@/pageComponents/admin/settings/AdminSettingTOC';
 import type { SystemInstanceConfigDomainMap } from '@fastgpt/global/common/system/config/schema';
+import { isValidServiceBaseUrl } from '@fastgpt/global/common/string/url';
 
 type SubserviceConfigForm = SystemInstanceConfigDomainMap['subservice'];
 
@@ -73,7 +74,13 @@ const McpSubserviceComponent = () => {
               <Controller
                 name="mcp.sseProxyUrl"
                 control={control}
-                rules={{ validate: (value) => !enabled || Boolean(value?.trim()) }}
+                rules={{
+                  validate: (value) => {
+                    if (!enabled) return true;
+                    if (!value?.trim()) return t('admin:required');
+                    return isValidServiceBaseUrl(value) || t('admin:invalid_subservice_base_url');
+                  }
+                }}
                 render={({ field }) => (
                   <ConnectivityTestInput
                     {...field}
@@ -87,7 +94,7 @@ const McpSubserviceComponent = () => {
               />
               {errors.mcp?.sseProxyUrl && (
                 <Text color={'red.500'} fontSize={'xs'} mt={1}>
-                  {t('admin:required')}
+                  {errors.mcp.sseProxyUrl.message ?? t('admin:required')}
                 </Text>
               )}
             </AdminFormItem>

@@ -6,6 +6,7 @@ import type {
   ProbeConnectionResponse
 } from '@fastgpt/global/openapi/admin/system/instanceConfig/probe';
 import { axiosWithoutSSRF } from '../../api/axios';
+import { isValidServiceBaseUrl } from '@fastgpt/global/common/string/url';
 
 const maxResponseBytes = 16 * 1024;
 
@@ -43,6 +44,9 @@ export const probeUrlConnection = async ({
         errorCode: 'protocol'
       };
     }
+
+    // 与配置保存使用同一基地址约束，防止探测与真实请求命中不同的 URL。
+    if (service && !isValidServiceBaseUrl(url)) return invalidResponse();
 
     const options = {
       timeout: Math.min(timeoutMs, 30000),

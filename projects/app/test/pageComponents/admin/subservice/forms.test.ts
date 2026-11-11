@@ -181,4 +181,22 @@ describe('subservice settings forms', () => {
       codeSandbox: { enabled: false, url: '', token: '' }
     });
   });
+
+  it.each([
+    { Component: CodeSandbox, field: 'codeSandbox' },
+    { Component: Mcp, field: 'mcp' }
+  ])('explains an invalid $field base URL before saving', async ({ Component, field }) => {
+    const defaults = resolveDomainEffectiveConfig({ domain: 'subservice', overrides: {} });
+    mocks.effectiveConfig = {
+      ...defaults,
+      codeSandbox: { enabled: true, url: 'https://user:secret@sandbox.test', token: '******' },
+      mcp: { enabled: true, sseProxyUrl: 'https://mcp.test?key=value' }
+    };
+    await act(async () => root.render(React.createElement(Component)));
+    await act(async () => {
+      await mocks.save!();
+    });
+    expect(mocks.patch, field).not.toHaveBeenCalled();
+    expect(container.textContent).toContain('admin:invalid_subservice_base_url');
+  });
 });

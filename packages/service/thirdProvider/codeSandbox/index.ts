@@ -4,7 +4,7 @@ import { createProxyAxios } from '../../common/api/axios';
 import { getLogger, LogCategories } from '../../common/logger';
 import type { SystemInstanceConfig } from '@fastgpt/global/common/system/config/schema';
 import { getSystemInstanceConfig } from '../../common/system/systemInstanceConfig/runtime';
-import { isValidHttpUrl } from '@fastgpt/global/common/string/url';
+import { isValidServiceBaseUrl } from '@fastgpt/global/common/string/url';
 const logger = getLogger(LogCategories.MODULE.WORKFLOW.CODE_SANDBOX);
 
 export type SanndboxPackagesResponse = {
@@ -17,7 +17,7 @@ export type SanndboxPackagesResponse = {
 export const isCodeSandboxConfigured = (
   config: SystemInstanceConfig['subservice']['codeSandbox'] = getSystemInstanceConfig().subservice
     .codeSandbox
-): boolean => config.enabled && isValidHttpUrl(config.url) && Boolean(config.token.trim());
+): boolean => config.enabled && isValidServiceBaseUrl(config.url) && Boolean(config.token.trim());
 
 export class CodeSandbox {
   private client: AxiosInstance | undefined;
