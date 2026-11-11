@@ -565,6 +565,96 @@ describe('delete collection by apiFileId', () => {
     ).toBe(3);
   });
 
+  it('ignores matched nodes covered by a matched ancestor through inner folders', async () => {
+    const users = await getFakeUsers(2);
+    const dirOwner = users.members[0];
+    const bodyOwner = users.members[1];
+    const { dataset } = await createDatasetWithCollection({
+      teamId: users.owner.teamId,
+      datasetTmbId: dirOwner.tmbId,
+      collectionTmbId: dirOwner.tmbId
+    });
+    const { idByApiFileId } = await insertApiFileLayout({
+      teamId: users.owner.teamId,
+      tmbId: dirOwner.tmbId,
+      bodyTmbId: bodyOwner.tmbId,
+      datasetId: String(dataset._id),
+      fileId: 'doc',
+      childId: 'child'
+    });
+    // 正文被移入派生目录内的自建文件夹：该文件夹没有外部身份，不在命中集合里
+    const innerFolder = await MongoDatasetCollection.create({
+      name: 'inner',
+      type: DatasetCollectionTypeEnum.folder,
+      teamId: users.owner.teamId,
+      tmbId: dirOwner.tmbId,
+      datasetId: dataset._id,
+      parentId: idByApiFileId.get('doc#dir')
+    });
+    await MongoDatasetCollection.updateOne(
+      { _id: idByApiFileId.get('doc') },
+      { $set: { parentId: innerFolder._id } }
+    );
+
+    const response = await Call(deleteHandler, {
+      auth: dirOwner,
+      body: { datasetId: String(dataset._id), apiFileIds: ['doc'] }
+    });
+
+    expect(response.code).toBe(200);
+    expect(
+      await MongoDatasetCollection.countDocuments({
+        datasetId: dataset._id,
+        apiFileId: { $in: ['doc', 'doc#dir', 'child'] }
+      })
+    ).toBe(0);
+    await expect(MongoDatasetCollection.findById(innerFolder._id).lean()).resolves.toBeNull();
+  });
+
+  it('still requires owner when the body was moved outside the derived folder', async () => {
+    const users = await getFakeUsers(2);
+    const dirOwner = users.members[0];
+    const bodyOwner = users.members[1];
+    const { dataset } = await createDatasetWithCollection({
+      teamId: users.owner.teamId,
+      datasetTmbId: dirOwner.tmbId,
+      collectionTmbId: dirOwner.tmbId
+    });
+    const { idByApiFileId } = await insertApiFileLayout({
+      teamId: users.owner.teamId,
+      tmbId: dirOwner.tmbId,
+      bodyTmbId: bodyOwner.tmbId,
+      datasetId: String(dataset._id),
+      fileId: 'doc',
+      childId: 'child'
+    });
+    // 正文移到派生目录之外：不再由命中目录的子树覆盖，必须独立鉴权
+    const outsideFolder = await MongoDatasetCollection.create({
+      name: 'outside',
+      type: DatasetCollectionTypeEnum.folder,
+      teamId: users.owner.teamId,
+      tmbId: dirOwner.tmbId,
+      datasetId: dataset._id
+    });
+    await MongoDatasetCollection.updateOne(
+      { _id: idByApiFileId.get('doc') },
+      { $set: { parentId: outsideFolder._id } }
+    );
+
+    const response = await Call(deleteHandler, {
+      auth: dirOwner,
+      body: { datasetId: String(dataset._id), apiFileIds: ['doc'] }
+    });
+
+    expect(response.code).not.toBe(200);
+    expect(
+      await MongoDatasetCollection.countDocuments({
+        datasetId: dataset._id,
+        apiFileId: { $in: ['doc', 'doc#dir', 'child'] }
+      })
+    ).toBe(3);
+  });
+
   it('rejects unpaired external ids', async () => {
     const { member, dataset } = await fixture();
 

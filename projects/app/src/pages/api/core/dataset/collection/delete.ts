@@ -54,13 +54,41 @@ async function handler(req: ApiRequestProps) {
     if (matched.length === 0) {
       return Promise.reject(DatasetErrEnum.unExistCollection);
     }
-    // 集合所有权可以单独转移到正文而不转移父目录。挂在同一命中节点下的正文随该节点的子树删除，
-    // 不再作为独立根要求 owner；否则目录 owner 无法按外部 ID 清理整棵树。
-    // 只命中正文（目录未命中或正文已移出）时仍以正文自身为根，单有正文的调用者依旧会被拒绝。
+    // 集合所有权可以单独转移到正文而不转移父目录。只要有命中祖先负责删除整棵子树，
+    // 该节点就不再作为独立根要求 owner，否则目录 owner 无法按外部 ID 清理整棵树。
+    // 祖先链中间可能夹着无外部身份的自建目录，必须沿 parentId 向上补齐而不是只看直接父级；
+    // 正文真正移出命中子树时仍以正文自身为根，单有正文的调用者依旧会被拒绝。
     const matchedIds = new Set(matched.map((item) => String(item._id)));
-    return matched
-      .filter((item) => !item.parentId || !matchedIds.has(String(item.parentId)))
-      .map((item) => String(item._id));
+    const parentOf = new Map<string, string | null>(
+      matched.map((item) => [String(item._id), item.parentId ? String(item.parentId) : null])
+    );
+    const isCoveredByMatchedAncestor = async (id: string) => {
+      // visited 防御异常 parentId 环，避免补齐祖先链时死循环或把节点误判为被自身覆盖
+      const visited = new Set([id]);
+      let parentId = parentOf.get(id) ?? null;
+      while (parentId) {
+        if (visited.has(parentId)) return false;
+        visited.add(parentId);
+        if (matchedIds.has(parentId)) return true;
+        if (!parentOf.has(parentId)) {
+          const ancestor = await MongoDatasetCollection.findOne(
+            { _id: parentId, teamId, datasetId },
+            'parentId'
+          ).lean();
+          parentOf.set(parentId, ancestor?.parentId ? String(ancestor.parentId) : null);
+        }
+        parentId = parentOf.get(parentId) ?? null;
+      }
+      return false;
+    };
+
+    const roots: string[] = [];
+    for (const item of matched) {
+      const id = String(item._id);
+      if (!(await isCoveredByMatchedAncestor(id))) roots.push(id);
+    }
+    // 异常父子环会让所有命中项互相覆盖，退回全部命中项，宁可多重鉴权也不误删
+    return roots.length ? roots : matched.map((item) => String(item._id));
   })();
 
   // 删除是 owner 专属操作：仅集合所有者（collection.tmbId）可删，持有 manage/write 的协作者不可删。
