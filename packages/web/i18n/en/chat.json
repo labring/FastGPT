@@ -59,6 +59,7 @@
   "image_parse": "Image parsing",
   "in_progress": "In Progress",
   "input_guide": "Input Guide",
+  "input_guide_hint": "Use ↑↓ to switch, Enter to fill",
   "input_placeholder_phone": "Enter your question",
   "internal_variables_tip": "Internal variables are visible only when debugging",
   "invalid_share_url": "Invalid sharing link",

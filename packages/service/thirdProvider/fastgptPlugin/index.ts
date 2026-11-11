@@ -1,8 +1,8 @@
 import { serviceEnv } from '../../env';
 import {
   FastGPTPluginClient,
-  type ToolAnswerType,
-  type ToolHandlerReturnType
+  type PluginStreamAnswerType,
+  type PluginStreamResponseDataType
 } from '@fastgpt/global/sdk/fastgpt-plugin';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
@@ -96,17 +96,17 @@ type RunPluginToolStreamParams = {
   systemVar: Record<string, unknown>;
   input: Record<string, unknown>;
   childId?: string;
-  onMessage?: (message: ToolAnswerType) => void;
+  onMessage?: (message: PluginStreamAnswerType) => void;
 };
 
 type ToolStreamMessage =
   | {
       type: 'response';
-      data: ToolHandlerReturnType;
+      data: PluginStreamResponseDataType;
     }
   | {
       type: 'stream';
-      data: ToolAnswerType;
+      data: PluginStreamAnswerType;
     }
   | {
       type: 'error';
@@ -139,7 +139,7 @@ export const runPluginToolStream = async ({
   onMessage,
   ...params
 }: RunPluginToolStreamParams): Promise<{
-  output?: ToolHandlerReturnType;
+  output?: PluginStreamResponseDataType;
   error?: unknown;
 }> => {
   const { token } = getPluginConfig();
@@ -169,7 +169,7 @@ export const runPluginToolStream = async ({
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
   let buffer = '';
-  let output: ToolHandlerReturnType | undefined;
+  let output: PluginStreamResponseDataType | undefined;
 
   while (true) {
     const { value, done } = await reader.read();
