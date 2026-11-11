@@ -41,7 +41,6 @@ catalog:
   '@t3-oss/env-core': 0.13.10
   '@tanstack/react-query': ^4.24.10
   '@tanstack/react-table': ^8.21.3
-  '@types/bun': ^1.4.4
   '@types/js-yaml': ^4.0.9
   '@types/jsdom': 21.1.7
   '@types/jsonwebtoken': ^9.0.3

@@ -1,5 +1,35 @@
-import type { Build } from 'bun';
 import { chmod, rm } from 'node:fs/promises';
+
+type BunBuildResult = {
+  success: boolean;
+  logs: unknown[];
+};
+
+type BunBuildOptions = {
+  entrypoints: string[];
+  outdir?: string;
+  target?: 'node' | 'bun' | 'browser';
+  format?: 'esm' | 'cjs' | 'iife';
+  splitting?: boolean;
+  minify?: boolean;
+  naming?: {
+    entry?: string;
+    chunk?: string;
+  };
+  compile?: {
+    outfile: string;
+    target?: string;
+  };
+};
+
+type BunGlobal = {
+  build: (options: BunBuildOptions) => Promise<BunBuildResult>;
+};
+
+const bunRuntime = (globalThis as { Bun?: BunGlobal }).Bun;
+if (!bunRuntime) {
+  throw new Error('scripts/build.bun.ts must be executed with Bun.');
+}
 
 const args = process.argv.slice(2);
 const compileOnly = args.includes('--compile-only');
@@ -20,7 +50,7 @@ function readFlagValue(flag: string): string | undefined {
 if (!compileOnly) {
   await rm('dist', { recursive: true, force: true });
 
-  const bundleResult = await Bun.build({
+  const bundleResult = await bunRuntime.build({
     entrypoints: ['src/cli/cli.ts', 'src/cli/run.ts'],
     outdir: 'dist',
     target: 'node',
@@ -46,10 +76,10 @@ if (!bundleOnly) {
     readFlagValue('--outfile') ??
     `bin/${target ? `fastgpt-${target}` : 'fastgpt'}${target?.includes('windows') ? '.exe' : ''}`;
 
-  const compileResult = await Bun.build({
+  const compileResult = await bunRuntime.build({
     entrypoints: ['src/cli/cli.ts'],
     minify: true,
-    compile: target ? { outfile, target: target as Build.CompileTarget } : { outfile }
+    compile: target ? { outfile, target } : { outfile }
   });
 
   if (!compileResult.success) {

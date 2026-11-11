@@ -81,9 +81,6 @@ catalogs:
     '@tanstack/react-table':
       specifier: ^8.21.3
       version: 8.21.3
-    '@types/bun':
-      specifier: ^1.4.4
-      version: 1.4.4
     '@types/js-yaml':
       specifier: ^4.0.9
       version: 4.0.9
@@ -501,9 +498,6 @@ importers:
       '@fastgpt/global':
         specifier: workspace:*
         version: link:../global
-      '@types/bun':
-        specifier: 'catalog:'
-        version: 1.4.4
       '@types/node':
         specifier: 'catalog:'
         version: 24.13.3
@@ -6785,9 +6779,6 @@ packages:
   '@types/body-parser@1.19.5':
     resolution: {integrity: sha512-fB3Zu92ucau0iQ0JMCFQE7b/dv8Ot07NI3KaZIkIUNXq82k4eBAqUaneXfleGY9JWskeS9y+u0nXMyspcuQrCg==}
 
-  '@types/bun@1.4.4':
-    resolution: {integrity: sha512-9wkRDXUXK124pEnAutE6n/l18j+i9GC5IAHK8TmX/2nlySETmky0OU6yL5U8pW1AoKh++AN9auDCr647BfurjQ==}
-
   '@types/chai@5.2.3':
     resolution: {integrity: sha512-Mw558oeA9fFbv65/y4mHtXDs9bPnFMZAL/jxdPFUpOHHIXX91mcgEHbS5Lahr+pwZFR8A7GQleRWeI6cGFC2UA==}
 
@@ -7991,9 +7982,6 @@ packages:
 
   bullmq@5.52.2:
     resolution: {integrity: sha512-fK/dKIv8ymyys4K+zeNEPA+yuYWzRPmBWUmwIMz8DvYekadl8VG19yUx94Na0n0cLAi+spdn3a/+ufkYK7CBUg==}
-
-  bun-types@1.4.4:
-    resolution: {integrity: sha512-yjrJh5oGX7mMPKGd19YXyIjmEuj4G4zNC30bs7PM9Az7NQ3ndF3j6hbeRdvJTRQEhJ/FYQwW0a2moweEi2hMxQ==}
 
   bundle-n-require@1.1.2:
     resolution: {integrity: sha512-bEk2jakVK1ytnZ9R2AAiZEeK/GxPUM8jvcRxHZXifZDMcjkI4EG/GlsJ2YGSVYT9y/p/gA9/0yDY8rCGsSU6Tg==}
@@ -21022,10 +21010,6 @@ snapshots:
       '@types/connect': 3.4.38
       '@types/node': 20.19.43
 
-  '@types/bun@1.4.4':
-    dependencies:
-      bun-types: 1.4.4
-
   '@types/chai@5.2.3':
     dependencies:
       '@types/deep-eql': 4.0.2
@@ -22516,11 +22500,6 @@ snapshots:
       uuid: 9.0.1
     transitivePeerDependencies:
       - supports-color
-
-  bun-types@1.4.4:
-    dependencies:
-      '@types/node': 20.19.43
-      undici-types: 8.3.0
 
   bundle-n-require@1.1.2:
     dependencies:

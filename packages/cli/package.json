@@ -36,7 +36,6 @@
   "devDependencies": {
     "@clack/prompts": "catalog:",
     "@fastgpt/global": "workspace:*",
-    "@types/bun": "catalog:",
     "@types/node": "catalog:",
     "@vitest/coverage-v8": "catalog:",
     "commander": "catalog:",
