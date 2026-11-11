@@ -46,7 +46,7 @@ node .agents/test/app/workflow/execution/workflow-fixtures.mjs
 | basic-interactive | WORKFLOW-071/C6 | GATE_URL；真实选择 A/B 后继续表单，沿原 chatId 恢复；动态模式只留 ref_default 出口，移除 SelectedB 及其入出边 |
 | legacy-run-app | WORKFLOW-064/C1 | CHILD_APP_ID；真实弃用类型 `app`，复用 child-leaf；Check 实际消费旧节点 history/answerText，空问题不进入子应用 |
 | legacy-loop + legacy-loop-pause | WORKFLOW-064/C2 | 真正的旧 `loop/loopStart/loopEnd`；普通图用空数组/假值数组，暂停图仅 1-based index=2 进入表单；保留旧共享变量语义 |
-| legacy-query-extension | WORKFLOW-064/C3 | MODEL_ID；真实弃用类型 `cfr`，下游引用 `system_text`（不是 `text`）；候选筛选后去重，确定性外部响应与实时模型调用须分别标注 |
+| legacy-query-extension | WORKFLOW-064/C3 | MODEL_ID；真实弃用类型 `cfr`，下游引用 `system_text`（不是 `text`）；仅对本轮团队 DeepSeek 配置原生 JSON Schema 输出约束来实时生成重复候选，具体约束见用例，不回放响应 |
 
 JSON 是拓扑基线；表中列明的权限矩阵、大小/并发/失败变体由本轮配置绑定生成，执行时应把最终实际 JSON 另存报告 evidence。只有完成对应 Markdown 所有必需变体与断言才能将整行标为通过；拓扑预检或部分 API 结果不能代替 UI、对象存储或权限证据。
 
