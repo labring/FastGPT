@@ -59,6 +59,7 @@
   "image_parse": "圖片解析",
   "in_progress": "進行中",
   "input_guide": "輸入導引",
+  "input_guide_hint": "使用鍵盤 ↑↓ 切換，Enter 填充",
   "input_placeholder_phone": "請輸入問題",
   "internal_variables_tip": "內部變量僅調試時可見",
   "invalid_share_url": "無效的分享鏈接",
