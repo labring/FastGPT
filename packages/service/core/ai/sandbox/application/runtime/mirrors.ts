@@ -347,12 +347,19 @@ class SandboxRuntimeMirrorFileManager {
           return false;
         if (marker?.origin === 'legacyBackup' && !copy) return false;
 
+        // pending 表示上次目标写入未完成，残片不是用户编辑；按原 marker 的 origin/备份续作，
+        // 不能把失败残片提升为新备份或用户原文。
+        const writePending = marker?.pending === true;
         // 自建文件被用户修改后，先把修改作为新的原始文件备份。
-        const userFile = content && (!marker || !marker.hashes.includes(buildRuntimeHash(content)));
+        const userFile =
+          !writePending &&
+          content &&
+          (!marker || !marker.hashes.includes(buildRuntimeHash(content)));
         const legacyBackup =
           !marker && previouslyActive && legacyActivePaths.includes(file.path) && copy;
         // 用户更改了受管的已有文件时不覆盖其编辑；先等待清空阶段保留编辑内容。
         if (
+          !writePending &&
           userFile &&
           (marker?.origin === 'backup' || marker?.origin === 'legacyBackup') &&
           (!marker.backupHash || buildRuntimeHash(content) !== marker.backupHash)
@@ -370,35 +377,41 @@ class SandboxRuntimeMirrorFileManager {
           (!marker.backupHash || buildRuntimeHash(copy) !== marker.backupHash)
         )
           return false;
+        const contentHash = content ? buildRuntimeHash(content) : undefined;
+        // 上次 marker 已落库但备份写入失败：目标仍是原始内容时，重试必须先补备份。
+        const retryMissingBackup =
+          writePending &&
+          marker?.origin === 'backup' &&
+          !backup &&
+          contentHash === marker.backupHash;
         const needsBackup =
-          userFile &&
+          (userFile || retryMissingBackup) &&
           !legacyBackup &&
           marker?.origin !== 'legacyBackup' &&
           (marker?.origin !== 'backup' || !backup);
+        const backupContent = needsBackup ? content : undefined;
         if (needsBackup) {
           // 不覆盖未知来源的同名备份；失败后的遗留文件须保守处理。
-          if (backup) return false;
-          backups.push({ path: backupPath, data: content });
+          if (backup || !backupContent) return false;
+          backups.push({ path: backupPath, data: backupContent });
         }
         const origin = legacyBackup
           ? 'legacyBackup'
           : needsBackup
             ? 'backup'
             : (marker?.origin ?? 'created');
-        const backupHash = needsBackup
-          ? buildRuntimeHash(content)
+        const backupHash = backupContent
+          ? buildRuntimeHash(backupContent)
           : (marker?.backupHash ?? (legacyBackup ? buildRuntimeHash(legacyBackup) : undefined));
         const currentHash =
           content && marker?.hashes.includes(buildRuntimeHash(content))
             ? buildRuntimeHash(content)
             : undefined;
-        const hashes = [
-          ...new Set(
-            [currentHash, buildRuntimeHash(file.data)].filter((hash): hash is string =>
-              Boolean(hash)
-            )
-          )
-        ];
+        const nextHash = buildRuntimeHash(file.data);
+        const hashes = writePending
+          ? // 重试时保留一个旧的受管 hash，避免残片/中间配置膨胀 marker；新目标始终写入。
+            [...new Set([...(marker?.hashes ?? []).slice(0, 1), nextHash])]
+          : [...new Set([currentHash, nextHash].filter((hash): hash is string => Boolean(hash)))];
         markerWrites.push({
           path: this.getMarkerPath(file.path),
           payload: { version: 1, path: file.path, origin, hashes, backupHash }
