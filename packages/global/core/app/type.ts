@@ -2,6 +2,7 @@ import { AppTypeEnum } from './constants';
 import { NodeInputKeyEnum } from '../workflow/constants';
 import { DatasetSearchModeEnum } from '../dataset/constants';
 import { DatasetTagFilterValueSchema } from '../dataset/search/tagFilter';
+import { rerankCandidateNumRange } from '../dataset/search/utils';
 import type { ReasoningEffort } from '../ai/llm/type';
 import type { AppPermission } from '../../support/permission/app/controller';
 import {
@@ -409,6 +410,11 @@ export const AppDatasetSearchParamsTypeSchema = z.object({
   /** @deprecated */
   rerankModel: OptionalDatasetModelSchema,
   rerankWeight: NumSchema.optional(),
+  // 非法候选数回退默认值，关闭重排或读取旧配置时也不能因此中断检索。
+  rerankCandidateNum: IntSchema.min(rerankCandidateNumRange.min)
+    .max(rerankCandidateNumRange.max)
+    .catch(rerankCandidateNumRange.default)
+    .optional(),
 
   datasetSearchUsingExtensionQuery: BoolSchema.optional(),
   datasetSearchExtensionModelId: OptionalDatasetModelSchema,

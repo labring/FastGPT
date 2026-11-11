@@ -11,7 +11,12 @@ import {
 } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { CreateAppBodyType } from '@fastgpt/global/openapi/core/app/common/api';
-import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
+import {
+  OwnerRoleVal,
+  PerResourceTypeEnum,
+  ReadRoleVal,
+  WritePermissionVal
+} from '@fastgpt/global/support/permission/constant';
 import { TeamAppCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
 import { Types } from '@fastgpt/service/common/mongo';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
@@ -20,6 +25,7 @@ import { MongoAppTemplate } from '@fastgpt/service/core/app/templates/templateSc
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import { getFakeUsers } from '@test/datas/users';
+import type { parseHeaderCertRet } from '@test/mocks/request';
 import { Call } from '@test/utils/request';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -345,6 +351,104 @@ describe('create api', () => {
     const version = await MongoAppVersion.findOne({ appId }).lean();
     expect(version?.nodes).toHaveLength(1);
     expect(version?.resources).toEqual([{ type: 'dataset', id: String(authorizedDataset._id) }]);
+  });
+});
+
+describe('app creation inheritPermission', () => {
+  /** 父 folder + read 协作者：子应用 ACL 可直接对比是否合并了父级快照。 */
+  const setupParentFolder = async () => {
+    const users = await getFakeUsers(2);
+    const [owner, collaborator] = users.members;
+    const teamId = users.owner.teamId;
+    await MongoResourcePermission.findOneAndUpdate(
+      { resourceType: 'team', teamId, resourceId: null, tmbId: owner.tmbId },
+      { permission: TeamAppCreatePermissionVal },
+      { upsert: true }
+    );
+    const parent = await MongoApp.create({
+      name: 'permission-parent-folder',
+      type: AppTypeEnum.folder,
+      teamId,
+      tmbId: owner.tmbId
+    });
+    await MongoResourcePermission.create([
+      {
+        resourceType: PerResourceTypeEnum.app,
+        teamId,
+        resourceId: String(parent._id),
+        tmbId: owner.tmbId,
+        permission: OwnerRoleVal
+      },
+      {
+        resourceType: PerResourceTypeEnum.app,
+        teamId,
+        resourceId: String(parent._id),
+        tmbId: collaborator.tmbId,
+        permission: ReadRoleVal
+      }
+    ]);
+    return { owner, collaborator, teamId, parent };
+  };
+
+  const appPermissions = async ({ teamId, appId }: { teamId: string; appId: string }) => {
+    const rows = await MongoResourcePermission.find(
+      { resourceType: PerResourceTypeEnum.app, teamId, resourceId: appId },
+      'tmbId permission'
+    ).lean();
+    return rows.map((row) => `${String(row.tmbId)}:${row.permission}`).sort();
+  };
+
+  const createChild = async ({
+    owner,
+    parentId,
+    inheritPermission
+  }: {
+    owner: parseHeaderCertRet;
+    parentId: string;
+    inheritPermission?: boolean;
+  }) =>
+    Call<CreateAppBodyType, EmptyRequestParams, string>(createapi.default, {
+      auth: owner,
+      body: {
+        nodes: [],
+        name: 'permission-child',
+        type: AppTypeEnum.simple,
+        parentId,
+        inheritPermission
+      }
+    });
+
+  it('inherits the parent snapshot when inheritPermission is omitted', async () => {
+    const { owner, collaborator, teamId, parent } = await setupParentFolder();
+
+    const res = await createChild({ owner, parentId: String(parent._id) });
+
+    expect(res.code).toBe(200);
+    const app = await MongoApp.findById(res.data).lean();
+    expect(app?.inheritPermission).toBe(true);
+    await expect(appPermissions({ teamId, appId: String(app._id) })).resolves.toEqual(
+      [
+        `${String(owner.tmbId)}:${OwnerRoleVal}`,
+        `${String(collaborator.tmbId)}:${ReadRoleVal}`
+      ].sort()
+    );
+  });
+
+  it('writes only the owner snapshot for an independent app', async () => {
+    const { owner, teamId, parent } = await setupParentFolder();
+
+    const res = await createChild({
+      owner,
+      parentId: String(parent._id),
+      inheritPermission: false
+    });
+
+    expect(res.code).toBe(200);
+    const app = await MongoApp.findById(res.data).lean();
+    expect(app?.inheritPermission).toBe(false);
+    await expect(appPermissions({ teamId, appId: String(app._id) })).resolves.toEqual([
+      `${String(owner.tmbId)}:${OwnerRoleVal}`
+    ]);
   });
 });
 

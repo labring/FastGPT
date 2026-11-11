@@ -430,7 +430,11 @@ export const formatCollectionParamsByDataset = async ({
     delete formatCreateCollectionParams.chunkTriggerMinSize;
     delete formatCreateCollectionParams.dataEnhanceCollectionName;
     delete formatCreateCollectionParams.imageIndex;
-    delete formatCreateCollectionParams.autoIndexes;
+    // 模板 FAQ 需要保留 autoIndexes，供 getTrainingModeByCollection 选择 auto 队列；
+    // QA/备份导入仍不使用 autoIndex。
+    if (trainingType !== DatasetCollectionDataProcessModeEnum.template) {
+      delete formatCreateCollectionParams.autoIndexes;
+    }
 
     if (
       trainingType === DatasetCollectionDataProcessModeEnum.backup ||
@@ -1163,7 +1167,7 @@ export async function delCollection({
   else await retryFn(remove);
 }
 
-/** 查找 collection 及其全部子节点（parentId 子树）；返回 [根, ...子孙]。 */
+/** 查找团队内 collection 及其全部子节点，固定根的 dataset 范围；返回 [根, ...子孙]。 */
 export async function findCollectionAndAllChildren({
   teamId,
   collectionId,
@@ -1173,20 +1177,21 @@ export async function findCollectionAndAllChildren({
   collectionId: string;
   fields?: string;
 }) {
+  const root = await MongoDatasetCollection.findOne({ _id: collectionId, teamId }).lean();
+  if (!root) {
+    throw new Error('Collection not found');
+  }
   const find = async (id: string): Promise<any[]> => {
-    const children = await MongoDatasetCollection.find({ teamId, parentId: id }, fields).lean();
+    const children = await MongoDatasetCollection.find(
+      { teamId, datasetId: root.datasetId, parentId: id },
+      fields
+    ).lean();
     let list = children;
     for (const child of children) {
       list = list.concat(await find(String(child._id)));
     }
     return list;
   };
-  const [root, children] = await Promise.all([
-    MongoDatasetCollection.findById(collectionId).lean(),
-    find(collectionId)
-  ]);
-  if (!root) {
-    throw new Error('Collection not found');
-  }
+  const children = await find(collectionId);
   return [root, ...children];
 }

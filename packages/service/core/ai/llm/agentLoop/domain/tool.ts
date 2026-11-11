@@ -42,6 +42,8 @@ export type AgentLoopReadFileExecuteParams = {
 export type AgentLoopToolExecutionResult<TChildrenResponse = unknown> = {
   response: string;
   assistantMessages: ChatCompletionMessageParam[];
+  /** 工具结果全部回填后追加的服务端 User 指令；沿用原消息链，不在暂停或停止后续跑。 */
+  continuationMessage?: string;
   /** 工具内部产生的展示层 assistant responses，由上层 adapter 解释。 */
   assistantResponses?: AgentLoopAssistantResponse[];
   usages: AgentLoopUsage[];

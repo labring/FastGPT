@@ -1,6 +1,7 @@
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { DatasetParamsModalFormType } from '@/components/core/app/DatasetParamsModal';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
+import { rerankCandidateNumRange } from '@fastgpt/global/core/dataset/search/utils';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import {
   isValidReferenceValueFormat,
@@ -51,6 +52,7 @@ export const getDatasetSearchParams = (inputs: Pick<FlowNodeInputItemType, 'key'
     rerankModelId: undefined,
     rerankModel: undefined,
     rerankWeight: 0.6,
+    rerankCandidateNum: rerankCandidateNumRange.default,
     datasetSearchUsingExtensionQuery: false,
     datasetSearchExtensionModelId: undefined,
     datasetSearchExtensionModel: undefined,

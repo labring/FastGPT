@@ -77,6 +77,7 @@ export type DispatchAgentModuleProps = ModuleDispatchProps<{
   /** @deprecated */
   [NodeInputKeyEnum.datasetSearchRerankModel]?: string;
   [NodeInputKeyEnum.datasetSearchRerankWeight]?: number;
+  [NodeInputKeyEnum.datasetSearchRerankCandidateNum]?: number;
   [NodeInputKeyEnum.datasetSearchUsingExtensionQuery]?: boolean;
   [NodeInputKeyEnum.datasetSearchExtensionModelId]?: string;
   /** @deprecated */

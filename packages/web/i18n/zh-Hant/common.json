@@ -1106,6 +1106,8 @@
   "request_more": "點選載入更多",
   "required": "必填",
   "rerank_weight": "重排權重",
+  "rerank_candidate_num": "重排候選數",
+  "rerank_candidate_num_tips": "從召回結果中最多取前 N 條分塊送入重排模型，超出部分按召回順序截斷，不參與重排。數值越大，重排耗時越長、對模型負載越高，但重排產生的作用越大。",
   "resume_failed": "恢復失敗",
   "resume_completed_data_parse_failed": "恢復完成態資料解析失敗",
   "response_processing_error": "處理回應時發生錯誤",

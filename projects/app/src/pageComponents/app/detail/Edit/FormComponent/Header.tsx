@@ -233,9 +233,7 @@ const Header = ({
               mr={[2, 4]}
               icon={<MyIcon name={'history'} w={'18px'} />}
               aria-label={''}
-              size={'sm'}
-              w={'34px'}
-              h={'34px'}
+              size={'mdSquare'}
               variant={'whitePrimary'}
               onClick={isShowHistories ? closeHistories : setIsShowHistories}
             />

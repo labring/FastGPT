@@ -112,7 +112,6 @@ const MyEdit = <T extends SimpleAppSnapshotType | WorkflowVersionEntry>({
           <Button
             variant={'whiteBase'}
             w={'full'}
-            h={'30px'}
             onClick={async () => {
               const initialSnapshot = past[past.length - 1];
 

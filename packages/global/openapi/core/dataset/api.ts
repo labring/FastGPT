@@ -10,11 +10,14 @@ import {
   DatasetSchema,
   DatasetListItemSchema,
   sangforFileParseConfigSchema,
-  InheritPermissionInputSchema,
-  SearchDataResponseItemSchema,
-  type WithOptionalInheritPermission
+  SearchDataResponseItemSchema
 } from '../../../core/dataset/type';
+import {
+  InheritPermissionInputSchema,
+  type WithOptionalInheritPermission
+} from '../../../support/permission/inheritPermission';
 import { AppListSortSchema } from '../../../core/app/constants';
+import { AppDatasetSearchParamsTypeSchema } from '../../../core/app/type';
 import {
   CollaboratorListSchema,
   CollaboratorUpdateListSchema,
@@ -25,6 +28,14 @@ import {
   PaginationPageSizeLimit,
   PaginationResponseSchema
 } from '../../api';
+
+// 与业务配置共用同一字段 schema，避免 API 拒绝数字控件可能提交的字符串值。
+const RerankCandidateNumSchema = AppDatasetSearchParamsTypeSchema.shape.rerankCandidateNum.meta({
+  example: 100,
+  default: 100,
+  description:
+    '启用重排时，从融合后的召回结果中最多取前 N 条送入重排模型；有效值为 10~100 的整数，缺失或非法值统一按 100 处理，不中断检索'
+});
 
 /* ============================================================================
  * API: 创建知识库
@@ -648,6 +659,7 @@ const SearchDatasetTestOptionsSchema = z.object({
     description:
       '重排结果的融合权重，原始召回结果权重为 1 - rerankWeight；默认 0.5，1 表示仅使用重排排序'
   }),
+  rerankCandidateNum: RerankCandidateNumSchema,
   datasetSearchUsingExtensionQuery: z.boolean().optional().meta({
     example: false,
     default: false,

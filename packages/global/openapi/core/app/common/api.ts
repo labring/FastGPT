@@ -12,6 +12,7 @@ import {
 import { VariableItemTypeSchema } from '../../../../core/app/variable/type';
 import { ShortUrlSchema } from '../../../../support/marketing/type';
 import { AppPermissionSchema } from '../../../../support/permission/app/controller.schema';
+import { InheritPermissionSchema } from '../../../../support/permission/inheritPermission';
 import { SourceMemberSchema } from '../../../../support/user/type';
 import {
   OpenAPIFlowNodeInputItemTypeSchema,
@@ -228,6 +229,7 @@ export const CreateAppBodySchema = z
       example: '68ad85a7463006c963799a05',
       description: '父级应用/文件夹 ID'
     }),
+    inheritPermission: InheritPermissionSchema,
     name: z.string().min(1).meta({
       example: '新应用',
       description: '应用名称'

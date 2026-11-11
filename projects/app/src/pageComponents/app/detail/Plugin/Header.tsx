@@ -169,16 +169,13 @@ const Header = () => {
               <IconButton
                 icon={<MyIcon name={'history'} w={'18px'} />}
                 aria-label={''}
-                size={'sm'}
-                w={'34px'}
-                h={'34px'}
+                size={'mdSquare'}
                 variant={'whitePrimary'}
                 onClick={() => (showHistoryModal ? closePanel() : openPanel('history'))}
               />
               <Button
                 leftIcon={<MyIcon name={'core/workflow/debug'} w={['14px', '16px']} />}
                 w={'81px'}
-                h={'34px'}
                 variant={'whitePrimary'}
                 flexShrink={0}
                 onClick={async () => {

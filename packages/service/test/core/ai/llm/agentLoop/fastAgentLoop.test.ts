@@ -185,8 +185,14 @@ describe('runFastAgentMainLoop', () => {
 
     expect(result.status).toBe('done');
     expect(createLLMResponseMock).toHaveBeenCalledTimes(2);
-    expect(completionPolicy).toHaveBeenNthCalledWith(1, { requestIndex: 1 });
-    expect(completionPolicy).toHaveBeenNthCalledWith(2, { requestIndex: 2 });
+    expect(completionPolicy).toHaveBeenNthCalledWith(1, {
+      requestIndex: 1,
+      answerText: 'phase summary'
+    });
+    expect(completionPolicy).toHaveBeenNthCalledWith(2, {
+      requestIndex: 2,
+      answerText: 'terminal answer'
+    });
     expect(createLLMResponseMock.mock.calls[1][0].body.messages).toContainEqual({
       role: ChatCompletionRequestMessageRoleEnum.User,
       hideInUI: true,

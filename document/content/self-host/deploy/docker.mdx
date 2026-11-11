@@ -252,6 +252,7 @@ docker compose up -d
 ### 5. 访问 FastGPT
 
 可通过第三步开放的端口/域名访问 FastGPT。登录用户名为 `root`：
+
 - **v4.17.3 及更高版本**：初始密码固定为 `123456`，首次登录后系统会弹出激活窗口强制要求修改密码。忘记密码时可通过内置 CLI 脚本重置，详见[修改与重置 root 密码](../config/root-password.mdx)。
 - **旧版本（v4.17.2 及更早）**：密码为 `docker-compose.yml` 环境变量里设置的 `DEFAULT_ROOT_PSW`。如果使用交互式脚本部署，脚本会随机生成并在完成后输出登录密码。每次重启容器都会按该变量自动更新密码。
 
@@ -390,6 +391,8 @@ docker compose up -d
    ```
 
 4. 执行初始化脚本（如果有）
+
+5. 如果还需要把自带的 MongoDB 5.x 迁移到 8.x，参考 [MongoDB 5.x 迁移到 8.x（导出/恢复）](../upgrading/mongodb-8.mdx)。
 
 ### 如何自定义环境变量？
 

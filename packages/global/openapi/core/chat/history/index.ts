@@ -66,7 +66,8 @@ export const ChatHistoryPath: OpenAPIPath = {
   '/core/chat/history/markRead': {
     post: {
       summary: '标记会话已读',
-      description: '用户在本页看完回复后调用，同步 Mongo hasBeenRead',
+      description:
+        '用户在本页看完回复后调用，同步 Mongo hasBeenRead。App 来源要求应用读取权限，其他来源保留资源写权限；同时校验对应来源的会话访问范围。',
       tags: [DevApiTagsMap.chatHistory, SystemOpenApiTagMap.chatHistory],
       requestBody: {
         content: {

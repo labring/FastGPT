@@ -202,6 +202,7 @@ const NodeVariableUpdate = ({ data, selected }: CanvasNodeProps) => {
             </FormLabel>
             <Box ml={2}>
               <NodeInputSelect
+                strategy="absolute"
                 renderTypeList={[inputType, FlowNodeInputTypeEnum.reference]}
                 selectedType={updateItem.renderType}
                 onChange={(e) => {

@@ -62,6 +62,10 @@ const createManifest = ({
   downloadObjectKey: `pkgs/${pluginId}/${version}.pkg`,
   downloadUrl: `https://cdn.example.com/${pluginId}/${version}.pkg`,
   readmeUrl: `https://cdn.example.com/${pluginId}/README.md`,
+  readmeUrls: {
+    en: `https://cdn.example.com/${pluginId}/README.en.md`,
+    'zh-CN': `https://cdn.example.com/${pluginId}/README.zh-CN.md`
+  },
   filename: `${pluginId}@${version}@${etag}.pkg`,
   source: 'official',
   size: 12,
@@ -131,7 +135,11 @@ describe('marketplace tool data service', () => {
         isToolset: true,
         source: 'official',
         downloadCount: 7,
-        downloadUrl: 'https://cdn.example.com/tool-a/1.0.0.pkg'
+        downloadUrl: 'https://cdn.example.com/tool-a/1.0.0.pkg',
+        readmeUrls: {
+          en: 'https://cdn.example.com/tool-a/README.en.md',
+          'zh-CN': 'https://cdn.example.com/tool-a/README.zh-CN.md'
+        }
       },
       {
         pluginId: 'tool-a/child',
@@ -143,7 +151,11 @@ describe('marketplace tool data service', () => {
         tags: ['search'],
         source: 'official',
         downloadCount: 0,
-        downloadUrl: 'https://cdn.example.com/tool-a/1.0.0.pkg'
+        downloadUrl: 'https://cdn.example.com/tool-a/1.0.0.pkg',
+        readmeUrls: {
+          en: 'https://cdn.example.com/tool-a/README.en.md',
+          'zh-CN': 'https://cdn.example.com/tool-a/README.zh-CN.md'
+        }
       }
     ]);
     expect(repoMocks.listToolManifests).toHaveBeenCalledWith({ latestOnly: true });

@@ -273,6 +273,7 @@ export function agentForm2AppWorkflow(
                 rerankModelId: data.dataset.rerankModelId,
                 rerankModel: data.dataset.rerankModel,
                 rerankWeight: data.dataset.rerankWeight,
+                rerankCandidateNum: data.dataset.rerankCandidateNum,
                 datasetSearchUsingExtensionQuery: data.dataset.datasetSearchUsingExtensionQuery,
                 datasetSearchExtensionModelId: data.dataset.datasetSearchExtensionModelId,
                 datasetSearchExtensionModel: data.dataset.datasetSearchExtensionModel,

@@ -151,6 +151,10 @@ export const appWorkflow2Form = ({
         node.inputs,
         NodeInputKeyEnum.datasetSearchRerankWeight
       );
+      defaultAppForm.dataset.rerankCandidateNum = findInputValueByKey(
+        node.inputs,
+        NodeInputKeyEnum.datasetSearchRerankCandidateNum
+      );
       // Query extension
       defaultAppForm.dataset.datasetSearchUsingExtensionQuery = findInputValueByKey(
         node.inputs,
@@ -534,6 +538,13 @@ export function form2AppWorkflow(
           label: '',
           valueType: WorkflowIOValueTypeEnum.number,
           value: formData.dataset.rerankWeight
+        },
+        {
+          key: NodeInputKeyEnum.datasetSearchRerankCandidateNum,
+          renderTypeList: [FlowNodeInputTypeEnum.hidden],
+          label: '',
+          valueType: WorkflowIOValueTypeEnum.number,
+          value: formData.dataset.rerankCandidateNum
         },
         {
           key: NodeInputKeyEnum.datasetSearchUsingExtensionQuery,

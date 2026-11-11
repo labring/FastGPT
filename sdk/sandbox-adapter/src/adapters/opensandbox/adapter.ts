@@ -238,10 +238,25 @@ export class OpenSandboxAdapter extends BaseSandboxAdapter {
     );
   }
 
+  /**
+   * 按原文替换文件内容，同一文件的多处修改按传入顺序依次生效。
+   *
+   * OpenSandbox 的 /files/replace 请求体以路径为键，同一请求里同一路径只保留最后一项，
+   * 因此按“每个文件的第 n 处修改”分批：不同文件仍合并在同一请求，同一文件的后续修改进入下一批。
+   */
   async replaceContent(entries: ContentReplaceEntry[]): Promise<void> {
-    await this.lifecycle.sandbox.files.replaceContents(
-      entries.map((entry) => ({ ...entry, path: this.normalizePath(entry.path) }))
-    );
+    const batches: ContentReplaceEntry[][] = [];
+    const editCountByPath = new Map<string, number>();
+    for (const entry of entries) {
+      const path = this.normalizePath(entry.path);
+      const batchIndex = editCountByPath.get(path) ?? 0;
+      editCountByPath.set(path, batchIndex + 1);
+      (batches[batchIndex] ??= []).push({ ...entry, path });
+    }
+
+    for (const batch of batches) {
+      await this.lifecycle.sandbox.files.replaceContents(batch);
+    }
   }
 
   async createDirectories(

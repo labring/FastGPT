@@ -1,6 +1,7 @@
 import { SearchScoreTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import type { RerankModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
+import { normalizeRerankCandidateNum } from '@fastgpt/global/core/dataset/search/utils';
 import { concatWeightedRecallLists, removeDuplicateSearchResults } from './result';
 import { rerankDatasetWithSynonyms } from '../../synonym/rerank';
 
@@ -62,6 +63,7 @@ export const reRankSearchResults = async ({
   rerankModel,
   query,
   rerankWeight,
+  rerankCandidateNum,
   teamId
 }: {
   usingReRank: boolean;
@@ -69,6 +71,7 @@ export const reRankSearchResults = async ({
   rerankModel?: RerankModelDataType;
   query: string;
   rerankWeight: number;
+  rerankCandidateNum?: number;
   teamId: string;
 }): Promise<{
   results: SearchDataResponseItemType[];
@@ -84,11 +87,17 @@ export const reRankSearchResults = async ({
   }
 
   try {
+    // mixed 模式先完成 embedding/fullText 的 RRF 融合，再在这里按融合顺序截断；
+    // 不能按单路 recall limit 截断，否则会丢掉另一路的互补候选。
+    const candidates = removeDuplicateSearchResults(textRecallResults).slice(
+      0,
+      normalizeRerankCandidateNum(rerankCandidateNum)
+    );
     const { results: reRankResults, inputTokens } = await datasetDataReRank({
       teamId,
       rerankModel,
       query,
-      data: removeDuplicateSearchResults(textRecallResults)
+      data: candidates
     });
 
     if (rerankWeight === 1) {
@@ -99,9 +108,10 @@ export const reRankSearchResults = async ({
       };
     }
 
+    // 只融合送入重排的候选：超出部分没有重排分，会被按重排分过滤的阈值直接放行。
     return {
       results: concatWeightedRecallLists([
-        { weight: 1 - rerankWeight, list: textRecallResults },
+        { weight: 1 - rerankWeight, list: candidates },
         { weight: rerankWeight, list: reRankResults }
       ]),
       inputTokens,

@@ -713,8 +713,6 @@ const DatasetTagFilterRows = ({
         </Flex>
         <Button
           variant={'link'}
-          h={'34px'}
-          minH={'34px'}
           leftIcon={<MyIcon name={'common/addLight'} boxSize={4} mr={-1} />}
           color={'primary.700'}
           onClick={() => {
